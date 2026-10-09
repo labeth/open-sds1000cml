@@ -136,6 +136,9 @@ func (e *Engine) SetMask(m *Mask) {
 			// The SRAM engine's geometry lives in its frames: the mask was
 			// built from the latest ones, so it compares with frames like them.
 			id := e.pubIdent
+			if m.FrameIdent {
+				id = frameIdent{m.TdivS, m.SampleS, m.PeakDetect}
+			}
 			cp.FrameIdent, cp.TdivS, cp.SampleS, cp.PeakDetect = true, id.TdivS, id.SampleS, id.PeakDetect
 		}
 		cp.OffKey = e.offCode[m.Ch&1]

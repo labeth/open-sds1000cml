@@ -147,3 +147,52 @@ func TestSuperresArmDeepWindowStaysResponsive(t *testing.T) {
 		t.Fatalf("deep window: title %q status %q", c.MenuView().Title, c.SuperresView().Status)
 	}
 }
+
+type cancellableFPGAEng struct {
+	*fakeEng
+	started chan context.Context
+}
+
+// TRLC-LINKS: REQ-SDS-141
+func (f *cancellableFPGAEng) FPGAStack(ctx context.Context, _ engine.FPGAStackRequest) (engine.FPGAStackResult, error) {
+	f.started <- ctx
+	<-ctx.Done()
+	return engine.FPGAStackResult{}, ctx.Err()
+}
+
+// TRLC-LINKS: REQ-SDS-141
+func TestSuperresFPGACancel(t *testing.T) {
+	_, base, fe := newC(t)
+	eng := &cancellableFPGAEng{base, make(chan context.Context, 1)}
+	c := New(eng, fe, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
+	c.SetFrameSource(func(fn func(*engine.Frame)) {
+		fn(&engine.Frame{C1: []uint8{40, 200, 40, 200, 40, 200, 40, 200}, Valid: 8, EdgeX: 4, SampleS: 2e-9})
+	})
+	c.srFPGARun()
+	ctx := <-eng.started
+	if _, ok := ctx.Deadline(); ok {
+		t.Fatal("progressing stacks must not have a fixed session deadline")
+	}
+	c.srCancel("cancelled")
+	select {
+	case <-ctx.Done():
+	case <-time.After(time.Second):
+		t.Fatal("native cancel did not reach FPGA job")
+	}
+	deadline := time.Now().Add(time.Second)
+	for {
+		c.mu.Lock()
+		busy := c.srFPGABusy
+		c.mu.Unlock()
+		if !busy {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("cancelled job remained busy")
+		}
+		time.Sleep(time.Millisecond)
+	}
+	if v := c.SuperresView(); v.Active || v.Focus != 0 || v.Status != "cancelled" {
+		t.Fatalf("cancelled completion restored stale review: %+v", v)
+	}
+}

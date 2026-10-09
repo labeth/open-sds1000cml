@@ -256,11 +256,8 @@ func decodeManchesterAt(S sliced, T float64, cfg ManchesterCfg, bits int, colTim
 		if len(cells) == 0 || bestScore <= 0 || bestGood < bits {
 			continue // need at least one whole byte of clean cells
 		}
-		// Leading alternating run = preamble. The FIRST/LAST segment of a free-
-		// running capture may be a frame truncated by the record edge (it starts or
-		// ends mid-data); require a preamble there to drop that partial. Interior
-		// segments are whole frames bounded by idle gaps on both sides, so accept
-		// them as-is (and a lone single frame — the synthetic test case — too).
+		// Require a preamble only when a boundary segment lacks enough
+		// observed idle to establish a complete frame.
 		run := 0
 		if cells[0].Bit >= 0 {
 			run = 1
@@ -268,7 +265,7 @@ func decodeManchesterAt(S sliced, T float64, cfg ManchesterCfg, bits int, colTim
 				run++
 			}
 		}
-		atEdge := len(segs) > 1 && (sgIdx == 0 || sgIdx == len(segs)-1)
+		atEdge := len(segs) > 1 && ((sgIdx == 0 && s0e < 2.5*T) || (sgIdx == len(segs)-1 && float64(S.n)-lastE < 2.5*T))
 		if run < 3 && atEdge {
 			continue
 		}

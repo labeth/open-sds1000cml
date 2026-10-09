@@ -54,14 +54,15 @@ try {
   await page.click("#zmTrig");
   await page.waitForTimeout(300);
 
-  // (3) coupling guard FIRST (client-side st mutation, read the refusal immediately).
-  await page.evaluate(() => { st.cpl1 = 1; });
-  await page.click("#zmBuild");
-  await page.waitForTimeout(200);
-  ok((await page.evaluate(() => $("zmStats").textContent)).includes("coupling"),
-    "AC-coupled channel refuses the mask build");
-  ok(await page.evaluate(() => !zm.mask), "no mask installed by the refused build");
-  await page.evaluate(() => { st.cpl1 = 0; });
+  // (3) Keep the synthetic coupling and its check in one turn: a real status
+  // poll must not replace this fixture-only value before the click.
+  const refused = await page.evaluate(() => {
+    st.cpl1 = 1; $("zmBuild").click();
+    const result = {message: $("zmStats").textContent, empty: !zm.mask};
+    st.cpl1 = 0; return result;
+  });
+  ok(refused.message.includes("coupling"), "AC-coupled channel refuses the mask build");
+  ok(refused.empty, "no mask installed by the refused build");
 
   // (4) build a mask from 8 raw frames and upload it.
   await page.fill("#zmN", "8");

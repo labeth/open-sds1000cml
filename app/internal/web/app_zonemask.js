@@ -48,8 +48,13 @@ function drawZones(g) {
     g.strokeRect(x0, y0, x1 - x0, y1 - y0);
     g.setLineDash([]);
   }
-  // mask envelope (standard windowed display only; deep serves skip the render)
-  if (zm.mask && frame && frame.win_frac === 1 && st && (frame.win_cols || st.win_cols) === zm.mask.win) {
+  // Map sample-based masks through trigger-relative time, including deep
+  // records and display envelopes with a different number of columns.
+  const mg = zm.mask && zm.mask.geometry;
+  const maskVisible = zm.mask && frame && (mg
+    ? mg.tdiv_s === frame.tdiv_s && mg.sample_s > 0 && frame.col_span_s > 0 && frame.edge_frac >= 0
+    : frame.win_frac === 1 && st && (frame.win_cols || st.win_cols) === zm.mask.win);
+  if (maskVisible) {
     const win = zm.mask.win, span = view.win.b - view.win.a || 1;
     g.strokeStyle = "rgba(242,166,59,0.55)";
     for (const env of [zm.mask.lo, zm.mask.hi]) {
@@ -57,7 +62,8 @@ function drawZones(g) {
       let started = false;
       for (let x = 0; x < CW; x += 2) {
         const fr = view.win.a + (x / CW) * span;
-        const j = Math.round(fr * (win - 1));
+        const dt = mg ? (fr * (frame.cols - 1) - frame.edge_frac * frame.cols) * frame.col_span_s / frame.cols : 0;
+        const j = Math.round(mg ? dt / mg.sample_s + zm.mask.posFrac * win : fr * (win - 1));
         if (j < 0 || j >= win) { started = false; continue; }
         const y = yFor(env[j], 1);
         if (!started) { g.moveTo(x, y); started = true; } else g.lineTo(x, y);
@@ -199,7 +205,7 @@ function zmRescale() {
       }
       m.avpc = c.vpc; m.aoff = c.off;
       mchg = true;
-      fetch("/api/mask", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ lo: m.lo, hi: m.hi, win: m.win, ch: m.ch || 0 }) }).catch(() => {});
+      fetch("/api/mask", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ lo_b64: zmPackMask(m.lo), hi_b64: zmPackMask(m.hi), win: m.win, ch: m.ch || 0, ...m.geometry }) }).catch(() => {});
     }
   }
   if (zchg || mchg) { zmStatus("re-anchored to the new vertical scale"); redraw(); }
@@ -244,17 +250,25 @@ $("zmTrig").onclick = () => {
   zmStatus(on ? "zone trigger ON — only qualifying frames publish" : "zone trigger off");
 };
 
+// Compact mask transport avoids large numeric JSON allocations on the ARM.
+// TRLC-LINKS: REQ-SDS-014
+function zmPackMask(a) {
+  let out = "";
+  for (let i = 0; i < a.length; i += 8192) out += String.fromCharCode(...a.slice(i, i + 8192));
+  return btoa(out);
+}
+
 // --- mask build from N raw frames (dilated client-side, uploaded) ---
 // TRLC-LINKS: REQ-SDS-014
 $("zmBuild").onclick = async () => {
   if (!st || !st.win_cols) { zmStatus("no window info yet"); return; }
   const N = Math.max(4, Math.min(200, +$("zmN").value || 32));
-  const tolT = Math.max(0, +$("zmTolT").value || 0), tolV = Math.max(0, +$("zmTolV").value || 0);
+  const tolT = Math.max(0, Math.min(1048576, Math.floor(+$("zmTolT").value || 0))), tolV = Math.max(0, Math.min(255, +$("zmTolV").value || 0));
   const ch = +$("zmCh").value || 0;
   if (!zmCplOK(ch)) return;
   let win = 0;
-  const posFrac = st.trig_pos_frac > 0 ? st.trig_pos_frac : 0.5;
-  let lo, hi, geometry;
+  const posFrac = Number.isFinite(st.trig_pos_frac) && st.trig_pos_frac >= 0 && st.trig_pos_frac <= 1 ? st.trig_pos_frac : 0.5;
+  let lo, hi, geometry, frameGeometry;
   let got = 0, lastSeq = 0, tries = 0;
   zmStatus("building mask 0/" + N + "…");
   while (got < N && tries < N * 6) {
@@ -264,16 +278,17 @@ $("zmBuild").onclick = async () => {
       const f = decodeBinFrame(await r.arrayBuffer());
       if (!f || f.unchanged || f.seq === lastSeq) continue;
       lastSeq = f.seq;
-      if (!(f.edge_x >= 0) || !(f.sample_s > 0)) continue;
+      if (!(f.edge_x >= 0) || !(f.sample_s > 0) || (f.peak_detect && st.acq_mode !== 3)) continue;
       const sig = ch === 1 ? f.c2 : f.c1;
       if (!sig) continue;
       const fw = Math.min(f.win_cols || st.win_cols, f.cols);
       const key = [fw, f.tdiv_s, f.sample_s, !!f.peak_detect].join(":");
-      if (!win) {
-        win = fw; geometry = key;
-        if (!(win > 0) || win > 65536) { zmStatus("mask build failed — window exceeds 65536 samples"); return; }
+      if (!win || key !== geometry) {
+        win = fw; geometry = key; got = 0;
+        frameGeometry = {tdiv_s: f.tdiv_s, sample_s: f.sample_s, peak_detect: !!f.peak_detect};
+        if (!(win > 0) || win > 1048576) { zmStatus("mask build failed — window exceeds SRAM record depth"); return; }
         lo = new Array(win).fill(255); hi = new Array(win).fill(0);
-      } else if (key !== geometry) { zmStatus("mask build failed — acquisition geometry changed"); return; }
+      }
       const left = Math.round(f.edge_x - posFrac * win);
       for (let j = 0; j < win; j++) {
         const s = left + j;
@@ -290,23 +305,29 @@ $("zmBuild").onclick = async () => {
   // unobserved columns (lo>hi) are UNTESTABLE — normalize to always-pass before
   // dilating, or they become inverted-garbage bounds that fail every sample
   for (let j = 0; j < win; j++) if (lo[j] > hi[j]) { lo[j] = 0; hi[j] = 255; }
-  // dilation (same morphology as engine.BuildMaskFromEnvelope)
+  // Sliding min/max dilation: linear work even for full SRAM records and
+  // large horizontal tolerances. Each index enters and leaves its deque once.
   const dLo = new Array(win), dHi = new Array(win);
+  const qLo = new Int32Array(win), qHi = new Int32Array(win);
+  let lh = 0, lt = 0, hh = 0, ht = 0, next = 0;
   for (let j = 0; j < win; j++) {
-    let mn = 255, mx = 0;
-    for (let k = Math.max(0, j - tolT); k <= Math.min(win - 1, j + tolT); k++) {
-      if (lo[k] < mn) mn = lo[k];
-      if (hi[k] > mx) mx = hi[k];
+    const end = Math.min(win - 1, j + tolT), start = Math.max(0, j - tolT);
+    while (next <= end) {
+      while (lt > lh && lo[qLo[lt - 1]] >= lo[next]) lt--;
+      while (ht > hh && hi[qHi[ht - 1]] <= hi[next]) ht--;
+      qLo[lt++] = next; qHi[ht++] = next++;
     }
-    dLo[j] = Math.max(0, Math.floor(mn - tolV));
-    dHi[j] = Math.min(255, Math.ceil(mx + tolV));
+    while (lh < lt && qLo[lh] < start) lh++;
+    while (hh < ht && qHi[hh] < start) hh++;
+    dLo[j] = Math.max(0, Math.floor(lo[qLo[lh]] - tolV));
+    dHi[j] = Math.min(255, Math.ceil(hi[qHi[hh]] + tolV));
   }
   try {
-    const response = await fetch("/api/mask", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ lo: dLo, hi: dHi, win, ch }) });
+    const response = await fetch("/api/mask", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ lo_b64: zmPackMask(dLo), hi_b64: zmPackMask(dHi), win, ch, ...frameGeometry }) });
     const result = await response.json();
     if (!response.ok || !result.ok) throw new Error(result.err || "server rejected mask");
   } catch (e) { zmStatus("mask build failed — " + e.message); return; }
-  zm.mask = { lo: dLo, hi: dHi, win, ch };
+  zm.mask = { lo: dLo, hi: dHi, win, ch, posFrac, geometry: frameGeometry };
   const c = zmVctx(ch);
   if (c) { // frozen source for exact re-mapping on later V/div / offset changes
     zm.mask.srcLo = dLo.slice(); zm.mask.srcHi = dHi.slice();

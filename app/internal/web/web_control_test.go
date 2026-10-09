@@ -281,3 +281,19 @@ func (f *fakeAnalog) TrigVolts(code uint16, srcCh int) float64 {
 
 // TRLC-LINKS: REQ-SDS-162
 func (f *fakeAnalog) TrigCalActive(srcCh int) (float64, float64) { return 31437, 911 }
+
+// TRLC-LINKS: REQ-SDS-204
+func TestRunToggleAfterSingleCapture(t *testing.T) {
+	fs := &fakeScope{}
+	s := New(fs, nil, nil, nil)
+	// The device has completed a single capture; a browser may still show running.
+	fs.stats.Running = false
+	out := post(t, s, "runtoggle", 0)
+	if out["ok"] != true || out["applied"] != float64(1) || !fs.stats.Running {
+		t.Fatalf("resume completed single: %v", out)
+	}
+	out = post(t, s, "runtoggle", 0)
+	if out["ok"] != true || out["applied"] != float64(0) || fs.stats.Running {
+		t.Fatalf("stop running acquisition: %v", out)
+	}
+}

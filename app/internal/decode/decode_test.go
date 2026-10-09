@@ -313,3 +313,39 @@ func TestDecodeUARTFrameError(t *testing.T) {
 		t.Errorf("expected frame-error, got kind=%s text=%q", r.Spans[0].Kind, r.Spans[0].Text)
 	}
 }
+
+// TRLC-LINKS: REQ-SDS-018
+func TestAutodetectARINCWithParityErrors(t *testing.T) {
+	var w []uint8
+	for i := 0; i < 9; i++ {
+		word := []uint32{0x92345678, 0x12345678, 0x956789ab}[i%3]
+		bits := make([]int, 32)
+		for j := range bits {
+			bits[j] = int((word >> j) & 1)
+		}
+		arincAppendWord(&w, bits, 40)
+		arincIdle(&w, 320)
+	}
+	// Slightly asymmetric rails: the NULL level need not be their exact midpoint.
+	for i, v := range w {
+		switch v {
+		case 40:
+			w[i] = 84
+		case 128:
+			w[i] = 133
+		case 210:
+			w[i] = 168
+		}
+	}
+	// Free-running records may begin/end inside a word. Partial words must
+	// not let a UART interpretation outweigh the complete ARINC words.
+	for phase := 0; phase < 120; phase++ {
+		capture := w[phase*40 : phase*40+8000]
+		if r := Autodetect(capture, nil, 2.5e-7, "hex"); r.Proto != "arinc429" {
+			t.Fatalf("phase %d: ARINC parity errors misidentified as %s: %s", phase, r.Proto, r.Text)
+		}
+		if r, _ := AutodetectFast(capture, nil, 2.5e-7, "hex"); r.Proto != "arinc429" {
+			t.Fatalf("fast phase %d: got %s", phase, r.Proto)
+		}
+	}
+}

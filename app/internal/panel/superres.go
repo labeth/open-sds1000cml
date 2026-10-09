@@ -230,6 +230,11 @@ func (c *Controller) srSeedAndStart() bool {
 // TRLC-LINKS: REQ-SDS-140
 func (c *Controller) srCancel(why string) {
 	c.mu.Lock()
+	if c.srFPGACancel != nil {
+		c.srFPGACancel()
+		c.srFPGACancel = nil
+		c.srFPGAGen++
+	}
 	if c.srStop != nil {
 		close(c.srStop)
 		c.srStop = nil

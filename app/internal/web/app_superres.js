@@ -160,7 +160,9 @@ function srEvtIngest(f) {
     sr.st.c[1].vpc = f.vpc2 || 1 / 25; sr.st.c[1].offV = f.off2_v || 0;
     sr.meta = { tdiv_s: f.tdiv_s, cols: f.cols, sample_s: dt, vpc1: f.vpc1, vpc2: f.vpc2 };
     const h = d.occ[0];
-    sr.evtMargin = Math.max(4, Math.round(d.spb || (h.i1 - h.i0) / 10));
+    // UART data spans end before parity/stop. Retain both plus decoder
+    // guard samples so the stacked review is itself a complete frame.
+    sr.evtMargin = Math.max(8, Math.ceil(2 * (d.spb || (h.i1 - h.i0) / 10)) + 8);
     const gLo = Math.max(0, h.i0 - sr.evtMargin), gHi = Math.min(f.cols, h.i1 + sr.evtMargin);
     if (gHi - gLo < 8 || !srSeedRef(sr.st, f.c1, f.c2, -1, { lo: gLo, hi: gHi })) { sr.st = null; srStatus("decode-trig: reference byte unusable (raise V/div for headroom)"); return; }
     firstFrame = true; // srSeedRef already stacked occ[0]
@@ -385,7 +387,7 @@ $("srArm").onclick = () => {
 };
 
 // TRLC-LINKS: REQ-SDS-019
-$("srReset").onclick = () => { if (sr.showing) srExitView(); srStop(); sr.st = null; sr.etsSt = null; sr.etsDetect = null; sr.meta = null; sr.savedWin = null; srStatus("idle"); };
+$("srReset").onclick = () => { if (sr.fpgaAbort) sr.fpgaAbort.abort(); sr.fpga = null; if (sr.showing) srExitView(); srStop(); sr.st = null; sr.etsSt = null; sr.etsDetect = null; sr.meta = null; sr.savedWin = null; srStatus("idle"); };
 
 // AUTOGATE: always (re-)place the markers on the best feature in the current
 // view, then show them. GATE: show/hide toggle — auto-places only the first time;
@@ -695,18 +697,22 @@ $("srFpga").onclick = async () => {
     channel: align, falling: false, level: lv.level, hysteresis: lv.hysteresis,
     pre_samples: FPGA_WINDOW / 2, min_separation: FPGA_WINDOW,
     bins: FPGA_WINDOW * K, factor: K, channel_mask: 3 } };
+  const abort = new AbortController();
+  sr.fpgaAbort = abort;
   sr.fpgaBusy = true;
   $("srFpga").classList.add("on");
   srStatus(`FPGA: stacking ${records} records (level ${lv.level}, hysteresis ${lv.hysteresis})…`);
   try {
-    const r = await fetch("/api/superres/fpga", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    const r = await fetch("/api/superres/fpga", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body), signal: abort.signal });
     if (!r.ok) { srStatus("FPGA: " + (await r.text()).trim()); return; }
     const res = await r.json();
+    if (abort.signal.aborted) return;
     sr.fpga = { res, align, tdiv_s: live.tdiv_s, vpc1: live.vpc1 || 1 / 25, vpc2: live.vpc2 || 1 / 25, off1: live.off1_v || 0, off2: live.off2_v || 0 };
     srFpgaShow();
   } catch (e) {
-    srStatus("FPGA: " + e);
+    if (!abort.signal.aborted) srStatus("FPGA: " + e);
   } finally {
+    sr.fpgaAbort = null;
     sr.fpgaBusy = false;
     $("srFpga").classList.remove("on");
   }

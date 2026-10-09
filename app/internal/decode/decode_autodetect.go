@@ -111,7 +111,10 @@ func scoreResult(r Result) float64 {
 		if good <= 0 {
 			return -1e9
 		}
-		return float64(good*150 + c[0]*15 - c[1]*40)
+		// Even a bad-parity word supplies 32 correctly spaced bipolar RZ
+		// pulses. Keep that framing evidence: partial boundary words can
+		// otherwise add enough false UART bytes to outscore valid ARINC.
+		return float64(good*150 + c[0]*50 - c[1]*40)
 	case "usbls":
 		// A valid PID (nibble + matching complement) spans "addr"; bad -> error.
 		c := kinds("addr", "frame-error")

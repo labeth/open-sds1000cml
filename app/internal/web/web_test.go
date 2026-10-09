@@ -119,7 +119,7 @@ func (f *fakeScope) MaskFails() []engine.MaskFail { return f.maskRing }
 func (f *fakeScope) SetSerialParams(p engine.SerialParams) { f.serialParams = p }
 
 // TRLC-LINKS: REQ-SDS-162
-func (f *fakeScope) SetSerialMode(m int) { f.serialMode = m }
+func (f *fakeScope) SetSerialMode(m int) { f.serialMode = m; f.stats.SerialMode = m }
 
 // TRLC-LINKS: REQ-SDS-162
 func (f *fakeScope) SetBodeMode(on bool, ref, dut int) { f.bodeOn, f.bodeRef, f.bodeDut = on, ref, dut }

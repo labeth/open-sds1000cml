@@ -41,6 +41,13 @@ func TestEnvelopeAllowed(t *testing.T) {
 		t.Fatal("Bode needs time-ordered samples, not extrema")
 	}
 	e.SetBodeMode(false, 0, 1)
+	for _, mode := range []int{MaskTest, MaskStopFail} {
+		e.SetMaskMode(mode)
+		if e.envelopeAllowed(sramcapture.Config{}, edge) {
+			t.Fatal("mask testing must preserve sample geometry")
+		}
+	}
+	e.SetMaskMode(MaskOff)
 	for _, mode := range []int32{AcqAverage, AcqPrecision, AcqEres} {
 		e.acqMode.Store(mode)
 		if e.envelopeAllowed(sramcapture.Config{}, edge) {

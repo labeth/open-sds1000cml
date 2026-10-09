@@ -27,3 +27,11 @@ func TestSuperresJS(t *testing.T) {
 		t.Fatalf("superres.js test did not report ALL PASS")
 	}
 }
+
+// TRLC-LINKS: REQ-SDS-019
+func TestEventStackUARTReviewJS(t *testing.T) {
+	testenv.NeedNode(t)
+	if out, err := exec.Command("node", "event_stack.test.cjs").CombinedOutput(); err != nil {
+		t.Fatalf("event stack review: %v\n%s", err, out)
+	}
+}

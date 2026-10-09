@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"time"
 
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/superres"
@@ -93,9 +92,9 @@ func (s *Server) registerFPGAStack(mux *http.ServeMux) {
 			}
 			req.Stack.TemplateStride, req.Stack.TemplatePre, req.Stack.TemplateThreshold = tpl.Stride, tpl.Pre, tpl.Threshold
 		}
-		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Minute)
-		defer cancel()
-		res, err := source.FPGAStack(ctx, req)
+		// Individual hardware operations have deadlines; a progressing large
+		// stack may legitimately take longer than five minutes.
+		res, err := source.FPGAStack(r.Context(), req)
 		if err != nil {
 			http.Error(w, err.Error(), 409)
 			return

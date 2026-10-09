@@ -7,3 +7,8 @@ assert.ok(result.ok);assert.match(result.text,/1234 5678/);
 const u=Array(160).fill(210);for(const v of [0x148,0x155]){u.push(...Array(40).fill(40));for(let b=0;b<9;b++)u.push(...Array(40).fill((v>>b)&1?210:40));u.push(...Array(80).fill(210));}u.push(...Array(160).fill(210));
 const uart=c.decodeUART(u,1e-6,{baud:25000,bits:9,parity:'none',fmt:'hex'});assert.ok(uart.ok);assert.match(uart.text,/148 155/);
 console.log('ALL PASS');
+const whole=c.decodeManchester(wave.concat(wave),1e-6,{bitrate:25000,ieee:true,msb:true,bits:16});
+assert.deepEqual(Array.from(whole.bytes),[0x1234,0x5678,0x1234,0x5678],'complete boundary frames with idle need no preamble');
+const partial=wave.slice((6+4)*40).concat(wave,wave.slice(0,(6+28)*40));
+const clipped=c.decodeManchester(partial,1e-6,{bitrate:25000,ieee:true,msb:true,bits:16});
+assert.deepEqual(Array.from(clipped.bytes),[0x1234,0x5678],'truncated boundary frames remain rejected');

@@ -227,7 +227,7 @@ func drawTrace(sf Surface, sig []uint8, win int, xc float64, interp bool, col ui
 	if win > n {
 		win = n
 	}
-	if posFrac <= 0 || posFrac > 1 {
+	if !(posFrac >= 0 && posFrac <= 1) {
 		posFrac = 0.5
 	}
 	// Anchor at posFrac; do NOT clamp `left` — extend the nearest rail off the

@@ -222,3 +222,22 @@ func TestDecodeManchesterNoPanic(t *testing.T) {
 		}
 	}
 }
+
+// TRLC-LINKS: REQ-SDS-018
+func TestDecodeManchesterCompleteBoundaryFrames(t *testing.T) {
+	const spb = 40
+	w := manchesterWave(mBits([]int{0x1234, 0x5678}, true, 16), true, spb)
+	cfg := ManchesterCfg{Bitrate: 25000, IEEE: true, MSB: true, Bits: 16}
+	whole := append(append([]uint8{}, w...), w...)
+	r := DecodeManchester(whole, 1e-6, cfg)
+	if fmt.Sprint(r.Bytes) != "[4660 22136 4660 22136]" {
+		t.Fatalf("complete boundary frames discarded: %+v", r)
+	}
+	partial := append([]uint8{}, w[(6+4)*spb:]...)
+	partial = append(partial, w...)
+	partial = append(partial, w[:(6+28)*spb]...)
+	r = DecodeManchester(partial, 1e-6, cfg)
+	if fmt.Sprint(r.Bytes) != "[4660 22136]" {
+		t.Fatalf("truncated boundary frames accepted: %+v", r)
+	}
+}

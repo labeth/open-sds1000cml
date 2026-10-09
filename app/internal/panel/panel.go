@@ -222,22 +222,24 @@ type Controller struct {
 	// render lock. srFocus is the intensity-button cycle: 0=watch (live+gate),
 	// 1=edit gate START, 2=edit gate END (ADJUST knob moves the edge), 3=review
 	// the stacked trace. srManLo/srManHi are the manual gate (-1 = auto).
-	srActive   bool
-	srFocus    int
-	srManLo    int
-	srManHi    int
-	srStack    *superres.Stack
-	srStop     chan struct{}
-	srStatus   string
-	srK        int     // fine-grid factor
-	srStopMode int     // 0=bits, 1=stacks, 2=time (menu order bit→stacks→time)
-	srStopVal  float64 // target for the active stop mode
-	srFPGABusy bool    // an FPGA stacking session is running (superres_fpga.go)
-	srCh       int     // stacked/aligned channel (0=C1,1=C2)
-	srT0       time.Time
-	srMean     []float32 // latest crunched trace for the review render (guarded by mu)
-	srMean2    []float32 // the OTHER channel's crunched trace (stacked X-Y / dual FFT)
-	srBits     float64   // latest measured bits gained (guarded by mu)
+	srActive     bool
+	srFocus      int
+	srManLo      int
+	srManHi      int
+	srStack      *superres.Stack
+	srStop       chan struct{}
+	srStatus     string
+	srK          int     // fine-grid factor
+	srStopMode   int     // 0=bits, 1=stacks, 2=time (menu order bit→stacks→time)
+	srStopVal    float64 // target for the active stop mode
+	srFPGACancel func()
+	srFPGAGen    uint64
+	srFPGABusy   bool // an FPGA stacking session is running (superres_fpga.go)
+	srCh         int  // stacked/aligned channel (0=C1,1=C2)
+	srT0         time.Time
+	srMean       []float32 // latest crunched trace for the review render (guarded by mu)
+	srMean2      []float32 // the OTHER channel's crunched trace (stacked X-Y / dual FFT)
+	srBits       float64   // latest measured bits gained (guarded by mu)
 
 	// Mask testing (device flow, docs/zonemask-plan.md §3): build a golden
 	// envelope from N live frames on the trigger-source channel, dilate by the

@@ -178,7 +178,7 @@ function applyStatus() {
   $("decStream").disabled = st.band === "sram";
   $("decStream").title = st.band === "sram" ? "Use Stream + trigger above for continuous FPGA decoding and a retained capture" : "Collect decoded capture windows (gaps between records)";
   $("single").classList.toggle("on", !!st.single);
-  if (document.activeElement !== $("tpos") && st.trig_pos_frac > 0) $("tpos").value = st.trig_pos_frac;
+  if (document.activeElement !== $("tpos") && Number.isFinite(st.trig_pos_frac) && st.trig_pos_frac >= 0 && st.trig_pos_frac <= 1) $("tpos").value = st.trig_pos_frac;
   $("wedged").style.display = st.wedged ? "inline" : "none";
   if (document.activeElement !== $("ttype")) $("ttype").value = st.trig_type || 0;
   updateTriggerQualifiers(st.trig_qual);
@@ -424,9 +424,8 @@ async function pollStatus() {
   try { st = await (await fetch("/api/status")).json(); applyStatus(); }
   catch (e) { $("line").textContent = "no connection"; lastLineHTML = ""; } // reset the diff guard or a static status keeps "no connection" stuck
   // While a SINGLE is armed, poll fast so the self-stop on capture reaches the
-  // UI promptly: the RUN/STOP button toggles off st.running, and a 1 s-stale
-  // "running" shadow made a post-capture RUN click send STOP instead (the scope
-  // would not resume). 250 ms closes that window; steady state stays 1 s.
+  // UI promptly. Run/Stop itself toggles the current state at the device;
+  // this faster poll is only for the indicator. Steady state stays 1 s.
   setTimeout(pollStatus, st && st.single ? 250 : 1000);
 }
 

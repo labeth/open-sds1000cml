@@ -161,7 +161,7 @@ func (s *Server) hFrameBin(w http.ResponseWriter, r *http.Request) {
 		off, vpc := s.vertScales()
 		st := s.sc.Snapshot()
 		posFrac := st.TrigPosFrac
-		if posFrac <= 0 {
+		if !(posFrac >= 0 && posFrac <= 1) {
 			posFrac = 0.5
 		}
 		var rep frameReply

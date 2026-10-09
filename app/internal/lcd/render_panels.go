@@ -327,8 +327,11 @@ func drawMarkers(sf Surface, hud HUD) {
 	}
 	// Trigger POSITION: downward pointer at the top.
 	tx := int(hud.TrigPosFrac * float64(W))
-	if hud.TrigPosFrac <= 0 || hud.TrigPosFrac > 1 {
+	if !(hud.TrigPosFrac >= 0 && hud.TrigPosFrac <= 1) {
 		tx = W / 2
+	}
+	if tx >= W {
+		tx = W - 1
 	}
 	for dy := 0; dy <= 7; dy++ {
 		hw := (7 - dy) / 2

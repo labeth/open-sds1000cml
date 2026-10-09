@@ -147,7 +147,7 @@ function drawTrigMarkers(g) {
   // Prefer the real edge position in the served record (deep memory); fall back
   // to the HW trigger-position fraction when there's no software edge.
   const frac = (frame && frame.edge_frac >= 0) ? frame.edge_frac
-             : (st.trig_pos_frac > 0 ? st.trig_pos_frac : 0.5);
+             : (Number.isFinite(st.trig_pos_frac) && st.trig_pos_frac >= 0 && st.trig_pos_frac <= 1 ? st.trig_pos_frac : 0.5);
   if (frac >= view.win.a && frac <= view.win.b) {
     const tx = (frac - view.win.a) / (view.win.b - view.win.a) * CW;
     g.strokeStyle = "rgba(255,159,46,.35)"; g.lineWidth = dpr;

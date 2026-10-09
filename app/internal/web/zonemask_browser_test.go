@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"os/exec"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"open-sds/app/internal/engine"
@@ -22,9 +23,9 @@ import (
 func TestZoneMaskBrowser(t *testing.T) {
 	testenv.NeedNode(t)
 	const N = 2048
-	n := uint64(0)
+	var n atomic.Uint64
 	gen := func() *engine.Frame {
-		n++
+		seq := n.Add(1)
 		c1 := make([]uint8, N)
 		c2 := make([]uint8, N)
 		for i := 0; i < N; i++ {
@@ -32,7 +33,7 @@ func TestZoneMaskBrowser(t *testing.T) {
 			c2[i] = uint8(128 + 40*math.Sin(2*math.Pi*5*float64(i)/N))
 		}
 		return &engine.Frame{
-			C1: c1, C2: c2, Seq: n, Valid: N, WinCols: N, EdgeX: N / 2,
+			C1: c1, C2: c2, Seq: seq, Valid: N, WinCols: N, EdgeX: N / 2,
 			TdivS: 500e-6, DisplayedS: 500e-6, SampleS: 800e-9, Trigd: true, Coherent: true, Ptp: 120,
 		}
 	}

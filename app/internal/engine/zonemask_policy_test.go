@@ -3,6 +3,7 @@ package engine
 
 import (
 	"math"
+	"open-sds/app/internal/sramcapture"
 	"testing"
 )
 
@@ -313,5 +314,23 @@ func TestSingleShotWaitsForZoneQualify(t *testing.T) {
 	}
 	if e.singleArmed.Load() || e.running.Load() {
 		t.Fatal("single must latch and stop on the qualifying frame")
+	}
+}
+
+// TRLC-LINKS: REQ-SDS-014
+func TestMaskKeepsBuilderGeometry(t *testing.T) {
+	e := &Engine{sram: &sramcapture.Capture{}, pubIdent: frameIdent{.0002, 1e-6, true}}
+	e.SetMask(&Mask{Lo: []uint8{0, 0}, Hi: []uint8{255, 255}, WinCols: 2,
+		FrameIdent: true, TdivS: .0002, SampleS: 2e-9})
+	e.SetMaskMode(MaskTest)
+	f := &Frame{C1: []uint8{50, 200}, Valid: 2, WinCols: 2, TdivS: .0002, SampleS: 2e-9}
+	e.maskEval(f, 2, 0, 1, f.SampleS, .5)
+	if e.maskPass.Load() != 1 || e.maskSkip.Load() != 0 {
+		t.Fatal("mask used a later envelope frame's identity")
+	}
+	f.SampleS = 4e-9
+	e.maskEval(f, 2, 0, 1, f.SampleS, .5)
+	if e.maskSkip.Load() != 1 {
+		t.Fatal("changed sample geometry was accepted")
 	}
 }

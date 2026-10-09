@@ -56,7 +56,7 @@ func (c *Controller) maskBuildStart() {
 // engine through thread-safe entry points.
 // TRLC-LINKS: REQ-SDS-139
 func (c *Controller) maskBuildRun(n, tolT, tolV, ch int, posFrac float64) {
-	if posFrac <= 0 || posFrac > 1 {
+	if math.IsNaN(posFrac) || posFrac < 0 || posFrac > 1 {
 		posFrac = 0.5
 	}
 	var lo, hi []uint8
@@ -65,10 +65,13 @@ func (c *Controller) maskBuildRun(n, tolT, tolV, ch int, posFrac float64) {
 	var peak bool
 	var lastSeq uint64
 	for tries := 0; got < n && tries < n*20; tries++ {
+		if e, ok := c.eng.(interface{ LeaseDecodeView(time.Duration) }); ok {
+			e.LeaseDecodeView(3 * time.Second)
+		}
 		time.Sleep(60 * time.Millisecond)
 		ok := false
 		c.frameFn(func(f *engine.Frame) {
-			if f == nil || f.Seq == lastSeq || f.EdgeX < 0 || f.SampleS <= 0 || f.IsEnv {
+			if f == nil || f.Seq == lastSeq || f.EdgeX < 0 || f.SampleS <= 0 || f.IsEnv || (f.PeakDetect && c.eng.Snapshot().AcqMode != engine.AcqPeak) {
 				return
 			}
 			lastSeq = f.Seq
@@ -134,6 +137,7 @@ func (c *Controller) maskBuildRun(n, tolT, tolV, ch int, posFrac float64) {
 		c.maskSetMsg("MASK: build failed")
 		return
 	}
+	m.FrameIdent, m.TdivS, m.SampleS, m.PeakDetect = true, tdivS, sampleS, peak
 	c.eng.SetMask(m)
 	c.maskSetMsg(fmt.Sprintf("MASK: ready (%d frames, C%d) - set Mode to Test", got, ch+1))
 }

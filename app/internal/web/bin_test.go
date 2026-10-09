@@ -43,7 +43,7 @@ func refReply(s *Server, cols int, full bool, since uint64) frameReply {
 	off, vpc := s.vertScales()
 	st := s.sc.Snapshot()
 	posFrac := st.TrigPosFrac
-	if posFrac <= 0 {
+	if !(posFrac >= 0 && posFrac <= 1) {
 		posFrac = 0.5
 	}
 	var rep frameReply
@@ -348,5 +348,18 @@ func TestRawFeedRequestsChronologicalSamples(t *testing.T) {
 	getBin(t, s, "/api/frame.bin?raw=1")
 	if sc.lease != 3*time.Second {
 		t.Fatalf("raw lease = %v", sc.lease)
+	}
+}
+
+// TRLC-LINKS: REQ-SDS-163
+func TestBinTriggerPositionEndpoints(t *testing.T) {
+	for _, pos := range []float64{0, 1} {
+		f := &engine.Frame{C1: make([]uint8, 2048), C2: make([]uint8, 2048), Seq: 1, Valid: 2048, WinCols: 512, EdgeX: 1024, SampleS: 2e-9}
+		scope := &fakeScope{frameGen: func() *engine.Frame { return f }, stats: engine.Stats{TrigPosFrac: pos}}
+		s := New(scope, nil, nil, nil)
+		rep, _, _ := getBin(t, s, "/api/frame.bin?cols=800")
+		if rep.EdgeFrac != pos {
+			t.Fatalf("position %g served as %g", pos, rep.EdgeFrac)
+		}
 	}
 }

@@ -5,15 +5,14 @@
 "use strict";
 $("autoset").onclick = autoset;
 // TRLC-LINKS: REQ-SDS-204
-$("run").onclick = async () => { if (autosetBusy && !await autosetDone) return; const on = !(st && st.running); const r = await send("run", on ? 1 : 0); if (r.ok && st) { st.running = on; applyStatus(); } };
+$("run").onclick = async () => { if (autosetBusy && !await autosetDone) return; const r = await send("runtoggle", 0); if (r.ok && st) { st.running = !!r.applied; st.single = false; applyStatus(); } };
 // TRLC-LINKS: REQ-SDS-204
 $("single").onclick = async () => {
   if (!(await send("single", 1)).ok) return;
   if (st) { st.norm = st.running = st.single = true; applyStatus(); }
-  // A one-shot self-stops on capture. Poll fast until it does so the RUN button
-  // — which toggles off st.running — sees the stop immediately; otherwise a
-  // post-capture RUN click reads a stale "running" and sends STOP (scope would
-  // not resume). Bounded; the steady 1 s poll takes over after.
+  // A one-shot self-stops on capture. Poll fast to update its indicator.
+  // Run/Stop toggles at the device, independently of this display refresh.
+  // Bounded; the steady 1 s poll takes over after.
   let n = 0;
   // TRLC-LINKS: REQ-SDS-204
   const chk = async () => {

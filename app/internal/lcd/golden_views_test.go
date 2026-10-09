@@ -136,9 +136,7 @@ func TestGoldenYTDecodeUART(t *testing.T) {
 	}
 	h := defaultHUD()
 	h.TdivS, h.SampleS = 100e-6, sampleS
-	// TrigPosFrac must be a real panel value (0.5): drawDecode maps spans with
-	// the raw HUD posFrac and, unlike drawTrace, does not default 0 to centre —
-	// a 0 here would shift the strip half a screen off the trace.
+	// This fixture places the trigger at the center of the display.
 	h.TrigPosFrac = 0.5
 	h.DecProto = 2                       // UART
 	h.DecBaud = int(1 / (spb * sampleS)) // 62500: explicit, no auto-inference

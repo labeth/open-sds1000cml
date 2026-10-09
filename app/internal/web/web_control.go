@@ -109,7 +109,8 @@ func clampI(v, lo, hi int) int {
 }
 
 // hMask uploads the envelope mask (POST JSON {lo:[],hi:[],win,ch}; empty lo
-// clears). The envelopes are display-window columns (win = engine WinCols at
+// clears). Full SRAM masks use compact base64 lo_b64/hi_b64 byte arrays.
+// The envelopes are display-window columns (win = engine WinCols at
 // build time); the client builds + dilates.
 // TRLC-LINKS: REQ-SDS-162
 func (s *Server) hMask(w http.ResponseWriter, r *http.Request) {
@@ -118,31 +119,46 @@ func (s *Server) hMask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var m struct {
-		Lo  []int `json:"lo"`
-		Hi  []int `json:"hi"`
-		Win int   `json:"win"`
-		Ch  int   `json:"ch"`
+		Lo         []int   `json:"lo"`
+		LoBytes    []uint8 `json:"lo_b64"`
+		HiBytes    []uint8 `json:"hi_b64"`
+		Hi         []int   `json:"hi"`
+		Win        int     `json:"win"`
+		Ch         int     `json:"ch"`
+		TdivS      float64 `json:"tdiv_s"`
+		SampleS    float64 `json:"sample_s"`
+		PeakDetect bool    `json:"peak_detect"`
 	}
-	if err := json.NewDecoder(io.LimitReader(r.Body, 1<<20)).Decode(&m); err != nil {
+	if err := json.NewDecoder(io.LimitReader(r.Body, 4<<20)).Decode(&m); err != nil {
 		writeJSON(w, map[string]any{"ok": false, "err": "bad json"})
 		return
 	}
-	if len(m.Lo) == 0 {
-		s.sc.SetMask(nil)
-		writeJSON(w, map[string]any{"ok": true, "cleared": true})
-		return
+	var lo, hi []uint8
+	if len(m.LoBytes) > 0 {
+		if len(m.Lo) > 0 || len(m.Hi) > 0 || len(m.LoBytes) != m.Win || len(m.HiBytes) != m.Win || m.Win <= 0 || m.Win > 1<<20 {
+			writeJSON(w, map[string]any{"ok": false, "err": "length mismatch"})
+			return
+		}
+		lo, hi = m.LoBytes, m.HiBytes
+	} else {
+		if len(m.Lo) == 0 {
+			s.sc.SetMask(nil)
+			writeJSON(w, map[string]any{"ok": true, "cleared": true})
+			return
+		}
+		// Preserve the original bounded numeric upload for older clients.
+		if len(m.Lo) != m.Win || len(m.Hi) != m.Win || m.Win <= 0 || m.Win > 1<<16 {
+			writeJSON(w, map[string]any{"ok": false, "err": "length mismatch"})
+			return
+		}
+		lo, hi = make([]uint8, m.Win), make([]uint8, m.Win)
+		for i := 0; i < m.Win; i++ {
+			lo[i] = uint8(clampI(m.Lo[i], 0, 255))
+			hi[i] = uint8(clampI(m.Hi[i], 0, 255))
+		}
 	}
-	if len(m.Lo) != m.Win || len(m.Hi) != m.Win || m.Win <= 0 || m.Win > 1<<16 {
-		writeJSON(w, map[string]any{"ok": false, "err": "length mismatch"})
-		return
-	}
-	lo := make([]uint8, m.Win)
-	hi := make([]uint8, m.Win)
-	for i := 0; i < m.Win; i++ {
-		lo[i] = uint8(clampI(m.Lo[i], 0, 255))
-		hi[i] = uint8(clampI(m.Hi[i], 0, 255))
-	}
-	s.sc.SetMask(&engine.Mask{Lo: lo, Hi: hi, WinCols: m.Win, Ch: m.Ch & 1})
+	s.sc.SetMask(&engine.Mask{Lo: lo, Hi: hi, WinCols: m.Win, Ch: m.Ch & 1,
+		FrameIdent: m.TdivS > 0 && m.SampleS > 0, TdivS: m.TdivS, SampleS: m.SampleS, PeakDetect: m.PeakDetect})
 	writeJSON(w, map[string]any{"ok": true, "win": m.Win})
 }
 
@@ -231,6 +247,15 @@ func (s *Server) hSet(w http.ResponseWriter, r *http.Request) {
 	switch req.Control {
 	case "run":
 		s.sc.SetRunning(req.Value != 0)
+	case "runtoggle":
+		// A single capture can stop between browser status polls. Toggle the
+		// current instrument state, not the browser's stale running flag.
+		on := !s.sc.Snapshot().Running
+		s.sc.SetRunning(on)
+		applied = 0
+		if on {
+			applied = 1
+		}
 	case "norm":
 		s.sc.SetNorm(req.Value != 0)
 	case "tdiv":

@@ -46,6 +46,7 @@ run(async (t) => {
   let delegated = true;
   try { await asReq; } catch (e) { delegated = false; }
   t.ok(delegated, "autoset delegates to the device routine (POST /api/panel button=auto)");
+  await po.waitFor(() => !document.getElementById("autoset").classList.contains("on"), null, 8000);
 
   // --- trigger ---------------------------------------------------------------
   const mode0 = await po.text("mode");

@@ -511,7 +511,9 @@ function scoreResult(r) {
     // One "addr" (label) span per word; a parity-failed word adds "!P".
     const words = kind("addr"), ferr = kind("frame-error"), good = words - ferr;
     if (good <= 0) return -1e9;
-    return good * 150 + words * 15 - ferr * 40;
+    // Bad parity still leaves 32 correctly framed bipolar RZ pulses;
+    // partial record boundaries must not promote a false UART decode.
+    return good * 150 + words * 50 - ferr * 40;
   }
   if (r.proto === "usbls") {
     // A valid PID (nibble + matching complement) spans "addr"; bad -> error.

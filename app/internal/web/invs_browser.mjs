@@ -16,6 +16,7 @@ run(async (t) => {
   // The status poll must deliver the inv fields (present even when false).
   await po.waitFor(() => typeof st !== "undefined" && st && "inv1" in st && "inv2" in st);
   t.ok(true, "/api/status carries inv1/inv2");
+  await po.waitFor(() => frame && frame.c1 && frame.c2 && frame.cols > 0 && GLR && GLR.gl);
 
   // traceY: set the invert flags, redraw and read back the coverage-weighted
   // centroid row of the pixels lying on the bg→trace-colour axis — ALL inside
@@ -53,6 +54,11 @@ run(async (t) => {
       }
     return { y: wsum ? sum / wsum : -1, n, h };
   }, [which, inv1, inv2]);
+
+  // Wait for observable rendered traces, not just the first transport frame:
+  // initial layout/WebGL setup may still be settling on a busy browser worker.
+  await t.until(async () => (await traceY(1, false, false)).n > 100 &&
+    (await traceY(2, false, false)).n > 100, "both initial traces painted", 10000);
 
   const c1Off = await traceY(1, false, false);
   const c2Off = await traceY(2, false, false);

@@ -3,6 +3,7 @@ package panel
 
 import (
 	"testing"
+	"time"
 
 	"open-sds/app/internal/engine"
 )
@@ -147,5 +148,44 @@ func TestAutosetNoSignalRestoresRequestedOffsets(t *testing.T) {
 	c.runAutoset(make(chan struct{}))
 	if fe.offReqV != before {
 		t.Fatalf("offsets after no-signal sweep = %v, want %v", fe.offReqV, before)
+	}
+}
+
+// TRLC-LINKS: REQ-SDS-137
+type autosetSampleEngine struct {
+	*fakeEng
+	leases []time.Duration
+}
+
+// TRLC-LINKS: REQ-SDS-137
+func (e *autosetSampleEngine) LeaseDecodeView(d time.Duration) { e.leases = append(e.leases, d) }
+
+// TRLC-LINKS: REQ-SDS-137
+func TestAutosetLeasesSampleFrames(t *testing.T) {
+	c, e, _ := newC(t)
+	leaser := &autosetSampleEngine{fakeEng: e}
+	c.eng = leaser
+	sig := make([]uint8, 200)
+	for i := range sig {
+		sig[i] = 40
+		if i%20 >= 10 {
+			sig[i] = 200
+		}
+	}
+	c.SetFrameSource(func(fn func(*engine.Frame)) {
+		fn(&engine.Frame{C1: sig, C2: sig, Valid: len(sig), SampleS: 50e-9, IsEnv: len(leaser.leases) == 0})
+	})
+	stop := make(chan struct{})
+	for i := 0; i < 2; i++ {
+		if !c.waitFrame(stop) {
+			t.Fatal("unexpected cancellation")
+		}
+		if len(leaser.leases) != i+1 || leaser.leases[i] <= settleMs*time.Millisecond {
+			t.Fatalf("autoset must renew chronological samples before settling: %v", leaser.leases)
+		}
+		m, ok := c.measureChans()
+		if !ok || !has(m[0]) || m[0].Freq <= 0 {
+			t.Fatal("autoset did not receive a measurable chronological signal")
+		}
 	}
 }

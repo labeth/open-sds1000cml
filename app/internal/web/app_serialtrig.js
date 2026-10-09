@@ -94,6 +94,7 @@ function stParams() {
 
 let stLastSig = "";
 let stConfigError = "";
+let stModePending = null, stModeGeneration = 0, stArmGeneration = 0;
 // TRLC-LINKS: REQ-SDS-206
 function stPush() {
   const p = stParams();
@@ -106,7 +107,20 @@ function stPush() {
 }
 
 // TRLC-LINKS: REQ-SDS-206
-function stSetArmed(on) { $("stArm").classList.toggle("on", on); send("serialmode", on ? 1 : 0); }
+function stSetArmed(on) {
+  const generation = ++stModeGeneration;
+  stModePending = on ? 1 : 0;
+  $("stArm").classList.toggle("on", on);
+  return send("serialmode", stModePending).then(r => {
+    if (generation !== stModeGeneration) return;
+    if (!r.ok) {
+      stModePending = null;
+      $("stArm").classList.toggle("on", !!(st && st.serial_mode));
+      stConfigError = "Trigger mode was not applied. Check the connection and retry.";
+      stStatus();
+    }
+  });
+}
 
 // serial is only tested on the real-time bands that flow through the trigger
 // gate — envelope/roll/stream/ETS bypass it, so warn when armed on those.
@@ -136,7 +150,7 @@ function stStatus(msg) {
 // TRLC-LINKS: REQ-SDS-206
 function stOnDecodeChange() {
   if (!$("stArm")) return;
-  if (stProtoNum() === 0) { if (stArmed()) stSetArmed(false); stStatus(""); return; }
+  if (stProtoNum() === 0) { ++stArmGeneration; if (stArmed() || (st && st.serial_mode) || stModePending === 1) stSetArmed(false); stStatus(""); return; }
   if (stArmed()) stPush().catch(() => {});
 }
 
@@ -147,11 +161,12 @@ function stOnDecodeChange() {
   // TRLC-LINKS: REQ-SDS-206
   $("stArm").onclick = async () => {
     if (stProtoNum() === 0) { stStatus("turn on decode to arm a serial trigger"); return; }
-    const on = !stArmed();
+    const on = !stArmed(), generation = ++stArmGeneration;
     if (on) {
       try { await stPush(); } catch { stStatus(); return; } // install config BEFORE arming; abort on invalid/rejected
     }
-    stSetArmed(on);
+    if (generation !== stArmGeneration || stProtoNum() === 0) return;
+    await stSetArmed(on);
     stStatus();
   };
   for (const id of ["stAddr", "stRW", "stBytes", "dsClock"])
@@ -163,6 +178,11 @@ function stOnDecodeChange() {
 setInterval(() => {
   if (!$("stArm") || !st) return;
   if (stProtoNum() === 0) { if (stArmed()) stSetArmed(false); return; }
+  // Ignore pre-command status polls until one acknowledges the requested mode.
+  if (stModePending !== null) {
+    if ((st.serial_mode || 0) === stModePending) stModePending = null;
+    else { stStatus(); return; }
+  }
   if (st.serial_mode && !stArmed()) $("stArm").classList.add("on");   // engine armed, UI didn't know
   if (!st.serial_mode && stArmed()) $("stArm").classList.remove("on"); // engine disarmed elsewhere
   if (stArmed()) {

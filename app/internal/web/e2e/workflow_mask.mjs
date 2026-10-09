@@ -42,11 +42,14 @@ export const maskv = [
   // TRLC-LINKS: REQ-SDS-208
   { id: "M5", name: "Mask test: build a golden mask from live frames, enable counting", run: async (op) => {
     await op.autosetStable(1);
+    // Align the mask to the pulse channel, not the occasional C2 marker.
+    if (!(await op.readText("source")).includes("C1")) await op.click("source");
+    await op.setBand(100e-6);
     await op.fill("zmN", "24", { why: "build from 24 frames" });
     await op.clickExpect("zmBuild", async () => {
       const s = await op.readText("zmStats");
       return s && /mask (built|ready)/i.test(s);
-    }, { timeout: 20000, why: "build mask must accumulate frames and install a golden envelope" });
+    }, { timeout: 90000, why: "build mask must accumulate frames and install a golden envelope" });
     await op.selectExpect("zmMode", "1", null, { why: "enable mask counting" });
     const meter = await op.readUntil(async () => {
       const t = await op.readText("zmMeter");

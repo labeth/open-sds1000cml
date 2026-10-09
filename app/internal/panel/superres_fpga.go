@@ -4,7 +4,6 @@ package panel
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/sramcapture"
@@ -114,16 +113,23 @@ func (c *Controller) srFPGARun() {
 		close(c.srStop)
 		c.srStop = nil
 	}
+	ctx, cancel := context.WithCancel(context.Background())
+	c.srFPGACancel = cancel
+	c.srFPGAGen++
+	generation := c.srFPGAGen
 	c.srActive, c.srFPGABusy, c.srFocus = true, true, 0
 	c.srStatus = fmt.Sprintf("FPGA: stacking %d records...", records)
 	c.mu.Unlock()
 	go func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 		defer cancel()
 		res, err := fs.FPGAStack(ctx, req)
 		c.mu.Lock()
 		defer c.mu.Unlock()
 		c.srFPGABusy = false
+		c.srFPGACancel = nil
+		if generation != c.srFPGAGen {
+			return
+		}
 		if err != nil {
 			c.srStatus = "FPGA: " + err.Error()
 			return

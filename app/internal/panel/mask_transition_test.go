@@ -39,3 +39,27 @@ func TestMaskBuildRestartsFromStoppedRecordToLivePreview(t *testing.T) {
 		t.Fatalf("no live mask installed: %s", c.MaskStatus())
 	}
 }
+
+type maskRecordingEng struct {
+	*fakeEng
+	mask *engine.Mask
+}
+
+// TRLC-LINKS: REQ-SDS-139
+func (e *maskRecordingEng) SetMask(m *engine.Mask) { e.mask = m }
+
+// TRLC-LINKS: REQ-SDS-139
+func TestMaskBuildAtLeftTriggerPosition(t *testing.T) {
+	_, base, fe := newC(t)
+	e := &maskRecordingEng{fakeEng: base}
+	c := New(e, fe, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
+	var seq uint64
+	c.SetFrameSource(func(fn func(*engine.Frame)) {
+		seq++
+		fn(&engine.Frame{Seq: seq, C1: []uint8{40, 60, 180, 200}, Valid: 4, WinCols: 4, EdgeX: 2, SampleS: 2e-9, TdivS: 1e-6})
+	})
+	c.maskBuildRun(8, 0, 0, 0, 0)
+	if e.mask == nil || e.mask.Lo[0] != 180 || e.mask.Hi[0] != 180 || e.mask.Lo[2] != 0 || e.mask.Hi[2] != 255 {
+		t.Fatalf("left-position mask used a centred window: %+v", e.mask)
+	}
+}

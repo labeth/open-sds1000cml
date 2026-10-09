@@ -386,6 +386,11 @@ func (c *Controller) verifyTrigLevel(stop chan struct{}, computed uint16) bool {
 // returning false if autoset was cancelled during the wait.
 // TRLC-LINKS: REQ-SDS-137
 func (c *Controller) waitFrame(stop chan struct{}) bool {
+	// Autoset measures chronological samples. Renew its own lease rather than
+	// depending on a browser decoder/analyzer to suppress SRAM envelopes.
+	if e, ok := c.eng.(interface{ LeaseDecodeView(time.Duration) }); ok {
+		e.LeaseDecodeView(3 * time.Second)
+	}
 	select {
 	case <-stop:
 		return false

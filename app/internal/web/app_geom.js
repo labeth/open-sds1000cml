@@ -87,7 +87,7 @@ function homeWindow(f) {
   if (!f) return { a: 0, b: 1 };
   let wf = homeSpan(f);
   if (f.is_env) wf = 1;
-  const pf = (st && st.trig_pos_frac > 0 && st.trig_pos_frac < 1) ? st.trig_pos_frac : 0.5;
+  const pf = (st && Number.isFinite(st.trig_pos_frac) && st.trig_pos_frac >= 0 && st.trig_pos_frac <= 1) ? st.trig_pos_frac : 0.5;
   const c = (f.edge_frac >= 0) ? f.edge_frac : 0.5; // matches server window() when EdgeX<0
   let a = c - wf * pf, b = c + wf * (1 - pf);
   // DEEP record with a real edge: keep the edge EXACTLY at posFrac and let the

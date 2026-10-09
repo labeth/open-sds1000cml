@@ -137,15 +137,14 @@ function decodeManchesterAt(S, T, cfg, bits, colTimeS) {
       else { cells = rA.cells; bestGood = rA.good; }
     }
     if (!cells.length || bestScore <= 0 || bestGood < bits) continue; // need one whole byte of clean cells
-    // Leading alternating run = preamble. A FIRST/LAST segment of a free-running
-    // capture may be truncated by the record edge; require a preamble there to
-    // drop that partial. Interior segments are whole frames — accept as-is.
+    // Leading alternating run = preamble. Require it only when a boundary
+    // segment lacks enough observed idle to establish a complete frame.
     let run = 0;
     if (cells[0].bit >= 0) {
       run = 1;
       for (let i = 1; i < cells.length && cells[i].bit >= 0 && cells[i].bit !== cells[i - 1].bit; i++) run++;
     }
-    const atEdge = segs.length > 1 && (sgIdx === 0 || sgIdx === segs.length - 1);
+    const atEdge = segs.length > 1 && ((sgIdx === 0 && s0e < 2.5 * T) || (sgIdx === segs.length - 1 && S.n - lastE < 2.5 * T));
     if (run < 3 && atEdge) continue;
     if (frames > 0) {                          // separate frames in the transcript
       spans.push({ i0: cells[0].i0, i1: cells[0].i0, text: "", kind: "gap" });

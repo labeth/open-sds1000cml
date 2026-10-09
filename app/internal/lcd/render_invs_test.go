@@ -2,6 +2,7 @@
 package lcd
 
 import (
+	"bytes"
 	"testing"
 
 	"open-sds/app/internal/engine"
@@ -130,5 +131,43 @@ func TestRenderINVSFlipsEnvelope(t *testing.T) {
 	// The un-inverted neighbour is untouched.
 	if lo, hi, ok = traceRows(sf, colC2); !ok || lo != sampleToY(70) || hi != sampleToY(60) {
 		t.Fatalf("Inv1 must not move C2's env band: [%d,%d] ok=%v", lo, hi, ok)
+	}
+}
+
+// TRLC-LINKS: REQ-SDS-021
+func TestTriggerPositionMarkerEndpoints(t *testing.T) {
+	for _, tc := range []struct {
+		pos float64
+		x   int
+	}{{0, 0}, {.5, W / 2}, {1, W - 1}} {
+		sf := NewMemSurface()
+		drawMarkers(sf, HUD{TrigPosFrac: tc.pos})
+		if sf.At(tc.x, 9) != colTrig {
+			t.Errorf("position %g: missing pointer tip at %d", tc.pos, tc.x)
+		}
+	}
+}
+
+// TRLC-LINKS: REQ-SDS-021, REQ-SDS-018
+func TestLeftEdgeTraceDecodeAndZoneAlignment(t *testing.T) {
+	const n = 1024
+	f := &engine.Frame{C1: goldenUARTWave([]int{0x4f, 0x4b, 0x21}, 16, n), Valid: n, WinCols: n, EdgeX: 0, SampleS: 1e-6}
+	hud := HUD{DecProto: 2, DecBaud: 62500, Zones: []engine.Zone{{DtLoS: 0, DtHiS: 100e-6, CodeLo: 100, CodeHi: 160}}}
+	for _, tc := range []struct {
+		name string
+		draw func(Surface, float64, float64)
+	}{
+		{"trace", func(sf Surface, xc, pf float64) { drawTrace(sf, f.C1, n, xc, false, colC1, pf) }},
+		{"decode", func(sf Surface, xc, pf float64) { drawDecode(sf, f, hud, n, xc, pf) }},
+		{"zone", func(sf Surface, xc, pf float64) { drawZoneMask(sf, f, hud, n, xc, pf) }},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			a, b := NewMemSurface(), NewMemSurface()
+			tc.draw(a, 0, 0)
+			tc.draw(b, n/2, .5)
+			if !bytes.Equal(a.Pix, b.Pix) {
+				t.Fatal("left-edge view differs from the same sample window at center position")
+			}
+		})
 	}
 }

@@ -2,6 +2,7 @@
 package web
 
 import (
+	"bytes"
 	"encoding/json"
 	"net/http/httptest"
 	"strings"
@@ -95,5 +96,29 @@ func TestZoneMaskAPI(t *testing.T) {
 	mux.ServeHTTP(rr, httptest.NewRequest("POST", "/api/set", strings.NewReader(`{"control":"maskclear","value":0}`)))
 	if !fs.maskCleared {
 		t.Fatal("maskclear not applied")
+	}
+}
+
+// TRLC-LINKS: REQ-SDS-014, REQ-SDS-162
+func TestMaskFullSRAMRecord(t *testing.T) {
+	const n = 1 << 20
+	lo, hi := make([]uint8, n), make([]uint8, n)
+	for i := range lo {
+		lo[i] = 10
+		hi[i] = 200
+	}
+	body, err := json.Marshal(map[string]any{"lo_b64": lo, "hi_b64": hi, "win": n, "ch": 0, "tdiv_s": .0002, "sample_s": 2e-9})
+	if err != nil {
+		t.Fatal(err)
+	}
+	fs := &fakeScope{}
+	rr := httptest.NewRecorder()
+	New(fs, nil, nil, nil).Handler().ServeHTTP(rr, httptest.NewRequest("POST", "/api/mask", bytes.NewReader(body)))
+	var rep map[string]any
+	if err = json.Unmarshal(rr.Body.Bytes(), &rep); err != nil {
+		t.Fatal(err)
+	}
+	if rep["ok"] != true || fs.mask == nil || fs.mask.WinCols != n || fs.mask.Lo[n-1] != 10 || fs.mask.Hi[n-1] != 200 || !fs.mask.FrameIdent || fs.mask.TdivS != .0002 || fs.mask.SampleS != 2e-9 {
+		t.Fatalf("full SRAM mask rejected: %v", rep)
 	}
 }

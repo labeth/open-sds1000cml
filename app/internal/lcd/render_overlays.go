@@ -179,8 +179,8 @@ func drawDecode(sf Surface, f *engine.Frame, hud HUD, win int, xc, posFrac float
 	if hud.DecProto == 0 || f == nil {
 		return
 	}
-	if posFrac <= 0 || posFrac > 1 { // same normalization as drawTrace/drawZoneMask:
-		posFrac = 0.5 // an unset fraction must not shift the strip half a screen off the trace
+	if !(posFrac >= 0 && posFrac <= 1) { // same normalization as drawTrace/drawZoneMask:
+		posFrac = 0.5 // an invalid fraction must not shift the strip off the trace
 	}
 	valid := frameValid(f)
 	ch := func(c int) []uint8 {
@@ -320,7 +320,7 @@ var colMask = rgb(90, 120, 160)
 // alignment — the engine skips those frames too).
 // TRLC-LINKS: REQ-SDS-021
 func drawZoneMask(sf Surface, f *engine.Frame, hud HUD, win int, xc, posFrac float64) {
-	if posFrac <= 0 || posFrac > 1 {
+	if !(posFrac >= 0 && posFrac <= 1) {
 		posFrac = 0.5
 	}
 	left := xc - float64(win)*posFrac
