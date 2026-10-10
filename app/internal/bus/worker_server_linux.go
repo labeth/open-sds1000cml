@@ -39,6 +39,92 @@ type acquisitionWorker struct {
 	// decoded-stream transcript built here (ADR-STREAM-LINES-IN-WORKER).
 	lines      *decodedlines.Transcript
 	linesStore *decodedlines.Transcript // reused across streams
+	// Stream-bank pump (ADR-STREAM-IMAGE): drained words wait in sring.
+	sOn                bool
+	sExpected          uint64 // next ordinal to drain
+	sHead, sCount      int    // bytes
+	sFirst             uint64 // ordinal of the word at sHead
+	sFault             error
+	sring              []byte
+	sLastPump          time.Time     // diagnostics for a lost stream:
+	sMaxGap, sMaxDrain time.Duration // longest pump-to-pump gap and bank drain
+}
+
+// workerStreamBytes bounds the stream ring: a million words, 30 s of a
+// 10 ms/div roll and half a second at the fabric's fastest stream.
+const workerStreamBytes = 4 << 20
+
+// TRLC-LINKS: REQ-SDS-035
+type streamRingWriter struct{ w *acquisitionWorker }
+
+// TRLC-LINKS: REQ-SDS-035
+func (r streamRingWriter) Write(b []byte) (int, error) {
+	w := r.w
+	if w.sCount+len(b) > len(w.sring) {
+		return 0, fmt.Errorf("isolated stream ring overflow; words lost")
+	}
+	for done := 0; done < len(b); {
+		at := (w.sHead + w.sCount) % len(w.sring)
+		k := copy(w.sring[at:min(len(w.sring), at+len(b)-done)], b[done:])
+		done += k
+		w.sCount += k
+	}
+	return len(b), nil
+}
+
+// streamPump drains every published stream bank, in ordinal order.
+// TRLC-LINKS: REQ-SDS-035
+func (w *acquisitionWorker) streamPump() {
+	if !w.sOn || w.sFault != nil {
+		return
+	}
+	now := time.Now()
+	if !w.sLastPump.IsZero() {
+		w.sMaxGap = max(w.sMaxGap, now.Sub(w.sLastPump))
+	}
+	w.sLastPump = now
+	for i := 0; i < 8; i++ {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		t0 := time.Now()
+		block, err := w.capture.DrainStream(ctx, w.sExpected, streamRingWriter{w})
+		cancel()
+		if err == sramcapture.ErrNoStreamBlock {
+			return
+		}
+		if err != nil {
+			st, _ := w.capture.StreamStatus()
+			w.sFault = fmt.Errorf("%w (after %d words; status %+v; longest pump gap %v, drain %v)", err, w.sExpected, st,
+				w.sMaxGap.Round(time.Microsecond), w.sMaxDrain.Round(time.Microsecond))
+			return
+		}
+		w.sMaxDrain = max(w.sMaxDrain, time.Since(t0))
+		w.sExpected = block.FirstWord + uint64(block.Words)
+	}
+}
+
+// streamPumpOn starts or stops the stream pump and its FIFO service.
+// TRLC-LINKS: REQ-SDS-035
+func (w *acquisitionWorker) streamPumpOn(on bool) error {
+	w.sOn, w.sExpected, w.sHead, w.sCount, w.sFirst, w.sFault = on, 0, 0, 0, 0, nil
+	w.sLastPump, w.sMaxGap, w.sMaxDrain = time.Time{}, 0, 0
+	if on && w.sring == nil {
+		w.sring = make([]byte, workerStreamBytes)
+	}
+	if on && w.deadline == nil {
+		if d, ok := w.bus.(*Dev); ok {
+			var err error
+			if w.deadline, err = d.StartDecodedDeadline(); err != nil {
+				return err
+			}
+		}
+	}
+	if !on && !w.active && w.deadline != nil {
+		if err := w.deadline.Close(); err != nil {
+			return err
+		}
+		w.deadline = nil
+	}
+	return nil
 }
 
 // workerLines bounds the worker's transcript: about a million 8-bit units.
@@ -106,7 +192,7 @@ func (w *acquisitionWorker) stream(enabled bool) error {
 	w.head = 0
 	w.count = 0
 	w.fault = nil
-	if w.deadline != nil {
+	if w.deadline != nil && !w.sOn {
 		if err := w.deadline.Close(); err != nil {
 			return err
 		}
@@ -252,6 +338,31 @@ func (w *acquisitionWorker) handle(request []byte) int {
 				w.lines.Flush()
 			}
 			n = w.lines.EncodeLines(int(sel)<<16|int(value), data[:count])
+		case workerStreamPump:
+			if count != 0 {
+				err = fmt.Errorf("invalid stream pump request")
+				break
+			}
+			err = w.streamPumpOn(value&1 != 0)
+		case workerStreamWords:
+			if count < 8 || !w.sOn {
+				err = fmt.Errorf("no stream pump")
+				break
+			}
+			if w.sFault != nil {
+				err = w.sFault
+				break
+			}
+			amount := min(count-8, w.sCount) &^ 3
+			binary.LittleEndian.PutUint64(data[:8], w.sFirst)
+			for done := 0; done < amount; {
+				k := copy(data[8+done:8+amount], w.sring[w.sHead:min(len(w.sring), w.sHead+amount-done)])
+				done += k
+				w.sHead = (w.sHead + k) % len(w.sring)
+			}
+			w.sCount -= amount
+			w.sFirst += uint64(amount / 4)
+			n = 8 + amount
 		default:
 			err = fmt.Errorf("unknown worker operation")
 		}
@@ -289,6 +400,7 @@ func (w *acquisitionWorker) serve(fd int) error {
 	pending := 0
 	for {
 		w.pump()
+		w.streamPump()
 		if pending != 0 {
 			n, _, errno := syscall.RawSyscall(syscall.SYS_WRITE, uintptr(fd), uintptr(unsafe.Pointer(&w.response[0])), uintptr(pending))
 			if errno == 0 {

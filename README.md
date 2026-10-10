@@ -59,6 +59,7 @@ exports. All waveforms and readouts are from the connected signal.</sub>
 | **Precision mode** | 16-bit filtered samples, 524,288 per channel; decimation ×16 to ×1,048,576 for long records (137 s at 50 s/div) |
 | **Super-resolution** | up to a **×64 time grid** (31.25 ps); about **+4 bits** from FPGA stacking |
 | **Timebase** | 1 ns/div to 50 s/div |
+| **Roll mode** | AUTO at 10 ms/div and slower scrolls continuously; optional gap-free streaming, verified loss-free at **~1 M samples/s per channel (3.9 MB/s)** with **about 1 s of buffering** in the scope's SRAM |
 | **Vertical** | 2 mV/div to 10 V/div; DC, AC or GND; 20 MHz bandwidth limit; probe ×1, ×10 or ×100 |
 | **Serial protocols** | **10**, each with hardware trigger and decode: UART, I²C, SPI, CAN / CAN FD, FlexRay, ARINC 429, MIL-STD-1553, SENT, Manchester, USB low-speed |
 | **Streaming decode** | **continuous, gap-free protocol decoding**, not one capture at a time: 921,600-baud UART ran for 3 minutes without losing a byte, with the full-rate record kept for every frame |
@@ -84,6 +85,14 @@ exports. All waveforms and readouts are from the connected signal.</sub>
   qualified triggers run on live frames too. Average, ERES and precision use a decimated live
   capture instead (their filtering needs true samples); eye diagram and super-resolution read raw
   samples while in use.
+* **Roll mode.** In AUTO at 10 ms/div and slower the view scrolls instead of waiting for a
+  trigger. By default it is built from back-to-back decimated captures, so a timebase change
+  responds at once (short gaps hold the last value). HORIZ F4 (web: ROLL STREAM) switches to
+  **gap-free streaming** on the FPGA `stream` image: every averaged (or min/max) sample reaches
+  the ARM, at up to 978,000 samples/s per channel (decimation ×512, 3.9 MB/s; the bus carries
+  about 5.1 MB/s). The scope's 2 MiB SRAM buffers the stream, so the ARM can stall for about
+  1 s at ×1024 (0.5 s at ×512) without losing a sample; a longer stall is reported, never
+  silent.
 * **Responsive controls:** front-panel keys and lamps answer within tens of milliseconds, even
   during a long readout; a LOADING indicator (LCD and web) shows while a record is being read.
 

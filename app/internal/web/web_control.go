@@ -298,6 +298,16 @@ func (s *Server) hSet(w http.ResponseWriter, r *http.Request) {
 		// envelope is time-ordered (engine orderEnvelope).
 		writeJSON(w, map[string]any{"ok": true, "applied": 0})
 		return
+	case "rollstream":
+		// Roll on the stream image (gap-free; an image reload when roll starts
+		// or ends) instead of chunked captures.
+		if sc, ok := s.sc.(interface{ SetRollStream(bool) }); ok {
+			sc.SetRollStream(req.Value != 0)
+			writeJSON(w, map[string]any{"ok": true, "applied": req.Value != 0})
+		} else {
+			writeJSON(w, map[string]any{"ok": false, "err": "unsupported"})
+		}
+		return
 	case "holdoff":
 		applied := s.sc.SetHoldoff(req.Value)
 		writeJSON(w, map[string]any{"ok": true, "applied": applied})

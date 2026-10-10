@@ -30,6 +30,7 @@ $("slope").onclick = () => { const r = !(st && st.trig_rising); send("trigslope"
 // TRLC-LINKS: REQ-SDS-204
 $("source").onclick = () => { const c = st && st.trig_source === 1 ? 0 : 1; send("trigsource", c); if (st) { st.trig_source = c; applyStatus(); } };
 // TRLC-LINKS: REQ-SDS-204
+$("rollStream").onclick = () => { const on = !(st && st.roll_stream); send("rollstream", on ? 1 : 0); if (st) { st.roll_stream = on; applyStatus(); } };
 $("ets").onclick = () => { const on = !(st && st.ets); send("ets", on ? 1 : 0); if (st) { st.ets = on; applyStatus(); } };
 // TRLC-LINKS: REQ-SDS-204
 $("tdiv").onchange = () => send("tdiv", +$("tdiv").value);

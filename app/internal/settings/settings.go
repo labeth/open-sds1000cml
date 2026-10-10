@@ -64,7 +64,8 @@ type Acq struct {
 	Mode            int     `json:"mode"` // 0=normal 1=average 2=eres 3=peak
 	AvgCount        int     `json:"avg_count"`
 	EresLen         int     `json:"eres_len"`
-	MemDepth        int     `json:"mem_depth,omitempty"` // requested depth (samples); 0 = not saved
+	RollStream      bool    `json:"roll_stream,omitempty"` // roll on the stream image (gap-free)
+	MemDepth        int     `json:"mem_depth,omitempty"`   // requested depth (samples); 0 = not saved
 }
 
 // Decode is the device protocol-decode setup (controller-owned; historically

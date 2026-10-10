@@ -28,6 +28,9 @@ const (
 	workerEvents
 	workerLineMode // value: serial protocol id, 0 = off (ADR-STREAM-LINES-IN-WORKER)
 	workerLines    // selector:value = first absolute line, plane bit 0 = flush
+	// ADR-STREAM-IMAGE: the worker drains the stream banks itself.
+	workerStreamPump  // value 1 = start draining from ordinal 0, 0 = stop
+	workerStreamWords // payload: 8-byte ordinal of the first word, then words
 )
 
 type workerClient struct {
@@ -191,6 +194,42 @@ func (d *Dev) ReadIsolatedDecodedBytes(epoch uint32, dst []byte) (int, bool, err
 	}
 	n, err := d.remote.call(workerEvents, 0, 0, 0, epoch, dst)
 	return n, true, err
+}
+
+// SetIsolatedStreamPump makes the worker drain the stream banks (on) into its
+// ring, at its FIFO service, from ordinal 0; owned is false without a worker.
+// TRLC-LINKS: REQ-SDS-035
+func (d *Dev) SetIsolatedStreamPump(on bool) (bool, error) {
+	if d.remote == nil {
+		return false, nil
+	}
+	v := uint16(0)
+	if on {
+		v = 1
+	}
+	_, err := d.remote.call(workerStreamPump, 0, 0, v, 0, nil)
+	return true, err
+}
+
+// ReadIsolatedStream takes drained stream words from the worker's ring into
+// dst (whole 32-bit words) and returns the ordinal of the first. A fault or
+// ring overflow is an error: the stream lost words.
+// TRLC-LINKS: REQ-SDS-035
+func (d *Dev) ReadIsolatedStream(dst []byte) (first uint64, n int, owned bool, err error) {
+	if d.remote == nil {
+		return 0, 0, false, nil
+	}
+	var buf [workerPayload]byte
+	limit := min(len(dst), workerPayload-8) &^ 3
+	m, err := d.remote.call(workerStreamWords, 0, 0, 0, 0, buf[:limit+8])
+	if err != nil || m < 8 {
+		if err == nil {
+			err = fmt.Errorf("bus: short worker stream reply")
+		}
+		return 0, 0, true, err
+	}
+	first = binary.LittleEndian.Uint64(buf[:8])
+	return first, copy(dst, buf[8:m]), true, nil
 }
 
 // TRLC-LINKS: REQ-SDS-001, REQ-SDS-013

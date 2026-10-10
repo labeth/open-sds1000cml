@@ -273,7 +273,7 @@ let binFailures = 0;
 
 // Buttons that are ON/OFF toggles get an aria-pressed mirror of their .on class.
 const PRESSED = ["mYT", "mXY", "mFFT", "tPersist", "tCursors", "tC1", "tC2", "freeze",
-  "mode", "ets", "single", "decAuto", "decWatch", "decStream"];
+  "mode", "ets", "rollStream", "single", "decAuto", "decWatch", "decStream"];
 
 
 let lastLineHTML = "", lastAria = "";

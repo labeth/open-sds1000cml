@@ -24,7 +24,10 @@
 `ifdef UART_TRIGGER
 `ifdef INTERLEAVE
 `ifdef BURST_RECALL
+`ifndef STREAM_CAPTURE
+// ADR-STREAM-IMAGE: the stream image's host buffer holds stream banks instead.
 `define ENVELOPE_RECALL
+`endif
 `endif
 `endif
 `endif
@@ -86,9 +89,15 @@ module acq_sram_top(
  localparam BUF_WORDS=(1<<BUF_AW);
  wire core,sample_clk,locked;
 `ifdef STREAM_CAPTURE
- reg [1:0] stream_cfg=0,stream_mode=0;
+ reg [2:0] stream_cfg=0,stream_mode=0; // [0] stream, [1] continuous (no trigger), [2] peak-detect words
  reg [1:0] stream_rise_enable=0,stream_fall_enable=0;reg stream_auto=0;
  reg streaming_fault=0;
+`ifdef STREAM_DRUM
+ // ADR-STREAM-IMAGE: the stream runs through the SRAM as a FIFO (stream_drum.v).
+ reg drum_active=0;
+ wire drum_cmd,drum_cmd_read,drum_cmd_discard,drum_cmd_continue,drum_wvalid,drum_wstop,drum_fault;
+ wire [19:0] drum_cmd_count;wire [31:0] drum_wdata;
+`endif
 `endif
 `ifdef INTERLEAVE
  wire halfclk;bench_pll pll(mclk_in,core,sample_clk,locked,halfclk);
@@ -102,7 +111,11 @@ module acq_sram_top(
  reg frontend_finished=0;
  (* preserve, dont_merge *) reg frontend_count=0;
  // A new write command cancels a stale frozen-record stop before priming.
- always @(posedge core)frontend_finished<=record_done && !priming && !arm && !(command && !command_read);
+ always @(posedge core)frontend_finished<=record_done && !priming && !arm && !(command && !command_read)
+`ifdef STREAM_DRUM
+  && !drum_active // the drum's stream has no frozen record to end it
+`endif
+  ;
 `ifdef PRECISION
  reg [4:0] decim_request=0;
  (* preserve, dont_merge *) reg [4:0] decim_log=0;
@@ -617,6 +630,12 @@ module acq_sram_top(
 `ifdef UART_TRIGGER
   || event_core_sync[2]
 `endif
+`ifdef STREAM_DRUM
+  // The drum takes words continuously into its own FIFO; write_ready is up
+  // only during its SRAM bursts (bench 2026-10-10: the interleaver overflowed
+  // at once and stopped the front end).
+  || drum_active
+`endif
  );
  adc_interleave frontend(.refclk(mclk_in),.memclk(core),.packclk(halfclk),.enable(frontend_run),.lane(lane),.encode_enable(encode_enable),
  .snapshot_request(snap_request),.snapshot_ack(snap_ack),.consume(frontend_consume),.word_data(il_raw_word),.valid(il_raw_valid),.fault(il_fault),.snapshot(cores),.enc_p(enc_p),.enc_n(enc_n),.locked(adc_locked));
@@ -744,7 +763,7 @@ module acq_sram_top(
   18:decim_request<=wd[4:0];
 `endif
 `ifdef STREAM_CAPTURE
-  19:stream_cfg<=wd[1:0];
+  19:stream_cfg<=wd[2:0];
 `endif
   16:buffer_index<=wd[BUF_AW-1:0];
  endcase
@@ -897,13 +916,31 @@ module acq_sram_top(
  reg [19:0] transport_count_q=0;
  always @(posedge core)transport_count_q<=stack_select ? stack_command_count : command_count;
  wire [19:0] transport_command_count=transport_count_q;
+ wire [31:0] transport_write_data=write_data;wire transport_write_valid=write_valid,transport_write_stop=write_stop;
+`else
+`ifdef STREAM_DRUM
+ // While the drum runs it alone commands the SRAM (no host recalls in stream mode).
+ // The transport's command mux selects on its own copy of drum_active (fanout).
+ (* preserve *) reg drum_sel=0;
+ always @(posedge core)drum_sel<=drum_active;
+ wire transport_command=drum_sel ? drum_cmd : command,transport_command_read=drum_sel ? drum_cmd_read : command_read;
+ wire transport_command_discard=drum_sel ? drum_cmd_discard : command_discard;
+ wire transport_command_continue=drum_sel ? drum_cmd_continue : command_continue;
+ // Registered (timing): both sources hold their count for clocks before a command.
+ reg [19:0] transport_count_q=0;
+ always @(posedge core)transport_count_q<=drum_sel ? drum_cmd_count : command_count;
+ wire [19:0] transport_command_count=transport_count_q;
+ wire [31:0] transport_write_data=drum_sel ? drum_wdata : write_data;
+ wire transport_write_valid=drum_sel ? drum_wvalid : write_valid,transport_write_stop=drum_sel ? drum_wstop : write_stop;
 `else
  wire transport_command=command,transport_command_read=command_read,transport_command_discard=command_discard;
  wire transport_command_continue=command_continue;wire [19:0] transport_command_count=command_count;
+ wire [31:0] transport_write_data=write_data;wire transport_write_valid=write_valid,transport_write_stop=write_stop;
+`endif
 `endif
  sram_transport #(.CONTINUOUS_ONLY(1),.READ_DELAY(SRAM_READ_DELAY)) transport(.clk(core),.sample_clk(sample_clk),.reset(1'b0),.locked(locked),
   .command(transport_command),.command_read(transport_command_read),.command_discard(transport_command_discard),.command_continue(transport_command_continue),.command_count(transport_command_count),
-  .ready(ready),.write_data(write_data),.write_valid(write_valid),.write_stop(write_stop),.write_ready(write_ready),
+  .ready(ready),.write_data(transport_write_data),.write_valid(transport_write_valid),.write_stop(transport_write_stop),.write_ready(write_ready),
   .read_data(read_data),.read_valid(read_valid),.done(transport_done),.position(position),.dq(dq),.k1(k1),.k2(k2),.g1(g1));
  wire record_fire=fire;
  sram_record #(.CONFIG_VALIDATED(1),.DERIVED_CONFIG(1)) record(.clk(core),.reset(1'b0),.arm(arm),.halt(halt),.pre_count(pre_cfg),.post_count(post_cfg),
@@ -936,7 +973,7 @@ module acq_sram_top(
   end else if(read_half)begin packet_data<={32'b0,read_first};packet_addr<=(received-1'b1)>>1;packet_toggle<=!packet_toggle;read_half<=0;end
  end
 `ifdef STREAM_CAPTURE
- wire stream_write;wire [BUF_AW-2:0] stream_address;wire [63:0] stream_data;
+ wire stream_write;wire [BUF_AW-2:0] stream_address;wire [63:0] stream_data;wire stream_seal_ok;
  wire packetizer_fault,stream_finished,bank_overrun,host_bank_overrun;
  wire stream_packet_valid,stream_packet_single,stream_packet_seal;wire [63:0] stream_packet_data;
  wire [1:0] stream_available,stream_token,stream_single;
@@ -944,23 +981,81 @@ module acq_sram_top(
  wire [63:0] stream_first0,stream_first1;
  reg stream_was_running=0;
  always @(posedge core)stream_was_running<=running;
- wire stream_reset=!stream_mode[0] || priming || arm;
+ // Registered: the packetizer and banks synchronize it, and a wire would put
+ // the arm/priming decode on their reset fanout at 250 MHz.
+ (* preserve *) reg stream_reset=1;
+`ifdef STREAM_DRUM
+ always @(posedge core)stream_reset<=!stream_mode[0] || !drum_active; // a new stream starts at ordinal 0
+`else
+ always @(posedge core)stream_reset<=!stream_mode[0] || priming || arm;
+`endif
+ // The 125 MHz buffer write port selects stream or recall words with its own
+ // copy of the mode, so no core-clock register drives the RAM's port mux.
+ (* preserve *) reg stream_on_h=0;
+ always @(posedge halfclk)stream_on_h<=stream_mode[0];
+ wire peak_valid;wire [31:0] peak_word;
+ (* preserve *) reg peak_on=0;
+ always @(posedge core)peak_on<=stream_mode[2] && stream_mode[0] && frontend_run;
+ // A bucket spans as many raw words (two samples each) as the precision
+ // decimator's output word does samples: equal stream rates.
+ (* preserve *) reg [4:0] peak_log=0;
+ always @(posedge core)peak_log<=decim_log-1'b1; // static while running: registered
+ stream_peak peak(.clk(core),.enable(peak_on),.log_words(peak_log),.in_valid(il_raw_valid),.in_word(il_raw_word),
+  .out_valid(peak_valid),.out_word(peak_word));
+`ifdef STREAM_DRUM
+ // The drum's input: the bucket extremes (peak) or the decimated words, or a
+ // counter ramp with the counter source (bench checks); not the record's path.
+ // One register stage first (timing at 250 MHz): the ramp steps on a register.
+ (* preserve *) reg drum_in_valid=0;(* preserve *) reg [31:0] drum_in_data=0;reg [31:0] drum_ramp=0;reg drum_ramp_c=0;
+ reg drum_s_valid=0,drum_p_valid=0,drum_peak=0,drum_il=0;reg [31:0] drum_s_word=0,drum_p_word=0;
+ always @(posedge core)begin
+  drum_s_valid<=source_valid && frontend_run;drum_s_word<=il_word;
+  drum_p_valid<=peak_valid;drum_p_word<=peak_word;
+  drum_peak<=stream_mode[2];drum_il<=cfg[0];
+  drum_in_valid<=drum_active && (drum_peak ? drum_p_valid : drum_s_valid);
+  drum_in_data<=drum_peak ? drum_p_word : drum_il ? drum_s_word : drum_ramp;
+  // The ramp in two 16-bit halves: the high half steps a clock after the low
+  // half wraps (a stream is decimated by 2^8 or more: words are clocks apart).
+  drum_ramp_c<=0;
+  if(!drum_active)begin drum_ramp<=0;end
+  else begin
+   if(!drum_peak && drum_s_valid)begin drum_ramp[15:0]<=drum_ramp[15:0]+1'b1;drum_ramp_c<=&drum_ramp[15:0];end
+   if(drum_ramp_c)drum_ramp[31:16]<=drum_ramp[31:16]+1'b1;
+  end
+ end
+ wire drum_bank_ready;
+ stream_drum #(.AW(19),.WF_AW(12),.DESC_AW(9),.BANK_AW(BUF_AW-2)) drum(.clk(core),.active(drum_active),
+  .in_valid(drum_in_valid),.in_data(drum_in_data),
+  .cmd(drum_cmd),.cmd_read(drum_cmd_read),.cmd_discard(drum_cmd_discard),.cmd_continue(drum_cmd_continue),.cmd_count(drum_cmd_count),
+  .t_ready(ready),.t_write_ready(write_ready),.t_done(transport_done),.wdata(drum_wdata),.wvalid(drum_wvalid),.wstop(drum_wstop),
+  .rdata(read_data),.rvalid(read_valid),.position(position),.fault(drum_fault),
+  .hclk(halfclk),.bank_ready(drum_bank_ready),.packet_valid(stream_packet_valid),.packet_data(stream_packet_data),
+  .packet_single(stream_packet_single),.packet_seal(stream_packet_seal));
+ assign packetizer_fault=drum_fault,stream_finished=!drum_active,stream_seal_ok=1'b1;
+`else
  // Isolate the live-stream tap from SRAM arm/priming decode fanout. Stop and
  // data validity take the same extra clock, retaining the last accepted word.
  (* preserve, dont_merge *) reg [31:0] stream_tap_data=0;
  (* preserve *) reg stream_tap_valid=0,stream_tap_stop=0;
  always @(posedge core)begin
-  stream_tap_data<=cfg[0] ? capture_word : ramp; // priming data is invalid and need not select zero
-  stream_tap_valid<=stream_mode[0] && write_valid && !dummy_write && !halt;
+  // Peak mode streams the raw words' bucket extremes instead of the record's
+  // (averaged) decimated words (stream_peak.v); the record itself is unchanged.
+  stream_tap_data<=stream_mode[2] ? peak_word : cfg[0] ? capture_word : ramp; // priming data is invalid and need not select zero
+  stream_tap_valid<=stream_mode[0] && !halt && (stream_mode[2] ? peak_valid && running : write_valid && !dummy_write);
   stream_tap_stop<=stream_was_running && !running;
  end
  stream_packetizer stream_pack(.reset(stream_reset),.word_clk(core),.packet_clk(halfclk),
   .word_valid(stream_tap_valid),.word_data(stream_tap_data),
-  .stop(stream_tap_stop),.fault(packetizer_fault),.finished(stream_finished),
+  .stop(stream_tap_stop),.seal_ok(stream_seal_ok),.fault(packetizer_fault),.finished(stream_finished),
   .packet_valid(stream_packet_valid),.packet_data(stream_packet_data),.packet_single(stream_packet_single),.packet_seal(stream_packet_seal));
+`endif
  stream_banks #(.BANK_AW(BUF_AW-2)) stream_queue(.reset(stream_reset),.producer_clk(halfclk),.host_clk(clk),
   .packet_valid(stream_packet_valid),.packet_data(stream_packet_data),.packet_single(stream_packet_single),.seal(stream_packet_seal),
-  .packet_ready(),.mem_write(stream_write),.mem_address(stream_address),.mem_data(stream_data),
+`ifdef STREAM_DRUM
+  .packet_ready(),.cur_ready(drum_bank_ready),
+`else
+  .packet_ready(stream_seal_ok),.cur_ready(),
+`endif.mem_write(stream_write),.mem_address(stream_address),.mem_data(stream_data),
   .overrun(bank_overrun),.host_overrun(host_bank_overrun),.host_release(wc && ws==20),.release_bank(wd[0]),.release_token(wd[1]),
   .host_ready(stream_available),.host_token(stream_token),.first_word0(stream_first0),.first_word1(stream_first1),
   .packets0(stream_count0),.packets1(stream_count1),.last_single(stream_single));
@@ -973,7 +1068,7 @@ module acq_sram_top(
  always @(posedge core)if(stream_reset)streaming_fault<=0;else streaming_fault<=stream_mode[0] && (packetizer_fault || bank_fault_s[2]);
  always @(posedge halfclk)begin
   packet_seen<=packet_toggle;
-  if(stream_mode[0])begin if(stream_write)buffer_mem64[stream_address]<=stream_data;end
+  if(stream_on_h)begin if(stream_write)buffer_mem64[stream_address]<=stream_data;end
   else if(packet_toggle!=packet_seen)buffer_mem64[packet_addr]<=packet_data;
  end
 `else
@@ -1132,15 +1227,27 @@ module acq_sram_top(
    ack<=req_s[2];command_error<=0;
    case(dispatch_opcode)
     1:if(dispatch_arm_ok) begin
+`ifdef STREAM_DRUM
+     // Stream mode: the drum takes the SRAM and the front end runs for it.
+     if(stream_mode[0])begin drum_active<=1;frontend_run<=1;frontend_count<=1;end
+     else begin
+`endif
      force_trigger<=0;priming<=1;
      command<=1;command_read<=0;command_discard<=0;command_continue<=0;prefetch_valid<=0;
+`ifdef STREAM_DRUM
+     end
+`endif
     end else command_error<=1;
     2,3,7:if(dispatch_read_ok) begin
      command<=1;command_read<=1;
      prefetch_valid<=dispatch_opcode!=3;
     end else command_error<=1;
     4:force_trigger<=1;
+`ifdef STREAM_DRUM
+    5:begin halt<=1;if(drum_active)begin drum_active<=0;frontend_run<=0;frontend_count<=0;end end
+`else
     5:halt<=1;
+`endif
 `ifdef INTERLEAVE
     6:begin snap_request<=!snap_request;snap_busy<=1;end
 `else

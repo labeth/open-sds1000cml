@@ -191,7 +191,7 @@ func (c *Controller) pageSlots(pg int) int {
 			return 1
 		}
 	case pgHoriz:
-		return 3
+		return 4
 	case pgAcq:
 		return 4
 	case pgChan:

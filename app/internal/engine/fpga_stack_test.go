@@ -186,6 +186,12 @@ func (f *fakeImages) LoadLine() error { return errors.New("no line image in this
 // TRLC-LINKS: REQ-SDS-013
 func (f *fakeImages) HasLine() bool { return false }
 
+// TRLC-LINKS: REQ-SDS-035
+func (f *fakeImages) LoadStream() error { return nil }
+
+// TRLC-LINKS: REQ-SDS-035
+func (f *fakeImages) HasStream() bool { return false }
+
 // TRLC-LINKS: REQ-SDS-141
 func (f *fakeImages) HasStack() bool { return true }
 

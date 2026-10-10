@@ -232,3 +232,21 @@ func TestSuperresUX(t *testing.T) {
 		t.Errorf("UTILITY lamp still lit after cancel: %#x", w)
 	}
 }
+
+// HORIZONTAL F4 toggles how roll runs: chunked by default, stream on demand.
+// TRLC-LINKS: REQ-SDS-010
+func TestRollStreamSoftkey(t *testing.T) {
+	c, eng, _ := newC(t)
+	c.menuButton(btnHorizMenu)
+	if v := c.MenuView(); v.Title != "HORIZ" || v.Items[3].Value != "Chunked" {
+		t.Fatalf("HORIZ page: %+v", v)
+	}
+	c.menuButton(btnF4)
+	if !eng.Snapshot().RollStream || c.MenuView().Items[3].Value != "Stream" {
+		t.Fatal("F4 did not select stream roll")
+	}
+	c.menuButton(btnF4)
+	if eng.Snapshot().RollStream {
+		t.Fatal("F4 did not return to chunked roll")
+	}
+}

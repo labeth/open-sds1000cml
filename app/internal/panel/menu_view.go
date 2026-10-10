@@ -238,7 +238,8 @@ func (c *Controller) MenuView() MenuView {
 			{"Time/div", fmtEng(st.DisplayedS, "s")},
 			{"Trig Pos", fmt.Sprintf("%d%%", int(c.trigPos()*100+0.5))},
 			{"Zoom", zl},
-			{"", ""}, {"", ""},
+			{"Roll", rollName(st.RollStream)},
+			{"", ""},
 		}
 	case pgChan:
 		cpl0, cpl1, p0, p1 := "DC", "DC", "1x", "1x"
@@ -330,4 +331,13 @@ func (c *Controller) MenuView() MenuView {
 		}
 	}
 	return v
+}
+
+// rollName labels how roll runs (engine SetRollStream).
+// TRLC-LINKS: REQ-SDS-010
+func rollName(stream bool) string {
+	if stream {
+		return "Stream"
+	}
+	return "Chunked"
 }

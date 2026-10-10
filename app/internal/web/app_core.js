@@ -179,6 +179,7 @@ function applyStatus() {
   $("decStream").disabled = st.band === "sram";
   $("decStream").title = st.band === "sram" ? "Use Stream + trigger above for continuous FPGA decoding and a retained capture" : "Collect decoded capture windows (gaps between records)";
   $("single").classList.toggle("on", !!st.single);
+  $("rollStream").classList.toggle("on", !!st.roll_stream);
   if (document.activeElement !== $("tpos") && Number.isFinite(st.trig_pos_frac) && st.trig_pos_frac >= 0 && st.trig_pos_frac <= 1) $("tpos").value = st.trig_pos_frac;
   $("wedged").style.display = st.wedged ? "inline" : "none";
   // Loading indicator (after a short grace so fast frames never flash it).

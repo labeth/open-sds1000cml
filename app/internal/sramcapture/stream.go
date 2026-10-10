@@ -223,3 +223,60 @@ func (c *Capture) DrainStream(ctx context.Context, expected uint64, dst io.Write
 	e = c.write(20, uint16(block.Bank)|uint16((s.Tokens>>block.Bank)&1)<<1)
 	return block, e
 }
+
+// StartStream enables the stream banks and arms cfg: every word the record
+// writes is also published to the host through DrainStream, starting at
+// ordinal 0. continuous never triggers, so the stream runs until StopStream;
+// otherwise the record's own trigger and post-trigger end it. peak streams
+// each bucket's extremes (the envelope recall's raw word format) in place of
+// the record's averaged words, one word per 2^DecimationLog2 samples. The fabric
+// streams decimated records only (DecimationLog2 8 or more: at most about
+// 2 M words a second, what the host drain sustains).
+// TRLC-LINKS: REQ-SDS-035
+func (c *Capture) StartStream(ctx context.Context, cfg Config, continuous, peak bool) error {
+	if cfg.DecimationLog2 < 8 || cfg.DecimationLog2 > 20 {
+		return fmt.Errorf("sramcapture: stream decimation %d, need 8..20", cfg.DecimationLog2)
+	}
+	c.mu.Lock()
+	rev, err := c.read(13)
+	if err == nil && rev != 11 {
+		err = fmt.Errorf("sramcapture: stream requires revision 11")
+	}
+	if err == nil {
+		err = c.prepareStreamBuffers()
+	}
+	if err == nil {
+		mode := uint16(1)
+		if continuous {
+			mode |= 2
+		}
+		if peak {
+			mode |= 4 // bucket extremes of the raw words, {max2,max1,min2,min1}
+		}
+		// Latched by the fabric while idle, so before the arm.
+		err = c.write(19, mode)
+	}
+	c.mu.Unlock()
+	if err != nil {
+		return err
+	}
+	if err = c.Arm(ctx, cfg); err != nil {
+		c.mu.Lock()
+		c.write(19, 0)
+		c.mu.Unlock()
+	}
+	return err
+}
+
+// StopStream halts the acquisition and disables the stream banks; blocks not
+// yet drained are discarded.
+// TRLC-LINKS: REQ-SDS-035
+func (c *Capture) StopStream(ctx context.Context) error {
+	err := c.Halt(ctx)
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if werr := c.write(19, 0); err == nil {
+		err = werr
+	}
+	return err
+}

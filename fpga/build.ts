@@ -1,7 +1,7 @@
 // ENGMODEL-OWNER-UNIT: FU-FPGA-BUILD
 // Builds one FPGA image for the EP4CE10F17C8 with headless Quartus 21.1 Lite:
 //
-//   node --experimental-strip-types fpga/build.ts --image=general|packet|line|stacking [--seed=N] [--prepare-only] [--install]
+//   node --experimental-strip-types fpga/build.ts --image=general|packet|line|stacking|stream [--seed=N] [--prepare-only] [--install]
 //
 // Every image is common/ (the acquisition top, SRAM record and transport, ADC
 // interleave, panel scan, clocks and GPMC) plus its own decoders or engine:
@@ -21,9 +21,9 @@ const args=process.argv.slice(2);
 const flag=(f:string)=>args.includes(f);
 const value=(k:string)=>args.find(a=>a.startsWith(k+'='))?.slice(k.length+1);
 if(args.some(a=>!['--prepare-only','--install'].includes(a) && !/^--image=\w+$/.test(a) && !/^--seed=\d+$/.test(a)))
- throw Error('usage: build.ts --image=general|packet|line|stacking [--seed=N] [--prepare-only] [--install]');
+ throw Error('usage: build.ts --image=general|packet|line|stacking|stream [--seed=N] [--prepare-only] [--install]');
 
-type Image={dir:string,files:string[],defines:string[],seed:number,trigger:boolean,precision:boolean};
+type Image={dir:string,files:string[],defines:string[],seed:number,trigger:boolean,precision:boolean,bare?:boolean};
 // Shared by every image (the stacking build used the same PLL text).
 const common=['record.v','transport.v','adc_unpack.v','interleave.v','panel_scan.v','pll.v','adc_pll.v',
  'gpmc_slave.v','ddio_pair.v','lane_in.v','lanemap_seed.vh'];
@@ -39,6 +39,11 @@ const images:Record<string,Image>={
   defines:['TRIG_ARINC','TRIG_CAN','TRIG_FLEXRAY','TRIG_MIL','TRIG_SENT','SEQUENCE_ONLY'],seed:6,trigger:true,precision:false},
  line:{dir:'images/line',files:['manchester_receive.v','manchester_trigger.v','usbls_trigger.v','protocol_scratch.v'],
   defines:['TRIG_MAN','TRIG_USB','SEQUENCE_ONLY'],seed:7,trigger:true,precision:false},
+ // ADR-STREAM-IMAGE: continuous capture for roll and loss-free streaming; no
+ // protocol decoders, so the packetizer, banks and precision decimation fit.
+ // STREAM_DRUM: the stream goes through the external SRAM as a FIFO, whose
+ // 512K words are the drain's slack (stream_drum.v).
+ stream:{dir:'images/stream',files:['stream_packetizer.v','stream_banks.v','stream_peak.v','stream_drum.v','general/precision.v','general/precision_tail.v'],defines:['STREAM_CAPTURE','STREAM_DRUM'],seed:32,trigger:true,precision:true,bare:true},
  stacking:{dir:'images/stacking',files:['stack_engine_port.v','stack_edge_accumulator.v','stack_edge_hits.v','stack_tiled_accumulator.v',
   'stack_tile_access.v','stack_tile_transfer.v','stack_state_tile.v','stack_resample_store.v','stack_resample.v','stack_positions.v',
   'stack_interpolate.v','stack_accumulate.v','stack_bin_writer.v','stack_record_cache.v'],defines:[],seed:11,trigger:false,precision:false},
@@ -66,10 +71,12 @@ function copy(source:string,file:string){copyFileSync(source,join(out,file));inp
 // TRLC-LINKS: REQ-SDS-210
 function project(file:string,text:string){writeFileSync(join(out,file),text);inputs[file]=sha(text);}
 
-const sources=[...(image.trigger ? trigger : []),...image.files];
+// An image may name another image's file as dir/file (shared, not copied in the tree).
+const imageFile=(f:string)=>f.includes('/') ? basename(f) : f;
+const sources=[...(image.trigger ? trigger : []),...image.files.map(imageFile)];
 for(const f of common)copy(join(root,'common',f),f);
 for(const f of image.trigger ? trigger : [])copy(join(root,'trigger',f),f);
-for(const f of image.files)copy(join(root,image.dir,f),f);
+for(const f of image.files)copy(f.includes('/') ? join(root,'images',f) : join(root,image.dir,f),imageFile(f));
 
 let defines:string[];
 if(image.trigger){
@@ -80,7 +87,7 @@ if(image.trigger){
   .filter(l=>!l.startsWith('set_global_assignment -name VERILOG_FILE ') || listed.has(l.slice('set_global_assignment -name VERILOG_FILE '.length)));
  for(const f of ['record.v','transport.v','adc_unpack.v','interleave.v','sample_timeline.v','event_sequence.v','envelope_reduce.v',
   'decoded_event_queue.v','decoded_event_bridge.v','decoded_event_reader.v','decoded_event_transport.v','decoded_event_port.v','panel_scan.v',
-  ...image.files])if(!qsf.includes(`set_global_assignment -name VERILOG_FILE ${f}`))qsf.push(`set_global_assignment -name VERILOG_FILE ${f}`);
+  ...image.files.map(imageFile)])if(!qsf.includes(`set_global_assignment -name VERILOG_FILE ${f}`))qsf.push(`set_global_assignment -name VERILOG_FILE ${f}`);
  qsf=qsf.map(l=>l.startsWith('set_global_assignment -name SEED ') ? `set_global_assignment -name SEED ${seed}` : l);
  qsf=qsf.map(l=>l==='set_global_assignment -name FITTER_EFFORT "STANDARD FIT"' ? 'set_global_assignment -name FITTER_EFFORT "AUTO FIT"' : l);
  // Placement and routing effort, but no extra physical synthesis, whose
@@ -88,8 +95,27 @@ if(image.trigger){
  qsf.push('set_global_assignment -name ROUTER_TIMING_OPTIMIZATION_LEVEL MAXIMUM','set_global_assignment -name PLACEMENT_EFFORT_MULTIPLIER 4');
  project('bench.qsf',qsf.join('\n'));
  const sdc=readFileSync(join(root,'trigger','project.sdc'),'utf8');
- project('bench.sdc',image.precision ? sdc : sdc.split('\n').filter(l=>!/precision/i.test(l)).join('\n'));
- defines=['UART_TRIGGER','PROTOCOL_SET',...image.defines,'INTERLEAVE','BURST_RECALL',...(image.precision ? ['PRECISION'] : []),'HOST_READ_FIX'];
+ // ADR-STREAM-IMAGE: the stream crosses 250 -> 125 MHz through a gray-coded
+ // FIFO; only first synchronizer stages are cut, and its storage, stable for
+ // clocks before the read pointer reaches it, is excused from the 4 ns path.
+ const streamSdc=name==='stream' ? ['',
+  'set_false_path -to [get_registers {*stream_pack*reset_s[0] *stream_pack*wgray_s0[*] *stream_pack*rgray_s0[*] *stream_pack*stop_s[0] *stream_pack*fault_s[0]}]',
+  'set_false_path -to [get_registers {*stream_queue*preset_s[0] *stream_queue*rel_s0[*] *stream_queue*pub_s0[*] *stream_queue*hreset_s[0] *stream_queue*overrun_s[0]}]',
+  // stream_drum's register FIFOs between clk and hclk: an entry is written a
+  // clock or more before its pointer shows it on the other side.
+  'set_false_path -from [get_registers {*drum|iq~* *drum|rq~*}] -to [get_registers {*drum|wf_in[*] *drum|in_lo[*] *drum|packet_data[*]}]',
+  'set_false_path -from [get_registers {*drum|wq~*}] -to [get_registers {*drum|w_data[*]}]',
+  'set_false_path -from [get_registers {*stream_pack*mem*}] -to [get_registers {*stream_pack*low[*] *stream_pack*packet_data[*]}]',
+  // stream_peak's bucket stage updates at most every other clock from pair
+  // registers held two clocks (its design), so those paths get two clocks.
+  // The bucket size changes only while acquisition is idle.
+  'set_false_path -from [get_registers {*peak_log[*] *peak|size_r[*]}] -to [get_registers {*peak|size_r[*] *peak|init[*]}]',
+  'set_multicycle_path -setup -end 2 -from [get_registers {*peak|pmin?[*] *peak|pmax?[*] *peak|min?[*] *peak|max?[*] *peak|left[*] *peak|first}] -to [get_registers {*peak|min?[*] *peak|max?[*] *peak|left[*] *peak|first}]',
+  'set_multicycle_path -hold -end 1 -from [get_registers {*peak|pmin?[*] *peak|pmax?[*] *peak|min?[*] *peak|max?[*] *peak|left[*] *peak|first}] -to [get_registers {*peak|min?[*] *peak|max?[*] *peak|left[*] *peak|first}]'].join('\n') : '';
+ project('bench.sdc',(image.precision ? sdc : sdc.split('\n').filter(l=>!/precision/i.test(l)).join('\n'))+streamSdc);
+ // A bare image (stream) leaves out the protocol baseline (sequence trigger,
+ // protocol scratch): it triggers on nothing and needs the room at 250 MHz.
+ defines=[...(image.bare ? [] : ['UART_TRIGGER','PROTOCOL_SET']),...image.defines,'INTERLEAVE','BURST_RECALL',...(image.precision ? ['PRECISION'] : []),'HOST_READ_FIX'];
 }else{
  // Stacking: interleave and burst recall foundation plus the stacking port,
  // whose pop-on-read mailbox needs the qualified read strobe (HOST_READ_FIX).

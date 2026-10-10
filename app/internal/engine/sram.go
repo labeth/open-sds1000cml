@@ -471,6 +471,9 @@ acquisitionLoop:
 	for !e.stopReq.Load() {
 		e.setBusy("", 0) // set again only around a recall and its processing
 		e.serviceCommands()
+		if roll.streaming && (!e.rollActive() || e.protocolImage != imageStream || len(e.sramJobs) != 0) {
+			e.rollStreamStop(&roll) // leaving roll: free the fabric for records
+		}
 		// A decoded stream's triggered record becomes the stopped capture: it is
 		// recalled at full depth below, before any image switch can drop it.
 		adopting := false
@@ -531,7 +534,11 @@ acquisitionLoop:
 		if rolling {
 			retained, recalled = false, false // the roll view is not a retained record
 			e.viewHeld.Store(false)
-			e.rollStep(&roll)
+			if e.protocolImage == imageStream {
+				e.rollStreamStep(&roll)
+			} else {
+				e.rollStep(&roll)
+			}
 			continue
 		}
 		cfg, plan, tdiv, norm, tp := e.sramConfig()

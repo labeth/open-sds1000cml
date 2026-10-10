@@ -61,3 +61,28 @@ func TestHeldRecallRoundTrip(t *testing.T) {
 		t.Fatalf("conditioning fields lost: %+v", dst)
 	}
 }
+
+// Peak stream words decode to (min, max) pairs per channel, ordered to
+// continue from the view: a falling edge inside a bucket is one transition.
+// TRLC-LINKS: REQ-SDS-035
+func TestPeakSamplesOrdered(t *testing.T) {
+	e := &Engine{}
+	r := &rollView{}
+	r.reset(planRollPeak(0.01), 0.01, [2]chScale{})
+	// {max2,max1,min2,min1}: high, high->low (edge), low; CH2 constant 100.
+	raw := []byte{
+		200, 100, 200, 100, // bucket 0: CH1 200..200
+		10, 100, 200, 100, // bucket 1: CH1 10..200 (falling edge)
+		10, 100, 10, 100, // bucket 2: CH1 10..10
+	}
+	q1, q2 := e.peakSamples(r, raw)
+	want := []uint8{200, 200, 200, 10, 10, 10}
+	for i, v := range want {
+		if roundQ8(q1[i]) != v || roundQ8(q2[i]) != 100 {
+			t.Fatalf("CH1 %v, want %v; CH2 %v", q1, want, q2)
+		}
+	}
+	if p := planRollPeak(0.01); p.screen > rollScreenSamples || p.log < 8 || p.screen%2 != 0 {
+		t.Fatalf("peak plan %+v", p)
+	}
+}

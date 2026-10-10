@@ -31,6 +31,10 @@ PACKET_EMBED := internal/fpgaload/packet.rbf
 # Line image: Manchester and USB low-speed triggers.
 LINE_RBF ?= ../fpga/bitstreams/line.rbf
 LINE_EMBED := internal/fpgaload/line.rbf
+# Stream image (ADR-STREAM-IMAGE): continuous capture for roll mode. Optional
+# until it ships in fpga/bitstreams.
+STREAM_RBF ?= $(wildcard ../fpga/bitstreams/stream.rbf)
+STREAM_EMBED := internal/fpgaload/stream.rbf
 
 .PHONY: all app app-release test vet clean
 
@@ -62,9 +66,13 @@ app-release:
 	  test "$$(stat -c %s "$(LINE_RBF)")" = 368011 || { echo "app-release: $(LINE_RBF) is not a 368011-byte EP4CE10 .rbf"; exit 1; }; \
 	  cp "$(LINE_RBF)" $(LINE_EMBED); \
 	else rm -f $(LINE_EMBED); fi
+	@if [ -n "$(STREAM_RBF)" ]; then \
+	  test "$$(stat -c %s "$(STREAM_RBF)")" = 368011 || { echo "app-release: $(STREAM_RBF) is not a 368011-byte EP4CE10 .rbf"; exit 1; }; \
+	  cp "$(STREAM_RBF)" $(STREAM_EMBED); \
+	else rm -f $(STREAM_EMBED); fi
 	CGO_ENABLED=0 GOOS=linux GOARCH=arm GOARM=7 \
-	  go build -trimpath -tags "withgeneralbitstream$(if $(STACK_RBF), withstackbitstream)$(if $(PACKET_RBF), withpacketbitstream)$(if $(LINE_RBF), withlinebitstream)" -ldflags "$(LDFLAGS)" -o $(DIST)/app-arm ./cmd/app
-	@echo "app-release: $(DIST)/app-arm embeds $(RBF) ($$(sha256sum "$(RBF)" | cut -c1-16)…)$(if $(STACK_RBF), stacking image $(STACK_RBF))$(if $(PACKET_RBF), packet image $(PACKET_RBF))$(if $(LINE_RBF), line image $(LINE_RBF))"
+	  go build -trimpath -tags "withgeneralbitstream$(if $(STACK_RBF), withstackbitstream)$(if $(PACKET_RBF), withpacketbitstream)$(if $(LINE_RBF), withlinebitstream)$(if $(STREAM_RBF), withstreambitstream)" -ldflags "$(LDFLAGS)" -o $(DIST)/app-arm ./cmd/app
+	@echo "app-release: $(DIST)/app-arm embeds $(RBF) ($$(sha256sum "$(RBF)" | cut -c1-16)…)$(if $(STACK_RBF), stacking image $(STACK_RBF))$(if $(PACKET_RBF), packet image $(PACKET_RBF))$(if $(LINE_RBF), line image $(LINE_RBF))$(if $(STREAM_RBF), stream image $(STREAM_RBF))"
 
 test:
 	go test ./...

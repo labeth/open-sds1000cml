@@ -88,6 +88,12 @@ func (f *packetImages) LoadLine() error {
 // TRLC-LINKS: REQ-SDS-013
 func (f *packetImages) HasLine() bool { return true }
 
+// TRLC-LINKS: REQ-SDS-035
+func (f *packetImages) LoadStream() error { return nil }
+
+// TRLC-LINKS: REQ-SDS-035
+func (f *packetImages) HasStream() bool { return false }
+
 // TRLC-LINKS: REQ-SDS-005
 func (f *packetImages) LoadGeneral() error {
 	f.loads = append(f.loads, "general")

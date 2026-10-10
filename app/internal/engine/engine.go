@@ -189,6 +189,7 @@ type Stats struct {
 	BusyPct         float64  `json:"busy_pct"`               // its progress 0..100, -1 when unknown
 	BusyMs          float64  `json:"busy_ms"`                // how long it has been busy
 	FrameStages     string   `json:"frame_stages,omitempty"` // last SRAM frame's stage times
+	RollStream      bool     `json:"roll_stream"`            // roll uses the stream image (gap-free, image reload on entry)
 	Roll            bool     `json:"roll"`                   // the live view is rolling (slow timebase, AUTO)
 	ViewPending     bool     `json:"view_pending"`           // stopped: the held record is being re-shown at a new view
 	HoldoffS        float64  `json:"holdoff_s"`              // trigger holdoff (0 = off)
@@ -432,6 +433,7 @@ type Engine struct {
 	// front-end scale it is shown at, for ViewPending.
 	viewHeld      atomic.Bool
 	rolling       atomic.Bool // the SRAM loop is in roll mode (Stats.Roll)
+	rollStream    atomic.Bool // roll runs gap-free on the stream image (opt-in; SetRollStream)
 	shownScaleGen atomic.Uint64
 	etsWant       bool // staged ETS opt-in; applied at the frame boundary
 	tp            trigParams
@@ -751,6 +753,7 @@ func (e *Engine) Snapshot() Stats {
 	defer e.mu.Unlock()
 	s := e.stats
 	s.Roll = e.rolling.Load() && s.Running
+	s.RollStream = e.rollStream.Load()
 	s.ViewPending = e.sram != nil && !s.Running && e.viewHeld.Load() && (e.pendSet || e.scaleGen.Load() != e.shownScaleGen.Load())
 	if e.busyWhat != "" {
 		s.Busy, s.BusyMs, s.BusyPct = e.busyWhat, float64(time.Since(e.busyAt))/float64(time.Millisecond), -1

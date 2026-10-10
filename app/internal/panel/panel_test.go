@@ -70,6 +70,16 @@ func (f *fakeEng) SetRunning(on bool) {
 }
 
 // TRLC-LINKS: REQ-SDS-135
+func (f *fakeEng) SetRollStream(on bool) {
+	f.statMu.Lock()
+	f.stats.RollStream = on
+	f.statMu.Unlock()
+}
+
+// TRLC-LINKS: REQ-SDS-010
+func (f *fakeEng) RollStream() bool { return f.Snapshot().RollStream }
+
+// TRLC-LINKS: REQ-SDS-135
 func (f *fakeEng) SetSingle() {
 	f.statMu.Lock()
 	f.stats.Running, f.stats.Single, f.stats.Norm = true, true, true

@@ -83,6 +83,7 @@ func Collect(eng Engine, fe Analog, pc Panel) Settings {
 		if md, ok := eng.(interface{ MemDepth() int }); ok {
 			s.Acq.MemDepth = md.MemDepth()
 		}
+		s.Acq.RollStream = st.RollStream
 		// OffC1/OffC2 are the staged DAC codes; 0 means the boot-inherited
 		// offset was never touched (spec 06 §4.4) — record that so restore
 		// won't drive an explicit 0 V over an untouched channel.
@@ -164,6 +165,9 @@ func Apply(s Settings, eng Engine, fe Analog, pc Panel, logf func(string, ...any
 				qe.SetSlopeParams(q.SlopeLo, q.SlopeHi, q.SlopeMinNs, q.SlopeMaxNs, q.SlopeCond)
 			}
 			qe.SetVideoParams(q.VideoStd, q.VideoLine, q.VideoNeg)
+		}
+		if rs, ok := eng.(interface{ SetRollStream(bool) }); ok {
+			rs.SetRollStream(s.Acq.RollStream)
 		}
 		eng.SetAcqMode(s.Acq.Mode) // clamps to normal on out-of-range
 		if s.Acq.AvgCount > 0 {

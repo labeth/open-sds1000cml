@@ -282,6 +282,13 @@ func (c *Controller) menuCycle(slot, dir int) {
 				c.zoomOff = 0 // reset pan when back to 1x
 			}
 			c.mu.Unlock()
+		case 3: // Roll: chunked (instant) <-> stream (gap-free, image reload)
+			if e, ok := c.eng.(interface {
+				SetRollStream(bool)
+				RollStream() bool
+			}); ok {
+				e.SetRollStream(!e.RollStream())
+			}
 		}
 	case pgChan:
 		if c.fe != nil {

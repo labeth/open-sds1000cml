@@ -193,6 +193,9 @@ const (
 	// imageLine has the line-code decoders Manchester and USB; the packet
 	// image has ARINC 429, CAN, FlexRay, MIL-1553 and SENT.
 	imageLine = "line"
+	// imageStream is the continuous-capture image roll mode runs on
+	// (ADR-STREAM-IMAGE).
+	imageStream = "stream"
 )
 
 // protocolImage names the image whose hardware triggers p, or "" for the
@@ -216,6 +219,8 @@ func (e *Engine) hasImage(name string) bool {
 		return e.images.HasPacket()
 	case imageLine:
 		return e.images.HasLine()
+	case imageStream:
+		return e.images.HasStream()
 	}
 	return true
 }
@@ -225,7 +230,15 @@ func (e *Engine) hasImage(name string) bool {
 // also keeps precision decimation.
 // TRLC-LINKS: REQ-SDS-013
 func (e *Engine) wantImage() string {
-	if e.images == nil || e.serialMode.Load() != SerialTrigger {
+	if e.images == nil {
+		return ""
+	}
+	// Roll streaming (opt-in) runs gap-free on the stream image; a stop keeps
+	// it, so RUN resumes without a reload.
+	if e.rollStream.Load() && e.images.HasStream() && (e.rollActive() || (!e.running.Load() && e.protocolImage == imageStream)) {
+		return imageStream
+	}
+	if e.serialMode.Load() != SerialTrigger {
 		return ""
 	}
 	e.ser.mu.Lock()
@@ -261,12 +274,15 @@ func (e *Engine) loadImage(name string) bool {
 		load = e.images.LoadPacket
 	case imageLine:
 		load = e.images.LoadLine
+	case imageStream:
+		load = e.images.LoadStream
 	}
 	shown := name
 	if shown == "" {
 		shown = "general"
 	}
 	e.logf("engine: loading the %s image", shown)
+	e.setBusy("loading "+shown+" image", 0) // the loading indicator covers the reload
 	// A load takes seconds without bus reads; beat so the OTA agent does not
 	// judge the app hung and restart it.
 	beating := make(chan struct{})

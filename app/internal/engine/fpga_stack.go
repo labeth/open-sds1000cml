@@ -24,6 +24,10 @@ type ImageSwitcher interface {
 	HasStack() bool
 	HasPacket() bool
 	HasLine() bool
+	// LoadStream loads the continuous-capture image roll mode runs on
+	// (ADR-STREAM-IMAGE).
+	LoadStream() error
+	HasStream() bool
 }
 
 // FPGAStackRequest stacks Records fresh captures at the current timebase, raw

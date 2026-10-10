@@ -14,5 +14,10 @@
   "stacking": {
     "seed": 11,
     "sha256": "501e42ba70e9603eae5f80883fe7aa720b72eb23eb3c749ba4d0c4a2fee2dadd"
+  },
+  "stream": {
+    "seed": 32,
+    "sha256": "54f00a835fb2300595ab3b2b88883d971de26c4a71dce96fdd6825bd1c0ec926",
+    "inputs": "fd13411bd6f59234ba75adda89fcedc476f2b88e0662ddc0467dd418bce29cfe"
   }
 }
