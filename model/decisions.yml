@@ -1577,6 +1577,14 @@ decisions:
   consequences:
   - Chunked roll answers a timebase change at once; streaming reloads an image when roll starts or ends.
   - Bench 2026-10-10 - streaming roll at 500 ms/div runs at 21 to 22 LCD frames/s with no overflow.
+  - Revised 2026-10-10 - beyond the largest decimation (2^20) the view groups samples in software (averaged
+    for chunks, extremes for the peak stream), so it stays within 4096 samples at every timebase; 50 s/div had
+    held 476k samples and a knob step took up to 9.4 s. Bench - every step within one image shows in 0.04 to
+    0.32 s; only roll to triggered in streaming mode (an image reload) takes about 4 s.
+  - The roll history is kept in volts and re-rendered at the live scale, so a V/div or offset round trip no
+    longer clips it. Data captured across any front-end write (relays, gain, offset DAC; analog.FrontEnd.OnApply)
+    is dropped for 250 ms and held, a peak view holding its last min and max pair; this removed spikes from
+    words in flight at the old gain and from relay transients.
 - id: ADR-STREAM-IMAGE
   title: A separate FPGA image streams every decimated word to the host
   status: accepted

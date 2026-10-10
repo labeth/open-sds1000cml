@@ -731,6 +731,7 @@ func main() {
 		fe.OnOffset(e.SetOffsetDAC)       // offset re-anchors to each detent's cal zero
 		fe.OnOffsetV(e.SetChannelOffsetV) // trigger level rides the same offset reference as the samples
 		fe.OnVdiv(e.SetChannelVdiv)       // keep the trigger level→display-code map current
+		fe.OnApply(e.NoteFrontEndWrite)   // roll drops data captured across a relay switch
 		e.SetBodeScaleSource(func(ch int) float64 {
 			idx, _ := fe.Snapshot()
 			return analog.AnalogVdiv(idx[ch&1]) * fe.ProbeFactor(ch)

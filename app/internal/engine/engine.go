@@ -369,6 +369,7 @@ type Engine struct {
 	trigCPV     [2]atomic.Uint64 // per-channel active trig-cal CPV (float64 bits)
 	trigOffV    [2]atomic.Uint64 // per-channel applied offset volts (float64 bits)
 	scaleGen    atomic.Uint64    // bumped on every V/div or offset change (stopped replay)
+	feGen       atomic.Uint64    // bumped on every front-end write (relays, gain, offset DAC), changed or not
 	pubIdent    frameIdent       // geometry of the latest published frame (guarded by mu)
 	chCoupling  [2]atomic.Int32  // per-channel coupling (analog.CplDC/AC/GND); AC is software
 	chMeanCode  [2]atomic.Uint64 // per-channel smoothed raw mean code of published frames (float64 bits; 0 = none)

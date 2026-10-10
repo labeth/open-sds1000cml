@@ -112,6 +112,7 @@ type FrontEnd struct {
 	stage     func(ch int, code uint16)              // offset-DAC stager (engine.SetOffsetDAC)
 	onOffV    func(ch int, offV float64)             // applied-offset-volts hook (engine trigger reference)
 	onVdiv    func(ch int, vdivV, zero, cpv float64) // V/div change hook (engine trigger map + per-detent cal)
+	onApply   func()                                 // every relay/gain write (the engine discards data captured across it)
 	onCpl     func(ch, mode int)                     // coupling change hook (engine: software AC trigger level)
 	offReqV   [2]float64                             // requested input-referred offset volts
 	offSet    [2]bool                                // whether the user has set an offset
@@ -434,7 +435,19 @@ func (f *FrontEnd) applyLocked() error {
 		return err
 	}
 	f.emitted = true
+	if f.onApply != nil {
+		f.onApply()
+	}
 	return nil
+}
+
+// OnApply wires a hook run after every relay and gain write (V/div, BWL,
+// coupling), changed or not: relays switching disturb the input briefly.
+// TRLC-LINKS: REQ-SDS-015
+func (f *FrontEnd) OnApply(fn func()) {
+	f.mu.Lock()
+	f.onApply = fn
+	f.mu.Unlock()
 }
 
 // SetBWL engages or releases a channel's 20 MHz bandwidth-limit relay. The

@@ -33,11 +33,15 @@ const rollChunkS = 0.05
 // TRLC-LINKS: REQ-SDS-010, REQ-SDS-035
 func planRollPeak(tdiv float64) rollPlan {
 	span := 10 * tdiv
-	p := rollPlan{log: 8}
+	p := rollPlan{log: 8, peak: true}
 	for p.log < 20 && span*500e6/float64(uint64(1)<<p.log) > rollScreenSamples/2 {
 		p.log++
 	}
-	bucketS := float64(uint64(1)<<p.log) / 500e6
+	// Beyond the largest hardware bucket, group stream words in software so the
+	// view stays within rollScreenSamples (50 s/div: 476k samples otherwise,
+	// and every knob step re-sized and re-drew them).
+	p.group = max(1, int(math.Ceil(span*500e6/float64(uint64(1)<<p.log)/(rollScreenSamples/2))))
+	bucketS := float64(uint64(1)<<p.log) * float64(p.group) / 500e6
 	p.sampleS = bucketS / 2
 	p.screen = int(math.Max(2, 2*math.Round(span/bucketS)))
 	p.chunk = p.screen
@@ -48,21 +52,28 @@ func planRollPeak(tdiv float64) rollPlan {
 type rollPlan struct {
 	log     uint8
 	sampleS float64
-	screen  int // samples in the view
-	chunk   int // words per capture
+	screen  int  // samples in the view
+	chunk   int  // words per capture
+	group   int  // captured samples (stream words) per view sample (pair), when the decimation tops out
+	peak    bool // view samples are (min, max) pairs: a hold repeats the last pair
 }
 
 // planRoll picks the finest decimation whose screen fits rollScreenSamples.
 // TRLC-LINKS: REQ-SDS-010
 func planRoll(tdiv float64) rollPlan {
 	span := 10 * tdiv
-	p := rollPlan{log: 4, sampleS: 32e-9}
+	p := rollPlan{log: 4, sampleS: 32e-9, group: 1}
 	for p.log < 20 && span/p.sampleS > rollScreenSamples {
 		p.log++
 		p.sampleS *= 2
 	}
+	hwS := p.sampleS
+	// Beyond the largest decimation, average captured samples in software so the
+	// view stays within rollScreenSamples.
+	p.group = max(1, int(math.Ceil(span/hwS/rollScreenSamples)))
+	p.sampleS = hwS * float64(p.group)
 	p.screen = int(math.Max(2, math.Round(span/p.sampleS)))
-	p.chunk = max(8, min(int(math.Round(rollChunkS/p.sampleS)), p.screen))
+	p.chunk = max(8, min(int(math.Round(rollChunkS/hwS)), p.screen*p.group))
 	return p
 }
 
@@ -108,7 +119,10 @@ type rollView struct {
 	plan     rollPlan
 	tdiv     float64
 	c1, c2   []uint8
-	q1, q2   []uint16
+	q1, q2   []uint16  // c1..q2: the view at the live scale, derived from v1, v2
+	v1, v2   []float32 // the view in volts: a V/div or offset change re-derives the codes, never clamps these
+	settle   time.Time // data captured before this (a scale change in flight, the front end settling) is dropped
+	feGen    uint64    // the front-end write generation the view's data was captured under
 	filled   int       // samples received since the view started
 	lastEnd  time.Time // host time of the newest sample
 	scale    [2]chScale
@@ -124,8 +138,14 @@ type rollView struct {
 	losses    int
 	lastBlock time.Time
 	buf       [32768]byte
-	isolated  bool                 // the bus worker drains the banks into its ring
-	deadline  *bus.DecodedDeadline // prompt service while streaming (bus.StartDecodedDeadline)
+	isolated  bool // the bus worker drains the banks into its ring
+	// Partial software group (plan.group > 1): averaged samples (chunked) or
+	// peak words (stream) carried to the next update.
+	accN       int
+	acc1, acc2 int64
+	accLast    [2]uint16
+	carry      []byte
+	deadline   *bus.DecodedDeadline // prompt service while streaming (bus.StartDecodedDeadline)
 }
 
 // TRLC-LINKS: REQ-SDS-010
@@ -133,44 +153,157 @@ func (r *rollView) reset(p rollPlan, tdiv float64, scale [2]chScale) {
 	r.plan, r.tdiv, r.scale = p, tdiv, scale
 	r.c1, r.c2 = make([]uint8, p.screen), make([]uint8, p.screen)
 	r.q1, r.q2 = make([]uint16, p.screen), make([]uint16, p.screen)
+	r.v1, r.v2 = make([]float32, p.screen), make([]float32, p.screen)
 	r.filled, r.lastEnd, r.first = 0, time.Time{}, true
 	r.captured, r.elapsed, r.covered = 0, 0, 0
+	r.accN, r.acc1, r.acc2, r.carry = 0, 0, 0, nil
 }
 
-// push appends gap held samples and then the chunk (Q8.8 pairs per word).
+// groupAvg averages captured samples, gap held samples first, into view
+// samples of plan.group each, carrying a partial group to the next call.
+// TRLC-LINKS: REQ-SDS-010
+func (r *rollView) groupAvg(gap int, q1, q2 []uint16) ([]uint16, []uint16) {
+	g := max(1, r.plan.group)
+	gap = min(gap, (r.plan.screen+1)*g) // older than the view: drawn as held anyway
+	if r.filled == 0 && r.accN == 0 && len(q1) > 0 {
+		r.accLast = [2]uint16{q1[0], q2[0]}
+	}
+	var o1, o2 []uint16
+	add := func(n int, v1, v2 uint16) {
+		for n > 0 {
+			t := min(n, g-r.accN)
+			r.acc1 += int64(t) * int64(v1)
+			r.acc2 += int64(t) * int64(v2)
+			r.accN += t
+			n -= t
+			if r.accN == g {
+				o1 = append(o1, uint16(r.acc1/int64(g)))
+				o2 = append(o2, uint16(r.acc2/int64(g)))
+				r.accN, r.acc1, r.acc2 = 0, 0, 0
+			}
+		}
+	}
+	add(gap, r.accLast[0], r.accLast[1])
+	for i := range q1 {
+		add(1, q1[i], q2[i])
+	}
+	if len(q1) > 0 {
+		r.accLast = [2]uint16{q1[len(q1)-1], q2[len(q2)-1]}
+	}
+	return o1, o2
+}
+
+// groupPeak merges plan.group consecutive peak words ({max2,max1,min2,min1})
+// into one, carrying a partial group to the next call.
+// TRLC-LINKS: REQ-SDS-010, REQ-SDS-035
+func (r *rollView) groupPeak(raw []byte) []byte {
+	g := r.plan.group
+	if g <= 1 {
+		return raw
+	}
+	data := append(r.carry, raw...)
+	n := len(data) / 4 / g
+	out := make([]byte, 4*n)
+	for k := 0; k < n; k++ {
+		w := data[4*g*k:]
+		lo1, lo2, hi1, hi2 := w[0], w[1], w[2], w[3]
+		for j := 1; j < g; j++ {
+			b := w[4*j:]
+			lo1, lo2, hi1, hi2 = min(lo1, b[0]), min(lo2, b[1]), max(hi1, b[2]), max(hi2, b[3])
+		}
+		out[4*k], out[4*k+1], out[4*k+2], out[4*k+3] = lo1, lo2, hi1, hi2
+	}
+	r.carry = append([]byte(nil), data[4*g*n:]...)
+	return out
+}
+
+// push appends gap held samples and then the chunk (Q8.8 codes at the view's
+// scale), keeping the history in volts.
 // TRLC-LINKS: REQ-SDS-010
 func (r *rollView) push(gap int, q1, q2 []uint16) {
-	n := len(r.c1)
+	n := len(r.v1)
 	add := min(gap+len(q1), n)
-	copy(r.c1, r.c1[add:])
-	copy(r.c2, r.c2[add:])
-	copy(r.q1, r.q1[add:])
-	copy(r.q2, r.q2[add:])
-	at := n - add
-	hold := min(gap, add)
-	if hold > 0 {
-		h1, h2 := r.q1[max(at-1, 0)], r.q2[max(at-1, 0)]
-		if r.filled == 0 && len(q1) > 0 {
-			h1, h2 = q1[0], q2[0]
+	for ch, q := range [2][]uint16{q1, q2} {
+		v := r.v1
+		if ch == 1 {
+			v = r.v2
 		}
-		for i := 0; i < hold; i++ {
-			r.q1[at+i], r.q2[at+i] = h1, h2
+		copy(v, v[add:])
+		at := n - add
+		hold := min(gap, add)
+		if hold > 0 {
+			// Hold the last value; a peak view holds its last (min, max) pair, so
+			// the envelope runs on instead of a line through it.
+			h := [2]float32{v[max(at-1, 0)], v[max(at-1, 0)]}
+			if r.plan.peak && at >= 2 {
+				h = [2]float32{v[at-2], v[at-1]}
+			}
+			if r.filled == 0 && len(q) > 0 {
+				h = [2]float32{r.volts(ch, q[0]), r.volts(ch, q[0])}
+			}
+			for i := 0; i < hold; i++ {
+				v[at+i] = h[i%2]
+			}
 		}
-	}
-	src := len(q1) - (add - hold)
-	copy(r.q1[at+hold:], q1[src:])
-	copy(r.q2[at+hold:], q2[src:])
-	for i := at; i < n; i++ {
-		r.c1[i], r.c2[i] = roundQ8(r.q1[i]), roundQ8(r.q2[i])
-	}
-	if r.filled == 0 { // the first chunk also fills the view's past
-		for i := 0; i < at; i++ {
-			r.q1[i], r.q2[i] = r.q1[at], r.q2[at]
-			r.c1[i], r.c2[i] = r.c1[at], r.c2[at]
+		src := len(q) - (add - hold)
+		for i, x := range q[src:] {
+			v[at+hold+i] = r.volts(ch, x)
+		}
+		if r.filled == 0 { // the first chunk also fills the view's past
+			for i := 0; i < at; i++ {
+				v[i] = v[at]
+			}
 		}
 	}
 	r.filled += gap + len(q1)
+	r.render()
 }
+
+// volts converts a Q8.8 code at the view's scale (25 codes a division).
+// TRLC-LINKS: REQ-SDS-010, REQ-SDS-040
+func (r *rollView) volts(ch int, q uint16) float32 {
+	sc := r.scale[ch]
+	if !(sc.vdiv > 0) {
+		sc.vdiv = 1
+	}
+	return float32((float64(q)/256-128)*sc.vdiv/25 - sc.off)
+}
+
+// render derives the view's codes from its volts at the live scale; volts
+// off the screen clip, as on the screen, but stay in the history.
+// TRLC-LINKS: REQ-SDS-010, REQ-SDS-040
+func (r *rollView) render() {
+	for ch := range r.scale {
+		sc := r.scale[ch]
+		if !(sc.vdiv > 0) {
+			sc.vdiv = 1
+		}
+		v, q, c := r.v1, r.q1, r.c1
+		if ch == 1 {
+			v, q, c = r.v2, r.q2, r.c2
+		}
+		k, b := 25/sc.vdiv, 128+sc.off*25/sc.vdiv
+		for i, x := range v {
+			code := math.Max(0, math.Min(65535, math.Round((float64(x)*k+b)*256)))
+			q[i] = uint16(code)
+			c[i] = roundQ8(q[i])
+		}
+	}
+}
+
+// rescale moves the view to a new V/div or offset: the history is kept in
+// volts, and data captured across the change is dropped for a moment.
+// TRLC-LINKS: REQ-SDS-010, REQ-SDS-040
+func (r *rollView) rescale(scale [2]chScale, now time.Time) {
+	r.scale = scale
+	r.render()
+	r.settle = now.Add(rollSettle)
+	r.accN, r.acc1, r.acc2, r.carry = 0, 0, 0, nil
+}
+
+// rollSettle covers words still in flight at the old scale (the stream's
+// buffering) and the front end's switching transient.
+const rollSettle = 250 * time.Millisecond
 
 // rollWriter collects a chunk's words: as Q8.8 pairs (chunked captures) and
 // as raw bytes (peak-detect stream words).
@@ -211,17 +344,10 @@ func (e *Engine) rollStep(r *rollView) {
 	scale := e.liveScale()
 	if r.plan != p || r.tdiv != tdiv || r.c1 == nil {
 		r.reset(p, tdiv, scale)
-	} else if scale != r.scale {
-		// A V/div or offset change: re-express the history at the new scale.
-		for ch := range scale {
-			c, q := r.c1, r.q1
-			if ch == 1 {
-				c, q = r.c2, r.q2
-			}
-			rescaleCodes(c, q, r.scale[ch], scale[ch])
-		}
-		r.scale = scale
+	} else if scale != r.scale || e.feGen.Load() != r.feGen {
+		r.rescale(scale, e.clk.Now()) // a V/div or offset change, or any front-end write
 	}
+	r.feGen = e.feGen.Load()
 	cfg := sramcapture.Config{Source: sramcapture.ADC, DecimationLog2: p.log, PreWords: uint32(p.chunk - 1), PostWords: 1,
 		TriggerChannel: uint8(e.trigSrc.Load()), TriggerLevel: uint8(e.trigLevelWord())}
 	armAt := e.clk.Now()
@@ -286,21 +412,38 @@ func (e *Engine) rollStep(r *rollView) {
 		return
 	}
 	// Place the chunk: its last sample is at the freeze, seen within a poll.
+	// Placement counts captured samples; a software group then averages them.
 	n := len(w.q1)
+	hwS := p.sampleS / float64(p.group)
 	gap := 0
+	prevEnd := r.lastEnd
 	if !r.lastEnd.IsZero() {
-		missing := end.Sub(r.lastEnd).Seconds() - float64(n)*p.sampleS
-		gap = max(0, int(math.Round(missing/p.sampleS)))
+		missing := end.Sub(r.lastEnd).Seconds() - float64(n)*hwS
+		gap = max(0, int(math.Round(missing/hwS)))
 		r.elapsed = r.elapsed*0.9 + end.Sub(r.lastEnd).Seconds()
-		r.captured = r.captured*0.9 + float64(n)*p.sampleS
+		r.captured = r.captured*0.9 + float64(n)*hwS
 	}
 	r.lastEnd = end
 	if r.elapsed > 0 {
 		r.covered = math.Min(1, r.captured/r.elapsed)
 	}
-	r.push(gap, w.q1, w.q2)
+	if armAt.Before(r.settle) || e.liveScale() != r.scale || e.feGen.Load() != r.feGen {
+		// Captured across a scale change or while the front end settled: the
+		// next chunk's placement holds over it.
+		r.lastEnd = prevEnd
+		return
+	}
+	if p.group > 1 {
+		q1, q2 := r.groupAvg(gap, w.q1, w.q2)
+		if len(q1) == 0 {
+			return // the view moves once a whole group is in
+		}
+		r.push(0, q1, q2)
+	} else {
+		r.push(gap, w.q1, w.q2)
+	}
 
-	e.rollPublish(r, m.Decimation, "roll view: back-to-back decimated captures; gaps between them hold the last value",
+	e.rollPublish(r, m.Decimation*uint32(p.group), "roll view: back-to-back decimated captures; gaps between them hold the last value",
 		fmt.Sprintf("roll (%d samples, %.0f%% captured)", p.screen, 100*r.covered),
 		fmt.Sprintf("roll chunk %d words %.0f ms, gap %d samples, cycle %.0f ms",
 			n, float64(n)*p.sampleS*1e3, gap, float64(e.clk.Now().Sub(armAt))/float64(time.Millisecond)))
@@ -367,16 +510,10 @@ func (e *Engine) rollStreamStep(r *rollView) {
 	if r.plan != p || r.tdiv != tdiv || r.c1 == nil {
 		e.rollStreamStop(r)
 		r.reset(p, tdiv, scale)
-	} else if scale != r.scale {
-		for ch := range scale {
-			c, q := r.c1, r.q1
-			if ch == 1 {
-				c, q = r.c2, r.q2
-			}
-			rescaleCodes(c, q, r.scale[ch], scale[ch])
-		}
-		r.scale = scale
+	} else if scale != r.scale || e.feGen.Load() != r.feGen {
+		r.rescale(scale, e.clk.Now()) // a V/div or offset change, or any front-end write
 	}
+	r.feGen = e.feGen.Load()
 	if !r.streaming {
 		cfg := sramcapture.Config{Source: sramcapture.ADC, DecimationLog2: p.log, PreWords: sramcapture.Words - 17, PostWords: 17,
 			TriggerChannel: uint8(e.trigSrc.Load()), TriggerLevel: uint8(e.trigLevelWord())}
@@ -484,19 +621,29 @@ func (e *Engine) rollStreamStep(r *rollView) {
 		return
 	}
 	now := e.clk.Now()
+	if now.Before(r.settle) || e.liveScale() != r.scale || e.feGen.Load() != r.feGen {
+		// Words captured at the old scale or while the front end settled: drop
+		// them, and place what follows by the host clock (held over the gap).
+		r.first = true
+		return
+	}
+	raw := r.groupPeak(w.raw)
+	if len(raw) == 0 {
+		return // the view moves once a whole group is in
+	}
 	gap := 0
 	if r.first {
 		// The first data of a (re)started stream: place it by the host clock.
 		if !r.lastEnd.IsZero() {
-			missing := now.Sub(r.lastEnd).Seconds() - float64(2*len(w.q1))*p.sampleS // two view samples a word
+			missing := now.Sub(r.lastEnd).Seconds() - float64(2*len(raw)/4)*p.sampleS // two view samples a word
 			gap = max(0, int(math.Round(missing/p.sampleS)))
 		}
 		r.first = false
 	}
-	q1, q2 := e.peakSamples(r, w.raw)
+	q1, q2 := e.peakSamples(r, raw)
 	r.push(gap, q1, q2)
 	r.lastEnd, r.lastPub = now, now
-	e.rollPublish(r, uint32(1)<<p.log, "roll view: continuous peak-detect stream (stream image)",
+	e.rollPublish(r, uint32(1)<<p.log*uint32(p.group), "roll view: continuous peak-detect stream (stream image)",
 		fmt.Sprintf("roll stream (%d samples, %d losses)", p.screen, r.losses),
 		fmt.Sprintf("roll stream %d words this update, ordinal %d", len(w.q1), r.expected))
 }
@@ -571,5 +718,5 @@ func (e *Engine) rollStreamStop(r *rollView) {
 		}
 		r.deadline = nil
 	}
-	r.streaming, r.first = false, true
+	r.streaming, r.first, r.carry = false, true, nil
 }

@@ -479,6 +479,11 @@ func (e *Engine) SetTrigLevelCode(code uint16) uint16 {
 	return code
 }
 
+// NoteFrontEndWrite records a relay or gain write (analog.FrontEnd.OnApply):
+// roll drops the data captured across it.
+// TRLC-LINKS: REQ-SDS-010, REQ-SDS-015
+func (e *Engine) NoteFrontEndWrite() { e.feGen.Add(1) }
+
 // SetOffsetDAC stages a vertical-offset DAC write for a channel (0=C1,
 // 1=C2). Codes are producer-clamped (analog.OffsetCode); the shadow is
 // last-write-wins with no compare-on-change — redundant-traffic suppression
@@ -488,6 +493,7 @@ func (e *Engine) SetOffsetDAC(ch int, code uint16) {
 	if ch != 1 {
 		ch = 0
 	}
+	e.feGen.Add(1)
 	e.mu.Lock()
 	e.offCode[ch], e.offDirty[ch] = code, true
 	if ch == 0 {
