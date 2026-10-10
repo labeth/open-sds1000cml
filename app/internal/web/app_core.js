@@ -144,6 +144,7 @@ function trigState() {
   if (!st) return "—";
   if (!st.running) return "STOP";
   if (st.single) return "SNGL";
+  if (st.roll) return "ROLL"; // untriggered scrolling view at slow timebases
   if (st.waiting) return "WAIT"; // the held frame's T'D is stale
   if (frame && frame.trigd) return "T'D";
   if (st.norm) return "WAIT";

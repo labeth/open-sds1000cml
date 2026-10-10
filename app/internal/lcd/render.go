@@ -54,6 +54,7 @@ type HUD struct {
 	BusyPct          float64 // its progress 0..100, <0 unknown
 	BusyPhase        int     // spinner step, advanced by the caller while busy
 	ViewPending      bool    // stopped: the shown frame is about to be replaced at the new view
+	Roll             bool    // the live view is rolling (slow timebase, AUTO)
 	Zoom             int     // horizontal magnification (1 = none)
 	ZoomOff          float64 // zoom-window pan offset (fraction of the record)
 	Persist          bool    // display persistence (afterglow)

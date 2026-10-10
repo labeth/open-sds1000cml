@@ -466,6 +466,7 @@ func (e *Engine) runSRAM() {
 	var singleGen uint64      // SINGLE press the current capture was armed/waiting under
 	var held heldRecall       // the stopped record's recall, kept for re-scaled replays
 	var lastPace float64      // the previous frame's pacing hold (FrameStages)
+	var roll rollView         // the slow-timebase scrolling view (sram_roll.go)
 acquisitionLoop:
 	for !e.stopReq.Load() {
 		e.setBusy("", 0) // set again only around a recall and its processing
@@ -523,6 +524,14 @@ acquisitionLoop:
 		viewPending = viewPending || e.scaleGen.Load() != shownScaleGen
 		if !e.running.Load() && (!retained || (recalled && !viewPending)) {
 			e.clk.Sleep(20 * time.Millisecond)
+			continue
+		}
+		rolling := e.rollActive()
+		e.rolling.Store(rolling)
+		if rolling {
+			retained, recalled = false, false // the roll view is not a retained record
+			e.viewHeld.Store(false)
+			e.rollStep(&roll)
 			continue
 		}
 		cfg, plan, tdiv, norm, tp := e.sramConfig()

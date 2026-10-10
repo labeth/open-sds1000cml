@@ -36,7 +36,10 @@ type Frame struct {
 	PeakDetect bool
 	// Ordered: a PeakDetect frame whose pairs are in time order (orderEnvelope),
 	// so it may be decoded and qualified as samples at SampleS spacing.
-	Ordered  bool
+	Ordered bool
+	// Roll: a scrolling view stitched from back-to-back captures, newest sample
+	// last, untriggered (sram_roll.go).
+	Roll     bool
 	EnvCols  int  // envelope column count (800) when IsEnv, else 0
 	Ptp      int  // peak-to-peak of the discrimination channel
 	Trigd    bool // HW comparator fired (0x39 bit1)

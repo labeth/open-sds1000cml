@@ -102,6 +102,7 @@ func buildHUD(e *engine.Engine, fe *analog.FrontEnd) lcd.HUD {
 		hud.Busy, hud.BusyPct, hud.BusyPhase = st.Busy, st.BusyPct, int(st.BusyMs/250)
 	}
 	hud.ViewPending = st.ViewPending
+	hud.Roll = st.Roll
 	if st.Norm && st.Running {
 		hud.Waiting = e.SincePublish() > time.Duration(math.Max(1, 25*st.TdivS)*float64(time.Second))
 	}

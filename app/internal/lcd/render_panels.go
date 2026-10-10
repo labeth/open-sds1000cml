@@ -424,6 +424,8 @@ func drawHUD(sf Surface, f *engine.Frame, hud HUD) {
 		state = "STOP" // (should not persist: single clears on capture)
 	case !hud.Running:
 		state = "STOP"
+	case hud.Roll:
+		state = "ROLL" // untriggered scrolling view (slow timebase)
 	case hud.Waiting:
 		state = "WAIT" // the held frame's T'D is stale
 	case hud.Trigd:
