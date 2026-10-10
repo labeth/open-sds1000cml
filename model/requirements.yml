@@ -927,9 +927,16 @@ requirements:
   category: functional
   sourceRefs:
   - REF-SOURCE-APP-INTERNAL-SRAMCAPTURE-STREAM-GO
+  - REF-SOURCE-APP-INTERNAL-ENGINE-SRAM-ROLL-GO
+  - REF-SOURCE-FPGA-IMAGES-STREAM-STREAM-DRUM-V
+  - REF-SOURCE-FPGA-IMAGES-STREAM-STREAM-BANKS-V
+  - REF-SOURCE-FPGA-IMAGES-STREAM-SIM-TB-STREAM-DRUM-V
   appliesTo:
   - FU-APP-SRAMCAPTURE
-  notes: Source-derived contract; source presence is not evidence of a passing hardware qualification.
+  notes: Source-derived contract; source presence is not evidence of a passing hardware qualification. The stream
+    image (ADR-STREAM-IMAGE) buffers the stream in the SRAM (ADR-STREAM-DRUM); bench 2026-10-10 checked every word
+    of a counter source loss-free at decimation 512 and 1024, through a 900 ms host stall at 1024. A stall beyond
+    the ring, or decimation 256, faults and is reported rather than lost silently.
   verificationMethods:
   - inspection
   - test

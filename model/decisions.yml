@@ -1561,6 +1561,60 @@ decisions:
   consequences:
   - A plain make app binary keeps whatever image is loaded; after the emergency binary that image lacks the
     envelope reducer and live frames fall back to decimated capture.
+- id: ADR-ROLL-CHUNKED-DEFAULT
+  title: Roll at slow timebases from chunked captures by default, gap-free streaming as an option
+  status: accepted
+  date: '2026-10-10'
+  context: At 10 ms/div and slower a triggered frame waits out its whole screen, so the live view fell below the 10
+    frames/s the user requires (ADR-LIVE-ORDERED-ENVELOPE). A gap-free stream needs the stream image, and loading it
+    costs seconds, which the user rejected for every timebase step ("you dont get a few seconds delay everytime you
+    tick the knob one step to far").
+  decision: In AUTO at 10 ms/div and slower (edge trigger, no averaging, serial, zone, mask or Bode mode, no raw
+    lease) the view rolls. By default it is built from back-to-back decimated captures on the general image, placed
+    on the host clock, with the gaps between them holding the last value. HORIZ F4 (web ROLL STREAM, setting
+    roll_stream) switches to gap-free streaming on the stream image (ADR-STREAM-IMAGE), drained by the bus worker's
+    stream pump.
+  consequences:
+  - Chunked roll answers a timebase change at once; streaming reloads an image when roll starts or ends.
+  - Bench 2026-10-10 - streaming roll at 500 ms/div runs at 21 to 22 LCD frames/s with no overflow.
+- id: ADR-STREAM-IMAGE
+  title: A separate FPGA image streams every decimated word to the host
+  status: accepted
+  date: '2026-10-10'
+  context: The record images capture finite records; a continuous stream needs the host buffer as two ping-pong banks
+    and a source of decimated or peak-detect words, and the general image has no room beside its decoders.
+  decision: The stream image (bare, no protocol triggers) carries the general image's precision decimator, a
+    peak-detect reducer (stream_peak, bucket min and max in the envelope's raw format) and two host banks
+    (stream_banks) published with the stream ordinal of their first word. Host release names the bank and its
+    publication token; a lost word raises a sticky fault, never a silent gap. Register 13 reports revision 11.
+    Decimation is 2^8 or more.
+  consequences:
+  - The host validates ordinals and tokens (REQ-SDS-035); DrainStream and the worker pump both drain it.
+  - Image switching to and from it is a stopped acquisition transition.
+- id: ADR-STREAM-DRUM
+  title: Buffer the stream in the SRAM as a drum
+  status: accepted
+  date: '2026-10-10'
+  context: With only the 8192-word host buffer, a host stall of a few milliseconds lost stream words. The 512K-word
+    SRAM has no address bus, only a counter that steps forward with each K2 pulse (spec 12 section 5).
+  decision: stream_drum gathers words in a 4096-word on-chip FIFO and writes bursts (16 junk words, at most a bank of
+    data, a gap) where the counter passes the write head; a descriptor records each burst, and each burst is read
+    back whole by one fresh read into a host bank. Seeks go at most 8192 pulses between decisions. While the host
+    takes no banks, bursts wait at the write head until a full bank. Control and its block RAMs run at 125 MHz
+    (M9K minimum period 4.2 ns rules out 250 MHz); register stages on the 250 MHz clock pair words with the
+    transport, write offers at most every other clock (the transport pulses only for taken words). The board's
+    read words arrive one pulse late (READ_DELAY 1), so fresh reads start 17 words early with one extra pulse,
+    and reads never continue (a continued read would lose its first word). The front end is drained while the
+    drum runs (its consume followed write_ready before, and the interleaver overflowed).
+  consequences:
+  - Bench 2026-10-10, counter source, every word checked - loss-free at decimation 512 (978k words/s, 3.9 MB/s)
+    and 1024; at 1024 a single 900 ms host stall is absorbed and a 1.2 s stall faults (the ring holds about 1.07
+    s); 300 ms stalls each second are absorbed.
+  - Reading back what was just written costs a lap (2.1 ms), so the FIFO must hold a lap of input; decimation 256
+    (4.2k words a lap, 7.8 MB/s) exceeds the FIFO and the GPMC bus (about 5.1 MB/s at the shipped timing).
+    Writing in place during seeks was tried and dropped; its holes become dead crossing time.
+  - Recovery after a stall needs host drain headroom above the input rate (about 1.2 MB/s at 512, 3.1 MB/s at 1024).
+  - tb_stream_drum models the late write (P+2), unreliable burst starts and the one-pulse read skew.
 - id: ADR-PANEL-SERIAL-SCAN
   title: Scan the front panel from the owned images over the factory's serial shift chain
   status: accepted

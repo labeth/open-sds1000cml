@@ -1717,6 +1717,86 @@ architecture:
     uri: ../app/internal/sramcapture/envelope.go
     description: 'Committed source at f804ad882891fa033f2f283b3bb75670b3fde56a; Git blob
       71816764ffddec07b1e507601bf5ab2cf54337bc. A source or test is not a claim of device qualification.'
+  - id: REF-SOURCE-APP-INTERNAL-ENGINE-SRAM-ROLL-GO
+    name: app/internal/engine/sram_roll.go
+    kind: source-artifact
+    layer: evidence
+    version: ebd352e4ad759a20e730f27527b57cf67d119363
+    uri: ../app/internal/engine/sram_roll.go
+    description: 'Committed source at ebd352e4ad759a20e730f27527b57cf67d119363; Git blob
+      662ea8f6e8048a8ddfba45424a042aa547d23536. A source or test is not a claim of device qualification.'
+  - id: REF-SOURCE-APP-INTERNAL-FPGALOAD-STREAM-EMBED-GO
+    name: app/internal/fpgaload/stream_embed.go
+    kind: source-artifact
+    layer: evidence
+    version: ebd352e4ad759a20e730f27527b57cf67d119363
+    uri: ../app/internal/fpgaload/stream_embed.go
+    description: 'Committed source at ebd352e4ad759a20e730f27527b57cf67d119363; Git blob
+      355a1e2ed17bcc5043f504821b10a72cb81e8fae. A source or test is not a claim of device qualification.'
+  - id: REF-SOURCE-APP-INTERNAL-FPGALOAD-STREAM-STUB-GO
+    name: app/internal/fpgaload/stream_stub.go
+    kind: source-artifact
+    layer: evidence
+    version: ebd352e4ad759a20e730f27527b57cf67d119363
+    uri: ../app/internal/fpgaload/stream_stub.go
+    description: 'Committed source at ebd352e4ad759a20e730f27527b57cf67d119363; Git blob
+      f7bc705d632fc71f888376c6d355b8287813eebc. A source or test is not a claim of device qualification.'
+  - id: REF-SOURCE-FPGA-IMAGES-STREAM-STREAM-DRUM-V
+    name: fpga/images/stream/stream_drum.v
+    kind: source-artifact
+    layer: evidence
+    version: ebd352e4ad759a20e730f27527b57cf67d119363
+    uri: ../fpga/images/stream/stream_drum.v
+    description: 'Committed source at ebd352e4ad759a20e730f27527b57cf67d119363; Git blob
+      c5be2114da7f6b649fb9ac96872e66aecc2e7232. A source or test is not a claim of device qualification.'
+  - id: REF-SOURCE-FPGA-IMAGES-STREAM-STREAM-BANKS-V
+    name: fpga/images/stream/stream_banks.v
+    kind: source-artifact
+    layer: evidence
+    version: ebd352e4ad759a20e730f27527b57cf67d119363
+    uri: ../fpga/images/stream/stream_banks.v
+    description: 'Committed source at ebd352e4ad759a20e730f27527b57cf67d119363; Git blob
+      9b059503618fdba03a93c9a8f5ec7e3c545ee4d4. A source or test is not a claim of device qualification.'
+  - id: REF-SOURCE-FPGA-IMAGES-STREAM-STREAM-PEAK-V
+    name: fpga/images/stream/stream_peak.v
+    kind: source-artifact
+    layer: evidence
+    version: ebd352e4ad759a20e730f27527b57cf67d119363
+    uri: ../fpga/images/stream/stream_peak.v
+    description: 'Committed source at ebd352e4ad759a20e730f27527b57cf67d119363; Git blob
+      bab11c6a1e7fdb606f63af764b934014dd284a14. A source or test is not a claim of device qualification.'
+  - id: REF-SOURCE-FPGA-IMAGES-STREAM-STREAM-PACKETIZER-V
+    name: fpga/images/stream/stream_packetizer.v
+    kind: source-artifact
+    layer: evidence
+    version: ebd352e4ad759a20e730f27527b57cf67d119363
+    uri: ../fpga/images/stream/stream_packetizer.v
+    description: 'Committed source at ebd352e4ad759a20e730f27527b57cf67d119363; Git blob
+      4a8f9bd9ccbc8035eace33e73e8974c2b3a5c05d. A source or test is not a claim of device qualification.'
+  - id: REF-SOURCE-FPGA-IMAGES-STREAM-SIM-TB-STREAM-DRUM-V
+    name: fpga/images/stream/sim/tb_stream_drum.v
+    kind: source-artifact
+    layer: evidence
+    version: ebd352e4ad759a20e730f27527b57cf67d119363
+    uri: ../fpga/images/stream/sim/tb_stream_drum.v
+    description: 'Committed source at ebd352e4ad759a20e730f27527b57cf67d119363; Git blob
+      495af427681a2ab687b6a3b83dd4cb1a4eff25d3. A source or test is not a claim of device qualification.'
+  - id: REF-SOURCE-FPGA-IMAGES-STREAM-SIM-TB-STREAM-V
+    name: fpga/images/stream/sim/tb_stream.v
+    kind: source-artifact
+    layer: evidence
+    version: ebd352e4ad759a20e730f27527b57cf67d119363
+    uri: ../fpga/images/stream/sim/tb_stream.v
+    description: 'Committed source at ebd352e4ad759a20e730f27527b57cf67d119363; Git blob
+      252cfa4c549995f38a864e40029dd9a32a6c5e5c. A source or test is not a claim of device qualification.'
+  - id: REF-SOURCE-FPGA-IMAGES-STREAM-SIM-TB-STREAM-PEAK-V
+    name: fpga/images/stream/sim/tb_stream_peak.v
+    kind: source-artifact
+    layer: evidence
+    version: ebd352e4ad759a20e730f27527b57cf67d119363
+    uri: ../fpga/images/stream/sim/tb_stream_peak.v
+    description: 'Committed source at ebd352e4ad759a20e730f27527b57cf67d119363; Git blob
+      f9270f467627212604028fb687f86bc1749a048c. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-ENGINE-BANDS-GO
     name: app/internal/engine/bands.go
     kind: source-artifact
