@@ -64,7 +64,9 @@ func (f *fakeScope) SetOffsetDAC(ch int, code uint16) { f.offCh, f.offCode = ch,
 func (f *fakeScope) SetETS(on bool) { f.ets = &on; f.stats.ETS = on }
 
 // TRLC-LINKS: REQ-SDS-162
-func (f *fakeScope) SetSingle() { f.single = true; f.stats.Single = true }
+// SetSingle arms NORM like the engine (Engine.SetSingle calls SetNorm(true)),
+// which the page also shows at once.
+func (f *fakeScope) SetSingle() { f.single = true; f.stats.Single = true; f.SetNorm(true) }
 
 // TRLC-LINKS: REQ-SDS-163
 func (f *fakeScope) QuietRLock() {}

@@ -168,7 +168,12 @@ func (z *fuzzScope) SetRunning(on bool) {
 func (z *fuzzScope) SetNorm(on bool) { z.mu.Lock(); z.norm = on; z.mu.Unlock() }
 
 // TRLC-LINKS: REQ-SDS-180
-func (z *fuzzScope) SetSingle() { z.mu.Lock(); z.single, z.running = true, true; z.mu.Unlock() }
+// SetSingle arms NORM like the engine (Engine.SetSingle calls SetNorm(true)).
+func (z *fuzzScope) SetSingle() {
+	z.mu.Lock()
+	z.single, z.running, z.norm = true, true, true
+	z.mu.Unlock()
+}
 
 // TRLC-LINKS: REQ-SDS-180
 func (z *fuzzScope) SetTdiv(s float64) (engine.Band, bool) {
