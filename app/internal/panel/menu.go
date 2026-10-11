@@ -22,6 +22,7 @@ const (
 	pgSuperres // super-res stack-and-crunch config (opened by UTILITY while active)
 	pgMask     // mask testing (reached by re-pressing ACQUIRE past REF)
 	pgSave     // setup save/recall slots (SAVE/RECALL key)
+	pgMatch    // serial trigger match editor (SERIAL page, F2)
 )
 
 // MenuItem is one softkey slot: a label and its current value.
@@ -190,7 +191,14 @@ func (c *Controller) openMenu(pg int) {
 func (c *Controller) pageSlots(pg int) int {
 	switch pg {
 	case pgTrigQ:
-		switch c.eng.Snapshot().TrigType {
+		st := c.eng.Snapshot()
+		if st.SerialMode != 0 { // SERIAL: Proto / Match / Clear (+ Addr on I2C)
+			if se := c.serialTrig(); se != nil && se.SerialConfig().Proto == 2 {
+				return 4
+			}
+			return 3
+		}
+		switch st.TrigType {
 		case 1:
 			return 4
 		case 2:
@@ -212,6 +220,8 @@ func (c *Controller) pageSlots(pg int) int {
 		return 5
 	case pgSave: // Slot / Save / Recall
 		return 3
+	case pgMatch: // Keys / Enter / Del / OK / Cancel
+		return 5
 	case pgDecode: // varies by protocol — don't let the highlight land on a blank slot
 		switch c.decProto {
 		case 0: // Off — only the Proto selector

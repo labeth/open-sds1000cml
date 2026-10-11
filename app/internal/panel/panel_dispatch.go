@@ -309,6 +309,9 @@ func (c *Controller) dispatch(name string, dir, steps int) {
 	if busy { // knobs are inert while autoset sweeps (avoids racing its writes)
 		return
 	}
+	if c.matchEditorKnob(name, dir) { // the match editor owns its knobs while open
+		return
+	}
 	switch name {
 	case "tdiv":
 		// CW (+1) → slower timebase; ladder is ascending.

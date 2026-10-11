@@ -541,3 +541,21 @@ func TestRenderSuperresIdleStatus(t *testing.T) {
 		t.Fatalf("idle SR status not drawn (%d px)", n)
 	}
 }
+
+// The match editor covers the trace area with its keyboard (the highlighted
+// key filled) and leaves the softkey column to the menu.
+// TRLC-LINKS: REQ-SDS-021
+func TestRenderMatchEditor(t *testing.T) {
+	h := defaultHUD()
+	h.MenuOpen, h.MenuTitle = true, "MATCH"
+	h.Match = MatchView{Open: true, Set: "Hex", Proto: "UART", Toks: []string{"55", "A?", "ERR"}, Cur: 3,
+		Keys: [][]string{{"0", "1", "2"}, {"3", "4", "5"}}, Row: 1, Col: 2}
+	m := NewMemSurface()
+	Render(m, testFrame(2048), h, true)
+	if n := countColorIn(m, colTrig, 4+2*226, 80+56, 4+3*226, 80+2*56); n < 2000 {
+		t.Fatalf("highlighted key not filled (%d px)", n)
+	}
+	if n := countColorIn(m, colC1, 0, 14, W-116, H); n != 0 {
+		t.Fatalf("trace drawn through the editor (%d px)", n)
+	}
+}

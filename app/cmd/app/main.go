@@ -157,6 +157,7 @@ func buildHUD(e *engine.Engine, fe *analog.FrontEnd) lcd.HUD {
 		hud.ViewMode, hud.MathMode = mv.ViewMode, mv.MathMode
 		hud.AutosetBusy, hud.AutosetMsg = mv.AutosetBusy, mv.AutosetMsg
 		hud.Notice = mv.Notice
+		hud.Match = lcd.MatchView(pc.MatchEditor())
 		hud.Zoom, hud.ZoomOff = mv.Zoom, mv.ZoomOff
 		hud.Persist = mv.Persist
 		hud.DecProto, hud.DecBaud = mv.DecProto, mv.DecBaud
@@ -318,7 +319,7 @@ func renderSigOf(f *engine.Frame, hud lcd.HUD, live bool) renderSig {
 		extra: fmt.Sprint(hud.MenuTitle, hud.MenuItems, hud.AutosetBusy, hud.AutosetMsg,
 			hud.TrigSrc, hud.TrigRising, hud.TrigLvlV, hud.TrigPosFrac, hud.Waiting,
 			hud.Zoom1, hud.Zoom2, hud.ChanExplicit, hud.DecBaud, hud.DecChA, hud.DecChB,
-			hud.DecCPOL, hud.DecCPHA, hud.DecFormat, hud.MaskMsg, hud.SRStatus, hud.Notice),
+			hud.DecCPOL, hud.DecCPHA, hud.DecFormat, hud.MaskMsg, hud.SRStatus, hud.Notice, hud.Match),
 	}
 }
 

@@ -95,6 +95,18 @@ func (e *Engine) SetSerialParams(p SerialParams) {
 	e.arincAux.Store(0)
 }
 
+// SerialConfig is the serial trigger's current decode settings and match
+// (a copy), so the panel edits what is armed, whoever armed it.
+// TRLC-LINKS: REQ-SDS-013
+func (e *Engine) SerialConfig() SerialParams {
+	e.ser.mu.Lock()
+	p := e.ser.params
+	e.ser.mu.Unlock()
+	p.Bytes = append([]int(nil), p.Bytes...)
+	p.Pattern = append([]PatternElem(nil), p.Pattern...)
+	return p
+}
+
 // SetSerialMode arms/disarms the serial trigger (SerialOff/SerialTrigger).
 // TRLC-LINKS: REQ-SDS-013
 func (e *Engine) SetSerialMode(m int) {

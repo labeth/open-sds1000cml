@@ -49,21 +49,22 @@ type HUD struct {
 	// them), so both off draws neither channel. Without it, both off means
 	// "unset" and both are drawn.
 	ChanExplicit     bool
-	ShowMeas         bool    // on-device MEASURE panel overlay
-	ViewMode         int     // 0=Y-T 1=X-Y 2=FFT 3=BODE 4=SPECTROGRAM
-	MathMode         int     // 0 = off, 1 = C1+C2, 2 = C1-C2, 3 = C1×C2
-	AutosetBusy      bool    // autoset sweep running → show a cancelable banner
-	AutosetMsg       string  // banner text while AutosetBusy
-	Notice           string  // brief result banner (PRINT), "" when none
-	Busy             string  // a frame is being read/processed (loading indicator); "" idle
-	BusyPct          float64 // its progress 0..100, <0 unknown
-	BusyPhase        int     // spinner step, advanced by the caller while busy
-	ViewPending      bool    // stopped: the shown frame is about to be replaced at the new view
-	Roll             bool    // the live view is rolling (slow timebase, AUTO)
-	Zoom             int     // horizontal magnification (1 = none)
-	ZoomOff          float64 // zoom-window pan offset (fraction of the record)
-	Persist          bool    // display persistence (afterglow)
-	DecProto         int     // 0=off,1=Auto,2=UART,3=I2C,4=SPI,5=Manchester,6=SENT,7=CAN,8=MIL1553,9=ARINC429,10=USB,11=FlexRay
+	ShowMeas         bool      // on-device MEASURE panel overlay
+	ViewMode         int       // 0=Y-T 1=X-Y 2=FFT 3=BODE 4=SPECTROGRAM
+	MathMode         int       // 0 = off, 1 = C1+C2, 2 = C1-C2, 3 = C1×C2
+	AutosetBusy      bool      // autoset sweep running → show a cancelable banner
+	AutosetMsg       string    // banner text while AutosetBusy
+	Notice           string    // brief result banner (PRINT), "" when none
+	Match            MatchView // serial trigger match editor (full screen while open)
+	Busy             string    // a frame is being read/processed (loading indicator); "" idle
+	BusyPct          float64   // its progress 0..100, <0 unknown
+	BusyPhase        int       // spinner step, advanced by the caller while busy
+	ViewPending      bool      // stopped: the shown frame is about to be replaced at the new view
+	Roll             bool      // the live view is rolling (slow timebase, AUTO)
+	Zoom             int       // horizontal magnification (1 = none)
+	ZoomOff          float64   // zoom-window pan offset (fraction of the record)
+	Persist          bool      // display persistence (afterglow)
+	DecProto         int       // 0=off,1=Auto,2=UART,3=I2C,4=SPI,5=Manchester,6=SENT,7=CAN,8=MIL1553,9=ARINC429,10=USB,11=FlexRay
 	DecBaud          int
 	DecChA, DecChB   int // channel roles (0=C1,1=C2)
 	DecCPOL, DecCPHA bool
@@ -648,6 +649,7 @@ func Render(sf Surface, f *engine.Frame, hud HUD, live bool, persist ...*MemSurf
 	if hud.ViewMode == 0 {
 		drawCursors(sf, hud)
 	}
+	drawMatchEditor(sf, hud.Match)
 	drawMenu(sf, hud)
 	if hud.SRActive {
 		drawSuperresHUD(sf, hud)

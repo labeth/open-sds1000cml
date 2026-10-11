@@ -141,6 +141,11 @@ func (c *Controller) MenuView() MenuView {
 		}
 		v.Items = it
 	case pgTrigQ:
+		if st.SerialMode != 0 { // Serial: the match (the bus is the DECODE page's)
+			v.Title = "SERIAL"
+			v.Items = c.serialItems()
+			break
+		}
 		cond := []string{"any", "<min", ">max", "in"}
 		pct := func(f float64) string { return fmt.Sprintf("%d%%", int(f*100+0.5)) }
 		switch st.TrigType {
@@ -194,7 +199,7 @@ func (c *Controller) MenuView() MenuView {
 		if st.TrigSource == 1 {
 			src = "CH2"
 		}
-		types := []string{"Edge", "Pulse", "Slope", "Video"}
+		types := []string{"Edge", "Pulse", "Slope", "Video", "Serial"}
 		ho := "Off"
 		if st.HoldoffS > 0 {
 			ho = fmtEng(st.HoldoffS, "s")
@@ -204,7 +209,7 @@ func (c *Controller) MenuView() MenuView {
 			{"Mode", ternary(st.Norm, "NORM", "AUTO")},
 			{"Slope", slope},
 			{"Source", src},
-			{"Type", types[st.TrigType&3]},
+			{"Type", types[trigTypeIndex(st)]},
 			{"Holdoff", ho},
 		}
 	case pgAcq:
@@ -283,6 +288,25 @@ func (c *Controller) MenuView() MenuView {
 			{"Show A", show(rA, rAs)},
 			{"Show B", show(rB, rBs)},
 			{"Clear", ""},
+		}
+	case pgMatch:
+		c.mu.Lock()
+		k := c.kb
+		c.mu.Unlock()
+		key := "-"
+		if g := kbGrid(k.set); k.row < len(g) && k.col < len(g[k.row]) {
+			key = g[k.row][k.col]
+		}
+		if key == " " {
+			key = "space"
+		}
+		v.Title = "MATCH"
+		v.Items = []MenuItem{
+			{"Keys", kbSetNames[k.set]},
+			{"Enter", key},
+			{"Del", "<"},
+			{"OK", "apply"},
+			{"Cancel", ""},
 		}
 	case pgSave:
 		c.mu.Lock()

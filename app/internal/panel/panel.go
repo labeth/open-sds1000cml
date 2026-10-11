@@ -180,9 +180,10 @@ type Controller struct {
 	decCPOL, decCPHA bool
 	decFormat        int // 0=hex, 1=ascii, 2=both
 	// Auto decode streaming (ADR-PANEL-DECODED-STREAM), guarded by mu.
-	decMode  int // decModeView / decModeStream
-	decTrig  int // index into decTrigNames
-	decValue int // StreamOnValue unit
+	decMode  int         // decModeView / decModeStream
+	decTrig  int         // index into decTrigNames
+	decValue int         // StreamOnValue unit
+	kb       matchEditor // SERIAL trigger match editor (full-screen keyboard)
 	stream   Stream
 	autoSrc  AutoSource
 	// a stopped stream's screen: transcript list or the record's waveform

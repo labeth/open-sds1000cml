@@ -160,6 +160,7 @@ func (c *Controller) menuCycle(slot, dir int) {
 		}
 		c.mu.Unlock()
 		c.syncDecodeView(on)
+		c.syncSerialBus() // an armed serial trigger decodes with these settings
 		switch streamAction {
 		case "list":
 			c.toggleStreamList()
@@ -170,7 +171,15 @@ func (c *Controller) menuCycle(slot, dir int) {
 			c.eng.SetRunning(true)
 		}
 		return
+	case pgMatch:
+		c.matchEditorCycle(slot, dir)
+		return
 	case pgTrigQ: // trigger-qualifier params for the current trigger TYPE
+		if st.SerialMode != 0 {
+			c.serialCycle(slot, dir)
+			c.pushLEDs()
+			return
+		}
 		c.mu.Lock()
 		c.adoptQual(st) // step from what the engine uses (the web or SCPI may have set it)
 		switch st.TrigType {
@@ -235,8 +244,8 @@ func (c *Controller) menuCycle(slot, dir int) {
 			c.eng.SetTrigSlope(!st.TrigRising)
 		case 2:
 			c.eng.SetTrigSource(1 - st.TrigSource)
-		case 3:
-			c.eng.SetTrigType(mod4(st.TrigType + dir))
+		case 3: // Edge, Pulse, Slope, Video, Serial
+			c.setTrigTypeIndex(st, ((trigTypeIndex(st)+dir)%trigTypes+trigTypes)%trigTypes)
 		case 4:
 			c.eng.SetHoldoff(nextHoldoff(st.HoldoffS, dir, c.pressWrap))
 		}
