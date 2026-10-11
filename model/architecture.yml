@@ -631,6 +631,14 @@ architecture:
     prose: 'wsmath.js - statistics, reference difference and the master repeat test for the web workspaces, the twin of the shared analysis package.'
     tags:
     - source-backed
+  - id: FU-WEB-REMOTE
+    name: Phone remote
+    group: FG-WEB
+    prose: 'remote.html and remote_*.js - the phone remote (Tiles & Search, ADR-TASK-WORKSPACES): home tiles, every sheet
+      tab with search, the change history with undo and the physical keys, on the sheet model API; control state only, no
+      waveform.'
+    tags:
+    - source-backed
   - id: FU-WEB-APP-NAV
     name: Web App Nav
     group: FG-WEB

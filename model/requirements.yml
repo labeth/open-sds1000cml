@@ -3647,3 +3647,18 @@ requirements:
   verificationMethods:
   - test
   verificationCriteria: Browser tests drive every workspace and setting through the new layout.
+- id: REQ-SDS-220
+  title: Phone remote
+  text: The instrument shall serve a phone remote page that changes every setting through the sheet model without
+    opening a sheet on the LCD, shows only control state, keeps a change history with undo, and keeps the phone awake
+    where the browser allows.
+  status: draft
+  category: functional
+  appliesTo:
+  - FU-WEB-REMOTE
+  - FU-APP-PANEL
+  verificationMethods:
+  - test
+  verificationCriteria: Browser tests in phone emulation drive every tab, typed entry, workspace switching with an LCD
+    sheet open, undo and the guarded Default Setup against the test server; on the device, the same flows from a phone
+    with the LCD showing the REMOTE confirmations.
