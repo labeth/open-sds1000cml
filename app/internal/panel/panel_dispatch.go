@@ -202,6 +202,9 @@ func (c *Controller) button(code int) {
 			c.fe.SetOffset(ch, 0) // push POSITION: trace back to 0 V
 		}
 		return
+	case btnDefaultSetup:
+		c.DefaultSetup()
+		return
 	case btnHorizPosPush:
 		if c.streamListToTrigger() { // open stream list: back to the trigger line
 			return
@@ -355,7 +358,7 @@ func (c *Controller) dispatch(name string, dir, steps int) {
 		if c.decodeValueAdjust(dir * steps) {
 			return
 		}
-		c.menuAdjust(dir)
+		c.menuAdjust(dir, steps)
 	case "horizpos":
 		// A stopped stream's open list scrolls with this knob (lines; the
 		// acceleration makes long jumps quick).

@@ -336,12 +336,16 @@ function drawYTPeaks(g) {
 // under-read by up to ~15% (scalloping) — labelled ≈ for that reason.
 // TRLC-LINKS: REQ-SDS-070
 function peakVolts(ch, p) {
-  const spec = specMemo[ch].spec;
+  const spec = specMemo[ch].spec, src = specMemo[ch].src;
   if (!spec || !frame) return 0;
+  const vpc = (ch === 2 ? frame.vpc2 : frame.vpc1) || 1 / 25;
+  // The fitted tone, not the Hann bin: between bins the bin reads up to
+  // 1.42 dB low (scalloping) — 1.70 V for a 1.98 V fundamental.
+  const span = src ? peakSpanS(src) : 0;
+  if (src && span > 0) return toneAmplitude(src, p.freq * span) * vpc;
   const N = spec.half * 2;
   const mag = spec.peak * Math.pow(10, p.db / 20);
-  const ampCodes = 4 * mag / N;
-  return ampCodes * ((ch === 2 ? frame.vpc2 : frame.vpc1) || 1 / 25);
+  return 4 * mag / N * vpc;
 }
 
 // Noise-floor magnitude of a channel's current spectrum = the MEDIAN AC-bin

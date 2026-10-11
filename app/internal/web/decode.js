@@ -282,6 +282,16 @@ function decodeUART(codes, colTimeS, cfg) {
     }
     i++;
   }
+  // Sync-in (mirrors Go syncIn): errors before the first clean frame, when it
+  // starts within a few frames of the record start, are bytes cut by the
+  // window, not line errors.
+  let first = -1;
+  for (let k = 0; k + 1 < spans.length; k++) if (spans[k].kind === "data" && spans[k + 1].kind === "data") { first = k; break; }
+  if (first > 0 && spans[first].i0 <= guard + 4 * need && spans.slice(0, first).some((sp) => sp.kind === "frame-error" || sp.kind === "parity-error")) {
+    for (let k = 0; k < first; k++) { spans[k].kind = "gap"; spans[k].text = "gap"; }
+    toks.length = 0; bytes.length = 0;
+    for (const sp of spans) if (sp.kind !== "gap") { toks.push(sp.text); bytes.push(sp.val); }
+  }
   return { ok: true, error: null, proto: "uart", spans, text: toks.join(" "), bytes,
     meta: { baud: Math.round(baud), samplesPerBit: SPB, threshold: S.threshold, lowRail: S.lowRail, highRail: S.highRail } };
 }
@@ -471,7 +481,11 @@ function scoreResult(r) {
     // (a partial SENT frame read as "UART 66674 Bd, 5 bytes") — not a UART.
     const m = r.meta || {};
     if (m.samplesPerBit > 0 && m.samplesPerBit < 4) return -1e9;
-    if (bytes < 8 && !STANDARD_BAUDS.some(b => Math.abs(m.baud - b) <= 0.03 * b)) return -1e9;
+    const stdBaud = STANDARD_BAUDS.some(b => Math.abs(m.baud - b) <= 0.03 * b);
+    if (bytes < 8 && !stdBaud) return -1e9;
+    // An odd rate with over a fifth of its bytes misframed is another protocol
+    // read as UART (an undersampled SENT: "UART 45701 Bd", bug hunt 2026-10-11).
+    if (!stdBaud && kind("frame-error") * 5 > bytes) return -1e9;
     return bytes * 10 - kind("frame-error") * 35 - kind("parity-error") * 18 + 15;
   }
   if (r.proto === "spi") {
@@ -491,7 +505,9 @@ function scoreResult(r) {
   if (r.proto === "sent") {
     // ok already gates on >=1 CRC-4-valid frame; score by validated frames.
     const crcs = kind("crc");
-    if (crcs === 0) return -1e9;
+    // CRC-4 passes 1 random frame in 16: a quarter of the complete frames
+    // must check (a bus alternating bad/good CRCs still detects).
+    if (crcs === 0 || crcs * 4 < kind("sync") - 1) return -1e9;
     return crcs * 300 + kind("data") * 4 - kind("frame-error") * 20;
   }
   if (r.proto === "canfd") {
@@ -553,6 +569,23 @@ function clockScore(codes, opts) {
   return { ok: true, uniFrac: uni / gaps.length, halfPeriod: hp, edges: S.edges.length, S };
 }
 
+// midPhaseData: share of the data edges away from every clock edge (beyond a
+// quarter half-period). Mirrors decode_autodetect.go midPhaseData: SPI launches
+// data on a clock edge, I2C moves SDA mid-low.
+// TRLC-LINKS: REQ-SDS-018
+function midPhaseData(c, d) {
+  if (!c || !c.ok || !(c.halfPeriod > 0) || !d || !d.ok || !d.edges.length || !c.S.edges.length) return 0;
+  const tol = Math.max(c.halfPeriod / 4, 1.5), ce = c.S.edges;
+  let mid = 0, j = 0;
+  for (const e of d.edges) {
+    while (j + 1 < ce.length && ce[j + 1].i <= e.i) j++;
+    let dist = Math.abs(e.i - ce[j].i);
+    if (j + 1 < ce.length) dist = Math.min(dist, Math.abs(ce[j + 1].i - e.i));
+    if (dist > tol) mid++;
+  }
+  return mid / d.edges.length;
+}
+
 // idleLevel: the rail a sliced channel rests on most of the time (a clock idles
 // at its CPOL rail between transactions). 1 = idle high, 0 = idle low.
 // TRLC-LINKS: REQ-SDS-018
@@ -593,7 +626,10 @@ function autodetect(frame, opts) {
   const u1 = clk1.uniFrac, u2 = clk2.uniFrac, hi = Math.max(u1, u2), lo = Math.min(u1, u2);
   const clockedPair = active.length >= 2 && hi > 0.72 && hi > lo + 0.12;
   // TRLC-LINKS: REQ-SDS-018
-  const isClocky = k => { const c = k === 1 ? clk1 : clk2; return c.uniFrac > 0.78 && c.edges >= 40; };
+  // A near-perfectly uniform line is a clock even with few edges on screen: a
+  // 3 kHz square at 500 us/div (~30 edges) read as constant-bit Manchester
+  // (bug hunt 2026-10-10). Real Manchester data mixes T/2 and T gaps.
+  const isClocky = k => { const c = k === 1 ? clk1 : clk2; return (c.uniFrac > 0.78 && c.edges >= 40) || (c.uniFrac >= 0.95 && c.edges >= 10); };
 
   // UART — async single-wire. Suppress on a clocked pair (that IS SPI — a data line
   // paired with a clock) and on a lone clock (else it auto-bauds into bogus 0x55).
@@ -625,7 +661,7 @@ function autodetect(frame, opts) {
   // word parity, PID complement, strict framing), so their scoring gates make
   // false claims on foreign signals cosmically unlikely — try every channel.
   for (const k of active) {
-    if (dSent) add("sent", { line: k }, { baud: 0 }, dSent(chans[k], colTimeS, { tickNs: 0, nibbles: 0, fmt }));
+    if (dSent) add("sent", { line: k }, { baud: 0, sentTickNs: 0, sentNibbles: 8 }, dSent(chans[k], colTimeS, { tickNs: 0, nibbles: 0, fmt }));
     if (dCan) add("canfd", { line: k }, { baud: 0 }, dCan(chans[k], colTimeS, { nominalBaud: 0, dominantLow: true, fmt }));
     if (dMil) add("mil1553", { line: k }, { baud: 0 }, dMil(chans[k], colTimeS, { bitrate: 0, fmt }));
     if (dArinc) add("arinc429", { line: k }, { baud: 0 }, dArinc(chans[k], colTimeS, { bitrate: 0, fmt }));
@@ -643,16 +679,21 @@ function autodetect(frame, opts) {
     if (clockedPair) {
       const clk = u1 >= u2 ? 1 : 2, data = clk === 1 ? 2 : 1;
       const cpol = idleLevel(clk === 1 ? clk1.S : clk2.S);
-      for (const cpha of [0, 1])
-        for (const bo of ["msb", "lsb"])   // msb first => the default on a binary tie
-          add("spi", { clk, data }, { cpol, cpha, msb: bo === "msb" },
-            decodeSPI(chans[clk], chans[data], colTimeS, { cpol, cpha, bitOrder: bo, fmt }));
+      if (midPhaseData(clk === 1 ? clk1 : clk2, (data === 1 ? clk1 : clk2).S) <= 0.5) { // else I2C-like: never SPI
+        for (const cpha of [0, 1])
+          for (const bo of ["msb", "lsb"])   // msb first => the default on a binary tie
+            add("spi", { clk, data }, { cpol, cpha, msb: bo === "msb" },
+              decodeSPI(chans[clk], chans[data], colTimeS, { cpol, cpha, bitOrder: bo, fmt }));
+      }
     }
   }
 
   cands.sort((a, b) => b.score - a.score);
   const best = cands[0];
-  if (!best || best.score <= -1e8)
+  // Errors outweighing the evidence are no detection: a garbage UART or
+  // Manchester decode won Auto whenever nothing else qualified (bug hunt
+  // 2026-10-11). Mirrors decode_autodetect.go.
+  if (!best || best.score <= 0)
     return { proto: "off", roles: {}, cfg: {}, result: null, score: -Infinity, candidates: cands,
       reason: active.length ? "no protocol matched" : "no active signal" };
   return { proto: best.proto, roles: best.roles, cfg: best.cfg, result: best.result, score: best.score, candidates: cands };

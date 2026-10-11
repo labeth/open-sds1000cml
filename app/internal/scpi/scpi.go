@@ -8,10 +8,12 @@ package scpi
 
 import (
 	"fmt"
+	"math"
 	"os"
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"open-sds/app/internal/engine"
 )
@@ -87,6 +89,9 @@ type Handler struct {
 	disp Display
 	shot Screenshot
 	logf func(string, ...any)
+	// setups backs *SAV/*RCL; nil leaves them unavailable (an error, never a
+	// silent success).
+	setups SetupMemory
 
 	// mu serializes HandleLine against the cross-goroutine snapshot readers
 	// (Inverted() feeds the web status snapshot and the LCD HUD builder).
@@ -101,9 +106,9 @@ type Handler struct {
 	// Instrument-state shadows for echo-back of controls with no engine
 	// representation yet. Every shadowed set MUST round-trip through its
 	// query (spec 11 §3.3): a silent success that the query then
-	// contradicts corrupts automation. BWL has no shadow on purpose — this
-	// build cannot engage the 20 MHz limit (spec 06 §6), so a BWL ON set
-	// errors and the query reports the fixed OFF state.
+	// contradicts corrupts automation. BWL has no shadow on purpose: it
+	// reads the front end's relay state (spec 06 §6), and a front end
+	// without the relay keeps it fixed OFF (ON errors).
 	tra    [2]bool
 	cpl    [2]string
 	attn   [2]float64
@@ -113,9 +118,73 @@ type Handler struct {
 	trmd   string
 	trlvV  float64
 	serial string
+	// pendTdiv is the timebase TDIV (or *RST) set and the engine has not
+	// applied yet: a band switch takes seconds, and TDIV? answered the old
+	// value meanwhile (bug hunt #2). 0 when none is pending.
+	pendTdiv float64
+}
+
+// tdivNow is the instrument's timebase: a pending setting until the engine
+// reports it applied.
+// TRLC-LINKS: REQ-SDS-024
+func (h *Handler) tdivNow(st engine.Stats) float64 {
+	if h.pendTdiv > 0 && math.Abs(st.TdivS-h.pendTdiv) > h.pendTdiv*1e-6 {
+		return h.pendTdiv
+	}
+	h.pendTdiv = 0
+	return st.TdivS
+}
+
+// settle waits, unlocked and bounded, until a pending timebase is applied
+// (*OPC?, *WAI): it answered at once while the band switch still ran.
+// TRLC-LINKS: REQ-SDS-024
+func (h *Handler) settle() {
+	if h.pendTdiv == 0 {
+		return
+	}
+	h.mu.Unlock()
+	defer h.mu.Lock()
+	for deadline := time.Now().Add(10 * time.Second); time.Now().Before(deadline); time.Sleep(20 * time.Millisecond) {
+		if math.Abs(h.sc.Snapshot().TdivS-h.pendTdiv) <= h.pendTdiv*1e-6 {
+			return
+		}
+	}
 }
 
 // TRLC-LINKS: REQ-SDS-024
+// SetupMemory stores and recalls whole instrument setups in numbered slots
+// (*SAV/*RCL).
+type SetupMemory interface {
+	SaveSetup(slot int) error
+	RecallSetup(slot int) error
+}
+
+// SetupFiles stores and recalls setups as named files (STPN/RCPN).
+type SetupFiles interface {
+	SaveSetupFile(name string) error
+	RecallSetupFile(name string) error
+}
+
+// cursorMeasure is a Display that owns the manual cursors and the
+// measurement panel (CRMS, PACU).
+type cursorMeasure interface {
+	CursorsOn() bool
+	SetCursorsOn(on bool)
+	SetMeasOn(on bool)
+}
+
+// SetSetupMemory wires *SAV/*RCL (and STPN/RCPN when the store keeps named
+// files) to a setup store.
+// TRLC-LINKS: REQ-SDS-024
+func (h *Handler) SetSetupMemory(m SetupMemory) {
+	h.mu.Lock()
+	h.setups = m
+	h.mu.Unlock()
+}
+
+// setupSlots is the vendor's *SAV/*RCL range.
+const setupSlots = 20
+
 func New(sc Scope, fe Analog, disp Display, shot Screenshot, logf func(string, ...any)) *Handler {
 	return &Handler{
 		sc: sc, fe: fe, disp: disp, shot: shot, logf: logf,
@@ -216,6 +285,22 @@ func saraStr(rate float64) string {
 // TRLC-LINKS: REQ-SDS-024
 func (h *Handler) exec(cmd string) []byte {
 	up := strings.ToUpper(cmd)
+
+	// Channel-pair prefix Ca-Cb: (MEAD? delay between two channels).
+	if len(up) >= 6 && up[0] == 'C' && up[2] == '-' && up[3] == 'C' && up[5] == ':' {
+		a, b := int(up[1]-'0'), int(up[4]-'0')
+		if a < 1 || a > 2 || b < 1 || b > 2 || a == b {
+			return errTok(errSuffix)
+		}
+		head, arg := up[6:], ""
+		if i := strings.IndexByte(head, ' '); i >= 0 {
+			head, arg = head[:i], strings.TrimSpace(head[i+1:])
+		}
+		if head != "MEAD?" {
+			return errTok(errUndefined)
+		}
+		return h.mead(a-1, b-1, arg)
+	}
 
 	// Channel prefix Cn: (C1/C2 only; anything else is a suffix error).
 	ch := -1

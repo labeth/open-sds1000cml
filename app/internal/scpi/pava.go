@@ -78,8 +78,7 @@ var pavaParam = map[string]struct {
 // the record cannot support reads "****", as the vendor firmware does.
 // TRLC-LINKS: REQ-SDS-021, REQ-SDS-024
 func (h *Handler) pava(ch int, arg string) []byte {
-	p, ok := pavaParam[arg]
-	if !ok {
+	if _, ok := pavaParam[arg]; !ok && arg != "ALL" {
 		return errTok(errHeader)
 	}
 	vdiv := 1.0
@@ -118,11 +117,49 @@ func (h *Handler) pava(ch int, arg string) []byte {
 			r = r.WithEnvelopeTiming(sig[:valid], vdiv/25*probe, offV*probe, f.SampleS)
 		}
 	})
+	if r != nil && ch >= 0 && ch < 2 && h.invs[ch] { // h.mu is held (HandleLine)
+		r = r.Inverted() // measure what the inverted trace shows
+	}
+	if arg == "ALL" { // every parameter from one measurement (bug hunt #2: ALL was a header error)
+		out := "ALL"
+		for _, name := range pavaOrder {
+			out += "," + name + "," + pavaValue(name, r)
+		}
+		return h.reply(fmt.Sprintf("C%d:PAVA", ch+1), out)
+	}
+	return h.reply(fmt.Sprintf("C%d:PAVA", ch+1), arg+","+pavaValue(arg, r))
+}
+
+// pavaOrder is PAVA? ALL's parameter order.
+var pavaOrder = []string{"PKPK", "MAX", "MIN", "AMPL", "TOP", "BASE", "MEAN", "RMS", "OVSP", "RPRE",
+	"PER", "FREQ", "PWID", "NWID", "RISE", "FALL", "DUTY", "NDUTY"}
+
+// pavaValue formats one parameter of a measurement; "****" when the record
+// cannot support it.
+// TRLC-LINKS: REQ-SDS-024
+func pavaValue(arg string, r *measure.Result) string {
+	p := pavaParam[arg]
 	value := "****"
-	if r != nil && (!p.timing || r.HasTiming) && !(p.edge && r.EnvTiming) {
+	show := r != nil
+	switch {
+	case !show:
+	case p.edge:
+		// Edge shape needs an edge, not a period: one edge on screen (a fast
+		// timebase) has a rise time (bug hunt 2026-10-10: RISE read **** at
+		// 50 ns/div on a clean 20 ns edge).
+		show = !r.EnvTiming && (r.RiseS > 0 || r.FallS > 0)
+		if arg == "RISE" {
+			show = show && r.RiseS > 0
+		} else if arg == "FALL" {
+			show = show && r.FallS > 0
+		}
+	case p.timing:
+		show = r.HasTiming
+	}
+	if show {
 		if v := p.get(r); !math.IsNaN(v) && !math.IsInf(v, 0) {
 			value = fmt.Sprintf("%.6E%s", v, p.unit)
 		}
 	}
-	return h.reply(fmt.Sprintf("C%d:PAVA", ch+1), arg+","+value)
+	return value
 }

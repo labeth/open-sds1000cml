@@ -661,7 +661,7 @@ acquisitionLoop:
 			// A software-qualified trigger needs room to find its event away
 			// from the hardware edge and still fill the screen around it.
 			screen := plan.Screen
-			if softQualify {
+			if softQualify || e.serialMode.Load() == SerialTrigger {
 				screen *= 2
 			}
 			recallOffset, recallWords = liveSRAMWindow(m, screen, posFrac)
@@ -850,6 +850,8 @@ acquisitionLoop:
 		if bucket != 0 {
 			// After the (min, max)-pair calibration above: put each pair in
 			// time order so the live envelope also serves as samples.
+			orderEnvelopeHead(f.C1[:f.Valid], f.Q1)
+			orderEnvelopeHead(f.C2[:f.Valid], f.Q2)
 			orderEnvelope(f.C1[:f.Valid], f.Q1)
 			orderEnvelope(f.C2[:f.Valid], f.Q2)
 			f.Ordered = true
@@ -884,14 +886,14 @@ acquisitionLoop:
 		_, _, f.Ptp = ptp(disc)
 		qualified := f.Trigd
 		if softQualify {
-			at := softAnchor(f.Valid, plan.Screen, posFrac, f.EdgeX)
+			at := softAnchor(f.Valid, f.WinCols, posFrac, f.EdgeX)
 			switch tp.typ {
 			case TrigPulse:
 				f.EdgeX = qualifyPulseAt(disc, f.SampleS*1e9, tp, !cfg.Falling, at)
 			case TrigSlope:
 				f.EdgeX = qualifySlopeAt(disc, f.SampleS*1e9, tp, !cfg.Falling, at)
 			case TrigVideo:
-				f.EdgeX = qualifyVideoAt(disc, tp, at)
+				f.EdgeX = qualifyVideoAt(disc, f.SampleS*1e9, tp, at)
 			}
 			qualified = f.EdgeX >= 0
 			f.Trigd = qualified
@@ -928,7 +930,15 @@ acquisitionLoop:
 				e.serialMatches.Add(1)
 			}
 		} else if e.serialMode.Load() == SerialTrigger {
-			matched, anchor := e.serialQualify(f, f.Valid, f.SampleS)
+			posFrac := math.Float64frombits(e.trigPosFrac.Load())
+			matched, anchor := e.serialQualifyAt(f, f.Valid, f.SampleS, softAnchor(f.Valid, f.WinCols, posFrac, -1))
+			if matched && offRecord(f.Valid, f.WinCols, posFrac, anchor) > f.WinCols/20 {
+				// The match would leave over 5 % of the screen off the
+				// record (one SRAM read is ~one screen at >=200 us/div):
+				// wait for a better-placed one, as for no match (bug hunt
+				// 2026-10-11, #29).
+				matched = false
+			}
 			qualified = matched
 			f.Trigd = matched
 			f.TriggerKind = "software-window"
@@ -1184,4 +1194,20 @@ func softAnchor(valid, screen int, posFrac, hwEdge float64) anchorSpan {
 func retainedSRAMPlan(p SRAMPlan, tdiv float64) SRAMPlan {
 	p.Screen = int(math.Min(float64(p.Samples), math.Max(2, math.Round(10*tdiv/p.SampleS))))
 	return p
+}
+
+// offRecord is how many of a screen's winCols columns, centred on anchor at
+// posFrac, fall outside a record of valid samples; zero when the record
+// cannot hold a screen at all (then nothing better exists).
+// TRLC-LINKS: REQ-SDS-013
+func offRecord(valid, winCols int, posFrac float64, anchor int) int {
+	if winCols <= 0 || winCols > valid || anchor < 0 {
+		return 0
+	}
+	if !(posFrac >= 0 && posFrac <= 1) {
+		posFrac = .5
+	}
+	left := anchor - int(math.Round(posFrac*float64(winCols)))
+	right := left + winCols - valid
+	return max(0, -left) + max(0, right)
 }

@@ -1,6 +1,8 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
 package engine
 
+import "math"
+
 // Trigger qualifiers (spec 05, spec 03 §7): PULSE (GLIT), SLOPE (SLEW) and
 // VIDEO (TV) are pure software discrimination over the drained record — they
 // REPLACE the EDGE pipeline (centerCross + windowSlopeMatches), never
@@ -221,7 +223,7 @@ func qualifySlopeAt(disc []uint8, intervalNs float64, p trigParams, rising bool,
 					break
 				}
 				if int(disc[k-1]) < second && v >= second {
-					tNs := float64(k-c) * intervalNs
+					tNs := slopeTimeNs(disc, c, first, k, second, p, intervalNs)
 					if condOK(tNs, p.slopeTMinNs, p.slopeTMaxNs, p.slopeCond) {
 						if at.closer(k, &bestDist) {
 							bestX = crossFrac(disc, k, second)
@@ -234,7 +236,7 @@ func qualifySlopeAt(disc []uint8, intervalNs float64, p trigParams, rising bool,
 					break
 				}
 				if int(disc[k-1]) > second && v <= second {
-					tNs := float64(k-c) * intervalNs
+					tNs := slopeTimeNs(disc, c, first, k, second, p, intervalNs)
 					if condOK(tNs, p.slopeTMinNs, p.slopeTMaxNs, p.slopeCond) {
 						if at.closer(k, &bestDist) {
 							bestX = crossFrac(disc, k, second)
@@ -248,18 +250,59 @@ func qualifySlopeAt(disc []uint8, intervalNs float64, p trigParams, rising bool,
 	return bestX
 }
 
+// Line sync pulses (4.7 us PAL/NTSC; equalizing 2.35 us) and the limits a
+// sync must fall inside, give or take a sample interval: without them any
+// square wave's edges counted as line syncs (bug hunt 2026-10-10: VIDEO fired
+// on a 5 kHz square).
+const (
+	videoSyncMinNs = 1500
+	videoSyncMaxNs = 12000
+)
+
+// videoSyncWidthOK reports whether the sync pulse entered at c leaves the
+// sync region after a line sync's width.
+// TRLC-LINKS: REQ-SDS-011
+func videoSyncWidthOK(disc []uint8, c, syncLvl int, neg bool, intervalNs float64) bool {
+	for k := c + 1; k < len(disc); k++ {
+		a, b := int(disc[k-1]), int(disc[k])
+		out := a <= syncLvl && b > syncLvl // negative sync: back up out of it
+		if !neg {
+			out = a >= syncLvl && b < syncLvl
+		}
+		if out {
+			w := (crossFrac(disc, k, syncLvl) - crossFrac(disc, c, syncLvl)) * intervalNs
+			return w+intervalNs >= videoSyncMinNs && w-intervalNs <= videoSyncMaxNs
+		}
+	}
+	return false // the record ends inside the pulse: its width is unknown
+}
+
+// slopeTimeNs estimates a traversal's time from the interpolated threshold
+// crossings, less what sample averaging alone makes of a step: the sample
+// holding the edge averages it into an intermediate value, so interpolated
+// between the plateaus a step spans up to two intervals and its threshold
+// crossings sit up to 2*(hi-lo) intervals apart. Counting samples timed every
+// fast edge at 0 or one interval (bug hunt 2026-10-10: SLOPE > 1 us fired on
+// ns edges at 500 us/div, 4.86 us samples). A slow ramp reads short by that
+// allowance.
+// TRLC-LINKS: REQ-SDS-011
+func slopeTimeNs(disc []uint8, c, first, k, second int, p trigParams, intervalNs float64) float64 {
+	d := math.Abs(crossFrac(disc, k, second) - crossFrac(disc, c, first))
+	return math.Max(0, d-2*math.Abs(p.slopeHiFrac-p.slopeLoFrac)) * intervalNs
+}
+
 // qualifyVideo (spec 05: TV): sync-separate at 30% up from the sync tip,
 // collect crossings INTO the sync region as line boundaries, and anchor on
 // the selected line's sync edge. Only all-lines (line=0) and line-N exist;
 // odd/even field discrimination is NOT implementable here (needs a full
 // video frame in the record) and must never silently mis-trigger.
 // TRLC-LINKS: REQ-SDS-011
-func qualifyVideo(disc []uint8, p trigParams) float64 {
-	return qualifyVideoAt(disc, p, centreAnchor(len(disc)))
+func qualifyVideo(disc []uint8, intervalNs float64, p trigParams) float64 {
+	return qualifyVideoAt(disc, intervalNs, p, centreAnchor(len(disc)))
 }
 
 // TRLC-LINKS: REQ-SDS-011
-func qualifyVideoAt(disc []uint8, p trigParams, at anchorSpan) float64 {
+func qualifyVideoAt(disc []uint8, intervalNs float64, p trigParams, at anchorSpan) float64 {
 	n := len(disc)
 	mn, mx, span := ptp(disc)
 	if span < flatRejectSpan {
@@ -291,7 +334,7 @@ func qualifyVideoAt(disc []uint8, p trigParams, at anchorSpan) float64 {
 		} else {
 			syncEdge = a < syncLvl && b >= syncLvl // rising into sync
 		}
-		if !syncEdge {
+		if !syncEdge || !videoSyncWidthOK(disc, c, syncLvl, p.videoNeg, intervalNs) {
 			continue
 		}
 		count++

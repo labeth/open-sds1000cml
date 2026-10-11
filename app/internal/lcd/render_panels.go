@@ -68,10 +68,7 @@ func drawMeasPanel(sf Surface, f *engine.Frame, hud HUD) {
 	if f == nil || f.Valid == 0 {
 		return
 	}
-	sc1, sc2 := hud.ShowC1, hud.ShowC2
-	if !sc1 && !sc2 {
-		sc1, sc2 = true, true
-	}
+	sc1, sc2 := hud.shownChans()
 	x := 4
 	if sc1 {
 		measBox(sf, f, hud, 0, x)
@@ -103,6 +100,9 @@ func measBox(sf Surface, f *engine.Frame, hud HUD, ch, x int) {
 		off = 0
 	}
 	m := measFor(ch, sig, frameQ(f, ch), f.FilterGuard, f.Seq, f.Content, vdiv*float64(zoomOf(hud, ch))/25*probe, off*probe, hud.SampleS, probe, cpl)
+	if (ch == 0 && hud.Inv1) || (ch == 1 && hud.Inv2) {
+		m = m.Inverted() // measure what the inverted trace shows
+	}
 	if f.PeakDetect {
 		m = m.WithEnvelopeTiming(sig, vdiv*float64(zoomOf(hud, ch))/25*probe, off*probe, hud.SampleS)
 	}
@@ -125,18 +125,22 @@ func measBox(sf Surface, f *engine.Frame, hud HUD, ch, x int) {
 			[2]string{"Freq", fmtFreq(m.Freq)},
 			[2]string{"Per", fmtTdiv(m.Period)},
 			[2]string{"Duty", fmt.Sprintf("%.0f%%", m.Duty)})
-		if m.RiseS > 0 {
-			rows = append(rows, [2]string{"Rise", fmtTdiv(m.RiseS)})
-		}
-		if m.FallS > 0 {
-			rows = append(rows, [2]string{"Fall", fmtTdiv(m.FallS)})
-		}
-		if m.PosWidthS > 0 {
-			rows = append(rows, [2]string{"+Wid", fmtTdiv(m.PosWidthS)})
-		}
-		if m.NegWidthS > 0 {
-			rows = append(rows, [2]string{"-Wid", fmtTdiv(m.NegWidthS)})
-		}
+	}
+	// Edges and widths need edges, not a whole period: one edge on a fast
+	// timebase has a rise time (as on the web; bug hunt 2026-10-10).
+	if m.RiseS > 0 {
+		rows = append(rows, [2]string{"Rise", fmtTdiv(m.RiseS)})
+	}
+	if m.FallS > 0 {
+		rows = append(rows, [2]string{"Fall", fmtTdiv(m.FallS)})
+	}
+	if m.PosWidthS > 0 {
+		rows = append(rows, [2]string{"+Wid", fmtTdiv(m.PosWidthS)})
+	}
+	if m.NegWidthS > 0 {
+		rows = append(rows, [2]string{"-Wid", fmtTdiv(m.NegWidthS)})
+	}
+	if m.HasTiming {
 		if m.Overshoot > 0 {
 			rows = append(rows, [2]string{"OS", fmt.Sprintf("%.0f%%", m.Overshoot)})
 		}
@@ -204,10 +208,7 @@ func drawCursors(sf Surface, hud HUD) {
 			}
 			return fmtVolt(frac * vdiv * probe * 8) // 8 vertical divisions
 		}
-		sc1, sc2 := hud.ShowC1, hud.ShowC2
-		if !sc1 && !sc2 {
-			sc1, sc2 = true, true
-		}
+		sc1, sc2 := hud.shownChans()
 		label = ""
 		if sc1 {
 			label = "dV1 " + dvOf(hud.C1VdivV, hud.Probe1)
@@ -255,6 +256,23 @@ func drawAutosetBanner(sf Surface, msg string) {
 		hint = "check the probe / scale"
 	}
 	DrawText(sf, x0+(bw-TextWidth(hint, 1))/2, y0+30, hint, colDim, 1)
+}
+
+// drawNotice is a one-line result banner (PRINT's saved file name).
+// TRLC-LINKS: REQ-SDS-021
+func drawNotice(sf Surface, msg string) {
+	bw, bh := TextWidth(msg, 2)+24, 28
+	x0, y0 := (W-bw)/2, (H-bh)/2
+	for y := y0; y < y0+bh; y++ {
+		for x := x0; x < x0+bw; x++ {
+			c := rgb(8, 12, 28)
+			if y == y0 || y == y0+bh-1 || x == x0 || x == x0+bw-1 {
+				c = colInfo
+			}
+			sf.SetPixel(x, y, c)
+		}
+	}
+	DrawText(sf, x0+12, y0+7, msg, colInfo, 2)
 }
 
 // softkeyY is the on-screen Y (slot centre) of each physical F1..F5 button,
@@ -462,6 +480,9 @@ func drawHUD(sf Surface, f *engine.Frame, hud HUD) {
 			off = 0
 		}
 		m := measFor(ch, sig, frameQ(f, ch), f.FilterGuard, f.Seq, f.Content, vdiv*float64(zoomOf(hud, ch))/25*probe, off*probe, hud.SampleS, probe, cpl)
+		if (ch == 0 && hud.Inv1) || (ch == 1 && hud.Inv2) {
+			m = m.Inverted() // measure what the inverted trace shows
+		}
 		if f.PeakDetect {
 			m = m.WithEnvelopeTiming(sig, vdiv*float64(zoomOf(hud, ch))/25*probe, off*probe, hud.SampleS)
 		}
@@ -474,8 +495,11 @@ func drawHUD(sf Surface, f *engine.Frame, hud HUD) {
 		}
 		DrawText(sf, x, H-9, s, col, 1)
 	}
-	line(0, 4, f.C1[:valid], hud.C1VdivV, hud.Probe1, hud.OffC1V, hud.Cpl1, colC1, "C1")
-	if hud.TwoChan && len(f.C2) >= valid {
+	sc1, sc2 := hud.shownChans() // a hidden channel has no readout
+	if sc1 {
+		line(0, 4, f.C1[:valid], hud.C1VdivV, hud.Probe1, hud.OffC1V, hud.Cpl1, colC1, "C1")
+	}
+	if sc2 && hud.TwoChan && len(f.C2) >= valid {
 		line(1, 410, f.C2[:valid], hud.C2VdivV, hud.Probe2, hud.OffC2V, hud.Cpl2, colC2, "C2")
 	}
 }

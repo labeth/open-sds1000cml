@@ -365,16 +365,17 @@ type Engine struct {
 	streamMode      atomic.Bool        // stitched high-bandwidth streaming decode mode
 	chVdivBits      [2]atomic.Uint64   // per-channel V/div (float64 bits) for the
 	//                              trigger-level → display-code mapping
-	trigZero    [2]atomic.Uint64 // per-channel active trig-cal Zero (float64 bits)
-	trigCPV     [2]atomic.Uint64 // per-channel active trig-cal CPV (float64 bits)
-	trigOffV    [2]atomic.Uint64 // per-channel applied offset volts (float64 bits)
-	scaleGen    atomic.Uint64    // bumped on every V/div or offset change (stopped replay)
-	feGen       atomic.Uint64    // bumped on every front-end write (relays, gain, offset DAC), changed or not
-	pubIdent    frameIdent       // geometry of the latest published frame (guarded by mu)
-	chCoupling  [2]atomic.Int32  // per-channel coupling (analog.CplDC/AC/GND); AC is software
-	chMeanCode  [2]atomic.Uint64 // per-channel smoothed raw mean code of published frames (float64 bits; 0 = none)
-	hintReset   atomic.Bool      // clear the phase-continuity hint (config changed)
-	trigPosFrac atomic.Uint64    // horizontal trigger position, fraction of screen
+	trigZero      [2]atomic.Uint64 // per-channel active trig-cal Zero (float64 bits)
+	trigCPV       [2]atomic.Uint64 // per-channel active trig-cal CPV (float64 bits)
+	trigOffV      [2]atomic.Uint64 // per-channel applied offset volts (float64 bits)
+	scaleGen      atomic.Uint64    // bumped on every V/div or offset change (stopped replay)
+	feGen         atomic.Uint64    // bumped on every front-end write (relays, gain, offset DAC), changed or not
+	singleRestore atomic.Int32     // trigger mode a SINGLE replaced: 1 AUTO, 2 NORM, 0 none (restored on RUN)
+	pubIdent      frameIdent       // geometry of the latest published frame (guarded by mu)
+	chCoupling    [2]atomic.Int32  // per-channel coupling (analog.CplDC/AC/GND); AC is software
+	chMeanCode    [2]atomic.Uint64 // per-channel smoothed raw mean code of published frames (float64 bits; 0 = none)
+	hintReset     atomic.Bool      // clear the phase-continuity hint (config changed)
+	trigPosFrac   atomic.Uint64    // horizontal trigger position, fraction of screen
 
 	// zone trigger + mask testing (zonemask.go)
 	zoneMode    atomic.Int32

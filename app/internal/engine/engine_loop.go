@@ -341,7 +341,7 @@ func (e *Engine) oneFrame(norm bool) {
 	case TrigSlope:
 		edgeX = qualifySlope(disc, interval, tp, rising)
 	case TrigVideo:
-		edgeX = qualifyVideo(disc, tp)
+		edgeX = qualifyVideo(disc, interval, tp)
 	default:
 		// EDGE: anchor on the user's HW trigger level (WYSIWYG — the display
 		// crosses where the level is set). A lock requires a right-slope crossing

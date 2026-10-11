@@ -72,8 +72,10 @@ func drawBode(sf Surface, hud HUD) {
 		}
 	}
 	// magnitude horizontal gridlines + dB labels
-	for i := 0; i <= 4; i++ {
-		db := gLo + (gHi-gLo)*float64(i)/4
+	// Gridlines at multiples of a round step, not quarters of the range:
+	// [-180,45] in quarters read "-11.2" and "-124" (bug hunt 2026-10-10).
+	gStep := gridStep(gLo, gHi, []float64{1, 2, 5, 10, 20, 50})
+	for k, db := 0, math.Ceil(gLo/gStep)*gStep; k <= 10 && db <= gHi+1e-6; k, db = k+1, db+gStep {
 		y := magYOf(db)
 		col := colGrid
 		if math.Abs(db) < 1e-6 {
@@ -85,8 +87,8 @@ func drawBode(sf Surface, hud HUD) {
 		DrawTextRight(sf, plotL-4, y, g3(db), colDim, 1)
 	}
 	// phase horizontal gridlines + deg labels
-	for i := 0; i <= 4; i++ {
-		dg := pLo + (pHi-pLo)*float64(i)/4
+	pStep := gridStep(pLo, pHi, []float64{15, 30, 45, 90, 180})
+	for k, dg := 0, math.Ceil(pLo/pStep)*pStep; k <= 10 && dg <= pHi+1e-6; k, dg = k+1, dg+pStep {
 		y := phYOf(dg)
 		col := colGrid
 		if math.Abs(dg) < 1e-6 {
@@ -109,7 +111,23 @@ func drawBode(sf Surface, hud HUD) {
 	}
 	DrawText(sf, plotL+2, padT-14, "dB", colC1, 1)
 	DrawText(sf, plotL+2, phY0-14, "phase deg", colC2, 1)
-	DrawTextRight(sf, W-4, 4, fmt.Sprintf("%d pts", n), colDim, 1)
+	// In the plot gap, not the header row (it covered the trigger status).
+	DrawText(sf, plotL+2+TextWidth("phase deg  ", 1), phY0-14, fmt.Sprintf("%d pts", n), colDim, 1)
+}
+
+// gridStep is the smallest of the round steps that splits [lo,hi] into at
+// most five intervals (the largest when none does). Mirrors bode.js.
+// TRLC-LINKS: REQ-SDS-021
+func gridStep(lo, hi float64, steps []float64) float64 {
+	for _, s := range steps {
+		if (hi-lo)/s <= 5+1e-9 {
+			return s
+		}
+	}
+	if span := hi - lo; span > 0 && !math.IsInf(span, 0) && span/steps[len(steps)-1] > 10 {
+		return span / 4 // a range no round step covers: quarters, as before
+	}
+	return steps[len(steps)-1]
 }
 
 // niceRange pads [min,max] of vals to round multiples of step; fallback when

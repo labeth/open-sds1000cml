@@ -13,6 +13,7 @@ package engine
 // of the LCD decode strip's config (which lives on the panel).
 
 import (
+	"math"
 	"sync"
 
 	"open-sds/app/internal/decode"
@@ -113,6 +114,12 @@ func (e *Engine) SetSerialMode(m int) {
 // AUTO never edge-locks, so (unlike the zone gate) it must NOT be gated on lock.
 // TRLC-LINKS: REQ-SDS-013
 func (e *Engine) serialQualify(f *Frame, valid int, sampleS float64) (bool, int) {
+	return e.serialQualifyAt(f, valid, sampleS, anchorSpan{target: -1, lo: math.MinInt, hi: math.MaxInt})
+}
+
+// serialQualifyAt is serialQualify choosing among the record's matches by at.
+// TRLC-LINKS: REQ-SDS-013
+func (e *Engine) serialQualifyAt(f *Frame, valid int, sampleS float64, at anchorSpan) (bool, int) {
 	e.ser.mu.Lock()
 	p := e.ser.params
 	e.ser.mu.Unlock()
@@ -140,10 +147,56 @@ func (e *Engine) serialQualify(f *Frame, valid int, sampleS float64) (bool, int)
 	if !res.OK {
 		return false, -1
 	}
+	match := d.Match
 	if sequenceNeeded(p) {
-		return matchSequence(res.Spans, p)
+		match = matchSequence
 	}
-	return d.Match(res.Spans, p)
+	return pickSerialMatch(res.Spans, p, match, at)
+}
+
+// pickSerialMatch walks the record's matches in order and keeps the one
+// nearest at.target that the display can centre a full screen on. A record
+// holds more than a screen, so the first match can sit near a record end and
+// leave part of the screen off the record, drawn as a repeated edge sample
+// (bug hunt 2026-10-10: a flat 0 V tail on a repeating UART message). When no
+// match fits - at slow timebases one SRAM read holds little more than the
+// screen - the match nearest the target leaves the least of it off.
+// TRLC-LINKS: REQ-SDS-013
+func pickSerialMatch(sp []decode.Span, p SerialParams, match func([]decode.Span, SerialParams) (bool, int), at anchorSpan) (bool, int) {
+	ok, first := match(sp, p)
+	if !ok || first < 0 {
+		return ok, first
+	}
+	pick, pickD, near, nearD := -1, math.MaxInt, first, math.MaxInt
+	for anchor, k, n := first, 0, 0; n < 256; n++ {
+		d := anchor - at.target
+		if d < 0 {
+			d = -d
+		}
+		if d < nearD {
+			near, nearD = anchor, d
+		}
+		if at.holds(anchor) && d < pickD {
+			pick, pickD = anchor, d
+		}
+		if anchor >= at.target {
+			break // later matches are farther from the target
+		}
+		for k < len(sp) && sp[k].I0 <= anchor {
+			k++
+		}
+		if k >= len(sp) {
+			break
+		}
+		var more bool
+		if more, anchor = match(sp[k:], p); !more || anchor < 0 {
+			break
+		}
+	}
+	if pick < 0 {
+		return true, near
+	}
+	return true, pick
 }
 
 // matchI2C finds a transaction addressing p.Addr (or any if <0) with the wanted

@@ -23,33 +23,38 @@ type HUD struct {
 	C1VdivV, C2VdivV float64
 	// Zoom1/Zoom2 magnify a channel's codes about mid-scale: the 2 and 5 mV
 	// detents are ×5/×2 display zooms of the 10 mV analog range (0 means 1).
-	Zoom1, Zoom2     int
-	Probe1, Probe2   float64 // probe attenuation (1/10/100); 0 treated as ×1
-	Cpl1, Cpl2       int     // input coupling (analog.CplDC/CplAC/CplGND)
-	Inv1, Inv2       bool    // display-level trace invert (SCPI Cn:INVS — the shadow there is the truth)
-	TdivS            float64
-	TrigSrc          int
-	TrigRising       bool
-	TrigLvlDiv       float64
-	TrigLvlV         float64         // trigger level at the probe tip, volts
-	Waiting          bool            // NORMAL, running, nothing published lately
-	StreamOn         bool            // DECODE Auto in Stream mode
-	Stream           streamview.View // its state and counters
-	StreamList       bool            // the transcript fills the screen
-	StreamPage       streamview.Page // the transcript lines to show
-	Running, Norm    bool
-	RecordS          float64 // the capture in progress fills this long a record (0 unknown)
-	Single           bool
-	Trigd            bool
-	SampleS          float64 // per-sample seconds (frequency readout)
-	TrigPosFrac      float64 // horizontal trigger position, 0.5 = centre
-	OffC1V, OffC2V   float64 // applied vertical offset volts (ground markers)
-	ShowC1, ShowC2   bool    // per-channel display enable
+	Zoom1, Zoom2   int
+	Probe1, Probe2 float64 // probe attenuation (1/10/100); 0 treated as ×1
+	Cpl1, Cpl2     int     // input coupling (analog.CplDC/CplAC/CplGND)
+	Inv1, Inv2     bool    // display-level trace invert (SCPI Cn:INVS — the shadow there is the truth)
+	TdivS          float64
+	TrigSrc        int
+	TrigRising     bool
+	TrigLvlDiv     float64
+	TrigLvlV       float64         // trigger level at the probe tip, volts
+	Waiting        bool            // NORMAL, running, nothing published lately
+	StreamOn       bool            // DECODE Auto in Stream mode
+	Stream         streamview.View // its state and counters
+	StreamList     bool            // the transcript fills the screen
+	StreamPage     streamview.Page // the transcript lines to show
+	Running, Norm  bool
+	RecordS        float64 // the capture in progress fills this long a record (0 unknown)
+	Single         bool
+	Trigd          bool
+	SampleS        float64 // per-sample seconds (frequency readout)
+	TrigPosFrac    float64 // horizontal trigger position, 0.5 = centre
+	OffC1V, OffC2V float64 // applied vertical offset volts (ground markers)
+	ShowC1, ShowC2 bool    // per-channel display enable
+	// ChanExplicit marks ShowC1/ShowC2 as the user's choice (the panel set
+	// them), so both off draws neither channel. Without it, both off means
+	// "unset" and both are drawn.
+	ChanExplicit     bool
 	ShowMeas         bool    // on-device MEASURE panel overlay
 	ViewMode         int     // 0=Y-T 1=X-Y 2=FFT 3=BODE 4=SPECTROGRAM
 	MathMode         int     // 0 = off, 1 = C1+C2, 2 = C1-C2, 3 = C1×C2
 	AutosetBusy      bool    // autoset sweep running → show a cancelable banner
 	AutosetMsg       string  // banner text while AutosetBusy
+	Notice           string  // brief result banner (PRINT), "" when none
 	Busy             string  // a frame is being read/processed (loading indicator); "" idle
 	BusyPct          float64 // its progress 0..100, <0 unknown
 	BusyPhase        int     // spinner step, advanced by the caller while busy
@@ -506,11 +511,7 @@ func Render(sf Surface, f *engine.Frame, hud HUD, live bool, persist ...*MemSurf
 		traceTarget = pb
 	}
 
-	// Both-off ⇒ show both (default / callers that don't set the flags).
-	sc1, sc2 := hud.ShowC1, hud.ShowC2
-	if !sc1 && !sc2 {
-		sc1, sc2 = true, true
-	}
+	sc1, sc2 := hud.shownChans()
 	// X-Y / FFT only make sense on per-sample (native/decimated) frames — an
 	// envelope/roll frame has no paired samples or usable spectrum, so fall
 	// through to the Y-T envelope rendering (matches the web, which gates these).
@@ -650,10 +651,14 @@ func Render(sf Surface, f *engine.Frame, hud HUD, live bool, persist ...*MemSurf
 	drawMenu(sf, hud)
 	if hud.SRActive {
 		drawSuperresHUD(sf, hud)
+	} else if hud.MenuOpen && hud.MenuTitle == "SUPER-RES" && hud.SRStatus != "" {
+		drawSRLine(sf, "SR off  "+hud.SRStatus) // why UTILITY did not arm (bug hunt #2)
 	}
 	drawMaskHUD(sf, hud)
 	if hud.AutosetBusy {
 		drawAutosetBanner(sf, hud.AutosetMsg)
+	} else if hud.Notice != "" {
+		drawNotice(sf, hud.Notice)
 	}
 }
 
@@ -663,4 +668,15 @@ func absI(x int) int {
 		return -x
 	}
 	return x
+}
+
+// shownChans is the per-channel display enable. Both off means "unset" (show
+// both) unless the panel set the flags: then the user hid both channels and
+// neither is drawn (bug hunt #2: CH1+CH2 off brought both traces back).
+// TRLC-LINKS: REQ-SDS-021
+func (h HUD) shownChans() (bool, bool) {
+	if !h.ShowC1 && !h.ShowC2 && !h.ChanExplicit {
+		return true, true
+	}
+	return h.ShowC1, h.ShowC2
 }

@@ -25,6 +25,46 @@ func stepNs(cur float64, dir int, wrap bool) float64 {
 	return ladder[stepIndex(idx, dir, len(ladder), wrap)]
 }
 
+// orderNs keeps a min/max time window open: when an edit closes or inverts
+// it, the other limit moves one ladder step away (maxEdited: the max was
+// edited, so the min gives way). An inverted window never triggered, and
+// the panel let W min step past W max (bug hunt #2).
+// TRLC-LINKS: REQ-SDS-136
+func orderNs(mn, mx float64, maxEdited bool) (float64, float64) {
+	if mn < mx {
+		return mn, mx
+	}
+	if maxEdited {
+		if lower := stepNs(mx, -1, false); lower < mx {
+			return lower, mx
+		}
+		return mx, stepNs(mx, 1, false) // max at the ladder floor
+	}
+	if higher := stepNs(mn, 1, false); higher > mn {
+		return mn, higher
+	}
+	return stepNs(mn, -1, false), mn // min at the ladder top
+}
+
+// orderFrac keeps slope thresholds low < high in 5% steps the same way (a
+// High that wrapped to 5% under Low left a slope trigger that never fired).
+// TRLC-LINKS: REQ-SDS-136
+func orderFrac(lo, hi float64, hiEdited bool) (float64, float64) {
+	if lo < hi-1e-9 {
+		return lo, hi
+	}
+	if hiEdited {
+		if hi-0.05 >= 0.05-1e-9 {
+			return hi - 0.05, hi
+		}
+		return hi, hi + 0.05
+	}
+	if lo+0.05 <= 0.95+1e-9 {
+		return lo, lo + 0.05
+	}
+	return lo - 0.05, lo
+}
+
 // stepFrac steps a fraction by 0.05 within [0.05, 0.95]; a press wraps.
 // TRLC-LINKS: REQ-SDS-136
 func stepFrac(cur float64, dir int, wrap bool) float64 {
@@ -40,8 +80,15 @@ func stepFrac(cur float64, dir int, wrap bool) float64 {
 }
 
 // TRLC-LINKS: REQ-SDS-136
+// depthLabel names a record depth in binary units, as the web does
+// (524288 = "512k", not "524k"; bug hunt #2).
 func depthLabel(n int) string {
-	if n >= 1000 {
+	switch {
+	case n >= 1<<20 && n%(1<<20) == 0:
+		return fmt.Sprintf("%dM", n>>20)
+	case n >= 1024 && n%1024 == 0:
+		return fmt.Sprintf("%dk", n>>10)
+	case n >= 1000:
 		return fmt.Sprintf("%dk", n/1000)
 	}
 	return fmt.Sprint(n)
@@ -70,7 +117,7 @@ func mod3(x int) int { return ((x % 3) + 3) % 3 }
 // nextHoldoff steps the trigger-holdoff ladder (Off → 100 µs → 1 ms → 10 ms →
 // 100 ms → 1 s), clamped at the ends.
 // TRLC-LINKS: REQ-SDS-136
-func nextHoldoff(cur float64, dir int) float64 {
+func nextHoldoff(cur float64, dir int, wrap bool) float64 {
 	opts := []float64{0, 100e-6, 1e-3, 10e-3, 100e-3, 1}
 	if dir > 0 {
 		for _, v := range opts {
@@ -78,12 +125,18 @@ func nextHoldoff(cur float64, dir int) float64 {
 				return v
 			}
 		}
+		if wrap { // a press past 1 s goes back to Off (bug hunt #2: it stuck)
+			return opts[0]
+		}
 		return opts[len(opts)-1]
 	}
 	for i := len(opts) - 1; i >= 0; i-- {
 		if opts[i] < cur*(1-1e-6) {
 			return opts[i]
 		}
+	}
+	if wrap {
+		return opts[len(opts)-1]
 	}
 	return opts[0]
 }

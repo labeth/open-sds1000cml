@@ -21,6 +21,7 @@ const (
 	pgDecode   // protocol decode (MAIN ▸ Decode)
 	pgSuperres // super-res stack-and-crunch config (opened by UTILITY while active)
 	pgMask     // mask testing (reached by re-pressing ACQUIRE past REF)
+	pgSave     // setup save/recall slots (SAVE/RECALL key)
 )
 
 // MenuItem is one softkey slot: a label and its current value.
@@ -35,17 +36,20 @@ var (
 	btnF4 = bcode(2, 13)
 	btnF5 = bcode(3, 5)
 
-	btnTrigMenu  = bcode(0, 10)
-	btnAcquire   = bcode(0, 11)
-	btnDisplay   = bcode(1, 3)
-	btnHorizMenu = bcode(1, 12)
-	btnMenuOnOff = bcode(0, 13)
-	btnMeasure   = bcode(1, 4)  // spec 08 §7 — was unwired (dead button)
-	btnCursors   = bcode(0, 12) // spec 08 §7 — was unwired (dead button)
-	btnMath      = bcode(2, 12) // spec 08 §6.4 — was unwired (dead button)
-	btnRef       = bcode(3, 12) // spec 08 §6.4 — was unwired (dead button)
-	btnCh1       = bcode(2, 4)
-	btnCh2       = bcode(3, 4)
+	btnTrigMenu     = bcode(0, 10)
+	btnAcquire      = bcode(0, 11)
+	btnDisplay      = bcode(1, 3)
+	btnHorizMenu    = bcode(1, 12)
+	btnMenuOnOff    = bcode(0, 13)
+	btnMeasure      = bcode(1, 4)  // spec 08 §7 — was unwired (dead button)
+	btnCursors      = bcode(0, 12) // spec 08 §7 — was unwired (dead button)
+	btnMath         = bcode(2, 12) // spec 08 §6.4 — was unwired (dead button)
+	btnDefaultSetup = bcode(2, 10) // spec 08 §6.5 DEFAULT SETUP
+	btnRef          = bcode(3, 12) // spec 08 §6.4 — was unwired (dead button)
+	btnSaveRecall   = bcode(1, 11) // setup save/recall page — was claim-and-ignore (bug hunt 2026-10-11)
+	btnPrint        = bcode(3, 13) // hardcopy to the U-disk — was claim-and-ignore (bug hunt #2)
+	btnCh1          = bcode(2, 4)
+	btnCh2          = bcode(3, 4)
 )
 
 var softkeys = []int{btnF1, btnF2, btnF3, btnF4, btnF5}
@@ -63,6 +67,12 @@ func (c *Controller) menuButton(code int) bool {
 		}
 		c.mu.Unlock()
 		c.openMenu(next)
+		return true
+	case btnSaveRecall:
+		c.openMenu(pgSave)
+		return true
+	case btnPrint:
+		c.printScreen()
 		return true
 	case btnAcquire:
 		// ACQUIRE cycles acquire -> reference -> mask pages, so all three
@@ -200,6 +210,8 @@ func (c *Controller) pageSlots(pg int) int {
 		return 5
 	case pgMask: // Mode / Build / Frames / Tol / Reset
 		return 5
+	case pgSave: // Slot / Save / Recall
+		return 3
 	case pgDecode: // varies by protocol — don't let the highlight land on a blank slot
 		switch c.decProto {
 		case 0: // Off — only the Proto selector
@@ -228,14 +240,16 @@ func (c *Controller) menuCount(st engine.Stats, dir int) {
 
 // menuAdjust is the ADJUST knob acting on the highlighted item (spec 08 §6.3).
 // On the cursor page the knob moves the active cursor rather than cycling a
-// softkey, so positioning feels continuous.
+// softkey, so positioning feels continuous: it moves by the knob's
+// accelerated step count (a fast spin crossed the screen at 1 % an event;
+// bug hunt 2026-10-10). A menu value cycles one item an event.
 // TRLC-LINKS: REQ-SDS-136
-func (c *Controller) menuAdjust(dir int) {
+func (c *Controller) menuAdjust(dir, steps int) {
 	c.mu.Lock()
 	pg, sel, curOn := c.menuPage, c.menuSel, c.curOn
 	c.mu.Unlock()
 	if pg == pgCursor && curOn {
-		c.moveCursor(dir)
+		c.moveCursor(dir * max(1, steps))
 		return
 	}
 	if pg != pgNone {

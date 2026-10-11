@@ -48,6 +48,7 @@ type Analog interface {
 type ViewState struct {
 	ViewMode int
 	Decode   Decode
+	Display  Display
 }
 
 // Panel is the front-panel controller surface (implemented by
@@ -109,6 +110,7 @@ func Collect(eng Engine, fe Analog, pc Panel) Settings {
 		v := pc.SettingsView()
 		s.ViewMode = v.ViewMode
 		s.Decode = v.Decode
+		s.Display = v.Display
 	}
 	return s
 }
@@ -210,7 +212,7 @@ func Apply(s Settings, eng Engine, fe Analog, pc Panel, logf func(string, ...any
 		}
 	}
 	if pc != nil {
-		pc.ApplySettingsView(ViewState{ViewMode: s.ViewMode, Decode: s.Decode})
+		pc.ApplySettingsView(ViewState{ViewMode: s.ViewMode, Decode: s.Decode, Display: s.Display})
 	}
 }
 

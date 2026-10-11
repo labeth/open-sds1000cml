@@ -203,8 +203,27 @@ func DecodeUSBLS(dp []uint8, colTimeS float64, cfg USBLSCfg) Result {
 			prev = 0
 		}
 		var rawBits, rawCell []int
-		for k := 0; k < nCells; k++ {
-			lv := logicAt(S, x0+(float64(k)+0.5)*T)
+		// Re-synchronize the cell grid on edges (as a USB receiver's DPLL does):
+		// an edge within 0.4 bit of a cell boundary re-anchors the grid there.
+		// Free-running from the first edge, a 1 % bit-time error slipped bits
+		// across a packet (bug hunt 2026-10-10: 0F F0 00 F8 read A7 F4 01 FC at
+		// 5.5 samples a bit).
+		// The grid, not a count fixed up front, says where the packet ends: its
+		// last cell starts before the last edge (rounding (x1-x0)/T dropped the
+		// final byte when T read a little long).
+		ax, ak, ei := x0, 0, sg[0]
+		for k := 0; k < nCells+eopCells; k++ {
+			xs := ax + float64(k-ak)*T
+			if xs > x1-0.5*T {
+				break
+			}
+			for ei <= sg[1] && S.edges[ei].x < xs-0.4*T {
+				ei++
+			}
+			if ei <= sg[1] && math.Abs(S.edges[ei].x-xs) <= 0.4*T {
+				ax, ak = S.edges[ei].x, k
+			}
+			lv := logicAt(S, ax+(float64(k-ak)+0.5)*T)
 			if lv < 0 { // ran off the captured region
 				break
 			}
@@ -286,16 +305,26 @@ func DecodeUSBLS(dp []uint8, colTimeS float64, cfg USBLSCfg) Result {
 		spans = append(spans, Span{cellStart(x0, cellOf[8]), cellEnd(x0, cellOf[15]), pidText, pidKind, pid4})
 		toks = append(toks, pidText)
 
-		// Payload bytes (data + CRC) after the PID, LSB-first.
+		// Payload bytes (data + CRC) after the PID, LSB-first. A DATA packet's
+		// last two bytes are its CRC16: a mismatch marks them, so bytes misread
+		// from a degraded capture are never shown as good.
 		nBytes := (len(bitsArr) - 16) / 8
+		payload := make([]int, nBytes)
 		for b := 0; b < nBytes; b++ {
 			base := 16 + b*8
-			val := 0
 			for i := 0; i < 8; i++ {
-				val |= bitsArr[base+i] << i
+				payload[b] |= bitsArr[base+i] << i
 			}
-			spans = append(spans, Span{cellStart(x0, cellOf[base]), cellEnd(x0, cellOf[base+7]), hex2(val), "data", val})
-			toks = append(toks, hex2(val))
+		}
+		crcBad := usbIsData(pid4) && nBytes >= 2 && usbCRC16(payload[:nBytes-2]) != payload[nBytes-2]|payload[nBytes-1]<<8
+		for b, val := range payload {
+			base := 16 + b*8
+			text, kind := hex2(val), "data"
+			if crcBad && b >= nBytes-2 {
+				text, kind = "!"+text, "crc-error"
+			}
+			spans = append(spans, Span{cellStart(x0, cellOf[base]), cellEnd(x0, cellOf[base+7]), text, kind, val})
+			toks = append(toks, text)
 			bytesOut = append(bytesOut, val)
 		}
 		if stuffCell >= 0 {
@@ -313,4 +342,26 @@ func DecodeUSBLS(dp []uint8, colTimeS float64, cfg USBLSCfg) Result {
 	}
 	return Result{OK: true, Proto: "usbls", Spans: spans, Text: strings.Join(toks, " "),
 		Bytes: bytesOut, Baud: baud, SPB: T, Thr: S.threshold}
+}
+
+// usbIsData reports a DATA0/DATA1/DATA2/MDATA PID, whose payload ends in a CRC16.
+// TRLC-LINKS: REQ-SDS-018
+func usbIsData(pid4 int) bool { return pid4&3 == 3 }
+
+// usbCRC16 is the USB data CRC: polynomial 0x8005 reflected (0xA001), initial
+// all ones, inverted; sent low byte first.
+// TRLC-LINKS: REQ-SDS-018
+func usbCRC16(data []int) int {
+	c := 0xFFFF
+	for _, b := range data {
+		c ^= b & 0xFF
+		for i := 0; i < 8; i++ {
+			if c&1 != 0 {
+				c = c>>1 ^ 0xA001
+			} else {
+				c >>= 1
+			}
+		}
+	}
+	return c ^ 0xFFFF
 }

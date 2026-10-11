@@ -104,3 +104,48 @@ func (c *Controller) adoptQual(st engine.Stats) {
 	c.pulseLvl, c.pulseMin, c.pulseMax, c.pulseCond = q.PulseLvl, q.PulseMinNs, q.PulseMaxNs, q.PulseCond
 	c.slopeLo, c.slopeHi, c.slopeMin, c.slopeMax, c.slopeCond = q.SlopeLo, q.SlopeHi, q.SlopeMinNs, q.SlopeMaxNs, q.SlopeCond
 }
+
+// CursorsOn reports whether the manual cursors are shown (SCPI CRMS?).
+// TRLC-LINKS: REQ-SDS-136
+func (c *Controller) CursorsOn() bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.curOn
+}
+
+// SetCursorsOn shows or hides the manual cursors (SCPI CRMS MANUAL/OFF).
+// TRLC-LINKS: REQ-SDS-136
+func (c *Controller) SetCursorsOn(on bool) {
+	c.mu.Lock()
+	c.curOn = on
+	c.mu.Unlock()
+	c.pushLEDs()
+}
+
+// MeasOn reports whether the measurement panel is shown.
+// TRLC-LINKS: REQ-SDS-136
+func (c *Controller) MeasOn() bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.showMeas
+}
+
+// SetMeasOn shows or hides the measurement panel (SCPI PACU adds a
+// measurement to the display).
+// TRLC-LINKS: REQ-SDS-136
+func (c *Controller) SetMeasOn(on bool) {
+	c.mu.Lock()
+	c.showMeas = on
+	c.mu.Unlock()
+	c.pushLEDs()
+}
+
+// CursorState reports the manual cursors for SCPI CRVA?: on, the type
+// (0 time / 1 volts) and both cursors' screen fractions (x left->right,
+// y top->bottom).
+// TRLC-LINKS: REQ-SDS-136
+func (c *Controller) CursorState() (on bool, typ int, x, y [2]float64) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.curOn, c.curType, c.curX, c.curY
+}

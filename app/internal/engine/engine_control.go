@@ -22,7 +22,7 @@ func (e *Engine) SetTrigType(t int) {
 func (e *Engine) SetPulseParams(lvlFrac, wMinNs, wMaxNs float64, cond int) {
 	e.mu.Lock()
 	e.tp.pulseLvlFrac = clampFrac(lvlFrac)
-	e.tp.pulseWMinNs, e.tp.pulseWMaxNs = wMinNs, wMaxNs
+	e.tp.pulseWMinNs, e.tp.pulseWMaxNs = orderPair(wMinNs, wMaxNs)
 	e.tp.pulseCond = cond & 3
 	e.stats.TrigQual = qualOf(e.tp)
 	e.mu.Unlock()
@@ -31,9 +31,8 @@ func (e *Engine) SetPulseParams(lvlFrac, wMinNs, wMaxNs float64, cond int) {
 // TRLC-LINKS: REQ-SDS-011
 func (e *Engine) SetSlopeParams(loFrac, hiFrac, tMinNs, tMaxNs float64, cond int) {
 	e.mu.Lock()
-	e.tp.slopeLoFrac = clampFrac(loFrac)
-	e.tp.slopeHiFrac = clampFrac(hiFrac)
-	e.tp.slopeTMinNs, e.tp.slopeTMaxNs = tMinNs, tMaxNs
+	e.tp.slopeLoFrac, e.tp.slopeHiFrac = orderPair(clampFrac(loFrac), clampFrac(hiFrac))
+	e.tp.slopeTMinNs, e.tp.slopeTMaxNs = orderPair(tMinNs, tMaxNs)
 	e.tp.slopeCond = cond & 3
 	e.stats.TrigQual = qualOf(e.tp)
 	e.mu.Unlock()
@@ -51,6 +50,18 @@ func (e *Engine) SetVideoParams(std, line int, neg bool) {
 	e.tp.videoStd, e.tp.videoLine, e.tp.videoNeg = std, line, neg
 	e.stats.TrigQual = qualOf(e.tp)
 	e.mu.Unlock()
+}
+
+// orderPair reads a qualifier's two limits as a range whichever way round
+// they came: an inverted pair (W max under W min, slope High under Low, from
+// the web or SCPI) never triggered (bug hunt #2). A zero limit is "unset"
+// (e.g. T max under "<min") and is left where it is.
+// TRLC-LINKS: REQ-SDS-011
+func orderPair(lo, hi float64) (float64, float64) {
+	if lo > hi && hi > 0 {
+		return hi, lo
+	}
+	return lo, hi
 }
 
 // TRLC-LINKS: REQ-SDS-011
@@ -107,6 +118,9 @@ func (e *Engine) SetRunning(on bool) {
 	e.singleArmed.Store(false) // an explicit RUN or STOP both cancel a pending single-shot
 	if on {
 		e.maskStopped.Store(false) // resuming releases the stop-on-fail latch
+		if m := e.singleRestore.Swap(0); m != 0 {
+			e.setNorm(m == 2) // back to the trigger mode SINGLE replaced
+		}
 	}
 	e.mu.Lock()
 	e.stats.Running = on
@@ -120,7 +134,17 @@ func (e *Engine) SetRunning(on bool) {
 // gives — unlike plain NORM, which keeps re-publishing triggered frames.
 // TRLC-LINKS: REQ-SDS-011
 func (e *Engine) SetSingle() {
-	e.SetNorm(true)
+	// A single shot waits for a real trigger (NORM); the mode it replaced comes
+	// back on the next RUN, unless the user picks one meanwhile.
+	e.mu.Lock()
+	prev := e.norm
+	e.mu.Unlock()
+	if prev {
+		e.singleRestore.CompareAndSwap(0, 2)
+	} else {
+		e.singleRestore.CompareAndSwap(0, 1)
+	}
+	e.setNorm(true)
 	e.running.Store(true)
 	e.singleGen.Add(1)
 	e.singleArmed.Store(true)
@@ -287,6 +311,13 @@ func (e *Engine) trigDispLevel(srcCh int) int {
 
 // TRLC-LINKS: REQ-SDS-011
 func (e *Engine) SetNorm(on bool) {
+	e.singleRestore.Store(0) // the user's own choice: nothing to restore after a SINGLE
+	e.setNorm(on)
+}
+
+// setNorm applies the trigger mode.
+// TRLC-LINKS: REQ-SDS-009
+func (e *Engine) setNorm(on bool) {
 	e.mu.Lock()
 	e.norm = on
 	e.stats.Norm = on
@@ -342,6 +373,12 @@ func (e *Engine) MemDepth() int { return int(e.memDepth.Load()) }
 // the applied value (clamped to [0, 1000] ms).
 // TRLC-LINKS: REQ-SDS-008
 func (e *Engine) SetFramePeriod(ms int) int {
+	if e.sram != nil {
+		// The SRAM images publish each capture as it completes, with no pacing
+		// floor: report that rather than echo a request that changes nothing
+		// (bug hunt 2026-10-10: 1000 ms read back as applied at 23 fps).
+		return 0
+	}
 	if ms < 0 {
 		ms = 0
 	}

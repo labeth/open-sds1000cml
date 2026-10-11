@@ -4,6 +4,7 @@ package panel
 import (
 	"context"
 	"fmt"
+	"math"
 
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/sramcapture"
@@ -120,6 +121,18 @@ func (c *Controller) srFPGARun() {
 	c.srActive, c.srFPGABusy, c.srFocus = true, true, 0
 	c.srStatus = fmt.Sprintf("FPGA: stacking %d records...", records)
 	c.mu.Unlock()
+	req.Progress = func(done, total int) { // a session runs for seconds: show it moving
+		c.mu.Lock()
+		if generation == c.srFPGAGen && c.srFPGABusy {
+			c.srStatus = fmt.Sprintf("FPGA: record %d/%d...", done, total)
+		}
+		c.mu.Unlock()
+	}
+	// The review's timebase is the one the session ran at (read here, on the
+	// panel goroutine, not under c.mu in the result).
+	// The engine's, not the knob index: the web sets the timebase too.
+	snap := c.eng.Snapshot()
+	tdiv, posFrac := snap.TdivS, snap.TrigPosFrac
 	go func() {
 		defer cancel()
 		res, err := fs.FPGAStack(ctx, req)
@@ -136,7 +149,9 @@ func (c *Controller) srFPGARun() {
 		}
 		mean, mean2 := res.Result.Mean, res.Result.Mean2
 		c.srStack, c.srMean, c.srMean2 = res.Stack, mean, mean2
-		c.srWinLo, c.srWinHi, c.srPeriod = 0, res.Stack.N, 0
+		gate, screen := fpgaReviewSpan(res.Stack.N, int(req.Stack.PreSamples), tdiv, res.SampleS, posFrac)
+		res.Stack.GateLo, res.Stack.GateHi = gate, gate+res.Stack.N
+		c.srWinLo, c.srWinHi, c.srPeriod = 0, screen, 0
 		c.srBits, c.srFrames, c.srRejected, c.srFocus = res.Result.BitsGained, int(res.Hits), 0, 3
 		reduction := 0.0
 		if res.BusReads > 0 {
@@ -147,4 +162,22 @@ func (c *Controller) srFPGARun() {
 			c.srStatus += fmt.Sprintf(" rej %d", res.Rejected)
 		}
 	}()
+}
+
+// fpgaReviewSpan places an FPGA stack of n samples for review: one screen of
+// samples at the session's timebase, with the stack's edge (pre samples into
+// it) at the trigger position; it returns the stack's gate start within that
+// screen. Drawing just the stack's few samples across the screen under the
+// "M 100ns" label read an 18 ns clock edge as 240 ns (bug hunt 2026-10-10);
+// off the stack the review is blank.
+// TRLC-LINKS: REQ-SDS-141, REQ-SDS-021
+func fpgaReviewSpan(n, pre int, tdiv, sampleS, posFrac float64) (gateLo, screen int) {
+	if !(sampleS > 0) || !(tdiv > 0) {
+		return 0, max(n, 1)
+	}
+	if !(posFrac >= 0 && posFrac <= 1) {
+		posFrac = .5
+	}
+	screen = max(2, int(math.Round(10*tdiv/sampleS)))
+	return int(math.Round(posFrac*float64(screen))) - pre, screen
 }

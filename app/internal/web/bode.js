@@ -5,6 +5,15 @@
 // both against a LOG frequency axis with decade gridlines. Pure rendering; the
 // points come from /api/bode. Shared helpers are exported for node tests.
 
+// bodeGridStep: the smallest round step splitting [lo,hi] into at most five
+// intervals (the largest when none does). Mirrors render_bode.go gridStep.
+// TRLC-LINKS: REQ-SDS-125
+function bodeGridStep(lo, hi, steps) {
+  for (const s of steps) if ((hi - lo) / s <= 5 + 1e-9) return s;
+  const span = hi - lo, big = steps[steps.length - 1];
+  return (span > 0 && isFinite(span) && span / big > 10) ? span / 4 : big; // no round step fits: quarters
+}
+
 // bodeNiceRange returns [lo, hi] padded to round numbers that bracket the data.
 // TRLC-LINKS: REQ-SDS-125
 function bodeNiceRange(vals, fallbackLo, fallbackHi, step) {
@@ -90,14 +99,17 @@ function bodeDraw(g, w, h, pts, colors) {
 
   // magnitude horizontal gridlines + labels (dB)
   g.textAlign = "right";
-  for (let db = gLo; db <= gHi + 1e-6; db += (gHi - gLo) / 4) {
+  // Multiples of a round step, not quarters of the range ("-11°", "-124°").
+  const gStep = bodeGridStep(gLo, gHi, [1, 2, 5, 10, 20, 50]);
+  for (let k = 0, db = Math.ceil(gLo / gStep) * gStep; k <= 10 && db <= gHi + 1e-6; k++, db += gStep) {
     const y = magYOf(db);
     g.strokeStyle = Math.abs(db) < 1e-6 ? cAxis : cGrid;
     g.beginPath(); g.moveTo(plotL, y); g.lineTo(plotR, y); g.stroke();
     g.fillStyle = cText; g.fillText(db.toFixed(0), plotL - 4, y);
   }
   // phase horizontal gridlines + labels (deg)
-  for (let d = pLo; d <= pHi + 1e-6; d += (pHi - pLo) / 4) {
+  const pStep = bodeGridStep(pLo, pHi, [15, 30, 45, 90, 180]);
+  for (let k = 0, d = Math.ceil(pLo / pStep) * pStep; k <= 10 && d <= pHi + 1e-6; k++, d += pStep) {
     const y = phYOf(d);
     g.strokeStyle = Math.abs(d) < 1e-6 ? cAxis : cGrid;
     g.beginPath(); g.moveTo(plotL, y); g.lineTo(plotR, y); g.stroke();
@@ -124,5 +136,5 @@ function bodeDraw(g, w, h, pts, colors) {
 }
 
 if (typeof module !== "undefined" && module.exports) {
-  module.exports = { bodeNiceRange, bodeLogTicks, bodeFmtHz, bodeDraw };
+  module.exports = { bodeNiceRange, bodeGridStep, bodeLogTicks, bodeFmtHz, bodeDraw };
 }

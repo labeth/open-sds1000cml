@@ -15,11 +15,16 @@ func (c *Controller) SettingsView() settings.ViewState {
 	defer c.mu.Unlock()
 	return settings.ViewState{
 		ViewMode: c.viewMode,
+		// Math, measurements, persistence and channel visibility survived no
+		// restart (bug hunt 2026-10-10).
+		Display: settings.Display{MathMode: c.mathMode, ShowMeas: c.showMeas, Persist: c.persist,
+			Hidden: [2]bool{!c.chDisp[0], !c.chDisp[1]}},
 		Decode: settings.Decode{
 			Proto: c.decProto, Baud: c.decBaud,
 			ChA: c.decChA, ChB: c.decChB,
 			CPOL: c.decCPOL, CPHA: c.decCPHA,
-			Format: c.decFormat,
+			Format:     c.decFormat,
+			StreamTrig: c.decTrig, StreamValue: c.decValue,
 		},
 	}
 }
@@ -57,10 +62,15 @@ func (c *Controller) ApplySettingsView(v settings.ViewState) {
 
 	c.mu.Lock()
 	c.viewMode = view
+	c.mathMode = mod5(v.Display.MathMode)
+	c.showMeas, c.persist = v.Display.ShowMeas, v.Display.Persist
+	c.chDisp = [2]bool{!v.Display.Hidden[0], !v.Display.Hidden[1]}
 	c.decProto, c.decBaud = d.Proto, d.Baud
 	c.decChA, c.decChB = d.ChA, d.ChB
 	c.decCPOL, c.decCPHA = d.CPOL, d.CPHA
 	c.decFormat = d.Format
+	c.decTrig = mod3(d.StreamTrig)
+	c.decValue = (d.StreamValue%0x10000 + 0x10000) % 0x10000
 	c.mu.Unlock()
 	c.syncDecodeView(d.Proto != 0)
 }

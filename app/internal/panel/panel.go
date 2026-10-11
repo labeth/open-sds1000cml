@@ -214,7 +214,12 @@ type Controller struct {
 	// autoset runs as a background sweep; autosetStop cancels it (second AUTO).
 	autosetBusy bool
 	autosetStop chan struct{}
-	autosetMsg  string     // banner text while busy ("AUTOSET…" / a result note)
+	autosetMsg  string // banner text while busy ("AUTOSET…" / a result note)
+	// PRINT key: hardcopy saves a screenshot and names the file; notice is
+	// its brief on-screen result until noticeUntil.
+	hardcopy    func() (string, error)
+	notice      string
+	noticeUntil time.Time
 	refs        [2]refWave // saved reference waveforms (REF A/B)
 
 	// Super-res (device stack-and-crunch, reference-locked — SINGLE a frame, then
@@ -244,16 +249,19 @@ type Controller struct {
 	// Mask testing (device flow, docs/zonemask-plan.md §3): build a golden
 	// envelope from N live frames on the trigger-source channel, dilate by the
 	// selected tolerance preset, install in the engine. All guarded by mu.
-	maskN        int    // frames per build
-	maskTol      int    // index into maskTols presets
-	maskBuilding bool   // a build goroutine is running
-	maskMsg      string // build/status line for the LCD HUD
-	srFrames     int    // stacked frame count (guarded by mu — srStack.Frames races)
-	srRejected   int    // rejected (non-matching) frame count (guarded by mu)
-	srResetReq   bool   // Reset softkey → srLoop clears the accumulation next tick
-	srWinLo      int    // the selected span (frozen on-screen window / manual gate):
-	srWinHi      int    // the review renders exactly this span, so the view is unchanged
-	srPeriod     int    // detected period within the span (samples); >0 → the stack is
+	maskN        int         // frames per build
+	setups       SetupMemory // SAVE/RECALL slots (nil = unavailable)
+	saveSlot     int         // SAVE/RCL page slot 1..setupSlots
+	saveMsg      string      // last save/recall outcome
+	maskTol      int         // index into maskTols presets
+	maskBuilding bool        // a build goroutine is running
+	maskMsg      string      // build/status line for the LCD HUD
+	srFrames     int         // stacked frame count (guarded by mu — srStack.Frames races)
+	srRejected   int         // rejected (non-matching) frame count (guarded by mu)
+	srResetReq   bool        // Reset softkey → srLoop clears the accumulation next tick
+	srWinLo      int         // the selected span (frozen on-screen window / manual gate):
+	srWinHi      int         // the review renders exactly this span, so the view is unchanged
+	srPeriod     int         // detected period within the span (samples); >0 → the stack is
 	// ONE period and the review TILES it across the span (fast multi-wave cheat)
 
 	// Trigger-qualifier shadows (the engine has no getters for these), edited on
@@ -290,7 +298,7 @@ func New(eng Engine, fe Analog, keyFD int, tdivs []float64, startTdiv float64, l
 		srK: 32, srStopMode: 0, srStopVal: 4, srCh: 0,
 		// Mask defaults: 32 build frames, tolerance preset ±5 samp / ±8 codes
 		// (covers trigger-point jitter + 3σ noise — docs/zonemask-plan.md §1.4).
-		maskN: 32, maskTol: 1,
+		maskN: 32, maskTol: 1, saveSlot: 1,
 		// Seed the qualifier shadows to the engine's defaultTrigParams so the
 		// pgTrigQ page agrees with the engine from boot (slope 0.2/0.8, neg sync).
 		pulseLvl: 0.5, pulseMin: 100, pulseMax: 1000,

@@ -120,8 +120,18 @@ function decodeUSBLS(dp, colTimeS, cfg) {
     let prev = logicAt(S, idleX);
     if (prev < 0) prev = 0;
     const rawBits = [], rawCell = [];
-    for (let k = 0; k < nCells; k++) {
-      const lv = logicAt(S, x0 + (k + 0.5) * T);
+    // Re-synchronize the cell grid on edges (a USB receiver's DPLL): an edge
+    // within 0.4 bit of a cell boundary re-anchors the grid (bug hunt
+    // 2026-10-10: free-running, a 1 % bit-time error slipped bits).
+    // The grid, not a count fixed up front, says where the packet ends (its
+    // last cell starts before the last edge).
+    let ax = x0, ak = 0, ei = sg[0];
+    for (let k = 0; k < nCells + eopCells; k++) {
+      const xs = ax + (k - ak) * T;
+      if (xs > x1 - 0.5 * T) break;
+      while (ei <= sg[1] && S.edges[ei].x < xs - 0.4 * T) ei++;
+      if (ei <= sg[1] && Math.abs(S.edges[ei].x - xs) <= 0.4 * T) { ax = S.edges[ei].x; ak = k; }
+      const lv = logicAt(S, ax + (k - ak + 0.5) * T);
       if (lv < 0) break;                       // ran off the captured region
       const b = (lv !== prev) ? 0 : 1;
       prev = lv;
@@ -166,14 +176,23 @@ function decodeUSBLS(dp, colTimeS, cfg) {
     spans.push({ i0: cellStart(x0, cellOf[8]), i1: cellEnd(x0, cellOf[15]), text: pidText, kind: pidKind, val: pid4 });
     toks.push(pidText);
 
-    // Payload bytes (data + CRC) after the PID, LSB-first.
+    // Payload bytes (data + CRC) after the PID, LSB-first. A DATA packet's
+    // last two bytes are its CRC16: a mismatch marks them as errors.
     const nBytes = (bitsArr.length - 16) >> 3;
+    const payload = [];
     for (let b = 0; b < nBytes; b++) {
       const base = 16 + b * 8;
       let val = 0;
       for (let i = 0; i < 8; i++) val |= bitsArr[base + i] << i;
-      spans.push({ i0: cellStart(x0, cellOf[base]), i1: cellEnd(x0, cellOf[base + 7]), text: hex2(val), kind: "data", val });
-      toks.push(hex2(val)); bytes.push(val);
+      payload.push(val);
+    }
+    const crcBad = (pid4 & 3) === 3 && nBytes >= 2 && usbCRC16(payload.slice(0, nBytes - 2)) !== (payload[nBytes - 2] | payload[nBytes - 1] << 8);
+    for (let b = 0; b < nBytes; b++) {
+      const base = 16 + b * 8, val = payload[b];
+      const bad = crcBad && b >= nBytes - 2;
+      const text = bad ? "!" + hex2(val) : hex2(val);
+      spans.push({ i0: cellStart(x0, cellOf[base]), i1: cellEnd(x0, cellOf[base + 7]), text, kind: bad ? "crc-error" : "data", val });
+      toks.push(text); bytes.push(val);
     }
     if (stuffCell >= 0) { spans.push({ i0: cellStart(x0, stuffCell), i1: cellEnd(x0, stuffCell), text: "STUFF!", kind: "frame-error", val: 0 }); toks.push("STUFF!"); }
   }
@@ -183,6 +202,18 @@ function decodeUSBLS(dp, colTimeS, cfg) {
   if (colTimeS > 0) baud = Math.round(1 / (T * colTimeS));
   return { ok: true, error: null, proto: "usbls", spans, text: toks.join(" "), bytes,
     meta: { bitrate: baud, samplesPerBit: T, threshold: S.threshold, lowRail: S.lowRail, highRail: S.highRail } };
+}
+
+// usbCRC16 is the USB data CRC: 0x8005 reflected (0xA001), init all ones,
+// inverted; sent low byte first.
+// TRLC-LINKS: REQ-SDS-018
+function usbCRC16(data) {
+  let c = 0xFFFF;
+  for (const b of data) {
+    c ^= b & 0xFF;
+    for (let i = 0; i < 8; i++) c = (c & 1) ? ((c >>> 1) ^ 0xA001) : (c >>> 1);
+  }
+  return c ^ 0xFFFF;
 }
 
 if (typeof module !== "undefined" && module.exports)

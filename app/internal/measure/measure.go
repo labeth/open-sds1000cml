@@ -45,6 +45,30 @@ type Result struct {
 	EnvTiming bool `json:"env_timing"`
 }
 
+// Inverted is the result for the channel displayed inverted (SCPI Cn:INVS):
+// levels negate (max and min, top and base swap), rising and falling edges
+// and positive and negative widths swap, duty becomes its complement; Vpp,
+// amplitude, RMS, frequency and period hold. A new value: callers cache r.
+// Without it an inverted trace read Vmax +3.3 V while it ran 0 to -3.3 V
+// (bug hunt 2026-10-10).
+// TRLC-LINKS: REQ-SDS-021
+func (r *Result) Inverted() *Result {
+	if r == nil {
+		return nil
+	}
+	c := *r
+	c.Vmax, c.Vmin = -r.Vmin, -r.Vmax
+	c.Vmean = -r.Vmean
+	c.Vtop, c.Vbase = -r.Vbase, -r.Vtop
+	c.Overshoot, c.Preshoot = r.Preshoot, r.Overshoot
+	c.RiseS, c.FallS = r.FallS, r.RiseS
+	c.PosWidthS, c.NegWidthS = r.NegWidthS, r.PosWidthS
+	if r.HasTiming && r.Duty != 0 {
+		c.Duty = 100 - r.Duty
+	}
+	return &c
+}
+
 // DropTiming removes the timing results: a peak-detect envelope holds each
 // bucket's extremes, not samples in time order, so periods, widths and edges
 // measured on it are artefacts. Amplitude extremes stay valid.

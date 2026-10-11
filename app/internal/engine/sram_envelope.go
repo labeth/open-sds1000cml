@@ -89,6 +89,25 @@ func orderEnvelope(c []uint8, q []uint16) {
 	}
 }
 
+// orderEnvelopeHead orders a record's first (min, max) pair, which has no
+// earlier sample to continue from, so it leads into the next pair: left as
+// (min, max), a falling edge in the first bucket read low, high, low - a
+// one-sample pulse at the record's start that VIDEO took for a sync pulse
+// (bug hunt 2026-10-10). Call it before orderEnvelope on a fresh record.
+// TRLC-LINKS: REQ-SDS-010
+func orderEnvelopeHead(c []uint8, q []uint16) {
+	if len(c) < 4 {
+		return
+	}
+	m := (int(c[2]) + int(c[3])) / 2
+	if abs(int(c[0])-m) < abs(int(c[1])-m) {
+		c[0], c[1] = c[1], c[0]
+		if len(q) == len(c) {
+			q[0], q[1] = q[1], q[0]
+		}
+	}
+}
+
 func abs(v int) int {
 	if v < 0 {
 		return -v

@@ -287,6 +287,10 @@ async function runAutodetect() {
   if (d.cfg.cpol != null) dcfg.cpol = d.cfg.cpol;
   if (d.cfg.cpha != null) dcfg.cpha = d.cfg.cpha;
   if (d.cfg.msb != null) dcfg.msb = d.cfg.msb;
+  // SENT reads tick and nibble count from its own inputs: set them to what the
+  // detector decoded with, or the display decodes with the old ones ("detected
+  // SENT · 28 bytes" over "(no decode)"; bug hunt #2).
+  if (d.cfg.sentNibbles) { $("decSentTick").value = d.cfg.sentTickNs; $("decSentNibbles").value = d.cfg.sentNibbles; }
   dcfg.auto = true;                                    // let the threshold auto-track
   syncDecodeControls();
   updateDecodePanel();

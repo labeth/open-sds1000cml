@@ -49,9 +49,46 @@ func (h *Handler) execGlobal(head, arg string) []byte {
 			h.disp.SetViewXY(false)
 			h.disp.SetPersist(false)
 		}
+		// The rest of the default setup (V/div, offset, trigger, acquire mode,
+		// math, cursors, zoom...) is the panel's DEFAULT SETUP, run on the
+		// panel's own goroutine (bug hunt 2026-10-10: *RST left them as they were).
+		// It runs to completion before the next command: queued, it landed
+		// after them ("*RST;TDIV 2US" ended at 500 us; bug hunt #2). The
+		// panel may read display state through Inverted(), so wait unlocked.
+		if p, ok := h.disp.(interface {
+			InjectButtonWait(string, time.Duration) bool
+		}); ok {
+			h.mu.Unlock()
+			p.InjectButtonWait("defaultsetup", 5*time.Second)
+			h.mu.Lock()
+		}
+		h.pendTdiv = 500e-6
 		return nil
-	case "*CLS", "*OPC", "*WAI", "*SAV", "*RCL", "*ESE", "*SRE":
-		return nil // accepted, silent (status/setup-memory stubs)
+	case "*SAV", "*RCL":
+		// Setup memory: silently accepted before, so *RCL restored nothing
+		// while a controller believed it had (bug hunt 2026-10-10).
+		n, err := strconv.Atoi(strings.TrimSpace(arg))
+		if err != nil {
+			return errTok(errHeader)
+		}
+		if n < 1 || n > setupSlots || h.setups == nil {
+			return errTok(errOutOfRange)
+		}
+		if head == "*SAV" {
+			err = h.setups.SaveSetup(n)
+		} else {
+			err = h.setups.RecallSetup(n)
+		}
+		if err != nil {
+			h.logf("scpi: %s %d: %v", head, n, err)
+			return errTok(errOutOfRange)
+		}
+		return nil
+	case "*WAI":
+		h.settle()
+		return nil
+	case "*CLS", "*OPC", "*ESE", "*SRE":
+		return nil // accepted, silent (status stubs)
 	case "BUZZ":
 		// No buzzer driver exists in this firmware: OFF is the fixed truth,
 		// BUZZ ON must error rather than silently succeed (the BWL rule).
@@ -138,6 +175,7 @@ func (h *Handler) execGlobal(head, arg string) []byte {
 		}
 		return h.reply("PESU", v)
 	case "*OPC?":
+		h.settle() // operations complete: a timebase change has been applied
 		return []byte("1\n")
 	case "*STB?", "*ESR?", "INR?", "CMR?":
 		return h.reply(strings.TrimSuffix(head, "?"), "0")
@@ -160,12 +198,14 @@ func (h *Handler) execGlobal(head, arg string) []byte {
 		if err != nil {
 			return errTok(errHeader)
 		}
-		if _, ok := h.sc.SetTdiv(v); !ok {
+		b, ok := h.sc.SetTdiv(v)
+		if !ok {
 			return errTok(errOutOfRange)
 		}
+		h.pendTdiv = b.TdivS
 		return nil
 	case "TDIV?":
-		return h.reply("TDIV", sciS(st.TdivS))
+		return h.reply("TDIV", sciS(h.tdivNow(st)))
 	case "TRDL":
 		// TRDL is the trigger's offset from the screen centre: the guide's
 		// time formula t = -TRDL - 5·TDIV + i/SARA puts a positive delay's
@@ -444,8 +484,92 @@ func (h *Handler) execGlobal(head, arg string) []byte {
 			v = "ON"
 		}
 		return h.reply("XYDS", v)
-	case "PACU", "CRMS", "CRST", "PNSU", "STPN", "RCPN", "HCSU":
-		return nil // accepted stubs (measure/cursor/panel-memory: no query form to contradict)
+	case "STPN", "RCPN":
+		// Store/recall the setup as a named file on the U-disk:
+		// DISK,UDSK,FILE,'NAME.SET'. Silently accepted before, saving and
+		// restoring nothing (bug hunt 2026-10-11).
+		files, ok := h.setups.(SetupFiles)
+		if !ok {
+			return errTok(errOutOfRange)
+		}
+		name, bad := setupFileName(arg)
+		if bad != "" {
+			return errTok(bad)
+		}
+		var err error
+		if head == "STPN" {
+			err = files.SaveSetupFile(name)
+		} else {
+			err = files.RecallSetupFile(name)
+		}
+		if err != nil {
+			h.logf("scpi: %s %s: %v", head, name, err)
+			return errTok(errOutOfRange)
+		}
+		return nil
+	case "CRMS":
+		// Cursor mode: OFF / MANUAL are the panel's cursors; the tracking
+		// modes do not exist here. Silently accepted before.
+		cm, ok := h.disp.(cursorMeasure)
+		switch {
+		case !ok:
+			return errTok(errOutOfRange)
+		case arg == "OFF":
+			cm.SetCursorsOn(false)
+		case arg == "MANUAL":
+			cm.SetCursorsOn(true)
+		case arg == "TRACK" || arg == "HREL" || arg == "VREL":
+			return errTok(errOutOfRange)
+		default:
+			return errTok(errHeader)
+		}
+		return nil
+	case "CRMS?":
+		v := "OFF"
+		if cm, ok := h.disp.(cursorMeasure); ok && cm.CursorsOn() {
+			v = "MANUAL"
+		}
+		return h.reply("CRMS", v)
+	case "PACU":
+		// PACU <param>,<source> puts a measurement on the display: the
+		// measurement panel shows every parameter of the channels.
+		f := strings.Split(arg, ",")
+		cm, ok := h.disp.(cursorMeasure)
+		if len(f) != 2 {
+			return errTok(errHeader)
+		}
+		if _, known := pavaParam[strings.TrimSpace(f[0])]; !known {
+			return errTok(errOutOfRange)
+		}
+		if src := strings.TrimSpace(f[1]); src != "C1" && src != "C2" {
+			return errTok(errSuffix)
+		}
+		if !ok {
+			return errTok(errOutOfRange)
+		}
+		cm.SetMeasOn(true)
+		return nil
+	case "CRST", "PNSU":
+		// Cursor positions in vendor divisions and the binary panel-setup
+		// block have no equivalent here: refuse rather than silently accept
+		// (bug hunt 2026-10-11).
+		return errTok(errOutOfRange)
+	case "HCSU":
+		// Hardcopy setup: SCDP always returns the BMP screen. Accept that and
+		// refuse anything else; it took any argument silently and had no query
+		// (bug hunt #2, the BUZZ/GRDS rule).
+		parts := strings.Split(strings.ReplaceAll(arg, " ", ""), ",")
+		if len(parts)%2 != 0 || arg == "" {
+			return errTok(errHeader)
+		}
+		for i := 0; i < len(parts); i += 2 {
+			if parts[i] != "DEV" || parts[i+1] != "BMP" {
+				return errTok(errOutOfRange)
+			}
+		}
+		return nil
+	case "HCSU?":
+		return h.reply("HCSU", "DEV,BMP")
 	case "SRLN?":
 		return h.reply("SRLN", "Default")
 	}
@@ -680,6 +804,8 @@ func (h *Handler) execChannel(ch int, head, arg string) []byte {
 		return h.reply(fmt.Sprintf("C%d:INVS", ch+1), v)
 	case "WF?":
 		return h.waveform(ch, arg)
+	case "CRVA?":
+		return h.crva(ch, arg)
 	case "PAVA?":
 		return h.pava(ch, arg)
 	}
@@ -758,4 +884,28 @@ func (h *Handler) setWFSU(arg string) []byte {
 		}
 	}
 	return nil
+}
+
+// setupFileName takes STPN/RCPN's DISK,UDSK,FILE,'NAME.SET' and returns a
+// safe file name (base name only, letters/digits/._-, .SET), or the error
+// token.
+// TRLC-LINKS: REQ-SDS-024
+func setupFileName(arg string) (string, string) {
+	f := strings.SplitN(arg, ",", 4)
+	if len(f) != 4 || strings.TrimSpace(f[0]) != "DISK" || strings.TrimSpace(f[1]) != "UDSK" || strings.TrimSpace(f[2]) != "FILE" {
+		return "", errHeader
+	}
+	name := strings.Trim(strings.TrimSpace(f[3]), "'\"")
+	if i := strings.LastIndexAny(name, "/\\"); i >= 0 {
+		name = name[i+1:]
+	}
+	if len(name) < 5 || len(name) > 64 || !strings.HasSuffix(strings.ToUpper(name), ".SET") {
+		return "", errOutOfRange
+	}
+	for _, r := range name {
+		if !(r >= 'A' && r <= 'Z' || r >= 'a' && r <= 'z' || r >= '0' && r <= '9' || r == '_' || r == '-' || r == '.') {
+			return "", errOutOfRange
+		}
+	}
+	return name, ""
 }

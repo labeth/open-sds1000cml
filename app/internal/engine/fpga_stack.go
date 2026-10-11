@@ -38,6 +38,9 @@ type FPGAStackRequest struct {
 	Stack       sramcapture.StackConfig `json:"stack"`
 	Records     int                     `json:"records"`
 	RecordWords uint32                  `json:"record_words,omitempty"`
+	// Progress, when set, hears each finished record (on the engine's owner
+	// loop: it must not block).
+	Progress func(done, total int) `json:"-"`
 }
 
 // FPGAStackResult reports the stack and the bus traffic it needed. RawWords
@@ -209,6 +212,7 @@ func (e *Engine) runFPGAStack(ctx context.Context, cfg sramcapture.Config, req F
 	// Every tile must see the same frozen records and hit parity. Retain each
 	// tile's moments on the ARM while another tile occupies the FPGA RAM.
 	moments := make([]superres.FPGAStackMoments, 2*req.Stack.Bins)
+	scratch := make([]superres.FPGAStackMoments, 2*tile)
 	stackStart, beats := time.Now(), e.sram.Beats()
 	var m sramcapture.Metadata
 	for r := 0; r < req.Records; r++ {
@@ -221,15 +225,12 @@ func (e *Engine) runFPGAStack(ctx context.Context, cfg sramcapture.Config, req F
 		for first := 0; first < req.Stack.Bins; first += tile {
 			n := min(tile, req.Stack.Bins-first)
 			state := moments[2*first : 2*(first+n)]
+			// Every scan starts from a zeroed tile and its moments are added on
+			// the ARM: uploading the running state before each scan cost one bus
+			// round trip a word, half the session (bug hunt 2026-10-10: 20
+			// records took minutes with the display frozen).
 			if err = e.sram.StackResetTile(ctx); err != nil {
 				return res, err
-			}
-			if r > 0 {
-				t0 = time.Now()
-				if err = e.sram.StackUpload(ctx, state); err != nil {
-					return res, err
-				}
-				res.UploadS += time.Since(t0).Seconds()
 			}
 			t0 = time.Now()
 			hits, crossings, rejected, scanErr := e.sram.StackScan(ctx, first, n, res.Hits)
@@ -243,10 +244,17 @@ func (e *Engine) runFPGAStack(ctx context.Context, cfg sramcapture.Config, req F
 				return res, fmt.Errorf("stack tiles disagree on hits/crossings/rejections at record %d tile %d", r, first/tile)
 			}
 			t0 = time.Now()
-			if err = e.sram.StackDownload(ctx, state); err != nil {
+			part := scratch[:len(state)]
+			if err = e.sram.StackDownload(ctx, part); err != nil {
 				return res, err
 			}
+			for i := range state {
+				superres.AddFPGAMoments(&state[i], part[i])
+			}
 			res.DownloadS += time.Since(t0).Seconds()
+		}
+		if req.Progress != nil {
+			req.Progress(r+1, req.Records)
 		}
 		res.Hits = recordHits
 		res.Crossings += uint64(recordCrossings)

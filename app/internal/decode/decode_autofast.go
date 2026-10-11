@@ -101,3 +101,70 @@ func shortestPulse(c []uint8) int {
 	}
 	return shortest
 }
+
+// Redecode decodes a new frame as an earlier Autodetect result found it: the
+// same protocol, channel roles and UART baud, without trying every protocol.
+// When that no longer decodes, it detects afresh. Pacing the full detection
+// must not pace the decode: a cached result drawn over a newer frame put the
+// labels where an earlier frame's bytes had been (bug hunt 2026-10-10).
+// TRLC-LINKS: REQ-SDS-018
+func Redecode(prev Result, c1, c2 []uint8, colTimeS float64, format string) Result {
+	chans := [2][]uint8{c1, c2}
+	a, b := chans[prev.Roles.ChA&1], chans[prev.Roles.ChB&1]
+	if a == nil {
+		return Autodetect(c1, c2, colTimeS, format)
+	}
+	var r Result
+	switch prev.Proto {
+	case "uart":
+		r = DecodeUART(a, colTimeS, UARTCfg{Baud: prev.Baud, Bits: 8, Parity: "none", Format: format})
+	case "manchester":
+		r = DecodeManchester(a, colTimeS, ManchesterCfg{IEEE: true, MSB: true, Format: format})
+	case "sent":
+		r = DecodeSENT(a, colTimeS, SENTCfg{})
+	case "canfd":
+		r = DecodeCANFD(a, colTimeS, CANFDCfg{DominantLow: true})
+	case "mil1553":
+		r = DecodeMIL1553(a, colTimeS, MIL1553Cfg{})
+	case "arinc429":
+		r = DecodeARINC429(a, colTimeS, ARINC429Cfg{})
+	case "usbls":
+		r = DecodeUSBLS(a, colTimeS, USBLSCfg{})
+	case "flexray":
+		r = DecodeFlexRay(a, colTimeS, FlexRayCfg{})
+	case "i2c":
+		if b != nil {
+			r = DecodeI2C(a, b, colTimeS, I2CCfg{Format: format})
+		}
+	case "spi":
+		if b != nil {
+			r = DecodeSPI(a, b, colTimeS, SPICfg{CPOL: prev.Roles.CPOL, CPHA: prev.Roles.CPHA, MSB: prev.Roles.MSB, Format: format})
+		}
+	}
+	if scoreResult(r) <= -1e8 {
+		return Autodetect(c1, c2, colTimeS, format)
+	}
+	r.Src, r.Roles = prev.Src, prev.Roles
+	return r
+}
+
+// RedecodeFast is Redecode on AutodetectFast's strided copy.
+// TRLC-LINKS: REQ-SDS-018
+func RedecodeFast(prev Result, c1, c2 []uint8, colTimeS float64, format string) (Result, float64) {
+	stride := autoStride(c1, c2)
+	if stride <= 1 {
+		return Redecode(prev, c1, c2, colTimeS, format), colTimeS
+	}
+	pick := func(c []uint8) []uint8 {
+		if c == nil {
+			return nil
+		}
+		out := make([]uint8, 0, len(c)/stride+1)
+		for i := 0; i < len(c); i += stride {
+			out = append(out, c[i])
+		}
+		return out
+	}
+	st := colTimeS * float64(stride)
+	return Redecode(prev, pick(c1), pick(c2), st, format), st
+}

@@ -253,8 +253,52 @@ func DecodeUART(codes []uint8, colTimeS float64, cfg UARTCfg) Result {
 		}
 		i++
 	}
+	if syncIn(spans, guard+uartSyncFrames*need) {
+		toks, bytes = toks[:0], bytes[:0]
+		for _, sp := range spans {
+			if sp.Kind != "gap" {
+				toks, bytes = append(toks, sp.Text), append(bytes, sp.Val)
+			}
+		}
+	}
 	return Result{OK: true, Proto: "uart", Spans: spans, Text: strings.Join(toks, " "),
 		Bytes: bytes, Baud: int(math.Round(baud)), SPB: spb, Thr: S.threshold}
+}
+
+// uartSyncFrames bounds the sync-in: a record that opens inside back-to-back
+// frames mis-frames until a stop bit lands on idle, a few frames at most.
+const uartSyncFrames = 4
+
+// syncIn marks what precedes the decode's sync point as gaps when an error
+// sits there and sync comes within window samples of the record start: those
+// are bytes cut by the window, not line errors. Sync is the first two clean
+// frames in a row (one mis-framed byte can end on an idle-looking stop bit).
+// Every capture of a clean back-to-back UART line began "!0B !AA !A9", so an
+// error watch caught every frame (bug hunt #2). A line that never decodes
+// cleanly keeps its errors. Reports whether it changed anything.
+// TRLC-LINKS: REQ-SDS-018
+func syncIn(spans []Span, window int) bool {
+	first := -1
+	for k := 0; k+1 < len(spans); k++ {
+		if spans[k].Kind == "data" && spans[k+1].Kind == "data" {
+			first = k
+			break
+		}
+	}
+	if first <= 0 || spans[first].I0 > window {
+		return false
+	}
+	bad := false
+	for k := 0; k < first; k++ {
+		bad = bad || spans[k].Kind == "frame-error" || spans[k].Kind == "parity-error"
+	}
+	if !bad {
+		return false
+	}
+	for k := 0; k < first; k++ {
+		spans[k].Kind, spans[k].Text = "gap", "gap"
+	}
+	return true
 }
 
 // standardBauds are the common UART rates auto-baud snaps to.

@@ -86,26 +86,33 @@ func drawFFT(sf Surface, f *engine.Frame, hud HUD) {
 		}
 	}
 
-	sc1, sc2 := hud.ShowC1, hud.ShowC2
-	if !sc1 && !sc2 {
-		sc1, sc2 = true, true
-	}
-	row := 10
+	sc1, sc2 := hud.shownChans()
 	// Overlay both enabled channels' spectra (parity with the web), each in its
-	// channel colour and normalised to its own peak.
+	// channel colour and normalised to its own peak; then the labels, on a
+	// backing, so no spectrum runs through them (bug hunt 2026-10-10: the
+	// tall low-frequency peaks garbled the labels and the span).
+	type label struct {
+		s string
+		c uint16
+	}
+	var labels []label
 	if sc2 && hud.TwoChan && len(f.C2) >= valid {
 		fpk := fftTrace(sf, f.C2, n, stride, colC2, effNyq, kLo, kHi)
-		DrawText(sf, 10, row, "FFT C2 peak "+fmtFreq(fpk), colC2, 1)
-		row += 12
+		labels = append(labels, label{"FFT C2 peak " + fmtFreq(fpk), colC2})
 	}
 	if sc1 {
 		fpk := fftTrace(sf, f.C1, n, stride, colC1, effNyq, kLo, kHi)
-		DrawText(sf, 10, row, "FFT C1 peak "+fmtFreq(fpk), colC1, 1)
-		row += 12
+		labels = append(labels, label{"FFT C1 peak " + fmtFreq(fpk), colC1})
 	}
 	fLo := float64(kLo) / float64(half) * effNyq
 	fHi := float64(kHi) / float64(half) * effNyq
-	DrawText(sf, 10, row, fmtFreq(fLo)+".."+fmtFreq(fHi), colDim, 1)
+	labels = append(labels, label{fmtFreq(fLo) + ".." + fmtFreq(fHi), colDim})
+	row := 10
+	for _, l := range labels {
+		fillRect(sf, 8, row-2, TextWidth(l.s, 1)+4, 11, colBG)
+		DrawText(sf, 10, row, l.s, l.c, 1)
+		row += 12
+	}
 }
 
 // envPair is 2 for a peak-detect envelope, whose values come in (min, max)

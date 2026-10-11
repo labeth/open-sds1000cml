@@ -417,9 +417,15 @@ func decodeFrame(f *engine.Frame, hud HUD, valid int, ch func(int) []uint8, form
 	if cacheable && decodeCache.ok && decodeCache.key == key {
 		return decodeCache.res
 	}
+	// Between detections a new frame is decoded as the last one detected: the
+	// cached spans belong to that frame's content, not this one's.
+	redecode := false
 	if prev := decodeCache.key; hud.DecProto == 1 && decodeCache.ok && time.Since(decodeCache.at) < autoDecodeRefresh &&
 		prev.proto == key.proto && prev.format == key.format && prev.valid == key.valid && prev.sampleS == key.sampleS {
-		return decodeCache.res
+		if decodeCache.res.Proto == "off" {
+			return decodeCache.res
+		}
+		redecode = true
 	}
 	var res decode.Result
 	switch hud.DecProto { // 0=off 1=Auto 2=UART 3=I2C 4=SPI
@@ -427,7 +433,11 @@ func decodeFrame(f *engine.Frame, hud HUD, valid int, ch func(int) []uint8, form
 		// Strided: a full Autodetect of a 500 k-sample screen took 14 s on
 		// the scope's ARM and held the frame all that time.
 		var st float64
-		res, st = decode.AutodetectFast(ch(0), ch(1), f.SampleS, format)
+		if redecode {
+			res, st = decode.RedecodeFast(decodeCache.res, ch(0), ch(1), f.SampleS, format)
+		} else {
+			res, st = decode.AutodetectFast(ch(0), ch(1), f.SampleS, format)
+		}
 		if k := int(st/f.SampleS + 0.5); k > 1 {
 			for i := range res.Spans { // back to the frame's sample indices
 				res.Spans[i].I0 *= k
@@ -456,6 +466,10 @@ func decodeFrame(f *engine.Frame, hud HUD, valid int, ch func(int) []uint8, form
 	case 11:
 		res = decode.DecodeFlexRay(ch(hud.DecChA), f.SampleS, decode.FlexRayCfg{Bitrate: hud.DecBaud})
 	}
-	decodeCache.key, decodeCache.res, decodeCache.ok, decodeCache.at = key, res, cacheable, time.Now()
+	at := time.Now()
+	if redecode {
+		at = decodeCache.at // the detection's pacing runs from the last detection
+	}
+	decodeCache.key, decodeCache.res, decodeCache.ok, decodeCache.at = key, res, cacheable, at
 	return res
 }

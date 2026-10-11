@@ -42,7 +42,19 @@ function fdDataLen(dlc) {
 // canReadRaw samples one wire bit at pos+0.5*spb (0=dominant,1=recessive) and
 // advances pos by spb. Returns -1 out of range.
 // TRLC-LINKS: REQ-SDS-018
+function canResync(r) {
+  // Re-synchronize as a CAN controller does: an edge within 0.4 bit of the
+  // expected boundary becomes the boundary (bug hunt 2026-10-10: free-running
+  // from SOF, a 2 % bit-time error slipped bits at 8 samples a bit).
+  const E = r.S.edges, w = 0.4 * r.spb;
+  if (r.ei === undefined) r.ei = 0;
+  while (r.ei < E.length && E[r.ei].x < r.pos - w) r.ei++;
+  if (r.ei < E.length && Math.abs(E[r.ei].x - r.pos) <= w) r.pos = E[r.ei].x;
+}
+
+// TRLC-LINKS: REQ-SDS-018
 function canReadRaw(r) {
+  canResync(r);
   const center = r.pos + 0.5 * r.spb;
   r.li0 = Math.round(r.pos);
   let end = Math.round(r.pos + r.spb) - 1;

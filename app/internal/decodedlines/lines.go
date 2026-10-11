@@ -8,6 +8,7 @@ package decodedlines
 import (
 	"encoding/binary"
 	"fmt"
+	"math/bits"
 	"strings"
 
 	"open-sds/app/internal/sramcapture"
@@ -45,6 +46,7 @@ type Transcript struct {
 	trig, recFirst, recLast uint64
 	marked                  bool
 	triggerHint             bool // a trigger or retained-record event arrived
+	lineUnits               int  // units pushed into lines, from first on
 }
 
 // New makes a transcript for a serial-registry protocol holding capacity
@@ -184,6 +186,7 @@ func (t *Transcript) Flush() {
 
 // TRLC-LINKS: REQ-SDS-018
 func (t *Transcript) push(l Line) {
+	t.lineUnits += int(l.N) - bits.OnesCount16(l.Errs)
 	if len(t.lines) < t.capacity {
 		t.lines = append(t.lines, l)
 	} else {
@@ -240,6 +243,25 @@ func (t *Transcript) TriggerLine() int {
 		}
 	}
 	return lo
+}
+
+// Rate is the units a second of signal time, from the first unit to the
+// newest line's first unit: wall-clock time since the start missed the
+// capture that ran while the stream was being set up, and read 11.6 k/s on a
+// 8.8 k/s UART (bug hunt 2026-10-10).
+// TRLC-LINKS: REQ-SDS-018
+func (t *Transcript) Rate() (float64, bool) {
+	if !t.haveFirst || len(t.lines) == 0 {
+		return 0, false
+	}
+	l := t.At(len(t.lines) - 1)
+	// The lines' own units, less the newest line's: a builder's counters
+	// (SetCounters) also count units decoded ahead of the first line.
+	units := t.lineUnits - (int(l.N) - bits.OnesCount16(l.Errs))
+	if l.Sample <= t.first || units <= 0 {
+		return 0, false
+	}
+	return float64(units) / (float64(l.Sample-t.first) * 2e-9), true
 }
 
 // Header names the columns, matching Format's layout.

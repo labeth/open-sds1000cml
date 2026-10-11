@@ -45,10 +45,16 @@ func drawSuperresHUD(sf Surface, hud HUD) {
 	}
 
 	tag := "SR " + srFocusTag(hud.SRFocus)
-	msg := fmt.Sprintf("%s  +%.1fb  x%d  %s", tag, hud.SRBits, hud.SRk, hud.SRStatus)
-	// Bottom-left, above the liveness strip; a thin backing bar keeps it legible
-	// over the trace.
-	y := H - 12
+	drawSRLine(sf, fmt.Sprintf("%s  +%.1fb  x%d  %s", tag, hud.SRBits, hud.SRk, hud.SRStatus))
+}
+
+// drawSRLine is the super-res status line.
+// TRLC-LINKS: REQ-SDS-021
+func drawSRLine(sf Surface, msg string) {
+	// Bottom-left, one row above the Vpp/f quick readout (at H-12 it covered
+	// the C1 readout, bug hunt 2026-10-10); a thin backing bar keeps it
+	// legible over the trace.
+	y := H - 21
 	for by := y - 1; by < y+9 && by < H; by++ {
 		for bx := 0; bx < TextWidth(msg, 1)+8 && bx < W; bx++ {
 			sf.SetPixel(bx, by, colBG)
@@ -303,10 +309,7 @@ func drawSuperresFFT(sf Surface, hud HUD) {
 	if hud.SRAlign == 1 {
 		c1Mean, c2Mean = hud.SRMean2, hud.SRMean
 	}
-	sc1, sc2 := hud.ShowC1, hud.ShowC2
-	if !sc1 && !sc2 {
-		sc1, sc2 = true, true
-	}
+	sc1, sc2 := hud.shownChans()
 	row := 10
 	if sc2 && hud.TwoChan && len(c2Mean) > 0 {
 		if s2, _ := srResampleArray(c2Mean, n); s2 != nil {

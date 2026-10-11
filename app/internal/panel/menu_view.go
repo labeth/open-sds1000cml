@@ -1,7 +1,10 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-PANEL
 package panel
 
-import "fmt"
+import (
+	"fmt"
+	"time"
+)
 
 // MenuView is the render snapshot of the on-screen menu (read by the LCD
 // renderer on a different goroutine; taken under the controller mutex).
@@ -17,6 +20,7 @@ type MenuView struct {
 	MathMode       int        // 0 = off, 1 = C1+C2, 2 = C1-C2, 3 = C1×C2
 	AutosetBusy    bool       // an autoset sweep is running (LCD shows a hint)
 	AutosetMsg     string     // banner text while AutosetBusy
+	Notice         string     // brief result banner (PRINT), "" when none
 	Zoom           int        // horizontal magnification (1 = none)
 	ZoomOff        float64    // zoom-window pan offset (fraction of the record)
 	Persist        bool       // display persistence (afterglow)
@@ -46,6 +50,10 @@ func (c *Controller) MenuView() MenuView {
 	c.mu.Lock()
 	pg, sel, c1, c2, meas := c.menuPage, c.menuSel, c.chDisp[0], c.chDisp[1], c.showMeas
 	view, mth, busy, amsg := c.viewMode, c.mathMode, c.autosetBusy, c.autosetMsg
+	notice := ""
+	if time.Now().Before(c.noticeUntil) {
+		notice = c.notice
+	}
 	rA, rAs, rB, rBs := c.refs[0].has, c.refs[0].show, c.refs[1].has, c.refs[1].show
 	curOn, curType, curSel, curX, curY := c.curOn, c.curType, c.curSel, c.curX, c.curY
 	pl, pmn, pmx, pc := c.pulseLvl, c.pulseMin, c.pulseMax, c.pulseCond
@@ -71,7 +79,7 @@ func (c *Controller) MenuView() MenuView {
 	}
 	c.mu.Unlock()
 	v := MenuView{Open: pg != pgNone, Sel: sel, ShowC1: c1, ShowC2: c2, ShowMeas: meas,
-		ViewMode: view, MathMode: mth, AutosetBusy: busy, AutosetMsg: amsg,
+		ViewMode: view, MathMode: mth, AutosetBusy: busy, AutosetMsg: amsg, Notice: notice,
 		Zoom: zoom, ZoomOff: zoomOff, Persist: persist,
 		SRActive: srActive, SRFocus: srFocus, SRGate: srGate, SRStatus: srStatus, MaskStatus: maskStatus,
 		DecProto: decProto, DecBaud: decBaud, DecChA: decChA, DecChB: decChB, DecCPOL: decCPOL, DecCPHA: decCPHA, DecFormat: decFormat,
@@ -275,6 +283,21 @@ func (c *Controller) MenuView() MenuView {
 			{"Show A", show(rA, rAs)},
 			{"Show B", show(rB, rBs)},
 			{"Clear", ""},
+		}
+	case pgSave:
+		c.mu.Lock()
+		slot, msg := c.saveSlot, c.saveMsg
+		c.mu.Unlock()
+		if msg == "" {
+			msg = "-"
+		}
+		v.Title = "SAVE/RCL"
+		v.Items = []MenuItem{
+			{"Slot", fmt.Sprint(slot)},
+			{"Save", ">"},
+			{"Recall", ">"},
+			{"Result", msg},
+			{"", ""},
 		}
 	case pgMask:
 		tol := maskTols[maskTol%len(maskTols)]

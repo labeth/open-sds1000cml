@@ -68,6 +68,18 @@ func (c *Controller) menuCycle(slot, dir int) {
 			}
 		}
 		return
+	case pgSave:
+		switch slot {
+		case 0: // Slot 1..20
+			c.mu.Lock()
+			c.saveSlot = ((c.saveSlot-1+dir)%setupSlots+setupSlots)%setupSlots + 1
+			c.mu.Unlock()
+		case 1:
+			c.saveRecall(true)
+		case 2:
+			c.saveRecall(false)
+		}
+		return
 	case pgMask:
 		switch slot {
 		case 0: // Mode Off/Test/Stop-F (engine resets counters on off->on)
@@ -173,6 +185,7 @@ func (c *Controller) menuCycle(slot, dir int) {
 			case 3:
 				c.pulseCond = mod4(c.pulseCond + dir)
 			}
+			c.pulseMin, c.pulseMax = orderNs(c.pulseMin, c.pulseMax, slot == 2)
 			pl, pmn, pmx, pc := c.pulseLvl, c.pulseMin, c.pulseMax, c.pulseCond
 			c.mu.Unlock()
 			c.eng.SetPulseParams(pl, pmn, pmx, pc)
@@ -189,6 +202,8 @@ func (c *Controller) menuCycle(slot, dir int) {
 			case 4:
 				c.slopeCond = mod4(c.slopeCond + dir)
 			}
+			c.slopeLo, c.slopeHi = orderFrac(c.slopeLo, c.slopeHi, slot == 1)
+			c.slopeMin, c.slopeMax = orderNs(c.slopeMin, c.slopeMax, slot == 3)
 			lo, hi, tmn, tmx, sc := c.slopeLo, c.slopeHi, c.slopeMin, c.slopeMax, c.slopeCond
 			c.mu.Unlock()
 			c.eng.SetSlopeParams(lo, hi, tmn, tmx, sc)
@@ -223,7 +238,7 @@ func (c *Controller) menuCycle(slot, dir int) {
 		case 3:
 			c.eng.SetTrigType(mod4(st.TrigType + dir))
 		case 4:
-			c.eng.SetHoldoff(nextHoldoff(st.HoldoffS, dir))
+			c.eng.SetHoldoff(nextHoldoff(st.HoldoffS, dir, c.pressWrap))
 		}
 	case pgAcq:
 		switch slot {

@@ -55,10 +55,17 @@ func scoreResult(r Result) float64 {
 		}
 		// A few bytes at a rate no UART uses are not a UART: a partial SENT
 		// frame read as "UART 66674 Bd, 5 bytes". Show more of the signal.
-		if len(r.Bytes) < 8 && !nearStandardBaud(float64(r.Baud), 0.03) {
+		std := nearStandardBaud(float64(r.Baud), 0.03)
+		if len(r.Bytes) < 8 && !std {
 			return -1e9
 		}
 		c := kinds("frame-error", "parity-error")
+		// An odd rate with over a fifth of its bytes misframed is another
+		// protocol read as UART (an undersampled SENT: "UART 45701 Bd", bug
+		// hunt 2026-10-11).
+		if !std && c[0]*5 > len(r.Bytes) {
+			return -1e9
+		}
 		return float64(len(r.Bytes)*10 - c[0]*35 - c[1]*18 + 15)
 	case "spi":
 		if len(r.Bytes) == 0 {
@@ -83,8 +90,13 @@ func scoreResult(r Result) float64 {
 		return float64(len(r.Bytes)*8 + c[0]*10 - c[1]*30)
 	case "sent":
 		// OK already gates on >=1 CRC-4-valid frame; score by validated frames.
-		c := kinds("crc", "data", "frame-error")
-		if c[0] == 0 {
+		c := kinds("crc", "data", "frame-error", "sync")
+		// CRC-4 passes one random frame in 16: a lone valid frame among many
+		// syncs is chance, as a UART at under two samples a bit read as
+		// "SENT, 1 of 17 frames" (bug hunt 2026-10-10). A quarter of the
+		// complete frames must check: half rejected a real bus alternating
+		// bad and good CRCs (bad, good, bad on screen).
+		if c[0] == 0 || c[0]*4 < c[3]-1 {
 			return -1e9
 		}
 		return float64(c[0]*300 + c[1]*4 - c[2]*20)
@@ -138,6 +150,7 @@ type clockInfo struct {
 	ok      bool
 	uniFrac float64
 	edges   int
+	hp      float64 // dominant half-period in samples
 	s       sliced
 }
 
@@ -168,7 +181,34 @@ func clockScore(codes []uint8) clockInfo {
 			uni++
 		}
 	}
-	return clockInfo{ok: true, uniFrac: float64(uni) / float64(len(gaps)), edges: len(s.edges), s: s}
+	return clockInfo{ok: true, uniFrac: float64(uni) / float64(len(gaps)), edges: len(s.edges), hp: hp, s: s}
+}
+
+// midPhaseData is the share of the data line's edges that sit away from every
+// clock edge (beyond a quarter half-period). SPI launches data on a clock edge;
+// I2C moves SDA in the middle of SCL low. Mostly mid-phase data is not SPI:
+// an I2C window without its START read as "SPI mode 3, 3 bytes" (bug hunt #2).
+// TRLC-LINKS: REQ-SDS-018
+func midPhaseData(c clockInfo, d sliced) float64 {
+	if !c.ok || c.hp <= 0 || !d.ok || len(d.edges) == 0 || len(c.s.edges) == 0 {
+		return 0
+	}
+	tol := math.Max(c.hp/4, 1.5)
+	ce := c.s.edges
+	mid, j := 0, 0
+	for _, e := range d.edges {
+		for j+1 < len(ce) && ce[j+1].i <= e.i {
+			j++
+		}
+		dist := math.Abs(float64(e.i - ce[j].i))
+		if j+1 < len(ce) {
+			dist = math.Min(dist, math.Abs(float64(ce[j+1].i-e.i)))
+		}
+		if dist > tol {
+			mid++
+		}
+	}
+	return float64(mid) / float64(len(d.edges))
 }
 
 // idleLevel is the rail a channel rests on most (a clock idles at its CPOL rail).
@@ -211,7 +251,11 @@ func Autodetect(c1, c2 []uint8, colTimeS float64, format string) Result {
 		best.Error = "no active signal"
 		return best
 	}
-	bestScore := -1e8
+	// A detection needs more evidence than errors (score > 0): garbage UART
+	// and Manchester decodes - more frame errors than words - won whenever
+	// nothing else qualified, e.g. MIL-1553 at 50 us/div read as Manchester
+	// and an undecodable SENT as "MANCH 51 kb/s" (bug hunt 2026-10-11).
+	bestScore := 0.0
 	chName := func(k int) string { return [2]string{"C1", "C2"}[k&1] }
 	consider := func(r Result, src string, roles Roles) {
 		if sc := scoreResult(r); sc > bestScore {
@@ -225,7 +269,13 @@ func Autodetect(c1, c2 []uint8, colTimeS float64, format string) Result {
 	u0, u1 := clk[0].uniFrac, clk[1].uniFrac
 	hi, lo := math.Max(u0, u1), math.Min(u0, u1)
 	clockedPair := len(active) >= 2 && hi > 0.72 && hi > lo+0.12
-	isClocky := func(k int) bool { return clk[k].uniFrac > 0.78 && clk[k].edges >= 40 }
+	// A near-perfectly uniform line is a clock even with few edges on screen: a
+	// 3 kHz square at 500 us/div (~30 edges) read as constant-bit Manchester
+	// (bug hunt 2026-10-10). Real Manchester data mixes T/2 and T gaps.
+	isClocky := func(k int) bool {
+		c := clk[k]
+		return (c.uniFrac > 0.78 && c.edges >= 40) || (c.uniFrac >= 0.95 && c.edges >= 10)
+	}
 
 	// UART — async single-wire. Skip on a clocked pair (that's SPI) or a lone clock
 	// (else auto-baud invents bogus 0x55s from the square wave).
@@ -268,6 +318,9 @@ func Autodetect(c1, c2 []uint8, colTimeS float64, format string) Result {
 				ci = 1
 			}
 			di := 1 - ci
+			if midPhaseData(clk[ci], clk[di].s) > 0.5 {
+				return best // data moves between clock edges: I2C-like, never SPI
+			}
 			cpol := idleLevel(clk[ci].s)
 			for _, cpha := range []bool{false, true} {
 				for _, msb := range []bool{true, false} { // msb first on a binary tie (SPI default)

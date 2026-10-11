@@ -92,15 +92,11 @@ function nearestPeak(peaks, freq) {
   return best;
 }
 
-// component: reconstruct the single-frequency contribution of `samples` at
-// cyclesPerLen cycles across the whole array (= freq * recordDuration). Fits
-// amplitude+phase of that one tone by projecting the mean-removed signal onto
-// cos/sin (a single-bin, un-windowed DFT), then returns a same-length array in
-// the SAME code units so it can be drawn straight over the time trace — "show me
-// just this frequency inside the waveform". Values < 0 are treated as gaps:
-// skipped in the fit, still produced in the output.
+// fitTone: amplitude+phase of the single tone at cyclesPerLen cycles across
+// the whole array (= freq * recordDuration), by projecting the mean-removed
+// signal onto cos/sin. Values < 0 are gaps, skipped in the fit.
 // TRLC-LINKS: REQ-SDS-070
-function component(samples, cyclesPerLen) {
+function fitTone(samples, cyclesPerLen) {
   const M = samples.length;
   if (M < 2) return null;
   const w = 2 * Math.PI * cyclesPerLen / M;
@@ -137,6 +133,28 @@ function component(samples, cyclesPerLen) {
   const det = scc * sss - scs * scs;
   let A = 0, B = 0;
   if (Math.abs(det) > 1e-9) { A = (dc * sss - ds * scs) / det; B = (ds * scc - dc * scs) / det; }
+  return { A, B, mean, w, cw, sw, M };
+}
+
+// toneAmplitude: the peak amplitude (code units) of the least-squares fitted
+// tone at cyclesPerLen. A Hann bin's magnitude reads up to 1.42 dB low when the
+// tone falls between bins (scalloping): the FFT list's "≈Vpk" said 1.70 V for
+// a 1.98 V fundamental half a bin off (bug hunt 2026-10-10).
+// TRLC-LINKS: REQ-SDS-070
+function toneAmplitude(samples, cyclesPerLen) {
+  const t = fitTone(samples, cyclesPerLen);
+  return t ? Math.hypot(t.A, t.B) : 0;
+}
+
+// component: reconstruct the single-frequency contribution of `samples`
+// (fitTone) as a same-length array in the SAME code units, so it can be drawn
+// straight over the time trace — "show me just this frequency inside the
+// waveform". Gaps (values < 0) are still produced in the output.
+// TRLC-LINKS: REQ-SDS-070
+function component(samples, cyclesPerLen) {
+  const t = fitTone(samples, cyclesPerLen);
+  if (!t) return null;
+  const { A, B, mean, w, cw, sw, M } = t;
   const out = new Array(M);
   { let c = 1, s = 0;
     for (let i = 0; i < M; i++) {
@@ -149,5 +167,5 @@ function component(samples, cyclesPerLen) {
 }
 
 if (typeof module !== "undefined" && module.exports) {
-  module.exports = { fftInPlace, spectrum, detectPeaks, nearestPeak, component };
+  module.exports = { fftInPlace, spectrum, detectPeaks, nearestPeak, component, fitTone, toneAmplitude };
 }

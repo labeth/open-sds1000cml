@@ -1,7 +1,10 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-PANEL
 package panel
 
-import "strings"
+import (
+	"strings"
+	"time"
+)
 
 // TRLC-LINKS: REQ-SDS-135
 func nameCode(name string) (int, bool) {
@@ -63,7 +66,7 @@ func nameCode(name string) (int, bool) {
 	case "set50":
 		return bcode(2, 2), true
 	case "defaultsetup":
-		return bcode(2, 10), true
+		return btnDefaultSetup, true
 	case "force":
 		return bcode(3, 2), true
 	case "help":
@@ -96,6 +99,30 @@ func (c *Controller) InjectButton(name string) bool {
 	case c.inject <- func() { c.button(code) }:
 		return true
 	default:
+		return false
+	}
+}
+
+// InjectButtonWait runs a named button on the panel goroutine and waits
+// (bounded) until it has run. *RST needs this: its DEFAULT SETUP used to land
+// after the commands that followed it, so "*RST;TDIV 2US" ended at 500 us
+// (bug hunt #2).
+// TRLC-LINKS: REQ-SDS-135
+func (c *Controller) InjectButtonWait(name string, timeout time.Duration) bool {
+	code, ok := nameCode(name)
+	if !ok {
+		return false
+	}
+	done := make(chan struct{})
+	select {
+	case c.inject <- func() { c.button(code); close(done) }:
+	case <-time.After(timeout):
+		return false
+	}
+	select {
+	case <-done:
+		return true
+	case <-time.After(timeout):
 		return false
 	}
 }

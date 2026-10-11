@@ -375,6 +375,15 @@ func (s *Server) buildReply(f *engine.Frame, cols int, full bool, since uint64, 
 		}
 	}
 	rep.M1, rep.M2, rep.Clip1, rep.Clip2 = s.meas.m1, s.meas.m2, s.meas.clip1, s.meas.clip2
+	if s.invSrc != nil { // measure what the inverted trace shows (SCPI Cn:INVS)
+		inv := s.invSrc()
+		if inv[0] {
+			rep.M1 = rep.M1.Inverted()
+		}
+		if inv[1] {
+			rep.M2 = rep.M2.Inverted()
+		}
+	}
 	s.measMu.Unlock()
 	return rep
 }

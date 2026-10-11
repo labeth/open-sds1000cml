@@ -22,6 +22,7 @@ import (
 	"path/filepath"
 	"runtime/debug"
 	"strconv"
+	"strings"
 	"sync/atomic"
 	"syscall"
 	"time"
@@ -151,10 +152,11 @@ func buildHUD(e *engine.Engine, fe *analog.FrontEnd) lcd.HUD {
 			}
 		}
 		mv := pc.MenuView()
-		hud.ShowC1, hud.ShowC2 = mv.ShowC1, mv.ShowC2
+		hud.ShowC1, hud.ShowC2, hud.ChanExplicit = mv.ShowC1, mv.ShowC2, true
 		hud.ShowMeas = mv.ShowMeas
 		hud.ViewMode, hud.MathMode = mv.ViewMode, mv.MathMode
 		hud.AutosetBusy, hud.AutosetMsg = mv.AutosetBusy, mv.AutosetMsg
+		hud.Notice = mv.Notice
 		hud.Zoom, hud.ZoomOff = mv.Zoom, mv.ZoomOff
 		hud.Persist = mv.Persist
 		hud.DecProto, hud.DecBaud = mv.DecProto, mv.DecBaud
@@ -273,6 +275,11 @@ type renderSig struct {
 	showC1, showC2                                  bool
 	menuOpen, curOn                                 bool
 	ref0, ref1                                      bool
+	// extra prints the remaining HUD state a held display shows: the menu's
+	// title and values, the autoset banner, the trigger readout, decode
+	// parameters (bug hunt #2: a softkey that changed only a value, e.g.
+	// TRIGGER Type Pulse->Slope while stopped, left the old value on screen).
+	extra string
 }
 
 // statusSlot is what the top bar's status slot shows (lcd.DrawStatusSlot).
@@ -308,6 +315,10 @@ func renderSigOf(f *engine.Frame, hud lcd.HUD, live bool) renderSig {
 		streamOn: hud.StreamOn, streamState: int(hud.Stream.State), streamList: hud.StreamList,
 		streamTop: hud.StreamPage.Top, streamTotal: hud.StreamPage.Total, streamTrig: hud.StreamPage.TriggerLine,
 		streamSlot: streamSlot(hud),
+		extra: fmt.Sprint(hud.MenuTitle, hud.MenuItems, hud.AutosetBusy, hud.AutosetMsg,
+			hud.TrigSrc, hud.TrigRising, hud.TrigLvlV, hud.TrigPosFrac, hud.Waiting,
+			hud.Zoom1, hud.Zoom2, hud.ChanExplicit, hud.DecBaud, hud.DecChA, hud.DecChB,
+			hud.DecCPOL, hud.DecCPHA, hud.DecFormat, hud.MaskMsg, hud.SRStatus, hud.Notice),
 	}
 }
 
@@ -852,6 +863,19 @@ func main() {
 	}
 	scpiH := scpi.New(scopeSource{e, fo}, sfe, pc, shot, logf)
 	scpiCtrl.Store(scpiH) // publish for the LCD render loop + screenshot paths
+	// *SAV/*RCL: numbered setups beside the persisted one, through the same
+	// Collect/Apply paths as the boot restore.
+	setupSlots := settings.Slots{Dir: filepath.Dir(setPath),
+		Collect: func() settings.Settings { return settings.Collect(e, setFE, pc) },
+		Apply:   func(st settings.Settings) { settings.Apply(st, e, setFE, pc, logf) }}
+	scpiH.SetSetupMemory(setupSlots)
+	pc.SetSetupMemory(setupSlots) // SAVE/RECALL key: the same slots as *SAV/*RCL
+	pc.SetHardcopy(func() (string, error) {
+		if !mountedAt(uDisk) { // the bare directory would be the internal flash
+			return "", fmt.Errorf("no U-disk mounted at %s", uDisk)
+		}
+		return saveHardcopy(uDisk, screenPNG())
+	})
 	if _, port, err := vxi11srv.Start(scpiH.HandleLine, true, logf); err != nil {
 		logf("WARNING: VXI-11 server failed: %v", err)
 	} else {
@@ -913,3 +937,35 @@ type cachedStreamPage struct {
 
 // lastStreamPage is buildHUD's cached transcript page.
 var lastStreamPage atomic.Pointer[cachedStreamPage]
+
+// uDisk is the USB stick's mount point (PRINT saves screenshots there).
+const uDisk = "/usr/bin/siglent/usr/media/U-disk0"
+
+// mountedAt reports a filesystem mounted at dir.
+// TRLC-LINKS: REQ-SDS-136
+func mountedAt(dir string) bool {
+	mounts, err := os.ReadFile("/proc/mounts")
+	return err == nil && strings.Contains(string(mounts), " "+dir+" ")
+}
+
+// saveHardcopy writes png as the next free SDSnnnn.png in dir and returns
+// its name.
+// TRLC-LINKS: REQ-SDS-136
+func saveHardcopy(dir string, png []byte) (string, error) {
+	for n := 1; n < 10000; n++ {
+		name := fmt.Sprintf("SDS%04d.png", n)
+		f, err := os.OpenFile(filepath.Join(dir, name), os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
+		if os.IsExist(err) {
+			continue
+		}
+		if err != nil {
+			return "", err
+		}
+		_, werr := f.Write(png)
+		if cerr := f.Close(); werr == nil {
+			werr = cerr
+		}
+		return name, werr
+	}
+	return "", fmt.Errorf("%s: no free SDSnnnn.png name", dir)
+}

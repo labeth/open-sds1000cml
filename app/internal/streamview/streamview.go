@@ -329,7 +329,9 @@ func (c *Controller) refreshLocked() {
 	if v.State == Streaming {
 		v.Elapsed = time.Since(c.start)
 	}
-	if s := v.Elapsed.Seconds(); s > 0 {
+	if r, ok := t.Rate(); ok {
+		v.UnitsPerSecond = r
+	} else if s := v.Elapsed.Seconds(); s > 0 {
 		v.UnitsPerSecond = float64(t.Units) / s
 	}
 }

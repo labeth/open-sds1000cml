@@ -85,11 +85,29 @@ type canReader struct {
 	stuffErr    bool // a stuff bit was NOT the opposite of its 5-run (6 same = violation)
 	bits        []int
 	li0, li1    int // sample span of the last raw bit read
+	ei          int // next edge to consider for resynchronization
+}
+
+// canResync re-synchronizes the bit clock as a CAN controller does: an edge
+// within 0.4 bit of the expected boundary becomes the boundary. Free-running
+// from SOF, a 2 % bit-time error (edges quantized to 2-sample steps on a live
+// envelope, 8 samples a bit) slipped bits by mid-frame (bug hunt 2026-10-10:
+// ID 123 55 AA 0F F0 read 45 D4 1F E1 at 100 us/div).
+// TRLC-LINKS: REQ-SDS-018
+func (r *canReader) resync() {
+	w := 0.4 * r.spb
+	for r.ei < len(r.S.edges) && r.S.edges[r.ei].x < r.pos-w {
+		r.ei++
+	}
+	if r.ei < len(r.S.edges) && math.Abs(r.S.edges[r.ei].x-r.pos) <= w {
+		r.pos = r.S.edges[r.ei].x
+	}
 }
 
 // readRaw samples one wire bit at pos+0.5*spb and advances pos by spb.
 // TRLC-LINKS: REQ-SDS-018
 func (r *canReader) readRaw() (int, bool) {
+	r.resync()
 	center := r.pos + 0.5*r.spb
 	r.li0 = int(math.Round(r.pos))
 	end := int(math.Round(r.pos+r.spb)) - 1

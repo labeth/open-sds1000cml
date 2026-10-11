@@ -346,6 +346,24 @@ out-of-range value is rejected and the setting left unchanged (no transfer occur
 
 ---
 
+### 3.6 Cursor values and channel delay
+
+`Cn:CRVA? HREL|VREL` reads the panel's manual cursors in the LCD readout's mapping (10 time
+divisions, 8 voltage divisions at the displayed V/div, probe-tip volts):
+
+| Query | Reply |
+|---|---|
+| `C1:CRVA? HREL` | `C1:CRVA HREL,<dt>s,<1/dt>Hz,<v@cursor A>V,<v@cursor B>V` (`****` for a cursor off the record) |
+| `C1:CRVA? VREL` | `C1:CRVA VREL,<dV>V,<cursor A level>V,<cursor B level>V` |
+| cursors off | `C1:CRVA OFF` |
+
+`Ca-Cb:MEAD? <param>` (a, b ∈ {1,2}, a ≠ b) is the delay from a channel-a edge to a channel-b edge
+on the published frame, at 50 % of each channel's swing (10 % hysteresis), interpolated:
+`FRR FRF FFR FFF` (first rising/falling of a → first rising/falling of b), `LRR LRF LFR LFF`
+(last edges), `SKEW` (rising edges nearest the trigger) in seconds, and `PHA` (phase of b's rising edge
+over a's period, degrees, ±180). Reply `Ca-Cb:MEAD <param>,<value>` with `%.6E` and `S` (no unit for
+`PHA`); `****` when either channel has no such edge.
+
 ## 4. Waveform transfer (`Cn:WF?`)
 
 `Cn:WF?` has two data selectors, each returning an IEEE-488.2 **definite-length arbitrary block** after

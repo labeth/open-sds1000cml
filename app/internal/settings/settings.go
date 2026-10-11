@@ -79,6 +79,10 @@ type Decode struct {
 	CPOL   bool `json:"cpol"`
 	CPHA   bool `json:"cpha"`
 	Format int  `json:"format"` // 0=hex 1=ascii 2=both
+	// Decoded-stream trigger (Auto ▸ Stream): 0=error 1=value 2=manual, and
+	// the value it waits for.
+	StreamTrig  int `json:"stream_trig,omitempty"`
+	StreamValue int `json:"stream_value,omitempty"`
 }
 
 // Settings is the whole persisted setup. Every field is comparable, so the
@@ -93,6 +97,17 @@ type Settings struct {
 	Acq      Acq        `json:"acq"`
 	Decode   Decode     `json:"decode"`
 	ViewMode int        `json:"view_mode"` // 0=Y-T 1=X-Y 2=FFT 3=Bode 4=Spgm
+	Display  Display    `json:"display"`
+}
+
+// Display is the LCD's display setup beyond the view mode. Zero values are the
+// power-on state (both channels shown), so an older file reads as defaults.
+// TRLC-LINKS: REQ-SDS-072, REQ-SDS-089
+type Display struct {
+	MathMode int     `json:"math_mode"` // 0 off, 1 C1+C2, 2 C1-C2, 3 C2-C1, 4 C1xC2
+	ShowMeas bool    `json:"show_meas"`
+	Persist  bool    `json:"persist"`
+	Hidden   [2]bool `json:"hidden"` // channel trace off (DISPLAY CH1/CH2)
 }
 
 // DefaultPath resolves where the settings file lives.

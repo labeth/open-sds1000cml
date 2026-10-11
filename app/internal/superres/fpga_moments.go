@@ -66,3 +66,24 @@ func getFPGAField(words []uint16, offset, width int) (value [2]uint64) {
 	}
 	return value
 }
+
+// AddFPGAMoments adds b into a exactly (128-bit limbs with carry): moments are
+// sums and counts, so a tile scanned from zero per record and added on the ARM
+// equals one that kept accumulating in the FPGA, without uploading the state
+// back word by word before every scan.
+// TRLC-LINKS: REQ-SDS-141
+func AddFPGAMoments(a *FPGAStackMoments, b FPGAStackMoments) {
+	add := func(x *[2]uint64, y [2]uint64) {
+		lo := x[0] + y[0]
+		carry := uint64(0)
+		if lo < x[0] {
+			carry = 1
+		}
+		x[0], x[1] = lo, x[1]+y[1]+carry
+	}
+	add(&a.Sum, b.Sum)
+	add(&a.SumSquares, b.SumSquares)
+	add(&a.SumOdd, b.SumOdd)
+	a.Count += b.Count
+	a.CountOdd += b.CountOdd
+}

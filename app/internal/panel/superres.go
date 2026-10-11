@@ -3,6 +3,7 @@ package panel
 
 import (
 	"fmt"
+	"math"
 	"time"
 
 	"open-sds/app/internal/engine"
@@ -135,34 +136,60 @@ func (c *Controller) srSeedAndStart() bool {
 	}
 	c.srWaitRaw()
 	var c1, c2 []uint8
-	var edgeX, sampleS float64
+	var edgeX, sampleS, seedTdiv float64
 	var cols, winCols int
-	c.frameFn(func(f *engine.Frame) {
-		if f == nil || f.IsEnv || f.PeakDetect {
-			return
+	var seq uint64
+	grab := func() {
+		c1, c2 = nil, nil
+		c.frameFn(func(f *engine.Frame) {
+			if f == nil || f.IsEnv || f.PeakDetect {
+				return
+			}
+			v := f.Valid
+			if v < 1 || v > len(f.C1) {
+				v = len(f.C1)
+			}
+			if v < 8 {
+				return
+			}
+			cols, edgeX, sampleS, winCols, seedTdiv, seq = v, f.EdgeX, f.SampleS, f.WinCols, f.TdivS, f.Seq
+			c1 = append([]uint8(nil), f.C1[:v]...)
+			if len(f.C2) >= v {
+				c2 = append([]uint8(nil), f.C2[:v]...)
+			} else {
+				c2 = c1
+			}
+		})
+	}
+	grab()
+	c.mu.Lock()
+	k, ch, mlo, mhi := c.srK, c.srCh, c.srManLo, c.srManHi
+	c.mu.Unlock()
+	// A stopped scope shows its full record (a million samples on the SRAM
+	// band), which is never shallow enough to stack in software, so SINGLE
+	// then UTILITY always failed (bug hunt #2). The stack is fed live raw
+	// frames anyway: resume and seed from the first one, as a running arm does.
+	if c1 != nil && cols*k > srSoftBinsMax && !c.eng.Snapshot().Running {
+		stale := seq
+		c.eng.SetRunning(true)
+		for i := 0; i < 60; i++ {
+			c.srLeaseRaw()
+			time.Sleep(50 * time.Millisecond)
+			fresh := false
+			c.frameFn(func(f *engine.Frame) { fresh = f != nil && f.Seq != stale && !f.IsEnv && !f.PeakDetect })
+			if fresh {
+				break
+			}
 		}
-		v := f.Valid
-		if v < 1 || v > len(f.C1) {
-			v = len(f.C1)
+		grab()
+		if c1 == nil || cols*k > srSoftBinsMax {
+			c.eng.SetRunning(false) // leave it stopped, as the user had it
 		}
-		if v < 8 {
-			return
-		}
-		cols, edgeX, sampleS, winCols = v, f.EdgeX, f.SampleS, f.WinCols
-		c1 = append([]uint8(nil), f.C1[:v]...)
-		if len(f.C2) >= v {
-			c2 = append([]uint8(nil), f.C2[:v]...)
-		} else {
-			c2 = c1
-		}
-	})
+	}
 	if c1 == nil {
 		c.srSetStatus("sampled frame required - use FPGA or a faster timebase")
 		return false
 	}
-	c.mu.Lock()
-	k, ch, mlo, mhi := c.srK, c.srCh, c.srManLo, c.srManHi
-	c.mu.Unlock()
 	// The software stack holds ten float64 accumulators per fine bin; a deep
 	// window (156k samples at 0.5 ms/div x32 = ~400 MB) cannot fit the device.
 	if cols*k > srSoftBinsMax {
@@ -221,8 +248,8 @@ func (c *Controller) srSeedAndStart() bool {
 	c.srWinLo, c.srWinHi, c.srPeriod = mlo, mhi, period // review span + tile period
 	c.running, c.single = true, false
 	c.mu.Unlock()
-	c.eng.SetRunning(true) // resume so matching frames flow in
-	go c.srLoop(stop, st)  // pass the Stack in — the loop is its sole owner, no shared read
+	c.eng.SetRunning(true)          // resume so matching frames flow in
+	go c.srLoop(stop, st, seedTdiv) // pass the Stack in — the loop is its sole owner, no shared read
 	return true
 }
 
@@ -320,7 +347,7 @@ func (c *Controller) SuperresStatus() (active, review bool, bits float64, frames
 // touches srStack, so there is no data race with the renderer (which reads the
 // guarded srMean/srStatus/srBits snapshot).
 // TRLC-LINKS: REQ-SDS-140
-func (c *Controller) srLoop(stop chan struct{}, st *superres.Stack) {
+func (c *Controller) srLoop(stop chan struct{}, st *superres.Stack, seedTdiv float64) {
 	var lastSeq uint64
 	var lastMean time.Time
 	reached := false // stop target hit (or geometry changed): stack is final, idle
@@ -332,7 +359,6 @@ func (c *Controller) srLoop(stop chan struct{}, st *superres.Stack) {
 			return
 		case <-tick.C:
 		}
-		c.srLeaseRaw() // keep full-rate raw live frames while stacking
 		// Reset request (Reset softkey) — done here so only this goroutine touches
 		// the Stack. Clears the accumulation, keeps the locked reference.
 		c.mu.Lock()
@@ -356,11 +382,16 @@ func (c *Controller) srLoop(stop chan struct{}, st *superres.Stack) {
 		if idle {
 			continue // stacked result is final; wait for Reset or UTILITY-cancel
 		}
+		// Full-rate raw live frames only while stacking: renewed for a final
+		// stack, the lease read 500 k words a frame at 200 us/div and held the
+		// live view at 1 fps for as long as super-res stayed armed (bug hunt
+		// 2026-10-10).
+		c.srLeaseRaw()
 		var c1, c2 []uint8
 		var edgeX float64
 		var seq uint64
 		var cols int
-		var sampleS float64
+		var sampleS, tdiv float64
 		var envelope bool
 		c.frameFn(func(f *engine.Frame) {
 			if f != nil && (f.IsEnv || f.PeakDetect) {
@@ -377,7 +408,7 @@ func (c *Controller) srLoop(stop chan struct{}, st *superres.Stack) {
 			if v < 8 {
 				return
 			}
-			seq, cols, edgeX, sampleS = f.Seq, v, f.EdgeX, f.SampleS
+			seq, cols, edgeX, sampleS, tdiv = f.Seq, v, f.EdgeX, f.SampleS, f.TdivS
 			c1 = append([]uint8(nil), f.C1[:v]...)
 			if len(f.C2) >= v {
 				c2 = append([]uint8(nil), f.C2[:v]...)
@@ -400,6 +431,14 @@ func (c *Controller) srLoop(stop chan struct{}, st *superres.Stack) {
 		// cover the grid is simply skipped, no penalty, no cancel.
 		if st.SampleS != 0 && sampleS != 0 && sampleS != st.SampleS {
 			c.srReachReview(st, "scale changed - stack kept")
+			reached = true
+			continue
+		}
+		// Raw SRAM frames keep their 2 ns pitch at every timebase, so a
+		// timebase change shows only as TdivS: the stack kept feeding 500 k
+		// sample frames at 200 us/div (bug hunt 2026-10-10).
+		if seedTdiv > 0 && tdiv > 0 && math.Abs(tdiv-seedTdiv) > seedTdiv*1e-6 {
+			c.srReachReview(st, "timebase changed - stack kept")
 			reached = true
 			continue
 		}
