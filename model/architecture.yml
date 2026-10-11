@@ -162,10 +162,12 @@ architecture:
   - id: FU-APP-PANEL
     name: Panel policy and menus
     group: FG-APP
-    prose: 'Key/knob semantics, soft menus and instrument commands. Physical keys and knobs arrive from the FPGA panel
-      scan (ADR-PANEL-SERIAL-SCAN); web panel actions and SCPI remain usable. All 25 Go files have reviewed
-      declaration links. Host tests do not qualify physical controls. Control events, conditional dispatch, all
-      softkey pages and no-action branches are authored in FLOW-PANEL-CONTROLS in model/behavior.yml.'
+    prose: 'Key/knob semantics and instrument commands as task workspaces (ADR-TASK-WORKSPACES): five workspaces on F1-F5
+      with a pictogram rail and per-workspace knob tools, and full-screen settings sheets over one declarative row model
+      (model.go, model_rows.go) that the sheets, the knobs, the F-keys and the remote API (remote.go) change through the
+      same setter. Physical keys and knobs arrive from the FPGA panel scan (ADR-PANEL-SERIAL-SCAN); web panel actions and
+      SCPI remain usable. Host tests do not qualify physical controls. Control events, conditional dispatch, the
+      workspaces, the sheet and the remote inputs are authored in FLOW-PANEL-CONTROLS in model/behavior.yml.'
     tags:
     - source-backed
   - id: FU-APP-SCPI
