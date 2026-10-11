@@ -844,6 +844,11 @@ func cursRows() []*row {
 			},
 			def: func(c *Controller) error { c.centreCursor(k); return nil },
 		}
+		r.stepN = func(c *Controller, n int) error { // a step a detent, accelerated by a fast spin
+			s := c.snap()
+			lo, hi := r.lim(s)
+			return r.setN(c, clampF(r.val(s)+float64(n)*r.step(s), lo, hi))
+		}
 		if k == 0 {
 			r.knob = "MEASURE workspace: the Adjust knob."
 		} else {

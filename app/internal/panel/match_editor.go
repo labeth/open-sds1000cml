@@ -323,9 +323,9 @@ func (c *Controller) matchOK() error {
 	c.mu.Unlock()
 	if err := c.setMatchTokens(toks); err != nil {
 		c.mu.Lock()
-		c.kb.msg = err.Error()
+		c.kb.msg = err.Error() // the editor stays open with the reason
 		c.mu.Unlock()
-		return nil
+		return err
 	}
 	c.matchCancel()
 	text := strings.Join(toks, " ")

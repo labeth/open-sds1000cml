@@ -112,8 +112,8 @@ func unitName(u string) string {
 // TRLC-LINKS: REQ-SDS-214
 func parseMatchText(text string) ([]string, error) {
 	s := strings.TrimSpace(text)
-	if s == "" {
-		return nil, nil
+	if s == "" || strings.EqualFold(s, "any") || strings.EqualFold(s, "any byte") {
+		return nil, nil // no match bytes: any byte
 	}
 	if len(s) >= 2 && (s[0] == '"' && s[len(s)-1] == '"' || s[0] == '\'' && s[len(s)-1] == '\'') {
 		body, err := unescape(s[1 : len(s)-1])

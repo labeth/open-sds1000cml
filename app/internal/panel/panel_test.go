@@ -494,11 +494,13 @@ func idle() [5]uint16 {
 	return [5]uint16{0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0}
 }
 
-// newEng is the engine at the state the panel tests start from.
+// newEng is the engine at the state the panel tests start from, with the
+// real engine's boot qualifiers (levels set, windows unset).
 func newEng() *fakeEng {
 	return &fakeEng{matrix: idle(), stats: engine.Stats{
 		Running: true, TrigCode: 31434, TdivS: 500e-6, TrigPosFrac: 0.5,
 		AvgCount: 16, EresLen: 1, MemDepth: 20480,
+		TrigQual: engine.TrigQual{PulseLvl: 0.5, SlopeLo: 0.2, SlopeHi: 0.8, VideoNeg: true},
 	}}
 }
 

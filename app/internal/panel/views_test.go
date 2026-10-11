@@ -6,13 +6,16 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
 	"open-sds/app/internal/analog"
+	"open-sds/app/internal/decode"
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/lcd"
 	"open-sds/app/internal/panel/wsview"
+	"open-sds/app/internal/streamview"
 )
 
 // Every workspace, view, sheet tab and picker drawn end to end: the panel's
@@ -36,21 +39,42 @@ type viewRig struct {
 	eng   *bodeEng
 	fe    *fakeFE
 	clk   *testClock
+	fmu   sync.Mutex // f: the super-res loop reads it from its goroutine
 	f     *engine.Frame
 	seq   uint64
 	spect *lcd.Spectrogram
 }
 
+// fakeStream is a decoded stream that never starts (Auto finds nothing).
+type fakeStream struct{ mu sync.Mutex }
+
+func (s *fakeStream) Start(engine.SerialParams, engine.StreamTrigger, int, string) error { return nil }
+func (s *fakeStream) Stop()                                                              {}
+func (s *fakeStream) Active() bool                                                       { return false }
+func (s *fakeStream) Snapshot() streamview.View                                          { return streamview.View{} }
+func (s *fakeStream) Refuse(string)                                                      {}
+func (s *fakeStream) Lines(int, int) streamview.LinesPage                                { return streamview.LinesPage{} }
+func (s *fakeStream) LinesBinary(int, []byte) int                                        { return 0 }
+
+// newViewRig is a controller with every optional part: the FRA sweep, the
+// serial trigger, the bandwidth limit, the display invert, a decoded
+// stream, a frame source and a manual clock.
 func newViewRig(t *testing.T) *viewRig {
 	t.Helper()
 	fe := &fakeFE{idx: [2]int{8, 8}}
 	eng := &bodeEng{fakeEng: newEng()}
-	c := New(eng, fe, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
+	c := New(eng, bwlFE{fe}, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
 	c.decode(idle(), true)
 	c.detectSync = true
 	r := &viewRig{t: t, c: c, eng: eng, fe: fe, clk: withClock(c), spect: lcd.NewSpectrogram()}
-	c.SetFrameSource(func(fn func(*engine.Frame)) { fn(r.f) })
+	c.SetFrameSource(func(fn func(*engine.Frame)) {
+		r.fmu.Lock()
+		f := r.f
+		r.fmu.Unlock()
+		fn(f)
+	})
 	c.SetInverter(&fakeInv{})
+	c.SetDecodeStream(&fakeStream{}, func() (decode.Result, float64, bool) { return decode.Result{}, 0, false })
 	return r
 }
 
@@ -58,7 +82,9 @@ func newViewRig(t *testing.T) *viewRig {
 func (r *viewRig) show(f *engine.Frame) {
 	r.seq++
 	f.Seq = r.seq
+	r.fmu.Lock()
 	r.f = f
+	r.fmu.Unlock()
 	r.eng.set(func(st *engine.Stats) { st.Seq, st.TdivS = r.seq, f.TdivS })
 	r.c.OnFrame(f)
 	if f.SampleS > 0 && !f.IsEnv {

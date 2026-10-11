@@ -181,9 +181,7 @@ func (c *Controller) status(s *sv) Status {
 	for i := range st.Views {
 		st.Views[i] = workspaceView(s, wsview.WS(i))
 	}
-	c.mu.Lock()
-	st.Lamps = c.ledWord
-	c.mu.Unlock()
+	st.Lamps = c.lampWord(s) // what the lamps show (latched at the next input or sync)
 	st.LampsLit = lampNames(st.Lamps)
 	switch {
 	case u.open && u.sub == subMatch:
