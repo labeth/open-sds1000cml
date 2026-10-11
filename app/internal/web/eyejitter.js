@@ -53,6 +53,11 @@ function ejNew(opts) {
     // record holds too few edges to estimate UI alone; the pool accumulates
     // intervals across records so the grid resolves after a few of them.
     lastErr: "",
+    // 10-90 % transition times of locked records' edges (samples): running sums
+    riseSum: 0, riseN: 0, fallSum: 0, fallN: 0,
+    // TIE of rising and falling edges apart (samples): their difference is the
+    // duty-cycle distortion that moves the eye's crossing
+    tieRiseSum: 0, tieRiseN: 0, tieFallSum: 0, tieFallN: 0,
   };
 }
 
@@ -111,6 +116,7 @@ function ejFeed(st, sig, n, sampleS) {
 
   // --- TIE aggregation (seconds): exact running stats + decimated buffer ---
   for (let i = 0; i < fit.tie.length; i++) {
+    if (e.pol[i] > 0) { st.tieRiseSum += fit.tie[i]; st.tieRiseN++; } else { st.tieFallSum += fit.tie[i]; st.tieFallN++; }
     const v = fit.tie[i] * sampleS;
     st.tieSum += v;
     const p = v * v;
@@ -147,6 +153,11 @@ function ejFeed(st, sig, n, sampleS) {
     prevIdx = i;
   }
   st.edges += e.t.length;
+
+  // --- 10-90 % rise and fall times, bounded to half a UI either side ---
+  const tt = ejEdgeTimes(sig, n, e, fit.ui / 2);
+  for (const v of tt.rise) { st.riseSum += v; st.riseN++; }
+  for (const v of tt.fall) { st.fallSum += v; st.fallN++; }
 
   // --- TIE spectrum on the UI grid (per record, magnitude-averaged) ---
   const nUI = fit.nIdx[fit.nIdx.length - 1] - fit.nIdx[0];
@@ -273,11 +284,22 @@ function ejResult(st) {
   }
   // eye metrics from the density map
   if (st.records > 0) out.eyeMetrics = ejEyeMetrics(st);
+  // edge times and the crossing level (fraction of the swing)
+  const rise = st.riseN ? st.riseSum / st.riseN : NaN, fall = st.fallN ? st.fallSum / st.fallN : NaN;
+  out.riseS = rise * st.sampleS;
+  out.fallS = fall * st.sampleS;
+  out.crossing = ejCrossing(st.tieRiseN ? st.tieRiseSum / st.tieRiseN : NaN, st.tieFallN ? st.tieFallSum / st.tieFallN : NaN, rise, fall);
+  // Sample-limited figures (below about 20 samples per UI, REQ-SDS-215) are
+  // bounds: edge times, eye width and jitter can only read high (an edge faster
+  // than a few samples is smeared over them; quantization adds jitter), so the
+  // true values are at most what is shown.
+  out.samplesPerUI = st.ui;
+  out.bounded = st.ui > 0 && st.ui < 20;
   return out;
 }
 
 
 
 if (typeof module !== "undefined" && module.exports) {
-  module.exports = { ejNew, ejFeed, ejResult, ejEdges, ejEstimateUI, ejEstimateUIFromIntervals, ejFitGrid, ejFFT, ejEyeMetrics };
+  module.exports = { ejNew, ejFeed, ejResult, ejEdges, ejEstimateUI, ejEstimateUIFromIntervals, ejFitGrid, ejFFT, ejEyeMetrics, ejEdgeTimes, ejCrossing };
 }

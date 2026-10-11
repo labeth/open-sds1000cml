@@ -266,6 +266,54 @@ function ejEyeMetrics(st) {
   return { eyeHeightCodes: eyeHeight, eyeWidthUI: Math.min(1, eyeWidthUI), crossTotal: total };
 }
 
+// ejEdgeTimes measures each edge's 10-90 % transition time around its mid
+// crossing: from the edge's interpolated mid time, walk back to the near
+// threshold (10 % for a rising edge, 90 % for a falling one) and forward to the
+// far one, interpolating both crossings. The walk is bounded by maxSpan samples
+// either side (half a UI), so a sluggish edge never reaches into the next bit.
+// Returns {rise:[samples], fall:[samples]}.
+// TRLC-LINKS: REQ-SDS-215
+function ejEdgeTimes(sig, n, e, maxSpan) {
+  const out = { rise: [], fall: [] };
+  if (!e || !(e.hi > e.lo)) return out;
+  const p10 = e.lo + 0.1 * (e.hi - e.lo), p90 = e.lo + 0.9 * (e.hi - e.lo);
+  const span = Math.max(2, Math.floor(maxSpan || 8));
+  // cross: the fractional index where sig crosses level between i and i+1
+  // TRLC-LINKS: REQ-SDS-215
+  const cross = (i, level) => { const a = sig[i], b = sig[i + 1]; return b === a ? i : i + (level - a) / (b - a); };
+  for (let k = 0; k < e.t.length; k++) {
+    const t = e.t[k], up = e.pol[k] > 0, c = Math.floor(t);
+    const near = up ? p10 : p90, far = up ? p90 : p10;
+    // back from the mid crossing to the near threshold
+    let i = c, t0 = NaN;
+    for (let s = 0; s < span && i >= 0 && i + 1 < n; s++, i--) {
+      const a = sig[i], b = sig[i + 1];
+      if (up ? (a <= near && b > near) : (a >= near && b < near)) { t0 = cross(i, near); break; }
+    }
+    // forward from the mid crossing to the far threshold
+    let j = c, t1 = NaN;
+    for (let s = 0; s < span && j + 1 < n; s++, j++) {
+      const a = sig[j], b = sig[j + 1];
+      if (up ? (a < far && b >= far) : (a > far && b <= far)) { t1 = cross(j, far); break; }
+    }
+    if (!(t1 > t0)) continue;
+    (up ? out.rise : out.fall).push(t1 - t0);
+  }
+  return out;
+}
+
+// ejCrossing is the eye's crossing level as a fraction of the swing (0.5 = a
+// symmetric eye). Rising and falling transitions are taken as straight lines
+// through their mid-level times, which sit tieRise / tieFall from the ideal
+// grid, with 10-90 % times rise / fall (all in samples): they intersect at
+// 0.5 + 0.8 · (tieFall − tieRise) / (rise + fall). Late falling edges (wider
+// ones) lift the crossing; NaN without both edge kinds.
+// TRLC-LINKS: REQ-SDS-215
+function ejCrossing(tieRise, tieFall, rise, fall) {
+  if (![tieRise, tieFall, rise, fall].every(Number.isFinite) || !(rise + fall > 0)) return NaN;
+  return Math.max(0, Math.min(1, 0.5 + 0.8 * (tieFall - tieRise) / (rise + fall)));
+}
+
 if (typeof module !== "undefined" && module.exports) {
-  module.exports = { ejEdges, ejEstimateUI, ejEstimateUIFromIntervals, ejFitGrid, ejFFT, ejMedian, ejRjDj, rmsOf, ejEyeMetrics, ejPushCapped };
+  module.exports = { ejEdges, ejEstimateUI, ejEstimateUIFromIntervals, ejFitGrid, ejFFT, ejMedian, ejRjDj, rmsOf, ejEyeMetrics, ejPushCapped, ejEdgeTimes, ejCrossing };
 }

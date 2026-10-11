@@ -145,5 +145,31 @@ function frame(amp1, amp2, seed) {
   near(toneAmplitude(r, 20.5), 50, 0.5, "toneAmplitude() recovers the amplitude half a bin off");
 }
 
+// --- 10. harmonics + THD (SPECTRUM's peak table, REQ-SDS-216) ----------------
+// A square wave's odd harmonics fall as 1/n: H3 at −9.5 dB, H5 at −14 dB…; its
+// THD over H3…H15 is √(Σ 1/n²) ≈ 45 %. A pure sine has no harmonic.
+{
+  const { harmonics } = require("./peaks.js");
+  const M = 8192, cyc = 64; // bin-centred fundamental, harmonics on bins too
+  const sq = [];
+  for (let n = 0; n < M; n++) sq.push(128 + 60 * (((n * cyc / M) % 1) < 0.5 ? 1 : -1));
+  const sp = spectrum(sq, 0.5);
+  const pk = detectPeaks(sp, { floorDb: -50, maxPeaks: 8 });
+  const H = harmonics(pk, sp);
+  near(H.f0, cyc / M, 1e-4, "f0 = the largest peak (the fundamental)");
+  ok(pk.map((p, i) => H.harm[i]).join(",") === "1,3,5,7,9,11,13,15", "odd harmonics numbered 1,3,5…15: " + pk.map((p, i) => H.harm[i]).join(","));
+  const h3 = pk[H.harm.indexOf(3)];
+  near(h3.db - H.topDb, 20 * Math.log10(1 / 3), 0.3, "H3 is 1/3 of H1 (−9.5 dB)");
+  let s = 0; for (const n of [3, 5, 7, 9, 11, 13, 15]) s += 1 / (n * n);
+  near(H.thd, Math.sqrt(s), 0.01, "THD over the listed harmonics ≈ √Σ1/n²");
+  ok(H.count === 7, "7 harmonics summed");
+  const sine = [];
+  for (let n = 0; n < M; n++) sine.push(128 + 60 * Math.sin(2 * Math.PI * cyc * n / M));
+  const ss = spectrum(sine, 0.5), sk = detectPeaks(ss, { floorDb: -50, maxPeaks: 8 }), SH = harmonics(sk, ss);
+  ok(SH.count === 0 && Number.isNaN(SH.thd), "a pure sine has no harmonic: THD is NaN");
+  const e = harmonics([], null);
+  ok(e.f0 === 0 && e.harm.length === 0, "no peaks: an empty result");
+}
+
 console.log(failed ? `\n${failed} FAILED` : "\nALL PASS");
 process.exit(failed ? 1 : 0);

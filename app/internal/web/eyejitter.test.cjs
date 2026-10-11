@@ -292,5 +292,47 @@ const SAMPLE_S = 2e-9;
   check(late > 3 * early, "review: running TIE rms tracks post-cap jitter", (early * 1e12).toFixed(0) + "ps -> " + (late * 1e12).toFixed(0) + "ps");
 }
 
+// ---- BUS eye (REQ-SDS-215): crossing, rise/fall, sample-limited bounds ----
+{
+  // symmetric sigmoid edges: 10-90 % = `rise` samples, crossing at 50 % of the swing
+  const ui = 100, n = 20480, rise = 9;
+  const st = EJ.ejNew({});
+  const bits = prbs7(300);
+  for (let r = 0; r < 20; r++) EJ.ejFeed(st, genRecord(n, ui, 20 + (r * 37.3) % ui, bits, () => 0, 1.2, rise), n, SAMPLE_S);
+  const res = EJ.ejResult(st);
+  check(Math.abs(res.riseS - rise * SAMPLE_S) < 0.15 * rise * SAMPLE_S, "eye: rise 10-90 % ≈ the edge's", (res.riseS * 1e9).toFixed(2) + " ns vs " + (rise * SAMPLE_S * 1e9).toFixed(1));
+  check(Math.abs(res.fallS - rise * SAMPLE_S) < 0.15 * rise * SAMPLE_S, "eye: fall 10-90 % ≈ the edge's", (res.fallS * 1e9).toFixed(2) + " ns");
+  check(Math.abs(res.crossing - 0.5) < 0.06, "eye: symmetric edges cross at 50 %", (res.crossing * 100).toFixed(1) + " %");
+  check(res.bounded === false && Math.abs(res.samplesPerUI - ui) < 1, "eye: 100 samples/UI is not sample-limited", String(res.samplesPerUI));
+}
+{
+  // falling edges delayed by 6 samples (duty-cycle distortion: wider ones): the
+  // eye's X rises above the middle — 0.5 + 0.8·6/(12+12) = 70 % for these edges
+  const ui = 100, n = 20480, st = EJ.ejNew({});
+  const bits = prbs7(300);
+  for (let r = 0; r < 20; r++) {
+    const sig = new Int16Array(n), phase = 20 + (r * 41.7) % ui, edges = [];
+    for (let k = 1; k < bits.length; k++) if (bits[k] !== bits[k - 1]) edges.push({ t: phase + k * ui + (bits[k] ? 0 : 6), up: !!bits[k] });
+    let e = 0;
+    for (let i = 0; i < n; i++) {
+      while (e < edges.length - 1 && i > edges[e].t + 40) e++;
+      const ed = edges[Math.min(e, edges.length - 1)];
+      const a = ed.up ? 60 : 200, b = ed.up ? 200 : 60;
+      sig[i] = Math.round(i < ed.t - 40 ? a : i > ed.t + 40 ? b : a + (b - a) / (1 + Math.exp(-2.2 * (i - ed.t) / 6)));
+    }
+    EJ.ejFeed(st, sig, n, SAMPLE_S);
+  }
+  const res = EJ.ejResult(st);
+  check(Math.abs(res.crossing - 0.70) < 0.05, "eye: late falling edges lift the crossing to ≈70 %", (res.crossing * 100).toFixed(1) + " %");
+}
+{
+  // 8 samples per UI: sample-limited — the figures are bounds
+  const st = EJ.ejNew({});
+  const bits = prbs7(400);
+  for (let r = 0; r < 20; r++) EJ.ejFeed(st, genRecord(2048, 8, 3 + (r * 1.7) % 8, bits, () => 0, 1.2, 1.5), 2048, SAMPLE_S);
+  const res = EJ.ejResult(st);
+  check(res.bounded === true, "eye: below 20 samples per UI the figures are bounds", (res.samplesPerUI || 0).toFixed(1) + " samples/UI");
+}
+
 if (fails) { console.log(fails + " FAILURES"); process.exit(1); }
 console.log("ALL PASS");

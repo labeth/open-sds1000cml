@@ -166,6 +166,44 @@ function component(samples, cyclesPerLen) {
   return out;
 }
 
+// harmonics names each peak's harmonic number and sums the THD. The
+// fundamental f0 is the largest peak. A peak is harmonic n (n = round(f/f0))
+// when it lies within max(2 bins, 3 % of f0) of n·f0; when two peaks claim the
+// same n the stronger keeps it. THD = √(Σ_{n≥2} A_n²) / A_1 over the harmonic
+// peaks LISTED (A = linear magnitude from the peak's dB), so a longer list
+// (more peaks) includes more harmonics; `count` says how many it summed. spec
+// (optional) supplies the bin width. Returns {f0, topDb, harm[], thd, count}:
+// harm[i] is 0 for a peak that is not a harmonic; thd is NaN without one.
+// TRLC-LINKS: REQ-SDS-216
+function harmonics(peaks, spec) {
+  const out = { f0: 0, topDb: 0, harm: [], thd: NaN, count: 0 };
+  if (!peaks || !peaks.length) return out;
+  let top = 0;
+  for (let i = 1; i < peaks.length; i++) if (peaks[i].db > peaks[top].db) top = i;
+  const f0 = peaks[top].freq;
+  out.f0 = f0; out.topDb = peaks[top].db;
+  out.harm = peaks.map(() => 0);
+  if (!(f0 > 0)) return out;
+  const binHz = spec && spec.half > 0 && spec.nyq > 0 ? spec.nyq / spec.half : 0;
+  const tol = Math.max(2 * binHz, 0.03 * f0);
+  const best = new Map(); // n -> peak index
+  for (let i = 0; i < peaks.length; i++) {
+    const n = Math.round(peaks[i].freq / f0);
+    if (n < 1 || Math.abs(peaks[i].freq - n * f0) > tol) continue;
+    if (n === 1 && i !== top) continue; // a near neighbour of the fundamental is not H1
+    const j = best.get(n);
+    if (j === undefined || peaks[i].db > peaks[j].db) best.set(n, i);
+  }
+  let s2 = 0, count = 0;
+  for (const [n, i] of best) {
+    out.harm[i] = n;
+    if (n >= 2) { const a = Math.pow(10, (peaks[i].db - out.topDb) / 20); s2 += a * a; count++; }
+  }
+  out.count = count;
+  if (count) out.thd = Math.sqrt(s2);
+  return out;
+}
+
 if (typeof module !== "undefined" && module.exports) {
-  module.exports = { fftInPlace, spectrum, detectPeaks, nearestPeak, component, fitTone, toneAmplitude };
+  module.exports = { fftInPlace, spectrum, detectPeaks, nearestPeak, component, fitTone, toneAmplitude, harmonics };
 }
