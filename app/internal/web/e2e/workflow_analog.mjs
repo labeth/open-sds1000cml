@@ -1,6 +1,7 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-WEB
 // workflow_analog.mjs — tone + PRBS source workflows (FPGA analog/tone sources).
 import { near, assert } from "./workflow_assert.mjs";
+import { parseEng } from "./operator.mjs";
 
 
 // ---------------------------------------------------------------------------
@@ -33,29 +34,12 @@ export const tone1M = [
     assert(near(duty, 50, 0, 12), `Duty read ${duty}%, expected ~50%`);
   }},
   // TRLC-LINKS: REQ-SDS-208
-  { id: "T5", name: "Confirm the fundamental on the FFT view", run: async (op) => {
-    await op.clickExpect("mFFT", async () => (await op.readText("fftBody1")) !== null || (await op.page.$("#fftCardC1")) !== null,
-      { why: "FFT view button must switch the display to the spectrum" });
-    // FFT peak table on C1 lists the fundamental; read its first peak freq.
-    const peak = await op._settle(async () => {
-      const t = await op.page.evaluate(() => {
-        const b = document.querySelector("#fftBody1");
-        if (!b) return null;
-        const cell = b.querySelector("tr td");
-        return cell ? cell.textContent : null;
-      });
-      return t && /Hz/.test(t) ? t : false;
-    }, 8000, "FFT peak table never populated a peak").then(async () => {
-      return await op.page.evaluate(() => {
-        const b = document.querySelector("#fftBody1");
-        const cell = b && b.querySelector("tr td");
-        return cell ? cell.textContent : null;
-      });
-    });
-    const { parseEng } = await import("./operator.mjs");
+  { id: "T5", name: "Confirm the fundamental in SPECTRUM's peak table", run: async (op) => {
+    // SPECTRUM's peak table lists C1's peaks; the largest (Rel 0 dB) is the fundamental.
+    const peak = await op.topPeak(1);
     const hz = parseEng(peak);
     assert(near(hz, 1e6, 0.05), `FFT fundamental read ${peak} (${hz} Hz), expected ~1 MHz`);
-    await op.click("mYT", { why: "return to Y-T" });
+    await op.ws("scope");
   }},
   // TRLC-LINKS: REQ-SDS-208
   { id: "T6", name: "Stop acquisition and confirm the STOPPED indicator", run: async (op) => {
@@ -115,10 +99,15 @@ export const tone1M = [
 // tone1M part 2 — more single-channel operator tasks on the 1 MHz square.
 export const tone1Mb = [
   // TRLC-LINKS: REQ-SDS-208
-  { id: "T11", name: "Toggle the trigger slope rising↔falling", run: async (op) => {
+  { id: "T11", name: "Flip the trigger slope rising↔falling in the strip", run: async (op) => {
     const before = await op.readText("slope");
-    await op.clickExpect("slope", async () => (await op.readText("slope")) !== before, { why: "slope button must flip the edge" });
-    await op.click("slope", { why: "restore slope" });
+    const cur = await op.page.evaluate(() => document.getElementById("slope").value);
+    const next = cur === "1" ? "0" : "1";
+    await op.selectExpect("slope", next, async () => (await op.readText("slope")) !== before, { why: "the slope choice must flip the edge" });
+    // past the status echo guard: the strip now shows what the scope reports
+    await op.page.waitForTimeout(1800);
+    assert((await op.readText("slope")) !== before, `the scope did not keep the ${next === "1" ? "rising" : "falling"} slope`);
+    await op.selectExpect("slope", cur, null, { why: "restore slope" });
   }},
   // TRLC-LINKS: REQ-SDS-208
   { id: "T12", name: "GND coupling flattens C1 to the ground reference", run: async (op) => {
@@ -162,9 +151,7 @@ export const tone1Mb = [
   }},
   // TRLC-LINKS: REQ-SDS-208
   { id: "T17", name: "Math C1+C2 renders without error (C2 idle)", run: async (op) => {
-    await op.selectExpect("mathFn", "c1+c2", async () => await op.page.evaluate(() => {
-      const c = document.getElementById("mathCard"); return c && getComputedStyle(c).display !== "none";
-    }), { why: "math function must engage" });
+    await op.selectExpect("mathFn", "c1+c2", async () => await op.mathShown(), { why: "math function must engage (COMPARE's Math pane)" });
     const sz = await op.lcdPng();
     assert(sz > 3000, "math trace did not render");
     await op.selectExpect("mathFn", "off", null, { why: "math off" });
@@ -202,11 +189,17 @@ export const tone1Mb = [
     assert(os != null && os !== "—", "overshoot did not read a value on a square edge");
   }},
   // TRLC-LINKS: REQ-SDS-208
-  { id: "T21", name: "Collapse the side dock and let the scope fill the width", run: async (op) => {
-    await op.clickExpect("panelToggle", async () => await op.page.evaluate(() => {
-      const d = document.getElementById("dock"); return d && (getComputedStyle(d).display === "none" || d.classList.contains("collapsed") || document.body.classList.contains("nopanel"));
-    }), { why: "panel toggle must collapse the dock" });
-    await op.click("panelToggle", { why: "restore the dock" });
+  { id: "T21", name: "Maximize the scope pane and restore it with Esc", run: async (op) => {
+    await op.ws("scope");
+    const w0 = await op.page.evaluate(() => document.getElementById("scope").width);
+    // double-click the pane's title bar: the pane fills the workspace and the
+    // trace canvas follows its size
+    await op.page.dblclick("#p-scope > .ph .pt");
+    await op._settle(async () => await op.page.evaluate((w) => document.getElementById("scope").width > w * 1.1, w0), 3000,
+      "maximizing the scope pane did not widen the trace canvas");
+    await op.page.keyboard.press("Escape");
+    await op._settle(async () => await op.page.evaluate((w) => Math.abs(document.getElementById("scope").width - w) <= 2, w0), 3000,
+      "Esc did not restore the scope pane");
   }},
   // TRLC-LINKS: REQ-SDS-208
   { id: "T22", name: "Trigger level slider moves the level and keeps a lock", run: async (op) => {
@@ -215,6 +208,65 @@ export const tone1Mb = [
     await op.page.waitForTimeout(1500);
     const f = await op.waitMeas(1, "Freq");
     assert(near(f, 1e6, 0.06), `after a trigger-level move the scope still reads ${f} Hz`);
+  }},
+  // TRLC-LINKS: REQ-SDS-208, REQ-SDS-216
+  { id: "T23", name: "SPECTRUM names the square's odd harmonics and reads its THD", run: async (op) => {
+    await op.autosetStable(1);
+    await op.topPeak(1);
+    // the peak table's Harm column names the multiples of the largest peak
+    const harms = await op.readUntil(async () => await op.page.evaluate(() => {
+      const h = [...document.querySelectorAll("#fftBody tr.pk .ph")].map((c) => c.textContent).filter(Boolean);
+      return h.includes("H3") ? h : null;
+    }), 8000, "the peak table never marked the 3rd harmonic");
+    assert(harms.includes("H1") && !harms.includes("H2"), `a square has odd harmonics only, the table reads ${harms.join(" ")}`);
+    const thd = await op.readUntil(async () => await op.page.evaluate(() => {
+      for (const r of document.querySelectorAll("#roBody tr")) { const th = r.querySelector("th"); if (th && th.textContent === "THD") return r.querySelector("td").textContent; }
+      return null;
+    }), 6000, "SPECTRUM's readout shows no THD");
+    const v = parseFloat(thd);
+    // H2..H10 of an ideal square (H3, H5, H7, H9) make 42.9 %; the edge rate takes a little off
+    assert(v > 30 && v < 50, `THD of a square reads "${thd}", expected about 40–43 %`);
+    await op.ws("scope");
+  }},
+  // TRLC-LINKS: REQ-SDS-208, REQ-SDS-217
+  { id: "T24", name: "MEASURE statistics count captures, keep a tight frequency spread, and reset", run: async (op) => {
+    await op.autosetStable(1);
+    await op.ws("measure");
+    await op.selectExpect("measView", "stats", null, { why: "MEASURE's statistics view" });
+    // TRLC-LINKS: REQ-SDS-208
+    const row = async () => await op.page.evaluate(() => {
+      const r = document.querySelector('#statsBody tr[data-stat="1:Freq"]');
+      return r ? { unit: r.querySelector("th .unit").textContent, td: [...r.querySelectorAll("td")].map((c) => c.textContent.trim()) } : null;
+    });
+    // columns: Now, Mean, Min, Max, Sdev, N
+    const a = await op.readUntil(async () => { const r = await row(); return r && +r.td[5] >= 5 ? r : null; }, 12000, "the Freq statistics never counted 5 captures");
+    const [mean, min, max] = [1, 2, 3].map((i) => parseEng(a.td[i] + " " + a.unit));
+    assert(near(mean, 1e6, 0.03) && min <= mean && mean <= max, `Freq mean ${mean} Hz (min ${min}, max ${max}) — expected ~1 MHz, ordered`);
+    assert((max - min) / mean < 0.02, `the frequency spread ${min}…${max} Hz is wide for a crystal source`);
+    const n0 = +a.td[5];
+    await op.clickExpect("statsReset", async () => { const r = await row(); return r && +r.td[5] < n0; }, { why: "Reset must restart the statistics" });
+  }},
+  // TRLC-LINKS: REQ-SDS-208, REQ-SDS-218
+  { id: "T25", name: "COMPARE: stack a master, build the mask from it and test live captures", run: async (op) => {
+    await op.autosetStable(1);
+    await op.ws("compare");
+    await op.selectExpect("masterN", "64", null, { why: "average 64 captures" });
+    await op.clickExpect("masterBtn", async () => /master ×64/.test(await op.readText("refInfoA") || ""),
+      { timeout: 90000, why: "Stack master must average 64 captures into REF A" });
+    // the acquisition is back to what it was, the mask test counts raw captures
+    assert((await op.readText("acq")) === "Normal", `the acquisition should be restored to Normal, reads ${await op.readText("acq")}`);
+    assert((await op.readText("zmMode")) === "Count", `the mask test should be counting, reads ${await op.readText("zmMode")}`);
+    const meter = await op.readUntil(async () => { const t = await op.readText("zmMeter"); return t && /pass\s+\d/i.test(t) ? t : null; },
+      10000, "the mask test never counted a live capture against the master");
+    assert(/pass/.test(meter), `mask meter should count passes, got "${meter}"`);
+    // the live square sits on the master: nearly every sample within half a division
+    const within = await op.readUntil(async () => await op.page.evaluate(() => {
+      const r = document.querySelector('#diffBody tr[data-ref="A"]');
+      const td = r && r.querySelectorAll("td");
+      return td && td.length === 3 ? parseFloat(td[2].textContent) : null;
+    }), 6000, "COMPARE's difference pane did not compare the live trace with the master");
+    assert(within > 90, `only ${within} % of the live samples are within 0.5 div of the master`);
+    await op.selectExpect("zmMode", "0", null, { why: "mask test off" });
   }},
 ];
 
@@ -237,38 +289,26 @@ export const prbs2M = [
     assert(f != null && (near(f, 2e6, 0.05) || near(f, 1e6, 0.05)), `C2 clock freq ${f} Hz, expected ~2 MHz (or 1 MHz)`);
   }},
   // TRLC-LINKS: REQ-SDS-208
-  { id: "P3", name: "Eye diagram: arm the analyzer and get a locked eye with height", run: async (op) => {
-    await op.selectExpect("ejCh", "1", null, { why: "analyze the data channel C1" });
-    await op.clickExpect("ejArm", async () => {
-      const s = await op.readText("ejStats");
-      return s && !/idle/i.test(s);
-    }, { timeout: 8000, why: "ARM must start the eye/jitter analyzer" });
-    // wait for a real eye: the ejBody table must list an eye height in codes/mV
-    const h = await op._settle(async () => {
-      const t = await op.page.evaluate(() => {
-        const b = document.querySelector("#ejBody");
-        if (!b) return null;
-        for (const r of b.querySelectorAll("tr")) { const th = r.querySelector("th"); if (th && /eye height/i.test(th.textContent)) return r.querySelector("td") ? r.querySelector("td").textContent : null; }
-        return null;
-      });
-      return t && /code|mV/.test(t) ? t : false;
-    }, 15000, "eye never locked (no eye-height measured on a serial signal)").then(async () => await op.readText("ejStats"));
-    assert(h != null, "eye analyzer produced no status");
+  { id: "P3", name: "Eye diagram: BUS's eye view locks an eye with height on the data", run: async (op) => {
+    await op.eyeOn(1, "analyze the data channel C1");
+    // wait for a real eye: the eye/jitter table must list an eye height in codes/mV
+    const h = await op.readUntil(async () => { const t = await op.eyeRow("eye height"); return t && /code|mV/.test(t) ? t : null; },
+      15000, "eye never locked (no eye-height measured on a serial signal)");
+    assert(h != null, "eye analyzer produced no eye height");
+    // the crossing reads too
+    const x = await op.eyeRow("crossing");
+    assert(x && /%/.test(x), `eye crossing should read a percentage, got "${x}"`);
   }},
   // TRLC-LINKS: REQ-SDS-208
-  { id: "P4", name: "Jitter: read a TIE measurement from the locked eye", run: async (op) => {
-    await op.selectExpect("ejCh", "1", null, { why: "C1" });
-    await op.clickExpect("ejArm", async () => !/idle/i.test(await op.readText("ejStats") || ""), { timeout: 8000, why: "ARM eye/jitter" });
-    const tie = await op.readUntil(async () => {
-      const t = await op.page.evaluate(() => {
-        const b = document.querySelector("#ejBody");
-        if (!b) return null;
-        for (const r of b.querySelectorAll("tr")) { const th = r.querySelector("th"); if (th && th.textContent.trim() === "TIE") return r.querySelector("td") ? r.querySelector("td").textContent : null; }
-        return null;
-      });
-      return t && /s/.test(t) ? t : null;
-    }, 15000, "no TIE jitter measurement appeared");
-    assert(/rms/.test(tie) && /pp/.test(tie), `TIE row should read rms/pp jitter, got "${tie}"`);
+  { id: "P4", name: "Jitter: read the TIE rms and pk-pk off the locked eye", run: async (op) => {
+    await op.eyeOn(1, "ARM eye/jitter on C1");
+    const rms = await op.readUntil(async () => { const t = await op.eyeRow("TIE rms"); return t && /s$/.test(t) ? t : null; },
+      15000, "no TIE jitter measurement appeared");
+    const pp = await op.eyeRow("TIE pk-pk");
+    assert(/s$/.test(rms) && pp && /s$/.test(pp), `TIE rows should read rms and pk-pk times, got "${rms}" / "${pp}"`);
+    // TRLC-LINKS: REQ-SDS-208
+    const num = (t) => parseEng(t.replace(/^[≤≥]\s*/, ""));
+    assert(num(pp) >= num(rms), `TIE pk-pk ${pp} must be at least the rms ${rms}`);
     await op.click("ejReset", { why: "clear the eye after reading" });
   }},
   // TRLC-LINKS: REQ-SDS-208
@@ -281,45 +321,32 @@ export const prbs2M = [
   }},
   // TRLC-LINKS: REQ-SDS-208
   { id: "P6", name: "Math: display C1−C2 and confirm the math trace renders", run: async (op) => {
-    await op.selectExpect("mathFn", "c1-c2", async () => await op.page.evaluate(() => {
-      const c = document.getElementById("mathCard"); return c && getComputedStyle(c).display !== "none";
-    }), { why: "selecting a math function must reveal/enable the math trace" });
-    const hint = await op.readText("mathHint");
-    assert(hint != null, "math hint not shown");
+    await op.selectExpect("mathFn", "c1-c2", async () => await op.mathShown(), { why: "selecting a math function must draw the math trace" });
+    const scale = await op.readText("mathScale");
+    assert(/V\/div/.test(scale), `math scale should read V/div, got "${scale}"`);
     await op.selectExpect("mathFn", "off", null, { why: "math off" });
   }},
   // TRLC-LINKS: REQ-SDS-208
   { id: "P7", name: "Cursors: enable manual cursors and read a Δ value off the screen", run: async (op) => {
-    await op.clickExpect("tCursors", async () => await op.page.evaluate(() => {
-      const c = document.getElementById("curCard"); return c && getComputedStyle(c).display !== "none";
-    }), { why: "Cursors button must reveal the cursor readout card" });
-    // the cursor card must show a Δ (delta) row the operator reads
+    await op.ws("measure"); // MEASURE's Cursors pane holds the readout
+    await op.clickExpect("tCursors", async () => await op.isOn("tCursors"), { why: "Cursors button must engage the cursors" });
     const hasDelta = await op._settle(async () => await op.page.evaluate(() => {
-      const b = document.querySelector("#curBody"); return b && /Δ|delta|d[tx]/i.test(b.textContent);
+      const b = document.querySelector("#curBody"); return b && /Δt/.test(b.textContent);
     }), 4000, "cursor readout never showed a delta value");
     assert(hasDelta, "no cursor delta");
     await op.click("tCursors", { why: "cursors off" });
   }},
   // TRLC-LINKS: REQ-SDS-208
   { id: "P8", name: "FFT the clock and confirm its fundamental peak", run: async (op) => {
-    await op.clickExpect("mFFT", async () => (await op.page.$("#fftCardC2")) !== null || (await op.page.$("#fftCardC1")) !== null,
-      { why: "FFT view" });
-    const peak = await op.readUntil(async () => {
-      return await op.page.evaluate(() => {
-        for (const id of ["fftBody2", "fftBody1"]) { const b = document.querySelector("#" + id); const c = b && b.querySelector("tr td"); if (c && /Hz/.test(c.textContent)) return c.textContent; }
-        return null;
-      });
-    }, 8000, "FFT produced no peak");
-    const { parseEng } = await import("./operator.mjs");
+    const peak = await op.topPeak(2);
     const hz = parseEng(peak);
     assert(hz > 5e5 && hz < 5e6, `FFT clock peak ${peak} (${hz} Hz) out of the expected 1–2 MHz range`);
-    await op.click("mYT", { why: "back to Y-T" });
+    await op.ws("scope");
   }},
   // TRLC-LINKS: REQ-SDS-208
   { id: "P9", name: "Save C1 to reference A and confirm it is stored", run: async (op) => {
-    await op.clickExpect("refSaveA", async () => await op.page.evaluate(() => {
-      const rows = document.querySelector("#refRows"); return rows && /REF\s*A/.test(rows.textContent);
-    }), { timeout: 5000, why: "Save A must store the live C1 as reference A" });
+    await op.clickExpect("refSaveA", async () => /C1/.test(await op.readText("refInfoA") || ""),
+      { timeout: 5000, why: "Save A must store the live C1 as reference A (COMPARE's References)" });
   }},
   // TRLC-LINKS: REQ-SDS-208
   { id: "P10", name: "AC coupling on C1 removes the DC component (mean → ~0)", run: async (op) => {
@@ -348,8 +375,7 @@ export const prbs2M = [
 export const prbs2Mb = [
   // TRLC-LINKS: REQ-SDS-208
   { id: "P13", name: "Enlarge the eye diagram to a full-screen view and close it", run: async (op) => {
-    await op.selectExpect("ejCh", "1", null, { why: "C1" });
-    await op.clickExpect("ejArm", async () => !/idle/i.test(await op.readText("ejStats") || ""), { timeout: 8000, why: "arm eye" });
+    await op.eyeOn(1, "arm eye on C1");
     await op.readUntil(async () => { const s = await op.readText("ejStats"); return s && !/lock|idle/i.test(s) ? s : (/lock/i.test(s || "") ? null : (s || null)); }, 10000, "eye did not progress").catch(() => {});
     await op.clickExpect("ejEye", async () => await op.page.evaluate(() => !document.getElementById("ejBigWrap").classList.contains("hidden")),
       { why: "clicking the eye must open the enlarged view" });
@@ -359,20 +385,27 @@ export const prbs2Mb = [
   }},
   // TRLC-LINKS: REQ-SDS-208
   { id: "P14", name: "Math C2−C1 renders the difference trace", run: async (op) => {
-    await op.selectExpect("mathFn", "c2-c1", async () => await op.page.evaluate(() => { const c = document.getElementById("mathCard"); return c && getComputedStyle(c).display !== "none"; }), { why: "C2−C1 math" });
+    await op.selectExpect("mathFn", "c2-c1", async () => await op.mathShown(), { why: "C2−C1 math" });
     assert((await op.lcdPng()) > 3000, "C2−C1 math did not render");
     await op.selectExpect("mathFn", "off", null, { why: "math off" });
   }},
   // TRLC-LINKS: REQ-SDS-208
   { id: "P15", name: "Math C1×C2 (mixer product) renders", run: async (op) => {
-    await op.selectExpect("mathFn", "c1*c2", async () => await op.page.evaluate(() => { const c = document.getElementById("mathCard"); return c && getComputedStyle(c).display !== "none"; }), { why: "C1×C2 math" });
+    await op.selectExpect("mathFn", "c1*c2", async () => await op.mathShown(), { why: "C1×C2 math" });
     assert((await op.lcdPng()) > 3000, "C1×C2 math did not render");
     await op.selectExpect("mathFn", "off", null, { why: "math off" });
   }},
   // TRLC-LINKS: REQ-SDS-208
   { id: "P16", name: "Save both references A and B and confirm both are stored", run: async (op) => {
-    await op.clickExpect("refSaveA", async () => await op.page.evaluate(() => /REF\s*A/.test(document.getElementById("refRows").textContent)), { why: "save A" });
-    await op.clickExpect("refSaveB", async () => await op.page.evaluate(() => /REF\s*B/.test(document.getElementById("refRows").textContent)), { why: "save B" });
+    await op.clickExpect("refSaveA", async () => !/empty/.test(await op.readText("refInfoA") || "empty"), { why: "save A" });
+    await op.clickExpect("refSaveB", async () => !/empty/.test(await op.readText("refInfoB") || "empty"), { why: "save B" });
+    // COMPARE's difference pane reads the live traces against them
+    await op.ws("compare");
+    const d = await op.readUntil(async () => await op.page.evaluate(() => {
+      const r = document.querySelector('#diffBody tr[data-ref="A"]');
+      return r && /%/.test(r.textContent) ? r.textContent : null;
+    }), 4000, "COMPARE's difference pane did not read the live trace against REF A");
+    assert(/REF A vs C1/.test(d), `the difference row should name REF A vs C1, got "${d}"`);
   }},
   // TRLC-LINKS: REQ-SDS-208
   { id: "P17", name: "Both channels report a Vmean, and they differ", run: async (op) => {
@@ -382,8 +415,7 @@ export const prbs2Mb = [
   }},
   // TRLC-LINKS: REQ-SDS-208
   { id: "P18", name: "Enlarge the TIE histogram to full screen and close it", run: async (op) => {
-    await op.selectExpect("ejCh", "1", null, { why: "C1" });
-    await op.clickExpect("ejArm", async () => !/idle/i.test(await op.readText("ejStats") || ""), { timeout: 8000, why: "arm eye" });
+    await op.eyeOn(1, "arm eye on C1");
     await op.page.waitForTimeout(3000);
     await op.clickExpect("ejHist", async () => await op.page.evaluate(() => !document.getElementById("ejBigWrap").classList.contains("hidden")),
       { why: "clicking the histogram must open the enlarged view" });
@@ -402,7 +434,8 @@ export const prbs2Mb = [
   }},
   // TRLC-LINKS: REQ-SDS-208
   { id: "P20", name: "Cursors read a ΔV (voltage delta) between the two channels", run: async (op) => {
-    await op.clickExpect("tCursors", async () => await op.page.evaluate(() => { const c = document.getElementById("curCard"); return c && getComputedStyle(c).display !== "none"; }), { why: "cursors on" });
+    await op.ws("measure");
+    await op.clickExpect("tCursors", async () => await op.isOn("tCursors"), { why: "cursors on" });
     const hasDV = await op._settle(async () => await op.page.evaluate(() => /ΔV/.test(document.querySelector("#curBody").textContent)), 4000, "cursor readout never showed a ΔV");
     assert(hasDV, "no ΔV");
     await op.click("tCursors", { why: "cursors off" });
@@ -410,12 +443,9 @@ export const prbs2Mb = [
   // TRLC-LINKS: REQ-SDS-208
   { id: "P21", name: "FFT of the PRBS data shows spectral content", run: async (op) => {
     await op.autosetStable(1);
-    await op.clickExpect("mFFT", async () => (await op.page.$("#fftCardC1")) !== null, { why: "FFT view" });
-    const peak = await op.readUntil(async () => {
-      return await op.page.evaluate(() => { const b = document.querySelector("#fftBody1"); const c = b && b.querySelector("tr td"); return c && /Hz/.test(c.textContent) ? c.textContent : null; });
-    }, 8000, "PRBS FFT produced no peak");
+    const peak = await op.topPeak(1);
     assert(peak != null, "no FFT peak on the data channel");
-    await op.click("mYT", { why: "back to Y-T" });
+    await op.ws("scope");
   }},
   // TRLC-LINKS: REQ-SDS-208
   { id: "P22", name: "AVERAGE acquisition mode smooths and still measures", run: async (op) => {
@@ -435,13 +465,12 @@ export const prbs2Mb = [
     await op.selectExpect("acq", "0", null, { why: "back to normal" });
   }},
   // TRLC-LINKS: REQ-SDS-208
-  { id: "P24", name: "Clear the eye analyzer and confirm it returns to idle-capable", run: async (op) => {
-    await op.selectExpect("ejCh", "2", null, { why: "C2 clock" });
-    await op.clickExpect("ejArm", async () => !/idle/i.test(await op.readText("ejStats") || ""), { timeout: 8000, why: "arm eye on the clock" });
+  { id: "P24", name: "Reset the eye analyzer on the clock and keep it running", run: async (op) => {
+    await op.eyeOn(2, "eye on the C2 clock");
     await op.page.waitForTimeout(1500);
     await op.click("ejReset", { why: "reset clears the accumulated data" });
     const s = await op.readText("ejStats");
-    assert(s != null, "eye status vanished after reset");
+    assert(s != null && s.length > 0, "eye status vanished after reset");
     await op.click("ejArm", { why: "stop" }).catch(() => {});
   }},
 ];

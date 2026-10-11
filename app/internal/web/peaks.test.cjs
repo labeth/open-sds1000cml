@@ -145,5 +145,82 @@ function frame(amp1, amp2, seed) {
   near(toneAmplitude(r, 20.5), 50, 0.5, "toneAmplitude() recovers the amplitude half a bin off");
 }
 
+// --- 10. harmonics + THD (SPECTRUM's peak table, REQ-SDS-216) ----------------
+// The rules of analysis.Harmonics (the LCD's table): H1..H10 numbered, the THD
+// over H2..H10 from the tone levels. A square wave's odd harmonics fall as 1/n:
+// H3 at −9.5 dB, H5 at −14 dB…; with 8 peaks listed (H1..H15) the THD counts
+// H3..H9: √(1/9+1/25+1/49+1/81) = 42.9 %. A pure sine has no harmonic.
+{
+  const { harmonics } = require("./peaks.js");
+  const M = 8192, cyc = 64; // bin-centred fundamental, harmonics on bins too
+  const sq = [];
+  for (let n = 0; n < M; n++) sq.push(128 + 60 * (((n * cyc / M) % 1) < 0.5 ? 1 : -1));
+  const sp = spectrum(sq, 0.5);
+  const pk = detectPeaks(sp, { floorDb: -50, maxPeaks: 8 });
+  const H = harmonics(pk, sp);
+  near(H.f0, cyc / M, 1e-4, "f0 = the largest peak (the fundamental)");
+  ok(H.fund === 0, "the fundamental is the first (lowest) peak");
+  ok(pk.map((p, i) => H.harm[i]).join(",") === "1,3,5,7,9,0,0,0", "odd harmonics numbered 1,3,5,7,9; H11..H15 are past H10: " + pk.map((p, i) => H.harm[i]).join(","));
+  const h3 = pk[H.harm.indexOf(3)];
+  near(h3.lvl - H.topDb, 20 * Math.log10(1 / 3), 0.3, "H3 is 1/3 of H1 (−9.5 dB)");
+  const sq9 = Math.sqrt(1 / 9 + 1 / 25 + 1 / 49 + 1 / 81);
+  near(H.thd, sq9, 0.01, "THD over H3..H9 ≈ 42.9 %");
+  ok(H.count === 4, "4 harmonics summed");
+  const sine = [];
+  for (let n = 0; n < M; n++) sine.push(128 + 60 * Math.sin(2 * Math.PI * cyc * n / M));
+  const ss = spectrum(sine, 0.5), sk = detectPeaks(ss, { floorDb: -50, maxPeaks: 8 }), SH = harmonics(sk, ss);
+  ok(SH.count === 0 && Number.isNaN(SH.thd), "a pure sine has no harmonic: THD is NaN");
+  const e = harmonics([], null);
+  ok(e.f0 === 0 && e.fund === -1 && e.harm.length === 0, "no peaks: an empty result");
+
+  // analysis.TestPeaksAndTHDOfWaveforms' band-limited square, between bins:
+  // (4/π)·80/n for odd n ≤ 15 at 31.7 cycles in 4096 samples, 8 peaks
+  const N4 = 4096, sq4 = [];
+  for (let i = 0; i < N4; i++) {
+    let v = 128;
+    for (let n = 1; n <= 15; n += 2) v += 4 / Math.PI * 80 / n * Math.sin(2 * Math.PI * 31.7 * n * i / N4);
+    sq4.push(v);
+  }
+  const s4 = spectrum(sq4, 0.5), p4 = detectPeaks(s4, { floorDb: -50, maxPeaks: 8 }), H4 = harmonics(p4, s4);
+  ok(p4.map((p, i) => H4.harm[i]).filter(Boolean).join(",") === "1,3,5,7,9", "band-limited square between bins: H1,H3..H9 numbered");
+  near(100 * H4.thd, 100 * sq9, 1.5, "…THD 42.9 % ±1.5 (the Go test's tolerance)");
+
+  // the rules on a hand-made list: 1.5 bins or 1 % of n·f0, the strongest of
+  // two claimants, nothing past H10
+  const L = [
+    { k: 10, freq: 1000, db: 0, lvl: 0 },
+    { k: 30, freq: 3005, db: -10, lvl: -10 },   // H3, 5 Hz off
+    { k: 31, freq: 3100, db: -5, lvl: -5 },     // also near H3 (100 Hz ≤ 1.5 bins = 150 Hz): stronger, wins
+    { k: 50, freq: 5200, db: -20, lvl: -20 },   // 200 Hz off H5: no harmonic
+    { k: 120, freq: 12000, db: -30, lvl: -30 }, // H12: past H10
+  ];
+  const HL = harmonics(L);
+  ok(HL.harm.join(",") === "1,0,3,0,0", "tolerance, strongest claimant and H10 limit: " + HL.harm.join(","));
+  near(HL.thd, Math.pow(10, -5 / 20), 1e-12, "THD from the winning H3 only");
+  // the tone level, not the bin level, picks the fundamental and sets Rel
+  const T = [{ k: 10, freq: 1000, db: -1.0, lvl: 0.3 }, { k: 20, freq: 2000, db: 0, lvl: 0 }];
+  const HT = harmonics(T);
+  ok(HT.fund === 0 && HT.topDb === 0.3 && HT.harm.join(",") === "1,2", "the strongest tone level is the fundamental");
+}
+
+// --- 11. a peak's tone level: the Hann bin corrected for scalloping ----------
+// analysis.TestPeakLevelBetweenBins: a 60-code tone 100+off bins in, a 30-code
+// tone on bin 300. The bin of a tone half a bin off reads ~1.42 dB low; the
+// corrected level `lvl` stays within 0.06 dB of the true +6.02 dB at any offset.
+{
+  const N4 = 4096;
+  for (const off of [0, 0.1, 0.2, 0.25, 0.3, 0.4, 0.45, 0.5, 0.6, 0.75, 0.9]) {
+    const s = [];
+    for (let i = 0; i < N4; i++) s.push(128 + 60 * Math.sin(2 * Math.PI * (100 + off) * i / N4) + 30 * Math.sin(2 * Math.PI * 300 * i / N4 + 0.4));
+    const pk = detectPeaks(spectrum(s, 0.5), { floorDb: -50, maxPeaks: 4 });
+    if (pk.length !== 2) { ok(false, `offset ${off}: ${pk.length} peaks, want 2`); continue; }
+    const want = 20 * Math.log10(2);
+    const lvlErr = pk[0].lvl - pk[1].lvl - want, binErr = pk[0].db - pk[1].lvl - want;
+    ok(Math.abs(lvlErr) <= 0.06, `offset ${off} bins: tone level ${lvlErr.toFixed(3)} dB off (the bin ${binErr.toFixed(3)} dB)`);
+    if (off === 0.5) ok(binErr < -1.4, `half a bin off, the bin reads ${binErr.toFixed(3)} dB (≈ −1.42)`);
+    ok(Math.abs(pk[1].lvl - pk[1].db) < 1e-3, `offset ${off}: an on-bin tone's level is its bin level`);
+  }
+}
+
 console.log(failed ? `\n${failed} FAILED` : "\nALL PASS");
 process.exit(failed ? 1 : 0);

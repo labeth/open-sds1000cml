@@ -1,17 +1,24 @@
-// app_init.js — boot: initial layout + first frame/status poll. Loaded LAST so
-// every handler is registered and every function defined. Shares app.js globals.
+// ENGMODEL-OWNER-UNIT: FU-WEB-APP-INIT
+// app_init.js — boot: the workspace layout, the first frame/status poll. Loaded
+// LAST so every handler is registered and every function defined. Shares app.js
+// globals.
 "use strict";
 
+for (const el of document.querySelectorAll(".seg[id]")) segInit(el); // select-like segmented controls
+mirrorInit();       // the strip controls' copies in the panes
+glInit();           // create the WebGL renderers for the scope + navigator
+wsInit();           // lay out the workspaces; SCOPE is shown and holds the scope display
 window.addEventListener("resize", resize);
-glInit();   // create the WebGL renderers for the scope + navigator
-resize();   // sizes the canvas backing stores and paints once
-// Track the ACTUAL laid-out size of the scope box (dock collapse/expand, late
-// reflow, font load) so the GL backing store always matches what CSS displays —
-// window "resize" alone misses layout-only changes.
+resize();           // sizes the canvas backing stores and paints once
+updateRefRows();
+updateDecodePanel();
+// Track the ACTUAL laid-out size of the scope box (workspace switches, pane
+// resizes, collapse/maximize, late reflow, font load) so the GL backing store
+// always matches what CSS displays — window "resize" alone misses layout-only changes.
 if (typeof ResizeObserver === "function") {
   let rafPending = 0;
   new ResizeObserver(() => {
-    if (rafPending) return;                 // coalesce bursts (e.g. the drawer transition)
+    if (rafPending) return;                 // coalesce bursts (a gutter drag)
     rafPending = requestAnimationFrame(() => { rafPending = 0; resize(); });
   }).observe($("scopebox"));
 }

@@ -46,18 +46,33 @@ const rint = (lo, hi) => lo + Math.floor(rng() * (hi - lo + 1));
 const rfloat = (lo, hi) => lo + rng() * (hi - lo);
 
 // ---------- generic DOM drivers (operator hands) ----------
+// A control lives in a workspace pane (or the strip): an operator first brings it
+// on screen — its workspace tab, its pane, its view — as All settings' arrows do.
+// TRLC-LINKS: REQ-SDS-180
+async function reveal(op, id) {
+  return await op.page.evaluate((i) => { const e = document.getElementById(i); return !!e && typeof revealControl === "function" && revealControl(e); }, id);
+}
+// selRandom picks a random option of a <select> or of a segmented choice
+// (clicking its button when it is on screen).
 // TRLC-LINKS: REQ-SDS-180
 async function selRandom(op, id) {
-  const opts = await op.page.evaluate((i) => {
+  await reveal(op, id);
+  const c = await op.page.evaluate((i) => {
     const e = document.getElementById(i);
-    return e ? [...e.options].map((o) => o.value) : null;
+    if (!e) return null;
+    const seg = e.classList.contains("seg");
+    return { seg, opts: seg ? [...e.querySelectorAll(":scope > button")].map((b) => b.dataset.value) : [...e.options].map((o) => o.value) };
   }, id);
-  if (!opts || !opts.length) throw new Error(`select #${id} missing/empty`);
-  const v = opts[Math.floor(rng() * opts.length)];
-  await op.page.evaluate((a) => {
-    const e = document.getElementById(a.id);
-    e.value = a.v; e.dispatchEvent(new Event("change"));
-  }, { id, v });
+  if (!c || !c.opts.length) throw new Error(`choice #${id} missing/empty`);
+  const v = c.opts[Math.floor(rng() * c.opts.length)];
+  const b = c.seg ? await op.page.$(`#${id} > button[data-value="${v}"]`) : null;
+  if (b && (await b.isVisible())) await b.click({ timeout: 6000 });
+  else {
+    await op.page.evaluate((a) => {
+      const e = document.getElementById(a.id);
+      e.value = a.v; e.dispatchEvent(new Event("change", { bubbles: true }));
+    }, { id, v });
+  }
   return v;
 }
 // TRLC-LINKS: REQ-SDS-180
@@ -74,10 +89,28 @@ async function slider(op, id, v) {
 async function clickId(op, id) {
   const el = await op.page.$("#" + id);
   if (!el) throw new Error(`button #${id} missing`);
+  if (!(await el.isVisible())) await reveal(op, id);
   if (!(await el.isVisible())) return `#${id} hidden — skipped`;
+  if (!(await el.isEnabled())) return `#${id} disabled — skipped`;
   await el.click({ timeout: 6000 });
   return null;
 }
+// press a single-letter shortcut the way a user does: nothing editable focused
+// TRLC-LINKS: REQ-SDS-180
+async function key(op, k) {
+  await op.page.evaluate(() => { const a = document.activeElement; if (a && a !== document.body) a.blur(); });
+  await op.page.keyboard.press(k);
+  return "key " + k;
+}
+// a random visible element matching `sel`, or null
+// TRLC-LINKS: REQ-SDS-180
+async function anyVisible(op, sel) {
+  const all = await op.page.$$(sel);
+  const vis = [];
+  for (const e of all) if (await e.isVisible()) vis.push(e);
+  return vis.length ? vis[Math.floor(rng() * vis.length)] : null;
+}
+const WS_IDS = ["scope", "bus", "spectrum", "measure", "compare"];
 
 // ---------- the action palette ----------
 // Each action: { name, w: weight, hold: frames may legitimately stop after it,
@@ -100,11 +133,11 @@ const ACTIONS = [
   // TRLC-LINKS: REQ-SDS-180
   { name: "trig-level", w: 6, run: async (op) => { const v = rfloat(-3.5, 4.5).toFixed(2); await slider(op, "lvl", v); return "lvl=" + v; } },
   // TRLC-LINKS: REQ-SDS-180
-  { name: "trig-slope", w: 3, run: async (op) => clickId(op, "slope") },
+  { name: "trig-slope", w: 3, run: async (op) => "slope=" + (await selRandom(op, "slope")) },
   // TRLC-LINKS: REQ-SDS-180
-  { name: "trig-source", w: 3, run: async (op) => clickId(op, "source") },
+  { name: "trig-source", w: 3, run: async (op) => "source=" + (await selRandom(op, "source")) },
   // TRLC-LINKS: REQ-SDS-180
-  { name: "trig-mode", w: 3, hold: true, run: async (op) => clickId(op, "mode") }, // NORM with no matching trigger may hold
+  { name: "trig-mode", w: 3, hold: true, run: async (op) => "mode=" + (await selRandom(op, "mode")) }, // NORM with no matching trigger may hold
   // TRLC-LINKS: REQ-SDS-180
   { name: "trig-type", w: 3, run: async (op) => "ttype=" + (await selRandom(op, "ttype")) },
   // TRLC-LINKS: REQ-SDS-180
@@ -127,12 +160,61 @@ const ACTIONS = [
   { name: "freeze", w: 2, hold: true, run: async (op) => clickId(op, "freeze") },
   // TRLC-LINKS: REQ-SDS-180
   { name: "autoset", w: 1, run: async (op) => { await clickId(op, "autoset"); await op.page.waitForTimeout(4000); return "autoset"; } },
+  // the workspaces: a tab, the same workspace's key again (its other view), and
+  // the view letters (Y-T / X-Y / FFT). COMPARE again stacks a master, which
+  // takes many captures — it has its own browser test.
   // TRLC-LINKS: REQ-SDS-180
-  { name: "view-yt", w: 2, run: async (op) => clickId(op, "mYT") },
+  { name: "ws-switch", w: 5, run: async (op) => { const w = pick(WS_IDS); await clickId(op, "tab-" + w); return "ws=" + w; } },
   // TRLC-LINKS: REQ-SDS-180
-  { name: "view-xy", w: 1, run: async (op) => clickId(op, "mXY") },
+  {
+    name: "ws-again", w: 3, run: async (op) => {
+      const cur = await op.page.evaluate(() => ws.cur);
+      if (cur === "compare") return "compare — skipped";
+      await key(op, "Alt+" + (WS_IDS.indexOf(cur) + 1));
+      return "again " + cur;
+    },
+  },
   // TRLC-LINKS: REQ-SDS-180
-  { name: "view-fft", w: 2, run: async (op) => clickId(op, "mFFT") },
+  { name: "view-yt", w: 2, run: async (op) => key(op, "y") },
+  // TRLC-LINKS: REQ-SDS-180
+  { name: "view-xy", w: 1, run: async (op) => key(op, "x") },
+  // TRLC-LINKS: REQ-SDS-180
+  { name: "view-fft", w: 2, run: async (op) => key(op, "f") },
+  // TRLC-LINKS: REQ-SDS-180
+  { name: "spectrum-view", w: 2, run: async (op) => "viewSpec=" + (await selRandom(op, "viewSpec")) },
+  // TRLC-LINKS: REQ-SDS-180
+  { name: "bus-view", w: 2, run: async (op) => "busView=" + (await selRandom(op, "busView")) },
+  // TRLC-LINKS: REQ-SDS-180
+  { name: "meas-view", w: 1, run: async (op) => "measView=" + (await selRandom(op, "measView")) },
+  // panes: collapse/expand a pane, maximize one and restore (the trace canvas
+  // follows every size change)
+  {
+    // TRLC-LINKS: REQ-SDS-180
+    name: "pane-collapse", w: 2, run: async (op) => {
+      const c = await anyVisible(op, ".ws:not([hidden]) .pane > .ph > .pc");
+      if (!c) return "no pane caret";
+      await c.click({ timeout: 6000 });
+      return "caret";
+    },
+  },
+  {
+    // TRLC-LINKS: REQ-SDS-180
+    name: "pane-maximize", w: 2, run: async (op) => {
+      const t = await anyVisible(op, ".ws:not([hidden]) .pane > .ph > .pt");
+      if (!t) return "no pane title";
+      await t.dblclick({ timeout: 6000 });
+      if (rng() < 0.6) { await op.page.waitForTimeout(300); await key(op, "Escape"); return "maximize + restore"; }
+      return "maximize";
+    },
+  },
+  {
+    // TRLC-LINKS: REQ-SDS-180
+    name: "all-settings", w: 1, run: async (op) => { await clickId(op, "allBtn"); return "all settings toggled"; },
+  },
+  {
+    // TRLC-LINKS: REQ-SDS-180
+    name: "help-open-close", w: 1, run: async (op) => { await key(op, "?"); await op.page.waitForTimeout(250); await key(op, "Escape"); return "help"; },
+  },
   // TRLC-LINKS: REQ-SDS-180
   { name: "math-fn", w: 2, run: async (op) => "mathFn=" + (await selRandom(op, "mathFn")) },
   // TRLC-LINKS: REQ-SDS-180
@@ -151,6 +233,17 @@ const ACTIONS = [
   { name: "decode-fmt", w: 1, run: async (op) => "decFmt=" + (await selRandom(op, "decFmt")) },
   // TRLC-LINKS: REQ-SDS-180
   { name: "decode-auto", w: 1, run: async (op) => clickId(op, "decDetect") },
+  {
+    // TRLC-LINKS: REQ-SDS-180
+    name: "packet-click", w: 1, run: async (op) => {
+      const r = await anyVisible(op, "#pkBody tr[data-i]");
+      if (!r) return "no packet row";
+      await r.click({ timeout: 6000 });
+      return "packet zoom";
+    },
+  },
+  // TRLC-LINKS: REQ-SDS-180
+  { name: "stats-reset", w: 1, run: async (op) => clickId(op, "statsReset") },
   {
     // TRLC-LINKS: REQ-SDS-180
     name: "zone-cycle", w: 1, hold: true, run: async (op) => {
@@ -262,9 +355,11 @@ const ACTIONS = [
     },
   },
   // TRLC-LINKS: REQ-SDS-180
-  { name: "fftN1", w: 1, run: async (op) => { const v = rint(1, 64); await op.page.evaluate((x) => { const e = document.getElementById("fftN1"); if (e) { e.value = x; e.dispatchEvent(new Event("change")); } }, v); return "fftN1=" + v; } },
+  { name: "fft-peaks-n", w: 1, run: async (op) => { const v = rint(1, 64); await op.page.evaluate((x) => { const e = document.getElementById("fftN"); if (e) { e.value = x; e.dispatchEvent(new Event("change")); } }, v); return "fftN=" + v; } },
   // TRLC-LINKS: REQ-SDS-180
   { name: "ref-save", w: 1, run: async (op) => clickId(op, pick(["refSaveA", "refSaveB"])) },
+  // TRLC-LINKS: REQ-SDS-180
+  { name: "ref-show", w: 1, run: async (op) => clickId(op, pick(["refShowA", "refShowB"])) },
 ];
 const weighted = [];
 for (const a of ACTIONS) for (let k = 0; k < a.w; k++) weighted.push(a);

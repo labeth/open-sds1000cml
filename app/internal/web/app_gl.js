@@ -18,12 +18,14 @@
 // ---- glyph atlas: baked ONCE into a texture (invisible offscreen raster; not a
 // rendering surface, so no alignment concerns). Monospace so layout is trivial.
 const GL_GLYPH_W = 8, GL_GLYPH_H = 14, GL_FIRST = 32, GL_LAST = 126;
+// The few non-ASCII glyphs the readouts use (µs, ranges, Δ, degrees…), after ASCII.
+const GL_EXTRA = "µ–—Δ°±×·≤≥▸◂◆…√";
 let glAtlas = null; // { canvas-derived pixels, texW, texH, cols }
 
 // TRLC-LINKS: REQ-SDS-071
 function glBuildAtlas() {
   if (glAtlas) return glAtlas;
-  const n = GL_LAST - GL_FIRST + 1;
+  const nAscii = GL_LAST - GL_FIRST + 1, n = nAscii + GL_EXTRA.length;
   const cols = 16, rows = Math.ceil((n + 1) / cols); // +1 slot for the white texel
   const cw = GL_GLYPH_W, ch = GL_GLYPH_H;
   const texW = cols * cw, texH = rows * ch;
@@ -39,13 +41,21 @@ function glBuildAtlas() {
   for (let i = 0; i < n; i++) {
     const s = i + 1; // glyph slots start after the white block
     const cx = (s % cols) * cw, cy = Math.floor(s / cols) * ch;
-    g.fillText(String.fromCharCode(GL_FIRST + i), cx + cw / 2, cy + ch / 2 + 0.5);
+    g.fillText(i < nAscii ? String.fromCharCode(GL_FIRST + i) : GL_EXTRA[i - nAscii], cx + cw / 2, cy + ch / 2 + 0.5);
   }
   const px = g.getImageData(0, 0, texW, texH).data; // RGBA; solids/text use the alpha
   // white-texel UV (centre of slot 0)
   const whiteU = (cw * 0.5) / texW, whiteV = (ch * 0.5) / texH;
-  glAtlas = { px, texW, texH, cols, cw, ch, whiteU, whiteV, first: GL_FIRST };
+  glAtlas = { px, texW, texH, cols, cw, ch, whiteU, whiteV, first: GL_FIRST, nAscii };
   return glAtlas;
+}
+
+// glSlot is a character's atlas slot ('?' for one the atlas lacks).
+// TRLC-LINKS: REQ-SDS-071
+function glSlot(atlas, cc) {
+  if (cc >= atlas.first && cc <= GL_LAST) return cc - atlas.first + 1;
+  const k = GL_EXTRA.indexOf(String.fromCharCode(cc));
+  return k >= 0 ? atlas.nAscii + 1 + k : 63 - atlas.first + 1;
 }
 
 // ---- a renderer bound to one canvas -----------------------------------------
@@ -118,6 +128,8 @@ function glRenderer(canvas) {
   // TRLC-LINKS: REQ-SDS-071
   function ensure(floats) {
     if (vN + floats <= verts.length) return;
+    // past 16 MB of vertices, draw what is queued instead of growing further
+    if (vN && vN + floats > (1 << 22)) { flush(); if (floats <= verts.length) return; }
     let cap = verts.length; while (vN + floats > cap) cap <<= 1;
     const nv = new Float32Array(cap); nv.set(verts.subarray(0, vN)); verts = nv;
   }
@@ -196,6 +208,8 @@ function glRenderer(canvas) {
   // TRLC-LINKS: REQ-SDS-071
   R.translate = function (x, y) { const m = R.xf; m[4] += m[0] * x + m[2] * y; m[5] += m[1] * x + m[3] * y; };
   // TRLC-LINKS: REQ-SDS-071
+  R.scale = function (sx, sy) { const m = R.xf; m[0] *= sx; m[1] *= sx; m[2] *= sy; m[3] *= sy; };
+  // TRLC-LINKS: REQ-SDS-071
   R.rotate = function (r) { const m = R.xf, s = Math.sin(r), c = Math.cos(r); const a = m[0], b = m[1], cc = m[2], d = m[3]; m[0] = a * c + cc * s; m[1] = b * c + d * s; m[2] = a * -s + cc * c; m[3] = b * -s + d * c; };
   // TRLC-LINKS: REQ-SDS-071
   R.clip = function (x, y, w, h) { setScissor(w > 0 && h > 0 ? { x, y, w, h } : null); };
@@ -230,14 +244,28 @@ function glRenderer(canvas) {
       R.line(pts[i - 2], pts[i - 1], pts[i], pts[i + 1], col, wOpt);
     }
   };
+  // Dashes go only where the segment can be seen: it is clipped to the canvas
+  // (device space, with a margin) first. A segment reaching far off screen — a
+  // reference placed by time under a much faster timebase — would otherwise
+  // make millions of dashes and exhaust the vertex buffer.
   // TRLC-LINKS: REQ-SDS-071
   R.dashedLine = function (x0, y0, x1, y1, col, on, off, wOpt) {
     const len = Math.hypot(x1 - x0, y1 - y0) || 1, ux = (x1 - x0) / len, uy = (y1 - y0) / len;
-    let d = 0;
-    while (d < len) {
+    const p0 = tx(x0, y0), p1 = tx(x1, y1), M = 64, dx = p1[0] - p0[0], dy = p1[1] - p0[1];
+    let t0 = 0, t1 = 1; // Liang–Barsky against [-M, w+M] × [-M, h+M]
+    for (const [p, q] of [[-dx, p0[0] + M], [dx, R.w + M - p0[0]], [-dy, p0[1] + M], [dy, R.h + M - p0[1]]]) {
+      if (p === 0) { if (q < 0) return; continue; }
+      const r = q / p;
+      if (p < 0) { if (r > t1) return; if (r > t0) t0 = r; } else { if (r < t0) return; if (r < t1) t1 = r; }
+    }
+    const per = on + off, end = t1 * len;
+    if (!(per > 0)) return;
+    let d = Math.floor(t0 * len / per) * per; // keep the dash phase of the whole segment
+    if ((end - d) / per > 1e5) { R.line(x0 + ux * d, y0 + uy * d, x0 + ux * end, y0 + uy * end, col, wOpt); return; }
+    while (d < end) {
       const a = d, b = Math.min(len, d + on);
       R.line(x0 + ux * a, y0 + uy * a, x0 + ux * b, y0 + uy * b, col, wOpt);
-      d += on + off;
+      d += per;
     }
   };
   // TRLC-LINKS: REQ-SDS-071
@@ -256,9 +284,7 @@ function glRenderer(canvas) {
     let ox = x; if (align === "c") ox = x - total / 2; else if (align === "r") ox = x - total;
     const c = glCol(col), tw = atlas.texW, th = atlas.texH;
     for (let i = 0; i < str.length; i++) {
-      let cc = str.charCodeAt(i);
-      if (cc < atlas.first || cc > GL_LAST) cc = 63; // '?'
-      const slot = cc - atlas.first + 1;
+      const slot = glSlot(atlas, str.charCodeAt(i));
       const sx = (slot % atlas.cols) * atlas.cw, sy = Math.floor(slot / atlas.cols) * atlas.ch;
       const u0 = sx / tw, v0 = sy / th, u1 = (sx + atlas.cw) / tw, v1 = (sy + atlas.ch) / th;
       const gx = ox + i * gw;
@@ -481,7 +507,7 @@ function glContext2D(R, canvasEl) {
   // TRLC-LINKS: REQ-SDS-071
   ctx.rotate = r => R.rotate(r);
   // TRLC-LINKS: REQ-SDS-071
-  ctx.scale = () => { /* unused */ };
+  ctx.scale = (sx, sy) => R.scale(sx, sy === undefined ? sx : sy);
   // TRLC-LINKS: REQ-SDS-071
   ctx.drawImage = (src, dx, dy, dw, dh) => { if (src && src._glTex) R.image(src._glTex, dx || 0, dy || 0, dw || src.width, dh || src.height); };
   // blit a raw RGBA buffer (heatmaps); the app calls this instead of the old

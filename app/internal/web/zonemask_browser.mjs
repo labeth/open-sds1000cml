@@ -1,5 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-WEB
-// Real-browser e2e for the zone/mask card (argv[2]=URL). Verifies:
+// Real-browser e2e for the Mask & zones pane (MEASURE; argv[2]=URL). Verifies:
 // (1) armed zone drawing: click "draw zone", drag on the scope canvas -> a
 //     zone lands in zm.zones (edge-anchored coords) and the list renders it;
 // (2) "zone trig" sends zonemode=1;
@@ -34,6 +34,11 @@ try {
   await page.goto(URL, { waitUntil: "domcontentloaded", timeout: 15000 });
   await page.waitForFunction(() => typeof frame !== "undefined" && frame && frame.c1 && frame.c1.length > 0, null, { timeout: 15000 });
   await page.waitForFunction(() => typeof st !== "undefined" && st && st.win_cols > 0, null, { timeout: 15000 });
+
+  // The Mask & zones pane lives in MEASURE (and COMPARE); the scope is beside it.
+  await page.click("#tab-measure");
+  await page.waitForFunction(() => ws.cur === "measure" && document.getElementById("zmDraw").getClientRects().length > 0, null, { timeout: 5000 });
+  ok(true, "MEASURE shows the Mask & zones pane beside the scope");
 
   // (1) draw a zone: arm, drag a rect over the scope canvas.
   await page.click("#zmDraw");

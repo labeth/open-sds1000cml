@@ -16,6 +16,10 @@ op.page.on("pageerror", (e) => stacks.push(e.stack || e.message));
 const clk = async (id) => { const el = await op.page.$("#" + id); if (el && await el.isVisible()) await el.click(); };
 // TRLC-LINKS: REQ-SDS-208
 const sel = async (id, v) => op.page.evaluate((a) => { const e = document.getElementById(a.id); if (e) { e.value = a.v; e.dispatchEvent(new Event("change")); } }, { id, v });
+// the screen view, through the workspace that owns it (Y-T/X-Y: SCOPE; FFT and
+// the spectrogram: SPECTRUM) — as the view controls and the Y/X/F keys do
+// TRLC-LINKS: REQ-SDS-208
+const view = async (v) => op.page.evaluate((m) => { const spec = ["FFT", "SPG", "BODE"].includes(m); setWs(spec ? "spectrum" : "scope"); setWsView(m); }, v);
 // TRLC-LINKS: REQ-SDS-208
 const report = async (tag) => {
   await op.page.waitForTimeout(1800);
@@ -40,15 +44,15 @@ await report("S2 C1 off alone");
 await clk("tC1"); await op.page.waitForTimeout(300);
 
 // scenario 3: FFT view with C1 off
-await clk("tC1"); await clk("mFFT");
+await clk("tC1"); await view("FFT");
 await report("S3 FFT view + C1 off");
-await clk("mYT"); await clk("tC1"); await op.page.waitForTimeout(300);
+await view("YT"); await clk("tC1"); await op.page.waitForTimeout(300);
 
-// scenario 4: spectrogram armed, then hop to a slow (env/roll) band
-await clk("spgArm");
+// scenario 4: the spectrogram view (it runs while shown), then hop to a slow (env/roll) band
+await view("SPG");
 await sel("tdiv", "0.5");
-await report("S4 spectrogram armed + roll band");
-await sel("tdiv", "0.0000005"); await op.page.waitForTimeout(1500); await clk("spgArm");
+await report("S4 spectrogram running + roll band");
+await sel("tdiv", "0.0000005"); await op.page.waitForTimeout(1500); await view("YT");
 
 // scenario 5: freeze then ctrl-wheel zoom
 await clk("freeze");
@@ -59,9 +63,9 @@ await report("S5 freeze + ctrl-wheel");
 await clk("freeze");
 
 // scenario 6: XY view with C2 off
-await clk("tC2"); await clk("mXY");
+await clk("tC2"); await view("XY");
 await report("S6 XY + C2 off");
-await clk("mYT"); await clk("tC2");
+await view("YT"); await clk("tC2");
 
 await op.close();
 if (globalThis.__fails) process.exit(1);

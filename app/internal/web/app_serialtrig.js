@@ -102,7 +102,7 @@ function stPush() {
   const signature = JSON.stringify(p);
   return fetch("/api/serial", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(p) })
     .then(async r => { const j = await r.json(); if (!r.ok || !j || !j.ok) throw new Error("rejected"); })
-    .then(() => { stLastSig = signature; stConfigError = ""; })
+    .then(() => { stLastSig = signature; if (stConfigError) { stConfigError = ""; stStatus(); } })
     .catch(error => { stConfigError = "Trigger settings were not applied. Check the connection and retry."; stStatus(); throw error; });
 }
 
@@ -160,6 +160,12 @@ function stOnDecodeChange() {
   if (!$("stArm")) return;
   // TRLC-LINKS: REQ-SDS-206
   $("stArm").onclick = async () => {
+    // With decoding off, find the bus first (BUS's Trigger on bytes pane): a
+    // serial trigger needs the decoder's protocol and settings.
+    if (stProtoNum() === 0 && !stArmed() && typeof runAutodetect === "function") {
+      stStatus("detecting the bus…");
+      await runAutodetect();
+    }
     if (stProtoNum() === 0) { stStatus("turn on decode to arm a serial trigger"); return; }
     const on = !stArmed(), generation = ++stArmGeneration;
     if (on) {

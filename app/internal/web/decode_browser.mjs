@@ -1,73 +1,64 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-WEB
-// Real-browser e2e for the protocol-decode UI + navigator, driven by headless
-// Chromium against a local server serving a synthetic I2C frame (argv[2]=URL).
-// Asserts the on-screen decode transcript, byte count, Copy button, and the
-// navigator wheel-zoom + reset. SKIP/exit 0 when the browser is unavailable.
-import path from "node:path";
-import { findPlaywright } from "./scope_po.mjs";
+// Real-browser e2e for the protocol-decode UI + navigator in the BUS workspace,
+// driven by headless Chromium against a local server serving a synthetic I2C
+// frame (argv[2]=URL). Asserts: entering BUS with decoding off detects the bus
+// and decodes it; the decode transcript (Log view), byte count and Copy; the
+// packet table; and the navigator wheel-zoom + reset with the decode staying
+// valid. SKIP/exit 0 when the browser is unavailable.
+import { openScope, run } from "./scope_po.mjs";
 
-const URL = process.argv[2];
-if (!URL) { console.log("SKIP: no URL argument"); process.exit(0); }
-
-const pwPath = findPlaywright();
-if (!pwPath) { console.log("SKIP: playwright not installed"); process.exit(0); }
-if (!process.env.PLAYWRIGHT_BROWSERS_PATH && process.env.HOME) process.env.PLAYWRIGHT_BROWSERS_PATH = path.join(process.env.HOME, ".cache/ms-playwright");
-
-let chromium;
-try { ({ chromium } = (await import(pwPath)).default); }
-catch (e) { console.log("SKIP: cannot load playwright:", e.message); process.exit(0); }
-let browser;
-try { browser = await chromium.launch({ headless: true, args: ["--no-sandbox"] }); }
-catch (e) { console.log("SKIP: cannot launch chromium:", e.message); process.exit(0); }
-
-let fails = 0;
-// TRLC-LINKS: REQ-SDS-180
-const ok = (c, m) => { console.log((c ? "ok  - " : "FAIL- ") + m); if (!c) fails++; };
 const EXPECT = "START 50 W ACK 00 ACK FF NAK STOP";
 
-try {
-  const ctx = await browser.newContext({ viewport: { width: 1400, height: 900 } });
-  try { await ctx.grantPermissions(["clipboard-read", "clipboard-write"], { origin: URL }); } catch {}
-  const page = await ctx.newPage();
-  page.on("pageerror", e => { console.log("PAGEERROR:", e.message); fails++; });
-  await page.goto(URL, { waitUntil: "domcontentloaded", timeout: 15000 });
+run(async (t) => {
+  const { page, po, browser, pageErrors } = await openScope(process.argv[2]);
+  t.browser = browser;
+  try { await page.context().grantPermissions(["clipboard-read", "clipboard-write"], { origin: process.argv[2] }); } catch {}
 
-  ok(await page.evaluate(() => typeof decodeI2C === "function"), "decode.js loaded in the page");
+  t.ok(await po.eval(() => typeof decodeI2C === "function"), "decode.js loaded in the page");
 
-  // Select I2C (roles default SCL=C1, SDA=C2 — matches the synthetic frame).
-  await page.selectOption("#decProto", "i2c");
-  await page.waitForFunction(exp => document.getElementById("decodeText").value.includes("START"), EXPECT, { timeout: 15000 });
-  const text = await page.evaluate(() => document.getElementById("decodeText").value);
-  ok(text === EXPECT, `decode transcript = "${text}"`);
-  ok(await page.evaluate(() => document.getElementById("decodeCount").textContent).then(t => /2 bytes/.test(t)), "byte count shows 2 bytes");
-  ok(await page.evaluate(() => !!(dcfg.result && dcfg.result.ok && dcfg.result.spans.length)), "decode result has on-trace spans");
+  // Entering BUS with decoding off auto-detects the bus (I²C here: SCL=C1, SDA=C2).
+  await po.ws("bus");
+  await po.waitFor(() => dcfg.proto === "i2c" && dcfg.result && dcfg.result.ok, null, 15000);
+  t.ok(await po.value("decProto") === "i2c", "BUS entry detected I²C and turned decoding on");
+
+  // The transcript lives in the Log view.
+  await po.seg("busView", "log");
+  await po.waitFor((exp) => document.getElementById("decodeText").value.includes("START"), EXPECT, 15000);
+  const text = await po.eval(() => document.getElementById("decodeText").value);
+  t.ok(text === EXPECT, `decode transcript = "${text}"`);
+  t.ok(/2 bytes/.test(await po.text("decodeCount")), "byte count shows 2 bytes");
+  t.ok(await po.eval(() => !!(dcfg.result && dcfg.result.ok && dcfg.result.spans.length)), "decode result has on-trace spans");
 
   // Copy button -> clipboard holds the transcript (127.0.0.1 is a secure context).
-  await page.click("#decodeCopy");
+  await po.click("decodeCopy");
   let clip = "";
   try { clip = await page.evaluate(() => navigator.clipboard.readText()); } catch {}
-  ok(clip === EXPECT || clip === "", `Copy button ${clip ? "put the transcript on the clipboard" : "ran (clipboard unreadable in this env)"}`);
+  t.ok(clip === EXPECT || clip === "", `Copy button ${clip ? "put the transcript on the clipboard" : "ran (clipboard unreadable in this env)"}`);
+
+  // The packet table: the one transaction, address and data apart.
+  await po.seg("busView", "packets");
+  await po.waitFor(() => document.querySelectorAll("#pkBody tr[data-i]").length === 1, null, 8000);
+  const row = await po.eval(() => [...document.querySelectorAll("#pkBody tr[data-i] td")].map((c) => c.textContent));
+  t.ok(row[2] === "50 W" && row[3] === "00 FF" && row[4] === ".." && row[5] === "2", "packet row: addr 50 W, hex 00 FF, string .., 2 bytes: " + row.join(" | "));
 
   // Navigator: wheel-zoom narrows the window; the decode result stays valid and
   // its spans still map through xForCol; double-click the nav resets to full.
-  const before = await page.evaluate(() => view.win.b - view.win.a);
-  await page.evaluate(() => {
+  const before = await po.eval(() => view.win.b - view.win.a);
+  await po.eval(() => {
     const s = document.getElementById("scope"), r = s.getBoundingClientRect();
     s.dispatchEvent(new WheelEvent("wheel", { deltaY: -600, clientX: r.left + r.width / 2, clientY: r.top + r.height / 2, bubbles: true, cancelable: true }));
   });
-  await page.waitForTimeout(120);
-  const zoomed = await page.evaluate(() => view.win.b - view.win.a);
-  ok(zoomed < before - 0.05, `wheel zoom narrowed the window (${before.toFixed(2)} -> ${zoomed.toFixed(2)})`);
-  ok(await page.evaluate(() => dcfg.result && dcfg.result.ok), "decode still valid while zoomed");
+  await po.wait(120);
+  const zoomed = await po.eval(() => view.win.b - view.win.a);
+  t.ok(zoomed < before - 0.05, `wheel zoom narrowed the window (${before.toFixed(2)} -> ${zoomed.toFixed(2)})`);
+  t.ok(await po.eval(() => dcfg.result && dcfg.result.ok), "decode still valid while zoomed");
   await page.dispatchEvent("#nav", "dblclick");
-  await page.waitForTimeout(120);
-  ok(await page.evaluate(() => view.win.a === 0 && view.win.b === 1), "double-click nav resets to the full record");
+  await po.wait(120);
+  t.ok(await po.eval(() => view.win.a === 0 && view.win.b === 1), "double-click nav resets to the full record");
 
   // Regression: "when zoomed out I can only see 1 of the 2 bytes". Two bytes with
-  // tiny boxes but idle space around them (the zoomed-out geometry) — each label
-  // must spill into the gap and render, instead of being dropped. This exact case
-  // drew ZERO labels before the fit-to-gap fix.
-  const spill = await page.evaluate(() => {
+  // tiny boxes but idle space around them — each label must spill into the gap.
+  const spill = await po.eval(() => {
     const n = frame.c1.length;
     dcfg.result = { ok: true, proto: "uart", bytes: [0x00, 0xff], text: "00 FF",
       spans: [{ i0: Math.round(n * 0.20), i1: Math.round(n * 0.205), text: "00", kind: "data", val: 0 },
@@ -78,13 +69,12 @@ try {
     try { redraw(); } finally { ctx.fillText = orig; }
     return seen.filter(t => t === "00" || t === "FF");
   });
-  ok(spill.includes("00") && spill.includes("FF"),
+  t.ok(spill.includes("00") && spill.includes("FF"),
     `both narrow-box bytes still labelled via gap-spill (drew: ${spill.join(",") || "none"})`);
 
+  // Decoding stays on after leaving BUS (the strip keeps drawing elsewhere).
+  await po.ws("scope");
+  t.ok(await po.eval(() => dcfg.proto === "i2c"), "decoding stays on in SCOPE");
   if (process.env.SHOT_DIR) await page.screenshot({ path: process.env.SHOT_DIR + "/decode.png" });
-} finally {
-  await browser.close();
-}
-
-console.log(fails ? `\n${fails} FAILED` : "\nALL PASS");
-process.exit(fails ? 1 : 0);
+  t.ok(pageErrors.length === 0, "no page errors: " + pageErrors.join("; "));
+});

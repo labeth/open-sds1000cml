@@ -1,9 +1,10 @@
-// Real-browser e2e for the web BODE / FRA card, driven by headless Chromium via
-// Playwright. Launched by bode_browser_test.go against an httptest server (URL
-// in argv[2]) whose /api/bode returns synthetic points. Asserts the app_views.js
-// bode wiring works end to end: ARM toggles state + posts bodemode, the render
-// path fetches /api/bode and draws the curve, the full-screen enlarge opens, and
-// CLEAR runs — all with NO page errors.
+// Real-browser e2e for the Bode / FRA view of the SPECTRUM workspace, driven
+// by headless Chromium via Playwright. Launched by bode_browser_test.go against
+// an httptest server (URL in argv[2]) whose /api/bode returns synthetic points.
+// Asserts: SPECTRUM again reaches the Bode view (FFT → spectrogram → Bode), ARM
+// toggles state + posts bodemode with the ref/dut channels, the view fetches
+// /api/bode and draws the curve on the scope canvas, the peak pane lists the
+// points, and Clear runs — all with NO page errors.
 // Output protocol: "SKIP: ..."+exit0 when the browser is absent, else "ALL PASS".
 import { openScope, run } from "./scope_po.mjs";
 
@@ -22,6 +23,16 @@ run(async (t) => {
     }
   });
 
+  // Alt+3 enters SPECTRUM (FFT); Alt+3 again cycles to the spectrogram, then Bode.
+  await page.keyboard.press("Alt+Digit3");
+  await po.waitFor(() => ws.cur === "spectrum" && view.mode === "FFT", null, 4000);
+  await page.keyboard.press("Alt+Digit3");
+  await po.waitFor(() => view.mode === "SPG", null, 4000);
+  await page.keyboard.press("Alt+Digit3");
+  await po.waitFor(() => view.mode === "BODE", null, 4000);
+  t.ok(true, "SPECTRUM again cycles FFT → spectrogram → Bode");
+  t.ok(await po.isVisible("bodeArm") && !(await po.isVisible("spgArm")), "the Bode tools show in the pane header");
+
   await po.click("bodeArm");
   t.ok(await po.hasClass("bodeArm", "on"), "bodeArm goes active on click");
   t.ok((await po.text("bodeArm")) === "STOP", "bodeArm label becomes STOP");
@@ -29,19 +40,24 @@ run(async (t) => {
   t.ok(bodeModePost && bodeModePost.value === 1, "ARM posts bodemode value=1");
   t.ok(bodeModePost && bodeModePost.lo === 0 && bodeModePost.hi === 1, "bodemode carries ref/dut in lo/hi");
 
-  // the render path fetches /api/bode and draws — returns the point count
+  // the view fetches /api/bode and draws — returns the point count
   const n = await po.eval(() => bodeRenderNow());
   t.ok(n === 2, "bodeRenderNow drew " + n + " points from /api/bode (want 2)");
+  await po.waitFor(() => document.querySelectorAll("#bodeBody tr").length === 2 && !document.getElementById("bodeTable").hidden, null, 4000);
+  t.ok(/Hz/.test(await po.text("bodeBody")) && /dB/.test(await po.text("bodeBody")), "the peak pane lists the Bode points (frequency, gain, phase)");
+  await t.until(async () => /Points\s*2/.test(await po.text("roBody")), "the readout counts the points", 2000);
 
-  // full-screen enlarge (reuses the eye big-view shell) opens and targets bode
-  await po.click("bodeCv");
-  const big = await po.eval(() => ({
-    open: !document.getElementById("ejBigWrap").classList.contains("hidden"),
-    kind: typeof ejBigKind !== "undefined" ? ejBigKind : null,
-  }));
-  t.ok(big.open && big.kind === "bode", "bode enlarge opens (kind=" + big.kind + ")");
-  await po.click("ejBigWrap");
-  await po.waitFor(() => document.getElementById("ejBigWrap").classList.contains("hidden"), null, 4000);
+  // the scope canvas shows the plot: pixels other than the background
+  const painted = await po.eval(() => {
+    redraw();
+    const gl = GLR.gl, cv = document.getElementById("scope");
+    const px = new Uint8Array(cv.width * cv.height * 4);
+    gl.readPixels(0, 0, cv.width, cv.height, gl.RGBA, gl.UNSIGNED_BYTE, px);
+    let k = 0;
+    for (let i = 0; i < px.length; i += 4) if (px[i] + px[i + 1] + px[i + 2] > 60) k++;
+    return k;
+  });
+  t.ok(painted > 200, "the Bode plot is drawn on the scope canvas: " + painted + " lit pixels");
 
   // CLEAR runs without error
   await po.click("bodeClear");

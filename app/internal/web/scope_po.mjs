@@ -9,11 +9,11 @@
 //
 // Usage in a driver:
 //   import { openScope, run } from "./scope_po.mjs";
-//   run(async (t) => {                      // t: {ok, near, browser?}
+//   run(async (t) => {                      // t: {ok, near, until, browser?}
 //     const { page, po, browser } = await openScope(process.argv[2]);
 //     t.browser = browser;
-//     await po.setMode("FFT");
-//     t.ok(await po.isCardVisible("fftCardC1"), "C1 FFT box visible in FFT mode");
+//     await po.setMode("FFT");             // SPECTRUM workspace, FFT view
+//     t.ok(await po.isVisible("peakTable"), "the peak table shows in SPECTRUM");
 //   });
 import { existsSync, readdirSync } from "node:fs";
 import { execSync } from "node:child_process";
@@ -103,22 +103,47 @@ export async function openScope(url, opts = {}) {
 }
 
 // ---- the page-object: intent methods over the UI, no per-driver DOM knowledge -
+// The UI is five task workspaces (SCOPE, BUS, SPECTRUM, MEASURE, COMPARE) over
+// a fixed instrument strip; a control lives in one workspace's pane. reveal()
+// brings it on screen the way All settings' arrows do (workspace, view, pane).
 // TRLC-LINKS: REQ-SDS-180
 export function pageObject(page) {
   // TRLC-LINKS: REQ-SDS-180
   const $ = (id) => "#" + id;
+  // TRLC-LINKS: REQ-SDS-180
+  const reveal = (id) => page.evaluate((i) => { const el = document.getElementById(i); return !!el && revealControl(el); }, id);
   const po = {
     page,
-    // view modes + toggles
+    // workspaces: click the tab (Alt+1..5 works too)
     // TRLC-LINKS: REQ-SDS-180
-    setMode: (m) => page.click($({ YT: "mYT", XY: "mXY", FFT: "mFFT" }[m] || m)),
+    ws: async (id) => { await page.click("#tab-" + id); await page.waitForFunction((w) => ws.cur === w, id, { timeout: 4000 }); },
     // TRLC-LINKS: REQ-SDS-180
-    toggle: (id) => page.click($(id)),
+    curWs: () => page.evaluate(() => ws.cur),
     // TRLC-LINKS: REQ-SDS-180
-    click: (id) => page.click($(id)),
+    reveal,
+    // the screen view: Y-T / X-Y are SCOPE's, FFT / spectrogram / Bode SPECTRUM's
+    // TRLC-LINKS: REQ-SDS-180
+    setMode: async (m) => {
+      const spec = ["FFT", "SPG", "BODE"].includes(m);
+      await po.ws(spec ? "spectrum" : "scope");
+      await po.seg(spec ? "viewSpec" : "viewScope", m);
+      await page.waitForFunction((mm) => view.mode === mm, m, { timeout: 4000 });
+    },
+    // a segmented control: click the option with that value
+    // TRLC-LINKS: REQ-SDS-180
+    seg: async (id, value) => { await reveal(id); await page.click(`#${id} > button[data-value="${value}"]`); },
+    // TRLC-LINKS: REQ-SDS-180
+    toggle: async (id) => { await reveal(id); await page.click($(id)); },
+    // TRLC-LINKS: REQ-SDS-180
+    click: async (id) => { await reveal(id); await page.click($(id)); },
+    // an Export menu entry: open the menu, then click it
+    // TRLC-LINKS: REQ-SDS-180
+    exportClick: async (id) => { await page.click("#exportBtn"); await page.click($(id)); },
     // form controls
     // TRLC-LINKS: REQ-SDS-180
-    setSelect: (id, value) => page.selectOption($(id), String(value)),
+    setSelect: async (id, value) => { await reveal(id); await page.selectOption($(id), String(value)); },
+    // TRLC-LINKS: REQ-SDS-180
+    isVisible: (id) => page.evaluate((i) => { const el = document.getElementById(i); return !!el && el.getClientRects().length > 0 && getComputedStyle(el).visibility !== "hidden"; }, id),
     // TRLC-LINKS: REQ-SDS-180
     fill: (id, value) => page.fill($(id), String(value)),
     // a range/slider: set value + fire input+change so listeners run

@@ -1,6 +1,7 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-WEB
 // workflow_serial.mjs — mask, UART, SPI, burst source workflows (protocol/serial sources).
 import { near, assert } from "./workflow_assert.mjs";
+import { parseEng } from "./operator.mjs";
 
 
 // ---------------------------------------------------------------------------
@@ -17,11 +18,11 @@ export const uart = [
   { id: "U2", name: "Decode UART at 115200 baud and get transcript bytes", run: async (op) => {
     await op.autosetStable(1);
     await op.setBand(100e-6); // slow to a band showing several bytes (decode-appropriate)
-    await op.selectExpect("decProto", "uart", async () => await op.page.evaluate(() => {
-      const c = document.getElementById("decodeResultCard"); return c && getComputedStyle(c).display !== "none";
-    }), { why: "selecting UART must reveal the decode result panel" });
+    await op.selectExpect("decProto", "uart", async () => await op.page.evaluate(() => document.getElementById("pkEmpty").hidden),
+      { why: "selecting UART must turn BUS's packet list on" });
     await op.fill("decBaud", "115200", { why: "115200 baud" });
     await op.page.evaluate(() => { const e = document.getElementById("decBaud"); e.dispatchEvent(new Event("change")); });
+    await op.selectExpect("busView", "log", null, { why: "the Packets pane's Log view holds the transcript" });
     const txt = await op.readUntil(async () => {
       const t = await op.readText("decodeText");
       return t && t.replace(/\s/g, "").length > 2 ? t : null;
@@ -108,10 +109,9 @@ export const uart = [
   // TRLC-LINKS: REQ-SDS-208
   { id: "U9", name: "FFT of the UART line shows spectral content", run: async (op) => {
     await op.autosetStable(1);
-    await op.clickExpect("mFFT", async () => (await op.page.$("#fftCardC1")) !== null, { why: "FFT view" });
-    const peak = await op.readUntil(async () => await op.page.evaluate(() => { const b = document.querySelector("#fftBody1"); const c = b && b.querySelector("tr td"); return c && /Hz/.test(c.textContent) ? c.textContent : null; }), 8000, "no FFT peak on the UART line");
+    const peak = await op.topPeak(1);
     assert(peak != null, "no UART FFT peak");
-    await op.click("mYT", { why: "back to Y-T" });
+    await op.ws("scope");
   }},
   // TRLC-LINKS: REQ-SDS-208
   { id: "U10", name: "Copy the decode transcript to the clipboard control", run: async (op) => {
@@ -125,6 +125,47 @@ export const uart = [
     assert(await op.exists("decodeCopy"), "decode copy control missing");
     await op.click("decodeCopy", { why: "copy transcript" });
     await op.selectExpect("decProto", "off", null, { why: "decode off" });
+  }},
+  // TRLC-LINKS: REQ-SDS-208, REQ-SDS-214
+  { id: "U11", name: "BUS finds the UART by itself and turns decoding on", run: async (op) => {
+    await op.autosetStable(1);
+    await op.setBand(100e-6);
+    // decoding is off (reset): entering BUS runs the detection
+    await op.ws("bus");
+    const proto = await op.readUntil(async () => { const p = await op.page.evaluate(() => document.getElementById("decProto").value); return p !== "off" ? p : null; },
+      12000, "entering BUS did not detect the bus");
+    assert(proto === "uart", `BUS detected ${proto}, expected UART`);
+    const note = await op.page.evaluate(() => document.getElementById("toast").textContent);
+    assert(/detected/i.test(note), `BUS should say what it found; the notice reads "${note}"`);
+    // decoding stays on in the other workspaces
+    await op.ws("scope");
+    assert((await op.page.evaluate(() => document.getElementById("decProto").value)) === "uart", "decoding switched off on leaving BUS");
+  }},
+  // TRLC-LINKS: REQ-SDS-208, REQ-SDS-214
+  { id: "U12", name: "BUS's packet table: hex and string columns, rows hold still, a click zooms", run: async (op) => {
+    await op.autosetStable(1);
+    await op.setBand(100e-6);
+    await op.selectExpect("decProto", "uart", null, { why: "UART" });
+    await op.fill("decBaud", "115200", { why: "baud" });
+    await op.page.evaluate(() => { document.getElementById("decBaud").dispatchEvent(new Event("change")); });
+    await op.selectExpect("busView", "packets", null, { why: "the Packets view" });
+    const rows = await op.readUntil(async () => await op.page.evaluate(() => {
+      const out = [];
+      for (const tr of document.querySelectorAll("#pkBody tr[data-i]")) { const td = tr.querySelectorAll("td"); out.push({ hex: td[3].textContent, str: td[4].textContent }); }
+      return out.length ? out : null;
+    }), 12000, "the packet table stayed empty on a UART stream");
+    assert(rows.some((r) => /55 AA/i.test(r.hex)), `no packet shows the message bytes 55 AA: ${rows.map((r) => r.hex).join(" | ")}`);
+    assert(rows.some((r) => /Hi/.test(r.str)), `no packet's string column shows "Hi": ${rows.map((r) => r.str).join(" | ")}`);
+    const align = await op.page.evaluate(() => getComputedStyle(document.querySelector("#pkBody tr[data-i] td.str")).textAlign);
+    assert(align === "left" || align === "start", `the string column should be left-aligned, is ${align}`);
+    // the same message repeating leaves the rows alone (no flicker)
+    await op.page.evaluate(() => { document.querySelector("#pkBody tr[data-i]").dataset.e2e = "kept"; });
+    await op.page.waitForTimeout(2500);
+    assert(await op.page.evaluate(() => !!document.querySelector('#pkBody tr[data-e2e="kept"]')), "the packet rows were rebuilt while the same message repeated");
+    // a click freezes the display and zooms onto that packet
+    await op.page.click("#pkBody tr[data-i]");
+    await op._settle(async () => await op.isOn("freeze"), 3000, "clicking a packet did not freeze the display on it");
+    await op.click("freeze", { why: "back to live" });
   }},
 ];
 
@@ -150,9 +191,8 @@ export const spi = [
   { id: "S3", name: "Decode SPI (mode 0, CLK=C1, DATA=C2) and get transcript bytes", run: async (op) => {
     await op.autosetStable(1);
     await op.setBand(100e-6); // a full message + gap on screen (SPI frames cleanly here)
-    await op.selectExpect("decProto", "spi", async () => await op.page.evaluate(() => {
-      const c = document.getElementById("decodeResultCard"); return c && getComputedStyle(c).display !== "none";
-    }), { why: "selecting SPI must reveal the decode result panel" });
+    await op.selectExpect("decProto", "spi", async () => await op.page.evaluate(() => document.getElementById("pkEmpty").hidden),
+      { why: "selecting SPI must turn BUS's packet list on" });
     // set roles CLK=C1, DATA=C2, mode 0, MSB-first
     await op.page.evaluate(() => {
       // TRLC-LINKS: REQ-SDS-208
@@ -245,7 +285,8 @@ export const spiB = [
   // TRLC-LINKS: REQ-SDS-208
   { id: "S11", name: "Cursors measure one SCLK period on the bus", run: async (op) => {
     await op.autosetStable(1);
-    await op.clickExpect("tCursors", async () => await op.page.evaluate(() => { const c = document.getElementById("curCard"); return c && getComputedStyle(c).display !== "none"; }), { why: "cursors on" });
+    await op.ws("measure"); // MEASURE's Cursors pane holds the readout
+    await op.clickExpect("tCursors", async () => await op.isOn("tCursors"), { why: "cursors on" });
     const inv = await op.readUntil(async () => {
       const t = await op.page.evaluate(() => { const b = document.querySelector("#curBody"); const rows = b.querySelectorAll("tr"); for (const r of rows) { const th = r.querySelector("th"); if (th && /1\/Δt/.test(th.textContent)) return r.querySelector("td").textContent; } return null; });
       return t && /Hz/.test(t) ? t : null;
@@ -256,14 +297,15 @@ export const spiB = [
   // TRLC-LINKS: REQ-SDS-208
   { id: "S12", name: "Save the SCLK as reference A and toggle its display", run: async (op) => {
     await op.autosetStable(1);
-    await op.clickExpect("refSaveA", async () => await op.page.evaluate(() => /REF\s*A/.test(document.getElementById("refRows").textContent)), { why: "save A" });
-    // toggle the reference show state via its row button
-    await op.page.evaluate(() => { const b = document.querySelector("#refRows .reftog"); if (b) b.click(); });
+    await op.clickExpect("refSaveA", async () => /C1/.test(await op.readText("refInfoA") || ""), { why: "save A" });
+    // hide and show it again with its Show toggle
+    await op.clickExpect("refShowA", async () => !(await op.isOn("refShowA")), { why: "hide REF A" });
+    await op.clickExpect("refShowA", async () => await op.isOn("refShowA"), { why: "show REF A" });
     assert((await op.lcdPng()) > 3000, "reference toggle broke rendering");
   }},
   // TRLC-LINKS: REQ-SDS-208
   { id: "S13", name: "Math CLK×DATA (the gated product) renders", run: async (op) => {
-    await op.selectExpect("mathFn", "c1*c2", async () => await op.page.evaluate(() => { const c = document.getElementById("mathCard"); return c && getComputedStyle(c).display !== "none"; }), { why: "CLK×DATA math" });
+    await op.selectExpect("mathFn", "c1*c2", async () => await op.mathShown(), { why: "CLK×DATA math" });
     assert((await op.lcdPng()) > 3000, "CLK×DATA math did not render");
     await op.selectExpect("mathFn", "off", null, { why: "math off" });
   }},
@@ -339,12 +381,10 @@ export const burst = [
   // TRLC-LINKS: REQ-SDS-208
   { id: "B2", name: "FFT reveals the burst's high-frequency components", run: async (op) => {
     await op.autosetStable(1);
-    await op.clickExpect("mFFT", async () => (await op.page.$("#fftCardC1")) !== null, { why: "FFT view" });
-    const peak = await op.readUntil(async () => await op.page.evaluate(() => { const b = document.querySelector("#fftBody1"); const c = b && b.querySelector("tr td"); return c && /Hz/.test(c.textContent) ? c.textContent : null; }), 9000, "FFT produced no peak on the burst");
-    const { parseEng } = await import("./operator.mjs");
+    const peak = await op.topPeak(1, 9000);
     const hz = parseEng(peak);
     assert(hz > 1e6, `FFT peak ${peak} (${hz} Hz) — expected MHz-scale content`);
-    await op.click("mYT", { why: "back to Y-T" });
+    await op.ws("scope");
   }},
   // TRLC-LINKS: REQ-SDS-208
   { id: "B3", name: "Persistence accumulates the repetitive burst structure", run: async (op) => {
@@ -408,13 +448,13 @@ export const burst = [
   // TRLC-LINKS: REQ-SDS-208
   { id: "B10", name: "FFT peak click selects the component (spectral marker)", run: async (op) => {
     await op.autosetStable(1);
-    await op.clickExpect("mFFT", async () => (await op.page.$("#fftCardC1")) !== null, { why: "FFT view" });
-    await op.readUntil(async () => await op.page.evaluate(() => { const b = document.querySelector("#fftBody1"); const c = b && b.querySelector("tr td"); return c && /Hz/.test(c.textContent) ? true : null; }), 9000, "no FFT peak to click");
-    // click the first FFT peak row (an operator selecting a component to measure)
-    await op.page.evaluate(() => { const r = document.querySelector("#fftBody1 tr"); if (r) r.click(); });
-    await op.page.waitForTimeout(500);
+    await op.topPeak(1, 9000);
+    // click the first peak row (an operator picking a component to measure)
+    await op.page.click("#fftBody tr.pk");
+    await op._settle(async () => await op.page.evaluate(() => !!document.querySelector("#fftBody tr.pk.is-sel")), 3000, "clicking a peak row did not pick it");
     assert((await op.lcdPng()) > 3000, "spectral marker interaction broke rendering");
-    await op.click("mYT", { why: "back to Y-T" });
+    await op.click("fftClear", { why: "clear the picked peaks" });
+    await op.ws("scope");
   }},
   // TRLC-LINKS: REQ-SDS-208
   { id: "B11", name: "Persistence + single together capture and hold a burst", run: async (op) => {

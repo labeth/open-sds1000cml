@@ -243,6 +243,7 @@ function drawFFT() {
     ctx.stroke(); ctx.globalAlpha = 1;
     // peak markers; selected ones highlighted (palette) + labelled
     ctx.textBaseline = "bottom"; ctx.font = "bold " + (11 * dpr) + "px system-ui";
+    const topL = fftCh[ch].peaks.reduce((m, q) => Math.max(m, peakLvl(q)), -Infinity); // labels read re the strongest tone, as Rel
     for (let i = 0; i < fftCh[ch].peaks.length; i++) {
       const p = fftCh[ch].peaks[i], px = xAt(p.frac), py = yAt(p.db), col = selColorCh(ch, i), r = (col ? 6 : 3) * dpr;
       if (px < -20 || px > CW + 20) continue;
@@ -250,7 +251,7 @@ function drawFFT() {
       ctx.beginPath(); ctx.moveTo(px, py - r * 2); ctx.lineTo(px - r, py - r * 0.5); ctx.lineTo(px + r, py - r * 0.5); ctx.closePath(); ctx.fill();
       if (col) {
         const tx = Math.min(px + 8 * dpr, CW - 96 * dpr);
-        ctx.fillText("C" + ch + " " + eng(p.freq, "Hz", 4) + "  " + p.db.toFixed(1) + " dB", tx, Math.max(py - 10 * dpr, 30 * dpr));
+        ctx.fillText("C" + ch + " " + eng(p.freq, "Hz", 4) + "  " + (peakLvl(p) - topL).toFixed(1) + " dB", tx, Math.max(py - 10 * dpr, 30 * dpr));
       }
     }
     ctx.textBaseline = "alphabetic";
@@ -344,7 +345,7 @@ function peakVolts(ch, p) {
   const span = src ? peakSpanS(src) : 0;
   if (src && span > 0) return toneAmplitude(src, p.freq * span) * vpc;
   const N = spec.half * 2;
-  const mag = spec.peak * Math.pow(10, p.db / 20);
+  const mag = spec.peak * Math.pow(10, peakLvl(p) / 20);
   return 4 * mag / N * vpc;
 }
 
@@ -364,25 +365,26 @@ function specFloor(ch) {
   return spec._floor;
 }
 
-// Selected-peak measurement lines under each FFT list: exact frequency,
+// Selected-peak measurement lines under the peak table: exact frequency,
 // level re the channel's strongest line, absolute amplitude, and the tone's SNR
 // above the noise floor (with the equivalent bits of resolution, 6.02 dB/bit).
 // TRLC-LINKS: REQ-SDS-070
 function updateFFTSel(ch) {
-  const el = $("fftSel" + ch);
+  const el = $("fftSel");
   const S = fftCh[ch];
+  if (ch !== pkChannel()) return;
   if (!peaksVisible() || !S.selIdx.size) { el.textContent = ""; return; }
   const spec = specMemo[ch] && specMemo[ch].spec, floor = specFloor(ch);
-  const rows = [];
+  const rows = [], topL = S.peaks.reduce((m, q) => Math.max(m, peakLvl(q)), -Infinity);
   for (const i of [...S.selIdx].sort((a, b) => a - b)) {
     const p = S.peaks[i];
     if (!p) continue;
     let snrStr = "";
     if (spec && floor > 0) {
-      const snr = 20 * Math.log10((spec.peak * Math.pow(10, p.db / 20)) / floor);
+      const snr = 20 * Math.log10((spec.peak * Math.pow(10, peakLvl(p) / 20)) / floor);
       snrStr = " · " + snr.toFixed(0) + " dB SNR (~" + Math.max(0, snr / 6.02).toFixed(1) + " bit)";
     }
-    rows.push(eng(p.freq, "Hz", 4) + " · " + p.db.toFixed(1) + " dBc · ≈" + eng(peakVolts(ch, p), "Vpk", 3) + snrStr);
+    rows.push(eng(p.freq, "Hz", 4) + " · " + (peakLvl(p) - topL).toFixed(1) + " dBc · ≈" + eng(peakVolts(ch, p), "Vpk", 3) + snrStr);
   }
   // Harmonic/delta line when 2+ peaks are picked: spacing and ratio.
   if (S.selIdx.size >= 2) {
@@ -393,30 +395,63 @@ function updateFFTSel(ch) {
   el.style.whiteSpace = "pre-line";
 }
 
-// TRLC-LINKS: REQ-SDS-070
+// pkChannel is the channel SPECTRUM's peak table shows (its C1/C2 choice).
+// TRLC-LINKS: REQ-SDS-070, REQ-SDS-216
+function pkChannel() { return $("pkCh").value === "2" ? 2 : 1; }
+
+// peakDBV is a peak's level in dBV (RMS) from its tone level (peaks.js lvl: the
+// Hann bin corrected for scalloping, within 0.06 dB between bins): amplitude =
+// 4·|X|/N codes (coherent gain 0.5) × volts per code, ÷ √2 for RMS. The Rel
+// column and THD use the same tone levels, as the LCD's table does.
+// TRLC-LINKS: REQ-SDS-216
+function peakDBV(ch, p) {
+  const spec = specMemo[ch] && specMemo[ch].spec;
+  if (!spec || !frame) return -Infinity;
+  const vpc = (ch === 2 ? frame.vpc2 : frame.vpc1) || 1 / 25;
+  const v = 4 * spec.peak * Math.pow(10, peakLvl(p) / 20) / (spec.half * 2) * vpc / Math.SQRT2;
+  return v > 0 ? 20 * Math.log10(v) : -Infinity;
+}
+
+// updateFFTListCh renders the peak table when it shows this channel: rank,
+// frequency, level (dBV, from the fitted tone), level relative to the largest
+// peak, and the harmonic number of the largest peak (peaks.js harmonics()).
+// Rows keep their elements while the count holds, so a click is never dropped.
+// TRLC-LINKS: REQ-SDS-070, REQ-SDS-216
 function updateFFTListCh(ch) {
-  const card = $("fftCardC" + ch);
-  if (!(peaksVisible() && chOn(ch) && chHas(ch))) { card.style.display = "none"; return; }
-  card.style.display = "";
-  const S = fftCh[ch], body = $("fftBody" + ch), need = S.peaks.length;
+  if (ch !== pkChannel()) return;
+  const body = $("fftBody");
+  if (!(chOn(ch) && chHas(ch))) {
+    const t = `<tr><td class="e" colspan="5">${chHas(ch) ? "CH" + ch + " is off — turn it on to list its peaks." : "No sampled CH" + ch + " record yet."}</td></tr>`;
+    if (body.dataset.sig !== t) { body.dataset.sig = t; body.innerHTML = t; }
+    $("pkSub").textContent = "";
+    updateFFTSel(ch);
+    return;
+  }
+  const S = fftCh[ch], need = S.peaks.length;
+  const H = harmonics(S.peaks, specMemo[ch].spec);
   let rows = body.querySelectorAll("tr.pk");
-  // Rebuild row STRUCTURE only when the count changes — otherwise update cells in
-  // place so the row elements (and your click) are never dropped.
-  if (rows.length !== need) {
-    let html = "<tr><th>#</th><th>Freq</th><th>dB</th></tr>";
-    for (let i = 0; i < need; i++) html += `<tr class="pk" data-i="${i}" style="cursor:pointer"><th>${i + 1}</th><td class="pf"></td><td class="pd"></td></tr>`;
-    if (!need) html += "<tr><td colspan='3' style='color:var(--dim)'>no peaks</td></tr>";
+  if (rows.length !== need || body.dataset.sig !== "rows") {
+    let html = "";
+    for (let i = 0; i < need; i++) html += `<tr class="pk pick" data-i="${i}" tabindex="0"><td class="l n">${i + 1}</td><td class="pf cc${ch}"></td><td class="pl"></td><td class="pr"></td><td class="ph n"></td></tr>`;
+    if (!need) html = `<tr><td class="e" colspan="5">No peaks above the floor.</td></tr>`;
     body.innerHTML = html;
+    body.dataset.sig = need ? "rows" : "none";
     rows = body.querySelectorAll("tr.pk");
   }
   for (let i = 0; i < need; i++) {
     const p = S.peaks[i], tr = rows[i], col = selColorCh(ch, i);
     tr.dataset.freq = p.freq;                 // selection carries the FREQUENCY
-    tr.style.background = col ? "rgba(255,210,63,.14)" : "";
+    tr.classList.toggle("is-sel", !!col);
     tr.style.boxShadow = col ? `inset 3px 0 0 ${col}` : "";
-    tr.querySelector(".pf").textContent = eng(p.freq, "Hz", 4);
-    tr.querySelector(".pd").textContent = p.db.toFixed(1);
+    tr.setAttribute("aria-selected", col ? "true" : "false");
+    const lv = peakDBV(ch, p), hn = H.harm[i];
+    const set = (cls, t) => { const c = tr.querySelector(cls); if (c.textContent !== t) c.textContent = t; };
+    set(".pf", eng(p.freq, "Hz", 4));
+    set(".pl", Number.isFinite(lv) ? lv.toFixed(1) + " dBV" : "—");
+    set(".pr", (peakLvl(p) - H.topDb).toFixed(1) + " dB");
+    set(".ph", hn ? "H" + hn : "");
   }
+  $("pkSub").textContent = "CH" + ch;
   updateFFTSel(ch);
 }
 
@@ -425,26 +460,33 @@ function updateFFTLists() { updateFFTListCh(1); updateFFTListCh(2); }
 
 // ==== wiring ====
 
-// ---- FFT peak-row selection wiring ----
-
-
-
-
-// One delegated handler per channel's (never-replaced) tbody. Toggling by the
-// row's own frequency is robust to the list re-sorting between render and click.
-for (const ch of [1, 2]) {
-  $("fftBody" + ch).addEventListener("click", ev => {
-    const tr = ev.target.closest(".pk");
-    if (!tr || tr.dataset.freq == null) return;
-    togglePeakCh(ch, +tr.dataset.freq);
-  });
-  // TRLC-LINKS: REQ-SDS-070
-  $("fftClear" + ch).onclick = () => clearPeaksCh(ch);
-  // TRLC-LINKS: REQ-SDS-070
-  $("fftN" + ch).oninput = () => {
-    const v = Math.round(+$("fftN" + ch).value);
-    maxPeaks = Number.isFinite(v) && v >= 1 ? Math.min(64, v) : 8;
-    $("fftN1").value = maxPeaks; $("fftN2").value = maxPeaks; // shared count
-    redraw();
-  };
-}
+// ---- peak-table selection wiring ----
+// One delegated handler on the (never-replaced) tbody. Toggling by the row's
+// own frequency is robust to the list re-sorting between render and click.
+$("fftBody").addEventListener("click", ev => {
+  const tr = ev.target.closest(".pk");
+  if (!tr || tr.dataset.freq == null) return;
+  togglePeakCh(pkChannel(), +tr.dataset.freq);
+});
+$("fftBody").addEventListener("keydown", ev => {
+  const tr = ev.target.closest(".pk");
+  if (!tr) return;
+  if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); tr.click(); }
+  else if (ev.key === "ArrowDown" || ev.key === "ArrowUp") {
+    const nx = ev.key === "ArrowDown" ? tr.nextElementSibling : tr.previousElementSibling;
+    if (nx) { ev.preventDefault(); nx.focus(); }
+  }
+});
+// TRLC-LINKS: REQ-SDS-070
+$("fftClear").onclick = () => clearPeaksCh(pkChannel());
+// typing, the spinner and a pasted value (input) or an edit committed elsewhere (change)
+// TRLC-LINKS: REQ-SDS-070
+$("fftN").oninput = $("fftN").onchange = () => {
+  const v = Math.round(+$("fftN").value);
+  maxPeaks = Number.isFinite(v) && v >= 1 ? Math.min(64, v) : 8;
+  peakListLastT = 0;
+  for (const ch of [1, 2]) computePeaksCh(ch);
+  updateFFTLists(); redraw();
+};
+// TRLC-LINKS: REQ-SDS-070, REQ-SDS-216
+$("pkCh").onchange = () => { $("fftBody").dataset.sig = ""; $("fftSel").textContent = ""; computePeaksCh(pkChannel()); updateFFTLists(); };

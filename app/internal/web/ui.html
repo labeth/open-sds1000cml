@@ -7,395 +7,466 @@
 <link rel="stylesheet" href="tokens.css"><!-- palette generated from tokens.json, shared with the LCD -->
 <link rel="stylesheet" href="base.css">
 </head>
-<body>
-<header>
-  <h1>open-sds1000cml <span class="dim">— SDS1102CML+</span></h1>
-  <span id="trigChip" data-state="" title="trigger state (press ? for shortcuts)" aria-label="trigger state">—</span>
-  <div id="hstat" aria-live="polite"><span id="wedged" role="alert" style="display:none">ENGINE WEDGED</span><span id="loading" class="loading" hidden>LOADING</span><span id="line">connecting…</span></div>
-  <button id="panelToggle" class="sm" aria-label="toggle side panels" title="panels">&#9776;</button>
+<body data-ws="scope">
+<!-- Task workspaces (ADR-TASK-WORKSPACES): five workspaces over one fixed
+     instrument strip. The panes below live in #panelib until app_ws.js lays
+     each workspace out from its split tree; the scope (#scopeunit) and the
+     shared panes move into whichever workspace is shown. -->
+<header id="top">
+  <div class="brand"><b>open-sds1000cml</b><span>SDS1102CML+</span></div>
+  <div id="wstabs" role="tablist" aria-label="Workspaces">
+    <button type="button" role="tab" class="wstab" id="tab-scope" data-ws="scope" aria-controls="ws-scope" aria-selected="true" aria-keyshortcuts="Alt+1"><kbd>Alt+1</kbd><span>SCOPE</span><i class="tdot" hidden></i></button>
+    <button type="button" role="tab" class="wstab" id="tab-bus" data-ws="bus" aria-controls="ws-bus" aria-selected="false" aria-keyshortcuts="Alt+2" tabindex="-1"><kbd>Alt+2</kbd><span>BUS</span><i class="tdot" hidden></i></button>
+    <button type="button" role="tab" class="wstab" id="tab-spectrum" data-ws="spectrum" aria-controls="ws-spectrum" aria-selected="false" aria-keyshortcuts="Alt+3" tabindex="-1"><kbd>Alt+3</kbd><span>SPECTRUM</span><i class="tdot" hidden></i></button>
+    <button type="button" role="tab" class="wstab" id="tab-measure" data-ws="measure" aria-controls="ws-measure" aria-selected="false" aria-keyshortcuts="Alt+4" tabindex="-1"><kbd>Alt+4</kbd><span>MEASURE</span><i class="tdot" hidden></i></button>
+    <button type="button" role="tab" class="wstab" id="tab-compare" data-ws="compare" aria-controls="ws-compare" aria-selected="false" aria-keyshortcuts="Alt+5" tabindex="-1"><kbd>Alt+5</kbd><span>COMPARE</span><i class="tdot" hidden></i></button>
+  </div>
+  <span class="grow"></span>
+  <span id="trigChip" data-state="" role="status" title="Trigger state (press ? for help)" aria-label="trigger state">—</span>
+  <button type="button" id="setupsBtn" class="sm" aria-haspopup="true" aria-expanded="false" title="Save or recall the whole setup (slots 1-20, shared with the scope's SAVE/RECALL)">Setups</button>
+  <button type="button" id="exportBtn" class="sm" aria-haspopup="true" aria-expanded="false" title="Export the displayed capture (PNG, CSV, sigrok, VCD, WAV) or save a device screenshot">Export</button>
+  <button type="button" id="defaultBtn" class="sm" title="Default setup: return the instrument to its power-on settings">Default setup</button>
+  <button type="button" id="allBtn" class="sm" aria-pressed="false" aria-keyshortcuts="Control+," title="Every setting in one filterable list (Ctrl+,)">All settings</button>
+  <button type="button" id="helpBtn" class="sm sq" aria-label="Help" aria-keyshortcuts="?" title="Workspaces, keys and mouse (?)">?</button>
 </header>
 
-<div id="main">
-  <div id="wrap">
-    <div id="scopebox">
-      <canvas id="scope" role="img" aria-label="oscilloscope display"></canvas>
-      <div id="stopped" style="display:none">STOPPED</div>
-    </div>
-    <canvas id="nav"></canvas>
+<main id="wsbody">
+  <div id="wsarea">
+    <div class="ws" id="ws-scope" role="tabpanel" aria-labelledby="tab-scope"></div>
+    <div class="ws" id="ws-bus" role="tabpanel" aria-labelledby="tab-bus" hidden></div>
+    <div class="ws" id="ws-spectrum" role="tabpanel" aria-labelledby="tab-spectrum" hidden></div>
+    <div class="ws" id="ws-measure" role="tabpanel" aria-labelledby="tab-measure" hidden></div>
+    <div class="ws" id="ws-compare" role="tabpanel" aria-labelledby="tab-compare" hidden></div>
   </div>
-  <div id="dock">
-    <div class="card">
-      <h3>View</h3>
-      <div class="seg" role="group" aria-label="view mode">
-        <button id="mYT" class="on">Y-T</button>
-        <button id="mXY">X-Y</button>
-        <button id="mFFT">FFT</button>
+  <div id="allgut" class="gut gut-v" role="separator" tabindex="0" aria-orientation="vertical" aria-label="Resize the All settings pane" hidden></div>
+  <aside id="allcol" hidden>
+    <section class="pane" id="allpane" aria-label="All settings">
+      <div class="ph"><span class="pt">All settings</span><span class="ps" id="allSub">every setting, grouped</span><span class="pa"><button type="button" class="pc" id="allClose" aria-label="Close All settings" title="Close (Ctrl+,)">✕</button></span></div>
+      <div class="pb">
+        <input type="search" id="allFilter" placeholder="Filter, e.g. coupling or baud" aria-label="Filter settings" autocomplete="off" spellcheck="false">
+        <div id="allNone" class="empty" hidden></div>
+        <div id="allList"></div>
       </div>
-      <div class="grp-label">channels</div>
-      <div class="toggles">
-        <button id="tC1" class="sm on cc1">C1</button>
-        <button id="tC2" class="sm on cc2">C2</button>
-      </div>
-      <div class="grp-label">display</div>
-      <div class="toggles">
-        <button id="tCursors" class="sm">Cursors</button>
-        <button id="tPersist" class="sm">Persist</button>
-        <button id="freeze" class="sm">Freeze</button>
-      </div>
-      <div class="grp-label">export</div>
-      <div class="toggles">
-        <button id="ePNG" class="sm">PNG</button>
-        <button id="eCSV" class="sm">CSV</button>
-        <button id="eSR" class="sm" title="sigrok session (.sr) — calibrated volts at the true sample rate PLUS thresholded logic channels (D1/D2), so PulseView / sigrok-cli protocol decoders attach to the export directly">SR</button>
-        <button id="eVCD" class="sm" title="value change dump (.vcd) — analog channels as real vars for GTKWave and sigrok (import needs a recent libsigrok)">VCD</button>
-        <button id="eWAV" class="sm" title="float32 WAV — calibrated volts, importable by sigrok and any DSP/audio tool (unavailable when the rate exceeds WAV's 4.29 GHz limit)">WAV</button>
-      </div>
-    </div>
+    </section>
+  </aside>
+</main>
 
-    <div class="card" id="mathCard">
-      <h3><span class="ccm">M</span> Math</h3>
-      <select id="mathFn" class="dsel wfull" aria-label="math function">
-        <option value="off">Off</option>
-        <option value="c1-c2">C1 − C2</option>
-        <option value="c2-c1">C2 − C1</option>
-        <option value="c1+c2">C1 + C2</option>
-        <option value="c1*c2">C1 × C2</option>
-        <option value="res1">C1 − selected FFT peaks (remove carrier)</option>
-        <option value="res2">C2 − selected FFT peaks (remove carrier)</option>
-      </select>
-      <div id="mathScale" class="subtle"></div>
-      <div id="mathHint" class="subtle mt"></div>
-    </div>
-
-    <div class="card" id="srCard">
-      <h3>Superres <span class="subtle">stack &amp; crunch</span></h3>
-      <div class="toggles">
-        <button id="srAutoGate" class="sm" title="place the gate markers automatically on the best feature in the current view (the active region, one period when periodic). Always re-places. Drag to adjust, then ARM.">autogate</button>
-        <button id="srGate" class="sm" title="show/hide the gate markers (auto-placed the first time). What they span is EXACTLY what gets super-resed — drag them, then ARM.">gate</button>
-        <button id="srArm" class="sm" title="stack raw acquisitions: find every occurrence of the gated feature, sub-sample align, average onto a fine grid. With the gate on it stacks exactly the marked region; without it, the auto-picked feature.">ARM</button>
-        <button id="srShow" class="sm" title="review the stacked waveform (zoom/cursors/CSV all work on it)">view</button>
-        <button id="srFit" class="sm" title="least-squares sum-of-sinusoids fit of the stack → REF B overlay">fit&nbsp;model</button>
-        <button id="srReset" class="sm" title="discard the stack">✕</button>
-        <button id="srFpga" class="sm" title="stack in the FPGA: switches to the stacking image, finds every edge crossing in each fresh record, accumulates a 32-sample window around it on the grid×K fine grid, and sends only the accumulated moments to the ARM. Live acquisition pauses for the session.">FPGA</button>
-        <label title="records to stack in the FPGA session">× <input id="srFpgaN" type="number" min="1" max="1000" step="10" value="20" class="w-num"></label>
-        <label title="only stack edges whose surrounding waveform matches the shape around the trigger in the current frame (points of the current frame, a quarter before the crossing); unrelated edges are rejected in the FPGA"><input type="checkbox" id="srFpgaMatch"> match shape <input id="srFpgaPts" type="number" min="2" max="1024" step="16" value="64" class="w-num"></label>
-        <label title="exact: a place must match the shape as closely as a true repeat can (ADC noise, uncorrected core offsets and half a template point of alignment on slopes); loose: an eighth of the swing per point"><select id="srFpgaTol"><option value="0" selected>exact</option><option value="-1">loose</option></select></label>
-      </div>
-      <div class="decrow">
-        <label title="Goal presets that set the grid/kernel/stop/BW-comp for a tradeoff, then ARM. max bandwidth: accumulate bits and spend them as high-frequency boost (highest recovered −3 dB). max ENOB: accumulate with NO boost (lowest noise — boost trades noise for bandwidth). fast capture: coarse grid + short stop for a quick usable stack with a modest auto boost. custom leaves the controls as-is.">preset
-          <select id="srPreset"><option value="custom" selected>custom</option><option value="hibw">max bandwidth</option><option value="enob">max ENOB (clean)</option><option value="fast">fast capture</option></select></label>
-      </div>
-      <div class="decrow">
-        <label title="which channel drives the matching/alignment. both = follow the trigger source; C1/C2 = lock to that channel. Both channels are always stacked.">ch
-          <select id="srCh"><option value="0" selected>both</option><option value="1">C1</option><option value="2">C2</option></select></label>
-        <label>grid ×<select id="srK"><option>16</option><option selected>32</option><option>64</option></select></label>
-        <label title="stop the crunch when the target is reached. +bits and stacks are ACQUISITION-RATE INDEPENDENT (same result whether crunching fast or slow — matches the device); time is not.">stop
-          <select id="srStopMode"><option value="bits" selected>+bits</option><option value="stacks">stacks</option><option value="time">time&nbsp;s</option><option value="manual">manual</option></select>
-          <input id="srStopVal" type="number" min="0" step="0.5" value="4" class="w-num"></label>
-      </div>
-      <div class="decrow">
-        <label title="resample kernel. interp: every bin averages every frame — lowest noise floor, but softens content near the raw Nyquist. cubic: Catmull-Rom, flatter passband. drizzle: deposit real samples at their aligned sub-sample position — best fidelity for near-Nyquist tones (needs frames ≫ grid×), at a higher noise floor.">kernel <select id="srKernel"><option value="interp" selected>interp</option><option value="cubic">cubic</option><option value="drizzle">drizzle</option></select></label>
-        <label title="sweep the offset DAC by sub-LSB steps across frames (subtracted back in software) so the 8-bit quantizer's staircase averages out"><input type="checkbox" id="srDither"> dither</label>
-      </div>
-      <div class="decrow">
-        <label title="Reconstruct a FREE-RUN, UN-TRIGGERABLE periodic signal — a clock above the ~65 MHz trigger comparator or near the ADC Nyquist (few samples/cycle), where normal trigger-edge/NCC alignment can't lock. Phase-coherent equivalent-time folding: measure each free-run frame's phase with a single-bin DFT at the clock frequency (precise — it uses every cycle in the record) and fold every sample onto ONE period. No trigger needed; recovers frequency + shape + ENOB, and (with BW comp on) the true amplitude of the attenuated high-frequency clock. Use AUTO trigger."><input type="checkbox" id="srEts"> clock (ETS)</label>
-        <label title="Clock frequency in MHz. Blank = auto-detect the dominant tone above 20 MHz. Set it explicitly for a weak tone or to force a specific harmonic.">f <input id="srEtsFreq" type="text" placeholder="auto" class="w-num" inputmode="decimal"></label>
-        <span id="srEtsInfo" class="subtle"></span>
-      </div>
-      <div class="decrow">
-        <label title="Decode-triggered super-res: a SOFTWARE trigger on a decoded protocol value. With the Decode card set to UART, it stacks every occurrence of a target BYTE among the data — finds e.g. the letter 'H' buried in random bytes, sub-sample aligns each occurrence, and super-resolves it. The generalization of the free-run clock ETS to aperiodic DECODED events. Because the decoder (not a waveform match) decides what an occurrence is, lookalike bytes are never stacked. Use AUTO trigger."><input type="checkbox" id="srEvt"> decode trig</label>
-        <label title="Target byte: hex (e.g. 48) or a single character (e.g. H).">byte <input id="srEvtByte" type="text" placeholder="48 or H" class="w-num" value="H"></label>
-      </div>
-      <div class="decrow">
-        <label title="Analog-falloff compensation (DSP bandwidth enhancement). De-embeds the MEASURED channel magnitude response (scope front-end + interconnect, −3 dB ≈ 16 MHz on this bench) by reshaping the crunched spectrum toward flat — recovering resolution the analog rolloff cost. It spends the stack's extra ENOB as high-frequency boost, so it only works on a stack (a single frame has no headroom). Every view (Y-T / FFT / X-Y / measure) shows the recovered signal."><input type="checkbox" id="srComp"> BW comp</label>
-        <label title="Recovered-bandwidth target. auto: spend the stack's MEASURED noise reduction (bits gained) as boost and recover the highest −3 dB that budget allows — so a longer stack automatically reaches higher (e.g. +5 bit ≈ 150 MHz). Fixed values force a target regardless of headroom (more high-frequency noise if the stack is short).">to <select id="srCompBw"><option value="auto" selected>auto</option><option value="50e6">50 MHz</option><option value="60e6">60 MHz</option><option value="70e6">70 MHz</option><option value="80e6">80 MHz</option><option value="120e6">120 MHz</option></select></label>
-        <span id="srCompInfo" class="subtle"></span>
-      </div>
-      <div id="srStats" class="subtle">idle — autogate, adjust the markers, then ARM</div>
-    </div>
-
-    <div class="card" id="ejCard">
-      <h3>Eye / Jitter <span class="subtle">serial analysis</span></h3>
-      <div class="toggles">
-        <button id="ejArm" class="sm" title="analyze a serial NRZ stream: recover the bit clock from the edges (software CDR), fold every sample into a persistence eye, and measure TIE jitter (histogram / RJ / DJ / spectrum). No trigger lock needed — it folds free-run captures, so it works above the trigger's frequency ceiling.">ARM</button>
-        <label>ch <select id="ejCh"><option value="1" selected>C1</option><option value="2">C2</option></select></label>
-        <button id="ejOpt" class="sm" title="optimize acquisition for the eye: fit the vertical, then step the timebase to the best samples-per-UI for this signal (the fastest band that still locks — also finds the rate limit).">optimize</button>
-        <button id="ejReset" class="sm" title="discard the accumulated eye/jitter data">✕</button>
-      </div>
-      <canvas id="ejEye" class="ejcv" width="460" height="200" aria-label="eye diagram" title="click for a full-screen view"></canvas>
-      <div class="ejrow">
-        <canvas id="ejHist" width="224" height="72" aria-label="TIE histogram" title="click for a full-screen view with axes"></canvas>
-        <canvas id="ejSpec" width="224" height="72" aria-label="TIE spectrum" title="click for a full-screen view with axes + CDR corner"></canvas>
-      </div>
-      <table class="meas"><tbody id="ejBody"></tbody></table>
-      <div id="ejStats" class="subtle">idle — needs a triggered serial (NRZ) signal with sampled waveforms</div>
-    </div>
-
-    <div class="card" id="bodeCard">
-      <h3>Bode / FRA <span class="subtle">frequency response</span></h3>
-      <div class="toggles">
-        <button id="bodeArm" class="sm" title="Frequency Response Analysis: with the DUT input on the REF channel and its output on the DUT channel, ARM and sweep the source frequency — each frequency adds a magnitude (dB) + phase (deg) point. No built-in generator: drive the sweep externally (a signal gen, or step the FPGA source).">ARM</button>
-        <label>ref <select id="bodeRef"><option value="0" selected>C1</option><option value="1">C2</option></select></label>
-        <label>DUT <select id="bodeDut"><option value="0">C1</option><option value="1" selected>C2</option></select></label>
-        <button id="bodeClear" class="sm" title="clear the accumulated response curve">✕</button>
-      </div>
-      <canvas id="bodeCv" class="ejcv" width="460" height="230" aria-label="Bode plot: magnitude (dB) and phase (deg) vs log frequency" title="click for a full-screen view"></canvas>
-      <div id="bodeStats" class="subtle">idle — put the DUT input on REF, output on DUT, ARM, then sweep the source</div>
-    </div>
-
-    <div class="card" id="spgCard">
-      <h3>Spectrogram <span class="subtle">FFT over time</span></h3>
-      <div class="toggles">
-        <button id="spgArm" class="sm" title="waterfall of the spectrum over time: each capture's FFT becomes a colour row (X = frequency, Y = time, newest on top). Watch tones drift, step, or come and go.">ARM</button>
-        <label>ch <select id="spgCh"><option value="1" selected>C1</option><option value="2">C2</option></select></label>
-        <label>floor <select id="spgFloor"><option value="-40">-40dB</option><option value="-60" selected>-60dB</option><option value="-80">-80dB</option></select></label>
-        <button id="spgClear" class="sm" title="clear the waterfall">✕</button>
-      </div>
-      <canvas id="spgCv" class="ejcv" width="460" height="220" aria-label="spectrogram: FFT magnitude over time" title="click for a full-screen view"></canvas>
-      <div id="spgStats" class="subtle">idle — ARM and feed a triggered signal to build the waterfall</div>
-    </div>
-
-    <div class="card" id="zmCard">
-      <h3>Zone / Mask <span class="subtle">pass-fail testing</span></h3>
-      <div class="toggles">
-        <button id="zmDraw" class="sm" title="arm zone drawing, then DRAG a rectangle on the scope. Frames must intersect it (or avoid it — toggle in the list) to publish when the zone trigger is on.">draw zone</button>
-        <button id="zmTrig" class="sm" title="zone trigger: only frames qualifying against ALL zones publish (NORM holds; AUTO lets a liveness frame through occasionally)">zone trig</button>
-        <button id="zmClearZones" class="sm" title="remove all zones">✕ zones</button>
-      </div>
-      <div id="zmZoneList" class="subtle"></div>
-      <div class="decrow">
-        <button id="zmBuild" class="sm" title="build the golden mask envelope from the next N raw frames of the selected channel, dilated by the tolerances">build mask</button>
-        <label>N <input id="zmN" type="number" min="4" max="200" value="32" class="num w-xs"></label>
-        <label>±t <input id="zmTolT" type="number" min="0" max="200" value="5" class="num w-xs" title="horizontal dilation in samples — must cover trigger-point jitter"></label>
-        <label>±V <input id="zmTolV" type="number" min="0" max="60" value="8" class="num w-xs" title="vertical dilation in codes — at least 3x the noise sigma"></label>
-        <label>ch <select id="zmCh"><option value="0" selected>C1</option><option value="1">C2</option></select></label>
-      </div>
-      <div class="decrow">
-        <label>test <select id="zmMode"><option value="0" selected>off</option><option value="1">count</option><option value="2">stop on fail</option></select></label>
-        <button id="zmClearStats" class="sm" title="reset pass/fail counters and the failure ring">reset</button>
-      </div>
-      <div id="zmMeter" class="subtle"></div>
-      <div id="zmGallery" class="subtle"></div>
-      <div id="zmStats" class="subtle">no mask — build one from a clean signal first</div>
-    </div>
-
-    <div class="card" id="refCard">
-      <h3>Reference <span class="subtle">save &amp; overlay</span></h3>
-      <div class="toggles">
-        <button id="refSaveA" class="sm" title="snapshot the current traces into REF A">Save A</button>
-        <button id="refSaveB" class="sm" title="snapshot the current traces into REF B">Save B</button>
-      </div>
-      <div id="refRows"></div>
-    </div>
-
-    <div class="card" id="measCard">
-      <h3>Measure</h3>
-      <table class="meas"><tbody id="measBody"></tbody></table>
-    </div>
-
-    <div class="card" id="curCard" style="display:none">
-      <h3>Cursors</h3>
-      <table class="meas"><tbody id="curBody"></tbody></table>
-    </div>
-
-    <div class="card" id="fftCardC1" style="display:none">
-      <h3><span class="cc1">C1</span> FFT peaks <span class="subtle">click to toggle</span>
-        <span class="card-actions">
-          <label class="subtle">top
-            <input id="fftN1" type="number" min="1" max="64" value="8" class="num w-xs"></label>
-          <button id="fftClear1" class="btn-mini">clear</button></span></h3>
-      <table class="meas"><tbody id="fftBody1"></tbody></table>
-      <div id="fftSel1" class="subtle"></div>
-    </div>
-
-    <div class="card" id="fftCardC2" style="display:none">
-      <h3><span class="cc2">C2</span> FFT peaks <span class="subtle">click to toggle</span>
-        <span class="card-actions">
-          <label class="subtle">top
-            <input id="fftN2" type="number" min="1" max="64" value="8" class="num w-xs"></label>
-          <button id="fftClear2" class="btn-mini">clear</button></span></h3>
-      <table class="meas"><tbody id="fftBody2"></tbody></table>
-      <div id="fftSel2" class="subtle"></div>
-    </div>
-
-    <div class="card" id="decodeCard">
-      <h3>Decode
-        <span class="card-actions">
-          <button id="decDetect" class="sm" title="auto-detect protocol, channel roles, threshold and sub-settings from the live signal">auto</button>
-          <select id="decProto" class="dsel">
-          <option value="off">Off</option><option value="uart">UART</option>
-          <option value="i2c">I²C</option><option value="spi">SPI</option>
-          <option value="manchester">Manchester</option><option value="sent">SENT</option>
-          <option value="can">CAN</option><option value="mil1553">MIL-1553B</option>
-          <option value="arinc429">ARINC 429</option><option value="usb">USB LS/FS</option>
-          <option value="flexray">FlexRay</option></select></span></h3>
-      <div id="decDetectMsg" class="subtle" style="display:none;margin:2px 0"></div>
-      <div id="decRoles" style="display:none;font-size:12px;color:var(--dim)">
-        <div class="dec-i2c decrow"><span>SCL</span><select id="decScl" class="rolesel"></select>
-          <span>SDA</span><select id="decSda" class="rolesel"></select></div>
-        <div class="dec-spi decrow"><span>CLK</span><select id="decClk" class="rolesel"></select>
-          <span>DATA</span><select id="decData" class="rolesel"></select></div>
-        <div class="dec-single decrow"><span>Line</span><select id="decLine" class="rolesel"></select></div>
-        <div class="decrow"><button id="decAuto" class="sm on">auto&nbsp;thr</button>
-          <input id="decThr" type="range" min="0" max="255" value="128" class="grow">
-          <span id="decThrV" class="readout xs">128</span></div>
-        <div class="decrow"><span>show</span><select id="decFmt" class="dsel">
-          <option value="hex">Hex</option><option value="ascii">ASCII</option><option value="both">Hex+ASCII</option></select></div>
-        <div class="decrow"><button id="decWatch" class="sm" title="save decoded windows matching the rule to a review buffer">watch</button>
-          <label class="row-tight"><input type="checkbox" id="decWatchErr" checked>err</label>
-          <input id="decWatchMatch" placeholder="match (text or /regex/)" class="grow min"></div>
-        <div class="dec-rate decrow"><span>baud (0 = auto)</span><input id="decBaud" type="number" value="115200" class="w-md">
-          <span class="dec-word"><span>bits</span><input id="decBits" type="number" min="1" max="16" value="8" class="w-xs"></span>
-          <select id="decParity" class="dec-uart dsel"><option value="none">N</option><option value="even">E</option><option value="odd">O</option></select>
-          </div>
-        <div class="dec-sent decrow"><label for="decSentTick">SENT tick ns (0 = auto)</label><input id="decSentTick" type="number" min="0" value="3000" class="w-md"><label for="decSentNibbles">Nibbles</label><input id="decSentNibbles" type="number" min="1" max="64" value="8" class="w-xs"></div>
-        <div class="dec-polarity decrow"><label><input id="decInverted" type="checkbox"> Inverted inputs</label></div>
-        <div class="dec-spi decrow"><span>CPOL</span><select id="decCpol" class="dsel"><option>0</option><option>1</option></select>
-          <span>CPHA</span><select id="decCpha" class="dsel"><option>0</option><option>1</option></select>
-          <select id="decMsb" class="dsel"><option value="1">MSB</option><option value="0">LSB</option></select></div>
-        <div class="decrow dec-spi"><label for="dsClock">SPI clock Hz</label><input id="dsClock" type="number" min="1" value="200000" class="w-md"></div>
-        <div class="grp-label">trigger on match</div>
-        <div class="decrow">
-          <span class="dec-i2c"><span>addr</span><input id="stAddr" type="text" placeholder="any" class="num w-xs" title="7-bit hex address to trigger on, e.g. 24 — blank = any">
-            <select id="stRW" class="dsel"><option value="2">any</option><option value="0">W</option><option value="1">R</option></select></span>
-          <input id="stBytes" type="text" placeholder="any" class="num grow min" title="Hex data sequence, up to 32 units: bytes for byte protocols, nibbles for SENT, 16-bit words for MIL-1553, 19-bit data for ARINC 429. ?? matches any unit, A? any low nibble, ERR any decoder error (CRC, parity, framing, stuffing, coding). Blank = any valid data/transaction.">
-          <button id="stArm" class="sm" title="serial trigger: publish only frames whose decoded stream matches, centred on the match. Uses the decode settings above. AUTO passes a liveness frame; NORM/SINGLE hold for the match.">arm</button>
-        </div>
-        <div id="stStats" class="subtle"></div>
-
-      </div>
-        <div class="grp-label">decoded stream → retained capture</div>
-        <div class="decrow"><button id="dsStart" class="sm">Stream + trigger</button><button id="dsRaw" class="sm" disabled>Download raw</button><button id="dsEnd" class="sm" disabled>End session</button></div>
-        <div id="dsStatus" class="subtle">Uses the decode settings and match above. Full-depth capture, 50% pretrigger.</div>
-        <div id="dsCount" class="subtle"></div><pre id="dsEvents" class="decoded-events"></pre>
-    </div>
-
-    <div class="card" id="decodeResultCard" style="display:none">
-      <h3>Decoded <span id="decodeCount" class="subtle"></span>
-        <span class="card-actions">
-          <button id="decStream" class="sm" title="stitch back-to-back deep captures for continuous high-bandwidth decode">stream</button>
-          <button id="decHistClear" class="btn-mini">clr</button>
-          <button id="decodeCopy" class="btn-mini">copy</button></span></h3>
-      <textarea id="decodeText" readonly wrap="off" class="transcript"></textarea>
-    </div>
-
-    <div class="card" id="captureCard" style="display:none">
-      <h3>Captured <span id="captureCount" class="subtle"></span>
-        <span class="card-actions">
-          <button id="capLive" class="btn-mini ok" style="display:none">● live</button>
-          <button id="capCopy" class="btn-mini">copy</button>
-          <button id="capClear" class="btn-mini">clr</button></span></h3>
-      <div id="captureList" class="scroll-list"></div>
-    </div>
-  </div>
-</div>
-
-<footer>
-  <div class="fsec">
-    <button id="run" class="is-run">RUN ▶</button>
-    <button id="single" title="NORM-arm: hold until a triggered frame">SINGLE</button>
-    <button id="autoset" title="auto-set time/div, vertical scale + offset, and trigger for the current signal">AUTOSET</button>
-  </div>
-  <div class="fsec">
-    <span class="fcap">Trigger</span>
-    <button id="mode">AUTO</button>
-    <select id="ttype" aria-label="trigger type">
-      <option value="0">EDGE</option><option value="1">PULSE</option>
-      <option value="2">SLOPE</option><option value="3">VIDEO</option>
-    </select>
-    <button id="slope" title="trigger slope">&#8599;</button>
-    <button id="source" title="trigger source channel">C1</button>
-    <button id="ets" title="equivalent-time sampling (&#8804;50 ns)">ETS</button>
-    <button id="rollStream" title="Roll at slow timebases (AUTO, 10 ms/div and slower). Off: chunked captures, instant when the timebase changes. On: gap-free stream image, reloaded (a few seconds) when roll starts or ends.">ROLL STREAM</button>
-    <input type="range" id="lvl" aria-label="trigger level" min="-3.8" max="4.7" step="0.05" value="0" title="trigger level (or drag the handle on the display)">
+<footer id="strip" aria-label="Instrument strip, the same in every workspace">
+  <div class="sg" role="group" aria-label="Run control"><div class="sgc">Run control</div><div class="sgb">
+    <button type="button" id="run" class="big is-run" aria-keyshortcuts="Space">RUN ▶</button>
+    <button type="button" id="single" aria-keyshortcuts="S" title="Single shot: arm one capture in Normal trigger mode, then stop">SINGLE</button>
+    <button type="button" id="autoset" title="Autoset: the device sweeps the timebase, fits each channel's scale and sets an edge trigger">AUTO</button>
+  </div></div>
+  <div class="sg" role="group" aria-label="Timebase"><div class="sgc">Timebase</div><div class="sgb">
+    <button type="button" id="tdivDn" class="stb" aria-label="Faster timebase" title="Less time per division">−</button>
+    <select id="tdiv" aria-label="time per division" title="Time per division (wheel up = faster, as on the scope)"></select>
+    <button type="button" id="tdivUp" class="stb" aria-label="Slower timebase" title="More time per division">+</button>
+  </div></div>
+  <div class="sg" role="group" aria-label="CH1"><div class="sgc cc1">CH1</div><div class="sgb">
+    <button type="button" id="tC1" class="sm tog on" aria-label="CH1 display" aria-keyshortcuts="1" title="Show or hide CH1">On</button>
+    <button type="button" id="vdiv1Dn" class="stb" aria-label="CH1 more sensitive" title="Smaller V/div (taller trace)">−</button>
+    <select id="vdiv1" aria-label="C1 volts per division" title="CH1 volts per division (wheel up = more sensitive)"></select>
+    <button type="button" id="vdiv1Up" class="stb" aria-label="CH1 less sensitive" title="Larger V/div (shorter trace)">+</button>
+  </div></div>
+  <div class="sg" role="group" aria-label="CH2"><div class="sgc cc2">CH2</div><div class="sgb">
+    <button type="button" id="tC2" class="sm tog on" aria-label="CH2 display" aria-keyshortcuts="2" title="Show or hide CH2">On</button>
+    <button type="button" id="vdiv2Dn" class="stb" aria-label="CH2 more sensitive" title="Smaller V/div (taller trace)">−</button>
+    <select id="vdiv2" aria-label="C2 volts per division" title="CH2 volts per division (wheel up = more sensitive)"></select>
+    <button type="button" id="vdiv2Up" class="stb" aria-label="CH2 less sensitive" title="Larger V/div (shorter trace)">+</button>
+  </div></div>
+  <div class="sg sg-trig" role="group" aria-label="Trigger"><div class="sgc" id="trigCap">Trigger · Edge</div><div class="sgb">
+    <div class="seg" id="source" aria-label="Trigger source" aria-keyshortcuts="T" data-value="0"><button data-value="0" class="cc1">C1</button><button data-value="1" class="cc2">C2</button></div>
+    <div class="seg" id="slope" aria-label="Trigger slope" aria-keyshortcuts="E" data-value="1"><button data-value="1" aria-label="Rising" title="Trigger on the rising edge">↗</button><button data-value="0" aria-label="Falling" title="Trigger on the falling edge">↘</button></div>
+    <input type="range" id="lvl" aria-label="trigger level" min="-3.8" max="4.7" step="0.05" value="0" title="Trigger level (or drag the ▸ handle on the scope)">
     <span id="lvlv" class="readout">0.00 V</span>
-    <label class="hint" title="minimum time after a trigger before re-arming (stabilises complex/bursty waveforms)">holdoff</label>
-    <input type="number" id="holdoff" min="0" max="10" step="0.0001" value="0" class="w-md" aria-label="trigger holdoff seconds" title="trigger holdoff (seconds); 0 = off">
-    <span class="hint">s</span>
+    <button type="button" id="set50" class="sm" title="Trigger level to the middle of the signal">50%</button>
+    <div class="seg" id="mode" aria-label="Trigger mode" aria-keyshortcuts="A" data-value="0"><button data-value="0" title="Free-run when nothing triggers">Auto</button><button data-value="1" title="Show only triggered captures">Normal</button></div>
+    <button type="button" id="force" class="sm" title="Force one trigger now">Force</button>
+  </div></div>
+</footer>
+
+<!-- The scope display: one WebGL canvas, its overview strip and status bar.
+     app_ws.js moves it into the scope pane of the workspace on show. -->
+<div id="scopeunit">
+  <div id="scopebox">
+    <canvas id="scope" role="img" aria-label="oscilloscope display"></canvas>
+    <div id="stopped">STOPPED</div>
   </div>
-  <div class="fsec">
-    <span class="fcap">Horizontal</span>
-    <select id="tdiv" aria-label="time per division" title="time per division"></select>
-    <label class="hint" title="horizontal trigger position">pos</label>
-    <input type="range" id="tpos" aria-label="trigger horizontal position" min="0" max="1" step="0.02" value="0.5" title="trigger horizontal position">
+  <canvas id="nav" aria-label="record overview: drag to pan, double-click for the whole record"></canvas>
+  <div id="scopebar"><span id="hstat" aria-live="polite"><span id="wedged" role="alert">ENGINE WEDGED</span><span id="loading" class="loading" hidden>LOADING</span><span id="line">connecting…</span></span></div>
+</div>
+<span id="scopetools" class="tools">
+  <button type="button" id="tCursors" class="xs tog" aria-keyshortcuts="C" title="Time and voltage cursors (drag them on the scope)">Cursors</button>
+  <button type="button" id="tPersist" class="xs tog" aria-keyshortcuts="P" title="Persistence: traces fade instead of being replaced">Persist</button>
+  <button type="button" id="freeze" class="xs tog" aria-keyshortcuts="Z" title="Freeze the display (acquisition keeps running)">Freeze</button>
+</span>
+
+<div id="panelib" hidden>
+
+<!-- ======================== SCOPE ======================== -->
+<section class="pane" id="p-scope" data-title="Scope">
+  <div class="ph"><span class="pt">Scope</span><span class="ps"></span><span class="pa">
+    <span class="hl"><span class="lbl">View</span><span class="seg sm" id="viewScope" aria-label="Scope view" aria-keyshortcuts="Alt+1" data-value="YT"><button data-value="YT" id="mYT" aria-keyshortcuts="Y">Y-T</button><button data-value="XY" id="mXY" aria-keyshortcuts="X">X-Y</button></span></span>
+    <span data-tools-slot></span>
+  </span></div>
+  <div class="pb flush" data-scope-slot></div>
+</section>
+
+<section class="pane" id="p-horiz" data-title="Horizontal">
+  <div class="ph"><span class="pt">Horizontal</span><span class="ps"></span></div>
+  <div class="pb">
+    <div class="r"><span class="l">Time/div</span><span class="step"><span class="mirror" data-src="tdivDn"></span><span class="mirror" data-src="tdiv"></span><span class="mirror" data-src="tdivUp"></span></span></div>
+    <div class="r"><span class="l">Position</span><input type="range" id="tpos" class="grow" aria-label="trigger horizontal position" min="0" max="1" step="0.02" value="0.5" title="Where the trigger sits across the screen"><span id="tposv" class="readout xs">50 %</span><button type="button" id="tposCentre" class="xs" title="Trigger back to the centre">Centre</button></div>
+    <div class="r"><span class="l">Zoom</span><span class="seg xs" id="zoomSeg" aria-label="Zoom about the trigger" data-value="1"><button data-value="1">Off</button><button data-value="2">2×</button><button data-value="5">5×</button><button data-value="10">10×</button><button data-value="20">20×</button><button data-value="50">50×</button></span></div>
+    <div class="r"><span class="l">Roll</span><span class="seg xs" id="rollStream" aria-label="Roll mode at slow timebases" data-value="0" title="Roll at 10 ms/div and slower (AUTO). Chunked: captures, instant on timebase changes. Stream: gap-free stream image, reloaded when roll starts or ends."><button data-value="0">Chunked</button><button data-value="1">Stream</button></span><span class="hint">10 ms/div and slower</span></div>
   </div>
-  <div class="fsec">
-    <span class="fcap">Vertical</span>
-    <span class="cc1">C1</span><select id="vdiv1" aria-label="C1 volts per division"></select>
-    <select id="cpl1" class="dsel" aria-label="C1 coupling" title="C1 coupling (AC = software DC-block)">
-      <option value="0">DC</option><option value="1">AC</option><option value="2">GND</option></select>
-    <select id="probe1" class="dsel" aria-label="C1 probe attenuation" title="C1 probe attenuation">
-      <option value="1">1×</option><option value="10">10×</option><option value="100">100×</option></select>
-    <input type="range" id="off1" aria-label="C1 offset" min="-3.8" max="3.8" step="0.05" value="0" title="C1 offset (or drag C1's arrow on the display)">
-    <span id="off1v" class="readout">—</span>
-    <span class="cc2">C2</span><select id="vdiv2" aria-label="C2 volts per division"></select>
-    <select id="cpl2" class="dsel" aria-label="C2 coupling" title="C2 coupling (AC = software DC-block)">
-      <option value="0">DC</option><option value="1">AC</option><option value="2">GND</option></select>
-    <select id="probe2" class="dsel" aria-label="C2 probe attenuation" title="C2 probe attenuation">
-      <option value="1">1×</option><option value="10">10×</option><option value="100">100×</option></select>
-    <input type="range" id="off2" aria-label="C2 offset" min="-3.8" max="3.8" step="0.05" value="0" title="C2 offset (or drag C2's arrow on the display)">
-    <span id="off2v" class="readout">—</span>
+</section>
+
+<section class="pane" id="p-quick" data-title="Measurements">
+  <div class="ph"><span class="pt">Measurements</span><span class="ps">quick readouts</span><span class="pa"><button type="button" class="xs" id="quickMore" title="Every parameter with statistics: MEASURE (Alt+4)">All in MEASURE</button></span></div>
+  <div class="pb"><div class="qgrid" id="quickBody" role="table" aria-label="Quick measurements"></div></div>
+</section>
+
+<section class="pane" id="p-vert" data-title="Vertical">
+  <div class="ph"><span class="pt">Vertical</span><span class="ps"></span></div>
+  <div class="pb">
+    <div class="vg">
+      <span></span><span class="vh cc1">CH1</span><span class="vh cc2">CH2</span>
+      <span class="l">Display</span><span class="vc"><span class="mirror" data-src="tC1" data-label="On"></span></span><span class="vc"><span class="mirror" data-src="tC2" data-label="On"></span></span>
+      <span class="l">Scale</span>
+      <span class="vc step"><span class="mirror" data-src="vdiv1Dn"></span><span class="mirror" data-src="vdiv1"></span><span class="mirror" data-src="vdiv1Up"></span></span>
+      <span class="vc step"><span class="mirror" data-src="vdiv2Dn"></span><span class="mirror" data-src="vdiv2"></span><span class="mirror" data-src="vdiv2Up"></span></span>
+      <span class="l">Offset</span>
+      <span class="vc"><input type="range" id="off1" class="grow" aria-label="C1 offset" min="-3.8" max="3.8" step="0.05" value="0" title="CH1 offset (or drag the ◂1 arrow on the scope)"><button type="button" id="zero1" class="xs" title="CH1 offset to 0 V">0</button></span>
+      <span class="vc"><input type="range" id="off2" class="grow" aria-label="C2 offset" min="-3.8" max="3.8" step="0.05" value="0" title="CH2 offset (or drag the ◂2 arrow on the scope)"><button type="button" id="zero2" class="xs" title="CH2 offset to 0 V">0</button></span>
+      <span></span><span class="vc"><span id="off1v" class="readout sub">—</span></span><span class="vc"><span id="off2v" class="readout sub">—</span></span>
+      <span class="l">Coupling</span>
+      <span class="vc"><span class="seg xs" id="cpl1" aria-label="C1 coupling" data-value="0" title="CH1 coupling (AC is a software DC block)"><button data-value="0">DC</button><button data-value="1">AC</button><button data-value="2">GND</button></span></span>
+      <span class="vc"><span class="seg xs" id="cpl2" aria-label="C2 coupling" data-value="0" title="CH2 coupling (AC is a software DC block)"><button data-value="0">DC</button><button data-value="1">AC</button><button data-value="2">GND</button></span></span>
+      <span class="l">Probe</span>
+      <span class="vc"><span class="seg xs" id="probe1" aria-label="C1 probe attenuation" data-value="1"><button data-value="1">1×</button><button data-value="10">10×</button><button data-value="100">100×</button></span></span>
+      <span class="vc"><span class="seg xs" id="probe2" aria-label="C2 probe attenuation" data-value="1"><button data-value="1">1×</button><button data-value="10">10×</button><button data-value="100">100×</button></span></span>
+    </div>
   </div>
-  <div class="fsec">
-    <span class="fcap">Acquire</span>
-    <select id="acq" aria-label="acquisition mode">
-      <option value="0">NORMAL</option><option value="1">AVERAGE</option>
-      <option value="2">ERES</option><option value="3">PEAK</option><option value="4">PRECISION</option>
-    </select>
-    <select id="acqn" style="display:none"></select>
-    <span id="acquisitionWarning"></span>
-    <span id="actualSampleRate" aria-live="polite">Sample rate: —</span>
-    <label id="precisionRateLabel" hidden>Samples/s per channel <select id="precisionRate" aria-label="Precision samples per second"></select></label>
-    <label class="hint">mem</label>
-    <select id="memdepth" aria-label="memory depth">
+</section>
+
+<section class="pane" id="p-trig" data-title="Trigger">
+  <div class="ph"><span class="pt">Trigger</span><span class="ps" id="trigSub"></span></div>
+  <div class="pb">
+    <div class="r"><span class="l">Type</span><span class="seg xs" id="ttype" aria-label="trigger type" data-value="0"><button data-value="0">Edge</button><button data-value="1">Pulse</button><button data-value="2">Slope</button><button data-value="3">Video</button></span></div>
+    <div class="r"><span class="l">Source</span><span class="mirror" data-src="source"></span><span class="l2">Slope</span><span class="mirror" data-src="slope"></span></div>
+    <div class="r"><span class="l">Mode</span><span class="mirror" data-src="mode"></span><span class="mirror" data-src="force"></span></div>
+    <div class="r"><span class="l">Level</span><span class="mirror" data-src="lvl" data-cls="grow"></span><span class="mirror" data-src="lvlv"></span><span class="mirror" data-src="set50"></span></div>
+    <div class="r"><span class="l">Holdoff</span><input type="number" id="holdoff" min="0" max="10" step="0.0001" value="0" class="w-md" aria-label="trigger holdoff seconds" title="Minimum time after a trigger before re-arming; 0 = off"><span class="hint">s · 0 = off</span></div>
+    <div id="qualrow" class="q">
+      <div id="qp-pulse" class="qb">
+        <div class="r"><span class="l">Width</span><span class="seg xs" id="p-cond" aria-label="pulse width condition" data-value="0"><button data-value="0">Any</button><button data-value="1">&lt; min</button><button data-value="2">&gt; max</button><button data-value="3">Inside</button></span></div>
+        <div class="r"><span class="l">Limits</span><span class="hint">min</span><input type="number" id="p-min" min="0" step="0.1" value="0" class="w-md" aria-label="pulse minimum width µs"><span class="hint">max</span><input type="number" id="p-max" min="0" step="0.1" value="0" class="w-md" aria-label="pulse maximum width µs"><span class="hint">µs</span></div>
+        <div class="r"><span class="l">Level</span><input type="number" id="p-lvl" min="0" max="100" step="5" value="50" class="w-sm" aria-label="pulse threshold percent"><span class="hint">% of the swing</span></div>
+      </div>
+      <div id="qp-slope" class="qb">
+        <div class="r"><span class="l">Edge time</span><span class="seg xs" id="s-cond" aria-label="slope time condition" data-value="0"><button data-value="0">Any</button><button data-value="1">&lt; min</button><button data-value="2">&gt; max</button><button data-value="3">Inside</button></span></div>
+        <div class="r"><span class="l">Limits</span><span class="hint">min</span><input type="number" id="s-min" min="0" step="0.1" value="0" class="w-md" aria-label="slope minimum time µs"><span class="hint">max</span><input type="number" id="s-max" min="0" step="0.1" value="0" class="w-md" aria-label="slope maximum time µs"><span class="hint">µs</span></div>
+        <div class="r"><span class="l">Thresholds</span><span class="hint">low</span><input type="number" id="s-lo" min="0" max="100" step="5" value="20" class="w-sm" aria-label="slope low threshold percent"><span class="hint">high</span><input type="number" id="s-hi" min="0" max="100" step="5" value="80" class="w-sm" aria-label="slope high threshold percent"><span class="hint">%</span></div>
+      </div>
+      <div id="qp-video" class="qb">
+        <div class="r"><span class="l">Standard</span><span class="seg xs" id="v-std" aria-label="video standard" data-value="0"><button data-value="0">PAL</button><button data-value="1">NTSC</button></span><span class="l2">Sync</span><span class="seg xs" id="v-neg" aria-label="video sync polarity" data-value="1"><button data-value="1">Negative</button><button data-value="0">Positive</button></span></div>
+        <div class="r"><span class="l">Line</span><input type="number" id="v-line" min="0" max="625" value="0" class="w-md" aria-label="video line"><span class="hint">0 = any line</span></div>
+      </div>
+    </div>
+    <div id="serialNote" class="tsum is-on" hidden></div>
+  </div>
+</section>
+
+<section class="pane" id="p-acq" data-title="Acquisition">
+  <div class="ph"><span class="pt">Acquisition</span><span class="ps" id="acqSub"></span></div>
+  <div class="pb">
+    <div class="r"><span class="l">Mode</span><span class="seg xs" id="acq" aria-label="acquisition mode" data-value="0"><button data-value="0">Normal</button><button data-value="1">Average</button><button data-value="2">ERes</button><button data-value="3">Peak</button><button data-value="4">Precision</button></span></div>
+    <div class="r" id="acqnRow"><span class="l" id="acqnLbl">Averages</span><select id="acqn" aria-label="averages or ERes length"></select></div>
+    <div class="r" id="precisionRateLabel" hidden><span class="l">Rate</span><select id="precisionRate" aria-label="Precision samples per second"></select><span class="hint">per channel</span></div>
+    <div class="r"><span class="l">Memory</span><select id="memdepth" aria-label="memory depth">
       <option value="1048576">1M (SRAM deep)</option>
       <option value="524288">512k (precision SRAM)</option>
       <option value="2048">2k (fast)</option><option value="6144" selected>6k</option>
       <option value="14336">14k</option><option value="20480">20k (deep)</option>
-    </select>
+    </select></div>
+    <div class="r"><span class="l">Sampling</span><button type="button" id="ets" class="xs tog" title="Equivalent-time sampling (≤50 ns/div)">ETS</button><span id="actualSampleRate" class="sub" aria-live="polite">Sample rate: —</span></div>
+    <div id="acquisitionWarning" class="sub warn"></div>
   </div>
-
-  <section class="panel2" id="precisionCard">
- <strong>Precision &amp; fit</strong>
- <span id="precisionLimits">No precision filter selected.</span>
-
- <label>Fit <select id="precisionModel"><option value="triangle">Triangle</option><option value="sine">Sine</option><option value="periodic">Periodic harmonics (noise diagnostic)</option></select></label>
- <label>Channel <select id="precisionChannel"><option value="0">C1</option><option value="1">C2</option></select></label>
- <button id="precisionFit">Fit current view</button>
- <div id="precisionFitResult">Fits estimate model parameters; they do not increase ADC accuracy. Residual includes noise and model mismatch.</div>
- <canvas id="precisionFitCanvas" width="700" height="200" hidden></canvas>
 </section>
-<div id="qualrow" class="panel2">
-    <div class="grp" id="qp-pulse" style="display:none">
-      <label>pulse</label>
-      lvl <input type="number" id="p-lvl" min="0" max="100" step="5" value="50" class="w-sm">%
-      w&#8712;[<input type="number" id="p-min" min="0" step="0.1" value="0" class="w-md">,
-      <input type="number" id="p-max" min="0" step="0.1" value="0" class="w-md">] µs
-      <select id="p-cond"><option value="0">any</option><option value="1">&lt;min</option>
-        <option value="2">&gt;max</option><option value="3">inside</option></select>
+
+<!-- ======================== BUS ======================== -->
+<section class="pane" id="p-bus-scope" data-title="Scope">
+  <div class="ph"><span class="pt">Scope</span><span class="ps" id="busSub">decode off</span><span class="pa"><span data-tools-slot></span></span></div>
+  <div class="pb flush" data-scope-slot></div>
+</section>
+
+<section class="pane" id="p-packets" data-title="Packets">
+  <div class="ph"><span class="pt" id="pkTitle">Packets</span><span class="ps" id="decodeCount"></span><span class="pa">
+    <span class="seg xs" id="busView" aria-label="BUS view" aria-keyshortcuts="Alt+2" data-value="packets"><button data-value="packets">Packets</button><button data-value="log">Log</button><button data-value="eye">Eye</button></span>
+  </span></div>
+  <div class="pb">
+    <div class="bview" data-view="packets">
+      <div id="pkEmpty" class="empty"><span>Decode is off. Choose a protocol in the Decoder pane, or let the scope find the bus:</span><button type="button" id="pkDetect" class="sm">Auto-detect the bus</button></div>
+      <table class="pkt" id="pktable" aria-label="Decoded packets">
+        <colgroup><col class="c-n"><col class="c-t"><col class="c-a"><col class="c-hex"><col class="c-str"><col class="c-b"></colgroup>
+        <thead><tr><th class="l">#</th><th>Time</th><th class="l">Addr</th><th class="l">Hex</th><th class="l">String</th><th>Bytes</th></tr></thead>
+        <tbody id="pkBody"></tbody>
+      </table>
+      <div id="pkNote" class="sub"></div>
     </div>
-    <div class="grp" id="qp-slope" style="display:none">
-      <label>slew</label>
-      lo <input type="number" id="s-lo" min="0" max="100" step="5" value="20" class="w-sm">%
-      hi <input type="number" id="s-hi" min="0" max="100" step="5" value="80" class="w-sm">%
-      t&#8712;[<input type="number" id="s-min" min="0" step="0.1" value="0" class="w-md">,
-      <input type="number" id="s-max" min="0" step="0.1" value="0" class="w-md">] µs
-      <select id="s-cond"><option value="0">any</option><option value="1">&lt;min</option>
-        <option value="2">&gt;max</option><option value="3">inside</option></select>
+    <div class="bview" data-view="log" hidden>
+      <div class="r"><button type="button" id="decStream" class="xs tog" title="Stitch back-to-back captures into a continuous history">Stream log</button><button type="button" id="decHistClear" class="xs">Clear log</button><button type="button" id="decodeCopy" class="xs">Copy</button></div>
+      <textarea id="decodeText" readonly wrap="off" class="transcript" aria-label="decoded transcript"></textarea>
+      <div class="r"><button type="button" id="decWatch" class="xs tog" title="Save decoded windows matching the rule to a review buffer">Watch</button><label class="row-tight"><input type="checkbox" id="decWatchErr" checked> errors</label><input id="decWatchMatch" placeholder="match (text or /regex/)" class="grow" aria-label="watch match"></div>
+      <div id="captureCard">
+        <div class="r"><span class="sub">Captured <span id="captureCount"></span></span><button type="button" id="capLive" class="xs ok" hidden>● live</button><button type="button" id="capCopy" class="xs">Copy</button><button type="button" id="capClear" class="xs">Clear</button></div>
+        <div id="captureList" class="scroll-list"></div>
+      </div>
     </div>
-    <div class="grp" id="qp-video" style="display:none">
-      <label>video</label>
-      <select id="v-std"><option value="0">PAL</option><option value="1">NTSC</option></select>
-      line <input type="number" id="v-line" min="0" max="625" value="0" class="w-md">
-      <select id="v-neg"><option value="1">neg sync</option><option value="0">pos sync</option></select>
+    <div class="bview eyeview" data-view="eye" hidden>
+      <div class="r"><button type="button" id="ejArm" class="xs tog" title="Recover the bit clock (software CDR), fold every sample into a 2-UI eye and measure TIE jitter. No trigger lock needed.">ARM</button><label class="hl"><span class="lbl">ch</span><select id="ejCh" aria-label="eye channel"><option value="1" selected>C1</option><option value="2">C2</option></select></label><button type="button" id="ejOpt" class="xs" title="Fit the vertical, then step the timebase to the best samples per UI">Optimize</button><button type="button" id="ejReset" class="xs" title="Discard the accumulated eye">Reset</button><span id="ejStats" class="sub grow">idle — needs a serial (NRZ) signal with sampled waveforms</span></div>
+      <div class="eyegrid">
+        <canvas id="ejEye" class="ejcv" aria-label="eye diagram" title="click for a full-screen view"></canvas>
+        <div class="ejtw"><table class="meas ejt" aria-label="eye and jitter figures"><tbody id="ejBody"></tbody></table></div>
+        <div class="ejrow"><canvas id="ejHist" aria-label="TIE histogram" title="click for a full-screen view with axes"></canvas><canvas id="ejSpec" aria-label="TIE spectrum" title="click for a full-screen view with axes"></canvas></div>
+      </div>
     </div>
   </div>
-</footer>
+</section>
 
-<div id="help" role="dialog" aria-modal="true" aria-label="keyboard shortcuts">
+<section class="pane" id="p-decoder" data-title="Decoder">
+  <div class="ph"><span class="pt">Decoder</span><span class="ps" id="decSub"></span></div>
+  <div class="pb">
+    <div class="r"><span class="l">Protocol</span><select id="decProto" aria-label="decode protocol">
+      <option value="off">Off</option><option value="uart">UART</option>
+      <option value="i2c">I²C</option><option value="spi">SPI</option>
+      <option value="manchester">Manchester</option><option value="sent">SENT</option>
+      <option value="can">CAN</option><option value="mil1553">MIL-1553B</option>
+      <option value="arinc429">ARINC 429</option><option value="usb">USB LS/FS</option>
+      <option value="flexray">FlexRay</option></select>
+      <button type="button" id="decDetect" class="sm" title="Detect the protocol, channel roles, threshold and settings from the live signal">Auto-detect</button></div>
+    <div id="decDetectMsg" class="sub"></div>
+    <div id="decRoles">
+      <div class="r dec-i2c"><span class="l">I²C</span><span class="hint">SCL</span><select id="decScl" class="rolesel" aria-label="I2C SCL channel"></select><span class="hint">SDA</span><select id="decSda" class="rolesel" aria-label="I2C SDA channel"></select></div>
+      <div class="r dec-spi"><span class="l">SPI</span><span class="hint">CLK</span><select id="decClk" class="rolesel" aria-label="SPI clock channel"></select><span class="hint">DATA</span><select id="decData" class="rolesel" aria-label="SPI data channel"></select></div>
+      <div class="r dec-single"><span class="l">Line</span><select id="decLine" class="rolesel" aria-label="decode line channel"></select></div>
+      <div class="r dec-rate"><span class="l">Bit rate</span><input id="decBaud" type="number" value="115200" class="w-md" aria-label="baud (0 = auto)" title="Baud or bit rate; 0 = auto"><span class="dec-word"><span class="hint">bits</span><input id="decBits" type="number" min="1" max="16" value="8" class="w-xs" aria-label="data bits"></span><span class="seg xs dec-uart" id="decParity" aria-label="UART parity" data-value="none"><button data-value="none">N</button><button data-value="even">E</button><button data-value="odd">O</button></span></div>
+      <div class="r dec-sent"><span class="l">SENT</span><span class="hint">tick ns</span><input id="decSentTick" type="number" min="0" value="3000" class="w-md" aria-label="SENT tick ns (0 = auto)"><span class="hint">nibbles</span><input id="decSentNibbles" type="number" min="1" max="64" value="8" class="w-xs" aria-label="SENT nibbles"></div>
+      <div class="r dec-spi"><span class="l">Mode</span><span class="hint">CPOL</span><span class="seg xs" id="decCpol" aria-label="SPI CPOL" data-value="0"><button data-value="0">0</button><button data-value="1">1</button></span><span class="hint">CPHA</span><span class="seg xs" id="decCpha" aria-label="SPI CPHA" data-value="0"><button data-value="0">0</button><button data-value="1">1</button></span><span class="seg xs" id="decMsb" aria-label="SPI bit order" data-value="1"><button data-value="1">MSB</button><button data-value="0">LSB</button></span></div>
+      <div class="r dec-spi"><span class="l">SPI clock</span><input id="dsClock" type="number" min="1" value="200000" class="w-md" aria-label="SPI clock Hz"><span class="hint">Hz (trigger, capture)</span></div>
+      <div class="r dec-polarity"><span class="l">Polarity</span><label class="row-tight"><input id="decInverted" type="checkbox"> inverted inputs</label></div>
+      <div class="r"><span class="l">Threshold</span><button type="button" id="decAuto" class="xs tog on" title="Track the threshold automatically">Auto</button><input type="range" id="decThr" min="0" max="255" value="128" class="grow" aria-label="decode threshold code"><span id="decThrV" class="readout xs">128</span></div>
+    </div>
+    <div class="r"><span class="l">Strip</span><span class="seg xs" id="decFmt" aria-label="decode strip format" data-value="hex" title="How the decode strip under the trace shows the data"><button data-value="hex">Hex</button><button data-value="ascii">String</button><button data-value="both">Hex+String</button></span></div>
+  </div>
+</section>
+
+<section class="pane" id="p-match" data-title="Trigger on bytes">
+  <div class="ph"><span class="pt">Trigger on bytes</span><span class="ps"></span></div>
+  <div class="pb">
+    <div id="stSum" class="tsum" role="status">Not armed</div>
+    <div class="r"><span class="l">Match</span><input id="stBytes" type="text" placeholder="hex, e.g. 55 AA (blank = any)" class="mono grow" aria-label="serial trigger match pattern" spellcheck="false" autocomplete="off" title="Hex units, up to 32: bytes, SENT nibbles, MIL-1553 16-bit words or ARINC 429 data. ?? any unit, A? any low nibble, ERR any decoder error. Enter arms the trigger."></div>
+    <div class="r"><span class="l">Insert</span><button type="button" id="stInsAny" class="xs" title="Any unit">??</button><button type="button" id="stInsErr" class="xs" title="A decoder error (CRC, parity, framing…)">ERR</button><button type="button" id="stClear" class="xs">Clear</button></div>
+    <div class="r dec-i2c"><span class="l">I²C addr</span><input id="stAddr" type="text" placeholder="any" class="mono w-sm" aria-label="I2C address to trigger on" title="7-bit hex address, e.g. 24 — blank = any"><span class="seg xs" id="stRW" aria-label="I2C direction" data-value="2"><button data-value="2">Any</button><button data-value="0">W</button><button data-value="1">R</button></span></div>
+    <div class="r"><button type="button" id="stArm" class="sm tog" title="Serial trigger: publish only captures whose decoded stream matches, centred on the match">Trigger on match</button><span id="stStats" class="sub"></span></div>
+    <div class="sub">Uses the Decoder's protocol and settings. With decoding off, arming detects the bus first.</div>
+    <div class="hr"></div>
+    <div class="cap">Retained capture</div>
+    <div class="r"><button type="button" id="dsStart" class="xs">Stream + trigger</button><button type="button" id="dsRaw" class="xs" disabled>Download raw</button><button type="button" id="dsEnd" class="xs" disabled>End session</button></div>
+    <div id="dsStatus" class="sub">Uses the decode settings and match above. Full-depth capture, 50% pretrigger.</div>
+    <div id="dsCount" class="sub"></div><pre id="dsEvents" class="decoded-events"></pre>
+  </div>
+</section>
+
+<!-- ======================== SPECTRUM ======================== -->
+<section class="pane" id="p-analysis" data-title="Spectrum">
+  <div class="ph"><span class="pt">Spectrum</span><span class="ps" id="anaSub"></span><span class="pa">
+    <span class="seg sm" id="viewSpec" aria-label="Spectrum view" aria-keyshortcuts="Alt+3" data-value="FFT"><button data-value="FFT" id="mFFT" aria-keyshortcuts="F">FFT</button><button data-value="SPG" id="mSPG">Spectrogram</button><button data-value="BODE" id="mBODE">Bode</button></span>
+    <span class="anatools" data-ana="SPG" hidden><button type="button" id="spgArm" class="xs tog" title="Waterfall of the spectrum over time, newest on top">ARM</button><select id="spgCh" aria-label="spectrogram channel"><option value="1" selected>C1</option><option value="2">C2</option></select><select id="spgFloor" aria-label="spectrogram floor"><option value="-40">-40 dB</option><option value="-60" selected>-60 dB</option><option value="-80">-80 dB</option></select><button type="button" id="spgClear" class="xs">Clear</button></span>
+    <span class="anatools" data-ana="BODE" hidden><button type="button" id="bodeArm" class="xs tog" title="Frequency response: DUT input on REF, output on DUT; ARM, then sweep the source">ARM</button><span class="hint">ref</span><select id="bodeRef" aria-label="Bode reference channel"><option value="0" selected>C1</option><option value="1">C2</option></select><span class="hint">DUT</span><select id="bodeDut" aria-label="Bode DUT channel"><option value="0">C1</option><option value="1" selected>C2</option></select><button type="button" id="bodeClear" class="xs">Clear</button></span>
+    <span data-tools-slot></span>
+  </span></div>
+  <div class="pb flush" data-scope-slot></div>
+</section>
+
+<section class="pane" id="p-time" data-title="Time trace">
+  <div class="ph"><span class="pt">Time trace</span><span class="ps" id="timeSub">the timebase sets the span and the resolution</span></div>
+  <div class="pb flush"><canvas id="tracecv" aria-label="time trace"></canvas></div>
+</section>
+
+<section class="pane" id="p-peaks" data-title="Peaks">
+  <div class="ph"><span class="pt" id="peaksTitle">Peaks</span><span class="ps" id="pkSub"></span><span class="pa">
+    <span class="seg xs" id="pkCh" aria-label="Peaks channel" data-value="1"><button data-value="1" class="cc1">C1</button><button data-value="2" class="cc2">C2</button></span>
+    <label class="hl"><span class="lbl">top</span><input id="fftN" type="number" min="1" max="64" value="8" class="num w-xs" aria-label="number of peaks"></label>
+    <button type="button" id="fftClear" class="xs" title="Clear the picked peaks">Clear</button>
+  </span></div>
+  <div class="pb">
+    <table class="meas pkt2" id="peakTable" aria-label="Spectral peaks">
+      <colgroup><col class="c-n"><col><col><col><col class="c-h"></colgroup>
+      <thead><tr><th class="l">#</th><th>Frequency</th><th>Level</th><th>Rel</th><th>Harm</th></tr></thead>
+      <tbody id="fftBody"></tbody>
+    </table>
+    <div id="fftSel" class="sub"></div>
+    <div class="sub" id="peaksNote">In frequency order. Levels are the tones' (the Hann bin corrected for scalloping); Rel is re the largest, Harm its multiple up to H10 (THD of H2–H10 in the readout). Click a row to pick a peak: picked tones are drawn over the Y-T trace and feed the residual math.</div>
+    <table class="meas" id="bodeTable" aria-label="Bode points" hidden>
+      <colgroup><col class="c-n"><col><col><col></colgroup>
+      <thead><tr><th class="l">#</th><th>Frequency</th><th>Gain</th><th>Phase</th></tr></thead>
+      <tbody id="bodeBody"></tbody>
+    </table>
+  </div>
+</section>
+
+<section class="pane" id="p-readout" data-title="Spectrum readout">
+  <div class="ph"><span class="pt">Spectrum readout</span><span class="ps" id="roSub"></span></div>
+  <div class="pb">
+    <table class="meas ro"><tbody id="roBody"></tbody></table>
+    <div class="r" id="roTdiv"><span class="l">Time/div</span><span class="step"><span class="mirror" data-src="tdivDn"></span><span class="mirror" data-src="tdiv"></span><span class="mirror" data-src="tdivUp"></span></span></div>
+    <div id="spgStats" class="sub">Spectrogram idle — shown in the Spectrogram view (SPECTRUM again)</div>
+    <div id="bodeStats" class="sub">Bode idle — put the DUT input on REF, output on DUT, ARM, then sweep the source</div>
+  </div>
+</section>
+
+<!-- ======================== MEASURE ======================== -->
+<section class="pane" id="p-meas-scope" data-title="Scope">
+  <div class="ph"><span class="pt">Scope</span><span class="ps"></span><span class="pa"><span data-tools-slot></span></span></div>
+  <div class="pb flush" data-scope-slot></div>
+</section>
+
+<section class="pane" id="p-stats" data-title="Measurements">
+  <div class="ph"><span class="pt" id="measTitle">Statistics</span><span class="ps" id="measSub"></span><span class="pa">
+    <span class="seg xs" id="measView" aria-label="Measurement view" aria-keyshortcuts="Alt+4" data-value="stats"><button data-value="stats">Statistics</button><button data-value="values">All values</button></span>
+    <span class="seg xs" id="measCh" aria-label="Channels" data-value="0"><button data-value="0">Both</button><button data-value="1" class="cc1">C1</button><button data-value="2" class="cc2">C2</button></span>
+    <button type="button" id="statsReset" class="xs" title="Restart the statistics (they also restart when the timebase, a scale, a probe, a coupling or the acquisition mode changes)">Reset</button>
+  </span></div>
+  <div class="pb">
+    <table class="meas st" id="statsTable" aria-label="Measurement statistics">
+      <colgroup><col class="c-p"><col><col><col><col><col><col class="c-nn"></colgroup>
+      <thead><tr><th class="l">Measurement</th><th>Now</th><th>Mean</th><th>Min</th><th>Max</th><th>Sdev</th><th>N</th></tr></thead>
+      <tbody id="statsBody"></tbody>
+    </table>
+    <table class="meas vals" id="valuesTable" aria-label="All measurement values" hidden><colgroup><col class="c-k"><col><col><col class="c-gap"><col class="c-k"><col><col></colgroup><tbody id="measBody"></tbody></table>
+  </div>
+</section>
+
+<section class="pane" id="p-cursors" data-title="Cursors">
+  <div class="ph"><span class="pt">Cursors</span><span class="ps"></span></div>
+  <div class="pb">
+    <div class="r"><span class="l">Cursors</span><span class="mirror" data-src="tCursors" data-label="On"></span><span class="hint">drag A/B on the scope</span></div>
+    <table class="meas"><tbody id="curBody"></tbody></table>
+  </div>
+</section>
+
+<section class="pane" id="p-mask" data-title="Mask &amp; zones">
+  <div class="ph"><span class="pt">Mask &amp; zones</span><span class="ps" id="maskSub"></span></div>
+  <div class="pb">
+    <div class="r"><button type="button" id="zmBuild" class="sm" title="Build the golden mask from the next N raw captures of the channel, dilated by the tolerances">Build mask</button><span class="hint">N</span><input id="zmN" type="number" min="4" max="200" value="32" class="num w-xs" aria-label="mask captures"><span class="seg xs" id="zmCh" aria-label="mask channel" data-value="0"><button data-value="0" class="cc1">C1</button><button data-value="1" class="cc2">C2</button></span></div>
+    <div class="r"><span class="l">Tolerance</span><span class="hint">±t</span><input id="zmTolT" type="number" min="0" max="200" value="5" class="num w-xs" aria-label="mask time tolerance samples" title="horizontal dilation in samples — must cover trigger jitter"><span class="hint">samples ±V</span><input id="zmTolV" type="number" min="0" max="60" value="8" class="num w-xs" aria-label="mask voltage tolerance codes" title="vertical dilation in codes — at least 3× the noise"><span class="hint">codes</span></div>
+    <div class="r"><span class="l">Test</span><span class="seg xs" id="zmMode" aria-label="mask test" data-value="0"><button data-value="0">Off</button><button data-value="1">Count</button><button data-value="2">Stop on fail</button></span><button type="button" id="zmClearStats" class="xs" title="Reset the pass/fail counters and the failure gallery">Reset counts</button></div>
+    <div id="zmMeter" class="meter"></div>
+    <div id="zmGallery" class="gallery"></div>
+    <div id="zmStats" class="sub">no mask — build one from a clean signal first</div>
+    <div class="hr"></div>
+    <div class="r"><span class="l">Zones</span><button type="button" id="zmDraw" class="xs tog" title="Then drag a rectangle on the scope: captures must cross it (or avoid it)">Draw zone</button><button type="button" id="zmTrig" class="xs tog" title="Zone trigger: only captures qualifying against every zone publish">Zone trigger</button><button type="button" id="zmClearZones" class="xs">Clear zones</button></div>
+    <div id="zmZoneList" class="sub"></div>
+  </div>
+</section>
+
+<section class="pane" id="p-sr" data-title="Super-res">
+  <div class="ph"><span class="pt">Super-res</span><span class="ps" id="srSub">stack &amp; crunch</span></div>
+  <div class="pb">
+    <div class="r"><button type="button" id="srArm" class="xs tog" title="Stack raw acquisitions: find every occurrence of the gated feature, align it sub-sample, average onto a fine grid">ARM</button><button type="button" id="srShow" class="xs tog" title="Review the stacked waveform (zoom, cursors and export all work on it)">View</button><button type="button" id="srAutoGate" class="xs" title="Place the gate on the best feature in the view, then drag it">Autogate</button><button type="button" id="srGate" class="xs tog" title="Show or hide the gate markers">Gate</button><button type="button" id="srFit" class="xs" title="Least-squares sum-of-sinusoids fit of the stack into REF B">Fit model</button><button type="button" id="srReset" class="xs" title="Discard the stack">Reset</button></div>
+    <div class="r"><span class="l">Preset</span><select id="srPreset" aria-label="super-res preset"><option value="custom" selected>custom</option><option value="hibw">max bandwidth</option><option value="enob">max ENOB (clean)</option><option value="fast">fast capture</option></select></div>
+    <div class="r"><span class="l">Channel</span><select id="srCh" aria-label="super-res align channel"><option value="0" selected>both</option><option value="1">C1</option><option value="2">C2</option></select><span class="hint">grid ×</span><select id="srK" aria-label="super-res grid"><option>16</option><option selected>32</option><option>64</option></select></div>
+    <div class="r"><span class="l">Stop</span><select id="srStopMode" aria-label="super-res stop mode"><option value="bits" selected>+bits</option><option value="stacks">stacks</option><option value="time">time s</option><option value="manual">manual</option></select><input id="srStopVal" type="number" min="0" step="0.5" value="4" class="w-num" aria-label="super-res stop target"></div>
+    <div class="r"><span class="l">Kernel</span><select id="srKernel" aria-label="super-res kernel"><option value="interp" selected>interp</option><option value="cubic">cubic</option><option value="drizzle">drizzle</option></select><label class="row-tight"><input type="checkbox" id="srDither"> dither</label></div>
+    <div class="r"><span class="l">Clock ETS</span><label class="row-tight"><input type="checkbox" id="srEts"> free-run clock</label><span class="hint">f MHz</span><input id="srEtsFreq" type="text" placeholder="auto" class="w-num" inputmode="decimal" aria-label="ETS clock MHz"><span id="srEtsInfo" class="sub"></span></div>
+    <div class="r"><span class="l">Decode trig</span><label class="row-tight"><input type="checkbox" id="srEvt"> UART byte</label><input id="srEvtByte" type="text" placeholder="48 or H" class="w-num" value="H" aria-label="decode-triggered byte"></div>
+    <div class="r"><span class="l">BW comp</span><label class="row-tight"><input type="checkbox" id="srComp"> on</label><span class="hint">to</span><select id="srCompBw" aria-label="BW compensation target"><option value="auto" selected>auto</option><option value="50e6">50 MHz</option><option value="60e6">60 MHz</option><option value="70e6">70 MHz</option><option value="80e6">80 MHz</option><option value="120e6">120 MHz</option></select><span id="srCompInfo" class="sub"></span></div>
+    <div class="r"><span class="l">FPGA</span><button type="button" id="srFpga" class="xs tog" title="Stack in the FPGA stacking image (live acquisition pauses for the session)">FPGA stack</button><span class="hint">×</span><input id="srFpgaN" type="number" min="1" max="1000" step="10" value="20" class="w-num" aria-label="FPGA records"><label class="row-tight"><input type="checkbox" id="srFpgaMatch"> match</label><input id="srFpgaPts" type="number" min="2" max="1024" step="16" value="64" class="w-num" aria-label="FPGA match points"><select id="srFpgaTol" aria-label="FPGA match tolerance"><option value="0" selected>exact</option><option value="-1">loose</option></select></div>
+    <div id="srStats" class="sub">idle — autogate, adjust the markers, then ARM</div>
+  </div>
+</section>
+
+<section class="pane" id="p-prec" data-title="Precision &amp; fit">
+  <div class="ph"><span class="pt">Precision &amp; fit</span><span class="ps"></span></div>
+  <div class="pb" id="precisionCard">
+    <div id="precisionLimits" class="sub">No precision filter selected.</div>
+    <div class="r"><span class="l">Fit</span><select id="precisionModel" aria-label="fit model"><option value="triangle">Triangle</option><option value="sine">Sine</option><option value="periodic">Periodic harmonics (noise diagnostic)</option></select></div>
+    <div class="r"><span class="l">Channel</span><select id="precisionChannel" aria-label="fit channel"><option value="0">C1</option><option value="1">C2</option></select><button type="button" id="precisionFit" class="xs">Fit current view</button></div>
+    <div id="precisionFitResult" class="sub">Fits estimate model parameters; they do not increase ADC accuracy. Residual includes noise and model mismatch.</div>
+    <canvas id="precisionFitCanvas" width="700" height="200" hidden></canvas>
+  </div>
+</section>
+
+<!-- ======================== COMPARE ======================== -->
+<section class="pane" id="p-cmp-scope" data-title="Scope">
+  <div class="ph"><span class="pt">Scope</span><span class="ps"></span><span class="pa"><span data-tools-slot></span></span></div>
+  <div class="pb flush" data-scope-slot></div>
+</section>
+
+<section class="pane" id="p-diff" data-title="Difference to reference">
+  <div class="ph"><span class="pt">Difference to reference</span><span class="ps" id="diffSub"></span></div>
+  <div class="pb">
+    <table class="meas df" aria-label="Difference to reference">
+      <colgroup><col class="c-r"><col><col><col></colgroup>
+      <thead><tr><th class="l">Reference vs live</th><th>Max |Δ|</th><th>RMS Δ</th><th>Within 0.5 div</th></tr></thead>
+      <tbody id="diffBody"></tbody>
+    </table>
+  </div>
+</section>
+
+<section class="pane" id="p-refs" data-title="References">
+  <div class="ph"><span class="pt">References</span><span class="ps"></span></div>
+  <div class="pb">
+    <div class="r"><span class="l refa">REF A</span><button type="button" id="refSaveA" class="xs" title="Snapshot the shown traces into REF A">Save A</button><button type="button" id="refShowA" class="xs tog" title="Show or hide REF A" disabled>Show</button><button type="button" id="refClearA" class="xs" disabled>Clear</button><span id="refInfoA" class="sub grow">empty</span></div>
+    <div class="r"><span class="l refb">REF B</span><button type="button" id="refSaveB" class="xs" title="Snapshot the shown traces into REF B">Save B</button><button type="button" id="refShowB" class="xs tog" title="Show or hide REF B" disabled>Show</button><button type="button" id="refClearB" class="xs" disabled>Clear</button><span id="refInfoB" class="sub grow">empty</span></div>
+    <div class="hr"></div>
+    <div class="r"><span class="l">Master</span><button type="button" id="masterBtn" class="sm" aria-keyshortcuts="Alt+5" title="Average N captures into a master, store it as REF A, build the mask from it and start the test on raw captures (COMPARE again)">Stack master</button><span class="hint">N</span><select id="masterN" aria-label="captures to average"><option>16</option><option>32</option><option selected>64</option><option>128</option><option>256</option></select></div>
+    <div id="masterStat" class="sub">Averages the trigger source, stores REF A, builds the mask from it, restores the acquisition and starts the test. COMPARE again (Alt+5) runs it too.</div>
+  </div>
+</section>
+
+<section class="pane" id="p-math" data-title="Math">
+  <div class="ph"><span class="pt">Math</span><span class="ps"></span></div>
+  <div class="pb">
+    <div class="r"><span class="l">Function</span><select id="mathFn" class="grow" aria-label="math function">
+      <option value="off">Off</option>
+      <option value="c1-c2">C1 − C2</option>
+      <option value="c2-c1">C2 − C1</option>
+      <option value="c1+c2">C1 + C2</option>
+      <option value="c1*c2">C1 × C2</option>
+      <option value="res1">C1 − picked FFT peaks (remove carrier)</option>
+      <option value="res2">C2 − picked FFT peaks (remove carrier)</option>
+    </select></div>
+    <div id="mathScale" class="sub"></div>
+    <div id="mathHint" class="sub"></div>
+  </div>
+</section>
+
+</div><!-- #panelib -->
+
+<div class="pop" id="exportpop" role="menu" aria-label="Export" hidden>
+  <div class="hd">Export the displayed capture</div>
+  <button type="button" role="menuitem" id="ePNG">PNG image of the scope</button>
+  <button type="button" role="menuitem" id="eCSV">CSV (calibrated volts)</button>
+  <button type="button" role="menuitem" id="eSR" title="sigrok session: calibrated volts at the true sample rate plus thresholded logic channels (D1/D2), so PulseView protocol decoders attach directly">sigrok session (.sr)</button>
+  <button type="button" role="menuitem" id="eVCD" title="value change dump: analog channels as real vars for GTKWave and sigrok">VCD</button>
+  <button type="button" role="menuitem" id="eWAV" title="float32 WAV, calibrated volts (unavailable above WAV's 4.29 GHz rate limit)">WAV (float32)</button>
+  <div class="sep"></div>
+  <button type="button" role="menuitem" id="ePrint" title="The scope saves a screenshot of its own LCD (the PRINT key)">Device screenshot (PRINT)</button>
+</div>
+
+<div class="pop" id="setpop" role="dialog" aria-label="Setups" hidden>
+  <div class="hd">Setups — every setting, in the scope's 20 setup slots</div>
+  <div id="setSlots" class="slots"></div>
+</div>
+
+<div id="help" role="dialog" aria-modal="true" aria-label="Help">
   <div class="sheet">
-    <h2>Keyboard shortcuts</h2>
-    <table id="helpBody"></table>
+    <div class="hrow"><h2>Task workspaces</h2><span class="grow"></span><button type="button" id="helpClose" class="sm">Close</button></div>
+    <p class="sub">Each workspace lays the screen out for one job. It is one instrument: a setting changed in one workspace is the same in all of them; only the screen view is remembered per workspace. The strip at the bottom never changes. All settings (Ctrl+,) lists every setting and jumps to where it lives.</p>
+    <div class="hcols"><table id="helpBody"></table><table id="helpKeys"></table><table id="helpMouse"></table></div>
   </div>
 </div>
 
@@ -406,6 +477,8 @@
   </div>
 </div>
 
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
 <script src="peaks.js"></script>
 <script src="decode.js"></script>
 <script src="decode_manchester.js"></script>
@@ -415,6 +488,8 @@
 <script src="decode_arinc429.js"></script>
 <script src="decode_usbls.js"></script>
 <script src="decode_flexray.js"></script>
+<script src="packets.js"></script>
+<script src="wsmath.js"></script>
 <script src="binframe.js"></script>
 <script src="sigrok_export.js"></script>
 <script src="superres_math.js"></script>
@@ -428,11 +503,13 @@
 <script src="eyejitter.js"></script>
 <script src="bode.js"></script>
 <script src="spectrogram.js"></script>
-<!-- The client, in load order: shared state first, then pure helpers, then the
-     orchestration/transport core, then one file per feature (its functions AND
-     its event wiring together), then the cross-cutting control/canvas wiring,
-     and finally app_init (first paint + poll) once everything is defined. -->
+<!-- The client, in load order: shared state first, then the UI primitives and
+     pure helpers, then the orchestration/transport core, then one file per
+     feature (its functions AND its event wiring together), then the
+     cross-cutting control/canvas wiring, the workspaces, and finally app_init
+     (layout + first paint + poll) once everything is defined. -->
 <script src="app.js"></script>            <!-- shared state + globals + small helpers -->
+<script src="app_ui.js"></script>         <!-- segmented controls, mirrors, popovers, toast -->
 <script src="app_gl.js"></script>         <!-- WebGL 2D renderer + facade (all graphics boxes) -->
 <script src="app_geom.js"></script>       <!-- viewport/window/marker geometry (pure) -->
 <script src="app_draw.js"></script>       <!-- trace/grid/math/ref/cursor drawing (pure) -->
@@ -449,6 +526,12 @@
 <script src="app_controls.js"></script>   <!-- acquisition/trigger/timebase/vertical/view controls -->
 <script src="app_canvas.js"></script>     <!-- scope + navigator pointer/wheel interactions -->
 <script src="app_precision.js"></script>
-<script src="app_init.js"></script>       <!-- first paint + first poll (must be last) -->
+<script src="app_ws.js"></script>         <!-- workspaces: layout, switching, keys, help -->
+<script src="app_bus.js"></script>        <!-- BUS: auto-decode, packets, eye view -->
+<script src="app_spectrum.js"></script>   <!-- SPECTRUM: peaks, THD, readout, time trace -->
+<script src="app_measure.js"></script>    <!-- MEASURE: statistics, values, cursors -->
+<script src="app_compare.js"></script>    <!-- COMPARE: references, difference, master -->
+<script src="app_allset.js"></script>     <!-- All settings + setups -->
+<script src="app_init.js"></script>       <!-- layout + first paint + first poll (must be last) -->
 </body>
 </html>

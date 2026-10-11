@@ -50,11 +50,23 @@ function spectrum(samples, nyq) {
   return { mags, half, nyq: nyq || 0, peak };
 }
 
+// hannGain is a Hann window's response to a tone d bins (|d| ≤ 0.5) off a bin,
+// relative to a tone on the bin: sinc(d) / (1 − d²) (analysis.hannGain).
+// TRLC-LINKS: REQ-SDS-216
+function hannGain(d) {
+  if (d === 0) return 1;
+  return Math.sin(Math.PI * d) / (Math.PI * d * (1 - d * d));
+}
+
 // detectPeaks: local maxima above floorDb, parabola-interpolated for sub-bin
 // frequency. Returns AT MOST maxPeaks entries — the strongest by magnitude —
 // but SORTED BY FREQUENCY ascending so the displayed list order is stable
 // frame-to-frame (magnitude ranking jitters with noise; frequency does not).
-// TRLC-LINKS: REQ-SDS-070
+// Each peak has its bin level `db` and the tone's level `lvl`: the bin level
+// corrected for the Hann window's scalloping at the refined frequency (a tone
+// between bins reads up to 1.42 dB low in its bin) — analysis.Peaks' DB, so the
+// web's and the LCD's peak tables show the same numbers.
+// TRLC-LINKS: REQ-SDS-070, REQ-SDS-216
 function detectPeaks(spec, opts) {
   const floorDb = (opts && opts.floorDb != null) ? opts.floorDb : -50;
   const maxPeaks = (opts && opts.maxPeaks != null) ? opts.maxPeaks : 8;
@@ -68,7 +80,8 @@ function detectPeaks(spec, opts) {
         mags[k] > mags[k-2] && mags[k] >= mags[k+2] && dbAt(k) > floorDb) {
       const a = Math.log(mags[k-1] + 1e-12), b = Math.log(mags[k] + 1e-12), c = Math.log(mags[k+1] + 1e-12);
       let d = 0.5 * (a - c) / (a - 2 * b + c || -1e-9); if (Math.abs(d) > 1) d = 0;
-      cand.push({ k, frac: k + d, freq: nyq > 0 ? (k + d) / half * nyq : 0, db: dbAt(k) });
+      const db = dbAt(k);
+      cand.push({ k, frac: k + d, freq: nyq > 0 ? (k + d) / half * nyq : 0, db, lvl: db - 20 * Math.log10(hannGain(Math.max(-0.5, Math.min(0.5, d)))) });
     }
   }
   cand.sort((p, q) => q.db - p.db);        // strongest first
@@ -166,6 +179,61 @@ function component(samples, cyclesPerLen) {
   return out;
 }
 
+// HARM_MAX is the highest harmonic numbered and counted in the THD
+// (analysis.MaxHarmonic).
+const HARM_MAX = 10;
+
+// peakLvl: a peak's tone level (detectPeaks' lvl), its bin level for a peak
+// from elsewhere.
+// TRLC-LINKS: REQ-SDS-216
+function peakLvl(p) { return Number.isFinite(p.lvl) ? p.lvl : p.db; }
+
+// harmonics numbers the peaks that sit on multiples of the fundamental and
+// sums the THD, as analysis.Harmonics does for the LCD. The fundamental f0 is
+// the strongest peak (by tone level). A peak is harmonic n (n = round(f/f0),
+// 1..10) when it lies within max(1.5 bins, 1 % of n·f0) of n·f0; of several,
+// the strongest. The bin width is recovered from the peaks (freq/k of the
+// highest bin). THD = √(Σ_{n=2..10} 10^((L_n − L_1)/10)) over the harmonics
+// LISTED (L = tone level), so a longer list may include more of them; `count`
+// says how many it summed. Returns {f0, fund, topDb, harm[], thd, count}:
+// fund is the fundamental's index, topDb the strongest tone level (Rel is
+// relative to it), harm[i] 0 for a peak that is no harmonic, thd a fraction
+// (NaN without a harmonic). `spec` is accepted for older callers and unused.
+// TRLC-LINKS: REQ-SDS-216
+function harmonics(peaks, spec) { // eslint-disable-line no-unused-vars
+  const out = { f0: 0, fund: -1, topDb: 0, harm: [], thd: NaN, count: 0 };
+  if (!peaks || !peaks.length) return out;
+  out.harm = peaks.map(() => 0);
+  let top = -1;
+  for (let i = 0; i < peaks.length; i++) {
+    const p = peaks[i], l = peakLvl(p);
+    if (Number.isFinite(l) && p.freq > 0 && Number.isFinite(p.freq) && (top < 0 || l > peakLvl(peaks[top]))) top = i;
+  }
+  if (top < 0) return out;
+  const f0 = peaks[top].freq;
+  out.f0 = f0; out.topDb = peakLvl(peaks[top]);
+  let binHz = 0, topBin = 0;
+  for (const p of peaks) if (p.k > topBin && p.freq > 0 && Number.isFinite(p.freq)) { binHz = p.freq / p.k; topBin = p.k; }
+  const best = new Array(HARM_MAX + 1).fill(-1);
+  for (let i = 0; i < peaks.length; i++) {
+    const p = peaks[i], l = peakLvl(p);
+    if (!Number.isFinite(p.freq) || !Number.isFinite(l)) continue;
+    const n = Math.round(p.freq / f0);
+    if (!(n >= 1 && n <= HARM_MAX)) continue;
+    if (Math.abs(p.freq - n * f0) > Math.max(1.5 * binHz, 0.01 * n * f0)) continue;
+    if (best[n] < 0 || l > peakLvl(peaks[best[n]])) best[n] = i;
+  }
+  best.forEach((i, n) => { if (i >= 0) out.harm[i] = n; });
+  out.fund = best[1];
+  if (out.fund < 0) return out;
+  const l1 = peakLvl(peaks[out.fund]);
+  let sum = 0, count = 0;
+  for (let n = 2; n <= HARM_MAX; n++) if (best[n] >= 0) { sum += Math.pow(10, (peakLvl(peaks[best[n]]) - l1) / 10); count++; }
+  out.count = count;
+  if (count) out.thd = Math.sqrt(sum);
+  return out;
+}
+
 if (typeof module !== "undefined" && module.exports) {
-  module.exports = { fftInPlace, spectrum, detectPeaks, nearestPeak, component, fitTone, toneAmplitude };
+  module.exports = { fftInPlace, spectrum, detectPeaks, nearestPeak, component, fitTone, toneAmplitude, harmonics };
 }

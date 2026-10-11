@@ -97,7 +97,9 @@ function ejDrawEye(st2) {
       data[o] = r; data[o + 1] = gg; data[o + 2] = b; data[o + 3] = 255;
     }
   }
-  const cv = $("ejEye"), g = glCardCtx(cv, "#05080c");
+  const cv = $("ejEye");
+  if (!fitCanvas(cv)) return; // the eye view is not shown: nothing to paint
+  const g = glCardCtx(cv, "#05080c");
   if (!g) return;
   ejDrawEyeTo(g, cv, st2, false);
   glCardEnd(cv);
@@ -105,7 +107,9 @@ function ejDrawEye(st2) {
 
 // TRLC-LINKS: REQ-SDS-200
 function ejDrawHist(st2, res) {
-  const cv = $("ejHist"), g = glCardCtx(cv, "#05080c");
+  const cv = $("ejHist");
+  if (!fitCanvas(cv)) return;
+  const g = glCardCtx(cv, "#05080c");
   if (!g) return;
   ejDrawHistTo(g, cv, st2, res, false);
   glCardEnd(cv);
@@ -153,7 +157,9 @@ function ejDrawHistTo(g, cv, st2, res, detailed) {
 
 // TRLC-LINKS: REQ-SDS-200
 function ejDrawSpec(res) {
-  const cv = $("ejSpec"), g = glCardCtx(cv, "#05080c");
+  const cv = $("ejSpec");
+  if (!fitCanvas(cv)) return;
+  const g = glCardCtx(cv, "#05080c");
   if (!g) return;
   ejDrawSpecTo(g, cv, res, false);
   glCardEnd(cv);
@@ -204,14 +210,29 @@ function ejDrawSpecTo(g, cv, res, detailed) {
   }
 }
 
-// TRLC-LINKS: REQ-SDS-200
+// ejMetricsTable fills the eye readout: bit rate, UI, eye height and width,
+// crossing, rise/fall and TIE (rms, pk-pk), then the jitter decomposition.
+// Below about 20 samples per UI the sample interval limits the edge times, eye
+// width and jitter: those figures are upper/lower bounds, marked ≤ / ≥.
+// TRLC-LINKS: REQ-SDS-200, REQ-SDS-215
 function ejMetricsTable(res) {
   const rows = [];
+  const b = !!res.bounded;
   // TRLC-LINKS: REQ-SDS-200
-  const push = (k, v) => rows.push("<tr><th>" + k + "</th><td>" + v + "</td></tr>");
-  if (res.bitRate) push("bit rate", eng(res.bitRate, "b/s", 5) + " (UI " + eng(res.uiSeconds, "s", 4) + ")");
+  const push = (k, v, bound) => rows.push("<tr><th>" + k + "</th><td" + (bound ? ' class="bnd" title="sample-limited: a bound, not a measurement"' : "") + ">" + v + "</td></tr>");
+  const le = b ? "≤ " : "", ge = b ? "≥ " : "";
+  push("bit rate", res.bitRate ? eng(res.bitRate, "b/s", 5) : "—");
+  push("UI", res.uiSeconds > 0 ? eng(res.uiSeconds, "s", 4) + (res.samplesPerUI ? " · " + res.samplesPerUI.toFixed(1) + " samples" : "") : "—", b);
+  const em = res.eyeMetrics;
+  push("eye height", em && em.eyeHeightCodes > 0 ? (ej.vpcReal
+    ? (em.eyeHeightCodes * ej.vpc * 1000).toFixed(1) + " mV (" + em.eyeHeightCodes.toFixed(0) + " codes)"
+    : em.eyeHeightCodes.toFixed(0) + " codes") : "—");
+  push("eye width", em && em.eyeWidthUI > 0 ? ge + em.eyeWidthUI.toFixed(2) + " UI" : "—", b);
+  push("crossing", Number.isFinite(res.crossing) ? (res.crossing * 100).toFixed(1) + " %" : "—");
+  push("rise / fall", (Number.isFinite(res.riseS) ? le + eng(res.riseS, "s", 3) : "—") + " / " + (Number.isFinite(res.fallS) ? le + eng(res.fallS, "s", 3) : "—"), b);
   if (res.tieRms !== undefined) {
-    push("TIE", eng(res.tieRms, "s", 3) + " rms · " + eng(res.tiePp, "s", 3) + " pp");
+    push("TIE rms", le + eng(res.tieRms, "s", 3), b);
+    push("TIE pk-pk", le + eng(res.tiePp, "s", 3), b);
     // dual-Dirac-lite caveat: unimodal TIE (incl. periodic jitter) counts as RJ.
     // Flag when the spectrum's dominant tone explains most of the TIE power.
     const pjDominated = res.specPeakAmp && res.tieRms > 0 && (res.specPeakAmp / Math.SQRT2) > 0.6 * res.tieRms;
@@ -221,14 +242,10 @@ function ejMetricsTable(res) {
     // metrology honesty: the per-record linear-fit clock high-passes TIE — the
     // scope-world analogue of a golden PLL's loop bandwidth. Say so.
     if (res.tieHpHz) push("CDR corner", "&gt; " + eng(res.tieHpHz, "Hz", 2) + " measured");
+  } else {
+    push("TIE rms", "—"); push("TIE pk-pk", "—");
   }
-  const em = res.eyeMetrics;
-  if (em && em.eyeHeightCodes > 0) {
-    push("eye height", ej.vpcReal
-      ? (em.eyeHeightCodes * ej.vpc * 1000).toFixed(1) + " mV (" + em.eyeHeightCodes.toFixed(0) + " codes)"
-      : em.eyeHeightCodes.toFixed(0) + " codes");
-    if (em.eyeWidthUI > 0) push("eye width", em.eyeWidthUI.toFixed(2) + " UI");
-  }
+  if (b) rows.push('<tr><td colspan="2" class="e">Below 20 samples per UI the sample interval limits these figures: ≤ / ≥ mark bounds. A faster timebase (Optimize) measures them.</td></tr>');
   $("ejBody").innerHTML = rows.join("");
 }
 

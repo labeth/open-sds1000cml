@@ -119,7 +119,7 @@ function updateCaptureList() {
   }
   if (!dcfg.captures.length) html = `<div style="color:var(--dim);padding:2px 4px">${dcfg.watch ? "watching — no matches yet" : "watch off"}</div>`;
   $("captureList").innerHTML = html;
-  $("capLive").style.display = dcfg.reviewIdx >= 0 ? "" : "none";
+  $("capLive").hidden = dcfg.reviewIdx < 0;
 }
 
 // Review a captured window: freeze on its snapshot so you can zoom/navigate/decode
@@ -139,11 +139,12 @@ function reviewLive() {
   updateCaptureList();
 }
 
+// updateDecodeResults fills BUS's transcript (the Log view) and its count, then
+// lets the packet table (app_bus.js) group the new result.
 // TRLC-LINKS: REQ-SDS-207
 function updateDecodeResults() {
-  const card = $("decodeResultCard");
-  if (dcfg.proto === "off") { card.style.display = "none"; return; }
-  card.style.display = "";
+  if (typeof busOnDecode === "function") busOnDecode();
+  if (dcfg.proto === "off") { $("decodeText").value = ""; $("decodeCount").textContent = ""; return; }
   const r = dcfg.result;
   if (frame && (frame.is_env || (frame.peak_detect && !frame.ordered))) { $("decodeText").value = "(waiting for sampled waveform — min/max envelopes cannot be decoded)"; $("decodeCount").textContent = "sampled data required"; return; }
   if (dcfg.stream) { // show the accumulated packet history (newest last), auto-scroll
@@ -197,6 +198,7 @@ function drawDecode(g) {
       if (label) { g.textAlign = "left"; g.fillText(label, x0 + 3 * dpr, cy); }
     }
   }
+  if (typeof busDrawSel === "function") busDrawSel(g, bandY, bandH); // the packet BUS zoomed onto
   g.restore(); g.textAlign = "left"; g.textBaseline = "alphabetic";
 }
 

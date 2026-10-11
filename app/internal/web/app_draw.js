@@ -252,18 +252,37 @@ function drawMath(g) {
   if (m) drawTrace(g, m, MATHCOL, residual ? ((st && st[mathFn === "res2" ? "zoom2" : "zoom1"]) || 1) : 1);
 }
 
+// drawRefTrace overlays a reference. With `tm` ({edge, dt} of the reference and
+// the live record's) the reference is placed by time from the trigger, so one
+// taken from a record of another length (an averaged master) lines up; without
+// it, index-proportionally over the record.
 // TRLC-LINKS: REQ-SDS-203
-function drawRefTrace(g, cols, refVpc, refOff, curVpc, curOff, color, zoom) {
+function drawRefTrace(g, cols, refVpc, refOff, curVpc, curOff, color, zoom, tm) {
   if (!cols || !cols.length || !curVpc) return;
   g.strokeStyle = color; g.lineWidth = 1.2 * dpr; g.lineJoin = "round";
   g.globalAlpha = 0.7; g.setLineDash([4 * dpr, 3 * dpr]);
   g.beginPath(); let pen = false;
-  const n = cols.length, [iLo, iHi] = winRange(n);
-  for (let i = iLo; i <= iHi; i++) {
+  const n = cols.length;
+  let iLo, iHi, xOf;
+  if (tm) {
+    // live record index of reference index i, then its screen x
+    // TRLC-LINKS: REQ-SDS-203
+    const liveIdx = (i) => tm.edgeL + (i - tm.edge) * tm.dt / tm.dtL;
+    // TRLC-LINKS: REQ-SDS-203
+    const refIdx = (frac) => tm.edge + (frac * (tm.nL - 1) - tm.edgeL) * tm.dtL / tm.dt;
+    iLo = Math.max(0, Math.floor(refIdx(view.win.a)) - 1); iHi = Math.min(n - 1, Math.ceil(refIdx(view.win.b)) + 1);
+    xOf = (i) => xForCol(liveIdx(i), tm.nL);
+    if (iHi - iLo > 4 * CW) tm.step = Math.ceil((iHi - iLo) / (4 * CW)); // dense: a few points per pixel
+  } else {
+    [iLo, iHi] = winRange(n);
+    xOf = (i) => xForCol(i, n);
+  }
+  const step = tm && tm.step ? tm.step : 1;
+  for (let i = iLo; i <= iHi; i += step) {
     const rc = cols[i];
     if (rc < 0) { pen = false; continue; }
     const code = 128 + ((rc - 128) * refVpc - refOff + curOff) / curVpc;
-    const x = xForCol(i, n), y = yFor(code, zoom);
+    const x = xOf(i), y = yFor(code, zoom);
     if (y < -4 || y > CH + 4) { pen = false; continue; }
     if (pen) g.lineTo(x, y); else { g.moveTo(x, y); pen = true; }
   }
@@ -280,8 +299,15 @@ function drawRefs(g) {
     // time-compressed curve. Hide it unless the spans match (~1%).
     if (r.srSpanS && frame && frame.col_span_s &&
         Math.abs(r.srSpanS - frame.col_span_s) > 0.01 * r.srSpanS) continue;
-    if (r.c1) drawRefTrace(g, r.c1, r.vpc1, r.off1, frame ? frame.vpc1 : r.vpc1, frame ? frame.off1_v || 0 : 0, REFCOL[slot], st ? st.zoom1 : 1);
-    if (r.c2) drawRefTrace(g, r.c2, r.vpc2, r.off2, frame ? frame.vpc2 : r.vpc2, frame ? frame.off2_v || 0 : 0, REFCOL[slot], st ? st.zoom2 : 1);
+    // time placement when both the reference and the live record know their trigger
+    let tm = null;
+    const live = frame && (frame.c1 || frame.c2);
+    if (live && !frame.is_env && r.dt > 0 && r.edge >= 0 && frame.edge_frac >= 0) {
+      const nL = live.length, dtL = frameDtS(frame, nL);
+      if (dtL > 0) tm = { edge: r.edge, dt: r.dt, edgeL: frame.edge_frac * (nL - 1), dtL, nL };
+    }
+    if (r.c1) drawRefTrace(g, r.c1, r.vpc1, r.off1, frame ? frame.vpc1 : r.vpc1, frame ? frame.off1_v || 0 : 0, REFCOL[slot], st ? st.zoom1 : 1, tm && Object.assign({}, tm));
+    if (r.c2) drawRefTrace(g, r.c2, r.vpc2, r.off2, frame ? frame.vpc2 : r.vpc2, frame ? frame.off2_v || 0 : 0, REFCOL[slot], st ? st.zoom2 : 1, tm && Object.assign({}, tm));
   }
 }
 
@@ -299,31 +325,48 @@ function saveRef(slot) {
     for (let i = 0; i < arr.length; i += stride) out.push(arr[i]);
     return out;
   };
+  const n = frame.c1 ? frame.c1.length : frame.c2 ? frame.c2.length : 0;
+  const stride = n > 65536 ? Math.ceil(n / 65536) : 1;
   refs[slot] = {
     c1: view.c1 ? cap(frame.c1) : null,
     c2: view.c2 ? cap(frame.c2) : null,
     vpc1: frame.vpc1 || 1 / 25, vpc2: frame.vpc2 || 1 / 25,
     off1: frame.off1_v || 0, off2: frame.off2_v || 0,
     show: true,
+    // Timing, so the difference readout compares by time from the trigger even
+    // when the live record has another length: seconds per stored point, the
+    // trigger's stored index, and the timebase the reference was taken at.
+    dt: n ? frameDtS(frame, n) * stride : 0,
+    edge: frame.edge_frac >= 0 ? frame.edge_frac * (n - 1) / stride : -1,
+    tdiv: frame.tdiv_s || 0,
+    vdiv1: st ? st.vdiv1 * probeOf(1) : 0, vdiv2: st ? st.vdiv2 * probeOf(2) : 0,
+    at: Date.now(), label: "",
   };
   updateRefRows(); redraw();
 }
 
+// updateRefRows syncs COMPARE's REF A/B controls with the stored references.
 // TRLC-LINKS: REQ-SDS-203
 function updateRefRows() {
-  let html = "";
   for (const slot of ["A", "B"]) {
     const r = refs[slot];
-    if (!r) continue;
-    html += `<div class="decrow" style="align-items:center">` +
-      `<button class="btn-mini reftog" data-slot="${slot}" style="color:${REFCOL[slot]}">REF ${slot} ${r.show ? "●" : "○"}</button>` +
-      `<button class="btn-mini refclr" data-slot="${slot}" title="clear REF ${slot}">✕</button></div>`;
+    const show = $("refShow" + slot), clr = $("refClear" + slot), info = $("refInfo" + slot);
+    if (!show) continue;
+    show.disabled = !r; clr.disabled = !r;
+    show.classList.toggle("on", !!(r && r.show));
+    show.setAttribute("aria-pressed", r && r.show ? "true" : "false");
+    const chans = r ? [r.c1 ? "C1" : "", r.c2 ? "C2" : ""].filter(Boolean).join("+") : "";
+    info.textContent = !r ? "empty" : (r.label ? r.label + " · " : "") + (chans || "no trace") +
+      (r.tdiv ? " · " + fmtTdiv(r.tdiv) + "/div" : "") + " · " + new Date(r.at || Date.now()).toLocaleTimeString();
   }
-  const el = $("refRows"); el.innerHTML = html;
+  if (typeof wsDots === "function") wsDots();
+  if (typeof cmpRender === "function" && typeof ws !== "undefined" && ws.cur === "compare") cmpRender();
+}
+for (const slot of ["A", "B"]) {
   // TRLC-LINKS: REQ-SDS-203
-  el.querySelectorAll(".reftog").forEach(b => b.onclick = () => { refs[b.dataset.slot].show = !refs[b.dataset.slot].show; updateRefRows(); redraw(); });
+  $("refShow" + slot).onclick = () => { const r = refs[slot]; if (!r) return; r.show = !r.show; updateRefRows(); redraw(); };
   // TRLC-LINKS: REQ-SDS-203
-  el.querySelectorAll(".refclr").forEach(b => b.onclick = () => { refs[b.dataset.slot] = null; updateRefRows(); redraw(); });
+  $("refClear" + slot).onclick = () => { refs[slot] = null; updateRefRows(); redraw(); };
 }
 
 // TRLC-LINKS: REQ-SDS-071
@@ -359,7 +402,7 @@ function drawXY() {
     if (pen) ctx.lineTo(x, y); else { ctx.moveTo(x, y); pen = true; }
   }
   ctx.stroke();
-  ctx.fillStyle = "var(--dim)"; ctx.font = (12 * dpr) + "px system-ui";
+  ctx.fillStyle = DIMCOL; ctx.font = (12 * dpr) + "px system-ui";
   ctx.fillText("X: C1   Y: C2", 8 * dpr, 16 * dpr);
 }
 

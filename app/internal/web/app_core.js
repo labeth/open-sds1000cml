@@ -22,6 +22,7 @@ function scheduleRender() {
     redraw();
     updateMeas();
     updateCursors();
+    if (typeof wsTick === "function") wsTick(now); // the shown workspace's readouts (stats, spectrum, difference)
   });
 }
 
@@ -30,6 +31,8 @@ function redraw() {
   refreshAria(); // keep aria-pressed in sync with view toggles (which call redraw)
   updateStatusLine(); // time/div follows the zoom → keep it live, not just per status poll
   glBeginFrame();     // clear the scope's WebGL frame; ctx routes every draw to the GPU
+  if (view.mode === "SPG") { drawSpgMain(); glEndFrame(); return; }   // SPECTRUM's waterfall (app_views.js)
+  if (view.mode === "BODE") { drawBodeMain(); glEndFrame(); return; } // SPECTRUM's Bode plot (app_views.js)
   if (view.mode === "XY") { drawXY(); drawCursors(); drawBoxZoom(ctx); glEndFrame(); return; }
   if (view.mode === "FFT") { drawFFT(); drawCursors(); drawBoxZoom(ctx); glEndFrame(); drawNav(); return; }
   if (view.persist && GLR && frame && !frame.is_env) {
@@ -59,54 +62,76 @@ function redraw() {
   drawNav();
 }
 
-// TRLC-LINKS: REQ-SDS-204
+// updateMeas refreshes the measurement readouts the shown workspace has: SCOPE's
+// quick readouts (the core set, both channels) and MEASURE's all-values table.
+// Every value cell carries data-meas="<ch>:<key>" so one reader finds it
+// wherever it is shown.
+// TRLC-LINKS: REQ-SDS-204, REQ-SDS-217
 function updateMeas() {
-  const keys = measExpanded ? MEAS_CORE.concat(MEAS_MORE) : MEAS_CORE;
   const clip1 = !!(frame && frame.clip1), clip2 = !!(frame && frame.clip2);
-  const sig = keys.length + ":" + clip1 + ":" + clip2;
-  if (sig !== measDomSig) {
+  const sig = clip1 + ":" + clip2;
+  if (sig !== measDomSig || !measCells) {
     measDomSig = sig;
     // TRLC-LINKS: REQ-SDS-204
     const clipTag = c => c ? ` <span class="clip" title="signal is clipping — increase V/div or probe; measurements unreliable">⚠ CLIP</span>` : "";
-    let html = `<tr><th></th><td class="cc1">C1${clipTag(clip1)}</td>` +
-               `<td class="cc2">C2${clipTag(clip2)}</td></tr>`;
-    for (const k of keys) {
-      html += `<tr><th>${k}</th><td class="cc1"></td><td class="cc2"></td></tr>`;
-    }
-    html += `<tr><td colspan="3" style="text-align:center;padding-top:3px">` +
-            `<button id="measMore" class="btn-mini">${measExpanded ? "less ▲" : "more ▼"}</button></td></tr>`;
+    const half = (keys) => `<div class="qcol"><span></span><span class="hd cc1">C1${clipTag(clip1)}</span><span class="hd cc2">C2${clipTag(clip2)}</span>` +
+      keys.map((k) => `<span class="k">${k}</span><span class="v cc1" data-meas="1:${k}"></span><span class="v cc2" data-meas="2:${k}"></span>`).join("") + `</div>`;
+    $("quickBody").innerHTML = half(MEAS_CORE.slice(0, 4)) + half(MEAS_CORE.slice(4));
+    // all values: the core set and the rest side by side, so every value shows
+    // without scrolling and C1/C2 sit close to their names
+    // TRLC-LINKS: REQ-SDS-217
+    const cell = (k) => k ? `<th>${k}</th><td class="cc1" data-meas="1:${k}"></td><td class="cc2" data-meas="2:${k}"></td>` : "<th></th><td></td><td></td>";
+    const hd = `<th></th><td class="cc1">C1${clipTag(clip1)}</td><td class="cc2">C2${clipTag(clip2)}</td>`;
+    let html = `<tr class="hd">${hd}<td></td>${hd}</tr>`;
+    for (let i = 0; i < Math.max(MEAS_CORE.length, MEAS_MORE.length); i++) html += `<tr>${cell(MEAS_CORE[i])}<td></td>${cell(MEAS_MORE[i])}</tr>`;
     $("measBody").innerHTML = html;
-    // TRLC-LINKS: REQ-SDS-204
-    $("measMore").onclick = () => { measExpanded = !measExpanded; updateMeas(); };
-    const rows = $("measBody").querySelectorAll("tr");
-    measCells = {};
-    keys.forEach((k, i) => { measCells[k] = rows[i + 1].querySelectorAll("td"); });
+    measCells = [...document.querySelectorAll("#quickBody [data-meas], #measBody [data-meas]")].map((el) => {
+      const [ch, k] = el.dataset.meas.split(":");
+      return { el, ch: +ch, k };
+    });
   }
-  for (const k of keys) {
-    const [a, b] = measCells[k];
-    const t1 = fmtMeas(k, frame && frame.m1), t2 = fmtMeas(k, frame && frame.m2);
-    if (a.textContent !== t1) a.textContent = t1;
-    if (b.textContent !== t2) b.textContent = t2;
+  const m1 = frame && frame.m1, m2 = frame && frame.m2;
+  for (const c of measCells) {
+    const t = fmtMeas(c.k, c.ch === 1 ? m1 : m2);
+    if (c.el.textContent !== t) c.el.textContent = t;
   }
 }
 
-// TRLC-LINKS: REQ-SDS-202
+let lastCurHTML = "";
+// updateCursors fills MEASURE's cursor table: the A/B time and voltage cursor
+// positions and their differences, per channel.
+// TRLC-LINKS: REQ-SDS-202, REQ-SDS-217
 function updateCursors() {
-  if (!view.cursors || !frame) { $("curCard").style.display = "none"; return; }
-  $("curCard").style.display = "";
+  const body = $("curBody");
+  if (!view.cursors || !frame) {
+    const t = `<tr><td class="e" colspan="3">${view.cursors ? "Waiting for a capture." : "Cursors are off — turn them on (C) and drag the dashed lines on the scope."}</td></tr>`;
+    if (lastCurHTML !== t) { lastCurHTML = t; body.innerHTML = t; }
+    return;
+  }
   // Cursors are screen fractions; the screen now spans (b-a) of the record.
-  const dt = Math.abs(cur.t2 - cur.t1) * (frame.col_span_s || 0) * (view.win.b - view.win.a);
+  const span = (frame.col_span_s || 0) * (view.win.b - view.win.a);
+  const dt = Math.abs(cur.t2 - cur.t1) * span;
+  // Time of a cursor relative to the trigger (t = 0 at the edge).
+  const edge = frame.edge_frac >= 0 ? frame.edge_frac : 0.5;
+  // TRLC-LINKS: REQ-SDS-202
+  const tAt = (x) => ((view.win.a + x * (view.win.b - view.win.a)) - edge) * (frame.col_span_s || 0);
   // A full-height drag spans 200 codes ÷ vertical zoom (the 2 mV/5 mV detents
   // render magnified), times volts/code (already probe-scaled). Per channel.
   const z1 = (st && st.zoom1) || 1, z2 = (st && st.zoom2) || 1;
   const vspan = view.vwin.b - view.vwin.a; // a full-height drag spans the ZOOMED voltage range
   const vFull1 = 200 * vspan * (frame.vpc1 || 1 / 25) / z1, vFull2 = 200 * vspan * (frame.vpc2 || 1 / 25) / z2;
   const dv1 = Math.abs(cur.v2 - cur.v1) * vFull1, dv2 = Math.abs(cur.v2 - cur.v1) * vFull2;
-  $("curBody").innerHTML =
+  // TRLC-LINKS: REQ-SDS-202
+  const vAt = (y, ch) => { const vpc = (ch === 2 ? frame.vpc2 : frame.vpc1) || 1 / 25, z = ch === 2 ? z2 : z1; return (codeAtY(y, z) - 128) * vpc - ((ch === 2 ? frame.off2_v : frame.off1_v) || 0); };
+  const html =
+    `<tr><th>A / B</th><td>${eng(tAt(cur.t1), "s")}</td><td>${eng(tAt(cur.t2), "s")}</td></tr>` +
     `<tr><th>Δt</th><td colspan="2">${eng(dt, "s")}</td></tr>` +
     `<tr><th>1/Δt</th><td colspan="2">${dt > 0 ? eng(1 / dt, "Hz") : "—"}</td></tr>` +
+    `<tr><th class="cc1">C1 A / B</th><td class="cc1">${eng(vAt(cur.v1, 1), "V")}</td><td class="cc1">${eng(vAt(cur.v2, 1), "V")}</td></tr>` +
     `<tr><th>ΔV C1</th><td colspan="2" class="cc1">${eng(dv1, "V")}</td></tr>` +
+    `<tr><th class="cc2">C2 A / B</th><td class="cc2">${eng(vAt(cur.v1, 2), "V")}</td><td class="cc2">${eng(vAt(cur.v2, 2), "V")}</td></tr>` +
     `<tr><th>ΔV C2</th><td colspan="2" class="cc2">${eng(dv2, "V")}</td></tr>`;
+  if (lastCurHTML !== html) { lastCurHTML = html; body.innerHTML = html; }
 }
 
 // TRLC-LINKS: REQ-SDS-023, REQ-SDS-202
@@ -169,27 +194,29 @@ function applyStatus() {
   $("run").classList.toggle("is-stop", !!st.running);
   $("run").classList.toggle("is-run", !st.running);
   $("stopped").style.display = st.running ? "none" : "block";
-  $("mode").textContent = st.norm ? "NORM" : "AUTO";
-  $("mode").classList.toggle("on", st.norm);
-  $("slope").innerHTML = st.trig_rising ? "&#8599;" : "&#8600;";
-  $("source").textContent = st.trig_source === 1 ? "C2" : "C1";
+  setFromStatus($("mode"), st.norm ? 1 : 0);
+  setFromStatus($("slope"), st.trig_rising ? 1 : 0);
+  setFromStatus($("source"), st.trig_source === 1 ? 1 : 0);
   $("ets").classList.toggle("on", !!st.ets && st.band !== "sram");
   $("ets").disabled = st.band === "sram";
-  $("ets").title = st.band === "sram" ? "Equivalent-time acquisition is unavailable with SRAM capture" : "equivalent-time sampling (≤50 ns)";
+  $("ets").title = st.band === "sram" ? "Equivalent-time acquisition is unavailable with SRAM capture" : "Equivalent-time sampling (≤50 ns/div)";
   $("decStream").disabled = st.band === "sram";
-  $("decStream").title = st.band === "sram" ? "Use Stream + trigger above for continuous FPGA decoding and a retained capture" : "Collect decoded capture windows (gaps between records)";
+  $("decStream").title = st.band === "sram" ? "Use Stream + trigger (Trigger on bytes pane) for continuous FPGA decoding and a retained capture" : "Stitch back-to-back captures into a continuous history";
   $("single").classList.toggle("on", !!st.single);
-  $("rollStream").classList.toggle("on", !!st.roll_stream);
-  if (document.activeElement !== $("tpos") && Number.isFinite(st.trig_pos_frac) && st.trig_pos_frac >= 0 && st.trig_pos_frac <= 1) $("tpos").value = st.trig_pos_frac;
+  setFromStatus($("rollStream"), st.roll_stream ? 1 : 0);
+  if (document.activeElement !== $("tpos") && Number.isFinite(st.trig_pos_frac) && st.trig_pos_frac >= 0 && st.trig_pos_frac <= 1) {
+    $("tpos").value = st.trig_pos_frac;
+    $("tposv").textContent = Math.round(st.trig_pos_frac * 100) + " %";
+  }
   $("wedged").style.display = st.wedged ? "inline" : "none";
   // Loading indicator (after a short grace so fast frames never flash it).
   const loading = !!st.busy && st.busy_ms >= 150;
   $("loading").hidden = !loading;
   if (loading) $("loading").textContent = "LOADING" + (st.busy_pct >= 0 ? " " + Math.round(st.busy_pct) + "%" : "…");
-  if (document.activeElement !== $("ttype")) $("ttype").value = st.trig_type || 0;
+  setFromStatus($("ttype"), st.trig_type || 0);
   updateTriggerQualifiers(st.trig_qual);
   updateQualRow();
-  if (document.activeElement !== $("acq")) $("acq").value = st.acq_mode || 0;
+  setFromStatus($("acq"), st.acq_mode || 0);
   updateAcqN();
   if (document.activeElement !== $("memdepth") && st.mem_depth) $("memdepth").value = st.mem_depth;
   $("memdepth").disabled = st.band === "sram";
@@ -200,12 +227,21 @@ function applyStatus() {
     for (const t of st.tdivs) { const o = document.createElement("option"); o.value = t; o.textContent = fmtTdiv(t); $("tdiv").appendChild(o); }
   if ($("vdiv1").options.length === 0 && st.vdivs)
     for (const id of ["vdiv1", "vdiv2"]) for (const v of st.vdivs) { const o = document.createElement("option"); o.value = v; o.textContent = fmtVdiv(v); $(id).appendChild(o); }
-  for (const [id, val] of [["tdiv", st.tdiv_s], ["vdiv1", st.vdiv1], ["vdiv2", st.vdiv2]])
-    if (val && document.activeElement !== $(id)) for (const o of $(id).options) if (Math.abs(+o.value - val) <= val * 1e-6) { o.selected = true; break; }
-  for (const [id, val] of [["probe1", st.probe1], ["probe2", st.probe2]])
-    if (document.activeElement !== $(id)) $(id).value = String(val || 1);
-  for (const [id, val] of [["cpl1", st.cpl1], ["cpl2", st.cpl2]])
-    if (document.activeElement !== $(id)) $(id).value = String(val || 0);
+  for (const [id, val] of [["tdiv", st.tdiv_s], ["vdiv1", st.vdiv1], ["vdiv2", st.vdiv2]]) {
+    const el = $(id);
+    if (val && document.activeElement !== el && !(el._userAt && performance.now() - el._userAt < 1500))
+      for (const o of el.options) if (Math.abs(+o.value - val) <= val * 1e-6) { o.selected = true; break; }
+  }
+  for (const [id, val] of [["probe1", st.probe1], ["probe2", st.probe2]]) setFromStatus($(id), val || 1);
+  for (const [id, val] of [["cpl1", st.cpl1], ["cpl2", st.cpl2]]) setFromStatus($(id), val || 0);
+  // The strip's trigger caption names the type (and the bytes of an armed serial trigger).
+  {
+    const types = ["Edge", "Pulse", "Slope", "Video"];
+    const serial = !!st.serial_mode && typeof stArmed === "function";
+    const pat = serial ? ($("stBytes").value.trim() || "any") : "";
+    const cap = "Trigger · " + (serial ? "Serial " + pat : types[st.trig_type || 0] || "Edge");
+    if ($("trigCap").textContent !== cap) $("trigCap").textContent = cap;
+  }
   // Sliders read/emit tip-referred volts. Their span and step follow each
   // channel's V/div: a fixed ±3.8 V in 50 mV steps was 25 div a step at
   // 2 mV/div and ±0.4 div end to end at 10 V/div.
@@ -231,6 +267,7 @@ function applyStatus() {
   chip.textContent = state;
   chip.dataset.state = state;
   refreshAria();
+  syncMirrors();
 }
 
 // The on-screen time/div — and its scale — FOLLOW the view zoom. The grid is
@@ -293,13 +330,14 @@ function awaitFrame(pred, timeout = 2500) {
   });
 }
 
+// updateQualRow shows the qualifier block of the chosen trigger type (Edge has none).
 // TRLC-LINKS: REQ-SDS-204
 function updateQualRow() {
   const t = +$("ttype").value;
-  $("qualrow").style.display = t === 0 ? "none" : "flex";
-  $("qp-pulse").style.display = t === 1 ? "flex" : "none";
-  $("qp-slope").style.display = t === 2 ? "flex" : "none";
-  $("qp-video").style.display = t === 3 ? "flex" : "none";
+  $("qualrow").style.display = t === 0 ? "none" : "block";
+  $("qp-pulse").style.display = t === 1 ? "block" : "none";
+  $("qp-slope").style.display = t === 2 ? "block" : "none";
+  $("qp-video").style.display = t === 3 ? "block" : "none";
 }
 
 // TRLC-LINKS: REQ-SDS-204
@@ -311,10 +349,12 @@ function updateAcqN() {
   $("precisionRateLabel").hidden = +$("acq").value !== 4;
   if(document.activeElement!==rate) rate.value=(st && st.precision_rate_hz)||31250000;
 
-  const m = +$("acq").value, n = $("acqn");
-  if (m === 1 || m === 4) { fillAcqN([1, 4, 16, 32, 64, 128, 256], st ? st.avg_count : 16); n.style.display = ""; }
-  else if (m === 2) { fillAcqN([3, 7, 15, 31, 63], st ? st.eres_len : 1); n.style.display = ""; }
-  else n.style.display = "none";
+  const m = +$("acq").value, row = $("acqnRow");
+  if (m === 1 || m === 4) { fillAcqN([1, 4, 16, 32, 64, 128, 256], st ? st.avg_count : 16); row.hidden = false; $("acqnLbl").textContent = "Averages"; }
+  else if (m === 2) { fillAcqN([3, 7, 15, 31, 63], st ? st.eres_len : 1); row.hidden = false; $("acqnLbl").textContent = "ERes length"; }
+  else row.hidden = true;
+  const names = ["normal", "average", "ERes", "peak detect", "precision"];
+  $("acqSub").textContent = names[m] + (m === 1 || m === 4 ? " ×" + $("acqn").value : m === 2 ? " " + $("acqn").value : "");
 }
 
 // TRLC-LINKS: REQ-SDS-204
@@ -324,14 +364,14 @@ function fillAcqN(opts, sel) {
   if (document.activeElement !== n && sel) n.value = sel;
 }
 
-// ---- view toggles ----
-// TRLC-LINKS: REQ-SDS-204
+// ---- view ----
+// setMode switches what the scope canvas draws: Y-T, X-Y, FFT, or SPECTRUM's
+// spectrogram ("SPG") and Bode ("BODE") views. The workspaces own which view
+// is shown (app_ws.js setWsView); this only applies it.
+// TRLC-LINKS: REQ-SDS-204, REQ-SDS-219
 function setMode(m) {
   view.mode = m;
-  for (const [id, mm] of [["mYT", "YT"], ["mXY", "XY"], ["mFFT", "FFT"]]) $(id).classList.toggle("on", mm === m);
   // Mode-dependent panels must be synced HERE, not only inside their drawer.
-  // The peak boxes live in FFT and Y-T; hide them in X-Y. (redraw() re-shows and
-  // repopulates them for the active mode.)
   updateFFTLists();
   // The navigator lives in Y-T (record overview) and FFT (spectrum
   // overview); toggling it changes the scope height, so re-measure
@@ -347,7 +387,7 @@ function recompute() { computeDecode(); redraw(); }
 function updateMathHint() {
   const h = $("mathHint");
   if (mathFn === "res1" || mathFn === "res2")
-    h.textContent = "select the carrier peak(s) in the C" + (mathFn === "res1" ? 1 : 2) + " FFT list; the residual (minor waves) shows in purple";
+    h.textContent = "pick the carrier peak(s) of C" + (mathFn === "res1" ? 1 : 2) + " in SPECTRUM's peak table; the residual (minor waves) shows in purple";
   else h.textContent = "";
 }
 
