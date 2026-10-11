@@ -76,3 +76,36 @@ func TestApplySettingsViewKeepsTwoSignalRolesOpposite(t *testing.T) {
 		t.Fatalf("UART source lost: %+v", got)
 	}
 }
+
+// Math, measurements, persistence and channel visibility round-trip through
+// the saved setup (bug hunt 2026-10-10: they were lost on restart).
+// TRLC-LINKS: REQ-SDS-072, REQ-SDS-089
+func TestSettingsViewDisplayRoundTrip(t *testing.T) {
+	a, _, _ := newC(t)
+	a.mu.Lock()
+	a.mathMode, a.showMeas, a.persist, a.chDisp = 3, true, true, [2]bool{true, false}
+	a.mu.Unlock()
+	b, _, _ := newC(t)
+	b.ApplySettingsView(a.SettingsView())
+	v := b.MenuView()
+	if v.MathMode != 3 || !v.ShowMeas || !v.Persist || !v.ShowC1 || v.ShowC2 {
+		t.Fatalf("display setup lost: %+v", v)
+	}
+}
+
+// The decoded-stream trigger and its value persist with the rest of DECODE
+// (bug hunt 2026-10-10: a restart reset them to Error / 00).
+// TRLC-LINKS: REQ-SDS-072, REQ-SDS-018
+func TestSettingsViewStreamTriggerRoundTrip(t *testing.T) {
+	a, _, _ := newC(t)
+	a.mu.Lock()
+	a.decProto, a.decTrig, a.decValue = 1, 1, 0x55
+	a.mu.Unlock()
+	b, _, _ := newC(t)
+	b.ApplySettingsView(a.SettingsView())
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	if b.decTrig != 1 || b.decValue != 0x55 {
+		t.Fatalf("stream trigger lost: trig %d value %#x", b.decTrig, b.decValue)
+	}
+}

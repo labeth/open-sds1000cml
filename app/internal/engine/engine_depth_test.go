@@ -115,3 +115,35 @@ func TestSingleShotStopsAfterCapture(t *testing.T) {
 		t.Fatal("RUN did not cancel the pending single-shot")
 	}
 }
+
+// SINGLE waits in NORM, and the next RUN brings back the mode it replaced;
+// an explicit AUTO/NORM choice meanwhile is kept (bug hunt 2026-10-10: AUTO
+// stayed NORM for good after one SINGLE).
+// TRLC-LINKS: REQ-SDS-009, REQ-SDS-011
+func TestSingleRestoresTriggerMode(t *testing.T) {
+	e, _ := newTestEngine(t, newFakeBus())
+	norm := func() bool { e.mu.Lock(); defer e.mu.Unlock(); return e.norm }
+	e.SetNorm(false)
+	e.SetSingle()
+	if !norm() {
+		t.Fatal("SINGLE should wait in NORM")
+	}
+	e.SetRunning(false) // the single completed
+	e.SetRunning(true)
+	if norm() {
+		t.Fatal("RUN after SINGLE should restore AUTO")
+	}
+	e.SetNorm(true)
+	e.SetSingle()
+	e.SetRunning(true)
+	if !norm() {
+		t.Fatal("RUN after SINGLE from NORM should stay NORM")
+	}
+	e.SetNorm(false)
+	e.SetSingle()
+	e.SetNorm(true) // the user chose NORM during the single
+	e.SetRunning(true)
+	if !norm() {
+		t.Fatal("an explicit mode choice must survive RUN")
+	}
+}

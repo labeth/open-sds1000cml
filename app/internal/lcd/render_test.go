@@ -484,3 +484,60 @@ func TestFontCoversPrintableASCII(t *testing.T) {
 		}
 	}
 }
+
+// Bode gridlines sit on round steps (bug hunt 2026-10-10: quarters of
+// [-180,45] labelled -11.2 and -124).
+// TRLC-LINKS: REQ-SDS-021
+func TestBodeGridStep(t *testing.T) {
+	if s := gridStep(-180, 45, []float64{15, 30, 45, 90, 180}); s != 45 {
+		t.Fatalf("phase step %g", s)
+	}
+	if s := gridStep(-10, 20, []float64{1, 2, 5, 10, 20, 50}); s != 10 {
+		t.Fatalf("gain step %g", s)
+	}
+	if s := gridStep(-1e300, 1e300, []float64{1, 2, 5}); !(s > 0) {
+		t.Fatalf("huge range step %g", s)
+	}
+}
+
+// Both channels switched off on the panel draw no trace and no readout (bug
+// hunt #2: CH1 then CH2 off brought both traces and readouts back). Unset flags
+// (ChanExplicit false) still mean "show both".
+// TRLC-LINKS: REQ-SDS-021
+func TestRenderBothChannelsHidden(t *testing.T) {
+	h := defaultHUD()
+	h.ShowMeas = true
+	m := NewMemSurface()
+	Render(m, testFrame(2048), h, true)
+	if countColorIn(m, colC1, 10, 14, W-10, H) < 500 || countColorIn(m, colC2, 10, 14, W-10, H) < 500 {
+		t.Fatal("unset channel flags must draw both channels")
+	}
+	h.ChanExplicit = true
+	m = NewMemSurface()
+	Render(m, testFrame(2048), h, true)
+	for _, c := range []uint16{colC1, colC2} {
+		if n := countColorIn(m, c, 10, 14, W-10, H); n != 0 {
+			t.Fatalf("hidden channels drew %d px of %#04x", n, c)
+		}
+	}
+}
+
+// The SUPER-RES page says why UTILITY did not arm; the reason was set but
+// only drawn while super-res was active (bug hunt #2).
+// TRLC-LINKS: REQ-SDS-021
+func TestRenderSuperresIdleStatus(t *testing.T) {
+	h := defaultHUD()
+	h.MenuOpen, h.MenuTitle = true, "SUPER-RES"
+	h.MenuItems = []MenuItem{{"Channel", "C1"}}
+	m := NewMemSurface()
+	Render(m, testFrame(2048), h, true)
+	if n := countColorIn(m, colSR, 0, H-23, 400, H-11); n != 0 {
+		t.Fatalf("no status, yet %d SR px", n)
+	}
+	h.SRStatus = "window too deep for software stacking"
+	m = NewMemSurface()
+	Render(m, testFrame(2048), h, true)
+	if n := countColorIn(m, colSR, 0, H-23, 400, H-11); n < 50 {
+		t.Fatalf("idle SR status not drawn (%d px)", n)
+	}
+}

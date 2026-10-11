@@ -4,7 +4,7 @@
 // synthetic scope frames, and checks the two things the user hit: selection
 // must survive frame-to-frame magnitude jitter, and you must be able to pick a
 // different peak afterwards. Run: node peaks.test.cjs  (exit 0 = pass).
-const { spectrum, detectPeaks, nearestPeak, component } = require("./peaks.js");
+const { spectrum, detectPeaks, nearestPeak, component, toneAmplitude } = require("./peaks.js");
 
 let failed = 0;
 // TRLC-LINKS: REQ-SDS-070
@@ -132,6 +132,17 @@ function frame(amp1, amp2, seed) {
   for (let n = 0; n < M; n++) res[n] -= (comp[n] - 128); // remove the carrier's AC part
   let mn = Infinity, mx = -Infinity; for (const v of res) { if (v < mn) mn = v; if (v > mx) mx = v; }
   near(mx - mn, 12, 3, "removing a sine carrier reveals the ~12ptp minor wave underneath");
+}
+
+// --- 9. amplitude between bins: the fit, not the scalloped Hann bin ---------
+// (bug hunt 2026-10-10: a 5 MHz clock half a bin off read 1.70 V for 1.98 V.)
+{
+  const M = 2048, r = [];
+  for (let n = 0; n < M; n++) r.push(128 + 50 * Math.sin(2 * Math.PI * 20.5 * n / M + 0.3));
+  const sp = spectrum(r, 1);
+  const hann = 4 * sp.peak / (sp.half * 2);
+  ok(hann < 50 * 0.9, `Hann bin reads low half a bin off (${hann.toFixed(1)} of 50)`);
+  near(toneAmplitude(r, 20.5), 50, 0.5, "toneAmplitude() recovers the amplitude half a bin off");
 }
 
 console.log(failed ? `\n${failed} FAILED` : "\nALL PASS");

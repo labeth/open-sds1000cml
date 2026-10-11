@@ -219,7 +219,7 @@ func TestSuperresReviewRoutesByViewMode(t *testing.T) {
 
 	// count the Y-T super-res trace ONLY in the trace band (the SR status line at
 	// the bottom uses colSR too and is drawn in every view — exclude it).
-	ytTrace := countColorIn(yt, colSR, 0, 0, W, H-20)
+	ytTrace := countColorIn(yt, colSR, 0, 0, W, H-23)
 	if ytTrace == 0 {
 		t.Error("Y-T review drew no super-res trace")
 	}
@@ -231,7 +231,7 @@ func TestSuperresReviewRoutesByViewMode(t *testing.T) {
 	if countColor(xy, colMath) == 0 {
 		t.Error("stacked X-Y drew no figure")
 	}
-	if countColorIn(xy, colSR, 0, 0, W, H-20) != 0 {
+	if countColorIn(xy, colSR, 0, 0, W, H-23) != 0 {
 		t.Error("stacked X-Y should NOT draw the Y-T super-res trace")
 	}
 
@@ -245,7 +245,7 @@ func TestSuperresReviewRoutesByViewMode(t *testing.T) {
 	if countColor(fft, colC2) == 0 {
 		t.Error("stacked FFT drew no C2 spectrum")
 	}
-	if countColorIn(fft, colSR, 0, 0, W, H-20) != 0 {
+	if countColorIn(fft, colSR, 0, 0, W, H-23) != 0 {
 		t.Error("stacked FFT should NOT draw the Y-T super-res trace")
 	}
 }

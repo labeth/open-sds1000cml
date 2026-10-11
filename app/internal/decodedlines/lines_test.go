@@ -88,3 +88,30 @@ func TestEncodeWidths(t *testing.T) {
 		t.Fatalf("byte line %d bytes", n)
 	}
 }
+
+// The rate is units per second of signal time: a 115200 Bd byte every
+// 4340 two-nanosecond samples is 115200/10 bytes a second, whatever wall
+// clock the stream took to start (bug hunt 2026-10-10).
+// TRLC-LINKS: REQ-SDS-018
+func TestRateIsSignalTime(t *testing.T) {
+	w := New(1, 64)
+	if _, ok := w.Rate(); ok {
+		t.Fatal("rate on an empty transcript")
+	}
+	w.Add(uart(strings.Repeat("Hi U....", 40), 5000))
+	r, ok := w.Rate()
+	want := 1 / (4340 * 2e-9)
+	if !ok || r < want*0.99 || r > want*1.01 {
+		t.Fatalf("rate %.0f/s ok=%v, want %.0f/s", r, ok, want)
+	}
+	// Lines built by the worker arrive with its counters, which also count
+	// units decoded before the first line held here (HW: 26 k/s on 8.8 k/s).
+	g := New(1, 64)
+	for i := 0; i < w.Count(); i++ {
+		g.Append(w.Base()+i, *w.At(i))
+	}
+	g.SetCounters(Counters{Units: 3 * w.Units})
+	if r, ok := g.Rate(); !ok || r < want*0.99 || r > want*1.01 {
+		t.Fatalf("line-mode rate %.0f/s ok=%v, want %.0f/s", r, ok, want)
+	}
+}

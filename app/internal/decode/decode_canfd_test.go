@@ -2,8 +2,11 @@
 package decode
 
 import (
+	"encoding/json"
 	"fmt"
 	"math/rand"
+	"os"
+	"strings"
 	"testing"
 	"time"
 )
@@ -388,5 +391,35 @@ func TestDecodeCANFDNoPanic(t *testing.T) {
 	// Explicitly exercise the empty/degenerate inputs too.
 	for _, c := range [][]uint8{nil, {}, {128}, {0, 255}, make([]uint8, 3)} {
 		DecodeCANFD(c, 1e-6, CANFDCfg{NominalBaud: 25000, DominantLow: true})
+	}
+}
+
+// A live-envelope capture at 100 us/div (500 kbit/s, ~8 samples a bit, edges
+// quantized to 2-sample steps) decodes cleanly: the reader resynchronizes on
+// edges instead of free-running from SOF (bug hunt 2026-10-10: it read
+// 45 D4 1F E1 and lost auto-detect to UART).
+// TRLC-LINKS: REQ-SDS-018
+func TestCANEnvelopeCaptureResync(t *testing.T) {
+	b, err := os.ReadFile("testdata/can_envelope_100us.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var f struct {
+		SampleS float64 `json:"sample_s"`
+		C1      []int   `json:"c1"`
+	}
+	if err := json.Unmarshal(b, &f); err != nil {
+		t.Fatal(err)
+	}
+	c1 := make([]uint8, len(f.C1))
+	for i, v := range f.C1 {
+		c1[i] = uint8(v)
+	}
+	r := DecodeCANFD(c1, f.SampleS, CANFDCfg{DominantLow: true})
+	if !strings.Contains(r.Text, "ID:123 DLC:4 55 AA 0F F0 CRC:5EE1 ACK") {
+		t.Fatalf("decode %q", r.Text)
+	}
+	if a := Autodetect(c1, nil, f.SampleS, "hex"); a.Proto != "canfd" {
+		t.Fatalf("auto-detect chose %q", a.Proto)
 	}
 }

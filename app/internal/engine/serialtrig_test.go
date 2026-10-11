@@ -348,3 +348,60 @@ func TestSerialRegistryCapabilities(t *testing.T) {
 		t.Fatal("accepted invalid decoder")
 	}
 }
+
+// A record holding the pattern more than once triggers on the match a full
+// screen fits around, not the first one at the record start (bug hunt
+// 2026-10-10: the first match left a flat 0 V tail off the record).
+// TRLC-LINKS: REQ-SDS-013
+func TestSerialQualifyPicksCentredMatch(t *testing.T) {
+	msg := []int{0x48, 0x55, 0xAA, 0x0F, 0x0A}
+	var bytes []int
+	for i := 0; i < 4; i++ {
+		bytes = append(bytes, msg...)
+	}
+	w := uartWave(bytes, 40)
+	f := &Frame{C1: w, C2: make([]uint8, len(w)), Valid: len(w), SampleS: 1e-6}
+	e := &Engine{}
+	e.SetSerialParams(SerialParams{Proto: serUART, ChA: 0, Bytes: []int{0x55, 0xAA}})
+	_, first := e.serialQualify(f, f.Valid, f.SampleS)
+	screen := len(w) / 2
+	ok, anchor := e.serialQualifyAt(f, f.Valid, f.SampleS, softAnchor(f.Valid, screen, .5, -1))
+	if !ok || anchor == first {
+		t.Fatalf("ok=%v anchor=%d, want a later match than the first (%d)", ok, anchor, first)
+	}
+	if anchor < screen/2 || anchor > f.Valid-screen/2 {
+		t.Fatalf("anchor %d leaves the screen off the record [%d,%d]", anchor, screen/2, f.Valid-screen/2)
+	}
+	// No match fits the span (a record little longer than the screen) → the
+	// match nearest the target still triggers, leaving the least off-record.
+	mid := f.Valid / 2
+	ok, anchor = e.serialQualifyAt(f, f.Valid, f.SampleS, anchorSpan{target: mid, lo: mid - 1, hi: mid + 1})
+	if !ok || anchor == first {
+		t.Fatalf("fallback ok=%v anchor=%d, want the match nearest %d (not the first, %d)", ok, anchor, mid, first)
+	}
+	period := len(w) / 4
+	if d := anchor - mid; d < -period/2-40 || d > period/2+40 {
+		t.Fatalf("fallback anchor %d is %d from the target, over half a message period (%d)", anchor, d, period)
+	}
+	// Unconstrained, the first match triggers (the band pipeline's rule).
+	if ok, a := e.serialQualify(f, f.Valid, f.SampleS); !ok || a != first {
+		t.Fatalf("serialQualify ok=%v anchor=%d, want first %d", ok, a, first)
+	}
+}
+
+// A serial match that would leave more than a sliver of the screen off the
+// record does not trigger (bug hunt 2026-10-11, #29); a record shorter than
+// the screen never blocks.
+// TRLC-LINKS: REQ-SDS-013
+func TestOffRecord(t *testing.T) {
+	for _, tc := range []struct{ valid, win, anchor, want int }{
+		{4096, 3937, 2048, 0},
+		{4096, 3937, 1433, 1969 - 1433},
+		{4096, 3937, 3131, 3131 - 1969 + 3937 - 4096},
+		{4096, 5000, 100, 0},
+	} {
+		if got := offRecord(tc.valid, tc.win, .5, tc.anchor); got != tc.want {
+			t.Errorf("offRecord(%d,%d,.5,%d)=%d want %d", tc.valid, tc.win, tc.anchor, got, tc.want)
+		}
+	}
+}

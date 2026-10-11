@@ -22,15 +22,15 @@ func TestCursorMenu(t *testing.T) {
 	}
 	// ADJUST moves the active (A) X-cursor; default 0.35 → +2 steps ≈ 0.37.
 	before := c.MenuView().CurX[0]
-	c.menuAdjust(+1)
-	c.menuAdjust(+1)
+	c.menuAdjust(+1, 1)
+	c.menuAdjust(+1, 1)
 	if got := c.MenuView().CurX[0]; got <= before {
 		t.Fatalf("ADJUST did not move cursor A: %v → %v", before, got)
 	}
 	// F3 switches the active cursor to B; ADJUST then moves B, not A.
 	aFixed := c.MenuView().CurX[0]
 	c.menuButton(btnF3)
-	c.menuAdjust(-1)
+	c.menuAdjust(-1, 1)
 	v := c.MenuView()
 	if v.CurSel != 1 || v.CurX[0] != aFixed {
 		t.Fatalf("active cursor switch failed: sel=%d A=%v(want %v)", v.CurSel, v.CurX[0], aFixed)
@@ -248,5 +248,20 @@ func TestRollStreamSoftkey(t *testing.T) {
 	c.menuButton(btnF4)
 	if eng.Snapshot().RollStream {
 		t.Fatal("F4 did not return to chunked roll")
+	}
+}
+
+// A fast ADJUST spin (an accelerated event) moves the cursor by its step
+// count, not 1 % an event (bug hunt 2026-10-10).
+// TRLC-LINKS: REQ-SDS-136
+func TestCursorAdjustAccelerates(t *testing.T) {
+	c, _, _ := newC(t)
+	c.menuButton(btnHorizMenu)
+	c.menuButton(btnHorizMenu)
+	c.menuButton(btnF1)
+	before := c.MenuView().CurX[0]
+	c.menuAdjust(+1, 10)
+	if got := c.MenuView().CurX[0]; got < before+0.099 || got > before+0.101 {
+		t.Fatalf("10-step ADJUST moved cursor A %v -> %v, want +0.10", before, got)
 	}
 }

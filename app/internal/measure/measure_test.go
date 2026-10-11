@@ -430,3 +430,22 @@ func TestEnvelopeTiming(t *testing.T) {
 		t.Fatalf("unresolved envelope reports %.1f Hz", r.Freq)
 	}
 }
+
+// An inverted channel reads its levels negated and its edges swapped
+// (bug hunt 2026-10-10).
+// TRLC-LINKS: REQ-SDS-021
+func TestResultInverted(t *testing.T) {
+	r := &Result{Vpp: 3.3, Vmax: 3.3, Vmin: 0, Vmean: 1.6, Vtop: 3.2, Vbase: 0.1, Vampl: 3.1,
+		Overshoot: 5, Preshoot: 1, Freq: 5000, Duty: 30, RiseS: 1e-9, FallS: 2e-9,
+		PosWidthS: 60e-6, NegWidthS: 140e-6, HasTiming: true}
+	i := r.Inverted()
+	if i.Vmax != 0 || i.Vmin != -3.3 || i.Vmean != -1.6 || i.Vtop != -0.1 || i.Vbase != -3.2 || i.Vpp != 3.3 || i.Vampl != 3.1 {
+		t.Fatalf("levels %+v", i)
+	}
+	if i.Overshoot != 1 || i.Preshoot != 5 || i.RiseS != 2e-9 || i.FallS != 1e-9 || i.PosWidthS != 140e-6 || i.NegWidthS != 60e-6 || i.Duty != 70 || i.Freq != 5000 {
+		t.Fatalf("timing %+v", i)
+	}
+	if r.Vmax != 3.3 {
+		t.Fatal("Inverted must not modify its receiver (cached results)")
+	}
+}

@@ -14,3 +14,11 @@ func TestARINCAutoParityErrorsJS(t *testing.T) {
 		t.Fatalf("ARINC auto: %v\n%s", err, out)
 	}
 }
+
+// TRLC-LINKS: REQ-SDS-207
+func TestSENTAutoAppliesSettingsJS(t *testing.T) {
+	testenv.NeedNode(t)
+	if out, err := exec.Command("node", "sent_auto.test.cjs").CombinedOutput(); err != nil {
+		t.Fatalf("SENT auto: %v\n%s", err, out)
+	}
+}

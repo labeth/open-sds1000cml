@@ -25,6 +25,10 @@ ok(lo <= -6 && hi >= -6 && lo % 10 === 0, "nice range brackets -6 on 10s: " + lo
 const t = b.bodeLogTicks(1e6, 1e7);
 ok(t.some(x => x.f === 1e6 && x.major) && t.some(x => x.f === 1e7 && x.major), "decade majors present");
 ok(t.some(x => x.f === 2e6 && !x.major) && t.some(x => x.f === 5e6 && !x.major), "1-2-5 minors present");
+// gridlines on round steps: [-180,45] in 45s, [-10,20] in 10s (not quarters)
+ok(b.bodeGridStep(-180, 45, [15, 30, 45, 90, 180]) === 45, "phase step 45");
+ok(b.bodeGridStep(-10, 20, [1, 2, 5, 10, 20, 50]) === 10, "gain step 10");
+ok(b.bodeGridStep(-1e300, 1e300, [1, 2, 5]) > 0, "huge range still steps");
 // hz formatting
 ok(b.bodeFmtHz(2.5e6) === "2.5M", "2.5M: " + b.bodeFmtHz(2.5e6));
 ok(b.bodeFmtHz(1e3) === "1k", "1k: " + b.bodeFmtHz(1e3));

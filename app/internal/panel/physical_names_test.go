@@ -4,11 +4,12 @@ package panel
 import (
 	"reflect"
 	"testing"
+	"time"
 )
 
 // TRLC-LINKS: REQ-SDS-135
 func TestUnassignedPhysicalNamesReachDispatcherWithoutEffects(t *testing.T) {
-	for _, name := range []string{"print", "saverecall", "defaultsetup", "help", "tdivpush"} {
+	for _, name := range []string{"help", "tdivpush"} {
 		t.Run(name, func(t *testing.T) {
 			c, eng, fe := newC(t)
 			before := c.MenuView()
@@ -38,9 +39,16 @@ func TestHoldoffStepsToNearestSettingInRequestedDirection(t *testing.T) {
 	}{
 		{0.0025, 1, 0.01}, {0.0025, -1, 0.001}, {0.001, 1, 0.01}, {0.001, -1, 0.0001}, {0, -1, 0}, {1, 1, 1},
 	} {
-		if got := nextHoldoff(tc.current, tc.direction); got != tc.want {
+		if got := nextHoldoff(tc.current, tc.direction, false); got != tc.want {
 			t.Errorf("holdoff %g dir %d: %g, want %g", tc.current, tc.direction, got, tc.want)
 		}
+	}
+	// A softkey press wraps past the ends (bug hunt #2: F5 stuck at 1 s).
+	if got := nextHoldoff(1, 1, true); got != 0 {
+		t.Errorf("press past 1 s: %g, want Off", got)
+	}
+	if got := nextHoldoff(0, -1, true); got != 1 {
+		t.Errorf("press below Off: %g, want 1 s", got)
 	}
 }
 
@@ -106,4 +114,110 @@ func TestWiredFixedFunctionKeys(t *testing.T) {
 	}
 	press(c, "set50") // no frame: nothing to measure, nothing changes
 	press(c, "force") // the fake engine has no ForceTrigger: ignored
+}
+
+// DEFAULT SETUP returns the setup to power-on: overlays off, both channels
+// 1 V/div at 0 V, AUTO and running (bug hunt 2026-10-10: the key did nothing).
+// TRLC-LINKS: REQ-SDS-136
+func TestDefaultSetupKey(t *testing.T) {
+	c, eng, _ := newC(t)
+	c.mu.Lock()
+	c.showMeas, c.mathMode, c.curOn, c.zoom, c.persist, c.viewMode = true, 2, true, 10, true, 1
+	c.decProto = 1 // bug hunt #2: decode stayed on through DEFAULT SETUP
+	c.refs[0] = refWave{has: true, show: true}
+	c.mu.Unlock()
+	if !c.InjectButton("defaultsetup") {
+		t.Fatal("DEFAULT SETUP rejected")
+	}
+	(<-c.inject)()
+	v := c.MenuView()
+	if v.ShowMeas || v.MathMode != 0 || v.CurOn || v.Zoom != 1 || v.Persist || v.ViewMode != 0 || v.Open {
+		t.Fatalf("overlays not reset: %+v", v)
+	}
+	if v.DecProto != 0 {
+		t.Fatalf("decode still on after DEFAULT SETUP: proto %d", v.DecProto)
+	}
+	c.mu.Lock()
+	refShown, refKept := c.refs[0].show, c.refs[0].has
+	c.mu.Unlock()
+	if refShown || !refKept {
+		t.Fatalf("REF A after DEFAULT SETUP: show=%v has=%v (want hidden, kept)", refShown, refKept)
+	}
+	if len(eng.calls) == 0 {
+		t.Fatal("DEFAULT SETUP made no engine calls")
+	}
+}
+
+// Qualifier limits never invert: stepping W min past W max pushes W max up,
+// and a slope High wrapped under Low pulls Low down (bug hunt #2: W min 200 us
+// with W max 20 us, and High 5% under Low 40%, left triggers that never fired).
+// TRLC-LINKS: REQ-SDS-136
+func TestTriggerQualifierLimitsStayOrdered(t *testing.T) {
+	c, eng, _ := newC(t)
+	eng.stats.TrigType = 1
+	c.openMenu(pgTrigQ)
+	c.pressWrap = true
+	for i := 0; i < 6; i++ {
+		c.menuCycle(1, 1) // W min up
+		if c.pulseMin >= c.pulseMax {
+			t.Fatalf("W min %g >= W max %g", c.pulseMin, c.pulseMax)
+		}
+	}
+	eng.stats.TrigType = 2
+	for i := 0; i < 25; i++ {
+		c.menuCycle(1, 1) // High up, wrapping
+		if c.slopeLo >= c.slopeHi {
+			t.Fatalf("Low %g >= High %g", c.slopeLo, c.slopeHi)
+		}
+		c.menuCycle(3, 1) // T max up, wrapping
+		if c.slopeMin >= c.slopeMax {
+			t.Fatalf("T min %g >= T max %g", c.slopeMin, c.slopeMax)
+		}
+	}
+}
+
+// TRLC-LINKS: REQ-SDS-136
+func TestOrderHelpers(t *testing.T) {
+	if mn, mx := orderNs(200e3, 20e3, false); mn != 200e3 || mx <= mn {
+		t.Fatalf("min edited: %g %g", mn, mx)
+	}
+	if mn, mx := orderNs(200e3, 20e3, true); mx != 20e3 || mn >= mx {
+		t.Fatalf("max edited: %g %g", mn, mx)
+	}
+	if lo, hi := orderFrac(0.4, 0.05, true); hi != 0.05 && lo >= hi {
+		t.Fatalf("hi at floor: %g %g", lo, hi)
+	}
+	if lo, hi := orderFrac(0.95, 0.95, false); lo >= hi {
+		t.Fatalf("lo at top: %g %g", lo, hi)
+	}
+}
+
+// Depth labels match the web's binary units (bug hunt #2: LCD "524k").
+// TRLC-LINKS: REQ-SDS-136
+func TestDepthLabelBinary(t *testing.T) {
+	for n, want := range map[int]string{524288: "512k", 1048576: "1M", 2048: "2k", 14336: "14k", 20480: "20k", 9000: "9k", 500: "500"} {
+		if got := depthLabel(n); got != want {
+			t.Errorf("depthLabel(%d) = %q, want %q", n, got, want)
+		}
+	}
+}
+
+// InjectButtonWait returns only once the button ran (SCPI *RST relies on
+// it), and gives up when the panel goroutine never takes it.
+// TRLC-LINKS: REQ-SDS-135
+func TestInjectButtonWait(t *testing.T) {
+	c, _, _ := newC(t)
+	c.mu.Lock()
+	c.showMeas = true
+	c.mu.Unlock()
+	go func() { (<-c.inject)() }()
+	if !c.InjectButtonWait("defaultsetup", time.Second) {
+		t.Fatal("wait failed")
+	}
+	if c.MenuView().ShowMeas {
+		t.Fatal("returned before DEFAULT SETUP ran")
+	}
+	if c.InjectButtonWait("defaultsetup", 20*time.Millisecond) {
+		t.Fatal("no panel goroutine, yet the wait reported success")
+	}
 }

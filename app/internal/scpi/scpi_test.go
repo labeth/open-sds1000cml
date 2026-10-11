@@ -786,3 +786,30 @@ func TestAcquisitionQueryPrecision(t *testing.T) {
 		t.Fatalf("got %q", got)
 	}
 }
+
+// PAVA? ALL lists every parameter with the value its own query gives (bug
+// hunt #2: ALL was a header error).
+// TRLC-LINKS: REQ-SDS-024
+func TestPAVAAll(t *testing.T) {
+	h, fs := newH(t)
+	n := 5000
+	c := make([]uint8, n)
+	for i := range c {
+		c[i] = 103
+		if (i/250)%2 == 1 {
+			c[i] = 153
+		}
+	}
+	fs.frame = &engine.Frame{Seq: 1, Valid: n, C1: c, C2: c, SampleS: 2e-9}
+	all := strings.TrimSuffix(do(t, h, "C1:PAVA? ALL"), "\n")
+	parts := strings.Split(strings.TrimPrefix(all, "C1:PAVA ALL,"), ",")
+	if len(parts) != 2*len(pavaOrder) {
+		t.Fatalf("ALL reply %q", all)
+	}
+	for i, name := range pavaOrder {
+		one := do(t, h, "C1:PAVA? "+name)
+		if want := "C1:PAVA " + name + "," + parts[2*i+1] + "\n"; parts[2*i] != name || one != want {
+			t.Fatalf("%s: ALL gives %s,%s, single %q", name, parts[2*i], parts[2*i+1], one)
+		}
+	}
+}

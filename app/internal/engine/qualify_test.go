@@ -174,7 +174,7 @@ func TestQualifyVideo(t *testing.T) {
 	p := defaultTrigParams() // PAL, line 0 (any), negative sync
 
 	// Any line: the sync edge nearest the centre (sample 1000 → line 5 at 1000).
-	xc := qualifyVideo(sig, p)
+	xc := qualifyVideo(sig, 320, p)
 	if xc < 995 || xc > 1005 {
 		t.Fatalf("video any-line anchor %v, want ≈1000", xc)
 	}
@@ -183,14 +183,28 @@ func TestQualifyVideo(t *testing.T) {
 	// first sync pulse (no crossing), so detected edges are at ≈200, 400,
 	// 600 — the 3rd is ≈600.
 	p.videoLine = 3
-	xc = qualifyVideo(sig, p)
+	xc = qualifyVideo(sig, 320, p)
 	if xc < 595 || xc > 605 {
 		t.Fatalf("video line-3 anchor %v, want ≈600", xc)
 	}
 
+	// A plain square (100 us levels at 320 ns samples) has no line syncs.
+	sq := make([]uint8, 2000)
+	for i := range sq {
+		sq[i] = 20
+		if (i/312)%2 == 0 {
+			sq[i] = 150
+		}
+	}
+	p.videoLine = 0
+	if xc := qualifyVideo(sq, 320, p); xc != -1 {
+		t.Fatalf("a square wave triggered VIDEO at %v", xc)
+	}
+	p.videoLine = 3
+
 	// Line 100: fewer than 100 sync edges → hold.
 	p.videoLine = 100
-	if xc := qualifyVideo(sig, p); xc != -1 {
+	if xc := qualifyVideo(sig, 320, p); xc != -1 {
 		t.Fatalf("line-100 with 10 lines: %v, want -1", xc)
 	}
 }
@@ -470,5 +484,55 @@ func TestACTriggerLevelFollowsMean(t *testing.T) {
 	e.SetChannelCoupling(0, couplingAC)
 	if got := e.trigDispLevel(0); got != 169 {
 		t.Fatalf("AC level %d, want the mean 169", got)
+	}
+}
+
+// A step in averaged samples reads as a one-interval ramp: SLOPE > min must
+// not fire on it, while a genuinely slow ramp still qualifies (bug hunt
+// 2026-10-10).
+// TRLC-LINKS: REQ-SDS-011
+func TestSlopeStepIsNotSlow(t *testing.T) {
+	p := trigParams{typ: TrigSlope, slopeLoFrac: 0.2, slopeHiFrac: 0.8, slopeTMaxNs: 1000, slopeCond: CondGreater} // > max
+	step := make([]uint8, 200)
+	for i := range step {
+		step[i] = 50
+		if i > 100 {
+			step[i] = 200
+		}
+	}
+	step[100] = 140 // the sample whose interval holds the edge
+	if x := qualifySlope(step, 4864, p, true); x >= 0 {
+		t.Fatalf("a step qualified as a slope > 1 us at %v", x)
+	}
+	ramp := make([]uint8, 200)
+	for i := range ramp {
+		v := 50 + (i-90)*15
+		ramp[i] = uint8(min(200, max(50, v)))
+	}
+	if x := qualifySlope(ramp, 4864, p, true); x < 0 {
+		t.Fatal("a 10-sample ramp (~49 us) should qualify as a slope > 1 us")
+	}
+	p.slopeCond, p.slopeTMinNs, p.slopeTMaxNs = CondLess, 1000, 0 // < min
+	if x := qualifySlope(step, 4864, p, true); x < 0 {
+		t.Fatal("a step should qualify as a slope < 1 us")
+	}
+}
+
+// An inverted qualifier range from the web or SCPI is read as a range; a
+// zero limit stays "unset" (bug hunt #2).
+// TRLC-LINKS: REQ-SDS-011
+func TestQualifierLimitsOrdered(t *testing.T) {
+	e := &Engine{}
+	e.SetPulseParams(0.5, 3000, 2000, CondInside)
+	if e.tp.pulseWMinNs != 2000 || e.tp.pulseWMaxNs != 3000 {
+		t.Fatalf("pulse %g..%g", e.tp.pulseWMinNs, e.tp.pulseWMaxNs)
+	}
+	e.SetSlopeParams(0.3, 0.2, 1000, 500, CondInside)
+	if e.tp.slopeLoFrac != 0.2 || e.tp.slopeHiFrac != 0.3 || e.tp.slopeTMinNs != 500 || e.tp.slopeTMaxNs != 1000 {
+		t.Fatalf("slope %+v", e.tp)
+	}
+	e.SetSlopeParams(0.2, 0.8, 1000, 0, CondLess)
+	if e.tp.slopeTMinNs != 1000 || e.tp.slopeTMaxNs != 0 {
+		t.Fatalf("unset T max moved: %g..%g", e.tp.slopeTMinNs, e.tp.slopeTMaxNs)
 	}
 }

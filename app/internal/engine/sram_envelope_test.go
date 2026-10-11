@@ -87,3 +87,20 @@ func TestOrderEnvelope(t *testing.T) {
 		}
 	}
 }
+
+// The first bucket's pair leads into the next one: a falling edge in it must
+// not read as a one-sample pulse at the record's start (bug hunt 2026-10-10).
+// TRLC-LINKS: REQ-SDS-010
+func TestOrderEnvelopeHead(t *testing.T) {
+	c := []uint8{126, 209, 128, 128, 127, 128} // bucket 0 holds a falling edge
+	orderEnvelopeHead(c, nil)
+	orderEnvelope(c, nil)
+	if c[0] != 209 || c[1] != 126 {
+		t.Fatalf("head %v, want falling 209,126", c[:2])
+	}
+	r := []uint8{126, 209, 208, 210, 209, 209} // rising edge: (min, max) is right
+	orderEnvelopeHead(r, nil)
+	if r[0] != 126 || r[1] != 209 {
+		t.Fatalf("head %v, want rising 126,209", r[:2])
+	}
+}
