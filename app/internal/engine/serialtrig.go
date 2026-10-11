@@ -119,6 +119,28 @@ func (e *Engine) SetSerialMode(m int) {
 	e.serialMode.Store(int32(m))
 }
 
+// autoGateLiveness is AUTO's rule for a capture the armed serial or zone gate
+// rejected, in the SRAM loop (engine_loop.go applies the same rule inline):
+// hold it, but let one liveness frame through every serialFallback or
+// zoneFallback holds. With no gate armed every capture publishes. Engine
+// goroutine only.
+// TRLC-LINKS: REQ-SDS-013
+func (e *Engine) autoGateLiveness() bool {
+	switch {
+	case e.serialMode.Load() == SerialTrigger:
+		if e.serialHeld++; e.serialHeld < serialFallback {
+			return false
+		}
+		e.serialHeld = 0
+	case e.zoneMode.Load() == ZoneTrigger:
+		if e.zoneHeld++; e.zoneHeld < zoneFallback {
+			return false
+		}
+		e.zoneHeld = 0
+	}
+	return true
+}
+
 // serialQualify decodes the captured record with the armed serial config and
 // reports whether the target pattern is present, plus the record SAMPLE index to
 // anchor the display on (-1 = don't re-anchor). Engine goroutine; f is the

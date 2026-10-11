@@ -405,3 +405,47 @@ func TestOffRecord(t *testing.T) {
 		}
 	}
 }
+
+// TestAutoGateLiveness: in AUTO the SRAM loop holds captures the armed serial
+// or zone gate rejected and lets one liveness frame through per fallback count,
+// like the native loop, so matched bytes stay where the trigger put them.
+// TRLC-LINKS: REQ-SDS-013
+func TestAutoGateLiveness(t *testing.T) {
+	e := New(Config{Bus: newFakeBus()})
+	if !e.autoGateLiveness() {
+		t.Fatal("no gate armed: every capture publishes")
+	}
+	for _, gate := range []struct {
+		name     string
+		arm      func(on bool)
+		fallback int
+	}{
+		{"serial", func(on bool) {
+			if on {
+				e.SetSerialMode(SerialTrigger)
+			} else {
+				e.SetSerialMode(SerialOff)
+			}
+		}, serialFallback},
+		{"zone", func(on bool) {
+			if on {
+				e.SetZoneMode(ZoneTrigger)
+			} else {
+				e.SetZoneMode(ZoneOff)
+			}
+		}, zoneFallback},
+	} {
+		gate.arm(true)
+		for round := 0; round < 2; round++ {
+			for i := 1; i < gate.fallback; i++ {
+				if e.autoGateLiveness() {
+					t.Fatalf("%s: rejected capture %d published", gate.name, i)
+				}
+			}
+			if !e.autoGateLiveness() {
+				t.Fatalf("%s: no liveness frame after %d holds", gate.name, gate.fallback)
+			}
+		}
+		gate.arm(false)
+	}
+}

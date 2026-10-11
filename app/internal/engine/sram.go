@@ -1035,6 +1035,14 @@ acquisitionLoop:
 			e.bodeEval(f, f.Valid, f.SampleS)
 		}
 		publish := qualified || !norm || fullRecall || userForced || maskStop
+		// AUTO with the serial or zone gate armed holds the captures the gate
+		// rejected. Publishing every one drew it centred on the record middle
+		// between the matched frames, so the matched bytes jumped about.
+		if publish && !qualified && !fullRecall && !userForced && !maskStop {
+			publish = e.autoGateLiveness()
+		} else if qualified {
+			e.serialHeld, e.zoneHeld = 0, 0
+		}
 		if maskStop {
 			e.maskStopped.Store(true)
 			e.running.Store(false)
