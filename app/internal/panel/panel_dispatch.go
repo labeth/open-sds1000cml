@@ -314,8 +314,10 @@ func (c *Controller) dispatch(name string, dir, steps int) {
 	}
 	switch name {
 	case "tdiv":
-		// CW (+1) → slower timebase; ladder is ascending.
-		c.tdivIdx = clampInt(c.tdivIdx+dir, 0, len(c.tdivs)-1)
+		// CW (+1) → faster timebase, toward "nS" on the knob's printed arc
+		// ("S ... nS"); the ladder is ascending. It turned the other way,
+		// against the marking.
+		c.tdivIdx = clampInt(c.tdivIdx-dir, 0, len(c.tdivs)-1)
 		c.eng.SetTdiv(c.tdivs[c.tdivIdx])
 	case "ch1vdiv", "ch2vdiv":
 		ch := 0
@@ -325,7 +327,10 @@ func (c *Controller) dispatch(name string, dir, steps int) {
 		if c.fe == nil {
 			return // claim-and-ignore without an analog front end
 		}
-		c.vIdx[ch] = clampInt(c.vIdx[ch]+dir, 0, len(analog.Detents)-1)
+		// CW (+1) → smaller V/div, toward "mV" on the knob's printed arc
+		// ("V ... mV"); the detents are ascending. It turned the other way,
+		// against the marking.
+		c.vIdx[ch] = clampInt(c.vIdx[ch]-dir, 0, len(analog.Detents)-1)
 		if err := c.fe.SetVdiv(ch, c.vIdx[ch]); err != nil {
 			c.logf("panel: SetVdiv: %v", err)
 		}

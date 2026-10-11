@@ -366,8 +366,9 @@ These fixed-function buttons are on the same matrix; no dedicated status LED. De
 Stepping conventions and constants:
 
 - **TIME/DIV / V/DIV are stepped knobs**: one detent = one ladder index regardless of magnitude. CW
-  (dir=+1) → slower tdiv / larger V/div. The tdiv ladder + boot band are injected via the
-  constructor (§2); the V/div ladder is in §9.
+  (dir=+1) → faster tdiv / smaller V/div, as the printed arcs show ("S ... nS", "V ... mV"; the
+  opposite was a bug). The tdiv ladder + boot band are injected via the constructor (§2); the V/div
+  ladder is in §9.
 - **POSITION / TRIG LEVEL are continuous**: apply `dir * step * magnitude`, clamp to the DAC's linear
   region.
 

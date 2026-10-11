@@ -71,12 +71,13 @@ func TestKnobPriorityOneRowPerEvent(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-135
 func TestTdivKnob(t *testing.T) {
 	c, eng, _ := newC(t)
-	// TIME/DIV CW (bit14 low): +1 detent (500µs → 1ms), stepped (0x69 ignored).
+	// TIME/DIV CW (bit14 low): one detent toward "nS" on the printed arc
+	// (500µs → 200µs), stepped (0x69 ignored).
 	m := idle()
 	m[2] &^= 1 << 14
 	m[4] = 37 // magnitude must be ignored on stepped knobs
 	c.decode(m, true)
-	if len(eng.calls) != 1 || eng.calls[0].what != "tdiv" || eng.calls[0].a != int(1e-3*1e9) {
+	if len(eng.calls) != 1 || eng.calls[0].what != "tdiv" || eng.calls[0].a != int(200e-6*1e9) {
 		t.Fatalf("tdiv CW: %v", eng.calls)
 	}
 	// Sustained rotation: bit stays low next event (no phase change) —
@@ -91,12 +92,13 @@ func TestTdivKnob(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-135
 func TestVdivKnob(t *testing.T) {
 	c, _, fe := newC(t)
-	// CH1 V/DIV CCW (0x65 bit15 low): 1V (idx 8) → 500mV (idx 7).
+	// CH1 V/DIV CCW (0x65 bit15 low): away from "mV" on the printed arc,
+	// 1V (idx 8) → 2V (idx 9).
 	m := idle()
 	m[1] &^= 1 << 15
 	m[4] = 1
 	c.decode(m, true)
-	if len(fe.calls) != 1 || fe.calls[0] != (call{"vdiv", 0, 7}) {
+	if len(fe.calls) != 1 || fe.calls[0] != (call{"vdiv", 0, 9}) {
 		t.Fatalf("ch1 vdiv CCW: %v", fe.calls)
 	}
 }
@@ -144,12 +146,13 @@ func TestKnobResyncFromEngine(t *testing.T) {
 	if eng.calls[len(eng.calls)-1] != (call{"triglevel", 29996, 0}) {
 		t.Fatalf("resync trig: %v", eng.calls)
 	}
-	// V/div CW from the resynced idx 5 → 6, not from the stale boot idx 8.
+	// V/div CW (toward mV) from the resynced idx 5 → 4, not from the stale
+	// boot idx 8.
 	m = idle()
 	m[1] &^= 1 << 14
 	m[4] = 1
 	c.decode(m, true)
-	if fe.calls[len(fe.calls)-1] != (call{"vdiv", 0, 6}) {
+	if fe.calls[len(fe.calls)-1] != (call{"vdiv", 0, 4}) {
 		t.Fatalf("resync vdiv: %v", fe.calls)
 	}
 }
