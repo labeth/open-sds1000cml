@@ -501,7 +501,43 @@ issue a GPMC access (spec 01 single-owner discipline).
 
 ---
 
-## 8. Open
+## 8. The phone remote (HTTP)
+
+Beside SCPI, the web server (port 8080) serves a **phone remote** at `/remote` (`/r` redirects there). It is its
+own small page (`remote.html`, `remote.css`, `remote_*.js`; none of the main page's scripts) that changes every
+setting through the sheet model (spec 08 §7.4) and never opens, moves or closes anything on the LCD; the LCD
+confirms each change with a one-line `REMOTE` note. It shows control state only: setting values, no waveform, no
+readouts. It loads nothing from outside the scope (system fonts, no CDN), under the main page's strict CSP.
+
+| Request | Answer |
+|---|---|
+| `GET /api/panel/wait?seq=N&timeout_ms=T` | the panel snapshot as soon as its `Seq` differs from `N` (at most 10 s): the remote's one standing request. It rests while the phone's page is hidden. |
+| `GET /api/sheets` | every tab and row: id, label, kind, value and text, availability and `Why` (what puts a row in use while it is not), the `Section` header drawn above it, options, unit, range, step or ladder, `Presets` (a number row's labelled values), actions |
+| `POST /api/sheets/set {row, value\|text}` | set a row; `{ok, value, text, error}`, the device's own error text |
+| `POST /api/sheets/action {row, action}` | run an action, or a number row's preset by its label (`{"row":"trig.holdoff","action":"1 ms"}`) |
+| `POST /api/panel {button}` / `{knob, dir, steps}` | a key or a knob by its physical name (spec 08 §6) |
+| `POST /api/panel {"workspace":"bus"}` | switch the workspace (its id, name or tag, any case) **whatever the LCD shows**: a sheet open there, its edit or the match editor stay exactly as they are, where F1..F5 would pick the sheet's choices. Leaving BUS closes the BUS pane's own byte picker. Answers `{ok, error, workspace, name, view, next, seq}`. |
+| `POST /api/panel {"again":true}` | the active workspace's again (its next view; COMPARE stacks a master or cancels it), the LCD's sheet left as it is; the same answer, or the reason a master is refused |
+| `GET /remote.webmanifest`, `/remote-icon-{180,192,512}.png` | the web app manifest (`display: standalone`, from `/remote`) and the home-screen icons |
+| `GET /remote-awake.mp4`, `/remote-awake.webm` | the keep-awake videos (a few KB, byte ranges served) |
+
+The panel snapshot's `AgainNext` names what the active workspace's again shows next even while a menu covers the
+pane (whose own `Again` line is then empty).
+
+- **History** lives on the phone (browser storage, at most 100 entries): on every `Seq` change the remote reads
+  `/api/sheets` again and diffs the rows and the workspace. A change is the phone's when one of its calls can
+  have made it (the calls run in order, each until its effects have been read back), another remote's while the
+  LCD's REMOTE line names the row, else the scope's. Undo sets the old values back through `/api/sheets/set`.
+- **Keeping the phone awake:** the Screen Wake Lock API needs a secure context, which the scope's plain HTTP is
+  not. There the page plays a tiny silent video from a tap: it carries an audio track and is not muted and
+  seeks back instead of looping, because WebKit keeps the display on only for an unmuted video with audio that
+  is not looping, and Chromium only for an audible or visible one. The page says which mechanism holds.
+- **Fullscreen:** the Fullscreen API from a tap (Android). An iPhone has none for pages; the manifest and the
+  `apple-mobile-web-app-capable` meta make Add to Home Screen open the remote without browser bars.
+
+---
+
+## 9. Open
 
 - **VXI-11 async/interrupt channels.** The procedure numbers are pinned (§2.3: `device_abort` on
   `DEVICE_ASYNC`, `create_intr_chan`/`destroy_intr_chan`/`device_enable_srq` for `DEVICE_INTR`), but

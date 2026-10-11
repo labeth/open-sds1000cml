@@ -474,7 +474,9 @@ action through the same setter as the knobs and F-keys, validated and clamped al
 anything on the LCD; a one-line `REMOTE` note confirms it for 1.5 s (the SYS tab turns these off).
 `/api/status` carries the panel snapshot (workspace, view, sheet, F-key labels as drawn, tool line,
 notice, picker, lamp word, `Seq`) and `GET /api/panel/wait?seq=N&timeout_ms=T` long-polls it (at most
-10 s).
+10 s). `{"workspace":"bus"}` and `{"again":true}` on `/api/panel` are the workspace keys for the phone
+remote: they switch the workspace or run its again whatever the LCD shows, a sheet open there staying as
+it is (spec 11 §8). A number row's presets run through `/api/sheets/action` by their labels.
 
 ---
 
