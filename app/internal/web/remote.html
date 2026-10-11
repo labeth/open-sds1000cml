@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<!-- ENGMODEL-OWNER-UNIT: FU-WEB-REMOTE  TRLC-LINKS: REQ-SDS-220
+     The phone remote ("Tiles & Search"): its own small app on the sheet model
+     API, served at /remote (/r redirects here). Control state only. -->
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b0f14">
+<meta name="color-scheme" content="dark">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Scope remote">
+<meta name="format-detection" content="telephone=no">
+<title>Scope remote</title>
+<link rel="manifest" href="remote.webmanifest">
+<link rel="apple-touch-icon" href="remote-icon-180.png">
+<link rel="icon" type="image/png" sizes="192x192" href="remote-icon-192.png">
+<link rel="stylesheet" href="tokens.css"><!-- the palette shared with the main page and the LCD -->
+<link rel="stylesheet" href="remote.css">
+</head>
+<body>
+<div id="app" role="application" aria-label="Scope remote"></div>
+<script src="remote_core.js"></script>
+<script src="remote_ui.js"></script>
+<script src="remote_net.js"></script>
+<script src="remote_app.js"></script>
+</body>
+</html>

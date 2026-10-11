@@ -12,6 +12,7 @@ import (
 	"net/http/pprof"
 	"open-sds/app/internal/sramcapture"
 	"open-sds/app/internal/streamview"
+	"path"
 	"strconv"
 	"strings"
 	"sync"
@@ -199,6 +200,8 @@ func (s *Server) Handler() http.Handler {
 	s.registerDecodedCapture(mux)
 	s.registerFPGAStack(mux)
 	mux.HandleFunc("/", s.hRoot)
+	mux.HandleFunc("GET /remote", s.hRemote)
+	mux.HandleFunc("GET /r", func(w http.ResponseWriter, r *http.Request) { http.Redirect(w, r, "/remote", http.StatusFound) })
 	mux.HandleFunc("/api/status", s.hStatus)
 	mux.HandleFunc("/api/frame.bin", s.hFrameBin)
 	mux.HandleFunc("/api/set", s.hSet)
@@ -273,17 +276,20 @@ func (s *Server) superseded(r *http.Request) bool {
 // hPanel injects a front-panel button or knob event (spec 08 §6), or types
 // into the LCD's current context. Body: {"button":"F1"},
 // {"knob":"adjust","dir":1,"steps":1}, {"type":{"text":"55 AA"}} (the
-// highlighted sheet row, the byte picker or the match editor) or
+// highlighted sheet row, the byte picker or the match editor),
 // {"set":{"row":"trig.level","text":"1.25V"}} (a row by id, the LCD left
-// as it is).
-// TRLC-LINKS: REQ-SDS-162
+// as it is), {"workspace":"bus"} or {"again":true} (the workspace keys for
+// the phone remote, an open LCD sheet left as it is).
+// TRLC-LINKS: REQ-SDS-162, REQ-SDS-220
 func (s *Server) hPanel(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		Button string `json:"button"`
-		Knob   string `json:"knob"`
-		Dir    int    `json:"dir"`
-		Steps  int    `json:"steps"`
-		Type   *struct {
+		Button    string `json:"button"`
+		Knob      string `json:"knob"`
+		Dir       int    `json:"dir"`
+		Steps     int    `json:"steps"`
+		Workspace string `json:"workspace"`
+		Again     bool   `json:"again"`
+		Type      *struct {
 			Text string `json:"text"`
 		} `json:"type"`
 		Set *struct {
@@ -297,6 +303,10 @@ func (s *Server) hPanel(w http.ResponseWriter, r *http.Request) {
 	}
 	if s.panel == nil {
 		writeJSON(w, map[string]any{"ok": false, "err": "no panel"})
+		return
+	}
+	if req.Workspace != "" || req.Again {
+		s.hPanelWorkspace(w, req.Workspace, req.Again)
 		return
 	}
 	if req.Type != nil || req.Set != nil {
@@ -338,28 +348,45 @@ func (s *Server) hScreen(w http.ResponseWriter, r *http.Request) {
 	w.Write(s.screen())
 }
 
+// pageCSP is the strict same-origin CSP of the pages. Script and connect are
+// 'self' only (no inline script — every module is an external same-origin
+// classic script). style keeps 'unsafe-inline' for the display:none hooks.
+// img allows data: for the canvas PNG export. Media and the manifest fall
+// back to 'self'.
+const pageCSP = "default-src 'self'; script-src 'self'; connect-src 'self'; " +
+	"style-src 'self' 'unsafe-inline'; img-src 'self' data:; " +
+	"object-src 'none'; base-uri 'none'"
+
 // hRoot serves the page at "/" (with the strict CSP) and every embedded
-// .js/.css asset by bare filename. It is the ServeMux catch-all; the /api/*
-// routes are registered explicitly and never reach here.
+// asset by bare filename (.js/.css, the remote's manifest, icons and
+// videos). It is the ServeMux catch-all; the /api/* routes are registered
+// explicitly and never reach here.
 // TRLC-LINKS: REQ-SDS-161
 func (s *Server) hRoot(w http.ResponseWriter, r *http.Request) {
 	p := strings.TrimPrefix(r.URL.Path, "/")
 	if p == "" {
-		// Strict same-origin CSP. Script and connect are 'self' only (no inline
-		// script — every module is an external same-origin classic script).
-		// style keeps 'unsafe-inline' for the display:none hooks. img allows
-		// data: for the canvas PNG export.
-		w.Header().Set("Content-Security-Policy",
-			"default-src 'self'; script-src 'self'; connect-src 'self'; "+
-				"style-src 'self' 'unsafe-inline'; img-src 'self' data:; "+
-				"object-src 'none'; base-uri 'none'")
+		w.Header().Set("Content-Security-Policy", pageCSP)
 		serveAsset(w, "ui.html")
 		return
 	}
-	if staticName(p) && serveAsset(w, p) {
-		return
+	if staticName(p) {
+		if ext := path.Ext(p); ext == ".js" || ext == ".css" {
+			if serveAsset(w, p) {
+				return
+			}
+		} else if serveMedia(w, r, p) {
+			return
+		}
 	}
 	http.NotFound(w, r)
+}
+
+// hRemote serves the phone remote (/remote; /r redirects here): its own
+// small app on the sheet model API, with the same strict CSP as the page.
+// TRLC-LINKS: REQ-SDS-161, REQ-SDS-220
+func (s *Server) hRemote(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Security-Policy", pageCSP)
+	serveAsset(w, "remote.html")
 }
 
 // TRLC-LINKS: REQ-SDS-161, REQ-SDS-162, REQ-SDS-163, REQ-SDS-164

@@ -48,6 +48,8 @@ type RowModel struct {
 	Kind      string // enum, number, action, bytes
 	Available bool   // in use now (else it is shown dim)
 	Help      string
+	Section   string     `json:",omitempty"` // the section header the LCD draws above this row
+	Why       string     `json:",omitempty"` // what puts the row in use, while it is not
 	Value     any        `json:",omitempty"` // raw: option value, number in Unit, or the match text
 	Text      string     // as written on the sheet
 	Options   []OptModel `json:",omitempty"`
@@ -56,6 +58,7 @@ type RowModel struct {
 	Max       *float64   `json:",omitempty"`
 	Step      *float64   `json:",omitempty"` // one knob step (absent: a ladder)
 	Ladder    []float64  `json:",omitempty"`
+	Presets   []string   `json:",omitempty"` // a number row's labelled values, run by /api/sheets/action
 	Actions   []ActModel `json:",omitempty"`
 }
 
@@ -106,6 +109,7 @@ type Status struct {
 	FKeys       [5]KeyStatus
 	Tool        []ToolSeg
 	Again       string
+	AgainNext   string // what the workspace's key again shows next, whatever the LCD shows ("X-Y")
 	Notice      string
 	Remote      string
 	Picker      PickerStatus
@@ -177,7 +181,7 @@ func (c *Controller) status(s *sv) Status {
 	u := &s.ui
 	d, v := c.displayAndView(s)
 	st := Status{AutosetBusy: d.AutosetBusy, AutosetMsg: d.AutosetMsg, Workspace: wsview.Names[u.ws], WorkspaceID: wsview.IDs[u.ws],
-		View: workspaceView(s, u.ws), Notice: v.Notice, Remote: d.Remote, Display: d}
+		View: workspaceView(s, u.ws), AgainNext: c.againNext(s), Notice: v.Notice, Remote: d.Remote, Display: d}
 	for i := range st.Views {
 		st.Views[i] = workspaceView(s, wsview.WS(i))
 	}
@@ -294,7 +298,10 @@ func (c *Controller) displayAndView(s *sv) (Display, wsview.View) {
 // rowModel describes a row for the remote.
 // TRLC-LINKS: REQ-SDS-212
 func rowModel(s *sv, r *row) RowModel {
-	m := RowModel{ID: r.id, Label: r.label, Available: r.relevant(s), Help: r.help, Text: r.valueText(s)}
+	m := RowModel{ID: r.id, Label: r.label, Available: r.relevant(s), Help: r.help, Section: r.hdr, Text: r.valueText(s)}
+	if !m.Available {
+		m.Why = r.why
+	}
 	switch r.kind {
 	case wsview.Enum:
 		m.Kind, m.Value = "enum", r.get(s)
@@ -310,6 +317,11 @@ func rowModel(s *sv, r *row) RowModel {
 		}
 		if r.ladder != nil {
 			m.Ladder = r.ladder(s)
+		}
+		if r.presets != nil {
+			for _, p := range r.presets(s) {
+				m.Presets = append(m.Presets, p.t)
+			}
 		}
 	case wsview.Bytes:
 		m.Kind, m.Value = "bytes", strings.Join(matchTokens(s), " ")
@@ -496,6 +508,111 @@ func (c *Controller) SheetAction(id, action string) SetResult {
 	return res
 }
 
+// RemoteWorkspace switches to a workspace for the remote ("bus", "BUS" or
+// "SPEC"), as F1..F5 do with no menu open, whatever the LCD shows: a sheet,
+// its edit or the match editor open there stays exactly as it is, where an
+// F-key would pick a sheet choice instead. Only the BUS pane's own byte
+// picker closes when BUS is left. The workspace already shown stays as it
+// is (its key again is RemoteAgain). The LCD confirms with a REMOTE line.
+// TRLC-LINKS: REQ-SDS-211, REQ-SDS-220
+func (c *Controller) RemoteWorkspace(name string) SetResult {
+	ws := -1
+	n := strings.TrimSpace(name)
+	for i := 0; i < wsview.Count; i++ {
+		if strings.EqualFold(n, wsview.IDs[i]) || strings.EqualFold(n, wsview.Names[i]) || strings.EqualFold(n, wsview.Tags[i]) {
+			ws = i
+		}
+	}
+	if ws < 0 {
+		return SetResult{Row: "workspace", Error: fmt.Sprintf("no workspace %q: SCOPE, BUS, SPECTRUM, MEASURE or COMPARE", name)}
+	}
+	var res SetResult
+	if !c.onPanel(func() { res = c.remoteWorkspace(wsview.WS(ws)) }) {
+		return SetResult{Row: "workspace", Error: "the panel is busy"}
+	}
+	return res
+}
+
+// autosetRefusal: while Autoset sweeps, a remote's changes wait, as the
+// panel's keys do (its scale changes and acquisitions are not to be raced);
+// only Autoset itself runs, as a second press cancels it.
+const autosetRefusal = "Autoset is running: changes wait until it is done (Autoset again cancels it)"
+
+// remoteWorkspace is RemoteWorkspace on the panel goroutine.
+// TRLC-LINKS: REQ-SDS-211, REQ-SDS-220
+func (c *Controller) remoteWorkspace(ws wsview.WS) SetResult {
+	if c.AutosetBusy() {
+		return SetResult{Row: "workspace", Error: autosetRefusal}
+	}
+	defer c.afterInput()
+	c.mu.Lock()
+	cur := c.ui.ws
+	if ws != cur && c.ui.wpick {
+		c.closePickLocked() // the BUS pane's picker belongs to BUS
+	}
+	c.mu.Unlock()
+	if ws != cur {
+		c.switchWS(ws)
+		c.remoteLine("workspace", "REMOTE  workspace "+wsview.Names[ws])
+	}
+	return SetResult{OK: true, Row: "workspace", Value: wsview.IDs[ws], Text: wsview.Names[ws]}
+}
+
+// RemoteAgain is the active workspace's key again for the remote: its next
+// view (COMPARE: stack a master, or cancel the one stacking), whatever the
+// LCD shows; an open sheet stays as it is. A refused master says why.
+// TRLC-LINKS: REQ-SDS-211, REQ-SDS-220
+func (c *Controller) RemoteAgain() SetResult {
+	var res SetResult
+	if !c.onPanel(func() { res = c.remoteAgain() }) {
+		return SetResult{Row: "again", Error: "the panel is busy"}
+	}
+	return res
+}
+
+// remoteAgain is RemoteAgain on the panel goroutine.
+// TRLC-LINKS: REQ-SDS-211, REQ-SDS-218, REQ-SDS-220
+func (c *Controller) remoteAgain() SetResult {
+	if c.AutosetBusy() {
+		return SetResult{Row: "again", Error: autosetRefusal}
+	}
+	defer c.afterInput()
+	c.mu.Lock()
+	ws, stacking := c.ui.ws, c.stack != nil
+	c.mu.Unlock()
+	switch {
+	case ws == wsview.Compare && stacking:
+		c.stackCancel("", false)
+	case ws == wsview.Compare:
+		if err := c.stackStart(); err != nil {
+			return SetResult{Row: "again", Error: "No master: " + err.Error()}
+		}
+	default:
+		c.nextView()
+	}
+	view := workspaceView(c.snap(), ws)
+	c.remoteLine("again", "REMOTE  "+wsview.Names[ws]+" "+view)
+	return SetResult{OK: true, Row: "again", Value: view, Text: view}
+}
+
+// againNext is what the active workspace's key again shows next. The pane's
+// own again line is not drawn while a menu covers it, so the remote reads
+// this one.
+// TRLC-LINKS: REQ-SDS-211, REQ-SDS-220
+func (c *Controller) againNext(s *sv) string {
+	switch s.ui.ws {
+	case wsview.Bus:
+		return map[bool]string{true: "Packets", false: "Eye diagram"}[s.ui.busEye]
+	case wsview.Spectrum:
+		return viewName(nextSpecView(s.viewMode))
+	case wsview.Measure:
+		return map[bool]string{true: "Statistics", false: "All values"}[s.ui.measAll]
+	case wsview.Compare:
+		return c.cmpAgainText(s)
+	}
+	return viewName(map[bool]int{true: viewXY, false: viewYT}[s.viewMode == viewYT])
+}
+
 // TypeText applies text to the LCD's current context: the highlighted sheet
 // row, the byte picker or the match editor.
 // TRLC-LINKS: REQ-SDS-212, REQ-SDS-214
@@ -514,6 +631,9 @@ func (c *Controller) setRow(id string, value any, text string, remote bool) SetR
 	r := rowByID[id]
 	if r == nil {
 		return SetResult{Row: id, Error: fmt.Sprintf("no row %q", id)}
+	}
+	if remote && c.AutosetBusy() {
+		return SetResult{Row: id, Error: autosetRefusal}
 	}
 	s := c.snap()
 	err := c.applyRow(r, s, value, text)
@@ -607,6 +727,12 @@ func (c *Controller) runAction(id, action string, remote bool) SetResult {
 	if r == nil {
 		return SetResult{Row: id, Error: fmt.Sprintf("no row %q", id)}
 	}
+	if remote && id != "sys.autoset" && c.AutosetBusy() {
+		return SetResult{Row: id, Error: autosetRefusal}
+	}
+	if r.kind == wsview.Number && r.presets != nil {
+		return c.runPreset(r, action, remote)
+	}
 	if r.kind != wsview.Action && r.kind != wsview.Slot {
 		return SetResult{Row: id, Error: fmt.Sprintf("%s is a setting, not an action: use /api/sheets/set", r.label)}
 	}
@@ -647,20 +773,66 @@ func (c *Controller) runAction(id, action string, remote bool) SetResult {
 	return SetResult{OK: true, Row: id, Text: m.Text}
 }
 
+// runPreset applies one of a number row's labelled values (panel
+// goroutine), as its F-key on the sheet does: by label, the first when
+// label is empty.
+// TRLC-LINKS: REQ-SDS-212, REQ-SDS-220
+func (c *Controller) runPreset(r *row, label string, remote bool) SetResult {
+	s := c.snap()
+	ps := r.presets(s)
+	var p *preset
+	for i := range ps {
+		if label == "" || strings.EqualFold(ps[i].t, strings.TrimSpace(label)) {
+			p = &ps[i]
+			break
+		}
+	}
+	if p == nil {
+		var names []string
+		for _, x := range ps {
+			names = append(names, x.t)
+		}
+		return SetResult{Row: r.id, Error: fmt.Sprintf("%s has no preset %q (%s)", r.label, label, strings.Join(names, ", "))}
+	}
+	defer c.afterInput()
+	var err error
+	if p.run != nil {
+		err = p.run(c)
+	} else {
+		err = r.setNumber(c, s, p.v)
+	}
+	if err != nil {
+		return SetResult{Row: r.id, Error: err.Error()}
+	}
+	m := rowModel(c.snap(), r)
+	if remote {
+		c.remoteNote(r, m.Text)
+	}
+	return SetResult{OK: true, Row: r.id, Value: m.Value, Text: m.Text}
+}
+
 // remoteNote shows "REMOTE  TRIG level 1.25 V" on the LCD for a moment; a
 // repeat on the same row within it only updates the text.
 // TRLC-LINKS: REQ-SDS-212
 func (c *Controller) remoteNote(r *row, text string) {
+	c.remoteLine(r.id, "REMOTE  "+sheetTabs[rowTab[r.id]].name+" "+strings.ToLower(r.label)+" "+text)
+}
+
+// remoteLine shows a REMOTE line on the LCD for a moment; key names what
+// it is about, so a repeat replaces it in place.
+// TRLC-LINKS: REQ-SDS-212, REQ-SDS-220
+func (c *Controller) remoteLine(key, line string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	c.ui.remote = "REMOTE  " + sheetTabs[rowTab[r.id]].name + " " + strings.ToLower(r.label) + " " + text
-	c.ui.remoteRow = r.id
-	c.ui.remoteUnt = c.now().Add(remoteNoteFor)
+	c.ui.remote, c.ui.remoteRow, c.ui.remoteUnt = line, key, c.now().Add(remoteNoteFor)
 }
 
 // typeText applies text to the LCD's current context (panel goroutine).
 // TRLC-LINKS: REQ-SDS-212, REQ-SDS-214
 func (c *Controller) typeText(text string) SetResult {
+	if c.AutosetBusy() {
+		return SetResult{Error: autosetRefusal}
+	}
 	s := c.snap()
 	u := &s.ui
 	defer c.afterInput()

@@ -161,6 +161,7 @@ automatically.
 
 ## Connect and control
 
+* **Phone remote** at `/r` on port 8080: settings, workspaces and keys from a phone (below).
 * **Web UI** on port 8080 in any browser, with WebGL rendering and every feature above. It is laid
   out as the scope's five task workspaces: SCOPE, BUS (decode with a packet table, trigger on bytes,
   eye diagram), SPECTRUM (FFT, harmonics and THD, spectrogram, Bode), MEASURE (statistics, cursors,
@@ -178,6 +179,23 @@ automatically.
 * **Safe updates:** an on-device agent installs new versions over the network into A/B slots and
   rolls back automatically if a version fails its health check. Nothing is written to the scope's
   flash.
+
+## Phone remote
+
+Open `http://<scope>:8080/r` on a phone (the LCD shows the scope's address; the web UI's top bar links it). The
+remote changes the scope's settings without opening anything on the scope's screen, which confirms each change
+with a short REMOTE line. It shows settings only, no waveform. Several phones can use it at once.
+
+* **Home:** big tiles (time/div, trigger level, V/div and the workspace's own settings), each with two buttons
+  that name the value they go to; the workspace chips (the active one again: its next view); Run/Stop, Single
+  and Auto.
+* **Menus:** every settings tab and row, with search that knows everyday words ("averaging", "screenshot");
+  a long press pins a row to Home.
+* **History:** every change, from the phone or the scope, with undo.
+* **Keys:** the knob pushes and keys, the menu keys (they open the menu on the phone) and Default Setup (hold 1 s).
+* Typed numbers with units ("1.25V", "500us"), match bytes in hex or text.
+* The phone stays awake (a wake lock, or a silent video on the scope's plain HTTP) and goes fullscreen; on an
+  iPhone, Share, Add to Home Screen opens it without browser bars.
 
 ## What it adds over the factory firmware
 
