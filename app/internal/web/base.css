@@ -21,6 +21,9 @@
   button:disabled, select:disabled, input:disabled { opacity: .45; cursor: default; }
   button.on { background: var(--on-bg); border-color: var(--on-edge); color: var(--on-fg); }
   button.sm, select.sm { padding: 3px 7px; font-size: 12px; }
+  a.tlink { background: var(--ctrl); color: var(--text); border: 1px solid var(--edge); border-radius: 5px; padding: 3px 7px;
+    font-size: 12px; text-decoration: none; white-space: nowrap; }
+  a.tlink:hover { border-color: var(--edge-hover); }
   button.xs { padding: 2px 6px; font-size: 11px; border-radius: 4px; }
   button.sq { min-width: 28px; padding-left: 0; padding-right: 0; }
   button.ok { color: var(--run); }

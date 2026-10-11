@@ -1,0 +1,15 @@
+{
+  "name": "SDS phone remote",
+  "short_name": "Scope remote",
+  "description": "Change the scope's settings from the phone; nothing opens on the scope.",
+  "start_url": "/remote",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0b0f14",
+  "theme_color": "#0b0f14",
+  "icons": [
+    { "src": "remote-icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "remote-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}
