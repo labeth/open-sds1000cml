@@ -2,6 +2,8 @@
 package panel
 
 import (
+	"strings"
+
 	"open-sds/app/internal/panel/framecalc"
 	"open-sds/app/internal/panel/wsview"
 	"open-sds/app/internal/settings"
@@ -12,6 +14,7 @@ import (
 // workspace UI, so a restart or a recalled setup returns where it was.
 // TRLC-LINKS: REQ-SDS-136, REQ-SDS-211
 func (c *Controller) SettingsView() settings.ViewState {
+	ser := c.serialSettings() // engine state: read before the panel lock
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	ui := settings.UI{Set: true, Workspace: int(c.ui.ws), BusEye: c.ui.busEye, MeasAll: c.ui.measAll,
@@ -38,7 +41,52 @@ func (c *Controller) SettingsView() settings.ViewState {
 			Format:     c.decFormat,
 			StreamTrig: c.decTrig, StreamValue: c.decValue,
 		},
-		UI: ui,
+		UI:     ui,
+		Serial: ser,
+	}
+}
+
+// serialSettings is the serial trigger as the settings file keeps it.
+// TRLC-LINKS: REQ-SDS-013, REQ-SDS-089
+func (c *Controller) serialSettings() settings.Serial {
+	se := c.serialTrig()
+	if se == nil {
+		return settings.Serial{}
+	}
+	p := se.SerialConfig()
+	return settings.Serial{Set: true, Armed: c.eng.Snapshot().SerialMode != 0,
+		Match: strings.Join(tokensOf(p), " "), Addr: p.Addr, RW: p.RW}
+}
+
+// restoreSerial puts back a saved serial trigger: the match, the I2C address
+// and direction, then arms it through the TRIG tab's own path, which needs
+// the restored bus. A match that no longer parses is any byte; a trigger
+// that cannot arm stays off.
+// TRLC-LINKS: REQ-SDS-013, REQ-SDS-089
+func (c *Controller) restoreSerial(s settings.Serial) {
+	se := c.serialTrig()
+	if se == nil || !s.Set {
+		return
+	}
+	toks, err := parseMatchText(s.Match)
+	if err != nil {
+		c.logf("settings: serial match %q: %v - any byte", s.Match, err)
+		toks = nil
+	}
+	b, pat, err := compileTokens(toks)
+	if err != nil {
+		b, pat = nil, nil
+	}
+	p := se.SerialConfig()
+	p.Bytes, p.Pattern = b, pat
+	p.Addr, p.RW = clampInt(s.Addr, -1, 127), clampInt(s.RW, 0, 2)
+	se.SetSerialParams(c.serialBus(p))
+	if st := c.eng.Snapshot(); s.Armed && st.SerialMode == 0 {
+		if err := c.armSerial(); err != nil {
+			c.logf("settings: serial trigger not re-armed: %v", err)
+		}
+	} else if !s.Armed && st.SerialMode != 0 {
+		c.setTrigTypeIndex(st, 0)
 	}
 }
 
@@ -108,6 +156,7 @@ func (c *Controller) ApplySettingsView(v settings.ViewState) {
 	}
 	c.mu.Unlock()
 	c.syncDecodeView(d.Proto != framecalc.ProtoOff)
+	c.restoreSerial(v.Serial)
 }
 
 // syncDecodeView tells the engine whether the display decodes the frame, so

@@ -80,6 +80,9 @@ func TestApplyRestoreCollectFidelity(t *testing.T) {
 		// MEASURE on all values with two readouts, the master depth.
 		UI: settings.UI{Set: true, Workspace: 2, Views: [5]int{1, 0, 4, 0, 0}, BusEye: true, MeasAll: true,
 			Meas: [12]int{1*32 + 0 + 1, 0*32 + 1 + 1}, FFTSource: 1, MasterDepth: 128, RemoteNotices: true},
+		// The serial trigger's match, kept while disarmed (a trigger type
+		// other than Serial is set above); not I2C, so any address.
+		Serial: settings.Serial{Set: true, Match: "55 AA", Addr: -1, RW: 2},
 	}
 	settings.Apply(want, e, fe, pc, t.Logf)
 	got := settings.Collect(e, fe, pc)

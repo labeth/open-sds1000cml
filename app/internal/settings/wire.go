@@ -50,6 +50,7 @@ type ViewState struct {
 	Decode   Decode
 	Display  Display
 	UI       UI
+	Serial   Serial
 }
 
 // Panel is the front-panel controller surface (implemented by
@@ -113,6 +114,7 @@ func Collect(eng Engine, fe Analog, pc Panel) Settings {
 		s.Decode = v.Decode
 		s.Display = v.Display
 		s.UI = v.UI
+		s.Serial = v.Serial
 	}
 	return s
 }
@@ -214,7 +216,7 @@ func Apply(s Settings, eng Engine, fe Analog, pc Panel, logf func(string, ...any
 		}
 	}
 	if pc != nil {
-		pc.ApplySettingsView(ViewState{ViewMode: s.ViewMode, Decode: s.Decode, Display: s.Display, UI: s.UI})
+		pc.ApplySettingsView(ViewState{ViewMode: s.ViewMode, Decode: s.Decode, Display: s.Display, UI: s.UI, Serial: s.Serial})
 	}
 }
 

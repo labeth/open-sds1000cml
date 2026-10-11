@@ -19,7 +19,8 @@ func TestSettingsViewRoundTrip(t *testing.T) {
 	}
 	c.ApplySettingsView(want)
 	got := c.SettingsView()
-	got.UI = settings.UI{} // a file without the workspace UI keeps the UI as it is
+	got.UI = settings.UI{}         // a file without the workspace UI keeps the UI as it is
+	got.Serial = settings.Serial{} // ... and one without the serial block keeps the trigger
 	if got != want {
 		t.Fatalf("round trip mismatch:\n got %+v\nwant %+v", got, want)
 	}
@@ -143,5 +144,53 @@ func TestSettingsViewStreamTriggerRoundTrip(t *testing.T) {
 	defer b.mu.Unlock()
 	if b.decTrig != 1 || b.decValue != 0x55 {
 		t.Fatalf("stream trigger lost: trig %d value %#x", b.decTrig, b.decValue)
+	}
+}
+
+// The serial trigger's match, I2C address/direction and armed state survive a
+// restart or a recalled setup; an older file without the block leaves it
+// alone, and a match that no longer parses comes back as any byte.
+// TRLC-LINKS: REQ-SDS-013, REQ-SDS-089
+func TestSettingsViewSerialRoundTrip(t *testing.T) {
+	a, aeng, _ := newC(t)
+	a.ApplySettingsView(settings.ViewState{Decode: settings.Decode{Proto: 2, Baud: 115200, ChA: 0, ChB: 1}})
+	if err := a.setMatchTokens([]string{"55", "AA"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := a.armSerial(); err != nil {
+		t.Fatal(err)
+	}
+	saved := a.SettingsView()
+	if want := (settings.Serial{Set: true, Armed: true, Match: "55 AA", Addr: -1, RW: 2}); saved.Serial != want {
+		t.Fatalf("saved %+v, want %+v", saved.Serial, want)
+	}
+	if aeng.Snapshot().SerialMode == 0 {
+		t.Fatal("source trigger not armed")
+	}
+
+	b, beng, _ := newC(t)
+	b.ApplySettingsView(saved)
+	if beng.Snapshot().SerialMode == 0 {
+		t.Fatal("restored trigger not armed")
+	}
+	if p := beng.SerialConfig(); len(p.Bytes) != 2 || p.Bytes[0] != 0x55 || p.Bytes[1] != 0xAA || p.Proto != 1 {
+		t.Fatalf("restored params %+v", p)
+	}
+
+	old := saved
+	old.Serial = settings.Serial{} // a file from before the block
+	b.ApplySettingsView(old)
+	if beng.Snapshot().SerialMode == 0 {
+		t.Fatal("a file without the serial block disarmed the trigger")
+	}
+
+	off := saved
+	off.Serial.Armed, off.Serial.Match = false, "not hex"
+	b.ApplySettingsView(off)
+	if beng.Snapshot().SerialMode != 0 {
+		t.Fatal("saved disarmed, restored armed")
+	}
+	if p := beng.SerialConfig(); len(p.Bytes) != 0 || len(p.Pattern) != 0 {
+		t.Fatalf("a bad saved match should be any byte, got %+v", p)
 	}
 }

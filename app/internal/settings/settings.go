@@ -99,6 +99,20 @@ type Settings struct {
 	ViewMode int        `json:"view_mode"` // 0=Y-T 1=X-Y 2=FFT 3=Bode 4=Spgm
 	Display  Display    `json:"display"`
 	UI       UI         `json:"ui"`
+	Serial   Serial     `json:"serial"`
+}
+
+// Serial is the serial trigger: its match as the panel writes it ("55 AA",
+// "A? ??"; empty = any byte), the I2C address and direction it waits for, and
+// whether it is armed. Set marks a saved block: an older file has none and
+// boots with the trigger disarmed.
+// TRLC-LINKS: REQ-SDS-013, REQ-SDS-089
+type Serial struct {
+	Set   bool   `json:"set"`
+	Armed bool   `json:"armed"`
+	Match string `json:"match,omitempty"`
+	Addr  int    `json:"addr"` // -1 = any address
+	RW    int    `json:"rw"`   // 0 write, 1 read, 2 either
 }
 
 // UI is where the panel's task workspaces were (ADR-TASK-WORKSPACES): the
