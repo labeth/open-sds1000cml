@@ -517,12 +517,16 @@ readouts. It loads nothing from outside the scope (system fonts, no CDN), under 
 | `POST /api/sheets/action {row, action}` | run an action, or a number row's preset by its label (`{"row":"trig.holdoff","action":"1 ms"}`) |
 | `POST /api/panel {button}` / `{knob, dir, steps}` | a key or a knob by its physical name (spec 08 §6) |
 | `POST /api/panel {"workspace":"bus"}` | switch the workspace (its id, name or tag, any case) **whatever the LCD shows**: a sheet open there, its edit or the match editor stay exactly as they are, where F1..F5 would pick the sheet's choices. Leaving BUS closes the BUS pane's own byte picker. Answers `{ok, error, workspace, name, view, next, notice, seq}` (`notice` only when the switch itself raised one; later notices come with the snapshot). |
-| `POST /api/panel {"again":true}` | the active workspace's again (its next view; COMPARE stacks a master or cancels it), the LCD's sheet left as it is; the same answer, or the reason a master is refused. While Autoset sweeps, both wait as the panel's keys do: the answer is the refusal. |
+| `POST /api/panel {"again":true}` | the active workspace's again (its next view; COMPARE stacks a master or cancels it), the LCD's sheet left as it is; the same answer, or the reason a master is refused |
 | `GET /remote.webmanifest`, `/remote-icon-{180,192,512}.png` | the web app manifest (`display: standalone`, from `/remote`) and the home-screen icons |
 | `GET /remote-awake.mp4`, `/remote-awake.webm` | the keep-awake videos (a few KB, byte ranges served) |
 
 The panel snapshot's `AgainNext` names what the active workspace's again shows next even while a menu covers the
 pane (whose own `Again` line is then empty).
+
+While Autoset sweeps, the scope takes no change from a remote, as its keys take none: sets, actions, presets,
+typed text and the workspace keys answer `Autoset is running: ...` and change nothing. Only Autoset itself runs,
+where a second press cancels the sweep (the remote's Auto key says so).
 
 - **History** lives on the phone (browser storage, at most 100 entries): on every `Seq` change the remote reads
   `/api/sheets` again and diffs the rows and the workspace. A change is the phone's when one of its calls can

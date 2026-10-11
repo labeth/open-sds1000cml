@@ -144,26 +144,47 @@ func TestRemoteWorkspaceClosesTheBusPicker(t *testing.T) {
 	}
 }
 
-// While Autoset sweeps, the workspace keys wait (as the panel's keys do):
-// COMPARE's again would start averaging under the sweep.
+// While Autoset sweeps, a remote's changes wait (as the panel's keys do): a
+// set, a preset, an action, typed text and the workspace keys answer the
+// refusal and change nothing (COMPARE's again would start averaging under the
+// sweep); Autoset itself still runs, as its second press cancels.
 // TRLC-LINKS: REQ-SDS-137, REQ-SDS-220
-func TestRemoteWorkspaceWaitsForAutoset(t *testing.T) {
+func TestRemoteWaitsForAutoset(t *testing.T) {
 	c, eng, _ := newC(t)
 	c.RemoteWorkspace("compare")
-	c.mu.Lock()
-	c.autosetBusy = true
-	c.mu.Unlock()
-	if res := c.RemoteAgain(); res.OK || !strings.Contains(res.Error, "Autoset is running") || eng.Snapshot().AcqMode != 0 {
-		t.Fatalf("again during autoset: %+v (acq %d)", res, eng.Snapshot().AcqMode)
+	busy := func(b bool) { c.mu.Lock(); c.autosetBusy = b; c.mu.Unlock() }
+	refused := func(what string, res SetResult) {
+		t.Helper()
+		if res.OK || !strings.Contains(res.Error, "Autoset is running") {
+			t.Fatalf("%s during autoset: %+v", what, res)
+		}
 	}
-	if res := c.RemoteWorkspace("bus"); res.OK || c.PanelStatus().Workspace != "COMPARE" {
-		t.Fatalf("a switch during autoset: %+v in %s", res, c.PanelStatus().Workspace)
+	busy(true)
+	refused("again", c.RemoteAgain())
+	if eng.Snapshot().AcqMode != 0 {
+		t.Fatalf("again started averaging under the sweep (acq %d)", eng.Snapshot().AcqMode)
 	}
-	c.mu.Lock()
-	c.autosetBusy = false
-	c.mu.Unlock()
+	refused("a switch", c.RemoteWorkspace("bus"))
+	if ws := c.PanelStatus().Workspace; ws != "COMPARE" {
+		t.Fatalf("switched to %s during autoset", ws)
+	}
+	tdiv := rowText(c, "time.tdiv")
+	refused("a set", c.SheetSet("time.tdiv", nil, "1ms"))
+	refused("a preset", c.SheetAction("trig.holdoff", "1 ms"))
+	refused("an action", c.SheetAction("file.setup1", "save"))
+	refused("typed text", c.TypeText("2ms"))
+	if rowText(c, "time.tdiv") != tdiv || eng.Snapshot().HoldoffS != 0 || rowText(c, "file.setup1") != "empty" {
+		t.Fatalf("a refused change landed: tdiv %s, holdoff %g, setup 1 %q", rowText(c, "time.tdiv"), eng.Snapshot().HoldoffS, rowText(c, "file.setup1"))
+	}
+	if res := c.SheetAction("sys.autoset", ""); strings.Contains(res.Error, "Autoset is running") {
+		t.Fatalf("Autoset (its cancel) was refused: %+v", res)
+	}
+	busy(false)
 	if res := c.RemoteWorkspace("bus"); !res.OK {
-		t.Fatalf("after autoset: %+v", res)
+		t.Fatalf("a switch after autoset: %+v", res)
+	}
+	if res := c.SheetSet("time.tdiv", nil, "1ms"); !res.OK {
+		t.Fatalf("a set after autoset: %+v", res)
 	}
 }
 

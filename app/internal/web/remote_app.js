@@ -250,7 +250,8 @@
   runB.id = "runstop";
   const singleB = button({ label: "Single", sub: "one shot", cls: "dk", aria: "Single", onTap: () => { singleSeen = false; pressKey("single"); } });
   singleB.id = "single";
-  const autoB = button({ label: "Auto", sub: "autoset", cls: "dk primary", aria: "Auto (autoset)", onTap: () => actRow("sys.autoset", "autoset", "Autoset") });
+  // while Autoset sweeps the scope takes no other change; a second press cancels it, as on the panel
+  const autoB = button({ label: "Auto", sub: "autoset", cls: "dk primary", aria: "Auto (autoset)", onTap: () => actRow("sys.autoset", "autoset", panel().AutosetBusy ? "Autoset cancelled" : "Autoset") });
   autoB.id = "auto";
   dock.append(runB, singleB, autoB);
   let singleSeen = false;
@@ -264,7 +265,7 @@
     if (armed) singleSeen = true;
     singleB.classList.toggle("warn", armed);
     singleB.setSub(armed ? "armed" : singleSeen && stop ? "done" : "one shot");
-    autoB.setSub(panel().AutosetBusy ? "busy…" : "autoset");
+    autoB.setSub(panel().AutosetBusy ? "tap to cancel" : "autoset");
   }
 
   // ---- the tab bar ----------------------------------------------------------------------------

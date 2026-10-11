@@ -533,9 +533,10 @@ func (c *Controller) RemoteWorkspace(name string) SetResult {
 	return res
 }
 
-// autosetRefusal: while Autoset sweeps, the workspace keys wait, as the
-// panel's keys do (its acquisitions are not to be raced).
-const autosetRefusal = "Autoset is running: the workspace keys wait until it is done"
+// autosetRefusal: while Autoset sweeps, a remote's changes wait, as the
+// panel's keys do (its scale changes and acquisitions are not to be raced);
+// only Autoset itself runs, as a second press cancels it.
+const autosetRefusal = "Autoset is running: changes wait until it is done (Autoset again cancels it)"
 
 // remoteWorkspace is RemoteWorkspace on the panel goroutine.
 // TRLC-LINKS: REQ-SDS-211, REQ-SDS-220
@@ -631,6 +632,9 @@ func (c *Controller) setRow(id string, value any, text string, remote bool) SetR
 	if r == nil {
 		return SetResult{Row: id, Error: fmt.Sprintf("no row %q", id)}
 	}
+	if remote && c.AutosetBusy() {
+		return SetResult{Row: id, Error: autosetRefusal}
+	}
 	s := c.snap()
 	err := c.applyRow(r, s, value, text)
 	defer c.afterInput()
@@ -722,6 +726,9 @@ func (c *Controller) runAction(id, action string, remote bool) SetResult {
 	r := rowByID[id]
 	if r == nil {
 		return SetResult{Row: id, Error: fmt.Sprintf("no row %q", id)}
+	}
+	if remote && id != "sys.autoset" && c.AutosetBusy() {
+		return SetResult{Row: id, Error: autosetRefusal}
 	}
 	if r.kind == wsview.Number && r.presets != nil {
 		return c.runPreset(r, action, remote)
@@ -823,6 +830,9 @@ func (c *Controller) remoteLine(key, line string) {
 // typeText applies text to the LCD's current context (panel goroutine).
 // TRLC-LINKS: REQ-SDS-212, REQ-SDS-214
 func (c *Controller) typeText(text string) SetResult {
+	if c.AutosetBusy() {
+		return SetResult{Error: autosetRefusal}
+	}
 	s := c.snap()
 	u := &s.ui
 	defer c.afterInput()
