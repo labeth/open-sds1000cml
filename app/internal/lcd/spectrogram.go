@@ -7,6 +7,7 @@ import (
 
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/panel/framecalc"
+	"open-sds/app/internal/panel/wsview"
 )
 
 // Spectrogram ("FFT over time"): a scrolling waterfall of Hann-windowed
@@ -184,38 +185,70 @@ func spectrumMags(src []uint8, stride int) ([]float64, float64) {
 // drawSpectrogram blits the waterfall image and draws the frequency axis + a dB
 // colour key. `sg` is the accumulated image passed via the HUD.
 // TRLC-LINKS: REQ-SDS-021, REQ-SDS-068
-func drawSpectrogram(sf Surface, sg *Spectrogram) {
+func drawSpectrogram(sf Surface, p plotArea, sg *Spectrogram, hideCaptions bool) {
+	drawSpectrogramMark(sf, p, sg, hideCaptions, nil)
+}
+
+// drawSpectrogramMark blits the waterfall into plot p (scaled from its
+// image: the full-screen plot is 1:1) with its axis and colour key, and
+// SPECTRUM's marker when one is given.
+// TRLC-LINKS: REQ-SDS-021, REQ-SDS-068, REQ-SDS-216
+func drawSpectrogramMark(sf Surface, p plotArea, sg *Spectrogram, hideCaptions bool, m *wsview.SpecPane) {
 	if sg == nil || sg.rows == 0 {
-		DrawText(sf, W/2-170, H/2, "SPECTROGRAM — FFT over time; needs a triggered signal", colDim, 1)
+		msg := "SPECTROGRAM - FFT over time; needs a triggered signal"
+		DrawText(sf, (p.w-TextWidth(msg, 1))/2, p.y0+p.h/2, msg, colDim, 1)
 		return
 	}
-	// blit the heatmap region
-	for y := sgY0; y < sgY1; y++ {
-		for x := sgX0; x < sgX1; x++ {
-			sf.SetPixel(x, y, sg.img.At(x, y))
+	x0, x1 := sgX0, p.w-(W-sgX1)
+	y0, y1 := p.y0+sgY0, p.y0+p.h-(H-sgY1)
+	cols, rows := x1-x0, y1-y0
+	if cols < 8 || rows < 8 {
+		return
+	}
+	// blit the heatmap region, nearest neighbour when the plot is smaller
+	for y := 0; y < rows; y++ {
+		sy := sgY0 + y*sgRows/rows
+		for x := 0; x < cols; x++ {
+			sf.SetPixel(x0+x, y0+y, sg.img.At(sgX0+x*sgCols/cols, sy))
 		}
 	}
 	// frequency axis (0 .. effNyq) with a few ticks
 	if sg.effNyq > 0 {
 		for i := 0; i <= 4; i++ {
-			x := sgX0 + i*sgCols/4
+			x := x0 + i*cols/4
 			f := sg.effNyq * float64(i) / 4
 			if i == 4 { // right-aligned: centred, it ran off the screen edge
-				DrawTextRight(sf, x, sgY1+6, fmtFreq(f), colDim, 1)
+				DrawTextRight(sf, x, y1+6, fmtFreq(f), colDim, 1)
 			} else {
-				DrawText(sf, x-12, sgY1+6, fmtFreq(f), colDim, 1)
+				DrawText(sf, x-12, y1+6, fmtFreq(f), colDim, 1)
 			}
-			sf.SetPixel(x, sgY1, colAxis)
+			sf.SetPixel(x, y1, colAxis)
 		}
 	}
 	// time arrow (newest at top)
-	DrawText(sf, 6, sgY0, "new", colDim, 1)
-	DrawText(sf, 6, sgY1-10, "old", colDim, 1)
-	// dB colour key along the top-right
+	DrawText(sf, 6, y0, "new", colDim, 1)
+	DrawText(sf, 6, y1-10, "old", colDim, 1)
+	if m != nil && m.HasMark && sg.effNyq > 0 {
+		xOf := func(hz float64) int { return x0 + int(math.Min(math.Max(hz/sg.effNyq, 0), 1)*float64(cols)) }
+		if m.HasRef {
+			vdash(sf, xOf(m.RefHz), y0, y1, colDim)
+		}
+		x := xOf(m.MarkHz)
+		vdash(sf, x, y0, y1, colTrig)
+		lw := TextWidth(m.MarkText, 1) + 4
+		lx := min(max(x+4, 2), p.w-lw-2)
+		fillRect(sf, lx, y0+2, lw, 10, colBG)
+		DrawText(sf, lx+2, y0+3, m.MarkText, colTrig, 1)
+	}
+	if hideCaptions {
+		return
+	}
+	// dB colour key along the top-right, clear of the status bar
+	ky := max(p.y0+6, 13)
 	for i := 0; i < 40; i++ {
 		c := heat(float64(i) / 39)
-		fillRect(sf, sgX1-44+i, 6, 1, 8, c)
+		fillRect(sf, x1-44+i, ky, 1, 8, c)
 	}
-	DrawText(sf, sgX1-64, 8, "dB", colDim, 1)
-	DrawText(sf, sgX0+2, 8, fmt.Sprintf("spgm %.0fdB floor", sg.floorDB), colDim, 1)
+	DrawText(sf, x1-64, ky, "dB", colDim, 1)
+	DrawText(sf, x0+2, ky, fmt.Sprintf("spgm %.0fdB floor", sg.floorDB), colDim, 1)
 }

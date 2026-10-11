@@ -1,0 +1,553 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-PANEL
+package panel
+
+import (
+	"fmt"
+	"math"
+	"regexp"
+	"strconv"
+	"time"
+
+	"open-sds/app/internal/analog"
+	"open-sds/app/internal/engine"
+	"open-sds/app/internal/panel/framecalc"
+	"open-sds/app/internal/panel/wsview"
+)
+
+// COMPARE (REQ-SDS-218): rows MASTER, REF A, REF B, MASK and MATH with a
+// live difference readout. COMPARE again stacks a master: it averages N
+// captures of the trigger source with the engine's Average mode, stores the
+// result as REF A, builds the mask from it, restores the acquisition so live
+// captures are tested raw, and turns the test on with zeroed counters. A
+// master is refused while the trigger source does not repeat from capture
+// to capture (the mask build's own rule), with what to change.
+
+// Compare rows.
+const (
+	cmpMaster = iota
+	cmpRefA
+	cmpRefB
+	cmpMask
+	cmpMath
+	numCmpRows
+)
+
+// stackState is a master being stacked (guarded by Controller.mu).
+type stackState struct {
+	n, src            int
+	prevMode, prevAvg int
+	prevMask          int
+	seq0              uint64
+	frames            int // captures seen while stacking
+	got               int // captures the average holds (the frame says)
+	pending           bool
+}
+
+// stabCols is the repeat test's resolution: screen columns compared.
+const stabCols = 400
+
+// screenDivs maps a channel's window onto cols columns in divisions at the
+// live scale (column extremes' midpoint, as the trace draws them).
+// TRLC-LINKS: REQ-SDS-218
+func screenDivs(f *engine.Frame, s *sv, ch, cols int) []float64 {
+	valid := framecalc.Valid(f)
+	if ch == 1 && len(f.C2) < valid {
+		return nil
+	}
+	g := geom{valid: valid, winCols: f.WinCols, edgeX: f.EdgeX, sampleS: f.SampleS}
+	left, win := windowOf(g, s)
+	sig := framecalc.Channel(f, ch, valid)
+	if s.cpl[ch] != analog.CplDC {
+		sig = analog.CoupleDisplay(sig, s.cpl[ch])
+	}
+	z := float64(max(analog.Detents[s.vidx[ch]].Zoom, 1))
+	out := make([]float64, cols)
+	for x := range out {
+		lo := clampInt(int(math.Floor(left+float64(x)*float64(win)/float64(cols))), 0, valid-1)
+		hi := clampInt(int(math.Floor(left+float64(x+1)*float64(win)/float64(cols)))-1, lo, valid-1)
+		mn, mx := sig[lo], sig[lo]
+		for _, v := range sig[lo : hi+1] {
+			mn, mx = min(mn, v), max(mx, v)
+		}
+		out[x] = (float64(mn)+float64(mx))/2 - 128
+		out[x] = out[x] * z / 25
+	}
+	return out
+}
+
+// stabKey is what the repeat test depends on.
+func stabKey(s *sv) string {
+	src := s.st.TrigSource & 1
+	return fmt.Sprint(src, s.vidx, s.offV, s.probe, s.cpl, s.st.TdivS, s.st.TrigRising, s.st.TrigType, s.st.TrigCode,
+		s.st.TrigPosFrac, s.st.AcqMode, s.zoom, s.zoomOff, s.st.HoldoffS, s.st.SerialMode)
+}
+
+// stabFrame tests the trigger source's capture against the previous one.
+// TRLC-LINKS: REQ-SDS-218
+func (c *Controller) stabFrame(a *anaState, s *sv, f *engine.Frame) {
+	src := s.st.TrigSource & 1
+	if s.st.AcqMode == engine.AcqAverage || !s.chDisp[src] || f.IsEnv {
+		a.stabPrev = nil
+		return
+	}
+	if k := stabKey(s); k != a.stabKey {
+		a.stabKey, a.stabPrev, a.stabRes, a.stabFed = k, nil, nil, frameKey{}
+	}
+	if seen(&a.stabFed, keyOf(f)) {
+		return // tested already
+	}
+	cur := screenDivs(f, s, src, stabCols)
+	if cur == nil {
+		return
+	}
+	if a.stabPrev != nil {
+		win := max(f.WinCols, 1)
+		slack := max(1, int(math.Round(6*float64(stabCols)/float64(win))))
+		a.stabRes = append(a.stabRes, anaRepeats(a.stabPrev, cur, 0.25, slack))
+		if len(a.stabRes) > stabN {
+			a.stabRes = a.stabRes[len(a.stabRes)-stabN:]
+		}
+	}
+	a.stabPrev = cur
+}
+
+// stabVerdict is how many of the last captures repeated; ok is false while
+// there are too few to tell.
+// TRLC-LINKS: REQ-SDS-218
+func stabVerdict(a *anaState) (nOK, n int, stable, ok bool) {
+	n = len(a.stabRes)
+	if n < stabMin {
+		return 0, n, false, false
+	}
+	for _, r := range a.stabRes {
+		if r {
+			nOK++
+		}
+	}
+	return nOK, n, float64(nOK) >= 0.75*float64(n), true
+}
+
+// refDiffFrame compares each stored reference with the live trace.
+// TRLC-LINKS: REQ-SDS-218
+func (c *Controller) refDiffFrame(a *anaState, s *sv, f *engine.Frame) {
+	src := s.st.TrigSource & 1
+	c.mu.Lock()
+	refs := c.refs
+	c.mu.Unlock()
+	for i, r := range refs {
+		d := refDiffResult{}
+		switch {
+		case !r.has:
+		case !s.chDisp[src]:
+			d.why = fmt.Sprintf("C%d is off", src+1)
+		case r.tdiv > 0 && math.Abs(r.tdiv-s.st.TdivS) > r.tdiv*1e-6:
+			d.why = "stored at " + si(r.tdiv, "s") + "/div"
+		case f.IsEnv:
+			d.why = "no sampled frame"
+		default:
+			codes := r.c1
+			if src == 1 {
+				codes = r.c2
+			}
+			live := screenDivs(f, s, src, RefCols)
+			if len(codes) != RefCols || live == nil {
+				d.why = "no trace"
+				break
+			}
+			vdivLive := analog.AnalogVdiv(s.vidx[src])
+			offLive := s.offV[src]
+			ref := make([]float64, RefCols)
+			for x, v := range codes {
+				volts := (float64(v)-128)*r.vdiv[src]/25 - r.off[src]
+				ref[x] = (volts + offLive) / vdivLive
+			}
+			for x := range live { // live in divisions of the analog range
+				live[x] = live[x] / float64(max(analog.Detents[s.vidx[src]].Zoom, 1))
+			}
+			mx, rms, pct := anaRefDiff(live, ref, 0.5)
+			vt := vdivLive * s.probe[src]
+			d = refDiffResult{ok: !math.IsNaN(mx), max: mx * vt, rms: rms * vt, pct: pct}
+		}
+		a.refDiff[i] = d
+	}
+}
+
+// ---- the master ----
+
+var blockAvgRE = regexp.MustCompile(`block average (\d+)/(\d+)`)
+
+// stackStart is COMPARE again (and the sheet's Stack master): average the
+// trigger source into a master, unless it does not repeat.
+// TRLC-LINKS: REQ-SDS-218
+func (c *Controller) stackStart() error {
+	s := c.snap()
+	src := s.st.TrigSource & 1
+	if !s.chDisp[src] {
+		c.toast(fmt.Sprintf("The trigger source CH%d is off: the master is stacked from it", src+1), 1800*time.Millisecond)
+		return fmt.Errorf("the trigger source CH%d is off", src+1)
+	}
+	c.amu.Lock()
+	nOK, n, stable, known := stabVerdict(&c.ana)
+	c.amu.Unlock()
+	if known && !stable && s.st.AcqMode != engine.AcqAverage {
+		c.toast(fmt.Sprintf("No master: C%d differs between captures (%d/%d repeat) - set a stable trigger first", src+1, nOK, n), 2800*time.Millisecond)
+		return fmt.Errorf("the trigger source does not repeat (%d/%d)", nOK, n)
+	}
+	c.mu.Lock()
+	if c.stack != nil {
+		c.mu.Unlock()
+		return nil
+	}
+	st := &stackState{n: c.stackN, src: src, prevMode: s.st.AcqMode, prevAvg: s.st.AvgCount, prevMask: s.st.MaskMode, seq0: s.st.Seq}
+	c.stack = st
+	c.mu.Unlock()
+	if s.st.MaskMode != 0 {
+		c.eng.SetMaskMode(0) // the averaged captures are not tested
+	}
+	if s.st.AcqMode == engine.AcqAverage {
+		c.eng.SetAcqMode(0) // start a fresh average
+	}
+	c.eng.SetAvgCount(st.n)
+	c.eng.SetAcqMode(engine.AcqAverage)
+	if !s.st.Running {
+		c.setRun(0)
+	}
+	c.toast(fmt.Sprintf("Stacking %d captures of C%d for the master - F5 again cancels", st.n, src+1), 2000*time.Millisecond)
+	return nil
+}
+
+// stackCount is how many captures the frame's average holds.
+func stackCount(f *engine.Frame, st *stackState) int {
+	if m := blockAvgRE.FindStringSubmatch(f.Filter); m != nil {
+		k, _ := strconv.Atoi(m[1])
+		return k
+	}
+	return st.frames
+}
+
+// stackProgress follows a stack after each frame; it reports when the
+// master is complete. A changed acquisition stops it, keeping the change.
+// TRLC-LINKS: REQ-SDS-218
+func (c *Controller) stackProgress(f *engine.Frame) bool {
+	st := c.eng.Snapshot()
+	c.mu.Lock()
+	sk := c.stack
+	if sk == nil || sk.pending {
+		c.mu.Unlock()
+		return false
+	}
+	if st.AcqMode != engine.AcqAverage || st.AvgCount != sk.n {
+		c.mu.Unlock()
+		c.stackCancel("Master stopped: the acquisition was changed", true)
+		return false
+	}
+	if f.Seq != sk.seq0 {
+		sk.frames++
+		sk.seq0 = f.Seq
+	}
+	sk.got = stackCount(f, sk)
+	done := sk.got >= sk.n
+	if done {
+		sk.pending = true
+	}
+	c.mu.Unlock()
+	return done
+}
+
+// stackStatus is the stack's progress for the pane: captures so far.
+func (c *Controller) stackStatus() (n, of, src int, ok bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.stack == nil {
+		return 0, 0, 0, false
+	}
+	return min(c.stack.got, c.stack.n), c.stack.n, c.stack.src, true
+}
+
+// stackFinish stores the averaged frame as REF A, builds the mask from it,
+// restores the acquisition and starts the test with zeroed counters.
+// TRLC-LINKS: REQ-SDS-218
+func (c *Controller) stackFinish(f *engine.Frame) {
+	c.mu.Lock()
+	st := c.stack
+	c.stack = nil
+	c.mu.Unlock()
+	if st == nil {
+		return
+	}
+	c.captureRefFrom(f, 0)
+	built := false
+	if c.eng.Snapshot().TrigSource&1 == st.src {
+		built = c.buildMaskFrom(f, st.src)
+	}
+	c.eng.SetAcqMode(st.prevMode)
+	c.eng.SetAvgCount(st.prevAvg)
+	mode := 1
+	if st.prevMask == 2 {
+		mode = 2
+	}
+	if built {
+		c.eng.SetMaskMode(mode)
+		c.eng.ClearMaskFails()
+	}
+	c.mu.Lock()
+	c.ui.hasMaster, c.ui.masterN, c.ui.masterSrc, c.ui.masterT = true, st.n, st.src, c.now()
+	c.ui.cmpRow = cmpMask
+	msg := fmt.Sprintf("Master in REF A (%d captures), mask built - testing live captures", st.n)
+	if !built {
+		msg = fmt.Sprintf("Master in REF A (%d captures); no mask (the trigger source changed)", st.n)
+	}
+	c.toastLocked(msg, 2600*time.Millisecond)
+	c.mu.Unlock()
+	c.maskSetMsg("")
+	c.publish()
+}
+
+// stackCancel stops a stack: the acquisition is restored unless the user
+// changed it (keepAcq), the mask test mode is put back.
+// TRLC-LINKS: REQ-SDS-218
+func (c *Controller) stackCancel(why string, keepAcq bool) {
+	c.mu.Lock()
+	st := c.stack
+	c.stack = nil
+	c.mu.Unlock()
+	if st == nil {
+		return
+	}
+	if !keepAcq {
+		c.eng.SetAcqMode(st.prevMode)
+		c.eng.SetAvgCount(st.prevAvg)
+	} else if c.eng.Snapshot().AcqMode != engine.AcqAverage {
+		c.eng.SetAvgCount(st.prevAvg) // their new mode stays; the stack's depth goes
+	}
+	if c.eng.Snapshot().MaskMode != st.prevMask {
+		c.eng.SetMaskMode(st.prevMask)
+	}
+	if why == "" {
+		why = "Master cancelled - acquisition restored"
+	}
+	if st.prevMask != 0 {
+		why += ", mask counts restarted"
+	}
+	c.toast(why, 2000*time.Millisecond)
+}
+
+// ---- rows ----
+
+// mathNext is the MATH row's order: Off, C1-C2, C2-C1, C1+C2, C1xC2.
+var mathNext = map[int]int{0: 2, 2: 3, 3: 1, 1: 4, 4: 0}
+
+// mathNames name the math functions.
+var mathNames = []string{"Off", "C1+C2", "C1-C2", "C2-C1", "C1xC2"}
+
+// maskNext is the MASK row push once a mask exists: count, stop on fail, off.
+var maskNext = map[int]int{1: 2, 2: 0, 0: 1}
+
+// cmpAdjust is Adjust in COMPARE: the row.
+// TRLC-LINKS: REQ-SDS-218, REQ-SDS-213
+func (c *Controller) cmpAdjust(dir int) {
+	c.mu.Lock()
+	c.ui.cmpRow = clampInt(c.ui.cmpRow+dir, 0, numCmpRows-1)
+	c.mu.Unlock()
+}
+
+// cmpAction is the Adjust push in COMPARE: the row's action.
+// TRLC-LINKS: REQ-SDS-218
+func (c *Controller) cmpAction() {
+	s := c.snap()
+	switch s.ui.cmpRow {
+	case cmpMaster:
+		if s.stacking {
+			c.toast("Stacking the master: F5 again cancels", 1400*time.Millisecond)
+			return
+		}
+		next := stackDepths[0]
+		for i, n := range stackDepths {
+			if n == s.stackN {
+				next = stackDepths[(i+1)%len(stackDepths)]
+			}
+		}
+		c.mu.Lock()
+		c.stackN = next
+		c.toastLocked(fmt.Sprintf("Master depth %d captures - F5 again stacks it", next), 1400*time.Millisecond)
+		c.mu.Unlock()
+	case cmpRefA, cmpRefB:
+		i := s.ui.cmpRow - cmpRefA
+		if !s.refHas[i] {
+			if err := c.storeRef(i); err != nil {
+				c.toast(err.Error(), 1500*time.Millisecond)
+			}
+			return
+		}
+		c.showRef(i, !s.refShow[i])
+		c.toast(fmt.Sprintf("REF %c %s", 'A'+i, map[bool]string{true: "hidden", false: "shown"}[s.refShow[i]]), 900*time.Millisecond)
+	case cmpMask:
+		if s.st.MaskSet {
+			next := maskNext[s.st.MaskMode]
+			c.setMaskMode(next)
+			c.toast("Mask test: "+[]string{"off", "counting (pass/fail)", "stops on the first fail"}[next], 1400*time.Millisecond)
+			return
+		}
+		src := s.st.TrigSource & 1
+		if !s.chDisp[src] {
+			c.toast(fmt.Sprintf("The trigger source CH%d is off", src+1), 1500*time.Millisecond)
+			return
+		}
+		c.mu.Lock()
+		c.maskAutoTest = true
+		c.mu.Unlock()
+		c.maskBuildStart()
+	case cmpMath:
+		next := mathNext[s.mathMode]
+		c.setMath(next)
+		c.toast("Math "+mathNames[next], 900*time.Millisecond)
+	}
+}
+
+// cmpActionText is what the selected row's push does, at its right end.
+func cmpActionText(s *sv, row int) string {
+	switch row {
+	case cmpMaster:
+		if s.stacking {
+			return "F5: cancel"
+		}
+		next := stackDepths[0]
+		for i, n := range stackDepths {
+			if n == s.stackN {
+				next = stackDepths[(i+1)%len(stackDepths)]
+			}
+		}
+		return fmt.Sprintf("push: depth %d", next)
+	case cmpRefA, cmpRefB:
+		i := row - cmpRefA
+		if !s.refHas[i] {
+			return "push: store"
+		}
+		return "push: " + map[bool]string{true: "hide", false: "show"}[s.refShow[i]]
+	case cmpMask:
+		if s.st.MaskSet {
+			return "push: " + map[int]string{1: "stop on fail", 2: "test off", 0: "count"}[s.st.MaskMode]
+		}
+		return fmt.Sprintf("push: build from C%d", s.st.TrigSource&1+1)
+	}
+	return "push: math " + mathNames[mathNext[s.mathMode]]
+}
+
+// cmpAgainText is what COMPARE again does now.
+func (c *Controller) cmpAgainText(s *sv) string {
+	if s.stacking {
+		return "cancel stack"
+	}
+	c.amu.Lock()
+	_, _, stable, known := stabVerdict(&c.ana)
+	c.amu.Unlock()
+	if known && !stable && s.st.AcqMode != engine.AcqAverage {
+		return "needs a stable trigger"
+	}
+	return "stack master"
+}
+
+// cmpPane builds the COMPARE pane.
+// TRLC-LINKS: REQ-SDS-218
+func (c *Controller) cmpPane(s *sv) *wsview.CmpPane {
+	p := &wsview.CmpPane{}
+	p.Title = "COMPARE"
+	src := s.st.TrigSource & 1
+	c.amu.Lock()
+	nOK, n, stable, known := stabVerdict(&c.ana)
+	diffs := c.ana.refDiff
+	c.amu.Unlock()
+	cap, capCol := fmt.Sprintf("trigger source C%d", src+1), wsview.Text
+	switch {
+	case !s.chDisp[src]:
+		cap, capCol = cap+" is off", wsview.Warn
+	case s.stacking || s.st.AcqMode == engine.AcqAverage:
+		cap += ": averaging"
+	case !s.st.Running && !known:
+		cap += ": stopped"
+	case !known:
+		cap += ": checking that it repeats..."
+	case stable:
+		cap += fmt.Sprintf(" repeats (%d/%d captures fit the last one)", nOK, n)
+	default:
+		cap, capCol = cap+fmt.Sprintf(" does not repeat (%d/%d): a master would smear", nOK, n), wsview.Warn
+	}
+	p.Caption, p.CapCol = cap, capCol
+	sel := clampInt(s.ui.cmpRow, 0, numCmpRows-1)
+	for i := 0; i < numCmpRows; i++ {
+		r := wsview.CmpRow{Sel: i == sel, InfoCol: wsview.Text, ExtraCol: wsview.Text}
+		switch i {
+		case cmpMaster:
+			r.Name = "MASTER"
+			if k, of, ssrc, ok := c.stackStatus(); ok {
+				r.Info, r.InfoCol = fmt.Sprintf("STACK %d/%d of C%d", k, of, ssrc+1), wsview.Amber
+				r.Bar, r.BarN, r.BarOf = true, k, of
+				r.BarNote, r.BarNoteCol = "averaging - then REF A + mask, test raw", wsview.Dim
+				if !s.st.Running {
+					r.BarNote, r.BarNoteCol = "stopped - Run/Stop continues", wsview.Warn
+				}
+			} else if known && !stable && s.st.AcqMode != engine.AcqAverage {
+				r.Info, r.InfoCol = "needs a stable trigger", wsview.Warn
+				r.Extra, r.ExtraCol = "Trig Menu: holdoff or another edge; or a BUS serial trigger", wsview.Warn
+			} else if s.ui.hasMaster {
+				r.Info = fmt.Sprintf("REF A: %d x C%d, %.0f s ago", s.ui.masterN, s.ui.masterSrc+1, s.now.Sub(s.ui.masterT).Seconds())
+				r.Extra, r.ExtraCol = "mask from the stack; live captures tested raw", wsview.Dim
+			} else {
+				r.Info, r.InfoCol = fmt.Sprintf("depth %d captures of C%d", s.stackN, src+1), wsview.Dim
+				r.Extra, r.ExtraCol = "F5 again: average, store REF A, build the mask, test raw", wsview.Dim
+			}
+		case cmpRefA, cmpRefB:
+			k := i - cmpRefA
+			r.Name = fmt.Sprintf("REF %c", 'A'+k)
+			if !s.refHas[k] {
+				r.Info, r.InfoCol = "empty", wsview.Dim
+			} else {
+				c.mu.Lock()
+				ref := c.refs[k]
+				c.mu.Unlock()
+				r.Info = fmt.Sprintf("C1+C2 %s %s", si(ref.vdiv[src]*s.probe[src], "V"), si(ref.tdiv, "s"))
+				r.Info += map[bool]string{true: "  shown", false: "  hidden"}[s.refShow[k]]
+				d := diffs[k]
+				switch {
+				case d.why != "":
+					r.Extra = d.why
+				case d.ok:
+					r.Extra = fmt.Sprintf("max|d| %s  rms %s  %.1f%% in 0.5div", si(d.max, "V"), si(d.rms, "V"), d.pct)
+				}
+			}
+		case cmpMask:
+			r.Name = "MASK"
+			if !s.st.MaskSet {
+				r.Info, r.InfoCol = "none", wsview.Dim
+				if s.maskBusy {
+					r.Info, r.InfoCol = "building...", wsview.Amber
+				}
+			} else {
+				r.Info = []string{"built, test off", "counting", "stops on a fail"}[clampInt(s.st.MaskMode, 0, 2)]
+				if s.st.MaskMode != 0 {
+					tot := s.st.MaskPass + s.st.MaskFail
+					r.Extra = fmt.Sprintf("pass %d  fail %d", s.st.MaskPass, s.st.MaskFail)
+					if tot > 0 {
+						r.Extra += fmt.Sprintf("  (%.1f%% fail)", 100*float64(s.st.MaskFail)/float64(tot))
+					}
+				}
+				if s.st.MaskFail > 0 {
+					r.ExtraCol = wsview.Stop
+				}
+			}
+		case cmpMath:
+			r.Name = "MATH"
+			r.Info = mathNames[clampInt(s.mathMode, 0, 4)]
+			if s.mathMode == 0 {
+				r.InfoCol = wsview.Dim
+			}
+		}
+		if r.Sel {
+			r.Action = cmpActionText(s, i)
+		}
+		p.Rows[i] = r
+	}
+	p.Tool = []wsview.Seg{{Key: "Adjust", Job: "row"}, {Key: "push", Job: "row action"}, {Key: "Position", Job: "trigger position"}, {Key: "push", Job: "centre"}}
+	p.Again = "F5 again: " + c.cmpAgainText(s)
+	return p
+}

@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 
 	"open-sds/app/internal/lcd"
+	"open-sds/app/internal/panel/wsview"
 	"testing"
 )
 
@@ -28,19 +29,40 @@ func TestSaveHardcopyNumbers(t *testing.T) {
 	}
 }
 
-// A softkey that changes only a menu value repaints a held display (bug hunt
-// #2: TRIGGER Type Pulse->Slope while stopped left "Pulse" on the LCD).
-// TRLC-LINKS: REQ-SDS-168
-func TestRenderSigSeesMenuValues(t *testing.T) {
-	h := lcd.HUD{MenuOpen: true, MenuTitle: "TRIGGER", MenuSel: 3,
-		MenuItems: []lcd.MenuItem{{Label: "Type", Value: "Pulse"}}}
-	a := renderSigOf(nil, h, false)
-	h.MenuItems = []lcd.MenuItem{{Label: "Type", Value: "Slope"}}
-	if renderSigOf(nil, h, false) == a {
-		t.Fatal("menu value change left the render signature unchanged")
+// A key that changes only a value in a sheet, a pane's text, the rail label
+// or a notice repaints a held display (bug hunt #2: TRIGGER Type
+// Pulse->Slope while stopped left "Pulse" on the LCD); the same snapshot
+// rebuilt (new pointers, the same content) does not.
+// TRLC-LINKS: REQ-SDS-168, REQ-SDS-211
+func TestRenderSigSeesUIChanges(t *testing.T) {
+	view := func(typ string) wsview.View {
+		return wsview.View{Layout: wsview.Layout{MenuW: 116, Sheet: true},
+			Sheet: &wsview.Sheet{WSName: "SCOPE", Rows: []wsview.Row{{Kind: wsview.Enum, Label: "Type",
+				Opts: []wsview.Opt{{Text: "Pulse", Sel: typ == "Pulse"}, {Text: "Slope", Sel: typ == "Slope"}}}},
+				Sub: &wsview.Sub{Title: "x"}},
+			Keys: &wsview.Keys{Title: "TYPE"}}
 	}
+	h := lcd.HUD{UI: view("Pulse")}
+	a := renderSigOf(nil, h, false)
+	if h.UI = view("Pulse"); renderSigOf(nil, h, false) != a {
+		t.Fatal("the same UI rebuilt changed the render signature")
+	}
+	if h.UI = view("Slope"); renderSigOf(nil, h, false) == a {
+		t.Fatal("a sheet value change left the render signature unchanged")
+	}
+	h.UI = view("Pulse")
+	h.UI.RailNote = &wsview.Note{Head: "F1 SCOPE"}
+	if renderSigOf(nil, h, false) == a {
+		t.Fatal("the rail label left the render signature unchanged")
+	}
+	h.UI = view("Pulse")
 	h.Notice = "SAVED SDS0001.png"
 	if renderSigOf(nil, h, false) == a {
 		t.Fatal("a PRINT notice left the render signature unchanged")
+	}
+	h.Notice = ""
+	h.Remote = "REMOTE  TRIG level 1.25V"
+	if renderSigOf(nil, h, false) == a {
+		t.Fatal("a REMOTE note left the render signature unchanged")
 	}
 }

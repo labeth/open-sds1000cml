@@ -8,6 +8,7 @@ import (
 
 	"open-sds/app/internal/analog"
 	"open-sds/app/internal/engine"
+	"open-sds/app/internal/panel/wsview"
 	"open-sds/app/internal/streamview"
 )
 
@@ -48,13 +49,18 @@ type HUD struct {
 	// ChanExplicit marks ShowC1/ShowC2 as the user's choice (the panel set
 	// them), so both off draws neither channel. Without it, both off means
 	// "unset" and both are drawn.
-	ChanExplicit     bool
-	ShowMeas         bool      // on-device MEASURE panel overlay
+	ChanExplicit bool
+	ShowMeas     bool // on-device MEASURE readout boxes
+	// MeasItems are the chosen readouts, "1:pkpk" (channel and parameter);
+	// nil shows every parameter of each shown channel.
+	MeasItems        []string
 	ViewMode         int       // 0=Y-T 1=X-Y 2=FFT 3=BODE 4=SPECTROGRAM
-	MathMode         int       // 0 = off, 1 = C1+C2, 2 = C1-C2, 3 = C1×C2
+	MathMode         int       // 0 = off, 1 = C1+C2, 2 = C1-C2, 3 = C2-C1, 4 = C1×C2
+	FFTSrc           int       // the FFT source channel (drawn on top; the SPECTRUM marker's)
 	AutosetBusy      bool      // autoset sweep running → show a cancelable banner
 	AutosetMsg       string    // banner text while AutosetBusy
-	Notice           string    // brief result banner (PRINT), "" when none
+	Notice           string    // a short notice (PRINT, workspace tools), "" when none
+	Remote           string    // a remote change's one-line note, "" when none
 	Match            MatchView // serial trigger match editor (full screen while open)
 	Busy             string    // a frame is being read/processed (loading indicator); "" idle
 	BusyPct          float64   // its progress 0..100, <0 unknown
@@ -87,11 +93,10 @@ type HUD struct {
 	// where its web UI lives. Empty (no network) renders nothing.
 	URL string
 
-	// On-screen menu overlay (spec 08 §6): five softkey slots down the right edge.
-	MenuOpen  bool
-	MenuTitle string
-	MenuItems []MenuItem
-	MenuSel   int
+	// UI is the task-workspace UI (ADR-TASK-WORKSPACES): the layout, the
+	// pictogram rail, the workspace's pane, a settings sheet or the byte
+	// picker. The zero View draws no UI over a full-screen plot.
+	UI wsview.View
 
 	// Super-res stack-and-crunch overlay (reference-locked). SRActive shows the
 	// status HUD; SRFocus 3 (review) replaces the live trace with the stacked mean;
@@ -138,10 +143,6 @@ type HUD struct {
 	Spect *Spectrogram
 }
 
-// MenuItem is one softkey slot label + value for the LCD menu overlay.
-// TRLC-LINKS: REQ-SDS-021
-type MenuItem struct{ Label, Value string }
-
 const (
 	traceTop = 8
 	traceBot = H - 4 // 476
@@ -150,40 +151,36 @@ const (
 // sampleToY: higher code = higher on screen; clamp to panel (spec 07 §3.4).
 // 25 codes/div render scale (spec 10 §7.1): 8 divisions = 200 codes centred on
 // code 128, so the ADC's 256 codes span 10.24 div and the trace clips at the
-// graticule edge beyond ±4 div.
+// graticule edge beyond ±4 div. This is the full-screen plot's mapping.
 // TRLC-LINKS: REQ-SDS-021
-func sampleToY(v float64) int {
-	y := traceBot - int(((v-128)/200+0.5)*float64(traceBot-traceTop)+0.5)
-	if y < 0 {
-		y = 0
-	}
-	if y > H-1 {
-		y = H - 1
-	}
-	return y
-}
+func sampleToY(v float64) int { return fullPlot.sy(v) }
 
+// drawGraticule draws the plot's 10 x 8 divisions, centre axes brighter.
 // TRLC-LINKS: REQ-SDS-021
-func drawGraticule(sf Surface) {
+func drawGraticule(sf Surface, p plotArea) {
 	for c := 0; c <= 10; c++ {
-		x := c * (W - 1) / 10
+		x := p.gridX(c)
 		col := colGrid
 		if c == 5 {
 			col = colAxis
 		}
-		for y := 0; y < H; y++ {
-			sf.SetPixel(x, y, col)
-		}
+		vline(sf, x, p.y0, H-1, col)
 	}
 	for r := 0; r <= 8; r++ {
-		y := r * (H - 1) / 8
+		y := p.gridY(r)
 		col := colGrid
 		if r == 4 {
 			col = colAxis
 		}
-		for x := 0; x < W; x++ {
-			sf.SetPixel(x, y, col)
-		}
+		hline(sf, 0, p.w-1, y, col)
+	}
+}
+
+// hline draws row y from x0 to x1 inclusive.
+// TRLC-LINKS: REQ-SDS-021
+func hline(sf Surface, x0, x1, y int, c uint16) {
+	for x := x0; x <= x1; x++ {
+		sf.SetPixel(x, y, c)
 	}
 }
 
@@ -223,12 +220,10 @@ func drawLine(sf Surface, x0, y0, x1, y1 int, c uint16) {
 	}
 }
 
-// drawTrace maps the record window onto the panel (spec 07 §3.5): nearest
-// sample when Interp is false, linear interpolation of REAL samples when
-// true — never sinc, never a segment across a skipped column.
+// drawTrace maps the record window onto the full-screen plot (spec 07 §3.5).
 // TRLC-LINKS: REQ-SDS-021
 func drawTrace(sf Surface, sig []uint8, win int, xc float64, interp bool, col uint16, posFrac float64, zoom ...int) {
-	drawTraceID(sf, traceID{}, sig, win, xc, interp, col, posFrac, zoom...)
+	drawTraceID(sf, fullPlot, traceID{}, sig, win, xc, interp, col, posFrac, zoom...)
 }
 
 // traceID names the samples a trace draws (frame Seq plus how the channel's
@@ -240,9 +235,11 @@ type traceID struct {
 	inv     bool
 }
 
-// drawTraceID is drawTrace for identified samples (see traceID).
+// drawTraceID maps the record window onto plot p: nearest sample when
+// interp is false, linear interpolation of REAL samples when true — never
+// sinc, never a segment across a skipped column.
 // TRLC-LINKS: REQ-SDS-021
-func drawTraceID(sf Surface, id traceID, sig []uint8, win int, xc float64, interp bool, col uint16, posFrac float64, zoom ...int) {
+func drawTraceID(sf Surface, p plotArea, id traceID, sig []uint8, win int, xc float64, interp bool, col uint16, posFrac float64, zoom ...int) {
 	z := 1.0
 	if len(zoom) > 0 && zoom[0] > 1 {
 		z = float64(zoom[0])
@@ -261,13 +258,13 @@ func drawTraceID(sf Surface, id traceID, sig []uint8, win int, xc float64, inter
 	// record (repeat-nearest), identical to web window() so LCD == web. Keeps the
 	// anchor exactly at posFrac even when the record has no mid crossing.
 	left := xc - float64(win)*posFrac
-	if !interp && float64(win) > 1.5*W {
-		drawDenseTrace(sf, id, sig, left, win, col, z)
+	if !interp && float64(win) > 1.5*float64(p.w) {
+		drawDenseTrace(sf, p, id, sig, left, win, col, z)
 		return
 	}
 	prevX, prevY := -1, 0
-	for x := 0; x < W; x++ {
-		pos := left + float64(x)*float64(win)/float64(W)
+	for x := 0; x < p.w; x++ {
+		pos := left + float64(x)*float64(win)/float64(p.w)
 		var y int
 		if interp {
 			if pos < 0 {
@@ -281,7 +278,7 @@ func drawTraceID(sf Surface, id traceID, sig []uint8, win int, xc float64, inter
 				frac := pos - float64(i)
 				v = v*(1-frac) + float64(sig[i+1])*frac
 			}
-			y = sampleToY(128 + (v-128)*z)
+			y = p.sy(128 + (v-128)*z)
 		} else {
 			i := int(pos)
 			if pos < 0 {
@@ -289,7 +286,7 @@ func drawTraceID(sf Surface, id traceID, sig []uint8, win int, xc float64, inter
 			} else if i > n-1 {
 				i = n - 1
 			}
-			y = sampleToY(128 + (float64(sig[i])-128)*z)
+			y = p.sy(128 + (float64(sig[i])-128)*z)
 		}
 		if prevX >= 0 {
 			drawLine(sf, prevX, prevY, x, y, col)
@@ -303,12 +300,12 @@ func drawTraceID(sf Surface, id traceID, sig []uint8, win int, xc float64, inter
 // drawAcquiring notes that the capture for the current timebase is still
 // filling its record.
 // TRLC-LINKS: REQ-SDS-021
-func drawAcquiring(sf Surface, hud HUD) {
+func drawAcquiring(sf Surface, p plotArea, hud HUD) {
 	msg := "ACQUIRING"
 	if hud.RecordS >= 1 {
 		msg += fmt.Sprintf("  %s record", fmtTdiv(hud.RecordS))
 	}
-	DrawText(sf, (W-TextWidth(msg, 2))/2, (traceTop+traceBot)/2-8, msg, colDim, 2)
+	DrawText(sf, (p.w-TextWidth(msg, 2))/2, (p.top+p.bot)/2-8, msg, colDim, 2)
 }
 
 // drawDenseTrace draws a record with more samples than columns as each
@@ -317,11 +314,11 @@ func drawAcquiring(sf Surface, hud HUD) {
 // sample in 1250, so a captured glitch was not drawn (bench 2026-10-07).
 // Columns beyond the record repeat its nearest end, as drawTrace does.
 // TRLC-LINKS: REQ-SDS-021
-func drawDenseTrace(sf Surface, id traceID, sig []uint8, left float64, win int, col uint16, z float64) {
-	cols := denseColumns(id, sig, left, win)
-	y := func(v uint8) int { return sampleToY(128 + (float64(v)-128)*z) }
+func drawDenseTrace(sf Surface, p plotArea, id traceID, sig []uint8, left float64, win int, col uint16, z float64) {
+	cols := denseColumns(id, sig, left, win, p.w)
+	y := func(v uint8) int { return p.sy(128 + (float64(v)-128)*z) }
 	prevY := -1
-	for x := 0; x < W; x++ {
+	for x := 0; x < p.w; x++ {
 		yTop, yBot := y(cols.mx[x]), y(cols.mn[x])
 		if prevY >= 0 { // join: the span reaches the previous column's last value
 			yTop, yBot = min(yTop, prevY), max(yBot, prevY)
@@ -340,6 +337,7 @@ type denseCols struct {
 type denseKey struct {
 	id     traceID
 	n, win int
+	cols   int
 	left   float64
 	ptr    *uint8    // the samples' buffer…
 	probe  [16]uint8 // …and a spread of them, against a reused Seq
@@ -354,8 +352,9 @@ var denseCache struct {
 }
 
 // TRLC-LINKS: REQ-SDS-021
-func denseColumns(id traceID, sig []uint8, left float64, win int) *denseCols {
-	key := denseKey{id: id, n: len(sig), win: win, left: left, ptr: &sig[0]}
+func denseColumns(id traceID, sig []uint8, left float64, win, ncols int) *denseCols {
+	ncols = min(max(ncols, 1), W)
+	key := denseKey{id: id, n: len(sig), win: win, cols: ncols, left: left, ptr: &sig[0]}
 	for i := range key.probe {
 		key.probe[i] = sig[i*(len(sig)-1)/(len(key.probe)-1)]
 	}
@@ -371,8 +370,8 @@ func denseColumns(id traceID, sig []uint8, left float64, win int) *denseCols {
 		c = new(denseCols)
 	}
 	n := len(sig)
-	step := float64(win) / float64(W)
-	for x := 0; x < W; x++ {
+	step := float64(win) / float64(ncols)
+	for x := 0; x < ncols; x++ {
 		lo := int(math.Floor(left + float64(x)*step))
 		hi := int(math.Floor(left+float64(x+1)*step)) - 1
 		lo, hi = min(max(lo, 0), n-1), min(max(hi, 0), n-1)
@@ -397,21 +396,19 @@ func denseColumns(id traceID, sig []uint8, left float64, win int) *denseCols {
 // between a real captured min and max, magnified about mid-scale by the
 // channel's display zoom like drawTrace.
 // TRLC-LINKS: REQ-SDS-021
-func drawEnvelope(sf Surface, mn, mx []uint8, cols int, col uint16, zoom int) {
+func drawEnvelope(sf Surface, p plotArea, mn, mx []uint8, cols int, col uint16, zoom int) {
 	z := float64(max(zoom, 1))
-	for x := 0; x < W; x++ {
-		c := x * cols / W
+	for x := 0; x < p.w; x++ {
+		c := x * cols / p.w
 		if c >= cols || c >= len(mn) || c >= len(mx) {
 			continue
 		}
-		yTop := sampleToY(128 + (float64(mx[c])-128)*z)
-		yBot := sampleToY(128 + (float64(mn[c])-128)*z)
+		yTop := p.sy(128 + (float64(mx[c])-128)*z)
+		yBot := p.sy(128 + (float64(mn[c])-128)*z)
 		if yTop > yBot {
 			yTop, yBot = yBot, yTop
 		}
-		for y := yTop; y <= yBot; y++ {
-			sf.SetPixel(x, y, col)
-		}
+		vline(sf, x, yTop, yBot, col)
 	}
 }
 
@@ -479,13 +476,32 @@ func fillRect(sf Surface, x, y, w, h int, c uint16) {
 	}
 }
 
-// Render draws one complete frame into the back buffer (spec 07 §3.2):
-// fill → graticule → trace/envelope → liveness strip → readouts. Never
-// blanks on a held frame; the strip goes red instead.
+// strokeRect draws a 1 px rectangle outline.
 // TRLC-LINKS: REQ-SDS-021
+func strokeRect(sf Surface, x, y, w, h int, c uint16) {
+	if w <= 0 || h <= 0 {
+		return
+	}
+	hline(sf, x, x+w-1, y, c)
+	hline(sf, x, x+w-1, y+h-1, c)
+	vline(sf, x, y, y+h-1, c)
+	vline(sf, x+w-1, y, y+h-1, c)
+}
+
+// Render draws one complete frame into the back buffer (spec 07 §3.2):
+// fill → graticule → trace/envelope → liveness strip → readouts → the
+// workspace UI (the pane, the rail, a sheet or the picker). Never blanks on
+// a held frame; the strip goes red instead.
+// TRLC-LINKS: REQ-SDS-021, REQ-SDS-211
 func Render(sf Surface, f *engine.Frame, hud HUD, live bool, persist ...*MemSurface) {
 	sf.Fill(colBG)
-	drawGraticule(sf)
+	ui := &hud.UI
+	sheet := ui.Sheet != nil
+	p := plotOf(ui.Layout)
+	traces := !sheet && !ui.Layout.HideTraces
+	if traces {
+		drawGraticule(sf, p)
+	}
 	// Running, a frame captured at another timebase is not this view: drawn
 	// under the new label it misread by the ratio, and at 10 s/div the next
 	// frame takes minutes to fill (bench 2026-10-07). Show the graticule and
@@ -494,7 +510,9 @@ func Render(sf Surface, f *engine.Frame, hud HUD, live bool, persist ...*MemSurf
 		math.Abs(f.TdivS-hud.TdivS) > 1e-9*hud.TdivS
 	if acquiring {
 		f = nil
-		defer drawAcquiring(sf, hud)
+		if traces {
+			defer drawAcquiring(sf, p, hud)
+		}
 	}
 
 	// Persistence: when on (Y-T only, non-envelope), draw the traces onto a
@@ -505,120 +523,14 @@ func Render(sf Surface, f *engine.Frame, hud HUD, live bool, persist ...*MemSurf
 	if len(persist) > 0 {
 		pb = persist[0]
 	}
-	persisting := pb != nil && hud.Persist && hud.ViewMode == 0 && f != nil && !f.IsEnv && len(f.C1) > 0
+	persisting := traces && pb != nil && hud.Persist && hud.ViewMode == 0 && f != nil && !f.IsEnv && len(f.C1) > 0
 	traceTarget := sf
 	if persisting {
 		pb.FadeToBlack()
 		traceTarget = pb
 	}
-
-	sc1, sc2 := hud.shownChans()
-	// X-Y / FFT only make sense on per-sample (native/decimated) frames — an
-	// envelope/roll frame has no paired samples or usable spectrum, so fall
-	// through to the Y-T envelope rendering (matches the web, which gates these).
-	srReview := hud.SRFocus == 3 && len(hud.SRMean) > 0
-	if streamFullScreen(hud) {
-		drawStream(sf, hud)
-	} else if srReview {
-		// Review the super-resolved stack in the SELECTED view, so FFT and X-Y
-		// operate on the crunched (extra-bit, K× fine-grid) trace — not just Y-T.
-		// Bode (3) / Spectrogram (4) are sweep/time-evolving views with no meaning
-		// for a frozen stack, so they fall back to the Y-T super-res trace.
-		switch hud.ViewMode {
-		case 1:
-			drawSuperresXY(sf, hud)
-		case 2:
-			drawSuperresFFT(sf, hud)
-		default:
-			drawSuperresTrace(traceTarget, hud)
-		}
-	} else if hud.ViewMode == 1 && f != nil && !f.IsEnv && len(f.C1) > 0 {
-		drawXY(sf, f, hud)
-	} else if hud.ViewMode == 2 && f != nil && !f.IsEnv && len(f.C1) > 0 {
-		drawFFT(sf, f, hud)
-	} else if hud.ViewMode == 3 {
-		drawBode(sf, hud)
-	} else if hud.ViewMode == 4 {
-		drawSpectrogram(sf, hud.Spect)
-	} else if f != nil && len(f.C1) > 0 {
-		valid := f.Valid
-		if valid < 1 {
-			valid = 1
-		}
-		if valid > len(f.C1) {
-			valid = len(f.C1)
-		}
-		if f.IsEnv && f.EnvCols > 0 {
-			if hud.TwoChan && sc2 {
-				mn2, mx2 := f.EnvMin2, f.EnvMax2
-				if hud.Inv2 { // INVS mirrors the band: min'=inv(max), max'=inv(min)
-					mn2, mx2 = invertCodes(mx2), invertCodes(mn2)
-				}
-				drawEnvelope(sf, mn2, mx2, f.EnvCols, colC2, hud.Zoom2)
-			}
-			if sc1 {
-				mn1, mx1 := f.EnvMin, f.EnvMax
-				if hud.Inv1 {
-					mn1, mx1 = invertCodes(mx1), invertCodes(mn1)
-				}
-				drawEnvelope(sf, mn1, mx1, f.EnvCols, colC1, hud.Zoom1)
-			}
-		} else {
-			win := f.WinCols
-			if win <= 0 || win > valid {
-				win = valid
-			}
-			c1 := f.C1[:valid]
-			if hud.Cpl1 != analog.CplDC { // software coupling: AC removes DC, GND grounds
-				c1 = analog.CoupleDisplay(c1, hud.Cpl1)
-			}
-			if hud.Inv1 { // display-level INVS: mirror the rendered trace only
-				c1 = invertCodes(c1)
-			}
-			xc := f.EdgeX
-			if xc < 0 {
-				// Match web window(): an uncentred frame (EdgeX=-1) is always a
-				// flat/DC capture under the engine's publish policy — centre on
-				// the record middle. NEVER fabricate an edge from a marginal/noise
-				// crossing (that would jitter a flat line and diverge from web).
-				xc = float64(valid) / 2
-			}
-			// Horizontal ZOOM: show win/zoom samples magnified across the screen,
-			// panned by ZoomOff across the record (centred, so posFrac=0.5).
-			posFrac := hud.TrigPosFrac
-			if hud.Zoom > 1 {
-				win /= hud.Zoom
-				if win < 8 {
-					win = 8
-				}
-				xc += hud.ZoomOff * float64(valid)
-				posFrac = 0.5
-			}
-			drawZoneMask(traceTarget, f, hud, win, xc, posFrac)
-			if hud.TwoChan && sc2 && len(f.C2) >= valid {
-				c2 := f.C2[:valid]
-				if hud.Cpl2 != analog.CplDC {
-					c2 = analog.CoupleDisplay(c2, hud.Cpl2)
-				}
-				if hud.Inv2 {
-					c2 = invertCodes(c2)
-				}
-				drawTraceID(traceTarget, traceID{f.Seq, 2, hud.Cpl2, hud.Inv2}, c2, win, xc, f.Interp, colC2, posFrac, hud.Zoom2)
-			}
-			if sc1 {
-				drawTraceID(traceTarget, traceID{f.Seq, 1, hud.Cpl1, hud.Inv1}, c1, win, xc, f.Interp, colC1, posFrac, hud.Zoom1)
-			}
-			if hud.MathMode != 0 {
-				drawMath(traceTarget, f, hud, win, xc, posFrac)
-			}
-			drawRefs(traceTarget, hud)
-			if hud.DecProto != 0 {
-				drawDecode(sf, f, hud, win, xc, posFrac)
-			}
-		}
-	}
-	if hud.StreamOn && !streamFullScreen(hud) && hud.Stream.State != streamview.Idle {
-		drawStreamStrip(sf, hud)
+	if traces {
+		drawViews(sf, traceTarget, p, f, hud)
 	}
 	if persisting { // composite the decayed trace layer over the graticule
 		if ms, ok := sf.(*MemSurface); ok {
@@ -631,37 +543,157 @@ func Render(sf Surface, f *engine.Frame, hud HUD, live bool, persist ...*MemSurf
 	if live && f != nil && f.Ptp >= 8 {
 		strip = colOK
 	}
-	for y := 0; y <= 1; y++ {
-		for x := 0; x < W; x++ {
-			sf.SetPixel(x, y, strip)
+	hline(sf, 0, W-1, 0, strip)
+	hline(sf, 0, W-1, 1, strip)
+
+	// Trigger/ground markers, the MEASURE readouts and cursors are time-domain
+	// concepts — only overlay them in Y-T, not on the X-Y/FFT plots.
+	yt := traces && hud.ViewMode == 0 && !streamFullScreen(hud)
+	if yt {
+		drawMarkers(sf, p, hud)
+	}
+	drawHUD(sf, p, f, hud)
+	if yt && hud.ShowMeas && !ui.Layout.HideMeas {
+		drawMeasPanel(sf, p, f, hud)
+	}
+	if yt {
+		drawCursors(sf, p, hud)
+	}
+	if !sheet {
+		if hud.SRActive {
+			drawSuperresHUD(sf, p, hud)
+		}
+		drawMaskHUD(sf, hud)
+	}
+	drawUI(sf, f, hud, p)
+	switch {
+	case hud.AutosetBusy:
+		drawAutosetBanner(sf, p, hud.AutosetMsg)
+	case hud.Notice != "":
+		drawNotice(sf, p, hud.Notice)
+	}
+	if hud.Remote != "" {
+		drawRemote(sf, p, hud.Remote)
+	}
+}
+
+// drawViews draws the plot's content for the view: the transcript, the
+// super-res review, X-Y, FFT, Bode, spectrogram, or the Y-T traces with
+// their overlays.
+// TRLC-LINKS: REQ-SDS-021
+func drawViews(sf, traceTarget Surface, p plotArea, f *engine.Frame, hud HUD) {
+	sc1, sc2 := hud.shownChans()
+	// X-Y / FFT only make sense on per-sample (native/decimated) frames — an
+	// envelope/roll frame has no paired samples or usable spectrum, so fall
+	// through to the Y-T envelope rendering (matches the web, which gates these).
+	srReview := hud.SRFocus == 3 && len(hud.SRMean) > 0
+	switch {
+	case streamFullScreen(hud):
+		drawStream(sf, p, hud)
+	case srReview:
+		// Review the super-resolved stack in the SELECTED view, so FFT and X-Y
+		// operate on the crunched (extra-bit, K× fine-grid) trace — not just Y-T.
+		// Bode (3) / Spectrogram (4) are sweep/time-evolving views with no meaning
+		// for a frozen stack, so they fall back to the Y-T super-res trace.
+		switch hud.ViewMode {
+		case 1:
+			drawSuperresXY(sf, p, hud)
+		case 2:
+			drawSuperresFFT(sf, p, hud)
+		default:
+			drawSuperresTrace(traceTarget, p, hud)
+		}
+	case hud.ViewMode == 1 && f != nil && !f.IsEnv && len(f.C1) > 0:
+		drawXY(sf, p, f, hud)
+	case hud.ViewMode == 2 && f != nil && !f.IsEnv && len(f.C1) > 0:
+		drawFFT(sf, p, f, hud)
+	case hud.ViewMode == 3:
+		drawBode(sf, p, hud)
+	case hud.ViewMode == 4:
+		drawSpectrogramMark(sf, p, hud.Spect, hud.UI.Layout.HideViewCaptions, hud.UI.Spec)
+	case f != nil && len(f.C1) > 0:
+		valid := frameValid(f)
+		if f.IsEnv && f.EnvCols > 0 {
+			if hud.TwoChan && sc2 {
+				mn2, mx2 := f.EnvMin2, f.EnvMax2
+				if hud.Inv2 { // INVS mirrors the band: min'=inv(max), max'=inv(min)
+					mn2, mx2 = invertCodes(mx2), invertCodes(mn2)
+				}
+				drawEnvelope(sf, p, mn2, mx2, f.EnvCols, colC2, hud.Zoom2)
+			}
+			if sc1 {
+				mn1, mx1 := f.EnvMin, f.EnvMax
+				if hud.Inv1 {
+					mn1, mx1 = invertCodes(mx1), invertCodes(mn1)
+				}
+				drawEnvelope(sf, p, mn1, mx1, f.EnvCols, colC1, hud.Zoom1)
+			}
+			break
+		}
+		win, xc, posFrac := traceWindow(f, hud, valid)
+		c1 := f.C1[:valid]
+		if hud.Cpl1 != analog.CplDC { // software coupling: AC removes DC, GND grounds
+			c1 = analog.CoupleDisplay(c1, hud.Cpl1)
+		}
+		if hud.Inv1 { // display-level INVS: mirror the rendered trace only
+			c1 = invertCodes(c1)
+		}
+		drawZoneMask(traceTarget, p, f, hud, win, xc, posFrac)
+		if hud.TwoChan && sc2 && len(f.C2) >= valid {
+			c2 := f.C2[:valid]
+			if hud.Cpl2 != analog.CplDC {
+				c2 = analog.CoupleDisplay(c2, hud.Cpl2)
+			}
+			if hud.Inv2 {
+				c2 = invertCodes(c2)
+			}
+			drawTraceID(traceTarget, p, traceID{f.Seq, 2, hud.Cpl2, hud.Inv2}, c2, win, xc, f.Interp, colC2, posFrac, hud.Zoom2)
+		}
+		if sc1 {
+			drawTraceID(traceTarget, p, traceID{f.Seq, 1, hud.Cpl1, hud.Inv1}, c1, win, xc, f.Interp, colC1, posFrac, hud.Zoom1)
+		}
+		if hud.MathMode != 0 {
+			drawMath(traceTarget, p, f, hud, win, xc, posFrac)
+		}
+		drawRefs(traceTarget, p, hud)
+		if hud.DecProto != 0 {
+			drawDecode(sf, p, f, hud, win, xc, posFrac)
 		}
 	}
+	if hud.StreamOn && !streamFullScreen(hud) && hud.Stream.State != streamview.Idle {
+		drawStreamStrip(sf, p, hud)
+	}
+}
 
-	// Trigger/ground markers, the MEASURE panel and cursors are time-domain
-	// concepts — only overlay them in Y-T, not on the X-Y/FFT plots.
-	if hud.ViewMode == 0 && !streamFullScreen(hud) { // the transcript has no time axis
-		drawMarkers(sf, hud)
+// traceWindow is the sample window the Y-T plot shows: win samples with the
+// trigger crossing xc at posFrac of the screen; zoomed, win/zoom samples
+// centred on the panned crossing.
+// TRLC-LINKS: REQ-SDS-021
+func traceWindow(f *engine.Frame, hud HUD, valid int) (win int, xc, posFrac float64) {
+	win = f.WinCols
+	if win <= 0 || win > valid {
+		win = valid
 	}
-	drawHUD(sf, f, hud)
-	if hud.ShowMeas && hud.ViewMode == 0 {
-		drawMeasPanel(sf, f, hud)
+	xc = f.EdgeX
+	if xc < 0 {
+		// Match web window(): an uncentred frame (EdgeX=-1) is always a
+		// flat/DC capture under the engine's publish policy — centre on
+		// the record middle. NEVER fabricate an edge from a marginal/noise
+		// crossing (that would jitter a flat line and diverge from web).
+		xc = float64(valid) / 2
 	}
-	if hud.ViewMode == 0 {
-		drawCursors(sf, hud)
+	// Horizontal ZOOM: show win/zoom samples magnified across the screen,
+	// panned by ZoomOff across the record (centred, so posFrac=0.5).
+	posFrac = hud.TrigPosFrac
+	if hud.Zoom > 1 {
+		win /= hud.Zoom
+		if win < 8 {
+			win = 8
+		}
+		xc += hud.ZoomOff * float64(valid)
+		posFrac = 0.5
 	}
-	drawMatchEditor(sf, hud.Match)
-	drawMenu(sf, hud)
-	if hud.SRActive {
-		drawSuperresHUD(sf, hud)
-	} else if hud.MenuOpen && hud.MenuTitle == "SUPER-RES" && hud.SRStatus != "" {
-		drawSRLine(sf, "SR off  "+hud.SRStatus) // why UTILITY did not arm (bug hunt #2)
-	}
-	drawMaskHUD(sf, hud)
-	if hud.AutosetBusy {
-		drawAutosetBanner(sf, hud.AutosetMsg)
-	} else if hud.Notice != "" {
-		drawNotice(sf, hud.Notice)
-	}
+	return win, xc, posFrac
 }
 
 // TRLC-LINKS: REQ-SDS-021

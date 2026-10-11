@@ -10,44 +10,69 @@ import (
 	"open-sds/app/internal/superres"
 )
 
-// Device super-res (spec: reference-locked stack-and-crunch). UTILITY toggles it
-// like SINGLE: press to arm (lock the current frozen frame as the match reference
-// and stack matching frames), press again to cancel. The ADJUST/intensity knob-
-// push toggles the stacked-trace review view. Stacking runs on its own goroutine,
+// Device super-res (spec: reference-locked stack-and-crunch), the ACQ tab's
+// SUPER-RES rows: Super-res On locks the current frame as the match
+// reference and stacks matching frames (freeze a frame you like with Single
+// first); Off cancels. Show switches the live trace and the stacked review,
+// the Gate rows set the stacked span. Stacking runs on its own goroutine,
 // OFF the render lock — the crunch may lag the engine and that is fine: the
-// bits/stacks stop targets are acquisition-rate independent (the device converges
-// to the same stack as the web).
+// bits/stacks stop targets are acquisition-rate independent (the device
+// converges to the same stack as the web).
 
-// srToggle is the UTILITY handler: arm ⇄ cancel.
+// srArm locks the CURRENT frame as the match reference and starts stacking.
+// It fails (the status says why) when no usable frame is on screen.
 // TRLC-LINKS: REQ-SDS-140
-func (c *Controller) srToggle() {
-	c.mu.Lock()
-	active := c.srActive
-	c.mu.Unlock()
-	if active {
-		c.srCancel("cancelled")
-		return
-	}
-	c.srArm()
-}
-
-// srArm locks the CURRENT frame as the match reference and starts stacking, then
-// maps the softkeys to the super-res page. (Freeze a frame you like with SINGLE
-// first.) UTILITY handler for the arm direction.
-// TRLC-LINKS: REQ-SDS-140
-func (c *Controller) srArm() {
+func (c *Controller) srArm() error {
 	c.mu.Lock()
 	c.srFocus = 0                 // watch
 	c.srManLo, c.srManHi = -1, -1 // auto gate
 	c.mu.Unlock()
 	if !c.srSeedAndStart() {
-		// Keep the page reachable so Channel and Stop-on (e.g. FPGA, which does
-		// not need a software reference) can still be chosen; status says why.
-		c.openMenu(pgSuperres)
-		return
+		c.mu.Lock()
+		why := c.srStatus
+		c.mu.Unlock()
+		return fmt.Errorf("super-res: %s", why)
 	}
-	c.openMenu(pgSuperres) // map the softkeys to the super-res page while active
 	c.pushLEDs()
+	return nil
+}
+
+// srAutoGate goes back to the automatic gate (the screen window).
+// TRLC-LINKS: REQ-SDS-140
+func (c *Controller) srAutoGate() error {
+	c.mu.Lock()
+	active := c.srActive
+	c.srManLo, c.srManHi = -1, -1
+	c.mu.Unlock()
+	if active {
+		c.srSeedAndStart()
+	}
+	return nil
+}
+
+// srSetGate moves a gate edge to sample v and restacks on the new gate.
+// TRLC-LINKS: REQ-SDS-140
+func (c *Controller) srSetGate(end bool, v int) error {
+	c.mu.Lock()
+	if !c.srActive || c.srStack == nil {
+		c.mu.Unlock()
+		return fmt.Errorf("super-res is off")
+	}
+	if c.srManLo < 0 { // first edit: seed the manual gate from the auto gate
+		c.srManLo, c.srManHi = c.srStack.GateLo, c.srStack.GateHi
+	}
+	n := c.srStack.N
+	const minW = 8
+	if end {
+		c.srManHi = clampInt(v, minW, n)
+		c.srManLo = min(c.srManLo, c.srManHi-minW)
+	} else {
+		c.srManLo = clampInt(v, 0, n-minW)
+		c.srManHi = max(c.srManHi, c.srManLo+minW)
+	}
+	c.mu.Unlock()
+	c.srSeedAndStart() // rebuild the stack on the new gate
+	return nil
 }
 
 // srRearm rebuilds the stack from the current frame with the current Channel/K —
@@ -61,45 +86,6 @@ func (c *Controller) srRearm() {
 	if active {
 		c.srSeedAndStart()
 	}
-}
-
-// srGateAdjust moves the super-res gate edge under the ADJUST knob while a gate
-// edge is focused (intensity button selects start/end). Re-seeds the stack with
-// the new manual gate. Returns true if it consumed the knob step.
-// TRLC-LINKS: REQ-SDS-140
-func (c *Controller) srGateAdjust(delta int) bool {
-	c.mu.Lock()
-	if !c.srActive || (c.srFocus != 1 && c.srFocus != 2) || c.srStack == nil {
-		c.mu.Unlock()
-		return false
-	}
-	if c.srManLo < 0 { // first edit: seed the manual gate from the auto gate
-		c.srManLo, c.srManHi = c.srStack.GateLo, c.srStack.GateHi
-	}
-	n := c.srStack.N
-	step := delta * 4 // samples per accel-step
-	const minW = 8
-	if c.srFocus == 2 {
-		c.srManHi += step
-	} else {
-		c.srManLo += step
-	}
-	if c.srManLo < 0 {
-		c.srManLo = 0
-	}
-	if c.srManHi > n {
-		c.srManHi = n
-	}
-	if c.srManHi-c.srManLo < minW { // keep a minimum width, pushing the moved edge
-		if c.srFocus == 2 {
-			c.srManHi = c.srManLo + minW
-		} else {
-			c.srManLo = c.srManHi - minW
-		}
-	}
-	c.mu.Unlock()
-	c.srSeedAndStart() // rebuild the stack on the new gate
-	return true
 }
 
 // srPeriodSpanMax bounds the span searched for a period when arming.
@@ -253,8 +239,9 @@ func (c *Controller) srSeedAndStart() bool {
 	return true
 }
 
-// srCancel stops the stacker and leaves the mode (UTILITY re-press). The stack is
-// dropped; the last review the user wanted is already on screen if they froze it.
+// srCancel stops the stacker and leaves the mode (Super-res Off). The stack
+// is dropped; the last review the user wanted is already on screen if they
+// froze it.
 // TRLC-LINKS: REQ-SDS-140
 func (c *Controller) srCancel(why string) {
 	c.mu.Lock()
@@ -271,24 +258,8 @@ func (c *Controller) srCancel(why string) {
 	if why != "" {
 		c.srStatus = why
 	}
-	closeMenu := c.menuPage == pgSuperres
 	c.mu.Unlock()
-	if closeMenu {
-		c.openMenu(pgNone)
-	}
 	c.pushLEDs()
-}
-
-// srFocusCycle (ADJUST/intensity push) advances the super-res focus:
-// watch → gate-start → gate-end → review → watch. In the gate-edit foci the
-// ADJUST knob moves that edge; review shows the stacked trace.
-// TRLC-LINKS: REQ-SDS-140
-func (c *Controller) srFocusCycle() {
-	c.mu.Lock()
-	if c.srActive {
-		c.srFocus = (c.srFocus + 1) % 4
-	}
-	c.mu.Unlock()
 }
 
 // srReqReset (Reset softkey) asks the stacker to start the accumulation over,

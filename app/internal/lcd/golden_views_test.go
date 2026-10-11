@@ -295,21 +295,3 @@ func TestGoldenCursorsVolts(t *testing.T) {
 	Render(sf, goldenYTFrame(), h, true)
 	goldenAssert(t, "cursors_volts", sf)
 }
-
-// TestGoldenMenu pins the softkey menu overlay over a live trace: the title
-// band, five slots aligned to the physical F1..F5 buttons, and the filled
-// inverted highlight on the selected slot.
-// TRLC-LINKS: REQ-SDS-021
-func TestGoldenMenu(t *testing.T) {
-	h := goldenYTHUD()
-	h.MenuOpen = true
-	h.MenuTitle = "TRIGGER"
-	h.MenuItems = []MenuItem{
-		{"Mode", "AUTO"}, {"Slope", "Rise"}, {"Source", "C1"},
-		{"Coupling", "DC"}, {"50%", "Set"},
-	}
-	h.MenuSel = 1
-	sf := NewMemSurface()
-	Render(sf, goldenYTFrame(), h, true)
-	goldenAssert(t, "menu_trace", sf)
-}

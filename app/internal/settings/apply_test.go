@@ -76,6 +76,10 @@ func TestApplyRestoreCollectFidelity(t *testing.T) {
 		Acq:      settings.Acq{Mode: 1, AvgCount: 64, EresLen: 1, MemDepth: 16384, PrecisionRateHz: 15625000},
 		Decode:   settings.Decode{Proto: 4, Baud: 9600, ChA: 1, ChB: 0, CPOL: true, CPHA: true, Format: 1},
 		ViewMode: 4,
+		// The workspace UI: SPECTRUM on its spectrogram, BUS on the eye,
+		// MEASURE on all values with two readouts, the master depth.
+		UI: settings.UI{Set: true, Workspace: 2, Views: [5]int{1, 0, 4, 0, 0}, BusEye: true, MeasAll: true,
+			Meas: [12]int{1*32 + 0 + 1, 0*32 + 1 + 1}, FFTSource: 1, MasterDepth: 128, RemoteNotices: true},
 	}
 	settings.Apply(want, e, fe, pc, t.Logf)
 	got := settings.Collect(e, fe, pc)
@@ -128,8 +132,9 @@ func TestApplyHostileValuesClampThroughSetters(t *testing.T) {
 		VertSet:  true,
 		Trigger:  settings.Trigger{LevelCode: 99999999, Source: 5, Type: -3, HoldoffS: 400},
 		Acq:      settings.Acq{Mode: 77, AvgCount: 100000, EresLen: 10},
-		Decode:   settings.Decode{Proto: -9, Baud: 1234567, ChA: -3, ChB: 42, Format: 47},
+		Decode:   settings.Decode{Proto: -9, Baud: 99999999, ChA: -3, ChB: 42, Format: 47},
 		ViewMode: -7,
+		UI:       settings.UI{Set: true, Workspace: 77, Views: [5]int{-3, 9, 99, -1, 5}, Meas: [12]int{-5, 9999, 33}, FFTSource: -3, MasterDepth: 7},
 	}
 	settings.Apply(hostile, e, fe, pc, t.Logf)
 
@@ -166,6 +171,15 @@ func TestApplyHostileValuesClampThroughSetters(t *testing.T) {
 	}
 	if v.ViewMode < 0 || v.ViewMode > 4 {
 		t.Fatalf("view mode out of domain: %d", v.ViewMode)
+	}
+	u := v.UI
+	if u.Workspace < 0 || u.Workspace > 4 || u.FFTSource != 1 || u.MasterDepth != 64 || u.Meas[0] != 33 || u.Meas[1] != 0 {
+		t.Fatalf("hostile workspace UI not clamped into domain: %+v", u)
+	}
+	for _, view := range u.Views {
+		if view < 0 || view > 4 {
+			t.Fatalf("a workspace view out of domain: %+v", u.Views)
+		}
 	}
 }
 

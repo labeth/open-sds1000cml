@@ -72,7 +72,7 @@ type Acq struct {
 // reset to Off on every app restart).
 // TRLC-LINKS: REQ-SDS-072, REQ-SDS-089
 type Decode struct {
-	Proto  int  `json:"proto"` // 0=off 1=auto 2=uart 3=i2c 4=spi
+	Proto  int  `json:"proto"` // 0=off 1=auto 2=uart 3=i2c 4=spi 5..11 the bit-rate and SENT decoders
 	Baud   int  `json:"baud"`
 	ChA    int  `json:"cha"` // UART source; I2C SCL; SPI CLK (0=C1 1=C2)
 	ChB    int  `json:"chb"` // I2C SDA; SPI DATA
@@ -98,6 +98,26 @@ type Settings struct {
 	Decode   Decode     `json:"decode"`
 	ViewMode int        `json:"view_mode"` // 0=Y-T 1=X-Y 2=FFT 3=Bode 4=Spgm
 	Display  Display    `json:"display"`
+	UI       UI         `json:"ui"`
+}
+
+// UI is where the panel's task workspaces were (ADR-TASK-WORKSPACES): the
+// workspace, each one's view, and the panel-held choices beside them, so a
+// restart or a recalled setup returns there. Set marks a saved block (an
+// older file has none and keeps the power-on workspaces).
+// TRLC-LINKS: REQ-SDS-211, REQ-SDS-089
+type UI struct {
+	Set       bool   `json:"set"`
+	Workspace int    `json:"workspace"`          // 0 SCOPE, 1 BUS, 2 SPECTRUM, 3 MEASURE, 4 COMPARE
+	Views     [5]int `json:"views"`              // each workspace's display view
+	BusEye    bool   `json:"bus_eye,omitempty"`  // BUS on the eye diagram
+	MeasAll   bool   `json:"meas_all,omitempty"` // MEASURE on all values
+	// Meas holds the chosen readouts in order: channel*32 + parameter + 1
+	// (0 = none).
+	Meas          [12]int `json:"meas"`
+	FFTSource     int     `json:"fft_source,omitempty"`
+	MasterDepth   int     `json:"master_depth,omitempty"`
+	RemoteNotices bool    `json:"remote_notices"`
 }
 
 // Display is the LCD's display setup beyond the view mode. Zero values are the

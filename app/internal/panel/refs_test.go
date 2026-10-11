@@ -2,7 +2,6 @@
 package panel
 
 import (
-	"fmt"
 	"testing"
 
 	"open-sds/app/internal/analog"
@@ -45,43 +44,41 @@ func TestRefSavesTheScreenWindow(t *testing.T) {
 	}
 }
 
-// A soft-key press cycles a list option past its end back to the start; the
-// ADJUST knob stops at the ends.
-// TRLC-LINKS: REQ-SDS-136
-func TestSoftkeyPressWrapsOptions(t *testing.T) {
+// The F-keys pick a list option directly; Position < > steps it and stops
+// at the ends (the TIME tab's Zoom row).
+// TRLC-LINKS: REQ-SDS-136, REQ-SDS-212
+func TestSheetOptionsPickAndClamp(t *testing.T) {
 	c, _, _ := newC(t)
-	c.button(btnHorizMenu)
-	var seen []int
-	for i := 0; i < 6; i++ {
-		c.button(btnF3)
-		seen = append(seen, c.zoom)
+	press(t, c, "horizmenu")
+	goRow(t, c, "time.zoom")
+	pickKey(t, c, "20x")
+	if c.zoom != 20 {
+		t.Fatalf("F-key picked zoom %d", c.zoom)
 	}
-	if want := []int{2, 5, 10, 20, 50, 1}; fmt.Sprint(seen) != fmt.Sprint(want) {
-		t.Fatalf("zoom presses %v, want %v", seen, want)
-	}
-	c.zoom = 50
-	c.menuCycle(2, +1) // the ADJUST knob
+	turn(c, "horizpos", 3) // past the end
 	if c.zoom != 50 {
-		t.Fatalf("knob past the end: zoom %d", c.zoom)
+		t.Fatalf("Position past the end: zoom %d", c.zoom)
+	}
+	turn(c, "horizpos", -9)
+	if c.zoom != 1 {
+		t.Fatalf("Position past the start: zoom %d", c.zoom)
 	}
 }
 
-// The pulse page shows and steps the qualifiers the engine uses, set on the
-// web or over SCPI, and its width ladder reaches past 50 us.
-// TRLC-LINKS: REQ-SDS-136
-func TestPulsePageFollowsEngine(t *testing.T) {
+// The pulse rows show and step the qualifiers the engine uses, set on the
+// web or over SCPI, and the width ladder reaches past 50 us.
+// TRLC-LINKS: REQ-SDS-136, REQ-SDS-212
+func TestPulseRowsFollowEngine(t *testing.T) {
 	c, eng, _ := newC(t)
 	eng.stats.TrigType = 1
 	eng.stats.TrigQual = engine.TrigQual{PulseLvl: .5, PulseMinNs: 20000, PulseMaxNs: 150000, PulseCond: 2, SlopeLo: .2, SlopeHi: .8, SlopeMinNs: 100, SlopeMaxNs: 1000}
-	c.button(btnTrigMenu)
-	c.button(btnTrigMenu) // the qualifier page
-	v := c.MenuView()
-	if v.Items[1].Value != "20 us" || v.Items[2].Value != "150 us" {
-		t.Fatalf("page shows %v", v.Items)
+	if a, b := rowText(c, "trig.pulse_min"), rowText(c, "trig.pulse_max"); a != "20us" || b != "150us" {
+		t.Fatalf("rows show %q / %q", a, b)
 	}
-	c.button(btnF3) // W max: 150 us -> next step from the engine's value
-	if c.pulseMax != 200000 || c.pulseMin != 20000 {
-		t.Fatalf("stepped to min %v max %v", c.pulseMin, c.pulseMax)
+	goRow(t, c, "trig.pulse_max")
+	pickKey(t, c, "Up") // one ladder step from the engine's value
+	if q := eng.Snapshot().TrigQual; q.PulseMaxNs != 200000 || q.PulseMinNs != 20000 {
+		t.Fatalf("stepped to min %v max %v", q.PulseMinNs, q.PulseMaxNs)
 	}
 	if got := stepNs(5e9, 1, false); got != 1e10 {
 		t.Fatalf("ladder top %v", got)

@@ -26,48 +26,52 @@ func streamStatus(v streamview.View) string {
 	return s
 }
 
-// drawStream fills the graticule with the hexdump transcript: status, column
+// drawStream fills the plot with the hexdump transcript: status, column
 // header, the page of lines, and on a stopped stream where the page sits and
 // which controls move it.
 // TRLC-LINKS: REQ-SDS-018
-func drawStream(sf Surface, hud HUD) {
-	v, p := hud.Stream, hud.StreamPage
-	fillRect(sf, 0, 14, W, H-28, rgb(4, 8, 16))
+func drawStream(sf Surface, p plotArea, hud HUD) {
+	v, pg := hud.Stream, hud.StreamPage
+	fillRect(sf, 0, p.y0+14, p.w, H-28-p.y0, colBoxBg)
 	col := colInfo
 	if v.State == streamview.Failed {
 		col = colStale
 	}
-	DrawText(sf, 6, 18, streamStatus(v), col, 1)
-	DrawText(sf, 6, 30, p.Header, colDim, 1)
+	DrawText(sf, 6, p.y0+18, streamStatus(v), col, 1)
+	DrawText(sf, 6, p.y0+30, pg.Header, colDim, 1)
 	const lineH = 10
-	for i, l := range p.Lines {
+	for i, l := range pg.Lines {
+		y := p.y0 + 42 + i*lineH
+		if y > H-36 {
+			break
+		}
 		c := colC1
-		if p.Top+i == p.TriggerLine {
+		if pg.Top+i == pg.TriggerLine {
 			c = colTrig
 		}
-		DrawText(sf, 6, 42+i*lineH, l, c, 1)
+		DrawText(sf, 6, y, l, c, 1)
 	}
 	if v.State != streamview.Streaming && v.State != streamview.Failed {
-		last := p.Top + len(p.Lines)
-		DrawText(sf, 6, H-24, fmt.Sprintf("lines %d-%d of %d   HORIZ POS: scroll  push: trigger   F2: waveform   RUN: stream again",
-			p.Top+1, last, p.Total), colDim, 1)
+		last := pg.Top + len(pg.Lines)
+		DrawText(sf, 6, H-24, fmt.Sprintf("lines %d-%d of %d   Position: scroll  push: trigger   BUS tab Stream shows: Wave   Run/Stop: stream again",
+			pg.Top+1, last, pg.Total), colDim, 1)
 	}
 }
 
 // drawStreamStrip overlays the transcript lines around the trigger on the
 // recalled record's waveform.
 // TRLC-LINKS: REQ-SDS-018
-func drawStreamStrip(sf Surface, hud HUD) {
-	v, p := hud.Stream, hud.StreamPage
+func drawStreamStrip(sf Surface, p plotArea, hud HUD) {
+	v, pg := hud.Stream, hud.StreamPage
 	const lineH = 10
-	fillRect(sf, 0, 14, W, 26+lineH*len(p.Lines), rgb(4, 8, 16))
-	DrawText(sf, 6, 16, streamStatus(v)+"   F2: list", colInfo, 1)
-	DrawText(sf, 6, 26, p.Header, colDim, 1)
-	for i, l := range p.Lines {
+	fillRect(sf, 0, p.y0+14, p.w, 26+lineH*len(pg.Lines), colBoxBg)
+	DrawText(sf, 6, p.y0+16, streamStatus(v)+"   BUS tab Stream shows: List", colInfo, 1)
+	DrawText(sf, 6, p.y0+26, pg.Header, colDim, 1)
+	for i, l := range pg.Lines {
 		c := colC1
-		if p.Top+i == p.TriggerLine {
+		if pg.Top+i == pg.TriggerLine {
 			c = colTrig
 		}
-		DrawText(sf, 6, 36+i*lineH, l, c, 1)
+		DrawText(sf, 6, p.y0+36+i*lineH, l, c, 1)
 	}
 }

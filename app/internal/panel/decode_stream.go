@@ -7,6 +7,7 @@ import (
 
 	"open-sds/app/internal/decode"
 	"open-sds/app/internal/engine"
+	"open-sds/app/internal/panel/framecalc"
 	"open-sds/app/internal/streamview"
 )
 
@@ -101,17 +102,101 @@ func (c *Controller) streaming() bool {
 	return c.decProto == 1 && c.decMode == decModeStream && c.stream != nil
 }
 
-// decodeValueAdjust lets ADJUST step the stream trigger value by its
-// accelerated count while that item is highlighted.
-// TRLC-LINKS: REQ-SDS-018
-func (c *Controller) decodeValueAdjust(delta int) bool {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	if c.menuPage != pgDecode || c.decProto != 1 || c.menuSel != 4 {
-		return false
+// setDecProto sets the decoder (framecalc.ProtoOff..ProtoFlexRay). Leaving
+// Auto ends a stream; a bit-rate protocol starts at its usual rate; clock and
+// data stay on different channels; an armed serial trigger follows the bus.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-214
+func (c *Controller) setDecProto(p int) error {
+	if p < framecalc.ProtoOff || p >= framecalc.NumProtos {
+		return fmt.Errorf("no protocol %d", p)
 	}
-	c.decValue = ((c.decValue+delta)%0x10000 + 0x10000) % 0x10000
-	return true
+	c.mu.Lock()
+	prev := c.decProto
+	c.decProto = p
+	if p == framecalc.ProtoI2C || p == framecalc.ProtoSPI {
+		c.decChB = 1 - c.decChA
+	}
+	if rateProto(p) && p != prev {
+		c.decBaud = defaultRate(p)
+	}
+	if p == framecalc.ProtoUART && rateProto(prev) {
+		c.decBaud = 115200
+	}
+	stop := p != framecalc.ProtoAuto && c.decMode == decModeStream
+	if stop {
+		c.decMode = decModeView
+	}
+	if p != framecalc.ProtoOff {
+		c.ui.busFailed = false
+	}
+	c.mu.Unlock()
+	c.syncDecodeView(p != framecalc.ProtoOff)
+	if p == framecalc.ProtoOff && c.eng.Snapshot().SerialMode != 0 {
+		c.setTrigTypeIndex(c.eng.Snapshot(), 0)
+		c.toast("Serial trigger off (no decode): Edge", 1800*time.Millisecond)
+	}
+	c.syncSerialBus()
+	if stop {
+		c.stopStream()
+		c.eng.SetRunning(true)
+	}
+	return nil
+}
+
+// setDecBaud sets the UART baud or the bit rate of a bit-rate protocol.
+// TRLC-LINKS: REQ-SDS-018
+func (c *Controller) setDecBaud(b int) error {
+	if b < 50 || b > 20000000 {
+		return fmt.Errorf("baud %d is outside 50..20000000", b)
+	}
+	c.mu.Lock()
+	c.decBaud = b
+	c.mu.Unlock()
+	c.syncSerialBus()
+	return nil
+}
+
+// setDecRole puts a line on a channel: the first role (UART source, I2C SCL,
+// SPI CLK) or the second (SDA, DATA); the other role moves to the other
+// channel, so clock and data never share one.
+// TRLC-LINKS: REQ-SDS-018
+func (c *Controller) setDecRole(first bool, ch int) error {
+	c.mu.Lock()
+	if first {
+		c.decChA = ch & 1
+		c.decChB = 1 - c.decChA
+	} else {
+		c.decChB = ch & 1
+		c.decChA = 1 - c.decChB
+	}
+	c.mu.Unlock()
+	c.syncSerialBus()
+	return nil
+}
+
+// setStreamMode starts (Auto: with what it found) or stops the hardware
+// decoded stream.
+// TRLC-LINKS: REQ-SDS-018
+func (c *Controller) setStreamMode(on bool) error {
+	c.mu.Lock()
+	if c.decProto != framecalc.ProtoAuto || c.stream == nil {
+		c.mu.Unlock()
+		if on {
+			return fmt.Errorf("a stream needs Protocol = Auto")
+		}
+		return nil
+	}
+	was := c.decMode == decModeStream
+	c.decMode = map[bool]int{true: decModeStream, false: decModeView}[on]
+	c.mu.Unlock()
+	switch {
+	case on && !was:
+		c.startStream()
+	case !on && was:
+		c.stopStream()
+		c.eng.SetRunning(true)
+	}
+	return nil
 }
 
 // TRLC-LINKS: REQ-SDS-018

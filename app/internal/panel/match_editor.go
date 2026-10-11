@@ -5,15 +5,20 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"open-sds/app/internal/engine"
+	"open-sds/app/internal/panel/wsview"
 )
 
-// The match editor is a full-screen keyboard for the serial trigger's match
-// (SERIAL page, F2). TIME/DIV moves the key highlight left/right, CH2
-// POSITION up/down, ADJUST the insertion cursor in the pattern; F2 types the
-// highlighted key. Its tokens are the web's "trigger on match" syntax: hex
-// units, "??" any unit, "A?" nibble wildcards and ERR for a decoder error.
+// The match editor is a full-screen keyboard for the serial trigger's match,
+// opened from the BUS tab's Match bytes row (F1 Edit bytes, or Adjust push).
+// Adjust moves the key highlight, Position the insertion cursor; F1 changes
+// the key set, F2 (or the Adjust push) types the highlighted key, F3 deletes,
+// F4 applies, F5 cancels; the Position push clears the pattern. S/DIV and
+// Menu On/Off leave it as they leave any sheet sub-mode, discarding the edit.
+// Its tokens are the web's "trigger on match" syntax: hex units, "??" any
+// unit, "A?" nibble wildcards and ERR for a decoder error.
 
 // Key sets.
 const (
@@ -90,20 +95,6 @@ type MatchEditorView struct {
 	Msg      string
 }
 
-// openMatchEditor loads the armed match into the editor.
-// TRLC-LINKS: REQ-SDS-013
-func (c *Controller) openMatchEditor() {
-	se := c.serialTrig()
-	if se == nil {
-		return
-	}
-	toks := tokensOf(se.SerialConfig())
-	c.mu.Lock()
-	c.kb = matchEditor{open: true, toks: toks, cur: len(toks)}
-	c.mu.Unlock()
-	c.openMenu(pgMatch)
-}
-
 // tokensOf renders a trigger's match as editor tokens.
 // TRLC-LINKS: REQ-SDS-013
 func tokensOf(p engine.SerialParams) []string {
@@ -173,12 +164,47 @@ func compileTokens(toks []string) (bytes []int, pattern []engine.PatternElem, er
 	return nil, pattern, nil
 }
 
+// setMatchTokens sets the serial trigger's match (nil = any byte), keeping
+// the bus and whether it is armed.
+// TRLC-LINKS: REQ-SDS-013, REQ-SDS-214
+func (c *Controller) setMatchTokens(toks []string) error {
+	se := c.serialTrig()
+	if se == nil {
+		return fmt.Errorf("no serial trigger in this engine")
+	}
+	if len(toks) > kbMaxTokens {
+		return fmt.Errorf("%d units: %d at most", len(toks), kbMaxTokens)
+	}
+	b, pat, err := compileTokens(toks)
+	if err != nil {
+		return err
+	}
+	p := se.SerialConfig()
+	p.Bytes, p.Pattern = b, pat
+	se.SetSerialParams(c.serialBus(p))
+	return nil
+}
+
+// openMatchSub opens the editor on the armed match (the sheet's sub-mode).
+// TRLC-LINKS: REQ-SDS-013, REQ-SDS-212
+func (c *Controller) openMatchSub() {
+	var toks []string
+	if se := c.serialTrig(); se != nil {
+		toks = tokensOf(se.SerialConfig())
+	}
+	c.mu.Lock()
+	c.ui.edit = false
+	c.kb = matchEditor{open: true, toks: toks, cur: len(toks)}
+	c.ui.sub = subMatch
+	c.mu.Unlock()
+}
+
 // MatchEditor is the editor's render snapshot.
 // TRLC-LINKS: REQ-SDS-013
 func (c *Controller) MatchEditor() MatchEditorView {
 	c.mu.Lock()
 	k := c.kb
-	k.open = k.open && c.menuPage == pgMatch
+	k.open = k.open && c.ui.open && c.ui.sub == subMatch
 	k.toks = append([]string(nil), k.toks...)
 	c.mu.Unlock()
 	if !k.open {
@@ -192,87 +218,131 @@ func (c *Controller) MatchEditor() MatchEditorView {
 		Toks: k.toks, Cur: k.cur, Typing: k.typing, Proto: proto, Msg: k.msg}
 }
 
-// matchEditorOpen reports the editor is up (its knobs are captured).
+// matchKeys are the editor's F-keys: key set, type, delete, apply, cancel.
 // TRLC-LINKS: REQ-SDS-013
-func (c *Controller) matchEditorOpen() bool {
+func (c *Controller) matchKeys(s *sv) []fkey {
 	c.mu.Lock()
-	defer c.mu.Unlock()
-	return c.kb.open && c.menuPage == pgMatch // leaving the page cancels it
+	k := c.kb
+	c.mu.Unlock()
+	key := "-"
+	if g := kbGrid(k.set); k.row < len(g) && k.col < len(g[k.row]) {
+		key = g[k.row][k.col]
+	}
+	if key == " " {
+		key = "space"
+	}
+	return []fkey{
+		{label: "Keys", value: kbSetNames[k.set], run: func() error { c.matchCycleSet(); return nil }},
+		{label: "Type", value: key, run: func() error { c.matchTypeKey(); return nil }},
+		{label: "Delete", value: "<", run: func() error { c.matchDelete(); return nil }},
+		{label: "OK", value: "use these bytes", run: c.matchOK},
+		{label: "Cancel", value: "keep the match", run: func() error { c.matchCancel(); return nil }},
+	}
 }
 
-// matchEditorKnob moves the key highlight (TIME/DIV: column, CH2 POSITION:
-// row) or the insertion cursor (ADJUST). It reports whether it took the knob.
+// matchMoveKey moves the key highlight n keys through the grid, row by row.
 // TRLC-LINKS: REQ-SDS-013
-func (c *Controller) matchEditorKnob(name string, dir int) bool {
+func (c *Controller) matchMoveKey(n int) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	k := &c.kb
-	if !k.open || c.menuPage != pgMatch {
-		return false
-	}
-	grid := kbGrid(k.set)
-	switch name {
-	case "tdiv":
-		n := len(grid[k.row])
-		k.col = ((k.col+dir)%n + n) % n
-	case "ch2pos":
-		// Position knobs turn clockwise to raise the trace: clockwise moves up.
-		n := len(grid)
-		k.row = ((k.row-dir)%n + n) % n
-		k.col = min(k.col, len(grid[k.row])-1)
-	case "adjust":
-		k.cur = max(0, min(len(k.toks), k.cur+dir))
-		k.typing = false
-	default:
-		return false
-	}
-	return true
-}
-
-// matchEditorCycle handles the editor's softkeys: F1 key set, F2 type the
-// highlighted key, F3 delete before the cursor, F4 apply, F5 cancel.
-// TRLC-LINKS: REQ-SDS-013
-func (c *Controller) matchEditorCycle(slot, dir int) {
-	c.mu.Lock()
-	k := &c.kb
-	if !k.open || c.menuPage != pgMatch {
-		c.mu.Unlock()
-		return
-	}
-	k.msg = ""
-	switch slot {
-	case 0:
-		k.set = ((k.set+dir)%kbSets + kbSets) % kbSets
-		k.row, k.col, k.typing = 0, 0, false
-	case 1:
-		k.press(kbGrid(k.set)[k.row][k.col])
-	case 2:
-		if k.cur > 0 {
-			k.toks = append(k.toks[:k.cur-1], k.toks[k.cur:]...)
-			k.cur--
+	g := kbGrid(k.set)
+	total, idx := 0, 0
+	for r, row := range g {
+		if r == k.row {
+			idx = total + min(k.col, len(row)-1)
 		}
-		k.typing = false
-	case 3:
-		bytes, pattern, err := compileTokens(k.toks)
-		if err != nil {
-			k.msg = err.Error()
-			c.mu.Unlock()
+		total += len(row)
+	}
+	idx = ((idx+n)%total + total) % total
+	for r, row := range g {
+		if idx < len(row) {
+			k.row, k.col = r, idx
 			return
 		}
-		k.open = false
+		idx -= len(row)
+	}
+}
+
+// matchMoveCursor moves the insertion cursor.
+// TRLC-LINKS: REQ-SDS-013
+func (c *Controller) matchMoveCursor(dir int) {
+	c.mu.Lock()
+	c.kb.cur = max(0, min(len(c.kb.toks), c.kb.cur+dir))
+	c.kb.typing = false
+	c.mu.Unlock()
+}
+
+// matchCycleSet steps the key set (Hex, Text, Special).
+// TRLC-LINKS: REQ-SDS-013
+func (c *Controller) matchCycleSet() {
+	c.mu.Lock()
+	c.kb.set = (c.kb.set + 1) % kbSets
+	c.kb.row, c.kb.col, c.kb.typing, c.kb.msg = 0, 0, false, ""
+	c.mu.Unlock()
+}
+
+// matchTypeKey types the highlighted key at the cursor.
+// TRLC-LINKS: REQ-SDS-013
+func (c *Controller) matchTypeKey() {
+	c.mu.Lock()
+	k := &c.kb
+	k.msg = ""
+	if g := kbGrid(k.set); k.row < len(g) && k.col < len(g[k.row]) {
+		k.press(g[k.row][k.col])
+	}
+	c.mu.Unlock()
+}
+
+// matchDelete deletes the token before the cursor.
+// TRLC-LINKS: REQ-SDS-013
+func (c *Controller) matchDelete() {
+	c.mu.Lock()
+	k := &c.kb
+	if k.cur > 0 {
+		k.toks = append(k.toks[:k.cur-1], k.toks[k.cur:]...)
+		k.cur--
+	}
+	k.typing, k.msg = false, ""
+	c.mu.Unlock()
+}
+
+// matchClear empties the pattern (the factory value: any byte).
+// TRLC-LINKS: REQ-SDS-013
+func (c *Controller) matchClear() {
+	c.mu.Lock()
+	c.kb.toks, c.kb.cur, c.kb.typing, c.kb.msg = nil, 0, false, ""
+	c.mu.Unlock()
+}
+
+// matchOK applies the pattern and returns to the sheet.
+// TRLC-LINKS: REQ-SDS-013
+func (c *Controller) matchOK() error {
+	c.mu.Lock()
+	toks := append([]string(nil), c.kb.toks...)
+	c.mu.Unlock()
+	if err := c.setMatchTokens(toks); err != nil {
+		c.mu.Lock()
+		c.kb.msg = err.Error()
 		c.mu.Unlock()
-		if se := c.serialTrig(); se != nil {
-			p := se.SerialConfig()
-			p.Bytes, p.Pattern = bytes, pattern
-			se.SetSerialParams(c.serialBus(p))
-		}
-		c.openMenu(pgTrigQ)
-		return
-	case 4:
-		k.open = false
-		c.mu.Unlock()
-		c.openMenu(pgTrigQ)
-		return
+		return nil
+	}
+	c.matchCancel()
+	text := strings.Join(toks, " ")
+	if text == "" {
+		text = "any byte"
+	}
+	c.toast("Match: "+text, 1500*time.Millisecond)
+	return nil
+}
+
+// matchCancel leaves the editor without applying.
+// TRLC-LINKS: REQ-SDS-013
+func (c *Controller) matchCancel() {
+	c.mu.Lock()
+	c.kb.open = false
+	if c.ui.sub == subMatch {
+		c.ui.sub = subNone
 	}
 	c.mu.Unlock()
 }
@@ -326,4 +396,92 @@ func (k *matchEditor) press(key string) {
 		return
 	}
 	k.typing = insert(key)
+}
+
+// ---- the byte picker ----
+
+// pickFrom builds the picker's bytes from packets, starting at packet start.
+// TRLC-LINKS: REQ-SDS-214
+func pickFrom(rows [][]string, starts []bool, startPkt int) pickState {
+	var p pickState
+	for i, toks := range rows {
+		if i == startPkt {
+			p.start = len(p.toks)
+		}
+		for j, t := range toks {
+			if len(p.toks) < 256 {
+				p.toks = append(p.toks, wsview.PickTok{Text: t, Start: j == 0 && (starts[i] || i > 0)})
+			}
+		}
+	}
+	p.start = clampInt(p.start, 0, max(0, len(p.toks)-1))
+	p.first = p.start
+	return p
+}
+
+// pickKeys are the picker's F-keys: trigger on 1..4 bytes, cancel.
+// TRLC-LINKS: REQ-SDS-214
+func (c *Controller) pickKeys(s *sv) []fkey {
+	p := s.ui.pick
+	var out []fkey
+	for n := 1; n <= 4; n++ {
+		n := n
+		ok := p.start+n <= len(p.toks)
+		var toks []string
+		for i := p.start; i < p.start+n && i < len(p.toks); i++ {
+			toks = append(toks, p.toks[i].Text)
+		}
+		v := "-"
+		if ok {
+			v = strings.Join(toks, " ")
+		}
+		out = append(out, fkey{label: fmt.Sprintf("Trig on %d", n), value: v, dim: !ok, run: func() error { return c.pickUse(n) }})
+	}
+	out = append(out, fkey{label: "Cancel", value: "keep the match", run: func() error { c.pickCancel(); return nil }})
+	return out
+}
+
+// pickMove moves the first byte.
+// TRLC-LINKS: REQ-SDS-214
+func (c *Controller) pickMove(dir int) {
+	c.mu.Lock()
+	c.ui.pick.start = clampInt(c.ui.pick.start+dir, 0, max(0, len(c.ui.pick.toks)-1))
+	c.mu.Unlock()
+}
+
+// pickCancel closes the picker without a change.
+// TRLC-LINKS: REQ-SDS-214
+func (c *Controller) pickCancel() {
+	c.mu.Lock()
+	if c.ui.wpick {
+		c.closePickLocked()
+	} else if c.ui.sub == subPick {
+		c.ui.sub, c.ui.pick = subNone, pickState{}
+	}
+	c.mu.Unlock()
+}
+
+// pickUse triggers on n bytes from the highlighted one: it sets the match
+// and switches the trigger to Serial.
+// TRLC-LINKS: REQ-SDS-214
+func (c *Controller) pickUse(n int) error {
+	c.mu.Lock()
+	p := c.ui.pick
+	c.mu.Unlock()
+	if p.start+n > len(p.toks) {
+		return fmt.Errorf("not enough bytes after the highlighted one")
+	}
+	var toks []string
+	for _, t := range p.toks[p.start : p.start+n] {
+		toks = append(toks, t.Text)
+	}
+	if err := c.setMatchTokens(toks); err != nil {
+		return err
+	}
+	c.pickCancel()
+	if err := c.armSerial(); err != nil {
+		return err
+	}
+	c.toast("Trigger on "+strings.Join(toks, " "), 1600*time.Millisecond)
+	return nil
 }

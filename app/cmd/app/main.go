@@ -13,6 +13,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"hash/fnv"
 	"math"
 	"net/http"
 	"open-sds/app/internal/decode"
@@ -38,6 +39,7 @@ import (
 	"open-sds/app/internal/iface"
 	"open-sds/app/internal/lcd"
 	"open-sds/app/internal/panel"
+	"open-sds/app/internal/panel/wsview"
 	"open-sds/app/internal/scpi"
 	"open-sds/app/internal/settings"
 	"open-sds/app/internal/sramcapture"
@@ -122,7 +124,7 @@ func buildHUD(e *engine.Engine, fe *analog.FrontEnd) lcd.HUD {
 		}
 		hud.TrigLvlV = e.TrigVoltsAt(st.TrigCode, st.TrigSource) * max(probe, 1)
 	}
-	if pc := uiCtrl.Load(); pc != nil { // menu overlay + per-channel display
+	if pc := uiCtrl.Load(); pc != nil { // the workspace UI + per-channel display
 		if sv := streamCtrl.Load(); sv != nil && pc.StreamMode() {
 			v := sv.Snapshot()
 			list, top := pc.StreamList()
@@ -151,33 +153,27 @@ func buildHUD(e *engine.Engine, fe *analog.FrontEnd) lcd.HUD {
 				lastStreamPage.Store(&cachedStreamPage{key, hud.StreamPage})
 			}
 		}
-		mv := pc.MenuView()
-		hud.ShowC1, hud.ShowC2, hud.ChanExplicit = mv.ShowC1, mv.ShowC2, true
-		hud.ShowMeas = mv.ShowMeas
-		hud.ViewMode, hud.MathMode = mv.ViewMode, mv.MathMode
-		hud.AutosetBusy, hud.AutosetMsg = mv.AutosetBusy, mv.AutosetMsg
-		hud.Notice = mv.Notice
+		d, v := pc.Snapshot() // the display state and the workspace UI, read together
+		hud.ShowC1, hud.ShowC2, hud.ChanExplicit = d.ShowC1, d.ShowC2, true
+		hud.ShowMeas, hud.MeasItems = d.ShowMeas, d.MeasItems
+		hud.ViewMode, hud.MathMode, hud.FFTSrc = d.ViewMode, d.MathMode, d.FFTSrc
+		hud.AutosetBusy, hud.AutosetMsg = d.AutosetBusy, d.AutosetMsg
+		hud.Notice, hud.Remote = v.Notice, d.Remote
+		hud.UI = v
 		hud.Match = lcd.MatchView(pc.MatchEditor())
-		hud.Zoom, hud.ZoomOff = mv.Zoom, mv.ZoomOff
-		hud.Persist = mv.Persist
-		hud.DecProto, hud.DecBaud = mv.DecProto, mv.DecBaud
-		hud.DecChA, hud.DecChB = mv.DecChA, mv.DecChB
-		hud.DecCPOL, hud.DecCPHA = mv.DecCPOL, mv.DecCPHA
-		hud.DecFormat = mv.DecFormat
+		hud.Zoom, hud.ZoomOff = d.Zoom, d.ZoomOff
+		hud.Persist = d.Persist
+		hud.DecProto, hud.DecBaud = d.DecProto, d.DecBaud
+		hud.DecChA, hud.DecChB = d.DecChA, d.DecChB
+		hud.DecCPOL, hud.DecCPHA = d.DecCPOL, d.DecCPHA
+		hud.DecFormat = d.DecFormat
 		rv := pc.RefView()
 		for i := 0; i < 2; i++ {
 			hud.RefC1[i], hud.RefC2[i], hud.RefShow[i] = rv[i].C1, rv[i].C2, rv[i].Show
 			hud.RefVdiv[i], hud.RefOff[i] = rv[i].Vdiv, rv[i].Off
 		}
-		hud.CurOn, hud.CurType, hud.CurSel = mv.CurOn, mv.CurType, mv.CurSel
-		hud.CurX, hud.CurY = mv.CurX, mv.CurY
-		hud.MenuOpen, hud.MenuTitle, hud.MenuSel = mv.Open, mv.Title, mv.Sel
-		if mv.Open { // only the visible menu needs its item list copied each tick
-			hud.MenuItems = make([]lcd.MenuItem, len(mv.Items))
-			for i, it := range mv.Items {
-				hud.MenuItems[i] = lcd.MenuItem{Label: it.Label, Value: it.Value}
-			}
-		}
+		hud.CurOn, hud.CurType, hud.CurSel = d.CurOn, d.CurType, d.CurSel
+		hud.CurX, hud.CurY = d.CurX, d.CurY
 		sv := pc.SuperresView()
 		hud.SRActive, hud.SRFocus, hud.SRStatus = sv.Active, sv.Focus, sv.Status
 		hud.SRBits, hud.SRMean, hud.SRk = sv.Bits, sv.Mean, sv.K
@@ -237,7 +233,7 @@ var lastViewWasBode atomic.Bool
 var lcdSpect = lcd.NewSpectrogram()
 
 // uiCtrl is the panel controller, published after creation so the LCD render
-// loop (started earlier) and the SCDP screenshot can read the menu overlay.
+// loop (started earlier) and the SCDP screenshot can read the workspace UI.
 var uiCtrl atomic.Pointer[panel.Controller]
 
 // streamCtrl is the scope-side decoded stream, published for the HUD.
@@ -261,7 +257,7 @@ type renderSig struct {
 	seq                                             uint64
 	view, math, dec, zoom                           int
 	curType, curSel                                 int
-	menuSel                                         int
+	ui                                              uint64 // the workspace UI (uiSig)
 	url                                             string
 	tdiv, zoomOff                                   float64
 	c1v, c2v, off1, off2                            float64
@@ -274,12 +270,12 @@ type renderSig struct {
 	running, single, norm                           bool
 	trigd, live                                     bool
 	showC1, showC2                                  bool
-	menuOpen, curOn                                 bool
+	curOn                                           bool
 	ref0, ref1                                      bool
-	// extra prints the remaining HUD state a held display shows: the menu's
-	// title and values, the autoset banner, the trigger readout, decode
-	// parameters (bug hunt #2: a softkey that changed only a value, e.g.
-	// TRIGGER Type Pulse->Slope while stopped, left the old value on screen).
+	// extra prints the remaining HUD state a held display shows: the autoset
+	// banner, the notices, the trigger readout, decode parameters (bug hunt
+	// #2: a softkey that changed only a value, e.g. TRIGGER Type Pulse->Slope
+	// while stopped, left the old value on screen).
 	extra string
 }
 
@@ -287,6 +283,54 @@ type renderSig struct {
 type statusSlot struct {
 	busy       string
 	pct, phase int
+}
+
+// uiSig fingerprints the workspace UI for the repaint check. Pointers are
+// followed (fmt would print their addresses, new on every snapshot); the
+// eye's density grid is left out: it changes only with a new frame, and the
+// signature has the frame's Seq.
+// TRLC-LINKS: REQ-SDS-168, REQ-SDS-211
+func uiSig(v wsview.View) uint64 {
+	h := fnv.New64a()
+	fmt.Fprint(h, v.WS, v.Layout, v.Rail, v.Notice)
+	if v.RailNote != nil {
+		fmt.Fprint(h, "|note", *v.RailNote)
+	}
+	if v.Keys != nil {
+		fmt.Fprint(h, "|keys", *v.Keys)
+	}
+	if v.Sheet != nil {
+		sh := *v.Sheet
+		if sh.Sub != nil {
+			fmt.Fprint(h, "|sub", *sh.Sub)
+			sh.Sub = nil
+		}
+		fmt.Fprint(h, "|sheet", sh)
+	}
+	if v.Picker != nil {
+		fmt.Fprint(h, "|pick", *v.Picker)
+	}
+	if v.Scope != nil {
+		fmt.Fprint(h, "|scope", *v.Scope)
+	}
+	if v.Bus != nil {
+		fmt.Fprint(h, "|bus", *v.Bus)
+	}
+	if v.Eye != nil {
+		e := *v.Eye
+		e.Grid = nil
+		fmt.Fprint(h, "|eye", e)
+	}
+	if v.Spec != nil {
+		fmt.Fprint(h, "|spec", *v.Spec)
+	}
+	if v.Meas != nil {
+		fmt.Fprint(h, "|meas", *v.Meas)
+	}
+	if v.Cmp != nil {
+		fmt.Fprint(h, "|cmp", *v.Cmp)
+	}
+	return h.Sum64()
 }
 
 // TRLC-LINKS: REQ-SDS-168
@@ -298,7 +342,7 @@ func renderSigOf(f *engine.Frame, hud lcd.HUD, live bool) renderSig {
 	return renderSig{
 		seq:  seq,
 		view: hud.ViewMode, math: hud.MathMode, dec: hud.DecProto, zoom: hud.Zoom,
-		curType: hud.CurType, curSel: hud.CurSel, menuSel: hud.MenuSel,
+		curType: hud.CurType, curSel: hud.CurSel, ui: uiSig(hud.UI),
 		url:  hud.URL, // an IP appearing/changing must repaint a held display
 		tdiv: hud.TdivS, zoomOff: hud.ZoomOff,
 		c1v: hud.C1VdivV, c2v: hud.C2VdivV, off1: hud.OffC1V, off2: hud.OffC2V,
@@ -308,15 +352,15 @@ func renderSigOf(f *engine.Frame, hud lcd.HUD, live bool) renderSig {
 		showMeas: hud.ShowMeas, persist: hud.Persist,
 		running: hud.Running, single: hud.Single, norm: hud.Norm,
 		trigd: hud.Trigd, live: live, showC1: hud.ShowC1, showC2: hud.ShowC2,
-		menuOpen: hud.MenuOpen, curOn: hud.CurOn,
-		ref0: hud.RefShow[0], ref1: hud.RefShow[1],
+		curOn: hud.CurOn,
+		ref0:  hud.RefShow[0], ref1: hud.RefShow[1],
 		// Decoded stream: its state and the list's page repaint the display;
 		// while streaming, a quarter-second slot paces the transcript at 4 Hz
 		// so drawing leaves the CPU to the event pump.
 		streamOn: hud.StreamOn, streamState: int(hud.Stream.State), streamList: hud.StreamList,
 		streamTop: hud.StreamPage.Top, streamTotal: hud.StreamPage.Total, streamTrig: hud.StreamPage.TriggerLine,
 		streamSlot: streamSlot(hud),
-		extra: fmt.Sprint(hud.MenuTitle, hud.MenuItems, hud.AutosetBusy, hud.AutosetMsg,
+		extra: fmt.Sprint(hud.AutosetBusy, hud.AutosetMsg, hud.Remote, hud.MeasItems, hud.FFTSrc,
 			hud.TrigSrc, hud.TrigRising, hud.TrigLvlV, hud.TrigPosFrac, hud.Waiting,
 			hud.Zoom1, hud.Zoom2, hud.ChanExplicit, hud.DecBaud, hud.DecChA, hud.DecChB,
 			hud.DecCPOL, hud.DecCPHA, hud.DecFormat, hud.MaskMsg, hud.SRStatus, hud.Notice, hud.Match),
@@ -341,6 +385,7 @@ func runLCD(e *engine.Engine, fe *analog.FrontEnd, fo *frames.Fanout) {
 	back := lcd.NewMemSurface()
 	persistLayer := lcd.NewMemSurface() // afterglow trace layer, owned by this loop
 	var sgSeq uint64                    // last frame pushed into the shared spectrogram (lcdSpect)
+	sgSrc := -1                         // the channel the waterfall shows (it restarts on a change)
 	var lastSeq uint64
 	var lastPresented uint64
 	var lastFresh time.Time
@@ -353,6 +398,9 @@ func runLCD(e *engine.Engine, fe *analog.FrontEnd, fo *frames.Fanout) {
 		// drain): a concurrent render burst there corrupts the HW capture on this
 		// single core. This pauses ~19ms/frame; the wait+pace (~90ms) is free.
 		e.QuietRLock()
+		if pc := uiCtrl.Load(); pc != nil {
+			fo.WithFrame(pc.OnFrame) // the workspace pane's analysis, once per new frame
+		}
 		hud := buildHUD(e, fe)
 		present := false
 		fo.WithFrame(func(f *engine.Frame) {
@@ -366,15 +414,20 @@ func runLCD(e *engine.Engine, fe *analog.FrontEnd, fo *frames.Fanout) {
 			if f != nil {
 				hud.Trigd = f.Trigd // on-screen TRIG'd indicator (there is no TRIG'd lamp)
 				hud.SampleS = f.SampleS
-				// Spectrogram: push each fresh per-sample frame's spectrum as a
-				// new waterfall row while the SPECTROGRAM view is active.
-				if hud.ViewMode == 4 && !f.IsEnv && f.Seq != sgSeq && len(f.C1) > 0 {
+				// Spectrogram: push each fresh per-sample frame's spectrum of the
+				// FFT source as a new waterfall row while the SPECTROGRAM view is
+				// active; a new source starts a new waterfall.
+				if hud.ViewMode == 4 && !f.IsEnv && len(f.C1) > 0 && (f.Seq != sgSeq || hud.FFTSrc&1 != sgSrc) {
+					if hud.FFTSrc&1 != sgSrc {
+						lcdSpect.Clear()
+						sgSrc = hud.FFTSrc & 1
+					}
 					sgSeq = f.Seq
 					effNyq := 0.0
 					if f.SampleS > 0 {
 						effNyq = 0.5 / f.SampleS
 					}
-					lcdSpect.Push(f, 0, effNyq) // C1
+					lcdSpect.Push(f, sgSrc, effNyq)
 				}
 			}
 			if pc := uiCtrl.Load(); pc != nil {
@@ -829,18 +882,7 @@ func main() {
 	go saver.Run(stopFo)
 
 	// Device-screen PNG for the web /api/screen.png endpoint: the exact LCD render.
-	screenPNG := func() []byte {
-		back := lcd.NewMemSurface()
-		hud := buildHUD(e, fe)
-		fo.WithFrame(func(f *engine.Frame) {
-			if f != nil {
-				hud.SampleS = f.SampleS
-				hud.Trigd = f.Trigd
-			}
-			lcd.Render(back, f, hud, true)
-		})
-		return lcd.EncodePNG(back)
-	}
+	screenPNG := func() []byte { return lcd.EncodePNG(renderScreen(e, fe, fo)) }
 	// SCPI over VXI-11 (spec 11): the host instrument-control interface.
 	// SCDP renders a fresh headless frame — works with or without the LCD.
 	// Created BEFORE the web server so its INVS shadow (the display-invert
@@ -850,20 +892,10 @@ func main() {
 	if fe != nil {
 		sfe = fe
 	}
-	shot := func() []byte {
-		back := lcd.NewMemSurface()
-		hud := buildHUD(e, fe)
-		fo.WithFrame(func(f *engine.Frame) {
-			if f != nil {
-				hud.SampleS = f.SampleS
-				hud.Trigd = f.Trigd
-			}
-			lcd.Render(back, f, hud, true)
-		})
-		return lcd.EncodeBMP(back)
-	}
+	shot := func() []byte { return lcd.EncodeBMP(renderScreen(e, fe, fo)) }
 	scpiH := scpi.New(scopeSource{e, fo}, sfe, pc, shot, logf)
 	scpiCtrl.Store(scpiH) // publish for the LCD render loop + screenshot paths
+	pc.SetInverter(scpiH) // the CH tabs' Invert rows: the same INVS shadow
 	// *SAV/*RCL: numbered setups beside the persisted one, through the same
 	// Collect/Apply paths as the boot restore.
 	setupSlots := settings.Slots{Dir: filepath.Dir(setPath),
@@ -910,6 +942,26 @@ func main() {
 		logf("acquisition worker shutdown: %v", err)
 	}
 	os.Exit(0)
+}
+
+// renderScreen renders the LCD picture headlessly (the /api/screen.png PNG,
+// the SCDP hardcopy, PRINT): the workspace analysis of the frame first, so
+// the pane describes the frame drawn.
+// TRLC-LINKS: REQ-SDS-168, REQ-SDS-211
+func renderScreen(e *engine.Engine, fe *analog.FrontEnd, fo *frames.Fanout) *lcd.MemSurface {
+	if pc := uiCtrl.Load(); pc != nil {
+		fo.WithFrame(pc.OnFrame)
+	}
+	back := lcd.NewMemSurface()
+	hud := buildHUD(e, fe)
+	fo.WithFrame(func(f *engine.Frame) {
+		if f != nil {
+			hud.SampleS = f.SampleS
+			hud.Trigd = f.Trigd
+		}
+		lcd.Render(back, f, hud, true)
+	})
+	return back
 }
 
 // streamSlot is a quarter-second counter while a decoded stream runs (0

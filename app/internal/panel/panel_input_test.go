@@ -1,7 +1,10 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-PANEL
 package panel
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 // TRLC-LINKS: REQ-SDS-135
 func TestButtonEdges(t *testing.T) {
@@ -194,32 +197,40 @@ func TestResyncButtonsOnly(t *testing.T) {
 	}
 }
 
-// TRLC-LINKS: REQ-SDS-135
-func TestKnobPushTrigger(t *testing.T) {
-	c, eng, _ := newC(t)
-	last := func() call { return eng.calls[len(eng.calls)-1] }
-	// Push CH1 V/DIV (0x65:9 → m[1] bit 9) → trigger source C1.
-	m := idle()
-	m[1] &^= 1 << 9
-	c.decode(m, true)
-	if got := last(); got != (call{"src", 0, 0}) {
-		t.Fatalf("CH1 V/DIV push → trig source C1: got %v", got)
+// The knob pushes do their printed jobs (spec 08 §6.3): V/DIV push is
+// Variable (the front end has no fine V/div, so it says so and changes
+// nothing), the Level and Position pushes are Zero, the S/DIV push is Zoom.
+// TRLC-LINKS: REQ-SDS-135, REQ-SDS-213
+func TestKnobPushPrintedJobs(t *testing.T) {
+	c, eng, fe := newC(t)
+	withClock(c)
+	pushBit := func(sel, bit int) {
+		m := idle()
+		m[sel] &^= 1 << bit
+		c.decode(m, true)
+		c.decode(idle(), true) // release
 	}
-	c.decode(idle(), true) // release
-	// Push CH2 V/DIV (0x66:1 → m[2] bit 1) → trigger source C2.
-	m = idle()
-	m[2] &^= 1 << 1
-	c.decode(m, true)
-	if got := last(); got != (call{"src", 1, 0}) {
-		t.Fatalf("CH2 V/DIV push → trig source C2: got %v", got)
+	pushBit(1, 9) // CH1 V/DIV push (0x65:9): Variable
+	if len(eng.calls) != 0 || len(fe.calls) != 0 || !strings.Contains(c.View().Notice, "no fine V/div") {
+		t.Fatalf("V/DIV push: engine %v fe %v notice %q", eng.calls, fe.calls, c.View().Notice)
 	}
-	c.decode(idle(), true)
-	// Push TRIG LEVEL (0x64:9 → m[0] bit 9) → flip slope (default rising=false → true).
-	m = idle()
-	m[0] &^= 1 << 9
-	c.decode(m, true)
-	if got := last(); got != (call{"slope", 1, 0}) {
-		t.Fatalf("TRIG LEVEL push → flip slope to rising: got %v", got)
+	eng.stats.TrigCode = 30000
+	pushBit(0, 9) // TRIG LEVEL push (0x64:9): Zero, the level to 0 V
+	if last := eng.calls[len(eng.calls)-1]; last != (call{"triglevel", 31437, 0}) {
+		t.Fatalf("Level push: %v", eng.calls)
+	}
+	fe.offReqV[1] = 0.4
+	pushBit(3, 1) // CH2 POSITION push (0x67:1): Zero, the trace back to 0 V
+	if fe.offReqV[1] != 0 {
+		t.Fatalf("CH2 Position push: offset %v", fe.offReqV[1])
+	}
+	pushBit(2, 9) // S/DIV push (0x66:9): Zoom
+	if c.zoom != 10 {
+		t.Fatalf("S/DIV push: zoom %d", c.zoom)
+	}
+	pushBit(2, 9)
+	if c.zoom != 1 {
+		t.Fatalf("S/DIV push again: zoom %d", c.zoom)
 	}
 }
 

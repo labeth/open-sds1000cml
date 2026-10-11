@@ -141,7 +141,7 @@ func TestTriggerPositionMarkerEndpoints(t *testing.T) {
 		x   int
 	}{{0, 0}, {.5, W / 2}, {1, W - 1}} {
 		sf := NewMemSurface()
-		drawMarkers(sf, HUD{TrigPosFrac: tc.pos})
+		drawMarkers(sf, fullPlot, HUD{TrigPosFrac: tc.pos})
 		if sf.At(tc.x, 9) != colTrig {
 			t.Errorf("position %g: missing pointer tip at %d", tc.pos, tc.x)
 		}
@@ -158,8 +158,8 @@ func TestLeftEdgeTraceDecodeAndZoneAlignment(t *testing.T) {
 		draw func(Surface, float64, float64)
 	}{
 		{"trace", func(sf Surface, xc, pf float64) { drawTrace(sf, f.C1, n, xc, false, colC1, pf) }},
-		{"decode", func(sf Surface, xc, pf float64) { drawDecode(sf, f, hud, n, xc, pf) }},
-		{"zone", func(sf Surface, xc, pf float64) { drawZoneMask(sf, f, hud, n, xc, pf) }},
+		{"decode", func(sf Surface, xc, pf float64) { drawDecode(sf, fullPlot, f, hud, n, xc, pf) }},
+		{"zone", func(sf Surface, xc, pf float64) { drawZoneMask(sf, fullPlot, f, hud, n, xc, pf) }},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			a, b := NewMemSurface(), NewMemSurface()

@@ -2,13 +2,15 @@
 package panel
 
 import (
+	"fmt"
 	"math"
-	"open-sds/app/internal/analog"
-	"open-sds/app/internal/engine"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
+
+	"open-sds/app/internal/analog"
+	"open-sds/app/internal/engine"
 )
 
 // Run is the panel event loop: SIGIO (knobs + buttons, rate-capped ~150 Hz)
@@ -20,6 +22,8 @@ func (c *Controller) Run(stop <-chan struct{}) {
 	c.mu.Lock()
 	c.adoptQual(c.eng.Snapshot())
 	c.mu.Unlock()
+	c.looping.Store(true) // the remote's changes now run on this goroutine
+	defer c.looping.Store(false)
 
 	sigio := make(chan os.Signal, 8)
 	haveSIGIO := false
@@ -141,6 +145,7 @@ func (c *Controller) button(code int) {
 	if busy && code != btnAuto {
 		return
 	}
+	defer c.afterInput()
 	switch code {
 	case btnRunStop:
 		if c.streaming() { // Auto Stream: STOP ends the stream (manual trigger), RUN restarts it
@@ -156,71 +161,57 @@ func (c *Controller) button(code int) {
 		}
 		// Toggle RUN/STOP from the engine's state, not the shadow: a single that
 		// self-stopped moments ago may not be synced into the shadow yet.
-		r := !c.eng.Snapshot().Running
-		c.mu.Lock()
-		c.running = r
-		c.single = false
-		c.mu.Unlock()
-		c.eng.SetRunning(r)
+		c.setRun(map[bool]int{true: 1, false: 0}[c.eng.Snapshot().Running])
 	case btnSingle:
-		c.mu.Lock()
-		c.norm, c.running, c.single = true, true, true
-		c.mu.Unlock()
-		c.eng.SetSingle() // true single-shot: capture one triggered frame, stop
+		c.single1() // Normal + one triggered capture, then stop
 	case btnAuto:
-		c.autoset()
-		return
-	case btnCh1VdivPush:
-		c.eng.SetTrigSource(0) // push CH1 V/DIV → trigger on C1
-		return
-	case btnCh2VdivPush:
-		c.eng.SetTrigSource(1) // push CH2 V/DIV → trigger on C2
-		return
-	case btnTrigLvlPush:
-		c.eng.SetTrigSlope(!c.eng.Snapshot().TrigRising) // push TRIG LEVEL → flip edge
-		return
-	case btnUtility:
-		c.srToggle() // arm ⇄ cancel super-res (like SINGLE); handles its own LEDs
-		return
-	case btnAdjustPsh:
-		c.srFocusCycle() // ADJUST/intensity push → cycle watch/gate-start/gate-end/review
-		return
+		c.runAuto()
+	case btnDefaultSetup:
+		c.defaultSetupUI()
 	case btnSet50:
 		c.setTrigMid()
-		return
 	case btnForce:
-		if f, ok := c.eng.(interface{ ForceTrigger() }); ok {
-			f.ForceTrigger()
-		}
-		return
+		c.force()
+	case btnPrint:
+		c.printScreen()
+	case btnCh1VdivPush, btnCh2VdivPush:
+		c.variablePush(map[bool]int{true: 1, false: 0}[code == btnCh2VdivPush])
 	case btnCh1PosPush, btnCh2PosPush:
+		ch := map[bool]int{true: 1, false: 0}[code == btnCh2PosPush]
 		if c.fe != nil {
-			ch := 0
-			if code == btnCh2PosPush {
-				ch = 1
-			}
-			c.fe.SetOffset(ch, 0) // push POSITION: trace back to 0 V
+			c.setOffsetTip(ch, 0) // Zero: the trace back to 0 V
+			c.toast(fmt.Sprintf("CH%d offset 0 V", ch+1), 900*time.Millisecond)
 		}
-		return
-	case btnDefaultSetup:
-		c.DefaultSetup()
-		return
+	case btnTrigLvlPush:
+		c.zeroTrigLevel() // Zero: the trigger level to 0 V
+		c.toast("Trigger level 0 V", 900*time.Millisecond)
+	case btnTdivPush:
+		c.tdivPush()
 	case btnHorizPosPush:
-		if c.streamListToTrigger() { // open stream list: back to the trigger line
-			return
-		}
-		c.mu.Lock()
-		c.zoomOff = 0
-		c.mu.Unlock()
-		c.eng.SetTrigPosFrac(0.5) // push HORIZ POSITION: trigger back to centre
-		return
+		c.positionPush()
+	case btnAdjustPsh:
+		c.adjustPush()
+	case btnMenuOnOff:
+		c.menuKey()
+	case btnHelp:
+		c.helpKey()
+	case btnCh1, btnCh2:
+		c.chanKey(map[bool]int{true: 1, false: 0}[code == btnCh2])
 	default:
-		// Menu / softkey / channel buttons (spec 08 §6). Anything else is
-		// claimed-and-ignored so it can't cross-drive another control.
-		c.menuButton(code)
-		return
+		for i, sk := range softkeys {
+			if code == sk {
+				c.fKey(i)
+				return
+			}
+		}
+		if name, ok := tabKeys[code]; ok {
+			c.mu.Lock()
+			c.closePickLocked()
+			c.mu.Unlock()
+			c.keyTab(name)
+		}
+		// anything else is claimed and ignored, so it cannot cross-drive a control
 	}
-	c.pushLEDs()
 }
 
 // resync refreshes the knob shadows from authoritative state before a step,
@@ -309,16 +300,12 @@ func (c *Controller) dispatch(name string, dir, steps int) {
 	if busy { // knobs are inert while autoset sweeps (avoids racing its writes)
 		return
 	}
-	if c.matchEditorKnob(name, dir) { // the match editor owns its knobs while open
-		return
-	}
+	defer c.afterInput()
 	switch name {
 	case "tdiv":
 		// CW (+1) → faster timebase, toward "nS" on the knob's printed arc
-		// ("S ... nS"); the ladder is ascending. It turned the other way,
-		// against the marking.
-		c.tdivIdx = clampInt(c.tdivIdx-dir, 0, len(c.tdivs)-1)
-		c.eng.SetTdiv(c.tdivs[c.tdivIdx])
+		// ("S ... nS"); a sheet turns its tab instead, a zoom its factor.
+		c.tdivTurn(dir)
 	case "ch1vdiv", "ch2vdiv":
 		ch := 0
 		if name == "ch2vdiv" {
@@ -358,32 +345,11 @@ func (c *Controller) dispatch(name string, dir, steps int) {
 		c.trigCode = uint16(nc)
 		c.eng.SetTrigLevelCode(c.trigCode)
 	case "adjust":
-		// While editing a super-res gate edge, ADJUST moves that edge; otherwise it
-		// drives the highlighted menu item (spec 08 §6.3; no-op if the menu is shut).
-		if c.srGateAdjust(dir * steps) {
-			return
-		}
-		if c.decodeValueAdjust(dir * steps) {
-			return
-		}
-		c.menuAdjust(dir, steps)
+		// The workspace's tool, the sheet's row, or the picker's byte.
+		c.adjustTurn(dir, steps)
 	case "horizpos":
-		// A stopped stream's open list scrolls with this knob (lines; the
-		// acceleration makes long jumps quick).
-		if c.scrollStreamList(dir * steps) {
-			return
-		}
-		// Horizontal POSITION knob: when zoomed, pan the zoom window across the
-		// record; otherwise pan the trigger point (was a dead knob before).
-		c.mu.Lock()
-		z := c.zoom
-		if z > 1 {
-			c.zoomOff = clampF(c.zoomOff+float64(dir*steps)*0.02, -0.5, 0.5)
-			c.mu.Unlock()
-		} else {
-			c.mu.Unlock()
-			c.eng.SetTrigPosFrac(clampF(c.trigPos()+float64(dir*steps)*0.01, 0.02, 1))
-		}
+		// The workspace's tool, the sheet's value, or a stopped stream's list.
+		c.positionTurn(dir, steps)
 	}
 }
 
@@ -404,15 +370,6 @@ func (c *Controller) trigStepCodes() int {
 	src := c.eng.Snapshot().TrigSource & 1
 	return max(1, int(math.Round(panelTrigStepCodesPerVdiv*analog.Detents[idx[src]].VdivV)))
 }
-
-// Fixed-function keys (spec 08 §6.5) and knob pushes with an action.
-var (
-	btnSet50        = bcode(2, 2)
-	btnForce        = bcode(3, 2)
-	btnCh1PosPush   = bcode(0, 1)
-	btnCh2PosPush   = bcode(3, 1)
-	btnHorizPosPush = bcode(3, 9)
-)
 
 // setTrigMid is SET TO 50%: the trigger level at the midpoint of the source
 // channel's latest frame.

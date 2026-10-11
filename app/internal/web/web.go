@@ -21,6 +21,7 @@ import (
 	"open-sds/app/internal/diag"
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/measure"
+	"open-sds/app/internal/panel"
 )
 
 //go:generate go run gen_tokens.go
@@ -200,6 +201,10 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/api/set", s.hSet)
 	mux.HandleFunc("/api/panel", s.hPanel)
 	mux.HandleFunc("/api/panel/scan", s.hPanelScan)
+	mux.HandleFunc("GET /api/panel/wait", s.hPanelWait)
+	mux.HandleFunc("GET /api/sheets", s.hSheets)
+	mux.HandleFunc("POST /api/sheets/set", s.hSheetsSet)
+	mux.HandleFunc("POST /api/sheets/action", s.hSheetsAction)
 	mux.HandleFunc("GET /api/stream/lines", s.hStreamLines)
 	mux.HandleFunc("GET /api/stream/lines.bin", s.hStreamLinesBin)
 	mux.HandleFunc("/api/zones", s.hZones)
@@ -261,8 +266,12 @@ func (s *Server) superseded(r *http.Request) bool {
 	return e != 0 && e < s.epoch.Load()
 }
 
-// hPanel injects a front-panel button or knob event (spec 08 §6). Body:
-// {"button":"F1"} or {"knob":"adjust","dir":1,"steps":1}.
+// hPanel injects a front-panel button or knob event (spec 08 §6), or types
+// into the LCD's current context. Body: {"button":"F1"},
+// {"knob":"adjust","dir":1,"steps":1}, {"type":{"text":"55 AA"}} (the
+// highlighted sheet row, the byte picker or the match editor) or
+// {"set":{"row":"trig.level","text":"1.25V"}} (a row by id, the LCD left
+// as it is).
 // TRLC-LINKS: REQ-SDS-162
 func (s *Server) hPanel(w http.ResponseWriter, r *http.Request) {
 	var req struct {
@@ -270,6 +279,13 @@ func (s *Server) hPanel(w http.ResponseWriter, r *http.Request) {
 		Knob   string `json:"knob"`
 		Dir    int    `json:"dir"`
 		Steps  int    `json:"steps"`
+		Type   *struct {
+			Text string `json:"text"`
+		} `json:"type"`
+		Set *struct {
+			Row  string `json:"row"`
+			Text string `json:"text"`
+		} `json:"set"`
 	}
 	if err := json.NewDecoder(io.LimitReader(r.Body, 4<<10)).Decode(&req); err != nil {
 		writeJSON(w, map[string]any{"ok": false, "err": "bad json"})
@@ -277,6 +293,21 @@ func (s *Server) hPanel(w http.ResponseWriter, r *http.Request) {
 	}
 	if s.panel == nil {
 		writeJSON(w, map[string]any{"ok": false, "err": "no panel"})
+		return
+	}
+	if req.Type != nil || req.Set != nil {
+		pr, ok := s.panel.(panelRemote)
+		if !ok {
+			writeJSON(w, map[string]any{"ok": false, "err": "no panel"})
+			return
+		}
+		var res panel.SetResult
+		if req.Type != nil {
+			res = pr.TypeText(req.Type.Text)
+		} else {
+			res = pr.SheetSet(req.Set.Row, nil, req.Set.Text)
+		}
+		writeJSON(w, map[string]any{"ok": res.OK, "applied": res.Text, "row": res.Row, "value": res.Value, "error": res.Error})
 		return
 	}
 	ok := false

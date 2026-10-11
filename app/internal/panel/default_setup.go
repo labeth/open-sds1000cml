@@ -7,9 +7,10 @@ import "open-sds/app/internal/analog"
 // SCPI *RST): AUTO and running on a rising CH1 edge at 0 V, 500 us/div with the
 // trigger centred, normal acquisition, both channels 1 V/div DC x1 at 0 V,
 // and every overlay off (math, cursors, zoom, measurements, persistence,
-// X-Y/FFT views, super-res, menus, protocol decode and its stream, reference
+// X-Y/FFT views, super-res, protocol decode and its stream, reference
 // display, mask/zone/serial triggering, ETS). Saved references and setups are
-// kept. The key was claim-and-ignore before (bug hunt 2026-10-10).
+// kept. The workspace UI is reset by the key's handler (defaultSetupUI),
+// which keeps the workspace.
 // TRLC-LINKS: REQ-SDS-136
 func (c *Controller) DefaultSetup() {
 	c.srCancel("")
@@ -56,7 +57,6 @@ func (c *Controller) DefaultSetup() {
 	c.curOn, c.curType, c.curSel = false, 0, 0
 	c.curX, c.curY = [2]float64{0.35, 0.65}, [2]float64{0.35, 0.65}
 	c.zoom, c.zoomOff = 1, 0
-	c.menuPage = pgNone
 	streaming := c.decMode == decModeStream
 	c.decProto, c.decMode = 0, decModeView
 	for i := range c.refs {

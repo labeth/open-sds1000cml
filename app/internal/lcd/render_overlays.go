@@ -15,10 +15,13 @@ import (
 // X-Y mode). Codes 0..255 map across the graticule (x) and up it (y); a stride
 // keeps dense records cheap.
 // TRLC-LINKS: REQ-SDS-021
-func drawXY(sf Surface, f *engine.Frame, hud HUD) {
+func drawXY(sf Surface, p plotArea, f *engine.Frame, hud HUD) {
 	valid := frameValid(f)
+	cap := !hud.UI.Layout.HideViewCaptions
 	if len(f.C2) < valid {
-		DrawText(sf, 10, 10, "X-Y needs CH2", colDim, 1)
+		if cap {
+			DrawText(sf, 10, p.y0+10, "X-Y needs CH2", colDim, 1)
+		}
 		return
 	}
 	c1 := coupledDisplay(f.C1[:valid], hud.Cpl1)
@@ -29,14 +32,16 @@ func drawXY(sf Surface, f *engine.Frame, hud HUD) {
 	}
 	px, py := -1, -1
 	for i := 0; i < valid; i += step {
-		x := int(float64(c1[i]) * float64(W-1) / 255.0)
-		y := sampleToY(float64(c2[i]))
+		x := int(float64(c1[i]) * float64(p.w-1) / 255.0)
+		y := p.sy(float64(c2[i]))
 		if px >= 0 {
 			drawLine(sf, px, py, x, y, colMath)
 		}
 		px, py = x, y
 	}
-	DrawText(sf, 10, 10, "X:C1  Y:C2", colDim, 1)
+	if cap {
+		DrawText(sf, 10, p.y0+10, "X:C1  Y:C2", colDim, 1)
+	}
 }
 
 // mathScale is the math trace's displayed units per division. Products use
@@ -97,7 +102,7 @@ func mathCodes(c1, c2 []uint8, hud HUD) []uint8 {
 }
 
 // TRLC-LINKS: REQ-SDS-021
-func drawMath(sf Surface, f *engine.Frame, hud HUD, win int, xc, posFrac float64) {
+func drawMath(sf Surface, p plotArea, f *engine.Frame, hud HUD, win int, xc, posFrac float64) {
 	valid := frameValid(f)
 	if len(f.C2) < valid {
 		return
@@ -105,7 +110,7 @@ func drawMath(sf Surface, f *engine.Frame, hud HUD, win int, xc, posFrac float64
 	c1 := coupledDisplay(f.C1[:valid], hud.Cpl1)
 	c2 := coupledDisplay(f.C2[:valid], hud.Cpl2)
 	m := mathCodes(c1, c2, hud)
-	drawTrace(sf, m, win, xc, f.Interp, colMath, posFrac)
+	drawTraceID(sf, p, traceID{}, m, win, xc, f.Interp, colMath, posFrac)
 	unit := "V/div"
 	if hud.MathMode == 4 {
 		unit = "V^2/div"
@@ -115,12 +120,12 @@ func drawMath(sf Surface, f *engine.Frame, hud HUD, win int, xc, posFrac float64
 
 // drawRefs overlays the saved reference waveforms (REF A/B) as dim traces for
 // comparison against the live trace (parity with the web REF A/B). A reference
-// is the screen as saved, one point per column, so it is drawn 1:1 across the
-// screen and aligns while the timebase is unchanged. Its codes are re-read at
+// is the screen as saved, one point per column, so it is drawn across the
+// plot and aligns while the timebase is unchanged. Its codes are re-read at
 // the live V/div and offset, so it keeps the volts it was saved at. A is the
 // info tint and B dim, distinct from the live channels and the purple math.
 // TRLC-LINKS: REQ-SDS-021, REQ-SDS-138
-func drawRefs(sf Surface, hud HUD) {
+func drawRefs(sf Surface, p plotArea, hud HUD) {
 	cols := [2]uint16{colInfo, colDim}
 	live := [2][2]float64{ // per channel: analog V/div, offset volts
 		{hud.C1VdivV * float64(max(hud.Zoom1, 1)), hud.OffC1V},
@@ -139,7 +144,7 @@ func drawRefs(sf Surface, hud HUD) {
 			if v := hud.RefVdiv[i][ch]; v > 0 && live[ch][0] > 0 {
 				codes = rescaleRef(r, v, hud.RefOff[i][ch], live[ch][0], live[ch][1])
 			}
-			drawTrace(sf, codes, len(codes), float64(len(codes))/2, false, cols[i], .5, zoom[ch])
+			drawTraceID(sf, p, traceID{}, codes, len(codes), float64(len(codes))/2, false, cols[i], .5, zoom[ch])
 		}
 	}
 }
@@ -173,11 +178,16 @@ func decodeColor(kind string) uint16 {
 	}
 }
 
+// protoNames are the strip's protocol labels.
+var protoNames = []string{"", "AUTO", "UART", "I2C", "SPI", "MANCH", "SENT", "CAN", "1553", "ARINC", "USB", "FLEXR"}
+
 // drawDecode runs the protocol decoder on the frame and draws the decoded byte
-// spans in a strip below the trace (parity with the web decode overlay). Only in
-// Y-T; the span sample indices map to screen x through the same trace window.
-// TRLC-LINKS: REQ-SDS-021
-func drawDecode(sf Surface, f *engine.Frame, hud HUD, win int, xc, posFrac float64) {
+// spans in a strip at the bottom of the plot (parity with the web decode
+// overlay). Only in Y-T; the span sample indices map to screen x through the
+// same trace window. In BUS the selected packet is boxed with its list
+// number and the packets holding the match bytes are ticked.
+// TRLC-LINKS: REQ-SDS-021, REQ-SDS-214
+func drawDecode(sf Surface, p plotArea, f *engine.Frame, hud HUD, win int, xc, posFrac float64) {
 	if hud.DecProto == 0 || f == nil {
 		return
 	}
@@ -193,35 +203,18 @@ func drawDecode(sf Surface, f *engine.Frame, hud HUD, win int, xc, posFrac float
 	}
 	format := []string{"hex", "ascii", "both"}[hud.DecFormat%3]
 	res := decodeFrame(f, hud, valid, ch, format)
-	name := []string{"", "AUTO", "UART", "I2C", "SPI", "MANCH", "SENT", "CAN", "1553", "ARINC", "USB", "FLEXR"}[hud.DecProto%12]
-	if hud.DecProto == 1 { // Auto — label with whatever it found (all ten protocols)
-		switch res.Proto {
-		case "uart":
-			name = "AUTO UART"
-		case "i2c":
-			name = "AUTO I2C"
-		case "spi":
-			name = "AUTO SPI"
-		case "manchester":
-			name = "AUTO MANCH"
-		case "sent":
-			name = "AUTO SENT"
-		case "canfd":
-			name = "AUTO CAN"
-		case "mil1553":
-			name = "AUTO 1553"
-		case "arinc429":
-			name = "AUTO ARINC"
-		case "usbls":
-			name = "AUTO USB"
-		case "flexray":
-			name = "AUTO FLEXR"
+	name := protoNames[hud.DecProto%len(protoNames)]
+	if hud.DecProto == 1 && res.Proto != "" && res.Proto != "off" { // Auto: label with what it found
+		auto := map[string]string{"uart": "UART", "i2c": "I2C", "spi": "SPI", "manchester": "MANCH", "sent": "SENT",
+			"canfd": "CAN", "mil1553": "1553", "arinc429": "ARINC", "usbls": "USB", "flexray": "FLEXR"}[res.Proto]
+		if auto != "" {
+			name = "AUTO " + auto
 		}
 	}
 	// Decode lane: a dark band that sits ABOVE the bottom Vpp/freq readout row
 	// (drawn later by drawHUD at H-9), so the two never overwrite each other.
 	yLbl, yTxt, yBar := H-36, H-26, H-14 // label / byte hex / span bars, top→bottom
-	fillRect(sf, 0, yLbl-2, W, 27, rgb(6, 10, 22))
+	fillRect(sf, 0, yLbl-2, p.w, 27, colBoxBg)
 	if !res.OK {
 		DrawText(sf, 10, yLbl, name+": "+res.Error, colStale, 1)
 		return
@@ -249,31 +242,69 @@ func drawDecode(sf Surface, f *engine.Frame, hud HUD, win int, xc, posFrac float
 	DrawText(sf, 10, yLbl, fmt.Sprintf("%s  %d %s", label, len(res.Bytes), unit), colDim, 1)
 	// Map a sample index to screen x via the same window the trace uses.
 	left := xc - float64(win)*posFrac
-	sx := func(s float64) int { return int((s - left) * float64(W) / float64(win)) }
+	sx := func(s float64) int { return int((s - left) * float64(p.w) / float64(win)) }
+	lastEnd, lastLen := -1<<30, 0 // the last label drawn
 	for i, s := range res.Spans {
 		x0, x1 := sx(float64(s.I0)), sx(float64(s.I1))
-		if x1 < 0 || x0 >= W {
+		if x1 < 0 || x0 >= p.w {
 			continue // off-screen
 		}
 		col := decodeColor(s.Kind)
 		if x1 < x0+2 {
 			x1 = x0 + 2
 		}
-		for x := x0; x <= x1 && x < W; x++ { // span bar
-			if x >= 0 {
-				sf.SetPixel(x, yBar, col)
-				sf.SetPixel(x, yBar+1, col)
-			}
+		for x := max(x0, 0); x <= x1 && x < p.w; x++ { // span bar
+			sf.SetPixel(x, yBar, col)
+			sf.SetPixel(x, yBar+1, col)
 		}
-		// Byte text, but only if it fits before the next span — otherwise a dense
-		// stream turns the strip into unreadable mush; the coloured bars remain.
-		nextX0 := W
+		// Byte text, but only if it fits before the next span — otherwise a
+		// dense stream turns the strip into unreadable mush; the coloured bars
+		// remain. Next to a multi-character label keep three blank columns
+		// (one between a label's own characters), so back-to-back bytes do not
+		// read as one number ("4869205555AA"); a label that then no longer
+		// fits its span is skipped.
+		nextX0 := p.w
 		if i+1 < len(res.Spans) {
 			nextX0 = sx(float64(res.Spans[i+1].I0))
 		}
-		if end := x0 + 1 + len(s.Text)*6; x0 >= 0 && end <= W && end <= nextX0 {
-			DrawText(sf, x0+1, yTxt, s.Text, col, 1)
+		gap := 0
+		if len(s.Text) > 1 || lastLen > 1 {
+			gap = 2
 		}
+		tx := max(x0+1, lastEnd+gap)
+		if end := tx + len(s.Text)*6; x0 >= 0 && s.Text != "" && end <= p.w && end <= nextX0 {
+			DrawText(sf, tx, yTxt, s.Text, col, 1)
+			lastEnd, lastLen = end, len(s.Text)
+		}
+	}
+	// BUS: the selected packet boxed (with its list number), the matches ticked
+	if b := hud.UI.Bus; b != nil {
+		for _, m := range b.Marks {
+			x0, x1 := sx(float64(m.I0)), sx(float64(m.I1))
+			if x1 < 0 || x0 >= p.w {
+				continue
+			}
+			x1 = max(x1, x0+2)
+			if m.Match {
+				fillTri(sf, max(2, x0), yLbl-6, 3, colTrig)
+			}
+			if m.Sel {
+				strokeRect(sf, x0-2, yLbl+7, x1-x0+5, 20, colTrig)
+				lab := fmt.Sprintf("#%d", b.SelNum)
+				lw := TextWidth(lab, 1) + 4
+				lx := min(max(x0+6, 2), p.w-lw-2)
+				fillRect(sf, lx, yLbl-16, lw, 10, colBG)
+				DrawText(sf, lx+2, yLbl-15, lab, colTrig, 1)
+			}
+		}
+	}
+}
+
+// fillTri draws a small filled triangle pointing down, its base at row y.
+// TRLC-LINKS: REQ-SDS-214
+func fillTri(sf Surface, x, y, h int, c uint16) {
+	for dy := 0; dy <= h; dy++ {
+		hline(sf, x-(h-dy), x+(h-dy), y+dy, c)
 	}
 }
 
@@ -287,38 +318,33 @@ var colMask = rgb(90, 120, 160)
 // window geometry matches the mask (zoom or a band change break the column
 // alignment — the engine skips those frames too).
 // TRLC-LINKS: REQ-SDS-021
-func drawZoneMask(sf Surface, f *engine.Frame, hud HUD, win int, xc, posFrac float64) {
+func drawZoneMask(sf Surface, p plotArea, f *engine.Frame, hud HUD, win int, xc, posFrac float64) {
 	if !(posFrac >= 0 && posFrac <= 1) {
 		posFrac = 0.5
 	}
 	left := xc - float64(win)*posFrac
 	// mask envelope boundary lines
 	if hud.MaskMode > 0 && hud.MaskWin == win && len(hud.MaskLo) == win && len(hud.MaskHi) == win {
-		for x := 0; x < W; x++ {
-			j := x * win / W
-			sf.SetPixel(x, sampleToY(float64(hud.MaskLo[j])), colMask)
-			sf.SetPixel(x, sampleToY(float64(hud.MaskHi[j])), colMask)
+		for x := 0; x < p.w; x++ {
+			j := x * win / p.w
+			sf.SetPixel(x, p.sy(float64(hud.MaskLo[j])), colMask)
+			sf.SetPixel(x, p.sy(float64(hud.MaskHi[j])), colMask)
 		}
 	}
 	// zone rectangles: dt (seconds from the edge) -> raw sample -> screen x
 	if len(hud.Zones) > 0 && f.SampleS > 0 && f.EdgeX >= 0 {
 		for _, z := range hud.Zones {
-			x0 := int((f.EdgeX + z.DtLoS/f.SampleS - left) * float64(W) / float64(win))
-			x1 := int((f.EdgeX + z.DtHiS/f.SampleS - left) * float64(W) / float64(win))
+			x0 := int((f.EdgeX + z.DtLoS/f.SampleS - left) * float64(p.w) / float64(win))
+			x1 := int((f.EdgeX + z.DtHiS/f.SampleS - left) * float64(p.w) / float64(win))
 			if x1 < x0 {
 				x0, x1 = x1, x0
 			}
-			if x1 < 0 || x0 >= W {
+			if x1 < 0 || x0 >= p.w {
 				continue
 			}
-			if x0 < 0 {
-				x0 = 0
-			}
-			if x1 >= W {
-				x1 = W - 1
-			}
-			y0 := sampleToY(float64(z.CodeHi)) // higher code = higher on screen
-			y1 := sampleToY(float64(z.CodeLo))
+			x0, x1 = max(x0, 0), min(x1, p.w-1)
+			y0 := p.sy(float64(z.CodeHi)) // higher code = higher on screen
+			y1 := p.sy(float64(z.CodeLo))
 			col := colOK // intersect: the frame must enter -> green
 			if z.Avoid {
 				col = colStale // avoid: the frame must miss -> red/orange
@@ -369,8 +395,13 @@ func drawMaskHUD(sf Surface, hud HUD) {
 		col = colStale // failures flash the meter red/orange
 	}
 	// Second row, right-aligned under the address: on the top row a status
-	// over ~30 characters ran into the device URL (bench 2026-10-08).
-	DrawTextRight(sf, 664, 14, line, col, 1)
+	// over ~30 characters ran into the device URL (bench 2026-10-08). Under a
+	// workspace pane it sits at the top of the plot instead.
+	y := 14
+	if t := hud.UI.Layout.PlotTop; t > 0 {
+		y = t + 14
+	}
+	DrawTextRight(sf, min(664, plotOf(hud.UI.Layout).w-4), y, line, col, 1)
 }
 
 // decodeFrame decodes the frame's protocol through the shared per-frame

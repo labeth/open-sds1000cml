@@ -51,19 +51,21 @@ func TestSuperresFPGARun(t *testing.T) {
 	}
 	fr := &engine.Frame{C1: flat, C2: sig, Valid: n, EdgeX: 32, SampleS: 2e-9}
 	c.SetFrameSource(func(fn func(*engine.Frame)) { fn(fr) })
-	c.button(btnUtility)
-	if v := c.MenuView(); v.Title != "SUPER-RES" || c.SuperresView().Active {
-		t.Fatalf("flat-channel UTILITY: title %q active %v", v.Title, c.SuperresView().Active)
+	press(t, c, "acquire")
+	goRow(t, c, "acq.superres")
+	pickKey(t, c, "On")
+	if c.SuperresView().Active {
+		t.Fatal("super-res armed on the flat C1")
 	}
-	c.menuButton(btnF1)      // Channel C1 -> C2
-	for i := 0; i < 3; i++ { // bits → stacks → time → FPGA
-		c.menuButton(btnF3)
+	goRow(t, c, "acq.sr_channel")
+	pickKey(t, c, "C2")
+	goRow(t, c, "acq.sr_stop")
+	pickKey(t, c, "FPGA rec")
+	if rowText(c, "acq.sr_target") != "20" {
+		t.Fatalf("FPGA target %q", rowText(c, "acq.sr_target"))
 	}
-	v := c.MenuView()
-	if v.Items[2].Value != "FPGA" || v.Items[3].Value != "20 rec" || v.Items[4].Label != "Run" {
-		t.Fatalf("FPGA menu: %+v", v.Items)
-	}
-	c.menuButton(btnF5)
+	goRow(t, c, "acq.sr_restart")
+	pickKey(t, c, "Run FPGA")
 	req := <-eng.requests
 	s := req.Stack
 	if req.Records != 20 || req.RecordWords != fpgaRecordWords || s.Factor != 32 || s.Bins != fpgaWindow*32 ||
@@ -106,14 +108,11 @@ func TestSuperresFPGAMatchRun(t *testing.T) {
 	}
 	fr := &engine.Frame{C1: sig, C2: sig, Valid: n, EdgeX: 60, SampleS: 2e-9}
 	c.SetFrameSource(func(fn func(*engine.Frame)) { fn(fr) })
-	c.button(btnUtility)
-	for i := 0; i < 4; i++ { // bits → stacks → time → FPGA → FPGA+match
-		c.menuButton(btnF3)
-	}
-	if v := c.MenuView(); v.Items[2].Value != "FPGA+match" || v.Items[4].Label != "Run" {
-		t.Fatalf("match menu: %+v", v.Items)
-	}
-	c.menuButton(btnF5)
+	press(t, c, "acquire")
+	goRow(t, c, "acq.sr_stop")
+	pickKey(t, c, "FPGA+match")
+	goRow(t, c, "acq.sr_restart")
+	pickKey(t, c, "Run FPGA")
 	req := <-eng.requests
 	s := req.Stack
 	if len(s.Template) != fpgaMatchPoints || s.TemplateStride != 1 || s.TemplatePre != fpgaMatchPoints/4 || s.TemplateThreshold <= 0 {
@@ -139,12 +138,12 @@ func TestSuperresArmDeepWindowStaysResponsive(t *testing.T) {
 	fr := &engine.Frame{C1: sig, C2: sig, Valid: n, EdgeX: float64(n / 2), SampleS: 3.2e-8, WinCols: 156314}
 	c.SetFrameSource(func(fn func(*engine.Frame)) { fn(fr) })
 	start := time.Now()
-	c.button(btnUtility)
+	r := c.SheetSet("acq.superres", nil, "On")
 	if d := time.Since(start); d > 2*time.Second {
 		t.Fatalf("arming a deep window blocked the panel for %v", d)
 	}
-	if c.MenuView().Title != "SUPER-RES" || c.SuperresView().Active || !strings.Contains(c.SuperresView().Status, "too deep") {
-		t.Fatalf("deep window: title %q status %q", c.MenuView().Title, c.SuperresView().Status)
+	if r.OK || !strings.Contains(r.Error, "too deep") || c.SuperresView().Active || !strings.Contains(c.SuperresView().Status, "too deep") {
+		t.Fatalf("deep window: %+v status %q", r, c.SuperresView().Status)
 	}
 }
 

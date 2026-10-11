@@ -20,10 +20,11 @@ type MatchView struct {
 	Msg      string
 }
 
-// drawMatchEditor fills the trace area with the match editor: the pattern
-// with its cursor, an ASCII preview, the key grid with the highlighted key,
-// and the knob hints. The softkey column stays the menu's.
-// TRLC-LINKS: REQ-SDS-021
+// drawMatchEditor fills the screen left of the F-key column with the match
+// editor: the pattern with its cursor, an ASCII preview, the key grid with
+// the highlighted key, and the knob hints. The F-key column (Keys, Type,
+// Delete, OK, Cancel) is the sheet's.
+// TRLC-LINKS: REQ-SDS-021, REQ-SDS-214
 func drawMatchEditor(sf Surface, m MatchView) {
 	if !m.Open {
 		return
@@ -126,7 +127,7 @@ func drawMatchEditor(sf Surface, m MatchView) {
 			DrawText(sf, x0+(cw-tw)/2, y0+(ch-8*ks)/2, label, fg, ks)
 		}
 	}
-	DrawText(sf, 6, H-36, "TIME/DIV: left/right   CH2 POS: up/down   F2: enter   ADJUST: cursor", colDim, 1)
+	DrawText(sf, 6, H-36, "Adjust: key  push: type it   Position: cursor  push: clear   Menu On/Off: discard", colDim, 1)
 	DrawText(sf, 6, H-24, "hex: 2 digits a byte, ? = any nibble   ?? any byte   ERR decode error", colDim, 1)
 	if m.Msg != "" {
 		DrawText(sf, 6, H-12, m.Msg, colTrig, 1)

@@ -13,7 +13,7 @@ import (
 // bottom edge while stacking is active, and — in the gate-edit foci — the gate
 // markers over the live trace with the active edge highlighted.
 // TRLC-LINKS: REQ-SDS-021
-func drawSuperresHUD(sf Surface, hud HUD) {
+func drawSuperresHUD(sf Surface, p plotArea, hud HUD) {
 	// Gate overlay while watching/editing (focus 0/1/2): two vertical markers at
 	// the SELECTED span's edges (the user's region — not the internal one-period
 	// stack gate, which would jump after arming); the edge being edited is drawn
@@ -24,17 +24,17 @@ func drawSuperresHUD(sf Surface, hud HUD) {
 	}
 	if hud.SRFocus != 3 && hud.SRN > 0 && mHi > mLo {
 		xAt := func(s int) int {
-			x := s * W / hud.SRN
+			x := s * p.w / hud.SRN
 			if x < 0 {
 				x = 0
 			}
-			if x > W-1 {
-				x = W - 1
+			if x > p.w-1 {
+				x = p.w - 1
 			}
 			return x
 		}
 		marker := func(x int, active bool) {
-			for y := traceTop; y < traceBot; y++ {
+			for y := p.top; y < p.bot; y++ {
 				if active || (y&3) == 0 { // active edge solid; idle edge dashed
 					sf.SetPixel(x, y, colSR)
 				}
@@ -45,18 +45,18 @@ func drawSuperresHUD(sf Surface, hud HUD) {
 	}
 
 	tag := "SR " + srFocusTag(hud.SRFocus)
-	drawSRLine(sf, fmt.Sprintf("%s  +%.1fb  x%d  %s", tag, hud.SRBits, hud.SRk, hud.SRStatus))
+	drawSRLine(sf, p, fmt.Sprintf("%s  +%.1fb  x%d  %s", tag, hud.SRBits, hud.SRk, hud.SRStatus))
 }
 
 // drawSRLine is the super-res status line.
 // TRLC-LINKS: REQ-SDS-021
-func drawSRLine(sf Surface, msg string) {
+func drawSRLine(sf Surface, p plotArea, msg string) {
 	// Bottom-left, one row above the Vpp/f quick readout (at H-12 it covered
 	// the C1 readout, bug hunt 2026-10-10); a thin backing bar keeps it
 	// legible over the trace.
 	y := H - 21
 	for by := y - 1; by < y+9 && by < H; by++ {
-		for bx := 0; bx < TextWidth(msg, 1)+8 && bx < W; bx++ {
+		for bx := 0; bx < TextWidth(msg, 1)+8 && bx < p.w; bx++ {
 			sf.SetPixel(bx, by, colBG)
 		}
 	}
@@ -85,7 +85,7 @@ func srFocusTag(f int) string {
 // multi-wave view from the fast one-period stack. Each screen column takes the
 // min/max over its covered fine bins so detail survives any grid size.
 // TRLC-LINKS: REQ-SDS-021
-func drawSuperresTrace(sf Surface, hud HUD) {
+func drawSuperresTrace(sf Surface, p plotArea, hud HUD) {
 	m := hud.SRMean
 	nb := len(m)
 	if nb == 0 {
@@ -114,9 +114,9 @@ func drawSuperresTrace(sf Surface, hud HUD) {
 		return int(off * float64(K))
 	}
 	prevY, havePrev := 0, false
-	for x := 0; x < W; x++ {
-		s0 := winLo + float64(x)*span/float64(W)
-		s1 := winLo + float64(x+1)*span/float64(W)
+	for x := 0; x < p.w; x++ {
+		s0 := winLo + float64(x)*span/float64(p.w)
+		s1 := winLo + float64(x+1)*span/float64(p.w)
 		b0, b1 := binAt(s0), binAt(s1)
 		lo, hi, any := float32(1e9), float32(-1e9), false
 		scan := func(a, b int) {
@@ -147,8 +147,8 @@ func drawSuperresTrace(sf Surface, hud HUD) {
 			havePrev = false
 			continue
 		}
-		yHi := sampleToY(float64(hi)) // higher code → higher on screen (smaller y)
-		yLo := sampleToY(float64(lo))
+		yHi := p.sy(float64(hi)) // higher code → higher on screen (smaller y)
+		yLo := p.sy(float64(lo))
 		// Connect from the previous column so single-sample columns still form a line.
 		if havePrev {
 			if prevY < yHi {
@@ -161,7 +161,7 @@ func drawSuperresTrace(sf Surface, hud HUD) {
 		for y := yHi; y <= yLo; y++ {
 			sf.SetPixel(x, y, colSR)
 		}
-		prevY, havePrev = sampleToY(float64((lo+hi)/2)), true
+		prevY, havePrev = p.sy(float64((lo+hi)/2)), true
 	}
 }
 
@@ -297,10 +297,10 @@ func srFFTPlan(hud HUD) (n int, effNyq float64, kLo, kHi int, ok bool) {
 // so its Nyquist extends K× past the raw single-shot Nyquist AND its noise floor
 // drops by the gained bits — the super-res win, now visible in the spectrum.
 // TRLC-LINKS: REQ-SDS-021, REQ-SDS-070
-func drawSuperresFFT(sf Surface, hud HUD) {
+func drawSuperresFFT(sf Surface, p plotArea, hud HUD) {
 	n, effNyq, kLo, kHi, ok := srFFTPlan(hud)
 	if !ok {
-		DrawText(sf, 10, 10, "SR FFT — stacking...", colDim, 1)
+		DrawText(sf, 10, p.y0+10, "SR FFT - stacking...", colDim, 1)
 		return
 	}
 	half := n / 2
@@ -310,17 +310,17 @@ func drawSuperresFFT(sf Surface, hud HUD) {
 		c1Mean, c2Mean = hud.SRMean2, hud.SRMean
 	}
 	sc1, sc2 := hud.shownChans()
-	row := 10
+	row := p.y0 + 10
 	if sc2 && hud.TwoChan && len(c2Mean) > 0 {
 		if s2, _ := srResampleArray(c2Mean, n); s2 != nil {
-			fpk := fftCore(sf, s2, colC2, effNyq, kLo, kHi)
+			fpk := fftCoreP(sf, p, s2, colC2, effNyq, kLo, kHi)
 			DrawText(sf, 10, row, "SR FFT C2 peak "+fmtFreq(fpk), colC2, 1)
 			row += 12
 		}
 	}
 	if sc1 {
 		if s1, _ := srResampleArray(c1Mean, n); s1 != nil {
-			fpk := fftCore(sf, s1, colC1, effNyq, kLo, kHi)
+			fpk := fftCoreP(sf, p, s1, colC1, effNyq, kLo, kHi)
 			DrawText(sf, 10, row, "SR FFT C1 peak "+fmtFreq(fpk), colC1, 1)
 			row += 12
 		}
@@ -335,13 +335,13 @@ func drawSuperresFFT(sf Surface, hud HUD) {
 // they pair up. Float grid ⇒ smoother than the live X-Y. The pen lifts over
 // uncovered (-1 gap) bins rather than drawing a false chord (matches the web).
 // TRLC-LINKS: REQ-SDS-021
-func drawSuperresXY(sf Surface, hud HUD) {
+func drawSuperresXY(sf Surface, p plotArea, hud HUD) {
 	c1Mean, c2Mean := hud.SRMean, hud.SRMean2
 	if hud.SRAlign == 1 {
 		c1Mean, c2Mean = hud.SRMean2, hud.SRMean
 	}
 	if !hud.TwoChan || len(c2Mean) == 0 {
-		DrawText(sf, 10, 10, "X-Y needs CH2", colDim, 1)
+		DrawText(sf, 10, p.y0+10, "X-Y needs CH2", colDim, 1)
 		return
 	}
 	const nOut = 2000
@@ -356,12 +356,12 @@ func drawSuperresXY(sf Surface, hud HUD) {
 			px = -1
 			continue
 		}
-		sx := int(x[i] * float64(W-1) / 255.0)
-		sy := sampleToY(y[i])
+		sx := int(x[i] * float64(p.w-1) / 255.0)
+		sy := p.sy(y[i])
 		if px >= 0 {
 			drawLine(sf, px, py, sx, sy, colMath)
 		}
 		px, py = sx, sy
 	}
-	DrawText(sf, 10, 10, "X:C1  Y:C2 (SR)", colDim, 1)
+	DrawText(sf, 10, p.y0+10, "X:C1  Y:C2 (SR)", colDim, 1)
 }

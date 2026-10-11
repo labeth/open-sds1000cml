@@ -19,6 +19,7 @@ const RefCols = 800
 type refWave struct {
 	c1, c2    []uint8
 	vdiv, off [2]float64
+	tdiv      float64 // the timebase it was stored at (it lines up only there)
 	has       bool
 	show      bool
 }
@@ -40,8 +41,18 @@ func (c *Controller) captureRef(slot int) {
 	if c.frameFn == nil || slot < 0 || slot > 1 {
 		return
 	}
+	c.frameFn(func(f *engine.Frame) { c.captureRefFrom(f, slot) })
+}
+
+// captureRefFrom stores frame f's screen into reference slot (0=A, 1=B); the
+// master stores the averaged frame it is handed, inside the frame lock.
+// TRLC-LINKS: REQ-SDS-138, REQ-SDS-218
+func (c *Controller) captureRefFrom(f *engine.Frame, slot int) {
+	if slot < 0 || slot > 1 {
+		return
+	}
 	st := c.eng.Snapshot()
-	r := refWave{has: true, show: true, vdiv: [2]float64{1, 1}}
+	r := refWave{has: true, show: true, vdiv: [2]float64{1, 1}, tdiv: st.TdivS}
 	cpl := [2]int{}
 	if c.fe != nil {
 		idx, _ := c.fe.Snapshot()
@@ -57,29 +68,22 @@ func (c *Controller) captureRef(slot int) {
 	if !(posFrac > 0 && posFrac <= 1) {
 		posFrac = .5
 	}
-	ok := false
-	c.frameFn(func(f *engine.Frame) {
-		if f == nil || len(f.C1) == 0 || f.IsEnv {
-			return
-		}
-		valid := min(max(f.Valid, 1), len(f.C1))
-		win := f.WinCols
-		if win <= 0 || win > valid {
-			win = valid
-		}
-		xc := f.EdgeX
-		if xc < 0 {
-			xc = float64(valid) / 2
-		}
-		left := xc - float64(win)*posFrac
-		r.c1 = screenColumns(analog.CoupleDisplay(f.C1[:valid], cpl[0]), left, win, f.Interp)
-		if len(f.C2) >= valid {
-			r.c2 = screenColumns(analog.CoupleDisplay(f.C2[:valid], cpl[1]), left, win, f.Interp)
-		}
-		ok = true
-	})
-	if !ok {
+	if f == nil || len(f.C1) == 0 || f.IsEnv {
 		return
+	}
+	valid := min(max(f.Valid, 1), len(f.C1))
+	win := f.WinCols
+	if win <= 0 || win > valid {
+		win = valid
+	}
+	xc := f.EdgeX
+	if xc < 0 {
+		xc = float64(valid) / 2
+	}
+	left := xc - float64(win)*posFrac
+	r.c1 = screenColumns(analog.CoupleDisplay(f.C1[:valid], cpl[0]), left, win, f.Interp)
+	if len(f.C2) >= valid {
+		r.c2 = screenColumns(analog.CoupleDisplay(f.C2[:valid], cpl[1]), left, win, f.Interp)
 	}
 	c.mu.Lock()
 	c.refs[slot] = r

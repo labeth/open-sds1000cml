@@ -1,0 +1,359 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-PANEL
+package panel
+
+import (
+	"math"
+	"sort"
+
+	"open-sds/app/internal/analog"
+	"open-sds/app/internal/decode"
+	"open-sds/app/internal/engine"
+	"open-sds/app/internal/measure"
+	"open-sds/app/internal/panel/framecalc"
+	"open-sds/app/internal/panel/wsview"
+)
+
+// Per-frame analysis for the workspace panes. The render paths call OnFrame
+// with each published frame; it runs at most once per frame (by Seq and
+// Content) and only for the active workspace, so a redraw never repeats the
+// heavy part (decode, FFT, eye fold, measurements, the repeat test).
+
+// geom is where a frame's samples sit on the screen.
+type geom struct {
+	valid   int
+	winCols int
+	edgeX   float64
+	sampleS float64
+	tdivS   float64
+}
+
+// anaState is the analysis the panes show (guarded by Controller.amu).
+type anaState struct {
+	key  frameKey // the frame analysed last, and for what
+	need needKey
+	g    geom
+
+	// BUS
+	res     decode.Result // the frame's decode
+	resOK   bool
+	live    []Packet // this frame's packets (complete and cut)
+	list    PacketList
+	listKey string
+	// BUS eye
+	eye    *Eye
+	eyeKey string
+	eyeRes EyeResult
+	eyeWhy string
+	eyeCh  int
+	eyeOK  bool
+	eyeFed frameKey // the frame folded last (each is folded once)
+
+	// SPECTRUM
+	specOK   bool
+	spec     framecalc.Spec
+	specDBV  []float64 // per bin, dBV (rms)
+	specCh   int
+	peaks    []Peak
+	thd      THD
+	floorDBV float64
+
+	// MEASURE
+	stats    map[measItem]*Stats
+	statLast map[measItem]float64
+	statKey  string
+	statN    int
+	statFed  frameKey     // the frame counted last
+	allVals  [2][]float64 // MEASURE all values: per channel, per parameter
+	allOK    [2]bool
+	curV     [2][2]float64 // each channel's volts at the time cursors A and B
+	curOK    [2]bool
+
+	// COMPARE
+	stabPrev []float64
+	stabRes  []bool
+	stabKey  string
+	stabFed  frameKey // the frame tested last
+	refDiff  [2]refDiffResult
+}
+
+// refDiffResult is a reference against the live trace.
+type refDiffResult struct {
+	ok            bool
+	why           string
+	max, rms, pct float64 // volts, volts, percent within 0.5 div
+}
+
+// stabN is how many captures the repeat verdict looks back over.
+const (
+	stabN   = 12
+	stabMin = 6
+)
+
+// frameKey names a published frame; the zero key (a hand-built frame) is
+// never taken as seen.
+type frameKey struct{ seq, content uint64 }
+
+// keyOf is f's key.
+func keyOf(f *engine.Frame) frameKey { return frameKey{f.Seq, f.Content} }
+
+// seen reports whether k is the key last recorded in *last, recording it.
+func seen(last *frameKey, k frameKey) bool {
+	if k != (frameKey{}) && k == *last {
+		return true
+	}
+	*last = k
+	return false
+}
+
+// needKey is what the panes analyse: when it changes, the frame on screen
+// is analysed again (a stopped scope has no next frame).
+type needKey struct {
+	ws           wsview.WS
+	measTab, eye bool
+}
+
+// need reads the needKey (c.mu).
+func (c *Controller) need() needKey {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return needKey{c.ui.ws, c.ui.open && sheetTabs[c.ui.tab].id == "meas", c.ui.busEye}
+}
+
+// OnFrame analyses a newly published frame for the active workspace. It is
+// idempotent per frame (the accumulating figures take a frame once) and
+// cheap when nothing needs it. It must not read frames through the frame
+// source (the caller holds the fan-out lock).
+// TRLC-LINKS: REQ-SDS-214, REQ-SDS-215, REQ-SDS-216, REQ-SDS-217, REQ-SDS-218
+func (c *Controller) OnFrame(f *engine.Frame) {
+	if f == nil || len(f.C1) == 0 {
+		return
+	}
+	k, need := keyOf(f), c.need()
+	c.amu.Lock()
+	if k != (frameKey{}) && k == c.ana.key && need == c.ana.need {
+		c.amu.Unlock()
+		return
+	}
+	c.amu.Unlock()
+	s := c.snap()
+	var finish bool
+	c.amu.Lock()
+	a := &c.ana
+	if k != (frameKey{}) && k == a.key && need == a.need {
+		c.amu.Unlock() // another render path (a screenshot) analysed it meanwhile
+		return
+	}
+	a.key, a.need = k, need
+	a.g = geom{valid: framecalc.Valid(f), winCols: f.WinCols, edgeX: f.EdgeX, sampleS: f.SampleS, tdivS: f.TdivS}
+	switch s.ui.ws {
+	case wsview.Bus:
+		c.busFrame(a, s, f)
+		if s.ui.busEye {
+			c.eyeFrame(a, s, f)
+		}
+	case wsview.Spectrum:
+		c.specFrame(a, s, f)
+	case wsview.Measure:
+		c.measFrame(a, s, f)
+	case wsview.Compare:
+		c.stabFrame(a, s, f)
+		c.refDiffFrame(a, s, f)
+	}
+	if measTabOpen(s) && s.ui.ws != wsview.Measure && !f.IsEnv {
+		measVals(a, s, f, s.chDisp) // the MEAS tab's live values
+	}
+	c.amu.Unlock()
+	if s.stacking {
+		finish = c.stackProgress(f)
+	}
+	if finish {
+		c.stackFinish(f)
+	}
+}
+
+// decodeParams are the panel's decode settings.
+// TRLC-LINKS: REQ-SDS-214
+func decodeParamsOf(s *sv) framecalc.DecodeParams {
+	return framecalc.DecodeParams{Proto: s.decProto, Baud: s.decBaud, ChA: s.decChA, ChB: s.decChB,
+		CPOL: s.decCPOL, CPHA: s.decCPHA, Format: []string{"hex", "ascii", "both"}[mod3(s.decFormat)]}
+}
+
+// codesOf returns a channel's valid samples as codes (Q8.8 when the frame
+// carries them), with the display coupling applied.
+// TRLC-LINKS: REQ-SDS-215
+func codesOf(f *engine.Frame, ch, lo, hi int, cpl int) []float64 {
+	valid := framecalc.Valid(f)
+	lo, hi = max(lo, 0), min(hi, valid)
+	if hi <= lo {
+		return nil
+	}
+	sig := framecalc.Channel(f, ch, valid)
+	if cpl != analog.CplDC {
+		sig = analog.CoupleDisplay(sig, cpl)
+	}
+	q := f.Q1
+	if ch == 1 {
+		q = f.Q2
+	}
+	out := make([]float64, hi-lo)
+	for i := lo; i < hi; i++ {
+		if cpl == analog.CplDC && len(q) >= valid {
+			out[i-lo] = float64(q[i]) / 256
+		} else {
+			out[i-lo] = float64(sig[i])
+		}
+	}
+	return out
+}
+
+// window is the sample span the screen shows: [left, left+win) of the frame
+// (the zoom window when zoomed), as the LCD's trace mapping.
+// TRLC-LINKS: REQ-SDS-214
+func windowOf(g geom, s *sv) (left float64, win int) {
+	valid := g.valid
+	win = g.winCols
+	if win <= 0 || win > valid {
+		win = valid
+	}
+	xc := g.edgeX
+	if xc < 0 {
+		xc = float64(valid) / 2
+	}
+	pos := s.st.TrigPosFrac
+	if !(pos >= 0 && pos <= 1) {
+		pos = 0.5
+	}
+	if s.zoom > 1 {
+		win = max(win/s.zoom, 8)
+		xc += s.zoomOff * float64(valid)
+		pos = 0.5
+	}
+	return xc - float64(win)*pos, win
+}
+
+// voltsPerCode is a channel's volts per display code at the probe tip.
+// TRLC-LINKS: REQ-SDS-216, REQ-SDS-217
+func voltsPerCode(s *sv, ch int) float64 {
+	d := analog.Detents[s.vidx[ch&1]]
+	return d.VdivV * float64(max(d.Zoom, 1)) / 25 * s.probe[ch&1]
+}
+
+// measureCh measures one channel of the frame as the LCD's readouts do:
+// calibrated volts at the tip, the display coupling, the invert.
+// TRLC-LINKS: REQ-SDS-217
+func measureCh(f *engine.Frame, s *sv, ch int) *measure.Result {
+	valid := framecalc.Valid(f)
+	if ch == 1 && len(f.C2) < valid {
+		return nil
+	}
+	sig := framecalc.Channel(f, ch, valid)
+	off := 0.0
+	if s.fe {
+		off = s.offV[ch]
+	}
+	cpl := s.cpl[ch]
+	if cpl != analog.CplDC {
+		sig = analog.CoupleDisplay(sig, cpl)
+		off = 0
+	}
+	q := f.Q1
+	if ch == 1 {
+		q = f.Q2
+	}
+	if len(q) < valid {
+		q = nil
+	} else {
+		q = q[:valid]
+	}
+	vpc := voltsPerCode(s, ch)
+	m := measure.ComputeAcquisition(sig, q, vpc, off*s.probe[ch], f.SampleS, cpl, f.FilterGuard)
+	if s.hasInv && s.inv[ch] {
+		m = m.Inverted()
+	}
+	if f.PeakDetect && m != nil {
+		m = m.WithEnvelopeTiming(sig, vpc, off*s.probe[ch], f.SampleS)
+	}
+	return m
+}
+
+// measValue is one parameter of a measurement (NaN when it has none).
+// TRLC-LINKS: REQ-SDS-217
+func measValue(m *measure.Result, p int) float64 {
+	if m == nil {
+		return math.NaN()
+	}
+	timing := func(v float64) float64 {
+		if !m.HasTiming {
+			return math.NaN()
+		}
+		return v
+	}
+	pos := func(v float64) float64 {
+		if v > 0 {
+			return v
+		}
+		return math.NaN()
+	}
+	switch measParams[p].id {
+	case "freq":
+		return timing(m.Freq)
+	case "pkpk":
+		return m.Vpp
+	case "period":
+		return timing(m.Period)
+	case "duty":
+		return timing(m.Duty)
+	case "rise":
+		return pos(m.RiseS)
+	case "fall":
+		return pos(m.FallS)
+	case "pwid":
+		return pos(m.PosWidthS)
+	case "nwid":
+		return pos(m.NegWidthS)
+	case "ampl":
+		return m.Vampl
+	case "max":
+		return m.Vmax
+	case "min":
+		return m.Vmin
+	case "top":
+		return m.Vtop
+	case "base":
+		return m.Vbase
+	case "mean":
+		return m.Vmean
+	case "rms":
+		return m.Vrms
+	case "acrms":
+		return m.VrmsAC
+	case "ovsh":
+		return timing(m.Overshoot)
+	}
+	return math.NaN()
+}
+
+// fmtMeas formats a parameter's value in its unit.
+// TRLC-LINKS: REQ-SDS-217
+func fmtMeas(p int, v float64) string {
+	if math.IsNaN(v) || math.IsInf(v, 0) {
+		return "---"
+	}
+	switch measParams[p].unit {
+	case "%":
+		return g3(v) + "%"
+	default:
+		return si(v, measParams[p].unit)
+	}
+}
+
+// median is the median of xs (NaN for none).
+// TRLC-LINKS: REQ-SDS-216
+func median(xs []float64) float64 {
+	if len(xs) == 0 {
+		return math.NaN()
+	}
+	s := append([]float64(nil), xs...)
+	sort.Float64s(s)
+	return s[len(s)/2]
+}

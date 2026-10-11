@@ -7,6 +7,7 @@ import (
 
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/panel/framecalc"
+	"open-sds/app/internal/panel/wsview"
 )
 
 // TRLC-LINKS: REQ-SDS-021
@@ -166,16 +167,16 @@ func TestRenderAltViews(t *testing.T) {
 	}
 }
 
-// The selected softkey is a FILLED inverted amber bar (not a 1px outline): its
-// slot must be a solid block of colTrig with dark (colBG) inverted text on top.
-// TRLC-LINKS: REQ-SDS-021
-func TestRenderMenuSelectedSoftkeyFilled(t *testing.T) {
+// The current choice in the F-key column is a FILLED inverted amber bar (not
+// a 1px outline): its slot must be a solid block of colTrig with dark
+// (colBG) inverted text on top.
+// TRLC-LINKS: REQ-SDS-021, REQ-SDS-212
+func TestRenderKeysSelectedFilled(t *testing.T) {
 	m := NewMemSurface()
 	h := defaultHUD()
-	h.MenuOpen = true
-	h.MenuTitle = "TRIGGER"
-	h.MenuItems = []MenuItem{{"Mode", "AUTO"}, {"Slope", "Rise"}, {"Source", "C1"}}
-	h.MenuSel = 1 // second slot (F2), aligned to the physical button at softkeyY[1]
+	h.UI = wsview.View{Layout: wsview.Layout{MenuW: 116, Sheet: true, HideTraces: true}, Sheet: &wsview.Sheet{WSName: "SCOPE"},
+		Keys: &wsview.Keys{Title: "MODE", Top: 30, Items: [5]wsview.Key{{Label: "Auto"}, {Label: "Normal", Sel: true}, {Label: "Single"}}}}
+	// slot 1 (F2), aligned to the physical button at softkeyY[1]
 	Render(m, testFrame(2048), h, true)
 	// slot i=1 bar spans y in [softkeyY[1]-9, softkeyY[1]+9], x in [687,797]
 	y0, y1 := softkeyY[1]-9, softkeyY[1]+9
@@ -523,32 +524,35 @@ func TestRenderBothChannelsHidden(t *testing.T) {
 	}
 }
 
-// The SUPER-RES page says why UTILITY did not arm; the reason was set but
-// only drawn while super-res was active (bug hunt #2).
-// TRLC-LINKS: REQ-SDS-021
-func TestRenderSuperresIdleStatus(t *testing.T) {
+// The sheet writes its tab's live status under the rows in the status
+// colour: the ACQ tab says why super-res did not arm (bug hunt #2: the
+// reason was set but only drawn while super-res was active).
+// TRLC-LINKS: REQ-SDS-021, REQ-SDS-212
+func TestRenderSheetStatus(t *testing.T) {
 	h := defaultHUD()
-	h.MenuOpen, h.MenuTitle = true, "SUPER-RES"
-	h.MenuItems = []MenuItem{{"Channel", "C1"}}
+	sh := &wsview.Sheet{WSName: "SCOPE", Rows: []wsview.Row{{Kind: wsview.Enum, Label: "Super-res", Opts: []wsview.Opt{{Text: "Off", Sel: true}, {Text: "On"}}}}}
+	h.UI = wsview.View{Layout: wsview.Layout{MenuW: 116, Sheet: true, HideTraces: true}, Sheet: sh}
 	m := NewMemSurface()
 	Render(m, testFrame(2048), h, true)
-	if n := countColorIn(m, colSR, 0, H-23, 400, H-11); n != 0 {
+	y := rowY0 + rowH + 8
+	if n := countColorIn(m, colSR, 0, y, 470, y+10); n != 0 {
 		t.Fatalf("no status, yet %d SR px", n)
 	}
-	h.SRStatus = "window too deep for software stacking"
+	sh.Status = []wsview.Span{{Text: "Super-res: window too deep for software stacking", Col: wsview.SR}}
 	m = NewMemSurface()
 	Render(m, testFrame(2048), h, true)
-	if n := countColorIn(m, colSR, 0, H-23, 400, H-11); n < 50 {
+	if n := countColorIn(m, colSR, 0, y, 470, y+10); n < 50 {
 		t.Fatalf("idle SR status not drawn (%d px)", n)
 	}
 }
 
-// The match editor covers the trace area with its keyboard (the highlighted
-// key filled) and leaves the softkey column to the menu.
-// TRLC-LINKS: REQ-SDS-021
+// The match editor covers the screen left of the F-key column with its
+// keyboard (the highlighted key filled).
+// TRLC-LINKS: REQ-SDS-021, REQ-SDS-214
 func TestRenderMatchEditor(t *testing.T) {
 	h := defaultHUD()
-	h.MenuOpen, h.MenuTitle = true, "MATCH"
+	h.UI = wsview.View{Layout: wsview.Layout{MenuW: 116, Sheet: true, HideTraces: true}, Sheet: &wsview.Sheet{WSName: "BUS"},
+		Keys: &wsview.Keys{Title: "MATCH EDITOR", Top: 30, Items: [5]wsview.Key{{Label: "Keys", Value: "Hex"}, {Label: "Type"}}}}
 	h.Match = MatchView{Open: true, Set: "Hex", Proto: "UART", Toks: []string{"55", "A?", "ERR"}, Cur: 3,
 		Keys: [][]string{{"0", "1", "2"}, {"3", "4", "5"}}, Row: 1, Col: 2}
 	m := NewMemSurface()
@@ -558,5 +562,8 @@ func TestRenderMatchEditor(t *testing.T) {
 	}
 	if n := countColorIn(m, colC1, 0, 14, W-116, H); n != 0 {
 		t.Fatalf("trace drawn through the editor (%d px)", n)
+	}
+	if n := countColorIn(m, colMenuBg, W-110, 40, W-4, H-4); n < 1000 {
+		t.Fatalf("the F-key column is not drawn beside the editor (%d px)", n)
 	}
 }

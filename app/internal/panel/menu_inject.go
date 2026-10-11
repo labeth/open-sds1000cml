@@ -6,6 +6,8 @@ import (
 	"time"
 )
 
+// nameCode maps a physical button's API name to its code (the /api/panel
+// and SCPI inject surface; the names are stable).
 // TRLC-LINKS: REQ-SDS-135
 func nameCode(name string) (int, bool) {
 	switch strings.ToLower(name) {
@@ -15,15 +17,15 @@ func nameCode(name string) (int, bool) {
 		return btnSingle, true
 	case "auto":
 		return btnAuto, true
-	case "ch1vdivpush": // push CH1 V/DIV knob → trigger source C1
+	case "ch1vdivpush": // CH1 V/DIV push (Variable)
 		return btnCh1VdivPush, true
-	case "ch2vdivpush": // push CH2 V/DIV knob → trigger source C2
+	case "ch2vdivpush": // CH2 V/DIV push (Variable)
 		return btnCh2VdivPush, true
-	case "triglvlpush": // push TRIG LEVEL knob → flip slope rise/fall
+	case "triglvlpush": // TRIG LEVEL push (Zero): level 0 V
 		return btnTrigLvlPush, true
-	case "utility", "util": // toggle super-res like SINGLE (arm ⇄ cancel)
+	case "utility", "util": // the BUS tab
 		return btnUtility, true
-	case "adjustpush", "intensity": // ADJUST/intensity knob push → toggle SR review
+	case "adjustpush", "intensity": // the Adjust push: the workspace's tool
 		return btnAdjustPsh, true
 	case "f1":
 		return btnF1, true
@@ -57,28 +59,26 @@ func nameCode(name string) (int, bool) {
 		return btnCh1, true
 	case "ch2":
 		return btnCh2, true
-	// Physical keys with no assigned action still enter the normal dispatcher,
-	// so API validation can distinguish an ignored key from an unknown name.
 	case "print", "hardcopy":
-		return bcode(3, 13), true
+		return btnPrint, true
 	case "saverecall":
-		return bcode(1, 11), true
+		return btnSaveRecall, true
 	case "set50":
-		return bcode(2, 2), true
+		return btnSet50, true
 	case "defaultsetup":
 		return btnDefaultSetup, true
 	case "force":
-		return bcode(3, 2), true
+		return btnForce, true
 	case "help":
-		return bcode(3, 11), true
-	case "ch1pospush":
-		return bcode(0, 1), true
-	case "ch2pospush":
-		return bcode(3, 1), true
-	case "tdivpush":
-		return bcode(2, 9), true
-	case "horizpospush":
-		return bcode(3, 9), true
+		return btnHelp, true
+	case "ch1pospush": // CH1 POSITION push (Zero)
+		return btnCh1PosPush, true
+	case "ch2pospush": // CH2 POSITION push (Zero)
+		return btnCh2PosPush, true
+	case "tdivpush": // S/DIV push (Zoom)
+		return btnTdivPush, true
+	case "horizpospush": // HORIZONTAL POSITION push (Zero)
+		return btnHorizPosPush, true
 	}
 	return 0, false
 }

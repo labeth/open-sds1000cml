@@ -18,14 +18,46 @@ func TestSettingsViewRoundTrip(t *testing.T) {
 		},
 	}
 	c.ApplySettingsView(want)
-	if got := c.SettingsView(); got != want {
+	got := c.SettingsView()
+	got.UI = settings.UI{} // a file without the workspace UI keeps the UI as it is
+	if got != want {
 		t.Fatalf("round trip mismatch:\n got %+v\nwant %+v", got, want)
 	}
-	// The render path must see the restored state (the LCD/HUD reads MenuView).
-	mv := c.MenuView()
+	// The render path must see the restored state (the LCD/HUD reads Snapshot).
+	mv, _ := c.Snapshot()
 	if mv.ViewMode != 2 || mv.DecProto != 3 || mv.DecBaud != 57600 ||
 		mv.DecChA != 1 || mv.DecChB != 0 || !mv.DecCPOL || mv.DecCPHA || mv.DecFormat != 1 {
-		t.Fatalf("MenuView does not reflect the restored state: %+v", mv)
+		t.Fatalf("Snapshot does not reflect the restored state: %+v", mv)
+	}
+}
+
+// The workspace, each workspace's view, the chosen measurements, the FFT
+// source, the master depth and the remote-notice switch survive a restart or
+// a recalled setup; a recall enters the saved workspace on its view.
+// TRLC-LINKS: REQ-SDS-136, REQ-SDS-211
+func TestSettingsViewWorkspaceRoundTrip(t *testing.T) {
+	a, _, _ := newC(t)
+	press(t, a, "f3", "f3") // SPECTRUM, then its next view: the spectrogram
+	a.mu.Lock()
+	a.meas = []measItem{{ch: 1, param: 3}, {ch: 0, param: 0}}
+	a.fftSrc, a.stackN, a.remoteNotices = 1, 128, false
+	a.ui.busEye = true
+	a.mu.Unlock()
+	saved := a.SettingsView()
+	if !saved.UI.Set || saved.UI.Workspace != 2 || saved.UI.Views[2] != viewSpectrogram || saved.ViewMode != viewSpectrogram {
+		t.Fatalf("saved UI %+v view %d", saved.UI, saved.ViewMode)
+	}
+	b, _, _ := newC(t)
+	press(t, b, "menu") // a sheet open on the LCD closes on a panel recall
+	b.ApplySettingsView(saved)
+	st := b.PanelStatus()
+	if st.Workspace != "SPECTRUM" || st.View != "Spectrogram" || st.Mode != "workspace" || st.Views[1] != "Eye diagram" {
+		t.Fatalf("restored %s/%s mode %s views %v", st.Workspace, st.View, st.Mode, st.Views)
+	}
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	if len(b.meas) != 2 || b.meas[0] != (measItem{ch: 1, param: 3}) || b.fftSrc != 1 || b.stackN != 128 || b.remoteNotices {
+		t.Fatalf("restored meas %v src %d depth %d notices %v", b.meas, b.fftSrc, b.stackN, b.remoteNotices)
 	}
 }
 
@@ -35,18 +67,22 @@ func TestApplySettingsViewClamps(t *testing.T) {
 	c.ApplySettingsView(settings.ViewState{
 		ViewMode: -7,
 		Decode: settings.Decode{
-			Proto: 99, Baud: 12345, ChA: -3, ChB: -3, Format: 47,
+			Proto: 99, Baud: 7, ChA: -3, ChB: -3, Format: 47,
 		},
 	})
 	got := c.SettingsView()
-	if got.ViewMode != mod5b(-7) {
-		t.Errorf("view mode not wrapped like the DISPLAY menu: %d", got.ViewMode)
+	if got.ViewMode != mod5(-7) {
+		t.Errorf("view mode not wrapped like the VIEW tab: %d", got.ViewMode)
 	}
 	if got.Decode.Proto != 0 {
 		t.Errorf("out-of-range proto must default Off: %d", got.Decode.Proto)
 	}
 	if got.Decode.Baud != 115200 {
-		t.Errorf("off-ladder baud must default 115200: %d", got.Decode.Baud)
+		t.Errorf("a baud no decoder takes must default 115200: %d", got.Decode.Baud)
+	}
+	c.ApplySettingsView(settings.ViewState{Decode: settings.Decode{Proto: 2, Baud: 12345}})
+	if b := c.SettingsView().Decode.Baud; b != 12345 { // a typed baud (the BUS tab takes any)
+		t.Errorf("custom baud lost: %d", b)
 	}
 	if got.Decode.ChA>>1 != 0 || got.Decode.ChB>>1 != 0 {
 		t.Errorf("channel roles escaped 0/1: %+v", got.Decode)
@@ -87,7 +123,7 @@ func TestSettingsViewDisplayRoundTrip(t *testing.T) {
 	a.mu.Unlock()
 	b, _, _ := newC(t)
 	b.ApplySettingsView(a.SettingsView())
-	v := b.MenuView()
+	v, _ := b.Snapshot()
 	if v.MathMode != 3 || !v.ShowMeas || !v.Persist || !v.ShowC1 || v.ShowC2 {
 		t.Fatalf("display setup lost: %+v", v)
 	}

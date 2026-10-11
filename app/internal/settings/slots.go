@@ -42,6 +42,13 @@ func (s Slots) RecallSetup(n int) error {
 	return nil
 }
 
+// PeekSetup reads slot n without applying it (the panel's FILE rows show
+// what each slot holds).
+// TRLC-LINKS: REQ-SDS-072, REQ-SDS-089
+func (s Slots) PeekSetup(n int) (Settings, bool) {
+	return Load(s.slotPath(n), nil)
+}
+
 // SaveSetupFile stores the current setup as a named file (SCPI STPN). The
 // name is a bare file name the caller has validated.
 // TRLC-LINKS: REQ-SDS-072, REQ-SDS-089

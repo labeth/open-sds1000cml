@@ -9,6 +9,7 @@ package panel
 
 import (
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"open-sds/app/internal/analog"
@@ -72,7 +73,7 @@ type Analog interface {
 // match it, so this map is authoritative. (There is no TRIG'd latch LED —
 // trigger-armed is a read-only HW status shown on-screen, not a lamp.)
 const (
-	ledCursors = 0x0002
+	ledCursors = 0x0002 // not driven (the latch bit is not confirmed)
 	ledIntens  = 0x0004 // INTENSITY / ADJUST-knob (not driven)
 	ledCH1     = 0x0010
 	ledMath    = 0x0020
@@ -81,8 +82,8 @@ const (
 	ledMeasure = 0x0100
 	ledAcquire = 0x0200
 	ledDisplay = 0x0400
-	ledSaveRec = 0x0800 // SAVE/RECALL (not driven)
-	ledUtility = 0x1000 // UTILITY — lit while super-res is active (toggle like SINGLE)
+	ledSaveRec = 0x0800 // SAVE/RECALL — the settings are those last saved or recalled
+	ledUtility = 0x1000 // UTILITY — a bus is decoded
 	ledRun     = 0x2000 // RUN (green element of the bicolor RUN/STOP lamp)
 	ledStop    = 0x4000 // STOP (red element)
 	ledSingle  = 0x8000
@@ -100,13 +101,13 @@ var (
 	btnSingle  = bcode(1, 10)
 	btnAuto    = bcode(3, 10)
 
-	// Knob push-switches (spec 08 §6.3), repurposed as trigger shortcuts:
-	btnCh1VdivPush = bcode(1, 9) // 0x65:9 — push CH1 V/DIV → trigger source C1
-	btnCh2VdivPush = bcode(2, 1) // 0x66:1 — push CH2 V/DIV → trigger source C2
-	btnTrigLvlPush = bcode(0, 9) // 0x64:9 — push TRIG LEVEL → flip slope rise/fall
+	// Knob push-switches (spec 08 §6.3), with their printed jobs:
+	btnCh1VdivPush = bcode(1, 9) // 0x65:9 — CH1 V/DIV push (Variable)
+	btnCh2VdivPush = bcode(2, 1) // 0x66:1 — CH2 V/DIV push (Variable)
+	btnTrigLvlPush = bcode(0, 9) // 0x64:9 — TRIG LEVEL push (Zero): level 0 V
 
-	btnUtility   = bcode(2, 3) // 0x66:3 (spec 08 §6.4) — toggle super-res like SINGLE
-	btnAdjustPsh = bcode(1, 1) // 0x65:1 (spec 08 §6.3) — ADJUST/intensity push: toggle SR review
+	btnUtility   = bcode(2, 3) // 0x66:3 (spec 08 §6.4) — the BUS sheet tab
+	btnAdjustPsh = bcode(1, 1) // 0x65:1 (spec 08 §6.3) — ADJUST push: the workspace's tool
 )
 
 // knobDef is one row of the FIXED FPGA priority order (spec 08 §3): exactly
@@ -166,12 +167,11 @@ type Controller struct {
 	norm     bool
 	single   bool // a single-shot is armed/waiting → SINGLE lamp
 
-	prev      [5]uint16
-	havePrev  bool
-	zoom      int     // horizontal magnification (1,2,5,10,20,50); 1 = no zoom
-	zoomOff   float64 // pan offset of the zoom window, fraction of the record
-	pressWrap bool    // panel goroutine: the menu step comes from a soft-key press
-	persist   bool    // display persistence (afterglow)
+	prev     [5]uint16
+	havePrev bool
+	zoom     int     // horizontal magnification (1,2,5,10,20,50); 1 = no zoom
+	zoomOff  float64 // pan offset of the zoom window, fraction of the record
+	persist  bool    // display persistence (afterglow)
 	// Protocol decode: proto 0=off,1=UART,2=I2C,3=SPI. chA/chB = channel roles
 	// (0=C1,1=C2): UART uses chA (source); I2C chA=SCL,chB=SDA; SPI chA=CLK,chB=DATA.
 	decProto         int
@@ -190,24 +190,52 @@ type Controller struct {
 	streamList bool
 	streamTop  int // list's first line; -1 follows the newest
 
-	// Menu state (spec 08 §6): written by the panel goroutine, read by the LCD
-	// renderer, guarded by mu. inject runs API-driven panel events on the panel
-	// goroutine so button/knob dispatch stays single-threaded.
+	// UI state (ADR-TASK-WORKSPACES): written by the panel goroutine, read by
+	// the LCD renderer and the remote, guarded by mu. inject runs API-driven
+	// panel events on the panel goroutine so dispatch stays single-threaded.
 	mu       sync.Mutex
-	menuPage int
-	menuSel  int
+	ui       uiState
+	clock    func() time.Time // nil: time.Now (tests drive notices with their own)
 	chDisp   [2]bool
 	showMeas bool
-	viewMode int // 0 = Y-T, 1 = X-Y, 2 = FFT (DISPLAY menu "View")
-	mathMode int // 0 = off, 1 = C1+C2, 2 = C1-C2, 3 = C1×C2 (DISPLAY menu "Math")
+	meas     []measItem // the chosen readouts (at most maxMeasItems)
+	viewMode int        // 0 Y-T, 1 X-Y, 2 FFT, 3 Bode, 4 spectrogram (the VIEW tab's View)
+	mathMode int        // 0 = off, 1 = C1+C2, 2 = C1-C2, 3 = C2-C1, 4 = C1×C2
+	fftSrc   int        // the channel SPECTRUM and the spectrogram analyse
+	inverter Inverter   // the display invert (SCPI Cn:INVS state); nil without one
+
+	// Per-frame analysis for the panes (OnFrame), guarded by amu. Lock order:
+	// amu may be taken without mu held only; mu may be taken under amu.
+	amu sync.Mutex
+	ana anaState
+
+	// The remote's snapshot and long-poll (remote.go), guarded by rmu.
+	rmu    sync.Mutex
+	remote remoteState
+
+	apiDepth       int    // a remote action is running: it leaves the LCD's menus alone
+	ledWord        uint16 // the latched lamp word
+	ledSet         bool
+	lastSetup      int    // the slot last saved or recalled (Save/Recall lamp)
+	lastSetupPrint string // the settings then
+	slotUsed       [setupSlots + 1]bool
+	slotSum        [setupSlots + 1]string // the FILE rows' summaries
+	slotWS         [setupSlots + 1]int    // the workspace each slot holds (-1 unknown)
+	remoteNotices  bool                   // show REMOTE notes on the LCD
+	stackN         int                    // the master's depth
+	stack          *stackState            // a master being stacked
+	maskAutoTest   bool                   // the COMPARE MASK row: count once built
+	detectSync     bool                   // tests: run the bus detection inline
 	// On-screen cursors (spec 08 §6): two X (time) and two Y (volts) cursors,
 	// positions as screen fractions; ADJUST moves the selected one.
-	curOn   bool
-	curType int // 0 = X (time), 1 = Y (volts)
-	curSel  int // 0 = A, 1 = B
-	curX    [2]float64
-	curY    [2]float64
-	inject  chan func()
+	curOn    bool
+	curType  int // 0 = X (time), 1 = Y (volts)
+	curSel   int // 0 = A, 1 = B
+	curX     [2]float64
+	curY     [2]float64
+	inject   chan func()
+	looping  atomic.Bool // Run is serving inject (else a remote change runs inline)
+	inlineMu sync.Mutex  // orders inline remote changes without the loop
 
 	// frameFn reads the latest published frame (fo.WithFrame) for autoset; nil
 	// until SetFrameSource is called (AUTO then falls back to plain AUTO/run).
@@ -216,12 +244,10 @@ type Controller struct {
 	autosetBusy bool
 	autosetStop chan struct{}
 	autosetMsg  string // banner text while busy ("AUTOSET…" / a result note)
-	// PRINT key: hardcopy saves a screenshot and names the file; notice is
-	// its brief on-screen result until noticeUntil.
-	hardcopy    func() (string, error)
-	notice      string
-	noticeUntil time.Time
-	refs        [2]refWave // saved reference waveforms (REF A/B)
+	// PRINT key: hardcopy saves a screenshot and names the file (shown as a
+	// notice).
+	hardcopy func() (string, error)
+	refs     [2]refWave // saved reference waveforms (REF A/B)
 
 	// Super-res (device stack-and-crunch, reference-locked — SINGLE a frame, then
 	// UTILITY). srActive gates the mode; a stacker goroutine feeds srStack OFF the
@@ -252,8 +278,6 @@ type Controller struct {
 	// selected tolerance preset, install in the engine. All guarded by mu.
 	maskN        int         // frames per build
 	setups       SetupMemory // SAVE/RECALL slots (nil = unavailable)
-	saveSlot     int         // SAVE/RCL page slot 1..setupSlots
-	saveMsg      string      // last save/recall outcome
 	maskTol      int         // index into maskTols presets
 	maskBuilding bool        // a build goroutine is running
 	maskMsg      string      // build/status line for the LCD HUD
@@ -265,8 +289,8 @@ type Controller struct {
 	srPeriod     int         // detected period within the span (samples); >0 → the stack is
 	// ONE period and the review TILES it across the span (fast multi-wave cheat)
 
-	// Trigger-qualifier shadows (the engine has no getters for these), edited on
-	// the TRIGGER-qualifier sub-page. ns for widths/times; fractions 0..1.
+	// Trigger-qualifier shadows (an engine without getters for these), edited
+	// on the TRIG tab. ns for widths/times; fractions 0..1.
 	pulseLvl, pulseMin, pulseMax         float64
 	pulseCond                            int
 	slopeLo, slopeHi, slopeMin, slopeMax float64
@@ -299,13 +323,20 @@ func New(eng Engine, fe Analog, keyFD int, tdivs []float64, startTdiv float64, l
 		srK: 32, srStopMode: 0, srStopVal: 4, srCh: 0,
 		// Mask defaults: 32 build frames, tolerance preset ±5 samp / ±8 codes
 		// (covers trigger-point jitter + 3σ noise — docs/zonemask-plan.md §1.4).
-		maskN: 32, maskTol: 1, saveSlot: 1,
+		maskN: 32, maskTol: 1,
 		// Seed the qualifier shadows to the engine's defaultTrigParams so the
-		// pgTrigQ page agrees with the engine from boot (slope 0.2/0.8, neg sync).
+		// TRIG tab agrees with the engine from boot (slope 0.2/0.8, neg sync).
 		pulseLvl: 0.5, pulseMin: 100, pulseMax: 1000,
 		slopeLo: 0.2, slopeHi: 0.8, slopeMin: 100, slopeMax: 1000,
 		videoLine: 0, videoNeg: true,
+		ui:            freshUI(),
+		stackN:        64,
+		remoteNotices: true,
 	}
+	for i := range c.slotWS {
+		c.slotWS[i] = -1
+	}
+	c.ui.statT = c.now()
 	for i, t := range tdivs {
 		if t >= startTdiv*(1-1e-6) {
 			c.tdivIdx = i
@@ -313,4 +344,18 @@ func New(eng Engine, fe Analog, keyFD int, tdivs []float64, startTdiv float64, l
 		}
 	}
 	return c
+}
+
+// Inverter is the display-level trace invert (the SCPI Cn:INVS state).
+type Inverter interface {
+	Inverted() [2]bool
+	SetInverted(ch int, on bool)
+}
+
+// SetInverter wires the CH tabs' Invert rows to the display invert.
+// TRLC-LINKS: REQ-SDS-212
+func (c *Controller) SetInverter(i Inverter) {
+	c.mu.Lock()
+	c.inverter = i
+	c.mu.Unlock()
 }

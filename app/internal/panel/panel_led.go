@@ -1,63 +1,111 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-PANEL
 package panel
 
-// SyncLEDs refreshes the acquisition lamps (RUN/STOP, SINGLE) from the engine and
-// re-latches only when the state actually changed — so the lamps follow a single-shot
-// self-stopping, or the web/SCPI toggling run, without a front-panel key press.
+import (
+	"fmt"
+	"math"
+	"time"
+
+	"open-sds/app/internal/panel/framecalc"
+)
+
+// Lamps (spec 08 §8.2): only the confirmed lamps, each with one meaning,
+// sheet open or not: the key's function is in use. Measure: readouts on.
+// Acquire: acquisition not Normal, or super-res on. Display: a view other
+// than Y-T, or persistence. Utility: decoding. Save/Recall: the settings are
+// unchanged since the last save or recall. 1 and 2: the channel is shown.
+// Single: armed. Run/Stop: green running, amber waiting for a trigger
+// (Normal or Single), red stopped. CURSORS, MATH, REF and INTENSITY stay dark
+// (their latch bits are not confirmed).
+
+// lampWord is the latch word for state s.
+// TRLC-LINKS: REQ-SDS-135, REQ-SDS-211
+func (c *Controller) lampWord(s *sv) uint16 {
+	var w uint16
+	if s.chDisp[0] {
+		w |= ledCH1
+	}
+	if s.chDisp[1] {
+		w |= ledCH2
+	}
+	switch {
+	case !s.st.Running:
+		w |= ledStop
+	case s.st.Single || c.waitingForTrigger(s):
+		w |= ledRun | ledStop // both elements: amber
+	default:
+		w |= ledRun
+	}
+	if s.st.Single && s.st.Running {
+		w |= ledSingle
+	}
+	if s.showMeas && len(s.meas) > 0 {
+		w |= ledMeasure
+	}
+	if s.st.AcqMode != 0 || s.srActive {
+		w |= ledAcquire
+	}
+	if s.viewMode != viewYT || s.persist {
+		w |= ledDisplay
+	}
+	if s.decProto != framecalc.ProtoOff {
+		w |= ledUtility
+	}
+	c.mu.Lock()
+	last, print := c.lastSetup, c.lastSetupPrint
+	c.mu.Unlock()
+	if last > 0 && s.slotUsed[last] && print == setupPrint(s) {
+		w |= ledSaveRec
+	}
+	return w
+}
+
+// waitingForTrigger reports Normal mode, running, with nothing published
+// lately: the held frame's trigger state no longer describes now.
+// TRLC-LINKS: REQ-SDS-135
+func (c *Controller) waitingForTrigger(s *sv) bool {
+	sp, ok := c.eng.(interface{ SincePublish() time.Duration })
+	if !ok || !s.st.Norm || !s.st.Running {
+		return false
+	}
+	return sp.SincePublish() > time.Duration(math.Max(1, 25*s.st.TdivS)*float64(time.Second))
+}
+
+// setupPrint is a fingerprint of the settings a setup holds (for the
+// Save/Recall lamp).
+// TRLC-LINKS: REQ-SDS-136
+func setupPrint(s *sv) string {
+	return fmt.Sprint(s.st.TdivS, s.st.TrigSource, s.st.TrigRising, s.st.TrigCode, s.st.TrigType, s.st.Norm, s.st.HoldoffS,
+		s.st.TrigPosFrac, s.st.AcqMode, s.st.AvgCount, s.st.EresLen, s.vidx, s.offV, s.cpl, s.probe, s.bwl,
+		s.chDisp, s.showMeas, s.persist, s.viewMode, s.mathMode, s.decProto, s.decBaud, s.decChA, s.decChB,
+		s.decCPOL, s.decCPHA, s.decFormat, s.meas, s.fftSrc, s.ui.ws)
+}
+
+// SyncLEDs refreshes the lamps from the engine and the panel state and
+// re-latches only when the word changed, so the lamps follow a single-shot
+// self-stopping or the web/SCPI toggling run without a key press; it also
+// publishes the panel snapshot for the remote's long-poll.
 // TRLC-LINKS: REQ-SDS-135
 func (c *Controller) SyncLEDs() {
 	st := c.eng.Snapshot()
 	c.mu.Lock()
-	changed := c.running != st.Running || c.single != st.Single || c.norm != st.Norm
 	c.running, c.norm, c.single = st.Running, st.Norm, st.Single
 	c.mu.Unlock()
-	if changed {
-		c.pushLEDs()
-	}
+	c.pushLEDs()
+	c.publish()
 }
 
+// pushLEDs latches the lamp word when it changed.
 // TRLC-LINKS: REQ-SDS-135
 func (c *Controller) pushLEDs() {
+	w := c.lampWord(c.snap())
 	c.mu.Lock()
-	c1, c2, pg, meas := c.chDisp[0], c.chDisp[1], c.menuPage, c.showMeas
-	running, single, math := c.running, c.single, c.mathMode
-	srActive := c.srActive
+	changed := !c.ledSet || w != c.ledWord
+	c.ledWord, c.ledSet = w, true
 	c.mu.Unlock()
-	var word uint16
-	if c1 {
-		word |= ledCH1
+	if changed {
+		c.eng.SetLEDs(w)
 	}
-	if c2 {
-		word |= ledCH2
-	}
-	if math != 0 {
-		word |= ledMath // MATH lamp tracks the math function being active
-	}
-	if running {
-		word |= ledRun
-	} else {
-		word |= ledStop
-	}
-	if single { // SINGLE lamp: a single-shot is armed (NOT the NORM trigger mode)
-		word |= ledSingle
-	}
-	if srActive { // UTILITY lamp lit while super-res is stacking (toggle like SINGLE)
-		word |= ledUtility
-	}
-	if meas {
-		word |= ledMeasure // MEASURE key lamp tracks the panel toggle
-	}
-	switch pg { // light the lamp of the button whose page is showing (spec 08 §6.4/§8.2)
-	case pgAcq:
-		word |= ledAcquire
-	case pgRef: // dedicated REF key / ACQUIRE's second page — its own lamp
-		word |= ledRef
-	case pgDisp, pgChan: // CHANNEL is DISPLAY's second page (no lamp of its own)
-		word |= ledDisplay
-	case pgCursor: // dedicated CURSORS key / HORIZONTAL's second page
-		word |= ledCursors
-	}
-	c.eng.SetLEDs(word)
 }
 
 // TRLC-LINKS: REQ-SDS-135

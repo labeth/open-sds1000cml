@@ -26,10 +26,11 @@ func (c *Controller) SetViewXY(on bool) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if on {
-		c.viewMode = 1
-	} else if c.viewMode == 1 {
-		c.viewMode = 0
+		c.viewMode = viewXY
+	} else if c.viewMode == viewXY {
+		c.viewMode = viewYT
 	}
+	c.ui.views[c.ui.ws] = c.viewMode // the workspace remembers it
 }
 
 // PersistOn reports the display-persistence (afterglow) state.
@@ -48,29 +49,30 @@ func (c *Controller) SetPersist(on bool) {
 	c.persist = on
 }
 
-// MenuOpen reports whether the on-screen softkey menu is visible.
-// TRLC-LINKS: REQ-SDS-136
+// MenuOpen reports whether a menu is open: a settings sheet or the byte
+// picker (SCPI MENU?).
+// TRLC-LINKS: REQ-SDS-136, REQ-SDS-212
 func (c *Controller) MenuOpen() bool {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	return c.menuPage != pgNone
+	return c.ui.open || c.ui.wpick
 }
 
-// SetMenuOpen shows (the MAIN page) or hides the on-screen softkey menu —
-// the SCPI MENU ON/OFF verb. pushLEDs afterwards: closing e.g. the DISPLAY
-// page must also drop that key's lamp (same discipline as openMenu).
-// TRLC-LINKS: REQ-SDS-136
+// SetMenuOpen is the SCPI MENU ON/OFF verb, as Menu On/Off does it: ON opens
+// this workspace's sheet (where it was left), OFF closes the sheet or the
+// picker.
+// TRLC-LINKS: REQ-SDS-136, REQ-SDS-212
 func (c *Controller) SetMenuOpen(on bool) {
 	c.mu.Lock()
-	if on {
-		if c.menuPage == pgNone {
-			c.menuPage, c.menuSel = pgMain, 0
-		}
-	} else {
-		c.menuPage = pgNone
+	switch {
+	case on && !c.ui.open && !c.ui.wpick:
+		c.openWsSheetLocked()
+	case !on:
+		c.closePickLocked()
+		c.closeSheetLocked()
 	}
 	c.mu.Unlock()
-	c.pushLEDs()
+	c.afterInput()
 }
 
 // TraceOn reports whether a channel's trace is shown (the CH1/CH2 keys).

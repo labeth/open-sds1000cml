@@ -10,18 +10,20 @@ import (
 // the upper panel and phase (deg, colC2) in the lower, against a LOG frequency
 // axis with decade gridlines. Parity with the web bode.js render.
 // TRLC-LINKS: REQ-SDS-021
-func drawBode(sf Surface, hud HUD) {
+func drawBode(sf Surface, p plotArea, hud HUD) {
 	n := len(hud.BodeFreq)
 	if n < 1 {
-		DrawText(sf, W/2-150, H/2, "BODE / FRA — arm and sweep the source frequency", colDim, 1)
+		msg := "BODE / FRA - sweep the source frequency (ref C1, DUT C2)"
+		DrawText(sf, (p.w-TextWidth(msg, 1))/2, p.y0+p.h/2, msg, colDim, 1)
 		return
 	}
-	const padL, padR, padT, padB = 56, 20, 22, 30
-	magH := (H - padT - padB) * 56 / 100
+	const padL, padR, padTop, padB = 56, 20, 22, 30
+	padT := p.y0 + padTop
+	magH := (p.h - padTop - padB) * 56 / 100
 	gap := 18
 	phY0 := padT + magH + gap
 	phH := H - padB - phY0
-	plotL, plotR := padL, W-padR
+	plotL, plotR := padL, p.w-padR
 	plotW := plotR - plotL
 
 	f0, f1 := hud.BodeFreq[0], hud.BodeFreq[n-1]
@@ -67,7 +69,12 @@ func drawBode(sf Surface, hud HUD) {
 				sf.SetPixel(x, y, col)
 			}
 			if m == 1 {
-				DrawText(sf, x-10, H-padB+6, fmtFreq(f), colDim, 1)
+				lbl := fmtFreq(f)
+				if x-10+TextWidth(lbl, 1) > p.w-2 { // the last decade: inside the plot
+					DrawTextRight(sf, p.w-2, H-padB+6, lbl, colDim, 1)
+				} else {
+					DrawText(sf, x-10, H-padB+6, lbl, colDim, 1)
+				}
 			}
 		}
 	}
@@ -109,10 +116,26 @@ func drawBode(sf Surface, hud HUD) {
 		fillRect(sf, xOf(hud.BodeFreq[i])-1, magYOf(hud.BodeGain[i])-1, 3, 3, colC1)
 		fillRect(sf, xOf(hud.BodeFreq[i])-1, phYOf(hud.BodePhase[i])-1, 3, 3, colC2)
 	}
-	DrawText(sf, plotL+2, padT-14, "dB", colC1, 1)
+	if !hud.UI.Layout.HideViewCaptions {
+		DrawText(sf, plotL+2, padT-14, "dB", colC1, 1)
+	}
 	DrawText(sf, plotL+2, phY0-14, "phase deg", colC2, 1)
 	// In the plot gap, not the header row (it covered the trigger status).
 	DrawText(sf, plotL+2+TextWidth("phase deg  ", 1), phY0-14, fmt.Sprintf("%d pts", n), colDim, 1)
+	// SPECTRUM's marker on a sweep point, and its delta reference.
+	if m := hud.UI.Spec; m != nil && m.Bode {
+		if m.BodeRef >= 0 && m.BodeRef < n {
+			vdash(sf, xOf(hud.BodeFreq[m.BodeRef]), padT, H-padB, colDim)
+		}
+		if m.BodeIdx >= 0 && m.BodeIdx < n {
+			x := xOf(hud.BodeFreq[m.BodeIdx])
+			vdash(sf, x, padT, H-padB, colTrig)
+			lw := TextWidth(m.MarkText, 1) + 4
+			lx := min(max(x+4, 2), p.w-lw-2)
+			fillRect(sf, lx, padT+2, lw, 10, colBG)
+			DrawText(sf, lx+2, padT+3, m.MarkText, colTrig, 1)
+		}
+	}
 }
 
 // gridStep is the smallest of the round steps that splits [lo,hi] into at

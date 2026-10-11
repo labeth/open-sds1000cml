@@ -1,18 +1,30 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-PANEL
 package panel
 
-import "open-sds/app/internal/settings"
-
-// decBauds is the DECODE menu's UART baud ladder (menuCycle slot 1) — the
-// domain a restored baud must come from.
-var decBauds = []int{9600, 19200, 38400, 57600, 115200, 230400}
+import (
+	"open-sds/app/internal/panel/framecalc"
+	"open-sds/app/internal/panel/wsview"
+	"open-sds/app/internal/settings"
+)
 
 // SettingsView reports the controller-owned slice of the persisted setup
-// (settings.Panel surface): the device decode config and the view mode.
-// TRLC-LINKS: REQ-SDS-136
+// (settings.Panel surface): the decode setup, the display state, and the
+// workspace UI, so a restart or a recalled setup returns where it was.
+// TRLC-LINKS: REQ-SDS-136, REQ-SDS-211
 func (c *Controller) SettingsView() settings.ViewState {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	ui := settings.UI{Set: true, Workspace: int(c.ui.ws), BusEye: c.ui.busEye, MeasAll: c.ui.measAll,
+		FFTSource: c.fftSrc, MasterDepth: c.stackN, RemoteNotices: c.remoteNotices}
+	for i := range ui.Views {
+		ui.Views[i] = c.ui.views[i]
+	}
+	ui.Views[c.ui.ws] = c.viewMode
+	for i, it := range c.meas {
+		if i < len(ui.Meas) {
+			ui.Meas[i] = it.ch*32 + it.param + 1
+		}
+	}
 	return settings.ViewState{
 		ViewMode: c.viewMode,
 		// Math, measurements, persistence and channel visibility survived no
@@ -26,39 +38,32 @@ func (c *Controller) SettingsView() settings.ViewState {
 			Format:     c.decFormat,
 			StreamTrig: c.decTrig, StreamValue: c.decValue,
 		},
+		UI: ui,
 	}
 }
 
-// ApplySettingsView restores the controller-owned setup, enforcing the same
-// domains the DECODE/DISPLAY menus keep (menuCycle): proto ∈ [0,4], baud from
-// the menu ladder, clock/data roles on opposite channels for the two-signal
-// protocols, format ∈ [0,2], view mode ∈ [0,4]. Hostile values degrade to
-// defaults — never a panic, never an out-of-domain field. All fields are
-// mu-guarded plain state with no engine side-effects (the render loop picks
-// them up via MenuView, exactly as after a menu press).
-// TRLC-LINKS: REQ-SDS-136
+// ApplySettingsView restores the controller-owned setup, enforcing the
+// domains the BUS and VIEW tabs keep: proto a decoder, a baud the decoders
+// take, clock and data on opposite channels for the two-signal protocols,
+// format and view in range, a workspace and its views. Hostile values
+// degrade to defaults — never a panic, never an out-of-domain field. A
+// recalled workspace is entered as F1..F5 enters it (its view applied).
+// TRLC-LINKS: REQ-SDS-136, REQ-SDS-211
 func (c *Controller) ApplySettingsView(v settings.ViewState) {
 	d := v.Decode
-	if d.Proto < 0 || d.Proto > 4 {
-		d.Proto = 0 // Off
+	if d.Proto < framecalc.ProtoOff || d.Proto >= framecalc.NumProtos {
+		d.Proto = framecalc.ProtoOff
 	}
-	inLadder := false
-	for _, b := range decBauds {
-		if b == d.Baud {
-			inLadder = true
-			break
-		}
-	}
-	if !inLadder {
+	if d.Baud < 50 || d.Baud > 20000000 {
 		d.Baud = 115200
 	}
 	d.ChA &= 1
 	d.ChB &= 1
-	if d.Proto == 3 || d.Proto == 4 { // I2C/SPI: data on the OTHER channel (menu invariant)
-		d.ChB = 1 - d.ChA
+	if d.Proto == framecalc.ProtoI2C || d.Proto == framecalc.ProtoSPI || d.ChB == d.ChA {
+		d.ChB = 1 - d.ChA // data on the OTHER channel
 	}
 	d.Format = mod3(d.Format)
-	view := mod5b(v.ViewMode)
+	view := mod5(v.ViewMode)
 
 	c.mu.Lock()
 	c.viewMode = view
@@ -71,8 +76,38 @@ func (c *Controller) ApplySettingsView(v settings.ViewState) {
 	c.decFormat = d.Format
 	c.decTrig = mod3(d.StreamTrig)
 	c.decValue = (d.StreamValue%0x10000 + 0x10000) % 0x10000
+	if u := v.UI; u.Set {
+		ws := wsview.WS(clampInt(u.Workspace, 0, wsview.Count-1))
+		for i := range c.ui.views {
+			c.ui.views[i] = mod5(u.Views[i])
+		}
+		c.ui.ws, c.ui.busEye, c.ui.measAll = ws, u.BusEye, u.MeasAll
+		c.viewMode = c.ui.views[ws]
+		if c.apiDepth == 0 { // a remote's recall leaves the LCD's menus as they are
+			c.closeSheetLocked()
+			c.closePickLocked()
+		}
+		c.meas = nil
+		for _, m := range u.Meas {
+			if m <= 0 {
+				continue
+			}
+			ch, p := (m-1)/32, (m-1)%32
+			if ch <= 1 && p < len(measParams) {
+				c.meas = append(c.meas, measItem{ch: ch, param: p})
+			}
+		}
+		c.fftSrc = u.FFTSource & 1
+		c.stackN = 64
+		for _, n := range stackDepths {
+			if n == u.MasterDepth {
+				c.stackN = n
+			}
+		}
+		c.remoteNotices = u.RemoteNotices
+	}
 	c.mu.Unlock()
-	c.syncDecodeView(d.Proto != 0)
+	c.syncDecodeView(d.Proto != framecalc.ProtoOff)
 }
 
 // syncDecodeView tells the engine whether the display decodes the frame, so
