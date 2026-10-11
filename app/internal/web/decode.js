@@ -287,7 +287,8 @@ function decodeUART(codes, colTimeS, cfg) {
   // window, not line errors.
   let first = -1;
   for (let k = 0; k + 1 < spans.length; k++) if (spans[k].kind === "data" && spans[k + 1].kind === "data") { first = k; break; }
-  if (first > 0 && spans[first].i0 <= guard + 4 * need && spans.slice(0, first).some((sp) => sp.kind === "frame-error" || sp.kind === "parity-error")) {
+  const openedMid = spans.length && (spans[0].kind !== "data" || spans[0].i0 <= guard + 1.5 * SPB); // else in sync from the start
+  if (first > 0 && openedMid && spans[first].i0 <= guard + 4 * need && spans.slice(0, first).some((sp) => sp.kind === "frame-error" || sp.kind === "parity-error")) {
     for (let k = 0; k < first; k++) { spans[k].kind = "gap"; spans[k].text = "gap"; }
     toks.length = 0; bytes.length = 0;
     for (const sp of spans) if (sp.kind !== "gap") { toks.push(sp.text); bytes.push(sp.val); }

@@ -297,7 +297,7 @@ func usblsRepoPackets(r Result) []usblsRepoPkt {
 			if len(out) > 0 {
 				out[len(out)-1].name = strings.TrimPrefix(s.Text, "!")
 			}
-		case "data":
+		case "data", "crc-error": // a failed CRC16 marks its two bytes crc-error
 			if len(out) > 0 {
 				p := &out[len(out)-1]
 				p.bytes = append(p.bytes, s.Val)

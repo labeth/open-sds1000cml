@@ -253,7 +253,7 @@ func DecodeUART(codes []uint8, colTimeS float64, cfg UARTCfg) Result {
 		}
 		i++
 	}
-	if syncIn(spans, guard+uartSyncFrames*need) {
+	if syncIn(spans, guard+uartSyncFrames*need, guard+1.5*spb) {
 		toks, bytes = toks[:0], bytes[:0]
 		for _, sp := range spans {
 			if sp.Kind != "gap" {
@@ -269,15 +269,18 @@ func DecodeUART(codes []uint8, colTimeS float64, cfg UARTCfg) Result {
 // frames mis-frames until a stop bit lands on idle, a few frames at most.
 const uartSyncFrames = 4
 
-// syncIn marks what precedes the decode's sync point as gaps when an error
-// sits there and sync comes within window samples of the record start: those
-// are bytes cut by the window, not line errors. Sync is the first two clean
-// frames in a row (one mis-framed byte can end on an idle-looking stop bit).
-// Every capture of a clean back-to-back UART line began "!0B !AA !A9", so an
-// error watch caught every frame (bug hunt #2). A line that never decodes
-// cleanly keeps its errors. Reports whether it changed anything.
+// syncIn marks what precedes the decode's sync point as gaps when the record
+// visibly opened mid-traffic (its first frame is an error, or its first start
+// edge comes within openBy samples: a falling edge right away is a byte cut by
+// the window) and sync comes within window samples. Sync is the first two
+// clean frames in a row (one mis-framed byte can end on an idle-looking stop
+// bit). Every capture of a clean back-to-back UART line began "!0B !AA !A9",
+// so an error watch caught every frame (bug hunt #2). A record that opens idle
+// keeps its errors: a real break after a clean first byte is an error, and a
+// line that never decodes cleanly keeps them all. Reports whether it changed
+// anything.
 // TRLC-LINKS: REQ-SDS-018
-func syncIn(spans []Span, window int) bool {
+func syncIn(spans []Span, window int, openBy float64) bool {
 	first := -1
 	for k := 0; k+1 < len(spans); k++ {
 		if spans[k].Kind == "data" && spans[k+1].Kind == "data" {
@@ -287,6 +290,9 @@ func syncIn(spans []Span, window int) bool {
 	}
 	if first <= 0 || spans[first].I0 > window {
 		return false
+	}
+	if spans[0].Kind == "data" && float64(spans[0].I0) > openBy {
+		return false // opened idle: in sync from the start
 	}
 	bad := false
 	for k := 0; k < first; k++ {
