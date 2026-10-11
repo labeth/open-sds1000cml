@@ -302,26 +302,9 @@ $("zmBuild").onclick = async () => {
     } catch (e) { break; }
   }
   if (got < 4) { zmStatus("mask build failed — no locked frames (trigger on-signal?)"); return; }
-  // unobserved columns (lo>hi) are UNTESTABLE — normalize to always-pass before
-  // dilating, or they become inverted-garbage bounds that fail every sample
-  for (let j = 0; j < win; j++) if (lo[j] > hi[j]) { lo[j] = 0; hi[j] = 255; }
-  // Sliding min/max dilation: linear work even for full SRAM records and
-  // large horizontal tolerances. Each index enters and leaves its deque once.
-  const dLo = new Array(win), dHi = new Array(win);
-  const qLo = new Int32Array(win), qHi = new Int32Array(win);
-  let lh = 0, lt = 0, hh = 0, ht = 0, next = 0;
-  for (let j = 0; j < win; j++) {
-    const end = Math.min(win - 1, j + tolT), start = Math.max(0, j - tolT);
-    while (next <= end) {
-      while (lt > lh && lo[qLo[lt - 1]] >= lo[next]) lt--;
-      while (ht > hh && hi[qHi[ht - 1]] <= hi[next]) ht--;
-      qLo[lt++] = next; qHi[ht++] = next++;
-    }
-    while (lh < lt && qLo[lh] < start) lh++;
-    while (hh < ht && qHi[hh] < start) hh++;
-    dLo[j] = Math.max(0, Math.floor(lo[qLo[lh]] - tolV));
-    dHi[j] = Math.min(255, Math.ceil(hi[qHi[hh]] + tolV));
-  }
+  // Dilate by the tolerances (wsmath.js maskDilate, shared with COMPARE's
+  // stacked master; unobserved columns become always-pass first).
+  const { lo: dLo, hi: dHi } = maskDilate(lo, hi, tolT, tolV);
   try {
     const response = await fetch("/api/mask", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ lo_b64: zmPackMask(dLo), hi_b64: zmPackMask(dHi), win, ch, ...frameGeometry }) });
     const result = await response.json();

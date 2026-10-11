@@ -64,23 +64,27 @@ function bodeColors() {
 // TRLC-LINKS: REQ-SDS-125
 function bodeStatus(m) { if (m !== undefined) $("bodeStats").textContent = m; }
 
-// TRLC-LINKS: REQ-SDS-125
-function bodeDrawBig() {
-  const cv = $("ejBig"); if (!cv) return;
-  const r = cv.getBoundingClientRect(), dpr2 = window.devicePixelRatio || 1;
-  if (cv.width !== Math.round(r.width * dpr2)) { cv.width = Math.round(r.width * dpr2); cv.height = Math.round(r.height * dpr2); }
-  fetch("/api/bode").then(x => x.json()).then(pts => {
-    const g = glCardCtx(cv, "#05080c");
-    if (g) { bodeDraw(g, cv.width, cv.height, pts.ok ? pts : { freq: [] }, bodeColors()); glCardEnd(cv); }
-    $("ejBigInfo").textContent = "Bode / FRA — " + (pts.n || 0) + " points · click to close";
-  }).catch(() => { });
-}
-
 // TRLC-LINKS: REQ-SDS-068
 function spgStatus(m) { if (m !== undefined) $("spgStats").textContent = m; }
 
 // TRLC-LINKS: REQ-SDS-068
 function spgEnsure() { if (!spg.sg) spg.sg = sgNew(400, 200); return spg.sg; }
+
+// SPECTRUM draws its spectrogram and Bode views on the scope canvas itself, so
+// they get the large pane (and maximize) like the FFT. The plot routines take
+// CSS pixels; a dpr scale keeps their text crisp and the right size on HiDPI.
+// TRLC-LINKS: REQ-SDS-068, REQ-SDS-216
+function drawSpgMain() {
+  ctx.save(); ctx.scale(dpr, dpr);
+  sgBlit(ctx, CW / dpr, CH / dpr, spg.sg, DIMCOL);
+  ctx.restore();
+}
+// TRLC-LINKS: REQ-SDS-125, REQ-SDS-216
+function drawBodeMain() {
+  ctx.save(); ctx.scale(dpr, dpr);
+  bodeDraw(ctx, CW / dpr, CH / dpr, bode.pts || { freq: [], gain_db: [], phase_deg: [] }, bodeColors());
+  ctx.restore();
+}
 
 // TRLC-LINKS: REQ-SDS-068
 function spgPushCurrent() {
@@ -95,47 +99,25 @@ function spgPushCurrent() {
   sgPushRow(sg, s.mags, s.half, s.peak, s.nyq || peakNyq());
 }
 
+// spgRender repaints the waterfall when SPECTRUM shows it (on the scope canvas).
 // TRLC-LINKS: REQ-SDS-068
-function spgRender(cv) {
-  cv = cv || $("spgCv");
-  const rect = cv.getBoundingClientRect();
-  const W = Math.max(200, Math.round(rect.width || cv.width));
-  if (cv.width !== W) cv.width = W;
-  const g = glCardCtx(cv, "#141c26");
-  if (!g) return;
-  sgBlit(g, cv.width, cv.height, spg.sg, DIMCOL);
-  glCardEnd(cv);
-}
-
-// TRLC-LINKS: REQ-SDS-068
-function spgDrawBig() {
-  const cv = $("ejBig"); if (!cv) return;
-  const r = cv.getBoundingClientRect(), dpr2 = window.devicePixelRatio || 1;
-  if (cv.width !== Math.round(r.width * dpr2)) { cv.width = Math.round(r.width * dpr2); cv.height = Math.round(r.height * dpr2); }
-  const g = glCardCtx(cv, "#05080c");
-  if (g) { sgBlit(g, cv.width, cv.height, spg.sg, DIMCOL); glCardEnd(cv); }
-  $("ejBigInfo").textContent = "Spectrogram — FFT over time · click to close";
-}
+function spgRender() { if (view.mode === "SPG") scheduleRender(); }
 
 // ==== wiring ====
 
 // ---- Bode + spectrogram wiring ----
 
 
+// bodeRenderNow fetches the accumulated response into bode.pts and repaints the
+// Bode view when it is shown. Returns the point count.
 // TRLC-LINKS: REQ-SDS-125
 async function bodeRenderNow() {
-  if (typeof bodeDraw !== "function") return;
-  const cv = $("bodeCv"); if (!cv) return;
+  if (typeof bodeDraw !== "function") return 0;
   let pts = { freq: [], gain_db: [], phase_deg: [] };
   try { const r = await (await fetch("/api/bode")).json(); if (r.ok) pts = r; } catch (e) { }
-  // crisp render at the element's CSS box × dpr
-  const rect = cv.getBoundingClientRect();
-  const W = Math.max(200, Math.round(rect.width || cv.width)), H = cv.height;
-  if (cv.width !== W) cv.width = W;
-  const g = glCardCtx(cv, "#141c26");
-  if (!g) return pts.n || 0;
-  bodeDraw(g, cv.width, H, pts, bodeColors());
-  glCardEnd(cv);
+  bode.pts = pts;
+  if (view.mode === "BODE") scheduleRender();
+  if (typeof specOnBode === "function") specOnBode(pts);
   return pts.n || 0;
 }
 
@@ -164,22 +146,14 @@ for (const id of ["bodeRef", "bodeDut"]) $(id).onchange = () => {
     fetch("/api/set", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ control: "bodemode", value: 1, lo: ref, hi: dut }) }).catch(() => {});
   }
 };
-// full-screen enlarge on click, reusing the eye big-view dialog shell
-// TRLC-LINKS: REQ-SDS-125
-$("bodeCv").onclick = () => {
-  if (typeof ejBigVisible !== "function") return;
-  ejBigKind = "bode";
-  $("ejBigWrap").classList.remove("hidden");
-  bodeDrawBig();
-};
-
-// 1 Hz: refresh the curve + the live-point readout while armed (or non-empty).
+// 1 Hz: refresh the curve + the live-point readout while armed (or non-empty),
+// and whenever the Bode view is shown.
 setInterval(async () => {
   if (!st) return;
-  const active = st.bode_mode > 0 || (st.bode_points || 0) > 0;
-  if (!active) return;
+  const active = st.bode_mode > 0 || (st.bode_points || 0) > 0 || bode.armed;
+  if (!active && view.mode !== "BODE") return;
   const n = await bodeRenderNow();
-  if (typeof ejBigVisible === "function" && ejBigVisible() && ejBigKind === "bode") bodeDrawBig();
+  if (!active) return;
   let line = `${n || 0} points`;
   if (st.bode_mode > 0) {
     line = st.bode_valid
@@ -203,16 +177,10 @@ $("spgClear").onclick = () => { if (spg.sg) sgClear(spg.sg); spgRender(); spgSta
 $("spgCh").onchange = () => { spg.ch = +$("spgCh").value === 2 ? 2 : 1; };
 // TRLC-LINKS: REQ-SDS-068
 $("spgFloor").onchange = () => { if (spg.sg) spg.sg.floorDb = +$("spgFloor").value || -60; };
-// TRLC-LINKS: REQ-SDS-068
-$("spgCv").onclick = () => {
-  if (typeof ejBigVisible !== "function") return;
-  ejBigKind = "spg"; $("ejBigWrap").classList.remove("hidden"); spgDrawBig();
-};
 // push + render on a fast tick so the waterfall scrolls at ~frame rate
 setInterval(() => {
   if (!spg.armed && (!spg.sg || spg.sg.rows === 0)) return;
   spgPushCurrent();
   spgRender();
-  if (typeof ejBigVisible === "function" && ejBigVisible() && ejBigKind === "spg") spgDrawBig();
   if (spg.armed) spgStatus(`waterfall live · ${spg.sg ? spg.sg.rows : 0} rows · Nyquist ${eng(peakNyq(), "Hz", 3)}`);
 }, 80);

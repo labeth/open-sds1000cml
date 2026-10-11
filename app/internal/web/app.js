@@ -93,6 +93,9 @@ const SRCOL = css.getPropertyValue("--sr").trim() || "#35c8e8"; // super-res ove
 function resize() {
   dpr = window.devicePixelRatio || 1;
   const box = $("scopebox");
+  // A workspace switch can leave the box un-laid-out for a moment (and the
+  // spectrogram/Bode views keep it hidden): keep the last backing store.
+  if (!box.clientWidth || !box.clientHeight) { if (GLR) redraw(); return; }
   const w = Math.max(240, Math.floor(box.clientWidth));
   const h = Math.max(120, Math.floor(box.clientHeight));
   // The canvas ELEMENT is sized purely by CSS (#scope is position:absolute
@@ -175,7 +178,7 @@ let mathMemo = { c1: null, c2: null, fn: null, sel: "", out: null };
 // overlaid for comparison. A ref stays at its ABSOLUTE voltage — it is
 // re-mapped to the current V/div/offset when drawn, not pinned to screen codes.
 const refs = { A: null, B: null };
-const REFCOL = { A: "#b48ead", B: "#a3be8c" };
+const REFCOL = { A: css.getPropertyValue("--ref-a").trim() || "#b48ead", B: css.getPropertyValue("--ref-b").trim() || "#a3be8c" };
 
 
 
@@ -230,15 +233,14 @@ let peakListLastT = 0;
 
 
 
-// Measurement rows. A compact default set plus an expandable "more" group
-// (timing/pulse) so the panel stays scannable but the depth is one click away.
+// Measurement parameters: the core set (SCOPE's quick readouts) and the rest
+// (timing/pulse); MEASURE shows them all, with statistics.
 const MEAS_CORE = ["Vpp", "Vmax", "Vmin", "Vmean", "Vrms", "Freq", "Period", "Duty"];
 const MEAS_MORE = ["ACrms", "Vtop", "Vbase", "Vampl", "Rise", "Fall", "+Width", "-Width", "Overshoot"];
-let measExpanded = false;
-// The row STRUCTURE only changes on expand/collapse or a clip-flag flip; the
-// VALUES change every frame. Rebuild the table on structure changes, update
-// cell textContent in place otherwise — an innerHTML re-parse at 20 fps was
-// measurable DOM churn for identical markup.
+const MEAS_ALL = MEAS_CORE.concat(MEAS_MORE);
+// The table STRUCTURE only changes on a clip-flag flip; the VALUES change every
+// frame. Rebuild on structure changes, update cell textContent in place
+// otherwise — an innerHTML re-parse at 20 fps was measurable DOM churn.
 let measDomSig = "", measCells = null;
 
 
@@ -273,8 +275,9 @@ const navWin = () => view.mode === "FFT" ? view.fwin : view.win; // which window
 let binFailures = 0;
 
 // Buttons that are ON/OFF toggles get an aria-pressed mirror of their .on class.
-const PRESSED = ["mYT", "mXY", "mFFT", "tPersist", "tCursors", "tC1", "tC2", "freeze",
-  "mode", "ets", "rollStream", "single", "decAuto", "decWatch", "decStream"];
+// (Segmented controls carry aria-checked on their options instead.)
+const PRESSED = ["tPersist", "tCursors", "tC1", "tC2", "freeze", "ets", "single", "decAuto", "decWatch", "decStream",
+  "ejArm", "srArm", "srShow", "srGate", "srFpga", "spgArm", "bodeArm", "zmDraw", "zmTrig", "stArm", "refShowA", "refShowB"];
 
 
 let lastLineHTML = "", lastAria = "";
@@ -321,61 +324,62 @@ const sr = { st: null, armed: false, gen: 0, lastSeq: 0, meta: null, t0: 0, stop
 
 let srFails = 0;
 
-// ---- keyboard shortcuts + ? help overlay ----
-// One declarative registry drives the keymap AND the help sheet, so adding a
-// shortcut is a one-line change (the extensibility pattern from the ADR).
+// ---- keyboard shortcuts ----
+// One declarative registry drives the keymap AND the help sheet (app_ws.js), so
+// adding a shortcut is a one-line change. The workspace keys (Alt+1..5, Ctrl+,
+// and Esc) live with the workspaces in app_ws.js.
 const KEYMAP = [
   // TRLC-LINKS: REQ-SDS-204
   { key: " ", label: "Space", desc: "Run / Stop", run: () => $("run").click() },
   // TRLC-LINKS: REQ-SDS-204
   { key: "s", label: "S", desc: "Single shot", run: () => $("single").click() },
   // TRLC-LINKS: REQ-SDS-204
-  { key: "a", label: "A", desc: "AUTO / NORM trigger", run: () => $("mode").click() },
+  { key: "a", label: "A", desc: "AUTO / NORM trigger mode", run: () => segNext($("mode")) },
   // TRLC-LINKS: REQ-SDS-204
-  { key: "t", label: "T", desc: "Trigger source C1/C2", run: () => $("source").click() },
+  { key: "t", label: "T", desc: "Trigger source C1 / C2", run: () => segNext($("source")) },
   // TRLC-LINKS: REQ-SDS-204
-  { key: "1", label: "1", desc: "Toggle channel 1", run: () => $("tC1").click() },
+  { key: "e", label: "E", desc: "Trigger slope rising / falling", run: () => segNext($("slope")) },
   // TRLC-LINKS: REQ-SDS-204
-  { key: "2", label: "2", desc: "Toggle channel 2", run: () => $("tC2").click() },
+  { key: "1", label: "1", desc: "Show / hide channel 1", run: () => $("tC1").click() },
+  // TRLC-LINKS: REQ-SDS-204
+  { key: "2", label: "2", desc: "Show / hide channel 2", run: () => $("tC2").click() },
   // TRLC-LINKS: REQ-SDS-204
   { key: "c", label: "C", desc: "Cursors", run: () => $("tCursors").click() },
   // TRLC-LINKS: REQ-SDS-204
-  { key: "p", label: "P", desc: "Persist", run: () => $("tPersist").click() },
+  { key: "p", label: "P", desc: "Persistence", run: () => $("tPersist").click() },
   // TRLC-LINKS: REQ-SDS-204
-  { key: "z", label: "Z", desc: "Freeze", run: () => $("freeze").click() },
+  { key: "z", label: "Z", desc: "Freeze the display", run: () => $("freeze").click() },
   // TRLC-LINKS: REQ-SDS-204
-  { key: "y", label: "Y", desc: "Y-T view", run: () => setMode("YT") },
+  { key: "y", label: "Y", desc: "Y-T view (from SPECTRUM: back to SCOPE)", run: () => keyView("YT") },
   // TRLC-LINKS: REQ-SDS-204
-  { key: "x", label: "X", desc: "X-Y view", run: () => setMode("XY") },
+  { key: "x", label: "X", desc: "X-Y view (in SCOPE)", run: () => keyView("XY") },
   // TRLC-LINKS: REQ-SDS-204
-  { key: "f", label: "F", desc: "FFT view", run: () => setMode("FFT") },
+  { key: "f", label: "F", desc: "FFT view (in SPECTRUM)", run: () => keyView("FFT") },
   // TRLC-LINKS: REQ-SDS-204
   { key: "?", label: "?", desc: "Show / hide this help", run: () => toggleHelp() },
 ];
-// Mouse gestures — listed in the ? overlay so they're discoverable.
+// Mouse gestures — listed in the help sheet so they're discoverable.
 const MOUSEMAP = [
   { label: "Drag (empty area)", desc: "Box zoom — time and voltage (Y-T), frequency (FFT)" },
-  { label: "Wheel", desc: "Zoom the time axis about the cursor (FFT: frequency axis)" },
+  { label: "Wheel", desc: "Zoom the time axis about the pointer (FFT: the frequency axis)" },
   { label: "Shift+Wheel", desc: "Pan left / right through the record" },
-  { label: "Ctrl+Wheel", desc: "Change time/div (zoom the acquisition)" },
-  { label: "Double-click", desc: "Reset zoom (time + voltage; FFT: frequency)" },
+  { label: "Ctrl+Wheel", desc: "Time/div (up = faster)" },
+  { label: "Wheel on time/div or V/div", desc: "Up = faster / more sensitive, as on the knobs" },
+  { label: "Double-click", desc: "Reset the zoom (time + voltage; FFT: frequency)" },
   { label: "Drag ▸ handle (right)", desc: "Move the trigger level" },
   { label: "Drag ◂ arrow (left)", desc: "Move a channel's offset" },
   { label: "Shift+click", desc: "Set the trigger level where you click" },
+  { label: "Gap between panes", desc: "Drag to resize; double-click resets" },
+  { label: "Caret in a pane title", desc: "Collapse or expand the pane" },
+  { label: "Double-click a pane title", desc: "Maximize the pane; again or Esc restores" },
+  { label: "Click a packet / a peak", desc: "Zoom onto the packet (freezes the display) / pick the peak" },
 ];
+// editableFocused: is the user typing in a field? (Buttons, checkboxes and
+// sliders are not typing: single-letter shortcuts still work on them.)
 // TRLC-LINKS: REQ-SDS-204
-function editableFocused() { const a = document.activeElement; return a && /^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName); }
-// TRLC-LINKS: REQ-SDS-204
-function toggleHelp() {
-  const el = $("help");
-  if (!el.classList.contains("show")) {
-    // TRLC-LINKS: REQ-SDS-204
-    const rows = arr => arr.map(x => `<tr><td><kbd>${x.label}</kbd></td><td>${x.desc}</td></tr>`).join("");
-    $("helpBody").innerHTML =
-      `<tr><th colspan="2" class="fcap">Keyboard</th></tr>` + rows(KEYMAP) +
-      `<tr><th colspan="2" class="fcap">Mouse</th></tr>` + rows(MOUSEMAP);
-  }
-  el.classList.toggle("show");
+function editableFocused() {
+  const a = document.activeElement;
+  return !!a && /^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName) && !/^(button|checkbox|radio|range)$/.test(a.type || "");
 }
 
 

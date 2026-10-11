@@ -7,7 +7,7 @@ const code=helper+text.slice(text.indexOf('$("zmBuild").onclick'),text.indexOf('
 async function run(reject,pos=.5){
  let seq=0,body,message;
  const els={zmBuild:{},zmN:{value:4},zmTolT:{value:0},zmTolV:{value:0},zmCh:{value:0}};
- const c={st:{win_cols:312500,trig_pos_frac:pos},zm:{},$:id=>els[id],zmCplOK:()=>true,zmVctx:()=>null,redraw:()=>{},zmStatus:t=>message=t,
+ const c={...require('./wsmath.js'),st:{win_cols:312500,trig_pos_frac:pos},zm:{},$:id=>els[id],zmCplOK:()=>true,zmVctx:()=>null,redraw:()=>{},zmStatus:t=>message=t,
  btoa:s=>Buffer.from(s,'binary').toString('base64'),decodeBinFrame:f=>f,fetch:async(url,opts)=>{
  if(url==='/api/mask'){body=JSON.parse(opts.body);body.lo=Array.from(Buffer.from(body.lo_b64,'base64'));body.hi=Array.from(Buffer.from(body.hi_b64,'base64'));return {ok:true,json:async()=>({ok:!reject,err:'rejected for test'})};}
  return {arrayBuffer:async()=>({seq:++seq,edge_x:2,sample_s:1e-6,tdiv_s:1e-3,cols:4,win_cols:4,c1:[60.25,60.25,190.75,190.75]})};
@@ -21,7 +21,7 @@ async function fullRecord(n=131072,tol=65536) {
  let seq=0,body,message;
  const sig=Array.from({length:n},(_,i)=>i%400<100?hi:lo);
  const els={zmBuild:{},zmN:{value:4},zmTolT:{value:tol},zmTolV:{value:2},zmCh:{value:0}};
- const c={st:{win_cols:n,trig_pos_frac:.5},zm:{},$:id=>els[id],zmCplOK:()=>true,zmVctx:()=>null,redraw:()=>{},zmStatus:t=>message=t,
+ const c={...require('./wsmath.js'),st:{win_cols:n,trig_pos_frac:.5},zm:{},$:id=>els[id],zmCplOK:()=>true,zmVctx:()=>null,redraw:()=>{},zmStatus:t=>message=t,
  btoa:s=>Buffer.from(s,'binary').toString('base64'),decodeBinFrame:f=>f,fetch:async(url,opts)=>{
   if(url==='/api/mask'){body=JSON.parse(opts.body);body.lo=Array.from(Buffer.from(body.lo_b64,'base64'));body.hi=Array.from(Buffer.from(body.hi_b64,'base64'));return {ok:true,json:async()=>({ok:true})};}
   return {arrayBuffer:async()=>({seq:++seq,edge_x:n/2,sample_s:2e-9,tdiv_s:.0002,cols:n,win_cols:n,c1:sig})};
@@ -37,7 +37,7 @@ async function fullRecord(n=131072,tol=65536) {
 async function geometryTransition() {
  let seq=0,body,message;
  const els={zmBuild:{},zmN:{value:4},zmTolT:{value:0},zmTolV:{value:0},zmCh:{value:0}};
- const c={st:{win_cols:4,trig_pos_frac:.5},zm:{},$:id=>els[id],zmCplOK:()=>true,zmVctx:()=>null,redraw:()=>{},zmStatus:t=>message=t,
+ const c={...require('./wsmath.js'),st:{win_cols:4,trig_pos_frac:.5},zm:{},$:id=>els[id],zmCplOK:()=>true,zmVctx:()=>null,redraw:()=>{},zmStatus:t=>message=t,
  btoa:s=>Buffer.from(s,'binary').toString('base64'),decodeBinFrame:f=>f,fetch:async(url,opts)=>{
   if(url==='/api/mask'){body=JSON.parse(opts.body);return {ok:true,json:async()=>({ok:true})};}
   ++seq;const n=seq<=2?4:6;

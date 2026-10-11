@@ -1,8 +1,10 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-WEB
 // Operator harness: drives the REAL scope web UI the way a human does —
 // clicking actual buttons, setting actual inputs, and READING RESULTS OFF THE
-// RENDERED SCREEN (the measurement panel DOM, decode output, eye/jitter table,
-// zone meter) or the device LCD PNG. It never uses /api/set to set a value or
+// RENDERED SCREEN (the measurement readouts, decode output, eye/jitter table,
+// zone meter) or the device LCD PNG. The UI is five task workspaces over an
+// instrument strip; a primitive first brings its control on screen (workspace
+// tab, pane, view) as an operator would. It never uses /api/set to set a value or
 // /api/frame to read a measurement — those are the "cheating" data paths.
 //
 // STRICT CONTRACT (the operator goal): every control action asserts that the
@@ -22,7 +24,7 @@ export async function launch(url) {
   const browser = await chromium.launch({ headless: true, args: ["--no-sandbox"] });
   const page = await browser.newPage({ viewport: { width: 1500, height: 950 } });
   const pageErrors = [];
-  page.on("pageerror", (e) => pageErrors.push(e.message));
+  page.on("pageerror", (e) => pageErrors.push(process.env.FUZZ_STACK ? (e.stack || e.message) : e.message));
   await page.goto(url, { waitUntil: "domcontentloaded", timeout: 20000 });
   // a frame of ANY kind (a slow envelope/roll band has no per-sample c1 array,
   // so don't require c1 — just that the transport is delivering frames)
@@ -39,8 +41,8 @@ export class Op {
   async close() { await this.browser.close(); }
 
   // Return the UI to a known baseline between workflows, through the GUI only:
-  // Y-T view, both channels on, AUTO+running, decode/zone/mask/cursors off,
-  // no freeze, DC coupling, 1x zoom. Uses the same controls a user would.
+  // SCOPE in Y-T, both channels on, AUTO+running, decode/zone/mask/cursors off,
+  // no freeze, DC coupling, normal acquisition. Uses the controls a user would.
   // TRLC-LINKS: REQ-SDS-180
   async reset() {
     const p = this.page;
@@ -50,26 +52,29 @@ export class Op {
       const clk = (id) => { const e = document.getElementById(id); if (e) e.click(); };
       // TRLC-LINKS: REQ-SDS-180
       const setSel = (id, v) => { const e = document.getElementById(id); if (e && e.value !== v) { e.value = v; e.dispatchEvent(new Event("change")); } };
+      // TRLC-LINKS: REQ-SDS-180
+      const seg = (id, v) => { const b = document.querySelector(`#${id} > button[data-value="${v}"]`); if (b && !b.classList.contains("on")) b.click(); };
       if (typeof frozen !== "undefined" && frozen) clk("freeze");
       // stop the eye/jitter + superres analyzers if armed (both are toggles)
       if (typeof ej !== "undefined" && ej && ej.armed) clk("ejArm");
       if (typeof sr !== "undefined" && sr && sr.armed) clk("srArm");
       setSel("decProto", "off");
-      setSel("zmMode", "0");
+      seg("zmMode", "0");
       setSel("mathFn", "off");
-      setSel("acq", "0");
-      setSel("cpl1", "0"); setSel("cpl2", "0");
-      // view back to Y-T
-      const yt = document.getElementById("mYT"); if (yt && !yt.classList.contains("on")) yt.click();
+      seg("acq", "0");
+      seg("cpl1", "0"); seg("cpl2", "0");
+      // SCOPE in Y-T
+      if (typeof setWs === "function") { setWs("scope"); setWsView("YT"); }
       // ensure running + AUTO
       if (typeof st !== "undefined" && st) {
         if (!st.running) clk("run");
-        if (st.norm) clk("mode"); // NORM holds frames without a trigger — baseline is AUTO
+        if (st.norm) seg("mode", "0"); // NORM holds frames without a trigger — baseline is AUTO
       }
       const cur = document.getElementById("tCursors"); if (cur && cur.classList.contains("on")) cur.click();
+      for (const id of ["tC1", "tC2"]) { const b = document.getElementById(id); if (b && !b.classList.contains("on")) b.click(); }
     });
-    // zone trigger off + clear zones through the real buttons if present
-    if (await this.page.$("#zmTrig.on")) await this.page.click("#zmTrig", { timeout: 1500 }).catch(() => {});
+    // zone trigger off through the real button if it is on
+    if (await this.page.$("#zmTrig.on")) await this.click("zmTrig").catch(() => {});
     await p.waitForTimeout(300);
     this.pageErrors.length = 0;
   }
@@ -86,10 +91,17 @@ export class Op {
   // --- element existence (a missing control the operator was told exists is a bug) ---
   // TRLC-LINKS: REQ-SDS-180
   async exists(id) { return (await this.page.$("#" + id)) !== null; }
+  // reveal brings a control on screen the way an operator does: its workspace
+  // tab, its pane (expanded) and its view — what All settings' arrows do.
+  // TRLC-LINKS: REQ-SDS-180
+  async reveal(id) {
+    return await this.page.evaluate((i) => { const e = document.getElementById(i); return !!e && typeof revealControl === "function" && revealControl(e); }, id);
+  }
   // TRLC-LINKS: REQ-SDS-180
   async requireVisible(id, why) {
     const el = await this.page.$("#" + id);
     if (!el) throw new Error(`control #${id} not present (${why})`);
+    if (!(await el.isVisible())) await this.reveal(id);
     if (!(await el.isVisible())) throw new Error(`control #${id} present but hidden (${why}) — operator cannot use it`);
     return el;
   }
@@ -113,10 +125,16 @@ export class Op {
     await this.page.waitForTimeout(120);
     this._checkNoErrors(`click #${id}`);
   }
+  // selectExpect picks an option: a <select>'s, or a segmented choice's button.
   // TRLC-LINKS: REQ-SDS-180
   async selectExpect(id, value, effect, { timeout = 4000, why = "" } = {}) {
     const el = await this.requireVisible(id, why || `select ${id}`);
-    await el.selectOption(value, { timeout: 2000 });
+    if (await el.evaluate((e) => e.tagName === "SELECT")) await el.selectOption(String(value), { timeout: 2000 });
+    else {
+      const b = await this.page.$(`#${id} > button[data-value="${value}"]`);
+      if (!b) throw new Error(`choice #${id} has no option ${value} (${why})`);
+      await b.click({ timeout: 2000 });
+    }
     if (effect) await this._settle(effect, timeout, `select #${id}=${value} had no effect (${why})`);
     this._checkNoErrors(`select #${id}`);
   }
@@ -184,30 +202,86 @@ export class Op {
   }
 
   // --- READ FROM THE GUI (rendered DOM the operator sees) ---
-  // Reads a measurement cell straight from the Measure panel table text.
+  // Reads a measurement where the GUI shows it: SCOPE's quick readouts hold the
+  // core set, MEASURE's All values every parameter (cells carry data-meas).
+  // When none is on screen the operator opens MEASURE's All values view.
   // TRLC-LINKS: REQ-SDS-180
   async readMeas(ch, key) {
-    return await this.page.evaluate((a) => {
-      const rows = document.querySelectorAll("#measBody tr");
-      for (const r of rows) {
-        const th = r.querySelector("th");
-        if (th && th.textContent.trim() === a.key) {
-          const tds = r.querySelectorAll("td");
-          const cell = tds[a.ch === 2 ? 1 : 0];
-          return cell ? cell.textContent.trim() : null;
-        }
-      }
-      return null;
+    const read = () => this.page.evaluate((a) => {
+      for (const el of document.querySelectorAll(`[data-meas="${a.ch}:${a.key}"]`))
+        if (el.getClientRects().length) return el.textContent.trim();
+      return undefined;
     }, { ch, key });
+    let v = await read();
+    if (v === undefined) {
+      await this.page.evaluate(() => { setWs("measure"); measSetView("values"); });
+      await this.page.waitForTimeout(150);
+      v = await read();
+    }
+    return v === undefined ? null : v;
   }
-  // Expand the Measure panel's "more" group so timing/pulse rows are readable.
+  // Every parameter is in MEASURE's All values view (there is no "more" toggle).
   // TRLC-LINKS: REQ-SDS-180
   async measMore() {
-    if (await this.page.$("#measMore")) {
-      const label = await this.page.$eval("#measMore", (b) => b.textContent);
-      if (/more/.test(label)) await this.page.click("#measMore", { timeout: 2000 });
-    }
+    await this.page.evaluate(() => { setWs("measure"); measSetView("values"); });
+    await this.page.waitForTimeout(150);
   }
+  // ws opens a workspace with its tab, as an operator clicks it.
+  // TRLC-LINKS: REQ-SDS-180
+  async ws(id) {
+    await this.clickExpect("tab-" + id, async () => await this.page.evaluate((i) => document.getElementById("tab-" + i).getAttribute("aria-selected") === "true", id),
+      { why: `the ${id.toUpperCase()} tab must open its workspace` });
+  }
+  // topPeak reads SPECTRUM's peak table for channel `ch`: the frequency of the
+  // largest peak (the row whose Rel reads 0 dB).
+  // TRLC-LINKS: REQ-SDS-180
+  async topPeak(ch = 1, timeout = 8000) {
+    await this.ws("spectrum");
+    await this.selectExpect("viewSpec", "FFT", null, { why: "SPECTRUM's FFT view" });
+    await this.selectExpect("pkCh", String(ch), null, { why: `the peak table lists C${ch}` });
+    return await this.readUntil(async () => await this.page.evaluate(() => {
+      let best = null;
+      for (const tr of document.querySelectorAll("#fftBody tr.pk")) {
+        const rel = parseFloat(tr.querySelector(".pr").textContent), f = tr.querySelector(".pf").textContent;
+        if (/Hz/.test(f) && Number.isFinite(rel) && (!best || rel > best.rel)) best = { rel, f };
+      }
+      return best ? best.f : null;
+    }), timeout, `SPECTRUM's peak table never listed a C${ch} peak`);
+  }
+  // eyeOn opens BUS's eye view (it arms the eye on the decoded data line) and
+  // makes sure the analyzer runs on channel `ch`: another channel is chosen and
+  // re-armed with ARM, as an operator does.
+  // TRLC-LINKS: REQ-SDS-180
+  async eyeOn(ch, why = "") {
+    await this.ws("bus");
+    await this._settle(async () => await this.page.evaluate(() => !busDetecting), 12000, "BUS's bus detection never finished");
+    await this.selectExpect("busView", "eye", async () => await this.isOn("ejArm"), { timeout: 6000, why: "BUS's Eye view arms the eye" });
+    if (+(await this.readText("ejCh")) !== ch) {
+      await this.selectExpect("ejCh", String(ch), null, { why: why || `eye on C${ch}` });
+      if (await this.isOn("ejArm")) await this.click("ejArm", { why: "stop, to re-arm on the other channel" });
+    }
+    if (!(await this.isOn("ejArm")))
+      await this.clickExpect("ejArm", async () => await this.isOn("ejArm") && !/idle/i.test(await this.readText("ejStats") || ""), { timeout: 8000, why: why || `ARM the eye on C${ch}` });
+  }
+  // eyeRow reads one figure off the eye/jitter table by its row heading.
+  // TRLC-LINKS: REQ-SDS-180
+  async eyeRow(name) {
+    return await this.page.evaluate((n) => {
+      for (const r of document.querySelectorAll("#ejBody tr")) {
+        const th = r.querySelector("th"), td = r.querySelector("td");
+        if (th && td && th.textContent.trim().toLowerCase() === n.toLowerCase()) return td.textContent.trim();
+      }
+      return null;
+    }, name);
+  }
+  // isOn: a toggle button shows its engaged state (class "on").
+  // TRLC-LINKS: REQ-SDS-180
+  async isOn(id) {
+    return await this.page.evaluate((i) => { const e = document.getElementById(i); return !!e && e.classList.contains("on"); }, id);
+  }
+  // mathShown: the math trace is drawn (its scale line reads "…/div").
+  // TRLC-LINKS: REQ-SDS-180
+  async mathShown() { return /\/div/.test((await this.readText("mathScale")) || ""); }
   // A measurement in engineering units -> a plain SI number (V, Hz, s, %).
   // Reads the GUI string and parses it; unit prefixes handled.
   // TRLC-LINKS: REQ-SDS-180
@@ -239,10 +313,12 @@ export class Op {
   }
   // TRLC-LINKS: REQ-SDS-180
   async readText(id) {
-    // textarea/input hold their live content in .value, not textContent
+    // textarea/input hold their live content in .value, not textContent; a
+    // segmented choice reads as its chosen option's label
     return await this.page.evaluate((i) => {
       const el = document.getElementById(i);
       if (!el) return null;
+      if (el.classList.contains("seg")) { const b = el.querySelector("button.on"); return b ? (b.getAttribute("aria-label") || b.textContent).trim() : ""; }
       const v = el.matches("input, textarea, select") ? el.value : el.textContent;
       return (v || "").trim();
     }, id);

@@ -22,22 +22,77 @@ $("single").onclick = async () => {
   setTimeout(chk, 200);
 };
 // TRLC-LINKS: REQ-SDS-204
-$("tpos").oninput = () => send("trigpos", +$("tpos").value);
+$("tpos").oninput = () => { $("tposv").textContent = Math.round(+$("tpos").value * 100) + " %"; send("trigpos", +$("tpos").value); };
 // TRLC-LINKS: REQ-SDS-204
-$("mode").onclick = () => { const on = !(st && st.norm); send("norm", on ? 1 : 0); if (st) { st.norm = on; applyStatus(); } };
+$("tposCentre").onclick = () => { $("tpos").value = 0.5; $("tpos").dispatchEvent(new Event("input")); };
+// The strip's trigger controls are segmented choices (they fire "change").
 // TRLC-LINKS: REQ-SDS-204
-$("slope").onclick = () => { const r = !(st && st.trig_rising); send("trigslope", r ? 1 : 0); if (st) { st.trig_rising = r; applyStatus(); } };
+$("mode").onchange = () => { const on = $("mode").value === "1"; send("norm", on ? 1 : 0); if (st) { st.norm = on; applyStatus(); } };
 // TRLC-LINKS: REQ-SDS-204
-$("source").onclick = () => { const c = st && st.trig_source === 1 ? 0 : 1; send("trigsource", c); if (st) { st.trig_source = c; applyStatus(); } };
+$("slope").onchange = () => { const r = $("slope").value === "1"; send("trigslope", r ? 1 : 0); if (st) { st.trig_rising = r; applyStatus(); } };
 // TRLC-LINKS: REQ-SDS-204
-$("rollStream").onclick = () => { const on = !(st && st.roll_stream); send("rollstream", on ? 1 : 0); if (st) { st.roll_stream = on; applyStatus(); } };
+$("source").onchange = () => { const c = $("source").value === "1" ? 1 : 0; send("trigsource", c); if (st) { st.trig_source = c; applyStatus(); } };
+// TRLC-LINKS: REQ-SDS-204
+$("rollStream").onchange = () => { const on = $("rollStream").value === "1"; send("rollstream", on ? 1 : 0); if (st) { st.roll_stream = on; applyStatus(); } };
+// TRLC-LINKS: REQ-SDS-204
 $("ets").onclick = () => { const on = !(st && st.ets); send("ets", on ? 1 : 0); if (st) { st.ets = on; applyStatus(); } };
 // TRLC-LINKS: REQ-SDS-204
-$("tdiv").onchange = () => send("tdiv", +$("tdiv").value);
+$("tdiv").onchange = () => { $("tdiv")._userAt = performance.now(); send("tdiv", +$("tdiv").value); };
 // TRLC-LINKS: REQ-SDS-204
-$("vdiv1").onchange = () => send("vdiv1", +$("vdiv1").value);
+$("vdiv1").onchange = () => { $("vdiv1")._userAt = performance.now(); send("vdiv1", +$("vdiv1").value); };
 // TRLC-LINKS: REQ-SDS-204
-$("vdiv2").onchange = () => send("vdiv2", +$("vdiv2").value);
+$("vdiv2").onchange = () => { $("vdiv2")._userAt = performance.now(); send("vdiv2", +$("vdiv2").value); };
+// −/+ steppers and the knob wheel rule: up (or −) = a bigger trace. The ladders
+// are in ascending order, so "faster / more sensitive" is the previous option.
+for (const [id, control] of [["tdiv", "tdiv"], ["vdiv1", "vdiv1"], ["vdiv2", "vdiv2"]]) {
+  // TRLC-LINKS: REQ-SDS-204
+  const step = (dir) => stepSelect($(id), dir, control);
+  $(id)._knob = step;
+  knobWheel($(id), step);
+  // TRLC-LINKS: REQ-SDS-204
+  $(id + "Dn").onclick = () => step(-1);
+  // TRLC-LINKS: REQ-SDS-204
+  $(id + "Up").onclick = () => step(1);
+}
+// 50 % and Force are the front panel's keys: one implementation, on the device.
+// TRLC-LINKS: REQ-SDS-204
+async function panelPress(name) {
+  try {
+    const r = await fetch("/api/panel", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ button: name }) });
+    const j = await r.json();
+    kickStatus();
+    return !!(j && j.ok);
+  } catch (e) { return false; }
+}
+// TRLC-LINKS: REQ-SDS-204
+$("set50").onclick = async () => {
+  if (await panelPress("set50")) return;
+  // No panel (bench server): place the level at the source's mid-swing here.
+  const m = frame && (st && st.trig_source === 1 ? frame.m2 : frame.m1);
+  if (!m || !(m.vmax > m.vmin)) { toast("50 %: no signal on the trigger source", "warn"); return; }
+  const mid = (m.vmax + m.vmin) / 2;
+  st.trig_volts = mid; $("lvl").value = mid; $("lvlv").textContent = eng(mid, "V");
+  send("triglevelcode", trigCodeFor(mid)); redraw();
+};
+// TRLC-LINKS: REQ-SDS-204
+$("force").onclick = async () => { if (!(await panelPress("force"))) toast("Force trigger is not available on this server", "warn"); };
+for (const ch of [1, 2]) {
+  // TRLC-LINKS: REQ-SDS-204
+  $("zero" + ch).onclick = () => { $("off" + ch).value = 0; $("off" + ch + "v").textContent = eng(0, "V"); send("offset" + ch, 0); };
+}
+// Zoom about the trigger: the client-side window, the same one wheel and box
+// zoom move (the hardware timebase is untouched).
+// TRLC-LINKS: REQ-SDS-202
+$("zoomSeg").onchange = () => {
+  const z = +$("zoomSeg").value || 1;
+  if (!frame) return;
+  if (z === 1) { goHome(); return; }
+  const h = homeWindow(frame), span = (h.b - h.a) / z;
+  const c = frame.edge_frac >= 0 ? frame.edge_frac : (h.a + h.b) / 2;
+  const pf = (st && Number.isFinite(st.trig_pos_frac)) ? st.trig_pos_frac : 0.5;
+  view.win.a = c - span * pf; view.win.b = view.win.a + span; userZoomed = true;
+  clearPersist(); redraw();
+};
 // TRLC-LINKS: REQ-SDS-204
 $("probe1").onchange = () => send("probe1", +$("probe1").value);
 // TRLC-LINKS: REQ-SDS-204
@@ -91,19 +146,13 @@ $("acqn").onchange = () => send([1,4].includes(+$("acq").value) ? "avgcount" : "
 $("memdepth").onchange = () => { send("memdepth", +$("memdepth").value); userZoomed = false; }; // deeper = more to scroll, fewer fps
 
 // TRLC-LINKS: REQ-SDS-204
-$("mYT").onclick = () => setMode("YT");
-// TRLC-LINKS: REQ-SDS-204
-$("mXY").onclick = () => setMode("XY");
-// TRLC-LINKS: REQ-SDS-204
-$("mFFT").onclick = () => setMode("FFT");
-// TRLC-LINKS: REQ-SDS-204
 $("tPersist").onclick = () => { view.persist = !view.persist; $("tPersist").classList.toggle("on", view.persist); clearPersist(); redraw(); };
 // TRLC-LINKS: REQ-SDS-204
 $("tCursors").onclick = () => { view.cursors = !view.cursors; $("tCursors").classList.toggle("on", view.cursors); updateCursors(); redraw(); };
 // TRLC-LINKS: REQ-SDS-204
-$("tC1").onclick = () => { view.c1 = !view.c1; $("tC1").classList.toggle("on", view.c1); redraw(); };
+$("tC1").onclick = () => { view.c1 = !view.c1; $("tC1").classList.toggle("on", view.c1); $("tC1").textContent = view.c1 ? "On" : "Off"; redraw(); };
 // TRLC-LINKS: REQ-SDS-204
-$("tC2").onclick = () => { view.c2 = !view.c2; $("tC2").classList.toggle("on", view.c2); redraw(); };
+$("tC2").onclick = () => { view.c2 = !view.c2; $("tC2").classList.toggle("on", view.c2); $("tC2").textContent = view.c2 ? "On" : "Off"; redraw(); };
 // TRLC-LINKS: REQ-SDS-204
 $("freeze").onclick = () => { frozen = !frozen; $("freeze").classList.toggle("on", frozen); };
 
@@ -188,26 +237,17 @@ $("eWAV").onclick = () => {
   const wav = s && sigrokWAV(s); // null when the rate exceeds WAV's uint32 Hz
   if (wav) exportFile(exportName(s.seq, "wav"), "audio/wav", wav);
 };
-window.addEventListener("keydown", (e) => {
-  if (e.key === "Escape") { $("help").classList.remove("show"); return; }
-  if (editableFocused() || e.ctrlKey || e.metaKey || e.altKey) return;
-  const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
-  const m = KEYMAP.find(x => x.key === k || x.key === e.key);
-  if (m) { e.preventDefault(); m.run(); }
-});
-// TRLC-LINKS: REQ-SDS-204
-$("help").onclick = (e) => { if (e.target.id === "help") $("help").classList.remove("show"); }; // click backdrop closes
+// The device's own screenshot: the PRINT key saves the LCD on the scope.
+// TRLC-LINKS: REQ-SDS-069
+$("ePrint").onclick = async () => {
+  popClose();
+  toast((await panelPress("print")) ? "The scope is saving a screenshot of its screen (PRINT)" : "Device screenshot is not available on this server", "warn");
+};
+// TRLC-LINKS: REQ-SDS-069
+$("exportBtn").onclick = () => popToggle($("exportpop"), $("exportBtn"));
+for (const id of ["ePNG", "eCSV", "eSR", "eVCD", "eWAV"]) $(id).addEventListener("click", () => popClose());
 // TRLC-LINKS: REQ-SDS-203
 $("mathFn").onchange = () => { mathFn = $("mathFn").value; updateMathHint(); redraw(); };
-// TRLC-LINKS: REQ-SDS-204
-$("panelToggle").onclick = () => { document.body.classList.toggle("dock-toggled"); resize(); }; // collapse/expand dock
-// Minimise/expand an individual card by clicking its title (ignore header controls).
-$("dock").addEventListener("click", ev => {
-  // ignore header controls, the action cluster, and hint text (e.g. "click to toggle")
-  if (ev.target.closest("button, input, select, label, textarea, a, .subtle, .card-actions")) return;
-  const h3 = ev.target.closest("h3");
-  if (h3 && h3.parentElement.classList.contains("card")) h3.parentElement.classList.toggle("collapsed");
-});
 
 // TRLC-LINKS: REQ-SDS-204
 $("precisionRate").onchange = () => send("precisionrate", +$("precisionRate").value);
@@ -223,6 +263,6 @@ function updateTriggerQualifiers(q) {
   };
   for (const [id, value] of Object.entries(values)) {
     const el = $(id);
-    if (el && document.activeElement !== el && Number.isFinite(value)) el.value = value;
+    if (el && document.activeElement !== el && !(el._userAt && performance.now() - el._userAt < 1500) && Number.isFinite(value)) el.value = value;
   }
 }

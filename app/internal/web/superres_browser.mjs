@@ -2,7 +2,9 @@
 // Real-browser e2e for the superres stacker (argv[2]=URL of a server whose
 // fakeScope generates a jittered noisy sine): arm → frames accumulate and
 // stats populate → view shows the stacked waveform as a frozen synthetic
-// frame (dense, Float32) → fit model lands in REF B → live resumes.
+// frame (dense, Float32) → fit model lands in REF B → live resumes. The
+// stacker's controls live in MEASURE's Super-res pane; the FFT and X-Y views
+// in SPECTRUM and SCOPE (the stack shows in every view).
 // SKIP/exit 0 when the browser is absent.
 import path from "node:path";
 import { findPlaywright } from "./scope_po.mjs";
@@ -29,10 +31,21 @@ try {
   await page.goto(URL, { waitUntil: "domcontentloaded", timeout: 15000 });
   await page.waitForFunction(() => typeof frame !== "undefined" && frame && frame.c1 && frame.c1.length > 0, null, { timeout: 15000 });
 
+  // Controls are reached like All settings' arrows do: workspace, pane, view.
+  // TRLC-LINKS: REQ-SDS-180
+  const reveal = (id) => page.evaluate((i) => revealControl(document.getElementById(i)), id);
+  // TRLC-LINKS: REQ-SDS-180
+  const click = async (id) => { await reveal(id); await page.click("#" + id); };
+  // TRLC-LINKS: REQ-SDS-180
+  const yt = () => page.evaluate(() => { setWs("scope"); setWsView("YT"); });
+  await reveal("srArm");
+  ok(await page.evaluate(() => ws.cur === "measure" && !document.getElementById("p-sr").parentElement.classList.contains("is-collapsed")),
+    "the Super-res pane opens in MEASURE");
+
   // Arm with manual stop and a fine grid.
   await page.selectOption("#srStopMode", "manual"); // no auto-stop during the e2e
   await page.selectOption("#srK", "16");
-  await page.click("#srArm");
+  await click("srArm");
   // Frames must accumulate (fakeScope publishes continuously).
   await page.waitForFunction(() => sr.st && sr.st.frames >= 25, null, { timeout: 20000 });
   // The stats line repaints slower than frames stack; wait for it too (it read
@@ -43,11 +56,11 @@ try {
   ok(mid.frames >= 25, `frames accumulate (${mid.frames})`);
   ok(/bits/.test(mid.stats) && /GSa\/s|MSa\/s/.test(mid.stats), `stats line live: ${mid.stats.slice(0, 90)}`);
 
-  await page.click("#srArm"); // stop
+  await click("srArm"); // stop
   ok(await page.evaluate(() => !sr.armed), "stop disarms");
 
   // Review the stacked result — a first-class view.
-  await page.click("#srShow");
+  await click("srShow");
   const rev = await page.evaluate(() => ({
     frozen, len: frame.c1.length, k: sr.st.K, n: sr.st.n,
     float: frame.c1 instanceof Float32Array,
@@ -64,27 +77,27 @@ try {
 
   // Toggle back to live and back to the stack — the zoom is remembered.
   await page.evaluate(() => { view.win.a = 0.4; view.win.b = 0.6; redraw(); }); // zoom into the stack
-  await page.click("#srShow"); // -> live
+  await click("srShow"); // -> live
   await page.waitForFunction(() => !sr.showing && !frozen, null, { timeout: 5000 });
   await page.waitForFunction(() => frame && !(frame.c1 instanceof Float32Array), null, { timeout: 10000 });
   ok(true, "toggle returns to live frames");
-  await page.click("#srShow"); // -> stack again
+  await click("srShow"); // -> stack again
   const back = await page.evaluate(() => ({ showing: sr.showing, a: view.win.a, b: view.win.b, float: frame.c1 instanceof Float32Array }));
   ok(back.showing && back.float, "toggle re-enters the stack view");
   ok(Math.abs(back.a - 0.4) < 0.01 && Math.abs(back.b - 0.6) < 0.01, `stack zoom remembered (${back.a.toFixed(2)}..${back.b.toFixed(2)})`);
 
   // FFT mode on the stack: peaks appear for both channels.
-  await page.click("#mFFT");
+  await page.evaluate(() => keyView("FFT"));
   await page.waitForTimeout(600);
   const fft = await page.evaluate(() => ({ p1: fftCh[1].peaks.length, p2: fftCh[2].peaks.length }));
   ok(fft.p1 > 0, `FFT peaks on stacked C1 (${fft.p1})`);
   ok(fft.p2 > 0, `FFT peaks on stacked C2 (${fft.p2})`);
 
   // X-Y mode on the stack renders without page errors.
-  await page.click("#mXY");
+  await page.evaluate(() => keyView("XY"));
   await page.waitForTimeout(400);
   ok(await page.evaluate(() => view.mode === "XY" && frame.c1.length > 0 && frame.c2.length > 0), "X-Y mode on the stack");
-  await page.click("#mYT");
+  await yt();
   await page.waitForTimeout(200);
 
   // Rubber-band box zoom: drag a rectangle → both time AND voltage zoom in.
@@ -104,7 +117,7 @@ try {
 
   // FFT zoom: wheel narrows the frequency window; box drag narrows further;
   // double-click resets; a plain click still toggles a peak.
-  await page.click("#mFFT");
+  await page.evaluate(() => keyView("FFT"));
   await page.waitForTimeout(500);
   await page.mouse.move(sb.x + sb.width * 0.2, sb.y + sb.height * 0.5);
   await page.mouse.wheel(0, -600);
@@ -136,7 +149,7 @@ try {
   // Selected-peak measurement line: pick the strongest C1 peak via the list.
   await page.evaluate(() => { if (fftCh[1].peaks.length) togglePeakCh(1, fftCh[1].peaks[0].freq); });
   await page.waitForTimeout(300);
-  const selTxt = await page.evaluate(() => $("fftSel1").textContent);
+  const selTxt = await page.evaluate(() => $("fftSel").textContent);
   ok(/Vpk/.test(selTxt) && /dBc/.test(selTxt), `peak measurement shown: ${selTxt.slice(0, 60)}`);
   await page.evaluate(() => clearPeaksCh(1));
 
@@ -158,7 +171,7 @@ try {
     const selAfter = await page.evaluate(() => fftCh[1].sel.length + fftCh[2].sel.length);
     ok(selAfter !== selBefore, `plain click still toggles a peak (${selBefore}→${selAfter})`);
   }
-  await page.click("#mYT");
+  await yt();
 
   // Noise on the stack must be visibly below a single frame's noise.
   const noise = await page.evaluate(() => {
@@ -169,12 +182,12 @@ try {
   ok(noise.fill > 0.5, `fine grid fills (${(noise.fill * 100).toFixed(0)}%)`);
 
   // Model fit lands in REF B.
-  await page.click("#srFit");
+  await click("srFit");
   const fit = await page.evaluate(() => ({ has: !!(refs.B && refs.B.c1 && refs.B.c1.length), msg: $("srStats").textContent }));
   ok(fit.has, `fit model → REF B (${fit.msg.slice(0, 60)})`);
 
   // Unfreeze → live frames take over again.
-  await page.click("#freeze");
+  await click("freeze");
   await page.waitForFunction(() => !frozen && frame && !(frame.c1 instanceof Float32Array), null, { timeout: 10000 });
   ok(true, "live resumes after review");
 } catch (e) {

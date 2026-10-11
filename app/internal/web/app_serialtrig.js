@@ -160,6 +160,12 @@ function stOnDecodeChange() {
   if (!$("stArm")) return;
   // TRLC-LINKS: REQ-SDS-206
   $("stArm").onclick = async () => {
+    // With decoding off, find the bus first (BUS's Trigger on bytes pane): a
+    // serial trigger needs the decoder's protocol and settings.
+    if (stProtoNum() === 0 && !stArmed() && typeof runAutodetect === "function") {
+      stStatus("detecting the bus…");
+      await runAutodetect();
+    }
     if (stProtoNum() === 0) { stStatus("turn on decode to arm a serial trigger"); return; }
     const on = !stArmed(), generation = ++stArmGeneration;
     if (on) {
