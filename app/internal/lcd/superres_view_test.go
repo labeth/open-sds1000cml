@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"open-sds/app/internal/engine"
+	"open-sds/app/internal/panel/framecalc"
 )
 
 // A synthetic super-res HUD: a K× fine-grid mean built from gen(fineBin), a
@@ -118,7 +119,7 @@ func TestSuperresFFTFloatFloorBeatsQuantised(t *testing.T) {
 			w := 0.5 - 0.5*math.Cos(2*math.Pi*float64(i)/float64(n-1))
 			re[i] = (samples[i] - mean) * w
 		}
-		fftRadix2(re, im)
+		framecalc.FFT(re, im)
 		half := n / 2
 		mags := make([]float64, 0, half)
 		peak := 1e-12

@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"open-sds/app/internal/engine"
+	"open-sds/app/internal/panel/framecalc"
 )
 
 // TRLC-LINKS: REQ-SDS-021
@@ -467,7 +468,7 @@ func TestBlockMeansSuppressAlias(t *testing.T) {
 	for i := range src {
 		src[i] = uint8(100 + 50*(i%2))
 	}
-	for i, v := range blockMeans(src, 32, 2) {
+	for i, v := range framecalc.BlockMeans(src, 32, 2) {
 		if v != 125 {
 			t.Fatalf("block %d: %v, want 125 (the alternating tone averaged out)", i, v)
 		}

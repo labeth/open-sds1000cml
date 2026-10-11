@@ -4,11 +4,11 @@ package lcd
 import (
 	"fmt"
 	"math"
+	"strings"
+
 	"open-sds/app/internal/decode"
 	"open-sds/app/internal/engine"
-	"strings"
-	"sync"
-	"time"
+	"open-sds/app/internal/panel/framecalc"
 )
 
 // drawXY plots C1 (x) against C2 (y) — the Lissajous view (parity with the web
@@ -373,103 +373,19 @@ func drawMaskHUD(sf Surface, hud HUD) {
 	DrawTextRight(sf, 664, 14, line, col, 1)
 }
 
-// decodeKey identifies one decode of a frame. A stopped record re-shown at a
-// new V/div or offset keeps its Content, and decodes to the same bytes.
-type decodeKey struct {
-	id, seq               bool
-	ident                 uint64
-	valid                 int
-	sampleS               float64
-	proto, chA, chB, baud int
-	cpol, cpha            bool
-	format                string
-}
-
-var decodeCache struct {
-	sync.Mutex
-	key decodeKey
-	res decode.Result
-	ok  bool
-	at  time.Time // when Auto last ran its detection
-}
-
-// autoDecodeRefresh paces Auto's detection, which tries every protocol: at the
-// live frame rate it was the largest share of an LCD frame. Between runs the
-// strip keeps the last result, as the measurements do (measRefresh).
-const autoDecodeRefresh = 500 * time.Millisecond
-
-// decodeFrame decodes the frame's protocol, reusing the last result for the
-// same frame content and settings: a deep record's decode takes most of a
-// second on the ARM and the LCD redraws it on every view change.
+// decodeFrame decodes the frame's protocol through the shared per-frame
+// cache (framecalc.Decode), so the strip and the BUS packet list decode a
+// frame once. valid and ch are the caller's view of the frame; the cache
+// derives the same channels from f.
 // TRLC-LINKS: REQ-SDS-018
 func decodeFrame(f *engine.Frame, hud HUD, valid int, ch func(int) []uint8, format string) decode.Result {
-	key := decodeKey{valid: valid, sampleS: f.SampleS, proto: hud.DecProto, chA: hud.DecChA, chB: hud.DecChB,
-		baud: hud.DecBaud, cpol: hud.DecCPOL, cpha: hud.DecCPHA, format: format}
-	switch {
-	case f.Content != 0:
-		key.id, key.ident = true, f.Content
-	case f.Seq != 0:
-		key.seq, key.ident = true, f.Seq
-	}
-	cacheable := key.id || key.seq
-	decodeCache.Lock()
-	defer decodeCache.Unlock()
-	if cacheable && decodeCache.ok && decodeCache.key == key {
-		return decodeCache.res
-	}
-	// Between detections a new frame is decoded as the last one detected: the
-	// cached spans belong to that frame's content, not this one's.
-	redecode := false
-	if prev := decodeCache.key; hud.DecProto == 1 && decodeCache.ok && time.Since(decodeCache.at) < autoDecodeRefresh &&
-		prev.proto == key.proto && prev.format == key.format && prev.valid == key.valid && prev.sampleS == key.sampleS {
-		if decodeCache.res.Proto == "off" {
-			return decodeCache.res
-		}
-		redecode = true
-	}
-	var res decode.Result
-	switch hud.DecProto { // 0=off 1=Auto 2=UART 3=I2C 4=SPI
-	case 1: // Auto: detect protocol / channel roles / sub-settings from the signal
-		// Strided: a full Autodetect of a 500 k-sample screen took 14 s on
-		// the scope's ARM and held the frame all that time.
-		var st float64
-		if redecode {
-			res, st = decode.RedecodeFast(decodeCache.res, ch(0), ch(1), f.SampleS, format)
-		} else {
-			res, st = decode.AutodetectFast(ch(0), ch(1), f.SampleS, format)
-		}
-		if k := int(st/f.SampleS + 0.5); k > 1 {
-			for i := range res.Spans { // back to the frame's sample indices
-				res.Spans[i].I0 *= k
-				res.Spans[i].I1 *= k
-			}
-			res.SPB *= float64(k)
-		}
-	case 2:
-		res = decode.DecodeUART(ch(hud.DecChA), f.SampleS, decode.UARTCfg{Baud: hud.DecBaud, Format: format})
-	case 3:
-		res = decode.DecodeI2C(ch(hud.DecChA), ch(hud.DecChB), f.SampleS, decode.I2CCfg{Format: format})
-	case 4:
-		res = decode.DecodeSPI(ch(hud.DecChA), ch(hud.DecChB), f.SampleS, decode.SPICfg{CPOL: hud.DecCPOL, CPHA: hud.DecCPHA, MSB: true, Format: format})
-	case 5:
-		res = decode.DecodeManchester(ch(hud.DecChA), f.SampleS, decode.ManchesterCfg{Bitrate: hud.DecBaud, IEEE: true, Format: format})
-	case 6:
-		res = decode.DecodeSENT(ch(hud.DecChA), f.SampleS, decode.SENTCfg{})
-	case 7:
-		res = decode.DecodeCANFD(ch(hud.DecChA), f.SampleS, decode.CANFDCfg{NominalBaud: hud.DecBaud, DominantLow: true})
-	case 8:
-		res = decode.DecodeMIL1553(ch(hud.DecChA), f.SampleS, decode.MIL1553Cfg{Bitrate: hud.DecBaud})
-	case 9:
-		res = decode.DecodeARINC429(ch(hud.DecChA), f.SampleS, decode.ARINC429Cfg{Bitrate: hud.DecBaud})
-	case 10:
-		res = decode.DecodeUSBLS(ch(hud.DecChA), f.SampleS, decode.USBLSCfg{Bitrate: hud.DecBaud})
-	case 11:
-		res = decode.DecodeFlexRay(ch(hud.DecChA), f.SampleS, decode.FlexRayCfg{Bitrate: hud.DecBaud})
-	}
-	at := time.Now()
-	if redecode {
-		at = decodeCache.at // the detection's pacing runs from the last detection
-	}
-	decodeCache.key, decodeCache.res, decodeCache.ok, decodeCache.at = key, res, cacheable, at
-	return res
+	_, _ = valid, ch
+	return framecalc.Decode(f, decodeParams(hud, format))
+}
+
+// decodeParams are the HUD's decode settings.
+// TRLC-LINKS: REQ-SDS-018
+func decodeParams(hud HUD, format string) framecalc.DecodeParams {
+	return framecalc.DecodeParams{Proto: hud.DecProto, Baud: hud.DecBaud, ChA: hud.DecChA, ChB: hud.DecChB,
+		CPOL: hud.DecCPOL, CPHA: hud.DecCPHA, Format: format}
 }

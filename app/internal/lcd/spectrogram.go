@@ -6,6 +6,7 @@ import (
 	"math"
 
 	"open-sds/app/internal/engine"
+	"open-sds/app/internal/panel/framecalc"
 )
 
 // Spectrogram ("FFT over time"): a scrolling waterfall of Hann-windowed
@@ -95,7 +96,7 @@ func (sg *Spectrogram) Push(f *engine.Frame, ch int, effNyq float64) {
 	// Stride the whole record down to ~sgFFTN samples so the spectrum covers the
 	// full capture at a USEFUL frequency resolution (like the FFT view) — not the
 	// raw Nyquist, which crams a low-frequency signal into the leftmost sliver.
-	stride := pairStride(f, valid/sgFFTN)
+	stride := framecalc.PairStride(f, valid/sgFFTN)
 	mags, peak := spectrumMags(src[:valid], stride)
 	if mags == nil || peak <= 0 {
 		return
@@ -155,7 +156,7 @@ func spectrumMags(src []uint8, stride int) ([]float64, float64) {
 	if n < 16 {
 		return nil, 0
 	}
-	samples := blockMeans(src, n, stride)
+	samples := framecalc.BlockMeans(src, n, stride)
 	re := make([]float64, n)
 	im := make([]float64, n)
 	var mean float64
@@ -167,7 +168,7 @@ func spectrumMags(src []uint8, stride int) ([]float64, float64) {
 		w := 0.5 - 0.5*math.Cos(2*math.Pi*float64(i)/float64(n-1))
 		re[i] = (v - mean) * w
 	}
-	fftRadix2(re, im)
+	framecalc.FFT(re, im)
 	half := n / 2
 	mags := make([]float64, half)
 	peak := 1e-9

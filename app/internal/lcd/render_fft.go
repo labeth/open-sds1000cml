@@ -3,42 +3,10 @@ package lcd
 
 import (
 	"math"
-	"open-sds/app/internal/engine"
-)
 
-// fftRadix2 is an in-place iterative Cooley–Tukey FFT (len must be a power of
-// two). Kept here (not shared with peaks.js) so the LCD has no JS dependency.
-// TRLC-LINKS: REQ-SDS-021, REQ-SDS-070
-func fftRadix2(re, im []float64) {
-	n := len(re)
-	for i, j := 1, 0; i < n; i++ {
-		bit := n >> 1
-		for ; j&bit != 0; bit >>= 1 {
-			j ^= bit
-		}
-		j ^= bit
-		if i < j {
-			re[i], re[j] = re[j], re[i]
-			im[i], im[j] = im[j], im[i]
-		}
-	}
-	for l := 2; l <= n; l <<= 1 {
-		ang := -2 * math.Pi / float64(l)
-		wr, wi := math.Cos(ang), math.Sin(ang)
-		for i := 0; i < n; i += l {
-			cr, ci := 1.0, 0.0
-			for k := 0; k < l/2; k++ {
-				tr := re[i+k+l/2]*cr - im[i+k+l/2]*ci
-				ti := re[i+k+l/2]*ci + im[i+k+l/2]*cr
-				re[i+k+l/2] = re[i+k] - tr
-				im[i+k+l/2] = im[i+k] - ti
-				re[i+k] += tr
-				im[i+k] += ti
-				cr, ci = cr*wr-ci*wi, cr*wi+ci*wr
-			}
-		}
-	}
-}
+	"open-sds/app/internal/engine"
+	"open-sds/app/internal/panel/framecalc"
+)
 
 // drawFFT renders the Hann-windowed magnitude spectrum (dB, peak-normalised) of
 // the display channel across the graticule (parity with the web FFT mode). n is
@@ -47,7 +15,7 @@ func fftRadix2(re, im []float64) {
 func drawFFT(sf Surface, f *engine.Frame, hud HUD) {
 	valid := frameValid(f)
 	n := 1
-	for n*2 <= valid/envPair(f) && n < 8192 {
+	for n*2 <= valid/framecalc.EnvPair(f) && n < 8192 {
 		n <<= 1
 	}
 	if n < 16 {
@@ -56,7 +24,7 @@ func drawFFT(sf Surface, f *engine.Frame, hud HUD) {
 	// Stride the WHOLE record down to n (not the leading prefix) so the spectrum
 	// represents the full capture; the effective sample interval grows by stride,
 	// so the axis' Nyquist shrinks accordingly.
-	stride := pairStride(f, valid/n)
+	stride := framecalc.PairStride(f, valid/n)
 	nyq := 0.0
 	if hud.SampleS > 0 {
 		nyq = 0.5 / hud.SampleS
@@ -115,54 +83,12 @@ func drawFFT(sf Surface, f *engine.Frame, hud HUD) {
 	}
 }
 
-// envPair is 2 for a peak-detect envelope, whose values come in (min, max)
-// pairs per bucket, else 1.
-// TRLC-LINKS: REQ-SDS-021
-func envPair(f *engine.Frame) int {
-	if f.PeakDetect {
-		return 2
-	}
-	return 1
-}
-
-// pairStride is the block length that reduces a record to its spectrum
-// samples. An envelope's blocks hold whole (min, max) pairs, so each spectrum
-// sample is bucket midpoints: transforming the pairs themselves put their
-// alternation at the top of the axis as a rising false spectrum (bench
-// 2026-10-07, UART at 10 us/div).
-// TRLC-LINKS: REQ-SDS-021
-func pairStride(f *engine.Frame, stride int) int {
-	stride = max(stride, 1)
-	if p := envPair(f); stride%p != 0 {
-		stride += p - stride%p
-	}
-	return stride
-}
-
 // fftTrace draws one channel's Hann magnitude spectrum (dB, peak-normalised)
 // across the graticule and returns its parabola-refined peak frequency. src is
 // strided by `stride` down to `n` samples.
 // TRLC-LINKS: REQ-SDS-021, REQ-SDS-070
 func fftTrace(sf Surface, src []uint8, n, stride int, col uint16, effNyq float64, kLo, kHi int) float64 {
-	return fftCore(sf, blockMeans(src, n, stride), col, effNyq, kLo, kHi)
-}
-
-// blockMeans reduces src to n samples, each the mean of `stride` consecutive
-// samples: a boxcar low-pass ahead of the decimation. Taking every stride-th
-// sample instead folded everything above the reduced Nyquist back into the
-// plot (a 1 MHz square's harmonics and the 200 MHz interleave spur at stride 2).
-// TRLC-LINKS: REQ-SDS-021, REQ-SDS-070
-func blockMeans(src []uint8, n, stride int) []float64 {
-	stride = max(stride, 1)
-	out := make([]float64, n)
-	for i := range out {
-		sum := 0
-		for _, v := range src[i*stride : (i+1)*stride] {
-			sum += int(v)
-		}
-		out[i] = float64(sum) / float64(stride)
-	}
-	return out
+	return fftCore(sf, framecalc.BlockMeans(src, n, stride), col, effNyq, kLo, kHi)
 }
 
 // fftCore Hann-windows `samples` (DC included; mean-subtracted here), FFTs it,
@@ -184,7 +110,7 @@ func fftCore(sf Surface, samples []float64, col uint16, effNyq float64, kLo, kHi
 		w := 0.5 - 0.5*math.Cos(2*math.Pi*float64(i)/float64(n-1))
 		re[i] = (samples[i] - mean) * w
 	}
-	fftRadix2(re, im)
+	framecalc.FFT(re, im)
 	half := n / 2
 	mags := make([]float64, half)
 	// Exclude the DC bin (k=0) from the 0 dB reference — Hann leakage at DC would
