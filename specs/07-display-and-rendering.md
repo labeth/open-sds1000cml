@@ -448,9 +448,10 @@ The same strip is drawn on both the trace and envelope paths.
 | `colGrid` | `(40, 40, 60)` | graticule grid lines |
 | `colAxis` | `(80, 80, 110)` | centre cross-hairs (column 5, row 4) |
 | `colC1` | `(255, 236, 0)` | channel 1 trace / envelope (yellow) |
-| `colC2` | `(0, 220, 255)` | channel 2 trace (cyan) |
+| `colC2` | `(240, 108, 196)` | channel 2 trace (pink, the panel's C2 marking) |
 | `colOK` | `(0, 200, 0)` | liveness strip: fresh coherent frame |
 | `colStale` | `(220, 40, 40)` | liveness strip: held / wedged / dead |
+| `colSR` | `(53, 200, 232)` | super-res overlay and gate markers (cyan) |
 
 ---
 
@@ -561,7 +562,7 @@ Drawn at scale 1. Coordinates are the glyph top-left; `W=800`, `H=480`.
 | Position `(x,y)` | Text | Colour |
 |---|---|---|
 | `(4, 2)` | `C1 <v/div>` (e.g. `C1 500mV`) | `colC1` yellow |
-| `(96, 2)` | `C2 <v/div>` | `colC2` cyan |
+| `(96, 2)` | `C2 <v/div>` | `colC2` pink |
 | `(200, 2)` | `M <time/div>` (main timebase) | `colInfo` grey `(200,200,200)` |
 | right-justified at `(796, 2)` | `T C<n> <^\|v> <±level>div <state>` — trigger source channel `n`, edge (`^` rising / `v` falling), level in divisions, sweep state | `colTrig` green `(64,255,64)` |
 | `(4, 471)` | `C1 Vpp <volts>` + (when the measurement is valid) `  f <freq>` | `colC1` |
@@ -622,7 +623,7 @@ in `(128,144,160)`, and the item label (`|`-separated lines, 11-px line pitch) f
 ### 10.4 C2 (second-channel) envelope
 
 **Resolved:** the faithful slow/roll picture is a **per-channel** min/max envelope — C1 in
-`colC1` (yellow) and, when two channels are enabled, C2 in `colC2` (cyan), each built from
+`colC1` (yellow) and, when two channels are enabled, C2 in `colC2` (pink), each built from
 its own samples and drawn with the identical per-column min..max fill of §6.3. The min/max
 reduction is stored **planar, channel-major**: `channels × EnvCols` entries, channel `ch`
 occupying `EnvMin[ch·EnvCols : (ch+1)·EnvCols]` (same for `EnvMax`). The draw loop iterates

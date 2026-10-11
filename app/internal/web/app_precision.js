@@ -120,8 +120,8 @@ if(typeof document!=="undefined") {
       const lo=Math.min(...y),hi=Math.max(...y),rr=Math.max(...fit.residual.map(Math.abs),.001);
       // TRLC-LINKS: REQ-SDS-205
       function line(a,color,fn){ctx.strokeStyle=color;ctx.beginPath();a.forEach((v,i)=>{const x=i/(a.length-1)*w, yy=fn(v);if(i)ctx.lineTo(x,yy);else ctx.moveTo(x,yy);});ctx.stroke();}
-      line(y,"#e8c546",v=>100-(v-lo)/(hi-lo)*80);line(fit.fitted,"#51d8ee",v=>100-(v-lo)/(hi-lo)*80);
-      line(fit.residual,"#ef859d",v=>155-v/rr*30);ctx.fillStyle="#ddd";ctx.fillText("Captured (yellow), fit (cyan)",8,12);ctx.fillText("Residual (pink), ±"+eng(rr*vpc,"V"),8,122);
+      line(y,"#e8c546",v=>100-(v-lo)/(hi-lo)*80);line(fit.fitted,"#e6ecf2",v=>100-(v-lo)/(hi-lo)*80);
+      line(fit.residual,"#35c8e8",v=>155-v/rr*30);ctx.fillStyle="#ddd";ctx.fillText("Captured (yellow), fit (white)",8,12);ctx.fillText("Residual (cyan), ±"+eng(rr*vpc,"V"),8,122);
     } catch(e) {out.textContent=e.message;}
   };
 }

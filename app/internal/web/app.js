@@ -86,6 +86,7 @@ const C2COL = css.getPropertyValue("--c2").trim();
 const CURCOL = css.getPropertyValue("--cursor").trim();
 const MATHCOL = css.getPropertyValue("--math").trim();
 const TRIGCOL = css.getPropertyValue("--trigger").trim();
+const SRCOL = css.getPropertyValue("--sr").trim() || "#35c8e8"; // super-res overlay (shared with the LCD)
 
 // ---- responsive canvas ----
 // TRLC-LINKS: REQ-SDS-204
@@ -195,7 +196,7 @@ const fftCh = { 1: { peaks: [], sel: [], selIdx: new Set() }, 2: { peaks: [], se
 let maxPeaks = 8;
 // Distinct palettes so a channel's selected-component overlays are attributable
 // on the waveform: C1 warm, C2 cool.
-const COMPCOLS = { 1: ["#ff9f1c", "#ffe14f", "#ff5ec4", "#ffb86b", "#ffd24f"], 2: ["#4fd8ff", "#8cff5a", "#b98cff", "#5ad9ff", "#6bffb8"] };
+const COMPCOLS = { 1: ["#ff9f1c", "#ffe14f", "#35c8e8", "#ffb86b", "#ffd24f"], 2: ["#ff7ac8", "#8cff5a", "#b98cff", "#ff9ed8", "#6bffb8"] };
 // Recompute one channel's peaks + re-anchor its selection to the nearest current
 // peak (tracks drift, dedupes, keeps a freq whose peak momentarily vanished).
 // Returns that channel's spectrum, or null if the channel is off/absent/flat.

@@ -1,7 +1,7 @@
 // ENGMODEL-OWNER-UNIT: FU-WEB-APP-NAV
 // app_nav.js — navigator strip drawing (classic script; shares app.js globals).
 
-// drawSrGate overlays the super-res gate markers (magenta, matching the device)
+// drawSrGate overlays the super-res gate markers (SRCOL, the --sr token shared with the device)
 // with a shaded region between them. Positions are EDGE-RELATIVE offsets mapped to
 // this frame's record fraction (srGateRF) then into the view, so they stay pinned
 // to the trigger-locked signal through zoom/pan and the edge's frame-to-frame wander.
@@ -14,8 +14,8 @@ function drawSrGate() {
   const xf = f => (f - view.win.a) / span * CW;
   const xa = xf(srGateRF(Math.min(srGate.a, srGate.b))), xb = xf(srGateRF(Math.max(srGate.a, srGate.b)));
   g.save();
-  g.fillStyle = "rgba(230,120,240,0.10)"; g.fillRect(xa, 0, xb - xa, CH);
-  g.strokeStyle = "rgb(230,120,240)"; g.lineWidth = dpr; g.fillStyle = "rgb(230,120,240)";
+  g.fillStyle = SRCOL; g.globalAlpha = 0.10; g.fillRect(xa, 0, xb - xa, CH); g.globalAlpha = 1;
+  g.strokeStyle = SRCOL; g.lineWidth = dpr; g.fillStyle = SRCOL;
   for (const x of [xa, xb]) {
     g.beginPath(); g.moveTo(x, 0); g.lineTo(x, CH); g.stroke();
     g.fillRect(x - 4 * dpr, 0, 8 * dpr, 10 * dpr); g.fillRect(x - 4 * dpr, CH - 10 * dpr, 8 * dpr, 10 * dpr);

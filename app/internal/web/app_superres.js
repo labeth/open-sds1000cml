@@ -431,7 +431,7 @@ function srMakeViewFrame() {
   const dt = sr.st.sampleS / sr.st.K; // seconds per fine bin
   // res.mean is the ALIGN channel's stack, res.mean2 the other — map them back to
   // the PHYSICAL channels so the review honors the selection (align C2 must show
-  // as the cyan C2 trace, not swap into C1).
+  // as the pink C2 trace, not swap into C1).
   let c1m = sr.st.align === 0 ? res.mean : res.mean2;
   let c2m = sr.st.align === 0 ? res.mean2 : res.mean;
   // Analog-falloff compensation: de-embed the measured chain rolloff on the
