@@ -102,7 +102,7 @@ function stPush() {
   const signature = JSON.stringify(p);
   return fetch("/api/serial", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(p) })
     .then(async r => { const j = await r.json(); if (!r.ok || !j || !j.ok) throw new Error("rejected"); })
-    .then(() => { stLastSig = signature; stConfigError = ""; })
+    .then(() => { stLastSig = signature; if (stConfigError) { stConfigError = ""; stStatus(); } })
     .catch(error => { stConfigError = "Trigger settings were not applied. Check the connection and retry."; stStatus(); throw error; });
 }
 

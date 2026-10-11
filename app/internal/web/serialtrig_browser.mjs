@@ -67,8 +67,8 @@ run(async (t) => {
   await po.setSelect("decProto", "off");
   await po.waitFor(() => !document.getElementById("stArm").classList.contains("on"), null, 8000);
   t.ok(!(await po.hasClass("stArm", "on")), "turning decode off auto-disarms the trigger");
-  const off = posts.filter(p => /\/api\/set/.test(p.url) && p.body.control === "serialmode").pop();
-  t.ok(!!off && off.body.value === 0, "disarm POSTed serialmode=0");
+  await t.until(() => { const off = posts.filter(p => /\/api\/set/.test(p.url) && p.body.control === "serialmode").pop(); return !!off && off.body.value === 0; },
+    "disarm POSTed serialmode=0", 3000);
 
   for (const [proto, id] of [["manchester", 4], ["sent", 5], ["can", 6], ["mil1553", 7], ["arinc429", 8], ["usb", 9], ["flexray", 10]]) {
     await po.setSelect("decProto", proto);
@@ -96,7 +96,7 @@ run(async (t) => {
   await po.page.focus("#stBytes");
   await po.page.keyboard.press("Enter");
   await po.waitFor(() => document.getElementById("stArm").classList.contains("on"), null, 8000);
-  t.ok(!(await page.locator("#stStats").textContent()).includes("not applied"), "Enter in the match field arms; a successful retry clears the error");
+  await t.until(async () => !(await page.locator("#stStats").textContent()).includes("not applied"), "Enter in the match field arms; a successful retry clears the error", 3000);
   await t.until(async () => /Serial 55/.test(await po.text("trigCap")), "the strip's trigger caption shows the armed serial trigger", 5000);
   t.ok(pageErrors.length === 0, "no page errors: " + pageErrors.join("; "));
 });
