@@ -45,7 +45,7 @@ run(async (t) => {
   t.ok(n === 2, "bodeRenderNow drew " + n + " points from /api/bode (want 2)");
   await po.waitFor(() => document.querySelectorAll("#bodeBody tr").length === 2 && !document.getElementById("bodeTable").hidden, null, 4000);
   t.ok(/Hz/.test(await po.text("bodeBody")) && /dB/.test(await po.text("bodeBody")), "the peak pane lists the Bode points (frequency, gain, phase)");
-  t.ok(/Points\s*2/.test(await po.text("roBody")), "the readout counts the points");
+  await t.until(async () => /Points\s*2/.test(await po.text("roBody")), "the readout counts the points", 2000);
 
   // the scope canvas shows the plot: pixels other than the background
   const painted = await po.eval(() => {

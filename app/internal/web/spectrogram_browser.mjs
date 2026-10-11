@@ -33,7 +33,7 @@ run(async (t) => {
     return n;
   });
   t.ok(painted > 50, "spectrogram drawn on the scope canvas: " + painted + " painted pixels");
-  t.ok(/Waterfall/.test(await po.text("roBody")), "the readout reports the waterfall");
+  await t.until(async () => /Waterfall/.test(await po.text("roBody")), "the readout reports the waterfall", 2000);
 
   // leaving the view stops the waterfall it started; the rows are kept
   await po.setMode("FFT");

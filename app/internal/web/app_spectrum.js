@@ -142,7 +142,7 @@ function specReadout() {
 }
 
 // specOnBode lists the Bode points (newest sweep order: by frequency) in the
-// peaks pane while the Bode view is shown.
+// peaks pane while the Bode view is shown, and the readout counts them with it.
 // TRLC-LINKS: REQ-SDS-216
 function specOnBode(p) {
   if ($("bodeTable").hidden) return;
@@ -152,6 +152,7 @@ function specOnBode(p) {
   if (!n) html = `<tr><td class="e" colspan="4">No points yet: put the DUT input on REF and its output on DUT, ARM, then sweep the source.</td></tr>`;
   const b = $("bodeBody");
   if (b.dataset.sig !== html) { b.dataset.sig = html; b.innerHTML = html; }
+  specReadout();
 }
 
 WS_TICKS.push((now) => {
