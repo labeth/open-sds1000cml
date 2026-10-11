@@ -3662,3 +3662,9 @@ requirements:
   verificationCriteria: Browser tests in phone emulation drive every tab, typed entry, workspace switching with an LCD
     sheet open, undo and the guarded Default Setup against the test server; on the device, the same flows from a phone
     with the LCD showing the REMOTE confirmations.
+  notes: The workspace keys are /api/panel {"workspace"} and {"again"}, which leave an open LCD sheet as it is. While
+    Autoset sweeps, every remote change (sheet sets, actions, presets, typed text, workspace keys, from any client) is
+    refused with the reason; only Autoset itself runs, to cancel the sweep. The history lives in the phone's browser and
+    tells the phone's own changes from the scope's and other remotes' by timing, so it can misattribute a scope change
+    made while a call is in flight. Plain HTTP has no wake lock, so the page keeps the phone awake with a silent video,
+    which may pause music on an iPhone.
