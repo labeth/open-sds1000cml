@@ -150,6 +150,15 @@ architecture:
     prose: 'Shared calibrated voltage and timing measurements used by LCD and web outputs.'
     tags:
     - source-backed
+  - id: FU-APP-ANALYSIS
+    name: Shared analysis
+    group: FG-APP
+    prose: 'Pure analysis shared by the LCD workspaces and the web app (ADR-TASK-WORKSPACES): decoded packets and a
+      packet list that holds still, the eye and jitter engine (a port of eyejitter.js, held to it by a node parity
+      test) and the LCD eye, spectral peaks, harmonics and THD, running statistics, reference difference and the
+      master repeat test.'
+    tags:
+    - source-backed
   - id: FU-APP-PANEL
     name: Panel policy and menus
     group: FG-APP

@@ -1,0 +1,6 @@
+go test fuzz v1
+[]byte("x\xff000x\xff1\x00\xffz\x000\xff\xff0")
+float64(1)
+float64(1e+300)
+uint16(6)
+uint16(18)
