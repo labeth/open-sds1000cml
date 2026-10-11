@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"open-sds/app/internal/engine"
@@ -93,9 +94,14 @@ type Handler struct {
 	// silent success).
 	setups SetupMemory
 
-	// mu serializes HandleLine against the cross-goroutine snapshot readers
-	// (Inverted() feeds the web status snapshot and the LCD HUD builder).
+	// mu serializes HandleLine against the cross-goroutine snapshot readers.
 	mu sync.Mutex
+
+	// invs is the per-channel INVS (display invert) state, bit ch. It is
+	// atomic, not under mu: the web status snapshot, the LCD HUD builder and
+	// the panel (whose CH tab writes it) read it while HandleLine holds mu
+	// and calls into the panel (MENU, Cn:TRA).
+	invs atomic.Uint32
 
 	chdr string // "SHORT" | "OFF" (power-on default SHORT)
 	wfSP int
@@ -112,7 +118,6 @@ type Handler struct {
 	tra    [2]bool
 	cpl    [2]string
 	attn   [2]float64
-	invs   [2]bool
 	unit   [2]string
 	skew   [2]float64
 	trmd   string
@@ -203,10 +208,32 @@ func New(sc Scope, fe Analog, disp Display, shot Screenshot, logf func(string, .
 // status snapshot and the LCD HUD both read it here.
 // TRLC-LINKS: REQ-SDS-024
 func (h *Handler) Inverted() [2]bool {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	return h.invs
+	b := h.invs.Load()
+	return [2]bool{b&1 != 0, b&2 != 0}
 }
+
+// SetInverted sets a channel's INVS state: the panel's CH tab Invert row
+// writes the same shadow as Cn:INVS.
+// TRLC-LINKS: REQ-SDS-024, REQ-SDS-212
+func (h *Handler) SetInverted(ch int, on bool) {
+	if ch < 0 || ch > 1 {
+		return
+	}
+	for {
+		old := h.invs.Load()
+		nw := old &^ (1 << ch)
+		if on {
+			nw |= 1 << ch
+		}
+		if h.invs.CompareAndSwap(old, nw) {
+			return
+		}
+	}
+}
+
+// inverted reports one channel's INVS state.
+// TRLC-LINKS: REQ-SDS-024
+func (h *Handler) inverted(ch int) bool { return ch >= 0 && ch < 2 && h.invs.Load()>>ch&1 != 0 }
 
 // TRLC-LINKS: REQ-SDS-024
 func loadSerial() string {

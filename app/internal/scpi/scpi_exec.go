@@ -33,7 +33,7 @@ func (h *Handler) execGlobal(head, arg string) []byte {
 		h.trmd = "AUTO"
 		h.chdr = "SHORT"
 		h.wfSP, h.wfNP, h.wfFP, h.wfSN = 1, 0, 0, 0
-		h.invs = [2]bool{}
+		h.invs.Store(0)
 		h.unit = [2]string{"V", "V"}
 		h.skew = [2]float64{}
 		h.tra = [2]bool{true, true}
@@ -788,17 +788,17 @@ func (h *Handler) execChannel(ch int, head, arg string) []byte {
 		// — what you SEE flips, what is measured does not).
 		switch arg {
 		case "ON":
-			h.invs[ch] = true
+			h.SetInverted(ch, true)
 			return nil
 		case "OFF":
-			h.invs[ch] = false
+			h.SetInverted(ch, false)
 			return nil
 		default:
 			return errTok(errHeader)
 		}
 	case "INVS?":
 		v := "OFF"
-		if h.invs[ch] {
+		if h.inverted(ch) {
 			v = "ON"
 		}
 		return h.reply(fmt.Sprintf("C%d:INVS", ch+1), v)

@@ -117,7 +117,7 @@ func (h *Handler) pava(ch int, arg string) []byte {
 			r = r.WithEnvelopeTiming(sig[:valid], vdiv/25*probe, offV*probe, f.SampleS)
 		}
 	})
-	if r != nil && ch >= 0 && ch < 2 && h.invs[ch] { // h.mu is held (HandleLine)
+	if r != nil && h.inverted(ch) {
 		r = r.Inverted() // measure what the inverted trace shows
 	}
 	if arg == "ALL" { // every parameter from one measurement (bug hunt #2: ALL was a header error)
