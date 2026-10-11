@@ -108,9 +108,11 @@ run(async (t) => {
 
   // Stability while magnitudes reshuffle: BOTH picks survive, tracked by
   // frequency, even as the strongest peak swaps between the two tones.
+  // At least 16 frames, and on until the ranking has swapped (a loaded machine
+  // fetches fewer frames in the same time), at most 80.
   const strongestIdx = new Set();
   let stable = true;
-  for (let i = 0; i < 16; i++) {
+  for (let i = 0; i < 80 && (i < 16 || strongestIdx.size < 2); i++) {
     await po.wait(90);
     const s = await po.eval(() => ({
       sel: [...fftCh[1].selIdx].map(i => Math.round(fftCh[1].peaks[i].freq)).sort((a, b) => a - b),
@@ -119,7 +121,7 @@ run(async (t) => {
     strongestIdx.add(s.strong);
     if (s.sel.length !== 2 || !s.sel.every((f, k) => Math.abs(f - want2[k]) < 2000)) stable = false;
   }
-  t.ok(stable, `both picks stayed put across 16 reshuffling frames`);
+  t.ok(stable, `both picks stayed put across the reshuffling frames`);
   t.ok(strongestIdx.size > 1, `magnitude ranking actually reshuffled (strongest peak took ${strongestIdx.size} positions)`);
 
   // Leaving SPECTRUM: the view returns to Y-T and the picks keep working there.
