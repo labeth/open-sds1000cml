@@ -45,6 +45,12 @@ run(async (t) => {
     const ctx = await browser.newContext(d);
     // the scope's plain HTTP: browsers have no Screen Wake Lock there (127.0.0.1 counts as secure)
     if (opts.noWakeLock) await ctx.addInitScript(() => { delete Navigator.prototype.wakeLock; });
+    // haptics: Android vibrates (recorded here); Safari has no Vibration API, so an iPhone has the visual tick only
+    await ctx.addInitScript((iphone) => {
+      window.__vib = [];
+      if (iphone) delete Navigator.prototype.vibrate;
+      else Navigator.prototype.vibrate = function (p) { window.__vib.push(p); return true; };
+    }, /iPhone/.test(devName));
     const page = await ctx.newPage();
     const errors = [];
     // while the test drops the scope's server the browser logs the failed requests: expected there only
@@ -137,6 +143,9 @@ run(async (t) => {
       "the quick buttons say where they go: 1 ms counter-clockwise, 200 us clockwise");
     await P.tap('[data-tile="time.tdiv"] [data-q="cw"]');
     await P.until(async () => (await P.text('[data-tile="time.tdiv"] .tv')) === "200 us", "a tap on it shows 200 us");
+    P.ok(await page.evaluate(() => /\bflash\b/.test((document.querySelector(".tick") || {}).className || "")), "the step ticks on screen");
+    if (/iPhone/.test(devName)) P.ok(await page.evaluate(() => typeof navigator.vibrate !== "function"), "an iPhone has no vibration: the tick alone, and no error");
+    else P.ok(await page.evaluate(() => window.__vib.length > 0 && window.__vib.every((p) => p)), "the step vibrates on Android");
     await P.until(async () => Math.abs((await ctrl("/engine")).tdiv - 200e-6) < 1e-9, "the scope's timebase is 200 us");
     await P.until(async () => /^REMOTE {2}TIME time\/div 200us/.test((await ctrl("/status")).Remote || ""), "the LCD confirms with a REMOTE line");
     P.ok(await lcdClosed(), "nothing opened on the LCD");
@@ -319,7 +328,19 @@ run(async (t) => {
     await ctrl("/button?name=utility");
     const ks = await P.text("#keep-awake small"), fs = await P.text("#fullscreen small");
     P.ok(/^(awake: wake lock|awake: video|off: tap to keep awake)/.test(ks), "keep awake says its state: " + ks);
-    if (opts && opts.noWakeLock) P.ok(/^awake: video/.test(ks), "without a wake lock (plain HTTP) the silent video keeps the phone awake");
+    if (opts && opts.noWakeLock) {
+      P.ok(/^awake: video/.test(ks), "without a wake lock (plain HTTP) the silent video keeps the phone awake");
+      const vid = () => page.evaluate(() => {
+        const v = document.querySelector("video.awake-video");
+        if (v && v.seeks === undefined) { v.seeks = 0; v.addEventListener("seeking", () => { v.seeks++; }); }
+        return v ? { paused: v.paused, t: v.currentTime, muted: v.muted, loop: v.loop, seeks: v.seeks } : null;
+      });
+      const v1 = await vid();
+      await sleep(1600);
+      const v2 = await vid();
+      P.ok(!!v1 && !!v2 && !v2.paused && !v1.muted && !v1.loop && v2.seeks >= 1,
+        "the video plays on past its 1 s length, unmuted, seeking back instead of looping: " + JSON.stringify([v1, v2]));
+    }
     P.ok(/^(on|off|refused|not )/.test(fs), "fullscreen says its state: " + fs);
 
     // the scope's server drops: the banner, then the resync
