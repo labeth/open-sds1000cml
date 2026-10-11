@@ -2499,7 +2499,8 @@ requirements:
   - test
   verificationCriteria: 'Source presence and fake controls do not establish full clause coverage or physical
     qualification.'
-  notes: Source-domain bounds are not full input validation. Restored UART role equality can survive a later protocol
+  notes: Superseded by REQ-SDS-211 and REQ-SDS-212 (ADR-TASK-WORKSPACES). Source-domain bounds are not full
+    input validation. Restored UART role equality can survive a later protocol
     change; qualifier ordering and snapshot atomicity are not guaranteed.
 - id: REQ-SDS-137
   title: Panel autoset sweep
@@ -3521,3 +3522,128 @@ requirements:
   - test
   verificationCriteria: Building each image at its default seed reproduces the sha256 recorded in fpga/bitstreams/images.json;
     the stacking build also passes its input-register, pin-placement and memory audit.
+- id: REQ-SDS-211
+  title: LCD task workspaces
+  text: While no settings sheet is open, the instrument shall switch between the SCOPE, BUS, SPECTRUM, MEASURE and
+    COMPARE workspaces with F1-F5, show them as a pictogram rail at most 30 px wide at the right edge of the LCD with
+    the active one highlighted, and show the active workspace's next view when its key is pressed again.
+  status: draft
+  category: functional
+  appliesTo:
+  - FU-APP-PANEL
+  - FU-APP-LCD
+  verificationMethods:
+  - test
+  verificationCriteria: Panel state-machine tests and LCD goldens of every workspace; on the device, captures of each
+    workspace after F1-F5.
+- id: REQ-SDS-212
+  title: Full-screen settings sheets
+  text: When Menu On/Off or a menu key is pressed, the instrument shall open a full-screen settings sheet whose tabs
+    cover every setting, write each row's options out, pick the highlighted row's option with F1-F5, change tab with
+    S/DIV and move rows with Adjust; pressing the key of the open tab shall close the sheet, and actions shall run only
+    from labelled F-keys.
+  status: draft
+  category: functional
+  appliesTo:
+  - FU-APP-PANEL
+  - FU-APP-LCD
+  verificationMethods:
+  - test
+  verificationCriteria: A reachability test sets every setting through panel inputs alone; sheet goldens.
+- id: REQ-SDS-213
+  title: Workspace knob tools
+  text: In each workspace the instrument shall give Adjust, Horizontal Position and their pushes one job named on a
+    tool line, and keep the printed jobs of V/DIV, vertical Position, Level, S/DIV and their pushes (Variable, Zero,
+    Zoom), with V/DIV and S/DIV turning the way their printed arcs show.
+  status: draft
+  category: functional
+  appliesTo:
+  - FU-APP-PANEL
+  verificationMethods:
+  - test
+  verificationCriteria: Panel input tests per workspace.
+- id: REQ-SDS-214
+  title: BUS workspace
+  text: When the BUS workspace is entered with decoding off, the instrument shall auto-detect the bus and turn
+    decoding on; it shall list complete packets with their bytes as hex and as a separate left-aligned string column
+    in fixed columns that hold still while the same messages repeat, default the decode strip to hex, let the user
+    select packets and pick bytes to trigger on, and toggle an eye diagram when F2 is pressed again.
+  status: draft
+  category: functional
+  appliesTo:
+  - FU-APP-PANEL
+  - FU-APP-LCD
+  - FU-APP-WEB
+  verificationMethods:
+  - test
+  verificationCriteria: Unit tests of packet grouping and list stability; on the device, the FPGA UART, SPI and I2C
+    sources decoded on entry.
+- id: REQ-SDS-215
+  title: Eye diagram and jitter on both surfaces
+  text: The instrument shall fold the decoded data line at the recovered bit period into a two-UI eye and report bit
+    rate, UI, eye height, eye width, crossing level, rise and fall times and TIE jitter RMS and peak to peak, shown as
+    bounds when the sample interval limits them.
+  status: draft
+  category: functional
+  appliesTo:
+  - FU-APP-LCD
+  - FU-APP-WEB
+  verificationMethods:
+  - test
+  verificationCriteria: Go eye and jitter results match the web eyejitter.js on shared vectors; device eye of the FPGA
+    PRBS source.
+- id: REQ-SDS-216
+  title: SPECTRUM workspace
+  text: The instrument shall show the FFT with a peak table (frequency, level, level relative to the largest peak,
+    harmonic number), THD and a movable peak marker, beside a small time trace, and cycle FFT, spectrogram and Bode
+    when F3 is pressed again.
+  status: draft
+  category: functional
+  appliesTo:
+  - FU-APP-PANEL
+  - FU-APP-LCD
+  - FU-APP-WEB
+  verificationMethods:
+  - test
+  verificationCriteria: Peak and THD unit tests on synthetic square waves; device capture of the FPGA square wave.
+- id: REQ-SDS-217
+  title: MEASURE workspace
+  text: The instrument shall show running measurement statistics (current, mean, minimum, maximum, standard
+    deviation and count) for the chosen parameters, with time and voltage cursors moved by Adjust and Horizontal
+    Position.
+  status: draft
+  category: functional
+  appliesTo:
+  - FU-APP-PANEL
+  - FU-APP-LCD
+  - FU-APP-WEB
+  verificationMethods:
+  - test
+  verificationCriteria: Statistics unit tests; device capture of the measurement table on the FPGA clock source.
+- id: REQ-SDS-218
+  title: COMPARE workspace and stacked master
+  text: The instrument shall compare the live trace against references, the mask and math with a live difference
+    readout, and when F5 is pressed again in COMPARE it shall average N captures of a repeating signal into a master,
+    store it as REF A, build the mask from it and restore the previous acquisition so live captures are tested raw;
+    it shall refuse a master from a signal that does not repeat and say how to fix the trigger.
+  status: draft
+  category: functional
+  appliesTo:
+  - FU-APP-PANEL
+  - FU-APP-LCD
+  - FU-APP-WEB
+  verificationMethods:
+  - test
+  verificationCriteria: Master-stacking tests with a repeating and a free-running source; device mask test on the
+    FPGA square wave.
+- id: REQ-SDS-219
+  title: Web task workspaces
+  text: The web app shall offer the same five workspaces with keyboard switching, a fixed instrument strip for run
+    control, timebase, channels and trigger, and an all-settings view, replacing the single dock of cards.
+  status: draft
+  category: functional
+  appliesTo:
+  - FU-APP-WEB
+  verificationMethods:
+  - test
+  verificationCriteria: Browser tests drive every workspace and setting through the new layout.

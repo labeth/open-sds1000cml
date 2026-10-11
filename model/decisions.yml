@@ -2040,6 +2040,30 @@ decisions:
   - On the 1 MHz reference the displayed edge now moves 0.19 ns peak to peak at 5 ns/div (0.04 division), 0.12 ns at
     10 ns/div and not measurably at 25-100 ns/div; slower timebases stay below a pixel.
   - The refinement trusts the hardware index to within twelve samples; a crossing further away leaves the index as is.
+- id: ADR-TASK-WORKSPACES
+  title: Task workspaces replace the softkey menus on the scope and the dock layout in the web app
+  status: accepted
+  date: '2026-10-11'
+  context: The owner found the menus clunky and slow, options hidden behind page cycles, and many printed keys
+    unused. Eleven control schemes were prototyped on one simulated scope (six for the LCD and panel, five for the
+    web app) and timed on the same 13 bench tasks. The owner chose Task Workspaces for both surfaces, combined on the
+    LCD with the full-screen settings sheets of the Settings Sheet scheme, and asked for a breaking change with no
+    old GUI kept. Prototype counts for the 13 tasks - LCD 30 actions against 43 today; web 25 against 33.
+  decision: 'Five task workspaces, SCOPE, BUS, SPECTRUM, MEASURE and COMPARE, on both surfaces. On the LCD, with no
+    sheet open, F1-F5 switch workspaces shown as a pictogram rail at most 30 px wide; pressing the active key again
+    shows the workspace''s next view (BUS packets / eye diagram, SPECTRUM FFT / spectrogram / Bode, COMPARE stacks
+    a master). Every setting lives in full-screen sheets (tabs, every option written out, F1-F5 pick, S/DIV turns
+    tabs, Adjust moves rows); menu keys open their tab and close it again. Adjust and Horizontal Position are each
+    workspace''s tool, named on a tool line; the other printed knob and push jobs stay. BUS auto-detects and decodes
+    on entry and lists complete packets as hex plus a separate left-aligned string column; the strip defaults to hex.
+    The web app gets the same five workspaces over a fixed instrument strip. The old menu pages and the old web dock
+    are removed. C2 takes the panel''s pink.'
+  consequences:
+  - Breaking change to the panel menu tree, the LCD menu overlay and the web layout; tests written against the old
+    pages and DOM are rewritten for the workspaces.
+  - F1-F5 have two meanings (workspace or sheet choice), always shown on screen by the rail or the sheet's labels.
+  - New shared analysis code (packets, eye and jitter, spectral peaks and THD, statistics, reference difference,
+    stacked master) serves both surfaces.
 - id: ADR-SOURCE-BASELINE
   title: Use the user-selected current branch
   status: accepted
