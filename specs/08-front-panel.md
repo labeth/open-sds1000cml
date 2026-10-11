@@ -307,36 +307,35 @@ Every knob has a push switch in addition to rotation.
 
 ### 6.4 Menu / mode buttons
 
-Active-low `(sel,bit)`; press is a 1→0 edge. LED bit is the CS3-latch bit (§8.2) that lights the
-control's lamp. The menu/mode LEDs live in the latch mid byte (`0x0100..0x1000`); those five are
-established. The CURSORS/MATH/REF lamps live in the **unresolved low byte** (§8.2), so no LED bit is
-given here — do not wire them until the low byte is re-captured one bit at a time (§6.5 scan).
+Active-low `(sel,bit)`; press is a 1→0 edge. Each printed menu key opens its tab of the settings
+sheet (§7.2) and, pressed again on that tab, closes it. The lamp column is the CS3-latch bit
+(§8.2, the map is spec 02 §7.5) the key's lamp is driven on; "dark" lamps are not driven.
 
-| Control | Selector | Bit | LED bit |
+| Control | Selector | Bit | Opens | Lamp |
+|---|---|---|---|---|
+| TRIGGER MENU | `0x64` | 10 | TRIG tab | none |
+| ACQUIRE | `0x64` | 11 | ACQ tab | `0x0200` — acquisition not Normal, or super-res on |
+| CURSORS | `0x64` | 12 | CURS tab | dark (§8.2) |
+| MENU (on/off) | `0x64` | 13 | the workspace's sheet (§7.2) | none |
+| DISPLAY | `0x65` | 3 | VIEW tab | `0x0400` — a view other than Y-T, or persistence |
+| MEASURE | `0x65` | 4 | MEAS tab | `0x0100` — readouts on |
+| SAVE/RECALL | `0x65` | 11 | FILE tab | `0x0800` — the settings are those last saved or recalled |
+| HORIZONTAL MENU | `0x65` | 12 | TIME tab | none |
+| UTILITY | `0x66` | 3 | BUS tab | `0x1000` — a bus is decoded |
+| MATH | `0x66` | 12 | MATH/REF tab, Math row | dark (§8.2) |
+| REF | `0x67` | 12 | MATH/REF tab, Store Ref A row | dark (§8.2) |
+| HELP | `0x67` | 11 | SYS tab, the guide to the workspace | none |
+| CH1 | `0x66` | 4 | CH1 tab (switches an off channel on) | `0x0010` — CH1 shown |
+| CH2 | `0x67` | 4 | CH2 tab (switches an off channel on) | `0x0040` — CH2 shown |
+
+### 6.5 Remaining control buttons
+
+| Control | Selector | Bit | Action |
 |---|---|---|---|
-| CURSORS | `0x64` | 12 | unresolved — do not wire (§8.2) |
-| ACQUIRE | `0x64` | 11 | `0x0200` |
-| DISPLAY | `0x65` | 3 | `0x0400` |
-| MEASURE | `0x65` | 4 | `0x0100` |
-| SAVE/RECALL | `0x65` | 11 | `0x0800` |
-| UTILITY | `0x66` | 3 | `0x1000` |
-| REF | `0x67` | 12 | unresolved — do not wire (§8.2) |
-| MATH | `0x66` | 12 | unresolved — do not wire (§8.2) |
-
-### 6.5 Remaining menu / control buttons
-
-These fixed-function buttons are on the same matrix; no dedicated status LED. Decode and dispatch as
-`(sel,bit)`; claim-and-ignore any not yet wired to an action (§7).
-
-| Control | Selector | Bit |
-|---|---|---|
-| TRIGGER MENU | `0x64` | 10 |
-| MENU (on/off) | `0x64` | 13 |
-| HORIZONTAL MENU | `0x65` | 12 |
-| SET TO 50% | `0x66` | 2 |
-| DEFAULT SETUP | `0x66` | 10 |
-| FORCE | `0x67` | 2 |
-| HELP | `0x67` | 11 |
+| SET TO 50% | `0x66` | 2 | trigger level at the midpoint of the source channel's frame |
+| DEFAULT SETUP | `0x66` | 10 | factory settings; any menu closes; the workspace stays (§7.1) |
+| FORCE | `0x67` | 2 | one untriggered capture (`ForceTrigger`) |
+| PRINT | `0x67` | 13 | the screen as `SDSnnnn.png` on the U-disk, named in a notice |
 
 - **Scan procedure (for any future board revision):** with the decoder running and logging every raw
   `(sel,bit)` 1→0 edge, press one physical button in isolation and record the reported `(sel,bit)`;
@@ -347,21 +346,86 @@ These fixed-function buttons are on the same matrix; no dedicated status LED. De
 
 ## 7. Control wiring (event → instrument action)
 
-| Event | Source | Action |
+The panel is driven by **task workspaces** (ADR-TASK-WORKSPACES): five screens for the jobs the
+instrument is used for, each re-laying the LCD (spec 07 §10.3) and giving the two tool knobs (Adjust
+and Horizontal Position) a job named on the screen, over one declarative settings model whose rows
+the sheets, the knobs, the F-keys and the remote all change through the same setter. Every key is
+wired; none is claim-and-ignore.
+
+### 7.1 Workspaces (no menu open)
+
+F1..F5 select the workspaces on a pictogram rail beside the keys; the active workspace's key again
+shows its next view. Entering a workspace shows a short label beside its key for 1.6 s
+(`F3 SPECTRUM   again: FFT / Spectrogram / Bode`).
+
+| Key | Workspace | Pane | Key again |
+|---|---|---|---|
+| F1 | SCOPE | none: the full trace | Y-T ↔ X-Y |
+| F2 | BUS | the decoded packets: a fixed-column hex dump, a separate string box, the match | Packets ↔ eye diagram |
+| F3 | SPECTRUM | the FFT large, a small time trace, a peak table, marker, THD | FFT → spectrogram → Bode |
+| F4 | MEASURE | statistics (now, mean, min, max, sdev, N) of the chosen readouts, cursors | statistics ↔ all values |
+| F5 | COMPARE | MASTER, REF A, REF B, MASK, MATH rows, live difference | stack a master (again: cancel) |
+
+Entry behaviour: BUS with decode off auto-detects the bus on CH1/CH2 and decodes it, with a notice
+(decoding stays on after leaving BUS); SPECTRUM starts on the FFT; MEASURE with nothing chosen picks
+Vpp and frequency of the shown channels. Each workspace remembers its view. A master (COMPARE again)
+averages N captures of the trigger source (the engine's Average, N = 64 by default), stores the
+result as REF A, builds the mask from it, restores the acquisition so live captures are tested raw,
+and turns the test on with zeroed counters; it is refused, saying how to fix the trigger, while the
+trigger source does not repeat from capture to capture. AUTO and DEFAULT SETUP close any menu and
+keep the workspace, which re-applies its entry behaviour.
+
+### 7.2 Settings sheets (a menu open)
+
+MENU opens the workspace's sheet where it was left (the first time on its own first tab); the printed
+keys (§6.4) open their tabs. A sheet is full screen with every option written out; the workspace's
+own tabs come first. While a sheet (or the BUS byte picker) is open, F1..F5 pick the choices written
+beside them in the 116 px F-key column; actions run only from their labelled F-key.
+
+| Control | In a sheet |
+|---|---|
+| TIME/DIV | the previous / next tab (wrapping); leaves an edit or a sub-mode |
+| ADJUST | the row (wrapping); in an edit: the value; in the match editor: the key |
+| ADJUST push | edit the row (again: done); on Match bytes: the match editor; in the editor: type the key |
+| HORIZ POSITION | the row's value: the next option, or a knob step; in the editor: the cursor |
+| HORIZ POSITION push | the row's factory value; in the editor: clear |
+| F1..F5 | the row's choices; a number row: Down, Up and presets; an action row: its actions |
+| MENU / the tab's key | close the sheet (a sub-mode: discard it) |
+
+The BUS tab's Match bytes row opens the match editor (a full-screen keyboard of Hex, Text and Special
+keys, 32 units at most: F1 key set, F2 type, F3 delete, F4 OK, F5 cancel) or the byte picker (the
+bytes decoded on screen, the first complete message's first byte highlighted; F1..F4 trigger on 1..4
+bytes from it and set the trigger type Serial; F5 cancel).
+
+### 7.3 Knobs and pushes
+
+V/DIV, vertical POSITION, TRIG LEVEL and TIME/DIV keep their printed jobs in every workspace, and the
+pushes theirs (Variable, Zero, Zoom). ADJUST and HORIZ POSITION are each workspace's tools.
+
+| Control | Source | Action |
 |---|---|---|
-| TIME/DIV knob | `0x66`:14/15 | step the injected tdiv ladder one detent → `SetTdiv` (routes ETS / native-fast / deep / envelope / roll automatically) |
-| CH1 V/DIV knob | `0x65`:14/15 | step `vIdx` → analog front-end `SetVdiv` (§9), off-bus |
-| CH2 V/DIV knob | `0x66`:6/7 | step `vIdx` → analog front-end `SetVdiv` (§9), off-bus |
-| CH1 POSITION knob | `0x64`:6/7 | step CH1 offset DAC code → `SetOffsetDAC(0, code)` (CS3, owner-flushed **with run-word re-assert**, §8.3) |
-| CH2 POSITION knob | `0x67`:6/7 | step CH2 offset DAC code → `SetOffsetDAC(1, code)` (CS3, owner-flushed **with run-word re-assert**, §8.3) |
-| TRIG LEVEL knob | `0x64`:14/15 | step level DAC code → `SetTrigLevel(code)` (CS3, owner-flushed as the **4-write quad + re-arm** at the Arm boundary, §8.4) |
-| RUN/STOP button | `0x65`:2 | toggle running → `SetRunning`; update LEDs |
-| SINGLE button | `0x65`:10 | enter NORM/arm (wait for a comparator edge) + running → `SetNorm(true)`+`SetRunning(true)`; update LEDs |
-| AUTO button | `0x67`:10 | return to AUTO free-run trigger mode + running → `SetNorm(false)`+`SetRunning(true)`; update LEDs |
-| SET TO 50% | `0x66`:2 | trigger level at the midpoint of the source channel's latest frame ((max+min)/2) |
-| FORCE | `0x67`:2 | complete the armed capture once without a trigger (`ForceTrigger`); shown even in NORMAL |
-| CH1 / CH2 POSITION push | `0x64`:1 / `0x67`:1 | offset back to 0 V |
-| HORIZ POSITION push | `0x67`:9 | trigger position back to screen centre; zoom pan to 0 |
+| TIME/DIV knob | `0x66`:14/15 | step the injected tdiv ladder → `SetTdiv`; zoomed: the zoom factor; a sheet: its tab |
+| TIME/DIV push (Zoom) | `0x66`:9 | zoom on (the last factor, 10× the first time) / off; BUS Packets: zoom onto the selected packet |
+| CH1 / CH2 V/DIV knob | `0x65`:14/15, `0x66`:6/7 | step `vIdx` → analog front-end `SetVdiv` (§9), off-bus |
+| CH1 / CH2 V/DIV push (Variable) | `0x65`:9, `0x66`:1 | a notice: the front end has only its 12 calibrated steps, no fine V/div |
+| CH1 / CH2 POSITION knob | `0x64`:6/7, `0x67`:6/7 | step the offset → `SetOffsetDAC(ch, code)` (owner-flushed **with run-word re-assert**, §8.3) |
+| CH1 / CH2 POSITION push (Zero) | `0x64`:1, `0x67`:1 | offset back to 0 V |
+| TRIG LEVEL knob | `0x64`:14/15 | step the level code → `SetTrigLevel(code)` (the **4-write quad + re-arm** at the Arm boundary, §8.4) |
+| TRIG LEVEL push (Zero) | `0x64`:9 | the level to 0 V |
+| RUN/STOP | `0x65`:2 | toggle running → `SetRunning` (a decoded stream: stop / restart it) |
+| SINGLE | `0x65`:10 | Normal, one triggered capture, then stop |
+| AUTO | `0x67`:10 | autoset (a second press cancels the sweep) |
+
+Workspace tools (no menu open):
+
+| Workspace | ADJUST | ADJUST push | HORIZ POSITION | HORIZ POSITION push |
+|---|---|---|---|---|
+| SCOPE | the last number set in a sheet (tagged in the bottom row), else the active cursor | open the sheet at that row | trigger position (zoomed: the zoom window) | centre |
+| BUS Packets | select a packet (zoomed: pan to it) | the byte picker (no bus: detect again) | the next / previous packet holding the match | back to the trigger |
+| BUS eye | the threshold cursor | clear the eye | the sample-point cursor | both cursors to the crossing and the eye centre |
+| SPECTRUM | the marker peak to peak (Bode: point to point) | a delta reference at the marker (again: off) | the marker bin by bin | the largest peak (Bode: follow the sweep) |
+| MEASURE | cursor A | cursors off / time / volts | cursor B | zero the statistics |
+| COMPARE | the row | the row's action (written at its right end) | trigger position | centre |
 
 Stepping conventions and constants:
 
@@ -369,15 +433,15 @@ Stepping conventions and constants:
   (dir=+1) → faster tdiv / smaller V/div, as the printed arcs show ("S ... nS", "V ... mV"; the
   opposite was a bug). The tdiv ladder + boot band are injected via the constructor (§2); the V/div
   ladder is in §9.
-- **POSITION / TRIG LEVEL are continuous**: apply `dir * step * magnitude`, clamp to the DAC's linear
-  region.
+- **POSITION / TRIG LEVEL / ADJUST / HORIZ POSITION are continuous**: apply `dir * step * magnitude`
+  (the acceleration of §5.3), clamped to the setting's range.
 
   **Offset (position) DAC** — the centre (0 V) seed is the **calibrated per-(channel, V/div) zero**: the
   cal RAM record field `+0x12` (i16 live offset-zero code, boot-default `0x27ef` = `10223`; with the
   boot-default cal table `+0x12` equals `+0x08` for every record — see calibration spec 10 / 06 §5.2). `10600` is only the
   **uncalibrated fallback** centre (the reference implementation still hardcodes `10600`; cal-RAM
-  wiring is an open item). `20` codes/accel-step, clamp `[9600, 11600]`; higher code → lower mean.
-  `nc = offCode[ch] + dir*20*steps`, clamped.
+  wiring is an open item). The knob steps 0.2 displayed divisions an accel-step at every V/div;
+  higher code → lower mean.
 
   **Trigger level DAC** — code assembled and written by the owner (§8.4). Constants (valid at
   1 V/div and 2 V/div):
@@ -385,23 +449,32 @@ Stepping conventions and constants:
   | Constant | Value | Meaning |
   |---|---|---|
   | `trigCenter` | `31434` (`0x7aca`) | 0 V threshold |
-  | `trigStep` | `40` codes / accel-step | ≈ 0.043 V/step @1 V/div |
+  | `trigStep` | `40` codes / accel-step at 1 V/div, scaled by the source's V/div | ≈ 0.043 V/step @1 V/div |
   | `trigMin` | `27000` (`0x6978`) | ≈ +4.7 V @1 V/div |
   | `trigMax` | `35000` (`0x88b8`) | ≈ −3.8 V @1 V/div |
   | slope | `−938` codes/V | **higher threshold → lower code** |
 
   Sign: CW (dir=+1) **raises** the level, which **lowers** the code:
-  `nc = trigCode − dir*40*steps`, clamped to `[trigMin, trigMax]`.
+  `nc = trigCode − dir*step*steps`, clamped to `[trigMin, trigMax]`.
 
 - **Startup discipline:** seed all shadow state to the inherited boot detents but drive **nothing** at
   startup (no front-end / offset / level write) — the inherited boot analog range and engine band
   stay untouched until the user turns a knob. The initial LED word (§8) is the one exception and is
   pushed at startup.
 
-**Partial / unwired bindings:** HORIZ POSITION, ADJUST, softkeys, §6.4 menu buttons, and CH1/CH2
-on/off are decoded but not all wired to engine state (no horizontal-position / menu plumbing yet).
-The AUTO button is bound to "return to AUTO free-run trigger mode", not a full autoscale. Unwired
-controls must be **claimed and ignored** so they cannot cross-drive another control.
+### 7.4 Remote control
+
+`/api/panel` injects a button or knob event by its physical name (§6, unchanged) and also takes typed
+entry into the LCD's current context (`{"type":{"text":"1.25V"}}`: the highlighted row, the byte
+picker or the match editor) or into a row by id (`{"set":{"row":"trig.level","text":"1.25V"}}`).
+`GET /api/sheets` is the whole settings model (tabs, rows with stable ids, kinds, options or ranges,
+values, availability, help); `POST /api/sheets/set` and `/api/sheets/action` change a row or run an
+action through the same setter as the knobs and F-keys, validated and clamped alike, answering
+`{ok, value, text, error}` with a readable error. A remote change never opens, moves or closes
+anything on the LCD; a one-line `REMOTE` note confirms it for 1.5 s (the SYS tab turns these off).
+`/api/status` carries the panel snapshot (workspace, view, sheet, F-key labels as drawn, tool line,
+notice, picker, lamp word, `Seq`) and `GET /api/panel/wait?seq=N&timeout_ms=T` long-polls it (at most
+10 s).
 
 ---
 
@@ -433,48 +506,35 @@ The `0x0b=0` leading strobe is required; omitting it means the latch never captu
 
 ### 8.2 Bit → LED map
 
-Established bits on this clone:
+The bit map is spec 02 §7.5 (the corroborated PCB wiring: `0x0010` CH1, `0x0020` MATH, `0x0040` CH2,
+`0x0080` REF, `0x0002` CURSORS, `0x0004` INTENSITY/ADJUST, the mid-byte menu lamps and the high-byte
+RUN/STOP/SINGLE bits). There is no TRIG'd lamp: trigger-armed is an on-screen indicator.
 
-| Bit | LED |
-|---|---|
-| `0x0004` | TRIG'd |
-| `0x0010` | CH2 |
-| `0x0020` | CH1 |
-| `0x0100` | MEASURE |
-| `0x0200` | ACQUIRE |
-| `0x0400` | DISPLAY |
-| `0x0800` | SAVE/RECALL |
-| `0x1000` | UTILITY |
-| `0x2000` | RUN (green element) |
-| `0x4000` | STOP (red element) |
-| `0x8000` | SINGLE |
+The panel drives nine lamps, each with one meaning — the key's function is in use — whether a sheet
+is open or not:
 
+| Bit | Lamp | Lit while |
+|---|---|---|
+| `0x0010` | CH1 | CH1's trace is shown |
+| `0x0040` | CH2 | CH2's trace is shown |
+| `0x0100` | MEASURE | readouts are on (one or more chosen) |
+| `0x0200` | ACQUIRE | the acquisition is not Normal, or super-res is on |
+| `0x0400` | DISPLAY | a view other than Y-T, or persistence |
+| `0x0800` | SAVE/RECALL | the settings are those last saved to or recalled from a setup slot |
+| `0x1000` | UTILITY | a bus is decoded |
+| `0x2000`/`0x4000` | RUN/STOP | green running, amber (both) waiting for a trigger (Normal or Single), red stopped |
+| `0x8000` | SINGLE | a single capture is armed |
+
+- CURSORS, MATH, REF and INTENSITY/ADJUST stay **dark**: only confirmed lamps are used, and those four
+  have no lamp-by-lamp confirmation on this board (§6.5 scan) beyond the map.
 - RUN/STOP is one bicolor LED: `0x2000` = green, `0x4000` = red; both set (`0x6000`) = amber.
-- The five menu LEDs (`0x0100..0x1000`) light the one matching the active menu.
 - Writing `0xFFFF` is a lamp-test (every LED on).
-- Typical state word: `CH1 | CH2` for enabled traces, plus `RUN(0x2000)` while running or
-  `STOP(0x4000)` while stopped, plus `SINGLE(0x8000)` in NORM/arm mode, plus the active menu bit. The
-  idle state is STOP (`0x4000`).
-- Set/clear the bit(s) in the shadow and flush once per change (not per bit) to avoid intermediate
-  visible states — the strobe latches the whole word.
-- This clone's low-byte wiring does **not** follow any presumed internal LED index order — use the
-  bits above, not an index guess.
-
-**Open (latch low byte `0x0001..0x0080`).** The low-byte lamp assignment is only partly resolved:
-
-- **Resolved (wire these):** `0x0004` = TRIG'd, `0x0010` = CH2, `0x0020` = CH1. These three are
-  corroborated by the control-plane implementation and match this map.
-- **Unresolved (do NOT wire yet):** CURSORS, MATH, REF, and INTENSITY/ADJUST. Two candidate low-byte
-  assignments exist and disagree on where CH1/CH2 sit versus MATH/REF (one reads `0x0002` = CURSORS,
-  `0x0004` = INTENSITY/ADJUST, `0x0010` = CH1, `0x0020` = MATH, `0x0040` = CH2, `0x0080` = REF, with
-  no TRIG'd bit). The one hard constraint: **`0x0020` cannot be both CH1 and MATH.** The three
-  resolved bits above are the ones corroborated by the shipping control plane; CURSORS/MATH/REF/
-  INTENSITY have no independent corroboration and stay unresolved.
-
-Re-capture the low byte one bit at a time (§6.5 scan) before wiring CURSORS/MATH/REF/INTENSITY lamps;
-do not populate them from an assumed LED-index table — that order does not hold on this board. The
-mid-byte menu LEDs (`0x0100..0x1000`) and the high-byte RUN/STOP/SINGLE bits (`0x2000/0x4000/0x8000`)
-agree across both maps and are settled.
+- The panel computes the word from the state, latches it only when it changes, and re-syncs it on its
+  40 ms tick, so the lamps follow engine-side changes (a single self-stopping, SCPI or the web
+  toggling run) without a key press. Set/clear the bit(s) in the shadow and flush once per change
+  (not per bit) to avoid intermediate visible states — the strobe latches the whole word.
+- This clone's wiring does **not** follow any presumed internal LED index order — use spec 02 §7.5,
+  not an index guess.
 
 **Trap:** this must be a single-owner flush like every other CS3 write. Treat a non-effect as harmless
 (on a differently-wired board the latch may be MCU-owned); either way it must never disturb the

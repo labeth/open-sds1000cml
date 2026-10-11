@@ -291,14 +291,14 @@ argument returns the §3.4 error token.
 |---|---|---|
 | Common (IEEE-488.2) | `*IDN?` `*RST` `*CLS` `*OPC` `*STB?` `*ESR?` `*ESE` `*SRE` `*WAI` `*TST?` `*CAL?` `*SAV` `*RCL` | `*RST` = Default Setup; `*SAV <n>`/`*RCL <n>` setup memory |
 | Comm / util | `CHDR ON\|OFF\|SHORT` `BUZZ ON\|OFF` `INR?` `CMR?` `ALST?` | header echo, buzzer, internal/comm/all status registers |
-| Channel (`Cn:…`) | `Cn:VDIV <v>` `Cn:OFST <v>` `Cn:CPL <enum>` `Cn:ATTN <x>` `Cn:BWL ON\|OFF` `Cn:TRA ON\|OFF` `Cn:UNIT <enum>` `Cn:SKEW <s>` `Cn:INVS ON\|OFF` | `n`∈{1,2}. `VDIV`/`OFST` in probe-tip volts like `TRLV` and `PAVA?` (`ATTN` 10: `VDIV 5` = the 0.5 V/div BNC range; sci/SI accepted). `CPL` coupling (`A1M`/`D1M`/`GND` form). `ATTN` probe factor. `BWL` 20 MHz limit. `TRA` trace, `INVS` invert |
+| Channel (`Cn:…`) | `Cn:VDIV <v>` `Cn:OFST <v>` `Cn:CPL <enum>` `Cn:ATTN <x>` `Cn:BWL ON\|OFF` `Cn:TRA ON\|OFF` `Cn:UNIT <enum>` `Cn:SKEW <s>` `Cn:INVS ON\|OFF` | `n`∈{1,2}. `VDIV`/`OFST` in probe-tip volts like `TRLV` and `PAVA?` (`ATTN` 10: `VDIV 5` = the 0.5 V/div BNC range; sci/SI accepted). `CPL` coupling (`A1M`/`D1M`/`GND` form). `ATTN` probe factor. `BWL` 20 MHz limit. `TRA` trace, `INVS` invert (the same shadow as the CH tabs' Invert row) |
 | Timebase | `TDIV <s>` `TRDL <s>` | seconds/div; trigger delay (position) |
 | Trigger | `TRMD <mode>` `TRSE <src>` `TRSL <slope>` `TRCP <cpl>` `TRLV <v>` `TRLV2 <v>` | `TRMD`∈{`AUTO`,`NORM`,`SINGLE`,`STOP`}; `TRSL`∈{`POS`,`NEG`,`WINDOW`}; `TRLV`/`TRLV2` level in volts |
 | Run-state verbs | `ARM` `STOP` `FRTR` `ASET` (`AUTO_SETUP`) | value-less momentary actions (no query form): arm/run, stop, force-trigger, auto-setup |
 | Acquire | `ACQW <mode>` `AVGA <n>` `SAST?` `SARA?` `SANU?` `XYDS ON\|OFF` | acq mode (sample/peak/average/eres); `AVGA` average count; X-Y display |
 | Waveform | `WFSU <pairs>` `Cn:WF? DAT2\|DESC` | §4 / §3.5 |
 | Measure / cursor | `PACU` `PAVA?` `CRMS` `CRVA?` `CRST` `MEAD?` | parameter/cursor measurement |
-| Display | `GRDS` `INTS` `PESU` `MENU` | grid / intensity / persistence / menu |
+| Display | `GRDS` `INTS` `PESU` `MENU` | grid / intensity / persistence / menu (`MENU ON` opens the workspace's settings sheet as Menu On/Off does, `OFF` closes a sheet or the byte picker; spec 08 §7.2) |
 | Save / recall | `*SAV` `*RCL` `PNSU` `STPN` `RCPN` | setups & panel memory |
 | Pass/Fail | `PFDD` `PFDS` `PFCT` `PFST` `PFSL` `PFCM` | mask test display/source/control/state/select/compare |
 | Hardcopy | `SCDP` `HCSU` | screen dump (§6), hardcopy setup |

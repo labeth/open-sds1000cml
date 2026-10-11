@@ -331,7 +331,9 @@ trace overlays it.
   `x = 0..799`.
 
 So the graticule is 10 horizontal divisions (matching the 10-division `WinCols`) × 8
-vertical divisions, with a brighter centre cross.
+vertical divisions, with a brighter centre cross. With the workspace UI the graticule spans the plot area the
+layout leaves (beside the 30-px rail, below a workspace's pane; §10.3) with the same 10 × 8
+divisions.
 
 ---
 
@@ -452,6 +454,13 @@ The same strip is drawn on both the trace and envelope paths.
 | `colOK` | `(0, 200, 0)` | liveness strip: fresh coherent frame |
 | `colStale` | `(220, 40, 40)` | liveness strip: held / wedged / dead |
 | `colSR` | `(53, 200, 232)` | super-res overlay and gate markers (cyan) |
+| `colMenuBg` | token `lcd-menu` `#080c1c` | sheet tab strip, pane header band, F-key column |
+| `colBoxBg` | token `lcd-box` `#060a16` | the sheet's side panel, the byte picker box, measurement boxes |
+| `colWarn` | token `warn` | warnings in the panes (a sample-limited eye) |
+| `colCursor` | token `cursor` | the eye diagram's sample-point and threshold cursors |
+
+The palette is generated into `lcd/palette_gen.go` from `web/tokens.json` (the source shared with
+the web UI); the values above that predate it are the defaults it replaced.
 
 ---
 
@@ -487,10 +496,10 @@ The same strip is drawn on both the trace and envelope paths.
 
 ---
 
-## 10. Overlay layer — HUD, cursors, softkey menu (reference layout)
+## 10. Overlay layer — HUD, cursors, task workspaces (reference layout)
 
 The minimal renderer of §§2–7 draws **graticule + trace/envelope + the 2-px liveness
-strip only**. The on-screen HUD read-outs, cursors, and softkey menu are a separate
+strip only**. The on-screen HUD read-outs, cursors, and the workspace UI (§10.3) are a separate
 **overlay** painted on top of the same back buffer, after the trace/envelope and before
 `Present`. The overlay is text-driven and uses a compact **5×7 bitmap font** (§10.0): at
 scale 1 a glyph cell is **5 px wide + 1 px inter-glyph space (advance 6 px)** and **7 px
@@ -601,7 +610,7 @@ when the measurement is valid**; otherwise the Vpp read-out stands alone.
 
 ### 10.2 Cursors
 
-Two vertical time cursors, off by default (toggled from the Cursor menu). When on, each
+Two vertical time cursors, off by default (the CURS tab, or the Adjust push in MEASURE). When on, each
 cursor is a **dashed vertical line** in orange `(255,160,32)`, one pixel every 3rd row
 from `y = 12` to `y = H-12 = 468`, at column `curX[i]`. Default positions are
 `curX = {W/3, 2W/3} = {266, 533}`. Each cursor is labelled `1`/`2` at `(curX[i]-2, H-20 =
@@ -609,16 +618,95 @@ from `y = 12` to `y = H-12 = 468`, at column `curX[i]`. Default positions are
 orange, where `dT = |curX[0]-curX[1]| / W × (10 × time/div)` and the `1/dT` term is
 appended only when `dT > 0`.
 
-### 10.3 Softkey menu column
+### 10.3 Task workspaces, settings sheets and the F-key column
 
-When a menu is open it paints a **right-edge column** starting at `x0 = W-84 = 716`,
-filled with `(15,19,27)` and a 1-px left border in `(68,85,102)`. The menu title sits at
-`(x0+8, 6)` in yellow `(255,255,64)`. Below it are **five softkey rows**, each `rowH =
-(H-28)/5 = 90` px tall, aligned to the five physical F1–F5 menu buttons (front-panel map,
-[08-front-panel.md](08-front-panel.md)). Row `i` (`i = 0..4`)
-draws a bordered cell `(51,68,85)` at `y = 28 + i×rowH`, an `F<i+1>` tag at `(x0+8, y+5)`
-in `(128,144,160)`, and the item label (`|`-separated lines, 11-px line pitch) from
-`(x0+8, y+18)` in `colInfo`.
+The panel's UI (spec 08 §7, ADR-TASK-WORKSPACES) is drawn by the overlay from a **view snapshot**
+(`panel/wsview.View`) the panel controller builds: plain data (texts, semantic colours, layout
+numbers), no logic. The renderer maps the semantic colours onto the generated palette (§8) and draws
+with flat 1-px lines and filled rectangles and the 5×7 font only; no colour is hard-coded (the
+channel colours are always `colC1`/`colC2`).
+
+**Layout.** With no menu open a **pictogram rail** 30 px wide occupies `x = 770..799` and the plot
+uses the freed width (`w = 770`); a workspace with a pane puts it under the top status row and the
+plot below it:
+
+| Workspace | Pane rows | Plot rows | Plot |
+|---|---|---|---|
+| SCOPE | none | full height (the trace mapping of §6.1) | the trace, X-Y |
+| BUS | `12..135` | `136..479` | the trace with the decode strip, or the eye diagram |
+| SPECTRUM | `12..149` | `150..479` | FFT, spectrogram or Bode |
+| MEASURE | `12..141` | `142..479` | the trace with cursors |
+| COMPARE | `12..103` | `104..479` | the trace with references, mask and math |
+
+Under a pane the eight vertical divisions span the plot exactly (graticule and trace mapping move
+together); the graticule is drawn across `w`, not 800. The bottom Vpp/f readouts and the measurement
+boxes give way where a pane shows the same figures.
+
+**Rail.** One 28×34 tab per F-key, vertically centred on the physical F1..F5 (the `softkeyY` row
+centres 80, 160, 240, 320, 410): a 22×14 pictogram (a wave; packets on a strip; spectral lines; two
+cursors and the distance between them; a wave in a dotted mask band) over a 4-letter tag (`SCOP BUS
+SPEC MEAS COMP`). The active tab is filled amber (`colTrig`) with dark content, the others outlined
+in `colGrid`. After a workspace key a one-line label (`F3 SPECTRUM   again: FFT / Spectrogram /
+Bode`) sits left of the rail beside that key for 1.6 s.
+
+**Pane.** A 12-px header band in `colMenuBg` at `y = 12` with the workspace's name in amber at
+`(4, 14)`, a caption, and a dim hint right-aligned; the pane body; a **tool line** at `plotTop − 12`
+naming the knobs' jobs (`Adjust: packet  push: pick bytes  Position: next match ...`) with the
+active key's next view in amber at its right end (`F2 again: Eye diagram`); an axis rule at
+`plotTop − 1`. SCOPE has no pane: its name sits in the top bar and the Adjust tag
+(`Adjust: Level 200mV`, amber while just turned) in the bottom row.
+
+- **BUS packets:** a fixed-column hex dump — the list number, a box of 16 hex cells (18-px pitch, a
+  6-px gap after the 8th), a separate left-aligned string box with the same bytes as text (`.` for
+  non-printables), the byte count and the match bytes in amber (cut packets say so, dim). Eight lines,
+  at most three per packet, scrolled to keep the selected packet (a `>` and a `colGrid` band) in view;
+  framing errors are `ER` cells in `colStale`. Under the trace the decode strip boxes the selected
+  packet in amber with its number and ticks the packets holding the match.
+- **Byte picker:** the pane framed in amber; the bytes at scale 2 in a window around the first byte
+  (filled amber), the next three underlined, a bar before each message start, `ERR` in `colStale`.
+- **Eye diagram:** the plot shows two UI around the bit centre (192 grid columns per UI, 2 px each,
+  768 px; labels `-1 UI -0.5 0 +0.5 +1 UI`), the 8 divisions in 2-px rows; the fold's density in four
+  shades mixed from the data line's channel colour over the screen colour; the eye opening as a dashed
+  amber box; the sample-point (`S`) and threshold (`T`) cursors dotted in `colCursor`. The pane has
+  a small live time trace and the figures (bit rate, UI, crossing, UI folded, eye height and width,
+  rise, fall, TIE rms and pk-pk, samples per UI, dt) with `<`/`>` on bounds when the edges fall
+  between samples, and a warning when sample-limited.
+- **SPECTRUM:** a small time trace, the peak table (frequency, level dBV, level against the top
+  peak, harmonic) in frequency order, a readout (top peak, THD), the marker line; the plot shows the
+  marker as a dotted amber line with a triangle on its level and a label, and a dim delta reference.
+- **MEASURE:** the statistics table (now, mean, min, max, sdev, N), or all values of both channels in
+  two columns, and the cursor block.
+- **COMPARE:** five rows (MASTER, REF A, REF B, MASK, MATH); the selected row's action is written at
+  its right end; a stacking master shows a progress bar.
+
+**Settings sheet.** Full screen (the trace is not drawn). A tab strip at `y = 12` (17 px, `colMenuBg`):
+the workspace's name, its own tabs, a double bar, the other tabs dim; the open tab filled amber;
+`< S/DIV >` right-aligned. Rows from `y = 34`, 17 px each (section headers 13 px), to `x = 470`: the
+label at `x = 12`; an enum row writes every option inline from `x = 110`, the current one filled
+amber (grey when it is Off or the row is not in use), a list too long for the row windowed around the
+current option with `<`/`>`; a number row shows its value and a range gauge; an action row its
+labelled buttons; a slot row its summary; the highlighted row has a `>` and a `colGrid` band (an
+amber frame and `EDIT` while editing). Rows not in use are dim. Under the rows the tab's live status
+(and the SYS tab's guide). Right of the rows (`x = 478`, 202 px) a **live mini view** (`y = 34`,
+158 px: the trace with the cursors, or the X-Y, FFT, Bode or spectrogram being shown, tagged `LIVE`,
+`WAIT` or `STOP`) above a panel explaining the highlighted row (its value large when it fits, help,
+range, the knob that also changes it, and the keys). A hint line at `y = 469` names the keys that
+move and close the sheet. The byte picker of the Match bytes row is a box under (or above) that row;
+the match editor is a full-screen keyboard left of the F-key column.
+
+**F-key column.** While a sheet, the byte picker or the match editor is open, a 116-px column at
+`x = 684` (`colMenuBg`, an amber rule on its left) from `y = 30` (12 for the picker) carries the
+menu's title and, on each F-key's row (`softkeyY − 7`), the choice's label over its value; the current
+choice, or the key just pressed (for 350 ms), is filled amber.
+
+**Notices.** A short notice (`AUTO: UART 115200 8N1 on C1, decode on`, `Trigger to centre`) is a
+boxed line centred on the plot for its duration; a remote change's `REMOTE  TRIG level 1.25V` line
+for 1.5 s; the autoset banner as before. All durations run on the panel controller's clock.
+
+**Cost.** The heavy analysis (decode, the eye fold, the spectrum, the measurements, the repeat test)
+runs once per published frame in the panel's `OnFrame`, called by the LCD loop before it builds the
+view; the renderer only draws. The repaint signature includes a fingerprint of the view, so a held
+display is redrawn exactly when something on it changed.
 
 ### 10.4 C2 (second-channel) envelope
 
