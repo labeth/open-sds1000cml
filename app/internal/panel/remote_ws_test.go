@@ -144,6 +144,29 @@ func TestRemoteWorkspaceClosesTheBusPicker(t *testing.T) {
 	}
 }
 
+// While Autoset sweeps, the workspace keys wait (as the panel's keys do):
+// COMPARE's again would start averaging under the sweep.
+// TRLC-LINKS: REQ-SDS-137, REQ-SDS-220
+func TestRemoteWorkspaceWaitsForAutoset(t *testing.T) {
+	c, eng, _ := newC(t)
+	c.RemoteWorkspace("compare")
+	c.mu.Lock()
+	c.autosetBusy = true
+	c.mu.Unlock()
+	if res := c.RemoteAgain(); res.OK || !strings.Contains(res.Error, "Autoset is running") || eng.Snapshot().AcqMode != 0 {
+		t.Fatalf("again during autoset: %+v (acq %d)", res, eng.Snapshot().AcqMode)
+	}
+	if res := c.RemoteWorkspace("bus"); res.OK || c.PanelStatus().Workspace != "COMPARE" {
+		t.Fatalf("a switch during autoset: %+v in %s", res, c.PanelStatus().Workspace)
+	}
+	c.mu.Lock()
+	c.autosetBusy = false
+	c.mu.Unlock()
+	if res := c.RemoteWorkspace("bus"); !res.OK {
+		t.Fatalf("after autoset: %+v", res)
+	}
+}
+
 // The remote's workspace keys run on the panel loop like its other changes.
 // TRLC-LINKS: REQ-SDS-220
 func TestRemoteWorkspaceOnThePanelLoop(t *testing.T) {

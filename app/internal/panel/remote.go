@@ -533,9 +533,16 @@ func (c *Controller) RemoteWorkspace(name string) SetResult {
 	return res
 }
 
+// autosetRefusal: while Autoset sweeps, the workspace keys wait, as the
+// panel's keys do (its acquisitions are not to be raced).
+const autosetRefusal = "Autoset is running: the workspace keys wait until it is done"
+
 // remoteWorkspace is RemoteWorkspace on the panel goroutine.
 // TRLC-LINKS: REQ-SDS-211, REQ-SDS-220
 func (c *Controller) remoteWorkspace(ws wsview.WS) SetResult {
+	if c.AutosetBusy() {
+		return SetResult{Row: "workspace", Error: autosetRefusal}
+	}
 	defer c.afterInput()
 	c.mu.Lock()
 	cur := c.ui.ws
@@ -565,6 +572,9 @@ func (c *Controller) RemoteAgain() SetResult {
 // remoteAgain is RemoteAgain on the panel goroutine.
 // TRLC-LINKS: REQ-SDS-211, REQ-SDS-218, REQ-SDS-220
 func (c *Controller) remoteAgain() SetResult {
+	if c.AutosetBusy() {
+		return SetResult{Row: "again", Error: autosetRefusal}
+	}
 	defer c.afterInput()
 	c.mu.Lock()
 	ws, stacking := c.ui.ws, c.stack != nil
