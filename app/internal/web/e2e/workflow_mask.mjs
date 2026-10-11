@@ -43,7 +43,7 @@ export const maskv = [
   { id: "M5", name: "Mask test: build a golden mask from live frames, enable counting", run: async (op) => {
     await op.autosetStable(1);
     // Align the mask to the pulse channel, not the occasional C2 marker.
-    if (!(await op.readText("source")).includes("C1")) await op.click("source");
+    await op.selectExpect("source", "0", null, { why: "trigger on the pulse channel C1" });
     await op.setBand(100e-6);
     await op.fill("zmN", "24", { why: "build from 24 frames" });
     await op.clickExpect("zmBuild", async () => {
@@ -104,14 +104,15 @@ export const maskv = [
   // TRLC-LINKS: REQ-SDS-208
   { id: "M9", name: "Switch the trigger source to C2 and back, still acquiring", run: async (op) => {
     await op.autosetStable(1);
-    const initial = (await op.readText("source")).trim();
-    const other = initial.includes("C1") ? "C2" : "C1";
-    await op.clickExpect("source", async () => (await op.readText("source")).includes(other),
-      { why: "trigger-source button switches channels" });
+    const initial = await op.page.evaluate(() => document.getElementById("source").value);
+    const other = initial === "0" ? "1" : "0";
+    await op.selectExpect("source", other, async () => (await op.readText("source")) === (other === "0" ? "C1" : "C2"),
+      { why: "the strip's trigger-source choice switches channels" });
     await op.page.waitForTimeout(1200);
     assert((await op.status()).running, "scope stopped after switching trigger source");
-    await op.clickExpect("source", async () => (await op.readText("source")).trim() === initial,
-      { why: "trigger-source button returns to the initial channel" });
+    assert((await op.readText("source")) === (other === "0" ? "C1" : "C2"), "the scope did not keep the new trigger source");
+    await op.selectExpect("source", initial, async () => (await op.readText("source")) === (initial === "0" ? "C1" : "C2"),
+      { why: "the trigger source returns to the initial channel" });
   }},
   // TRLC-LINKS: REQ-SDS-208
   { id: "M10", name: "Set a trigger holdoff shorter than the period and stay locked", run: async (op) => {

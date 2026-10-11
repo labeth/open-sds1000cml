@@ -30,21 +30,31 @@ not retried).
 
 `operator.mjs` primitives assert every control ACTUALLY responded and THROW
 with a precise message otherwise — that is how UX/root-cause issues surface.
-Results are read from the rendered DOM (`#measBody`, decode text, `#ejBody`,
-`#zmMeter`) or the device LCD PNG.
+Results are read from the rendered DOM (measurement cells carry
+`data-meas="<ch>:<key>"`, the decode transcript, BUS's packet table and
+`#ejBody`, SPECTRUM's `#fftBody`/`#roBody`, `#zmMeter`) or the device LCD PNG.
+
+The web UI is five task workspaces (SCOPE, BUS, SPECTRUM, MEASURE, COMPARE)
+over a fixed instrument strip. A primitive first brings its control on screen
+the way an operator does (workspace tab, pane, view — `revealControl`, what
+All settings' arrows use); `op.ws(id)` clicks a workspace tab, `op.topPeak(ch)`
+reads SPECTRUM's largest peak, `op.eyeOn(ch)` opens BUS's eye view on a
+channel, `op.eyeRow(name)` reads an eye/jitter figure.
 
 ## Note on sources
 
-100 workflows across 6 sources:
+105 workflows across 6 sources:
 
-    tone1M   22   1 MHz square — measure/trigger/view/FFT/cursors/math/superres/
-                  coupling/probe/help/single/freeze/persist/zoom/panel
+    tone1M   25   1 MHz square — measure/trigger/view/FFT/cursors/math/superres/
+                  coupling/probe/help/single/freeze/persist/zoom/pane maximize/
+                  harmonics + THD/statistics/stacked master + mask
     prbs2M   24   PRBS7 + clock — eye/jitter/big-views/two-channel/math/X-Y/refs/
                   superres/AVERAGE/ERES/spectrum
     spi      20   SPI Mode 0 — decode (hex/auto/bit-order)/cursors/refs/math/zoom/
                   coupling/peak-detect/measurements
     maskviol 12   pulse train + width violation — pulse measure/trigger/mask/zone
-    uart     10   UART 8N1 115200 — decode transcript/hex/ASCII/auto/C2/wrong-baud
+    uart     12   UART 8N1 115200 — decode transcript/hex/ASCII/auto/C2/wrong-baud/
+                  BUS entry detection/packet table (hex + string, holds still, zoom)
     burst    12   50/150/250 MHz stepped burst — FFT/superres/zone/persist/envelope
 
 88 (all but maskviol) are rock-solid. maskviol drives a very-low-duty pulse
@@ -74,6 +84,20 @@ a screenshot each; the run continues so one pass surfaces the population.
 
     ITERS=200 SEED=42 OUT=/tmp/fuzz node fuzz.mjs
     ITERS=19  SEED=42 DEBUG_AT=19 node fuzz.mjs   # replay to a finding with layout diagnostics
+    FUZZ_STACK=1 ...                              # page errors recorded with their stacks
+
+The palette drives the workspaces too: tab switches, a workspace's key again
+(not COMPARE's, which stacks a master), the Y/X/F view letters, SPECTRUM/BUS/
+MEASURE view choices, pane collapse and maximize, All settings and help.
+Segmented choices (coupling, probe, trigger source/slope/mode, acquisition,
+decode format…) are clicked; a control in another workspace is revealed first.
+The CI lane (`TestFuzzBrowserSynthetic`) runs 60 iterations of seed 1 against a
+synthetic scope; `FUZZ_ITERS`/`FUZZ_SEED` run longer hunts.
+
+The workspace palette's first hunts found a reference placed by time under a
+much faster timebase (1 ns/div) dashing millions of off-screen segments until the
+GL vertex buffer could not grow ("Array buffer allocation failed"); dashed
+segments are now clipped to the canvas and the buffer flushes past 16 MB.
 
 Bugs found by the first 200-iteration run (both fixed):
   * peakNyq() crashed on frames lacking a per-sample channel array (channel

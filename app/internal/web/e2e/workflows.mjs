@@ -1,4 +1,4 @@
-// 100 end-to-end operator workflows. Each mimics a real task: an FPGA source
+// 105 end-to-end operator workflows. Each mimics a real task: an FPGA source
 // drives the scope, the operator drives the GUI / hard buttons, and reads the
 // RESULT off the screen. `source` names the FPGA config that must be flashed
 // (see e2e/README for the flash command per source).
