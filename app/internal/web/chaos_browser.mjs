@@ -1,6 +1,7 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-WEB
 // Browser chaos monkey (argv[2]=URL, argv[3]=seed, argv[4]=actions).
-// Randomly pokes every interactive control, drags/wheels/keys the scope
+// Randomly pokes the interactive controls on screen — the workspace tabs and
+// keys bring every workspace's panes in turn — drags/wheels/keys the scope
 // canvas, and flips modes as fast as the UI allows. ANY pageerror or
 // unhandled rejection is a bug (each one is a broken UI state a user can
 // reach); at the end the render loop must still be alive (seq advancing).
@@ -39,29 +40,33 @@ try {
   await page.goto(URL, { waitUntil: "domcontentloaded", timeout: 15000 });
   await page.waitForFunction(() => typeof frame !== "undefined" && frame && frame.c1 && frame.c1.length > 0, null, { timeout: 15000 });
 
-  const box = await (await page.$("#scope")).boundingBox();
-  const keys = ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "+", "-", "Escape", "Home", "f", "z", " "];
+  // the scope moves between workspaces: measure it where it is now
+  // TRLC-LINKS: REQ-SDS-180
+  const scopeBox = async () => (await (await page.$("#scope")).boundingBox()) || { x: 0, y: 0, width: 1, height: 1 };
+  // Alt+1..4 switch workspaces (COMPARE again would stack a master)
+  const keys = ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "+", "-", "Escape", "Home", "f", "z", " ", "Alt+1", "Alt+2", "Alt+3", "Alt+4"];
 
   for (let i = 0; i < ACTIONS; i++) {
     const kind = rnd();
     try {
       if (kind < 0.30) { // click a random button
-        const btns = await page.$$("button:not([disabled])");
+        const btns = await page.$$("button:not([disabled]):visible");
         if (btns.length) await pick(btns).click({ timeout: 700, force: true });
       } else if (kind < 0.45) { // random select option
-        const sels = await page.$$("select");
+        const sels = await page.$$("select:visible");
         if (sels.length) {
           const sel = pick(sels);
           const opts = await sel.$$eval("option", os => os.map(o => o.value));
           if (opts.length) await sel.selectOption(pick(opts), { timeout: 700 });
         }
       } else if (kind < 0.58) { // random number input
-        const ins = await page.$$('input[type="number"]');
+        const ins = await page.$$('input[type="number"]:visible');
         if (ins.length) {
           const v = pick(["0", "-1", "1e9", "3", "255", "0.0001", "-42", "99999"]);
           await pick(ins).fill(v, { timeout: 700 });
         }
       } else if (kind < 0.78) { // pointer gesture on the scope canvas
+        const box = await scopeBox();
         const x0 = box.x + rnd() * box.width, y0 = box.y + rnd() * box.height;
         const x1 = box.x + rnd() * box.width, y1 = box.y + rnd() * box.height;
         await page.mouse.move(x0, y0);
@@ -78,6 +83,7 @@ try {
         await page.keyboard.press(pick(keys));
       } else { // shift/ctrl-modified canvas click (cursors etc.)
         const mod = rnd() < 0.5 ? "Shift" : "Control";
+        const box = await scopeBox();
         await page.keyboard.down(mod);
         await page.mouse.click(box.x + rnd() * box.width, box.y + rnd() * box.height);
         await page.keyboard.up(mod);

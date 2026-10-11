@@ -46,7 +46,7 @@ const WS_LAYOUT = {
     lc([lp("p-peaks", 360, { grow: true }), lp("p-readout", 300)], SIDE, { minW: 330 })]),
   measure: () => lr([
     lc([lp("p-meas-scope", 400, { grow: true, min: 200 }), lp("p-stats", 300, { minW: 440, min: 120 })], 900, { grow: true }),
-    lc([lp("p-cursors", 168), lp("p-mask", 300, { grow: true }), lp("p-acq", 196), lp("p-sr", 330, { collapsed: true }), lp("p-prec", 230, { collapsed: true })], SIDE, { minW: 330 })]),
+    lc([lp("p-cursors", 218), lp("p-mask", 300, { grow: true }), lp("p-acq", 196), lp("p-sr", 330, { collapsed: true }), lp("p-prec", 230, { collapsed: true })], SIDE, { minW: 330 })]),
   compare: () => lr([
     lc([lp("p-cmp-scope", 500, { grow: true, min: 200 }), lp("p-diff", 150, { minW: 380, min: 100 })], 900, { grow: true }),
     lc([lp("p-refs", 222), lp("p-math", 104), lp("p-mask", 300, { grow: true })], SIDE, { minW: 330 })]),
