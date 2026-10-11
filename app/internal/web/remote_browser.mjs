@@ -326,6 +326,48 @@ run(async (t) => {
     const lcd = await ctrl("/status");
     P.ok(lcd.Mode === "sheet" && lcd.Sheet.Tab === "bus", "Default Setup from the phone left the LCD's BUS sheet open");
     await ctrl("/button?name=utility");
+
+    // the dock: Run/Stop, Single and Auto act as the scope's keys and show its state
+    await P.until(async () => (await ctrl("/engine")).running && /^(running|waiting)$/.test(await P.text("#runstop .sub")), "the dock says the scope runs");
+    await P.tap("#runstop");
+    await P.until(async () => !(await ctrl("/engine")).running && (await P.text("#runstop .sub")) === "stopped", "Run/Stop stops the scope, and the dock says so");
+    await P.tap("#single");
+    await P.until(async () => /^(armed|done)$/.test(await P.text("#single .sub")), "Single arms one shot: " + await P.text("#single .sub"));
+    await P.tap("#auto");
+    await P.until(async () => { const e = await ctrl("/engine"); return e.running && !e.norm; }, "Auto runs autoset (on this rig without frames: running, Auto trigger)");
+    await P.until(async () => /^Autoset/.test(await P.toast()), "and says so");
+
+    // Keys: the pushes act as the scope's, the knob jobs turn, a menu key opens the phone's page
+    const zero = (s) => /^-?0\s*m?V$/.test(s || "");
+    await P.tap('[data-tabbar="home"]');
+    await P.tap('[data-tile="trig.level"] [data-q="cw"]');
+    await P.tap('[data-tile="ch1.offset"] [data-q="cw"]');
+    await P.until(async () => { const r = await rows(); return !zero(r["trig.level"].Text) && !zero(r["ch1.offset"].Text); }, "the level and CH1's offset off 0 V");
+    await P.tap('[data-tabbar="keys"]');
+    await P.tap('[data-k="triglvlpush"]');
+    await P.until(async () => zero((await rows())["trig.level"].Text), "Level push puts the level to 0 V");
+    await P.tap('[data-k="ch1pospush"]');
+    await P.until(async () => zero((await rows())["ch1.offset"].Text), "CH1 Position push puts the offset to 0 V");
+    const zoom0 = (await rows())["time.zoom"].Value;
+    await P.tap('[data-k="tdivpush"]');
+    await P.until(async () => (await rows())["time.zoom"].Value !== zoom0, "S/DIV push turns Zoom on");
+    await P.tap('[data-k="tdivpush"]');
+    await P.until(async () => (await rows())["time.zoom"].Value === zoom0, "and off again");
+    const pos0 = (await rows())["time.trig_pos"].Text;
+    await P.tap('[data-knob="horizpos"][data-q="cw"]');
+    await P.until(async () => (await rows())["time.trig_pos"].Text !== pos0, "the Position knob moves the trigger position (" + pos0 + ")");
+    await P.tap('[data-knob="horizpos"][data-push]');
+    await P.until(async () => (await rows())["time.trig_pos"].Text === pos0, "its push centres it again");
+    // each key's own answer (the toast cleared first): the phone's confirmation, or the scope's notice
+    for (const [k, said] of [["force", /^Forced a trigger$/], ["set50", /^Level set to 50 %$/], ["print", /^(Print: the scope saves a screenshot|PRINT: .+)$/],
+      ["ch1vdivpush", /^CH1 Variable: no fine V\/div/]]) {
+      await page.evaluate(() => { const e = document.querySelector(".toast"); if (e) { e.hidden = true; e.textContent = ""; } });
+      await P.tap(`[data-k="${k}"]`);
+      await P.until(async () => said.test(await P.toast()), "the " + k + " key answers");
+    }
+    await P.tap('[data-k="menu:trigmenu"]');
+    await P.until(() => P.visible('.mbody [data-row="trig.holdoff"]'), "Trig Menu opens TRIG here");
+    P.ok(await lcdClosed(), "the keys and knobs left no menu open on the LCD");
     const ks = await P.text("#keep-awake small"), fs = await P.text("#fullscreen small");
     P.ok(/^(awake: wake lock|awake: video|off: tap to keep awake)/.test(ks), "keep awake says its state: " + ks);
     if (opts && opts.noWakeLock) {
