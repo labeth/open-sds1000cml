@@ -95,7 +95,7 @@ svg { flex: none; }
 .wsa > span { grid-row: 1; min-width: 0; font: 500 var(--fs-sm)/17px var(--sans); color: var(--on-fg); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* ---- the connection banner ---- */
-.banner { flex: none; display: flex; align-items: center; gap: 8px; min-height: 36px; padding: 6px 16px; background: color-mix(in srgb, var(--warn) 16%, var(--bg)); border-bottom: 1px solid var(--warn); color: var(--warn); font: 600 var(--fs-sm)/1.3 var(--sans); }
+.banner { flex: none; display: flex; align-items: center; gap: 8px; min-height: 36px; padding: 6px 16px; background: var(--panel); background: color-mix(in srgb, var(--warn) 16%, var(--bg)); border-bottom: 1px solid var(--warn); color: var(--warn); font: 600 var(--fs-sm)/1.3 var(--sans); }
 .banner .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--warn); animation: pulse 1s ease-in-out infinite alternate; }
 @keyframes pulse { from { opacity: 1; } to { opacity: .25; } }
 
