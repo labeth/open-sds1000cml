@@ -118,6 +118,8 @@ function glRenderer(canvas) {
   // TRLC-LINKS: REQ-SDS-071
   function ensure(floats) {
     if (vN + floats <= verts.length) return;
+    // past 16 MB of vertices, draw what is queued instead of growing further
+    if (vN && vN + floats > (1 << 22)) { flush(); if (floats <= verts.length) return; }
     let cap = verts.length; while (vN + floats > cap) cap <<= 1;
     const nv = new Float32Array(cap); nv.set(verts.subarray(0, vN)); verts = nv;
   }
@@ -230,14 +232,28 @@ function glRenderer(canvas) {
       R.line(pts[i - 2], pts[i - 1], pts[i], pts[i + 1], col, wOpt);
     }
   };
+  // Dashes go only where the segment can be seen: it is clipped to the canvas
+  // (device space, with a margin) first. A segment reaching far off screen — a
+  // reference placed by time under a much faster timebase — would otherwise
+  // make millions of dashes and exhaust the vertex buffer.
   // TRLC-LINKS: REQ-SDS-071
   R.dashedLine = function (x0, y0, x1, y1, col, on, off, wOpt) {
     const len = Math.hypot(x1 - x0, y1 - y0) || 1, ux = (x1 - x0) / len, uy = (y1 - y0) / len;
-    let d = 0;
-    while (d < len) {
+    const p0 = tx(x0, y0), p1 = tx(x1, y1), M = 64, dx = p1[0] - p0[0], dy = p1[1] - p0[1];
+    let t0 = 0, t1 = 1; // Liang–Barsky against [-M, w+M] × [-M, h+M]
+    for (const [p, q] of [[-dx, p0[0] + M], [dx, R.w + M - p0[0]], [-dy, p0[1] + M], [dy, R.h + M - p0[1]]]) {
+      if (p === 0) { if (q < 0) return; continue; }
+      const r = q / p;
+      if (p < 0) { if (r > t1) return; if (r > t0) t0 = r; } else { if (r < t0) return; if (r < t1) t1 = r; }
+    }
+    const per = on + off, end = t1 * len;
+    if (!(per > 0)) return;
+    let d = Math.floor(t0 * len / per) * per; // keep the dash phase of the whole segment
+    if ((end - d) / per > 1e5) { R.line(x0 + ux * d, y0 + uy * d, x0 + ux * end, y0 + uy * end, col, wOpt); return; }
+    while (d < end) {
       const a = d, b = Math.min(len, d + on);
       R.line(x0 + ux * a, y0 + uy * a, x0 + ux * b, y0 + uy * b, col, wOpt);
-      d += on + off;
+      d += per;
     }
   };
   // TRLC-LINKS: REQ-SDS-071
