@@ -241,7 +241,8 @@ $("eWAV").onclick = () => {
 // TRLC-LINKS: REQ-SDS-069
 $("ePrint").onclick = async () => {
   popClose();
-  toast((await panelPress("print")) ? "The scope is saving a screenshot of its screen (PRINT)" : "Device screenshot is not available on this server", "warn");
+  if (await panelPress("print")) toast("The scope is saving a screenshot of its screen (PRINT)");
+  else toast("Device screenshot is not available on this server", "warn");
 };
 // TRLC-LINKS: REQ-SDS-069
 $("exportBtn").onclick = () => popToggle($("exportpop"), $("exportBtn"));
