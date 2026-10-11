@@ -238,7 +238,7 @@
       bar.append(backB, ttl, awakeB, fsB);
       return;
     }
-    if (S.tab === "menus") setTitle("Menus", "Every setting " + DOT + " long press to pin it to Home");
+    if (S.tab === "menus") setTitle("Menus", "Every setting " + DOT + " long press to pin");
     else if (S.tab === "hist") setTitle("History", n ? n + (n === 1 ? " change" : " changes") + ", kept on this phone" : "Every change, newest first");
     else setTitle("Keys", "Pushes, keys and the phone");
     bar.append(ttl, awakeB, fsB);

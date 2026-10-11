@@ -392,6 +392,13 @@ run(async (t) => {
     await P.shot("home-measure");
     await P.tap('[data-tabbar="menus"]');
     await layout(P, "Menus");
+    await P.shot("menus");
+    await P.page.locator("#search").fill("coupling");
+    await P.until(() => P.visible('.mbody [data-row="ch2.coupling"]'), "search: coupling");
+    await layout(P, "search results");
+    await P.shot("menus-search");
+    await P.page.locator("#search").fill("");
+    await P.until(() => P.visible('[data-tab="file"]'), "an empty search shows the tabs again");
     await P.tap('[data-tab="file"]');
     await layout(P, "FILE page");
     await P.shot("menus-file");
@@ -407,6 +414,11 @@ run(async (t) => {
     await P.tap('[data-tabbar="hist"]');
     await layout(P, "History");
     await P.shot("history");
+    await P.tap(".hent:last-child .hmain");
+    await P.until(() => P.visible('.sheet [data-sheet="hist"]'), "an entry opens its details");
+    await layout(P, "history entry sheet");
+    await P.shot("sheet-history");
+    await P.tap(".sheet-close");
     await P.tap('[data-tabbar="keys"]');
     await layout(P, "Keys");
     await P.shot("keys");
@@ -419,6 +431,11 @@ run(async (t) => {
     await P.until(() => P.visible("#add-tile"), "a long press edits the tiles");
     await layout(P, "edit tiles");
     await P.shot("home-edit");
+    await P.tap("#add-tile");
+    await P.until(() => P.visible('.sheet [data-sheet="add"] [data-add]'), "Add a tile lists the settings");
+    await layout(P, "add sheet");
+    await P.shot("sheet-add");
+    await P.tap(".sheet-close");
     await P.tap("#edit-done");
     t.ok(P.errors.length === 0, label + ": no console errors" + (P.errors.length ? " - " + P.errors.slice(0, 3).join(" | ") : ""));
     await P.ctx.close();

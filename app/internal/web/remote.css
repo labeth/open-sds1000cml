@@ -81,6 +81,9 @@ svg { flex: none; }
 .ib.bad { color: var(--warn); }
 .ib[aria-pressed="true"] { background: transparent; border-color: transparent; color: var(--run); }
 .back { flex: none; min-height: 44px; padding: 0 10px 0 2px; gap: 0; color: var(--on-fg); }
+/* a narrow phone: the back key is its chevron, and Home leaves fullscreen to the other tabs, so the five chips keep 44 px */
+@media (max-width: 379px) { .back { width: 44px; padding: 0; } .back .lbl { display: none; } }
+@media (max-width: 349px) { .bar.home #fs { display: none; } }
 .wsw { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .wss { display: flex; gap: 4px; min-width: 0; }
 .wsb {
@@ -167,13 +170,13 @@ svg { flex: none; }
 .sbox .field-input:focus-visible { outline: none; }
 .mbody { padding-bottom: var(--kb); }
 .mbody > .sec { padding: 10px 16px 6px; }
-.tabs { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 6px; padding: 0 12px 6px; }
+.tabs { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 6px; padding: 0 12px 6px; }
 .tabc {
   min-width: 0; min-height: 52px; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 2px; padding: 4px 10px;
   border-radius: var(--r); border: 1px solid var(--edge); background: var(--panel); color: var(--text); text-align: left;
 }
 .tabc b { max-width: 100%; font: 600 var(--fs)/1.15 var(--sans); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.tabc span { max-width: 100%; font: 400 var(--fs-sm)/1.15 var(--sans); color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tabc span { max-width: 100%; font: 400 var(--fs-sm)/1.2 var(--sans); color: var(--dim); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
 .tabc.own { border-left: 4px solid var(--trigger); }
 .tabc.down { background: var(--well); }
 .list { display: flex; flex-direction: column; padding-bottom: 16px; }
@@ -188,7 +191,9 @@ svg { flex: none; }
 .cl b { font: 500 var(--fs)/1.25 var(--sans); }
 .cl small { font: 400 var(--fs-sm)/1.3 var(--sans); color: var(--dim); }
 .cl small:empty { display: none; }
-.cv { flex: none; max-width: 48%; font: 500 var(--fs)/1.2 var(--mono); color: var(--trigger); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cv { flex: none; max-width: 64%; font: 500 var(--fs)/1.2 var(--mono); color: var(--trigger); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* a label with a second line keeps half the row */
+.cell:has(> .cl > small:not(:empty)) > .cv { max-width: 48%; }
 .cell.off .cl b, .cell.off .cv { color: var(--dim); }
 .cell > svg, .cm > svg { flex: none; width: 18px; height: 18px; color: var(--dim); }
 .cm { flex: 1 1 auto; min-width: 0; min-height: 48px; display: flex; align-items: center; gap: 8px; padding: 0 4px 0 0; border: 0; border-radius: var(--r-sm); background: transparent; color: inherit; text-align: left; }
