@@ -76,9 +76,34 @@ func vline(sf Surface, x, y0, y1 int, c uint16) {
 	if y0 > y1 {
 		return
 	}
-	px := unsafe.Slice((*uint16)(unsafe.Pointer(&m.Pix[0])), W*H) // RGB565 LE = native on ARM/amd64
+	px := m.px()
 	for o := y0*W + x; y0 <= y1; y0, o = y0+1, o+W {
 		px[o] = c
+	}
+}
+
+// px is the surface's pixels as RGB565 words (little-endian, native on ARM
+// and amd64).
+// TRLC-LINKS: REQ-SDS-021
+func (m *MemSurface) px() []uint16 { return unsafe.Slice((*uint16)(unsafe.Pointer(&m.Pix[0])), W*H) }
+
+// fillSpan fills rows [y0,y1) of columns [x0,x1) of a MemSurface, clipped:
+// the sheets, panes and the F-key column fill most of the screen, which
+// pixel by pixel cost most of a frame.
+// TRLC-LINKS: REQ-SDS-021
+func (m *MemSurface) fillSpan(x0, y0, x1, y1 int, c uint16) {
+	x0, x1 = max(x0, 0), min(x1, W)
+	y0, y1 = max(y0, 0), min(y1, H)
+	if x0 >= x1 || y0 >= y1 {
+		return
+	}
+	px := m.px()
+	row := px[y0*W+x0 : y0*W+x1]
+	for i := range row {
+		row[i] = c
+	}
+	for y := y0 + 1; y < y1; y++ {
+		copy(px[y*W+x0:y*W+x1], row)
 	}
 }
 

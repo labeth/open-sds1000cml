@@ -179,6 +179,10 @@ func drawGraticule(sf Surface, p plotArea) {
 // hline draws row y from x0 to x1 inclusive.
 // TRLC-LINKS: REQ-SDS-021
 func hline(sf Surface, x0, x1, y int, c uint16) {
+	if m, ok := sf.(*MemSurface); ok {
+		m.fillSpan(x0, y, x1+1, y+1, c)
+		return
+	}
 	for x := x0; x <= x1; x++ {
 		sf.SetPixel(x, y, c)
 	}
@@ -469,6 +473,10 @@ var (
 // fillRect paints a solid rectangle (clipped to the surface).
 // TRLC-LINKS: REQ-SDS-021
 func fillRect(sf Surface, x, y, w, h int, c uint16) {
+	if m, ok := sf.(*MemSurface); ok {
+		m.fillSpan(x, y, x+w, y+h, c)
+		return
+	}
 	for yy := y; yy < y+h; yy++ {
 		for xx := x; xx < x+w; xx++ {
 			sf.SetPixel(xx, yy, c)

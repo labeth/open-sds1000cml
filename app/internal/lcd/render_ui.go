@@ -3,7 +3,6 @@ package lcd
 
 import (
 	"math"
-	"strings"
 
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/panel/framecalc"
@@ -1348,14 +1347,4 @@ func drawThumbBode(sf Surface, hud HUD, x0, y0, w, h int) {
 		pb := y0 + 1 + int(math.Min(math.Max(-hud.BodePhase[i]/180, 0), 1)*float64(h-3))
 		drawLine(sf, xOf(i-1), pa, xOf(i), pb, colC2)
 	}
-}
-
-// stripCtl drops control characters a value text could carry.
-func stripCtl(s string) string {
-	return strings.Map(func(r rune) rune {
-		if r < 32 || r > 126 {
-			return '.'
-		}
-		return r
-	}, s)
 }
