@@ -87,7 +87,7 @@ exports. All waveforms and readouts are from the connected signal.</sub>
   samples while in use.
 * **Roll mode.** In AUTO at 10 ms/div and slower the view scrolls instead of waiting for a
   trigger. By default it is built from back-to-back decimated captures, so a timebase change
-  responds at once (short gaps hold the last value). HORIZ F4 (web: ROLL STREAM) switches to
+  responds at once (short gaps hold the last value). HORIZ F4 (web: SCOPE, Horizontal, Roll: Stream) switches to
   **gap-free streaming** on the FPGA `stream` image: every averaged (or min/max) sample reaches
   the ARM, at up to 978,000 samples/s per channel (decimation ×512, 3.9 MB/s; the bus carries
   about 5.1 MB/s). The scope's 2 MiB SRAM buffers the stream, so the ARM can stall for about
@@ -161,7 +161,13 @@ automatically.
 
 ## Connect and control
 
-* **Web UI** on port 8080 in any browser, with WebGL rendering and every feature above.
+* **Web UI** on port 8080 in any browser, with WebGL rendering and every feature above. It is laid
+  out as the scope's five task workspaces: SCOPE, BUS (decode with a packet table, trigger on bytes,
+  eye diagram), SPECTRUM (FFT, harmonics and THD, spectrogram, Bode), MEASURE (statistics, cursors,
+  mask test) and COMPARE (references, math, difference readout, stacked master). Alt+1 to Alt+5
+  switch, and the shown workspace's key again shows its next view. A strip with run control,
+  timebase, channels and trigger stays at the bottom, and All settings (Ctrl+,) lists every setting
+  and shows where it lives.
 * **Export:** PNG, CSV, sigrok `.sr` (opens in PulseView, with thresholded logic channels), VCD and
   WAV.
 * **SCPI over VXI-11** (LAN): Siglent / LeCroy short-form commands, including `WF?` waveform
