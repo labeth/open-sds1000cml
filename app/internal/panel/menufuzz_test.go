@@ -97,6 +97,18 @@ func fuzzAlphabet() []fuzzAction {
 			r.show(uartFrame([]string{"Hello\r\n", "OK\r\n"}, 460800, 80e-6, 100e-9, 8000))
 			r.c.button(btnAdjustPsh)
 		}})
+	// F1-F5 switch workspaces only while no sheet or picker is open, which a
+	// walk this full of menu keys leaves too rarely to reach every workspace:
+	// close what is open with Menu On/Off first, as a user would.
+	for i, key := range []int{btnF1, btnF2, btnF3, btnF4, btnF5} {
+		key := key
+		acts = append(acts, fuzzAction{fmt.Sprintf("nav:ws%d", i+1), func(r *viewRig) {
+			for j := 0; j < 3 && (r.c.ui.open || r.c.ui.wpick || r.c.ui.sub != subNone); j++ {
+				r.c.button(btnMenuOnOff)
+			}
+			r.c.button(key)
+		}})
+	}
 	return acts
 }
 

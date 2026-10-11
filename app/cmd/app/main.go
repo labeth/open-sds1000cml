@@ -921,6 +921,7 @@ func main() {
 	// (SetWriteDeadline). Don't "harden" this without moving that contract.
 	ws := web.New(scopeSource{e, fo}, feIface, pc, screenPNG)
 	ws.SetInvertSource(scpiH.Inverted) // display-level INVS: SCPI shadow → /api/status
+	ws.SetSetupMemory(setupSlots)      // the web top bar's Setups: the same slots as *SAV/*RCL
 	if !sramDefault {
 		ws.SetDiag(dg)
 	} // /diag + /api/diag/* (workplan §2 diagnostic block)

@@ -577,11 +577,65 @@ architecture:
       "resize" alone misses layout-only changes.'
     tags:
     - source-backed
+  - id: FU-WEB-APP-UI
+    name: Web App UI kit
+    group: FG-WEB
+    prose: 'app_ui.js - the workspace UI''s shared controls: segmented controls, mirrors of a setting in several places, popovers and toasts (ADR-TASK-WORKSPACES).'
+    tags:
+    - source-backed
+  - id: FU-WEB-APP-WS
+    name: Web App Workspaces
+    group: FG-WEB
+    prose: 'app_ws.js - the five task workspaces (SCOPE, BUS, SPECTRUM, MEASURE, COMPARE): pane layouts that resize, collapse and maximize, the per-workspace view, the again behaviour, activity dots, Alt+1..5 and the help sheet.'
+    tags:
+    - source-backed
+  - id: FU-WEB-APP-BUS
+    name: Web App BUS workspace
+    group: FG-WEB
+    prose: 'app_bus.js - BUS: bus detection on entry, the fixed-column packet table (hex plus a left-aligned string, complete packets only, holding still while messages repeat), zoom onto a packet, packets / eye diagram.'
+    tags:
+    - source-backed
+  - id: FU-WEB-APP-SPECTRUM
+    name: Web App SPECTRUM workspace
+    group: FG-WEB
+    prose: 'app_spectrum.js - SPECTRUM: the small time trace, the peak table with harmonics and THD (levels as the LCD''s), FFT / spectrogram / Bode on the main canvas.'
+    tags:
+    - source-backed
+  - id: FU-WEB-APP-MEASURE
+    name: Web App MEASURE workspace
+    group: FG-WEB
+    prose: 'app_measure.js - MEASURE: running statistics (now, mean, min, max, sdev, N) per parameter and channel, reset, restart on a scale change.'
+    tags:
+    - source-backed
+  - id: FU-WEB-APP-COMPARE
+    name: Web App COMPARE workspace
+    group: FG-WEB
+    prose: 'app_compare.js - COMPARE: the live difference to the references and the stacked master (average N, REF A, mask, raw acquisition restored, refusal when the signal does not repeat).'
+    tags:
+    - source-backed
+  - id: FU-WEB-APP-ALLSET
+    name: Web App All settings
+    group: FG-WEB
+    prose: 'app_allset.js - All settings: every control as a live mirror with a pointer to the workspace and pane where it lives.'
+    tags:
+    - source-backed
+  - id: FU-WEB-PACKETS
+    name: Web packets
+    group: FG-WEB
+    prose: 'packets.js - decoded spans grouped into packets and the stable packet list, the web twin of the shared analysis package''s packets.'
+    tags:
+    - source-backed
+  - id: FU-WEB-WSMATH
+    name: Web workspace math
+    group: FG-WEB
+    prose: 'wsmath.js - statistics, reference difference and the master repeat test for the web workspaces, the twin of the shared analysis package.'
+    tags:
+    - source-backed
   - id: FU-WEB-APP-NAV
     name: Web App Nav
     group: FG-WEB
     prose: 'app_nav.js — navigator strip drawing (classic script; shares app.js globals). drawSrGate overlays the
-      super-res gate markers (magenta, matching the device) with a shaded region between them. Positions are
+      super-res gate markers (the "sr" token shared with the device) with a shaded region between them. Positions are
       EDGE-RELATIVE offsets mapped to this frame''s record fraction (srGateRF) then into the view, so they stay
       pinned to the trigger-locked signal through zoom/pan and the edge''s frame-to-frame wander.'
     tags:
