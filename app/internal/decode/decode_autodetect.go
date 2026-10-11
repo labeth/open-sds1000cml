@@ -211,6 +211,52 @@ func midPhaseData(c clockInfo, d sliced) float64 {
 	return float64(mid) / float64(len(d.edges))
 }
 
+// phaseLock is how firmly the data line's edges keep one place in the clock's
+// cycle: the largest share of them inside a quarter of the cycle (16 bins of
+// falling edge to falling edge, the best 4 in a row, wrapping), with n the
+// edges counted (only those inside a cycle: a burst's idle gap has no phase).
+// A line this clock clocks is near 1: SPI launches data on an edge, I2C moves
+// SDA at one delay into SCL low. A line that only shares the screen with a
+// clock, a UART beside a free-running clock, spreads over the whole cycle.
+// TRLC-LINKS: REQ-SDS-018
+func phaseLock(c clockInfo, d sliced) (share float64, n int) {
+	if !c.ok || c.hp <= 0 || !d.ok {
+		return 0, 0
+	}
+	var falls []int
+	for _, e := range c.s.edges {
+		if e.dir < 0 {
+			falls = append(falls, e.i)
+		}
+	}
+	var bins [16]int
+	j := 0
+	for _, e := range d.edges {
+		for j+1 < len(falls) && falls[j+1] <= e.i {
+			j++
+		}
+		if j+1 >= len(falls) || falls[j] > e.i {
+			continue
+		}
+		p := falls[j+1] - falls[j]
+		if float64(p) > 3*c.hp { // a cycle is 2 half-periods; longer is a gap
+			continue
+		}
+		bins[16*(e.i-falls[j])/p]++
+		n++
+	}
+	if n == 0 {
+		return 0, 0
+	}
+	best := 0
+	for s := range bins {
+		if w := bins[s] + bins[(s+1)%16] + bins[(s+2)%16] + bins[(s+3)%16]; w > best {
+			best = w
+		}
+	}
+	return float64(best) / float64(n), n
+}
+
 // idleLevel is the rail a channel rests on most (a clock idles at its CPOL rail).
 // TRLC-LINKS: REQ-SDS-018
 func idleLevel(s sliced) int {
@@ -269,6 +315,20 @@ func Autodetect(c1, c2 []uint8, colTimeS float64, format string) Result {
 	u0, u1 := clk[0].uniFrac, clk[1].uniFrac
 	hi, lo := math.Max(u0, u1), math.Min(u0, u1)
 	clockedPair := len(active) >= 2 && hi > 0.72 && hi > lo+0.12
+	// A clock beside a line it does not clock is no clocked bus: a UART next to
+	// a free-running clock read as SPI, I2C or nothing (bug hunt 2026-10-11).
+	// That line keeps no place in the clock's cycle, so it is tried on its own
+	// and neither SPI nor I2C is claimed for the pair.
+	freeClock := false
+	if clockedPair {
+		ci := 0
+		if u1 > u0 {
+			ci = 1
+		}
+		share, n := phaseLock(clk[ci], clk[1-ci].s)
+		freeClock = n >= 12 && share < 0.6
+	}
+	locked := clockedPair && !freeClock
 	// A near-perfectly uniform line is a clock even with few edges on screen: a
 	// 3 kHz square at 500 us/div (~30 edges) read as constant-bit Manchester
 	// (bug hunt 2026-10-10). Real Manchester data mixes T/2 and T gaps.
@@ -279,7 +339,7 @@ func Autodetect(c1, c2 []uint8, colTimeS float64, format string) Result {
 
 	// UART — async single-wire. Skip on a clocked pair (that's SPI) or a lone clock
 	// (else auto-baud invents bogus 0x55s from the square wave).
-	if !clockedPair {
+	if !locked {
 		for _, k := range active {
 			if !isClocky(k) {
 				consider(DecodeUART(chans[k], colTimeS, UARTCfg{Bits: 8, Parity: "none", Format: format}), chName(k), line(k))
@@ -289,7 +349,7 @@ func Autodetect(c1, c2 []uint8, colTimeS float64, format string) Result {
 	// Manchester — heuristic like UART, and a bare square wave IS valid
 	// constant-bit Manchester, so apply the same clock suppression: never claim
 	// Manchester on a clocked pair (that's SPI) or on a lone clock line.
-	if !clockedPair {
+	if !locked {
 		for _, k := range active {
 			if !isClocky(k) {
 				consider(DecodeManchester(chans[k], colTimeS, ManchesterCfg{IEEE: true, MSB: true, Format: format}), chName(k), line(k))
@@ -307,7 +367,7 @@ func Autodetect(c1, c2 []uint8, colTimeS float64, format string) Result {
 		consider(DecodeUSBLS(chans[k], colTimeS, USBLSCfg{}), chName(k), line(k))
 		consider(DecodeFlexRay(chans[k], colTimeS, FlexRayCfg{}), chName(k), line(k))
 	}
-	if len(active) >= 2 {
+	if len(active) >= 2 && !freeClock {
 		for _, ord := range [][2]int{{0, 1}, {1, 0}} { // I2C: scoring resolves SCL/SDA order
 			consider(DecodeI2C(chans[ord[0]], chans[ord[1]], colTimeS, I2CCfg{Format: format}),
 				"SCL "+chName(ord[0])+" SDA "+chName(ord[1]), Roles{ChA: ord[0], ChB: ord[1]})

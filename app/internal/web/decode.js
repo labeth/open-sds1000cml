@@ -587,6 +587,34 @@ function midPhaseData(c, d) {
   return mid / d.edges.length;
 }
 
+// phaseLock: how firmly the data line's edges keep one place in the clock's
+// cycle: the largest share of them inside a quarter of the cycle (16 bins of
+// falling edge to falling edge, the best 4 in a row, wrapping), with n the
+// edges counted (only those inside a cycle: a burst's idle gap has no phase).
+// A line this clock clocks is near 1 (SPI launches data on an edge, I2C moves
+// SDA at one delay into SCL low); a UART beside a free-running clock spreads
+// over the whole cycle. Mirrors decode_autodetect.go phaseLock.
+// TRLC-LINKS: REQ-SDS-018
+function phaseLock(c, d) {
+  if (!c || !c.ok || !(c.halfPeriod > 0) || !d || !d.ok) return { share: 0, n: 0 };
+  const falls = [];
+  for (const e of c.S.edges) if (e.dir < 0) falls.push(e.i);
+  const bins = new Array(16).fill(0);
+  let n = 0, j = 0;
+  for (const e of d.edges) {
+    while (j + 1 < falls.length && falls[j + 1] <= e.i) j++;
+    if (j + 1 >= falls.length || falls[j] > e.i) continue;
+    const p = falls[j + 1] - falls[j];
+    if (p > 3 * c.halfPeriod) continue; // a cycle is 2 half-periods; longer is a gap
+    bins[Math.floor(16 * (e.i - falls[j]) / p)]++;
+    n++;
+  }
+  if (!n) return { share: 0, n: 0 };
+  let best = 0;
+  for (let s = 0; s < 16; s++) best = Math.max(best, bins[s] + bins[(s + 1) % 16] + bins[(s + 2) % 16] + bins[(s + 3) % 16]);
+  return { share: best / n, n };
+}
+
 // idleLevel: the rail a sliced channel rests on most of the time (a clock idles
 // at its CPOL rail between transactions). 1 = idle high, 0 = idle low.
 // TRLC-LINKS: REQ-SDS-018
@@ -626,6 +654,16 @@ function autodetect(frame, opts) {
   const clk1 = clockScore(chans[1], slOpts), clk2 = clockScore(chans[2], slOpts);
   const u1 = clk1.uniFrac, u2 = clk2.uniFrac, hi = Math.max(u1, u2), lo = Math.min(u1, u2);
   const clockedPair = active.length >= 2 && hi > 0.72 && hi > lo + 0.12;
+  // A clock beside a line it does not clock is no clocked bus: a UART next to a
+  // free-running clock read as SPI, I2C or nothing (bug hunt 2026-10-11). That
+  // line keeps no place in the clock's cycle, so it is tried on its own and
+  // neither SPI nor I2C is claimed for the pair. Mirrors decode_autodetect.go.
+  let freeClock = false;
+  if (clockedPair) {
+    const lk = u2 > u1 ? phaseLock(clk2, clk1.S) : phaseLock(clk1, clk2.S);
+    freeClock = lk.n >= 12 && lk.share < 0.6;
+  }
+  const locked = clockedPair && !freeClock;
   // TRLC-LINKS: REQ-SDS-018
   // A near-perfectly uniform line is a clock even with few edges on screen: a
   // 3 kHz square at 500 us/div (~30 edges) read as constant-bit Manchester
@@ -634,7 +672,7 @@ function autodetect(frame, opts) {
 
   // UART — async single-wire. Suppress on a clocked pair (that IS SPI — a data line
   // paired with a clock) and on a lone clock (else it auto-bauds into bogus 0x55).
-  if (!clockedPair)
+  if (!locked)
     for (const k of active)
       if (!isClocky(k))
         add("uart", { line: k }, { baud: 0, bits: 8, parity: "none" },
@@ -652,7 +690,7 @@ function autodetect(frame, opts) {
   // Manchester — heuristic like UART, and a bare square wave IS valid
   // constant-bit Manchester, so apply the same clock suppression: never claim
   // Manchester on a clocked pair (that's SPI) or on a lone clock line.
-  if (!clockedPair && dManch)
+  if (!locked && dManch)
     for (const k of active)
       if (!isClocky(k))
         add("manchester", { line: k }, { baud: 0, msb: true, bits: 8 },
@@ -670,7 +708,7 @@ function autodetect(frame, opts) {
     if (dFlex) add("flexray", { line: k }, { baud: 0 }, dFlex(chans[k], colTimeS, { bitrate: 0, fmt }));
   }
 
-  if (active.length >= 2) {
+  if (active.length >= 2 && !freeClock) {
     // I2C — try both SCL/SDA orderings (scoring, not clock-detection, resolves it).
     for (const [scl, sda] of [[1, 2], [2, 1]])
       add("i2c", { scl, sda }, {}, decodeI2C(chans[scl], chans[sda], colTimeS, { fmt }));
@@ -717,4 +755,4 @@ function decode(frame, cfg) {
 
 if (typeof module !== "undefined" && module.exports)
   module.exports = { KINDS, fmtByte, fmtWord, frameDtS, frameSpanS, sliceChannel, logicAt, decodeUART, decodeI2C, decodeSPI, decode,
-    scoreResult, clockScore, idleLevel, autodetect };
+    scoreResult, clockScore, phaseLock, idleLevel, autodetect };

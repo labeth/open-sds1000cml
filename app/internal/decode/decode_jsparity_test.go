@@ -313,6 +313,14 @@ func TestJSDecoderParity(t *testing.T) {
 			}
 		}
 		addAuto(sq, nil, 1e-6)
+		// A UART beside a free-running clock it has nothing to do with: UART on
+		// its own line in both, never SPI or I2C on the pair.
+		uaFree := uartWave([]int{0x48, 0x69, 0x55, 0xAA, 0x41, 0x42, 0x43, 0x44}, 40)
+		for _, hp := range []int{7, 61} {
+			ck := freeClock(len(uaFree), hp)
+			addAuto(uaFree, ck, 1/(40*115200.0))
+			addAuto(ck, uaFree, 1/(40*115200.0))
+		}
 	}
 
 	// ---- Corruption fuzz: flip/truncate random regions of each base waveform and
