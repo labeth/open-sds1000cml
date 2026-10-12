@@ -429,6 +429,16 @@ test("an undo entry keeps the ids of the entries it undid (a redo puts them back
   const back = new RC.History(JSON.parse(JSON.stringify(h.list)));
   assert.deepEqual(back.list[0].undid, [e.id], "kept across a reload");
 });
+test("stored History of another shape is dropped when it loads", () => {
+  const row = { id: "a", tab: "T", label: "a", kind: "enum", old: { key: "0", text: "0" }, neu: { key: "1", text: "1" } };
+  const good = { id: 3, t: 1, src: "phone", rows: [row] };
+  const h = new RC.History([good, { id: 1, t: 1, src: "phone" }, { id: 2, t: 1, src: "phone", rows: [{ id: "time.tdiv" }], undoable: true }, null, 5, "x",
+    Object.assign({}, good, { id: 4, ws: "bus" }), Object.assign({}, good, { id: 6, rows: [Object.assign({}, row, { old: null })] })]);
+  assert.deepEqual(h.list.map((e) => e.id), [3], "only the entry of the shape the page shows");
+  assert.equal(new RC.History({ list: [] }).list.length, 0, "not a list");
+  assert.equal(h.add("scope", [row], {}, 2).id, 4, "ids go on after the kept ones");
+  assert.ok(RC.okEntry(good) && !RC.okEntry({ id: 1 }));
+});
 test("History keeps at most 100 entries; ago reads like a phone", () => {
   const h = new RC.History();
   for (let i = 0; i < 120; i++) h.add("scope", [{ id: "r" + i, tab: "T", label: "r", kind: "enum", old: { key: "0" }, neu: { key: "1" } }], {}, i * 10000);

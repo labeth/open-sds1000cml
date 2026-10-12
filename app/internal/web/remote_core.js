@@ -603,6 +603,17 @@
     return out;
   }
 
+  // okEntry: a stored entry of the shape this page shows. History survives
+  // page updates and hand edits: anything else is dropped when it loads.
+  // TRLC-LINKS: REQ-SDS-220
+  function okEntry(e) {
+    const str = (x) => typeof x === "string";
+    const side = (x) => !!x && typeof x === "object" && str(x.key);
+    const okRow = (r) => !!r && typeof r === "object" && str(r.id) && str(r.tab) && str(r.label) && side(r.old) && side(r.neu);
+    return !!e && typeof e === "object" && Number.isFinite(e.id) && Number.isFinite(e.t) && str(e.src) && Array.isArray(e.rows) && e.rows.every(okRow) &&
+      (e.ws == null || (typeof e.ws === "object" && str(e.ws.from) && str(e.ws.to))) && (e.undid === undefined || Array.isArray(e.undid));
+  }
+
   // History is the change list, newest first: every setting change from the
   // phone or the scope; steps on one row from one source within 3 s are one
   // entry (stepping back to the start removes it); an undo is itself an
@@ -610,7 +621,7 @@
   // TRLC-LINKS: REQ-SDS-220
   class History {
     constructor(list) {
-      this.list = Array.isArray(list) ? list.slice(0, HIST_MAX) : [];
+      this.list = Array.isArray(list) ? list.filter(okEntry).slice(0, HIST_MAX) : [];
       this.seq = this.list.reduce((m, e) => Math.max(m, e.id || 0), 0);
     }
 
@@ -716,7 +727,7 @@
   const RC = {
     g3, si, sgnSI, hex2, fmtValue, pretty, compact, near, neighbour, turn, CW_DOWN, parseNumber, numberHint, nearestLadder,
     unitKeys, numKey, isHex, hexNumKey, parseMatch, quoteText, hexKey, MATCH_MAX, index, isSwitch, isSlot, SYN, NAME, label, words, within1, search,
-    matchPlace, tracked, snapshot, diff, History, ago, tools, turnWords, MERGE_MS,
+    matchPlace, tracked, snapshot, diff, okEntry, History, ago, tools, turnWords, MERGE_MS,
   };
   if (typeof module !== "undefined" && module.exports) module.exports = RC;
   else root.RC = RC;

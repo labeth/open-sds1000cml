@@ -50,7 +50,8 @@
 
   // ---- state ----------------------------------------------------------------------------
 
-  const HIST_KEY = "history";
+  // History's storage key, versioned: entries of an older page are not read
+  const HIST_KEY = "history2";
   const S = {
     model: { rows: new Map(), tabs: [] }, // RC.index(/api/sheets)
     panel: null,                          // the panel status (/api/panel/wait)
@@ -530,5 +531,5 @@
   // TRLC-LINKS: REQ-SDS-220
   function on(fn) { S.fns.push(fn); }
 
-  window.RN = { api, S, start, refresh, row, set, step, action, preset, press, knob, workspace, again, undo, on, saveHistory };
+  window.RN = { api, S, HIST_KEY, start, refresh, row, set, step, action, preset, press, knob, workspace, again, undo, on, saveHistory };
 })();

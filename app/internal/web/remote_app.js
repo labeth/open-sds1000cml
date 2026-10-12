@@ -348,7 +348,7 @@
     for (const k of Object.keys(tabBtns)) tabBtns[k].setAttribute("aria-selected", k === id ? "true" : "false");
     if (id === "menus") renderMenus();
     if (id === "home") renderHome(true);
-    if (id === "hist") renderHist();
+    if (id === "hist") { renderHist(); badge(); }
     renderBar();
   }
 
@@ -1361,12 +1361,17 @@
     else v.append(e.kind === "action" ? "done (no setting changed)" : "—");
     return v;
   }
+  // the badge counts the entries added since History was last shown (the
+  // newest entry seen then is kept on the phone, with History)
+  let seenId = Number(load(RN.HIST_KEY + "-seen", 0)) || 0;
   // TRLC-LINKS: REQ-SDS-220
   function badge() {
-    const n = RN.S.history.list.length;
+    const L = RN.S.history.list;
+    if (S.tab === "hist" && L.length && L[0].id > seenId) { seenId = L[0].id; store(RN.HIST_KEY + "-seen", seenId); }
+    const n = L.filter((e) => e.id > seenId).length;
     histBadge.hidden = !n;
     histBadge.textContent = n > 99 ? "99+" : String(n);
-    tabBtns.hist.setAttribute("aria-label", "History" + (n ? ", " + n + (n === 1 ? " change" : " changes") : ""));
+    tabBtns.hist.setAttribute("aria-label", "History" + (n ? ", " + n + (n === 1 ? " new change" : " new changes") : ""));
   }
   // TRLC-LINKS: REQ-SDS-220
   function renderHist() {

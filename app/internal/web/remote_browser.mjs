@@ -54,6 +54,7 @@ run(async (t) => {
         HTMLMediaElement.prototype.play = function () { window.__play = { session: session.type, muted: this.muted }; return play.call(this); };
       });
     }
+    if (opts.init) await ctx.addInitScript(opts.init);
     // haptics: Android vibrates (recorded here); Safari has no Vibration API, so an iPhone has the visual tick only
     await ctx.addInitScript((iphone) => {
       window.__vib = [];
@@ -355,7 +356,12 @@ run(async (t) => {
     await page.unroute("**/api/sheets/set");
     P.ok((await rows())["ch2.coupling"].Text === "AC" && await page.evaluate((id) => !document.querySelector(`[data-hist="${id}"]`).classList.contains("undone"), coup),
       "and leaves the entry as it was, with its Undo");
-    P.ok(Number(await P.text("#hist-badge")) >= 5, "the History tab counts the changes");
+    P.ok(!(await P.visible("#hist-badge")), "on History the badge counts nothing: it is all seen here");
+    await P.tap('[data-tabbar="home"]');
+    await P.tap('[data-tile="ch1.vdiv"] [data-q="cw"]');
+    await P.until(async () => (await P.text("#hist-badge")) === "1", "a change made away from History: the badge counts 1 new");
+    await P.tap('[data-tabbar="hist"]');
+    P.ok(!(await P.visible("#hist-badge")), "History shown: the badge goes");
     // back to before the bus was set up: everything since, from the phone and the scope, on a 1 s hold
     const proto = await page.evaluate(() => { const e = [...document.querySelectorAll(".hent")].find((x) => /BUS · Protocol/.test(x.textContent)); return e ? e.dataset.hist : ""; });
     await P.tap(`[data-hopen="${proto}"]`);
@@ -568,6 +574,24 @@ run(async (t) => {
     await sleep(300);
     t.ok(!/silent sound track/.test(await P.toast()), "without the notice a second time");
     t.ok(P.errors.length === 0, "iPhone keep-awake: no console errors" + (P.errors.length ? " - " + P.errors.slice(0, 3).join(" | ") : ""));
+    await P.ctx.close();
+  }
+
+  // ---- History kept on the phone: entries of another shape are dropped, the badge counts only new ones ----
+  {
+    await ctrl("/reset");
+    const P = await phone("Pixel 7", { label: "stored history", init: () => {
+      const row = { id: "time.tdiv", tab: "TIME", label: "Time/div", kind: "number", old: { value: 1e-3, text: "1ms", key: "0.001" }, neu: { value: 5e-4, text: "500us", key: "0.0005" } };
+      localStorage.setItem("sds-remote:history", JSON.stringify([{ id: 1, t: Date.now(), src: "phone" }]));   // an older page's
+      localStorage.setItem("sds-remote:history2", JSON.stringify([{ id: 9, t: Date.now(), src: "scope", rows: [row], undoable: true },
+        { id: 8, t: Date.now(), src: "phone" }, { id: 7, t: Date.now(), src: "phone", rows: [{ id: "time.tdiv" }], undoable: true }, "junk"]));
+      localStorage.setItem("sds-remote:history2-seen", "9");
+    } });
+    t.ok(!(await P.visible("#hist-badge")), "stored history: the badge counts no entry as new after a reload");
+    await P.tap('[data-tabbar="hist"]');
+    t.ok(await P.page.evaluate(() => document.querySelectorAll("#view-hist .hent").length === 1 && /TIME · Time\/div/.test(document.querySelector("#view-hist .hent").textContent)),
+      "History shows the one entry of the right shape and drops the others");
+    t.ok(P.errors.length === 0, "stored history: no console errors" + (P.errors.length ? " - " + P.errors.slice(0, 3).join(" | ") : ""));
     await P.ctx.close();
   }
 
