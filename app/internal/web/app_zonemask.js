@@ -381,6 +381,12 @@ setInterval(() => {
   // the next V/div or offset change.
   const zmm = zm.mask, g = st.mask_gen || 0;
   if (zmm && !zmm.inflight && typeof zmm.gen === "number" && (g > zmm.gen || (g < zmm.gen && Date.now() - zmm.genAt > 3000))) zmLetGo();
+  // the test mode and the mask as the scope has them, set on the LCD, a phone or another page
+  const mode = String(st.mask_mode || 0);
+  if ($("zmMode").value !== mode && !$("zmMode").contains(document.activeElement)) $("zmMode").value = mode;
+  const idle = /^(no mask|mask cleared|the scope's mask was cleared|the scope has a mask|re-anchored)/.test($("zmStats").textContent);
+  if (!zm.mask && idle && st.mask_set && !/^the scope has a mask/.test($("zmStats").textContent)) zmStatus("the scope has a mask, built on the LCD, a phone or another page");
+  else if (!zm.mask && idle && !st.mask_set && /^the scope has a mask/.test($("zmStats").textContent)) zmStatus("no mask — build one from a clean signal first");
   zmRescale();
   if (st.mask_mode > 0 || st.mask_fail > 0 || st.mask_pass > 0) {
     const total = (st.mask_pass || 0) + (st.mask_fail || 0);

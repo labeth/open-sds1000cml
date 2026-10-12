@@ -107,6 +107,20 @@ try {
   await page.waitForTimeout(1500);
   ok(!(await page.evaluate(async () => !!(await (await fetch("/api/status")).json()).mask_set)), "the mask stays cleared");
 
+  // (5d) a mask and its test set elsewhere (the LCD, a phone): the pane shows
+  // the scope's test mode and says the scope has a mask, rather than "Off" and
+  // "no mask" beside a meter that counts
+  await page.evaluate(async () => {
+    const post = (u, b) => fetch(u, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(b) });
+    await post("/api/mask", { lo: [10, 10], hi: [200, 200], win: 2, ch: 0 });
+    await post("/api/set", { control: "maskmode", value: 1 });
+  });
+  await page.waitForFunction(() => $("zmMode").value === "1" && /^the scope has a mask/.test($("zmStats").textContent), null, { timeout: 5000 });
+  ok(true, "a mask and its test set elsewhere: the pane shows Count and that the scope has a mask");
+  await page.evaluate(() => fetch("/api/mask", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ lo: [], hi: [], win: 0 }) }));
+  await page.waitForFunction(() => $("zmMode").value === "0" && /^no mask/.test($("zmStats").textContent), null, { timeout: 5000 });
+  ok(true, "…and back to Off and no mask once it is cleared");
+
   // (5c) Clear mask on this page: a rebuilt mask under test goes, with its
   // test, and the page's copy with it
   await page.click("#zmBuild");
