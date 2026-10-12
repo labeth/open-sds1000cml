@@ -66,6 +66,11 @@ func TestMasterStacksStoresAndTests(t *testing.T) {
 	}
 	r.eng.set(func(st *engine.Stats) { st.MaskPass, st.MaskFail = 9, 2 })
 	r.show(toneFrame("block average 64/64 (waveform aligned)"))
+	// the mask waits for a live capture: it is built in the geometry the test judges
+	if st := r.eng.Snapshot(); st.MaskSet || c.View().Cmp.Rows[cmpMask].Info != "building..." {
+		t.Fatalf("before a live capture: mask %v, row %+v", st.MaskSet, c.View().Cmp.Rows[cmpMask])
+	}
+	r.show(toneFrame(""))
 	st := r.eng.Snapshot()
 	if c.stack != nil || !c.RefView()[0].Show || !st.MaskSet || st.MaskMode != 1 || st.AcqMode != 0 || st.AvgCount != 4 ||
 		st.MaskPass != 0 || st.MaskFail != 0 {

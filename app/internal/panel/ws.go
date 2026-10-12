@@ -247,7 +247,7 @@ func (c *Controller) snap() *sv {
 	if c.srStack != nil {
 		s.srGateLo, s.srGateHi, s.srN = c.srStack.GateLo, c.srStack.GateHi, c.srStack.N
 	}
-	s.maskN, s.maskTol, s.maskBusy, s.maskMsg = c.maskN, c.maskTol, c.maskBuilding, c.maskMsg
+	s.maskN, s.maskTol, s.maskBusy, s.maskMsg = c.maskN, c.maskTol, c.maskBuilding || c.masterPend != nil, c.maskMsg
 	s.meas = append([]measItem(nil), c.meas...)
 	s.fftSrc, s.stackN, s.stacking = c.fftSrc, c.stackN, c.stack != nil
 	s.slotUsed, s.slotSum = c.slotUsed, c.slotSum

@@ -170,6 +170,7 @@ func (c *Controller) clearMask() {
 	c.mu.Lock()
 	c.maskGen++
 	c.maskAutoTest = false
+	c.masterPend = nil
 	stacking := c.stack != nil
 	c.mu.Unlock()
 	if stacking {
@@ -205,48 +206,6 @@ func (c *Controller) clearMaskAction() error {
 		c.toast("Mask cleared", 1200*time.Millisecond)
 	}
 	return nil
-}
-
-// buildMaskFrom installs a mask around one frame of channel ch (the
-// master's averaged frame), dilated by the tolerance preset. It reports
-// whether a mask was installed.
-// TRLC-LINKS: REQ-SDS-139, REQ-SDS-218
-func (c *Controller) buildMaskFrom(f *engine.Frame, ch int) bool {
-	if f == nil || f.EdgeX < 0 || f.SampleS <= 0 || f.IsEnv {
-		return false
-	}
-	c.mu.Lock()
-	tol := maskTols[c.maskTol%len(maskTols)]
-	c.mu.Unlock()
-	posFrac := c.eng.Snapshot().TrigPosFrac
-	if math.IsNaN(posFrac) || posFrac < 0 || posFrac > 1 {
-		posFrac = 0.5
-	}
-	sig := f.C1
-	if ch == 1 {
-		sig = f.C2
-	}
-	valid := min(f.Valid, len(sig))
-	if valid == 0 {
-		return false
-	}
-	win := f.WinCols
-	if win <= 0 || win > valid {
-		win = valid
-	}
-	lo, hi := make([]uint8, win), make([]uint8, win)
-	left := int(math.Round(f.EdgeX - float64(win)*posFrac))
-	for j := range lo {
-		s := min(max(left+j, 0), valid-1)
-		lo[j], hi[j] = sig[s], sig[s]
-	}
-	m := engine.BuildMaskFromEnvelope(lo, hi, win, tol[0], tol[1], ch)
-	if m == nil {
-		return false
-	}
-	m.FrameIdent, m.TdivS, m.SampleS, m.PeakDetect = true, f.TdivS, f.SampleS, f.PeakDetect
-	c.eng.SetMask(m)
-	return true
 }
 
 // TRLC-LINKS: REQ-SDS-139

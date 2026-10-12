@@ -30,6 +30,7 @@ type fakeEng struct {
 	stats   engine.Stats
 	acqLog  []engine.AcqSample
 	serial  engine.SerialParams
+	mask    *engine.Mask // the last one installed (nil: cleared)
 	illegal []string
 	statMu  sync.Mutex // the Run loop's lamp sync snapshots it concurrently
 }
@@ -281,7 +282,7 @@ func (f *fakeEng) SetMask(m *engine.Mask) {
 	defer f.statMu.Unlock()
 	if m == nil { // clears, as the engine's does
 		f.calls = append(f.calls, call{"mask", 0, 0})
-		f.stats.MaskSet = false
+		f.stats.MaskSet, f.mask = false, nil
 		return
 	}
 	if m.WinCols <= 0 || len(m.Lo) < m.WinCols || len(m.Hi) < m.WinCols {
@@ -289,7 +290,7 @@ func (f *fakeEng) SetMask(m *engine.Mask) {
 		return
 	}
 	f.calls = append(f.calls, call{"mask", m.WinCols, 0})
-	f.stats.MaskSet = true
+	f.stats.MaskSet, f.mask = true, m
 }
 
 // TRLC-LINKS: REQ-SDS-135

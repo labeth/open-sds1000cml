@@ -1,6 +1,8 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
 package engine
 
+import "math"
+
 // Software edge discrimination and centring (spec 03 §7, spec 05 §3).
 // There are no hardware slope/type registers: the comparator only places the
 // threshold; slope and position are judged over the drained record. Slope is
@@ -211,6 +213,22 @@ func midLevel(sig []uint8) int {
 // TRLC-LINKS: REQ-SDS-011
 func centerCross(sig []uint8, lvl int, rising bool) float64 {
 	return centerCrossHint(sig, lvl, rising, -1)
+}
+
+// nearerCrossHint is the confirmed crossing nearest the hint, rising or
+// falling (centerCrossHint takes one direction), or -1.
+// TRLC-LINKS: REQ-SDS-013, REQ-SDS-011
+func nearerCrossHint(sig []uint8, lvl int, hint float64) float64 {
+	r, f := centerCrossHint(sig, lvl, true, hint), centerCrossHint(sig, lvl, false, hint)
+	switch {
+	case r < 0:
+		return f
+	case f < 0:
+		return r
+	case math.Abs(f-hint) < math.Abs(r-hint):
+		return f
+	}
+	return r
 }
 
 // TRLC-LINKS: REQ-SDS-011

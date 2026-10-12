@@ -287,6 +287,7 @@ type Controller struct {
 	maskTol      int         // index into maskTols presets
 	maskBuilding bool        // a build goroutine is running
 	maskGen      uint64      // counts mask clears: a build running when the mask is cleared installs nothing
+	masterPend   *masterSrc  // a finished master waiting for a live capture to build its mask in
 	maskMsg      string      // build/status line for the LCD HUD
 	srFrames     int         // stacked frame count (guarded by mu — srStack.Frames races)
 	srRejected   int         // rejected (non-matching) frame count (guarded by mu)

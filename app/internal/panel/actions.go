@@ -429,6 +429,7 @@ func (c *Controller) setMath(m int) error {
 func (c *Controller) clearRefs() error {
 	c.mu.Lock()
 	c.refs = [2]refWave{}
+	c.ui.hasMaster = false // the master was REF A
 	c.mu.Unlock()
 	return nil
 }

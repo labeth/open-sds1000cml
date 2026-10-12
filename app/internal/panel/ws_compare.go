@@ -267,8 +267,27 @@ func (c *Controller) stackStatus() (n, of, src int, ok bool) {
 	return min(c.stack.got, c.stack.n), c.stack.n, c.stack.src, true
 }
 
-// stackFinish stores the averaged frame as REF A, builds the mask from it,
-// restores the acquisition and starts the test with zeroed counters.
+// masterSrc is a finished master waiting for a live capture to build its
+// mask in (masterMaskFrame).
+type masterSrc struct {
+	sig     []uint8 // the trigger source's averaged samples
+	edge    float64 // the master's trigger position, in its samples
+	sampleS float64
+	ch      int
+	mode    int       // the test mode to start: count, or stop on fail
+	until   time.Time // no live capture by then: REF A stays without a mask
+	gen     uint64    // the mask clears when it was made: a clear since drops it
+}
+
+// masterMaskWait is how long a finished master waits for a live capture.
+const masterMaskWait = 5 * time.Second
+
+// stackFinish stores the averaged frame as REF A and restores the
+// acquisition; the mask follows in the geometry of the next live capture
+// (masterMaskFrame). The averaged captures are not that geometry: on the
+// SRAM images they are a filtered record at another sample interval, where
+// the live captures are peak-detect readouts, and a mask in theirs had every
+// live capture skipped as not comparable.
 // TRLC-LINKS: REQ-SDS-218
 func (c *Controller) stackFinish(f *engine.Frame) {
 	c.mu.Lock()
@@ -279,31 +298,126 @@ func (c *Controller) stackFinish(f *engine.Frame) {
 		return
 	}
 	c.captureRefFrom(f, 0)
-	built := false
-	if c.eng.Snapshot().TrigSource&1 == st.src {
-		built = c.buildMaskFrom(f, st.src)
+	var src *masterSrc
+	if c.eng.Snapshot().TrigSource&1 == st.src && f.EdgeX >= 0 && f.SampleS > 0 && !f.IsEnv {
+		sig := f.C1
+		if st.src == 1 {
+			sig = f.C2
+		}
+		if n := min(f.Valid, len(sig)); n > 0 {
+			mode := 1
+			if st.prevMask == 2 {
+				mode = 2
+			}
+			src = &masterSrc{sig: append([]uint8(nil), sig[:n]...), edge: f.EdgeX, sampleS: f.SampleS, ch: st.src, mode: mode}
+		}
 	}
 	c.eng.SetAcqMode(st.prevMode)
 	c.eng.SetAvgCount(st.prevAvg)
-	mode := 1
-	if st.prevMask == 2 {
-		mode = 2
-	}
-	if built {
-		c.eng.SetMaskMode(mode)
-		c.eng.ClearMaskFails()
-	}
 	c.mu.Lock()
 	c.ui.hasMaster, c.ui.masterN, c.ui.masterSrc, c.ui.masterT = true, st.n, st.src, c.now()
 	c.ui.cmpRow = cmpMask
-	msg := fmt.Sprintf("Master in REF A (%d captures), mask built - testing live captures", st.n)
-	if !built {
+	msg := fmt.Sprintf("Master in REF A (%d captures) - building its mask from the next live capture", st.n)
+	if src != nil {
+		src.until, src.gen = c.now().Add(masterMaskWait), c.maskGen
+		c.masterPend = src
+	} else {
 		msg = fmt.Sprintf("Master in REF A (%d captures); no mask (the trigger source changed)", st.n)
 	}
 	c.toastLocked(msg, 2600*time.Millisecond)
 	c.mu.Unlock()
 	c.maskSetMsg("")
 	c.publish()
+}
+
+// masterMaskFrame builds a finished master's mask in the geometry of the
+// first live capture after it, starts the test and zeroes its counts. A
+// clear since drops the master's mask; with no live capture within
+// masterMaskWait, REF A stays without one.
+// TRLC-LINKS: REQ-SDS-218, REQ-SDS-139
+func (c *Controller) masterMaskFrame(f *engine.Frame) {
+	c.mu.Lock()
+	src := c.masterPend
+	if src != nil && src.gen != c.maskGen {
+		c.masterPend, src = nil, nil
+	}
+	tol := maskTols[c.maskTol%len(maskTols)]
+	c.mu.Unlock()
+	if src == nil {
+		return
+	}
+	st := c.eng.Snapshot()
+	var m *engine.Mask
+	if st.AcqMode != engine.AcqAverage && !blockAvgRE.MatchString(f.Filter) && f.EdgeX >= 0 && f.SampleS > 0 && !f.IsEnv {
+		posFrac := st.TrigPosFrac
+		if math.IsNaN(posFrac) || posFrac < 0 || posFrac > 1 {
+			posFrac = 0.5
+		}
+		m = masterMaskOnto(src, f, posFrac, tol[0], tol[1])
+	}
+	if m == nil && !c.now().After(src.until) {
+		return // the averaged captures still in flight: wait for a live one
+	}
+	c.mu.Lock()
+	if c.masterPend != src { // cleared meanwhile
+		c.mu.Unlock()
+		return
+	}
+	c.masterPend = nil
+	c.mu.Unlock()
+	if m == nil {
+		c.toast("The master is in REF A, but no live capture came to build its mask in", 2600*time.Millisecond)
+		c.publish()
+		return
+	}
+	c.eng.SetMask(m)
+	c.eng.SetMaskMode(src.mode)
+	c.eng.ClearMaskFails()
+	c.toast("Mask built from the master - testing live captures", 2000*time.Millisecond)
+	c.publish()
+}
+
+// masterMaskOnto maps the averaged master onto a live capture's geometry by
+// time from the trigger, column by column as the engine's test reads the
+// capture: each column's bounds are the master's min and max over the
+// column's span, dilated by the tolerance (the web page's masterMask does the
+// same). Columns the master does not cover always pass.
+// TRLC-LINKS: REQ-SDS-218, REQ-SDS-139
+func masterMaskOnto(src *masterSrc, live *engine.Frame, posFrac float64, tolT, tolV int) *engine.Mask {
+	sig := live.C1
+	if src.ch == 1 {
+		sig = live.C2
+	}
+	valid := min(live.Valid, len(sig))
+	win := live.WinCols
+	if win <= 0 || win > valid {
+		win = valid
+	}
+	n := len(src.sig)
+	if win <= 0 || n == 0 || !(src.sampleS > 0) {
+		return nil
+	}
+	lo, hi := make([]uint8, win), make([]uint8, win)
+	left := math.Round(live.EdgeX - float64(win)*posFrac)
+	r := math.Max(0.5, live.SampleS/src.sampleS/2)
+	for j := range lo {
+		lo[j], hi[j] = 255, 0
+		x := src.edge + (left+float64(j)-live.EdgeX)*live.SampleS/src.sampleS
+		if x < 0 || x > float64(n-1) {
+			continue
+		}
+		mn, mx := uint8(255), uint8(0)
+		for k := max(0, int(math.Floor(x-r))); k <= min(n-1, int(math.Ceil(x+r))); k++ {
+			mn, mx = min(mn, src.sig[k]), max(mx, src.sig[k])
+		}
+		lo[j], hi[j] = mn, mx
+	}
+	m := engine.BuildMaskFromEnvelope(lo, hi, win, tolT, tolV, src.ch)
+	if m == nil {
+		return nil
+	}
+	m.FrameIdent, m.TdivS, m.SampleS, m.PeakDetect = true, live.TdivS, live.SampleS, live.PeakDetect
+	return m
 }
 
 // stackCancel stops a stack: the acquisition is restored unless the user

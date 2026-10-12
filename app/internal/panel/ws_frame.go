@@ -168,6 +168,8 @@ func (c *Controller) OnFrame(f *engine.Frame) {
 	}
 	if finish {
 		c.stackFinish(f)
+	} else if !s.stacking {
+		c.masterMaskFrame(f)
 	}
 }
 

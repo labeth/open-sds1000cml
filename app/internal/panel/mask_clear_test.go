@@ -2,6 +2,7 @@
 package panel
 
 import (
+	"math"
 	"strings"
 	"testing"
 
@@ -123,5 +124,72 @@ func TestDefaultSetupClearsMatchAndMask(t *testing.T) {
 	}
 	if st := eng.Snapshot(); st.MaskSet || st.MaskMode != 0 {
 		t.Fatalf("Default setup kept the mask: set %v mode %d", st.MaskSet, st.MaskMode)
+	}
+}
+
+// The master's mask is built in the geometry of the live captures the test
+// judges. On the SRAM images the averaged master is a filtered record at
+// 256 ns while the live captures are peak-detect readouts at 488 ns over
+// another window, and a mask stamped with the master's geometry had every
+// live capture skipped. Mapped by time from the trigger, a live capture passes
+// its own master's mask. A clear while the master waits drops its mask, and
+// Clear refs forgets the master that was REF A.
+// TRLC-LINKS: REQ-SDS-218, REQ-SDS-139
+func TestMasterMaskInLiveGeometry(t *testing.T) {
+	wave := func(tS float64) uint8 { // a UART-like line: 8.68 us bits
+		if bit := int(math.Floor(tS/8.68e-6)) + 1000; bit%3 == 0 || bit%7 == 1 {
+			return 60
+		}
+		return 200
+	}
+	frame := func(n, win int, edge, sampleS float64, peak bool, filter string) *engine.Frame {
+		sig := make([]uint8, n)
+		for i := range sig {
+			sig[i] = wave((float64(i) - edge) * sampleS)
+		}
+		return &engine.Frame{C1: sig, C2: sig, Valid: n, WinCols: win, EdgeX: edge, SampleS: sampleS, TdivS: 100e-6, PeakDetect: peak, Filter: filter}
+	}
+	master := frame(4721, 3906, 2408, 256e-9, false, "CIC3 + compensated FIR; block average 64/64 (waveform aligned)")
+	live := frame(4096, 2049, 1355, 488e-9, true, "peak-detect display readout")
+	finish := func(c *Controller) {
+		c.mu.Lock()
+		c.stack = &stackState{n: 64, src: 0, prevMode: 0, prevAvg: 16}
+		c.mu.Unlock()
+		c.stackFinish(master)
+	}
+
+	c, eng, _ := newC(t)
+	withClock(c)
+	finish(c)
+	if eng.Snapshot().MaskSet {
+		t.Fatal("a mask before any live capture: built in the averaged geometry")
+	}
+	c.masterMaskFrame(master) // an averaged capture still in flight: not the geometry to judge
+	if eng.Snapshot().MaskSet {
+		t.Fatal("a mask from an averaged capture")
+	}
+	c.masterMaskFrame(live)
+	m := eng.mask
+	if m == nil || !m.FrameIdent || m.WinCols != 2049 || m.SampleS != 488e-9 || !m.PeakDetect || m.TdivS != 100e-6 || eng.Snapshot().MaskMode != 1 {
+		t.Fatalf("the master's mask %+v, test mode %d: want the live geometry", m, eng.Snapshot().MaskMode)
+	}
+	left := int(math.Round(live.EdgeX - float64(m.WinCols)*0.5))
+	for j := 0; j < m.WinCols; j++ {
+		if v := live.C1[left+j]; v < m.Lo[j] || v > m.Hi[j] {
+			t.Fatalf("column %d: the live sample %d is outside its master's mask [%d, %d]", j, v, m.Lo[j], m.Hi[j])
+		}
+	}
+	c.clearRefs()
+	if got := rowByID["cmp.stack_master"].status(c.snap()); got != "none" {
+		t.Fatalf("after Clear refs the master row says %q", got)
+	}
+
+	c, eng, _ = newC(t)
+	withClock(c)
+	finish(c)
+	c.clearMask()
+	c.masterMaskFrame(live)
+	if eng.Snapshot().MaskSet {
+		t.Fatal("Clear mask while the master waited: its mask was built anyway")
 	}
 }

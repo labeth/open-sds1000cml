@@ -369,10 +369,13 @@ shows its next view. Entering a workspace shows a short label beside its key for
 Entry behaviour: BUS with decode off auto-detects the bus on CH1/CH2 and decodes it, with a notice
 (decoding stays on after leaving BUS); SPECTRUM starts on the FFT; MEASURE with nothing chosen picks
 Vpp and frequency of the shown channels. Each workspace remembers its view. A master (COMPARE again)
-averages N captures of the trigger source (the engine's Average, N = 64 by default), stores the
-result as REF A, builds the mask from it, restores the acquisition so live captures are tested raw,
-and turns the test on with zeroed counters; it is refused, saying how to fix the trigger, while the
-trigger source does not repeat from capture to capture. COMPARE's MASK row push, once a mask
+averages N captures of the trigger source (the engine's Average, N = 64 by default; under a serial
+trigger aligned on the match's own edge, as the live captures are), stores the result as REF A,
+restores the acquisition so live captures are tested raw, builds the mask from the master in the
+geometry of the next live capture (the averaged record is not that geometry: on the SRAM images a
+filtered record at another sample interval than the live peak-detect readouts), and turns the test on
+with zeroed counters; it is refused, saying how to fix the trigger, while the trigger source does not
+repeat from capture to capture. COMPARE's MASK row push, once a mask
 exists: a mask built with its test off starts counting, counting stops on a fail, and after stop on
 fail the push clears the mask (the sheet's Mask test turns a test off and keeps the mask; its Clear
 mask row removes it at any time, as does a web page's Clear mask). Clearing turns the test off, zeroes

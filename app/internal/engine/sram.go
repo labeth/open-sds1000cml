@@ -980,7 +980,14 @@ acquisitionLoop:
 				edge = f.EdgeX - float64(lo)
 			} else if hi > lo {
 				local := disc[lo:hi]
-				edge = centerCrossHint(local, midLevel(local), !cfg.Falling, f.EdgeX-float64(lo))
+				if e.serialMode.Load() == SerialTrigger {
+					// the match's own edge, which goes either way (a UART start
+					// bit falls): the nearest rising edge put the average up to
+					// a bit away from the live captures, centred on the match
+					edge = nearerCrossHint(local, midLevel(local), f.EdgeX-float64(lo))
+				} else {
+					edge = centerCrossHint(local, midLevel(local), !cfg.Falling, f.EdgeX-float64(lo))
+				}
 			}
 			if edge >= 0 {
 				f.EdgeX = edge + float64(lo)
