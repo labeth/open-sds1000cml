@@ -3677,3 +3677,23 @@ requirements:
     Chromium, and with a silent sound track and the "ambient" audio session on WebKit. A Keys switch uses the sound
     track on any phone where the quiet way does not hold. Whether each way holds the screen on real phones, and whether
     music plays on, is not yet verified.
+- id: REQ-SDS-221
+  title: Screen saver
+  text: When no input has reached the panel for the Screen saver time, the instrument shall show only a small live scope
+    drifting over a black LCD. When none has for the Screen off time, it shall draw the LCD black and switch its
+    backlight off. A key or knob on the scope that wakes the screen shall do nothing else.
+  status: draft
+  category: functional
+  appliesTo:
+  - FU-APP-LCD
+  - FU-APP-PANEL
+  - FU-APP-SETTINGS
+  verificationMethods:
+  - test
+  verificationCriteria: Panel tests run the idle clock through on, saver and off, wake the screen with a key and a knob
+    on the scope (each does nothing else, nor does a key in the next half second) and with a remote change (it takes
+    effect), and check both rows, their restore across a restart and that saved setups do not carry them. LCD tests
+    check that the saver stays on screen, moves and leaves the rest black. On the device, the real framebuffer shows
+    the saver and then black, the Shelly plug shows the backlight's 1.5 W drop, and an input brings the workspace back.
+  notes: GPIO 7 is the panel's only light control (ADR-SCREEN-SAVER); the tlc59108-bl backlight device does not dim this
+    panel. Input is anything that runs on the panel goroutine; the web page's /api/set does not count.

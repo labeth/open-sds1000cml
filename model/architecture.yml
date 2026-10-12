@@ -141,7 +141,8 @@ architecture:
   - id: FU-APP-LCD
     name: LCD rendering
     group: FG-APP
-    prose: 'RGB565 framebuffer, double buffering, trace/FFT/math/spectrogram/super-resolution and menu display.'
+    prose: 'RGB565 framebuffer, double buffering, trace/FFT/math/spectrogram/super-resolution and menu display, and the
+      screen saver (ADR-SCREEN-SAVER): a live mini view drifting over black, then a black screen with its backlight off.'
     tags:
     - source-backed
   - id: FU-APP-MEASURE
@@ -180,7 +181,7 @@ architecture:
     name: App Settings
     group: FG-APP
     prose: 'app/internal/settings: the persisted instrument settings, their wire format, validation on apply and the
-      deferred saver.'
+      deferred saver. The setup memories leave out the screen saver''s times, which belong to the instrument.'
     tags:
     - source-backed
   - id: FU-APP-SRAMCAPTURE

@@ -2094,3 +2094,31 @@ decisions:
   consequences:
   - Offline checks establish model and simulation properties only.
   - ADC population, profile timing/device tests and warm-switch qualification remain open system facts.
+- id: ADR-SCREEN-SAVER
+  title: A screen saver that shows a drifting live scope, then switches the backlight off
+  status: accepted
+  date: '2026-10-12'
+  context: The owner asked for a screen saver that, after a time they choose, turns the screen off or shows something
+    that does not burn into the panel, or both. The LCD's only light control is GPIO 7, the display and backlight
+    enable (specs/08-front-panel.md section 10.1). Measured with the Shelly plug, the scope draws 22.3 W with it high
+    and 20.8 W with it low, and the panel lights again when it goes high. The kernel's tlc59108-bl backlight device
+    takes a brightness of 0 to 255 but changes nothing (still 22.3 W at 0), so it does not drive this panel and there is
+    no dimming. The LCD loop's full-screen render is the display's heaviest load on the single core.
+  decision: 'Two rows on the SYS tab: Screen saver (Off, 1, 2, 5, 10, 15 or 30 minutes, or 1 hour; 15 minutes by
+    default) and Screen off (Off, 5, 10, 15 or 30 minutes, or 1, 2 or 4 hours; 1 hour by default), both counted from
+    the last input. After the Screen saver time the LCD shows only a small live scope with its run state, drifting over
+    black at 5 px/s, so no pixel holds one image. After the Screen off time the LCD is drawn black and GPIO 7 goes low.
+    Input is anything that runs on the panel goroutine: the scope''s keys and knobs, and the phone remote, the web''s
+    sheet and panel calls, its Clear mask and SCPI *RST. A key or knob on the scope that wakes the screen does nothing
+    else, and neither does any key or knob in the half second after it, so a knob turned to wake the screen does not
+    also change a setting. A remote input wakes the screen and also takes effect. The web page''s own controls
+    (/api/set) do not count: they change the engine directly, and the page renews its leases on timers, which would
+    keep the screen awake. While the screen sleeps, the scope keeps acquiring, analysing and lighting its lamps; only
+    the full-screen render stops. Both rows belong to the instrument, not to a setup.'
+  consequences:
+  - The LCD loop asks the panel controller each tick whether the screen is on, saving or off.
+  - Saved setups, their recall and Default Setup leave both rows as they are; the settings file keeps them across a
+    restart.
+  - /api/screen.png and the hardcopy still render the workspace, not the saver.
+  - The panel status names the screen state (on, saver or off).
+  - The app switches the backlight on when it stops, so the panel is never left dark.
