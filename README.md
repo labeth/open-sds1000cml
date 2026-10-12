@@ -14,39 +14,61 @@ always brings back the factory firmware.
 
 ## In action
 
-![Native scope LCD showing a centered I²C transaction, triggered on data bytes 55 AA at address 0x24](docs/images/scope-i2c.png)
+![Native scope LCD in the BUS workspace: the decoded UART packet 48 69 20 55 AA 0F F0 0A in a hex column and a string box, the serial trigger matching AA, and the packet centred on the trace](docs/images/scope-bus.png)
 
-**Trigger on the data, directly on the scope.** The FPGA matches the I²C byte
-sequence `55 AA` in a write to address `0x24`, keeping the decoded transaction
-near the center. SDA is C1 (yellow), SCL is C2 (cyan); the address and payload
-`55 AA 0F F0` appear below the traces.
+**Trigger on the data, directly on the scope.** The serial trigger matches the byte `AA` in a
+115,200-baud UART and centres it. The BUS workspace lists each decoded packet in a fixed hex column
+with its text in a separate box, so the table does not jump as the bytes change.
 
-| On the scope: continuous UART decoding | On the scope: FFT |
+<sub>Every capture here is from a live SDS1102CML+ running this firmware. An Alchitry Au drives the same
+115,200-baud UART message (`Hi U`, then `55 AA 0F F0 0A`) into C1 and C2, and the serial trigger matches
+`AA`. LCD images are the native 800 × 480 screen.</sub>
+
+### On the scope
+
+Five task workspaces, one per printed F-key on the rail at the right. Pressing the shown workspace's key
+again switches to its next view.
+
+| | |
 |---|---|
-| ![Native LCD showing over 1.1 million streamed UART bytes with timestamps, hex and ASCII text, and zero reported errors or loss](docs/images/scope-uart-stream.png) | ![Native LCD showing the two channels' frequency spectra](docs/images/scope-spectrum.png) |
+| ![SCOPE workspace: both channels' UART traces with readouts and the decoded bytes under the trace](docs/images/scope-scope.png) | ![SCOPE again: X-Y, a diagonal line because both channels carry the same signal](docs/images/scope-xy.png) |
+| **SCOPE:** the full trace, readouts and the decoded strip | **SCOPE again:** X-Y (here a diagonal: C1 and C2 carry the same signal) |
+| ![BUS again: an eye diagram of the UART with bit rate, eye height and width, and TIE jitter](docs/images/scope-bus-eye.png) | ![The match editor: a full-screen keypad for the trigger's match bytes, in hex](docs/images/scope-match-editor.png) |
+| **BUS again:** the eye diagram, with eye height, width and TIE jitter | **The match editor:** the knobs move over a full-screen keypad, hex or text |
+| ![SPECTRUM: the FFT with a peak table, harmonics and THD over a small time trace](docs/images/scope-spectrum.png) | ![SPECTRUM again: the spectrogram, the spectrum over time](docs/images/scope-spectrogram.png) |
+| **SPECTRUM:** the FFT, peak table, harmonics and THD | **SPECTRUM again:** the spectrogram (and then Bode, for a swept source) |
+| ![MEASURE: statistics of the chosen readouts, now, mean, min, max and sdev](docs/images/scope-measure.png) | ![MEASURE again: every value of both channels](docs/images/scope-measure-all.png) |
+| **MEASURE:** statistics of the chosen readouts | **MEASURE again:** every value of both channels |
+| ![COMPARE: a master stacked from 64 captures in REF A and its mask testing live captures](docs/images/scope-compare.png) | ![The TRIG settings sheet: every trigger setting written out, with a live preview and help](docs/images/scope-sheet-trig.png) |
+| **COMPARE:** a master stacked from 64 captures (REF A), its mask testing live captures | **A settings sheet:** every option written out, with a live preview and help |
 
-**Long UART streams, directly on the scope.** The AU transmits a repeating
-155-byte text message at 921,600 baud (8N1). The LCD capture shows more than
-1.1 million received bytes, with timestamps, hex and ASCII text, and zero
-reported errors or loss. Alongside it, the FFT view shows frequency-domain
-analysis on the same native 800 × 480 display.
+### In a browser
 
-![Browser FPGA stacking view showing complementary clock edges accumulated on a 32-times-finer time grid](docs/images/web-stacking.png)
+The web UI on port 8080 has the same five workspaces (Alt+1 to Alt+5), a strip with run control,
+timebase, channels and trigger, and All settings (Ctrl+,).
 
-**Stack repeated edges.** Complementary 10 MHz signals from the AU, accumulated
-in the scope's FPGA: 10 records, 26,212 aligned hits and a ×32 time grid. The
-browser shows both reconstructed edges alongside the completed stack's statistics.
-
-| Browser spectrogram | Native LCD spectrogram |
+| | |
 |---|---|
-| ![Enlarged browser waterfall showing a repeating stepped-frequency clock and harmonics](docs/images/web-spectrogram.png) | ![Native LCD waterfall showing the same stepped-frequency source](docs/images/scope-spectrogram.png) |
+| ![Web SCOPE workspace](docs/images/web-scope.png) | ![Web BUS workspace: the decoder, the packet table and the trigger on bytes](docs/images/web-bus.png) |
+| **SCOPE** | **BUS:** decoder, packet table, trigger on bytes |
+| ![Web BUS eye diagram with jitter analysis](docs/images/web-bus-eye.png) | ![Web SPECTRUM: FFT with peaks and THD](docs/images/web-spectrum.png) |
+| **BUS:** eye diagram and jitter (it folds sampled records: here two full records) | **SPECTRUM:** FFT, peaks, THD |
+| ![Web spectrogram](docs/images/web-spectrogram.png) | ![Web MEASURE: statistics, cursors and the mask test](docs/images/web-measure.png) |
+| **SPECTRUM:** spectrogram | **MEASURE:** statistics, cursors, mask and zones |
+| ![Web COMPARE: REF A against the live trace with the difference readout, and the mask test counting](docs/images/web-compare.png) | ![All settings: every control of the app in one list, with where it lives](docs/images/web-allsettings.png) |
+| **COMPARE:** REF A against the live trace, and the mask test counting a master stacked on the scope | **All settings:** every control, and where it lives |
 
-**Watch frequency change over time.** An Alchitry Au steps a real clock from
-2.5 MHz to 25 MHz; the waterfall reveals each step and its harmonics.
+### On a phone
 
-<sub>Captured from a live SDS1102CML+ running replacement firmware. Browser
-captures use a wider sidebar for readability; LCD images are native screen
-exports. All waveforms and readouts are from the connected signal.</sub>
+`http://<scope>:8080/r` is a remote for the scope's settings: it shows no waveform and never opens
+anything on the scope's screen.
+
+| | | |
+|---|---|---|
+| ![Phone remote Home: big tiles for time/div, trigger level and V/div, the workspace chips, Run/Stop, Single and Auto](docs/images/remote-home.png) | ![Phone remote in BUS: the match bytes and serial trigger tiles](docs/images/remote-bus.png) | ![Phone remote Menus: every settings tab, with search](docs/images/remote-menus.png) |
+| **Home** | **BUS:** match bytes, serial trigger | **Menus:** every tab, with search |
+| ![Phone remote typed entry: a keypad with units for time/div](docs/images/remote-sheet.png) | ![Phone remote History: each change with who made it, and undo](docs/images/remote-history.png) | ![Phone remote Keys: the knob pushes and keys, and the phone's keep-awake and fullscreen](docs/images/remote-keys.png) |
+| **Typed values** with units | **History** with undo | **Keys** and the phone's settings |
 
 ## At a glance
 
@@ -174,8 +196,10 @@ automatically.
 * **SCPI over VXI-11** (LAN): Siglent / LeCroy short-form commands, including `WF?` waveform
   transfer with a WAVEDESC header and `SCDP` screenshots, so existing Siglent scripts and VISA tools
   work.
-* **On the scope itself:** the LCD (Y-T, X-Y, FFT and spectrogram views) and the real front-panel
-  keys and knobs, with menus for every feature. Settings are kept across restarts.
+* **On the scope itself:** the LCD and the real front-panel keys and knobs, as five task workspaces
+  (SCOPE, BUS, SPECTRUM, MEASURE, COMPARE) on F1 to F5, each workspace's key again showing its next view;
+  MENU and the printed keys open full-screen settings sheets with every option written out. Settings are
+  kept across restarts.
 * **Safe updates:** an on-device agent installs new versions over the network into A/B slots and
   rolls back automatically if a version fails its health check. Nothing is written to the scope's
   flash.
