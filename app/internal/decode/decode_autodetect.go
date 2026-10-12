@@ -77,9 +77,15 @@ func scoreResult(r Result) float64 {
 				printable++
 			}
 		}
-		pf := float64(printable) / float64(len(r.Bytes))
-		// no framing -> weakest; Margin breaks CPHA, printable breaks bit-order.
-		return float64(len(r.Bytes)*2) + r.Margin*10 + pf*6
+		// no framing -> weakest; Margin breaks CPHA. Text (three quarters
+		// printable) breaks the bit order; anything less is binary, which ties
+		// and keeps MSB first (the SPI default): a printable share alone read
+		// binary payloads LSB-first half the time.
+		text := 0.0
+		if printable*4 >= len(r.Bytes)*3 {
+			text = 6
+		}
+		return float64(len(r.Bytes)*2) + r.Margin*10 + text
 	case "manchester":
 		// Heuristic (no CRC): must clear real UART/SPI on their own signals, so
 		// it is weighted between them; coding violations pull it down hard.
@@ -257,6 +263,43 @@ func phaseLock(c clockInfo, d sliced) (share float64, n int) {
 	return float64(best) / float64(n), n
 }
 
+// launchEdges counts the data line's edges that sit on a falling and on a
+// rising clock edge (the nearer one, within a quarter half-period). SPI
+// launches each bit on one clock edge and samples it on the other, so the
+// data's edges name the launch edge and with it CPHA, where the sampled
+// amplitude cannot: on sharp edges every sample is a full rail either way.
+// TRLC-LINKS: REQ-SDS-018
+func launchEdges(c clockInfo, d sliced) (fall, rise int) {
+	if !c.ok || c.hp <= 0 || !d.ok {
+		return 0, 0
+	}
+	tol := math.Max(c.hp/4, 1.5)
+	ce := c.s.edges
+	j := 0
+	for _, e := range d.edges {
+		for j+1 < len(ce) && ce[j+1].i <= e.i {
+			j++
+		}
+		near, dist := -1, math.Inf(1)
+		for _, k := range []int{j, j + 1} {
+			if k < len(ce) {
+				if dd := math.Abs(float64(e.i - ce[k].i)); dd < dist {
+					near, dist = k, dd
+				}
+			}
+		}
+		if near < 0 || dist > tol {
+			continue
+		}
+		if ce[near].dir < 0 {
+			fall++
+		} else {
+			rise++
+		}
+	}
+	return fall, rise
+}
+
 // idleLevel is the rail a channel rests on most (a clock idles at its CPOL rail).
 // TRLC-LINKS: REQ-SDS-018
 func idleLevel(s sliced) int {
@@ -382,7 +425,16 @@ func Autodetect(c1, c2 []uint8, colTimeS float64, format string) Result {
 				return best // data moves between clock edges: I2C-like, never SPI
 			}
 			cpol := idleLevel(clk[ci].s)
-			for _, cpha := range []bool{false, true} {
+			// Data launched on the falling edge is sampled on the rising one
+			// (modes 0 and 3, CPHA = CPOL), on the rising edge on the falling
+			// one (modes 1 and 2); without a clear majority both are tried.
+			cphas := []bool{false, true}
+			if fall, rise := launchEdges(clk[ci], clk[di].s); fall >= 2*rise+2 {
+				cphas = []bool{cpol == 1}
+			} else if rise >= 2*fall+2 {
+				cphas = []bool{cpol == 0}
+			}
+			for _, cpha := range cphas {
 				for _, msb := range []bool{true, false} { // msb first on a binary tie (SPI default)
 					order, mode := "LSB", cpol<<1
 					if msb {

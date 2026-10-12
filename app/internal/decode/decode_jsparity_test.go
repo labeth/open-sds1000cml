@@ -321,6 +321,15 @@ func TestJSDecoderParity(t *testing.T) {
 			addAuto(uaFree, ck, 1/(40*115200.0))
 			addAuto(ck, uaFree, 1/(40*115200.0))
 		}
+		// Every SPI mode on sharp edges (CPHA from the launch edge) and a
+		// binary payload against text sent LSB first (the bit-order tie).
+		bin := []int{0x0F, 0xF0, 0x3C, 0xC3, 0x12, 0x34, 0x56, 0x78}
+		for _, mode := range [][2]bool{{false, false}, {false, true}, {true, false}, {true, true}} {
+			ck, dt := spiModeWave(bin, 6, 1, mode[0], mode[1], true)
+			addAuto(ck, dt, 1e-7)
+		}
+		ck, dt := spiModeWave([]int{'H', 'e', 'l', 'l', 'o', '!'}, 4, 0, true, true, false)
+		addAuto(dt, ck, 1e-7) // roles swapped
 	}
 
 	// ---- Corruption fuzz: flip/truncate random regions of each base waveform and

@@ -495,8 +495,12 @@ function scoreResult(r) {
     // MSB vs LSB is signal-ambiguous (same bytes, bit-reversed) — prefer the order
     // that yields readable ASCII (real text almost always means that order is
     // right); binary data ties and falls back to MSB (SPI convention, tried first).
-    const printable = r.bytes.filter(b => b >= 0x20 && b < 0x7f).length / bytes;
-    return bytes * 2 + margin * 10 + printable * 6; // no framing -> weakest; margin breaks CPHA, printable breaks bit-order
+    // Text (three quarters printable) breaks the bit order; anything less is
+    // binary, which ties and keeps MSB first (the SPI default): a printable
+    // share alone read binary payloads LSB-first half the time.
+    const printable = r.bytes.filter(b => b >= 0x20 && b < 0x7f).length;
+    const text = printable * 4 >= bytes * 3 ? 6 : 0;
+    return bytes * 2 + margin * 10 + text; // no framing -> weakest; margin breaks CPHA
   }
   if (r.proto === "manchester") {
     // Heuristic (no CRC): weighted between UART and SPI; violations pull hard.
@@ -615,6 +619,31 @@ function phaseLock(c, d) {
   return { share: best / n, n };
 }
 
+// launchEdges: the data line's edges that sit on a falling and on a rising
+// clock edge (the nearer one, within a quarter half-period). SPI launches each
+// bit on one clock edge and samples it on the other, so the data's edges name
+// the launch edge and with it CPHA, where the sampled amplitude cannot (on
+// sharp edges every sample is a full rail). Mirrors decode_autodetect.go.
+// TRLC-LINKS: REQ-SDS-018
+function launchEdges(c, d) {
+  if (!c || !c.ok || !(c.halfPeriod > 0) || !d || !d.ok) return { fall: 0, rise: 0 };
+  const tol = Math.max(c.halfPeriod / 4, 1.5), ce = c.S.edges;
+  let fall = 0, rise = 0, j = 0;
+  for (const e of d.edges) {
+    while (j + 1 < ce.length && ce[j + 1].i <= e.i) j++;
+    let near = -1, dist = Infinity;
+    for (const k of [j, j + 1]) {
+      if (k < ce.length) {
+        const dd = Math.abs(e.i - ce[k].i);
+        if (dd < dist) { near = k; dist = dd; }
+      }
+    }
+    if (near < 0 || dist > tol) continue;
+    if (ce[near].dir < 0) fall++; else rise++;
+  }
+  return { fall, rise };
+}
+
 // idleLevel: the rail a sliced channel rests on most of the time (a clock idles
 // at its CPOL rail between transactions). 1 = idle high, 0 = idle low.
 // TRLC-LINKS: REQ-SDS-018
@@ -719,7 +748,12 @@ function autodetect(frame, opts) {
       const clk = u1 >= u2 ? 1 : 2, data = clk === 1 ? 2 : 1;
       const cpol = idleLevel(clk === 1 ? clk1.S : clk2.S);
       if (midPhaseData(clk === 1 ? clk1 : clk2, (data === 1 ? clk1 : clk2).S) <= 0.5) { // else I2C-like: never SPI
-        for (const cpha of [0, 1])
+        // Data launched on the falling edge is sampled on the rising one (modes
+        // 0 and 3, CPHA = CPOL), on the rising edge on the falling one (modes 1
+        // and 2); without a clear majority both are tried.
+        const le = launchEdges(clk === 1 ? clk1 : clk2, (data === 1 ? clk1 : clk2).S);
+        const cphas = le.fall >= 2 * le.rise + 2 ? [cpol] : le.rise >= 2 * le.fall + 2 ? [1 - cpol] : [0, 1];
+        for (const cpha of cphas)
           for (const bo of ["msb", "lsb"])   // msb first => the default on a binary tie
             add("spi", { clk, data }, { cpol, cpha, msb: bo === "msb" },
               decodeSPI(chans[clk], chans[data], colTimeS, { cpol, cpha, bitOrder: bo, fmt }));
@@ -755,4 +789,4 @@ function decode(frame, cfg) {
 
 if (typeof module !== "undefined" && module.exports)
   module.exports = { KINDS, fmtByte, fmtWord, frameDtS, frameSpanS, sliceChannel, logicAt, decodeUART, decodeI2C, decodeSPI, decode,
-    scoreResult, clockScore, phaseLock, idleLevel, autodetect };
+    scoreResult, clockScore, phaseLock, launchEdges, idleLevel, autodetect };
