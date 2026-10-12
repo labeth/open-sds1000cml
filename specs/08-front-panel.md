@@ -483,8 +483,10 @@ did, measured there: the ids of the rows whose value it changed (a timebase coun
 engine applies it at its next capture; `workspace` when it switched the workspace), the notice it raised and
 the sheet values' count after it (`SheetsSeq`). An Autoset it starts is named; when the sweep ends the snapshot names it as the last one done
 with the rows it changed. A key or knob sent with `"remote":true` runs the same way and is answered once it
-has run; it waits while Autoset sweeps (as the panel's own keys do) and, with `"nomenu":true`, while a menu
-is open on the LCD, where the Adjust and Position turns and pushes would move it. The snapshot leaves out
+has run; it waits while Autoset sweeps (as the panel's own keys do), and it never works the LCD's menus: the
+menu keys and F-keys are refused, the S/DIV, Adjust and Position turns and pushes (any key with
+`"nomenu":true`) wait while a menu is open there, and the Adjust push is refused where it would open one
+(SCOPE's row sheet, BUS's byte picker; the phone does that job itself). The snapshot leaves out
 live texts, so a remote is not woken on every frame: the highlighted row of an action is sent without its
 status text (a mask test's counts), and COMPARE's again names the key's job, not the trigger's stability.
 
