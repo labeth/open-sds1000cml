@@ -571,10 +571,8 @@
     const t = tools();
     if (/pick/i.test(t.adjust.push)) { openEditor("bus.match"); toast("Pick bytes here: type the match bytes", "ok"); return; }
     if (wsNow() === "scope" || /sheet/i.test(t.adjust.push)) {
-      const job = String(t.adjust.job || "").toLowerCase();
-      let found = null;
-      for (const [id, r] of RN.S.model.rows) if (r.Kind === "number" && job && r.Label.toLowerCase() === job) { found = id; break; }
-      if (found) openEditor(found); else toast("Adjust tunes the last value set in a sheet; nothing is set yet", "err");
+      const id = panel().AdjustRow;   // by id: CH1 and CH2 both have an Offset and a V/div
+      if (id && row(id)) openEditor(id); else toast("Adjust tunes the last value set in a sheet; nothing is set yet", "err");
       return;
     }
     pressKey("adjustpush", "", true);

@@ -414,6 +414,19 @@ run(async (t) => {
     await P.tap('[data-k="force"]');
     await sleep(600);
     P.ok((await P.toast()) === "", "Force changes nothing the phone could read back: no toast of its own (" + await P.toast() + ")");
+    // SCOPE's Adjust push opens the row the scope's Adjust tunes, by its id: CH2's Offset and V/div, not CH1's
+    for (const id of ["ch2.offset", "ch2.vdiv"]) {
+      await ctrl("/button?name=ch2");
+      for (let i = 0; i < 12 && ((await ctrl("/status")).Sheet.Row || {}).ID !== id; i++) await ctrl("/knob?name=adjust&dir=1");
+      await ctrl("/knob?name=horizpos&dir=1");
+      await ctrl("/button?name=menu");
+      await P.until(async () => (await page.evaluate(() => RN.S.panel.AdjustRow)) === id && !(await page.locator('[data-knob="adjust"][data-push]').isDisabled()),
+        "the phone sees the scope's Adjust on " + id);
+      await P.tap('[data-knob="adjust"][data-push]');
+      await P.until(async () => (await page.evaluate(() => { const b = document.querySelector(".sheet [data-editor]"); return b ? b.dataset.editor : ""; })) === id,
+        "the Adjust push opens " + id + " here");
+      await P.tap(".sheet-close");
+    }
     await P.tap('[data-k="menu:trigmenu"]');
     await P.until(() => P.visible('.mbody [data-row="trig.holdoff"]'), "Trig Menu opens TRIG here");
     P.ok(await lcdClosed(), "the keys and knobs left no menu open on the LCD");

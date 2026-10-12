@@ -114,6 +114,7 @@ type Status struct {
 	Sheet       SheetStatus
 	FKeys       [5]KeyStatus
 	Tool        []ToolSeg
+	AdjustRow   string `json:",omitempty"` // the row SCOPE's Adjust tunes (its label alone is ambiguous: CH1 and CH2 both have an Offset)
 	Again       string // the pane's again line (COMPARE: the key's job, not the trigger's stability)
 	AgainNext   string // what the workspace's key again shows next, whatever the LCD shows ("X-Y")
 	Notice      string
@@ -249,6 +250,9 @@ func (c *Controller) status(s *sv) Status {
 		st.Tool, st.Again = paneTool(c, s, v)
 		if v.Cmp != nil {
 			st.Again = "F5 again: " + st.AgainNext // the key's job, not the trigger's stability
+		}
+		if r := adjTarget(s); r != nil && u.ws == wsview.Scope && !u.wpick {
+			st.AdjustRow = r.id
 		}
 	}
 	switch {

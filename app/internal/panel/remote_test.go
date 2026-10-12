@@ -307,6 +307,31 @@ func TestRemoteKeysAnswerWhatTheyDid(t *testing.T) {
 	}
 }
 
+// SCOPE's Adjust tunes the last number set in a sheet: the snapshot names
+// that row by id, as its label ("Offset", "V/div") is the same for CH1 and
+// CH2.
+// TRLC-LINKS: REQ-SDS-213, REQ-SDS-220
+func TestAdjustTargetIsNamedByID(t *testing.T) {
+	c, _, _ := newC(t)
+	if st := c.PanelStatus(); st.AdjustRow != "" {
+		t.Fatalf("nothing set yet, yet %q", st.AdjustRow)
+	}
+	for _, id := range []string{"ch2.offset", "ch2.vdiv", "ch1.offset"} {
+		press(t, c, map[bool]string{true: "ch2", false: "ch1"}[strings.HasPrefix(id, "ch2")])
+		goRow(t, c, id)
+		turn(c, "horizpos", 1) // Position changes the row's value
+		press(t, c, "menu")
+		st := c.PanelStatus()
+		if st.Mode != "workspace" || st.AdjustRow != id || st.Tool[0].Job != rowByID[id].label {
+			t.Fatalf("%s: mode %s, adjust row %q, tool %+v", id, st.Mode, st.AdjustRow, st.Tool)
+		}
+	}
+	c.RemoteWorkspace("bus")
+	if st := c.PanelStatus(); st.AdjustRow != "" {
+		t.Fatalf("BUS: adjust row %q", st.AdjustRow)
+	}
+}
+
 // stagedEng applies a timebase at its next capture, as the real engine does:
 // its Snapshot keeps the old one until then.
 type stagedEng struct{ *fakeEng }
