@@ -80,13 +80,26 @@ try {
     for (let i = 0; i < 5; i++) { invalidate(); const d = once(() => redraw()); if (d < coldBest) coldBest = d; }
     let sum = 0, best = Infinity;
     for (let i = 0; i < 6; i++) { const d = once(() => redraw()); sum += d; if (d < best) best = d; }
-    return { cold: +coldBest.toFixed(1), warm: +(sum / 6).toFixed(1), warmBest: +best.toFixed(1) };
+    // Count the work rather than time it: a working memo makes a warm redraw fit no tone and
+    // compute no math. A cold/warm time ratio said the same on a quiet machine, but on a shared
+    // CI runner a working memo measured 2.8x where the bar was 3x.
+    const realComp = component, realMath = computeMathRaw;
+    let fits = 0, maths = 0, cold = null, warm = null;
+    component = (...a) => { fits++; return realComp(...a); };
+    computeMathRaw = (...a) => { maths++; return realMath(...a); };
+    try {
+      invalidate(); redraw(); cold = { fits, maths };
+      fits = 0; maths = 0; redraw(); redraw(); warm = { fits, maths };
+    } finally { component = realComp; computeMathRaw = realMath; }
+    return { cold: +coldBest.toFixed(1), warm: +(sum / 6).toFixed(1), warmBest: +best.toFixed(1), coldWork: cold, warmWork: warm };
   });
   console.log(`  timings: cold(best of 5)=${r.cold}ms warm=${r.warm}ms (best ${r.warmBest}ms)`);
 
-  // Memoization must make warm redraws dramatically cheaper than the cold fit.
-  ok(r.cold / Math.max(r.warmBest, 0.1) > 3,
-     `component/math memo active: cold ${r.cold}ms vs warm-best ${r.warmBest}ms (>3x faster warm)`);
+  // Memoization: a cold redraw fits every selected tone, a warm one recomputes nothing.
+  ok(r.coldWork.fits >= setup.selected && r.coldWork.maths >= 1,
+     `a cold redraw fits the selected tones: ${r.coldWork.fits} fits, ${r.coldWork.maths} math`);
+  ok(r.warmWork.fits === 0 && r.warmWork.maths === 0,
+     `component/math memo active: a warm redraw fits ${r.warmWork.fits} tones and computes ${r.warmWork.maths} math (none)`);
   // Absolute backstop: a warm redraw of a viewed stack must stay interactive.
   ok(r.warm < 200, `warm stack redraw stays interactive: ${r.warm}ms < 200ms`);
 
