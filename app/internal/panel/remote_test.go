@@ -2,8 +2,10 @@
 package panel
 
 import (
+	"fmt"
 	"math"
 	"math/rand"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -199,6 +201,86 @@ func TestCompareStabilityLeavesTheSeqAlone(t *testing.T) {
 	}
 	if res := c.RemoteAgain(); res.OK || !strings.Contains(res.Error, "No master") {
 		t.Fatalf("again on noise: %+v", res)
+	}
+}
+
+// A remote call says what it did, measured on the panel goroutine: the rows
+// whose value it changed (side effects too), the notice it raised and the
+// sheet values' count after it; nothing for a set that changes nothing or
+// is refused. A timebase counts at once, though the engine applies it at
+// its next capture.
+// TRLC-LINKS: REQ-SDS-212, REQ-SDS-220
+func TestRemoteCallsSayWhatTheyChanged(t *testing.T) {
+	c, eng, _ := newC(t)
+	withClock(c)
+	c.Sheets()
+	res := c.SheetSet("acq.averages", nil, "64") // a count also selects Average
+	if !res.OK || fmt.Sprint(res.Changed) != "[acq.mode acq.averages]" || res.SheetsSeq == 0 || res.SheetsSeq != c.PanelStatus().SheetsSeq {
+		t.Fatalf("averages: %+v (sheets %d)", res, c.PanelStatus().SheetsSeq)
+	}
+	if res := c.SheetSet("acq.averages", nil, "64"); !res.OK || len(res.Changed) != 0 {
+		t.Fatalf("the same value again: %+v", res)
+	}
+	if res := c.SheetSet("trig.level", nil, "99V"); res.OK || len(res.Changed) != 0 {
+		t.Fatalf("a refused set: %+v", res)
+	}
+	res = c.RemoteWorkspace("measure") // MEASURE starts with Vpp and Freq, and says so
+	if !res.OK || !slices.Contains(res.Changed, "meas.pkpk") || !slices.Contains(res.Changed, "meas.freq") || !strings.Contains(res.Notice, "Vpp") {
+		t.Fatalf("MEASURE: %+v", res)
+	}
+	if res := c.RemoteAgain(); !res.OK || len(res.Changed) != 0 || res.Notice != "" {
+		t.Fatalf("again: %+v", res)
+	}
+	// the engine takes a new timebase at its next capture, after the call
+	c.eng = &stagedEng{fakeEng: eng}
+	if res := c.SheetSet("time.tdiv", nil, "1ms"); !res.OK || fmt.Sprint(res.Changed) != "[time.tdiv]" || eng.Snapshot().TdivS != 500e-6 {
+		t.Fatalf("a staged timebase: %+v (engine %g)", res, eng.Snapshot().TdivS)
+	}
+	if res := c.SheetSet("time.tdiv", nil, "500us"); !res.OK || len(res.Changed) != 0 {
+		t.Fatalf("the timebase in effect asked for again: %+v", res)
+	}
+	c.eng = eng
+	if res := c.SheetAction("sys.default", ""); !res.OK || !slices.Contains(res.Changed, "acq.mode") ||
+		slices.Contains(res.Changed, "ch2.coupling") || slices.Contains(res.Changed, "bus.match") {
+		t.Fatalf("Default setup: %+v", res)
+	}
+}
+
+// stagedEng applies a timebase at its next capture, as the real engine does:
+// its Snapshot keeps the old one until then.
+type stagedEng struct{ *fakeEng }
+
+// SetTdiv stages the timebase.
+func (e *stagedEng) SetTdiv(t float64) (engine.Band, bool) { return engine.PlanTdiv(t) }
+
+// An Autoset a remote starts is named in its answer; when the sweep ends
+// (here cancelled by a second press) the snapshot names it as the last one
+// done, with the rows it changed.
+// TRLC-LINKS: REQ-SDS-137, REQ-SDS-220
+func TestAutosetSaysWhatItChanged(t *testing.T) {
+	c, _, _ := newC(t)
+	c.SheetSet("trig.mode", nil, "Normal")
+	sig := make([]uint8, 200)
+	for i := range sig {
+		sig[i] = uint8(40 + 160*(i/10%2))
+	}
+	c.SetFrameSource(func(fn func(*engine.Frame)) {
+		fn(&engine.Frame{C1: sig, C2: sig, Valid: len(sig), SampleS: 50e-9})
+	})
+	res := c.SheetAction("sys.autoset", "")
+	if !res.OK || res.Autoset == 0 || !c.AutosetBusy() {
+		t.Fatalf("autoset: %+v busy %v", res, c.AutosetBusy())
+	}
+	time.Sleep(30 * time.Millisecond)
+	if again := c.SheetAction("sys.autoset", ""); !again.OK || again.Autoset != 0 {
+		t.Fatalf("the second press cancels: %+v", again)
+	}
+	for i := 0; i < 400 && c.AutosetBusy(); i++ {
+		time.Sleep(5 * time.Millisecond)
+	}
+	st := c.PanelStatus()
+	if c.AutosetBusy() || st.AutosetDone != res.Autoset || !slices.Contains(st.AutosetChanged, "trig.mode") {
+		t.Fatalf("after the sweep: done %d (started %d), changed %v", st.AutosetDone, res.Autoset, st.AutosetChanged)
 	}
 }
 

@@ -161,10 +161,12 @@ func (p *remoteFixture) RemoteWorkspace(name string) panel.SetResult {
 		return panel.SetResult{Row: "workspace", Error: `no workspace "nope": SCOPE, BUS, SPECTRUM, MEASURE or COMPARE`}
 	}
 	p.status.Workspace, p.status.WorkspaceID, p.status.View, p.status.AgainNext = strings.ToUpper(name), name, "Packets", "Eye diagram"
+	res := panel.SetResult{OK: true, Row: "workspace", Value: name, Text: strings.ToUpper(name), SheetsSeq: 7}
 	if name == "measure" {
 		p.status.Notice = "Measuring Vpp and Freq - the Measure key picks others"
+		res.Notice, res.Changed = p.status.Notice, []string{"meas.pkpk", "meas.freq"}
 	}
-	return panel.SetResult{OK: true, Row: "workspace", Value: name, Text: strings.ToUpper(name)}
+	return res
 }
 
 // TRLC-LINKS: REQ-SDS-220
@@ -189,10 +191,11 @@ func TestPanelWorkspaceEndpoint(t *testing.T) {
 	if out["ok"] != true || p.again != 1 || out["view"] != "Eye diagram" || out["next"] != "Packets" {
 		t.Fatalf("again: %v", out)
 	}
-	// the notice the switch raised, and not one the LCD was still showing
+	// the notice the switch raised and the rows it changed, and not a notice the LCD was still showing
 	_, out = httpCall(t, s, "POST", "/api/panel", map[string]any{"workspace": "measure"})
-	if out["notice"] != "Measuring Vpp and Freq - the Measure key picks others" {
-		t.Fatalf("the switch's notice: %v", out)
+	if out["notice"] != "Measuring Vpp and Freq - the Measure key picks others" || fmt.Sprint(out["changed"]) != "[meas.pkpk meas.freq]" ||
+		out["sheetsSeq"] != 7.0 {
+		t.Fatalf("the switch's notice and rows: %v", out)
 	}
 	_, out = httpCall(t, s, "POST", "/api/panel", map[string]any{"workspace": "bus"})
 	if out["ok"] != true || out["notice"] != "" {

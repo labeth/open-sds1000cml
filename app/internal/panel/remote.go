@@ -4,6 +4,7 @@ package panel
 import (
 	"encoding/json"
 	"fmt"
+	"hash"
 	"hash/fnv"
 	"math"
 	"strings"
@@ -121,15 +122,26 @@ type Status struct {
 	Lamps       uint16
 	LampsLit    []string
 	Display     Display
+	// the last Autoset sweep that ended and the rows it changed (a remote
+	// that started it books them as its own)
+	AutosetDone    uint64
+	AutosetChanged []string `json:",omitempty"`
 }
 
-// SetResult is the outcome of a remote set, action or typed entry.
+// SetResult is the outcome of a remote set, action or typed entry. A
+// remote call (remoteCall) also says what it did, measured on the panel
+// goroutine: the rows whose value it changed, the notice it raised, the
+// sheet values' count after it and the Autoset sweep it started.
 type SetResult struct {
-	OK    bool   `json:"ok"`
-	Row   string `json:"row,omitempty"`
-	Value any    `json:"value,omitempty"`
-	Text  string `json:"text,omitempty"`
-	Error string `json:"error,omitempty"`
+	OK        bool     `json:"ok"`
+	Row       string   `json:"row,omitempty"`
+	Value     any      `json:"value,omitempty"`
+	Text      string   `json:"text,omitempty"`
+	Error     string   `json:"error,omitempty"`
+	Changed   []string `json:"changed,omitempty"`
+	Notice    string   `json:"notice,omitempty"`
+	SheetsSeq uint64   `json:"sheetsSeq,omitempty"`
+	Autoset   uint64   `json:"autoset,omitempty"` // Status.AutosetDone names it when the sweep ends
 }
 
 // remoteState is the published snapshot (guarded by Controller.rmu).
@@ -194,6 +206,9 @@ func (c *Controller) status(s *sv) Status {
 	}
 	st.Lamps = c.lampWord(s) // what the lamps show (latched at the next input or sync)
 	st.LampsLit = lampNames(st.Lamps)
+	c.mu.Lock()
+	st.AutosetDone, st.AutosetChanged = c.autosetDone, c.autosetChanged
+	c.mu.Unlock()
 	switch {
 	case u.open && u.sub == subMatch:
 		st.Mode = "editor"
@@ -361,32 +376,130 @@ func ptr(v float64) *float64 { return &v }
 // so the Seq follows a setting changed anywhere.
 func sheetSig(s *sv) uint64 {
 	h := fnv.New64a()
-	var b [8]byte
-	put := func(x uint64) {
-		for i := range b {
-			b[i] = byte(x >> (8 * i))
-		}
-		h.Write(b[:])
-	}
 	for _, t := range sheetTabs {
 		for _, r := range t.rows {
 			h.Write([]byte(r.id))
-			put(uint64(b2ic(r.relevant(s))))
-			switch r.kind {
-			case wsview.Enum:
-				put(uint64(r.get(s)))
-				put(uint64(len(r.options(s))))
-			case wsview.Number:
-				put(math.Float64bits(r.val(s)))
-			case wsview.Bytes:
-				h.Write([]byte(matchText(s)))
-			case wsview.Slot:
-				put(uint64(b2ic(s.slotUsed[r.slot])))
-				h.Write([]byte(s.slotSum[r.slot]))
+			putU64(h, uint64(b2ic(r.relevant(s))))
+			if r.kind == wsview.Enum {
+				putU64(h, uint64(len(r.options(s))))
 			}
+			hashValue(h, s, r)
 		}
 	}
 	return h.Sum64()
+}
+
+// hashValue writes a row's value into h: its option, its number, the match
+// bytes or a setup slot's summary (an action has none; its live status is
+// not a setting).
+func hashValue(h hash.Hash64, s *sv, r *row) {
+	switch r.kind {
+	case wsview.Enum:
+		putU64(h, uint64(r.get(s)))
+	case wsview.Number:
+		putU64(h, math.Float64bits(r.val(s)))
+	case wsview.Bytes:
+		h.Write([]byte(matchText(s)))
+	case wsview.Slot:
+		putU64(h, uint64(b2ic(s.slotUsed[r.slot])))
+		h.Write([]byte(s.slotSum[r.slot]))
+	}
+}
+
+// putU64 writes x into h, little-endian.
+func putU64(h hash.Hash64, x uint64) {
+	var b [8]byte
+	for i := range b {
+		b[i] = byte(x >> (8 * i))
+	}
+	h.Write(b[:])
+}
+
+// rowKeys is every row's value as a key, in sheet order.
+// TRLC-LINKS: REQ-SDS-212, REQ-SDS-220
+func rowKeys(s *sv) []uint64 {
+	h := fnv.New64a()
+	keys := make([]uint64, 0, len(rowByID))
+	for _, t := range sheetTabs {
+		for _, r := range t.rows {
+			h.Reset()
+			hashValue(h, s, r)
+			keys = append(keys, h.Sum64())
+		}
+	}
+	return keys
+}
+
+// changeMark is how a remote call (or an Autoset sweep) found the settings:
+// each row's value, the timebase in effect and the requests for another,
+// and the notice showing.
+type changeMark struct {
+	keys      []uint64
+	tdiv      float64
+	tdivAsked uint64
+	noticeUnt time.Time
+}
+
+// markChanges takes the settings as they are now, for changesSince.
+// TRLC-LINKS: REQ-SDS-212, REQ-SDS-220
+func (c *Controller) markChanges() changeMark {
+	s := c.snap()
+	m := changeMark{keys: rowKeys(s), tdiv: s.st.TdivS}
+	c.mu.Lock()
+	m.tdivAsked, m.noticeUnt = c.tdivAsked, c.ui.noticeUnt
+	c.mu.Unlock()
+	return m
+}
+
+// changesSince lists the rows whose value is not what m found, in sheet
+// order, and the notice raised since. A timebase asked for since m counts
+// at once: the engine applies it at its next capture, after the call.
+// TRLC-LINKS: REQ-SDS-212, REQ-SDS-220
+func (c *Controller) changesSince(m changeMark) ([]string, string) {
+	if len(m.keys) == 0 {
+		return nil, ""
+	}
+	s := c.snap()
+	keys := rowKeys(s)
+	c.mu.Lock()
+	asked := c.tdivAsked != m.tdivAsked && c.tdivWant != m.tdiv
+	notice := ""
+	if c.ui.noticeUnt != m.noticeUnt && s.now.Before(c.ui.noticeUnt) {
+		notice = c.ui.notice
+	}
+	c.mu.Unlock()
+	var out []string
+	i := 0
+	for _, t := range sheetTabs {
+		for _, r := range t.rows {
+			if keys[i] != m.keys[i] || asked && r.id == "time.tdiv" {
+				out = append(out, r.id)
+			}
+			i++
+		}
+	}
+	return out, notice
+}
+
+// remoteCall runs fn on the panel goroutine for a remote and adds what the
+// call did to its answer: the rows it changed and the notice it raised,
+// measured there (a knob turned on the scope, or another remote's call, is
+// not in them), and the sheet values' count after it, so the remote knows
+// which read of /api/sheets shows the change.
+// TRLC-LINKS: REQ-SDS-212, REQ-SDS-220
+func (c *Controller) remoteCall(row string, fn func() SetResult) SetResult {
+	var res SetResult
+	if !c.onPanel(func() {
+		m := c.markChanges()
+		res = fn()
+		res.Changed, res.Notice = c.changesSince(m)
+	}) {
+		return SetResult{Row: row, Error: "the panel is busy"}
+	}
+	c.rmu.Lock()
+	res.SheetsSeq = c.remote.sheetsSeq
+	c.rmu.Unlock()
+	return res
 }
 
 // publish recomputes the snapshot and bumps Seq when it changed.
@@ -510,21 +623,26 @@ func (c *Controller) onPanel(fn func()) bool {
 // typed entry ("1.25V", "115200", "C2 Fall", "55 AA").
 // TRLC-LINKS: REQ-SDS-212
 func (c *Controller) SheetSet(id string, value any, text string) SetResult {
-	var res SetResult
-	if !c.onPanel(func() { res = c.setRow(id, value, text, true) }) {
-		return SetResult{Row: id, Error: "the panel is busy"}
-	}
-	return res
+	return c.remoteCall(id, func() SetResult { return c.setRow(id, value, text, true) })
 }
 
-// SheetAction runs an action of a row (the first when action is empty).
-// TRLC-LINKS: REQ-SDS-212
+// SheetAction runs an action of a row (the first when action is empty). An
+// Autoset it starts is named in the answer: the sweep's rows come with the
+// snapshot when it ends (Status.AutosetDone, AutosetChanged).
+// TRLC-LINKS: REQ-SDS-212, REQ-SDS-220
 func (c *Controller) SheetAction(id, action string) SetResult {
-	var res SetResult
-	if !c.onPanel(func() { res = c.runAction(id, action, true) }) {
-		return SetResult{Row: id, Error: "the panel is busy"}
-	}
-	return res
+	return c.remoteCall(id, func() SetResult {
+		c.mu.Lock()
+		run := c.autosetRun
+		c.mu.Unlock()
+		res := c.runAction(id, action, true)
+		c.mu.Lock()
+		if c.autosetRun != run && c.autosetBusy {
+			res.Autoset = c.autosetRun
+		}
+		c.mu.Unlock()
+		return res
+	})
 }
 
 // RemoteWorkspace switches to a workspace for the remote ("bus", "BUS" or
@@ -545,11 +663,7 @@ func (c *Controller) RemoteWorkspace(name string) SetResult {
 	if ws < 0 {
 		return SetResult{Row: "workspace", Error: fmt.Sprintf("no workspace %q: SCOPE, BUS, SPECTRUM, MEASURE or COMPARE", name)}
 	}
-	var res SetResult
-	if !c.onPanel(func() { res = c.remoteWorkspace(wsview.WS(ws)) }) {
-		return SetResult{Row: "workspace", Error: "the panel is busy"}
-	}
-	return res
+	return c.remoteCall("workspace", func() SetResult { return c.remoteWorkspace(wsview.WS(ws)) })
 }
 
 // autosetRefusal: while Autoset sweeps, a remote's changes wait, as the
@@ -582,11 +696,7 @@ func (c *Controller) remoteWorkspace(ws wsview.WS) SetResult {
 // LCD shows; an open sheet stays as it is. A refused master says why.
 // TRLC-LINKS: REQ-SDS-211, REQ-SDS-220
 func (c *Controller) RemoteAgain() SetResult {
-	var res SetResult
-	if !c.onPanel(func() { res = c.remoteAgain() }) {
-		return SetResult{Row: "again", Error: "the panel is busy"}
-	}
-	return res
+	return c.remoteCall("again", c.remoteAgain)
 }
 
 // remoteAgain is RemoteAgain on the panel goroutine.

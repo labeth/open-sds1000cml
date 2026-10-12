@@ -288,6 +288,7 @@ func (c *Controller) setTdivIdx(i int) error {
 	i = clampInt(i, 0, len(c.tdivs)-1)
 	c.mu.Lock()
 	c.tdivIdx = i
+	c.tdivAsked, c.tdivWant = c.tdivAsked+1, c.tdivs[i]
 	c.mu.Unlock()
 	c.eng.SetTdiv(c.tdivs[i])
 	return nil
