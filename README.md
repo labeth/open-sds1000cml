@@ -191,11 +191,16 @@ with a short REMOTE line. It shows settings only, no waveform. Several phones ca
   and Auto.
 * **Menus:** every settings tab and row, with search that knows everyday words ("averaging", "screenshot");
   a long press pins a row to Home.
-* **History:** every change, from the phone or the scope, with undo.
+* **History:** every change, from the phone (as the scope reports what each of its calls changed), the scope or
+  another phone, with undo; the tab's badge counts what is new since you last looked.
 * **Keys:** the knob pushes and keys, the menu keys (they open the menu on the phone) and Default Setup (hold 1 s).
-* Typed numbers with units ("1.25V", "500us"), match bytes in hex or text.
-* The phone stays awake (a wake lock, or a silent video on the scope's plain HTTP) and goes fullscreen; on an
-  iPhone, Share, Add to Home Screen opens it without browser bars.
+* Typed numbers with units ("1.25V", "500us", a comma for the point works too), hex values ("0x50") and match
+  bytes in hex or text.
+* The phone's back gesture closes the open sheet or page before it leaves the remote.
+* The phone stays awake: a wake lock where the browser has one; on the scope's plain HTTP a muted video behind
+  the controls (Android), or a video with a silent sound track (iPhone, or any phone with Stronger keep-awake in
+  Keys, which may pause other apps' music). It goes fullscreen on Android; on an iPhone, Share, Add to Home
+  Screen opens it without browser bars.
 
 ## What it adds over the factory firmware
 

@@ -512,32 +512,61 @@ readouts. It loads nothing from outside the scope (system fonts, no CDN), under 
 | Request | Answer |
 |---|---|
 | `GET /api/panel/wait?seq=N&timeout_ms=T` | the panel snapshot as soon as its `Seq` differs from `N` (at most 10 s): the remote's one standing request. It rests while the phone's page is hidden. |
-| `GET /api/sheets` | every tab and row: id, label, kind, value and text, availability and `Why` (what puts a row in use while it is not), the `Section` header drawn above it, options, unit, range, step or ladder, `Presets` (a number row's labelled values), actions |
-| `POST /api/sheets/set {row, value\|text}` | set a row; `{ok, value, text, error}`, the device's own error text |
-| `POST /api/sheets/action {row, action}` | run an action, or a number row's preset by its label (`{"row":"trig.holdoff","action":"1 ms"}`) |
-| `POST /api/panel {button}` / `{knob, dir, steps}` | a key or a knob by its physical name (spec 08 §6) |
-| `POST /api/panel {"workspace":"bus"}` | switch the workspace (its id, name or tag, any case) **whatever the LCD shows**: a sheet open there, its edit or the match editor stay exactly as they are, where F1..F5 would pick the sheet's choices. Leaving BUS closes the BUS pane's own byte picker. Answers `{ok, error, workspace, name, view, next, notice, seq}` (`notice` only when the switch itself raised one; later notices come with the snapshot). |
-| `POST /api/panel {"again":true}` | the active workspace's again (its next view; COMPARE stacks a master or cancels it), the LCD's sheet left as it is; the same answer, or the reason a master is refused |
-| `GET /remote.webmanifest`, `/remote-icon-{180,192,512}.png` | the web app manifest (`display: standalone`, from `/remote`) and the home-screen icons |
-| `GET /remote-awake.mp4`, `/remote-awake.webm` | the keep-awake videos (a few KB, byte ranges served) |
+| `GET /api/sheets` | every tab and row: id, label, kind, value and text, availability and `Why` (what puts a row in use while it is not), the `Section` header drawn above it, options, unit, range, step or ladder, `Presets` (a number row's labelled values), actions; and `SheetsSeq`, the sheet values' count when it was read |
+| `POST /api/sheets/set {row, value\|text}` | set a row; `{ok, value, text, error, changed, notice, sheetsSeq}`, the device's own error text (below) |
+| `POST /api/sheets/action {row, action}` | run an action, or a number row's preset by its label (`{"row":"trig.holdoff","action":"1 ms"}`); the same answer, plus `autoset`, the Autoset sweep it started |
+| `POST /api/panel {button}` / `{knob, dir, steps}` | a key or a knob by its physical name (spec 08 §6), answered `{ok}` once queued |
+| `POST /api/panel {button\|knob, "remote":true, "nomenu"}` | the phone's keys and knobs: answered once run, `{ok, error, changed, notice, sheetsSeq}`. Refused with the Autoset text while a sweep runs (but `auto`, which cancels it), and with `"nomenu":true` (the Adjust and Position turns and pushes) while a menu is open on the LCD, where they would move it |
+| `POST /api/panel {"workspace":"bus"}` | switch the workspace (its id, name or tag, any case) **whatever the LCD shows**: a sheet open there, its edit or the match editor stay exactly as they are, where F1..F5 would pick the sheet's choices. Leaving BUS closes the BUS pane's own byte picker. Answers `{ok, error, workspace, name, view, next, notice, changed, sheetsSeq, seq}` (`notice` only when the switch itself raised one; later notices come with the snapshot). |
+| `POST /api/panel {"again":true, "workspace":"bus"}` | the active workspace's again (its next view; COMPARE stacks a master or cancels it), the LCD's sheet left as it is; the same answer, or the reason a master is refused. With `workspace` it is refused unless that workspace is active (`BUS again: the scope shows SPECTRUM now`): a phone that has not yet seen a switch on the scope does not run the wrong again |
+| `GET /remote/` | redirects to `/remote` |
+| `GET /remote.webmanifest`, `/remote-icon-{180,192,512}.png` | the web app manifest (`display: standalone`, from `/remote`, scope `/remote`) and the home-screen icons |
+| `GET /remote-awake.mp4`, `/remote-awake.webm` | the keep-awake videos (a few KB) |
+
+Every page and asset is served with an `ETag` hashed once at start-up and `Cache-Control: no-cache`, so a
+browser revalidates and gets `304 Not Modified` for what did not change; byte ranges are served (iPhone
+Safari plays a video only from a server that answers them).
 
 The panel snapshot's `AgainNext` names what the active workspace's again shows next even while a menu covers the
-pane (whose own `Again` line is then empty).
+pane (whose own `Again` line is then empty); in COMPARE both name the key's job (stack master, cancel stack), and
+the trigger's stability shows on the LCD and in the refusal of a master. `AdjustRow` is the id of the row SCOPE's
+Adjust tunes (CH1 and CH2 both have an Offset). `SheetsSeq` moves only with a sheet value or a row's
+availability; live texts (an action row's status, such as a mask test's counts) are not in the snapshot, so a
+long-poll does not wake on every frame. `AutosetDone` and `AutosetChanged` name the last Autoset sweep that
+ended and the rows it changed.
+
+A change's answer says what the change did, measured on the panel goroutine where knobs and other calls cannot
+interleave: `changed`, the ids of the rows whose value it changed (a timebase counts at once, though the engine
+applies it at its next capture); `notice`, the notice it raised; `sheetsSeq`, the sheet values' count after it.
 
 While Autoset sweeps, the scope takes no change from a remote, as its keys take none: sets, actions, presets,
-typed text and the workspace keys answer `Autoset is running: ...` and change nothing. Only Autoset itself runs,
-where a second press cancels the sweep (the remote's Auto key says so).
+typed text, the workspace keys and the remote's keys and knobs answer `Autoset is running: ...` and change
+nothing. Only Autoset itself runs, where a second press cancels the sweep (the remote's Auto key says so).
 
-- **History** lives on the phone (browser storage, at most 100 entries): on every `Seq` change the remote reads
-  `/api/sheets` again and diffs the rows and the workspace. A change is the phone's when one of its calls can
-  have made it (the calls run in order, each until its effects have been read back), another remote's while the
-  LCD's REMOTE line names the row, else the scope's. Undo sets the old values back through `/api/sheets/set`.
+- **Following the scope:** the remote's one long-poll takes each new snapshot and reads `/api/sheets` again only
+  when `SheetsSeq` moved, at most every 300 ms; after one of its own changes it reads the sheets once, until a
+  read brings the answer's `sheetsSeq`.
+- **History** lives on the phone (browser storage under a versioned key, at most 100 entries; entries of another
+  shape are dropped when it loads): it diffs the rows and the workspace of each read. A change is the phone's
+  only where the answer to one of its calls lists the row (an Autoset it started: the rows its sweep changed,
+  once the snapshot says it ended); nothing is booked while a call has not answered. Every other change is
+  another remote's where the LCD's REMOTE line names the row, else the scope's (the BUS search's decode, turned
+  on a moment after a switch, is the scope's). Undo sets the old values back through `/api/sheets/set`; an entry
+  counts as undone only where its rows went back, and a refusal is shown in the scope's words. Undoing an undo
+  is a redo. The History tab's badge counts the entries added since History was last shown.
 - **Keeping the phone awake:** the Screen Wake Lock API needs a secure context, which the scope's plain HTTP is
-  not. There the page plays a tiny silent video from a tap: it carries an audio track and is not muted and
-  seeks back instead of looping, because WebKit keeps the display on only for an unmuted video with audio that
-  is not looping, and Chromium only for an audible or visible one. The page says which mechanism holds.
-- **Fullscreen:** the Fullscreen API from a tap (Android). An iPhone has none for pages; the manifest and the
-  `apple-mobile-web-app-capable` meta make Add to Home Screen open the remote without browser bars.
+  not. There the page plays a small video behind the controls, from the first tap: on Chromium muted (its
+  video wake lock holds a muted video only while it covers a fifth of the screen, so it fills the screen behind
+  the page); on WebKit (every iPhone browser, which keeps the display on only for an unmuted video with audio
+  that is not looping) with its silent sound track, `navigator.audioSession.type = "ambient"` set before
+  playing where the browser has it so it mixes with other apps' audio. A Keys switch, Stronger keep-awake,
+  plays the sound track on any phone, for one where the muted video does not hold. The video seeks back instead
+  of looping; the first time a video with sound starts, a notice says so, once. The page says which way holds.
+- **Fullscreen:** the Fullscreen API from a tap (Android; over plain HTTP, Android's Add to Home screen opens a
+  normal tab). An iPhone has none for pages; the manifest and the `apple-mobile-web-app-capable` meta make Add
+  to Home Screen open the remote without browser bars.
+- **The phone's back gesture** closes what is open on the remote (a sheet, tile editing, a Menus page or a
+  search) before it leaves the page: while one is open, a history entry of the remote's own sits on top.
 
 ---
 
