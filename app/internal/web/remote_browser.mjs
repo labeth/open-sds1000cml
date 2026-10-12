@@ -524,6 +524,48 @@ run(async (t) => {
     await B.ctx.close();
   }
 
+  // ---- the phone's back gesture closes what is open on the remote, then leaves it --------------
+  {
+    await ctrl("/reset");
+    const P = await phone("Pixel 7", { label: "back" });
+    const { page } = P;
+    const back = async () => { await page.evaluate(() => history.back()).catch(() => {}); await page.waitForTimeout(300); };
+    const here = () => /\/remote$/.test(page.url());
+    await P.tap('[data-tile="trig.level"] .tmain');
+    await P.until(() => P.visible(".sheet"), "a sheet opens");
+    await back();
+    t.ok(!(await P.visible(".sheet")) && here(), "back closes the sheet and stays on the remote: " + page.url());
+    await P.tap('[data-tabbar="menus"]');
+    await P.tap('[data-tab="ch2"]');
+    await P.tap('[data-row="ch2.offset"] [data-open]');
+    await P.until(() => P.visible(".sheet"), "a sheet over the CH2 page");
+    await back();
+    t.ok(!(await P.visible(".sheet")) && await P.visible('[data-row="ch2.coupling"]') && here(), "back closes the sheet, the CH2 page stays");
+    await back();
+    t.ok(await P.visible('[data-tab="trig"]') && here(), "back again: the Menus root");
+    await page.locator("#search").fill("holdoff");
+    await P.until(() => P.visible('.mbody [data-row="trig.holdoff"]'), "a search");
+    await back();
+    t.ok((await page.locator("#search").inputValue()) === "" && await P.visible('[data-tab="trig"]') && here(), "back clears the search");
+    await P.tap('[data-tabbar="home"]');
+    await P.hold('[data-tile="time.tdiv"] .tmain', 700);
+    await P.until(() => P.visible("#add-tile"), "editing the tiles");
+    await back();
+    t.ok(!(await P.visible("#add-tile")) && here(), "back ends the editing");
+    // closed another way, the entry goes too: with nothing open, back leaves the remote
+    await P.tap('[data-tile="trig.level"] .tmain');
+    await P.tap(".sheet-close");
+    await P.tap('[data-tabbar="menus"]');
+    await P.tap('[data-tab="ch1"]');
+    await P.tap("#back");
+    await P.tap('[data-tabbar="home"]');
+    await page.waitForTimeout(300);
+    await back();
+    t.ok(!here(), "with nothing open, back leaves the remote: " + page.url());
+    t.ok(P.errors.length === 0, "back: no console errors" + (P.errors.length ? " - " + P.errors.slice(0, 3).join(" | ") : ""));
+    await P.ctx.close();
+  }
+
   // ---- three phone sizes: every tab and sheet kind keeps the layout rules ---------------------
   for (const [label, dev, vp] of [["390x844", "iPhone 14", { width: 390, height: 844 }], ["360x780", "Pixel 7", { width: 360, height: 780 }],
     ["844x390", "Pixel 7", { width: 844, height: 390 }]]) {

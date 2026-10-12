@@ -165,7 +165,43 @@
   const dock = h("div", { class: "dock", role: "group", "aria-label": "Run control" });
   const tabbar = h("nav", { class: "tabbar", role: "tablist", "aria-label": "Sections" });
   app.append(bar, banner, views, h("div", { class: "bottom" }, dock, tabbar));
-  const sh = RU.sheet({ onClose: () => { S.sheet = null; sh.body.textContent = ""; KP.active = null; } });
+  const sh = RU.sheet({ onClose: () => { S.sheet = null; sh.body.textContent = ""; KP.active = null; syncBack(); } });
+
+  // ---- the phone's back gesture: it closes what is open here before it leaves the remote ----------
+
+  // While a sheet, tile editing, a Menus page or a search is open, one
+  // history entry of the remote's own sits on top: the phone's back pops it
+  // and closes the topmost of them (the entry comes back while more stays
+  // open). Closed another way, the entry is taken off again (history.back),
+  // and that pop is not taken for the phone's back. The entry follows after
+  // the task that opened or closed something, so closing one thing and
+  // opening another moves no history.
+  const Back = { pushed: false, skip: 0, timer: 0 };
+  // TRLC-LINKS: REQ-SDS-220
+  function openDepth() { return (sh.isOpen() ? 1 : 0) + (S.edit ? 1 : 0) + (S.tab === "menus" && (S.page || S.query.trim()) ? 1 : 0); }
+  // TRLC-LINKS: REQ-SDS-220
+  function syncBack() {
+    clearTimeout(Back.timer);
+    Back.timer = setTimeout(() => {
+      const want = openDepth() > 0;
+      try {
+        if (want && !Back.pushed) { history.pushState({ sdsRemote: 1 }, ""); Back.pushed = true; }
+        else if (!want && Back.pushed) { Back.pushed = false; Back.skip++; history.back(); }
+      } catch (e) { /* no history here */ }
+    }, 0);
+  }
+  window.addEventListener("popstate", (e) => {
+    if (Back.skip) { Back.skip--; return; }   // the entry taken off by syncBack
+    if (e.state && e.state.sdsRemote) { Back.pushed = true; syncBack(); return; }   // forward onto it
+    Back.pushed = false;
+    if (sh.isOpen()) sh.close();
+    else if (S.edit) exitEdit();
+    else if (S.tab === "menus" && S.page) goBack();
+    else if (S.tab === "menus" && S.query.trim()) { searchIn.value = ""; S.query = ""; renderMenus(); }
+    syncBack();
+  });
+  // a reload keeps the entry's state, though nothing is open now
+  if (history.state && history.state.sdsRemote) { try { history.replaceState(null, ""); } catch (e) { /* none */ } }
 
   // the connection banner
   // TRLC-LINKS: REQ-SDS-220
@@ -299,6 +335,7 @@
   tabBtns.hist.appendChild(histBadge);
   // TRLC-LINKS: REQ-SDS-220
   function goTab(id) {
+    syncBack();
     if (S.edit) { S.edit = false; renderHome(true); }
     if (id === S.tab) {
       if (id === "menus" && (S.page || S.query)) { S.page = null; S.query = ""; searchIn.value = ""; renderMenus(); }
@@ -516,9 +553,10 @@
     haptic("long");
     renderHome(true);
     renderBar();
+    syncBack();
   }
   // TRLC-LINKS: REQ-SDS-220
-  function exitEdit() { S.edit = false; renderHome(true); renderBar(); }
+  function exitEdit() { S.edit = false; renderHome(true); renderBar(); syncBack(); }
   // TRLC-LINKS: REQ-SDS-220
   function moveTile(id, d) {
     const ws = wsNow(), ids = tilesOf(ws), i = ids.indexOf(id), j = i + d;
@@ -604,6 +642,7 @@
     sh.open(title);
     sh.body.scrollTop = 0;
     refreshAll();
+    syncBack();
     return box;
   }
   // TRLC-LINKS: REQ-SDS-220
@@ -1110,6 +1149,7 @@
 
   // TRLC-LINKS: REQ-SDS-220
   function renderMenus() {
+    syncBack();
     S.menuWs = wsNow();
     srow.hidden = !!S.page;
     clearQ.hidden = !S.query;
