@@ -23,7 +23,7 @@ run(async (t) => {
   await po.setSelect("decProto", "uart");
   await t.until(async () => (await po.eval(() => document.getElementById("stBytes").value)) === "55 AA",
     "the page shows the match the scope is armed with (55 AA)", 6000);
-  t.ok(await po.hasClass("stArm", "on"), "…and the trigger as armed");
+  await t.until(async () => po.hasClass("stArm", "on"), "…and the trigger as armed (once this page decodes, which shows the pane)", 4000);
   await t.until(async () => (await po.text("trigCap")).includes("55 AA"), "the strip's caption names it too", 4000);
   await new Promise((r) => setTimeout(r, 2500));
   t.ok(posts.length === 0, "the page posts no serial settings of its own: " + JSON.stringify(posts));
