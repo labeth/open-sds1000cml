@@ -69,7 +69,10 @@ func (c *Controller) setTrigTypeIndex(st engine.Stats, next int) {
 	c.eng.SetTrigType(next)
 }
 
-// serialBus copies the BUS tab's bus settings into p, keeping its match.
+// serialBus copies the BUS tab's bus settings into p, keeping its match and
+// its I2C address and direction: the engine reads those for I2C only, so a
+// bus other than I2C keeps them for when it is I2C again (the I2C address
+// row reads the kept value, not in use).
 // TRLC-LINKS: REQ-SDS-013
 func (c *Controller) serialBus(p engine.SerialParams) engine.SerialParams {
 	c.mu.Lock()
@@ -81,9 +84,6 @@ func (c *Controller) serialBus(p engine.SerialParams) engine.SerialParams {
 	p.Baud, p.Bits, p.Parity = c.decBaud, 8, "none"
 	p.CPOL, p.CPHA, p.MSB = c.decCPOL, c.decCPHA, true
 	p.HaveThr = false
-	if p.Proto != 2 { // only I2C has an address
-		p.Addr, p.RW = -1, 2
-	}
 	return p
 }
 
@@ -115,6 +115,6 @@ func (c *Controller) setI2CAddr(a int) error {
 	}
 	p := se.SerialConfig()
 	p.Addr = clampInt(a, -1, 127)
-	se.SetSerialParams(c.serialBus(p)) // a bus other than I2C keeps "any"
+	se.SetSerialParams(c.serialBus(p)) // a bus other than I2C keeps it for when it is I2C
 	return nil
 }

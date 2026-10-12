@@ -21,12 +21,21 @@ var siPrefix = map[rune]float64{
 // parseNumber reads a number such as "1.25V", "500u", "-20 mV", "2k",
 // "115200", "50%", "10 div" or "0x55". unit is the row's unit ("V", "s",
 // "Hz", "%", "div", "Bd" or ""); a different unit is an error. A percent row
-// takes "50" or "50%" and returns 50.
+// takes "50" or "50%" and returns 50. A comma is the decimal point when the
+// text has no point and one comma ("2,5V", "115,2k": a European keyboard);
+// before exactly three digits after a whole number ("57,600") it could be a
+// thousands separator too, so that is refused rather than guessed.
 // TRLC-LINKS: REQ-SDS-212
 func parseNumber(text, unit string) (float64, error) {
 	s := strings.TrimSpace(text)
 	if s == "" {
 		return 0, fmt.Errorf("empty value")
+	}
+	if i := strings.IndexByte(s, ','); i >= 0 && !strings.Contains(s, ".") && strings.Count(s, ",") == 1 {
+		if twoWays(s, i) {
+			return 0, fmt.Errorf("the comma in %q reads two ways: type it without the comma, or with a point", text)
+		}
+		s = s[:i] + "." + s[i+1:]
 	}
 	if l := strings.ToLower(s); strings.HasPrefix(l, "0x") || strings.HasPrefix(l, "-0x") {
 		neg := strings.HasPrefix(l, "-")
@@ -72,6 +81,22 @@ scan:
 		return 0, fmt.Errorf("unit %q does not fit (want %s)", u, unitName(unit))
 	}
 	return 0, fmt.Errorf("unit %q does not fit (want %s)", rest, unitName(unit))
+}
+
+// twoWays: the comma at i stands after a whole number other than 0 and
+// before exactly three digits, as in "57,600": a decimal point or a
+// thousands separator.
+// TRLC-LINKS: REQ-SDS-212
+func twoWays(s string, i int) bool {
+	whole := strings.TrimLeft(s[:i], "+-")
+	if whole == "" || strings.Trim(whole, "0") == "" || strings.TrimLeft(whole, "0123456789") != "" {
+		return false
+	}
+	n := 0
+	for n < len(s)-i-1 && isDigit(s[i+1+n]) {
+		n++
+	}
+	return n == 3
 }
 
 // unitIs reports whether u names the row's unit (with common spellings).

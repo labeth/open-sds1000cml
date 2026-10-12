@@ -332,7 +332,7 @@ sheet (§7.2) and, pressed again on that tab, closes it. The lamp column is the 
 
 | Control | Selector | Bit | Action |
 |---|---|---|---|
-| SET TO 50% | `0x66` | 2 | trigger level at the midpoint of the source channel's frame |
+| SET TO 50% | `0x66` | 2 | trigger level at the midpoint of the source channel's frame; without a signal there a notice says so and the level stays |
 | DEFAULT SETUP | `0x66` | 10 | factory settings; any menu closes; the workspace stays (§7.1) |
 | FORCE | `0x67` | 2 | one untriggered capture (`ForceTrigger`) |
 | PRINT | `0x67` | 13 | the screen as `SDSnnnn.png` on the U-disk, named in a notice |
@@ -477,6 +477,18 @@ notice, picker, lamp word, `Seq`) and `GET /api/panel/wait?seq=N&timeout_ms=T` l
 10 s). `{"workspace":"bus"}` and `{"again":true}` on `/api/panel` are the workspace keys for the phone
 remote: they switch the workspace or run its again whatever the LCD shows, a sheet open there staying as
 it is (spec 11 §8). A number row's presets run through `/api/sheets/action` by their labels.
+
+A remote's change runs on the panel goroutine, ordered with the knobs and keys, and its answer says what it
+did, measured there: the ids of the rows whose value it changed (a timebase counts at once, though the
+engine applies it at its next capture; `workspace` when it switched the workspace), the notice it raised and
+the sheet values' count after it (`SheetsSeq`). An Autoset it starts is named; when the sweep ends the snapshot names it as the last one done
+with the rows it changed. A key or knob sent with `"remote":true` runs the same way and is answered once it
+has run; it waits while Autoset sweeps (as the panel's own keys do), and it never works the LCD's menus: the
+menu keys and F-keys are refused, the S/DIV, Adjust and Position turns and pushes (any key with
+`"nomenu":true`) wait while a menu is open there, and the Adjust push is refused where it would open one
+(SCOPE's row sheet, BUS's byte picker; the phone does that job itself). The snapshot leaves out
+live texts, so a remote is not woken on every frame: the highlighted row of an action is sent without its
+status text (a mask test's counts), and COMPARE's again names the key's job, not the trigger's stability.
 
 ---
 

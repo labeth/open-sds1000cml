@@ -84,18 +84,22 @@ func TestRemoteCoreParity(t *testing.T) {
 			vec.Fmt = append(vec.Fmt, fmtVec{m, v})
 			wantFmt = append(wantFmt, r.fmtN(v))
 		}
-		// a value out of range: refused with the same words, nothing clamped
-		over := hi + math.Max(math.Abs(hi), 1)
-		vec.Range = append(vec.Range, rangeVec{m, strconvG(over)})
-		err := r.setNumber(c, s, over)
-		if err == nil {
-			t.Fatalf("%s: %g above its range was not refused", r.id, over)
+		// a value out of range, above or below: refused with the same words,
+		// nothing clamped (a negative one written as itself: -1s, -0x01)
+		for _, out := range []float64{hi + math.Max(math.Abs(hi), 1), lo - math.Max(math.Abs(lo), 1)} {
+			vec.Range = append(vec.Range, rangeVec{m, strconvG(out)})
+			err := r.setNumber(c, s, out)
+			if err == nil {
+				t.Fatalf("%s: %g outside its range was not refused", r.id, out)
+			}
+			wantRange = append(wantRange, err.Error())
 		}
-		wantRange = append(wantRange, err.Error())
 	}
 	for _, unit := range []string{"V", "s", "%", "div", "b/s", ""} {
 		for _, text := range []string{"1.25", "1.25V", "1.25 V", "500u", "500us", "500 us", "-20 mV", "+1.2", "1e-3", "2k", "115.2k", "50%", "25 %",
-			"0x1F", "-0x10", "0xZZ", "abc", "", "  ", "1.2.3", "1e", "1e5", "5mA", "2 volts", "3 sec", "10 div", "9600 baud", ".5", "-.5ms", "1Meg", "µs", "3µs"} {
+			"0x1F", "-0x10", "0xZZ", "abc", "", "  ", "1.2.3", "1e", "1e5", "5mA", "2 volts", "3 sec", "10 div", "9600 baud", ".5", "-.5ms", "1Meg", "µs", "3µs",
+			"2,5V", "2,5", "115,2k", "57,600", "1,2,3", "1.2,3", ",5", "-0,5 ms", "1,5e3", "0x1,2", "2,5 volts", "0,125", "1,250 ms",
+			"-1,500", "1,2345", "12,34k", "+3,000V", "000,500"} {
 			vec.Parse = append(vec.Parse, parseVec{text, unit})
 		}
 	}
@@ -110,6 +114,11 @@ func TestRemoteCoreParity(t *testing.T) {
 	vf := filepath.Join(dir, "vectors.json")
 	if err := os.WriteFile(vf, blob, 0o644); err != nil {
 		t.Fatal(err)
+	}
+	for _, f := range []string{filepath.Join("testdata", "remoteparity.cjs"), filepath.Join("..", "web", "remote_core.js")} {
+		if _, err := os.ReadFile(f); err != nil { // read here so Go's test cache sees a change to them (node reads them)
+			t.Fatal(err)
+		}
 	}
 	cmd := exec.Command(node, filepath.Join("testdata", "remoteparity.cjs"), vf, filepath.Join("..", "web"))
 	cmd.Stderr = os.Stderr

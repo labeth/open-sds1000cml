@@ -4,6 +4,7 @@ package panel
 import (
 	"encoding/json"
 	"fmt"
+	"hash"
 	"hash/fnv"
 	"math"
 	"strings"
@@ -18,7 +19,10 @@ import (
 // setter (the knob and F-key path) and never opens, moves or closes
 // anything on the LCD; a one-line REMOTE note there confirms it. One Seq
 // counts every change of the snapshot and of the sheet values, and the
-// long-poll wakes on it.
+// long-poll wakes on it; SheetsSeq counts the sheet values alone, so a
+// remote reads /api/sheets again only when they changed. Live texts (a
+// mask test's counts, the stack's status, COMPARE's trigger stability) are
+// not in the snapshot: they would wake every remote on every frame.
 
 // KeyStatus is one F-key label as drawn.
 type KeyStatus struct {
@@ -70,8 +74,9 @@ type TabModel struct {
 
 // SheetsModel is the whole sheet model for the remote.
 type SheetsModel struct {
-	Seq  uint64
-	Tabs []TabModel
+	Seq       uint64
+	SheetsSeq uint64 // the sheet values' count (Status.SheetsSeq) when this model was read
+	Tabs      []TabModel
 }
 
 // SheetStatus is the LCD's open sheet.
@@ -82,7 +87,7 @@ type SheetStatus struct {
 	TabTitle string
 	Tabs     []string // in this workspace's order
 	Edit     bool
-	Row      *RowModel // the highlighted row
+	Row      *RowModel // the highlighted row (an action row without its live status text)
 }
 
 // PickerStatus is the byte picker or the match editor.
@@ -98,6 +103,7 @@ type PickerStatus struct {
 // Status is the panel snapshot in /api/status: what the LCD and lamps show.
 type Status struct {
 	Seq         uint64
+	SheetsSeq   uint64 // moves only when a sheet value or a row's availability changes
 	AutosetBusy bool
 	AutosetMsg  string
 	Workspace   string
@@ -108,7 +114,8 @@ type Status struct {
 	Sheet       SheetStatus
 	FKeys       [5]KeyStatus
 	Tool        []ToolSeg
-	Again       string
+	AdjustRow   string `json:",omitempty"` // the row SCOPE's Adjust tunes (its label alone is ambiguous: CH1 and CH2 both have an Offset)
+	Again       string // the pane's again line (COMPARE: the key's job, not the trigger's stability)
 	AgainNext   string // what the workspace's key again shows next, whatever the LCD shows ("X-Y")
 	Notice      string
 	Remote      string
@@ -116,21 +123,35 @@ type Status struct {
 	Lamps       uint16
 	LampsLit    []string
 	Display     Display
+	// the last Autoset sweep that ended and the rows it changed (a remote
+	// that started it books them as its own)
+	AutosetDone    uint64
+	AutosetChanged []string `json:",omitempty"`
 }
 
-// SetResult is the outcome of a remote set, action or typed entry.
+// SetResult is the outcome of a remote set, action or typed entry. A
+// remote call (remoteCall) also says what it did, measured on the panel
+// goroutine: the rows whose value it changed ("workspace" too when it
+// switched it), the notice it raised, the sheet values' count after it and
+// the Autoset sweep it started.
 type SetResult struct {
-	OK    bool   `json:"ok"`
-	Row   string `json:"row,omitempty"`
-	Value any    `json:"value,omitempty"`
-	Text  string `json:"text,omitempty"`
-	Error string `json:"error,omitempty"`
+	OK        bool     `json:"ok"`
+	Row       string   `json:"row,omitempty"`
+	Value     any      `json:"value,omitempty"`
+	Text      string   `json:"text,omitempty"`
+	Error     string   `json:"error,omitempty"`
+	Changed   []string `json:"changed,omitempty"`
+	Notice    string   `json:"notice,omitempty"`
+	SheetsSeq uint64   `json:"sheetsSeq,omitempty"`
+	Autoset   uint64   `json:"autoset,omitempty"` // Status.AutosetDone names it when the sweep ends
 }
 
 // remoteState is the published snapshot (guarded by Controller.rmu).
 type remoteState struct {
 	seq          uint64
 	sig          uint64
+	sheetsSeq    uint64 // counts sheetSig changes
+	sheetSig     uint64
 	status       Status
 	wake         chan struct{}
 	sheetsActive time.Time
@@ -187,6 +208,9 @@ func (c *Controller) status(s *sv) Status {
 	}
 	st.Lamps = c.lampWord(s) // what the lamps show (latched at the next input or sync)
 	st.LampsLit = lampNames(st.Lamps)
+	c.mu.Lock()
+	st.AutosetDone, st.AutosetChanged = c.autosetDone, c.autosetChanged
+	c.mu.Unlock()
 	switch {
 	case u.open && u.sub == subMatch:
 		st.Mode = "editor"
@@ -213,6 +237,9 @@ func (c *Controller) status(s *sv) Status {
 			st.Sheet.Tabs = append(st.Sheet.Tabs, sheetTabs[ti].name)
 		}
 		rm := rowModel(s, curRow(u))
+		if rm.Kind == "action" {
+			rm.Text = "" // a live status (a mask test's counts, the stack's): /api/sheets has it
+		}
 		st.Sheet.Row = &rm
 		st.Tool = []ToolSeg{{"S/DIV", "tab"}, {"Adjust", "row"}, {"push", "edit"}, {"Position", "change the row"}, {"push", "default"}}
 		if u.sub == subMatch {
@@ -222,6 +249,12 @@ func (c *Controller) status(s *sv) Status {
 		}
 	} else {
 		st.Tool, st.Again = paneTool(c, s, v)
+		if v.Cmp != nil {
+			st.Again = "F5 again: " + st.AgainNext // the key's job, not the trigger's stability
+		}
+		if r := adjTarget(s); r != nil && u.ws == wsview.Scope && !u.wpick {
+			st.AdjustRow = r.id
+		}
 	}
 	switch {
 	case u.wpick || u.open && u.sub == subPick:
@@ -348,32 +381,137 @@ func ptr(v float64) *float64 { return &v }
 // so the Seq follows a setting changed anywhere.
 func sheetSig(s *sv) uint64 {
 	h := fnv.New64a()
-	var b [8]byte
-	put := func(x uint64) {
-		for i := range b {
-			b[i] = byte(x >> (8 * i))
-		}
-		h.Write(b[:])
-	}
 	for _, t := range sheetTabs {
 		for _, r := range t.rows {
 			h.Write([]byte(r.id))
-			put(uint64(b2ic(r.relevant(s))))
-			switch r.kind {
-			case wsview.Enum:
-				put(uint64(r.get(s)))
-				put(uint64(len(r.options(s))))
-			case wsview.Number:
-				put(math.Float64bits(r.val(s)))
-			case wsview.Bytes:
-				h.Write([]byte(matchText(s)))
-			case wsview.Slot:
-				put(uint64(b2ic(s.slotUsed[r.slot])))
-				h.Write([]byte(s.slotSum[r.slot]))
+			putU64(h, uint64(b2ic(r.relevant(s))))
+			if r.kind == wsview.Enum {
+				putU64(h, uint64(len(r.options(s))))
 			}
+			hashValue(h, s, r)
 		}
 	}
 	return h.Sum64()
+}
+
+// hashValue writes a row's value into h: its option, its number, the match
+// bytes or a setup slot's summary (an action has none; its live status is
+// not a setting).
+// TRLC-LINKS: REQ-SDS-211, REQ-SDS-220
+func hashValue(h hash.Hash64, s *sv, r *row) {
+	switch r.kind {
+	case wsview.Enum:
+		putU64(h, uint64(r.get(s)))
+	case wsview.Number:
+		putU64(h, math.Float64bits(r.val(s)))
+	case wsview.Bytes:
+		h.Write([]byte(matchText(s)))
+	case wsview.Slot:
+		putU64(h, uint64(b2ic(s.slotUsed[r.slot])))
+		h.Write([]byte(s.slotSum[r.slot]))
+	}
+}
+
+// putU64 writes x into h, little-endian.
+// TRLC-LINKS: REQ-SDS-211
+func putU64(h hash.Hash64, x uint64) {
+	var b [8]byte
+	for i := range b {
+		b[i] = byte(x >> (8 * i))
+	}
+	h.Write(b[:])
+}
+
+// rowKeys is every row's value as a key, in sheet order.
+// TRLC-LINKS: REQ-SDS-212, REQ-SDS-220
+func rowKeys(s *sv) []uint64 {
+	h := fnv.New64a()
+	keys := make([]uint64, 0, len(rowByID))
+	for _, t := range sheetTabs {
+		for _, r := range t.rows {
+			h.Reset()
+			hashValue(h, s, r)
+			keys = append(keys, h.Sum64())
+		}
+	}
+	return keys
+}
+
+// changeMark is how a remote call (or an Autoset sweep) found the settings:
+// each row's value, the timebase in effect and the requests for another,
+// the workspace and the notice showing.
+type changeMark struct {
+	keys      []uint64
+	tdiv      float64
+	tdivAsked uint64
+	ws        wsview.WS
+	noticeUnt time.Time
+}
+
+// markChanges takes the settings as they are now, for changesSince.
+// TRLC-LINKS: REQ-SDS-212, REQ-SDS-220
+func (c *Controller) markChanges() changeMark {
+	s := c.snap()
+	m := changeMark{keys: rowKeys(s), tdiv: s.st.TdivS}
+	c.mu.Lock()
+	m.tdivAsked, m.ws, m.noticeUnt = c.tdivAsked, c.ui.ws, c.ui.noticeUnt
+	c.mu.Unlock()
+	return m
+}
+
+// changesSince lists the rows whose value is not what m found, in sheet
+// order ("workspace" last when the workspace is another one), and the
+// notice raised since. A timebase asked for since m counts at once: the
+// engine applies it at its next capture, after the call.
+// TRLC-LINKS: REQ-SDS-212, REQ-SDS-220
+func (c *Controller) changesSince(m changeMark) ([]string, string) {
+	if len(m.keys) == 0 {
+		return nil, ""
+	}
+	s := c.snap()
+	keys := rowKeys(s)
+	c.mu.Lock()
+	asked, ws := c.tdivAsked != m.tdivAsked && c.tdivWant != m.tdiv, c.ui.ws
+	notice := ""
+	if c.ui.noticeUnt != m.noticeUnt && s.now.Before(c.ui.noticeUnt) {
+		notice = c.ui.notice
+	}
+	c.mu.Unlock()
+	var out []string
+	i := 0
+	for _, t := range sheetTabs {
+		for _, r := range t.rows {
+			if keys[i] != m.keys[i] || asked && r.id == "time.tdiv" {
+				out = append(out, r.id)
+			}
+			i++
+		}
+	}
+	if ws != m.ws {
+		out = append(out, "workspace")
+	}
+	return out, notice
+}
+
+// remoteCall runs fn on the panel goroutine for a remote and adds what the
+// call did to its answer: the rows it changed and the notice it raised,
+// measured there (a knob turned on the scope, or another remote's call, is
+// not in them), and the sheet values' count after it, so the remote knows
+// which read of /api/sheets shows the change.
+// TRLC-LINKS: REQ-SDS-212, REQ-SDS-220
+func (c *Controller) remoteCall(row string, fn func() SetResult) SetResult {
+	var res SetResult
+	if !c.onPanel(func() {
+		m := c.markChanges()
+		res = fn()
+		res.Changed, res.Notice = c.changesSince(m)
+	}) {
+		return SetResult{Row: row, Error: "the panel is busy"}
+	}
+	c.rmu.Lock()
+	res.SheetsSeq = c.remote.sheetsSeq
+	c.rmu.Unlock()
+	return res
 }
 
 // publish recomputes the snapshot and bumps Seq when it changed.
@@ -387,7 +525,12 @@ func (c *Controller) publish() {
 	sig := h.Sum64()
 	c.rmu.Lock()
 	if s.now.Sub(c.remote.sheetsActive) < sheetsWindow {
-		sig ^= sheetSig(s) * 0x9E3779B97F4A7C15
+		ss := sheetSig(s)
+		if ss != c.remote.sheetSig || c.remote.sheetsSeq == 0 {
+			c.remote.sheetsSeq++
+			c.remote.sheetSig = ss
+		}
+		sig ^= ss * 0x9E3779B97F4A7C15
 	}
 	if c.remote.wake == nil {
 		c.remote.wake = make(chan struct{})
@@ -398,7 +541,7 @@ func (c *Controller) publish() {
 		close(c.remote.wake)
 		c.remote.wake = make(chan struct{})
 	}
-	st.Seq = c.remote.seq
+	st.Seq, st.SheetsSeq = c.remote.seq, c.remote.sheetsSeq
 	c.remote.status = st
 	c.rmu.Unlock()
 }
@@ -446,8 +589,12 @@ func (c *Controller) Sheets() SheetsModel {
 	c.remote.sheetsActive = c.now()
 	c.rmu.Unlock()
 	c.publish()
-	s := c.snap()
+	// the counts before the read: a change while it runs counts once more
 	var m SheetsModel
+	c.rmu.Lock()
+	m.Seq, m.SheetsSeq = c.remote.seq, c.remote.sheetsSeq
+	c.rmu.Unlock()
+	s := c.snap()
 	for _, t := range sheetTabs {
 		tm := TabModel{ID: t.id, Name: t.name, Title: t.title, Key: t.key}
 		for _, r := range t.rows {
@@ -455,9 +602,6 @@ func (c *Controller) Sheets() SheetsModel {
 		}
 		m.Tabs = append(m.Tabs, tm)
 	}
-	c.rmu.Lock()
-	m.Seq = c.remote.seq
-	c.rmu.Unlock()
 	return m
 }
 
@@ -491,21 +635,26 @@ func (c *Controller) onPanel(fn func()) bool {
 // typed entry ("1.25V", "115200", "C2 Fall", "55 AA").
 // TRLC-LINKS: REQ-SDS-212
 func (c *Controller) SheetSet(id string, value any, text string) SetResult {
-	var res SetResult
-	if !c.onPanel(func() { res = c.setRow(id, value, text, true) }) {
-		return SetResult{Row: id, Error: "the panel is busy"}
-	}
-	return res
+	return c.remoteCall(id, func() SetResult { return c.setRow(id, value, text, true) })
 }
 
-// SheetAction runs an action of a row (the first when action is empty).
-// TRLC-LINKS: REQ-SDS-212
+// SheetAction runs an action of a row (the first when action is empty). An
+// Autoset it starts is named in the answer: the sweep's rows come with the
+// snapshot when it ends (Status.AutosetDone, AutosetChanged).
+// TRLC-LINKS: REQ-SDS-212, REQ-SDS-220
 func (c *Controller) SheetAction(id, action string) SetResult {
-	var res SetResult
-	if !c.onPanel(func() { res = c.runAction(id, action, true) }) {
-		return SetResult{Row: id, Error: "the panel is busy"}
-	}
-	return res
+	return c.remoteCall(id, func() SetResult {
+		c.mu.Lock()
+		run := c.autosetRun
+		c.mu.Unlock()
+		res := c.runAction(id, action, true)
+		c.mu.Lock()
+		if c.autosetRun != run && c.autosetBusy {
+			res.Autoset = c.autosetRun
+		}
+		c.mu.Unlock()
+		return res
+	})
 }
 
 // RemoteWorkspace switches to a workspace for the remote ("bus", "BUS" or
@@ -516,21 +665,23 @@ func (c *Controller) SheetAction(id, action string) SetResult {
 // is (its key again is RemoteAgain). The LCD confirms with a REMOTE line.
 // TRLC-LINKS: REQ-SDS-211, REQ-SDS-220
 func (c *Controller) RemoteWorkspace(name string) SetResult {
-	ws := -1
-	n := strings.TrimSpace(name)
-	for i := 0; i < wsview.Count; i++ {
-		if strings.EqualFold(n, wsview.IDs[i]) || strings.EqualFold(n, wsview.Names[i]) || strings.EqualFold(n, wsview.Tags[i]) {
-			ws = i
-		}
-	}
+	ws := wsIndex(name)
 	if ws < 0 {
 		return SetResult{Row: "workspace", Error: fmt.Sprintf("no workspace %q: SCOPE, BUS, SPECTRUM, MEASURE or COMPARE", name)}
 	}
-	var res SetResult
-	if !c.onPanel(func() { res = c.remoteWorkspace(wsview.WS(ws)) }) {
-		return SetResult{Row: "workspace", Error: "the panel is busy"}
+	return c.remoteCall("workspace", func() SetResult { return c.remoteWorkspace(wsview.WS(ws)) })
+}
+
+// wsIndex finds a workspace by its id, name or tag, any case (-1: none).
+// TRLC-LINKS: REQ-SDS-211, REQ-SDS-220
+func wsIndex(name string) int {
+	n := strings.TrimSpace(name)
+	for i := 0; i < wsview.Count; i++ {
+		if strings.EqualFold(n, wsview.IDs[i]) || strings.EqualFold(n, wsview.Names[i]) || strings.EqualFold(n, wsview.Tags[i]) {
+			return i
+		}
 	}
-	return res
+	return -1
 }
 
 // autosetRefusal: while Autoset sweeps, a remote's changes wait, as the
@@ -560,14 +711,129 @@ func (c *Controller) remoteWorkspace(ws wsview.WS) SetResult {
 
 // RemoteAgain is the active workspace's key again for the remote: its next
 // view (COMPARE: stack a master, or cancel the one stacking), whatever the
-// LCD shows; an open sheet stays as it is. A refused master says why.
+// LCD shows; an open sheet stays as it is. A refused master says why. want
+// names the workspace the remote meant ("" the active one): while another
+// is active the call is refused, so a remote that has not yet seen a
+// switch on the scope does not run that workspace's again.
 // TRLC-LINKS: REQ-SDS-211, REQ-SDS-220
-func (c *Controller) RemoteAgain() SetResult {
-	var res SetResult
-	if !c.onPanel(func() { res = c.remoteAgain() }) {
-		return SetResult{Row: "again", Error: "the panel is busy"}
+func (c *Controller) RemoteAgain(want string) SetResult {
+	ws := -1
+	if strings.TrimSpace(want) != "" {
+		if ws = wsIndex(want); ws < 0 {
+			return SetResult{Row: "again", Error: fmt.Sprintf("no workspace %q: SCOPE, BUS, SPECTRUM, MEASURE or COMPARE", want)}
+		}
 	}
-	return res
+	return c.remoteCall("again", func() SetResult {
+		c.mu.Lock()
+		cur := c.ui.ws
+		c.mu.Unlock()
+		if ws >= 0 && wsview.WS(ws) != cur {
+			return SetResult{Row: "again", Error: wsview.Names[ws] + " again: the scope shows " + wsview.Names[cur] + " now"}
+		}
+		return c.remoteAgain()
+	})
+}
+
+// menuRefusal: with a menu open on the LCD, Adjust, Position and their
+// pushes move that menu, so a remote's turns and pushes of them wait.
+const menuRefusal = "A menu is open on the scope: Adjust and Position move it there, so they wait here until it closes"
+
+// remoteKeys are the keys a remote presses: none of them opens, moves or
+// closes a menu on the LCD (Default Setup and Auto leave a remote's LCD menus
+// as they are). The menu keys and the F-keys work the LCD's menus: a remote
+// opens its own.
+var remoteKeys = map[int]bool{btnRunStop: true, btnSingle: true, btnAuto: true, btnDefaultSetup: true, btnSet50: true, btnForce: true,
+	btnPrint: true, btnCh1VdivPush: true, btnCh2VdivPush: true, btnCh1PosPush: true, btnCh2PosPush: true, btnTrigLvlPush: true,
+	btnTdivPush: true, btnHorizPosPush: true, btnAdjustPsh: true}
+
+// RemoteKey presses a key of the panel for a remote and answers once it has
+// run, with the rows it changed and the notice it raised (remoteCall). It
+// is refused while Autoset sweeps (but AUTO, which cancels the sweep), as
+// the panel's own keys are ignored then, and where it would open, move or
+// close a menu on the LCD: the menu keys and F-keys, the Adjust and Position
+// pushes while a menu is open there (any key with nomenu), and the Adjust
+// push where it opens one (SCOPE's row sheet, BUS's byte picker). Like a
+// remote's actions it leaves the LCD's menus as they are.
+// TRLC-LINKS: REQ-SDS-162, REQ-SDS-220
+func (c *Controller) RemoteKey(name string, nomenu bool) SetResult {
+	code, ok := nameCode(name)
+	if !ok {
+		return SetResult{Row: name, Error: fmt.Sprintf("no key %q", name)}
+	}
+	if !remoteKeys[code] {
+		return SetResult{Row: name, Error: fmt.Sprintf("the %s key works the scope's menus: a remote opens its own", name)}
+	}
+	return c.remoteCall(name, func() SetResult {
+		if why := c.remoteWaits(code != btnAuto, nomenu || code == btnAdjustPsh || code == btnHorizPosPush); why != "" {
+			return SetResult{Row: name, Error: why}
+		}
+		if code == btnAdjustPsh && c.adjustOpensMenu() {
+			return SetResult{Row: name, Error: "Here the Adjust push opens a menu on the scope: the phone opens it on itself instead"}
+		}
+		c.mu.Lock()
+		c.apiDepth++
+		c.mu.Unlock()
+		c.button(code)
+		c.mu.Lock()
+		c.apiDepth--
+		c.mu.Unlock()
+		return SetResult{OK: true, Row: name}
+	})
+}
+
+// RemoteKnob turns a knob of the panel (dir +1 clockwise, steps detents)
+// for a remote, refused and answered as RemoteKey: S/DIV, Adjust and
+// Position (and any knob with nomenu) wait while a menu is open on the LCD,
+// where they would turn its tab, move its row or change it.
+// TRLC-LINKS: REQ-SDS-162, REQ-SDS-220
+func (c *Controller) RemoteKnob(name string, dir, steps int, nomenu bool) SetResult {
+	if !knobNames[name] {
+		return SetResult{Row: name, Error: fmt.Sprintf("no knob %q", name)}
+	}
+	dir = map[bool]int{true: 1, false: -1}[dir >= 0]
+	menuKnob := name == "tdiv" || name == "adjust" || name == "horizpos"
+	return c.remoteCall(name, func() SetResult {
+		if why := c.remoteWaits(true, nomenu || menuKnob); why != "" {
+			return SetResult{Row: name, Error: why}
+		}
+		c.resync()
+		c.dispatch(name, dir, max(steps, 1))
+		return SetResult{OK: true, Row: name}
+	})
+}
+
+// adjustOpensMenu: the Adjust push opens a menu on the LCD in this
+// workspace: SCOPE's opens its target row's sheet, BUS's the byte picker
+// while it decodes packets.
+// TRLC-LINKS: REQ-SDS-213, REQ-SDS-220
+func (c *Controller) adjustOpensMenu() bool {
+	s := c.snap()
+	switch {
+	case s.ui.ws == wsview.Scope:
+		return true
+	case s.ui.ws == wsview.Bus && !s.ui.busEye:
+		c.amu.Lock()
+		defer c.amu.Unlock()
+		return busDecoding(s, &c.ana)
+	}
+	return false
+}
+
+// remoteWaits is why a remote's key or knob does not run now ("" runs it):
+// Autoset sweeping (when the key waits for it), or a menu open on the LCD
+// (with nomenu).
+// TRLC-LINKS: REQ-SDS-162, REQ-SDS-220
+func (c *Controller) remoteWaits(autoset, nomenu bool) string {
+	if autoset && c.AutosetBusy() {
+		return autosetRefusal
+	}
+	c.mu.Lock()
+	menu := c.ui.open || c.ui.wpick
+	c.mu.Unlock()
+	if nomenu && menu {
+		return menuRefusal
+	}
+	return ""
 }
 
 // remoteAgain is RemoteAgain on the panel goroutine.
@@ -608,7 +874,10 @@ func (c *Controller) againNext(s *sv) string {
 	case wsview.Measure:
 		return map[bool]string{true: "Statistics", false: "All values"}[s.ui.measAll]
 	case wsview.Compare:
-		return c.cmpAgainText(s)
+		// the key's job: whether the trigger is stable enough is said when it
+		// is pressed (a verdict that flickers with the signal would wake every
+		// remote on every frame)
+		return map[bool]string{true: "cancel stack", false: "stack master"}[s.stacking]
 	}
 	return viewName(map[bool]int{true: viewXY, false: viewYT}[s.viewMode == viewYT])
 }

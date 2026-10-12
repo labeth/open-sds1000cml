@@ -59,20 +59,23 @@ func TestRemotePageServed(t *testing.T) {
 			t.Errorf("%s: %d", m[1], r.Code)
 		}
 	}
-	if r := get(s, "/r"); r.Code != http.StatusFound || r.Header().Get("Location") != "/remote" {
-		t.Fatalf("/r: %d -> %q", r.Code, r.Header().Get("Location"))
+	for _, p := range []string{"/r", "/remote/", "/remote/x"} {
+		if r := get(s, p); r.Code != http.StatusFound || r.Header().Get("Location") != "/remote" {
+			t.Fatalf("%s: %d -> %q", p, r.Code, r.Header().Get("Location"))
+		}
 	}
 	// the manifest: standalone from /remote, with icons that are served PNGs of their size
 	r := get(s, "/remote.webmanifest")
 	var man struct {
 		StartURL string `json:"start_url"`
+		Scope    string `json:"scope"`
 		Display  string `json:"display"`
 		Icons    []struct{ Src, Sizes string }
 	}
 	if r.Code != 200 || r.Header().Get("Content-Type") != "application/manifest+json" || json.Unmarshal(r.Body.Bytes(), &man) != nil {
 		t.Fatalf("manifest: %d %q", r.Code, r.Header().Get("Content-Type"))
 	}
-	if man.Display != "standalone" || man.StartURL != "/remote" || len(man.Icons) == 0 {
+	if man.Display != "standalone" || man.StartURL != "/remote" || man.Scope != "/remote" || len(man.Icons) == 0 { // the main UI stays out of an installed remote
 		t.Fatalf("manifest: %s", r.Body.String())
 	}
 	icons := append([]string{"remote-icon-180.png"}, func() (out []string) {
@@ -103,7 +106,7 @@ func TestRemotePageServed(t *testing.T) {
 			t.Fatalf("%s range: %d %d %q", v.name, part.Code, part.Body.Len(), part.Header().Get("Content-Range"))
 		}
 	}
-	for _, p := range []string{"/remote.html", "/ui.html", "/remote/", "/nope.png", "/../remote.css"} {
+	for _, p := range []string{"/remote.html", "/ui.html", "/nope.png", "/../remote.css"} {
 		if r := get(s, p); r.Code == 200 {
 			t.Errorf("%s served", p)
 		}
@@ -111,6 +114,45 @@ func TestRemotePageServed(t *testing.T) {
 	// the main page's top bar points at the remote
 	if !strings.Contains(get(s, "/").Body.String(), `id="remoteLink" class="tlink" href="remote"`) {
 		t.Error("the main page has no Phone remote link")
+	}
+}
+
+// Every embedded page and asset carries an ETag hashed once at start-up and
+// answers If-None-Match with 304 and no body: a phone opening the remote
+// again downloads only what changed (an OTA update changes the tags).
+// TRLC-LINKS: REQ-SDS-161, REQ-SDS-220
+func TestAssetsRevalidate(t *testing.T) {
+	s := New(&fakeScope{}, nil, nil, nil)
+	paths := []string{"/", "/remote"}
+	files, _ := assetFS.ReadDir(".")
+	for _, f := range files {
+		if staticName(f.Name()) {
+			paths = append(paths, "/"+f.Name())
+		}
+	}
+	if len(paths) < 40 {
+		t.Fatalf("only %d files", len(paths))
+	}
+	seen := map[string]string{}
+	for _, p := range paths {
+		r := get(s, p)
+		tag := r.Header().Get("ETag")
+		if r.Code != 200 || !regexp.MustCompile(`^"[0-9a-f]{16}"$`).MatchString(tag) || r.Header().Get("Cache-Control") != "no-cache" {
+			t.Fatalf("%s: %d etag %q cache %q", p, r.Code, tag, r.Header().Get("Cache-Control"))
+		}
+		if other, ok := seen[tag]; ok && other != p {
+			t.Fatalf("%s and %s share the tag %s", p, other, tag)
+		}
+		seen[tag] = p
+		if again := get(s, p, "If-None-Match", tag); again.Code != http.StatusNotModified || again.Body.Len() != 0 {
+			t.Fatalf("%s revalidated: %d, %d bytes", p, again.Code, again.Body.Len())
+		}
+		if other := get(s, p, "If-None-Match", `"0000000000000000"`); other.Code != 200 || other.Body.Len() == 0 {
+			t.Fatalf("%s with another tag: %d", p, other.Code)
+		}
+	}
+	if r := get(s, "/remote", "If-None-Match", assetTags["remote.html"]); r.Code != http.StatusNotModified || r.Header().Get("Content-Security-Policy") != pageCSP {
+		t.Fatalf("/remote revalidated: %d csp %q", r.Code, r.Header().Get("Content-Security-Policy"))
 	}
 }
 
@@ -150,8 +192,9 @@ func TestRemoteNoExternalResources(t *testing.T) {
 // it records what the server asked for.
 type remoteFixture struct {
 	panelFixture
-	ws    string
-	again int
+	ws      string
+	again   int
+	againIn string
 }
 
 // TRLC-LINKS: REQ-SDS-220
@@ -161,15 +204,18 @@ func (p *remoteFixture) RemoteWorkspace(name string) panel.SetResult {
 		return panel.SetResult{Row: "workspace", Error: `no workspace "nope": SCOPE, BUS, SPECTRUM, MEASURE or COMPARE`}
 	}
 	p.status.Workspace, p.status.WorkspaceID, p.status.View, p.status.AgainNext = strings.ToUpper(name), name, "Packets", "Eye diagram"
+	res := panel.SetResult{OK: true, Row: "workspace", Value: name, Text: strings.ToUpper(name), SheetsSeq: 7}
 	if name == "measure" {
 		p.status.Notice = "Measuring Vpp and Freq - the Measure key picks others"
+		res.Notice, res.Changed = p.status.Notice, []string{"meas.pkpk", "meas.freq"}
 	}
-	return panel.SetResult{OK: true, Row: "workspace", Value: name, Text: strings.ToUpper(name)}
+	return res
 }
 
 // TRLC-LINKS: REQ-SDS-220
-func (p *remoteFixture) RemoteAgain() panel.SetResult {
+func (p *remoteFixture) RemoteAgain(want string) panel.SetResult {
 	p.again++
+	p.againIn = want
 	p.status.View, p.status.AgainNext = "Eye diagram", "Packets"
 	return panel.SetResult{OK: true, Row: "again", Value: "Eye diagram", Text: "Eye diagram"}
 }
@@ -186,13 +232,19 @@ func TestPanelWorkspaceEndpoint(t *testing.T) {
 		t.Fatalf("workspace: %v (asked %q)", out, p.ws)
 	}
 	_, out = httpCall(t, s, "POST", "/api/panel", map[string]any{"again": true})
-	if out["ok"] != true || p.again != 1 || out["view"] != "Eye diagram" || out["next"] != "Packets" {
+	if out["ok"] != true || p.again != 1 || p.againIn != "" || out["view"] != "Eye diagram" || out["next"] != "Packets" {
 		t.Fatalf("again: %v", out)
 	}
-	// the notice the switch raised, and not one the LCD was still showing
+	// again with the workspace the phone meant: the panel checks it is the active one; nothing switches
+	p.ws = ""
+	if _, out = httpCall(t, s, "POST", "/api/panel", map[string]any{"again": true, "workspace": "bus"}); out["ok"] != true || p.again != 2 || p.againIn != "bus" || p.ws != "" {
+		t.Fatalf("again in BUS: %v (asked %q, switched %q)", out, p.againIn, p.ws)
+	}
+	// the notice the switch raised and the rows it changed, and not a notice the LCD was still showing
 	_, out = httpCall(t, s, "POST", "/api/panel", map[string]any{"workspace": "measure"})
-	if out["notice"] != "Measuring Vpp and Freq - the Measure key picks others" {
-		t.Fatalf("the switch's notice: %v", out)
+	if out["notice"] != "Measuring Vpp and Freq - the Measure key picks others" || fmt.Sprint(out["changed"]) != "[meas.pkpk meas.freq]" ||
+		out["sheetsSeq"] != 7.0 {
+		t.Fatalf("the switch's notice and rows: %v", out)
 	}
 	_, out = httpCall(t, s, "POST", "/api/panel", map[string]any{"workspace": "bus"})
 	if out["ok"] != true || out["notice"] != "" {

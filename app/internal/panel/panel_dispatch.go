@@ -372,12 +372,14 @@ func (c *Controller) trigStepCodes() int {
 }
 
 // setTrigMid is SET TO 50%: the trigger level at the midpoint of the source
-// channel's latest frame.
+// channel's latest frame. Without a signal there it says so and leaves the
+// level as it is.
 // TRLC-LINKS: REQ-SDS-135
 func (c *Controller) setTrigMid() {
 	m, ok := c.measureChans()
 	src := c.eng.Snapshot().TrigSource & 1
 	if !ok || !has(m[src]) {
+		c.toast(fmt.Sprintf("Set to 50 %%: no signal on C%d", src+1), 1500*time.Millisecond)
 		return
 	}
 	mid := (m[src].Vmax + m[src].Vmin) / 2

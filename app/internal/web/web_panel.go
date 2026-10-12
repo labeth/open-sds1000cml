@@ -31,15 +31,23 @@ type panelRemote interface {
 // test double without it answers "no panel").
 type panelWorkspaces interface {
 	RemoteWorkspace(name string) panel.SetResult
-	RemoteAgain() panel.SetResult
+	RemoteAgain(want string) panel.SetResult
+}
+
+// panelKeys is the remote's keys and knobs: answered once they have run,
+// with what they did (type-asserted; without it a key is only queued).
+type panelKeys interface {
+	RemoteKey(name string, nomenu bool) panel.SetResult
+	RemoteKnob(name string, dir, steps int, nomenu bool) panel.SetResult
 }
 
 // hPanelWorkspace switches the workspace ({"workspace":"bus"}) or runs the
-// active one's "again" ({"again":true}) for the phone remote. Unlike F1..F5
+// active one's "again" ({"again":true}; with "workspace" it is refused
+// unless that one is active) for the phone remote. Unlike F1..F5
 // it works while the LCD has a sheet open and leaves that sheet as it is
 // (REQ-SDS-220). The answer carries the workspace, its view, what again
-// shows next and the notice the switch raised on the LCD (not one showing
-// from before).
+// shows next, the notice the switch itself raised on the LCD (not one
+// showing from before), the rows it changed and the sheet values' count.
 // TRLC-LINKS: REQ-SDS-162, REQ-SDS-220
 func (s *Server) hPanelWorkspace(w http.ResponseWriter, name string, again bool) {
 	pw, ok := s.panel.(panelWorkspaces)
@@ -47,26 +55,16 @@ func (s *Server) hPanelWorkspace(w http.ResponseWriter, name string, again bool)
 		writeJSON(w, map[string]any{"ok": false, "error": "no panel"})
 		return
 	}
-	ps, hasStatus := s.panel.(interface{ PanelStatus() panel.Status })
-	before := ""
-	if hasStatus {
-		before = ps.PanelStatus().Notice
-	}
 	var res panel.SetResult
-	if name == "" && again {
-		res = pw.RemoteAgain()
+	if again {
+		res = pw.RemoteAgain(name)
 	} else {
 		res = pw.RemoteWorkspace(name)
 	}
-	out := map[string]any{"ok": res.OK, "error": res.Error}
-	if hasStatus {
+	out := map[string]any{"ok": res.OK, "error": res.Error, "notice": res.Notice, "changed": res.Changed, "sheetsSeq": res.SheetsSeq}
+	if ps, ok := s.panel.(interface{ PanelStatus() panel.Status }); ok {
 		st := ps.PanelStatus()
-		notice := ""
-		if st.Notice != before {
-			notice = st.Notice
-		}
-		out["seq"], out["workspace"], out["name"], out["view"], out["next"], out["notice"] =
-			st.Seq, st.WorkspaceID, st.Workspace, st.View, st.AgainNext, notice
+		out["seq"], out["workspace"], out["name"], out["view"], out["next"] = st.Seq, st.WorkspaceID, st.Workspace, st.View, st.AgainNext
 	}
 	writeJSON(w, out)
 }

@@ -4,6 +4,8 @@ package web
 import (
 	"bytes"
 	"embed"
+	"fmt"
+	"hash/fnv"
 	"net/http"
 	"path"
 	"strings"
@@ -30,12 +32,36 @@ var assetTypes = map[string]string{
 	".webm":        "video/webm",
 }
 
-// serveAsset writes an embedded static file with revalidation caching. The OTA
-// agent swaps the whole binary (embedded assets included), so a browser-cached
-// asset must round-trip before it can meet a newer server's wire format.
-// Returns false (writing nothing) when the file is not embedded.
+// assetTags are the embedded files' ETags, hashed once at start-up. A
+// browser revalidates every file (no-cache) and gets 304 Not Modified while
+// it holds the same one, so opening a page moves only what changed since the
+// last visit; an OTA update swaps the binary and with it the tags.
+var assetTags = tagAssets()
+
+// tagAssets hashes every embedded file.
 // TRLC-LINKS: REQ-SDS-161
-func serveAsset(w http.ResponseWriter, name string) bool {
+func tagAssets() map[string]string {
+	tags := map[string]string{}
+	files, _ := assetFS.ReadDir(".")
+	for _, f := range files {
+		if body, err := assetFS.ReadFile(f.Name()); err == nil {
+			h := fnv.New64a()
+			h.Write(body)
+			tags[f.Name()] = fmt.Sprintf(`"%016x"`, h.Sum64())
+		}
+	}
+	return tags
+}
+
+// serveAsset writes an embedded file with revalidation caching: its ETag
+// answers If-None-Match with 304. The OTA agent swaps the whole binary
+// (embedded assets included), so a browser-cached asset must round-trip
+// before it can meet a newer server's wire format. Byte ranges are served:
+// iPhone Safari plays a video only from a server that answers Range
+// requests (the remote's keep-awake). Returns false (writing nothing) when
+// the file is not embedded.
+// TRLC-LINKS: REQ-SDS-161, REQ-SDS-220
+func serveAsset(w http.ResponseWriter, r *http.Request, name string) bool {
 	body, err := assetFS.ReadFile(name)
 	if err != nil {
 		return false
@@ -46,21 +72,7 @@ func serveAsset(w http.ResponseWriter, name string) bool {
 	}
 	w.Header().Set("Content-Type", ct)
 	w.Header().Set("Cache-Control", "no-cache")
-	w.Write(body)
-	return true
-}
-
-// serveMedia writes an embedded manifest, icon or video with byte-range
-// support: iPhone Safari plays a video only from a server that answers Range
-// requests (the remote's keep-awake fallback).
-// TRLC-LINKS: REQ-SDS-161, REQ-SDS-220
-func serveMedia(w http.ResponseWriter, r *http.Request, name string) bool {
-	body, err := assetFS.ReadFile(name)
-	if err != nil {
-		return false
-	}
-	w.Header().Set("Content-Type", assetTypes[path.Ext(name)])
-	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("ETag", assetTags[name])
 	http.ServeContent(w, r, name, time.Time{}, bytes.NewReader(body))
 	return true
 }

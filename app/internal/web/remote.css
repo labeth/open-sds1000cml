@@ -9,6 +9,8 @@
   --safe-t: env(safe-area-inset-top, 0px); --safe-r: env(safe-area-inset-right, 0px);
   --safe-b: env(safe-area-inset-bottom, 0px); --safe-l: env(safe-area-inset-left, 0px);
   --shadow: 0 10px 30px rgba(0, 0, 0, .5); --kb: 0px;
+  /* text on the control colours at 4.5:1 or more: dim on --ctrl (and --edge, pressed), dim on --on-bg, Stop's label */
+  --dim-ctrl: #919dab; --dim-on: #a9c3dc; --stop-text: #f07a2c;
   color-scheme: dark;
 }
 *, *::before, *::after { box-sizing: border-box; }
@@ -20,7 +22,7 @@ body {
   -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none;
 }
 #app {
-  position: fixed; top: 0; left: 0; right: 0; height: 100vh; height: 100dvh;
+  position: fixed; top: 0; left: 0; right: 0; height: 100vh; height: 100dvh; background: var(--bg);
   display: flex; flex-direction: column; overflow: hidden;
   padding: var(--safe-t) var(--safe-r) var(--safe-b) var(--safe-l); touch-action: manipulation;
 }
@@ -44,16 +46,17 @@ svg { flex: none; }
   border: 1px solid var(--edge); background: var(--ctrl); color: var(--text); font: 600 var(--fs)/1.1 var(--sans); text-align: center;
 }
 .btn.col { flex-direction: column; gap: 3px; }
-.btn .sub { display: block; max-width: 100%; font: 500 var(--fs-sm)/1.15 var(--sans); color: var(--dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.btn .sub { display: block; max-width: 100%; font: 500 var(--fs-sm)/1.15 var(--sans); color: var(--dim-ctrl); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.btn.primary .sub, .btn.on .sub, .btn[aria-pressed="true"] .sub { color: var(--dim-on); }
 .btn.sq { width: var(--tap); padding: 0; }
 .btn.ghost { background: transparent; border-color: transparent; }
 .btn.primary { background: var(--on-bg); border-color: var(--on-edge); color: var(--on-fg); }
 .btn.run { border-color: var(--run); color: var(--run); }
-.btn.stop { border-color: var(--stop); color: var(--stop); }
+.btn.stop { border-color: var(--stop); color: var(--stop-text); }
 .btn.warn { border-color: var(--warn); color: var(--warn); }
 .btn.on, .btn[aria-pressed="true"] { background: var(--on-bg); border-color: var(--on-edge); color: var(--on-fg); }
 .btn.down { background: var(--edge); transform: translateY(1px); }
-.btn.dimmed { color: var(--dim); }
+.btn.dimmed { color: var(--dim-ctrl); }
 .btn svg { width: 22px; height: 22px; }
 .hold { overflow: hidden; }
 .hold::before { content: ""; position: absolute; inset: 0; background: var(--stop); opacity: .35; transform-origin: 0 50%; transform: scaleX(0); pointer-events: none; }
@@ -88,7 +91,7 @@ svg { flex: none; }
 .wss { display: flex; gap: 4px; min-width: 0; }
 .wsb {
   position: relative; flex: 1 1 0; min-width: 44px; min-height: 44px; display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 2px; padding: 0; border-radius: var(--r-sm); border: 1px solid var(--edge); background: var(--ctrl); color: var(--dim);
+  gap: 2px; padding: 0; border-radius: var(--r-sm); border: 1px solid var(--edge); background: var(--ctrl); color: var(--dim-ctrl);
 }
 .wsb svg { width: 20px; height: 20px; }
 .wst { font: 600 var(--fs-sm)/1 var(--sans); letter-spacing: .02em; }
@@ -96,6 +99,9 @@ svg { flex: none; }
 .wsb.down { background: var(--edge); }
 .wsa { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); column-gap: 4px; min-height: 17px; }
 .wsa > span { grid-row: 1; min-width: 0; font: 500 var(--fs-sm)/17px var(--sans); color: var(--on-fg); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* 300 px and less (a small phone, or text zoomed): the eye leaves Home's bar too (Keys has the switch), and the chips draw
+   closer, so five of 44 px fit in 240 px */
+@media (max-width: 299px) { .bar.home #awake { display: none; } .bar.home { padding-left: 4px; padding-right: 4px; } .wss, .wsa { column-gap: 2px; gap: 2px; } }
 
 /* ---- the connection banner ---- */
 .banner { flex: none; display: flex; align-items: center; gap: 8px; min-height: 36px; padding: 6px 16px; background: var(--panel); background: color-mix(in srgb, var(--warn) 16%, var(--bg)); border-bottom: 1px solid var(--warn); color: var(--warn); font: 600 var(--fs-sm)/1.3 var(--sans); }
@@ -127,13 +133,13 @@ svg { flex: none; }
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .qb.sans { font-family: var(--sans); font-weight: 600; }
-.qc { flex: none; font: 400 var(--fs-md)/1 var(--sans); color: var(--dim); }
+.qc { flex: none; font: 400 var(--fs-md)/1 var(--sans); color: var(--dim-ctrl); }
 .qv { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .qb.tight .qc { display: none; }
 .qb[aria-checked="true"] { background: var(--on-bg); border-color: var(--on-edge); color: var(--on-fg); }
 .qb.arm { border-color: var(--trigger); color: var(--trigger); }
 .qb.down { background: var(--edge); }
-.qb.dimmed { color: var(--dim); }
+.qb.dimmed { color: var(--dim-ctrl); }
 .q .hold { flex: 1 1 0; min-height: 44px; padding: 0 6px; font-size: var(--fs-sm); }
 .edq .btn { flex: 1 1 0; min-width: 44px; min-height: 44px; padding: 0; }
 .more { display: flex; justify-content: center; padding: 20px 12px 12px; }
@@ -277,7 +283,7 @@ body.sheet-on .toast { top: calc(var(--safe-t) + 8px); bottom: auto; }
 .why { font: 500 var(--fs-sm)/1.35 var(--sans); color: var(--warn); }
 .stp { display: grid; grid-template-columns: minmax(76px, 1fr) minmax(0, 1.5fr) minmax(76px, 1fr); gap: 8px; }
 .sb { min-height: 84px; flex-direction: column; gap: 4px; padding: 0 4px; }
-.sb .ch { font: 400 26px/1 var(--sans); color: var(--dim); }
+.sb .ch { font: 400 26px/1 var(--sans); color: var(--dim-ctrl); }
 .sb .sbv { max-width: 100%; font: 500 var(--fs-sm)/1.1 var(--mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .disp { min-width: 0; display: flex; flex-direction: column; justify-content: center; padding: 6px 8px; text-align: center; border-radius: var(--r); background: var(--well); border: 1px solid var(--edge); }
 .dv { min-height: 34px; font: 600 26px/1.25 var(--mono); color: var(--acc); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -322,7 +328,7 @@ body.sheet-on .toast { top: calc(var(--safe-t) + 8px); bottom: auto; }
 .keys { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); grid-template-rows: repeat(5, 48px); gap: 8px; }
 .key { min-width: 0; min-height: 44px; border-radius: var(--r); border: 1px solid var(--edge); background: var(--ctrl); color: var(--text); font: 500 var(--fs-lg)/1 var(--mono); }
 .key.unit { color: var(--trigger); font-size: var(--fs-md); }
-.key.op { color: var(--dim); font-family: var(--sans); font-size: var(--fs); }
+.key.op { color: var(--dim-ctrl); font-family: var(--sans); font-size: var(--fs); }
 .key.enter { background: var(--on-bg); border-color: var(--on-edge); color: var(--on-fg); font: 600 var(--fs-md)/1 var(--sans); }
 .key.down { background: var(--edge); }
 .opts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
@@ -357,5 +363,7 @@ body.sheet-on .toast { top: calc(var(--safe-t) + 8px); bottom: auto; }
 .tick.warn { background: var(--stop); }
 .tick.long { background: var(--trigger); }
 @keyframes tick { from { opacity: .95; transform: scale(1.5); } to { opacity: 0; transform: scale(1); } }
-.awake-video { position: fixed; left: -100px; top: -100px; width: 2px; height: 2px; opacity: 0; pointer-events: none; }
+/* keep-awake: the video fills the screen behind the page (#app paints over it). Chromium holds the screen for a muted
+   video only while it covers a fifth of the screen; it does not count what is drawn over it. */
+.awake-video { position: fixed; inset: 0; z-index: -1; width: 100%; height: 100%; object-fit: cover; background: var(--bg); pointer-events: none; }
 @media (prefers-reduced-motion: reduce) { .sheet, .scrim, .swt::after { transition: none; } .tick.flash, .banner .dot { animation: none; } }

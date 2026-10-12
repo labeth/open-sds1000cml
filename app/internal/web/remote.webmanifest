@@ -3,7 +3,7 @@
   "short_name": "Scope remote",
   "description": "Change the scope's settings from the phone; nothing opens on the scope.",
   "start_url": "/remote",
-  "scope": "/",
+  "scope": "/remote",
   "display": "standalone",
   "orientation": "any",
   "background_color": "#0b0f14",

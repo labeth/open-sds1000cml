@@ -43,6 +43,7 @@ func (c *Controller) autoset() {
 		c.pushLEDs()
 		return
 	}
+	from := c.markChanges() // the settings before the sweep, for the rows it changes
 	c.mu.Lock()
 	if c.autosetBusy { // second press cancels
 		if c.autosetStop != nil {
@@ -54,6 +55,8 @@ func (c *Controller) autoset() {
 	}
 	stop := make(chan struct{})
 	c.autosetBusy, c.autosetStop, c.autosetMsg = true, stop, "AUTOSET..."
+	c.autosetRun++
+	c.autosetFrom = from
 	c.mu.Unlock()
 	c.pushLEDs()
 	go c.runAutoset(stop)
@@ -62,11 +65,19 @@ func (c *Controller) autoset() {
 // TRLC-LINKS: REQ-SDS-137
 func (c *Controller) runAutoset(stop chan struct{}) {
 	defer func() {
+		// the rows the sweep changed, for the remote that started it: kept
+		// with its number before the busy flag drops, so a snapshot that
+		// shows the sweep ended also lists them
+		c.mu.Lock()
+		run, from := c.autosetRun, c.autosetFrom
+		c.mu.Unlock()
+		changed, _ := c.changesSince(from)
 		c.mu.Lock()
 		c.autosetBusy = false
 		if c.autosetStop == stop {
 			c.autosetStop = nil
 		}
+		c.autosetDone, c.autosetChanged = run, changed
 		c.mu.Unlock()
 		c.pushLEDs()
 	}()
@@ -604,6 +615,7 @@ func (c *Controller) setTdivNearest(target float64) float64 {
 	}
 	c.mu.Lock()
 	c.tdivIdx = best
+	c.tdivAsked, c.tdivWant = c.tdivAsked+1, c.tdivs[best]
 	c.mu.Unlock()
 	band, _ := c.eng.SetTdiv(c.tdivs[best])
 	return band.CaptureIntervalNs() * 1e-9

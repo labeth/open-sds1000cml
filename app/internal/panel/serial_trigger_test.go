@@ -45,9 +45,12 @@ func TestSerialTriggerType(t *testing.T) {
 	if p := eng.SerialConfig(); p.Proto != 2 || p.Addr != 0x50 || c.decChA == c.decChB {
 		t.Fatalf("I2C: %+v roles %d/%d", p, c.decChA, c.decChB)
 	}
-	c.SheetSet("bus.protocol", nil, "SPI")
-	if p := eng.SerialConfig(); p.Proto != 3 || p.Addr != -1 || p.ChA != c.decChA || p.ChB != c.decChB {
+	c.SheetSet("bus.protocol", nil, "SPI") // the I2C address is kept for when the bus is I2C again
+	if p := eng.SerialConfig(); p.Proto != 3 || p.Addr != 0x50 || p.ChA != c.decChA || p.ChB != c.decChB {
 		t.Fatalf("SPI: %+v (decode roles %d/%d)", p, c.decChA, c.decChB)
+	}
+	if r := rowModel(c.snap(), rowByID["bus.i2c_address"]); r.Text != "0x50" || r.Available {
+		t.Fatalf("the I2C address on SPI: %+v", r)
 	}
 	c.SheetSet("bus.protocol", nil, "Manch") // no serial trigger for it: disarmed
 	if eng.stats.SerialMode != 0 {

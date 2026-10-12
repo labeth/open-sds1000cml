@@ -2,6 +2,7 @@
 package web
 
 import (
+	"os"
 	"os/exec"
 	"strings"
 	"testing"
@@ -17,6 +18,9 @@ import (
 // TRLC-LINKS: REQ-SDS-220
 func TestRemoteCoreJS(t *testing.T) {
 	testenv.NeedNode(t)
+	if _, err := os.ReadFile("remote.test.cjs"); err != nil { // read here so Go's test cache sees a change to it
+		t.Fatal(err)
+	}
 	out, err := exec.Command("node", "remote.test.cjs").CombinedOutput()
 	if err != nil || !strings.Contains(string(out), "ALL PASS") {
 		t.Fatalf("remote.test.cjs: %v\n%s", err, out)

@@ -46,14 +46,22 @@
   // TRLC-LINKS: REQ-SDS-220
   function hex2(v) { return Math.max(0, Math.round(v)).toString(16).toUpperCase().padStart(2, "0"); }
 
+  // hexText writes a whole number as the hex rows do (panel hexText): 0x50,
+  // and -0x02 for a negative one typed; rounded half away from zero, as Go.
+  // TRLC-LINKS: REQ-SDS-220
+  function hexText(v) {
+    const n = Math.sign(v) * Math.round(Math.abs(v));
+    return n < 0 ? "-0x" + hex2(-n) : "0x" + hex2(n);
+  }
+
   // The rows the device formats in their own way; the rest follow their unit.
   const FMT = {
-    "trig.holdoff": (v) => (v <= 0 ? "Off" : si(v, "s")),
+    "trig.holdoff": (v) => (v === 0 ? "Off" : si(v, "s")),
     "ch1.offset": (v) => sgnSI(v, "V"),
     "ch2.offset": (v) => sgnSI(v, "V"),
     "time.zoom_pos": (v) => String(Math.round(v * 10) / 10) + " %",
-    "bus.stream_value": (v) => "0x" + hex2(v),
-    "bus.i2c_address": (v) => (v < 0 ? "Any" : "0x" + hex2(v)),
+    "bus.stream_value": (v) => hexText(v),
+    "bus.i2c_address": (v) => (v === -1 ? "Any" : hexText(v)),
     "acq.sr_target": (v) => g3(v),
   };
 
@@ -155,16 +163,27 @@
   }
 
   // parseNumber reads "1.25V", "500u", "-20 mV", "2k", "50%", "0x55" in the
-  // row's unit, with the device's error texts.
+  // row's unit, with the device's error texts. A comma is the decimal point
+  // when the text has no point and one comma ("2,5V": a European keyboard);
+  // before exactly three digits after a whole number ("57,600") it could be
+  // a thousands separator too, so that is refused rather than guessed.
   // TRLC-LINKS: REQ-SDS-220
   function parseNumber(text, unit) {
-    const s = String(text == null ? "" : text).trim();
+    const s0 = String(text == null ? "" : text).trim();
     const want = unit ? unit : "a plain number";
-    if (!s) return { ok: false, error: "empty value" };
+    if (!s0) return { ok: false, error: "empty value" };
+    let s = s0;
+    if (s0.indexOf(".") < 0 && s0.split(",").length === 2) {
+      const i = s0.indexOf(","), whole = s0.slice(0, i).replace(/^[+-]+/, "");
+      if (/^\d+$/.test(whole) && /[1-9]/.test(whole) && /^\d{3}(\D|$)/.test(s0.slice(i + 1))) {
+        return { ok: false, error: 'the comma in "' + String(text) + '" reads two ways: type it without the comma, or with a point' };
+      }
+      s = s0.slice(0, i) + "." + s0.slice(i + 1);
+    }
     const l = s.toLowerCase();
     if (l.startsWith("0x") || l.startsWith("-0x")) {
       const neg = l[0] === "-", h = l.replace(/^-?0x/, "");
-      if (!/^[0-9a-f]+$/.test(h)) return { ok: false, error: 'bad hex number "' + s + '"' };
+      if (!/^[0-9a-f]+$/.test(h)) return { ok: false, error: 'bad hex number "' + s0 + '"' };
       const v = parseInt(h, 16);
       return { ok: true, value: neg ? -v : v };
     }
@@ -181,7 +200,7 @@
     }
     const num = s.slice(0, i), rest = s.slice(i).trim();
     const v = /^[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?$/.test(num) ? Number(num) : NaN;
-    if (!Number.isFinite(v)) return { ok: false, error: 'not a number: "' + s + '"' };
+    if (!Number.isFinite(v)) return { ok: false, error: 'not a number: "' + s0 + '"' };
     if (!rest || unitIs(rest, unit)) return { ok: true, value: v };
     const p = PREFIX[rest[0]];
     if (p !== undefined) {
@@ -232,14 +251,36 @@
     return best;
   }
 
-  // The unit keys a number row's keypad gets.
+  // The unit keys a number row's keypad gets (none for a row the scope
+  // writes in hex: its keypad has A-F and 0x instead).
   const UNIT_KEYS = { V: ["mV", "V"], s: ["ns", "us", "ms", "s"], "%": ["%"], "b/s": ["k", "M"] };
 
   // TRLC-LINKS: REQ-SDS-220
   function unitKeys(row) {
+    if (isHex(row)) return [];
     const u = UNIT_KEYS[row.Unit || ""];
     if (u) return u;
     return !row.Unit && row.Max >= 1000 ? ["k"] : [];
+  }
+
+  // The rows the scope writes in hex ("0x50").
+  const HEX = { "bus.i2c_address": 1, "bus.stream_value": 1 };
+
+  // TRLC-LINKS: REQ-SDS-220
+  function isHex(row) { return !!row && !!HEX[row.ID]; }
+
+  // hexNumKey edits a hex keypad's number ("0x50"): a letter A-F makes it
+  // hex (0x goes in front), 0x puts the prefix in or takes it out, Del takes
+  // the last digit (and 0x with the last one).
+  // TRLC-LINKS: REQ-SDS-220
+  function hexNumKey(buf, k) {
+    const hex = buf.slice(0, 2) === "0x";
+    if (k === "clear") return "";
+    if (k === "back") return buf === "0x" ? "" : buf.slice(0, -1);
+    if (k === "0x") return hex ? buf.slice(2) : "0x" + buf;
+    if (buf.length >= 10) return buf;
+    if (/^[A-F]$/.test(k)) return (hex ? buf : "0x" + buf) + k;
+    return /^[0-9]$/.test(k) ? buf + k : buf;
   }
 
   // numKey edits a number keypad's text: digits, the sign, Del (a whole unit
@@ -408,7 +449,16 @@
     recall: ["setup"], load: ["setup"], persistence: ["persistence"], afterglow: ["persistence"], xy: ["view"],
     spectrogram: ["view"], bode: ["view"], invert: ["invert"], ac: ["coupling"], dc: ["coupling"], gnd: ["coupling"],
     ground: ["coupling"], holdoff: ["holdoff"], zoom: ["zoom"], cursor: ["cursor"], measure: ["meas"],
+    // scope words and the usual misspellings
+    vpp: ["peak-peak"], "pk-pk": ["peak-peak"], pkpk: ["peak-peak"], "p-p": ["peak-peak"], rising: ["rise"], falling: ["fall"],
+    risetime: ["rise"], falltime: ["fall"], samplerate: ["time/div", "memory depth"], recordlength: ["memory depth"],
+    record: ["memory depth"], "screen-shot": ["print"], persistance: ["persistence"], averge: ["average"], tigger: ["trigger", "trig"],
+    cusor: ["cursor"], offest: ["offset"],
   };
+
+  // Phrases that are one word to the search ("peak to peak" is pkpk).
+  const PHRASES = [[/\bpeak[ -]to[ -]peak\b/g, "pkpk"], [/\brise time\b/g, "risetime"], [/\bfall time\b/g, "falltime"],
+    [/\bsample rate\b/g, "samplerate"], [/\brecord length\b/g, "recordlength"], [/\bscreen shot\b/g, "screenshot"]];
 
   // The friendlier names of rows whose sheet label needs its tab.
   const NAME = {
@@ -427,19 +477,76 @@
     return (row.tab === "ch1" ? "CH1 " : row.tab === "ch2" ? "CH2 " : "") + row.Label.replace(/\s+/g, " ");
   }
 
-  // words splits a query into lower-case words.
+  // words splits a query into lower-case words (a known phrase is one).
   // TRLC-LINKS: REQ-SDS-220
-  function words(q) { return String(q || "").toLowerCase().split(/[\s,]+/).filter(Boolean); }
+  function words(q) {
+    let s = String(q || "").toLowerCase();
+    for (const [re, w] of PHRASES) s = s.replace(re, w);
+    return s.split(/[\s,]+/).filter(Boolean);
+  }
+
+  // within1: a and b differ by at most one letter: one changed, added,
+  // dropped, or two neighbours swapped ("offest", "offset").
+  // TRLC-LINKS: REQ-SDS-220
+  function within1(a, b) {
+    if (a === b) return true;
+    const la = a.length, lb = b.length;
+    if (Math.abs(la - lb) > 1) return false;
+    let i = 0;
+    while (i < la && i < lb && a[i] === b[i]) i++;
+    if (la === lb) {
+      return a.slice(i + 1) === b.slice(i + 1) || (a[i] === b[i + 1] && a[i + 1] === b[i] && a.slice(i + 2) === b.slice(i + 2));
+    }
+    return la > lb ? a.slice(i + 1) === b.slice(i) : a.slice(i) === b.slice(i + 1);
+  }
+
+  // vocabulary is every word the sheets use (names, tabs, sections, options,
+  // presets, actions) and the everyday words above.
+  // TRLC-LINKS: REQ-SDS-220
+  function vocabulary(model) {
+    const v = new Set(Object.keys(SYN));
+    const put = (t) => { for (const w of String(t || "").toLowerCase().split(/[^a-z0-9]+/)) if (w.length >= 4) v.add(w); };
+    for (const t of model.tabs) {
+      put(t.name); put(t.title);
+      for (const id of t.rows) {
+        const r = model.rows.get(id);
+        put(label(r)); put(r.Label); put(r.section);
+        for (const o of r.Options || []) put(o.Text);
+        for (const p of r.Presets || []) put(p);
+        for (const a of r.Actions || []) put(a.Text);
+      }
+    }
+    return v;
+  }
 
   // search finds rows by their name, tab, section, options and help, and by
   // the everyday words above. Every word must match; a name match ranks
-  // first, the help text last. [{id, score}], best first, in sheet order.
+  // first, the help text last. When nothing matches, a word of 5 letters or
+  // more also matches the sheets' words one letter away from it ("averge",
+  // "tigger"). [{id, score}], best first, in sheet order.
   // TRLC-LINKS: REQ-SDS-220
   function search(model, q, limit) {
     const ws = words(q);
     if (!ws.length) return [];
+    let out = find(model, ws, (w) => [w].concat(SYN[w] || []));
+    if (!out.length) {
+      const vocab = vocabulary(model);
+      out = find(model, ws, (w) => {
+        const alts = w.length < 5 ? [] : [...vocab].filter((x) => x !== w && within1(w, x));
+        return [w].concat(SYN[w] || [], ...alts.map((x) => [x].concat(SYN[x] || [])));
+      });
+    }
+    out.sort((a, b) => b.score - a.score || a.order - b.order);
+    return out.slice(0, limit || 40).map((x) => ({ id: x.id, score: x.score }));
+  }
+
+  // find scores every row against the words, each word standing for its
+  // candidates (itself and its alternatives); rows that every word matches.
+  // TRLC-LINKS: REQ-SDS-220
+  function find(model, ws, cands) {
     const out = [];
     let order = 0;
+    const alt = ws.map(cands);
     for (const t of model.tabs) {
       for (const id of t.rows) {
         const r = model.rows.get(id);
@@ -449,9 +556,9 @@
           (r.Presets || []).join(" "), (r.Actions || []).map((a) => a.Text).join(" ")].join(" ").toLowerCase();
         const help = String(r.Help || "").toLowerCase();
         let score = 0, all = true;
-        for (const w of ws) {
+        for (let k = 0; k < ws.length; k++) {
           let best = 0;
-          for (const x of [w].concat(SYN[w] || [])) {
+          for (const x of alt[k]) {
             if (name.startsWith(x)) best = Math.max(best, 4);
             else if (new RegExp("(^|[\\s/(-])" + x.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&")).test(name)) best = Math.max(best, 3);
             else if (name.indexOf(x) >= 0) best = Math.max(best, 2);
@@ -464,8 +571,7 @@
         if (all) out.push({ id, score, order });
       }
     }
-    out.sort((a, b) => b.score - a.score || a.order - b.order);
-    return out.slice(0, limit || 40).map((x) => ({ id: x.id, score: x.score }));
+    return out;
   }
 
   // matchPlace reports whether a place (a workspace, a key, a tab of the
@@ -516,6 +622,17 @@
     return out;
   }
 
+  // okEntry: a stored entry of the shape this page shows. History survives
+  // page updates and hand edits: anything else is dropped when it loads.
+  // TRLC-LINKS: REQ-SDS-220
+  function okEntry(e) {
+    const str = (x) => typeof x === "string";
+    const side = (x) => !!x && typeof x === "object" && str(x.key);
+    const okRow = (r) => !!r && typeof r === "object" && str(r.id) && str(r.tab) && str(r.label) && side(r.old) && side(r.neu);
+    return !!e && typeof e === "object" && Number.isFinite(e.id) && Number.isFinite(e.t) && str(e.src) && Array.isArray(e.rows) && e.rows.every(okRow) &&
+      (e.ws == null || (typeof e.ws === "object" && str(e.ws.from) && str(e.ws.to))) && (e.undid === undefined || Array.isArray(e.undid));
+  }
+
   // History is the change list, newest first: every setting change from the
   // phone or the scope; steps on one row from one source within 3 s are one
   // entry (stepping back to the start removes it); an undo is itself an
@@ -523,13 +640,14 @@
   // TRLC-LINKS: REQ-SDS-220
   class History {
     constructor(list) {
-      this.list = Array.isArray(list) ? list.slice(0, HIST_MAX) : [];
+      this.list = Array.isArray(list) ? list.filter(okEntry).slice(0, HIST_MAX) : [];
       this.seq = this.list.reduce((m, e) => Math.max(m, e.id || 0), 0);
     }
 
     // add books a change: src "phone", "scope" or "remote" (another remote);
-    // meta {primary, label, kind, undoable, ws}. Returns the entry (or null
-    // when a merge removed it).
+    // meta {primary, label, kind, undoable, ws, undid (an undo: the ids of
+    // the entries it undid)}. Returns the entry (or null when a merge
+    // removed it).
     add(src, rows, meta, now) {
       meta = meta || {};
       rows = rows.slice();
@@ -549,6 +667,7 @@
       const e = { id: ++this.seq, t: now, src, rows, single, primary: pi >= 0 || (rows.length > 0 && rows[0].id === meta.primary),
         pid: meta.primary || "", ws: meta.ws || null, label: meta.label || "", kind: meta.kind || (meta.ws ? "ws" : rows.length === 1 ? "set" : "batch"),
         undoable, undone: false, n: 1 };
+      if (Array.isArray(meta.undid) && meta.undid.length) e.undid = meta.undid.slice();   // an undo: the entries it undid
       this.list.unshift(e);
       if (this.list.length > HIST_MAX) this.list.length = HIST_MAX;
       return e;
@@ -626,8 +745,8 @@
 
   const RC = {
     g3, si, sgnSI, hex2, fmtValue, pretty, compact, near, neighbour, turn, CW_DOWN, parseNumber, numberHint, nearestLadder,
-    unitKeys, numKey, parseMatch, quoteText, hexKey, MATCH_MAX, index, isSwitch, isSlot, SYN, NAME, label, words, search,
-    matchPlace, tracked, snapshot, diff, History, ago, tools, turnWords, MERGE_MS,
+    unitKeys, numKey, isHex, hexNumKey, parseMatch, quoteText, hexKey, MATCH_MAX, index, isSwitch, isSlot, SYN, NAME, label, words, within1, search,
+    matchPlace, tracked, snapshot, diff, okEntry, History, ago, tools, turnWords, MERGE_MS,
   };
   if (typeof module !== "undefined" && module.exports) module.exports = RC;
   else root.RC = RC;

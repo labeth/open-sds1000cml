@@ -176,6 +176,20 @@ test("parseNumber reads SI text in the row's unit, with the device's errors", ()
   assert.equal(RC.parseNumber("5 mA", "V").error, 'unit "A" does not fit (want V)');
   assert.equal(RC.parseNumber("", "V").error, "empty value");
   assert.equal(RC.parseNumber("3x", "").error, 'unit "x" does not fit (want a plain number)');
+  assert.equal(RC.parseNumber("2,5V", "V").value, 2.5, "a comma is the decimal point on a European keyboard");
+  assert.equal(RC.parseNumber("115,2k", "b/s").value, 115200);
+  assert.equal(RC.parseNumber("1,2,3", "").error, 'unit ",2,3" does not fit (want a plain number)', "two commas are not a decimal point");
+  assert.equal(RC.parseNumber("57,600", "Bd").error, 'the comma in "57,600" reads two ways: type it without the comma, or with a point',
+    "a comma before three digits could be a thousands separator: refused, not guessed");
+  assert.equal(RC.parseNumber("0,125", "V").value, 0.125, "after 0 it is a decimal point");
+});
+test("a negative value typed reads as itself in the refusal (not Off, not 0x-1)", () => {
+  const m = RC.index(sheets());
+  assert.equal(RC.numberHint(m.rows.get("trig.holdoff"), "-5").error, "holdoff -5s is outside Off .. 10s");
+  assert.equal(RC.numberHint(m.rows.get("bus.i2c_address"), "-2").error, "i2c address -0x02 is outside Any .. 0x7F");
+  assert.equal(RC.fmtValue({ ID: "bus.stream_value", Unit: "" }, -1), "-0x01");
+  assert.equal(RC.fmtValue({ ID: "bus.stream_value", Unit: "" }, 255), "0xFF");
+  assert.equal(RC.fmtValue(m.rows.get("trig.holdoff"), 0), "Off");
 });
 test("numberHint checks the range and says when the scope takes the nearest step", () => {
   const m = RC.index(sheets());
@@ -211,6 +225,30 @@ test("numKey edits the keypad text; unit keys replace the unit; digits go in bef
   assert.deepEqual(RC.unitKeys({ Unit: "s" }), ["ns", "us", "ms", "s"]);
   assert.deepEqual(RC.unitKeys({ Unit: "", Max: 100000 }), ["k"]);
   assert.deepEqual(RC.unitKeys({ Unit: "", Max: 127 }), []);
+});
+
+test("a row the scope writes in hex gets a hex keypad: A-F make it 0x.., 0x toggles the prefix", () => {
+  const m = RC.index(sheets());
+  const a = m.rows.get("bus.i2c_address");
+  assert.ok(RC.isHex(a) && RC.isHex({ ID: "bus.stream_value" }) && !RC.isHex(m.rows.get("trig.level")));
+  assert.deepEqual(RC.unitKeys({ ID: "bus.stream_value", Unit: "", Max: 65535 }), [], "no k key on a hex row");
+  let b = "";
+  for (const k of ["5", "0"]) b = RC.hexNumKey(b, k);
+  assert.equal(b, "50", "digits alone stay decimal");
+  b = RC.hexNumKey(b, "0x");
+  assert.equal(b, "0x50", "0x makes them hex");
+  assert.equal(RC.numberHint(a, b).text, "0x50");
+  assert.equal(RC.numberHint(a, b).value, 80);
+  b = RC.hexNumKey("", "A");
+  assert.equal(b, "0xA", "a letter brings 0x");
+  b = RC.hexNumKey(b, "F");
+  assert.equal(b, "0xAF");
+  assert.equal(RC.numberHint(a, b).error, "i2c address 0xAF is outside Any .. 0x7F", "refused as the device does");
+  assert.equal(RC.hexNumKey("0xA", "back"), "0x");
+  assert.equal(RC.hexNumKey("0x", "back"), "", "Del takes 0x back with the last digit");
+  assert.equal(RC.hexNumKey("0x50", "0x"), "50");
+  assert.equal(RC.hexNumKey("0x50", "clear"), "");
+  assert.equal(RC.hexNumKey("0x12345678", "9"), "0x12345678", "ten characters at most");
 });
 
 // ---- match bytes ------------------------------------------------------------------------------
@@ -287,6 +325,38 @@ test("search ranks names first and finds rows by everyday words", () => {
   assert.ok(!RC.matchPlace({ label: "History", words: "undo changes log" }, "undo zz"));
 });
 
+test("search knows scope words, phrases and one-letter misspellings", () => {
+  const row = (id, label, extra) => Object.assign({ ID: id, Label: label, Kind: "enum", Available: true, Help: "", Value: 0, Text: "" }, extra);
+  const onoff = { Options: [{ Value: 0, Text: "Off" }, { Value: 1, Text: "On" }] };
+  const m = RC.index({ Tabs: [
+    { ID: "trig", Name: "TRIG", Title: "Trigger", Rows: [row("trig.edge", "Source/slope", { Options: [{ Value: 0, Text: "C1 Rise" }, { Value: 1, Text: "C1 Fall" }] }),
+      row("trig.level", "Level", { Kind: "number", Unit: "V" })] },
+    { ID: "ch1", Name: "CH1", Title: "Channel 1", Rows: [row("ch1.offset", "Offset", { Kind: "number", Unit: "V" }), row("ch1.coupling", "Coupling", { Options: [{ Value: 0, Text: "DC" }, { Value: 1, Text: "AC" }] })] },
+    { ID: "time", Name: "TIME", Title: "Horizontal", Rows: [row("time.tdiv", "Time/div", { Kind: "number", Unit: "s" })] },
+    { ID: "acq", Name: "ACQ", Title: "Acquire", Rows: [row("acq.mode", "Mode", { Options: [{ Value: 0, Text: "Normal" }, { Value: 1, Text: "Average" }] }),
+      row("acq.depth", "Memory depth", { Options: [{ Value: 2048, Text: "2k" }] })] },
+    { ID: "view", Name: "VIEW", Title: "Display", Rows: [row("view.persist", "Persistence", onoff)] },
+    { ID: "meas", Name: "MEAS", Title: "Measure", Rows: [row("meas.pkpk", "Peak-peak"), row("meas.rise", "Rise"), row("meas.fall", "Fall")] },
+    { ID: "curs", Name: "CURS", Title: "Cursors", Rows: [row("curs.mode", "Cursors")] },
+    { ID: "sys", Name: "SYS", Title: "System and help", Rows: [row("sys.print", "Print screen", { Kind: "action", Actions: [{ ID: "print", Text: "Save PNG", Available: true }] })] },
+  ] });
+  const top = (q) => (RC.search(m, q)[0] || {}).id;
+  const all = (q) => RC.search(m, q).map((x) => x.id);
+  for (const [q, id] of [["vpp", "meas.pkpk"], ["pk-pk", "meas.pkpk"], ["peak to peak", "meas.pkpk"], ["rise time", "meas.rise"], ["record length", "acq.depth"],
+    ["screen-shot", "sys.print"], ["screen shot", "sys.print"], ["persistance", "view.persist"], ["cusor", "curs.mode"], ["offest", "ch1.offset"]]) {
+    assert.equal(top(q), id, q);
+  }
+  assert.ok(all("rising").includes("trig.edge") && all("rising").includes("meas.rise"), "rising: the rising edge and the rise time");
+  assert.ok(all("falling").includes("trig.edge") && all("falling").includes("meas.fall"));
+  assert.deepEqual(all("sample rate").sort(), ["acq.depth", "time.tdiv"], "the sample rate follows time/div and the memory depth");
+  assert.ok(all("averge").includes("acq.mode"), "averge, one letter short of Average");
+  assert.ok(all("tigger").includes("trig.level"), "tigger, one letter short of trigger");
+  assert.deepEqual(all("zzzzz"), [], "nothing like it");
+  assert.deepEqual(all("trig coupling"), [], "every word must still match");
+  assert.deepEqual(all("rose"), [], "a word under 5 letters is not guessed at");
+  assert.ok(RC.within1("offest", "offset") && RC.within1("averge", "average") && RC.within1("cusor", "cursor") && !RC.within1("cursor", "curves"));
+});
+
 // ---- history ----------------------------------------------------------------------------------
 test("History books a change with old and new values, newest first", () => {
   const m0 = RC.index(sheets()), h = new RC.History();
@@ -360,6 +430,28 @@ test("undo targets restore old values; back-to-before takes each row's oldest va
   const restored = new RC.History(JSON.parse(JSON.stringify(h.list)));
   assert.equal(restored.list.length, h.list.length, "kept across a reload");
   assert.ok(restored.add("phone", [r("z", 0, 1)], {}, 500).id > def.id, "ids continue");
+});
+test("an undo entry keeps the ids of the entries it undid (a redo puts them back in effect)", () => {
+  const h = new RC.History();
+  const r = (id, a, b) => ({ id, tab: "T", label: id, kind: "enum", old: { value: a, text: a, key: JSON.stringify(a) }, neu: { value: b, text: b, key: JSON.stringify(b) } });
+  const e = h.add("phone", [r("cpl", "DC", "AC")], {}, 0);
+  const u = h.add("phone", [r("cpl", "AC", "DC")], { kind: "undo", label: "Undo: c", undid: [e.id] }, 5000);
+  assert.deepEqual(u.undid, [e.id]);
+  assert.equal(u.kind, "undo");
+  assert.ok(u.undoable, "an undo can itself be undone");
+  assert.equal(e.undid, undefined, "a plain change undid nothing");
+  const back = new RC.History(JSON.parse(JSON.stringify(h.list)));
+  assert.deepEqual(back.list[0].undid, [e.id], "kept across a reload");
+});
+test("stored History of another shape is dropped when it loads", () => {
+  const row = { id: "a", tab: "T", label: "a", kind: "enum", old: { key: "0", text: "0" }, neu: { key: "1", text: "1" } };
+  const good = { id: 3, t: 1, src: "phone", rows: [row] };
+  const h = new RC.History([good, { id: 1, t: 1, src: "phone" }, { id: 2, t: 1, src: "phone", rows: [{ id: "time.tdiv" }], undoable: true }, null, 5, "x",
+    Object.assign({}, good, { id: 4, ws: "bus" }), Object.assign({}, good, { id: 6, rows: [Object.assign({}, row, { old: null })] })]);
+  assert.deepEqual(h.list.map((e) => e.id), [3], "only the entry of the shape the page shows");
+  assert.equal(new RC.History({ list: [] }).list.length, 0, "not a list");
+  assert.equal(h.add("scope", [row], {}, 2).id, 4, "ids go on after the kept ones");
+  assert.ok(RC.okEntry(good) && !RC.okEntry({ id: 1 }));
 });
 test("History keeps at most 100 entries; ago reads like a phone", () => {
   const h = new RC.History();

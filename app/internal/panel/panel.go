@@ -158,14 +158,16 @@ type Controller struct {
 	keyFD int
 	logf  func(string, ...any)
 
-	tdivs    []float64
-	tdivIdx  int
-	vIdx     [2]int
-	offReqV  [2]float64
-	trigCode uint16
-	running  bool
-	norm     bool
-	single   bool // a single-shot is armed/waiting → SINGLE lamp
+	tdivs     []float64
+	tdivIdx   int
+	tdivAsked uint64  // timebase requests so far (guarded by mu): the engine applies one at its next capture
+	tdivWant  float64 // the timebase asked for last
+	vIdx      [2]int
+	offReqV   [2]float64
+	trigCode  uint16
+	running   bool
+	norm      bool
+	single    bool // a single-shot is armed/waiting → SINGLE lamp
 
 	prev     [5]uint16
 	havePrev bool
@@ -244,6 +246,12 @@ type Controller struct {
 	autosetBusy bool
 	autosetStop chan struct{}
 	autosetMsg  string // banner text while busy ("AUTOSET…" / a result note)
+	// each sweep is numbered; when one ends, the rows it changed are kept for
+	// the remote that started it (Status.AutosetDone, AutosetChanged)
+	autosetRun     uint64
+	autosetFrom    changeMark
+	autosetDone    uint64
+	autosetChanged []string
 	// PRINT key: hardcopy saves a screenshot and names the file (shown as a
 	// notice).
 	hardcopy func() (string, error)
@@ -341,6 +349,15 @@ func New(eng Engine, fe Analog, keyFD int, tdivs []float64, startTdiv float64, l
 		if t >= startTdiv*(1-1e-6) {
 			c.tdivIdx = i
 			break
+		}
+	}
+	// a serial trigger never set up takes any I2C address and direction: its
+	// zero value reads address 0x00, write, and the address is kept across
+	// buses (serialBus); a restored setup sets its own after this
+	if se := c.serialTrig(); se != nil {
+		if p := se.SerialConfig(); p.Proto == 0 && len(p.Bytes) == 0 && len(p.Pattern) == 0 && p.Addr == 0 && p.RW == 0 {
+			p.Addr, p.RW = -1, 2
+			se.SetSerialParams(p)
 		}
 	}
 	return c

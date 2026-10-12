@@ -126,12 +126,27 @@
     const r = row(id), a = r && (r.Actions || []).find((x) => x.ID === act);
     const label = (r ? tabName(r.tab) + " " + DOT + " " + RC.label(r) : id) + (a ? ": " + a.Text : "");
     const undoable = id === "sys.autoset" || id === "sys.default" || (RC.isSlot(r) && act === "recall");
-    return RN.action(id, act, { label: id === "sys.autoset" ? "Autoset" : id === "sys.default" ? "Default setup" : label, undoable },
-      { autoset: id === "sys.autoset" }).then((res) => answer(res, res.ok ? okText || "" : ""));
+    return RN.action(id, act, { label: id === "sys.autoset" ? "Autoset" : id === "sys.default" ? "Default setup" : label, undoable })
+      .then((res) => answer(res, res.ok ? okText || "" : ""));
   }
+  // pressKey presses a key of the scope (label titles its History entry;
+  // nomenu: a push that waits while a menu is open there). The scope answers
+  // once the key has run: its notice, else the setting it changed as read
+  // back, confirms it; never a text of the phone's own (Force changes
+  // nothing to read back: the tick says it ran).
   // TRLC-LINKS: REQ-SDS-220
-  function pressKey(button, okText, label) {
-    return RN.press(button, label ? { label } : {}).then((r) => answer(r, okText));
+  function pressKey(button, label, nomenu) {
+    return RN.press(button, label ? { label } : {}, nomenu).then(async (r) => {
+      if (!answer(r).ok) return r;
+      if (r.notice) { toast(r.notice); return r; }
+      const id = button === "runstop" || button === "single" ? null : (r.changed || []).find((x) => row(x));   // the dock shows the run state
+      if (id) {
+        await r.after;
+        const x = row(id);
+        if (x) toast(labelFor(id) + ": " + disp(x.Text), "ok");
+      }
+      return r;
+    });
   }
   // TRLC-LINKS: REQ-SDS-220
   function turnKnob(name, dir) { return RN.knob(name, dir).then((r) => answer(r)); }
@@ -150,7 +165,43 @@
   const dock = h("div", { class: "dock", role: "group", "aria-label": "Run control" });
   const tabbar = h("nav", { class: "tabbar", role: "tablist", "aria-label": "Sections" });
   app.append(bar, banner, views, h("div", { class: "bottom" }, dock, tabbar));
-  const sh = RU.sheet({ onClose: () => { S.sheet = null; sh.body.textContent = ""; KP.active = null; } });
+  const sh = RU.sheet({ inert: app, onClose: () => { S.sheet = null; sh.body.textContent = ""; KP.active = null; syncBack(); } });
+
+  // ---- the phone's back gesture: it closes what is open here before it leaves the remote ----------
+
+  // While a sheet, tile editing, a Menus page or a search is open, one
+  // history entry of the remote's own sits on top: the phone's back pops it
+  // and closes the topmost of them (the entry comes back while more stays
+  // open). Closed another way, the entry is taken off again (history.back),
+  // and that pop is not taken for the phone's back. The entry follows after
+  // the task that opened or closed something, so closing one thing and
+  // opening another moves no history.
+  const Back = { pushed: false, skip: 0, timer: 0 };
+  // TRLC-LINKS: REQ-SDS-220
+  function openDepth() { return (sh.isOpen() ? 1 : 0) + (S.edit ? 1 : 0) + (S.tab === "menus" && (S.page || S.query.trim()) ? 1 : 0); }
+  // TRLC-LINKS: REQ-SDS-220
+  function syncBack() {
+    clearTimeout(Back.timer);
+    Back.timer = setTimeout(() => {
+      const want = openDepth() > 0;
+      try {
+        if (want && !Back.pushed) { history.pushState({ sdsRemote: 1 }, ""); Back.pushed = true; }
+        else if (!want && Back.pushed) { Back.pushed = false; Back.skip++; history.back(); }
+      } catch (e) { /* no history here */ }
+    }, 0);
+  }
+  window.addEventListener("popstate", (e) => {
+    if (Back.skip) { Back.skip--; return; }   // the entry taken off by syncBack
+    if (e.state && e.state.sdsRemote) { Back.pushed = true; syncBack(); return; }   // forward onto it
+    Back.pushed = false;
+    if (sh.isOpen()) sh.close();
+    else if (S.edit) exitEdit();
+    else if (S.tab === "menus" && S.page) goBack();
+    else if (S.tab === "menus" && S.query.trim()) { searchIn.value = ""; S.query = ""; renderMenus(); }
+    syncBack();
+  });
+  // a reload keeps the entry's state, though nothing is open now
+  if (history.state && history.state.sdsRemote) { try { history.replaceState(null, ""); } catch (e) { /* none */ } }
 
   // the connection banner
   // TRLC-LINKS: REQ-SDS-220
@@ -284,6 +335,7 @@
   tabBtns.hist.appendChild(histBadge);
   // TRLC-LINKS: REQ-SDS-220
   function goTab(id) {
+    syncBack();
     if (S.edit) { S.edit = false; renderHome(true); }
     if (id === S.tab) {
       if (id === "menus" && (S.page || S.query)) { S.page = null; S.query = ""; searchIn.value = ""; renderMenus(); }
@@ -296,7 +348,7 @@
     for (const k of Object.keys(tabBtns)) tabBtns[k].setAttribute("aria-selected", k === id ? "true" : "false");
     if (id === "menus") renderMenus();
     if (id === "home") renderHome(true);
-    if (id === "hist") renderHist();
+    if (id === "hist") { renderHist(); badge(); }
     renderBar();
   }
 
@@ -501,9 +553,10 @@
     haptic("long");
     renderHome(true);
     renderBar();
+    syncBack();
   }
   // TRLC-LINKS: REQ-SDS-220
-  function exitEdit() { S.edit = false; renderHome(true); renderBar(); }
+  function exitEdit() { S.edit = false; renderHome(true); renderBar(); syncBack(); }
   // TRLC-LINKS: REQ-SDS-220
   function moveTile(id, d) {
     const ws = wsNow(), ids = tilesOf(ws), i = ids.indexOf(id), j = i + d;
@@ -556,13 +609,11 @@
     const t = tools();
     if (/pick/i.test(t.adjust.push)) { openEditor("bus.match"); toast("Pick bytes here: type the match bytes", "ok"); return; }
     if (wsNow() === "scope" || /sheet/i.test(t.adjust.push)) {
-      const job = String(t.adjust.job || "").toLowerCase();
-      let found = null;
-      for (const [id, r] of RN.S.model.rows) if (r.Kind === "number" && job && r.Label.toLowerCase() === job) { found = id; break; }
-      if (found) openEditor(found); else toast("Adjust tunes the last value set in a sheet; nothing is set yet", "err");
+      const id = panel().AdjustRow;   // by id: CH1 and CH2 both have an Offset and a V/div
+      if (id && row(id)) openEditor(id); else toast("Adjust tunes the last value set in a sheet; nothing is set yet", "err");
       return;
     }
-    pressKey("adjustpush");
+    pressKey("adjustpush", "", true);
   }
 
   // =================================================================================================
@@ -591,6 +642,7 @@
     sh.open(title);
     sh.body.scrollTop = 0;
     refreshAll();
+    syncBack();
     return box;
   }
   // TRLC-LINKS: REQ-SDS-220
@@ -662,7 +714,7 @@
       pre.appendChild(zb);
       bind(zb, () => { const z = row("time.zoom"); const on = !!z && z.Value !== 1; zb.classList.toggle("on", on); zb.setLabel(on ? "Zoom: " + z.Text : "Zoom: off"); });
     } else if (id === "trig.level") {
-      const fb = button({ label: "Force", onTap: () => pressKey("force", "Forced a trigger") });
+      const fb = button({ label: "Force", onTap: () => pressKey("force") });
       fb.dataset.extra = "force";
       pre.appendChild(fb);
     }
@@ -720,26 +772,36 @@
   const at = (col, rw, cs, rs) => "grid-column:" + col + " / span " + (cs || 1) + ";grid-row:" + rw + " / span " + (rs || 1);
   // TRLC-LINKS: REQ-SDS-220
   function numPad(id, dv, msg) {
-    const units = RC.unitKeys(row(id));
+    const units = RC.unitKeys(row(id)), hex = RC.isHex(row(id));
     let buf = "";
     const keys = h("div", { class: "keys" });
     const el = h("div", { class: "keypad", data: { keypad: id } }, keys);
     const add = (k, label, cls, place) => keys.appendChild(keyBtn(k, label, cls, place, key));
-    [["7", "8", "9"], ["4", "5", "6"], ["1", "2", "3"], ["-", "0", "."]].forEach((rw, ri) => rw.forEach((k, ci) => add(k, k === "-" ? PM : k, k === "-" ? "op" : "", at(ci + 1, ri + 1))));
-    if (units.length >= 3) {
-      units.slice(0, 4).forEach((u, i) => add(u, u, "unit", at(4, 1 + i)));
-      add("back", "Del", "op", at(1, 5));
-      add("clear", "Clear", "op", at(2, 5));
-      add("enter", "Set", "enter", at(3, 5, 2));
-    } else if (units.length) {
-      units.forEach((u, i) => add(u, u, "unit", units.length === 1 ? at(4, 1, 1, 2) : at(4, 1 + i)));
-      add("back", "Del", "op", at(4, 3));
-      add("clear", "Clear", "op", at(4, 4));
-      add("enter", "Set", "enter", at(1, 5, 4));
+    if (hex) {
+      // a row the scope writes in hex: the digits, A-F and 0x
+      [["7", "8", "9", "F"], ["4", "5", "6", "E"], ["1", "2", "3", "D"], ["0", "A", "B", "C"]].forEach((rw, ri) =>
+        rw.forEach((k, ci) => add(k, k, /[A-F]/.test(k) ? "unit" : "", at(ci + 1, ri + 1))));
+      add("0x", "0x", "unit", at(1, 5));
+      add("back", "Del", "op", at(2, 5));
+      add("clear", "Clear", "op", at(3, 5));
+      add("enter", "Set", "enter", at(4, 5));
     } else {
-      add("back", "Del", "op", at(4, 1, 1, 2));
-      add("clear", "Clear", "op", at(4, 3, 1, 2));
-      add("enter", "Set", "enter", at(1, 5, 4));
+      [["7", "8", "9"], ["4", "5", "6"], ["1", "2", "3"], ["-", "0", "."]].forEach((rw, ri) => rw.forEach((k, ci) => add(k, k === "-" ? PM : k, k === "-" ? "op" : "", at(ci + 1, ri + 1))));
+      if (units.length >= 3) {
+        units.slice(0, 4).forEach((u, i) => add(u, u, "unit", at(4, 1 + i)));
+        add("back", "Del", "op", at(1, 5));
+        add("clear", "Clear", "op", at(2, 5));
+        add("enter", "Set", "enter", at(3, 5, 2));
+      } else if (units.length) {
+        units.forEach((u, i) => add(u, u, "unit", units.length === 1 ? at(4, 1, 1, 2) : at(4, 1 + i)));
+        add("back", "Del", "op", at(4, 3));
+        add("clear", "Clear", "op", at(4, 4));
+        add("enter", "Set", "enter", at(1, 5, 4));
+      } else {
+        add("back", "Del", "op", at(4, 1, 1, 2));
+        add("clear", "Clear", "op", at(4, 3, 1, 2));
+        add("enter", "Set", "enter", at(1, 5, 4));
+      }
     }
     // TRLC-LINKS: REQ-SDS-220
     function show() {
@@ -747,7 +809,7 @@
       if (!buf) {
         dv.textContent = disp(r.Text); dv.classList.remove("typed");
         dv.classList.toggle("long", dv.textContent.length > 9);
-        msg.className = "msg"; msg.textContent = units.length ? "Type a value and a unit, then Set" : "Type a value, then Set";
+        msg.className = "msg"; msg.textContent = hex ? "Type it in hex (A-F makes it 0x..), then Set" : units.length ? "Type a value and a unit, then Set" : "Type a value, then Set";
         return;
       }
       dv.textContent = buf; dv.classList.add("typed");
@@ -759,7 +821,7 @@
     // TRLC-LINKS: REQ-SDS-220
     function key(k) {
       if (k === "enter") { apply(); return; }
-      buf = RC.numKey(buf, k, units);
+      buf = hex ? RC.hexNumKey(buf, k) : RC.numKey(buf, k, units);
       show();
     }
     // TRLC-LINKS: REQ-SDS-220
@@ -773,7 +835,7 @@
         toast(res.error || "The scope refused " + typed, "err");
       });
     }
-    KP.active = { el, key, reset() { buf = ""; show(); } };
+    KP.active = { el, key, hexnum: hex, reset() { buf = ""; show(); } };
     bind(el, () => { if (!buf) show(); });
     return el;
   }
@@ -786,9 +848,10 @@
     if (e.key === "Enter" && t && t.tagName === "BUTTON" && t !== document.body) return;   // the button's own Enter
     if (e.key === "Enter") { e.preventDefault(); kp.key("enter"); return; }
     if (e.key === "Backspace") { e.preventDefault(); kp.key("back"); return; }
+    if (kp.hexnum && /^[xX]$/.test(e.key)) { e.preventDefault(); kp.key("0x"); return; }
     if (e.key.length === 1 && /[0-9a-fA-F.?\s-]/.test(e.key)) {
       e.preventDefault();
-      kp.key(kp.hex ? (e.key === "?" ? "??" : e.key.toUpperCase()) : e.key);
+      kp.key(kp.hex ? (e.key === "?" ? "??" : e.key.toUpperCase()) : kp.hexnum ? e.key.toUpperCase() : e.key);
     }
   });
   // a turned phone re-lays the Settings lists (segmented options inline or stacked)
@@ -925,7 +988,8 @@
     // keep the focus in the text field (a tapped button would take it)
     for (const b of [mHex, mTxt]) b.addEventListener("mousedown", (e) => e.preventDefault());
     txt.addEventListener("input", () => { err = ""; show(); });
-    txt.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); arm(); } });
+    // the keyboard's Done key sets the bytes, as Set does; only "Trigger on it" arms the trigger
+    txt.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); setOnly(); } });
     // TRLC-LINKS: REQ-SDS-220
     async function setMatch() {
       const t = typed();
@@ -988,7 +1052,7 @@
       const a = h("button", { type: "button", class: "btn", data: { knob, q: "ccw" } }), b = h("button", { type: "button", class: "btn", data: { knob, q: "cw" } });
       repeat(a, () => turnKnob(knob, -1));
       repeat(b, () => turnKnob(knob, 1));
-      const p = button({ label: "push", sub: "", onTap: () => (knob === "adjust" ? adjustPush() : pressKey(pushBtn)) });
+      const p = button({ label: "push", sub: "", onTap: () => (knob === "adjust" ? adjustPush() : pressKey(pushBtn, "", true)) });
       p.dataset.knob = knob;
       p.dataset.push = "1";
       wrap.append(head, h("div", { class: "k3" }, a, p, b));
@@ -1058,7 +1122,7 @@
       h("h3", { text: "Keys" }),
       P("Force, Set to 50 %, Print, the knob pushes (Zero, Zoom, Variable), the Adjust and Position jobs, the menu keys (they open the menu here) and Default Setup (hold it for 1 s)."),
       h("h3", { text: "The phone" }),
-      P("The eye keeps the screen on: with a wake lock where the browser has one, else with a tiny silent video (the scope serves plain HTTP, where browsers have no wake lock). The corner button goes fullscreen on Android. An iPhone has no fullscreen for pages: Share, Add to Home Screen opens the remote without browser bars."));
+      P("The eye keeps the screen on: with a wake lock where the browser has one, else (the scope serves plain HTTP, where browsers have none) with a muted video behind the remote, or, on an iPhone or with Stronger keep-awake in Keys, a video with a silent sound track. The corner button goes fullscreen on Android. An iPhone has no fullscreen for pages: Share, Add to Home Screen opens the remote without browser bars."));
     const sys = button({ label: "The scope's own help pages (SYS)", cls: "ghost", onTap: () => { sh.close(); goTab("menus"); openPage("sys"); } });
     sys.dataset.sys = "1";
     box.appendChild(sys);
@@ -1086,6 +1150,7 @@
 
   // TRLC-LINKS: REQ-SDS-220
   function renderMenus() {
+    syncBack();
     S.menuWs = wsNow();
     srow.hidden = !!S.page;
     clearQ.hidden = !S.query;
@@ -1144,12 +1209,12 @@
   // ---- search: settings (with everyday words), then places --------------------------------------
 
   const PLACES = WS.map((w) => ({ id: "ws:" + w.id, icon: w.icon, label: w.name + " workspace", sub: w.what, words: w.words, run: () => goWs(w.id) })).concat([
-    { id: "key:set50", icon: "zero", label: "Set to 50 %", sub: "Trigger key: the level to the middle of the signal", words: "set 50 % percent level middle half", run: () => pressKey("set50", "Level set to 50 %", "Set to 50 %") },
+    { id: "key:set50", icon: "zero", label: "Set to 50 %", sub: "Trigger key: the level to the middle of the signal", words: "set 50 % percent level middle half", run: () => pressKey("set50", "Set to 50 %") },
     { id: "key:zoom", icon: "expand", label: "Zoom (S/DIV push)", sub: "Zoom on or off around the trigger", words: "zoom push s/div magnify", run: () => pressKey("tdivpush") },
     { id: "key:tools", icon: "dial", label: "Workspace tools", sub: "Adjust and Position jobs and their pushes", words: "adjust position knob tools push statistics zero peak packet cursor row", run: () => openTools() },
     { id: "history", icon: "clock", label: "History", sub: "Every change, newest first, with undo", words: "history undo changes changed log recent back", run: () => goTab("hist") },
     { id: "help", icon: "hand", label: "Help: how this remote works", sub: "Tiles, sheets, search, pins", words: "help guide how tiles pin search remote", run: () => openHelp() },
-    { id: "awake", icon: "eye", label: "Keep the phone awake", sub: "Wake lock, or a silent video on plain HTTP", words: "awake wake lock sleep screen dim", run: () => toggleAwake() },
+    { id: "awake", icon: "eye", label: "Keep the phone awake", sub: "Wake lock, or a video behind the remote on plain HTTP", words: "awake wake lock sleep screen dim", run: () => toggleAwake() },
     { id: "fs", icon: "expand", label: "Fullscreen", sub: "Hide the browser bars", words: "fullscreen full screen browser bars home", run: () => toggleFs() },
   ]);
   // TRLC-LINKS: REQ-SDS-220
@@ -1283,7 +1348,7 @@
     if (e.label) return e.label;
     if (e.ws) return "Workspace";
     if (e.rows.length === 1 || e.primary) return e.rows[0].tab + " " + DOT + " " + e.rows[0].label;
-    return e.src === "phone" ? "Settings" : "On the scope";
+    return e.src === "phone" ? "Settings" : e.src === "remote" ? "On another remote" : "On the scope";
   }
   const nd = (t) => RC.pretty(String(t == null ? "" : t)).replace(/\s*\/div$/, "");
   // TRLC-LINKS: REQ-SDS-220
@@ -1297,12 +1362,17 @@
     else v.append(e.kind === "action" ? "done (no setting changed)" : "—");
     return v;
   }
+  // the badge counts the entries added since History was last shown (the
+  // newest entry seen then is kept on the phone, with History)
+  let seenId = Number(load(RN.HIST_KEY + "-seen", 0)) || 0;
   // TRLC-LINKS: REQ-SDS-220
   function badge() {
-    const n = RN.S.history.list.length;
+    const L = RN.S.history.list;
+    if (S.tab === "hist" && L.length && L[0].id > seenId) { seenId = L[0].id; store(RN.HIST_KEY + "-seen", seenId); }
+    const n = L.filter((e) => e.id > seenId).length;
     histBadge.hidden = !n;
     histBadge.textContent = n > 99 ? "99+" : String(n);
-    tabBtns.hist.setAttribute("aria-label", "History" + (n ? ", " + n + (n === 1 ? " change" : " changes") : ""));
+    tabBtns.hist.setAttribute("aria-label", "History" + (n ? ", " + n + (n === 1 ? " new change" : " new changes") : ""));
   }
   // TRLC-LINKS: REQ-SDS-220
   function renderHist() {
@@ -1323,7 +1393,7 @@
     press(main, { onTap: () => openEntry(e) });
     const el = h("div", { class: "hent " + e.src + (e.undone ? " undone" : ""), role: "listitem", data: { hist: String(e.id) } }, main);
     if (e.undoable && !e.undone) {
-      const u = button({ label: "Undo", aria: "Undo: " + title, onTap: () => undoEntries([e], "Undo: " + title) });
+      const u = button({ label: "Undo", aria: undoTitle(e), onTap: () => undoEntries([e], undoTitle(e)) });
       u.classList.add("hundo");
       u.dataset.hundo = String(e.id);
       el.appendChild(u);
@@ -1333,11 +1403,18 @@
     histMeta.push(upd);
     return el;
   }
+  // undoTitle names an undo of e: undoing an undo is a redo.
+  // TRLC-LINKS: REQ-SDS-220
+  function undoTitle(e) {
+    const t = entryTitle(e), m = e.kind === "undo" ? /^(Undo|Redo): (.*)$/.exec(t) : null;
+    return m ? (m[1] === "Undo" ? "Redo: " : "Undo: ") + m[2] : "Undo: " + t;
+  }
   // TRLC-LINKS: REQ-SDS-220
   function undoEntries(list, title) {
     RN.undo(list, title).then((res) => {
       haptic(res.ok ? "confirm" : "warn");
       if (res.ok) toast(title, "ok");
+      else if (res.none) toast("Not undone: " + res.error, "err", 4200);
       else toast(res.fails && res.fails.length ? "Undone, except " + res.fails[0] : res.error || "The scope refused the undo", "err", 4200);
       if (S.tab === "hist") renderHist();
     });
@@ -1361,7 +1438,8 @@
     box.appendChild(list);
     const acts = h("div", { class: "k1" });
     if (e.undoable && !e.undone) {
-      const u = button({ label: "Undo this", cls: "primary", onTap: () => { sh.close(); undoEntries([e], "Undo: " + title); } });
+      const u = button({ label: e.kind === "undo" && /^Redo: /.test(undoTitle(e)) ? "Redo this" : "Undo this", cls: "primary",
+        onTap: () => { sh.close(); undoEntries([e], undoTitle(e)); } });
       u.dataset.hundoOne = String(e.id);
       acts.appendChild(u);
     }
@@ -1388,16 +1466,16 @@
     const v1 = key("ch1vdivpush", "CH1 V/DIV", "Variable", () => pressKey("ch1vdivpush"));
     const v2 = key("ch2vdivpush", "CH2 V/DIV", "Variable", () => pressKey("ch2vdivpush"));
     const zoomB = key("tdivpush", "S/DIV push", "Zoom", () => pressKey("tdivpush"));
-    const hposB = key("horizpospush", "Position push", "centre", () => pressKey("horizpospush"));
-    group("Trigger", "k3", [key("force", "Force", "trigger now", () => pressKey("force", "Forced a trigger")),
-      key("set50", "Set to 50 %", "level", () => pressKey("set50", "Level set to 50 %", "Set to 50 %")),
-      key("triglvlpush", "Level push", "Zero: 0 V", () => pressKey("triglvlpush", "Level 0 V", "Level push: 0 V"))]);
-    group("Vertical", "k2", [v1, v2, key("ch1pospush", "CH1 Position", "Zero: 0 V", () => pressKey("ch1pospush", "CH1 offset 0 V", "CH1 Position push: 0 V")),
-      key("ch2pospush", "CH2 Position", "Zero: 0 V", () => pressKey("ch2pospush", "CH2 offset 0 V", "CH2 Position push: 0 V"))]);
+    const hposB = key("horizpospush", "Position push", "centre", () => pressKey("horizpospush", "", true));
+    group("Trigger", "k3", [key("force", "Force", "trigger now", () => pressKey("force")),
+      key("set50", "Set to 50 %", "level", () => pressKey("set50", "Set to 50 %")),
+      key("triglvlpush", "Level push", "Zero: 0 V", () => pressKey("triglvlpush", "Level push: 0 V"))]);
+    group("Vertical", "k2", [v1, v2, key("ch1pospush", "CH1 Position", "Zero: 0 V", () => pressKey("ch1pospush", "CH1 Position push: 0 V")),
+      key("ch2pospush", "CH2 Position", "Zero: 0 V", () => pressKey("ch2pospush", "CH2 Position push: 0 V"))]);
     group("Horizontal", "k2", [zoomB, hposB]);
     const helpB = button({ label: "Help", sub: "this remote", onTap: () => openHelp() });
     helpB.dataset.k = "help";
-    group("System", "k2", [key("print", "Print", "screenshot", () => pressKey("print", "Print: the scope saves a screenshot")), helpB]);
+    group("System", "k2", [key("print", "Print", "screenshot", () => pressKey("print")), helpB]);
     const defB = holdButton({ label: "Default Setup", sub: "factory settings: hold 1 s", ms: 1000, onConfirm: () => actRow("sys.default", "default", "Default setup restored") });
     defB.id = "default-setup";
     wrap.appendChild(h("div", { class: "k1" }, defB));
@@ -1406,15 +1484,17 @@
     const mk = MENU_KEYS.map(([k, label, tab, focus]) => key("menu:" + k, label, tab ? TABNAME[tab] || tab.toUpperCase() : "all menus",
       () => { if (tab) openPage(tab, focus); else { S.page = null; goTab("menus"); renderMenus(); renderBar(); } }));
     group("Menu keys (they open the menu here, not on the scope)", "k3", mk);
-    // the phone: keep awake and fullscreen, with their real state
-    const awk = h("button", { type: "button", class: "cell", role: "switch", "aria-checked": "false", id: "keep-awake" },
-      h("span", { class: "cl" }, h("b", { text: "Keep the phone awake" }), h("small")), h("span", { class: "swt", "aria-hidden": "true" }));
-    const fsc = h("button", { type: "button", class: "cell", role: "switch", "aria-checked": "false", id: "fullscreen" },
-      h("span", { class: "cl" }, h("b", { text: "Fullscreen" }), h("small")), h("span", { class: "swt", "aria-hidden": "true" }));
+    // the phone: keep awake (and its stronger way) and fullscreen, with their real state
+    const sw = (id, name) => h("button", { type: "button", class: "cell", role: "switch", "aria-checked": "false", id },
+      h("span", { class: "cl" }, h("b", { text: name }), h("small")), h("span", { class: "swt", "aria-hidden": "true" }));
+    const awk = sw("keep-awake", "Keep the phone awake"), strong = sw("wake-strong", "Stronger keep-awake (silent sound)"), fsc = sw("fullscreen", "Fullscreen");
     press(awk, { onTap: () => toggleAwake() });
+    press(strong, { onTap: () => Wake.setStrong(!Wake.strong()).then((w) => { if (!w.on && w.note) toast(w.note, "err", 4200); }) });
     press(fsc, { onTap: () => toggleFs() });
-    wrap.append(h("div", { class: "sec", text: "This phone" }), awk, fsc,
-      h("p", { class: "note", text: "The scope serves plain HTTP, where browsers have no Screen Wake Lock: the remote then keeps the screen on with a tiny silent video (on an iPhone that may pause music from other apps; turn keep-awake off to stop it). iPhone Safari has no fullscreen for pages: Share, Add to Home Screen opens the remote without browser bars. Android: Fullscreen above, or the browser menu's Add to Home screen." }));
+    strong.hidden = RU.isWebKit();   // an iPhone always uses the sound track
+    wrap.append(h("div", { class: "sec", text: "This phone" }), awk, strong, fsc,
+      h("p", { class: "note", text: "Keeping the phone awake: the scope serves plain HTTP, where browsers have no wake lock. On Android a muted video plays behind the remote, which nothing shows or sounds; if your phone still locks, turn on Stronger keep-awake: the video then plays a silent sound track, which holds the screen on any phone but may pause or lower music from other apps. An iPhone keeps the screen on only for a video with sound, so there it always plays the silent sound track, asking iOS to mix it with your music." }),
+      h("p", { class: "note", text: "Fullscreen: on Android, the switch above (over the scope's plain HTTP, Add to Home screen only opens a normal tab). An iPhone has no fullscreen for pages: Share, Add to Home Screen opens the remote without browser bars." }));
     V.keys.appendChild(wrap);
     bind(wrap, () => {
       const t = tools();
@@ -1422,9 +1502,11 @@
       hposB.disabled = scopeMenu();
       const z = row("time.zoom");
       zoomB.setSub("Zoom: " + (!z || z.Value === 1 ? "off" : z.Text));
-      const wk = Wake.state(), fs = Full.state();
+      const wk = Wake.state(), fs = Full.state(), st = Wake.strong();
       awk.setAttribute("aria-checked", wk.on ? "true" : "false");
       awk.querySelector("small").textContent = wk.text + (wk.note ? " " + DOT + " " + wk.note : "");
+      strong.setAttribute("aria-checked", st ? "true" : "false");
+      strong.querySelector("small").textContent = st ? "on: a silent sound track; some phones then pause music" : "off: a muted video, no sound";
       fsc.setAttribute("aria-checked", fs.on ? "true" : "false");
       fsc.querySelector("small").textContent = fs.text;
     });
@@ -1435,7 +1517,7 @@
   // TRLC-LINKS: REQ-SDS-220
   function toggleAwake() {
     if (Wake.state().on) { Wake.disable(); toast("Keep awake: off", "ok"); return; }
-    Wake.enable().then((w) => toast(w.on ? w.text : w.note || w.text, w.on ? "ok" : "err", w.on ? 2200 : 4200));
+    Wake.enable().then((w) => { if (!w.told) toast(w.on ? w.text : w.note || w.text, w.on ? "ok" : "err", w.on ? 2200 : 4200); });
   }
   // TRLC-LINKS: REQ-SDS-220
   function toggleFs() {

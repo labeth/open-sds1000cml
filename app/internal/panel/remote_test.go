@@ -2,10 +2,15 @@
 package panel
 
 import (
+	"fmt"
 	"math"
+	"math/rand"
+	"slices"
 	"strings"
 	"testing"
 	"time"
+
+	"open-sds/app/internal/engine"
 )
 
 // The phone remote's surface: the panel snapshot labels everything as the
@@ -124,6 +129,320 @@ func TestSeqAndLongPoll(t *testing.T) {
 	}
 	if d := time.Since(t0); d > 2*time.Second {
 		t.Fatalf("the long-poll overran its timeout: %v", d)
+	}
+}
+
+// A mask test counting while the LCD's cursor rests on MATH/REF Counters
+// (whose text is the live pass/fail count) does not move the Seq the
+// remotes' long-polls wake on, nor SheetsSeq: the counts are not a setting.
+// A setting changed meanwhile moves both.
+// TRLC-LINKS: REQ-SDS-211, REQ-SDS-220
+func TestALiveRowLeavesTheSeqAlone(t *testing.T) {
+	c, eng, _ := newC(t)
+	c.Sheets() // a remote reads the sheets: their values count in the Seq
+	press(t, c, "math")
+	goRow(t, c, "cmp.counters")
+	st0 := c.PanelStatus()
+	if st0.Sheet.Row == nil || st0.Sheet.Row.ID != "cmp.counters" || st0.Sheet.Row.Text != "" {
+		t.Fatalf("the LCD's row: %+v", st0.Sheet.Row)
+	}
+	for i := 1; i <= 50; i++ {
+		eng.set(func(st *engine.Stats) { st.MaskPass, st.MaskFail = int64(i), int64(i/7) })
+		c.SyncLEDs() // the panel loop's 40 ms tick
+		if st := c.PanelStatus(); st.Seq != st0.Seq || st.SheetsSeq != st0.SheetsSeq {
+			t.Fatalf("count %d moved the Seq %d -> %d (sheets %d -> %d)", i, st0.Seq, st.Seq, st0.SheetsSeq, st.SheetsSeq)
+		}
+	}
+	if got := rowText(c, "cmp.counters"); got != "pass 50  fail 7" {
+		t.Fatalf("the LCD's row says %q", got)
+	}
+	if res := c.SheetSet("cmp.mask_tol", nil, "8pt/12cd"); !res.OK {
+		t.Fatalf("tolerance: %+v", res)
+	}
+	if st := c.PanelStatus(); st.Seq == st0.Seq || st.SheetsSeq == st0.SheetsSeq {
+		t.Fatalf("a setting left the Seq at %d (sheets %d)", st.Seq, st.SheetsSeq)
+	}
+	// the workspace alone moves the Seq, not the sheet values' count
+	st1 := c.PanelStatus()
+	if res := c.RemoteWorkspace("measure"); !res.OK {
+		t.Fatalf("MEASURE: %+v", res)
+	}
+	if st := c.PanelStatus(); st.Seq == st1.Seq {
+		t.Fatalf("a workspace switch left the Seq at %d", st.Seq)
+	}
+}
+
+// COMPARE's trigger-stability verdict flickers with a marginal signal: the
+// LCD's pane shows it, but the remote's snapshot names the key's job
+// ("stack master"), so the verdict does not move the Seq; a refused master
+// says why when the key is pressed.
+// TRLC-LINKS: REQ-SDS-211, REQ-SDS-218, REQ-SDS-220
+func TestCompareStabilityLeavesTheSeqAlone(t *testing.T) {
+	r := newViewRig(t)
+	c := r.c
+	press(t, c, "f5")
+	c.Sheets()
+	rng := rand.New(rand.NewSource(3))
+	for i := 0; i < 8; i++ {
+		r.show(toneFrame(""))
+	}
+	st0 := c.PanelStatus()
+	if st0.AgainNext != "stack master" || st0.Again != "F5 again: stack master" {
+		t.Fatalf("COMPARE: again %q next %q", st0.Again, st0.AgainNext)
+	}
+	for i := 0; i < 8; i++ {
+		r.show(noiseFrame(rng))
+	}
+	if !strings.Contains(c.View().Cmp.Again, "needs a stable trigger") {
+		t.Fatalf("the LCD's pane: %q", c.View().Cmp.Again)
+	}
+	if st := c.PanelStatus(); st.Seq != st0.Seq || st.AgainNext != "stack master" || st.Again != "F5 again: stack master" {
+		t.Fatalf("the verdict moved the snapshot: Seq %d -> %d, again %q next %q", st0.Seq, st.Seq, st.Again, st.AgainNext)
+	}
+	if res := c.RemoteAgain(""); res.OK || !strings.Contains(res.Error, "No master") {
+		t.Fatalf("again on noise: %+v", res)
+	}
+}
+
+// A remote call says what it did, measured on the panel goroutine: the rows
+// whose value it changed (side effects too), the notice it raised and the
+// sheet values' count after it; nothing for a set that changes nothing or
+// is refused. A timebase counts at once, though the engine applies it at
+// its next capture.
+// TRLC-LINKS: REQ-SDS-212, REQ-SDS-220
+func TestRemoteCallsSayWhatTheyChanged(t *testing.T) {
+	c, eng, _ := newC(t)
+	withClock(c)
+	c.Sheets()
+	res := c.SheetSet("acq.averages", nil, "64") // a count also selects Average
+	if !res.OK || fmt.Sprint(res.Changed) != "[acq.mode acq.averages]" || res.SheetsSeq == 0 || res.SheetsSeq != c.PanelStatus().SheetsSeq {
+		t.Fatalf("averages: %+v (sheets %d)", res, c.PanelStatus().SheetsSeq)
+	}
+	if res := c.SheetSet("acq.averages", nil, "64"); !res.OK || len(res.Changed) != 0 {
+		t.Fatalf("the same value again: %+v", res)
+	}
+	if res := c.SheetSet("trig.level", nil, "99V"); res.OK || len(res.Changed) != 0 {
+		t.Fatalf("a refused set: %+v", res)
+	}
+	res = c.RemoteWorkspace("measure") // MEASURE starts with Vpp and Freq, and says so
+	if !res.OK || !slices.Contains(res.Changed, "meas.pkpk") || !slices.Contains(res.Changed, "meas.freq") || !strings.Contains(res.Notice, "Vpp") ||
+		res.Changed[len(res.Changed)-1] != "workspace" {
+		t.Fatalf("MEASURE: %+v", res)
+	}
+	if res := c.RemoteWorkspace("measure"); !res.OK || len(res.Changed) != 0 {
+		t.Fatalf("the workspace shown already: nothing switched, yet %+v", res)
+	}
+	if res := c.RemoteAgain(""); !res.OK || len(res.Changed) != 0 || res.Notice != "" {
+		t.Fatalf("again: %+v", res)
+	}
+	// the engine takes a new timebase at its next capture, after the call
+	c.eng = &stagedEng{fakeEng: eng}
+	if res := c.SheetSet("time.tdiv", nil, "1ms"); !res.OK || fmt.Sprint(res.Changed) != "[time.tdiv]" || eng.Snapshot().TdivS != 500e-6 {
+		t.Fatalf("a staged timebase: %+v (engine %g)", res, eng.Snapshot().TdivS)
+	}
+	if res := c.SheetSet("time.tdiv", nil, "500us"); !res.OK || len(res.Changed) != 0 {
+		t.Fatalf("the timebase in effect asked for again: %+v", res)
+	}
+	c.eng = eng
+	if res := c.SheetAction("sys.default", ""); !res.OK || !slices.Contains(res.Changed, "acq.mode") ||
+		slices.Contains(res.Changed, "ch2.coupling") || slices.Contains(res.Changed, "bus.match") {
+		t.Fatalf("Default setup: %+v", res)
+	}
+}
+
+// The remote's keys and knobs are answered once they have run, with what
+// they changed and the notice they raised: Set to 50 % without a signal
+// says so and leaves the level. While Autoset sweeps they wait as the
+// panel's own keys do (AUTO cancels it); the Adjust and Position turns and
+// pushes, sent with nomenu, wait while a menu is open on the LCD, where
+// they would move it, and leave it as it is. Again names the workspace it
+// was meant for and is refused in another one.
+// TRLC-LINKS: REQ-SDS-162, REQ-SDS-220
+func TestRemoteKeysAnswerWhatTheyDid(t *testing.T) {
+	c, eng, _ := newC(t)
+	withClock(c)
+	c.SheetSet("trig.level", nil, "1.2V")
+	code := eng.Snapshot().TrigCode
+	if res := c.RemoteKey("set50", false); !res.OK || len(res.Changed) != 0 || res.Notice != "Set to 50 %: no signal on C1" || eng.Snapshot().TrigCode != code {
+		t.Fatalf("50 %% without a signal: %+v (code %d, was %d)", res, eng.Snapshot().TrigCode, code)
+	}
+	if res := c.RemoteKey("triglvlpush", false); !res.OK || fmt.Sprint(res.Changed) != "[trig.level]" || res.Notice != "Trigger level 0 V" {
+		t.Fatalf("level push: %+v", res)
+	}
+	if res := c.RemoteKey("nope", false); res.OK || res.Error != `no key "nope"` {
+		t.Fatalf("an unknown key: %+v", res)
+	}
+	// keys that would open, move or close a menu on the LCD are not a remote's
+	for _, k := range []string{"trigmenu", "utility", "menu", "f2"} {
+		if res := c.RemoteKey(k, false); res.OK || !strings.Contains(res.Error, "works the scope's menus") {
+			t.Fatalf("%s: %+v", k, res)
+		}
+	}
+	if res := c.RemoteKey("adjustpush", true); res.OK || !strings.Contains(res.Error, "opens a menu on the scope") || c.PanelStatus().Mode != "workspace" {
+		t.Fatalf("SCOPE's Adjust push (it opens a sheet): %+v mode %s", res, c.PanelStatus().Mode)
+	}
+	press(t, c, "trigmenu")
+	goRow(t, c, "trig.mode")
+	before := c.PanelStatus().Sheet
+	for i, res := range []SetResult{c.RemoteKnob("adjust", 1, 1, true), c.RemoteKnob("horizpos", -1, 1, true), c.RemoteKey("adjustpush", true),
+		c.RemoteKey("horizpospush", true), c.RemoteKnob("tdiv", 1, 1, false), c.RemoteKnob("adjust", 1, 1, false)} {
+		if res.OK || res.Error != menuRefusal || len(res.Changed) != 0 {
+			t.Fatalf("%d with a menu open on the LCD: %+v", i, res)
+		}
+	}
+	if st := c.PanelStatus().Sheet; !st.Open || st.Row.ID != before.Row.ID || st.Edit != before.Edit || eng.Snapshot().Norm {
+		t.Fatalf("the LCD's sheet moved: %+v", st)
+	}
+	if res := c.RemoteKey("runstop", false); !res.OK || eng.Snapshot().Running {
+		t.Fatalf("Run/Stop with the menu open: %+v", res)
+	}
+	press(t, c, "trigmenu")
+	c.mu.Lock()
+	c.autosetBusy = true // a sweep running
+	c.mu.Unlock()
+	for i, res := range []SetResult{c.RemoteKey("runstop", false), c.RemoteKnob("adjust", 1, 1, false)} {
+		if res.OK || res.Error != autosetRefusal {
+			t.Fatalf("%d during Autoset: %+v", i, res)
+		}
+	}
+	if res := c.RemoteKey("auto", false); !res.OK {
+		t.Fatalf("AUTO during Autoset: %+v", res)
+	}
+	c.mu.Lock()
+	c.autosetBusy = false
+	c.mu.Unlock()
+	c.RemoteWorkspace("spectrum")
+	if res := c.RemoteAgain("bus"); res.OK || res.Error != "BUS again: the scope shows SPECTRUM now" || c.PanelStatus().View != "FFT" {
+		t.Fatalf("BUS again in SPECTRUM: %+v view %s", res, c.PanelStatus().View)
+	}
+	if res := c.RemoteAgain("spec"); !res.OK || res.Text != "Spectrogram" {
+		t.Fatalf("SPECTRUM again: %+v", res)
+	}
+}
+
+// SCOPE's Adjust tunes the last number set in a sheet: the snapshot names
+// that row by id, as its label ("Offset", "V/div") is the same for CH1 and
+// CH2.
+// TRLC-LINKS: REQ-SDS-213, REQ-SDS-220
+func TestAdjustTargetIsNamedByID(t *testing.T) {
+	c, _, _ := newC(t)
+	if st := c.PanelStatus(); st.AdjustRow != "" {
+		t.Fatalf("nothing set yet, yet %q", st.AdjustRow)
+	}
+	for _, id := range []string{"ch2.offset", "ch2.vdiv", "ch1.offset"} {
+		press(t, c, map[bool]string{true: "ch2", false: "ch1"}[strings.HasPrefix(id, "ch2")])
+		goRow(t, c, id)
+		turn(c, "horizpos", 1) // Position changes the row's value
+		press(t, c, "menu")
+		st := c.PanelStatus()
+		if st.Mode != "workspace" || st.AdjustRow != id || st.Tool[0].Job != rowByID[id].label {
+			t.Fatalf("%s: mode %s, adjust row %q, tool %+v", id, st.Mode, st.AdjustRow, st.Tool)
+		}
+	}
+	c.RemoteWorkspace("bus")
+	if st := c.PanelStatus(); st.AdjustRow != "" {
+		t.Fatalf("BUS: adjust row %q", st.AdjustRow)
+	}
+}
+
+// The I2C address the serial trigger requires is Any until set, and kept
+// while the bus is not I2C (the row reads it, not in use) for when it is:
+// setting the match on a UART bus leaves it as it is (it was moved to Any
+// as a side effect, so an undo of the match could never put it back), and
+// an address typed meanwhile is the one I2C then uses.
+// TRLC-LINKS: REQ-SDS-013, REQ-SDS-220
+func TestI2CAddressKeptOffI2C(t *testing.T) {
+	c, eng, _ := newC(t)
+	if r := rowModel(c.snap(), rowByID["bus.i2c_address"]); r.Text != "Any" {
+		t.Fatalf("never set: %q", r.Text)
+	}
+	c.SheetSet("bus.protocol", nil, "I2C")
+	if res := c.SheetSet("bus.i2c_address", nil, "0x50"); !res.OK {
+		t.Fatalf("address: %+v", res)
+	}
+	c.SheetSet("bus.protocol", nil, "UART")
+	res := c.SheetSet("bus.match", nil, "55 AA")
+	if !res.OK || slices.Contains(res.Changed, "bus.i2c_address") || fmt.Sprint(res.Changed) != "[bus.match]" {
+		t.Fatalf("the match on UART: %+v", res)
+	}
+	if r := rowModel(c.snap(), rowByID["bus.i2c_address"]); r.Text != "0x50" || r.Available {
+		t.Fatalf("the address on UART: %+v", r)
+	}
+	if res := c.SheetSet("bus.i2c_address", nil, "0x42"); !res.OK || res.Text != "0x42" {
+		t.Fatalf("an address typed on UART: %+v", res)
+	}
+	c.SheetSet("bus.protocol", nil, "I2C")
+	if p := eng.SerialConfig(); p.Addr != 0x42 || rowText(c, "bus.i2c_address") != "0x42" {
+		t.Fatalf("back on I2C: %+v", p)
+	}
+}
+
+// Typed values: a comma is the decimal point when there is no point (a
+// European phone keyboard), but not before exactly three digits ("57,600",
+// maybe a thousands separator); and a negative value refused names itself
+// ("-5s", "-0x01"), where it read "Off" and "0x-1".
+// TRLC-LINKS: REQ-SDS-212, REQ-SDS-220
+func TestTypedCommaAndNegativeTexts(t *testing.T) {
+	c, _, _ := newC(t)
+	if res := c.SheetSet("trig.level", nil, "1,25V"); !res.OK || res.Text != "1.25V" {
+		t.Fatalf("1,25V: %+v", res)
+	}
+	c.SheetSet("bus.protocol", nil, "UART")
+	if res := c.SheetSet("bus.baud", nil, "115,2k"); !res.OK || c.decBaud != 115200 {
+		t.Fatalf("115,2k: %+v (baud %d)", res, c.decBaud)
+	}
+	// a comma before three digits could be a thousands separator: refused, not 58 baud
+	if res := c.SheetSet("bus.baud", nil, "57,600"); res.OK || c.decBaud != 115200 {
+		t.Fatalf("57,600: %+v (baud %d)", res, c.decBaud)
+	}
+	if res := c.SheetSet("trig.level", nil, "1,250V"); res.OK || !strings.Contains(res.Error, `the comma in "1,250V" reads two ways`) {
+		t.Fatalf("1,250V: %+v", res)
+	}
+	for _, x := range [][3]string{{"trig.holdoff", "-5", "holdoff -5s is outside Off .. 10s"},
+		{"bus.stream_value", "-1", "stream value -0x01 is outside 0x00 .. 0xFFFF"},
+		{"bus.i2c_address", "-2", "i2c address -0x02 is outside Any .. 0x7F"}} {
+		if res := c.SheetSet(x[0], nil, x[1]); res.OK || res.Error != x[2] {
+			t.Fatalf("%s %s: %+v", x[0], x[1], res)
+		}
+	}
+}
+
+// stagedEng applies a timebase at its next capture, as the real engine does:
+// its Snapshot keeps the old one until then.
+type stagedEng struct{ *fakeEng }
+
+// SetTdiv stages the timebase.
+// TRLC-LINKS: REQ-SDS-220
+func (e *stagedEng) SetTdiv(t float64) (engine.Band, bool) { return engine.PlanTdiv(t) }
+
+// An Autoset a remote starts is named in its answer; when the sweep ends
+// (here cancelled by a second press) the snapshot names it as the last one
+// done, with the rows it changed.
+// TRLC-LINKS: REQ-SDS-137, REQ-SDS-220
+func TestAutosetSaysWhatItChanged(t *testing.T) {
+	c, _, _ := newC(t)
+	c.SheetSet("trig.mode", nil, "Normal")
+	sig := make([]uint8, 200)
+	for i := range sig {
+		sig[i] = uint8(40 + 160*(i/10%2))
+	}
+	c.SetFrameSource(func(fn func(*engine.Frame)) {
+		fn(&engine.Frame{C1: sig, C2: sig, Valid: len(sig), SampleS: 50e-9})
+	})
+	res := c.SheetAction("sys.autoset", "")
+	if !res.OK || res.Autoset == 0 || !c.AutosetBusy() {
+		t.Fatalf("autoset: %+v busy %v", res, c.AutosetBusy())
+	}
+	time.Sleep(30 * time.Millisecond)
+	if again := c.SheetAction("sys.autoset", ""); !again.OK || again.Autoset != 0 {
+		t.Fatalf("the second press cancels: %+v", again)
+	}
+	for i := 0; i < 400 && c.AutosetBusy(); i++ {
+		time.Sleep(5 * time.Millisecond)
+	}
+	st := c.PanelStatus()
+	if c.AutosetBusy() || st.AutosetDone != res.Autoset || !slices.Contains(st.AutosetChanged, "trig.mode") {
+		t.Fatalf("after the sweep: done %d (started %d), changed %v", st.AutosetDone, res.Autoset, st.AutosetChanged)
 	}
 }
 
