@@ -537,7 +537,8 @@ ended and the rows it changed.
 
 A change's answer says what the change did, measured on the panel goroutine where knobs and other calls cannot
 interleave: `changed`, the ids of the rows whose value it changed (a timebase counts at once, though the engine
-applies it at its next capture); `notice`, the notice it raised; `sheetsSeq`, the sheet values' count after it.
+applies it at its next capture), and `workspace` when it switched the workspace; `notice`, the notice it raised;
+`sheetsSeq`, the sheet values' count after it.
 
 While Autoset sweeps, the scope takes no change from a remote, as its keys take none: sets, actions, presets,
 typed text, the workspace keys and the remote's keys and knobs answer `Autoset is running: ...` and change

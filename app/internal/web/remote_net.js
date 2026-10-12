@@ -218,13 +218,12 @@
   function saveHistory() { RU.store(HIST_KEY, S.history.list); }
 
   // took keeps what an answer of the scope says a call did: the rows it
-  // changed, the workspace it switched to, the Autoset it started, and the
-  // sheet values' count that shows it.
+  // changed (and "workspace" when it switched it), the Autoset it started,
+  // and the sheet values' count that shows it.
   // TRLC-LINKS: REQ-SDS-220
   function took(c, res) {
     if (!res) return;
-    for (const id of res.changed || []) c.claims.set(id, Infinity);
-    if (res.ok && res.workspace) c.wsTo = res.workspace;
+    for (const id of res.changed || []) c.claims.set(id, Infinity);   // "workspace": it switched the workspace
     if (res.autoset) c.autoset = res.autoset;
     if (res.sheetsSeq) c.upTo = Math.max(c.upTo, res.sheetsSeq);
   }
@@ -276,9 +275,8 @@
         if (c) { if (!mine.has(c)) mine.set(c, []); mine.get(c).push(r); }
         else (otherRemote(r) ? remote : scope).push(r);
       }
-      let wsCall = null;
-      for (let i = S.calls.length - 1; ws && i >= 0 && !wsCall; i--) if (S.calls[i].wsTo === ws.to) wsCall = S.calls[i];
-      if (wsCall) { wsCall.wsTo = ""; if (!mine.has(wsCall)) mine.set(wsCall, []); }
+      const wsCall = ws ? claimer("workspace") : null;
+      if (wsCall && !mine.has(wsCall)) mine.set(wsCall, []);
       for (const [c, rs] of mine) attach(c, rs, c === wsCall ? ws : null);
       const theirWs = ws && !wsCall ? ws : null, remoteWs = !!theirWs && otherRemoteWs();
       if (remote.length || remoteWs) S.history.add("remote", remote, { ws: remoteWs ? theirWs : undefined }, Date.now());
@@ -287,7 +285,7 @@
       emit("history");
     }
     const t = now();
-    S.calls = S.calls.filter((c) => !c.doneAt || c.autoset || c.wsTo || [...c.claims.values()].some((until) => until >= t));
+    S.calls = S.calls.filter((c) => !c.doneAt || c.autoset || [...c.claims.values()].some((until) => until >= t));
   }
 
   // otherRemote: the scope's REMOTE line names the row while this phone
@@ -338,7 +336,7 @@
     const answer = new Promise((r) => { answered = r; });
     const run = async () => {
       book();                                         // what came before this call is not this call's
-      const c = { id: ++callSeq, meta, doneAt: 0, claims: new Map(), wsTo: "", autoset: 0, upTo: 0, entry: null };
+      const c = { id: ++callSeq, meta, doneAt: 0, claims: new Map(), autoset: 0, upTo: 0, entry: null };   // claims: row id (or "workspace") -> until
       S.calls.push(c);
       S.lastCall = now();
       let res, lost = false;

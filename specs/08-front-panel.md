@@ -480,8 +480,8 @@ it is (spec 11 §8). A number row's presets run through `/api/sheets/action` by 
 
 A remote's change runs on the panel goroutine, ordered with the knobs and keys, and its answer says what it
 did, measured there: the ids of the rows whose value it changed (a timebase counts at once, though the
-engine applies it at its next capture), the notice it raised and the sheet values' count after it
-(`SheetsSeq`). An Autoset it starts is named; when the sweep ends the snapshot names it as the last one done
+engine applies it at its next capture; `workspace` when it switched the workspace), the notice it raised and
+the sheet values' count after it (`SheetsSeq`). An Autoset it starts is named; when the sweep ends the snapshot names it as the last one done
 with the rows it changed. A key or knob sent with `"remote":true` runs the same way and is answered once it
 has run; it waits while Autoset sweeps (as the panel's own keys do) and, with `"nomenu":true`, while a menu
 is open on the LCD, where the Adjust and Position turns and pushes would move it. The snapshot leaves out

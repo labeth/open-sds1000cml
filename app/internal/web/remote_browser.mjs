@@ -342,6 +342,8 @@ run(async (t) => {
     P.ok(after.Mode === "sheet" && after.Sheet.Tab === "trig" && after.Sheet.Row.ID === before.Sheet.Row.ID, "again left the LCD's sheet as it was");
     await P.tap('[data-ws="scope"]');
     await P.until(async () => (await ctrl("/status")).Workspace === "SCOPE", "back to SCOPE");
+    await P.until(() => page.evaluate(() => { const L = RN.S.history.list; return L.some((e) => e.ws && e.ws.to === "spectrum" && e.src === "phone") && L.some((e) => e.ws && e.ws.to === "scope" && e.src === "phone"); }),
+      "the phone's workspace switches are the phone's in History (the scope says the call switched it)");
     await P.shot("home-scope-menu");
     // the tools wait while the LCD's menu has the knobs; the scope itself refuses a turn or push sent before the phone saw the menu
     await P.tap('[data-tabbar="keys"]');

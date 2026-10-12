@@ -225,8 +225,12 @@ func TestRemoteCallsSayWhatTheyChanged(t *testing.T) {
 		t.Fatalf("a refused set: %+v", res)
 	}
 	res = c.RemoteWorkspace("measure") // MEASURE starts with Vpp and Freq, and says so
-	if !res.OK || !slices.Contains(res.Changed, "meas.pkpk") || !slices.Contains(res.Changed, "meas.freq") || !strings.Contains(res.Notice, "Vpp") {
+	if !res.OK || !slices.Contains(res.Changed, "meas.pkpk") || !slices.Contains(res.Changed, "meas.freq") || !strings.Contains(res.Notice, "Vpp") ||
+		res.Changed[len(res.Changed)-1] != "workspace" {
 		t.Fatalf("MEASURE: %+v", res)
+	}
+	if res := c.RemoteWorkspace("measure"); !res.OK || len(res.Changed) != 0 {
+		t.Fatalf("the workspace shown already: nothing switched, yet %+v", res)
 	}
 	if res := c.RemoteAgain(""); !res.OK || len(res.Changed) != 0 || res.Notice != "" {
 		t.Fatalf("again: %+v", res)
@@ -399,6 +403,7 @@ func TestTypedCommaAndNegativeTexts(t *testing.T) {
 type stagedEng struct{ *fakeEng }
 
 // SetTdiv stages the timebase.
+// TRLC-LINKS: REQ-SDS-220
 func (e *stagedEng) SetTdiv(t float64) (engine.Band, bool) { return engine.PlanTdiv(t) }
 
 // An Autoset a remote starts is named in its answer; when the sweep ends

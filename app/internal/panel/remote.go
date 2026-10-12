@@ -131,8 +131,9 @@ type Status struct {
 
 // SetResult is the outcome of a remote set, action or typed entry. A
 // remote call (remoteCall) also says what it did, measured on the panel
-// goroutine: the rows whose value it changed, the notice it raised, the
-// sheet values' count after it and the Autoset sweep it started.
+// goroutine: the rows whose value it changed ("workspace" too when it
+// switched it), the notice it raised, the sheet values' count after it and
+// the Autoset sweep it started.
 type SetResult struct {
 	OK        bool     `json:"ok"`
 	Row       string   `json:"row,omitempty"`
@@ -396,6 +397,7 @@ func sheetSig(s *sv) uint64 {
 // hashValue writes a row's value into h: its option, its number, the match
 // bytes or a setup slot's summary (an action has none; its live status is
 // not a setting).
+// TRLC-LINKS: REQ-SDS-211, REQ-SDS-220
 func hashValue(h hash.Hash64, s *sv, r *row) {
 	switch r.kind {
 	case wsview.Enum:
@@ -411,6 +413,7 @@ func hashValue(h hash.Hash64, s *sv, r *row) {
 }
 
 // putU64 writes x into h, little-endian.
+// TRLC-LINKS: REQ-SDS-211
 func putU64(h hash.Hash64, x uint64) {
 	var b [8]byte
 	for i := range b {
@@ -436,11 +439,12 @@ func rowKeys(s *sv) []uint64 {
 
 // changeMark is how a remote call (or an Autoset sweep) found the settings:
 // each row's value, the timebase in effect and the requests for another,
-// and the notice showing.
+// the workspace and the notice showing.
 type changeMark struct {
 	keys      []uint64
 	tdiv      float64
 	tdivAsked uint64
+	ws        wsview.WS
 	noticeUnt time.Time
 }
 
@@ -450,14 +454,15 @@ func (c *Controller) markChanges() changeMark {
 	s := c.snap()
 	m := changeMark{keys: rowKeys(s), tdiv: s.st.TdivS}
 	c.mu.Lock()
-	m.tdivAsked, m.noticeUnt = c.tdivAsked, c.ui.noticeUnt
+	m.tdivAsked, m.ws, m.noticeUnt = c.tdivAsked, c.ui.ws, c.ui.noticeUnt
 	c.mu.Unlock()
 	return m
 }
 
 // changesSince lists the rows whose value is not what m found, in sheet
-// order, and the notice raised since. A timebase asked for since m counts
-// at once: the engine applies it at its next capture, after the call.
+// order ("workspace" last when the workspace is another one), and the
+// notice raised since. A timebase asked for since m counts at once: the
+// engine applies it at its next capture, after the call.
 // TRLC-LINKS: REQ-SDS-212, REQ-SDS-220
 func (c *Controller) changesSince(m changeMark) ([]string, string) {
 	if len(m.keys) == 0 {
@@ -466,7 +471,7 @@ func (c *Controller) changesSince(m changeMark) ([]string, string) {
 	s := c.snap()
 	keys := rowKeys(s)
 	c.mu.Lock()
-	asked := c.tdivAsked != m.tdivAsked && c.tdivWant != m.tdiv
+	asked, ws := c.tdivAsked != m.tdivAsked && c.tdivWant != m.tdiv, c.ui.ws
 	notice := ""
 	if c.ui.noticeUnt != m.noticeUnt && s.now.Before(c.ui.noticeUnt) {
 		notice = c.ui.notice
@@ -481,6 +486,9 @@ func (c *Controller) changesSince(m changeMark) ([]string, string) {
 			}
 			i++
 		}
+	}
+	if ws != m.ws {
+		out = append(out, "workspace")
 	}
 	return out, notice
 }

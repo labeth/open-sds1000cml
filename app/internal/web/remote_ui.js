@@ -433,10 +433,12 @@
       this.emit();
     },
     // setStrong turns Stronger keep-awake on or off; a video keeping the
-    // phone awake starts again the new way
+    // phone awake the other way starts again the new way (also one the same
+    // tap was starting)
     async setStrong(on) {
       store("wake-strong", !!on);
-      if (this.how && this.how !== "wake lock" && this.video) {
+      if (this.pending) await this.pending;
+      if (this.how && this.how !== "wake lock" && this.video && this.video.muted === this.sound()) {
         this.how = "";   // the pause this makes is not the browser's
         this.video.pause();
         return this.enable();
