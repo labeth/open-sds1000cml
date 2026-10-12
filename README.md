@@ -45,16 +45,19 @@ again switches to its next view.
 ### In a browser
 
 The web UI on port 8080 has the same five workspaces (Alt+1 to Alt+5), a strip with run control,
-timebase, channels and trigger, and All settings (Ctrl+,).
+timebase, channels and trigger, and All settings (Ctrl+,). A workspace's key pressed again shows its
+next view, as on the scope.
 
 | | |
 |---|---|
-| ![Web SCOPE workspace](docs/images/web-scope.png) | ![Web BUS workspace: the decoder, the packet table and the trigger on bytes](docs/images/web-bus.png) |
-| **SCOPE** | **BUS:** decoder, packet table, trigger on bytes |
-| ![Web BUS eye diagram with jitter analysis](docs/images/web-bus-eye.png) | ![Web SPECTRUM: FFT with peaks and THD](docs/images/web-spectrum.png) |
-| **BUS:** eye diagram and jitter (it folds sampled records: here two full records) | **SPECTRUM:** FFT, peaks, THD |
-| ![Web spectrogram](docs/images/web-spectrogram.png) | ![Web MEASURE: statistics, cursors and the mask test](docs/images/web-measure.png) |
-| **SPECTRUM:** spectrogram | **MEASURE:** statistics, cursors, mask and zones |
+| ![Web SCOPE workspace](docs/images/web-scope.png) | ![Web SCOPE in X-Y: C1 against C2, a diagonal because both channels carry the same signal](docs/images/web-xy.png) |
+| **SCOPE** | **SCOPE again:** X-Y |
+| ![Web BUS workspace: the decoder, the packet table and the trigger on bytes](docs/images/web-bus.png) | ![Web BUS eye diagram with jitter analysis](docs/images/web-bus-eye.png) |
+| **BUS:** decoder, packet table, trigger on bytes | **BUS again:** eye diagram and jitter (it folds sampled records: here two full records) |
+| ![Web SPECTRUM: FFT with peaks and THD](docs/images/web-spectrum.png) | ![Web spectrogram](docs/images/web-spectrogram.png) |
+| **SPECTRUM:** FFT, peaks, THD | **SPECTRUM again:** spectrogram |
+| ![Web MEASURE: statistics, cursors and the mask test](docs/images/web-measure.png) | ![Web MEASURE, All values: every measurement of both channels in this capture](docs/images/web-measure-all.png) |
+| **MEASURE:** statistics, cursors, mask and zones | **MEASURE again:** every value of both channels |
 | ![Web COMPARE: REF A against the live trace with the difference readout, and the mask test counting](docs/images/web-compare.png) | ![All settings: every control of the app in one list, with where it lives](docs/images/web-allsettings.png) |
 | **COMPARE:** REF A against the live trace, and the mask test counting a master stacked on the scope | **All settings:** every control, and where it lives |
 
