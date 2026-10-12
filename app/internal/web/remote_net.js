@@ -459,19 +459,38 @@
     return call({ history: { label: name + " again" } }, () => api.again());
   }
 
+  // keyOf is a row's value as History keys it.
+  // TRLC-LINKS: REQ-SDS-220
+  function keyOf(id) {
+    const r = S.model.rows.get(id);
+    return r ? JSON.stringify(r.Value === undefined ? null : r.Value) : undefined;
+  }
+
+  // inEffect: every setting entry e changed still has e's new value (and
+  // the scope is in the workspace e switched to).
+  // TRLC-LINKS: REQ-SDS-220
+  function inEffect(e) {
+    return e.rows.every((r) => r.kind === "slot" || keyOf(r.id) === r.neu.key) && (!e.ws || wsId() === e.ws.to);
+  }
+
   // undo sets the rows of these entries back to their old values (and the
   // workspace they started in), in up to three passes so that rows depending
-  // on others settle, and books that as one entry. Rows the scope would not
-  // set back are named in the answer.
+  // on others settle, and books that as one entry. An entry counts as undone
+  // only where all its rows (and its workspace) went back; undoing an undo
+  // puts the entries it had undone back in effect. Answers {ok, none
+  // (nothing went back), fails, error}: a row the scope refused is named
+  // with the scope's own words, one it set elsewhere with where it stayed.
   // TRLC-LINKS: REQ-SDS-220
   function undo(entries, title) {
     const t = S.history.targets(entries);
-    return call({ history: { kind: "undo", label: title } }, async (c) => {
-      const fails = [];
-      if (t.ws && wsId() !== t.ws) {
+    const undid = entries.filter((e) => e.undoable && !e.undone).map((e) => e.id);
+    return call({ history: { kind: "undo", label: title, undid } }, async (c) => {
+      const why = new Map();   // row id ("" the workspace) -> the scope's refusal
+      let wsBack = !t.ws || wsId() === t.ws;
+      if (!wsBack) {
         const r = await api.workspace(t.ws);
         took(c, r);
-        if (r.ok) applyWorkspace(r); else fails.push(r.error);
+        if (r.ok) { applyWorkspace(r); wsBack = true; } else why.set("", r.error || "refused");
       }
       let todo = t.rows;
       for (let pass = 0; pass < 3 && todo.length; pass++) {
@@ -479,14 +498,25 @@
           const input = x.kind === "bytes" ? { text: x.value ? String(x.value) : "any" } : { value: x.value };
           const r = await api.set(x.id, input);
           took(c, r);
-          if (r.ok) setModelRow(x.id, r.value, r.text);
+          if (r.ok) { setModelRow(x.id, r.value, r.text); why.delete(x.id); } else why.set(x.id, r.error || "refused");
         }
-        await refresh();
-        todo = todo.filter((x) => { const cur = S.model.rows.get(x.id); return cur && JSON.stringify(cur.Value === undefined ? null : cur.Value) !== x.key; });
+        await refresh(c.upTo);
+        todo = todo.filter((x) => keyOf(x.id) !== x.key);
       }
-      for (const x of todo) fails.push(x.tab + " " + x.label + " stayed at " + RC.pretty((S.model.rows.get(x.id) || {}).Text || "?"));
-      for (const e of entries) if (e.undoable) e.undone = true;
+      const stayed = new Set(todo.map((x) => x.id));
+      const fails = todo.map((x) => x.tab + " " + x.label + (why.has(x.id) ? ": " + why.get(x.id) : " stayed at " + RC.pretty((S.model.rows.get(x.id) || {}).Text || "?")));
+      if (!wsBack) fails.unshift("the workspace: " + why.get(""));
+      let any = false;
+      for (const e of entries) {
+        if (!e.undoable || e.undone || (e.ws && !wsBack) || e.rows.some((r) => r.kind !== "slot" && stayed.has(r.id))) continue;
+        e.undone = any = true;
+        for (const id of e.undid || []) {   // an undo undone: what it undid is in effect again
+          const o = S.history.list.find((x) => x.id === id);
+          if (o && o.undone && inEffect(o)) o.undone = false;
+        }
+      }
       saveHistory();
+      if (!any && fails.length) return { ok: false, none: true, fails, error: why.size ? [...why.values()][0] : fails[0] };
       return { ok: !fails.length, fails, error: fails[0] };
     });
   }

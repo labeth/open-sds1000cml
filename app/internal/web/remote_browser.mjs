@@ -312,10 +312,21 @@ run(async (t) => {
     await P.until(async () => /^Undo: CH2 · Coupling/.test(await P.text(".hent:first-child .hl b") || ""), "the undo is itself an entry");
     P.ok(await page.evaluate((id) => document.querySelector(`[data-hist="${id}"]`).classList.contains("undone"), coup), "the original is marked undone");
     await P.tap(".hent:first-child .hmain");
-    await P.until(() => P.visible(".sheet [data-hundo-one]"), "an entry's details offer Undo this");
+    await P.until(async () => (await P.text(".sheet [data-hundo-one]")) === "Redo this", "an undo's details offer Redo this");
     await P.shot("history-entry");
     await P.tap(".sheet [data-hundo-one]");
     await P.until(async () => (await rows())["ch2.coupling"].Text === "AC", "undoing the undo is a redo");
+    await P.until(async () => /^Redo: CH2 · Coupling/.test(await P.text(".hent:first-child .hl b") || ""), "titled Redo, not Undo: Undo:");
+    P.ok(await page.evaluate((id) => { const e = document.querySelector(`[data-hist="${id}"]`); return !e.classList.contains("undone") && !!e.querySelector("[data-hundo]"); }, coup),
+      "the redo puts the original back in effect: no longer struck through, its Undo back");
+    // an undo the scope refuses: nothing is marked undone, and the scope's words are shown
+    const REFUSED = "Autoset is running: changes wait until it is done (Autoset again cancels it)";
+    await page.route("**/api/sheets/set", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ok: false, row: "ch2.coupling", error: REFUSED }) }));
+    await P.tap(`[data-hundo="${coup}"]`);
+    await P.until(async () => (await P.toast()) === "Not undone: " + REFUSED, "a refused undo says so in the scope's words");
+    await page.unroute("**/api/sheets/set");
+    P.ok((await rows())["ch2.coupling"].Text === "AC" && await page.evaluate((id) => !document.querySelector(`[data-hist="${id}"]`).classList.contains("undone"), coup),
+      "and leaves the entry as it was, with its Undo");
     P.ok(Number(await P.text("#hist-badge")) >= 5, "the History tab counts the changes");
     // back to before the bus was set up: everything since, from the phone and the scope, on a 1 s hold
     const proto = await page.evaluate(() => { const e = [...document.querySelectorAll(".hent")].find((x) => /BUS · Protocol/.test(x.textContent)); return e ? e.dataset.hist : ""; });

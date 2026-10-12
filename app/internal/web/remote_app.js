@@ -1323,7 +1323,7 @@
     press(main, { onTap: () => openEntry(e) });
     const el = h("div", { class: "hent " + e.src + (e.undone ? " undone" : ""), role: "listitem", data: { hist: String(e.id) } }, main);
     if (e.undoable && !e.undone) {
-      const u = button({ label: "Undo", aria: "Undo: " + title, onTap: () => undoEntries([e], "Undo: " + title) });
+      const u = button({ label: "Undo", aria: undoTitle(e), onTap: () => undoEntries([e], undoTitle(e)) });
       u.classList.add("hundo");
       u.dataset.hundo = String(e.id);
       el.appendChild(u);
@@ -1333,11 +1333,18 @@
     histMeta.push(upd);
     return el;
   }
+  // undoTitle names an undo of e: undoing an undo is a redo.
+  // TRLC-LINKS: REQ-SDS-220
+  function undoTitle(e) {
+    const t = entryTitle(e), m = e.kind === "undo" ? /^(Undo|Redo): (.*)$/.exec(t) : null;
+    return m ? (m[1] === "Undo" ? "Redo: " : "Undo: ") + m[2] : "Undo: " + t;
+  }
   // TRLC-LINKS: REQ-SDS-220
   function undoEntries(list, title) {
     RN.undo(list, title).then((res) => {
       haptic(res.ok ? "confirm" : "warn");
       if (res.ok) toast(title, "ok");
+      else if (res.none) toast("Not undone: " + res.error, "err", 4200);
       else toast(res.fails && res.fails.length ? "Undone, except " + res.fails[0] : res.error || "The scope refused the undo", "err", 4200);
       if (S.tab === "hist") renderHist();
     });
@@ -1361,7 +1368,8 @@
     box.appendChild(list);
     const acts = h("div", { class: "k1" });
     if (e.undoable && !e.undone) {
-      const u = button({ label: "Undo this", cls: "primary", onTap: () => { sh.close(); undoEntries([e], "Undo: " + title); } });
+      const u = button({ label: e.kind === "undo" && /^Redo: /.test(undoTitle(e)) ? "Redo this" : "Undo this", cls: "primary",
+        onTap: () => { sh.close(); undoEntries([e], undoTitle(e)); } });
       u.dataset.hundoOne = String(e.id);
       acts.appendChild(u);
     }

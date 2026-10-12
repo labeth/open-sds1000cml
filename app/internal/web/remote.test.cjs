@@ -361,6 +361,18 @@ test("undo targets restore old values; back-to-before takes each row's oldest va
   assert.equal(restored.list.length, h.list.length, "kept across a reload");
   assert.ok(restored.add("phone", [r("z", 0, 1)], {}, 500).id > def.id, "ids continue");
 });
+test("an undo entry keeps the ids of the entries it undid (a redo puts them back in effect)", () => {
+  const h = new RC.History();
+  const r = (id, a, b) => ({ id, tab: "T", label: id, kind: "enum", old: { value: a, text: a, key: JSON.stringify(a) }, neu: { value: b, text: b, key: JSON.stringify(b) } });
+  const e = h.add("phone", [r("cpl", "DC", "AC")], {}, 0);
+  const u = h.add("phone", [r("cpl", "AC", "DC")], { kind: "undo", label: "Undo: c", undid: [e.id] }, 5000);
+  assert.deepEqual(u.undid, [e.id]);
+  assert.equal(u.kind, "undo");
+  assert.ok(u.undoable, "an undo can itself be undone");
+  assert.equal(e.undid, undefined, "a plain change undid nothing");
+  const back = new RC.History(JSON.parse(JSON.stringify(h.list)));
+  assert.deepEqual(back.list[0].undid, [e.id], "kept across a reload");
+});
 test("History keeps at most 100 entries; ago reads like a phone", () => {
   const h = new RC.History();
   for (let i = 0; i < 120; i++) h.add("scope", [{ id: "r" + i, tab: "T", label: "r", kind: "enum", old: { key: "0" }, neu: { key: "1" } }], {}, i * 10000);

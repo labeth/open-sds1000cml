@@ -528,8 +528,9 @@
     }
 
     // add books a change: src "phone", "scope" or "remote" (another remote);
-    // meta {primary, label, kind, undoable, ws}. Returns the entry (or null
-    // when a merge removed it).
+    // meta {primary, label, kind, undoable, ws, undid (an undo: the ids of
+    // the entries it undid)}. Returns the entry (or null when a merge
+    // removed it).
     add(src, rows, meta, now) {
       meta = meta || {};
       rows = rows.slice();
@@ -549,6 +550,7 @@
       const e = { id: ++this.seq, t: now, src, rows, single, primary: pi >= 0 || (rows.length > 0 && rows[0].id === meta.primary),
         pid: meta.primary || "", ws: meta.ws || null, label: meta.label || "", kind: meta.kind || (meta.ws ? "ws" : rows.length === 1 ? "set" : "batch"),
         undoable, undone: false, n: 1 };
+      if (Array.isArray(meta.undid) && meta.undid.length) e.undid = meta.undid.slice();   // an undo: the entries it undid
       this.list.unshift(e);
       if (this.list.length > HIST_MAX) this.list.length = HIST_MAX;
       return e;
