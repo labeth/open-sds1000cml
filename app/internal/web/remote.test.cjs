@@ -311,6 +311,38 @@ test("search ranks names first and finds rows by everyday words", () => {
   assert.ok(!RC.matchPlace({ label: "History", words: "undo changes log" }, "undo zz"));
 });
 
+test("search knows scope words, phrases and one-letter misspellings", () => {
+  const row = (id, label, extra) => Object.assign({ ID: id, Label: label, Kind: "enum", Available: true, Help: "", Value: 0, Text: "" }, extra);
+  const onoff = { Options: [{ Value: 0, Text: "Off" }, { Value: 1, Text: "On" }] };
+  const m = RC.index({ Tabs: [
+    { ID: "trig", Name: "TRIG", Title: "Trigger", Rows: [row("trig.edge", "Source/slope", { Options: [{ Value: 0, Text: "C1 Rise" }, { Value: 1, Text: "C1 Fall" }] }),
+      row("trig.level", "Level", { Kind: "number", Unit: "V" })] },
+    { ID: "ch1", Name: "CH1", Title: "Channel 1", Rows: [row("ch1.offset", "Offset", { Kind: "number", Unit: "V" }), row("ch1.coupling", "Coupling", { Options: [{ Value: 0, Text: "DC" }, { Value: 1, Text: "AC" }] })] },
+    { ID: "time", Name: "TIME", Title: "Horizontal", Rows: [row("time.tdiv", "Time/div", { Kind: "number", Unit: "s" })] },
+    { ID: "acq", Name: "ACQ", Title: "Acquire", Rows: [row("acq.mode", "Mode", { Options: [{ Value: 0, Text: "Normal" }, { Value: 1, Text: "Average" }] }),
+      row("acq.depth", "Memory depth", { Options: [{ Value: 2048, Text: "2k" }] })] },
+    { ID: "view", Name: "VIEW", Title: "Display", Rows: [row("view.persist", "Persistence", onoff)] },
+    { ID: "meas", Name: "MEAS", Title: "Measure", Rows: [row("meas.pkpk", "Peak-peak"), row("meas.rise", "Rise"), row("meas.fall", "Fall")] },
+    { ID: "curs", Name: "CURS", Title: "Cursors", Rows: [row("curs.mode", "Cursors")] },
+    { ID: "sys", Name: "SYS", Title: "System and help", Rows: [row("sys.print", "Print screen", { Kind: "action", Actions: [{ ID: "print", Text: "Save PNG", Available: true }] })] },
+  ] });
+  const top = (q) => (RC.search(m, q)[0] || {}).id;
+  const all = (q) => RC.search(m, q).map((x) => x.id);
+  for (const [q, id] of [["vpp", "meas.pkpk"], ["pk-pk", "meas.pkpk"], ["peak to peak", "meas.pkpk"], ["rise time", "meas.rise"], ["record length", "acq.depth"],
+    ["screen-shot", "sys.print"], ["screen shot", "sys.print"], ["persistance", "view.persist"], ["cusor", "curs.mode"], ["offest", "ch1.offset"]]) {
+    assert.equal(top(q), id, q);
+  }
+  assert.ok(all("rising").includes("trig.edge") && all("rising").includes("meas.rise"), "rising: the rising edge and the rise time");
+  assert.ok(all("falling").includes("trig.edge") && all("falling").includes("meas.fall"));
+  assert.deepEqual(all("sample rate").sort(), ["acq.depth", "time.tdiv"], "the sample rate follows time/div and the memory depth");
+  assert.ok(all("averge").includes("acq.mode"), "averge, one letter short of Average");
+  assert.ok(all("tigger").includes("trig.level"), "tigger, one letter short of trigger");
+  assert.deepEqual(all("zzzzz"), [], "nothing like it");
+  assert.deepEqual(all("trig coupling"), [], "every word must still match");
+  assert.deepEqual(all("rose"), [], "a word under 5 letters is not guessed at");
+  assert.ok(RC.within1("offest", "offset") && RC.within1("averge", "average") && RC.within1("cusor", "cursor") && !RC.within1("cursor", "curves"));
+});
+
 // ---- history ----------------------------------------------------------------------------------
 test("History books a change with old and new values, newest first", () => {
   const m0 = RC.index(sheets()), h = new RC.History();

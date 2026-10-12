@@ -430,7 +430,16 @@
     recall: ["setup"], load: ["setup"], persistence: ["persistence"], afterglow: ["persistence"], xy: ["view"],
     spectrogram: ["view"], bode: ["view"], invert: ["invert"], ac: ["coupling"], dc: ["coupling"], gnd: ["coupling"],
     ground: ["coupling"], holdoff: ["holdoff"], zoom: ["zoom"], cursor: ["cursor"], measure: ["meas"],
+    // scope words and the usual misspellings
+    vpp: ["peak-peak"], "pk-pk": ["peak-peak"], pkpk: ["peak-peak"], "p-p": ["peak-peak"], rising: ["rise"], falling: ["fall"],
+    risetime: ["rise"], falltime: ["fall"], samplerate: ["time/div", "memory depth"], recordlength: ["memory depth"],
+    record: ["memory depth"], "screen-shot": ["print"], persistance: ["persistence"], averge: ["average"], tigger: ["trigger", "trig"],
+    cusor: ["cursor"], offest: ["offset"],
   };
+
+  // Phrases that are one word to the search ("peak to peak" is pkpk).
+  const PHRASES = [[/\bpeak[ -]to[ -]peak\b/g, "pkpk"], [/\brise time\b/g, "risetime"], [/\bfall time\b/g, "falltime"],
+    [/\bsample rate\b/g, "samplerate"], [/\brecord length\b/g, "recordlength"], [/\bscreen shot\b/g, "screenshot"]];
 
   // The friendlier names of rows whose sheet label needs its tab.
   const NAME = {
@@ -449,19 +458,76 @@
     return (row.tab === "ch1" ? "CH1 " : row.tab === "ch2" ? "CH2 " : "") + row.Label.replace(/\s+/g, " ");
   }
 
-  // words splits a query into lower-case words.
+  // words splits a query into lower-case words (a known phrase is one).
   // TRLC-LINKS: REQ-SDS-220
-  function words(q) { return String(q || "").toLowerCase().split(/[\s,]+/).filter(Boolean); }
+  function words(q) {
+    let s = String(q || "").toLowerCase();
+    for (const [re, w] of PHRASES) s = s.replace(re, w);
+    return s.split(/[\s,]+/).filter(Boolean);
+  }
+
+  // within1: a and b differ by at most one letter: one changed, added,
+  // dropped, or two neighbours swapped ("offest", "offset").
+  // TRLC-LINKS: REQ-SDS-220
+  function within1(a, b) {
+    if (a === b) return true;
+    const la = a.length, lb = b.length;
+    if (Math.abs(la - lb) > 1) return false;
+    let i = 0;
+    while (i < la && i < lb && a[i] === b[i]) i++;
+    if (la === lb) {
+      return a.slice(i + 1) === b.slice(i + 1) || (a[i] === b[i + 1] && a[i + 1] === b[i] && a.slice(i + 2) === b.slice(i + 2));
+    }
+    return la > lb ? a.slice(i + 1) === b.slice(i) : a.slice(i) === b.slice(i + 1);
+  }
+
+  // vocabulary is every word the sheets use (names, tabs, sections, options,
+  // presets, actions) and the everyday words above.
+  // TRLC-LINKS: REQ-SDS-220
+  function vocabulary(model) {
+    const v = new Set(Object.keys(SYN));
+    const put = (t) => { for (const w of String(t || "").toLowerCase().split(/[^a-z0-9]+/)) if (w.length >= 4) v.add(w); };
+    for (const t of model.tabs) {
+      put(t.name); put(t.title);
+      for (const id of t.rows) {
+        const r = model.rows.get(id);
+        put(label(r)); put(r.Label); put(r.section);
+        for (const o of r.Options || []) put(o.Text);
+        for (const p of r.Presets || []) put(p);
+        for (const a of r.Actions || []) put(a.Text);
+      }
+    }
+    return v;
+  }
 
   // search finds rows by their name, tab, section, options and help, and by
   // the everyday words above. Every word must match; a name match ranks
-  // first, the help text last. [{id, score}], best first, in sheet order.
+  // first, the help text last. When nothing matches, a word of 5 letters or
+  // more also matches the sheets' words one letter away from it ("averge",
+  // "tigger"). [{id, score}], best first, in sheet order.
   // TRLC-LINKS: REQ-SDS-220
   function search(model, q, limit) {
     const ws = words(q);
     if (!ws.length) return [];
+    let out = find(model, ws, (w) => [w].concat(SYN[w] || []));
+    if (!out.length) {
+      const vocab = vocabulary(model);
+      out = find(model, ws, (w) => {
+        const alts = w.length < 5 ? [] : [...vocab].filter((x) => x !== w && within1(w, x));
+        return [w].concat(SYN[w] || [], ...alts.map((x) => [x].concat(SYN[x] || [])));
+      });
+    }
+    out.sort((a, b) => b.score - a.score || a.order - b.order);
+    return out.slice(0, limit || 40).map((x) => ({ id: x.id, score: x.score }));
+  }
+
+  // find scores every row against the words, each word standing for its
+  // candidates (itself and its alternatives); rows that every word matches.
+  // TRLC-LINKS: REQ-SDS-220
+  function find(model, ws, cands) {
     const out = [];
     let order = 0;
+    const alt = ws.map(cands);
     for (const t of model.tabs) {
       for (const id of t.rows) {
         const r = model.rows.get(id);
@@ -471,9 +537,9 @@
           (r.Presets || []).join(" "), (r.Actions || []).map((a) => a.Text).join(" ")].join(" ").toLowerCase();
         const help = String(r.Help || "").toLowerCase();
         let score = 0, all = true;
-        for (const w of ws) {
+        for (let k = 0; k < ws.length; k++) {
           let best = 0;
-          for (const x of [w].concat(SYN[w] || [])) {
+          for (const x of alt[k]) {
             if (name.startsWith(x)) best = Math.max(best, 4);
             else if (new RegExp("(^|[\\s/(-])" + x.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&")).test(name)) best = Math.max(best, 3);
             else if (name.indexOf(x) >= 0) best = Math.max(best, 2);
@@ -486,8 +552,7 @@
         if (all) out.push({ id, score, order });
       }
     }
-    out.sort((a, b) => b.score - a.score || a.order - b.order);
-    return out.slice(0, limit || 40).map((x) => ({ id: x.id, score: x.score }));
+    return out;
   }
 
   // matchPlace reports whether a place (a workspace, a key, a tab of the
@@ -650,7 +715,7 @@
 
   const RC = {
     g3, si, sgnSI, hex2, fmtValue, pretty, compact, near, neighbour, turn, CW_DOWN, parseNumber, numberHint, nearestLadder,
-    unitKeys, numKey, isHex, hexNumKey, parseMatch, quoteText, hexKey, MATCH_MAX, index, isSwitch, isSlot, SYN, NAME, label, words, search,
+    unitKeys, numKey, isHex, hexNumKey, parseMatch, quoteText, hexKey, MATCH_MAX, index, isSwitch, isSlot, SYN, NAME, label, words, within1, search,
     matchPlace, tracked, snapshot, diff, History, ago, tools, turnWords, MERGE_MS,
   };
   if (typeof module !== "undefined" && module.exports) module.exports = RC;
