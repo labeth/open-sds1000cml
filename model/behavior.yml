@@ -856,9 +856,15 @@ behavior:
       ref: FU-APP-PANEL
       kind: control_action
       action: 'A remote change (specs/08-front-panel.md section 7.4, specs/11-host-interface.md section 8): a sheet row set,
-        action or preset by id, typed text, or the workspace keys {"workspace"} and {"again"} goes through the same setter
-        as the knobs and F-keys, validated and clamped alike, and answers the device''s own error text. It never opens,
-        moves or closes the LCD''s sheet, picker or editor; the LCD confirms it with a one-line REMOTE note for 1.5 s.'
+        action or preset by id, typed text, the workspace keys {"workspace"} and {"again"} (with "workspace", refused
+        unless that workspace is active), or a key or knob sent with "remote" goes through the same setter as the knobs
+        and F-keys, validated and clamped alike, and answers the device''s own error text. It runs on the panel goroutine
+        and answers with the rows it changed, the notice it raised and the sheet values'' count (SheetsSeq) after it. It
+        never opens, moves or closes the LCD''s sheet, picker or editor (except that leaving BUS closes the BUS pane''s
+        own byte picker). A remote''s menu keys and F-keys are refused. Its S/DIV, Adjust and Position turns and its Adjust
+        and Position pushes (any key or knob with "nomenu") wait while a menu is open there. Its Adjust push is refused
+        where it would open one. The LCD confirms it with a one-line REMOTE note for 1.5 s. Live texts (a mask test''s
+        counts, COMPARE''s trigger stability) are left out of the snapshot, so they do not advance the Seq.'
       sourceRef: FU-WEB-REMOTE
       destinationRef: FU-APP-PANEL
       next:
@@ -869,13 +875,13 @@ behavior:
       action: Finish this input dispatch. Applicable commands change engine/frontend state; panel-local changes are
         drawn on the next LCD frame and published to the remote snapshot (its Seq advances).
     properties:
-      sourceBaseline: 4ba59a9eb69df58bdcf5f76a4157be9b6302601f
+      sourceBaseline: aafbbe7f4e263067e9689d7c3bc51fb616f120e7
       requirements: REQ-SDS-135, REQ-SDS-137, REQ-SDS-168, REQ-SDS-211, REQ-SDS-212, REQ-SDS-213, REQ-SDS-214, REQ-SDS-216,
         REQ-SDS-217, REQ-SDS-218, REQ-SDS-220
       reviewNext: The CURSORS, MATH and REF lamps are not driven (specs/08-front-panel.md section 8.2) until it is known
         whether the panel has them. Physical key availability depends on the loaded FPGA image.
-      sourceFiles: app/internal/panel/panel.go, app/internal/panel/panel_dispatch.go, app/internal/panel/ws_input.go, app/internal/panel/ws.go, app/internal/panel/sheet.go, app/internal/panel/actions.go, app/internal/panel/remote.go, app/internal/panel/autoset.go, specs/08-front-panel.md
-      sourceSHA256: '{"app/internal/panel/actions.go": "c0b1f601a2bbbefecf28f12c7a5bdd609b71255958d254cd4cf7e8f8f922f562", "app/internal/panel/autoset.go": "092ce08979652961c0f1db7ace3d28ee27ab317b7f4f7c5b4f36bc375461dc8e", "app/internal/panel/panel.go": "ebe84916d55a8e06f7d64da9cf70670b975013371705337e8b0c8e1eb53268b4", "app/internal/panel/panel_dispatch.go": "aca9bc2766ed4f445fb3bab3f4354f8db99f703523fe737980972aa51c78670c", "app/internal/panel/remote.go": "366d1297cda7601f7cb0a7bc1690fc69635d155d96bc9d0096509ce146d1f9d6", "app/internal/panel/sheet.go": "c0949ca7b28b9715629b43310e947f7206a6ff5153d91082ddaf8b8d18c6af5f", "app/internal/panel/ws.go": "af96ddd4a95f62b318fe4bc38b04bb61f5cd507771e95f7e6c7580ebfcb36c89", "app/internal/panel/ws_input.go": "7d2f9ee7d687dd96fcae38828489000f338957e084dfc9c2c8e98bca0f58cd9f", "specs/08-front-panel.md": "ca7e9d9596d12fb73cfb6f11505c2c5d74ea803908ed44d161f7f222c17b0412"}'
+      sourceFiles: app/internal/panel/panel.go, app/internal/panel/panel_dispatch.go, app/internal/panel/ws_input.go, app/internal/panel/ws.go, app/internal/panel/sheet.go, app/internal/panel/actions.go, app/internal/panel/remote.go, app/internal/panel/autoset.go, app/internal/panel/model_rows.go, app/internal/panel/textparse.go, specs/08-front-panel.md
+      sourceSHA256: '{"app/internal/panel/actions.go": "72343051479227e339c1236f2df122f317ea649f9485b3ae904868aa098ad309", "app/internal/panel/autoset.go": "9a6f78e0f824b3491f769197c92b40d53209d50d6ef1357a5f92787e2036c2b5", "app/internal/panel/model_rows.go": "1bf33f13b894abfb3d48ca6ae0f4da05db51974db1b88e6f5306496c9c279661", "app/internal/panel/panel.go": "a1d4a39dca2ebc504ca9fa7d5a6bc3d2b606d1868987ee7620cc05ee16032107", "app/internal/panel/panel_dispatch.go": "5893cecc8729642cca92ab4038de81af8477ba0c3c4848b202ab2e5ad34dad14", "app/internal/panel/remote.go": "7381a1ddbbe0682c66ce1674e43cf29b458dcc60d2a673866d43e2a1da8a86e7", "app/internal/panel/sheet.go": "c0949ca7b28b9715629b43310e947f7206a6ff5153d91082ddaf8b8d18c6af5f", "app/internal/panel/textparse.go": "ea2e5ea639398eb7f78ad65628c1207021f6a2e21fd1a86570830bc1d61824f1", "app/internal/panel/ws.go": "af96ddd4a95f62b318fe4bc38b04bb61f5cd507771e95f7e6c7580ebfcb36c89", "app/internal/panel/ws_input.go": "7d2f9ee7d687dd96fcae38828489000f338957e084dfc9c2c8e98bca0f58cd9f", "specs/08-front-panel.md": "f7d5fdcc77a34249a7b953d379514277c48655b81daa2033502c7e6b5446ca1f"}'
   - id: FLOW-BOOT
     title: USB boot and supervised application
     description: Overview of boot dependencies, not an unconditional success path. Ordinary takeover uses the factory
