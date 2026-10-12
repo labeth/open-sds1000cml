@@ -20,7 +20,7 @@ body {
   -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none;
 }
 #app {
-  position: fixed; top: 0; left: 0; right: 0; height: 100vh; height: 100dvh;
+  position: fixed; top: 0; left: 0; right: 0; height: 100vh; height: 100dvh; background: var(--bg);
   display: flex; flex-direction: column; overflow: hidden;
   padding: var(--safe-t) var(--safe-r) var(--safe-b) var(--safe-l); touch-action: manipulation;
 }
@@ -357,5 +357,7 @@ body.sheet-on .toast { top: calc(var(--safe-t) + 8px); bottom: auto; }
 .tick.warn { background: var(--stop); }
 .tick.long { background: var(--trigger); }
 @keyframes tick { from { opacity: .95; transform: scale(1.5); } to { opacity: 0; transform: scale(1); } }
-.awake-video { position: fixed; left: -100px; top: -100px; width: 2px; height: 2px; opacity: 0; pointer-events: none; }
+/* keep-awake: the video fills the screen behind the page (#app paints over it). Chromium holds the screen for a muted
+   video only while it covers a fifth of the screen; it does not count what is drawn over it. */
+.awake-video { position: fixed; inset: 0; z-index: -1; width: 100%; height: 100%; object-fit: cover; background: var(--bg); pointer-events: none; }
 @media (prefers-reduced-motion: reduce) { .sheet, .scrim, .swt::after { transition: none; } .tick.flash, .banner .dot { animation: none; } }

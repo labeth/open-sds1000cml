@@ -4,8 +4,9 @@
 // opening under the finger never takes a ghost tap), with a pressed look, a
 // long press, hold-to-repeat and hold-to-confirm; the bottom sheet; the
 // toast; haptics (vibration where the phone has it, a visible tick always);
-// keeping the phone awake (Screen Wake Lock, else a silent looping video)
-// and fullscreen, each with its real state.
+// keeping the phone awake (Screen Wake Lock, else a muted video behind the
+// page, or one with a silent sound track) and fullscreen, each with its real
+// state.
 // TRLC-LINKS: REQ-SDS-220
 "use strict";
 
@@ -341,30 +342,43 @@
 
   // ---- keeping the phone awake ------------------------------------------------------------
 
-  // Wake keeps the screen on. The Screen Wake Lock API exists only in secure
-  // contexts; the scope serves plain HTTP, so there the remote plays a tiny
-  // silent video (the NoSleep technique), started from a tap. Browsers keep
-  // the screen on only for a playing video with an audio track that is not
-  // muted (WebKit) or audible or on screen (Chromium), and not for a looping
-  // one (WebKit): so the video carries a silent track, is not muted and seeks
-  // back before its end instead of looping. The state says which one holds.
+  // Wake keeps the screen on, in one of three ways, and says which holds:
+  //  - the Screen Wake Lock, where the browser has one (secure contexts
+  //    only; the scope serves plain HTTP, so mostly not);
+  //  - "muted video" (Chromium, Android): a muted video playing behind the
+  //    controls. Chromium holds the screen for a muted video only while it is
+  //    on screen and covers at least a fifth of it (its VideoWakeLock: 75 %
+  //    in the viewport, 20 % of the viewport's area; opacity and what covers
+  //    it do not count), so it fills the screen behind the page;
+  //  - "silent sound" (WebKit, the iPhone, which holds the screen only for a
+  //    video with an audio track that is not muted and not looping; or any
+  //    phone with Stronger keep-awake on): the same video unmuted, its sound
+  //    track silent; navigator.audioSession "ambient" (where the browser has
+  //    it) mixes it with other apps' music instead of stopping it.
+  // The video seeks back before its end instead of looping (WebKit). The
+  // first time a video with sound starts, a notice says so, once.
   // TRLC-LINKS: REQ-SDS-220
   const Wake = {
-    want: false, how: "", note: "", sentinel: null, video: null, fns: [], busy: false,
+    want: false, how: "", note: "", sentinel: null, video: null, fns: [], pending: null,
     on(fn) { this.fns.push(fn); },
     emit() { for (const f of this.fns) f(this.state()); },
-    // state: {on, how ("wake lock" | "video" | ""), text, note}
+    // state: {on, how ("wake lock" | "muted video" | "silent sound" | ""), text, note}
     state() {
       const how = this.how;
       return { on: !!how, how, text: how ? "awake: " + how : "off: tap to keep awake", note: this.note };
     },
     // wanted: on unless the user turned it off (the owner's phone must not lock)
     wanted() { return this.want || load("wake", true); },
+    // strong: Stronger keep-awake, the silent sound track on any phone
+    strong() { return load("wake-strong", false) === true; },
+    // sound: the video plays with its (silent) sound track
+    sound() { return isWebKit() || this.strong(); },
     lockAvailable() { return "wakeLock" in navigator && !!window.isSecureContext && navigator.wakeLock && typeof navigator.wakeLock.request === "function"; },
-    async enable() {
-      if (this.busy) return this.state();
-      this.busy = true;
-      try { return await this.start(); } finally { this.busy = false; }
+    // enable starts keeping awake; a start under way is the one answered.
+    // The state it answers has told: true when it showed the notice.
+    enable() {
+      if (!this.pending) this.pending = this.start().finally(() => { this.pending = null; });
+      return this.pending;
     },
     async start() {
       this.want = true;
@@ -385,16 +399,26 @@
           this.note = "Wake lock refused (" + ((e && e.message) || e) + "); using the video instead.";
         }
       }
-      const v = this.ensureVideo();
+      const v = this.ensureVideo(), sound = this.sound();
+      let told = false;
+      v.muted = !sound;
+      if (sound && navigator.audioSession) {
+        try { navigator.audioSession.type = "ambient"; } catch (e) { /* the browser's own choice */ }
+      }
       try {
         await v.play();
-        this.how = "video";
+        this.how = sound ? "silent sound" : "muted video";
+        if (sound && !load("wake-sound-told", false)) {
+          store("wake-sound-told", true);
+          told = true;
+          toast("Keep-awake now plays a video with a silent sound track: nothing is heard, but some phones pause other apps' music for it. Keys, This phone, has the choices.", "", 9000);
+        }
       } catch (e) {
         this.how = "";
         this.note = "The browser would not play the keep-awake video (" + ((e && e.name) || e) + "): tap to try again.";
       }
       this.emit();
-      return this.state();
+      return Object.assign(this.state(), { told });
     },
     disable() {
       this.want = false;
@@ -404,17 +428,28 @@
       this.how = ""; this.note = "";
       this.emit();
     },
+    // setStrong turns Stronger keep-awake on or off; a video keeping the
+    // phone awake starts again the new way
+    async setStrong(on) {
+      store("wake-strong", !!on);
+      if (this.how && this.how !== "wake lock" && this.video) {
+        this.how = "";   // the pause this makes is not the browser's
+        this.video.pause();
+        return this.enable();
+      }
+      this.emit();
+      return this.state();
+    },
     ensureVideo() {
       if (this.video) return this.video;
-      const v = h("video", { playsinline: "", "webkit-playsinline": "", preload: "auto", title: "Keep awake", "aria-hidden": "true", class: "awake-video" });
-      v.muted = false;
+      const v = h("video", { playsinline: "", "webkit-playsinline": "", preload: "auto", title: "Keep awake", "aria-hidden": "true", tabindex: "-1", class: "awake-video" });
       v.appendChild(h("source", { src: "remote-awake.webm", type: "video/webm" }));
       v.appendChild(h("source", { src: "remote-awake.mp4", type: "video/mp4" }));
       // seek back before the end: a looping video does not keep the screen on everywhere
       v.addEventListener("timeupdate", () => { if (v.currentTime > 0.5) v.currentTime = 0.05 + Math.random() * 0.1; });
       v.addEventListener("ended", () => { if (this.want) v.play().catch(() => {}); });
       v.addEventListener("pause", () => {
-        if (this.how === "video") { this.how = ""; this.note = "The browser paused the keep-awake video: tap to resume."; this.emit(); }
+        if (this.how && this.how !== "wake lock") { this.how = ""; this.note = "The browser paused the keep-awake video: tap to resume."; this.emit(); }
       });
       doc.body.appendChild(v);
       this.video = v;
@@ -423,17 +458,17 @@
     // resume after the page shows again (the lock is released and the
     // video paused while it is hidden); the video may need the next tap
     async resume() {
-      if (!this.want || this.how || this.busy) return;
+      if (!this.want || this.how || this.pending) return;
       if (this.lockAvailable()) { await this.enable(); return; }
       if (this.video) {
-        try { await this.video.play(); this.how = "video"; this.note = ""; this.emit(); } catch (e) { /* the next tap */ }
+        try { await this.video.play(); this.how = this.video.muted ? "muted video" : "silent sound"; this.note = ""; this.emit(); } catch (e) { /* the next tap */ }
       }
     },
   };
   doc.addEventListener("visibilitychange", () => { if (doc.visibilityState === "visible") Wake.resume(); });
   // the first tap (and any tap after the browser stopped it) starts keep-awake
   // unless the user turned it off: play() and the lock need a user gesture
-  const kick = () => { if (Wake.wanted() && !Wake.how && !Wake.busy) Wake.enable(); };
+  const kick = () => { if (Wake.wanted() && !Wake.how && !Wake.pending) Wake.enable(); };
   doc.addEventListener("touchend", kick, true);
   doc.addEventListener("click", kick, true);
 
@@ -443,6 +478,13 @@
   function isIOS() {
     const n = navigator;
     return /iPhone|iPad|iPod/.test(n.userAgent || "") || (n.platform === "MacIntel" && n.maxTouchPoints > 1);
+  }
+
+  // isWebKit: Safari, and every browser on an iPhone (they all use WebKit)
+  // TRLC-LINKS: REQ-SDS-220
+  function isWebKit() {
+    const ua = navigator.userAgent || "";
+    return isIOS() || (/Safari\//.test(ua) && !/Chrome|Chromium|Android|Edg\//.test(ua));
   }
 
   // Full is fullscreen from a tap (Android and desktop browsers). An iPhone
@@ -500,5 +542,5 @@
     try { if (v === undefined) localStorage.removeItem("sds-remote:" + k); else localStorage.setItem("sds-remote:" + k, JSON.stringify(v)); } catch (e) { /* none */ }
   }
 
-  window.RU = { h, add, icon, haptic, press, button, repeat, holdButton, drag, toast, sheet, Wake, Full, isIOS, load, store };
+  window.RU = { h, add, icon, haptic, press, button, repeat, holdButton, drag, toast, sheet, Wake, Full, isIOS, isWebKit, load, store };
 })();

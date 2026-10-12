@@ -1121,7 +1121,7 @@
       h("h3", { text: "Keys" }),
       P("Force, Set to 50 %, Print, the knob pushes (Zero, Zoom, Variable), the Adjust and Position jobs, the menu keys (they open the menu here) and Default Setup (hold it for 1 s)."),
       h("h3", { text: "The phone" }),
-      P("The eye keeps the screen on: with a wake lock where the browser has one, else with a tiny silent video (the scope serves plain HTTP, where browsers have no wake lock). The corner button goes fullscreen on Android. An iPhone has no fullscreen for pages: Share, Add to Home Screen opens the remote without browser bars."));
+      P("The eye keeps the screen on: with a wake lock where the browser has one, else (the scope serves plain HTTP, where browsers have none) with a muted video behind the remote, or, on an iPhone or with Stronger keep-awake in Keys, a video with a silent sound track. The corner button goes fullscreen on Android. An iPhone has no fullscreen for pages: Share, Add to Home Screen opens the remote without browser bars."));
     const sys = button({ label: "The scope's own help pages (SYS)", cls: "ghost", onTap: () => { sh.close(); goTab("menus"); openPage("sys"); } });
     sys.dataset.sys = "1";
     box.appendChild(sys);
@@ -1213,7 +1213,7 @@
     { id: "key:tools", icon: "dial", label: "Workspace tools", sub: "Adjust and Position jobs and their pushes", words: "adjust position knob tools push statistics zero peak packet cursor row", run: () => openTools() },
     { id: "history", icon: "clock", label: "History", sub: "Every change, newest first, with undo", words: "history undo changes changed log recent back", run: () => goTab("hist") },
     { id: "help", icon: "hand", label: "Help: how this remote works", sub: "Tiles, sheets, search, pins", words: "help guide how tiles pin search remote", run: () => openHelp() },
-    { id: "awake", icon: "eye", label: "Keep the phone awake", sub: "Wake lock, or a silent video on plain HTTP", words: "awake wake lock sleep screen dim", run: () => toggleAwake() },
+    { id: "awake", icon: "eye", label: "Keep the phone awake", sub: "Wake lock, or a video behind the remote on plain HTTP", words: "awake wake lock sleep screen dim", run: () => toggleAwake() },
     { id: "fs", icon: "expand", label: "Fullscreen", sub: "Hide the browser bars", words: "fullscreen full screen browser bars home", run: () => toggleFs() },
   ]);
   // TRLC-LINKS: REQ-SDS-220
@@ -1478,15 +1478,17 @@
     const mk = MENU_KEYS.map(([k, label, tab, focus]) => key("menu:" + k, label, tab ? TABNAME[tab] || tab.toUpperCase() : "all menus",
       () => { if (tab) openPage(tab, focus); else { S.page = null; goTab("menus"); renderMenus(); renderBar(); } }));
     group("Menu keys (they open the menu here, not on the scope)", "k3", mk);
-    // the phone: keep awake and fullscreen, with their real state
-    const awk = h("button", { type: "button", class: "cell", role: "switch", "aria-checked": "false", id: "keep-awake" },
-      h("span", { class: "cl" }, h("b", { text: "Keep the phone awake" }), h("small")), h("span", { class: "swt", "aria-hidden": "true" }));
-    const fsc = h("button", { type: "button", class: "cell", role: "switch", "aria-checked": "false", id: "fullscreen" },
-      h("span", { class: "cl" }, h("b", { text: "Fullscreen" }), h("small")), h("span", { class: "swt", "aria-hidden": "true" }));
+    // the phone: keep awake (and its stronger way) and fullscreen, with their real state
+    const sw = (id, name) => h("button", { type: "button", class: "cell", role: "switch", "aria-checked": "false", id },
+      h("span", { class: "cl" }, h("b", { text: name }), h("small")), h("span", { class: "swt", "aria-hidden": "true" }));
+    const awk = sw("keep-awake", "Keep the phone awake"), strong = sw("wake-strong", "Stronger keep-awake (silent sound)"), fsc = sw("fullscreen", "Fullscreen");
     press(awk, { onTap: () => toggleAwake() });
+    press(strong, { onTap: () => Wake.setStrong(!Wake.strong()).then((w) => { if (!w.on && w.note) toast(w.note, "err", 4200); }) });
     press(fsc, { onTap: () => toggleFs() });
-    wrap.append(h("div", { class: "sec", text: "This phone" }), awk, fsc,
-      h("p", { class: "note", text: "The scope serves plain HTTP, where browsers have no Screen Wake Lock: the remote then keeps the screen on with a tiny silent video (on an iPhone that may pause music from other apps; turn keep-awake off to stop it). iPhone Safari has no fullscreen for pages: Share, Add to Home Screen opens the remote without browser bars. Android: Fullscreen above, or the browser menu's Add to Home screen." }));
+    strong.hidden = RU.isWebKit();   // an iPhone always uses the sound track
+    wrap.append(h("div", { class: "sec", text: "This phone" }), awk, strong, fsc,
+      h("p", { class: "note", text: "Keeping the phone awake: the scope serves plain HTTP, where browsers have no wake lock. On Android a muted video plays behind the remote, which nothing shows or sounds; if your phone still locks, turn on Stronger keep-awake: the video then plays a silent sound track, which holds the screen on any phone but may pause or lower music from other apps. An iPhone keeps the screen on only for a video with sound, so there it always plays the silent sound track, asking iOS to mix it with your music." }),
+      h("p", { class: "note", text: "Fullscreen: on Android, the switch above (over the scope's plain HTTP, Add to Home screen only opens a normal tab). An iPhone has no fullscreen for pages: Share, Add to Home Screen opens the remote without browser bars." }));
     V.keys.appendChild(wrap);
     bind(wrap, () => {
       const t = tools();
@@ -1494,9 +1496,11 @@
       hposB.disabled = scopeMenu();
       const z = row("time.zoom");
       zoomB.setSub("Zoom: " + (!z || z.Value === 1 ? "off" : z.Text));
-      const wk = Wake.state(), fs = Full.state();
+      const wk = Wake.state(), fs = Full.state(), st = Wake.strong();
       awk.setAttribute("aria-checked", wk.on ? "true" : "false");
       awk.querySelector("small").textContent = wk.text + (wk.note ? " " + DOT + " " + wk.note : "");
+      strong.setAttribute("aria-checked", st ? "true" : "false");
+      strong.querySelector("small").textContent = st ? "on: a silent sound track; some phones then pause music" : "off: a muted video, no sound";
       fsc.setAttribute("aria-checked", fs.on ? "true" : "false");
       fsc.querySelector("small").textContent = fs.text;
     });
@@ -1507,7 +1511,7 @@
   // TRLC-LINKS: REQ-SDS-220
   function toggleAwake() {
     if (Wake.state().on) { Wake.disable(); toast("Keep awake: off", "ok"); return; }
-    Wake.enable().then((w) => toast(w.on ? w.text : w.note || w.text, w.on ? "ok" : "err", w.on ? 2200 : 4200));
+    Wake.enable().then((w) => { if (!w.told) toast(w.on ? w.text : w.note || w.text, w.on ? "ok" : "err", w.on ? 2200 : 4200); });
   }
   // TRLC-LINKS: REQ-SDS-220
   function toggleFs() {

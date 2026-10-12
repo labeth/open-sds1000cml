@@ -45,6 +45,15 @@ run(async (t) => {
     const ctx = await browser.newContext(d);
     // the scope's plain HTTP: browsers have no Screen Wake Lock there (127.0.0.1 counts as secure)
     if (opts.noWakeLock) await ctx.addInitScript(() => { delete Navigator.prototype.wakeLock; });
+    // Safari's Audio Session API, and what it was set to when the keep-awake video started
+    if (opts.audioSession) {
+      await ctx.addInitScript(() => {
+        const session = { type: "auto" };
+        Object.defineProperty(Navigator.prototype, "audioSession", { configurable: true, get: () => session });
+        const play = HTMLMediaElement.prototype.play;
+        HTMLMediaElement.prototype.play = function () { window.__play = { session: session.type, muted: this.muted }; return play.call(this); };
+      });
+    }
     // haptics: Android vibrates (recorded here); Safari has no Vibration API, so an iPhone has the visual tick only
     await ctx.addInitScript((iphone) => {
       window.__vib = [];
@@ -442,19 +451,36 @@ run(async (t) => {
     await P.until(() => P.visible('.mbody [data-row="trig.holdoff"]'), "Trig Menu opens TRIG here");
     P.ok(await lcdClosed(), "the keys and knobs left no menu open on the LCD");
     const ks = await P.text("#keep-awake small"), fs = await P.text("#fullscreen small");
-    P.ok(/^(awake: wake lock|awake: video|off: tap to keep awake)/.test(ks), "keep awake says its state: " + ks);
+    P.ok(/^(awake: wake lock|awake: muted video|awake: silent sound|off: tap to keep awake)/.test(ks), "keep awake says its state: " + ks);
     if (opts && opts.noWakeLock) {
-      P.ok(/^awake: video/.test(ks), "without a wake lock (plain HTTP) the silent video keeps the phone awake");
+      // Chromium holds the screen for a muted video that fills a fifth of the screen: it plays behind the page
+      P.ok(/^awake: muted video/.test(ks), "without a wake lock (plain HTTP) a muted video keeps the phone awake: " + ks);
       const vid = () => page.evaluate(() => {
         const v = document.querySelector("video.awake-video");
         if (v && v.seeks === undefined) { v.seeks = 0; v.addEventListener("seeking", () => { v.seeks++; }); }
-        return v ? { paused: v.paused, t: v.currentTime, muted: v.muted, loop: v.loop, seeks: v.seeks } : null;
+        const b = v && v.getBoundingClientRect();
+        return v ? { paused: v.paused, t: v.currentTime, muted: v.muted, loop: v.loop, seeks: v.seeks, cover: b.width * b.height / (innerWidth * innerHeight) } : null;
       });
       const v1 = await vid();
       await sleep(1600);
       const v2 = await vid();
-      P.ok(!!v1 && !!v2 && !v2.paused && !v1.muted && !v1.loop && v2.seeks >= 1,
-        "the video plays on past its 1 s length, unmuted, seeking back instead of looping: " + JSON.stringify([v1, v2]));
+      P.ok(!!v1 && !!v2 && !v2.paused && v1.muted && !v1.loop && v2.seeks >= 1 && v1.cover >= 0.99,
+        "the video plays on past its 1 s length, muted, filling the screen behind the page, seeking back instead of looping: " + JSON.stringify([v1, v2]));
+      await P.tap('[data-tabbar="keys"]');
+      P.ok(await P.visible("#wake-strong") && (await P.text("#wake-strong small")) === "off: a muted video, no sound", "Keys offers Stronger keep-awake, off");
+      await page.evaluate(() => { const e = document.querySelector(".toast"); if (e) { e.hidden = true; e.textContent = ""; } });
+      await P.tap("#wake-strong");
+      await P.until(async () => /^awake: silent sound/.test(await P.text("#keep-awake small")) && !(await vid()).muted && !(await vid()).paused,
+        "Stronger keep-awake: the video plays its silent sound track");
+      await P.until(async () => /silent sound track/.test(await P.toast()), "the first video with sound says so, once");
+      await P.tap("#wake-strong");
+      await P.until(async () => /^awake: muted video/.test(await P.text("#keep-awake small")) && (await vid()).muted, "turned off: the muted video again");
+      await page.evaluate(() => { const e = document.querySelector(".toast"); if (e) { e.hidden = true; e.textContent = ""; } });
+      await P.tap("#wake-strong");
+      await P.until(async () => !(await vid()).muted, "on again");
+      await sleep(400);
+      P.ok(!/silent sound track/.test(await P.toast()), "and the notice is not shown a second time");
+      await P.tap("#wake-strong");
     }
     P.ok(/^(on|off|refused|not )/.test(fs), "fullscreen says its state: " + fs);
 
@@ -522,6 +548,27 @@ run(async (t) => {
     t.ok(A.errors.length + B.errors.length === 0, "two phones: no console errors");
     await A.ctx.close();
     await B.ctx.close();
+  }
+
+  // ---- an iPhone over plain HTTP: the video plays its silent sound track, mixed with other apps' music ----
+  {
+    await ctrl("/reset");
+    const P = await phone("iPhone 14", { label: "iPhone keep-awake", noWakeLock: true, audioSession: true });
+    const { page } = P;
+    await P.tap('[data-tabbar="keys"]');
+    await P.until(async () => /^awake: silent sound/.test(await P.text("#keep-awake small")), "the first tap keeps the iPhone awake with the silent sound track");
+    const played = await page.evaluate(() => window.__play);
+    t.ok(!!played && played.session === "ambient" && played.muted === false, "the video starts unmuted with the audio session ambient (mixed with music): " + JSON.stringify(played));
+    await P.until(async () => /silent sound track/.test(await P.toast()), "and says once that it plays a silent sound track");
+    t.ok(!(await P.visible("#wake-strong")), "an iPhone needs no Stronger switch: it always uses the sound track");
+    await P.page.reload();
+    await page.waitForSelector('[data-tile="time.tdiv"] .tv');
+    await P.tap('[data-tabbar="keys"]');
+    await P.until(async () => /^awake: silent sound/.test(await P.text("#keep-awake small")), "after a reload it keeps awake again");
+    await sleep(300);
+    t.ok(!/silent sound track/.test(await P.toast()), "without the notice a second time");
+    t.ok(P.errors.length === 0, "iPhone keep-awake: no console errors" + (P.errors.length ? " - " + P.errors.slice(0, 3).join(" | ") : ""));
+    await P.ctx.close();
   }
 
   // ---- the phone's back gesture closes what is open on the remote, then leaves it --------------
