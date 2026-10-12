@@ -849,7 +849,7 @@ func (c *Controller) remoteAgain() SetResult {
 		c.stackCancel("", false)
 	case ws == wsview.Compare:
 		if err := c.stackStart(); err != nil {
-			return SetResult{Row: "again", Error: "No master: " + err.Error()}
+			return SetResult{Row: "again", Error: err.Error()} // the LCD's notice, word for word
 		}
 	default:
 		c.nextView()

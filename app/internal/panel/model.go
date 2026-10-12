@@ -244,6 +244,9 @@ func (r *row) parseEnum(s *sv, text string) (int, error) {
 			return o.v, nil
 		}
 	}
+	if err := ambiguousComma(t); err != nil { // "57,600" baud: say why, as a number row does
+		return 0, fmt.Errorf("%s: %v", r.label, err)
+	}
 	var names []string
 	for _, o := range r.options(s) {
 		names = append(names, o.t)

@@ -177,21 +177,24 @@ func (c *Controller) refDiffFrame(a *anaState, s *sv, f *engine.Frame) {
 var blockAvgRE = regexp.MustCompile(`block average (\d+)/(\d+)`)
 
 // stackStart is COMPARE again (and the sheet's Stack master): average the
-// trigger source into a master, unless it does not repeat.
+// trigger source into a master, unless it does not repeat. A refusal's
+// error is the notice the LCD shows, so a remote says it in the same words.
 // TRLC-LINKS: REQ-SDS-218
 func (c *Controller) stackStart() error {
 	s := c.snap()
 	src := s.st.TrigSource & 1
 	if !s.chDisp[src] {
-		c.toast(fmt.Sprintf("The trigger source CH%d is off: the master is stacked from it", src+1), 1800*time.Millisecond)
-		return fmt.Errorf("the trigger source CH%d is off", src+1)
+		err := fmt.Errorf("No master: the trigger source CH%d is off, and the master is stacked from it", src+1)
+		c.toast(err.Error(), 1800*time.Millisecond)
+		return err
 	}
 	c.amu.Lock()
 	nOK, n, stable, known := stabVerdict(&c.ana)
 	c.amu.Unlock()
 	if known && !stable && s.st.AcqMode != engine.AcqAverage {
-		c.toast(fmt.Sprintf("No master: C%d differs between captures (%d/%d repeat) - set a stable trigger first", src+1, nOK, n), 2800*time.Millisecond)
-		return fmt.Errorf("the trigger source does not repeat (%d/%d)", nOK, n)
+		err := fmt.Errorf("No master: C%d differs between captures (%d/%d repeat) - set a stable trigger first", src+1, nOK, n)
+		c.toast(err.Error(), 2800*time.Millisecond)
+		return err
 	}
 	c.mu.Lock()
 	if c.stack != nil {

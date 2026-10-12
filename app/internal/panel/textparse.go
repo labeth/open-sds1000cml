@@ -31,10 +31,10 @@ func parseNumber(text, unit string) (float64, error) {
 	if s == "" {
 		return 0, fmt.Errorf("empty value")
 	}
+	if err := ambiguousComma(text); err != nil {
+		return 0, err
+	}
 	if i := strings.IndexByte(s, ','); i >= 0 && !strings.Contains(s, ".") && strings.Count(s, ",") == 1 {
-		if twoWays(s, i) {
-			return 0, fmt.Errorf("the comma in %q reads two ways: type it without the comma, or with a point", text)
-		}
 		s = s[:i] + "." + s[i+1:]
 	}
 	if l := strings.ToLower(s); strings.HasPrefix(l, "0x") || strings.HasPrefix(l, "-0x") {
@@ -81,6 +81,17 @@ scan:
 		return 0, fmt.Errorf("unit %q does not fit (want %s)", u, unitName(unit))
 	}
 	return 0, fmt.Errorf("unit %q does not fit (want %s)", rest, unitName(unit))
+}
+
+// ambiguousComma refuses a comma that reads two ways ("57,600": a decimal
+// point or a thousands separator), in the same words for every row.
+// TRLC-LINKS: REQ-SDS-212
+func ambiguousComma(text string) error {
+	s := strings.TrimSpace(text)
+	if i := strings.IndexByte(s, ','); i >= 0 && !strings.Contains(s, ".") && strings.Count(s, ",") == 1 && twoWays(s, i) {
+		return fmt.Errorf("the comma in %q reads two ways: type it without the comma, or with a point", text)
+	}
+	return nil
 }
 
 // twoWays: the comma at i stands after a whole number other than 0 and

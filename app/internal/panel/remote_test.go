@@ -200,8 +200,8 @@ func TestCompareStabilityLeavesTheSeqAlone(t *testing.T) {
 	if st := c.PanelStatus(); st.Seq != st0.Seq || st.AgainNext != "stack master" || st.Again != "F5 again: stack master" {
 		t.Fatalf("the verdict moved the snapshot: Seq %d -> %d, again %q next %q", st0.Seq, st.Seq, st.Again, st.AgainNext)
 	}
-	if res := c.RemoteAgain(""); res.OK || !strings.Contains(res.Error, "No master") {
-		t.Fatalf("again on noise: %+v", res)
+	if res := c.RemoteAgain(""); res.OK || !strings.Contains(res.Error, "No master") || res.Error != c.PanelStatus().Notice {
+		t.Fatalf("again on noise: %+v, the LCD says %q (the same words, or the phone shows one and then the other)", res, c.PanelStatus().Notice)
 	}
 }
 
@@ -399,7 +399,7 @@ func TestTypedCommaAndNegativeTexts(t *testing.T) {
 		t.Fatalf("115,2k: %+v (baud %d)", res, c.decBaud)
 	}
 	// a comma before three digits could be a thousands separator: refused, not 58 baud
-	if res := c.SheetSet("bus.baud", nil, "57,600"); res.OK || c.decBaud != 115200 {
+	if res := c.SheetSet("bus.baud", nil, "57,600"); res.OK || c.decBaud != 115200 || !strings.Contains(res.Error, `the comma in "57,600" reads two ways`) {
 		t.Fatalf("57,600: %+v (baud %d)", res, c.decBaud)
 	}
 	if res := c.SheetSet("trig.level", nil, "1,250V"); res.OK || !strings.Contains(res.Error, `the comma in "1,250V" reads two ways`) {
