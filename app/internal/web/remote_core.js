@@ -46,14 +46,22 @@
   // TRLC-LINKS: REQ-SDS-220
   function hex2(v) { return Math.max(0, Math.round(v)).toString(16).toUpperCase().padStart(2, "0"); }
 
+  // hexText writes a whole number as the hex rows do (panel hexText): 0x50,
+  // and -0x02 for a negative one typed; rounded half away from zero, as Go.
+  // TRLC-LINKS: REQ-SDS-220
+  function hexText(v) {
+    const n = Math.sign(v) * Math.round(Math.abs(v));
+    return n < 0 ? "-0x" + hex2(-n) : "0x" + hex2(n);
+  }
+
   // The rows the device formats in their own way; the rest follow their unit.
   const FMT = {
-    "trig.holdoff": (v) => (v <= 0 ? "Off" : si(v, "s")),
+    "trig.holdoff": (v) => (v === 0 ? "Off" : si(v, "s")),
     "ch1.offset": (v) => sgnSI(v, "V"),
     "ch2.offset": (v) => sgnSI(v, "V"),
     "time.zoom_pos": (v) => String(Math.round(v * 10) / 10) + " %",
-    "bus.stream_value": (v) => "0x" + hex2(v),
-    "bus.i2c_address": (v) => (v < 0 ? "Any" : "0x" + hex2(v)),
+    "bus.stream_value": (v) => hexText(v),
+    "bus.i2c_address": (v) => (v === -1 ? "Any" : hexText(v)),
     "acq.sr_target": (v) => g3(v),
   };
 
@@ -155,16 +163,18 @@
   }
 
   // parseNumber reads "1.25V", "500u", "-20 mV", "2k", "50%", "0x55" in the
-  // row's unit, with the device's error texts.
+  // row's unit, with the device's error texts. A comma is the decimal point
+  // when the text has no point and one comma ("2,5V": a European keyboard).
   // TRLC-LINKS: REQ-SDS-220
   function parseNumber(text, unit) {
-    const s = String(text == null ? "" : text).trim();
+    const s0 = String(text == null ? "" : text).trim();
     const want = unit ? unit : "a plain number";
-    if (!s) return { ok: false, error: "empty value" };
+    if (!s0) return { ok: false, error: "empty value" };
+    const s = s0.indexOf(".") < 0 && s0.split(",").length === 2 ? s0.replace(",", ".") : s0;
     const l = s.toLowerCase();
     if (l.startsWith("0x") || l.startsWith("-0x")) {
       const neg = l[0] === "-", h = l.replace(/^-?0x/, "");
-      if (!/^[0-9a-f]+$/.test(h)) return { ok: false, error: 'bad hex number "' + s + '"' };
+      if (!/^[0-9a-f]+$/.test(h)) return { ok: false, error: 'bad hex number "' + s0 + '"' };
       const v = parseInt(h, 16);
       return { ok: true, value: neg ? -v : v };
     }
@@ -181,7 +191,7 @@
     }
     const num = s.slice(0, i), rest = s.slice(i).trim();
     const v = /^[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?$/.test(num) ? Number(num) : NaN;
-    if (!Number.isFinite(v)) return { ok: false, error: 'not a number: "' + s + '"' };
+    if (!Number.isFinite(v)) return { ok: false, error: 'not a number: "' + s0 + '"' };
     if (!rest || unitIs(rest, unit)) return { ok: true, value: v };
     const p = PREFIX[rest[0]];
     if (p !== undefined) {

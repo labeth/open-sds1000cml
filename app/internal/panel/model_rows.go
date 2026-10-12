@@ -228,10 +228,10 @@ func trigRows() []*row {
 		lim:  constLim(0, 10), step: constStep(0),
 		setN: func(c *Controller, v float64) error { return c.setHoldoff(v) },
 		fmtN: func(v float64) string {
-			if v <= 0 {
+			if v == 0 {
 				return "Off"
 			}
-			return si(v, "s")
+			return si(v, "s") // a negative one typed reads as itself in the refusal
 		},
 		ladder: func(*sv) []float64 { return holdoffLadder },
 		presets: func(*sv) []preset {
@@ -1137,7 +1137,7 @@ func busTabRows() []*row {
 			c.decValue = clampInt(int(math.Round(v)), 0, 0xFFFF)
 			c.mu.Unlock()
 			return nil
-		}, func(v float64) string { return fmt.Sprintf("0x%02X", int(v)) })
+		}, hexText)
 	streamVal.help = "The decoded value that ends a stream (Stream stops = On value)."
 	streamVal.rel, streamVal.why = func(s *sv) bool { return isAuto(s) && s.decTrig == 1 }, "Stream stops = On value"
 	streamVal.def = func(c *Controller) error { return streamVal.setN(c, 0) }
@@ -1266,16 +1266,27 @@ func busTabRows() []*row {
 		return float64(s.serial.Addr)
 	}, constLim(-1, 127), constStep(1), func(c *Controller, v float64) error { return c.setI2CAddr(int(math.Round(v))) },
 		func(v float64) string {
-			if v < 0 {
+			if v == -1 {
 				return "Any"
 			}
-			return fmt.Sprintf("0x%02X", int(v))
+			return hexText(v)
 		})
 	addr.help = "The I2C address the serial trigger requires (Any: every address)."
 	addr.rel, addr.why = func(s *sv) bool { return serialBus(s) && s.decProto == framecalc.ProtoI2C }, "Protocol = I2C"
 	addr.presets = func(*sv) []preset { return []preset{{t: "Any", v: -1}} }
 	addr.def = func(c *Controller) error { return c.setI2CAddr(-1) }
 	return []*row{proto, format, stream, streamTrig, streamVal, streamScreen, baud, rate, line, scl, sda, clk, data, spiMode, match, arm, addr}
+}
+
+// hexText writes a whole number as the hex rows do: 0x50, and -0x02 for a
+// negative one typed (it reads as itself in the refusal, not as 0x-2).
+// TRLC-LINKS: REQ-SDS-212
+func hexText(v float64) string {
+	n := int(math.Round(v))
+	if n < 0 {
+		return fmt.Sprintf("-0x%02X", -n)
+	}
+	return fmt.Sprintf("0x%02X", n)
 }
 
 // baudName is a baud as the row writes it: 115k2, 9k6, 1k2.

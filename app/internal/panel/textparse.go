@@ -21,12 +21,16 @@ var siPrefix = map[rune]float64{
 // parseNumber reads a number such as "1.25V", "500u", "-20 mV", "2k",
 // "115200", "50%", "10 div" or "0x55". unit is the row's unit ("V", "s",
 // "Hz", "%", "div", "Bd" or ""); a different unit is an error. A percent row
-// takes "50" or "50%" and returns 50.
+// takes "50" or "50%" and returns 50. A comma is the decimal point when the
+// text has no point and one comma ("2,5V", "115,2k": a European keyboard).
 // TRLC-LINKS: REQ-SDS-212
 func parseNumber(text, unit string) (float64, error) {
 	s := strings.TrimSpace(text)
 	if s == "" {
 		return 0, fmt.Errorf("empty value")
+	}
+	if !strings.Contains(s, ".") && strings.Count(s, ",") == 1 {
+		s = strings.Replace(s, ",", ".", 1)
 	}
 	if l := strings.ToLower(s); strings.HasPrefix(l, "0x") || strings.HasPrefix(l, "-0x") {
 		neg := strings.HasPrefix(l, "-")

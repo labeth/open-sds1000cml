@@ -176,6 +176,17 @@ test("parseNumber reads SI text in the row's unit, with the device's errors", ()
   assert.equal(RC.parseNumber("5 mA", "V").error, 'unit "A" does not fit (want V)');
   assert.equal(RC.parseNumber("", "V").error, "empty value");
   assert.equal(RC.parseNumber("3x", "").error, 'unit "x" does not fit (want a plain number)');
+  assert.equal(RC.parseNumber("2,5V", "V").value, 2.5, "a comma is the decimal point on a European keyboard");
+  assert.equal(RC.parseNumber("115,2k", "b/s").value, 115200);
+  assert.equal(RC.parseNumber("1,2,3", "").error, 'unit ",2,3" does not fit (want a plain number)', "two commas are not a decimal point");
+});
+test("a negative value typed reads as itself in the refusal (not Off, not 0x-1)", () => {
+  const m = RC.index(sheets());
+  assert.equal(RC.numberHint(m.rows.get("trig.holdoff"), "-5").error, "holdoff -5s is outside Off .. 10s");
+  assert.equal(RC.numberHint(m.rows.get("bus.i2c_address"), "-2").error, "i2c address -0x02 is outside Any .. 0x7F");
+  assert.equal(RC.fmtValue({ ID: "bus.stream_value", Unit: "" }, -1), "-0x01");
+  assert.equal(RC.fmtValue({ ID: "bus.stream_value", Unit: "" }, 255), "0xFF");
+  assert.equal(RC.fmtValue(m.rows.get("trig.holdoff"), 0), "Off");
 });
 test("numberHint checks the range and says when the scope takes the nearest step", () => {
   const m = RC.index(sheets());
