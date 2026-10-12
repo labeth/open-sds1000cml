@@ -192,6 +192,13 @@ func (f *fakeScope) SetSerialParams(p engine.SerialParams) {
 }
 
 // TRLC-LINKS: REQ-SDS-162
+func (f *fakeScope) SerialConfig() engine.SerialParams {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.serialParams
+}
+
+// TRLC-LINKS: REQ-SDS-162
 func (f *fakeScope) SetSerialMode(m int) {
 	f.mu.Lock()
 	defer f.mu.Unlock()

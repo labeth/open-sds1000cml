@@ -94,6 +94,47 @@ function stParams() {
 
 let stLastSig = "";
 let stConfigError = "";
+// stOwn: this page armed the trigger, or its match was edited here since. Only
+// then does the page push its settings or disarm: a trigger armed on the LCD, a
+// phone or another page is shown here as the scope has it (stAdopt), never
+// replaced by this page's empty match or its own decode settings.
+let stOwn = false, stAdopting = false;
+
+// stMatchText writes the scope's match as this page types it: hex units, "??"
+// any unit, "A?" a nibble wildcard, ERR a decoder error.
+// TRLC-LINKS: REQ-SDS-206
+function stMatchText(p) {
+  const hex = (v, n) => v.toString(16).toUpperCase().padStart(n, "0");
+  if (p.pattern && p.pattern.length) {
+    return p.pattern.map((u) => {
+      if (u.kind === 4) return "ERR";
+      const n = Math.max(2, (u.value || 0).toString(16).length);
+      if (!u.mask) return "?".repeat(n);
+      let t = "";
+      for (let i = n - 1; i >= 0; i--) t += ((u.mask >> (4 * i)) & 15) === 15 ? hex((u.value >> (4 * i)) & 15, 1) : "?";
+      return t;
+    }).join(" ");
+  }
+  return (p.bytes || []).map((b) => hex(b, 2)).join(" ");
+}
+
+// stAdopt shows the trigger as the scope has it armed: the match, I2C address
+// and direction (not while one of them is being typed).
+// TRLC-LINKS: REQ-SDS-206
+function stAdopt() {
+  if (stAdopting) return;
+  const a = document.activeElement;
+  if (a && (a.id === "stBytes" || a.id === "stAddr" || (a.closest && a.closest("#stRW")))) return;
+  stAdopting = true;
+  fetch("/api/serial").then((r) => r.json()).then((j) => {
+    if (!j || !j.ok || stOwn) return;
+    const p = j.params || {};
+    $("stBytes").value = stMatchText(p);
+    $("stAddr").value = p.addr >= 0 ? p.addr.toString(16).toUpperCase().padStart(2, "0") : "";
+    $("stRW").value = String(p.rw == null ? 2 : p.rw);
+    stStatus();
+  }).catch(() => {}).finally(() => { stAdopting = false; });
+}
 let stModePending = null, stModeGeneration = 0, stArmGeneration = 0;
 // TRLC-LINKS: REQ-SDS-206
 function stPush() {
@@ -150,8 +191,8 @@ function stStatus(msg) {
 // TRLC-LINKS: REQ-SDS-206
 function stOnDecodeChange() {
   if (!$("stArm")) return;
-  if (stProtoNum() === 0) { ++stArmGeneration; if (stArmed() || (st && st.serial_mode) || stModePending === 1) stSetArmed(false); stStatus(""); return; }
-  if (stArmed()) stPush().catch(() => {});
+  if (stProtoNum() === 0) { ++stArmGeneration; if (stOwn && (stArmed() || stModePending === 1)) stSetArmed(false); stStatus(""); return; }
+  if (stArmed() && stOwn) stPush().catch(() => {});
 }
 
 // ==== wiring ====
@@ -168,6 +209,7 @@ function stOnDecodeChange() {
     }
     if (stProtoNum() === 0) { stStatus("turn on decode to arm a serial trigger"); return; }
     const on = !stArmed(), generation = ++stArmGeneration;
+    stOwn = on;
     if (on) {
       try { await stPush(); } catch { stStatus(); return; } // install config BEFORE arming; abort on invalid/rejected
     }
@@ -177,23 +219,24 @@ function stOnDecodeChange() {
   };
   for (const id of ["stAddr", "stRW", "stBytes", "dsClock"])
     // TRLC-LINKS: REQ-SDS-206
-    $(id).onchange = () => { if (stArmed()) stPush().catch(() => {}); stStatus(); };
+    $(id).onchange = () => { stOwn = true; if (stArmed()) stPush().catch(() => {}); stStatus(); };
 })();
 
 // resync + live status (both directions); re-push if the config drifted.
 setInterval(() => {
   if (!$("stArm") || !st) return;
-  if (stProtoNum() === 0) { if (stArmed()) stSetArmed(false); return; }
+  if (stProtoNum() === 0) { if (stOwn && stArmed()) stSetArmed(false); return; }
   // Ignore pre-command status polls until one acknowledges the requested mode.
   if (stModePending !== null) {
     if ((st.serial_mode || 0) === stModePending) stModePending = null;
     else { stStatus(); return; }
   }
   if (st.serial_mode && !stArmed()) $("stArm").classList.add("on");   // engine armed, UI didn't know
-  if (!st.serial_mode && stArmed()) $("stArm").classList.remove("on"); // engine disarmed elsewhere
-  if (stArmed()) {
+  if (!st.serial_mode && stArmed()) { $("stArm").classList.remove("on"); stOwn = false; } // engine disarmed elsewhere
+  if (stArmed() && !stOwn) stAdopt(); // armed elsewhere: show its match, push nothing
+  else if (stArmed()) {
     const p = stParams();
-    if (p && JSON.stringify(p) !== stLastSig) stPush().catch(() => {}); // decode/match changed
+    if (p && JSON.stringify(p) !== stLastSig) stPush().catch(() => {}); // decode/match changed here
   }
   stStatus();
 }, 1000);

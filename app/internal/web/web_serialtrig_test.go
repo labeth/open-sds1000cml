@@ -7,6 +7,8 @@ import (
 	"net/http/httptest"
 	"reflect"
 	"testing"
+
+	"open-sds/app/internal/engine"
 )
 
 // TRLC-LINKS: REQ-SDS-162
@@ -63,11 +65,24 @@ func TestSerialTriggerEndpoints(t *testing.T) {
 		t.Fatalf("bad json should return ok:false, got %v", out)
 	}
 
-	// GET on the POST-only endpoint → 405
+	// GET reads the trigger as armed, so a page can show it rather than
+	// replace it; another method is refused
+	fs.SetSerialParams(engine.SerialParams{Proto: 1, Bytes: []int{0xAA}, Addr: -1, RW: 2})
 	req = httptest.NewRequest("GET", "/api/serial", nil)
 	rec = httptest.NewRecorder()
 	s.Handler().ServeHTTP(rec, req)
+	var got struct {
+		OK     bool                `json:"ok"`
+		Params engine.SerialParams `json:"params"`
+	}
+	json.Unmarshal(rec.Body.Bytes(), &got)
+	if !got.OK || got.Params.Proto != 1 || len(got.Params.Bytes) != 1 || got.Params.Bytes[0] != 0xAA {
+		t.Fatalf("GET /api/serial: %s", rec.Body.String())
+	}
+	req = httptest.NewRequest("PUT", "/api/serial", nil)
+	rec = httptest.NewRecorder()
+	s.Handler().ServeHTTP(rec, req)
 	if rec.Code != 405 {
-		t.Fatalf("GET /api/serial code=%d, want 405", rec.Code)
+		t.Fatalf("PUT /api/serial code=%d, want 405", rec.Code)
 	}
 }

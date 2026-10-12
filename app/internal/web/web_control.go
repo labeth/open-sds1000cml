@@ -52,8 +52,19 @@ func (s *Server) hZones(w http.ResponseWriter, r *http.Request) {
 // /api/set {control:"serialmode"}. Match values retain the protocol's word width.
 // TRLC-LINKS: REQ-SDS-162
 func (s *Server) hSerial(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodGet {
+		// the trigger as armed (on the LCD, a phone or a page): a page shows
+		// it rather than replace it with its own empty match
+		sc, ok := s.sc.(interface{ SerialConfig() engine.SerialParams })
+		if !ok {
+			writeJSON(w, map[string]any{"ok": false, "err": "no serial trigger"})
+			return
+		}
+		writeJSON(w, map[string]any{"ok": true, "params": sc.SerialConfig(), "mode": s.sc.Snapshot().SerialMode})
+		return
+	}
 	if r.Method != http.MethodPost {
-		http.Error(w, "POST only", http.StatusMethodNotAllowed)
+		http.Error(w, "GET or POST only", http.StatusMethodNotAllowed)
 		return
 	}
 	var p engine.SerialParams
