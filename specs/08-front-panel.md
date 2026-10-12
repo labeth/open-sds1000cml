@@ -372,8 +372,9 @@ Vpp and frequency of the shown channels. Each workspace remembers its view. A ma
 averages N captures of the trigger source (the engine's Average, N = 64 by default; under a serial
 trigger aligned on the match's own edge, as the live captures are), stores the result as REF A,
 restores the acquisition so live captures are tested raw, builds the mask from the master in the
-geometry of the next live capture (the averaged record is not that geometry: on the SRAM images a
-filtered record at another sample interval than the live peak-detect readouts), and turns the test on
+geometry of the live captures once three in a row share it (the averaged record is not that geometry:
+on the SRAM images a filtered record at another sample interval than the live peak-detect readouts),
+and turns the test on
 with zeroed counters; it is refused, saying how to fix the trigger, while the trigger source does not
 repeat from capture to capture. COMPARE's MASK row push, once a mask
 exists: a mask built with its test off starts counting, counting stops on a fail, and after stop on
