@@ -846,8 +846,8 @@ behavior:
       ref: FU-APP-PANEL
       kind: control_action
       action: 'COMPARE (MASTER, REF A, REF B, MASK and MATH rows and the live difference): its key again stacks a master
-        (N captures of the trigger source averaged, stored as REF A, the mask built from it in the geometry of the next live
-        capture and the test turned on with zeroed counters; refused, saying how to fix the trigger, while the source does not repeat; again while stacking:
+        (N captures of the trigger source averaged, stored as REF A, the mask built from it in the geometry of the live
+        captures once three in a row share it, and the test turned on with zeroed counters; refused, saying how to fix the trigger, while the source does not repeat; again while stacking:
         cancel). ADJUST moves the row and its push runs the row''s action (MASK, once a mask exists, cycles a built mask
         to counting, counting to stop on fail, and stop on fail to cleared); HORIZ POSITION moves the trigger position
         and its push centres it.'
@@ -878,13 +878,13 @@ behavior:
       action: Finish this input dispatch. Applicable commands change engine/frontend state; panel-local changes are
         drawn on the next LCD frame and published to the remote snapshot (its Seq advances).
     properties:
-      sourceBaseline: 6b2f42572364b2c71d577b75beffbfddba72014b
+      sourceBaseline: 9bde613725c73aaf1bbcaf5fadf1a7603ec69f8c
       requirements: REQ-SDS-135, REQ-SDS-137, REQ-SDS-168, REQ-SDS-211, REQ-SDS-212, REQ-SDS-213, REQ-SDS-214, REQ-SDS-216,
         REQ-SDS-217, REQ-SDS-218, REQ-SDS-220
       reviewNext: The INTENSITY/ADJUST lamp is not driven (specs/08-front-panel.md section 8.2), since no firmware has
         lit it. Physical key availability depends on the loaded FPGA image.
       sourceFiles: app/internal/panel/panel.go, app/internal/panel/panel_dispatch.go, app/internal/panel/panel_led.go, app/internal/panel/ws_input.go, app/internal/panel/ws.go, app/internal/panel/sheet.go, app/internal/panel/actions.go, app/internal/panel/remote.go, app/internal/panel/autoset.go, app/internal/panel/model_rows.go, app/internal/panel/textparse.go, specs/08-front-panel.md
-      sourceSHA256: '{"app/internal/panel/actions.go": "bf7fd508758d61935c21de6bac69d634810ec8ff47c9f206e86492aa84d70819", "app/internal/panel/autoset.go": "3ac47397010c4969684de3e045ce91a59f61bc1ece37a0e04d5dbebeaa639b77", "app/internal/panel/model_rows.go": "4bb59983cfb2c93f19ab9604105b4be308aae6859a8b3a7d8e8e89d93e75461b", "app/internal/panel/panel.go": "fcd8100fc29622fb6cf38f97d03b90f12f80aea8fe038aa6491442fdd2cf2dd7", "app/internal/panel/panel_dispatch.go": "55f9cdf6c41ce9f572b650c32f2286e18db1f487f97057d9617aecf1b3ca9338", "app/internal/panel/panel_led.go": "1bd11646e0e493a421e3e11f0b9b16b793ec1e1b3cd481544672f43ff7bad13b", "app/internal/panel/remote.go": "9eff8e63713db301422bc7e94621ba4dbeafb40af3d60d23f7b733a1ec4920ad", "app/internal/panel/sheet.go": "c0949ca7b28b9715629b43310e947f7206a6ff5153d91082ddaf8b8d18c6af5f", "app/internal/panel/textparse.go": "c5f08231502d6c18ab4d123c8517bcbec095c192cef1b1483080dbd2c22de869", "app/internal/panel/ws.go": "9155039eb7e397524a74b830bf39055f60bfc49d85e6d494c3332278ab9567bc", "app/internal/panel/ws_input.go": "7d2f9ee7d687dd96fcae38828489000f338957e084dfc9c2c8e98bca0f58cd9f", "specs/08-front-panel.md": "f527a10bb4006385e4881b977d03deec32b1f1bf714435a4561eb115a4e397ea"}'
+      sourceSHA256: '{"app/internal/panel/actions.go": "bf7fd508758d61935c21de6bac69d634810ec8ff47c9f206e86492aa84d70819", "app/internal/panel/autoset.go": "3ac47397010c4969684de3e045ce91a59f61bc1ece37a0e04d5dbebeaa639b77", "app/internal/panel/model_rows.go": "4bb59983cfb2c93f19ab9604105b4be308aae6859a8b3a7d8e8e89d93e75461b", "app/internal/panel/panel.go": "fcd8100fc29622fb6cf38f97d03b90f12f80aea8fe038aa6491442fdd2cf2dd7", "app/internal/panel/panel_dispatch.go": "55f9cdf6c41ce9f572b650c32f2286e18db1f487f97057d9617aecf1b3ca9338", "app/internal/panel/panel_led.go": "1bd11646e0e493a421e3e11f0b9b16b793ec1e1b3cd481544672f43ff7bad13b", "app/internal/panel/remote.go": "9eff8e63713db301422bc7e94621ba4dbeafb40af3d60d23f7b733a1ec4920ad", "app/internal/panel/sheet.go": "c0949ca7b28b9715629b43310e947f7206a6ff5153d91082ddaf8b8d18c6af5f", "app/internal/panel/textparse.go": "c5f08231502d6c18ab4d123c8517bcbec095c192cef1b1483080dbd2c22de869", "app/internal/panel/ws.go": "9155039eb7e397524a74b830bf39055f60bfc49d85e6d494c3332278ab9567bc", "app/internal/panel/ws_input.go": "7d2f9ee7d687dd96fcae38828489000f338957e084dfc9c2c8e98bca0f58cd9f", "specs/08-front-panel.md": "e99ceeb43b63f1ee358ce4a0299608867d4eed2cc6bc01bcda3f1a50f1cde8c7"}'
   - id: FLOW-BOOT
     title: USB boot and supervised application
     description: Overview of boot dependencies, not an unconditional success path. Ordinary takeover uses the factory
