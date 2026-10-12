@@ -3672,7 +3672,8 @@ requirements:
     phone starts reports its sweep's rows when it ends. The history lives in the phone's browser. It books only those
     rows as the phone's, and every other change as the scope's or another remote's. Live texts (a mask test's counts,
     COMPARE's trigger stability) stay out of the remote's Seq, and SheetsSeq moves only with a sheet value, so an idle
-    phone does not poll in a loop. Plain HTTP has no wake lock. The page keeps the phone awake with a muted video on
+    phone does not poll in a loop. Rows are settings. Time/div is the timebase asked for, which the engine applies at
+    its next capture, and Memory depth is the depth asked for; a call's answer stands only against an older read. Plain HTTP has no wake lock. The page keeps the phone awake with a muted video on
     Chromium, and with a silent sound track and the "ambient" audio session on WebKit. A Keys switch uses the sound
     track on any phone where the quiet way does not hold. Whether each way holds the screen on real phones, and whether
     music plays on, is not yet verified.
