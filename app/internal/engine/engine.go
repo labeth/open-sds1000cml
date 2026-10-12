@@ -227,6 +227,9 @@ type Stats struct {
 	MaskRing    int   `json:"mask_ring,omitempty"`    // captured failures available
 	MaskStopped bool  `json:"mask_stopped,omitempty"` // stop-on-fail latched
 	MaskSet     bool  `json:"mask_set,omitempty"`     // an envelope mask is installed
+	// MaskGen counts the mask's installs and clears: a client that installed
+	// one knows whether it is still the one installed
+	MaskGen uint64 `json:"mask_gen,omitempty"`
 
 	// Serial / protocol trigger (serialtrig.go)
 	SerialMode    int    `json:"serial_mode,omitempty"` // 0 off, 1 armed
@@ -792,7 +795,7 @@ func (e *Engine) Snapshot() Stats {
 	e.zm.mu.Lock()
 	s.ZoneCount = len(e.zm.zones)
 	s.MaskRing = len(e.zm.ring)
-	s.MaskSet = e.zm.mask != nil
+	s.MaskSet, s.MaskGen = e.zm.mask != nil, e.zm.maskGen
 	e.zm.mu.Unlock()
 	s.SerialMode = int(e.serialMode.Load())
 	s.SerialMatches = e.serialMatches.Load()

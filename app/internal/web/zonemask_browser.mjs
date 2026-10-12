@@ -93,6 +93,20 @@ try {
     "zone re-anchored to the new V/div (codes stretched 2x about centre)");
   ok(Math.abs(rr.after.lo0 - stretch(rr.before.lo0)) <= 2, "mask envelope re-anchored to the new V/div");
 
+  // (5b) a mask cleared elsewhere (the LCD, a phone, another page) stays
+  // cleared: the page lets its copy go instead of installing it again at
+  // the next V/div change
+  await page.waitForFunction(() => zm.mask && typeof zm.mask.gen === "number" && !zm.mask.inflight, null, { timeout: 5000 });
+  await page.evaluate(async () => {
+    await fetch("/api/mask", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ lo: [], hi: [], win: 0 }) });
+    frame.vpc1 = frame.vpc1 / 2; // a V/div change before this page's next status poll
+    window.zmRescale();
+  });
+  await page.waitForFunction(() => !zm.mask, null, { timeout: 5000 });
+  ok(true, "a mask cleared elsewhere, then a V/div change: the scope refuses the stale re-install and the page lets its copy go");
+  await page.waitForTimeout(1500);
+  ok(!(await page.evaluate(async () => !!(await (await fetch("/api/status")).json()).mask_set)), "the mask stays cleared");
+
   // (6) failure gallery: the Go fixture preloads one ring entry; the 1 Hz
   // meter renders it -> click freezes the failing frame with the mark.
   await page.waitForFunction(() => document.querySelectorAll("#zmGallery .zmf").length > 0, null, { timeout: 5000 });

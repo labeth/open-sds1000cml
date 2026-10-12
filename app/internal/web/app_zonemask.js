@@ -205,10 +205,41 @@ function zmRescale() {
       }
       m.avpc = c.vpc; m.aoff = c.off;
       mchg = true;
-      fetch("/api/mask", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ lo_b64: zmPackMask(m.lo), hi_b64: zmPackMask(m.hi), win: m.win, ch: m.ch || 0, ...m.geometry }) }).catch(() => {});
+      if (m.inflight) m.again = true; // one install at a time: the latest scale follows its answer
+      else zmReinstall(m);
     }
   }
   if (zchg || mchg) { zmStatus("re-anchored to the new vertical scale"); redraw(); }
+}
+
+// zmReinstall sends the re-scaled mask naming the install it replaces: the
+// scope refuses it once its mask changed elsewhere (cleared or replaced on
+// the LCD, by a phone, COMPARE's master or another page), and the page then
+// lets its copy go rather than bring a cleared mask back.
+// TRLC-LINKS: REQ-SDS-014
+function zmReinstall(m) {
+  m.inflight = true;
+  const body = { lo_b64: zmPackMask(m.lo), hi_b64: zmPackMask(m.hi), win: m.win, ch: m.ch || 0, ...m.geometry };
+  if (typeof m.gen === "number") body.if_gen = m.gen;
+  fetch("/api/mask", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
+    .then((r) => r.json())
+    .then((j) => {
+      m.inflight = false;
+      if (zm.mask !== m) return;
+      if (j && j.ok) {
+        if (typeof j.gen === "number") { m.gen = j.gen; m.genAt = Date.now(); }
+        if (m.again) { m.again = false; zmReinstall(m); }
+      } else if (j && j.stale) zmLetGo();
+    })
+    .catch(() => { m.inflight = false; });
+}
+
+// zmLetGo forgets the page's mask: the scope holds another one now, or none.
+// TRLC-LINKS: REQ-SDS-014
+function zmLetGo() {
+  zm.mask = null;
+  zmStatus("the scope's mask was cleared or replaced elsewhere: this page let its copy go");
+  redraw();
 }
 
 // ==== wiring ====
@@ -305,12 +336,14 @@ $("zmBuild").onclick = async () => {
   // Dilate by the tolerances (wsmath.js maskDilate, shared with COMPARE's
   // stacked master; unobserved columns become always-pass first).
   const { lo: dLo, hi: dHi } = maskDilate(lo, hi, tolT, tolV);
+  let gen = null; // this install's number: the scope may clear or replace it later
   try {
     const response = await fetch("/api/mask", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ lo_b64: zmPackMask(dLo), hi_b64: zmPackMask(dHi), win, ch, ...frameGeometry }) });
     const result = await response.json();
     if (!response.ok || !result.ok) throw new Error(result.err || "server rejected mask");
+    if (typeof result.gen === "number") gen = result.gen;
   } catch (e) { zmStatus("mask build failed — " + e.message); return; }
-  zm.mask = { lo: dLo, hi: dHi, win, ch, posFrac, geometry: frameGeometry };
+  zm.mask = { lo: dLo, hi: dHi, win, ch, posFrac, geometry: frameGeometry, gen, genAt: Date.now() };
   const c = zmVctx(ch);
   if (c) { // frozen source for exact re-mapping on later V/div / offset changes
     zm.mask.srcLo = dLo.slice(); zm.mask.srcHi = dHi.slice();
@@ -329,6 +362,13 @@ window.zmRescale = zmRescale; // exercised directly by the browser e2e
 // --- live meter + failure gallery (driven off the 1 Hz status poll) ---
 setInterval(() => {
   if (!st) return;
+  // the scope's mask is no longer the one this page installed: cleared or
+  // replaced on the LCD, by a phone, COMPARE's master or another page (its
+  // count moved past ours), or the app restarted (its count stays behind
+  // ours past a status poll). Let it go here rather than install it again at
+  // the next V/div or offset change.
+  const zmm = zm.mask, g = st.mask_gen || 0;
+  if (zmm && !zmm.inflight && typeof zmm.gen === "number" && (g > zmm.gen || (g < zmm.gen && Date.now() - zmm.genAt > 3000))) zmLetGo();
   zmRescale();
   if (st.mask_mode > 0 || st.mask_fail > 0 || st.mask_pass > 0) {
     const total = (st.mask_pass || 0) + (st.mask_fail || 0);

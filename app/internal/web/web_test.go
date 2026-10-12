@@ -44,6 +44,7 @@ type fakeScope struct {
 	zones        []engine.Zone
 	zoneMode     int
 	mask         *engine.Mask
+	lastMask     *engine.Mask // the last one installed (mask may be cleared since)
 	maskMode     int
 	maskCleared  bool
 	maskRing     []engine.MaskFail
@@ -154,6 +155,11 @@ func (f *fakeScope) SetMask(m *engine.Mask) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.mask = m
+	if m != nil {
+		f.lastMask = m
+	}
+	f.stats.MaskSet = m != nil
+	f.stats.MaskGen++
 }
 
 // TRLC-LINKS: REQ-SDS-162

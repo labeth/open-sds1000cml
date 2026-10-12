@@ -94,6 +94,7 @@ type zoneMaskState struct {
 	mu      sync.Mutex
 	zones   []Zone
 	mask    *Mask
+	maskGen uint64 // each install or clear of the mask counts one (Stats.MaskGen)
 	ring    []MaskFail
 	t0      time.Time // engine-clock epoch for AtNs
 	epochOK bool
@@ -146,6 +147,7 @@ func (e *Engine) SetMask(m *Mask) {
 	}
 	e.zm.mu.Lock()
 	e.zm.mask = cp
+	e.zm.maskGen++
 	e.zm.mu.Unlock()
 }
 

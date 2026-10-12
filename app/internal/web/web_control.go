@@ -127,6 +127,7 @@ func (s *Server) hMask(w http.ResponseWriter, r *http.Request) {
 		TdivS      float64 `json:"tdiv_s"`
 		SampleS    float64 `json:"sample_s"`
 		PeakDetect bool    `json:"peak_detect"`
+		IfGen      *uint64 `json:"if_gen"` // a re-install: the install it replaces (Stats.MaskGen)
 	}
 	if err := json.NewDecoder(io.LimitReader(r.Body, 4<<20)).Decode(&m); err != nil {
 		writeJSON(w, map[string]any{"ok": false, "err": "bad json"})
@@ -142,7 +143,7 @@ func (s *Server) hMask(w http.ResponseWriter, r *http.Request) {
 	} else {
 		if len(m.Lo) == 0 {
 			s.sc.SetMask(nil)
-			writeJSON(w, map[string]any{"ok": true, "cleared": true})
+			writeJSON(w, map[string]any{"ok": true, "cleared": true, "gen": s.sc.Snapshot().MaskGen})
 			return
 		}
 		// Preserve the original bounded numeric upload for older clients.
@@ -156,9 +157,20 @@ func (s *Server) hMask(w http.ResponseWriter, r *http.Request) {
 			hi[i] = uint8(clampI(m.Hi[i], 0, 255))
 		}
 	}
+	// a page re-scaling its mask to a new V/div names the install it replaces:
+	// refused once the scope's mask changed since (cleared or replaced on the
+	// LCD, by a phone or another page), so a cleared mask does not come back
+	if m.IfGen != nil {
+		if cur := s.sc.Snapshot().MaskGen; cur != *m.IfGen {
+			writeJSON(w, map[string]any{"ok": false, "stale": true, "gen": cur, "err": "the scope's mask changed since this page installed it"})
+			return
+		}
+	}
 	s.sc.SetMask(&engine.Mask{Lo: lo, Hi: hi, WinCols: m.Win, Ch: m.Ch & 1,
 		FrameIdent: m.TdivS > 0 && m.SampleS > 0, TdivS: m.TdivS, SampleS: m.SampleS, PeakDetect: m.PeakDetect})
-	writeJSON(w, map[string]any{"ok": true, "win": m.Win})
+	// gen names this install: the page keeps re-scaling its mask only while
+	// the scope still holds it (Stats.MaskGen)
+	writeJSON(w, map[string]any{"ok": true, "win": m.Win, "gen": s.sc.Snapshot().MaskGen})
 }
 
 // hMaskFail serves one captured failing frame from the ring as JSON (gallery

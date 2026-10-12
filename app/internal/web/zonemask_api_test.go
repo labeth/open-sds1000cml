@@ -4,6 +4,7 @@ package web
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -37,6 +38,23 @@ func TestZoneMaskAPI(t *testing.T) {
 	json.Unmarshal(rr.Body.Bytes(), &rep)
 	if rep["ok"] != true || fs.mask == nil || fs.mask.WinCols != 2 || fs.mask.Hi[1] != 200 {
 		t.Fatalf("mask upload: %v %+v", rep, fs.mask)
+	}
+	// a re-install names the install it replaces, and is refused once the
+	// scope's mask changed since: a mask cleared elsewhere does not come back
+	gen := uint64(rep["gen"].(float64))
+	reinstall := func(ifGen uint64) map[string]any {
+		rr := httptest.NewRecorder()
+		mux.ServeHTTP(rr, httptest.NewRequest("POST", "/api/mask", strings.NewReader(
+			fmt.Sprintf(`{"lo":[20,20],"hi":[220,220],"win":2,"ch":0,"if_gen":%d}`, ifGen))))
+		var out map[string]any
+		json.Unmarshal(rr.Body.Bytes(), &out)
+		return out
+	}
+	if out := reinstall(gen); out["ok"] != true || uint64(out["gen"].(float64)) != gen+1 || fs.mask.Lo[0] != 20 {
+		t.Fatalf("re-install of the mask installed: %v %+v", out, fs.mask)
+	}
+	if out := reinstall(gen); out["ok"] != false || out["stale"] != true || fs.mask.Lo[0] != 20 {
+		t.Fatalf("re-install naming an older install: %v %+v", out, fs.mask)
 	}
 	rr = httptest.NewRecorder()
 	mux.ServeHTTP(rr, httptest.NewRequest("POST", "/api/mask", strings.NewReader(`{"lo":[],"hi":[],"win":0}`)))

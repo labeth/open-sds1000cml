@@ -75,12 +75,15 @@ func TestZoneMaskBrowser(t *testing.T) {
 	if fs.zoneMode != 1 {
 		t.Fatalf("zone trig toggle: zoneMode=%d", fs.zoneMode)
 	}
-	if fs.mask == nil || fs.mask.WinCols != N {
-		t.Fatalf("mask upload missing: %+v", fs.mask)
+	if fs.lastMask == nil || fs.lastMask.WinCols != N {
+		t.Fatalf("mask upload missing: %+v", fs.lastMask)
 	}
 	for j := 0; j < N; j++ {
-		if fs.mask.Lo[j] > fs.mask.Hi[j] {
-			t.Fatalf("mask bounds inverted at col %d: [%d,%d]", j, fs.mask.Lo[j], fs.mask.Hi[j])
+		if fs.lastMask.Lo[j] > fs.lastMask.Hi[j] {
+			t.Fatalf("mask bounds inverted at col %d: [%d,%d]", j, fs.lastMask.Lo[j], fs.lastMask.Hi[j])
 		}
+	}
+	if fs.mask != nil {
+		t.Fatal("the mask cleared elsewhere was installed again")
 	}
 }
