@@ -15,6 +15,9 @@ run(async (t) => {
     if (r.method() === "POST" && /\/api\/serial/.test(r.url())) posts.push(r.postData() || "");
   });
 
+  // before this page decodes anything (it opens in SCOPE), the strip names the armed match
+  await t.until(async () => (await po.text("trigCap")).includes("55 AA"), "the strip names the scope's armed match from the start", 4000);
+
   await po.ws("bus");
   await po.waitFor(() => !busDetecting, null, 10000);
   await po.setSelect("decProto", "uart");

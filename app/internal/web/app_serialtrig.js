@@ -225,6 +225,8 @@ function stOnDecodeChange() {
 // resync + live status (both directions); re-push if the config drifted.
 setInterval(() => {
   if (!$("stArm") || !st) return;
+  // armed elsewhere: show its match (in the strip's caption too), whether or not this page decodes
+  if (st.serial_mode && !stOwn) stAdopt();
   if (stProtoNum() === 0) { if (stOwn && stArmed()) stSetArmed(false); return; }
   // Ignore pre-command status polls until one acknowledges the requested mode.
   if (stModePending !== null) {
@@ -233,8 +235,7 @@ setInterval(() => {
   }
   if (st.serial_mode && !stArmed()) $("stArm").classList.add("on");   // engine armed, UI didn't know
   if (!st.serial_mode && stArmed()) { $("stArm").classList.remove("on"); stOwn = false; } // engine disarmed elsewhere
-  if (stArmed() && !stOwn) stAdopt(); // armed elsewhere: show its match, push nothing
-  else if (stArmed()) {
+  if (stArmed() && stOwn) { // a trigger this page owns: push what changed here
     const p = stParams();
     if (p && JSON.stringify(p) !== stLastSig) stPush().catch(() => {}); // decode/match changed here
   }
