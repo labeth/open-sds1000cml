@@ -222,6 +222,10 @@ type Controller struct {
 	slotSum        [setupSlots + 1]string // the FILE rows' summaries
 	slotWS         [setupSlots + 1]int    // the workspace each slot holds (-1 unknown)
 	remoteNotices  bool                   // show REMOTE notes on the LCD
+	saverMin       int                    // Screen saver after this many minutes without input (0 = off)
+	offMin         int                    // Screen off after this many minutes without input (0 = off)
+	lastInput      time.Time              // the last input run on the panel goroutine (zero: none yet)
+	wakeUntil      time.Time              // until then the scope's keys and knobs only wake the screen
 	stackN         int                    // the master's depth
 	stack          *stackState            // a master being stacked
 	maskAutoTest   bool                   // the COMPARE MASK row: count once built
@@ -340,6 +344,8 @@ func New(eng Engine, fe Analog, keyFD int, tdivs []float64, startTdiv float64, l
 		ui:            freshUI(),
 		stackN:        64,
 		remoteNotices: true,
+		saverMin:      defSaverMin,
+		offMin:        defOffMin,
 	}
 	for i := range c.slotWS {
 		c.slotWS[i] = -1

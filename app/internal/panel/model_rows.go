@@ -1382,5 +1382,31 @@ func sysRows() []*row {
 		},
 	}
 	remote.def = func(c *Controller) error { return remote.set(c, 1) }
-	return []*row{help, print, auto, def, remote}
+	saver := &row{id: "sys.saver", label: "Screen saver", kind: wsview.Enum,
+		help:  "With no input this long, only a small live scope drifts over black, so nothing burns in. A key wakes it.",
+		opts:  staticOpts(minuteOpts(saverMins)),
+		quick: saverQuick,
+		get:   func(s *sv) int { return s.saverMin },
+		set: func(c *Controller, v int) error {
+			c.mu.Lock()
+			c.saverMin = oneOf(v, saverMins, defSaverMin)
+			c.mu.Unlock()
+			return nil
+		},
+	}
+	saver.def = func(c *Controller) error { return saver.set(c, defSaverMin) }
+	off := &row{id: "sys.screen_off", label: "Screen off", kind: wsview.Enum,
+		help:  "With no input this long, the screen goes black and its backlight off. A key wakes it.",
+		opts:  staticOpts(minuteOpts(offMins)),
+		quick: offQuick,
+		get:   func(s *sv) int { return s.offMin },
+		set: func(c *Controller, v int) error {
+			c.mu.Lock()
+			c.offMin = oneOf(v, offMins, defOffMin)
+			c.mu.Unlock()
+			return nil
+		},
+	}
+	off.def = func(c *Controller) error { return off.set(c, defOffMin) }
+	return []*row{help, print, auto, def, remote, saver, off}
 }

@@ -123,6 +123,7 @@ type Status struct {
 	Lamps       uint16
 	LampsLit    []string
 	Display     Display
+	Screen      string // on, saver or off (ADR-SCREEN-SAVER)
 	// the last Autoset sweep that ended and the rows it changed (a remote
 	// that started it books them as its own)
 	AutosetDone    uint64
@@ -208,6 +209,7 @@ func (c *Controller) status(s *sv) Status {
 		st.Views[i] = workspaceView(s, wsview.WS(i))
 	}
 	st.Lamps = c.lampWord(s) // what the lamps show (latched at the next input or sync)
+	st.Screen = s.screen.String()
 	st.LampsLit = lampNames(st.Lamps)
 	c.mu.Lock()
 	st.AutosetDone, st.AutosetChanged = c.autosetDone, c.autosetChanged
@@ -611,6 +613,7 @@ func (c *Controller) onPanel(fn func()) bool {
 	if !c.looping.Load() {
 		c.inlineMu.Lock()
 		defer c.inlineMu.Unlock()
+		c.noteInput(false) // as the panel loop books it
 		fn()
 		return true
 	}

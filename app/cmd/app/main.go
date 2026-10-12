@@ -392,6 +392,11 @@ func runLCD(e *engine.Engine, fe *analog.FrontEnd, fo *frames.Fanout) {
 	var lastSig renderSig
 	var lastSlot statusSlot
 	haveSig := false
+	// The screen saver (ADR-SCREEN-SAVER): what the LCD shows, when the saver
+	// began (its drift is the time since), when it last moved, and the light.
+	scr := panel.ScreenOn
+	var saverT0, saverAt time.Time
+	lit := true
 	for {
 		time.Sleep(e.RenderPeriod()) // tunable display cadence
 		// Render only OUTSIDE the engine's load-sensitive windows (arm-settle +
@@ -400,6 +405,11 @@ func runLCD(e *engine.Engine, fe *analog.FrontEnd, fo *frames.Fanout) {
 		e.QuietRLock()
 		if pc := uiCtrl.Load(); pc != nil {
 			fo.WithFrame(pc.OnFrame) // the workspace pane's analysis, once per new frame
+			if s := pc.Screen(); s != scr {
+				scr = s
+				saverT0, saverAt = time.Now(), time.Time{}
+				haveSig = false // back on, the workspace repaints in full
+			}
 		}
 		hud := buildHUD(e, fe)
 		present := false
@@ -434,6 +444,23 @@ func runLCD(e *engine.Engine, fe *analog.FrontEnd, fo *frames.Fanout) {
 				pc.SyncLEDs() // keep RUN/STOP + SINGLE lamps in step (re-latches only on change)
 			}
 			live := f != nil && time.Since(lastFresh) < 300*time.Millisecond
+			// Asleep, the scope keeps acquiring and analysing; only the
+			// workspace's render stops.
+			switch scr {
+			case panel.ScreenOff: // black once, then the light goes off
+				if lit {
+					back.Fill(0)
+					present = true
+				}
+				return
+			case panel.ScreenSaver:
+				if now := time.Now(); now.Sub(saverAt) >= lcd.SaverStep {
+					saverAt = now
+					lcd.DrawSaver(back, f, hud, int(now.Sub(saverT0)/lcd.SaverStep))
+					present = true
+				}
+				return
+			}
 			// Repaint only when the picture changed. Time-evolving views and active
 			// tests bypass the cache and always repaint (afterglow decay, the Bode
 			// sweep, the spectrogram waterfall, super-res review, a running mask/zone
@@ -460,10 +487,18 @@ func runLCD(e *engine.Engine, fe *analog.FrontEnd, fo *frames.Fanout) {
 		})
 		if present {
 			fb.Present(back)
-			if lastSeq != lastPresented {
+			if scr == panel.ScreenOn && lastSeq != lastPresented {
 				e.NoteLCDFrame()
 				lastPresented = lastSeq
 			}
+		}
+		// The light follows the picture: off once the black frame is up, on
+		// once the next picture is.
+		if want := scr != panel.ScreenOff; want != lit && (present || !want) {
+			if err := lcd.SetBacklight(want); err != nil {
+				logf("lcd: backlight: %v", err)
+			}
+			lit = want
 		}
 		e.QuietRUnlock()
 	}
@@ -935,7 +970,8 @@ func main() {
 
 	s := <-sig
 	logf("signal %v — stopping engine at frame boundary", s)
-	saver.Flush() // a change still inside the debounce window survives the restart
+	saver.Flush()          // a change still inside the debounce window survives the restart
+	lcd.SetBacklight(true) // never leave the panel dark behind the screen saver
 	if !e.Stop(2 * time.Second) {
 		logf("WARNING: engine did not stop in time")
 	}

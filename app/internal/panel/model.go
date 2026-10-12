@@ -347,6 +347,9 @@ type sv struct {
 	slotUsed       [setupSlots + 1]bool
 	slotSum        [setupSlots + 1]string
 	remoteNotices  bool
+	saverMin       int    // the Screen saver row (minutes, 0 = off)
+	offMin         int    // the Screen off row
+	screen         Screen // what the LCD shows now
 	hasHardcopy    bool
 	pulse          [4]float64 // level frac, min ns, max ns, cond
 	slope          [5]float64 // lo, hi, min ns, max ns, cond

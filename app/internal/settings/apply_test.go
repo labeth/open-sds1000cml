@@ -83,6 +83,8 @@ func TestApplyRestoreCollectFidelity(t *testing.T) {
 		// The serial trigger's match, kept while disarmed (a trigger type
 		// other than Serial is set above); not I2C, so any address.
 		Serial: settings.Serial{Set: true, Match: "55 AA", Addr: -1, RW: 2},
+		// The screen saver's times, not the factory ones.
+		Screen: settings.Screen{Set: true, SaverMin: 5, OffMin: 120},
 	}
 	settings.Apply(want, e, fe, pc, t.Logf)
 	got := settings.Collect(e, fe, pc)

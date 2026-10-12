@@ -100,6 +100,19 @@ type Settings struct {
 	Display  Display    `json:"display"`
 	UI       UI         `json:"ui"`
 	Serial   Serial     `json:"serial"`
+	Screen   Screen     `json:"screen,omitzero"` // the instrument's, never in a saved setup
+}
+
+// Screen is the screen saver (ADR-SCREEN-SAVER): minutes without input
+// before the saver and before the screen goes off, 0 for never. It belongs
+// to the instrument, so the setup memories leave it out and their recall
+// leaves it as it is. Set marks a saved block (an older file has none and
+// keeps the factory times).
+// TRLC-LINKS: REQ-SDS-221, REQ-SDS-089
+type Screen struct {
+	Set      bool `json:"set"`
+	SaverMin int  `json:"saver_min"`
+	OffMin   int  `json:"off_min"`
 }
 
 // Serial is the serial trigger: its match as the panel writes it ("55 AA",

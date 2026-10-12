@@ -500,6 +500,25 @@ runs), and the Adjust push is refused where it would open one
 live texts, so a remote is not woken on every frame: the highlighted row of an action is sent without its
 status text (a mask test's counts), and COMPARE's again names the key's job, not the trigger's stability.
 
+### 7.5 Screen saver
+
+Two SYS rows set it (ADR-SCREEN-SAVER), both counted from the last input: **Screen saver** (Off, 1, 2,
+5, 10, 15 or 30 min, 1 h; factory 15 min; F1..F5 offer Off, 5, 15, 30 min and 1 h) and **Screen off**
+(Off, 5, 10, 15 or 30 min, 1, 2 or 4 h; factory 1 h; F1..F5 offer Off, 15, 30 min, 1 and 2 h). After
+the Screen saver time the LCD shows only a small live scope drifting over black (spec 07 §10.5); after
+the Screen off time it is black with gpio7 low (§10.1). A Screen off shorter than the saver goes
+straight to black.
+
+Input is anything run on the panel goroutine: the scope's keys and knobs, and for the API every
+`/api/panel` and `/api/sheets` change (the phone remote, the web's keys), the web's Clear mask and SCPI
+`*RST`. A key or knob on the scope that finds the screen asleep only wakes it, and so does any key or
+knob in the 0.5 s after it, so a knob turned to wake the screen does not also change a setting. A
+remote input wakes the screen and also does its job. The web page's own controls (`/api/set`) are not
+input: they change the engine directly, and the page renews its leases on timers. While the screen
+sleeps the scope keeps acquiring, analysing and driving its lamps. `/api/status` names the state
+(`Screen`: `on`, `saver`, `off`). The rows belong to the instrument: the settings file keeps them,
+while the setup memories leave them out and their recall and Default Setup leave them as they are.
+
 ---
 
 ## 8. Panel LEDs — CS3 latch
@@ -718,6 +737,12 @@ echo 7   > /sys/class/gpio/export          # already done at boot → skip (EBUS
 echo out > /sys/class/gpio/gpio7/direction
 echo 1   > /sys/class/gpio/gpio7/value     # 1 = display ON; 0 = dark
 ```
+
+It is the panel's only light control. The screen saver (§7.5) drives it low after the Screen off time,
+once a black frame is up, and high again on the next input, once the picture is; the app also drives it
+high when it stops. Measured with the Shelly plug, the scope draws 22.3 W with it high and 20.8 W with it
+low. The kernel's `tlc59108-bl` backlight device (`/sys/class/backlight`, brightness 0..255) is not
+wired to this panel: brightness 0 leaves the draw at 22.3 W.
 
 ### 10.2 `gpio113` — trigger-event pulse (no panel indicator)
 

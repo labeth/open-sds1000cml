@@ -10,9 +10,10 @@ import (
 )
 
 // SettingsView reports the controller-owned slice of the persisted setup
-// (settings.Panel surface): the decode setup, the display state, and the
-// workspace UI, so a restart or a recalled setup returns where it was.
-// TRLC-LINKS: REQ-SDS-136, REQ-SDS-211
+// (settings.Panel surface): the decode setup, the display state, the
+// workspace UI and the screen saver's times, so a restart or a recalled setup
+// returns where it was (a setup memory leaves the screen saver out).
+// TRLC-LINKS: REQ-SDS-136, REQ-SDS-211, REQ-SDS-221
 func (c *Controller) SettingsView() settings.ViewState {
 	ser := c.serialSettings() // engine state: read before the panel lock
 	c.mu.Lock()
@@ -43,6 +44,7 @@ func (c *Controller) SettingsView() settings.ViewState {
 		},
 		UI:     ui,
 		Serial: ser,
+		Screen: settings.Screen{Set: true, SaverMin: c.saverMin, OffMin: c.offMin},
 	}
 }
 
@@ -95,8 +97,9 @@ func (c *Controller) restoreSerial(s settings.Serial) {
 // take, clock and data on opposite channels for the two-signal protocols,
 // format and view in range, a workspace and its views. Hostile values
 // degrade to defaults — never a panic, never an out-of-domain field. A
-// recalled workspace is entered as F1..F5 enters it (its view applied).
-// TRLC-LINKS: REQ-SDS-136, REQ-SDS-211
+// recalled workspace is entered as F1..F5 enters it (its view applied). A
+// screen saver time the rows do not offer is the factory time.
+// TRLC-LINKS: REQ-SDS-136, REQ-SDS-211, REQ-SDS-221
 func (c *Controller) ApplySettingsView(v settings.ViewState) {
 	d := v.Decode
 	if d.Proto < framecalc.ProtoOff || d.Proto >= framecalc.NumProtos {
@@ -153,6 +156,10 @@ func (c *Controller) ApplySettingsView(v settings.ViewState) {
 			}
 		}
 		c.remoteNotices = u.RemoteNotices
+	}
+	if sc := v.Screen; sc.Set {
+		c.saverMin = oneOf(sc.SaverMin, saverMins, defSaverMin)
+		c.offMin = oneOf(sc.OffMin, offMins, defOffMin)
 	}
 	c.mu.Unlock()
 	c.syncDecodeView(d.Proto != framecalc.ProtoOff)

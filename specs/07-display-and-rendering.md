@@ -724,7 +724,23 @@ planar half and, when two channels are enabled, C2's drained window (the roll pr
 already captures C2 into its own ring) into the second half. No new capture or bus access
 is introduced — C2 envelope samples are already drained alongside C1.
 
-### 10.5 Open
+### 10.5 Screen saver
+
+After the SYS tab's Screen saver time without input (spec 08 §7.5) the loop stops drawing the
+workspace and draws only the saver: the screen black (`0x0000`), a 240×144 mini view of the live frame
+(the sheet thumbnail's graticule, traces and trigger pointer), and under it the run state at scale 2
+(`RUN` in `colOK`, `STOP` in `colStale`, `SINGLE` in `colTrig`), the time/div in `colInfo`, and at
+scale 1 a running mask test's `MASK pass N  FAIL M` (`colWarn` once one fails) or `Any key wakes the
+screen` in `colDim`. The 240×180 box moves one pixel right or left and one up or down every 200 ms,
+bouncing off the edges (`SaverPos`), so no pixel holds one image and the path repeats only after
+hours; the loop repaints at that step, not every tick. After the Screen off time it presents one black
+frame and drives gpio7 low (spec 08 §10.1); on the next input it repaints the workspace in full and
+then drives gpio7 high. While the screen sleeps the loop still runs the panes' analysis, the
+spectrogram's rows and the lamps; only the render stops (on the bench: 41 to 44 live frames per
+second while asleep against 23 to 24 with the workspace drawn). `/api/screen.png` and the hardcopy
+always render the workspace.
+
+### 10.6 Open
 
 - **Per-region pixel rectangles** (exact bounds of the waveform area vs. the status
   strips) are not pinned as hard constants; the whole `800×480` renders correctly as one
@@ -732,5 +748,6 @@ is introduced — C2 envelope samples are already drained alongside C1.
   against a target-hardware screen capture if a future revision needs them.
 - **Backlight brightness/dimming** has no firmware-controlled path; the panel runs at a
   fixed/full backlight, and the GPIO enable line is a binary on/off with no brightness
-  register. The framebuffer bring-up (driver load order, GPIO7 enable, `mmap`) is fully
+  register. The kernel's `tlc59108-bl` backlight device does not dim this panel (spec 08
+  §10.1). The framebuffer bring-up (driver load order, GPIO7 enable, `mmap`) is fully
   specified in §1.4.

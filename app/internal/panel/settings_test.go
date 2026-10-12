@@ -16,6 +16,7 @@ func TestSettingsViewRoundTrip(t *testing.T) {
 			Proto: 3, Baud: 57600, ChA: 1, ChB: 0,
 			CPOL: true, CPHA: false, Format: 1,
 		},
+		Screen: settings.Screen{Set: true, SaverMin: 30, OffMin: 0},
 	}
 	c.ApplySettingsView(want)
 	got := c.SettingsView()

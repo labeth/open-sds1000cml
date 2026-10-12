@@ -143,6 +143,7 @@ const (
 func (c *Controller) SetClock(now func() time.Time) {
 	c.mu.Lock()
 	c.clock = now
+	c.lastInput = time.Time{} // the idle time starts again on the new clock
 	c.mu.Unlock()
 }
 
@@ -252,6 +253,7 @@ func (c *Controller) snap() *sv {
 	s.fftSrc, s.stackN, s.stacking = c.fftSrc, c.stackN, c.stack != nil
 	s.slotUsed, s.slotSum = c.slotUsed, c.slotSum
 	s.remoteNotices, s.hasHardcopy = c.remoteNotices, c.hardcopy != nil
+	s.saverMin, s.offMin, s.screen = c.saverMin, c.offMin, c.screenLocked(s.now)
 	s.ui = c.ui
 	stream := c.stream
 	c.mu.Unlock()

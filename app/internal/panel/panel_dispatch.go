@@ -65,7 +65,8 @@ func (c *Controller) Run(stop <-chan struct{}) {
 		case <-stop:
 			return
 		case fn := <-c.inject:
-			fn() // API-injected button/knob, run on the panel goroutine
+			c.noteInput(false) // a remote input wakes the screen and still does its job
+			fn()               // API-injected button/knob, run on the panel goroutine
 		case <-sigio:
 			if time.Since(lastSig) < 6*time.Millisecond {
 				if !pendingTrail {
@@ -124,7 +125,7 @@ func (c *Controller) decode(m [5]uint16, knobsOn bool) {
 	for i := 0; i < 4; i++ {
 		pressed := (c.prev[i] &^ m[i]) &^ uint16(knobPhaseMask)
 		for bit := 0; bit < 16; bit++ {
-			if pressed&(1<<uint(bit)) != 0 {
+			if pressed&(1<<uint(bit)) != 0 && !c.noteInput(true) { // a key that wakes the screen does nothing else
 				c.button(bcode(i, bit))
 			}
 		}
@@ -286,6 +287,9 @@ func (c *Controller) knob(m [5]uint16) {
 		steps := 1
 		if !k.stepped {
 			steps = accel(raw)
+		}
+		if c.noteInput(true) {
+			return // it woke the screen: nothing else
 		}
 		c.dispatch(k.name, dir, steps)
 		return // exactly one knob per interrupt

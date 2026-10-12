@@ -25,7 +25,7 @@ func (s Slots) SaveSetup(n int) error {
 	if s.Collect == nil {
 		return fmt.Errorf("setup memory unavailable")
 	}
-	return Save(s.slotPath(n), s.Collect())
+	return Save(s.slotPath(n), s.setup())
 }
 
 // RecallSetup applies the setup stored in slot n; an empty slot is an error.
@@ -38,8 +38,18 @@ func (s Slots) RecallSetup(n int) error {
 	if s.Apply == nil {
 		return fmt.Errorf("setup memory unavailable")
 	}
+	st.Screen = Screen{} // the screen saver is the instrument's
 	s.Apply(st)
 	return nil
+}
+
+// setup is the current setup as a setup memory keeps it: without the
+// instrument's screen saver.
+// TRLC-LINKS: REQ-SDS-221
+func (s Slots) setup() Settings {
+	st := s.Collect()
+	st.Screen = Screen{}
+	return st
 }
 
 // PeekSetup reads slot n without applying it (the panel's FILE rows show
@@ -56,7 +66,7 @@ func (s Slots) SaveSetupFile(name string) error {
 	if s.Collect == nil || name != filepath.Base(name) {
 		return fmt.Errorf("setup file unavailable")
 	}
-	return Save(filepath.Join(s.Dir, name), s.Collect())
+	return Save(filepath.Join(s.Dir, name), s.setup())
 }
 
 // RecallSetupFile applies a setup file stored by SaveSetupFile (SCPI RCPN).
@@ -72,6 +82,7 @@ func (s Slots) RecallSetupFile(name string) error {
 	if s.Apply == nil {
 		return fmt.Errorf("setup memory unavailable")
 	}
+	st.Screen = Screen{} // the screen saver is the instrument's
 	s.Apply(st)
 	return nil
 }
