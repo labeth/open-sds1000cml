@@ -363,6 +363,7 @@ $("zmClearMask").onclick = async () => {
   } catch (e) { /* the status poll shows the scope's state */ }
   zm.mask = null; zm.failMark = null;
   $("zmMode").value = "0";
+  if (typeof performance !== "undefined") $("zmMode")._userAt = performance.now();
   zmStatus("mask cleared — build one from a clean signal");
   redraw();
 };
@@ -382,8 +383,9 @@ setInterval(() => {
   const zmm = zm.mask, g = st.mask_gen || 0;
   if (zmm && !zmm.inflight && typeof zmm.gen === "number" && (g > zmm.gen || (g < zmm.gen && Date.now() - zmm.genAt > 3000))) zmLetGo();
   // the test mode and the mask as the scope has them, set on the LCD, a phone or another page
-  const mode = String(st.mask_mode || 0);
-  if ($("zmMode").value !== mode && !$("zmMode").contains(document.activeElement)) $("zmMode").value = mode;
+  // (not for 3 s after a pick here: the status poll may still show the mode before it)
+  const mode = String(st.mask_mode || 0), z = $("zmMode"), picked = typeof performance !== "undefined" && z._userAt && performance.now() - z._userAt < 3000;
+  if (z.value !== mode && !z.contains(document.activeElement) && !picked) z.value = mode;
   const idle = /^(no mask|mask cleared|the scope's mask was cleared|the scope has a mask|re-anchored)/.test($("zmStats").textContent);
   if (!zm.mask && idle && st.mask_set && !/^the scope has a mask/.test($("zmStats").textContent)) zmStatus("the scope has a mask, built on the LCD, a phone or another page");
   else if (!zm.mask && idle && !st.mask_set && /^the scope has a mask/.test($("zmStats").textContent)) zmStatus("no mask — build one from a clean signal first");
