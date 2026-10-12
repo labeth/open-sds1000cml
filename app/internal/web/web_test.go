@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"net/http/httptest"
+	"sync"
 	"testing"
 
 	"open-sds/app/internal/engine"
@@ -15,9 +16,11 @@ import (
 // the real engine: the browser suites poll status every second, and a double
 // that keeps serving boot state reverts the UI's optimistically-applied
 // controls whenever the focus guard doesn't cover them — a whole class of
-// e2e flakes (trig type/source, RUN/STOP label, level readout).
+// e2e flakes (trig type/source, RUN/STOP label, level readout). Every method
+// holds mu: the browser suites' handlers run on concurrent goroutines.
 // TRLC-LINKS: REQ-SDS-162
 type fakeScope struct {
+	mu       sync.Mutex
 	stats    engine.Stats
 	frame    *engine.Frame
 	frameGen func() *engine.Frame // when set, WithFrame serves this instead
@@ -58,15 +61,29 @@ type fakeScope struct {
 }
 
 // TRLC-LINKS: REQ-SDS-162
-func (f *fakeScope) SetOffsetDAC(ch int, code uint16) { f.offCh, f.offCode = ch, &code }
+func (f *fakeScope) SetOffsetDAC(ch int, code uint16) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.offCh, f.offCode = ch, &code
+}
 
 // TRLC-LINKS: REQ-SDS-162
-func (f *fakeScope) SetETS(on bool) { f.ets = &on; f.stats.ETS = on }
+func (f *fakeScope) SetETS(on bool) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.ets = &on
+	f.stats.ETS = on
+}
 
 // TRLC-LINKS: REQ-SDS-162
 // SetSingle arms NORM like the engine (Engine.SetSingle calls SetNorm(true)),
 // which the page also shows at once.
-func (f *fakeScope) SetSingle() { f.single = true; f.stats.Single = true; f.SetNorm(true) }
+func (f *fakeScope) SetSingle() {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	on := true
+	f.single, f.stats.Single, f.norm, f.stats.Norm = true, true, &on, true
+}
 
 // TRLC-LINKS: REQ-SDS-163
 func (f *fakeScope) QuietRLock() {}
@@ -81,109 +98,200 @@ func (f *fakeScope) Tune(t engine.TuneVals) engine.TuneVals { return t }
 func (f *fakeScope) TuneSnapshot() engine.TuneVals { return engine.TuneVals{} }
 
 // TRLC-LINKS: REQ-SDS-162
-func (f *fakeScope) SetTrigPosFrac(frac float64) { f.trigPos = frac; f.stats.TrigPosFrac = frac }
+func (f *fakeScope) SetTrigPosFrac(frac float64) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.trigPos = frac
+	f.stats.TrigPosFrac = frac
+}
 
 // TRLC-LINKS: REQ-SDS-162
-func (f *fakeScope) SetMemDepth(n int) int { f.memDepth = n; f.stats.MemDepth = n; return n }
+func (f *fakeScope) SetMemDepth(n int) int {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.memDepth = n
+	f.stats.MemDepth = n
+	return n
+}
 
 // TRLC-LINKS: REQ-SDS-162
 func (f *fakeScope) SetFramePeriod(ms int) int { return ms }
 
 // TRLC-LINKS: REQ-SDS-162
-func (f *fakeScope) SetStreamMode(on bool) bool { f.stats.Stream = on; return on }
+func (f *fakeScope) SetStreamMode(on bool) bool {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.stats.Stream = on
+	return on
+}
 
 // TRLC-LINKS: REQ-SDS-162
 func (f *fakeScope) SetHoldoff(sec float64) float64 {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	f.holdoff = sec
 	f.stats.HoldoffS = sec
 	return sec
 }
 
 // TRLC-LINKS: REQ-SDS-162
-func (f *fakeScope) SetZones(z []engine.Zone) { f.zones = z }
+func (f *fakeScope) SetZones(z []engine.Zone) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.zones = z
+}
 
 // TRLC-LINKS: REQ-SDS-162
-func (f *fakeScope) SetZoneMode(m int) { f.zoneMode = m; f.stats.ZoneMode = m }
+func (f *fakeScope) SetZoneMode(m int) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.zoneMode = m
+	f.stats.ZoneMode = m
+}
 
 // TRLC-LINKS: REQ-SDS-162
-func (f *fakeScope) SetMask(m *engine.Mask) { f.mask = m }
+func (f *fakeScope) SetMask(m *engine.Mask) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.mask = m
+}
 
 // TRLC-LINKS: REQ-SDS-162
-func (f *fakeScope) SetMaskMode(m int) { f.maskMode = m; f.stats.MaskMode = m }
+func (f *fakeScope) SetMaskMode(m int) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.maskMode = m
+	f.stats.MaskMode = m
+}
 
 // TRLC-LINKS: REQ-SDS-162
-func (f *fakeScope) ClearMaskFails() { f.maskCleared = true }
+func (f *fakeScope) ClearMaskFails() {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.maskCleared = true
+}
 
 // TRLC-LINKS: REQ-SDS-162
-func (f *fakeScope) MaskFails() []engine.MaskFail { return f.maskRing }
+func (f *fakeScope) MaskFails() []engine.MaskFail {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.maskRing
+}
 
 // TRLC-LINKS: REQ-SDS-162
-func (f *fakeScope) SetSerialParams(p engine.SerialParams) { f.serialParams = p }
+func (f *fakeScope) SetSerialParams(p engine.SerialParams) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.serialParams = p
+}
 
 // TRLC-LINKS: REQ-SDS-162
-func (f *fakeScope) SetSerialMode(m int) { f.serialMode = m; f.stats.SerialMode = m }
+func (f *fakeScope) SetSerialMode(m int) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.serialMode = m
+	f.stats.SerialMode = m
+}
 
 // TRLC-LINKS: REQ-SDS-162
-func (f *fakeScope) SetBodeMode(on bool, ref, dut int) { f.bodeOn, f.bodeRef, f.bodeDut = on, ref, dut }
+func (f *fakeScope) SetBodeMode(on bool, ref, dut int) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.bodeOn, f.bodeRef, f.bodeDut = on, ref, dut
+}
 
 // TRLC-LINKS: REQ-SDS-162
-func (f *fakeScope) ClearBode() { f.bodeCleared = true }
+func (f *fakeScope) ClearBode() {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.bodeCleared = true
+}
 
 // TRLC-LINKS: REQ-SDS-162
-func (f *fakeScope) BodePoints() []engine.BodePoint { return f.bodePts }
+func (f *fakeScope) BodePoints() []engine.BodePoint {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.bodePts
+}
 
 // TRLC-LINKS: REQ-SDS-162
-func (f *fakeScope) AcqLog(n int) ([]engine.AcqSample, float64) { return f.acqLog, f.halfRate }
+func (f *fakeScope) AcqLog(n int) ([]engine.AcqSample, float64) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.acqLog, f.halfRate
+}
 
 // TRLC-LINKS: REQ-SDS-162
-func (f *fakeScope) CmdLog(n int) []engine.CmdNote { return f.cmdLog }
+func (f *fakeScope) CmdLog(n int) []engine.CmdNote {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.cmdLog
+}
 
 // TRLC-LINKS: REQ-SDS-162
 func (f *fakeScope) NoteCmd(name string, val float64) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	f.cmdLog = append(f.cmdLog, engine.CmdNote{Name: name, Val: val})
 }
 
 // TRLC-LINKS: REQ-SDS-162
 func (f *fakeScope) SetTrigType(t int) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	f.calls = append(f.calls, [2]any{"trigtype", t})
 	f.stats.TrigType = t
 }
 
 // TRLC-LINKS: REQ-SDS-162
 func (f *fakeScope) SetAcqMode(m int) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	f.calls = append(f.calls, [2]any{"acqmode", m})
 	f.stats.AcqMode = m
 }
 
 // TRLC-LINKS: REQ-SDS-162
 func (f *fakeScope) SetAvgCount(n int) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	f.calls = append(f.calls, [2]any{"avgcount", n})
 	f.stats.AvgCount = n
 }
 
 // TRLC-LINKS: REQ-SDS-162
 func (f *fakeScope) SetEresLen(l int) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	f.calls = append(f.calls, [2]any{"eres", l})
 	f.stats.EresLen = l
 }
 
 // TRLC-LINKS: REQ-SDS-162
 func (f *fakeScope) SetPulseParams(lvl, wMin, wMax float64, cond int) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	f.calls = append(f.calls, [2]any{"pulse", []any{lvl, wMin, wMax, cond}})
 }
 
 // TRLC-LINKS: REQ-SDS-162
 func (f *fakeScope) SetSlopeParams(lo, hi, tMin, tMax float64, cond int) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	f.calls = append(f.calls, [2]any{"slope", []any{lo, hi, tMin, tMax, cond}})
 }
 
 // TRLC-LINKS: REQ-SDS-162
 func (f *fakeScope) SetVideoParams(std, line int, neg bool) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	f.calls = append(f.calls, [2]any{"video", []any{std, line, neg}})
 }
 
 // TRLC-LINKS: REQ-SDS-162
 func (f *fakeScope) lastCall() [2]any {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	if len(f.calls) == 0 {
 		return [2]any{}
 	}
@@ -247,6 +355,8 @@ func (f *fakeAnalog) Coupling(ch int) int { return f.cpl[ch&1] }
 
 // TRLC-LINKS: REQ-SDS-164
 func (f *fakeScope) Snapshot() engine.Stats {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	s := f.stats
 	if f.trigCode != nil { // reflect an echoed SetTrigLevelCode so status round-trips
 		s.TrigCode = *f.trigCode
@@ -256,27 +366,51 @@ func (f *fakeScope) Snapshot() engine.Stats {
 
 // TRLC-LINKS: REQ-SDS-163
 func (f *fakeScope) WithFrame(fn func(*engine.Frame)) {
+	f.mu.Lock()
+	fr := f.frame
 	if f.frameGen != nil {
-		fn(f.frameGen())
-		return
+		fr = f.frameGen()
 	}
-	fn(f.frame)
+	f.mu.Unlock()
+	fn(fr)
 }
 
 // TRLC-LINKS: REQ-SDS-162
-func (f *fakeScope) SetRunning(on bool) { f.running = &on; f.stats.Running = on }
+func (f *fakeScope) SetRunning(on bool) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.running = &on
+	f.stats.Running = on
+}
 
 // TRLC-LINKS: REQ-SDS-162
-func (f *fakeScope) SetNorm(on bool) { f.norm = &on; f.stats.Norm = on }
+func (f *fakeScope) SetNorm(on bool) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.norm = &on
+	f.stats.Norm = on
+}
 
 // TRLC-LINKS: REQ-SDS-162
-func (f *fakeScope) SetTrigSlope(r bool) { f.slope = &r; f.stats.TrigRising = r }
+func (f *fakeScope) SetTrigSlope(r bool) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.slope = &r
+	f.stats.TrigRising = r
+}
 
 // TRLC-LINKS: REQ-SDS-162
-func (f *fakeScope) SetTrigSource(ch int) { f.source = &ch; f.stats.TrigSource = ch }
+func (f *fakeScope) SetTrigSource(ch int) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.source = &ch
+	f.stats.TrigSource = ch
+}
 
 // TRLC-LINKS: REQ-SDS-162
 func (f *fakeScope) SetTrigLevelCode(c uint16) uint16 {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	if c < engine.TrigCodeMin {
 		c = engine.TrigCodeMin
 	}
@@ -286,6 +420,8 @@ func (f *fakeScope) SetTrigLevelCode(c uint16) uint16 {
 
 // TRLC-LINKS: REQ-SDS-162
 func (f *fakeScope) SetTdiv(s float64) (engine.Band, bool) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	b, ok := engine.PlanTdiv(s)
 	if ok {
 		f.tdiv = &s

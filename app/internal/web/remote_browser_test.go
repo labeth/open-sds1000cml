@@ -79,7 +79,7 @@ func (e *remoteEngine) SetNorm(on bool) { e.lock(func() { e.fakeScope.SetNorm(on
 
 // TRLC-LINKS: REQ-SDS-220
 func (e *remoteEngine) SetSingle() {
-	e.lock(func() { e.fakeScope.SetSingle(); e.fakeScope.stats.Running = true })
+	e.lock(func() { e.fakeScope.SetSingle(); e.fakeScope.SetRunning(true) })
 }
 
 // TRLC-LINKS: REQ-SDS-220
