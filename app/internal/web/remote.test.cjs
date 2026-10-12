@@ -213,6 +213,30 @@ test("numKey edits the keypad text; unit keys replace the unit; digits go in bef
   assert.deepEqual(RC.unitKeys({ Unit: "", Max: 127 }), []);
 });
 
+test("a row the scope writes in hex gets a hex keypad: A-F make it 0x.., 0x toggles the prefix", () => {
+  const m = RC.index(sheets());
+  const a = m.rows.get("bus.i2c_address");
+  assert.ok(RC.isHex(a) && RC.isHex({ ID: "bus.stream_value" }) && !RC.isHex(m.rows.get("trig.level")));
+  assert.deepEqual(RC.unitKeys({ ID: "bus.stream_value", Unit: "", Max: 65535 }), [], "no k key on a hex row");
+  let b = "";
+  for (const k of ["5", "0"]) b = RC.hexNumKey(b, k);
+  assert.equal(b, "50", "digits alone stay decimal");
+  b = RC.hexNumKey(b, "0x");
+  assert.equal(b, "0x50", "0x makes them hex");
+  assert.equal(RC.numberHint(a, b).text, "0x50");
+  assert.equal(RC.numberHint(a, b).value, 80);
+  b = RC.hexNumKey("", "A");
+  assert.equal(b, "0xA", "a letter brings 0x");
+  b = RC.hexNumKey(b, "F");
+  assert.equal(b, "0xAF");
+  assert.equal(RC.numberHint(a, b).error, "i2c address 0xAF is outside Any .. 0x7F", "refused as the device does");
+  assert.equal(RC.hexNumKey("0xA", "back"), "0x");
+  assert.equal(RC.hexNumKey("0x", "back"), "", "Del takes 0x back with the last digit");
+  assert.equal(RC.hexNumKey("0x50", "0x"), "50");
+  assert.equal(RC.hexNumKey("0x50", "clear"), "");
+  assert.equal(RC.hexNumKey("0x12345678", "9"), "0x12345678", "ten characters at most");
+});
+
 // ---- match bytes ------------------------------------------------------------------------------
 test("parseMatch reads hex tokens and quoted text as the device does", () => {
   assert.deepEqual(RC.parseMatch("55 AA 0F").tokens, ["55", "AA", "0F"]);

@@ -733,26 +733,36 @@
   const at = (col, rw, cs, rs) => "grid-column:" + col + " / span " + (cs || 1) + ";grid-row:" + rw + " / span " + (rs || 1);
   // TRLC-LINKS: REQ-SDS-220
   function numPad(id, dv, msg) {
-    const units = RC.unitKeys(row(id));
+    const units = RC.unitKeys(row(id)), hex = RC.isHex(row(id));
     let buf = "";
     const keys = h("div", { class: "keys" });
     const el = h("div", { class: "keypad", data: { keypad: id } }, keys);
     const add = (k, label, cls, place) => keys.appendChild(keyBtn(k, label, cls, place, key));
-    [["7", "8", "9"], ["4", "5", "6"], ["1", "2", "3"], ["-", "0", "."]].forEach((rw, ri) => rw.forEach((k, ci) => add(k, k === "-" ? PM : k, k === "-" ? "op" : "", at(ci + 1, ri + 1))));
-    if (units.length >= 3) {
-      units.slice(0, 4).forEach((u, i) => add(u, u, "unit", at(4, 1 + i)));
-      add("back", "Del", "op", at(1, 5));
-      add("clear", "Clear", "op", at(2, 5));
-      add("enter", "Set", "enter", at(3, 5, 2));
-    } else if (units.length) {
-      units.forEach((u, i) => add(u, u, "unit", units.length === 1 ? at(4, 1, 1, 2) : at(4, 1 + i)));
-      add("back", "Del", "op", at(4, 3));
-      add("clear", "Clear", "op", at(4, 4));
-      add("enter", "Set", "enter", at(1, 5, 4));
+    if (hex) {
+      // a row the scope writes in hex: the digits, A-F and 0x
+      [["7", "8", "9", "F"], ["4", "5", "6", "E"], ["1", "2", "3", "D"], ["0", "A", "B", "C"]].forEach((rw, ri) =>
+        rw.forEach((k, ci) => add(k, k, /[A-F]/.test(k) ? "unit" : "", at(ci + 1, ri + 1))));
+      add("0x", "0x", "unit", at(1, 5));
+      add("back", "Del", "op", at(2, 5));
+      add("clear", "Clear", "op", at(3, 5));
+      add("enter", "Set", "enter", at(4, 5));
     } else {
-      add("back", "Del", "op", at(4, 1, 1, 2));
-      add("clear", "Clear", "op", at(4, 3, 1, 2));
-      add("enter", "Set", "enter", at(1, 5, 4));
+      [["7", "8", "9"], ["4", "5", "6"], ["1", "2", "3"], ["-", "0", "."]].forEach((rw, ri) => rw.forEach((k, ci) => add(k, k === "-" ? PM : k, k === "-" ? "op" : "", at(ci + 1, ri + 1))));
+      if (units.length >= 3) {
+        units.slice(0, 4).forEach((u, i) => add(u, u, "unit", at(4, 1 + i)));
+        add("back", "Del", "op", at(1, 5));
+        add("clear", "Clear", "op", at(2, 5));
+        add("enter", "Set", "enter", at(3, 5, 2));
+      } else if (units.length) {
+        units.forEach((u, i) => add(u, u, "unit", units.length === 1 ? at(4, 1, 1, 2) : at(4, 1 + i)));
+        add("back", "Del", "op", at(4, 3));
+        add("clear", "Clear", "op", at(4, 4));
+        add("enter", "Set", "enter", at(1, 5, 4));
+      } else {
+        add("back", "Del", "op", at(4, 1, 1, 2));
+        add("clear", "Clear", "op", at(4, 3, 1, 2));
+        add("enter", "Set", "enter", at(1, 5, 4));
+      }
     }
     // TRLC-LINKS: REQ-SDS-220
     function show() {
@@ -760,7 +770,7 @@
       if (!buf) {
         dv.textContent = disp(r.Text); dv.classList.remove("typed");
         dv.classList.toggle("long", dv.textContent.length > 9);
-        msg.className = "msg"; msg.textContent = units.length ? "Type a value and a unit, then Set" : "Type a value, then Set";
+        msg.className = "msg"; msg.textContent = hex ? "Type it in hex (A-F makes it 0x..), then Set" : units.length ? "Type a value and a unit, then Set" : "Type a value, then Set";
         return;
       }
       dv.textContent = buf; dv.classList.add("typed");
@@ -772,7 +782,7 @@
     // TRLC-LINKS: REQ-SDS-220
     function key(k) {
       if (k === "enter") { apply(); return; }
-      buf = RC.numKey(buf, k, units);
+      buf = hex ? RC.hexNumKey(buf, k) : RC.numKey(buf, k, units);
       show();
     }
     // TRLC-LINKS: REQ-SDS-220
@@ -786,7 +796,7 @@
         toast(res.error || "The scope refused " + typed, "err");
       });
     }
-    KP.active = { el, key, reset() { buf = ""; show(); } };
+    KP.active = { el, key, hexnum: hex, reset() { buf = ""; show(); } };
     bind(el, () => { if (!buf) show(); });
     return el;
   }
@@ -799,9 +809,10 @@
     if (e.key === "Enter" && t && t.tagName === "BUTTON" && t !== document.body) return;   // the button's own Enter
     if (e.key === "Enter") { e.preventDefault(); kp.key("enter"); return; }
     if (e.key === "Backspace") { e.preventDefault(); kp.key("back"); return; }
+    if (kp.hexnum && /^[xX]$/.test(e.key)) { e.preventDefault(); kp.key("0x"); return; }
     if (e.key.length === 1 && /[0-9a-fA-F.?\s-]/.test(e.key)) {
       e.preventDefault();
-      kp.key(kp.hex ? (e.key === "?" ? "??" : e.key.toUpperCase()) : e.key);
+      kp.key(kp.hex ? (e.key === "?" ? "??" : e.key.toUpperCase()) : kp.hexnum ? e.key.toUpperCase() : e.key);
     }
   });
   // a turned phone re-lays the Settings lists (segmented options inline or stacked)

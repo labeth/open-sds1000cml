@@ -332,6 +332,38 @@ func TestAdjustTargetIsNamedByID(t *testing.T) {
 	}
 }
 
+// The I2C address the serial trigger requires is Any until set, and kept
+// while the bus is not I2C (the row reads it, not in use) for when it is:
+// setting the match on a UART bus leaves it as it is (it was moved to Any
+// as a side effect, so an undo of the match could never put it back), and
+// an address typed meanwhile is the one I2C then uses.
+// TRLC-LINKS: REQ-SDS-013, REQ-SDS-220
+func TestI2CAddressKeptOffI2C(t *testing.T) {
+	c, eng, _ := newC(t)
+	if r := rowModel(c.snap(), rowByID["bus.i2c_address"]); r.Text != "Any" {
+		t.Fatalf("never set: %q", r.Text)
+	}
+	c.SheetSet("bus.protocol", nil, "I2C")
+	if res := c.SheetSet("bus.i2c_address", nil, "0x50"); !res.OK {
+		t.Fatalf("address: %+v", res)
+	}
+	c.SheetSet("bus.protocol", nil, "UART")
+	res := c.SheetSet("bus.match", nil, "55 AA")
+	if !res.OK || slices.Contains(res.Changed, "bus.i2c_address") || fmt.Sprint(res.Changed) != "[bus.match]" {
+		t.Fatalf("the match on UART: %+v", res)
+	}
+	if r := rowModel(c.snap(), rowByID["bus.i2c_address"]); r.Text != "0x50" || r.Available {
+		t.Fatalf("the address on UART: %+v", r)
+	}
+	if res := c.SheetSet("bus.i2c_address", nil, "0x42"); !res.OK || res.Text != "0x42" {
+		t.Fatalf("an address typed on UART: %+v", res)
+	}
+	c.SheetSet("bus.protocol", nil, "I2C")
+	if p := eng.SerialConfig(); p.Addr != 0x42 || rowText(c, "bus.i2c_address") != "0x42" {
+		t.Fatalf("back on I2C: %+v", p)
+	}
+}
+
 // stagedEng applies a timebase at its next capture, as the real engine does:
 // its Snapshot keeps the old one until then.
 type stagedEng struct{ *fakeEng }

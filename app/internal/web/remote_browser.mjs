@@ -236,6 +236,15 @@ run(async (t) => {
     await P.tap('[data-row="bus.protocol"]');
     await P.tap('.sheet [data-value="2"]');
     await P.until(async () => (await rows())["bus.protocol"].Text === "UART", "Protocol UART from its options sheet");
+    // the I2C address is written in hex: a hex keypad; on a UART bus the scope keeps it for when the bus is I2C
+    await P.tap('[data-row="bus.i2c_address"] [data-open]');
+    await P.until(() => P.visible('.sheet [data-keypad="bus.i2c_address"] [data-key="0x"]'), "the I2C address opens a hex keypad (A-F, 0x)");
+    P.ok(await P.visible('.sheet [data-key="F"]') && !(await P.visible('.sheet [data-key="k"]')), "with A-F and no k key");
+    for (const k of ["5", "0", "0x"]) await P.tap(`.sheet [data-key="${k}"]`);
+    P.ok(await P.text("#kp-msg") === "= 0x50", "5 0 0x reads = 0x50: " + await P.text("#kp-msg"));
+    await P.shot("sheet-hex");
+    await P.tap('.sheet [data-key="enter"]');
+    await P.until(async () => (await rows())["bus.i2c_address"].Text === "0x50", "Set: the scope keeps 0x50 for I2C");
     await P.tap('[data-row="bus.match"]');
     await P.until(() => P.visible('.sheet [data-keypad="bus.match"]'), "Match bytes opens the hex keypad");
     for (const k of ["5", "5", "A", "A"]) await P.tap(`.sheet [data-key="${k}"]`);
@@ -243,6 +252,7 @@ run(async (t) => {
     await P.shot("sheet-bytes");
     await P.tap('.sheet [data-act="arm"]');
     await P.until(async () => { const e = await ctrl("/engine"); return e.serialMode !== 0 && JSON.stringify(e.serialBytes) === "[85,170]"; }, "Trigger on it: the scope triggers on 55 AA");
+    P.ok((await rows())["bus.i2c_address"].Text === "0x50", "the match on UART leaves the kept I2C address as it is");
     await P.tap('[data-row="bus.match"]');
     await P.tap('.sheet [data-mode="text"]');
     await page.locator("#match-text").fill("Hi");
@@ -348,6 +358,7 @@ run(async (t) => {
     await P.hold(".sheet [data-hundo-all]", 1150);
     await P.until(async () => { const r = await rows(); return r["bus.protocol"].Text === "Off" && r["bus.match"].Text === "any byte" && r["time.tdiv"].Text === "2us"; },
       "the hold puts the bus, the match and the scope's timebase back to before", 8000);
+    await P.until(async () => /^Back to before: BUS · Protocol/.test(await P.toast()), "and says so, with no row it could not put back: " + await P.toast());
     P.ok((await rows())["ch2.coupling"].Text === "AC", "changes older than the entry stay");
 
     // Keys: Default Setup refuses a tap and runs on a 1 s hold (the LCD's sheet stays)

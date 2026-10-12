@@ -232,14 +232,36 @@
     return best;
   }
 
-  // The unit keys a number row's keypad gets.
+  // The unit keys a number row's keypad gets (none for a row the scope
+  // writes in hex: its keypad has A-F and 0x instead).
   const UNIT_KEYS = { V: ["mV", "V"], s: ["ns", "us", "ms", "s"], "%": ["%"], "b/s": ["k", "M"] };
 
   // TRLC-LINKS: REQ-SDS-220
   function unitKeys(row) {
+    if (isHex(row)) return [];
     const u = UNIT_KEYS[row.Unit || ""];
     if (u) return u;
     return !row.Unit && row.Max >= 1000 ? ["k"] : [];
+  }
+
+  // The rows the scope writes in hex ("0x50").
+  const HEX = { "bus.i2c_address": 1, "bus.stream_value": 1 };
+
+  // TRLC-LINKS: REQ-SDS-220
+  function isHex(row) { return !!row && !!HEX[row.ID]; }
+
+  // hexNumKey edits a hex keypad's number ("0x50"): a letter A-F makes it
+  // hex (0x goes in front), 0x puts the prefix in or takes it out, Del takes
+  // the last digit (and 0x with the last one).
+  // TRLC-LINKS: REQ-SDS-220
+  function hexNumKey(buf, k) {
+    const hex = buf.slice(0, 2) === "0x";
+    if (k === "clear") return "";
+    if (k === "back") return buf === "0x" ? "" : buf.slice(0, -1);
+    if (k === "0x") return hex ? buf.slice(2) : "0x" + buf;
+    if (buf.length >= 10) return buf;
+    if (/^[A-F]$/.test(k)) return (hex ? buf : "0x" + buf) + k;
+    return /^[0-9]$/.test(k) ? buf + k : buf;
   }
 
   // numKey edits a number keypad's text: digits, the sign, Del (a whole unit
@@ -628,7 +650,7 @@
 
   const RC = {
     g3, si, sgnSI, hex2, fmtValue, pretty, compact, near, neighbour, turn, CW_DOWN, parseNumber, numberHint, nearestLadder,
-    unitKeys, numKey, parseMatch, quoteText, hexKey, MATCH_MAX, index, isSwitch, isSlot, SYN, NAME, label, words, search,
+    unitKeys, numKey, isHex, hexNumKey, parseMatch, quoteText, hexKey, MATCH_MAX, index, isSwitch, isSlot, SYN, NAME, label, words, search,
     matchPlace, tracked, snapshot, diff, History, ago, tools, turnWords, MERGE_MS,
   };
   if (typeof module !== "undefined" && module.exports) module.exports = RC;

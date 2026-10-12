@@ -351,6 +351,15 @@ func New(eng Engine, fe Analog, keyFD int, tdivs []float64, startTdiv float64, l
 			break
 		}
 	}
+	// a serial trigger never set up takes any I2C address and direction: its
+	// zero value reads address 0x00, write, and the address is kept across
+	// buses (serialBus); a restored setup sets its own after this
+	if se := c.serialTrig(); se != nil {
+		if p := se.SerialConfig(); p.Proto == 0 && len(p.Bytes) == 0 && len(p.Pattern) == 0 && p.Addr == 0 && p.RW == 0 {
+			p.Addr, p.RW = -1, 2
+			se.SetSerialParams(p)
+		}
+	}
 	return c
 }
 
