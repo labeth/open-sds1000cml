@@ -641,7 +641,7 @@ Per-channel control byte:
 | Bit | Meaning | Notes |
 |---|---|---|
 | 0 | Bandwidth limit | **1 = full BW**, 0 = 20 MHz limit |
-| 1 | GND coupling select | inert on this clone (relay unpopulated) |
+| 1 | GND coupling select | the relay works when the absolute word is emitted (spec 06 §6); the firmware keeps coupling a display transform |
 | 2 | **Coarse V/div range** | **1 = attenuated/high range** (500 mV/div…5 V/div), 0 = sensitive/low range |
 | 3 | DC coupling select | selects a DC offset-cal entry, not a coupling cap |
 | 5 | Constant enable | always 1 |
