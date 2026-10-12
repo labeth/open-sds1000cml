@@ -179,6 +179,9 @@ test("parseNumber reads SI text in the row's unit, with the device's errors", ()
   assert.equal(RC.parseNumber("2,5V", "V").value, 2.5, "a comma is the decimal point on a European keyboard");
   assert.equal(RC.parseNumber("115,2k", "b/s").value, 115200);
   assert.equal(RC.parseNumber("1,2,3", "").error, 'unit ",2,3" does not fit (want a plain number)', "two commas are not a decimal point");
+  assert.equal(RC.parseNumber("57,600", "Bd").error, 'the comma in "57,600" reads two ways: type it without the comma, or with a point',
+    "a comma before three digits could be a thousands separator: refused, not guessed");
+  assert.equal(RC.parseNumber("0,125", "V").value, 0.125, "after 0 it is a decimal point");
 });
 test("a negative value typed reads as itself in the refusal (not Off, not 0x-1)", () => {
   const m = RC.index(sheets());

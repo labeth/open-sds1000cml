@@ -164,13 +164,22 @@
 
   // parseNumber reads "1.25V", "500u", "-20 mV", "2k", "50%", "0x55" in the
   // row's unit, with the device's error texts. A comma is the decimal point
-  // when the text has no point and one comma ("2,5V": a European keyboard).
+  // when the text has no point and one comma ("2,5V": a European keyboard);
+  // before exactly three digits after a whole number ("57,600") it could be
+  // a thousands separator too, so that is refused rather than guessed.
   // TRLC-LINKS: REQ-SDS-220
   function parseNumber(text, unit) {
     const s0 = String(text == null ? "" : text).trim();
     const want = unit ? unit : "a plain number";
     if (!s0) return { ok: false, error: "empty value" };
-    const s = s0.indexOf(".") < 0 && s0.split(",").length === 2 ? s0.replace(",", ".") : s0;
+    let s = s0;
+    if (s0.indexOf(".") < 0 && s0.split(",").length === 2) {
+      const i = s0.indexOf(","), whole = s0.slice(0, i).replace(/^[+-]+/, "");
+      if (/^\d+$/.test(whole) && /[1-9]/.test(whole) && /^\d{3}(\D|$)/.test(s0.slice(i + 1))) {
+        return { ok: false, error: 'the comma in "' + String(text) + '" reads two ways: type it without the comma, or with a point' };
+      }
+      s = s0.slice(0, i) + "." + s0.slice(i + 1);
+    }
     const l = s.toLowerCase();
     if (l.startsWith("0x") || l.startsWith("-0x")) {
       const neg = l[0] === "-", h = l.replace(/^-?0x/, "");

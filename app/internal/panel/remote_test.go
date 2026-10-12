@@ -365,7 +365,8 @@ func TestI2CAddressKeptOffI2C(t *testing.T) {
 }
 
 // Typed values: a comma is the decimal point when there is no point (a
-// European phone keyboard), and a negative value refused names itself
+// European phone keyboard), but not before exactly three digits ("57,600",
+// maybe a thousands separator); and a negative value refused names itself
 // ("-5s", "-0x01"), where it read "Off" and "0x-1".
 // TRLC-LINKS: REQ-SDS-212, REQ-SDS-220
 func TestTypedCommaAndNegativeTexts(t *testing.T) {
@@ -376,6 +377,13 @@ func TestTypedCommaAndNegativeTexts(t *testing.T) {
 	c.SheetSet("bus.protocol", nil, "UART")
 	if res := c.SheetSet("bus.baud", nil, "115,2k"); !res.OK || c.decBaud != 115200 {
 		t.Fatalf("115,2k: %+v (baud %d)", res, c.decBaud)
+	}
+	// a comma before three digits could be a thousands separator: refused, not 58 baud
+	if res := c.SheetSet("bus.baud", nil, "57,600"); res.OK || c.decBaud != 115200 {
+		t.Fatalf("57,600: %+v (baud %d)", res, c.decBaud)
+	}
+	if res := c.SheetSet("trig.level", nil, "1,250V"); res.OK || !strings.Contains(res.Error, `the comma in "1,250V" reads two ways`) {
+		t.Fatalf("1,250V: %+v", res)
 	}
 	for _, x := range [][3]string{{"trig.holdoff", "-5", "holdoff -5s is outside Off .. 10s"},
 		{"bus.stream_value", "-1", "stream value -0x01 is outside 0x00 .. 0xFFFF"},
