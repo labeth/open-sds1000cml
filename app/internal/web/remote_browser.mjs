@@ -276,9 +276,18 @@ run(async (t) => {
     await P.tap('[data-ws="scope"]');
     await P.until(async () => (await ctrl("/status")).Workspace === "SCOPE", "back to SCOPE");
     await P.shot("home-scope-menu");
-    // the tools wait while the LCD's menu has the knobs
+    // the tools wait while the LCD's menu has the knobs; the scope itself refuses a turn or push sent before the phone saw the menu
     await P.tap('[data-tabbar="keys"]');
     P.ok(await page.locator('[data-knob="adjust"][data-q="cw"]').isDisabled(), "Adjust waits while the scope's menu has it");
+    const lcdRow = (await ctrl("/status")).Sheet.Row.ID;
+    for (const send of ["adjust", "adjustpush", "horizpospush"]) {
+      const r = await page.evaluate((k) => (k === "adjust" ? RN.knob(k, 1) : RN.press(k, {}, true)).then((x) => ({ ok: x.ok, error: x.error })), send);
+      P.ok(!r.ok && /^A menu is open on the scope/.test(r.error || ""), send + " with a menu open on the LCD: refused by the scope (" + r.error + ")");
+    }
+    const lcdNow = await ctrl("/status");
+    P.ok(lcdNow.Mode === "sheet" && lcdNow.Sheet.Row.ID === lcdRow && !lcdNow.Sheet.Edit, "and the LCD's menu did not move");
+    const stale = await page.evaluate(() => RN.api.again("bus"));
+    P.ok(!stale.ok && stale.error === "BUS again: the scope shows SCOPE now", "an again meant for another workspace is refused: " + stale.error);
     await ctrl("/button?name=trigmenu");
     P.ok(await lcdClosed(), "the person at the scope closed the sheet");
 
@@ -376,6 +385,7 @@ run(async (t) => {
     await P.tap('[data-tabbar="keys"]');
     await P.tap('[data-k="triglvlpush"]');
     await P.until(async () => zero((await rows())["trig.level"].Text), "Level push puts the level to 0 V");
+    await P.until(async () => (await P.toast()) === "Trigger level 0 V", "and the phone shows the scope's own notice");
     await P.tap('[data-k="ch1pospush"]');
     await P.until(async () => zero((await rows())["ch1.offset"].Text), "CH1 Position push puts the offset to 0 V");
     const zoom0 = (await rows())["time.zoom"].Value;
@@ -388,13 +398,22 @@ run(async (t) => {
     await P.until(async () => (await rows())["time.trig_pos"].Text !== pos0, "the Position knob moves the trigger position (" + pos0 + ")");
     await P.tap('[data-knob="horizpos"][data-push]');
     await P.until(async () => (await rows())["time.trig_pos"].Text === pos0, "its push centres it again");
-    // each key's own answer (the toast cleared first): the phone's confirmation, or the scope's notice
-    for (const [k, said] of [["force", /^Forced a trigger$/], ["set50", /^Level set to 50 %$/], ["print", /^(Print: the scope saves a screenshot|PRINT: .+)$/],
-      ["ch1vdivpush", /^CH1 Variable: no fine V\/div/]]) {
-      await page.evaluate(() => { const e = document.querySelector(".toast"); if (e) { e.hidden = true; e.textContent = ""; } });
+    // each key is confirmed by what the scope did, never by a text of the phone's own (the toast cleared first)
+    const clearToast = () => page.evaluate(() => { const e = document.querySelector(".toast"); if (e) { e.hidden = true; e.textContent = ""; } });
+    const lvl = (await rows())["trig.level"].Value;
+    await clearToast();
+    await P.tap('[data-k="set50"]');
+    await P.until(async () => (await P.toast()) === "Set to 50 %: no signal on C1", "Set to 50 % without a signal: the scope's notice");
+    P.ok((await rows())["trig.level"].Value === lvl, "and the level stays where it was");
+    for (const [k, said] of [["print", /^PRINT: unavailable$/], ["ch1vdivpush", /^CH1 Variable: no fine V\/div/]]) {
+      await clearToast();
       await P.tap(`[data-k="${k}"]`);
-      await P.until(async () => said.test(await P.toast()), "the " + k + " key answers");
+      await P.until(async () => said.test(await P.toast()), "the " + k + " key: the scope's notice");
     }
+    await clearToast();
+    await P.tap('[data-k="force"]');
+    await sleep(600);
+    P.ok((await P.toast()) === "", "Force changes nothing the phone could read back: no toast of its own (" + await P.toast() + ")");
     await P.tap('[data-k="menu:trigmenu"]');
     await P.until(() => P.visible('.mbody [data-row="trig.holdoff"]'), "Trig Menu opens TRIG here");
     P.ok(await lcdClosed(), "the keys and knobs left no menu open on the LCD");

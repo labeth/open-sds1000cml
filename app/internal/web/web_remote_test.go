@@ -150,8 +150,9 @@ func TestRemoteNoExternalResources(t *testing.T) {
 // it records what the server asked for.
 type remoteFixture struct {
 	panelFixture
-	ws    string
-	again int
+	ws      string
+	again   int
+	againIn string
 }
 
 // TRLC-LINKS: REQ-SDS-220
@@ -170,8 +171,9 @@ func (p *remoteFixture) RemoteWorkspace(name string) panel.SetResult {
 }
 
 // TRLC-LINKS: REQ-SDS-220
-func (p *remoteFixture) RemoteAgain() panel.SetResult {
+func (p *remoteFixture) RemoteAgain(want string) panel.SetResult {
 	p.again++
+	p.againIn = want
 	p.status.View, p.status.AgainNext = "Eye diagram", "Packets"
 	return panel.SetResult{OK: true, Row: "again", Value: "Eye diagram", Text: "Eye diagram"}
 }
@@ -188,8 +190,13 @@ func TestPanelWorkspaceEndpoint(t *testing.T) {
 		t.Fatalf("workspace: %v (asked %q)", out, p.ws)
 	}
 	_, out = httpCall(t, s, "POST", "/api/panel", map[string]any{"again": true})
-	if out["ok"] != true || p.again != 1 || out["view"] != "Eye diagram" || out["next"] != "Packets" {
+	if out["ok"] != true || p.again != 1 || p.againIn != "" || out["view"] != "Eye diagram" || out["next"] != "Packets" {
 		t.Fatalf("again: %v", out)
+	}
+	// again with the workspace the phone meant: the panel checks it is the active one; nothing switches
+	p.ws = ""
+	if _, out = httpCall(t, s, "POST", "/api/panel", map[string]any{"again": true, "workspace": "bus"}); out["ok"] != true || p.again != 2 || p.againIn != "bus" || p.ws != "" {
+		t.Fatalf("again in BUS: %v (asked %q, switched %q)", out, p.againIn, p.ws)
 	}
 	// the notice the switch raised and the rows it changed, and not a notice the LCD was still showing
 	_, out = httpCall(t, s, "POST", "/api/panel", map[string]any{"workspace": "measure"})

@@ -90,7 +90,7 @@ func TestRemoteAgainLeavesTheLCDSheet(t *testing.T) {
 		if res := c.RemoteWorkspace(s.ws); !res.OK {
 			t.Fatalf("%s: %+v", s.ws, res)
 		}
-		res := c.RemoteAgain()
+		res := c.RemoteAgain("")
 		st := c.PanelStatus()
 		if !res.OK || res.Text != s.view || st.View != s.view || st.AgainNext != s.next {
 			t.Fatalf("%s again: %+v, view %s, next %s", s.ws, res, st.View, st.AgainNext)
@@ -107,19 +107,19 @@ func TestRemoteAgainLeavesTheLCDSheet(t *testing.T) {
 	if st := c.PanelStatus(); st.AgainNext != "stack master" {
 		t.Fatalf("COMPARE next: %q", st.AgainNext)
 	}
-	if res := c.RemoteAgain(); !res.OK || res.Text != "Stacking" || eng.Snapshot().AcqMode != 1 {
+	if res := c.RemoteAgain(""); !res.OK || res.Text != "Stacking" || eng.Snapshot().AcqMode != 1 {
 		t.Fatalf("COMPARE again: %+v (acq %d)", res, eng.Snapshot().AcqMode)
 	}
 	if st := c.PanelStatus(); st.AgainNext != "cancel stack" || st.Mode != "editor" {
 		t.Fatalf("stacking: next %q mode %s", st.AgainNext, st.Mode)
 	}
-	if res := c.RemoteAgain(); !res.OK || res.Text != "Compare" || eng.Snapshot().AcqMode != 0 {
+	if res := c.RemoteAgain(""); !res.OK || res.Text != "Compare" || eng.Snapshot().AcqMode != 0 {
 		t.Fatalf("COMPARE again (cancel): %+v (acq %d)", res, eng.Snapshot().AcqMode)
 	}
 	// a master the scope refuses says why
 	press(t, c, "menu") // the editor closes on the LCD
 	c.SheetSet("ch1.on", nil, "Off")
-	if res := c.RemoteAgain(); res.OK || !strings.Contains(res.Error, "No master: the trigger source CH1 is off") {
+	if res := c.RemoteAgain(""); res.OK || !strings.Contains(res.Error, "No master: the trigger source CH1 is off") {
 		t.Fatalf("a refused master: %+v", res)
 	}
 }
@@ -160,7 +160,7 @@ func TestRemoteWaitsForAutoset(t *testing.T) {
 		}
 	}
 	busy(true)
-	refused("again", c.RemoteAgain())
+	refused("again", c.RemoteAgain(""))
 	if eng.Snapshot().AcqMode != 0 {
 		t.Fatalf("again started averaging under the sweep (acq %d)", eng.Snapshot().AcqMode)
 	}
@@ -205,7 +205,7 @@ func TestRemoteWorkspaceOnThePanelLoop(t *testing.T) {
 	if res := c.RemoteWorkspace("measure"); !res.OK {
 		t.Fatalf("on the loop: %+v", res)
 	}
-	if res := c.RemoteAgain(); !res.OK || res.Text != "All values" {
+	if res := c.RemoteAgain(""); !res.OK || res.Text != "All values" {
 		t.Fatalf("again on the loop: %+v", res)
 	}
 	if st := c.PanelStatus(); st.Workspace != "MEASURE" || st.Mode != "sheet" || st.Sheet.Tab != "trig" {

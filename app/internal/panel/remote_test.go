@@ -199,7 +199,7 @@ func TestCompareStabilityLeavesTheSeqAlone(t *testing.T) {
 	if st := c.PanelStatus(); st.Seq != st0.Seq || st.AgainNext != "stack master" || st.Again != "F5 again: stack master" {
 		t.Fatalf("the verdict moved the snapshot: Seq %d -> %d, again %q next %q", st0.Seq, st.Seq, st.Again, st.AgainNext)
 	}
-	if res := c.RemoteAgain(); res.OK || !strings.Contains(res.Error, "No master") {
+	if res := c.RemoteAgain(""); res.OK || !strings.Contains(res.Error, "No master") {
 		t.Fatalf("again on noise: %+v", res)
 	}
 }
@@ -228,7 +228,7 @@ func TestRemoteCallsSayWhatTheyChanged(t *testing.T) {
 	if !res.OK || !slices.Contains(res.Changed, "meas.pkpk") || !slices.Contains(res.Changed, "meas.freq") || !strings.Contains(res.Notice, "Vpp") {
 		t.Fatalf("MEASURE: %+v", res)
 	}
-	if res := c.RemoteAgain(); !res.OK || len(res.Changed) != 0 || res.Notice != "" {
+	if res := c.RemoteAgain(""); !res.OK || len(res.Changed) != 0 || res.Notice != "" {
 		t.Fatalf("again: %+v", res)
 	}
 	// the engine takes a new timebase at its next capture, after the call
@@ -243,6 +243,67 @@ func TestRemoteCallsSayWhatTheyChanged(t *testing.T) {
 	if res := c.SheetAction("sys.default", ""); !res.OK || !slices.Contains(res.Changed, "acq.mode") ||
 		slices.Contains(res.Changed, "ch2.coupling") || slices.Contains(res.Changed, "bus.match") {
 		t.Fatalf("Default setup: %+v", res)
+	}
+}
+
+// The remote's keys and knobs are answered once they have run, with what
+// they changed and the notice they raised: Set to 50 % without a signal
+// says so and leaves the level. While Autoset sweeps they wait as the
+// panel's own keys do (AUTO cancels it); the Adjust and Position turns and
+// pushes, sent with nomenu, wait while a menu is open on the LCD, where
+// they would move it, and leave it as it is. Again names the workspace it
+// was meant for and is refused in another one.
+// TRLC-LINKS: REQ-SDS-162, REQ-SDS-220
+func TestRemoteKeysAnswerWhatTheyDid(t *testing.T) {
+	c, eng, _ := newC(t)
+	withClock(c)
+	c.SheetSet("trig.level", nil, "1.2V")
+	code := eng.Snapshot().TrigCode
+	if res := c.RemoteKey("set50", false); !res.OK || len(res.Changed) != 0 || res.Notice != "Set to 50 %: no signal on C1" || eng.Snapshot().TrigCode != code {
+		t.Fatalf("50 %% without a signal: %+v (code %d, was %d)", res, eng.Snapshot().TrigCode, code)
+	}
+	if res := c.RemoteKey("triglvlpush", false); !res.OK || fmt.Sprint(res.Changed) != "[trig.level]" || res.Notice != "Trigger level 0 V" {
+		t.Fatalf("level push: %+v", res)
+	}
+	if res := c.RemoteKey("nope", false); res.OK || res.Error != `no key "nope"` {
+		t.Fatalf("an unknown key: %+v", res)
+	}
+	press(t, c, "trigmenu")
+	goRow(t, c, "trig.mode")
+	before := c.PanelStatus().Sheet
+	for i, res := range []SetResult{c.RemoteKnob("adjust", 1, 1, true), c.RemoteKnob("horizpos", -1, 1, true), c.RemoteKey("adjustpush", true),
+		c.RemoteKey("horizpospush", true)} {
+		if res.OK || res.Error != menuRefusal || len(res.Changed) != 0 {
+			t.Fatalf("%d with a menu open on the LCD: %+v", i, res)
+		}
+	}
+	if st := c.PanelStatus().Sheet; !st.Open || st.Row.ID != before.Row.ID || st.Edit != before.Edit || eng.Snapshot().Norm {
+		t.Fatalf("the LCD's sheet moved: %+v", st)
+	}
+	if res := c.RemoteKey("runstop", false); !res.OK || eng.Snapshot().Running {
+		t.Fatalf("Run/Stop with the menu open: %+v", res)
+	}
+	press(t, c, "trigmenu")
+	c.mu.Lock()
+	c.autosetBusy = true // a sweep running
+	c.mu.Unlock()
+	for i, res := range []SetResult{c.RemoteKey("runstop", false), c.RemoteKnob("adjust", 1, 1, false)} {
+		if res.OK || res.Error != autosetRefusal {
+			t.Fatalf("%d during Autoset: %+v", i, res)
+		}
+	}
+	if res := c.RemoteKey("auto", false); !res.OK {
+		t.Fatalf("AUTO during Autoset: %+v", res)
+	}
+	c.mu.Lock()
+	c.autosetBusy = false
+	c.mu.Unlock()
+	c.RemoteWorkspace("spectrum")
+	if res := c.RemoteAgain("bus"); res.OK || res.Error != "BUS again: the scope shows SPECTRUM now" || c.PanelStatus().View != "FFT" {
+		t.Fatalf("BUS again in SPECTRUM: %+v view %s", res, c.PanelStatus().View)
+	}
+	if res := c.RemoteAgain("spec"); !res.OK || res.Text != "Spectrogram" {
+		t.Fatalf("SPECTRUM again: %+v", res)
 	}
 }
 

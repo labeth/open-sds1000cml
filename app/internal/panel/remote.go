@@ -653,17 +653,23 @@ func (c *Controller) SheetAction(id, action string) SetResult {
 // is (its key again is RemoteAgain). The LCD confirms with a REMOTE line.
 // TRLC-LINKS: REQ-SDS-211, REQ-SDS-220
 func (c *Controller) RemoteWorkspace(name string) SetResult {
-	ws := -1
-	n := strings.TrimSpace(name)
-	for i := 0; i < wsview.Count; i++ {
-		if strings.EqualFold(n, wsview.IDs[i]) || strings.EqualFold(n, wsview.Names[i]) || strings.EqualFold(n, wsview.Tags[i]) {
-			ws = i
-		}
-	}
+	ws := wsIndex(name)
 	if ws < 0 {
 		return SetResult{Row: "workspace", Error: fmt.Sprintf("no workspace %q: SCOPE, BUS, SPECTRUM, MEASURE or COMPARE", name)}
 	}
 	return c.remoteCall("workspace", func() SetResult { return c.remoteWorkspace(wsview.WS(ws)) })
+}
+
+// wsIndex finds a workspace by its id, name or tag, any case (-1: none).
+// TRLC-LINKS: REQ-SDS-211, REQ-SDS-220
+func wsIndex(name string) int {
+	n := strings.TrimSpace(name)
+	for i := 0; i < wsview.Count; i++ {
+		if strings.EqualFold(n, wsview.IDs[i]) || strings.EqualFold(n, wsview.Names[i]) || strings.EqualFold(n, wsview.Tags[i]) {
+			return i
+		}
+	}
+	return -1
 }
 
 // autosetRefusal: while Autoset sweeps, a remote's changes wait, as the
@@ -693,10 +699,93 @@ func (c *Controller) remoteWorkspace(ws wsview.WS) SetResult {
 
 // RemoteAgain is the active workspace's key again for the remote: its next
 // view (COMPARE: stack a master, or cancel the one stacking), whatever the
-// LCD shows; an open sheet stays as it is. A refused master says why.
+// LCD shows; an open sheet stays as it is. A refused master says why. want
+// names the workspace the remote meant ("" the active one): while another
+// is active the call is refused, so a remote that has not yet seen a
+// switch on the scope does not run that workspace's again.
 // TRLC-LINKS: REQ-SDS-211, REQ-SDS-220
-func (c *Controller) RemoteAgain() SetResult {
-	return c.remoteCall("again", c.remoteAgain)
+func (c *Controller) RemoteAgain(want string) SetResult {
+	ws := -1
+	if strings.TrimSpace(want) != "" {
+		if ws = wsIndex(want); ws < 0 {
+			return SetResult{Row: "again", Error: fmt.Sprintf("no workspace %q: SCOPE, BUS, SPECTRUM, MEASURE or COMPARE", want)}
+		}
+	}
+	return c.remoteCall("again", func() SetResult {
+		c.mu.Lock()
+		cur := c.ui.ws
+		c.mu.Unlock()
+		if ws >= 0 && wsview.WS(ws) != cur {
+			return SetResult{Row: "again", Error: wsview.Names[ws] + " again: the scope shows " + wsview.Names[cur] + " now"}
+		}
+		return c.remoteAgain()
+	})
+}
+
+// menuRefusal: with a menu open on the LCD, Adjust, Position and their
+// pushes move that menu, so a remote's turns and pushes of them wait.
+const menuRefusal = "A menu is open on the scope: Adjust and Position move it there, so they wait here until it closes"
+
+// RemoteKey presses a key of the panel for a remote and answers once it has
+// run, with the rows it changed and the notice it raised (remoteCall). It
+// is refused while Autoset sweeps (but AUTO, which cancels the sweep), as
+// the panel's own keys are ignored then, and, with nomenu, while a menu is
+// open on the LCD (the Adjust and Position pushes act on it there). Like a
+// remote's actions it leaves the LCD's menus as they are.
+// TRLC-LINKS: REQ-SDS-162, REQ-SDS-220
+func (c *Controller) RemoteKey(name string, nomenu bool) SetResult {
+	code, ok := nameCode(name)
+	if !ok {
+		return SetResult{Row: name, Error: fmt.Sprintf("no key %q", name)}
+	}
+	return c.remoteCall(name, func() SetResult {
+		if why := c.remoteWaits(code != btnAuto, nomenu); why != "" {
+			return SetResult{Row: name, Error: why}
+		}
+		c.mu.Lock()
+		c.apiDepth++
+		c.mu.Unlock()
+		c.button(code)
+		c.mu.Lock()
+		c.apiDepth--
+		c.mu.Unlock()
+		return SetResult{OK: true, Row: name}
+	})
+}
+
+// RemoteKnob turns a knob of the panel (dir +1 clockwise, steps detents)
+// for a remote, refused and answered as RemoteKey.
+// TRLC-LINKS: REQ-SDS-162, REQ-SDS-220
+func (c *Controller) RemoteKnob(name string, dir, steps int, nomenu bool) SetResult {
+	if !knobNames[name] {
+		return SetResult{Row: name, Error: fmt.Sprintf("no knob %q", name)}
+	}
+	dir = map[bool]int{true: 1, false: -1}[dir >= 0]
+	return c.remoteCall(name, func() SetResult {
+		if why := c.remoteWaits(true, nomenu); why != "" {
+			return SetResult{Row: name, Error: why}
+		}
+		c.resync()
+		c.dispatch(name, dir, max(steps, 1))
+		return SetResult{OK: true, Row: name}
+	})
+}
+
+// remoteWaits is why a remote's key or knob does not run now ("" runs it):
+// Autoset sweeping (when the key waits for it), or a menu open on the LCD
+// (with nomenu).
+// TRLC-LINKS: REQ-SDS-162, REQ-SDS-220
+func (c *Controller) remoteWaits(autoset, nomenu bool) string {
+	if autoset && c.AutosetBusy() {
+		return autosetRefusal
+	}
+	c.mu.Lock()
+	menu := c.ui.open || c.ui.wpick
+	c.mu.Unlock()
+	if nomenu && menu {
+		return menuRefusal
+	}
+	return ""
 }
 
 // remoteAgain is RemoteAgain on the panel goroutine.

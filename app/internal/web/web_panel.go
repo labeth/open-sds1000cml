@@ -31,11 +31,19 @@ type panelRemote interface {
 // test double without it answers "no panel").
 type panelWorkspaces interface {
 	RemoteWorkspace(name string) panel.SetResult
-	RemoteAgain() panel.SetResult
+	RemoteAgain(want string) panel.SetResult
+}
+
+// panelKeys is the remote's keys and knobs: answered once they have run,
+// with what they did (type-asserted; without it a key is only queued).
+type panelKeys interface {
+	RemoteKey(name string, nomenu bool) panel.SetResult
+	RemoteKnob(name string, dir, steps int, nomenu bool) panel.SetResult
 }
 
 // hPanelWorkspace switches the workspace ({"workspace":"bus"}) or runs the
-// active one's "again" ({"again":true}) for the phone remote. Unlike F1..F5
+// active one's "again" ({"again":true}; with "workspace" it is refused
+// unless that one is active) for the phone remote. Unlike F1..F5
 // it works while the LCD has a sheet open and leaves that sheet as it is
 // (REQ-SDS-220). The answer carries the workspace, its view, what again
 // shows next, the notice the switch itself raised on the LCD (not one
@@ -48,8 +56,8 @@ func (s *Server) hPanelWorkspace(w http.ResponseWriter, name string, again bool)
 		return
 	}
 	var res panel.SetResult
-	if name == "" && again {
-		res = pw.RemoteAgain()
+	if again {
+		res = pw.RemoteAgain(name)
 	} else {
 		res = pw.RemoteWorkspace(name)
 	}

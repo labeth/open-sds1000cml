@@ -33,18 +33,19 @@
     }
   }
 
-  // panel input answers {ok} when the key or knob was queued on the scope
-  // TRLC-LINKS: REQ-SDS-220
-  const busy = (r) => (r && r.ok ? r : { ok: false, error: (r && (r.error || r.err)) || "the scope is busy: try again" });
+  // A key or knob is the remote's ("remote": answered once it has run, with
+  // what it did); "nomenu" makes the scope refuse it while a menu is open on
+  // its LCD (Adjust, Position and their pushes would move that menu). Again
+  // names the workspace it is meant for.
   const api = {
     wait: (seq, ms) => http("GET", "/api/panel/wait?seq=" + seq + "&timeout_ms=" + ms, null, ms + 6000),
     sheets: () => http("GET", "/api/sheets", null, 10000),
     set: (row, input) => http("POST", "/api/sheets/set", Object.assign({ row }, input)),
     action: (row, action) => http("POST", "/api/sheets/action", { row, action: action || "" }),
-    press: async (button) => busy(await http("POST", "/api/panel", { button })),
-    knob: async (knob, dir, steps) => busy(await http("POST", "/api/panel", { knob, dir, steps: steps || 1 })),
+    press: (button, nomenu) => http("POST", "/api/panel", { button, remote: true, nomenu: !!nomenu }),
+    knob: (knob, dir, steps, nomenu) => http("POST", "/api/panel", { knob, dir, steps: steps || 1, remote: true, nomenu: !!nomenu }),
     workspace: (ws) => http("POST", "/api/panel", { workspace: ws }),
-    again: () => http("POST", "/api/panel", { again: true }),
+    again: (ws) => http("POST", "/api/panel", { again: true, workspace: ws || "" }),
   };
 
   // ---- state ----------------------------------------------------------------------------
@@ -348,6 +349,7 @@
       }
       res = res || { ok: false, error: "no answer" };
       took(c, res);
+      if (res.notice) S.notice = res.notice;   // shown with the answer: the snapshot need not bring it again
       c.doneAt = now();
       S.lastCall = c.doneAt;
       if (res.ok && meta.row && !res.skipped) {
@@ -429,13 +431,15 @@
     return call({ row: id, history: { primary: id } }, () => api.action(id, label));
   }
 
-  // press is a key of the panel; knob a detent of a knob.
+  // press is a key of the panel (nomenu: a push that waits while a menu is
+  // open on the scope); knob a detent of the Adjust or Position knob, which
+  // waits so too.
   // TRLC-LINKS: REQ-SDS-220
-  function press(button, history, extra) {
-    return call(Object.assign({ history: history || {} }, extra), () => api.press(button));
+  function press(button, history, nomenu) {
+    return call({ history: history || {} }, () => api.press(button, nomenu));
   }
   // TRLC-LINKS: REQ-SDS-220
-  function knob(name, dir) { return call({ history: {} }, () => api.knob(name, dir, 1)); }
+  function knob(name, dir) { return call({ history: {} }, () => api.knob(name, dir, 1, true)); }
 
   // workspace switches the scope's workspace (an open sheet on the LCD stays
   // as it is); again runs the active workspace's again. BUS may then search
@@ -453,10 +457,12 @@
       return res;
     });
   }
+  // again is the active workspace's again, as this phone shows it: the
+  // scope refuses it if another workspace is active by now.
   // TRLC-LINKS: REQ-SDS-220
   function again() {
     const name = S.panel ? S.panel.Workspace : "";
-    return call({ history: { label: name + " again" } }, () => api.again());
+    return call({ history: { label: name + " again" } }, () => api.again(wsId()));
   }
 
   // keyOf is a row's value as History keys it.

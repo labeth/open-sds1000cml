@@ -279,7 +279,11 @@ func (s *Server) superseded(r *http.Request) bool {
 // highlighted sheet row, the byte picker or the match editor),
 // {"set":{"row":"trig.level","text":"1.25V"}} (a row by id, the LCD left
 // as it is), {"workspace":"bus"} or {"again":true} (the workspace keys for
-// the phone remote, an open LCD sheet left as it is).
+// the phone remote, an open LCD sheet left as it is; {"again":true,
+// "workspace":"bus"} runs BUS's again only while BUS is active). A key or
+// knob with "remote":true is answered once it has run, with the rows it
+// changed and the notice it raised; it waits while Autoset sweeps, and with
+// "nomenu":true while a menu is open on the LCD.
 // TRLC-LINKS: REQ-SDS-162, REQ-SDS-220
 func (s *Server) hPanel(w http.ResponseWriter, r *http.Request) {
 	var req struct {
@@ -287,6 +291,8 @@ func (s *Server) hPanel(w http.ResponseWriter, r *http.Request) {
 		Knob      string `json:"knob"`
 		Dir       int    `json:"dir"`
 		Steps     int    `json:"steps"`
+		Remote    bool   `json:"remote"`
+		NoMenu    bool   `json:"nomenu"`
 		Workspace string `json:"workspace"`
 		Again     bool   `json:"again"`
 		Type      *struct {
@@ -322,6 +328,14 @@ func (s *Server) hPanel(w http.ResponseWriter, r *http.Request) {
 			res = pr.SheetSet(req.Set.Row, nil, req.Set.Text)
 		}
 		writeJSON(w, map[string]any{"ok": res.OK, "applied": res.Text, "row": res.Row, "value": res.Value, "error": res.Error})
+		return
+	}
+	if pk, isKeys := s.panel.(panelKeys); isKeys && req.Remote && (req.Button != "" || req.Knob != "") {
+		if req.Button != "" {
+			writeJSON(w, pk.RemoteKey(req.Button, req.NoMenu))
+		} else {
+			writeJSON(w, pk.RemoteKnob(req.Knob, req.Dir, req.Steps, req.NoMenu))
+		}
 		return
 	}
 	ok := false

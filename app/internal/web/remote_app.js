@@ -129,9 +129,24 @@
     return RN.action(id, act, { label: id === "sys.autoset" ? "Autoset" : id === "sys.default" ? "Default setup" : label, undoable })
       .then((res) => answer(res, res.ok ? okText || "" : ""));
   }
+  // pressKey presses a key of the scope (label titles its History entry;
+  // nomenu: a push that waits while a menu is open there). The scope answers
+  // once the key has run: its notice, else the setting it changed as read
+  // back, confirms it; never a text of the phone's own (Force changes
+  // nothing to read back: the tick says it ran).
   // TRLC-LINKS: REQ-SDS-220
-  function pressKey(button, okText, label) {
-    return RN.press(button, label ? { label } : {}).then((r) => answer(r, okText));
+  function pressKey(button, label, nomenu) {
+    return RN.press(button, label ? { label } : {}, nomenu).then(async (r) => {
+      if (!answer(r).ok) return r;
+      if (r.notice) { toast(r.notice); return r; }
+      const id = button === "runstop" || button === "single" ? null : (r.changed || []).find((x) => row(x));   // the dock shows the run state
+      if (id) {
+        await r.after;
+        const x = row(id);
+        if (x) toast(labelFor(id) + ": " + disp(x.Text), "ok");
+      }
+      return r;
+    });
   }
   // TRLC-LINKS: REQ-SDS-220
   function turnKnob(name, dir) { return RN.knob(name, dir).then((r) => answer(r)); }
@@ -562,7 +577,7 @@
       if (found) openEditor(found); else toast("Adjust tunes the last value set in a sheet; nothing is set yet", "err");
       return;
     }
-    pressKey("adjustpush");
+    pressKey("adjustpush", "", true);
   }
 
   // =================================================================================================
@@ -662,7 +677,7 @@
       pre.appendChild(zb);
       bind(zb, () => { const z = row("time.zoom"); const on = !!z && z.Value !== 1; zb.classList.toggle("on", on); zb.setLabel(on ? "Zoom: " + z.Text : "Zoom: off"); });
     } else if (id === "trig.level") {
-      const fb = button({ label: "Force", onTap: () => pressKey("force", "Forced a trigger") });
+      const fb = button({ label: "Force", onTap: () => pressKey("force") });
       fb.dataset.extra = "force";
       pre.appendChild(fb);
     }
@@ -988,7 +1003,7 @@
       const a = h("button", { type: "button", class: "btn", data: { knob, q: "ccw" } }), b = h("button", { type: "button", class: "btn", data: { knob, q: "cw" } });
       repeat(a, () => turnKnob(knob, -1));
       repeat(b, () => turnKnob(knob, 1));
-      const p = button({ label: "push", sub: "", onTap: () => (knob === "adjust" ? adjustPush() : pressKey(pushBtn)) });
+      const p = button({ label: "push", sub: "", onTap: () => (knob === "adjust" ? adjustPush() : pressKey(pushBtn, "", true)) });
       p.dataset.knob = knob;
       p.dataset.push = "1";
       wrap.append(head, h("div", { class: "k3" }, a, p, b));
@@ -1144,7 +1159,7 @@
   // ---- search: settings (with everyday words), then places --------------------------------------
 
   const PLACES = WS.map((w) => ({ id: "ws:" + w.id, icon: w.icon, label: w.name + " workspace", sub: w.what, words: w.words, run: () => goWs(w.id) })).concat([
-    { id: "key:set50", icon: "zero", label: "Set to 50 %", sub: "Trigger key: the level to the middle of the signal", words: "set 50 % percent level middle half", run: () => pressKey("set50", "Level set to 50 %", "Set to 50 %") },
+    { id: "key:set50", icon: "zero", label: "Set to 50 %", sub: "Trigger key: the level to the middle of the signal", words: "set 50 % percent level middle half", run: () => pressKey("set50", "Set to 50 %") },
     { id: "key:zoom", icon: "expand", label: "Zoom (S/DIV push)", sub: "Zoom on or off around the trigger", words: "zoom push s/div magnify", run: () => pressKey("tdivpush") },
     { id: "key:tools", icon: "dial", label: "Workspace tools", sub: "Adjust and Position jobs and their pushes", words: "adjust position knob tools push statistics zero peak packet cursor row", run: () => openTools() },
     { id: "history", icon: "clock", label: "History", sub: "Every change, newest first, with undo", words: "history undo changes changed log recent back", run: () => goTab("hist") },
@@ -1396,16 +1411,16 @@
     const v1 = key("ch1vdivpush", "CH1 V/DIV", "Variable", () => pressKey("ch1vdivpush"));
     const v2 = key("ch2vdivpush", "CH2 V/DIV", "Variable", () => pressKey("ch2vdivpush"));
     const zoomB = key("tdivpush", "S/DIV push", "Zoom", () => pressKey("tdivpush"));
-    const hposB = key("horizpospush", "Position push", "centre", () => pressKey("horizpospush"));
-    group("Trigger", "k3", [key("force", "Force", "trigger now", () => pressKey("force", "Forced a trigger")),
-      key("set50", "Set to 50 %", "level", () => pressKey("set50", "Level set to 50 %", "Set to 50 %")),
-      key("triglvlpush", "Level push", "Zero: 0 V", () => pressKey("triglvlpush", "Level 0 V", "Level push: 0 V"))]);
-    group("Vertical", "k2", [v1, v2, key("ch1pospush", "CH1 Position", "Zero: 0 V", () => pressKey("ch1pospush", "CH1 offset 0 V", "CH1 Position push: 0 V")),
-      key("ch2pospush", "CH2 Position", "Zero: 0 V", () => pressKey("ch2pospush", "CH2 offset 0 V", "CH2 Position push: 0 V"))]);
+    const hposB = key("horizpospush", "Position push", "centre", () => pressKey("horizpospush", "", true));
+    group("Trigger", "k3", [key("force", "Force", "trigger now", () => pressKey("force")),
+      key("set50", "Set to 50 %", "level", () => pressKey("set50", "Set to 50 %")),
+      key("triglvlpush", "Level push", "Zero: 0 V", () => pressKey("triglvlpush", "Level push: 0 V"))]);
+    group("Vertical", "k2", [v1, v2, key("ch1pospush", "CH1 Position", "Zero: 0 V", () => pressKey("ch1pospush", "CH1 Position push: 0 V")),
+      key("ch2pospush", "CH2 Position", "Zero: 0 V", () => pressKey("ch2pospush", "CH2 Position push: 0 V"))]);
     group("Horizontal", "k2", [zoomB, hposB]);
     const helpB = button({ label: "Help", sub: "this remote", onTap: () => openHelp() });
     helpB.dataset.k = "help";
-    group("System", "k2", [key("print", "Print", "screenshot", () => pressKey("print", "Print: the scope saves a screenshot")), helpB]);
+    group("System", "k2", [key("print", "Print", "screenshot", () => pressKey("print")), helpB]);
     const defB = holdButton({ label: "Default Setup", sub: "factory settings: hold 1 s", ms: 1000, onConfirm: () => actRow("sys.default", "default", "Default setup restored") });
     defB.id = "default-setup";
     wrap.appendChild(h("div", { class: "k1" }, defB));
