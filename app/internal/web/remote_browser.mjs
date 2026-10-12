@@ -26,7 +26,7 @@ run(async (t) => {
   const ctrl = async (p) => (await fetch(CTRL + p)).json();
   // TRLC-LINKS: REQ-SDS-220
   const rows = async () => {
-    const m = await (await fetch(APP + "/api/sheets")).json(), out = {};
+    const m = await (await fetch(APP + "/api/sheets", { headers: { "X-Test-Driver": "1" } })).json(), out = {};
     for (const tab of m.Tabs) for (const r of tab.Rows) out[r.ID] = r;
     return out;
   };
@@ -141,12 +141,17 @@ run(async (t) => {
     // a tile: the quick button names the value it reaches; right is clockwise (toward ns)
     P.ok(await P.text('[data-tile="time.tdiv"] [data-q="cw"] .qv') === "200 us" && await P.text('[data-tile="time.tdiv"] [data-q="ccw"] .qv') === "1 ms",
       "the quick buttons say where they go: 1 ms counter-clockwise, 200 us clockwise");
+    await sleep(300);
+    await ctrl("/hits");
     await P.tap('[data-tile="time.tdiv"] [data-q="cw"]');
     await P.until(async () => (await P.text('[data-tile="time.tdiv"] .tv')) === "200 us", "a tap on it shows 200 us");
     P.ok(await page.evaluate(() => /\bflash\b/.test((document.querySelector(".tick") || {}).className || "")), "the step ticks on screen");
     if (/iPhone/.test(devName)) P.ok(await page.evaluate(() => typeof navigator.vibrate !== "function"), "an iPhone has no vibration: the tick alone, and no error");
     else P.ok(await page.evaluate(() => window.__vib.length > 0 && window.__vib.every((p) => p)), "the step vibrates on Android");
     await P.until(async () => Math.abs((await ctrl("/engine")).tdiv - 200e-6) < 1e-9, "the scope's timebase is 200 us");
+    await sleep(500);
+    const one = (await ctrl("/hits")) || {};
+    P.ok(one["/api/sheets/set"] === 1 && one["/api/sheets"] === 1, "one tap: one set and one read of the sheets, not two (" + JSON.stringify(one) + ")");
     await P.until(async () => /^REMOTE {2}TIME time\/div 200us/.test((await ctrl("/status")).Remote || ""), "the LCD confirms with a REMOTE line");
     P.ok(await lcdClosed(), "nothing opened on the LCD");
     // a held quick button repeats
@@ -276,6 +281,20 @@ run(async (t) => {
     P.ok(await page.locator('[data-knob="adjust"][data-q="cw"]').isDisabled(), "Adjust waits while the scope's menu has it");
     await ctrl("/button?name=trigmenu");
     P.ok(await lcdClosed(), "the person at the scope closed the sheet");
+
+    // a mask test counting under the LCD's cursor (MATH/REF Counters, a live text) leaves the phone at rest
+    await ctrl("/button?name=math");
+    for (let i = 0; i < 20 && ((await ctrl("/status")).Sheet.Row || {}).ID !== "cmp.counters"; i++) await ctrl("/knob?name=adjust&dir=1");
+    P.ok(((await ctrl("/status")).Sheet.Row || {}).ID === "cmp.counters", "the person at the scope rests the cursor on MATH/REF Counters");
+    await sleep(600);
+    await ctrl("/hits");
+    for (let i = 1; i <= 60; i++) { await ctrl("/mask?pass=" + i); await sleep(40); }
+    const rest = (await ctrl("/hits")) || {};
+    P.ok(!rest["/api/sheets"] && (rest["/api/panel/wait"] || 0) <= 1,
+      "2.4 s of a mask test counting under the LCD's cursor: no re-read, at most one long-poll (" + JSON.stringify(rest) + ")");
+    await ctrl("/mask?pass=0");
+    await ctrl("/button?name=math");
+    P.ok(await lcdClosed(), "the person at the scope closed MATH/REF");
 
     // History: the phone's changes, a scope knob as the scope's, undo
     await ctrl("/knob?name=tdiv&dir=-1");
@@ -420,6 +439,32 @@ run(async (t) => {
     await B.tap('[data-tabbar="home"]');
     await B.tap('[data-tile="ch2.vdiv"] [data-q="ccw"]');
     await A.until(async () => (await A.text('[data-tile="ch2.vdiv"] .tv')) === "2 V", "phone A follows phone B");
+    // whose change is whose: only the rows the scope says a call changed are that phone's
+    const book = (P, id) => P.page.evaluate((id) => RN.S.history.list.filter((e) => e.rows.some((r) => r.id === id)).map((e) => ({ src: e.src, rows: e.rows.map((r) => r.id) })), id);
+    await sleep(3100);
+    await B.page.route("**/api/sheets/set", async (route) => { await sleep(1500); await route.continue(); });
+    const late = B.tap('[data-tile="ch2.vdiv"] [data-q="cw"]');
+    await sleep(300);
+    await A.tap('[data-tile="trig.level"] [data-q="cw"]');
+    await late;
+    await B.until(async () => (await book(B, "trig.level")).length > 0 && (await book(B, "ch2.vdiv")).length > 1, "phone B books both changes once its slow answer is in", 6000);
+    await B.page.unroute("**/api/sheets/set");
+    let hb = await book(B, "trig.level");
+    t.ok(hb.length === 1 && hb[0].src !== "phone" && hb[0].rows.join() === "trig.level", "A's level change while B's call was out is not B's: " + JSON.stringify(hb));
+    hb = (await book(B, "ch2.vdiv"))[0];
+    t.ok(hb.src === "phone" && hb.rows.join() === "ch2.vdiv", "B's own entry holds only the row it changed: " + JSON.stringify(hb));
+    await sleep(3100);
+    await A.page.route("**/api/sheets/set", async (route) => { await sleep(1500); await route.continue(); });
+    const slow = A.tap('[data-tile="ch1.offset"] [data-q="cw"]');
+    await sleep(300);
+    await ctrl("/knob?name=tdiv&dir=-1");
+    await slow;
+    await A.until(async () => (await book(A, "time.tdiv")).length > 0 && (await book(A, "ch1.offset")).length > 0, "phone A books both once its slow answer is in", 6000);
+    await A.page.unroute("**/api/sheets/set");
+    let ha = await book(A, "time.tdiv");
+    t.ok(ha.length === 1 && ha[0].src === "scope" && ha[0].rows.join() === "time.tdiv", "the scope's knob while A's call was out is the scope's: " + JSON.stringify(ha));
+    ha = await book(A, "ch1.offset");
+    t.ok(ha.length === 1 && ha[0].src === "phone" && ha[0].rows.join() === "ch1.offset", "A's own entry holds only its row: " + JSON.stringify(ha));
     t.ok(A.errors.length + B.errors.length === 0, "two phones: no console errors");
     await A.ctx.close();
     await B.ctx.close();

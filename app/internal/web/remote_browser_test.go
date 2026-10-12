@@ -221,14 +221,26 @@ func (m *remoteSetups) PeekSetup(n int) (settings.Settings, bool) {
 	return s, ok
 }
 
-// remoteGate drops every connection while the scope is "down".
+// remoteGate drops every connection while the scope is "down", and counts
+// the phones' requests by path (not the driver's own, which say
+// X-Test-Driver).
 type remoteGate struct {
 	down atomic.Bool
 	h    http.Handler
+	mu   sync.Mutex
+	hits map[string]int
 }
 
 // TRLC-LINKS: REQ-SDS-220
 func (g *remoteGate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.Header.Get("X-Test-Driver") == "" {
+		g.mu.Lock()
+		if g.hits == nil {
+			g.hits = map[string]int{}
+		}
+		g.hits[r.URL.Path]++
+		g.mu.Unlock()
+	}
 	if g.down.Load() {
 		if hj, ok := w.(http.Hijacker); ok {
 			if c, _, err := hj.Hijack(); err == nil {
@@ -255,8 +267,9 @@ type remoteRig struct {
 // behind the real handlers. The control server answers /down and /up (drop
 // the app server's connections or let them through), /button?name=,
 // /knob?name=&dir= (the scope's own keys and knobs), /status (what the LCD
-// shows), /engine (the engine's state) and /reset (factory settings, SCOPE,
-// no menu on the LCD).
+// shows), /engine (the engine's state), /reset (factory settings, SCOPE,
+// no menu on the LCD), /mask?pass= (a mask test's count) and /hits (the
+// phones' requests by path since the last /hits).
 // TRLC-LINKS: REQ-SDS-220
 func newRemoteRig(t testing.TB) *remoteRig {
 	eng := newRemoteEngine()
@@ -300,6 +313,22 @@ func newRemoteRig(t testing.TB) *remoteRig {
 		writeJSON(w, map[string]bool{"ok": ok})
 	})
 	mux.HandleFunc("/status", func(w http.ResponseWriter, _ *http.Request) { writeJSON(w, pc.PanelStatus()) })
+	mux.HandleFunc("/mask", func(w http.ResponseWriter, q *http.Request) {
+		n, _ := strconv.ParseInt(q.URL.Query().Get("pass"), 10, 64)
+		eng.lock(func() {
+			eng.fakeScope.mu.Lock()
+			eng.fakeScope.stats.MaskPass = n
+			eng.fakeScope.mu.Unlock()
+		})
+		writeJSON(w, map[string]bool{"ok": true})
+	})
+	mux.HandleFunc("/hits", func(w http.ResponseWriter, _ *http.Request) {
+		gate.mu.Lock()
+		hits := gate.hits
+		gate.hits = nil
+		gate.mu.Unlock()
+		writeJSON(w, hits)
+	})
 	mux.HandleFunc("/engine", func(w http.ResponseWriter, _ *http.Request) {
 		st := eng.Snapshot()
 		ser := eng.SerialConfig()

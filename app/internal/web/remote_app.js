@@ -126,8 +126,8 @@
     const r = row(id), a = r && (r.Actions || []).find((x) => x.ID === act);
     const label = (r ? tabName(r.tab) + " " + DOT + " " + RC.label(r) : id) + (a ? ": " + a.Text : "");
     const undoable = id === "sys.autoset" || id === "sys.default" || (RC.isSlot(r) && act === "recall");
-    return RN.action(id, act, { label: id === "sys.autoset" ? "Autoset" : id === "sys.default" ? "Default setup" : label, undoable },
-      { autoset: id === "sys.autoset" }).then((res) => answer(res, res.ok ? okText || "" : ""));
+    return RN.action(id, act, { label: id === "sys.autoset" ? "Autoset" : id === "sys.default" ? "Default setup" : label, undoable })
+      .then((res) => answer(res, res.ok ? okText || "" : ""));
   }
   // TRLC-LINKS: REQ-SDS-220
   function pressKey(button, okText, label) {
@@ -1283,7 +1283,7 @@
     if (e.label) return e.label;
     if (e.ws) return "Workspace";
     if (e.rows.length === 1 || e.primary) return e.rows[0].tab + " " + DOT + " " + e.rows[0].label;
-    return e.src === "phone" ? "Settings" : "On the scope";
+    return e.src === "phone" ? "Settings" : e.src === "remote" ? "On another remote" : "On the scope";
   }
   const nd = (t) => RC.pretty(String(t == null ? "" : t)).replace(/\s*\/div$/, "");
   // TRLC-LINKS: REQ-SDS-220
