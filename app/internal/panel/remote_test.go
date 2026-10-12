@@ -272,11 +272,20 @@ func TestRemoteKeysAnswerWhatTheyDid(t *testing.T) {
 	if res := c.RemoteKey("nope", false); res.OK || res.Error != `no key "nope"` {
 		t.Fatalf("an unknown key: %+v", res)
 	}
+	// keys that would open, move or close a menu on the LCD are not a remote's
+	for _, k := range []string{"trigmenu", "utility", "menu", "f2"} {
+		if res := c.RemoteKey(k, false); res.OK || !strings.Contains(res.Error, "works the scope's menus") {
+			t.Fatalf("%s: %+v", k, res)
+		}
+	}
+	if res := c.RemoteKey("adjustpush", true); res.OK || !strings.Contains(res.Error, "opens a menu on the scope") || c.PanelStatus().Mode != "workspace" {
+		t.Fatalf("SCOPE's Adjust push (it opens a sheet): %+v mode %s", res, c.PanelStatus().Mode)
+	}
 	press(t, c, "trigmenu")
 	goRow(t, c, "trig.mode")
 	before := c.PanelStatus().Sheet
 	for i, res := range []SetResult{c.RemoteKnob("adjust", 1, 1, true), c.RemoteKnob("horizpos", -1, 1, true), c.RemoteKey("adjustpush", true),
-		c.RemoteKey("horizpospush", true)} {
+		c.RemoteKey("horizpospush", true), c.RemoteKnob("tdiv", 1, 1, false), c.RemoteKnob("adjust", 1, 1, false)} {
 		if res.OK || res.Error != menuRefusal || len(res.Changed) != 0 {
 			t.Fatalf("%d with a menu open on the LCD: %+v", i, res)
 		}

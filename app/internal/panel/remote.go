@@ -738,11 +738,21 @@ func (c *Controller) RemoteAgain(want string) SetResult {
 // pushes move that menu, so a remote's turns and pushes of them wait.
 const menuRefusal = "A menu is open on the scope: Adjust and Position move it there, so they wait here until it closes"
 
+// remoteKeys are the keys a remote presses: none of them opens, moves or
+// closes a menu on the LCD (Default Setup and Auto leave a remote's LCD menus
+// as they are). The menu keys and the F-keys work the LCD's menus: a remote
+// opens its own.
+var remoteKeys = map[int]bool{btnRunStop: true, btnSingle: true, btnAuto: true, btnDefaultSetup: true, btnSet50: true, btnForce: true,
+	btnPrint: true, btnCh1VdivPush: true, btnCh2VdivPush: true, btnCh1PosPush: true, btnCh2PosPush: true, btnTrigLvlPush: true,
+	btnTdivPush: true, btnHorizPosPush: true, btnAdjustPsh: true}
+
 // RemoteKey presses a key of the panel for a remote and answers once it has
 // run, with the rows it changed and the notice it raised (remoteCall). It
 // is refused while Autoset sweeps (but AUTO, which cancels the sweep), as
-// the panel's own keys are ignored then, and, with nomenu, while a menu is
-// open on the LCD (the Adjust and Position pushes act on it there). Like a
+// the panel's own keys are ignored then, and where it would open, move or
+// close a menu on the LCD: the menu keys and F-keys, the Adjust and Position
+// pushes while a menu is open there (any key with nomenu), and the Adjust
+// push where it opens one (SCOPE's row sheet, BUS's byte picker). Like a
 // remote's actions it leaves the LCD's menus as they are.
 // TRLC-LINKS: REQ-SDS-162, REQ-SDS-220
 func (c *Controller) RemoteKey(name string, nomenu bool) SetResult {
@@ -750,9 +760,15 @@ func (c *Controller) RemoteKey(name string, nomenu bool) SetResult {
 	if !ok {
 		return SetResult{Row: name, Error: fmt.Sprintf("no key %q", name)}
 	}
+	if !remoteKeys[code] {
+		return SetResult{Row: name, Error: fmt.Sprintf("the %s key works the scope's menus: a remote opens its own", name)}
+	}
 	return c.remoteCall(name, func() SetResult {
-		if why := c.remoteWaits(code != btnAuto, nomenu); why != "" {
+		if why := c.remoteWaits(code != btnAuto, nomenu || code == btnAdjustPsh || code == btnHorizPosPush); why != "" {
 			return SetResult{Row: name, Error: why}
+		}
+		if code == btnAdjustPsh && c.adjustOpensMenu() {
+			return SetResult{Row: name, Error: "Here the Adjust push opens a menu on the scope: the phone opens it on itself instead"}
 		}
 		c.mu.Lock()
 		c.apiDepth++
@@ -766,21 +782,41 @@ func (c *Controller) RemoteKey(name string, nomenu bool) SetResult {
 }
 
 // RemoteKnob turns a knob of the panel (dir +1 clockwise, steps detents)
-// for a remote, refused and answered as RemoteKey.
+// for a remote, refused and answered as RemoteKey: S/DIV, Adjust and
+// Position (and any knob with nomenu) wait while a menu is open on the LCD,
+// where they would turn its tab, move its row or change it.
 // TRLC-LINKS: REQ-SDS-162, REQ-SDS-220
 func (c *Controller) RemoteKnob(name string, dir, steps int, nomenu bool) SetResult {
 	if !knobNames[name] {
 		return SetResult{Row: name, Error: fmt.Sprintf("no knob %q", name)}
 	}
 	dir = map[bool]int{true: 1, false: -1}[dir >= 0]
+	menuKnob := name == "tdiv" || name == "adjust" || name == "horizpos"
 	return c.remoteCall(name, func() SetResult {
-		if why := c.remoteWaits(true, nomenu); why != "" {
+		if why := c.remoteWaits(true, nomenu || menuKnob); why != "" {
 			return SetResult{Row: name, Error: why}
 		}
 		c.resync()
 		c.dispatch(name, dir, max(steps, 1))
 		return SetResult{OK: true, Row: name}
 	})
+}
+
+// adjustOpensMenu: the Adjust push opens a menu on the LCD in this
+// workspace: SCOPE's opens its target row's sheet, BUS's the byte picker
+// while it decodes packets.
+// TRLC-LINKS: REQ-SDS-213, REQ-SDS-220
+func (c *Controller) adjustOpensMenu() bool {
+	s := c.snap()
+	switch {
+	case s.ui.ws == wsview.Scope:
+		return true
+	case s.ui.ws == wsview.Bus && !s.ui.busEye:
+		c.amu.Lock()
+		defer c.amu.Unlock()
+		return busDecoding(s, &c.ana)
+	}
+	return false
 }
 
 // remoteWaits is why a remote's key or knob does not run now ("" runs it):
