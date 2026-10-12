@@ -354,6 +354,18 @@ $("zmBuild").onclick = async () => {
 };
 // TRLC-LINKS: REQ-SDS-014
 $("zmMode").onchange = () => send("maskmode", +$("zmMode").value);
+// Clear mask: the scope drops the mask, its test and its counts (and a build
+// or master under way on the LCD); this page lets its copy go.
+// TRLC-LINKS: REQ-SDS-014, REQ-SDS-139
+$("zmClearMask").onclick = async () => {
+  try {
+    await fetch("/api/mask", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ lo: [], hi: [], win: 0 }) });
+  } catch (e) { /* the status poll shows the scope's state */ }
+  zm.mask = null; zm.failMark = null;
+  $("zmMode").value = "0";
+  zmStatus("mask cleared — build one from a clean signal");
+  redraw();
+};
 // TRLC-LINKS: REQ-SDS-014
 $("zmClearStats").onclick = () => { send("maskclear", 0); zm.failMark = null; redraw(); };
 

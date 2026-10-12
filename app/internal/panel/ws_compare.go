@@ -343,8 +343,10 @@ var mathNext = map[int]int{0: 2, 2: 3, 3: 1, 1: 4, 4: 0}
 // mathNames name the math functions.
 var mathNames = []string{"Off", "C1+C2", "C1-C2", "C2-C1", "C1xC2"}
 
-// maskNext is the MASK row push once a mask exists: count, stop on fail, off.
-var maskNext = map[int]int{1: 2, 2: 0, 0: 1}
+// maskNext is the MASK row push once a mask exists: a mask built with its
+// test off counts, counting stops on a fail; after stop on fail the push
+// clears the mask (the sheet's Mask test turns a test off and keeps it).
+var maskNext = map[int]int{0: 1, 1: 2}
 
 // cmpAdjust is Adjust in COMPARE: the row.
 // TRLC-LINKS: REQ-SDS-218, REQ-SDS-213
@@ -386,7 +388,11 @@ func (c *Controller) cmpAction() {
 		c.toast(fmt.Sprintf("REF %c %s", 'A'+i, map[bool]string{true: "hidden", false: "shown"}[s.refShow[i]]), 900*time.Millisecond)
 	case cmpMask:
 		if s.st.MaskSet {
-			next := maskNext[s.st.MaskMode]
+			next, ok := maskNext[s.st.MaskMode]
+			if !ok { // after stop on fail
+				c.clearMaskAction()
+				return
+			}
 			c.setMaskMode(next)
 			c.toast("Mask test: "+[]string{"off", "counting (pass/fail)", "stops on the first fail"}[next], 1400*time.Millisecond)
 			return
@@ -429,7 +435,7 @@ func cmpActionText(s *sv, row int) string {
 		return "push: " + map[bool]string{true: "hide", false: "show"}[s.refShow[i]]
 	case cmpMask:
 		if s.st.MaskSet {
-			return "push: " + map[int]string{1: "stop on fail", 2: "test off", 0: "count"}[s.st.MaskMode]
+			return "push: " + map[int]string{1: "stop on fail", 2: "clear mask", 0: "count"}[s.st.MaskMode]
 		}
 		return fmt.Sprintf("push: build from C%d", s.st.TrigSource&1+1)
 	}

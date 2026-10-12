@@ -333,7 +333,7 @@ sheet (§7.2) and, pressed again on that tab, closes it. The lamp column is the 
 | Control | Selector | Bit | Action |
 |---|---|---|---|
 | SET TO 50% | `0x66` | 2 | trigger level at the midpoint of the source channel's frame; without a signal there a notice says so and the level stays |
-| DEFAULT SETUP | `0x66` | 10 | factory settings; any menu closes; the workspace stays (§7.1) |
+| DEFAULT SETUP | `0x66` | 10 | factory settings, the mask and the serial trigger's match bytes cleared; any menu closes; the workspace stays (§7.1) |
 | FORCE | `0x67` | 2 | one untriggered capture (`ForceTrigger`) |
 | PRINT | `0x67` | 13 | the screen as `SDSnnnn.png` on the U-disk, named in a notice |
 
@@ -372,8 +372,13 @@ Vpp and frequency of the shown channels. Each workspace remembers its view. A ma
 averages N captures of the trigger source (the engine's Average, N = 64 by default), stores the
 result as REF A, builds the mask from it, restores the acquisition so live captures are tested raw,
 and turns the test on with zeroed counters; it is refused, saying how to fix the trigger, while the
-trigger source does not repeat from capture to capture. AUTO and DEFAULT SETUP close any menu and
-keep the workspace, which re-applies its entry behaviour.
+trigger source does not repeat from capture to capture. COMPARE's MASK row push, once a mask
+exists: a mask built with its test off starts counting, counting stops on a fail, and after stop on
+fail the push clears the mask (the sheet's Mask test turns a test off and keeps the mask; its Clear
+mask row removes it at any time, as does a web page's Clear mask). Clearing turns the test off, zeroes
+its counts and captured failures, and stops a mask build or master under way. AUTO and DEFAULT SETUP
+close any menu and keep the workspace, which re-applies its entry behaviour; DEFAULT SETUP also clears
+the mask and the serial trigger's match bytes (no bytes, any I2C address and direction).
 
 ### 7.2 Settings sheets (a menu open)
 

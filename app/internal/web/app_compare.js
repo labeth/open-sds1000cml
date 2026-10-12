@@ -256,7 +256,8 @@ async function stackMaster() {
       body: JSON.stringify({ lo_b64: zmPackMask(mk.lo), hi_b64: zmPackMask(mk.hi), win: mk.win, ch, ...mk.geometry }) });
     const res = await resp.json().catch(() => ({}));
     if (!resp.ok || !res.ok) { refuse("the mask was not accepted (" + (res.err || resp.status) + ")."); return; }
-    zm.mask = { lo: mk.lo, hi: mk.hi, win: mk.win, ch, posFrac, geometry: mk.geometry };
+    // gen: this install's number, so the page lets the mask go once the scope clears or replaces it
+    zm.mask = { lo: mk.lo, hi: mk.hi, win: mk.win, ch, posFrac, geometry: mk.geometry, gen: typeof res.gen === "number" ? res.gen : null, genAt: Date.now() };
     const c = zmVctx(ch);
     if (c) { zm.mask.srcLo = mk.lo.slice(); zm.mask.srcHi = mk.hi.slice(); zm.mask.svpc = c.vpc; zm.mask.soff = c.off; zm.mask.avpc = c.vpc; zm.mask.aoff = c.off; }
     $("zmCh").value = String(ch);

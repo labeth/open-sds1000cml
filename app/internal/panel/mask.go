@@ -35,6 +35,7 @@ func (c *Controller) maskBuildStart() {
 	}
 	n, tol := c.maskN, maskTols[c.maskTol%len(maskTols)]
 	c.maskBuilding = true
+	gen := c.maskGen
 	c.mu.Unlock()
 	st := c.eng.Snapshot()
 	ch := st.TrigSource & 1
@@ -47,15 +48,16 @@ func (c *Controller) maskBuildStart() {
 	}
 	c.eng.SetRunning(true) // the build needs live frames
 	c.maskSetMsg(fmt.Sprintf("MASK: building 0/%d", n))
-	go c.maskBuildRun(n, tol[0], tol[1], ch, st.TrigPosFrac)
+	go c.maskBuildRun(gen, n, tol[0], tol[1], ch, st.TrigPosFrac)
 }
 
 // maskBuildRun accumulates the per-column envelope over n distinct locked
 // frames (window()-consistent mapping, same as the engine test point) and
-// installs the dilated mask. Runs off the panel goroutine; only touches the
-// engine through thread-safe entry points.
+// installs the dilated mask, unless the mask was cleared since the build
+// started (gen). Runs off the panel goroutine; only touches the engine
+// through thread-safe entry points.
 // TRLC-LINKS: REQ-SDS-139
-func (c *Controller) maskBuildRun(n, tolT, tolV, ch int, posFrac float64) {
+func (c *Controller) maskBuildRun(gen uint64, n, tolT, tolV, ch int, posFrac float64) {
 	if math.IsNaN(posFrac) || posFrac < 0 || posFrac > 1 {
 		posFrac = 0.5
 	}
@@ -64,7 +66,7 @@ func (c *Controller) maskBuildRun(n, tolT, tolV, ch int, posFrac float64) {
 	var sampleS, tdivS float64
 	var peak bool
 	var lastSeq uint64
-	for tries := 0; got < n && tries < n*20; tries++ {
+	for tries := 0; got < n && tries < n*20 && !c.maskCleared(gen); tries++ {
 		time.Sleep(60 * time.Millisecond)
 		ok := false
 		c.frameFn(func(f *engine.Frame) {
@@ -124,7 +126,11 @@ func (c *Controller) maskBuildRun(n, tolT, tolV, ch int, posFrac float64) {
 	}
 	c.mu.Lock()
 	c.maskBuilding = false
+	cleared := c.maskGen != gen
 	c.mu.Unlock()
+	if cleared { // the mask was cleared while this one was built
+		return
+	}
 	if got < 8 || win == 0 {
 		c.maskSetMsg("MASK: build failed - no locked frames (trigger on-signal?)")
 		return
@@ -146,6 +152,59 @@ func (c *Controller) maskBuildRun(n, tolT, tolV, ch int, posFrac float64) {
 		return
 	}
 	c.maskSetMsg(fmt.Sprintf("MASK: ready (%d frames, C%d) - set Mode to Test", got, ch+1))
+}
+
+// maskCleared reports whether the mask was cleared since gen.
+// TRLC-LINKS: REQ-SDS-139
+func (c *Controller) maskCleared(gen uint64) bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.maskGen != gen
+}
+
+// clearMask removes the mask: its test goes off, its counts and captured
+// failures are zeroed, and a build or master stack under way, which would
+// install a mask when done, is stopped. DEFAULT SETUP clears it this way.
+// TRLC-LINKS: REQ-SDS-139, REQ-SDS-218
+func (c *Controller) clearMask() {
+	c.mu.Lock()
+	c.maskGen++
+	c.maskAutoTest = false
+	stacking := c.stack != nil
+	c.mu.Unlock()
+	if stacking {
+		c.stackCancel("", false)
+	}
+	c.eng.SetMaskMode(0)
+	c.eng.SetMask(nil)
+	c.eng.ClearMaskFails()
+	c.maskSetMsg("")
+}
+
+// ClearMask is clearMask for the web pages (their Clear mask: /api/mask with
+// no envelope), run on the panel goroutine like a key.
+// TRLC-LINKS: REQ-SDS-139, REQ-SDS-162
+func (c *Controller) ClearMask() {
+	c.onPanel(func() {
+		c.clearMask()
+		c.afterInput()
+	})
+}
+
+// clearMaskAction is Clear mask on the COMPARE sheet and the MASK row's push
+// after stop on fail: clearMask, said on the LCD.
+// TRLC-LINKS: REQ-SDS-139, REQ-SDS-218
+func (c *Controller) clearMaskAction() error {
+	c.mu.Lock()
+	stacking := c.stack != nil
+	c.mu.Unlock()
+	c.clearMask()
+	if stacking {
+		c.toast("Mask cleared, and the master being stacked cancelled", 1600*time.Millisecond)
+	} else {
+		c.toast("Mask cleared", 1200*time.Millisecond)
+	}
+	return nil
 }
 
 // buildMaskFrom installs a mask around one frame of channel ch (the

@@ -56,10 +56,11 @@ func TestZoneMaskAPI(t *testing.T) {
 	if out := reinstall(gen); out["ok"] != false || out["stale"] != true || fs.mask.Lo[0] != 20 {
 		t.Fatalf("re-install naming an older install: %v %+v", out, fs.mask)
 	}
+	fs.SetMaskMode(1)
 	rr = httptest.NewRecorder()
 	mux.ServeHTTP(rr, httptest.NewRequest("POST", "/api/mask", strings.NewReader(`{"lo":[],"hi":[],"win":0}`)))
-	if fs.mask != nil {
-		t.Fatal("empty mask must clear")
+	if fs.mask != nil || fs.maskMode != 0 {
+		t.Fatalf("empty mask must clear the mask and its test: mask %v, mode %d", fs.mask != nil, fs.maskMode)
 	}
 	// length mismatch rejected
 	rr = httptest.NewRecorder()

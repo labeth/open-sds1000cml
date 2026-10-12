@@ -279,7 +279,12 @@ func (f *fakeEng) SetSlopeParams(lo, hi, mn, mx float64, c int) {
 func (f *fakeEng) SetMask(m *engine.Mask) {
 	f.statMu.Lock()
 	defer f.statMu.Unlock()
-	if m == nil || m.WinCols <= 0 || len(m.Lo) < m.WinCols || len(m.Hi) < m.WinCols {
+	if m == nil { // clears, as the engine's does
+		f.calls = append(f.calls, call{"mask", 0, 0})
+		f.stats.MaskSet = false
+		return
+	}
+	if m.WinCols <= 0 || len(m.Lo) < m.WinCols || len(m.Hi) < m.WinCols {
 		f.bad("SetMask malformed")
 		return
 	}

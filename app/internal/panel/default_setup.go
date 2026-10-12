@@ -8,9 +8,10 @@ import "open-sds/app/internal/analog"
 // trigger centred, normal acquisition, both channels 1 V/div DC x1 at 0 V,
 // and every overlay off (math, cursors, zoom, measurements, persistence,
 // X-Y/FFT views, super-res, protocol decode and its stream, reference
-// display, mask/zone/serial triggering, ETS). Saved references and setups are
-// kept. The workspace UI is reset by the key's handler (defaultSetupUI),
-// which keeps the workspace.
+// display, mask/zone/serial triggering, ETS). The mask is cleared and the
+// serial trigger's match bytes and I2C address with it. Saved references and
+// setups are kept. The workspace UI is reset by the key's handler
+// (defaultSetupUI), which keeps the workspace.
 // TRLC-LINKS: REQ-SDS-136
 func (c *Controller) DefaultSetup() {
 	c.srCancel("")
@@ -21,12 +22,17 @@ func (c *Controller) DefaultSetup() {
 	c.eng.SetAcqMode(0)
 	c.eng.SetHoldoff(0)
 	c.eng.SetETS(false)
-	c.eng.SetMaskMode(0)
+	c.clearMask()
 	if e, ok := c.eng.(interface{ SetZoneMode(int) }); ok {
 		e.SetZoneMode(0)
 	}
 	if e, ok := c.eng.(interface{ SetSerialMode(int) }); ok {
 		e.SetSerialMode(0)
+	}
+	if se := c.serialTrig(); se != nil { // no match bytes, any I2C address and direction
+		p := se.SerialConfig()
+		p.Bytes, p.Pattern, p.Addr, p.RW = nil, nil, -1, 2
+		se.SetSerialParams(p)
 	}
 	c.eng.SetTrigPosFrac(0.5)
 	for i, t := range c.tdivs {

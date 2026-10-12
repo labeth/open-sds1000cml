@@ -25,7 +25,7 @@ func TestMaskBuildRestartsFromStoppedRecordToLivePreview(t *testing.T) {
 		}
 		fn(&engine.Frame{Seq: seq, C1: sig, C2: sig, Valid: n, WinCols: n, EdgeX: float64(n / 2), SampleS: 2e-9, TdivS: 1e-6})
 	})
-	c.maskBuildRun(8, 1, 2, 0, .5)
+	c.maskBuildRun(c.maskGen, 8, 1, 2, 0, .5)
 	found := false
 	for _, call := range e.calls {
 		if call.what == "mask" {
@@ -58,7 +58,7 @@ func TestMaskBuildAtLeftTriggerPosition(t *testing.T) {
 		seq++
 		fn(&engine.Frame{Seq: seq, C1: []uint8{40, 60, 180, 200}, Valid: 4, WinCols: 4, EdgeX: 2, SampleS: 2e-9, TdivS: 1e-6})
 	})
-	c.maskBuildRun(8, 0, 0, 0, 0)
+	c.maskBuildRun(c.maskGen, 8, 0, 0, 0, 0)
 	if e.mask == nil || e.mask.Lo[0] != 180 || e.mask.Hi[0] != 180 || e.mask.Lo[2] != 0 || e.mask.Hi[2] != 255 {
 		t.Fatalf("left-position mask used a centred window: %+v", e.mask)
 	}

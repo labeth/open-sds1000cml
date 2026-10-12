@@ -964,6 +964,12 @@ func cmpRows() []*row {
 			return "none"
 		},
 	}
+	clearMask := &row{id: "cmp.clear_mask", label: "Clear mask", kind: wsview.Action,
+		help: "Remove the mask: its test goes off, its counts and captured failures are zeroed, and a build or master under way stops.",
+		acts: func(s *sv) []act {
+			return []act{{id: "clear", t: "Clear", dim: !s.st.MaskSet && !s.maskBusy && !s.stacking, run: (*Controller).clearMaskAction}}
+		},
+	}
 	frames := &row{id: "cmp.mask_frames", label: "Build frames", kind: wsview.Enum,
 		help: "Captures a mask build gathers.", opts: staticOpts([]opt{{16, "16"}, {32, "32"}, {64, "64"}, {128, "128"}}),
 		get: func(s *sv) int { return s.maskN },
@@ -1027,7 +1033,7 @@ func cmpRows() []*row {
 			return "none"
 		},
 	}
-	return []*row{math_, sa, show(0), sb, show(1), clear, maskMode, build, frames, tol, counters, depth, master}
+	return []*row{math_, sa, show(0), sb, show(1), clear, maskMode, build, clearMask, frames, tol, counters, depth, master}
 }
 
 // ---- BUS ----

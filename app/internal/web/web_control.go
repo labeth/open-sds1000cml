@@ -142,7 +142,7 @@ func (s *Server) hMask(w http.ResponseWriter, r *http.Request) {
 		lo, hi = m.LoBytes, m.HiBytes
 	} else {
 		if len(m.Lo) == 0 {
-			s.sc.SetMask(nil)
+			s.clearMask()
 			writeJSON(w, map[string]any{"ok": true, "cleared": true, "gen": s.sc.Snapshot().MaskGen})
 			return
 		}
@@ -171,6 +171,20 @@ func (s *Server) hMask(w http.ResponseWriter, r *http.Request) {
 	// gen names this install: the page keeps re-scaling its mask only while
 	// the scope still holds it (Stats.MaskGen)
 	writeJSON(w, map[string]any{"ok": true, "win": m.Win, "gen": s.sc.Snapshot().MaskGen})
+}
+
+// clearMask removes the mask with its test and counts: through the panel
+// where there is one, which also stops a mask build or master stack under
+// way on the LCD, else in the engine.
+// TRLC-LINKS: REQ-SDS-014, REQ-SDS-139
+func (s *Server) clearMask() {
+	if p, ok := s.panel.(interface{ ClearMask() }); ok {
+		p.ClearMask()
+		return
+	}
+	s.sc.SetMaskMode(0)
+	s.sc.SetMask(nil)
+	s.sc.ClearMaskFails()
 }
 
 // hMaskFail serves one captured failing frame from the ring as JSON (gallery

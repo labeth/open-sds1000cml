@@ -107,6 +107,17 @@ try {
   await page.waitForTimeout(1500);
   ok(!(await page.evaluate(async () => !!(await (await fetch("/api/status")).json()).mask_set)), "the mask stays cleared");
 
+  // (5c) Clear mask on this page: a rebuilt mask under test goes, with its
+  // test, and the page's copy with it
+  await page.click("#zmBuild");
+  await page.waitForFunction(() => zm.mask && zm.mask.win > 0 && typeof zm.mask.gen === "number", null, { timeout: 20000 });
+  await page.click('#zmMode button[data-value="1"]');
+  await page.waitForFunction(async () => (await (await fetch("/api/status")).json()).mask_mode === 1, null, { timeout: 5000 });
+  await page.click("#zmClearMask");
+  await page.waitForFunction(() => !zm.mask && $("zmMode").value === "0", null, { timeout: 5000 });
+  const cleared = await page.evaluate(async () => (await (await fetch("/api/status")).json()));
+  ok(!cleared.mask_set && !cleared.mask_mode, "Clear mask removes the scope's mask and turns its test off: " + JSON.stringify({ set: cleared.mask_set, mode: cleared.mask_mode }));
+
   // (6) failure gallery: the Go fixture preloads one ring entry; the 1 Hz
   // meter renders it -> click freezes the failing frame with the mark.
   await page.waitForFunction(() => document.querySelectorAll("#zmGallery .zmf").length > 0, null, { timeout: 5000 });
