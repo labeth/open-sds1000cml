@@ -988,7 +988,8 @@
     // keep the focus in the text field (a tapped button would take it)
     for (const b of [mHex, mTxt]) b.addEventListener("mousedown", (e) => e.preventDefault());
     txt.addEventListener("input", () => { err = ""; show(); });
-    txt.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); arm(); } });
+    // the keyboard's Done key sets the bytes, as Set does; only "Trigger on it" arms the trigger
+    txt.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); setOnly(); } });
     // TRLC-LINKS: REQ-SDS-220
     async function setMatch() {
       const t = typed();

@@ -59,20 +59,23 @@ func TestRemotePageServed(t *testing.T) {
 			t.Errorf("%s: %d", m[1], r.Code)
 		}
 	}
-	if r := get(s, "/r"); r.Code != http.StatusFound || r.Header().Get("Location") != "/remote" {
-		t.Fatalf("/r: %d -> %q", r.Code, r.Header().Get("Location"))
+	for _, p := range []string{"/r", "/remote/", "/remote/x"} {
+		if r := get(s, p); r.Code != http.StatusFound || r.Header().Get("Location") != "/remote" {
+			t.Fatalf("%s: %d -> %q", p, r.Code, r.Header().Get("Location"))
+		}
 	}
 	// the manifest: standalone from /remote, with icons that are served PNGs of their size
 	r := get(s, "/remote.webmanifest")
 	var man struct {
 		StartURL string `json:"start_url"`
+		Scope    string `json:"scope"`
 		Display  string `json:"display"`
 		Icons    []struct{ Src, Sizes string }
 	}
 	if r.Code != 200 || r.Header().Get("Content-Type") != "application/manifest+json" || json.Unmarshal(r.Body.Bytes(), &man) != nil {
 		t.Fatalf("manifest: %d %q", r.Code, r.Header().Get("Content-Type"))
 	}
-	if man.Display != "standalone" || man.StartURL != "/remote" || len(man.Icons) == 0 {
+	if man.Display != "standalone" || man.StartURL != "/remote" || man.Scope != "/remote" || len(man.Icons) == 0 { // the main UI stays out of an installed remote
 		t.Fatalf("manifest: %s", r.Body.String())
 	}
 	icons := append([]string{"remote-icon-180.png"}, func() (out []string) {
@@ -103,7 +106,7 @@ func TestRemotePageServed(t *testing.T) {
 			t.Fatalf("%s range: %d %d %q", v.name, part.Code, part.Body.Len(), part.Header().Get("Content-Range"))
 		}
 	}
-	for _, p := range []string{"/remote.html", "/ui.html", "/remote/", "/nope.png", "/../remote.css"} {
+	for _, p := range []string{"/remote.html", "/ui.html", "/nope.png", "/../remote.css"} {
 		if r := get(s, p); r.Code == 200 {
 			t.Errorf("%s served", p)
 		}

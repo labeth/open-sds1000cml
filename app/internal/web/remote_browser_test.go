@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -356,6 +357,12 @@ func newRemoteRig(t testing.TB) *remoteRig {
 // TRLC-LINKS: REQ-SDS-220
 func TestRemoteBrowser(t *testing.T) {
 	testenv.NeedNode(t)
+	// read here so Go's test cache sees a change to the driver (node reads it)
+	for _, f := range []string{"remote_browser.mjs", "scope_po.mjs"} {
+		if _, err := os.ReadFile(f); err != nil {
+			t.Fatal(err)
+		}
+	}
 	r := newRemoteRig(t)
 	wsDriver(t, "remote_browser.mjs", r.app.URL, r.ctrl.URL)
 	// the LCD stayed as the person at the scope left it, and no sheet was

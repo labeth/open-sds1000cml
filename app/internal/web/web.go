@@ -201,6 +201,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/", s.hRoot)
 	mux.HandleFunc("GET /remote", s.hRemote)
 	mux.HandleFunc("GET /r", func(w http.ResponseWriter, r *http.Request) { http.Redirect(w, r, "/remote", http.StatusFound) })
+	mux.HandleFunc("GET /remote/", func(w http.ResponseWriter, r *http.Request) { http.Redirect(w, r, "/remote", http.StatusFound) })
 	mux.HandleFunc("/api/status", s.hStatus)
 	mux.HandleFunc("/api/frame.bin", s.hFrameBin)
 	mux.HandleFunc("/api/set", s.hSet)

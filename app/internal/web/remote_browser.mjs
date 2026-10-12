@@ -308,6 +308,15 @@ run(async (t) => {
     await P.shot("sheet-bytes-text");
     await P.tap('.sheet [data-act="set"]');
     await P.until(async () => JSON.stringify((await ctrl("/engine")).serialBytes) === "[72,105]", "Set: the match is Hi (48 69)");
+    // the keyboard's Done (Enter) in the text field sets the bytes and does not arm the trigger
+    await P.tap('[data-row="bus.trigger_on"]');
+    await P.until(async () => (await ctrl("/engine")).serialMode === 0, "the serial trigger off from its switch");
+    await P.tap('[data-row="bus.match"]');
+    await P.tap('.sheet [data-mode="text"]');
+    await page.locator("#match-text").fill("OK");
+    await page.locator("#match-text").press("Enter");
+    await P.until(async () => JSON.stringify((await ctrl("/engine")).serialBytes) === "[79,75]" && !(await P.visible(".sheet")), "Enter in the text field sets OK and closes the sheet");
+    P.ok((await ctrl("/engine")).serialMode === 0, "and leaves the serial trigger off");
     await P.tap('[data-row="bus.match"]');
     await P.tap('.sheet [data-key="5"]');
     P.ok(/^bad byte "5"/.test(await P.text("#match-msg")), "a lone hex digit is refused before Set");
