@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"open-sds/app/internal/engine"
 	"open-sds/app/internal/panel/wsview"
 	"open-sds/app/internal/settings"
 )
@@ -356,8 +357,8 @@ type sinceEng struct {
 // SincePublish is the time since the engine last published a frame.
 func (e *sinceEng) SincePublish() time.Duration { return e.since }
 
-// Each confirmed lamp means its function is in use; the unconfirmed ones
-// stay dark (spec 08 §8.2, spec 02 §7.5).
+// Each lamp means its function is in use; INTENSITY, which no firmware has
+// lit, stays dark (spec 08 §8.2, spec 02 §7.5).
 // TRLC-LINKS: REQ-SDS-135, REQ-SDS-211
 func TestLampsMeanFunctionInUse(t *testing.T) {
 	c, base, _ := newC(t)
@@ -379,6 +380,9 @@ func TestLampsMeanFunctionInUse(t *testing.T) {
 	check("power-on DISPLAY", ledDisplay, false)
 	check("power-on UTILITY", ledUtility, false)
 	check("power-on SAVE/RECALL", ledSaveRec, false)
+	check("power-on MATH", ledMath, false)
+	check("power-on REF", ledRef, false)
+	check("power-on CURSORS", ledCursors, false)
 	check("running", ledRun, true)
 	check("running", ledStop, false)
 
@@ -428,11 +432,25 @@ func TestLampsMeanFunctionInUse(t *testing.T) {
 	check("stopped", ledSingle, false)
 
 	c.SheetSet("cmp.math", nil, "C1+C2")
+	check("math on", ledMath, true)
+	c.SheetSet("cmp.math", nil, "Off")
+	check("math off", ledMath, false)
 	c.SetCursorsOn(true)
-	c.SheetAction("cmp.store_a", "")
-	if w := eng.lastLEDs(); w&(ledMath|ledRef|ledCursors|ledIntens) != 0 {
-		t.Fatalf("an unconfirmed lamp lit: %#04x", w)
+	check("cursors on", ledCursors, true)
+	c.SetCursorsOn(false)
+	check("cursors off", ledCursors, false)
+	c.SetFrameSource(func(fn func(*engine.Frame)) { fn(smallFrame()) })
+	if res := c.SheetAction("cmp.store_a", ""); !res.OK {
+		t.Fatalf("store REF A: %s", res.Error)
 	}
+	check("REF A stored and shown", ledRef, true)
+	c.SheetSet("cmp.show_a", nil, "Off")
+	check("REF A hidden", ledRef, false)
+	c.SheetSet("cmp.show_a", nil, "On")
+	check("REF A shown again", ledRef, true)
+	c.SheetAction("cmp.clear_refs", "")
+	check("refs cleared", ledRef, false)
+	check("INTENSITY", ledIntens, false)
 }
 
 // V/DIV push (Variable): the front end has only its calibrated detents.

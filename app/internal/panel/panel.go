@@ -73,12 +73,12 @@ type Analog interface {
 // match it, so this map is authoritative. (There is no TRIG'd latch LED —
 // trigger-armed is a read-only HW status shown on-screen, not a lamp.)
 const (
-	ledCursors = 0x0002 // not driven (the latch bit is not confirmed)
-	ledIntens  = 0x0004 // INTENSITY / ADJUST-knob (not driven)
+	ledCursors = 0x0002 // CURSORS — the cursors are on
+	ledIntens  = 0x0004 // INTENSITY / ADJUST-knob (not driven: no firmware has lit it)
 	ledCH1     = 0x0010
-	ledMath    = 0x0020
+	ledMath    = 0x0020 // MATH — a math trace is on
 	ledCH2     = 0x0040
-	ledRef     = 0x0080
+	ledRef     = 0x0080 // REF — REF A or REF B is shown
 	ledMeasure = 0x0100
 	ledAcquire = 0x0200
 	ledDisplay = 0x0400

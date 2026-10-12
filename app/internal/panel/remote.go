@@ -167,8 +167,9 @@ func lampNames(w uint16) []string {
 	for _, l := range []struct {
 		bit  uint16
 		name string
-	}{{ledCH1, "CH1"}, {ledCH2, "CH2"}, {ledRun, "RUN"}, {ledStop, "STOP"}, {ledSingle, "SINGLE"}, {ledMeasure, "MEASURE"},
-		{ledAcquire, "ACQUIRE"}, {ledDisplay, "DISPLAY"}, {ledUtility, "UTILITY"}, {ledSaveRec, "SAVE/RECALL"}} {
+	}{{ledCH1, "CH1"}, {ledCH2, "CH2"}, {ledMath, "MATH"}, {ledRef, "REF"}, {ledRun, "RUN"}, {ledStop, "STOP"}, {ledSingle, "SINGLE"},
+		{ledMeasure, "MEASURE"}, {ledCursors, "CURSORS"}, {ledAcquire, "ACQUIRE"}, {ledDisplay, "DISPLAY"}, {ledUtility, "UTILITY"},
+		{ledSaveRec, "SAVE/RECALL"}} {
 		if w&l.bit != 0 {
 			out = append(out, l.name)
 		}

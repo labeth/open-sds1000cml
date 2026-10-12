@@ -638,13 +638,14 @@ func TestSingleThenRunLamp(t *testing.T) {
 	}
 }
 
-// The lamp bits match spec 02 §7.5, each channel lamp follows its trace, and
-// the unconfirmed lamps (MATH, REF, CURSORS, INTENSITY) stay dark whatever
-// is on (spec 08 §8.2: only confirmed lamps, one meaning each).
+// The lamp bits match spec 02 §7.5, each channel lamp follows its trace, the
+// MATH and CURSORS lamps follow their functions, and INTENSITY, which no
+// firmware has lit, stays dark (spec 08 §8.2: one meaning each).
 // TRLC-LINKS: REQ-SDS-135
 func TestLEDMap(t *testing.T) {
-	if ledCH1 != 0x0010 || ledMath != 0x0020 || ledCH2 != 0x0040 {
-		t.Fatalf("LED bits drifted from spec: CH1=%#x MATH=%#x CH2=%#x (want 0x10/0x20/0x40)", ledCH1, ledMath, ledCH2)
+	if ledCH1 != 0x0010 || ledMath != 0x0020 || ledCH2 != 0x0040 || ledRef != 0x0080 || ledCursors != 0x0002 {
+		t.Fatalf("LED bits drifted from spec: CH1=%#x MATH=%#x CH2=%#x REF=%#x CURSORS=%#x (want 0x10/0x20/0x40/0x80/0x02)",
+			ledCH1, ledMath, ledCH2, ledRef, ledCursors)
 	}
 	c, eng, _ := newC(t)
 	c.SetTraceOn(1, false)
@@ -662,8 +663,8 @@ func TestLEDMap(t *testing.T) {
 	}
 	c.SetCursorsOn(true)
 	c.afterInput()
-	if w := eng.lastLEDs(); w&(ledMath|ledRef|ledCursors|ledIntens) != 0 {
-		t.Errorf("an unconfirmed lamp lit: %#x", w)
+	if w := eng.lastLEDs(); w&(ledMath|ledCursors) != ledMath|ledCursors || w&(ledRef|ledIntens) != 0 {
+		t.Errorf("math and cursors on, no reference: lamps %#x", w)
 	}
 	c.SetTraceOn(0, false)
 	if w := eng.lastLEDs(); w&ledCH1 != 0 || w&ledCH2 == 0 {

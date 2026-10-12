@@ -525,13 +525,16 @@ The bit map is spec 02 §7.5 (the corroborated PCB wiring: `0x0010` CH1, `0x0020
 `0x0080` REF, `0x0002` CURSORS, `0x0004` INTENSITY/ADJUST, the mid-byte menu lamps and the high-byte
 RUN/STOP/SINGLE bits). There is no TRIG'd lamp: trigger-armed is an on-screen indicator.
 
-The panel drives nine lamps, each with one meaning — the key's function is in use — whether a sheet
+The panel drives twelve lamps, each with one meaning — the key's function is in use — whether a sheet
 is open or not:
 
 | Bit | Lamp | Lit while |
 |---|---|---|
 | `0x0010` | CH1 | CH1's trace is shown |
 | `0x0040` | CH2 | CH2's trace is shown |
+| `0x0020` | MATH | a math trace is on |
+| `0x0080` | REF | REF A or REF B is shown |
+| `0x0002` | CURSORS | the cursors are on |
 | `0x0100` | MEASURE | readouts are on (one or more chosen) |
 | `0x0200` | ACQUIRE | the acquisition is not Normal, or super-res is on |
 | `0x0400` | DISPLAY | a view other than Y-T, or persistence |
@@ -540,8 +543,8 @@ is open or not:
 | `0x2000`/`0x4000` | RUN/STOP | green running, amber (both) waiting for a trigger (Normal or Single), red stopped |
 | `0x8000` | SINGLE | a single capture is armed |
 
-- CURSORS, MATH, REF and INTENSITY/ADJUST stay **dark**: only confirmed lamps are used, and those four
-  have no lamp-by-lamp confirmation on this board (§6.5 scan) beyond the map.
+- The softkey firmware lit MATH, REF and CURSORS on this board from these bits. INTENSITY/ADJUST stays
+  **dark**: no firmware has lit it, so its lamp is not confirmed.
 - RUN/STOP is one bicolor LED: `0x2000` = green, `0x4000` = red; both set (`0x6000`) = amber.
 - Writing `0xFFFF` is a lamp-test (every LED on).
 - The panel computes the word from the state, latches it only when it changes, and re-syncs it on its

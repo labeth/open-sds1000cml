@@ -15,8 +15,9 @@ import (
 // than Y-T, or persistence. Utility: decoding. Save/Recall: the settings are
 // unchanged since the last save or recall. 1 and 2: the channel is shown.
 // Single: armed. Run/Stop: green running, amber waiting for a trigger
-// (Normal or Single), red stopped. CURSORS, MATH, REF and INTENSITY stay dark
-// (their latch bits are not confirmed).
+// (Normal or Single), red stopped. Math: a math trace is on. Ref: REF A or
+// REF B is shown. Cursors: the cursors are on. INTENSITY stays dark (no
+// firmware has lit it, so its latch bit is not confirmed).
 
 // lampWord is the latch word for state s.
 // TRLC-LINKS: REQ-SDS-135, REQ-SDS-211
@@ -27,6 +28,15 @@ func (c *Controller) lampWord(s *sv) uint16 {
 	}
 	if s.chDisp[1] {
 		w |= ledCH2
+	}
+	if s.mathMode != 0 {
+		w |= ledMath
+	}
+	if s.refHas[0] && s.refShow[0] || s.refHas[1] && s.refShow[1] {
+		w |= ledRef
+	}
+	if s.curOn {
+		w |= ledCursors
 	}
 	switch {
 	case !s.st.Running:
