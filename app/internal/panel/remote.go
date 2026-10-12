@@ -18,7 +18,10 @@ import (
 // setter (the knob and F-key path) and never opens, moves or closes
 // anything on the LCD; a one-line REMOTE note there confirms it. One Seq
 // counts every change of the snapshot and of the sheet values, and the
-// long-poll wakes on it.
+// long-poll wakes on it; SheetsSeq counts the sheet values alone, so a
+// remote reads /api/sheets again only when they changed. Live texts (a
+// mask test's counts, the stack's status, COMPARE's trigger stability) are
+// not in the snapshot: they would wake every remote on every frame.
 
 // KeyStatus is one F-key label as drawn.
 type KeyStatus struct {
@@ -70,8 +73,9 @@ type TabModel struct {
 
 // SheetsModel is the whole sheet model for the remote.
 type SheetsModel struct {
-	Seq  uint64
-	Tabs []TabModel
+	Seq       uint64
+	SheetsSeq uint64 // the sheet values' count (Status.SheetsSeq) when this model was read
+	Tabs      []TabModel
 }
 
 // SheetStatus is the LCD's open sheet.
@@ -82,7 +86,7 @@ type SheetStatus struct {
 	TabTitle string
 	Tabs     []string // in this workspace's order
 	Edit     bool
-	Row      *RowModel // the highlighted row
+	Row      *RowModel // the highlighted row (an action row without its live status text)
 }
 
 // PickerStatus is the byte picker or the match editor.
@@ -98,6 +102,7 @@ type PickerStatus struct {
 // Status is the panel snapshot in /api/status: what the LCD and lamps show.
 type Status struct {
 	Seq         uint64
+	SheetsSeq   uint64 // moves only when a sheet value or a row's availability changes
 	AutosetBusy bool
 	AutosetMsg  string
 	Workspace   string
@@ -108,7 +113,7 @@ type Status struct {
 	Sheet       SheetStatus
 	FKeys       [5]KeyStatus
 	Tool        []ToolSeg
-	Again       string
+	Again       string // the pane's again line (COMPARE: the key's job, not the trigger's stability)
 	AgainNext   string // what the workspace's key again shows next, whatever the LCD shows ("X-Y")
 	Notice      string
 	Remote      string
@@ -131,6 +136,8 @@ type SetResult struct {
 type remoteState struct {
 	seq          uint64
 	sig          uint64
+	sheetsSeq    uint64 // counts sheetSig changes
+	sheetSig     uint64
 	status       Status
 	wake         chan struct{}
 	sheetsActive time.Time
@@ -213,6 +220,9 @@ func (c *Controller) status(s *sv) Status {
 			st.Sheet.Tabs = append(st.Sheet.Tabs, sheetTabs[ti].name)
 		}
 		rm := rowModel(s, curRow(u))
+		if rm.Kind == "action" {
+			rm.Text = "" // a live status (a mask test's counts, the stack's): /api/sheets has it
+		}
 		st.Sheet.Row = &rm
 		st.Tool = []ToolSeg{{"S/DIV", "tab"}, {"Adjust", "row"}, {"push", "edit"}, {"Position", "change the row"}, {"push", "default"}}
 		if u.sub == subMatch {
@@ -222,6 +232,9 @@ func (c *Controller) status(s *sv) Status {
 		}
 	} else {
 		st.Tool, st.Again = paneTool(c, s, v)
+		if v.Cmp != nil {
+			st.Again = "F5 again: " + st.AgainNext // the key's job, not the trigger's stability
+		}
 	}
 	switch {
 	case u.wpick || u.open && u.sub == subPick:
@@ -387,7 +400,12 @@ func (c *Controller) publish() {
 	sig := h.Sum64()
 	c.rmu.Lock()
 	if s.now.Sub(c.remote.sheetsActive) < sheetsWindow {
-		sig ^= sheetSig(s) * 0x9E3779B97F4A7C15
+		ss := sheetSig(s)
+		if ss != c.remote.sheetSig || c.remote.sheetsSeq == 0 {
+			c.remote.sheetsSeq++
+			c.remote.sheetSig = ss
+		}
+		sig ^= ss * 0x9E3779B97F4A7C15
 	}
 	if c.remote.wake == nil {
 		c.remote.wake = make(chan struct{})
@@ -398,7 +416,7 @@ func (c *Controller) publish() {
 		close(c.remote.wake)
 		c.remote.wake = make(chan struct{})
 	}
-	st.Seq = c.remote.seq
+	st.Seq, st.SheetsSeq = c.remote.seq, c.remote.sheetsSeq
 	c.remote.status = st
 	c.rmu.Unlock()
 }
@@ -446,8 +464,12 @@ func (c *Controller) Sheets() SheetsModel {
 	c.remote.sheetsActive = c.now()
 	c.rmu.Unlock()
 	c.publish()
-	s := c.snap()
+	// the counts before the read: a change while it runs counts once more
 	var m SheetsModel
+	c.rmu.Lock()
+	m.Seq, m.SheetsSeq = c.remote.seq, c.remote.sheetsSeq
+	c.rmu.Unlock()
+	s := c.snap()
 	for _, t := range sheetTabs {
 		tm := TabModel{ID: t.id, Name: t.name, Title: t.title, Key: t.key}
 		for _, r := range t.rows {
@@ -455,9 +477,6 @@ func (c *Controller) Sheets() SheetsModel {
 		}
 		m.Tabs = append(m.Tabs, tm)
 	}
-	c.rmu.Lock()
-	m.Seq = c.remote.seq
-	c.rmu.Unlock()
 	return m
 }
 
@@ -608,7 +627,10 @@ func (c *Controller) againNext(s *sv) string {
 	case wsview.Measure:
 		return map[bool]string{true: "Statistics", false: "All values"}[s.ui.measAll]
 	case wsview.Compare:
-		return c.cmpAgainText(s)
+		// the key's job: whether the trigger is stable enough is said when it
+		// is pressed (a verdict that flickers with the signal would wake every
+		// remote on every frame)
+		return map[bool]string{true: "cancel stack", false: "stack master"}[s.stacking]
 	}
 	return viewName(map[bool]int{true: viewXY, false: viewYT}[s.viewMode == viewYT])
 }

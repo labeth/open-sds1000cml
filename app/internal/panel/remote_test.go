@@ -3,9 +3,12 @@ package panel
 
 import (
 	"math"
+	"math/rand"
 	"strings"
 	"testing"
 	"time"
+
+	"open-sds/app/internal/engine"
 )
 
 // The phone remote's surface: the panel snapshot labels everything as the
@@ -124,6 +127,78 @@ func TestSeqAndLongPoll(t *testing.T) {
 	}
 	if d := time.Since(t0); d > 2*time.Second {
 		t.Fatalf("the long-poll overran its timeout: %v", d)
+	}
+}
+
+// A mask test counting while the LCD's cursor rests on MATH/REF Counters
+// (whose text is the live pass/fail count) does not move the Seq the
+// remotes' long-polls wake on, nor SheetsSeq: the counts are not a setting.
+// A setting changed meanwhile moves both.
+// TRLC-LINKS: REQ-SDS-211, REQ-SDS-220
+func TestALiveRowLeavesTheSeqAlone(t *testing.T) {
+	c, eng, _ := newC(t)
+	c.Sheets() // a remote reads the sheets: their values count in the Seq
+	press(t, c, "math")
+	goRow(t, c, "cmp.counters")
+	st0 := c.PanelStatus()
+	if st0.Sheet.Row == nil || st0.Sheet.Row.ID != "cmp.counters" || st0.Sheet.Row.Text != "" {
+		t.Fatalf("the LCD's row: %+v", st0.Sheet.Row)
+	}
+	for i := 1; i <= 50; i++ {
+		eng.set(func(st *engine.Stats) { st.MaskPass, st.MaskFail = int64(i), int64(i/7) })
+		c.SyncLEDs() // the panel loop's 40 ms tick
+		if st := c.PanelStatus(); st.Seq != st0.Seq || st.SheetsSeq != st0.SheetsSeq {
+			t.Fatalf("count %d moved the Seq %d -> %d (sheets %d -> %d)", i, st0.Seq, st.Seq, st0.SheetsSeq, st.SheetsSeq)
+		}
+	}
+	if got := rowText(c, "cmp.counters"); got != "pass 50  fail 7" {
+		t.Fatalf("the LCD's row says %q", got)
+	}
+	if res := c.SheetSet("cmp.mask_tol", nil, "8pt/12cd"); !res.OK {
+		t.Fatalf("tolerance: %+v", res)
+	}
+	if st := c.PanelStatus(); st.Seq == st0.Seq || st.SheetsSeq == st0.SheetsSeq {
+		t.Fatalf("a setting left the Seq at %d (sheets %d)", st.Seq, st.SheetsSeq)
+	}
+	// the workspace alone moves the Seq, not the sheet values' count
+	st1 := c.PanelStatus()
+	if res := c.RemoteWorkspace("measure"); !res.OK {
+		t.Fatalf("MEASURE: %+v", res)
+	}
+	if st := c.PanelStatus(); st.Seq == st1.Seq {
+		t.Fatalf("a workspace switch left the Seq at %d", st.Seq)
+	}
+}
+
+// COMPARE's trigger-stability verdict flickers with a marginal signal: the
+// LCD's pane shows it, but the remote's snapshot names the key's job
+// ("stack master"), so the verdict does not move the Seq; a refused master
+// says why when the key is pressed.
+// TRLC-LINKS: REQ-SDS-211, REQ-SDS-218, REQ-SDS-220
+func TestCompareStabilityLeavesTheSeqAlone(t *testing.T) {
+	r := newViewRig(t)
+	c := r.c
+	press(t, c, "f5")
+	c.Sheets()
+	rng := rand.New(rand.NewSource(3))
+	for i := 0; i < 8; i++ {
+		r.show(toneFrame(""))
+	}
+	st0 := c.PanelStatus()
+	if st0.AgainNext != "stack master" || st0.Again != "F5 again: stack master" {
+		t.Fatalf("COMPARE: again %q next %q", st0.Again, st0.AgainNext)
+	}
+	for i := 0; i < 8; i++ {
+		r.show(noiseFrame(rng))
+	}
+	if !strings.Contains(c.View().Cmp.Again, "needs a stable trigger") {
+		t.Fatalf("the LCD's pane: %q", c.View().Cmp.Again)
+	}
+	if st := c.PanelStatus(); st.Seq != st0.Seq || st.AgainNext != "stack master" || st.Again != "F5 again: stack master" {
+		t.Fatalf("the verdict moved the snapshot: Seq %d -> %d, again %q next %q", st0.Seq, st.Seq, st.Again, st.AgainNext)
+	}
+	if res := c.RemoteAgain(); res.OK || !strings.Contains(res.Error, "No master") {
+		t.Fatalf("again on noise: %+v", res)
 	}
 }
 
