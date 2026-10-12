@@ -398,6 +398,7 @@ func inIntRange(v, lo, hi int) bool { return v >= lo && v <= hi }
 
 // TRLC-LINKS: REQ-SDS-135
 type fakeFE struct {
+	mu      sync.Mutex // an Autoset sweep sets it from its own goroutine
 	calls   []call
 	idx     [2]int
 	offReqV [2]float64
@@ -408,23 +409,35 @@ type fakeFE struct {
 
 // TRLC-LINKS: REQ-SDS-135
 func (f *fakeFE) SetVdiv(ch, idx int) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	f.calls = append(f.calls, call{"vdiv", ch, idx})
 	f.idx[ch] = idx
 	return nil
 }
 
 // TRLC-LINKS: REQ-SDS-135
-func (f *fakeFE) Snapshot() ([2]int, bool) { return f.idx, false }
+func (f *fakeFE) Snapshot() ([2]int, bool) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.idx, false
+}
 
 // TRLC-LINKS: REQ-SDS-135
 func (f *fakeFE) SetOffset(ch int, volts float64) uint16 {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	f.calls = append(f.calls, call{"offset", ch, int(volts * 100)})
 	f.offReqV[ch] = volts
 	return uint16(10223 - int(volts*100))
 }
 
 // TRLC-LINKS: REQ-SDS-135
-func (f *fakeFE) OffsetReqV(ch int) float64 { return f.offReqV[ch] }
+func (f *fakeFE) OffsetReqV(ch int) float64 {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.offReqV[ch]
+}
 
 // TRLC-LINKS: REQ-SDS-135
 func (f *fakeFE) OffsetVolts(ch int, code uint16) float64 { return (10223 - float64(code)) / 100 }
@@ -434,22 +447,32 @@ func (f *fakeFE) OffsetK(ch int) float64 { return 100 }
 
 // TRLC-LINKS: REQ-SDS-135
 func (f *fakeFE) SetCoupling(ch, mode int) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	f.calls = append(f.calls, call{"coupling", ch, mode})
 	f.cpl[ch] = mode
 	return nil
 }
 
 // TRLC-LINKS: REQ-SDS-135
-func (f *fakeFE) Coupling(ch int) int { return f.cpl[ch] }
+func (f *fakeFE) Coupling(ch int) int {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.cpl[ch]
+}
 
 // TRLC-LINKS: REQ-SDS-135
 func (f *fakeFE) SetProbe(ch int, x float64) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	f.calls = append(f.calls, call{"probe", ch, int(x)})
 	f.probe[ch] = x
 }
 
 // TRLC-LINKS: REQ-SDS-135
 func (f *fakeFE) ProbeFactor(ch int) float64 {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	if f.probe[ch] >= 1 {
 		return f.probe[ch]
 	}
@@ -469,10 +492,19 @@ func (f *fakeFE) SetTrigCalDetent(ch, detent int, c analog.TrigCal) {}
 type bwlFE struct{ *fakeFE }
 
 // SetBWL sets a channel's bandwidth limit.
-func (f bwlFE) SetBWL(ch int, on bool) error { f.bwl[ch&1] = on; return nil }
+func (f bwlFE) SetBWL(ch int, on bool) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.bwl[ch&1] = on
+	return nil
+}
 
 // BWL reports a channel's bandwidth limit.
-func (f bwlFE) BWL(ch int) bool { return f.bwl[ch&1] }
+func (f bwlFE) BWL(ch int) bool {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.bwl[ch&1]
+}
 
 // fakeInv is the display invert (the SCPI INVS shadow).
 type fakeInv struct {

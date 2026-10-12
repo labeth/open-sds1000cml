@@ -47,6 +47,7 @@ const ALL_GROUPS = [
   ["Eye diagram", [["ejArm", "Eye / jitter", "arm eye diagram tie"], ["ejCh", "Eye channel", ""], ["ejOpt", "Optimize for the eye", "timebase"], ["ejReset", "Reset the eye", ""]]],
   ["Mask & zones", [["zmBuild", "Build mask", "golden"], ["zmN", "Mask captures", "n"], ["zmCh", "Mask channel", ""], ["zmTolT", "Mask time tolerance", "samples"],
     ["zmTolV", "Mask voltage tolerance", "codes"], ["zmMode", "Mask test", "count stop on fail"], ["zmClearStats", "Reset mask counts", "pass fail"],
+    ["zmClearMask", "Clear mask", "remove delete"],
     ["zmDraw", "Draw zone", "zone trigger"], ["zmTrig", "Zone trigger", ""], ["zmClearZones", "Clear zones", ""]]],
   ["References & math", [["refSaveA", "Save REF A", "reference"], ["refShowA", "Show REF A", ""], ["refClearA", "Clear REF A", ""], ["refSaveB", "Save REF B", "reference"],
     ["refShowB", "Show REF B", ""], ["refClearB", "Clear REF B", ""], ["masterBtn", "Stack master", "average golden reference mask"], ["masterN", "Master captures", "average count"],
