@@ -277,10 +277,18 @@ type masterSrc struct {
 	mode    int       // the test mode to start: count, or stop on fail
 	until   time.Time // no live capture by then: REF A stays without a mask
 	gen     uint64    // the mask clears when it was made: a clear since drops it
+	geom    string    // the live captures' geometry so far, and in how many captures in a row
+	seen    int
 }
 
 // masterMaskWait is how long a finished master waits for a live capture.
 const masterMaskWait = 5 * time.Second
+
+// masterSteady is how many live captures in a row must share a geometry
+// before the master's mask is built in it: a capture made while Average was
+// switched off can come from the filtered record (another geometry) without
+// naming its average, and a mask in its geometry skipped every live capture.
+const masterSteady = 3
 
 // stackFinish stores the averaged frame as REF A and restores the
 // acquisition; the mask follows in the geometry of the next live capture
@@ -331,9 +339,9 @@ func (c *Controller) stackFinish(f *engine.Frame) {
 }
 
 // masterMaskFrame builds a finished master's mask in the geometry of the
-// first live capture after it, starts the test and zeroes its counts. A
-// clear since drops the master's mask; with no live capture within
-// masterMaskWait, REF A stays without one.
+// live captures after it (once masterSteady of them share it), starts the
+// test and zeroes its counts. A clear since drops the master's mask; with no
+// live captures within masterMaskWait, REF A stays without one.
 // TRLC-LINKS: REQ-SDS-218, REQ-SDS-139
 func (c *Controller) masterMaskFrame(f *engine.Frame) {
 	c.mu.Lock()
@@ -349,11 +357,22 @@ func (c *Controller) masterMaskFrame(f *engine.Frame) {
 	st := c.eng.Snapshot()
 	var m *engine.Mask
 	if st.AcqMode != engine.AcqAverage && !blockAvgRE.MatchString(f.Filter) && f.EdgeX >= 0 && f.SampleS > 0 && !f.IsEnv {
-		posFrac := st.TrigPosFrac
-		if math.IsNaN(posFrac) || posFrac < 0 || posFrac > 1 {
-			posFrac = 0.5
+		g := fmt.Sprint(f.WinCols, min(f.Valid, len(f.C1)), f.TdivS, f.SampleS, f.PeakDetect)
+		c.mu.Lock()
+		if g == src.geom {
+			src.seen++
+		} else {
+			src.geom, src.seen = g, 1
 		}
-		m = masterMaskOnto(src, f, posFrac, tol[0], tol[1])
+		steady := src.seen >= masterSteady
+		c.mu.Unlock()
+		if steady {
+			posFrac := st.TrigPosFrac
+			if math.IsNaN(posFrac) || posFrac < 0 || posFrac > 1 {
+				posFrac = 0.5
+			}
+			m = masterMaskOnto(src, f, posFrac, tol[0], tol[1])
+		}
 	}
 	if m == nil && !c.now().After(src.until) {
 		return // the averaged captures still in flight: wait for a live one

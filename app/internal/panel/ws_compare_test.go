@@ -70,7 +70,9 @@ func TestMasterStacksStoresAndTests(t *testing.T) {
 	if st := r.eng.Snapshot(); st.MaskSet || c.View().Cmp.Rows[cmpMask].Info != "building..." {
 		t.Fatalf("before a live capture: mask %v, row %+v", st.MaskSet, c.View().Cmp.Rows[cmpMask])
 	}
-	r.show(toneFrame(""))
+	for range 3 { // the live geometry holds: the mask is built in it
+		r.show(toneFrame(""))
+	}
 	st := r.eng.Snapshot()
 	if c.stack != nil || !c.RefView()[0].Show || !st.MaskSet || st.MaskMode != 1 || st.AcqMode != 0 || st.AvgCount != 4 ||
 		st.MaskPass != 0 || st.MaskFail != 0 {

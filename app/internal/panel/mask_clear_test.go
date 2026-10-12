@@ -165,8 +165,12 @@ func TestMasterMaskInLiveGeometry(t *testing.T) {
 		t.Fatal("a mask before any live capture: built in the averaged geometry")
 	}
 	c.masterMaskFrame(master) // an averaged capture still in flight: not the geometry to judge
+	// one made while Average was switched off: the filtered record, its average not named
+	c.masterMaskFrame(frame(4721, 3906, 2408, 256e-9, false, "CIC3 + compensated FIR"))
+	c.masterMaskFrame(live)
+	c.masterMaskFrame(live)
 	if eng.Snapshot().MaskSet {
-		t.Fatal("a mask from an averaged capture")
+		t.Fatal("a mask before the live geometry held for three captures")
 	}
 	c.masterMaskFrame(live)
 	m := eng.mask
@@ -188,7 +192,9 @@ func TestMasterMaskInLiveGeometry(t *testing.T) {
 	withClock(c)
 	finish(c)
 	c.clearMask()
-	c.masterMaskFrame(live)
+	for range 3 {
+		c.masterMaskFrame(live)
+	}
 	if eng.Snapshot().MaskSet {
 		t.Fatal("Clear mask while the master waited: its mask was built anyway")
 	}

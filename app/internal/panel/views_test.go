@@ -329,7 +329,9 @@ func TestWorkspaceScreens(t *testing.T) {
 		t.Fatalf("stacking row %+v", v.Cmp.Rows[cmpMaster])
 	}
 	r.show(toneFrame("block average 64/64 (waveform aligned)"))
-	r.show(toneFrame("")) // the first live capture: the master's mask is built in its geometry
+	for range 3 { // live captures: the master's mask is built in their geometry
+		r.show(toneFrame(""))
+	}
 	r.clk.advance(3 * time.Second)
 	r.eng.set(func(st *engine.Stats) { st.MaskPass = 120 })
 	if v := r.shot("compare_master"); !c.RefView()[0].Show || r.eng.Snapshot().MaskMode != 1 || v.Cmp == nil {

@@ -242,11 +242,19 @@ async function stackMaster() {
     await restore();
     masterSay("Building the mask from the master…");
     // 4. the mask, in the geometry of the live captures it will judge
-    let live = null;
-    for (let k = 0; k < 10 && !live; k++) {
+    // the live geometry must hold for three captures in a row: one made while Average was switched off
+    // can come from the filtered record (another geometry) without naming its average
+    let live = null, geom = "", seen = 0, since = 0;
+    for (let k = 0; k < 20 && !live; k++) {
       try {
-        const f = decodeBinFrame(await (await fetch("/api/frame.bin?raw=1&waitms=1000")).arrayBuffer());
-        if (f && !f.unchanged && f.sample_s > 0 && f.edge_x >= 0 && (ch ? f.c2 : f.c1) && !/block average/.test(f.filter || "")) live = f;
+        const f = decodeBinFrame(await (await fetch("/api/frame.bin?raw=1&waitms=1000&since=" + since)).arrayBuffer());
+        if (!f || f.unchanged) continue;
+        since = f.seq;
+        if (!(f.sample_s > 0 && f.edge_x >= 0 && (ch ? f.c2 : f.c1)) || /block average/.test(f.filter || "")) { seen = 0; continue; }
+        const g = [f.win_cols, f.cols, f.tdiv_s, f.sample_s, !!f.peak_detect].join(":");
+        seen = g === geom ? seen + 1 : 1;
+        geom = g;
+        if (seen >= 3) live = f;
       } catch (e) { /* retry */ }
     }
     if (!live) { refuse("no live capture after restoring the acquisition — REF A is kept; build the mask in the Mask pane."); return; }
