@@ -370,6 +370,13 @@ run(async (t) => {
     const rest = (await ctrl("/hits")) || {};
     P.ok(!rest["/api/sheets"] && (rest["/api/panel/wait"] || 0) <= 1,
       "2.4 s of a mask test counting under the LCD's cursor: no re-read, at most one long-poll (" + JSON.stringify(rest) + ")");
+    // the LCD's cursor moving fast (a status change each time, no sheet value): the long-polls keep a 300 ms gap, no re-read
+    await ctrl("/hits");
+    const t0 = Date.now();
+    for (let i = 0; i < 24; i++) await ctrl("/knob?name=adjust&dir=" + (i % 2 ? -1 : 1));
+    const span = Date.now() - t0, moving = (await ctrl("/hits")) || {};
+    P.ok(!moving["/api/sheets"] && (moving["/api/panel/wait"] || 0) <= Math.ceil(span / 300) + 1,
+      "24 cursor moves on the LCD in " + span + " ms: long-polls at least 300 ms apart, no re-read (" + JSON.stringify(moving) + ")");
     await ctrl("/mask?pass=0");
     await ctrl("/button?name=math");
     P.ok(await lcdClosed(), "the person at the scope closed MATH/REF");
@@ -600,6 +607,24 @@ run(async (t) => {
     t.ok(ha.length === 1 && ha[0].src === "scope" && ha[0].rows.join() === "time.tdiv", "the scope's knob while A's call was out is the scope's: " + JSON.stringify(ha));
     ha = await book(A, "ch1.offset");
     t.ok(ha.length === 1 && ha[0].src === "phone" && ha[0].rows.join() === "ch1.offset", "A's own entry holds only its row: " + JSON.stringify(ha));
+    // one read brings another remote's row (the REMOTE line names it) and the scope's: two entries, each with its own rows
+    await sleep(2100);
+    const split = await B.page.evaluate(async () => {
+      const real = RN.api.sheets, base = await real();
+      const crafted = JSON.parse(JSON.stringify(base));
+      for (const t of crafted.Tabs) for (const r of t.Rows) {
+        if (r.ID === "ch2.coupling") { r.Value = r.Value ? 0 : 1; r.Text = r.Value ? "AC" : "DC"; }
+        if (r.ID === "time.trig_pos") { r.Value = 30; r.Text = "30 %"; }
+      }
+      crafted.SheetsSeq = base.SheetsSeq + 1000;
+      RN.S.panel = Object.assign({}, RN.S.panel, { Remote: "REMOTE  CH2 coupling " + (crafted.Tabs.flatMap((t) => t.Rows).find((r) => r.ID === "ch2.coupling").Text) });
+      RN.api.sheets = async () => crafted;
+      await RN.refresh();
+      RN.api.sheets = real;
+      return RN.S.history.list.slice(0, 2).map((e) => ({ src: e.src, rows: e.rows.map((r) => r.id) }));
+    });
+    t.ok(split.some((e) => e.src === "remote" && e.rows.join() === "ch2.coupling") && split.some((e) => e.src === "scope" && e.rows.join() === "time.trig_pos"),
+      "one read with another remote's row and the scope's: two entries, each with its own rows: " + JSON.stringify(split));
     t.ok(A.errors.length + B.errors.length === 0, "two phones: no console errors");
     await A.ctx.close();
     await B.ctx.close();
