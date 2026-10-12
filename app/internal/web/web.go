@@ -12,7 +12,6 @@ import (
 	"net/http/pprof"
 	"open-sds/app/internal/sramcapture"
 	"open-sds/app/internal/streamview"
-	"path"
 	"strconv"
 	"strings"
 	"sync"
@@ -380,17 +379,11 @@ func (s *Server) hRoot(w http.ResponseWriter, r *http.Request) {
 	p := strings.TrimPrefix(r.URL.Path, "/")
 	if p == "" {
 		w.Header().Set("Content-Security-Policy", pageCSP)
-		serveAsset(w, "ui.html")
+		serveAsset(w, r, "ui.html")
 		return
 	}
-	if staticName(p) {
-		if ext := path.Ext(p); ext == ".js" || ext == ".css" {
-			if serveAsset(w, p) {
-				return
-			}
-		} else if serveMedia(w, r, p) {
-			return
-		}
+	if staticName(p) && serveAsset(w, r, p) {
+		return
 	}
 	http.NotFound(w, r)
 }
@@ -400,7 +393,7 @@ func (s *Server) hRoot(w http.ResponseWriter, r *http.Request) {
 // TRLC-LINKS: REQ-SDS-161, REQ-SDS-220
 func (s *Server) hRemote(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Security-Policy", pageCSP)
-	serveAsset(w, "remote.html")
+	serveAsset(w, r, "remote.html")
 }
 
 // TRLC-LINKS: REQ-SDS-161, REQ-SDS-162, REQ-SDS-163, REQ-SDS-164

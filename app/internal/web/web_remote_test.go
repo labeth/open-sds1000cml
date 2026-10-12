@@ -114,6 +114,45 @@ func TestRemotePageServed(t *testing.T) {
 	}
 }
 
+// Every embedded page and asset carries an ETag hashed once at start-up and
+// answers If-None-Match with 304 and no body: a phone opening the remote
+// again downloads only what changed (an OTA update changes the tags).
+// TRLC-LINKS: REQ-SDS-161, REQ-SDS-220
+func TestAssetsRevalidate(t *testing.T) {
+	s := New(&fakeScope{}, nil, nil, nil)
+	paths := []string{"/", "/remote"}
+	files, _ := assetFS.ReadDir(".")
+	for _, f := range files {
+		if staticName(f.Name()) {
+			paths = append(paths, "/"+f.Name())
+		}
+	}
+	if len(paths) < 40 {
+		t.Fatalf("only %d files", len(paths))
+	}
+	seen := map[string]string{}
+	for _, p := range paths {
+		r := get(s, p)
+		tag := r.Header().Get("ETag")
+		if r.Code != 200 || !regexp.MustCompile(`^"[0-9a-f]{16}"$`).MatchString(tag) || r.Header().Get("Cache-Control") != "no-cache" {
+			t.Fatalf("%s: %d etag %q cache %q", p, r.Code, tag, r.Header().Get("Cache-Control"))
+		}
+		if other, ok := seen[tag]; ok && other != p {
+			t.Fatalf("%s and %s share the tag %s", p, other, tag)
+		}
+		seen[tag] = p
+		if again := get(s, p, "If-None-Match", tag); again.Code != http.StatusNotModified || again.Body.Len() != 0 {
+			t.Fatalf("%s revalidated: %d, %d bytes", p, again.Code, again.Body.Len())
+		}
+		if other := get(s, p, "If-None-Match", `"0000000000000000"`); other.Code != 200 || other.Body.Len() == 0 {
+			t.Fatalf("%s with another tag: %d", p, other.Code)
+		}
+	}
+	if r := get(s, "/remote", "If-None-Match", assetTags["remote.html"]); r.Code != http.StatusNotModified || r.Header().Get("Content-Security-Policy") != pageCSP {
+		t.Fatalf("/remote revalidated: %d csp %q", r.Code, r.Header().Get("Content-Security-Policy"))
+	}
+}
+
 // The remote's files use no outside resource (the bench may have no
 // internet): no external URLs, no inline script.
 // TRLC-LINKS: REQ-SDS-220
