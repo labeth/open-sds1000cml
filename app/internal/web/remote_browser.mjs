@@ -135,6 +135,44 @@ run(async (t) => {
     P.ok(!r.small.length, where + ": every shown control is at least 44 px" + (r.small.length ? " - " + r.small.slice(0, 6).join(", ") : ""));
     P.ok(!r.tiny.length, where + ": no text under 13 px" + (r.tiny.length ? " - " + r.tiny.slice(0, 6).join(", ") : ""));
     P.ok(!r.side, where + ": nothing scrolls sideways");
+    // every shown text against what is drawn under it: 4.5:1 (3:1 large), disabled controls aside (WCAG AA)
+    const low = await P.page.evaluate(() => {
+      const parse = (c) => {
+        let m = /rgba?\(([^)]+)\)/.exec(c);
+        if (m) { const p = m[1].split(/[ ,/]+/).filter(Boolean).map(Number); return [p[0], p[1], p[2], p.length > 3 ? p[3] : 1]; }
+        m = /color\(srgb ([^)]+)\)/.exec(c);
+        if (m) { const p = m[1].split(/[ /]+/).filter(Boolean).map(Number); return [p[0] * 255, p[1] * 255, p[2] * 255, p.length > 3 ? p[3] : 1]; }
+        return null;
+      };
+      const lum = (c) => { const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }; return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]); };
+      const over = (fg, bg) => [0, 1, 2].map((i) => fg[i] * fg[3] + bg[i] * (1 - fg[3])).concat(1);
+      const under = (e) => {
+        const layers = [];
+        for (let x = e; x; x = x.parentElement) { const c = parse(getComputedStyle(x).backgroundColor); if (c && c[3] > 0) layers.push(c); if (c && c[3] >= 1) break; }
+        let bg = parse(getComputedStyle(document.body).backgroundColor) || [0, 0, 0, 1];
+        for (let i = layers.length - 1; i >= 0; i--) bg = over(layers[i], bg);
+        return bg;
+      };
+      const out = [], seen = new Set();
+      const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+      for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+        const e = n.parentElement;
+        if (!n.textContent.trim() || !e || e.closest("[hidden], button:disabled, .tick, .awake-video, svg") || !e.getClientRects().length) continue;
+        const b = e.getBoundingClientRect();
+        if (b.bottom <= 0 || b.top >= innerHeight || getComputedStyle(e).visibility === "hidden") continue;
+        let o = 1;
+        for (let x = e; x; x = x.parentElement) o *= parseFloat(getComputedStyle(x).opacity);
+        if (o < 0.99) continue;   // fading in or out, or dimmed on purpose
+        const st = getComputedStyle(e), fg = parse(st.color);
+        if (!fg) continue;
+        const bg = under(e), a = lum(over(fg, bg)), c = lum(bg), ratio = (Math.max(a, c) + 0.05) / (Math.min(a, c) + 0.05);
+        const fs = parseFloat(st.fontSize), large = fs >= 24 || (fs >= 18.66 && parseInt(st.fontWeight, 10) >= 700);
+        const key = e.className + "|" + st.color + "|" + ratio.toFixed(1);
+        if (ratio < (large ? 3 : 4.5) && !seen.has(key)) { seen.add(key); out.push((e.className || e.tagName) + " \"" + n.textContent.trim().slice(0, 16) + "\" " + ratio.toFixed(2) + ":1"); }
+      }
+      return out;
+    });
+    P.ok(!low.length, where + ": every text has 4.5:1 contrast" + (low.length ? " - " + low.slice(0, 6).join(", ") : ""));
   }
 
   // ---- one phone through every requirement ----------------------------------------------------
@@ -647,7 +685,16 @@ run(async (t) => {
     await P.tap('[data-tile="time.tdiv"] .tmain');
     await layout(P, "number sheet");
     await P.shot("sheet-number");
+    // the page behind a sheet is inert: Tab stays in the sheet, a screen reader too
+    const trap = await P.page.evaluate(() => ({ inert: document.getElementById("app").inert, role: document.getElementById("app").getAttribute("role") }));
+    const where = [];
+    for (let i = 0; i < 14; i++) {
+      await P.page.keyboard.press("Tab");
+      where.push(await P.page.evaluate(() => { const a = document.activeElement; return !a || a === document.body ? "body" : a.closest(".sheet") ? "sheet" : "page:" + (a.id || a.className); }));
+    }
+    P.ok(trap.inert && trap.role === null && !where.some((w) => w.startsWith("page:")), "a sheet keeps the focus; the page behind is inert, and no role=application: " + JSON.stringify(trap) + " " + where.join(","));
     await P.tap(".sheet-close");
+    P.ok(!(await P.page.evaluate(() => document.getElementById("app").inert)), "closed: the page is live again");
     await P.tap('[data-tile="trig.edge"] .tmain');
     await layout(P, "options sheet");
     await P.shot("sheet-options");
@@ -713,6 +760,19 @@ run(async (t) => {
     await P.tap(".sheet-close");
     await P.tap("#edit-done");
     t.ok(P.errors.length === 0, label + ": no console errors" + (P.errors.length ? " - " + P.errors.slice(0, 3).join(" | ") : ""));
+    await P.ctx.close();
+  }
+
+  // ---- a 360 px phone at 150 % page zoom (240 CSS px): Home still fits ------------------------
+  {
+    await ctrl("/reset");
+    const P = await phone("Pixel 7", { viewport: { width: 240, height: 520 }, label: "240x520" });
+    await layout(P, "Home at 150 % zoom");
+    await P.shot("home");
+    t.ok(!(await P.visible("#awake")) && await P.visible('[data-ws="compare"]'), "240 px: the five chips keep 44 px, the eye moves to Keys");
+    await P.tap('[data-tabbar="keys"]');
+    await layout(P, "Keys at 150 % zoom");
+    t.ok(P.errors.length === 0, "240x520: no console errors" + (P.errors.length ? " - " + P.errors.slice(0, 3).join(" | ") : ""));
     await P.ctx.close();
   }
   await ctrl("/reset");

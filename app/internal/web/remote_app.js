@@ -165,7 +165,7 @@
   const dock = h("div", { class: "dock", role: "group", "aria-label": "Run control" });
   const tabbar = h("nav", { class: "tabbar", role: "tablist", "aria-label": "Sections" });
   app.append(bar, banner, views, h("div", { class: "bottom" }, dock, tabbar));
-  const sh = RU.sheet({ onClose: () => { S.sheet = null; sh.body.textContent = ""; KP.active = null; syncBack(); } });
+  const sh = RU.sheet({ inert: app, onClose: () => { S.sheet = null; sh.body.textContent = ""; KP.active = null; syncBack(); } });
 
   // ---- the phone's back gesture: it closes what is open here before it leaves the remote ----------
 

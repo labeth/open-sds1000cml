@@ -289,7 +289,9 @@
   // sheet is the one bottom sheet: a scrim, a grab handle, a title, extra
   // head buttons, a close button; drag the head down or tap the scrim to
   // close, Escape on a keyboard. {el, head, body, open(title), close(),
-  // isOpen(), setTitle(t)}. Focus goes into it and back to where it was.
+  // isOpen(), setTitle(t)}. Focus goes into it and back to where it was;
+  // o.inert (the page behind) is inert while it is open, so focus and a
+  // screen reader stay in the sheet.
   // TRLC-LINKS: REQ-SDS-220
   function sheet(o) {
     const scrim = h("div", { class: "scrim", hidden: true });
@@ -312,6 +314,7 @@
         void el.offsetWidth;
         scrim.classList.add("open"); el.classList.add("open");
         doc.body.classList.add("sheet-on");
+        if (o && o.inert) o.inert.inert = true;
         el.focus({ preventScroll: true });
         return api;
       },
@@ -322,6 +325,7 @@
         el.style.transform = "";
         scrim.hidden = true; el.hidden = true;
         doc.body.classList.remove("sheet-on");
+        if (o && o.inert) o.inert.inert = false;
         if (o && o.onClose) o.onClose();
         if (back && back.isConnected && back.focus) back.focus({ preventScroll: true });
         return api;
