@@ -63,7 +63,8 @@ run(async (t) => {
     "switching to SLOPE reveals slope, hides pulse");
   await po.seg("ttype", "0"); // EDGE
   await t.until(async () => !(await po.isCardVisible("qualrow")), "EDGE hides the qualifier panel");
-  t.ok((await po.text("trigCap")).includes("Edge"), "the strip's trigger caption names the type");
+  // the caption follows the server's status (the next poll), the panel the click
+  await t.until(async () => (await po.text("trigCap")).includes("Edge"), "the strip's trigger caption names the type");
   await po.setRange("lvl", 1.5);
   await t.until(async () => ((await po.text("lvlv")) || "").includes("1.5"), "trigger level readout tracks the slider");
 
