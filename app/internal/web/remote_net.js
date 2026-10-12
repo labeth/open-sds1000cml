@@ -58,7 +58,7 @@
     seq: 0, sheetsSeq: -1,                // the status's Seq, and the SheetsSeq of the model read last
     online: false, ever: false, error: "",
     overlay: new Map(),                   // row id -> {value, text}: set here, not answered yet
-    stamps: new Map(),                    // row id -> when a call's answer set it (an older read does not undo it)
+    stamps: new Map(),                    // row id -> {t, seq}: when a call's answer set it, and its SheetsSeq (an older read does not undo it)
     history: new RC.History(RU.load(HIST_KEY, [])),
     base: null,                           // the snapshot History last booked
     calls: [],                            // this phone's calls whose changes may still show
@@ -189,14 +189,20 @@
     return reading;
   }
 
+  // applySheets takes a read of the sheet model. A call's answered value
+  // stands against a read older than the answer: one that started before
+  // the answer came and, where the scope counts, brings a SheetsSeq below
+  // the answer's. A read that already counts the change is the truth, even
+  // one that started first: the scope may have moved on since its answer.
   // TRLC-LINKS: REQ-SDS-220
   function applySheets(sh, t0) {
     if (typeof sh.SheetsSeq === "number") S.sheetsSeq = sh.SheetsSeq;
     const m = RC.index(sh);
-    for (const [id, t] of S.stamps) {
+    for (const [id, st] of S.stamps) {
+      const older = st.t > t0 && !(st.seq && typeof sh.SheetsSeq === "number" && sh.SheetsSeq >= st.seq);
       const mine = S.model.rows.get(id);
-      if (t > t0 && mine && m.rows.has(id)) m.rows.set(id, Object.assign({}, m.rows.get(id), { Value: mine.Value, Text: mine.Text }));
-      else if (t <= t0) S.stamps.delete(id);
+      if (!older) S.stamps.delete(id);
+      else if (mine && m.rows.has(id)) m.rows.set(id, Object.assign({}, m.rows.get(id), { Value: mine.Value, Text: mine.Text }));
     }
     S.model = m;
   }
@@ -353,7 +359,7 @@
       S.lastCall = c.doneAt;
       if (res.ok && meta.row && !res.skipped) {
         setModelRow(meta.row, res.value, res.text);
-        S.stamps.set(meta.row, c.doneAt);
+        S.stamps.set(meta.row, { t: c.doneAt, seq: res.sheetsSeq || 0 });
       }
       if (res.ok && res.workspace) applyWorkspace(res);
       if (meta.row && !S.queued.has(meta.row)) S.overlay.delete(meta.row);

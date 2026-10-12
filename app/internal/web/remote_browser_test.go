@@ -36,6 +36,11 @@ type remoteEngine struct {
 	mu sync.Mutex
 	*fakeScope
 	serial engine.SerialParams
+	// with tdivLag a timebase takes effect that long after it is asked for,
+	// as the real engine takes it at its next capture; meanwhile Snapshot
+	// names it as the one asked for (TdivSetS)
+	tdivLag  time.Duration
+	tdivPend float64
 }
 
 // TRLC-LINKS: REQ-SDS-220
@@ -62,13 +67,36 @@ func (e *remoteEngine) lock(fn func()) {
 
 // TRLC-LINKS: REQ-SDS-220
 func (e *remoteEngine) Snapshot() (s engine.Stats) {
-	e.lock(func() { s = e.fakeScope.Snapshot() })
+	e.lock(func() {
+		s = e.fakeScope.Snapshot()
+		s.TdivSetS = s.TdivS
+		if e.tdivPend > 0 {
+			s.TdivSetS = e.tdivPend
+		}
+	})
 	return
 }
 
 // TRLC-LINKS: REQ-SDS-220
 func (e *remoteEngine) SetTdiv(v float64) (b engine.Band, ok bool) {
-	e.lock(func() { b, ok = e.fakeScope.SetTdiv(v) })
+	e.lock(func() {
+		if e.tdivLag <= 0 {
+			b, ok = e.fakeScope.SetTdiv(v)
+			return
+		}
+		if b, ok = engine.PlanTdiv(v); !ok {
+			return
+		}
+		e.tdivPend = b.TdivS
+		time.AfterFunc(e.tdivLag, func() { // the next capture takes whatever is asked for by then
+			e.lock(func() {
+				if e.tdivPend > 0 {
+					e.fakeScope.SetTdiv(e.tdivPend)
+					e.tdivPend = 0
+				}
+			})
+		})
+	})
 	return
 }
 
@@ -314,6 +342,11 @@ func newRemoteRig(t testing.TB) *remoteRig {
 		writeJSON(w, map[string]bool{"ok": ok})
 	})
 	mux.HandleFunc("/status", func(w http.ResponseWriter, _ *http.Request) { writeJSON(w, pc.PanelStatus()) })
+	mux.HandleFunc("/tdivlag", func(w http.ResponseWriter, q *http.Request) {
+		ms, _ := strconv.Atoi(q.URL.Query().Get("ms"))
+		eng.lock(func() { eng.tdivLag = time.Duration(ms) * time.Millisecond })
+		writeJSON(w, map[string]bool{"ok": true})
+	})
 	mux.HandleFunc("/mask", func(w http.ResponseWriter, q *http.Request) {
 		n, _ := strconv.ParseInt(q.URL.Query().Get("pass"), 10, 64)
 		eng.lock(func() {

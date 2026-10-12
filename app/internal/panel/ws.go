@@ -180,6 +180,10 @@ func (c *Controller) railNoteLocked(head, text string) {
 // TRLC-LINKS: REQ-SDS-211, REQ-SDS-212
 func (c *Controller) snap() *sv {
 	s := &sv{now: c.now(), st: c.eng.Snapshot(), tdivs: c.tdivs}
+	s.memDepth = s.st.MemDepth
+	if md, ok := c.eng.(interface{ MemDepth() int }); ok {
+		s.memDepth = md.MemDepth()
+	}
 	src := s.st.TrigSource & 1
 	if c.fe != nil {
 		s.fe = true

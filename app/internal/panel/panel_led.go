@@ -85,7 +85,7 @@ func (c *Controller) waitingForTrigger(s *sv) bool {
 // Save/Recall lamp).
 // TRLC-LINKS: REQ-SDS-136
 func setupPrint(s *sv) string {
-	return fmt.Sprint(s.st.TdivS, s.st.TrigSource, s.st.TrigRising, s.st.TrigCode, s.st.TrigType, s.st.Norm, s.st.HoldoffS,
+	return fmt.Sprint(s.st.TdivSet(), s.st.TrigSource, s.st.TrigRising, s.st.TrigCode, s.st.TrigType, s.st.Norm, s.st.HoldoffS,
 		s.st.TrigPosFrac, s.st.AcqMode, s.st.AvgCount, s.st.EresLen, s.vidx, s.offV, s.cpl, s.probe, s.bwl,
 		s.chDisp, s.showMeas, s.persist, s.viewMode, s.mathMode, s.decProto, s.decBaud, s.decChA, s.decChB,
 		s.decCPOL, s.decCPHA, s.decFormat, s.meas, s.fftSrc, s.ui.ws)

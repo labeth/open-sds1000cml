@@ -234,8 +234,8 @@ func (c *Controller) resync() {
 	c.mu.Lock()
 	c.running, c.norm, c.single = st.Running, st.Norm, st.Single // guarded — pushLEDs reads these
 	c.mu.Unlock()
-	for i, t := range c.tdivs {
-		if st.TdivS > 0 && absf(t-st.TdivS) <= t*1e-6 {
+	for i, t := range c.tdivs { // the timebase asked for: one waiting for the next capture counts
+		if ts := st.TdivSet(); ts > 0 && absf(t-ts) <= t*1e-6 {
 			c.tdivIdx = i
 			break
 		}

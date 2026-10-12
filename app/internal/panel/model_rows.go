@@ -426,7 +426,7 @@ func chanRows(ch int) []*row {
 func timeRows() []*row {
 	tdiv := &row{id: "time.tdiv", label: "Time/div", kind: wsview.Number, unit: "s",
 		help: "Seconds per horizontal division.", knob: "No sheet open: the S/DIV knob (clockwise toward nS).",
-		val:    func(s *sv) float64 { return s.st.TdivS },
+		val:    func(s *sv) float64 { return s.st.TdivSet() }, // asked for: the engine takes it at its next capture
 		fmtN:   siFmt("s"),
 		step:   constStep(0),
 		ladder: func(s *sv) []float64 { return s.tdivs },
@@ -471,7 +471,7 @@ func timeRows() []*row {
 	pan.def = func(c *Controller) error { return c.setZoomOff(0) }
 	roll := &row{id: "time.roll", label: "Roll mode", kind: wsview.Enum,
 		help: "How the trace scrolls at 100 ms/div and slower: chunked (instant) or a gap-free stream.",
-		rel:  func(s *sv) bool { return s.st.TdivS >= 100e-3 }, why: "Time/div 100 ms or slower",
+		rel:  func(s *sv) bool { return s.st.TdivSet() >= 100e-3 }, why: "Time/div 100 ms or slower",
 		opts: staticOpts([]opt{{0, "Chunked"}, {1, "Stream"}}),
 		get:  func(s *sv) int { return b2ic(s.st.RollStream) },
 		set:  func(c *Controller, v int) error { return c.setRollStream(v == 1) },
@@ -553,7 +553,7 @@ func acqRows() []*row {
 		help: "Decimated record depth: frame rate against detail.",
 		rel:  func(s *sv) bool { return !isSRAM(s) }, why: "the direct-capture image (SRAM depth is fixed)",
 		opts: staticOpts([]opt{{2048, "2k"}, {6144, "6k"}, {14336, "14k"}, {20480, "20k"}}),
-		get:  func(s *sv) int { return s.st.MemDepth },
+		get:  func(s *sv) int { return s.memDepth },
 		set:  func(c *Controller, v int) error { return directOnly(c, func() { c.eng.SetMemDepth(v) }) },
 		def:  func(c *Controller) error { return directOnly(c, func() { c.eng.SetMemDepth(20480) }) },
 	}

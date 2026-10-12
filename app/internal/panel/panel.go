@@ -158,16 +158,14 @@ type Controller struct {
 	keyFD int
 	logf  func(string, ...any)
 
-	tdivs     []float64
-	tdivIdx   int
-	tdivAsked uint64  // timebase requests so far (guarded by mu): the engine applies one at its next capture
-	tdivWant  float64 // the timebase asked for last
-	vIdx      [2]int
-	offReqV   [2]float64
-	trigCode  uint16
-	running   bool
-	norm      bool
-	single    bool // a single-shot is armed/waiting → SINGLE lamp
+	tdivs    []float64
+	tdivIdx  int
+	vIdx     [2]int
+	offReqV  [2]float64
+	trigCode uint16
+	running  bool
+	norm     bool
+	single   bool // a single-shot is armed/waiting → SINGLE lamp
 
 	prev     [5]uint16
 	havePrev bool

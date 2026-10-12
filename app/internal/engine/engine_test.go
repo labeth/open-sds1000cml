@@ -468,8 +468,25 @@ func TestBandChangeAppliedAtBoundary(t *testing.T) {
 		f, _ := e.Consume()
 		return f != nil && f.TdivS == 1e-6 && f.Valid == maxRecordCols
 	})
-	if got := e.Snapshot().TdivS; got != 1e-6 {
-		t.Fatalf("stats tdiv = %v, want 1µs", got)
+	if st := e.Snapshot(); st.TdivS != 1e-6 || st.TdivSetS != 1e-6 {
+		t.Fatalf("stats tdiv = %v, asked %v, want 1µs both", st.TdivS, st.TdivSetS)
+	}
+}
+
+// A new timebase waits for the next capture: until then the snapshot names
+// it as the one asked for, and the band in effect as TdivS.
+// TRLC-LINKS: REQ-SDS-008, REQ-SDS-212
+func TestSnapshotNamesTheTimebaseAskedFor(t *testing.T) {
+	e, _ := newTestEngine(t, newFakeBus())
+	before := e.Snapshot()
+	if before.TdivSetS != before.TdivS {
+		t.Fatalf("nothing asked: TdivSetS %v, TdivS %v", before.TdivSetS, before.TdivS)
+	}
+	if _, ok := e.SetTdiv(1e-6); !ok {
+		t.Fatal("SetTdiv(1µs) rejected")
+	}
+	if st := e.Snapshot(); st.TdivSetS != 1e-6 || st.TdivS != before.TdivS {
+		t.Fatalf("pending: TdivSetS %v (want 1µs), TdivS %v (want %v)", st.TdivSetS, st.TdivS, before.TdivS)
 	}
 }
 

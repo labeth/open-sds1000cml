@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"slices"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -235,11 +236,17 @@ func TestRemoteCallsSayWhatTheyChanged(t *testing.T) {
 	if res := c.RemoteAgain(""); !res.OK || len(res.Changed) != 0 || res.Notice != "" {
 		t.Fatalf("again: %+v", res)
 	}
-	// the engine takes a new timebase at its next capture, after the call
-	c.eng = &stagedEng{fakeEng: eng}
-	if res := c.SheetSet("time.tdiv", nil, "1ms"); !res.OK || fmt.Sprint(res.Changed) != "[time.tdiv]" || eng.Snapshot().TdivS != 500e-6 {
+	// the engine takes a new timebase at its next capture, after the call:
+	// the answer counts the one asked for
+	staged := &stagedEng{fakeEng: eng}
+	c.eng = staged
+	if res := c.SheetSet("time.tdiv", nil, "1ms"); !res.OK || fmt.Sprint(res.Changed) != "[time.tdiv]" || res.Text != "1ms" || eng.Snapshot().TdivS != 500e-6 {
 		t.Fatalf("a staged timebase: %+v (engine %g)", res, eng.Snapshot().TdivS)
 	}
+	if res := c.SheetSet("time.tdiv", nil, "500us"); !res.OK || fmt.Sprint(res.Changed) != "[time.tdiv]" || res.Text != "500us" {
+		t.Fatalf("back to the timebase in effect before the engine took 1 ms: %+v", res)
+	}
+	staged.apply()
 	if res := c.SheetSet("time.tdiv", nil, "500us"); !res.OK || len(res.Changed) != 0 {
 		t.Fatalf("the timebase in effect asked for again: %+v", res)
 	}
@@ -407,13 +414,125 @@ func TestTypedCommaAndNegativeTexts(t *testing.T) {
 	}
 }
 
-// stagedEng applies a timebase at its next capture, as the real engine does:
-// its Snapshot keeps the old one until then.
-type stagedEng struct{ *fakeEng }
+// stagedEng takes a timebase at its next capture (apply), as the real engine
+// does: until then its Snapshot keeps the one in effect as TdivS and names
+// the one asked for as TdivSetS.
+type stagedEng struct {
+	*fakeEng
+	mu   sync.Mutex
+	pend float64
+}
 
 // SetTdiv stages the timebase.
 // TRLC-LINKS: REQ-SDS-220
-func (e *stagedEng) SetTdiv(t float64) (engine.Band, bool) { return engine.PlanTdiv(t) }
+func (e *stagedEng) SetTdiv(t float64) (engine.Band, bool) {
+	b, ok := engine.PlanTdiv(t)
+	if ok {
+		e.mu.Lock()
+		e.pend = b.TdivS
+		e.mu.Unlock()
+	}
+	return b, ok
+}
+
+// Snapshot names a staged timebase as the one asked for.
+// TRLC-LINKS: REQ-SDS-220
+func (e *stagedEng) Snapshot() engine.Stats {
+	st := e.fakeEng.Snapshot()
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	st.TdivSetS = st.TdivS
+	if e.pend > 0 {
+		st.TdivSetS = e.pend
+	}
+	return st
+}
+
+// apply is the next capture: the staged timebase takes effect.
+func (e *stagedEng) apply() {
+	e.mu.Lock()
+	p := e.pend
+	e.pend = 0
+	e.mu.Unlock()
+	if p > 0 {
+		e.fakeEng.SetTdiv(p)
+	}
+}
+
+// sramDepthEng is an SRAM image: the depth in use (Stats.MemDepth) follows
+// the timebase, while the depth asked for (MemDepth) stays.
+type sramDepthEng struct{ *fakeEng }
+
+// MemDepth is the depth asked for.
+// TRLC-LINKS: REQ-SDS-220
+func (e *sramDepthEng) MemDepth() int { return 20480 }
+
+// The Memory depth row is the depth asked for. On the SRAM images the depth
+// in use follows the timebase once the engine takes it, which came after an
+// Autoset or Default Setup had been measured, so a phone booked it as a
+// change of the scope's that nobody made.
+// TRLC-LINKS: REQ-SDS-212, REQ-SDS-220
+func TestMemoryDepthRowIsTheSetting(t *testing.T) {
+	c, eng, _ := newC(t)
+	c.eng = &sramDepthEng{fakeEng: eng}
+	eng.set(func(st *engine.Stats) { st.MemDepth = 1048576 })
+	c.Sheets()
+	before := c.PanelStatus().SheetsSeq
+	m := c.markChanges()
+	eng.set(func(st *engine.Stats) { st.MemDepth = 524288 }) // the engine took a slower timebase
+	c.publish()
+	if changed, _ := c.changesSince(m); len(changed) != 0 {
+		t.Fatalf("the depth in use moved: changed %v", changed)
+	}
+	if got := rowText(c, "acq.depth"); got != "20k" {
+		t.Fatalf("Memory depth reads %q, want the 20k asked for", got)
+	}
+	if after := c.PanelStatus().SheetsSeq; after != before {
+		t.Fatalf("SheetsSeq %d -> %d: the phones read the sheets again for nothing", before, after)
+	}
+}
+
+// Until the engine takes a new timebase at its next capture, the panel's
+// setting is the one asked for: a remote's answer, the LCD's REMOTE note and
+// the sheets name it, and further steps (the S/DIV knob, a sheet's arrows)
+// go on from it, not from the one still in effect, so none is lost.
+// TRLC-LINKS: REQ-SDS-212, REQ-SDS-220
+func TestTimebaseAskedForLeadsUntilApplied(t *testing.T) {
+	c, eng, _ := newC(t)
+	withClock(c)
+	staged := &stagedEng{fakeEng: eng}
+	c.eng = staged
+	if res := c.SheetSet("time.tdiv", nil, "1ms"); !res.OK || res.Text != "1ms" || fmt.Sprint(res.Changed) != "[time.tdiv]" {
+		t.Fatalf("the answer names the timebase asked for: %+v", res)
+	}
+	if st := c.PanelStatus(); !strings.Contains(st.Remote, "1ms") {
+		t.Fatalf("REMOTE note %q, want the timebase asked for", st.Remote)
+	}
+	if got := rowText(c, "time.tdiv"); got != "1ms" {
+		t.Fatalf("the sheets say %q", got)
+	}
+	if eng.Snapshot().TdivS != 500e-6 {
+		t.Fatal("the test engine took the timebase at once")
+	}
+	if err := c.stepTdiv(1); err != nil { // a sheet's arrow: 2 ms
+		t.Fatal(err)
+	}
+	if res := c.RemoteKnob("tdiv", -1, 1, false); !res.OK { // counter-clockwise, slower: 5 ms
+		t.Fatalf("knob: %+v", res)
+	}
+	c.resync() // the panel's own knob, as its loop runs it: 10 ms
+	c.dispatch("tdiv", -1, 1)
+	if got := rowText(c, "time.tdiv"); got != "10ms" {
+		t.Fatalf("three steps on from 1 ms before the engine took any: %q, want 10ms", got)
+	}
+	staged.apply()
+	if got := eng.Snapshot().TdivS; got != 10e-3 {
+		t.Fatalf("the engine took %g, want 10 ms", got)
+	}
+	if res := c.SheetSet("time.tdiv", nil, "10ms"); !res.OK || len(res.Changed) != 0 {
+		t.Fatalf("the timebase in effect asked for again: %+v", res)
+	}
+}
 
 // An Autoset a remote starts is named in its answer; when the sweep ends
 // (here cancelled by a second press) the snapshot names it as the last one

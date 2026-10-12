@@ -630,6 +630,60 @@ run(async (t) => {
     await B.ctx.close();
   }
 
+  // ---- a timebase the scope takes at its next capture, as the real one does: the phone, its toast and
+  //      the scope's REMOTE line name the one asked for at once, and quick taps each make their step ----
+  {
+    await ctrl("/reset");
+    await ctrl("/tdivlag?ms=300");
+    const P = await phone("Pixel 7", { label: "timebase at the next capture" });
+    const ladder = ["500 us", "200 us", "100 us", "50 us", "20 us", "10 us", "5 us"];
+    for (let i = 1; i < ladder.length; i++) {
+      await P.tap('[data-tile="time.tdiv"] [data-q="cw"]');
+      await P.until(async () => (await P.text('[data-tile="time.tdiv"] .tv')) === ladder[i], `tap ${i} shows ${ladder[i]}`, 1500);
+      await sleep(i % 2 ? 100 : 450); // quicker than the scope takes it, and slower
+    }
+    await P.until(async () => Math.abs((await ctrl("/engine")).tdiv - 5e-6) < 1e-12, "six quick taps make six steps: the scope takes 5 us");
+    await sleep(900);
+    P.ok(await P.text('[data-tile="time.tdiv"] .tv') === "5 us", "the phone still shows 5 us once the scope has taken it");
+    await P.tap('[data-tile="time.tdiv"] .tmain');
+    for (const k of ["2", "ms"]) await P.tap(`.sheet [data-key="${k}"]`);
+    await P.tap('.sheet [data-key="enter"]');
+    let line = "";
+    await P.until(async () => { line = ((await ctrl("/status")).Remote || "").replace(/\s+/g, ""); return /2ms/.test(line); },
+      "the scope's REMOTE line names 2 ms, the timebase asked for");
+    await P.until(async () => (await P.toast()) === "Time/div: 2 ms", "the toast names it too: " + await P.toast());
+    await P.until(async () => Math.abs((await ctrl("/engine")).tdiv - 2e-3) < 1e-12, "and the scope takes it");
+    await sleep(900);
+    P.ok(await P.text('[data-tile="time.tdiv"] .tv') === "2 ms", "the tile stays on 2 ms");
+    // the race the real scope showed: a read under way when an answer comes already brings the new
+    // timebase, with the answer's own sheet count, while the answer names the one before it; the read
+    // is the truth (the answer must not be stamped over it, with nothing left to read it again)
+    const raced = await P.page.evaluate(async () => {
+      const real = { sheets: RN.api.sheets, set: RN.api.set };
+      const base = await real.sheets(), fresh = JSON.parse(JSON.stringify(base));
+      const r = fresh.Tabs.flatMap((x) => x.Rows).find((x) => x.ID === "time.tdiv");
+      r.Value = 1e-3; r.Text = "1ms";
+      fresh.SheetsSeq = base.SheetsSeq + 1;
+      let release;
+      RN.api.sheets = () => new Promise((res) => { release = () => res(fresh); });
+      const reading = RN.refresh();
+      await new Promise((res) => setTimeout(res, 30));
+      RN.api.set = async () => ({ ok: true, row: "time.tdiv", value: 2e-3, text: "2ms", changed: ["time.tdiv"], sheetsSeq: fresh.SheetsSeq });
+      const answered = RN.set("time.tdiv", { value: 1e-3 });
+      await new Promise((res) => setTimeout(res, 30));
+      release();
+      await reading;
+      await answered;
+      RN.api.sheets = real.sheets;
+      RN.api.set = real.set;
+      return RN.S.model.rows.get("time.tdiv").Text;
+    });
+    P.ok(raced === "1ms", "an answer naming the timebase before is not stamped over a read that has the new one: " + raced);
+    await ctrl("/tdivlag?ms=0");
+    P.ok(P.errors.length === 0, "timebase at the next capture: no console errors");
+    await P.ctx.close();
+  }
+
   // ---- an iPhone over plain HTTP: the video plays its silent sound track, mixed with other apps' music ----
   {
     await ctrl("/reset");

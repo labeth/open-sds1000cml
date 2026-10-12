@@ -306,6 +306,7 @@ type sv struct {
 	zoom              int
 	zoomOff           float64
 	tdivs             []float64
+	memDepth          int // the depth asked for: on the SRAM images the one in use (Stats.MemDepth) follows the timebase
 
 	decProto, decBaud, decChA, decChB int
 	decCPOL, decCPHA                  bool

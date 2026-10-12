@@ -439,12 +439,9 @@ func rowKeys(s *sv) []uint64 {
 }
 
 // changeMark is how a remote call (or an Autoset sweep) found the settings:
-// each row's value, the timebase in effect and the requests for another,
-// the workspace and the notice showing.
+// each row's value, the workspace and the notice showing.
 type changeMark struct {
 	keys      []uint64
-	tdiv      float64
-	tdivAsked uint64
 	ws        wsview.WS
 	noticeUnt time.Time
 }
@@ -453,17 +450,17 @@ type changeMark struct {
 // TRLC-LINKS: REQ-SDS-212, REQ-SDS-220
 func (c *Controller) markChanges() changeMark {
 	s := c.snap()
-	m := changeMark{keys: rowKeys(s), tdiv: s.st.TdivS}
+	m := changeMark{keys: rowKeys(s)}
 	c.mu.Lock()
-	m.tdivAsked, m.ws, m.noticeUnt = c.tdivAsked, c.ui.ws, c.ui.noticeUnt
+	m.ws, m.noticeUnt = c.ui.ws, c.ui.noticeUnt
 	c.mu.Unlock()
 	return m
 }
 
 // changesSince lists the rows whose value is not what m found, in sheet
 // order ("workspace" last when the workspace is another one), and the
-// notice raised since. A timebase asked for since m counts at once: the
-// engine applies it at its next capture, after the call.
+// notice raised since. A timebase counts once asked for (the row reads
+// the setting; the engine applies it at its next capture, after the call).
 // TRLC-LINKS: REQ-SDS-212, REQ-SDS-220
 func (c *Controller) changesSince(m changeMark) ([]string, string) {
 	if len(m.keys) == 0 {
@@ -472,7 +469,7 @@ func (c *Controller) changesSince(m changeMark) ([]string, string) {
 	s := c.snap()
 	keys := rowKeys(s)
 	c.mu.Lock()
-	asked, ws := c.tdivAsked != m.tdivAsked && c.tdivWant != m.tdiv, c.ui.ws
+	ws := c.ui.ws
 	notice := ""
 	if c.ui.noticeUnt != m.noticeUnt && s.now.Before(c.ui.noticeUnt) {
 		notice = c.ui.notice
@@ -482,7 +479,7 @@ func (c *Controller) changesSince(m changeMark) ([]string, string) {
 	i := 0
 	for _, t := range sheetTabs {
 		for _, r := range t.rows {
-			if keys[i] != m.keys[i] || asked && r.id == "time.tdiv" {
+			if keys[i] != m.keys[i] {
 				out = append(out, r.id)
 			}
 			i++

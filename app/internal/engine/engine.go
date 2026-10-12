@@ -166,6 +166,7 @@ type Stats struct {
 	TrigPosFrac   float64 `json:"trig_pos_frac"`  // horizontal trigger position 0..1
 	FalseTriggers uint64  `json:"false_triggers"` // hardware triggers with no calibrated edge at the index (dropped)
 	TdivS         float64 `json:"tdiv_s"`
+	TdivSetS      float64 `json:"tdiv_set_s"` // the timebase asked for: a new one waits for the next capture (TdivS until then)
 	DisplayedS    float64 `json:"displayed_sdiv_s"`
 	RecordS       float64 `json:"record_s"`  // planned SRAM record duration: how long one capture takes to fill
 	TrigCode      uint16  `json:"trig_code"` // 0 = boot-inherited comparator untouched
@@ -748,6 +749,16 @@ func (e *Engine) RenderPeriod() time.Duration {
 	return time.Duration(ms) * time.Millisecond
 }
 
+// TdivSet is the timebase setting: the one asked for (TdivSetS), or TdivS
+// from a snapshot that does not name one.
+// TRLC-LINKS: REQ-SDS-008, REQ-SDS-212
+func (s Stats) TdivSet() float64 {
+	if s.TdivSetS > 0 {
+		return s.TdivSetS
+	}
+	return s.TdivS
+}
+
 // Snapshot returns a copy of the stats. Never touches the bus.
 // TRLC-LINKS: REQ-SDS-009, REQ-SDS-127
 func (e *Engine) Snapshot() Stats {
@@ -757,6 +768,10 @@ func (e *Engine) Snapshot() Stats {
 	s.Roll = e.rolling.Load() && s.Running
 	s.RollStream = e.rollStream.Load()
 	s.ViewPending = e.sram != nil && !s.Running && e.viewHeld.Load() && (e.pendSet || e.scaleGen.Load() != e.shownScaleGen.Load())
+	s.TdivSetS = s.TdivS
+	if e.pendSet {
+		s.TdivSetS = e.pendBand.TdivS
+	}
 	if e.busyWhat != "" {
 		s.Busy, s.BusyMs, s.BusyPct = e.busyWhat, float64(time.Since(e.busyAt))/float64(time.Millisecond), -1
 		if all := e.busyAll.Load(); all > 0 {

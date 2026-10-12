@@ -536,9 +536,11 @@ long-poll does not wake on every frame. `AutosetDone` and `AutosetChanged` name 
 ended and the rows it changed.
 
 A change's answer says what the change did, measured on the panel goroutine where knobs and other calls cannot
-interleave: `changed`, the ids of the rows whose value it changed (a timebase counts at once, though the engine
-applies it at its next capture), and `workspace` when it switched the workspace; `notice`, the notice it raised;
-`sheetsSeq`, the sheet values' count after it.
+interleave: `changed`, the ids of the rows whose value it changed, and `workspace` when it switched the
+workspace; `notice`, the notice it raised; `sheetsSeq`, the sheet values' count after it. A row is a setting,
+not the state of the capture under way: Time/div is the timebase asked for, which the engine applies at its
+next capture (until then the answer, the LCD's REMOTE line and the sheets already name it, and steps go on
+from it), and Memory depth is the depth asked for (on the SRAM images the depth in use follows the timebase).
 
 While Autoset sweeps, the scope takes no change from a remote, as its keys take none: sets, actions, presets,
 typed text, the workspace keys and the remote's keys and knobs answer `Autoset is running: ...` and change
@@ -546,7 +548,9 @@ nothing. Only Autoset itself runs, where a second press cancels the sweep (the r
 
 - **Following the scope:** the remote's one long-poll takes each new snapshot and reads `/api/sheets` again only
   when `SheetsSeq` moved, at most every 300 ms; after one of its own changes it reads the sheets once, until a
-  read brings the answer's `sheetsSeq`.
+  read brings the answer's `sheetsSeq`. The answer's value stands only against a read older than it (one that
+  started before the answer came and brings a lower `SheetsSeq`); a read that already counts the change is the
+  truth.
 - **History** lives on the phone (browser storage under a versioned key, at most 100 entries; entries of another
   shape are dropped when it loads): it diffs the rows and the workspace of each read. A change is the phone's
   only where the answer to one of its calls lists the row (an Autoset it started: the rows its sweep changed,

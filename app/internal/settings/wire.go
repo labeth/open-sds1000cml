@@ -71,7 +71,7 @@ func Collect(eng Engine, fe Analog, pc Panel) Settings {
 	s := Settings{Version: Version}
 	if eng != nil {
 		st := eng.Snapshot()
-		s.TdivS = st.TdivS
+		s.TdivS = st.TdivSet()
 		s.Trigger = Trigger{
 			Qualifiers: st.TrigQual,
 			LevelCode:  int(st.TrigCode),

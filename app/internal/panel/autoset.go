@@ -615,7 +615,6 @@ func (c *Controller) setTdivNearest(target float64) float64 {
 	}
 	c.mu.Lock()
 	c.tdivIdx = best
-	c.tdivAsked, c.tdivWant = c.tdivAsked+1, c.tdivs[best]
 	c.mu.Unlock()
 	band, _ := c.eng.SetTdiv(c.tdivs[best])
 	return band.CaptureIntervalNs() * 1e-9
