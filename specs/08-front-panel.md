@@ -382,7 +382,13 @@ fail the push clears the mask (the sheet's Mask test turns a test off and keeps 
 mask row removes it at any time, as does a web page's Clear mask). Clearing turns the test off, zeroes
 its counts and captured failures, and stops a mask build or master under way. AUTO and DEFAULT SETUP
 close any menu and keep the workspace, which re-applies its entry behaviour; DEFAULT SETUP also clears
-the mask and the serial trigger's match bytes (no bytes, any I2C address and direction).
+the mask and the serial trigger's match bytes (no bytes, any I2C address and direction), puts the mask
+build's frames and tolerance, super-res's channel, grid, stop and target, the averaging count (16),
+ERES length (1), precision rate (31.25 MSa/s), roll mode (chunked), the FFT source (C1), the master
+depth (64) and the stream's stop (on an error) back, chooses no measurement (MEASURE then measures Vpp
+and Freq), and turns the frequency response off on C1 / C2 with its points forgotten. The screen saver,
+screen off and remote notices are the instrument's preferences and stay. The VIEW tab chooses the frequency
+response's reference and DUT channels (picking the other's channel swaps them) and clears its points.
 
 ### 7.2 Settings sheets (a menu open)
 
@@ -421,9 +427,9 @@ pushes theirs (Variable, Zero, Zoom). ADJUST and HORIZ POSITION are each workspa
 | CH1 / CH2 POSITION push (Zero) | `0x64`:1, `0x67`:1 | offset back to 0 V |
 | TRIG LEVEL knob | `0x64`:14/15 | step the level code → `SetTrigLevel(code)` (the **4-write quad + re-arm** at the Arm boundary, §8.4) |
 | TRIG LEVEL push (Zero) | `0x64`:9 | the level to 0 V |
-| RUN/STOP | `0x65`:2 | toggle running → `SetRunning` (a decoded stream: stop / restart it) |
-| SINGLE | `0x65`:10 | Normal, one triggered capture, then stop |
-| AUTO | `0x67`:10 | autoset (a second press cancels the sweep) |
+| RUN/STOP | `0x65`:2 | toggle running → `SetRunning` (a decoded stream: stop / restart it; a web page's decoded capture: end it first) |
+| SINGLE | `0x65`:10 | Normal, one triggered capture, then stop (a web page's decoded capture ends first) |
+| AUTO | `0x67`:10 | autoset (a second press cancels the sweep; a web page's decoded capture ends first) |
 
 Workspace tools (no menu open):
 

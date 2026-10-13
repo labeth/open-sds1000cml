@@ -53,7 +53,7 @@ next view, as on the scope.
 | ![Web SCOPE workspace](docs/images/web-scope.png) | ![Web SCOPE in X-Y: C1 against C2, a diagonal because both channels carry the same signal](docs/images/web-xy.png) |
 | **SCOPE** | **SCOPE again:** X-Y |
 | ![Web BUS workspace: the decoder, the packet table and the trigger on bytes](docs/images/web-bus.png) | ![Web BUS eye diagram with jitter analysis](docs/images/web-bus-eye.png) |
-| **BUS:** decoder, packet table, trigger on bytes | **BUS again:** eye diagram and jitter (it folds sampled records: here two full records) |
+| **BUS:** decoder, packet table, trigger on bytes | **BUS again:** the eye diagram and jitter, drawn as on the scope with the same figures |
 | ![Web SPECTRUM: FFT with peaks and THD](docs/images/web-spectrum.png) | ![Web spectrogram](docs/images/web-spectrogram.png) |
 | **SPECTRUM:** FFT, peaks, THD | **SPECTRUM again:** spectrogram |
 | ![Web MEASURE: statistics, cursors and the mask test](docs/images/web-measure.png) | ![Web MEASURE, All values: every measurement of both channels in this capture](docs/images/web-measure-all.png) |
@@ -108,7 +108,8 @@ anything on the scope's screen.
 * **Live min/max envelope:** the FPGA reduces the screen to 4,096 min/max points, so narrow events
   stay visible at any zoom. The points are put back in time order, so protocol decode, masks and
   trigger placement run on live frames too. Average, ERES and precision use a decimated live
-  capture instead (their filtering needs true samples); eye diagram and super-resolution read raw
+  capture of 8,192 samples instead (their filtering needs true samples; the FFT takes 32,768, full
+  rate at 5 µs/div and faster); eye diagram and super-resolution read raw
   samples while in use.
 * **Roll mode.** In AUTO at 10 ms/div and slower the view scrolls instead of waiting for a
   trigger. By default it is built from back-to-back decimated captures, so a timebase change
@@ -193,7 +194,7 @@ automatically.
 * **Phone remote** at `/r` on port 8080: settings, workspaces and keys from a phone (below).
 * **Web UI** on port 8080 in any browser, with WebGL rendering and every feature above. It is laid
   out as the scope's five task workspaces: SCOPE, BUS (decode with a packet table, trigger on bytes,
-  eye diagram), SPECTRUM (FFT, harmonics and THD, spectrogram, Bode), MEASURE (statistics, cursors,
+  eye diagram, the scope's own stream), SPECTRUM (FFT, harmonics and THD, spectrogram, Bode), MEASURE (statistics, cursors,
   mask test) and COMPARE (references, math, difference readout, stacked master). Alt+1 to Alt+5
   switch, and the shown workspace's key again shows its next view. A strip with run control,
   timebase, channels and trigger stays at the bottom, and All settings (Ctrl+,) lists every setting

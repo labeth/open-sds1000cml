@@ -251,7 +251,7 @@ code = clamp( round( zero + K · V ) )
     constant across every V/div setting in the tier.
   - **Sensitive tier (V/div ≤ 200 mV):** **K ≈ 4392 codes/V** — about 45× steeper.
 - **Display offset polarity:** a *positive* offset yields a *higher* code (the trace moves *up*); `0 V` programs
-  exactly `zero`. Live checks on 2026-09-24 at 2 V/div showed that reducing the DAC code by 100
+  exactly `zero`. Live checks at 2 V/div showed that reducing the DAC code by 100
   moved CH1 down 12.38 ADC counts and CH2 down 13.53 counts. This corrects the earlier inverted
   sign claim; it does not qualify the sensitive tier.
 

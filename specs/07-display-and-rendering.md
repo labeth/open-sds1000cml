@@ -668,14 +668,20 @@ active key's next view in amber at its right end (`F2 again: Eye diagram`); an a
   768 px; labels `-1 UI -0.5 0 +0.5 +1 UI`), the 8 divisions in 2-px rows; the fold's density in four
   shades mixed from the data line's channel colour over the screen colour; the eye opening as a dashed
   amber box; the sample-point (`S`) and threshold (`T`) cursors dotted in `colCursor`. The pane has
-  a small live time trace and the figures (bit rate, UI, crossing, UI folded, eye height and width,
-  rise, fall, TIE rms and pk-pk, samples per UI, dt) with `<`/`>` on bounds when the edges fall
-  between samples, and a warning when sample-limited.
+  a small live time trace and the figures (bit rate to five figures, UI with its samples per UI,
+  crossing, UI folded, eye height and width, rise, fall, TIE rms and pk-pk, RJ / DJ, period and
+  cycle-to-cycle jitter) with `<`/`>` on bounds when the edges fall between samples, and a warning
+  when sample-limited. The eye folds sampled records (it leases the decode view's samples, not the
+  envelope's), every sample of a fast bus; it starts over when its settings change, or when three
+  captures in a row are off its clock period. The web's eye draws the same picture with the same figures in the same order (one engine:
+  the JS eye and its Go port agree step for step).
 - **SPECTRUM:** a small time trace, the peak table (frequency, level dBV, level against the top
   peak, harmonic) in frequency order, a readout (top peak, THD), the marker line; the plot shows the
   marker as a dotted amber line with a triangle on its level and a label, and a dim delta reference.
 - **MEASURE:** the statistics table (now, mean, min, max, sdev, N), or all values of both channels in
-  two columns, and the cursor block.
+  two columns of nine (the 18 parameters, preshoot included, in the web's names and order), and the
+  cursor block. The statistics count only while MEASURE is shown, as on the web. The readout boxes drawn
+  over the trace in the other workspaces use the same names and figures.
 - **COMPARE:** five rows (MASTER, REF A, REF B, MASK, MATH); the selected row's action is written at
   its right end; a stacking master shows a progress bar.
 
