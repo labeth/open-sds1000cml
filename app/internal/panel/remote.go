@@ -171,6 +171,7 @@ type remoteState struct {
 const sheetsWindow = 60 * time.Second
 
 // lampNames names the lit lamps of a word.
+// TRLC-LINKS: REQ-SDS-211, REQ-SDS-212
 func lampNames(w uint16) []string {
 	var out []string
 	for _, l := range []struct {
@@ -187,6 +188,7 @@ func lampNames(w uint16) []string {
 }
 
 // workspaceView names a workspace's view.
+// TRLC-LINKS: REQ-SDS-211, REQ-SDS-212
 func workspaceView(s *sv, ws wsview.WS) string {
 	switch ws {
 	case wsview.Bus:
@@ -285,6 +287,7 @@ func (c *Controller) status(s *sv) Status {
 }
 
 // paneTool is the tool line in workspace mode (SCOPE's from its Adjust tag).
+// TRLC-LINKS: REQ-SDS-211, REQ-SDS-212
 func paneTool(c *Controller, s *sv, v wsview.View) ([]ToolSeg, string) {
 	var p *wsview.Pane
 	switch {
@@ -321,6 +324,7 @@ func paneTool(c *Controller, s *sv, v wsview.View) ([]ToolSeg, string) {
 }
 
 // displayAndView is Snapshot from a state read already taken.
+// TRLC-LINKS: REQ-SDS-211, REQ-SDS-212
 func (c *Controller) displayAndView(s *sv) (Display, wsview.View) {
 	c.mu.Lock()
 	busy, amsg := c.autosetBusy, c.autosetMsg
@@ -379,6 +383,7 @@ func rowModel(s *sv, r *row) RowModel {
 }
 
 // finiteOr keeps JSON encodable: NaN and Inf read 0.
+// TRLC-LINKS: REQ-SDS-212
 func finiteOr(v float64) float64 {
 	if math.IsNaN(v) || math.IsInf(v, 0) {
 		return 0
@@ -386,10 +391,12 @@ func finiteOr(v float64) float64 {
 	return v
 }
 
+// TRLC-LINKS: REQ-SDS-212
 func ptr(v float64) *float64 { return &v }
 
 // sheetSig hashes every row's value and availability (not live counters),
 // so the Seq follows a setting changed anywhere.
+// TRLC-LINKS: REQ-SDS-212
 func sheetSig(s *sv) uint64 {
 	h := fnv.New64a()
 	for _, t := range sheetTabs {

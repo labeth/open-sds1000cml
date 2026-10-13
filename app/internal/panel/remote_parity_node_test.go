@@ -188,10 +188,12 @@ func TestRemoteCoreParity(t *testing.T) {
 }
 
 // strconvG writes v so the parsers read it back exactly.
+// TRLC-LINKS: REQ-SDS-212, REQ-SDS-220
 func strconvG(v float64) string { return fmt.Sprintf("%.10g", v) }
 
 // unquote folds the two languages' quoting of the typed text in an error
 // (Go %q escapes, JS writes the text as typed).
+// TRLC-LINKS: REQ-SDS-212, REQ-SDS-220
 func unquote(s string) string {
 	return strings.NewReplacer(`\"`, `"`, `µ`, "µ", `\t`, "\t").Replace(s)
 }

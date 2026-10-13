@@ -11,6 +11,7 @@ type qualBus struct {
 	order  []uint16
 }
 
+// TRLC-LINKS: REQ-SDS-011, REQ-SDS-014
 func (b *qualBus) Read(_ uint8, s uint16) (uint16, error) {
 	switch {
 	case s == qualCapability && b.block:
@@ -21,6 +22,7 @@ func (b *qualBus) Read(_ uint8, s uint16) (uint16, error) {
 	return 0, nil
 }
 
+// TRLC-LINKS: REQ-SDS-011, REQ-SDS-014
 func (b *qualBus) RawWrite(s, v uint16) error {
 	b.writes[s] = v
 	b.order = append(b.order, s)

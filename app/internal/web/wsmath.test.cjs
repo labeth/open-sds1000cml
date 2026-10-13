@@ -6,6 +6,7 @@
 "use strict";
 const assert = require("node:assert/strict");
 const W = require("./wsmath.js");
+// TRLC-LINKS: REQ-SDS-217, REQ-SDS-218
 const near = (a, b, tol, m) => assert.ok(Math.abs(a - b) <= tol, `${m}: ${a} vs ${b}`);
 
 // ---- RunStats: mean/min/max/sdev, NaN skipped, reset ----
@@ -40,6 +41,7 @@ const near = (a, b, tol, m) => assert.ok(Math.abs(a - b) <= tol, `${m}: ${a} vs 
 
 // ---- repeats: a jittered square repeats; free-running phases do not ----
 {
+  // TRLC-LINKS: REQ-SDS-217, REQ-SDS-218
   const sq = (n, ph, noise) => Array.from({ length: n }, (_, i) => (((i + ph) % 100) < 50 ? 180 : 70) + (noise ? (((i * 7919 + ph * 31) % 7) - 3) : 0));
   const a = sq(2000, 0, true), b = sq(2000, 2, true);         // 2 samples of trigger jitter, ±3 codes noise
   assert.ok(W.repeats(a, b, 8, 5), "a repeating, jittered capture passes the mask build's rule");

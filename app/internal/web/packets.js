@@ -154,9 +154,11 @@ function pkMatch(p, tokens) {
 // stays listed, and the selection follows a packet by content.
 // TRLC-LINKS: REQ-SDS-214
 class PacketList {
+  // TRLC-LINKS: REQ-SDS-214
   constructor(max) { this.rows = []; this.selKey = null; this.nextId = 1; this.max = max || 200; this.version = 0; }
 
   // update returns true when the rows were replaced.
+  // TRLC-LINKS: REQ-SDS-214
   update(ps) {
     const done = (ps || []).filter((p) => p.complete);
     const have = new Map();
@@ -186,12 +188,16 @@ class PacketList {
     return true;
   }
 
+  // TRLC-LINKS: REQ-SDS-214
   clear() { this.rows = []; this.selKey = null; this.version++; }
+  // TRLC-LINKS: REQ-SDS-214
   select(i) { const r = this.rows[i]; this.selKey = r ? r.key : null; return r || null; }
+  // TRLC-LINKS: REQ-SDS-214
   selected() { return this.selKey === null ? null : this.rows.find((r) => r.key === this.selKey) || null; }
 
   // findMatch returns the index of the next row (from `from`, stepping dir) that
   // holds the pattern, wrapping around; -1 when none does.
+  // TRLC-LINKS: REQ-SDS-214
   findMatch(tokens, from, dir) {
     const n = this.rows.length;
     if (!n) return -1;

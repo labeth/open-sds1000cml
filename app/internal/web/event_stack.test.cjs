@@ -11,7 +11,15 @@ for(const parity of ['none','even','odd']){
  bits.push(1,1,1,1,1);
  const sig=Float32Array.from(bits.flatMap(b=>Array(spb).fill(b?200:60)));
  const c={...lib,decodeUART,srGateFeed:globalThis.srGateFeed,dcfg:{proto:'uart',baud:115200,bits:8,parity,auto:true},
-  sr:{alignCh:0,evtByte:value,stopVal:0},$:id=>({value:id==='srK'?'4':id==='srKernel'?'interp':''}),srUpdateStats(){},srStatus(){},srStop:s=>{throw Error(s)}};
+  sr:{alignCh:0,evtByte:value,stopVal:0},
+  // TRLC-LINKS: REQ-SDS-019
+  $:id=>({value:id==='srK'?'4':id==='srKernel'?'interp':''}),
+  // TRLC-LINKS: REQ-SDS-019
+  srUpdateStats(){},
+  // TRLC-LINKS: REQ-SDS-019
+  srStatus(){},
+  // TRLC-LINKS: REQ-SDS-019
+  srStop:s=>{throw Error(s)}};
  vm.createContext(c);vm.runInContext(code,c);
  const frame={cols:sig.length,c1:sig,c2:sig,sample_s:dt,tdiv_s:.0001};
  // software never triggers: an untriggered record, or one the FPGA triggered

@@ -14,6 +14,7 @@ const P = require("./packets.js");
 // TRLC-LINKS: REQ-SDS-214
 function uartRecord(msgs, spb, gap, lead, tail) {
   const out = [];
+  // TRLC-LINKS: REQ-SDS-214
   const push = (v, k) => { for (let i = 0; i < k; i++) out.push(v ? 200 : 50); };
   for (let m = 0; m < msgs.length; m++) {
     for (const b of Buffer.from(msgs[m], "latin1")) {
@@ -52,9 +53,13 @@ function uartRecord(msgs, spb, gap, lead, tail) {
 {
   const scl = [], sda = [];
   const SPB = 40, half = SPB / 2;
+  // TRLC-LINKS: REQ-SDS-214
   const seg = (n, s, d) => { for (let k = 0; k < n; k++) { scl.push(s ? 210 : 40); sda.push(d ? 210 : 40); } };
+  // TRLC-LINKS: REQ-SDS-214
   const bit = (b) => { seg(half, false, b); seg(half, true, b); };
+  // TRLC-LINKS: REQ-SDS-214
   const byte = (v) => { for (let i = 7; i >= 0; i--) bit((v >> i) & 1); };
+  // TRLC-LINKS: REQ-SDS-214
   const txn = (addr, rd, data, stop) => {
     seg(half, true, true); seg(half, true, false);        // START
     byte((addr << 1) | (rd ? 1 : 0)); bit(0);             // address + ACK
@@ -80,7 +85,9 @@ function uartRecord(msgs, spb, gap, lead, tail) {
 {
   const clk = [], dat = [];
   const P0 = 8;
+  // TRLC-LINKS: REQ-SDS-214
   const idle = (n) => { for (let i = 0; i < n; i++) { clk.push(40); dat.push(40); } };
+  // TRLC-LINKS: REQ-SDS-214
   const burst = (bytes) => {
     for (const v of bytes) for (let i = 7; i >= 0; i--) {
       const b = (v >> i) & 1;
@@ -97,6 +104,7 @@ function uartRecord(msgs, spb, gap, lead, tail) {
 
 // ---- PacketList: holds still while the same messages repeat ----
 {
+  // TRLC-LINKS: REQ-SDS-214
   const mk = (s, i0, complete = true) => ({ i0, i1: i0 + 50, bytes: [...Buffer.from(s, "latin1")], byteErr: [...s].map(() => false), addr: -1, hasAddr: false, read: false, complete, err: "" });
   const L = new P.PacketList();
   assert.equal(L.update([mk("A1", 10), mk("B2", 200), mk("C3", 400)]), true, "first content lists");

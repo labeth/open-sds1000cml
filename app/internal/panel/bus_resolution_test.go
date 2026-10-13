@@ -19,6 +19,7 @@ import (
 // i2cFrame is an I2C bus (SCL on C1, SDA on C2) repeating a write of the
 // bytes to address 0x24, the clock at fclk, n samples sampleS apart. SDA
 // moves only mid SCL-low, as the bench source does.
+// TRLC-LINKS: REQ-SDS-214
 func i2cFrame(fclk, sampleS float64, n int, bytes ...int) *engine.Frame {
 	c1, c2 := make([]uint8, n), make([]uint8, n)
 	q := 1 / fclk / 4 / sampleS // a quarter clock in samples
@@ -59,6 +60,7 @@ func i2cFrame(fclk, sampleS float64, n int, bytes ...int) *engine.Frame {
 // envelope2 is f as the live readout's time-ordered envelope: a (min, max)
 // pair per bucket of both channels, each pair in the order that continues
 // from the value before it.
+// TRLC-LINKS: REQ-SDS-214
 func envelope2(f *engine.Frame, bucket int) *engine.Frame {
 	n := f.Valid / bucket
 	env := func(src []uint8) []uint8 {
@@ -83,6 +85,7 @@ func envelope2(f *engine.Frame, bucket int) *engine.Frame {
 		SampleS: f.SampleS * float64(bucket) / 2, TdivS: f.TdivS, PeakDetect: true, Ordered: true}
 }
 
+// TRLC-LINKS: REQ-SDS-214
 func absDiff(a, b uint8) int {
 	if a > b {
 		return int(a - b)
@@ -261,6 +264,7 @@ type envEng struct {
 	leased atomic.Bool
 }
 
+// TRLC-LINKS: REQ-SDS-214
 func (e *envEng) LeaseDecodeView(d time.Duration) { e.leased.Store(d > 0) }
 
 // recStream records what the decoded stream was told. Its end stops the
@@ -272,12 +276,15 @@ type recStream struct {
 	eng                    *envEng
 }
 
+// TRLC-LINKS: REQ-SDS-214
 func (s *recStream) Start(_ engine.SerialParams, _ engine.StreamTrigger, _ int, label string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.label, s.active, s.started = label, 1, s.started+1
 	return nil
 }
+
+// TRLC-LINKS: REQ-SDS-214
 func (s *recStream) Stop() {
 	if !s.Active() {
 		return
@@ -288,23 +295,34 @@ func (s *recStream) Stop() {
 	defer s.mu.Unlock()
 	s.active, s.stops = 0, s.stops+1
 }
+
+// TRLC-LINKS: REQ-SDS-214
 func (s *recStream) Active() bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.active == 1
 }
+
+// TRLC-LINKS: REQ-SDS-214
 func (s *recStream) Snapshot() streamview.View { return streamview.View{} }
+
+// TRLC-LINKS: REQ-SDS-214
 func (s *recStream) Refuse(why string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.refused = why
 }
+
+// TRLC-LINKS: REQ-SDS-214
 func (s *recStream) Lines(int, int) streamview.LinesPage { return streamview.LinesPage{} }
-func (s *recStream) LinesBinary(int, []byte) int         { return 0 }
+
+// TRLC-LINKS: REQ-SDS-214
+func (s *recStream) LinesBinary(int, []byte) int { return 0 }
 
 // newEnvRig is a controller at 500us/div with a 115200 UART on C1 that its
 // live envelope (3.6 points a bit) cannot show, Auto starting a stream as the
 // app's does: on the frame on screen.
+// TRLC-LINKS: REQ-SDS-214
 func newEnvRig(t *testing.T) (*Controller, *envEng, *recStream) {
 	t.Helper()
 	_, base, fe := newC(t)
@@ -405,6 +423,7 @@ func TestAutoTriggerArmsOnTheBusItsEnvelopeHides(t *testing.T) {
 }
 
 // runsAgain waits for RUN after a stream's end stopped the scope.
+// TRLC-LINKS: REQ-SDS-013, REQ-SDS-214
 func runsAgain(t *testing.T, eng *envEng) {
 	t.Helper()
 	for i := 0; !eng.Snapshot().Running; i++ {
@@ -580,6 +599,7 @@ type slowStream struct {
 	begin             func() // a stream that begins stops RUN, as the engine's does
 }
 
+// TRLC-LINKS: REQ-SDS-214
 func (s *slowStream) Start(_ engine.SerialParams, _ engine.StreamTrigger, _ int, label string) error {
 	s.mu.Lock()
 	if s.starting {
@@ -600,6 +620,8 @@ func (s *slowStream) Start(_ engine.SerialParams, _ engine.StreamTrigger, _ int,
 	}
 	return nil
 }
+
+// TRLC-LINKS: REQ-SDS-214
 func (s *slowStream) Stop() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -608,6 +630,8 @@ func (s *slowStream) Stop() {
 	}
 	s.active = 0
 }
+
+// TRLC-LINKS: REQ-SDS-214
 func (s *slowStream) Active() bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -647,6 +671,7 @@ func TestStreamOnOffOnRuns(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-018
 func (s *slowStream) isStarting() bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -660,6 +685,7 @@ type waitEng struct {
 	since time.Duration
 }
 
+// TRLC-LINKS: REQ-SDS-018
 func (e *waitEng) SincePublish() time.Duration { return e.since }
 
 // A bus search that gets no new capture because the scope waits for a trigger

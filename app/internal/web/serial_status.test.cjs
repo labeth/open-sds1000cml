@@ -4,7 +4,18 @@ const vm = require('node:vm');
 const source = fs.readFileSync('app_serialtrig.js', 'utf8');
 const status = source.slice(source.indexOf('function stStatus('), source.indexOf('// called by the decode panel'));
 const el = {textContent: ''};
-const c = {$: () => el, stProtoNum: () => 1, stParams: () => ({}), stConfigError: '', stArmed: () => true, stBandInactive: () => false};
+const c = {
+  // TRLC-LINKS: REQ-SDS-206
+  $: () => el,
+  // TRLC-LINKS: REQ-SDS-206
+  stProtoNum: () => 1,
+  // TRLC-LINKS: REQ-SDS-206
+  stParams: () => ({}),
+  stConfigError: '',
+  // TRLC-LINKS: REQ-SDS-206
+  stArmed: () => true,
+  // TRLC-LINKS: REQ-SDS-206
+  stBandInactive: () => false};
 vm.createContext(c); vm.runInContext(status, c);
 for (const [backend, label] of [['hardware-uart','hardware UART'],['hardware-i2c','hardware I²C'],['hardware-spi','hardware SPI'],['hardware-can-sequence','hardware CAN sequence'],['hardware-mil1553-sequence','hardware MIL-1553 sequence'],['hardware-usbls','hardware USB LS'],['','waiting for the scope']]) {
   c.st = {serial_backend: backend, serial_matches: 7}; c.stStatus();
@@ -15,6 +26,7 @@ c.st = {serial_backend: 'none: measuring the UART bit rate', serial_matches: 0};
 assert.equal(el.textContent, 'armed · no hardware trigger yet: measuring the UART bit rate');
 console.log('ALL PASS');
 
+// TRLC-LINKS: REQ-SDS-206
 const paramsContext = {dcfg:{proto:'spi',clk:1,data:2,bits:8,msb:true,auto:false}, $: id=>({value: {stAddr:'',stBytes:'55 AA',stRW:'2',decThr:'128',dsClock:'200000'}[id]})};
 vm.createContext(paramsContext);
 vm.runInContext(source.slice(0,source.indexOf('let stLastSig')),paramsContext);
@@ -27,13 +39,28 @@ assert.equal(paramsContext.stParams().chB,1);
   const els = {};
   for (const id of ['stArm','stStats','stAddr','stRW','stBytes','dsClock','decThr']) {
     const classes = new Set();
-    els[id] = {value:'',textContent:'',classList:{contains:k=>classes.has(k),add:k=>classes.add(k),remove:k=>classes.delete(k),toggle(k,on){if(on)classes.add(k);else classes.delete(k);}}};
+    els[id] = {value:'',textContent:'',classList:{
+      // TRLC-LINKS: REQ-SDS-206
+      contains:k=>classes.has(k),
+      // TRLC-LINKS: REQ-SDS-206
+      add:k=>classes.add(k),
+      // TRLC-LINKS: REQ-SDS-206
+      remove:k=>classes.delete(k),
+      // TRLC-LINKS: REQ-SDS-206
+      toggle(k,on){if(on)classes.add(k);else classes.delete(k);}}};
   }
   els.stRW.value='2';
   const sent=[];let tick,release;
+  // TRLC-LINKS: REQ-SDS-206
   const c={$:id=>els[id],dcfg:{proto:'uart',bits:8,baud:115200,auto:true},st:{serial_mode:0},document:{activeElement:null},
+    // TRLC-LINKS: REQ-SDS-206
     send:async(control,value)=>{sent.push([control,value]);return {ok:true};},
-    fetch:async()=>({ok:true,json:async()=>({ok:true})}),setInterval:f=>tick=f};
+    // TRLC-LINKS: REQ-SDS-206
+    fetch:async()=>({ok:true,
+      // TRLC-LINKS: REQ-SDS-206
+      json:async()=>({ok:true})}),
+    // TRLC-LINKS: REQ-SDS-206
+    setInterval:f=>tick=f};
   vm.createContext(c);vm.runInContext(source,c);
   await els.stArm.onclick();tick();
   assert.ok(els.stArm.classList.contains('on'),'old status must not erase pending arm');
@@ -42,7 +69,13 @@ assert.equal(paramsContext.stParams().chB,1);
   c.st.serial_mode=1;tick();assert.ok(!els.stArm.classList.contains('on'));
   c.st.serial_mode=0;tick();
   c.dcfg.proto='uart';
-  c.fetch=()=>new Promise(r=>release=()=>r({ok:true,json:async()=>({ok:true})}));
+  // TRLC-LINKS: REQ-SDS-206
+  c.fetch=()=>new Promise(r=>{
+    // TRLC-LINKS: REQ-SDS-206
+    release=()=>r({ok:true,
+      // TRLC-LINKS: REQ-SDS-206
+      json:async()=>({ok:true})});
+  });
   const arming=els.stArm.onclick();c.dcfg.proto='off';c.stOnDecodeChange();release();await arming;
   assert.deepEqual(sent.at(-1),['serialmode',0],'an in-flight config must not rearm after Decode Off');
   console.log('serial mode race PASS');

@@ -12,6 +12,7 @@ import (
 // levelsEngine is a bare engine whose image has the hardware UART matcher,
 // at 1 V/div with no offset, the trigger centred, a request without a
 // threshold armed.
+// TRLC-LINKS: REQ-SDS-013
 func levelsEngine(p SerialParams) *Engine {
 	e := &Engine{hardwareUART: true, hardwareSPI: true, hardwareSequence: true, band: Band{TdivS: 100e-6}}
 	for ch := 0; ch < 2; ch++ {
@@ -141,6 +142,7 @@ func TestUARTAutoBaudPlansTheHardwareMatcher(t *testing.T) {
 
 // sentLine is a SENT line at tick samples a tick: each frame a SYNC of 56
 // ticks and its nibbles, every pulse five ticks low and high for the rest.
+// TRLC-LINKS: REQ-SDS-013
 func sentLine(frames [][]int, tick int) []uint8 {
 	var w []uint8
 	push := func(v uint8, k int) {

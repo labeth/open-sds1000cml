@@ -52,6 +52,7 @@ func goldenRender(t *testing.T, name string, f *engine.Frame, h HUD) {
 }
 
 // paneLayout is a workspace layout: the rail and a pane above the plot.
+// TRLC-LINKS: REQ-SDS-211
 func paneLayout(top int) wsview.Layout { return wsview.Layout{MenuW: 30, PlotTop: top} }
 
 // TestGoldenScopeRail pins SCOPE: the full-height trace beside the

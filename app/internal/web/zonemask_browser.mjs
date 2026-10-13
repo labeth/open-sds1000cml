@@ -111,6 +111,7 @@ try {
   // the scope's test mode and says the scope has a mask, rather than "Off" and
   // "no mask" beside a meter that counts
   await page.evaluate(async () => {
+    // TRLC-LINKS: REQ-SDS-180
     const post = (u, b) => fetch(u, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(b) });
     await post("/api/mask", { lo: [10, 10], hi: [200, 200], win: 2, ch: 0 });
     await post("/api/set", { control: "maskmode", value: 1 });

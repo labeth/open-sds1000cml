@@ -29,24 +29,32 @@ const WSBY = Object.fromEntries(WSDEF.map((w) => [w.id, w]));
 
 // Layout trees. In every split exactly one item grows (the main pane) and the
 // others keep their pixel size, like an IDE's side bars.
+// TRLC-LINKS: REQ-SDS-219
 const lp = (pane, size, o) => Object.assign({ kind: "pane", pane, size }, o || {});
+// TRLC-LINKS: REQ-SDS-219
 const lr = (items, size, o) => Object.assign({ kind: "split", dir: "row", items, size }, o || {});
+// TRLC-LINKS: REQ-SDS-219
 const lc = (items, size, o) => Object.assign({ kind: "split", dir: "col", items, size }, o || {});
 const SIDE = 372;
 // TRLC-LINKS: REQ-SDS-219
 const WS_LAYOUT = {
+  // TRLC-LINKS: REQ-SDS-219
   scope: () => lr([
     lc([lp("p-scope", 470, { grow: true, min: 200 }), lr([lp("p-horiz", 340, { minW: 270 }), lp("p-quick", 520, { grow: true, minW: 300 })], 168)], 900, { grow: true }),
     lc([lp("p-vert", 268), lp("p-trig", 300, { grow: true }), lp("p-acq", 196)], SIDE, { minW: 330 })]),
+  // TRLC-LINKS: REQ-SDS-219
   bus: () => lr([
     lc([lp("p-bus-scope", 420, { grow: true, min: 200 }), lp("p-packets", 290, { minW: 420, min: 120 })], 900, { grow: true }),
     lc([lp("p-decoder", 340), lp("p-match", 360, { grow: true })], SIDE, { minW: 330 })]),
+  // TRLC-LINKS: REQ-SDS-219
   spectrum: () => lr([
     lc([lp("p-analysis", 470, { grow: true, min: 200 }), lp("p-time", 190, { min: 110 })], 900, { grow: true }),
     lc([lp("p-peaks", 360, { grow: true }), lp("p-readout", 300)], SIDE, { minW: 330 })]),
+  // TRLC-LINKS: REQ-SDS-219
   measure: () => lr([
     lc([lp("p-meas-scope", 400, { grow: true, min: 200 }), lp("p-stats", 300, { minW: 440, min: 120 })], 900, { grow: true }),
     lc([lp("p-cursors", 218), lp("p-mask", 300, { grow: true }), lp("p-acq", 196), lp("p-sr", 330, { collapsed: true }), lp("p-prec", 230, { collapsed: true })], SIDE, { minW: 330 })]),
+  // TRLC-LINKS: REQ-SDS-219
   compare: () => lr([
     lc([lp("p-cmp-scope", 500, { grow: true, min: 200 }), lp("p-diff", 150, { minW: 380, min: 100 })], 900, { grow: true }),
     lc([lp("p-refs", 222), lp("p-math", 104), lp("p-mask", 300, { grow: true })], SIDE, { minW: 330 })]),
@@ -132,6 +140,7 @@ function resizePair(node, gi, delta, base) {
 function pairBase(node, gi) {
   const p = neighbours(node, gi);
   if (!p) return null;
+  // TRLC-LINKS: REQ-SDS-219
   const m = (el) => el.getBoundingClientRect()[node.dir === "row" ? "width" : "height"];
   return { a0: m(p[0].el), b0: m(p[1].el) };
 }
@@ -365,6 +374,7 @@ function wsKey(id) {
 // test, a shown reference…): a dot on its tab, red when the mask test fails.
 // TRLC-LINKS: REQ-SDS-219
 function wsDots() {
+  // TRLC-LINKS: REQ-SDS-219
   const set = (id, on, bad, why) => {
     const t = $("tab-" + id);
     if (!t) return;
@@ -500,7 +510,9 @@ function toggleHelp(force) {
   const show = force === undefined ? !el.classList.contains("show") : !!force;
   if (show === el.classList.contains("show")) return;
   if (show) {
+    // TRLC-LINKS: REQ-SDS-219, REQ-SDS-204
     const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;");
+    // TRLC-LINKS: REQ-SDS-219, REQ-SDS-204
     const rows = (arr) => arr.map((x) => `<tr><td><kbd>${esc(x.label)}</kbd></td><td>${esc(x.desc)}</td></tr>`).join("");
     // three columns: the workspaces, the keys, the mouse
     $("helpBody").innerHTML =
@@ -522,7 +534,9 @@ function toggleHelp(force) {
   }
 }
 $("help").addEventListener("click", (e) => { if (e.target.id === "help") toggleHelp(false); }); // backdrop closes
+// TRLC-LINKS: REQ-SDS-219, REQ-SDS-204
 $("helpClose").onclick = () => toggleHelp(false);
+// TRLC-LINKS: REQ-SDS-219, REQ-SDS-204
 $("helpBtn").onclick = () => toggleHelp();
 // a modal: Tab stays on the sheet's control instead of wandering behind it
 $("help").addEventListener("keydown", (e) => { if (e.key === "Tab") { e.preventDefault(); $("helpClose").focus(); } });

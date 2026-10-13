@@ -325,6 +325,7 @@ function ejDrawEyeTo(g, cv, st2, detailed, res) {
   // smooth/LINEAR upscale for the enlarge view; small view stays crisp/NEAREST)
   g.blit(ejEyeCv.data, ejEyeCv.w, ejEyeCv.h, 0, 0, cv.width, cv.height, detailed);
   const W = cv.width, H = cv.height, fs = detailed ? 14 : 10;
+  // TRLC-LINKS: REQ-SDS-200, REQ-SDS-215
   const yOf = (code) => (EJ_CODE_HI - code) / (EJ_CODE_HI - EJ_CODE_LO) * (H - 1);
   // TRLC-LINKS: REQ-SDS-215
   const line = (x0, y0, x1, y1) => { g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke(); };

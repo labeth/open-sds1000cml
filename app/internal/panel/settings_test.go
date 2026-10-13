@@ -205,7 +205,10 @@ func TestSettingsViewSerialRoundTrip(t *testing.T) {
 // fakeInverter is the display invert (SCPI's INVS shadow on the device).
 type fakeInverter struct{ inv [2]bool }
 
-func (i *fakeInverter) Inverted() [2]bool           { return i.inv }
+// TRLC-LINKS: REQ-SDS-013, REQ-SDS-089
+func (i *fakeInverter) Inverted() [2]bool { return i.inv }
+
+// TRLC-LINKS: REQ-SDS-013, REQ-SDS-089
 func (i *fakeInverter) SetInverted(ch int, on bool) { i.inv[ch&1] = on }
 
 // A saved setup brings back the channel invert, the cursors (mode, A and B,

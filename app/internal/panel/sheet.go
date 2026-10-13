@@ -238,6 +238,7 @@ func (c *Controller) rowKeys(s *sv, r *row) []fkey {
 }
 
 // abs64 is |x|.
+// TRLC-LINKS: REQ-SDS-212
 func abs64(x float64) float64 {
 	if x < 0 {
 		return -x

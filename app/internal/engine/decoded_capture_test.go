@@ -245,6 +245,7 @@ func (b *haltBus) RawWrite(s, v uint16) error {
 
 // webSessionEngine is an engine holding a decoded capture, a web page's or the
 // scope's stream's, last touched by a client contact ago.
+// TRLC-LINKS: REQ-SDS-013
 func webSessionEngine(t *testing.T, web bool, contact time.Duration) *Engine {
 	t.Helper()
 	capture, err := sramcapture.New(&haltBus{})

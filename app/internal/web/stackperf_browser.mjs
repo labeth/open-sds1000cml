@@ -85,7 +85,9 @@ try {
     // CI runner a working memo measured 2.8x where the bar was 3x.
     const realComp = component, realMath = computeMathRaw;
     let fits = 0, maths = 0, cold = null, warm = null;
+    // TRLC-LINKS: REQ-SDS-180
     component = (...a) => { fits++; return realComp(...a); };
+    // TRLC-LINKS: REQ-SDS-180
     computeMathRaw = (...a) => { maths++; return realMath(...a); };
     try {
       invalidate(); redraw(); cold = { fits, maths };

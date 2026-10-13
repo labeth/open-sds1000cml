@@ -27,6 +27,7 @@ type reachContext struct {
 }
 
 // set is a remote set that must succeed.
+// TRLC-LINKS: REQ-SDS-212
 func set(t *testing.T, c *Controller, id, text string) {
 	t.Helper()
 	if res := c.SheetSet(id, nil, text); !res.OK {
@@ -35,6 +36,7 @@ func set(t *testing.T, c *Controller, id, text string) {
 }
 
 // reachContexts are the states the reachability tests walk.
+// TRLC-LINKS: REQ-SDS-212
 func reachContexts() []reachContext {
 	return []reachContext{
 		{"base", func(*testing.T, *viewRig) {}},
@@ -78,6 +80,7 @@ func reachContexts() []reachContext {
 }
 
 // smallFrame is a short square wave super-res can stack in software.
+// TRLC-LINKS: REQ-SDS-212
 func smallFrame() *engine.Frame {
 	n := 256
 	sig := make([]uint8, n)
@@ -88,6 +91,7 @@ func smallFrame() *engine.Frame {
 }
 
 // rigFor is a rig in context x, showing a short capture super-res can stack.
+// TRLC-LINKS: REQ-SDS-212
 func rigFor(t *testing.T, x reachContext) *viewRig {
 	r := newViewRig(t)
 	// the engine's power-on qualifiers (defaultTrigParams): the time limits
@@ -103,9 +107,11 @@ func rigFor(t *testing.T, x reachContext) *viewRig {
 }
 
 // settable reports whether a row has a value to set (not an action).
+// TRLC-LINKS: REQ-SDS-212
 func settable(m RowModel) bool { return m.Kind != "action" }
 
 // sameValue compares two model values (numbers within quantisation).
+// TRLC-LINKS: REQ-SDS-212
 func sameValue(a, b any, tol float64) bool {
 	fa, oka := a.(float64)
 	fb, okb := b.(float64)
@@ -123,6 +129,7 @@ func sameValue(a, b any, tol float64) bool {
 // otherValue is a value for m other than its current one: another option,
 // the next ladder entry, a number a few steps away inside the range, other
 // match bytes.
+// TRLC-LINKS: REQ-SDS-212
 func otherValue(m RowModel) (any, bool) {
 	switch m.Kind {
 	case "enum":
@@ -165,6 +172,7 @@ func otherValue(m RowModel) (any, bool) {
 }
 
 // tolOf is the quantisation a number row may round a value to.
+// TRLC-LINKS: REQ-SDS-212
 func tolOf(m RowModel) float64 {
 	if m.Step != nil && *m.Step > 0 {
 		return *m.Step/2 + 1e-9
@@ -182,9 +190,11 @@ type reach struct {
 	why map[string]string
 }
 
+// TRLC-LINKS: REQ-SDS-212
 func newReach() *reach { return &reach{ok: map[string]bool{}, why: map[string]string{}} }
 
 // never lists the settable rows no context changed, with the last reason.
+// TRLC-LINKS: REQ-SDS-212
 func (rc *reach) never() []string {
 	var out []string
 	for _, tb := range sheetTabs {

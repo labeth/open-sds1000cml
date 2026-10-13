@@ -70,6 +70,7 @@ func (p *panelFixture) TypeText(text string) panel.SetResult {
 }
 
 // httpCall runs one request against s and decodes the JSON reply.
+// TRLC-LINKS: REQ-SDS-162
 func httpCall(t *testing.T, s *Server, method, path string, body any) (int, map[string]any) {
 	t.Helper()
 	var rd *bytes.Reader

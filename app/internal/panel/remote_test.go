@@ -449,6 +449,7 @@ func (e *stagedEng) Snapshot() engine.Stats {
 }
 
 // apply is the next capture: the staged timebase takes effect.
+// TRLC-LINKS: REQ-SDS-220
 func (e *stagedEng) apply() {
 	e.mu.Lock()
 	p := e.pend
@@ -566,6 +567,7 @@ func TestAutosetSaysWhatItChanged(t *testing.T) {
 }
 
 // waitLoop waits for Run to serve injected events.
+// TRLC-LINKS: REQ-SDS-137, REQ-SDS-220
 func waitLoop(t *testing.T, c *Controller) {
 	t.Helper()
 	for i := 0; i < 200 && !c.looping.Load(); i++ {
@@ -715,6 +717,7 @@ type forceEng struct {
 }
 
 // ForceTrigger counts forced captures.
+// TRLC-LINKS: REQ-SDS-212
 func (e *forceEng) ForceTrigger() { *e.n++ }
 
 // A typed value under a row's lowest is refused at every scale: the pulse and

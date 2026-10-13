@@ -9,6 +9,7 @@ import (
 )
 
 // sineFrame is a frame of a sine of cycles periods over n samples.
+// TRLC-LINKS: REQ-SDS-216
 func sineFrame(n int, cycles, amp float64, seq uint64) *engine.Frame {
 	f := &engine.Frame{C1: make([]uint8, n), C2: make([]uint8, n), Valid: n, SampleS: 1e-6, Seq: seq}
 	for i := range f.C1 {

@@ -779,6 +779,7 @@ func TestScreenshotCanReadDisplayState(t *testing.T) {
 }
 
 // Precision is a distinct live acquisition mode, not normal sampling.
+// TRLC-LINKS: REQ-SDS-024
 func TestAcquisitionQueryPrecision(t *testing.T) {
 	h, fs := newH(t)
 	fs.stats.AcqMode = engine.AcqPrecision

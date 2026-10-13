@@ -11,11 +11,13 @@ type fakeSetups struct {
 	fail            bool
 }
 
+// TRLC-LINKS: REQ-SDS-024
 func (f *fakeSetups) SaveSetup(n int) error {
 	f.saved = append(f.saved, n)
 	return nil
 }
 
+// TRLC-LINKS: REQ-SDS-024
 func (f *fakeSetups) RecallSetup(n int) error {
 	if f.fail {
 		return errors.New("empty")
@@ -58,9 +60,14 @@ type fakeCurMeas struct {
 	cursors, meas bool
 }
 
-func (d *fakeCurMeas) CursorsOn() bool      { return d.cursors }
+// TRLC-LINKS: REQ-SDS-024
+func (d *fakeCurMeas) CursorsOn() bool { return d.cursors }
+
+// TRLC-LINKS: REQ-SDS-024
 func (d *fakeCurMeas) SetCursorsOn(on bool) { d.cursors = on }
-func (d *fakeCurMeas) SetMeasOn(on bool)    { d.meas = on }
+
+// TRLC-LINKS: REQ-SDS-024
+func (d *fakeCurMeas) SetMeasOn(on bool) { d.meas = on }
 
 type fakeSetupFiles struct {
 	fakeSetups
@@ -68,7 +75,10 @@ type fakeSetupFiles struct {
 	got   string
 }
 
+// TRLC-LINKS: REQ-SDS-024
 func (f *fakeSetupFiles) SaveSetupFile(n string) error { f.files[n] = true; return nil }
+
+// TRLC-LINKS: REQ-SDS-024
 func (f *fakeSetupFiles) RecallSetupFile(n string) error {
 	if !f.files[n] {
 		return errors.New("missing")

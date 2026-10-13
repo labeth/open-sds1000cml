@@ -16,12 +16,14 @@ type rigInverter struct {
 	inv [2]bool
 }
 
+// TRLC-LINKS: REQ-SDS-211
 func (i *rigInverter) Inverted() [2]bool {
 	i.mu.Lock()
 	defer i.mu.Unlock()
 	return i.inv
 }
 
+// TRLC-LINKS: REQ-SDS-211
 func (i *rigInverter) SetInverted(ch int, on bool) {
 	i.mu.Lock()
 	defer i.mu.Unlock()

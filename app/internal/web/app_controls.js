@@ -99,7 +99,9 @@ $("probe1").onchange = () => send("probe1", +$("probe1").value);
 // sheetsFollow shows their values.
 // TRLC-LINKS: REQ-SDS-211
 for (const ch of [1, 2]) {
+  // TRLC-LINKS: REQ-SDS-211
   $("bwl" + ch).onchange = () => sheetSet("ch" + ch + ".bwl", +$("bwl" + ch).value);
+  // TRLC-LINKS: REQ-SDS-211
   $("inv" + ch).onchange = () => sheetSet("ch" + ch + ".invert", +$("inv" + ch).value);
 }
 // TRLC-LINKS: REQ-SDS-204
@@ -248,6 +250,7 @@ $("eWAV").onclick = () => {
 // TRLC-LINKS: REQ-SDS-069
 $("ePrint").onclick = async () => {
   popClose();
+  // TRLC-LINKS: REQ-SDS-069
   const notice = async () => { try { return ((await (await fetch("/api/status")).json()).panel || {}).Notice || ""; } catch (e) { return null; } };
   const before = await notice();
   if (!(await panelPress("print"))) { toast("Device screenshot is not available on this server", "warn"); return; }

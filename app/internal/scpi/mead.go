@@ -14,6 +14,7 @@ type edges struct{ rise, fall []float64 }
 
 // findEdges slices a channel at mid-swing with 10 % hysteresis, so converter
 // noise on a flat level is no edge; nil when the channel has no swing.
+// TRLC-LINKS: REQ-SDS-024
 func findEdges(c []uint8) *edges {
 	if len(c) < 4 {
 		return nil
@@ -49,6 +50,7 @@ func findEdges(c []uint8) *edges {
 
 // crossing walks back from i to the sample pair straddling level and
 // interpolates the crossing position.
+// TRLC-LINKS: REQ-SDS-024
 func crossing(c []uint8, i int, level float64) float64 {
 	for j := i; j > 0; j-- {
 		a, b := float64(c[j-1]), float64(c[j])

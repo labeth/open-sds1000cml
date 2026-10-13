@@ -10,6 +10,7 @@ import (
 // clock idles at CPOL, each bit is launched delay samples after its launch
 // edge (CPHA 0: the trailing edge, the first bit set up at the burst start;
 // CPHA 1: the leading edge) and is sampled on the other edge.
+// TRLC-LINKS: REQ-SDS-018
 func spiModeWave(bytes []int, h, delay int, cpol, cpha, msb bool) (clk, dat []uint8) {
 	lo, hi := uint8(40), uint8(210)
 	idle, act := lo, hi

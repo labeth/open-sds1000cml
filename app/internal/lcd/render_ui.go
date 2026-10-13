@@ -145,6 +145,7 @@ func drawRailNote(sf Surface, n *wsview.Note) {
 }
 
 // clampI clamps v into [lo, hi].
+// TRLC-LINKS: REQ-SDS-211
 func clampI(v, lo, hi int) int { return min(max(v, lo), hi) }
 
 // ---- the F-key text column (a menu is open) ----
@@ -283,6 +284,7 @@ const (
 	busToolY = 124
 )
 
+// TRLC-LINKS: REQ-SDS-211, REQ-SDS-213
 func cellX(k int) int {
 	if k >= 8 {
 		return hexIn + k*cellW + midGap
@@ -375,6 +377,7 @@ func drawBusPane(sf Surface, p plotArea, b *wsview.BusPane) {
 }
 
 // itoa formats a small integer.
+// TRLC-LINKS: REQ-SDS-214
 func itoa(n int) string {
 	if n == 0 {
 		return "0"
@@ -456,6 +459,7 @@ func drawPickerPane(sf Surface, p plotArea, pk *wsview.Picker) {
 
 // eyeShades are four density shades of a channel colour over the screen
 // colour, dim to full (flat fills only).
+// TRLC-LINKS: REQ-SDS-214
 func eyeShades(ch int) [4]uint16 {
 	c := colC1
 	if ch == 1 {
@@ -471,6 +475,7 @@ func eyeShades(ch int) [4]uint16 {
 }
 
 // unpack565 is the 8-bit RGB of an RGB565 colour.
+// TRLC-LINKS: REQ-SDS-214
 func unpack565(c uint16) (r, g, b uint8) {
 	return uint8(c>>11&0x1f) << 3, uint8(c>>5&0x3f) << 2, uint8(c&0x1f) << 3
 }
@@ -1276,6 +1281,7 @@ func drawThumb(sf Surface, f *engine.Frame, hud HUD, sh *wsview.Sheet) {
 }
 
 // drawThumbXY is the X-Y mini view.
+// TRLC-LINKS: REQ-SDS-212
 func drawThumbXY(sf Surface, f *engine.Frame, x0, y0, w, h int) {
 	if f == nil || f.IsEnv || len(f.C1) == 0 {
 		return
@@ -1297,6 +1303,7 @@ func drawThumbXY(sf Surface, f *engine.Frame, x0, y0, w, h int) {
 }
 
 // drawThumbFFT is the FFT mini view (column maxima, -80 dB at the bottom).
+// TRLC-LINKS: REQ-SDS-212
 func drawThumbFFT(sf Surface, f *engine.Frame, hud HUD, ch, x0, y0, w, h int) {
 	if f == nil || f.IsEnv || len(f.C1) == 0 {
 		return
@@ -1334,6 +1341,7 @@ func drawThumbFFT(sf Surface, f *engine.Frame, hud HUD, ch, x0, y0, w, h int) {
 }
 
 // drawThumbBode is the Bode mini view: gain (C1 colour) and phase (C2).
+// TRLC-LINKS: REQ-SDS-212
 func drawThumbBode(sf Surface, hud HUD, x0, y0, w, h int) {
 	n := len(hud.BodeFreq)
 	if n < 2 || hud.BodeFreq[0] <= 0 {

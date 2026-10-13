@@ -17,6 +17,7 @@ type wholeSlots struct {
 	c *Controller
 }
 
+// TRLC-LINKS: REQ-SDS-136
 func (w *wholeSlots) CurrentSetup() settings.Settings {
 	v := w.c.SettingsView()
 	return settings.Settings{ViewMode: v.ViewMode, Decode: v.Decode, Display: v.Display, UI: v.UI, Serial: v.Serial}

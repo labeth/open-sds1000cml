@@ -73,6 +73,7 @@ func (f *fakeEng) SetLEDs(w uint16) {
 }
 
 // lastLEDs is the last latched lamp word.
+// TRLC-LINKS: REQ-SDS-135
 func (f *fakeEng) lastLEDs() uint16 {
 	f.statMu.Lock()
 	defer f.statMu.Unlock()
@@ -90,6 +91,7 @@ func (f *fakeEng) Snapshot() engine.Stats {
 }
 
 // set changes the engine state under its lock (tests).
+// TRLC-LINKS: REQ-SDS-135
 func (f *fakeEng) set(fn func(st *engine.Stats)) {
 	f.statMu.Lock()
 	fn(&f.stats)
@@ -494,6 +496,7 @@ func (f *fakeFE) SetTrigCalDetent(ch, detent int, c analog.TrigCal) {}
 type bwlFE struct{ *fakeFE }
 
 // SetBWL sets a channel's bandwidth limit.
+// TRLC-LINKS: REQ-SDS-135
 func (f bwlFE) SetBWL(ch int, on bool) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -502,6 +505,7 @@ func (f bwlFE) SetBWL(ch int, on bool) error {
 }
 
 // BWL reports a channel's bandwidth limit.
+// TRLC-LINKS: REQ-SDS-135
 func (f bwlFE) BWL(ch int) bool {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -515,6 +519,7 @@ type fakeInv struct {
 }
 
 // Inverted reports both channels' invert.
+// TRLC-LINKS: REQ-SDS-135
 func (f *fakeInv) Inverted() [2]bool {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -522,6 +527,7 @@ func (f *fakeInv) Inverted() [2]bool {
 }
 
 // SetInverted sets a channel's invert.
+// TRLC-LINKS: REQ-SDS-135
 func (f *fakeInv) SetInverted(ch int, on bool) {
 	f.mu.Lock()
 	f.inv[ch&1] = on
@@ -535,6 +541,7 @@ func idle() [5]uint16 {
 
 // newEng is the engine at the state the panel tests start from, with the
 // real engine's boot qualifiers (levels set, windows unset).
+// TRLC-LINKS: REQ-SDS-135
 func newEng() *fakeEng {
 	return &fakeEng{matrix: idle(), stats: engine.Stats{
 		Running: true, TrigCode: 31434, TdivS: 500e-6, TrigPosFrac: 0.5,
@@ -559,6 +566,7 @@ type testClock struct {
 	t  time.Time
 }
 
+// TRLC-LINKS: REQ-SDS-135
 func (k *testClock) now() time.Time {
 	k.mu.Lock()
 	defer k.mu.Unlock()
@@ -566,6 +574,7 @@ func (k *testClock) now() time.Time {
 }
 
 // advance moves the clock on by d.
+// TRLC-LINKS: REQ-SDS-135
 func (k *testClock) advance(d time.Duration) {
 	k.mu.Lock()
 	k.t = k.t.Add(d)
@@ -573,6 +582,7 @@ func (k *testClock) advance(d time.Duration) {
 }
 
 // withClock gives c a manual clock.
+// TRLC-LINKS: REQ-SDS-135
 func withClock(c *Controller) *testClock {
 	k := &testClock{t: time.Date(2026, 10, 11, 12, 0, 0, 0, time.UTC)}
 	c.SetClock(k.now)
@@ -580,6 +590,7 @@ func withClock(c *Controller) *testClock {
 }
 
 // press runs physical buttons by their API names, as the panel does.
+// TRLC-LINKS: REQ-SDS-135
 func press(t *testing.T, c *Controller, names ...string) {
 	t.Helper()
 	for _, n := range names {
@@ -592,6 +603,7 @@ func press(t *testing.T, c *Controller, names ...string) {
 }
 
 // turn turns a knob n detents (negative: counter-clockwise), one event each.
+// TRLC-LINKS: REQ-SDS-135
 func turn(c *Controller, knob string, n int) {
 	dir := 1
 	if n < 0 {
@@ -605,6 +617,7 @@ func turn(c *Controller, knob string, n int) {
 
 // goRow reaches a row with panel inputs only: Menu On/Off opens the
 // workspace's sheet, S/DIV turns to the row's tab, Adjust moves to the row.
+// TRLC-LINKS: REQ-SDS-135
 func goRow(t *testing.T, c *Controller, id string) {
 	t.Helper()
 	if rowByID[id] == nil {
@@ -630,6 +643,7 @@ func goRow(t *testing.T, c *Controller, id string) {
 }
 
 // pickKey presses the F-key whose label is label.
+// TRLC-LINKS: REQ-SDS-135
 func pickKey(t *testing.T, c *Controller, label string) {
 	t.Helper()
 	for i, l := range keyLabels(c) {
@@ -642,9 +656,11 @@ func pickKey(t *testing.T, c *Controller, label string) {
 }
 
 // rowText is a row's value as written on the sheet.
+// TRLC-LINKS: REQ-SDS-135
 func rowText(c *Controller, id string) string { return rowByID[id].valueText(c.snap()) }
 
 // keyLabels are the five F-key labels as the status reports them.
+// TRLC-LINKS: REQ-SDS-135
 func keyLabels(c *Controller) []string {
 	st := c.PanelStatus()
 	var out []string
@@ -655,6 +671,7 @@ func keyLabels(c *Controller) []string {
 }
 
 // mustState fails unless the UI is in the given workspace and mode.
+// TRLC-LINKS: REQ-SDS-135
 func mustState(t *testing.T, c *Controller, ws, mode string) Status {
 	t.Helper()
 	st := c.PanelStatus()
@@ -712,6 +729,7 @@ func TestLEDMap(t *testing.T) {
 }
 
 // keyNamesOf lists the keys of a map (for messages).
+// TRLC-LINKS: REQ-SDS-135
 func keyNamesOf[V any](m map[string]V) string {
 	var out []string
 	for k := range m {

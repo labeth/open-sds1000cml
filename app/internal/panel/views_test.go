@@ -35,9 +35,11 @@ type bodeEng struct {
 }
 
 // BodePoints is the accumulated sweep.
+// TRLC-LINKS: REQ-SDS-211, REQ-SDS-212, REQ-SDS-214, REQ-SDS-215, REQ-SDS-216, REQ-SDS-217, REQ-SDS-218
 func (e *bodeEng) BodePoints() []engine.BodePoint { return e.pts }
 
 // LeaseDecodeView counts a lease of raw frames.
+// TRLC-LINKS: REQ-SDS-211, REQ-SDS-212, REQ-SDS-214, REQ-SDS-215, REQ-SDS-216, REQ-SDS-217, REQ-SDS-218
 func (e *bodeEng) LeaseDecodeView(d time.Duration) {
 	if d > 0 {
 		e.leases.Add(1)
@@ -45,17 +47,20 @@ func (e *bodeEng) LeaseDecodeView(d time.Duration) {
 }
 
 // SetBodeMode arms the frequency response on ref / dut (the engine's own).
+// TRLC-LINKS: REQ-SDS-211, REQ-SDS-212, REQ-SDS-214, REQ-SDS-215, REQ-SDS-216, REQ-SDS-217, REQ-SDS-218
 func (e *bodeEng) SetBodeMode(on bool, ref, dut int) {
 	e.set(func(st *engine.Stats) { st.BodeMode, st.BodeRef, st.BodeDut = b2ic(on), ref, dut })
 }
 
 // ClearBode forgets the points.
+// TRLC-LINKS: REQ-SDS-211, REQ-SDS-212, REQ-SDS-214, REQ-SDS-215, REQ-SDS-216, REQ-SDS-217, REQ-SDS-218
 func (e *bodeEng) ClearBode() {
 	e.pts = nil
 	e.set(func(st *engine.Stats) { st.BodePoints = 0 })
 }
 
 // LeaseSpectrumView counts a lease of spectrum frames, and its release.
+// TRLC-LINKS: REQ-SDS-211, REQ-SDS-212, REQ-SDS-214, REQ-SDS-215, REQ-SDS-216, REQ-SDS-217, REQ-SDS-218
 func (e *bodeEng) LeaseSpectrumView(d time.Duration) {
 	if d > 0 {
 		e.specLeases.Add(1)
@@ -80,17 +85,31 @@ type viewRig struct {
 // fakeStream is a decoded stream that never starts (Auto finds nothing).
 type fakeStream struct{ mu sync.Mutex }
 
+// TRLC-LINKS: REQ-SDS-211, REQ-SDS-212, REQ-SDS-214, REQ-SDS-215, REQ-SDS-216, REQ-SDS-217, REQ-SDS-218
 func (s *fakeStream) Start(engine.SerialParams, engine.StreamTrigger, int, string) error { return nil }
-func (s *fakeStream) Stop()                                                              {}
-func (s *fakeStream) Active() bool                                                       { return false }
-func (s *fakeStream) Snapshot() streamview.View                                          { return streamview.View{} }
-func (s *fakeStream) Refuse(string)                                                      {}
-func (s *fakeStream) Lines(int, int) streamview.LinesPage                                { return streamview.LinesPage{} }
-func (s *fakeStream) LinesBinary(int, []byte) int                                        { return 0 }
+
+// TRLC-LINKS: REQ-SDS-211, REQ-SDS-212, REQ-SDS-214, REQ-SDS-215, REQ-SDS-216, REQ-SDS-217, REQ-SDS-218
+func (s *fakeStream) Stop() {}
+
+// TRLC-LINKS: REQ-SDS-211, REQ-SDS-212, REQ-SDS-214, REQ-SDS-215, REQ-SDS-216, REQ-SDS-217, REQ-SDS-218
+func (s *fakeStream) Active() bool { return false }
+
+// TRLC-LINKS: REQ-SDS-211, REQ-SDS-212, REQ-SDS-214, REQ-SDS-215, REQ-SDS-216, REQ-SDS-217, REQ-SDS-218
+func (s *fakeStream) Snapshot() streamview.View { return streamview.View{} }
+
+// TRLC-LINKS: REQ-SDS-211, REQ-SDS-212, REQ-SDS-214, REQ-SDS-215, REQ-SDS-216, REQ-SDS-217, REQ-SDS-218
+func (s *fakeStream) Refuse(string) {}
+
+// TRLC-LINKS: REQ-SDS-211, REQ-SDS-212, REQ-SDS-214, REQ-SDS-215, REQ-SDS-216, REQ-SDS-217, REQ-SDS-218
+func (s *fakeStream) Lines(int, int) streamview.LinesPage { return streamview.LinesPage{} }
+
+// TRLC-LINKS: REQ-SDS-211, REQ-SDS-212, REQ-SDS-214, REQ-SDS-215, REQ-SDS-216, REQ-SDS-217, REQ-SDS-218
+func (s *fakeStream) LinesBinary(int, []byte) int { return 0 }
 
 // newViewRig is a controller with every optional part: the FRA sweep, the
 // serial trigger, the bandwidth limit, the display invert, a decoded
 // stream, a frame source and a manual clock.
+// TRLC-LINKS: REQ-SDS-211, REQ-SDS-212, REQ-SDS-214, REQ-SDS-215, REQ-SDS-216, REQ-SDS-217, REQ-SDS-218
 func newViewRig(t *testing.T) *viewRig {
 	t.Helper()
 	fe := &fakeFE{idx: [2]int{8, 8}}
@@ -111,6 +130,7 @@ func newViewRig(t *testing.T) *viewRig {
 }
 
 // show publishes capture f (a new Seq) and lets the panel analyse it.
+// TRLC-LINKS: REQ-SDS-211, REQ-SDS-212, REQ-SDS-214, REQ-SDS-215, REQ-SDS-216, REQ-SDS-217, REQ-SDS-218
 func (r *viewRig) show(f *engine.Frame) {
 	r.seq++
 	f.Seq = r.seq
@@ -126,6 +146,7 @@ func (r *viewRig) show(f *engine.Frame) {
 }
 
 // hud is the LCD state for the controller's snapshot, as the app builds it.
+// TRLC-LINKS: REQ-SDS-211, REQ-SDS-212, REQ-SDS-214, REQ-SDS-215, REQ-SDS-216, REQ-SDS-217, REQ-SDS-218
 func (r *viewRig) hud() lcd.HUD {
 	c, st := r.c, r.eng.Snapshot()
 	d, v := c.Snapshot()
@@ -154,6 +175,7 @@ func (r *viewRig) hud() lcd.HUD {
 }
 
 // shot renders the screen; with PANEL_VIEWS_DIR set it is saved as name.png.
+// TRLC-LINKS: REQ-SDS-211, REQ-SDS-212, REQ-SDS-214, REQ-SDS-215, REQ-SDS-216, REQ-SDS-217, REQ-SDS-218
 func (r *viewRig) shot(name string) wsview.View {
 	r.t.Helper()
 	if r.f != nil {
@@ -180,6 +202,7 @@ func (r *viewRig) shot(name string) wsview.View {
 // uartFrame is a capture of a UART bus on C1 (C2 idle high): msgs sent
 // one after another at baud, gapS of idle between them, n samples sampleS
 // apart, triggered at the record's middle.
+// TRLC-LINKS: REQ-SDS-211, REQ-SDS-212, REQ-SDS-214, REQ-SDS-215, REQ-SDS-216, REQ-SDS-217, REQ-SDS-218
 func uartFrame(msgs []string, baud, gapS, sampleS float64, n int) *engine.Frame {
 	c1, c2 := make([]uint8, n), make([]uint8, n)
 	for i := range c1 {
@@ -212,6 +235,7 @@ func uartFrame(msgs []string, baud, gapS, sampleS float64, n int) *engine.Frame 
 }
 
 // toneFrame is a 1 kHz square on C1 and a 3 kHz sine on C2 over 5 ms.
+// TRLC-LINKS: REQ-SDS-211, REQ-SDS-212, REQ-SDS-214, REQ-SDS-215, REQ-SDS-216, REQ-SDS-217, REQ-SDS-218
 func toneFrame(filter string) *engine.Frame {
 	const n = 20000
 	sampleS := 5e-3 / n

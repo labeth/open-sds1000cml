@@ -355,6 +355,7 @@ type sinceEng struct {
 }
 
 // SincePublish is the time since the engine last published a frame.
+// TRLC-LINKS: REQ-SDS-211, REQ-SDS-212
 func (e *sinceEng) SincePublish() time.Duration { return e.since }
 
 // Each lamp means its function is in use; INTENSITY, which no firmware has
@@ -492,12 +493,15 @@ type memSlots struct {
 	rec   []int
 }
 
+// TRLC-LINKS: REQ-SDS-214
 func (m *memSlots) SaveSetup(n int) error { m.saved[n] = true; return nil }
 
+// TRLC-LINKS: REQ-SDS-214
 func (m *memSlots) PeekSetup(n int) (settings.Settings, bool) {
 	return settings.Settings{UI: settings.UI{Set: true, Workspace: 1}}, m.saved[n]
 }
 
+// TRLC-LINKS: REQ-SDS-214
 func (m *memSlots) RecallSetup(n int) error {
 	if !m.saved[n] {
 		return fmt.Errorf("empty")

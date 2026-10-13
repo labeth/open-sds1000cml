@@ -38,13 +38,21 @@
   // its LCD (Adjust, Position and their pushes would move that menu). Again
   // names the workspace it is meant for.
   const api = {
+    // TRLC-LINKS: REQ-SDS-220
     wait: (seq, ms) => http("GET", "/api/panel/wait?seq=" + seq + "&timeout_ms=" + ms, null, ms + 6000),
+    // TRLC-LINKS: REQ-SDS-220
     sheets: () => http("GET", "/api/sheets", null, 10000),
+    // TRLC-LINKS: REQ-SDS-220
     set: (row, input) => http("POST", "/api/sheets/set", Object.assign({ row }, input)),
+    // TRLC-LINKS: REQ-SDS-220
     action: (row, action) => http("POST", "/api/sheets/action", { row, action: action || "" }),
+    // TRLC-LINKS: REQ-SDS-220
     press: (button, nomenu) => http("POST", "/api/panel", { button, remote: true, nomenu: !!nomenu }),
+    // TRLC-LINKS: REQ-SDS-220
     knob: (knob, dir, steps, nomenu) => http("POST", "/api/panel", { knob, dir, steps: steps || 1, remote: true, nomenu: !!nomenu }),
+    // TRLC-LINKS: REQ-SDS-220
     workspace: (ws) => http("POST", "/api/panel", { workspace: ws }),
+    // TRLC-LINKS: REQ-SDS-220
     again: (ws) => http("POST", "/api/panel", { again: true, workspace: ws || "" }),
   };
 
@@ -66,6 +74,7 @@
     lastCall: -Infinity, notice: "",
     fns: [],
   };
+  // TRLC-LINKS: REQ-SDS-220
   const now = () => performance.now();
 
   // TRLC-LINKS: REQ-SDS-220
@@ -80,6 +89,7 @@
     if (was !== on) emit("online");
   }
 
+  // TRLC-LINKS: REQ-SDS-220
   const wsId = () => (S.panel && S.panel.WorkspaceID) || "";
 
   // row is a row as the phone shows it: the scope's value, or the value this
@@ -111,6 +121,7 @@
   function shown() {
     if (!document.hidden) return Promise.resolve(false);
     return new Promise((r) => {
+      // TRLC-LINKS: REQ-SDS-220
       const f = () => { if (!document.hidden) { document.removeEventListener("visibilitychange", f); r(true); } };
       document.addEventListener("visibilitychange", f);
     });
@@ -340,6 +351,7 @@
     if (!S.online) return Promise.resolve({ ok: false, error: "Not connected to the scope" });
     let answered;
     const answer = new Promise((r) => { answered = r; });
+    // TRLC-LINKS: REQ-SDS-220
     const run = async () => {
       book();                                         // what came before this call is not this call's
       const c = { id: ++callSeq, meta, doneAt: 0, claims: new Map(), autoset: 0, upTo: 0, entry: null };   // claims: row id (or "workspace") -> until

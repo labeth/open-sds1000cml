@@ -304,6 +304,7 @@ func TestRunToggleAfterSingleCapture(t *testing.T) {
 // fakeRefs is a panel with references (the web's /api/refs).
 type fakeRefs struct{ fuzzPanel }
 
+// TRLC-LINKS: REQ-SDS-204
 func (*fakeRefs) RefsExport() [2]panel.RefExport {
 	return [2]panel.RefExport{{Has: true, Show: true, Cols: 3, C1: []int{1, 2, 3}, Vdiv: [2]float64{1, 1}, TdivS: 1e-3, PosFrac: .5}}
 }

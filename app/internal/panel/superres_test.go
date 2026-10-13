@@ -30,6 +30,7 @@ type leaseEng struct {
 	n atomic.Int32
 }
 
+// TRLC-LINKS: REQ-SDS-141, REQ-SDS-021
 func (e *leaseEng) LeaseDecodeView(time.Duration) { e.n.Add(1) }
 
 // A final stack (here: the timebase changed under it) stops leasing raw

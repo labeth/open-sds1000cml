@@ -136,6 +136,26 @@ jobs:
       - name: RTL testbenches
         run: fpga/sim.sh
 
+  # The engineering model (model/) must validate without errors: requirements,
+  # catalog, and every function's TRLC-LINKS across the tree. engdoc exits
+  # non-zero on any error; warnings are reported but pass.
+  model:
+    runs-on: ubuntu-latest
+    env:
+      ENGMODEL_VERSION: 5297fc4a56470a762febdec0db67ba6c13f78703 # pin: the tool the model was migrated to
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+          cache: false
+      - name: Install engdoc
+        run: go install "github.com/labeth/engineering-model-go/cmd/engdoc@${ENGMODEL_VERSION}"
+      - name: validate the model
+        run: >
+          engdoc --model model/engmod.yml --requirements model/requirements.yml
+          --design model/views.yml --code-root . --out "$RUNNER_TEMP/ARCHITECTURE.adoc"
+
   cross-build:
     runs-on: ubuntu-latest
     steps:

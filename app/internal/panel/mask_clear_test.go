@@ -11,6 +11,7 @@ import (
 )
 
 // installTestMask puts a two-column mask in the engine with its test in mode.
+// TRLC-LINKS: REQ-SDS-139, REQ-SDS-218
 func installTestMask(c *Controller, mode int) {
 	c.eng.SetMask(&engine.Mask{Lo: []uint8{10, 10}, Hi: []uint8{200, 200}, WinCols: 2})
 	c.eng.SetMaskMode(mode)
@@ -314,6 +315,7 @@ func TestDefaultSetupResetsMaskBuildAndSuperres(t *testing.T) {
 }
 
 // fakeEng's precision rate: DEFAULT SETUP sets the engine's own.
+// TRLC-LINKS: REQ-SDS-136
 func (f *fakeEng) SetPrecisionRate(hz float64) float64 {
 	f.set(func(st *engine.Stats) { st.PrecisionRateHz = hz })
 	return hz

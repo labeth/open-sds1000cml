@@ -18,8 +18,10 @@ function segInit(el) {
   el._seg = true;
   if (!el.getAttribute("role")) el.setAttribute("role", "radiogroup");
   let cur = el.dataset.value != null ? String(el.dataset.value) : null;
+  // TRLC-LINKS: REQ-SDS-219
   const opts = () => el.querySelectorAll(":scope > button[data-value]");
   for (const b of opts()) { b.type = "button"; b.setAttribute("role", "radio"); }
+  // TRLC-LINKS: REQ-SDS-219
   const paint = () => {
     for (const b of opts()) {
       const on = b.dataset.value === cur;
@@ -30,7 +32,9 @@ function segInit(el) {
   };
   Object.defineProperty(el, "value", {
     configurable: true,
+    // TRLC-LINKS: REQ-SDS-219
     get() { return cur; },
+    // TRLC-LINKS: REQ-SDS-219
     set(v) { cur = v == null ? null : String(v); paint(); },
   });
   // TRLC-LINKS: REQ-SDS-219

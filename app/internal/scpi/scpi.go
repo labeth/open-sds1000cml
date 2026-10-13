@@ -190,6 +190,7 @@ func (h *Handler) SetSetupMemory(m SetupMemory) {
 // setupSlots is the vendor's *SAV/*RCL range.
 const setupSlots = 20
 
+// TRLC-LINKS: REQ-SDS-024
 func New(sc Scope, fe Analog, disp Display, shot Screenshot, logf func(string, ...any)) *Handler {
 	return &Handler{
 		sc: sc, fe: fe, disp: disp, shot: shot, logf: logf,

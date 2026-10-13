@@ -17,6 +17,7 @@ type Slots struct {
 }
 
 // slotPath is a slot's file.
+// TRLC-LINKS: REQ-SDS-072, REQ-SDS-089
 func (s Slots) slotPath(n int) string { return filepath.Join(s.Dir, fmt.Sprintf("setup%02d.json", n)) }
 
 // SaveSetup stores the current setup in slot n.

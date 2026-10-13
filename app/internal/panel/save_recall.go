@@ -170,6 +170,7 @@ type SetupSlot struct {
 	Summary string
 }
 
+// TRLC-LINKS: REQ-SDS-136
 func (s *SharedSetups) store() SetupMemory {
 	s.c.mu.Lock()
 	defer s.c.mu.Unlock()

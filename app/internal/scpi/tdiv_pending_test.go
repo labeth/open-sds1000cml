@@ -17,6 +17,7 @@ type slowScope struct {
 	pending float64
 }
 
+// TRLC-LINKS: REQ-SDS-024
 func (s *slowScope) SetTdiv(t float64) (engine.Band, bool) {
 	b, ok := engine.PlanTdiv(t)
 	if ok {
@@ -27,12 +28,14 @@ func (s *slowScope) SetTdiv(t float64) (engine.Band, bool) {
 	return b, ok
 }
 
+// TRLC-LINKS: REQ-SDS-024
 func (s *slowScope) Snapshot() engine.Stats {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.stats
 }
 
+// TRLC-LINKS: REQ-SDS-024
 func (s *slowScope) apply() {
 	s.mu.Lock()
 	s.stats.TdivS = s.pending

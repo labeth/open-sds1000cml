@@ -102,6 +102,7 @@ func TestBusEyeTools(t *testing.T) {
 // changing at each bit boundary and its bit clock on C2, rising at the
 // boundary and falling mid-bit, n samples sampleS apart; the bit grid starts
 // phase samples into the record.
+// TRLC-LINKS: REQ-SDS-215
 func prbsSPIFrame(bitS, sampleS float64, n int, phase float64) *engine.Frame {
 	c1, c2 := make([]uint8, n), make([]uint8, n)
 	spb := bitS / sampleS

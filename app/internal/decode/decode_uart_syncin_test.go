@@ -76,6 +76,7 @@ func TestUARTSyncInKeepsBreakAfterIdleStart(t *testing.T) {
 
 // benchUARTLine is the bench's UART source: "Hi U" AA 0F F0 0A, each byte 8N1
 // with an idle bit after its stop bit, and 27 idle bits after each message.
+// TRLC-LINKS: REQ-SDS-018
 func benchUARTLine(spb, messages int) ([]uint8, []int) {
 	msg := []int{0x48, 0x69, 0x20, 0x55, 0xAA, 0x0F, 0xF0, 0x0A}
 	var line []uint8

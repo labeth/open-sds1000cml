@@ -11,6 +11,7 @@ import (
 
 // envelopeOf is f as the live peak-detect readout at a slow timebase: one
 // (min, max) pair per bucket of the capture, time-ordered.
+// TRLC-LINKS: REQ-SDS-214
 func envelopeOf(f *engine.Frame, bucket int) *engine.Frame {
 	n := f.Valid / bucket
 	c1, c2 := make([]uint8, 2*n), make([]uint8, 2*n)

@@ -114,6 +114,7 @@ func fuzzAlphabet() []fuzzAction {
 
 // reachRow moves to a row with the panel's keys and knobs; it reports
 // whether it got there (the fuzz takes whatever state it is in).
+// TRLC-LINKS: REQ-SDS-136
 func reachRow(c *Controller, id string) bool {
 	if c.ui.wpick {
 		c.button(btnMenuOnOff) // closes the BUS picker

@@ -14,6 +14,7 @@ import (
 // go test ./internal/lcd -run - -bench Render
 
 // benchRender renders f with h b.N times.
+// TRLC-LINKS: REQ-SDS-021
 func benchRender(b *testing.B, f *engine.Frame, h HUD) {
 	sf := NewMemSurface()
 	b.ReportAllocs()

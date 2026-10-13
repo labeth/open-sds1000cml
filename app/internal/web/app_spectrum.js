@@ -32,12 +32,15 @@ function specViewChanged(v) {
 }
 
 WS_HOOKS.push({
+  // TRLC-LINKS: REQ-SDS-216
   enter(id) { if (id === "spectrum") specViewChanged(WSV.spectrum); },
+  // TRLC-LINKS: REQ-SDS-216
   leave(prev) {
     if (prev !== "spectrum") return;
     if (spg.armed && specArmedSpg) { $("spgArm").click(); specArmedSpg = false; }
     $("tPersist").hidden = false;
   },
+  // TRLC-LINKS: REQ-SDS-216
   view(id, v) { if (id === "spectrum") specViewChanged(v); },
 });
 

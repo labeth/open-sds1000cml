@@ -176,6 +176,7 @@ func (e *Engine) BeginDecodedCapture(ctx context.Context, cfg sramcapture.Config
 
 // beginDecodedCapture starts a session; web marks a web page's (the scope's
 // keys end it, and it ends itself when abandoned), not the scope's stream.
+// TRLC-LINKS: REQ-SDS-013
 func (e *Engine) beginDecodedCapture(ctx context.Context, cfg sramcapture.Config, lineProto int, web bool) (sramcapture.RecordIdentity, error) {
 	value, err := e.decodedCall(ctx, func() (any, error) {
 		e.decodedStarting = time.Time{} // the session (or its failure) takes over the image

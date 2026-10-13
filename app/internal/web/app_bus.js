@@ -136,6 +136,7 @@ function busSetView(v) {
   busRoom(v === "eye");
   if (v === "packets") { busRenderedV = -1; busRenderTable(); }
 }
+// TRLC-LINKS: REQ-SDS-214, REQ-SDS-215
 $("busView").onchange = () => { if (ws.cur !== "bus") setWs("bus"); busSetView($("busView").value); };
 
 // busRoom gives the eye room: the lower pane grows to at least half the column
@@ -180,6 +181,7 @@ const BUS_LIVE_POINTS = 2048, BUS_READABLE_FEATURE = 5;
 function busReadableTimebase(featureS) {
   if (!(featureS > 0) || !st || !st.tdivs || !(st.tdiv_s > 0)) return "";
   const window = st.serial_mode ? 12.5 : 10;
+  // TRLC-LINKS: REQ-SDS-214
   const points = (tdiv) => featureS / (window * tdiv / BUS_LIVE_POINTS);
   if (points(st.tdiv_s) >= DECODE_MIN_ENVELOPE_FEATURE) return "";
   let best = 0;
@@ -200,15 +202,18 @@ async function busDetect(onEntry) {
   else toast("BUS: no bus detected — " + ($("decDetectMsg").textContent || "choose a protocol in the Decoder pane"), "warn");
   busRenderTable();
 }
+// TRLC-LINKS: REQ-SDS-214
 $("pkDetect").onclick = () => busDetect(false);
 
 WS_HOOKS.push({
+  // TRLC-LINKS: REQ-SDS-214
   enter(id) {
     if (id !== "bus") return;
     if (dcfg.proto === "off" && !(st && st.stream)) busDetect(true); // the user's protocol, when set, is kept (and a scope streaming is stopped)
     if (ws.busView === "eye") busEyeOn();
     busRenderedV = -1; busRenderTable();
   },
+  // TRLC-LINKS: REQ-SDS-214
   leave(prev) { if (prev === "bus") busEyeOff(); },
 });
 
@@ -245,7 +250,9 @@ function busInsert(tok) {
   el.dispatchEvent(new Event("change", { bubbles: true }));
   busRenderedV = -1; busRenderTable();
 }
+// TRLC-LINKS: REQ-SDS-206
 $("stInsAny").onclick = () => busInsert("??");
+// TRLC-LINKS: REQ-SDS-206
 $("stInsErr").onclick = () => busInsert("ERR");
 // TRLC-LINKS: REQ-SDS-206
 $("stClear").onclick = () => { $("stBytes").value = ""; $("stBytes").dispatchEvent(new Event("change", { bubbles: true })); busRenderedV = -1; busRenderTable(); };

@@ -9,8 +9,13 @@ import "open-sds/app/internal/panel/wsview"
 
 type gl = wsview.Span
 
+// TRLC-LINKS: REQ-SDS-212
 func gT(t string) gl { return gl{Text: t, Col: wsview.Amber} }
+
+// TRLC-LINKS: REQ-SDS-212
 func gN(t string) gl { return gl{Text: t, Col: wsview.Text} }
+
+// TRLC-LINKS: REQ-SDS-212
 func gD(t string) gl { return gl{Text: t, Col: wsview.Dim} }
 
 var wsGuide = [wsview.Count][]gl{

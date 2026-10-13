@@ -128,6 +128,7 @@ function allBuild() {
     head.innerHTML = `<span>▾</span><span>${g}</span><span class="agn">${entries.length}</span>`;
     const box = document.createElement("div");
     box.className = "agb";
+    // TRLC-LINKS: REQ-SDS-219
     head.onclick = () => { box.hidden = !box.hidden; head.setAttribute("aria-expanded", String(!box.hidden)); head.firstChild.textContent = box.hidden ? "▸" : "▾"; };
     sec.append(head, box);
     for (const [id, label, kw, also] of entries) {
@@ -147,6 +148,7 @@ function allBuild() {
       go.type = "button"; go.className = "go"; go.textContent = "→";
       go.setAttribute("aria-label", "Show " + label + " where it lives");
       go.title = "Show where it lives";
+      // TRLC-LINKS: REQ-SDS-219
       go.onclick = () => allGo(id);
       row.append(l, c, go);
       box.appendChild(row);
@@ -161,7 +163,9 @@ function allBuild() {
     `<select id="allSlot" aria-label="Setup slot">${Array.from({ length: 20 }, (_, i) => `<option value="${i + 1}">Slot ${i + 1}</option>`).join("")}</select>` +
     `<button type="button" class="xs" id="allSave">Save</button><button type="button" class="xs" id="allRecall">Recall</button></span></div></div>`;
   list.appendChild(sec);
+  // TRLC-LINKS: REQ-SDS-219
   $("allSave").onclick = () => setupOp("save", +$("allSlot").value);
+  // TRLC-LINKS: REQ-SDS-219
   $("allRecall").onclick = () => setupOp("recall", +$("allSlot").value);
   syncMirrors();
 }
@@ -206,7 +210,9 @@ function allToggle(force) {
   $("allBtn").setAttribute("aria-pressed", String(open));
   if (open) { allFit(); syncMirrors(); $("allFilter").focus(); }
 }
+// TRLC-LINKS: REQ-SDS-219
 $("allBtn").onclick = () => allToggle();
+// TRLC-LINKS: REQ-SDS-219
 $("allClose").onclick = () => allToggle(false);
 $("allFilter").addEventListener("input", allFilterApply);
 $("allFilter").addEventListener("keydown", (ev) => { if (ev.key === "Escape" && $("allFilter").value) { $("allFilter").value = ""; allFilterApply(); ev.stopPropagation(); } });
@@ -262,6 +268,7 @@ async function setupsRefresh() {
     save.setAttribute("aria-label", (used ? "Replace setup " : "Save setup ") + n);
   }
 }
+// TRLC-LINKS: REQ-SDS-219
 (function setupsInit() {
   let html = "";
   for (let n = 1; n <= 20; n++) html += `<div class="slot-t" data-slot="${n}"><div class="h"><b>Slot ${n}</b></div><div class="i"></div><div class="b">` +
@@ -273,6 +280,7 @@ async function setupsRefresh() {
     setupOp(b.dataset.op, +b.closest("[data-slot]").dataset.slot);
   });
 })();
+// TRLC-LINKS: REQ-SDS-219
 $("setupsBtn").onclick = () => { popToggle($("setpop"), $("setupsBtn")); if (!$("setpop").hidden) setupsRefresh(); };
 
 // Default setup is the front panel's DEFAULT SETUP key: one implementation.

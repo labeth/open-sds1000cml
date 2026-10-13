@@ -11,8 +11,11 @@
 // standard deviation. Non-finite values are skipped.
 // TRLC-LINKS: REQ-SDS-217
 class RunStats {
+  // TRLC-LINKS: REQ-SDS-217
   constructor() { this.reset(); }
+  // TRLC-LINKS: REQ-SDS-217
   reset() { this.n = 0; this.mean = 0; this.m2 = 0; this.min = Infinity; this.max = -Infinity; this.last = NaN; }
+  // TRLC-LINKS: REQ-SDS-217
   add(v) {
     this.last = typeof v === "number" ? v : NaN;
     if (!Number.isFinite(this.last)) return;
@@ -23,6 +26,7 @@ class RunStats {
     if (v < this.min) this.min = v;
     if (v > this.max) this.max = v;
   }
+  // TRLC-LINKS: REQ-SDS-217
   sdev() { return this.n > 1 ? Math.sqrt(this.m2 / (this.n - 1)) : NaN; }
 }
 

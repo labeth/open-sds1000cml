@@ -10,6 +10,7 @@ import (
 )
 
 // noiseFrame is a capture that does not repeat: a random C1.
+// TRLC-LINKS: REQ-SDS-218
 func noiseFrame(rng *rand.Rand) *engine.Frame {
 	f := toneFrame("")
 	for i := range f.C1 {

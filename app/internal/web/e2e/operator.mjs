@@ -207,6 +207,7 @@ export class Op {
   // When none is on screen the operator opens MEASURE's All values view.
   // TRLC-LINKS: REQ-SDS-180
   async readMeas(ch, key) {
+    // TRLC-LINKS: REQ-SDS-180
     const read = () => this.page.evaluate((a) => {
       for (const el of document.querySelectorAll(`[data-meas="${a.ch}:${a.key}"]`))
         if (el.getClientRects().length) return el.textContent.trim();

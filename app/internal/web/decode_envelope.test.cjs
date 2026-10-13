@@ -3,7 +3,11 @@ const source=fs.readFileSync('app_decode.js','utf8');
 const compute=source.slice(source.indexOf('function computeDecode()'),source.indexOf('// watchReason'));
 for(const flag of ['peak_detect','is_env']) {
  let leases=0, updates=0;
- const c={dcfg:{proto:'can',result:{text:'stale bytes'}},frame:{c1:[0,255,0,255],[flag]:true},renewDecodeLease(){leases++;},updateDecodeResults(){updates++;}};
+ const c={dcfg:{proto:'can',result:{text:'stale bytes'}},frame:{c1:[0,255,0,255],[flag]:true},
+  // TRLC-LINKS: REQ-SDS-207
+  renewDecodeLease(){leases++;},
+  // TRLC-LINKS: REQ-SDS-207
+  updateDecodeResults(){updates++;}};
  vm.createContext(c);vm.runInContext(compute,c);c.computeDecode();
  assert.equal(c.dcfg.result,null,'envelope must not retain a stale decode');
  assert.equal(leases,1,'request sampled data even while the current frame is an envelope');
@@ -17,23 +21,35 @@ for(const flag of ['peak_detect','is_env']) {
   const guarded = source.slice(source.indexOf('// decodeFeatureSamples is'), source.indexOf('// watchReason'));
   const lo = 40, hi = 210, q = 25; // a quarter clock: 25 samples
   const scl = [], sda = [];
+  // TRLC-LINKS: REQ-SDS-207
   const put = (c, d, n) => { for (let i = 0; i < n * q; i++) { scl.push(c); sda.push(d); } };
+  // TRLC-LINKS: REQ-SDS-207
   const bit = (b) => { put(lo, b ? hi : lo, 2); put(hi, b ? hi : lo, 2); };
   while (scl.length < 60000) {
     put(hi, hi, 8); put(hi, lo, 2); put(lo, lo, 1);
     for (const v of [0x24 << 1, 0x55, 0xAA]) { for (let k = 7; k >= 0; k--) bit((v >> k) & 1); bit(0); }
     put(lo, lo, 2); put(hi, lo, 2); put(hi, hi, 2);
   }
+  // TRLC-LINKS: REQ-SDS-207
   const env = (src, bucket) => { const out = []; let last = src[0];
     for (let b = 0; b + bucket <= src.length; b += bucket) {
       let mn = 255, mx = 0; for (let i = b; i < b + bucket; i++) { mn = Math.min(mn, src[i]); mx = Math.max(mx, src[i]); }
       if (Math.abs(last - mx) < Math.abs(last - mn)) { out.push(mx, mn); last = mn; } else { out.push(mn, mx); last = mx; }
     } return out; };
+  // TRLC-LINKS: REQ-SDS-207
   const decodeAt = (bucket) => {
     const f = { c1: env(scl, bucket), c2: env(sda, bucket), peak_detect: true, ordered: true };
     const el = { value: '', textContent: '' };
+    // TRLC-LINKS: REQ-SDS-207
     const c = { dcfg: { proto: 'i2c', auto: true, inverted: false, fmt: 'hex', scl: 1, sda: 2 }, frame: f, $: () => el,
-      renewDecodeLease() {}, updateDecodeResults() {}, decCodes: (r) => (r === 2 ? f.c2 : f.c1), frameDtS: () => 1e-6 * bucket / 2 };
+      // TRLC-LINKS: REQ-SDS-207
+      renewDecodeLease() {},
+      // TRLC-LINKS: REQ-SDS-207
+      updateDecodeResults() {},
+      // TRLC-LINKS: REQ-SDS-207
+      decCodes: (r) => (r === 2 ? f.c2 : f.c1),
+      // TRLC-LINKS: REQ-SDS-207
+      frameDtS: () => 1e-6 * bucket / 2 };
     vm.createContext(c);
     vm.runInContext(fs.readFileSync('decode.js', 'utf8'), c);
     vm.runInContext(guarded, c); c.computeDecode();
@@ -54,10 +70,15 @@ for(const flag of ['peak_detect','is_env']) {
   assert.equal(jsLimit, goLimit, 'the web and the scope refuse envelopes alike');
   const bus = fs.readFileSync('app_bus.js', 'utf8');
   const fn = bus.slice(bus.indexOf('const BUS_LIVE_POINTS'), bus.indexOf('async function busDetect('));
+  // TRLC-LINKS: REQ-SDS-207
   const step = (tdiv, serial) => {
     const sent = [];
     const c = { st: { tdivs: [1e-5, 2e-5, 5e-5, 1e-4, 2e-4, 5e-4, 1e-3], tdiv_s: tdiv, serial_mode: serial ? 1 : 0 },
-      DECODE_MIN_ENVELOPE_FEATURE: jsLimit, send: (k, v) => sent.push([k, v]), fmtTdiv: (s) => Math.round(s * 1e6) + 'us' };
+      DECODE_MIN_ENVELOPE_FEATURE: jsLimit,
+      // TRLC-LINKS: REQ-SDS-207
+      send: (k, v) => sent.push([k, v]),
+      // TRLC-LINKS: REQ-SDS-207
+      fmtTdiv: (s) => Math.round(s * 1e6) + 'us' };
     vm.createContext(c); vm.runInContext(fn, c);
     return [c.busReadableTimebase(1 / 115200), sent];
   };

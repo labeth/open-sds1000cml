@@ -1,8 +1,27 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-WEB
 // TRLC-LINKS: REQ-SDS-205
 const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
-const els={precisionFit:{},precisionFitResult:{},precisionChannel:{value:'0'},precisionModel:{value:'sine'},precisionFitCanvas:{getContext:()=>({fillRect(){},beginPath(){},lineTo(){},moveTo(){},stroke(){},fillText(){}}),width:700,height:200}};
-const c={document:{getElementById:id=>els[id]},frame:{seq:1,c1:Array.from({length:200},(_,i)=>128+30*Math.sin(i*2*Math.PI/20)),m1:{freq:50},sample_s:.001,cols:200,col_span_s:.2,vpc1:.04},view:{win:{a:0,b:1}},st:{vdiv1:1,probe1:1,running:true},eng:(v,u)=>v.toFixed(4)+u};
+const els={precisionFit:{},precisionFitResult:{},precisionChannel:{value:'0'},precisionModel:{value:'sine'},precisionFitCanvas:{
+  // TRLC-LINKS: REQ-SDS-205
+  getContext:()=>({
+    // TRLC-LINKS: REQ-SDS-205
+    fillRect(){},
+    // TRLC-LINKS: REQ-SDS-205
+    beginPath(){},
+    // TRLC-LINKS: REQ-SDS-205
+    lineTo(){},
+    // TRLC-LINKS: REQ-SDS-205
+    moveTo(){},
+    // TRLC-LINKS: REQ-SDS-205
+    stroke(){},
+    // TRLC-LINKS: REQ-SDS-205
+    fillText(){}}),
+  width:700,height:200}};
+const c={document:{
+  // TRLC-LINKS: REQ-SDS-205
+  getElementById:id=>els[id]},frame:{seq:1,c1:Array.from({length:200},(_,i)=>128+30*Math.sin(i*2*Math.PI/20)),m1:{freq:50},sample_s:.001,cols:200,col_span_s:.2,vpc1:.04},view:{win:{a:0,b:1}},st:{vdiv1:1,probe1:1,running:true},
+  // TRLC-LINKS: REQ-SDS-205
+  eng:(v,u)=>v.toFixed(4)+u};
 vm.createContext(c);vm.runInContext(fs.readFileSync('app_precision.js','utf8'),c);
 (async()=>{
 await els.precisionFit.onclick();const before=els.precisionFitResult.textContent;assert.match(before,/2\.4000V pp/);
@@ -13,7 +32,11 @@ c.st.vdiv1=.5;await els.precisionFit.onclick();assert.equal(els.precisionFitResu
 // 4096 points (a stopped record arrives as min/max pairs too).
 const raw={seq:7,c1:Array.from({length:100000},(_,i)=>128+30*Math.sin(2*Math.PI*i*2e-9*50000)),sample_s:2e-9};
 let asked=0;
-c.fetch=async(url)=>{asked++;assert.match(url,/raw=1&lease=raw/);return {ok:true,arrayBuffer:async()=>null};};
+// TRLC-LINKS: REQ-SDS-205
+c.fetch=async(url)=>{asked++;assert.match(url,/raw=1&lease=raw/);return {ok:true,
+  // TRLC-LINKS: REQ-SDS-205
+  arrayBuffer:async()=>null};};
+// TRLC-LINKS: REQ-SDS-205
 c.decodeBinFrame=()=>raw;
 c.frame.m1.freq=50000;
 for(const flag of ['peak_detect','is_env']){
@@ -24,6 +47,7 @@ for(const flag of ['peak_detect','is_env']){
 }
 assert.equal(asked,2,'one raw capture asked each time');
 // stopped, no capture of samples comes: the advice names what works
+// TRLC-LINKS: REQ-SDS-205
 c.frame.peak_detect=true;c.st.running=false;c.decodeBinFrame=()=>({unchanged:true});
 await els.precisionFit.onclick();
 assert.match(els.precisionFitResult.textContent,/min\/max envelopes cannot be fitted and no capture of samples came. Run, or a faster time\/div/);

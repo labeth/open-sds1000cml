@@ -40,6 +40,7 @@ const (
 var onOff = []opt{{0, "Off"}, {1, "On"}}
 var chans = []opt{{0, "CH1"}, {1, "CH2"}}
 
+// TRLC-LINKS: REQ-SDS-212
 func staticOpts(o []opt) func(*sv) []opt { return func(*sv) []opt { return o } }
 
 // measParam is one measurement parameter.
@@ -68,6 +69,7 @@ var measAllOrder = []string{"pkpk", "max", "min", "mean", "rms", "freq", "period
 const measAllSplit = 9
 
 // measIndex is a parameter's index in measParams (-1 unknown).
+// TRLC-LINKS: REQ-SDS-212
 func measIndex(id string) int {
 	for i, p := range measParams {
 		if p.id == id {
@@ -87,6 +89,7 @@ var sheetTabs [numTabs]*tab
 var rowByID = map[string]*row{}
 var rowTab = map[string]int{}
 
+// TRLC-LINKS: REQ-SDS-212
 func init() {
 	sheetTabs = [numTabs]*tab{
 		{id: "trig", name: "TRIG", title: "Trigger", key: "Trig Menu", rows: trigRows()},
@@ -136,13 +139,16 @@ func rowIndex(id string) int {
 
 // ---- helpers ----
 
+// TRLC-LINKS: REQ-SDS-212
 func notSerial(s *sv) bool { return s.st.SerialMode == 0 }
 
+// TRLC-LINKS: REQ-SDS-212
 func trigTypeIs(t int) func(*sv) bool {
 	return func(s *sv) bool { return s.st.SerialMode == 0 && s.st.TrigType == t }
 }
 
 // numRow builds a continuous number row.
+// TRLC-LINKS: REQ-SDS-212
 func numRow(id, label, unit string, val func(*sv) float64, lim func(*sv) (float64, float64), step func(*sv) float64,
 	setN func(*Controller, float64) error, fmtN func(float64) string) *row {
 	r := &row{id: id, label: label, kind: wsview.Number, unit: unit, val: val, lim: lim, step: step, setN: setN, fmtN: fmtN}
@@ -154,16 +160,20 @@ func numRow(id, label, unit string, val func(*sv) float64, lim func(*sv) (float6
 	return r
 }
 
+// TRLC-LINKS: REQ-SDS-212
 func constStep(v float64) func(*sv) float64 { return func(*sv) float64 { return v } }
 
+// TRLC-LINKS: REQ-SDS-212
 func constLim(lo, hi float64) func(*sv) (float64, float64) {
 	return func(*sv) (float64, float64) { return lo, hi }
 }
 
+// TRLC-LINKS: REQ-SDS-212
 func siFmt(unit string) func(float64) string { return func(v float64) string { return si(v, unit) } }
 
 // nsLadder is the 1-2-5 ladder of pulse widths and slope times (10 ns..10 s),
 // what the old qualifier page stepped through.
+// TRLC-LINKS: REQ-SDS-212
 func nsLadderStep(cur float64, n int) float64 {
 	for ; n > 0; n-- {
 		cur = stepNs(cur, 1, false)
@@ -176,6 +186,7 @@ func nsLadderStep(cur float64, n int) float64 {
 
 // timeQualRow is a pulse-width or slope-time row: seconds, 10 ns..10 s,
 // stepped on the 1-2-5 ladder, typed values exact.
+// TRLC-LINKS: REQ-SDS-212
 func timeQualRow(id, label string, val func(*sv) float64, setNs func(*Controller, float64) error) *row {
 	r := &row{id: id, label: label, kind: wsview.Number, unit: "s", fmtN: siFmt("s"),
 		val:  func(s *sv) float64 { return val(s) * 1e-9 },
@@ -203,6 +214,7 @@ var condOpts = []opt{{0, "Any"}, {1, "< min"}, {2, "> max"}, {3, "In range"}}
 // 5 s are reached by the knob, not only typed.
 var holdoffLadder = []float64{0, 100e-6, 200e-6, 500e-6, 1e-3, 2e-3, 5e-3, 10e-3, 20e-3, 50e-3, 100e-3, 200e-3, 500e-3, 1, 2, 5, 10}
 
+// TRLC-LINKS: REQ-SDS-212
 func trigRows() []*row {
 	edge := &row{id: "trig.edge", label: "Source/slope", kind: wsview.Enum,
 		help: "Channel the trigger watches and its edge in one choice. Pulse trigger: Rise = positive pulse.",
@@ -365,6 +377,7 @@ func trigRows() []*row {
 
 // ---- CH1 / CH2 ----
 
+// TRLC-LINKS: REQ-SDS-212
 func chanRows(ch int) []*row {
 	p := fmt.Sprintf("ch%d.", ch+1)
 	C := fmt.Sprintf("CH%d", ch+1)
@@ -447,6 +460,7 @@ func chanRows(ch int) []*row {
 
 // ---- TIME ----
 
+// TRLC-LINKS: REQ-SDS-212
 func timeRows() []*row {
 	tdiv := &row{id: "time.tdiv", label: "Time/div", kind: wsview.Number, unit: "s",
 		help: "Seconds per horizontal division.", knob: "No sheet open: the S/DIV knob (clockwise toward nS).",
@@ -518,6 +532,7 @@ func directOnly(c *Controller, set func()) error {
 	return nil
 }
 
+// TRLC-LINKS: REQ-SDS-212
 func acqRows() []*row {
 	isSRAM := func(s *sv) bool { return s.st.BandKind == "sram" }
 	mode := &row{id: "acq.mode", label: "Mode", kind: wsview.Enum,
@@ -744,6 +759,7 @@ func acqRows() []*row {
 
 // ---- VIEW ----
 
+// TRLC-LINKS: REQ-SDS-212
 func viewRows() []*row {
 	view := &row{id: "view.view", label: "View", kind: wsview.Enum,
 		help: "Time view, X-Y, spectrum (FFT), frequency response (Bode) or spectrogram.",
@@ -813,6 +829,7 @@ func bodeChanRow(id, label, help string, dut bool) *row {
 
 var measOpts = []opt{{0, "Off"}, {1, "C1"}, {2, "C2"}, {3, "Both"}}
 
+// TRLC-LINKS: REQ-SDS-066
 func measRows() []*row {
 	readouts := &row{id: "meas.readouts", label: "Readouts", kind: wsview.Enum,
 		help: "Show the chosen measurements in boxes on the trace.",
@@ -856,6 +873,7 @@ func measRows() []*row {
 
 // ---- CURS ----
 
+// TRLC-LINKS: REQ-SDS-066
 func cursRows() []*row {
 	mode := &row{id: "curs.mode", label: "Cursors", kind: wsview.Enum,
 		help: "Off, two time cursors or two voltage cursors.",
@@ -946,6 +964,7 @@ func cursorDiv(s *sv, k int) float64 {
 // ---- MATH/REF (COMPARE) ----
 
 // maskTolNames label the mask tolerance presets (±samples / ±codes).
+// TRLC-LINKS: REQ-SDS-212
 func maskTolOpts() []opt {
 	var o []opt
 	for i, t := range maskTols {
@@ -957,6 +976,7 @@ func maskTolOpts() []opt {
 // stackDepths are the master's stack depths (captures averaged).
 var stackDepths = []int{16, 32, 64, 128, 256}
 
+// TRLC-LINKS: REQ-SDS-212
 func cmpRows() []*row {
 	math_ := &row{id: "cmp.math", label: "Math", kind: wsview.Enum,
 		help: "Show a computed trace from both channels.",
@@ -1122,6 +1142,7 @@ func protoName(p int) string {
 var bauds = []int{1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200, 230400, 460800, 921600}
 
 // rateProto reports a protocol whose bit rate is a setting (DecBaud).
+// TRLC-LINKS: REQ-SDS-214
 func rateProto(p int) bool {
 	switch p {
 	case framecalc.ProtoManchester, framecalc.ProtoCAN, framecalc.ProtoMIL1553, framecalc.ProtoARINC429,
@@ -1132,11 +1153,13 @@ func rateProto(p int) bool {
 }
 
 // lineProto reports a single-line protocol (one channel: the Source row).
+// TRLC-LINKS: REQ-SDS-214
 func lineProto(p int) bool {
 	return p == framecalc.ProtoUART || p == framecalc.ProtoSENT || rateProto(p)
 }
 
 // defaultRate is a protocol's usual bit rate, seeded when it is chosen.
+// TRLC-LINKS: REQ-SDS-214
 func defaultRate(p int) int {
 	switch p {
 	case framecalc.ProtoCAN:
@@ -1153,6 +1176,7 @@ func defaultRate(p int) int {
 	return 115200
 }
 
+// TRLC-LINKS: REQ-SDS-214
 func busTabRows() []*row {
 	decOn := func(s *sv) bool { return s.decProto != framecalc.ProtoOff }
 	proto := &row{id: "bus.protocol", label: "Protocol", kind: wsview.Enum,
@@ -1393,6 +1417,7 @@ func depthText(n int) string {
 
 // ---- FILE ----
 
+// TRLC-LINKS: REQ-SDS-212
 func fileRows() []*row {
 	var rows []*row
 	for n := 1; n <= setupSlots; n++ {
@@ -1418,6 +1443,7 @@ func fileRows() []*row {
 
 var guideNames = []string{"This workspace", "Sheets", "Knobs, lamps"}
 
+// TRLC-LINKS: REQ-SDS-212
 func sysRows() []*row {
 	help := &row{id: "sys.help", label: "Help", kind: wsview.Action,
 		help: "The guide below: this workspace, the sheets, or the knobs and lamps (also the Help key).",

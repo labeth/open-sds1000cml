@@ -56,12 +56,19 @@
 
   // The rows the device formats in their own way; the rest follow their unit.
   const FMT = {
+    // TRLC-LINKS: REQ-SDS-220
     "trig.holdoff": (v) => (v === 0 ? "Off" : si(v, "s")),
+    // TRLC-LINKS: REQ-SDS-220
     "ch1.offset": (v) => sgnSI(v, "V"),
+    // TRLC-LINKS: REQ-SDS-220
     "ch2.offset": (v) => sgnSI(v, "V"),
+    // TRLC-LINKS: REQ-SDS-220
     "time.zoom_pos": (v) => String(Math.round(v * 10) / 10) + " %",
+    // TRLC-LINKS: REQ-SDS-220
     "bus.stream_value": (v) => hexText(v),
+    // TRLC-LINKS: REQ-SDS-220
     "bus.i2c_address": (v) => (v === -1 ? "Any" : hexText(v)),
+    // TRLC-LINKS: REQ-SDS-220
     "acq.sr_target": (v) => g3(v),
   };
 
@@ -189,6 +196,7 @@
     }
     // the numeric part, scanned as the device does: digits, points, a
     // leading sign, and an exponent that has digits after it
+    // TRLC-LINKS: REQ-SDS-220
     const dig = (c) => c >= "0" && c <= "9";
     let i = 0;
     while (i < s.length) {
@@ -381,6 +389,7 @@
   // is one wildcard byte, Del takes a whole ?? back.
   // TRLC-LINKS: REQ-SDS-220
   function hexKey(buf, k) {
+    // TRLC-LINKS: REQ-SDS-220
     const digits = (b) => b.replace(/\s/g, "").length;
     if (k === "back") {
       let b = buf.replace(/\s+$/, "");
@@ -505,6 +514,7 @@
   // TRLC-LINKS: REQ-SDS-220
   function vocabulary(model) {
     const v = new Set(Object.keys(SYN));
+    // TRLC-LINKS: REQ-SDS-220
     const put = (t) => { for (const w of String(t || "").toLowerCase().split(/[^a-z0-9]+/)) if (w.length >= 4) v.add(w); };
     for (const t of model.tabs) {
       put(t.name); put(t.title);
@@ -626,8 +636,11 @@
   // page updates and hand edits: anything else is dropped when it loads.
   // TRLC-LINKS: REQ-SDS-220
   function okEntry(e) {
+    // TRLC-LINKS: REQ-SDS-220
     const str = (x) => typeof x === "string";
+    // TRLC-LINKS: REQ-SDS-220
     const side = (x) => !!x && typeof x === "object" && str(x.key);
+    // TRLC-LINKS: REQ-SDS-220
     const okRow = (r) => !!r && typeof r === "object" && str(r.id) && str(r.tab) && str(r.label) && side(r.old) && side(r.neu);
     return !!e && typeof e === "object" && Number.isFinite(e.id) && Number.isFinite(e.t) && str(e.src) && Array.isArray(e.rows) && e.rows.every(okRow) &&
       (e.ws == null || (typeof e.ws === "object" && str(e.ws.from) && str(e.ws.to))) && (e.undid === undefined || Array.isArray(e.undid));
@@ -639,6 +652,7 @@
   // entry. At most 100 entries.
   // TRLC-LINKS: REQ-SDS-220
   class History {
+    // TRLC-LINKS: REQ-SDS-220
     constructor(list) {
       this.list = Array.isArray(list) ? list.filter(okEntry).slice(0, HIST_MAX) : [];
       this.seq = this.list.reduce((m, e) => Math.max(m, e.id || 0), 0);
@@ -648,6 +662,7 @@
     // meta {primary, label, kind, undoable, ws, undid (an undo: the ids of
     // the entries it undid)}. Returns the entry (or null when a merge
     // removed it).
+    // TRLC-LINKS: REQ-SDS-220
     add(src, rows, meta, now) {
       meta = meta || {};
       rows = rows.slice();
@@ -675,6 +690,7 @@
 
     // extend adds rows a change brought with it (side effects found later);
     // the row the user changed goes first when it comes later.
+    // TRLC-LINKS: REQ-SDS-220
     extend(e, rows, ws) {
       for (const r of rows) {
         const have = e.rows.find((x) => x.id === r.id);
@@ -691,6 +707,7 @@
 
     // targets is what an undo of these entries sets back: each row's old
     // value from the oldest of them, and the workspace they started in.
+    // TRLC-LINKS: REQ-SDS-220
     targets(entries) {
       const rows = new Map();
       let ws = null;
@@ -704,6 +721,7 @@
     // since is entry e and every newer entry that changed a setting or the
     // workspace: what "back to before this" undoes. Undone entries count too,
     // so an undo and the entry it undid cancel out in the targets.
+    // TRLC-LINKS: REQ-SDS-220
     since(e) {
       const at = this.list.indexOf(e);
       return at < 0 ? [] : this.list.slice(0, at + 1).filter((x) => x.ws || x.rows.some((r) => r.kind !== "slot"));

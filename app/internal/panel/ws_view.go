@@ -100,6 +100,7 @@ func (c *Controller) view(s *sv) wsview.View {
 }
 
 // flashIndex is the F-key flashing on row id (-1 none).
+// TRLC-LINKS: REQ-SDS-211, REQ-SDS-212
 func flashIndex(s *sv, id string) int {
 	if s.ui.flashRow == id && s.now.Before(s.ui.flashUntil) {
 		return s.ui.flashI
@@ -108,6 +109,7 @@ func flashIndex(s *sv, id string) int {
 }
 
 // keyColumn lays F-key choices out for the LCD's text column.
+// TRLC-LINKS: REQ-SDS-211, REQ-SDS-212
 func keyColumn(title string, top int, keys []fkey, flash int) *wsview.Keys {
 	k := &wsview.Keys{Title: title, Top: top}
 	for i := 0; i < len(keys) && i < 5; i++ {
@@ -591,6 +593,7 @@ func (c *Controller) busPane(s *sv) *wsview.BusPane {
 }
 
 // plural is "1 packet" / "2 packets".
+// TRLC-LINKS: REQ-SDS-214
 func plural(n int, w string) string {
 	if n == 1 {
 		return w

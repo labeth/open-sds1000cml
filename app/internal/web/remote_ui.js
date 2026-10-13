@@ -118,6 +118,7 @@
   // TRLC-LINKS: REQ-SDS-220
   function press(el, o) {
     let timer = 0, long = false, x0 = 0, y0 = 0;
+    // TRLC-LINKS: REQ-SDS-220
     const stop = () => { if (timer) { clearTimeout(timer); timer = 0; } el.classList.remove("down"); };
     el.addEventListener("pointerdown", (e) => {
       if (e.pointerType === "mouse" && e.button !== 0) return;
@@ -157,7 +158,9 @@
     if (o.icon) b.insertAdjacentHTML("beforeend", icon(o.icon, o.iconSize));
     if (o.label !== undefined) b.appendChild(h("span", { class: "lbl", text: o.label }));
     if (o.sub !== undefined) b.appendChild(h("span", { class: "sub", text: o.sub }));
+    // TRLC-LINKS: REQ-SDS-220
     b.setLabel = (t) => { const s = b.querySelector(".lbl"); if (s && s.textContent !== t) s.textContent = t; };
+    // TRLC-LINKS: REQ-SDS-220
     b.setSub = (t) => { const s = b.querySelector(".sub"); if (s && s.textContent !== t) s.textContent = t; };
     return press(b, o);
   }
@@ -168,11 +171,13 @@
   // TRLC-LINKS: REQ-SDS-220
   function repeat(b, fn) {
     let timer = 0, reps = 0;
+    // TRLC-LINKS: REQ-SDS-220
     const stop = () => { if (timer) { clearTimeout(timer); timer = 0; } b.classList.remove("down"); };
     b.addEventListener("pointerdown", (e) => {
       if (e.pointerType === "mouse" && e.button !== 0) return;
       reps = 0;
       b.classList.add("down");
+      // TRLC-LINKS: REQ-SDS-220
       const again = () => {
         if (!b.isConnected || b.disabled) { stop(); return; }
         reps++;
@@ -204,6 +209,7 @@
     b.appendChild(h("span", { class: "lbl", text: o.label }));
     if (o.sub !== undefined) b.appendChild(h("span", { class: "sub", text: o.sub }));
     let timer = 0, done = false, active = false;
+    // TRLC-LINKS: REQ-SDS-220
     const start = () => {
       if (b.disabled || active) return;
       active = true; done = false;
@@ -215,6 +221,7 @@
         o.onConfirm();
       }, ms);
     };
+    // TRLC-LINKS: REQ-SDS-220
     const end = (explain) => {
       if (!active) return;
       active = false;
@@ -230,6 +237,7 @@
     b.addEventListener("keyup", (e) => { if (e.key === " " || e.key === "Enter") { e.preventDefault(); end(true); } });
     b.addEventListener("click", (e) => e.preventDefault());
     b.addEventListener("contextmenu", (e) => e.preventDefault());
+    // TRLC-LINKS: REQ-SDS-220
     b.setLabel = (t) => { b.querySelector(".lbl").textContent = t; };
     return b;
   }
@@ -255,6 +263,7 @@
       }
       if (on && o.onMove) o.onMove({ dx, dy });
     });
+    // TRLC-LINKS: REQ-SDS-220
     const end = (e, cancel) => {
       if (e.pointerId !== id) return;
       const dx = e.clientX - x0, dy = e.clientY - y0, moved = on;
@@ -305,6 +314,7 @@
     let open = false, back = null;
     const api = {
       el, head, body, tools,
+      // TRLC-LINKS: REQ-SDS-220
       open(t) {
         api.setTitle(t || "");
         if (open) return api;
@@ -318,6 +328,7 @@
         el.focus({ preventScroll: true });
         return api;
       },
+      // TRLC-LINKS: REQ-SDS-220
       close() {
         if (!open) return api;
         open = false;
@@ -330,14 +341,20 @@
         if (back && back.isConnected && back.focus) back.focus({ preventScroll: true });
         return api;
       },
+      // TRLC-LINKS: REQ-SDS-220
       isOpen: () => open,
+      // TRLC-LINKS: REQ-SDS-220
       setTitle(t) { title.textContent = t; },
     };
+    // TRLC-LINKS: REQ-SDS-220
     press(close, { onTap: () => api.close() });
     scrim.addEventListener("click", () => api.close());
     drag(head, {
+      // TRLC-LINKS: REQ-SDS-220
       onStart() { el.classList.add("dragging"); },
+      // TRLC-LINKS: REQ-SDS-220
       onMove(d) { el.style.transform = "translateY(" + Math.max(0, d.dy) + "px)"; },
+      // TRLC-LINKS: REQ-SDS-220
       onEnd(d) { el.classList.remove("dragging"); el.style.transform = ""; if (d.moved && !d.cancel && d.dy > 80) api.close(); },
     });
     el.addEventListener("keydown", (e) => { if (e.key === "Escape") { e.preventDefault(); api.close(); } });
@@ -364,26 +381,35 @@
   // TRLC-LINKS: REQ-SDS-220
   const Wake = {
     want: false, how: "", note: "", sentinel: null, video: null, fns: [], pending: null,
+    // TRLC-LINKS: REQ-SDS-220
     on(fn) { this.fns.push(fn); },
+    // TRLC-LINKS: REQ-SDS-220
     emit() { for (const f of this.fns) f(this.state()); },
     // state: {on, how ("wake lock" | "muted video" | "silent sound" | ""), text, note}
+    // TRLC-LINKS: REQ-SDS-220
     state() {
       const how = this.how;
       return { on: !!how, how, text: how ? "awake: " + how : "off: tap to keep awake", note: this.note };
     },
     // wanted: on unless the user turned it off (the owner's phone must not lock)
+    // TRLC-LINKS: REQ-SDS-220
     wanted() { return this.want || load("wake", true); },
     // strong: Stronger keep-awake, the silent sound track on any phone
+    // TRLC-LINKS: REQ-SDS-220
     strong() { return load("wake-strong", false) === true; },
     // sound: the video plays with its (silent) sound track
+    // TRLC-LINKS: REQ-SDS-220
     sound() { return isWebKit() || this.strong(); },
+    // TRLC-LINKS: REQ-SDS-220
     lockAvailable() { return "wakeLock" in navigator && !!window.isSecureContext && navigator.wakeLock && typeof navigator.wakeLock.request === "function"; },
     // enable starts keeping awake; a start under way is the one answered.
     // The state it answers has told: true when it showed the notice.
+    // TRLC-LINKS: REQ-SDS-220
     enable() {
       if (!this.pending) this.pending = this.start().finally(() => { this.pending = null; });
       return this.pending;
     },
+    // TRLC-LINKS: REQ-SDS-220
     async start() {
       this.want = true;
       store("wake", true);
@@ -424,6 +450,7 @@
       this.emit();
       return Object.assign(this.state(), { told });
     },
+    // TRLC-LINKS: REQ-SDS-220
     disable() {
       this.want = false;
       store("wake", false);
@@ -435,6 +462,7 @@
     // setStrong turns Stronger keep-awake on or off; a video keeping the
     // phone awake the other way starts again the new way (also one the same
     // tap was starting)
+    // TRLC-LINKS: REQ-SDS-220
     async setStrong(on) {
       store("wake-strong", !!on);
       if (this.pending) await this.pending;
@@ -446,6 +474,7 @@
       this.emit();
       return this.state();
     },
+    // TRLC-LINKS: REQ-SDS-220
     ensureVideo() {
       if (this.video) return this.video;
       const v = h("video", { playsinline: "", "webkit-playsinline": "", preload: "auto", title: "Keep awake", "aria-hidden": "true", tabindex: "-1", class: "awake-video" });
@@ -463,6 +492,7 @@
     },
     // resume after the page shows again (the lock is released and the
     // video paused while it is hidden); the video may need the next tap
+    // TRLC-LINKS: REQ-SDS-220
     async resume() {
       if (!this.want || this.how || this.pending) return;
       if (this.lockAvailable()) { await this.enable(); return; }
@@ -474,6 +504,7 @@
   doc.addEventListener("visibilitychange", () => { if (doc.visibilityState === "visible") Wake.resume(); });
   // the first tap (and any tap after the browser stopped it) starts keep-awake
   // unless the user turned it off: play() and the lock need a user gesture
+  // TRLC-LINKS: REQ-SDS-220
   const kick = () => { if (Wake.wanted() && !Wake.how && !Wake.pending) Wake.enable(); };
   doc.addEventListener("touchend", kick, true);
   doc.addEventListener("click", kick, true);
@@ -499,15 +530,21 @@
   // TRLC-LINKS: REQ-SDS-220
   const Full = {
     note: "", fns: [],
+    // TRLC-LINKS: REQ-SDS-220
     on(fn) { this.fns.push(fn); },
+    // TRLC-LINKS: REQ-SDS-220
     emit() { for (const f of this.fns) f(this.state()); },
+    // TRLC-LINKS: REQ-SDS-220
     supported() {
       const e = doc.documentElement;
       return !!(e.requestFullscreen || e.webkitRequestFullscreen) && (doc.fullscreenEnabled === true || doc.webkitFullscreenEnabled === true);
     },
+    // TRLC-LINKS: REQ-SDS-220
     standalone() { return !!(window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) || navigator.standalone === true; },
+    // TRLC-LINKS: REQ-SDS-220
     active() { return !!(doc.fullscreenElement || doc.webkitFullscreenElement); },
     // state: {on, can, text}
+    // TRLC-LINKS: REQ-SDS-220
     state() {
       if (this.active()) return { on: true, can: true, text: "on" };
       if (this.standalone()) return { on: true, can: false, text: "on: opened from the home screen" };
@@ -516,6 +553,7 @@
       }
       return { on: false, can: true, text: this.note ? "refused: " + this.note : "off" };
     },
+    // TRLC-LINKS: REQ-SDS-220
     async toggle() {
       this.note = "";
       if (!this.supported()) { this.emit(); return this.state(); }

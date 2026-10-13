@@ -82,6 +82,7 @@ function cmpRepeat() {
 }
 // a held (stopped or frozen) capture sends no frames: keep the readout current anyway
 setInterval(() => { if (ws.cur === "compare" && performance.now() - cmpT > 900) { cmpT = performance.now(); cmpRender(); } }, 1000);
+// TRLC-LINKS: REQ-SDS-218
 WS_HOOKS.push({ enter(id) { if (id === "compare") { cmpT = 0; cmpRender(); } } });
 
 // ---- the stacked master ----------------------------------------------------------
@@ -159,6 +160,7 @@ async function stackMaster() {
   if (master.busy) { masterCancel(); return; }
   if (ws.cur !== "compare") setWs("compare");
   const N = Math.max(2, +$("masterN").value || 64);
+  // TRLC-LINKS: REQ-SDS-218
   const refuse = (why) => { masterSay("Master refused: " + why, "warn"); toast("Master refused: " + why, "warn"); };
   master.busy = true; master.abort = false; masterUI();
   try {
@@ -193,4 +195,5 @@ async function stackMaster() {
     masterUI();
   }
 }
+// TRLC-LINKS: REQ-SDS-218
 $("masterBtn").onclick = () => stackMaster();

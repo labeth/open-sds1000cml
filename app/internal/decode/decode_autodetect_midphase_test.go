@@ -8,6 +8,7 @@ import (
 
 // pair builds a clock and a data line, the data changing `at` samples after
 // each falling clock edge (hp samples per half-period).
+// TRLC-LINKS: REQ-SDS-018
 func pair(hp, at, bits int) (clk, dat []uint8) {
 	v := 1
 	for b := 0; b < bits; b++ {
@@ -46,6 +47,7 @@ func TestAutodetectMidPhaseDataIsNotSPI(t *testing.T) {
 }
 
 // freeClock is a free-running square wave of n samples, hp samples a half-period.
+// TRLC-LINKS: REQ-SDS-018
 func freeClock(n, hp int) []uint8 {
 	ck := make([]uint8, n)
 	for i := range ck {

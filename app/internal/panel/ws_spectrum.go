@@ -235,6 +235,7 @@ func (c *Controller) bodePoints() []engine.BodePoint {
 }
 
 // bodeIndex is the marked Bode point: the chosen one, else the newest.
+// TRLC-LINKS: REQ-SDS-216
 func bodeIndex(u *uiState, n int) int {
 	if u.bodeIdx < 0 || u.bodeIdx >= n {
 		return n - 1
@@ -255,6 +256,7 @@ func (c *Controller) bodeMove(s *sv, n int) {
 }
 
 // harmName is a peak's harmonic tag: "H3".
+// TRLC-LINKS: REQ-SDS-216
 func harmName(p Peak) string {
 	if p.Harm < 1 {
 		return ""
@@ -417,6 +419,7 @@ func (c *Controller) bodePane(s *sv, p *wsview.SpecPane) {
 }
 
 // nextSpecView is SPECTRUM again: FFT, spectrogram, Bode, FFT.
+// TRLC-LINKS: REQ-SDS-216
 func nextSpecView(v int) int {
 	switch v {
 	case viewFFT:

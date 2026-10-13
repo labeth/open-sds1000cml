@@ -11,6 +11,7 @@ import (
 
 // qualEngine is the packet test engine on the qualifier image at 1 V/div, its
 // channels' extents not yet learned.
+// TRLC-LINKS: REQ-SDS-011
 func qualEngine(t *testing.T) (*Engine, *stackEngineBus, *packetImages) {
 	e, b, images := newPacketTestEngine(t)
 	for ch := 0; ch < 2; ch++ {
@@ -23,6 +24,7 @@ func qualEngine(t *testing.T) (*Engine, *stackEngineBus, *packetImages) {
 }
 
 // square is a 0 V / 3.4 V square at 1 V/div: codes 128 and 213.
+// TRLC-LINKS: REQ-SDS-011
 func learnSquare(e *Engine) {
 	w := make([]uint8, 4000)
 	for i := range w {

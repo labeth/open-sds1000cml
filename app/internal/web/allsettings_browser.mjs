@@ -108,6 +108,7 @@ run(async (t) => {
   t.ok(await page.evaluate(() => document.querySelectorAll("#setSlots [data-slot]").length) === 20, "20 slots");
   // Each tile says what its slot holds, as the scope's FILE tab: an empty one
   // cannot be recalled, saving over a used one replaces it.
+  // TRLC-LINKS: REQ-SDS-219
   const tile = (n) => page.evaluate((n) => {
     const el = document.querySelector(`#setSlots [data-slot="${n}"]`);
     return { info: el.querySelector(".i").textContent, save: el.querySelector('[data-op="save"]').textContent,

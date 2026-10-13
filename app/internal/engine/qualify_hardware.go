@@ -160,6 +160,7 @@ func qualTicks(minNs, maxNs float64) (prescale uint32, minTicks, maxTicks uint32
 }
 
 // qualName names a qualifier kind for the trigger backend.
+// TRLC-LINKS: REQ-SDS-011
 func qualName(kind uint8) string {
 	return map[uint8]string{sramcapture.QualPulse: "pulse", sramcapture.QualSlope: "slope", sramcapture.QualVideo: "video"}[kind]
 }

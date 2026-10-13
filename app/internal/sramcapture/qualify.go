@@ -168,6 +168,7 @@ type ZoneWindow struct {
 }
 
 // Enabled reports zones to test.
+// TRLC-LINKS: REQ-SDS-014
 func (z ZoneConfig) Enabled() bool {
 	for _, w := range z.Zones {
 		if w.Enabled {

@@ -678,6 +678,7 @@ function frame(n, period, shift, noise, amp, harmonics) {
 // sample offset without searching a whole bit around every occurrence.
 {
   const N=120000,L=40000, sig=new Float32Array(N).fill(60);
+  // TRLC-LINKS: REQ-SDS-019, REQ-SDS-181
   const pat=i=>128+45*Math.sin(i*.001)+20*Math.sin(i*.007)+12*Math.sin(i*.0003);
   for(let i=0;i<L;i++){sig[1000+i]=pat(i);sig[65012+i]=pat(i);}
   const started=performance.now();

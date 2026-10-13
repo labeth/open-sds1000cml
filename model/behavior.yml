@@ -1049,161 +1049,161 @@ behavior:
     to: FU-APP-ANALOG
   - type: depends_on
     from: FU-APP-ANALOG
-    to: REF-SOURCE-APP-INTERNAL-ANALOG-FRONTEND-GO
+    to: CODE-APP-INTERNAL-ANALOG-FRONTEND-GO
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-APP
     to: FU-APP-APP
   - type: depends_on
     from: FU-APP-APP
-    to: REF-SOURCE-APP-CMD-APP-MAIN-GO
+    to: CODE-APP-CMD-APP-MAIN-GO
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-BUILD
     to: FU-APP-BUILD
   - type: depends_on
     from: FU-APP-BUILD
-    to: REF-SOURCE-APP-README-MD
+    to: CODE-APP-README-MD
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-APP
     to: FU-APP-BUILDINFO
   - type: depends_on
     from: FU-APP-BUILDINFO
-    to: REF-SOURCE-APP-INTERNAL-BUILDINFO-BUILDINFO-GO
+    to: CODE-APP-INTERNAL-BUILDINFO-BUILDINFO-GO
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-APP
     to: FU-APP-BUS
   - type: depends_on
     from: FU-APP-BUS
-    to: REF-SOURCE-APP-INTERNAL-BUS-BUS-GO
+    to: CODE-APP-INTERNAL-BUS-BUS-GO
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-APP
     to: FU-APP-CAL
   - type: depends_on
     from: FU-APP-CAL
-    to: REF-SOURCE-APP-INTERNAL-CAL-CAL-GO
+    to: CODE-APP-INTERNAL-CAL-CAL-GO
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-APP
     to: FU-APP-DECODE
   - type: depends_on
     from: FU-APP-DECODE
-    to: REF-SOURCE-APP-INTERNAL-DECODE-DECODE-GO
+    to: CODE-APP-INTERNAL-DECODE-DECODE-GO
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-APP
     to: FU-APP-DIAG
   - type: depends_on
     from: FU-APP-DIAG
-    to: REF-SOURCE-APP-INTERNAL-DIAG-BUSPROBE-GO
+    to: CODE-APP-INTERNAL-DIAG-BUSPROBE-GO
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-APP
     to: FU-APP-DSP
   - type: depends_on
     from: FU-APP-DSP
-    to: REF-SOURCE-APP-INTERNAL-DSP-PRECISION-GO
+    to: CODE-APP-INTERNAL-DSP-PRECISION-GO
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-APP
     to: FU-APP-ENGINE
   - type: depends_on
     from: FU-APP-ENGINE
-    to: REF-SOURCE-APP-INTERNAL-ENGINE-ARENA-GO
+    to: CODE-APP-INTERNAL-ENGINE-ARENA-GO
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-APP
     to: FU-APP-FPGALOAD
   - type: depends_on
     from: FU-APP-FPGALOAD
-    to: REF-SOURCE-APP-INTERNAL-FPGALOAD-BITSTREAM-EMBED-GO
+    to: CODE-APP-INTERNAL-FPGALOAD-BITSTREAM-EMBED-GO
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-APP
     to: FU-APP-FRAMES
   - type: depends_on
     from: FU-APP-FRAMES
-    to: REF-SOURCE-APP-INTERNAL-FRAMES-FANOUT-GO
+    to: CODE-APP-INTERNAL-FRAMES-FANOUT-GO
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-APP
     to: FU-APP-IFACE
   - type: depends_on
     from: FU-APP-IFACE
-    to: REF-SOURCE-APP-INTERNAL-IFACE-IFACE-GO
+    to: CODE-APP-INTERNAL-IFACE-IFACE-GO
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-APP
     to: FU-APP-LCD
   - type: depends_on
     from: FU-APP-LCD
-    to: REF-SOURCE-APP-INTERNAL-LCD-FONT-GO
+    to: CODE-APP-INTERNAL-LCD-FONT-GO
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-APP
     to: FU-APP-MEASURE
   - type: depends_on
     from: FU-APP-MEASURE
-    to: REF-SOURCE-APP-INTERNAL-MEASURE-MEASURE-GO
+    to: CODE-APP-INTERNAL-MEASURE-MEASURE-GO
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-APP
     to: FU-APP-PANEL
   - type: depends_on
     from: FU-APP-PANEL
-    to: REF-SOURCE-APP-INTERNAL-PANEL-AUTOSET-GO
+    to: CODE-APP-INTERNAL-PANEL-AUTOSET-GO
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-APP
     to: FU-APP-SCPI
   - type: depends_on
     from: FU-APP-SCPI
-    to: REF-SOURCE-APP-INTERNAL-SCPI-SCPI-GO
+    to: CODE-APP-INTERNAL-SCPI-SCPI-GO
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-APP
     to: FU-APP-SETTINGS
   - type: depends_on
     from: FU-APP-SETTINGS
-    to: REF-SOURCE-APP-INTERNAL-SETTINGS-SAVER-GO
+    to: CODE-APP-INTERNAL-SETTINGS-SAVER-GO
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-APP
     to: FU-APP-SRAMCAPTURE
   - type: depends_on
     from: FU-APP-SRAMCAPTURE
-    to: REF-SOURCE-APP-INTERNAL-SRAMCAPTURE-CAPTURE-GO
+    to: CODE-APP-INTERNAL-SRAMCAPTURE-CAPTURE-GO
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-APP
     to: FU-APP-SUPERRES
   - type: depends_on
     from: FU-APP-SUPERRES
-    to: REF-SOURCE-APP-INTERNAL-SUPERRES-COMP-GO
+    to: CODE-APP-INTERNAL-SUPERRES-COMP-GO
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-APP
     to: FU-APP-TESTENV
   - type: depends_on
     from: FU-APP-TESTENV
-    to: REF-SOURCE-APP-INTERNAL-TESTENV-TESTENV-GO
+    to: CODE-APP-INTERNAL-TESTENV-TESTENV-GO
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-APP
     to: FU-APP-VXI11SRV
   - type: depends_on
     from: FU-APP-VXI11SRV
-    to: REF-SOURCE-APP-INTERNAL-VXI11SRV-SERVER-GO
+    to: CODE-APP-INTERNAL-VXI11SRV-SERVER-GO
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-APP
     to: FU-APP-WEB
   - type: depends_on
     from: FU-APP-WEB
-    to: REF-SOURCE-APP-INTERNAL-WEB-ASSETS-GO
+    to: CODE-APP-INTERNAL-WEB-ASSETS-GO
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-BUILD
@@ -1213,196 +1213,196 @@ behavior:
     to: FU-OTA-AGENT
   - type: depends_on
     from: FU-OTA-AGENT
-    to: REF-SOURCE-OTA-CMD-AGENT-MAIN-GO
+    to: CODE-OTA-CMD-AGENT-MAIN-GO
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-OTA
     to: FU-OTA-BOOT
   - type: depends_on
     from: FU-OTA-BOOT
-    to: REF-SOURCE-OTA-BOOT-DOC-GO
+    to: CODE-OTA-BOOT-DOC-GO
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-BUILD
     to: FU-OTA-BUILD
   - type: depends_on
     from: FU-OTA-BUILD
-    to: REF-SOURCE-OTA-README-MD
+    to: CODE-OTA-README-MD
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-OTA
     to: FU-OTA-BUILDINFO
   - type: depends_on
     from: FU-OTA-BUILDINFO
-    to: REF-SOURCE-OTA-INTERNAL-BUILDINFO-BUILDINFO-GO
+    to: CODE-OTA-INTERNAL-BUILDINFO-BUILDINFO-GO
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-OTA
     to: FU-OTA-CONFIG
   - type: depends_on
     from: FU-OTA-CONFIG
-    to: REF-SOURCE-OTA-INTERNAL-CONFIG-CONFIG-GO
+    to: CODE-OTA-INTERNAL-CONFIG-CONFIG-GO
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-OTA
     to: FU-OTA-FDINHERIT
   - type: depends_on
     from: FU-OTA-FDINHERIT
-    to: REF-SOURCE-OTA-INTERNAL-FDINHERIT-FDINHERIT-GO
+    to: CODE-OTA-INTERNAL-FDINHERIT-FDINHERIT-GO
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-OTA
     to: FU-OTA-GPMC
   - type: depends_on
     from: FU-OTA-GPMC
-    to: REF-SOURCE-OTA-INTERNAL-GPMC-GPMC-GO
+    to: CODE-OTA-INTERNAL-GPMC-GPMC-GO
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-OTA
     to: FU-OTA-OTACTL
   - type: depends_on
     from: FU-OTA-OTACTL
-    to: REF-SOURCE-OTA-CMD-OTACTL-MAIN-GO
+    to: CODE-OTA-CMD-OTACTL-MAIN-GO
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-OTA
     to: FU-OTA-RPCPROTO
   - type: depends_on
     from: FU-OTA-RPCPROTO
-    to: REF-SOURCE-OTA-INTERNAL-RPCPROTO-RPCPROTO-GO
+    to: CODE-OTA-INTERNAL-RPCPROTO-RPCPROTO-GO
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-OTA
     to: FU-OTA-SLOTS
   - type: depends_on
     from: FU-OTA-SLOTS
-    to: REF-SOURCE-OTA-INTERNAL-SLOTS-SLOTS-GO
+    to: CODE-OTA-INTERNAL-SLOTS-SLOTS-GO
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-OTA
     to: FU-OTA-STUBAPP
   - type: depends_on
     from: FU-OTA-STUBAPP
-    to: REF-SOURCE-OTA-CMD-STUBAPP-MAIN-GO
+    to: CODE-OTA-CMD-STUBAPP-MAIN-GO
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-OTA
     to: FU-OTA-SYSINFO
   - type: depends_on
     from: FU-OTA-SYSINFO
-    to: REF-SOURCE-OTA-INTERNAL-SYSINFO-SYSINFO-GO
+    to: CODE-OTA-INTERNAL-SYSINFO-SYSINFO-GO
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-OTA
     to: FU-OTA-VXI11
   - type: depends_on
     from: FU-OTA-VXI11
-    to: REF-SOURCE-OTA-INTERNAL-VXI11-VXI11-GO
+    to: CODE-OTA-INTERNAL-VXI11-VXI11-GO
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-OTA
     to: FU-OTA-WATCHDOG
   - type: depends_on
     from: FU-OTA-WATCHDOG
-    to: REF-SOURCE-OTA-INTERNAL-WATCHDOG-WATCHDOG-GO
+    to: CODE-OTA-INTERNAL-WATCHDOG-WATCHDOG-GO
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-BUILD
     to: FU-REPOSITORY
   - type: depends_on
     from: FU-REPOSITORY
-    to: REF-SOURCE-GITATTRIBUTES
+    to: CODE-GITATTRIBUTES
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-RTL
     to: FU-RTL-ACQ-SRAM-ADC-UNPACK
   - type: depends_on
     from: FU-RTL-ACQ-SRAM-ADC-UNPACK
-    to: REF-SOURCE-FPGA-COMMON-ADC-UNPACK-V
+    to: CODE-FPGA-COMMON-ADC-UNPACK-V
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-RTL
     to: FU-RTL-ACQ-SRAM-INTERLEAVE
   - type: depends_on
     from: FU-RTL-ACQ-SRAM-INTERLEAVE
-    to: REF-SOURCE-FPGA-COMMON-INTERLEAVE-V
+    to: CODE-FPGA-COMMON-INTERLEAVE-V
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-RTL
     to: FU-RTL-ACQ-SRAM-PRECISION
   - type: depends_on
     from: FU-RTL-ACQ-SRAM-PRECISION
-    to: REF-SOURCE-FPGA-IMAGES-GENERAL-PRECISION-V
+    to: CODE-FPGA-IMAGES-GENERAL-PRECISION-V
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-RTL
     to: FU-RTL-ACQ-SRAM-PRECISION-TAIL
   - type: depends_on
     from: FU-RTL-ACQ-SRAM-PRECISION-TAIL
-    to: REF-SOURCE-FPGA-IMAGES-GENERAL-PRECISION-TAIL-V
+    to: CODE-FPGA-IMAGES-GENERAL-PRECISION-TAIL-V
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-RTL
     to: FU-RTL-ACQ-SRAM-RECORD
   - type: depends_on
     from: FU-RTL-ACQ-SRAM-RECORD
-    to: REF-SOURCE-FPGA-COMMON-RECORD-V
+    to: CODE-FPGA-COMMON-RECORD-V
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-RTL
     to: FU-RTL-ACQ-SRAM-TOP
   - type: depends_on
     from: FU-RTL-ACQ-SRAM-TOP
-    to: REF-SOURCE-FPGA-COMMON-TOP-V
+    to: CODE-FPGA-COMMON-TOP-V
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-RTL
     to: FU-RTL-ACQ-SRAM-TRANSPORT
   - type: depends_on
     from: FU-RTL-ACQ-SRAM-TRANSPORT
-    to: REF-SOURCE-FPGA-COMMON-TRANSPORT-V
+    to: CODE-FPGA-COMMON-TRANSPORT-V
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-BUILD
     to: FU-RTL-ACQ-TESTS
   - type: depends_on
     from: FU-RTL-ACQ-TESTS
-    to: REF-SOURCE-FPGA-COMMON-SIM-DDR-MODEL-V
+    to: CODE-FPGA-COMMON-SIM-DDR-MODEL-V
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-RTL
     to: FU-RTL-COMMON-DDIO-PAIR
   - type: depends_on
     from: FU-RTL-COMMON-DDIO-PAIR
-    to: REF-SOURCE-FPGA-COMMON-DDIO-PAIR-V
+    to: CODE-FPGA-COMMON-DDIO-PAIR-V
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-RTL
     to: FU-RTL-COMMON-GPMC-SLAVE
   - type: depends_on
     from: FU-RTL-COMMON-GPMC-SLAVE
-    to: REF-SOURCE-FPGA-COMMON-GPMC-SLAVE-V
+    to: CODE-FPGA-COMMON-GPMC-SLAVE-V
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-RTL
     to: FU-RTL-COMMON-LANE-IN
   - type: depends_on
     from: FU-RTL-COMMON-LANE-IN
-    to: REF-SOURCE-FPGA-COMMON-LANE-IN-V
+    to: CODE-FPGA-COMMON-LANE-IN-V
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-BUILD
     to: FU-RTL-COMMON-TESTS
   - type: depends_on
     from: FU-RTL-COMMON-TESTS
-    to: REF-SOURCE-FPGA-COMMON-SIM-GPMC-BFM-V
+    to: CODE-FPGA-COMMON-SIM-GPMC-BFM-V
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-EVIDENCE
     to: FU-SPECIFICATIONS
   - type: depends_on
     from: FU-SPECIFICATIONS
-    to: REF-SOURCE-SPECS-00-OVERVIEW-MD
+    to: CODE-SPECS-00-OVERVIEW-MD
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-BUILD
@@ -1412,273 +1412,273 @@ behavior:
     to: FU-WEB-APP
   - type: depends_on
     from: FU-WEB-APP
-    to: REF-SOURCE-APP-INTERNAL-WEB-APP-JS
+    to: CODE-APP-INTERNAL-WEB-APP-JS
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-WEB
     to: FU-WEB-APP-CANVAS
   - type: depends_on
     from: FU-WEB-APP-CANVAS
-    to: REF-SOURCE-APP-INTERNAL-WEB-APP-CANVAS-JS
+    to: CODE-APP-INTERNAL-WEB-APP-CANVAS-JS
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-WEB
     to: FU-WEB-APP-CONTROLS
   - type: depends_on
     from: FU-WEB-APP-CONTROLS
-    to: REF-SOURCE-APP-INTERNAL-WEB-APP-CONTROLS-JS
+    to: CODE-APP-INTERNAL-WEB-APP-CONTROLS-JS
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-WEB
     to: FU-WEB-APP-CORE
   - type: depends_on
     from: FU-WEB-APP-CORE
-    to: REF-SOURCE-APP-INTERNAL-WEB-APP-CORE-JS
+    to: CODE-APP-INTERNAL-WEB-APP-CORE-JS
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-WEB
     to: FU-WEB-APP-DECODE
   - type: depends_on
     from: FU-WEB-APP-DECODE
-    to: REF-SOURCE-APP-INTERNAL-WEB-APP-DECODE-JS
+    to: CODE-APP-INTERNAL-WEB-APP-DECODE-JS
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-WEB
     to: FU-WEB-APP-DRAW
   - type: depends_on
     from: FU-WEB-APP-DRAW
-    to: REF-SOURCE-APP-INTERNAL-WEB-APP-DRAW-JS
+    to: CODE-APP-INTERNAL-WEB-APP-DRAW-JS
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-WEB
     to: FU-WEB-APP-EYE
   - type: depends_on
     from: FU-WEB-APP-EYE
-    to: REF-SOURCE-APP-INTERNAL-WEB-APP-EYE-JS
+    to: CODE-APP-INTERNAL-WEB-APP-EYE-JS
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-WEB
     to: FU-WEB-APP-FFT
   - type: depends_on
     from: FU-WEB-APP-FFT
-    to: REF-SOURCE-APP-INTERNAL-WEB-APP-FFT-JS
+    to: CODE-APP-INTERNAL-WEB-APP-FFT-JS
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-WEB
     to: FU-WEB-APP-GEOM
   - type: depends_on
     from: FU-WEB-APP-GEOM
-    to: REF-SOURCE-APP-INTERNAL-WEB-APP-GEOM-JS
+    to: CODE-APP-INTERNAL-WEB-APP-GEOM-JS
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-WEB
     to: FU-WEB-APP-GL
   - type: depends_on
     from: FU-WEB-APP-GL
-    to: REF-SOURCE-APP-INTERNAL-WEB-APP-GL-JS
+    to: CODE-APP-INTERNAL-WEB-APP-GL-JS
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-WEB
     to: FU-WEB-APP-INIT
   - type: depends_on
     from: FU-WEB-APP-INIT
-    to: REF-SOURCE-APP-INTERNAL-WEB-APP-INIT-JS
+    to: CODE-APP-INTERNAL-WEB-APP-INIT-JS
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-WEB
     to: FU-WEB-APP-NAV
   - type: depends_on
     from: FU-WEB-APP-NAV
-    to: REF-SOURCE-APP-INTERNAL-WEB-APP-NAV-JS
+    to: CODE-APP-INTERNAL-WEB-APP-NAV-JS
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-WEB
     to: FU-WEB-APP-PRECISION
   - type: depends_on
     from: FU-WEB-APP-PRECISION
-    to: REF-SOURCE-APP-INTERNAL-WEB-APP-PRECISION-JS
+    to: CODE-APP-INTERNAL-WEB-APP-PRECISION-JS
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-WEB
     to: FU-WEB-APP-SERIALTRIG
   - type: depends_on
     from: FU-WEB-APP-SERIALTRIG
-    to: REF-SOURCE-APP-INTERNAL-WEB-APP-SERIALTRIG-JS
+    to: CODE-APP-INTERNAL-WEB-APP-SERIALTRIG-JS
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-WEB
     to: FU-WEB-APP-SUPERRES
   - type: depends_on
     from: FU-WEB-APP-SUPERRES
-    to: REF-SOURCE-APP-INTERNAL-WEB-APP-SUPERRES-JS
+    to: CODE-APP-INTERNAL-WEB-APP-SUPERRES-JS
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-WEB
     to: FU-WEB-APP-VIEWS
   - type: depends_on
     from: FU-WEB-APP-VIEWS
-    to: REF-SOURCE-APP-INTERNAL-WEB-APP-VIEWS-JS
+    to: CODE-APP-INTERNAL-WEB-APP-VIEWS-JS
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-WEB
     to: FU-WEB-APP-ZONEMASK
   - type: depends_on
     from: FU-WEB-APP-ZONEMASK
-    to: REF-SOURCE-APP-INTERNAL-WEB-APP-ZONEMASK-JS
+    to: CODE-APP-INTERNAL-WEB-APP-ZONEMASK-JS
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-WEB
     to: FU-WEB-BINFRAME
   - type: depends_on
     from: FU-WEB-BINFRAME
-    to: REF-SOURCE-APP-INTERNAL-WEB-BINFRAME-JS
+    to: CODE-APP-INTERNAL-WEB-BINFRAME-JS
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-WEB
     to: FU-WEB-BODE
   - type: depends_on
     from: FU-WEB-BODE
-    to: REF-SOURCE-APP-INTERNAL-WEB-BODE-JS
+    to: CODE-APP-INTERNAL-WEB-BODE-JS
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-WEB
     to: FU-WEB-DECODE
   - type: depends_on
     from: FU-WEB-DECODE
-    to: REF-SOURCE-APP-INTERNAL-WEB-DECODE-JS
+    to: CODE-APP-INTERNAL-WEB-DECODE-JS
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-WEB
     to: FU-WEB-DECODE-ARINC429
   - type: depends_on
     from: FU-WEB-DECODE-ARINC429
-    to: REF-SOURCE-APP-INTERNAL-WEB-DECODE-ARINC429-JS
+    to: CODE-APP-INTERNAL-WEB-DECODE-ARINC429-JS
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-WEB
     to: FU-WEB-DECODE-CANFD
   - type: depends_on
     from: FU-WEB-DECODE-CANFD
-    to: REF-SOURCE-APP-INTERNAL-WEB-DECODE-CANFD-JS
+    to: CODE-APP-INTERNAL-WEB-DECODE-CANFD-JS
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-WEB
     to: FU-WEB-DECODE-FLEXRAY
   - type: depends_on
     from: FU-WEB-DECODE-FLEXRAY
-    to: REF-SOURCE-APP-INTERNAL-WEB-DECODE-FLEXRAY-JS
+    to: CODE-APP-INTERNAL-WEB-DECODE-FLEXRAY-JS
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-WEB
     to: FU-WEB-DECODE-MANCHESTER
   - type: depends_on
     from: FU-WEB-DECODE-MANCHESTER
-    to: REF-SOURCE-APP-INTERNAL-WEB-DECODE-MANCHESTER-JS
+    to: CODE-APP-INTERNAL-WEB-DECODE-MANCHESTER-JS
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-WEB
     to: FU-WEB-DECODE-MIL1553
   - type: depends_on
     from: FU-WEB-DECODE-MIL1553
-    to: REF-SOURCE-APP-INTERNAL-WEB-DECODE-MIL1553-JS
+    to: CODE-APP-INTERNAL-WEB-DECODE-MIL1553-JS
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-WEB
     to: FU-WEB-DECODE-SENT
   - type: depends_on
     from: FU-WEB-DECODE-SENT
-    to: REF-SOURCE-APP-INTERNAL-WEB-DECODE-SENT-JS
+    to: CODE-APP-INTERNAL-WEB-DECODE-SENT-JS
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-WEB
     to: FU-WEB-DECODE-USBLS
   - type: depends_on
     from: FU-WEB-DECODE-USBLS
-    to: REF-SOURCE-APP-INTERNAL-WEB-DECODE-USBLS-JS
+    to: CODE-APP-INTERNAL-WEB-DECODE-USBLS-JS
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-WEB
     to: FU-WEB-EYEJITTER
   - type: depends_on
     from: FU-WEB-EYEJITTER
-    to: REF-SOURCE-APP-INTERNAL-WEB-EYEJITTER-JS
+    to: CODE-APP-INTERNAL-WEB-EYEJITTER-JS
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-WEB
     to: FU-WEB-EYEJITTER-ANALYSIS
   - type: depends_on
     from: FU-WEB-EYEJITTER-ANALYSIS
-    to: REF-SOURCE-APP-INTERNAL-WEB-EYEJITTER-ANALYSIS-JS
+    to: CODE-APP-INTERNAL-WEB-EYEJITTER-ANALYSIS-JS
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-WEB
     to: FU-WEB-PEAKS
   - type: depends_on
     from: FU-WEB-PEAKS
-    to: REF-SOURCE-APP-INTERNAL-WEB-PEAKS-JS
+    to: CODE-APP-INTERNAL-WEB-PEAKS-JS
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-WEB
     to: FU-WEB-SIGROK-EXPORT
   - type: depends_on
     from: FU-WEB-SIGROK-EXPORT
-    to: REF-SOURCE-APP-INTERNAL-WEB-SIGROK-EXPORT-JS
+    to: CODE-APP-INTERNAL-WEB-SIGROK-EXPORT-JS
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-WEB
     to: FU-WEB-SPECTROGRAM
   - type: depends_on
     from: FU-WEB-SPECTROGRAM
-    to: REF-SOURCE-APP-INTERNAL-WEB-SPECTROGRAM-JS
+    to: CODE-APP-INTERNAL-WEB-SPECTROGRAM-JS
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-WEB
     to: FU-WEB-SUPERRES
   - type: depends_on
     from: FU-WEB-SUPERRES
-    to: REF-SOURCE-APP-INTERNAL-WEB-SUPERRES-JS
+    to: CODE-APP-INTERNAL-WEB-SUPERRES-JS
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-WEB
     to: FU-WEB-SUPERRES-COMP
   - type: depends_on
     from: FU-WEB-SUPERRES-COMP
-    to: REF-SOURCE-APP-INTERNAL-WEB-SUPERRES-COMP-JS
+    to: CODE-APP-INTERNAL-WEB-SUPERRES-COMP-JS
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-WEB
     to: FU-WEB-SUPERRES-ETS
   - type: depends_on
     from: FU-WEB-SUPERRES-ETS
-    to: REF-SOURCE-APP-INTERNAL-WEB-SUPERRES-ETS-JS
+    to: CODE-APP-INTERNAL-WEB-SUPERRES-ETS-JS
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-WEB
     to: FU-WEB-SUPERRES-GATE
   - type: depends_on
     from: FU-WEB-SUPERRES-GATE
-    to: REF-SOURCE-APP-INTERNAL-WEB-SUPERRES-GATE-JS
+    to: CODE-APP-INTERNAL-WEB-SUPERRES-GATE-JS
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-WEB
     to: FU-WEB-SUPERRES-MATH
   - type: depends_on
     from: FU-WEB-SUPERRES-MATH
-    to: REF-SOURCE-APP-INTERNAL-WEB-SUPERRES-MATH-JS
+    to: CODE-APP-INTERNAL-WEB-SUPERRES-MATH-JS
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-WEB
     to: FU-WEB-SUPERRES-MEASURE
   - type: depends_on
     from: FU-WEB-SUPERRES-MEASURE
-    to: REF-SOURCE-APP-INTERNAL-WEB-SUPERRES-MEASURE-JS
+    to: CODE-APP-INTERNAL-WEB-SUPERRES-MEASURE-JS
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-WEB
     to: FU-WEB-SUPERRES-TEMPLATE
   - type: depends_on
     from: FU-WEB-SUPERRES-TEMPLATE
-    to: REF-SOURCE-APP-INTERNAL-WEB-SUPERRES-TEMPLATE-JS
+    to: CODE-APP-INTERNAL-WEB-SUPERRES-TEMPLATE-JS
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: deployed_to
     from: FU-APP-ANALOG

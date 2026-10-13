@@ -304,6 +304,7 @@ test("index carries sections down and splits their notes", () => {
 });
 test("search ranks names first and finds rows by everyday words", () => {
   const m = RC.index(sheets());
+  // TRLC-LINKS: REQ-SDS-220
   const ids = (q) => RC.search(m, q).map((x) => x.id);
   assert.equal(ids("holdoff")[0], "trig.holdoff");
   assert.equal(ids("hold")[0], "trig.holdoff", "a prefix");
@@ -326,6 +327,7 @@ test("search ranks names first and finds rows by everyday words", () => {
 });
 
 test("search knows scope words, phrases and one-letter misspellings", () => {
+  // TRLC-LINKS: REQ-SDS-220
   const row = (id, label, extra) => Object.assign({ ID: id, Label: label, Kind: "enum", Available: true, Help: "", Value: 0, Text: "" }, extra);
   const onoff = { Options: [{ Value: 0, Text: "Off" }, { Value: 1, Text: "On" }] };
   const m = RC.index({ Tabs: [
@@ -340,7 +342,9 @@ test("search knows scope words, phrases and one-letter misspellings", () => {
     { ID: "curs", Name: "CURS", Title: "Cursors", Rows: [row("curs.mode", "Cursors")] },
     { ID: "sys", Name: "SYS", Title: "System and help", Rows: [row("sys.print", "Print screen", { Kind: "action", Actions: [{ ID: "print", Text: "Save PNG", Available: true }] })] },
   ] });
+  // TRLC-LINKS: REQ-SDS-220
   const top = (q) => (RC.search(m, q)[0] || {}).id;
+  // TRLC-LINKS: REQ-SDS-220
   const all = (q) => RC.search(m, q).map((x) => x.id);
   for (const [q, id] of [["vpp", "meas.pkpk"], ["pk-pk", "meas.pkpk"], ["peak to peak", "meas.pkpk"], ["rise time", "meas.rise"], ["record length", "acq.depth"],
     ["screen-shot", "sys.print"], ["screen shot", "sys.print"], ["persistance", "view.persist"], ["cusor", "curs.mode"], ["offest", "ch1.offset"]]) {
@@ -374,6 +378,7 @@ test("History books a change with old and new values, newest first", () => {
 });
 test("steps on one row from one source within 3 s are one entry; back to the start removes it", () => {
   const h = new RC.History();
+  // TRLC-LINKS: REQ-SDS-220
   const step = (from, to, t, src) => h.add(src || "phone", [{ id: "time.tdiv", tab: "TIME", label: "Time/div", kind: "number",
     old: { value: from, text: RC.si(from, "s"), key: JSON.stringify(from) }, neu: { value: to, text: RC.si(to, "s"), key: JSON.stringify(to) } }], {}, t);
   step(5e-4, 2e-4, 0);
@@ -388,6 +393,7 @@ test("steps on one row from one source within 3 s are one entry; back to the sta
   step(2e-5, 1e-5, 6500, "scope");
   assert.equal(h.list.length, 3, "another source: a new entry");
   const k = new RC.History();
+  // TRLC-LINKS: REQ-SDS-220
   const s2 = (from, to, t) => k.add("phone", [{ id: "x", tab: "T", label: "x", kind: "number", old: { value: from, text: "" + from, key: "" + from },
     neu: { value: to, text: "" + to, key: "" + to } }], {}, t);
   s2(1, 2, 0);
@@ -396,6 +402,7 @@ test("steps on one row from one source within 3 s are one entry; back to the sta
 });
 test("undo targets restore old values; back-to-before takes each row's oldest value", () => {
   const h = new RC.History();
+  // TRLC-LINKS: REQ-SDS-220
   const r = (id, a, b) => ({ id, tab: "T", label: id, kind: "number", old: { value: a, text: "" + a, key: "" + a }, neu: { value: b, text: "" + b, key: "" + b } });
   const e1 = h.add("phone", [r("a", 1, 2)], { label: "first" }, 0);
   const e2 = h.add("scope", [r("a", 2, 3), r("b", 10, 20)], {}, 100);
@@ -433,6 +440,7 @@ test("undo targets restore old values; back-to-before takes each row's oldest va
 });
 test("an undo entry keeps the ids of the entries it undid (a redo puts them back in effect)", () => {
   const h = new RC.History();
+  // TRLC-LINKS: REQ-SDS-220
   const r = (id, a, b) => ({ id, tab: "T", label: id, kind: "enum", old: { value: a, text: a, key: JSON.stringify(a) }, neu: { value: b, text: b, key: JSON.stringify(b) } });
   const e = h.add("phone", [r("cpl", "DC", "AC")], {}, 0);
   const u = h.add("phone", [r("cpl", "AC", "DC")], { kind: "undo", label: "Undo: c", undid: [e.id] }, 5000);

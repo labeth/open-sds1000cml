@@ -167,6 +167,7 @@ const ACTIONS = [
   { name: "ws-switch", w: 5, run: async (op) => { const w = pick(WS_IDS); await clickId(op, "tab-" + w); return "ws=" + w; } },
   // TRLC-LINKS: REQ-SDS-180
   {
+    // TRLC-LINKS: REQ-SDS-180
     name: "ws-again", w: 3, run: async (op) => {
       const cur = await op.page.evaluate(() => ws.cur);
       if (cur === "compare") return "compare — skipped";

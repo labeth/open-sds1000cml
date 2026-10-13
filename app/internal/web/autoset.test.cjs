@@ -11,18 +11,32 @@ const code = source.slice(source.indexOf('async function send(control, value)'))
     autosetBusy: false, autosetDone: Promise.resolve(true), st: {},
     // Existing valid measurements must not end autoset before the device ends it.
     frame: {m1: {vpp: 3.3, freq: 1e6}},
-    $: () => ({classList: {add() {}, remove() {}}}),
-    goHome() {}, applyStatus() {},
+    // TRLC-LINKS: REQ-SDS-204
+    $: () => ({classList: {
+      // TRLC-LINKS: REQ-SDS-204
+      add() {},
+      // TRLC-LINKS: REQ-SDS-204
+      remove() {}}}),
+    // TRLC-LINKS: REQ-SDS-204
+    goHome() {},
+    // TRLC-LINKS: REQ-SDS-204
+    applyStatus() {},
+    // TRLC-LINKS: REQ-SDS-204
     Date: {now: () => now},
+    // TRLC-LINKS: REQ-SDS-204
     setTimeout: fn => setImmediate(() => { now += 100; fn(); }),
+    // TRLC-LINKS: REQ-SDS-204
     awaitFrame: async () => { now += 100; },
+    // TRLC-LINKS: REQ-SDS-204
     fetch: async (url, options) => {
       if (url === '/api/status') {
         polls++;
         busy = polls >= 20 && polls < 40;
+        // TRLC-LINKS: REQ-SDS-204
         return {json: async () => ({panel: {AutosetBusy: busy}})};
       }
       if (url === '/api/set') writes.push({busy, command: JSON.parse(options.body)});
+      // TRLC-LINKS: REQ-SDS-204
       return {ok: true, json: async () => ({ok: true})};
     }
   };
@@ -36,7 +50,10 @@ const code = source.slice(source.indexOf('async function send(control, value)'))
   assert.equal(sandbox.autosetBusy, false);
   // A device that never finishes must not release a queued acquisition command.
   polls = 0; writes = []; now = 0;
-  sandbox.fetch = async url => ({ok: true, json: async () => url === '/api/status' ? {panel:{AutosetBusy:true}} : {ok:true}});
+  // TRLC-LINKS: REQ-SDS-204
+  sandbox.fetch = async url => ({ok: true,
+    // TRLC-LINKS: REQ-SDS-204
+    json: async () => url === '/api/status' ? {panel:{AutosetBusy:true}} : {ok:true}});
   const stuck = sandbox.autoset();
   const blocked = sandbox.send('single', 1);
   await stuck;
