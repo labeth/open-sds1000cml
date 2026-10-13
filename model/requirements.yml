@@ -258,7 +258,10 @@ requirements:
   notes: Source-derived contract; source presence is not evidence of a passing hardware qualification. Revised
     2026-10-09 (ADR-SINGLE-PRESS-GENERATION). SINGLE ends only on a capture armed, or still waiting for its event,
     after the press; a frame already frozen when SINGLE is pressed publishes as a live frame. The capture serving
-    a SINGLE is recalled whole once and held for the stop.
+    a SINGLE is recalled whole once and held for the stop. Revised 2026-10-12 (ADR-HARDWARE-QUALIFIERS) - pulse width,
+    slope time and video line triggers are decided by the qualifier FPGA image; the engine plans them from the learned
+    signal extent, publishes no triggered frame while no hardware plan exists, and only places the trigger point on
+    the qualified event.
   verificationMethods:
   - inspection
   - test
@@ -302,7 +305,10 @@ requirements:
   - REF-SOURCE-APP-INTERNAL-ENGINE-ENGINE-LOOP-GO
   appliesTo:
   - FU-APP-ENGINE
-  notes: Source-derived contract; source presence is not evidence of a passing hardware qualification.
+  notes: Source-derived contract; source presence is not evidence of a passing hardware qualification. Revised
+    2026-10-12 (ADR-SERIAL-HARDWARE-TRIGGER) - the registered matchers are the FPGA images' protocol matchers; the
+    engine plans them from the request and the levels and rates it learns from the captures, and software decoding
+    only places the trigger point on the match.
   verificationMethods:
   - inspection
   - test
@@ -329,7 +335,9 @@ requirements:
     draws edge-relative zones, builds dilated masks from distinct raw frames and reanchors code bounds to stored
     voltage context. Zone coordinates and overlay transforms use C1 even for selected C2. Upload errors are not
     acknowledged in the local success state; mask frame eligibility and calibration identity are weaker than panel-side
-    checks.
+    checks. Revised 2026-10-12 (ADR-HARDWARE-QUALIFIERS) - the zone trigger is evaluated by the qualifier FPGA image
+    (four zones, bucketed windows around the edge); masks are still tested in software on triggered frames, which is a
+    pass/fail test of a capture, not a trigger.
   verificationMethods:
   - inspection
   - test

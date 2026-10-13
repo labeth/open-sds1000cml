@@ -502,9 +502,10 @@ behavior:
     - id: STEP-PANEL-BTNDEFAULTSETUP
       ref: EVT-PANEL-BTNDEFAULTSETUP
       kind: control_action
-      action: Factory settings, with the mask cleared (its test off, its counts zeroed) and the serial trigger's match
-        bytes cleared (any I2C address and direction); any menu closes; the workspace stays and re-applies its entry
-        behaviour.
+      action: Factory settings, the bus settings, the pulse, slope and video limits, full bandwidth and upright traces
+        included, with the mask cleared (its test off, its counts zeroed) and the serial trigger's match bytes cleared
+        (any I2C address and direction); a decoded stream ends and the scope runs again; any menu closes; the workspace
+        stays and re-applies its entry behaviour.
       sourceRef: FU-APP-PANEL
       destinationRef: FU-APP-ENGINE
       next:
@@ -806,7 +807,8 @@ behavior:
       ref: FU-APP-PANEL
       kind: control_action
       action: 'BUS packets (a fixed-column hex dump, a separate string box and the match; entered with decode off, the bus
-        on CH1/CH2 is detected and decoded with a notice; again: the eye diagram): ADJUST selects a packet (zoomed: pans
+        on CH1/CH2 is detected on a sampled record and decoded, at a timebase whose live readout resolves it, with a
+        notice naming both (ADR-BUS-READABLE-DECODE); again: the eye diagram): ADJUST selects a packet (zoomed: pans
         to it) and its push opens the byte picker (no bus: detects again); HORIZ POSITION goes to the next or previous
         packet holding the match and its push back to the trigger; the TIME/DIV push zooms onto the selected packet.'
       sourceRef: FU-APP-PANEL
@@ -869,7 +871,9 @@ behavior:
         own byte picker). A remote''s menu keys and F-keys are refused. Its S/DIV, Adjust and Position turns and its Adjust
         and Position pushes (any key or knob with "nomenu") wait while a menu is open there. Its Adjust push is refused
         where it would open one. The LCD confirms it with a one-line REMOTE note for 1.5 s. Live texts (a mask test''s
-        counts, COMPARE''s trigger stability) are left out of the snapshot, so they do not advance the Seq.'
+        counts, COMPARE''s trigger stability) are left out of the snapshot, so they do not advance the Seq. The sheet
+        model carries the TRIG tab''s status lines (whether the FPGA decides the trigger, or why not), as the LCD shows
+        them under its rows.'
       sourceRef: FU-WEB-REMOTE
       destinationRef: FU-APP-PANEL
       next:
@@ -880,13 +884,13 @@ behavior:
       action: Finish this input dispatch. Applicable commands change engine/frontend state; panel-local changes are
         drawn on the next LCD frame and published to the remote snapshot (its Seq advances).
     properties:
-      sourceBaseline: 9a70abd79968655689744975cca2d6dde0b0d496
+      sourceBaseline: d4b93feea628722113b34ee0e4914bbac8a3c29b
       requirements: REQ-SDS-135, REQ-SDS-137, REQ-SDS-168, REQ-SDS-211, REQ-SDS-212, REQ-SDS-213, REQ-SDS-214, REQ-SDS-216,
         REQ-SDS-217, REQ-SDS-218, REQ-SDS-220, REQ-SDS-221
       reviewNext: The INTENSITY/ADJUST lamp is not driven (specs/08-front-panel.md section 8.2), since no firmware has
         lit it. Physical key availability depends on the loaded FPGA image.
       sourceFiles: app/internal/panel/panel.go, app/internal/panel/panel_dispatch.go, app/internal/panel/panel_led.go, app/internal/panel/ws_input.go, app/internal/panel/ws.go, app/internal/panel/sheet.go, app/internal/panel/actions.go, app/internal/panel/remote.go, app/internal/panel/autoset.go, app/internal/panel/model_rows.go, app/internal/panel/textparse.go, app/internal/panel/screen.go, specs/08-front-panel.md
-      sourceSHA256: '{"app/internal/panel/actions.go": "bf7fd508758d61935c21de6bac69d634810ec8ff47c9f206e86492aa84d70819", "app/internal/panel/autoset.go": "3ac47397010c4969684de3e045ce91a59f61bc1ece37a0e04d5dbebeaa639b77", "app/internal/panel/model_rows.go": "2c358a906c8b525743fdad5035e5f85aea3e2f236ce894ca2f1b7f70abb753f8", "app/internal/panel/panel.go": "6357d378ad0835e17aff940942a565228c9b18128cce6803a672e3c63aea89fd", "app/internal/panel/panel_dispatch.go": "082a106cd7e33d5da67c17c84aca2f0f5d57ae41b0a70c47256e3dae0255e3fc", "app/internal/panel/panel_led.go": "1bd11646e0e493a421e3e11f0b9b16b793ec1e1b3cd481544672f43ff7bad13b", "app/internal/panel/remote.go": "795dd083913b12b54fe2a79b90c02dd4636fab647573d2826b6117be5f6defa3", "app/internal/panel/screen.go": "491474baff8d91e334e9207d43386e4886dbb8ead4ae11fd49bf47a11157c1f4", "app/internal/panel/sheet.go": "c0949ca7b28b9715629b43310e947f7206a6ff5153d91082ddaf8b8d18c6af5f", "app/internal/panel/textparse.go": "c5f08231502d6c18ab4d123c8517bcbec095c192cef1b1483080dbd2c22de869", "app/internal/panel/ws.go": "feff6bcc42d0d7aa79a0d9eb54a06f6ecddd7c506855664b1c6892d78b0b6f77", "app/internal/panel/ws_input.go": "7d2f9ee7d687dd96fcae38828489000f338957e084dfc9c2c8e98bca0f58cd9f", "specs/08-front-panel.md": "64d07531b10a65d9f82de51e90cfb292c31eaa5489c8413b1f55f1be7eaebf40"}'
+      sourceSHA256: '{"app/internal/panel/actions.go": "503729b997c422791c57e9e6cb0d8d14b3f958807825bed08fafe53d747d1c9b", "app/internal/panel/autoset.go": "3ac47397010c4969684de3e045ce91a59f61bc1ece37a0e04d5dbebeaa639b77", "app/internal/panel/model_rows.go": "f1d15398a39114143534443e0c5855cef852a5e8c2d0541d1ab4cbea6379effe", "app/internal/panel/panel.go": "1b7b657b3ed81cb287cd92af0e6ee35c7f969fbd1046ad6a3376c70c3a8b2f60", "app/internal/panel/panel_dispatch.go": "082a106cd7e33d5da67c17c84aca2f0f5d57ae41b0a70c47256e3dae0255e3fc", "app/internal/panel/panel_led.go": "3558acd6c13b95e5f65fccc8b5e4b3bd27429493c8a31ffe267e55fbcfbb4265", "app/internal/panel/remote.go": "0c0f516ba83982f4e3f7df8f2b95f4a74e609245e74e4b17c991719101c962f3", "app/internal/panel/screen.go": "491474baff8d91e334e9207d43386e4886dbb8ead4ae11fd49bf47a11157c1f4", "app/internal/panel/sheet.go": "c0949ca7b28b9715629b43310e947f7206a6ff5153d91082ddaf8b8d18c6af5f", "app/internal/panel/textparse.go": "c5f08231502d6c18ab4d123c8517bcbec095c192cef1b1483080dbd2c22de869", "app/internal/panel/ws.go": "37d6413383af725dc63ed2bca8a27c8114f56825b151b839cf2934158fd4d47f", "app/internal/panel/ws_input.go": "7d2f9ee7d687dd96fcae38828489000f338957e084dfc9c2c8e98bca0f58cd9f", "specs/08-front-panel.md": "353e28570900538728a0d3402794773d3d8bbb6ad30fea136d6cf4e8ab180974"}'
   - id: FLOW-BOOT
     title: USB boot and supervised application
     description: Overview of boot dependencies, not an unconditional success path. Ordinary takeover uses the factory

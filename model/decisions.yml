@@ -1831,6 +1831,11 @@ decisions:
     on offset-corrected codes would lift that.
   - Near that band the frame rate drops while noise triggers are dropped (5 V/div at 1.6 V - 8 codes above the
     baseline - showed about 8 real frames a second with 30 dropped).
+  - 'Confirmed 2026-10-12 against the owner''s rule (ADR-HARDWARE-QUALIFIERS): software may check a trigger the FPGA
+    pointed out and place it, never search data the FPGA did not point at, so the confirmation stays. The dropped
+    triggers'' recent share is kept (noise_triggers); above a quarter the TRIG tab, the phone''s TRIG page and the
+    web''s trigger card say how many were dropped as noise and to raise the gain or move the level. Bench: none at
+    1 V/div with the level mid-signal; 35 a second beside 8 real for a 3.3 V signal at 5 V/div and 1.6 V.'
 - id: ADR-SOFTWARE-AC-TRIGGER
   title: Place an AC-coupled source's trigger level on the AC trace
   status: accepted
@@ -2122,3 +2127,113 @@ decisions:
   - /api/screen.png and the hardcopy still render the workspace, not the saver.
   - The panel status names the screen state (on, saver or off).
   - The app switches the backlight on when it stops, so the panel is never left dark.
+- id: ADR-SERIAL-HARDWARE-TRIGGER
+  title: The FPGA's matcher decides every serial trigger; software only places it on the match
+  status: accepted
+  date: '2026-10-12'
+  context: 'The owner''s rule (2026-10-12): every trigger is decided in FPGA hardware, and software may only refine where
+    the trigger point sits. The scope''s panel and the phone sent the serial request without a decoder threshold, so
+    the general image''s UART, I2C and SPI matchers were never armed: captures ran untriggered and software decoded
+    and matched each record (4 matches/s on a UART; a SINGLE recalled the 1M-sample record three times, 34 s). The
+    scope''s own serial trigger offered only UART, I2C and SPI, although the packet and line images match CAN,
+    Manchester, SENT, MIL-STD-1553, USB LS, ARINC 429 and FlexRay.'
+  decision: The engine always plans the FPGA matcher for an armed serial trigger on every bus. What a request does not
+    name it takes from the signal - each capture's decoder threshold, kept in volts so a V/div or offset change
+    re-expresses it, the UART bit rate and the SPI clock measured on the lines, SENT's tick and nibble count from its
+    pulse periods, and ARINC 429's slicer levels from a sampled record - and it loads the image with the protocol's
+    matcher once the request is plannable. A MIL-STD-1553 word or an ARINC 429 field typed as bytes is joined into the
+    matcher's unit. While no matcher can take the request nothing triggers, and the BUS caption, the TRIG tab and the
+    web's serial status say why ("No hardware trigger yet - ..."). Software decodes a triggered record only to move
+    the trigger point back to the start of the matched bytes; the record keeps the last measured shift before the
+    trigger so the match stays on screen. This replaces the software matching fallback of ADR-PROTOCOL-TRIGGER-IMAGE.
+  consequences:
+  - 'Bench 2026-10-12 (Au sources on A2/A11): UART 4 to 21 matches/s in RUN and a SINGLE in one recall (4.3 s); I2C 20/s,
+    SPI 23/s, CAN 22/s, Manchester 24/s, MIL-STD-1553 25/s, USB LS 25/s, FlexRay 22/s, ARINC 429 25/s and SENT
+    triggering on the scope''s own match; V/div and offset changes keep triggering.'
+  - A learned level or rate replaces the plan only when it moves two codes or more, so capture noise does not re-arm
+    the matcher; a request on a dead line waits instead of running free.
+  - The legacy SCOPE_CAPTURE=default capture path still matches serial requests in software; it is not a production path.
+  - Levels are learned only from a capture with no front-end write (relay, gain, offset) since the previous capture
+    was armed; the capture spanning a V/div change holds the relay's transient, which widened a learned extent.
+  - 'Clarified by the owner (2026-10-12): software may place a trigger and check whether a trigger the hardware pointed
+    out is correct, but never test data the hardware did not point at.'
+- id: ADR-HARDWARE-QUALIFIERS
+  title: Pulse, slope, video and zone triggers are decided in a qualifier FPGA image
+  status: accepted
+  date: '2026-10-12'
+  context: 'The owner''s rule (2026-10-12): every trigger is decided in FPGA hardware, and software only refines the
+    trigger point. Every SRAM image triggered on the plain edge for the pulse, slope and video types and for the zone
+    trigger, and the engine then kept or dropped each record in software by its pulse width, slope time, video line
+    or zones. The general image uses 97 percent of the logic and cannot take the qualifiers.'
+  decision: 'A trigger image, qualify: the raw acquisition foundation with precision decimation and the live envelope
+    recall, as in the general image, plus two qualifier blocks. qual_trigger measures a pulse''s width between edges at
+    the trigger level, a slope''s time from a first level to a second (crossing the first back aborts it; the levels
+    compare sums of five consecutive samples, one from each interleaved converter, so the converters'' raw offsets
+    cancel), or counts
+    the line syncs after a vertical sync, in ticks of a power-of-two prescale (1 to 65536) of the 250 MHz clock with
+    16-bit limits (exact to 4 ns up to 262 us, 17 s at most), and fires on the closing edge when the time is any, under the minimum, over the maximum or between them, or on
+    line N''s sync (every line for 0). zone_qual tests up to four rectangles, a window of time around the edge and a
+    code range on one channel, each intersect or avoid, from a 1024-bucket history of each zone''s running count of
+    buckets with a sample inside (buckets of a power of two of the 8 ns half clock, in block RAM), and fires once the
+    latest window has ended. The registers sit in the host bus''s free addresses below 128; register 74 reads 0x5154
+    when the blocks exist and 75 their kinds. The engine loads the image for a pulse, slope or video trigger or a
+    zone trigger with zones, plans the levels as fractions of the trigger channel''s extent learned from the captures
+    (kept in volts), and the limits in ticks; with no plan nothing triggers and the TRIG tab and the web say why.
+    Software only places the trigger point on the event - a pulse''s closing edge, a slope''s second level, a video
+    line''s sync leading edge - and, for zones, back by the decision''s delay, which the record holds before the
+    trigger.'
+  consequences:
+  - Pulse, slope, video and zone triggers cost an image switch from the general image, like the protocol images, and
+    serial triggers cannot be combined with them.
+  - Video lines count from the first line sync after the vertical sync and its equalizing pulses (NTSC line 10, PAL
+    line 6); line syncs are 3.5 to 7 us and broad pulses 15 us or longer, at the 30 percent sync slice.
+  - Zone windows are quantized to their bucket (8 ns at the finest, coarser when the windows span more than 1000
+    buckets). The zone trigger fires a fixed time after the edge - the wait and 48 half clocks of decision - which the
+    record holds before the trigger and the engine takes back off; a pulse or video trigger fires 12 ns after an edge
+    trigger on its closing edge would, a slope 24 ns.
+  - 'Bench 2026-10-12 (Au sources on A2/A11): pulse widths over 4 us, under 1.5 us, between 1.5 and 2.5 us and a low
+    pulse over 13 us each triggered only on the 5, 1, 2 us pulses and the 14 us low, the point within one sample of
+    the closing edge; NTSC line 10 is the first line after the post-equalizing pulses and line 21 shows line 20''s
+    marker 1.75 us before its sync, the point on the sync''s leading edge; a zone high 2.5 to 4 us after the edge
+    passed only the 3 and 5 us pulses and as an avoid zone only the 1 and 2 us ones, the point within a sample of the
+    edge.'
+  - 'Slope levels first compared raw interleaved codes: CH1''s converters sit 11 codes apart, and on the bench''s
+    18 ns edges (slow at the top) the second level''s crossing moved with the converter catching it, so the edges
+    measured 8 to 20 ns. Replayed offline with the unit''s offsets, raw codes gave 3 to 5 clocks by converter
+    rotation and five-sample sums 4 to 5 for every rotation, as the calibrated record. With the sums, the bench''s
+    17 ns edges measure over 16 and not over 20 ns, 22 ns edges (20 MHz limit) over 20 and not over 24 ns, and
+    limits outside never fire.'
+  - Built at seed 10 (8192 logic elements, 79 percent; minimum internal slack +0.066 ns). Closing 250 MHz timing took
+    registered configuration decodes and edges, up-counters with synchronous clear and sticky equality flags instead
+    of loaded down-counters, a registered block RAM read, and the qualifier's and zones'' own registered copies of the
+    sample word.
+- id: ADR-BUS-READABLE-DECODE
+  title: BUS decodes the live readout only where it resolves the bus, and finds the bus on a sampled record
+  status: accepted
+  date: '2026-10-12'
+  context: Above about 200 us/div the live readout is an ordered min/max envelope of 2048 points over the screen,
+    not samples. A bus whose shortest feature (a UART bit, half an I2C clock) spans few of those points aliases there.
+    On the bench a 115200 UART at Default setup's 500 us/div, 3.6 points a bit, read 0A as 02 and 20 as 30 on the LCD,
+    and the web found no protocol or reported an ambiguous baud. After Autoset's 10 us/div the record held about one
+    byte, and both BUS entries said no bus was found.
+  decision: A live envelope is decoded only when the bus's shortest feature spans at least 4 of its points
+    (framecalc.MinEnvelopeFeature, the same limit in the web's decoder); otherwise the decode says the bus is not
+    resolved at this timebase. BUS entry and the web's Detect find the bus on a sampled record (the decode lease on
+    the scope, one recalled raw record on the web). When the record hid the bus, decimated or too short, they look
+    again at the slowest timebase sampled at the full rate, keep it when the bus is found there and go back otherwise.
+    Once a bus is found, BUS steps to the slowest timebase whose readout gives its feature 5 points, room for a serial
+    trigger's wider window, and says so. Protocol = Auto finds its bus the same way where the live envelope cannot;
+    picking Auto searches and steps the timebase (decode stays Auto), a decoded stream starts from the frame on
+    screen or else that search, and arming the serial trigger from Auto fixes decode to the bus found and steps to a
+    timebase that reads it. The step judges the timebase asked for, which a running stream holds until it ends.
+  consequences:
+  - 'Bench: after Default setup BUS entry says "AUTO: UART 115200 8N1 on C1, decode on, 200us/div to read it" and the
+    LCD reads the message without errors; the web finds the UART at 500 us/div and, after Autoset, at 200 us/div.'
+  - BUS entry can change the timebase, always with a notice naming the new one.
+  - 'Bench (bug hunt #3): at 500 us/div with the UART on screen, picking Auto says "AUTO: UART 115200 8N1 on C1,
+    200us/div to read it", Stream On streams it, and "Trigger on it" from a stream arms the hardware UART matcher.'
+  - Leaving a stream (Stream Off, a fixed protocol, the serial trigger, Default setup) puts RUN back only after the
+    stream has ended, since the engine ends a stream stopped to show its record.
+  - A search's result stands only if no protocol was set, recalled or defaulted while it ran (seconds at slow
+    timebases); a scope waiting for a trigger, which sends no new capture to search, says so instead of "no bus
+    found", and the web's Detect refuses a bus the live envelope cannot resolve (I2C read as Manchester).

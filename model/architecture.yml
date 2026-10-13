@@ -109,12 +109,14 @@ architecture:
       policies. Legacy command service runs at boundaries; the ordinary capture wait polls stop and status but
       does not pump diagnostic callbacks. Callback timeouts do not cancel queued work, and failed register writes
       are counted without preserving dirty shadows for retry. Capture coherence is a software fill/drain check;
-      tail detection and noise discrimination are content heuristics. Serial matching precedes zone/mask and
-      observation gates, but the original content-lock decision still gates those consumers. Stitched windows
-      expose blackout metadata and are not gapless capture. REQ-SDS-127/128 describe bounded diagnostic history,
-      tuning and recovery telemetry. The SRAM loop does not invoke Bode accumulation; REQ-SDS-066 retains that
-      integration gap and synthetic-only measurement evidence. Hardware capability depends on the selected
-      fabric; physical panel scanning is absent on the owned default image.'
+      tail detection and noise discrimination are content heuristics. On the SRAM engine the FPGA decides every
+      trigger (ADR-SERIAL-HARDWARE-TRIGGER, ADR-HARDWARE-QUALIFIERS): the engine plans the serial matcher, the
+      pulse, slope and video qualifier and the zone trigger from the settings and the levels it learns from the
+      captures, loads the image that has them, and only moves the trigger point onto the event; with no hardware
+      plan nothing triggers and the status says why. Stitched windows expose blackout metadata and are not gapless
+      capture. REQ-SDS-127/128 describe bounded diagnostic history, tuning and recovery telemetry. The SRAM loop
+      measures every capture for Bode, triggered or not. Hardware capability depends on the selected fabric;
+      physical panel scanning is absent on the owned default image.'
     tags:
     - source-backed
   - id: FU-APP-FPGALOAD
@@ -473,6 +475,20 @@ architecture:
       CS to after CS; 50 ns cycle gap (the app''s EDMA uses a 5-fclk gap).'
     tags:
     - source-backed
+  - id: FU-RTL-QUAL-TRIGGER
+    name: Rtl Hardware Trigger Qualifiers
+    group: FG-RTL
+    prose: 'fpga/images/qualify (ADR-HARDWARE-QUALIFIERS): qual_trigger.v measures a pulse''s width between edges at
+      the trigger level, a slope''s time between two levels, or counts video line syncs after a vertical sync, in
+      16-bit counts of ticks of a power-of-two prescale (1 to 65536) of the 250 MHz clock, and fires on the event''s
+      closing edge when the time meets the condition (any, under, over, between). sum_edge_pair.v gives the slope its
+      level crossings on sums of five consecutive samples (five_sum), one per interleaved converter, so the
+      converters'' offsets cancel. zone_qual.v keeps, per zone, a running count of buckets with a sample inside its
+      codes (1024 buckets of power-of-two 8 ns half clocks in block RAM) and fires a fixed time after the edge when
+      every intersect zone was entered in its window around it and no avoid zone was.'
+    tags:
+    - source-backed
+    - experimental
   - id: FU-SPECIFICATIONS
     name: Specifications
     group: FG-EVIDENCE
