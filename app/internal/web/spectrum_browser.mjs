@@ -34,6 +34,9 @@ run(async (t) => {
   t.near(parseFloat(T[1].cells[3]), 20 * Math.log10(1 / 3), 0.3, "H3 is a third of H1 (Rel −9.5 dB)");
   // level: (4/π)·60 codes × 1/25 V per code, rms = 6.7 dBV
   t.near(parseFloat(T[0].cells[2]), 20 * Math.log10(4 / Math.PI * 60 / 25 / Math.SQRT2), 0.3, "the fundamental's level in dBV");
+  // the readout refreshes on the workspace's tick, up to 400 ms after the table
+  await t.until(async () => { const r = await readout(); return /^CH1/.test(r.Source || "") && /harmonics/.test(r.THD || ""); },
+    "the readout fills in", 3000);
   const ro = await readout();
   t.ok(/^CH1/.test(ro.Source || ""), "the readout names the source channel");
   t.near(parseFloat(ro.THD), 42.88, 1.0, "THD of H2..H10 of the square (≈ 42.9 %)");
