@@ -70,6 +70,8 @@ const (
 // zero based. Cross-core analog timing is not implied by this API.
 // TRLC-LINKS: REQ-SDS-032, REQ-SDS-040
 type Config struct {
+	Qualifier         QualifierConfig         `json:"qualifier"`
+	Zones             ZoneConfig              `json:"zones"`
 	Sequence          SequenceTriggerConfig   `json:"sequence"`
 	Packet            PacketTriggerConfig     `json:"packet"`
 	Manchester        ManchesterTriggerConfig `json:"manchester"`
@@ -433,6 +435,20 @@ func (c *Capture) Arm(ctx context.Context, cfg Config) error {
 	if err := cfg.Manchester.validate(); err != nil {
 		return err
 	}
+	if err := cfg.Qualifier.validate(); err != nil {
+		return err
+	}
+	if err := cfg.Zones.validate(); err != nil {
+		return err
+	}
+	if cfg.Zones.Enabled() && (cfg.Source != ADC || !cfg.Normal) {
+		return fmt.Errorf("sramcapture: zones qualify a normal ADC trigger")
+	}
+	// A qualifier fires on its own event in place of the trigger edge.
+	if cfg.Qualifier.Enabled && (cfg.Packet.Enabled || cfg.Manchester.Enabled || cfg.USBLS.Enabled || cfg.MIL1553.Enabled || cfg.SENT.Enabled ||
+		cfg.SPI.Enabled || cfg.I2C.Enabled || cfg.UART.Enabled || cfg.Source != ADC || !cfg.Normal) {
+		return fmt.Errorf("sramcapture: a qualifier requires exclusive ADC normal triggering")
+	}
 	// The packet image carries only these two blocks; each needs the whole receiver.
 	general := cfg.USBLS.Enabled || cfg.MIL1553.Enabled || cfg.SENT.Enabled || cfg.SPI.Enabled || cfg.I2C.Enabled || cfg.UART.Enabled
 	if (cfg.Packet.Enabled || cfg.Manchester.Enabled) && ((cfg.Packet.Enabled && cfg.Manchester.Enabled) || general || cfg.Source != ADC || !cfg.Normal) {
@@ -515,6 +531,12 @@ func (c *Capture) Arm(ctx context.Context, cfg Config) error {
 		if e = c.write(57, 0); e != nil {
 			return e
 		}
+	}
+	if err := c.configureQualifier(revision, cfg.Qualifier); err != nil {
+		return err
+	}
+	if err := c.configureZones(revision, cfg.Zones); err != nil {
+		return err
 	}
 	if err := c.configureSequence(cfg.Sequence); err != nil {
 		return err

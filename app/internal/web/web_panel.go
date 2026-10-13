@@ -36,6 +36,27 @@ type panelWorkspaces interface {
 
 // panelKeys is the remote's keys and knobs: answered once they have run,
 // with what they did (type-asserted; without it a key is only queued).
+// panelRefs is the panel's saved references (GET /api/refs).
+type panelRefs interface {
+	RefsExport() [2]panel.RefExport
+}
+
+// hRefs serves the scope's REF A and REF B (the master is REF A), so the web
+// app's Stack master shows the scope's master.
+// TRLC-LINKS: REQ-SDS-138, REQ-SDS-218
+func (s *Server) hRefs(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "GET only", http.StatusMethodNotAllowed)
+		return
+	}
+	pr, ok := s.panel.(panelRefs)
+	if !ok {
+		writeJSON(w, map[string]any{"ok": false, "error": "no panel on this server"})
+		return
+	}
+	writeJSON(w, map[string]any{"ok": true, "refs": pr.RefsExport()})
+}
+
 type panelKeys interface {
 	RemoteKey(name string, nomenu bool) panel.SetResult
 	RemoteKnob(name string, dir, steps int, nomenu bool) panel.SetResult

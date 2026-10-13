@@ -102,7 +102,7 @@ if(typeof document!=="undefined") {
     const out=document.getElementById("precisionFitResult");
     try {
       if(!frame)throw new Error("No capture yet.");
-      if(frame.peak_detect||frame.is_env)throw new Error("Fit requires sampled waveform data; min/max envelopes cannot be fitted.");
+      if(frame.peak_detect||frame.is_env)throw new Error("Fit requires sampled waveform data; min/max envelopes cannot be fitted. STOP for the full record, or use the Precision acquisition.");
       const ch=+document.getElementById("precisionChannel").value, model=document.getElementById("precisionModel").value;
       const sig=ch?frame.c2:frame.c1, m=ch?frame.m2:frame.m1;
       const start=Math.max(0,Math.floor(view.win.a*sig.length)), end=Math.min(sig.length,Math.ceil(view.win.b*sig.length),start+4096);

@@ -20,11 +20,13 @@ import (
 
 // geom is where a frame's samples sit on the screen.
 type geom struct {
-	valid   int
-	winCols int
-	edgeX   float64
-	sampleS float64
-	tdivS   float64
+	valid    int
+	winCols  int
+	edgeX    float64
+	sampleS  float64
+	tdivS    float64
+	peak     bool    // a peak-detect readout: sampleS is a min/max point's span
+	captureS float64 // the converters' sample interval behind it
 }
 
 // anaState is the analysis the panes show (guarded by Controller.amu).
@@ -144,7 +146,8 @@ func (c *Controller) OnFrame(f *engine.Frame) {
 		return
 	}
 	a.key, a.need = k, need
-	a.g = geom{valid: framecalc.Valid(f), winCols: f.WinCols, edgeX: f.EdgeX, sampleS: f.SampleS, tdivS: f.TdivS}
+	a.g = geom{valid: framecalc.Valid(f), winCols: f.WinCols, edgeX: f.EdgeX, sampleS: f.SampleS, tdivS: f.TdivS,
+		peak: f.PeakDetect, captureS: f.CaptureSampleS}
 	switch s.ui.ws {
 	case wsview.Bus:
 		c.busFrame(a, s, f)

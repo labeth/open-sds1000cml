@@ -35,6 +35,29 @@ type Result struct {
 	Roles  Roles   // Autodetect: the same choice, for configuring a hardware decoder
 }
 
+// FeatureSamples is the shortest feature a decode's bus holds, in samples: a
+// bit of an NRZ line (UART, CAN, USB, FlexRay), half a clock (I2C, SPI), half
+// a bit of a line code (Manchester, MIL-1553, ARINC 429's return to zero),
+// SENT's shortest pulse of four ticks. 0 when the result names none
+// (decode.js decodeFeatureSamples).
+// TRLC-LINKS: REQ-SDS-018
+func FeatureSamples(r Result) float64 {
+	if !r.OK || !(r.SPB > 0) {
+		return 0
+	}
+	switch r.Proto {
+	case "i2c", "spi", "manchester", "mil1553", "arinc429":
+		return r.SPB / 2
+	case "sent":
+		return 4 * r.SPB
+	}
+	return r.SPB
+}
+
+// Names are the protocols as the screens name them.
+var Names = map[string]string{"uart": "UART", "i2c": "I2C", "spi": "SPI", "manchester": "Manchester", "sent": "SENT",
+	"canfd": "CAN", "mil1553": "MIL-1553", "arinc429": "ARINC 429", "usbls": "USB LS", "flexray": "FlexRay"}
+
 // Roles is the channel assignment and SPI framing Autodetect chose: ChA is the
 // line (or I2C SCL / SPI CLK), ChB the I2C SDA / SPI DATA, 0 = C1.
 // TRLC-LINKS: REQ-SDS-018
@@ -113,13 +136,46 @@ type sliced struct {
 	edges      []edge
 }
 
-// sliceChannel builds the threshold/hysteresis + level/edge model for one
-// channel (decode.js sliceChannel). thr overrides the auto midpoint when set.
+// AutoThreshold is the slicing level the decoders use when none is set: the
+// midpoint of the channel's low and high rails. The serial trigger gives it to
+// the hardware matcher, so the FPGA slices the line where the decode does.
+// ok is false for a channel without two clear levels.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-013
+func AutoThreshold(codes []uint8) (float64, bool) {
+	lo, hi, reason := rails(codes)
+	return (lo + hi) / 2, reason == ""
+}
+
+// Extent is a channel's code range without its sparse noise tails (codes
+// under one in a thousand samples at either end): the levels trigger
+// qualifiers place their thresholds between. ok is false when the channel
+// is flat or holds too few samples.
+// TRLC-LINKS: REQ-SDS-011
+func Extent(codes []uint8) (lo, hi int, ok bool) {
+	var h [256]int
+	for _, v := range codes {
+		h[v]++
+	}
+	if len(codes) < 8 {
+		return 0, 0, false
+	}
+	noiseFloor := max(1, len(codes)/1000)
+	lo, hi = 0, 255
+	for lo < 255 && h[lo] < noiseFloor {
+		lo++
+	}
+	for hi > 0 && h[hi] < noiseFloor {
+		hi--
+	}
+	return lo, hi, hi > lo
+}
+
+// rails finds a channel's low and high levels: the code histogram's extent
+// without its sparse noise tails, split at the middle, each half's mean. The
+// reason is set when there are too few samples or the swing is under minAmp.
 // TRLC-LINKS: REQ-SDS-018
-func sliceChannel(codes []uint8, thr float64, haveThr bool) sliced {
-	const hystFrac = 0.20
+func rails(codes []uint8) (lowRail, highRail float64, reason string) {
 	const minAmp = 20.0
-	n := len(codes)
 	var h [256]float64
 	valid := 0
 	for _, v := range codes {
@@ -127,7 +183,7 @@ func sliceChannel(codes []uint8, thr float64, haveThr bool) sliced {
 		valid++
 	}
 	if valid < 8 {
-		return sliced{reason: "no/too-few valid samples"}
+		return 0, 0, "no/too-few valid samples"
 	}
 	noiseFloor := math.Max(1, 0.001*float64(valid))
 	gmin := 0
@@ -139,7 +195,7 @@ func sliceChannel(codes []uint8, thr float64, haveThr bool) sliced {
 		gmax--
 	}
 	if gmax <= gmin {
-		return sliced{reason: "flat/no transitions"}
+		return 0, 0, "flat/no transitions"
 	}
 	mid0 := float64(gmin+gmax) / 2
 	var lw, ls, hw, hs float64
@@ -152,18 +208,31 @@ func sliceChannel(codes []uint8, thr float64, haveThr bool) sliced {
 			hs += h[c]
 		}
 	}
-	lowRail := float64(gmin)
+	lowRail = float64(gmin)
 	if ls != 0 {
 		lowRail = lw / ls
 	}
-	highRail := float64(gmax)
+	highRail = float64(gmax)
 	if hs != 0 {
 		highRail = hw / hs
 	}
-	amp := highRail - lowRail
-	if amp < minAmp {
-		return sliced{reason: fmt.Sprintf("amplitude %.0f < %g", amp, minAmp)}
+	if amp := highRail - lowRail; amp < minAmp {
+		return lowRail, highRail, fmt.Sprintf("amplitude %.0f < %g", amp, minAmp)
 	}
+	return lowRail, highRail, ""
+}
+
+// sliceChannel builds the threshold/hysteresis + level/edge model for one
+// channel (decode.js sliceChannel). thr overrides the auto midpoint when set.
+// TRLC-LINKS: REQ-SDS-018
+func sliceChannel(codes []uint8, thr float64, haveThr bool) sliced {
+	const hystFrac = 0.20
+	n := len(codes)
+	lowRail, highRail, reason := rails(codes)
+	if reason != "" {
+		return sliced{reason: reason}
+	}
+	amp := highRail - lowRail
 	threshold := (lowRail + highRail) / 2
 	if haveThr {
 		threshold = thr

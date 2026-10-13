@@ -55,14 +55,23 @@ func (c *Controller) startStream() {
 	c.mu.Lock()
 	c.streamList, c.streamTop = false, -1 // a new stream shows its live tail
 	c.mu.Unlock()
-	// Auto runs on the frame on screen now; it takes a while on long views,
-	// so it runs with the start off the panel goroutine.
-	go func() {
+	// Auto runs on the frame on screen, else on a sampled record found as
+	// BUS's auto-detect finds a bus: the live envelope is too coarse at slow
+	// timebases (bug hunt #3: a 115200 UART plain on screen at 500us/div was
+	// "no protocol"). Both take a while on long views, so they run with the
+	// start off the panel goroutine.
+	c.offPanel(func() {
 		t0 := time.Now()
 		res, sampleS, ok := auto()
-		c.logf("panel: stream: auto %s in %v", res.Proto, time.Since(t0).Round(time.Millisecond))
 		if !ok {
-			s.Refuse("Auto found no protocol on screen - show more of it (slower t/div)") // e.g. one UART byte at 10 us/div
+			res, sampleS, ok, _ = c.findBus(auto, c.streaming)
+		}
+		c.logf("panel: stream: auto %s in %v", res.Proto, time.Since(t0).Round(time.Millisecond))
+		if !c.streaming() {
+			return // Stream went off, or Protocol left Auto, meanwhile
+		}
+		if !ok {
+			s.Refuse("Auto: " + c.noBusNote("no bus found on C1 or C2"))
 			return
 		}
 		p, err := streamview.ParamsFromAuto(res, sampleS)
@@ -74,13 +83,24 @@ func (c *Controller) startStream() {
 		if res.Baud > 0 {
 			label = fmt.Sprintf("%s %d b/s %s", streamName(res.Proto), res.Baud, res.Src)
 		}
+		// A stream still starting or ending (Stream turned off and on again
+		// quickly) ends first: Start refused while one was starting, and that
+		// one then stopped as the Off had asked, leaving Stream On with none
+		// running (bug hunt #3).
+		for end := time.Now().Add(30 * time.Second); s.Active() && time.Now().Before(end); {
+			s.Stop()
+			time.Sleep(50 * time.Millisecond)
+		}
+		if !c.streaming() {
+			return
+		}
 		t1 := time.Now()
 		err = s.Start(p, decTrigKinds[trig%3], value, label)
 		c.logf("panel: stream: started in %v", time.Since(t1).Round(time.Millisecond))
 		if err != nil {
 			c.logf("panel: stream: %v", err)
 		}
-	}()
+	})
 }
 
 // stopStream ends a running stream by hand; its record goes to the display.
@@ -92,6 +112,30 @@ func (c *Controller) stopStream() {
 	if s != nil && s.Active() {
 		go s.Stop()
 	}
+}
+
+// leaveStream ends stream mode's stream and resumes live captures. The engine
+// ends a stream stopped, its record on the display, so RUN waits for that end:
+// run before it, the scope was left stopped (bug hunt #3: "Trigger on it" from
+// a stream armed a stopped scope; DEFAULT SETUP from a stream ended in STOP).
+// TRLC-LINKS: REQ-SDS-018
+func (c *Controller) leaveStream() {
+	c.mu.Lock()
+	s := c.stream
+	c.mu.Unlock()
+	if s == nil || !s.Active() {
+		c.eng.SetRunning(true)
+		return
+	}
+	go func() {
+		s.Stop()
+		for end := time.Now().Add(30 * time.Second); s.Active() && time.Now().Before(end); {
+			time.Sleep(50 * time.Millisecond) // a stream still starting ends at its first read
+		}
+		if !c.streaming() { // Stream on again meanwhile: its own start stops the scope
+			c.eng.SetRunning(true)
+		}
+	}()
 }
 
 // streaming reports the DECODE menu in Auto Stream mode.
@@ -113,6 +157,7 @@ func (c *Controller) setDecProto(p int) error {
 	c.mu.Lock()
 	prev := c.decProto
 	c.decProto = p
+	c.decGen++
 	if p == framecalc.ProtoI2C || p == framecalc.ProtoSPI {
 		c.decChB = 1 - c.decChA
 	}
@@ -137,8 +182,7 @@ func (c *Controller) setDecProto(p int) error {
 	}
 	c.syncSerialBus()
 	if stop {
-		c.stopStream()
-		c.eng.SetRunning(true)
+		c.leaveStream()
 	}
 	return nil
 }
@@ -193,8 +237,7 @@ func (c *Controller) setStreamMode(on bool) error {
 	case on && !was:
 		c.startStream()
 	case !on && was:
-		c.stopStream()
-		c.eng.SetRunning(true)
+		c.leaveStream()
 	}
 	return nil
 }

@@ -241,8 +241,19 @@ $("eWAV").onclick = () => {
 // TRLC-LINKS: REQ-SDS-069
 $("ePrint").onclick = async () => {
   popClose();
-  if (await panelPress("print")) toast("The scope is saving a screenshot of its screen (PRINT)");
-  else toast("Device screenshot is not available on this server", "warn");
+  const notice = async () => { try { return ((await (await fetch("/api/status")).json()).panel || {}).Notice || ""; } catch (e) { return null; } };
+  const before = await notice();
+  if (!(await panelPress("print"))) { toast("Device screenshot is not available on this server", "warn"); return; }
+  toast("The scope is saving a screenshot of its screen (PRINT)");
+  // The scope names the file it saved, or says why not, on its own screen:
+  // say it here too (it only ever said "saving"; bug hunt #3).
+  for (let i = 0; i < 24; i++) {
+    await new Promise((r) => setTimeout(r, 250));
+    const n = await notice();
+    if (n === null || n === before) continue;
+    if (/^SAVED /.test(n)) { toast("Saved on the scope's USB stick as " + n.slice(6)); return; }
+    if (/^PRINT/.test(n)) { toast("The scope could not save its screenshot (" + n + ")", "warn"); return; }
+  }
 };
 // TRLC-LINKS: REQ-SDS-069
 $("exportBtn").onclick = () => popToggle($("exportpop"), $("exportBtn"));

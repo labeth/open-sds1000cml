@@ -26,8 +26,28 @@ func (c *Controller) srArm() error {
 	c.mu.Lock()
 	c.srFocus = 0                 // watch
 	c.srManLo, c.srManHi = -1, -1 // auto gate
+	fpga := c.srStopMode >= srStopFPGA
 	c.mu.Unlock()
-	if !c.srSeedAndStart() {
+	if fpga { // Stop on an FPGA mode: the FPGA stacks; On refused with the software stack's depth limit (bug hunt #3)
+		c.srFPGARun()
+		return nil
+	}
+	// The live record on screen too deep for the software stack: refused at
+	// once (stopped, the seed resumes RUN and stacks the live frames).
+	if cols := c.srSampledCols(); cols > 0 && c.eng.Snapshot().Running {
+		c.mu.Lock()
+		k := c.srK
+		c.mu.Unlock()
+		if cols*k > srSoftBinsMax {
+			why := fmt.Sprintf("too deep to stack (%dk): Stop on: FPGA rec, or a faster S/DIV", (cols+500)/1000)
+			c.srSetStatus(why)
+			return fmt.Errorf("super-res: %s", why)
+		}
+	}
+	// the seed takes seconds off the panel goroutine: say so, not the last
+	// session's "cancelled" (bug hunt #3)
+	c.srSetStatus("finding the reference...")
+	if !c.srKick() {
 		c.mu.Lock()
 		why := c.srStatus
 		c.mu.Unlock()
@@ -35,6 +55,81 @@ func (c *Controller) srArm() error {
 	}
 	c.pushLEDs()
 	return nil
+}
+
+// srSampledCols is the samples of the sampled frame on screen, 0 for none
+// (an envelope, or no frame).
+// TRLC-LINKS: REQ-SDS-140
+func (c *Controller) srSampledCols() int {
+	cols := 0
+	c.frameFn(func(f *engine.Frame) {
+		if f != nil && !f.IsEnv && !f.PeakDetect {
+			cols = min(max(f.Valid, 0), len(f.C1))
+		}
+	})
+	return cols
+}
+
+// srKick asks for a fresh stack from the current frame with the current
+// channel, grid and gate. The period search and the seed take seconds on the
+// ARM and froze every key while they ran on the panel goroutine (bug hunt #3:
+// Super-res On held the keys 2-4 s, each gate edge's knob detent 1-2 s), so
+// the panel loop hands them to a seeder goroutine, where the latest request
+// wins; without the loop (tests) the seed runs here. It reports false when a
+// seed run here failed.
+// TRLC-LINKS: REQ-SDS-140
+func (c *Controller) srKick() bool {
+	c.mu.Lock()
+	c.srSeedGen++
+	gen := c.srSeedGen
+	c.srSeeding = true
+	c.srRunAt = c.runReq.Load()
+	start := !c.srSeederOn
+	if c.looping.Load() && start {
+		c.srSeederOn = true
+	}
+	c.mu.Unlock()
+	if !c.looping.Load() {
+		ok := c.srSeedAndStartGen(gen)
+		c.mu.Lock()
+		if c.srSeedGen == gen {
+			c.srSeeding = false
+		}
+		c.mu.Unlock()
+		return ok
+	}
+	if start {
+		go c.srSeeder()
+	}
+	return true
+}
+
+// srSeeder seeds stacks until no newer request waits; a failed seed says why.
+// TRLC-LINKS: REQ-SDS-140
+func (c *Controller) srSeeder() {
+	for {
+		c.mu.Lock()
+		if !c.srSeeding { // Off came before this seed began: nothing to seed
+			c.srSeederOn = false
+			c.mu.Unlock()
+			return
+		}
+		gen := c.srSeedGen
+		c.mu.Unlock()
+		ok := c.srSeedAndStartGen(gen)
+		c.mu.Lock()
+		if c.srSeedGen != gen && c.srSeeding {
+			c.mu.Unlock()
+			continue // a newer request (a gate edit, a new channel) came meanwhile
+		}
+		c.srSeeding, c.srSeederOn = false, false
+		why, current := c.srStatus, c.srSeedGen == gen
+		c.mu.Unlock()
+		if !ok && current {
+			c.toast("Super-res: "+why, 2400*time.Millisecond)
+		}
+		return
+	}
 }
 
 // srAutoGate goes back to the automatic gate (the screen window).
@@ -45,7 +140,7 @@ func (c *Controller) srAutoGate() error {
 	c.srManLo, c.srManHi = -1, -1
 	c.mu.Unlock()
 	if active {
-		c.srSeedAndStart()
+		c.srKick()
 	}
 	return nil
 }
@@ -71,7 +166,7 @@ func (c *Controller) srSetGate(end bool, v int) error {
 		c.srManHi = max(c.srManHi, c.srManLo+minW)
 	}
 	c.mu.Unlock()
-	c.srSeedAndStart() // rebuild the stack on the new gate
+	c.srKick() // rebuild the stack on the new gate
 	return nil
 }
 
@@ -84,7 +179,7 @@ func (c *Controller) srRearm() {
 	c.srManLo, c.srManHi = -1, -1 // Channel/K change → auto gate for the new stack
 	c.mu.Unlock()
 	if active {
-		c.srSeedAndStart()
+		c.srKick()
 	}
 }
 
@@ -116,9 +211,26 @@ func srFocusName(f int) string {
 // usable frame or the reference is unusable.
 // TRLC-LINKS: REQ-SDS-140
 func (c *Controller) srSeedAndStart() bool {
-	if c.frameFn == nil {
-		c.srSetStatus("no frame source")
+	c.mu.Lock()
+	gen := c.srSeedGen
+	c.mu.Unlock()
+	return c.srSeedAndStartGen(gen)
+}
+
+// srSeedAndStartGen is srSeedAndStart for request gen: a newer request or Off
+// meanwhile discards it (its status, and the stack it built).
+// TRLC-LINKS: REQ-SDS-140
+func (c *Controller) srSeedAndStartGen(gen uint64) bool {
+	fail := func(why string) bool {
+		c.mu.Lock()
+		if c.srSeedGen == gen {
+			c.srStatus = why
+		}
+		c.mu.Unlock()
 		return false
+	}
+	if c.frameFn == nil {
+		return fail("no frame source")
 	}
 	c.srWaitRaw()
 	var c1, c2 []uint8
@@ -155,7 +267,7 @@ func (c *Controller) srSeedAndStart() bool {
 	// band), which is never shallow enough to stack in software, so SINGLE
 	// then UTILITY always failed (bug hunt #2). The stack is fed live raw
 	// frames anyway: resume and seed from the first one, as a running arm does.
-	if c1 != nil && cols*k > srSoftBinsMax && !c.eng.Snapshot().Running {
+	if c1 != nil && cols*k > srSoftBinsMax && !c.eng.Snapshot().Running && c.srRunUntouched() {
 		stale := seq
 		c.eng.SetRunning(true)
 		for i := 0; i < 60; i++ {
@@ -173,14 +285,13 @@ func (c *Controller) srSeedAndStart() bool {
 		}
 	}
 	if c1 == nil {
-		c.srSetStatus("sampled frame required - use FPGA or a faster timebase")
-		return false
+		return fail("sampled frame required - Stop on: FPGA rec, or a faster timebase")
 	}
 	// The software stack holds ten float64 accumulators per fine bin; a deep
 	// window (156k samples at 0.5 ms/div x32 = ~400 MB) cannot fit the device.
 	if cols*k > srSoftBinsMax {
-		c.srSetStatus(fmt.Sprintf("window too deep for software stacking (%d samples) - use FPGA or a faster timebase", cols))
-		return false
+		// short enough for the ACQ tab's status line with its remedy (77 characters)
+		return fail(fmt.Sprintf("too deep to stack (%dk): Stop on: FPGA rec, or a faster S/DIV", (cols+500)/1000))
 	}
 	// Default gate = the ON-SCREEN window (super-res exactly what's displayed —
 	// winCols samples centred on the trigger edge), so you never stack a random
@@ -220,11 +331,14 @@ func (c *Controller) srSeedAndStart() bool {
 	st.Align = ch
 	st.SampleS = sampleS
 	if !st.SeedRefGate(c1, c2, edgeX, stackLo, stackHi) { // lo<0 → auto gate; else manual
-		c.srSetStatus("ref unusable (flat/clipped) - freeze a cleaner frame")
-		return false
+		return fail("ref unusable (flat/clipped) - freeze a cleaner frame")
 	}
 	stop := make(chan struct{})
 	c.mu.Lock()
+	if c.srSeedGen != gen { // a newer request or Off came while this one seeded
+		c.mu.Unlock()
+		return false
+	}
 	if c.srStop != nil { // stop the previous stacker before swapping the Stack
 		close(c.srStop)
 	}
@@ -232,11 +346,28 @@ func (c *Controller) srSeedAndStart() bool {
 	c.srT0, c.srStatus, c.srMean, c.srMean2, c.srBits, c.srResetReq = time.Now(), "stacking...", nil, nil, 0, false
 	c.srFrames, c.srRejected = st.Hits, 0               // fresh counts (not stale from a prior arm)
 	c.srWinLo, c.srWinHi, c.srPeriod = mlo, mhi, period // review span + tile period
-	c.running, c.single = true, false
+	// resume so matching frames flow in; a Run/Stop/Single pressed while the
+	// seed ran off the panel goroutine stands (bug hunt #3: the seed's end put
+	// a Stop pressed meanwhile back to Run)
+	resume := c.runReq.Load() == c.srRunAt
+	if resume {
+		c.running, c.single = true, false
+	}
 	c.mu.Unlock()
-	c.eng.SetRunning(true)          // resume so matching frames flow in
+	if resume {
+		c.eng.SetRunning(true)
+	}
 	go c.srLoop(stop, st, seedTdiv) // pass the Stack in — the loop is its sole owner, no shared read
 	return true
+}
+
+// srRunUntouched reports that no Run, Stop or Single came since the seed was
+// asked for: only then does a seed change Run/Stop for its frames.
+// TRLC-LINKS: REQ-SDS-140
+func (c *Controller) srRunUntouched() bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.runReq.Load() == c.srRunAt
 }
 
 // srCancel stops the stacker and leaves the mode (Super-res Off). The stack
@@ -254,7 +385,8 @@ func (c *Controller) srCancel(why string) {
 		close(c.srStop)
 		c.srStop = nil
 	}
-	c.srActive, c.srFocus = false, 0
+	c.srSeedGen++ // a seed in flight is discarded
+	c.srActive, c.srFocus, c.srSeeding = false, 0, false
 	if why != "" {
 		c.srStatus = why
 	}

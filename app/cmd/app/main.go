@@ -66,6 +66,20 @@ func (s scopeSource) WaitNextFrame(last uint64, timeout time.Duration) uint64 {
 	return s.fo.WaitNext(last, timeout)
 }
 
+// webSetups is the panel's shared setup store as the web's Setups list it:
+// what each slot holds, as the scope's FILE tab shows it.
+// TRLC-LINKS: REQ-SDS-219
+type webSetups struct{ *panel.SharedSetups }
+
+// TRLC-LINKS: REQ-SDS-219
+func (w webSetups) SetupSlots() []web.SetupSlot {
+	var out []web.SetupSlot
+	for _, s := range w.Slots() {
+		out = append(out, web.SetupSlot{Slot: s.Slot, Used: s.Used, Summary: s.Summary})
+	}
+	return out
+}
+
 // buildHUD assembles the LCD/SCDP heads-up state from the engine + front end.
 // The trigger-level readout is scaled by the SOURCE channel's V/div.
 // TRLC-LINKS: REQ-SDS-168
@@ -440,9 +454,8 @@ func runLCD(e *engine.Engine, fe *analog.FrontEnd, fo *frames.Fanout) {
 					lcdSpect.Push(f, sgSrc, effNyq)
 				}
 			}
-			if pc := uiCtrl.Load(); pc != nil {
-				pc.SyncLEDs() // keep RUN/STOP + SINGLE lamps in step (re-latches only on change)
-			}
+			// The panel's 40 ms tick keeps the lamps and the remote's snapshot
+			// in step; doing it here too doubled their cost (bug hunt #3, B3).
 			live := f != nil && time.Since(lastFresh) < 300*time.Millisecond
 			// Asleep, the scope keeps acquiring and analysing; only the
 			// workspace's render stops.
@@ -775,7 +788,7 @@ func main() {
 		interleaveCal = c
 	}
 	e := engine.New(engine.Config{Bus: b, Logf: logf, SRAM: sramBackend, InterleaveCalibration: interleaveCal})
-	if images := (imageSwitcher{fd: gpmcFD}); sramDefault && len(fpgaload.General()) != 0 && (images.HasStack() || images.HasPacket() || images.HasLine() || images.HasStream()) {
+	if images := (imageSwitcher{fd: gpmcFD}); sramDefault && len(fpgaload.General()) != 0 && (images.HasStack() || images.HasPacket() || images.HasLine() || images.HasStream() || images.HasQualify()) {
 		e.SetImageSwitcher(images)
 		logf("FPGA images embedded: stacking %d, packet %d, line %d bytes", len(fpgaload.Stack()), len(fpgaload.Packet()), len(fpgaload.Line()))
 	}
@@ -936,8 +949,11 @@ func main() {
 	setupSlots := settings.Slots{Dir: filepath.Dir(setPath),
 		Collect: func() settings.Settings { return settings.Collect(e, setFE, pc) },
 		Apply:   func(st settings.Settings) { settings.Apply(st, e, setFE, pc, logf) }}
-	scpiH.SetSetupMemory(setupSlots)
 	pc.SetSetupMemory(setupSlots) // SAVE/RECALL key: the same slots as *SAV/*RCL
+	// SCPI and the web save and recall through the panel, so its FILE rows and
+	// SAVE/RECALL lamp follow them.
+	sharedSetups := pc.SharedSetups()
+	scpiH.SetSetupMemory(sharedSetups)
 	pc.SetHardcopy(func() (string, error) {
 		if !mountedAt(uDisk) { // the bare directory would be the internal flash
 			return "", fmt.Errorf("no U-disk mounted at %s", uDisk)
@@ -955,8 +971,8 @@ func main() {
 	// request. Slow-peer writes are bounded per-response inside the handler
 	// (SetWriteDeadline). Don't "harden" this without moving that contract.
 	ws := web.New(scopeSource{e, fo}, feIface, pc, screenPNG)
-	ws.SetInvertSource(scpiH.Inverted) // display-level INVS: SCPI shadow → /api/status
-	ws.SetSetupMemory(setupSlots)      // the web top bar's Setups: the same slots as *SAV/*RCL
+	ws.SetInvertSource(scpiH.Inverted)         // display-level INVS: SCPI shadow → /api/status
+	ws.SetSetupMemory(webSetups{sharedSetups}) // the web top bar's Setups: the same slots as *SAV/*RCL
 	if !sramDefault {
 		ws.SetDiag(dg)
 	} // /diag + /api/diag/* (workplan §2 diagnostic block)

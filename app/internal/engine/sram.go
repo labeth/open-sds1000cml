@@ -8,6 +8,7 @@ import (
 	"math"
 	"open-sds/app/internal/dsp"
 	"open-sds/app/internal/sramcapture"
+	"slices"
 	"time"
 )
 
@@ -22,6 +23,24 @@ type SRAMPlan struct {
 }
 
 // TRLC-LINKS: REQ-SDS-010, REQ-SDS-040
+
+// FullRateTdiv is the slowest of tdivs whose SRAM record is sampled at the
+// fastest rate (0 for none): where BUS detection looks again when a record
+// hid the bus (decimated, or too short).
+// TRLC-LINKS: REQ-SDS-214
+func FullRateTdiv(tdivs []float64) float64 {
+	if len(tdivs) == 0 {
+		return 0
+	}
+	full, best := PlanSRAM(slices.Min(tdivs)).SampleS, 0.0
+	for _, t := range tdivs {
+		if PlanSRAM(t).SampleS <= full && t > best {
+			best = t
+		}
+	}
+	return best
+}
+
 func PlanSRAM(tdiv float64) SRAMPlan {
 	p := SRAMPlan{Samples: int(sramcapture.SamplesPerChannel), SampleS: 2e-9}
 	if !(tdiv > 0) || math.IsInf(tdiv, 0) {
@@ -246,6 +265,15 @@ func (e *Engine) sramConfig() (sramcapture.Config, SRAMPlan, float64, bool, trig
 		words := uint32((samples + perWord - 1) / perWord)
 		p.Samples = int(words) * perWord
 		pre := uint32(float64(words) * math.Float64frombits(e.trigPosFrac.Load()))
+		if e.serialMode.Load() == SerialTrigger && p.SampleS > 0 {
+			// Software moves the trigger point back to the match's start, as
+			// far as it last did: the record holds that before the hardware
+			// trigger too (at 200 us/div the record is one screen, and the
+			// screen's left edge went flat; bug hunt #3).
+			if s := math.Float64frombits(e.serLv.shiftS.Load()); s > 0 {
+				pre += min(uint32(s/p.SampleS)/uint32(perWord), words/2)
+			}
+		}
 		if pre >= words {
 			pre = words - 1
 		}
@@ -256,7 +284,31 @@ func (e *Engine) sramConfig() (sramcapture.Config, SRAMPlan, float64, bool, trig
 			e.ser.mu.Lock()
 			serial := e.ser.params
 			e.ser.mu.Unlock()
+			// The matcher slices at the learned level when the request names none.
+			serial, _ = e.serialPlanParams(serial)
 			e.planSerial(&c, serial, tp.typ == TrigEdge && e.serialMode.Load() != SerialTrigger)
+		}
+		if tp.typ != TrigEdge && e.serialMode.Load() != SerialTrigger {
+			// The FPGA's qualifier decides a pulse, slope or video trigger; until
+			// it can (no image, the levels still unknown) captures run free
+			// and nothing triggers.
+			if q, level, why := e.planQualifier(tp, int(c.TriggerChannel), e.trigRising.Load()); why == "" {
+				c.Qualifier, c.Normal, c.TriggerLevel = q, true, level
+			}
+		}
+		if e.zonesOn() && e.serialMode.Load() != SerialTrigger {
+			// The FPGA's zones qualify the trigger; until they can, nothing
+			// triggers. They fire when the latest window has ended: the record
+			// holds that delay before the trigger too.
+			if z, delayS, why := e.planZones(); why == "" && c.Normal {
+				c.Zones = z
+				if p.SampleS > 0 {
+					c.PreWords = min(c.PreWords+uint32(delayS/p.SampleS)/uint32(perWord), words-1)
+					c.PostWords = words - c.PreWords
+				}
+			} else {
+				c.Normal = false
+			}
 		}
 		e.planHysteresis(&c, p.Log != 0)
 		return c, p
@@ -554,9 +606,30 @@ acquisitionLoop:
 		}
 		e.stats.BandKind = "sram"
 		e.stats.HaltMode = "freeze-read-rearm"
-		e.stats.SerialBackend = "software"
+		e.stats.SerialBackend = ""
 		if name := hardwareSerialName(cfg); name != "" {
 			e.stats.SerialBackend = "hardware-" + name
+		} else if e.serialMode.Load() == SerialTrigger {
+			e.stats.SerialBackend = "none: " + e.serialNoHardware()
+		}
+		e.stats.TriggerBackend = ""
+		if cfg.Qualifier.Enabled {
+			e.stats.TriggerBackend = "hardware-" + qualName(cfg.Qualifier.Kind)
+		} else if tp.typ != TrigEdge && e.serialMode.Load() != SerialTrigger {
+			_, _, why := e.planQualifier(tp, int(cfg.TriggerChannel), e.trigRising.Load())
+			e.stats.TriggerBackend = "none: " + why
+		}
+		e.stats.ZoneBackend = ""
+		if cfg.Zones.Enabled() {
+			e.stats.ZoneBackend = "hardware"
+		} else if e.zonesOn() && e.serialMode.Load() != SerialTrigger {
+			why := "the trigger has no hardware yet"
+			if e.stats.TriggerBackend == "" {
+				_, _, why = e.planZones()
+			}
+			e.stats.ZoneBackend = "none: " + why
+		} else if e.zonesOn() {
+			e.stats.ZoneBackend = "none: zones qualify an edge, pulse, slope or video trigger, not a serial one"
 		}
 		e.stats.TdivS = tdiv
 		e.stats.DisplayedS = math.Min(tdiv, float64(plan.Samples)*plan.SampleS/10)
@@ -565,6 +638,7 @@ acquisitionLoop:
 		e.mu.Unlock()
 		armAt := e.clk.Now()
 		armedAt := armAt
+		feAtArm := e.feGen.Load() // the front end's write generation this capture is armed under
 		var ctx context.Context
 		var cancel context.CancelFunc
 		var err error
@@ -653,18 +727,30 @@ acquisitionLoop:
 		e.viewHeld.Store(true)
 		recallOffset, recallWords := uint32(0), m.Length
 		posFrac := math.Float64frombits(e.trigPosFrac.Load())
-		softQualify := tp.typ != TrigEdge && e.serialMode.Load() != SerialTrigger
+		// Pulse, slope and video triggers are the FPGA's: nothing is searched
+		// in software, only a video line moves back to its sync's start.
+		softQualify := false
 		// The capture that serves a SINGLE is read whole once: the stop that
 		// follows shows that full record from memory instead of reading it again.
 		singleShot := !replay && e.singleArmed.Load() && singleGen == e.singleGen.Load()
 		if !fullRecall && !singleShot {
 			// A software-qualified trigger needs room to find its event away
-			// from the hardware edge and still fill the screen around it.
-			screen := plan.Screen
-			if softQualify || e.serialMode.Load() == SerialTrigger {
+			// from the hardware edge and still fill the screen around it. The
+			// FPGA's serial trigger fires at the match's end and software
+			// moves the trigger point back to its start: the window holds
+			// that much more before the trigger (twice the screen halved the
+			// live envelope's resolution, and a fast bus no longer decoded;
+			// bug hunt #3).
+			screen, pre := plan.Screen, 0
+			switch {
+			case softQualify:
 				screen *= 2
+			case e.serialMode.Load() == SerialTrigger:
+				pre = e.serialPreRoom(plan.SampleS, screen)
+			case cfg.Qualifier.Enabled && cfg.Qualifier.Kind == sramcapture.QualVideo && plan.SampleS > 0:
+				pre = int(8e-6 / plan.SampleS) // a line sync's width
 			}
-			recallOffset, recallWords = liveSRAMWindow(m, screen, posFrac)
+			recallOffset, recallWords = liveSRAMWindowPre(m, screen, posFrac, pre)
 		}
 		// While running, a window larger than the display needs is read as a
 		// peak-detect envelope; the deep record stays in SRAM for a stop.
@@ -874,6 +960,9 @@ acquisitionLoop:
 		}
 		conditionedAt := e.clk.Now()
 		e.cpuStage.Lock()
+		if !replay {
+			e.learnLevels(f, savedScale, feAtArm)
+		}
 		f.WindowNs = int64(float64(f.Valid) * f.SampleS * 1e9)
 		if !previousFrozen.IsZero() {
 			f.GapNs = int64(armAt.Sub(previousFrozen))
@@ -885,19 +974,32 @@ acquisitionLoop:
 		}
 		_, _, f.Ptp = ptp(disc)
 		qualified := f.Trigd
-		if softQualify {
-			at := softAnchor(f.Valid, f.WinCols, posFrac, f.EdgeX)
-			switch tp.typ {
-			case TrigPulse:
-				f.EdgeX = qualifyPulseAt(disc, f.SampleS*1e9, tp, !cfg.Falling, at)
-			case TrigSlope:
-				f.EdgeX = qualifySlopeAt(disc, f.SampleS*1e9, tp, !cfg.Falling, at)
-			case TrigVideo:
-				f.EdgeX = qualifyVideoAt(disc, f.SampleS*1e9, tp, at)
+		if cfg.Zones.Enabled() && f.Trigd && f.EdgeX >= 0 && f.SampleS > 0 {
+			// The FPGA's zones decided and fired when the latest window ended:
+			// the trigger point moves back to the edge they qualified, before
+			// it is placed on its crossing.
+			_, delayS, _ := e.planZones()
+			f.EdgeX -= delayS / f.SampleS
+			f.TrigPos = int(f.EdgeX)
+		}
+		switch {
+		case cfg.Qualifier.Enabled:
+			// The FPGA's qualifier decided; software only places the trigger
+			// point on the event's level crossing.
+			if f.Trigd {
+				f.TriggerKind = "hardware-" + qualName(cfg.Qualifier.Kind)
+				q := f.Q1
+				if cfg.TriggerChannel == 1 {
+					q = f.Q2
+				}
+				f.EdgeX = placeQualified(f, disc, q, cfg.Qualifier, cfg.TriggerLevel)
+				f.TrigPos = int(f.EdgeX)
 			}
-			qualified = f.EdgeX >= 0
-			f.Trigd = qualified
-			f.TriggerKind = "software-window"
+		case tp.typ != TrigEdge && e.serialMode.Load() != SerialTrigger:
+			// No qualifier could take it: nothing triggers. Software never
+			// decides a trigger.
+			qualified, f.Trigd = false, false
+			f.TriggerKind, f.EdgeX = "untriggered", -1
 		}
 		// Place a plain edge trigger at its exact level crossing: the FPGA
 		// index is word-granular. Envelope frames hold bucket extremes, not
@@ -908,50 +1010,47 @@ acquisitionLoop:
 				if cfg.TriggerChannel == 1 {
 					q = f.Q2
 				}
-				if !confirmTriggerEdge(disc, q, f.Valid, f.EdgeX, float64(lvl), !cfg.Falling, f.PeakDetect) {
-					// Converter noise, not an edge: AUTO shows it untriggered,
-					// NORMAL and SINGLE keep waiting.
+				if !e.placeEdgeTrigger(f, disc, q, float64(lvl), !cfg.Falling) {
+					// The FPGA pointed at an edge the calibrated record does
+					// not have (converter noise): software may check a trigger
+					// the hardware pointed out and reject it (owner rule).
+					// AUTO shows it untriggered, NORMAL and SINGLE keep waiting.
 					f.Trigd, qualified = false, false
 					f.TriggerKind, f.EdgeX = "forced", -1
-					e.mu.Lock()
-					e.stats.FalseTriggers++
-					e.mu.Unlock()
-				} else if !f.PeakDetect {
-					f.EdgeX = refineTriggerEdge(disc, q, f.Valid, f.EdgeX, float64(lvl), !cfg.Falling)
-					f.TrigPos = int(f.EdgeX)
 				}
 			}
 		}
 		e.noteARINCLevels(f)
 		if name := hardwareSerialName(cfg); e.serialMode.Load() == SerialTrigger && name != "" {
+			// The FPGA's matcher decided; software only moves the trigger
+			// point from where the match ended to where it began.
 			qualified = f.Trigd
 			f.TriggerKind = "hardware-" + name
 			if qualified {
 				e.serialMatches.Add(1)
+				if at := e.serialMatchStart(f, f.EdgeX); at >= 0 {
+					e.serLv.shiftS.Store(math.Float64bits((f.EdgeX - at) * f.SampleS))
+					f.EdgeX = at
+					f.TrigPos = int(at)
+				}
 			}
 		} else if e.serialMode.Load() == SerialTrigger {
-			posFrac := math.Float64frombits(e.trigPosFrac.Load())
-			matched, anchor := e.serialQualifyAt(f, f.Valid, f.SampleS, softAnchor(f.Valid, f.WinCols, posFrac, -1))
-			if matched && offRecord(f.Valid, f.WinCols, posFrac, anchor) > f.WinCols/20 {
-				// The match would leave over 5 % of the screen off the
-				// record (one SRAM read is ~one screen at >=200 us/div):
-				// wait for a better-placed one, as for no match (bug hunt
-				// 2026-10-11, #29).
-				matched = false
-			}
-			qualified = matched
-			f.Trigd = matched
-			f.TriggerKind = "software-window"
-			if matched {
-				f.EdgeX = float64(anchor)
-				e.serialMatches.Add(1)
-			} else {
-				f.EdgeX = -1
-			}
+			// No matcher could take the request (its levels are still being
+			// learned from these untriggered captures, or the image has none
+			// for it): nothing triggers. Software never decides a trigger.
+			qualified, f.Trigd = false, false
+			f.TriggerKind, f.EdgeX = "untriggered", -1
 		}
-		if e.zoneMode.Load() == ZoneTrigger {
-			qualified = qualified && e.zonesQualify(f, f.Valid, f.EdgeX, f.SampleS)
-			f.Trigd = qualified
+		switch {
+		case cfg.Zones.Enabled():
+			if f.Trigd {
+				f.TriggerKind = "hardware-zone"
+			}
+		case e.zonesOn() && e.serialMode.Load() != SerialTrigger:
+			// No zone hardware could take them: nothing triggers. Software
+			// never decides a trigger.
+			qualified, f.Trigd = false, false
+			f.TriggerKind, f.EdgeX = "untriggered", -1
 		}
 		// Mask test: every triggered frame, published or held (zonemask.go).
 		// Stop-on-fail stops on the offending frame and shows it.
@@ -1038,7 +1137,11 @@ acquisitionLoop:
 			f.Trigd = false
 			f.TriggerKind = "forced"
 		}
-		if !replay && f.Trigd && !f.PeakDetect && e.bodeMode.Load() == BodeOn {
+		// Bode measures every capture, triggered or not: its gain and phase
+		// are the ratio of the two channels sampled together. Asking for a
+		// trigger stopped the sweep, unsaid, with the level off the signal
+		// (bug hunt #3).
+		if !replay && !f.PeakDetect && e.bodeMode.Load() == BodeOn {
 			e.bodeEval(f, f.Valid, f.SampleS)
 		}
 		publish := qualified || !norm || fullRecall || userForced || maskStop
@@ -1112,11 +1215,20 @@ func boolInt(v bool) int {
 // needing more samples, retain the whole visible span instead of aliasing it.
 // TRLC-LINKS: REQ-SDS-010
 func liveSRAMWindow(m sramcapture.Metadata, screen int, posFrac float64) (uint32, uint32) {
+	return liveSRAMWindowPre(m, screen, posFrac, 0)
+}
+
+// liveSRAMWindowPre is liveSRAMWindow holding extraPre more samples before the
+// trigger.
+// TRLC-LINKS: REQ-SDS-010
+func liveSRAMWindowPre(m sramcapture.Metadata, screen int, posFrac float64, extraPre int) (uint32, uint32) {
 	per := int(m.SamplesPerWord)
 	samples := max(2048, screen+512)
 	if m.FractionBits == 8 {
 		samples = max(256, screen+128)
 	}
+	margin := samples - screen
+	samples += max(0, extraPre)
 	words := min(m.Length, uint32((samples+per-1)/per))
 	// The trigger sits at posFrac of the screen, so the window holds
 	// screen·posFrac samples before it plus half the margin. Centring the
@@ -1125,7 +1237,7 @@ func liveSRAMWindow(m sramcapture.Metadata, screen int, posFrac float64) (uint32
 	if !(posFrac >= 0 && posFrac <= 1) {
 		posFrac = .5
 	}
-	pre := uint32((float64(screen)*posFrac + float64(samples-screen)/2) / float64(per))
+	pre := uint32((float64(screen)*posFrac + float64(margin)/2 + float64(max(0, extraPre))) / float64(per))
 	pre = min(pre, words)
 	offset := uint32(0)
 	if m.TriggerIndex > pre {

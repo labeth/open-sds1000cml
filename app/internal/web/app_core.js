@@ -253,7 +253,12 @@ function applyStatus() {
   {
     const src = (st.trig_source || 0) + 1, vd = st["vdiv" + src] || 1, p = trigProbe();
     const off = Number.isFinite(st["off" + src + "_v"]) ? st["off" + src + "_v"] : 0;
-    $("lvl").min = -5 * vd * p - off; $("lvl").max = 5 * vd * p - off; $("lvl").step = vd * p / 25; // ±5 div of screen
+    // ±5 div of screen, its ends on whole steps of one code from 0 V: a range snaps to min + n·step, and an
+    // offset-shifted min (-4.56 mV after Default setup) left 0 V off the grid (bug hunt #3: back at the centre
+    // the level read 4.39 mV)
+    const step = vd * p / 25;
+    $("lvl").step = step;
+    $("lvl").min = Math.floor((-5 * vd * p - off) / step) * step; $("lvl").max = Math.ceil((5 * vd * p - off) / step) * step;
   }
   if (!offDragging) {
     $("off1v").textContent = Number.isFinite(st.off1_v) ? eng(st.off1_v, "V") : "—";
@@ -338,6 +343,13 @@ function updateQualRow() {
   $("qp-pulse").style.display = t === 1 ? "block" : "none";
   $("qp-slope").style.display = t === 2 ? "block" : "none";
   $("qp-video").style.display = t === 3 ? "block" : "none";
+  // The FPGA decides these triggers: say so, or why it cannot yet.
+  const b = (st && st.trigger_backend) || "";
+  $("qualStat").textContent = b.startsWith("none: ") ? "No hardware trigger yet: " + b.slice(6) : b.startsWith("hardware-") ? "Decided in the FPGA" : "";
+  // edge triggers the FPGA fired with no edge at the level, dropped: say so
+  const noise = t === 0 && st && st.noise_triggers > 0.25;
+  $("trigNoise").hidden = !noise;
+  if (noise) $("trigNoise").textContent = `${Math.round(100 * st.noise_triggers)}% of triggers dropped as noise: raise the gain or move the level`;
 }
 
 // TRLC-LINKS: REQ-SDS-204

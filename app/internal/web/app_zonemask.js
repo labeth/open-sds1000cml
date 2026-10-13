@@ -278,7 +278,7 @@ $("zmTrig").onclick = () => {
   const on = !$("zmTrig").classList.contains("on");
   $("zmTrig").classList.toggle("on", on);
   send("zonemode", on ? 1 : 0);
-  zmStatus(on ? "zone trigger ON — only qualifying frames publish" : "zone trigger off");
+  zmStatus(on ? "zone trigger ON — the FPGA fires only on edges that pass every zone" : "zone trigger off");
 };
 
 // Compact mask transport avoids large numeric JSON allocations on the ARM.
@@ -405,6 +405,12 @@ setInterval(() => {
   if (st.zone_mode > 0 && (st.zone_skip || 0) > zm.lastZoneSkip && zm.lastZoneSkip >= 0)
     zmStatus("zone trigger inactive at this timebase (env/roll frames can't qualify)");
   zm.lastZoneSkip = st.zone_skip || 0;
+  // The FPGA decides the zone trigger: say so, or why it cannot yet.
+  if (st.zone_mode > 0) {
+    const b = st.zone_backend || "";
+    const line = b.startsWith("none: ") ? "zone trigger ON — no hardware trigger yet: " + b.slice(6) : b === "hardware" ? "zone trigger ON — decided in the FPGA" : "";
+    if (line && zm.lastZoneLine !== line) { zmStatus(line); zm.lastZoneLine = line; }
+  } else zm.lastZoneLine = "";
   if ((st.mask_ring || 0) !== zm.lastRing) {
     zm.lastRing = st.mask_ring || 0;
     let html = "";

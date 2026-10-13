@@ -398,7 +398,7 @@ function revealControl(el) {
   const pop = el.closest(".pop");
   if (pop) {
     const btn = $(pop.id === "exportpop" ? "exportBtn" : pop.id === "setpop" ? "setupsBtn" : "");
-    if (btn && pop.hidden) popToggle(pop, btn);
+    if (btn && pop.hidden) btn.click(); // as its button opens it (Setups reads the slots)
     return !pop.hidden;
   }
   const pane = el.closest(".pane");

@@ -2,6 +2,7 @@
 package engine
 
 import (
+	"fmt"
 	"math"
 	"sort"
 	"sync"
@@ -44,6 +45,7 @@ type bodeState struct {
 	// last live point (for the status readout), guarded by mu
 	live      BodePoint
 	liveValid bool
+	why       string            // why the last capture gave no point ("" when it did)
 	scale     func(int) float64 // input-referred volts/div, including probe factor
 }
 
@@ -101,6 +103,7 @@ func (e *Engine) BodePoints() []BodePoint {
 // TRLC-LINKS: REQ-SDS-066
 func (e *Engine) bodeEval(f *Frame, valid int, sampleS float64) {
 	if sampleS <= 0 || valid < 8 {
+		e.bodeInvalidate("no samples")
 		return
 	}
 	e.bode.mu.Lock()
@@ -120,14 +123,19 @@ func (e *Engine) bodeEval(f *Frame, valid int, sampleS float64) {
 	}
 	ref, dut = ref[:valid], dut[:valid]
 
+	noTone := fmt.Sprintf("no tone on the reference C%d", refCh+1)
 	f0 := fundamentalHz(ref, sampleS)
 	if f0 <= 0 {
-		e.bodeInvalidate()
+		e.bodeInvalidate(noTone)
 		return
 	}
 	cyc := f0 * float64(valid) * sampleS
-	if cyc < bodeMinCycles || f0 >= 0.5/sampleS {
-		e.bodeInvalidate() // too few cycles to trust, or at/over Nyquist
+	if cyc < bodeMinCycles {
+		e.bodeInvalidate(fmt.Sprintf("%.1f cycles on screen, %g needed: S/DIV slower", cyc, bodeMinCycles))
+		return
+	}
+	if f0 >= 0.5/sampleS {
+		e.bodeInvalidate("the tone is too fast for this sample rate: S/DIV faster")
 		return
 	}
 	re1, im1 := singleBinDFT(ref, f0, sampleS)
@@ -138,7 +146,7 @@ func (e *Engine) bodeEval(f *Frame, valid int, sampleS float64) {
 	// the per-sample quantisation noise scaled by record length).
 	floor := 0.5 * math.Sqrt(float64(valid))
 	if mag1 < floor {
-		e.bodeInvalidate()
+		e.bodeInvalidate(noTone)
 		return
 	}
 	refScale := math.Float64frombits(e.chVdivBits[refCh].Load())
@@ -154,7 +162,7 @@ func (e *Engine) bodeEval(f *Frame, valid int, sampleS float64) {
 	}
 	gainDB := 20 * math.Log10((mag2*dutScale)/(mag1*refScale))
 	if math.IsInf(gainDB, 0) || math.IsNaN(gainDB) {
-		e.bodeInvalidate()
+		e.bodeInvalidate(fmt.Sprintf("no output on the DUT C%d", dutCh+1))
 		return
 	}
 	// phase of X2·conj(X1) = arg(X2) − arg(X1), wrapped to (−180, 180]
@@ -173,14 +181,15 @@ func (e *Engine) bodeEval(f *Frame, valid int, sampleS float64) {
 	if len(e.bode.bins) < bodeMaxPoints || func() bool { _, ok := e.bode.bins[bin]; return ok }() {
 		e.bode.bins[bin] = p
 	}
-	e.bode.live, e.bode.liveValid = p, true
+	e.bode.live, e.bode.liveValid, e.bode.why = p, true, ""
 	e.bode.mu.Unlock()
 }
 
+// bodeInvalidate marks the live point stale, saying why the capture gave none.
 // TRLC-LINKS: REQ-SDS-066
-func (e *Engine) bodeInvalidate() {
+func (e *Engine) bodeInvalidate(why string) {
 	e.bode.mu.Lock()
-	e.bode.liveValid = false
+	e.bode.liveValid, e.bode.why = false, why
 	e.bode.mu.Unlock()
 }
 

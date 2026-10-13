@@ -15,6 +15,9 @@ func (e *Engine) SetTrigType(t int) {
 	e.mu.Lock()
 	e.tp.typ = TrigType(t)
 	e.stats.TrigType = t
+	if t == int(TrigEdge) {
+		e.stats.TriggerBackend = "" // an edge needs no qualifier: not the last type's
+	}
 	e.mu.Unlock()
 }
 
@@ -323,6 +326,7 @@ func (e *Engine) setNorm(on bool) {
 	e.stats.Norm = on
 	e.mu.Unlock()
 	e.hintReset.Store(true)
+	e.clearNoiseTriggers()
 }
 
 // SetTdiv stages a timebase change; it is applied at the next frame boundary
@@ -338,6 +342,7 @@ func (e *Engine) SetTdiv(tdivS float64) (Band, bool) {
 	e.pendBand, e.pendSet = b, true
 	e.mu.Unlock()
 	e.hintReset.Store(true)
+	e.clearNoiseTriggers()
 	return b, true
 }
 
@@ -512,6 +517,7 @@ func (e *Engine) SetTrigLevelCode(code uint16) uint16 {
 	e.mu.Unlock()
 	if changed {
 		e.hintReset.Store(true)
+		e.clearNoiseTriggers()
 	}
 	return code
 }
@@ -548,6 +554,7 @@ func (e *Engine) SetTrigSlope(rising bool) {
 	e.stats.TrigRising = rising
 	e.mu.Unlock()
 	e.hintReset.Store(true)
+	e.clearNoiseTriggers()
 }
 
 // SetETS stages the equivalent-time opt-in (spec 04 §3: never auto-routed;
@@ -574,6 +581,7 @@ func (e *Engine) SetTrigSource(ch int) {
 	e.stats.TrigSource = ch
 	e.mu.Unlock()
 	e.hintReset.Store(true)
+	e.clearNoiseTriggers()
 }
 
 // SetPrecisionRate selects the nearest hardware output sample rate per channel.

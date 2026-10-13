@@ -326,6 +326,7 @@ type sv struct {
 	refHas         [2]bool
 	refShow        [2]bool
 	srActive       bool
+	srSeeding      bool
 	srFocus        int
 	srCh, srK      int
 	srStopMode     int

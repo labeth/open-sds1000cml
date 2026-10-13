@@ -177,7 +177,9 @@ func timeQualRow(id, label string, val func(*sv) float64, setNs func(*Controller
 var condOpts = []opt{{0, "Any"}, {1, "< min"}, {2, "> max"}, {3, "In range"}}
 
 // holdoffLadder is the holdoff the knob and Down/Up step through.
-var holdoffLadder = []float64{0, 100e-6, 1e-3, 10e-3, 100e-3, 1}
+// holdoffLadder is Off, then 1-2-5 steps up to the row's 10 s (it stopped at
+// 1 s in decades, so 200 ms or 5 s could only be typed; bug hunt #3).
+var holdoffLadder = []float64{0, 100e-6, 200e-6, 500e-6, 1e-3, 2e-3, 5e-3, 10e-3, 20e-3, 50e-3, 100e-3, 200e-3, 500e-3, 1, 2, 5, 10}
 
 func trigRows() []*row {
 	edge := &row{id: "trig.edge", label: "Source/slope", kind: wsview.Enum,
@@ -551,17 +553,30 @@ func acqRows() []*row {
 	}
 	depth := &row{id: "acq.depth", label: "Memory depth", kind: wsview.Enum,
 		help: "Decimated record depth: frame rate against detail.",
-		rel:  func(s *sv) bool { return !isSRAM(s) }, why: "the direct-capture image (SRAM depth is fixed)",
-		opts: staticOpts([]opt{{2048, "2k"}, {6144, "6k"}, {14336, "14k"}, {20480, "20k"}}),
-		get:  func(s *sv) int { return s.memDepth },
-		set:  func(c *Controller, v int) error { return directOnly(c, func() { c.eng.SetMemDepth(v) }) },
-		def:  func(c *Controller) error { return directOnly(c, func() { c.eng.SetMemDepth(20480) }) },
+		rel:  func(s *sv) bool { return !isSRAM(s) }, why: "the direct-capture image (on SRAM the timebase sets the depth)",
+		// On the SRAM image the timebase sets the record's depth: the row
+		// names it, not the direct path's unused setting (it read 6k beside
+		// 1M; bug hunt #3).
+		opts: func(s *sv) []opt {
+			if isSRAM(s) {
+				return []opt{{s.st.MemDepth, depthText(s.st.MemDepth) + " (auto)"}}
+			}
+			return []opt{{2048, "2k"}, {6144, "6k"}, {14336, "14k"}, {20480, "20k"}}
+		},
+		get: func(s *sv) int {
+			if isSRAM(s) {
+				return s.st.MemDepth
+			}
+			return s.memDepth
+		},
+		set: func(c *Controller, v int) error { return directOnly(c, func() { c.eng.SetMemDepth(v) }) },
+		def: func(c *Controller) error { return directOnly(c, func() { c.eng.SetMemDepth(20480) }) },
 	}
-	srOn := func(s *sv) bool { return s.srActive }
+	srOn := func(s *sv) bool { return s.srActive || s.srSeeding }
 	sr := &row{id: "acq.superres", label: "Super-res", kind: wsview.Enum, hdr: "SUPER-RES  (stacking for extra vertical bits)",
 		help: "Stack matching captures of the frame on screen for extra vertical bits (freeze one with Single first).",
 		opts: staticOpts(onOff),
-		get:  func(s *sv) int { return b2ic(s.srActive) },
+		get:  func(s *sv) int { return b2ic(s.srActive || s.srSeeding) },
 		set: func(c *Controller, v int) error {
 			if v == 1 {
 				return c.srArm()
@@ -955,11 +970,18 @@ func cmpRows() []*row {
 			return []act{{id: "build", t: "Build now", dim: s.maskBusy, run: func(c *Controller) error { c.maskBuildStart(); return nil }}}
 		},
 		status: func(s *sv) string {
+			// the build's progress, or why it failed: the row was "building"
+			// and then "none", the reason only on the LCD (bug hunt #3)
+			msg := strings.TrimPrefix(s.maskMsg, "MASK: ")
 			switch {
+			case s.maskBusy && strings.HasPrefix(msg, "building"):
+				return msg
 			case s.maskBusy:
 				return "building"
 			case s.st.MaskSet:
 				return "ready"
+			case strings.HasPrefix(msg, "build failed"):
+				return msg
 			}
 			return "none"
 		},
@@ -1038,7 +1060,7 @@ func cmpRows() []*row {
 
 // ---- BUS ----
 
-// protoOpts are the decoders; the serial trigger takes UART, I2C and SPI.
+// protoOpts are the decoders; the serial trigger takes every one.
 var protoOpts = []opt{{framecalc.ProtoOff, "Off"}, {framecalc.ProtoAuto, "Auto"}, {framecalc.ProtoUART, "UART"},
 	{framecalc.ProtoI2C, "I2C"}, {framecalc.ProtoSPI, "SPI"}, {framecalc.ProtoManchester, "Manch"},
 	{framecalc.ProtoSENT, "SENT"}, {framecalc.ProtoCAN, "CAN"}, {framecalc.ProtoMIL1553, "1553"},
@@ -1098,8 +1120,17 @@ func busTabRows() []*row {
 		opts:  staticOpts(protoOpts),
 		quick: []int{framecalc.ProtoOff, framecalc.ProtoAuto, framecalc.ProtoUART, framecalc.ProtoI2C, framecalc.ProtoSPI},
 		get:   func(s *sv) int { return s.decProto },
-		set:   func(c *Controller, v int) error { return c.setDecProto(v) },
-		def:   func(c *Controller) error { return c.setDecProto(framecalc.ProtoOff) },
+		set: func(c *Controller, v int) error {
+			was := c.snapProto()
+			if err := c.setDecProto(v); err != nil {
+				return err
+			}
+			if v == framecalc.ProtoAuto && was != framecalc.ProtoAuto {
+				c.offPanel(c.findAuto) // the bus on a sampled record, and a timebase that reads it
+			}
+			return nil
+		},
+		def: func(c *Controller) error { return c.setDecProto(framecalc.ProtoOff) },
 	}
 	format := &row{id: "bus.strip_format", label: "Strip format", kind: wsview.Enum,
 		help: "Format of the decode strip under the trace: Hex, String (text) or both. The BUS packet list always shows hex and string.",
@@ -1305,6 +1336,18 @@ func baudName(b int) string {
 		return fmt.Sprintf("%dk", b/1000)
 	}
 	return strconv.Itoa(b)
+}
+
+// depthText is a record depth as the rows write it: 1M, 20k, 512.
+// TRLC-LINKS: REQ-SDS-212
+func depthText(n int) string {
+	switch {
+	case n >= 1<<20 && n%(1<<20) == 0:
+		return fmt.Sprintf("%dM", n>>20)
+	case n >= 1024 && n%1024 == 0:
+		return fmt.Sprintf("%dk", n>>10)
+	}
+	return strconv.Itoa(n)
 }
 
 // ---- FILE ----

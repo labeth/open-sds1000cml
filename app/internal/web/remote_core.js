@@ -417,7 +417,7 @@
         rows.set(r.ID, Object.assign({}, r, { tab: t.ID, tabName: t.Name, section: sec, sectionNote: note, sectionHead: !!r.Section }));
         ids.push(r.ID);
       }
-      tabs.push({ id: t.ID, name: t.Name, title: t.Title, key: t.Key, rows: ids });
+      tabs.push({ id: t.ID, name: t.Name, title: t.Title, key: t.Key, rows: ids, notes: t.Notes || [] });
     }
     return { rows, tabs };
   }

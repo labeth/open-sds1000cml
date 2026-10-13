@@ -19,9 +19,26 @@ const RefCols = 800
 type refWave struct {
 	c1, c2    []uint8
 	vdiv, off [2]float64
-	tdiv      float64 // the timebase it was stored at (it lines up only there)
+	tdiv      float64    // the timebase it was stored at (it lines up only there)
+	posFrac   float64    // where the trigger sat across the screen then
+	probe     [2]float64 // each channel's probe factor then (1 without a front end)
 	has       bool
 	show      bool
+}
+
+// RefExport is a saved reference as the web app takes it (GET /api/refs):
+// its screen columns, the volts they were saved at, the timebase and where
+// the trigger sat, so a page can overlay the scope's REF A (the master).
+type RefExport struct {
+	Has     bool       `json:"has"`
+	Show    bool       `json:"show"`
+	Cols    int        `json:"cols"`
+	C1      []int      `json:"c1,omitempty"`
+	C2      []int      `json:"c2,omitempty"`
+	Vdiv    [2]float64 `json:"vdiv"` // at the probe tip, as the web's volts per code
+	Off     [2]float64 `json:"off"`  // at the probe tip
+	TdivS   float64    `json:"tdiv_s"`
+	PosFrac float64    `json:"pos_frac"`
 }
 
 // RefWave is the render-side view of a saved reference.
@@ -52,12 +69,13 @@ func (c *Controller) captureRefFrom(f *engine.Frame, slot int) {
 		return
 	}
 	st := c.eng.Snapshot()
-	r := refWave{has: true, show: true, vdiv: [2]float64{1, 1}, tdiv: st.TdivS}
+	r := refWave{has: true, show: true, vdiv: [2]float64{1, 1}, tdiv: st.TdivS, probe: [2]float64{1, 1}}
 	cpl := [2]int{}
 	if c.fe != nil {
 		idx, _ := c.fe.Snapshot()
 		for ch, code := range [2]uint16{st.OffC1, st.OffC2} {
 			r.vdiv[ch] = analog.AnalogVdiv(idx[ch])
+			r.probe[ch] = max(c.fe.ProbeFactor(ch), 1)
 			cpl[ch] = c.fe.Coupling(ch)
 			if code != 0 && cpl[ch] != analog.CplAC { // as the HUD's offset
 				r.off[ch] = c.fe.OffsetVolts(ch, code)
@@ -81,6 +99,7 @@ func (c *Controller) captureRefFrom(f *engine.Frame, slot int) {
 		xc = float64(valid) / 2
 	}
 	left := xc - float64(win)*posFrac
+	r.posFrac = posFrac
 	r.c1 = screenColumns(analog.CoupleDisplay(f.C1[:valid], cpl[0]), left, win, f.Interp)
 	if len(f.C2) >= valid {
 		r.c2 = screenColumns(analog.CoupleDisplay(f.C2[:valid], cpl[1]), left, win, f.Interp)
@@ -106,6 +125,35 @@ func screenColumns(sig []uint8, left float64, win int, interp bool) []uint8 {
 			v = v*(1-frac) + float64(sig[i+1])*frac
 		}
 		out[x] = uint8(v + .5)
+	}
+	return out
+}
+
+// RefsExport is both reference slots for the web app (GET /api/refs).
+// TRLC-LINKS: REQ-SDS-138, REQ-SDS-218
+func (c *Controller) RefsExport() [2]RefExport {
+	ints := func(b []uint8) []int {
+		if b == nil {
+			return nil
+		}
+		out := make([]int, len(b))
+		for i, v := range b {
+			out[i] = int(v)
+		}
+		return out
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	var out [2]RefExport
+	for i, r := range c.refs {
+		if r.has {
+			e := RefExport{Has: true, Show: r.show, Cols: RefCols, C1: ints(r.c1), C2: ints(r.c2), TdivS: r.tdiv, PosFrac: r.posFrac}
+			for ch := range e.Vdiv {
+				p := max(r.probe[ch], 1)
+				e.Vdiv[ch], e.Off[ch] = r.vdiv[ch]*p, r.off[ch]*p
+			}
+			out[i] = e
+		}
 	}
 	return out
 }

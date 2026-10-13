@@ -168,6 +168,26 @@ function busEyeOn() {
 function busEyeOff() { if (ej.armed) ejStop("eye view closed"); }
 
 // ---- detection on entry ---------------------------------------------------------
+// The live readout is an envelope of at least BUS_LIVE_POINTS over the screen
+// (sramcapture.EnvelopeBucketsQ8 pairs); a bus feature under
+// DECODE_MIN_ENVELOPE_FEATURE of them is not decoded. BUS steps to the
+// slowest timebase that reads the bus found, BUS_READABLE_FEATURE points
+// (room for a serial trigger's 12.5-division window), as the scope's BUS does.
+const BUS_LIVE_POINTS = 2048, BUS_READABLE_FEATURE = 5;
+// busReadableTimebase steps the scope's timebase when this one cannot read a
+// bus whose shortest feature is featureS; it returns what the toast adds.
+// TRLC-LINKS: REQ-SDS-214
+function busReadableTimebase(featureS) {
+  if (!(featureS > 0) || !st || !st.tdivs || !(st.tdiv_s > 0)) return "";
+  const window = st.serial_mode ? 12.5 : 10;
+  const points = (tdiv) => featureS / (window * tdiv / BUS_LIVE_POINTS);
+  if (points(st.tdiv_s) >= DECODE_MIN_ENVELOPE_FEATURE) return "";
+  let best = 0;
+  for (const t of st.tdivs) if (points(t) >= BUS_READABLE_FEATURE && t > best) best = t;
+  if (!best) return "";
+  send("tdiv", best);
+  return ", " + fmtTdiv(best) + "/div to read it";
+}
 // TRLC-LINKS: REQ-SDS-214
 async function busDetect(onEntry) {
   if (busDetecting) return;
@@ -175,7 +195,8 @@ async function busDetect(onEntry) {
   try {
     await runAutodetect();
   } finally { busDetecting = false; }
-  if (dcfg.proto !== "off") toast("BUS: detected " + $("decDetectMsg").textContent.replace(/^detected /, "") + " — decoding is on" + (onEntry ? " (it stays on in the other workspaces)" : ""));
+  const stepped = dcfg.proto !== "off" ? busReadableTimebase(dcfg.detectFeatureS) : "";
+  if (dcfg.proto !== "off") toast("BUS: detected " + $("decDetectMsg").textContent.replace(/^detected /, "") + " — decoding is on" + stepped + (onEntry ? " (it stays on in the other workspaces)" : ""));
   else toast("BUS: no bus detected — " + ($("decDetectMsg").textContent || "choose a protocol in the Decoder pane"), "warn");
   busRenderTable();
 }

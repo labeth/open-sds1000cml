@@ -158,7 +158,7 @@ setInterval(async () => {
   if (st.bode_mode > 0) {
     line = st.bode_valid
       ? `live: ${eng(st.bode_freq_hz, "Hz", 3)} · ${st.bode_gain_db.toFixed(2)} dB · ${st.bode_phase_deg.toFixed(1)}° — ${n || 0} pts`
-      : `armed — no single-frequency lock yet (${n || 0} pts)`;
+      : `armed — ${st.bode_why || "no single-frequency lock yet"} (${n || 0} pts)`;
   }
   bodeStatus(line);
 }, 1000);

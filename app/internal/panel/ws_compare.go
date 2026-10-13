@@ -188,10 +188,26 @@ func (c *Controller) stackStart() error {
 		c.toast(err.Error(), 1800*time.Millisecond)
 		return err
 	}
+	c.mu.Lock()
+	stacking := c.stack != nil
+	c.mu.Unlock()
+	if stacking {
+		return nil // already stacking (in its own Average)
+	}
+	// The master is tested against raw live captures, and whether the source
+	// repeats is judged on raw captures: in Average neither holds. A master
+	// started there took the average of a source that did not repeat, and
+	// restored Average, so its mask never came, or failed every capture once
+	// the acquisition went back to Normal (bug hunt #3).
+	if s.st.AcqMode == engine.AcqAverage {
+		err := fmt.Errorf("No master: the acquisition is Average - set it to Normal, so the master can check that C%d repeats", src+1)
+		c.toast(err.Error(), 2800*time.Millisecond)
+		return err
+	}
 	c.amu.Lock()
 	nOK, n, stable, known := stabVerdict(&c.ana)
 	c.amu.Unlock()
-	if known && !stable && s.st.AcqMode != engine.AcqAverage {
+	if known && !stable {
 		err := fmt.Errorf("No master: C%d differs between captures (%d/%d repeat) - set a stable trigger first", src+1, nOK, n)
 		c.toast(err.Error(), 2800*time.Millisecond)
 		return err
@@ -206,9 +222,6 @@ func (c *Controller) stackStart() error {
 	c.mu.Unlock()
 	if s.st.MaskMode != 0 {
 		c.eng.SetMaskMode(0) // the averaged captures are not tested
-	}
-	if s.st.AcqMode == engine.AcqAverage {
-		c.eng.SetAcqMode(0) // start a fresh average
 	}
 	c.eng.SetAvgCount(st.n)
 	c.eng.SetAcqMode(engine.AcqAverage)

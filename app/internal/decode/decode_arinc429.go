@@ -270,14 +270,20 @@ func ARINC429Levels(codes []uint8, cfg ARINC429Cfg) (null, thrHi, thrLo, exitHi,
 	if gmax <= gmin {
 		return 0, 0, 0, 0, 0, "flat/no transitions"
 	}
-	// NULL level = the dominant (mode) code in the active range: an RZ line rests
-	// at NULL for the second half of every bit plus the inter-word gaps.
-	mid := gmin
-	best := -1.0
+	// NULL level = the centre of the densest band of codes in the active range:
+	// an RZ line rests at NULL for the second half of every bit plus the
+	// inter-word gaps. A band, not the commonest single code: a NULL with ripple
+	// spreads over a dozen codes, each outnumbered by a flat rail's one (the
+	// bench's NULL, a filtered toggle, read as the LO rail; bug hunt #3).
+	const nullBand = 4
+	mid, best := gmin, -1
 	for c := gmin; c <= gmax; c++ {
-		if float64(h[c]) > best {
-			best = float64(h[c])
-			mid = c
+		sum := 0
+		for k := max(gmin, c-nullBand); k <= min(gmax, c+nullBand); k++ {
+			sum += h[k]
+		}
+		if sum > best {
+			best, mid = sum, c
 		}
 	}
 	midf := float64(mid)

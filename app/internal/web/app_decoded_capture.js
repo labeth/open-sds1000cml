@@ -22,10 +22,37 @@ function dsSequence(p) {
   });
   return { length: elements.length, qualify: dataOnly && [4, 5, 6, 8, 9, 10].includes(p.proto), end_bad_value: p.proto === 4 || p.proto === 8, elements };
 }
+// dsStandardBaud snaps a measured UART rate to a standard one within 3 %.
+// TRLC-LINKS: REQ-SDS-206
+function dsStandardBaud(b) {
+  for (const s of [1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200, 230400, 460800, 921600, 1e6, 2e6, 3e6])
+    if (Math.abs(b - s) <= 0.03 * s) return s;
+  return Math.round(b);
+}
+// dsAutoFill takes what the decoder found on auto settings: the threshold it
+// sliced at, the bit rate, an SPI clock rate, SENT's tick. Stream + trigger refused
+// the decoder's defaults ("Set a manual decode threshold", bug hunt #3); a
+// figure the decode did not find stays missing and dsConfig names it.
+// TRLC-LINKS: REQ-SDS-206
+function dsAutoFill(p) {
+  const r = dcfg.result, m = r && r.ok && r.meta;
+  if (!m) return p;
+  const q = { ...p };
+  const dt = frame && frame.c1 ? frameDtS(frame, frame.c1.length) : 0;
+  if (!q.haveThr && Number.isFinite(m.threshold)) { q.threshold = Math.round(m.threshold); q.haveThr = true; }
+  if (!(q.baud > 0)) { // a UART's baud, a line code's bit rate (CAN's from its samples per bit)
+    const rate = m.baud || m.bitrate || (m.samplesPerBit > 0 && dt > 0 ? 1 / (m.samplesPerBit * dt) : 0);
+    if (rate > 0) q.baud = q.proto === 1 ? dsStandardBaud(rate) : Math.round(rate);
+  }
+  if (q.proto === 3 && !(q.spiClockHz > 0) && m.colsPerClock > 0 && dt > 0) q.spiClockHz = Math.round(1 / (m.colsPerClock * dt));
+  if (q.proto === 5 && !(q.tickNs > 0) && m.tickSamples > 0 && dt > 0) q.tickNs = m.tickSamples * dt * 1e9;
+  return q;
+}
 // TRLC-LINKS: REQ-SDS-206
 function dsConfig() {
   let p = stParams();
   if (!p || ![1, 2, 3, 4, 5, 6, 7, 8, 9, 10].includes(p.proto)) throw Error("Choose a protocol decoder to stream.");
+  p = dsAutoFill(p);
   if (!p.haveThr) throw Error("Set a manual decode threshold before streaming.");
   // Manchester, CAN, ARINC 429 and FlexRay stream from the packet image, which
   // the instrument loads on start; their patterns may exceed 32 bits.
@@ -61,7 +88,7 @@ function dsConfig() {
     if (p.chA === p.chB) throw Error("Clock and data must use different channels.");
     if (p.proto === 2) cfg.i2c = { enabled: true, clock_channel: p.chA, inverted: p.inverted, address: p.addr, direction: p.rw, pattern, length: p.bytes.length };
     else {
-      const hz = +$("dsClock").value;
+      const hz = +$("dsClock").value || p.spiClockHz;
       if (!Number.isFinite(hz) || hz <= 0) throw Error("Enter the SPI clock frequency.");
       cfg.spi = { enabled: true, clock_channel: p.chA, inverted: p.inverted, cpol: p.cpol, cpha: p.cpha, msb: p.msb, gap_ticks: Math.round(1.5 * 125e6 / hz), pattern, length: p.bytes.length };
     }

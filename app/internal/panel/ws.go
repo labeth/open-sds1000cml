@@ -243,6 +243,7 @@ func (c *Controller) snap() *sv {
 		s.refHas[i], s.refShow[i] = r.has, r.show
 	}
 	s.srActive, s.srFocus, s.srCh, s.srK = c.srActive, c.srFocus, c.srCh, c.srK
+	s.srSeeding = c.srSeeding
 	s.srStopMode, s.srStopVal, s.srStatus = c.srStopMode, c.srStopVal, c.srStatus
 	s.srManLo, s.srManHi, s.srFPGABusy = c.srManLo, c.srManHi, c.srFPGABusy
 	if c.srStack != nil {

@@ -122,6 +122,7 @@ func (c *Controller) ApplySettingsView(v settings.ViewState) {
 	c.showMeas, c.persist = v.Display.ShowMeas, v.Display.Persist
 	c.chDisp = [2]bool{!v.Display.Hidden[0], !v.Display.Hidden[1]}
 	c.decProto, c.decBaud = d.Proto, d.Baud
+	c.decGen++
 	c.decChA, c.decChB = d.ChA, d.ChB
 	c.decCPOL, c.decCPHA = d.CPOL, d.CPHA
 	c.decFormat = d.Format

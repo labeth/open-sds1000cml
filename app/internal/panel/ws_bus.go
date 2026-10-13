@@ -4,6 +4,7 @@ package panel
 import (
 	"fmt"
 	"math"
+	"slices"
 	"strings"
 	"time"
 
@@ -13,6 +14,7 @@ import (
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/panel/framecalc"
 	"open-sds/app/internal/panel/wsview"
+	"open-sds/app/internal/sramcapture"
 )
 
 // BUS (REQ-SDS-214): entering it with decode off finds the bus and decodes
@@ -310,19 +312,40 @@ func (c *Controller) zoomToggle() {
 
 // ---- detection ----
 
-// lockBus fixes the decoder to a detected bus (an Auto result): protocol,
-// lines and rate. It reports whether the result named a bus.
+// resultProto is the decoder an Auto result names (0: none).
 // TRLC-LINKS: REQ-SDS-214
-func (c *Controller) lockBus(res decode.Result) bool {
-	p := map[string]int{"uart": framecalc.ProtoUART, "i2c": framecalc.ProtoI2C, "spi": framecalc.ProtoSPI,
+func resultProto(res decode.Result) int {
+	if !res.OK {
+		return 0
+	}
+	return map[string]int{"uart": framecalc.ProtoUART, "i2c": framecalc.ProtoI2C, "spi": framecalc.ProtoSPI,
 		"manchester": framecalc.ProtoManchester, "sent": framecalc.ProtoSENT, "canfd": framecalc.ProtoCAN,
 		"mil1553": framecalc.ProtoMIL1553, "arinc429": framecalc.ProtoARINC429, "usbls": framecalc.ProtoUSB,
 		"flexray": framecalc.ProtoFlexRay}[res.Proto]
-	if !res.OK || p == 0 {
+}
+
+// resultName names the bus an Auto result found: "UART 115200 8N1 on C1".
+// TRLC-LINKS: REQ-SDS-214
+func resultName(res decode.Result) string {
+	chB := res.Roles.ChB & 1
+	if chB == res.Roles.ChA&1 {
+		chB = 1 - chB
+	}
+	return busName(resultProto(res), res.Baud, res.Roles.ChA&1, chB, res.Roles.CPOL, res.Roles.CPHA)
+}
+
+// lockBus fixes the decoder to a detected bus (an Auto result): protocol,
+// lines and rate. A stream Auto was running ends, as leaving Auto ends it.
+// It reports whether the result named a bus.
+// TRLC-LINKS: REQ-SDS-214
+func (c *Controller) lockBus(res decode.Result) bool {
+	p := resultProto(res)
+	if p == 0 {
 		return false
 	}
 	c.mu.Lock()
 	c.decProto = p
+	c.decGen++
 	c.decChA, c.decChB = res.Roles.ChA&1, res.Roles.ChB&1
 	if c.decChB == c.decChA {
 		c.decChB = 1 - c.decChA
@@ -333,12 +356,16 @@ func (c *Controller) lockBus(res decode.Result) bool {
 	if p == framecalc.ProtoSPI {
 		c.decCPOL, c.decCPHA = res.Roles.CPOL, res.Roles.CPHA
 	}
-	if c.decMode == decModeStream {
+	stream := c.decMode == decModeStream
+	if stream {
 		c.decMode = decModeView
 	}
 	c.mu.Unlock()
 	c.syncDecodeView(true)
 	c.syncSerialBus()
+	if stream {
+		c.leaveStream()
+	}
 	return true
 }
 
@@ -346,18 +373,230 @@ func (c *Controller) lockBus(res decode.Result) bool {
 // it free when the LCD decoded it already). Not for use inside OnFrame.
 // TRLC-LINKS: REQ-SDS-214
 func (c *Controller) lastAuto() (decode.Result, bool) {
+	res, _, ok := c.lastAutoAt()
+	return res, ok
+}
+
+// lastAutoAt is lastAuto with the decoded frame's sample interval.
+// TRLC-LINKS: REQ-SDS-214
+func (c *Controller) lastAutoAt() (decode.Result, float64, bool) {
 	if c.frameFn == nil {
-		return decode.Result{}, false
+		return decode.Result{}, 0, false
 	}
 	var res decode.Result
+	var sampleS float64
 	c.frameFn(func(f *engine.Frame) {
 		if f == nil || f.IsEnv || (f.PeakDetect && !f.Ordered) || len(f.C1) < 32 {
 			return
 		}
 		res = framecalc.Decode(f, framecalc.DecodeParams{Proto: framecalc.ProtoAuto, Format: "hex"})
+		sampleS = f.SampleS
 	})
-	return res, res.OK && res.Proto != "" && res.Proto != "off"
+	return res, sampleS, res.OK && res.Proto != "" && res.Proto != "off"
 }
+
+// liveEnvelopePoints is the live readout's points per window at the least: an
+// envelope of 1024 (min, max) buckets of Q8.8 words.
+const liveEnvelopePoints = 2 * sramcapture.EnvelopeBucketsQ8
+
+// readableFeature is the points per bus feature the timebase step aims for:
+// framecalc.MinEnvelopeFeature with room for the serial trigger's wider
+// window (12.5 divisions instead of 10).
+const readableFeature = 5.0
+
+// readableTimebase steps the timebase to the slowest that reads the bus live
+// when the current one cannot. The live readout is an envelope of
+// liveEnvelopePoints over the screen (a quarter more while a serial trigger
+// is armed), and a bus feature under framecalc.MinEnvelopeFeature of its points
+// aliases (bug hunt #3: BUS found I2C at 500us/div, then listed 151 packets
+// of no bytes). sampleS is the decoded frame's sample interval. It returns
+// what the notice adds ("" when the timebase stays).
+// TRLC-LINKS: REQ-SDS-214
+func (c *Controller) readableTimebase(res decode.Result, sampleS float64) string {
+	feature := decode.FeatureSamples(res) * sampleS
+	if !(feature > 0) || len(c.tdivs) == 0 {
+		return ""
+	}
+	s := c.snap()
+	window := 10.0
+	if s.st.SerialMode != 0 {
+		window = 12.5
+	}
+	points := func(tdiv float64) float64 { return feature / (window * tdiv / liveEnvelopePoints) }
+	// the timebase asked for: one set while a stream ran applies when it ends
+	if points(s.st.TdivSet()) >= framecalc.MinEnvelopeFeature {
+		return ""
+	}
+	best := 0
+	for i, t := range c.tdivs {
+		if points(t) >= readableFeature && t > c.tdivs[best] {
+			best = i
+		}
+	}
+	if c.setTdivIdx(best) != nil {
+		return ""
+	}
+	return ", " + si(c.tdivs[best], "s") + "/div to read it"
+}
+
+// detectOn waits (bounded by detectWait) for a sampled frame that accept
+// takes and runs auto (Auto on the frame on screen) on it, falling back to the
+// frame on screen at the end. It returns the result, the decoded frame's
+// sample interval and whether a bus was found.
+// TRLC-LINKS: REQ-SDS-214
+func (c *Controller) detectOn(accept func(*engine.Frame) bool, auto AutoSource) (decode.Result, float64, bool) {
+	deadline := c.now().Add(detectWait)
+	// While running, a frame captured after the search began: the one on
+	// screen, or one in flight, may predate a setting just changed (bug hunt
+	// #3: ARINC was "no bus found" in a frame from before its bandwidth limit).
+	var start uint64
+	if c.frameFn != nil && c.snap().st.Running {
+		c.frameFn(func(f *engine.Frame) {
+			if f != nil {
+				start = f.Seq
+			}
+		})
+	}
+	fresh := func(f *engine.Frame) bool { return start == 0 || f.Seq >= start+2 }
+	for {
+		if e, ok := c.eng.(interface{ LeaseDecodeView(time.Duration) }); ok {
+			e.LeaseDecodeView(3 * time.Second)
+		}
+		raw, usable := false, false
+		if c.frameFn != nil {
+			c.frameFn(func(f *engine.Frame) {
+				usable = f != nil && !f.IsEnv && !(f.PeakDetect && !f.Ordered) && f.Valid >= 32 && len(f.C1) >= f.Valid
+				raw = usable && !f.PeakDetect && accept(f) && fresh(f)
+			})
+		}
+		last := c.detectSync || !c.now().Before(deadline)
+		if raw || (usable && last) {
+			return auto()
+		}
+		if last {
+			return decode.Result{}, 0, false
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+}
+
+// findBus searches for a bus as BUS's auto-detect does: auto on a sampled
+// frame and, when that record hid the bus, again at the slowest timebase
+// sampled at the converters' full rate, which stays when the bus is found
+// there. A record hides a bus when it is decimated (a 10 Mbit/s FlexRay at
+// 500us/div's 32 ns) or too short (Autoset's 10us/div held about one UART
+// byte; bug hunt #3). The timebase found there stays only while wanted (the
+// caller still needs the bus: Auto still picked, a stream still asked for).
+// One search runs at a time. It returns auto's result, the decoded frame's
+// sample interval, whether a bus was found and the timebase it stepped to
+// (0: none).
+// TRLC-LINKS: REQ-SDS-214
+func (c *Controller) findBus(auto AutoSource, wanted func() bool) (decode.Result, float64, bool, float64) {
+	c.searchMu.Lock()
+	defer c.searchMu.Unlock()
+	res, sampleS, found := c.detectOn(func(*engine.Frame) bool { return true }, auto)
+	// a scope waiting for a trigger captures nothing at the full rate either
+	if full, t := c.fullRateS(), c.fullRateTdiv(); full > 0 && t > 0 && !found && t != c.snap().st.TdivSet() && !c.waitingForTrigger(c.snap()) {
+		prev := c.snap().st.TdivSet()
+		c.setTdivNearest(t)
+		res, sampleS, found = c.detectOn(func(f *engine.Frame) bool {
+			return f.SampleS <= 1.25*full && (f.TdivS == 0 || math.Abs(f.TdivS-t) <= 1e-3*t)
+		}, auto)
+		if found && wanted() {
+			return res, sampleS, true, t
+		}
+		c.setTdivNearest(prev)
+	}
+	return res, sampleS, found, 0
+}
+
+// noBusNote is what a bus search that found nothing says: none says no bus
+// was there, but a scope waiting for a trigger sent no new capture to search
+// (bug hunt #3: Normal with the level off the signal).
+// TRLC-LINKS: REQ-SDS-214
+func (c *Controller) noBusNote(none string) string {
+	if c.waitingForTrigger(c.snap()) { // the Run/Stop lamp's amber
+		return "no new capture - the scope waits for a trigger: Auto or Force, then again"
+	}
+	return none
+}
+
+// autoPicked reports Protocol = Auto.
+// TRLC-LINKS: REQ-SDS-214
+func (c *Controller) autoPicked() bool { return c.snapProto() == framecalc.ProtoAuto }
+
+// offPanel runs fn off the panel goroutine, or inline in tests: a bus search
+// reads sampled frames, seconds at slow timebases.
+// TRLC-LINKS: REQ-SDS-214
+func (c *Controller) offPanel(fn func()) {
+	c.mu.Lock()
+	sync := c.detectSync
+	c.mu.Unlock()
+	if sync {
+		fn()
+		return
+	}
+	go fn()
+}
+
+// offPanelErr is offPanel for a search that can fail: its error when it ran
+// inline; off the panel goroutine its notice says how it ended.
+// TRLC-LINKS: REQ-SDS-214
+func (c *Controller) offPanelErr(fn func() error) error {
+	c.mu.Lock()
+	sync := c.detectSync
+	c.mu.Unlock()
+	if sync {
+		return fn()
+	}
+	go func() { _ = fn() }()
+	return nil
+}
+
+// findAuto is Protocol = Auto's search when it is picked: Auto decodes the
+// live envelope, too coarse at slow timebases for a bus plain on screen (bug
+// hunt #3: a 115200 UART at 500us/div was "AUTO: no protocol matched"). The
+// bus is found on a sampled record as BUS's auto-detect finds it, and the
+// timebase steps to the slowest that reads it live; decode stays Auto.
+// TRLC-LINKS: REQ-SDS-214
+func (c *Controller) findAuto() {
+	res, sampleS, found, stepped := c.findBus(c.lastAutoAt, c.autoPicked)
+	if c.snapProto() != framecalc.ProtoAuto {
+		return // the protocol changed meanwhile
+	}
+	if found {
+		c.toast("AUTO: "+resultName(res)+c.readTimebase(res, sampleS, stepped), 2200*time.Millisecond)
+	} else {
+		c.toast("AUTO: "+c.noBusNote("no bus found on CH1 or CH2 yet"), 2200*time.Millisecond)
+	}
+	c.publish()
+}
+
+// readTimebase steps to the timebase that reads a bus findBus found live
+// (readableTimebase), and says where the timebase went: the step, or the
+// full-rate timebase the search kept.
+// TRLC-LINKS: REQ-SDS-214
+func (c *Controller) readTimebase(res decode.Result, sampleS, stepped float64) string {
+	if note := c.readableTimebase(res, sampleS); note != "" || stepped == 0 {
+		return note
+	}
+	return ", " + si(stepped, "s") + "/div to read it"
+}
+
+// fullRateS is the record's finest sample interval, the fastest timebase's
+// (0 without a ladder).
+// TRLC-LINKS: REQ-SDS-214
+func (c *Controller) fullRateS() float64 {
+	if len(c.tdivs) == 0 {
+		return 0
+	}
+	return engine.PlanSRAM(slices.Min(c.tdivs)).SampleS
+}
+
+// fullRateTdiv is the slowest timebase whose record is sampled at the full
+// rate (0 without a ladder).
+// TRLC-LINKS: REQ-SDS-214
+func (c *Controller) fullRateTdiv() float64 { return engine.FullRateTdiv(c.tdivs) }
 
 // busName names a decoded bus: "UART 115200 8N1 on C1".
 // TRLC-LINKS: REQ-SDS-214
@@ -400,39 +639,55 @@ func (c *Controller) autoDecode() {
 	go c.runDetect()
 }
 
+// detectWait bounds how long BUS's auto-detect waits for a sampled frame.
+const detectWait = 6 * time.Second
+
 // runDetect waits (bounded) for a sampled frame and detects the bus on it.
+// The decode lease makes the engine read samples instead of the live
+// peak-detect envelope; that read can take seconds at slow timebases, and an
+// envelope is too coarse to find a bus there (bug hunt #3: no bus found at
+// 500 us/div, the UART plain on screen). Only when no sampled frame comes is
+// the envelope tried. A record the timebase decimates hides a fast bus (a
+// 10 Mbit/s FlexRay at 500 us/div's 32 ns): with none found there, the search
+// runs again at the slowest timebase sampled at the converters' full rate,
+// which stays when the bus is found there.
 // TRLC-LINKS: REQ-SDS-214
 func (c *Controller) runDetect() {
-	var res decode.Result
-	found := false
-	for i := 0; i < 40 && !found; i++ {
-		if e, ok := c.eng.(interface{ LeaseDecodeView(time.Duration) }); ok {
-			e.LeaseDecodeView(3 * time.Second)
-		}
-		raw := false
-		if c.frameFn != nil {
-			c.frameFn(func(f *engine.Frame) {
-				raw = f != nil && !f.IsEnv && !(f.PeakDetect && !f.Ordered) && f.Valid >= 32 && len(f.C1) >= f.Valid
-			})
-		}
-		if raw {
-			res, found = c.lastAuto()
-			break
-		}
-		if c.detectSync {
-			break
-		}
-		time.Sleep(50 * time.Millisecond)
+	c.mu.Lock()
+	gen := c.decGen
+	c.mu.Unlock()
+	// A protocol set while the search ran (seconds at slow timebases) stands:
+	// the search's lock, or its "decode stays off", undid a UART picked on the
+	// phone meanwhile (bug hunt #3).
+	mine := func() bool {
+		c.mu.Lock()
+		defer c.mu.Unlock()
+		return c.decGen == gen
+	}
+	res, sampleS, found, stepped := c.findBus(c.lastAutoAt, mine)
+	if !mine() {
+		c.mu.Lock()
+		c.ui.busDetecting = false
+		c.mu.Unlock()
+		c.publish()
+		return
 	}
 	locked := found && c.lockBus(res)
+	tdivNote, none := "", ""
+	if locked {
+		tdivNote = c.readTimebase(res, sampleS, stepped)
+	} else {
+		none = c.noBusNote("no bus found on CH1 or CH2 - decode stays off")
+	}
 	c.mu.Lock()
 	c.ui.busDetecting = false
 	c.ui.busFailed = !locked
 	if locked {
-		c.toastLocked("AUTO: "+busName(c.decProto, c.decBaud, c.decChA, c.decChB, c.decCPOL, c.decCPHA)+", decode on", 1800*time.Millisecond)
-	} else {
+		c.toastLocked("AUTO: "+busName(c.decProto, c.decBaud, c.decChA, c.decChB, c.decCPOL, c.decCPHA)+", decode on"+tdivNote, 2200*time.Millisecond)
+	} else if c.decGen == gen {
 		c.decProto = framecalc.ProtoOff
-		c.toastLocked("AUTO: no bus found on CH1 or CH2 - decode stays off", 2400*time.Millisecond)
+		c.decGen++
+		c.toastLocked("AUTO: "+none, 2400*time.Millisecond)
 	}
 	c.mu.Unlock()
 	if !locked {

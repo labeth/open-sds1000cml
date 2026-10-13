@@ -70,6 +70,13 @@ type RowModel struct {
 type TabModel struct {
 	ID, Name, Title, Key string
 	Rows                 []RowModel
+	Notes                []TabNote `json:",omitempty"` // the TRIG tab's status lines, as under its rows on the LCD
+}
+
+// TabNote is one status line of a tab; Warn when it says what does not work.
+type TabNote struct {
+	Text string
+	Warn bool `json:",omitempty"`
 }
 
 // SheetsModel is the whole sheet model for the remote.
@@ -156,6 +163,7 @@ type remoteState struct {
 	status       Status
 	wake         chan struct{}
 	sheetsActive time.Time
+	pubAt        time.Time // the last publish
 }
 
 // sheetsWindow is how long after a remote's last sheet request the sheet
@@ -543,6 +551,7 @@ func (c *Controller) publish() {
 	}
 	st.Seq, st.SheetsSeq = c.remote.seq, c.remote.sheetsSeq
 	c.remote.status = st
+	c.remote.pubAt = s.now
 	c.rmu.Unlock()
 }
 
@@ -599,6 +608,12 @@ func (c *Controller) Sheets() SheetsModel {
 		tm := TabModel{ID: t.id, Name: t.name, Title: t.title, Key: t.key}
 		for _, r := range t.rows {
 			tm.Rows = append(tm.Rows, rowModel(s, r))
+		}
+		if t.id == "trig" {
+			// whether the FPGA decides the trigger, or why it cannot yet
+			for _, l := range tabStatus(c, s, t) {
+				tm.Notes = append(tm.Notes, TabNote{Text: l.Text, Warn: l.Col == wsview.Warn})
+			}
 		}
 		m.Tabs = append(m.Tabs, tm)
 	}
@@ -1150,6 +1165,9 @@ func (c *Controller) typeText(text string) SetResult {
 // afterInput latches the lamps and publishes the snapshot after a change.
 // TRLC-LINKS: REQ-SDS-211
 func (c *Controller) afterInput() {
+	c.mu.Lock()
+	c.setupSameAt = time.Time{} // the input may have changed a saved setting
+	c.mu.Unlock()
 	c.pushLEDs()
 	c.publish()
 }

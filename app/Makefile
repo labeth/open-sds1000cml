@@ -35,6 +35,10 @@ LINE_EMBED := internal/fpgaload/line.rbf
 # until it ships in fpga/bitstreams.
 STREAM_RBF ?= $(wildcard ../fpga/bitstreams/stream.rbf)
 STREAM_EMBED := internal/fpgaload/stream.rbf
+# Qualifier image (ADR-HARDWARE-QUALIFIERS): pulse, slope and video triggers
+# decided in the FPGA. Optional until it ships in fpga/bitstreams.
+QUALIFY_RBF ?= $(wildcard ../fpga/bitstreams/qualify.rbf)
+QUALIFY_EMBED := internal/fpgaload/qualify.rbf
 
 .PHONY: all app app-release test vet clean
 
@@ -70,9 +74,13 @@ app-release:
 	  test "$$(stat -c %s "$(STREAM_RBF)")" = 368011 || { echo "app-release: $(STREAM_RBF) is not a 368011-byte EP4CE10 .rbf"; exit 1; }; \
 	  cp "$(STREAM_RBF)" $(STREAM_EMBED); \
 	else rm -f $(STREAM_EMBED); fi
+	@if [ -n "$(QUALIFY_RBF)" ]; then \
+	  test "$$(stat -c %s "$(QUALIFY_RBF)")" = 368011 || { echo "app-release: $(QUALIFY_RBF) is not a 368011-byte EP4CE10 .rbf"; exit 1; }; \
+	  cp "$(QUALIFY_RBF)" $(QUALIFY_EMBED); \
+	else rm -f $(QUALIFY_EMBED); fi
 	CGO_ENABLED=0 GOOS=linux GOARCH=arm GOARM=7 \
-	  go build -trimpath -tags "withgeneralbitstream$(if $(STACK_RBF), withstackbitstream)$(if $(PACKET_RBF), withpacketbitstream)$(if $(LINE_RBF), withlinebitstream)$(if $(STREAM_RBF), withstreambitstream)" -ldflags "$(LDFLAGS)" -o $(DIST)/app-arm ./cmd/app
-	@echo "app-release: $(DIST)/app-arm embeds $(RBF) ($$(sha256sum "$(RBF)" | cut -c1-16)…)$(if $(STACK_RBF), stacking image $(STACK_RBF))$(if $(PACKET_RBF), packet image $(PACKET_RBF))$(if $(LINE_RBF), line image $(LINE_RBF))$(if $(STREAM_RBF), stream image $(STREAM_RBF))"
+	  go build -trimpath -tags "withgeneralbitstream$(if $(STACK_RBF), withstackbitstream)$(if $(PACKET_RBF), withpacketbitstream)$(if $(LINE_RBF), withlinebitstream)$(if $(STREAM_RBF), withstreambitstream)$(if $(QUALIFY_RBF), withqualifybitstream)" -ldflags "$(LDFLAGS)" -o $(DIST)/app-arm ./cmd/app
+	@echo "app-release: $(DIST)/app-arm embeds $(RBF) ($$(sha256sum "$(RBF)" | cut -c1-16)…)$(if $(STACK_RBF), stacking image $(STACK_RBF))$(if $(PACKET_RBF), packet image $(PACKET_RBF))$(if $(LINE_RBF), line image $(LINE_RBF))$(if $(STREAM_RBF), stream image $(STREAM_RBF))$(if $(QUALIFY_RBF), qualifier image $(QUALIFY_RBF))"
 
 test:
 	go test ./...
@@ -81,4 +89,4 @@ vet:
 	go vet ./...
 
 clean:
-	rm -rf $(DIST) $(EMBED) $(STACK_EMBED) $(PACKET_EMBED) $(LINE_EMBED)
+	rm -rf $(DIST) $(EMBED) $(STACK_EMBED) $(PACKET_EMBED) $(LINE_EMBED) $(QUALIFY_EMBED)

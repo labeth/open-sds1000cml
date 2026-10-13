@@ -31,9 +31,14 @@ function decodeARINC429(codes, colTimeS, cfg) {
   let gmin = 0; while (gmin < 255 && h[gmin] < noiseFloor) gmin++;
   let gmax = 255; while (gmax > 0 && h[gmax] < noiseFloor) gmax--;
   if (gmax <= gmin) return fail("flat/no transitions");
-  // NULL level = the dominant (mode) code in the active range.
+  // NULL level = the centre of the densest band of codes (a NULL with ripple
+  // spreads over a dozen codes; decode_arinc429.go ARINC429Levels).
   let mid = gmin, best = -1;
-  for (let c = gmin; c <= gmax; c++) { if (h[c] > best) { best = h[c]; mid = c; } }
+  for (let c = gmin; c <= gmax; c++) {
+    let sum = 0;
+    for (let k = Math.max(gmin, c - 4); k <= Math.min(gmax, c + 4); k++) sum += h[k];
+    if (sum > best) { best = sum; mid = c; }
+  }
   let midf = mid;
   if (cfg.threshold != null) midf = cfg.threshold;
   let rangeUp = gmax - midf, rangeDn = midf - gmin;

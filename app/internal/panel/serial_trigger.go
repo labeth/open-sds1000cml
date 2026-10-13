@@ -72,24 +72,34 @@ func (c *Controller) setTrigTypeIndex(st engine.Stats, next int) {
 // serialBus copies the BUS tab's bus settings into p, keeping its match and
 // its I2C address and direction: the engine reads those for I2C only, so a
 // bus other than I2C keeps them for when it is I2C again (the I2C address
-// row reads the kept value, not in use).
+// row reads the kept value, not in use). The bus is decoded as the BUS
+// workspace decodes it (Manchester IEEE, most significant bit first); the
+// engine measures what the panel does not set (the threshold, SENT's tick
+// and nibbles).
 // TRLC-LINKS: REQ-SDS-013
 func (c *Controller) serialBus(p engine.SerialParams) engine.SerialParams {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	if c.decProto >= framecalc.ProtoUART && c.decProto <= framecalc.ProtoSPI {
-		p.Proto = c.decProto - 1 // panel 2/3/4 = engine UART/I2C/SPI
+	if serialProto(c.decProto) {
+		p.Proto = c.decProto - 1 // the engine's numbering is the panel's less one
 	}
 	p.ChA, p.ChB = c.decChA, c.decChB
 	p.Baud, p.Bits, p.Parity = c.decBaud, 8, "none"
-	p.CPOL, p.CPHA, p.MSB = c.decCPOL, c.decCPHA, true
-	p.HaveThr = false
+	p.CPOL, p.CPHA, p.MSB, p.IEEE = c.decCPOL, c.decCPHA, true, true
+	p.HaveThr, p.TickNs, p.Nibbles, p.DataBaud = false, 0, 0, 0
 	return p
 }
 
+// serialProto reports a decoder the serial trigger matches: every one, from
+// UART to FlexRay (the packet and line FPGA images match the buses the
+// general image does not).
+// TRLC-LINKS: REQ-SDS-013
+func serialProto(proto int) bool {
+	return proto >= framecalc.ProtoUART && proto <= framecalc.ProtoFlexRay
+}
+
 // syncSerialBus re-sends the BUS settings to an armed serial trigger, or
-// disarms it when decode no longer names a bus it can match (Off, Auto, or
-// a protocol other than UART, I2C and SPI).
+// disarms it when decode no longer names a bus (Off, Auto).
 // TRLC-LINKS: REQ-SDS-013
 func (c *Controller) syncSerialBus() {
 	se := c.serialTrig()
@@ -99,7 +109,7 @@ func (c *Controller) syncSerialBus() {
 	c.mu.Lock()
 	proto := c.decProto
 	c.mu.Unlock()
-	if proto < framecalc.ProtoUART || proto > framecalc.ProtoSPI {
+	if !serialProto(proto) {
 		se.SetSerialMode(engine.SerialOff)
 		return
 	}

@@ -52,9 +52,10 @@ func refineTriggerEdge(sig []uint8, q []uint16, valid int, edgeX, level float64,
 // fabric compares raw interleaved codes, whose five converters sit up to ~11
 // codes apart: a level within that spread of a flat baseline fires on one
 // converter's noise, with no edge in the signal (bench 2026-10-07: 5 V/div
-// at 1.6 V, 10 V/div at 1.6 V). Such a frame is not a trigger. An envelope
-// (min, max pairs) confirms when the buckets beside the index reach both
-// sides of the level.
+// at 1.6 V, 10 V/div at 1.6 V). Such a frame is not a trigger: software may
+// check a trigger the FPGA pointed out, never search data it did not point
+// at (owner rule). An envelope (min, max pairs) confirms when the buckets
+// beside the index reach both sides of the level.
 // TRLC-LINKS: REQ-SDS-011, REQ-SDS-016
 func confirmTriggerEdge(sig []uint8, q []uint16, valid int, edgeX, level float64, rising, envelope bool) bool {
 	if valid < 2 || !(edgeX >= 0) || edgeX >= float64(valid) {
@@ -83,4 +84,46 @@ func confirmTriggerEdge(sig []uint8, q []uint16, valid int, edgeX, level float64
 		}
 	}
 	return false
+}
+
+// placeEdgeTrigger checks a hardware edge trigger on the calibrated record
+// and places it on its level crossing (the FPGA's index is word-granular).
+// It reports false for a trigger with no calibrated crossing near its index
+// - the raw codes' converter spread firing on noise at a small signal's rail
+// - which the caller drops; those are counted, and their recent share is
+// what the TRIG tab warns on. Envelope frames hold bucket extremes, not
+// samples in time order: they are checked, not refined.
+// TRLC-LINKS: REQ-SDS-011
+func (e *Engine) placeEdgeTrigger(f *Frame, disc []uint8, q []uint16, level float64, rising bool) bool {
+	confirmed := confirmTriggerEdge(disc, q, f.Valid, f.EdgeX, level, rising, f.PeakDetect)
+	e.noteNoiseTrigger(!confirmed)
+	if confirmed && !f.PeakDetect {
+		f.EdgeX = refineTriggerEdge(disc, q, f.Valid, f.EdgeX, level, rising)
+		f.TrigPos = int(f.EdgeX)
+	}
+	return confirmed
+}
+
+// noteNoiseTrigger counts a hardware edge trigger with no calibrated edge at
+// its index and keeps their recent share (an average over about the last
+// twenty triggers).
+// TRLC-LINKS: REQ-SDS-011
+func (e *Engine) noteNoiseTrigger(noise bool) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	x := 0.0
+	if noise {
+		x = 1
+		e.stats.FalseTriggers++
+	}
+	e.stats.NoiseTriggers += (x - e.stats.NoiseTriggers) / 20
+}
+
+// clearNoiseTriggers forgets the noise-trigger share when the trigger, the
+// timebase or the mode changes: the next triggers say anew.
+// TRLC-LINKS: REQ-SDS-011
+func (e *Engine) clearNoiseTriggers() {
+	e.mu.Lock()
+	e.stats.NoiseTriggers = 0
+	e.mu.Unlock()
 }

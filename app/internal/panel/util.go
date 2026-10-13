@@ -77,18 +77,18 @@ func mod5(x int) int { return ((x % 5) + 5) % 5 }
 // TRLC-LINKS: REQ-SDS-136
 func mod3(x int) int { return ((x % 3) + 3) % 3 }
 
-// nextHoldoff steps the trigger-holdoff ladder (Off → 100 µs → 1 ms → 10 ms →
-// 100 ms → 1 s), clamped at the ends.
+// nextHoldoff steps the trigger-holdoff ladder (holdoffLadder: Off, then
+// 1-2-5 from 100 µs to 10 s), clamped at the ends.
 // TRLC-LINKS: REQ-SDS-136
 func nextHoldoff(cur float64, dir int, wrap bool) float64 {
-	opts := []float64{0, 100e-6, 1e-3, 10e-3, 100e-3, 1}
+	opts := holdoffLadder
 	if dir > 0 {
 		for _, v := range opts {
 			if v > cur*(1+1e-6) {
 				return v
 			}
 		}
-		if wrap { // a press past 1 s goes back to Off (bug hunt #2: it stuck)
+		if wrap { // a press past the top goes back to Off (bug hunt #2: it stuck)
 			return opts[0]
 		}
 		return opts[len(opts)-1]

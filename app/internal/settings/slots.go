@@ -43,6 +43,16 @@ func (s Slots) RecallSetup(n int) error {
 	return nil
 }
 
+// CurrentSetup is the setup a save would write now (the panel's Save/Recall
+// lamp compares it with the one last saved or recalled).
+// TRLC-LINKS: REQ-SDS-136
+func (s Slots) CurrentSetup() Settings {
+	if s.Collect == nil {
+		return Settings{}
+	}
+	return s.setup()
+}
+
 // setup is the current setup as a setup memory keeps it: without the
 // instrument's screen saver.
 // TRLC-LINKS: REQ-SDS-221

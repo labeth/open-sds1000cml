@@ -138,7 +138,9 @@ func Decode(f *engine.Frame, p DecodeParams) decode.Result {
 	case ProtoSPI:
 		res = decode.DecodeSPI(ch(p.ChA), ch(p.ChB), f.SampleS, decode.SPICfg{CPOL: p.CPOL, CPHA: p.CPHA, MSB: true, Format: p.Format})
 	case ProtoManchester:
-		res = decode.DecodeManchester(ch(p.ChA), f.SampleS, decode.ManchesterCfg{Bitrate: p.Baud, IEEE: true, Format: p.Format})
+		// MSB first, as Auto found it and the web decodes it (the lock read
+		// LSB first: 12 34 showed as 48 2C; bug hunt #3).
+		res = decode.DecodeManchester(ch(p.ChA), f.SampleS, decode.ManchesterCfg{Bitrate: p.Baud, IEEE: true, MSB: true, Format: p.Format})
 	case ProtoSENT:
 		res = decode.DecodeSENT(ch(p.ChA), f.SampleS, decode.SENTCfg{})
 	case ProtoCAN:
@@ -152,12 +154,40 @@ func Decode(f *engine.Frame, p DecodeParams) decode.Result {
 	case ProtoFlexRay:
 		res = decode.DecodeFlexRay(ch(p.ChA), f.SampleS, decode.FlexRayCfg{Bitrate: p.Baud})
 	}
+	if f.PeakDetect && f.Ordered {
+		switch {
+		case p.Proto == ProtoAuto && res.Proto == "off" && res.Error == "no protocol matched":
+			// a bus the envelope cannot resolve is not found either (bug hunt
+			// #3: a 115200 UART at 500us/div was "no protocol matched")
+			res.Error = "no protocol resolved at this timebase - S/DIV faster, or SINGLE"
+		case !EnvelopeResolves(res):
+			res = decode.Result{Proto: res.Proto, Error: decode.Names[res.Proto] + " not resolved at this timebase - S/DIV faster, or SINGLE"}
+		}
+	}
 	at := time.Now()
 	if redecode {
 		at = decodeCache.at // the detection's pacing runs from the last detection
 	}
 	decodeCache.key, decodeCache.res, decodeCache.ok, decodeCache.at = key, res, cacheable, at
 	return res
+}
+
+// MinEnvelopeFeature is the shortest bus feature, in points, a live envelope
+// decodes: well over its (min, max) bucket of two points (a CAN frame of
+// ideal edges failed at 2.8 points a bit, a 115200 UART at 500us/div's 3.6
+// read 0A as 02 and 20 as 30 on the bench; bug hunt #3).
+const MinEnvelopeFeature = 4.0
+
+// EnvelopeResolves reports whether a decode of a live envelope can stand. The
+// envelope holds a (min, max) pair per bucket; a line that changes within a
+// bucket aliases there (a fast clock reads as a clock of two buckets, its
+// data as starts and stops: I2C at 500us/div listed 151 packets of no bytes,
+// bug hunt #3), so a bus whose shortest feature is not well over a bucket is
+// not decoded from it.
+// TRLC-LINKS: REQ-SDS-214
+func EnvelopeResolves(res decode.Result) bool {
+	fs := decode.FeatureSamples(res)
+	return fs == 0 || fs >= MinEnvelopeFeature
 }
 
 // ---- spectrum ----

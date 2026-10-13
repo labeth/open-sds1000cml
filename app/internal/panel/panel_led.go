@@ -61,10 +61,7 @@ func (c *Controller) lampWord(s *sv) uint16 {
 	if s.decProto != framecalc.ProtoOff {
 		w |= ledUtility
 	}
-	c.mu.Lock()
-	last, print := c.lastSetup, c.lastSetupPrint
-	c.mu.Unlock()
-	if last > 0 && s.slotUsed[last] && print == setupPrint(s) {
+	if c.sameAsSavedSetup(s) {
 		w |= ledSaveRec
 	}
 	return w
@@ -94,7 +91,8 @@ func setupPrint(s *sv) string {
 // SyncLEDs refreshes the lamps from the engine and the panel state and
 // re-latches only when the word changed, so the lamps follow a single-shot
 // self-stopping or the web/SCPI toggling run without a key press; it also
-// publishes the panel snapshot for the remote's long-poll.
+// publishes the panel snapshot for the remote's long-poll, at most every
+// syncPublishEvery (an input publishes at once).
 // TRLC-LINKS: REQ-SDS-135
 func (c *Controller) SyncLEDs() {
 	st := c.eng.Snapshot()
@@ -102,8 +100,18 @@ func (c *Controller) SyncLEDs() {
 	c.running, c.norm, c.single = st.Running, st.Norm, st.Single
 	c.mu.Unlock()
 	c.pushLEDs()
-	c.publish()
+	c.rmu.Lock()
+	at := c.remote.pubAt
+	c.rmu.Unlock()
+	if now := c.now(); at.IsZero() || now.Sub(at) >= syncPublishEvery || now.Before(at) {
+		c.publish()
+	}
 }
+
+// syncPublishEvery bounds the periodic publish: hashing every sheet row and
+// encoding the snapshot 45 times a second took a tenth of the CPU (bug hunt
+// #3, B3).
+const syncPublishEvery = 150 * time.Millisecond
 
 // pushLEDs latches the lamp word when it changed.
 // TRLC-LINKS: REQ-SDS-135

@@ -29,6 +29,26 @@ setInterval(() => {
   if (dcfg.proto !== "off" && !document.hidden && !superseded) renewDecodeLease();
 }, 1000);
 
+// decodeFeatureSamples is the shortest feature of a decode's bus in samples
+// (decode.FeatureSamples): a bit of an NRZ line, half a clock (I2C, SPI),
+// half a bit of a line code (Manchester, MIL-1553, ARINC 429), SENT's
+// shortest pulse of four ticks; 0 when the result names none.
+// TRLC-LINKS: REQ-SDS-207
+function decodeFeatureSamples(r) {
+  const m = (r && r.ok && r.meta) || {};
+  if (m.colsPerClock > 0) return m.colsPerClock / 2;
+  if (m.tickSamples > 0) return 4 * m.tickSamples;
+  if (!(m.samplesPerBit > 0)) return 0;
+  return ["manchester", "mil1553", "arinc429"].includes(r.proto) ? m.samplesPerBit / 2 : m.samplesPerBit;
+}
+// A live envelope holds a (min, max) pair per bucket, two points: a bus whose
+// shortest feature is not well over a bucket aliases there (a fast I2C clock
+// read as starts and stops, no bytes; a 115200 UART at 500 us/div's 3.6
+// points a bit read 0A as 02), so it is not decoded from it
+// (framecalc.MinEnvelopeFeature).
+const DECODE_MIN_ENVELOPE_FEATURE = 4;
+const DECODE_NAMES = { uart: "UART", i2c: "I2C", spi: "SPI", manchester: "Manchester", sent: "SENT", canfd: "CAN", mil1553: "MIL-1553", arinc429: "ARINC 429", usbls: "USB LS", flexray: "FlexRay" };
+
 // TRLC-LINKS: REQ-SDS-207
 function computeDecode() {
   dcfg.result = null;
@@ -57,6 +77,11 @@ function computeDecode() {
     r = decodeUSBLS(decCodes(dcfg.line), colTimeS, Object.assign(cfg, { bitrate: dcfg.baud > 0 ? dcfg.baud : 0, haveThr: !dcfg.auto }));
   else if (dcfg.proto === "flexray") // single line, BSS-framed bytes
     r = decodeFlexRay(decCodes(dcfg.line), colTimeS, Object.assign(cfg, { bitrate: dcfg.baud > 0 ? dcfg.baud : 0, haveThr: !dcfg.auto }));
+  if (r && r.ok && frame.peak_detect && frame.ordered) {
+    const fs = decodeFeatureSamples(r);
+    if (fs > 0 && fs < DECODE_MIN_ENVELOPE_FEATURE)
+      r = { ok: false, proto: r.proto, error: (DECODE_NAMES[r.proto] || r.proto) + " not resolved at this timebase - faster time/div, or SINGLE", spans: [], text: "", bytes: [], meta: {} };
+  }
   dcfg.result = r;
   if (r && r.ok && dcfg.auto && r.meta && r.meta.threshold != null) {
     $("decThr").value = Math.round(r.meta.threshold); $("decThrV").textContent = Math.round(r.meta.threshold);
@@ -261,20 +286,75 @@ function setDetectMsg(t, err) {
   el.style.color = err ? "#e8604c" : "var(--dim)";
 }
 
+// fetchSampledFrame recalls one sampled record of the live acquisition (the
+// raw feed the eye diagram and super-res read) that accept takes, or null
+// within waitMs.
+// TRLC-LINKS: REQ-SDS-207
+async function fetchSampledFrame(waitMs, accept) {
+  const t0 = performance.now();
+  let since = 0;
+  while (performance.now() - t0 < waitMs) {
+    try {
+      const r = await fetch("/api/frame.bin?since=" + since + "&waitms=1000&raw=1&lease=raw");
+      if (!r.ok) return null;
+      const f = decodeBinFrame(await r.arrayBuffer());
+      if (f && !f.unchanged) {
+        since = f.seq;
+        if (f.c1 && !f.is_env && !f.peak_detect && (!accept || accept(f))) return f;
+      }
+    } catch { return null; }
+  }
+  return null;
+}
+
+// detectStands returns detection d, unless src is the live envelope (no
+// sampled record came: Normal with nothing triggering) and the bus d names is
+// too fine for it, which aliases into another (I2C's data line read as
+// Manchester at 102 kBd; bug hunt #3): then a refusal that says why.
+// TRLC-LINKS: REQ-SDS-207
+function detectStands(d, src, waiting) {
+  if (d.proto === "off" || !(src.peak_detect && src.ordered) || !d.result) return d;
+  const fs = decodeFeatureSamples(d.result);
+  if (!(fs > 0 && fs < DECODE_MIN_ENVELOPE_FEATURE)) return d;
+  return { proto: "off", reason: waiting ? "no new capture: the scope waits for a trigger - Auto or Force, then Detect"
+    : "the live view cannot resolve it - a faster time/div, then Detect" };
+}
+
 // runAutodetect: analyse the current frame, pick the best protocol + roles +
 // sub-settings, apply them to dcfg + the DOM controls, and re-decode.
 // TRLC-LINKS: REQ-SDS-207
 async function runAutodetect() {
   if (!frame || !frame.c1 || frame.is_env) { setDetectMsg("no live waveform to analyse", true); return; }
-  if (frame.peak_detect && !frame.ordered && !frozen) {
-    // Detect on samples: ask for them and wait for the first such frame.
-    decodeLeaseT = 0; renewDecodeLease();
-    setDetectMsg("fetching full-rate samples…");
-    for (let t = 0; t < 25 && frame && frame.peak_detect && !frame.ordered; t++) await new Promise(r => setTimeout(r, 200));
+  let src = frame;
+  if (frame.peak_detect && !frozen) {
+    // Detect on samples, as the scope's BUS entry does: the live feed is a
+    // screen of min/max pairs (at 500 us/div after Default setup, 2.4 us a
+    // point: "no protocol matched" with a UART on screen; bug hunt #3), so
+    // recall one sampled record and detect on that.
+    setDetectMsg("fetching a sampled record…");
+    const raw = await fetchSampledFrame(4000);
+    if (raw) src = raw;
     if (!frame || !frame.c1) { setDetectMsg("no live waveform to analyse", true); return; }
   }
-  if ((frame.peak_detect && !frame.ordered) || frame.is_env) { setDetectMsg("Sampled data required — select Normal acquisition and Run before detecting.", true); return; }
-  const d = autodetect(frame, { fmt: dcfg.fmt });
+  if ((src.peak_detect && !src.ordered) || src.is_env) { setDetectMsg("Sampled data required — select Normal acquisition and Run before detecting.", true); return; }
+  let d = detectStands(autodetect(src, { fmt: dcfg.fmt }), src, !!(st && st.waiting)), stepped = 0;
+  // A record that hid the bus - too short (Autoset's 10 us/div held about one
+  // UART byte; bug hunt #3) or decimated - is looked at again at the slowest
+  // full-rate timebase, kept when it finds the bus, else the timebase goes
+  // back: as the scope's BUS entry does.
+  const full = st && st.full_rate_tdiv_s, prev = st && st.tdiv_s;
+  if (d.proto === "off" && !frozen && st.running && full > 0 && prev > 0 && Math.abs(prev - full) > 1e-3 * full) {
+    setDetectMsg("looking again at " + fmtTdiv(full) + "/div…");
+    await send("tdiv", full);
+    // a record of the new timebase (a frame that names none: the second after)
+    let seen = 0;
+    const raw = await fetchSampledFrame(6000, (f) => f.tdiv_s > 0 ? Math.abs(f.tdiv_s - full) <= 1e-3 * full : ++seen >= 2);
+    const d2 = raw ? autodetect(raw, { fmt: dcfg.fmt }) : null;
+    if (d2 && d2.proto !== "off") { d = d2; src = raw; stepped = full; }
+    else await send("tdiv", prev);
+  }
+  // the found bus's shortest feature in seconds, for BUS's timebase step
+  dcfg.detectFeatureS = d.proto !== "off" && d.result ? decodeFeatureSamples(d.result) * frameDtS(src, src.c1.length) : 0;
   if (d.proto === "off") {
     const why = d.reason && d.reason !== "no protocol matched" ? d.reason : "show more of the signal (slower t/div) or check the probes";
     setDetectMsg("no protocol matched — " + why, true); return;
@@ -298,7 +378,7 @@ async function runAutodetect() {
   updateDecodePanel();
   recompute();
   const nb = d.result && d.result.bytes ? d.result.bytes.length : 0;
-  setDetectMsg("detected " + detectLabel(d) + " · " + nb + " bytes");
+  setDetectMsg("detected " + detectLabel(d) + " · " + nb + " bytes" + (stepped ? " · " + fmtTdiv(stepped) + "/div to read it" : ""));
 }
 
 // ==== wiring ====
@@ -382,14 +462,14 @@ async function runAutodetect() {
       try { document.execCommand("copy"); } catch (e) {}
       document.body.removeChild(ta);
     }
-    $("capCopy").textContent = "copied"; setTimeout(() => $("capCopy").textContent = "copy", 900);
+    $("capCopy").textContent = "copied"; setTimeout(() => $("capCopy").textContent = "Copy", 900);
   };
   // TRLC-LINKS: REQ-SDS-207
   $("decodeCopy").onclick = () => {
     const t = $("decodeText").value;
     if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).catch(() => {});
     else { $("decodeText").select(); try { document.execCommand("copy"); } catch (e) {} }
-    $("decodeCopy").textContent = "copied"; setTimeout(() => $("decodeCopy").textContent = "copy", 900);
+    $("decodeCopy").textContent = "copied"; setTimeout(() => $("decodeCopy").textContent = "Copy", 900);
   };
   updateDecodePanel();
 })();

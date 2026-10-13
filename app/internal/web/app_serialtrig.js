@@ -122,11 +122,11 @@ function stMatchText(p) {
 // and direction (not while one of them is being typed).
 // TRLC-LINKS: REQ-SDS-206
 function stAdopt() {
-  if (stAdopting) return;
+  if (stAdopting) return Promise.resolve();
   const a = document.activeElement;
-  if (a && (a.id === "stBytes" || a.id === "stAddr" || (a.closest && a.closest("#stRW")))) return;
+  if (a && (a.id === "stBytes" || a.id === "stAddr" || (a.closest && a.closest("#stRW")))) return Promise.resolve();
   stAdopting = true;
-  fetch("/api/serial").then((r) => r.json()).then((j) => {
+  return fetch("/api/serial").then((r) => r.json()).then((j) => {
     if (!j || !j.ok || stOwn) return;
     const p = j.params || {};
     $("stBytes").value = stMatchText(p);
@@ -135,6 +135,10 @@ function stAdopt() {
     stStatus();
   }).catch(() => {}).finally(() => { stAdopting = false; });
 }
+// stFollowScope drops this page's own edits and shows the scope's match
+// (Default setup cleared it).
+// TRLC-LINKS: REQ-SDS-206
+function stFollowScope() { stOwn = false; stLastSig = ""; return stAdopt(); }
 let stModePending = null, stModeGeneration = 0, stArmGeneration = 0;
 // TRLC-LINKS: REQ-SDS-206
 function stPush() {
@@ -178,11 +182,15 @@ function stStatus(msg) {
   if (stConfigError) { $("stStats").textContent = stConfigError + (stArmed() ? " Previous settings remain armed." : ""); return; }
   if (!stArmed()) { $("stStats").textContent = ""; return; }
   if (stBandInactive()) { $("stStats").textContent = "⚠ inactive on this band (env/roll/stream/ETS)"; return; }
-  const name = st && (st.serial_backend || "").replace(/^hardware-/, "");
-  const protocol = (name || "").replace(/-sequence$/, "");
+  // The FPGA decides a serial trigger; "none: <why>" is an armed match it
+  // cannot take yet (the levels still being learned, no matcher in the image).
+  const backendName = (st && st.serial_backend) || "";
+  if (backendName.startsWith("none: ")) { $("stStats").textContent = `armed · no hardware trigger yet: ${backendName.slice(6)}`; return; }
+  const name = backendName.replace(/^hardware-/, "");
+  const protocol = name.replace(/-sequence$/, "");
   const labels = {uart: "UART", i2c: "I²C", spi: "SPI", sent: "SENT", mil1553: "MIL-1553", usbls: "USB LS", manchester: "Manchester", can: "CAN", arinc429: "ARINC 429", flexray: "FlexRay"};
-  const backend = st && /^hardware-/.test(st.serial_backend || "")
-    ? `hardware ${labels[protocol] || protocol}${name.endsWith("-sequence") ? " sequence" : ""}` : "software matching";
+  const backend = /^hardware-/.test(backendName)
+    ? `hardware ${labels[protocol] || protocol}${name.endsWith("-sequence") ? " sequence" : ""}` : "waiting for the scope";
   $("stStats").textContent = `armed · ${backend} · ${(st && st.serial_matches) || 0} matches`;
 }
 
@@ -199,23 +207,44 @@ function stOnDecodeChange() {
 // TRLC-LINKS: REQ-SDS-206
 (function initSerialTrig() {
   if (!$("stArm")) return;
+  stAdopt(); // the scope's stored match, armed or not
   // TRLC-LINKS: REQ-SDS-206
+  let arming = 0, cancel = false; // the arm under way (its generation): a bus search and the config push take seconds
   $("stArm").onclick = async () => {
-    // With decoding off, find the bus first (BUS's Trigger on bytes pane): a
-    // serial trigger needs the decoder's protocol and settings.
-    if (stProtoNum() === 0 && !stArmed() && typeof runAutodetect === "function") {
-      stStatus("detecting the bus…");
-      await runAutodetect();
-    }
-    if (stProtoNum() === 0) { stStatus("turn on decode to arm a serial trigger"); return; }
+    // A click while an arm is under way cancels it: the second click started
+    // an arm of its own, so two quick clicks armed (bug hunt #3).
+    if (arming) { cancel = true; ++stArmGeneration; stStatus("arming cancelled"); return; }
     const on = !stArmed(), generation = ++stArmGeneration;
-    stOwn = on;
-    if (on) {
-      try { await stPush(); } catch { stStatus(); return; } // install config BEFORE arming; abort on invalid/rejected
+    if (on) { arming = generation; cancel = false; }
+    try {
+      // With decoding off, find the bus first (BUS's Trigger on bytes pane): a
+      // serial trigger needs the decoder's protocol and settings.
+      if (on && stProtoNum() === 0 && typeof runAutodetect === "function") {
+        stStatus("detecting the bus…");
+        await runAutodetect();
+        if (generation !== stArmGeneration) return;
+      }
+      if (stProtoNum() === 0) { stStatus("turn on decode to arm a serial trigger"); return; }
+      // Arming a match not edited here arms the scope's stored one (set on the
+      // LCD or a phone, kept while disarmed): the empty field armed "any byte"
+      // over it (bug hunt #3).
+      if (on && !stOwn) await stAdopt();
+      if (generation !== stArmGeneration) return;
+      stOwn = on;
+      if (on) {
+        try { await stPush(); } catch { stStatus(); return; } // install config BEFORE arming; abort on invalid/rejected
+      }
+      if (generation !== stArmGeneration || stProtoNum() === 0) return;
+      await stSetArmed(on);
+      stStatus();
+    } finally {
+      if (arming === generation) {
+        arming = 0;
+        // cancelled once the arm was on its way to the scope: take it back
+        if (cancel && stArmed()) { stOwn = false; await stSetArmed(false); stStatus("arming cancelled"); }
+        cancel = false;
+      }
     }
-    if (generation !== stArmGeneration || stProtoNum() === 0) return;
-    await stSetArmed(on);
-    stStatus();
   };
   for (const id of ["stAddr", "stRW", "stBytes", "dsClock"])
     // TRLC-LINKS: REQ-SDS-206
@@ -225,8 +254,10 @@ function stOnDecodeChange() {
 // resync + live status (both directions); re-push if the config drifted.
 setInterval(() => {
   if (!$("stArm") || !st) return;
-  // armed elsewhere: show its match (in the strip's caption too), whether or not this page decodes
-  if (st.serial_mode && !stOwn) stAdopt();
+  // the scope's match, armed or not, unless this page edited its own: set or
+  // cleared elsewhere (the LCD, a phone, Default setup), the field showed the
+  // old one (bug hunt #3); armed, the strip's caption names it too
+  if (!stOwn && !document.hidden && !(typeof superseded !== "undefined" && superseded)) stAdopt();
   if (stProtoNum() === 0) { if (stOwn && stArmed()) stSetArmed(false); return; }
   // Ignore pre-command status polls until one acknowledges the requested mode.
   if (stModePending !== null) {

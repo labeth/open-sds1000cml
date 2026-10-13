@@ -98,6 +98,7 @@ var guideKnobs = []gl{gT("NO MENU OPEN: KNOBS AND KEYS AS PRINTED"),
 	gT("LAMPS (one meaning: the key's function is in use)"),
 	gN("Measure: readouts on    Acquire: not Normal or super-res    1, 2: shown"),
 	gN("Display: not Y-T or persistence    Utility: decoding"),
+	gN("Math: a math trace    Ref: a reference shown    Cursors: on    Single: armed"),
 	gN("Save/Recall: settings unchanged since the last save or recall"),
 	gN("Run/Stop: green running, amber waiting for a trigger, red stopped")}
 

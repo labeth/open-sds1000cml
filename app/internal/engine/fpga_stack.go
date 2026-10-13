@@ -28,6 +28,10 @@ type ImageSwitcher interface {
 	// (ADR-STREAM-IMAGE).
 	LoadStream() error
 	HasStream() bool
+	// LoadQualify loads the image with the pulse, slope and video triggers
+	// (ADR-HARDWARE-QUALIFIERS).
+	LoadQualify() error
+	HasQualify() bool
 }
 
 // FPGAStackRequest stacks Records fresh captures at the current timebase, raw

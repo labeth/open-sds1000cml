@@ -66,7 +66,13 @@ func (c *Controller) maskBuildRun(gen uint64, n, tolT, tolV, ch int, posFrac flo
 	var sampleS, tdivS float64
 	var peak bool
 	var lastSeq uint64
+	start := time.Now()
 	for tries := 0; got < n && tries < n*20 && !c.maskCleared(gen); tries++ {
+		// no locked frame at all: the trigger is off the signal; say so now,
+		// not after n*20 tries (2.5 min at 128 frames; bug hunt #3)
+		if got == 0 && time.Since(start) > maskNoLockWait {
+			break
+		}
 		time.Sleep(60 * time.Millisecond)
 		ok := false
 		c.frameFn(func(f *engine.Frame) {
@@ -132,7 +138,7 @@ func (c *Controller) maskBuildRun(gen uint64, n, tolT, tolV, ch int, posFrac flo
 		return
 	}
 	if got < 8 || win == 0 {
-		c.maskSetMsg("MASK: build failed - no locked frames (trigger on-signal?)")
+		c.maskSetMsg("MASK: build failed - no locked frames: put the trigger level on the signal")
 		return
 	}
 	m := engine.BuildMaskFromEnvelope(lo, hi, win, tolT, tolV, ch)
@@ -153,6 +159,9 @@ func (c *Controller) maskBuildRun(gen uint64, n, tolT, tolV, ch int, posFrac flo
 	}
 	c.maskSetMsg(fmt.Sprintf("MASK: ready (%d frames, C%d) - set Mode to Test", got, ch+1))
 }
+
+// maskNoLockWait is how long a build waits for its first locked frame.
+var maskNoLockWait = 5 * time.Second
 
 // maskCleared reports whether the mask was cleared since gen.
 // TRLC-LINKS: REQ-SDS-139

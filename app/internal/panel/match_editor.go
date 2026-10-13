@@ -328,6 +328,11 @@ func (c *Controller) matchOK() error {
 		return err
 	}
 	c.matchCancel()
+	// The match as the trigger now holds it: a lone typed nibble is the
+	// byte 0A, and the notice said "A" (bug hunt #3).
+	if se := c.serialTrig(); se != nil {
+		toks = tokensOf(se.SerialConfig())
+	}
 	text := strings.Join(toks, " ")
 	if text == "" {
 		text = "any byte"

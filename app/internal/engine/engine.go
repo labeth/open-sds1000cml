@@ -165,6 +165,10 @@ type Stats struct {
 	Single        bool    `json:"single"`         // a single-shot is armed/waiting
 	TrigPosFrac   float64 `json:"trig_pos_frac"`  // horizontal trigger position 0..1
 	FalseTriggers uint64  `json:"false_triggers"` // hardware triggers with no calibrated edge at the index (dropped)
+	// NoiseTriggers is the recent share of hardware edge triggers dropped
+	// for no calibrated edge at the index (0..1): the level sits in a small
+	// signal's noise.
+	NoiseTriggers float64 `json:"noise_triggers"`
 	TdivS         float64 `json:"tdiv_s"`
 	TdivSetS      float64 `json:"tdiv_set_s"` // the timebase asked for: a new one waits for the next capture (TdivS until then)
 	DisplayedS    float64 `json:"displayed_sdiv_s"`
@@ -234,6 +238,11 @@ type Stats struct {
 	// Serial / protocol trigger (serialtrig.go)
 	SerialMode    int    `json:"serial_mode,omitempty"` // 0 off, 1 armed
 	SerialBackend string `json:"serial_backend,omitempty"`
+	// TriggerBackend is a pulse, slope or video trigger's decider:
+	// "hardware-pulse", or "none: <why>" while the FPGA cannot take it.
+	TriggerBackend string `json:"trigger_backend,omitempty"`
+	// ZoneBackend is the zone trigger's decider: "hardware", or "none: <why>".
+	ZoneBackend string `json:"zone_backend,omitempty"`
 	// Image names the loaded acquisition image: general or packet.
 	Image         string `json:"image,omitempty"`
 	SerialMatches int64  `json:"serial_matches,omitempty"` // frames that matched the pattern
@@ -246,6 +255,7 @@ type Stats struct {
 	BodeFreqHz   float64 `json:"bode_freq_hz,omitempty"`   // live point frequency
 	BodeGainDB   float64 `json:"bode_gain_db,omitempty"`   // live point magnitude (dB)
 	BodePhaseDeg float64 `json:"bode_phase_deg,omitempty"` // live point phase (deg)
+	BodeWhy      string  `json:"bode_why,omitempty"`       // why the last capture gave no point
 }
 
 // AcqSample is one per-frame acquisition record captured by the realtime
@@ -308,6 +318,7 @@ type Engine struct {
 	hardwareManchester    bool
 	hardwareSequence      bool
 	hardwareEnvelope      bool
+	hardwareQualifier     bool // the image measures pulse widths, slopes and video lines (ADR-HARDWARE-QUALIFIERS)
 	// sequenceOnly: the image's decoders take no pattern of their own.
 	sequenceOnly bool
 	// hardwarePacket is the packet block's protocol mask (bit n = protocol n).
@@ -374,6 +385,7 @@ type Engine struct {
 	trigOffV      [2]atomic.Uint64 // per-channel applied offset volts (float64 bits)
 	scaleGen      atomic.Uint64    // bumped on every V/div or offset change (stopped replay)
 	feGen         atomic.Uint64    // bumped on every front-end write (relays, gain, offset DAC), changed or not
+	learnFE       uint64           // feGen when the SRAM loop's previous capture was armed (level learning waits a steady capture)
 	singleRestore atomic.Int32     // trigger mode a SINGLE replaced: 1 AUTO, 2 NORM, 0 none (restored on RUN)
 	pubIdent      frameIdent       // geometry of the latest published frame (guarded by mu)
 	chCoupling    [2]atomic.Int32  // per-channel coupling (analog.CplDC/AC/GND); AC is software
@@ -398,6 +410,8 @@ type Engine struct {
 	serialMatches atomic.Int64
 	serialHeld    int // engine goroutine only: AUTO liveness fallback counter
 	ser           serialState
+	serLv         serialLevels // the lines' levels and SPI clock, for the hardware matcher (serial_levels.go)
+	qualExt       qualExtent   // the channels' extents, for the hardware qualifiers (qualify_hardware.go)
 	bodeMode      atomic.Int32 // FRA (Bode) accumulation armed (bode.go)
 	bode          bodeState
 
@@ -810,6 +824,9 @@ func (e *Engine) Snapshot() Stats {
 		s.BodeFreqHz = e.bode.live.FreqHz
 		s.BodeGainDB = e.bode.live.GainDB
 		s.BodePhaseDeg = e.bode.live.PhaseDeg
+	}
+	if s.BodeMode != 0 {
+		s.BodeWhy = e.bode.why
 	}
 	e.bode.mu.Unlock()
 	// FPS = publishes within the trailing second.

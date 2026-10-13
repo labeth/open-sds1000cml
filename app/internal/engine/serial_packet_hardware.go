@@ -171,6 +171,7 @@ func (e *Engine) probeSerialHardware() {
 		{"Manchester", &e.hardwareManchester, e.sram.SupportsManchester},
 		{"sequence", &e.hardwareSequence, e.sram.SupportsSequence},
 		{"envelope", &e.hardwareEnvelope, e.sram.SupportsEnvelope},
+		{"qualifier", &e.hardwareQualifier, e.sram.SupportsQualifier},
 		{"sequence-only", &e.sequenceOnly, e.sram.SequenceOnly},
 	} {
 		var err error
@@ -221,6 +222,8 @@ func (e *Engine) hasImage(name string) bool {
 		return e.images.HasLine()
 	case imageStream:
 		return e.images.HasStream()
+	case imageQualify:
+		return e.images.HasQualify()
 	}
 	return true
 }
@@ -239,11 +242,21 @@ func (e *Engine) wantImage() string {
 		return imageStream
 	}
 	if e.serialMode.Load() != SerialTrigger {
+		// A pulse, slope or video trigger runs on the qualifier image.
+		e.mu.Lock()
+		typ := e.tp.typ
+		e.mu.Unlock()
+		if (typ != TrigEdge || e.zonesOn()) && e.images.HasQualify() { // and the zone trigger
+			return imageQualify
+		}
 		return ""
 	}
 	e.ser.mu.Lock()
 	p := e.ser.params
 	e.ser.mu.Unlock()
+	// The request as the matcher takes it: a threshold the engine learned
+	// (a request from the scope names none) makes it plannable.
+	p, _ = e.serialPlanParams(p)
 	if name := protocolImage(p); name != "" && serialThresholdOK(p) && e.hasImage(name) {
 		return name
 	}
@@ -276,6 +289,8 @@ func (e *Engine) loadImage(name string) bool {
 		load = e.images.LoadLine
 	case imageStream:
 		load = e.images.LoadStream
+	case imageQualify:
+		load = e.images.LoadQualify
 	}
 	shown := name
 	if shown == "" {
@@ -283,6 +298,7 @@ func (e *Engine) loadImage(name string) bool {
 	}
 	e.logf("engine: loading the %s image", shown)
 	e.setBusy("loading "+shown+" image", 0) // the loading indicator covers the reload
+	e.noteBackendsLoading(name)
 	// A load takes seconds without bus reads; beat so the OTA agent does not
 	// judge the app hung and restart it.
 	beating := make(chan struct{})
@@ -333,7 +349,16 @@ func (e *Engine) noteARINCLevels(f *Frame) {
 	e.ser.mu.Lock()
 	p := e.ser.params
 	e.ser.mu.Unlock()
-	if p.Proto != serARINC || !serialThresholdOK(p) || f.Valid < 8 || f.Decimation > 1 {
+	// Plannable once a threshold is known (the scope's request learns it);
+	// the slicer levels are the decoder's own from a sampled record. A live
+	// envelope's (min, max) pairs gave wrong ones, kept until the request
+	// changed, and the matcher never fired (bug hunt #3): the levels wait for
+	// a sampled record, which a short lease asks for.
+	if planned, _ := e.serialPlanParams(p); p.Proto != serARINC || !serialThresholdOK(planned) || f.Valid < 8 || f.Decimation > 1 {
+		return
+	}
+	if f.PeakDetect || f.IsEnv {
+		e.lease(&e.decodeLease, time.Second)
 		return
 	}
 	codes := f.C1[:f.Valid]
@@ -341,4 +366,24 @@ func (e *Engine) noteARINCLevels(f *Frame) {
 		codes = f.C2[:f.Valid]
 	}
 	e.arincAux.Store(arincLevels(codes, p))
+}
+
+// noteBackendsLoading says, for the seconds an image load takes, that the
+// pulse, slope or video trigger and the zones wait for it: their status is
+// otherwise set by the next capture (the TRIG tab named nothing during a
+// load; bug hunt #3).
+// TRLC-LINKS: REQ-SDS-011, REQ-SDS-014
+func (e *Engine) noteBackendsLoading(image string) {
+	shown := map[string]string{imageQualify: "qualifier", imagePacket: "packet", imageLine: "line", imageStream: "stream", "": "general"}[image]
+	why := "none: loading the " + shown + " FPGA image"
+	zones := e.zonesOn()
+	serial := e.serialMode.Load() == SerialTrigger
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	if e.tp.typ != TrigEdge && !serial {
+		e.stats.TriggerBackend = why
+	}
+	if zones && !serial {
+		e.stats.ZoneBackend = why
+	}
 }

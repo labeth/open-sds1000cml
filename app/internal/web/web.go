@@ -206,6 +206,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/api/frame.bin", s.hFrameBin)
 	mux.HandleFunc("/api/set", s.hSet)
 	mux.HandleFunc("/api/panel", s.hPanel)
+	mux.HandleFunc("/api/refs", s.hRefs)
 	mux.HandleFunc("/api/panel/scan", s.hPanelScan)
 	mux.HandleFunc("GET /api/panel/wait", s.hPanelWait)
 	mux.HandleFunc("GET /api/sheets", s.hSheets)

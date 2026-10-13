@@ -159,7 +159,9 @@
     <div class="r"><span class="l">Mode</span><span class="mirror" data-src="mode"></span><span class="mirror" data-src="force"></span></div>
     <div class="r"><span class="l">Level</span><span class="mirror" data-src="lvl" data-cls="grow"></span><span class="mirror" data-src="lvlv"></span><span class="mirror" data-src="set50"></span></div>
     <div class="r"><span class="l">Holdoff</span><input type="number" id="holdoff" min="0" max="10" step="0.0001" value="0" class="w-md" aria-label="trigger holdoff seconds" title="Minimum time after a trigger before re-arming; 0 = off"><span class="hint">s · 0 = off</span></div>
+    <div id="trigNoise" class="sub warn" aria-live="polite" hidden></div>
     <div id="qualrow" class="q">
+      <div id="qualStat" class="sub" aria-live="polite"></div>
       <div id="qp-pulse" class="qb">
         <div class="r"><span class="l">Width</span><span class="seg xs" id="p-cond" aria-label="pulse width condition" data-value="0"><button data-value="0">Any</button><button data-value="1">&lt; min</button><button data-value="2">&gt; max</button><button data-value="3">Inside</button></span></div>
         <div class="r"><span class="l">Limits</span><span class="hint">min</span><input type="number" id="p-min" min="0" step="0.1" value="0" class="w-md" aria-label="pulse minimum width µs"><span class="hint">max</span><input type="number" id="p-max" min="0" step="0.1" value="0" class="w-md" aria-label="pulse maximum width µs"><span class="hint">µs</span></div>

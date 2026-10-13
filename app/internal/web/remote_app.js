@@ -646,7 +646,10 @@
     return box;
   }
   // TRLC-LINKS: REQ-SDS-220
-  function finish(text) { haptic("confirm"); sh.close(); if (text) toast(text, "ok"); }
+  // finish confirms a change; from: the sheet it was made in (S.sheet then). A
+  // late answer closes only that sheet: closed by hand meanwhile and another
+  // opened, the answer shut the new one (bug hunt #3: a slow link).
+  function finish(text, from) { haptic("confirm"); if (from === undefined || S.sheet === from) sh.close(); if (text) toast(text, "ok"); }
 
   // openEditor opens one setting's sheet.
   // TRLC-LINKS: REQ-SDS-220
@@ -702,7 +705,7 @@
     left.appendChild(dragStrip(id));
     const pre = h("div", { class: "pre" });
     for (const p of r0.Presets || []) {
-      const pb = button({ label: p, onTap: () => RN.preset(id, p).then((res) => { if (answer(res).ok) finish(labelFor(id) + ": " + disp(res.text)); }) });
+      const pb = button({ label: p, onTap: () => { const from = S.sheet; RN.preset(id, p).then((res) => { if (answer(res).ok) finish(labelFor(id) + ": " + disp(res.text), from); }); } });
       pb.dataset.preset = p;
       pre.appendChild(pb);
       bind(pb, () => pb.classList.toggle("on", disp(row(id).Text) === disp(p.replace(/\s+/g, ""))));
@@ -827,9 +830,9 @@
     // TRLC-LINKS: REQ-SDS-220
     function apply() {
       if (!buf) { haptic("warn"); msg.className = "msg err"; msg.textContent = "Type a value first"; return; }
-      const typed = buf;
+      const typed = buf, from = S.sheet;
       RN.set(id, { text: typed }).then((res) => {
-        if (res.ok) { buf = ""; finish(labelFor(id) + ": " + disp(res.text)); return; }
+        if (res.ok) { buf = ""; finish(labelFor(id) + ": " + disp(res.text), from); return; }
         haptic("warn");
         msg.className = "msg err"; msg.textContent = res.error || "The scope refused " + typed;
         toast(res.error || "The scope refused " + typed, "err");
@@ -870,7 +873,7 @@
     const bs = (r0.Options || []).map((o) => {
       const b = h("button", { type: "button", class: "opt", role: "radio", "aria-checked": "false", data: { value: String(o.Value) }, html: icon("check", 20) });
       b.appendChild(h("span", { text: o.Text }));
-      press(b, { onTap: () => RN.set(id, { value: o.Value }).then((res) => { if (answer(res).ok) finish(labelFor(id) + ": " + disp(res.text)); }) });
+      press(b, { onTap: () => { const from = S.sheet; RN.set(id, { value: o.Value }).then((res) => { if (answer(res).ok) finish(labelFor(id) + ": " + disp(res.text), from); }); } });
       grid.appendChild(b);
       return [b, o.Value];
     });
@@ -884,10 +887,10 @@
       const msg = h("div", { class: "msg", "aria-live": "polite" });
       // TRLC-LINKS: REQ-SDS-220
       const typedBaud = () => {
-        const t = inp.value.trim();
+        const t = inp.value.trim(), from = S.sheet;
         if (!t) { inp.focus(); return; }
         RN.set(id, { text: t }).then((res) => {
-          if (res.ok) { finish("Baud: " + disp(res.text)); return; }
+          if (res.ok) { finish("Baud: " + disp(res.text), from); return; }
           msg.className = "msg err"; msg.textContent = res.error; haptic("warn");
         });
       };
@@ -904,9 +907,9 @@
     for (const a of row(id).Actions || []) {
       let b;
       if (id === "sys.default") {
-        b = holdButton({ label: a.Text, sub: "hold 1 s", ms: 1000, icon: "power", onConfirm: () => actRow(id, a.ID).then((res) => { if (res.ok) finish("Default setup restored"); }) });
+        b = holdButton({ label: a.Text, sub: "hold 1 s", ms: 1000, icon: "power", onConfirm: () => { const from = S.sheet; actRow(id, a.ID).then((res) => { if (res.ok) finish("Default setup restored", from); }); } });
       } else {
-        b = button({ label: a.Text, sub: slotHint(id, a), cls: "primary", onTap: () => actRow(id, a.ID).then((res) => { if (res.ok) finish(labelFor(id) + ": " + a.Text); }) });
+        b = button({ label: a.Text, sub: slotHint(id, a), cls: "primary", onTap: () => { const from = S.sheet; actRow(id, a.ID).then((res) => { if (res.ok) finish(labelFor(id) + ": " + a.Text, from); }); } });
       }
       b.dataset.action = a.ID;
       bind(b, () => { const x = (row(id).Actions || []).find((y) => y.ID === a.ID); b.classList.toggle("dimmed", !!x && !x.Available); });
@@ -999,16 +1002,16 @@
       return res;
     }
     // TRLC-LINKS: REQ-SDS-220
-    async function setOnly() { const res = await setMatch(); if (res.ok) finish("Match bytes: " + disp(res.text)); }
+    async function setOnly() { const from = S.sheet, res = await setMatch(); if (res.ok) finish("Match bytes: " + disp(res.text), from); }
     // TRLC-LINKS: REQ-SDS-220
     async function arm() {
-      const res = await setMatch();
+      const from = S.sheet, res = await setMatch();
       if (!res.ok) return;
       const a = await RN.set("bus.trigger_on", { value: 1 });
-      if (a.ok) { finish("Serial trigger on " + disp(row(id).Text)); return; }
+      if (a.ok) { finish("Serial trigger on " + disp(row(id).Text), from); return; }
       haptic("warn"); err = a.error; show(); toast(a.error, "err");
     }
-    const anyB = button({ label: "Any byte", onTap: () => { buf = ""; txt.value = ""; setRow(id, { text: "any" }).then((res) => { if (res.ok) finish("Match: any byte"); }); } });
+    const anyB = button({ label: "Any byte", onTap: () => { const from = S.sheet; buf = ""; txt.value = ""; setRow(id, { text: "any" }).then((res) => { if (res.ok) finish("Match: any byte", from); }); } });
     anyB.dataset.act = "any";
     const setB = button({ label: "Set", onTap: () => setOnly() });
     setB.dataset.act = "set";
@@ -1204,6 +1207,8 @@
       list.appendChild(cell(id));
     }
     mBody.appendChild(list);
+    // the tab's status lines (TRIG: whether the FPGA decides the trigger)
+    for (const n of t.notes || []) mBody.appendChild(h("p", { class: "tnote" + (n.Warn ? " warn" : ""), text: n.Text }));
   }
 
   // ---- search: settings (with everyday words), then places --------------------------------------

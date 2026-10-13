@@ -313,8 +313,14 @@ func (c *Controller) bodePane(s *sv, p *wsview.SpecPane) {
 	if len(pts) == 0 {
 		p.Caption = "BODE  sweeping the source (ref C1, DUT C2)..."
 		p.Empty = "Sweeping..."
+		if why := s.st.BodeWhy; why != "" { // a capture gave no point: say why
+			p.Empty = "No point: " + why
+		}
 	} else {
 		p.Caption = fmt.Sprintf("BODE  ref C1, DUT C2  %d points", len(pts))
+		if why := s.st.BodeWhy; why != "" {
+			p.Caption += "  - " + why
+		}
 		p.Right = si(pts[0].FreqHz, "Hz") + ".." + si(pts[len(pts)-1].FreqHz, "Hz")
 		mi := bodeIndex(u, len(pts))
 		p.BodeIdx = mi

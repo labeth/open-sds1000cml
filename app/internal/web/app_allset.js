@@ -238,12 +238,31 @@ async function setupOp(op, slot) {
     if (!r.ok || !j.ok) { toast((op === "save" ? "Save" : "Recall") + " slot " + slot + ": " + (j.err || "setup memory is not available on this device"), "warn"); return false; }
     toast(op === "save" ? "Setup saved in slot " + slot : "Setup " + slot + " recalled");
     kickStatus();
+    setupsRefresh();
     return true;
   } catch (e) { toast("Setups: no connection", "err"); return false; }
 }
+// setupsRefresh shows what each slot holds, as the scope's FILE tab does: an
+// empty slot cannot be recalled, and saving over a used one replaces it (the
+// tiles named no slot's setup, so the owner's could be overwritten unseen).
+// TRLC-LINKS: REQ-SDS-219
+async function setupsRefresh() {
+  let slots = null;
+  try { const j = await (await fetch("/api/setup")).json(); if (j && j.ok && Array.isArray(j.slots)) slots = j.slots; } catch (e) { /* the tiles stay plain */ }
+  for (const el of document.querySelectorAll("#setSlots [data-slot]")) {
+    const n = +el.dataset.slot, s = slots && slots.find((x) => x.slot === n), used = !!(s && s.used);
+    const info = el.querySelector(".i");
+    info.textContent = slots ? (used ? s.summary || "used" : "empty") : "";
+    info.title = info.textContent;
+    el.querySelector('[data-op="recall"]').disabled = !!slots && !used;
+    const save = el.querySelector('[data-op="save"]');
+    save.textContent = used ? "Replace" : "Save";
+    save.setAttribute("aria-label", (used ? "Replace setup " : "Save setup ") + n);
+  }
+}
 (function setupsInit() {
   let html = "";
-  for (let n = 1; n <= 20; n++) html += `<div class="slot-t" data-slot="${n}"><div class="h"><b>Slot ${n}</b></div><div class="b">` +
+  for (let n = 1; n <= 20; n++) html += `<div class="slot-t" data-slot="${n}"><div class="h"><b>Slot ${n}</b></div><div class="i"></div><div class="b">` +
     `<button type="button" class="xs" data-op="save" aria-label="Save setup ${n}">Save</button><button type="button" class="xs" data-op="recall" aria-label="Recall setup ${n}">Recall</button></div></div>`;
   $("setSlots").innerHTML = html;
   $("setSlots").addEventListener("click", (ev) => {
@@ -252,11 +271,14 @@ async function setupOp(op, slot) {
     setupOp(b.dataset.op, +b.closest("[data-slot]").dataset.slot);
   });
 })();
-$("setupsBtn").onclick = () => popToggle($("setpop"), $("setupsBtn"));
+$("setupsBtn").onclick = () => { popToggle($("setpop"), $("setupsBtn")); if (!$("setpop").hidden) setupsRefresh(); };
 
 // Default setup is the front panel's DEFAULT SETUP key: one implementation.
 // TRLC-LINKS: REQ-SDS-219
 $("defaultBtn").onclick = async () => {
-  if (await panelPress("defaultsetup")) { toast("Default setup applied"); setTimeout(goHome, 400); }
+  if (await panelPress("defaultsetup")) {
+    toast("Default setup applied"); setTimeout(goHome, 400);
+    if (typeof stFollowScope === "function") stFollowScope(); // the match it cleared, not this page's
+  }
   else toast("Default setup is not available on this server", "warn");
 };

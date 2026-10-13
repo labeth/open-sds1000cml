@@ -281,6 +281,10 @@ func sheetHint(s *sv, t *tab) wsview.Span {
 	return wsview.Span{Text: h, Col: wsview.Dim}
 }
 
+// noiseTriggerWarn is the share of edge triggers dropped as noise from which
+// the TRIG tab warns.
+const noiseTriggerWarn = 0.25
+
 // tabStatus is the live status under a tab's rows.
 // TRLC-LINKS: REQ-SDS-212
 func tabStatus(c *Controller, s *sv, t *tab) []wsview.Span {
@@ -302,6 +306,26 @@ func tabStatus(c *Controller, s *sv, t *tab) []wsview.Span {
 		out = append(out, dim("Status: "+st))
 		if s.st.SerialMode != 0 {
 			out = append(out, dim("Serial trigger on "+matchText(s)+"; the bus is the BUS tab's"))
+		}
+		// Pulse, slope, video and zones are decided in the FPGA: until it
+		// can (its image loading, the levels being learned) nothing
+		// triggers, and this says why.
+		hw := func(what, backend string) {
+			if what == "" {
+				return // an edge trigger, or a serial one: their own lines
+			}
+			if why, ok := strings.CutPrefix(backend, "none: "); ok {
+				out = append(out, wsview.Span{Text: what + ": no hardware trigger yet - " + why, Col: wsview.Warn})
+			} else if strings.HasPrefix(backend, "hardware") {
+				out = append(out, dim(what+" decided in the FPGA"))
+			}
+		}
+		hw(map[int]string{1: "Pulse width", 2: "Slope", 3: "Video line"}[trigTypeIndex(s.st)], s.st.TriggerBackend)
+		hw("Zones", s.st.ZoneBackend)
+		// Edge triggers with no edge at the level, dropped: the FPGA fires
+		// on the converters' noise at a small signal's rail
+		if trigTypeIndex(s.st) == 0 && s.st.NoiseTriggers > noiseTriggerWarn {
+			out = append(out, wsview.Span{Text: fmt.Sprintf("%.0f%% of triggers dropped as noise: raise the gain or move the level", 100*s.st.NoiseTriggers), Col: wsview.Warn})
 		}
 	case "curs":
 		if s.curOn {
@@ -373,10 +397,15 @@ func tabStatus(c *Controller, s *sv, t *tab) []wsview.Span {
 			line = fmt.Sprintf("Screen %s wide (zoom %dx of %s)", si(w/float64(s.zoom), "s"), s.zoom, si(w, "s"))
 		}
 		c.amu.Lock()
-		ss := c.ana.g.sampleS
+		g := c.ana.g
 		c.amu.Unlock()
-		if ss > 0 {
-			line += "   sample interval " + si(ss, "s")
+		switch {
+		case g.peak && g.captureS > 0 && g.captureS < g.sampleS:
+			// a peak-detect readout: the converters' interval, not the span
+			// of a min/max point (it read 500ns for 2ns sampling; bug hunt #3)
+			line += "   sampled every " + si(g.captureS, "s") + ", shown peak-detected"
+		case g.sampleS > 0:
+			line += "   sample interval " + si(g.sampleS, "s")
 		}
 		out = append(out, dim(line))
 	case "view":
@@ -487,6 +516,11 @@ func (c *Controller) busPane(s *sv) *wsview.BusPane {
 			cap += fmt.Sprintf(", %d cut at the edges", cutN)
 		}
 		p.Caption, p.CapCol = cap, wsview.Text
+	}
+	// The trigger is the FPGA's matcher (ADR-SERIAL-HARDWARE-TRIGGER): while
+	// none can take the request nothing triggers, and the caption says why.
+	if why, ok := strings.CutPrefix(s.st.SerialBackend, "none: "); ok && s.st.SerialMode != 0 {
+		p.Caption, p.CapCol = "No hardware trigger yet: "+why, wsview.Warn
 	}
 	if len(rows) == 0 {
 		p.Empty = "No packets on screen"

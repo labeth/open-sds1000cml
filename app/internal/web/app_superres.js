@@ -114,11 +114,12 @@ function srEtsUpdateStats(final) {
 }
 
 // ==== decode-triggered super-res: stack a decoded protocol BYTE event ========
-// Software trigger on a decoded value (like the serial trigger), then align +
-// stack every occurrence — the "sw triggered on random events" generalization of
-// the free-run clock ETS. Reuses the DECODE config from the Decode card and the
-// gated multi-hit stacker (srSeedRef seeds the gate on the first occurrence's
-// waveform; srGateFeed with hitCenters aligns+stacks the rest).
+// The scope's FPGA triggers on the byte (the serial trigger, armed on it at
+// ARM: software never decides a trigger), and each record it triggers stacks
+// the occurrence the trigger sits on, aligned by its decode. Reuses the DECODE
+// config from the Decode card and the gated multi-hit stacker (srSeedRef seeds
+// the gate on the first occurrence's waveform; srGateFeed with hitCenters
+// aligns+stacks the rest).
 // TRLC-LINKS: REQ-SDS-019
 function srEvtParseByte(s) {
   s = (s || "").trim().replace(/^0x/i, "").replace(/^'|'$/g, "");
@@ -149,9 +150,22 @@ function srEvtIngest(f) {
   if (!(sr.evtByte >= 0)) { srStop("decode-trig: enter a target byte (e.g. 48 or H)"); return; }
   const d = srEvtDecode(alignSig, dt, sr.evtByte);
   if (!d) { srStop("decode-trig needs the Decode card set to UART"); return; }
+  const want = `0x${sr.evtByte.toString(16).toUpperCase()}`;
+  // Only a record the FPGA triggered on the byte stacks, and only the
+  // occurrence its trigger point sits on (the engine places it where the
+  // matched byte's data begins).
+  const hardware = f.trigd && /^hardware-uart/.test(f.trigger_kind || "") && f.edge_x != null && f.edge_x >= 0;
+  const spb = d.spb || 0;
+  const at = hardware && spb > 0 ? d.occ.filter(o => Math.abs(o.i0 - f.edge_x) <= 2 * spb)
+    .sort((a, b) => Math.abs(a.i0 - f.edge_x) - Math.abs(b.i0 - f.edge_x)).slice(0, 1) : [];
+  if (!at.length) {
+    const backend = (typeof st !== "undefined" && st && st.serial_backend) || "arming";
+    if (!sr.st) srStatus(`decode-trig: waiting for the scope's UART trigger on ${want} (${backend})…`);
+    return;
+  }
+  d.occ = at;
   let firstFrame = false;
   if (!sr.st) {
-    if (!d.occ.length) { srStatus(`decode-trig: waiting for 0x${sr.evtByte.toString(16).toUpperCase()} (${d.spb ? d.spb.toFixed(0) + " samp/bit" : "no decode"})…`); return; }
     const K = +$("srK").value || 32;
     sr.st = srNew(f.cols, K);
     sr.st.kernel = $("srKernel").value || "interp";
@@ -267,6 +281,7 @@ function srIngest(f) {
 // TRLC-LINKS: REQ-SDS-019
 function srStop(why) {
   sr.armed = false;
+  srEvtRestore();
   if (sr.dither.on && sr.dither.idx !== 0) {
     const dch = (sr.alignCh || 0) + 1;
     send("offset" + dch, sr.dither.base / probeOf(dch)); // restore the pre-dither offset
@@ -329,8 +344,44 @@ async function srLoop(gen) {
 }
 
 
+// srEvtArm arms the scope's serial trigger on the decode-trig byte (the
+// FPGA's UART matcher), keeping the serial trigger as it was for srStop.
 // TRLC-LINKS: REQ-SDS-019
-$("srArm").onclick = () => {
+async function srEvtArm() {
+  if (typeof dcfg === "undefined" || dcfg.proto !== "uart" || typeof stPush !== "function") { srStatus("decode-trig needs the Decode card set to UART"); return false; }
+  if (!(sr.evtByte >= 0) || sr.evtByte > 255) { srStatus("decode-trig: enter a target byte (e.g. 48 or H)"); return false; }
+  // the scope's serial trigger as it is (protocol, lines, match), for STOP
+  let params = null;
+  try { const j = await (await fetch("/api/serial")).json(); if (j && j.ok) params = j.params; } catch {}
+  sr.evtPrev = { bytes: $("stBytes").value, armed: stArmed(), own: stOwn, params };
+  $("stBytes").value = sr.evtByte.toString(16).toUpperCase().padStart(2, "0");
+  stOwn = true;
+  try { await stPush(); } catch {
+    $("stBytes").value = sr.evtPrev.bytes; stOwn = sr.evtPrev.own; sr.evtPrev = null;
+    srStatus("decode-trig: the scope did not take the UART trigger"); return false;
+  }
+  if (!stArmed()) await stSetArmed(true);
+  stStatus();
+  return true;
+}
+// srEvtRestore puts the serial trigger back as it was before decode-trig.
+// TRLC-LINKS: REQ-SDS-019
+function srEvtRestore() {
+  const prev = sr.evtPrev;
+  if (!prev) return;
+  sr.evtPrev = null;
+  $("stBytes").value = prev.bytes;
+  stOwn = prev.own;
+  if (!prev.armed) stSetArmed(false);
+  // the scope's own settings back, armed or not (its stored match)
+  if (prev.params) {
+    fetch("/api/serial", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(prev.params) })
+      .catch(() => {}).finally(() => { stLastSig = ""; stStatus(); });
+  } else if (prev.armed) stPush().catch(() => {}).finally(() => stStatus());
+}
+
+// TRLC-LINKS: REQ-SDS-019
+$("srArm").onclick = async () => {
   if (sr.armed) { srStop("stopped"); return; }
   if (!st || !["native-fast", "decimated", "sram"].includes(st.band)) {
     srStatus("unsupported band (" + (st ? st.band : "?") + ") — select a sampled waveform timebase");
@@ -352,7 +403,8 @@ $("srArm").onclick = () => {
   sr.etsF = (parseFloat($("srEtsFreq").value) || 0) * 1e6;
   sr.evt = $("srEvt").checked && !sr.ets; // decode-triggered byte-event stack (ETS wins if both)
   sr.evtByte = srEvtParseByte($("srEvtByte").value);
-  if ((sr.ets || sr.evt) && st && st.norm) send("norm", 0); // free-run so every event/cycle is captured
+  if (sr.ets && st && st.norm) send("norm", 0); // free-run so every cycle is captured
+  if (sr.evt && !(await srEvtArm())) return; // the FPGA triggers on the byte
   // GATE markers set → seed the first frame as the reference with THAT region
   // (works from SINGLE or free-run). Otherwise: frozen → lock the frozen frame;
   // running → auto-adopt.
@@ -382,7 +434,7 @@ $("srArm").onclick = () => {
   sr.armed = true;
   $("srArm").textContent = "STOP";
   $("srArm").classList.add("on");
-  srStatus(sr.ets ? "reconstructing (equivalent-time)… use AUTO trigger" : sr.evt ? "decode-trig stacking… (Decode = UART, free-run)" : srGate.on ? "stacking… (gate = markers)" : "stacking…");
+  srStatus(sr.ets ? "reconstructing (equivalent-time)… use AUTO trigger" : sr.evt ? "decode-trig stacking… (the scope's UART trigger on the byte)" : srGate.on ? "stacking… (gate = markers)" : "stacking…");
   srLoop(++sr.gen);
 };
 

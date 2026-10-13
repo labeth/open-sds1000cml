@@ -75,5 +75,11 @@ func (s imageSwitcher) HasLine() bool { return len(fpgaload.Line()) != 0 }
 // TRLC-LINKS: REQ-SDS-035
 func (s imageSwitcher) LoadStream() error { return s.load(fpgaload.Stream()) }
 
+// TRLC-LINKS: REQ-SDS-011
+func (s imageSwitcher) LoadQualify() error { return s.load(fpgaload.Qualify()) }
+
+// TRLC-LINKS: REQ-SDS-011
+func (s imageSwitcher) HasQualify() bool { return len(fpgaload.Qualify()) != 0 }
+
 // TRLC-LINKS: REQ-SDS-035
 func (s imageSwitcher) HasStream() bool { return len(fpgaload.Stream()) != 0 }

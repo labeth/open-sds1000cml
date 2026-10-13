@@ -14,6 +14,7 @@ import (
 
 	"open-sds/app/internal/analog"
 	"open-sds/app/internal/engine"
+	"open-sds/app/internal/settings"
 	"open-sds/app/internal/superres"
 )
 
@@ -216,8 +217,11 @@ type Controller struct {
 	apiDepth       int    // a remote action is running: it leaves the LCD's menus alone
 	ledWord        uint16 // the latched lamp word
 	ledSet         bool
-	lastSetup      int    // the slot last saved or recalled (Save/Recall lamp)
-	lastSetupPrint string // the settings then
+	lastSetup      int               // the slot last saved or recalled (Save/Recall lamp)
+	lastSetupPrint string            // the settings then (a store without setupCurrent)
+	lastSetupSt    settings.Settings // the setup then, as a save writes it
+	setupSame      bool              // the settings are still lastSetupSt (cached)
+	setupSameAt    time.Time         // when setupSame was taken; zero: take it again
 	slotUsed       [setupSlots + 1]bool
 	slotSum        [setupSlots + 1]string // the FILE rows' summaries
 	slotWS         [setupSlots + 1]int    // the workspace each slot holds (-1 unknown)
@@ -230,6 +234,8 @@ type Controller struct {
 	stack          *stackState            // a master being stacked
 	maskAutoTest   bool                   // the COMPARE MASK row: count once built
 	detectSync     bool                   // tests: run the bus detection inline
+	searchMu       sync.Mutex             // one bus search at a time (findBus steps the timebase)
+	decGen         uint64                 // counts the protocol settings (set, recalled, defaulted, locked): a search's result stands only if none came meanwhile
 	// On-screen cursors (spec 08 §6): two X (time) and two Y (volts) cursors,
 	// positions as screen fractions; ADJUST moves the selected one.
 	curOn    bool
@@ -276,12 +282,20 @@ type Controller struct {
 	srStopVal    float64 // target for the active stop mode
 	srFPGACancel func()
 	srFPGAGen    uint64
-	srFPGABusy   bool // an FPGA stacking session is running (superres_fpga.go)
-	srCh         int  // stacked/aligned channel (0=C1,1=C2)
-	srT0         time.Time
-	srMean       []float32 // latest crunched trace for the review render (guarded by mu)
-	srMean2      []float32 // the OTHER channel's crunched trace (stacked X-Y / dual FFT)
-	srBits       float64   // latest measured bits gained (guarded by mu)
+	// The seeder: the period search and the seed take seconds on the ARM, so
+	// they run off the panel goroutine; a request's generation lets the
+	// latest one win and Off discard one in flight.
+	srSeedGen  uint64
+	srSeeding  bool          // a seed requested or running: the mode reads On
+	srSeederOn bool          // the seeder goroutine runs
+	srRunAt    uint64        // runReq when the latest seed was asked for
+	runReq     atomic.Uint64 // Run, Stop and Single asked for: a seed resumes RUN only when none came after it was asked for
+	srFPGABusy bool          // an FPGA stacking session is running (superres_fpga.go)
+	srCh       int           // stacked/aligned channel (0=C1,1=C2)
+	srT0       time.Time
+	srMean     []float32 // latest crunched trace for the review render (guarded by mu)
+	srMean2    []float32 // the OTHER channel's crunched trace (stacked X-Y / dual FFT)
+	srBits     float64   // latest measured bits gained (guarded by mu)
 
 	// Mask testing (device flow, docs/zonemask-plan.md §3): build a golden
 	// envelope from N live frames on the trigger-source channel, dilate by the
@@ -338,8 +352,8 @@ func New(eng Engine, fe Analog, keyFD int, tdivs []float64, startTdiv float64, l
 		maskN: 32, maskTol: 1,
 		// Seed the qualifier shadows to the engine's defaultTrigParams so the
 		// TRIG tab agrees with the engine from boot (slope 0.2/0.8, neg sync).
-		pulseLvl: 0.5, pulseMin: 100, pulseMax: 1000,
-		slopeLo: 0.2, slopeHi: 0.8, slopeMin: 100, slopeMax: 1000,
+		pulseLvl: 0.5, pulseMin: powerOnLimitNs[0], pulseMax: powerOnLimitNs[1],
+		slopeLo: 0.2, slopeHi: 0.8, slopeMin: powerOnLimitNs[0], slopeMax: powerOnLimitNs[1],
 		videoLine: 0, videoNeg: true,
 		ui:            freshUI(),
 		stackN:        64,

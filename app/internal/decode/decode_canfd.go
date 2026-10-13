@@ -251,8 +251,15 @@ func DecodeCANFD(codes []uint8, colTimeS float64, cfg CANFDCfg) Result {
 	if frames == 0 {
 		return Result{Proto: "canfd", Error: "no CAN frame found"}
 	}
+	// The nominal rate it decoded at: BUS's lock keeps it, so the bus is
+	// decoded at it afterwards (without it the panel kept its 115200 default
+	// and decoded a 500 kbit/s bus at that; bug hunt #3).
+	baud := cfg.NominalBaud
+	if baud <= 0 && colTimeS > 0 {
+		baud = int(math.Round(1 / (spb * colTimeS)))
+	}
 	return Result{OK: true, Proto: "canfd", Spans: spans, Text: strings.Join(toks, " "),
-		Bytes: allBytes, SPB: spb, Thr: S.threshold}
+		Bytes: allBytes, Baud: baud, SPB: spb, Thr: S.threshold}
 }
 
 // inferCANspb estimates the samples-per-bit from the edge-gap distribution.

@@ -93,6 +93,7 @@ func (e *Engine) SetSerialParams(p SerialParams) {
 	e.ser.params = p
 	e.ser.mu.Unlock()
 	e.arincAux.Store(0)
+	e.serLv.shiftS.Store(0)
 }
 
 // SerialConfig is the serial trigger's current decode settings and match
@@ -173,11 +174,18 @@ func (e *Engine) serialQualifyAt(f *Frame, valid int, sampleS float64, at anchor
 	if len(chA) < valid || len(chB) < valid {
 		return false, -1
 	}
+	return serialMatchIn(chA[:valid], chB[:valid], sampleS, p, at)
+}
+
+// serialMatchIn decodes the two lines (a request's first and second line)
+// and finds its match nearest at.target.
+// TRLC-LINKS: REQ-SDS-013
+func serialMatchIn(chA, chB []uint8, sampleS float64, p SerialParams, at anchorSpan) (bool, int) {
 	d, ok := serialDecoder(p.Proto)
 	if !ok {
 		return false, -1
 	} // Unsupported protocols must never qualify a trigger.
-	res := d.Decode(chA[:valid], chB[:valid], sampleS, p)
+	res := d.Decode(chA, chB, sampleS, p)
 	if !res.OK {
 		return false, -1
 	}

@@ -309,7 +309,7 @@ const sr = { st: null, armed: false, gen: 0, lastSeq: 0, meta: null, t0: 0, stop
   showing: false, savedWin: null, // stack-view toggle state + remembered zoom
   comp: false, compFbw: "auto", compSpend: 0.8, compInfo: null, // analog-falloff compensation (de-embed the measured chain rolloff; auto target from the stack's bit budget)
   ets: false, etsF: 0, etsSt: null, etsInfo: null, // phase-coherent equivalent-time reconstruction of a free-run/untriggerable clock
-  evt: false, evtByte: NaN, evtMargin: 0, // decode-triggered super-res: stack a decoded protocol byte event
+  evt: false, evtByte: NaN, evtMargin: 0, evtPrev: null, // decode-triggered super-res: stack a decoded protocol byte event (evtPrev: the serial trigger before it)
   // Offset dither: the 8-bit quantizer's staircase survives averaging when
   // the front-end noise is sub-LSB. Sweeping the offset DAC by sub-LSB steps
   // across frames (and subtracting the COMMANDED offset back in code space)
