@@ -35,7 +35,8 @@ func TestBodeBrowser(t *testing.T) {
 	}
 	fs := &fakeScope{
 		frameGen: gen,
-		stats:    engine.Stats{Running: true, TrigPosFrac: 0.5},
+		// the engine's channels: the reference on C1, the DUT on C2
+		stats: engine.Stats{Running: true, TrigPosFrac: 0.5, BodeDut: 1},
 		bodePts: []engine.BodePoint{
 			{FreqHz: 1e6, GainDB: -6, PhaseDeg: -45},
 			{FreqHz: 2e6, GainDB: -12, PhaseDeg: -90},
