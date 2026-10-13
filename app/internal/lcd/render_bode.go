@@ -80,7 +80,7 @@ func drawBode(sf Surface, p plotArea, hud HUD) {
 	}
 	// magnitude horizontal gridlines + dB labels
 	// Gridlines at multiples of a round step, not quarters of the range:
-	// [-180,45] in quarters read "-11.2" and "-124" (bug hunt 2026-10-10).
+	// [-180,45] in quarters reads "-11.2" and "-124".
 	gStep := gridStep(gLo, gHi, []float64{1, 2, 5, 10, 20, 50})
 	for k, db := 0, math.Ceil(gLo/gStep)*gStep; k <= 10 && db <= gHi+1e-6; k, db = k+1, db+gStep {
 		y := magYOf(db)

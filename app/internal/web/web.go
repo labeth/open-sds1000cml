@@ -77,7 +77,7 @@ type Scope interface {
 	CmdLog(n int) []engine.CmdNote
 	NoteCmd(name string, val float64)
 
-	// Live tuning (debug /api/debug/tune) for the framerate/CPU/success campaign.
+	// Live tuning (debug /api/debug/tune) of the frame-rate and CPU knobs.
 	Tune(engine.TuneVals) engine.TuneVals
 	TuneSnapshot() engine.TuneVals
 }
@@ -214,6 +214,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /api/sheets/action", s.hSheetsAction)
 	mux.HandleFunc("GET /api/stream/lines", s.hStreamLines)
 	mux.HandleFunc("GET /api/stream/lines.bin", s.hStreamLinesBin)
+	mux.HandleFunc("GET /api/stream/window", s.hStreamWindow)
 	mux.HandleFunc("/api/zones", s.hZones)
 	mux.HandleFunc("/api/serial", s.hSerial)
 	mux.HandleFunc("GET /api/serial/protocols", func(w http.ResponseWriter, r *http.Request) { writeJSON(w, engine.SerialDecoderList()) })
@@ -241,7 +242,7 @@ func (s *Server) hClaim(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]uint64{"epoch": e})
 }
 
-// hTune applies live tuning knobs for the framerate/CPU/success campaign and
+// hTune applies the live frame-rate and CPU tuning knobs and
 // returns the effective values. GET reports current values; POST {json} sets
 // them. Fields omitted / negative are left unchanged (see engine.Tune).
 // TRLC-LINKS: REQ-SDS-162
@@ -484,6 +485,29 @@ func (s *Server) hStreamLines(w http.ResponseWriter, r *http.Request) {
 		n = 8192
 	}
 	page, ok := src.StreamLines(from, n)
+	if !ok {
+		http.Error(w, "no decoded stream", 404)
+		return
+	}
+	writeJSON(w, page)
+}
+
+// hStreamWindow serves the stream's newest ?rows=N (1..40) transcript lines
+// as the LCD's list writes them: the web's BUS shows the scope's stream.
+// TRLC-LINKS: REQ-SDS-018
+func (s *Server) hStreamWindow(w http.ResponseWriter, r *http.Request) {
+	src, ok := s.panel.(interface {
+		StreamWindow(rows int) (streamview.Page, bool)
+	})
+	if !ok {
+		http.Error(w, "no decoded stream", 404)
+		return
+	}
+	n, err := strconv.Atoi(r.URL.Query().Get("rows"))
+	if err != nil || n <= 0 || n > streamview.ListRows {
+		n = streamview.ListRows
+	}
+	page, ok := src.StreamWindow(n)
 	if !ok {
 		http.Error(w, "no decoded stream", 404)
 		return

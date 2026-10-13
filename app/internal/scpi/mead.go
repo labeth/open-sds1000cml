@@ -69,8 +69,7 @@ var meadParams = map[string]struct {
 
 // mead answers Ca-Cb:MEAD? <param>: edge delays between the two channels on
 // the published frame (PHA in degrees over A's period, SKEW between the
-// rising edges nearest the trigger). Unlisted in any reply grammar before:
-// "Undefined header" (bug hunt 2026-10-11).
+// rising edges nearest the trigger).
 // TRLC-LINKS: REQ-SDS-024
 func (h *Handler) mead(a, b int, arg string) []byte {
 	header := fmt.Sprintf("C%d-C%d:MEAD", a+1, b+1)

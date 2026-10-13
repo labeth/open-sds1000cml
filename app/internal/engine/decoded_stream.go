@@ -50,9 +50,9 @@ func (e *Engine) BeginDecodedStream(ctx context.Context, p SerialParams, trig St
 	}
 	cfgValue, err := e.decodedCall(ctx, func() (cfg any, err error) {
 		// Hold the image until BeginDecodedCapture takes over: between the two
-		// owner calls the acquisition loop saw no session and put the general
-		// image back, so a packet stream loaded packet, general, packet (three
-		// multi-second loads; bench 2026-10-07).
+		// owner calls the acquisition loop sees no session and puts the general
+		// image back, so a packet stream loads packet, general, packet (three
+		// multi-second loads).
 		e.decodedStarting = e.clk.Now().Add(30 * time.Second) // lapses if the capture never begins
 		defer func() {
 			if err != nil {
@@ -86,7 +86,7 @@ func (e *Engine) BeginDecodedStream(ctx context.Context, p SerialParams, trig St
 		return sramcapture.RecordIdentity{}, err
 	}
 	// Install worker transcript mode in the same owner call that starts capture.
-	return e.beginDecodedCapture(ctx, cfgValue.(sramcapture.Config), p.Proto)
+	return e.beginDecodedCapture(ctx, cfgValue.(sramcapture.Config), p.Proto, false)
 }
 
 // ReadDecodedLines fetches transcript lines the worker built, from absolute

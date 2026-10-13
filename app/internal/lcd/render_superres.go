@@ -51,9 +51,8 @@ func drawSuperresHUD(sf Surface, p plotArea, hud HUD) {
 // drawSRLine is the super-res status line.
 // TRLC-LINKS: REQ-SDS-021
 func drawSRLine(sf Surface, p plotArea, msg string) {
-	// Bottom-left, one row above the Vpp/f quick readout (at H-12 it covered
-	// the C1 readout, bug hunt 2026-10-10); a thin backing bar keeps it
-	// legible over the trace.
+	// Bottom-left, one row above the Vpp/f quick readout (at H-12 it covers
+	// the C1 readout); a thin backing bar keeps it legible over the trace.
 	y := H - 21
 	for by := y - 1; by < y+9 && by < H; by++ {
 		for bx := 0; bx < TextWidth(msg, 1)+8 && bx < p.w; bx++ {

@@ -99,12 +99,23 @@ func (s *Server) hFrameBin(w http.ResponseWriter, r *http.Request) {
 	}
 	// A consumer that needs true samples renews a lease before waiting (a
 	// closed analyzer lets it expire): lease=raw for full-rate samples (eye,
-	// super-res), lease=samples for evenly sampled ones (FFT). Live frames are
-	// otherwise time-ordered envelopes, fast whatever is enabled.
+	// super-res), lease=spectrum for the frames a spectrum is taken of (FFT,
+	// spectrogram: the LCD's SPECTRUM asks for the same), lease=samples for
+	// evenly sampled ones. Live frames are otherwise time-ordered envelopes,
+	// fast whatever is enabled.
 	switch r.URL.Query().Get("lease") {
 	case "raw":
 		if sc, ok := s.sc.(interface{ LeaseDecodeView(time.Duration) }); ok {
 			sc.LeaseDecodeView(3 * time.Second)
+		}
+	case "spectrum":
+		if sc, ok := s.sc.(interface{ LeaseSpectrumView(time.Duration) }); ok {
+			if r.URL.Query().Get("end") == "1" { // the FFT view closed: no frame wanted
+				sc.LeaseSpectrumView(0)
+				w.WriteHeader(http.StatusNoContent)
+				return
+			}
+			sc.LeaseSpectrumView(3 * time.Second)
 		}
 	case "samples":
 		if sc, ok := s.sc.(interface{ LeaseSampleView(time.Duration) }); ok {

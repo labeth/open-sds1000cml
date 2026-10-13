@@ -164,8 +164,8 @@ func New(b Bus) (*Capture, error) {
 	}
 	// A previous process may have left the envelope reducer on (a failed
 	// reduction): the first recall, the startup counter check, must turn it off
-	// or it reads reduced words (bench 2026-10-09: "startup counter word 0 is
-	// 1216", a crash loop into the emergency binary).
+	// or it reads reduced words ("startup counter word 0 is 1216", a crash loop
+	// into the emergency binary).
 	c.envelopeOn = rev == 10
 	return c, nil
 }

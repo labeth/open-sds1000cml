@@ -49,8 +49,7 @@ type Result struct {
 // levels negate (max and min, top and base swap), rising and falling edges
 // and positive and negative widths swap, duty becomes its complement; Vpp,
 // amplitude, RMS, frequency and period hold. A new value: callers cache r.
-// Without it an inverted trace read Vmax +3.3 V while it ran 0 to -3.3 V
-// (bug hunt 2026-10-10).
+// Without it an inverted trace reads Vmax +3.3 V while it runs 0 to -3.3 V.
 // TRLC-LINKS: REQ-SDS-021
 func (r *Result) Inverted() *Result {
 	if r == nil {
@@ -105,7 +104,7 @@ const envMinBuckets = 8
 // and pulse widths come from those midpoints, to within a bucket, when a
 // period spans at least envMinBuckets buckets; rise/fall and over/preshoot,
 // which happen inside a bucket, stay dropped. Without it every running frame
-// at 10 us/div and slower had no frequency (bench 2026-10-07).
+// at 10 us/div and slower has no frequency.
 // TRLC-LINKS: REQ-SDS-021
 func (r *Result) WithEnvelopeTiming(env []uint8, voltsPerCode, offV, sampleS float64) *Result {
 	c := r.WithoutTiming()
@@ -282,8 +281,8 @@ func compute[T ~uint8 | ~uint16](sig []T, voltsPerCode, offV, sampleS, scale flo
 	settled := func(code int) int {
 		lo, hi := code*bin, code*bin+bin-1
 		// int64: the device's int is 32 bits, and a 1 M-sample record's
-		// count × Q8.8 code (~2.6e10) wrapped it, so a single shot measured
-		// top -6.35 V and base -4.82 V on a 0-3.3 V square (bench 2026-10-06).
+		// count × Q8.8 code (~2.6e10) wraps it, so a single shot would measure
+		// top -6.35 V and base -4.82 V on a 0-3.3 V square.
 		var n, sum int64
 		for c := lo; c <= hi && c < len(hist); c++ {
 			n += int64(hist[c])
@@ -314,8 +313,8 @@ func compute[T ~uint8 | ~uint16](sig []T, voltsPerCode, offV, sampleS, scale flo
 		Vampl:  float64(topCode-baseCode) * voltsPerCode,
 	}
 	// True RMS of the displayed volts: the AC RMS and the mean in quadrature.
-	// Reporting the standard deviation as Vrms read 1.6 V for a 0-3.3 V square
-	// (2.32 V true RMS; bench 2026-10-06).
+	// Reporting the standard deviation as Vrms reads 1.6 V for a 0-3.3 V square
+	// (2.32 V true RMS).
 	r.Vrms = math.Hypot(r.Vmean, r.VrmsAC)
 	// Over/preshoot are the excursions beyond the settled levels, as a percent
 	// of amplitude (0 when amplitude is degenerate).

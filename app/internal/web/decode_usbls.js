@@ -121,8 +121,8 @@ function decodeUSBLS(dp, colTimeS, cfg) {
     if (prev < 0) prev = 0;
     const rawBits = [], rawCell = [];
     // Re-synchronize the cell grid on edges (a USB receiver's DPLL): an edge
-    // within 0.4 bit of a cell boundary re-anchors the grid (bug hunt
-    // 2026-10-10: free-running, a 1 % bit-time error slipped bits).
+    // within 0.4 bit of a cell boundary re-anchors the grid (free-running, a
+    // 1 % bit-time error slips bits).
     // The grid, not a count fixed up front, says where the packet ends (its
     // last cell starts before the last edge).
     let ax = x0, ak = 0, ei = sg[0];

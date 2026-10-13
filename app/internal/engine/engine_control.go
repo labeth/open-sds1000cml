@@ -57,7 +57,7 @@ func (e *Engine) SetVideoParams(std, line int, neg bool) {
 
 // orderPair reads a qualifier's two limits as a range whichever way round
 // they came: an inverted pair (W max under W min, slope High under Low, from
-// the web or SCPI) never triggered (bug hunt #2). A zero limit is "unset"
+// the web or SCPI) would never trigger. A zero limit is "unset"
 // (e.g. T max under "<min") and is left where it is.
 // TRLC-LINKS: REQ-SDS-011
 func orderPair(lo, hi float64) (float64, float64) {
@@ -297,7 +297,7 @@ func (e *Engine) trigDispLevel(srcCh int) int {
 	// Software AC coupling shows the trace with its mean at centre and no
 	// offset, and the level is read on that trace; the fabric sees the raw
 	// codes, so the level sits that far above the channel's raw mean. Without
-	// it a 0 V level on an AC trace crossing 0 V never fired (bench 2026-10-07).
+	// it a 0 V level on an AC trace crossing 0 V never fires.
 	if e.chCoupling[srcCh&1].Load() == couplingAC {
 		if mean := math.Float64frombits(e.chMeanCode[srcCh&1].Load()); mean > 0 {
 			dc = int(math.Round(mean + e.trigVolts(code, srcCh)*25/e.chVdivV(srcCh)))
@@ -381,7 +381,7 @@ func (e *Engine) SetFramePeriod(ms int) int {
 	if e.sram != nil {
 		// The SRAM images publish each capture as it completes, with no pacing
 		// floor: report that rather than echo a request that changes nothing
-		// (bug hunt 2026-10-10: 1000 ms read back as applied at 23 fps).
+		// (1000 ms reading back as applied at 23 fps).
 		return 0
 	}
 	if ms < 0 {

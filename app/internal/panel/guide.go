@@ -42,7 +42,7 @@ var wsGuide = [wsview.Count][]gl{
 		gN("Position push .. marker back to the largest peak"),
 		gN("S/DIV .......... time/div sets the span and the resolution"),
 		gN("F3 again ....... FFT / Spectrogram / Bode"),
-		gN("Menu On/Off .... sheet with VIEW (FFT source) ACQ TIME first")},
+		gN("Menu On/Off .... sheet with VIEW (FFT source, Bode channels) ACQ TIME first")},
 	{gT("MEASURE (F4): STATISTICS OF YOUR MEASUREMENTS, CURSORS"),
 		gD("Entering with nothing chosen measures Vpp and Freq of each channel."),
 		gN("Adjust ......... cursor A"),

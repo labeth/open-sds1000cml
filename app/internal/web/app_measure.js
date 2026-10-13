@@ -1,14 +1,17 @@
 // ENGMODEL-OWNER-UNIT: FU-WEB-APP-MEASURE
 // app_measure.js — the MEASURE workspace: every measurement parameter on both
 // channels with running statistics (now, mean, min, max, standard deviation,
-// count), a reset, and the all-values view (MEASURE again). The statistics run
-// on every new capture whichever workspace is shown, and restart when the
-// timebase, a scale, a probe, a coupling or the acquisition mode changes.
+// count), a reset, and the all-values view (MEASURE again). As on the scope's
+// MEASURE, the statistics count the captures while MEASURE is shown, and
+// restart when the timebase, a scale, an offset, a probe, a coupling, the
+// trigger, the acquisition mode or its count, or the invert changes (not every
+// workspace's captures - the FFT's filtered frames are another record - nor
+// across an offset or trigger change).
 // Classic script; shares app.js globals.
 "use strict";
 
 const MEAS_UNIT = { Vpp: "V", Vmax: "V", Vmin: "V", Vmean: "V", Vrms: "V", ACrms: "V", Vtop: "V", Vbase: "V", Vampl: "V",
-  Freq: "Hz", Period: "s", Duty: "%", Rise: "s", Fall: "s", "+Width": "s", "-Width": "s", Overshoot: "%" };
+  Freq: "Hz", Period: "s", Duty: "%", Rise: "s", Fall: "s", "+Width": "s", "-Width": "s", Overshoot: "%", Preshoot: "%" };
 const measStats = new Map();
 let measSeq = -1, measKeyCfg = "", measRenderT = 0;
 
@@ -26,6 +29,7 @@ function measValue(key, m) {
     case "Rise": return m.rise_s > 0 ? m.rise_s : NaN; case "Fall": return m.fall_s > 0 ? m.fall_s : NaN;
     case "+Width": return m.pos_width_s > 0 ? m.pos_width_s : NaN; case "-Width": return m.neg_width_s > 0 ? m.neg_width_s : NaN;
     case "Overshoot": return t && !m.env_timing ? m.overshoot : NaN;
+    case "Preshoot": return t && !m.env_timing ? m.preshoot : NaN;
   }
   return NaN;
 }
@@ -36,9 +40,11 @@ function measReset() { measStats.clear(); measRenderT = 0; measRender(true); }
 // measAccumulate adds a new capture's values once (by frame seq).
 // TRLC-LINKS: REQ-SDS-217
 function measAccumulate() {
-  if (!frame || frame.seq === measSeq || frame.sr_view) return;
+  if (!frame || frame.seq === measSeq || frame.sr_view || ws.cur !== "measure") return;
   measSeq = frame.seq;
-  const cfg = st ? [st.tdiv_s, st.vdiv1, st.vdiv2, st.probe1, st.probe2, st.cpl1, st.cpl2, st.acq_mode].join("|") : "";
+  // the scope's statKey: what changes the measured picture
+  const cfg = st ? [st.tdiv_s, st.vdiv1, st.vdiv2, st.off1_v, st.off2_v, st.probe1, st.probe2, st.cpl1, st.cpl2,
+    st.trig_source, st.trig_rising, st.trig_type, st.trig_code, st.acq_mode, st.avg_count, st.eres_len, st.inv1, st.inv2].join("|") : "";
   if (cfg !== measKeyCfg) { measKeyCfg = cfg; measStats.clear(); }
   for (const ch of [1, 2]) {
     const m = ch === 1 ? frame.m1 : frame.m2;

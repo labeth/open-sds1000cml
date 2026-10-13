@@ -1,7 +1,7 @@
 # dcinv — D-cache invalidate helper module for the EDMA drain (vendored)
 
 The AM3352 EDMA writes DRAM as a bus master, not through the Cortex-A8 data cache. A drain buffer
-whose lines are cached (a freshly mlocked, zero-filled buffer is cached too — measured on 2026-09-05:
+whose lines are cached (a freshly mlocked, zero-filled buffer is cached too — measured on the unit:
 records showed 32-word = 64-byte zero runs, up to 8448 of 20478 samples per frame) reads back stale
 lines. Linux 3.2 has no user-space D-cache invalidate, so this ~70-line module exposes
 `/dev/dcinv` ioctl `DCINV_INV = 0x40084401` `{addr, len}` = DCIMVAC over the buffer.

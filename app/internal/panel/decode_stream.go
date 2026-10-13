@@ -57,8 +57,8 @@ func (c *Controller) startStream() {
 	c.mu.Unlock()
 	// Auto runs on the frame on screen, else on a sampled record found as
 	// BUS's auto-detect finds a bus: the live envelope is too coarse at slow
-	// timebases (bug hunt #3: a 115200 UART plain on screen at 500us/div was
-	// "no protocol"). Both take a while on long views, so they run with the
+	// timebases (a 115200 Bd UART at 500us/div reads as no protocol). Both take
+	// a while on long views, so they run with the
 	// start off the panel goroutine.
 	c.offPanel(func() {
 		t0 := time.Now()
@@ -84,9 +84,8 @@ func (c *Controller) startStream() {
 			label = fmt.Sprintf("%s %d b/s %s", streamName(res.Proto), res.Baud, res.Src)
 		}
 		// A stream still starting or ending (Stream turned off and on again
-		// quickly) ends first: Start refused while one was starting, and that
-		// one then stopped as the Off had asked, leaving Stream On with none
-		// running (bug hunt #3).
+		// quickly) ends first: Start is refused while one is starting, and that
+		// one then stops as the Off asked, leaving Stream On with none running.
 		for end := time.Now().Add(30 * time.Second); s.Active() && time.Now().Before(end); {
 			s.Stop()
 			time.Sleep(50 * time.Millisecond)
@@ -116,8 +115,8 @@ func (c *Controller) stopStream() {
 
 // leaveStream ends stream mode's stream and resumes live captures. The engine
 // ends a stream stopped, its record on the display, so RUN waits for that end:
-// run before it, the scope was left stopped (bug hunt #3: "Trigger on it" from
-// a stream armed a stopped scope; DEFAULT SETUP from a stream ended in STOP).
+// a RUN before it leaves the scope stopped ("Trigger on it" or DEFAULT SETUP
+// from a stream).
 // TRLC-LINKS: REQ-SDS-018
 func (c *Controller) leaveStream() {
 	c.mu.Lock()
@@ -361,6 +360,22 @@ func (c *Controller) StreamLines(from, limit int) (streamview.LinesPage, bool) {
 		return streamview.LinesPage{}, false
 	}
 	return s.Lines(from, limit), true
+}
+
+// StreamWindow is the stream's newest rows transcript lines as the LCD's list
+// writes them, for the web's BUS (/api/stream/window); ok is false without a
+// stream.
+// TRLC-LINKS: REQ-SDS-018
+func (c *Controller) StreamWindow(rows int) (streamview.Page, bool) {
+	c.mu.Lock()
+	s, ok := c.stream.(interface {
+		Window(rows, top int) streamview.Page
+	})
+	c.mu.Unlock()
+	if !ok {
+		return streamview.Page{}, false
+	}
+	return s.Window(rows, -1), true
 }
 
 // StreamLinesBinary encodes the stream's transcript from absolute line from

@@ -95,34 +95,75 @@ function updatePrecisionLimits(f) {
 
 }
 
+// precisionWindow is the visible part [a, b] of a capture, block-averaged to at
+// most maxN points: its first 4096 samples alone can hold under a cycle of a
+// screen of raw samples. Clipping is judged on the samples before they are
+// averaged.
+// TRLC-LINKS: REQ-SDS-205
+function precisionWindow(sig, a, b, dt, maxN) {
+  const start = Math.max(0, Math.floor(a * sig.length)), end = Math.min(sig.length, Math.ceil(b * sig.length));
+  for (let i = start; i < end; i++) {
+    const v = sig[i];
+    if (!Number.isFinite(v) || v <= 0 || v >= 255) throw new Error("Fit requires an unclipped, valid window.");
+  }
+  const k = Math.max(1, Math.ceil((end - start) / maxN)), y = [];
+  for (let i = start; i + k <= end; i += k) {
+    let sum = 0;
+    for (let j = 0; j < k; j++) sum += sig[i + j];
+    y.push(sum / k);
+  }
+  return { y, dt: dt * k, samples: end - start };
+}
+
+// precisionSampledFrame takes one capture of samples through the raw feed (as
+// the eye and super-res do) when the display holds min/max pairs: a screen of
+// more samples than the page's columns. null when none comes (a stopped
+// record has no new capture).
+// TRLC-LINKS: REQ-SDS-205
+async function precisionSampledFrame() {
+  for (let i = 0; i < 4; i++) {
+    const r = await fetch("/api/frame.bin?since=" + (frame ? frame.seq : 0) + "&waitms=1500&raw=1&lease=raw");
+    if (!r.ok) return null;
+    const f = decodeBinFrame(await r.arrayBuffer());
+    if (f && !f.unchanged && f.c1 && f.c1.length >= 64 && !f.peak_detect && !f.is_env && f.sample_s > 0) return f;
+    if (!(st && st.running)) return null;
+  }
+  return null;
+}
+
 if(typeof document!=="undefined") {
 
   // TRLC-LINKS: REQ-SDS-205
-  document.getElementById("precisionFit").onclick=()=>{
+  document.getElementById("precisionFit").onclick=async()=>{
     const out=document.getElementById("precisionFitResult");
     try {
       if(!frame)throw new Error("No capture yet.");
-      if(frame.peak_detect||frame.is_env)throw new Error("Fit requires sampled waveform data; min/max envelopes cannot be fitted. STOP for the full record, or use the Precision acquisition.");
+      let src=frame;
+      if(frame.peak_detect||frame.is_env){
+        // the display holds min/max pairs: fit a capture of samples instead
+        // (a stopped record arrives as min/max pairs too)
+        out.textContent="Taking a capture of samples…";
+        src=await precisionSampledFrame();
+        if(!src)throw new Error("Fit requires sampled data; min/max envelopes cannot be fitted and no capture of samples came. Run, or a faster time/div (a stopped record redraws from memory), or the Precision acquisition.");
+      }
       const ch=+document.getElementById("precisionChannel").value, model=document.getElementById("precisionModel").value;
-      const sig=ch?frame.c2:frame.c1, m=ch?frame.m2:frame.m1;
-      const start=Math.max(0,Math.floor(view.win.a*sig.length)), end=Math.min(sig.length,Math.ceil(view.win.b*sig.length),start+4096);
-      const y=Array.from(sig.slice(start,end));
-      if(y.some(v=>!Number.isFinite(v)||v<=0||v>=255))throw new Error("Fit requires an unclipped, valid window.");
-      const dt=frame.sample_s || frame.col_span_s/frame.cols;
+      const sig=ch?src.c2:src.c1, m=ch?frame.m2:frame.m1;
+      const w=precisionWindow(sig,view.win.a,view.win.b,src.sample_s||src.col_span_s/src.cols,4096), y=w.y, dt=w.dt;
       const fit=model==="periodic"?precisionPeriodicFit(y,dt,m&&m.freq):precisionFitSignal(y,dt,m&&m.freq,model);
       const vpc=ch?frame.vpc2:frame.vpc1;
       if(!(vpc>0))throw new Error("Capture calibration unavailable.");
       const rms=fit.rms*vpc, vpp=2*Math.abs(fit.amplitude)*vpc;
-      out.textContent=model+" fit, CH"+(ch+1)+", capture "+frame.seq+": "+eng(fit.hz,"Hz")+", "+eng(vpp,"V")+" pp; residual RMS "+eng(rms,"V")+
-        " ("+(100*rms/vpp).toFixed(2)+"% of Vpp). "+(rms>.05*vpp?"Poor model match. ":"")+(model==="periodic"?fit.harmonics+" harmonics removed; residual-equivalent "+Math.log2(256/(Math.sqrt(12)*fit.rms)).toFixed(2)+" bits over the original ADC range. Harmonic distortion excluded; not SINAD ENOB or accuracy. ":"Residual is noise + distortion + timing/model error, not ADC ENOB. ")+"First "+y.length+" visible samples; snapshot only. "+(frame.filter||"");
-      const cv=document.getElementById("precisionFitCanvas");cv.hidden=false;const ctx=cv.getContext("2d"),w=cv.width,h=cv.height;
-      ctx.fillStyle="#071014";ctx.fillRect(0,0,w,h);
+      out.textContent=model+" fit, CH"+(ch+1)+", capture "+src.seq+": "+eng(fit.hz,"Hz")+", "+eng(vpp,"V")+" pp; residual RMS "+eng(rms,"V")+
+        " ("+(100*rms/vpp).toFixed(2)+"% of Vpp). "+(rms>.05*vpp?"Poor model match. ":"")+(model==="periodic"?fit.harmonics+" harmonics removed; residual-equivalent "+Math.log2(256/(Math.sqrt(12)*fit.rms)).toFixed(2)+" bits over the original ADC range. Harmonic distortion excluded; not SINAD ENOB or accuracy. ":"Residual is noise + distortion + timing/model error, not ADC ENOB. ")+
+        (w.samples>y.length?"The visible "+w.samples+" samples, averaged to "+y.length+" points":"The visible "+y.length+" samples")+"; snapshot only. "+(src.filter||frame.filter||"");
+      const cv=document.getElementById("precisionFitCanvas");cv.hidden=false;const ctx=cv.getContext("2d"),wd=cv.width,h=cv.height;
+      ctx.fillStyle="#071014";ctx.fillRect(0,0,wd,h);
       const lo=Math.min(...y),hi=Math.max(...y),rr=Math.max(...fit.residual.map(Math.abs),.001);
       // TRLC-LINKS: REQ-SDS-205
-      function line(a,color,fn){ctx.strokeStyle=color;ctx.beginPath();a.forEach((v,i)=>{const x=i/(a.length-1)*w, yy=fn(v);if(i)ctx.lineTo(x,yy);else ctx.moveTo(x,yy);});ctx.stroke();}
+      function line(a,color,fn){ctx.strokeStyle=color;ctx.beginPath();a.forEach((v,i)=>{const x=i/(a.length-1)*wd, yy=fn(v);if(i)ctx.lineTo(x,yy);else ctx.moveTo(x,yy);});ctx.stroke();}
       line(y,"#e8c546",v=>100-(v-lo)/(hi-lo)*80);line(fit.fitted,"#e6ecf2",v=>100-(v-lo)/(hi-lo)*80);
       line(fit.residual,"#35c8e8",v=>155-v/rr*30);ctx.fillStyle="#ddd";ctx.fillText("Captured (yellow), fit (white)",8,12);ctx.fillText("Residual (cyan), ±"+eng(rr*vpc,"V"),8,122);
     } catch(e) {out.textContent=e.message;}
   };
 }
-if(typeof module!=="undefined")module.exports={precisionFitSignal,precisionPeriodicFit};
+if(typeof module!=="undefined")module.exports={precisionFitSignal,precisionPeriodicFit,precisionWindow};

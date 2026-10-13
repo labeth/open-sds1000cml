@@ -51,10 +51,10 @@ func (h *Handler) execGlobal(head, arg string) []byte {
 		}
 		// The rest of the default setup (V/div, offset, trigger, acquire mode,
 		// math, cursors, zoom...) is the panel's DEFAULT SETUP, run on the
-		// panel's own goroutine (bug hunt 2026-10-10: *RST left them as they were).
-		// It runs to completion before the next command: queued, it landed
-		// after them ("*RST;TDIV 2US" ended at 500 us; bug hunt #2). The
-		// panel may read display state through Inverted(), so wait unlocked.
+		// panel's own goroutine. It runs to completion before the next
+		// command: queued, it would land after them ("*RST;TDIV 2US" ending at
+		// 500 us). The panel may read display state through Inverted(), so
+		// wait unlocked.
 		if p, ok := h.disp.(interface {
 			InjectButtonWait(string, time.Duration) bool
 		}); ok {
@@ -65,8 +65,8 @@ func (h *Handler) execGlobal(head, arg string) []byte {
 		h.pendTdiv = 500e-6
 		return nil
 	case "*SAV", "*RCL":
-		// Setup memory: silently accepted before, so *RCL restored nothing
-		// while a controller believed it had (bug hunt 2026-10-10).
+		// Setup memory: an error for anything it cannot do, never a silent
+		// success a controller takes for a restore.
 		n, err := strconv.Atoi(strings.TrimSpace(arg))
 		if err != nil {
 			return errTok(errHeader)
@@ -486,8 +486,7 @@ func (h *Handler) execGlobal(head, arg string) []byte {
 		return h.reply("XYDS", v)
 	case "STPN", "RCPN":
 		// Store/recall the setup as a named file on the U-disk:
-		// DISK,UDSK,FILE,'NAME.SET'. Silently accepted before, saving and
-		// restoring nothing (bug hunt 2026-10-11).
+		// DISK,UDSK,FILE,'NAME.SET'.
 		files, ok := h.setups.(SetupFiles)
 		if !ok {
 			return errTok(errOutOfRange)
@@ -551,13 +550,11 @@ func (h *Handler) execGlobal(head, arg string) []byte {
 		return nil
 	case "CRST", "PNSU":
 		// Cursor positions in vendor divisions and the binary panel-setup
-		// block have no equivalent here: refuse rather than silently accept
-		// (bug hunt 2026-10-11).
+		// block have no equivalent here: refuse rather than silently accept.
 		return errTok(errOutOfRange)
 	case "HCSU":
 		// Hardcopy setup: SCDP always returns the BMP screen. Accept that and
-		// refuse anything else; it took any argument silently and had no query
-		// (bug hunt #2, the BUZZ/GRDS rule).
+		// refuse anything else (as BUZZ and GRDS do), and answer the query.
 		parts := strings.Split(strings.ReplaceAll(arg, " ", ""), ",")
 		if len(parts)%2 != 0 || arg == "" {
 			return errTok(errHeader)

@@ -44,8 +44,8 @@ function fdDataLen(dlc) {
 // TRLC-LINKS: REQ-SDS-018
 function canResync(r) {
   // Re-synchronize as a CAN controller does: an edge within 0.4 bit of the
-  // expected boundary becomes the boundary (bug hunt 2026-10-10: free-running
-  // from SOF, a 2 % bit-time error slipped bits at 8 samples a bit).
+  // expected boundary becomes the boundary (free-running from SOF, a 2 %
+  // bit-time error slips bits at 8 samples a bit).
   const E = r.S.edges, w = 0.4 * r.spb;
   if (r.ei === undefined) r.ei = 0;
   while (r.ei < E.length && E[r.ei].x < r.pos - w) r.ei++;

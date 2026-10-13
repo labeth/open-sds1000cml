@@ -208,19 +208,21 @@ function rmsOf(a) {
   return Math.sqrt(ss / a.length);
 }
 
-// ejEyeMetrics: measured-at-density eye figures. Eye center = phase 0.75 of the
-// 2UI fold (edges land at 0/0.5); rails from the center column's density
-// clusters; height = inner gap (0.1% trimmed); width = crossing spread at the
-// mid level around phase 0.5.
-// TRLC-LINKS: REQ-SDS-199
+// ejEyeMetrics: measured-at-density eye figures. Eye centre = phase 0.5 of the
+// 2UI fold (the crossings land at 0.25/0.75); rails from the centre column's
+// density about the mid level between the levels at the first lock; height =
+// inner gap (0.1% trimmed); width = the contiguous gap at the mid level around
+// the centre. box is the opening in the window: left/right in UI from its left
+// edge (0..2) and lo/hi in codes.
+// TRLC-LINKS: REQ-SDS-199, REQ-SDS-215
 function ejEyeMetrics(st) {
   const W = st.eyeW, H = st.eyeH;
   // TRLC-LINKS: REQ-SDS-199
   const colAt = f => Math.min(W - 1, Math.floor(f * W));
   // TRLC-LINKS: REQ-SDS-199
   const codeOf = y => st.eyeY0 + y * (st.eyeY1 - st.eyeY0) / (H - 1);
-  // center column ± a few: cluster into low/high rails about the code midpoint
-  const c = colAt(0.75), span = 3;
+  // the centre column ± a few: the rails above and below the mid level
+  const c = colAt(0.5), span = 3;
   let total = 0;
   const col = new Float64Array(H);
   for (let x = c - span; x <= c + span; x++) {
@@ -228,7 +230,7 @@ function ejEyeMetrics(st) {
     for (let y = 0; y < H; y++) { col[y] += st.eye[y * W + x]; total += st.eye[y * W + x]; }
   }
   if (total < 500) return null;
-  const midY = (H - 1) / 2;
+  const midY = Math.min(H - 1, Math.max(0, ((st.lo + st.hi) / 2 - st.eyeY0) * (H - 1) / Math.max(1, st.eyeY1 - st.eyeY0)));
   // trim 0.1% from the inner side of each rail
   const trim = Math.max(1, total * 0.001);
   let acc = 0, topInner = -1, botInner = -1;
@@ -240,7 +242,7 @@ function ejEyeMetrics(st) {
   if (topInner >= 0 && botInner >= 0 && topInner > botInner) {
     eyeHeight = codeOf(topInner) - codeOf(botInner);
   }
-  // eye width: at the mid code row band, find the crossing cluster spread around phase 0.5
+  // eye width: at the mid code row band, the crossing clusters' gap around the centre
   const yMid = Math.round(midY), band = 2;
   const row = new Float64Array(W);
   let rowTot = 0;
@@ -248,22 +250,25 @@ function ejEyeMetrics(st) {
     if (y < 0 || y >= H) continue;
     for (let x = 0; x < W; x++) { row[x] += st.eye[y * W + x]; rowTot += st.eye[y * W + x]; }
   }
-  let eyeWidthUI = 0;
+  let eyeWidthUI = 0, left = NaN, right = NaN;
   if (rowTot > 200) {
     // The eye width is the LONGEST CONTIGUOUS mid-row gap containing the eye
-    // centre (crossings cluster at phases 0 / 0.5 / 1 of the 2-UI fold; the
-    // opening around 0.75 is one eye). Counting ALL empty columns across the
-    // fold over-reads by including the second eye.
+    // centre (crossings cluster at phases 0.25 / 0.75 of the 2-UI fold; the
+    // opening around 0.5 is one eye). Counting ALL empty columns across the
+    // fold over-reads by including the half eyes at the window's edges.
     const thr = rowTot / W * 0.5; // half of uniform density = crossing cluster
-    const xc = colAt(0.75);
+    const xc = colAt(0.5);
     let l = xc, r = xc;
     if (row[xc] < thr) {
       while (l > 0 && row[l - 1] < thr) l--;
       while (r < W - 1 && row[r + 1] < thr) r++;
       eyeWidthUI = (r - l + 1) / W * 2; // fold spans 2 UI
+      left = l / W * 2; right = (r + 1) / W * 2;
     }
   }
-  return { eyeHeightCodes: eyeHeight, eyeWidthUI: Math.min(1, eyeWidthUI), crossTotal: total };
+  const box = eyeHeight > 0 && eyeWidthUI > 0
+    ? { left, right, lo: codeOf(botInner), hi: codeOf(topInner) } : null;
+  return { eyeHeightCodes: eyeHeight, eyeWidthUI: Math.min(1, eyeWidthUI), crossTotal: total, midCode: codeOf(midY), box };
 }
 
 // ejEdgeTimes measures each edge's 10-90 % transition time around its mid

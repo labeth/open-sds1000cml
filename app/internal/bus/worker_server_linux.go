@@ -410,8 +410,8 @@ func (w *acquisitionWorker) serve(fd int) error {
 				pending = 0
 			} else if errno != syscall.EAGAIN && errno != syscall.EINTR && errno != syscall.ENOBUFS {
 				// ENOBUFS is transient on a packet socket: the kernel could not
-				// buffer this response yet. Exiting on it killed the app's bus
-				// at 1.5 MBd (bench 2026-10-06); the next iteration retries.
+				// buffer this response yet. Exiting on it kills the app's bus
+				// at 1.5 MBd; the next iteration retries.
 				return errno
 			}
 		}
@@ -426,8 +426,8 @@ func (w *acquisitionWorker) serve(fd int) error {
 				}
 				pending = w.handle(request[:workerHeader])
 				// Answer before the next FPGA drain: a pump between request and
-				// reply put a FIFO read into every register round trip and held
-				// a decoded stream below 921600 Bd (bench 2026-10-06).
+				// reply puts a FIFO read into every register round trip and holds
+				// a decoded stream below 921600 Bd.
 				n, _, errno := syscall.RawSyscall(syscall.SYS_WRITE, uintptr(fd), uintptr(unsafe.Pointer(&w.response[0])), uintptr(pending))
 				if errno == 0 {
 					if int(n) != pending {

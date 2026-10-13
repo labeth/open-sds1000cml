@@ -205,12 +205,37 @@ $("pkDetect").onclick = () => busDetect(false);
 WS_HOOKS.push({
   enter(id) {
     if (id !== "bus") return;
-    if (dcfg.proto === "off") busDetect(true); // the user's protocol, when set, is kept
+    if (dcfg.proto === "off" && !(st && st.stream)) busDetect(true); // the user's protocol, when set, is kept (and a scope streaming is stopped)
     if (ws.busView === "eye") busEyeOn();
     busRenderedV = -1; busRenderTable();
   },
   leave(prev) { if (prev === "bus") busEyeOff(); },
 });
+
+// ---- the scope's own stream ----------------------------------------------------------
+// While the scope streams its bus in hardware (BUS Stream, on the scope or the
+// phone) the Packets view shows it: its status and newest transcript lines as
+// the LCD's list writes them.
+let busStreamBusy = false;
+// TRLC-LINKS: REQ-SDS-018
+async function busScopeStream() {
+  const s = st && st.stream, box = $("scopeStream");
+  if (!s || !s.state) { if (!box.hidden) { box.hidden = true; $("scopeStreamText").textContent = ""; } return; }
+  box.hidden = false;
+  const head = "On the scope: " + s.state + " · " + s.label + " · " + s.units + " units" + (s.units_per_s > 0 ? " · " + eng(s.units_per_s, "/s", 3) : "") +
+    " · err " + s.errors + " · lost " + s.lost + (s.err ? " · " + s.err : "");
+  if ($("scopeStreamHead").textContent !== head) $("scopeStreamHead").textContent = head;
+  if (ws.cur !== "bus" || busStreamBusy || document.hidden) return;
+  busStreamBusy = true;
+  try {
+    const r = await fetch("/api/stream/window?rows=12");
+    if (r.ok) {
+      const p = await r.json(), t = [p.Header, ...(p.Lines || [])].join("\n");
+      if ($("scopeStreamText").textContent !== t) $("scopeStreamText").textContent = t;
+    }
+  } catch (e) { /* the next tick reads again */ } finally { busStreamBusy = false; }
+}
+setInterval(busScopeStream, 500);
 
 // ---- trigger on bytes --------------------------------------------------------------
 // TRLC-LINKS: REQ-SDS-206
@@ -238,7 +263,9 @@ function busSummary() {
   const el = $("stSum");
   const armed = stArmed(), pat = $("stBytes").value.trim() || "any unit";
   let cls = "tsum", txt;
+  const scopeProto = ["", "UART", "I²C", "SPI", "Manchester", "SENT", "CAN", "MIL-1553", "ARINC 429", "USB LS", "FlexRay"][stScopeProto] || "";
   if (!armed) txt = "Not armed — the trigger is " + ["Edge", "Pulse", "Slope", "Video"][(st && st.trig_type) || 0] + " on C" + ((st && st.trig_source) === 1 ? 2 : 1) + ".";
+  else if (dcfg.proto === "off" && !stOwn && scopeProto) { cls += " is-on"; txt = "Armed on the scope: triggering on " + pat + " in its " + scopeProto + " decode (decode here to list the packets)."; }
   else if (dcfg.proto === "off") { cls += " is-warn"; txt = "Armed, but decoding is off — choose a protocol."; }
   else if (stBandInactive()) { cls += " is-warn"; txt = "Armed, but inactive on this band (envelope, roll, stream or ETS)."; }
   else { cls += " is-on"; txt = "Armed: triggering on " + pat + " in the " + $("decProto").selectedOptions[0].textContent + " decode."; }

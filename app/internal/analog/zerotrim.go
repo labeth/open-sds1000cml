@@ -12,8 +12,8 @@ import (
 // ZeroTrim is a per-channel, per-detent correction to the calibration file's
 // offset-DAC zero (ADR-OFFSET-ZERO-TRIM): the input-referred volts at which an
 // open input sits with the offset at 0 V. The factory zeros were taken under
-// the factory's own offset law; under ours an open input sat up to 2.7 div
-// off at 2 mV/div and 0.25 div off at 500 mV/div (bench 2026-10-06).
+// the factory's own offset law; under ours an open input sits up to 2.7 div
+// off at 2 mV/div and 0.25 div off at 500 mV/div without the trim.
 // TRLC-LINKS: REQ-SDS-095
 type ZeroTrim struct {
 	Comment string    `json:"comment,omitempty"`
@@ -22,7 +22,7 @@ type ZeroTrim struct {
 	C2V     []float64 `json:"c2_v"`
 }
 
-// zeroTrimDefault is this unit's open-input zero, measured 2026-10-06 with
+// zeroTrimDefault is this unit's open-input zero, measured with
 // both inputs unconnected (offset 0, DC, 1 µs/div, mean of two sweeps).
 //
 //go:embed zero_default.json

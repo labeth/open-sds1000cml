@@ -77,13 +77,15 @@ function updateMeas() {
     const half = (keys) => `<div class="qcol"><span></span><span class="hd cc1">C1${clipTag(clip1)}</span><span class="hd cc2">C2${clipTag(clip2)}</span>` +
       keys.map((k) => `<span class="k">${k}</span><span class="v cc1" data-meas="1:${k}"></span><span class="v cc2" data-meas="2:${k}"></span>`).join("") + `</div>`;
     $("quickBody").innerHTML = half(MEAS_CORE.slice(0, 4)) + half(MEAS_CORE.slice(4));
-    // all values: the core set and the rest side by side, so every value shows
-    // without scrolling and C1/C2 sit close to their names
+    // all values: every parameter in two columns side by side, nine and nine as
+    // on the scope, so every value shows without scrolling and C1/C2 sit close
+    // to their names
     // TRLC-LINKS: REQ-SDS-217
     const cell = (k) => k ? `<th>${k}</th><td class="cc1" data-meas="1:${k}"></td><td class="cc2" data-meas="2:${k}"></td>` : "<th></th><td></td><td></td>";
     const hd = `<th></th><td class="cc1">C1${clipTag(clip1)}</td><td class="cc2">C2${clipTag(clip2)}</td>`;
     let html = `<tr class="hd">${hd}<td></td>${hd}</tr>`;
-    for (let i = 0; i < Math.max(MEAS_CORE.length, MEAS_MORE.length); i++) html += `<tr>${cell(MEAS_CORE[i])}<td></td>${cell(MEAS_MORE[i])}</tr>`;
+    const rows = Math.ceil(MEAS_ALL.length / 2);
+    for (let i = 0; i < rows; i++) html += `<tr>${cell(MEAS_ALL[i])}<td></td>${cell(MEAS_ALL[rows + i])}</tr>`;
     $("measBody").innerHTML = html;
     measCells = [...document.querySelectorAll("#quickBody [data-meas], #measBody [data-meas]")].map((el) => {
       const [ch, k] = el.dataset.meas.split(":");
@@ -254,8 +256,8 @@ function applyStatus() {
     const src = (st.trig_source || 0) + 1, vd = st["vdiv" + src] || 1, p = trigProbe();
     const off = Number.isFinite(st["off" + src + "_v"]) ? st["off" + src + "_v"] : 0;
     // ±5 div of screen, its ends on whole steps of one code from 0 V: a range snaps to min + n·step, and an
-    // offset-shifted min (-4.56 mV after Default setup) left 0 V off the grid (bug hunt #3: back at the centre
-    // the level read 4.39 mV)
+    // offset-shifted min (-4.56 mV after Default setup) would leave 0 V off the grid (back at the centre the
+    // level would read 4.39 mV)
     const step = vd * p / 25;
     $("lvl").step = step;
     $("lvl").min = Math.floor((-5 * vd * p - off) / step) * step; $("lvl").max = Math.ceil((5 * vd * p - off) / step) * step;
@@ -450,10 +452,17 @@ async function pollFrameBin() {
     // snapshot clobbered by the late reply. lastSeq stays put, so unfreezing
     // immediately long-polls the newest frame.
     if (!f.unchanged && !frozen) applyFrame(f);
-    // In FFT mode, keep a fresh full-record RAW frame for the spectrum source
-    // (the display frame is an interpolated window on native-fast). Throttled;
+    // In FFT and spectrogram mode, keep a fresh spectrum frame for the source
+    // (the display frame is the live envelope's extremes). Throttled;
     // fire-and-forget so it never paces the display loop.
-    if (view.mode === "FFT" && !frozen && !(typeof sr !== "undefined" && sr.showing) && performance.now() - fftRawT > 150) fetchFftRaw();
+    const specView = (view.mode === "FFT" || view.mode === "SPG") && !frozen && !(typeof sr !== "undefined" && sr.showing);
+    if (specView && performance.now() - fftRawT > 150) fetchFftRaw();
+    else if (!specView && fftLeased) {
+      // give the lease back at once: its decimated frames are filtered, and
+      // MEASURE's statistics would take them for 3 s (the scope's SPECTRUM does too)
+      fftLeased = false;
+      fetch("/api/frame.bin?lease=spectrum&end=1").catch(() => {});
+    }
     setTimeout(pollFrameBin, 10); // the server did the pacing; this only guards a hot loop
   } catch (e) {
     // Bad reply or network error (OTA app restart) — retry the SAME transport
@@ -463,15 +472,18 @@ async function pollFrameBin() {
   }
 }
 
-// fetchFftRaw pulls one full-record raw frame (un-windowed, un-interpolated,
-// carries sample_s) to source the FFT in FFT mode. Fire-and-forget + throttled
-// by the caller; sets fftRaw + fftRawT, then a redraw picks it up.
+// fetchFftRaw pulls one spectrum frame (lease=spectrum, as the LCD's SPECTRUM
+// asks: the full-rate record on short screens, else the filtered decimated one,
+// which carries its bandwidth) to source the FFT and the spectrogram.
+// Fire-and-forget + throttled by the caller; sets fftRaw + fftRawT, then a
+// redraw picks it up.
 // TRLC-LINKS: REQ-SDS-023
 async function fetchFftRaw() {
   if (fftRawBusy) return;
   fftRawBusy = true; fftRawT = performance.now();
   try {
-    const r = await fetch("/api/frame.bin?raw=1&lease=samples&waitms=300");
+    fftLeased = true;
+    const r = await fetch("/api/frame.bin?raw=1&lease=spectrum&waitms=300");
     if (r.ok) { const f = decodeBinFrame(await r.arrayBuffer()); if (f && !f.unchanged && f.c1 && f.sample_s > 0) { fftRaw = f; if (view.mode === "FFT") redraw(); } }
   } catch (e) { /* transient — the next tick retries */ } finally { fftRawBusy = false; }
 }
@@ -482,12 +494,44 @@ async function pollStatus() {
   if (superseded) return; // taken over by another browser; stop loading the device
   clearTimeout(pollTimer);
   pollBusy = true; pollKick = false;
-  try { st = await (await fetch("/api/status")).json(); applyStatus(); }
+  try { st = await (await fetch("/api/status")).json(); applyStatus(); sheetsFollow(); if (typeof cmpRepeat === "function") cmpRepeat(); if (typeof srScopeLine === "function") srScopeLine(); }
   catch (e) { $("line").textContent = "no connection"; lastLineHTML = ""; } // reset the diff guard or a static status keeps "no connection" stuck
   pollBusy = false;
   // While a SINGLE is armed or the device is loading, poll fast so the self-stop
   // and the loading indicator reach the UI promptly. Steady state stays 1 s.
   pollTimer = setTimeout(pollStatus, pollKick ? 150 : st && (st.single || st.busy) ? 250 : 1000);
+}
+
+// sheetSet sets one of the scope's sheet rows, as the phone does, and polls
+// the status soon after.
+// TRLC-LINKS: REQ-SDS-211
+async function sheetSet(row, value) {
+  try {
+    const r = await (await fetch("/api/sheets/set", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ row, value }) })).json();
+    if (r && r.ok === false && r.error) toast(r.error, "warn");
+    kickStatus();
+    return r;
+  } catch (e) { return null; }
+}
+
+// sheetsFollow keeps the page's controls that are the scope's own sheet rows
+// showing the scope's values, whoever set them (the scope's keys, the phone,
+// SCPI): when the scope's sheet changes (its SheetsSeq) the rows are fetched
+// once, so Stack master never writes a stale N over the depth set on the scope.
+// TRLC-LINKS: REQ-SDS-211
+let sheetsSeqSeen = -1, sheetsBusy = false;
+const SHEET_FOLLOW = [["bwl1", "ch1.bwl"], ["bwl2", "ch2.bwl"], ["inv1", "ch1.invert"], ["inv2", "ch2.invert"], ["masterN", "cmp.master_depth"]];
+async function sheetsFollow() {
+  const seq = st && st.panel ? st.panel.SheetsSeq : undefined;
+  if (seq === undefined || seq === sheetsSeqSeen || sheetsBusy) return;
+  sheetsBusy = true;
+  try {
+    const m = await (await fetch("/api/sheets")).json();
+    const rows = {};
+    for (const t of m.Tabs || []) for (const r of t.Rows || []) rows[r.ID] = r;
+    for (const [id, row] of SHEET_FOLLOW) if (rows[row] && rows[row].Value !== undefined) setFromStatus($(id), rows[row].Value);
+    sheetsSeqSeen = seq;
+  } catch (e) { /* the next status poll tries again */ } finally { sheetsBusy = false; }
 }
 
 // kickStatus re-polls soon after a control change, so the loading indicator

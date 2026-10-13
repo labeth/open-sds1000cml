@@ -3,7 +3,7 @@
 // parallel-load shift chain: load (ball J2) latches it, sclk (ball F2) clocks
 // 64 bits out and they arrive on J1, first bit first. The factory image runs
 // F2 as a free clock of about 300 kHz and J2 as the frame level, changing
-// every 64 clocks. Bench-settled on 2026-09-27: J2 high loads, F2 idles low,
+// every 64 clocks. Bench-settled: J2 high loads, F2 idles low,
 // J1 sampled before the rising edge; keys and knob phases read active low,
 // and each byte carries one knob's quadrature pair in bits 0 and 1. F1 is the
 // ARM's key interrupt (gpio3_19): a low pulse per changed frame raises it.

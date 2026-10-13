@@ -147,6 +147,12 @@
       <span class="l">Probe</span>
       <span class="vc"><span class="seg xs" id="probe1" aria-label="C1 probe attenuation" data-value="1"><button data-value="1">1×</button><button data-value="10">10×</button><button data-value="100">100×</button></span></span>
       <span class="vc"><span class="seg xs" id="probe2" aria-label="C2 probe attenuation" data-value="1"><button data-value="1">1×</button><button data-value="10">10×</button><button data-value="100">100×</button></span></span>
+      <span class="l">BW limit</span>
+      <span class="vc"><span class="seg xs" id="bwl1" aria-label="C1 bandwidth limit" data-value="0" title="CH1 20 MHz bandwidth limit: smoother, less noise (the scope's CH1 tab)"><button data-value="0">Full</button><button data-value="1">20 MHz</button></span></span>
+      <span class="vc"><span class="seg xs" id="bwl2" aria-label="C2 bandwidth limit" data-value="0" title="CH2 20 MHz bandwidth limit: smoother, less noise (the scope's CH2 tab)"><button data-value="0">Full</button><button data-value="1">20 MHz</button></span></span>
+      <span class="l">Invert</span>
+      <span class="vc"><span class="seg xs" id="inv1" aria-label="C1 invert" data-value="0" title="Draw CH1 upside down; the measurements keep the true polarity (the scope's CH1 tab)"><button data-value="0">Off</button><button data-value="1">On</button></span></span>
+      <span class="vc"><span class="seg xs" id="inv2" aria-label="C2 invert" data-value="0" title="Draw CH2 upside down; the measurements keep the true polarity (the scope's CH2 tab)"><button data-value="0">Off</button><button data-value="1">On</button></span></span>
     </div>
   </div>
 </section>
@@ -210,6 +216,7 @@
   </span></div>
   <div class="pb">
     <div class="bview" data-view="packets">
+      <div id="scopeStream" hidden><div id="scopeStreamHead" class="sub"></div><pre id="scopeStreamText" class="transcript" aria-label="the scope's stream"></pre></div>
       <div id="pkEmpty" class="empty"><span>Decode is off. Choose a protocol in the Decoder pane, or let the scope find the bus:</span><button type="button" id="pkDetect" class="sm">Auto-detect the bus</button></div>
       <table class="pkt" id="pktable" aria-label="Decoded packets">
         <colgroup><col class="c-n"><col class="c-t"><col class="c-a"><col class="c-hex"><col class="c-str"><col class="c-b"></colgroup>
@@ -425,6 +432,7 @@
     <div class="r"><span class="l refa">REF A</span><button type="button" id="refSaveA" class="xs" title="Snapshot the shown traces into REF A">Save A</button><button type="button" id="refShowA" class="xs tog" title="Show or hide REF A" disabled>Show</button><button type="button" id="refClearA" class="xs" disabled>Clear</button><span id="refInfoA" class="sub grow">empty</span></div>
     <div class="r"><span class="l refb">REF B</span><button type="button" id="refSaveB" class="xs" title="Snapshot the shown traces into REF B">Save B</button><button type="button" id="refShowB" class="xs tog" title="Show or hide REF B" disabled>Show</button><button type="button" id="refClearB" class="xs" disabled>Clear</button><span id="refInfoB" class="sub grow">empty</span></div>
     <div class="hr"></div>
+    <div class="r"><span class="l"></span><span id="cmpRepeat" class="sub grow" title="Whether the trigger source repeats capture after capture: a master and a mask need it (the scope's COMPARE caption)"></span></div>
     <div class="r"><span class="l">Master</span><button type="button" id="masterBtn" class="sm" aria-keyshortcuts="Alt+5" title="Average N captures into a master, store it as REF A, build the mask from it and start the test on raw captures (COMPARE again)">Stack master</button><span class="hint">N</span><select id="masterN" aria-label="captures to average"><option>16</option><option>32</option><option selected>64</option><option>128</option><option>256</option></select></div>
     <div id="masterStat" class="sub">Averages the trigger source, stores REF A, builds the mask from it, restores the acquisition and starts the test. COMPARE again (Alt+5) runs it too.</div>
   </div>

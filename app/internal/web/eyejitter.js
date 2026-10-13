@@ -11,7 +11,11 @@
 //   TIE:   t_k − ideal_k, aggregated: histogram, RJ/DJ (dual-Dirac-lite),
 //          per-record spectrum on the UI grid (Hann + FFT), magnitude-averaged
 //          across records (trigger phase is incoherent record-to-record)
-//   eye:   every sample folded at phase (t − t0) mod 2UI into a density map
+//   eye:   every sample folded at one UI, the crossing mid-cell, into a density
+//          map over the graticule's 8 divisions, shown twice side by side: one
+//          eye in the centre of a 2-UI window, crossings at ±0.5 UI, at the
+//          trace's own scale - the LCD's BUS eye (internal/analysis/eye.go)
+//          draws the same picture
 //
 // Honesty rules: a record that does not LOCK (too few edges, inconsistent UI,
 // fit residual too large) is rejected, never guessed at. All metrics report
@@ -20,6 +24,11 @@
 
 // ejNew allocates the analysis state. opts: {eyeW, eyeH, fftN}
 "use strict";
+
+// The eye's code window: the graticule's 8 divisions, 25 codes each about code
+// 128 (analysis.EyeCodeLo/EyeCodeHi on the LCD), so the eye lies at the trace's
+// own scale and V/div changes its size, as on the scope.
+const EJ_CODE_LO = 28, EJ_CODE_HI = 228;
 
 // node: pull the analysis module onto globalThis so bare calls resolve
 // (the browser loads it as a classic script before this one).
@@ -32,11 +41,13 @@ function ejNew(opts) {
   return {
     eyeW, eyeH,
     eye: new Float64Array(eyeW * eyeH), // density counts (float: fractional deposits)
-    lo: 255, hi: 0,                     // code range seen (for the eye y-scale)
+    eyeY0: EJ_CODE_LO, eyeY1: EJ_CODE_HI, // the eye's code window (row 0 = EJ_CODE_LO)
+    lo: 255, hi: 0,                     // the levels at the first lock
     ui: 0,                              // running UI estimate (samples)
     uiN: 0,                             // records contributing to ui
     sampleS: 0,
     records: 0, rejected: 0, edges: 0,
+    uis: 0,                             // unit intervals folded (the LCD eye's FOLDED)
     tie: [],                            // TIE sample buffer for histogram/RJ-DJ
     // (decimated when full — stays representative of the WHOLE run)
     tieCap: opts.tieCap || 60000,
@@ -95,21 +106,12 @@ function ejFeed(st, sig, n, sampleS) {
   }
   const fit = ejFitGrid(e.t, ui0);
   if (!fit) { st.rejected++; st.lastErr = "no-lock"; return "rejected:no-lock"; }
-  // Vertical scale is FROZEN at the first locked record: the density map's
-  // deposits are binned against it and cannot be rebinned, so a level shift
-  // (amplitude change, DC drift) must reject rather than corrupt eye metrics.
-  if (st.uiN === 0) {
-    // The vertical mapping is FROZEN at first lock with generous headroom (the
-    // review's corruption came from a MUTATING mapping re-interpreting old
-    // deposits). Later level wander/modulation lands at its true code position
-    // in the fixed mapping — the rails honestly widen and the measured eye
-    // shrinks, which is exactly what an eye diagram is for. Content beyond the
-    // headroom clamps at the border bins, far from the center/mid metrics rows.
-    st.lo = e.lo; st.hi = e.hi;
-    const head = Math.max(8, 0.4 * (e.hi - e.lo));
-    st.eyeY0 = Math.max(0, e.lo - head);
-    st.eyeY1 = Math.min(255, e.hi + head);
-  }
+  // The vertical mapping is the fixed graticule window, so the deposits never
+  // need rebinning: later level wander lands at its true code position - the
+  // rails honestly widen and the measured eye shrinks, which is exactly what
+  // an eye diagram is for. The levels at the first lock place the metrics'
+  // mid row.
+  if (st.uiN === 0) { st.lo = e.lo; st.hi = e.hi; }
   st.ui = st.uiN === 0 ? fit.ui : st.ui + (fit.ui - st.ui) / Math.min(st.uiN + 1, 32);
   st.uiN++;
   st.sampleS = sampleS;
@@ -219,19 +221,24 @@ function ejFeed(st, sig, n, sampleS) {
 
   st.lastSpanUI = nUI; // record span in UI (for the TIE high-pass corner report)
 
-  // --- eye fold: every sample at phase (t − t0) mod 2UI ---
-  const W = st.eyeW, H = st.eyeH;
+  // --- eye fold: one UI with the crossing mid-cell, shown twice side by side
+  // (the LCD's BUS eye): one full eye in the centre of a 2-UI window, the
+  // crossings at 0.5 and 1.5 UI. A 1-UI fold puts a clock's rising and falling
+  // edges in one crossing, as every bit's own eye does. ---
+  const W = st.eyeW, H = st.eyeH, half = Math.floor(W / 2);
   const y0 = st.eyeY0, y1 = st.eyeY1;
   const yscale = (H - 1) / Math.max(1, y1 - y0);
-  const fold = 2 * fit.ui;
   const iLo = Math.max(0, Math.ceil(fit.t0)), iHi = Math.min(n, Math.floor(fit.t0 + (nUI - 1) * fit.ui));
   for (let i = iLo; i < iHi; i++) {
-    let ph = (i - fit.t0) % fold;
-    if (ph < 0) ph += fold;
-    const x = Math.min(W - 1, Math.floor(ph / fold * W));
-    const y = Math.min(H - 1, Math.max(0, Math.round((sig[i] - y0) * yscale)));
+    let p = (i - fit.t0) / fit.ui + 0.5;
+    p -= Math.floor(p);
+    const x = Math.min(half - 1, Math.floor(p * half));
+    const y = Math.round((sig[i] - y0) * yscale);
+    if (!(y >= 0 && y <= H - 1)) continue; // off the graticule: not drawn (as the LCD's)
     st.eye[y * W + x]++;
+    st.eye[y * W + x + half]++;
   }
+  st.uis += Math.max(0, nUI);
   st.records++;
   return "locked:" + e.t.length;
 }
@@ -245,7 +252,7 @@ function ejFeed(st, sig, n, sampleS) {
 // TRLC-LINKS: REQ-SDS-199
 function ejResult(st) {
   const out = {
-    records: st.records, rejected: st.rejected, edges: st.edges,
+    records: st.records, rejected: st.rejected, edges: st.edges, uis: st.uis,
     ui: st.ui, sampleS: st.sampleS,
     uiSeconds: st.ui * st.sampleS,
     bitRate: st.ui > 0 && st.sampleS > 0 ? 1 / (st.ui * st.sampleS) : 0,
@@ -301,5 +308,5 @@ function ejResult(st) {
 
 
 if (typeof module !== "undefined" && module.exports) {
-  module.exports = { ejNew, ejFeed, ejResult, ejEdges, ejEstimateUI, ejEstimateUIFromIntervals, ejFitGrid, ejFFT, ejEyeMetrics, ejEdgeTimes, ejCrossing };
+  module.exports = { ejNew, ejFeed, ejResult, ejEdges, ejEstimateUI, ejEstimateUIFromIntervals, ejFitGrid, ejFFT, ejEyeMetrics, ejEdgeTimes, ejCrossing, EJ_CODE_LO, EJ_CODE_HI };
 }

@@ -59,24 +59,29 @@ func PlanSRAM(tdiv float64) SRAMPlan {
 	return p
 }
 
-// liveScreenSamples bounds a live decimated screen: a 4096-word readout, about
-// as long as the envelope's, for 10–20 frames a second.
-const liveScreenSamples = 4096
+// liveScreenSamples bounds a live decimated screen (Average, ERES, Precision,
+// the sample lease). The fabric's only decimator, the precision filter, passes
+// 7.5 % of its output rate (-3 dB at 13.5 %), so the bound sets the live
+// bandwidth: 8192 samples keep it at 1.4 to 2.8 times the 768-px plot's pixel
+// Nyquist, so nothing a pixel wide is smeared. 4096 leaves it under one (at
+// 500us/div, /1024 passes 36.6 kHz and a 115200 Bd UART's bits vanish in
+// Average and ERES). About 13 frames a second there, against 20.
+const liveScreenSamples = 8192
 
-// liveSRAMPlan decimates p until its screen fits liveScreenSamples (or the
+// liveSRAMPlan decimates p until its screen fits budget samples (or the
 // deepest decimation), with a record of a few screens; ok is false when p's
-// screen already reads in that many words.
+// screen already reads in budget words.
 // TRLC-LINKS: REQ-SDS-010
-func liveSRAMPlan(p SRAMPlan) (SRAMPlan, bool) {
+func liveSRAMPlan(p SRAMPlan, budget int) (SRAMPlan, bool) {
 	// A raw screen packs two samples a word: what bounds the readout is words.
-	if words := p.Screen / (2 - boolInt(p.Log != 0)); words <= liveScreenSamples {
+	if words := p.Screen / (2 - boolInt(p.Log != 0)); words <= budget {
 		return p, false
 	}
 	span := float64(p.Screen) * p.SampleS
 	if p.Log < 4 {
 		p.Log, p.SampleS = 4, 32e-9 // the fabric's first decimated rate
 	}
-	for p.Log < 20 && span/p.SampleS > liveScreenSamples {
+	for p.Log < 20 && span/p.SampleS > float64(budget) {
 		p.Log++
 		p.SampleS *= 2
 	}
@@ -269,7 +274,7 @@ func (e *Engine) sramConfig() (sramcapture.Config, SRAMPlan, float64, bool, trig
 			// Software moves the trigger point back to the match's start, as
 			// far as it last did: the record holds that before the hardware
 			// trigger too (at 200 us/div the record is one screen, and the
-			// screen's left edge went flat; bug hunt #3).
+			// screen's left edge would go flat).
 			if s := math.Float64frombits(e.serLv.shiftS.Load()); s > 0 {
 				pre += min(uint32(s/p.SampleS)/uint32(perWord), words/2)
 			}
@@ -317,7 +322,8 @@ func (e *Engine) sramConfig() (sramcapture.Config, SRAMPlan, float64, bool, trig
 	// Live frames must stay fast. A mode the envelope readout cannot serve
 	// (averaging, ERES, precision) is captured decimated to a display-sized
 	// record instead of reading a deep raw screen per frame; SINGLE stays deep.
-	if live, ok := liveSRAMPlan(p); ok && !e.singleArmed.Load() && !e.rawOnly && liveDecimates(e.envelopeBlock(c, tp)) {
+	block := e.envelopeBlock(c, tp)
+	if live, ok := liveSRAMPlan(p, liveBudget(block)); ok && !e.singleArmed.Load() && !e.rawOnly && liveDecimatesPlan(block, p) {
 		c, p = build(live)
 	}
 	return c, p, tdiv, norm, tp
@@ -418,9 +424,9 @@ func (e *Engine) planHysteresis(c *sramcapture.Config, decimated bool) {
 	// noise, otherwise a calibrated-looking falling trace can trigger rising.
 	// The offsets are the converter cores' own, after the front-end gain, so
 	// they hold at every V/div: gating them on the calibration's verified
-	// scale left a 4-code band elsewhere, and a level within the cores' spread
-	// of the baseline fired on raw noise (bench 2026-10-07: 2 V/div at 0.4 V
-	// and 5 V/div at 1.6 V triggered with no edge in the frame).
+	// scale leaves a 4-code band elsewhere, and a level within the cores'
+	// spread of the baseline fires on raw noise (2 V/div at 0.4 V and 5 V/div
+	// at 1.6 V trigger with no edge in the frame).
 	c.TriggerHysteresis = 4
 	cal := e.interleaveCalibration
 	if cal == nil || (decimated && hardwareSerialName(*c) == "") {
@@ -738,9 +744,9 @@ acquisitionLoop:
 			// from the hardware edge and still fill the screen around it. The
 			// FPGA's serial trigger fires at the match's end and software
 			// moves the trigger point back to its start: the window holds
-			// that much more before the trigger (twice the screen halved the
-			// live envelope's resolution, and a fast bus no longer decoded;
-			// bug hunt #3).
+			// that much more before the trigger (twice the screen would halve
+			// the live envelope's resolution, and a fast bus no longer
+			// decodes).
 			screen, pre := plan.Screen, 0
 			switch {
 			case softQualify:
@@ -1064,7 +1070,7 @@ acquisitionLoop:
 		averageDone := true
 		if (e.acqMode.Load() == AcqAverage || e.acqMode.Load() == AcqPrecision) && qualified && !fullRecall {
 			n := int(e.avgCount.Load())
-			key := fmt.Sprintf("%v/%g/%t/%v/%d/%d/%d/%d/%d/%s", cfg, tdiv, norm, tp, e.avgGen.Load(), e.chVdivBits[0].Load(), e.chVdivBits[1].Load(), e.trigOffV[0].Load(), e.trigOffV[1].Load(), f.Filter)
+			key := fmt.Sprintf("%v/%g/%t/%v/%d/%d/%d/%d/%d/%s", averageCfg(cfg), tdiv, norm, tp, e.avgGen.Load(), e.chVdivBits[0].Load(), e.chVdivBits[1].Load(), e.trigOffV[0].Load(), e.trigOffV[1].Load(), f.Filter)
 			// Refine the word-level trigger with the observed waveform crossing.
 			lo, hi := int(f.EdgeX)-4096, int(f.EdgeX)+4096
 			if lo < 0 {
@@ -1139,8 +1145,7 @@ acquisitionLoop:
 		}
 		// Bode measures every capture, triggered or not: its gain and phase
 		// are the ratio of the two channels sampled together. Asking for a
-		// trigger stopped the sweep, unsaid, with the level off the signal
-		// (bug hunt #3).
+		// trigger would stop the sweep, unsaid, with the level off the signal.
 		if !replay && !f.PeakDetect && e.bodeMode.Load() == BodeOn {
 			e.bodeEval(f, f.Valid, f.SampleS)
 		}
@@ -1232,8 +1237,8 @@ func liveSRAMWindowPre(m sramcapture.Metadata, screen int, posFrac float64, extr
 	words := min(m.Length, uint32((samples+per-1)/per))
 	// The trigger sits at posFrac of the screen, so the window holds
 	// screen·posFrac samples before it plus half the margin. Centring the
-	// window left a quarter of the screen as a flat extension at trigger
-	// position 0.2 or 0.8 (bench 2026-10-06, 1 µs/div).
+	// window leaves a quarter of the screen as a flat extension at trigger
+	// position 0.2 or 0.8 (1 µs/div).
 	if !(posFrac >= 0 && posFrac <= 1) {
 		posFrac = .5
 	}
@@ -1273,8 +1278,8 @@ func rescaleCodes(c []uint8, q []uint16, from, to chScale) {
 	}
 	k := from.vdiv / to.vdiv
 	b := (to.off - from.off) * 25 / to.vdiv
-	// Tables, not per-sample float math: 2M samples of float clamping took
-	// 3.7 s on the ARM (bench 2026-10-07).
+	// Tables, not per-sample float math: 2M samples of float clamping take
+	// 3.7 s on the ARM.
 	var lut8 [256]uint8
 	for v := range lut8 {
 		lut8[v] = uint8(math.Round(math.Max(0, math.Min(255, 128+(float64(v)-128)*k+b))))

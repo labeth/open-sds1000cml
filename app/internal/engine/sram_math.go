@@ -1,7 +1,11 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
 package engine
 
-import "math"
+import (
+	"math"
+
+	"open-sds/app/internal/sramcapture"
+)
 
 // eresQ8 keeps fractional codes through a centred moving average. The
 // shrinking end windows never wrap or introduce fabricated samples.
@@ -49,17 +53,37 @@ type sramAverage struct {
 // TRLC-LINKS: REQ-SDS-012
 func (a *sramAverage) reset() { a.count = 0 }
 
+// averageCfg is the part of a capture's configuration an average's block
+// keeps to: the same settings' captures, not the record's split around the
+// trigger. A serial trigger moves the split by each match's measured shift;
+// keyed on it, the block would restart on almost every capture and Average
+// never get past a few - a master on a serial trigger would never finish. The
+// block aligns each capture on its edge anyway.
+// TRLC-LINKS: REQ-SDS-012
+func averageCfg(c sramcapture.Config) sramcapture.Config {
+	c.PreWords, c.PostWords = 0, 0
+	return c
+}
+
+// averageLengthSlack is how far a record's length may stray from its block's
+// and still join it: a decimated record's length moves a sample or two with
+// the trigger's phase (14515 to 14517 samples at 20us/div), and a block
+// restarting on each change would never reach its count - a master would
+// never finish. Another plan's record is far longer or shorter.
+const averageLengthSlack = 8
+
 // TRLC-LINKS: REQ-SDS-012
 func (a *sramAverage) push(f *Frame, target int) int {
 	n := f.Valid
-	if len(a.sum1) != n {
+	if a.count >= target {
+		a.count = 0
+	}
+	if d := n - len(a.sum1); a.count == 0 && d != 0 || d < -averageLengthSlack || d > averageLengthSlack {
 		a.sum1 = make([]uint32, n)
 		a.sum2 = make([]uint32, n)
 		a.count = 0
 	}
-	if a.count >= target {
-		a.count = 0
-	}
+	m := min(n, len(a.sum1)) // the samples this record and the block both hold
 	f.Q1 = qBuffer(f.Q1, n)
 	f.Q2 = qBuffer(f.Q2, n)
 	if a.count == 0 {
@@ -76,7 +100,7 @@ func (a *sramAverage) push(f *Frame, target int) int {
 	if frac < 1e-6 {
 		frac = 0
 	}
-	lo, hi := 0, n
+	lo, hi := 0, m
 	if shift < 0 {
 		lo = -shift
 	}
@@ -97,7 +121,7 @@ func (a *sramAverage) push(f *Frame, target int) int {
 	}
 	// Accumulate before writing output, so shifting cannot overwrite input.
 
-	for i := 0; i < n; i++ {
+	for i := 0; i < m; i++ {
 		if a.count == 0 {
 			a.sum1[i] = 0
 			a.sum2[i] = 0

@@ -120,7 +120,7 @@ func (h *Handler) pava(ch int, arg string) []byte {
 	if r != nil && h.inverted(ch) {
 		r = r.Inverted() // measure what the inverted trace shows
 	}
-	if arg == "ALL" { // every parameter from one measurement (bug hunt #2: ALL was a header error)
+	if arg == "ALL" { // every parameter from one measurement
 		out := "ALL"
 		for _, name := range pavaOrder {
 			out += "," + name + "," + pavaValue(name, r)
@@ -145,8 +145,8 @@ func pavaValue(arg string, r *measure.Result) string {
 	case !show:
 	case p.edge:
 		// Edge shape needs an edge, not a period: one edge on screen (a fast
-		// timebase) has a rise time (bug hunt 2026-10-10: RISE read **** at
-		// 50 ns/div on a clean 20 ns edge).
+		// timebase) has a rise time (RISE must not read **** at 50 ns/div on a
+		// clean 20 ns edge).
 		show = !r.EnvTiming && (r.RiseS > 0 || r.FallS > 0)
 		if arg == "RISE" {
 			show = show && r.RiseS > 0

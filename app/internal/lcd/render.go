@@ -131,6 +131,9 @@ type HUD struct {
 	MaskStopped    bool
 	MaskMsg        string // panel build/status line ("" when idle)
 	ZoneSkip       int64  // zone-armed publishes that were untestable (env/roll)
+	// The mask's timebase and sample interval, to draw it through time over a
+	// frame sampled otherwise.
+	MaskTdivS, MaskSampleS float64
 
 	// FRA / Bode plot (bode.go): the accumulated response curve, rendered when
 	// ViewMode == 3. Parallel arrays sorted ascending by frequency.
@@ -313,9 +316,9 @@ func drawAcquiring(sf Surface, p plotArea, hud HUD) {
 }
 
 // drawDenseTrace draws a record with more samples than columns as each
-// column's min..max, joined to its neighbour. One point per column dropped
-// everything between: a stopped 1 M-sample record at 100 us/div showed one
-// sample in 1250, so a captured glitch was not drawn (bench 2026-10-07).
+// column's min..max, joined to its neighbour. One point per column drops
+// everything between: a stopped 1 M-sample record at 100 us/div would show one
+// sample in 1250, so a captured glitch would not be drawn.
 // Columns beyond the record repeat its nearest end, as drawTrace does.
 // TRLC-LINKS: REQ-SDS-021
 func drawDenseTrace(sf Surface, p plotArea, id traceID, sig []uint8, left float64, win int, col uint16, z float64) {
@@ -511,8 +514,8 @@ func Render(sf Surface, f *engine.Frame, hud HUD, live bool, persist ...*MemSurf
 		drawGraticule(sf, p)
 	}
 	// Running, a frame captured at another timebase is not this view: drawn
-	// under the new label it misread by the ratio, and at 10 s/div the next
-	// frame takes minutes to fill (bench 2026-10-07). Show the graticule and
+	// under the new label it misreads by the ratio, and at 10 s/div the next
+	// frame takes minutes to fill. Show the graticule and
 	// say a record is filling instead, as a scope clears on a timebase change.
 	acquiring := hud.Running && f != nil && f.TdivS > 0 && hud.TdivS > 0 &&
 		math.Abs(f.TdivS-hud.TdivS) > 1e-9*hud.TdivS
@@ -714,7 +717,7 @@ func absI(x int) int {
 
 // shownChans is the per-channel display enable. Both off means "unset" (show
 // both) unless the panel set the flags: then the user hid both channels and
-// neither is drawn (bug hunt #2: CH1+CH2 off brought both traces back).
+// neither is drawn.
 // TRLC-LINKS: REQ-SDS-021
 func (h HUD) shownChans() (bool, bool) {
 	if !h.ShowC1 && !h.ShowC2 && !h.ChanExplicit {

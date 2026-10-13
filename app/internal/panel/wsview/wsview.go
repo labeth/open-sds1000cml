@@ -218,8 +218,9 @@ type MeasPane struct {
 	Empty    bool
 	Stats    []StatRow
 	More     string
-	AllRows  [18][3]string // param, C1, C2 (two columns of nine)
+	AllRows  [18][3]string // param, C1, C2 (two columns)
 	AllN     int
+	AllSplit int // the first column's rows (0: nine)
 	Cursor   []Span
 	MaskLine Span
 }

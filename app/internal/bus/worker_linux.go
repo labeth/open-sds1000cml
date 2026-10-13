@@ -17,8 +17,8 @@ const workerMagic = 0x57435141
 const workerHeader = 24
 
 // workerPayload bounds one worker packet: 2048 decoded events. At 512 a call
-// the parent's pulls capped a decoded stream near 82 k events/s and the
-// worker's ring overflowed (continuous 921600 Bd UART, bench 2026-10-06).
+// the parent's pulls cap a decoded stream near 82 k events/s and the
+// worker's ring overflows (continuous 921600 Bd UART).
 const workerPayload = 65536
 const (
 	workerHello uint16 = iota

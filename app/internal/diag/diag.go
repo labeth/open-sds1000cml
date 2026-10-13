@@ -266,7 +266,7 @@ type SnoopVal struct {
 
 // RegWriteSnoop writes a register and reads the snoop registers in the SAME
 // engine transaction, so the engine's own per-frame writes cannot land in
-// between (they did on hardware, 2026-09-05: SNOOP_SEL always showed the
+// between (they did on hardware: SNOOP_SEL always showed the
 // engine's OPCODE write). This is the primitive of the GPMC A1/A2 ball test.
 // TRLC-LINKS: REQ-SDS-143
 func (d *Diag) RegWriteSnoop(name string, val uint16, raw bool) (SnoopVal, error) {
@@ -550,8 +550,8 @@ func (d *Diag) Census() (*Census, error) {
 			}
 			// LANE_TOG is one windowed counter on the selected signal: a reading
 			// is valid two 65536-cycle windows (2.6 ms at 50 MHz) after the
-			// index changes (fpga/common/lane_in.v). Hardware run 2026-09-05
-			// without this wait reported the previous lane's count on every lane.
+			// index changes (fpga/common/lane_in.v). A hardware run without
+			// this wait reported the previous lane's count on every lane.
 			d.sleep(laneTogSettle)
 			tog, _ := winRead(b, iface.DiagLaneTog)
 			lvl, _ := winRead(b, iface.DiagLaneLvl)
@@ -1090,7 +1090,7 @@ func (d *Diag) E2(o E2Options) (*E2Result, error) {
 							return err
 						}
 						// let the released ball settle on its pull-up before
-						// reading the rest level (2026-09-05: read-immediately
+						// reading the rest level (read-immediately
 						// scored rest_high 0 while the census read all ones)
 						d.sleep(busSettle)
 						lo, _ := winRead(b, iface.DiagBusRdLo)

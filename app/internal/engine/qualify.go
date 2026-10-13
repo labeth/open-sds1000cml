@@ -79,8 +79,8 @@ func condOK(m, min, max float64, cond int) bool {
 // anchorSpan says where a qualifier may anchor: the candidate nearest
 // target wins, and only candidates in [lo, hi] count - the indices around
 // which the recalled window still fills a whole screen. Anchoring outside it
-// shifted the trace by up to a screen and padded the rest flat (bench
-// 2026-10-06, pulse trigger at trigger position 0.2/0.8).
+// shifts the trace by up to a screen and pads the rest flat (a pulse trigger
+// at trigger position 0.2/0.8).
 type anchorSpan struct{ target, lo, hi int }
 
 // centreAnchor is the band pipeline's rule: nearest the frame centre, anywhere.
@@ -252,8 +252,7 @@ func qualifySlopeAt(disc []uint8, intervalNs float64, p trigParams, rising bool,
 
 // Line sync pulses (4.7 us PAL/NTSC; equalizing 2.35 us) and the limits a
 // sync must fall inside, give or take a sample interval: without them any
-// square wave's edges counted as line syncs (bug hunt 2026-10-10: VIDEO fired
-// on a 5 kHz square).
+// square wave's edges count as line syncs (VIDEO fires on a 5 kHz square).
 const (
 	videoSyncMinNs = 1500
 	videoSyncMaxNs = 12000
@@ -281,10 +280,9 @@ func videoSyncWidthOK(disc []uint8, c, syncLvl int, neg bool, intervalNs float64
 // crossings, less what sample averaging alone makes of a step: the sample
 // holding the edge averages it into an intermediate value, so interpolated
 // between the plateaus a step spans up to two intervals and its threshold
-// crossings sit up to 2*(hi-lo) intervals apart. Counting samples timed every
-// fast edge at 0 or one interval (bug hunt 2026-10-10: SLOPE > 1 us fired on
-// ns edges at 500 us/div, 4.86 us samples). A slow ramp reads short by that
-// allowance.
+// crossings sit up to 2*(hi-lo) intervals apart. Counting samples times every
+// fast edge at 0 or one interval (SLOPE > 1 us would fire on ns edges at
+// 500 us/div, 4.86 us samples). A slow ramp reads short by that allowance.
 // TRLC-LINKS: REQ-SDS-011
 func slopeTimeNs(disc []uint8, c, first, k, second int, p trigParams, intervalNs float64) float64 {
 	d := math.Abs(crossFrac(disc, k, second) - crossFrac(disc, c, first))

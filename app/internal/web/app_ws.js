@@ -380,8 +380,9 @@ function wsDots() {
   const sgOn = typeof spg !== "undefined" && spg.armed, bdOn = typeof bode !== "undefined" && bode.armed;
   set("spectrum", sgOn || bdOn, false, bdOn ? "Bode armed" : "spectrogram running");
   const maskOn = !!(st && st.mask_mode > 0), fails = !!(st && st.mask_fail > 0);
-  const srOn = typeof sr !== "undefined" && sr.armed;
-  set("measure", maskOn || srOn, maskOn && fails, maskOn ? "mask test running" + (fails ? ", " + st.mask_fail + " failures" : "") : "super-res stacking");
+  const srOn = typeof sr !== "undefined" && sr.armed, srScope = !!(st && st.sr_active);
+  set("measure", maskOn || srOn || srScope, maskOn && fails, maskOn ? "mask test running" + (fails ? ", " + st.mask_fail + " failures" : "") :
+    srOn ? "super-res stacking" : "super-res stacking on the scope");
   const refOn = !!((refs.A && refs.A.show) || (refs.B && refs.B.show)), mathOn = mathFn !== "off";
   const mst = typeof master !== "undefined" && master.busy;
   set("compare", refOn || mathOn || mst, false, mst ? "stacking a master" : refOn ? "references shown" : "math on");

@@ -23,6 +23,15 @@ const maxPeaks = 8
 // specFrame computes the FFT source's spectrum in dBV and its peaks.
 // TRLC-LINKS: REQ-SDS-216
 func (c *Controller) specFrame(a *anaState, s *sv, f *engine.Frame) {
+	if s.viewMode == viewFFT || s.viewMode == viewSpectrogram {
+		// the frames a spectrum can be taken of, as the web's FFT asks for: the
+		// full-rate record on short screens, else the filtered decimated one,
+		// not the live envelope's extremes
+		if e, ok := c.eng.(interface{ LeaseSpectrumView(time.Duration) }); ok {
+			e.LeaseSpectrumView(3 * time.Second)
+			a.specLease = true
+		}
+	}
 	ch := s.fftSrc & 1
 	sp, ok := framecalc.Spectrum(f, ch, f.SampleS)
 	a.specOK, a.specCh = ok, ch
@@ -44,6 +53,43 @@ func (c *Controller) specFrame(a *anaState, s *sv, f *engine.Frame) {
 	if len(db) > 2 {
 		a.floorDBV = median(db[1:])
 	}
+}
+
+// setBodeChannel sets the Bode reference or DUT channel in the engine,
+// keeping its armed state; the other row's channel swaps over.
+// TRLC-LINKS: REQ-SDS-066
+func (c *Controller) setBodeChannel(dut bool, ch int) error {
+	b, ok := c.eng.(interface{ SetBodeMode(bool, int, int) })
+	if !ok {
+		return fmt.Errorf("this engine has no frequency response")
+	}
+	st := c.eng.Snapshot()
+	ref, d := st.BodeRef&1, st.BodeDut&1
+	if dut {
+		if ch == ref {
+			ref = d
+		}
+		d = ch
+	} else {
+		if ch == d {
+			d = ref
+		}
+		ref = ch
+	}
+	b.SetBodeMode(st.BodeMode != 0, ref, d)
+	return nil
+}
+
+// bodeClear forgets the frequency-response points (the VIEW tab's action).
+// TRLC-LINKS: REQ-SDS-066
+func (c *Controller) bodeClear() error {
+	b, ok := c.eng.(interface{ ClearBode() })
+	if !ok {
+		return fmt.Errorf("this engine has no frequency response")
+	}
+	b.ClearBode()
+	c.toast("Bode points cleared", 1200*time.Millisecond)
+	return nil
 }
 
 // topPeak is the index of the largest peak (-1 none).
@@ -121,7 +167,7 @@ func (c *Controller) specFine(dir, n int) {
 	}
 	c.amu.Lock()
 	f, _, _, ok := specMarker(&s.ui, &c.ana)
-	bin, nyq := c.ana.spec.BinHz, c.ana.spec.EffNyq
+	bin, nyq := c.ana.spec.BinHz, c.ana.spec.SpanHz
 	c.amu.Unlock()
 	if !ok {
 		return
@@ -247,7 +293,7 @@ func (c *Controller) specPane(s *sv) *wsview.SpecPane {
 		p.Caption = fmt.Sprintf("%s C%d  waiting for a sampled frame", kind, s.fftSrc+1)
 		p.Empty = "No spectrum: the frame on screen has no samples (roll or envelope)"
 	} else {
-		p.Caption = fmt.Sprintf("%s C%d  span 0-%s  RBW %s  floor %.0fdBV", kind, s.fftSrc+1, si(sp.EffNyq, "Hz"), si(sp.BinHz, "Hz"), floor)
+		p.Caption = fmt.Sprintf("%s C%d  span 0-%s  RBW %s  floor %.0fdBV", kind, s.fftSrc+1, si(sp.SpanHz, "Hz"), si(sp.BinHz, "Hz"), floor)
 	}
 	p.TimeLabel = "TIME"
 	if s.zoom > 1 {

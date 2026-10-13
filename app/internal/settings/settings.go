@@ -100,7 +100,18 @@ type Settings struct {
 	Display  Display    `json:"display"`
 	UI       UI         `json:"ui"`
 	Serial   Serial     `json:"serial"`
+	Bode     Bode       `json:"bode,omitzero"`
 	Screen   Screen     `json:"screen,omitzero"` // the instrument's, never in a saved setup
+}
+
+// Bode is the frequency response's reference (DUT input) and DUT output
+// channels, 0 = C1 (the VIEW tab's Bode rows). Set marks a saved block: an
+// older file has none and keeps C1 / C2.
+// TRLC-LINKS: REQ-SDS-066, REQ-SDS-089
+type Bode struct {
+	Set bool `json:"set"`
+	Ref int  `json:"ref"`
+	Dut int  `json:"dut"`
 }
 
 // Screen is the screen saver (ADR-SCREEN-SAVER): minutes without input
@@ -145,6 +156,15 @@ type UI struct {
 	FFTSource     int     `json:"fft_source,omitempty"`
 	MasterDepth   int     `json:"master_depth,omitempty"`
 	RemoteNotices bool    `json:"remote_notices"`
+	// The mask build's frames and tolerance, and super-res's channel, grid and
+	// stop, kept over a restart. Zero is the factory value (an older file);
+	// the indexes are stored plus one.
+	MaskFrames int     `json:"mask_frames,omitempty"`
+	MaskTol    int     `json:"mask_tol,omitempty"` // preset index + 1
+	SrCh       int     `json:"sr_ch,omitempty"`    // channel + 1
+	SrGrid     int     `json:"sr_grid,omitempty"`
+	SrStop     int     `json:"sr_stop,omitempty"` // stop mode + 1
+	SrTarget   float64 `json:"sr_target,omitempty"`
 }
 
 // Display is the LCD's display setup beyond the view mode. Zero values are the
@@ -155,6 +175,16 @@ type Display struct {
 	ShowMeas bool    `json:"show_meas"`
 	Persist  bool    `json:"persist"`
 	Hidden   [2]bool `json:"hidden"` // channel trace off (DISPLAY CH1/CH2)
+	// Set marks the blocks below (an older file has none: invert off, no
+	// zoom, the cursors where they were). A recalled setup brings them back.
+	Set     bool       `json:"set,omitempty"`
+	Invert  [2]bool    `json:"invert"`   // the channel drawn upside down (the CH tabs' Invert)
+	CurMode int        `json:"cur_mode"` // the cursors: 0 off, 1 time, 2 volts
+	CurX    [2]float64 `json:"cur_x"`    // A and B, screen fractions across
+	CurY    [2]float64 `json:"cur_y"`    // A and B, screen fractions up
+	CurSel  int        `json:"cur_sel"`  // the cursor Adjust moves: 0 A, 1 B
+	Zoom    int        `json:"zoom"`     // horizontal magnification (1 none)
+	ZoomOff float64    `json:"zoom_off"` // the zoom window's pan
 }
 
 // DefaultPath resolves where the settings file lives.

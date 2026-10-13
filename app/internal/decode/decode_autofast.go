@@ -3,7 +3,7 @@ package decode
 
 // AutodetectFast is Autodetect on a strided copy of long records: the
 // decoders need only a few samples per bit, and on the scope's ARM a full
-// Autodetect of a 500 k-sample screen took 14 s (bench 2026-10-06). It keeps
+// Autodetect of a 500 k-sample screen takes 14 s. It keeps
 // about ten samples on the shortest real pulse of either channel and returns
 // the result with the sample time it was decoded at (colTimeS × stride).
 // TRLC-LINKS: REQ-SDS-018
@@ -105,8 +105,8 @@ func shortestPulse(c []uint8) int {
 // Redecode decodes a new frame as an earlier Autodetect result found it: the
 // same protocol, channel roles and UART baud, without trying every protocol.
 // When that no longer decodes, it detects afresh. Pacing the full detection
-// must not pace the decode: a cached result drawn over a newer frame put the
-// labels where an earlier frame's bytes had been (bug hunt 2026-10-10).
+// must not pace the decode: a cached result drawn over a newer frame puts the
+// labels where an earlier frame's bytes had been.
 // TRLC-LINKS: REQ-SDS-018
 func Redecode(prev Result, c1, c2 []uint8, colTimeS float64, format string) Result {
 	chans := [2][]uint8{c1, c2}

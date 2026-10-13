@@ -95,6 +95,13 @@ $("zoomSeg").onchange = () => {
 };
 // TRLC-LINKS: REQ-SDS-204
 $("probe1").onchange = () => send("probe1", +$("probe1").value);
+// The bandwidth limit and the invert are the scope's CH1 / CH2 tab rows;
+// sheetsFollow shows their values.
+// TRLC-LINKS: REQ-SDS-211
+for (const ch of [1, 2]) {
+  $("bwl" + ch).onchange = () => sheetSet("ch" + ch + ".bwl", +$("bwl" + ch).value);
+  $("inv" + ch).onchange = () => sheetSet("ch" + ch + ".invert", +$("inv" + ch).value);
+}
 // TRLC-LINKS: REQ-SDS-204
 $("probe2").onchange = () => send("probe2", +$("probe2").value);
 // TRLC-LINKS: REQ-SDS-204
@@ -246,7 +253,7 @@ $("ePrint").onclick = async () => {
   if (!(await panelPress("print"))) { toast("Device screenshot is not available on this server", "warn"); return; }
   toast("The scope is saving a screenshot of its screen (PRINT)");
   // The scope names the file it saved, or says why not, on its own screen:
-  // say it here too (it only ever said "saving"; bug hunt #3).
+  // say it here too, not just "saving".
   for (let i = 0; i < 24; i++) {
     await new Promise((r) => setTimeout(r, 250));
     const n = await notice();

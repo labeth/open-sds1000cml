@@ -70,7 +70,7 @@ func TextWidth(s string, scale int) int {
 
 // DrawText renders each set bit as a scale×scale block; advance 6·scale.
 // Bit 7 is a descender row: g, j, p, q and y drop below the baseline, so g
-// no longer reads as 9 ("Sp9m", "phase de9"; bug hunt 2026-10-10).
+// does not read as 9 ("Sp9m", "phase de9").
 // TRLC-LINKS: REQ-SDS-021
 func DrawText(sf Surface, x, y int, s string, c uint16, scale int) {
 	for _, r := range s {

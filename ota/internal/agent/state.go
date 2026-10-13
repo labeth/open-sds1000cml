@@ -53,8 +53,8 @@ func (sf *stateFile) update(fn func(*State)) error {
 	// Durable on a hard power cut: the state lives on the VFAT stick, and the
 	// operator's next step after `untakeover` is often a mains power cycle a
 	// few seconds later -- without fsync the write sits in the page cache
-	// (default 30 s writeback) and the OLD state boots (seen 2026-09-05: the
-	// agent came back taken_over=true and killed the factory app).
+	// (default 30 s writeback) and the OLD state boots (the agent comes back
+	// taken_over=true and kills the factory app).
 	tmp := sf.path + ".tmp"
 	f, err := os.OpenFile(tmp, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o644)
 	if err != nil {

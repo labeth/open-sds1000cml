@@ -300,7 +300,7 @@ $("zmBuild").onclick = async () => {
   let win = 0;
   const posFrac = Number.isFinite(st.trig_pos_frac) && st.trig_pos_frac >= 0 && st.trig_pos_frac <= 1 ? st.trig_pos_frac : 0.5;
   let lo, hi, geometry, frameGeometry;
-  let got = 0, lastSeq = 0, tries = 0;
+  let got = 0, lastSeq = 0, tries = 0, lastErr = "";
   zmStatus("building mask 0/" + N + "…");
   while (got < N && tries < N * 6) {
     tries++;
@@ -330,9 +330,14 @@ $("zmBuild").onclick = async () => {
       }
       got++;
       if (got % 8 === 0) zmStatus("building mask " + got + "/" + N + "…");
-    } catch (e) { break; }
+    } catch (e) {
+      // A dropped transfer (a full-rate record while a view holds a lease is
+      // megabytes) costs one try, not the build.
+      lastErr = (e && e.message) || String(e);
+      await new Promise((resolve) => setTimeout(resolve, 200));
+    }
   }
-  if (got < 4) { zmStatus("mask build failed — no locked frames (trigger on-signal?)"); return; }
+  if (got < 4) { zmStatus("mask build failed — " + (got === 0 && lastErr ? lastErr : "no locked frames (trigger on-signal?)")); return; }
   // Dilate by the tolerances (wsmath.js maskDilate, shared with COMPARE's
   // stacked master; unobserved columns become always-pass first).
   const { lo: dLo, hi: dHi } = maskDilate(lo, hi, tolT, tolV);

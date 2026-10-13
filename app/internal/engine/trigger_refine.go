@@ -14,8 +14,8 @@ const triggerRefineSpan = 12
 // by linear interpolation between the bracketing samples (Q8.8 values when q
 // is present, codes otherwise). level is in 8-bit codes. It returns edgeX
 // unchanged when no crossing lies within triggerRefineSpan. Word-level
-// placement left the displayed edge wandering 4 ns peak to peak, 0.8
-// divisions at 5 ns/div (bench 2026-10-06).
+// placement leaves the displayed edge wandering 4 ns peak to peak, 0.8
+// divisions at 5 ns/div.
 // TRLC-LINKS: REQ-SDS-011
 func refineTriggerEdge(sig []uint8, q []uint16, valid int, edgeX, level float64, rising bool) float64 {
 	if valid < 2 || !(edgeX >= 0) || math.IsInf(edgeX, 0) {
@@ -51,8 +51,8 @@ func refineTriggerEdge(sig []uint8, q []uint16, valid int, edgeX, level float64,
 // level in the trigger's direction at the hardware trigger index edgeX. The
 // fabric compares raw interleaved codes, whose five converters sit up to ~11
 // codes apart: a level within that spread of a flat baseline fires on one
-// converter's noise, with no edge in the signal (bench 2026-10-07: 5 V/div
-// at 1.6 V, 10 V/div at 1.6 V). Such a frame is not a trigger: software may
+// converter's noise, with no edge in the signal (5 V/div at 1.6 V, 10 V/div
+// at 1.6 V). Such a frame is not a trigger: software may
 // check a trigger the FPGA pointed out, never search data it did not point
 // at (owner rule). An envelope (min, max pairs) confirms when the buckets
 // beside the index reach both sides of the level.

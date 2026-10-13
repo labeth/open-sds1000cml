@@ -231,6 +231,7 @@ type Controller struct {
 	lastInput      time.Time              // the last input run on the panel goroutine (zero: none yet)
 	wakeUntil      time.Time              // until then the scope's keys and knobs only wake the screen
 	stackN         int                    // the master's depth
+	webCapture     bool                   // a web page's decoded capture holds the acquisition (seen by SyncLEDs)
 	stack          *stackState            // a master being stacked
 	maskAutoTest   bool                   // the COMPARE MASK row: count once built
 	detectSync     bool                   // tests: run the bus detection inline

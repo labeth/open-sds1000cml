@@ -15,6 +15,7 @@ const DIVX = 10, DIVY = 8;
 let st = null;        // last /api/status
 let frame = null;     // last frame reply
 let fftRaw = null, fftRawT = 0, fftRawBusy = false; // full-record RAW frame for FFT mode (native-fast display is an interpolated window)
+let fftLeased = false; // this page holds the spectrum lease (given back when the FFT and spectrogram close)
 let lastSeq = 0;
 let myEpoch = 0;      // single-active-client token from /api/claim; a newer browser supersedes us
 let superseded = false; // set when the device is taken over by another browser
@@ -65,6 +66,7 @@ const dcfg = {
   proto: "off", scl: 1, sda: 2, clk: 1, data: 2, line: 1,
   threshold: null, auto: true, baud: 115200, bits: 8, parity: "none",
   cpol: 0, cpha: 0, msb: true, fmt: "hex", result: null,
+  good: null, // {key, r, dt}: the last decode that read this bus (Stream + trigger takes its figures)
   stream: false, hist: [], lastStreamSeq: 0,   // stitched high-bandwidth decode + packet history
   // Watch/capture: save decoded windows matching a rule to a client buffer for
   // later review. watchErr = on any decode error; watchMatch = substring/regex on
@@ -215,7 +217,7 @@ const specMemo = { 1: { src: null, spec: null }, 2: { src: null, spec: null } };
 // Nyquist, so it keeps every real spectral line while dropping the pure
 // interpolation-artifact region above it, at ~40× the FFT speed. Normal
 // records (≤20480 samples) are already under the cap → unchanged.
-const FFT_MAX = 32768;
+const FFT_MAX = 8192; // the LCD's framecalc.MaxFFT: both surfaces transform the same points
 
 // Pointer readout state (FFT mode): frequency at x, dB at y, and each
 // visible channel's curve level at that frequency.
@@ -236,7 +238,7 @@ let peakListLastT = 0;
 // Measurement parameters: the core set (SCOPE's quick readouts) and the rest
 // (timing/pulse); MEASURE shows them all, with statistics.
 const MEAS_CORE = ["Vpp", "Vmax", "Vmin", "Vmean", "Vrms", "Freq", "Period", "Duty"];
-const MEAS_MORE = ["ACrms", "Vtop", "Vbase", "Vampl", "Rise", "Fall", "+Width", "-Width", "Overshoot"];
+const MEAS_MORE = ["ACrms", "Vtop", "Vbase", "Vampl", "Rise", "Fall", "+Width", "-Width", "Overshoot", "Preshoot"];
 const MEAS_ALL = MEAS_CORE.concat(MEAS_MORE);
 // The table STRUCTURE only changes on a clip-flag flip; the VALUES change every
 // frame. Rebuild on structure changes, update cell textContent in place

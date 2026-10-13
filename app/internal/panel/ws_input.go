@@ -419,6 +419,7 @@ func (c *Controller) scopeAdjustPush() {
 // from a remote, it leaves the LCD's menus as they are.
 // TRLC-LINKS: REQ-SDS-137, REQ-SDS-211
 func (c *Controller) runAuto() {
+	c.endWebCapture()
 	c.mu.Lock()
 	if c.apiDepth == 0 {
 		c.closeSheetLocked()

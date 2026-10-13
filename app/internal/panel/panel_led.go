@@ -98,7 +98,12 @@ func (c *Controller) SyncLEDs() {
 	st := c.eng.Snapshot()
 	c.mu.Lock()
 	c.running, c.norm, c.single = st.Running, st.Norm, st.Single
+	webTook := st.DecodedWeb && !c.webCapture
+	c.webCapture = st.DecodedWeb
 	c.mu.Unlock()
+	if webTook { // the acquisition stops while a web page streams decoded captures: say why, and how to end it
+		c.toast("A web page streams decoded captures - RUN here ends it", 4*time.Second)
+	}
 	c.pushLEDs()
 	c.rmu.Lock()
 	at := c.remote.pubAt
@@ -109,8 +114,7 @@ func (c *Controller) SyncLEDs() {
 }
 
 // syncPublishEvery bounds the periodic publish: hashing every sheet row and
-// encoding the snapshot 45 times a second took a tenth of the CPU (bug hunt
-// #3, B3).
+// encoding the snapshot 45 times a second takes a tenth of the CPU.
 const syncPublishEvery = 150 * time.Millisecond
 
 // pushLEDs latches the lamp word when it changed.

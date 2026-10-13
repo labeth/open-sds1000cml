@@ -4,6 +4,7 @@ package lcd
 import (
 	"fmt"
 	"math"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -98,10 +99,12 @@ func chanMeasure(f *engine.Frame, hud HUD, ch int) *measure.Result {
 type measRow struct{ name, value string }
 
 // measParamRow reads one parameter ("pkpk", "freq", ...) of a measurement,
-// ok false when the measurement has none.
+// ok false when the measurement has none. The names, the order and the
+// percent figures are the MEASURE pane's and the web's, so one parameter reads
+// the same everywhere.
 // TRLC-LINKS: REQ-SDS-021, REQ-SDS-217
 func measParamRow(m *measure.Result, id string) (measRow, bool) {
-	pct := func(v float64) string { return fmt.Sprintf("%.0f%%", v) }
+	pct := func(v float64) string { return strconv.FormatFloat(v, 'g', 3, 64) + "%" }
 	switch id {
 	case "pkpk":
 		return measRow{"Vpp", fmtVolt(m.Vpp)}, true
@@ -110,7 +113,7 @@ func measParamRow(m *measure.Result, id string) (measRow, bool) {
 	case "min":
 		return measRow{"Vmin", fmtVolt(m.Vmin)}, true
 	case "ampl":
-		return measRow{"Vamp", fmtVolt(m.Vampl)}, true
+		return measRow{"Vampl", fmtVolt(m.Vampl)}, true
 	case "top":
 		return measRow{"Vtop", fmtVolt(m.Vtop)}, true
 	case "base":
@@ -120,11 +123,11 @@ func measParamRow(m *measure.Result, id string) (measRow, bool) {
 	case "acrms":
 		return measRow{"ACrms", fmtVolt(m.VrmsAC)}, true
 	case "mean":
-		return measRow{"Vavg", fmtVolt(m.Vmean)}, true
+		return measRow{"Vmean", fmtVolt(m.Vmean)}, true
 	case "freq":
 		return measRow{"Freq", fmtFreq(m.Freq)}, m.HasTiming
 	case "period":
-		return measRow{"Per", fmtTdiv(m.Period)}, m.HasTiming
+		return measRow{"Period", fmtTdiv(m.Period)}, m.HasTiming
 	case "duty":
 		return measRow{"Duty", pct(m.Duty)}, m.HasTiming
 	case "rise":
@@ -132,18 +135,20 @@ func measParamRow(m *measure.Result, id string) (measRow, bool) {
 	case "fall":
 		return measRow{"Fall", fmtTdiv(m.FallS)}, m.FallS > 0
 	case "pwid":
-		return measRow{"+Wid", fmtTdiv(m.PosWidthS)}, m.PosWidthS > 0
+		return measRow{"+Width", fmtTdiv(m.PosWidthS)}, m.PosWidthS > 0
 	case "nwid":
-		return measRow{"-Wid", fmtTdiv(m.NegWidthS)}, m.NegWidthS > 0
-	case "ovsh":
-		return measRow{"OS", pct(m.Overshoot)}, m.HasTiming && m.Overshoot > 0
+		return measRow{"-Width", fmtTdiv(m.NegWidthS)}, m.NegWidthS > 0
+	case "ovsh": // an envelope holds no edge shape (the MEASURE pane's "---")
+		return measRow{"Overshoot", pct(m.Overshoot)}, m.HasTiming && !m.EnvTiming
+	case "prsh":
+		return measRow{"Preshoot", pct(m.Preshoot)}, m.HasTiming && !m.EnvTiming
 	}
 	return measRow{}, false
 }
 
-// allMeasParams is every parameter, in the readout box's order.
-var allMeasParams = []string{"pkpk", "max", "min", "ampl", "top", "base", "rms", "acrms", "mean",
-	"freq", "period", "duty", "rise", "fall", "pwid", "nwid", "ovsh"}
+// allMeasParams is every parameter, in the readout box's order: the web's.
+var allMeasParams = []string{"pkpk", "max", "min", "mean", "rms", "freq", "period", "duty",
+	"acrms", "top", "base", "ampl", "rise", "fall", "pwid", "nwid", "ovsh", "prsh"}
 
 // drawMeasPanel draws the MEASURE readout boxes: per shown channel, a box of
 // its chosen parameters (every parameter when nothing is chosen), via the
@@ -223,7 +228,7 @@ func drawCursors(sf Surface, p plotArea, hud HUD) {
 	}
 	dash := func(vertical bool, at int, active bool) {
 		// The inactive cursor is dim, not the grid colour: in colGrid it
-		// vanished into the graticule (bench 2026-10-07).
+		// vanishes into the graticule.
 		col := colDim
 		if active {
 			col = colTrig
@@ -529,8 +534,8 @@ func zoomOf(hud HUD, ch int) int {
 }
 
 // clipCache holds the last published frame's rail state: scanning a stopped
-// 1 M-sample record on every repaint took as long as drawing it (bench
-// 2026-10-07). A published frame's Seq is unique; Seq 0 is never cached.
+// 1 M-sample record on every repaint takes as long as drawing it. A published
+// frame's Seq is unique; Seq 0 is never cached.
 var clipCache struct {
 	sync.Mutex
 	seq   uint64

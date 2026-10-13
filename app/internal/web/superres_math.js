@@ -198,7 +198,7 @@ function srNew(n, K) {
     n, K, nbins,
     kernel: "interp", // "interp" = resample every frame at every fine bin
     // (each bin averages ALL frames); "drizzle" = linear deposit (each bin
-    // averages ~frames/K). See superres-lab.md iteration 4.
+    // averages ~frames/K).
     c: [chan(), chan()], // both channels stack; c[align] drives align/lucky
     align: 0, // which channel alignment/lucky-selection runs on
     gated: false, hits: 0, // reference-lock v2: gate grid + occurrence count

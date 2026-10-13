@@ -44,7 +44,7 @@ import (
 // pattern. This is the only reader we have. The vendor firmware is the other
 // one, and it is out of reach: restore-factory dies at "open keyboard interrupt"
 // because the agent still holds the boot fds, this unit's warm reboot is a no-op
-// (2026-09-06, agent uptime unbroken across reboot --confirm), and the only reset
+// (agent uptime unbroken across reboot --confirm), and the only reset
 // that returns the vendor is a mains cycle -- which destroys the contents we
 // would be reading. See the acq2 analysis branch
 //

@@ -139,9 +139,9 @@ func median(a []float64) float64 {
 // TRLC-LINKS: REQ-SDS-141
 func sortFloat(a []float64) {
 	// The library sort: the result's sigma takes medians over the whole fine
-	// grid (K x samples, ~176k at x32), where the old insertion sort spent
-	// 27% of the device CPU and held stacking to a frame every ~2 s (bench
-	// 2026-10-08). Equal floats are indistinguishable, so order matches JS.
+	// grid (K x samples, ~176k at x32), where an insertion sort spends 27% of
+	// the device CPU and holds stacking to a frame every ~2 s. Equal floats are
+	// indistinguishable, so order matches JS.
 	sort.Float64s(a)
 }
 

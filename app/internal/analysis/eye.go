@@ -42,6 +42,7 @@ const (
 	eyeFix        = 16      // fractional bits of the fixed-point grid positions
 	eyeMaxCols    = 2048
 	eyeMaxRows    = 1024
+	eyeTIECap     = 60000 // the TIE and period samples kept for RJ/DJ and the period jitter (the web's cap)
 )
 
 // Why a capture was not folded (EyeResult.LastErr).
@@ -107,6 +108,9 @@ type EyeResult struct {
 	Fall      float64 // 90-10 %
 	TIERms    float64 // time interval error against each burst's bit grid
 	TIEPkPk   float64
+	RJ, DJ    float64 // the TIE's random and deterministic parts (the web's dual-Dirac split, RJDJ)
+	PeriodJ   float64 // rms period jitter of consecutive rising edges
+	C2CJ      float64 // rms cycle-to-cycle jitter of the rising edges' periods
 	Lo, Hi    float64 // the two levels (codes)
 
 	UIs      float64 // unit intervals folded
@@ -157,6 +161,9 @@ type Eye struct {
 
 	tieSum, tieSum2, tieMin, tieMax float64
 	tieN                            int
+	tie                             []float64 // decimated TIE (s) for RJ/DJ: every tieDecim-th, halved at eyeTIECap
+	tieDecim, tieSeen               int
+	periodJ, c2cJ                   []float64 // period and cycle-to-cycle errors (s) of rising edges
 	loSum, hiSum                    float64
 	levN                            int
 	xSum                            float64 // crossing samples, as fractions of the swing
@@ -179,7 +186,7 @@ func NewEye(cols, rows int) *Eye {
 	return &Eye{cols: cols, rows: rows, tw: tw, cpr: (EyeCodeHi - EyeCodeLo) / float64(rows),
 		tile: make([]uint32, rows*tw), diff: make([]int32, rows*(tw+1)), dense: make([]uint32, rows*tw),
 		grid: make([]uint32, rows*cols), scratch: make([]float64, max(rows, tw)),
-		tieMin: math.Inf(1), tieMax: math.Inf(-1)}
+		tieMin: math.Inf(1), tieMax: math.Inf(-1), tieDecim: 1}
 }
 
 // Reset empties the eye, keeping its size.
@@ -191,7 +198,8 @@ func (e *Eye) Reset() {
 	clear(e.grid)
 	*e = Eye{cols: e.cols, rows: e.rows, tw: e.tw, cpr: e.cpr, tile: e.tile, diff: e.diff,
 		dense: e.dense, grid: e.grid, scratch: e.scratch, pool: e.pool[:0],
-		tieMin: math.Inf(1), tieMax: math.Inf(-1)}
+		tie: e.tie[:0], periodJ: e.periodJ[:0], c2cJ: e.c2cJ[:0],
+		tieMin: math.Inf(1), tieMax: math.Inf(-1), tieDecim: 1}
 }
 
 // Feed folds one capture of codes taken sampleS seconds apart into the eye.
@@ -366,11 +374,46 @@ func (e *Eye) foldBurst(sig []float64, es *EdgeSet, a, b int, ui0, sampleS float
 		e.tieMin = math.Min(e.tieMin, v)
 		e.tieMax = math.Max(e.tieMax, v)
 		e.tieN++
+		if e.tieSeen%e.tieDecim == 0 { // a buffer that stays representative of the whole run, as the web's
+			if e.tie = append(e.tie, v); len(e.tie) >= eyeTIECap {
+				half := make([]float64, 0, (len(e.tie)+1)/2)
+				for j := 0; j < len(e.tie); j += 2 {
+					half = append(half, e.tie[j])
+				}
+				e.tie, e.tieDecim = half, e.tieDecim*2
+			}
+		}
+		e.tieSeen++
 	}
+	e.periods(es.T[a:b], es.Pol[a:b], fit, sampleS)
 	lo, hi := float64(es.Lo), float64(es.Hi)
 	e.edgeTimes(sig, es, a, b, lo, hi, fit.UI, sampleS)
 	e.fold(sig, fit, es.T[a], es.T[b-1], lo, hi)
 	return true
+}
+
+// periods adds a burst's period and cycle-to-cycle errors: consecutive rising
+// edges against the bit grid (mixing polarities would read duty-cycle
+// distortion as period jitter), as the web's engine does.
+// TRLC-LINKS: REQ-SDS-215
+func (e *Eye) periods(t []float64, pol []int, fit *GridFit, sampleS float64) {
+	prev, prevErr, havePrev := -1, 0.0, false
+	for i := range t {
+		if pol[i] <= 0 {
+			continue
+		}
+		if prev >= 0 {
+			if dk := fit.N[i] - fit.N[prev]; dk >= 1 {
+				err := (t[i] - t[prev] - dk*fit.UI) * sampleS
+				pushCapped(&e.periodJ, err, eyeTIECap)
+				if havePrev {
+					pushCapped(&e.c2cJ, err-prevErr, eyeTIECap)
+				}
+				prevErr, havePrev = err, true
+			}
+		}
+		prev = i
+	}
 }
 
 // framingLimit is how far off the grid a burst's first or last edge must lie
@@ -724,7 +767,8 @@ func (e *Eye) reject(why string) {
 func (e *Eye) Result() EyeResult {
 	nan := math.NaN()
 	r := EyeResult{BitRate: nan, UI: nan, SamplesPerUI: nan, EyeHeight: nan, EyeWidth: nan,
-		Crossing: nan, Rise: nan, Fall: nan, TIERms: nan, TIEPkPk: nan, Lo: nan, Hi: nan,
+		Crossing: nan, Rise: nan, Fall: nan, TIERms: nan, TIEPkPk: nan, RJ: nan, DJ: nan, PeriodJ: nan, C2CJ: nan,
+		Lo: nan, Hi: nan,
 		UIs: e.uis, Edges: e.tieN, Records: e.records, Rejected: e.rejected, LastErr: e.lastErr,
 		Cols: e.cols, Rows: e.rows, Grid: e.grid}
 	if e.uiN > 0 && e.uiS > 0 {
@@ -737,6 +781,15 @@ func (e *Eye) Result() EyeResult {
 		mean := e.tieSum / float64(e.tieN)
 		r.TIERms = math.Sqrt(math.Max(0, e.tieSum2/float64(e.tieN)-mean*mean))
 		r.TIEPkPk = e.tieMax - e.tieMin
+	}
+	if rj, dj, ok := RJDJ(e.tie); ok {
+		r.RJ, r.DJ = rj, dj
+	}
+	if len(e.periodJ) > 0 {
+		r.PeriodJ = rmsOf(e.periodJ)
+	}
+	if len(e.c2cJ) > 0 {
+		r.C2CJ = rmsOf(e.c2cJ)
 	}
 	if e.riseN > 0 {
 		r.Rise = e.riseSum / float64(e.riseN)

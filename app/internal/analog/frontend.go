@@ -363,8 +363,8 @@ func (f *FrontEnd) offsetZeroAndDetent(ch int) (int, float64) {
 // analogDetent is the detent whose analog state a detent runs: the 2 and
 // 5 mV/div zooms run the 10 mV range (spec 06 §4.4), so they take its cal
 // record too. The cal file's own 2/5 mV records carry gain codes 219/164,
-// which drove the analog gain about 5.5×/2× above the 10 mV range under a
-// display that also zoomed ×5/×2 (bench 2026-10-06, open-input zero sweep).
+// which drive the analog gain about 5.5×/2× above the 10 mV range under a
+// display that also zooms ×5/×2 (seen in an open-input zero sweep).
 // TRLC-LINKS: REQ-SDS-015
 func analogDetent(idx int) int {
 	if idx >= 0 && idx < len(Detents) && Detents[idx].Zoom > 1 {
@@ -495,7 +495,7 @@ func (f *FrontEnd) SetVdiv(ch, idx int) error {
 	}
 	// Re-stage even when no offset was ever set: each detent has its own
 	// zero, and the sensitive tier's slope is 48× the attenuated one, so the
-	// previous detent's code left the trace off centre (bench 2026-10-06).
+	// previous detent's code leaves the trace off centre.
 	if f.stage != nil {
 		code := f.OffsetCode(ch, reReq) // OffsetCode uses the new detent zero
 		f.stage(ch, code)
@@ -527,7 +527,7 @@ func (f *FrontEnd) Snapshot() (idx [2]int, emitted bool) {
 //
 // Positive offset lowers the DAC code and raises the displayed trace (0 V →
 // zero): raising the code raises the converters' raw codes, and the FPGA inverts
-// the raw codes so rising input volts read as rising codes (bench 2026-10-05). The coarse attenuator
+// the raw codes so rising input volts read as rising codes. The coarse attenuator
 // (Detents[idx].Atten) sets only the per-tier ±range clamp, not the slope.
 // The sensitive ×1 ranges (≤200 mV/div) need their own, much steeper slope
 // (offsetSlope); with the attenuated slope they looked bench-dead.
@@ -542,7 +542,7 @@ const offsetCodesPerVolt = 100.0
 
 // offsetCodesPerVoltSensitive is the same DAC's slope on the sensitive tier
 // (≤200 mV/div, attenuator out), where it reaches the input about 48× more
-// weakly. BENCH-MEASURED 2026-10-05 on CH1 with a quiet input: 4350–5340
+// weakly. Measured on CH1 with a quiet input: 4350–5340
 // codes/V across 10–200 mV/div (scatter is ADC resolution); 4800 is used for
 // the whole tier. With 100 there, an offset moved the trace 1/48 as far as
 // asked — the "bench-dead" sensitive-tier offset.

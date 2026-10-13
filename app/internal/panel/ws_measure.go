@@ -382,19 +382,21 @@ func (c *Controller) measPane(s *sv) *wsview.MeasPane {
 	c.amu.Unlock()
 	if u.measAll {
 		p.Caption = "all values, both channels (live)"
-		for i := range measParams {
-			if i >= len(p.AllRows) {
-				break
+		// the web's order and columns
+		for row, id := range measAllOrder {
+			i := measIndex(id)
+			if i < 0 || row >= len(p.AllRows) {
+				continue
 			}
-			p.AllRows[i][0] = measParams[i].short
+			p.AllRows[row][0] = measParams[i].short
 			for ch := 0; ch < 2; ch++ {
-				p.AllRows[i][1+ch] = "---"
+				p.AllRows[row][1+ch] = "---"
 				if s.chDisp[ch] && allOK[ch] {
-					p.AllRows[i][1+ch] = fmtMeas(i, all[ch][i])
+					p.AllRows[row][1+ch] = fmtMeas(i, all[ch][i])
 				}
 			}
 		}
-		p.AllN = min(len(measParams), len(p.AllRows))
+		p.AllN, p.AllSplit = min(len(measAllOrder), len(p.AllRows)), measAllSplit
 	} else {
 		p.Caption = fmt.Sprintf("statistics  N %d  over %.1f s", n, s.now.Sub(u.statT).Seconds())
 		p.Empty = len(rows) == 0

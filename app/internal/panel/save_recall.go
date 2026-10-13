@@ -156,7 +156,7 @@ func setupSummary(st settings.Settings) string {
 // SharedSetups is the panel's setup store as the web page and SCPI use it:
 // the same slots, and the FILE rows and the SAVE/RECALL lamp follow a save or
 // recall made there as they follow the scope's own (a slot saved from the web
-// read "empty" on the scope until a restart; bug hunt #3).
+// must not read "empty" on the scope until a restart).
 // TRLC-LINKS: REQ-SDS-136
 func (c *Controller) SharedSetups() *SharedSetups { return &SharedSetups{c: c} }
 

@@ -528,7 +528,7 @@ func (e *Engine) rollStreamStep(r *rollView) {
 		r.streaming, r.expected, r.restartAt, r.lastBlock = true, 0, e.clk.Now(), e.clk.Now()
 		// With a bus worker (the instrument), the worker drains the banks at its
 		// FIFO service into a ring, so the app's scheduling cannot lose words
-		// (bench 2026-10-10: in-app drains stalled 16 to 21 ms behind the LCD).
+		// (in-app drains stall 16 to 21 ms behind the LCD).
 		if p, ok := e.b.(streamPumper); ok {
 			owned, err := p.SetIsolatedStreamPump(true)
 			if err != nil {
@@ -539,9 +539,9 @@ func (e *Engine) rollStreamStep(r *rollView) {
 			r.isolated = owned
 		}
 		// Two banks give the drain only a seal period or two of slack: on the
-		// single core the LCD render alone held the engine off for 23 to 50 ms
-		// (bench 2026-10-10, every loss with both banks unreleased). Run the
-		// session with the decoded stream's FIFO service, as that stream does.
+		// single core the LCD render alone holds the engine off for 23 to 50 ms
+		// (every measured loss had both banks unreleased). Run the session
+		// with the decoded stream's FIFO service, as that stream does.
 		if dev, ok := e.b.(*bus.Dev); ok && r.deadline == nil && !r.isolated {
 			if d, err := dev.StartDecodedDeadline(); err != nil {
 				e.logf("roll: stream scheduling: %v", err)

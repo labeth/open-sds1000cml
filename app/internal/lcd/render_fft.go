@@ -62,8 +62,8 @@ func drawFFT(sf Surface, p plotArea, f *engine.Frame, hud HUD) {
 		if !ok {
 			continue
 		}
-		half = sp.N / 2
-		effNyq = sp.EffNyq
+		half = len(sp.Mags) // the bins up to the span (a filter can end it before N/2)
+		effNyq = sp.SpanHz
 		kLo, kHi = fftBand(half, hud.Zoom, hud.ZoomOff)
 		col, name := colC1, "FFT C1 peak "
 		if ch == 1 {
@@ -83,8 +83,8 @@ func drawFFT(sf Surface, p plotArea, f *engine.Frame, hud HUD) {
 	if hud.UI.Layout.HideViewCaptions {
 		return
 	}
-	// The labels go on a backing, so no spectrum runs through them (bug hunt
-	// 2026-10-10: the tall low-frequency peaks garbled the labels and the span).
+	// The labels go on a backing, so no spectrum runs through them (tall
+	// low-frequency peaks garble the labels and the span otherwise).
 	labels = append(labels, label{fmtFreq(fLo) + ".." + fmtFreq(fHi), colDim})
 	row := p.y0 + 10
 	for _, l := range labels {

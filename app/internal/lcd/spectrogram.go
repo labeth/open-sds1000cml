@@ -24,7 +24,6 @@ const (
 	sgY1   = H - 26 // bottom (room for the frequency axis)
 	sgCols = sgX1 - sgX0
 	sgRows = sgY1 - sgY0
-	sgFFTN = 2048 // decimate the record to ~this many samples for the row FFT
 )
 
 // Spectrogram is the scrolling image plus the last effective Nyquist (for the
@@ -76,33 +75,31 @@ func heat(t float64) uint16 {
 	return rgb(lerp(a[0], b[0]), lerp(a[1], b[1]), lerp(a[2], b[2]))
 }
 
-// Push computes the frame's magnitude spectrum, scrolls the image down one row,
-// and paints the new spectrum as the top row. Ch selects the source channel.
+// Push takes the frame's spectrum, scrolls the image down one row, and paints
+// the new spectrum as the top row. Ch selects the source channel. The row is
+// the FFT view's spectrum (framecalc.Spectrum, cached per frame), so the
+// waterfall covers the span the SPECTRUM caption and the web's FFT and
+// waterfall show (a 2048-point stride of its own draws 0 to 20.8 MHz under a
+// caption of 0 to 83.3 MHz). effNyq is the frame's Nyquist, for a frame
+// without a sample interval.
 // TRLC-LINKS: REQ-SDS-068
 func (sg *Spectrogram) Push(f *engine.Frame, ch int, effNyq float64) {
-	if f == nil {
+	if f == nil || len(f.C1) == 0 {
 		return
 	}
-	src := f.C1
-	if ch == 1 {
-		src = f.C2
+	sampleS := f.SampleS
+	if !(sampleS > 0) && effNyq > 0 {
+		sampleS = 0.5 / effNyq
 	}
-	valid := f.Valid
-	if valid > len(src) {
-		valid = len(src)
-	}
-	if valid < 32 {
+	sp, ok := framecalc.Spectrum(f, ch, sampleS)
+	if !ok {
 		return
 	}
-	// Stride the whole record down to ~sgFFTN samples so the spectrum covers the
-	// full capture at a USEFUL frequency resolution (like the FFT view) — not the
-	// raw Nyquist, which crams a low-frequency signal into the leftmost sliver.
-	stride := framecalc.PairStride(f, valid/sgFFTN)
-	mags, peak := spectrumMags(src[:valid], stride)
-	if mags == nil || peak <= 0 {
+	mags, peak := sp.Mags, sp.Peak
+	if len(mags) < 2 || !(peak > 0) {
 		return
 	}
-	sg.effNyq = effNyq / float64(stride) // Nyquist shrinks by the decimation
+	sg.effNyq = sp.SpanHz
 
 	// scroll the heatmap region down one row (copy each row into the one below)
 	rowBytes := W * 2
@@ -139,47 +136,6 @@ func (sg *Spectrogram) Clear() {
 		sg.img.Pix[i] = 0
 	}
 	sg.rows = 0
-}
-
-// spectrumMags returns the Hann-windowed half-spectrum magnitudes of a real
-// record (largest power-of-two ≤ len) and the peak. Mirrors the FFT view and
-// the web spectrum().
-// TRLC-LINKS: REQ-SDS-068
-func spectrumMags(src []uint8, stride int) ([]float64, float64) {
-	if stride < 1 {
-		stride = 1
-	}
-	avail := len(src) / stride
-	n := 1
-	for n*2 <= avail {
-		n <<= 1
-	}
-	if n < 16 {
-		return nil, 0
-	}
-	samples := framecalc.BlockMeans(src, n, stride)
-	re := make([]float64, n)
-	im := make([]float64, n)
-	var mean float64
-	for _, v := range samples {
-		mean += v
-	}
-	mean /= float64(n)
-	for i, v := range samples {
-		w := 0.5 - 0.5*math.Cos(2*math.Pi*float64(i)/float64(n-1))
-		re[i] = (v - mean) * w
-	}
-	framecalc.FFT(re, im)
-	half := n / 2
-	mags := make([]float64, half)
-	peak := 1e-9
-	for k := 0; k < half; k++ {
-		mags[k] = math.Hypot(re[k], im[k])
-		if mags[k] > peak {
-			peak = mags[k]
-		}
-	}
-	return mags, peak
 }
 
 // drawSpectrogram blits the waterfall image and draws the frequency axis + a dB

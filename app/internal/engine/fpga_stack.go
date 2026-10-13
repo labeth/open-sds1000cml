@@ -230,9 +230,9 @@ func (e *Engine) runFPGAStack(ctx context.Context, cfg sramcapture.Config, req F
 			n := min(tile, req.Stack.Bins-first)
 			state := moments[2*first : 2*(first+n)]
 			// Every scan starts from a zeroed tile and its moments are added on
-			// the ARM: uploading the running state before each scan cost one bus
-			// round trip a word, half the session (bug hunt 2026-10-10: 20
-			// records took minutes with the display frozen).
+			// the ARM: uploading the running state before each scan costs one bus
+			// round trip a word, half the session (20 records take minutes with
+			// the display frozen).
 			if err = e.sram.StackResetTile(ctx); err != nil {
 				return res, err
 			}

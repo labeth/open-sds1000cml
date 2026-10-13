@@ -46,13 +46,35 @@ func staticOpts(o []opt) func(*sv) []opt { return func(*sv) []opt { return o } }
 type measParam struct{ id, label, short, unit string }
 
 // measParams are the parameters the MEAS tab offers (measure.Result's set).
+// Saved setups hold a choice by its index here: the order stays. The short
+// names are the web's (MEAS_ALL), as both surfaces' tables show them.
 var measParams = []measParam{
-	{"freq", "Frequency", "Freq", "Hz"}, {"pkpk", "Peak-peak", "Vpp", "V"}, {"period", "Period", "Per", "s"},
+	{"freq", "Frequency", "Freq", "Hz"}, {"pkpk", "Peak-peak", "Vpp", "V"}, {"period", "Period", "Period", "s"},
 	{"duty", "Duty", "Duty", "%"}, {"rise", "Rise", "Rise", "s"}, {"fall", "Fall", "Fall", "s"},
-	{"pwid", "+Width", "+Wid", "s"}, {"nwid", "-Width", "-Wid", "s"}, {"ampl", "Amplitude", "Vamp", "V"},
+	{"pwid", "+Width", "+Width", "s"}, {"nwid", "-Width", "-Width", "s"}, {"ampl", "Amplitude", "Vampl", "V"},
 	{"max", "Maximum", "Vmax", "V"}, {"min", "Minimum", "Vmin", "V"}, {"top", "Top", "Vtop", "V"},
-	{"base", "Base", "Vbase", "V"}, {"mean", "Mean", "Vavg", "V"}, {"rms", "RMS", "Vrms", "V"},
-	{"acrms", "AC RMS", "ACrms", "V"}, {"ovsh", "Overshoot", "OS", "%"},
+	{"base", "Base", "Vbase", "V"}, {"mean", "Mean", "Vmean", "V"}, {"rms", "RMS", "Vrms", "V"},
+	{"acrms", "AC RMS", "ACrms", "V"}, {"ovsh", "Overshoot", "Overshoot", "%"},
+	{"prsh", "Preshoot", "Preshoot", "%"}, // last: saved setups keep the indexes before it
+}
+
+// measAllOrder is the all-values view's order, the web's (MEAS_ALL: its
+// MEAS_CORE, then MEAS_MORE; measAllSplit rows in the first column).
+var measAllOrder = []string{"pkpk", "max", "min", "mean", "rms", "freq", "period", "duty",
+	"acrms", "top", "base", "ampl", "rise", "fall", "pwid", "nwid", "ovsh", "prsh"}
+
+// measAllSplit is the first column's row count in the all-values view: half
+// of the 18, as on the web.
+const measAllSplit = 9
+
+// measIndex is a parameter's index in measParams (-1 unknown).
+func measIndex(id string) int {
+	for i, p := range measParams {
+		if p.id == id {
+			return i
+		}
+	}
+	return -1
 }
 
 // Measurement parameter indexes used by the workspaces.
@@ -177,8 +199,8 @@ func timeQualRow(id, label string, val func(*sv) float64, setNs func(*Controller
 var condOpts = []opt{{0, "Any"}, {1, "< min"}, {2, "> max"}, {3, "In range"}}
 
 // holdoffLadder is the holdoff the knob and Down/Up step through.
-// holdoffLadder is Off, then 1-2-5 steps up to the row's 10 s (it stopped at
-// 1 s in decades, so 200 ms or 5 s could only be typed; bug hunt #3).
+// holdoffLadder is Off, then 1-2-5 steps up to the row's 10 s, so 200 ms or
+// 5 s are reached by the knob, not only typed.
 var holdoffLadder = []float64{0, 100e-6, 200e-6, 500e-6, 1e-3, 2e-3, 5e-3, 10e-3, 20e-3, 50e-3, 100e-3, 200e-3, 500e-3, 1, 2, 5, 10}
 
 func trigRows() []*row {
@@ -555,8 +577,7 @@ func acqRows() []*row {
 		help: "Decimated record depth: frame rate against detail.",
 		rel:  func(s *sv) bool { return !isSRAM(s) }, why: "the direct-capture image (on SRAM the timebase sets the depth)",
 		// On the SRAM image the timebase sets the record's depth: the row
-		// names it, not the direct path's unused setting (it read 6k beside
-		// 1M; bug hunt #3).
+		// names it, not the direct path's unused setting (6k beside 1M).
 		opts: func(s *sv) []opt {
 			if isSRAM(s) {
 				return []opt{{s.st.MemDepth, depthText(s.st.MemDepth) + " (auto)"}}
@@ -626,17 +647,7 @@ func acqRows() []*row {
 	srTarget := &row{id: "acq.sr_target", label: "Target", kind: wsview.Number,
 		help: "The stop target: bits gained, stacks, seconds or FPGA records.",
 		val:  func(s *sv) float64 { return s.srStopVal },
-		lim: func(s *sv) (float64, float64) {
-			switch s.srStopMode {
-			case 0:
-				return 0.5, 8
-			case 1:
-				return 50, 100000
-			case 2:
-				return 5, 3600
-			}
-			return 10, 1000
-		},
+		lim:  func(s *sv) (float64, float64) { return srTargetLimits(s.srStopMode) },
 		step: func(s *sv) float64 { return []float64{0.5, 50, 10, 10, 10}[clampInt(s.srStopMode, 0, 4)] },
 		fmtN: func(v float64) string { return g3(v) },
 		setN: func(c *Controller, v float64) error {
@@ -765,7 +776,37 @@ func viewRows() []*row {
 		},
 		def: func(c *Controller) error { c.SetPersist(false); return nil },
 	}
-	return []*row{view, src, persist}
+	bodeRef := bodeChanRow("view.bode_ref", "Bode REF", "The frequency response's reference: the channel on the DUT's input.", false)
+	bodeDut := bodeChanRow("view.bode_dut", "Bode DUT", "The frequency response's measured channel: the DUT's output.", true)
+	bodeClear := &row{id: "view.bode_clear", label: "Bode points", kind: wsview.Action,
+		help: "Forget the frequency-response points measured so far (a new DUT or sweep).",
+		acts: func(*sv) []act { return []act{{id: "clear", t: "Clear", run: (*Controller).bodeClear}} },
+		status: func(s *sv) string {
+			return fmt.Sprintf("%d %s", s.st.BodePoints, plural(s.st.BodePoints, "point"))
+		},
+	}
+	return []*row{view, src, persist, bodeRef, bodeDut, bodeClear}
+}
+
+// bodeChanRow is the Bode reference or DUT channel row: the engine's own
+// setting, which the web's selectors set too, so the Bode view arms the
+// channels chosen on either surface. Picking the other row's channel swaps
+// the two.
+// TRLC-LINKS: REQ-SDS-066
+func bodeChanRow(id, label, help string, dut bool) *row {
+	r := &row{id: id, label: label, kind: wsview.Enum, help: help,
+		knob: "SPECTRUM again (F3) shows Bode, which measures with these.",
+		opts: staticOpts([]opt{{0, "C1"}, {1, "C2"}}),
+		get: func(s *sv) int {
+			if dut {
+				return s.st.BodeDut & 1
+			}
+			return s.st.BodeRef & 1
+		},
+		set: func(c *Controller, v int) error { return c.setBodeChannel(dut, v&1) },
+	}
+	r.def = func(c *Controller) error { return c.setBodeChannel(dut, b2ic(dut)) }
+	return r
 }
 
 // ---- MEAS ----
@@ -970,8 +1011,8 @@ func cmpRows() []*row {
 			return []act{{id: "build", t: "Build now", dim: s.maskBusy, run: func(c *Controller) error { c.maskBuildStart(); return nil }}}
 		},
 		status: func(s *sv) string {
-			// the build's progress, or why it failed: the row was "building"
-			// and then "none", the reason only on the LCD (bug hunt #3)
+			// the build's progress, or why it failed: the phone reads the
+			// reason here, not only on the LCD
 			msg := strings.TrimPrefix(s.maskMsg, "MASK: ")
 			switch {
 			case s.maskBusy && strings.HasPrefix(msg, "building"):

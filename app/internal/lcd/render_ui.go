@@ -673,12 +673,21 @@ func drawMeasPane(sf Surface, p plotArea, m *wsview.MeasPane) {
 	drawPaneFrame(sf, p, &m.Pane)
 	switch {
 	case m.All:
+		split := m.AllSplit
+		if split <= 0 {
+			split = 9
+		}
 		for k, x := range []int{4, 262} {
 			DrawText(sf, x, 27, "PARAM", colDim, 1)
 			DrawTextRight(sf, x+130, 27, "C1", colC1, 1)
 			DrawTextRight(sf, x+206, 27, "C2", colC2, 1)
 			for r := 0; r < 9; r++ {
-				i := k*9 + r
+				i := r
+				if k == 1 {
+					i = split + r
+				} else if r >= split {
+					break
+				}
 				if i >= m.AllN {
 					break
 				}

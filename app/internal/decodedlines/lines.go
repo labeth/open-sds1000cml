@@ -246,9 +246,9 @@ func (t *Transcript) TriggerLine() int {
 }
 
 // Rate is the units a second of signal time, from the first unit to the
-// newest line's first unit: wall-clock time since the start missed the
-// capture that ran while the stream was being set up, and read 11.6 k/s on a
-// 8.8 k/s UART (bug hunt 2026-10-10).
+// newest line's first unit: wall-clock time since the start misses the
+// capture that ran while the stream was being set up, and reads 11.6 k/s on
+// a 8.8 k/s UART.
 // TRLC-LINKS: REQ-SDS-018
 func (t *Transcript) Rate() (float64, bool) {
 	if !t.haveFirst || len(t.lines) == 0 {

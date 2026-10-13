@@ -648,7 +648,7 @@
   // TRLC-LINKS: REQ-SDS-220
   // finish confirms a change; from: the sheet it was made in (S.sheet then). A
   // late answer closes only that sheet: closed by hand meanwhile and another
-  // opened, the answer shut the new one (bug hunt #3: a slow link).
+  // opened (a slow link), the answer must not shut the new one.
   function finish(text, from) { haptic("confirm"); if (from === undefined || S.sheet === from) sh.close(); if (text) toast(text, "ok"); }
 
   // openEditor opens one setting's sheet.

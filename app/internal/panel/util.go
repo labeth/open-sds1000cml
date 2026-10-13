@@ -4,9 +4,8 @@ package panel
 import "fmt"
 
 // stepNs steps a width/time value along a 1-2-5 nanosecond ladder from
-// 10 ns to 10 s; a press (wrap) cycles past the top back to the bottom. The
-// ladder stopped at 50 us, so a UART idle or a slow pulse could not be
-// qualified from the panel (bench 2026-10-07).
+// 10 ns to 10 s; a press (wrap) cycles past the top back to the bottom. It
+// reaches 10 s so a UART idle or a slow pulse can be qualified from the panel.
 // TRLC-LINKS: REQ-SDS-136
 func stepNs(cur float64, dir int, wrap bool) float64 {
 	var ladder []float64
@@ -25,8 +24,8 @@ func stepNs(cur float64, dir int, wrap bool) float64 {
 
 // orderNs keeps a min/max time window open: when an edit closes or inverts
 // it, the other limit moves one ladder step away (maxEdited: the max was
-// edited, so the min gives way). An inverted window never triggered, and
-// the panel let W min step past W max (bug hunt #2).
+// edited, so the min gives way). An inverted window never triggers, so W min
+// must not step past W max.
 // TRLC-LINKS: REQ-SDS-136
 func orderNs(mn, mx float64, maxEdited bool) (float64, float64) {
 	if mn < mx {
@@ -88,7 +87,7 @@ func nextHoldoff(cur float64, dir int, wrap bool) float64 {
 				return v
 			}
 		}
-		if wrap { // a press past the top goes back to Off (bug hunt #2: it stuck)
+		if wrap { // a press past the top goes back to Off, not stuck at the top
 			return opts[0]
 		}
 		return opts[len(opts)-1]

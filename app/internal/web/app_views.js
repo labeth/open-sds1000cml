@@ -52,6 +52,7 @@ function fmtMeas(key, m) {
     case "+Width": return m.pos_width_s > 0 ? eng(m.pos_width_s, "s") : "—";
     case "-Width": return m.neg_width_s > 0 ? eng(m.neg_width_s, "s") : "—";
     case "Overshoot": return m.has_timing && !m.env_timing ? m.overshoot.toFixed(1) + " %" : "—";
+    case "Preshoot": return m.has_timing && !m.env_timing ? m.preshoot.toFixed(1) + " %" : "—";
   }
   return "—";
 }
@@ -88,15 +89,19 @@ function drawBodeMain() {
 
 // TRLC-LINKS: REQ-SDS-068
 function spgPushCurrent() {
-  if (!spg.armed || !frame || typeof spectrum !== "function") return;
-  if (frame.seq === spg.lastSeq || frame.is_env) return;
-  const src = spg.ch === 2 ? frame.c2 : frame.c1;
+  // the FFT's source and transform (fftReduce): the spectrum frame while the
+  // spectrogram is shown, as the LCD's waterfall
+  const f = fftUseRaw() ? fftRaw : frame;
+  if (!spg.armed || !f || typeof spectrum !== "function") return;
+  if (f.seq === spg.lastSeq || f.is_env) return;
+  const src = spg.ch === 2 ? f.c2 : f.c1;
   if (!src || src.length < 32) return;
-  spg.lastSeq = frame.seq;
-  const s = spectrum(src, peakNyq());
+  spg.lastSeq = f.seq;
+  const g = gapFill(f.peak_detect ? pairMids(src) : src);
+  const s = g && fftReduce(g, peakNyq(), f.bandwidth_hz || 0, FFT_MAX);
   if (!s) return;
   const sg = spgEnsure();
-  sgPushRow(sg, s.mags, s.half, s.peak, s.nyq || peakNyq());
+  sgPushRow(sg, s.mags, s.half, s.peak, s.nyq);
 }
 
 // spgRender repaints the waterfall when SPECTRUM shows it (on the scope canvas).
@@ -139,17 +144,37 @@ $("bodeClear").onclick = () => {
   bodeRenderNow();
   bodeStatus(bode.armed ? "cleared — sweeping" : "cleared");
 };
+// The channels are the scope's (its VIEW tab's Bode REF / DUT rows show them):
+// a change goes there armed or not, and picking the other's channel swaps the
+// two, as on the scope.
 // TRLC-LINKS: REQ-SDS-125
 for (const id of ["bodeRef", "bodeDut"]) $(id).onchange = () => {
-  if (bode.armed) {
-    const ref = +$("bodeRef").value || 0, dut = +$("bodeDut").value || 0;
-    fetch("/api/set", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ control: "bodemode", value: 1, lo: ref, hi: dut }) }).catch(() => {});
+  let ref = +$("bodeRef").value || 0, dut = +$("bodeDut").value || 0;
+  if (ref === dut) {
+    if (id === "bodeRef") dut = 1 - ref; else ref = 1 - dut;
+    $("bodeRef").value = String(ref); $("bodeDut").value = String(dut);
   }
+  fetch("/api/set", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ control: "bodemode", value: bode.armed ? 1 : 0, lo: ref, hi: dut }) }).catch(() => {});
 };
+// bodeFollow shows the scope's own Bode state: armed (its Bode view arms it
+// too) and the channels set on the scope or the phone.
+// TRLC-LINKS: REQ-SDS-125
+function bodeFollow() {
+  const armed = st.bode_mode > 0;
+  if (armed !== bode.armed) {
+    bode.armed = armed;
+    $("bodeArm").classList.toggle("on", armed);
+    $("bodeArm").textContent = armed ? "STOP" : "ARM";
+  }
+  for (const [id, v] of [["bodeRef", st.bode_ref], ["bodeDut", st.bode_dut]]) {
+    if (Number.isInteger(v) && document.activeElement !== $(id) && $(id).value !== String(v & 1)) $(id).value = String(v & 1);
+  }
+}
 // 1 Hz: refresh the curve + the live-point readout while armed (or non-empty),
 // and whenever the Bode view is shown.
 setInterval(async () => {
   if (!st) return;
+  bodeFollow();
   const active = st.bode_mode > 0 || (st.bode_points || 0) > 0 || bode.armed;
   if (!active && view.mode !== "BODE") return;
   const n = await bodeRenderNow();
@@ -182,5 +207,5 @@ setInterval(() => {
   if (!spg.armed && (!spg.sg || spg.sg.rows === 0)) return;
   spgPushCurrent();
   spgRender();
-  if (spg.armed) spgStatus(`waterfall live · ${spg.sg ? spg.sg.rows : 0} rows · Nyquist ${eng(peakNyq(), "Hz", 3)}`);
+  if (spg.armed) spgStatus(`waterfall live · ${spg.sg ? spg.sg.rows : 0} rows · span 0 – ${eng(displayNyq(), "Hz", 3)}`);
 }, 80);

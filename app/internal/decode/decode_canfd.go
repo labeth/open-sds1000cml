@@ -91,8 +91,8 @@ type canReader struct {
 // canResync re-synchronizes the bit clock as a CAN controller does: an edge
 // within 0.4 bit of the expected boundary becomes the boundary. Free-running
 // from SOF, a 2 % bit-time error (edges quantized to 2-sample steps on a live
-// envelope, 8 samples a bit) slipped bits by mid-frame (bug hunt 2026-10-10:
-// ID 123 55 AA 0F F0 read 45 D4 1F E1 at 100 us/div).
+// envelope, 8 samples a bit) slips bits by mid-frame (ID 123 55 AA 0F F0
+// reads 45 D4 1F E1 at 100 us/div).
 // TRLC-LINKS: REQ-SDS-018
 func (r *canReader) resync() {
 	w := 0.4 * r.spb
@@ -252,8 +252,8 @@ func DecodeCANFD(codes []uint8, colTimeS float64, cfg CANFDCfg) Result {
 		return Result{Proto: "canfd", Error: "no CAN frame found"}
 	}
 	// The nominal rate it decoded at: BUS's lock keeps it, so the bus is
-	// decoded at it afterwards (without it the panel kept its 115200 default
-	// and decoded a 500 kbit/s bus at that; bug hunt #3).
+	// decoded at it afterwards (without it the panel keeps its 115200 default
+	// and decodes a 500 kbit/s bus at that).
 	baud := cfg.NominalBaud
 	if baud <= 0 && colTimeS > 0 {
 		baud = int(math.Round(1 / (spb * colTimeS)))

@@ -237,7 +237,7 @@ function srAccumCh(st, ch, sig, shift) {
     // samples sit at fine position (i − shift)·K, so bin b reads the frame
     // at raw index b/K + shift. "cubic" uses a Catmull-Rom kernel — flatter
     // passband than linear, recovering most of the sinc² edge softening at
-    // the same contributor count (lab iteration 5).
+    // the same contributor count.
     const invK = 1 / K;
     const cubic = st.kernel === "cubic";
     for (let b = 0; b < nb; b++) {

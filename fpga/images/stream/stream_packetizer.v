@@ -6,7 +6,7 @@
 //
 // Words cross through an 8-word gray-coded FIFO: the decimators can deliver
 // a few words clocks apart (the precision tail drains its own FIFO in bursts),
-// which a one-word handshake turned into faults (bench 2026-10-10). A word that
+// which a one-word handshake turns into faults. A word that
 // finds the FIFO full raises fault (sticky until reset), never a silent loss.
 //
 // A partially filled bank is sealed after SEAL_CYCLES packet clocks without a

@@ -124,8 +124,8 @@ type Handler struct {
 	trlvV  float64
 	serial string
 	// pendTdiv is the timebase TDIV (or *RST) set and the engine has not
-	// applied yet: a band switch takes seconds, and TDIV? answered the old
-	// value meanwhile (bug hunt #2). 0 when none is pending.
+	// applied yet: a band switch takes seconds, and TDIV? must not answer the
+	// old value meanwhile. 0 when none is pending.
 	pendTdiv float64
 }
 

@@ -119,7 +119,7 @@ func inferUARTspb(S sliced) (float64, string) {
 			// Final estimate over every fitting gap, multi-bit runs included:
 			// total time over total bits. The 1-bit mean alone carries the edge
 			// quantization of each short gap; peak-detect frames (half a bucket
-			// per sample) read 115200 Bd 1.2% fast that way (bench 2026-10-06).
+			// per sample) read 115200 Bd 1.2% fast that way.
 			sumG, sumM := 0.0, 0.0
 			for _, g := range kg {
 				if m := math.Round(g / ref); m >= 1 && math.Abs(g-m*ref) <= 0.35*ref {
@@ -253,7 +253,7 @@ func DecodeUART(codes []uint8, colTimeS float64, cfg UARTCfg) Result {
 		}
 		i++
 	}
-	if syncIn(spans, guard+uartSyncFrames*need, guard+1.5*spb) {
+	if syncIn(spans, S, spb, bits+2+pcNeed, float64(bits)-0.5) {
 		toks, bytes = toks[:0], bytes[:0]
 		for _, sp := range spans {
 			if sp.Kind != "gap" {
@@ -265,43 +265,63 @@ func DecodeUART(codes []uint8, colTimeS float64, cfg UARTCfg) Result {
 		Bytes: bytes, Baud: int(math.Round(baud)), SPB: spb, Thr: S.threshold}
 }
 
-// uartSyncFrames bounds the sync-in: a record that opens inside back-to-back
-// frames mis-frames until a stop bit lands on idle, a few frames at most.
-const uartSyncFrames = 4
+// uartSyncFrames bounds the sync-in: a record that opens inside traffic
+// mis-frames until a stop bit lands on idle, a few frames at most.
+const uartSyncFrames = 8
 
-// syncIn marks what precedes the decode's sync point as gaps when the record
-// visibly opened mid-traffic (its first frame is an error, or its first start
-// edge comes within openBy samples: a falling edge right away is a byte cut by
-// the window) and sync comes within window samples. Sync is the first two
-// clean frames in a row (one mis-framed byte can end on an idle-looking stop
-// bit). Every capture of a clean back-to-back UART line began "!0B !AA !A9",
-// so an error watch caught every frame (bug hunt #2). A record that opens idle
-// keeps its errors: a real break after a clean first byte is an error, and a
-// line that never decodes cleanly keeps them all. Reports whether it changed
+// syncIn marks the frames a record opened inside traffic with as gaps: read
+// from a data bit's edge, they are no bytes on the line. A record opens idle
+// when the line is high, within the record, for confirm bit times before the
+// first start edge - the data bits less half a bit: no data bit's edge
+// follows a run that long (a parity bit's can, after a word of ones; a parity
+// error after a short idle stays an error) - then every frame stands, and a
+// break after a clean first byte stays an error. Otherwise the frames back to back with the first one (each starting
+// before such a run could pass) are suspect: when none of the first
+// uartSyncFrames is an error and there are two or more, they are in sync (one
+// mis-framed byte can end on an idle-looking stop bit, two in a row hardly);
+// else sync comes two clean frames after the last error, or with the first
+// frame after an idle. A line that is not in sync within uartSyncFrames frames
+// keeps everything. Without it every capture of a back-to-back UART line
+// begins "!0B !AA !A9"; counting the first edge 1.5 bits in as opening idle,
+// a quarter of the bench line's captures still begin so, or with a byte made
+// of a cut one's last bits ("F8" for its 0A). Reports whether it changed
 // anything.
 // TRLC-LINKS: REQ-SDS-018
-func syncIn(spans []Span, window int, openBy float64) bool {
-	first := -1
-	for k := 0; k+1 < len(spans); k++ {
-		if spans[k].Kind == "data" && spans[k+1].Kind == "data" {
-			first = k
-			break
+func syncIn(spans []Span, S sliced, spb float64, frameBits int, confirm float64) bool {
+	if len(spans) == 0 {
+		return false
+	}
+	if run := int(math.Ceil(confirm * spb)); spans[0].I0 >= run {
+		idle := true
+		for j := spans[0].I0 - run; j < spans[0].I0 && idle; j++ {
+			idle = logicAt(S, float64(j)) == 1
+		}
+		if idle {
+			return false // opened idle
 		}
 	}
-	if first <= 0 || spans[first].I0 > window {
+	clean := func(k int) bool { return spans[k].Kind == "data" }
+	end := 1 // the frames back to back with the first: [0, end)
+	for end < len(spans) && float64(spans[end].I0)-(float64(spans[end-1].I0)+float64(frameBits)*spb) < confirm*spb {
+		end++
+	}
+	lastErr := -1
+	for k := 0; k < end && k < uartSyncFrames; k++ {
+		if !clean(k) {
+			lastErr = k
+		}
+	}
+	sync := end // the first frame after an idle
+	switch {
+	case lastErr < 0 && end >= 2:
+		return false // in sync from the first frame
+	case lastErr >= 0 && lastErr+2 < end && clean(lastErr+1) && clean(lastErr+2):
+		sync = lastErr + 1
+	}
+	if sync > uartSyncFrames || sync >= len(spans) {
 		return false
 	}
-	if spans[0].Kind == "data" && float64(spans[0].I0) > openBy {
-		return false // opened idle: in sync from the start
-	}
-	bad := false
-	for k := 0; k < first; k++ {
-		bad = bad || spans[k].Kind == "frame-error" || spans[k].Kind == "parity-error"
-	}
-	if !bad {
-		return false
-	}
-	for k := 0; k < first; k++ {
+	for k := 0; k < sync; k++ {
 		spans[k].Kind, spans[k].Text = "gap", "gap"
 	}
 	return true

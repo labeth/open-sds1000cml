@@ -217,8 +217,9 @@ func (r *row) setNumber(c *Controller, s *sv, v float64) error {
 		return fmt.Errorf("%s: not a number", r.label)
 	}
 	lo, hi := r.lim(s)
-	tol := 1e-9 * math.Max(math.Abs(lo), math.Abs(hi))
-	if v < lo-tol || v > hi+tol {
+	// a rounding allowance at each bound, scaled to that bound: one scaled to
+	// the larger lets 0 through a 10 ns .. 10 s row
+	if v < lo-1e-9*math.Abs(lo) || v > hi+1e-9*math.Abs(hi) {
 		return fmt.Errorf("%s %s is outside %s", strings.ToLower(r.label), r.fmtN(v), r.rangeText(s))
 	}
 	return r.setN(c, v)

@@ -466,8 +466,8 @@ func (s *Server) hDiagSramCrank(w http.ResponseWriter, r *http.Request) {
 
 // hDiagPeek: GET ?cs=2&off=0&n=256 — a READ-ONLY window into one GPMC chip
 // select's region. Writes nothing, ever; the mapping is PROT_READ on an
-// O_RDONLY /dev/mem. Exists because CS2 is VALID on this board and has never
-// been read by any campaign.
+// O_RDONLY /dev/mem. Exists because CS2 is VALID on this board and nothing
+// else reads it.
 // TRLC-LINKS: REQ-SDS-165
 func (s *Server) hDiagPeek(w http.ResponseWriter, r *http.Request) {
 	cs, _ := strconv.Atoi(r.URL.Query().Get("cs"))

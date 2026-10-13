@@ -116,9 +116,9 @@ function specReadout() {
     const ch = pkChannel(), spec = specMemo[ch] && specMemo[ch].spec;
     const nyq = displayNyq();
     rows.push(["Source", "CH" + ch + (chOn(ch) ? "" : " (off)")]);
-    rows.push(["Span", "0 – " + eng(nyq, "Hz", 3)]);
+    rows.push(["Span", "0 – " + eng(nyq, "Hz", 3) + (spec && spec.half < spec.points / 2 ? " (the decimation filter's band)" : "")]);
     if (spec) {
-      rows.push(["Resolution", eng(nyq / spec.half, "Hz", 3) + " per bin · Hann · " + (spec.half * 2) + " points"]);
+      rows.push(["Resolution", eng(spec.binHz, "Hz", 3) + " per bin · Hann · " + spec.points + " points"]);
       const fl = specFloor(ch);
       if (fl > 0) rows.push(["Noise floor", (20 * Math.log10(fl / spec.peak)).toFixed(1) + " dB re the largest peak"]);
       const P = fftCh[ch].peaks;
@@ -130,8 +130,8 @@ function specReadout() {
         rows.push(["THD", H.count ? (H.thd * 100).toFixed(2) + " % (" + H.count + (H.count === 1 ? " harmonic" : " harmonics") + " of the " + P.length + " peaks listed)" : "— (no harmonic among the listed peaks)"]);
       }
     }
-    const dt = fftUseRaw() && fftRaw.sample_s > 0 ? fftRaw.sample_s : frame && (frame.c1 || frame.c2) ? frameDtS(frame, (frame.c1 || frame.c2).length) : 0;
-    if (dt > 0) rows.push(["Sample rate", eng(1 / dt, "Sa/s", 3) + (fftUseRaw() ? " (full raw record)" : "")]);
+    // the transform's rate, as the LCD's "fs": the record's, over the block mean
+    if (spec && spec.fs > 0) rows.push(["Sample rate", eng(spec.fs, "Sa/s", 3)]);
     if (v === "SPG" && spg.sg) rows.push(["Waterfall", spg.sg.rows + " / " + spg.sg.h + " rows, newest on top"]);
   }
   const html = rows.map(([a, b]) => `<tr><th>${a}</th><td>${escHTML(b)}</td></tr>`).join("");

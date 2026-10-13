@@ -30,15 +30,19 @@ function dsStandardBaud(b) {
   return Math.round(b);
 }
 // dsAutoFill takes what the decoder found on auto settings: the threshold it
-// sliced at, the bit rate, an SPI clock rate, SENT's tick. Stream + trigger refused
-// the decoder's defaults ("Set a manual decode threshold", bug hunt #3); a
-// figure the decode did not find stays missing and dsConfig names it.
+// sliced at, the bit rate, an SPI clock rate, SENT's tick, so Stream + trigger
+// does not refuse the decoder's defaults ("Set a manual decode threshold"); a
+// figure the decode did not find stays missing and dsConfig names it. The
+// figures are the last decode that read this bus (the BUS entry's detect
+// included): right after the detect the newest frame can still be one the
+// detect's new timebase replaces, unread.
 // TRLC-LINKS: REQ-SDS-206
 function dsAutoFill(p) {
-  const r = dcfg.result, m = r && r.ok && r.meta;
+  const g = dcfg.good && dcfg.good.key === decKey() ? dcfg.good : null;
+  const r = dcfg.result && dcfg.result.ok ? dcfg.result : g && g.r, m = r && r.ok && r.meta;
   if (!m) return p;
   const q = { ...p };
-  const dt = frame && frame.c1 ? frameDtS(frame, frame.c1.length) : 0;
+  const dt = r === dcfg.result ? (frame && frame.c1 ? frameDtS(frame, frame.c1.length) : 0) : g.dt;
   if (!q.haveThr && Number.isFinite(m.threshold)) { q.threshold = Math.round(m.threshold); q.haveThr = true; }
   if (!(q.baud > 0)) { // a UART's baud, a line code's bit rate (CAN's from its samples per bit)
     const rate = m.baud || m.bitrate || (m.samplesPerBit > 0 && dt > 0 ? 1 / (m.samplesPerBit * dt) : 0);
@@ -186,6 +190,14 @@ async function dsDownload() {
   } catch (error) { dsMessage(error.message); }
   finally { if (ds.id === id && ds.words) $("dsRaw").disabled = false; }
 }
+// dsGone resets the page when its session was ended elsewhere: Run, the
+// scope's keys, or no client for two minutes.
+// TRLC-LINKS: REQ-SDS-206
+function dsGone() {
+  if (ds.abort) ds.abort.abort();
+  ds.id = null; ds.reading = false; $("dsEnd").disabled = true; $("dsRaw").disabled = true; $("dsStart").disabled = false;
+  dsMessage("The session ended: Run, the scope's keys or two minutes without this page took the acquisition back.");
+}
 // TRLC-LINKS: REQ-SDS-206
 async function dsPoll() {
   const id = ds.id; if (!id || ds.statusBusy) return; ds.statusBusy = true;
@@ -197,7 +209,7 @@ async function dsPoll() {
       ds.words = m.words; $("dsRaw").disabled = false;
       if (ds.reading) dsMessage(`${m.triggered ? "Triggered" : "Stopped"}: ${m.words * m.samples_per_word} samples/channel retained. Download before ending the session.`);
     }
-  } catch (error) { if (ds.id === id) dsMessage(error.message); }
+  } catch (error) { if (ds.id === id) { if (/no longer active/.test(error.message)) dsGone(); else dsMessage(error.message); } }
   finally { ds.statusBusy = false; }
 }
 $("dsStart").onclick = dsStart; $("dsEnd").onclick = dsEnd; $("dsRaw").onclick = dsDownload;

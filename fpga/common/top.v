@@ -757,8 +757,8 @@ module acq_sram_top(
 `endif
 `ifdef STREAM_DRUM
   // The drum takes words continuously into its own FIFO; write_ready is up
-  // only during its SRAM bursts (bench 2026-10-10: the interleaver overflowed
-  // at once and stopped the front end).
+  // only during its SRAM bursts (gating on it, the interleaver overflows at
+  // once and stops the front end).
   || drum_active
 `endif
  );
@@ -1335,7 +1335,7 @@ module acq_sram_top(
 `ifdef INTERLEAVE
   `ifdef PRECISION
   // Board-qualified sparse-clock origin: counter-referenced write addressing
-  // differs by one word from the continuous-clock path (origin probe, 2026-09-13).
+  // differs by one word from the continuous-clock path (origin probe).
   if(arm)origin<=position+(decim_active ? 2'd3 : 2'd2);
 `else
   if(arm)origin<=position+2'd2;

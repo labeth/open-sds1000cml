@@ -161,6 +161,7 @@ func (e *Engine) SetMaskMode(m int) {
 	if m != MaskOff && int(e.maskMode.Load()) == MaskOff {
 		e.maskPass.Store(0)
 		e.maskFail.Store(0)
+		e.maskSkip.Store(0) // or a fresh test shows every skip since power-on
 	}
 	if m != MaskStopFail {
 		e.maskStopped.Store(false) // leaving stop-on-fail releases the latch
@@ -176,6 +177,7 @@ func (e *Engine) ClearMaskFails() {
 	e.zm.mu.Unlock()
 	e.maskPass.Store(0)
 	e.maskFail.Store(0)
+	e.maskSkip.Store(0)
 	e.maskStopped.Store(false)
 }
 
@@ -291,14 +293,27 @@ func (e *Engine) maskEval(f *Frame, valid, liveDepth int, edgeX, sampleS, posFra
 	// clean run, so every non-comparable frame COUNTS as skipped (Stats.MaskSkip)
 	// and the UI can say "mask invalid".
 	win := m.WinCols
+	frameWin := win // the frame's window, in its own samples
+	var mapLo, mapHi []uint8
 	if m.FrameIdent {
 		w := f.WinCols
 		if w <= 0 || w > valid {
 			w = valid
 		}
-		if w != win || m.TdivS != f.TdivS || m.SampleS != f.SampleS || m.PeakDetect != f.PeakDetect {
+		frameWin = w
+		if m.TdivS != f.TdivS {
 			e.maskSkip.Add(1)
-			return false, false // a frame of another geometry: not comparable
+			return false, false // another timebase: not comparable
+		}
+		if w != win || m.SampleS != f.SampleS || m.PeakDetect != f.PeakDetect {
+			// The same screen sampled otherwise - a full-rate record while a
+			// view holds a lease, the live envelope after one: the mask is read
+			// through trigger-relative time, as the web draws it. Skipped, a mask
+			// built during a lease would test nothing once the lease ends.
+			if mapLo, mapHi = e.maskThroughTime(m, w, f.SampleS, f.PeakDetect, posFrac); mapLo == nil {
+				e.maskSkip.Add(1)
+				return false, false // a window of another span: not comparable
+			}
 		}
 	} else if e.band.WinCols() != win ||
 		m.TdivS != e.band.TdivS || m.SampleS != e.band.CaptureIntervalNs()*1e-9 {
@@ -338,17 +353,24 @@ func (e *Engine) maskEval(f *Frame, valid, liveDepth int, edgeX, sampleS, posFra
 	}
 	// display window mapping (window() semantics): column j reads the raw
 	// sample left+j where left anchors the edge at posFrac of the window.
-	left := int(math.Round(edgeX - float64(win)*posFrac))
+	lo, hi := m.Lo, m.Hi
+	if mapLo != nil {
+		lo, hi = mapLo, mapHi // entry j bounds the frame's window sample j
+	}
+	left := int(math.Round(edgeX - float64(frameWin)*posFrac))
 	failCol, failCode, failSample := -1, 0, 0
 	tested := 0
-	for j := 0; j < win; j++ {
+	for j := 0; j < frameWin; j++ {
 		s := left + j
 		if s < 0 || s >= valid {
 			continue // off-record columns are not testable (rail-extend on display)
 		}
+		if lo[j] > hi[j] {
+			continue // no mask column covers this sample's time
+		}
 		tested++
 		v := sig[s]
-		if v < m.Lo[j] || v > m.Hi[j] {
+		if v < lo[j] || v > hi[j] {
 			failCol, failCode, failSample = j, int(v), s
 			break
 		}
@@ -373,7 +395,7 @@ func (e *Engine) maskEval(f *Frame, valid, liveDepth int, edgeX, sampleS, posFra
 	}
 	mf := MaskFail{
 		C1: append([]uint8(nil), f.C1[:valid]...), Valid: valid,
-		Seq: seq, EdgeX: edgeX, SampleS: sampleS, WinCols: win,
+		Seq: seq, EdgeX: edgeX, SampleS: sampleS, WinCols: frameWin,
 		AtNs:    int64(e.clk.Now().Sub(e.zm.t0)),
 		FailCol: failCol, FailCode: failCode, FailSample: failSample,
 	}
@@ -386,6 +408,64 @@ func (e *Engine) maskEval(f *Frame, valid, liveDepth int, edgeX, sampleS, posFra
 	}
 	e.zm.mu.Unlock()
 	return true, mode == MaskStopFail
+}
+
+// maskMapKey is one reading of a mask through time: the mask and the frame
+// window it was read for.
+type maskMapKey struct {
+	m       *Mask
+	w       int
+	sampleS float64
+	peak    bool
+	posFrac float64
+}
+
+// maskMapState caches the last reading, for the engine goroutine.
+type maskMapState struct {
+	key    maskMapKey
+	lo, hi []uint8
+}
+
+// maskThroughTime reads mask m for a frame window of w samples at sampleS
+// (peak: min/max pairs) through trigger-relative time: entry i bounds the
+// window's sample i by the mask columns its time can fall in - the rounding of
+// both windows' left edges, and for a min or max anywhere in its pair's
+// bucket. An entry no column covers is inverted (lo > hi): untestable. It
+// returns nil for a window spanning another time than the mask's.
+// TRLC-LINKS: REQ-SDS-014
+func (e *Engine) maskThroughTime(m *Mask, w int, sampleS float64, peak bool, posFrac float64) (lo, hi []uint8) {
+	cols := min(m.WinCols, len(m.Lo), len(m.Hi))
+	if w <= 0 || cols <= 0 || !(sampleS > 0) || !(m.SampleS > 0) {
+		return nil, nil
+	}
+	// The same screen in both: windows round to whole samples (an envelope's to
+	// half a bucket).
+	span := float64(m.WinCols) * m.SampleS
+	if math.Abs(float64(w)*sampleS-span) > 0.01*span+0.5*math.Max(sampleS, m.SampleS) {
+		return nil, nil
+	}
+	key := maskMapKey{m, w, sampleS, peak, posFrac}
+	if e.maskMap.key == key {
+		return e.maskMap.lo, e.maskMap.hi
+	}
+	ratio := sampleS / m.SampleS // mask columns per frame sample
+	reach := 1.0                 // half a sample of extent and half of left-edge rounding
+	if peak {
+		reach = 2.0
+	}
+	lo, hi = make([]uint8, w), make([]uint8, w)
+	for i := range w {
+		jc := (float64(i)-float64(w)*posFrac)*ratio + float64(m.WinCols)*posFrac
+		a := max(int(math.Floor(jc-reach*ratio-0.5)), 0)
+		b := min(int(math.Ceil(jc+reach*ratio+0.5)), cols-1)
+		l, h := uint8(255), uint8(0)
+		for j := a; j <= b; j++ {
+			l, h = min(l, m.Lo[j]), max(h, m.Hi[j])
+		}
+		lo[i], hi[i] = l, h
+	}
+	e.maskMap = maskMapState{key: key, lo: lo, hi: hi}
+	return lo, hi
 }
 
 // BuildMaskFromEnvelope dilates a per-column [lo,hi] envelope by ±tolCols

@@ -24,8 +24,8 @@ var panelPositionBit = [8]uint{6, 7, 5, 4, 3, 2, 1, 0}
 var panelSteppedRow = [8]bool{false, false, true, true, true, false, false, false}
 
 const (
-	// panelCountsPerDetent is quadrature transitions per knob detent: bench
-	// 2026-10-06, five T/div clicks counted 20, resting at phase 11.
+	// panelCountsPerDetent is quadrature transitions per knob detent: five
+	// T/div clicks count 20, resting at phase 11.
 	panelCountsPerDetent = 4
 	// panelKnobSign maps counting up to clockwise.
 	panelKnobSign = 1
@@ -123,9 +123,9 @@ func (e *Engine) ReadMatrix() ([5]uint16, bool) {
 // turns a knob a few detents between reads (40 ms or less apart). A read
 // while the fabric loses power or restarts is garbage: zero words press all
 // 48 keys, and counters reading 0 or 0xff jump every knob by up to 31 detents.
-// After a power cycle the scope came up with the trigger level 39 steps up,
-// both positions 12 down and the trigger source and slope pushed (bench
-// 2026-10-08).
+// Without these limits a power cycle can bring the scope up with the trigger
+// level 39 steps up, both positions 12 down and the trigger source and slope
+// pushed.
 const (
 	panelMaxKeysDown   = 3
 	panelMaxCountsRead = 6 * panelCountsPerDetent

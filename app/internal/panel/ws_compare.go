@@ -196,9 +196,9 @@ func (c *Controller) stackStart() error {
 	}
 	// The master is tested against raw live captures, and whether the source
 	// repeats is judged on raw captures: in Average neither holds. A master
-	// started there took the average of a source that did not repeat, and
-	// restored Average, so its mask never came, or failed every capture once
-	// the acquisition went back to Normal (bug hunt #3).
+	// started there would average a source that does not repeat and restore
+	// Average, so its mask never comes, or fails every capture once the
+	// acquisition goes back to Normal.
 	if s.st.AcqMode == engine.AcqAverage {
 		err := fmt.Errorf("No master: the acquisition is Average - set it to Normal, so the master can check that C%d repeats", src+1)
 		c.toast(err.Error(), 2800*time.Millisecond)
@@ -602,15 +602,21 @@ func (c *Controller) cmpAgainText(s *sv) string {
 	return "stack master"
 }
 
-// cmpPane builds the COMPARE pane.
+// RepeatCaption is COMPARE's word on the trigger source: whether it repeats
+// capture after capture (a master or a mask needs it), and warn when it does
+// not or is off. The web's COMPARE shows the same line.
 // TRLC-LINKS: REQ-SDS-218
-func (c *Controller) cmpPane(s *sv) *wsview.CmpPane {
-	p := &wsview.CmpPane{}
-	p.Title = "COMPARE"
+func (c *Controller) RepeatCaption() (string, bool) {
+	cap, col := c.repeatCaption(c.snap())
+	return cap, col == wsview.Warn
+}
+
+// repeatCaption is RepeatCaption's text and colour.
+// TRLC-LINKS: REQ-SDS-218
+func (c *Controller) repeatCaption(s *sv) (string, wsview.Col) {
 	src := s.st.TrigSource & 1
 	c.amu.Lock()
 	nOK, n, stable, known := stabVerdict(&c.ana)
-	diffs := c.ana.refDiff
 	c.amu.Unlock()
 	cap, capCol := fmt.Sprintf("trigger source C%d", src+1), wsview.Text
 	switch {
@@ -627,6 +633,20 @@ func (c *Controller) cmpPane(s *sv) *wsview.CmpPane {
 	default:
 		cap, capCol = cap+fmt.Sprintf(" does not repeat (%d/%d): a master would smear", nOK, n), wsview.Warn
 	}
+	return cap, capCol
+}
+
+// cmpPane builds the COMPARE pane.
+// TRLC-LINKS: REQ-SDS-218
+func (c *Controller) cmpPane(s *sv) *wsview.CmpPane {
+	p := &wsview.CmpPane{}
+	p.Title = "COMPARE"
+	src := s.st.TrigSource & 1
+	c.amu.Lock()
+	_, _, stable, known := stabVerdict(&c.ana)
+	diffs := c.ana.refDiff
+	c.amu.Unlock()
+	cap, capCol := c.repeatCaption(s)
 	p.Caption, p.CapCol = cap, capCol
 	sel := clampInt(s.ui.cmpRow, 0, numCmpRows-1)
 	for i := 0; i < numCmpRows; i++ {

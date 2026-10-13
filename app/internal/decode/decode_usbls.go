@@ -205,9 +205,9 @@ func DecodeUSBLS(dp []uint8, colTimeS float64, cfg USBLSCfg) Result {
 		var rawBits, rawCell []int
 		// Re-synchronize the cell grid on edges (as a USB receiver's DPLL does):
 		// an edge within 0.4 bit of a cell boundary re-anchors the grid there.
-		// Free-running from the first edge, a 1 % bit-time error slipped bits
-		// across a packet (bug hunt 2026-10-10: 0F F0 00 F8 read A7 F4 01 FC at
-		// 5.5 samples a bit).
+		// Free-running from the first edge, a 1 % bit-time error slips bits
+		// across a packet (0F F0 00 F8 reads A7 F4 01 FC at 5.5 samples a
+		// bit).
 		// The grid, not a count fixed up front, says where the packet ends: its
 		// last cell starts before the last edge (rounding (x1-x0)/T dropped the
 		// final byte when T read a little long).

@@ -28,7 +28,7 @@ func (c *Controller) srArm() error {
 	c.srManLo, c.srManHi = -1, -1 // auto gate
 	fpga := c.srStopMode >= srStopFPGA
 	c.mu.Unlock()
-	if fpga { // Stop on an FPGA mode: the FPGA stacks; On refused with the software stack's depth limit (bug hunt #3)
+	if fpga { // Stop on an FPGA mode: the FPGA stacks, not the software stack with its depth limit
 		c.srFPGARun()
 		return nil
 	}
@@ -45,7 +45,7 @@ func (c *Controller) srArm() error {
 		}
 	}
 	// the seed takes seconds off the panel goroutine: say so, not the last
-	// session's "cancelled" (bug hunt #3)
+	// session's "cancelled"
 	c.srSetStatus("finding the reference...")
 	if !c.srKick() {
 		c.mu.Lock()
@@ -62,6 +62,9 @@ func (c *Controller) srArm() error {
 // TRLC-LINKS: REQ-SDS-140
 func (c *Controller) srSampledCols() int {
 	cols := 0
+	if c.frameFn == nil { // no frame source (as every other reader allows)
+		return 0
+	}
 	c.frameFn(func(f *engine.Frame) {
 		if f != nil && !f.IsEnv && !f.PeakDetect {
 			cols = min(max(f.Valid, 0), len(f.C1))
@@ -72,9 +75,9 @@ func (c *Controller) srSampledCols() int {
 
 // srKick asks for a fresh stack from the current frame with the current
 // channel, grid and gate. The period search and the seed take seconds on the
-// ARM and froze every key while they ran on the panel goroutine (bug hunt #3:
-// Super-res On held the keys 2-4 s, each gate edge's knob detent 1-2 s), so
-// the panel loop hands them to a seeder goroutine, where the latest request
+// ARM: on the panel goroutine they would hold every key 2-4 s (each gate
+// edge's knob detent 1-2 s), so the panel loop hands them to a seeder
+// goroutine, where the latest request
 // wins; without the loop (tests) the seed runs here. It reports false when a
 // seed run here failed.
 // TRLC-LINKS: REQ-SDS-140
@@ -265,8 +268,8 @@ func (c *Controller) srSeedAndStartGen(gen uint64) bool {
 	c.mu.Unlock()
 	// A stopped scope shows its full record (a million samples on the SRAM
 	// band), which is never shallow enough to stack in software, so SINGLE
-	// then UTILITY always failed (bug hunt #2). The stack is fed live raw
-	// frames anyway: resume and seed from the first one, as a running arm does.
+	// then UTILITY would always fail. The stack is fed live raw frames anyway:
+	// resume and seed from the first one, as a running arm does.
 	if c1 != nil && cols*k > srSoftBinsMax && !c.eng.Snapshot().Running && c.srRunUntouched() {
 		stale := seq
 		c.eng.SetRunning(true)
@@ -347,8 +350,8 @@ func (c *Controller) srSeedAndStartGen(gen uint64) bool {
 	c.srFrames, c.srRejected = st.Hits, 0               // fresh counts (not stale from a prior arm)
 	c.srWinLo, c.srWinHi, c.srPeriod = mlo, mhi, period // review span + tile period
 	// resume so matching frames flow in; a Run/Stop/Single pressed while the
-	// seed ran off the panel goroutine stands (bug hunt #3: the seed's end put
-	// a Stop pressed meanwhile back to Run)
+	// seed ran off the panel goroutine stands (the seed's end must not put a
+	// Stop pressed meanwhile back to Run)
 	resume := c.runReq.Load() == c.srRunAt
 	if resume {
 		c.running, c.single = true, false
@@ -486,9 +489,8 @@ func (c *Controller) srLoop(stop chan struct{}, st *superres.Stack, seedTdiv flo
 			continue // stacked result is final; wait for Reset or UTILITY-cancel
 		}
 		// Full-rate raw live frames only while stacking: renewed for a final
-		// stack, the lease read 500 k words a frame at 200 us/div and held the
-		// live view at 1 fps for as long as super-res stayed armed (bug hunt
-		// 2026-10-10).
+		// stack, the lease would read 500 k words a frame at 200 us/div and
+		// hold the live view at 1 fps for as long as super-res stays armed.
 		c.srLeaseRaw()
 		var c1, c2 []uint8
 		var edgeX float64
@@ -538,8 +540,8 @@ func (c *Controller) srLoop(stop chan struct{}, st *superres.Stack, seedTdiv flo
 			continue
 		}
 		// Raw SRAM frames keep their 2 ns pitch at every timebase, so a
-		// timebase change shows only as TdivS: the stack kept feeding 500 k
-		// sample frames at 200 us/div (bug hunt 2026-10-10).
+		// timebase change shows only as TdivS (else the stack keeps feeding
+		// 500 k sample frames at 200 us/div).
 		if seedTdiv > 0 && tdiv > 0 && math.Abs(tdiv-seedTdiv) > seedTdiv*1e-6 {
 			c.srReachReview(st, "timebase changed - stack kept")
 			reached = true

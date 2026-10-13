@@ -219,6 +219,37 @@ function inferUARTspb(S) {
   return { spb: 0, reason: "baud ambiguous — set it explicitly" };
 }
 
+// UART_SYNC_FRAMES bounds the sync-in (Go uartSyncFrames).
+const UART_SYNC_FRAMES = 8;
+
+// uartSyncIn is Go's syncIn: a record opens idle when the line is high for
+// confirm bit times before the first start edge (then every frame stands);
+// else the frames back to back with the first are suspect - in sync when none
+// of the first UART_SYNC_FRAMES is an error and there are two or more, else
+// from two clean frames after the last error or the first frame after an
+// idle, if that comes within UART_SYNC_FRAMES frames. Reports a change.
+// TRLC-LINKS: REQ-SDS-018
+function uartSyncIn(spans, S, SPB, frameBits, confirm, idle) {
+  if (!spans.length) return false;
+  const run = Math.ceil(confirm * SPB);
+  if (spans[0].i0 >= run) {
+    let opened = true;
+    for (let j = spans[0].i0 - run; j < spans[0].i0 && opened; j++) opened = logicAt(S, j) === idle;
+    if (opened) return false; // opened idle
+  }
+  const clean = (k) => spans[k].kind === "data";
+  let end = 1; // the frames back to back with the first: [0, end)
+  while (end < spans.length && spans[end].i0 - (spans[end - 1].i0 + frameBits * SPB) < confirm * SPB) end++;
+  let lastErr = -1;
+  for (let k = 0; k < end && k < UART_SYNC_FRAMES; k++) if (!clean(k)) lastErr = k;
+  let sync = end; // the first frame after an idle
+  if (lastErr < 0 && end >= 2) return false; // in sync from the first frame
+  if (lastErr >= 0 && lastErr + 2 < end && clean(lastErr + 1) && clean(lastErr + 2)) sync = lastErr + 1;
+  if (sync > UART_SYNC_FRAMES || sync >= spans.length) return false;
+  for (let k = 0; k < sync; k++) { spans[k].kind = "gap"; spans[k].text = "gap"; }
+  return true;
+}
+
 // TRLC-LINKS: REQ-SDS-018
 function decodeUART(codes, colTimeS, cfg) {
   cfg = cfg || {};
@@ -282,14 +313,9 @@ function decodeUART(codes, colTimeS, cfg) {
     }
     i++;
   }
-  // Sync-in (mirrors Go syncIn): errors before the first clean frame, when it
-  // starts within a few frames of the record start, are bytes cut by the
-  // window, not line errors.
-  let first = -1;
-  for (let k = 0; k + 1 < spans.length; k++) if (spans[k].kind === "data" && spans[k + 1].kind === "data") { first = k; break; }
-  const openedMid = spans.length && (spans[0].kind !== "data" || spans[0].i0 <= guard + 1.5 * SPB); // else in sync from the start
-  if (first > 0 && openedMid && spans[first].i0 <= guard + 4 * need && spans.slice(0, first).some((sp) => sp.kind === "frame-error" || sp.kind === "parity-error")) {
-    for (let k = 0; k < first; k++) { spans[k].kind = "gap"; spans[k].text = "gap"; }
+  // Sync-in (mirrors Go syncIn): the frames a record opened inside traffic
+  // with are gaps - read from a data bit's edge, they are no bytes on the line.
+  if (uartSyncIn(spans, S, SPB, bits + 2 + pcNeed, bits - 0.5, idle)) {
     toks.length = 0; bytes.length = 0;
     for (const sp of spans) if (sp.kind !== "gap") { toks.push(sp.text); bytes.push(sp.val); }
   }
@@ -470,8 +496,8 @@ function scoreResult(r) {
     // ordering. A real transaction addresses a device and clocks bytes+ACKs.
     const addrs = kind("addr"), acks = kind("ack") + kind("nak"), datas = kind("data"), starts = kind("start");
     if (addrs === 0) return -1e9;                  // no addressed device -> not real I2C
-    // One stray START on SPI data reads as one bare address; it outscored a
-    // real 18-byte SPI decode (bench 2026-10-07). Keep it only as a last resort.
+    // One stray START on SPI data reads as one bare address; it must not
+    // outscore a real 18-byte SPI decode. Keep it only as a last resort.
     if (addrs === 1 && datas === 0) return 5;
     return addrs * 100 + acks * 30 + datas * 20 + starts * 5;
   }
@@ -485,7 +511,7 @@ function scoreResult(r) {
     const stdBaud = STANDARD_BAUDS.some(b => Math.abs(m.baud - b) <= 0.03 * b);
     if (bytes < 8 && !stdBaud) return -1e9;
     // An odd rate with over a fifth of its bytes misframed is another protocol
-    // read as UART (an undersampled SENT: "UART 45701 Bd", bug hunt 2026-10-11).
+    // read as UART (an undersampled SENT reads "UART 45701 Bd").
     if (!stdBaud && kind("frame-error") * 5 > bytes) return -1e9;
     return bytes * 10 - kind("frame-error") * 35 - kind("parity-error") * 18 + 15;
   }
@@ -684,7 +710,7 @@ function autodetect(frame, opts) {
   const u1 = clk1.uniFrac, u2 = clk2.uniFrac, hi = Math.max(u1, u2), lo = Math.min(u1, u2);
   const clockedPair = active.length >= 2 && hi > 0.72 && hi > lo + 0.12;
   // A clock beside a line it does not clock is no clocked bus: a UART next to a
-  // free-running clock read as SPI, I2C or nothing (bug hunt 2026-10-11). That
+  // free-running clock reads as SPI, I2C or nothing. That
   // line keeps no place in the clock's cycle, so it is tried on its own and
   // neither SPI nor I2C is claimed for the pair. Mirrors decode_autodetect.go.
   let freeClock = false;
@@ -695,8 +721,8 @@ function autodetect(frame, opts) {
   const locked = clockedPair && !freeClock;
   // TRLC-LINKS: REQ-SDS-018
   // A near-perfectly uniform line is a clock even with few edges on screen: a
-  // 3 kHz square at 500 us/div (~30 edges) read as constant-bit Manchester
-  // (bug hunt 2026-10-10). Real Manchester data mixes T/2 and T gaps.
+  // 3 kHz square at 500 us/div (~30 edges) reads as constant-bit Manchester.
+  // Real Manchester data mixes T/2 and T gaps.
   const isClocky = k => { const c = k === 1 ? clk1 : clk2; return (c.uniFrac > 0.78 && c.edges >= 40) || (c.uniFrac >= 0.95 && c.edges >= 10); };
 
   // UART — async single-wire. Suppress on a clocked pair (that IS SPI — a data line
@@ -764,8 +790,8 @@ function autodetect(frame, opts) {
   cands.sort((a, b) => b.score - a.score);
   const best = cands[0];
   // Errors outweighing the evidence are no detection: a garbage UART or
-  // Manchester decode won Auto whenever nothing else qualified (bug hunt
-  // 2026-10-11). Mirrors decode_autodetect.go.
+  // Manchester decode would win Auto whenever nothing else qualifies. Mirrors
+  // decode_autodetect.go.
   if (!best || best.score <= 0)
     return { proto: "off", roles: {}, cfg: {}, result: null, score: -Infinity, candidates: cands,
       reason: active.length ? "no protocol matched" : "no active signal" };

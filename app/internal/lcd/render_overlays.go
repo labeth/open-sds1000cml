@@ -314,9 +314,10 @@ var colMask = rgb(90, 120, 160)
 // drawZoneMask overlays the installed zones (edge-anchored rectangles) and the
 // mask envelope boundaries, mapped with the SAME window mapping as drawTrace
 // (left = xc - win*posFrac; column j of the mask reads raw sample left+j), so
-// LCD == web == engine test point. The mask band only renders when the frame's
-// window geometry matches the mask (zoom or a band change break the column
-// alignment — the engine skips those frames too).
+// LCD == web == engine test point. A frame sampled otherwise than the mask (a
+// lease's full-rate record, the envelope after one, a zoom) of the mask's
+// timebase reads the mask through trigger-relative time, as the engine tests
+// it and the web draws it.
 // TRLC-LINKS: REQ-SDS-021
 func drawZoneMask(sf Surface, p plotArea, f *engine.Frame, hud HUD, win int, xc, posFrac float64) {
 	if !(posFrac >= 0 && posFrac <= 1) {
@@ -324,11 +325,28 @@ func drawZoneMask(sf Surface, p plotArea, f *engine.Frame, hud HUD, win int, xc,
 	}
 	left := xc - float64(win)*posFrac
 	// mask envelope boundary lines
-	if hud.MaskMode > 0 && hud.MaskWin == win && len(hud.MaskLo) == win && len(hud.MaskHi) == win {
-		for x := 0; x < p.w; x++ {
-			j := x * win / p.w
-			sf.SetPixel(x, p.sy(float64(hud.MaskLo[j])), colMask)
-			sf.SetPixel(x, p.sy(float64(hud.MaskHi[j])), colMask)
+	mw := hud.MaskWin
+	if hud.MaskMode > 0 && mw > 0 && len(hud.MaskLo) == mw && len(hud.MaskHi) == mw {
+		if mw == win {
+			for x := 0; x < p.w; x++ {
+				j := x * win / p.w
+				sf.SetPixel(x, p.sy(float64(hud.MaskLo[j])), colMask)
+				sf.SetPixel(x, p.sy(float64(hud.MaskHi[j])), colMask)
+			}
+		} else if hud.MaskSampleS > 0 && f.SampleS > 0 && f.EdgeX >= 0 && hud.MaskTdivS == f.TdivS {
+			maskPos := hud.TrigPosFrac
+			if !(maskPos >= 0 && maskPos <= 1) {
+				maskPos = 0.5
+			}
+			for x := 0; x < p.w; x++ {
+				s := left + float64(x)*float64(win)/float64(p.w)
+				j := int(math.Round((s-f.EdgeX)*f.SampleS/hud.MaskSampleS + float64(mw)*maskPos))
+				if j < 0 || j >= mw {
+					continue
+				}
+				sf.SetPixel(x, p.sy(float64(hud.MaskLo[j])), colMask)
+				sf.SetPixel(x, p.sy(float64(hud.MaskHi[j])), colMask)
+			}
 		}
 	}
 	// zone rectangles: dt (seconds from the edge) -> raw sample -> screen x
@@ -395,7 +413,7 @@ func drawMaskHUD(sf Surface, hud HUD) {
 		col = colStale // failures flash the meter red/orange
 	}
 	// Second row, right-aligned under the address: on the top row a status
-	// over ~30 characters ran into the device URL (bench 2026-10-08). Under a
+	// over ~30 characters runs into the device URL. Under a
 	// workspace pane it sits at the top of the plot instead.
 	y := 14
 	if t := hud.UI.Layout.PlotTop; t > 0 {

@@ -2,6 +2,9 @@
 // app_eye.js — eye-diagram + jitter view (classic script; shares app.js globals).
 
 "use strict";
+// The LCD's BUS eye grid (2 px cells over its 768 x 332 plot, panel eyeCols and
+// eyeRows): the same density cells, so the scope and the page draw one picture.
+const EJ_EYE_W = 384, EJ_EYE_H = 166;
 let ejOptBusy = false; // eye "optimize" search in progress (ejIngest guards re-learn instead of stopping)
 // TRLC-LINKS: REQ-SDS-067
 function ejStop(why) {
@@ -16,8 +19,14 @@ function ejIngest(f) {
   const ch = +$("ejCh").value === 2 ? 2 : 1;
   if (ej.ch && ch !== ej.ch) { ejStop("channel changed — re-ARM to analyze the other channel"); return; }
   ej.ch = ch;
-  const sig = ch === 2 ? f.c2 : f.c1;
-  if (!sig || f.is_env || f.peak_detect) { ejStop("band became unsupported"); return; }
+  const raw = ch === 2 ? f.c2 : f.c1;
+  if (!raw || f.is_env || f.peak_detect) { ejStop("band became unsupported"); return; }
+  // the codes as the scope draws them (inverted, magnified at 2 and 5 mV/div),
+  // as the LCD's eye folds them; a change of either starts the eye over
+  const z = (st && (ch === 2 ? st.zoom2 : st.zoom1)) || 1, inv = !!(st && (ch === 2 ? st.inv2 : st.inv1));
+  if (ej.disp !== undefined && ej.disp !== z + "/" + inv) ej.st = ejNew({ eyeW: EJ_EYE_W, eyeH: EJ_EYE_H });
+  ej.disp = z + "/" + inv;
+  const sig = ejDisplayCodes(raw, z, inv);
   if (!(f.sample_s > 0)) return; // no timebase → zero-second TIE would be fabricated
   const vpc = (ch === 2 ? f.vpc2 : f.vpc1) || (1 / 25);
   ej.vpcReal = !!(ch === 2 ? f.vpc2 : f.vpc1); // mV readouts only with a real calibration
@@ -40,6 +49,20 @@ function ejIngest(f) {
   ejRender(false);
 }
 
+// ejDisplayCodes is a channel's codes as the scope draws them, the LCD eye's
+// displayCodes: inverted, then magnified about mid-screen at the 2 and 5 mV
+// detents; a -1 margin stays -1.
+// TRLC-LINKS: REQ-SDS-215
+function ejDisplayCodes(sig, z, inv) {
+  if (z === 1 && !inv) return sig;
+  const out = new Float32Array(sig.length);
+  for (let i = 0; i < sig.length; i++) {
+    const v = sig[i];
+    out[i] = v < 0 ? -1 : 128 + ((inv ? 255 - v : v) - 128) * z;
+  }
+  return out;
+}
+
 // TRLC-LINKS: REQ-SDS-200
 function ejRender(force) {
   const now = performance.now();
@@ -56,27 +79,27 @@ function ejRender(force) {
     } else {
       ejStatus(res.records + " records · " + res.edges + " edges · " + st2.rejected + " rej" +
         (st2.rejected > 0 && res.lastErr ? " (" + res.lastErr + ")" : "") + " · " +
-        eng(res.bitRate, "b/s", 4) + " · UI " + eng(res.uiSeconds, "s", 3));
+        eng(res.bitRate, "bit/s", 5) + " · UI " + eng(res.uiSeconds, "s", 3));
     }
   }
-  ejDrawEye(st2);
+  ejDrawEye(st2, res);
   ejDrawHist(st2, res);
   ejDrawSpec(res);
   ejMetricsTable(res);
   if (typeof ejBigVisible === "function" && ejBigVisible()) ejDrawBig();
 }
 
-// log-density heatmap: dark well -> blue -> cyan -> yellow -> white
-// TRLC-LINKS: REQ-SDS-200
-function ejHeatColor(t) {
-  const r = Math.min(255, Math.max(0, Math.round(t < 0.5 ? 0 : (t - 0.5) * 2 * 255)));
-  const g = Math.min(255, Math.max(0, Math.round(t < 0.25 ? t * 4 * 130 : 130 + (t - 0.25) * 167)));
-  const b = Math.min(255, Math.max(0, Math.round(t < 0.5 ? 120 + t * 270 : 255 - (t - 0.5) * 2 * 200)));
-  return [r, g, b];
+// ejShades are the LCD eye's four density shades of the channel colour over
+// the eye's background, dim to full (lcd eyeShades).
+// TRLC-LINKS: REQ-SDS-215
+function ejShades(ch) {
+  const hex = (ch === 2 ? C2COL : C1COL) || "#f5d90a", bg = [5, 8, 12];
+  const c = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+  return [0.3, 0.52, 0.76, 1].map((f) => bg.map((b, i) => Math.round(b + (c[i] - b) * f)));
 }
 
-// TRLC-LINKS: REQ-SDS-200
-function ejDrawEye(st2) {
+// TRLC-LINKS: REQ-SDS-200, REQ-SDS-215
+function ejDrawEye(st2, res) {
   const W = st2.eyeW, H = st2.eyeH;
   // Build the RGBA density buffer once (kept in ejEyeCv for the enlarge view to
   // reuse — the small and big canvases are separate GL contexts, so each uploads
@@ -86,22 +109,22 @@ function ejDrawEye(st2) {
   data.fill(0);
   let mx = 0;
   for (let i = 0; i < st2.eye.length; i++) if (st2.eye[i] > mx) mx = st2.eye[i];
-  const lmax = Math.log1p(mx) || 1;
+  // the LCD's shades at its thresholds: 1.5, 8 and 35 % of the densest cell
+  const sh = ejShades(ej.ch), t1 = mx * 0.015, t2 = mx * 0.08, t3 = mx * 0.35;
   for (let y = 0; y < H; y++) {
     for (let x = 0; x < W; x++) {
       const d = st2.eye[y * W + x];
       if (d <= 0) continue;
       const o = ((H - 1 - y) * W + x) * 4;
-      const t = Math.log1p(d) / lmax;
-      const [r, gg, b] = ejHeatColor(t);
-      data[o] = r; data[o + 1] = gg; data[o + 2] = b; data[o + 3] = 255;
+      const c = sh[d >= t3 ? 3 : d >= t2 ? 2 : d >= t1 ? 1 : 0];
+      data[o] = c[0]; data[o + 1] = c[1]; data[o + 2] = c[2]; data[o + 3] = 255;
     }
   }
   const cv = $("ejEye");
   if (!fitCanvas(cv)) return; // the eye view is not shown: nothing to paint
   const g = glCardCtx(cv, "#05080c");
   if (!g) return;
-  ejDrawEyeTo(g, cv, st2, false);
+  ejDrawEyeTo(g, cv, st2, false, res);
   glCardEnd(cv);
 }
 
@@ -210,8 +233,9 @@ function ejDrawSpecTo(g, cv, res, detailed) {
   }
 }
 
-// ejMetricsTable fills the eye readout: bit rate, UI, eye height and width,
-// crossing, rise/fall and TIE (rms, pk-pk), then the jitter decomposition.
+// ejMetricsTable fills the eye readout with the LCD's BUS eye figures, in its
+// order: bit rate, UI, crossing, UIs folded, eye height and width, rise, fall,
+// TIE (rms, pk-pk), RJ / DJ and the period jitter; then the CDR corner.
 // Below about 20 samples per UI the sample interval limits the edge times, eye
 // width and jitter: those figures are upper/lower bounds, marked ≤ / ≥.
 // TRLC-LINKS: REQ-SDS-200, REQ-SDS-215
@@ -221,24 +245,26 @@ function ejMetricsTable(res) {
   // TRLC-LINKS: REQ-SDS-200
   const push = (k, v, bound) => rows.push("<tr><th>" + k + "</th><td" + (bound ? ' class="bnd" title="sample-limited: a bound, not a measurement"' : "") + ">" + v + "</td></tr>");
   const le = b ? "≤ " : "", ge = b ? "≥ " : "";
-  push("bit rate", res.bitRate ? eng(res.bitRate, "b/s", 5) : "—");
-  push("UI", res.uiSeconds > 0 ? eng(res.uiSeconds, "s", 4) + (res.samplesPerUI ? " · " + res.samplesPerUI.toFixed(1) + " samples" : "") : "—", b);
+  push("bit rate", res.bitRate ? eng(res.bitRate, "bit/s", 5) : "—");
+  push("UI", res.uiSeconds > 0 ? eng(res.uiSeconds, "s", 3) + (res.samplesPerUI ? " · " + res.samplesPerUI.toFixed(1) + " samples" : "") : "—", b);
+  push("crossing", Number.isFinite(res.crossing) ? (res.crossing * 100).toFixed(1) + " %" : "—");
+  push("folded", (res.uis || 0).toFixed(0) + " UI");
   const em = res.eyeMetrics;
   push("eye height", em && em.eyeHeightCodes > 0 ? (ej.vpcReal
-    ? (em.eyeHeightCodes * ej.vpc * 1000).toFixed(1) + " mV (" + em.eyeHeightCodes.toFixed(0) + " codes)"
+    ? eng(em.eyeHeightCodes * ej.vpc, "V", 3)
     : em.eyeHeightCodes.toFixed(0) + " codes") : "—");
   push("eye width", em && em.eyeWidthUI > 0 ? ge + em.eyeWidthUI.toFixed(2) + " UI" : "—", b);
-  push("crossing", Number.isFinite(res.crossing) ? (res.crossing * 100).toFixed(1) + " %" : "—");
-  push("rise / fall", (Number.isFinite(res.riseS) ? le + eng(res.riseS, "s", 3) : "—") + " / " + (Number.isFinite(res.fallS) ? le + eng(res.fallS, "s", 3) : "—"), b);
+  push("rise", Number.isFinite(res.riseS) ? le + eng(res.riseS, "s", 3) : "—", b);
+  push("fall", Number.isFinite(res.fallS) ? le + eng(res.fallS, "s", 3) : "—", b);
   if (res.tieRms !== undefined) {
     push("TIE rms", le + eng(res.tieRms, "s", 3), b);
     push("TIE pk-pk", le + eng(res.tiePp, "s", 3), b);
     // dual-Dirac-lite caveat: unimodal TIE (incl. periodic jitter) counts as RJ.
     // Flag when the spectrum's dominant tone explains most of the TIE power.
     const pjDominated = res.specPeakAmp && res.tieRms > 0 && (res.specPeakAmp / Math.SQRT2) > 0.6 * res.tieRms;
-    push("RJ / DJ(δδ)", (res.rj !== undefined ? eng(res.rj, "s", 3) : "— (needs ≥200 edges)") + " / " +
-      (res.dj ? eng(res.dj, "s", 3) : "—") + (pjDominated ? " · PJ-dominated" : ""));
-    push("period / c2c", eng(res.periodJRms, "s", 3) + " / " + eng(res.c2cJRms, "s", 3) + " rms");
+    push("RJ / DJ", (res.rj !== undefined ? le + eng(res.rj, "s", 3) : "— (needs ≥200 edges)") + " / " +
+      (res.dj ? eng(res.dj, "s", 3) : "—") + (pjDominated ? " · PJ-dominated" : ""), b);
+    push("period / c2c", le + eng(res.periodJRms, "s", 3) + " / " + eng(res.c2cJRms, "s", 3), b);
     // metrology honesty: the per-record linear-fit clock high-passes TIE — the
     // scope-world analogue of a golden PLL's loop bandwidth. Say so.
     if (res.tieHpHz) push("CDR corner", "&gt; " + eng(res.tieHpHz, "Hz", 2) + " measured");
@@ -277,30 +303,65 @@ function ejDrawBig() {
   if (g) {
     if (ejBigKind === "hist") ejDrawHistTo(g, cv, st2, res, true);
     else if (ejBigKind === "spec") ejDrawSpecTo(g, cv, res, true);
-    else ejDrawEyeTo(g, cv, st2, true);
+    else ejDrawEyeTo(g, cv, st2, true, res);
     glCardEnd(cv);
   }
   const em = res.eyeMetrics;
   $("ejBigInfo").textContent =
-    (res.bitRate ? eng(res.bitRate, "b/s", 4) + " · UI " + eng(res.uiSeconds, "s", 3) : "") +
+    (res.bitRate ? eng(res.bitRate, "bit/s", 5) + " · UI " + eng(res.uiSeconds, "s", 3) : "") +
     (res.tieRms !== undefined ? " · TIE " + eng(res.tieRms, "s", 3) + " rms · RJ " + (res.rj !== undefined ? eng(res.rj, "s", 3) : "—") + " · DJ " + (res.dj ? eng(res.dj, "s", 3) : "—") : "") +
     (em && em.eyeHeightCodes > 0 ? " · eye " + (em.eyeHeightCodes * ej.vpc * 1000).toFixed(0) + " mV / " + em.eyeWidthUI.toFixed(2) + " UI" : "") +
     " · " + res.records + " records — click to close";
 }
 
-// TRLC-LINKS: REQ-SDS-200
-function ejDrawEyeTo(g, cv, st2, detailed) {
+// ejDrawEyeTo paints the eye as the LCD's BUS eye does: the density, the
+// graticule (0.5 UI columns, the centre the axis, and the 8 divisions), the
+// -1 UI .. +1 UI labels, the dashed EYE OPENING box and the sample point (S)
+// and threshold (T) cursors at the centre and the crossing level.
+// TRLC-LINKS: REQ-SDS-200, REQ-SDS-215
+function ejDrawEyeTo(g, cv, st2, detailed, res) {
   if (!ejEyeCv) return;
   // upload the density buffer as a texture, scaled to the canvas (detailed =
   // smooth/LINEAR upscale for the enlarge view; small view stays crisp/NEAREST)
   g.blit(ejEyeCv.data, ejEyeCv.w, ejEyeCv.h, 0, 0, cv.width, cv.height, detailed);
-  // UI grid: the fold spans exactly 2 UI; mark the two bit boundaries
-  g.strokeStyle = "rgba(255,255,255,0.25)";
-  g.setLineDash(detailed ? [4, 6] : [3, 4]);
-  for (const fx of [0.25, 0.5, 0.75]) {
-    g.beginPath(); g.moveTo(fx * cv.width, 0); g.lineTo(fx * cv.width, cv.height); g.stroke();
+  const W = cv.width, H = cv.height, fs = detailed ? 14 : 10;
+  const yOf = (code) => (EJ_CODE_HI - code) / (EJ_CODE_HI - EJ_CODE_LO) * (H - 1);
+  // TRLC-LINKS: REQ-SDS-215
+  const line = (x0, y0, x1, y1) => { g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke(); };
+  for (let k = 0; k <= 4; k++) {
+    g.strokeStyle = k === 2 ? "rgba(255,255,255,0.32)" : "rgba(255,255,255,0.13)";
+    const x = Math.min(W - 1, k / 4 * W);
+    line(x, 0, x, H);
   }
-  g.setLineDash([]);
+  for (let r = 0; r <= 8; r++) {
+    g.strokeStyle = r === 4 ? "rgba(255,255,255,0.32)" : "rgba(255,255,255,0.13)";
+    const y = Math.min(H - 1, r / 8 * H);
+    line(0, y, W, y);
+  }
+  g.fillStyle = "#8899aa"; g.font = fs + "px sans-serif";
+  ["-1 UI", "-0.5", "0", "+0.5", "+1 UI"].forEach((s, k) => {
+    const w = g.measureText(s).width;
+    g.fillText(s, Math.max(2, Math.min(W - w - 2, k / 4 * W - (k === 0 ? 0 : k === 4 ? w : w / 2))), H - 3);
+  });
+  res = res || ejResult(st2);
+  const em = res.eyeMetrics, box = em && em.box;
+  if (box) {
+    const xa = box.left / 2 * W, xb = box.right / 2 * W, ya = yOf(box.hi), yb = yOf(box.lo);
+    g.strokeStyle = "#f2a63b"; g.setLineDash([3, 2]);
+    g.beginPath(); g.rect(xa, ya, xb - xa, yb - ya); g.stroke(); // a path: strokeRect draws no dashes
+    g.setLineDash([]);
+    g.fillStyle = "#f2a63b"; g.fillText("EYE OPENING", xa + 5, ya + fs + 3);
+  }
+  if (st2.hi > st2.lo) {
+    const th = Number.isFinite(res.crossing) ? st2.lo + res.crossing * (st2.hi - st2.lo) : (st2.lo + st2.hi) / 2;
+    g.strokeStyle = "rgba(230,230,230,0.7)"; g.setLineDash([2, 3]);
+    line(W / 2, 0, W / 2, H);
+    line(0, yOf(th), W, yOf(th));
+    g.setLineDash([]);
+    g.fillStyle = "rgba(230,230,230,0.85)";
+    g.fillText("S", W / 2 + 3, fs + 2);
+    g.fillText("T", 3, yOf(th) + fs + 1);
+  }
 }
 
 // ---- OPTIMIZE: find the best acquisition settings for the eye on the current
@@ -317,7 +378,7 @@ const ejSleep = ms => new Promise(r => setTimeout(r, ms));
 // state (vpc0/incons) so the intentional V/div + timebase changes we make don't
 // trip the "vertical/timebase changed — re-ARM" guards mid-optimize.
 // TRLC-LINKS: REQ-SDS-201, REQ-SDS-067
-function ejFreshState() { ej.st = ejNew({}); ej.lastUi = 0; ej.vpc0 = 0; ej.incons = 0; }
+function ejFreshState() { ej.st = ejNew({ eyeW: EJ_EYE_W, eyeH: EJ_EYE_H }); ej.lastUi = 0; ej.vpc0 = 0; ej.incons = 0; }
 
 // wait for the eye to lock at the current band; resolve to samples/UI or null.
 // TRLC-LINKS: REQ-SDS-201
@@ -456,7 +517,7 @@ $("ejArm").onclick = () => {
   }
   if (typeof ejNew !== "function" || typeof decodeBinFrame !== "function") { ejStatus("eyejitter/binframe scripts missing"); return; }
   if (sr.armed) srStop("stopped — eye/jitter armed (one raw consumer)");
-  ej.st = ejNew({});
+  ej.st = ejNew({ eyeW: EJ_EYE_W, eyeH: EJ_EYE_H });
   ej.lastSeq = 0; ej.gen++; ej.fails = 0;
   ej.rawWaitAt = 0;
   ej.ch = 0; ej.vpc0 = 0; ej.incons = 0;
@@ -467,7 +528,7 @@ $("ejArm").onclick = () => {
   ejLoop(ej.gen);
 };
 // TRLC-LINKS: REQ-SDS-201
-$("ejReset").onclick = () => { ej.st = ejNew({}); ej.lastUi = 0; ejRender(true); ejStatus(ej.armed ? "reset — locking…" : "idle"); };
+$("ejReset").onclick = () => { ej.st = ejNew({ eyeW: EJ_EYE_W, eyeH: EJ_EYE_H }); ej.lastUi = 0; ejRender(true); ejStatus(ej.armed ? "reset — locking…" : "idle"); };
 
 // TRLC-LINKS: REQ-SDS-201
 async function ejLoop(gen) {

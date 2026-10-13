@@ -50,6 +50,44 @@ function spectrum(samples, nyq) {
   return { mags, half, nyq: nyq || 0, peak };
 }
 
+// fftReduce is the LCD's transform of a record (framecalc.Spectrum, held to it
+// by TestSpectrumJSParity): the largest power of two up to maxN points, each the
+// mean of stride consecutive samples - the whole record, with a boxcar ahead of
+// the decimation (taking every stride-th sample folded a square's harmonics
+// back into the plot, and a stride sized from the display frame left most of a
+// long record out) - Hann-windowed. nyq0 is the record's Nyquist. A decimated
+// capture's filter ends the spectrum at bandHz: above it the bins hold the
+// stopband (a capture filtered at 4.2 MHz is not drawn to 15.6 MHz). The
+// result's nyq is the span shown, fs the transform's rate, points its length
+// and peak its largest bin past DC, as the LCD's.
+// TRLC-LINKS: REQ-SDS-070, REQ-SDS-216
+function fftReduce(g, nyq0, bandHz, maxN) {
+  let n = 1;
+  while (n * 2 <= g.length && n < (maxN || 8192)) n <<= 1;
+  if (n < 16) return null;
+  const stride = Math.max(1, Math.floor(g.length / n));
+  let x = g;
+  if (stride > 1) {
+    x = new Float64Array(n);
+    for (let i = 0; i < n; i++) {
+      let s = 0;
+      for (let j = i * stride; j < (i + 1) * stride; j++) s += g[j];
+      x[i] = s / stride;
+    }
+  }
+  const nyq = nyq0 / stride, s = spectrum(x, nyq);
+  if (!s) return null;
+  s.points = 2 * s.half; s.fs = 2 * nyq; s.binHz = nyq / s.half;
+  if (bandHz > 0 && bandHz < nyq) {
+    const kb = Math.min(s.half, Math.max(4, Math.ceil(bandHz / s.binHz)));
+    s.mags = s.mags.subarray(0, kb); s.half = kb; s.nyq = kb * s.binHz;
+  }
+  let pk = 1e-9;
+  for (let k = 1; k < s.half; k++) if (s.mags[k] > pk) pk = s.mags[k];
+  s.peak = pk;
+  return s;
+}
+
 // hannGain is a Hann window's response to a tone d bins (|d| ≤ 0.5) off a bin,
 // relative to a tone on the bin: sinc(d) / (1 − d²) (analysis.hannGain).
 // TRLC-LINKS: REQ-SDS-216
@@ -151,8 +189,8 @@ function fitTone(samples, cyclesPerLen) {
 
 // toneAmplitude: the peak amplitude (code units) of the least-squares fitted
 // tone at cyclesPerLen. A Hann bin's magnitude reads up to 1.42 dB low when the
-// tone falls between bins (scalloping): the FFT list's "≈Vpk" said 1.70 V for
-// a 1.98 V fundamental half a bin off (bug hunt 2026-10-10).
+// tone falls between bins (scalloping): a 1.98 V fundamental half a bin off
+// reads 1.70 V from the bin.
 // TRLC-LINKS: REQ-SDS-070
 function toneAmplitude(samples, cyclesPerLen) {
   const t = fitTone(samples, cyclesPerLen);
@@ -235,5 +273,5 @@ function harmonics(peaks, spec) { // eslint-disable-line no-unused-vars
 }
 
 if (typeof module !== "undefined" && module.exports) {
-  module.exports = { fftInPlace, spectrum, detectPeaks, nearestPeak, component, fitTone, toneAmplitude, harmonics };
+  module.exports = { fftInPlace, spectrum, fftReduce, detectPeaks, nearestPeak, component, fitTone, toneAmplitude, harmonics };
 }

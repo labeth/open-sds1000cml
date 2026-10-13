@@ -84,8 +84,8 @@ module tb_stream;
   if(singles==0)begin $display("FAIL: no single-word flush was exercised");errors=errors+1;end
   $display("phase 1: %0d words in %0d blocks, %0d single flushes",expected,blocks,singles);
   // 1b. Banks fill in about the seal period and the host takes each a little
-  //     late: a seal just after a full bank must wait, not overrun (bench
-  //     2026-10-10: decimation 2^12, a bank fills in exactly the seal period).
+  //     late: a seal just after a full bank must wait, not overrun (at
+  //     decimation 2^12 a bank fills in exactly the seal period).
   reset<=1;repeat(20)@(posedge hclk);expected=0;blocks=0;word_data<=0;reset<=0;repeat(20)@(posedge hclk);
   host_delay=60;
   send(1500,17,20);

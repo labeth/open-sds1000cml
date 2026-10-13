@@ -69,7 +69,7 @@ func (c *Controller) maskBuildRun(gen uint64, n, tolT, tolV, ch int, posFrac flo
 	start := time.Now()
 	for tries := 0; got < n && tries < n*20 && !c.maskCleared(gen); tries++ {
 		// no locked frame at all: the trigger is off the signal; say so now,
-		// not after n*20 tries (2.5 min at 128 frames; bug hunt #3)
+		// not after n*20 tries (2.5 min at 128 frames)
 		if got == 0 && time.Since(start) > maskNoLockWait {
 			break
 		}

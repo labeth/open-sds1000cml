@@ -2,6 +2,7 @@
 package panel
 
 import (
+	"context"
 	"fmt"
 	"math"
 	"time"
@@ -109,8 +110,8 @@ func (c *Controller) armSerial() error {
 
 // armAuto finds the bus Auto could not read on screen (findBus), fixes decode
 // to it, steps to the timebase that reads it live and arms the serial trigger
-// on it (bug hunt #3: "Trigger on it" with Protocol = Auto at 500us/div found
-// no bus, a 115200 UART plain on screen).
+// on it: at slow timebases the live envelope is too coarse to read a bus (a
+// 115200 Bd UART at 500us/div).
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-214
 func (c *Controller) armAuto() error {
 	res, sampleS, found, stepped := c.findBus(c.lastAutoAt, c.autoPicked)
@@ -405,6 +406,7 @@ func (c *Controller) setAcqMode(m int) error {
 // setRun is the Acquisition row: 0 run, 1 stop, 2 single.
 // TRLC-LINKS: REQ-SDS-212
 func (c *Controller) setRun(v int) error {
+	c.endWebCapture()
 	switch v {
 	case 2:
 		c.single1()
@@ -419,9 +421,33 @@ func (c *Controller) setRun(v int) error {
 	return nil
 }
 
+// endWebCapture ends a decoded capture a web page holds before a run-control
+// key or DEFAULT SETUP runs: the scope's keys always get the acquisition back,
+// also from a page closed mid-session. The scope's own stream is its RUN/STOP's
+// to stop and restart.
+// TRLC-LINKS: REQ-SDS-212, REQ-SDS-013
+func (c *Controller) endWebCapture() {
+	e, ok := c.eng.(interface {
+		EndWebDecodedCapture(context.Context) (bool, error)
+	})
+	if !ok || !c.eng.Snapshot().DecodedWeb {
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	ended, err := e.EndWebDecodedCapture(ctx)
+	switch {
+	case err != nil:
+		c.logf("panel: ending the web page's decoded capture: %v", err)
+	case ended:
+		c.toast("Ended the web page's decoded capture", 1800*time.Millisecond)
+	}
+}
+
 // single1 is SINGLE: Normal mode, one triggered capture, then stop.
 // TRLC-LINKS: REQ-SDS-212
 func (c *Controller) single1() {
+	c.endWebCapture()
 	c.runReq.Add(1)
 	c.mu.Lock()
 	c.norm, c.running, c.single = true, true, true

@@ -30,12 +30,45 @@ func (e *Engine) envelopeBlock(cfg sramcapture.Config, tp trigParams) string {
 		return "bode" // a single-bin DFT needs true samples; its screens are short
 	case e.leased(&e.decodeLease):
 		return "raw requested"
+	case e.leased(&e.spectrumLease):
+		return blockSpectrum
 	case e.leased(&e.sampleLease):
 		return "samples requested"
 	case !e.hardwareEnvelope:
 		return "fabric lacks envelope"
 	}
 	return ""
+}
+
+// blockSpectrum is the envelope block of a spectrum lease (LeaseSpectrumView).
+const blockSpectrum = "spectrum requested"
+
+// SpectrumRawSamples is the longest screen a spectrum lease reads at the full
+// rate: the web's largest FFT (FFT_MAX); a longer one is decimated, filtered.
+const SpectrumRawSamples = 32768
+
+// liveDecimatesPlan is liveDecimates for plan p: a spectrum keeps a screen of
+// up to SpectrumRawSamples at the full rate (5us/div: 25000 samples, 250 MHz
+// of spectrum against the decimated capture's 4.2 MHz) and is decimated
+// beyond it.
+// TRLC-LINKS: REQ-SDS-010, REQ-SDS-070
+func liveDecimatesPlan(block string, p SRAMPlan) bool {
+	if block == blockSpectrum && p.Screen <= SpectrumRawSamples {
+		return false
+	}
+	return liveDecimates(block)
+}
+
+// liveBudget is the live decimated screen's bound in samples: a spectrum's is
+// SpectrumRawSamples (the FFT reduces them by block means anyway, and the
+// display the other surfaces see keeps 0.53 MHz at 500us/div instead of
+// 66 kHz), every other liveScreenSamples.
+// TRLC-LINKS: REQ-SDS-010, REQ-SDS-070
+func liveBudget(block string) int {
+	if block == blockSpectrum {
+		return SpectrumRawSamples
+	}
+	return liveScreenSamples
 }
 
 // liveDecimates reports whether a live frame blocked from the envelope is
@@ -91,9 +124,9 @@ func orderEnvelope(c []uint8, q []uint16) {
 
 // orderEnvelopeHead orders a record's first (min, max) pair, which has no
 // earlier sample to continue from, so it leads into the next pair: left as
-// (min, max), a falling edge in the first bucket read low, high, low - a
-// one-sample pulse at the record's start that VIDEO took for a sync pulse
-// (bug hunt 2026-10-10). Call it before orderEnvelope on a fresh record.
+// (min, max), a falling edge in the first bucket reads low, high, low - a
+// one-sample pulse at the record's start that VIDEO takes for a sync pulse.
+// Call it before orderEnvelope on a fresh record.
 // TRLC-LINKS: REQ-SDS-010
 func orderEnvelopeHead(c []uint8, q []uint16) {
 	if len(c) < 4 {

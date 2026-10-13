@@ -19,6 +19,21 @@ const srStopFPGA = 3
 // trigger in the current frame (ADR-STACKING-TEMPLATE-QUALIFIER).
 const srStopFPGAMatch = 4
 
+// srTargetLimits is the stop target's range for a stop mode: bits gained,
+// stacks, seconds, FPGA records.
+// TRLC-LINKS: REQ-SDS-140
+func srTargetLimits(mode int) (lo, hi float64) {
+	switch mode {
+	case 0:
+		return 0.5, 8
+	case 1:
+		return 50, 100000
+	case 2:
+		return 5, 3600
+	}
+	return 10, 1000
+}
+
 // fpgaMatchPoints is the template length taken from the current frame.
 const fpgaMatchPoints = 64
 
@@ -168,8 +183,8 @@ func (c *Controller) srFPGARun() {
 // samples at the session's timebase, with the stack's edge (pre samples into
 // it) at the trigger position; it returns the stack's gate start within that
 // screen. Drawing just the stack's few samples across the screen under the
-// "M 100ns" label read an 18 ns clock edge as 240 ns (bug hunt 2026-10-10);
-// off the stack the review is blank.
+// "M 100ns" label would read an 18 ns clock edge as 240 ns; off the stack the
+// review is blank.
 // TRLC-LINKS: REQ-SDS-141, REQ-SDS-021
 func fpgaReviewSpan(n, pre int, tdiv, sampleS, posFrac float64) (gateLo, screen int) {
 	if !(sampleS > 0) || !(tdiv > 0) {

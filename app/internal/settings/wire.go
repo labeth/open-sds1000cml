@@ -93,6 +93,9 @@ func Collect(eng Engine, fe Analog, pc Panel) Settings {
 		// won't drive an explicit 0 V over an untouched channel.
 		s.Ch[0].OffsetSet = st.OffC1 != 0
 		s.Ch[1].OffsetSet = st.OffC2 != 0
+		if _, ok := eng.(interface{ SetBodeMode(bool, int, int) }); ok {
+			s.Bode = Bode{Set: true, Ref: st.BodeRef & 1, Dut: st.BodeDut & 1}
+		}
 	}
 	if fe != nil {
 		idx, emitted := fe.Snapshot()
@@ -216,6 +219,13 @@ func Apply(s Settings, eng Engine, fe Analog, pc Panel, logf func(string, ...any
 				}
 			}
 		}
+	}
+	if b, ok := eng.(interface{ SetBodeMode(bool, int, int) }); ok && s.Bode.Set {
+		ref, dut := s.Bode.Ref&1, s.Bode.Dut&1
+		if ref == dut {
+			dut = 1 - ref
+		}
+		b.SetBodeMode(eng.Snapshot().BodeMode != 0, ref, dut) // the armed state stays as it is
 	}
 	if pc != nil {
 		pc.ApplySettingsView(ViewState{ViewMode: s.ViewMode, Decode: s.Decode, Display: s.Display, UI: s.UI, Serial: s.Serial,

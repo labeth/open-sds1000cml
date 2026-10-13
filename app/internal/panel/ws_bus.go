@@ -25,13 +25,17 @@ import (
 // the selected packet. BUS again shows the eye diagram (REQ-SDS-215).
 
 // Eye grid size: 2 UI across 384 columns (2 px each, 768 px), the plot's
-// height in 2 px rows; the eye is fed about eyeFeedSPU samples per UI and
-// at most eyeMaxFed samples a capture (the fold costs about 1 ms per 1000
-// samples on the device's core).
+// height in 2 px rows; the eye is fed at least eyeFeedSPU samples per UI
+// (every sample of a fast bus: the edges' timing figures need them, and the
+// web's eye folds them all) and at most eyeMaxFed samples a capture (the
+// fold costs about 1 ms per 1000 samples on the device's core).
 const (
 	eyeCols    = 384
-	eyeFeedSPU = 64
+	eyeFeedSPU = 256
 	eyeMaxFed  = 16384
+	// eyeRestartOff captures in a row off the folded bit period restart the
+	// eye: the bus's rate changed.
+	eyeRestartOff = 3
 )
 
 // eyeRows is the eye grid's height for the BUS plot.
@@ -408,8 +412,8 @@ const readableFeature = 5.0
 // when the current one cannot. The live readout is an envelope of
 // liveEnvelopePoints over the screen (a quarter more while a serial trigger
 // is armed), and a bus feature under framecalc.MinEnvelopeFeature of its points
-// aliases (bug hunt #3: BUS found I2C at 500us/div, then listed 151 packets
-// of no bytes). sampleS is the decoded frame's sample interval. It returns
+// aliases (an I2C bus at 500us/div lists packets of no bytes). sampleS is the
+// decoded frame's sample interval. It returns
 // what the notice adds ("" when the timebase stays).
 // TRLC-LINKS: REQ-SDS-214
 func (c *Controller) readableTimebase(res decode.Result, sampleS float64) string {
@@ -447,8 +451,8 @@ func (c *Controller) readableTimebase(res decode.Result, sampleS float64) string
 func (c *Controller) detectOn(accept func(*engine.Frame) bool, auto AutoSource) (decode.Result, float64, bool) {
 	deadline := c.now().Add(detectWait)
 	// While running, a frame captured after the search began: the one on
-	// screen, or one in flight, may predate a setting just changed (bug hunt
-	// #3: ARINC was "no bus found" in a frame from before its bandwidth limit).
+	// screen, or one in flight, may predate a setting just changed (an ARINC
+	// bus is not found in a frame from before its bandwidth limit).
 	var start uint64
 	if c.frameFn != nil && c.snap().st.Running {
 		c.frameFn(func(f *engine.Frame) {
@@ -484,8 +488,8 @@ func (c *Controller) detectOn(accept func(*engine.Frame) bool, auto AutoSource) 
 // frame and, when that record hid the bus, again at the slowest timebase
 // sampled at the converters' full rate, which stays when the bus is found
 // there. A record hides a bus when it is decimated (a 10 Mbit/s FlexRay at
-// 500us/div's 32 ns) or too short (Autoset's 10us/div held about one UART
-// byte; bug hunt #3). The timebase found there stays only while wanted (the
+// 500us/div's 32 ns) or too short (Autoset's 10us/div holds about one UART
+// byte). The timebase found there stays only while wanted (the
 // caller still needs the bus: Auto still picked, a stream still asked for).
 // One search runs at a time. It returns auto's result, the decoded frame's
 // sample interval, whether a bus was found and the timebase it stepped to
@@ -511,8 +515,8 @@ func (c *Controller) findBus(auto AutoSource, wanted func() bool) (decode.Result
 }
 
 // noBusNote is what a bus search that found nothing says: none says no bus
-// was there, but a scope waiting for a trigger sent no new capture to search
-// (bug hunt #3: Normal with the level off the signal).
+// was there, but a scope waiting for a trigger (Normal with the level off the
+// signal) sends no new capture to search.
 // TRLC-LINKS: REQ-SDS-214
 func (c *Controller) noBusNote(none string) string {
 	if c.waitingForTrigger(c.snap()) { // the Run/Stop lamp's amber
@@ -554,8 +558,8 @@ func (c *Controller) offPanelErr(fn func() error) error {
 }
 
 // findAuto is Protocol = Auto's search when it is picked: Auto decodes the
-// live envelope, too coarse at slow timebases for a bus plain on screen (bug
-// hunt #3: a 115200 UART at 500us/div was "AUTO: no protocol matched"). The
+// live envelope, too coarse at slow timebases for a bus plain on screen (a
+// 115200 Bd UART at 500us/div matches no protocol there). The
 // bus is found on a sampled record as BUS's auto-detect finds it, and the
 // timebase steps to the slowest that reads it live; decode stays Auto.
 // TRLC-LINKS: REQ-SDS-214
@@ -645,8 +649,8 @@ const detectWait = 6 * time.Second
 // runDetect waits (bounded) for a sampled frame and detects the bus on it.
 // The decode lease makes the engine read samples instead of the live
 // peak-detect envelope; that read can take seconds at slow timebases, and an
-// envelope is too coarse to find a bus there (bug hunt #3: no bus found at
-// 500 us/div, the UART plain on screen). Only when no sampled frame comes is
+// envelope is too coarse to find a bus there (a UART plain on screen at
+// 500 us/div). Only when no sampled frame comes is
 // the envelope tried. A record the timebase decimates hides a fast bus (a
 // 10 Mbit/s FlexRay at 500 us/div's 32 ns): with none found there, the search
 // runs again at the slowest timebase sampled at the converters' full rate,
@@ -657,8 +661,8 @@ func (c *Controller) runDetect() {
 	gen := c.decGen
 	c.mu.Unlock()
 	// A protocol set while the search ran (seconds at slow timebases) stands:
-	// the search's lock, or its "decode stays off", undid a UART picked on the
-	// phone meanwhile (bug hunt #3).
+	// the search's lock, or its "decode stays off", must not undo a UART picked
+	// on the phone meanwhile.
 	mine := func() bool {
 		c.mu.Lock()
 		defer c.mu.Unlock()
@@ -784,9 +788,22 @@ func (c *Controller) openPickSub() error {
 // ---- the eye ----
 
 // eyeConfig is what the eye folds: the data line and the decoder's bit
-// time, or why there is no eye.
+// time, or why there is no eye. measured is a bit time measured on this
+// capture (the SPI or I2C clock), which differs from capture to capture in
+// its last digits.
 // TRLC-LINKS: REQ-SDS-215
-func eyeConfig(s *sv, a *anaState) (ch int, bit float64, why string) {
+func eyeConfig(s *sv, a *anaState) (ch int, bit float64, measured bool, why string) {
+	ch, bit, why = eyeConfigOf(s, a)
+	proto := s.decProto
+	if proto == framecalc.ProtoAuto {
+		proto = map[string]int{"spi": framecalc.ProtoSPI, "i2c": framecalc.ProtoI2C}[a.res.Proto]
+	}
+	return ch, bit, proto == framecalc.ProtoSPI || proto == framecalc.ProtoI2C, why
+}
+
+// eyeConfigOf is eyeConfig's data line and bit time.
+// TRLC-LINKS: REQ-SDS-215
+func eyeConfigOf(s *sv, a *anaState) (ch int, bit float64, why string) {
 	if !busDecoding(s, a) {
 		return 0, 0, "No bus decoded: F2 again for Packets, then push Adjust to find it"
 	}
@@ -848,11 +865,18 @@ func eyeWhyText(err string, ch int) string {
 }
 
 // eyeFrame folds the screen's data line into the eye: decimated to about
-// eyeFeedSPU samples per UI (a finer capture adds nothing the 192 columns
-// of a UI show) and at most eyeMaxFed samples a capture.
+// eyeFeedSPU samples per UI and at most eyeMaxFed samples a capture. While it
+// folds it leases full-rate raw frames, as the web's eye does: the screen's
+// decimated readout (24 ns at 10us/div) smears the edges over its sample
+// interval and leaves rise, fall and TIE as bounds.
 // TRLC-LINKS: REQ-SDS-215
 func (c *Controller) eyeFrame(a *anaState, s *sv, f *engine.Frame) {
-	ch, bit, why := eyeConfig(s, a)
+	ch, bit, measured, why := eyeConfig(s, a)
+	if why == "" {
+		if e, ok := c.eng.(interface{ LeaseDecodeView(time.Duration) }); ok {
+			e.LeaseDecodeView(3 * time.Second) // renewed by each capture; ends with the eye
+		}
+	}
 	if why == "" && (f.IsEnv || f.PeakDetect && !f.Ordered) {
 		why = "The eye needs sampled captures (not peak detect or roll)"
 	}
@@ -860,14 +884,21 @@ func (c *Controller) eyeFrame(a *anaState, s *sv, f *engine.Frame) {
 		a.eyeWhy, a.eyeOK = why, false
 		return
 	}
-	key := fmt.Sprint(ch, bit, s.vidx[ch], s.offV[ch], s.probe[ch], s.cpl[ch], s.inv[ch], f.SampleS, s.zoom, s.zoomOff,
-		s.st.AcqMode, s.st.TdivS, s.st.TrigPosFrac)
+	// A clock period measured on each capture is no setting: the eye's own
+	// check (the period within 2 % of the folded one) keeps it, and a bus
+	// whose rate really changed restarts it below.
+	keyBit := bit
+	if measured {
+		keyBit = 0
+	}
+	key := fmt.Sprint(ch, s.decProto, keyBit, s.vidx[ch], s.offV[ch], s.probe[ch], s.cpl[ch], s.inv[ch], f.SampleS, s.zoom,
+		s.zoomOff, s.st.AcqMode, s.st.TdivS, s.st.TrigPosFrac)
 	if a.eye == nil {
 		a.eye = anaNewEye(eyeCols, eyeRows())
 	}
-	if key != a.eyeKey { // any change to the picture starts the eye over
+	if key != a.eyeKey || a.eyeOff >= eyeRestartOff { // any change to the picture starts the eye over
 		a.eye.Reset()
-		a.eyeKey, a.eyeRes, a.eyeOK, a.eyeFed = key, EyeResult{}, false, frameKey{}
+		a.eyeKey, a.eyeRes, a.eyeOK, a.eyeFed, a.eyeOff = key, EyeResult{}, false, frameKey{}, 0
 	}
 	a.eyeCh = ch
 	if seen(&a.eyeFed, keyOf(f)) {
@@ -891,6 +922,12 @@ func (c *Controller) eyeFrame(a *anaState, s *sv, f *engine.Frame) {
 		r.Grid = append([]uint32(nil), r.Grid...)
 	} else {
 		r.Grid = a.eyeRes.Grid
+	}
+	switch {
+	case r.Records != before:
+		a.eyeOff = 0
+	case r.LastErr == analysis.EyeUIInconsistent:
+		a.eyeOff++
 	}
 	a.eyeRes = r
 	a.eyeOK = r.Records > 0

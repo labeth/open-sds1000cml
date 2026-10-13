@@ -104,9 +104,8 @@ func (c *Controller) InjectButton(name string) bool {
 }
 
 // InjectButtonWait runs a named button on the panel goroutine and waits
-// (bounded) until it has run. *RST needs this: its DEFAULT SETUP used to land
-// after the commands that followed it, so "*RST;TDIV 2US" ended at 500 us
-// (bug hunt #2).
+// (bounded) until it has run. *RST needs this: its DEFAULT SETUP must land
+// before the commands that follow it, or "*RST;TDIV 2US" ends at 500 us.
 // TRLC-LINKS: REQ-SDS-135
 func (c *Controller) InjectButtonWait(name string, timeout time.Duration) bool {
 	code, ok := nameCode(name)

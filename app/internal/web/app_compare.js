@@ -69,6 +69,17 @@ function cmpRender() {
   if (b.dataset.sig !== html) { b.dataset.sig = html; b.innerHTML = html; }
 }
 WS_TICKS.push((now) => { if (ws.cur === "compare" && now - cmpT > 300) { cmpT = now; cmpRender(); } });
+
+// cmpRepeat shows the scope's word on the trigger source, as its COMPARE
+// caption: whether it repeats (a master or a mask needs it), warn if not. It
+// comes with the status, so it follows each status poll.
+// TRLC-LINKS: REQ-SDS-218
+function cmpRepeat() {
+  const el = $("cmpRepeat"), t = (st && st.trig_repeat) || "";
+  const text = t ? t.charAt(0).toUpperCase() + t.slice(1) : "";
+  if (el.textContent !== text) el.textContent = text;
+  el.classList.toggle("warn", !!(st && st.trig_repeat_warn));
+}
 // a held (stopped or frozen) capture sends no frames: keep the readout current anyway
 setInterval(() => { if (ws.cur === "compare" && performance.now() - cmpT > 900) { cmpT = performance.now(); cmpRender(); } }, 1000);
 WS_HOOKS.push({ enter(id) { if (id === "compare") { cmpT = 0; cmpRender(); } } });
@@ -140,10 +151,9 @@ function loadScopeRef(slot, a, label) {
 // the LCD: the scope averages the trigger source while running (or refuses,
 // saying how to fix the trigger), stores REF A, builds the mask in the live
 // captures' geometry and starts the test. This page takes the scope's REF A
-// as its own, and its mask pane follows the scope's mask. The page averaged
-// through SINGLE before, a full record per capture on the SRAM image: 64
-// captures took about 15 minutes and always timed out (bug hunt #3). The
-// button again, or Esc, cancels.
+// as its own, and its mask pane follows the scope's mask. Averaging through
+// SINGLE instead reads a full record per capture on the SRAM image: 64 captures
+// take about 15 minutes. The button again, or Esc, cancels.
 // TRLC-LINKS: REQ-SDS-218
 async function stackMaster() {
   if (master.busy) { masterCancel(); return; }

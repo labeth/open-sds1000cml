@@ -45,6 +45,7 @@ func (e *Engine) serviceCommands() {
 			e.decodedService.maxRequests = max(e.decodedService.maxRequests, time.Since(stage))
 		}
 		e.pumpDecodedEvents()
+		e.expireDecoded()
 	}
 
 	stage = time.Now()

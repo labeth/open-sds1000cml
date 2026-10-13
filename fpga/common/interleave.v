@@ -41,8 +41,8 @@ module adc_interleave #(parameter SYNC_ENCODE=0)(
  end endgenerate
  reg [79:0] frame=0;
  // Gather at +2 ns, after every +5 ns input phase of the preceding period.
- // The converters' codes fall as the input voltage rises (bench 2026-10-05:
- // a 0-3.3 V square read 127..85 at 2 V/div); invert every sample here so
+ // The converters' codes fall as the input voltage rises (a 0-3.3 V square
+ // reads 127..85 at 2 V/div); invert every sample here so
  // all downstream logic (triggers, decoders, decimation) sees rising volts
  // as rising codes.
  always @(posedge phase[2]) frame<=~converted;

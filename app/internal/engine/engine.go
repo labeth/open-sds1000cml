@@ -96,8 +96,8 @@ type Clock struct {
 }
 
 // defaultFramePeriod is the publish pacing floor. It was 50 ms (20 fps), which
-// was well below what the hardware sustains: measured on the instrument on
-// 2026-09-05, the frame rate rises with the floor down to 10 ms and saturates
+// was well below what the hardware sustains: measured on the instrument, the
+// frame rate rises with the floor down to 10 ms and saturates
 // there at 62 fps, because a frame costs about 16 ms of real work (a 4.2 ms
 // drain, a 5.8 ms arm-to-latch, and ~6 ms of everything else). Nothing is
 // gained below 10 ms and the floor still bounds the publish rate, so 10 ms it
@@ -108,7 +108,7 @@ const defaultFramePeriod = 10 * time.Millisecond
 
 // defaultArmSettle is the pause between re-programming and OPCODE = GO. It was
 // 2 ms, copied from the vendor's own arm sequence ("~2 ms settle",
-// fpga-specs/22 §4.2 step 2). Measured on the instrument on 2026-09-05, halving
+// fpga-specs/22 §4.2 step 2). Measured on the instrument, halving
 // it takes the frame rate from 62 to 72.6 fps and going further buys almost
 // nothing (73.8 at 100 us, 75.0 at 50 us), so 1 ms keeps the largest margin
 // among the settings that actually help — still half the vendor's, not a
@@ -121,7 +121,7 @@ const defaultArmSettle = 1 * time.Millisecond
 // run before it may halt once the record is full. It was 3000 us. The gate only
 // shortcuts AUTO and anchored frames — NORM without a trigger waits the full
 // budget either way (see engine_capture.go) — so this is a liveness knob, not a
-// trigger-sensitivity one. Measured on the instrument on 2026-09-05: 72.7 fps
+// trigger-sensitivity one. Measured on the instrument: 72.7 fps
 // at 3000 us, 80.0 at 1500, and 89.2 at 750 where it saturates (300 us and
 // 100 us give the same 89). 750 us it is, the knee. 90 s soak: 8,025 frames at
 // 89.2 fps, 0 incoherent, 0 bus errors, 0 held, 0 dead runs, 0 short drains,
@@ -220,6 +220,9 @@ type Stats struct {
 	ShortDrains     uint64   `json:"short_drains"`     // drains where BURST_REMAIN held fewer words than the frame asked for
 	StreamOverflows uint64   `json:"stream_overflows"` // roll: STATUS_A.OVERFLOW seen (the drain fell behind the ring)
 
+	// A web page's decoded capture holds the acquisition (decoded_capture.go).
+	DecodedWeb bool `json:"decoded_web,omitempty"`
+
 	// Zone trigger + mask testing (docs/zonemask-plan.md)
 	ZoneMode    int   `json:"zone_mode,omitempty"`  // 0 off, 1 trigger
 	ZoneCount   int   `json:"zone_count,omitempty"` // installed zones
@@ -250,6 +253,8 @@ type Stats struct {
 
 	// FRA / Bode plot (bode.go)
 	BodeMode     int     `json:"bode_mode,omitempty"`      // 0 off, 1 armed
+	BodeRef      int     `json:"bode_ref"`                 // the reference (DUT input) channel, 0 = C1
+	BodeDut      int     `json:"bode_dut"`                 // the DUT output channel
 	BodePoints   int     `json:"bode_points,omitempty"`    // accumulated curve size
 	BodeValid    bool    `json:"bode_valid,omitempty"`     // the live point is valid
 	BodeFreqHz   float64 `json:"bode_freq_hz,omitempty"`   // live point frequency
@@ -339,8 +344,8 @@ type Engine struct {
 	armBusy       bool // busy-wait the settle (real clock) instead of Sleep — the native-fast root-cause fix
 	pollEvery     time.Duration
 
-	// Live tuning knobs (debug /api/debug/tune) for the framerate/CPU/success
-	// optimization campaign — atomics so the web handler sets them lock-free and
+	// Live tuning knobs (debug /api/debug/tune) for frame rate and CPU —
+	// atomics so the web handler sets them lock-free and
 	// the owner loop reads them each frame. Defaults mirror the compile-time
 	// constants; gated on armBusy (device) so tests are unaffected.
 	tuneArmSettleUs  atomic.Int64 // arm settle duration (µs)
@@ -372,6 +377,7 @@ type Engine struct {
 	decodeView      atomic.Bool        // the display decodes the frame: send samples, not peak-detect pairs
 	decodeLease     atomic.Int64       // raw live frames until this time (unix ns; see LeaseDecodeView)
 	sampleLease     atomic.Int64       // evenly sampled live frames until this time (LeaseSampleView)
+	spectrumLease   atomic.Int64       // live frames for a spectrum until this time (LeaseSpectrumView)
 	adopt           *adoptedRecord     // a decoded stream's record for the stopped loop to show (guarded by mu)
 	decodedCfg      sramcapture.Config // the running decoded capture's configuration (acquisition owner)
 	decodedLines    bool               // the worker builds the stream transcript; no event pumping (owner)
@@ -405,6 +411,7 @@ type Engine struct {
 	zoneSkip    atomic.Int64  // zone-armed publishes that could not be tested (env/roll)
 	zoneHeld    int           // engine goroutine only: AUTO liveness fallback counter
 	zm          zoneMaskState
+	maskMap     maskMapState // engine goroutine only: the mask read through time (maskThroughTime)
 	// serial / protocol trigger (serialtrig.go)
 	serialMode    atomic.Int32
 	serialMatches atomic.Int64
@@ -475,6 +482,8 @@ type Engine struct {
 	decodedError              error
 	decodedService            decodedServiceStats
 	decodedDeadline           *bus.DecodedDeadline
+	decodedWeb                bool      // the session is a web page's (BeginDecodedCapture), not the scope's stream
+	decodedContact            time.Time // a client's last call on the session (status, events, record)
 
 	// Owner-private state (no locking needed).
 	acqShadow, trigShadow uint16 // last ACQ_CTRL / TRIG_LEVEL words written (compare-on-change)
@@ -566,6 +575,7 @@ func New(cfg Config) *Engine {
 		b:                     cfg.Bus,
 		clk:                   cfg.Clock,
 		logf:                  cfg.Logf,
+		bode:                  bodeState{dutCh: 1}, // the frequency response's reference on C1, the DUT on C2
 		arena:                 newArena(capacity),
 		sram:                  cfg.SRAM,
 		interleaveCalibration: cfg.InterleaveCalibration,
@@ -818,6 +828,7 @@ func (e *Engine) Snapshot() Stats {
 	e.ser.mu.Unlock()
 	s.BodeMode = int(e.bodeMode.Load())
 	e.bode.mu.Lock()
+	s.BodeRef, s.BodeDut = e.bode.refCh, e.bode.dutCh
 	s.BodePoints = len(e.bode.bins)
 	s.BodeValid = e.bode.liveValid
 	if e.bode.liveValid {
@@ -986,8 +997,8 @@ func (e *Engine) setBusy(what string, total int) {
 
 // SetDecodeView records that the display decodes a protocol from the published
 // frame. Live frames serve decoding as they are: a live envelope's (min, max)
-// pairs are put in time order (orderEnvelope), which fixed the misreads of
-// unordered pairs from 5 to 200 us/div (bench 2026-10-06).
+// pairs are put in time order (orderEnvelope): unordered pairs misread from 5
+// to 200 us/div.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-010
 func (e *Engine) SetDecodeView(on bool) { e.decodeView.Store(on) }
 
@@ -1002,6 +1013,15 @@ func (e *Engine) LeaseDecodeView(d time.Duration) { e.lease(&e.decodeLease, d) }
 // autoset): an anti-aliased decimated capture serves, so the frame rate holds.
 // TRLC-LINKS: REQ-SDS-010
 func (e *Engine) LeaseSampleView(d time.Duration) { e.lease(&e.sampleLease, d) }
+
+// LeaseSpectrumView asks for live frames a spectrum can be taken of, for d
+// from now (the FFT and the spectrogram, on the LCD and the web alike): the
+// full-rate record while the screen holds at most SpectrumRawSamples samples,
+// else the anti-aliased decimated capture, whose frames carry the filter's
+// bandwidth - the spectrum ends there (a capture filtered at 4.2 MHz is not
+// drawn to 15.6 MHz, and no surface transforms the envelope).
+// TRLC-LINKS: REQ-SDS-010, REQ-SDS-070
+func (e *Engine) LeaseSpectrumView(d time.Duration) { e.lease(&e.spectrumLease, d) }
 
 // TRLC-LINKS: REQ-SDS-010
 func (e *Engine) lease(l *atomic.Int64, d time.Duration) {

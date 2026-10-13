@@ -146,7 +146,7 @@ func SurveyCSRegions() ([]CSRegion, error) {
 // Why it exists. SurveyCSRegions reports four VALID chip selects on this board —
 // CS0 (NAND), CS1 (the Cyclone), CS3 (the MAX V) and **CS2 at 0x02000000, which
 // nothing in this project has ever read** (the acq2 analysis branch
-// item 6 lists "CS2: never read"). The whole SRAM campaign has assumed the external
+// item 6 lists "CS2: never read"). The SRAM work has assumed the external
 // part is reached through the Cyclone or the MAX V, and the Cyclone's pad census
 // leaves nobody to drive a 19-bit address (2026-09-06-sram-interface-decoded.md).
 // An ARM-addressed region on its own chip select is the one supplier that resolves

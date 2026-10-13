@@ -32,17 +32,22 @@ type statusReply struct {
 	Cpl1          int           `json:"cpl1"` // 0=DC 1=AC 2=GND
 	Cpl2          int           `json:"cpl2"`
 	Inv1          bool          `json:"inv1"` // display-level trace invert (SCPI Cn:INVS shadow — the truth)
-	Inv2          bool          `json:"inv2"`
-	Zoom1         int           `json:"zoom1,omitempty"`
-	Zoom2         int           `json:"zoom2,omitempty"`
-	VdivLive      bool          `json:"vdiv_live"` // false until the first emit
-	Off1V         float64       `json:"off1_v"`
-	Off2V         float64       `json:"off2_v"`
-	CalSource     string        `json:"cal_source,omitempty"`
-	DC1V          float64       `json:"dc1_v"` // calibrated DC diagnostic (GAIN/110)
-	DC2V          float64       `json:"dc2_v"`
-	Version       string        `json:"version"`
-	Panel         *panel.Status `json:"panel,omitempty"` // what the LCD, its F-keys and the lamps show (read-only)
+	// TrigRepeat is the scope's COMPARE caption on the trigger source: whether
+	// it repeats capture after capture, which a master or a mask needs; warn
+	// when it does not.
+	TrigRepeat     string        `json:"trig_repeat,omitempty"`
+	TrigRepeatWarn bool          `json:"trig_repeat_warn,omitempty"`
+	Inv2           bool          `json:"inv2"`
+	Zoom1          int           `json:"zoom1,omitempty"`
+	Zoom2          int           `json:"zoom2,omitempty"`
+	VdivLive       bool          `json:"vdiv_live"` // false until the first emit
+	Off1V          float64       `json:"off1_v"`
+	Off2V          float64       `json:"off2_v"`
+	CalSource      string        `json:"cal_source,omitempty"`
+	DC1V           float64       `json:"dc1_v"` // calibrated DC diagnostic (GAIN/110)
+	DC2V           float64       `json:"dc2_v"`
+	Version        string        `json:"version"`
+	Panel          *panel.Status `json:"panel,omitempty"` // what the LCD, its F-keys and the lamps show (read-only)
 
 	// Device super-res (panel stack-and-crunch) live state; omitted when inactive.
 	SRActive   bool    `json:"sr_active,omitempty"`
@@ -87,6 +92,9 @@ func (s *Server) hStatus(w http.ResponseWriter, r *http.Request) {
 	if reporter, ok := s.panel.(interface{ PanelStatus() panel.Status }); ok {
 		view := reporter.PanelStatus()
 		rep.Panel = &view
+	}
+	if rc, ok := s.panel.(interface{ RepeatCaption() (string, bool) }); ok {
+		rep.TrigRepeat, rep.TrigRepeatWarn = rc.RepeatCaption()
 	}
 	if s.invSrc != nil {
 		inv := s.invSrc()

@@ -4,6 +4,7 @@ package panel
 import (
 	"math"
 	"sort"
+	"time"
 
 	"open-sds/app/internal/analog"
 	"open-sds/app/internal/decode"
@@ -49,6 +50,11 @@ type anaState struct {
 	eyeCh  int
 	eyeOK  bool
 	eyeFed frameKey // the frame folded last (each is folded once)
+	eyeOff int      // captures in a row off the folded bit period
+	// specLease: SPECTRUM's FFT or spectrogram holds the spectrum lease; the
+	// first frame after it is left gives it back (its decimated frames are
+	// filtered: MEASURE's statistics took them for 3 s after)
+	specLease bool
 
 	// SPECTRUM
 	specOK   bool
@@ -159,11 +165,19 @@ func (c *Controller) OnFrame(f *engine.Frame) {
 	case wsview.Measure:
 		c.measFrame(a, s, f)
 	case wsview.Compare:
-		c.stabFrame(a, s, f)
 		c.refDiffFrame(a, s, f)
 	}
+	// whether the trigger source repeats, for COMPARE and the web's COMPARE
+	// alike (400 columns a frame: cheap enough to keep up everywhere)
+	c.stabFrame(a, s, f)
 	if measTabOpen(s) && s.ui.ws != wsview.Measure && !f.IsEnv {
 		measVals(a, s, f, s.chDisp) // the MEAS tab's live values
+	}
+	if a.specLease && !(s.ui.ws == wsview.Spectrum && (s.viewMode == viewFFT || s.viewMode == viewSpectrogram)) {
+		a.specLease = false
+		if e, ok := c.eng.(interface{ LeaseSpectrumView(time.Duration) }); ok {
+			e.LeaseSpectrumView(0)
+		}
 	}
 	c.amu.Unlock()
 	if s.stacking {
@@ -332,7 +346,13 @@ func measValue(m *measure.Result, p int) float64 {
 		return m.Vrms
 	case "acrms":
 		return m.VrmsAC
-	case "ovsh":
+	case "ovsh", "prsh":
+		if m.EnvTiming { // an envelope holds no edge shape: unknown, not 0 % (the web shows it so)
+			return math.NaN()
+		}
+		if measParams[p].id == "prsh" {
+			return timing(m.Preshoot)
+		}
 		return timing(m.Overshoot)
 	}
 	return math.NaN()

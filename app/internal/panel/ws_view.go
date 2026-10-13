@@ -402,7 +402,7 @@ func tabStatus(c *Controller, s *sv, t *tab) []wsview.Span {
 		switch {
 		case g.peak && g.captureS > 0 && g.captureS < g.sampleS:
 			// a peak-detect readout: the converters' interval, not the span
-			// of a min/max point (it read 500ns for 2ns sampling; bug hunt #3)
+			// of a min/max point (500ns for 2ns sampling)
 			line += "   sampled every " + si(g.captureS, "s") + ", shown peak-detected"
 		case g.sampleS > 0:
 			line += "   sample interval " + si(g.sampleS, "s")
@@ -656,18 +656,19 @@ func (c *Controller) eyePane(s *sv) *wsview.EyePane {
 		}
 		return text
 	}
-	rate := fmt.Sprintf("%.2f kbit/s", r.BitRate/1e3)
-	if r.BitRate >= 1e6 {
-		rate = fmt.Sprintf("%.3f Mbit/s", r.BitRate/1e6)
-	}
+	// The web's eye card shows the same figures: the bit rate to five
+	// figures, the UI with its samples, RJ/DJ and the period jitter.
+	tb := mark(r.TIEBound, "<")
 	p.Figures = [3][4][2]string{
-		{{"BIT RATE", fig(r.BitRate, rate)}, {"UI", fig(r.UI, si(r.UI, "s"))},
-			{"CROSSING", fig(r.Crossing, fmt.Sprintf("%.0f %%", r.Crossing*100))}, {"FOLDED", fmt.Sprintf("%.0f UI", r.UIs)}},
+		{{"BIT RATE", fig(r.BitRate, si5(r.BitRate, "bit/s"))},
+			{"UI", fig(r.UI, si(r.UI, "s")+fmt.Sprintf(" %.1f samples", r.SamplesPerUI))},
+			{"CROSSING", fig(r.Crossing, fmt.Sprintf("%.1f %%", r.Crossing*100))}, {"FOLDED", fmt.Sprintf("%.0f UI", r.UIs)}},
 		{{"EYE HEIGHT", fig(r.EyeHeight, si(r.EyeHeight*vpc, "V"))},
 			{"EYE WIDTH", fig(r.EyeWidth, fmt.Sprintf("%s%.2f UI", mark(r.WidthBound, ">"), r.EyeWidth))},
 			{"RISE", fig(r.Rise, mark(r.RiseBound, "<")+si(r.Rise, "s"))}, {"FALL", fig(r.Fall, mark(r.FallBound, "<")+si(r.Fall, "s"))}},
-		{{"TIE RMS", fig(r.TIERms, mark(r.TIEBound, "<")+si(r.TIERms, "s"))}, {"TIE PK-PK", fig(r.TIEPkPk, mark(r.TIEBound, "<")+si(r.TIEPkPk, "s"))},
-			{"SAMPLES/UI", fig(r.SamplesPerUI, fmt.Sprintf("%.1f", r.SamplesPerUI))}, {"dt", si(g.sampleS, "s")}},
+		{{"TIE RMS", fig(r.TIERms, tb+si(r.TIERms, "s"))}, {"TIE PK-PK", fig(r.TIEPkPk, tb+si(r.TIEPkPk, "s"))},
+			{"RJ / DJ", fig(r.RJ, tb+si(r.RJ, "s")+" / "+si(r.DJ, "s"))},
+			{"PER / C2C", fig(r.PeriodJ, tb+si(r.PeriodJ, "s")+" / "+si(r.C2CJ, "s"))}},
 	}
 	ov, oh := "---", "---"
 	if !math.IsNaN(cur.Height()) {

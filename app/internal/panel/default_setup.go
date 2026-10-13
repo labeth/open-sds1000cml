@@ -5,21 +5,35 @@ import "open-sds/app/internal/analog"
 
 // DefaultSetup returns the instrument to its power-on setup (DEFAULT SETUP key,
 // SCPI *RST): AUTO and running on a rising CH1 edge at 0 V, 500 us/div with the
-// trigger centred, normal acquisition, both channels 1 V/div DC x1 at 0 V at
+// trigger centred, normal acquisition (16 averages, ERES length 1, precision
+// at 31.25 MSa/s, roll chunked), both channels 1 V/div DC x1 at 0 V at
 // full bandwidth and not inverted, and every overlay off (math, cursors, zoom, measurements, persistence,
 // X-Y/FFT views, super-res, protocol decode with its bus settings and its
-// stream, reference display, mask/zone/serial triggering, ETS). The mask is cleared and the
-// serial trigger's match bytes and I2C address with it. Saved references and
-// setups are kept. The workspace UI is reset by the key's handler
+// stream, reference display, mask/zone/serial triggering, ETS, the frequency
+// response on C1 / C2 with its points forgotten). The mask is cleared and the
+// serial trigger's match bytes and I2C address with it; no measurement stays
+// chosen, the FFT analyses C1 and a master stacks 64 captures. Saved references
+// and setups are kept, and the instrument's own preferences (screen saver,
+// remote notices). The workspace UI is reset by the key's handler
 // (defaultSetupUI), which keeps the workspace.
 // TRLC-LINKS: REQ-SDS-136
 func (c *Controller) DefaultSetup() {
+	c.endWebCapture()
 	c.srCancel("")
 	c.eng.SetNorm(false)
 	c.eng.SetTrigType(0)
 	c.eng.SetTrigSlope(true)
 	c.eng.SetTrigSource(0)
 	c.eng.SetAcqMode(0)
+	// the averaging count, ERES length, precision rate and roll mode too
+	c.eng.SetAvgCount(16)
+	c.eng.SetEresLen(1)
+	if e, ok := c.eng.(interface{ SetPrecisionRate(float64) float64 }); ok {
+		e.SetPrecisionRate(powerOnPrecisionRateHz)
+	}
+	if e, ok := c.eng.(interface{ SetRollStream(bool) }); ok {
+		e.SetRollStream(false)
+	}
 	c.eng.SetHoldoff(0)
 	c.eng.SetETS(false)
 	c.clearMask()
@@ -35,6 +49,13 @@ func (c *Controller) DefaultSetup() {
 		se.SetSerialParams(p)
 	}
 	c.resetQualifiers()
+	if b, ok := c.eng.(interface {
+		SetBodeMode(bool, int, int)
+		ClearBode()
+	}); ok { // the frequency response off, on C1 / C2, its points forgotten
+		b.SetBodeMode(false, 0, 1)
+		b.ClearBode()
+	}
 	c.eng.SetTrigPosFrac(0.5)
 	for i, t := range c.tdivs {
 		if t == 500e-6 {
@@ -60,12 +81,14 @@ func (c *Controller) DefaultSetup() {
 				}
 			}
 		}
+		// the level at 0 V (here, not under the invert below: that runs only with
+		// an inverter wired)
+		c.eng.SetTrigLevelCode(uint16(c.fe.TrigCode(0, 0)))
 	}
 	if c.inverter != nil { // the traces the right way up
 		for ch := 0; ch < 2; ch++ {
 			c.inverter.SetInverted(ch, false)
 		}
-		c.eng.SetTrigLevelCode(uint16(c.fe.TrigCode(0, 0)))
 	}
 	c.eng.SetRunning(true)
 	c.mu.Lock()
@@ -74,11 +97,19 @@ func (c *Controller) DefaultSetup() {
 	c.curOn, c.curType, c.curSel = false, 0, 0
 	c.curX, c.curY = [2]float64{0.35, 0.65}, [2]float64{0.35, 0.65}
 	c.zoom, c.zoomOff = 1, 0
+	// the mask build and super-res's settings: a restart keeps them, so they
+	// reset here like every other setting
+	c.maskN, c.maskTol = 32, 1
+	c.srCh, c.srK, c.srStopMode, c.srStopVal = 0, 32, 0, 4
+	// no measurement chosen (MEASURE then measures Vpp and Freq), the FFT on C1,
+	// a master of 64 captures, a stream stopped by an error
+	c.meas, c.fftSrc, c.stackN = nil, 0, 64
+	c.decTrig, c.decValue = 0, 0
 	streaming := c.decMode == decModeStream
 	c.decProto, c.decMode = 0, decModeView
 	c.decGen++
-	// the bus settings too: a bus found later started with the last one's
-	// bit rate (bug hunt #3: SENT showed the Manchester rate)
+	// the bus settings too: a bus found later would start with the last one's
+	// bit rate (SENT with a Manchester rate)
 	c.decBaud, c.decChA, c.decChB, c.decCPOL, c.decCPHA, c.decFormat = 115200, 0, 1, false, false, 0
 	for i := range c.refs {
 		c.refs[i].show = false
@@ -91,12 +122,15 @@ func (c *Controller) DefaultSetup() {
 	c.pushLEDs()
 }
 
+// powerOnPrecisionRateHz is the engine's precision rate at power-on.
+const powerOnPrecisionRateHz = 31.25e6
+
 // powerOnLimitNs is the pulse-width and slope-time limits at power-on.
 var powerOnLimitNs = [2]float64{100, 1000}
 
 // resetQualifiers puts the pulse, slope and video settings back to their
-// power-on values, on the panel and in the engine: DEFAULT SETUP left a
-// pulse width of "> 13 us" from before (bug hunt #3).
+// power-on values, on the panel and in the engine: DEFAULT SETUP must not keep
+// a pulse width of "> 13 us" from before.
 // TRLC-LINKS: REQ-SDS-212
 func (c *Controller) resetQualifiers() {
 	c.mu.Lock()

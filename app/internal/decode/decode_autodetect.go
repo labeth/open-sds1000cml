@@ -39,8 +39,8 @@ func scoreResult(r Result) float64 {
 		}
 		if addrs == 1 && datas == 0 {
 			// One stray START on SPI data (a data change while the clock is
-			// high) reads as one bare address; it outscored a real 18-byte
-			// SPI decode (bench 2026-10-07). Keep it only as a last resort.
+			// high) reads as one bare address; it can outscore a real 18-byte
+			// SPI decode. Keep it only as a last resort.
 			return 5
 		}
 		return float64(addrs*100 + acks*30 + datas*20 + starts*5)
@@ -49,7 +49,7 @@ func scoreResult(r Result) float64 {
 			return -1e9
 		}
 		// Under 4 samples a bit a UART decode is guesswork: FlexRay at
-		// 31 MS/s (3.3 samples a bit) read as "UART 9.5 MBd" (bench 2026-10-07).
+		// 31 MS/s (3.3 samples a bit) reads as "UART 9.5 MBd".
 		if r.SPB > 0 && r.SPB < 4 {
 			return -1e9
 		}
@@ -61,8 +61,7 @@ func scoreResult(r Result) float64 {
 		}
 		c := kinds("frame-error", "parity-error")
 		// An odd rate with over a fifth of its bytes misframed is another
-		// protocol read as UART (an undersampled SENT: "UART 45701 Bd", bug
-		// hunt 2026-10-11).
+		// protocol read as UART (an undersampled SENT: "UART 45701 Bd").
 		if !std && c[0]*5 > len(r.Bytes) {
 			return -1e9
 		}
@@ -98,8 +97,8 @@ func scoreResult(r Result) float64 {
 		// OK already gates on >=1 CRC-4-valid frame; score by validated frames.
 		c := kinds("crc", "data", "frame-error", "sync")
 		// CRC-4 passes one random frame in 16: a lone valid frame among many
-		// syncs is chance, as a UART at under two samples a bit read as
-		// "SENT, 1 of 17 frames" (bug hunt 2026-10-10). A quarter of the
+		// syncs is chance, as a UART at under two samples a bit reads as
+		// "SENT, 1 of 17 frames". A quarter of the
 		// complete frames must check: half rejected a real bus alternating
 		// bad and good CRCs (bad, good, bad on screen).
 		if c[0] == 0 || c[0]*4 < c[3]-1 {
@@ -193,7 +192,7 @@ func clockScore(codes []uint8) clockInfo {
 // midPhaseData is the share of the data line's edges that sit away from every
 // clock edge (beyond a quarter half-period). SPI launches data on a clock edge;
 // I2C moves SDA in the middle of SCL low. Mostly mid-phase data is not SPI:
-// an I2C window without its START read as "SPI mode 3, 3 bytes" (bug hunt #2).
+// an I2C window without its START reads as "SPI mode 3, 3 bytes" otherwise.
 // TRLC-LINKS: REQ-SDS-018
 func midPhaseData(c clockInfo, d sliced) float64 {
 	if !c.ok || c.hp <= 0 || !d.ok || len(d.edges) == 0 || len(c.s.edges) == 0 {
@@ -341,9 +340,9 @@ func Autodetect(c1, c2 []uint8, colTimeS float64, format string) Result {
 		return best
 	}
 	// A detection needs more evidence than errors (score > 0): garbage UART
-	// and Manchester decodes - more frame errors than words - won whenever
-	// nothing else qualified, e.g. MIL-1553 at 50 us/div read as Manchester
-	// and an undecodable SENT as "MANCH 51 kb/s" (bug hunt 2026-10-11).
+	// and Manchester decodes - more frame errors than words - would win
+	// whenever nothing else qualifies, e.g. MIL-1553 at 50 us/div read as
+	// Manchester and an undecodable SENT as "MANCH 51 kb/s".
 	bestScore := 0.0
 	chName := func(k int) string { return [2]string{"C1", "C2"}[k&1] }
 	consider := func(r Result, src string, roles Roles) {
@@ -359,7 +358,7 @@ func Autodetect(c1, c2 []uint8, colTimeS float64, format string) Result {
 	hi, lo := math.Max(u0, u1), math.Min(u0, u1)
 	clockedPair := len(active) >= 2 && hi > 0.72 && hi > lo+0.12
 	// A clock beside a line it does not clock is no clocked bus: a UART next to
-	// a free-running clock read as SPI, I2C or nothing (bug hunt 2026-10-11).
+	// a free-running clock would read as SPI, I2C or nothing.
 	// That line keeps no place in the clock's cycle, so it is tried on its own
 	// and neither SPI nor I2C is claimed for the pair.
 	freeClock := false
@@ -373,8 +372,8 @@ func Autodetect(c1, c2 []uint8, colTimeS float64, format string) Result {
 	}
 	locked := clockedPair && !freeClock
 	// A near-perfectly uniform line is a clock even with few edges on screen: a
-	// 3 kHz square at 500 us/div (~30 edges) read as constant-bit Manchester
-	// (bug hunt 2026-10-10). Real Manchester data mixes T/2 and T gaps.
+	// 3 kHz square at 500 us/div (~30 edges) would read as constant-bit
+	// Manchester. Real Manchester data mixes T/2 and T gaps.
 	isClocky := func(k int) bool {
 		c := clk[k]
 		return (c.uniFrac > 0.78 && c.edges >= 40) || (c.uniFrac >= 0.95 && c.edges >= 10)

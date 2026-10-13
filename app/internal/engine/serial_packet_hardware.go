@@ -351,9 +351,9 @@ func (e *Engine) noteARINCLevels(f *Frame) {
 	e.ser.mu.Unlock()
 	// Plannable once a threshold is known (the scope's request learns it);
 	// the slicer levels are the decoder's own from a sampled record. A live
-	// envelope's (min, max) pairs gave wrong ones, kept until the request
-	// changed, and the matcher never fired (bug hunt #3): the levels wait for
-	// a sampled record, which a short lease asks for.
+	// envelope's (min, max) pairs give wrong ones, kept until the request
+	// changes, and the matcher never fires: the levels wait for a sampled
+	// record, which a short lease asks for.
 	if planned, _ := e.serialPlanParams(p); p.Proto != serARINC || !serialThresholdOK(planned) || f.Valid < 8 || f.Decimation > 1 {
 		return
 	}
@@ -370,8 +370,8 @@ func (e *Engine) noteARINCLevels(f *Frame) {
 
 // noteBackendsLoading says, for the seconds an image load takes, that the
 // pulse, slope or video trigger and the zones wait for it: their status is
-// otherwise set by the next capture (the TRIG tab named nothing during a
-// load; bug hunt #3).
+// otherwise set by the next capture (the TRIG tab would name nothing during a
+// load).
 // TRLC-LINKS: REQ-SDS-011, REQ-SDS-014
 func (e *Engine) noteBackendsLoading(image string) {
 	shown := map[string]string{imageQualify: "qualifier", imagePacket: "packet", imageLine: "line", imageStream: "stream", "": "general"}[image]

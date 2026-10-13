@@ -27,7 +27,7 @@ bank where it passes the read head; descriptors record each burst. The
 control and its block RAMs run at 125 MHz (block RAM cannot run at 250 MHz);
 thin register stages on the 250 MHz clock pair words with the transport.
 
-Measured on the instrument (2026-10-10, every word of a counter source
+Measured on the instrument (every word of a counter source
 checked): loss-free at decimation ×512 (978,000 words/s, 3.9 MB/s) and
 ×1024; at ×1024 a single 900 ms host stall is absorbed and a 1.2 s stall is
 reported as a fault. Reading back what was just written costs one lap of

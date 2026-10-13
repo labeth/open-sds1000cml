@@ -2,13 +2,16 @@
 package web
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"math"
 	"net/http"
 	"open-sds/app/internal/analog"
 	"open-sds/app/internal/engine"
+	"time"
 )
 
 // hZones installs the zone-trigger rectangles (POST JSON array of zones in
@@ -282,8 +285,10 @@ func (s *Server) hSet(w http.ResponseWriter, r *http.Request) {
 	ok, applied, errStr := true, req.Value, ""
 	switch req.Control {
 	case "run":
+		s.endWebCapture(r.Context())
 		s.sc.SetRunning(req.Value != 0)
 	case "runtoggle":
+		s.endWebCapture(r.Context())
 		// A single capture can stop between browser status polls. Toggle the
 		// current instrument state, not the browser's stale running flag.
 		on := !s.sc.Snapshot().Running
@@ -319,6 +324,7 @@ func (s *Server) hSet(w http.ResponseWriter, r *http.Request) {
 			applied = 0
 		}
 	case "single":
+		s.endWebCapture(r.Context())
 		s.sc.SetSingle()
 	case "trigpos":
 		s.sc.SetTrigPosFrac(req.Value)
@@ -489,4 +495,22 @@ func (s *Server) hSet(w http.ResponseWriter, r *http.Request) {
 		ok, errStr = false, "unknown control"
 	}
 	writeJSON(w, map[string]any{"ok": ok, "applied": applied, "err": errStr})
+}
+
+// endWebCapture ends a web page's decoded capture before Run, Run/Stop or
+// Single from a page, as the scope's run-control keys do: they always get the
+// acquisition back, also from a page closed mid-session.
+// TRLC-LINKS: REQ-SDS-013
+func (s *Server) endWebCapture(ctx context.Context) {
+	e, ok := s.sc.(interface {
+		EndWebDecodedCapture(context.Context) (bool, error)
+	})
+	if !ok || !s.sc.Snapshot().DecodedWeb {
+		return
+	}
+	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+	if _, err := e.EndWebDecodedCapture(ctx); err != nil {
+		log.Printf("web: ending the web page's decoded capture: %v", err)
+	}
 }

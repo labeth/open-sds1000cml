@@ -3,7 +3,21 @@
 
 "use strict";
 // TRLC-LINKS: REQ-SDS-019
-function srStatus(msg) { $("srStats").textContent = msg; }
+function srStatus(msg) { sr.scopeLine = false; $("srStats").textContent = msg; }
+
+const SR_IDLE = "idle — autogate, adjust the markers, then ARM"; // ui.html's #srStats
+
+// srScopeLine shows the scope's own super-res while this page's stacker is
+// idle: its stack is on the scope's screen only. It follows each status poll.
+// TRLC-LINKS: REQ-SDS-019
+function srScopeLine() {
+  if (sr.armed) return;
+  if (st && st.sr_active) {
+    const t = "On the scope: " + (st.sr_status || "stacking…") + (st.sr_review ? " · showing the stack" : "") + " — its stack is on the scope's screen";
+    if ($("srStats").textContent !== t) $("srStats").textContent = t;
+    sr.scopeLine = true;
+  } else if (sr.scopeLine) srStatus(SR_IDLE);
+}
 
 // TRLC-LINKS: REQ-SDS-019
 function srUpdateStats(final) {
@@ -245,8 +259,8 @@ function srIngest(f) {
   const dz = sr.dither;
   if (dz.on) {
     if (dz.pending > 0) { dz.pending--; return; } // offset still staging — skip
-    // No commanded-value correction: iteration 2 of the lab showed the cal
-    // volts mapping / DAC granularity mis-corrects (half-code clustering).
+    // No commanded-value correction: the cal volts mapping / DAC granularity
+    // mis-corrects (half-code clustering).
     // The ALIGNED drift fit in srFeed measures each frame's ACTUAL vertical
     // shift vs the base-offset reference (b-fit precision ~0.007 codes over
     // the window) and normalizes it out — whatever the DAC really did.

@@ -19,7 +19,7 @@
 // packet_ready reports that the other bank is free, so a seal may publish the
 // current one. A seal that publishes while the other bank is still the host's
 // leaves the producer nowhere to go: a seal landing just after a full bank's
-// publication overran at once (bench 2026-10-10, 2047 words at decimation
+// publication overruns at once (2047 words at decimation
 // 2^12, where a bank fills in exactly the seal period). The packetizer seals
 // only while packet_ready holds.
 // TRLC-LINKS: REQ-SDS-035

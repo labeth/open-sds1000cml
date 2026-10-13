@@ -38,6 +38,33 @@ func si(v float64, unit string) string {
 	return neg + g3(a/last.scale) + last.pre + unit
 }
 
+// si5 formats v at five significant figures with an SI prefix, a space and
+// the unit ("2.0001 Mbit/s"), trailing zeros kept: the web's eng(v, unit, 5),
+// for the figures both show (the BUS eye's bit rate).
+// TRLC-LINKS: REQ-SDS-215
+func si5(v float64, unit string) string {
+	if math.IsNaN(v) || math.IsInf(v, 0) {
+		return "---"
+	}
+	if v == 0 {
+		return "0 " + unit
+	}
+	neg, a := "", v
+	if a < 0 {
+		neg, a = "-", -a
+	}
+	p := siSteps[len(siSteps)-1]
+	for _, s := range siSteps {
+		if a >= s.scale*0.999995 {
+			p = s
+			break
+		}
+	}
+	x := a / p.scale
+	digits := max(0, int(math.Floor(math.Log10(x)))) // a value promoted to the next prefix (0.99999..) reads 1.0000
+	return neg + strconv.FormatFloat(x, 'f', max(0, 4-digits), 64) + " " + p.pre + unit
+}
+
 // g3 is three significant figures without exponent or trailing zeros.
 // TRLC-LINKS: REQ-SDS-212
 func g3(x float64) string { return strconv.FormatFloat(x, 'g', 3, 64) }

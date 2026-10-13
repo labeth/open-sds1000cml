@@ -100,7 +100,7 @@ func parseInterleaveCalibration(b []byte) (*InterleaveCalibration, error) {
 
 // apply corrects per-converter offsets (and, at their measured scales, gain
 // and aperture) on a raw 500 MS/s record. Converter offsets do not depend on
-// V/div (bench 2026-10-05: identical at 1, 0.5 and 0.1 V/div), so the offset
+// V/div (measured identical at 1, 0.5 and 0.1 V/div), so the offset
 // correction applies at every scale. The record's converter rotation is found
 // from whichever channel matches its fingerprint best — one channel carrying a
 // strong signal does not block the other — and clipped samples neither vote
@@ -252,7 +252,7 @@ func (c *InterleaveCalibration) hasTiming(scale [2]float64, sampleS float64) boo
 	return sampleS == 2e-9 && ((c.TimingVdiv[0] > 0 && c.TimingVdiv[0] == scale[0]) || (c.TimingVdiv[1] > 0 && c.TimingVdiv[1] == scale[1]))
 }
 
-// defaultInterleave is this unit's converter offsets, measured 2026-10-05 on
+// defaultInterleave is this unit's converter offsets, measured on
 // the inverted-sample images (300 raw 500 MS/s records, quiet CH1 fixing each
 // record's rotation; CH2 averaged under an asynchronous 10 MHz square).
 //
@@ -269,8 +269,8 @@ func DefaultInterleaveCalibration() (*InterleaveCalibration, error) {
 // Envelope buckets hold (min, max) pairs taken by the FPGA over raw samples of
 // all five converters, so a bucket's maximum is the signal plus the highest
 // converter offset and its minimum the signal plus the lowest: on CH1 a flat
-// 3.28 V top read 3.52 V and the base -0.24 V, a 0.48 V amplitude error at
-// 1 V/div (bench 2026-10-06). Minima drop the lowest offset, maxima the
+// 3.28 V top reads 3.52 V and the base -0.24 V, a 0.48 V amplitude error at
+// 1 V/div. Minima drop the lowest offset, maxima the
 // highest; rail values stay. q receives the result in Q8.8 (fromQ: q already
 // holds the samples), and sig its rounding.
 // TRLC-LINKS: REQ-SDS-016, REQ-SDS-010

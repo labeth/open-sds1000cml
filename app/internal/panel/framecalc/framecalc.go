@@ -138,8 +138,8 @@ func Decode(f *engine.Frame, p DecodeParams) decode.Result {
 	case ProtoSPI:
 		res = decode.DecodeSPI(ch(p.ChA), ch(p.ChB), f.SampleS, decode.SPICfg{CPOL: p.CPOL, CPHA: p.CPHA, MSB: true, Format: p.Format})
 	case ProtoManchester:
-		// MSB first, as Auto found it and the web decodes it (the lock read
-		// LSB first: 12 34 showed as 48 2C; bug hunt #3).
+		// MSB first, as Auto found it and the web decodes it (LSB first reads
+		// 12 34 as 48 2C).
 		res = decode.DecodeManchester(ch(p.ChA), f.SampleS, decode.ManchesterCfg{Bitrate: p.Baud, IEEE: true, MSB: true, Format: p.Format})
 	case ProtoSENT:
 		res = decode.DecodeSENT(ch(p.ChA), f.SampleS, decode.SENTCfg{})
@@ -157,8 +157,8 @@ func Decode(f *engine.Frame, p DecodeParams) decode.Result {
 	if f.PeakDetect && f.Ordered {
 		switch {
 		case p.Proto == ProtoAuto && res.Proto == "off" && res.Error == "no protocol matched":
-			// a bus the envelope cannot resolve is not found either (bug hunt
-			// #3: a 115200 UART at 500us/div was "no protocol matched")
+			// a bus the envelope cannot resolve is not found either (a 115200
+			// Bd UART at 500us/div matches no protocol there)
 			res.Error = "no protocol resolved at this timebase - S/DIV faster, or SINGLE"
 		case !EnvelopeResolves(res):
 			res = decode.Result{Proto: res.Proto, Error: decode.Names[res.Proto] + " not resolved at this timebase - S/DIV faster, or SINGLE"}
@@ -174,15 +174,15 @@ func Decode(f *engine.Frame, p DecodeParams) decode.Result {
 
 // MinEnvelopeFeature is the shortest bus feature, in points, a live envelope
 // decodes: well over its (min, max) bucket of two points (a CAN frame of
-// ideal edges failed at 2.8 points a bit, a 115200 UART at 500us/div's 3.6
-// read 0A as 02 and 20 as 30 on the bench; bug hunt #3).
+// ideal edges fails at 2.8 points a bit; a 115200 Bd UART at 500us/div's 3.6
+// reads 0A as 02 and 20 as 30).
 const MinEnvelopeFeature = 4.0
 
 // EnvelopeResolves reports whether a decode of a live envelope can stand. The
 // envelope holds a (min, max) pair per bucket; a line that changes within a
 // bucket aliases there (a fast clock reads as a clock of two buckets, its
-// data as starts and stops: I2C at 500us/div listed 151 packets of no bytes,
-// bug hunt #3), so a bus whose shortest feature is not well over a bucket is
+// data as starts and stops: I2C at 500us/div lists packets of no bytes), so a
+// bus whose shortest feature is not well over a bucket is
 // not decoded from it.
 // TRLC-LINKS: REQ-SDS-214
 func EnvelopeResolves(res decode.Result) bool {
@@ -205,6 +205,10 @@ type Spec struct {
 	N      int
 	Stride int     // record samples per transform sample
 	EffNyq float64 // Hz at bin N/2 (the decimated Nyquist)
+	// SpanHz is what the spectrum covers: EffNyq, or a decimated capture's
+	// filter bandwidth when lower (Mags then ends there: above it the bins
+	// hold the filter's stopband, not the signal).
+	SpanHz float64
 	BinHz  float64
 	Peak   float64 // the largest magnitude, DC excluded
 	PeakK  int
@@ -222,9 +226,9 @@ func EnvPair(f *engine.Frame) int {
 
 // PairStride is the block length that reduces a record to its spectrum
 // samples. An envelope's blocks hold whole (min, max) pairs, so each spectrum
-// sample is bucket midpoints: transforming the pairs themselves put their
-// alternation at the top of the axis as a rising false spectrum (bench
-// 2026-10-07, UART at 10 us/div).
+// sample is bucket midpoints: transforming the pairs themselves puts their
+// alternation at the top of the axis as a rising false spectrum (a UART at
+// 10 us/div).
 // TRLC-LINKS: REQ-SDS-070
 func PairStride(f *engine.Frame, stride int) int {
 	stride = max(stride, 1)
@@ -374,6 +378,19 @@ func Spectrum(f *engine.Frame, ch int, sampleS float64) (Spec, bool) {
 	if sampleS > 0 {
 		sp.EffNyq = 0.5 / sampleS / float64(stride)
 		sp.BinHz = sp.EffNyq / float64(n/2)
+		sp.SpanHz = sp.EffNyq
+		// A decimated capture's filter ends the spectrum at its bandwidth: past
+		// it the bins hold nothing (a capture filtered at 4.2 MHz drawn to
+		// 15.6 MHz shows its harmonics above 4.2 MHz gone)
+		if bw := f.BandwidthHz; bw > 0 && bw < sp.EffNyq {
+			kb := min(len(mags), max(4, int(math.Ceil(bw/sp.BinHz))))
+			sp.Mags, sp.SpanHz, sp.Peak, sp.PeakK = mags[:kb], float64(kb)*sp.BinHz, 1e-9, 1
+			for k := 1; k < kb; k++ {
+				if mags[k] > sp.Peak {
+					sp.Peak, sp.PeakK = mags[k], k
+				}
+			}
+		}
 	}
 	s.key, s.spec, s.ok = key, sp, cacheable
 	return sp, true

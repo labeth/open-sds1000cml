@@ -12,7 +12,7 @@ function decCodes(role) {
 // renewDecodeLease keeps the engine sending samples, not peak-detect pairs,
 // while this browser decodes (the lease lapses a few seconds after it stops).
 // At 100 us/div a peak-detect bucket is wider than an SPI clock, and auto-detect
-// named it Manchester or UART (bench 2026-10-07).
+// names it Manchester or UART.
 // TRLC-LINKS: REQ-SDS-207
 let decodeLeaseT = 0;
 // TRLC-LINKS: REQ-SDS-207
@@ -49,6 +49,10 @@ function decodeFeatureSamples(r) {
 const DECODE_MIN_ENVELOPE_FEATURE = 4;
 const DECODE_NAMES = { uart: "UART", i2c: "I2C", spi: "SPI", manchester: "Manchester", sent: "SENT", canfd: "CAN", mil1553: "MIL-1553", arinc429: "ARINC 429", usbls: "USB LS", flexray: "FlexRay" };
 
+// decKey names the bus a decode reads: protocol, lines, polarity.
+// TRLC-LINKS: REQ-SDS-207
+function decKey() { return [dcfg.proto, dcfg.line, dcfg.scl, dcfg.sda, dcfg.clk, dcfg.data, !!dcfg.inverted].join(","); }
+
 // TRLC-LINKS: REQ-SDS-207
 function computeDecode() {
   dcfg.result = null;
@@ -83,6 +87,7 @@ function computeDecode() {
       r = { ok: false, proto: r.proto, error: (DECODE_NAMES[r.proto] || r.proto) + " not resolved at this timebase - faster time/div, or SINGLE", spans: [], text: "", bytes: [], meta: {} };
   }
   dcfg.result = r;
+  if (r && r.ok) dcfg.good = { key: decKey(), r, dt: colTimeS };
   if (r && r.ok && dcfg.auto && r.meta && r.meta.threshold != null) {
     $("decThr").value = Math.round(r.meta.threshold); $("decThrV").textContent = Math.round(r.meta.threshold);
   }
@@ -310,7 +315,7 @@ async function fetchSampledFrame(waitMs, accept) {
 // detectStands returns detection d, unless src is the live envelope (no
 // sampled record came: Normal with nothing triggering) and the bus d names is
 // too fine for it, which aliases into another (I2C's data line read as
-// Manchester at 102 kBd; bug hunt #3): then a refusal that says why.
+// Manchester at 102 kBd): then a refusal that says why.
 // TRLC-LINKS: REQ-SDS-207
 function detectStands(d, src, waiting) {
   if (d.proto === "off" || !(src.peak_detect && src.ordered) || !d.result) return d;
@@ -329,8 +334,8 @@ async function runAutodetect() {
   if (frame.peak_detect && !frozen) {
     // Detect on samples, as the scope's BUS entry does: the live feed is a
     // screen of min/max pairs (at 500 us/div after Default setup, 2.4 us a
-    // point: "no protocol matched" with a UART on screen; bug hunt #3), so
-    // recall one sampled record and detect on that.
+    // point: no protocol matches with a UART on screen), so recall one
+    // sampled record and detect on that.
     setDetectMsg("fetching a sampled record…");
     const raw = await fetchSampledFrame(4000);
     if (raw) src = raw;
@@ -338,8 +343,8 @@ async function runAutodetect() {
   }
   if ((src.peak_detect && !src.ordered) || src.is_env) { setDetectMsg("Sampled data required — select Normal acquisition and Run before detecting.", true); return; }
   let d = detectStands(autodetect(src, { fmt: dcfg.fmt }), src, !!(st && st.waiting)), stepped = 0;
-  // A record that hid the bus - too short (Autoset's 10 us/div held about one
-  // UART byte; bug hunt #3) or decimated - is looked at again at the slowest
+  // A record that hid the bus - too short (Autoset's 10 us/div holds about one
+  // UART byte) or decimated - is looked at again at the slowest
   // full-rate timebase, kept when it finds the bus, else the timebase goes
   // back: as the scope's BUS entry does.
   const full = st && st.full_rate_tdiv_s, prev = st && st.tdiv_s;
@@ -371,9 +376,10 @@ async function runAutodetect() {
   if (d.cfg.msb != null) dcfg.msb = d.cfg.msb;
   // SENT reads tick and nibble count from its own inputs: set them to what the
   // detector decoded with, or the display decodes with the old ones ("detected
-  // SENT · 28 bytes" over "(no decode)"; bug hunt #2).
+  // SENT · 28 bytes" over "(no decode)").
   if (d.cfg.sentNibbles) { $("decSentTick").value = d.cfg.sentTickNs; $("decSentNibbles").value = d.cfg.sentNibbles; }
   dcfg.auto = true;                                    // let the threshold auto-track
+  if (d.result && d.result.ok) dcfg.good = { key: decKey(), r: d.result, dt: frameDtS(src, src.c1.length) };
   syncDecodeControls();
   updateDecodePanel();
   recompute();

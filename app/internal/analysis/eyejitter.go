@@ -402,12 +402,13 @@ type EyeJitter struct {
 	eyeW, eyeH   int
 	eye          []float64 // density counts, row 0 = the lowest code
 	lo, hi       int       // levels at the first lock
-	eyeY0, eyeY1 float64   // the eye's code window, frozen at the first lock
+	eyeY0, eyeY1 float64   // the eye's code window: the graticule (EyeCodeLo..EyeCodeHi)
 	ui           float64   // running UI estimate (samples)
 	uiN          int
 	sampleS      float64
 
 	records, rejected, edges int
+	uis                      float64 // unit intervals folded
 
 	tie              []float64 // decimated TIE buffer (s) for RJ/DJ
 	tieCap, tieDecim int
@@ -449,7 +450,7 @@ func NewEyeJitter(o EyeJitterOptions) *EyeJitter {
 	if tc <= 0 {
 		tc = 60000
 	}
-	return &EyeJitter{eyeW: w, eyeH: h, eye: make([]float64, w*h), lo: 255,
+	return &EyeJitter{eyeW: w, eyeH: h, eye: make([]float64, w*h), lo: 255, eyeY0: EyeCodeLo, eyeY1: EyeCodeHi,
 		tieCap: tc, tieDecim: 1, tieMin: math.Inf(1), tieMax: math.Inf(-1), fftN: p}
 }
 
@@ -486,13 +487,9 @@ func (s *EyeJitter) Feed(sig []float64, sampleS float64) string {
 		return s.reject("no-lock")
 	}
 	if s.uiN == 0 {
-		// The vertical mapping is frozen at the first lock, with headroom: the
-		// deposits cannot be rebinned, so later level wander lands at its true
-		// code in the fixed mapping and the measured eye honestly shrinks.
-		s.lo, s.hi = e.Lo, e.Hi
-		head := math.Max(8, 0.4*float64(e.Hi-e.Lo))
-		s.eyeY0 = math.Max(0, float64(e.Lo)-head)
-		s.eyeY1 = math.Min(255, float64(e.Hi)+head)
+		// The vertical mapping is the fixed graticule window: later level
+		// wander lands at its true code and the measured eye honestly shrinks.
+		s.lo, s.hi = e.Lo, e.Hi // the metrics' mid row
 		s.ui = fit.UI
 	} else {
 		s.ui = s.ui + (fit.UI-s.ui)/float64(min(s.uiN+1, 32))
@@ -553,11 +550,11 @@ func (s *EyeJitter) Feed(sig []float64, sampleS float64) string {
 	}
 	s.lastSpanUI = nUI // record span in UI, for the TIE high-pass corner
 
-	// eye fold: every sample at phase (t - t0) mod 2UI
-	w, h := s.eyeW, s.eyeH
+	// eye fold: one UI with the crossing mid-cell, shown twice side by side
+	// (the LCD's BUS eye): one full eye in the centre of a 2-UI window
+	w, h, half := s.eyeW, s.eyeH, s.eyeW/2
 	y0, y1 := s.eyeY0, s.eyeY1
 	yscale := float64(h-1) / math.Max(1, y1-y0)
-	fold := 2 * fit.UI
 	n := float64(len(sig))
 	iLo := math.Max(0, math.Ceil(fit.T0))
 	iHi := math.Min(n, math.Floor(fit.T0+(nUI-1)*fit.UI))
@@ -566,15 +563,18 @@ func (s *EyeJitter) Feed(sig []float64, sampleS float64) string {
 			if math.IsNaN(sig[i]) {
 				continue
 			}
-			ph := math.Mod(float64(i)-fit.T0, fold)
-			if ph < 0 {
-				ph += fold
+			p := (float64(i)-fit.T0)/fit.UI + 0.5
+			p -= math.Floor(p)
+			x := min(half-1, int(math.Floor(p*float64(half))))
+			yf := jsRound((sig[i] - y0) * yscale)
+			if !(yf >= 0 && yf <= float64(h-1)) {
+				continue // off the graticule: not drawn
 			}
-			x := min(w-1, int(math.Floor(ph/fold*float64(w))))
-			y := int(math.Min(float64(h-1), math.Max(0, jsRound((sig[i]-y0)*yscale))))
-			s.eye[y*w+x]++
+			s.eye[int(yf)*w+x]++
+			s.eye[int(yf)*w+x+half]++
 		}
 	}
+	s.uis += math.Max(0, nUI)
 	s.records++
 	return "locked:" + strconv.Itoa(len(e.T))
 }
@@ -680,6 +680,7 @@ type EyeMetrics struct {
 // TRLC-LINKS: REQ-SDS-199, REQ-SDS-215
 type JitterResult struct {
 	Records, Rejected, Edges int
+	UIs                      float64 // unit intervals folded
 	UI, SampleS              float64 // UI in samples
 	UISeconds, BitRate       float64
 	LastErr                  string
@@ -702,7 +703,7 @@ type JitterResult struct {
 // buffer.
 // TRLC-LINKS: REQ-SDS-199, REQ-SDS-215
 func (s *EyeJitter) Result() JitterResult {
-	out := JitterResult{Records: s.records, Rejected: s.rejected, Edges: s.edges,
+	out := JitterResult{Records: s.records, Rejected: s.rejected, Edges: s.edges, UIs: s.uis,
 		UI: s.ui, SampleS: s.sampleS, UISeconds: s.ui * s.sampleS, LastErr: s.lastErr}
 	if s.ui > 0 && s.sampleS > 0 {
 		out.BitRate = 1 / (s.ui * s.sampleS)
@@ -748,17 +749,18 @@ func (s *EyeJitter) Result() JitterResult {
 }
 
 // Metrics measures the eye on the density map (ejEyeMetrics). The fold puts
-// the edges at phases 0 and 0.5 of the 2-UI window, so the eye centre is
-// phase 0.75: the rails come from the density clusters of the centre columns
-// (the height is the inner gap, 0.1 % trimmed), the width is the longest
-// crossing-free run of the mid row that holds the centre. It returns nil
-// below 500 counts in the centre columns.
+// the edges at phases 0.25 and 0.75 of the 2-UI window, so the eye centre is
+// phase 0.5: the rails come from the density of the centre columns above and
+// below the mid level between the levels at the first lock (the height is
+// the inner gap, 0.1 % trimmed), the width is the longest crossing-free run
+// of the mid row that holds the centre. It returns nil below 500 counts in
+// the centre columns.
 // TRLC-LINKS: REQ-SDS-199, REQ-SDS-215
 func (s *EyeJitter) Metrics() *EyeMetrics {
 	w, h := s.eyeW, s.eyeH
 	colAt := func(f float64) int { return min(w-1, int(math.Floor(f*float64(w)))) }
 	codeOf := func(y int) float64 { return s.eyeY0 + float64(y)*(s.eyeY1-s.eyeY0)/float64(h-1) }
-	c, span := colAt(0.75), 3
+	c, span := colAt(0.5), 3
 	total := 0.0
 	col := make([]float64, h)
 	for x := c - span; x <= c+span; x++ {
@@ -773,7 +775,7 @@ func (s *EyeJitter) Metrics() *EyeMetrics {
 	if total < 500 {
 		return nil
 	}
-	midY := float64(h-1) / 2
+	midY := math.Min(float64(h-1), math.Max(0, (float64(s.lo+s.hi)/2-s.eyeY0)*float64(h-1)/math.Max(1, s.eyeY1-s.eyeY0)))
 	// trim 0.1 % from the inner side of each rail (row 0 = the lowest code)
 	trim := math.Max(1, total*0.001)
 	acc, topInner, botInner := 0.0, -1, -1
@@ -795,7 +797,7 @@ func (s *EyeJitter) Metrics() *EyeMetrics {
 		height = codeOf(topInner) - codeOf(botInner)
 	}
 	// the width: the longest contiguous mid-row gap holding the eye centre
-	// (counting every empty column of the fold would add the second eye)
+	// (counting every empty column of the fold would add the half eyes)
 	yMid, band := int(jsRound(midY)), 2
 	row := make([]float64, w)
 	rowTot := 0.0
@@ -811,7 +813,7 @@ func (s *EyeJitter) Metrics() *EyeMetrics {
 	width := 0.0
 	if rowTot > 200 {
 		thr := rowTot / float64(w) * 0.5 // half of uniform density = a crossing cluster
-		xc := colAt(0.75)
+		xc := colAt(0.5)
 		if row[xc] < thr {
 			l, r := xc, xc
 			for l > 0 && row[l-1] < thr {

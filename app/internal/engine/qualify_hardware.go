@@ -66,8 +66,8 @@ func (e *Engine) learnQualExtent(f *Frame, sc [2]chScale) {
 // from a capture armed under the front end's write generation feAtArm, only
 // when no front-end write (relay, gain, offset) came since the previous
 // capture was armed: the capture spanning a V/div change holds its
-// transient, which widened the learned extent (at 10 V/div a pulse level was
-// planned off the signal; bug hunt #3).
+// transient, which widens the learned extent (at 10 V/div a pulse level is
+// planned off the signal).
 // TRLC-LINKS: REQ-SDS-011, REQ-SDS-013
 func (e *Engine) learnLevels(f *Frame, sc [2]chScale, feAtArm uint64) {
 	if feAtArm == e.feGen.Load() && feAtArm == e.learnFE {

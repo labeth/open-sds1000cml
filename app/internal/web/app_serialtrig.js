@@ -118,6 +118,9 @@ function stMatchText(p) {
   return (p.bytes || []).map((b) => hex(b, 2)).join(" ");
 }
 
+// stScopeProto is the protocol of the scope's serial trigger (stAdopt), named
+// when it was armed on the scope or the phone and this page decodes nothing.
+let stScopeProto = 0;
 // stAdopt shows the trigger as the scope has it armed: the match, I2C address
 // and direction (not while one of them is being typed).
 // TRLC-LINKS: REQ-SDS-206
@@ -129,6 +132,7 @@ function stAdopt() {
   return fetch("/api/serial").then((r) => r.json()).then((j) => {
     if (!j || !j.ok || stOwn) return;
     const p = j.params || {};
+    stScopeProto = p.proto || 0;
     $("stBytes").value = stMatchText(p);
     $("stAddr").value = p.addr >= 0 ? p.addr.toString(16).toUpperCase().padStart(2, "0") : "";
     $("stRW").value = String(p.rw == null ? 2 : p.rw);
@@ -211,8 +215,8 @@ function stOnDecodeChange() {
   // TRLC-LINKS: REQ-SDS-206
   let arming = 0, cancel = false; // the arm under way (its generation): a bus search and the config push take seconds
   $("stArm").onclick = async () => {
-    // A click while an arm is under way cancels it: the second click started
-    // an arm of its own, so two quick clicks armed (bug hunt #3).
+    // A click while an arm is under way cancels it, not starts an arm of its
+    // own (two quick clicks would arm).
     if (arming) { cancel = true; ++stArmGeneration; stStatus("arming cancelled"); return; }
     const on = !stArmed(), generation = ++stArmGeneration;
     if (on) { arming = generation; cancel = false; }
@@ -226,8 +230,8 @@ function stOnDecodeChange() {
       }
       if (stProtoNum() === 0) { stStatus("turn on decode to arm a serial trigger"); return; }
       // Arming a match not edited here arms the scope's stored one (set on the
-      // LCD or a phone, kept while disarmed): the empty field armed "any byte"
-      // over it (bug hunt #3).
+      // LCD or a phone, kept while disarmed), not "any byte" from the empty
+      // field.
       if (on && !stOwn) await stAdopt();
       if (generation !== stArmGeneration) return;
       stOwn = on;
@@ -255,17 +259,19 @@ function stOnDecodeChange() {
 setInterval(() => {
   if (!$("stArm") || !st) return;
   // the scope's match, armed or not, unless this page edited its own: set or
-  // cleared elsewhere (the LCD, a phone, Default setup), the field showed the
-  // old one (bug hunt #3); armed, the strip's caption names it too
+  // cleared elsewhere (the LCD, a phone, Default setup), the field follows;
+  // armed, the strip's caption names it too
   if (!stOwn && !document.hidden && !(typeof superseded !== "undefined" && superseded)) stAdopt();
-  if (stProtoNum() === 0) { if (stOwn && stArmed()) stSetArmed(false); return; }
   // Ignore pre-command status polls until one acknowledges the requested mode.
   if (stModePending !== null) {
     if ((st.serial_mode || 0) === stModePending) stModePending = null;
     else { stStatus(); return; }
   }
+  // the scope's state, whatever this page decodes: armed on the scope or the
+  // phone with this page's decode off it is still armed
   if (st.serial_mode && !stArmed()) $("stArm").classList.add("on");   // engine armed, UI didn't know
   if (!st.serial_mode && stArmed()) { $("stArm").classList.remove("on"); stOwn = false; } // engine disarmed elsewhere
+  if (stProtoNum() === 0) { if (stOwn && stArmed()) stSetArmed(false); stStatus(); return; }
   if (stArmed() && stOwn) { // a trigger this page owns: push what changed here
     const p = stParams();
     if (p && JSON.stringify(p) !== stLastSig) stPush().catch(() => {}); // decode/match changed here

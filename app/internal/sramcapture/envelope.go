@@ -8,7 +8,7 @@ import (
 )
 
 // EnvelopeOutputWords is the reducer's output limit: a request beyond it
-// produces nothing (bench 2026-10-09: 2048 Q8.8 buckets, 4096 words, gave 0).
+// produces nothing (2048 Q8.8 buckets, 4096 words, give 0).
 const EnvelopeOutputWords = 2048
 
 // EnvelopeBuckets is the envelope recall's output length for display: raw

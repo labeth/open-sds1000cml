@@ -18,7 +18,7 @@ function chHas(ch) { return !!(frame && (ch === 1 ? frame.c1 : frame.c2)); }
 // → true Nyquist + fine resolution). Frozen/single and the super-res review keep
 // their own shown frame.
 // TRLC-LINKS: REQ-SDS-070
-function fftUseRaw() { return view.mode === "FFT" && fftRaw && fftRaw.c1 && !frozen && !(typeof sr !== "undefined" && sr.showing); }
+function fftUseRaw() { return (view.mode === "FFT" || view.mode === "SPG") && fftRaw && fftRaw.c1 && !frozen && !(typeof sr !== "undefined" && sr.showing); }
 // TRLC-LINKS: REQ-SDS-070
 function peakSrcCh(ch) {
   if (fftUseRaw()) { const s = ch === 2 ? fftRaw.c2 : fftRaw.c1; if (s) return s; }
@@ -84,8 +84,8 @@ function gapFill(src) {
 }
 
 // pairMids reduces a peak-detect record ((min, max) per bucket) to its bucket
-// midpoints: transforming the pairs themselves drew their alternation as a
-// false spectrum rising to the top of the axis (bench 2026-10-07).
+// midpoints: transforming the pairs themselves draws their alternation as a
+// false spectrum rising to the top of the axis.
 // TRLC-LINKS: REQ-SDS-070
 function pairMids(src) {
   const out = new Float64Array(src.length >> 1);
@@ -96,19 +96,14 @@ function pairMids(src) {
   return out;
 }
 
+// fftBandHz is the FFT source's filter bandwidth (0: none).
 // TRLC-LINKS: REQ-SDS-070
-function fftStride() {
-  // Match peakNyq(): a channel array can be absent (channel off / env frame),
-  // so size the stride from whichever channel array exists — otherwise a
-  // C2-only frame would skip the FFT_MAX decimation entirely.
-  const sig = frame ? (frame.c1 || frame.c2) : null;
-  return Math.max(1, Math.ceil((sig ? sig.length : 0) / FFT_MAX));
-}
+function fftBandHz() { const f = fftUseRaw() ? fftRaw : frame; return (f && f.bandwidth_hz) || 0; }
 
-// displayNyq is the effective FFT Nyquist after the decimation cap — used by
-// every FFT frequency mapping so the axis stays self-consistent.
+// displayNyq is the span the FFT shows (the reduced Nyquist, or the filter's
+// band) — used by every FFT frequency mapping so the axis stays self-consistent.
 // TRLC-LINKS: REQ-SDS-070
-function displayNyq() { return peakNyq() / fftStride(); }
+function displayNyq() { const s = spectrumFor(1) || spectrumFor(2); return s ? s.nyq : peakNyq(); }
 
 // TRLC-LINKS: REQ-SDS-070
 function spectrumFor(ch) {
@@ -116,19 +111,8 @@ function spectrumFor(ch) {
   if (!src) { m.src = null; m.spec = null; return null; } // channel off / env frame: no source
   if (m.src === src) return m.spec;
   m.src = src;
-  let g = gapFill(fftUseRaw() && fftRaw.peak_detect ? pairMids(src) : src);
-  if (g) {
-    const stride = fftStride();
-    if (stride > 1) {
-      // Pure subsample (not box-average) so a tone's magnitude — hence
-      // peakVolts — is preserved exactly; the interpolation ripple aliased
-      // in is negligible next to the signal.
-      const dg = new Float64Array(Math.floor(g.length / stride));
-      for (let i = 0; i < dg.length; i++) dg[i] = g[i * stride];
-      g = dg;
-    }
-    m.spec = spectrum(g, displayNyq());
-  } else m.spec = null;
+  const g = gapFill(fftUseRaw() && fftRaw.peak_detect ? pairMids(src) : src);
+  m.spec = g ? fftReduce(g, peakNyq(), fftBandHz(), FFT_MAX) : null;
   return m.spec;
 }
 

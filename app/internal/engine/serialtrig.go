@@ -199,8 +199,8 @@ func serialMatchIn(chA, chB []uint8, sampleS float64, p SerialParams, at anchorS
 // pickSerialMatch walks the record's matches in order and keeps the one
 // nearest at.target that the display can centre a full screen on. A record
 // holds more than a screen, so the first match can sit near a record end and
-// leave part of the screen off the record, drawn as a repeated edge sample
-// (bug hunt 2026-10-10: a flat 0 V tail on a repeating UART message). When no
+// leave part of the screen off the record, drawn as a repeated edge sample (a
+// flat 0 V tail on a repeating UART message). When no
 // match fits - at slow timebases one SRAM read holds little more than the
 // screen - the match nearest the target leaves the least of it off.
 // TRLC-LINKS: REQ-SDS-013

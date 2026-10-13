@@ -211,14 +211,16 @@ func buildHUD(e *engine.Engine, fe *analog.FrontEnd) lcd.HUD {
 	if st.MaskMode > 0 && st.MaskSet {
 		if m := e.MaskEnvelope(); m != nil {
 			hud.MaskLo, hud.MaskHi, hud.MaskWin = m.Lo, m.Hi, m.WinCols
+			hud.MaskTdivS, hud.MaskSampleS = m.TdivS, m.SampleS
 		}
 	}
 	// FRA / Bode: selecting the BODE view (ViewMode 3) arms the engine's
-	// accumulation (default ref C1 / DUT C2) and feeds the accumulated curve
-	// to the renderer; leaving it disarms. The web can also arm FRA — both
-	// observe the same accumulated points.
+	// accumulation on its reference and DUT channels (the VIEW tab's Bode rows
+	// and the web's selectors set them; it re-armed C1 / C2 over a web choice)
+	// and feeds the accumulated curve to the renderer; leaving it disarms. The
+	// web can also arm FRA — both observe the same accumulated points.
 	if hud.ViewMode == 3 {
-		e.SetBodeMode(true, 0, 1)
+		e.SetBodeMode(true, st.BodeRef, st.BodeDut)
 		pts := e.BodePoints()
 		hud.BodeFreq = make([]float64, len(pts))
 		hud.BodeGain = make([]float64, len(pts))
@@ -228,7 +230,7 @@ func buildHUD(e *engine.Engine, fe *analog.FrontEnd) lcd.HUD {
 		}
 	} else if st.BodeMode > 0 && lastViewWasBode.Swap(false) {
 		// only the device auto-arm gets auto-disarmed; a web-armed FRA persists
-		e.SetBodeMode(false, 0, 1)
+		e.SetBodeMode(false, st.BodeRef, st.BodeDut)
 	}
 	if hud.ViewMode == 3 {
 		lastViewWasBode.Store(true)
@@ -287,9 +289,9 @@ type renderSig struct {
 	curOn                                           bool
 	ref0, ref1                                      bool
 	// extra prints the remaining HUD state a held display shows: the autoset
-	// banner, the notices, the trigger readout, decode parameters (bug hunt
-	// #2: a softkey that changed only a value, e.g. TRIGGER Type Pulse->Slope
-	// while stopped, left the old value on screen).
+	// banner, the notices, the trigger readout, decode parameters (a softkey
+	// that changes only a value, e.g. TRIGGER Type Pulse->Slope while
+	// stopped, must not leave the old value on screen).
 	extra string
 }
 
@@ -455,7 +457,7 @@ func runLCD(e *engine.Engine, fe *analog.FrontEnd, fo *frames.Fanout) {
 				}
 			}
 			// The panel's 40 ms tick keeps the lamps and the remote's snapshot
-			// in step; doing it here too doubled their cost (bug hunt #3, B3).
+			// in step; doing it here too doubles their cost.
 			live := f != nil && time.Since(lastFresh) < 300*time.Millisecond
 			// Asleep, the scope keeps acquiring and analysing; only the
 			// workspace's render stops.
@@ -632,7 +634,7 @@ func main() {
 	logf("start pid=%d version=%s", os.Getpid(), buildinfo.String())
 	// The unit has 125 MB and the default collector lets the heap reach twice
 	// the live set: after 1 M-sample stopped records and full-depth WF?/frame
-	// transfers the app held 71 MB RSS with 25 MB left free (bench 2026-10-07).
+	// transfers the app reaches 71 MB RSS with 25 MB left free.
 	// A soft limit makes the collector work harder near it instead of growing.
 	if os.Getenv("GOMEMLIMIT") == "" {
 		debug.SetMemoryLimit(appMemoryLimit)
@@ -743,7 +745,7 @@ func main() {
 		fabricOK = true
 		if useEDMA {
 			// The EDMA drain is only coherent through /dev/dcinv (a fresh mlocked
-			// buffer is cache-hot too: 64-byte zero runs on hardware, 2026-09-05).
+			// buffer is cache-hot too: 64-byte zero runs on hardware).
 			if err := bus.EnsureDcinv(logf); err != nil {
 				logf("bus: %v — EDMA drain will NOT be cache-coherent; records may carry stale 64-byte lines", err)
 			}
@@ -909,26 +911,6 @@ func main() {
 	go pc.Run(stopFo)
 	logf("panel controller up (fpga_key fd=%d)", keyFD)
 
-	// Settings persistence: restore the last user setup now that the engine is
-	// up — through the SAME setter paths the panel/web use, so every clamp and
-	// side-effect applies — then watch for changes and save them debounced to
-	// the U-disk. A missing/corrupt file just means "boot with defaults".
-	var setFE settings.Analog
-	if fe != nil {
-		setFE = fe
-	}
-	setPath := settings.DefaultPath()
-	if st, ok := settings.Load(setPath, logf); ok {
-		settings.Apply(st, e, setFE, pc, logf)
-		logf("settings: restored %s", setPath)
-	} else {
-		logf("settings: no saved setup at %s — defaults", setPath)
-	}
-	saver := settings.NewSaver(setPath, func() settings.Settings {
-		return settings.Collect(e, setFE, pc)
-	}, logf)
-	go saver.Run(stopFo)
-
 	// Device-screen PNG for the web /api/screen.png endpoint: the exact LCD render.
 	screenPNG := func() []byte { return lcd.EncodePNG(renderScreen(e, fe, fo)) }
 	// SCPI over VXI-11 (spec 11): the host instrument-control interface.
@@ -944,6 +926,27 @@ func main() {
 	scpiH := scpi.New(scopeSource{e, fo}, sfe, pc, shot, logf)
 	scpiCtrl.Store(scpiH) // publish for the LCD render loop + screenshot paths
 	pc.SetInverter(scpiH) // the CH tabs' Invert rows: the same INVS shadow
+	// Settings persistence: restore the last user setup now that the engine is
+	// up and the panel has its display invert (restored with the rest; a
+	// restore run before it would lose the invert) — through the
+	// SAME setter paths the panel/web use, so every clamp and side-effect
+	// applies — then watch for changes and save them debounced to the U-disk.
+	// A missing/corrupt file just means "boot with defaults".
+	var setFE settings.Analog
+	if fe != nil {
+		setFE = fe
+	}
+	setPath := settings.DefaultPath()
+	if st, ok := settings.Load(setPath, logf); ok {
+		settings.Apply(st, e, setFE, pc, logf)
+		logf("settings: restored %s", setPath)
+	} else {
+		logf("settings: no saved setup at %s — defaults", setPath)
+	}
+	saver := settings.NewSaver(setPath, func() settings.Settings {
+		return settings.Collect(e, setFE, pc)
+	}, logf)
+	go saver.Run(stopFo)
 	// *SAV/*RCL: numbered setups beside the persisted one, through the same
 	// Collect/Apply paths as the boot restore.
 	setupSlots := settings.Slots{Dir: filepath.Dir(setPath),
