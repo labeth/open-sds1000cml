@@ -131,3 +131,96 @@ func TestSuperresArmFromStoppedDeepRecord(t *testing.T) {
 		t.Fatalf("arm from a stopped deep record: active=%v N=%d status %q", active, n, status)
 	}
 }
+
+// With the panel loop running, Super-res seeds off it: On returns at once with
+// the mode reading On, the stack lands when the seed is done, and Off while it
+// seeds discards it (bug hunt #3: On held every key 2-4 s on the scope, each
+// gate edge's knob detent 1-2 s).
+// TRLC-LINKS: REQ-SDS-140
+func TestSuperresSeedsOffThePanelLoop(t *testing.T) {
+	c, eng, _ := newC(t)
+	eng.SetRunning(true)
+	fr := smallFrame()
+	fr.SampleS = 1e-9
+	hold := make(chan struct{})
+	var calls atomic.Int32
+	c.SetFrameSource(func(fn func(*engine.Frame)) {
+		if calls.Add(1) == 2 { // the seed's first look waits here
+			<-hold
+		}
+		fn(fr)
+	})
+	c.looping.Store(true)
+	defer c.looping.Store(false)
+	idle := func() bool { c.mu.Lock(); defer c.mu.Unlock(); return !c.srSeederOn }
+	wait := func(ok func() bool) {
+		for deadline := time.Now().Add(3 * time.Second); !ok(); {
+			if time.Now().After(deadline) {
+				t.Fatal("the seeder did not finish")
+			}
+			time.Sleep(5 * time.Millisecond)
+		}
+	}
+	start := time.Now()
+	if err := c.srArm(); err != nil || time.Since(start) > 200*time.Millisecond || rowText(c, "acq.superres") != "On" {
+		t.Fatalf("On: %v after %v, the row %q", err, time.Since(start), rowText(c, "acq.superres"))
+	}
+	if s := c.SuperresView().Status; s != "finding the reference..." { // not the last session's status
+		t.Fatalf("status while the seed runs: %q", s)
+	}
+	c.srCancel("cancelled") // Off while the seed waits
+	close(hold)
+	wait(idle)
+	if c.SuperresView().Active || rowText(c, "acq.superres") != "Off" {
+		t.Fatalf("a seed cancelled in flight armed super-res: active %v row %q", c.SuperresView().Active, rowText(c, "acq.superres"))
+	}
+	if err := c.srArm(); err != nil {
+		t.Fatal(err)
+	}
+	defer c.srCancel("")
+	wait(func() bool { return idle() && c.SuperresView().Active })
+}
+
+// A Stop pressed while a seed runs off the panel goroutine stands: the seed's
+// end resumed RUN over it (bug hunt #3: the ACQ Run row set to Stop just
+// after Super-res On read Run again); with no press meanwhile it resumes.
+// TRLC-LINKS: REQ-SDS-140
+func TestSuperresSeedKeepsAStopPressedMeanwhile(t *testing.T) {
+	for _, press := range []bool{true, false} {
+		c, eng, _ := newC(t)
+		eng.SetRunning(true)
+		fr := smallFrame()
+		fr.SampleS = 1e-9
+		hold := make(chan struct{})
+		var calls atomic.Int32
+		c.SetFrameSource(func(fn func(*engine.Frame)) {
+			if calls.Add(1) == 2 { // the seed's first look waits here
+				<-hold
+			}
+			fn(fr)
+		})
+		c.looping.Store(true)
+		if err := c.srArm(); err != nil {
+			t.Fatal(err)
+		}
+		if press {
+			if err := c.setRun(1); err != nil { // Stop while the seed runs
+				t.Fatal(err)
+			}
+		} else {
+			eng.SetRunning(false) // stopped, but not by a press since On
+		}
+		close(hold)
+		for deadline := time.Now().Add(3 * time.Second); !c.SuperresView().Active; {
+			if time.Now().After(deadline) {
+				t.Fatal("the seed did not finish")
+			}
+			time.Sleep(5 * time.Millisecond)
+		}
+		if running := eng.Snapshot().Running; running == press {
+			t.Fatalf("Stop pressed meanwhile %v: running %v after the seed", press, running)
+		}
+		c.srCancel("")
+		c.looping.Store(false)
+	}
+}

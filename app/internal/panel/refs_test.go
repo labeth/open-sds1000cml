@@ -99,3 +99,30 @@ func TestPanelStartPreservesRestoredQualifiers(t *testing.T) {
 		t.Fatal("panel startup replaced restored qualifiers")
 	}
 }
+
+// The web app takes the scope's references (GET /api/refs) with the volts at
+// the probe tip, as its own volts per code, the timebase and the trigger's
+// place across the screen: the web's Stack master shows the scope's master
+// as its REF A (bug hunt #3).
+// TRLC-LINKS: REQ-SDS-138, REQ-SDS-218
+func TestRefsExportForTheWeb(t *testing.T) {
+	c, eng, fe := newC(t)
+	eng.stats.TrigPosFrac, eng.stats.TdivS = .25, 100e-6
+	fe.SetProbe(0, 10)
+	n := 4096
+	f := &engine.Frame{C1: make([]uint8, n), C2: make([]uint8, n), Valid: n, WinCols: 2048, EdgeX: 2048}
+	for i := range f.C1 {
+		f.C1[i], f.C2[i] = 128, 60
+	}
+	c.SetFrameSource(func(fn func(*engine.Frame)) { fn(f) })
+	c.captureRef(0)
+	e := c.RefsExport()
+	a := e[0]
+	if !a.Has || e[1].Has || a.Cols != RefCols || len(a.C1) != RefCols || a.C1[0] != 128 || a.C2[0] != 60 {
+		t.Fatalf("export %+v / %+v", a.Has, e[1].Has)
+	}
+	v := analog.AnalogVdiv(fe.idx[0])
+	if a.Vdiv[0] != 10*v || a.Vdiv[1] != analog.AnalogVdiv(fe.idx[1]) || a.TdivS != 100e-6 || a.PosFrac != .25 {
+		t.Fatalf("tip V/div %v (want %v), tdiv %v, trigger at %v", a.Vdiv, 10*v, a.TdivS, a.PosFrac)
+	}
+}

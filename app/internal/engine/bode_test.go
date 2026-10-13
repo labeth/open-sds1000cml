@@ -3,6 +3,7 @@ package engine
 
 import (
 	"math"
+	"strings"
 	"testing"
 )
 
@@ -134,6 +135,10 @@ func TestBodeRejectsFloorAndSubCycle(t *testing.T) {
 	if len(e.BodePoints()) != 0 || e.Snapshot().BodeValid {
 		t.Error("flat reference must not produce a Bode point")
 	}
+	// the status says why (bug hunt #3: the LCD said "Sweeping..." forever)
+	if why := e.Snapshot().BodeWhy; why != "no tone on the reference C1" {
+		t.Errorf("flat reference: why %q", why)
+	}
 
 	// sub-cycle: only ~1 cycle in the record → rejected (needs >= bodeMinCycles)
 	e.ClearBode()
@@ -141,6 +146,15 @@ func TestBodeRejectsFloorAndSubCycle(t *testing.T) {
 	e.bodeEval(&Frame{C1: synthSine(n, lowF, dt, 90, 128, 0), C2: synthSine(n, lowF, dt, 90, 128, 0), Valid: n, SampleS: dt}, n, dt)
 	if len(e.BodePoints()) != 0 {
 		t.Error("a sub-bodeMinCycles record must be rejected")
+	}
+	threeF := 3.0 / (float64(n) * dt) // a tone, too few cycles of it
+	e.bodeEval(&Frame{C1: synthSine(n, threeF, dt, 90, 128, 0), C2: synthSine(n, threeF, dt, 90, 128, 0), Valid: n, SampleS: dt}, n, dt)
+	if why := e.Snapshot().BodeWhy; !strings.Contains(why, "S/DIV slower") {
+		t.Errorf("three cycles: why %q", why)
+	}
+	e.bodeEval(&Frame{C1: synthSine(n, 5e6, dt, 90, 128, 0), C2: synthSine(n, 5e6, dt, 90, 128, 0), Valid: n, SampleS: dt}, n, dt)
+	if why := e.Snapshot().BodeWhy; why != "" || !e.Snapshot().BodeValid {
+		t.Errorf("a good point: why %q", why)
 	}
 }
 

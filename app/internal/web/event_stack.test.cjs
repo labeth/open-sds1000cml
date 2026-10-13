@@ -13,7 +13,15 @@ for(const parity of ['none','even','odd']){
  const c={...lib,decodeUART,srGateFeed:globalThis.srGateFeed,dcfg:{proto:'uart',baud:115200,bits:8,parity,auto:true},
   sr:{alignCh:0,evtByte:value,stopVal:0},$:id=>({value:id==='srK'?'4':id==='srKernel'?'interp':''}),srUpdateStats(){},srStatus(){},srStop:s=>{throw Error(s)}};
  vm.createContext(c);vm.runInContext(code,c);
- c.srEvtIngest({cols:sig.length,c1:sig,c2:sig,sample_s:dt,tdiv_s:.0001});
+ const frame={cols:sig.length,c1:sig,c2:sig,sample_s:dt,tdiv_s:.0001};
+ // software never triggers: an untriggered record, or one the FPGA triggered
+ // elsewhere, stacks nothing; the FPGA's UART trigger on the byte (its point
+ // where the byte's data begins, 5 bits in) seeds the stack
+ c.srEvtIngest(frame);
+ assert.equal(c.sr.st,undefined,'a record the FPGA did not trigger must not stack');
+ c.srEvtIngest({...frame,trigd:true,trigger_kind:'hardware-uart',edge_x:12*spb});
+ assert.equal(c.sr.st,undefined,'a trigger away from the byte must not stack it');
+ c.srEvtIngest({...frame,trigd:true,trigger_kind:'hardware-uart',edge_x:5*spb});
  assert.ok(c.sr.st,'event reference must seed');
  const result=lib.srResult(c.sr.st),decoded=decodeUART(result.mean,dt/4,{baud:115200,bits:8,parity,guard:4});
  assert.deepEqual(decoded.bytes,[value],parity+' stacked review must retain the complete UART frame');

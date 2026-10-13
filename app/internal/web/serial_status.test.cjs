@@ -6,10 +6,13 @@ const status = source.slice(source.indexOf('function stStatus('), source.indexOf
 const el = {textContent: ''};
 const c = {$: () => el, stProtoNum: () => 1, stParams: () => ({}), stConfigError: '', stArmed: () => true, stBandInactive: () => false};
 vm.createContext(c); vm.runInContext(status, c);
-for (const [backend, label] of [['hardware-uart','hardware UART'],['hardware-i2c','hardware I²C'],['hardware-spi','hardware SPI'],['hardware-can-sequence','hardware CAN sequence'],['hardware-mil1553-sequence','hardware MIL-1553 sequence'],['hardware-usbls','hardware USB LS'],['software','software matching']]) {
+for (const [backend, label] of [['hardware-uart','hardware UART'],['hardware-i2c','hardware I²C'],['hardware-spi','hardware SPI'],['hardware-can-sequence','hardware CAN sequence'],['hardware-mil1553-sequence','hardware MIL-1553 sequence'],['hardware-usbls','hardware USB LS'],['','waiting for the scope']]) {
   c.st = {serial_backend: backend, serial_matches: 7}; c.stStatus();
   assert.equal(el.textContent, `armed · ${label} · 7 matches`);
 }
+// The FPGA decides a serial trigger: one it cannot take yet says why, never "software matching".
+c.st = {serial_backend: 'none: measuring the UART bit rate', serial_matches: 0}; c.stStatus();
+assert.equal(el.textContent, 'armed · no hardware trigger yet: measuring the UART bit rate');
 console.log('ALL PASS');
 
 const paramsContext = {dcfg:{proto:'spi',clk:1,data:2,bits:8,msb:true,auto:false}, $: id=>({value: {stAddr:'',stBytes:'55 AA',stRW:'2',decThr:'128',dsClock:'200000'}[id]})};
@@ -28,7 +31,7 @@ assert.equal(paramsContext.stParams().chB,1);
   }
   els.stRW.value='2';
   const sent=[];let tick,release;
-  const c={$:id=>els[id],dcfg:{proto:'uart',bits:8,baud:115200,auto:true},st:{serial_mode:0},
+  const c={$:id=>els[id],dcfg:{proto:'uart',bits:8,baud:115200,auto:true},st:{serial_mode:0},document:{activeElement:null},
     send:async(control,value)=>{sent.push([control,value]);return {ok:true};},
     fetch:async()=>({ok:true,json:async()=>({ok:true})}),setInterval:f=>tick=f};
   vm.createContext(c);vm.runInContext(source,c);

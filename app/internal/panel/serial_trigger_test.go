@@ -11,8 +11,8 @@ import (
 )
 
 // The serial trigger is the TRIG tab's fifth Type; it decodes with the BUS
-// tab's bus (one bus, set once), the BUS tab's Match bytes row and the
-// pickers set its match, and Serial refuses without a bus it can match.
+// tab's bus (one bus, set once, any of the decoders), the BUS tab's Match
+// bytes row and the pickers set its match, and Serial refuses without a bus.
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-212
 func TestSerialTriggerType(t *testing.T) {
 	c, eng, _ := newC(t)
@@ -52,12 +52,24 @@ func TestSerialTriggerType(t *testing.T) {
 	if r := rowModel(c.snap(), rowByID["bus.i2c_address"]); r.Text != "0x50" || r.Available {
 		t.Fatalf("the I2C address on SPI: %+v", r)
 	}
-	c.SheetSet("bus.protocol", nil, "Manch") // no serial trigger for it: disarmed
-	if eng.stats.SerialMode != 0 {
-		t.Fatal("a Manchester bus left the serial trigger armed")
+	// Every bus has a matcher (the packet and line FPGA images): the trigger
+	// follows a Manchester bus, decoded as BUS decodes it (IEEE, MSB first),
+	// and a CAN bus at its bit rate.
+	c.SheetSet("bus.protocol", nil, "Manch")
+	if p := eng.SerialConfig(); eng.stats.SerialMode == 0 || p.Proto != 4 || !p.MSB || !p.IEEE || p.HaveThr {
+		t.Fatalf("Manchester: mode %d %+v", eng.stats.SerialMode, p)
 	}
-	if res := c.SheetSet("trig.type", nil, "Serial"); res.OK || !strings.Contains(res.Error, "UART, I2C or SPI") {
-		t.Fatalf("Serial on Manchester: %+v", res)
+	c.SheetSet("bus.protocol", nil, "CAN")
+	c.mu.Lock()
+	c.decBaud = 500000
+	c.mu.Unlock()
+	c.syncSerialBus()
+	if p := eng.SerialConfig(); eng.stats.SerialMode == 0 || p.Proto != 6 || p.Baud != 500000 || !p.MSB {
+		t.Fatalf("CAN: mode %d %+v", eng.stats.SerialMode, p)
+	}
+	c.SheetSet("bus.protocol", nil, "Off") // no bus: disarmed
+	if eng.stats.SerialMode != 0 {
+		t.Fatal("decode off left the serial trigger armed")
 	}
 	c.SheetSet("bus.protocol", nil, "UART")
 	c.SheetSet("trig.type", nil, "Serial")
@@ -215,5 +227,24 @@ func TestBytePickers(t *testing.T) {
 	}
 	if st := c.PanelStatus(); st.Mode != "sheet" || st.Sheet.Row.ID != "bus.match" {
 		t.Fatalf("after the sheet pick: %s", st.Mode)
+	}
+}
+
+// OK's notice names the match the trigger now holds: a lone typed nibble is
+// the byte 0A, and the notice said "55 A" (bug hunt #3).
+// TRLC-LINKS: REQ-SDS-013
+func TestMatchEditorOKNamesTheArmedMatch(t *testing.T) {
+	c, _, _ := newC(t)
+	c.SheetSet("bus.protocol", nil, "UART")
+	c.SheetSet("trig.type", nil, "Serial") // match 55
+	press(t, c, "utility")
+	goRow(t, c, "bus.match")
+	pickKey(t, c, "Edit bytes")
+	c.mu.Lock()
+	c.kb.toks, c.kb.cur = []string{"55", "A"}, 2
+	c.mu.Unlock()
+	pickKey(t, c, "OK")
+	if n := c.View().Notice; n != "Match: 55 0A" {
+		t.Fatalf("OK's notice %q", n)
 	}
 }

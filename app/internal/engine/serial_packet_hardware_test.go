@@ -19,8 +19,8 @@ type packetEngineBus struct{ *stackEngineBus }
 
 // TRLC-LINKS: REQ-SDS-013
 func (b packetEngineBus) Read(p uint8, s uint16) (uint16, error) {
-	if b.image == "packet" || b.image == "line" || b.image == "general" {
-		packet, line, general := b.image == "packet", b.image == "line", b.image == "general"
+	if b.image == "packet" || b.image == "line" || b.image == "general" || b.image == "qualify" {
+		packet, line, general, qualify := b.image == "packet", b.image == "line", b.image == "general", b.image == "qualify"
 		switch s {
 		case 43:
 			return 0x454e, nil
@@ -36,8 +36,6 @@ func (b packetEngineBus) Read(p uint8, s uint16) (uint16, error) {
 			return map[bool]uint16{true: 0x5501}[line], nil
 		case 77:
 			return map[bool]uint16{true: 0x5e01}[packet], nil
-		case 118:
-			return 0x5351, nil
 		case 73:
 			return 0x5201, nil
 		case 48:
@@ -53,9 +51,15 @@ func (b packetEngineBus) Read(p uint8, s uint16) (uint16, error) {
 		case 102:
 			return map[bool]uint16{true: 0x4d01}[line], nil
 		case 30:
-			return map[bool]uint16{false: 0x4e44}[general], nil
+			return map[bool]uint16{false: 0x4e44}[general || qualify], nil
 		case 63:
 			return 0, nil
+		case 74:
+			return map[bool]uint16{true: 0x5154}[qualify], nil
+		case 75:
+			return map[bool]uint16{true: 0x000f}[qualify], nil
+		case 118:
+			return map[bool]uint16{false: 0x5351}[qualify], nil
 		}
 	}
 	return b.stackEngineBus.Read(p, s)
@@ -93,6 +97,16 @@ func (f *packetImages) LoadStream() error { return nil }
 
 // TRLC-LINKS: REQ-SDS-035
 func (f *packetImages) HasStream() bool { return false }
+
+// TRLC-LINKS: REQ-SDS-011
+func (f *packetImages) LoadQualify() error {
+	f.loads = append(f.loads, "qualify")
+	f.b.image = "qualify"
+	return nil
+}
+
+// TRLC-LINKS: REQ-SDS-011
+func (f *packetImages) HasQualify() bool { return true }
 
 // TRLC-LINKS: REQ-SDS-005
 func (f *packetImages) LoadGeneral() error {
@@ -152,7 +166,8 @@ func TestPacketImageFollowsSerialTrigger(t *testing.T) {
 	if e.serviceImage() {
 		t.Fatal("reloaded an image that is already loaded")
 	}
-	// Auto threshold stays a software request, on the general image.
+	// Without a threshold it waits on the general image until a capture has
+	// shown the line's levels (TestEveryBusPlansFromTheScope).
 	e.SetSerialParams(SerialParams{Proto: serCAN, Baud: 500000})
 	if !e.serviceImage() || b.image != "general" || e.protocolImage != "" || e.hardwarePacket != 0 || e.rawOnly || !e.hardwareUART || !e.hardwareEnvelope {
 		t.Fatalf("general image: loads %v image %s", images.loads, b.image)
@@ -260,5 +275,36 @@ func TestARINCLevelsMatchDecoder(t *testing.T) {
 				t.Fatalf("rails %v code %d: float %.2f %.2f %.2f %.2f integer %d %d %d %d", rails, c, hi, lo, exitHi, exitLo, h, l, eh, el)
 			}
 		}
+	}
+}
+
+// The ARINC slicer levels come from a sampled record: a live envelope's
+// (min, max) pairs gave wrong ones, kept until the request changed, and the
+// matcher never fired (bug hunt #3). On an envelope the engine asks for a
+// sampled record instead.
+// TRLC-LINKS: REQ-SDS-018
+func TestARINCLevelsWaitForASampledRecord(t *testing.T) {
+	e := levelsEngine(SerialParams{Proto: serARINC, ChA: 0, Baud: 100000, Bytes: []int{0xABCD}})
+	e.clk = Clock{Now: time.Now, Sleep: func(time.Duration) {}}
+	var codes []uint8
+	for i := 0; i < 4000; i++ {
+		v := 128
+		switch i % 20 {
+		case 0, 1, 2:
+			v = 210
+		case 10, 11:
+			v = 40
+		}
+		codes = append(codes, uint8(v+(i*7)%3-1))
+	}
+	e.learnSerialLevels(&Frame{C1: codes, C2: codes, Valid: len(codes), SampleS: 1e-6}, [2]chScale{{1, 0}, {1, 0}})
+	env := &Frame{C1: codes, C2: codes, Valid: len(codes), SampleS: 1e-6, PeakDetect: true, Ordered: true}
+	e.noteARINCLevels(env)
+	if e.arincAux.Load() != 0 || !e.leased(&e.decodeLease) {
+		t.Fatalf("levels from an envelope %#x, a sampled record asked for %v", e.arincAux.Load(), e.leased(&e.decodeLease))
+	}
+	e.noteARINCLevels(&Frame{C1: codes, C2: codes, Valid: len(codes), SampleS: 1e-6, Decimation: 1})
+	if e.arincAux.Load() == 0 {
+		t.Fatal("no levels from a sampled record")
 	}
 }

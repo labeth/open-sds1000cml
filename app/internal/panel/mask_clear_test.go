@@ -5,6 +5,7 @@ import (
 	"math"
 	"strings"
 	"testing"
+	"time"
 
 	"open-sds/app/internal/engine"
 )
@@ -105,7 +106,8 @@ func TestClearStopsAMaskBuild(t *testing.T) {
 }
 
 // DEFAULT SETUP clears the mask and the serial trigger's match: no bytes,
-// any I2C address and direction, as a trigger never armed.
+// any I2C address and direction, as a trigger never armed; the bus settings
+// return to power-on with the decoder (SENT showed the last bus's rate).
 // TRLC-LINKS: REQ-SDS-139, REQ-SDS-013
 func TestDefaultSetupClearsMatchAndMask(t *testing.T) {
 	c, eng, _ := newC(t)
@@ -113,6 +115,9 @@ func TestDefaultSetupClearsMatchAndMask(t *testing.T) {
 	c.SheetSet("bus.protocol", nil, "I2C")
 	c.SheetSet("bus.i2c_address", nil, "0x50")
 	c.SheetSet("bus.protocol", nil, "UART")
+	c.mu.Lock()
+	c.decBaud, c.decChA, c.decChB, c.decCPOL = 999873, 1, 0, true // the bus found before
+	c.mu.Unlock()
 	if res := c.SheetSet("bus.match", nil, "AA"); !res.OK {
 		t.Fatalf("match: %+v", res)
 	}
@@ -124,6 +129,13 @@ func TestDefaultSetupClearsMatchAndMask(t *testing.T) {
 	}
 	if st := eng.Snapshot(); st.MaskSet || st.MaskMode != 0 {
 		t.Fatalf("Default setup kept the mask: set %v mode %d", st.MaskSet, st.MaskMode)
+	}
+	// the bus settings return to power-on: a bus found later starts afresh
+	c.mu.Lock()
+	baud, chA, chB, cpol, cpha := c.decBaud, c.decChA, c.decChB, c.decCPOL, c.decCPHA
+	c.mu.Unlock()
+	if baud != 115200 || chA != 0 || chB != 1 || cpol || cpha {
+		t.Fatalf("bus after default setup: %d baud, C%d/C%d, cpol %v cpha %v", baud, chA+1, chB+1, cpol, cpha)
 	}
 }
 
@@ -197,5 +209,81 @@ func TestMasterMaskInLiveGeometry(t *testing.T) {
 	}
 	if eng.Snapshot().MaskSet {
 		t.Fatal("Clear mask while the master waited: its mask was built anyway")
+	}
+}
+
+// DEFAULT SETUP returns the channels to full bandwidth and the right way up:
+// the 20 MHz limit stayed on after it (bug hunt #3).
+// TRLC-LINKS: REQ-SDS-136
+func TestDefaultSetupClearsBWLimitAndInvert(t *testing.T) {
+	r := newViewRig(t)
+	c := r.c
+	for _, row := range []string{"ch1.bwl", "ch2.bwl", "ch1.invert", "ch2.invert"} {
+		if res := c.SheetSet(row, nil, "On"); !res.OK {
+			t.Fatalf("%s: %+v", row, res)
+		}
+	}
+	if res := c.SheetAction("sys.default", ""); !res.OK {
+		t.Fatalf("default setup: %+v", res)
+	}
+	for _, row := range []string{"ch1.bwl", "ch2.bwl", "ch1.invert", "ch2.invert"} {
+		if got := rowText(c, row); got != "Off" {
+			t.Errorf("%s after default setup: %q", row, got)
+		}
+	}
+}
+
+// DEFAULT SETUP returns the pulse, slope and video settings to their power-on
+// values: a pulse width "> 13 us", a 12-30 ns slope and NTSC line 10 set from
+// the web stayed after it (bug hunt #3).
+// TRLC-LINKS: REQ-SDS-136
+func TestDefaultSetupResetsTheQualifiers(t *testing.T) {
+	c, eng, _ := newC(t)
+	eng.SetPulseParams(0.3, 0, 13000, 2)
+	eng.SetSlopeParams(0.1, 0.9, 12, 30, 3)
+	eng.SetVideoParams(1, 10, false)
+	c.SheetSet("trig.type", nil, "Pulse")
+	if rowText(c, "trig.pulse_max") != "13us" {
+		t.Fatalf("the web's pulse width: %q", rowText(c, "trig.pulse_max"))
+	}
+	c.DefaultSetup()
+	q := eng.Snapshot().TrigQual
+	if q.PulseLvl != 0.5 || q.PulseMinNs != 100 || q.PulseMaxNs != 1000 || q.PulseCond != 0 || q.SlopeLo != 0.2 || q.SlopeHi != 0.8 ||
+		q.SlopeMinNs != 100 || q.SlopeMaxNs != 1000 || q.SlopeCond != 0 || q.VideoStd != 0 || q.VideoLine != 0 || !q.VideoNeg {
+		t.Fatalf("after default setup: %+v", q)
+	}
+	for row, want := range map[string]string{"trig.type": "Edge", "trig.pulse_when": "Any", "trig.pulse_max": "1us", "trig.slope_when": "Any",
+		"trig.video_std": "PAL", "trig.video_sync": "Negative"} {
+		if got := rowText(c, row); got != want {
+			t.Errorf("%s after default setup: %q, want %q", row, got, want)
+		}
+	}
+}
+
+// A mask build that gets no locked frame (the trigger off the signal) gives
+// up within seconds and its row says why: it showed "building" for 44 s (2.5
+// minutes at 128 frames) and then "none" on the sheet and the phone, the
+// reason only on the LCD (bug hunt #3).
+// TRLC-LINKS: REQ-SDS-139
+func TestMaskBuildSaysWhyItFailed(t *testing.T) {
+	c, _, _ := newC(t)
+	defer func(w time.Duration) { maskNoLockWait = w }(maskNoLockWait)
+	maskNoLockWait = 300 * time.Millisecond
+	var seq uint64
+	c.SetFrameSource(func(fn func(*engine.Frame)) {
+		seq++
+		f := smallFrame()
+		f.Seq, f.EdgeX, f.Trigd = seq, -1, false // free-running: no trigger located
+		fn(f)
+	})
+	c.mu.Lock()
+	c.maskBuilding = true
+	gen := c.maskGen
+	c.mu.Unlock()
+	start := time.Now()
+	c.maskBuildRun(gen, 8, 1, 2, 0, .5)
+	got := rowModel(c.snap(), rowByID["cmp.build_mask"]).Text
+	if d := time.Since(start); d > 2*time.Second || got != "build failed - no locked frames: put the trigger level on the signal" {
+		t.Fatalf("after %v the row says %q", d.Round(time.Millisecond), got)
 	}
 }

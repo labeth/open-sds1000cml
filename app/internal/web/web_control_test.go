@@ -4,9 +4,12 @@ package web
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"math"
 	"net/http/httptest"
 	"open-sds/app/internal/engine"
+	"open-sds/app/internal/panel"
+	"strings"
 	"testing"
 )
 
@@ -295,5 +298,38 @@ func TestRunToggleAfterSingleCapture(t *testing.T) {
 	out = post(t, s, "runtoggle", 0)
 	if out["ok"] != true || out["applied"] != float64(0) || fs.stats.Running {
 		t.Fatalf("stop running acquisition: %v", out)
+	}
+}
+
+// fakeRefs is a panel with references (the web's /api/refs).
+type fakeRefs struct{ fuzzPanel }
+
+func (*fakeRefs) RefsExport() [2]panel.RefExport {
+	return [2]panel.RefExport{{Has: true, Show: true, Cols: 3, C1: []int{1, 2, 3}, Vdiv: [2]float64{1, 1}, TdivS: 1e-3, PosFrac: .5}}
+}
+
+// GET /api/refs serves the scope's references as numbers (a []uint8 would be
+// base64 in JSON), and says so when the server has no panel.
+// TRLC-LINKS: REQ-SDS-138, REQ-SDS-218
+func TestRefsEndpoint(t *testing.T) {
+	s := New(&fakeScope{}, nil, &fakeRefs{}, nil)
+	rec := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rec, httptest.NewRequest("GET", "/api/refs", nil))
+	var got struct {
+		OK   bool              `json:"ok"`
+		Refs [2]map[string]any `json:"refs"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil || !got.OK || got.Refs[0]["has"] != true || fmt.Sprint(got.Refs[0]["c1"]) != "[1 2 3]" || got.Refs[1]["has"] != false {
+		t.Fatalf("refs %s (%v)", rec.Body.String(), err)
+	}
+	rec = httptest.NewRecorder()
+	New(&fakeScope{}, nil, nil, nil).Handler().ServeHTTP(rec, httptest.NewRequest("GET", "/api/refs", nil))
+	if !strings.Contains(rec.Body.String(), `"ok":false`) {
+		t.Fatalf("no panel: %s", rec.Body.String())
+	}
+	rec = httptest.NewRecorder()
+	s.Handler().ServeHTTP(rec, httptest.NewRequest("POST", "/api/refs", nil))
+	if rec.Code != 405 {
+		t.Fatalf("POST: %d", rec.Code)
 	}
 }

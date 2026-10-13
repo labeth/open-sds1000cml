@@ -250,3 +250,26 @@ func TestDecodeARINC429NoPanic(t *testing.T) {
 		}
 	}
 }
+
+// ARINC429Levels finds NULL as the densest band of codes: the bench's NULL, a
+// filtered toggle, rippled over 164-178 while the LO rail sat on one code,
+// and the commonest single code made LO the NULL and every threshold wrong
+// (bug hunt #3: the FPGA's ARINC matcher never fired).
+// TRLC-LINKS: REQ-SDS-018
+func TestARINC429LevelsRippledNull(t *testing.T) {
+	var codes []uint8
+	for i := 0; i < 20000; i++ {
+		switch i % 20 {
+		case 0, 1, 2:
+			codes = append(codes, 210) // HI
+		case 10, 11, 12:
+			codes = append(codes, 128) // LO, one code
+		default:
+			codes = append(codes, uint8(164+(i*7)%15)) // NULL with ripple
+		}
+	}
+	null, hi, lo, exitHi, exitLo, reason := ARINC429Levels(codes, ARINC429Cfg{Bitrate: 100000})
+	if reason != "" || null < 164 || null > 178 || hi <= 178 || hi >= 210 || lo >= 164 || lo <= 128 || exitHi < null || exitLo > null {
+		t.Fatalf("null %.1f hi %.1f lo %.1f exits %.1f/%.1f %q", null, hi, lo, exitHi, exitLo, reason)
+	}
+}

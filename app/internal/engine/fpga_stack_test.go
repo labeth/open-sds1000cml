@@ -192,6 +192,12 @@ func (f *fakeImages) LoadStream() error { return nil }
 // TRLC-LINKS: REQ-SDS-035
 func (f *fakeImages) HasStream() bool { return false }
 
+// TRLC-LINKS: REQ-SDS-011
+func (f *fakeImages) LoadQualify() error { return errors.New("no qualifier image in this fake") }
+
+// TRLC-LINKS: REQ-SDS-011
+func (f *fakeImages) HasQualify() bool { return false }
+
 // TRLC-LINKS: REQ-SDS-141
 func (f *fakeImages) HasStack() bool { return true }
 

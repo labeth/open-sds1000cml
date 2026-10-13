@@ -39,18 +39,18 @@ func TestHoldoffStepsToNearestSettingInRequestedDirection(t *testing.T) {
 		direction int
 		want      float64
 	}{
-		{0.0025, 1, 0.01}, {0.0025, -1, 0.001}, {0.001, 1, 0.01}, {0.001, -1, 0.0001}, {0, -1, 0}, {1, 1, 1},
+		{0.0025, 1, 0.005}, {0.0025, -1, 0.002}, {0.001, 1, 0.002}, {0.001, -1, 0.0005}, {0, -1, 0}, {1, 1, 2}, {10, 1, 10},
 	} {
 		if got := nextHoldoff(tc.current, tc.direction, false); got != tc.want {
 			t.Errorf("holdoff %g dir %d: %g, want %g", tc.current, tc.direction, got, tc.want)
 		}
 	}
-	// A press wraps past the ends (bug hunt #2: F5 stuck at 1 s).
-	if got := nextHoldoff(1, 1, true); got != 0 {
-		t.Errorf("press past 1 s: %g, want Off", got)
+	// A press wraps past the ends (bug hunt #2: F5 stuck at the top).
+	if got := nextHoldoff(10, 1, true); got != 0 {
+		t.Errorf("press past 10 s: %g, want Off", got)
 	}
-	if got := nextHoldoff(0, -1, true); got != 1 {
-		t.Errorf("press below Off: %g, want 1 s", got)
+	if got := nextHoldoff(0, -1, true); got != 10 {
+		t.Errorf("press below Off: %g, want 10 s", got)
 	}
 }
 
@@ -63,14 +63,20 @@ func TestSRAMAcquisitionRowsUseBackendCapabilities(t *testing.T) {
 	eng.stats.BandKind = "sram"
 	eng.stats.MemDepth = 1048576
 	before := len(eng.calls)
-	for _, id := range []string{"acq.ets", "acq.depth"} {
-		if rowByID[id].relevant(c.snap()) {
-			t.Errorf("%s in use on SRAM", id)
+	for _, set := range []struct {
+		id string
+		v  float64
+	}{{"acq.ets", 1}, {"acq.depth", 6144}} {
+		if rowByID[set.id].relevant(c.snap()) {
+			t.Errorf("%s in use on SRAM", set.id)
 		}
-		m := rowModel(c.snap(), rowByID[id])
-		if res := c.SheetSet(id, float64(m.Options[1].Value), ""); res.OK {
-			t.Errorf("%s set on SRAM", id)
+		if res := c.SheetSet(set.id, set.v, ""); res.OK {
+			t.Errorf("%s set on SRAM", set.id)
 		}
+	}
+	// The depth row names the depth the timebase set, not the direct path's (bug hunt #3).
+	if got := rowText(c, "acq.depth"); got != "1M (auto)" {
+		t.Errorf("the depth row on SRAM reads %q", got)
 	}
 	if len(eng.calls) != before {
 		t.Fatalf("unsupported SRAM controls issued engine commands: %v", eng.calls[before:])

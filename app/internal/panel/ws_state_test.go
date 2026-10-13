@@ -154,8 +154,8 @@ func TestSheetKnobs(t *testing.T) {
 	if !c.PanelStatus().Sheet.Edit {
 		t.Fatal("Adjust push did not edit the row")
 	}
-	turn(c, "adjust", 2) // editing: Adjust changes the value, not the row
-	if r := c.PanelStatus().Sheet.Row.ID; r != "trig.holdoff" || eng.Snapshot().HoldoffS != 1e-3 {
+	turn(c, "adjust", 2) // editing: Adjust changes the value, not the row (Off, 100 us, 200 us)
+	if r := c.PanelStatus().Sheet.Row.ID; r != "trig.holdoff" || eng.Snapshot().HoldoffS != 200e-6 {
 		t.Fatalf("edit turn: row %s holdoff %g", r, eng.Snapshot().HoldoffS)
 	}
 	press(t, c, "adjustpush")

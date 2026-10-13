@@ -27,6 +27,35 @@ run(async (t) => {
   await po.click("stArm");
   await t.until(async () => /turn on decode/.test(await po.text("stStats")), "with decoding off and no bus found, arming refuses and says why", 8000);
   t.ok(!(await po.hasClass("stArm", "on")), "…and stays disarmed");
+  // a second click while the first still searches for the bus cancels the arm
+  // (two quick clicks armed: the second started an arm of its own; bug hunt #3)
+  const sent = posts.length;
+  await po.eval(() => { const b = document.getElementById("stArm"); b.click(); b.click(); });
+  await t.until(async () => /arming cancelled/.test(await po.text("stStats")), "a second click while arming cancels it", 4000);
+  await new Promise((r) => setTimeout(r, 3000)); // the first click's search ends
+  t.ok(!(await po.hasClass("stArm", "on")) && !posts.slice(sent).some((p) => /\/api\/serial/.test(p.url)),
+    "…and the search that ends after it sends nothing to the scope");
+
+  // a second click that lands while the arm itself is on its way takes the arm back
+  {
+    await po.setSelect("decProto", "uart");
+    let release; const held = new Promise((r) => { release = r; });
+    await page.route("**/api/set", async (route) => {
+      const b = JSON.parse(route.request().postData() || "{}");
+      if (b.control === "serialmode" && b.value === 1) await held;
+      await route.continue();
+    });
+    const sent = posts.length;
+    await po.click("stArm");
+    await po.waitFor(() => document.getElementById("stArm").classList.contains("on"), null, 8000); // the arm is sent
+    await po.click("stArm");   // ...and the cancel lands before its answer
+    release();
+    await t.until(async () => posts.slice(sent).some((p) => p.body.control === "serialmode" && p.body.value === 0),
+      "a cancel that came after the arm was sent takes it back", 6000);
+    t.ok(!(await po.hasClass("stArm", "on")), "…and the trigger shows off");
+    await page.unroute("**/api/set");
+    await po.setSelect("decProto", "off");
+  }
 
   // decode on: I2C. The I2C address row appears.
   await po.setSelect("decProto", "i2c");

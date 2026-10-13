@@ -35,3 +35,39 @@ func TestRefineTriggerEdgeFindsExactCrossing(t *testing.T) {
 		t.Fatalf("no record: %v", got)
 	}
 }
+
+// Software may check a trigger the FPGA pointed out (owner rule): a hardware
+// edge trigger with no calibrated crossing near its index is reported for
+// dropping and counted; a real edge is placed on its crossing. The share of
+// dropped triggers is what the TRIG tab warns on, and a change of the
+// trigger forgets it.
+// TRLC-LINKS: REQ-SDS-011
+func TestUnconfirmedEdgeTriggersAreCounted(t *testing.T) {
+	e := &Engine{}
+	flat := make([]uint8, 200)
+	edge := make([]uint8, 200)
+	for i := range flat {
+		flat[i], edge[i] = 128, 128
+		if i >= 100 {
+			edge[i] = 144
+		}
+	}
+	f := &Frame{C1: flat, Valid: 200, EdgeX: 98, TrigPos: 98, Trigd: true}
+	if e.placeEdgeTrigger(f, flat, nil, 136, true) || f.EdgeX != 98 || e.stats.FalseTriggers != 1 {
+		t.Fatalf("a noise trigger: point %.1f, %d counted", f.EdgeX, e.stats.FalseTriggers)
+	}
+	g := &Frame{C1: edge, Valid: 200, EdgeX: 96, Trigd: true}
+	if !e.placeEdgeTrigger(g, edge, nil, 136, true) || math.Abs(g.EdgeX-99.5) > 0.01 || e.stats.FalseTriggers != 1 {
+		t.Fatalf("a real edge: point %.2f, %d noise", g.EdgeX, e.stats.FalseTriggers)
+	}
+	for i := 0; i < 30; i++ {
+		e.placeEdgeTrigger(&Frame{C1: flat, Valid: 200, EdgeX: 98, Trigd: true}, flat, nil, 136, true)
+	}
+	if e.stats.NoiseTriggers < 0.25 {
+		t.Fatalf("31 of 32 on noise: share %.2f", e.stats.NoiseTriggers)
+	}
+	e.SetTrigSlope(false)
+	if e.stats.NoiseTriggers != 0 {
+		t.Fatalf("a new trigger slope kept the share %.2f", e.stats.NoiseTriggers)
+	}
+}

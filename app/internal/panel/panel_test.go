@@ -135,7 +135,7 @@ func (f *fakeEng) SetTdiv(t float64) (engine.Band, bool) {
 		f.bad("SetTdiv %g not a ladder detent", t)
 		return engine.Band{}, false
 	}
-	f.stats.TdivS = b.TdivS
+	f.stats.TdivS, f.stats.TdivSetS = b.TdivS, 0 // applied at once: nothing pending
 	return b, true
 }
 

@@ -569,6 +569,27 @@ run(async (t) => {
   await flow("iPhone 14", "iPhone 14");
   await flow("Pixel 7", "Pixel 7", { noWakeLock: true });
 
+  // ---- on a slow link a late answer closes only the sheet it came from ------------------------
+  // (bug hunt #3: picked, closed by hand, another sheet opened - the late answer shut that one)
+  {
+    await ctrl("/reset");
+    const P = await phone("Pixel 7", { label: "slow link" });
+    await P.page.route("**/api/sheets/set", async (route) => { await sleep(800); await route.continue(); });
+    await P.tap('[data-tabbar="menus"]');
+    await P.tap('[data-tab="bus"]');
+    await P.tap('.mbody [data-row="bus.protocol"]');
+    await P.until(() => P.visible('.sheet [data-value="2"]'), "the Protocol sheet opens");
+    await P.tap('.sheet [data-value="2"]');      // UART: the scope answers 0.8 s later
+    await P.tap(".sheet-close");                  // closed by hand before the answer
+    await P.tap('.mbody [data-row="bus.protocol"]');
+    await P.until(() => P.visible('.sheet [data-value="2"]'), "the sheet opens again");
+    await sleep(1300);
+    t.ok(await P.visible(".sheet"), "the late answer leaves the sheet opened after it open");
+    await P.until(async () => (await rows())["bus.protocol"].Text === "UART", "and the pick landed");
+    await P.page.unroute("**/api/sheets/set");
+    await P.ctx.close();
+  }
+
   // ---- two phones at once: each follows the other; the other's change is "other remote" ------
   {
     await ctrl("/reset");

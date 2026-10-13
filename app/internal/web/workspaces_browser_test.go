@@ -257,6 +257,22 @@ func (f *wsSetups) RecallSetup(n int) error {
 	return nil
 }
 
+// SetupSlots: slot 20 holds a setup from the start, a saved slot another.
+// TRLC-LINKS: REQ-SDS-219
+func (f *wsSetups) SetupSlots() []SetupSlot {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	out := make([]SetupSlot, 20)
+	for i := range out {
+		out[i].Slot = i + 1
+	}
+	out[19].Used, out[19].Summary = true, "MEASURE  20us/div  C1^ 1.37V  C1 1V C2 1V  UART"
+	for _, n := range f.saved {
+		out[n-1].Used, out[n-1].Summary = true, "SCOPE  1ms/div  C1^ 0V  C1 1V C2 1V"
+	}
+	return out
+}
+
 // TestWorkspacesBrowser: switching (tabs, Alt+digit by key code, roving tab
 // keys), "again" per workspace, the view each workspace remembers, the dots,
 // each workspace's panes, maximize and collapse resizing the trace canvas,
@@ -272,7 +288,8 @@ func TestWorkspacesBrowser(t *testing.T) {
 
 // TestAllSettingsBrowser: every control of the page is in All settings (or
 // named as navigation), each row's arrow shows its control where it lives, an
-// edit in a row is the edit of the control, and Setups saves and recalls.
+// edit in a row is the edit of the control, and Setups shows what each slot
+// holds, saves and recalls.
 // TRLC-LINKS: REQ-SDS-219
 func TestAllSettingsBrowser(t *testing.T) {
 	testenv.NeedNode(t)
@@ -327,49 +344,22 @@ func TestMeasureBrowser(t *testing.T) {
 	wsDriver(t, "measure_browser.mjs", srv.URL)
 }
 
-// TestCompareBrowser: the difference readout against a reference, and the
-// master on three scopes — the deep-memory block average (SINGLE completes the
-// block), the fast path's running average (STOP after N captures), and a
-// free-running signal, which is refused with trigger advice and leaves the
-// acquisition alone.
+// TestCompareBrowser: the difference readout against a reference, and Stack
+// master: the page has the scope stack its master and takes the scope's REF A
+// (compare_browser.mjs mocks the scope's master row; the panel's master has
+// its own tests). The page drives no acquisition of its own: it averaged
+// through SINGLE before, which timed out on the SRAM image (bug hunt #3).
 // TRLC-LINKS: REQ-SDS-218
 func TestCompareBrowser(t *testing.T) {
 	testenv.NeedNode(t)
-	block := newWsScope(squareSig(64, false), 0)
-	block.block = true
-	ring := newWsScope(squareSig(64, false), 0)
-	free := newWsScope(squareSig(64, true), 0)
-	var urls []string
-	for _, sc := range []*wsScope{block, ring, free} {
-		srv := httptest.NewServer(New(sc, newFuzzAnalog(), &fuzzPanel{z: sc.fuzzScope}, nil).Handler())
-		defer srv.Close()
-		urls = append(urls, srv.URL)
-	}
-	wsDriver(t, "compare_browser.mjs", urls...)
-
-	// the master's acquisition sequence, as the instrument saw it
-	has := func(calls []string, want ...string) bool {
-		i := 0
-		for _, c := range calls {
-			if i < len(want) && c == want[i] {
-				i++
-			}
-		}
-		return i == len(want)
-	}
-	if c := block.Calls(); !has(c, "acqmode 1", "avgcount 64", "single", "acqmode 0", "norm false", "run true", "maskclear", "maskmode 1") {
-		t.Fatalf("block-average master: calls %v", c)
-	} else if !strings.Contains(strings.Join(c, ","), "mask win=") {
-		t.Fatalf("block-average master installed no mask: %v", c)
-	}
-	if c := ring.Calls(); !has(c, "acqmode 1", "avgcount 64", "run false", "acqmode 0", "norm false", "run true", "maskclear", "maskmode 1") {
-		t.Fatalf("running-average master: calls %v", c)
-	} else if strings.Contains(strings.Join(c, ","), "single") {
-		t.Fatalf("running-average master used SINGLE (it stops after one capture on the fast path): %v", c)
-	}
-	for _, c := range free.Calls() {
-		if strings.HasPrefix(c, "acqmode") || strings.HasPrefix(c, "avgcount") || strings.HasPrefix(c, "mask") {
-			t.Fatalf("a refused master touched the acquisition or the mask: %v", free.Calls())
+	sc := newWsScope(squareSig(64, false), 0)
+	sc.block = true
+	srv := httptest.NewServer(New(sc, newFuzzAnalog(), &fuzzPanel{z: sc.fuzzScope}, nil).Handler())
+	defer srv.Close()
+	wsDriver(t, "compare_browser.mjs", srv.URL)
+	for _, c := range sc.Calls() {
+		if strings.HasPrefix(c, "acqmode") || strings.HasPrefix(c, "avgcount") || c == "single" || strings.HasPrefix(c, "mask") {
+			t.Fatalf("the page drove the acquisition or the mask itself: %v", sc.Calls())
 		}
 	}
 }

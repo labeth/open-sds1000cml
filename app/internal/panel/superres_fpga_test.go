@@ -195,3 +195,63 @@ func TestSuperresFPGACancel(t *testing.T) {
 		t.Fatalf("cancelled completion restored stale review: %+v", v)
 	}
 }
+
+// With Stop on an FPGA mode, Super-res On runs an FPGA session: it refused
+// with the software stack's depth limit ("window too deep for software
+// stacking - use FPGA"), and only Restart's Run FPGA started it (bug hunt #3).
+// TRLC-LINKS: REQ-SDS-141
+func TestSuperresOnInFPGAModeRunsTheFPGA(t *testing.T) {
+	_, base, fe := newC(t)
+	eng := &fpgaFakeEng{fakeEng: base, requests: make(chan engine.FPGAStackRequest, 1)}
+	c := New(eng, fe, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
+	c.decode(idle(), true)
+	n := 200000 // a deep window, past the software stack's limit
+	sig := make([]uint8, n)
+	for i := range sig {
+		sig[i] = uint8(40 + (i*7)%160)
+	}
+	fr := &engine.Frame{C1: sig, C2: sig, Valid: n, EdgeX: 32, SampleS: 2e-9}
+	c.SetFrameSource(func(fn func(*engine.Frame)) { fn(fr) })
+	if res := c.SheetSet("acq.sr_stop", nil, "FPGA rec"); !res.OK {
+		t.Fatalf("stop on: %+v", res)
+	}
+	if res := c.SheetSet("acq.superres", nil, "On"); !res.OK {
+		t.Fatalf("Super-res On in FPGA mode: %+v", res)
+	}
+	select {
+	case req := <-eng.requests:
+		if req.Records != 20 {
+			t.Fatalf("request %+v", req)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("no FPGA session")
+	}
+}
+
+// Super-res On on a window too deep for the software stack says why and what
+// to do within the ACQ tab's status line: the remedy was cut off the LCD
+// ("...(156378 samples) - Stop o..", bug hunt #3).
+// TRLC-LINKS: REQ-SDS-141
+func TestSuperresTooDeepSaysTheRemedyOnTheLCD(t *testing.T) {
+	c, _, _ := newC(t)
+	n := 156378
+	sig := make([]uint8, n)
+	for i := range sig {
+		sig[i] = uint8(40 + (i*7)%160)
+	}
+	fr := &engine.Frame{C1: sig, C2: sig, Valid: n, EdgeX: 32, SampleS: 32e-9}
+	c.SetFrameSource(func(fn func(*engine.Frame)) { fn(fr) })
+	if res := c.SheetSet("acq.superres", nil, "On"); res.OK {
+		t.Fatal("a 156k-sample window stacked in software")
+	}
+	press(t, c, "acquire")
+	for _, sp := range c.View().Sheet.Status {
+		if strings.HasPrefix(sp.Text, "Super-res:") {
+			if len(sp.Text) > 77 || !strings.Contains(sp.Text, "Stop on: FPGA rec, or a faster S/DIV") {
+				t.Fatalf("the ACQ status line (%d characters): %q", len(sp.Text), sp.Text)
+			}
+			return
+		}
+	}
+	t.Fatal("no super-res status line")
+}

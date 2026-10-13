@@ -106,8 +106,22 @@ run(async (t) => {
   await page.click("#setupsBtn");
   t.ok(await po.isVisible("setpop") && (await page.getAttribute("#setupsBtn", "aria-expanded")) === "true", "Setups opens its slots");
   t.ok(await page.evaluate(() => document.querySelectorAll("#setSlots [data-slot]").length) === 20, "20 slots");
+  // Each tile says what its slot holds, as the scope's FILE tab: an empty one
+  // cannot be recalled, saving over a used one replaces it.
+  const tile = (n) => page.evaluate((n) => {
+    const el = document.querySelector(`#setSlots [data-slot="${n}"]`);
+    return { info: el.querySelector(".i").textContent, save: el.querySelector('[data-op="save"]').textContent,
+      recall: !el.querySelector('[data-op="recall"]').disabled };
+  }, n);
+  await t.until(async () => (await tile(20)).info === "MEASURE  20us/div  C1^ 1.37V  C1 1V C2 1V  UART",
+    "slot 20 shows the setup it holds", 3000);
+  t.ok((await tile(20)).save === "Replace" && (await tile(20)).recall, "a used slot: Replace and Recall");
+  const empty = await tile(3);
+  t.ok(empty.info === "empty" && empty.save === "Save" && !empty.recall, "an empty slot: Save, no Recall: " + JSON.stringify(empty));
   await page.click('#setSlots [data-slot="3"] button[data-op="save"]');
   await t.until(async () => /Setup saved in slot 3/.test(await po.text("toast")), "Save slot 3 stores the setup", 3000);
+  await t.until(async () => { const s3 = await tile(3); return s3.info === "SCOPE  1ms/div  C1^ 0V  C1 1V C2 1V" && s3.recall && s3.save === "Replace"; },
+    "slot 3 then shows its setup and can be recalled", 3000);
   await page.click('#setSlots [data-slot="3"] button[data-op="recall"]');
   await t.until(async () => /Setup 3 recalled/.test(await po.text("toast")), "Recall slot 3 brings it back", 3000);
   await page.keyboard.press("Escape");

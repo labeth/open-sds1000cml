@@ -121,3 +121,24 @@ func TestCompareRowActions(t *testing.T) {
 		}
 	}
 }
+
+// A master is refused while the acquisition is Average: the stability check
+// and the mask test both need raw captures. A master started there stacked a
+// source that did not repeat and restored Average, so its mask never came or
+// failed every capture (bug hunt #3).
+// TRLC-LINKS: REQ-SDS-218
+func TestMasterRefusedInAverage(t *testing.T) {
+	r := newViewRig(t)
+	c := r.c
+	r.eng.SetAcqMode(engine.AcqAverage)
+	r.eng.set(func(st *engine.Stats) { st.AvgCount = 16 })
+	press(t, c, "f5")
+	press(t, c, "f5") // again: stack
+	st := r.eng.Snapshot()
+	if c.stack != nil || st.AcqMode != engine.AcqAverage || st.AvgCount != 16 {
+		t.Fatalf("stacked from Average: stack %v acq %d avg %d", c.stack != nil, st.AcqMode, st.AvgCount)
+	}
+	if n := c.View().Notice; !strings.Contains(n, "acquisition is Average") || !strings.Contains(n, "set it to Normal") {
+		t.Fatalf("notice %q", n)
+	}
+}

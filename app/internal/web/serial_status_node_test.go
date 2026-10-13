@@ -4,13 +4,17 @@ package web
 import (
 	"open-sds/app/internal/testenv"
 	"os/exec"
+	"strings"
 	"testing"
 )
 
 // TRLC-LINKS: REQ-SDS-203
 func TestSerialStatusJS(t *testing.T) {
 	testenv.NeedNode(t)
-	if out, err := exec.Command("node", "serial_status.test.cjs").CombinedOutput(); err != nil {
+	// The race checks run after the first ALL PASS; a promise left pending
+	// ends node with no error and no PASS line, so the line is required.
+	out, err := exec.Command("node", "serial_status.test.cjs").CombinedOutput()
+	if err != nil || !strings.Contains(string(out), "serial mode race PASS") {
 		t.Fatalf("serial status: %v\n%s", err, out)
 	}
 }
