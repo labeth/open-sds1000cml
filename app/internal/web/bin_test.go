@@ -6,11 +6,13 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os/exec"
 	"reflect"
 	"testing"
 	"time"
 
 	"open-sds/app/internal/engine"
+	"open-sds/app/internal/testenv"
 )
 
 // getBin fetches /api/frame.bin and returns the decoded header + raw payload.
@@ -354,6 +356,12 @@ func TestRawFeedRequestsChronologicalSamples(t *testing.T) {
 	if sc.lease != 3*time.Second {
 		t.Fatalf("raw lease = %v", sc.lease)
 	}
+	// a bus search done with its record gives the lease back at once
+	rec := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rec, httptest.NewRequest("GET", "/api/frame.bin?lease=raw&end=1", nil))
+	if sc.lease != 0 || rec.Code != http.StatusNoContent {
+		t.Fatalf("release: lease %v, status %d", sc.lease, rec.Code)
+	}
 }
 
 // specLeaseScope records the spectrum lease.
@@ -398,5 +406,35 @@ func TestBinTriggerPositionEndpoints(t *testing.T) {
 		if rep.EdgeFrac != pos {
 			t.Fatalf("position %g served as %g", pos, rep.EdgeFrac)
 		}
+	}
+}
+
+// sampleLeaseScope records the sample lease.
+type sampleLeaseScope struct {
+	*fakeScope
+	lease time.Duration
+}
+
+// TRLC-LINKS: REQ-SDS-207
+func (s *sampleLeaseScope) LeaseSampleView(d time.Duration) { s.lease = d }
+
+// Detect's decimated record (lease=samples) is given back as soon as the
+// search is done with it, so the live view comes back at once.
+// TRLC-LINKS: REQ-SDS-207
+func TestSampleLeaseEnds(t *testing.T) {
+	sc := &sampleLeaseScope{fakeScope: &fakeScope{}}
+	s := New(sc, nil, nil, nil)
+	getBin(t, s, "/api/frame.bin?raw=1&lease=samples")
+	if sc.lease != 3*time.Second {
+		t.Fatalf("sample lease = %v", sc.lease)
+	}
+	rec := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rec, httptest.NewRequest("GET", "/api/frame.bin?lease=samples&end=1", nil))
+	if sc.lease != 0 || rec.Code != http.StatusNoContent {
+		t.Fatalf("release: lease %v, status %d", sc.lease, rec.Code)
+	}
+	testenv.NeedNode(t)
+	if out, err := exec.Command("node", "detect_sampled.test.cjs").CombinedOutput(); err != nil {
+		t.Fatalf("detect (page): %v\n%s", err, out)
 	}
 }

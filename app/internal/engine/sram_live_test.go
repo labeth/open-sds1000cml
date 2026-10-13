@@ -35,9 +35,10 @@ func TestLiveSRAMPlanBoundsTheScreen(t *testing.T) {
 
 // The live decimated record keeps the display's bandwidth: the precision
 // filter's -3 dB (13.5 % of the decimated rate) stays above the 768-px plot's
-// pixel Nyquist at every timebase, and a spectrum lease's record keeps up to
-// SpectrumRawSamples (at 500us/div /1024 passes 36.6 kHz, under the plot's
-// 76.8 kHz pixel Nyquist, and a 115200 Bd UART's bits vanish).
+// pixel Nyquist at every timebase, and a spectrum lease's decimated record
+// holds 8192-16384 samples, the FFT's points one for one (at 500us/div /1024
+// would pass 36.6 kHz, under the plot's 76.8 kHz pixel Nyquist, and a
+// 115200 Bd UART's bits vanish).
 // TRLC-LINKS: REQ-SDS-010, REQ-SDS-070
 func TestLiveSRAMPlanKeepsTheDisplayBandwidth(t *testing.T) {
 	for _, tdiv := range []float64{20e-6, 50e-6, 200e-6, 500e-6, 2e-3, 10e-3} {
@@ -51,15 +52,23 @@ func TestLiveSRAMPlanKeepsTheDisplayBandwidth(t *testing.T) {
 			t.Errorf("%g s/div: /%d keeps %.0f Hz, under 1.3 x the pixel Nyquist %.0f Hz", tdiv, 1<<live.Log, bw, pixNyq)
 		}
 		spec, ok := liveSRAMPlan(p, liveBudget(blockSpectrum))
-		if ok && (spec.Screen > SpectrumRawSamples || spec.Screen <= SpectrumRawSamples/2 && spec.Log > 4) {
+		if ok && (spec.Screen > spectrumLiveSamples || spec.Screen <= spectrumLiveSamples/2 && spec.Log > 4) {
 			t.Errorf("%g s/div: the spectrum's record holds %d samples at /%d", tdiv, spec.Screen, 1<<spec.Log)
 		}
 	}
 	if live, _ := liveSRAMPlan(PlanSRAM(500e-6), liveBudget("averaging")); live.Log != 9 {
 		t.Errorf("500us/div: /%d, want /512", 1<<live.Log)
 	}
-	if spec, _ := liveSRAMPlan(PlanSRAM(500e-6), liveBudget(blockSpectrum)); spec.Log != 7 {
-		t.Errorf("500us/div spectrum: /%d, want /128", 1<<spec.Log)
+	if spec, _ := liveSRAMPlan(PlanSRAM(500e-6), liveBudget(blockSpectrum)); spec.Log != 8 {
+		t.Errorf("500us/div spectrum: /%d, want /256", 1<<spec.Log)
+	}
+	if spec, ok := liveSRAMPlan(PlanSRAM(200e-6), liveBudget(blockSpectrum)); !ok || spec.Log != 6 || spec.Screen != 15625 {
+		t.Errorf("200us/div spectrum: /%d, %d samples; want /64, 15625 (an 8192-point FFT one for one)", 1<<spec.Log, spec.Screen)
+	}
+	if p := PlanSRAM(5e-6); liveDecimatesPlan(blockSpectrum, p) {
+		t.Error("5us/div spectrum decimated: 25000 samples stay at the full rate")
+	} else if _, ok := liveSRAMPlan(p, liveBudget(blockSpectrum)); ok {
+		t.Error("5us/div spectrum: the full-rate screen planned decimated")
 	}
 }
 
@@ -151,15 +160,20 @@ func TestRollPlansBounded(t *testing.T) {
 func TestRollGroupCarries(t *testing.T) {
 	r := &rollView{}
 	r.reset(rollPlan{group: 4, screen: 100}, 1, [2]chScale{})
-	o1, _ := r.groupAvg(0, []uint16{100, 200, 300}, []uint16{1, 1, 1})
+	o1, _, _ := r.groupAvg(0, []uint16{100, 200, 300}, []uint16{1, 1, 1})
 	if len(o1) != 0 {
 		t.Fatalf("partial group published %v", o1)
 	}
-	o1, o2 := r.groupAvg(2, []uint16{500, 700, 900, 1100, 1300}, []uint16{1, 1, 1, 1, 1})
+	o1, o2, held := r.groupAvg(2, []uint16{500, 700, 900, 1100, 1300}, []uint16{1, 1, 1, 1, 1})
 	// 100 200 300 | 500 ; held 300 300 is placed before the new samples:
 	// groups: {100,200,300,300} {300,500,700,900} ; carry {1100,1300}
-	if len(o1) != 2 || o1[0] != 225 || o1[1] != 600 || o2[0] != 1 {
-		t.Fatalf("groups %v %v", o1, o2)
+	if len(o1) != 2 || o1[0] != 225 || o1[1] != 600 || o2[0] != 1 || held[0] || held[1] {
+		t.Fatalf("groups %v %v held %v", o1, o2, held)
+	}
+	// a gap of six held samples: {1100,1300,1300,1300} {1300 x4} - the second
+	// mostly held
+	if o1, _, held := r.groupAvg(6, nil, nil); len(o1) != 2 || held[0] || !held[1] {
+		t.Fatalf("held groups %v %v", o1, held)
 	}
 	r.reset(rollPlan{group: 3, screen: 100}, 1, [2]chScale{})
 	// bytes: min1 min2 max1 max2
@@ -181,7 +195,7 @@ func TestRollRescaleKeepsHistory(t *testing.T) {
 	one := [2]chScale{{vdiv: 1, off: 0}, {vdiv: 1, off: 0}}
 	r.reset(rollPlan{group: 1, screen: 6}, 1, one)
 	in := []uint16{128 << 8, 140 << 8, 215 << 8, 41 << 8, 250 << 8, 5 << 8} // -0..+4.9 V
-	r.push(0, in, in)
+	r.push(0, in, in, nil)
 	for i, v := range in {
 		if r.q1[i] != v {
 			t.Fatalf("code %d: %d, want %d (volts round trip)", i, r.q1[i], v)
@@ -207,11 +221,43 @@ func TestRollPeakHoldPairs(t *testing.T) {
 	one := [2]chScale{{vdiv: 1}, {vdiv: 1}}
 	r.reset(rollPlan{group: 1, screen: 8, peak: true}, 1, one)
 	lo, hi := uint16(100<<8), uint16(200<<8)
-	r.push(0, []uint16{lo, hi, lo, hi}, []uint16{lo, hi, lo, hi})
-	r.push(4, nil, nil)
+	r.push(0, []uint16{lo, hi, lo, hi}, []uint16{lo, hi, lo, hi}, nil)
+	r.push(4, nil, nil, nil)
 	for i, want := range []uint16{lo, hi, lo, hi, lo, hi, lo, hi} {
 		if r.q1[i] != want {
 			t.Fatalf("held view %v", r.q1)
 		}
+	}
+}
+
+// The roll view knows which samples no capture covered - the view's past
+// before the first chunk and the gaps between chunks, held at the last value -
+// and measurements read its longest captured stretch, not the held ones (a
+// 1 kHz square measured across them read 769 Hz).
+// TRLC-LINKS: REQ-SDS-010, REQ-SDS-021
+func TestRollHeldMarksGaps(t *testing.T) {
+	r := &rollView{}
+	r.reset(rollPlan{group: 1, screen: 12}, 1, [2]chScale{{vdiv: 1}, {vdiv: 1}})
+	chunk := func(n int) []uint16 { return make([]uint16, n) }
+	r.push(0, chunk(4), chunk(4), nil) // the past filled from the first chunk: 8 held, 4 captured
+	r.push(3, chunk(5), chunk(5), nil) // 3 held, 5 captured
+	got := ""
+	for _, h := range r.held {
+		if h {
+			got += "H"
+		} else {
+			got += "."
+		}
+	}
+	// the newest 12: the first chunk (4), the gap (3), the second chunk (5)
+	if got != "....HHH....." {
+		t.Fatalf("held mask %s", got)
+	}
+	f := &Frame{Valid: 12, Held: r.held}
+	if a, b := f.MeasureRange(); a != 7 || b != 12 {
+		t.Fatalf("measure range %d..%d, want the second chunk 7..12", a, b)
+	}
+	if a, b := (&Frame{Valid: 12}).MeasureRange(); a != 0 || b != 12 {
+		t.Fatalf("a frame without held samples: %d..%d", a, b)
 	}
 }

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"open-sds/app/internal/engine"
+	"open-sds/app/internal/measure"
 )
 
 // TestRailing pins the semantics the coarsen-on-rail guard (autoset step 3c)
@@ -137,6 +138,7 @@ func TestOffScreenSaturated(t *testing.T) {
 }
 
 // A failed sweep must preserve calibrated requested offsets.
+// TRLC-LINKS: REQ-SDS-137
 func TestAutosetNoSignalRestoresRequestedOffsets(t *testing.T) {
 	c, eng, fe := newC(t)
 	eng.stats.TdivS = 1e-6
@@ -187,5 +189,37 @@ func TestAutosetLeasesSampleFrames(t *testing.T) {
 		if !ok || !has(m[0]) || m[0].Freq <= 0 {
 			t.Fatal("autoset did not receive a measurable chronological signal")
 		}
+	}
+}
+
+// The sweep's sample lease ends with it: held on, the live view stayed the
+// filtered decimated capture for 3 s after AUTO had finished.
+// TRLC-LINKS: REQ-SDS-137
+func TestAutosetEndsItsSampleLease(t *testing.T) {
+	c, e, _ := newC(t)
+	leaser := &autosetSampleEngine{fakeEng: e}
+	c.eng = leaser
+	c.SetFrameSource(func(fn func(*engine.Frame)) {
+		fn(&engine.Frame{C1: make([]uint8, 200), C2: make([]uint8, 200), Valid: 200, SampleS: 50e-9})
+	})
+	c.runAutoset(make(chan struct{}))
+	if n := len(leaser.leases); n < 2 || leaser.leases[n-1] != 0 {
+		t.Fatalf("leases %v: the last must end the lease (0)", leaser.leases)
+	}
+}
+
+// AUTO triggers on the stronger channel unless only the other's repetition is
+// resolved at the fitted timebase (the slow source's 10 Hz pulse beside its
+// 1 kHz square had the trigger on the pulse and the timebase on the square).
+// TRLC-LINKS: REQ-SDS-137
+func TestAutosetTriggersOnAResolvedChannel(t *testing.T) {
+	sq := &measure.Result{Vpp: 3.81, Freq: 1000}
+	pulse := &measure.Result{Vpp: 3.91}
+	if got := autosetTrigSource([2]*measure.Result{sq, pulse}); got != 0 {
+		t.Fatalf("1 kHz on C1, unresolved pulse on C2: triggers on C%d", got+1)
+	}
+	both := &measure.Result{Vpp: 3.91, Freq: 100e3}
+	if got := autosetTrigSource([2]*measure.Result{sq, both}); got != 1 {
+		t.Fatalf("both resolved: the stronger C2, got C%d", got+1)
 	}
 }

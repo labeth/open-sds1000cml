@@ -8,9 +8,11 @@ import (
 	"testing"
 
 	"open-sds/app/internal/engine"
+	"open-sds/app/internal/measure"
 )
 
 // square is a 0/200-code square of the given period starting high at phase.
+// TRLC-LINKS: REQ-SDS-024
 func square(n, period, phase int) []uint8 {
 	c := make([]uint8, n)
 	for i := range c {
@@ -22,6 +24,7 @@ func square(n, period, phase int) []uint8 {
 	return c
 }
 
+// TRLC-LINKS: REQ-SDS-024
 func replyValue(t *testing.T, out string) float64 {
 	t.Helper()
 	f := strings.Split(strings.TrimSpace(out), ",")
@@ -73,6 +76,7 @@ type fakeCursors struct {
 	y   [2]float64
 }
 
+// TRLC-LINKS: REQ-SDS-024
 func (d *fakeCursors) CursorState() (bool, int, [2]float64, [2]float64) { return d.on, d.typ, d.x, d.y }
 
 // Cn:CRVA? reads the panel cursors in the LCD readout's mapping.
@@ -103,5 +107,20 @@ func TestCRVACursorValues(t *testing.T) {
 	}
 	if out := do(t, h, "C1:CRVA? XREL"); out != errHeader+"\n" {
 		t.Fatalf("bad mode: %q", out)
+	}
+}
+
+// An envelope of a signal faster than its buckets holds no mean or RMS:
+// PAVA? MEAN and RMS answer **** rather than its (min, max) pairs' midpoint.
+// TRLC-LINKS: REQ-SDS-024
+func TestPAVAMeanUnknownOnAliasedEnvelope(t *testing.T) {
+	r := &measure.Result{Vmean: 1.6, Vrms: 2.3, Vpp: 3.3, EnvAliased: true}
+	for _, p := range []string{"MEAN", "RMS"} {
+		if v := pavaValue(p, r); !strings.Contains(v, "****") {
+			t.Errorf("%s on an aliased envelope: %q", p, v)
+		}
+	}
+	if v := pavaValue("PKPK", r); strings.Contains(v, "****") {
+		t.Errorf("PKPK hidden: %q", v)
 	}
 }

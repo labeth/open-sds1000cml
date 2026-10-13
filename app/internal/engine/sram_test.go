@@ -226,3 +226,34 @@ func TestSRAMRejectsLegacyStitchedStream(t *testing.T) {
 		t.Fatal("SRAM has no legacy stream loop; use decoded events")
 	}
 }
+
+// SINGLE keeps the deep record in Normal, for the stop to read whole; in
+// Average, Precision and ERES it runs on the decimated plan their preview runs
+// on (a block of deep records took minutes, and a raw deep record is noisier
+// than the filtered preview).
+// TRLC-LINKS: REQ-SDS-010, REQ-SDS-012
+func TestSingleUsesThePreviewPlanInFilteredModes(t *testing.T) {
+	e, _ := newTestEngine(t, newFakeBus())
+	b, ok := PlanTdiv(200e-6)
+	if !ok {
+		t.Fatal("no band for 200us/div")
+	}
+	e.band = b
+	e.hardwareEnvelope = true
+	for _, tc := range []struct {
+		mode    int32
+		single  bool
+		decimed bool
+	}{
+		{AcqNormal, false, false}, {AcqNormal, true, false},
+		{AcqAverage, false, true}, {AcqAverage, true, true},
+		{AcqPrecision, true, true}, {AcqEres, true, true},
+	} {
+		e.acqMode.Store(tc.mode)
+		e.singleArmed.Store(tc.single)
+		_, p, _, _, _ := e.sramConfig()
+		if got := p.Screen <= liveScreenSamples; got != tc.decimed {
+			t.Errorf("mode %d single %v: screen %d samples at %g s (decimated %v, want %v)", tc.mode, tc.single, p.Screen, p.SampleS, got, tc.decimed)
+		}
+	}
+}

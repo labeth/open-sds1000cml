@@ -22,3 +22,27 @@ func TestSENTAutoAppliesSettingsJS(t *testing.T) {
 		t.Fatalf("SENT auto: %v\n%s", err, out)
 	}
 }
+
+// TRLC-LINKS: REQ-SDS-018
+func TestUARTRepeatNotSENTJS(t *testing.T) {
+	testenv.NeedNode(t)
+	if out, err := exec.Command("node", "uart_repeat_auto.test.cjs").CombinedOutput(); err != nil {
+		t.Fatalf("UART repeat auto: %v\n%s", err, out)
+	}
+}
+
+// TRLC-LINKS: REQ-SDS-018
+func TestRingingNotI2CJS(t *testing.T) {
+	testenv.NeedNode(t)
+	if out, err := exec.Command("node", "i2c_ringing_auto.test.cjs").CombinedOutput(); err != nil {
+		t.Fatalf("ringing auto: %v\n%s", err, out)
+	}
+}
+
+// TRLC-LINKS: REQ-SDS-018
+func TestShortCaptureNoBusJS(t *testing.T) {
+	testenv.NeedNode(t)
+	if out, err := exec.Command("node", "short_capture_auto.test.cjs").CombinedOutput(); err != nil {
+		t.Fatalf("short capture auto: %v\n%s", err, out)
+	}
+}

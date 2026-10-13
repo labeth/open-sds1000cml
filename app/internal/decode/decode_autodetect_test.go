@@ -56,8 +56,12 @@ func TestAutodetectUndersampledUARTIsNotSENT(t *testing.T) {
 func TestAutodetectRealCapturesNoGarbageWinner(t *testing.T) {
 	for _, tc := range []struct{ file, want string }{
 		{"mil1553_envelope_50us", ""},   // too coarse for a 1553 sync on this frame: off, not Manchester
+		{"mil1553_raw_1us", ""},         // part of a word: off, not "UART 2000000, 1 byte" or "Manch, 1 byte"
 		{"sent_envelope_1ms", ""},       // 1.6 samples a tick: off, not "MANCH 51 kb/s"
 		{"sent_envelope_200us", "sent"}, // bad, good, bad CRC on screen: still SENT, not UART
+		// a 115200 Bd UART repeating one message, read as SENT with one frame
+		// of two passing its CRC by chance: still UART
+		{"uart115200_repeat_envelope_200us", "uart"},
 	} {
 		b, err := os.ReadFile("testdata/" + tc.file + ".json")
 		if err != nil {
@@ -80,6 +84,108 @@ func TestAutodetectRealCapturesNoGarbageWinner(t *testing.T) {
 			t.Errorf("%s: auto-detected %s (score %.0f), want no garbage winner", tc.file, r.Proto, scoreResult(r))
 		case tc.want != "" && r.Proto != tc.want:
 			t.Errorf("%s: auto-detected %s, want %s", tc.file, r.Proto, tc.want)
+		}
+	}
+}
+
+// Edge ringing on a bus at the full rate is no I2C clock: ARINC 429's two
+// lines at 10us/div read as I2C on a 20 ns clock (START 00 W ACK 00 ACK ...),
+// faster than any I2C runs (Ultra Fast-mode: 5 MHz).
+// TRLC-LINKS: REQ-SDS-018
+func TestAutodetectRingingIsNotI2C(t *testing.T) {
+	b, err := os.ReadFile("testdata/arinc429_raw_10us.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var f struct {
+		SampleS float64 `json:"sample_s"`
+		C1, C2  []int
+	}
+	if err := json.Unmarshal(b, &f); err != nil {
+		t.Fatal(err)
+	}
+	c1, c2 := make([]uint8, len(f.C1)), make([]uint8, len(f.C2))
+	for i := range f.C1 {
+		c1[i], c2[i] = uint8(f.C1[i]), uint8(f.C2[i])
+	}
+	if r := DecodeI2C(c1, c2, f.SampleS, I2CCfg{Format: "hex"}); scoreResult(r) <= 0 {
+		t.Fatalf("the capture no longer reads as I2C at all (score %.0f): the test proves nothing", scoreResult(r))
+	}
+	if r, _ := AutodetectFast(c1, c2, f.SampleS, "hex"); r.Proto == "i2c" {
+		t.Fatalf("ringing auto-detected as I2C: %.60q", r.Text)
+	}
+}
+
+// A UART reading needs evidence: one byte is a stop bit that checks on half of
+// random lines, and a fifth of its bytes misframed is another protocol read
+// as UART at any rate (part of a CAN frame: 500000 Bd, 3 bytes, 1 misframed);
+// clean bytes at a standard rate weigh most.
+// TRLC-LINKS: REQ-SDS-018
+func TestUARTScoreNeedsEvidence(t *testing.T) {
+	uart := func(bytes, misframed int, baud int) Result {
+		r := Result{OK: true, Proto: "uart", Baud: baud, SPB: 20}
+		for i := range bytes {
+			r.Bytes = append(r.Bytes, i)
+			kind := "data"
+			if i < misframed {
+				kind = "frame-error"
+			}
+			r.Spans = append(r.Spans, Span{Kind: kind})
+		}
+		return r
+	}
+	for _, c := range []struct {
+		name string
+		r    Result
+		pass bool
+	}{
+		{"one byte", uart(1, 0, 115200), false},
+		{"3 bytes, 1 misframed, standard rate", uart(3, 1, 500000), false},
+		{"3 clean bytes, standard rate", uart(3, 0, 115200), true},
+		{"5 bytes, 1 misframed, standard rate", uart(5, 1, 115200), true},
+	} {
+		if got := scoreResult(c.r) > 0; got != c.pass {
+			t.Errorf("%s: scored %.0f", c.name, scoreResult(c.r))
+		}
+	}
+	if clean, odd := scoreResult(uart(8, 0, 115200)), scoreResult(uart(8, 0, 66674)); clean-odd != 100 {
+		t.Errorf("8 clean bytes: standard rate %.0f, odd rate %.0f; want 100 apart", clean, odd)
+	}
+}
+
+// A clock's idle level is its gap between transfers (a run over twice its
+// half-period, also cut short by the record's end); a screen of nothing but
+// clocking says nothing of it and reads low (SPI mode 0), not whichever level a
+// few samples more fell on.
+// TRLC-LINKS: REQ-SDS-018
+func TestIdleLevelFromTheGap(t *testing.T) {
+	clock := func(lead int, lead0 uint8, halves int, tail int, tail0 uint8) []uint8 {
+		var c []uint8
+		put := func(v uint8, n int) {
+			for range n {
+				c = append(c, v)
+			}
+		}
+		put(lead0, lead)
+		v := uint8(200)
+		for range halves {
+			put(v, 50)
+			v = 250 - v // 200 <-> 50
+		}
+		put(tail0, tail)
+		return c
+	}
+	for _, c := range []struct {
+		name string
+		sig  []uint8
+		want int
+	}{
+		{"nothing but clocking, a few samples more high", clock(20, 50, 41, 20, 50), 0},
+		{"idling high between transfers", clock(400, 200, 40, 0, 0), 1},
+		{"idling low, the gap cut short by the record's end", clock(10, 200, 41, 110, 50), 0},
+	} {
+		if got := idleLevel(sliceChannel(c.sig, 0, false)); got != c.want {
+			t.Errorf("%s: idle %d, want %d", c.name, got, c.want)
 		}
 	}
 }

@@ -26,3 +26,13 @@ func TestPeaksJS(t *testing.T) {
 		t.Fatalf("peaks.js e2e test did not report ALL PASS")
 	}
 }
+
+// TestSpectrumLevelJS: a peak's dBV level (app_fft.js) comes from the
+// transform's points when a decimated capture's band keeps fewer bins.
+// TRLC-LINKS: REQ-SDS-216
+func TestSpectrumLevelJS(t *testing.T) {
+	testenv.NeedNode(t)
+	if out, err := exec.Command("node", "spectrum_level.test.cjs").CombinedOutput(); err != nil || !strings.Contains(string(out), "ALL PASS") {
+		t.Fatalf("spectrum level: %v\n%s", err, out)
+	}
+}

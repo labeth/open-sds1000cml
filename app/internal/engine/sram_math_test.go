@@ -39,15 +39,18 @@ func TestERESQ8(t *testing.T) {
 	}
 }
 
+// The average is the mean of the records until target are in, then a running
+// average in which each record weighs 1/target: a fourth record moves a full
+// average of three by a third of its difference, not a restart that shows it
+// alone (every target-th frame was one raw capture).
 // TRLC-LINKS: REQ-SDS-012
-func TestSRAMBlockAverageFractionsAndReset(t *testing.T) {
+func TestSRAMAverageFractionsRunningAndReset(t *testing.T) {
 	var a sramAverage
-	for i, want := range []uint16{25600, 25728, 25856, 26368} {
+	for i, want := range []uint16{25600, 25728, 25856, 26027} {
 		q := uint16(25600 + i*256)
 		f := Frame{Valid: 1, C1: make([]byte, 1), C2: make([]byte, 1), Q1: []uint16{q}, Q2: []uint16{65535}}
-		a.push(&f, 3)
-		if f.Q1[0] != want || f.Q2[0] != 65535 {
-			t.Fatalf("step %d: %v %v", i, f.Q1, f.Q2)
+		if got := a.push(&f, 3); got != min(i+1, 3) || f.Q1[0] != want || f.Q2[0] != 65535 {
+			t.Fatalf("step %d: holds %d, %v %v", i, got, f.Q1, f.Q2)
 		}
 	}
 	a.reset()

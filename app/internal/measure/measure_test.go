@@ -3,6 +3,7 @@ package measure
 
 import (
 	"math"
+	"math/rand"
 	"testing"
 )
 
@@ -446,5 +447,244 @@ func TestResultInverted(t *testing.T) {
 	}
 	if r.Vmax != 3.3 {
 		t.Fatal("Inverted must not modify its receiver (cached results)")
+	}
+}
+
+// An envelope frame's edge shape comes from its full-rate edge windows: the
+// rise and fall of the windows' clean edges and their over/preshoot, the
+// envelope's frequency and duty kept; a window without an edge adds nothing.
+// TRLC-LINKS: REQ-SDS-021
+func TestEdgeDetailFromWindows(t *testing.T) {
+	const sampleS = 2e-9
+	// edge is 2048 samples at 78 (base) or 178 (top), switching at sample 1000
+	// through a 10-sample linear edge, a 5-code overshoot after it.
+	edge := func(rising bool) []uint8 {
+		w := make([]uint8, 2048)
+		for i := range w {
+			x := float64(i-1000) / 10
+			v := 78 + 100*math.Max(0, math.Min(1, x))
+			if i >= 1010 && i < 1020 {
+				v += 5
+			}
+			if !rising {
+				v = 256 - v
+			}
+			w[i] = uint8(math.Round(v))
+		}
+		return w
+	}
+	env := make([]uint8, 0, 2048)
+	for b := 0; b < 1024; b++ { // a 30 % square, 104 buckets a period
+		v := uint8(78)
+		if b%104 < 31 {
+			v = 178
+		}
+		env = append(env, v, v)
+	}
+	ss := 96 * sampleS / 2
+	base := Compute(env, .04, 0, ss).WithEnvelopeTiming(env, .04, 0, ss)
+	if base.RiseS != 0 || base.EdgeShape {
+		t.Fatalf("envelope alone: rise %g edge shape %v", base.RiseS, base.EdgeShape)
+	}
+	r := base.WithEdgeDetail(.04, 0, EdgeWindow{Sig: edge(true), SampleS: sampleS, Shape: true}, EdgeWindow{Sig: edge(false), SampleS: sampleS, Shape: true})
+	if !r.EdgeShape || math.Abs(r.RiseS-16e-9) > 2.5e-9 || math.Abs(r.FallS-16e-9) > 2.5e-9 {
+		t.Fatalf("edge windows: rise %g fall %g shape %v", r.RiseS, r.FallS, r.EdgeShape)
+	}
+	if math.Abs(r.Overshoot-5) > 1.5 || r.Freq != base.Freq || r.Duty != base.Duty {
+		t.Fatalf("edge windows: overshoot %.1f %%, freq %g (was %g), duty %g (was %g)", r.Overshoot, r.Freq, base.Freq, r.Duty, base.Duty)
+	}
+	flat := make([]uint8, 2048)
+	for i := range flat {
+		flat[i] = 128
+	}
+	if f := base.WithEdgeDetail(.04, 0, EdgeWindow{Sig: flat, SampleS: sampleS, Shape: true}); f.EdgeShape || f.RiseS != 0 {
+		t.Fatalf("a flat window gave rise %g", f.RiseS)
+	}
+	// A decimated record's window: its edge is the filter's, no shape.
+	if d := base.WithEdgeDetail(.04, 0, EdgeWindow{Sig: edge(true), SampleS: sampleS}); d.EdgeShape || d.RiseS != 0 {
+		t.Fatalf("a decimated window gave rise %g", d.RiseS)
+	}
+}
+
+// An envelope of a signal faster than its buckets holds no mean or RMS: every
+// bucket spans the swing, so the pairs' mean is the midpoint (a pulse train's
+// read 1.63 V for 0.60 V). It is flagged, and the edge windows - several
+// periods each then - give the mean and RMS.
+// TRLC-LINKS: REQ-SDS-021
+func TestAliasedEnvelopeMeanFromWindows(t *testing.T) {
+	const vpc = 3.3 / 100
+	const off = -78 * vpc         // code 50 reads 0 V, 150 reads 3.3 V
+	env := make([]uint8, 0, 2048) // every bucket spans 50..150: a pulse train faster than a bucket
+	for b := 0; b < 1024; b++ {
+		env = append(env, 50, 150)
+	}
+	r := Compute(env, vpc, off, 1e-6).WithEnvelopeTiming(env, vpc, off, 1e-6)
+	if !r.EnvAliased {
+		t.Fatal("an envelope spanning the swing in every bucket is not flagged")
+	}
+	if got := r.WithEdgeDetail(vpc, off); !got.EnvAliased {
+		t.Fatal("no windows: the mean must stay unknown")
+	}
+	pulses := func() []uint8 { // 18 % high, a 60-sample period, 1024 samples
+		w := make([]uint8, 1024)
+		for i := range w {
+			w[i] = 50
+			if i%60 < 11 {
+				w[i] = 150
+			}
+		}
+		return w
+	}
+	got := r.WithEdgeDetail(vpc, off, EdgeWindow{Sig: pulses(), SampleS: 64e-9}, EdgeWindow{Sig: pulses(), SampleS: 64e-9})
+	frac := float64(11*17+11) / 1024 // high samples in the window
+	if got.EnvAliased || math.Abs(got.Vmean-3.3*frac) > 0.05 || math.Abs(got.Vrms-3.3*math.Sqrt(frac)) > 0.05 {
+		t.Fatalf("mean %.3f rms %.3f aliased %v, want %.3f %.3f", got.Vmean, got.Vrms, got.EnvAliased, 3.3*frac, 3.3*math.Sqrt(frac))
+	}
+	// A resolved envelope (a slow square) is not flagged.
+	slow := make([]uint8, 0, 2048)
+	for b := 0; b < 1024; b++ {
+		v := uint8(50)
+		if b%200 < 100 {
+			v = 150
+		}
+		slow = append(slow, v, v)
+	}
+	if s := Compute(slow, vpc, off, 1e-6).WithEnvelopeTiming(slow, vpc, off, 1e-6); s.EnvAliased {
+		t.Fatal("a resolved square flagged as aliased")
+	}
+}
+
+// A pulse narrower than a bucket - a bucket spanning the swing between two at
+// the same level - leaves the envelope's timing unknown: bucket midpoints miss
+// it and the frequency read too low (51 kHz for 66.8 kHz).
+// TRLC-LINKS: REQ-SDS-021
+func TestEnvelopeNarrowPulseDropsTiming(t *testing.T) {
+	env := make([]uint8, 0, 2048) // 30 % square, 104-bucket period, and a one-bucket pulse
+	for b := 0; b < 1024; b++ {
+		lo, hi := uint8(78), uint8(78)
+		switch {
+		case b%104 < 31:
+			lo, hi = 178, 178
+		case b%104 == 60:
+			hi = 178 // a pulse inside one low bucket
+		case b%104 == 80 || b%104 == 81:
+			hi = 178 // a pulse across two low buckets
+		}
+		env = append(env, lo, hi)
+	}
+	ss := 96 * 2e-9 / 2
+	if r := Compute(env, .04, 0, ss).WithEnvelopeTiming(env, .04, 0, ss); r.HasTiming {
+		t.Fatalf("timing with sub-bucket pulses: %.0f Hz", r.Freq)
+	}
+	// the one-bucket pulse alone, then the two-bucket one alone
+	one, two := append([]uint8(nil), env...), append([]uint8(nil), env...)
+	for b := 0; b < 1024; b++ {
+		switch b % 104 {
+		case 80, 81:
+			one[2*b+1] = 78
+		case 60:
+			two[2*b+1] = 78
+		}
+	}
+	for name, e := range map[string][]uint8{"one-bucket": one, "two-bucket": two} {
+		if r := Compute(e, .04, 0, ss).WithEnvelopeTiming(e, .04, 0, ss); r.HasTiming {
+			t.Errorf("timing with a %s pulse: %.0f Hz", name, r.Freq)
+		}
+	}
+}
+
+// A Q8.8 record's top and base are the settled levels of its modal codes, the
+// same as from a 65536-bin histogram coarsened per code, without building it.
+// TRLC-LINKS: REQ-SDS-017
+func TestComputeQ8LevelsMatchTheFineHistogram(t *testing.T) {
+	rng := rand.New(rand.NewSource(7))
+	reference := func(q []uint16) (top, base int) { // the per-bin coarsening
+		hist := make([]int, 65536)
+		cmin, cmax := int(q[0]), int(q[0])
+		for _, v := range q {
+			hist[v]++
+			cmin, cmax = min(cmin, int(v)), max(cmax, int(v))
+		}
+		coarse := make([]int, 256)
+		for i, c := range hist {
+			coarse[i/256] += c
+		}
+		settled := func(code int) int {
+			var n, sum int64
+			for c := code * 256; c < code*256+256; c++ {
+				n += int64(hist[c])
+				sum += int64(hist[c]) * int64(c)
+			}
+			return int((sum + n/2) / n)
+		}
+		mid := (cmin + cmax) / 2
+		top, base = cmax, cmin
+		if c := modeInRange(coarse, mid/256+1, cmax/256); c >= 0 {
+			top = settled(c)
+		}
+		if c := modeInRange(coarse, cmin/256, mid/256); c >= 0 {
+			base = settled(c)
+		}
+		return top, base
+	}
+	for trial := 0; trial < 300; trial++ {
+		n := 64 + rng.Intn(4000)
+		lo, hi := 20+rng.Intn(80), 140+rng.Intn(100)
+		q := make([]uint16, n)
+		for i := range q {
+			c := lo
+			if rng.Intn(100) < 40 {
+				c = hi
+			}
+			q[i] = uint16(c<<8 + rng.Intn(768) - 384) // about +-1.5 codes of noise
+		}
+		top, base := reference(q)
+		r := ComputeQ8(q, 1, 0, 2e-9)
+		if gotTop, gotBase := int(math.Round(r.Vtop*256))+32768, int(math.Round(r.Vbase*256))+32768; gotTop != top || gotBase != base {
+			t.Fatalf("trial %d: top %d base %d, want %d %d", trial, gotTop, gotBase, top, base)
+		}
+	}
+}
+
+// A signal faster than the envelope's buckets has no timing there; edge
+// windows holding whole periods give its frequency, period, duty and widths.
+// A resolved envelope keeps its own; windows shorter than a period give none.
+// TRLC-LINKS: REQ-SDS-021
+func TestWindowTimingWhenTheEnvelopeHasNone(t *testing.T) {
+	const vpc = 3.3 / 100
+	const off = -78 * vpc
+	env := make([]uint8, 0, 2048) // every bucket spans the swing
+	for b := 0; b < 1024; b++ {
+		env = append(env, 50, 150)
+	}
+	r := Compute(env, vpc, off, 492e-9).WithEnvelopeTiming(env, vpc, off, 492e-9)
+	if r.HasTiming {
+		t.Fatal("an aliased envelope reports timing")
+	}
+	square := func(period, high, phase int) []uint8 { // 2048 samples
+		w := make([]uint8, 2048)
+		for i := range w {
+			w[i] = 50
+			if (i+phase)%period < high {
+				w[i] = 150
+			}
+		}
+		return w
+	}
+	// 1 MHz at 2 ns, 30 % duty: four periods a window
+	got := r.WithEdgeDetail(vpc, off, EdgeWindow{Sig: square(500, 150, 0), SampleS: 2e-9, Shape: true},
+		EdgeWindow{Sig: square(500, 150, 230), SampleS: 2e-9, Shape: true})
+	if !got.HasTiming || got.EnvTiming || math.Abs(got.Freq-1e6) > 1e3 || math.Abs(got.Duty-30) > 0.5 ||
+		math.Abs(got.PosWidthS-300e-9) > 3e-9 || math.Abs(got.NegWidthS-700e-9) > 3e-9 {
+		t.Fatalf("timing %v freq %.0f duty %.2f widths %.1f/%.1f ns", got.HasTiming, got.Freq, got.Duty, got.PosWidthS*1e9, got.NegWidthS*1e9)
+	}
+	// a period longer than the window: nothing to time
+	if slow := r.WithEdgeDetail(vpc, off, EdgeWindow{Sig: square(5000, 1500, 0), SampleS: 2e-9, Shape: true}); slow.HasTiming {
+		t.Fatalf("timing %.0f Hz from a window shorter than a period", slow.Freq)
+	}
+	// a resolved envelope keeps its own timing
+	resolved := &Result{HasTiming: true, EnvTiming: true, Freq: 2500, Period: 400e-6, Duty: 50}
+	if kept := resolved.WithEdgeDetail(vpc, off, EdgeWindow{Sig: square(500, 150, 0), SampleS: 2e-9, Shape: true}); kept.Freq != 2500 || !kept.EnvTiming {
+		t.Fatalf("the envelope's timing replaced: %.0f Hz", kept.Freq)
 	}
 }
