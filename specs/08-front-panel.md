@@ -309,21 +309,21 @@ Every knob has a push switch in addition to rotation.
 
 Active-low `(sel,bit)`; press is a 1→0 edge. Each printed menu key opens its tab of the settings
 sheet (§7.2) and, pressed again on that tab, closes it. The lamp column is the CS3-latch bit
-(§8.2, the map is spec 02 §7.5) the key's lamp is driven on; "dark" lamps are not driven.
+(§8.2, the map is spec 02 §7.5) the key's lamp is driven on; "none" marks a key without a lamp.
 
 | Control | Selector | Bit | Opens | Lamp |
 |---|---|---|---|---|
 | TRIGGER MENU | `0x64` | 10 | TRIG tab | none |
 | ACQUIRE | `0x64` | 11 | ACQ tab | `0x0200` — acquisition not Normal, or super-res on |
-| CURSORS | `0x64` | 12 | CURS tab | dark (§8.2) |
+| CURSORS | `0x64` | 12 | CURS tab | `0x0002` — the cursors are on |
 | MENU (on/off) | `0x64` | 13 | the workspace's sheet (§7.2) | none |
 | DISPLAY | `0x65` | 3 | VIEW tab | `0x0400` — a view other than Y-T, or persistence |
-| MEASURE | `0x65` | 4 | MEAS tab | `0x0100` — readouts on |
+| MEASURE | `0x65` | 4 | MEAS tab | `0x0100` — readouts on, one or more chosen |
 | SAVE/RECALL | `0x65` | 11 | FILE tab | `0x0800` — the settings are those last saved or recalled |
 | HORIZONTAL MENU | `0x65` | 12 | TIME tab | none |
 | UTILITY | `0x66` | 3 | BUS tab | `0x1000` — a bus is decoded |
-| MATH | `0x66` | 12 | MATH/REF tab, Math row | dark (§8.2) |
-| REF | `0x67` | 12 | MATH/REF tab, Store Ref A row | dark (§8.2) |
+| MATH | `0x66` | 12 | MATH/REF tab, Math row | `0x0020` — a math trace is on |
+| REF | `0x67` | 12 | MATH/REF tab, Store Ref A row | `0x0080` — REF A or REF B is shown |
 | HELP | `0x67` | 11 | SYS tab, the guide to the workspace | none |
 | CH1 | `0x66` | 4 | CH1 tab (switches an off channel on) | `0x0010` — CH1 shown |
 | CH2 | `0x67` | 4 | CH2 tab (switches an off channel on) | `0x0040` — CH2 shown |

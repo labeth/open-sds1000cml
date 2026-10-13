@@ -107,7 +107,7 @@ anything on the scope's screen.
 * **Modes:** normal, average (up to 256 frames), enhanced resolution and precision.
 * **Live min/max envelope:** the FPGA reduces the screen to 4,096 min/max points, so narrow events
   stay visible at any zoom. The points are put back in time order, so protocol decode, masks and
-  qualified triggers run on live frames too. Average, ERES and precision use a decimated live
+  trigger placement run on live frames too. Average, ERES and precision use a decimated live
   capture instead (their filtering needs true samples); eye diagram and super-resolution read raw
   samples while in use.
 * **Roll mode.** In AUTO at 10 ms/div and slower the view scrolls instead of waiting for a
@@ -135,12 +135,15 @@ while keeping the full record in SRAM for STOP, SINGLE and detailed review.
 ## Triggering
 
 * **Edge** in hardware, with sub-sample placement: 0.19 ns peak-to-peak edge wander at 5 ns/div.
-* **Pulse width, slope and video** (PAL / NTSC, line select), qualified on the captured record.
+* **Pulse width, slope and video** (PAL / NTSC, line select) in hardware: the `qualify` FPGA image
+  measures the width or slope time in 4 ns ticks and counts video lines, and fires on the event.
 * **Auto, normal and single** modes; holdoff up to 10 s; force trigger.
 * **Protocol triggers in the FPGA** for all ten protocols. Match a byte, word, address, ID or frame
   pattern, with masks and wildcards.
 * **Sequence trigger:** chain up to **32 protocol events**, including **trigger on error**.
-* **Zone trigger:** draw boxes on the screen that the waveform must cross or avoid.
+* **Zone trigger:** draw up to four boxes on the screen that the waveform must cross or avoid; the
+  FPGA keeps a history of where the signal was and decides each edge.
+* Every trigger is decided in the FPGA; the app only places the trigger point exactly on the event.
 * **Mask test:** build a golden mask from live frames with time and voltage tolerances. Count
   failures or stop on the first one, and browse the failure gallery.
 
@@ -162,7 +165,8 @@ automatically.
 | Manchester | line | IEEE 802.3 and Thomas conventions |
 | USB low-speed | line | PID and payload bytes |
 
-* **Auto-detect** finds the protocol, channel roles, threshold and settings from a capture.
+* **Auto-detect** finds the protocol, channel roles, threshold and settings from a sampled capture at any
+  timebase, then steps to a timebase whose live view reads the bus, and says so.
 * **Continuous decoding:** a live decoded stream, with the full-rate record kept for every frame.
   UART at **921,600 baud ran lossless for 3 minutes** (16.6 M bytes). At higher rates a lost event
   is marked, never silently dropped.
@@ -178,7 +182,7 @@ automatically.
 * **Eye diagram and jitter:** software clock recovery; TIE rms and peak-to-peak, RJ / DJ split,
   period and cycle-to-cycle jitter, eye height and width; TIE histogram and spectrum.
 * **Super-resolution:** stacks repeated edges on a time grid up to ×64 finer than the sample period,
-  with interpolating, cubic or drizzle kernels, or triggered on a decoded UART byte. The **FPGA
+  with interpolating, cubic or drizzle kernels, or on a UART byte the FPGA triggers on. The **FPGA
   stacking image** accumulates the hits in hardware, using the same captured records across
   every tile to avoid acquisition-dependent seams. Phase-coherent equivalent-time folding resolves clocks above the trigger
   comparator's range.
@@ -253,7 +257,7 @@ behavioural specifications the implementation was written from are in [`specs/`]
 
 | Path | What it is |
 |---|---|
-| `app/` | The scope application (Go, ARMv7): acquisition engine, triggers, decoders, LCD, front panel, web UI, SCPI/VXI-11. Embeds the four FPGA images. |
+| `app/` | The scope application (Go, ARMv7): acquisition engine, triggers, decoders, LCD, front panel, web UI, SCPI/VXI-11. Embeds the six FPGA images. |
 | `fpga/` | The FPGA images (Verilog, Cyclone IV EP4CE10): what is common, what each image adds, the shipping bitstreams and the build. |
 | `ota/` | The on-device agent and `otactl`: install, launch, health, A/B slots, USB stick builder. |
 | `tools/deploy.sh` | Build the release app and install it on a scope over the network. |
@@ -265,7 +269,7 @@ behavioural specifications the implementation was written from are in [`specs/`]
 ```sh
 make test                      # app and ota test suites
 fpga/sim.sh                    # self-checking RTL testbenches (iverilog)
-make -C app app-release        # ARMv7 app with the four FPGA images embedded
+make -C app app-release        # ARMv7 app with the six FPGA images embedded
 tools/deploy.sh                # build and install on the scope (DEV=192.168.1.209)
 node --experimental-strip-types fpga/build.ts --image=general   # rebuild an FPGA image (Quartus 21.1 Lite)
 ```
