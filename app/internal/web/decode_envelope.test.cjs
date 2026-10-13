@@ -11,8 +11,8 @@ for(const flag of ['peak_detect','is_env']) {
 }
 
 // A live envelope whose buckets span the bus's clock is refused: an I2C clock
-// aliases there into starts and stops without bytes (bug hunt #3); a fine
-// one decodes (framecalc.EnvelopeResolves).
+// aliases there into starts and stops without bytes; a fine one decodes
+// (framecalc.EnvelopeResolves).
 {
   const guarded = source.slice(source.indexOf('// decodeFeatureSamples is'), source.indexOf('// watchReason'));
   const lo = 40, hi = 210, q = 25; // a quarter clock: 25 samples
@@ -46,8 +46,8 @@ for(const flag of ['peak_detect','is_env']) {
 }
 // The web's limit is the scope's (framecalc.MinEnvelopeFeature), and BUS steps
 // the timebase as the scope's BUS does: a 115200 UART's bit is 3.6 points of
-// 500 us/div's live readout (it read 0A as 02 on the bench) - 200 us/div reads
-// it; 100 us/div keeps (bug hunt #3).
+// 500 us/div's live readout (it reads 0A as 02) - 200 us/div reads it;
+// 100 us/div keeps.
 {
   const goLimit = +(/const MinEnvelopeFeature = ([0-9.]+)/.exec(fs.readFileSync('../panel/framecalc/framecalc.go', 'utf8'))[1]);
   const jsLimit = +(/const DECODE_MIN_ENVELOPE_FEATURE = ([0-9.]+)/.exec(source)[1]);
@@ -72,8 +72,8 @@ for(const flag of ['peak_detect','is_env']) {
 console.log('ALL PASS');
 
 // Detect on the live envelope (no sampled record came: Normal with nothing
-// triggering) refuses a bus the envelope cannot resolve: the I2C source's
-// data line read as Manchester at 102 kBd (bug hunt #3); a sampled record,
+// triggering) refuses a bus the envelope cannot resolve (an I2C data line
+// reads as Manchester at 102 kBd); a sampled record,
 // or a bus the envelope resolves, stands.
 {
   const guarded = source.slice(source.indexOf('// decodeFeatureSamples is'), source.indexOf('// watchReason'));

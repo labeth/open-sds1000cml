@@ -85,17 +85,21 @@ run(async (t) => {
   // TRLC-LINKS: REQ-SDS-215
   const figs = () => page.evaluate(() => Object.fromEntries([...document.querySelectorAll("#ejBody tr")].filter((r) => r.querySelector("th") && r.querySelector("td"))
     .map((r) => [r.querySelector("th").textContent, r.querySelector("td").textContent])));
-  await t.until(async () => { const f = await figs(); return /b\/s/.test(f["bit rate"] || "") && /s$/.test(f["TIE rms"] || ""); }, "the eye locks and measures", 15000);
+  await t.until(async () => { const f = await figs(); return /bit\/s/.test(f["bit rate"] || "") && /s$/.test(f["TIE rms"] || ""); }, "the eye locks and measures", 15000);
   // the eye's height and width need enough folded edges (a few captures)
   await t.until(async () => { const f = await figs(); return /code|V/.test(f["eye height"] || "") && /UI/.test(f["eye width"] || ""); }, "the eye opens: height and width", 20000);
   const f = await figs();
-  const br = parseFloat(f["bit rate"]) * ({ k: 1e3, M: 1e6 }[(/([kM])b\/s/.exec(f["bit rate"]) || [])[1]] || 1);
+  const br = parseFloat(f["bit rate"]) * ({ k: 1e3, M: 1e6 }[(/([kM])bit\/s/.exec(f["bit rate"]) || [])[1]] || 1);
   t.near(br, 115200, 2500, "bit rate");
   t.ok(/µs/.test(f.UI) && Math.abs(parseFloat(f.UI) - 8.68) < 0.2, "UI ≈ 8.68 µs: " + f.UI);
-  for (const k of ["eye height", "eye width", "crossing", "rise / fall", "TIE rms", "TIE pk-pk"])
+  // the LCD's BUS eye figures, in its order
+  t.ok(JSON.stringify(Object.keys(f).slice(0, 12)) === JSON.stringify(["bit rate", "UI", "crossing", "folded", "eye height", "eye width",
+    "rise", "fall", "TIE rms", "TIE pk-pk", "RJ / DJ", "period / c2c"]), "the LCD eye's figures, in its order: " + Object.keys(f).join(", "));
+  for (const k of ["eye height", "eye width", "crossing", "rise", "fall", "TIE rms", "TIE pk-pk"])
     t.ok(f[k] && !/^—/.test(f[k]), `the eye reads its ${k}: ${f[k]}`);
   t.ok(/%/.test(f.crossing), "the crossing is a percentage");
-  t.ok(!/[≤≥]/.test(f["eye width"] + f["rise / fall"]), "at 20 samples per UI the figures are measurements, not bounds");
+  t.ok(/^[1-9]\d* UI$/.test(f.folded), "the UIs folded: " + f.folded);
+  t.ok(!/[≤≥]/.test(f["eye width"] + f.rise + f.fall), "at 20 samples per UI the figures are measurements, not bounds");
   await page.keyboard.press("Alt+2");
   t.ok(!(await po.hasClass("ejArm", "on")) && await po.isVisible("pktable"), "BUS again: back to the packets, the eye stops");
 

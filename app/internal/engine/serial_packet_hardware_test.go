@@ -279,9 +279,9 @@ func TestARINCLevelsMatchDecoder(t *testing.T) {
 }
 
 // The ARINC slicer levels come from a sampled record: a live envelope's
-// (min, max) pairs gave wrong ones, kept until the request changed, and the
-// matcher never fired (bug hunt #3). On an envelope the engine asks for a
-// sampled record instead.
+// (min, max) pairs give wrong ones, kept until the request changes, and the
+// matcher never fires. On an envelope the engine asks for a sampled record
+// instead.
 // TRLC-LINKS: REQ-SDS-018
 func TestARINCLevelsWaitForASampledRecord(t *testing.T) {
 	e := levelsEngine(SerialParams{Proto: serARINC, ChA: 0, Baud: 100000, Bytes: []int{0xABCD}})

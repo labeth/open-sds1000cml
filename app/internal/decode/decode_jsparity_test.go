@@ -163,6 +163,18 @@ func TestJSDecoderParity(t *testing.T) {
 			DecodeUART(w, ct, UARTCfg{Baud: baud, Parity: par}))
 	}
 
+	// ---- UART windows opening inside the bench line's traffic: the sync-in
+	// grays the same frames in Go and JS.
+	{
+		line, _ := benchUARTLine(12, 3)
+		period := (8*11 + 27) * 12
+		ct := 1.0 / (115200 * 12)
+		for cut := 0; cut < period; cut += 23 {
+			w := line[cut : cut+2*period]
+			add("uart", w, ct, jsCfg{"baud": 115200, "parity": "none"}, DecodeUART(w, ct, UARTCfg{Baud: 115200}))
+		}
+	}
+
 	// ---- UART auto-baud on RINGY edges (the task-2 hardening): the cluster-walk
 	// inference must land on the same spb — hence the same bytes — in Go and JS.
 	{

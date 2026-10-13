@@ -196,9 +196,9 @@ func TestSuperresFPGACancel(t *testing.T) {
 	}
 }
 
-// With Stop on an FPGA mode, Super-res On runs an FPGA session: it refused
+// With Stop on an FPGA mode, Super-res On runs an FPGA session, not a refusal
 // with the software stack's depth limit ("window too deep for software
-// stacking - use FPGA"), and only Restart's Run FPGA started it (bug hunt #3).
+// stacking - use FPGA") that only Restart's Run FPGA gets past.
 // TRLC-LINKS: REQ-SDS-141
 func TestSuperresOnInFPGAModeRunsTheFPGA(t *testing.T) {
 	_, base, fe := newC(t)
@@ -229,8 +229,8 @@ func TestSuperresOnInFPGAModeRunsTheFPGA(t *testing.T) {
 }
 
 // Super-res On on a window too deep for the software stack says why and what
-// to do within the ACQ tab's status line: the remedy was cut off the LCD
-// ("...(156378 samples) - Stop o..", bug hunt #3).
+// to do within the ACQ tab's status line, the remedy not cut off the LCD
+// ("...(156378 samples) - Stop o..").
 // TRLC-LINKS: REQ-SDS-141
 func TestSuperresTooDeepSaysTheRemedyOnTheLCD(t *testing.T) {
 	c, _, _ := newC(t)

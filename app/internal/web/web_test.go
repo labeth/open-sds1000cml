@@ -211,6 +211,10 @@ func (f *fakeScope) SetBodeMode(on bool, ref, dut int) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.bodeOn, f.bodeRef, f.bodeDut = on, ref, dut
+	f.stats.BodeMode, f.stats.BodeRef, f.stats.BodeDut = 0, ref, dut // the engine reports them
+	if on {
+		f.stats.BodeMode = 1
+	}
 }
 
 // TRLC-LINKS: REQ-SDS-162

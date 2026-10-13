@@ -255,7 +255,7 @@ func TestGoldenBode(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-021, REQ-SDS-068
 func TestGoldenSpectrogram(t *testing.T) {
 	const n = 4096
-	const dt = 2e-9 // raw Nyquist 250 MHz; stride 2 → axis Nyquist 125 MHz
+	const dt = 2e-9 // Nyquist 250 MHz: 4096 samples are under MaxFFT, so the FFT view's spectrum and the waterfall span it all
 	sg := NewSpectrogram()
 	for s := 0; s < 8; s++ {
 		f := 10e6 + 15e6*float64(s) // 10..115 MHz staircase

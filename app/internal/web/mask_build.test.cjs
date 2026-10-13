@@ -47,7 +47,21 @@ async function geometryTransition() {
  assert.equal(seq,6,'only fresh geometry contributes to the requested frame count');
  assert.equal(body.tdiv_s,.006);assert.equal(body.sample_s,1e-6);assert.equal(body.peak_detect,false);assert.equal(body.win,6);assert.deepEqual([...Buffer.from(body.lo_b64,'base64')],Array(6).fill(200));assert.deepEqual([...Buffer.from(body.hi_b64,'base64')],Array(6).fill(201));assert.match(message,/mask built from 4/);
 }
-(async()=>{await run(false);await run(true);await run(false,0);await geometryTransition();await fullRecord(500,7);await fullRecord();console.log('ALL PASS')})().catch(e=>{console.error(e);process.exit(1)});
+// A dropped frame transfer (a full-rate record under a lease is megabytes) costs
+// a try, not the build.
+async function droppedTransfer() {
+ let seq=0,body,message,calls=0;
+ const els={zmBuild:{},zmN:{value:4},zmTolT:{value:0},zmTolV:{value:0},zmCh:{value:0}};
+ const c={...require('./wsmath.js'),st:{win_cols:4,trig_pos_frac:.5},zm:{},$:id=>els[id],zmCplOK:()=>true,zmVctx:()=>null,redraw:()=>{},zmStatus:t=>message=t,setTimeout,
+ btoa:s=>Buffer.from(s,'binary').toString('base64'),decodeBinFrame:f=>f,fetch:async(url,opts)=>{
+  if(url==='/api/mask'){body=JSON.parse(opts.body);return {ok:true,json:async()=>({ok:true})};}
+  if(++calls===2)throw new TypeError('network error');
+  return {arrayBuffer:async()=>({seq:++seq,edge_x:2,sample_s:1e-6,tdiv_s:1e-3,cols:4,win_cols:4,c1:[60,60,190,190]})};
+ }};
+ vm.createContext(c);vm.runInContext(code,c);await els.zmBuild.onclick();
+ assert.match(message,/mask built from 4/);assert.equal(body.win,4);
+}
+(async()=>{await run(false);await run(true);await run(false,0);await geometryTransition();await droppedTransfer();await fullRecord(500,7);await fullRecord();console.log('ALL PASS')})().catch(e=>{console.error(e);process.exit(1)});
 
 // Deep records retain the mask at its trigger-relative times, rather than
 // hiding it or stretching its four samples across the eight-sample record.

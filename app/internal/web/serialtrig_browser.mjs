@@ -28,7 +28,7 @@ run(async (t) => {
   await t.until(async () => /turn on decode/.test(await po.text("stStats")), "with decoding off and no bus found, arming refuses and says why", 8000);
   t.ok(!(await po.hasClass("stArm", "on")), "…and stays disarmed");
   // a second click while the first still searches for the bus cancels the arm
-  // (two quick clicks armed: the second started an arm of its own; bug hunt #3)
+  // (a second click must not start an arm of its own)
   const sent = posts.length;
   await po.eval(() => { const b = document.getElementById("stArm"); b.click(); b.click(); });
   await t.until(async () => /arming cancelled/.test(await po.text("stStats")), "a second click while arming cancels it", 4000);

@@ -50,9 +50,9 @@ func TestSerialTrigAdoptBrowser(t *testing.T) {
 }
 
 // The scope keeps its match while the serial trigger is off: a page shows it
-// and its Trigger on match arms it (serialstored_browser.mjs; the page's
-// empty field armed "any byte" over it, bug hunt #3); disarmed, the page
-// follows a match set elsewhere (it kept showing the old one).
+// and its Trigger on match arms it, not "any byte" from the page's empty field
+// (serialstored_browser.mjs); disarmed, the page follows a match set
+// elsewhere.
 // TRLC-LINKS: REQ-SDS-206
 func TestSerialStoredMatchBrowser(t *testing.T) {
 	testenv.NeedNode(t)

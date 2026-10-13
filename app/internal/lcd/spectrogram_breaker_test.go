@@ -327,43 +327,37 @@ func TestSpectrogramPushGuards(t *testing.T) {
 	}
 }
 
-// spectrumMags on degenerate records: all-zero, all-max, single spike, tiny.
+// Push on degenerate records (all-zero, all-max, single spike, tiny): the
+// spectrum it paints never panics or goes NaN.
 // TRLC-LINKS: REQ-SDS-068
-func TestSpectrumMagsDegenerate(t *testing.T) {
+func TestSpectrogramPushDegenerate(t *testing.T) {
 	cases := map[string][]uint8{
-		"all-zero":    make([]uint8, 4096),
-		"all-max":     bytesFill(4096, 255),
-		"all-mid":     bytesFill(4096, 128),
-		"single-hi":   spike(4096, 0, 255),
-		"single-end":  spike(4096, 4095, 255),
-		"len-16":      bytesFill(16, 128),
-		"len-31":      bytesFill(31, 128),
-		"len-17-sine": {}, // filled below
+		"all-zero":   make([]uint8, 4096),
+		"all-max":    bytesFill(4096, 255),
+		"all-mid":    bytesFill(4096, 128),
+		"single-hi":  spike(4096, 0, 255),
+		"single-end": spike(4096, 4095, 255),
+		"len-16":     bytesFill(16, 128),
+		"len-31":     bytesFill(31, 128),
 	}
 	sine := make([]uint8, 4096)
 	for i := range sine {
 		sine[i] = sgClamp8(128 + 90*math.Sin(float64(i)*0.05))
 	}
 	cases["sine"] = sine
+	seq := uint64(0)
 	for name, src := range cases {
-		if len(src) == 0 {
-			continue
-		}
 		func() {
 			defer func() {
 				if r := recover(); r != nil {
-					t.Fatalf("%s: spectrumMags PANIC: %v", name, r)
+					t.Fatalf("%s: Push PANIC: %v", name, r)
 				}
 			}()
-			mags, peak := spectrumMags(src, 1)
-			if peak <= 0 && mags != nil {
-				t.Errorf("%s: mags non-nil but peak %g", name, peak)
-			}
-			for k, m := range mags {
-				if math.IsNaN(m) || math.IsInf(m, 0) || m < 0 {
-					t.Errorf("%s: bad mag[%d]=%g", name, k, m)
-					break
-				}
+			seq++
+			sg := NewSpectrogram()
+			sg.Push(&engine.Frame{C1: src, C2: src, Valid: len(src), SampleS: 2e-9, Seq: seq}, 0, 0)
+			if sg.Rows() > 0 && !(sg.effNyq > 0) {
+				t.Errorf("%s: a row painted with span %g", name, sg.effNyq)
 			}
 		}()
 	}

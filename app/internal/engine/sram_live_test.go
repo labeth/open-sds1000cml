@@ -15,7 +15,7 @@ import (
 func TestLiveSRAMPlanBoundsTheScreen(t *testing.T) {
 	for _, tdiv := range []float64{200e-6, 500e-6, 10e-3, 1} {
 		p := PlanSRAM(tdiv)
-		live, ok := liveSRAMPlan(p)
+		live, ok := liveSRAMPlan(p, liveScreenSamples)
 		if !ok {
 			t.Fatalf("%g s/div: screen %d not reduced", tdiv, p.Screen)
 		}
@@ -27,9 +27,39 @@ func TestLiveSRAMPlanBoundsTheScreen(t *testing.T) {
 		}
 	}
 	for _, tdiv := range []float64{1e-6, 500e-9} {
-		if _, ok := liveSRAMPlan(PlanSRAM(tdiv)); ok {
+		if _, ok := liveSRAMPlan(PlanSRAM(tdiv), liveScreenSamples); ok {
 			t.Fatalf("%g s/div: a short raw screen was decimated", tdiv)
 		}
+	}
+}
+
+// The live decimated record keeps the display's bandwidth: the precision
+// filter's -3 dB (13.5 % of the decimated rate) stays above the 768-px plot's
+// pixel Nyquist at every timebase, and a spectrum lease's record keeps up to
+// SpectrumRawSamples (at 500us/div /1024 passes 36.6 kHz, under the plot's
+// 76.8 kHz pixel Nyquist, and a 115200 Bd UART's bits vanish).
+// TRLC-LINKS: REQ-SDS-010, REQ-SDS-070
+func TestLiveSRAMPlanKeepsTheDisplayBandwidth(t *testing.T) {
+	for _, tdiv := range []float64{20e-6, 50e-6, 200e-6, 500e-6, 2e-3, 10e-3} {
+		p := PlanSRAM(tdiv)
+		live, ok := liveSRAMPlan(p, liveBudget("averaging"))
+		if !ok {
+			continue
+		}
+		bw, pixNyq := 0.1346/live.SampleS, 768/(2*10*tdiv)
+		if bw < 1.3*pixNyq {
+			t.Errorf("%g s/div: /%d keeps %.0f Hz, under 1.3 x the pixel Nyquist %.0f Hz", tdiv, 1<<live.Log, bw, pixNyq)
+		}
+		spec, ok := liveSRAMPlan(p, liveBudget(blockSpectrum))
+		if ok && (spec.Screen > SpectrumRawSamples || spec.Screen <= SpectrumRawSamples/2 && spec.Log > 4) {
+			t.Errorf("%g s/div: the spectrum's record holds %d samples at /%d", tdiv, spec.Screen, 1<<spec.Log)
+		}
+	}
+	if live, _ := liveSRAMPlan(PlanSRAM(500e-6), liveBudget("averaging")); live.Log != 9 {
+		t.Errorf("500us/div: /%d, want /512", 1<<live.Log)
+	}
+	if spec, _ := liveSRAMPlan(PlanSRAM(500e-6), liveBudget(blockSpectrum)); spec.Log != 7 {
+		t.Errorf("500us/div spectrum: /%d, want /128", 1<<spec.Log)
 	}
 }
 
@@ -143,8 +173,8 @@ func TestRollGroupCarries(t *testing.T) {
 }
 
 // A V/div round trip keeps the roll history: codes clip on the screen at the
-// sensitive scale, but the history is volts (bench 2026-10-10: 1 -> 0.5 -> 1
-// V/div left a 3.3 V square topped at 2.7 V).
+// sensitive scale, but the history is volts (a history of codes leaves a 3.3 V
+// square topped at 2.7 V after 1 -> 0.5 -> 1 V/div).
 // TRLC-LINKS: REQ-SDS-010, REQ-SDS-040
 func TestRollRescaleKeepsHistory(t *testing.T) {
 	r := &rollView{}

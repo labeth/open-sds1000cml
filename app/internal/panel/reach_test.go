@@ -90,6 +90,12 @@ func smallFrame() *engine.Frame {
 // rigFor is a rig in context x, showing a short capture super-res can stack.
 func rigFor(t *testing.T, x reachContext) *viewRig {
 	r := newViewRig(t)
+	// the engine's power-on qualifiers (defaultTrigParams): the time limits
+	// start inside their rows' 10 ns .. 10 s, as on the scope
+	r.eng.set(func(st *engine.Stats) {
+		st.TrigQual = engine.TrigQual{PulseLvl: 0.5, PulseMinNs: 100, PulseMaxNs: 1000, SlopeLo: 0.2, SlopeHi: 0.8,
+			SlopeMinNs: 100, SlopeMaxNs: 1000, VideoNeg: true}
+	})
 	r.show(smallFrame())
 	x.prep(t, r)
 	t.Cleanup(func() { r.c.srCancel("cancelled") })

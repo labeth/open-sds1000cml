@@ -25,7 +25,7 @@ func (w *wholeSlots) CurrentSetup() settings.Settings {
 // The Save/Recall lamp compares the whole setup a save writes: a change
 // outside the old fingerprint (MEASURE's all-values view, BUS's eye, the
 // serial match, memory depth...) puts it out, and going back lights it
-// again (bug hunt #3, B1: it stayed lit).
+// again.
 // TRLC-LINKS: REQ-SDS-136
 func TestSaveRecallLampFollowsTheWholeSetup(t *testing.T) {
 	c, eng, _ := newC(t)
@@ -50,8 +50,8 @@ func TestSaveRecallLampFollowsTheWholeSetup(t *testing.T) {
 }
 
 // Between inputs the snapshot is published at most every 150 ms (hashing
-// every row and encoding the snapshot on each 40 ms tick and LCD frame took
-// a tenth of the CPU; bug hunt #3, B3), and a change still reaches it.
+// every row and encoding the snapshot on each 40 ms tick and LCD frame takes
+// a tenth of the CPU), and a change still reaches it.
 // TRLC-LINKS: REQ-SDS-211
 func TestSyncPublishIsRateLimited(t *testing.T) {
 	c, eng, _ := newC(t)
@@ -78,8 +78,8 @@ func TestSyncPublishIsRateLimited(t *testing.T) {
 
 // A setup saved or recalled from the web or SCPI goes through the panel's
 // shared store: its FILE row shows what the slot now holds and the
-// SAVE/RECALL lamp lights, as for a save on the scope (a slot saved on the
-// web read "empty" on the scope until a restart; bug hunt #3).
+// SAVE/RECALL lamp lights, as for a save on the scope (not "empty" on the
+// scope until a restart).
 // TRLC-LINKS: REQ-SDS-136
 func TestSharedSetupsUpdateTheFileRowsAndLamp(t *testing.T) {
 	c, eng, _ := newC(t)

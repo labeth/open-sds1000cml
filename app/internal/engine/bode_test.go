@@ -135,7 +135,7 @@ func TestBodeRejectsFloorAndSubCycle(t *testing.T) {
 	if len(e.BodePoints()) != 0 || e.Snapshot().BodeValid {
 		t.Error("flat reference must not produce a Bode point")
 	}
-	// the status says why (bug hunt #3: the LCD said "Sweeping..." forever)
+	// the status says why, not "Sweeping..." forever
 	if why := e.Snapshot().BodeWhy; why != "no tone on the reference C1" {
 		t.Errorf("flat reference: why %q", why)
 	}
@@ -213,5 +213,15 @@ func TestBodeUsesChannelAndProbeScales(t *testing.T) {
 	e.bodeEval(f, n, dt)
 	if p := e.BodePoints(); len(p) != 1 || math.Abs(p[0].GainDB+20) > .3 {
 		t.Fatalf("probe scales: %+v", p)
+	}
+}
+
+// A fresh engine's frequency response measures C2 against C1: the scope's
+// Bode view arms the engine's own channels, so they must not start as C1 / C1.
+// TRLC-LINKS: REQ-SDS-066
+func TestBodeChannelsStartOnC1C2(t *testing.T) {
+	e := New(Config{Bus: newFakeBus()})
+	if st := e.Snapshot(); st.BodeRef != 0 || st.BodeDut != 1 {
+		t.Fatalf("a fresh engine: ref %d dut %d, want C1 / C2", st.BodeRef, st.BodeDut)
 	}
 }

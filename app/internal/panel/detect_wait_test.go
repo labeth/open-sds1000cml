@@ -28,8 +28,7 @@ func envelopeOf(f *engine.Frame, bucket int) *engine.Frame {
 
 // BUS's auto-detect waits for the sampled frame its decode lease asks for:
 // at a slow timebase the live envelope holds a few points a UART bit and no
-// bus is found in it (bug hunt #3: "no bus found" at 500 us/div with the
-// UART on screen).
+// bus is found in it (500 us/div with the UART on screen).
 // TRLC-LINKS: REQ-SDS-214
 func TestBusDetectWaitsForSamples(t *testing.T) {
 	c, _, _ := newC(t)

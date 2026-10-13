@@ -1,6 +1,6 @@
 // Real-browser e2e: the web's Device screenshot (PRINT) presses the scope's
-// PRINT and then says what the scope saved, as the LCD does (it only ever
-// said "saving"; bug hunt #3). argv[2]=URL. SKIP/exit 0 without browser.
+// PRINT and then says what the scope saved, as the LCD does, not just
+// "saving". argv[2]=URL. SKIP/exit 0 without browser.
 import { openScope, run } from "./scope_po.mjs";
 
 run(async (t) => {

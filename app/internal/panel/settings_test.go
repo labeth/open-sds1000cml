@@ -22,6 +22,12 @@ func TestSettingsViewRoundTrip(t *testing.T) {
 	got := c.SettingsView()
 	got.UI = settings.UI{}         // a file without the workspace UI keeps the UI as it is
 	got.Serial = settings.Serial{} // ... and one without the serial block keeps the trigger
+	// ... and one without the display state (invert, cursors, zoom) keeps it: as at power-on here
+	if ds := got.Display; !ds.Set || ds.CurMode != 0 || ds.Zoom != 1 || ds.Invert != [2]bool{} {
+		t.Fatalf("the display state kept: %+v", ds)
+	}
+	got.Display = settings.Display{MathMode: got.Display.MathMode, ShowMeas: got.Display.ShowMeas,
+		Persist: got.Display.Persist, Hidden: got.Display.Hidden}
 	if got != want {
 		t.Fatalf("round trip mismatch:\n got %+v\nwant %+v", got, want)
 	}
@@ -116,7 +122,7 @@ func TestApplySettingsViewKeepsTwoSignalRolesOpposite(t *testing.T) {
 }
 
 // Math, measurements, persistence and channel visibility round-trip through
-// the saved setup (bug hunt 2026-10-10: they were lost on restart).
+// the saved setup, so a restart keeps them.
 // TRLC-LINKS: REQ-SDS-072, REQ-SDS-089
 func TestSettingsViewDisplayRoundTrip(t *testing.T) {
 	a, _, _ := newC(t)
@@ -132,7 +138,7 @@ func TestSettingsViewDisplayRoundTrip(t *testing.T) {
 }
 
 // The decoded-stream trigger and its value persist with the rest of DECODE
-// (bug hunt 2026-10-10: a restart reset them to Error / 00).
+// (a restart must not reset them to Error / 00).
 // TRLC-LINKS: REQ-SDS-072, REQ-SDS-018
 func TestSettingsViewStreamTriggerRoundTrip(t *testing.T) {
 	a, _, _ := newC(t)
@@ -193,5 +199,34 @@ func TestSettingsViewSerialRoundTrip(t *testing.T) {
 	}
 	if p := beng.SerialConfig(); len(p.Bytes) != 0 || len(p.Pattern) != 0 {
 		t.Fatalf("a bad saved match should be any byte, got %+v", p)
+	}
+}
+
+// fakeInverter is the display invert (SCPI's INVS shadow on the device).
+type fakeInverter struct{ inv [2]bool }
+
+func (i *fakeInverter) Inverted() [2]bool           { return i.inv }
+func (i *fakeInverter) SetInverted(ch int, on bool) { i.inv[ch&1] = on }
+
+// A saved setup brings back the channel invert, the cursors (mode, A and B,
+// the one Adjust moves) and the zoom, on a recall and over a restart.
+// TRLC-LINKS: REQ-SDS-136, REQ-SDS-211
+func TestSettingsViewDisplayStateRoundTrip(t *testing.T) {
+	c, _, _ := newC(t)
+	inv := &fakeInverter{}
+	c.SetInverter(inv)
+	want := settings.Display{Set: true, Invert: [2]bool{true, false}, CurMode: 2, CurX: [2]float64{0.2, 0.7},
+		CurY: [2]float64{0.3, 0.6}, CurSel: 1, Zoom: 5, ZoomOff: 0.25}
+	c.ApplySettingsView(settings.ViewState{Display: want})
+	if inv.inv != [2]bool{true, false} {
+		t.Fatalf("invert not restored: %v", inv.inv)
+	}
+	got := c.SettingsView().Display
+	got.MathMode, got.ShowMeas, got.Persist, got.Hidden = 0, false, false, [2]bool{}
+	if got != want {
+		t.Fatalf("display state:\n got %+v\nwant %+v", got, want)
+	}
+	if rowText(c, "curs.mode") != "Volts" || rowText(c, "time.zoom") != "5x" || rowText(c, "ch1.invert") != "On" {
+		t.Fatalf("rows: cursors %q zoom %q C1 invert %q", rowText(c, "curs.mode"), rowText(c, "time.zoom"), rowText(c, "ch1.invert"))
 	}
 }

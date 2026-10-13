@@ -396,8 +396,8 @@ func TestDecodeCANFDNoPanic(t *testing.T) {
 
 // A live-envelope capture at 100 us/div (500 kbit/s, ~8 samples a bit, edges
 // quantized to 2-sample steps) decodes cleanly: the reader resynchronizes on
-// edges instead of free-running from SOF (bug hunt 2026-10-10: it read
-// 45 D4 1F E1 and lost auto-detect to UART).
+// edges instead of free-running from SOF (which reads 45 D4 1F E1 and loses
+// auto-detect to UART).
 // TRLC-LINKS: REQ-SDS-018
 func TestCANEnvelopeCaptureResync(t *testing.T) {
 	b, err := os.ReadFile("testdata/can_envelope_100us.json")

@@ -59,6 +59,21 @@ run(async (t) => {
   });
   t.ok(painted > 200, "the Bode plot is drawn on the scope canvas: " + painted + " lit pixels");
 
+  // the page follows the scope's own Bode state: its Bode view or VIEW tab
+  // (here a direct /api/set) disarms it and swaps the channels
+  await po.eval(() => fetch("/api/set", { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ control: "bodemode", value: 0, lo: 1, hi: 0 }) }));
+  await t.until(async () => (await po.text("bodeArm")) === "ARM" && !(await po.hasClass("bodeArm", "on")),
+    "the ARM button follows the scope disarming", 4000);
+  await t.until(async () => (await po.value("bodeRef")) === "1" && (await po.value("bodeDut")) === "0",
+    "the REF / DUT selectors follow the scope's channels", 4000);
+  // picking the other's channel swaps them, and the scope gets both
+  bodeModePost = null;
+  await page.selectOption("#bodeDut", "1");
+  await po.wait(300);
+  t.ok((await po.value("bodeRef")) === "0" && bodeModePost && bodeModePost.lo === 0 && bodeModePost.hi === 1,
+    "DUT C2 over REF C2 swaps the REF to C1, sent to the scope disarmed: " + JSON.stringify(bodeModePost));
+
   // CLEAR runs without error
   await po.click("bodeClear");
   t.ok((await po.text("bodeStats")).length > 0, "bodeClear updates the status line");

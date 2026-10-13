@@ -9,8 +9,7 @@ import (
 	"testing"
 )
 
-// PRINT numbers its screenshots and never overwrites one (bug hunt #2: the
-// key was claim-and-ignore).
+// PRINT numbers its screenshots and never overwrites one.
 // TRLC-LINKS: REQ-SDS-136
 func TestSaveHardcopyNumbers(t *testing.T) {
 	dir := t.TempDir()
@@ -30,9 +29,9 @@ func TestSaveHardcopyNumbers(t *testing.T) {
 }
 
 // A key that changes only a value in a sheet, a pane's text, the rail label
-// or a notice repaints a held display (bug hunt #2: TRIGGER Type
-// Pulse->Slope while stopped left "Pulse" on the LCD); the same snapshot
-// rebuilt (new pointers, the same content) does not.
+// or a notice repaints a held display (TRIGGER Type Pulse->Slope while
+// stopped must not leave "Pulse" on the LCD); the same snapshot rebuilt (new
+// pointers, the same content) does not.
 // TRLC-LINKS: REQ-SDS-168, REQ-SDS-211
 func TestRenderSigSeesUIChanges(t *testing.T) {
 	view := func(typ string) wsview.View {

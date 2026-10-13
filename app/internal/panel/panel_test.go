@@ -24,6 +24,7 @@ type call struct {
 // serial trigger; plainEng hides it.
 // TRLC-LINKS: REQ-SDS-135
 type fakeEng struct {
+	webEnds int // EndWebDecodedCapture calls (web_capture_test.go)
 	matrix  [5]uint16
 	calls   []call
 	leds    []uint16

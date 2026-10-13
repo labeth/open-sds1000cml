@@ -8,8 +8,8 @@ import (
 )
 
 // Auto paces its full detection, but a newer frame inside the pacing window
-// is decoded afresh: the cached spans sat where the earlier frame's bytes had
-// been (bug hunt 2026-10-10: labels off the trace on a free-phase UART).
+// is decoded afresh, or the cached spans sit where the earlier frame's bytes
+// had been (labels off the trace on a free-phase UART).
 // TRLC-LINKS: REQ-SDS-018
 func TestAutoDecodeFollowsNewFrame(t *testing.T) {
 	msg := []int{0x48, 0x69, 0x20, 0x55, 0xAA, 0x0F, 0xF0, 0x0A}

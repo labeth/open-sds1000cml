@@ -117,8 +117,8 @@ func TestSingleShotStopsAfterCapture(t *testing.T) {
 }
 
 // SINGLE waits in NORM, and the next RUN brings back the mode it replaced;
-// an explicit AUTO/NORM choice meanwhile is kept (bug hunt 2026-10-10: AUTO
-// stayed NORM for good after one SINGLE).
+// an explicit AUTO/NORM choice meanwhile is kept (AUTO must not stay NORM for
+// good after one SINGLE).
 // TRLC-LINKS: REQ-SDS-009, REQ-SDS-011
 func TestSingleRestoresTriggerMode(t *testing.T) {
 	e, _ := newTestEngine(t, newFakeBus())

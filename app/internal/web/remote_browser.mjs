@@ -570,7 +570,7 @@ run(async (t) => {
   await flow("Pixel 7", "Pixel 7", { noWakeLock: true });
 
   // ---- on a slow link a late answer closes only the sheet it came from ------------------------
-  // (bug hunt #3: picked, closed by hand, another sheet opened - the late answer shut that one)
+  // (picked, closed by hand, another sheet opened: the late answer must not shut that one)
   {
     await ctrl("/reset");
     const P = await phone("Pixel 7", { label: "slow link" });

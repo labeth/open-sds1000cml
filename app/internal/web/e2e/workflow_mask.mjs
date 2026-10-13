@@ -63,7 +63,7 @@ export const maskv = [
     // freeze on the next anomaly. Confirm the mode engages and the tester keeps
     // counting frames. (Counted-truth CATCH of a known violation — building the
     // golden from a clean source, then testing a violated DUT — is validated by
-    // the FPGA counted-truth campaign; this single flash builds from an already
+    // the FPGA's counted violations; this single flash builds from an already
     // -violated source so its envelope learns the violation as normal.)
     await op.selectExpect("zmMode", "2", null, { why: "arm mask stop-on-fail" });
     const meter = await op.readUntil(async () => {

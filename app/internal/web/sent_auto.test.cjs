@@ -1,8 +1,8 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-WEB
 // Auto-detect reports the SENT tick and nibble count it decoded with, and a
-// decode with exactly those settings shows the bytes it announced (bug hunt
-// #2: "detected SENT · 28 bytes" over "(no decode)" when the inputs held
-// other values).
+// decode with exactly those settings shows the bytes it announced, not
+// "detected SENT · 28 bytes" over "(no decode)" when the inputs held other
+// values.
 const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
 const c={};vm.createContext(c);vm.runInContext(fs.readFileSync('decode.js','utf8')+'\n'+fs.readFileSync('decode_sent.js','utf8'),c);
 const f=JSON.parse(fs.readFileSync('../decode/testdata/sent_envelope_200us.json','utf8'));

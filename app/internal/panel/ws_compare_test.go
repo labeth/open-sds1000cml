@@ -123,9 +123,9 @@ func TestCompareRowActions(t *testing.T) {
 }
 
 // A master is refused while the acquisition is Average: the stability check
-// and the mask test both need raw captures. A master started there stacked a
-// source that did not repeat and restored Average, so its mask never came or
-// failed every capture (bug hunt #3).
+// and the mask test both need raw captures. A master started there would stack
+// a source that does not repeat and restore Average, so its mask never comes
+// or fails every capture.
 // TRLC-LINKS: REQ-SDS-218
 func TestMasterRefusedInAverage(t *testing.T) {
 	r := newViewRig(t)
@@ -140,5 +140,28 @@ func TestMasterRefusedInAverage(t *testing.T) {
 	}
 	if n := c.View().Notice; !strings.Contains(n, "acquisition is Average") || !strings.Contains(n, "set it to Normal") {
 		t.Fatalf("notice %q", n)
+	}
+}
+
+// Whether the trigger source repeats is kept up in every workspace, for the
+// web's COMPARE: RepeatCaption says so from SCOPE, as the LCD's COMPARE
+// caption.
+// TRLC-LINKS: REQ-SDS-218
+func TestRepeatCaptionOutsideCompare(t *testing.T) {
+	r := newViewRig(t)
+	c := r.c
+	if cap, _ := c.RepeatCaption(); !strings.Contains(cap, "checking that it repeats") {
+		t.Fatalf("before captures: %q", cap)
+	}
+	for i := 0; i < 8; i++ {
+		r.show(toneFrame(""))
+	}
+	cap, warn := c.RepeatCaption()
+	if warn || !strings.HasPrefix(cap, "trigger source C1 repeats (") {
+		t.Fatalf("from SCOPE after 8 repeating captures: %q warn %v", cap, warn)
+	}
+	press(t, c, "f5")
+	if v := c.View().Cmp; v == nil || v.Caption != cap {
+		t.Fatalf("COMPARE's caption %+v, want %q", v, cap)
 	}
 }

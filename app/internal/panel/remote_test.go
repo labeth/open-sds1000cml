@@ -716,3 +716,26 @@ type forceEng struct {
 
 // ForceTrigger counts forced captures.
 func (e *forceEng) ForceTrigger() { *e.n++ }
+
+// A typed value under a row's lowest is refused at every scale: the pulse and
+// slope minimums (10 ns .. 10 s) must not take 0 inside a rounding allowance
+// scaled to the 10 s top; the bound itself still goes in.
+// TRLC-LINKS: REQ-SDS-211, REQ-SDS-212
+func TestTypedValueUnderTheLowestIsRefused(t *testing.T) {
+	c, _, _ := newC(t)
+	c.SheetSet("trig.type", nil, "Pulse")
+	for _, id := range []string{"trig.pulse_min", "trig.slope_min"} {
+		if id == "trig.slope_min" {
+			c.SheetSet("trig.type", nil, "Slope")
+		}
+		before := rowText(c, id)
+		for _, text := range []string{"0", "-0", "1e-999", "5ns"} {
+			if res := c.SheetSet(id, nil, text); res.OK || rowText(c, id) != before || !strings.Contains(res.Error, "outside") {
+				t.Fatalf("%s %q: %+v, row %q (was %q)", id, text, res, rowText(c, id), before)
+			}
+		}
+		if res := c.SheetSet(id, nil, "10ns"); !res.OK || rowText(c, id) != "10ns" {
+			t.Fatalf("%s 10ns: %+v, row %q", id, res, rowText(c, id))
+		}
+	}
+}

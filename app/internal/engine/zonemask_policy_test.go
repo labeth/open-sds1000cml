@@ -334,3 +334,92 @@ func TestMaskKeepsBuilderGeometry(t *testing.T) {
 		t.Fatal("changed sample geometry was accepted")
 	}
 }
+
+// A mask keeps testing when the frames' sampling changes under it - a view's
+// lease brings full-rate records, the live envelope returns after one: a frame
+// of the mask's timebase is read through trigger-relative time, so a clean
+// frame passes, a glitch fails and only another timebase is skipped (else a
+// mask built during a lease tests nothing once the lease ends).
+// TRLC-LINKS: REQ-SDS-014
+func TestMaskTestsAnotherSamplingThroughTime(t *testing.T) {
+	e, _ := newTestEngine(t, newFakeBus())
+	e.sram = &sramcapture.Capture{} // the SRAM engine: masks keep their frames' identity
+	const tdiv = 100e-9
+	// A full-rate mask: 1000 columns at 1 ns, low before the trigger at the
+	// window's middle, high after it.
+	lo, hi := make([]uint8, 1000), make([]uint8, 1000)
+	for j := range lo {
+		lo[j], hi[j] = 20, 40
+		if j >= 500 {
+			lo[j], hi[j] = 200, 220
+		}
+	}
+	e.SetMask(&Mask{Lo: lo, Hi: hi, WinCols: 1000, FrameIdent: true, TdivS: tdiv, SampleS: 1e-9})
+	e.SetMaskMode(MaskTest)
+	// The live envelope of the same screen: 100 min/max samples at 10 ns.
+	env := func(glitchAt int) *Frame {
+		f := &Frame{C1: make([]uint8, 100), C2: make([]uint8, 100), Valid: 100, WinCols: 100, TdivS: tdiv,
+			SampleS: 10e-9, PeakDetect: true, Ordered: true, EdgeX: 50}
+		for i := range f.C1 {
+			f.C1[i] = 30
+			if i >= 50 {
+				f.C1[i] = 210
+			}
+		}
+		if glitchAt >= 0 {
+			f.C1[glitchAt] = 120
+		}
+		return f
+	}
+	f := env(-1)
+	if fail, _ := e.maskEval(f, f.Valid, 0, f.EdgeX, f.SampleS, .5); fail || e.maskPass.Load() != 1 || e.maskSkip.Load() != 0 {
+		t.Fatalf("a clean envelope frame: fail %v pass %d skip %d", fail, e.maskPass.Load(), e.maskSkip.Load())
+	}
+	f = env(20)
+	if fail, _ := e.maskEval(f, f.Valid, 0, f.EdgeX, f.SampleS, .5); !fail || e.maskFail.Load() != 1 {
+		t.Fatalf("a glitch on the envelope: fail %v fails %d", fail, e.maskFail.Load())
+	}
+	if r := e.MaskFails(); len(r) != 1 || r[0].FailSample != 20 || r[0].WinCols != 100 {
+		t.Fatalf("the failure names the frame's own window: %+v", r)
+	}
+	// Another timebase is not the same screen.
+	f = env(-1)
+	f.TdivS = 2 * tdiv
+	if fail, _ := e.maskEval(f, f.Valid, 0, f.EdgeX, f.SampleS, .5); fail || e.maskSkip.Load() != 1 {
+		t.Fatalf("another timebase: fail %v skip %d", fail, e.maskSkip.Load())
+	}
+
+	// The other way round: an envelope mask tests a full-rate record.
+	lo, hi = make([]uint8, 100), make([]uint8, 100)
+	for j := range lo {
+		lo[j], hi[j] = 20, 40
+		if j >= 50 {
+			lo[j], hi[j] = 200, 220
+		}
+	}
+	e.SetMask(&Mask{Lo: lo, Hi: hi, WinCols: 100, FrameIdent: true, TdivS: tdiv, SampleS: 10e-9, PeakDetect: true})
+	e.SetMaskMode(MaskTest)
+	raw := func(glitchAt int) *Frame {
+		f := &Frame{C1: make([]uint8, 1000), C2: make([]uint8, 1000), Valid: 1000, WinCols: 1000, TdivS: tdiv,
+			SampleS: 1e-9, EdgeX: 500}
+		for i := range f.C1 {
+			f.C1[i] = 30
+			if i >= 500 {
+				f.C1[i] = 210
+			}
+		}
+		if glitchAt >= 0 {
+			f.C1[glitchAt] = 120
+		}
+		return f
+	}
+	pass0, fail0 := e.maskPass.Load(), e.maskFail.Load()
+	f = raw(-1)
+	if fail, _ := e.maskEval(f, f.Valid, 0, f.EdgeX, f.SampleS, .5); fail || e.maskPass.Load() != pass0+1 {
+		t.Fatalf("a clean full-rate record: fail %v", fail)
+	}
+	f = raw(700)
+	if fail, _ := e.maskEval(f, f.Valid, 0, f.EdgeX, f.SampleS, .5); !fail || e.maskFail.Load() != fail0+1 {
+		t.Fatalf("a glitch in the full-rate record: fail %v", fail)
+	}
+}

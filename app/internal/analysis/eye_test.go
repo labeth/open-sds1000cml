@@ -65,6 +65,19 @@ func TestEyeMatchesWebOnStreams(t *testing.T) {
 			if d := math.Abs(r.TIEPkPk-*js.TIEPp) / *js.TIEPp; d > 1e-9 {
 				t.Errorf("%s: TIE pk-pk %g vs web %g", v.Name, r.TIEPkPk, *js.TIEPp)
 			}
+			// the LCD shows the web's RJ/DJ and period jitter too
+			if js.RJ != nil && (math.Abs(r.RJ-*js.RJ) > 1e-15+1e-9*math.Abs(*js.RJ) || math.Abs(r.DJ-*js.DJ) > 1e-15+1e-9*math.Abs(*js.DJ)) {
+				t.Errorf("%s: RJ/DJ %g/%g vs web %g/%g", v.Name, r.RJ, r.DJ, *js.RJ, *js.DJ)
+			}
+			if js.RJ == nil && !math.IsNaN(r.RJ) {
+				t.Errorf("%s: RJ %g where the web has none", v.Name, r.RJ)
+			}
+			if js.PeriodJRms != nil && *js.PeriodJRms > 0 && math.Abs(r.PeriodJ-*js.PeriodJRms) > 1e-9**js.PeriodJRms {
+				t.Errorf("%s: period jitter %g vs web %g", v.Name, r.PeriodJ, *js.PeriodJRms)
+			}
+			if js.C2CJRms != nil && *js.C2CJRms > 0 && math.Abs(r.C2CJ-*js.C2CJRms) > 1e-9**js.C2CJRms {
+				t.Errorf("%s: cycle-to-cycle jitter %g vs web %g", v.Name, r.C2CJ, *js.C2CJRms)
+			}
 			if js.Eye != nil && js.Eye.Height > 0 && math.Abs(r.EyeHeight-js.Eye.Height) > 4 {
 				t.Errorf("%s: eye height %.1f vs web %.1f codes", v.Name, r.EyeHeight, js.Eye.Height)
 			}

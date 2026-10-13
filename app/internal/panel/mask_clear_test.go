@@ -213,7 +213,7 @@ func TestMasterMaskInLiveGeometry(t *testing.T) {
 }
 
 // DEFAULT SETUP returns the channels to full bandwidth and the right way up:
-// the 20 MHz limit stayed on after it (bug hunt #3).
+// no 20 MHz limit stays on after it.
 // TRLC-LINKS: REQ-SDS-136
 func TestDefaultSetupClearsBWLimitAndInvert(t *testing.T) {
 	r := newViewRig(t)
@@ -235,7 +235,7 @@ func TestDefaultSetupClearsBWLimitAndInvert(t *testing.T) {
 
 // DEFAULT SETUP returns the pulse, slope and video settings to their power-on
 // values: a pulse width "> 13 us", a 12-30 ns slope and NTSC line 10 set from
-// the web stayed after it (bug hunt #3).
+// the web do not stay after it.
 // TRLC-LINKS: REQ-SDS-136
 func TestDefaultSetupResetsTheQualifiers(t *testing.T) {
 	c, eng, _ := newC(t)
@@ -261,9 +261,8 @@ func TestDefaultSetupResetsTheQualifiers(t *testing.T) {
 }
 
 // A mask build that gets no locked frame (the trigger off the signal) gives
-// up within seconds and its row says why: it showed "building" for 44 s (2.5
-// minutes at 128 frames) and then "none" on the sheet and the phone, the
-// reason only on the LCD (bug hunt #3).
+// up within seconds and its row says why, on the sheet and the phone too, not
+// "building" for minutes (2.5 at 128 frames) and then "none".
 // TRLC-LINKS: REQ-SDS-139
 func TestMaskBuildSaysWhyItFailed(t *testing.T) {
 	c, _, _ := newC(t)
@@ -285,5 +284,66 @@ func TestMaskBuildSaysWhyItFailed(t *testing.T) {
 	got := rowModel(c.snap(), rowByID["cmp.build_mask"]).Text
 	if d := time.Since(start); d > 2*time.Second || got != "build failed - no locked frames: put the trigger level on the signal" {
 		t.Fatalf("after %v the row says %q", d.Round(time.Millisecond), got)
+	}
+}
+
+// DEFAULT SETUP returns the mask build's frames and tolerance and super-res's
+// channel, grid and stop to their factory values (a restart keeps them), and
+// the trigger level to 0 V with no display invert wired (the level's reset
+// does not depend on the invert).
+// TRLC-LINKS: REQ-SDS-136
+func TestDefaultSetupResetsMaskBuildAndSuperres(t *testing.T) {
+	c, eng, _ := newC(t) // no inverter
+	for row, text := range map[string]string{"cmp.mask_frames": "128", "cmp.mask_tol": "12pt/20cd", "acq.sr_channel": "C2",
+		"acq.sr_grid": "x64", "acq.sr_stop": "Time"} {
+		if res := c.SheetSet(row, nil, text); !res.OK {
+			t.Fatalf("%s %s: %+v", row, text, res)
+		}
+	}
+	eng.SetTrigLevelCode(30000)
+	c.DefaultSetup()
+	for row, want := range map[string]string{"cmp.mask_frames": "32", "cmp.mask_tol": "5pt/8cd", "acq.sr_channel": "C1",
+		"acq.sr_grid": "x32", "acq.sr_stop": "Bits", "acq.sr_target": "4"} {
+		if got := rowText(c, row); got != want {
+			t.Errorf("%s after default setup: %q, want %q", row, got, want)
+		}
+	}
+	if got := eng.Snapshot().TrigCode; got != 31437 {
+		t.Errorf("trigger level code after default setup %d, want 31437 (0 V)", got)
+	}
+}
+
+// fakeEng's precision rate: DEFAULT SETUP sets the engine's own.
+func (f *fakeEng) SetPrecisionRate(hz float64) float64 {
+	f.set(func(st *engine.Stats) { st.PrecisionRateHz = hz })
+	return hz
+}
+
+// DEFAULT SETUP restores every setting to power-on, each row's own default
+// (its Position push) included: the averaging count, ERES length, precision
+// rate and roll mode, the chosen measurements, the FFT source, the master's
+// depth and the stream's stop.
+// TRLC-LINKS: REQ-SDS-136
+func TestDefaultSetupRestoresPowerOnSettings(t *testing.T) {
+	c, eng, _ := newC(t)
+	for id, v := range map[string]int{"acq.averages": 4, "acq.eres": 3, "cmp.master_depth": 16, "meas.freq": 1, "meas.pkpk": 1,
+		"view.fft_source": 1, "bus.stream_trigger": 1, "time.roll": 1} {
+		if err := rowByID[id].set(c, v); err != nil {
+			t.Fatalf("%s: %v", id, err)
+		}
+	}
+	if err := rowByID["bus.stream_value"].setN(c, 0x41); err != nil {
+		t.Fatal(err)
+	}
+	eng.SetPrecisionRate(3906250)
+	c.DefaultSetup()
+	for id, want := range map[string]string{"acq.averages": "16", "acq.eres": "1", "cmp.master_depth": "64", "meas.freq": "Off",
+		"meas.pkpk": "Off", "view.fft_source": "CH1", "bus.stream_trigger": "On error", "bus.stream_value": "0x00", "time.roll": "Chunked"} {
+		if got := rowText(c, id); got != want {
+			t.Errorf("%s after default setup: %q, want %q", id, got, want)
+		}
+	}
+	if got := eng.Snapshot().PrecisionRateHz; got != 31.25e6 {
+		t.Errorf("precision rate after default setup: %g, want 31.25e6", got)
 	}
 }

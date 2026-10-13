@@ -254,7 +254,7 @@ func TestDecodeARINC429NoPanic(t *testing.T) {
 // ARINC429Levels finds NULL as the densest band of codes: the bench's NULL, a
 // filtered toggle, rippled over 164-178 while the LO rail sat on one code,
 // and the commonest single code made LO the NULL and every threshold wrong
-// (bug hunt #3: the FPGA's ARINC matcher never fired).
+// (the FPGA's ARINC matcher never fires then).
 // TRLC-LINKS: REQ-SDS-018
 func TestARINC429LevelsRippledNull(t *testing.T) {
 	var codes []uint8

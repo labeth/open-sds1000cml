@@ -174,7 +174,7 @@ func TestRollStreamRow(t *testing.T) {
 }
 
 // A fast Adjust spin (an accelerated event) moves the cursor by its step
-// count, not one step an event (bug hunt 2026-10-10).
+// count, not one step an event.
 // TRLC-LINKS: REQ-SDS-136, REQ-SDS-213
 func TestCursorAdjustAccelerates(t *testing.T) {
 	c, _, _ := newC(t)

@@ -4,6 +4,7 @@ package web
 import (
 	"encoding/binary"
 	"encoding/json"
+	"net/http"
 	"net/http/httptest"
 	"reflect"
 	"testing"
@@ -352,6 +353,38 @@ func TestRawFeedRequestsChronologicalSamples(t *testing.T) {
 	getBin(t, s, "/api/frame.bin?raw=1&lease=raw")
 	if sc.lease != 3*time.Second {
 		t.Fatalf("raw lease = %v", sc.lease)
+	}
+}
+
+// specLeaseScope records the spectrum lease.
+type specLeaseScope struct {
+	*fakeScope
+	lease time.Duration
+}
+
+// TRLC-LINKS: REQ-SDS-070
+func (s *specLeaseScope) LeaseSpectrumView(d time.Duration) { s.lease = d }
+
+// The FFT and the spectrogram ask for spectrum frames, the LCD's SPECTRUM
+// lease, not the noise-reducing decimated capture (filtered at 4.2 MHz, drawn
+// to 15.6 MHz).
+// TRLC-LINKS: REQ-SDS-070
+func TestSpectrumFeedLeasesSpectrumFrames(t *testing.T) {
+	sc := &specLeaseScope{fakeScope: &fakeScope{}}
+	s := New(sc, nil, nil, nil)
+	getBin(t, s, "/api/frame.bin?raw=1&lease=samples")
+	if sc.lease != 0 {
+		t.Fatal("the sample lease asked for spectrum frames")
+	}
+	getBin(t, s, "/api/frame.bin?raw=1&lease=spectrum")
+	if sc.lease != 3*time.Second {
+		t.Fatalf("spectrum lease = %v", sc.lease)
+	}
+	// the FFT view closed: the lease is given back at once, no frame served
+	rec := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rec, httptest.NewRequest("GET", "/api/frame.bin?lease=spectrum&end=1", nil))
+	if sc.lease != 0 || rec.Code != http.StatusNoContent {
+		t.Fatalf("release: lease %v, status %d", sc.lease, rec.Code)
 	}
 }
 

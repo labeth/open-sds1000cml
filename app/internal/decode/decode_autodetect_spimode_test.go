@@ -62,9 +62,9 @@ func spiModeWave(bytes []int, h, delay int, cpol, cpha, msb bool) (clk, dat []ui
 
 // Auto decode reads every SPI mode and both bit orders on sharp edges, where
 // a sample at either clock edge is a full rail: CPHA comes from the edge the
-// data is launched on, and only text breaks the bit order. It read 87 of 320
-// physically modelled captures wrongly (review 2026-10-12): CPHA 1 as mode 0,
-// and binary payloads LSB first.
+// data is launched on, and only text breaks the bit order (not CPHA 1 as mode
+// 0, or binary payloads LSB first, as in 87 of 320 physically modelled
+// captures).
 // TRLC-LINKS: REQ-SDS-018
 func TestAutodetectSPIModes(t *testing.T) {
 	binary := []int{0x0F, 0xF0, 0x3C, 0xC3, 0x12, 0x34, 0x56, 0x78, 0x01, 0x80}

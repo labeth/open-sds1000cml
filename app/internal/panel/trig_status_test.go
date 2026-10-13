@@ -9,8 +9,8 @@ import (
 )
 
 // The TRIG tab says whether the FPGA decides a pulse, slope, video or zone
-// trigger, or why it cannot yet (ADR-HARDWARE-QUALIFIERS): its row status was
-// never drawn for a choice row (bug hunt #3).
+// trigger, or why it cannot yet (ADR-HARDWARE-QUALIFIERS), drawn for a choice
+// row too.
 // TRLC-LINKS: REQ-SDS-212
 func TestTrigTabNamesTheHardwareTrigger(t *testing.T) {
 	c, eng, _ := newC(t)

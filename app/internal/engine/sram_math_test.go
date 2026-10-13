@@ -2,8 +2,11 @@
 package engine
 
 import (
+	"fmt"
 	"math"
 	"testing"
+
+	"open-sds/app/internal/sramcapture"
 )
 
 // TRLC-LINKS: REQ-SDS-012
@@ -108,5 +111,55 @@ func TestAverageAlignsToFractionOfSample(t *testing.T) {
 	i := int(second.EdgeX)
 	if second.EdgeX != 30 || math.Abs(float64(second.Q1[i])/256-128) > 0.05 {
 		t.Fatalf("edge %.2f, value there %.3f, want 30 and 128", second.EdgeX, float64(second.Q1[i])/256)
+	}
+}
+
+// A decimated record a sample or two longer or shorter than the block's (its
+// length moves with the trigger's phase: 14515 to 14517 samples at 20us/div)
+// joins the block over the samples both hold, or the average restarts on each
+// change, never reaches 64, and a master never finishes. A record of another
+// plan still starts a new block.
+// TRLC-LINKS: REQ-SDS-012
+func TestSRAMAverageKeepsItsBlockOverALengthWobble(t *testing.T) {
+	var a sramAverage
+	frame := func(n int) *Frame {
+		f := &Frame{Valid: n, C1: make([]byte, n), C2: make([]byte, n), Q1: make([]uint16, n), Q2: make([]uint16, n), EdgeX: 500}
+		for i := range f.Q1 {
+			f.Q1[i], f.Q2[i] = uint16(i%200)<<8, 128<<8
+		}
+		return f
+	}
+	var count int
+	for k, n := range []int{14517, 14516, 14515, 14517, 14516, 14517, 14515, 14516} {
+		f := frame(n)
+		count = a.push(f, 64)
+		if count != k+1 {
+			t.Fatalf("capture %d (%d samples): the block counts %d", k, n, count)
+		}
+		if f.Valid > n || f.Valid < 14515 || f.Q1[300] != 100<<8 {
+			t.Fatalf("capture %d: %d samples, Q1[300] %d", k, f.Valid, f.Q1[300])
+		}
+	}
+	if count = a.push(frame(7258), 64); count != 1 {
+		t.Fatalf("another plan's record joined the block: %d", count)
+	}
+}
+
+// An average's block keeps to the same settings' captures, not to the record's
+// split around the trigger, which a serial trigger moves by each match's
+// measured shift (keyed on the split, the block restarts on almost every
+// capture).
+// TRLC-LINKS: REQ-SDS-012
+func TestAverageBlockIgnoresTheTriggerSplit(t *testing.T) {
+	c := sramcapture.Config{DecimationLog2: 4, PreWords: 7259, PostWords: 7258, TriggerLevel: 80}
+	moved := c
+	moved.PreWords, moved.PostWords = 7260, 7257
+	if fmt.Sprint(averageCfg(c)) != fmt.Sprint(averageCfg(moved)) {
+		t.Fatal("a moved trigger split started a new block")
+	}
+	level := c
+	level.TriggerLevel = 90
+	if fmt.Sprint(averageCfg(c)) == fmt.Sprint(averageCfg(level)) {
+		t.Fatal("another trigger level kept the block")
 	}
 }

@@ -164,7 +164,7 @@ func sentLine(frames [][]int, tick int) []uint8 {
 // The scope's requests name no threshold for any bus: once a capture has
 // shown the line, a CAN match is planned on the packet image, SENT's with the
 // tick and the nibbles measured on its line, and a MIL-1553 word typed as two
-// bytes is one word (bug hunt #3: the scope armed UART, I2C and SPI only).
+// bytes is one word: every bus, not UART, I2C and SPI only.
 // TRLC-LINKS: REQ-SDS-013
 func TestEveryBusPlansFromTheScope(t *testing.T) {
 	e, b, _ := newPacketTestEngine(t)
@@ -214,8 +214,8 @@ func TestEveryBusPlansFromTheScope(t *testing.T) {
 
 // The live window holds the room the trigger point may move back before the
 // hardware serial trigger, all of it before: the match and two units more
-// (an ARINC 429 field fired the FPGA ~0.44 ms after it began, past a quarter
-// screen at 200 us/div, and the screen's left edge was padded; bug hunt #3).
+// (an ARINC 429 field fires the FPGA ~0.44 ms after it begins, past a quarter
+// screen at 200 us/div, which would pad the screen's left edge).
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-010
 func TestSerialPreRoomHoldsTheMatchStart(t *testing.T) {
 	e := levelsEngine(SerialParams{Proto: serARINC, ChA: 0, Baud: 100000, Bytes: []int{0x00, 0xAB, 0xCD}})
@@ -238,8 +238,8 @@ func TestSerialPreRoomHoldsTheMatchStart(t *testing.T) {
 
 // The record holds, before the FPGA's serial trigger, the way the trigger
 // point last moved back to the match's start: at 200 us/div the record is one
-// screen, and the moved point left the screen's left edge without samples
-// (bug hunt #3, an ARINC 429 field 0.44 ms before the trigger).
+// screen, and the moved point would leave the screen's left edge without
+// samples (an ARINC 429 field begins 0.44 ms before the trigger).
 // TRLC-LINKS: REQ-SDS-013
 func TestRecordHoldsTheMatchBeforeTheTrigger(t *testing.T) {
 	e := levelsEngine(SerialParams{Proto: serUART, ChA: 0, ChB: 1, Baud: 115200, Bits: 8, Parity: "none", Bytes: []int{0x48}})

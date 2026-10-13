@@ -2,8 +2,11 @@
 package panel
 
 import (
+	"math"
 	"strings"
 	"testing"
+
+	"open-sds/app/internal/engine"
 )
 
 // BUS: the list holds the complete packets still while the messages repeat;
@@ -92,5 +95,85 @@ func TestBusEyeTools(t *testing.T) {
 	uart()
 	if e = c.View().Eye; e.Why != "" {
 		t.Fatalf("the eye did not fold again: %q", e.Why)
+	}
+}
+
+// prbsSPIFrame is the bench's PRBS source as an SPI bus: PRBS7 data on C1
+// changing at each bit boundary and its bit clock on C2, rising at the
+// boundary and falling mid-bit, n samples sampleS apart; the bit grid starts
+// phase samples into the record.
+func prbsSPIFrame(bitS, sampleS float64, n int, phase float64) *engine.Frame {
+	c1, c2 := make([]uint8, n), make([]uint8, n)
+	spb := bitS / sampleS
+	lfsr := 0x7f
+	data := uint8(40)
+	for i := 0; i < n; i++ {
+		b := (float64(i) - phase) / spb
+		k := math.Floor(b)
+		if i == 0 || math.Floor((float64(i-1)-phase)/spb) != k { // a bit boundary: the next PRBS7 bit
+			data = map[bool]uint8{true: 210, false: 40}[lfsr>>6&1 == 1]
+			lfsr = (lfsr<<1 | (lfsr>>6^lfsr>>5)&1) & 0x7f
+		}
+		c1[i] = data
+		c2[i] = 40
+		if b-k < 0.5 {
+			c2[i] = 210
+		}
+	}
+	return &engine.Frame{C1: c1, C2: c2, Valid: n, WinCols: n, EdgeX: float64(n) / 2, Ptp: 170,
+		TdivS: float64(n) * sampleS / 10, SampleS: sampleS, Trigd: true}
+}
+
+// The eye of an SPI bus keeps folding capture after capture: the clock
+// period it folds at is measured on each capture and differs in its last
+// digits, which must not start the eye over on every capture (a 2 Mbit/s
+// PRBS would show "196 UI folded from 1 capture" at 11 frames a second).
+// TRLC-LINKS: REQ-SDS-215
+func TestBusEyeAccumulatesAnSPIBus(t *testing.T) {
+	r := newViewRig(t)
+	c := r.c
+	frame := func(k int) *engine.Frame { return prbsSPIFrame(500e-9, 24e-9, 5000, 3+float64(k)*0.37) }
+	r.show(frame(0))
+	press(t, c, "f2") // BUS finds the bus
+	if d, _ := c.Snapshot(); d.DecProto == 0 {
+		t.Fatalf("BUS found no bus: %q", c.View().Notice)
+	}
+	press(t, c, "f2") // the eye
+	leases := r.eng.leases.Load()
+	for k := 1; k <= 6; k++ {
+		r.show(frame(k))
+	}
+	// the eye asks for full-rate raw frames while it folds, as the web's eye
+	// does: the screen's decimated readout smears the edges and leaves the
+	// timing figures bounds
+	if n := r.eng.leases.Load() - leases; n < 6 {
+		t.Fatalf("the eye leased raw frames %d times over 6 captures", n)
+	}
+	e := c.View().Eye
+	if e == nil || e.Why != "" || !strings.HasSuffix(e.Right, "from 6 captures") {
+		t.Fatalf("eye after 6 captures: %q %q", e.Right, e.Why)
+	}
+	// the bus's rate really changes: the eye starts over at the new one
+	for k := 1; k <= 5; k++ {
+		r.show(prbsSPIFrame(400e-9, 24e-9, 5000, 3+float64(k)*0.37))
+	}
+	e = c.View().Eye
+	if e.Why != "" || e.Figures[0][0][1] != "2.5000 Mbit/s" || strings.HasSuffix(e.Right, "from 1 capture") {
+		t.Fatalf("eye after the rate changed: %q %q %q", e.Figures[0][0][1], e.Right, e.Why)
+	}
+}
+
+// The eye's bit rate reads to five figures with its trailing zeros, as the
+// web's eye card shows it (eng(v, "bit/s", 5)).
+// TRLC-LINKS: REQ-SDS-215
+func TestSI5(t *testing.T) {
+	for _, c := range []struct {
+		v    float64
+		want string
+	}{{2.0001e6, "2.0001 Mbit/s"}, {2e6, "2.0000 Mbit/s"}, {115200, "115.20 kbit/s"}, {9600, "9.6000 kbit/s"},
+		{999.9999e3, "1.0000 Mbit/s"}, {300, "300.00 bit/s"}, {math.NaN(), "---"}} {
+		if got := si5(c.v, "bit/s"); got != c.want {
+			t.Errorf("si5(%g) = %q, want %q", c.v, got, c.want)
+		}
 	}
 }

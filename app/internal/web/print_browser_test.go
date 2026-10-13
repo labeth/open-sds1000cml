@@ -10,7 +10,7 @@ import (
 )
 
 // The web's Device screenshot (PRINT) says what the scope saved, as its LCD
-// does (print_browser.mjs; it only ever said "saving", bug hunt #3).
+// does, not just "saving" (print_browser.mjs).
 // TRLC-LINKS: REQ-SDS-069
 func TestDevicePrintNamesTheFileBrowser(t *testing.T) {
 	testenv.NeedNode(t)

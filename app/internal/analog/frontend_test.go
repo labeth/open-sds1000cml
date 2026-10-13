@@ -237,8 +237,8 @@ func TestCalibratedGainAndZero(t *testing.T) {
 }
 
 // TestOffsetKPerDivision pins the per-tier slope: one value per tier, not
-// per V/div — 4800 codes/V on the sensitive tier (bench 2026-10-05) and 100 on
-// the attenuated tier.
+// per V/div — 4800 codes/V on the sensitive tier and 100 on the attenuated
+// tier.
 // TRLC-LINKS: REQ-SDS-095
 func TestOffsetKPerDivision(t *testing.T) {
 	tr := &fakeTr{}

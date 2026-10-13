@@ -8,7 +8,7 @@ import (
 )
 
 // Second zone/mask breaker: 50 NEW waveform families (disjoint from the
-// zonemask_breaker_test.go corpus) aimed at what the first campaign did not
+// zonemask_breaker_test.go corpus) aimed at what that corpus does not
 // reach:
 //
 //   A. ZONE DIFFERENTIAL FUZZ — zonesQualify against an independently written
@@ -312,4 +312,4 @@ func TestZoneBreakerDifferential(t *testing.T) {
 
 // ---------- Campaign C: mask window-geometry fuzz ----------
 
-// ---------- root-cause regressions found by this campaign ----------
+// ---------- root-cause regressions ----------

@@ -171,3 +171,35 @@ func TestLeftEdgeTraceDecodeAndZoneAlignment(t *testing.T) {
 		})
 	}
 }
+
+// A mask built from full-rate records draws over the live envelope of the same
+// timebase through trigger-relative time, where the engine tests it, as on
+// frames of its own sampling.
+// TRLC-LINKS: REQ-SDS-021, REQ-SDS-014
+func TestMaskOverlayThroughTime(t *testing.T) {
+	lo, hi := make([]uint8, 1000), make([]uint8, 1000)
+	for j := range lo {
+		lo[j], hi[j] = 20, 40
+		if j >= 500 {
+			lo[j], hi[j] = 200, 220
+		}
+	}
+	hud := HUD{MaskMode: 1, MaskLo: lo, MaskHi: hi, MaskWin: 1000, MaskTdivS: 100e-9, MaskSampleS: 1e-9, TrigPosFrac: .5}
+	draw := func(n int, sampleS float64) *MemSurface {
+		f := &engine.Frame{C1: make([]uint8, n), Valid: n, WinCols: n, EdgeX: float64(n) / 2, SampleS: sampleS, TdivS: 100e-9}
+		sf := NewMemSurface()
+		drawZoneMask(sf, fullPlot, f, hud, n, float64(n)/2, .5)
+		return sf
+	}
+	own, env := draw(1000, 1e-9), draw(100, 10e-9)
+	p := fullPlot
+	for _, c := range []struct {
+		x    int
+		code float64
+	}{{p.w / 4, 20}, {p.w / 4, 40}, {3 * p.w / 4, 200}, {3 * p.w / 4, 220}} {
+		if own.At(c.x, p.sy(c.code)) != colMask || env.At(c.x, p.sy(c.code)) != colMask {
+			t.Errorf("mask line at x %d, code %g: own sampling %v, envelope %v", c.x, c.code,
+				own.At(c.x, p.sy(c.code)) == colMask, env.At(c.x, p.sy(c.code)) == colMask)
+		}
+	}
+}

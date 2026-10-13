@@ -12,8 +12,8 @@ import (
 )
 
 // An FPGA stack reviews at the session's timebase: one screen of samples with
-// the stack's edge at the trigger position (bug hunt 2026-10-10: its 32
-// samples were stretched across a 100 ns/div screen).
+// the stack's edge at the trigger position, not its 32 samples stretched
+// across a 100 ns/div screen.
 // TRLC-LINKS: REQ-SDS-141, REQ-SDS-021
 func TestFPGAReviewSpanIsTrueTimebase(t *testing.T) {
 	if gate, screen := fpgaReviewSpan(32, 16, 100e-9, 2e-9, 0.5); screen != 500 || gate != 250-16 {
@@ -33,8 +33,8 @@ type leaseEng struct {
 func (e *leaseEng) LeaseDecodeView(time.Duration) { e.n.Add(1) }
 
 // A final stack (here: the timebase changed under it) stops leasing raw
-// frames; the renewed lease held the live view at 1 fps at 200 us/div for as
-// long as super-res stayed armed (bug hunt 2026-10-10).
+// frames: a renewed lease holds the live view at 1 fps at 200 us/div for as
+// long as super-res stays armed.
 // TRLC-LINKS: REQ-SDS-140
 func TestSuperresFinalStackReleasesRawLease(t *testing.T) {
 	_, base, fe := newC(t)
@@ -95,8 +95,8 @@ func TestSuperresTimebaseChangeFreezesStack(t *testing.T) {
 }
 
 // SINGLE then UTILITY: the stopped full record is far too deep to stack in
-// software, so the arm resumes and seeds from a live raw frame (bug hunt #2:
-// it always failed with "window too deep" on the SRAM band).
+// software, so the arm resumes and seeds from a live raw frame instead of
+// failing with "window too deep" on the SRAM band.
 // TRLC-LINKS: REQ-SDS-140
 func TestSuperresArmFromStoppedDeepRecord(t *testing.T) {
 	c, eng, _ := newC(t)
@@ -134,8 +134,8 @@ func TestSuperresArmFromStoppedDeepRecord(t *testing.T) {
 
 // With the panel loop running, Super-res seeds off it: On returns at once with
 // the mode reading On, the stack lands when the seed is done, and Off while it
-// seeds discards it (bug hunt #3: On held every key 2-4 s on the scope, each
-// gate edge's knob detent 1-2 s).
+// seeds discards it (a seed on the panel loop holds every key 2-4 s, each gate
+// edge's knob detent 1-2 s).
 // TRLC-LINKS: REQ-SDS-140
 func TestSuperresSeedsOffThePanelLoop(t *testing.T) {
 	c, eng, _ := newC(t)
@@ -181,9 +181,8 @@ func TestSuperresSeedsOffThePanelLoop(t *testing.T) {
 	wait(func() bool { return idle() && c.SuperresView().Active })
 }
 
-// A Stop pressed while a seed runs off the panel goroutine stands: the seed's
-// end resumed RUN over it (bug hunt #3: the ACQ Run row set to Stop just
-// after Super-res On read Run again); with no press meanwhile it resumes.
+// A Stop pressed while a seed runs off the panel goroutine stands (the seed's
+// end must not resume RUN over it); with no press meanwhile it resumes.
 // TRLC-LINKS: REQ-SDS-140
 func TestSuperresSeedKeepsAStopPressedMeanwhile(t *testing.T) {
 	for _, press := range []bool{true, false} {

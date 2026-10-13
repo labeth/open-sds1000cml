@@ -207,9 +207,9 @@ func TestZoneTriggerIsPlannedInHardware(t *testing.T) {
 }
 
 // The TRIG status says the qualifier image is loading from the moment the
-// load starts, not from the first capture after it (the TRIG tab named
-// nothing for the seconds a load takes; bug hunt #3); an edge drops the last
-// type's status at once.
+// load starts, not from the first capture after it (else the TRIG tab names
+// nothing for the seconds a load takes); an edge drops the last type's status
+// at once.
 // TRLC-LINKS: REQ-SDS-011, REQ-SDS-014
 func TestTriggerStatusSaysTheImageLoads(t *testing.T) {
 	e, _, _ := qualEngine(t)
@@ -233,7 +233,7 @@ func TestTriggerStatusSaysTheImageLoads(t *testing.T) {
 
 // Levels are learned only from a capture with no front-end write since the
 // previous capture was armed: the one spanning a V/div change (its relay's
-// transient) is skipped, the next one learns (bug hunt #3).
+// transient) is skipped, the next one learns.
 // TRLC-LINKS: REQ-SDS-011
 func TestLevelsAreNotLearnedAcrossAFrontEndWrite(t *testing.T) {
 	e, _, _ := qualEngine(t)

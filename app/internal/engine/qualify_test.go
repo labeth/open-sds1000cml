@@ -488,8 +488,7 @@ func TestACTriggerLevelFollowsMean(t *testing.T) {
 }
 
 // A step in averaged samples reads as a one-interval ramp: SLOPE > min must
-// not fire on it, while a genuinely slow ramp still qualifies (bug hunt
-// 2026-10-10).
+// not fire on it, while a genuinely slow ramp still qualifies.
 // TRLC-LINKS: REQ-SDS-011
 func TestSlopeStepIsNotSlow(t *testing.T) {
 	p := trigParams{typ: TrigSlope, slopeLoFrac: 0.2, slopeHiFrac: 0.8, slopeTMaxNs: 1000, slopeCond: CondGreater} // > max
@@ -519,7 +518,7 @@ func TestSlopeStepIsNotSlow(t *testing.T) {
 }
 
 // An inverted qualifier range from the web or SCPI is read as a range; a
-// zero limit stays "unset" (bug hunt #2).
+// zero limit stays "unset".
 // TRLC-LINKS: REQ-SDS-011
 func TestQualifierLimitsOrdered(t *testing.T) {
 	e := &Engine{}

@@ -6,7 +6,7 @@ import (
 	"open-sds/app/internal/sramcapture"
 )
 
-// Frames captured on the instrument on 2026-09-27 (ADR-PANEL-SERIAL-SCAN).
+// Frames captured on the instrument (ADR-PANEL-SERIAL-SCAN).
 var panelIdle = [4]uint16{0xfdfc, 0xffff, 0xfcff, 0xffff}
 
 // TRLC-LINKS: REQ-SDS-022

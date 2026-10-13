@@ -9,8 +9,8 @@ import (
 )
 
 // The TIME tab names the converters' sample interval: on a peak-detect
-// readout a min/max point spans 244 samples, and the tab said "sample
-// interval 488ns" for 2 ns sampling (bug hunt #3).
+// readout a min/max point spans 244 samples, which is not the interval (2 ns
+// sampling, not 488 ns).
 // TRLC-LINKS: REQ-SDS-212
 func TestTimeTabNamesTheRealSampling(t *testing.T) {
 	c, _, _ := newC(t)

@@ -353,7 +353,7 @@ function frame(n, period, shift, noise, amp, harmonics) {
 }
 
 
-// ---- iteration 4: interpolated resampling vs drizzle — every fine bin
+// ---- interpolated resampling vs drizzle — every fine bin
 // averages every frame, so noise drops ~sqrt(K); the guard is edge
 // sharpness (10-90% rise in fine bins) which must not blur >10%.
 {
@@ -395,7 +395,7 @@ function frame(n, period, shift, noise, amp, harmonics) {
 }
 
 
-// ---- iteration 5: Catmull-Rom vs linear resampling — sharper passband at
+// ---- Catmull-Rom vs linear resampling — sharper passband at
 // the same contributor count; noise within 10%, no spurious ringing.
 {
   const n = 1024, period = 256, K = 16, noise = 2.0, N = 200;

@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -23,14 +24,45 @@ import (
 // screen must render and show its frame's analysis. With PANEL_VIEWS_DIR set
 // the screens are also written there as PNGs to look at.
 
-// bodeEng is the fake engine with an FRA sweep.
+// bodeEng is the fake engine with an FRA sweep; it counts the leases of
+// full-rate raw frames and of spectrum frames.
 type bodeEng struct {
 	*fakeEng
-	pts []engine.BodePoint
+	pts          []engine.BodePoint
+	leases       atomic.Int32 // raw frames (LeaseDecodeView)
+	specLeases   atomic.Int32 // spectrum frames (LeaseSpectrumView)
+	specReleases atomic.Int32
 }
 
 // BodePoints is the accumulated sweep.
 func (e *bodeEng) BodePoints() []engine.BodePoint { return e.pts }
+
+// LeaseDecodeView counts a lease of raw frames.
+func (e *bodeEng) LeaseDecodeView(d time.Duration) {
+	if d > 0 {
+		e.leases.Add(1)
+	}
+}
+
+// SetBodeMode arms the frequency response on ref / dut (the engine's own).
+func (e *bodeEng) SetBodeMode(on bool, ref, dut int) {
+	e.set(func(st *engine.Stats) { st.BodeMode, st.BodeRef, st.BodeDut = b2ic(on), ref, dut })
+}
+
+// ClearBode forgets the points.
+func (e *bodeEng) ClearBode() {
+	e.pts = nil
+	e.set(func(st *engine.Stats) { st.BodePoints = 0 })
+}
+
+// LeaseSpectrumView counts a lease of spectrum frames, and its release.
+func (e *bodeEng) LeaseSpectrumView(d time.Duration) {
+	if d > 0 {
+		e.specLeases.Add(1)
+	} else {
+		e.specReleases.Add(1)
+	}
+}
 
 // viewRig drives a controller with captures and renders its screens.
 type viewRig struct {

@@ -1,7 +1,6 @@
 // Stream + trigger takes what the decoder found on auto settings: its
 // threshold, a UART's bit rate (snapped to a standard one) and an SPI clock;
-// without a decode it still asks for a manual threshold (bug hunt #3: it
-// refused the decoder's defaults).
+// without a decode it still asks for a manual threshold.
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
@@ -36,6 +35,21 @@ c.stParams = () => ({...auto, proto: 6, bytes: [0x55]});
 c.dcfg.result = {ok: true, meta: {threshold: 128, samplesPerBit: 2}};
 c.frameDtS = () => 1e-6;
 assert.equal(c.dsConfig().packet.ticks, Math.round(125e6 * 256 / 500000), 'CAN at 500 kbit/s from 2 samples a bit of 1 us');
+c.frameDtS = () => 2e-9;
+
+// The newest frame unread (the BUS entry's detect stepped the timebase): the last decode that read this
+// bus gives the figures, with its own sample interval; another line's does not.
+c.stParams = () => ({...auto});
+c.decKey = () => 'uart,1';
+c.dcfg.result = {ok: false, error: 'UART not resolved at this timebase - faster time/div, or SINGLE'};
+c.dcfg.good = {key: 'uart,1', r: {ok: true, meta: {threshold: 140.2, samplesPerBit: 4340}}, dt: 2e-9};
+c.frameDtS = () => 1e-6; // the unread frame's interval: not the one the figures came from
+const g = c.dsConfig();
+assert.equal(g.trigger_level, 140, 'the last good decode\'s threshold');
+assert.equal(g.uart.bit_ticks, Math.round(125e6 / 115200), 'its rate from its own interval (4340 x 2 ns: 115207 Bd)');
+c.decKey = () => 'uart,2';
+assert.throws(() => c.dsConfig(), /Set a manual decode threshold/, 'another line\'s decode does not count');
+c.dcfg.good = null;
 c.frameDtS = () => 2e-9;
 
 c.stParams = () => ({...auto, proto: 1, threshold: 90, haveThr: true, baud: 9600});

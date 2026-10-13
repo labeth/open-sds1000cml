@@ -45,7 +45,7 @@ func TestHoldoffStepsToNearestSettingInRequestedDirection(t *testing.T) {
 			t.Errorf("holdoff %g dir %d: %g, want %g", tc.current, tc.direction, got, tc.want)
 		}
 	}
-	// A press wraps past the ends (bug hunt #2: F5 stuck at the top).
+	// A press wraps past the ends, not stuck at the top.
 	if got := nextHoldoff(10, 1, true); got != 0 {
 		t.Errorf("press past 10 s: %g, want Off", got)
 	}
@@ -74,7 +74,7 @@ func TestSRAMAcquisitionRowsUseBackendCapabilities(t *testing.T) {
 			t.Errorf("%s set on SRAM", set.id)
 		}
 	}
-	// The depth row names the depth the timebase set, not the direct path's (bug hunt #3).
+	// The depth row names the depth the timebase set, not the direct path's.
 	if got := rowText(c, "acq.depth"); got != "1M (auto)" {
 		t.Errorf("the depth row on SRAM reads %q", got)
 	}
@@ -111,8 +111,7 @@ func TestWiredFixedFunctionKeys(t *testing.T) {
 }
 
 // DEFAULT SETUP returns the setup to power-on: overlays off, decode off, the
-// references hidden but kept, any sheet closed; the workspace stays (bug
-// hunt 2026-10-10: the key did nothing; #2: decode stayed on).
+// references hidden but kept, any sheet closed; the workspace stays.
 // TRLC-LINKS: REQ-SDS-136, REQ-SDS-211
 func TestDefaultSetupKey(t *testing.T) {
 	c, eng, _ := newC(t)
@@ -148,9 +147,8 @@ func TestDefaultSetupKey(t *testing.T) {
 }
 
 // Qualifier limits never invert: stepping Min width past Max width pushes
-// Max up, and a slope High stepped under Low pulls Low down (bug hunt #2:
-// W min 200 us with W max 20 us, and High 5% under Low 40%, left triggers
-// that never fired).
+// Max up, and a slope High stepped under Low pulls Low down (W min 200 us with
+// W max 20 us, or High 5% under Low 40%, is a trigger that never fires).
 // TRLC-LINKS: REQ-SDS-136
 func TestTriggerQualifierLimitsStayOrdered(t *testing.T) {
 	c, _, _ := newC(t)

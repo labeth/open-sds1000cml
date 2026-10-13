@@ -31,8 +31,8 @@ func pair(hp, at, bits int) (clk, dat []uint8) {
 }
 
 // A window of I2C without its START (SDA moving mid-SCL-low) is not SPI; a
-// mode-0 SPI pair (data launched on the falling edge) still is (bug hunt #2:
-// LCD Auto read the bench I2C at 20 us/div as "SPI mode 3, 3 bytes").
+// mode-0 SPI pair (data launched on the falling edge) still is (not "SPI mode
+// 3, 3 bytes" for the bench I2C at 20 us/div).
 // TRLC-LINKS: REQ-SDS-018
 func TestAutodetectMidPhaseDataIsNotSPI(t *testing.T) {
 	clk, dat := pair(20, 10, 60) // I2C-like: SDA changes a quarter period into SCL low
@@ -58,10 +58,9 @@ func freeClock(n, hp int) []uint8 {
 }
 
 // A UART beside a free-running clock it has nothing to do with is a UART:
-// the bench's UART on C1 with a clock on C2 read as SPI on the web, and as
-// I2C or nothing here, because a clocked pair suppressed UART (bug hunt
-// 2026-10-11). Its edges keep no place in the clock's cycle; a clocked data
-// line keeps one.
+// a UART on C1 with a clock on C2 must not read as SPI, I2C or nothing, as it
+// does when a clocked pair suppresses UART. Its edges keep no place in the
+// clock's cycle; a clocked data line keeps one.
 // TRLC-LINKS: REQ-SDS-018
 func TestAutodetectUARTBesideFreeClock(t *testing.T) {
 	want := []int{0x48, 0x69, 0x55, 0xAA, 0x41, 0x42, 0x43, 0x44}

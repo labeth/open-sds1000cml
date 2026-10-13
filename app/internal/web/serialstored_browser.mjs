@@ -1,7 +1,7 @@
 // Real-browser e2e: the scope keeps a serial match while its trigger is off
 // (set on the LCD or a phone). The page shows that match from the start, and
-// its Trigger on match arms it: the page's empty field armed "any byte" over
-// it (bug hunt #3). An armed match the FPGA cannot take yet is named as that,
+// its Trigger on match arms it, not "any byte" from the page's empty field.
+// An armed match the FPGA cannot take yet is named as that,
 // not as software matching; disarmed, the page follows a match set elsewhere.
 // argv[2]=URL. SKIP/exit 0 without browser.
 import { openScope, run } from "./scope_po.mjs";

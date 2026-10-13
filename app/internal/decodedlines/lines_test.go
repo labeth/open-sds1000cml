@@ -91,7 +91,7 @@ func TestEncodeWidths(t *testing.T) {
 
 // The rate is units per second of signal time: a 115200 Bd byte every
 // 4340 two-nanosecond samples is 115200/10 bytes a second, whatever wall
-// clock the stream took to start (bug hunt 2026-10-10).
+// clock the stream took to start.
 // TRLC-LINKS: REQ-SDS-018
 func TestRateIsSignalTime(t *testing.T) {
 	w := New(1, 64)

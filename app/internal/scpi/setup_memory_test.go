@@ -25,7 +25,7 @@ func (f *fakeSetups) RecallSetup(n int) error {
 }
 
 // *SAV/*RCL reach the setup memory, and anything they cannot do is an error,
-// never a silent success (bug hunt 2026-10-10: *RCL 1 restored nothing).
+// never a silent success (a *RCL 1 that restores nothing).
 // TRLC-LINKS: REQ-SDS-024
 func TestSaveRecallSetupMemory(t *testing.T) {
 	h, _ := newH(t)
@@ -78,7 +78,7 @@ func (f *fakeSetupFiles) RecallSetupFile(n string) error {
 }
 
 // The panel-memory and cursor/measure verbs act or refuse; none is silently
-// accepted (bug hunt 2026-10-11: PNSU/STPN/RCPN/PACU/CRMS/CRST did nothing).
+// accepted (PNSU/STPN/RCPN/PACU/CRMS/CRST).
 // TRLC-LINKS: REQ-SDS-024
 func TestPanelMemoryAndCursorVerbsActOrRefuse(t *testing.T) {
 	h, _ := newH(t)

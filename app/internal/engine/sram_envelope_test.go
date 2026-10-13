@@ -3,6 +3,7 @@ package engine
 
 import (
 	"testing"
+	"time"
 
 	"open-sds/app/internal/sramcapture"
 )
@@ -89,7 +90,7 @@ func TestOrderEnvelope(t *testing.T) {
 }
 
 // The first bucket's pair leads into the next one: a falling edge in it must
-// not read as a one-sample pulse at the record's start (bug hunt 2026-10-10).
+// not read as a one-sample pulse at the record's start.
 // TRLC-LINKS: REQ-SDS-010
 func TestOrderEnvelopeHead(t *testing.T) {
 	c := []uint8{126, 209, 128, 128, 127, 128} // bucket 0 holds a falling edge
@@ -102,5 +103,34 @@ func TestOrderEnvelopeHead(t *testing.T) {
 	orderEnvelopeHead(r, nil)
 	if r[0] != 126 || r[1] != 209 {
 		t.Fatalf("head %v, want rising 126,209", r[:2])
+	}
+}
+
+// A spectrum lease blocks the envelope; it keeps a screen of up to
+// SpectrumRawSamples at the full rate and has a longer one decimated
+// (filtered), as the sample lease would (otherwise the web's FFT draws 0 to
+// 15.6 MHz of a 32 ns capture filtered at 4.2 MHz at 5us/div).
+// TRLC-LINKS: REQ-SDS-010, REQ-SDS-070
+func TestSpectrumLease(t *testing.T) {
+	e := &Engine{hardwareEnvelope: true, clk: Clock{Now: time.Now}}
+	edge := trigParams{typ: TrigEdge}
+	e.LeaseSpectrumView(3 * time.Second)
+	block := e.envelopeBlock(sramcapture.Config{}, edge)
+	if block != blockSpectrum {
+		t.Fatalf("block %q", block)
+	}
+	if p := PlanSRAM(5e-6); p.Screen != 25000 || liveDecimatesPlan(block, p) {
+		t.Fatalf("5us/div (%d samples): decimated", p.Screen)
+	}
+	if p := PlanSRAM(20e-6); liveDecimatesPlan(block, p) != true {
+		t.Fatalf("20us/div (%d samples): kept at the full rate", p.Screen)
+	}
+	// the other leases keep their rules
+	if p := PlanSRAM(5e-6); !liveDecimatesPlan("samples requested", p) || liveDecimatesPlan("raw requested", p) {
+		t.Fatal("the sample and raw leases changed")
+	}
+	e.LeaseSpectrumView(0)
+	if e.envelopeBlock(sramcapture.Config{}, edge) != "" {
+		t.Fatal("an ended lease still blocks the envelope")
 	}
 }

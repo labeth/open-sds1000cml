@@ -135,7 +135,7 @@ function frame(amp1, amp2, seed) {
 }
 
 // --- 9. amplitude between bins: the fit, not the scalloped Hann bin ---------
-// (bug hunt 2026-10-10: a 5 MHz clock half a bin off read 1.70 V for 1.98 V.)
+// (a 5 MHz clock half a bin off reads 1.70 V for 1.98 V from the bin.)
 {
   const M = 2048, r = [];
   for (let n = 0; n < M; n++) r.push(128 + 50 * Math.sin(2 * Math.PI * 20.5 * n / M + 0.3));

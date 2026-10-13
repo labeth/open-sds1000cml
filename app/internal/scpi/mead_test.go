@@ -32,8 +32,8 @@ func replyValue(t *testing.T, out string) float64 {
 	return v
 }
 
-// C1-C2:MEAD? measures edge delays between the channels (bug hunt
-// 2026-10-11: the verb was listed in spec 11 and answered "Undefined header").
+// C1-C2:MEAD? measures edge delays between the channels (spec 11 lists the
+// verb; it must not answer "Undefined header").
 // TRLC-LINKS: REQ-SDS-024
 func TestMEADDelays(t *testing.T) {
 	h, fs := newH(t)

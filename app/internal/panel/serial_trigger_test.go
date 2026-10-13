@@ -231,7 +231,7 @@ func TestBytePickers(t *testing.T) {
 }
 
 // OK's notice names the match the trigger now holds: a lone typed nibble is
-// the byte 0A, and the notice said "55 A" (bug hunt #3).
+// the byte 0A, so "55 0A", not "55 A".
 // TRLC-LINKS: REQ-SDS-013
 func TestMatchEditorOKNamesTheArmedMatch(t *testing.T) {
 	c, _, _ := newC(t)

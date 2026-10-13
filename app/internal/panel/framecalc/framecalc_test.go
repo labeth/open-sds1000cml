@@ -61,3 +61,26 @@ func TestDecodeCacheShared(t *testing.T) {
 		t.Fatal("decode off returned spans")
 	}
 }
+
+// A decimated capture's spectrum ends at its filter's bandwidth: above it the
+// bins hold the stopband (a 32 ns capture filtered at 4.2 MHz drawn to
+// 15.6 MHz shows a square's harmonics above 4.2 MHz gone). An
+// unfiltered frame keeps its whole Nyquist.
+// TRLC-LINKS: REQ-SDS-070, REQ-SDS-216
+func TestSpectrumEndsAtTheFilterBand(t *testing.T) {
+	f := sineFrame(4096, 64, 80, 21)
+	f.SampleS = 32e-9
+	full, _ := Spectrum(f, 0, f.SampleS)
+	if full.SpanHz != full.EffNyq || len(full.Mags) != full.N/2 {
+		t.Fatalf("unfiltered: span %g of Nyquist %g, %d bins", full.SpanHz, full.EffNyq, len(full.Mags))
+	}
+	g := sineFrame(4096, 64, 80, 22)
+	g.SampleS, g.BandwidthHz = 32e-9, 0.1346/32e-9 // the precision filter's -3 dB: 4.2 MHz at 32 ns
+	sp, ok := Spectrum(g, 0, g.SampleS)
+	if !ok || math.Abs(sp.SpanHz-g.BandwidthHz) > sp.BinHz || len(sp.Mags) >= sp.N/2 {
+		t.Fatalf("filtered: span %g, want %g; %d of %d bins", sp.SpanHz, g.BandwidthHz, len(sp.Mags), sp.N/2)
+	}
+	if sp.EffNyq != full.EffNyq || sp.PeakK != 64 {
+		t.Fatalf("Nyquist %g (want %g), peak bin %d", sp.EffNyq, full.EffNyq, sp.PeakK)
+	}
+}

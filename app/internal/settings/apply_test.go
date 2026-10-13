@@ -79,12 +79,19 @@ func TestApplyRestoreCollectFidelity(t *testing.T) {
 		// The workspace UI: SPECTRUM on its spectrogram, BUS on the eye,
 		// MEASURE on all values with two readouts, the master depth.
 		UI: settings.UI{Set: true, Workspace: 2, Views: [5]int{1, 0, 4, 0, 0}, BusEye: true, MeasAll: true,
-			Meas: [12]int{1*32 + 0 + 1, 0*32 + 1 + 1}, FFTSource: 1, MasterDepth: 128, RemoteNotices: true},
+			Meas: [12]int{1*32 + 0 + 1, 0*32 + 1 + 1}, FFTSource: 1, MasterDepth: 128, RemoteNotices: true,
+			// the mask build and super-res's stop
+			MaskFrames: 64, MaskTol: 3, SrCh: 2, SrGrid: 16, SrStop: 3, SrTarget: 120},
 		// The serial trigger's match, kept while disarmed (a trigger type
 		// other than Serial is set above); not I2C, so any address.
 		Serial: settings.Serial{Set: true, Match: "55 AA", Addr: -1, RW: 2},
 		// The screen saver's times, not the factory ones.
 		Screen: settings.Screen{Set: true, SaverMin: 5, OffMin: 120},
+		// The volts cursors, the zoom (no inverter in this rig: invert stays
+		// off) and the frequency response's channels swapped.
+		Display: settings.Display{Set: true, CurMode: 2, CurX: [2]float64{0.25, 0.75}, CurY: [2]float64{0.4, 0.55},
+			CurSel: 1, Zoom: 10, ZoomOff: -0.2},
+		Bode: settings.Bode{Set: true, Ref: 1, Dut: 0},
 	}
 	settings.Apply(want, e, fe, pc, t.Logf)
 	got := settings.Collect(e, fe, pc)
@@ -232,5 +239,29 @@ func sampleValid() settings.Settings {
 		TdivS:   500e-6,
 		Trigger: settings.Trigger{LevelCode: 31000, Rising: true},
 		Acq:     settings.Acq{Mode: 0, AvgCount: 16, EresLen: 1},
+	}
+}
+
+// A setup keeps the frequency response's reference and DUT channels; a
+// recall restores them and leaves the armed state as it is; an older file
+// without the block keeps the channels.
+// TRLC-LINKS: REQ-SDS-066, REQ-SDS-089
+func TestApplyRestoresBodeChannels(t *testing.T) {
+	e, fe, pc, _ := rig(t)
+	e.SetBodeMode(true, 1, 0)
+	s := settings.Collect(e, fe, pc)
+	if !s.Bode.Set || s.Bode.Ref != 1 || s.Bode.Dut != 0 {
+		t.Fatalf("collected %+v", s.Bode)
+	}
+	e.SetBodeMode(false, 0, 1)
+	settings.Apply(s, e, fe, pc, t.Logf)
+	if st := e.Snapshot(); st.BodeRef != 1 || st.BodeDut != 0 || st.BodeMode != 0 {
+		t.Fatalf("restored ref %d dut %d mode %d, want 1 0 disarmed", st.BodeRef, st.BodeDut, st.BodeMode)
+	}
+	s.Bode = settings.Bode{}
+	e.SetBodeMode(false, 1, 0)
+	settings.Apply(s, e, fe, pc, t.Logf)
+	if st := e.Snapshot(); st.BodeRef != 1 || st.BodeDut != 0 {
+		t.Fatalf("an older file moved the channels: ref %d dut %d", st.BodeRef, st.BodeDut)
 	}
 }

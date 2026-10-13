@@ -67,8 +67,8 @@ run(async (t) => {
   await t.until(async () => (await po.text("trigCap")).includes("Edge"), "the strip's trigger caption names the type");
   await po.setRange("lvl", 1.5);
   await t.until(async () => ((await po.text("lvlv")) || "").includes("1.5"), "trigger level readout tracks the slider");
-  // with the channel offset off 0 V the slider still stops on 0 V (bug hunt #3: Default setup's -4.56 mV offset
-  // put the slider's grid 4.39 mV off 0 V)
+  // with the channel offset off 0 V the slider still stops on 0 V (Default setup's -4.56 mV offset must not put
+  // the slider's grid 4.39 mV off 0 V)
   const zeroLvl = await po.eval(() => {
     const keep = [st.off1_v, st.off2_v];
     st.off1_v = st.off2_v = -0.00456; applyStatus();

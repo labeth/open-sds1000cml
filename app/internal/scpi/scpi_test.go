@@ -787,8 +787,7 @@ func TestAcquisitionQueryPrecision(t *testing.T) {
 	}
 }
 
-// PAVA? ALL lists every parameter with the value its own query gives (bug
-// hunt #2: ALL was a header error).
+// PAVA? ALL lists every parameter with the value its own query gives.
 // TRLC-LINKS: REQ-SDS-024
 func TestPAVAAll(t *testing.T) {
 	h, fs := newH(t)

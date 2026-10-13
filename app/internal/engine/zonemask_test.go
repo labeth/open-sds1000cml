@@ -148,3 +148,22 @@ func TestBuildMaskFromEnvelope(t *testing.T) {
 		t.Error("length mismatch must return nil")
 	}
 }
+
+// A mask test's counts start over together: turning the test on and clearing
+// its counts zero the skipped captures too (not "pass 57 FAIL 0 skip 476" on
+// a fresh test, every skip since power-on).
+// TRLC-LINKS: REQ-SDS-014
+func TestMaskCountsResetTogether(t *testing.T) {
+	e := &Engine{}
+	set := func() { e.maskPass.Store(5); e.maskFail.Store(2); e.maskSkip.Store(476) }
+	set()
+	e.ClearMaskFails()
+	if e.maskPass.Load() != 0 || e.maskFail.Load() != 0 || e.maskSkip.Load() != 0 {
+		t.Fatalf("cleared counts: pass %d fail %d skip %d", e.maskPass.Load(), e.maskFail.Load(), e.maskSkip.Load())
+	}
+	set()
+	e.SetMaskMode(MaskTest)
+	if e.maskPass.Load() != 0 || e.maskFail.Load() != 0 || e.maskSkip.Load() != 0 {
+		t.Fatalf("a test turned on: pass %d fail %d skip %d", e.maskPass.Load(), e.maskFail.Load(), e.maskSkip.Load())
+	}
+}

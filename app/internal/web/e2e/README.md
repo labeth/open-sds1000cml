@@ -62,17 +62,6 @@ channel, `op.eyeRow(name)` reads an eye/jitter figure.
 config drifts over minutes, so that batch is best-effort — not a scope bug (the
 scope measures whatever the FPGA emits).
 
-## Bugs this campaign found and fixed
-
-- Scientific notation on readouts (`1.00e+3 ns` for a 1 µs value) — web + LCD +
-  panel formatters.
-- Autoset read an aliased frequency from a slow/roll start (two divergent
-  autoset implementations; unified on the robust device sweep + web delegates).
-- RUN did nothing after a SINGLE capture (stale run-state shadow).
-- Autoset couldn't find a low-duty pulse train (amplitude-only "found" test).
-- Clicking the eye diagram to enlarge it crashed the page when RJ was not yet
-  available (`eng(undefined)`); `eng()` now dashes non-finite input.
-
 ## Operator fuzzer (`fuzz.mjs`)
 
 Seeded random-operator campaign against the LIVE scope UI: weighted realistic
@@ -93,11 +82,6 @@ Segmented choices (coupling, probe, trigger source/slope/mode, acquisition,
 decode format…) are clicked; a control in another workspace is revealed first.
 The CI lane (`TestFuzzBrowserSynthetic`) runs 60 iterations of seed 1 against a
 synthetic scope; `FUZZ_ITERS`/`FUZZ_SEED` run longer hunts.
-
-The workspace palette's first hunts found a reference placed by time under a
-much faster timebase (1 ns/div) dashing millions of off-screen segments until the
-GL vertex buffer could not grow ("Array buffer allocation failed"); dashed
-segments are now clipped to the canvas and the buffer flushes past 16 MB.
 
 Bugs found by the first 200-iteration run (both fixed):
   * peakNyq() crashed on frames lacking a per-sample channel array (channel

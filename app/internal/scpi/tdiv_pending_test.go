@@ -40,8 +40,8 @@ func (s *slowScope) apply() {
 }
 
 // TDIV? answers the set timebase while the engine still switches to it, and
-// *OPC? waits for the switch (bug hunt #2: TDIV? kept the old value for 3 s
-// and *OPC? answered at once).
+// *OPC? waits for the switch (not the old value for 3 s and an *OPC? that
+// answers at once).
 // TRLC-LINKS: REQ-SDS-024
 func TestTdivPendingAndOpc(t *testing.T) {
 	sc := &slowScope{}
@@ -64,8 +64,8 @@ func TestTdivPendingAndOpc(t *testing.T) {
 	}
 }
 
-// HCSU states the one hardcopy format there is and refuses others (bug hunt
-// #2: any argument was a silent success and HCSU? was undefined).
+// HCSU states the one hardcopy format there is and refuses others (no silent
+// success for any argument), and HCSU? answers.
 // TRLC-LINKS: REQ-SDS-024
 func TestHCSUFixedBMP(t *testing.T) {
 	h := New(&fakeScope{}, nil, nil, nil, t.Logf)

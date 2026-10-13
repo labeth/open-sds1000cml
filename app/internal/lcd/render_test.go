@@ -487,8 +487,8 @@ func TestFontCoversPrintableASCII(t *testing.T) {
 	}
 }
 
-// Bode gridlines sit on round steps (bug hunt 2026-10-10: quarters of
-// [-180,45] labelled -11.2 and -124).
+// Bode gridlines sit on round steps (not quarters of [-180,45] labelled -11.2
+// and -124).
 // TRLC-LINKS: REQ-SDS-021
 func TestBodeGridStep(t *testing.T) {
 	if s := gridStep(-180, 45, []float64{15, 30, 45, 90, 180}); s != 45 {
@@ -502,8 +502,8 @@ func TestBodeGridStep(t *testing.T) {
 	}
 }
 
-// Both channels switched off on the panel draw no trace and no readout (bug
-// hunt #2: CH1 then CH2 off brought both traces and readouts back). Unset flags
+// Both channels switched off on the panel draw no trace and no readout (CH1
+// then CH2 off must not bring both traces and readouts back). Unset flags
 // (ChanExplicit false) still mean "show both".
 // TRLC-LINKS: REQ-SDS-021
 func TestRenderBothChannelsHidden(t *testing.T) {
@@ -525,8 +525,8 @@ func TestRenderBothChannelsHidden(t *testing.T) {
 }
 
 // The sheet writes its tab's live status under the rows in the status
-// colour: the ACQ tab says why super-res did not arm (bug hunt #2: the
-// reason was set but only drawn while super-res was active).
+// colour: the ACQ tab says why super-res did not arm, not only while
+// super-res is active.
 // TRLC-LINKS: REQ-SDS-021, REQ-SDS-212
 func TestRenderSheetStatus(t *testing.T) {
 	h := defaultHUD()

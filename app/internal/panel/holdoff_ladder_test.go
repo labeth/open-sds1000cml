@@ -7,7 +7,7 @@ import (
 )
 
 // The Holdoff row steps Off and 1-2-5 up to its 10 s limit from the scope's
-// Position knob (it stepped in decades and stopped at 1 s; bug hunt #3).
+// Position knob, not in decades stopping at 1 s.
 // TRLC-LINKS: REQ-SDS-212, REQ-SDS-011
 func TestHoldoffStepsOneTwoFiveToTenSeconds(t *testing.T) {
 	c, _, _ := newC(t)

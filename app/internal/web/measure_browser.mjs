@@ -21,7 +21,7 @@ run(async (t) => {
   t.ok(await po.isVisible("statsTable") && !(await po.isVisible("valuesTable")), "MEASURE opens on the statistics");
   t.ok(await page.evaluate(() => [...document.querySelectorAll("#statsTable thead th")].map((h) => h.textContent).join("|")) === "Measurement|Now|Mean|Min|Max|Sdev|N",
     "columns: now, mean, min, max, sdev, N");
-  t.ok(await page.evaluate(() => document.querySelectorAll("#statsBody tr[data-stat]").length) === 34, "17 parameters × 2 channels");
+  t.ok(await page.evaluate(() => document.querySelectorAll("#statsBody tr[data-stat]").length) === 36, "18 parameters × 2 channels (preshoot too)");
   await t.until(async () => { const s = await stat("1:Freq"); return s && +s.td[5] >= 5; }, "N counts the captures", 8000);
   const f = await stat("1:Freq");
   t.ok(f.unit === "kHz", "the row carries its unit: " + f.unit);
@@ -44,9 +44,20 @@ run(async (t) => {
   await page.click("#vdiv1Dn");
   await t.until(async () => +(await stat("1:Freq")).td[5] < n3, "a V/div change restarts the statistics", 3000);
   await page.click("#vdiv1Up");
+  // as on the scope, they count only while MEASURE is shown (not every
+  // workspace's captures: the FFT's are filtered frames)
+  const r0 = +(await stat("1:Freq")).td[5];
+  await po.wait(1500);
+  const n4 = +(await stat("1:Freq")).td[5]; // counted in 1.5 s here: n4 - r0
+  await page.click("#tab-scope");
+  await po.wait(1500);
+  await page.click("#tab-measure");
+  const n5 = +(await stat("1:Freq")).td[5];
+  t.ok(n5 - n4 < (n4 - r0) / 2, `no counting while SCOPE was shown (${n4 - r0} in 1.5 s in MEASURE; ${n4} -> ${n5} across 1.5 s in SCOPE)`);
+  await t.until(async () => +(await stat("1:Freq")).td[5] > n5, "…and counting again in MEASURE", 3000);
   // the channel choice
   await po.seg("measCh", "2");
-  await t.until(() => page.evaluate(() => document.querySelectorAll('#statsBody tr[data-stat^="1:"]').length === 0 && document.querySelectorAll('#statsBody tr[data-stat^="2:"]').length === 17),
+  await t.until(() => page.evaluate(() => document.querySelectorAll('#statsBody tr[data-stat^="1:"]').length === 0 && document.querySelectorAll('#statsBody tr[data-stat^="2:"]').length === 18),
     "C2 shows only CH2's rows", 2000);
   await po.seg("measCh", "0");
 
@@ -54,8 +65,11 @@ run(async (t) => {
   await page.evaluate(() => document.activeElement.blur());
   await page.keyboard.press("Alt+4");
   t.ok(await po.isVisible("valuesTable") && !(await po.isVisible("statsTable")), "MEASURE again: all values");
-  await t.until(() => page.evaluate(() => [...document.querySelectorAll("#measBody [data-meas]")].filter((c) => c.textContent.trim()).length === 34),
-    "all 17 parameters of both channels read", 3000);
+  await t.until(() => page.evaluate(() => [...document.querySelectorAll("#measBody [data-meas]")].filter((c) => c.textContent.trim()).length === 36),
+    "all 18 parameters of both channels read", 3000);
+  // nine and nine side by side, as on the scope: Duty ends the first column, Preshoot the second
+  t.ok(await page.evaluate(() => { const r = [...document.querySelectorAll("#measBody tr")].filter((x) => !x.classList.contains("hd"));
+    return r.length === 9 && r[7].querySelector("th").textContent === "Duty" && r[8].querySelectorAll("th")[1].textContent === "Preshoot"; }), "all values in two columns of nine");
   t.ok(await page.evaluate(() => /kHz/.test(document.querySelector('#measBody [data-meas="1:Freq"]').textContent)), "with units");
   await page.keyboard.press("Alt+4");
   t.ok(await po.isVisible("statsTable"), "MEASURE again: back to the statistics");

@@ -10,9 +10,8 @@ import (
 )
 
 // The Save/Recall key opens the FILE tab: a row per numbered setup with what
-// it holds, saving and recalling from the F-keys beside it (it was
-// claim-and-ignore; bug hunt 2026-10-11), and the lamp says the settings are
-// the ones last saved or recalled.
+// it holds, saving and recalling from the F-keys beside it, and the lamp says
+// the settings are the ones last saved or recalled.
 // TRLC-LINKS: REQ-SDS-136, REQ-SDS-212
 func TestSaveRecallKeyFileTab(t *testing.T) {
 	c, eng, _ := newC(t)
@@ -48,7 +47,7 @@ func TestSaveRecallKeyFileTab(t *testing.T) {
 }
 
 // PRINT saves through the hardcopy hook and shows the file name; without a
-// hook it says so (bug hunt #2: the key was claim-and-ignore).
+// hook it says so, not claim-and-ignore.
 // TRLC-LINKS: REQ-SDS-136
 func TestPrintKeyShowsResult(t *testing.T) {
 	c, _, _ := newC(t)

@@ -347,8 +347,8 @@ func TestMeasureBrowser(t *testing.T) {
 // TestCompareBrowser: the difference readout against a reference, and Stack
 // master: the page has the scope stack its master and takes the scope's REF A
 // (compare_browser.mjs mocks the scope's master row; the panel's master has
-// its own tests). The page drives no acquisition of its own: it averaged
-// through SINGLE before, which timed out on the SRAM image (bug hunt #3).
+// its own tests). The page drives no acquisition of its own: averaging through
+// SINGLE times out on the SRAM image.
 // TRLC-LINKS: REQ-SDS-218
 func TestCompareBrowser(t *testing.T) {
 	testenv.NeedNode(t)

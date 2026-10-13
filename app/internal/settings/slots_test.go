@@ -8,8 +8,7 @@ import (
 	"testing"
 )
 
-// A saved slot recalls the setup it stored; an empty slot errors (bug hunt
-// 2026-10-10: *SAV/*RCL were accepted and did nothing).
+// A saved slot recalls the setup it stored; an empty slot errors.
 // TRLC-LINKS: REQ-SDS-072, REQ-SDS-089
 func TestSlotsSaveRecall(t *testing.T) {
 	cur := Settings{TdivS: 200e-6}

@@ -431,8 +431,7 @@ func TestEnvelopeTiming(t *testing.T) {
 	}
 }
 
-// An inverted channel reads its levels negated and its edges swapped
-// (bug hunt 2026-10-10).
+// An inverted channel reads its levels negated and its edges swapped.
 // TRLC-LINKS: REQ-SDS-021
 func TestResultInverted(t *testing.T) {
 	r := &Result{Vpp: 3.3, Vmax: 3.3, Vmin: 0, Vmean: 1.6, Vtop: 3.2, Vbase: 0.1, Vampl: 3.1,

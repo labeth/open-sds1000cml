@@ -103,7 +103,7 @@ func TestPanelStartPreservesRestoredQualifiers(t *testing.T) {
 // The web app takes the scope's references (GET /api/refs) with the volts at
 // the probe tip, as its own volts per code, the timebase and the trigger's
 // place across the screen: the web's Stack master shows the scope's master
-// as its REF A (bug hunt #3).
+// as its REF A.
 // TRLC-LINKS: REQ-SDS-138, REQ-SDS-218
 func TestRefsExportForTheWeb(t *testing.T) {
 	c, eng, fe := newC(t)

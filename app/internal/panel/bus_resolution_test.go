@@ -91,8 +91,8 @@ func absDiff(a, b uint8) int {
 }
 
 // A live envelope whose buckets span the bus's clock is not decoded: the
-// clock aliases there into starts and stops without bytes (bug hunt #3: I2C
-// at 500us/div listed 151 packets of no bytes). A fine one decodes.
+// clock aliases there into starts and stops without bytes (I2C at 500us/div:
+// packets of no bytes). A fine one decodes.
 // TRLC-LINKS: REQ-SDS-214
 func TestCoarseEnvelopeIsNotDecoded(t *testing.T) {
 	raw := i2cFrame(184e3, 10e-9, 400000, 0x55, 0xAA, 0x0F, 0xF0) // 4 ms, the clock 5.4 us
@@ -152,9 +152,9 @@ func TestBusDetectPicksAReadableTimebase(t *testing.T) {
 }
 
 // A record the timebase decimates hides a fast bus: BUS's auto-detect then
-// searches again at the slowest full-rate timebase and keeps it (bug hunt #3:
-// a 10 Mbit/s FlexRay was "no bus found" at 500us/div's 32 ns); with no bus
-// there either, the timebase goes back.
+// searches again at the slowest full-rate timebase and keeps it (a 10 Mbit/s
+// FlexRay is not found at 500us/div's 32 ns); with no bus there either, the
+// timebase goes back.
 // TRLC-LINKS: REQ-SDS-214
 func TestBusDetectRetriesAtTheFullRate(t *testing.T) {
 	c, eng, _ := newC(t)
@@ -218,9 +218,9 @@ func TestBusDetectRetriesAtTheFullRate(t *testing.T) {
 }
 
 // While running, BUS's auto-detect reads a frame captured after it began: the
-// frame on screen, or one in flight, may predate a setting just changed (bug
-// hunt #3: ARINC was "no bus found" in a frame from before its bandwidth
-// limit took effect).
+// frame on screen, or one in flight, may predate a setting just changed (an
+// ARINC bus is not found in a frame from before its bandwidth limit took
+// effect).
 // TRLC-LINKS: REQ-SDS-214
 func TestBusDetectReadsAFreshFrame(t *testing.T) {
 	c, eng, _ := newC(t)
@@ -342,9 +342,9 @@ func newEnvRig(t *testing.T) (*Controller, *envEng, *recStream) {
 }
 
 // Picking Protocol = Auto finds a bus its live envelope cannot show, on a
-// sampled record as BUS does, and steps to the timebase that reads it (bug
-// hunt #3: a 115200 UART plain on screen at 500us/div was "AUTO: no protocol
-// matched"); decode stays Auto.
+// sampled record as BUS does, and steps to the timebase that reads it (a
+// 115200 Bd UART plain on screen at 500us/div matches no protocol on the
+// envelope); decode stays Auto.
 // TRLC-LINKS: REQ-SDS-214
 func TestAutoFindsTheBusItsEnvelopeHides(t *testing.T) {
 	c, eng, _ := newEnvRig(t)
@@ -356,8 +356,8 @@ func TestAutoFindsTheBusItsEnvelopeHides(t *testing.T) {
 }
 
 // Stream On with Protocol = Auto starts from the bus found on a sampled
-// record (bug hunt #3: "Auto found no protocol on screen - show more of it
-// (slower t/div)" with a UART plain on screen at 500us/div).
+// record, not "Auto found no protocol on screen" with a UART plain on screen
+// at 500us/div.
 // TRLC-LINKS: REQ-SDS-018
 func TestAutoStreamStartsOnTheBusItsEnvelopeHides(t *testing.T) {
 	c, _, st := newEnvRig(t)
@@ -374,8 +374,8 @@ func TestAutoStreamStartsOnTheBusItsEnvelopeHides(t *testing.T) {
 
 // "Trigger on it" with Protocol = Auto arms on the bus found on a sampled
 // record when the frame on screen cannot show it, fixing decode to it and
-// ending the stream Auto ran (bug hunt #3: "Auto decode found no bus" with a
-// UART plain on screen at 500us/div; the stream kept running).
+// ending the stream Auto ran (not "Auto decode found no bus" with a UART
+// plain on screen at 500us/div, the stream still running).
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-214
 func TestAutoTriggerArmsOnTheBusItsEnvelopeHides(t *testing.T) {
 	c, eng, st := newEnvRig(t)
@@ -416,8 +416,7 @@ func runsAgain(t *testing.T, eng *envEng) {
 }
 
 // Leaving stream mode runs the scope again once the stream has ended: the
-// engine ends a stream stopped, after the RUN that followed Stop at once
-// (bug hunt #3).
+// engine ends a stream stopped, after a RUN that would follow Stop at once.
 // TRLC-LINKS: REQ-SDS-018
 func TestLeavingAStreamRunsAgain(t *testing.T) {
 	for _, leave := range []struct {
@@ -451,8 +450,8 @@ func TestLeavingAStreamRunsAgain(t *testing.T) {
 
 // "Trigger on it" with Protocol = Auto on a sampled frame on screen (a
 // stream's record) fixes decode to the bus there and steps to the timebase
-// that reads it live: armed at 500us/div, the decode strip could not show the
-// bytes it triggered on (bug hunt #3).
+// that reads it live: armed at 500us/div, the decode strip cannot show the
+// bytes it triggers on.
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-214
 func TestAutoTriggerStepsToATimebaseThatReadsIt(t *testing.T) {
 	c, eng, _ := newEnvRig(t)
@@ -468,9 +467,9 @@ func TestAutoTriggerStepsToATimebaseThatReadsIt(t *testing.T) {
 }
 
 // A timebase asked for while a stream ran applies when the stream ends: the
-// readable-timebase step judges that one, not the running one (bug hunt #3:
-// "Trigger on it" from a stream at 200us/div with 500us/div pending armed at
-// 500us/div, too coarse to show the bus).
+// readable-timebase step judges that one, not the running one ("Trigger on it"
+// from a stream at 200us/div with 500us/div pending would arm at 500us/div,
+// too coarse to show the bus).
 // TRLC-LINKS: REQ-SDS-214
 func TestReadableTimebaseJudgesTheTimebaseAskedFor(t *testing.T) {
 	c, eng, _ := newEnvRig(t)
@@ -487,8 +486,8 @@ func TestReadableTimebaseJudgesTheTimebaseAskedFor(t *testing.T) {
 }
 
 // Auto on a live envelope too coarse for the bus says so, as a fixed protocol
-// does (bug hunt #3: "AUTO: no protocol matched" with a 115200 UART on screen
-// at 500us/div); the sampled record finds the UART.
+// does, not "AUTO: no protocol matched" with a 115200 Bd UART on screen at
+// 500us/div; the sampled record finds the UART.
 // TRLC-LINKS: REQ-SDS-214
 func TestCoarseEnvelopeAutoSaysWhy(t *testing.T) {
 	uart := uartFrame([]string{"Hi U\\x55\\xaa"}, 115200, 300e-6, 20e-9, 200000)
@@ -503,8 +502,7 @@ func TestCoarseEnvelopeAutoSaysWhy(t *testing.T) {
 
 // A search whose caller no longer wants the bus gives the timebase back:
 // Auto picked after Autoset's 10us/div (about one UART byte) and changed
-// while the search looked at 200us/div left the scope at 200us/div (bug hunt
-// #3).
+// while the search looked at 200us/div must not leave the scope at 200us/div.
 // TRLC-LINKS: REQ-SDS-214
 func TestAutoSearchGivesTheTimebaseBackWhenLeft(t *testing.T) {
 	c, eng, _ := newC(t)
@@ -535,9 +533,8 @@ func TestAutoSearchGivesTheTimebaseBackWhenLeft(t *testing.T) {
 }
 
 // BUS's auto-detect leaves a protocol set while it searched (seconds at slow
-// timebases): its "no bus found - decode stays off" undid a UART picked on the
-// phone meanwhile, and a bus it found replaced the protocol picked (bug hunt
-// #3).
+// timebases): neither its "no bus found - decode stays off" nor a bus it found
+// replaces a UART picked on the phone meanwhile.
 // TRLC-LINKS: REQ-SDS-214
 func TestBusDetectKeepsAProtocolPickedMeanwhile(t *testing.T) {
 	idle := make([]uint8, 1000)
@@ -618,9 +615,9 @@ func (s *slowStream) Active() bool {
 }
 
 // Stream On, Off and On again while the first stream still starts ends with a
-// stream running: the second start was refused ("a stream is already
-// starting") and the first then stopped as the Off had asked, leaving Stream
-// On with none running (bug hunt #3).
+// stream running: the second start is refused ("a stream is already
+// starting") and the first then stops as the Off asked, which must not leave
+// Stream On with none running.
 // TRLC-LINKS: REQ-SDS-018
 func TestStreamOnOffOnRuns(t *testing.T) {
 	c, eng, _ := newC(t)
@@ -666,9 +663,8 @@ type waitEng struct {
 func (e *waitEng) SincePublish() time.Duration { return e.since }
 
 // A bus search that gets no new capture because the scope waits for a trigger
-// (Normal, the level off the signal) says so, not that no bus is there (bug
-// hunt #3: BUS entry and picking Auto said "no bus found", the web's Detect
-// named the I2C bus Manchester from the live envelope).
+// (Normal, the level off the signal) says so, not that no bus is there (nor,
+// on the web, names an I2C bus Manchester from the live envelope).
 // TRLC-LINKS: REQ-SDS-214
 func TestBusSearchSaysTheScopeWaits(t *testing.T) {
 	_, base, fe := newC(t)

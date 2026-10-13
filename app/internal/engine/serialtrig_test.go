@@ -350,8 +350,8 @@ func TestSerialRegistryCapabilities(t *testing.T) {
 }
 
 // A record holding the pattern more than once triggers on the match a full
-// screen fits around, not the first one at the record start (bug hunt
-// 2026-10-10: the first match left a flat 0 V tail off the record).
+// screen fits around, not the first one at the record start (which leaves a
+// flat 0 V tail off the record).
 // TRLC-LINKS: REQ-SDS-013
 func TestSerialQualifyPicksCentredMatch(t *testing.T) {
 	msg := []int{0x48, 0x55, 0xAA, 0x0F, 0x0A}
@@ -390,8 +390,7 @@ func TestSerialQualifyPicksCentredMatch(t *testing.T) {
 }
 
 // A serial match that would leave more than a sliver of the screen off the
-// record does not trigger (bug hunt 2026-10-11, #29); a record shorter than
-// the screen never blocks.
+// record does not trigger; a record shorter than the screen never blocks.
 // TRLC-LINKS: REQ-SDS-013
 func TestOffRecord(t *testing.T) {
 	for _, tc := range []struct{ valid, win, anchor, want int }{

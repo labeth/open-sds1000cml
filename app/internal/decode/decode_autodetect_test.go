@@ -8,8 +8,7 @@ import (
 )
 
 // A plain square with only ~30 edges on screen is a clock, not constant-bit
-// Manchester (bug hunt 2026-10-10: a 3 kHz square at 500 us/div was
-// announced as "AUTO MANCH 3kb/s").
+// Manchester (not "AUTO MANCH 3kb/s" for a 3 kHz square at 500 us/div).
 // TRLC-LINKS: REQ-SDS-018
 func TestAutodetectFewEdgeSquareIsNotManchester(t *testing.T) {
 	sq := make([]uint8, 2048)
@@ -25,8 +24,8 @@ func TestAutodetectFewEdgeSquareIsNotManchester(t *testing.T) {
 }
 
 // A 115200 Bd UART on the 1 ms/div live envelope (under two samples a bit)
-// carries no decodable protocol: Auto read it as SENT on one chance CRC-4
-// among 18 syncs (bug hunt 2026-10-10, real capture).
+// carries no decodable protocol, not SENT on one chance CRC-4 among 18 syncs
+// (a real capture).
 // TRLC-LINKS: REQ-SDS-018
 func TestAutodetectUndersampledUARTIsNotSENT(t *testing.T) {
 	b, err := os.ReadFile("testdata/uart115200_envelope_1ms.json")
@@ -51,8 +50,8 @@ func TestAutodetectUndersampledUARTIsNotSENT(t *testing.T) {
 
 // Auto must not name a protocol whose decode has more errors than evidence:
 // with every other decoder rejected, a garbage Manchester or UART decode
-// (negative score) won. Real bench captures, both channels carrying the line
-// as on the fixtures (bug hunt 2026-10-11).
+// (negative score) must not win. Real bench captures, both channels carrying
+// the line as on the fixtures.
 // TRLC-LINKS: REQ-SDS-018
 func TestAutodetectRealCapturesNoGarbageWinner(t *testing.T) {
 	for _, tc := range []struct{ file, want string }{

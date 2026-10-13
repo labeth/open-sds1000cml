@@ -15,7 +15,7 @@ import (
 // wrong PID complement.
 //
 // THREE attack classes (>=50 iterations each) plus edge/no-panic coverage, and a
-// gated block that pins two REAL findings surfaced by this campaign:
+// gated block that pins two real findings:
 //
 //	FINDING 1 (false-negative / false-positive): DecodeUSBLS splits packets only
 //	on an inter-packet idle wider than splitK=10 bit-times. Real USB LS/FS
