@@ -49,11 +49,18 @@ run(async (t) => {
   const r0 = +(await stat("1:Freq")).td[5];
   await po.wait(1500);
   const n4 = +(await stat("1:Freq")).td[5]; // counted in 1.5 s here: n4 - r0
+  t.ok(n4 > r0, `counting in MEASURE (${n4 - r0} in 1.5 s)`);
   await page.click("#tab-scope");
+  // the count itself, read while SCOPE is shown: a frame in flight at the
+  // switch may still land, then nothing more
+  const counted = () => page.evaluate(() => { const s = measStats.get("1:Freq"); return s ? s.n : 0; });
+  await po.wait(300);
+  const s0 = await counted();
   await po.wait(1500);
+  const s1 = await counted();
+  t.ok(s1 === s0, `no counting while SCOPE was shown (${s0} -> ${s1} across 1.5 s)`);
   await page.click("#tab-measure");
   const n5 = +(await stat("1:Freq")).td[5];
-  t.ok(n5 - n4 < (n4 - r0) / 2, `no counting while SCOPE was shown (${n4 - r0} in 1.5 s in MEASURE; ${n4} -> ${n5} across 1.5 s in SCOPE)`);
   await t.until(async () => +(await stat("1:Freq")).td[5] > n5, "…and counting again in MEASURE", 3000);
   // the channel choice
   await po.seg("measCh", "2");
