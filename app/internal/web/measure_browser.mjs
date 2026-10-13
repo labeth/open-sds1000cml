@@ -53,6 +53,7 @@ run(async (t) => {
   await page.click("#tab-scope");
   // the count itself, read while SCOPE is shown: a frame in flight at the
   // switch may still land, then nothing more
+  // TRLC-LINKS: REQ-SDS-217
   const counted = () => page.evaluate(() => { const s = measStats.get("1:Freq"); return s ? s.n : 0; });
   await po.wait(300);
   const s0 = await counted();

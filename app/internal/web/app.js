@@ -405,7 +405,7 @@ let ejBigKind = "eye";
 
 // ---- Bode / Frequency-Response-Analysis (engine-accumulated; this is the
 // control + render surface) ------------------------------------------------
-const bode = { armed: false, lastN: -1, timer: 0 };
+const bode = { armed: false, lastN: -1, timer: 0, pending: null };
 const GRIDCOL = css.getPropertyValue("--grid").trim() || "#243";
 const AXISCOL = css.getPropertyValue("--axis").trim() || "#456";
 const DIMCOL = css.getPropertyValue("--dim").trim() || "#9ab";

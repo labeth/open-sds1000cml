@@ -36,6 +36,9 @@ run(async (t) => {
   await po.click("bodeArm");
   t.ok(await po.hasClass("bodeArm", "on"), "bodeArm goes active on click");
   t.ok((await po.text("bodeArm")) === "STOP", "bodeArm label becomes STOP");
+  // a status read before the click must not undo it
+  t.ok(await page.evaluate(() => { const was = st.bode_mode; st.bode_mode = 0; bodeFollow(); st.bode_mode = was;
+    return bode.armed && $("bodeArm").textContent === "STOP"; }), "a stale status does not undo the click");
   await po.wait(200);
   t.ok(bodeModePost && bodeModePost.value === 1, "ARM posts bodemode value=1");
   t.ok(bodeModePost && bodeModePost.lo === 0 && bodeModePost.hi === 1, "bodemode carries ref/dut in lo/hi");

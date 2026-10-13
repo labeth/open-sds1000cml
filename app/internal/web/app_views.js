@@ -129,6 +129,7 @@ async function bodeRenderNow() {
 // TRLC-LINKS: REQ-SDS-125
 $("bodeArm").onclick = () => {
   bode.armed = !bode.armed;
+  bode.pending = { armed: bode.armed, until: Date.now() + 3000 };
   $("bodeArm").classList.toggle("on", bode.armed);
   $("bodeArm").textContent = bode.armed ? "STOP" : "ARM";
   const ref = +$("bodeRef").value || 0, dut = +$("bodeDut").value || 0;
@@ -161,6 +162,12 @@ for (const id of ["bodeRef", "bodeDut"]) $(id).onchange = () => {
 // TRLC-LINKS: REQ-SDS-125
 function bodeFollow() {
   const armed = st.bode_mode > 0;
+  // a click is shown until the scope's status agrees with it: the status read
+  // before it would undo it for a poll
+  if (bode.pending) {
+    if (armed !== bode.pending.armed && Date.now() < bode.pending.until) return;
+    bode.pending = null;
+  }
   if (armed !== bode.armed) {
     bode.armed = armed;
     $("bodeArm").classList.toggle("on", armed);
