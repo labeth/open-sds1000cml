@@ -76,6 +76,7 @@ func screenDivs(f *engine.Frame, s *sv, ch, cols int) []float64 {
 }
 
 // stabKey is what the repeat test depends on.
+// TRLC-LINKS: REQ-SDS-218
 func stabKey(s *sv) string {
 	src := s.st.TrigSource & 1
 	return fmt.Sprint(src, s.vidx, s.offV, s.probe, s.cpl, s.st.TdivS, s.st.TrigRising, s.st.TrigType, s.st.TrigCode,
@@ -174,7 +175,7 @@ func (c *Controller) refDiffFrame(a *anaState, s *sv, f *engine.Frame) {
 
 // ---- the master ----
 
-var blockAvgRE = regexp.MustCompile(`block average (\d+)/(\d+)`)
+var blockAvgRE = regexp.MustCompile(`\baverage (\d+)/(\d+)`)
 
 // stackStart is COMPARE again (and the sheet's Stack master): average the
 // trigger source into a master, unless it does not repeat. A refusal's
@@ -233,6 +234,7 @@ func (c *Controller) stackStart() error {
 }
 
 // stackCount is how many captures the frame's average holds.
+// TRLC-LINKS: REQ-SDS-218
 func stackCount(f *engine.Frame, st *stackState) int {
 	if m := blockAvgRE.FindStringSubmatch(f.Filter); m != nil {
 		k, _ := strconv.Atoi(m[1])
@@ -271,6 +273,7 @@ func (c *Controller) stackProgress(f *engine.Frame) bool {
 }
 
 // stackStatus is the stack's progress for the pane: captures so far.
+// TRLC-LINKS: REQ-SDS-218
 func (c *Controller) stackStatus() (n, of, src int, ok bool) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -560,6 +563,7 @@ func (c *Controller) cmpAction() {
 }
 
 // cmpActionText is what the selected row's push does, at its right end.
+// TRLC-LINKS: REQ-SDS-218
 func cmpActionText(s *sv, row int) string {
 	switch row {
 	case cmpMaster:
@@ -589,6 +593,7 @@ func cmpActionText(s *sv, row int) string {
 }
 
 // cmpAgainText is what COMPARE again does now.
+// TRLC-LINKS: REQ-SDS-218
 func (c *Controller) cmpAgainText(s *sv) string {
 	if s.stacking {
 		return "cancel stack"

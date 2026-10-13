@@ -370,21 +370,22 @@ type Engine struct {
 	avgCount        atomic.Int32
 	precisionLog    atomic.Int32
 	eresLen         atomic.Int32
-	avgGen          atomic.Uint32      // bumped on acq-mode/depth changes → ring clear
-	singleArmed     atomic.Bool        // SINGLE: stop after the next triggered frame
-	singleGen       atomic.Uint64      // bumped per SINGLE press: a capture armed before the press never consumes it
-	forceReq        atomic.Bool        // FORCE: complete the armed capture once without a trigger
-	decodeView      atomic.Bool        // the display decodes the frame: send samples, not peak-detect pairs
-	decodeLease     atomic.Int64       // raw live frames until this time (unix ns; see LeaseDecodeView)
-	sampleLease     atomic.Int64       // evenly sampled live frames until this time (LeaseSampleView)
-	spectrumLease   atomic.Int64       // live frames for a spectrum until this time (LeaseSpectrumView)
-	adopt           *adoptedRecord     // a decoded stream's record for the stopped loop to show (guarded by mu)
-	decodedCfg      sramcapture.Config // the running decoded capture's configuration (acquisition owner)
-	decodedLines    bool               // the worker builds the stream transcript; no event pumping (owner)
-	decodedStarting time.Time          // a decoded stream holds its image until its capture begins, at most until then (owner)
-	memDepth        atomic.Int32       // decimated drain depth (samples): fps↔data tradeoff
-	streamMode      atomic.Bool        // stitched high-bandwidth streaming decode mode
-	chVdivBits      [2]atomic.Uint64   // per-channel V/div (float64 bits) for the
+	avgGen          atomic.Uint32          // bumped on acq-mode/depth changes → ring clear
+	singleArmed     atomic.Bool            // SINGLE: stop after the next triggered frame
+	singleGen       atomic.Uint64          // bumped per SINGLE press: a capture armed before the press never consumes it
+	forceReq        atomic.Bool            // FORCE: complete the armed capture once without a trigger
+	decodeView      atomic.Bool            // the display decodes the frame: send samples, not peak-detect pairs
+	decodeLease     atomic.Int64           // raw live frames until this time (unix ns; see LeaseDecodeView)
+	sampleLease     atomic.Int64           // evenly sampled live frames until this time (LeaseSampleView)
+	spectrumLease   atomic.Int64           // live frames for a spectrum until this time (LeaseSpectrumView)
+	views           [viewSurfaces]viewSlot // view windows at full detail (LeaseViewWindow)
+	adopt           *adoptedRecord         // a decoded stream's record for the stopped loop to show (guarded by mu)
+	decodedCfg      sramcapture.Config     // the running decoded capture's configuration (acquisition owner)
+	decodedLines    bool                   // the worker builds the stream transcript; no event pumping (owner)
+	decodedStarting time.Time              // a decoded stream holds its image until its capture begins, at most until then (owner)
+	memDepth        atomic.Int32           // decimated drain depth (samples): fps↔data tradeoff
+	streamMode      atomic.Bool            // stitched high-bandwidth streaming decode mode
+	chVdivBits      [2]atomic.Uint64       // per-channel V/div (float64 bits) for the
 	//                              trigger-level → display-code mapping
 	trigZero      [2]atomic.Uint64 // per-channel active trig-cal Zero (float64 bits)
 	trigCPV       [2]atomic.Uint64 // per-channel active trig-cal CPV (float64 bits)

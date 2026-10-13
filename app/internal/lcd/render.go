@@ -247,6 +247,25 @@ type traceID struct {
 // sinc, never a segment across a skipped column.
 // TRLC-LINKS: REQ-SDS-021
 func drawTraceID(sf Surface, p plotArea, id traceID, sig []uint8, win int, xc float64, interp bool, col uint16, posFrac float64, zoom ...int) {
+	drawTraceHeld(sf, p, id, sig, nil, win, xc, interp, col, posFrac, zoom...)
+}
+
+// heldColor is a trace colour dimmed to about 40 %: the stretches of a roll
+// view no capture covered, drawn at the last value held.
+// TRLC-LINKS: REQ-SDS-021
+func heldColor(col uint16) uint16 {
+	r, g, b := col>>11&31, col>>5&63, col&31
+	return (r*2/5)<<11 | (g*2/5)<<5 | b*2/5
+}
+
+// drawTraceHeld is drawTraceID with held marking samples (len(sig), or nil)
+// that no capture covered: those are drawn in heldColor, so a roll view's
+// held stretches do not read as signal.
+// TRLC-LINKS: REQ-SDS-021
+func drawTraceHeld(sf Surface, p plotArea, id traceID, sig []uint8, held []bool, win int, xc float64, interp bool, col uint16, posFrac float64, zoom ...int) {
+	if len(held) != len(sig) {
+		held = nil
+	}
 	z := 1.0
 	if len(zoom) > 0 && zoom[0] > 1 {
 		z = float64(zoom[0])
@@ -266,7 +285,7 @@ func drawTraceID(sf Surface, p plotArea, id traceID, sig []uint8, win int, xc fl
 	// anchor exactly at posFrac even when the record has no mid crossing.
 	left := xc - float64(win)*posFrac
 	if !interp && float64(win) > 1.5*float64(p.w) {
-		drawDenseTrace(sf, p, id, sig, left, win, col, z)
+		drawDenseTrace(sf, p, id, sig, held, left, win, col, z)
 		return
 	}
 	prevX, prevY := -1, 0
@@ -295,10 +314,14 @@ func drawTraceID(sf Surface, p plotArea, id traceID, sig []uint8, win int, xc fl
 			}
 			y = p.sy(128 + (float64(sig[i])-128)*z)
 		}
+		c := col
+		if held != nil && held[min(max(int(pos), 0), n-1)] {
+			c = heldColor(col)
+		}
 		if prevX >= 0 {
-			drawLine(sf, prevX, prevY, x, y, col)
+			drawLine(sf, prevX, prevY, x, y, c)
 		} else {
-			sf.SetPixel(x, y, col)
+			sf.SetPixel(x, y, c)
 		}
 		prevX, prevY = x, y
 	}
@@ -321,18 +344,95 @@ func drawAcquiring(sf Surface, p plotArea, hud HUD) {
 // sample in 1250, so a captured glitch would not be drawn.
 // Columns beyond the record repeat its nearest end, as drawTrace does.
 // TRLC-LINKS: REQ-SDS-021
-func drawDenseTrace(sf Surface, p plotArea, id traceID, sig []uint8, left float64, win int, col uint16, z float64) {
+func drawDenseTrace(sf Surface, p plotArea, id traceID, sig []uint8, held []bool, left float64, win int, col uint16, z float64) {
 	cols := denseColumns(id, sig, left, win, p.w)
 	y := func(v uint8) int { return p.sy(128 + (float64(v)-128)*z) }
+	var top, bot [W]int16
+	var cc [W]uint16
+	w := min(p.w, W)
 	prevY := -1
-	for x := 0; x < p.w; x++ {
+	for x := 0; x < w; x++ {
 		yTop, yBot := y(cols.mx[x]), y(cols.mn[x])
 		if prevY >= 0 { // join: the span reaches the previous column's last value
 			yTop, yBot = min(yTop, prevY), max(yBot, prevY)
 		}
-		vline(sf, x, yTop, yBot, col)
+		c := col
+		if held != nil && columnHeld(held, left, win, p.w, x) {
+			c = heldColor(col)
+		}
+		yTop, yBot = max(yTop, 0), min(yBot, H-1)
+		top[x], bot[x], cc[x] = int16(yTop), int16(yBot), c
 		prevY = y(cols.last[x])
 	}
+	fillSpans(sf, top[:w], bot[:w], cc[:w])
+}
+
+// spanBlock is how many columns fillSpans fills as one block.
+const spanBlock = 128
+
+// fillSpans draws column x from row top[x] to bot[x] in colour cc[x]. A fast
+// signal's columns all span most of the trace: written down each column a
+// pixel lies a row (1600 bytes) from the last, and the cache misses cost an
+// LCD frame 14 ms on the scope. The rows all of a block's columns cover in one
+// colour are copied a row at a time instead (3 ms), the ragged ends drawn a
+// column at a time.
+// TRLC-LINKS: REQ-SDS-021
+func fillSpans(sf Surface, top, bot []int16, cc []uint16) {
+	m, ok := sf.(*MemSurface)
+	if !ok {
+		for x := range top {
+			vline(sf, x, int(top[x]), int(bot[x]), cc[x])
+		}
+		return
+	}
+	px := m.px()
+	var line [spanBlock]uint16 // a row of the block's colour
+	lineC, lined := uint16(0), false
+	for x0 := 0; x0 < len(top); x0 += spanBlock {
+		x1 := min(x0+spanBlock, len(top))
+		cTop, cBot, c := int16(0), int16(H-1), cc[x0]
+		for x := x0; x < x1; x++ {
+			cTop, cBot = max(cTop, top[x]), min(cBot, bot[x])
+			if cc[x] != c {
+				cBot = -1
+			}
+		}
+		if cBot-cTop < 8 { // little in common: a column at a time
+			for x := x0; x < x1; x++ {
+				vline(m, x, int(top[x]), int(bot[x]), cc[x])
+			}
+			continue
+		}
+		if !lined || lineC != c {
+			for i := range line {
+				line[i] = c
+			}
+			lineC, lined = c, true
+		}
+		for r := int(cTop); r <= int(cBot); r++ {
+			copy(px[r*W+x0:r*W+x1], line[:x1-x0])
+		}
+		for x := x0; x < x1; x++ {
+			vline(m, x, int(top[x]), int(cTop)-1, c)
+			vline(m, x, int(cBot)+1, int(bot[x]), c)
+		}
+	}
+}
+
+// columnHeld reports whether every sample of plot column x is held (or off
+// the record past a held end).
+// TRLC-LINKS: REQ-SDS-021
+func columnHeld(held []bool, left float64, win, w, x int) bool {
+	n := len(held)
+	a := int(math.Floor(left + float64(x)*float64(win)/float64(w)))
+	b := int(math.Floor(left + float64(x+1)*float64(win)/float64(w)))
+	a, b = min(max(a, 0), n-1), min(max(b, a+1), n)
+	for i := a; i < b; i++ {
+		if !held[i] {
+			return false
+		}
+	}
+	return true
 }
 
 // denseCols are a dense trace's per-column extremes and last sample.
@@ -405,7 +505,11 @@ func denseColumns(id traceID, sig []uint8, left float64, win, ncols int) *denseC
 // TRLC-LINKS: REQ-SDS-021
 func drawEnvelope(sf Surface, p plotArea, mn, mx []uint8, cols int, col uint16, zoom int) {
 	z := float64(max(zoom, 1))
-	for x := 0; x < p.w; x++ {
+	var top, bot [W]int16
+	var cc [W]uint16
+	w := min(p.w, W)
+	for x := 0; x < w; x++ {
+		top[x], bot[x], cc[x] = 1, 0, col // nothing drawn
 		c := x * cols / p.w
 		if c >= cols || c >= len(mn) || c >= len(mx) {
 			continue
@@ -415,8 +519,9 @@ func drawEnvelope(sf Surface, p plotArea, mn, mx []uint8, cols int, col uint16, 
 		if yTop > yBot {
 			yTop, yBot = yBot, yTop
 		}
-		vline(sf, x, yTop, yBot, col)
+		top[x], bot[x] = int16(yTop), int16(yBot)
 	}
+	fillSpans(sf, top[:w], bot[:w], cc[:w])
 }
 
 // frameValid clamps a frame's valid-sample count into range (shared by the
@@ -650,18 +755,35 @@ func drawViews(sf, traceTarget Surface, p plotArea, f *engine.Frame, hud HUD) {
 			c1 = invertCodes(c1)
 		}
 		drawZoneMask(traceTarget, p, f, hud, win, xc, posFrac)
+		// Zoomed into a live envelope: the frame's view window holds the
+		// zoomed part at full detail, where the screen's buckets are too coarse.
+		view, vwin, vxc, zoomed := zoomView(f, hud, valid)
 		if hud.TwoChan && sc2 && len(f.C2) >= valid {
 			c2 := f.C2[:valid]
-			if hud.Cpl2 != analog.CplDC {
+			if zoomed {
+				c2 = analog.CoupleDisplayBy(view.C2[:view.Valid], c2, hud.Cpl2)
+			} else if hud.Cpl2 != analog.CplDC {
 				c2 = analog.CoupleDisplay(c2, hud.Cpl2)
 			}
 			if hud.Inv2 {
 				c2 = invertCodes(c2)
 			}
-			drawTraceID(traceTarget, p, traceID{f.Seq, 2, hud.Cpl2, hud.Inv2}, c2, win, xc, f.Interp, colC2, posFrac, hud.Zoom2)
+			if zoomed {
+				drawTraceID(traceTarget, p, traceID{f.Seq, 4, hud.Cpl2, hud.Inv2}, c2, vwin, vxc, false, colC2, 0.5, hud.Zoom2)
+			} else {
+				drawTraceHeld(traceTarget, p, traceID{f.Seq, 2, hud.Cpl2, hud.Inv2}, c2, heldOf(f, valid), win, xc, f.Interp, colC2, posFrac, hud.Zoom2)
+			}
 		}
 		if sc1 {
-			drawTraceID(traceTarget, p, traceID{f.Seq, 1, hud.Cpl1, hud.Inv1}, c1, win, xc, f.Interp, colC1, posFrac, hud.Zoom1)
+			if zoomed {
+				v1 := analog.CoupleDisplayBy(view.C1[:view.Valid], f.C1[:valid], hud.Cpl1)
+				if hud.Inv1 {
+					v1 = invertCodes(v1)
+				}
+				drawTraceID(traceTarget, p, traceID{f.Seq, 3, hud.Cpl1, hud.Inv1}, v1, vwin, vxc, false, colC1, 0.5, hud.Zoom1)
+			} else {
+				drawTraceHeld(traceTarget, p, traceID{f.Seq, 1, hud.Cpl1, hud.Inv1}, c1, heldOf(f, valid), win, xc, f.Interp, colC1, posFrac, hud.Zoom1)
+			}
 		}
 		if hud.MathMode != 0 {
 			drawMath(traceTarget, p, f, hud, win, xc, posFrac)
@@ -724,4 +846,32 @@ func (h HUD) shownChans() (bool, bool) {
 		return true, true
 	}
 	return h.ShowC1, h.ShowC2
+}
+
+// heldOf is a roll frame's held samples over its valid prefix; nil otherwise.
+// TRLC-LINKS: REQ-SDS-021
+func heldOf(f *engine.Frame, valid int) []bool {
+	if len(f.Held) < valid {
+		return nil
+	}
+	return f.Held[:valid]
+}
+
+// zoomView is the frame's view window when it covers the zoomed part of a live
+// envelope frame, and where it lies: vwin of its values span the plot, the
+// zoom's centre at vxc.
+// TRLC-LINKS: REQ-SDS-021
+func zoomView(f *engine.Frame, hud HUD, valid int) (v *engine.ViewWindow, vwin int, vxc float64, ok bool) {
+	v = f.Views[engine.ViewScope]
+	if hud.Zoom <= 1 || v == nil || !f.PeakDetect || v.Valid < 2 || !(v.To > v.From) {
+		return nil, 0, 0, false
+	}
+	win, xc, _ := traceWindow(f, hud, valid)
+	za, zb := xc-float64(win)/2, xc+float64(win)/2
+	if tol := float64(win) / 100; v.From > za+tol || v.To < zb-tol {
+		return nil, 0, 0, false // a view of another stretch (the zoom just moved)
+	}
+	per := float64(v.Valid) / (v.To - v.From) // its values per frame value
+	vwin = int(math.Round(float64(win) * per))
+	return v, max(vwin, 2), (xc - v.From) * per, true
 }

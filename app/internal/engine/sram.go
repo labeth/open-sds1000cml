@@ -41,6 +41,7 @@ func FullRateTdiv(tdivs []float64) float64 {
 	return best
 }
 
+// TRLC-LINKS: REQ-SDS-214
 func PlanSRAM(tdiv float64) SRAMPlan {
 	p := SRAMPlan{Samples: int(sramcapture.SamplesPerChannel), SampleS: 2e-9}
 	if !(tdiv > 0) || math.IsInf(tdiv, 0) {
@@ -323,7 +324,12 @@ func (e *Engine) sramConfig() (sramcapture.Config, SRAMPlan, float64, bool, trig
 	// (averaging, ERES, precision) is captured decimated to a display-sized
 	// record instead of reading a deep raw screen per frame; SINGLE stays deep.
 	block := e.envelopeBlock(c, tp)
-	if live, ok := liveSRAMPlan(p, liveBudget(block)); ok && !e.singleArmed.Load() && !e.rawOnly && liveDecimatesPlan(block, p) {
+	// SINGLE keeps the deep record, except in the noise-reducing modes: their
+	// result is the filtered capture the preview shows (a block of deep records
+	// took minutes, and a raw deep record is noisier than the preview).
+	acq := e.acqMode.Load()
+	filtered := acq == AcqAverage || acq == AcqPrecision || acq == AcqEres
+	if live, ok := liveSRAMPlan(p, liveBudget(block)); ok && (!e.singleArmed.Load() || filtered) && !e.rawOnly && liveDecimatesPlan(block, p) {
 		c, p = build(live)
 	}
 	return c, p, tdiv, norm, tp
@@ -520,6 +526,8 @@ func (e *Engine) runSRAM() {
 	var savedNorm, savedForced bool
 	var savedTP trigParams
 	var savedScale [2]chScale // front-end scale the retained record was captured at
+	var savedShownTrigd bool  // the retained capture was published triggered
+	var edges edgeDetail      // the last edge windows read, carried to the frames between reads
 	var shownScaleGen uint64  // scaleGen when the shown frame was produced
 	var singleGen uint64      // SINGLE press the current capture was armed/waiting under
 	var held heldRecall       // the stopped record's recall, kept for re-scaled replays
@@ -736,10 +744,12 @@ acquisitionLoop:
 		// Pulse, slope and video triggers are the FPGA's: nothing is searched
 		// in software, only a video line moves back to its sync's start.
 		softQualify := false
-		// The capture that serves a SINGLE is read whole once: the stop that
-		// follows shows that full record from memory instead of reading it again.
+		// The capture that serves a SINGLE is first read as a live frame is, so
+		// it shows and stops at once; the stop that follows reads its full
+		// record (reading the whole record first kept the screen empty for
+		// seconds at every timebase).
 		singleShot := !replay && e.singleArmed.Load() && singleGen == e.singleGen.Load()
-		if !fullRecall && !singleShot {
+		if !fullRecall {
 			// A software-qualified trigger needs room to find its event away
 			// from the hardware edge and still fill the screen around it. The
 			// FPGA's serial trigger fires at the match's end and software
@@ -766,17 +776,18 @@ acquisitionLoop:
 			envBuckets = sramcapture.EnvelopeBucketsQ8 // two words a bucket
 		}
 		readout := "full record"
-		if singleShot {
-			readout = "single record"
-		} else if !fullRecall {
+		if !fullRecall {
 			if why := e.envelopeBlock(cfg, tp); why != "" {
 				readout = "raw window: " + why
 			} else {
-				bucket, recallOffset, recallWords = envelopeWindow(recallOffset, recallWords, envBuckets)
+				bucket, recallOffset, recallWords = envelopeWindow(recallOffset, recallWords, envBuckets, m.Length)
 				readout = "raw window: short"
 				if bucket != 0 {
 					readout = "envelope"
 				}
+			}
+			if singleShot {
+				readout = "single, " + readout
 			}
 		}
 		e.mu.Lock()
@@ -846,6 +857,39 @@ acquisitionLoop:
 			e.busErr(err)
 			continue
 		}
+		// A live envelope holds no edge shape, nor a mean where the signal is
+		// faster than a bucket: read the trigger edge and the next edge the
+		// other way at the record's rate, two short reads while it is still
+		// frozen, for rise, fall, over/preshoot and such a signal's mean and
+		// RMS.
+		if bucket != 0 && !replay && f.Trigd {
+			if key := (edgeKey{averageCfg(cfg), savedScale}); edges.due(key, e.clk.Now()) {
+				ctx, cancel = context.WithTimeout(context.Background(), time.Second)
+				edge := e.recallEdgeWindow(ctx, recall, m, m.TriggerIndex, savedScale)
+				var opp *EdgeWindow
+				disc := f.C1[:f.Valid]
+				if cfg.TriggerChannel == 1 {
+					disc = f.C2[:f.Valid]
+				}
+				if b := oppositeEdgeBucket(disc, int(f.EdgeX)/2, !cfg.Falling); b >= 0 {
+					opp = e.recallEdgeWindow(ctx, recall, m, recallOffset+uint32(b)*bucket+bucket/2, savedScale)
+				}
+				cancel()
+				edges.store(key, e.clk.Now(), edge, opp)
+			}
+			f.Edge, f.EdgeOpp = edges.edge, edges.opp
+			if f.Edge != nil || f.EdgeOpp != nil {
+				f.EdgeRead = edges.read
+			}
+		} else if !replay {
+			edges = edgeDetail{} // a capture of another kind: the windows no longer match
+		}
+		// A view showing part of the screen magnified gets that part at full
+		// detail: the screen's envelope spreads its buckets over all of it.
+		if !replay {
+			e.readViews(f, m, plan.Screen, recallOffset, recallWords, bucket, envBuckets, savedScale)
+		}
+		detailAt := e.clk.Now()
 		e.setBusy("processing", 0)
 		// CPU-only conditioning: let a staged lamp latch meanwhile (SetLEDs).
 		e.cpuStage.Unlock()
@@ -1016,11 +1060,14 @@ acquisitionLoop:
 				if cfg.TriggerChannel == 1 {
 					q = f.Q2
 				}
-				if !e.placeEdgeTrigger(f, disc, q, float64(lvl), !cfg.Falling) {
+				if !e.placeEdgeTrigger(f, disc, q, float64(lvl), !cfg.Falling) && !(replay && savedShownTrigd) {
 					// The FPGA pointed at an edge the calibrated record does
 					// not have (converter noise): software may check a trigger
 					// the hardware pointed out and reject it (owner rule).
 					// AUTO shows it untriggered, NORMAL and SINGLE keep waiting.
+					// A stopped record whose capture was shown triggered keeps
+					// that trigger (its envelope confirmed it), so the record
+					// shows the screen the capture did, not its middle.
 					f.Trigd, qualified = false, false
 					f.TriggerKind, f.EdgeX = "forced", -1
 				}
@@ -1113,7 +1160,7 @@ acquisitionLoop:
 			} else {
 				average.reset()
 			}
-			f.Filter += fmt.Sprintf("; block average %d/%d (waveform aligned)", count, n)
+			f.Filter += fmt.Sprintf("; average %d/%d (waveform aligned)", count, n)
 			if count > 0 {
 				if f.NoiseGainIdeal == 0 {
 					f.NoiseGainIdeal = 1
@@ -1121,6 +1168,9 @@ acquisitionLoop:
 				f.NoiseGainIdeal *= math.Sqrt(float64(count))
 			}
 			averageDone = count >= n
+			// A stop keeps the averaged frame shown: reading the raw capture
+			// again would replace the average with one of its captures.
+			recalled = true
 		} else {
 			average.reset()
 		}
@@ -1131,7 +1181,7 @@ acquisitionLoop:
 		e.stats.MemDepth = plan.Samples
 		e.stats.LastPtp = f.Ptp
 		e.stats.SRAMRecallMs = float64(recalledAt.Sub(recallAt)) / float64(time.Millisecond)
-		e.stats.ConditionMs = float64(conditionedAt.Sub(recalledAt)) / float64(time.Millisecond)
+		e.stats.ConditionMs = float64(conditionedAt.Sub(detailAt)) / float64(time.Millisecond)
 		e.stats.DrainMs = float64(e.clk.Now().Sub(frozenAt)) / float64(time.Millisecond)
 		e.mu.Unlock()
 		// Software qualifiers may reject a capture that froze before the arm
@@ -1165,6 +1215,9 @@ acquisitionLoop:
 			e.stats.Running = false
 			e.mu.Unlock()
 		}
+		if !replay {
+			savedShownTrigd = publish && f.Trigd
+		}
 		if publish {
 			e.noteChannelMeans(f)
 			e.mu.Lock()
@@ -1184,6 +1237,9 @@ acquisitionLoop:
 			}
 			e.mu.Unlock()
 			if (qualified && averageDone || userForced) && e.singleArmed.Load() && !fullRecall && singleGen == e.singleGen.Load() {
+				if acq := e.acqMode.Load(); acq == AcqAverage || acq == AcqPrecision {
+					recalled = true // the completed block is the result: no raw record over it
+				}
 				e.singleArmed.Store(false)
 				e.running.Store(false)
 				e.mu.Lock()
@@ -1200,8 +1256,8 @@ acquisitionLoop:
 		doneAt := e.clk.Now()
 		ms := func(a, b time.Time) float64 { return float64(b.Sub(a)) / float64(time.Millisecond) }
 		e.mu.Lock()
-		e.stats.FrameStages = fmt.Sprintf("arm %.0f wait %.0f read %.0f proc %.0f post %.0f prev-pace %.0f (ms)",
-			ms(armAt, armedAt), ms(armedAt, frozenAt), ms(frozenAt, recalledAt), ms(recalledAt, conditionedAt), ms(conditionedAt, doneAt), lastPace)
+		e.stats.FrameStages = fmt.Sprintf("arm %.0f wait %.0f read %.0f detail %.0f proc %.0f post %.0f prev-pace %.0f (ms)",
+			ms(armAt, armedAt), ms(armedAt, frozenAt), ms(frozenAt, recalledAt), ms(recalledAt, detailAt), ms(detailAt, conditionedAt), ms(conditionedAt, doneAt), lastPace)
 		e.mu.Unlock()
 		e.paceHoldWithFloor(doneAt, qualified && f.Trigd, 0)
 		lastPace = ms(doneAt, e.clk.Now())

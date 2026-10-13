@@ -74,6 +74,7 @@ function updateMeas() {
     measDomSig = sig;
     // TRLC-LINKS: REQ-SDS-204
     const clipTag = c => c ? ` <span class="clip" title="signal is clipping — increase V/div or probe; measurements unreliable">⚠ CLIP</span>` : "";
+    // TRLC-LINKS: REQ-SDS-204
     const half = (keys) => `<div class="qcol"><span></span><span class="hd cc1">C1${clipTag(clip1)}</span><span class="hd cc2">C2${clipTag(clip2)}</span>` +
       keys.map((k) => `<span class="k">${k}</span><span class="v cc1" data-meas="1:${k}"></span><span class="v cc2" data-meas="2:${k}"></span>`).join("") + `</div>`;
     $("quickBody").innerHTML = half(MEAS_CORE.slice(0, 4)) + half(MEAS_CORE.slice(4));
@@ -436,12 +437,36 @@ function showSuperseded() {
   o.style.display = "flex";
 }
 
+let viewLeased = false; // the last poll asked for a view window
+
+// viewParam is the poll's view-window lease: zoomed into a running live
+// envelope (whose buckets spread over the whole screen), the scope reads the
+// shown stretch again at full detail (view=a,b,cols: screen widths from the
+// trigger, a little wider than shown, and the canvas columns); view=off once
+// it is not, so the reads stop at once.
+// TRLC-LINKS: REQ-SDS-202
+function viewParam() {
+  const f = frame, w = view.win, n = f && f.c1 ? f.c1.length : 0;
+  if (userZoomed && f && f.peak_detect && f.win_frac > 0 && n > 1 && st && st.running) {
+    // value indices: the page draws value i at i/(n-1); edge_frac and
+    // win_frac are fractions of n
+    const anchor = f.edge_frac >= 0 ? f.edge_frac * n : n / 2, screen = f.win_frac * n;
+    const m = (w.b - w.a) * 0.02;
+    const a = ((w.a - m) * (n - 1) - anchor) / screen, b = ((w.b + m) * (n - 1) - anchor) / screen;
+    viewLeased = true;
+    return "&view=" + a.toFixed(6) + "," + b.toFixed(6) + "," + Math.round(CW);
+  }
+  if (!viewLeased) return "";
+  viewLeased = false;
+  return "&view=off";
+}
+
 // TRLC-LINKS: REQ-SDS-023
 async function pollFrameBin() {
   if (superseded) return; // another browser took control; wait for a manual refresh
   if (frozen || document.hidden) { setTimeout(pollFrameBin, 90); return; } // idle tick; hidden tabs stop hitting the device
   try {
-    const r = await fetch("/api/frame.bin?since=" + lastSeq + "&cols=" + reqCols + "&full=1&waitms=1000&epoch=" + myEpoch);
+    const r = await fetch("/api/frame.bin?since=" + lastSeq + "&cols=" + reqCols + "&full=1&waitms=1000&epoch=" + myEpoch + viewParam());
     if (r.status === 409) { showSuperseded(); return; } // a newer browser claimed the device — stop loading it
     if (!r.ok) throw new Error("http " + r.status);
     const f = decodeBinFrame(await r.arrayBuffer());
@@ -490,6 +515,7 @@ async function fetchFftRaw() {
 
 // TRLC-LINKS: REQ-SDS-023
 let pollTimer = 0, pollBusy = false, pollKick = false;
+// TRLC-LINKS: REQ-SDS-023
 async function pollStatus() {
   if (superseded) return; // taken over by another browser; stop loading the device
   clearTimeout(pollTimer);
@@ -521,6 +547,7 @@ async function sheetSet(row, value) {
 // TRLC-LINKS: REQ-SDS-211
 let sheetsSeqSeen = -1, sheetsBusy = false;
 const SHEET_FOLLOW = [["bwl1", "ch1.bwl"], ["bwl2", "ch2.bwl"], ["inv1", "ch1.invert"], ["inv2", "ch2.invert"], ["masterN", "cmp.master_depth"]];
+// TRLC-LINKS: REQ-SDS-211
 async function sheetsFollow() {
   const seq = st && st.panel ? st.panel.SheetsSeq : undefined;
   if (seq === undefined || seq === sheetsSeqSeen || sheetsBusy) return;

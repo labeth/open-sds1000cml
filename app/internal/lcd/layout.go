@@ -27,6 +27,10 @@ func plotOf(l wsview.Layout) plotArea {
 	return p
 }
 
+// PlotColumns is how many columns wide the waveform views draw under layout l.
+// TRLC-LINKS: REQ-SDS-211
+func PlotColumns(l wsview.Layout) int { return plotOf(l).w }
+
 // fullPlot is the whole screen (thumbnails and tests).
 var fullPlot = plotArea{w: W, y0: 0, h: H, top: traceTop, bot: traceBot}
 

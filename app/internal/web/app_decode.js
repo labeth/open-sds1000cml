@@ -291,16 +291,17 @@ function setDetectMsg(t, err) {
   el.style.color = err ? "#e8604c" : "var(--dim)";
 }
 
-// fetchSampledFrame recalls one sampled record of the live acquisition (the
-// raw feed the eye diagram and super-res read) that accept takes, or null
-// within waitMs.
+// fetchSampledFrame recalls one sampled record of the live acquisition that
+// accept takes, or null within waitMs: the full-rate feed the eye diagram and
+// super-res read (lease "raw"), or a decimated record (lease "samples": a
+// few thousand filtered samples a screen, read in tens of milliseconds).
 // TRLC-LINKS: REQ-SDS-207
-async function fetchSampledFrame(waitMs, accept) {
+async function fetchSampledFrame(waitMs, accept, lease) {
   const t0 = performance.now();
   let since = 0;
   while (performance.now() - t0 < waitMs) {
     try {
-      const r = await fetch("/api/frame.bin?since=" + since + "&waitms=1000&raw=1&lease=raw");
+      const r = await fetch("/api/frame.bin?since=" + since + "&waitms=1000&raw=1&lease=" + (lease || "raw"));
       if (!r.ok) return null;
       const f = decodeBinFrame(await r.arrayBuffer());
       if (f && !f.unchanged) {
@@ -325,24 +326,50 @@ function detectStands(d, src, waiting) {
     : "the live view cannot resolve it - a faster time/div, then Detect" };
 }
 
+// DETECT_DECIMATED_FEATURE is the samples of a decimated record a bus's
+// shortest feature must span for a detection on it to stand (a 115200 Bd UART
+// at 200 us/div spans 35); a faster bus is looked at at the full rate, as the
+// scope's BUS search does (panel decimatedFeature).
+const DETECT_DECIMATED_FEATURE = 8;
+
+// detectSampled detects on a sampled record of the live acquisition that
+// accept takes: a decimated one first, read in tens of milliseconds, standing
+// when the bus spans DETECT_DECIMATED_FEATURE of its samples; else a full-rate
+// one (a megasample at 200 us/div: seconds). It returns {d, src}, or null when
+// no record came.
+// TRLC-LINKS: REQ-SDS-207
+async function detectSampled(accept, rawWaitMs) {
+  const dec = await fetchSampledFrame(1500, accept, "samples");
+  fetch("/api/frame.bin?lease=samples&end=1").catch(() => {});
+  if (dec) {
+    const d = autodetect(dec, { fmt: dcfg.fmt });
+    if (d.proto !== "off" && d.result && decodeFeatureSamples(d.result) >= DETECT_DECIMATED_FEATURE) return { d, src: dec };
+  }
+  const raw = await fetchSampledFrame(rawWaitMs, accept);
+  // given back at once: a full-rate lease left running outranks the next
+  // search's decimated one (and holds the live view at a frame in seconds)
+  fetch("/api/frame.bin?lease=raw&end=1").catch(() => {});
+  return raw ? { d: autodetect(raw, { fmt: dcfg.fmt }), src: raw } : null;
+}
+
 // runAutodetect: analyse the current frame, pick the best protocol + roles +
 // sub-settings, apply them to dcfg + the DOM controls, and re-decode.
 // TRLC-LINKS: REQ-SDS-207
 async function runAutodetect() {
   if (!frame || !frame.c1 || frame.is_env) { setDetectMsg("no live waveform to analyse", true); return; }
-  let src = frame;
+  let src = frame, found = null;
   if (frame.peak_detect && !frozen) {
     // Detect on samples, as the scope's BUS entry does: the live feed is a
     // screen of min/max pairs (at 500 us/div after Default setup, 2.4 us a
-    // point: no protocol matches with a UART on screen), so recall one
-    // sampled record and detect on that.
+    // point: no protocol matches with a UART on screen), so recall a sampled
+    // record and detect on that.
     setDetectMsg("fetching a sampled record…");
-    const raw = await fetchSampledFrame(4000);
-    if (raw) src = raw;
+    found = await detectSampled(null, 4000);
+    if (found) src = found.src;
     if (!frame || !frame.c1) { setDetectMsg("no live waveform to analyse", true); return; }
   }
   if ((src.peak_detect && !src.ordered) || src.is_env) { setDetectMsg("Sampled data required — select Normal acquisition and Run before detecting.", true); return; }
-  let d = detectStands(autodetect(src, { fmt: dcfg.fmt }), src, !!(st && st.waiting)), stepped = 0;
+  let d = detectStands(found ? found.d : autodetect(src, { fmt: dcfg.fmt }), src, !!(st && st.waiting)), stepped = 0;
   // A record that hid the bus - too short (Autoset's 10 us/div holds about one
   // UART byte) or decimated - is looked at again at the slowest
   // full-rate timebase, kept when it finds the bus, else the timebase goes
@@ -353,9 +380,8 @@ async function runAutodetect() {
     await send("tdiv", full);
     // a record of the new timebase (a frame that names none: the second after)
     let seen = 0;
-    const raw = await fetchSampledFrame(6000, (f) => f.tdiv_s > 0 ? Math.abs(f.tdiv_s - full) <= 1e-3 * full : ++seen >= 2);
-    const d2 = raw ? autodetect(raw, { fmt: dcfg.fmt }) : null;
-    if (d2 && d2.proto !== "off") { d = d2; src = raw; stepped = full; }
+    const again = await detectSampled((f) => f.tdiv_s > 0 ? Math.abs(f.tdiv_s - full) <= 1e-3 * full : ++seen >= 2, 6000);
+    if (again && again.d.proto !== "off") { d = again.d; src = again.src; stepped = full; }
     else await send("tdiv", prev);
   }
   // the found bus's shortest feature in seconds, for BUS's timebase step

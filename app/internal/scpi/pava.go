@@ -59,8 +59,8 @@ var pavaParam = map[string]struct {
 	"AMPL":  {"V", false, func(r *measure.Result) float64 { return r.Vampl }, false},
 	"TOP":   {"V", false, func(r *measure.Result) float64 { return r.Vtop }, false},
 	"BASE":  {"V", false, func(r *measure.Result) float64 { return r.Vbase }, false},
-	"MEAN":  {"V", false, func(r *measure.Result) float64 { return r.Vmean }, false},
-	"RMS":   {"V", false, func(r *measure.Result) float64 { return r.Vrms }, false},
+	"MEAN":  {"V", false, func(r *measure.Result) float64 { return notAliased(r, r.Vmean) }, false},
+	"RMS":   {"V", false, func(r *measure.Result) float64 { return notAliased(r, r.Vrms) }, false},
 	"OVSP":  {"%", true, func(r *measure.Result) float64 { return r.Overshoot }, true},
 	"RPRE":  {"%", true, func(r *measure.Result) float64 { return r.Preshoot }, true},
 	"PER":   {"s", true, func(r *measure.Result) float64 { return r.Period }, false},
@@ -112,9 +112,16 @@ func (h *Handler) pava(ch int, arg string) []byte {
 		} else {
 			q = nil
 		}
-		r = measure.ComputeAcquisition(sig[:valid], q, vdiv/25*probe, offV*probe, f.SampleS, cpl, f.FilterGuard)
+		from := 0
+		if a, b := f.MeasureRange(); b-a < valid { // a roll view's captured stretch
+			from, valid = a, b
+			if q != nil {
+				q = q[a:b]
+			}
+		}
+		r = measure.ComputeAcquisition(sig[from:valid], q, vdiv/25*probe, offV*probe, f.SampleS, cpl, f.FilterGuard)
 		if r != nil && f.PeakDetect {
-			r = r.WithEnvelopeTiming(sig[:valid], vdiv/25*probe, offV*probe, f.SampleS)
+			r = r.WithEnvelopeTiming(sig[:valid], vdiv/25*probe, offV*probe, f.SampleS).WithEdgeDetail(vdiv/25*probe, offV*probe, f.EdgeWindows(ch)...)
 		}
 	})
 	if r != nil && h.inverted(ch) {
@@ -147,7 +154,7 @@ func pavaValue(arg string, r *measure.Result) string {
 		// Edge shape needs an edge, not a period: one edge on screen (a fast
 		// timebase) has a rise time (RISE must not read **** at 50 ns/div on a
 		// clean 20 ns edge).
-		show = !r.EnvTiming && (r.RiseS > 0 || r.FallS > 0)
+		show = (!r.EnvTiming || r.EdgeShape) && (r.RiseS > 0 || r.FallS > 0)
 		if arg == "RISE" {
 			show = show && r.RiseS > 0
 		} else if arg == "FALL" {
@@ -162,4 +169,14 @@ func pavaValue(arg string, r *measure.Result) string {
 		}
 	}
 	return value
+}
+
+// notAliased is v, or NaN (****) when r is an envelope of a signal faster
+// than its buckets, which holds no mean or RMS.
+// TRLC-LINKS: REQ-SDS-024
+func notAliased(r *measure.Result, v float64) float64 {
+	if r.EnvAliased {
+		return math.NaN()
+	}
+	return v
 }

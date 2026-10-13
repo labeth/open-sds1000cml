@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"open-sds/app/internal/engine"
+	"open-sds/app/internal/measure"
 	"open-sds/app/internal/panel/framecalc"
 	"open-sds/app/internal/panel/wsview"
 )
@@ -80,12 +81,14 @@ func (c *Controller) seedMeas() {
 }
 
 // statKey is what the statistics depend on: a change starts them again.
+// TRLC-LINKS: REQ-SDS-217
 func statKey(s *sv) string {
 	return fmt.Sprint(s.vidx, s.probe, s.cpl, s.offV, s.st.TdivS, s.st.TrigSource, s.st.TrigRising, s.st.TrigType,
 		s.st.TrigCode, s.st.AcqMode, s.st.AvgCount, s.st.EresLen, s.meas, s.inv)
 }
 
 // statsResetLocked zeroes the statistics (c.amu held).
+// TRLC-LINKS: REQ-SDS-217
 func (c *Controller) statsResetLocked() {
 	c.ana.stats, c.ana.statLast, c.ana.statN = nil, nil, 0
 }
@@ -122,8 +125,35 @@ func measVals(a *anaState, s *sv, f *engine.Frame, need [2]bool) {
 		for p := range measParams {
 			vals[p] = measValue(m, p)
 		}
-		a.allVals[ch], a.allOK[ch] = vals, true
+		a.allVals[ch], a.allOK[ch], a.allWin[ch] = vals, true, windowParams(m)
 	}
+}
+
+// windowParamGroups are the parameters a live envelope frame takes from its
+// edge windows, as the result marks them: the edge shape, the timing of a
+// signal the envelope does not resolve, its mean and RMS.
+var windowParamGroups = [3][]int{
+	{measIndex("rise"), measIndex("fall"), measIndex("ovsh"), measIndex("prsh")},
+	{measIndex("freq"), measIndex("period"), measIndex("duty"), measIndex("pwid"), measIndex("nwid")},
+	{measIndex("mean"), measIndex("rms"), measIndex("acrms")},
+}
+
+// windowParams are the parameters m took from edge windows; nil for none.
+// TRLC-LINKS: REQ-SDS-217
+func windowParams(m *measure.Result) map[int]bool {
+	var out map[int]bool
+	for g, on := range [3]bool{m.EdgeShape, m.WindowTiming, m.WindowMean} {
+		if !on {
+			continue
+		}
+		if out == nil {
+			out = map[int]bool{}
+		}
+		for _, p := range windowParamGroups[g] {
+			out[p] = true
+		}
+	}
+	return out
 }
 
 // measFrame is MEASURE's analysis: the cursors' trace volts, the
@@ -157,6 +187,9 @@ func (c *Controller) measFrame(a *anaState, s *sv, f *engine.Frame) {
 	if a.stats == nil {
 		a.stats, a.statLast = map[measItem]*Stats{}, map[measItem]float64{}
 	}
+	// An edge-window reading is counted once, on the frame it is new to.
+	freshEdge := f.EdgeRead == 0 || f.EdgeRead != a.statEdge
+	a.statEdge = f.EdgeRead
 	any := false
 	for _, it := range s.meas {
 		if !a.allOK[it.ch] {
@@ -164,6 +197,9 @@ func (c *Controller) measFrame(a *anaState, s *sv, f *engine.Frame) {
 		}
 		v := a.allVals[it.ch][it.param]
 		a.statLast[it] = v
+		if a.allWin[it.ch][it.param] && !freshEdge {
+			continue
+		}
 		st := a.stats[it]
 		if st == nil {
 			st = &Stats{}
@@ -269,6 +305,7 @@ func (c *Controller) measCursorMode() {
 }
 
 // cursorTimes are the time cursors' positions from the trigger (seconds).
+// TRLC-LINKS: REQ-SDS-217
 func cursorTimes(s *sv) (ta, tb float64) {
 	pos := s.st.TrigPosFrac
 	if !(pos > 0 && pos <= 1) {
@@ -282,6 +319,7 @@ func cursorTimes(s *sv) (ta, tb float64) {
 }
 
 // cursorVolts are a channel's volts at the voltage cursors.
+// TRLC-LINKS: REQ-SDS-217
 func cursorVolts(s *sv, ch int) (va, vb float64) {
 	vd := s.vdivTip(ch)
 	off := s.offV[ch] * s.probe[ch]

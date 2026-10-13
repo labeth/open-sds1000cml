@@ -71,9 +71,11 @@ type anaState struct {
 	statKey  string
 	statN    int
 	statFed  frameKey     // the frame counted last
+	statEdge uint64       // the edge-window read counted last (Frame.EdgeRead)
 	allVals  [2][]float64 // MEASURE all values: per channel, per parameter
 	allOK    [2]bool
-	curV     [2][2]float64 // each channel's volts at the time cursors A and B
+	allWin   [2]map[int]bool // the parameters taken from edge windows (carried between reads)
+	curV     [2][2]float64   // each channel's volts at the time cursors A and B
 	curOK    [2]bool
 
 	// COMPARE
@@ -102,9 +104,11 @@ const (
 type frameKey struct{ seq, content uint64 }
 
 // keyOf is f's key.
+// TRLC-LINKS: REQ-SDS-214, REQ-SDS-215, REQ-SDS-216, REQ-SDS-217, REQ-SDS-218
 func keyOf(f *engine.Frame) frameKey { return frameKey{f.Seq, f.Content} }
 
 // seen reports whether k is the key last recorded in *last, recording it.
+// TRLC-LINKS: REQ-SDS-214, REQ-SDS-215, REQ-SDS-216, REQ-SDS-217, REQ-SDS-218
 func seen(last *frameKey, k frameKey) bool {
 	if k != (frameKey{}) && k == *last {
 		return true
@@ -121,6 +125,7 @@ type needKey struct {
 }
 
 // need reads the needKey (c.mu).
+// TRLC-LINKS: REQ-SDS-214, REQ-SDS-215, REQ-SDS-216, REQ-SDS-217, REQ-SDS-218
 func (c *Controller) need() needKey {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -285,12 +290,22 @@ func measureCh(f *engine.Frame, s *sv, ch int) *measure.Result {
 		q = q[:valid]
 	}
 	vpc := voltsPerCode(s, ch)
+	if a, b := f.MeasureRange(); b-a < len(sig) { // a roll view's captured stretch
+		sig = sig[a:b]
+		if len(q) >= b {
+			q = q[a:b]
+		} else {
+			q = nil
+		}
+	}
 	m := measure.ComputeAcquisition(sig, q, vpc, off*s.probe[ch], f.SampleS, cpl, f.FilterGuard)
+	if f.PeakDetect && m != nil {
+		m = m.WithEnvelopeTiming(sig, vpc, off*s.probe[ch], f.SampleS).WithEdgeDetail(vpc, off*s.probe[ch], f.EdgeWindows(ch)...)
+	}
+	// After the timing: the invert swaps rise and fall and complements the
+	// duty, which the envelope's timing would otherwise put back.
 	if s.hasInv && s.inv[ch] {
 		m = m.Inverted()
-	}
-	if f.PeakDetect && m != nil {
-		m = m.WithEnvelopeTiming(sig, vpc, off*s.probe[ch], f.SampleS)
 	}
 	return m
 }
@@ -340,14 +355,19 @@ func measValue(m *measure.Result, p int) float64 {
 		return m.Vtop
 	case "base":
 		return m.Vbase
-	case "mean":
-		return m.Vmean
-	case "rms":
-		return m.Vrms
-	case "acrms":
+	case "mean", "rms", "acrms":
+		if m.EnvAliased { // an envelope of a signal faster than its buckets: unknown
+			return math.NaN()
+		}
+		switch measParams[p].id {
+		case "mean":
+			return m.Vmean
+		case "rms":
+			return m.Vrms
+		}
 		return m.VrmsAC
 	case "ovsh", "prsh":
-		if m.EnvTiming { // an envelope holds no edge shape: unknown, not 0 % (the web shows it so)
+		if m.EnvTiming && !m.EdgeShape { // an envelope alone holds no edge shape: unknown, not 0 % (the web shows it so)
 			return math.NaN()
 		}
 		if measParams[p].id == "prsh" {

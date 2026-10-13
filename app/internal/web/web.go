@@ -180,6 +180,8 @@ type measKey struct {
 type measVal struct {
 	m1, m2       *measure.Result
 	clip1, clip2 bool
+	seq          uint64 // the frame measured
+	edgeRead     uint64 // its edge windows' read (engine.Frame.EdgeRead)
 }
 
 // TRLC-LINKS: REQ-SDS-161, REQ-SDS-162, REQ-SDS-163, REQ-SDS-164
@@ -410,7 +412,8 @@ const screenCols = 800
 // Binary frame layout served by /api/frame.bin (all integers little-endian):
 //
 //	[0]     u8  magic 0xF5 — bump on any layout change
-//	[1]     u8  flags: bit0 unchanged, bit1 envelope, bit2 deep, bit3 empty
+//	[1]     u8  flags: bit0 unchanged, bit1 envelope, bit2 deep, bit3 empty,
+//	            bit4 raw, bit5 precision
 //	[2:4]   u16 reserved (0)
 //	[4:8]   u32 H = JSON header byte length
 //	[8:8+H]     UTF-8 JSON header: frameReply with the array fields nilled,
@@ -419,7 +422,10 @@ const screenCols = 800
 //	            native: c1[cols] c2[cols]
 //	            deep:   c1[cols-head-tail] c2[cols-head-tail] (cols == depth)
 //	            env:    e1min[cols] e1max[cols] e2min[cols] e2max[cols]
+//	            precision: q1[body] q2[body], u16 Q8.8 codes
 //	            unchanged/empty: none
+//	            then, when the header's view_n > 0 (a request that leased a
+//	            view window, view=): vc1[view_n] vc2[view_n]
 //
 // The -1 sentinels in the int16 reply arrays are provably contiguous head/tail
 // runs (the deep path serves the record verbatim; window() rail-extends off-record

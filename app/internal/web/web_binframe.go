@@ -47,7 +47,12 @@ func encodeBinFrame(rep frameReply) []byte {
 	hdr := rep
 	hdr.C1, hdr.C2 = nil, nil
 	hdr.E1Min, hdr.E1Max, hdr.E2Min, hdr.E2Max = nil, nil, nil, nil
+	hdr.VC1, hdr.VC2 = nil, nil
 	hdr.Head, hdr.Tail = head, tail
+	view := !rep.Unchanged && !rep.IsEnv && rep.ViewN > 0 && len(rep.VC1) == rep.ViewN && len(rep.VC2) == rep.ViewN
+	if !view {
+		hdr.ViewA, hdr.ViewB, hdr.ViewN = 0, 0, 0
+	}
 	hj, err := json.Marshal(hdr)
 	if err != nil { // unreachable with finite inputs; keep the wire well-formed
 		flags = binUnchanged
@@ -62,6 +67,9 @@ func encodeBinFrame(rep frameReply) []byte {
 	if precision {
 		payloadBytes = 2 * (len(rep.Q1) + len(rep.Q2))
 	}
+	if view {
+		payloadBytes += 2 * rep.ViewN
+	}
 	buf := make([]byte, 8, 8+len(hj)+payloadBytes)
 	buf[0] = binMagic
 	buf[1] = flags
@@ -73,11 +81,18 @@ func encodeBinFrame(rep frameReply) []byte {
 				buf = append(buf, byte(v), byte(v>>8))
 			}
 		}
-		return buf
+	} else {
+		for _, seg := range segs {
+			for _, v := range seg[head : head+segLen] {
+				buf = append(buf, uint8(v))
+			}
+		}
 	}
-	for _, seg := range segs {
-		for _, v := range seg[head : head+segLen] {
-			buf = append(buf, uint8(v))
+	if view {
+		for _, seg := range [][]int16{rep.VC1, rep.VC2} {
+			for _, v := range seg {
+				buf = append(buf, uint8(v))
+			}
 		}
 	}
 	return buf
@@ -106,6 +121,11 @@ func (s *Server) hFrameBin(w http.ResponseWriter, r *http.Request) {
 	switch r.URL.Query().Get("lease") {
 	case "raw":
 		if sc, ok := s.sc.(interface{ LeaseDecodeView(time.Duration) }); ok {
+			if r.URL.Query().Get("end") == "1" { // a bus search done with it
+				sc.LeaseDecodeView(0)
+				w.WriteHeader(http.StatusNoContent)
+				return
+			}
 			sc.LeaseDecodeView(3 * time.Second)
 		}
 	case "spectrum":
@@ -119,7 +139,28 @@ func (s *Server) hFrameBin(w http.ResponseWriter, r *http.Request) {
 		}
 	case "samples":
 		if sc, ok := s.sc.(interface{ LeaseSampleView(time.Duration) }); ok {
+			if r.URL.Query().Get("end") == "1" { // a bus search done with it: the live view back at once
+				sc.LeaseSampleView(0)
+				w.WriteHeader(http.StatusNoContent)
+				return
+			}
 			sc.LeaseSampleView(3 * time.Second)
+		}
+	}
+	// The page zoomed into a live envelope asks for its stretch at full detail
+	// (view=a,b,cols: screen widths from the trigger and the canvas columns,
+	// renewed with every poll); view=off ends it.
+	if v := r.URL.Query().Get("view"); v != "" {
+		if sc, ok := s.sc.(interface {
+			LeaseViewWindow(engine.ViewSurface, float64, float64, int, time.Duration)
+		}); ok {
+			var a, b float64
+			var cols int
+			if n, _ := fmt.Sscanf(v, "%g,%g,%d", &a, &b, &cols); n == 3 {
+				sc.LeaseViewWindow(engine.ViewWeb, a, b, cols, 2*time.Second)
+			} else {
+				sc.LeaseViewWindow(engine.ViewWeb, 0, 0, 0, 0)
+			}
 		}
 	}
 	var since uint64

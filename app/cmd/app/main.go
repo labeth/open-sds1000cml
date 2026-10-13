@@ -440,6 +440,14 @@ func runLCD(e *engine.Engine, fe *analog.FrontEnd, fo *frames.Fanout) {
 			if f != nil {
 				hud.Trigd = f.Trigd // on-screen TRIG'd indicator (there is no TRIG'd lamp)
 				hud.SampleS = f.SampleS
+				// Zoomed into the live envelope: ask for the zoomed part at
+				// full detail (the frame's view window), in screen widths
+				// from the trigger.
+				if hud.Zoom > 1 && f.PeakDetect && f.WinCols > 0 && f.Valid > 0 {
+					c := hud.ZoomOff * float64(f.Valid) / float64(min(f.WinCols, f.Valid))
+					h := 0.5 / float64(hud.Zoom)
+					e.LeaseViewWindow(engine.ViewScope, c-h, c+h, lcd.PlotColumns(hud.UI.Layout), time.Second)
+				}
 				// Spectrogram: push each fresh per-sample frame's spectrum of the
 				// FFT source as a new waterfall row while the SPECTROGRAM view is
 				// active; a new source starts a new waterfall.

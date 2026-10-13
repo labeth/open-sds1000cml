@@ -226,6 +226,33 @@ func CoupleDisplay(sig []uint8, mode int) []uint8 {
 	}
 }
 
+// CoupleDisplayBy is CoupleDisplay for part, a stretch of sig drawn on its own
+// (a zoom's detail): AC moves it by what takes sig's DC away, so it sits where
+// the whole trace does. part is never mutated.
+// TRLC-LINKS: REQ-SDS-096
+func CoupleDisplayBy(part, sig []uint8, mode int) []uint8 {
+	switch mode {
+	case CplAC:
+		if len(sig) == 0 {
+			return part
+		}
+		var sum int
+		for _, v := range sig {
+			sum += int(v)
+		}
+		shift := 128 - int(math.Round(float64(sum)/float64(len(sig))))
+		out := make([]uint8, len(part))
+		for i, v := range part {
+			out[i] = uint8(min(max(int(v)+shift, 0), 255))
+		}
+		return out
+	case CplGND:
+		return CoupleDisplay(part, CplGND)
+	default:
+		return part
+	}
+}
+
 // RemoveDC returns a copy of sig with its DC component removed: the record mean
 // is shifted to mid-scale (code 128), clamped to [0,255]. The input is never
 // mutated.

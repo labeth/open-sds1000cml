@@ -328,7 +328,7 @@ function peakVolts(ch, p) {
   // 1.42 dB low (scalloping) — 1.70 V for a 1.98 V fundamental.
   const span = src ? peakSpanS(src) : 0;
   if (src && span > 0) return toneAmplitude(src, p.freq * span) * vpc;
-  const N = spec.half * 2;
+  const N = spec.points; // the transform's length (half counts the bins kept below a filter's band)
   const mag = spec.peak * Math.pow(10, peakLvl(p) / 20);
   return 4 * mag / N * vpc;
 }
@@ -385,14 +385,15 @@ function pkChannel() { return $("pkCh").value === "2" ? 2 : 1; }
 
 // peakDBV is a peak's level in dBV (RMS) from its tone level (peaks.js lvl: the
 // Hann bin corrected for scalloping, within 0.06 dB between bins): amplitude =
-// 4·|X|/N codes (coherent gain 0.5) × volts per code, ÷ √2 for RMS. The Rel
-// column and THD use the same tone levels, as the LCD's table does.
+// 4·|X|/N codes (coherent gain 0.5, N the transform's points - not twice the
+// bins a decimated capture's band keeps) × volts per code, ÷ √2 for RMS. The
+// Rel column and THD use the same tone levels, as the LCD's table does.
 // TRLC-LINKS: REQ-SDS-216
 function peakDBV(ch, p) {
   const spec = specMemo[ch] && specMemo[ch].spec;
   if (!spec || !frame) return -Infinity;
   const vpc = (ch === 2 ? frame.vpc2 : frame.vpc1) || 1 / 25;
-  const v = 4 * spec.peak * Math.pow(10, peakLvl(p) / 20) / (spec.half * 2) * vpc / Math.SQRT2;
+  const v = 4 * spec.peak * Math.pow(10, peakLvl(p) / 20) / spec.points * vpc / Math.SQRT2;
   return v > 0 ? 20 * Math.log10(v) : -Infinity;
 }
 
@@ -429,6 +430,7 @@ function updateFFTListCh(ch) {
     tr.style.boxShadow = col ? `inset 3px 0 0 ${col}` : "";
     tr.setAttribute("aria-selected", col ? "true" : "false");
     const lv = peakDBV(ch, p), hn = H.harm[i];
+    // TRLC-LINKS: REQ-SDS-070, REQ-SDS-216
     const set = (cls, t) => { const c = tr.querySelector(cls); if (c.textContent !== t) c.textContent = t; };
     set(".pf", eng(p.freq, "Hz", 4));
     set(".pl", Number.isFinite(lv) ? lv.toFixed(1) + " dBV" : "—");

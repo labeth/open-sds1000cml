@@ -13,7 +13,13 @@
 const MEAS_UNIT = { Vpp: "V", Vmax: "V", Vmin: "V", Vmean: "V", Vrms: "V", ACrms: "V", Vtop: "V", Vbase: "V", Vampl: "V",
   Freq: "Hz", Period: "s", Duty: "%", Rise: "s", Fall: "s", "+Width": "s", "-Width": "s", Overshoot: "%", Preshoot: "%" };
 const measStats = new Map();
-let measSeq = -1, measKeyCfg = "", measRenderT = 0;
+let measSeq = -1, measEdge = 0, measKeyCfg = "", measRenderT = 0;
+// the parameters a live envelope frame takes from its edge windows, as its
+// result marks them: the edge shape, the timing and the mean of a signal the
+// envelope does not resolve
+const MEAS_WINDOW = [["edge_shape", new Set(["Rise", "Fall", "Overshoot", "Preshoot"])],
+  ["window_timing", new Set(["Freq", "Period", "Duty", "+Width", "-Width"])],
+  ["window_mean", new Set(["Vmean", "Vrms", "ACrms"])]];
 
 // measValue returns a parameter's raw value from a frame's measurement block
 // (NaN when the capture cannot give it), the numbers fmtMeas formats.
@@ -23,13 +29,14 @@ function measValue(key, m) {
   const t = !!m.has_timing;
   switch (key) {
     case "Vpp": return m.vpp; case "Vmax": return m.vmax; case "Vmin": return m.vmin;
-    case "Vmean": return m.vmean; case "Vrms": return m.vrms; case "ACrms": return m.vrms_ac;
+    case "Vmean": return m.env_aliased ? NaN : m.vmean; case "Vrms": return m.env_aliased ? NaN : m.vrms;
+    case "ACrms": return m.env_aliased ? NaN : m.vrms_ac;
     case "Vtop": return m.vtop; case "Vbase": return m.vbase; case "Vampl": return m.vampl;
     case "Freq": return t ? m.freq : NaN; case "Period": return t ? m.period : NaN; case "Duty": return t ? m.duty : NaN;
     case "Rise": return m.rise_s > 0 ? m.rise_s : NaN; case "Fall": return m.fall_s > 0 ? m.fall_s : NaN;
     case "+Width": return m.pos_width_s > 0 ? m.pos_width_s : NaN; case "-Width": return m.neg_width_s > 0 ? m.neg_width_s : NaN;
-    case "Overshoot": return t && !m.env_timing ? m.overshoot : NaN;
-    case "Preshoot": return t && !m.env_timing ? m.preshoot : NaN;
+    case "Overshoot": return m.edge_shape || t && !m.env_timing ? m.overshoot : NaN;
+    case "Preshoot": return m.edge_shape || t && !m.env_timing ? m.preshoot : NaN;
   }
   return NaN;
 }
@@ -37,11 +44,18 @@ function measValue(key, m) {
 // TRLC-LINKS: REQ-SDS-217
 function measReset() { measStats.clear(); measRenderT = 0; measRender(true); }
 
-// measAccumulate adds a new capture's values once (by frame seq).
+// measAccumulate adds a new reading's values once: by the frame measured
+// (meas_seq: the server reuses a reading for the frames of the next 100 ms
+// while running), and the edge shape by its edge-window read (edge_read:
+// carried to the frames between reads).
 // TRLC-LINKS: REQ-SDS-217
 function measAccumulate() {
-  if (!frame || frame.seq === measSeq || frame.sr_view || ws.cur !== "measure") return;
-  measSeq = frame.seq;
+  if (!frame || frame.sr_view || ws.cur !== "measure") return;
+  const seq = frame.meas_seq || frame.seq;
+  if (seq === measSeq) return;
+  measSeq = seq;
+  const freshEdge = !frame.edge_read || frame.edge_read !== measEdge;
+  measEdge = frame.edge_read || 0;
   // the scope's statKey: what changes the measured picture
   const cfg = st ? [st.tdiv_s, st.vdiv1, st.vdiv2, st.off1_v, st.off2_v, st.probe1, st.probe2, st.cpl1, st.cpl2,
     st.trig_source, st.trig_rising, st.trig_type, st.trig_code, st.acq_mode, st.avg_count, st.eres_len, st.inv1, st.inv2].join("|") : "";
@@ -50,6 +64,7 @@ function measAccumulate() {
     const m = ch === 1 ? frame.m1 : frame.m2;
     if (!m) continue;
     for (const k of MEAS_ALL) {
+      if (!freshEdge && MEAS_WINDOW.some(([flag, set]) => m[flag] && set.has(k))) continue;
       const id = ch + ":" + k;
       let s = measStats.get(id);
       if (!s) { s = new RunStats(); measStats.set(id, s); }
@@ -95,6 +110,7 @@ function measRender(force) {
       total = Math.max(total, n);
       const vals = s ? [s.last, s.mean, s.min, s.max] : [];
       const U = measRowUnit(vals, MEAS_UNIT[k]);
+      // TRLC-LINKS: REQ-SDS-217
       const cell = (v, d) => `<td>${n ? measBare(v, U.k, d) : "—"}</td>`;
       html += `<tr data-stat="${ch}:${k}"><th class="l">${k}<span class="unit">${U.u}</span></th>` +
         `<td>${s ? measBare(s.last, U.k) : "—"}</td>` + cell(s && s.mean) + cell(s && s.min) + cell(s && s.max) +
@@ -121,10 +137,15 @@ function measSetView(v) {
   if (v === "values") { $("measSub").textContent = "this capture"; updateMeas(); }
   else measRender(true);
 }
+// TRLC-LINKS: REQ-SDS-217
 $("measView").onchange = () => { if (ws.cur !== "measure") setWs("measure"); measSetView($("measView").value); };
+// TRLC-LINKS: REQ-SDS-217
 $("measCh").onchange = () => measRender(true);
+// TRLC-LINKS: REQ-SDS-217
 $("statsReset").onclick = () => { measReset(); toast("Statistics restarted"); };
+// TRLC-LINKS: REQ-SDS-217
 $("quickMore").onclick = () => { setWs("measure"); if (ws.measView !== "stats") measSetView("stats"); };
 
+// TRLC-LINKS: REQ-SDS-217
 WS_HOOKS.push({ enter(id) { if (id === "measure") measSetView(ws.measView); } });
 WS_TICKS.push(() => { measAccumulate(); measRender(false); });

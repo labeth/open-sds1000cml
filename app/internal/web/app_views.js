@@ -38,9 +38,9 @@ function fmtMeas(key, m) {
     case "Vpp": return eng(m.vpp, "V");
     case "Vmax": return eng(m.vmax, "V");
     case "Vmin": return eng(m.vmin, "V");
-    case "Vmean": return eng(m.vmean, "V");
-    case "Vrms": return eng(m.vrms, "V");
-    case "ACrms": return eng(m.vrms_ac, "V");
+    case "Vmean": return m.env_aliased ? "—" : eng(m.vmean, "V");
+    case "Vrms": return m.env_aliased ? "—" : eng(m.vrms, "V");
+    case "ACrms": return m.env_aliased ? "—" : eng(m.vrms_ac, "V");
     case "Vtop": return eng(m.vtop, "V");
     case "Vbase": return eng(m.vbase, "V");
     case "Vampl": return eng(m.vampl, "V");
@@ -51,8 +51,8 @@ function fmtMeas(key, m) {
     case "Fall": return m.fall_s > 0 ? eng(m.fall_s, "s") : "—";
     case "+Width": return m.pos_width_s > 0 ? eng(m.pos_width_s, "s") : "—";
     case "-Width": return m.neg_width_s > 0 ? eng(m.neg_width_s, "s") : "—";
-    case "Overshoot": return m.has_timing && !m.env_timing ? m.overshoot.toFixed(1) + " %" : "—";
-    case "Preshoot": return m.has_timing && !m.env_timing ? m.preshoot.toFixed(1) + " %" : "—";
+    case "Overshoot": return m.edge_shape || m.has_timing && !m.env_timing ? m.overshoot.toFixed(1) + " %" : "—";
+    case "Preshoot": return m.edge_shape || m.has_timing && !m.env_timing ? m.preshoot.toFixed(1) + " %" : "—";
   }
   return "—";
 }

@@ -59,14 +59,21 @@ func liveDecimatesPlan(block string, p SRAMPlan) bool {
 	return liveDecimates(block)
 }
 
-// liveBudget is the live decimated screen's bound in samples: a spectrum's is
-// SpectrumRawSamples (the FFT reduces them by block means anyway, and the
-// display the other surfaces see keeps 0.53 MHz at 500us/div instead of
-// 66 kHz), every other liveScreenSamples.
+// spectrumLiveSamples bounds a spectrum's decimated screen: twice the FFT's
+// points (framecalc.MaxFFT, the web's FFT_MAX: 8192), so the screen holds
+// 8192-16384 samples and the transform takes them one for one, filtered by the
+// capture's own decimation. A screen of up to 32768 took block means of three
+// (a boxcar, its harmonics folding back) from a read of twice the time: the
+// spectrum at 200us/div updated 3 times a second.
+const spectrumLiveSamples = 16384
+
+// liveBudget is the live screen's bound in record words: a spectrum's is
+// spectrumLiveSamples (a raw screen of up to SpectrumRawSamples, two a word,
+// stays at the full rate), every other liveScreenSamples.
 // TRLC-LINKS: REQ-SDS-010, REQ-SDS-070
 func liveBudget(block string) int {
 	if block == blockSpectrum {
-		return SpectrumRawSamples
+		return spectrumLiveSamples
 	}
 	return liveScreenSamples
 }
@@ -82,23 +89,36 @@ func liveDecimates(block string) bool {
 }
 
 // envelopeWindow buckets a live recall window for the display: words per
-// bucket, and the centred window it covers; zero when the window is short
-// enough (under eight words per bucket) to recall as it is.
+// bucket, and the window it covers - the requested one widened about its
+// centre to whole buckets, within the record's total words; zero when the
+// window is short enough (under two words per bucket) to recall as it is.
+// Whole buckets of the rounded-down size covered less than the screen
+// (2us/div: 8192 of 10000 samples), and the display stretched them over it.
 // TRLC-LINKS: REQ-SDS-010
-func envelopeWindow(offset, words, buckets uint32) (bucket, start, length uint32) {
+func envelopeWindow(offset, words, buckets, total uint32) (bucket, start, length uint32) {
 	// A read, with its 16 warm-up words, stays within one SRAM's worth.
-	if limit := uint32(sramcapture.Words - 16); words > limit {
+	limit := min(uint32(sramcapture.Words-16), total)
+	if words > limit {
 		offset, words = offset+(words-limit)/2, limit
 	}
-	// The FPGA reduces two-word packets, so buckets hold an even word count.
 	// Below two words per bucket the window is at most a few thousand words:
 	// recalling it raw is as quick, and keeps every sample.
-	bucket = words / buckets &^ 1
-	if bucket < 2 {
+	if buckets == 0 || words < 2*buckets {
 		return 0, offset, words
 	}
+	// The FPGA reduces two-word packets, so buckets hold an even word count.
+	bucket = (words + buckets - 1) / buckets
+	bucket += bucket & 1
+	for bucket > 2 && bucket*buckets > limit {
+		bucket -= 2
+	}
 	length = bucket * buckets
-	return bucket, offset + (words-length)/2, length
+	centre := offset + words/2
+	start = centre - min(centre, length/2)
+	if start+length > total {
+		start = total - min(total, length)
+	}
+	return bucket, start, length
 }
 
 // orderEnvelope turns (min, max) bucket pairs into a time-ordered stream: each
@@ -141,6 +161,7 @@ func orderEnvelopeHead(c []uint8, q []uint16) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-010
 func abs(v int) int {
 	if v < 0 {
 		return -v

@@ -30,8 +30,17 @@ function decodeBinFrame(buf) {
     return null;
   }
   if (typeof f !== "object" || f === null || typeof f.seq !== "number") return null;
-  const pay = u8.subarray(8 + hlen);
+  let pay = u8.subarray(8 + hlen);
   if (f.unchanged) return pay.length === 0 ? f : null;
+  // A leased view window trails the payload: vc1[view_n] vc2[view_n].
+  const vn = f.view_n | 0;
+  if (vn < 0 || 2 * vn > pay.length) return null;
+  if (vn > 0) {
+    const vb = pay.subarray(pay.length - 2 * vn);
+    f.vc1 = new Int16Array(vn); f.vc1.set(vb.subarray(0, vn));
+    f.vc2 = new Int16Array(vn); f.vc2.set(vb.subarray(vn));
+    pay = pay.subarray(0, pay.length - 2 * vn);
+  }
   const cols = f.cols | 0, head = f.head | 0, tail = f.tail | 0;
   if (cols <= 0 || head < 0 || tail < 0 || head + tail > cols) return null;
   // RAW-shape payload is ALWAYS c1+c2 (even when the frame is an envelope —

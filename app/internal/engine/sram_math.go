@@ -72,12 +72,15 @@ func averageCfg(c sramcapture.Config) sramcapture.Config {
 // never finish. Another plan's record is far longer or shorter.
 const averageLengthSlack = 8
 
+// push adds a record to the average and writes the average into f: the mean
+// of the records so far until target are in, then a running average in which
+// each record weighs 1/target. Restarting after target showed every target-th
+// frame as one raw capture, as noisy as Normal. It returns the records the
+// average holds (at most target).
 // TRLC-LINKS: REQ-SDS-012
 func (a *sramAverage) push(f *Frame, target int) int {
 	n := f.Valid
-	if a.count >= target {
-		a.count = 0
-	}
+	target = max(target, 1)
 	if d := n - len(a.sum1); a.count == 0 && d != 0 || d < -averageLengthSlack || d > averageLengthSlack {
 		a.sum1 = make([]uint32, n)
 		a.sum2 = make([]uint32, n)
@@ -120,7 +123,9 @@ func (a *sramAverage) push(f *Frame, target int) int {
 		return 0
 	}
 	// Accumulate before writing output, so shifting cannot overwrite input.
-
+	// Once full, a sum holds target times the average: it loses its own
+	// 1/target share for the new record's.
+	running, t := a.count >= target, uint32(target)
 	for i := 0; i < m; i++ {
 		if a.count == 0 {
 			a.sum1[i] = 0
@@ -130,15 +135,19 @@ func (a *sramAverage) push(f *Frame, target int) int {
 		if j < 0 || j >= n {
 			continue
 		}
-		if frac == 0 || j+1 >= n {
-			a.sum1[i] += uint32(f.Q1[j])
-			a.sum2[i] += uint32(f.Q2[j])
-			continue
+		x1, x2 := uint32(f.Q1[j]), uint32(f.Q2[j])
+		if frac != 0 && j+1 < n {
+			x1 = uint32(math.Round(float64(f.Q1[j])*(1-frac) + float64(f.Q1[j+1])*frac))
+			x2 = uint32(math.Round(float64(f.Q2[j])*(1-frac) + float64(f.Q2[j+1])*frac))
 		}
-		a.sum1[i] += uint32(math.Round(float64(f.Q1[j])*(1-frac) + float64(f.Q1[j+1])*frac))
-		a.sum2[i] += uint32(math.Round(float64(f.Q2[j])*(1-frac) + float64(f.Q2[j+1])*frac))
+		if running {
+			a.sum1[i] -= a.sum1[i] / t
+			a.sum2[i] -= a.sum2[i] / t
+		}
+		a.sum1[i] += x1
+		a.sum2[i] += x2
 	}
-	count := uint32(a.count + 1)
+	count := uint32(min(a.count+1, target))
 	for i := a.lo; i < a.hi; i++ {
 		out := i - a.lo
 		f.Q1[out] = uint16((a.sum1[i] + count/2) / count)
@@ -154,6 +163,6 @@ func (a *sramAverage) push(f *Frame, target int) int {
 		f.WinCols = f.Valid
 	}
 
-	a.count++
+	a.count = int(count)
 	return a.count
 }

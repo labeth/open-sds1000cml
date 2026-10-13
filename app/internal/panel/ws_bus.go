@@ -39,6 +39,7 @@ const (
 )
 
 // eyeRows is the eye grid's height for the BUS plot.
+// TRLC-LINKS: REQ-SDS-214
 func eyeRows() int { return (480 - wsDefs[wsview.Bus].plotTop - 12) / 2 }
 
 // busDecoding reports a bus being decoded (not off, not an Auto that found none).
@@ -54,6 +55,7 @@ func busDecoding(s *sv, a *anaState) bool {
 }
 
 // busListKey is what the packet list belongs to: a change starts it over.
+// TRLC-LINKS: REQ-SDS-214
 func busListKey(s *sv) string {
 	return fmt.Sprint(s.decProto, s.decBaud, s.decChA, s.decChB, s.decCPOL, s.decCPHA, s.st.TdivS)
 }
@@ -443,13 +445,40 @@ func (c *Controller) readableTimebase(res decode.Result, sampleS float64) string
 	return ", " + si(c.tdivs[best], "s") + "/div to read it"
 }
 
-// detectOn waits (bounded by detectWait) for a sampled frame that accept
-// takes and runs auto (Auto on the frame on screen) on it, falling back to the
-// frame on screen at the end. It returns the result, the decoded frame's
-// sample interval and whether a bus was found.
+// detectOn waits for a sampled frame that accept takes and runs auto (Auto on
+// the frame on screen) on it. It asks first for a decimated record - a few
+// thousand filtered samples a screen, read in tens of milliseconds - and keeps
+// what auto finds there when the bus's shortest feature spans decimatedFeature
+// of its samples; else a full-rate record (bounded by detectWait, falling back
+// to the frame on screen at the end): a megasample at 200us/div, seconds to
+// read, made BUS take 8 s to name a UART. accept is told which record it is
+// offered (decimated). It returns the result, the decoded frame's sample
+// interval and whether a bus was found.
 // TRLC-LINKS: REQ-SDS-214
-func (c *Controller) detectOn(accept func(*engine.Frame) bool, auto AutoSource) (decode.Result, float64, bool) {
-	deadline := c.now().Add(detectWait)
+func (c *Controller) detectOn(accept func(f *engine.Frame, decimated bool) bool, auto AutoSource) (decode.Result, float64, bool) {
+	if res, sampleS, found := c.detectWith(true, accept, auto, decimatedWait); found && decode.FeatureSamples(res) >= decimatedFeature {
+		return res, sampleS, true
+	}
+	return c.detectWith(false, accept, auto, detectWait)
+}
+
+// decimatedWait bounds the wait for a decimated record: a scope waiting for
+// a trigger captures none.
+const decimatedWait = 1500 * time.Millisecond
+
+// decimatedFeature is the samples of a decimated record a bus's shortest
+// feature must span for a detection on it to stand (a 115200 Bd UART at
+// 200us/div spans 35); a faster bus is looked at at the full rate.
+const decimatedFeature = 8.0
+
+// detectWith is one phase of detectOn: a decimated record (LeaseSampleView)
+// or a full-rate one (LeaseDecodeView), within wait. The lease ends with the
+// phase: a full-rate lease left running outranks the next phase's (the
+// search at 200us/div waited 4 s for a megasample instead of a decimated
+// record), and the live view comes back at once.
+// TRLC-LINKS: REQ-SDS-214
+func (c *Controller) detectWith(decimated bool, accept func(*engine.Frame, bool) bool, auto AutoSource, wait time.Duration) (decode.Result, float64, bool) {
+	deadline := c.now().Add(wait)
 	// While running, a frame captured after the search began: the one on
 	// screen, or one in flight, may predate a setting just changed (an ARINC
 	// bus is not found in a frame from before its bandwidth limit).
@@ -462,19 +491,27 @@ func (c *Controller) detectOn(accept func(*engine.Frame) bool, auto AutoSource) 
 		})
 	}
 	fresh := func(f *engine.Frame) bool { return start == 0 || f.Seq >= start+2 }
-	for {
-		if e, ok := c.eng.(interface{ LeaseDecodeView(time.Duration) }); ok {
-			e.LeaseDecodeView(3 * time.Second)
+	lease := func(d time.Duration) {
+		if decimated {
+			if e, ok := c.eng.(interface{ LeaseSampleView(time.Duration) }); ok {
+				e.LeaseSampleView(d)
+			}
+		} else if e, ok := c.eng.(interface{ LeaseDecodeView(time.Duration) }); ok {
+			e.LeaseDecodeView(d)
 		}
-		raw, usable := false, false
+	}
+	defer lease(0)
+	for {
+		lease(3 * time.Second)
+		got, usable := false, false
 		if c.frameFn != nil {
 			c.frameFn(func(f *engine.Frame) {
 				usable = f != nil && !f.IsEnv && !(f.PeakDetect && !f.Ordered) && f.Valid >= 32 && len(f.C1) >= f.Valid
-				raw = usable && !f.PeakDetect && accept(f) && fresh(f)
+				got = usable && !f.PeakDetect && accept(f, decimated) && fresh(f)
 			})
 		}
 		last := c.detectSync || !c.now().Before(deadline)
-		if raw || (usable && last) {
+		if got || (usable && last && !decimated) {
 			return auto()
 		}
 		if last {
@@ -498,13 +535,13 @@ func (c *Controller) detectOn(accept func(*engine.Frame) bool, auto AutoSource) 
 func (c *Controller) findBus(auto AutoSource, wanted func() bool) (decode.Result, float64, bool, float64) {
 	c.searchMu.Lock()
 	defer c.searchMu.Unlock()
-	res, sampleS, found := c.detectOn(func(*engine.Frame) bool { return true }, auto)
+	res, sampleS, found := c.detectOn(func(*engine.Frame, bool) bool { return true }, auto)
 	// a scope waiting for a trigger captures nothing at the full rate either
 	if full, t := c.fullRateS(), c.fullRateTdiv(); full > 0 && t > 0 && !found && t != c.snap().st.TdivSet() && !c.waitingForTrigger(c.snap()) {
 		prev := c.snap().st.TdivSet()
 		c.setTdivNearest(t)
-		res, sampleS, found = c.detectOn(func(f *engine.Frame) bool {
-			return f.SampleS <= 1.25*full && (f.TdivS == 0 || math.Abs(f.TdivS-t) <= 1e-3*t)
+		res, sampleS, found = c.detectOn(func(f *engine.Frame, decimated bool) bool {
+			return (decimated || f.SampleS <= 1.25*full) && (f.TdivS == 0 || math.Abs(f.TdivS-t) <= 1e-3*t)
 		}, auto)
 		if found && wanted() {
 			return res, sampleS, true, t
@@ -707,6 +744,7 @@ func (c *Controller) runDetect() {
 // ---- pickers ----
 
 // packetToks are a packet's bytes as picker tokens.
+// TRLC-LINKS: REQ-SDS-214
 func packetToks(p Packet) []string {
 	out := make([]string, len(p.Bytes))
 	for i, b := range p.Bytes {

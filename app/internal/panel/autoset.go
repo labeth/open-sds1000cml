@@ -79,6 +79,11 @@ func (c *Controller) runAutoset(stop chan struct{}) {
 		}
 		c.autosetDone, c.autosetChanged = run, changed
 		c.mu.Unlock()
+		// The sweep's sample lease ends with it: held on, the live view stayed
+		// the filtered decimated capture (2.34 MHz at 5us/div) for 3 s after.
+		if e, ok := c.eng.(interface{ LeaseSampleView(time.Duration) }); ok {
+			e.LeaseSampleView(0)
+		}
 		c.pushLEDs()
 	}()
 	cancelled := func() bool {
@@ -297,7 +302,7 @@ func (c *Controller) runAutoset(stop chan struct{}) {
 	//    midpoint on the stronger channel (this is why it must be measured AFTER
 	//    the vertical settles — else the level lands off-screen).
 	m, _ = c.measureChans()
-	src := strongerCh(m)
+	src := autosetTrigSource(m)
 	if !has(m[src]) {
 		return
 	}
@@ -573,6 +578,20 @@ func strongerCh(m [2]*measure.Result) int {
 		return 1
 	}
 	return 0
+}
+
+// autosetTrigSource is the channel AUTO triggers on: the stronger one, unless
+// only the other's repetition is resolved at the fitted timebase - a stronger
+// channel without a frequency there (a 10 Hz pulse beside a 1 kHz square)
+// fires on few screens, and the display timebase follows the trigger source.
+// TRLC-LINKS: REQ-SDS-137
+func autosetTrigSource(m [2]*measure.Result) int {
+	src := strongerCh(m)
+	hasFreq := func(r *measure.Result) bool { return has(r) && r.Freq > 0 }
+	if !hasFreq(m[src]) && hasFreq(m[1-src]) {
+		src = 1 - src
+	}
+	return src
 }
 
 // AutosetBusy reports whether an autoset sweep is in progress (for the LCD hint).

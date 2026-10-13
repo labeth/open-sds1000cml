@@ -237,6 +237,7 @@ function uartSyncIn(spans, S, SPB, frameBits, confirm, idle) {
     for (let j = spans[0].i0 - run; j < spans[0].i0 && opened; j++) opened = logicAt(S, j) === idle;
     if (opened) return false; // opened idle
   }
+  // TRLC-LINKS: REQ-SDS-018
   const clean = (k) => spans[k].kind === "data";
   let end = 1; // the frames back to back with the first: [0, end)
   while (end < spans.length && spans[end].i0 - (spans[end - 1].i0 + frameBits * SPB) < confirm * SPB) end++;
@@ -485,6 +486,26 @@ const STANDARD_BAUDS = [300, 600, 1200, 2400, 4800, 9600, 14400, 19200, 28800, 3
   57600, 76800, 115200, 230400, 250000, 460800, 500000, 921600, 1000000, 1500000, 2000000, 3000000];
 
 // TRLC-LINKS: REQ-SDS-018
+// I2C_MIN_CLOCK_S is the shortest clock period an I2C bus runs (5 MHz, less a
+// margin; decode_autodetect.go i2cMinClockS).
+const I2C_MIN_CLOCK_S = 180e-9;
+
+// sentDistinctFrames counts the different CRC-valid frames among a SENT
+// decode's spans: each frame's nibbles from its SYNC to its CRC
+// (decode_autodetect.go).
+// TRLC-LINKS: REQ-SDS-018
+function sentDistinctFrames(spans) {
+  const seen = new Set();
+  let frame = [];
+  for (const s of spans) {
+    if (s.kind === "sync") frame = [];
+    else if (s.kind === "data" || s.kind === "frame-error") frame.push(s.val);
+    else if (s.kind === "crc") seen.add(frame.concat([s.val]).join(","));
+  }
+  return seen.size;
+}
+
+// TRLC-LINKS: REQ-SDS-018
 function scoreResult(r) {
   if (!r || !r.ok) return -1e9;
   const spans = r.spans || [], bytes = r.bytes ? r.bytes.length : 0;
@@ -502,7 +523,9 @@ function scoreResult(r) {
     return addrs * 100 + acks * 30 + datas * 20 + starts * 5;
   }
   if (r.proto === "uart") {
-    if (bytes === 0) return -1e9;
+    // One byte is no UART: its stop bit checks on half of random lines (a
+    // MIL-1553 bus at 1 us/div read as "UART 2 MBd, 1 byte"). Show more.
+    if (bytes < 2) return -1e9;
     // Under 4 samples a bit a UART decode is guesswork (FlexRay at 31 MS/s read
     // as "UART 9.5 MBd"); a few bytes at a rate no UART uses are weak evidence
     // (a partial SENT frame read as "UART 66674 Bd, 5 bytes") — not a UART.
@@ -510,10 +533,13 @@ function scoreResult(r) {
     if (m.samplesPerBit > 0 && m.samplesPerBit < 4) return -1e9;
     const stdBaud = STANDARD_BAUDS.some(b => Math.abs(m.baud - b) <= 0.03 * b);
     if (bytes < 8 && !stdBaud) return -1e9;
-    // An odd rate with over a fifth of its bytes misframed is another protocol
-    // read as UART (an undersampled SENT reads "UART 45701 Bd").
-    if (!stdBaud && kind("frame-error") * 5 > bytes) return -1e9;
-    return bytes * 10 - kind("frame-error") * 35 - kind("parity-error") * 18 + 15;
+    // Over a fifth of the bytes misframed is another protocol read as UART, at
+    // an odd rate (an undersampled SENT reads "UART 45701 Bd") or a standard
+    // one (part of a CAN frame: "UART 500000 8N1", 3 bytes, 1 misframed).
+    if (kind("frame-error") * 5 > bytes) return -1e9;
+    // Clean at a rate UARTs use: every byte's stop bit checked.
+    const clean = stdBaud && kind("frame-error") === 0 && kind("parity-error") === 0 && bytes >= 8 ? 100 : 0;
+    return bytes * 10 - kind("frame-error") * 35 - kind("parity-error") * 18 + 15 + clean;
   }
   if (r.proto === "spi") {
     if (bytes === 0) return -1e9;
@@ -530,7 +556,8 @@ function scoreResult(r) {
   }
   if (r.proto === "manchester") {
     // Heuristic (no CRC): weighted between UART and SPI; violations pull hard.
-    if (bytes === 0) return -1e9;
+    // One byte is no evidence (part of a MIL-1553 word read as one byte).
+    if (bytes < 2) return -1e9;
     return bytes * 8 + kind("start") * 10 - kind("frame-error") * 30;
   }
   if (r.proto === "sent") {
@@ -539,6 +566,11 @@ function scoreResult(r) {
     // CRC-4 passes 1 random frame in 16: a quarter of the complete frames
     // must check (a bus alternating bad/good CRCs still detects).
     if (crcs === 0 || crcs * 4 < kind("sync") - 1) return -1e9;
+    // The evidence is the distinct valid frames: a repeated message's frames
+    // are one frame's chance (a UART repeating "Hi U" read as SENT had one
+    // frame of two pass its CRC). One frame weighs its nibbles, under a clean
+    // UART at a standard rate and over SENT read as a UART at an odd one.
+    if (sentDistinctFrames(spans) < 2) return 150 + kind("data") * 4 - kind("frame-error") * 20;
     return crcs * 300 + kind("data") * 4 - kind("frame-error") * 20;
   }
   if (r.proto === "canfd") {
@@ -675,9 +707,28 @@ function launchEdges(c, d) {
 // TRLC-LINKS: REQ-SDS-018
 function idleLevel(S) {
   if (!S || !S.ok) return 0;
+  // the longest run without an edge, when it is a gap between transfers (over
+  // twice the median run), is the idle level; else the level held most, low
+  // when neither holds a run more (decode_autodetect.go idleLevel)
+  let median = 0;
+  if (S.edges.length >= 3) {
+    const runs = []; let longest = 0, at = 0, prev = 0;
+    for (let k = 0; k <= S.edges.length; k++) {
+      const end = k < S.edges.length ? S.edges[k].i : S.n, r = end - prev;
+      runs.push(r);
+      if (r > longest) { longest = r; at = prev; }
+      prev = end;
+    }
+    runs.sort((a, b) => a - b);
+    median = runs[runs.length >> 1];
+    if (longest > 2 * median) {
+      const l = S.level[Math.min(at + (longest >> 1), S.n - 1)];
+      if (l === 0 || l === 1) return l;
+    }
+  }
   let hi = 0, lo = 0;
   for (let i = 0; i < S.level.length; i++) { if (S.level[i] === 1) hi++; else if (S.level[i] === 0) lo++; }
-  return hi > lo ? 1 : 0;
+  return hi > lo + median ? 1 : 0;
 }
 
 // autodetect: try every plausible protocol + channel-role + sub-setting
@@ -765,8 +816,14 @@ function autodetect(frame, opts) {
 
   if (active.length >= 2 && !freeClock) {
     // I2C — try both SCL/SDA orderings (scoring, not clock-detection, resolves it).
-    for (const [scl, sda] of [[1, 2], [2, 1]])
-      add("i2c", { scl, sda }, {}, decodeI2C(chans[scl], chans[sda], colTimeS, { fmt }));
+    for (const [scl, sda] of [[1, 2], [2, 1]]) {
+      const r = decodeI2C(chans[scl], chans[sda], colTimeS, { fmt });
+      // no I2C clock runs faster than Ultra Fast-mode's 5 MHz: a faster one is
+      // edge ringing on another bus (ARINC 429 at the full rate: an 18 ns
+      // clock) - decode_autodetect.go i2cMinClockS
+      if (r && r.meta && r.meta.colsPerClock > 0 && r.meta.colsPerClock * colTimeS < I2C_MIN_CLOCK_S) continue;
+      add("i2c", { scl, sda }, {}, r);
+    }
     // SPI — only a clocked pair. CLK = the more-uniform channel; CPOL from its idle
     // rail. Try BOTH CPHA phases and let scoreResult keep the cleaner one (higher
     // sampleMargin — the phase whose samples land on stable data, not a transition).

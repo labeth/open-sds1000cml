@@ -37,9 +37,24 @@ type Frame struct {
 	// Ordered: a PeakDetect frame whose pairs are in time order (orderEnvelope),
 	// so it may be decoded and qualified as samples at SampleS spacing.
 	Ordered bool
+	// Edge and EdgeOpp are full-rate windows of a live envelope frame's record
+	// around the trigger edge and the first edge the other way after it
+	// (edge_detail.go): the edge shape for the measurements. nil otherwise.
+	Edge, EdgeOpp *EdgeWindow
+	// EdgeRead numbers the read Edge and EdgeOpp come from (0: none): they
+	// are carried to the frames between reads.
+	EdgeRead uint64
+	// Views are stretches of the screen read at full detail for the views
+	// that show them magnified (LeaseViewWindow, view_detail.go), by
+	// ViewSurface; nil otherwise.
+	Views [viewSurfaces]*ViewWindow
 	// Roll: a scrolling view stitched from back-to-back captures, newest sample
 	// last, untriggered (sram_roll.go).
-	Roll     bool
+	Roll bool
+	// Held marks a roll view's samples no capture covered (the last value held
+	// between chunks): no signal, for the display to tell and measurements to
+	// skip. nil when every sample is captured.
+	Held     []bool
 	EnvCols  int  // envelope column count (800) when IsEnv, else 0
 	Ptp      int  // peak-to-peak of the discrimination channel
 	Trigd    bool // HW comparator fired (0x39 bit1)

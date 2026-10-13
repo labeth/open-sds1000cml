@@ -15,6 +15,31 @@ import (
 // framing), which outscore the purely heuristic ones (UART stop bits,
 // Manchester mid-cell coding, and SPI — no framing at all, the fallback).
 // TRLC-LINKS: REQ-SDS-018
+// i2cMinClockS is the shortest clock period an I2C bus runs (Ultra Fast-mode,
+// 5 MHz, less a margin): a faster "clock" is edge ringing on another bus -
+// ARINC 429's two lines at the full rate read as I2C on an 18 ns clock.
+const i2cMinClockS = 180e-9
+
+// sentDistinctFrames counts the different CRC-valid frames among a SENT
+// decode's spans: each frame's nibbles from its SYNC to its CRC.
+// TRLC-LINKS: REQ-SDS-018
+func sentDistinctFrames(spans []Span) int {
+	seen := map[string]bool{}
+	var frame []byte
+	for _, s := range spans {
+		switch s.Kind {
+		case "sync":
+			frame = frame[:0]
+		case "data", "frame-error":
+			frame = append(frame, byte(s.Val))
+		case "crc":
+			seen[string(append(frame, byte(s.Val)))] = true
+		}
+	}
+	return len(seen)
+}
+
+// TRLC-LINKS: REQ-SDS-018
 func scoreResult(r Result) float64 {
 	if !r.OK {
 		return -1e9
@@ -45,7 +70,10 @@ func scoreResult(r Result) float64 {
 		}
 		return float64(addrs*100 + acks*30 + datas*20 + starts*5)
 	case "uart":
-		if len(r.Bytes) == 0 {
+		// One byte is no UART: its stop bit checks on half of random lines - a
+		// MIL-1553 bus at 1us/div (part of a word on screen) read as "UART
+		// 2000000 8N1, 1 byte" on 3 screens of 8. Show more of the signal.
+		if len(r.Bytes) < 2 {
 			return -1e9
 		}
 		// Under 4 samples a bit a UART decode is guesswork: FlexRay at
@@ -60,12 +88,18 @@ func scoreResult(r Result) float64 {
 			return -1e9
 		}
 		c := kinds("frame-error", "parity-error")
-		// An odd rate with over a fifth of its bytes misframed is another
-		// protocol read as UART (an undersampled SENT: "UART 45701 Bd").
-		if !std && c[0]*5 > len(r.Bytes) {
+		// Over a fifth of the bytes misframed is another protocol read as UART,
+		// at an odd rate (an undersampled SENT: "UART 45701 Bd") or a standard
+		// one (part of a CAN frame: "UART 500000 8N1", 3 bytes, 1 misframed).
+		if c[0]*5 > len(r.Bytes) {
 			return -1e9
 		}
-		return float64(len(r.Bytes)*10 - c[0]*35 - c[1]*18 + 15)
+		score := float64(len(r.Bytes)*10 - c[0]*35 - c[1]*18 + 15)
+		// Clean at a rate UARTs use: every byte's stop bit checked.
+		if std && c[0] == 0 && c[1] == 0 && len(r.Bytes) >= 8 {
+			score += 100
+		}
+		return score
 	case "spi":
 		if len(r.Bytes) == 0 {
 			return -1e9
@@ -87,8 +121,10 @@ func scoreResult(r Result) float64 {
 		return float64(len(r.Bytes)*2) + r.Margin*10 + text
 	case "manchester":
 		// Heuristic (no CRC): must clear real UART/SPI on their own signals, so
-		// it is weighted between them; coding violations pull it down hard.
-		if len(r.Bytes) == 0 {
+		// it is weighted between them; coding violations pull it down hard. One
+		// byte is no evidence (part of a MIL-1553 word at 1us/div read as
+		// "Manch, 1 byte"), as for a UART.
+		if len(r.Bytes) < 2 {
 			return -1e9
 		}
 		c := kinds("start", "frame-error")
@@ -103,6 +139,15 @@ func scoreResult(r Result) float64 {
 		// bad and good CRCs (bad, good, bad on screen).
 		if c[0] == 0 || c[0]*4 < c[3]-1 {
 			return -1e9
+		}
+		// The evidence is the distinct valid frames: a repeated message's frames
+		// are one frame's chance. A UART repeating "Hi U" read as SENT had one
+		// frame of two pass its CRC (C2: SYNC B 4 4 3 4 3 C 4) over 16 clean
+		// 115200 Bd bytes. One frame weighs its nibbles, under a clean UART at
+		// a standard rate and over SENT read as a UART at an odd one (a real
+		// bus, bad, good, bad on screen, read "UART 69985 Bd").
+		if sentDistinctFrames(r.Spans) < 2 {
+			return float64(150 + c[1]*4 - c[2]*20)
 		}
 		return float64(c[0]*300 + c[1]*4 - c[2]*20)
 	case "canfd":
@@ -299,11 +344,40 @@ func launchEdges(c clockInfo, d sliced) (fall, rise int) {
 	return fall, rise
 }
 
-// idleLevel is the rail a channel rests on most (a clock idles at its CPOL rail).
+// idleLevel is a clock line's idle level (SPI's CPOL): the level of its
+// longest run without an edge when that is a gap between transfers - over
+// twice the median run, a clock's runs being even - else the level it holds
+// most, low when neither holds a run more: a screen of nothing but clocking
+// holds both alike, and a vote of 12759 samples to 12753 read a mode 0 clock
+// as mode 3. Low is SPI's usual idle (mode 0).
 // TRLC-LINKS: REQ-SDS-018
 func idleLevel(s sliced) int {
 	if !s.ok {
 		return 0
+	}
+	median := 0
+	if len(s.edges) >= 3 {
+		runs := make([]int, 0, len(s.edges)+1)
+		longest, at, prev := 0, 0, 0
+		for k := 0; k <= len(s.edges); k++ { // the runs between edges and the record's ends
+			end := s.n
+			if k < len(s.edges) {
+				end = s.edges[k].i
+			}
+			r := end - prev
+			runs = append(runs, r)
+			if r > longest {
+				longest, at = r, prev
+			}
+			prev = end
+		}
+		sort.Ints(runs)
+		median = runs[len(runs)/2]
+		if longest > 2*median {
+			if l := s.level[min(at+longest/2, s.n-1)]; l == 0 || l == 1 {
+				return int(l)
+			}
+		}
 	}
 	hi, lo := 0, 0
 	for _, l := range s.level {
@@ -313,7 +387,7 @@ func idleLevel(s sliced) int {
 			lo++
 		}
 	}
-	if hi > lo {
+	if hi > lo+median {
 		return 1
 	}
 	return 0
@@ -411,8 +485,11 @@ func Autodetect(c1, c2 []uint8, colTimeS float64, format string) Result {
 	}
 	if len(active) >= 2 && !freeClock {
 		for _, ord := range [][2]int{{0, 1}, {1, 0}} { // I2C: scoring resolves SCL/SDA order
-			consider(DecodeI2C(chans[ord[0]], chans[ord[1]], colTimeS, I2CCfg{Format: format}),
-				"SCL "+chName(ord[0])+" SDA "+chName(ord[1]), Roles{ChA: ord[0], ChB: ord[1]})
+			r := DecodeI2C(chans[ord[0]], chans[ord[1]], colTimeS, I2CCfg{Format: format})
+			if r.SPB > 0 && r.SPB*colTimeS < i2cMinClockS {
+				continue
+			}
+			consider(r, "SCL "+chName(ord[0])+" SDA "+chName(ord[1]), Roles{ChA: ord[0], ChB: ord[1]})
 		}
 		if clockedPair {
 			ci := 0

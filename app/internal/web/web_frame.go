@@ -67,6 +67,19 @@ type frameReply struct {
 	Depth    int     `json:"depth,omitempty"` // full-record sample count served (0 = not deep)
 	EdgeFrac float64 `json:"edge_frac"`       // trigger anchor as a fraction of the served array (-1 = free-run)
 	WinFrac  float64 `json:"win_frac"`        // one 10-div screen as a fraction of the served array (1 = whole)
+	// Held is a roll view's served sample ranges [a, b) no capture covered:
+	// the last value held between chunks, drawn dimmed, no signal.
+	Held [][2]int `json:"held,omitempty"`
+	// The page's zoom into a live envelope at full detail (its view window,
+	// leased with view=): ViewN values a channel, coupled as the trace is,
+	// the first at ViewA and the last at ViewB of the served array (value i
+	// of n at i/(n-1), as the page draws them). On the binary transport they
+	// follow the payload, ViewN bytes a channel.
+	ViewA float64 `json:"view_a,omitempty"`
+	ViewB float64 `json:"view_b,omitempty"`
+	ViewN int     `json:"view_n,omitempty"`
+	VC1   []int16 `json:"vc1,omitempty"`
+	VC2   []int16 `json:"vc2,omitempty"`
 
 	// Stream/stitch mode: continuity so the client stitches windows on one axis.
 	StreamSeq uint64  `json:"stream_seq,omitempty"` // monotonic window counter (0 = not a stream frame)
@@ -79,6 +92,11 @@ type frameReply struct {
 
 	M1 *measure.Result `json:"m1,omitempty"` // CH1 auto-measurements
 	M2 *measure.Result `json:"m2,omitempty"` // CH2
+	// MeasSeq is the frame M1 and M2 were measured on (reused for the frames
+	// of the next 100 ms while running), EdgeRead that frame's edge-window
+	// read (engine.Frame.EdgeRead): statistics count each reading once.
+	MeasSeq  uint64 `json:"meas_seq,omitempty"`
+	EdgeRead uint64 `json:"edge_read,omitempty"`
 
 	Clip1 bool `json:"clip1,omitempty"` // CH1 railed against the ADC full scale
 	Clip2 bool `json:"clip2,omitempty"` // CH2 railed — readings/measurements suspect
@@ -322,6 +340,13 @@ func (s *Server) buildReply(f *engine.Frame, cols int, full bool, since uint64, 
 		rep.Cols, rep.ColSpanS, rep.Depth = n, float64(n)*f.SampleS, n
 		rep.DtS = f.SampleS
 		rep.WinFrac = float64(f.WinCols) / float64(n)
+		rep.Held = heldRanges(f.Held, n)
+		if v := f.Views[engine.ViewWeb]; v != nil && f.PeakDetect && n > 1 && v.Valid > 1 && v.Valid <= len(v.C1) && v.Valid <= len(v.C2) && v.To > v.From {
+			last := v.To - (v.To-v.From)/float64(v.Valid) // where its last value lies
+			rep.ViewA, rep.ViewB, rep.ViewN = v.From/float64(n-1), last/float64(n-1), v.Valid
+			rep.VC1 = rawInt16(analog.CoupleDisplayBy(v.C1[:v.Valid], f.C1[:n], cpl[0]))
+			rep.VC2 = rawInt16(analog.CoupleDisplayBy(v.C2[:v.Valid], f.C2[:n], cpl[1]))
+		}
 	default:
 		// Native-fast / non-deep decimated: today's windowed screen slice.
 		rep.C1 = window(c1, f.Valid, f.WinCols, f.EdgeX, f.Interp, cols, posFrac)
@@ -362,19 +387,28 @@ func (s *Server) buildReply(f *engine.Frame, cols int, full bool, since uint64, 
 		if !(measThrottle && sameCfg && s.meas.m1 != nil && time.Since(s.measAt) < 100*time.Millisecond) {
 			s.measKey = key
 			s.measAt = time.Now()
+			a, b := f.MeasureRange() // a roll view's captured stretch
+			qa := func(q []uint16) []uint16 {
+				if len(q) < b {
+					return nil
+				}
+				return q[a:b]
+			}
 			s.meas = measVal{
-				m1:    measure.ComputeAcquisition(c1[:f.Valid], f.Q1, vpc[0], moff[0], f.SampleS, cpl[0], f.FilterGuard),
-				m2:    measure.ComputeAcquisition(c2[:f.Valid], f.Q2, vpc[1], moff[1], f.SampleS, cpl[1], f.FilterGuard),
+				m1:    measure.ComputeAcquisition(c1[a:b], qa(f.Q1), vpc[0], moff[0], f.SampleS, cpl[0], f.FilterGuard),
+				m2:    measure.ComputeAcquisition(c2[a:b], qa(f.Q2), vpc[1], moff[1], f.SampleS, cpl[1], f.FilterGuard),
 				clip1: measure.Clipped(f.C1[:f.Valid]), // RAW rail state (pre-coupling)
 				clip2: measure.Clipped(f.C2[:f.Valid]),
+				seq:   f.Seq, edgeRead: f.EdgeRead,
 			}
 			if f.PeakDetect {
-				s.meas.m1 = s.meas.m1.WithEnvelopeTiming(c1[:f.Valid], vpc[0], moff[0], f.SampleS)
-				s.meas.m2 = s.meas.m2.WithEnvelopeTiming(c2[:f.Valid], vpc[1], moff[1], f.SampleS)
+				s.meas.m1 = s.meas.m1.WithEnvelopeTiming(c1[:f.Valid], vpc[0], moff[0], f.SampleS).WithEdgeDetail(vpc[0], moff[0], f.EdgeWindows(0)...)
+				s.meas.m2 = s.meas.m2.WithEnvelopeTiming(c2[:f.Valid], vpc[1], moff[1], f.SampleS).WithEdgeDetail(vpc[1], moff[1], f.EdgeWindows(1)...)
 			}
 		}
 	}
 	rep.M1, rep.M2, rep.Clip1, rep.Clip2 = s.meas.m1, s.meas.m2, s.meas.clip1, s.meas.clip2
+	rep.MeasSeq, rep.EdgeRead = s.meas.seq, s.meas.edgeRead
 	if s.invSrc != nil { // measure what the inverted trace shows (SCPI Cn:INVS)
 		inv := s.invSrc()
 		if inv[0] {
@@ -420,4 +454,26 @@ func captureSampleS(f *engine.Frame) float64 {
 		return f.CaptureSampleS
 	}
 	return 0
+}
+
+// heldRanges is the [a, b) runs of held samples among the first n; nil when
+// there are none.
+// TRLC-LINKS: REQ-SDS-071
+func heldRanges(held []bool, n int) [][2]int {
+	if len(held) < n {
+		return nil
+	}
+	var out [][2]int
+	for i := 0; i < n; i++ {
+		if !held[i] {
+			continue
+		}
+		j := i
+		for j < n && held[j] {
+			j++
+		}
+		out = append(out, [2]int{i, j})
+		i = j
+	}
+	return out
 }

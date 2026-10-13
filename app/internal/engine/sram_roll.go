@@ -121,6 +121,7 @@ type rollView struct {
 	c1, c2   []uint8
 	q1, q2   []uint16  // c1..q2: the view at the live scale, derived from v1, v2
 	v1, v2   []float32 // the view in volts: a V/div or offset change re-derives the codes, never clamps these
+	held     []bool    // view samples no capture covered: held between chunks, or before the first
 	settle   time.Time // data captured before this (a scale change in flight, the front end settling) is dropped
 	feGen    uint64    // the front-end write generation the view's data was captured under
 	filled   int       // samples received since the view started
@@ -142,6 +143,7 @@ type rollView struct {
 	// Partial software group (plan.group > 1): averaged samples (chunked) or
 	// peak words (stream) carried to the next update.
 	accN       int
+	accHeld    int // held samples in the partial group
 	acc1, acc2 int64
 	accLast    [2]uint16
 	carry      []byte
@@ -154,43 +156,50 @@ func (r *rollView) reset(p rollPlan, tdiv float64, scale [2]chScale) {
 	r.c1, r.c2 = make([]uint8, p.screen), make([]uint8, p.screen)
 	r.q1, r.q2 = make([]uint16, p.screen), make([]uint16, p.screen)
 	r.v1, r.v2 = make([]float32, p.screen), make([]float32, p.screen)
+	r.held = make([]bool, p.screen)
 	r.filled, r.lastEnd, r.first = 0, time.Time{}, true
 	r.captured, r.elapsed, r.covered = 0, 0, 0
-	r.accN, r.acc1, r.acc2, r.carry = 0, 0, 0, nil
+	r.accN, r.accHeld, r.acc1, r.acc2, r.carry = 0, 0, 0, 0, nil
 }
 
 // groupAvg averages captured samples, gap held samples first, into view
-// samples of plan.group each, carrying a partial group to the next call.
+// samples of plan.group each, carrying a partial group to the next call; a
+// view sample mostly of held samples is held.
 // TRLC-LINKS: REQ-SDS-010
-func (r *rollView) groupAvg(gap int, q1, q2 []uint16) ([]uint16, []uint16) {
+func (r *rollView) groupAvg(gap int, q1, q2 []uint16) ([]uint16, []uint16, []bool) {
 	g := max(1, r.plan.group)
 	gap = min(gap, (r.plan.screen+1)*g) // older than the view: drawn as held anyway
 	if r.filled == 0 && r.accN == 0 && len(q1) > 0 {
 		r.accLast = [2]uint16{q1[0], q2[0]}
 	}
 	var o1, o2 []uint16
-	add := func(n int, v1, v2 uint16) {
+	var oh []bool
+	add := func(n int, v1, v2 uint16, held bool) {
 		for n > 0 {
 			t := min(n, g-r.accN)
 			r.acc1 += int64(t) * int64(v1)
 			r.acc2 += int64(t) * int64(v2)
 			r.accN += t
+			if held {
+				r.accHeld += t
+			}
 			n -= t
 			if r.accN == g {
 				o1 = append(o1, uint16(r.acc1/int64(g)))
 				o2 = append(o2, uint16(r.acc2/int64(g)))
-				r.accN, r.acc1, r.acc2 = 0, 0, 0
+				oh = append(oh, 2*r.accHeld > g)
+				r.accN, r.accHeld, r.acc1, r.acc2 = 0, 0, 0, 0
 			}
 		}
 	}
-	add(gap, r.accLast[0], r.accLast[1])
+	add(gap, r.accLast[0], r.accLast[1], true)
 	for i := range q1 {
-		add(1, q1[i], q2[i])
+		add(1, q1[i], q2[i], false)
 	}
 	if len(q1) > 0 {
 		r.accLast = [2]uint16{q1[len(q1)-1], q2[len(q2)-1]}
 	}
-	return o1, o2
+	return o1, o2, oh
 }
 
 // groupPeak merges plan.group consecutive peak words ({max2,max1,min2,min1})
@@ -218,11 +227,25 @@ func (r *rollView) groupPeak(raw []byte) []byte {
 }
 
 // push appends gap held samples and then the chunk (Q8.8 codes at the view's
-// scale), keeping the history in volts.
+// scale), keeping the history in volts. held marks chunk samples that are
+// themselves mostly held (a software group's); nil, none.
 // TRLC-LINKS: REQ-SDS-010
-func (r *rollView) push(gap int, q1, q2 []uint16) {
+func (r *rollView) push(gap int, q1, q2 []uint16, held []bool) {
 	n := len(r.v1)
 	add := min(gap+len(q1), n)
+	if len(r.held) == n {
+		copy(r.held, r.held[add:])
+		at, hold := n-add, min(gap, add)
+		for i := at; i < n; i++ {
+			k := i - at - hold + len(q1) - (add - hold) // index into the chunk
+			r.held[i] = i < at+hold || held != nil && k >= 0 && k < len(held) && held[k]
+		}
+		if r.filled == 0 { // the first chunk also fills the view's past: no capture
+			for i := 0; i < at; i++ {
+				r.held[i] = true
+			}
+		}
+	}
 	for ch, q := range [2][]uint16{q1, q2} {
 		v := r.v1
 		if ch == 1 {
@@ -434,13 +457,13 @@ func (e *Engine) rollStep(r *rollView) {
 		return
 	}
 	if p.group > 1 {
-		q1, q2 := r.groupAvg(gap, w.q1, w.q2)
+		q1, q2, held := r.groupAvg(gap, w.q1, w.q2)
 		if len(q1) == 0 {
 			return // the view moves once a whole group is in
 		}
-		r.push(0, q1, q2)
+		r.push(0, q1, q2, held)
 	} else {
-		r.push(gap, w.q1, w.q2)
+		r.push(gap, w.q1, w.q2, nil)
 	}
 
 	e.rollPublish(r, m.Decimation*uint32(p.group), "roll view: back-to-back decimated captures; gaps between them hold the last value",
@@ -462,6 +485,7 @@ func (e *Engine) rollPublish(r *rollView, decimation uint32, filter, readout, st
 	copy(f.C2, r.c2)
 	f.Q1 = append(q1[:0], r.q1...)
 	f.Q2 = append(q2[:0], r.q2...)
+	f.Held = append([]bool(nil), r.held...)
 	e.noteChannelMeans(f)
 	e.seq++
 	f.Seq = e.seq
@@ -641,7 +665,7 @@ func (e *Engine) rollStreamStep(r *rollView) {
 		r.first = false
 	}
 	q1, q2 := e.peakSamples(r, raw)
-	r.push(gap, q1, q2)
+	r.push(gap, q1, q2, nil)
 	r.lastEnd, r.lastPub = now, now
 	e.rollPublish(r, uint32(1)<<p.log*uint32(p.group), "roll view: continuous peak-detect stream (stream image)",
 		fmt.Sprintf("roll stream (%d samples, %d losses)", p.screen, r.losses),
@@ -719,4 +743,28 @@ func (e *Engine) rollStreamStop(r *rollView) {
 		r.deadline = nil
 	}
 	r.streaming, r.first, r.carry = false, true, nil
+}
+
+// MeasureRange is the stretch of the record measurements read: a roll view's
+// longest run of captured samples - its held stretches are no signal (a 1 kHz
+// square measured across them read 769 Hz) - else the whole record.
+// TRLC-LINKS: REQ-SDS-010, REQ-SDS-021
+func (f *Frame) MeasureRange() (int, int) {
+	if len(f.Held) != f.Valid {
+		return 0, f.Valid
+	}
+	best, bestAt, at := 0, 0, -1
+	for i := 0; i <= f.Valid; i++ {
+		if i < f.Valid && !f.Held[i] {
+			if at < 0 {
+				at = i
+			}
+			continue
+		}
+		if at >= 0 && i-at > best {
+			best, bestAt = i-at, at
+		}
+		at = -1
+	}
+	return bestAt, bestAt + best
 }

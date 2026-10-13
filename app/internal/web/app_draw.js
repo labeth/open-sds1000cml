@@ -108,6 +108,52 @@ function drawTrace(g, cols, color, zoom, inv) {
   g.stroke();
 }
 
+// viewCovers is whether frame f's view window (vc1/vc2: the zoom's stretch
+// read again at full detail, its first value at view_a of the served array
+// and its last at view_b) covers the shown window.
+// TRLC-LINKS: REQ-SDS-071
+function viewCovers(f) {
+  if (!f || !f.vc1 || !f.vc2 || f.vc1.length < 2 || !(f.view_b > f.view_a)) return false;
+  const w = view.win, tol = (w.b - w.a) / 100;
+  return f.view_a <= w.a + tol && f.view_b >= w.b - tol;
+}
+
+// drawViewTrace draws a view window's values (first at a, last at b of the
+// served array) with drawTrace, the shown window put in the view's own
+// fractions for the call.
+// TRLC-LINKS: REQ-SDS-071
+function drawViewTrace(g, vals, a, b, color, zoom, inv) {
+  const w = view.win, wa = w.a, wb = w.b, s = b - a;
+  w.a = (wa - a) / s; w.b = (wb - a) / s;
+  try { drawTrace(g, vals, color, zoom, inv); } finally { w.a = wa; w.b = wb; }
+}
+
+// drawTraceHeld draws a trace whose held ranges ([a, b) samples a roll view's
+// capture did not cover: the last value held between chunks) are no signal:
+// the captured samples in color, the held ones dimmed.
+// TRLC-LINKS: REQ-SDS-071
+function drawTraceHeld(g, cols, held, color, zoom, inv) {
+  if (!cols || !held || !held.length) { drawTrace(g, cols, color, zoom, inv); return; }
+  const split = heldSplit(cols, held);
+  g.globalAlpha = 0.35;
+  drawTrace(g, split.held, color, zoom, inv);
+  g.globalAlpha = 1;
+  drawTrace(g, split.real, color, zoom, inv);
+}
+
+// heldSplit is cols as two traces, the captured samples and the held ones,
+// each with the other's samples as gaps (-1); kept on the array per ranges.
+// TRLC-LINKS: REQ-SDS-071
+function heldSplit(cols, held) {
+  const c = cols._heldSplit;
+  if (c && c.ranges === held) return c;
+  const real = new cols.constructor(cols), only = new cols.constructor(cols.length).fill(-1);
+  for (const [a, b] of held) {
+    for (let i = Math.max(0, a); i < Math.min(b, cols.length); i++) { only[i] = cols[i]; real[i] = -1; }
+  }
+  return (cols._heldSplit = { ranges: held, real, held: only });
+}
+
 // TRLC-LINKS: REQ-SDS-071
 function drawEnv(g, mn, mx, color, zoom, inv) {
   if (!mn || !mx) return;
@@ -271,10 +317,12 @@ function drawRefTrace(g, cols, refVpc, refOff, curVpc, curOff, color, zoom, tm) 
     // TRLC-LINKS: REQ-SDS-203
     const refIdx = (frac) => tm.edge + (frac * (tm.nL - 1) - tm.edgeL) * tm.dtL / tm.dt;
     iLo = Math.max(0, Math.floor(refIdx(view.win.a)) - 1); iHi = Math.min(n - 1, Math.ceil(refIdx(view.win.b)) + 1);
+    // TRLC-LINKS: REQ-SDS-203
     xOf = (i) => xForCol(liveIdx(i), tm.nL);
     if (iHi - iLo > 4 * CW) tm.step = Math.ceil((iHi - iLo) / (4 * CW)); // dense: a few points per pixel
   } else {
     [iLo, iHi] = winRange(n);
+    // TRLC-LINKS: REQ-SDS-203
     xOf = (i) => xForCol(i, n);
   }
   const step = tm && tm.step ? tm.step : 1;
@@ -377,9 +425,14 @@ function drawYT(g) {
     if (frame.is_env) {
       if (view.c2) drawEnv(g, frame.e2min, frame.e2max, C2COL, st ? st.zoom2 : 1, !!(st && st.inv2));
       if (view.c1) drawEnv(g, frame.e1min, frame.e1max, C1COL, st ? st.zoom1 : 1, !!(st && st.inv1));
+    } else if (viewCovers(frame)) {
+      // zoomed into a live envelope: the stretch read again at full detail
+      if (view.c2) drawViewTrace(g, frame.vc2, frame.view_a, frame.view_b, C2COL, st ? st.zoom2 : 1, !!(st && st.inv2));
+      if (view.c1) drawViewTrace(g, frame.vc1, frame.view_a, frame.view_b, C1COL, st ? st.zoom1 : 1, !!(st && st.inv1));
+      drawMath(g);
     } else {
-      if (view.c2) drawTrace(g, frame.c2, C2COL, st ? st.zoom2 : 1, !!(st && st.inv2));
-      if (view.c1) drawTrace(g, frame.c1, C1COL, st ? st.zoom1 : 1, !!(st && st.inv1));
+      if (view.c2) drawTraceHeld(g, frame.c2, frame.held, C2COL, st ? st.zoom2 : 1, !!(st && st.inv2));
+      if (view.c1) drawTraceHeld(g, frame.c1, frame.held, C1COL, st ? st.zoom1 : 1, !!(st && st.inv1));
       drawMath(g);
     }
   }

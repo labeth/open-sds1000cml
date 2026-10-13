@@ -292,32 +292,71 @@ func FFT(re, im []float64) {
 
 // Mags Hann-windows samples (mean removed), transforms them and returns the
 // half-spectrum magnitudes and the largest of them, DC excluded (Hann
-// leakage at DC would otherwise become a false 0 dB anchor).
+// leakage at DC would otherwise become a false 0 dB anchor). The samples are
+// real: their even and odd ones go through one complex transform of half the
+// length, and the window and the unpacking twiddles are tabled per length -
+// an 8192-point spectrum took 86 ms on the scope's ARM, two a SPECTRUM frame.
 // TRLC-LINKS: REQ-SDS-070
 func Mags(samples []float64) ([]float64, float64, int) {
 	n := len(samples)
-	re := make([]float64, n)
-	im := make([]float64, n)
+	half := n / 2
+	tab := magsTables(n)
 	var mean float64
 	for _, v := range samples {
 		mean += v
 	}
 	mean /= float64(n)
-	for i, v := range samples {
-		w := 0.5 - 0.5*math.Cos(2*math.Pi*float64(i)/float64(n-1))
-		re[i] = (v - mean) * w
+	zr, zi := make([]float64, half), make([]float64, half)
+	for k := 0; k < half; k++ {
+		zr[k] = (samples[2*k] - mean) * tab.win[2*k]
+		zi[k] = (samples[2*k+1] - mean) * tab.win[2*k+1]
 	}
-	FFT(re, im)
-	half := n / 2
+	FFT(zr, zi)
 	mags := make([]float64, half)
 	peak, peakK := 1e-9, 1
 	for k := 0; k < half; k++ {
-		mags[k] = math.Hypot(re[k], im[k])
+		j := (half - k) % half
+		er, ei := (zr[k]+zr[j])/2, (zi[k]-zi[j])/2 // the even samples' transform
+		or, oi := (zi[k]+zi[j])/2, (zr[j]-zr[k])/2 // the odd samples'
+		c, s := tab.cos[k], tab.sin[k]
+		mags[k] = math.Hypot(er+c*or+s*oi, ei+c*oi-s*or)
 		if k >= 1 && mags[k] > peak {
 			peak, peakK = mags[k], k
 		}
 	}
 	return mags, peak, peakK
+}
+
+// magsTable is Mags' Hann window and unpacking twiddles for one length.
+type magsTable struct {
+	win, cos, sin []float64
+}
+
+var magsCache struct {
+	sync.Mutex
+	byN map[int]*magsTable
+}
+
+// magsTables is the table for n samples, made once.
+// TRLC-LINKS: REQ-SDS-070
+func magsTables(n int) *magsTable {
+	magsCache.Lock()
+	defer magsCache.Unlock()
+	if t := magsCache.byN[n]; t != nil {
+		return t
+	}
+	t := &magsTable{win: make([]float64, n), cos: make([]float64, n/2), sin: make([]float64, n/2)}
+	for i := range t.win {
+		t.win[i] = 0.5 - 0.5*math.Cos(2*math.Pi*float64(i)/float64(n-1))
+	}
+	for k := range t.cos {
+		t.cos[k], t.sin[k] = math.Cos(2*math.Pi*float64(k)/float64(n)), math.Sin(2*math.Pi*float64(k)/float64(n))
+	}
+	if magsCache.byN == nil {
+		magsCache.byN = map[int]*magsTable{}
+	}
+	magsCache.byN[n] = t
+	return t
 }
 
 type specKey struct {

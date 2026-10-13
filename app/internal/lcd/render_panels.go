@@ -85,12 +85,23 @@ func chanMeasure(f *engine.Frame, hud HUD, ch int) *measure.Result {
 		off = 0
 	}
 	vpc := vdiv * float64(zoomOf(hud, ch)) / 25 * probe
-	m := measFor(ch, sig, frameQ(f, ch), f.FilterGuard, f.Seq, f.Content, vpc, off*probe, hud.SampleS, probe, cpl)
+	q := frameQ(f, ch)
+	if a, b := f.MeasureRange(); b-a < len(sig) { // a roll view's captured stretch
+		sig = sig[a:b]
+		if len(q) >= b {
+			q = q[a:b]
+		} else {
+			q = nil
+		}
+	}
+	m := measFor(ch, sig, q, f.FilterGuard, f.Seq, f.Content, vpc, off*probe, hud.SampleS, probe, cpl)
+	if f.PeakDetect {
+		m = m.WithEnvelopeTiming(sig, vpc, off*probe, hud.SampleS).WithEdgeDetail(vpc, off*probe, f.EdgeWindows(ch)...)
+	}
+	// After the timing: the invert swaps rise and fall and complements the
+	// duty, which the envelope's timing would otherwise put back.
 	if (ch == 0 && hud.Inv1) || (ch == 1 && hud.Inv2) {
 		m = m.Inverted() // measure what the inverted trace shows
-	}
-	if f.PeakDetect {
-		m = m.WithEnvelopeTiming(sig, vpc, off*probe, hud.SampleS)
 	}
 	return m
 }
@@ -118,12 +129,12 @@ func measParamRow(m *measure.Result, id string) (measRow, bool) {
 		return measRow{"Vtop", fmtVolt(m.Vtop)}, true
 	case "base":
 		return measRow{"Vbase", fmtVolt(m.Vbase)}, true
-	case "rms":
-		return measRow{"Vrms", fmtVolt(m.Vrms)}, true
+	case "rms": // an envelope of a signal faster than its buckets holds no RMS or mean
+		return measRow{"Vrms", fmtVolt(m.Vrms)}, !m.EnvAliased
 	case "acrms":
-		return measRow{"ACrms", fmtVolt(m.VrmsAC)}, true
+		return measRow{"ACrms", fmtVolt(m.VrmsAC)}, !m.EnvAliased
 	case "mean":
-		return measRow{"Vmean", fmtVolt(m.Vmean)}, true
+		return measRow{"Vmean", fmtVolt(m.Vmean)}, !m.EnvAliased
 	case "freq":
 		return measRow{"Freq", fmtFreq(m.Freq)}, m.HasTiming
 	case "period":
@@ -138,10 +149,10 @@ func measParamRow(m *measure.Result, id string) (measRow, bool) {
 		return measRow{"+Width", fmtTdiv(m.PosWidthS)}, m.PosWidthS > 0
 	case "nwid":
 		return measRow{"-Width", fmtTdiv(m.NegWidthS)}, m.NegWidthS > 0
-	case "ovsh": // an envelope holds no edge shape (the MEASURE pane's "---")
-		return measRow{"Overshoot", pct(m.Overshoot)}, m.HasTiming && !m.EnvTiming
+	case "ovsh": // an envelope alone holds no edge shape (the MEASURE pane's "---")
+		return measRow{"Overshoot", pct(m.Overshoot)}, m.EdgeShape || m.HasTiming && !m.EnvTiming
 	case "prsh":
-		return measRow{"Preshoot", pct(m.Preshoot)}, m.HasTiming && !m.EnvTiming
+		return measRow{"Preshoot", pct(m.Preshoot)}, m.EdgeShape || m.HasTiming && !m.EnvTiming
 	}
 	return measRow{}, false
 }

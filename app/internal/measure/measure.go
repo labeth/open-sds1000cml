@@ -41,8 +41,116 @@ type Result struct {
 	HasTiming bool `json:"has_timing"`
 	// EnvTiming marks timing measured on a peak-detect envelope: period,
 	// frequency, duty and widths hold to a bucket, but edge shape (rise, fall,
-	// over/preshoot) is unknown and reads 0.
+	// over/preshoot) is unknown and reads 0 - unless EdgeShape.
 	EnvTiming bool `json:"env_timing"`
+	// EdgeShape marks rise, fall and over/preshoot taken from full-rate
+	// windows around an envelope frame's edges (WithEdgeDetail).
+	EdgeShape bool `json:"edge_shape"`
+	// EnvAliased marks an envelope whose buckets mostly span the swing: the
+	// signal is faster than a bucket, and the envelope's (min, max) pairs give
+	// no mean or RMS (a pulse train's mean read its midpoint, 1.63 V for
+	// 0.60 V) - Vmean, Vrms and AC rms are unknown unless the edge windows,
+	// which then hold several periods, gave them.
+	EnvAliased bool `json:"env_aliased"`
+	// WindowTiming and WindowMean mark the timing (frequency, period, duty,
+	// widths) and the mean and RMS taken from the edge windows: a signal the
+	// envelope does not resolve (WithEdgeDetail). Like the edge shape, they
+	// are carried to the frames between window reads.
+	WindowTiming bool `json:"window_timing,omitempty"`
+	WindowMean   bool `json:"window_mean,omitempty"`
+}
+
+// EdgeWindow is one channel's samples around an edge of an envelope frame's
+// record, at the record's rate.
+type EdgeWindow struct {
+	Sig     []uint8
+	Q       []uint16 // calibrated Q8.8, or nil
+	SampleS float64
+	// Shape: the window samples the full rate, so its edges are the signal's;
+	// a decimated record's are its filter's step response, which serves the
+	// mean and RMS but no rise, fall or over/preshoot.
+	Shape bool
+}
+
+// WithEdgeDetail takes rise, fall, overshoot and preshoot from full-rate
+// windows around an envelope frame's edges - the envelope's (min, max)
+// buckets hold no edge shape - and keeps every other figure. A window without
+// a clean edge of the channel adds nothing. A signal faster than the
+// envelope's buckets resolve has no timing there, and an aliased mean; a
+// window holding whole periods gives both.
+// TRLC-LINKS: REQ-SDS-021
+func (r *Result) WithEdgeDetail(voltsPerCode, offV float64, windows ...EdgeWindow) *Result {
+	if r == nil || len(windows) == 0 {
+		return r
+	}
+	c := *r
+	var sum, sq float64 // an aliased envelope's mean and RMS from the windows
+	var count int
+	var period, pos, neg avg // timing the envelope does not resolve
+	for _, w := range windows {
+		if len(w.Sig) == 0 || !(w.SampleS > 0) {
+			continue
+		}
+		t := ComputeAcquisition(w.Sig, w.Q, voltsPerCode, offV, w.SampleS, 0)
+		if t != nil && r.EnvAliased {
+			sum += t.Vmean
+			sq += t.Vrms * t.Vrms
+			count++
+		}
+		if t != nil && !r.HasTiming && t.HasTiming {
+			period.add(t.Period)
+			pos.add(t.PosWidthS)
+			neg.add(t.NegWidthS)
+		}
+		if t == nil || !w.Shape || !(t.RiseS > 0 || t.FallS > 0) {
+			continue
+		}
+		if c.RiseS == 0 && t.RiseS > 0 {
+			c.RiseS = t.RiseS
+		}
+		if c.FallS == 0 && t.FallS > 0 {
+			c.FallS = t.FallS
+		}
+		c.Overshoot, c.Preshoot = max(c.Overshoot, t.Overshoot), max(c.Preshoot, t.Preshoot)
+		c.EdgeShape = true
+	}
+	if count > 0 {
+		// Faster than a bucket, the windows hold several periods each.
+		c.Vmean = sum / float64(count)
+		c.Vrms = math.Sqrt(sq / float64(count))
+		c.VrmsAC = math.Sqrt(math.Max(0, c.Vrms*c.Vrms-c.Vmean*c.Vmean))
+		c.EnvAliased, c.WindowMean = false, true
+	}
+	if p := period.mean(); p > 0 {
+		c.Period, c.Freq = p, 1/p
+		c.PosWidthS, c.NegWidthS = pos.mean(), neg.mean()
+		c.Duty = c.PosWidthS / p * 100
+		c.HasTiming, c.EnvTiming, c.WindowTiming = true, false, true
+	}
+	return &c
+}
+
+// avg is a running mean of the positive values added.
+type avg struct {
+	sum float64
+	n   int
+}
+
+// TRLC-LINKS: REQ-SDS-021
+func (a *avg) add(v float64) {
+	if v > 0 {
+		a.sum += v
+		a.n++
+	}
+}
+
+// mean is the values' mean, 0 with none.
+// TRLC-LINKS: REQ-SDS-021
+func (a *avg) mean() float64 {
+	if a.n == 0 {
+		return 0
+	}
+	return a.sum / float64(a.n)
 }
 
 // Inverted is the result for the channel displayed inverted (SCPI Cn:INVS):
@@ -78,7 +186,7 @@ func (r *Result) DropTiming() {
 	}
 	r.Freq, r.Period, r.Duty, r.RiseS, r.FallS, r.PosWidthS, r.NegWidthS = 0, 0, 0, 0, 0, 0, 0
 	r.Overshoot, r.Preshoot = 0, 0
-	r.HasTiming, r.EnvTiming = false, false
+	r.HasTiming, r.EnvTiming, r.EdgeShape, r.WindowTiming = false, false, false, false
 }
 
 // WithoutTiming returns a copy with the timing results removed (see
@@ -109,7 +217,11 @@ const envMinBuckets = 8
 func (r *Result) WithEnvelopeTiming(env []uint8, voltsPerCode, offV, sampleS float64) *Result {
 	c := r.WithoutTiming()
 	n := len(env) / 2
-	if c == nil || n < 2*envMinBuckets || !(sampleS > 0) {
+	if c == nil {
+		return c
+	}
+	c.EnvAliased = envelopeAliased(env)
+	if n < 2*envMinBuckets || !(sampleS > 0) || envelopeNarrowPulse(env) {
 		return c
 	}
 	mids := make([]uint8, n)
@@ -142,6 +254,82 @@ func (r *Result) WithEnvelopeTiming(env []uint8, voltsPerCode, offV, sampleS flo
 	c.Freq, c.Period, c.Duty, c.PosWidthS, c.NegWidthS = t.Freq, t.Period, t.Duty, t.PosWidthS, t.NegWidthS
 	c.HasTiming, c.EnvTiming = true, true
 	return c
+}
+
+// envelopeNarrowPulse reports a pulse within two buckets: one or two buckets
+// that span the middle half of the swing between buckets wholly at the same
+// level. Bucket midpoints miss such a pulse, so the timing would count too few
+// edges (1, 2, 3 and 5 us pulses every 60 us at 200us/div read 51 kHz, not
+// 66.8 kHz): it is unknown instead.
+// TRLC-LINKS: REQ-SDS-021
+func envelopeNarrowPulse(env []uint8) bool {
+	n := len(env) / 2
+	if n < 3 {
+		return false
+	}
+	lo, hi := env[0], env[0]
+	for _, v := range env {
+		lo, hi = min(lo, v), max(hi, v)
+	}
+	if int(hi)-int(lo) < minAmplCodes {
+		return false
+	}
+	q1, q3 := int(lo)+(int(hi)-int(lo))/4, int(hi)-(int(hi)-int(lo))/4
+	level := func(i int) int { // -1 wholly low, 1 wholly high, 0 spanning or between
+		a, b := int(env[2*i]), int(env[2*i+1])
+		switch {
+		case max(a, b) <= q1:
+			return -1
+		case min(a, b) >= q3:
+			return 1
+		}
+		return 0
+	}
+	spans := func(i int) bool {
+		a, b := int(env[2*i]), int(env[2*i+1])
+		return min(a, b) <= q1 && max(a, b) >= q3
+	}
+	for i := 1; i+1 < n; i++ {
+		if !spans(i) || spans(i-1) {
+			continue
+		}
+		j := i // the run of spanning buckets from i
+		for j+1 < n && spans(j+1) && j-i < 2 {
+			j++
+		}
+		if j-i < 2 && j+1 < n {
+			if l := level(i - 1); l != 0 && l == level(j+1) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// envelopeAliased reports whether most of an envelope's buckets span the
+// middle half of its swing: a signal faster than a bucket.
+// TRLC-LINKS: REQ-SDS-021
+func envelopeAliased(env []uint8) bool {
+	n := len(env) / 2
+	if n == 0 {
+		return false
+	}
+	lo, hi := env[0], env[0]
+	for _, v := range env {
+		lo, hi = min(lo, v), max(hi, v)
+	}
+	if int(hi)-int(lo) < minAmplCodes {
+		return false
+	}
+	q1, q3 := int(lo)+(int(hi)-int(lo))/4, int(hi)-(int(hi)-int(lo))/4
+	spans := 0
+	for i := 0; i < n; i++ {
+		a, b := int(env[2*i]), int(env[2*i+1])
+		if min(a, b) <= q1 && max(a, b) >= q3 {
+			spans++
+		}
+	}
+	return 2*spans > n
 }
 
 // minAmplCodes is the smallest top−base span (in ADC codes) for which timing is
@@ -242,7 +430,15 @@ func compute[T ~uint8 | ~uint16](sig []T, voltsPerCode, offV, sampleS, scale flo
 	// otherwise loses small Q8.8 ripple when the record is nearly constant.
 	reference := int(sig[0])
 	var sum, sum2 int64
-	hist := make([]int, int(256*scale))
+	// The modes are found on whole ADC codes (below): a Q8.8 value's code is
+	// its high byte. Counting codes directly keeps a 65536-bin histogram and
+	// its per-bin division (no divide instruction on this ARM: a fifth of the
+	// device's CPU at the live frame rate) out of every measurement.
+	shift := 0
+	if scale >= 256 {
+		shift = 8
+	}
+	coarse := make([]int, 256)
 	for _, v := range sig {
 		iv := int(v)
 		if iv < cmin {
@@ -254,7 +450,7 @@ func compute[T ~uint8 | ~uint16](sig []T, voltsPerCode, offV, sampleS, scale flo
 		delta := int64(iv - reference)
 		sum += delta
 		sum2 += delta * delta
-		hist[iv]++
+		coarse[min(iv>>shift, 255)]++
 	}
 	meanDelta := float64(sum) / float64(n)
 	mean := float64(reference) + meanDelta
@@ -270,35 +466,31 @@ func compute[T ~uint8 | ~uint16](sig []T, voltsPerCode, offV, sampleS, scale flo
 	// The modes are found on whole ADC codes: a Q8.8 histogram has 256 bins per
 	// code, far too sparse for a mode. The settled level is then the mean of the
 	// samples in the winning code.
-	bin := int(scale)
-	if bin < 1 {
-		bin = 1
-	}
-	coarse := make([]int, 256)
-	for i, c := range hist {
-		coarse[i/bin] += c
-	}
 	settled := func(code int) int {
-		lo, hi := code*bin, code*bin+bin-1
+		if shift == 0 {
+			return code
+		}
 		// int64: the device's int is 32 bits, and a 1 M-sample record's
 		// count × Q8.8 code (~2.6e10) wraps it, so a single shot would measure
 		// top -6.35 V and base -4.82 V on a 0-3.3 V square.
 		var n, sum int64
-		for c := lo; c <= hi && c < len(hist); c++ {
-			n += int64(hist[c])
-			sum += int64(hist[c]) * int64(c)
+		for _, v := range sig {
+			if int(v)>>shift == code {
+				n++
+				sum += int64(v)
+			}
 		}
 		if n == 0 {
-			return lo + bin/2
+			return code<<shift + 1<<shift/2
 		}
 		return int((sum + n/2) / n)
 	}
 	mid := (cmin + cmax) / 2
 	topCode, baseCode := cmax, cmin
-	if c := modeInRange(coarse, mid/bin+1, cmax/bin); c >= 0 {
+	if c := modeInRange(coarse, mid>>shift+1, cmax>>shift); c >= 0 {
 		topCode = settled(c)
 	}
-	if c := modeInRange(coarse, cmin/bin, mid/bin); c >= 0 {
+	if c := modeInRange(coarse, cmin>>shift, mid>>shift); c >= 0 {
 		baseCode = settled(c)
 	}
 
