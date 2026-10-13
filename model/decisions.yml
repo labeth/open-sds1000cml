@@ -1283,11 +1283,11 @@ decisions:
     needed the retained-record cache''s transport side redesigned as a synchronous page reader, since both clocks come
     from one PLL, and power-of-two fine-grid factors only (the product offers K 8..64). External SRAM and ADC I/O
     timing and a hardware stack remain to be qualified before the image is embedded in a release.'
-  - 'End-to-end validated on the instrument on 2026-09-26 (app 3044e1d, qualified-read image, +0.001 ns). The API, the
+  - 'End-to-end validated on the instrument (app 3044e1d, qualified-read image, +0.001 ns). The API, the
     front panel (UTILITY, FPGA stop mode, Run) and the webpage (FPGA button) each stacked a live C2 edge from 10
     records to about +4.0 bits with about 736 times less bus traffic than the raw records, in 15 to 25 s. Continued
     refills, tile-major sessions, qualified GPMC reads and session health beats were required and are in.'
-  - 'Correction 2026-10-09: tile-major sessions acquired different records for neighboring tiles, producing
+  - 'Correction: tile-major sessions acquired different records for neighboring tiles, producing
     discontinuities when the signal or acquisition offset changed. Sessions now scan every tile of the same
     frozen record before rearming, preserving moments and initial hit parity across tiles. Hits, crossings
     and rejection counts must agree across tiles or the result is rejected. The historical tile-major bus
@@ -1315,11 +1315,11 @@ decisions:
   - Qualification reads Q samples per candidate; windows reaching far before the crossing may leave the two cached
     pages and cost a full SRAM seek per candidate.
   - Protocol-decoded qualification (for example one UART character) remains in the serial image and software.
-  - 'Validated on the instrument on 2026-09-26 (app 149751a, image +0.101 ns, 8629 logic elements) through the API,
+  - 'Validated on the instrument (app 149751a, image +0.101 ns, 8629 logic elements) through the API,
     the front panel (FPGA+match, 64 points) and the webpage (match shape). On the bench data line a 2 us template
     accepts nearly every rising edge, which all look alike; a 32 us template spanning the following bits rejects about
     93 percent of candidates and stacks only edges followed by the template''s pattern.'
-  - 'The default tolerance is exact (2026-09-27). Each point may differ by 6 codes for noise and the raw samples''
+  - 'The default tolerance is exact. Each point may differ by 6 codes for noise and the raw samples''
     uncorrected core offsets, plus a quarter of the local template slope for window placement within half a template
     point; the former eighth of the swing per point remains as loose. With one fixed 1024-point template on the bench
     data line, true repeats stay within about 1.5 codes per point (the same 8 to 10 places pass from 1.5 to 6.1),
@@ -1378,7 +1378,7 @@ decisions:
   - ARINC 429 needs a tri-level slicer with host thresholds and takes ADC codes, not a binary line.
   - Live qualification uses bench generators for each protocol on the Au fixture. The fixture DAC is not connected,
     so ARINC 429 is qualified by the differential and top-level simulations only until a tri-level source is wired.
-  - Revised 2026-09-27 after integrated fitting. All four decoders in one image used 9900 to 10000 logic elements
+  - Revised after integrated fitting. All four decoders in one image used 9900 to 10000 logic elements
     (97 percent) and missed 125 MHz timing by 0.2 to 0.6 ns on scattered congestion paths across six seeds, after
     the new cores' own long paths had been pipelined. The set is therefore split into a packet image (ARINC 429,
     CAN, FlexRay; one shared register block) and a Manchester image, each on the same raw-only foundation. The
@@ -1386,7 +1386,7 @@ decisions:
     decoder's own level function, and the three packet decoders keep 32-bit stamps whose upper bits the top level
     restores from the live sample ordinal.
   - 'The packet image (seed 2, 8215 logic elements, +0.033 ns) and the Manchester image (seed 1, 7426 logic elements,
-    +0.128 ns) close internal timing and were validated on the instrument on 2026-09-27 with Au fixtures on C2. CAN,
+    +0.128 ns) close internal timing and were validated on the instrument with Au fixtures on C2. CAN,
     FlexRay and Manchester trigger normal records in hardware (10 of 10 on the pattern, none on an absent pattern or
     one present only in a CRC-corrupt FlexRay frame, recovery, then the general image with edge capture) and stream
     from the webpage with no loss, including ERROR for corrupt frames. Each image load beats engine health; without it
@@ -1413,9 +1413,9 @@ decisions:
     decides about 35 clocks after its event; faster event bursts queue, and a queue overflow is counted and resets
     the partial match rather than inventing one.
   - Software qualification understands the same pattern tokens (any value, error), so the fallback path agrees.
-  - The serial image was merged into the general image on 2026-09-27 (ADR-GENERAL-RAW-IMAGE); its validation results
+  - The serial image was merged into the general image (ADR-GENERAL-RAW-IMAGE); its validation results
     below apply to the general image, which has the identical bitstream.
-  - 'Built and validated 2026-09-27. The serial (8001 logic elements, +0.101 ns), packet (8645, +0.113 ns) and
+  - 'Built and validated. The serial (8001 logic elements, +0.101 ns), packet (8645, +0.113 ns) and
     Manchester (7874, +0.085 ns) images close timing. On the instrument, CAN (error, wildcards, a sequence longer than
     any frame and one across frames rejected), FlexRay (a 12-byte header-and-payload sequence, an 11-byte sequence
     present only in a CRC-corrupt frame rejected, error), UART on the serial image (the whole 8-byte message, a near
@@ -1437,8 +1437,8 @@ decisions:
   - Long, wildcard and error triggers on UART, I2C, SPI, SENT, MIL-STD-1553 and USB run on the power-on image
     without an image switch.
   - This supersedes the decimation parts of the precision decisions and ADR-PROTOCOL-SEQUENCE-TRIGGER's serial image.
-  - Superseded on 2026-09-27 by ADR-IMAGE-REGROUP-DECIMATION, which returns decimation to the general image.
-  - 'Built and deployed 2026-09-27 (seed 1, 8001 logic elements, +0.101 ns, pinned in fpga/images/general); the
+  - Superseded by ADR-IMAGE-REGROUP-DECIMATION, which returns decimation to the general image.
+  - 'Built and deployed (seed 1, 8001 logic elements, +0.101 ns, pinned in fpga/images/general); the
     bitstream is identical to the serial image validated live under ADR-PROTOCOL-SEQUENCE-TRIGGER. On the instrument
     the native UART trigger, the 8-byte UART sequence, near-miss and error rejection, and an FPGA stacking session
     that returns to the general image all pass. The cost is live frame rate at slow timebases, where the whole raw
@@ -1465,7 +1465,7 @@ decisions:
     measurements resolve to a bucket. Software protocol qualification, averaging, ERES and zone triggering need every
     sample and keep full recall.
   - Envelope frames skip the ARM-side precision FIR, which assumes uniform samples.
-  - Rebalanced after integrated fitting on 2026-09-27. With Manchester, MIL-STD-1553, USB and SENT the line-code image
+  - Rebalanced after integrated fitting. With Manchester, MIL-STD-1553, USB and SENT the line-code image
     filled 94 percent and missed 125 MHz timing by 0.28 to 0.58 ns on four seeds. MIL-STD-1553 and SENT moved to the
     packet image, so the line-code image holds Manchester and USB (which share one scratch RAM) and the packet image
     ARINC 429, CAN, FlexRay, MIL-STD-1553 and SENT.
@@ -1473,7 +1473,7 @@ decisions:
     matchers and shared pattern registers (SEQUENCE_ONLY, advertised at register 47); the sequence trigger matches every
     pattern there, qualified on frame validity as the native matchers were. The general image keeps the native
     matchers beside the sequence trigger. Raw-only images also drop the envelope's Q8.8 datapath.
-  - 'Built and validated on the instrument on 2026-09-27. General (seed 4, 9483 logic elements, +0.014 ns, pinned in
+  - 'Built and validated on the instrument. General (seed 4, 9483 logic elements, +0.014 ns, pinned in
     fpga/images/general), packet (seed 2, 9262, +0.087 ns) and line-code (seed 1, 8729, +0.035 ns) close timing. Live
     frames recall in about 7 ms at every timebase, giving about 37 frames/s at 1 to 10 us/div, 35 at 100 us/div, 28 to
     29 at 0.5 to 1 ms/div, and 6.6 and 0.9 at 10 and 100 ms/div where the window itself is 0.1 and 1 s; before this
@@ -1482,7 +1482,7 @@ decisions:
     MIL-1553, SENT and USB decoded streams on their new images, UART native and sequence triggers and FPGA stacking
     all pass.'
   - This supersedes ADR-GENERAL-RAW-IMAGE's image content; its sequence-trigger consequences still hold.
-  - Its live-frame policy was revised on 2026-10-09 by ADR-LIVE-ORDERED-ENVELOPE; every live frame is an
+  - Its live-frame policy was revised by ADR-LIVE-ORDERED-ENVELOPE; every live frame is an
     envelope, in time order, and the sample-consuming modes listed above no longer force full recall.
 - id: ADR-LIVE-ORDERED-ENVELOPE
   title: Read every live frame as a time-ordered envelope; deep records on STOP and SINGLE
@@ -1491,7 +1491,7 @@ decisions:
   context: With a protocol decode on, live frames at 200 us/div recalled a 500k-word raw window, about 2.2 s a frame (0.5
     LCD frames/s), so knobs gave no feedback. The user required at least 10, preferably 20, frames/s in every
     mode, with the full record available on STOP or SINGLE. Unordered min and max pairs had made decoders misread
-    edges (2026-10-06), which is why decoding had forced raw frames.
+    edges, which is why decoding had forced raw frames.
   decision: Every live acquisition still captures the full-depth record, and a live frame is read as the FPGA envelope of
     its screen window. Each pair is emitted in the order that continues from the previous value, so an edge inside
     a bucket reads as one transition and a pulse narrower than a bucket as a one-sample peak; the frame is marked
@@ -1500,7 +1500,7 @@ decisions:
     FPGA-decimated live capture bounded to 4096 words a screen. A raw lease (eye diagram, super-resolution) and
     Bode read raw windows. SINGLE and STOP read the full record.
   consequences:
-  - Bench 2026-10-09 with I2C decode on (LCD frames/s) - 20 to 24 at 1 us to 100 us/div, 16 at 200 us/div, 18 at 1
+  - Bench with I2C decode on (LCD frames/s) - 20 to 24 at 1 us to 100 us/div, 16 at 200 us/div, 18 at 1
     ms/div, 11.6 at 5 ms/div. At 10 ms/div and slower a triggered frame waits out its whole screen, so reaching 10
     frames/s there needs a roll mode; rev 10 has no continuous stream (rev 11 only).
   - I2C decoded correctly from live ordered envelopes on the instrument.
@@ -1519,7 +1519,7 @@ decisions:
     hook that latches staged lamps; a lamp staged during CPU-only conditioning is latched at once by the staging
     goroutine under the capture lock. RUN/STOP toggles from the engine state.
   consequences:
-  - Bench 2026-10-09 - press-to-lamp delay 4 to 28 ms over 40 presses (was up to about 2 s); recall time
+  - Bench - press-to-lamp delay 4 to 28 ms over 40 presses (was up to about 2 s); recall time
     unchanged.
   - The frame in flight at a SINGLE press is shown live, then a fresh capture stops the scope.
 - id: ADR-STOPPED-RECORD-IN-MEMORY
@@ -1533,7 +1533,7 @@ decisions:
     conditioned record share Frame.Content, so displays reuse measurements and decode across them; the LCD skips
     drawing the old frame at the new scale while view_pending is set.
   consequences:
-  - Bench 2026-10-09 - a stopped V/div step reaches the LCD in about 0.5 to 0.8 s (was 2.5 s and more).
+  - Bench - a stopped V/div step reaches the LCD in about 0.5 to 0.8 s (was 2.5 s and more).
   - Memory holds up to two copies of a deep record on the 128 MB unit (about 4 MB raw, more with Q8.8 codes).
 - id: ADR-LOADING-INDICATOR
   title: Show a loading indicator while a frame is read or processed
@@ -1576,8 +1576,8 @@ decisions:
     stream pump.
   consequences:
   - Chunked roll answers a timebase change at once; streaming reloads an image when roll starts or ends.
-  - Bench 2026-10-10 - streaming roll at 500 ms/div runs at 21 to 22 LCD frames/s with no overflow.
-  - Revised 2026-10-10 - beyond the largest decimation (2^20) the view groups samples in software (averaged
+  - Bench - streaming roll at 500 ms/div runs at 21 to 22 LCD frames/s with no overflow.
+  - Beyond the largest decimation (2^20) the view groups samples in software (averaged
     for chunks, extremes for the peak stream), so it stays within 4096 samples at every timebase; 50 s/div had
     held 476k samples and a knob step took up to 9.4 s. Bench - every step within one image shows in 0.04 to
     0.32 s; only roll to triggered in streaming mode (an image reload) takes about 4 s.
@@ -1615,7 +1615,7 @@ decisions:
     and reads never continue (a continued read would lose its first word). The front end is drained while the
     drum runs (its consume followed write_ready before, and the interleaver overflowed).
   consequences:
-  - Bench 2026-10-10, counter source, every word checked - loss-free at decimation 512 (978k words/s, 3.9 MB/s)
+  - Bench, counter source, every word checked - loss-free at decimation 512 (978k words/s, 3.9 MB/s)
     and 1024; at 1024 a single 900 ms host stall is absorbed and a 1.2 s stall faults (the ring holds about 1.07
     s); 300 ms stalls each second are absorbed.
   - Reading back what was just written costs a lap (2.1 ms), so the FIFO must hold a lap of input; decimation 256
@@ -1640,7 +1640,7 @@ decisions:
     is the power-on default and the app re-applies it after every image load. ReadMatrix rebuilds the factory's five
     words from a scan read, one knob per read in the decoder's priority order, so the panel decoder is unchanged.
   consequences:
-  - 'Validated on the instrument on 2026-09-27. Keys read active low, one bit each; each row''s positions 1 and 2 are
+  - 'Validated on the instrument. Keys read active low, one bit each; each row''s positions 1 and 2 are
     a knob''s raw quadrature phases. Shift byte n is factory row n+1, and RUN/STOP, AUTO and SINGLE land on the
     decoder''s codes. 684 key interrupts arrived during a 45 s press test, and the user confirmed buttons and knobs
     work. The general image with the scan is seed 5, 9927 logic elements, +0.091 ns.'
@@ -1648,7 +1648,7 @@ decisions:
     constant low.
   - Knob transitions per detent (1) and direction (counting up is clockwise) are set in app/internal/engine/panel_scan.go
     and are not yet confirmed knob by knob.
-  - All four acquisition images carry the block since 2026-10-05 (general seed 1, packet seed 6, line-code seed 7,
+  - All four acquisition images carry the block (general seed 1, packet seed 6, line-code seed 7,
     stacking seed 11; see ADR-SAMPLE-POLARITY).
 - id: ADR-SAMPLE-POLARITY
   title: Invert the converter codes in the FPGA so rising volts read as rising codes
@@ -1668,7 +1668,7 @@ decisions:
     0.5-2 ns at 5 ns-2 us/div. Trigger levels of 0.5, 1.65 and 2.8 V fire within 0.1 V on both slopes.
   - Validators and fixtures that compensated the old inversion change. The UART validator and the decoded-capture
     validator measure their thresholds and take polarity from INVERTED (default 0); UART, SPI and I2C triggering and
-    streaming pass on the general image. On 2026-10-06, with the gen_bits.py fixtures rebuilt at INVERT=0, CAN,
+    streaming pass on the general image. With the gen_bits.py fixtures rebuilt at INVERT=0, CAN,
     FlexRay and Manchester hardware triggers and browser streams, and MIL-1553, SENT and USB streams pass on the
     packet and line-code images with zero event loss; USB event stamps sit 0-15 samples from the host decoder's
     edge anchor (one fixture edge time) and the validator allows 16.
@@ -1744,7 +1744,7 @@ decisions:
   title: SCPI timing and acquisition-state commands act on the instrument, not a shadow
   status: accepted
   date: '2026-10-07'
-  context: On the bench (python-vxi11, 2026-10-06) every query timed out, because device_write ran a line only at a
+  context: On the bench (python-vxi11) every query timed out, because device_write ran a line only at a
     newline and that client ends a message with the END flag. Once answered, TRDL stored a value nothing used,
     ARM and FRTR only set RUN, SAST? said Ready whenever running, and the guide's C2:TRLV / C2:TRSL forms were
     undefined headers.
@@ -1831,7 +1831,7 @@ decisions:
     on offset-corrected codes would lift that.
   - Near that band the frame rate drops while noise triggers are dropped (5 V/div at 1.6 V - 8 codes above the
     baseline - showed about 8 real frames a second with 30 dropped).
-  - 'Confirmed 2026-10-12 against the owner''s rule (ADR-HARDWARE-QUALIFIERS): software may check a trigger the FPGA
+  - 'Checked against the owner''s rule (ADR-HARDWARE-QUALIFIERS): software may check a trigger the FPGA
     pointed out and place it, never search data the FPGA did not point at, so the confirmation stays. The dropped
     triggers'' recent share is kept (noise_triggers); above a quarter the TRIG tab, the phone''s TRIG page and the
     web''s trigger card say how many were dropped as noise and to raise the gain or move the level. Bench: none at
@@ -1842,7 +1842,7 @@ decisions:
   date: '2026-10-07'
   context: AC coupling has no hardware high-pass on this unit (spec 06); the display removes each frame's mean and
     the offset. The fabric trigger still compares the raw DC codes against a level computed as if the trace were DC,
-    so with CH1 AC-coupled a 0 V level on the centred 3.3 V UART trace never triggered (WAIT, bench 2026-10-07) and
+    so with CH1 AC-coupled a 0 V level on the centred 3.3 V UART trace never triggered (WAIT) and
     any level was misplaced by the signal's DC.
   decision: The front end reports coupling changes to the engine. The engine keeps a smoothed raw mean of each
     channel from its published frames (both channels, always), and for an AC-coupled source places the fabric level
@@ -1937,7 +1937,7 @@ decisions:
     On a stopped stream F2 switches between the record's waveform (with the lines around the trigger) and the
     full-screen list, HORIZ POS scrolls it and its push returns to the trigger. Stopping freezes the record first and
     drains the events still queued up to its last sample, so the list covers the record.
-  - Bench 2026-10-06, all fixtures through the panel (Stream, manual trigger, STOP, list), zero events lost - UART
+  - Bench, all fixtures through the panel (Stream, manual trigger, STOP, list), zero events lost - UART
     8.7 k units/s, SPI 18.7 k, I2C 19.8 k, SENT 12.9 k (200 us/div), MIL-1553 23.6 k, USB-LS 59.2 k, CAN 10.2 k,
     Manchester 26.0 k. FlexRay at a full 10 Mbit/s overflows the isolated worker's queue at about 35 k units/s;
     one 16 KiB IPC payload per call is the limit (about 80 k events/s sustained). Starting takes 4 to 15 s when
@@ -1965,13 +1965,13 @@ decisions:
     and up).
   consequences:
   - The trigger and retained-record handling are unchanged; the trigger hint and loss counts travel with the lines.
-  - Bench 2026-10-06 (uartcnt counter, every byte checked) - 921600 Bd continuous for 3 min, 16 648 944 bytes at
+  - Bench (uartcnt counter, every byte checked) - 921600 Bd continuous for 3 min, 16 648 944 bytes at
     91.7 k/s, zero breaks, losses or decode errors (before, the queue overflowed after about a minute). The worker
     allocates its 65536-line transcript once at start; growing it mid-stream copied megabytes and overflowed the
     FPGA queue.
   - Line batches carry one byte per 8-bit unit (34-byte UART lines, about 1900 per packet), which lifted the GUI's
     pull past 1.5 MBd; /api/stream/lines.bin serves the same format to clients.
-  - Bench 2026-10-06 - 921600 Bd lossless (3 min, 16.6 M bytes). 1.5 MBd - the GUI keeps up (60 s lossless, 9.08 M
+  - Bench - 921600 Bd lossless (3 min, 16.6 M bytes). 1.5 MBd - the GUI keeps up (60 s lossless, 9.08 M
     bytes; 3 min, 27 M bytes with no missed lines), but the worker is stalled past the FPGA queue's 10 ms now and
     then, losing 0.01 to 0.05 percent of events at the FPGA (every loss marked LOST, never silent), with or without
     a client reading. Making 1.5 MBd lossless needs a deeper or more compact FPGA event queue.
@@ -1995,7 +1995,7 @@ decisions:
   - The hardware trigger and decoders still see the uncorrected codes; the offsets are smaller than the trigger
     hysteresis.
   - Peak-detect envelopes of undecimated records (5-200 us/div) take their bucket extremes over all five converters,
-    so minima drop the lowest converter offset and maxima the highest (2026-10-06); a 3.28 V square had read 3.76 V
+    so minima drop the lowest converter offset and maxima the highest; a 3.28 V square had read 3.76 V
     there and now reads 3.28-3.32 V at every timebase. Decimated envelopes are already filtered across converters.
 - id: ADR-BWL-RELAY
   title: Drive the bandwidth-limit relay
@@ -2029,7 +2029,7 @@ decisions:
     seq.
   - Vrms is the true RMS, DC included, as SCPI RMS and scope users read it; the standard deviation is reported
     separately as VrmsAC (ACrms). It had been the standard deviation, 1.6 V for a 0-3.3 V square whose true RMS is
-    2.28 V (2026-10-06).
+    2.28 V.
 - id: ADR-TRIGGER-SUBSAMPLE
   title: Place the displayed trigger at the exact level crossing
   status: accepted
@@ -2131,7 +2131,7 @@ decisions:
   title: The FPGA's matcher decides every serial trigger; software only places it on the match
   status: accepted
   date: '2026-10-12'
-  context: 'The owner''s rule (2026-10-12): every trigger is decided in FPGA hardware, and software may only refine where
+  context: 'The owner''s rule: every trigger is decided in FPGA hardware, and software may only refine where
     the trigger point sits. The scope''s panel and the phone sent the serial request without a decoder threshold, so
     the general image''s UART, I2C and SPI matchers were never armed: captures ran untriggered and software decoded
     and matched each record (4 matches/s on a UART; a SINGLE recalled the 1M-sample record three times, 34 s). The
@@ -2147,7 +2147,7 @@ decisions:
     the trigger point back to the start of the matched bytes; the record keeps the last measured shift before the
     trigger so the match stays on screen. This replaces the software matching fallback of ADR-PROTOCOL-TRIGGER-IMAGE.
   consequences:
-  - 'Bench 2026-10-12 (Au sources on A2/A11): UART 4 to 21 matches/s in RUN and a SINGLE in one recall (4.3 s); I2C 20/s,
+  - 'Bench (Au sources on A2/A11): UART 4 to 21 matches/s in RUN and a SINGLE in one recall (4.3 s); I2C 20/s,
     SPI 23/s, CAN 22/s, Manchester 24/s, MIL-STD-1553 25/s, USB LS 25/s, FlexRay 22/s, ARINC 429 25/s and SENT
     triggering on the scope''s own match; V/div and offset changes keep triggering.'
   - A learned level or rate replaces the plan only when it moves two codes or more, so capture noise does not re-arm
@@ -2155,13 +2155,13 @@ decisions:
   - The legacy SCOPE_CAPTURE=default capture path still matches serial requests in software; it is not a production path.
   - Levels are learned only from a capture with no front-end write (relay, gain, offset) since the previous capture
     was armed; the capture spanning a V/div change holds the relay's transient, which widened a learned extent.
-  - 'Clarified by the owner (2026-10-12): software may place a trigger and check whether a trigger the hardware pointed
+  - 'Clarified by the owner: software may place a trigger and check whether a trigger the hardware pointed
     out is correct, but never test data the hardware did not point at.'
 - id: ADR-HARDWARE-QUALIFIERS
   title: Pulse, slope, video and zone triggers are decided in a qualifier FPGA image
   status: accepted
   date: '2026-10-12'
-  context: 'The owner''s rule (2026-10-12): every trigger is decided in FPGA hardware, and software only refines the
+  context: 'The owner''s rule: every trigger is decided in FPGA hardware, and software only refines the
     trigger point. Every SRAM image triggered on the plain edge for the pulse, slope and video types and for the zone
     trigger, and the engine then kept or dropped each record in software by its pulse width, slope time, video line
     or zones. The general image uses 97 percent of the logic and cannot take the qualifiers.'
@@ -2191,7 +2191,7 @@ decisions:
     buckets). The zone trigger fires a fixed time after the edge - the wait and 48 half clocks of decision - which the
     record holds before the trigger and the engine takes back off; a pulse or video trigger fires 12 ns after an edge
     trigger on its closing edge would, a slope 24 ns.
-  - 'Bench 2026-10-12 (Au sources on A2/A11): pulse widths over 4 us, under 1.5 us, between 1.5 and 2.5 us and a low
+  - 'Bench (Au sources on A2/A11): pulse widths over 4 us, under 1.5 us, between 1.5 and 2.5 us and a low
     pulse over 13 us each triggered only on the 5, 1, 2 us pulses and the 14 us low, the point within one sample of
     the closing edge; NTSC line 10 is the first line after the post-equalizing pulses and line 21 shows line 20''s
     marker 1.75 us before its sync, the point on the sync''s leading edge; a zone high 2.5 to 4 us after the edge
@@ -2230,7 +2230,7 @@ decisions:
   - 'Bench: after Default setup BUS entry says "AUTO: UART 115200 8N1 on C1, decode on, 200us/div to read it" and the
     LCD reads the message without errors; the web finds the UART at 500 us/div and, after Autoset, at 200 us/div.'
   - BUS entry can change the timebase, always with a notice naming the new one.
-  - 'Bench (bug hunt #3): at 500 us/div with the UART on screen, picking Auto says "AUTO: UART 115200 8N1 on C1,
+  - 'Bench: at 500 us/div with the UART on screen, picking Auto says "AUTO: UART 115200 8N1 on C1,
     200us/div to read it", Stream On streams it, and "Trigger on it" from a stream arms the hardware UART matcher.'
   - Leaving a stream (Stream Off, a fixed protocol, the serial trigger, Default setup) puts RUN back only after the
     stream has ended, since the engine ends a stream stopped to show its record.

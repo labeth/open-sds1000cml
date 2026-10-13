@@ -305,7 +305,7 @@ behavior:
         resumes only when the operator requests Run.
   - id: FLOW-ACQUISITION-IMAGE-SWITCH
     title: Planned acquisition image selection and safe reconfiguration
-    description: Multiple-image behavior, implemented 2026-09-27 for four images (ADR-IMAGE-REGROUP-DECIMATION). The
+    description: Multiple-image behavior, implemented for four images (ADR-IMAGE-REGROUP-DECIMATION). The
       general image (UART, I2C, SPI, precision decimation, the sequence trigger and envelope recall) is the power-on
       selection; the packet (ARINC 429, CAN, FlexRay, MIL-STD-1553, SENT) and line-code (Manchester, USB) images load
       when a hardware trigger or decoded stream selects their protocol, and the stacking image for an FPGA stacking
@@ -504,8 +504,11 @@ behavior:
       kind: control_action
       action: Factory settings, the bus settings, the pulse, slope and video limits, full bandwidth and upright traces
         included, with the mask cleared (its test off, its counts zeroed) and the serial trigger's match bytes cleared
-        (any I2C address and direction); a decoded stream ends and the scope runs again; any menu closes; the workspace
-        stays and re-applies its entry behaviour.
+        (any I2C address and direction); the mask build's frames and tolerance, super-res's channel, grid, stop and
+        target, the averaging count, ERES length, precision rate, roll mode, FFT source, master depth and the stream's
+        stop back to their power-on values and no measurement chosen; the frequency response off on C1 / C2, its points
+        forgotten; a decoded stream ends and the scope runs again; any menu closes; the workspace stays and re-applies
+        its entry behaviour. The instrument's preferences (screen saver, screen off, remote notices) stay.
       sourceRef: FU-APP-PANEL
       destinationRef: FU-APP-ENGINE
       next:
@@ -884,13 +887,13 @@ behavior:
       action: Finish this input dispatch. Applicable commands change engine/frontend state; panel-local changes are
         drawn on the next LCD frame and published to the remote snapshot (its Seq advances).
     properties:
-      sourceBaseline: d4b93feea628722113b34ee0e4914bbac8a3c29b
+      sourceBaseline: 902ad5c4e6d88680157a82b91238ab10ec663f2a
       requirements: REQ-SDS-135, REQ-SDS-137, REQ-SDS-168, REQ-SDS-211, REQ-SDS-212, REQ-SDS-213, REQ-SDS-214, REQ-SDS-216,
         REQ-SDS-217, REQ-SDS-218, REQ-SDS-220, REQ-SDS-221
       reviewNext: The INTENSITY/ADJUST lamp is not driven (specs/08-front-panel.md section 8.2), since no firmware has
         lit it. Physical key availability depends on the loaded FPGA image.
-      sourceFiles: app/internal/panel/panel.go, app/internal/panel/panel_dispatch.go, app/internal/panel/panel_led.go, app/internal/panel/ws_input.go, app/internal/panel/ws.go, app/internal/panel/sheet.go, app/internal/panel/actions.go, app/internal/panel/remote.go, app/internal/panel/autoset.go, app/internal/panel/model_rows.go, app/internal/panel/textparse.go, app/internal/panel/screen.go, specs/08-front-panel.md
-      sourceSHA256: '{"app/internal/panel/actions.go": "503729b997c422791c57e9e6cb0d8d14b3f958807825bed08fafe53d747d1c9b", "app/internal/panel/autoset.go": "3ac47397010c4969684de3e045ce91a59f61bc1ece37a0e04d5dbebeaa639b77", "app/internal/panel/model_rows.go": "f1d15398a39114143534443e0c5855cef852a5e8c2d0541d1ab4cbea6379effe", "app/internal/panel/panel.go": "1b7b657b3ed81cb287cd92af0e6ee35c7f969fbd1046ad6a3376c70c3a8b2f60", "app/internal/panel/panel_dispatch.go": "082a106cd7e33d5da67c17c84aca2f0f5d57ae41b0a70c47256e3dae0255e3fc", "app/internal/panel/panel_led.go": "3558acd6c13b95e5f65fccc8b5e4b3bd27429493c8a31ffe267e55fbcfbb4265", "app/internal/panel/remote.go": "0c0f516ba83982f4e3f7df8f2b95f4a74e609245e74e4b17c991719101c962f3", "app/internal/panel/screen.go": "491474baff8d91e334e9207d43386e4886dbb8ead4ae11fd49bf47a11157c1f4", "app/internal/panel/sheet.go": "c0949ca7b28b9715629b43310e947f7206a6ff5153d91082ddaf8b8d18c6af5f", "app/internal/panel/textparse.go": "c5f08231502d6c18ab4d123c8517bcbec095c192cef1b1483080dbd2c22de869", "app/internal/panel/ws.go": "37d6413383af725dc63ed2bca8a27c8114f56825b151b839cf2934158fd4d47f", "app/internal/panel/ws_input.go": "7d2f9ee7d687dd96fcae38828489000f338957e084dfc9c2c8e98bca0f58cd9f", "specs/08-front-panel.md": "353e28570900538728a0d3402794773d3d8bbb6ad30fea136d6cf4e8ab180974"}'
+      sourceFiles: app/internal/panel/panel.go, app/internal/panel/panel_dispatch.go, app/internal/panel/panel_led.go, app/internal/panel/ws_input.go, app/internal/panel/ws.go, app/internal/panel/sheet.go, app/internal/panel/actions.go, app/internal/panel/default_setup.go, app/internal/panel/remote.go, app/internal/panel/autoset.go, app/internal/panel/model_rows.go, app/internal/panel/textparse.go, app/internal/panel/screen.go, specs/08-front-panel.md
+      sourceSHA256: '{"app/internal/panel/actions.go": "2d830dabfb655168061e32bdcfe0b056c0a46094dbb5fbfb46d224bbc5dee6a3", "app/internal/panel/autoset.go": "3ac47397010c4969684de3e045ce91a59f61bc1ece37a0e04d5dbebeaa639b77", "app/internal/panel/default_setup.go": "229cbebbb542b4ed635e3de7c4e5cef3645c13e8ea6a80c06a5e8784064f8f43", "app/internal/panel/model_rows.go": "9df03514a69661de2a4e4b978461a2a31309b98f4abaedfd5fbab9e35fae065e", "app/internal/panel/panel.go": "856272bd9880367d44b9f06c3fb291f9b5742ddc12e5e3abfe4ab30c101ba811", "app/internal/panel/panel_dispatch.go": "082a106cd7e33d5da67c17c84aca2f0f5d57ae41b0a70c47256e3dae0255e3fc", "app/internal/panel/panel_led.go": "80d335cc7cebddf7174c194702c5f184105373323583e070b0b4ae82ed6e2ba5", "app/internal/panel/remote.go": "0c0f516ba83982f4e3f7df8f2b95f4a74e609245e74e4b17c991719101c962f3", "app/internal/panel/screen.go": "491474baff8d91e334e9207d43386e4886dbb8ead4ae11fd49bf47a11157c1f4", "app/internal/panel/sheet.go": "c0949ca7b28b9715629b43310e947f7206a6ff5153d91082ddaf8b8d18c6af5f", "app/internal/panel/textparse.go": "c5f08231502d6c18ab4d123c8517bcbec095c192cef1b1483080dbd2c22de869", "app/internal/panel/ws.go": "37d6413383af725dc63ed2bca8a27c8114f56825b151b839cf2934158fd4d47f", "app/internal/panel/ws_input.go": "8022a35c654124e1a5fd7830cbb532fac814f568f697b140f886b6c4ca0f144f", "specs/08-front-panel.md": "e1758ab4c8879b0aaadb6bddb17127521ba8fba1c30467b0c21dd64064f42642"}'
   - id: FLOW-BOOT
     title: USB boot and supervised application
     description: Overview of boot dependencies, not an unconditional success path. Ordinary takeover uses the factory
