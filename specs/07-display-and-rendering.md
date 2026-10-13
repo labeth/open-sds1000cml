@@ -406,6 +406,22 @@ gives the smooth rise the band-limited edge actually has. `sin(x)/x` reconstruct
 **wrong** here — it rings (≈10-code overshoot) on the bandwidth-limited edge. Linear
 interpolation touches only **real captured samples**; no sample is fabricated.
 
+A roll view's samples no capture covered (`Frame.Held`: the last value held between back-to-back
+captures, and the view's past before the first) are drawn in the channel colour dimmed to about
+40 % (`heldColor`; the web: the same samples at alpha 0.35), so they do not read as signal;
+measurements read the view's longest captured stretch (`Frame.MeasureRange`).
+
+**Zoom into a live min/max frame.** The frame's pairs span the whole screen; zoomed until fewer of
+them than plot columns are shown, a magnified bucket's pair would draw as a slope (a 1 MHz square at
+200 µs/div zoomed 50× read as a slow wave). Each zoomed surface leases its stretch instead
+(`Engine.LeaseViewWindow`: the scope's zoom, the web page's, in screen widths from the trigger, and
+the columns that show it), and the engine reads that stretch of the same frozen capture again
+(`Frame.Views`), a min/max pair per column (raw when short), placed among the frame's values
+(`ViewWindow.From`/`To`). The LCD draws it in place of the frame's pairs while it covers the zoomed
+window (`zoomView`), the web while it covers the shown one (`viewCovers`; it travels after the
+binary frame's payload); AC coupling moves it by the whole trace's DC (`analog.CoupleDisplayBy`).
+A zoom the screen's pairs still resolve (one pair every second column or more) reads nothing.
+
 ### 6.3 Envelope (`drawEnvelope`) — slow/roll bands only
 
 For a signal far faster than the timebase, one display column spans many signal periods,
@@ -681,7 +697,13 @@ active key's next view in amber at its right end (`F2 again: Eye diagram`); an a
 - **MEASURE:** the statistics table (now, mean, min, max, sdev, N), or all values of both channels in
   two columns of nine (the 18 parameters, preshoot included, in the web's names and order), and the
   cursor block. The statistics count only while MEASURE is shown, as on the web. The readout boxes drawn
-  over the trace in the other workspaces use the same names and figures.
+  over the trace in the other workspaces use the same names and figures. On a live min/max frame,
+  rise, fall and over/preshoot come from the frame's full-rate edge windows (`Frame.Edge`, `EdgeOpp`:
+  1024 record words around the trigger edge and around the next edge the other way), and so do the
+  timing and the mean of a signal the envelope does not resolve (`WindowTiming`, `WindowMean`); the
+  other figures come from the envelope; an inverted channel is inverted after both. The windows are
+  read twice a second and carried to the frames between (`Frame.EdgeRead` numbers the reads): the
+  statistics count a window figure on the frame its read is new to, each other figure once a frame.
 - **COMPARE:** five rows (MASTER, REF A, REF B, MASK, MATH); the selected row's action is written at
   its right end; a stacking master shows a progress bar.
 

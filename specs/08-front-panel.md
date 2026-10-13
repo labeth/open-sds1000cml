@@ -367,7 +367,11 @@ shows its next view. Entering a workspace shows a short label beside its key for
 | F5 | COMPARE | MASTER, REF A, REF B, MASK, MATH rows, live difference | stack a master (again: cancel) |
 
 Entry behaviour: BUS with decode off auto-detects the bus on CH1/CH2 and decodes it, with a notice
-(decoding stays on after leaving BUS); SPECTRUM starts on the FFT; MEASURE with nothing chosen picks
+(decoding stays on after leaving BUS). The search reads a decimated record first (a few thousand
+filtered samples a screen, tens of milliseconds) and keeps a bus whose shortest feature spans 8 of
+its samples; else a full-rate record (a megasample at 200 us/div, seconds); each lease ends with its
+phase (the web's Detect alike). A reading of one byte, a UART with a fifth of its bytes misframed or
+an I2C clock faster than 5 MHz is no bus, and the search looks again at a slower timebase; SPECTRUM starts on the FFT; MEASURE with nothing chosen picks
 Vpp and frequency of the shown channels. Each workspace remembers its view. A master (COMPARE again)
 averages N captures of the trigger source (the engine's Average, N = 64 by default; under a serial
 trigger aligned on the match's own edge, as the live captures are), stores the result as REF A,

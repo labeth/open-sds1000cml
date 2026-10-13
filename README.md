@@ -95,8 +95,11 @@ anything on the scope's screen.
 
 * **Full-depth capture on both channels.** Every acquisition fills the scope's 2 MiB SRAM: 1 M
   samples per channel at 500 MS/s, 2.1 ms. While running, only a display-sized view of it is read,
-  so the screen keeps up; **STOP or SINGLE reads the full record** (about 2 s, with a loading
-  indicator), which can then be zoomed, measured, decoded and exported at full resolution.
+  so the screen keeps up; **STOP or SINGLE reads the full record** (about 4 s, with a loading
+  indicator), which can then be zoomed, measured, decoded and exported at full resolution. SINGLE
+  shows its capture at once, as a live frame, and stops; the full record of that same capture
+  follows. In Average, ERES and Precision, SINGLE completes one result as the live view does
+  and stops on it, and STOP keeps the result shown.
   Changing V/div, offset or timebase on a stopped record redraws it from memory.
 * **Calibrated five-way interleaving.** Each channel runs five 100 MS/s converters in turn. Per-core
   correction removes the interleave pattern (the comb drops from 11 codes to 0.15).
@@ -104,16 +107,23 @@ anything on the scope's screen.
   through a CIC filter. The ARM applies a 63-tap compensation filter and keeps 16-bit samples, so a
   slow record gains resolution instead of aliasing. The UI shows the resulting bandwidth and bit
   gain.
-* **Modes:** normal, average (up to 256 frames), enhanced resolution and precision.
+* **Modes:** normal, average (a running average of up to 256 captures, aligned on the trigger),
+  enhanced resolution and precision.
 * **Live min/max envelope:** the FPGA reduces the screen to 4,096 min/max points, so narrow events
-  stay visible at any zoom. The points are put back in time order, so protocol decode, masks and
-  trigger placement run on live frames too. Average, ERES and precision use a decimated live
-  capture of 8,192 samples instead (their filtering needs true samples; the FFT takes 32,768, full
-  rate at 5 µs/div and faster); eye diagram and super-resolution read raw
-  samples while in use.
+  stay visible at any zoom. Zoomed in until fewer of those points than pixels are shown (the LCD
+  from 10×, the web page alike), the zoomed stretch of the same capture is read again at full
+  detail, a min/max pair per column: a 1 MHz square at 200 µs/div zoomed 50× shows its 40 cycles,
+  not the screen's points stretched (about 4 frames a second of cost). The points are put back in
+  time order, so protocol decode, masks and trigger placement run on live frames too. Average, ERES
+  and precision use a decimated live capture of 8,192 samples instead (their filtering needs true
+  samples; the FFT takes 8,192 to 16,384 filtered samples, its 8,192 points one for one, or up to
+  32,768 at the full rate at 5 µs/div and faster); eye diagram and super-resolution read raw samples
+  while in use.
 * **Roll mode.** In AUTO at 10 ms/div and slower the view scrolls instead of waiting for a
   trigger. By default it is built from back-to-back decimated captures, so a timebase change
-  responds at once (short gaps hold the last value). HORIZ F4 (web: SCOPE, Horizontal, Roll: Stream) switches to
+  responds at once; it captures about two thirds of the time, and the gaps between captures hold
+  the last value, drawn dimmed, and are left out of measurements. HORIZ F4 (web: SCOPE, Horizontal,
+  Roll: Stream) switches to
   **gap-free streaming** on the FPGA `stream` image: every averaged (or min/max) sample reaches
   the ARM, at up to 978,000 samples/s per channel (decimation ×512, 3.9 MB/s; the bus carries
   about 5.1 MB/s). The scope's 2 MiB SRAM buffers the stream, so the ARM can stall for about
@@ -167,7 +177,9 @@ automatically.
 | USB low-speed | line | PID and payload bytes |
 
 * **Auto-detect** finds the protocol, channel roles, threshold and settings from a sampled capture at any
-  timebase, then steps to a timebase whose live view reads the bus, and says so.
+  timebase, then steps to a timebase whose live view reads the bus, and says so. It looks at a
+  decimated capture first, so UART, I2C, SPI, SENT and ARINC 429 are named in under a second and a half;
+  buses that need the full sample rate (Manchester, MIL-1553, CAN, USB, FlexRay) take a few seconds.
 * **Continuous decoding:** a live decoded stream, with the full-rate record kept for every frame.
   UART at **921,600 baud ran lossless for 3 minutes** (16.6 M bytes). At higher rates a lost event
   is marked, never silently dropped.
@@ -177,6 +189,10 @@ automatically.
 
 * **18 automatic measurements:** Vpp, Vmax, Vmin, Vmean, Vrms, AC rms, Vtop, Vbase, amplitude,
   overshoot, preshoot, frequency, period, duty cycle, rise time, fall time, +width and −width.
+  On the live min/max view, rise, fall and over/preshoot come from two short full-rate reads
+  around the trigger edge and the next edge the other way (twice a second, a few milliseconds
+  each); so do the frequency, duty, widths and mean of a signal faster than the min/max points
+  resolve (a 1 MHz square at 200 µs/div). The statistics count each reading once.
 * **Cursors** in time and voltage, with Δt, 1/Δt and ΔV.
 * **Math:** C1 − C2, C2 − C1, C1 + C2, C1 × C2, and carrier removal using FFT peaks.
 * **FFT** with a peak table (up to 64 peaks), and a **spectrogram** waterfall.
