@@ -1,7 +1,7 @@
 // ENGMODEL-OWNER-UNIT: FU-FPGA-BUILD
 // Builds one FPGA image for the EP4CE10F17C8 with headless Quartus 21.1 Lite:
 //
-//   node --experimental-strip-types fpga/build.ts --image=general|packet|line|stacking|stream [--seed=N] [--prepare-only] [--install]
+//   node --experimental-strip-types fpga/build.ts --image=general|packet|line|qualify|stacking|stream [--seed=N] [--prepare-only] [--install]
 //
 // Every image is common/ (the acquisition top, SRAM record and transport, ADC
 // interleave, panel scan, clocks and GPMC) plus its own decoders or engine:
@@ -21,7 +21,7 @@ const args=process.argv.slice(2);
 const flag=(f:string)=>args.includes(f);
 const value=(k:string)=>args.find(a=>a.startsWith(k+'='))?.slice(k.length+1);
 if(args.some(a=>!['--prepare-only','--install'].includes(a) && !/^--image=\w+$/.test(a) && !/^--seed=\d+$/.test(a)))
- throw Error('usage: build.ts --image=general|packet|line|stacking|stream [--seed=N] [--prepare-only] [--install]');
+ throw Error('usage: build.ts --image=general|packet|line|qualify|stacking|stream [--seed=N] [--prepare-only] [--install]');
 
 type Image={dir:string,files:string[],defines:string[],seed:number,trigger:boolean,precision:boolean,bare?:boolean};
 // Shared by every image (the stacking build used the same PLL text).
@@ -44,6 +44,10 @@ const images:Record<string,Image>={
  // STREAM_DRUM: the stream goes through the external SRAM as a FIFO, whose
  // 512K words are the drain's slack (stream_drum.v).
  stream:{dir:'images/stream',files:['stream_packetizer.v','stream_banks.v','stream_peak.v','stream_drum.v','general/precision.v','general/precision_tail.v'],defines:['STREAM_CAPTURE','STREAM_DRUM'],seed:32,trigger:true,precision:true,bare:true},
+ // ADR-HARDWARE-QUALIFIERS: pulse, slope, video and zone triggers decided
+ // in the FPGA, on the bare acquisition base with precision decimation and
+ // envelope recall (the general image has no room left for them).
+ qualify:{dir:'images/qualify',files:['qual_trigger.v','zone_qual.v','sum_edge_pair.v','general/precision.v','general/precision_tail.v'],defines:['QUAL_TRIGGER'],seed:10,trigger:true,precision:true,bare:true},
  stacking:{dir:'images/stacking',files:['stack_engine_port.v','stack_edge_accumulator.v','stack_edge_hits.v','stack_tiled_accumulator.v',
   'stack_tile_access.v','stack_tile_transfer.v','stack_state_tile.v','stack_resample_store.v','stack_resample.v','stack_positions.v',
   'stack_interpolate.v','stack_accumulate.v','stack_bin_writer.v','stack_record_cache.v'],defines:[],seed:11,trigger:false,precision:false},

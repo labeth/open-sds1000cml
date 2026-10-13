@@ -31,6 +31,16 @@
 `endif
 `endif
 `endif
+// ADR-HARDWARE-QUALIFIERS: the qualifier image reads live envelopes too.
+`ifdef QUAL_TRIGGER
+`ifdef INTERLEAVE
+`ifdef BURST_RECALL
+`ifndef ENVELOPE_RECALL
+`define ENVELOPE_RECALL
+`endif
+`endif
+`endif
+`endif
 // SEQUENCE_ONLY images match patterns with the sequence trigger alone: the
 // decoders' own pattern inputs are tied off (ADR-IMAGE-REGROUP-DECIMATION).
 `ifdef SEQUENCE_ONLY
@@ -136,6 +146,16 @@ module acq_sram_top(
  wire [31:0] selected_word=!decim_data_active ? il_raw_word : precision_word;
  wire selected_valid=!decim_active ? il_raw_valid : precision_valid;
  wire [31:0] selected_trigger=!decim_trigger_active ? il_raw_word : {precision_word[31:24],precision_word[15:8],precision_word[31:24],precision_word[15:8]};
+`ifdef QUAL_TRIGGER
+ // The qualifier's and the zones' own selections of the same word (their
+ // fanout off the edge trigger's net: timing).
+ (* preserve, dont_merge *) reg decim_qual=0,decim_zone=0;
+ always @(posedge core)if(config_idle)begin decim_qual<=decim_request!=0;decim_zone<=decim_request!=0;end
+ wire [31:0] qual_trigger_word=!decim_qual ? il_raw_word : {precision_word[31:24],precision_word[15:8],precision_word[31:24],precision_word[15:8]};
+ wire [31:0] zone_trigger_word=!decim_zone ? il_raw_word : {precision_word[31:24],precision_word[15:8],precision_word[31:24],precision_word[15:8]};
+ wire qual_trigger_valid=!decim_qual ? il_raw_valid : precision_valid;
+ wire zone_trigger_valid=!decim_zone ? il_raw_valid : precision_valid;
+`endif
  // Faults invalidate the whole record. One extra detection clock does not
  // turn an overflow into valid data and isolates the shutdown fanout.
  reg stream_fault=0;
@@ -147,6 +167,8 @@ module acq_sram_top(
 `else
  wire [31:0] selected_word=il_raw_word,selected_trigger=il_raw_word;
  wire selected_valid=il_raw_valid,stream_fault=il_fault;
+ wire [31:0] qual_trigger_word=il_raw_word,zone_trigger_word=il_raw_word;
+ wire qual_trigger_valid=il_raw_valid,zone_trigger_valid=il_raw_valid;
 `endif
  // Payload selection and partial threshold comparison advance together.
  // The comparator's first stage replaces the former trigger-word register.
@@ -593,11 +615,105 @@ module acq_sram_top(
 `else
   1'b0;
 `endif
+`ifdef QUAL_TRIGGER
+ // ADR-HARDWARE-QUALIFIERS: pulse, slope and video triggers (qual_trigger.v)
+ // decided here, never in software. Host registers (free in every image; the
+ // host bus has 7 address bits): 21 control {min_zero[7], channel[6],
+ // condition[5:4], negative[3], kind[2:1] (0 pulse, 1 slope, 2 video),
+ // enable[0]}; 22 the minimum less one and 24 the maximum in ticks; 26 the
+ // slope levels {B[15:8], A[7:0]}; 27 the video line; 28 the clocks a tick
+ // less one (a power of two less one). Read 74 the block, 75 its kinds.
+ reg [15:0] qual_cfg=0,qual_levels=16'h8080,qual_video=0,qual_min=0,qual_max=0,qual_pre=0;
+ reg [15:0] qual_cfg_l=0,qual_min_l=0,qual_max_l=0,qual_pre_l=0;reg [9:0] qual_line_l=0;
+ // The slope levels in five-sample sums, their re-arm bands three codes a
+ // sample (assigned below, from the host clock).
+ reg [10:0] qual_a5=640,qual_a5_lo=625,qual_a5_hi=655,qual_b5=640,qual_b5_lo=625,qual_b5_hi=655;
+ // Equal copies keep the channel select off one wide fanout net at 250 MHz.
+ (* preserve, dont_merge *) reg qual_ch=0;
+ always @(posedge core)if(config_idle)begin
+  qual_cfg_l<=qual_cfg;qual_min_l<=qual_min;qual_max_l<=qual_max;qual_pre_l<=qual_pre;qual_line_l<=qual_video[9:0];qual_ch<=qual_cfg[6];
+ end
+ wire qual_configured=qual_cfg_l[0];
+`ifndef UART_TRIGGER
+`ifdef ENVELOPE_RECALL
+ // Envelope recall host settings (without the protocol baseline that declares them).
+ reg [15:0] env_bucket_lo=0,env_control=0;reg [4:0] env_skip_host=0;
+`endif
+`endif
+ // The qualifier's own registered copies of its channel's samples and edges
+ // keep the trigger word's fanout off the edge trigger's comparators
+ // (timing): they come one clock later, alike. The zones keep theirs, and
+ // the edge trigger's edges as their candidates.
+ (* preserve, dont_merge *) reg [7:0] qual_first=0,qual_second=0;
+ (* preserve, dont_merge *) reg [31:0] zone_word=0;
+ (* preserve, dont_merge *) reg qual_word_valid=0,zone_word_valid=0,qual_run=0;
+ reg rise_q=0,fall_q=0,rise_z=0,fall_z=0;
+ always @(posedge core)begin
+  qual_first<=qual_ch ? qual_trigger_word[15:8] : qual_trigger_word[7:0];
+  qual_second<=qual_ch ? qual_trigger_word[31:24] : qual_trigger_word[23:16];
+  qual_word_valid<=frontend_run && qual_trigger_valid;qual_run<=frontend_run && qual_configured;
+  zone_word<=zone_trigger_word;zone_word_valid<=frontend_run && zone_trigger_valid;
+  rise_q<=rise_ch[qual_ch];fall_q<=fall_ch[qual_ch];
+  rise_z<=|(rise_ch & edge_rise_enable);fall_z<=|(fall_ch & edge_fall_enable);
+ end
+ // The slope's two levels compare the sum of five consecutive samples, one
+ // from each interleaved converter, so the converters' raw offsets cancel:
+ // on raw codes a slow edge's crossings moved by their spread over its slew
+ // (bench: 18 ns edges measured as 8 to 20 ns).
+ wire [10:0] qsum_first,qsum_second;wire qs_v3;
+ five_sum sums(.clk(core),.valid(qual_word_valid),.first(qual_first),.second(qual_second),
+  .sum_first(qsum_first),.sum_second(qsum_second),.out_valid(qs_v3));
+ // the trigger level's own edges serve pulse and video
+ wire rise_a,fall_a,rise_b,fall_b;
+ sum_edge_pair #(.W(11)) level_a(.clk(core),.enable(qual_run),.valid(qs_v3),.first(qsum_first),.second(qsum_second),
+  .level(qual_a5),.low_level(qual_a5_lo),.high_level(qual_a5_hi),.rise(rise_a),.fall(fall_a));
+ sum_edge_pair #(.W(11)) level_b(.clk(core),.enable(qual_run),.valid(qs_v3),.first(qsum_first),.second(qsum_second),
+  .level(qual_b5),.low_level(qual_b5_lo),.high_level(qual_b5_hi),.rise(rise_b),.fall(fall_b));
+ // A pulse or video trigger fires three clocks after an edge trigger on its
+ // closing edge would (the copies, and qual_trigger's edge and fire
+ // registers); a slope six (and its sums' two samples of delay).
+ wire qual_fire;
+ qual_trigger #(.CLK_MHZ(250)) qualify(.clk(core),.enable(qual_run),
+  .rise(rise_q),.fall(fall_q),.rise_a(rise_a),.fall_a(fall_a),.rise_b(rise_b),.fall_b(fall_b),
+  .kind(qual_cfg_l[2:1]),.negative(qual_cfg_l[3]),.cond(qual_cfg_l[5:4]),.min_zero(qual_cfg_l[7]),
+  .min_m1(qual_min_l),.max_t(qual_max_l),.prescale_m1(qual_pre_l),.line(qual_line_l),.fire(qual_fire));
+ // The zone trigger (zone_qual.v): a candidate is the edge or the
+ // qualifier's event; with zones on only the candidates the zones pass fire.
+ // Host registers: 83 {avoid[11:8], channel[7:4], enable[3:0]} per zone;
+ // 84 the decision's wait in buckets; 85 the half clocks a bucket less one (a
+ // power of two less one); 86..89 zone codes {high[15:8], low[7:0]}; 90..92
+ // and 69 window starts, 70..73 window ends, in signed buckets from the edge's.
+ reg [15:0] zone_cfg=0,zone_cfg_l=0;reg [10:0] zone_wait=1,zone_wait_l=1;reg [11:0] zone_bucket=0,zone_bucket_l=0;
+ reg [15:0] zone_codes[0:3];reg [10:0] zone_a[0:3],zone_b[0:3];
+ reg [31:0] zone_lo_l=0,zone_hi_l=0;reg [43:0] zone_a_l=0,zone_b_l=0;
+ integer zi;
+ initial for(zi=0;zi<4;zi=zi+1)begin zone_codes[zi]=0;zone_a[zi]=0;zone_b[zi]=0;end
+ always @(posedge core)if(config_idle)begin
+  zone_cfg_l<=zone_cfg;zone_wait_l<=zone_wait;zone_bucket_l<=zone_bucket;
+  for(zi=0;zi<4;zi=zi+1)begin
+   zone_lo_l[8*zi+:8]<=zone_codes[zi][7:0];zone_hi_l[8*zi+:8]<=zone_codes[zi][15:8];
+   zone_a_l[11*zi+:11]<=zone_a[zi];zone_b_l[11*zi+:11]<=zone_b[zi];
+  end
+ end
+ (* preserve, dont_merge *) reg zone_on=0;
+ always @(posedge core)if(config_idle)zone_on<=zone_cfg[3:0]!=0;
+ wire zone_fire_half;reg zone_fire_seen=0,zone_fire=0;
+ // the edges one clock later, with the zones' copy of the samples
+ wire zone_candidate=rise_z || fall_z || qual_fire;
+ // The zones decide on the half clock; one 250 MHz clock of their fire.
+ always @(posedge core)begin zone_fire_seen<=zone_fire_half;zone_fire<=zone_fire_half && !zone_fire_seen;end
+ zone_qual #(.AW(10)) zones(.clk(core),.half(halfclk),.enable(frontend_run && zone_on),.valid(zone_word_valid),
+  .word(zone_word),.candidate(zone_candidate),.zen(zone_cfg_l[3:0]),.zch(zone_cfg_l[7:4]),.zavoid(zone_cfg_l[11:8]),
+  .zlo(zone_lo_l),.zhi(zone_hi_l),.za(zone_a_l),.zb(zone_b_l),.wait_buckets(zone_wait_l),.bucket_mask(zone_bucket_l),.fire(zone_fire_half));
+`else
+ wire qual_configured=1'b0;
+`endif
  always @(posedge core)if(config_idle)begin
   edge_auto<=!cfg[4];
   protocol_enable<=cfg[0] && cfg[4] && protocol_configured;
-  edge_rise_enable<=(!protocol_configured && cfg[0] && cfg[4] && !cfg[5]) ? (cfg[6] ? 2'b10 : 2'b01) : 2'b00;
-  edge_fall_enable<=(!protocol_configured && cfg[0] && cfg[4] && cfg[5]) ? (cfg[6] ? 2'b10 : 2'b01) : 2'b00;
+  // A qualifier fires on its own event instead of every edge.
+  edge_rise_enable<=(!protocol_configured && !qual_configured && cfg[0] && cfg[4] && !cfg[5]) ? (cfg[6] ? 2'b10 : 2'b01) : 2'b00;
+  edge_fall_enable<=(!protocol_configured && !qual_configured && cfg[0] && cfg[4] && cfg[5]) ? (cfg[6] ? 2'b10 : 2'b01) : 2'b00;
  end
  genvar tc;generate for(tc=0;tc<2;tc=tc+1)begin:trigger_compare
   sram_edge_pair #(.PIPELINED(1)) edges(.clk(core),.enable(frontend_run),.valid(frontend_run && selected_valid),
@@ -616,11 +732,20 @@ module acq_sram_top(
 `ifdef STREAM_CAPTURE
   il_fire_stage<=force_trigger || stream_auto || (|(rise_ch & stream_rise_enable)) || (|(fall_ch & stream_fall_enable));
 `else
+`ifdef QUAL_TRIGGER
+  // With zones on, only the candidates the zones pass fire.
+  il_fire_stage<=force_trigger || edge_auto || (zone_on ? zone_fire : (|(rise_ch & edge_rise_enable)) || (|(fall_ch & edge_fall_enable)) || qual_fire)
+`ifdef UART_TRIGGER
+   || (protocol_enable && uart_fired)
+`endif
+   ;
+`else
   il_fire_stage<=force_trigger || edge_auto || (|(rise_ch & edge_rise_enable)) || (|(fall_ch & edge_fall_enable))
 `ifdef UART_TRIGGER
    || (protocol_enable && uart_fired)
 `endif
    ;
+`endif
 `endif
   if(!frontend_run)begin il_valid1<=0;il_valid<=0;end
  end
@@ -671,6 +796,17 @@ module acq_sram_top(
   host_level_low<=level>=hysteresis ? level-hysteresis : 8'd0;
   host_level_high<=({1'b0,level}+{1'b0,hysteresis})<=255 ? level+hysteresis : 8'd255;
  end
+`ifdef QUAL_TRIGGER
+ // The slope levels in five-sample sums and their bands, at the host clock.
+ reg [10:0] qual_a5_host=640,qual_b5_host=640;
+ always @(posedge clk)begin
+  qual_a5_host<={qual_levels[7:0],2'b00}+qual_levels[7:0];qual_b5_host<={qual_levels[15:8],2'b00}+qual_levels[15:8];
+ end
+ always @(posedge core)if(config_idle)begin
+  qual_a5<=qual_a5_host;qual_a5_lo<=qual_a5_host>=11'd15 ? qual_a5_host-11'd15 : 11'd0;qual_a5_hi<=qual_a5_host+11'd15;
+  qual_b5<=qual_b5_host;qual_b5_lo<=qual_b5_host>=11'd15 ? qual_b5_host-11'd15 : 11'd0;qual_b5_hi<=qual_b5_host+11'd15;
+ end
+`endif
 `ifdef BURST_RECALL
  reg [BUF_AW:0] burst_index=0;
  always @(posedge clk)begin
@@ -754,6 +890,13 @@ module acq_sram_top(
   110:packet_ticks[15:0]<=wd;111:packet_ticks[23:16]<=wd[7:0];
   112:packet_aux[15:0]<=wd;113:packet_aux[31:16]<=wd;
   114:packet_pattern[15:0]<=wd;115:packet_pattern[31:16]<=wd;116:packet_pattern[47:32]<=wd;117:packet_pattern[63:48]<=wd;
+`endif
+`ifdef QUAL_TRIGGER
+  21:qual_cfg<=wd;22:qual_min<=wd;24:qual_max<=wd;26:qual_levels<=wd;27:qual_video<=wd;28:qual_pre<=wd;
+  83:zone_cfg<=wd;84:zone_wait<=wd[10:0];85:zone_bucket<=wd[11:0];
+  86:zone_codes[0]<=wd;87:zone_codes[1]<=wd;88:zone_codes[2]<=wd;89:zone_codes[3]<=wd;
+  90:zone_a[0]<=wd[10:0];91:zone_a[1]<=wd[10:0];92:zone_a[2]<=wd[10:0];69:zone_a[3]<=wd[10:0];
+  70:zone_b[0]<=wd[10:0];71:zone_b[1]<=wd[10:0];72:zone_b[2]<=wd[10:0];73:zone_b[3]<=wd[10:0];
 `endif
   8:count_cfg[15:0]<=wd;9:count_cfg[19:16]<=wd[3:0];
 `ifdef INTERLEAVE
@@ -1312,6 +1455,15 @@ module acq_sram_top(
    // CAN / CAN FD and FlexRay validated frames with up to eight contiguous bytes.
    109:rd=16'h5001;
    110:rd=PACKET_PROTOCOLS;
+`endif
+`endif
+`ifdef QUAL_TRIGGER
+   // ADR-HARDWARE-QUALIFIERS: the qualifier block and its kinds {zone, video, slope, pulse}.
+   74:rd=16'h5154;75:rd=16'h000f;
+`ifndef UART_TRIGGER
+`ifdef ENVELOPE_RECALL
+   43:rd=16'h454e;46:rd=env_words;
+`endif
 `endif
 `endif
    0:rd=16'h5a52;

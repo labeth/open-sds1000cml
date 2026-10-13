@@ -1,13 +1,15 @@
 # FPGA images
 
-Five images for the EP4CE10F17C8. The app embeds them and loads the one a
-feature needs; `general` is the power-on image.
+Six images for the EP4CE10F17C8. The app embeds them and loads the one a
+feature needs; `general` is the power-on image. Every trigger is decided in
+the FPGA; the app only places the trigger point on the event.
 
 | Image | Adds |
 |---|---|
 | `general` | UART, I²C and SPI triggers; precision decimation |
 | `packet` | ARINC 429, CAN, FlexRay, MIL-1553 and SENT triggers |
 | `line` | Manchester and USB low-speed triggers |
+| `qualify` | pulse width, slope time and video line triggers, and the zone trigger (four zones around the edge); precision decimation |
 | `stacking` | FPGA super-resolution stacking engine |
 | `stream` | continuous capture for gap-free roll: decimated or peak-detect (bucket min/max) words, buffered in the SRAM ("drum") and streamed to the host through two ping-pong banks |
 
@@ -37,20 +39,38 @@ words arrive one pulse late (READ_DELAY 1), so a fresh read starts 17 words
 early and a continued read would lose a word; the front end is drained
 continuously while the drum runs.
 
+## Qualify image
+
+`images/qualify/qual_trigger.v` measures a pulse's width between edges at
+the trigger level, a slope's time between two levels, or counts the line
+syncs after a video vertical sync, in 16-bit counts of ticks of P clocks of
+250 MHz (P a power of two up to 65536; an interval whose edges are W clocks
+apart counts floor((W-1)/P) ticks), and fires two clocks after the closing
+edge. A slope's two levels are crossed on sums of five consecutive samples
+(`sum_edge_pair.v`), one from each interleaved converter: the converters sit
+up to 11 codes apart in the raw codes, which moved a slow edge's crossings.
+`images/qualify/zone_qual.v` keeps, per zone, a running count of buckets
+with a sample inside the zone's codes (1024 buckets, a power of two of the
+8 ns half clock, in block RAM) and decides from two counts per zone whether
+it was entered in its window around the edge; it fires a fixed time after
+the edge (the wait plus 48 half clocks), so the app can move the trigger
+point back onto the edge. Registers 21, 22, 24 and 26-28 hold the qualifier,
+83-92 and 69-73 the zones; register 74 reads 0x5154 and 75 the kinds.
+
 ## Source layout
 
 | Path | Used by |
 |---|---|
 | `common/` | every image: acquisition top (`top.v`, image features selected by defines), SRAM record and transport, ADC unpack and interleave, front-panel scan, clocks, GPMC slave, ADC lane inputs |
-| `trigger/` | general, packet and line: decoded-event queue and transport, sequence trigger, sample timeline, envelope recall, and the shared Quartus project (`project.qsf`, `project.sdc`) |
-| `images/<image>/` | that image only: its decoders or engine (stacking also has its own Quartus project; stream also uses the general image's precision decimator) |
+| `trigger/` | general, packet, line and qualify: decoded-event queue and transport, sequence trigger, sample timeline, envelope recall, and the shared Quartus project (`project.qsf`, `project.sdc`) |
+| `images/<image>/` | that image only: its decoders or engine (stacking also has its own Quartus project; stream and qualify also use the general image's precision decimator) |
 | `*/sim/` | testbenches for the sources beside them |
 | `bitstreams/` | the shipping images and `images.json` (seed and sha256 of each) |
 
 ## Build
 
 ```sh
-node --experimental-strip-types fpga/build.ts --image=general|packet|line|stacking|stream [--seed=N] [--prepare-only] [--install]
+node --experimental-strip-types fpga/build.ts --image=general|packet|line|qualify|stacking|stream [--seed=N] [--prepare-only] [--install]
 ```
 
 Builds into `fpga/out/<image>/` with Quartus 21.1 Lite (`QUARTUS_BIN`, default
