@@ -409,6 +409,7 @@ func (c *Controller) masterMaskFrame(f *engine.Frame) {
 		return
 	}
 	c.eng.SetMask(m)
+	c.noteMaskSetup()
 	c.eng.SetMaskMode(src.mode)
 	c.eng.ClearMaskFails()
 	c.toast("Mask built from the master - testing live captures", 2000*time.Millisecond)

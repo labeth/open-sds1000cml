@@ -84,7 +84,7 @@ func (c *Controller) runBusAuto(stop chan struct{}) {
 	c.decGen++
 	c.auto = autoWatch{}
 	c.mu.Unlock()
-	if !c.autosetSweep(stop) {
+	if _, ok := c.autosetSweep(stop, goalBus); !ok {
 		return
 	}
 	select {

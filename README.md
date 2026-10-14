@@ -212,7 +212,12 @@ automatically.
   stacking image** accumulates the hits in hardware, using the same captured records across
   every tile to avoid acquisition-dependent seams. Phase-coherent equivalent-time folding resolves clocks above the trigger
   comparator's range.
-* **Reference waveforms** (two), **persistence**, **XY mode**, **freeze** and **autoset**.
+* **Reference waveforms** (two), **persistence**, **XY mode** and **freeze**.
+* **AUTO frames the signal for the workspace:** SCOPE two cycles with the swing on about six
+  divisions; MEASURE at least ten cycles and SPECTRUM at least 50 (the marker on the fundamental),
+  both with the largest swing that stays on the screen; COMPARE takes the setup of the mask or
+  reference so the live trace sits on it; BUS frames the bus (below). A trace left past the screen's
+  edge steps to a coarser V/div, and the notice says what AUTO did ("AUTO: 2 cycles, C1 500mV/div").
 
 ## Connect and control
 

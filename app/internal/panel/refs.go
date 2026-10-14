@@ -2,6 +2,8 @@
 package panel
 
 import (
+	"fmt"
+
 	"open-sds/app/internal/analog"
 	"open-sds/app/internal/engine"
 )
@@ -24,6 +26,7 @@ type refWave struct {
 	probe     [2]float64 // each channel's probe factor then (1 without a front end)
 	has       bool
 	show      bool
+	setup     cmpSetup // the setup it was stored at, for AUTO in COMPARE
 }
 
 // RefExport is a saved reference as the web app takes it (GET /api/refs):
@@ -105,6 +108,7 @@ func (c *Controller) captureRefFrom(f *engine.Frame, slot int) {
 	if len(f.C2) >= valid {
 		r.c2 = screenColumns(analog.CoupleDisplay(f.C2[:valid], cpl[1]), left, win, f.Interp)
 	}
+	r.setup = c.takeSetup()
 	c.mu.Lock()
 	c.refs[slot] = r
 	c.mu.Unlock()
@@ -172,4 +176,109 @@ func (c *Controller) RefView() [2]RefWave {
 		}
 	}
 	return out
+}
+
+// cmpSetup is the setup a reference or a mask was taken at, so AUTO in
+// COMPARE (REQ-SDS-224) can put the live trace back on it: the timebase and
+// trigger position, each channel's detent and offset, and the trigger.
+type cmpSetup struct {
+	has      bool
+	tdiv     float64
+	posFrac  float64
+	vidx     [2]int
+	offReq   [2]float64
+	trigCode uint16
+	trigSrc  int
+	rising   bool
+	trigType int // a hardware type (edge, pulse, slope, video); a serial trigger is kept as an edge
+}
+
+// takeSetup reads the setup in use.
+// TRLC-LINKS: REQ-SDS-138, REQ-SDS-224
+func (c *Controller) takeSetup() cmpSetup {
+	st := c.eng.Snapshot()
+	s := cmpSetup{has: true, tdiv: st.TdivSet(), posFrac: st.TrigPosFrac, trigCode: st.TrigCode,
+		trigSrc: st.TrigSource & 1, rising: st.TrigRising, trigType: st.TrigType & 3}
+	if st.SerialMode != 0 {
+		s.trigType = 0
+	}
+	if c.fe != nil {
+		s.vidx, _ = c.fe.Snapshot()
+		s.offReq = [2]float64{c.fe.OffsetReqV(0), c.fe.OffsetReqV(1)}
+	}
+	return s
+}
+
+// applySetup puts the scope back on setup s, running in AUTO trigger mode as
+// the autoset leaves it.
+// TRLC-LINKS: REQ-SDS-224
+func (c *Controller) applySetup(s cmpSetup) {
+	c.eng.SetNorm(false)
+	c.eng.SetRunning(true)
+	c.mu.Lock()
+	c.norm, c.running = false, true
+	c.mu.Unlock()
+	if st := c.eng.Snapshot(); st.SerialMode != 0 || st.TrigType != s.trigType {
+		c.setTrigTypeIndex(st, s.trigType)
+	}
+	c.setTdivNearest(s.tdiv)
+	if s.posFrac > 0 {
+		_ = c.setTrigPos(s.posFrac)
+	}
+	if c.fe != nil {
+		for ch := 0; ch < 2; ch++ {
+			c.setVdiv(ch, s.vidx[ch])
+			c.fe.SetOffset(ch, s.offReq[ch])
+		}
+	}
+	c.eng.SetTrigSource(s.trigSrc)
+	c.eng.SetTrigSlope(s.rising)
+	if s.trigCode != 0 {
+		c.eng.SetTrigLevelCode(s.trigCode)
+		c.mu.Lock()
+		c.trigCode = s.trigCode
+		c.mu.Unlock()
+	}
+	c.pushLEDs()
+}
+
+// noteMaskSetup keeps the setup a mask was installed at, with the engine's
+// mask generation that names it.
+// TRLC-LINKS: REQ-SDS-139, REQ-SDS-224
+func (c *Controller) noteMaskSetup() {
+	s := c.takeSetup()
+	gen := c.eng.Snapshot().MaskGen
+	c.mu.Lock()
+	c.maskSetup, c.maskSetupGen = s, gen
+	c.mu.Unlock()
+}
+
+// compareAuto is AUTO in COMPARE with something to compare against: the
+// setup of the mask built here when it is still the one installed, else of
+// REF A, else of REF B, so the live trace sits on it. It says what it took;
+// ok is false with none (AUTO then frames as in SCOPE).
+// TRLC-LINKS: REQ-SDS-224
+func (c *Controller) compareAuto() (string, bool) {
+	st := c.eng.Snapshot()
+	c.mu.Lock()
+	var s cmpSetup
+	name := ""
+	switch {
+	case st.MaskSet && c.maskSetup.has && c.maskSetupGen == st.MaskGen:
+		s, name = c.maskSetup, "the mask's"
+	case c.refs[0].has && c.refs[0].setup.has:
+		s, name = c.refs[0].setup, "REF A's"
+	case c.refs[1].has && c.refs[1].setup.has:
+		s, name = c.refs[1].setup, "REF B's"
+	}
+	c.mu.Unlock()
+	if !s.has {
+		return "", false
+	}
+	c.applySetup(s)
+	note := fmt.Sprintf("AUTO (COMPARE): %s setup, %s/div", name, si(c.eng.Snapshot().TdivSet(), "s"))
+	if c.fe != nil {
+		note += fmt.Sprintf(", C1 %s/div, C2 %s/div", si(c.vdivAt(0), "V"), si(c.vdivAt(1), "V"))
+	}
+	return note, true
 }

@@ -148,6 +148,7 @@ func (c *Controller) maskBuildRun(gen uint64, n, tolT, tolV, ch int, posFrac flo
 	}
 	m.FrameIdent, m.TdivS, m.SampleS, m.PeakDetect = true, tdivS, sampleS, peak
 	c.eng.SetMask(m)
+	c.noteMaskSetup()
 	c.mu.Lock()
 	auto := c.maskAutoTest
 	c.maskAutoTest = false

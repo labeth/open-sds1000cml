@@ -587,8 +587,12 @@ async function autoset() {
     // The last sweep that ended before the press: a press that cancels a sweep
     // started elsewhere ends it before a status read may see it busy, and the
     // sweep's end is named by AutosetDone moving on.
-    let doneBefore = 0;
-    try { doneBefore = ((await (await fetch("/api/status")).json()).panel || {}).AutosetDone || 0; } catch (e) { return; }
+    let doneBefore = 0, noticeBefore = "";
+    try {
+      const p = (await (await fetch("/api/status")).json()).panel || {};
+      doneBefore = p.AutosetDone || 0;
+      noticeBefore = p.Notice || "";
+    } catch (e) { return; }
     // trigger the device autoset (the hard-button path — one implementation)
     try {
       const response = await fetch("/api/panel", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ button: "auto" }) });
@@ -612,6 +616,10 @@ async function autoset() {
     if (!completed) return;
     goHome();
     applyStatus();
+    // what the scope's AUTO did, as its notice says ("AUTO: 2 cycles, C1 500mV/div");
+    // BUS says what it found itself
+    const p = st.panel || {};
+    if (p.Notice && p.Notice !== noticeBefore && /^AUTO/.test(p.Notice) && p.Workspace !== "BUS") toast(p.Notice);
   } catch (e) {
     // A failed status request must not release queued acquisition commands.
     completed = false;

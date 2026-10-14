@@ -391,9 +391,40 @@ Manchester, SENT, CAN, USB and FlexRay; any word for ARINC 429 (each is a frame)
 any inside a message (midway to the idle between messages), firing on the first start bit after it, or
 the edge trigger when the messages have no idle. Match bytes the user set win (the serial trigger arms on
 them). The notice says what was chosen ("TRIG: I2C START (address byte)", "TRIG: UART first byte (idle >
-200us)"). BUS entry's detection sets the same trigger. AUTO in the other workspaces is the autoset. Either sweep
-first puts the trigger back to an edge and waits for the general image: measured on the qualifier or a
-protocol image, or while the image went back, the vertical fit went wrong.
+200us)"). BUS entry's detection sets the same trigger. AUTO in the other workspaces is the autoset framed
+for the workspace's job (REQ-SDS-224). Either sweep first puts the trigger back to an edge and waits for the
+general image: measured on the qualifier or a protocol image, or while the image went back, the vertical fit
+went wrong.
+
+The autoset finds the signal on a fast-to-slow timebase sweep at 2 V/div, fits the vertical over about 30
+cycles, reads the swing again at the V/div it fitted (the smaller of two captures; a finer detent when it fits
+and the capture holds nine tenths of the swing seen), centres on the midpoint and puts a hardware edge
+trigger at the 50 % level. Its captures there are filtered decimated ones, which
+ring on a square's edges (a 3.3 V square read 3.8 V): on a two-level signal the fit allows 2 % of the step
+past each level, as the screen's trace shows it. Each measurement waits for the second frame published after
+a change (a frame captured before it read a wrong midpoint). Then each workspace frames it:
+
+| Workspace | Timebase | Vertical | Also |
+|---|---|---|---|
+| SCOPE | the ladder step nearest two cycles | the swing on at most 7.2 of the 8 divisions (about six: 3.3 V logic at 500 mV/div) | rising edge, trigger at mid-screen |
+| MEASURE | the fastest step holding at least ten cycles | the swing on at most 7.5 divisions: the finest volts per code that stays on the screen | as SCOPE |
+| SPECTRUM (FFT, spectrogram) | the fastest step holding at least 50 cycles of the FFT source, at most 2 ms/div (the envelope bands from 5 ms/div hold no spectrum) | as MEASURE | timed and triggered on the FFT source, the marker on its fundamental; the span is what the sample rate there allows |
+| COMPARE | the setup the mask built on the scope was installed at, else REF A's, else REF B's (timebase, trigger position, each channel's V/div and offset, trigger source, slope, level and hardware type) | | without a mask or reference, as SCOPE |
+| BUS | the bus's own framing (above) | the swing on at most 6 divisions, the threshold midway | |
+
+Clipping (REQ-SDS-225): after the fit, and again on three captures of the screen AUTO leaves, a channel whose
+capture runs past the screen's top or bottom for four samples or more steps to the next coarser V/div and is
+centred again on
+the widest swing seen (the capture that clipped counts, its rail a bound): at most twice on the final screen,
+or on until it is off the ADC's rail. A capture at the fit's timebase can miss part of the swing (a bus's rare
+level, a burst), and the swing counts every capture of the sweep. A filtered decimated capture rings past a
+square's levels on every edge, so there a two-level signal clips when a level itself lies past the screen (or
+a stretch is at the ADC's rail).
+
+The notice says what AUTO did: "AUTO: 2 cycles, C1 500mV/div, C2 1V/div", "AUTO (MEASURE): 10 cycles, ...",
+"AUTO (SPECTRUM): 50 cycles, span 83.3MHz, marker 1MHz", "AUTO (COMPARE): REF A's setup, 1us/div, ...", with
+"coarser: it clipped" when the check stepped. The web page and the phone remote show the scope's notice
+when the sweep they started ends.
 
 Entry behaviour: BUS with decode off runs Auto, with a notice (decoding stays on after leaving BUS).
 The search reads a decimated record first (a few thousand
@@ -475,7 +506,7 @@ pushes theirs (Variable, Zero, Zoom). ADJUST and HORIZ POSITION are each workspa
 | TRIG LEVEL push (Zero) | `0x64`:9 | the level to 0 V |
 | RUN/STOP | `0x65`:2 | toggle running → `SetRunning` (a decoded stream: stop / restart it; a web page's decoded capture: end it first) |
 | SINGLE | `0x65`:10 | Normal, one triggered capture, then stop (a web page's decoded capture ends first) |
-| AUTO | `0x67`:10 | autoset; in BUS a new bus scan framed for reading (a second press cancels the sweep; a web page's decoded capture ends first) |
+| AUTO | `0x67`:10 | autoset framed for the workspace (SCOPE two cycles, MEASURE ten, SPECTRUM 50 of the FFT source, COMPARE the mask's or reference's setup); in BUS a new bus scan framed for reading (a second press cancels the sweep; a web page's decoded capture ends first) |
 
 Workspace tools (no menu open):
 

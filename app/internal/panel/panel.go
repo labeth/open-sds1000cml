@@ -272,6 +272,9 @@ type Controller struct {
 	hardcopy func() (string, error)
 	refs     [2]refWave // saved reference waveforms (REF A/B)
 
+	maskSetup    cmpSetup // the setup the mask built here was installed at
+	maskSetupGen uint64   // the engine's mask generation it names
+
 	// Super-res (device stack-and-crunch, reference-locked — SINGLE a frame, then
 	// UTILITY). srActive gates the mode; a stacker goroutine feeds srStack OFF the
 	// render lock. srFocus is the intensity-button cycle: 0=watch (live+gate),

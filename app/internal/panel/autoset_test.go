@@ -254,7 +254,7 @@ func TestAutosetKeepsABurstsSwing(t *testing.T) {
 	c.runAutoset(make(chan struct{}))
 	vidx, _ := fe.Snapshot()
 	got := fe.offReqV
-	want := detentForVpp(160 * analog.AnalogVdiv(nearestDetent(2.0)) / 25) // the burst read at the sweep's 2 V/div
+	want := detentFor(160*analog.AnalogVdiv(nearestDetent(2.0))/25, goalScope.fill) // the burst read at the sweep's 2 V/div
 	// the midpoint the burst reads at that scale: the offset centres it (an
 	// idle-only capture's midpoint, its rail, must not re-centre it)
 	for ch := 0; ch < 2; ch++ {

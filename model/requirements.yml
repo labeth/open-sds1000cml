@@ -3770,4 +3770,44 @@ requirements:
     address byte after every START); SPI, Manchester, SENT, CAN, USB and FlexRay the sequence trigger on START then any
     unit; ARINC 429 any word (each is a frame); MIL-1553 a command word; UART, whose matcher fires on every character,
     the pulse qualifier on an idle longer than any high time inside a message. BUS entry's detection sets the same
-    trigger. AUTO in the other workspaces is the autoset.
+    trigger. AUTO in the other workspaces is the autoset framed for the workspace (REQ-SDS-224).
+- id: REQ-SDS-224
+  title: AUTO frames the signal for the workspace's task
+  text: The instrument shall, when AUTO is pressed outside the BUS workspace, frame the signal for the workspace's
+    task, with about two cycles and the swing on about six divisions in SCOPE, at least ten cycles and the largest
+    swing that stays on the screen in MEASURE, at least fifty cycles of the FFT source on a sampled timebase with the
+    largest swing on the screen and the marker on its fundamental in SPECTRUM, and in COMPARE the setup a mask or
+    reference was stored at.
+  status: draft
+  category: functional
+  appliesTo:
+  - FU-APP-PANEL
+  verificationMethods:
+  - test
+  verificationCriteria: Panel tests on simulated captures check each workspace's timebase, V/div, trigger and notice
+    (SCOPE two cycles of 1 MHz at 200 ns/div and 500 mV/div for 3.3 V; MEASURE ten cycles; SPECTRUM fifty cycles of the
+    FFT source, the marker on it, no envelope band; COMPARE the mask's or REF A's setup, else SCOPE's framing). On the
+    device, AUTO in each workspace on the bench sources frames as stated, with the notice saying what it did.
+  notes: 'The trigger is a hardware edge at the 50 % level of the source, rising, at mid-screen (the FPGA decides it).
+    SPECTRUM stays at 2 ms/div or faster (the envelope bands from 5 ms/div hold no spectrum) and its span is what the
+    sample rate there allows. COMPARE restores the timebase, trigger position, each channel''s V/div and offset and the
+    trigger''s source, slope, level and hardware type; a mask installed from a web page has no stored setup. The notice
+    reads like "AUTO: 2 cycles, C1 500mV/div" or "AUTO (SPECTRUM): 50 cycles, span 100MHz, marker 1MHz", and the web
+    page and the phone remote show the scope''s notice.'
+- id: REQ-SDS-225
+  title: AUTO leaves no trace clipped
+  text: The instrument shall, after the autoset's vertical fit and again on the screen it leaves, step a channel whose
+    capture runs past the screen's top or bottom for a stretch to the next coarser V/div and centre it again.
+  status: draft
+  category: functional
+  appliesTo:
+  - FU-APP-PANEL
+  verificationMethods:
+  - test
+  verificationCriteria: A panel test simulates a level the fit's capture misses (it shows only on the final screen) and
+    checks AUTO ends coarser, unclipped, and says so; a unit test checks the stretch rule. On the device, AUTO on the
+    ARINC 429 bench source twenty times leaves no channel clipped, and a bursty FlexRay bus still fits.
+  notes: A stretch is four samples or more past the eight divisions; a ringing edge's sample or two is not. In a
+    filtered decimated capture, whose filter rings past a square's levels, a two-level signal is clipped when a level
+    lies past the screen or a stretch is at the ADC's rail. The final screen's check looks at three captures and steps
+    a channel at most twice, or on while the trace is at the ADC's rail. AUTO in BUS shares the fit (REQ-SDS-223).

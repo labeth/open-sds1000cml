@@ -168,8 +168,10 @@
   // TRLC-LINKS: REQ-SDS-220
   function applyPanel(st) {
     S.panel = st;
-    // a notice the scope shows in answer to this phone (AUTO: UART ... decode on)
-    if (st.Notice && st.Notice !== S.notice && now() - S.lastCall < 4000) emit("notice:" + st.Notice);
+    // a notice the scope shows in answer to this phone (AUTO: UART ... decode on),
+    // or at the end of an Autoset this phone started (AUTO: 2 cycles, C1 500mV/div)
+    const mine = now() - S.lastCall < 4000 || S.calls.some((c) => c.autoset);
+    if (st.Notice && st.Notice !== S.notice && mine) emit("notice:" + st.Notice);
     S.notice = st.Notice || "";
     emit("panel");
   }
