@@ -101,8 +101,11 @@ function sigrokZip(entries) {
 // trimmed; interior gaps (unfilled superres bins) stay NaN and each encoder
 // documents its own gap policy. Returns null when there is nothing to
 // export (no frame, envelope/roll frame, no time base, all margin).
+// inv (optional, [CH1, CH2]): channels displayed inverted (Cn:INVS) export
+// as shown, their volts negated as the measurements negate them; the
+// series names them (inverted) for the encoders' headers.
 // TRLC-LINKS: REQ-SDS-069
-function sigrokSeries(frame) {
+function sigrokSeries(frame, inv) {
   if (!frame || !frame.c1 || !frame.c1.length) return null;
   const n = frame.c1.length;
   const dt = frame.dt_s > 0 ? frame.dt_s : (frame.col_span_s || 0) / n;
@@ -115,13 +118,14 @@ function sigrokSeries(frame) {
   // one per bucket, at the bucket interval.
   const pd = !!frame.peak_detect;
   const m = pd ? n >> 1 : n;
-  const ch = chans.map(([name, codes, vpc, off]) => {
+  const ch = chans.map(([name, codes, vpc, off], k) => {
+    const sign = inv && inv[k] ? -1 : 1;
     const v = new Float64Array(m);
     for (let i = 0; i < m; i++) {
       const a = pd ? codes[2 * i] : codes[i], b = pd ? codes[2 * i + 1] : a;
-      v[i] = a < 0 || b < 0 ? NaN : ((a + b) / 2 - 128) * vpc - off;
+      v[i] = a < 0 || b < 0 ? NaN : sign * (((a + b) / 2 - 128) * vpc - off);
     }
-    return { name, v };
+    return { name, v, inverted: sign < 0 };
   });
   if (pd) return finishSeries(ch, m, 2 * dt, frame.seq || 0);
   return finishSeries(ch, n, dt, frame.seq || 0);
@@ -253,6 +257,7 @@ function sigrokVCD(series) {
   const id = (i) => String.fromCharCode(33 + i); // '!' onward, like sigrok
   const lines = ["$version open-sds1000cml sigrok export $end"];
   if (step > 1) lines.push("$comment decimated " + step + "x of " + series.n + " points $end");
+  for (const c of series.ch) if (c.inverted) lines.push("$comment " + c.name + " inverted as displayed $end");
   lines.push("$timescale " + sigrokVcdPeriod(ts) + " $end", "$scope module libsigrok $end");
   series.ch.forEach((c, i) => lines.push("$var real 64 " + id(i) + " " + c.name + " $end"));
   lines.push("$upscope $end", "$enddefinitions $end");

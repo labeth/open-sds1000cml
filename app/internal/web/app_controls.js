@@ -182,8 +182,9 @@ $("eCSV").onclick = () => {
   const dt = frame.dt_s > 0 ? frame.dt_s : (frame.col_span_s || 0) / frame.c1.length;
   const vpc1 = frame.vpc1 || (1 / 25), vpc2 = frame.vpc2 || (1 / 25);
   const o1 = frame.off1_v || 0, o2 = frame.off2_v || 0;
+  const [inv1, inv2] = exportInvert();
   // TRLC-LINKS: REQ-SDS-069
-  const toV = (code, vpc, off) => (code === undefined || code < 0 ? "" : ((code - 128) * vpc - off).toExponential(6));
+  const toV = (code, vpc, off, inv) => (code === undefined || code < 0 ? "" : ((inv ? -1 : 1) * ((code - 128) * vpc - off)).toExponential(6));
   const c2 = frame.c2;
   // Decimate huge arrays: a superres stack's K× fine grid is interpolation,
   // so exporting every point (>1M) means ~0.5 s of number-formatting for
@@ -201,11 +202,12 @@ $("eCSV").onclick = () => {
     " probe_c2=" + (st ? st.probe2 || 1 : 1) +
     (frame.edge_frac >= 0 ? " t0=trigger" : " t0=first_point") +
     (frame.peak_detect ? " peak_detect=1_rows_alternate_bucket_min_max" : "") +
-    (step > 1 ? " decimated=" + step + "x_of_" + N + "_pts" : "") + "\nt_s,c1_v,c2_v";
+    (step > 1 ? " decimated=" + step + "x_of_" + N + "_pts" : "") +
+    (inv1 || inv2 ? " inverted=" + [inv1 && "c1", inv2 && "c2"].filter(Boolean).join("+") + "_as_displayed" : "") + "\nt_s,c1_v,c2_v";
   let r = 1;
   for (let i = 0; i < N; i += step)
-    rows[r++] = (i * dt - t0).toExponential(6) + "," + toV(frame.c1[i], vpc1, o1) + "," +
-      toV(c2 ? c2[i] : undefined, vpc2, o2);
+    rows[r++] = (i * dt - t0).toExponential(6) + "," + toV(frame.c1[i], vpc1, o1, inv1) + "," +
+      toV(c2 ? c2[i] : undefined, vpc2, o2, inv2);
   exportFile(exportName(frame.seq, "csv"), "text/csv", rows.join("\n") + "\n");
 };
 // ---- sigrok exports (encoders in sigrok_export.js) ----
@@ -215,6 +217,12 @@ $("eCSV").onclick = () => {
 // exportName — superres view frames REUSE the live frame's seq (they have no
 // publish seq), so their files get a "-superres" marker instead of silently
 // overwriting the live frame's export of the same seq.
+// exportInvert is which channels the scope displays inverted (Cn:INVS): the
+// files export what the screen shows; SCPI WF? keeps the acquired volts.
+// TRLC-LINKS: REQ-SDS-069
+function exportInvert() {
+  return [!!(st && st.inv1), !!(st && st.inv2)];
+}
 // TRLC-LINKS: REQ-SDS-069
 function exportName(seq, ext) {
   return "scope-" + seq + (frame && frame.sr_view ? "-superres" : "") + "." + ext;
@@ -230,17 +238,17 @@ function exportFile(name, type, data) {
 }
 // TRLC-LINKS: REQ-SDS-069
 $("eSR").onclick = () => {
-  const s = sigrokSeries(frame);
+  const s = sigrokSeries(frame, exportInvert());
   if (s) exportFile(exportName(s.seq, "sr"), "application/zip", sigrokSR(s));
 };
 // TRLC-LINKS: REQ-SDS-069
 $("eVCD").onclick = () => {
-  const s = sigrokSeries(frame);
+  const s = sigrokSeries(frame, exportInvert());
   if (s) exportFile(exportName(s.seq, "vcd"), "text/plain", sigrokVCD(s));
 };
 // TRLC-LINKS: REQ-SDS-069
 $("eWAV").onclick = () => {
-  const s = sigrokSeries(frame);
+  const s = sigrokSeries(frame, exportInvert());
   const wav = s && sigrokWAV(s); // null when the rate exceeds WAV's uint32 Hz
   if (wav) exportFile(exportName(s.seq, "wav"), "audio/wav", wav);
 };

@@ -100,6 +100,16 @@ function unzip(u8) {
 
   const sr = sigrokSeries({ seq: 1, c1: Float32Array.from([129.5, -1, 130.25]), col_span_s: 3e-9, vpc1: 1 });
   check("series: fractional superres codes + single channel", sr && sr.ch.length === 1 && sr.ch[0].v[0] === 1.5 && sr.ch[0].v[2] === 2.25);
+  // a channel displayed inverted exports as shown: its volts negated, the
+  // other channel as acquired, and the VCD says which
+  {
+    const fi = { seq: 1, c1: new Int16Array([153, 128]), c2: new Int16Array([153, 128]), col_span_s: 2e-6, vpc1: 0.04, vpc2: 0.04 };
+    const si = sigrokSeries(fi, [true, false]);
+    check("series: inverted CH1 negated", Math.abs(si.ch[0].v[0] + 1) < 1e-12 && si.ch[0].inverted);
+    check("series: CH2 as acquired", Math.abs(si.ch[1].v[0] - 1) < 1e-12 && !si.ch[1].inverted);
+    check("vcd: names the inverted channel", sigrokVCD(si).includes("$comment CH1 inverted as displayed $end") && !sigrokVCD(si).includes("CH2 inverted"));
+    check("series: no invert given, as acquired", sigrokSeries(fi).ch[0].v[0] === 1);
+  }
   check("series: c2 of mismatched length dropped", sigrokSeries({ c1: new Int16Array(4), c2: new Int16Array(3), col_span_s: 1e-6 }).ch.length === 1);
 }
 

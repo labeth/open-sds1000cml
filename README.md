@@ -217,7 +217,9 @@ automatically.
   timebase, channels and trigger stays at the bottom, and All settings (Ctrl+,) lists every setting
   and shows where it lives.
 * **Export:** PNG, CSV, sigrok `.sr` (opens in PulseView, with thresholded logic channels), VCD and
-  WAV.
+  WAV. A channel displayed inverted exports as shown (its volts negated, named in the CSV and VCD
+  headers); SCPI `WF?` keeps the acquired volts, and `Cn:INVS?` tells a script the display is
+  inverted.
 * **SCPI over VXI-11** (LAN): Siglent / LeCroy short-form commands, including `WF?` waveform
   transfer with a WAVEDESC header and `SCDP` screenshots, so existing Siglent scripts and VISA tools
   work.
