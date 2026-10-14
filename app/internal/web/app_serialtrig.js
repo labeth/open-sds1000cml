@@ -87,7 +87,7 @@ function stParams() {
     bits: dcfg.bits || 8,
     parity: dcfg.parity || "none",
     inverted: !!dcfg.inverted,
-    cpol: !!dcfg.cpol, cpha: !!dcfg.cpha, msb: !!dcfg.msb,
+    cpol: !!dcfg.cpol, cpha: !!dcfg.cpha, msb: P !== 3 || !!dcfg.msb, // the bit order is SPI's; the others MSB first, as the scope decodes them
     ieee: true, tickNs: P === 5 ? +$("decSentTick").value : 0, nibbles: P === 5 ? +$("decSentNibbles").value : 0, dataBaud: 0,
     threshold: dcfg.auto ? 0 : (+$("decThr").value || 0),
     haveThr: !dcfg.auto,

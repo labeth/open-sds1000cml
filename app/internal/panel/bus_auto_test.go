@@ -79,6 +79,15 @@ func TestFrameStartPatterns(t *testing.T) {
 	if _, _, _, ok := sofPattern(framecalc.ProtoUART); ok {
 		t.Fatal("UART's matcher fires on every character: no frame start")
 	}
+	for _, toks := range [][]string{{"AA"}, {"55", "??"}, {"SOF", "12"}, {"SOF", "ERR"}, {"SOF", "??", "34"}, {"SOF"}} {
+		b, p, err := compileTokens(toks)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if user := (engine.SerialParams{Bytes: b, Pattern: p}); defaultMatch(user) {
+			t.Fatalf("the match %q the user typed reads as the frame-start trigger's: AUTO replaces it", toks)
+		}
+	}
 	for _, user := range []engine.SerialParams{{Bytes: []int{0xAA}}, {Pattern: []engine.PatternElem{{Kind: 2, Value: 0x55, Mask: 0xff}, {Kind: 2}}}} {
 		if defaultMatch(user) {
 			t.Fatalf("a match the user set reads as the default: %+v", user)

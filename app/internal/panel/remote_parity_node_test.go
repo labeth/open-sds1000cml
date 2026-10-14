@@ -103,7 +103,7 @@ func TestRemoteCoreParity(t *testing.T) {
 			vec.Parse = append(vec.Parse, parseVec{text, unit})
 		}
 	}
-	vec.Match = []string{"55 AA 0F", "55aa", "55,AA", "?? A? ?F ERR", "5", "55 ZZ", "", "any", "Any Byte", `"Hi"`, `"Hi\r\n"`, `'\x41\\'`, `"\q"`, `""`,
+	vec.Match = []string{"55 AA 0F", "55aa", "55,AA", "?? A? ?F ERR", "SOF ??", "sof 12 cmd", "CMD", "SOFA", "5", "55 ZZ", "", "any", "Any Byte", `"Hi"`, `"Hi\r\n"`, `'\x41\\'`, `"\q"`, `""`,
 		`"\x4"`, `"a\"b"`, strings.Repeat("00 ", 33), strings.Repeat("A", 64), `"é"`, `"tab\there"`, "AAB", "err ??"}
 
 	dir := t.TempDir()

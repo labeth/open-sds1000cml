@@ -71,7 +71,7 @@ function computeDecode() {
   else if (dcfg.proto === "spi")
     r = decodeSPI(decCodes(dcfg.clk), decCodes(dcfg.data), colTimeS, Object.assign(cfg, { cpol: dcfg.cpol, cpha: dcfg.cpha, bitOrder: dcfg.msb ? "msb" : "lsb" }));
   else if (dcfg.proto === "manchester") // single line, self-clocking (auto bit rate)
-    r = decodeManchester(decCodes(dcfg.line), colTimeS, Object.assign(cfg, { bitrate: dcfg.baud > 0 ? dcfg.baud : 0, ieee: true, msb: dcfg.msb, bits: dcfg.bits || 8, haveThr: !dcfg.auto }));
+    r = decodeManchester(decCodes(dcfg.line), colTimeS, Object.assign(cfg, { bitrate: dcfg.baud > 0 ? dcfg.baud : 0, ieee: true, msb: true, bits: dcfg.bits || 8, haveThr: !dcfg.auto }));
   else if (dcfg.proto === "sent") // single line, tick auto-derived from the 56-tick sync
     r = decodeSENT(decCodes(dcfg.line), colTimeS, Object.assign(cfg, { tickNs: +$("decSentTick").value, nibbles: +$("decSentNibbles").value, pausePulse: false, haveThr: !dcfg.auto }));
   else if (dcfg.proto === "can") // single line (dominant = low), nominal baud auto or from decBaud

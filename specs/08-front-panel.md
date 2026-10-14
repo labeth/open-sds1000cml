@@ -374,7 +374,8 @@ detects again; settings typed in are used as they are. When the settings Auto fi
 nothing for about 2 s of captures (at least three, a capture's units nearly all errors counting as
 nothing) after decoding the bus, Auto detects once more by itself; one bad capture does not, nor
 does a capture the live envelope cannot resolve or one with no edges on either line (a probe off, a
-pause in the traffic), nor a scope that captures nothing. A measured bit rate within 3 % of a Bit
+pause in the traffic), nor one at another timebase than the bus last decoded at (turned closer, a
+screen holds a few bits of one character), nor a scope that captures nothing. A measured bit rate within 3 % of a Bit
 rate row step fills in as that step (a 500 kbit/s CAN bus measured at 509 kb/s). With no bus found
 the settings in use stay. A setup saved while Auto was a decoding mode holds Protocol = Auto: it loads
 as one detection. Stream starts at once from the settings (the threshold, an SPI clock rate and SENT's

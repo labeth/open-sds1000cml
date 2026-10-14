@@ -181,7 +181,8 @@ automatically.
   roles, rate, SPI mode and bit order into the decoder settings, where the LCD, the web page and the
   phone show and edit them; then it steps to a timebase whose live view reads the bus, and says so.
   Everything (the decode, the packet list, the stream, the serial trigger) runs on those settings. When
-  they stop decoding for about two seconds (the probes moved to another bus), Auto detects again. It looks at a
+  they stop decoding for about two seconds at the timebase they decoded at (the probes moved to another bus),
+  Auto detects again. It looks at a
   decimated capture first, so UART, I2C, SPI, SENT and ARINC 429 are named in under a second and a half;
   buses that need the full sample rate (Manchester, MIL-1553, CAN, USB, FlexRay) take a few seconds.
 * **AUTO in BUS** scans for the bus anew and frames it for reading: the vertical fitted with the

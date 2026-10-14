@@ -86,7 +86,7 @@ func (c *Controller) serialBus(p engine.SerialParams) engine.SerialParams {
 	}
 	p.ChA, p.ChB = c.decChA, c.decChB
 	p.Baud, p.Bits, p.Parity = c.decBaud, 8, "none"
-	p.CPOL, p.CPHA, p.MSB, p.IEEE = c.decCPOL, c.decCPHA, !c.decLSB, true
+	p.CPOL, p.CPHA, p.MSB, p.IEEE = c.decCPOL, c.decCPHA, !c.decLSB || c.decProto != framecalc.ProtoSPI, true
 	p.HaveThr, p.TickNs, p.Nibbles, p.DataBaud = false, 0, 0, 0
 	return p
 }

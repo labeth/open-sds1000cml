@@ -179,3 +179,43 @@ func TestIdleLinesDoNotDetect(t *testing.T) {
 		t.Fatalf("the bus after the idle lines: baud %d, notice %q", r.c.snap().decBaud, r.c.View().Notice)
 	}
 }
+
+// A timebase turned to look closer at the bus (a few bits of one character
+// on screen) or further out says nothing of the bus: its captures, however
+// long they decode nothing, never start a detection, which would move the
+// timebase back. The bus lost at the timebase it decoded at still is.
+// TRLC-LINKS: REQ-SDS-214, REQ-SDS-222
+func TestAutoKeepsTheBusAtAnotherTimebase(t *testing.T) {
+	r := autoRig(t)
+	r.show(fastUART())
+	full := fastUART()
+	at := 0
+	for i := 400; i < len(full.C1); i++ {
+		if full.C1[i] < 100 && full.C1[i-1] > 150 { // a start bit
+			at = i - 10
+			break
+		}
+	}
+	const n = 120 // 12 us: five bits of one character at 1.2 us/div
+	closer := func() *engine.Frame {
+		return &engine.Frame{C1: append([]uint8(nil), full.C1[at:at+n]...), C2: append([]uint8(nil), full.C2[at:at+n]...),
+			Valid: n, WinCols: n, EdgeX: n / 2, TdivS: n * 100e-9 / 10, SampleS: 100e-9, Trigd: true}
+	}
+	note := r.c.snap().ui.busNote
+	for i := 0; i < 2*autoLostCaptures; i++ {
+		r.clk.advance(autoLostAfter)
+		r.show(closer())
+	}
+	time.Sleep(100 * time.Millisecond)
+	if s := r.c.snap(); s.decBaud != 460800 || s.ui.busDetecting || s.ui.busNote != note || strings.HasPrefix(r.c.View().Notice, "AUTO") {
+		t.Fatalf("a closer timebase started a detection: baud %d, notice %q, detection's note %q", s.decBaud, r.c.View().Notice, s.ui.busNote)
+	}
+	r.show(fastUART()) // back at the timebase it decodes at
+	for i := 0; i < autoLostCaptures; i++ {
+		r.clk.advance(autoLostAfter)
+		r.show(otherBus())
+	}
+	if !waitBaud(t, r.c, 115200) {
+		t.Fatalf("the bus lost at its timebase: baud %d, notice %q", r.c.snap().decBaud, r.c.View().Notice)
+	}
+}

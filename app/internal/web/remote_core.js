@@ -348,7 +348,7 @@
   }
 
   // parseMatch reads match bytes as the device does: hex tokens ("55 AA",
-  // "55AA", "??", "A?", "ERR") or quoted text ("\"Hi\\r\\n\""); empty = any byte.
+  // "55AA", "??", "A?", "ERR", "SOF", "CMD") or quoted text ("\"Hi\\r\\n\""); empty = any byte.
   // TRLC-LINKS: REQ-SDS-220
   function parseMatch(text) {
     const s = String(text == null ? "" : text).trim();
@@ -364,7 +364,7 @@
     for (const f of s.split(/[\s,]+/).filter(Boolean)) {
       const bad = { ok: false, error: 'bad byte "' + f + '": use hex pairs like 55 AA, ?? or ERR, or "text" in quotes' };
       const u = f.toUpperCase();
-      if (u === "ERR" || u === "??") { toks.push(u); continue; }
+      if (u === "ERR" || u === "??" || u === "SOF" || u === "CMD") { toks.push(u); continue; }
       if (u.length % 2) return bad;
       for (let i = 0; i < u.length; i += 2) {
         const t = u.slice(i, i + 2);

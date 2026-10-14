@@ -133,9 +133,11 @@ function computePeaksCh(ch) {
 function togglePeakCh(ch, pf) {
   const S = fftCh[ch], i = nearestPeak(S.peaks, pf);
   if (i < 0) return;
-  const before = S.sel.length;
-  S.sel = S.sel.filter(f => nearestPeak(S.peaks, f) !== i);
-  if (S.sel.length === before) S.sel.push(S.peaks[i].freq); // was not selected → add
+  // the picks that hold this peak (trackPicks set them to its frequency); a
+  // pick shown lost nearby is not one of them
+  const held = S.sel.includes(S.peaks[i].freq);
+  if (held) S.sel = S.sel.filter(f => f !== S.peaks[i].freq);
+  else S.sel.push(S.peaks[i].freq); // was not selected → add
   peakListLastT = 0; // selection changed: bypass the 1 Hz list throttle this redraw
   redraw();
 }

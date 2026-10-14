@@ -145,7 +145,8 @@ func unitName(u string) string {
 }
 
 // parseMatchText reads serial match bytes: hex tokens ("55 AA 0F", "55AA",
-// with the editor's wildcards ?? and A? and ERR) or quoted text ("\"Hi\r\n\"").
+// with the editor's wildcards ?? and A?, ERR, SOF and CMD) or quoted text
+// ("\"Hi\r\n\"").
 // It returns the editor's tokens; empty text is "any byte".
 // TRLC-LINKS: REQ-SDS-214
 func parseMatchText(text string) ([]string, error) {
@@ -176,7 +177,7 @@ func parseMatchText(text string) ([]string, error) {
 	var toks []string
 	for _, f := range strings.FieldsFunc(s, func(r rune) bool { return unicode.IsSpace(r) || r == ',' }) {
 		u := strings.ToUpper(f)
-		if u == "ERR" || u == "??" {
+		if u == "ERR" || u == "??" || u == "SOF" || u == "CMD" {
 			toks = append(toks, u)
 			continue
 		}

@@ -225,19 +225,22 @@ func sofPattern(proto int) (bytes []int, pattern []engine.PatternElem, name stri
 }
 
 // defaultMatch reports a match the frame-start trigger may replace: none,
-// or one a frame-start trigger set (it opens with SOF, or is one any unit or
-// a MIL-1553 command word). Bytes a user picked or typed stay.
+// or one a frame-start trigger set (SOF then any unit, one any unit, or a
+// MIL-1553 command word). Bytes a user picked or typed stay, a typed SOF
+// with more after it too.
 // TRLC-LINKS: REQ-SDS-223
 func defaultMatch(p engine.SerialParams) bool {
+	anyUnit := func(e engine.PatternElem) bool { return e.Kind == 2 && e.Mask == 0 }
+	cmd := engine.PatternElem{Kind: 2, Value: engine.MILCommand, Mask: engine.MILCommand}
 	switch {
 	case len(p.Bytes) > 0:
 		return false
 	case len(p.Pattern) == 0:
 		return true
-	case p.Pattern[0].Kind == 1:
-		return true
+	case len(p.Pattern) == 2:
+		return p.Pattern[0].Kind == 1 && anyUnit(p.Pattern[1])
 	}
-	return len(p.Pattern) == 1 && p.Pattern[0].Kind == 2 && (p.Pattern[0].Mask == 0 || p.Pattern[0].Mask == engine.MILCommand)
+	return len(p.Pattern) == 1 && (anyUnit(p.Pattern[0]) || p.Pattern[0] == cmd)
 }
 
 // frameTrigger puts the hardware trigger on the start of the bus's frames

@@ -2,6 +2,7 @@
 package panel
 
 import (
+	"math"
 	"strings"
 	"time"
 
@@ -32,6 +33,7 @@ type autoWatch struct {
 	filled bool      // the decoder settings are a detection's, no hand edit since
 	armed  bool      // they decoded the bus since: losing it detects again
 	good   time.Time // the last capture they decoded
+	tdiv   float64   // that capture's timebase
 	bad    int       // captures since that decoded nothing
 	seen   frameKey  // the capture judged last
 }
@@ -59,7 +61,9 @@ func decodesBus(res decode.Result) bool {
 // autoLostCaptures captures) after decoding the bus. A capture the live
 // envelope cannot resolve, or with no edges on either line, says nothing
 // about the bus: a detection there would find nothing and leave the bus that
-// comes next undetected. With no captures (stopped, or Normal with nothing
+// comes next undetected. Nor does one at another timebase than the bus last
+// decoded at: turned closer, a screen holds a few bits of one character, and
+// a detection would take the timebase back. With no captures (stopped, or Normal with nothing
 // triggering) nothing is judged. It runs within OnFrame: the detection itself
 // runs off it.
 // TRLC-LINKS: REQ-SDS-214, REQ-SDS-222
@@ -77,7 +81,8 @@ func (c *Controller) watchBus(s *sv, f *engine.Frame) {
 	good := decodesBus(res)
 	// says nothing of the bus: an envelope too coarse for it, or lines with no
 	// edges (a probe off, a gap in the traffic)
-	neutral := !good && (f.PeakDetect && f.Ordered && !res.OK && strings.Contains(res.Error, "not resolved") || idleLines(f))
+	neutral := !good && (f.PeakDetect && f.Ordered && !res.OK && strings.Contains(res.Error, "not resolved") || idleLines(f) ||
+		w.armed && f.TdivS > 0 && w.tdiv > 0 && math.Abs(f.TdivS-w.tdiv) > 1e-3*w.tdiv)
 	now := c.now()
 	c.mu.Lock()
 	if !c.auto.filled || c.auto.seen == k {
@@ -87,7 +92,7 @@ func (c *Controller) watchBus(s *sv, f *engine.Frame) {
 	c.auto.seen = k
 	switch {
 	case good:
-		c.auto.armed, c.auto.good, c.auto.bad = true, now, 0
+		c.auto.armed, c.auto.good, c.auto.tdiv, c.auto.bad = true, now, f.TdivS, 0
 	case !neutral:
 		c.auto.bad++
 	}

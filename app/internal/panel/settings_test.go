@@ -2,8 +2,10 @@
 package panel
 
 import (
+	"strings"
 	"testing"
 
+	"open-sds/app/internal/panel/framecalc"
 	"open-sds/app/internal/settings"
 )
 
@@ -231,5 +233,31 @@ func TestSettingsViewDisplayStateRoundTrip(t *testing.T) {
 	}
 	if rowText(c, "curs.mode") != "Volts" || rowText(c, "time.zoom") != "5x" || rowText(c, "ch1.invert") != "On" {
 		t.Fatalf("rows: cursors %q zoom %q C1 invert %q", rowText(c, "curs.mode"), rowText(c, "time.zoom"), rowText(c, "ch1.invert"))
+	}
+}
+
+// A frame-start match (AUTO in BUS: SOF then any unit; MIL-1553's command
+// word) survives a restart or a recalled setup as it was armed, not as any
+// byte, which arms on 55.
+// TRLC-LINKS: REQ-SDS-013, REQ-SDS-089, REQ-SDS-223
+func TestSettingsViewFrameStartMatchRoundTrip(t *testing.T) {
+	for _, tc := range []struct {
+		proto int
+		toks  []string
+	}{{framecalc.ProtoSPI, []string{"SOF", "??"}}, {framecalc.ProtoMIL1553, []string{"CMD"}}, {framecalc.ProtoCAN, []string{"SOF", "12"}}} {
+		a, _, _ := newC(t)
+		a.ApplySettingsView(settings.ViewState{Decode: settings.Decode{Proto: tc.proto, Baud: 1000000, ChA: 0, ChB: 1}})
+		if err := a.setMatchTokens(tc.toks); err != nil {
+			t.Fatal(err)
+		}
+		if err := a.armSerial(); err != nil {
+			t.Fatal(err)
+		}
+		saved := a.SettingsView()
+		b, beng, _ := newC(t)
+		b.ApplySettingsView(saved)
+		if got := tokensOf(beng.SerialConfig()); beng.Snapshot().SerialMode == 0 || strings.Join(got, " ") != strings.Join(tc.toks, " ") {
+			t.Fatalf("saved match %q restored as %q (armed %v)", saved.Serial.Match, got, beng.Snapshot().SerialMode != 0)
+		}
 	}
 }

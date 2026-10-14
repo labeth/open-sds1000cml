@@ -36,3 +36,13 @@ func TestSpectrumLevelJS(t *testing.T) {
 		t.Fatalf("spectrum level: %v\n%s", err, out)
 	}
 }
+
+// TestPickToggleJS: a click picks the peak, or unpicks the pick holding it,
+// never a lost pick beside it (app_fft.js togglePeakCh).
+// TRLC-LINKS: REQ-SDS-070
+func TestPickToggleJS(t *testing.T) {
+	testenv.NeedNode(t)
+	if out, err := exec.Command("node", "pick_toggle.test.cjs").CombinedOutput(); err != nil || !strings.Contains(string(out), "ALL PASS") {
+		t.Fatalf("pick toggle: %v\n%s", err, out)
+	}
+}

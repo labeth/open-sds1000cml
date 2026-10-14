@@ -15,3 +15,11 @@ func TestPageFollowsTheScopesDecodeJS(t *testing.T) {
 		t.Fatalf("the page follows the scope's decode: %v\n%s", err, out)
 	}
 }
+
+// TRLC-LINKS: REQ-SDS-207, REQ-SDS-222
+func TestBitOrderIsSPIsJS(t *testing.T) {
+	testenv.NeedNode(t)
+	if out, err := exec.Command("node", "bit_order.test.cjs").CombinedOutput(); err != nil {
+		t.Fatalf("bit order on the page: %v\n%s", err, out)
+	}
+}

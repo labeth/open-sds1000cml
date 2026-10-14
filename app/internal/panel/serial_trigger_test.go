@@ -249,3 +249,27 @@ func TestMatchEditorOKNamesTheArmedMatch(t *testing.T) {
 		t.Fatalf("OK's notice %q", n)
 	}
 }
+
+// Bit order is SPI's row: an SPI bus read least significant bit first leaves
+// the Manchester or CAN bus set next decoded and matched most significant bit
+// first, as BUS decodes it.
+// TRLC-LINKS: REQ-SDS-013, REQ-SDS-222
+func TestSerialTriggerBitOrderIsSPIs(t *testing.T) {
+	c, eng, _ := newC(t)
+	c.SheetSet("bus.protocol", nil, "SPI")
+	c.SheetSet("bus.bit_order", nil, "LSB first")
+	c.SheetSet("trig.type", nil, "Serial")
+	if p := eng.SerialConfig(); eng.stats.SerialMode == 0 || p.Proto != 3 || p.MSB {
+		t.Fatalf("SPI LSB first: mode %d %+v", eng.stats.SerialMode, p)
+	}
+	for _, proto := range []string{"Manch", "CAN", "UART"} {
+		c.SheetSet("bus.protocol", nil, proto)
+		if p := eng.SerialConfig(); eng.stats.SerialMode == 0 || !p.MSB {
+			t.Fatalf("%s after SPI LSB first: matched least significant bit first, BUS decodes it MSB first: %+v", proto, p)
+		}
+		c.SheetSet("bus.protocol", nil, "SPI")
+		if p := eng.SerialConfig(); p.MSB {
+			t.Fatalf("back on SPI: its LSB first lost %+v", p)
+		}
+	}
+}
