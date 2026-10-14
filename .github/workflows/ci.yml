@@ -151,8 +151,14 @@ jobs:
         with:
           go-version: "1.25"
           cache: false
+      # Three tries: a module proxy lookup that times out is not a model error.
       - name: Install engdoc
-        run: go install "github.com/labeth/engineering-model-go/cmd/engdoc@${ENGMODEL_VERSION}"
+        run: |
+          for try in 1 2 3; do
+            go install "github.com/labeth/engineering-model-go/cmd/engdoc@${ENGMODEL_VERSION}" && exit 0
+            sleep 15
+          done
+          exit 1
       - name: validate the model
         run: >
           engdoc --model model/engmod.yml --requirements model/requirements.yml
