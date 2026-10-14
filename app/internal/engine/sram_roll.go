@@ -18,9 +18,9 @@ import (
 // short back-to-back decimated captures placed on the host clock; the few
 // milliseconds between them (re-arm and readout) hold the last value.
 
-// rollMinTdiv is the slowest timebase that still runs triggered frames: from
+// RollMinTdiv is the fastest timebase AUTO rolls at (slower ones roll too): from
 // here a screen spans 100 ms or more, too long for 10 frames a second.
-const rollMinTdiv = 10e-3
+const RollMinTdiv = 10e-3
 
 // rollScreenSamples bounds the roll view; a screen is decimated to fit.
 const rollScreenSamples = 4096
@@ -92,7 +92,7 @@ func (e *Engine) rollActive() bool {
 	norm, tp := e.norm, e.tp
 	e.mu.Unlock()
 	switch {
-	case norm || tdiv < rollMinTdiv*0.999 || tp.typ != TrigEdge:
+	case norm || tdiv < RollMinTdiv*0.999 || tp.typ != TrigEdge:
 		return false
 	case e.acqMode.Load() == AcqAverage, e.serialMode.Load() == SerialTrigger,
 		e.zoneMode.Load() == ZoneTrigger, e.maskMode.Load() != MaskOff, e.bodeMode.Load() == BodeOn:

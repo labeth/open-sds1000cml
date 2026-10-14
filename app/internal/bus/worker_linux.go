@@ -11,6 +11,8 @@ import (
 	"sync"
 	"syscall"
 	"time"
+
+	"open-sds/app/internal/sramcapture"
 )
 
 const workerMagic = 0x57435141
@@ -31,7 +33,17 @@ const (
 	// ADR-STREAM-IMAGE: the worker drains the stream banks itself.
 	workerStreamPump  // value 1 = start draining from ordinal 0, 0 = stop
 	workerStreamWords // payload: 8-byte ordinal of the first word, then words
+	// workerRecall: whole reads of the frozen record the request names
+	// (sramcapture.Capture.RecallRecord); the request carries its parameters
+	// after its header, the record's epoch in the header's.
+	workerRecall
 )
+
+// workerRecallParams bounds a workerRecall request's parameters: the
+// record's id, then per read (at most sramcapture.RecordReadsMax) the
+// window's first word, the bucket's words (0: raw) and the bucket or word
+// count, each 32 bits little-endian.
+const workerRecallParams = 4 + 12*sramcapture.RecordReadsMax
 
 type workerClient struct {
 	mu        sync.Mutex
@@ -140,6 +152,12 @@ func (d *Dev) CloseWorker() error {
 // failure permanently invalidates this proxy; reported device errors do not.
 // TRLC-LINKS: REQ-SDS-001, REQ-SDS-013
 func (c *workerClient) call(op uint16, plane uint8, selector, value uint16, epoch uint32, dst []byte) (int, error) {
+	return c.callWith(op, plane, selector, value, epoch, nil, dst)
+}
+
+// callWith is call with params sent after the request's header.
+// TRLC-LINKS: REQ-SDS-001, REQ-SDS-013
+func (c *workerClient) callWith(op uint16, plane uint8, selector, value uint16, epoch uint32, params, dst []byte) (int, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if c.failed != nil {
@@ -149,7 +167,11 @@ func (c *workerClient) call(op uint16, plane uint8, selector, value uint16, epoc
 		return 0, fmt.Errorf("bus: oversized worker response")
 	}
 	c.sequence++
-	var request [workerHeader]byte
+	if len(params) > workerRecallParams {
+		return 0, fmt.Errorf("bus: oversized worker request")
+	}
+	var buf [workerHeader + workerRecallParams]byte
+	request := buf[:workerHeader+copy(buf[workerHeader:], params)]
 	binary.LittleEndian.PutUint32(request[:4], workerMagic)
 	binary.LittleEndian.PutUint32(request[4:8], c.sequence)
 	binary.LittleEndian.PutUint16(request[8:10], op)
@@ -159,7 +181,7 @@ func (c *workerClient) call(op uint16, plane uint8, selector, value uint16, epoc
 	binary.LittleEndian.PutUint32(request[16:20], uint32(len(dst)))
 	binary.LittleEndian.PutUint32(request[20:24], epoch)
 	_ = c.conn.SetDeadline(time.Now().Add(3 * time.Second))
-	n, err := c.conn.Write(request[:])
+	n, err := c.conn.Write(request)
 	if err == nil && n != len(request) {
 		err = fmt.Errorf("short worker request")
 	}
@@ -183,6 +205,28 @@ func (c *workerClient) call(op uint16, plane uint8, selector, value uint16, epoc
 		return 0, c.failed
 	}
 	return copy(dst, c.response[workerHeader:n]), nil
+}
+
+// RecallIsolated has the worker make reads of the frozen record (epoch,
+// record) names, windows holding each one's first word, bucket words (0: raw)
+// and bucket or word count, into dst whole (sramcapture.Capture.RecallRecord):
+// one round trip for them all. owned is false without a worker, or when they
+// exceed a worker packet.
+// TRLC-LINKS: REQ-SDS-001, REQ-SDS-033
+func (d *Dev) RecallIsolated(epoch, record uint32, windows []uint32, dst []byte) (bool, error) {
+	if d.remote == nil || len(dst) == 0 || len(dst) > workerPayload || len(windows) == 0 || len(windows)%3 != 0 || 4+4*len(windows) > workerRecallParams {
+		return false, nil
+	}
+	var params [workerRecallParams]byte
+	binary.LittleEndian.PutUint32(params[:], record)
+	for i, v := range windows {
+		binary.LittleEndian.PutUint32(params[4+4*i:], v)
+	}
+	n, err := d.remote.callWith(workerRecall, 0, 0, 0, epoch, params[:4+4*len(windows)], dst)
+	if err == nil && n != len(dst) {
+		err = fmt.Errorf("bus: short worker recall: %d of %d bytes", n, len(dst))
+	}
+	return true, err
 }
 
 // ReadIsolatedDecodedBytes bypasses hardware FIFO reads only when this Dev is a

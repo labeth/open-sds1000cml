@@ -3,7 +3,6 @@ package engine
 
 import (
 	"context"
-	"io"
 	"time"
 
 	"open-sds/app/internal/measure"
@@ -63,11 +62,11 @@ func oppositeEdgeBucket(pairs []uint8, trig int, rising bool) int {
 	return -1
 }
 
-// recallEdgeWindow reads a window of the frozen record at its own rate,
+// recallEdgeWindow reads a window of the frozen record m at its own rate,
 // centred on word w, and calibrates a raw record's converters (a decimated
 // record is filtered across them already); nil when the read fails.
 // TRLC-LINKS: REQ-SDS-021, REQ-SDS-016
-func (e *Engine) recallEdgeWindow(ctx context.Context, recall func(context.Context, uint32, uint32, io.Writer) (int64, error), m sramcapture.Metadata, w uint32, scale [2]chScale) *EdgeWindow {
+func (e *Engine) recallEdgeWindow(ctx context.Context, m sramcapture.Metadata, w uint32, scale [2]chScale) *EdgeWindow {
 	if m.Length < edgeWindowWords || m.SamplesPerWord == 0 {
 		return nil
 	}
@@ -82,7 +81,7 @@ func (e *Engine) recallEdgeWindow(ctx context.Context, recall func(context.Conte
 		f.Q1, f.Q2 = make([]uint16, n), make([]uint16, n)
 	}
 	writer := sramFrameWriter{f: f, m: m}
-	if _, err := recall(ctx, start, edgeWindowWords, &writer); err != nil || writer.n != n {
+	if err := e.sram.RecallReadsOf(ctx, m, sramcapture.RecordRead{Offset: start, Count: edgeWindowWords, Dst: &writer}); err != nil || writer.n != n {
 		return nil
 	}
 	ew := &EdgeWindow{C1: f.C1, C2: f.C2, Q1: f.Q1, Q2: f.Q2, SampleS: 1 / m.SampleRateHz, Full: m.SamplesPerWord == 2 && m.FractionBits == 0}

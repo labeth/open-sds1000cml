@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
+	"io"
 	"os"
 	"syscall"
 	"time"
@@ -338,6 +339,26 @@ func (w *acquisitionWorker) handle(request []byte) int {
 				w.lines.Flush()
 			}
 			n = w.lines.EncodeLines(int(sel)<<16|int(value), data[:count])
+		case workerRecall:
+			params := request[min(len(request), workerHeader):]
+			if count == 0 || len(params) < 16 || (len(params)-4)%12 != 0 {
+				err = fmt.Errorf("invalid recall request")
+				break
+			}
+			out := sliceWriter{b: data[:count]}
+			var reads [sramcapture.RecordReadsMax]sramcapture.RecordRead
+			k := (len(params) - 4) / 12
+			for i := range k {
+				at := params[4+12*i:]
+				reads[i] = sramcapture.RecordRead{Offset: binary.LittleEndian.Uint32(at), Bucket: binary.LittleEndian.Uint32(at[4:]), Count: binary.LittleEndian.Uint32(at[8:]), Dst: &out}
+			}
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+			err = w.capture.RecallRecord(ctx, sramcapture.RecordIdentity{Epoch: epoch, Record: binary.LittleEndian.Uint32(params)}, reads[:k])
+			cancel()
+			n = out.n
+			if err == nil && n != count {
+				err = fmt.Errorf("recall produced %d of %d bytes", n, count)
+			}
 		case workerStreamPump:
 			if count != 0 {
 				err = fmt.Errorf("invalid stream pump request")
@@ -375,6 +396,23 @@ func (w *acquisitionWorker) handle(request []byte) int {
 	return workerHeader + n
 }
 
+// sliceWriter fills b, failing past its end.
+// TRLC-LINKS: REQ-SDS-001
+type sliceWriter struct {
+	b []byte
+	n int
+}
+
+// TRLC-LINKS: REQ-SDS-001
+func (w *sliceWriter) Write(p []byte) (int, error) {
+	k := copy(w.b[w.n:], p)
+	w.n += k
+	if k != len(p) {
+		return k, io.ErrShortWrite
+	}
+	return k, nil
+}
+
 // serve polls a local packet socket with a 500 us deadline. Commands wake it
 // immediately; absent commands still leave the FPGA drain independent of Go's
 // GUI goroutines. All packet and event buffers are allocated before streaming.
@@ -396,7 +434,7 @@ func (w *acquisitionWorker) serve(fd int) error {
 			_ = w.deadline.Close()
 		}
 	}()
-	var request [workerHeader + 1]byte
+	var request [workerHeader + workerRecallParams + 1]byte
 	pending := 0
 	for {
 		w.pump()
@@ -421,10 +459,11 @@ func (w *acquisitionWorker) serve(fd int) error {
 				if n == 0 {
 					return nil
 				}
-				if int(n) != workerHeader || binary.LittleEndian.Uint32(request[:4]) != workerMagic || request[11] != 1 {
+				withParams := int(n) > workerHeader && int(n) <= workerHeader+workerRecallParams && binary.LittleEndian.Uint16(request[8:10]) == workerRecall
+				if int(n) != workerHeader && !withParams || binary.LittleEndian.Uint32(request[:4]) != workerMagic || request[11] != 1 {
 					return fmt.Errorf("invalid worker request framing")
 				}
-				pending = w.handle(request[:workerHeader])
+				pending = w.handle(request[:n])
 				// Answer before the next FPGA drain: a pump between request and
 				// reply puts a FIFO read into every register round trip and holds
 				// a decoded stream below 921600 Bd.

@@ -2,7 +2,6 @@
 package engine
 
 import (
-	"context"
 	"math"
 	"sync/atomic"
 	"time"
@@ -132,27 +131,42 @@ func viewSpan(m sramcapture.Metadata, screen int, offset, words uint32, edgeX, a
 	return anchor + a*screenWords, anchor + b*screenWords
 }
 
-// recallViewWindow reads planned view p with the live readout's
-// conditioning; at maps a record word to the frame's value index. nil when
-// the read fails.
-// TRLC-LINKS: REQ-SDS-010, REQ-SDS-021
-func (e *Engine) recallViewWindow(ctx context.Context, m sramcapture.Metadata, p viewPlan, scale [2]chScale, at func(w uint32) float64) *ViewWindow {
+// viewRead is a planned view window's read: the plan and the frame its
+// values land in.
+type viewRead struct {
+	p   viewPlan
+	f   *Frame
+	w   sramFrameWriter
+	win *ViewWindow
+}
+
+// newViewRead prepares the read of planned view p of the record m.
+// TRLC-LINKS: REQ-SDS-021
+func newViewRead(m sramcapture.Metadata, p viewPlan) *viewRead {
 	n := p.n
 	f := &Frame{C1: make([]uint8, n), C2: make([]uint8, n), Valid: n}
 	if m.FractionBits == 8 {
 		f.Q1, f.Q2 = make([]uint16, n), make([]uint16, n)
 	}
-	writer := sramFrameWriter{f: f, m: m}
-	var err error
-	switch {
-	case p.bucket != 0:
-		_, err = e.sram.RecallEnvelope(ctx, p.start, p.bucket, p.buckets, &writer)
-	case m.Revision == 10:
-		_, err = e.sram.RecallForward(ctx, p.start, p.length, &writer)
-	default:
-		_, err = e.sram.Recall(ctx, p.start, p.length, &writer)
+	return &viewRead{p: p, f: f, w: sramFrameWriter{f: f, m: m}}
+}
+
+// record is the read as the capture makes it.
+// TRLC-LINKS: REQ-SDS-021
+func (r *viewRead) record() sramcapture.RecordRead {
+	if r.p.bucket != 0 {
+		return sramcapture.RecordRead{Offset: r.p.start, Bucket: r.p.bucket, Count: r.p.buckets, Dst: &r.w}
 	}
-	if err != nil || writer.n != n {
+	return sramcapture.RecordRead{Offset: r.p.start, Count: r.p.length, Dst: &r.w}
+}
+
+// window is the view window the read gave, with the live readout's
+// conditioning; at maps a record word to the frame's value index. nil when
+// the read did not fill it.
+// TRLC-LINKS: REQ-SDS-010, REQ-SDS-021
+func (e *Engine) window(m sramcapture.Metadata, r *viewRead, scale [2]chScale, at func(w uint32) float64) *ViewWindow {
+	p, f, n := r.p, r.f, r.p.n
+	if r.w.n != n {
 		return nil
 	}
 	sampleS := 1 / m.SampleRateHz
@@ -182,15 +196,21 @@ func envelopeValue(offset, bucket uint32) func(w uint32) float64 {
 	return func(w uint32) float64 { return (float64(w) - float64(offset)) * 2 / float64(bucket) }
 }
 
-// readViews reads the frame's view windows the surfaces ask for (the frame
-// read from words [offset, offset+words) of the record in buckets of bucket
-// words, still frozen); one read serves both when they ask for the same.
+// viewReads is the view windows the surfaces ask for of a frame, planned:
+// one read serves both surfaces when they ask for the same.
+type viewReads [viewSurfaces]*viewRead
+
+// planViews plans the view windows the surfaces ask for of frame f, read from
+// words [offset, offset+words) of the record in buckets of bucket words. They
+// depend on the record's metadata alone, so they are read in the same
+// request as the screen's envelope (RecallReadsOf): with the bus worker, one
+// round trip for both, and a display render holding the CPU meanwhile is
+// waited out once a frame, not twice.
 // TRLC-LINKS: REQ-SDS-010, REQ-SDS-021
-func (e *Engine) readViews(f *Frame, m sramcapture.Metadata, screen int, offset, words, bucket, screenBuckets uint32, scale [2]chScale) {
+func (e *Engine) planViews(f *Frame, m sramcapture.Metadata, screen int, offset, words, bucket, screenBuckets uint32) (v viewReads) {
 	if m.SamplesPerWord == 0 || screen <= 0 || bucket == 0 {
-		return
+		return v
 	}
-	var asked [viewSurfaces]viewPlan
 	for s := range viewSurfaces {
 		a, b, cols, ok := e.viewRequest(s)
 		if !ok {
@@ -205,17 +225,40 @@ func (e *Engine) readViews(f *Frame, m sramcapture.Metadata, screen int, offset,
 		if !ok {
 			continue
 		}
-		asked[s] = p
 		for q := range s {
-			if asked[q] == p && f.Views[q] != nil {
-				f.Views[s] = f.Views[q]
+			if v[q] != nil && v[q].p == p {
+				v[s] = v[q]
 			}
 		}
-		if f.Views[s] != nil {
+		if v[s] == nil {
+			v[s] = newViewRead(m, p)
+		}
+	}
+	return v
+}
+
+// reads appends the views' distinct reads to dst.
+// TRLC-LINKS: REQ-SDS-021
+func (v *viewReads) reads(dst []sramcapture.RecordRead) []sramcapture.RecordRead {
+	for s, r := range v {
+		if r != nil && (s == 0 || v[0] != r) {
+			dst = append(dst, r.record())
+		}
+	}
+	return dst
+}
+
+// windows gives frame f the view windows the reads filled (the frame read
+// from word offset in buckets of bucket words).
+// TRLC-LINKS: REQ-SDS-010, REQ-SDS-021
+func (e *Engine) windows(f *Frame, v *viewReads, m sramcapture.Metadata, offset, bucket uint32, scale [2]chScale) {
+	for s, r := range v {
+		if r == nil {
 			continue
 		}
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-		f.Views[s] = e.recallViewWindow(ctx, m, p, scale, envelopeValue(offset, bucket))
-		cancel()
+		if r.win == nil {
+			r.win = e.window(m, r, scale, envelopeValue(offset, bucket))
+		}
+		f.Views[s] = r.win
 	}
 }

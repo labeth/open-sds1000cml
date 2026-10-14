@@ -25,6 +25,11 @@ type fakeBus struct {
 	commands                              []uint16
 	corruptBurstHead                      bool
 	observed                              chan struct{}
+	// identity, when set, gives the record an identity (recordID, epoch);
+	// selReads, when made, counts the reads of each register.
+	identity        bool
+	recordID, epoch uint32
+	selReads        map[uint16]int
 }
 
 // TRLC-LINKS: REQ-SDS-033
@@ -40,7 +45,16 @@ func (f *fakeBus) Read(plane uint8, s uint16) (uint16, error) {
 		return 0, errors.New("backend accessed a plane other than CS1")
 	}
 	var value uint32
+	if f.selReads != nil {
+		f.selReads[s]++
+	}
 	switch s {
+	case 69, 70, 71, 72, 73:
+		id := map[uint16]uint16{69: uint16(f.recordID), 70: uint16(f.recordID >> 16), 71: uint16(f.epoch), 72: uint16(f.epoch >> 16), 73: 0x5201}
+		if f.identity {
+			return id[s], nil
+		}
+		return 0, nil
 	case 0:
 		return f.id, nil
 	case 1:

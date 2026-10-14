@@ -55,7 +55,7 @@ function msg(flags, hdrObj, payload) {
 {
   const src = fs.readFileSync('app_core.js', 'utf8');
   const code = src.slice(src.indexOf('let viewLeased'), src.indexOf('// TRLC-LINKS: REQ-SDS-023\nasync function pollFrameBin'));
-  const c = { view: { win: { a: 0.45, b: 0.55 } }, userZoomed: true, st: { running: true }, CW: 1200,
+  const c = { view: { mode: "YT", win: { a: 0.45, b: 0.55 } }, userZoomed: true, st: { running: true }, CW: 1200,
     frame: { peak_detect: true, win_frac: 4065 / 4096, edge_frac: 0.5, c1: { length: 4096 } } };
   vm.createContext(c); vm.runInContext(code + '\nthis.viewParam = viewParam;', c);
   const q = c.viewParam();
@@ -70,5 +70,11 @@ function msg(flags, hdrObj, payload) {
   assert.equal(c.viewParam(), '', 'ended once');
   c.userZoomed = true; c.st.running = false;
   assert.equal(c.viewParam(), '', 'stopped: the full record is shown, no lease');
+  // X-Y shows no zoomed stretch: a zoom made in Y-T leases nothing there
+  c.st.running = true;
+  assert.ok(/^&view=-?[\d.]+,/.test(c.viewParam()), 'leased again in Y-T');
+  c.view.mode = "XY";
+  assert.equal(c.viewParam(), '&view=off', 'X-Y ends the lease');
+  assert.equal(c.viewParam(), '', 'and asks for none');
 }
 console.log('ALL PASS');

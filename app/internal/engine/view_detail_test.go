@@ -146,3 +146,53 @@ func TestLeaseViewWindowPerSurface(t *testing.T) {
 	}
 	e.LeaseViewWindow(ViewSurface(7), 0, 1, 770, time.Second) // no such surface: ignored
 }
+
+// The views are planned from the record's metadata before the screen is read,
+// so they go in the screen's request: one read for both surfaces when they
+// ask for the same stretch, one each when they differ, none unasked; the
+// windows land on the frame for their surface.
+// TRLC-LINKS: REQ-SDS-021
+func TestViewsReadWithTheScreen(t *testing.T) {
+	now := time.Unix(1000, 0)
+	e := &Engine{}
+	e.clk.Now = func() time.Time { return now }
+	m := sramcapture.Metadata{Length: sramcapture.Words, SamplesPerWord: 2, TriggerIndex: 262144, SampleRateHz: 500e6}
+	const screen = 1000000
+	bucket, offset, words := envelopeWindow(262144-screen/4, screen/2, sramcapture.EnvelopeBuckets, m.Length)
+	f := &Frame{EdgeX: float64(m.TriggerIndex-offset) * 2 / float64(bucket)}
+	plan := func() (viewReads, []sramcapture.RecordRead) {
+		v := e.planViews(f, m, screen, offset, words, bucket, sramcapture.EnvelopeBuckets)
+		screenRead := sramcapture.RecordRead{Offset: offset, Bucket: bucket, Count: sramcapture.EnvelopeBuckets}
+		return v, v.reads([]sramcapture.RecordRead{screenRead})
+	}
+	if _, reads := plan(); len(reads) != 1 {
+		t.Fatalf("no view asked: %d reads, want the screen's alone", len(reads))
+	}
+	e.LeaseViewWindow(ViewScope, -0.01, 0.01, 770, time.Second)
+	e.LeaseViewWindow(ViewWeb, -0.01, 0.01, 770, time.Second)
+	v, reads := plan()
+	if len(reads) != 2 || v[ViewScope] == nil || v[ViewScope] != v[ViewWeb] {
+		t.Fatalf("the same stretch asked twice: %d reads, want the screen's and one view", len(reads))
+	}
+	if r := reads[1]; r.Bucket == 0 || r.Count != 770 || r.Offset < offset || r.Offset+r.Bucket*r.Count > offset+words {
+		t.Fatalf("view read %+v: want 770 buckets within the screen's words %d..%d", r, offset, offset+words)
+	}
+	e.LeaseViewWindow(ViewWeb, 0.1, 0.2, 1200, time.Second)
+	v, reads = plan()
+	if len(reads) != 3 || v[ViewScope] == v[ViewWeb] {
+		t.Fatalf("two stretches: %d reads, want 3", len(reads))
+	}
+	// Filled, each surface's window lands on the frame; one the read did not
+	// fill is none.
+	r := v[ViewScope]
+	if _, err := r.w.Write(make([]byte, 4*int(r.p.buckets))); err != nil {
+		t.Fatal(err)
+	}
+	e.windows(f, &v, m, offset, bucket, [2]chScale{})
+	if w := f.Views[ViewScope]; w == nil || !w.PeakDetect || w.Valid != r.p.n || !(w.To > w.From) {
+		t.Fatalf("scope window %+v", w)
+	}
+	if f.Views[ViewWeb] != nil {
+		t.Fatal("a view the read left empty reached the frame")
+	}
+}

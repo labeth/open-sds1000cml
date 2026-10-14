@@ -830,8 +830,20 @@ acquisitionLoop:
 			recall = e.sram.RecallForward
 		}
 		recallAt := e.clk.Now()
+		var views viewReads
 		if bucket != 0 {
-			_, err = e.sram.RecallEnvelope(ctx, recallOffset, bucket, envBuckets, &writer)
+			// m is the status the capture froze under, read just now. The
+			// views showing part of the screen magnified get that part at full
+			// detail (the screen's envelope spreads its buckets over all of
+			// it), read with it.
+			views = e.planViews(f, m, plan.Screen, recallOffset, recallWords, bucket, envBuckets)
+			screenRead := sramcapture.RecordRead{Offset: recallOffset, Bucket: bucket, Count: envBuckets, Dst: &writer}
+			err = e.sram.RecallReadsOf(ctx, m, views.reads([]sramcapture.RecordRead{screenRead})...)
+			if err != nil && views != (viewReads{}) {
+				// A view's read must not cost the frame: read the screen alone.
+				views, writer.n = viewReads{}, 0
+				err = e.sram.RecallReadsOf(ctx, m, screenRead)
+			}
 			rejects, last := e.sram.EnvelopeDiagnostics()
 			e.mu.Lock()
 			e.stats.EnvelopeRejects, e.stats.EnvelopeLast = rejects, last
@@ -865,14 +877,14 @@ acquisitionLoop:
 		if bucket != 0 && !replay && f.Trigd {
 			if key := (edgeKey{averageCfg(cfg), savedScale}); edges.due(key, e.clk.Now()) {
 				ctx, cancel = context.WithTimeout(context.Background(), time.Second)
-				edge := e.recallEdgeWindow(ctx, recall, m, m.TriggerIndex, savedScale)
+				edge := e.recallEdgeWindow(ctx, m, m.TriggerIndex, savedScale)
 				var opp *EdgeWindow
 				disc := f.C1[:f.Valid]
 				if cfg.TriggerChannel == 1 {
 					disc = f.C2[:f.Valid]
 				}
 				if b := oppositeEdgeBucket(disc, int(f.EdgeX)/2, !cfg.Falling); b >= 0 {
-					opp = e.recallEdgeWindow(ctx, recall, m, recallOffset+uint32(b)*bucket+bucket/2, savedScale)
+					opp = e.recallEdgeWindow(ctx, m, recallOffset+uint32(b)*bucket+bucket/2, savedScale)
 				}
 				cancel()
 				edges.store(key, e.clk.Now(), edge, opp)
@@ -884,11 +896,7 @@ acquisitionLoop:
 		} else if !replay {
 			edges = edgeDetail{} // a capture of another kind: the windows no longer match
 		}
-		// A view showing part of the screen magnified gets that part at full
-		// detail: the screen's envelope spreads its buckets over all of it.
-		if !replay {
-			e.readViews(f, m, plan.Screen, recallOffset, recallWords, bucket, envBuckets, savedScale)
-		}
+		e.windows(f, &views, m, recallOffset, bucket, savedScale)
 		detailAt := e.clk.Now()
 		e.setBusy("processing", 0)
 		// CPU-only conditioning: let a staged lamp latch meanwhile (SetLEDs).

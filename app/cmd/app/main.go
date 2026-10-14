@@ -184,7 +184,7 @@ func buildHUD(e *engine.Engine, fe *analog.FrontEnd) lcd.HUD {
 		rv := pc.RefView()
 		for i := 0; i < 2; i++ {
 			hud.RefC1[i], hud.RefC2[i], hud.RefShow[i] = rv[i].C1, rv[i].C2, rv[i].Show
-			hud.RefVdiv[i], hud.RefOff[i] = rv[i].Vdiv, rv[i].Off
+			hud.RefVdiv[i], hud.RefOff[i], hud.RefProbe[i] = rv[i].Vdiv, rv[i].Off, rv[i].Probe
 		}
 		hud.CurOn, hud.CurType, hud.CurSel = d.CurOn, d.CurType, d.CurSel
 		hud.CurX, hud.CurY = d.CurX, d.CurY
@@ -221,6 +221,7 @@ func buildHUD(e *engine.Engine, fe *analog.FrontEnd) lcd.HUD {
 	// web can also arm FRA — both observe the same accumulated points.
 	if hud.ViewMode == 3 {
 		e.SetBodeMode(true, st.BodeRef, st.BodeDut)
+		hud.BodeRef, hud.BodeDut = st.BodeRef, st.BodeDut
 		pts := e.BodePoints()
 		hud.BodeFreq = make([]float64, len(pts))
 		hud.BodeGain = make([]float64, len(pts))
@@ -441,12 +442,9 @@ func runLCD(e *engine.Engine, fe *analog.FrontEnd, fo *frames.Fanout) {
 				hud.Trigd = f.Trigd // on-screen TRIG'd indicator (there is no TRIG'd lamp)
 				hud.SampleS = f.SampleS
 				// Zoomed into the live envelope: ask for the zoomed part at
-				// full detail (the frame's view window), in screen widths
-				// from the trigger.
-				if hud.Zoom > 1 && f.PeakDetect && f.WinCols > 0 && f.Valid > 0 {
-					c := hud.ZoomOff * float64(f.Valid) / float64(min(f.WinCols, f.Valid))
-					h := 0.5 / float64(hud.Zoom)
-					e.LeaseViewWindow(engine.ViewScope, c-h, c+h, lcd.PlotColumns(hud.UI.Layout), time.Second)
+				// full detail (the frame's view window).
+				if a, b, ok := scopeViewLease(hud, f); ok {
+					e.LeaseViewWindow(engine.ViewScope, a, b, lcd.PlotColumns(hud.UI.Layout), time.Second)
 				}
 				// Spectrogram: push each fresh per-sample frame's spectrum of the
 				// FFT source as a new waterfall row while the SPECTROGRAM view is
@@ -1030,6 +1028,19 @@ func renderScreen(e *engine.Engine, fe *analog.FrontEnd, fo *frames.Fanout) *lcd
 
 // streamSlot is a quarter-second counter while a decoded stream runs (0
 // otherwise): the display's 4 Hz transcript refresh.
+// scopeViewLease is the stretch of live envelope frame f the LCD's zoom
+// shows, in screen widths from the trigger, while zoomed in Y-T (X-Y draws no
+// zoomed stretch, and its reads cost frames).
+// TRLC-LINKS: REQ-SDS-021
+func scopeViewLease(hud lcd.HUD, f *engine.Frame) (a, b float64, ok bool) {
+	if hud.Zoom <= 1 || hud.ViewMode != 0 || f == nil || !f.PeakDetect || f.WinCols <= 0 || f.Valid <= 0 {
+		return 0, 0, false
+	}
+	c := hud.ZoomOff * float64(f.Valid) / float64(min(f.WinCols, f.Valid))
+	h := 0.5 / float64(hud.Zoom)
+	return c - h, c + h, true
+}
+
 // TRLC-LINKS: REQ-SDS-018
 func streamSlot(hud lcd.HUD) int64 {
 	if hud.StreamOn && (hud.Stream.State == streamview.Streaming || hud.Stream.State == streamview.Starting) {

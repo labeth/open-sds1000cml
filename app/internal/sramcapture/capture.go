@@ -41,6 +41,7 @@ type Capture struct {
 	recallScratch  []byte
 	recallData     []byte
 	recallHalves   []uint16
+	isolatedData   []byte // a bus worker's whole read (recallIsolated)
 	streamHalves   []uint16
 	streamWords    uint16
 	streamBytes    []byte
@@ -727,6 +728,179 @@ func (c *Capture) RecallForward(ctx context.Context, offset, count uint32, dst i
 	return c.recall(ctx, offset, count, dst, true)
 }
 
+// RecordRead is one window of a record read by RecallReadsOf: Count buckets
+// of Bucket words from word Offset reduced as RecallEnvelope does, or Count
+// words raw (Bucket 0) as RecallForward does on a revision 10 fabric and
+// Recall otherwise, written to Dst.
+// TRLC-LINKS: REQ-SDS-010, REQ-SDS-033
+type RecordRead struct {
+	Offset, Bucket, Count uint32
+	Dst                   io.Writer
+}
+
+// size is the bytes the read gives from a record m describes.
+// TRLC-LINKS: REQ-SDS-033
+func (r RecordRead) size(m Metadata) int {
+	if r.Bucket != 0 && m.FractionBits == 8 {
+		return int(r.Count) * 8 // Q8.8 buckets: the minima word, then the maxima
+	}
+	return int(r.Count) * 4
+}
+
+// RecordReadsMax bounds the reads RecallReadsOf makes in one round trip.
+const RecordReadsMax = 4
+
+// RecallReadsOf makes reads, in order, of the record m describes (read by
+// Status, or an earlier recall of it, while frozen): a frame's screen
+// and the stretches its views show magnified. A bus worker makes them all in
+// one round trip (isolatedRecall); else a check that the same record is still
+// the frozen one replaces reading its whole status again.
+// TRLC-LINKS: REQ-SDS-010, REQ-SDS-033
+func (c *Capture) RecallReadsOf(ctx context.Context, m Metadata, reads ...RecordRead) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if owned, err := c.recallIsolated(m, reads); owned {
+		return err
+	}
+	m, err := c.sameFrozen(m)
+	if err != nil {
+		return err
+	}
+	for _, r := range reads {
+		if err := c.recallRead(ctx, m, r); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// RecallRecord makes reads, in order, of the frozen record id names, as
+// RecallReadsOf does here; an error when that record is no longer the frozen
+// one. A bus worker serves isolatedRecall with it.
+// TRLC-LINKS: REQ-SDS-010, REQ-SDS-033
+func (c *Capture) RecallRecord(ctx context.Context, id RecordIdentity, reads []RecordRead) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	m, err := c.status()
+	if err != nil {
+		return err
+	}
+	if !m.HasRecordIdentity || m.RecordID != id.Record || m.EventEpoch != id.Epoch {
+		return fmt.Errorf("sramcapture: retained record identity changed")
+	}
+	for _, r := range reads {
+		if err := c.recallRead(ctx, m, r); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// sameFrozen checks that the record m describes is still the frozen one -
+// its flags and its identity, five register reads - and returns m; a record
+// without an identity is checked against a full status read.
+// Called with c.mu held.
+// TRLC-LINKS: REQ-SDS-033, REQ-SDS-083
+func (c *Capture) sameFrozen(m Metadata) (Metadata, error) {
+	if !m.HasRecordIdentity {
+		now, err := c.status()
+		if err != nil {
+			return now, err
+		}
+		if now.Length != m.Length || now.Start != m.Start || now.Origin != m.Origin || now.TriggerIndex != m.TriggerIndex || now.Revision != m.Revision || now.Decimation != m.Decimation {
+			return now, fmt.Errorf("sramcapture: retained record changed")
+		}
+		return now, nil
+	}
+	s, err := c.read(1)
+	if err != nil {
+		return m, err
+	}
+	if s&4 == 0 || s&16 == 0 || s&8 != 0 {
+		return m, fmt.Errorf("sramcapture: record is not frozen")
+	}
+	record, err := c.read32(69)
+	if err != nil {
+		return m, err
+	}
+	epoch, err := c.read32(71)
+	if err != nil {
+		return m, err
+	}
+	if record != m.RecordID || epoch != m.EventEpoch {
+		return m, fmt.Errorf("sramcapture: retained record identity changed")
+	}
+	return m, nil
+}
+
+// recallRead makes read r of the record m, read just now. Called with c.mu
+// held.
+// TRLC-LINKS: REQ-SDS-010, REQ-SDS-033
+func (c *Capture) recallRead(ctx context.Context, m Metadata, r RecordRead) error {
+	if r.Bucket != 0 {
+		return c.recallEnvelope(ctx, m, r.Offset, r.Bucket, r.Count, r.Dst)
+	}
+	_, err := c.recallFrozen(ctx, m, r.Offset, r.Count, r.Dst, m.Revision == 10)
+	return err
+}
+
+// isolatedRecall is a bus whose registers a worker process owns: it makes
+// whole reads of a frozen record there (Capture.RecallRecord) in one round
+// trip, where a read made here takes one per register access - a few dozen,
+// each a pair of process switches on the scope's single core - and every
+// round trip waits for whatever else holds the CPU (a display render) to let
+// the caller run again: a live frame's reads cost it several ms of CPU and
+// tens of ms. windows holds each read's (offset, bucket, count). owned is
+// false when no worker owns the bus or dst exceeds what one round trip
+// carries: the reads are then made here.
+// TRLC-LINKS: REQ-SDS-001, REQ-SDS-033
+type isolatedRecall interface {
+	RecallIsolated(epoch, record uint32, windows []uint32, dst []byte) (owned bool, err error)
+}
+
+// recallIsolated has the bus worker make reads of the record m describes
+// (see isolatedRecall); false when they are to be made here, also for a
+// record without the identity to check it by. Called with c.mu held.
+// TRLC-LINKS: REQ-SDS-001, REQ-SDS-033
+func (c *Capture) recallIsolated(m Metadata, reads []RecordRead) (bool, error) {
+	r, ok := c.bus.(isolatedRecall)
+	if !ok || !m.HasRecordIdentity || len(reads) == 0 || len(reads) > RecordReadsMax {
+		return false, nil
+	}
+	size := 0
+	var windows [3 * RecordReadsMax]uint32
+	for i, rd := range reads {
+		size += rd.size(m)
+		windows[3*i], windows[3*i+1], windows[3*i+2] = rd.Offset, rd.Bucket, rd.Count
+	}
+	if cap(c.isolatedData) < size {
+		c.isolatedData = make([]byte, size)
+	}
+	data := c.isolatedData[:size]
+	owned, err := r.RecallIsolated(m.EventEpoch, m.RecordID, windows[:3*len(reads)], data)
+	if !owned || err != nil {
+		return owned, err
+	}
+	for _, rd := range reads {
+		k := rd.size(m)
+		n, err := rd.Dst.Write(data[:k])
+		if err == nil && n != k {
+			err = io.ErrShortWrite
+		}
+		if err != nil {
+			return true, err
+		}
+		data = data[k:]
+	}
+	return true, nil
+}
+
 // TRLC-LINKS: REQ-SDS-033
 func (c *Capture) recall(ctx context.Context, offset, count uint32, dst io.Writer, forward bool) (written int64, err error) {
 	return c.recallChecked(ctx, offset, count, dst, forward, nil)
@@ -746,6 +920,13 @@ func (c *Capture) recallChecked(ctx context.Context, offset, count uint32, dst i
 	if expected != nil && (!m.HasRecordIdentity || m.RecordID != expected.Record || m.EventEpoch != expected.Epoch) {
 		return 0, fmt.Errorf("sramcapture: retained record identity changed")
 	}
+	return c.recallFrozen(ctx, m, offset, count, dst, forward)
+}
+
+// recallFrozen recalls the window of the record m, read just now. Called
+// with c.mu held.
+// TRLC-LINKS: REQ-SDS-033
+func (c *Capture) recallFrozen(ctx context.Context, m Metadata, offset, count uint32, dst io.Writer, forward bool) (written int64, err error) {
 	if m.DataFault {
 		return 0, fmt.Errorf("sramcapture: interleave FIFO fault; record has missing samples")
 	}

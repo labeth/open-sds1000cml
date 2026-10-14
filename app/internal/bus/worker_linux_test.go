@@ -249,3 +249,35 @@ func TestWorkerDisconnectNeverFallsBackToParentFD(t *testing.T) {
 		}
 	}
 }
+
+// A whole read of a record goes to the worker as one request carrying its
+// windows after the header, and reaches the worker's capture: the fake has no
+// SRAM, so its status read fails there and the error comes back. A request
+// whose parameters are not whole windows is refused; without a worker, or
+// beyond a packet, the read is the caller's to make.
+// TRLC-LINKS: REQ-SDS-001, REQ-SDS-033
+func TestWorkerRecallRequest(t *testing.T) {
+	d, _ := workerFixture(t)
+	dst := make([]byte, 64)
+	owned, err := d.RecallIsolated(7, 0x12345, []uint32{10, 4, 8, 500, 0, 8}, dst)
+	if !owned || err == nil || !strings.Contains(err.Error(), "unexpected fake read 1") {
+		t.Fatalf("owned %v, error %v: want the worker's capture to have read the status", owned, err)
+	}
+	if owned, _ := d.RecallIsolated(7, 1, []uint32{0, 0, 1}, make([]byte, workerPayload+4)); owned {
+		t.Fatal("a read beyond a worker packet was sent")
+	}
+	if owned, _ := d.RecallIsolated(7, 1, make([]uint32, 3*(sramcapture.RecordReadsMax+1)), dst); owned {
+		t.Fatal("more windows than a request carries were sent")
+	}
+	if owned, _ := (&Dev{fd: -1}).RecallIsolated(7, 1, []uint32{0, 0, 1}, dst); owned {
+		t.Fatal("a read was sent without a worker")
+	}
+	w := &acquisitionWorker{bus: &workerFake{}}
+	var request [workerHeader + 10]byte
+	binary.LittleEndian.PutUint16(request[8:10], workerRecall)
+	binary.LittleEndian.PutUint32(request[16:20], 16)
+	w.handle(request[:])
+	if w.response[10] != 1 || !strings.Contains(string(w.response[workerHeader:]), "invalid recall request") {
+		t.Fatal("a recall request without whole windows was served")
+	}
+}

@@ -39,8 +39,17 @@ func (c *Capture) SupportsEnvelope() (bool, error) {
 // TRLC-LINKS: REQ-SDS-010
 func (c *Capture) envelopeCapability() (bool, error) {
 	revision, err := c.read(13)
-	if err != nil || revision != 10 {
+	if err != nil {
 		return false, err
+	}
+	return c.envelopeCapabilityOf(revision)
+}
+
+// envelopeCapabilityOf is envelopeCapability on a fabric of the revision read.
+// TRLC-LINKS: REQ-SDS-010
+func (c *Capture) envelopeCapabilityOf(revision uint16) (bool, error) {
+	if revision != 10 {
+		return false, nil
 	}
 	v, err := c.read(43)
 	return v == 0x454e, err
@@ -63,14 +72,21 @@ func (c *Capture) RecallEnvelope(ctx context.Context, offset, bucket, buckets ui
 	if err != nil {
 		return m, err
 	}
-	if present, err := c.envelopeCapability(); err != nil || !present {
-		return m, fmt.Errorf("sramcapture: fabric lacks the envelope recall: %v", err)
+	return m, c.recallEnvelope(ctx, m, offset, bucket, buckets, dst)
+}
+
+// recallEnvelope reduces the window of the record m, read just now, into dst.
+// Called with c.mu held.
+// TRLC-LINKS: REQ-SDS-010, REQ-SDS-033
+func (c *Capture) recallEnvelope(ctx context.Context, m Metadata, offset, bucket, buckets uint32, dst io.Writer) error {
+	if present, err := c.envelopeCapabilityOf(m.Revision); err != nil || !present {
+		return fmt.Errorf("sramcapture: fabric lacks the envelope recall: %v", err)
 	}
 	if m.DataFault {
-		return m, fmt.Errorf("sramcapture: interleave FIFO fault; record has missing samples")
+		return fmt.Errorf("sramcapture: interleave FIFO fault; record has missing samples")
 	}
 	if !m.Ready || !m.Frozen || m.Running {
-		return m, fmt.Errorf("sramcapture: record is not frozen")
+		return fmt.Errorf("sramcapture: record is not frozen")
 	}
 	q8 := m.FractionBits == 8
 	perBucket := uint32(1)
@@ -81,23 +97,23 @@ func (c *Capture) RecallEnvelope(ctx context.Context, offset, bucket, buckets ui
 	// The FPGA reduces two-word packets: buckets are an even number of words.
 	if bucket < 2 || bucket%2 != 0 || bucket > 0xffffe || buckets == 0 || buckets*perBucket > EnvelopeOutputWords || (!q8 && buckets%2 != 0) ||
 		uint64(offset)+uint64(words) > uint64(m.Length) || words+16 > Words {
-		return m, fmt.Errorf("sramcapture: invalid envelope window")
+		return fmt.Errorf("sramcapture: invalid envelope window")
 	}
 	const prefix = 16
 	target := (m.Origin + m.Start + offset - prefix) & addressMask
 	position, err := c.read32(8)
 	if err != nil {
-		return m, err
+		return err
 	}
 	if skip := (target - position) & addressMask; skip != 0 {
 		if err = c.write32(8, skip); err != nil {
-			return m, err
+			return err
 		}
 		if err = c.command(ctx, 3); err != nil {
-			return m, err
+			return err
 		}
 		if err = c.ready(ctx); err != nil {
-			return m, err
+			return err
 		}
 	}
 	control := uint16(0x8000) | uint16(bucket>>16)
@@ -112,12 +128,12 @@ func (c *Capture) RecallEnvelope(ctx context.Context, offset, bucket, buckets ui
 		}
 	}()
 	for _, r := range []struct{ sel, value uint16 }{{43, uint16(bucket)}, {44, control}, {45, prefix}} {
-		if err = c.write(r.sel, r.value); err != nil {
-			return m, err
+		if err := c.write(r.sel, r.value); err != nil {
+			return err
 		}
 	}
 	if err = c.write32(8, words+prefix); err != nil {
-		return m, err
+		return err
 	}
 	if err = c.command(ctx, 2); err != nil {
 		// Diagnostic: record what the transport reported, then retry once.
@@ -126,14 +142,14 @@ func (c *Capture) RecallEnvelope(ctx context.Context, offset, bucket, buckets ui
 		c.envelopeRejects++
 		c.envelopeLast = fmt.Sprintf("op2 rejected: status %04x position %d target %d words %d: %v", s, pos, target, words, err)
 		if err = c.ready(ctx); err != nil {
-			return m, err
+			return err
 		}
 		if err = c.command(ctx, 2); err != nil {
-			return m, fmt.Errorf("%s; retry: %w", c.envelopeLast, err)
+			return fmt.Errorf("%s; retry: %w", c.envelopeLast, err)
 		}
 	}
 	if err = c.ready(ctx); err != nil {
-		return m, err
+		return err
 	}
 	out := buckets * perBucket
 	// The 125 MHz reducer finishes a few clocks after the transport.
@@ -142,14 +158,14 @@ func (c *Capture) RecallEnvelope(ctx context.Context, offset, bucket, buckets ui
 		got, err = c.read(46)
 	}
 	if err != nil {
-		return m, err
+		return err
 	}
 	if uint32(got) != out {
-		return m, fmt.Errorf("sramcapture: envelope produced %d words, want %d", got, out)
+		return fmt.Errorf("sramcapture: envelope produced %d words, want %d", got, out)
 	}
 	// Leave normal recalls unaffected.
 	if err = c.write(44, 0); err != nil {
-		return m, err
+		return err
 	}
 	c.envelopeOn = false
 	if cap(c.recallHalves) < int(out*2) {
@@ -157,22 +173,22 @@ func (c *Capture) RecallEnvelope(ctx context.Context, offset, bucket, buckets ui
 	}
 	halves := c.recallHalves[:out*2]
 	if err = c.write(16, 0); err != nil {
-		return m, err
+		return err
 	}
 	if _, err = c.read(17); err != nil {
-		return m, err
+		return err
 	}
 	if err = c.write(17, 0); err != nil {
-		return m, err
+		return err
 	}
 	if pop, ok := c.bus.(interface{ PopWordsChecked(uint16, []uint16) error }); ok {
 		if err = pop.PopWordsChecked(25, halves); err != nil {
-			return m, err
+			return err
 		}
 	} else {
 		for i := range halves {
 			if halves[i], err = c.read(25); err != nil {
-				return m, err
+				return err
 			}
 		}
 	}
@@ -184,5 +200,5 @@ func (c *Capture) RecallEnvelope(ctx context.Context, offset, bucket, buckets ui
 	if err == nil && n != len(data) {
 		err = io.ErrShortWrite
 	}
-	return m, err
+	return err
 }
