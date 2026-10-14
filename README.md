@@ -243,7 +243,9 @@ with a short REMOTE line. It shows settings only, no waveform. Several phones ca
 * **Menus:** every settings tab and row, with search that knows everyday words ("averaging", "screenshot");
   a long press pins a row to Home.
 * **History:** every change, from the phone (as the scope reports what each of its calls changed), the scope or
-  another phone, with undo; the tab's badge counts what is new since you last looked.
+  another phone, with undo; the tab's badge counts what is new since you last looked. What the scope sets
+  itself as a result (the memory depth a timebase brings, "(auto)") is part of the change that caused it: one
+  entry, and one undo reverts both.
 * **Keys:** the knob pushes and keys, the menu keys (they open the menu on the phone) and Default Setup (hold 1 s).
 * Typed numbers with units ("1.25V", "500us", a comma for the point works too), hex values ("0x50") and match
   bytes in hex or text.

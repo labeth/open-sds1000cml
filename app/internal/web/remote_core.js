@@ -645,10 +645,19 @@
       (e.ws == null || (typeof e.ws === "object" && str(e.ws.from) && str(e.ws.to))) && (e.undid === undefined || Array.isArray(e.undid));
   }
 
+  // autoRow: a row the scope set itself as a consequence of another change
+  // (its text ends "(auto)": the memory depth a timebase brings). It is a
+  // sub-change of the change that caused it, not one of its own.
+  // TRLC-LINKS: REQ-SDS-220
+  function autoRow(r) {
+    return / \(auto\)$/.test((r && r.neu && r.neu.text) || "");
+  }
+
   // History is the change list, newest first: every setting change from the
   // phone or the scope; steps on one row from one source within 3 s are one
   // entry (stepping back to the start removes it); an undo is itself an
-  // entry. At most 100 entries.
+  // entry; rows the scope set itself within 3 s of a change join it (one
+  // undo reverts both). At most 100 entries.
   // TRLC-LINKS: REQ-SDS-220
   class History {
     // TRLC-LINKS: REQ-SDS-220
@@ -667,12 +676,21 @@
       rows = rows.slice();
       const pi = meta.primary ? rows.findIndex((r) => r.id === meta.primary) : -1;
       if (pi > 0) rows.unshift(rows.splice(pi, 1)[0]);
-      const single = rows.length === 1 && !meta.ws && !meta.kind && !meta.label;
+      const own = rows.filter((r) => !autoRow(r)), auto = rows.filter(autoRow);
+      const plain = !meta.ws && !meta.kind && !meta.label;
       const last = this.list[0];
-      if (single && last && last.single && last.src === src && last.rows[0].id === rows[0].id && !last.undone && now - last.t <= MERGE_MS) {
-        last.rows[0].neu = rows[0].neu;
+      const recent = !!last && !last.undone && now - last.t <= MERGE_MS;
+      if (!own.length && auto.length && plain && recent && last.kind !== "undo" && last.kind !== "action") {
+        this.extend(last, auto);   // whatever source booked it: the scope set it for that change
+        return last;
+      }
+      if (own.length && own[0] !== rows[0]) rows.unshift(rows.splice(rows.indexOf(own[0]), 1)[0]);
+      const single = own.length === 1 && plain;
+      if (single && recent && last.single && last.src === src && last.rows[0].id === own[0].id) {
+        last.rows[0].neu = own[0].neu;
         last.t = now;
         last.n++;
+        if (auto.length) this.extend(last, auto);
         if (last.rows[0].neu.key === last.rows[0].old.key) { this.list.shift(); return null; }
         return last;
       }
@@ -699,20 +717,22 @@
       const pi = e.pid ? e.rows.findIndex((r) => r.id === e.pid) : -1;
       if (pi >= 0) { e.rows.unshift(e.rows.splice(pi, 1)[0]); e.primary = true; }
       if (ws) e.ws = e.ws ? { from: e.ws.from, to: ws.to } : ws;
-      e.single = e.single && e.rows.length === 1 && !e.ws;
+      e.single = e.single && e.rows.filter((r) => !autoRow(r)).length === 1 && !e.ws;
       if (!e.undoable && e.kind !== "action") e.undoable = !!e.ws || e.rows.some((r) => r.kind !== "slot");
       return e;
     }
 
     // targets is what an undo of these entries sets back: each row's old
-    // value from the oldest of them, and the workspace they started in.
+    // value from the oldest of them, and the workspace they started in. A row
+    // the scope derived before and after (auto both ways) is not set: the
+    // scope derives it again from the rows put back.
     // TRLC-LINKS: REQ-SDS-220
     targets(entries) {
       const rows = new Map();
       let ws = null;
       for (const e of entries.slice().sort((a, b) => b.id - a.id)) {   // newest first: older entries override
         if (e.ws) ws = e.ws.from;
-        for (const r of e.rows) if (r.kind !== "slot") rows.set(r.id, r);
+        for (const r of e.rows) if (r.kind !== "slot" && !(autoRow(r) && / \(auto\)$/.test(r.old.text || ""))) rows.set(r.id, r);
       }
       return { rows: Array.from(rows.values()).map((r) => ({ id: r.id, tab: r.tab, label: r.label, kind: r.kind, value: r.old.value, text: r.old.text, key: r.old.key })), ws };
     }

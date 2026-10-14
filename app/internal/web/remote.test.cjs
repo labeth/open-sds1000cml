@@ -399,6 +399,34 @@ test("steps on one row from one source within 3 s are one entry; back to the sta
   s2(2, 1, 500);
   assert.equal(k.list.length, 0, "stepped back to where it started");
 });
+test("a row the scope sets itself joins the change that caused it; undo reverts both", () => {
+  const h = new RC.History();
+  // TRLC-LINKS: REQ-SDS-220
+  const row = (id, label, from, fromText, to, toText) => ({ id, tab: "TIME", label, kind: "number",
+    old: { value: from, text: fromText, key: JSON.stringify(from) }, neu: { value: to, text: toText, key: JSON.stringify(to) } });
+  // TRLC-LINKS: REQ-SDS-220
+  const tdiv = (from, to, t) => h.add("phone", [row("time.tdiv", "Time/div", from, RC.si(from, "s"), to, RC.si(to, "s"))], {}, t);
+  // TRLC-LINKS: REQ-SDS-220
+  const depth = (from, to, t) => h.add("scope", [row("acq.depth", "Memory depth", from, from + " (auto)", to, to + " (auto)")], {}, t);
+  tdiv(2e-5, 2e-4, 0);
+  depth("500k", "1M", 400);   // booked a read later, as the scope's
+  assert.equal(h.list.length, 1, "the depth is part of the timebase change");
+  assert.deepEqual(h.list[0].rows.map((r) => r.id), ["time.tdiv", "acq.depth"]);
+  tdiv(2e-4, 5e-4, 900);
+  depth("1M", "2M", 1200);
+  assert.equal(h.list.length, 1, "knob steps still merge with the depth inside");
+  assert.equal(h.list[0].rows[0].neu.text, "500us");
+  assert.equal(h.list[0].rows[1].neu.text, "2M (auto)");
+  const t = h.targets([h.list[0]]);
+  assert.deepEqual(t.rows.map((r) => r.id), ["time.tdiv"], "undo puts the timebase back; the scope derives the depth again");
+  assert.equal(t.rows[0].text, "20us");
+  depth("2M", "4M", 9000);
+  assert.equal(h.list.length, 2, "a depth change long after any change: its own entry");
+  const m = new RC.History();
+  m.add("phone", [row("time.tdiv", "Time/div", 2e-5, "20us", 2e-4, "200us")], {}, 0);
+  m.add("scope", [row("acq.depth", "Memory depth", "500k", "500k", "1M", "1M (auto)")], {}, 300);
+  assert.deepEqual(m.targets([m.list[0]]).rows.map((r) => r.id), ["time.tdiv", "acq.depth"], "a depth set by hand before is put back");
+});
 test("undo targets restore old values; back-to-before takes each row's oldest value", () => {
   const h = new RC.History();
   // TRLC-LINKS: REQ-SDS-220
