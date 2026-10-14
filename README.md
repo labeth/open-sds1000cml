@@ -113,7 +113,8 @@ anything on the scope's screen.
   stay visible at any zoom. Zoomed in until fewer of those points than pixels are shown (the LCD
   from 10×, the web page alike), the zoomed stretch of the same capture is read again at full
   detail, a min/max pair per column: a 1 MHz square at 200 µs/div zoomed 50× shows its 40 cycles,
-  not the screen's points stretched (about 4 frames a second of cost). The points are put back in
+  not the screen's points stretched (read in the same request as the screen: 1 to 3 frames a
+  second of cost, the most where the zoom shows a fast signal's edge every few columns). The points are put back in
   time order, so protocol decode, masks and trigger placement run on live frames too. Average, ERES
   and precision use a decimated live capture of 8,192 samples instead (their filtering needs true
   samples; the FFT takes 8,192 to 16,384 filtered samples, its 8,192 points one for one, or up to

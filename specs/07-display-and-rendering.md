@@ -291,19 +291,23 @@ bytes of the drained round-robin word (one byte per channel per sample).
 
 ### 4.1 Trace window centring
 
-The display shows a `WinCols`-sample window of the record, centred on the trigger
-crossing:
+The display shows a `WinCols`-sample window of the record with the trigger crossing at the
+trigger position (`traceWindow`):
 
 1. `win = f.WinCols`, clamped: if `win ≤ 0` or `win > valid`, set `win = valid`.
-2. `xc = f.EdgeX`.
-3. If `xc < 0`, recompute a fallback crossing: `xc = CenterCross(c1, MidLevel(c1), +1)`
-   — the rising mid-level crossing nearest the record centre.
-4. If still `xc < 0` (a genuinely flat rail — the faithful native-fast result at
-   100–200 ns/div), set `xc = valid/2`: centre on the record middle and show the rail.
-   **Do not fabricate an edge.**
-5. Draw the trace of `c1 = f.C1[:valid]` with window `win` centred at `xc`, colour
-   `colC1`, interpolation flag `f.Interp`. Draw C2 identically with the same `xc`/`win`
+2. `xc = f.EdgeX`, and `posFrac` = the trigger position (`TrigPosFrac`, 0.5 = centre).
+3. If `xc < 0` (an untriggered frame: the engine's publish policy sends one only for a
+   flat or unlocked capture), set `xc = valid/2`: the record middle. **Do not fabricate an
+   edge** from a marginal or noise crossing (the web's window does the same).
+4. Zoomed (`Zoom > 1`): `win = max(win/Zoom, 8)`, `xc += ZoomOff·valid` (the pan, a fraction
+   of the record) and `posFrac = 0.5`: the zoomed screen is centred on the trigger plus the
+   pan. The trigger pointer, the cursors' times and their "At trigger" follow the same
+   mapping.
+5. Draw the trace of `c1 = f.C1[:valid]` over the window from `left = xc − win·posFrac`,
+   colour `colC1`, interpolation flag `f.Interp`. Draw C2 identically with the same window
    so the two channels stay horizontally aligned.
+
+The engine's edge discernment uses these two helpers (`midLevel`, `centerCross` in `engine/discern.go`):
 
 **`MidLevel(sig)`** returns `(min+max)/2` over the slice (integer), or **128** on an empty
 slice.
@@ -356,10 +360,10 @@ For interpolated (fractional) code values `v`, use the rounded float form:
 
 ### 6.2 Line trace (`drawTrace`)
 
-Maps the `win`-sample window, centred at `xc`, across all 800 columns and draws a
-connected 1-px waveform.
+Maps the `win`-sample window (§4.1) across all 800 columns and draws a connected 1-px
+waveform.
 
-- `left = xc - win/2` — the fractional sample position of the leftmost column.
+- `left = xc - win·posFrac` — the fractional sample position of the leftmost column.
 - For each panel column `x = 0..799`:
   `pos = left + x × win / 800` — the fractional sample position for this column.
 
@@ -421,6 +425,10 @@ the columns that show it), and the engine reads that stretch of the same frozen 
 window (`zoomView`), the web while it covers the shown one (`viewCovers`; it travels after the
 binary frame's payload); AC coupling moves it by the whole trace's DC (`analog.CoupleDisplayBy`).
 A zoom the screen's pairs still resolve (one pair every second column or more) reads nothing.
+The stretches depend on the record's metadata alone, so they are read in the same request as the
+screen's pairs (`Capture.RecallReadsOf`): the bus worker makes all of a frame's reads in one round
+trip (`Capture.RecallRecord`), where each register access was one, and the frame waits for the
+CPU a display render holds once, not once a read.
 
 ### 6.3 Envelope (`drawEnvelope`) — slow/roll bands only
 
@@ -589,50 +597,48 @@ Drawn at scale 1. Coordinates are the glyph top-left; `W=800`, `H=480`.
 | `(4, 2)` | `C1 <v/div>` (e.g. `C1 500mV`) | `colC1` yellow |
 | `(96, 2)` | `C2 <v/div>` | `colC2` pink |
 | `(200, 2)` | `M <time/div>` (main timebase) | `colInfo` grey `(200,200,200)` |
-| right-justified at `(796, 2)` | `T C<n> <^\|v> <±level>div <state>` — trigger source channel `n`, edge (`^` rising / `v` falling), level in divisions, sweep state | `colTrig` green `(64,255,64)` |
-| `(4, 471)` | `C1 Vpp <volts>` + (when the measurement is valid) `  f <freq>` | `colC1` |
+| `(262, 2)` | `x<n>` while zoomed (the zoom factor) | `colTrig` |
+| right-justified at `(796, 2)` | `T C<n> <^\|v> <level> <state>` — trigger source channel `n`, edge (`^` rising / `v` falling), level in volts at the tip, sweep state | `colTrig` green `(64,255,64)` |
+| `(4, 471)` | `C1 Vpp <volts>` + (when the measurement has timing) `  f <freq>` | `colC1` |
 | `(410, 471)` | `C2 Vpp <volts>` + `  f <freq>` | `colC2` |
+
+In X-Y, FFT, Bode and the spectrogram the `(200, 2)` field names the view (`X-Y`, `FFT`, `BODE`,
+`SPGM`) instead of the timebase.
 
 The bottom-row `y = H-9 = 471` keeps the 7-px glyphs inside the panel.
 
-**Value formatting.** All numeric fields use Go `strconv.FormatFloat(x, 'g', 3, 64)`
-(3 significant figures) with a unit suffix chosen by magnitude. Note the suffixes are
-ASCII (`us`, not `µs`).
+**Value formatting.** All numeric fields use 3 significant figures
+(`strconv.FormatFloat(x, 'g', 3, 64)`) with an SI prefix chosen by magnitude, the sign kept
+(`siScale`). A value that rounds up to 1000 of a prefix takes the next one (`999.96 ns` reads
+`1us`), never scientific notation. The suffixes are ASCII (`us`, not `µs`) and follow the
+number directly: `fmtVolt` (V, mV), `fmtTdiv` (s, ms, us, ns), `fmtFreq` (MHz, kHz, Hz).
 
-| Formatter | Rule |
-|---|---|
-| Voltage `fmtVolt(v)` | `x = abs(v)`; if `x ≥ 1` → `g,3(x)+"V"`, else `g,3(x·1e3)+"mV"` |
-| Time/div `fmtTdiv(s)` | `s ≥ 1` → `+"s"`; `s ≥ 1e-3` → `g,3(s·1e3)+"ms"`; `s ≥ 1e-6` → `g,3(s·1e6)+"us"`; else `g,3(s·1e9)+"ns"` |
-| Frequency `fmtFreq(f)` | `f ≥ 1e6` → `g,3(f/1e6)+"MHz"`; `f ≥ 1e3` → `g,3(f/1e3)+"kHz"`; else `g,3(f)+"Hz"` |
+**Trigger read-out.** Assembled as `fmt.Sprintf("T C%d %s %s %s", trigSrc+1, edge,
+fmtVolt(level), state)` and drawn right-aligned ending at `x = W-4 = 796`, `y = 2`. `edge` is
+`"^"` rising, else `"v"`; the level is the trigger level in volts at the probe tip. `state`
+starts as `"AUTO"` (`"NORM"` in Normal) and the first that holds of these replaces it: running
+a single → `"SNGL"`; not running → `"STOP"`; a roll view → `"ROLL"`; Normal with nothing
+published lately (`Waiting`: the held frame's trigger no longer describes now) → `"WAIT"`;
+the frame triggered → `"T'D"`; Normal → `"WAIT"`. The web's trigger chip uses the same words
+in the same order.
 
-**Trigger read-out.** Assembled as `fmt.Sprintf("T C%d %s %+.2fdiv %s", trigSrc+1, edge,
-trigLvl, state)` and drawn right-aligned ending at `x = W-4 = 796`, `y = 2`. `edge` is
-`"^"` when `trigEdge ≥ 0` (rising) else `"v"`; `trigLvl` is the level in divisions with a
-forced sign and 2 decimals (`%+.2f`). `state` precedence (evaluated in this order): start
-from the sweep-mode name `"AUTO"` (or `"NORM"` when NORM mode), then **if not running**
-override with `"STOP"`, **else if triggered** `"T'D"`, **else if NORM mode** `"WAIT"`.
-(STOP overrides the triggered/WAIT states; a running triggered display shows `T'D`.)
-
-**Bottom-row Vpp / frequency.** Per channel over the record `sig` (length = record cols),
-compute `cmin`/`cmax` (min/max ADC code) and `vpp = (cmax − cmin) / 127.0` volts — the
-render scale is a fixed **1/127 V per code**. Frequency is measured from the mid-level
-`lvl = (cmin + cmax) / 2`: scan `c = 1..cols-1` for rising crossings
-(`sig[c-1] < lvl && sig[c] ≥ lvl`), recording the first crossing index, the last, and the
-count `n`. The measurement is **valid** only when `n ≥ 2 && last > first && sampleS > 0`,
-where `sampleS` is the per-sample interval in seconds; then
-`period = (last − first) / (n − 1) · sampleS` and `freq = 1/period`. The `  f <freq>`
-suffix (two spaces, `f`, space, `fmtFreq(freq)`) is appended to the Vpp read-out **only
-when the measurement is valid**; otherwise the Vpp read-out stands alone.
+**Bottom-row Vpp / frequency.** Per shown channel, the frame measured by the shared measure
+package as the MEASURE readouts and the web measure it (`chanMeasure`: calibrated, probe-scaled
+volts, the display coupling and invert): `Vpp`, and `  f <freq>` appended when the measurement
+has timing (`HasTiming`).
 
 ### 10.2 Cursors
 
-Two vertical time cursors, off by default (the CURS tab, or the Adjust push in MEASURE). When on, each
-cursor is a **dashed vertical line** in orange `(255,160,32)`, one pixel every 3rd row
-from `y = 12` to `y = H-12 = 468`, at column `curX[i]`. Default positions are
-`curX = {W/3, 2W/3} = {266, 533}`. Each cursor is labelled `1`/`2` at `(curX[i]-2, H-20 =
-460)`. The delta read-out `dT <time>  1/dT <freq>` is drawn at `(330, 2)` in the same
-orange, where `dT = |curX[0]-curX[1]| / W × (10 × time/div)` and the `1/dT` term is
-appended only when `dT > 0`.
+A pair of time cursors (vertical) or volts cursors (horizontal), off by default (the CURS tab,
+or the Adjust push in MEASURE). Their positions are screen fractions (`curX`, `curY`). Each is a
+dashed line, one pixel every 2nd row (column) across the plot's ±4 divisions (the full plot
+width), the active one in `colTrig` and the other in `colDim` so it does not vanish into the
+graticule. The delta read-out sits in a box at the plot's top centre (`y = y0 + 24`):
+`dt <time>  1/dt <freq>` for time cursors, with `dt = |curX[0] − curX[1]| × 10 × time/div`
+(divided by the zoom factor while zoomed) and `1/dt` only when `dt > 0`; `dV1 <volts>  dV2 <volts>`
+for volts cursors, each shown channel's `|curY[0] − curY[1]| × 8 × V/div × probe`. MEASURE's pane
+lists each cursor's time from the trigger, read through the trace window (§4.1), and the shown
+channels' trace volts there.
 
 ### 10.3 Task workspaces, settings sheets and the F-key column
 

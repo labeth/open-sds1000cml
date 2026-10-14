@@ -369,9 +369,17 @@ shows its next view. Entering a workspace shows a short label beside its key for
 Entry behaviour: BUS with decode off auto-detects the bus on CH1/CH2 and decodes it, with a notice
 (decoding stays on after leaving BUS). The search reads a decimated record first (a few thousand
 filtered samples a screen, tens of milliseconds) and keeps a bus whose shortest feature spans 8 of
-its samples; else a full-rate record (a megasample at 200 us/div, seconds); each lease ends with its
-phase (the web's Detect alike). A reading of one byte, a UART with a fifth of its bytes misframed or
-an I2C clock faster than 5 MHz is no bus, and the search looks again at a slower timebase; SPECTRUM starts on the FFT; MEASURE with nothing chosen picks
+its samples (6 for CAN and FlexRay, whose CRCs a misread record does not pass; a UART only at a rate
+UARTs use); else a full-rate record of the timebase on screen, unless the decimated record was the
+full-rate one already, resolves every edge it holds, or the timebase is slower than the short record
+below (a megasample at 200 us/div takes seconds). Each lease ends with its phase (the web's Detect
+alike). A reading of one byte, a UART with a fifth of its bytes misframed or an I2C clock faster than
+5 MHz is no bus. With no bus, or only a UART of under 4 bytes or at a rate no UART uses (as likely part
+of another bus's frame), the search looks again at the slowest timebase sampled at the full rate: its
+decimated record, then a full-rate record a quarter as long (a fast bus's short frames, in under a
+second), then its whole record. The timebase the bus is found at stays (found on the short record,
+BUS steps to the slowest timebase up to the full-rate one whose live view reads it); with nothing
+found the timebase goes back and the scant UART, if any, is named. SPECTRUM starts on the FFT; MEASURE with nothing chosen picks
 Vpp and frequency of the shown channels. Each workspace remembers its view. A master (COMPARE again)
 averages N captures of the trigger source (the engine's Average, N = 64 by default; under a serial
 trigger aligned on the match's own edge, as the live captures are), stores the result as REF A,
@@ -462,19 +470,20 @@ Stepping conventions and constants:
   wiring is an open item). The knob steps 0.2 displayed divisions an accel-step at every V/div;
   higher code → lower mean.
 
-  **Trigger level DAC** — code assembled and written by the owner (§8.4). Constants (valid at
-  1 V/div and 2 V/div):
+  **Trigger level DAC** — code assembled and written by the owner (§8.4). Constants (the measured
+  global fit, constant across the V/div ladder; the front end's per-detent calibration replaces it
+  once pushed):
 
   | Constant | Value | Meaning |
   |---|---|---|
-  | `trigCenter` | `31434` (`0x7aca`) | 0 V threshold |
-  | `trigStep` | `40` codes / accel-step at 1 V/div, scaled by the source's V/div | ≈ 0.043 V/step @1 V/div |
-  | `trigMin` | `27000` (`0x6978`) | ≈ +4.7 V @1 V/div |
-  | `trigMax` | `35000` (`0x88b8`) | ≈ −3.8 V @1 V/div |
-  | slope | `−938` codes/V | **higher threshold → lower code** |
+  | `trigCenter` | `31437` | 0 V threshold |
+  | `trigStep` | `40` codes / accel-step at 1 V/div, scaled by the source's V/div (at least 1 code) | ≈ 0.044 V/step @1 V/div |
+  | `TrigCodeMin` | `1` | ≈ +34.5 V (the full 16 bits: the SRAM images trigger on sample codes) |
+  | `TrigCodeMax` | `65535` | ≈ −37.4 V |
+  | slope | `−911` codes/V | **higher threshold → lower code** |
 
   Sign: CW (dir=+1) **raises** the level, which **lowers** the code:
-  `nc = trigCode − dir*step*steps`, clamped to `[trigMin, trigMax]`.
+  `nc = trigCode − dir*step*steps`, clamped to `[TrigCodeMin, TrigCodeMax]`.
 
 - **Startup discipline:** seed all shadow state to the inherited boot detents but drive **nothing** at
   startup (no front-end / offset / level write) — the inherited boot analog range and engine band
@@ -680,7 +689,7 @@ Per-channel control byte:
 |---|---|---|
 | 0 | Bandwidth limit | **1 = full BW**, 0 = 20 MHz limit |
 | 1 | GND coupling select | the relay works when the absolute word is emitted (spec 06 §6); the firmware keeps coupling a display transform |
-| 2 | **Coarse V/div range** | **1 = attenuated/high range** (500 mV/div…5 V/div), 0 = sensitive/low range |
+| 2 | **Coarse V/div range** | **1 = attenuated/high range** (500 mV/div…10 V/div), 0 = sensitive/low range |
 | 3 | DC coupling select | selects a DC offset-cal entry, not a coupling cap |
 | 5 | Constant enable | always 1 |
 | 7 | CH2 base preload | CH2 byte base `0xA0`; CH1 byte base `0x20` |
@@ -689,7 +698,7 @@ Per-channel control byte:
 
 ### 9.3 V/div ladder (constants)
 
-11 detents per channel, 1-2-5:
+12 detents per channel, 1-2-5:
 
 | idx | V/div | Coarse range bit2 (`idx≥7`) | Gain-DAC code |
 |---|---|---|---|
@@ -704,6 +713,7 @@ Per-channel control byte:
 | 8 | 1 V | 1 | 57 |
 | 9 | 2 V | 1 | 28 |
 | 10 | 5 V | 1 | 11 |
+| 11 | 10 V | 1 | 6 |
 
 - `rangeHi = (vIdx ≥ 7)` — the coarse relay bit2 is set for the attenuated high-V/div detents.
 - `gainCode` per detent is the table above (CH2 shares it). idx 0/1 are below the analog floor and
