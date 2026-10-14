@@ -71,6 +71,15 @@ run(async (t) => {
   t.ok(sel.length === 2 && sel.some(f => near(f, mHi)), `a second click ADDS a peak (multi-select, ${sel.length} picked)`);
   t.ok(await po.count("#fftBody .pk.is-sel") === 2, "picked rows are marked");
   t.ok(/dBc/.test(await po.text("fftSel")), "the picked-peak readout under the table");
+  // a pick whose tone is gone reads greyed as lost, beside the held picks
+  t.ok(await page.evaluate(() => {
+    fftCh[1].lostSince = new Map([[123456, Date.now()]]);
+    updateFFTSel(1);
+    const l = document.querySelector("#fftSel .pk-lost");
+    const shown = !!l && /lost/.test(l.textContent) && +getComputedStyle(l).opacity < 1;
+    fftCh[1].lostSince = new Map();
+    return shown;
+  }), "a lost pick reads greyed as lost");
 
   // DESELECT: clicking a picked peak again removes just that one.
   await toggle(mLo);

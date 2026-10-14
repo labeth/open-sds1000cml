@@ -275,8 +275,9 @@ function harmonics(peaks, spec) { // eslint-disable-line no-unused-vars
 // PICK_BINS is how far a picked peak follows its tone from frame to frame:
 // a drifting tone is followed, another peak is never taken for it (the
 // scope's marker allows the same 2.5 bins). PICK_LOST_MS is how long a pick
-// waits for its tone before it is cleared: one noisy frame does not drop it.
-const PICK_BINS = 2.5, PICK_LOST_MS = 500;
+// whose tone is gone stays, shown lost, before it is cleared: a tone that
+// drops out briefly keeps its pick.
+const PICK_BINS = 2.5, PICK_LOST_MS = 3000;
 
 // trackPicks follows the picked frequencies sel onto this frame's peaks: a
 // pick moves to the peak within PICK_BINS bins of it (two picks on one peak
@@ -301,5 +302,5 @@ function trackPicks(sel, peaks, binHz, lostSince, now) {
 }
 
 if (typeof module !== "undefined" && module.exports) {
-  module.exports = { fftInPlace, spectrum, fftReduce, detectPeaks, nearestPeak, trackPicks, component, fitTone, toneAmplitude, harmonics };
+  module.exports = { fftInPlace, spectrum, fftReduce, detectPeaks, nearestPeak, trackPicks, PICK_LOST_MS, component, fitTone, toneAmplitude, harmonics };
 }

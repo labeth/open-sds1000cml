@@ -236,10 +236,11 @@ function frame(amp1, amp2, seed) {
   t = trackPicks(t.sel, pk(50000, 101800), bin, t.lostSince, 300);
   ok(t.sel[0] === 101800 && t.idxs.has(1) && t.lostSince.size === 0, "the tone back within the wait: the pick holds it again");
   t = trackPicks(t.sel, pk(50000), bin, t.lostSince, 400);
-  t = trackPicks(t.sel, pk(50000), bin, t.lostSince, 850);
-  ok(t.sel.length === 1, "gone under 500 ms: still picked");
-  t = trackPicks(t.sel, pk(50000), bin, t.lostSince, 950);
-  ok(t.sel.length === 0, "gone 550 ms: the pick is cleared");
+  t = trackPicks(t.sel, pk(50000), bin, t.lostSince, 3350);
+  ok(t.sel.length === 1, "gone under 3 s: still picked (shown lost)");
+  ok(t.lostSince.size === 1, "…and named lost while it waits");
+  t = trackPicks(t.sel, pk(50000), bin, t.lostSince, 3450);
+  ok(t.sel.length === 0, "gone 3 s: the pick is cleared");
   t = trackPicks([100000, 100400], pk(100200), bin, null, 0);
   ok(t.sel.length === 1 && t.idxs.size === 1, "two picks on one peak become one");
 }

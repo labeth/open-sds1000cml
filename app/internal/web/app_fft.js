@@ -292,6 +292,12 @@ function drawYTPeaks(g) {
   let row = 0;
   for (const ch of [1, 2]) {
     const S = fftCh[ch];
+    // a pick whose tone is gone: its frequency, greyed, until it is cleared
+    for (const f of (S.lostSince || new Map()).keys()) {
+      g.fillStyle = "rgba(150,150,150,.8)";
+      g.fillText("C" + ch + " f = " + eng(f, "Hz", 4) + " lost", CW - 165 * dpr, (18 + row * 15) * dpr);
+      row++;
+    }
     if (!S.selIdx.size) continue;
     const src = peakSrcCh(ch), zoom = ch === 1 ? (st ? st.zoom1 : 1) : (st ? st.zoom2 : 1), pal = COMPCOLS[ch];
     if (!src) continue; // selections can outlive a channel being toggled off
@@ -353,7 +359,8 @@ function updateFFTSel(ch) {
   const el = $("fftSel");
   const S = fftCh[ch];
   if (ch !== pkChannel()) return;
-  if (!peaksVisible() || !S.selIdx.size) { el.textContent = ""; return; }
+  const lost = [...(S.lostSince || new Map()).keys()];
+  if (!peaksVisible() || (!S.selIdx.size && !lost.length)) { el.textContent = ""; return; }
   const spec = specMemo[ch] && specMemo[ch].spec, floor = specFloor(ch);
   const rows = [], topL = S.peaks.reduce((m, q) => Math.max(m, peakLvl(q)), -Infinity);
   for (const i of [...S.selIdx].sort((a, b) => a - b)) {
@@ -371,8 +378,9 @@ function updateFFTSel(ch) {
     const fs = [...S.selIdx].map(i => S.peaks[i] && S.peaks[i].freq).filter(Boolean).sort((a, b) => a - b);
     if (fs.length >= 2) rows.push("Δf " + eng(fs[1] - fs[0], "Hz", 3) + " · f2/f1 " + (fs[1] / fs[0]).toFixed(3));
   }
-  el.textContent = rows.join("\n");
-  el.style.whiteSpace = "pre-line";
+  // TRLC-LINKS: REQ-SDS-070
+  const line = (text, cls) => { const d = document.createElement("div"); d.textContent = text; if (cls) d.className = cls; return d; };
+  el.replaceChildren(...rows.map((r) => line(r)), ...lost.map((f) => line(eng(f, "Hz", 4) + " · lost: the tone is gone", "pk-lost")));
 }
 
 // pkChannel is the channel SPECTRUM's peak table shows (its C1/C2 choice).

@@ -196,8 +196,8 @@ automatically.
   resolve (a 1 MHz square at 200 µs/div). The statistics count each reading once.
 * **Cursors** in time and voltage, with Δt, 1/Δt and ΔV.
 * **Math:** C1 − C2, C2 − C1, C1 + C2, C1 × C2, and carrier removal using FFT peaks.
-* **FFT** with a peak table (up to 64 peaks; a peak you pick on the web follows its tone within a few bins and
-  is cleared when the tone is gone), and a **spectrogram** waterfall.
+* **FFT** with a peak table (up to 64 peaks; a peak you pick on the web follows its tone within a few bins; when
+  the tone is gone it reads greyed as lost for 3 s, then is cleared), and a **spectrogram** waterfall.
 * **Eye diagram and jitter:** software clock recovery; TIE rms and peak-to-peak, RJ / DJ split,
   period and cycle-to-cycle jitter, eye height and width; TIE histogram and spectrum.
 * **Super-resolution:** stacks repeated edges on a time grid up to ×64 finer than the sample period,
