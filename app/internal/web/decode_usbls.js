@@ -199,7 +199,7 @@ function decodeUSBLS(dp, colTimeS, cfg) {
   if (packets === 0) return fail("usbls", "no USB packet (SYNC+PID) found");
 
   let baud = cfg.bitrate || 0;
-  if (colTimeS > 0) baud = Math.round(1 / (T * colTimeS));
+  if (colTimeS > 0) baud = snapRate(Math.round(1 / (T * colTimeS)), [1.5e6, 12e6]);
   return { ok: true, error: null, proto: "usbls", spans, text: toks.join(" "), bytes,
     meta: { bitrate: baud, samplesPerBit: T, threshold: S.threshold, lowRail: S.lowRail, highRail: S.highRail } };
 }

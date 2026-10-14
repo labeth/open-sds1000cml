@@ -152,7 +152,7 @@ function decodeARINC429(codes, colTimeS, cfg) {
 
   if (words === 0) return fail("no complete ARINC 429 word found");
   let baud = cfg.bitrate || 0;
-  if (colTimeS > 0) baud = Math.round(1 / (T * colTimeS));
+  if (colTimeS > 0) baud = snapRate(Math.round(1 / (T * colTimeS)), [12.5e3, 100e3]);
   return {
     ok: true, error: null, proto, spans, text: toks.join(" "), bytes,
     meta: { bitrate: baud, samplesPerBit: T, threshold: midf, lowRail: gmin, highRail: gmax }

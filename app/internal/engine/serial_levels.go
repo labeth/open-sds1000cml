@@ -266,14 +266,93 @@ func (e *Engine) serialPlanParams(p SerialParams) (SerialParams, string) {
 		}
 	}
 	// A MIL-1553 word typed as two bytes, an ARINC 429 data field as up to
-	// three (the scope's match editor holds bytes, as its BUS table shows them).
+	// three (the scope's match editor holds bytes, as its BUS table shows them);
+	// a sequence of words as their bytes in turn (two each, three each).
 	switch {
 	case p.Proto == serMIL1553 && len(p.Bytes) == 2:
 		p.Bytes = joinBytes(p.Bytes, 0xffff)
+	case p.Proto == serMIL1553 && len(p.Bytes) > 2 && len(p.Bytes)%2 == 0:
+		p.Bytes = joinGroups(p.Bytes, 2, 0xffff)
 	case p.Proto == serARINC && len(p.Bytes) >= 2 && len(p.Bytes) <= 3:
 		p.Bytes = joinBytes(p.Bytes, 0x7ffff)
+	case p.Proto == serARINC && len(p.Bytes) > 3 && len(p.Bytes)%3 == 0:
+		p.Bytes = joinGroups(p.Bytes, 3, 0x7ffff)
+	case p.Proto == serMIL1553 && len(p.Pattern) >= 2:
+		p.Pattern = groupPattern(p.Pattern, 2, 0xffff)
+	case p.Proto == serARINC && len(p.Pattern) >= 3:
+		p.Pattern = groupPattern(p.Pattern, 3, 0x7ffff)
+	}
+	// Each ARINC 429 word is a frame of its own, and a sequence counts within
+	// one frame: two words never match. Said, rather than armed in vain.
+	if p.Proto == serARINC && len(patternOf(p)) > 1 {
+		return p, arincOneWord
 	}
 	return p, ""
+}
+
+// arincOneWord refuses an ARINC 429 match of more than one word: the
+// matcher is not armed for it.
+const arincOneWord = "an ARINC 429 match is one word (00 AB CD: its data field)"
+
+// groupPattern is a byte pattern as units of n bytes each (the words of
+// MIL-1553 and ARINC 429 the matcher takes): a unit of n data bytes one
+// data element, values and masks big-endian within limit; n errors one error
+// (the BUS table writes a bad word as ERR for each of its bytes). The
+// pattern unchanged when a unit mixes them or does not fit.
+// TRLC-LINKS: REQ-SDS-013
+func groupPattern(pat []PatternElem, n, limit int) []PatternElem {
+	if len(pat)%n != 0 {
+		return pat
+	}
+	var out []PatternElem
+	for i := 0; i < len(pat); i += n {
+		g := pat[i : i+n]
+		switch {
+		case allKind(g, patternError):
+			out = append(out, PatternElem{Kind: patternError})
+		case allKind(g, patternData):
+			v, m := 0, 0
+			for _, e := range g {
+				if e.Value < 0 || e.Value > 0xff || e.Mask < 0 || e.Mask > 0xff {
+					return pat
+				}
+				v, m = v<<8|e.Value, m<<8|e.Mask
+			}
+			if v&^limit != 0 {
+				return pat
+			}
+			out = append(out, PatternElem{Kind: patternData, Value: v, Mask: m & limit})
+		default:
+			return pat
+		}
+	}
+	return out
+}
+
+// allKind reports whether every element of g is of kind k.
+// TRLC-LINKS: REQ-SDS-013
+func allKind(g []PatternElem, k int) bool {
+	for _, e := range g {
+		if e.Kind != k {
+			return false
+		}
+	}
+	return true
+}
+
+// joinGroups is bytes as big-endian values of n bytes each (joinBytes of
+// each group); bytes unchanged when a group does not join.
+// TRLC-LINKS: REQ-SDS-013
+func joinGroups(bytes []int, n, limit int) []int {
+	var out []int
+	for i := 0; i+n <= len(bytes); i += n {
+		v := joinBytes(bytes[i:i+n], limit)
+		if len(v) != 1 {
+			return bytes
+		}
+		out = append(out, v[0])
+	}
+	return out
 }
 
 // joinBytes is bytes as one big-endian value when every one is a byte and the
@@ -310,7 +389,7 @@ func (e *Engine) serialMatchStart(f *Frame, hw float64) float64 {
 	// word, an ARINC 429 field) are the decoded spans' values. The decoders
 	// keep their own thresholds.
 	if planned, why := e.serialPlanParams(p); why == "" {
-		p.Bytes, p.Baud, p.TickNs = planned.Bytes, planned.Baud, planned.TickNs
+		p.Bytes, p.Pattern, p.Baud, p.TickNs = planned.Bytes, planned.Pattern, planned.Baud, planned.TickNs
 	}
 	a, b := f.C1, f.C1
 	if p.ChA == 1 {

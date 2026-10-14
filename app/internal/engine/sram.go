@@ -291,8 +291,9 @@ func (e *Engine) sramConfig() (sramcapture.Config, SRAMPlan, float64, bool, trig
 			serial := e.ser.params
 			e.ser.mu.Unlock()
 			// The matcher slices at the learned level when the request names none.
-			serial, _ = e.serialPlanParams(serial)
-			e.planSerial(&c, serial, tp.typ == TrigEdge && e.serialMode.Load() != SerialTrigger)
+			if serial, why := e.serialPlanParams(serial); why != arincOneWord {
+				e.planSerial(&c, serial, tp.typ == TrigEdge && e.serialMode.Load() != SerialTrigger)
+			}
 		}
 		if tp.typ != TrigEdge && e.serialMode.Load() != SerialTrigger {
 			// The FPGA's qualifier decides a pulse, slope or video trigger; until
@@ -877,13 +878,20 @@ acquisitionLoop:
 		if bucket != 0 && !replay && f.Trigd {
 			if key := (edgeKey{averageCfg(cfg), savedScale}); edges.due(key, e.clk.Now()) {
 				ctx, cancel = context.WithTimeout(context.Background(), time.Second)
-				edge := e.recallEdgeWindow(ctx, m, m.TriggerIndex, savedScale)
-				var opp *EdgeWindow
 				disc := f.C1[:f.Valid]
 				if cfg.TriggerChannel == 1 {
 					disc = f.C2[:f.Valid]
 				}
-				if b := oppositeEdgeBucket(disc, int(f.EdgeX)/2, !cfg.Falling); b >= 0 {
+				at, trig, rising := m.TriggerIndex, int(f.EdgeX)/2, !cfg.Falling
+				if tp.typ != TrigEdge || e.serialMode.Load() == SerialTrigger {
+					// the trigger point is no edge of the edge trigger's direction
+					if b, r := nearestEdgeBucket(disc, trig); b >= 0 {
+						at, trig, rising = recallOffset+uint32(b)*bucket+bucket/2, b, r
+					}
+				}
+				edge := e.recallEdgeWindow(ctx, m, at, savedScale)
+				var opp *EdgeWindow
+				if b := oppositeEdgeBucket(disc, trig, rising); b >= 0 {
 					opp = e.recallEdgeWindow(ctx, m, recallOffset+uint32(b)*bucket+bucket/2, savedScale)
 				}
 				cancel()
@@ -1089,10 +1097,14 @@ acquisitionLoop:
 			f.TriggerKind = "hardware-" + name
 			if qualified {
 				e.serialMatches.Add(1)
+				hw := f.EdgeX
 				if at := e.serialMatchStart(f, f.EdgeX); at >= 0 {
 					e.serLv.shiftS.Store(math.Float64bits((f.EdgeX - at) * f.SampleS))
 					f.EdgeX = at
 					f.TrigPos = int(at)
+				}
+				if name == "uart" && hw >= 0 && f.EdgeX >= 0 {
+					f.MatchEndS, f.HasMatchEnd = (hw-f.EdgeX)*f.SampleS, true
 				}
 			}
 		} else if e.serialMode.Load() == SerialTrigger {

@@ -3,6 +3,7 @@ package framecalc
 
 import (
 	"math"
+	"strings"
 	"testing"
 
 	"open-sds/app/internal/engine"
@@ -83,5 +84,36 @@ func TestSpectrumEndsAtTheFilterBand(t *testing.T) {
 	}
 	if sp.EffNyq != full.EffNyq || sp.PeakK != 64 {
 		t.Fatalf("Nyquist %g (want %g), peak bin %d", sp.EffNyq, full.EffNyq, sp.PeakK)
+	}
+}
+
+// A frame the hardware UART matcher triggered carries where the matched
+// character's stop bit lay (Frame.MatchEndS after EdgeX): the decode frames
+// the characters back to back with it from there, where a record opening
+// inside the traffic read "A5 ER ER ER" on the owner's AA trigger.
+// TRLC-LINKS: REQ-SDS-013, REQ-SDS-018
+func TestDecodeFramesFromTheHardwareMatch(t *testing.T) {
+	const spb = 20
+	var w []uint8
+	bit := func(b int) {
+		for j := 0; j < spb; j++ {
+			w = append(w, uint8(40+170*b))
+		}
+	}
+	for _, c := range []int{0x48, 0x69, 0x20, 0x55, 0xAA, 0x0F, 0xF0, 0x0A} {
+		bit(0)
+		for k := 0; k < 8; k++ {
+			bit(c >> k & 1)
+		}
+		bit(1)
+	}
+	cut := 2*10*spb + 3*spb // the record opens inside 20
+	rec := append([]uint8(nil), w[cut:]...)
+	aaStart := float64(4*10*spb - cut)
+	f := &engine.Frame{C1: rec, C2: rec, Valid: len(rec), SampleS: 1 / (115200.0 * spb), Seq: 7,
+		EdgeX: aaStart, MatchEndS: 9.5 / 115200, HasMatchEnd: true}
+	r := Decode(f, DecodeParams{Proto: ProtoUART, Baud: 115200, Format: "hex"})
+	if !strings.Contains(r.Text, "55 AA 0F F0") || strings.Contains(r.Text, "!") {
+		t.Fatalf("decoded %q, want 55 AA 0F F0 in sync", r.Text)
 	}
 }

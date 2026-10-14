@@ -349,3 +349,16 @@ func FmtWord(v, bits int, format string) string {
 	}
 	return h
 }
+
+// snapRate is a bit rate read from a record's edges moved onto the nearest of
+// a bus's standard rates within 1.5 % (a 1 Mbit/s MIL-1553 bus read 999 kb/s,
+// a 10 Mbit/s FlexRay 9.88 or 10.1 Mb/s); otherwise it stands.
+// TRLC-LINKS: REQ-SDS-018
+func snapRate(baud int, rates ...float64) int {
+	for _, r := range rates {
+		if math.Abs(float64(baud)-r) <= 0.015*r {
+			return int(math.Round(r))
+		}
+	}
+	return baud
+}

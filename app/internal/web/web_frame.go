@@ -40,14 +40,19 @@ type frameReply struct {
 	E2Min          []int16 `json:"e2min,omitempty"`
 	E2Max          []int16 `json:"e2max,omitempty"`
 	EdgeX          float64 `json:"edge_x"`
-	Ptp            int     `json:"ptp"`
-	TdivS          float64 `json:"tdiv_s"`
-	DisplayedS     float64 `json:"displayed_sdiv_s"`
-	Interp         bool    `json:"interp"`
-	Norm           bool    `json:"norm"`
-	Trigd          bool    `json:"trigd"`
-	Coherent       bool    `json:"coherent"`
-	Degraded       bool    `json:"degraded,omitempty"` // native-fast dead tail survived retries: half-capture
+	// MatchEndS is where the hardware UART matcher received the matched
+	// character's stop bit, seconds after the trigger point (engine
+	// Frame.MatchEndS): the page's UART decode frames the characters back to
+	// back with it from there. Absent without such a match.
+	MatchEndS  *float64 `json:"match_end_s,omitempty"`
+	Ptp        int      `json:"ptp"`
+	TdivS      float64  `json:"tdiv_s"`
+	DisplayedS float64  `json:"displayed_sdiv_s"`
+	Interp     bool     `json:"interp"`
+	Norm       bool     `json:"norm"`
+	Trigd      bool     `json:"trigd"`
+	Coherent   bool     `json:"coherent"`
+	Degraded   bool     `json:"degraded,omitempty"` // native-fast dead tail survived retries: half-capture
 
 	// Scale factors the client uses for cursors/FFT/XY/measurements.
 	Cols     int     `json:"cols"`       // number of columns returned per trace
@@ -368,6 +373,10 @@ func (s *Server) buildReply(f *engine.Frame, cols int, full bool, since uint64, 
 		}
 	}
 	rep.StreamSeq, rep.WindowNs, rep.GapNs = f.StreamSeq, f.WindowNs, f.GapNs
+	if f.HasMatchEnd && rep.EdgeFrac >= 0 {
+		end := f.MatchEndS
+		rep.MatchEndS = &end
+	}
 	// Auto-measurements over the RAW record (accurate, band-independent),
 	// computed once per published frame via the value-keyed cache: repeat
 	// requests for the same seq (JSON + binary, or several clients) reuse it.

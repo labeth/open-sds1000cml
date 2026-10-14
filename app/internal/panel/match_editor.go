@@ -407,8 +407,8 @@ func (k *matchEditor) press(key string) {
 
 // pickFrom builds the picker's bytes from packets, starting at packet start.
 // TRLC-LINKS: REQ-SDS-214
-func pickFrom(rows [][]string, starts []bool, startPkt int) pickState {
-	var p pickState
+func pickFrom(rows [][]string, starts []bool, startPkt, unit int) pickState {
+	p := pickState{unit: max(unit, 1)}
 	for i, toks := range rows {
 		if i == startPkt {
 			p.start = len(p.toks)
@@ -424,16 +424,33 @@ func pickFrom(rows [][]string, starts []bool, startPkt int) pickState {
 	return p
 }
 
-// pickKeys are the picker's F-keys: trigger on 1..4 bytes, cancel.
+// pickUnitOf is the bytes one decoded unit of proto (a decode.Result's
+// name) takes in the picker: the matcher takes a MIL-1553 word or an ARINC
+// 429 field whole, so the picker offers whole units of them.
+// TRLC-LINKS: REQ-SDS-214
+func pickUnitOf(proto string) int {
+	switch proto {
+	case "mil1553":
+		return 2
+	case "arinc429":
+		return 3
+	}
+	return 1
+}
+
+// pickKeys are the picker's F-keys: trigger on 1..4 units (bytes, or the
+// words of MIL-1553 and ARINC 429), cancel.
 // TRLC-LINKS: REQ-SDS-214
 func (c *Controller) pickKeys(s *sv) []fkey {
 	p := s.ui.pick
+	unit := max(p.unit, 1)
 	var out []fkey
 	for n := 1; n <= 4; n++ {
 		n := n
-		ok := p.start+n <= len(p.toks)
+		// an ARINC 429 match is one word: each word is a frame of its own
+		ok := p.start+n*unit <= len(p.toks) && (unit != 3 || n == 1)
 		var toks []string
-		for i := p.start; i < p.start+n && i < len(p.toks); i++ {
+		for i := p.start; i < p.start+n*unit && i < len(p.toks); i++ {
 			toks = append(toks, p.toks[i].Text)
 		}
 		v := "-"
@@ -450,7 +467,7 @@ func (c *Controller) pickKeys(s *sv) []fkey {
 // TRLC-LINKS: REQ-SDS-214
 func (c *Controller) pickMove(dir int) {
 	c.mu.Lock()
-	c.ui.pick.start = clampInt(c.ui.pick.start+dir, 0, max(0, len(c.ui.pick.toks)-1))
+	c.ui.pick.start = clampInt(c.ui.pick.start+dir*max(c.ui.pick.unit, 1), 0, max(0, len(c.ui.pick.toks)-1))
 	c.mu.Unlock()
 }
 
@@ -473,6 +490,7 @@ func (c *Controller) pickUse(n int) error {
 	c.mu.Lock()
 	p := c.ui.pick
 	c.mu.Unlock()
+	n *= max(p.unit, 1)
 	if p.start+n > len(p.toks) {
 		return fmt.Errorf("not enough bytes after the highlighted one")
 	}

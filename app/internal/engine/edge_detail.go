@@ -62,6 +62,67 @@ func oppositeEdgeBucket(pairs []uint8, trig int, rising bool) int {
 	return -1
 }
 
+// nearestEdgeBucket is the edge of the envelope - unordered (min, max)
+// pairs - nearest bucket trig, either way: a bucket spanning both levels, or
+// the first one at its new level after a step between neighbours; rising says
+// which way the line goes there. A serial, pulse or video trigger points at no
+// edge of the trigger's own direction (a UART match ends in its stop bit), so
+// the edge windows go to the nearest edges instead. -1 when there is none.
+// TRLC-LINKS: REQ-SDS-021
+func nearestEdgeBucket(pairs []uint8, trig int) (int, bool) {
+	n := len(pairs) / 2
+	if trig < 0 || trig >= n {
+		return -1, false
+	}
+	lo, hi := 255, 0
+	for _, v := range pairs {
+		lo, hi = min(lo, int(v)), max(hi, int(v))
+	}
+	if hi-lo < 16 {
+		return -1, false
+	}
+	q1, q3 := lo+(hi-lo)/4, hi-(hi-lo)/4
+	level := func(i int) int { // +1 high, -1 low, 0 an edge inside
+		a, b := int(pairs[2*i]), int(pairs[2*i+1])
+		switch mn, mx := min(a, b), max(a, b); {
+		case mn >= q3:
+			return 1
+		case mx <= q1:
+			return -1
+		case mn <= q1 && mx >= q3:
+			return 0
+		}
+		return 2 // between the levels: no decision
+	}
+	edgeAt := func(i int) (bool, bool) {
+		l := level(i)
+		if l == 0 {
+			before, after := 2, 2
+			for j := i - 1; j >= 0 && before != 1 && before != -1; j-- {
+				before = level(j)
+			}
+			for j := i + 1; j < n && after != 1 && after != -1; j++ {
+				after = level(j)
+			}
+			return before != after && (before == 1 || before == -1) && (after == 1 || after == -1), after == 1
+		}
+		if i > 0 && (l == 1 || l == -1) && level(i-1) == -l {
+			return true, l == 1
+		}
+		return false, false
+	}
+	for d := 0; d < n; d++ {
+		for _, i := range []int{trig - d, trig + d} {
+			if i >= 0 && i < n {
+				if ok, rising := edgeAt(i); ok {
+					return i, rising
+				}
+			}
+		}
+	}
+	return -1, false
+}
+
 // recallEdgeWindow reads a window of the frozen record m at its own rate,
 // centred on word w, and calibrates a raw record's converters (a decimated
 // record is filtered across them already); nil when the read fails.

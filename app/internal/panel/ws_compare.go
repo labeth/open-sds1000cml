@@ -713,6 +713,13 @@ func (c *Controller) cmpPane(s *sv) *wsview.CmpPane {
 					if tot > 0 {
 						r.Extra += fmt.Sprintf("  (%.1f%% fail)", 100*float64(s.st.MaskFail)/float64(tot))
 					}
+					// captures the mask cannot be compared with (a V/div,
+					// offset or timebase since it was built) count here too,
+					// or a test that stopped testing would read as passing
+					if s.st.MaskSkip > 0 {
+						r.Extra += fmt.Sprintf("  skip %d", s.st.MaskSkip)
+						r.ExtraCol = wsview.Amber
+					}
 				}
 				if s.st.MaskFail > 0 {
 					r.ExtraCol = wsview.Stop

@@ -614,7 +614,7 @@ func (c *Controller) findBus(auto AutoSource, wanted func() bool) (decode.Result
 	// "UART 500000 8N1", USB at 2us/div as "UART 1500000 8N1", a FlexRay frame
 	// failing its CRC as "UART 10002156 8N1"): the search looks on, and names
 	// it only when it finds nothing else.
-	scant := found && scantUART(res)
+	scant := found && scantFind(res)
 	// a scope waiting for a trigger captures nothing at the full rate either
 	if full, t := c.fullRateS(), c.fullRateTdiv(); full > 0 && t > 0 && (!found || scant) && !c.waitingForTrigger(c.snap()) {
 		var first *look // the timebase on screen is the full-rate one: its decimated record is read
@@ -688,6 +688,15 @@ func (c *Controller) findAtFullRate(full, t float64, first *look, auto AutoSourc
 // TRLC-LINKS: REQ-SDS-214
 func scantUART(res decode.Result) bool {
 	return res.Proto == "uart" && (len(res.Bytes) < scantBytes || !decode.StandardBaud(float64(res.Baud)))
+}
+
+// scantFind reports a first find to look on from: a scant UART, or an SPI or
+// I2C bus of under scantBytes bytes (Autoset's 5us/div holds one byte of the
+// bench's 200 kHz SPI: BUS stayed there listing a single byte, where the
+// search at the full-rate timebase shows its messages).
+// TRLC-LINKS: REQ-SDS-214
+func scantFind(res decode.Result) bool {
+	return scantUART(res) || (res.Proto == "spi" || res.Proto == "i2c") && len(res.Bytes) < scantBytes
 }
 
 // scantBytes is the bytes a UART found on the search's first record must
@@ -947,7 +956,7 @@ func (c *Controller) openPickWS() {
 	}
 	_ = s
 	c.mu.Lock()
-	c.ui.pick = pickFrom(toks, starts, sel)
+	c.ui.pick = pickFrom(toks, starts, sel, pickUnitOf(c.ana.res.Proto))
 	c.ui.wpick = true
 	c.mu.Unlock()
 }
@@ -986,7 +995,7 @@ func (c *Controller) openPickSub() error {
 	}
 	c.mu.Lock()
 	c.ui.edit = false
-	c.ui.pick = pickFrom(toks, starts, max(first, 0))
+	c.ui.pick = pickFrom(toks, starts, max(first, 0), pickUnitOf(res.Proto))
 	c.ui.sub = subPick
 	c.mu.Unlock()
 	return nil

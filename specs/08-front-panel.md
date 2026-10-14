@@ -379,7 +379,11 @@ of another bus's frame), the search looks again at the slowest timebase sampled 
 decimated record, then a full-rate record a quarter as long (a fast bus's short frames, in under a
 second), then its whole record. The timebase the bus is found at stays (found on the short record,
 BUS steps to the slowest timebase up to the full-rate one whose live view reads it); with nothing
-found the timebase goes back and the scant UART, if any, is named. SPECTRUM starts on the FFT; MEASURE with nothing chosen picks
+found the timebase goes back and the scant UART, if any, is named. A web page entering its BUS with its
+own decode off decodes the bus the scope decodes, with the scope's settings, and searches only when the
+scope decodes none. On a capture the FPGA's UART matcher triggered, the decode frames the characters back
+to back with the matched one from where the matcher received it: a record opening inside back-to-back
+traffic holds no idle to frame by. SPECTRUM starts on the FFT; MEASURE with nothing chosen picks
 Vpp and frequency of the shown channels. Each workspace remembers its view. A master (COMPARE again)
 averages N captures of the trigger source (the engine's Average, N = 64 by default; under a serial
 trigger aligned on the match's own edge, as the live captures are), stores the result as REF A,
@@ -422,7 +426,9 @@ beside them in the 116 px F-key column; actions run only from their labelled F-k
 The BUS tab's Match bytes row opens the match editor (a full-screen keyboard of Hex, Text and Special
 keys, 32 units at most: F1 key set, F2 type, F3 delete, F4 OK, F5 cancel) or the byte picker (the
 bytes decoded on screen, the first complete message's first byte highlighted; F1..F4 trigger on 1..4
-bytes from it and set the trigger type Serial; F5 cancel).
+bytes from it and set the trigger type Serial; F5 cancel). On MIL-1553 the picker steps and counts whole
+words (two bytes each), on ARINC 429 it offers the one word (three bytes) a match can be: each ARINC word
+is a frame of its own, and a longer ARINC match is refused with that reason, the matcher not armed.
 
 ### 7.3 Knobs and pushes
 

@@ -181,6 +181,22 @@ func TestJSDecoderParity(t *testing.T) {
 		}
 	}
 
+	// ---- UART framed from a hardware match (the anchor in its stop bit):
+	// records opening inside back-to-back characters.
+	{
+		msg := []int{0x48, 0x69, 0x20, 0x55, 0xAA, 0x0F, 0xF0, 0x0A}
+		const spb = 20
+		w := uartBackToBack(msg, 2, 30, spb)
+		ct := 1.0 / (115200 * spb)
+		aa := 30*spb + 4*10*spb
+		for cut := 2 * 10 * spb; cut < 4*10*spb; cut += 3 * spb {
+			rec := w[30*spb+cut : aa+5*10*spb]
+			anchor := float64(aa-(30*spb+cut)) + 9.5*spb
+			add("uart", rec, ct, jsCfg{"baud": 115200, "parity": "none", "anchor": anchor},
+				DecodeUART(rec, ct, UARTCfg{Baud: 115200, Anchor: anchor, HasAnchor: true}))
+		}
+	}
+
 	// ---- UART auto-baud on RINGY edges (the task-2 hardening): the cluster-walk
 	// inference must land on the same spb — hence the same bytes — in Go and JS.
 	{

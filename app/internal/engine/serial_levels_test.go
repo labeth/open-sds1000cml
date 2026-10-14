@@ -2,6 +2,7 @@
 package engine
 
 import (
+	"fmt"
 	"math"
 	"strings"
 	"testing"
@@ -212,6 +213,12 @@ func TestEveryBusPlansFromTheScope(t *testing.T) {
 	if p, _ := e.serialPlanParams(SerialParams{Proto: serARINC, Baud: 100000, Bytes: []int{0x12, 0x34, 0x56}}); len(p.Bytes) != 3 {
 		t.Fatalf("an ARINC 429 field over 19 bits joined: %v", p.Bytes)
 	}
+	// a sequence of words as their bytes in turn: two MIL-1553 words (the
+	// BUS picker's "Trig on 2" on them; read as four separate units they
+	// never matched)
+	if p, _ := e.serialPlanParams(SerialParams{Proto: serMIL1553, Baud: 1000000, Bytes: []int{0xA5, 0x5A, 0x5A, 0xA5}}); fmt.Sprint(p.Bytes) != "[42330 23205]" {
+		t.Fatalf("two MIL-1553 words %v, want [0xA55A 0x5AA5]", p.Bytes)
+	}
 }
 
 // The live window holds the room the trigger point may move back before the
@@ -256,5 +263,27 @@ func TestRecordHoldsTheMatchBeforeTheTrigger(t *testing.T) {
 	e.SetSerialParams(SerialParams{Proto: serUART, ChA: 0, Baud: 9600, Bytes: []int{0x48}}) // another request: measured anew
 	if c2, _, _, _, _ := e.sramConfig(); c2.PreWords != c0.PreWords {
 		t.Fatalf("a new request kept the old shift: pre %d", c2.PreWords)
+	}
+}
+
+// A bad word typed as the BUS table writes it (ERR for each of its bytes) is
+// one error unit of MIL-1553; the bytes of an ARINC 429 field with a
+// wildcard one data unit; two ARINC words are refused, said, not armed in
+// vain (each word is a frame of its own).
+// TRLC-LINKS: REQ-SDS-013
+func TestWordPatternsGroupByUnit(t *testing.T) {
+	e := levelsEngine(SerialParams{Proto: serMIL1553})
+	errs := []PatternElem{{Kind: patternError}, {Kind: patternError}, {Kind: patternData, Value: 0xA5, Mask: 0xff}, {Kind: patternData, Value: 0x5A, Mask: 0xff}}
+	p, why := e.serialPlanParams(SerialParams{Proto: serMIL1553, Baud: 1000000, HaveThr: true, Threshold: 128, Pattern: errs})
+	if why != "" || len(p.Pattern) != 2 || p.Pattern[0].Kind != patternError || p.Pattern[1].Value != 0xA55A || p.Pattern[1].Mask != 0xffff {
+		t.Fatalf("MIL-1553 ERR ERR A5 5A planned %+v (%q), want [error, A55A]", p.Pattern, why)
+	}
+	field := []PatternElem{{Kind: patternData, Value: 0x00, Mask: 0xff}, {Kind: patternData, Value: 0xA0, Mask: 0xf0}, {Kind: patternData, Value: 0xCD, Mask: 0xff}}
+	p, why = e.serialPlanParams(SerialParams{Proto: serARINC, Baud: 100000, HaveThr: true, Threshold: 128, Pattern: field})
+	if why != "" || len(p.Pattern) != 1 || p.Pattern[0].Value != 0xA0CD || p.Pattern[0].Mask != 0x7f0ff {
+		t.Fatalf("ARINC 00 A? CD planned %+v (%q)", p.Pattern, why)
+	}
+	if _, why := e.serialPlanParams(SerialParams{Proto: serARINC, Baud: 100000, HaveThr: true, Threshold: 128, Bytes: []int{0x00, 0xAB, 0xCD, 0x01, 0x23, 0x45}}); why != arincOneWord {
+		t.Fatal("two ARINC 429 words planned without a word")
 	}
 }

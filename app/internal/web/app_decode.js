@@ -61,8 +61,11 @@ function computeDecode() {
   const colTimeS = frameDtS(frame, frame.c1.length); // dt_s-aware: true baud on the 1-200 ns/div nominal bands
   const cfg = { inverted: !!dcfg.inverted, threshold: dcfg.auto ? null : +$("decThr").value, guard: 4, fmt: dcfg.fmt };
   let r = null;
-  if (dcfg.proto === "uart")
-    r = decodeUART(decCodes(dcfg.line), colTimeS, Object.assign(cfg, { inverted: !!dcfg.inverted, baud: dcfg.baud > 0 ? dcfg.baud : null, bits: dcfg.bits, parity: dcfg.parity }));
+  if (dcfg.proto === "uart") {
+    // the hardware matcher's character fixes the framing (frame.match_end_s)
+    const n = frame.c1.length, anchor = frame.match_end_s != null && frame.edge_frac >= 0 && colTimeS > 0 ? frame.edge_frac * n + frame.match_end_s / colTimeS : null;
+    r = decodeUART(decCodes(dcfg.line), colTimeS, Object.assign(cfg, { inverted: !!dcfg.inverted, baud: dcfg.baud > 0 ? dcfg.baud : null, bits: dcfg.bits, parity: dcfg.parity, anchor }));
+  }
   else if (dcfg.proto === "i2c")
     r = decodeI2C(decCodes(dcfg.scl), decCodes(dcfg.sda), colTimeS, cfg);
   else if (dcfg.proto === "spi")
@@ -370,6 +373,13 @@ function detectScantUART(d) {
   return d.proto === "uart" && !!d.result && ((d.result.bytes || []).length < DETECT_SCANT_BYTES || !detectStandardBaud(d.result.meta && d.result.meta.baud));
 }
 
+// detectScant reports a first find to look on from: a scant UART, or an SPI
+// or I2C bus of under DETECT_SCANT_BYTES bytes (panel scantFind).
+// TRLC-LINKS: REQ-SDS-207
+function detectScant(d) {
+  return detectScantUART(d) || ((d.proto === "spi" || d.proto === "i2c") && !!d.result && (d.result.bytes || []).length < DETECT_SCANT_BYTES);
+}
+
 // detectSampled detects on a sampled record of the live acquisition that
 // accept takes: a decimated one first, read in tens of milliseconds, standing
 // when the bus spans enough of its samples (detectStandsDecimated); else a
@@ -512,7 +522,7 @@ async function runAutodetect() {
   // back: as the scope's BUS entry does.
   const full = st && st.full_rate_tdiv_s, prev = st && st.tdiv_s;
   let within = 0;
-  const scant = detectScantUART(d);
+  const scant = detectScant(d);
   if ((d.proto === "off" || scant) && !frozen && st.running && full > 0 && prev > 0) {
     // the timebase on screen is the full-rate one: its decimated record was read
     const first = Math.abs(prev - full) <= 1e-3 * full && found ? found.dec : null;

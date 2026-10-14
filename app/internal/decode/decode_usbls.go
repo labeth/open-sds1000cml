@@ -338,7 +338,7 @@ func DecodeUSBLS(dp []uint8, colTimeS float64, cfg USBLSCfg) Result {
 
 	baud := cfg.Bitrate
 	if colTimeS > 0 {
-		baud = int(math.Round(1.0 / (T * colTimeS)))
+		baud = snapRate(int(math.Round(1.0/(T*colTimeS))), 1.5e6, 12e6)
 	}
 	return Result{OK: true, Proto: "usbls", Spans: spans, Text: strings.Join(toks, " "),
 		Bytes: bytesOut, Baud: baud, SPB: T, Thr: S.threshold}

@@ -21,6 +21,7 @@ if (typeof sliceChannel === "undefined" && typeof require !== "undefined") {
   const _d = require("./decode.js");
   globalThis.sliceChannel = _d.sliceChannel;
   globalThis.logicAt = _d.logicAt;
+  globalThis.snapRate = _d.snapRate;
 }
 
 // TRLC-LINKS: REQ-SDS-018
@@ -210,7 +211,7 @@ function decodeFlexRay(codes, colTimeS, cfg) {
 
   if (frames === 0) return fxFail("no FlexRay frame (TSS) found");
   let baud = cfg.bitrate || 0;
-  if (colTimeS > 0) baud = Math.round(1 / (T * colTimeS));
+  if (colTimeS > 0) baud = snapRate(Math.round(1 / (T * colTimeS)), [2.5e6, 5e6, 10e6]);
   // OK requires at least one frame whose header CRC-11 AND frame CRC-24 both
   // verify. Framed-but-bad-CRC frames are still returned (flagged) in spans/bytes
   // for display, but never make OK true on their own — a corrupted frame must not

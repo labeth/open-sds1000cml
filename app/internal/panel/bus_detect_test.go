@@ -214,6 +214,23 @@ func TestBusSearchLooksPastAScantUART(t *testing.T) {
 			t.Errorf("%s %d Bd, %d bytes: scant %v", c.res.Proto, c.res.Baud, len(c.res.Bytes), got)
 		}
 	}
+	// an SPI or I2C bus of a byte or so (the bench SPI at Autoset's 5us/div)
+	// is looked on from too, a whole message is not
+	for _, c := range []struct {
+		res   decode.Result
+		scant bool
+	}{
+		{decode.Result{Proto: "spi", Bytes: make([]int, 1)}, true},
+		{decode.Result{Proto: "spi", Bytes: make([]int, 8)}, false},
+		{decode.Result{Proto: "i2c", Bytes: make([]int, 2)}, true},
+		{decode.Result{Proto: "i2c", Bytes: make([]int, 4)}, false},
+		{decode.Result{Proto: "canfd", Bytes: make([]int, 2)}, false},
+		{decode.Result{Proto: "uart", Baud: 1500000, Bytes: make([]int, 3)}, true},
+	} {
+		if got := scantFind(c.res); got != c.scant {
+			t.Errorf("%s, %d bytes: scant find %v", c.res.Proto, len(c.res.Bytes), got)
+		}
+	}
 }
 
 // A decimated record that resolves its every edge (a UART's bits at

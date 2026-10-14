@@ -123,5 +123,9 @@ async function run(decFS, decFrame, fullS, rawMaxTdiv, rawSampleS) {
   assert.equal(stands.detectScantUART({ proto: 'uart', result: { bytes: [1, 2, 3, 4], meta: { baud: 115200 } } }), false);
   assert.equal(stands.detectScantUART({ proto: 'uart', result: { bytes: new Array(12).fill(0), meta: { baud: 10002156 } } }), true, 'an odd rate');
   assert.equal(stands.detectScantUART({ proto: 'manchester', result: { bytes: [1] } }), false);
+  assert.equal(stands.detectScant({ proto: 'spi', result: { bytes: [0x48] } }), true, 'one SPI byte: look on (panel scantFind)');
+  assert.equal(stands.detectScant({ proto: 'spi', result: { bytes: new Array(8).fill(0) } }), false);
+  assert.equal(stands.detectScant({ proto: 'i2c', result: { bytes: [1, 2] } }), true);
+  assert.equal(stands.detectScant({ proto: 'canfd', result: { bytes: [1] } }), false);
   console.log('ALL PASS');
 })().catch((e) => { console.error(e); process.exit(1); });

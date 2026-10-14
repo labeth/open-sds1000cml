@@ -18,6 +18,11 @@ type UARTCfg struct {
 	Format    string
 	Threshold float64
 	HaveThr   bool
+	// Anchor, with HasAnchor, is a sample within the stop bit of a frame the
+	// hardware's matcher received (the serial trigger's point): the frames
+	// back to back with it are read from its framing (uartAnchorChain).
+	Anchor    float64
+	HasAnchor bool
 }
 
 // inferUARTspb estimates the samples-per-bit from the edge-gap statistics,
@@ -196,73 +201,137 @@ func DecodeUART(codes []uint8, colTimeS float64, cfg UARTCfg) Result {
 		}
 		return 1 - p
 	}
-	var spans []Span
-	var bytes []int
-	var toks []string
 	pcNeed := 0 // the parity bit lengthens the frame — count it so a frame near the
 	if parity != "none" {
 		pcNeed = 1 // record end isn't started with its stop bit off the captured range
 	}
 	need := int(math.Ceil(float64(bits+2+pcNeed) * spb))
-	i := guard
-	for i < n-need-guard {
-		if logicAt(S, float64(i-1)) == idle && logicAt(S, float64(i)) == 1-idle { // start edge
-			start := i
-			if logicAt(S, float64(start)+0.5*spb) == 1-idle { // confirm start bit
-				val, gap := 0, false
-				for c := 0; c < bits; c++ {
-					b := logicAt(S, float64(start)+(1.5+float64(c))*spb)
-					if b < 0 {
-						gap = true
-						break
-					}
-					val |= b << c // LSB-first
-				}
-				i1 := int(math.Min(float64(n-1), math.Round(float64(start)+float64(bits+1)*spb)))
-				if gap {
-					spans = append(spans, Span{start, i1, "gap", "gap", 0})
-					i = start + 1
-					continue
-				}
-				kind, pfx, pc := "data", "", 0
-				if parity != "none" {
-					pc = 1
-					pb := logicAt(S, float64(start)+(1.5+float64(bits))*spb)
-					if pb >= 0 && pb != parityOf(val) {
-						kind, pfx = "parity-error", "!"
-					}
-				}
-				sb := logicAt(S, float64(start)+(1.5+float64(bits)+float64(pc))*spb)
-				if sb < 0 { // stop bit ran off the record: an incomplete frame, not clean
-					spans = append(spans, Span{start, i1, "gap", "gap", 0})
-					i = start + 1
-					continue
-				}
-				if sb != idle { // wrong stop level = framing error
-					if kind == "data" {
-						kind = "frame-error"
-					}
-					pfx = "!"
-				}
-				spans = append(spans, Span{start, i1, pfx + FmtWord(val, bits, cfg.Format), kind, val})
-				toks = append(toks, pfx+FmtWord(val, bits, cfg.Format))
-				bytes = append(bytes, val)
-				i = int(math.Round(float64(start)+float64(bits+1+pc)*spb)) + 1
-				continue
+	// frameAt reads the frame whose start bit begins at start: its span and
+	// where the next start edge may be; ok false when no start bit is there.
+	frameAt := func(start int) (sp Span, next int, ok bool) {
+		if logicAt(S, float64(start)+0.5*spb) != 1-idle { // confirm start bit
+			return sp, 0, false
+		}
+		val, gap := 0, false
+		for c := 0; c < bits; c++ {
+			b := logicAt(S, float64(start)+(1.5+float64(c))*spb)
+			if b < 0 {
+				gap = true
+				break
+			}
+			val |= b << c // LSB-first
+		}
+		i1 := int(math.Min(float64(n-1), math.Round(float64(start)+float64(bits+1)*spb)))
+		if gap {
+			return Span{start, i1, "gap", "gap", 0}, start + 1, true
+		}
+		kind, pfx, pc := "data", "", 0
+		if parity != "none" {
+			pc = 1
+			pb := logicAt(S, float64(start)+(1.5+float64(bits))*spb)
+			if pb >= 0 && pb != parityOf(val) {
+				kind, pfx = "parity-error", "!"
 			}
 		}
-		i++
-	}
-	if syncIn(spans, S, spb, bits+2+pcNeed, float64(bits)-0.5) {
-		toks, bytes = toks[:0], bytes[:0]
-		for _, sp := range spans {
-			if sp.Kind != "gap" {
-				toks, bytes = append(toks, sp.Text), append(bytes, sp.Val)
+		sb := logicAt(S, float64(start)+(1.5+float64(bits)+float64(pc))*spb)
+		if sb < 0 { // stop bit ran off the record: an incomplete frame, not clean
+			return Span{start, i1, "gap", "gap", 0}, start + 1, true
+		}
+		if sb != idle { // wrong stop level = framing error
+			if kind == "data" {
+				kind = "frame-error"
 			}
+			pfx = "!"
+		}
+		return Span{start, i1, pfx + FmtWord(val, bits, cfg.Format), kind, val},
+			int(math.Round(float64(start)+float64(bits+1+pc)*spb)) + 1, true
+	}
+	// scan reads the frames whose start edges lie in [from, to).
+	scan := func(spans []Span, from, to int) []Span {
+		for i := from; i < n-need-guard && i < to; i++ {
+			if logicAt(S, float64(i-1)) == idle && logicAt(S, float64(i)) == 1-idle { // start edge
+				if sp, next, ok := frameAt(i); ok {
+					spans = append(spans, sp)
+					i = next - 1
+				}
+			}
+		}
+		return spans
+	}
+	var spans []Span
+	chain := uartAnchorChain(S, cfg, spb, bits+pcNeed, guard, frameAt)
+	if len(chain) == 0 {
+		spans = scan(nil, guard, n)
+		syncIn(spans, S, spb, bits+2+pcNeed, float64(bits)-0.5)
+	} else {
+		// before the chain: the frames that end before it, read in sync as
+		// any record's first frames are
+		frameLen := float64(bits+2+pcNeed) * spb
+		spans = scan(nil, guard, int(float64(chain[0].I0)-frameLen+0.5*spb))
+		syncIn(spans, S, spb, bits+2+pcNeed, float64(bits)-0.5)
+		spans = append(spans, chain...)
+		last := chain[len(chain)-1]
+		_, next, _ := frameAt(last.I0)
+		spans = scan(spans, next, n)
+	}
+	var bytes []int
+	var toks []string
+	for _, sp := range spans {
+		if sp.Kind != "gap" {
+			toks, bytes = append(toks, sp.Text), append(bytes, sp.Val)
 		}
 	}
 	return Result{OK: true, Proto: "uart", Spans: spans, Text: strings.Join(toks, " "),
 		Bytes: bytes, Baud: int(math.Round(baud)), SPB: spb, Thr: S.threshold}
+}
+
+// uartAnchorChain is the frames a hardware match fixes the framing of, in
+// time order: the matched frame (its start edge 1 to 2 bits before its stop
+// bit at cfg.Anchor plus the data and parity bits) and the frames back to
+// back before it, each starting a frame length before the next, while each
+// reads clean. A record that opens inside back-to-back traffic otherwise has
+// no idle to frame by: the owner's AA match at 20 us/div read "A5 ER ER ER
+// ER" where the line carried 20 55 AA 0F. nil without an anchor or when the
+// matched frame does not read clean. dataBits counts the parity bit.
+// TRLC-LINKS: REQ-SDS-013, REQ-SDS-018
+func uartAnchorChain(S sliced, cfg UARTCfg, spb float64, dataBits, guard int, frameAt func(int) (Span, int, bool)) []Span {
+	if !cfg.HasAnchor || !(cfg.Anchor >= 0) || !(spb > 0) {
+		return nil
+	}
+	// startNear is the start edge (a falling one: the line idles high) in
+	// [lo, hi]; two lie at least two bits apart, so a window under that
+	// holds one at most.
+	startNear := func(lo, hi float64) int {
+		for _, e := range S.edges {
+			if e.dir < 0 && e.x >= lo && e.x <= hi {
+				return e.i
+			}
+		}
+		return -1
+	}
+	clean := func(start int) (Span, bool) {
+		if start < guard {
+			return Span{}, false
+		}
+		sp, _, ok := frameAt(start)
+		return sp, ok && sp.Kind == "data"
+	}
+	a := cfg.Anchor
+	first, ok := clean(startNear(a-(float64(dataBits)+2.1)*spb, a-(float64(dataBits)+0.9)*spb))
+	if !ok {
+		return nil
+	}
+	chain := []Span{first}
+	frameLen := float64(dataBits+2) * spb
+	for len(chain) < 4096 {
+		at := float64(chain[0].I0) - frameLen
+		sp, ok := clean(startNear(at-0.6*spb, at+0.6*spb))
+		if !ok {
+			break
+		}
+		chain = append([]Span{sp}, chain...)
+	}
+	return chain
 }
 
 // uartSyncFrames bounds the sync-in: a record that opens inside traffic

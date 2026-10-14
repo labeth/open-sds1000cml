@@ -29,8 +29,14 @@ type Frame struct {
 	Valid   int     // drained sample count; the tail beyond it is stale
 	WinCols int     // samples spanning the 10-division screen
 	EdgeX   float64 // software crossing position, -1 = flat rail
-	Interp  bool    // native-fast: consumer should linearly interpolate
-	IsEnv   bool    // envelope/roll band: render Env* instead of traces
+	// MatchEndS, with HasMatchEnd, is where the hardware UART matcher received
+	// the matched character's stop bit, in seconds after EdgeX (EdgeX moves to
+	// where the match began): a decode frames the characters back to back
+	// with it from there (decode.UARTCfg.Anchor).
+	MatchEndS   float64
+	HasMatchEnd bool
+	Interp      bool // native-fast: consumer should linearly interpolate
+	IsEnv       bool // envelope/roll band: render Env* instead of traces
 	// PeakDetect marks a record of bucket extremes (min, max pairs) read as a
 	// display envelope: amplitude is valid, timing is not.
 	PeakDetect bool

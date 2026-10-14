@@ -300,49 +300,106 @@ function decodeUART(codes, colTimeS, cfg) {
 
   // TRLC-LINKS: REQ-SDS-018
   const parityOf = v => { const p = popcount(v & ((1 << bits) - 1)) & 1; return parity === "even" ? p : (1 - p); };
-  const spans = [], bytes = [], toks = [];
   // The parity bit lengthens the frame — count it so a frame near the record end
   // isn't started with its stop bit off the captured range.
   const pcNeed = parity !== "none" ? 1 : 0;
   const need = Math.ceil((bits + 2 + pcNeed) * SPB);
-  let i = guard;
-  while (i < n - need - guard) {
-    if (logicAt(S, i - 1) === idle && logicAt(S, i) === (1 - idle)) { // start edge
-      const start = i;
-      if (logicAt(S, Math.round(start + 0.5 * SPB)) === (1 - idle)) { // confirm start bit
-        let val = 0, gap = false;
-        for (let c = 0; c < bits; c++) {
-          const b = logicAt(S, Math.round(start + (1.5 + c) * SPB));
-          if (b < 0) { gap = true; break; }
-          if (lsb) val |= (b << c); else val = (val << 1) | b;
-        }
-        const i1 = Math.min(n - 1, Math.round(start + (bits + 1) * SPB));
-        if (gap) { spans.push({ i0: start, i1, text: "gap", kind: "gap" }); i = start + 1; continue; }
-        let kind = "data", pfx = "", pc = 0;
-        if (parity !== "none") {
-          pc = 1;
-          const pb = logicAt(S, Math.round(start + (1.5 + bits) * SPB));
-          if (pb >= 0 && pb !== parityOf(val)) { kind = "parity-error"; pfx = "!"; }
-        }
-        const sb = logicAt(S, Math.round(start + (1.5 + bits + pc) * SPB));
-        if (sb < 0) { spans.push({ i0: start, i1, text: "gap", kind: "gap" }); i = start + 1; continue; } // stop bit off the record: incomplete frame
-        if (sb !== idle) { if (kind === "data") kind = "frame-error"; pfx = "!"; } // wrong stop level = framing error
-        spans.push({ i0: start, i1, text: pfx + fmtWord(val, bits, fmt), kind, val });
-        toks.push(pfx + fmtWord(val, bits, fmt)); bytes.push(val);
-        i = Math.round(start + (bits + 1 + pc) * SPB) + 1;
-        continue;
+  // frameAt reads the frame whose start bit begins at start (Go frameAt):
+  // { sp, next } or null when no start bit is there.
+  // TRLC-LINKS: REQ-SDS-018
+  const frameAt = (start) => {
+    if (logicAt(S, Math.round(start + 0.5 * SPB)) !== (1 - idle)) return null; // confirm start bit
+    let val = 0, gap = false;
+    for (let c = 0; c < bits; c++) {
+      const b = logicAt(S, Math.round(start + (1.5 + c) * SPB));
+      if (b < 0) { gap = true; break; }
+      if (lsb) val |= (b << c); else val = (val << 1) | b;
+    }
+    const i1 = Math.min(n - 1, Math.round(start + (bits + 1) * SPB));
+    if (gap) return { sp: { i0: start, i1, text: "gap", kind: "gap" }, next: start + 1 };
+    let kind = "data", pfx = "", pc = 0;
+    if (parity !== "none") {
+      pc = 1;
+      const pb = logicAt(S, Math.round(start + (1.5 + bits) * SPB));
+      if (pb >= 0 && pb !== parityOf(val)) { kind = "parity-error"; pfx = "!"; }
+    }
+    const sb = logicAt(S, Math.round(start + (1.5 + bits + pc) * SPB));
+    if (sb < 0) return { sp: { i0: start, i1, text: "gap", kind: "gap" }, next: start + 1 }; // stop bit off the record: incomplete frame
+    if (sb !== idle) { if (kind === "data") kind = "frame-error"; pfx = "!"; } // wrong stop level = framing error
+    return { sp: { i0: start, i1, text: pfx + fmtWord(val, bits, fmt), kind, val }, next: Math.round(start + (bits + 1 + pc) * SPB) + 1 };
+  };
+  // scan reads the frames whose start edges lie in [from, to) onto spans.
+  // TRLC-LINKS: REQ-SDS-018
+  const scan = (spans, from, to) => {
+    for (let i = from; i < n - need - guard && i < to; i++) {
+      if (logicAt(S, i - 1) === idle && logicAt(S, i) === (1 - idle)) { // start edge
+        const fr = frameAt(i);
+        if (fr) { spans.push(fr.sp); i = fr.next - 1; }
       }
     }
-    i++;
-  }
+    return spans;
+  };
+  let spans;
+  const chain = uartAnchorChain(S, cfg, SPB, bits + pcNeed, guard, idle, frameAt);
   // Sync-in (mirrors Go syncIn): the frames a record opened inside traffic
   // with are gaps - read from a data bit's edge, they are no bytes on the line.
-  if (uartSyncIn(spans, S, SPB, bits + 2 + pcNeed, bits - 0.5, idle)) {
-    toks.length = 0; bytes.length = 0;
-    for (const sp of spans) if (sp.kind !== "gap") { toks.push(sp.text); bytes.push(sp.val); }
+  if (!chain.length) {
+    spans = scan([], guard, n);
+    uartSyncIn(spans, S, SPB, bits + 2 + pcNeed, bits - 0.5, idle);
+  } else {
+    // before the chain: the frames that end before it, read in sync as any
+    // record's first frames are
+    const frameLen = (bits + 2 + pcNeed) * SPB;
+    spans = scan([], guard, Math.trunc(chain[0].i0 - frameLen + 0.5 * SPB));
+    uartSyncIn(spans, S, SPB, bits + 2 + pcNeed, bits - 0.5, idle);
+    for (const sp of chain) spans.push(sp);
+    scan(spans, frameAt(chain[chain.length - 1].i0).next, n);
   }
+  const bytes = [], toks = [];
+  for (const sp of spans) if (sp.kind !== "gap") { toks.push(sp.text); bytes.push(sp.val); }
   return { ok: true, error: null, proto: "uart", spans, text: toks.join(" "), bytes,
     meta: { baud: Math.round(baud), samplesPerBit: SPB, threshold: S.threshold, lowRail: S.lowRail, highRail: S.highRail } };
+}
+
+// snapRate is a bit rate read from a record's edges moved onto the nearest of a
+// bus's standard rates within 1.5 %; otherwise it stands (Go snapRate).
+// TRLC-LINKS: REQ-SDS-018
+function snapRate(baud, rates) {
+  for (const r of rates) if (Math.abs(baud - r) <= 0.015 * r) return Math.round(r);
+  return baud;
+}
+
+// uartAnchorChain is the frames a hardware match fixes the framing of, in time
+// order (Go uartAnchorChain): cfg.anchor is a sample within the matched
+// character's stop bit; the matched frame and the frames back to back before
+// it, while each reads clean. [] without an anchor or when the matched frame
+// does not read clean. dataBits counts the parity bit.
+// TRLC-LINKS: REQ-SDS-013, REQ-SDS-018
+function uartAnchorChain(S, cfg, spb, dataBits, guard, idle, frameAt) {
+  const a = cfg.anchor;
+  if (!(a >= 0) || !(spb > 0)) return [];
+  const startDir = idle === 1 ? -1 : 1;
+  // TRLC-LINKS: REQ-SDS-018
+  const startNear = (lo, hi) => {
+    for (const e of S.edges) if (e.dir === startDir && e.x >= lo && e.x <= hi) return e.i;
+    return -1;
+  };
+  // TRLC-LINKS: REQ-SDS-018
+  const clean = (start) => {
+    if (start < guard) return null;
+    const fr = frameAt(start);
+    return fr && fr.sp.kind === "data" ? fr.sp : null;
+  };
+  const first = clean(startNear(a - (dataBits + 2.1) * spb, a - (dataBits + 0.9) * spb));
+  if (!first) return [];
+  const chain = [first], frameLen = (dataBits + 2) * spb;
+  while (chain.length < 4096) {
+    const at = chain[0].i0 - frameLen;
+    const sp = clean(startNear(at - 0.6 * spb, at + 0.6 * spb));
+    if (!sp) break;
+    chain.unshift(sp);
+  }
+  return chain;
 }
 
 // TRLC-LINKS: REQ-SDS-018
@@ -928,4 +985,4 @@ function decode(frame, cfg) {
 
 if (typeof module !== "undefined" && module.exports)
   module.exports = { KINDS, fmtByte, fmtWord, frameDtS, frameSpanS, sliceChannel, logicAt, decodeUART, decodeI2C, decodeSPI, decode,
-    scoreResult, clockScore, phaseLock, launchEdges, idleLevel, autodetect };
+    scoreResult, clockScore, phaseLock, launchEdges, idleLevel, autodetect, snapRate };

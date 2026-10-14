@@ -132,7 +132,11 @@ func Decode(f *engine.Frame, p DecodeParams) decode.Result {
 			res.SPB *= float64(k)
 		}
 	case ProtoUART:
-		res = decode.DecodeUART(ch(p.ChA), f.SampleS, decode.UARTCfg{Baud: p.Baud, Format: p.Format})
+		cfg := decode.UARTCfg{Baud: p.Baud, Format: p.Format}
+		if f.HasMatchEnd && f.EdgeX >= 0 && f.SampleS > 0 { // the hardware matcher's character fixes the framing
+			cfg.Anchor, cfg.HasAnchor = f.EdgeX+f.MatchEndS/f.SampleS, true
+		}
+		res = decode.DecodeUART(ch(p.ChA), f.SampleS, cfg)
 	case ProtoI2C:
 		res = decode.DecodeI2C(ch(p.ChA), ch(p.ChB), f.SampleS, decode.I2CCfg{Format: p.Format})
 	case ProtoSPI:

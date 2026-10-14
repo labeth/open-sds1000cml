@@ -108,7 +108,7 @@ function decodeMIL1553At(S, T, colTimeS) {
   if (words === 0) return { res: fail("mil1553", "no MIL-STD-1553 sync found"), words: 0 };
 
   let baud = 0;
-  if (colTimeS > 0) baud = Math.round(1 / (T * colTimeS));
+  if (colTimeS > 0) baud = snapRate(Math.round(1 / (T * colTimeS)), [1e6]);
   const res = { ok: true, error: null, proto: "mil1553", spans, text: toks.join(" "), bytes,
     meta: { bitrate: baud, samplesPerBit: T, threshold: S.threshold, lowRail: S.lowRail, highRail: S.highRail } };
   return { res, words };

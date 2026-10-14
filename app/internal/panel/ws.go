@@ -72,6 +72,7 @@ type pickState struct {
 	toks  []wsview.PickTok
 	start int // the first byte the F-keys trigger on
 	first int // where it opened
+	unit  int // bytes a decoded unit takes (a MIL-1553 word 2, an ARINC 429 field 3; else 1)
 }
 
 // uiState is the workspace UI (guarded by Controller.mu).

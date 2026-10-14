@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"open-sds/app/internal/engine"
+	"open-sds/app/internal/panel/wsview"
 )
 
 // noiseFrame is a capture that does not repeat: a random C1.
@@ -195,5 +196,25 @@ func TestCompareRefKeepsItsProbe(t *testing.T) {
 	}
 	if m := maxV(row.Extra); strings.HasSuffix(m, "mV") || !strings.HasSuffix(m, "V") {
 		t.Fatalf("REF A against a live trace ten times its volts: %q", row.Extra)
+	}
+}
+
+// Captures the mask cannot be compared with (an offset moved since it was
+// built) are counted as skipped; the MASK row says so, amber, or a test that
+// stopped testing reads "pass 96 fail 0" like a clean run (only the trace
+// overlay showed the skips).
+// TRLC-LINKS: REQ-SDS-218
+func TestCompareMaskRowNamesSkips(t *testing.T) {
+	r := newViewRig(t)
+	c := r.c
+	r.show(toneFrame(""))
+	press(t, c, "f5")
+	r.eng.set(func(st *engine.Stats) { st.MaskSet, st.MaskMode, st.MaskPass, st.MaskSkip = true, 2, 96, 0 })
+	if row := c.View().Cmp.Rows[cmpMask]; strings.Contains(row.Extra, "skip") {
+		t.Fatalf("no skips, yet the row says %q", row.Extra)
+	}
+	r.eng.set(func(st *engine.Stats) { st.MaskSkip = 505 })
+	if row := c.View().Cmp.Rows[cmpMask]; !strings.Contains(row.Extra, "skip 505") || row.ExtraCol != wsview.Amber {
+		t.Fatalf("505 skipped: row %q (colour %v)", row.Extra, row.ExtraCol)
 	}
 }

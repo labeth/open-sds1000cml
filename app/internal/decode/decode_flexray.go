@@ -303,7 +303,7 @@ func DecodeFlexRay(codes []uint8, colTimeS float64, cfg FlexRayCfg) Result {
 	}
 	baud := cfg.Bitrate
 	if colTimeS > 0 {
-		baud = int(math.Round(1.0 / (T * colTimeS)))
+		baud = snapRate(int(math.Round(1.0/(T*colTimeS))), 2.5e6, 5e6, 10e6)
 	}
 	// OK requires at least one frame whose header CRC-11 AND frame CRC-24 both
 	// verify. Frames that framed correctly but failed either CRC are still

@@ -68,3 +68,38 @@ func TestEdgeDetailRate(t *testing.T) {
 		t.Fatal("another scale kept the old windows")
 	}
 }
+
+// A serial match ends in its stop bit, no edge: the edge windows go to the
+// edge nearest the trigger point, either way, and the next one the other way
+// (the owner's UART trigger read no rise, ever: the trigger window held the
+// flat stop bit and the opposite one was sought in the edge trigger's sense).
+// TRLC-LINKS: REQ-SDS-021
+func TestNearestEdgeBucket(t *testing.T) {
+	pairs := make([]uint8, 0, 200)
+	for b := 0; b < 100; b++ { // low 0-29, a rise inside 30, high 31-59, a fall between 59 and 60
+		lo, hi := uint8(50), uint8(50)
+		switch {
+		case b == 30:
+			hi = 200
+		case b > 30 && b < 60:
+			lo, hi = 200, 200
+		}
+		pairs = append(pairs, lo, hi)
+	}
+	if b, rising := nearestEdgeBucket(pairs, 50); b != 60 || rising {
+		t.Fatalf("from 50: edge %d rising %v, want the fall at 60", b, rising)
+	}
+	if b, rising := nearestEdgeBucket(pairs, 36); b != 30 || !rising {
+		t.Fatalf("from 36: edge %d rising %v, want the rise at 30", b, rising)
+	}
+	if b, _ := nearestEdgeBucket(pairs, 50); oppositeEdgeBucket(pairs, b, false) != -1 {
+		t.Fatal("no rise after the fall at 60 in this record")
+	}
+	if b, rising := nearestEdgeBucket(pairs, 25); b != 30 || !rising {
+		t.Fatalf("from 25: edge %d rising %v", b, rising)
+	}
+	flat := make([]uint8, 200)
+	if b, _ := nearestEdgeBucket(flat, 10); b != -1 {
+		t.Fatalf("a flat record has an edge at %d", b)
+	}
+}

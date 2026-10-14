@@ -197,7 +197,7 @@ func decodeMIL1553At(S sliced, T, colTimeS float64) (Result, int) {
 
 	baud := 0
 	if colTimeS > 0 {
-		baud = int(math.Round(1.0 / (T * colTimeS)))
+		baud = snapRate(int(math.Round(1.0/(T*colTimeS))), 1e6)
 	}
 	return Result{OK: true, Proto: "mil1553", Spans: spans, Text: strings.Join(toks, " "),
 		Bytes: bytesOut, Baud: baud, SPB: T, Thr: S.threshold}, words
