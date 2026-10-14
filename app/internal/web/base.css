@@ -187,6 +187,8 @@
   table.pkt tbody tr { cursor: pointer; }
   table.pkt tbody tr:hover td { background: var(--ctrl); }
   table.pkt tbody tr.is-sel td { background: var(--on-bg); }
+  table.pkt tbody tr.cut { cursor: default; } /* cut by the record edges: listed, not zoomed onto */
+  table.pkt tbody tr.cut td { opacity: .75; }
   table.pkt tbody tr:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
 
   table.pkt2 { table-layout: fixed; } table.pkt2 col.c-n { width: 28px; } table.pkt2 col.c-h { width: 54px; }

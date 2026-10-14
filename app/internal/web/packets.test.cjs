@@ -124,4 +124,35 @@ function uartRecord(msgs, spb, gap, lead, tail) {
   assert.equal(L.findMatch(["??", "34"], 0, 1), 1);
   assert.equal(L.findMatch(["FF"], 0, 1), -1);
 }
+// addresses in each bus's own terms, as the scope's list writes them (Go analysis.AddrText)
+{
+  // TRLC-LINKS: REQ-SDS-214
+  const a = (proto, addr, read) => P.pkAddrText(proto, { addr, hasAddr: true, read: !!read });
+  assert.equal(a("i2c", 0x24), "24 W");
+  assert.equal(a("can", 0x123), "123", "a CAN data frame: no direction");
+  assert.equal(a("can", 0x100, true), "100 R", "a remote frame");
+  assert.equal(a("arinc429", 0o310), "310", "an ARINC label in octal");
+  assert.equal(a("mil1553", 5, true), "RT5 T");
+  assert.equal(P.pkAddrText("uart", { hasAddr: false }), "");
+  // the decoders' address spans by value: a CAN identifier (kind id), an ARINC label
+  const can = P.decodePackets({ ok: true, proto: "canfd", spans: [
+    { i0: 100, i1: 101, kind: "sof", text: "SOF" }, { i0: 102, i1: 120, kind: "id", text: "123", val: 0x123 },
+    { i0: 121, i1: 122, kind: "rtr", text: "DATA", val: 0 }, { i0: 130, i1: 140, kind: "data", text: "55", val: 0x55 },
+    { i0: 141, i1: 150, kind: "crc", text: "CRC:1234", val: 0x1234 }, { i0: 151, i1: 152, kind: "ack", text: "ACK" }] }, 400);
+  assert.ok(can.length && can[0].hasAddr && can[0].addr === 0x123 && !can[0].read, "CAN id read into the packet: " + JSON.stringify(can[0]));
+  // MIL-1553: a command word and its data word are one message, words as two
+  // bytes each, the RT address from the command word (as the scope lists it)
+  // TRLC-LINKS: REQ-SDS-214
+  const w = (i0, sync, val, bad) => [{ i0, i1: i0 + 2, kind: "start", text: sync }, { i0: i0 + 3, i1: i0 + 18, kind: "data", text: (bad ? "!" : "") + val.toString(16), val }];
+  const mil = P.decodePackets({ ok: true, proto: "mil1553", spans: [...w(100, "csync", 0xA55A), ...w(120, "dsync", 0x5AA5), ...w(300, "csync", 0xA55A)] }, 600);
+  assert.equal(mil.length, 2, "two messages: " + JSON.stringify(mil.map(P.pkHex)));
+  assert.equal(P.pkHex(mil[0]), "A5 5A 5A A5");
+  assert.equal(P.pkAddrText("mil1553", mil[0]), "RT20 T");
+  // ARINC 429: each word a packet of its own, its 19-bit field as three bytes
+  // TRLC-LINKS: REQ-SDS-214
+  const ar = (i0, label, val) => [{ i0, i1: i0 + 8, kind: "addr", text: label.toString(8), val: label }, { i0: i0 + 10, i1: i0 + 28, kind: "data", text: val.toString(16), val }];
+  const arinc = P.decodePackets({ ok: true, proto: "arinc429", spans: [...ar(100, 0o310, 0xABCD), ...ar(136, 0o205, 0x12345)] }, 400);
+  assert.deepEqual(arinc.map(P.pkHex), ["00 AB CD", "01 23 45"], "ARINC words");
+  assert.deepEqual(arinc.map((q) => P.pkAddrText("arinc429", q)), ["310", "205"]);
+}
 console.log("ALL PASS");

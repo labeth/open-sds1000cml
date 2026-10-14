@@ -664,3 +664,32 @@ func TestZoomTagReadsTheFactor(t *testing.T) {
 		}
 	}
 }
+
+// The trigger readout names a trigger that is no plain edge: the owner's
+// serial trigger on AA read "T C1 ^ 1.37V" as any edge does.
+// TRLC-LINKS: REQ-SDS-021
+func TestTriggerReadoutNamesTheType(t *testing.T) {
+	h := defaultHUD()
+	if got := trigTag(h); got != "" {
+		t.Fatalf("an edge trigger tagged %q", got)
+	}
+	for _, c := range []struct {
+		set  func(*HUD)
+		want string
+	}{
+		{func(h *HUD) { h.SerialArmed, h.SerialMatch = true, "AA" }, "SER AA"},
+		{func(h *HUD) { h.SerialArmed, h.SerialMatch = true, "48 69 20 55 AA" }, "SER 48 69 20 5.."},
+		{func(h *HUD) { h.TrigType, h.TrigQual.PulseCond, h.TrigQual.PulseMaxNs = 1, 2, 4000 }, "PULSE >4us C1"},
+		{func(h *HUD) {
+			h.TrigType, h.TrigQual.SlopeCond, h.TrigQual.SlopeMinNs, h.TrigQual.SlopeMaxNs = 2, 3, 10, 60
+		}, "SLOPE 10ns-60ns C1"},
+		{func(h *HUD) { h.TrigType, h.TrigQual.VideoLine, h.TrigSrc = 3, 20, 1 }, "VIDEO L20 C2"},
+		{func(h *HUD) { h.ZoneTrig = true }, "ZONE C1"},
+	} {
+		h := defaultHUD()
+		c.set(&h)
+		if got := trigTag(h); got != c.want {
+			t.Errorf("tag %q, want %q", got, c.want)
+		}
+	}
+}

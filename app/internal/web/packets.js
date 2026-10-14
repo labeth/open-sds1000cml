@@ -34,6 +34,21 @@ function pkNew(i0) {
   return { i0, i1: i0, bytes: [], byteErr: [], addr: -1, hasAddr: false, read: false, complete: false, err: "", opened: false, closed: false };
 }
 
+// pkAddrText is a packet's address as the BUS lists write it in each bus's
+// own terms (Go analysis.AddrText): I2C "24 W", CAN "123" ("123 R" remote),
+// an ARINC 429 label in octal, a MIL-1553 "RT5 T", else hex.
+// TRLC-LINKS: REQ-SDS-214
+function pkAddrText(proto, p) {
+  if (!p.hasAddr) return "";
+  // TRLC-LINKS: REQ-SDS-214
+  const hx = (v, n) => v.toString(16).toUpperCase().padStart(n, "0");
+  if (proto === "i2c") return hx(p.addr, 2) + " " + (p.read ? "R" : "W");
+  if (proto === "canfd" || proto === "can") return hx(p.addr, 3) + (p.read ? " R" : "");
+  if (proto === "arinc429") return p.addr.toString(8).padStart(3, "0");
+  if (proto === "mil1553") return "RT" + p.addr + " " + (p.read ? "T" : "R");
+  return hx(p.addr, 2);
+}
+
 // decodePackets groups r.spans into packets. recordLen is the sample count of
 // the decoded record (the margins the completeness test checks against).
 // TRLC-LINKS: REQ-SDS-214
@@ -52,8 +67,10 @@ function decodePackets(r, recordLen) {
     out.push(cur);
     cur = null;
   };
-  const i2c = r.proto === "i2c";
-  const framed = !i2c && spans.some((s) => PK_OPEN.has(s.kind));
+  const i2c = r.proto === "i2c", mil = r.proto === "mil1553", arinc = r.proto === "arinc429";
+  const framed = !i2c && (arinc || spans.some((s) => PK_OPEN.has(s.kind)));
+  // bytes a word takes, most significant first (Go analysis wordWidth)
+  const width = mil ? 2 : arinc ? 3 : 1;
   for (const s of spans) {
     if (s.kind === "gap") { // the decoder could not complete this unit
       if (cur) cur.cut = true;
@@ -81,25 +98,37 @@ function decodePackets(r, recordLen) {
       continue;
     }
     const gapBefore = s.i0 - lastEnd;
-    const opens = framed ? PK_OPEN.has(s.kind) : false;
+    // an ARINC 429 word opens with its label; a MIL-1553 data word continues
+    // the message its command word opened (Go analysis framed)
+    const dsync = mil && s.kind === "start" && s.text === "dsync";
+    const opens = !framed ? false : arinc ? s.kind === "addr" : PK_OPEN.has(s.kind) && !(dsync && cur);
     if (cur && (opens || gapBefore > gapThr)) close(opens);
     if (!cur) {
       cur = pkNew(s.i0);
       // complete at the start: it opens on a delimiter, or idle precedes it inside the record
-      cur.opened = framed ? opens : (s.i0 >= gapThr && !lastWasGap && (lastEnd === -Infinity || gapBefore > gapThr));
+      cur.opened = framed ? opens && !dsync : (s.i0 >= gapThr && !lastWasGap && (lastEnd === -Infinity || gapBefore > gapThr));
     }
     lastWasGap = false;
     if (s.kind === "data" || PK_ERR.has(s.kind)) {
+      if (r.proto === "mil1553" && s.kind === "data" && !cur.bytes.length && cur.opened && Number.isFinite(+s.val)) {
+        // the command (or status) word: RT address and T/R bit (Go analysis)
+        cur.addr = (+s.val >> 11) & 0x1f; cur.hasAddr = true; cur.read = ((+s.val >> 10) & 1) === 1;
+      }
       if (s.val !== undefined && s.val !== null && Number.isFinite(+s.val)) {
-        cur.bytes.push(+s.val);
         const bad = s.kind !== "data" || String(s.text || "").startsWith("!");
-        cur.byteErr.push(bad);
+        for (let k = width - 1; k >= 0; k--) {
+          cur.bytes.push(width > 1 ? (+s.val >> (8 * k)) & 0xff : +s.val);
+          cur.byteErr.push(bad);
+        }
         if (bad && !cur.err) cur.err = s.kind;
-      } else if (PK_ERR.has(s.kind) && !cur.err) cur.err = s.kind;
-    } else if (s.kind === "addr") {
-      const a = parseInt(s.text, 16);
+      } else if (PK_ERR.has(s.kind)) {
+        if (mil) for (let k = Math.max(0, cur.byteErr.length - width); k < cur.byteErr.length; k++) cur.byteErr[k] = true; // the last word (Go markLast)
+        if (!cur.err) cur.err = s.kind;
+      }
+    } else if (s.kind === "addr" || s.kind === "id") { // an ARINC 429 label, a CAN identifier: by value
+      const a = s.val !== undefined && s.val !== null && Number.isFinite(+s.val) ? +s.val : parseInt(s.text, 16);
       if (Number.isFinite(a)) { cur.addr = a; cur.hasAddr = true; }
-    }
+    } else if (s.kind === "rtr") cur.read = s.val === 1;
     cur.i1 = Math.max(cur.i1, s.i1);
     lastEnd = s.i1;
   }
@@ -211,5 +240,5 @@ class PacketList {
 }
 
 if (typeof module !== "undefined" && module.exports) {
-  module.exports = { decodePackets, PacketList, pkHex, pkString, pkKey, pkMatch };
+  module.exports = { pkAddrText, decodePackets, PacketList, pkHex, pkString, pkKey, pkMatch };
 }

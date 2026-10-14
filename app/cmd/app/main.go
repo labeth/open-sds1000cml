@@ -80,6 +80,33 @@ func (w webSetups) SetupSlots() []web.SetupSlot {
 	return out
 }
 
+// matchText is a serial trigger's match as the BUS table writes its units:
+// hex, "?" for a masked nibble, ERR for an error.
+// TRLC-LINKS: REQ-SDS-168
+func matchText(p engine.SerialParams) string {
+	var toks []string
+	if len(p.Pattern) == 0 {
+		for _, b := range p.Bytes {
+			toks = append(toks, fmt.Sprintf("%02X", b))
+		}
+		return strings.Join(toks, " ")
+	}
+	for _, u := range p.Pattern {
+		if u.Kind == 4 {
+			toks = append(toks, "ERR")
+			continue
+		}
+		h := []byte(fmt.Sprintf("%02X", u.Value))
+		for i := range h {
+			if shift := 4 * (len(h) - 1 - i); (u.Mask>>shift)&15 != 15 {
+				h[i] = '?'
+			}
+		}
+		toks = append(toks, string(h))
+	}
+	return strings.Join(toks, " ")
+}
+
 // buildHUD assembles the LCD/SCDP heads-up state from the engine + front end.
 // The trigger-level readout is scaled by the SOURCE channel's V/div.
 // TRLC-LINKS: REQ-SDS-168
@@ -88,7 +115,9 @@ func buildHUD(e *engine.Engine, fe *analog.FrontEnd) lcd.HUD {
 	hud := lcd.HUD{
 		C1VdivV: 1, C2VdivV: 1, TdivS: st.TdivS,
 		TrigSrc: st.TrigSource, TrigRising: st.TrigRising,
-		Running: st.Running, Norm: st.Norm, Single: st.Single, RecordS: st.RecordS,
+		TrigType: st.TrigType, TrigQual: st.TrigQual, SerialArmed: st.SerialMode != 0, ZoneTrig: st.ZoneMode != 0,
+		SerialMatch: matchText(e.SerialConfig()),
+		Running:     st.Running, Norm: st.Norm, Single: st.Single, RecordS: st.RecordS,
 		TrigPosFrac: st.TrigPosFrac, TwoChan: true,
 		ShowC1: true, ShowC2: true,
 		URL: lcd.DeviceURL(), // cached; re-enumerates at most every few seconds
@@ -379,6 +408,7 @@ func renderSigOf(f *engine.Frame, hud lcd.HUD, live bool) renderSig {
 		streamSlot: streamSlot(hud),
 		extra: fmt.Sprint(hud.AutosetBusy, hud.AutosetMsg, hud.Remote, hud.MeasItems, hud.FFTSrc,
 			hud.TrigSrc, hud.TrigRising, hud.TrigLvlV, hud.TrigPosFrac, hud.Waiting,
+			hud.TrigType, hud.TrigQual, hud.SerialArmed, hud.SerialMatch, hud.ZoneTrig,
 			hud.Zoom1, hud.Zoom2, hud.ChanExplicit, hud.DecBaud, hud.DecChA, hud.DecChB,
 			hud.DecCPOL, hud.DecCPHA, hud.DecFormat, hud.MaskMsg, hud.SRStatus, hud.Notice, hud.Match),
 	}

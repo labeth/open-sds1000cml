@@ -598,7 +598,7 @@ Drawn at scale 1. Coordinates are the glyph top-left; `W=800`, `H=480`.
 | `(96, 2)` | `C2 <v/div>` | `colC2` pink |
 | `(200, 2)` | `M <time/div>` (main timebase) | `colInfo` grey `(200,200,200)` |
 | `(262, 2)` | `x<n>` while zoomed (the zoom factor) | `colTrig` |
-| right-justified at `(796, 2)` | `T C<n> <^\|v> <level> <state>` — trigger source channel `n`, edge (`^` rising / `v` falling), level in volts at the tip, sweep state | `colTrig` green `(64,255,64)` |
+| right-justified at `(796, 2)` | `T C<n> <^\|v> <level> <state>` — trigger source channel `n`, edge (`^` rising / `v` falling), level in volts at the tip, sweep state; another trigger type `T <tag> <state>` | `colTrig` green `(64,255,64)` |
 | `(4, 471)` | `C1 Vpp <volts>` + (when the measurement has timing) `  f <freq>` | `colC1` |
 | `(410, 471)` | `C2 Vpp <volts>` + `  f <freq>` | `colC2` |
 
@@ -620,7 +620,10 @@ starts as `"AUTO"` (`"NORM"` in Normal) and the first that holds of these replac
 a single → `"SNGL"`; not running → `"STOP"`; a roll view → `"ROLL"`; Normal with nothing
 published lately (`Waiting`: the held frame's trigger no longer describes now) → `"WAIT"`;
 the frame triggered → `"T'D"`; Normal → `"WAIT"`. The web's trigger chip uses the same words
-in the same order.
+in the same order. A trigger that is no plain edge is named instead of the edge and level
+(`"T <tag> <state>"`): a serial trigger by its match as the BUS table writes it (`SER AA`, cut to
+eleven characters), a zone trigger `ZONE C<n>`, a pulse or slope trigger by its condition
+(`PULSE >4us C1`, `SLOPE 10ns-60ns C1`, `any`), a video trigger by its line (`VIDEO L20 C1`).
 
 **Bottom-row Vpp / frequency.** Per shown channel, the frame measured by the shared measure
 package as the MEASURE readouts and the web measure it (`chanMeasure`: calibrated, probe-scaled

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"open-sds/app/internal/analog"
+	"open-sds/app/internal/analysis"
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/panel/framecalc"
 	"open-sds/app/internal/panel/wsview"
@@ -557,7 +558,7 @@ func (c *Controller) busPane(s *sv) *wsview.BusPane {
 		if ln.from == 0 {
 			bl.Num, bl.Bytes = ln.pi+1, len(q.Bytes)
 			if q.HasAddr { // as the web's list writes it
-				bl.Addr = fmt.Sprintf("%02X %s", q.Addr, map[bool]string{true: "R", false: "W"}[q.Read])
+				bl.Addr = analysis.AddrText(res.Proto, q)
 			}
 			if len(toks) > 0 && tokMatch(toks, q) {
 				bl.Match = cut(strings.Join(toks, " "), 24)

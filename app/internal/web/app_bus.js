@@ -8,6 +8,7 @@
 "use strict";
 
 const busPk = new PacketList(200);
+let busLive = [];           // the last capture's packets, cut ones included
 let busSel = null;          // {i0, i1, n} of the packet zoomed onto, drawn on the trace
 let busRenderT = 0, busRenderedV = -1, busDetecting = false;
 
@@ -23,9 +24,21 @@ function busOnDecode() {
   const r = dcfg.result;
   if (!r || !r.ok || !frame || !frame.c1) { busRenderTable(); return; }
   if (frozen && dcfg.reviewIdx < 0 && busSel) return; // a zoomed packet holds the list
-  busPk.update(decodePackets(r, frame.c1.length));
+  busLive = decodePackets(r, frame.c1.length);
+  busPk.update(busLive);
   busRenderTable();
 }
+
+// busShownRows is what the packet table lists: the complete packets kept, or,
+// when there are none, the capture's packets cut by the record edges (partial),
+// as the scope's list does - a serial trigger at a fast timebase holds no
+// whole message, and an empty list hid the bytes the strip shows.
+// TRLC-LINKS: REQ-SDS-214
+function busShownRows(kept, live) {
+  if (kept.length) return { rows: kept, partial: false };
+  return { rows: (live || []).filter((p) => p.bytes && p.bytes.length), partial: true };
+}
+// End of busShownRows.
 
 // busTokens: the serial-trigger pattern as match tokens (rows holding it are marked).
 // TRLC-LINKS: REQ-SDS-214
@@ -41,7 +54,9 @@ function busRenderTable() {
   const r = dcfg.result;
   if (off) { $("pkNote").textContent = ""; busRenderedV = -1; $("pkBody").innerHTML = ""; return; }
   const toks = busTokens();
-  const sig = busPk.version + "|" + toks.join(" ") + "|" + (r && !r.ok ? r.error : "");
+  const shown = busShownRows(busPk.rows, busLive);
+  const sig = busPk.version + "|" + toks.join(" ") + "|" + (r && !r.ok ? r.error : "") +
+    (shown.partial ? "|" + shown.rows.map((p) => pkHex(p)).join("/") : "");
   if (sig === busRenderedV) return;
   busRenderedV = sig;
   const tb = $("pkBody");
@@ -55,19 +70,29 @@ function busRenderTable() {
   const dt = frame && n ? frameDtS(frame, n) : 0;
   const edge = frame && frame.edge_frac >= 0 ? frame.edge_frac * (n - 1) : 0;
   let html = "";
+  if (shown.partial) {
+    shown.rows.forEach((p, i) => {
+      const t = dt > 0 ? eng((p.i0 - edge) * dt, "s", 3) : "—";
+      const addr = pkAddrText(r && r.proto, p);
+      const hex = pkHex(p), hit = toks.length && pkMatch(p, toks);
+      html += `<tr class="cut${hit ? " hit" : ""}" title="Cut by the record edges"><td class="n">${i + 1}${hit ? " ◆" : ""}</td><td>${t}</td><td class="addr">${addr}</td>` +
+        `<td class="hex${p.err ? " bad" : ""}">${escHTML(hex)}</td><td class="str">${escHTML(pkString(p))}</td><td>${p.bytes.length}</td></tr>`;
+    });
+  }
   busPk.rows.forEach((p, i) => {
     const t = dt > 0 ? eng((p.i0 - edge) * dt, "s", 3) : "—";
-    const addr = p.hasAddr ? p.addr.toString(16).toUpperCase().padStart(2, "0") + " " + (p.read ? "R" : "W") : "";
+    const addr = pkAddrText(r && r.proto, p);
     const hex = pkHex(p), str = pkString(p), hit = toks.length && pkMatch(p, toks);
     html += `<tr data-i="${i}" data-id="${p.id}" tabindex="0" class="${busPk.selKey === p.key ? "is-sel" : ""}${hit ? " hit" : ""}" title="Zoom onto this packet (Enter)">` +
       `<td class="n">${i + 1}${hit ? " ◆" : ""}</td><td>${t}</td><td class="addr">${addr}</td>` +
       `<td class="hex${p.err ? " bad" : ""}" title="${escHTML(hex)}">${escHTML(hex) || "(no data bytes)"}</td>` +
       `<td class="str" title="${escHTML(str)}">${escHTML(str)}</td><td>${p.bytes.length}</td></tr>`;
   });
-  if (!busPk.rows.length) html = `<tr><td class="e" colspan="6">No complete packet in this capture yet — a packet cut by the record edges is not listed. A slower timebase shows more of the bus.</td></tr>`;
+  if (!shown.rows.length) html = `<tr><td class="e" colspan="6">No packet in this capture yet. A slower timebase shows more of the bus.</td></tr>`;
   tb.innerHTML = html;
   if (focusId) { const row = tb.querySelector(`tr[data-id="${focusId}"]`); if (row) row.focus({ preventScroll: true }); }
-  $("pkNote").textContent = busPk.rows.length ? (frozen ? "Click a packet to zoom onto it." : "Click a packet to zoom onto it (the display freezes so it holds still).") +
+  $("pkNote").textContent = shown.partial && shown.rows.length ? "Cut by the record edges: no whole message in this capture. A slower timebase shows them whole." + (toks.length ? " ◆ marks packets holding the trigger pattern." : "") :
+    busPk.rows.length ? (frozen ? "Click a packet to zoom onto it." : "Click a packet to zoom onto it (the display freezes so it holds still).") +
     (toks.length ? " ◆ marks packets holding the trigger pattern." : "") : "";
 }
 
@@ -203,14 +228,66 @@ function busSlowestReadable(featureS, within) {
   }
   return best;
 }
+// busScopeDecode is the decode the scope's BUS sheet rows (by id) set, as this
+// page's settings (proto, roles, rates), or null when the scope decodes no bus
+// or detects it itself (Auto).
+// TRLC-LINKS: REQ-SDS-214
+function busScopeDecode(rows) {
+  // TRLC-LINKS: REQ-SDS-214
+  const v = (id) => rows[id] && rows[id].Value;
+  const proto = [null, null, "uart", "i2c", "spi", "manchester", "sent", "can", "mil1553", "arinc429", "usb", "flexray"][v("bus.protocol")];
+  if (!proto) return null;
+  // TRLC-LINKS: REQ-SDS-214
+  const ch = (id, dflt) => (v(id) === 0 || v(id) === 1 ? v(id) + 1 : dflt);
+  const d = { proto };
+  if (proto === "i2c") { d.scl = ch("bus.scl", 1); d.sda = ch("bus.sda", 2); }
+  else if (proto === "spi") { const m = v("bus.spi_mode") || 0; d.clk = ch("bus.clk", 1); d.data = ch("bus.data", 2); d.cpol = m >> 1 & 1; d.cpha = m & 1; }
+  else d.line = ch("bus.source", 1);
+  if (proto === "uart") d.baud = v("bus.baud") > 0 ? v("bus.baud") : 0;
+  else if (proto !== "i2c" && proto !== "spi" && proto !== "sent") d.baud = v("bus.bit_rate") > 0 ? v("bus.bit_rate") : 0;
+  return d;
+}
+// End of busScopeDecode.
+
+// busAdoptScope decodes, on entering BUS with this page's decode off, the bus
+// the scope already decodes, with its settings: a detection here would read
+// it again and could step the scope's timebase (the owner's serial-triggered
+// UART at 20 us/div went to 200 us/div when a page opened BUS). False when
+// the scope decodes no bus.
+// TRLC-LINKS: REQ-SDS-214
+async function busAdoptScope() {
+  let d = null;
+  try {
+    const m = await (await fetch("/api/sheets")).json();
+    const rows = {};
+    for (const t of m.Tabs || []) for (const r of t.Rows || []) rows[r.ID] = r;
+    d = busScopeDecode(rows);
+  } catch (e) { return false; }
+  if (!d || dcfg.proto !== "off") return false;
+  Object.assign(dcfg, d);
+  dcfg.auto = true;
+  if (d.proto === "sent") $("decSentTick").value = 0;
+  syncDecodeControls();
+  updateDecodePanel();
+  recompute();
+  if (typeof wsDots === "function") wsDots();
+  setDetectMsg("decoding as the scope does: " + $("decProto").selectedOptions[0].textContent);
+  toast("BUS: decoding the scope's " + $("decProto").selectedOptions[0].textContent + " bus (it stays on in the other workspaces)");
+  busRenderTable();
+  return true;
+}
+
 // TRLC-LINKS: REQ-SDS-214
 async function busDetect(onEntry) {
   if (busDetecting) return;
   busDetecting = true;
   try {
+    // on entry the scope's own decode first (busAdoptScope), else a detection
+    if (onEntry && await busAdoptScope()) return;
     await runAutodetect();
   } finally { busDetecting = false; }
   const stepped = dcfg.proto !== "off" ? busReadableTimebase(dcfg.detectFeatureS) : "";
+  if (typeof wsDots === "function") wsDots(); // the tab's dot with the notice
   if (dcfg.proto !== "off") toast("BUS: detected " + $("decDetectMsg").textContent.replace(/^detected /, "") + " — decoding is on" + stepped + (onEntry ? " (it stays on in the other workspaces)" : ""));
   else toast("BUS: no bus detected — " + ($("decDetectMsg").textContent || "choose a protocol in the Decoder pane"), "warn");
   busRenderTable();
@@ -222,7 +299,9 @@ WS_HOOKS.push({
   // TRLC-LINKS: REQ-SDS-214
   enter(id) {
     if (id !== "bus") return;
-    if (dcfg.proto === "off" && !(st && st.stream)) busDetect(true); // the user's protocol, when set, is kept (and a scope streaming is stopped)
+    // the user's protocol, when set, is kept (and a scope streaming is stopped);
+    // else the scope's own decode, else a detection
+    if (dcfg.proto === "off" && !(st && st.stream)) busDetect(true);
     if (ws.busView === "eye") busEyeOn();
     busRenderedV = -1; busRenderTable();
   },

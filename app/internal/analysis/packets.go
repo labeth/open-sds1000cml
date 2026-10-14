@@ -1,6 +1,8 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ANALYSIS
 package analysis
 
+import "fmt"
+
 // Packets: the decoded spans of one record grouped into the messages of the
 // BUS workspace's packet list (REQ-SDS-214). Byte-stream buses (UART, SPI)
 // group bytes that follow each other closely: an idle gap of 1.5 byte times
@@ -442,4 +444,30 @@ func abs(v int) int {
 		return -v
 	}
 	return v
+}
+
+// AddrText is a packet's address as the BUS lists write it, in each bus's
+// own terms: an I2C address with its direction ("24 W"), a CAN identifier
+// ("123", "123 R" for a remote frame), an ARINC 429 label in octal ("310", as
+// the decode strip and ARINC practice write it), a MIL-1553 RT address and
+// its transmit/receive bit ("RT5 T"), else hex. "" without an address.
+// TRLC-LINKS: REQ-SDS-214
+func AddrText(proto string, p Packet) string {
+	if !p.HasAddr {
+		return ""
+	}
+	switch proto {
+	case "i2c":
+		return fmt.Sprintf("%02X %s", p.Addr, map[bool]string{true: "R", false: "W"}[p.Read])
+	case "canfd":
+		if p.Read {
+			return fmt.Sprintf("%03X R", p.Addr)
+		}
+		return fmt.Sprintf("%03X", p.Addr)
+	case "arinc429":
+		return fmt.Sprintf("%03o", p.Addr)
+	case "mil1553":
+		return fmt.Sprintf("RT%d %s", p.Addr, map[bool]string{true: "T", false: "R"}[p.Read])
+	}
+	return fmt.Sprintf("%02X", p.Addr)
 }

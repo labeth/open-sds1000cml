@@ -509,9 +509,11 @@ func drawHUD(sf Surface, p plotArea, f *engine.Frame, hud HUD) {
 	case hud.Norm:
 		state = "WAIT"
 	}
-	DrawTextRight(sf, 796, 2,
-		fmt.Sprintf("T C%d %s %s %s", hud.TrigSrc+1, edge, fmtVolt(hud.TrigLvlV), state),
-		colTrig, 1)
+	readout := fmt.Sprintf("T C%d %s %s %s", hud.TrigSrc+1, edge, fmtVolt(hud.TrigLvlV), state)
+	if tag := trigTag(hud); tag != "" {
+		readout = fmt.Sprintf("T %s %s", tag, state)
+	}
+	DrawTextRight(sf, 796, 2, readout, colTrig, 1)
 
 	// Device URL (post-takeover support: "what do I browse to?"). Right-aligned
 	// on the top bar in the dead zone between the math legend (ends ≤ ~345) and
@@ -664,4 +666,45 @@ func colorOf(c wsview.Col) uint16 {
 		return colCursor
 	}
 	return colInfo
+}
+
+// trigTag names a trigger that is no plain edge for the readout: the serial
+// match, the pulse or slope condition, the video line, a zone trigger ("" for
+// an edge). Without it the readout said "T C1 ^ 1.37V" on the owner's serial
+// trigger on AA, as for any edge.
+// TRLC-LINKS: REQ-SDS-021
+func trigTag(hud HUD) string {
+	cond := func(c int, minNs, maxNs float64) string {
+		switch c {
+		case 1:
+			return "<" + fmtTdiv(minNs*1e-9)
+		case 2:
+			return ">" + fmtTdiv(maxNs*1e-9)
+		case 3:
+			return fmtTdiv(minNs*1e-9) + "-" + fmtTdiv(maxNs*1e-9)
+		}
+		return "any"
+	}
+	src := fmt.Sprintf(" C%d", hud.TrigSrc+1)
+	q := hud.TrigQual
+	switch {
+	case hud.SerialArmed:
+		m := hud.SerialMatch
+		if len(m) > 11 {
+			m = m[:10] + ".."
+		}
+		if m == "" {
+			m = "any"
+		}
+		return "SER " + m
+	case hud.ZoneTrig:
+		return "ZONE" + src
+	case hud.TrigType == 1:
+		return "PULSE " + cond(q.PulseCond, q.PulseMinNs, q.PulseMaxNs) + src
+	case hud.TrigType == 2:
+		return "SLOPE " + cond(q.SlopeCond, q.SlopeMinNs, q.SlopeMaxNs) + src
+	case hud.TrigType == 3:
+		return fmt.Sprintf("VIDEO L%d%s", q.VideoLine, src)
+	}
+	return ""
 }

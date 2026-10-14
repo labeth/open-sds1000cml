@@ -32,7 +32,15 @@ type HUD struct {
 	TrigSrc        int
 	TrigRising     bool
 	TrigLvlDiv     float64
-	TrigLvlV       float64         // trigger level at the probe tip, volts
+	TrigLvlV       float64 // trigger level at the probe tip, volts
+	// The trigger the FPGA decides when it is no plain edge: its type
+	// (engine Stats.TrigType), the qualifier's figures, a serial match armed
+	// (its units as text) and a zone trigger; the readout names it.
+	TrigType       int
+	TrigQual       engine.TrigQual
+	SerialArmed    bool
+	SerialMatch    string
+	ZoneTrig       bool
 	Waiting        bool            // NORMAL, running, nothing published lately
 	StreamOn       bool            // DECODE Auto in Stream mode
 	Stream         streamview.View // its state and counters
