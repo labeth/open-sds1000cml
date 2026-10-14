@@ -10,11 +10,8 @@ module tb_decoded_event_queue #(parameter COMPACT=0);
  localparam [31:0] WIDE_VALUE=COMPACT ? 255 : 32'hfedcba98;
  localparam [31:0] NORMAL_COUNT=COMPACT ? 127 : 32'h87654321;
  decoded_event_queue #(.AW(1),.VALUE_BITS(COMPACT?8:32),.COUNT_BITS(COMPACT?7:32)) dut(clk,reset,epoch,iv,sample,8'd2,8'd8,8'd5,32'd0,value,NORMAL_COUNT,valid,ready,data,overflow);
-// TRLC-LINKS: REQ-SDS-013
  task step;begin @(posedge clk);#1;end endtask
-// TRLC-LINKS: REQ-SDS-013
  task send(input [31:0] v);begin @(negedge clk);iv=1;value=v;sample=64'h100000000+v;step;end endtask
-// TRLC-LINKS: REQ-SDS-013
  task take(input [7:0] kind,input [31:0] seq,input [31:0] val,input [31:0] count);begin
   @(negedge clk);
   if(!valid || data[15:8]!=kind || data[95:64]!=seq || data[223:192]!=val || data[255:224]!=(kind==5?count:NORMAL_COUNT) || data[63:32]!=epoch)

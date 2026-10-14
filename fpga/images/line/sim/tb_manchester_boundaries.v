@@ -15,17 +15,14 @@ module tb_manchester_boundaries;
    last_data=event_data;last_cell=event_cell;
   end
  end
- // TRLC-LINKS: REQ-SDS-013
  task begin_frame(input [4:0] width);begin
   @(negedge clk);word_bits=width;start=1;cell_valid=0;finish=0;
   @(negedge clk);start=0;words=0;errors=0;
  end endtask
- // TRLC-LINKS: REQ-SDS-013
  task offer_cell(input value,input invalid);begin
   @(negedge clk);cell_valid=1;first_level=!value;second_level=invalid ? !value : value;
   @(negedge clk);cell_valid=0;repeat(2)@(negedge clk);
  end endtask
- // TRLC-LINKS: REQ-SDS-013
  task end_frame;begin
   @(negedge clk);finish=1;@(negedge clk);finish=0;repeat(3)@(negedge clk);
  end endtask

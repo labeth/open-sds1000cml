@@ -4,7 +4,7 @@
 // clocks, drained by a host model that follows sramcapture.DrainStream
 // (find the bank whose first ordinal is the next expected word, read count and
 // last-single, check the words, release with the token read).
-// TRLC-LINKS: REQ-SDS-035
+// TRLC-LINKS: REQ-SDS-035, REQ-SDS-049
 module tb_stream;
  localparam AW=4,BANK=1<<AW;
  reg wclk=0,pclk=0,hclk=0;

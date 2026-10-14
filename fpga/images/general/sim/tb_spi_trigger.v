@@ -19,9 +19,7 @@ module tb_spi_trigger;
    4:errors=errors+1;
   endcase
  end
- // TRLC-LINKS: REQ-SDS-013
  task hold;begin repeat(6)@(negedge clk);end endtask
- // TRLC-LINKS: REQ-SDS-013
  task send(input [7:0] word);integer i;reg bitvalue;begin
   for(i=0;i<8;i=i+1)begin
    bitvalue=msb?word[7-i]:word[i];

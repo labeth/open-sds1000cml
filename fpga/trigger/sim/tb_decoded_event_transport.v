@@ -14,7 +14,6 @@ module tb_decoded_event_transport #(
  integer i,j,seen=0,lost=0,seq=0,output_file;
  reg [255:0] record;
  reg [1023:0] output_path;
-// TRLC-LINKS: REQ-SDS-013
  task read_event;begin
   wait(available);
   for(j=0;j<16;j=j+1)begin

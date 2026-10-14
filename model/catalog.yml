@@ -9,17 +9,25 @@ catalog:
   dataTerms:
   - id: TERM-RAW
     name: raw captured record
+    aliases:
+    - raw storage
     definition: 32-bit SRAM words contain CH1(t0),CH2(t0),CH1(t1),CH2(t1), oldest first; 1,048,576 samples/channel
       at full depth.
   - id: TERM-PRECISION
     name: precision q8.8 record
+    aliases:
+    - precision payloads
     definition: 32-bit words contain one unsigned Q8.8 sample/channel; 524,288 pairs at full depth; preserve all
       fractional bits.
   - id: TERM-DESCRIPTOR
     name: host bank descriptor
+    aliases:
+    - published bank
     definition: Published bank token, first word ordinal, valid word count and status; stable until correctly released.
   - id: TERM-FRAME
     name: display and measurement frame
+    aliases:
+    - published frame
     definition: Samples plus valid length, sample period, trigger position, filter bandwidth/guard and mode metadata.
   - id: TERM-SETTINGS
     name: instrument settings
@@ -33,9 +41,13 @@ catalog:
       binary.
   - id: TERM-HEALTH
     name: health token
+    aliases:
+    - health-token
     definition: Advancing engine heartbeat with initial coherent-frame gate; quiet NORM differs from a wedge.
   - id: TERM-UPDATE
     name: update payload
+    aliases:
+    - slot update
     definition: Staged app/agent slot binary and checksum; checksum does not establish authenticity.
   - id: TERM-EPOCH
     name: acquisition epoch

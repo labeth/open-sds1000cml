@@ -8,7 +8,6 @@ module tb_decoded_event_batch;
  wire event_ready,available,error;wire [3:0] cursor;wire [15:0] data,count;
  decoded_event_reader #(.AW(2)) dut(.*);
  integer i,j;
- // TRLC-LINKS: REQ-SDS-013
  task tick;begin @(posedge clk);#1;end endtask
  initial begin
   tick;@(negedge clk);reset=0;
@@ -45,19 +44,15 @@ module tb_decoded_event_identity;
  wire event_ready,available,error;wire [3:0] cursor;wire [15:0] data,count;
  decoded_event_reader #(.AW(2),.COMPACT_IDENTITY(1)) dut(.*);
  integer i,j;
- // TRLC-LINKS: REQ-SDS-013
  function [255:0] payload(input [31:0] seq,input [31:0] epoch);
   payload={32'h87654321,32'hfedcba98,32'h11223344,64'h123456789abcdef0,seq,epoch,32'h07080201};
  endfunction
- // TRLC-LINKS: REQ-SDS-013
  task tick;begin @(posedge clk);#1;end endtask
- // TRLC-LINKS: REQ-SDS-013
  task send(input [31:0] seq,input [31:0] epoch);begin
   @(negedge clk);if(!event_ready)$fatal(1,"reader not ready");
   event_data=payload(seq,epoch);event_valid=1;tick;
   @(negedge clk);event_valid=0;
  end endtask
- // TRLC-LINKS: REQ-SDS-013
  task take(input [31:0] seq,input [31:0] epoch);reg [255:0] expected;begin
   expected=payload(seq,epoch);
   @(negedge clk);pop=1;

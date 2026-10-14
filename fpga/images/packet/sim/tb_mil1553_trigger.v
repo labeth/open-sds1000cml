@@ -15,11 +15,9 @@ module tb_mil1553_trigger;
    last_word=event_data;last_command=event_command;
   end
  end
- // TRLC-LINKS: REQ-SDS-013
  task hold(input value,input integer cycles);integer j;begin
   for(j=0;j<cycles;j=j+1)begin @(negedge clk);line=value^inverted;end
  end endtask
- // TRLC-LINKS: REQ-SDS-013
  task send(input [15:0] value,input cmd,input corrupt,input integer broken);integer k;reg p,b;begin
   hold(!cmd,8*bit_ticks);hold(cmd,bit_ticks+bit_ticks/2);hold(!cmd,bit_ticks+bit_ticks/2);
   p=!(^value)^corrupt;

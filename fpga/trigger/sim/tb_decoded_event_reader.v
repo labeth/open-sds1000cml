@@ -7,7 +7,6 @@ module tb_decoded_event_reader;
  reg [255:0] payload=0;wire ready,available,error;wire [3:0] cursor;wire [15:0] data;
  decoded_event_reader dut(clk,reset,valid,payload,ready,pop,rewind,clear,available,cursor,data,error,);
  integer i;
-// TRLC-LINKS: REQ-SDS-013
  task step;begin @(posedge clk);#1;end endtask
  initial begin
   step;@(negedge clk);reset=0;

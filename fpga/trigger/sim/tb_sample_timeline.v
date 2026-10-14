@@ -44,7 +44,6 @@ module tb_sample_timeline_carry;
  sample_timeline dut(.core(core),.receiver_clk(core),.core_enabled(1'b1),.receiver_enabled(1'b0),
   .raw_valid(raw_valid),.receiver_valid(1'b0),.receiver_sample(32'd0),.arm(1'b0),.write_step(1'b1),
   .raw_mode(1'b1),.write_sample(sample),.frozen(1'b0),.record_id(32'd0),.record_epoch(32'd0));
- // TRLC-LINKS: REQ-SDS-039, REQ-SDS-041
  task check(input [31:0] value);reg [31:0] expected;begin
   @(negedge core);sample=value;expected=value+2;
   repeat(2)@(posedge core);#1;

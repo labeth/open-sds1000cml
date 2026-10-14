@@ -9,12 +9,10 @@ module tb_decoded_event_bridge;
  reg [255:0] sd=0;wire sr,hv;wire [255:0] hd;
  decoded_event_bridge dut(reset,source_clk,host_clk,sv,sd,sr,hv,hd,hr);
  integer i;
-// TRLC-LINKS: REQ-SDS-013
  task send(input [31:0] value);begin
   wait(sr);@(negedge source_clk);sd={8{value}};sv=1;
   @(negedge source_clk);sv=0;sd=~sd;
  end endtask
-// TRLC-LINKS: REQ-SDS-013
  task receive(input [31:0] value);begin
   wait(hv);
   repeat(5)begin @(negedge host_clk);if(!hv || hd!={8{value}} || sr)$fatal(1,"payload changed during host stall");end

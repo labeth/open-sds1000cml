@@ -36,21 +36,17 @@ module tb_manchester_frame_bounds;
    default:$fatal(1,"unexpected kind");
   endcase
  end
- // TRLC-LINKS: REQ-SDS-013
  task clear_epoch;begin
   @(negedge clk);reset=1;begin_frame=0;close_frame=0;candidate_valid=0;receiver_overflow=0;
   repeat(3)@(negedge clk);reset=0;hits=0;losses=0;words=0;errors=0;starts=0;ends=0;
  end endtask
- // TRLC-LINKS: REQ-SDS-013
  task open_buffer(input [31:0] lead);begin
   @(negedge clk);gap=lead;begin_frame=1;@(negedge clk);begin_frame=0;
  end endtask
- // TRLC-LINKS: REQ-SDS-013
  task offer(input [15:0] a,b,input [1:0] bad,input [15:0] index);begin
   @(negedge clk);candidate_valid=3;candidate_error=bad;candidate_data={b,a};candidate_cell={index,index};
   @(negedge clk);candidate_valid=0;repeat(2)@(negedge clk);
  end endtask
- // TRLC-LINKS: REQ-SDS-013
  task commit(input signed [19:0] a,b,input [31:0] trailing);begin
   @(negedge clk);score_a=a;score_b=b;gap=trailing;close_frame=1;@(negedge clk);close_frame=0;
  end endtask

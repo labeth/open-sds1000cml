@@ -47,7 +47,7 @@ func startEmbeddedNATS(t *testing.T) string {
 
 // startAgent boots the real agent against the broker with its TCP fallback on
 // an ephemeral localhost port, and returns it with the TCP control address.
-// TRLC-LINKS: REQ-SDS-108, REQ-SDS-109
+// TRLC-LINKS: REQ-SDS-108, REQ-SDS-109, REQ-SDS-122
 func startAgent(t *testing.T, natsURL string) (*agent.Agent, string) {
 	t.Helper()
 	dir := t.TempDir()
@@ -102,7 +102,7 @@ func callBoth(t *testing.T, natsTr, tcpTr otactl.Transport, cmd string, args any
 	return viaNATS, viaTCP
 }
 
-// TRLC-LINKS: REQ-SDS-108, REQ-SDS-109
+// TRLC-LINKS: REQ-SDS-108, REQ-SDS-109, REQ-SDS-123
 func TestNATSEndToEndSubjectsEventsAndTCPParity(t *testing.T) {
 	url := startEmbeddedNATS(t)
 

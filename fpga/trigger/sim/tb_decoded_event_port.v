@@ -7,7 +7,6 @@ module tb_decoded_event_port;
  wire enabled,pop,rewind,clear,hit;wire [31:0] epoch;wire [15:0] data;
  reg [15:0] complete_count=127;
  decoded_event_port dut(clk,reset,write,read_pop,ws,rs,wd,1'b1,1'b0,4'd3,16'h1234,enabled,epoch,pop,rewind,clear,hit,data,complete_count);
-// TRLC-LINKS: REQ-SDS-013
  task put(input [7:0] s,input [15:0] d);begin
   @(negedge clk);write=1;ws=s;wd=d;@(negedge clk);write=0;
  end endtask

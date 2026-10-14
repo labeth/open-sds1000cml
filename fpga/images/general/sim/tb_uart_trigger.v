@@ -17,16 +17,13 @@ module tb_uart_trigger;
   if(valid) bytes=bytes+1;
   if(error) errors=errors+1;
  end
-// TRLC-LINKS: REQ-SDS-013
  task level(input v);integer j;begin
   @(negedge clk);line=v ^ inverted;
   for(j=0;j<bit_ticks;j=j+1)begin @(posedge clk);while(!tick)@(posedge clk);end
  end endtask
-// TRLC-LINKS: REQ-SDS-013
  task send(input [7:0] v,input good_stop);integer i;begin
   level(0);for(i=0;i<8;i=i+1) level(v[i]);level(good_stop);
  end endtask
-// TRLC-LINKS: REQ-SDS-013
  task restart;begin
   @(negedge clk);reset=1;repeat(2) @(posedge clk);
   @(negedge clk);reset=0;level(1);level(1);
