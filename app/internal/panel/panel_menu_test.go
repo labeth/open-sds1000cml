@@ -2,6 +2,7 @@
 package panel
 
 import (
+	"math"
 	"testing"
 
 	"open-sds/app/internal/engine"
@@ -170,6 +171,90 @@ func TestRollStreamRow(t *testing.T) {
 	pickKey(t, c, "Chunked")
 	if eng.Snapshot().RollStream {
 		t.Fatal("Chunked not selected")
+	}
+}
+
+// The roll mode row is in use where roll runs: AUTO at 10 ms/div and slower.
+// TRLC-LINKS: REQ-SDS-010
+func TestRollRowInUseFromRollTimebase(t *testing.T) {
+	c, _, _ := newC(t)
+	avail := func() bool {
+		for _, tab := range c.Sheets().Tabs {
+			for _, r := range tab.Rows {
+				if r.ID == "time.roll" {
+					return r.Available
+				}
+			}
+		}
+		t.Fatal("no time.roll row")
+		return false
+	}
+	for _, tc := range []struct {
+		tdiv string
+		want bool
+	}{{"5ms", false}, {"10ms", true}, {"50ms", true}, {"100ms", true}} {
+		if res := c.SheetSet("time.tdiv", nil, tc.tdiv); !res.OK {
+			t.Fatalf("set %s: %+v", tc.tdiv, res)
+		}
+		if got := avail(); got != tc.want {
+			t.Errorf("at %s/div the roll mode row in use = %v, want %v", tc.tdiv, got, tc.want)
+		}
+	}
+}
+
+// A time cursor's time from the trigger is where the screen shows it (and
+// where its trace volts are read, windowOf): zoomed, the screen is centred
+// on the trigger plus the pan, whatever the trigger position.
+// TRLC-LINKS: REQ-SDS-217
+func TestCursorTimesFollowTheZoomedScreen(t *testing.T) {
+	const valid, winCols, tdiv = 40000, 10000, 1e-3 // a record of 4 screens
+	g := geom{valid: valid, winCols: winCols, edgeX: 12000}
+	sampleS := 10 * tdiv / winCols
+	for _, tc := range []struct {
+		zoom       int
+		off, pos   float64
+		curA, curB float64
+	}{{1, 0, 0.3, 0.2, 0.7}, {10, 0, 0.3, 0.2, 0.7}, {10, 0.05, 0.5, 0.4, 0.9}, {5, -0.1, 0.8, 0.1, 0.6}} {
+		s := &sv{zoom: tc.zoom, zoomOff: tc.off}
+		s.st.TdivS, s.st.TrigPosFrac = tdiv, tc.pos
+		s.curX = [2]float64{tc.curA, tc.curB}
+		left, win := windowOf(g, s)
+		ta, tb := cursorTimes(s, float64(valid)/winCols)
+		for k, got := range []float64{ta, tb} {
+			want := (left + s.curX[k]*float64(win) - g.edgeX) * sampleS
+			if math.Abs(got-want) > 1e-9 {
+				t.Errorf("zoom %d pan %g trigger at %g: cursor %c at %s, the screen shows it at %s",
+					tc.zoom, tc.off, tc.pos, 'A'+k, si(got, "s"), si(want, "s"))
+			}
+		}
+	}
+}
+
+// Zoomed with a pan, a time cursor's "At trigger" goes where the screen shows
+// the trigger, not where the unzoomed trigger position would be.
+// TRLC-LINKS: REQ-SDS-217
+func TestCursorAtTriggerZoomed(t *testing.T) {
+	r := newViewRig(t)
+	c := r.c
+	f := toneFrame("")
+	f.WinCols = f.Valid / 4 // a record of 4 screens
+	r.show(f)
+	r.eng.set(func(st *engine.Stats) { st.TrigPosFrac = 0.3 })
+	for _, set := range [][2]string{{"curs.mode", "Time"}, {"time.zoom", "10x"}, {"time.zoom_pos", "1"}} {
+		if res := c.SheetSet(set[0], nil, set[1]); !res.OK {
+			t.Fatalf("%s %s: %+v", set[0], set[1], res)
+		}
+	}
+	if res := c.SheetAction("curs.a", "At trigger"); !res.OK {
+		t.Fatalf("At trigger: %+v", res)
+	}
+	// the pan is 1 % of 4 screens, 0.4 of a 10x zoomed screen: the trigger
+	// shows at 0.5 - 0.4
+	if got := c.curX[0]; math.Abs(got-0.1) > 1e-9 {
+		t.Fatalf("cursor A at %.3f of the screen, the trigger shows at 0.100", got)
+	}
+	if ta, _ := cursorTimes(c.snap(), 4); math.Abs(ta) > 1e-12 {
+		t.Fatalf("cursor A at the trigger reads %s", si(ta, "s"))
 	}
 }
 

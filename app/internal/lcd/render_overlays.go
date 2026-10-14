@@ -131,6 +131,7 @@ func drawRefs(sf Surface, p plotArea, hud HUD) {
 		{hud.C1VdivV * float64(max(hud.Zoom1, 1)), hud.OffC1V},
 		{hud.C2VdivV * float64(max(hud.Zoom2, 1)), hud.OffC2V},
 	}
+	liveProbe := [2]float64{max(hud.Probe1, 1), max(hud.Probe2, 1)}
 	zoom := [2]int{hud.Zoom1, hud.Zoom2}
 	for i := 0; i < 2; i++ {
 		if !hud.RefShow[i] {
@@ -142,7 +143,10 @@ func drawRefs(sf Surface, p plotArea, hud HUD) {
 			}
 			codes := r
 			if v := hud.RefVdiv[i][ch]; v > 0 && live[ch][0] > 0 {
-				codes = rescaleRef(r, v, hud.RefOff[i][ch], live[ch][0], live[ch][1])
+				// its volts at the tip, through the probe it was stored with,
+				// as the live input's through the probe on it now
+				k := max(hud.RefProbe[i][ch], 1) / liveProbe[ch]
+				codes = rescaleRef(r, v*k, hud.RefOff[i][ch]*k, live[ch][0], live[ch][1])
 			}
 			drawTraceID(sf, p, traceID{}, codes, len(codes), float64(len(codes))/2, false, cols[i], .5, zoom[ch])
 		}

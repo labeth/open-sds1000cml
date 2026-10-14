@@ -141,7 +141,7 @@ func TestTriggerPositionMarkerEndpoints(t *testing.T) {
 		x   int
 	}{{0, 0}, {.5, W / 2}, {1, W - 1}} {
 		sf := NewMemSurface()
-		drawMarkers(sf, fullPlot, HUD{TrigPosFrac: tc.pos})
+		drawMarkers(sf, fullPlot, nil, HUD{TrigPosFrac: tc.pos})
 		if sf.At(tc.x, 9) != colTrig {
 			t.Errorf("position %g: missing pointer tip at %d", tc.pos, tc.x)
 		}

@@ -1,5 +1,4 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-WEB
-// TRLC-LINKS: REQ-SDS-201
 const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
 (async()=>{
 const src=fs.readFileSync('app_eye.js','utf8');const code=src.slice(src.indexOf('async function ejOptimize()'),src.indexOf('// ==== wiring ===='));

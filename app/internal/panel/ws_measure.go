@@ -165,6 +165,9 @@ func (c *Controller) measFrame(a *anaState, s *sv, f *engine.Frame) {
 	}
 	if s.curOn && s.curType == 0 {
 		a.curV, a.curOK = cursorTraceVolts(f, s)
+		if g := framecalc.Valid(f); g > 0 {
+			a.curRecords = float64(g) / float64(max(min(f.WinCols, g), 1))
+		}
 	}
 	if k := statKey(s); k != a.statKey {
 		a.statKey, a.statFed = k, frameKey{}
@@ -261,6 +264,7 @@ func (c *Controller) centreCursor(k int) {
 // TRLC-LINKS: REQ-SDS-212
 func (c *Controller) cursorAtTrigger(k int) {
 	s := c.snap()
+	records := c.recordScreens()
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if c.curType == 1 {
@@ -273,7 +277,28 @@ func (c *Controller) cursorAtTrigger(k int) {
 	if !(pos > 0 && pos <= 1) {
 		pos = 0.5
 	}
-	c.curX[k&1] = pos
+	if s.zoom > 1 { // the zoomed screen is centred on the trigger plus the pan
+		pos = 0.5 - s.zoomOff*records*float64(s.zoom)
+	}
+	c.curX[k&1] = clampF(pos, 0, 1)
+}
+
+// recordScreens is the frame on screen's record length in screens (its
+// values over the screen's), 0 with no frame.
+// TRLC-LINKS: REQ-SDS-217
+func (c *Controller) recordScreens() float64 {
+	n := 0.0
+	if c.frameFn != nil {
+		c.frameFn(func(f *engine.Frame) {
+			if f == nil {
+				return
+			}
+			if v := framecalc.Valid(f); v > 0 {
+				n = float64(v) / float64(max(min(f.WinCols, v), 1))
+			}
+		})
+	}
+	return n
 }
 
 // measCursor moves cursor k by n knob steps (MEASURE: Adjust A, Position B).
@@ -304,18 +329,23 @@ func (c *Controller) measCursorMode() {
 	c.toast("Cursors "+[]string{"off", "Time (Adjust: A, Position: B)", "Volts (Adjust: A, Position: B)"}[next], 1400*time.Millisecond)
 }
 
-// cursorTimes are the time cursors' positions from the trigger (seconds).
+// cursorTimes are the time cursors' positions from the trigger (seconds),
+// as the screen shows them (windowOf): zoomed, the screen is centred on the
+// trigger plus the pan, a fraction of the record, which is records screens
+// long (0: unknown, the pan left out).
 // TRLC-LINKS: REQ-SDS-217
-func cursorTimes(s *sv) (ta, tb float64) {
+func cursorTimes(s *sv, records float64) (ta, tb float64) {
 	pos := s.st.TrigPosFrac
 	if !(pos > 0 && pos <= 1) {
 		pos = 0.5
 	}
-	span := 10 * s.st.TdivS
+	screen := 10 * s.st.TdivS
+	span, at := screen, 0.0
 	if s.zoom > 1 {
 		span /= float64(s.zoom)
+		pos, at = 0.5, s.zoomOff*records*screen
 	}
-	return (s.curX[0] - pos) * span, (s.curX[1] - pos) * span
+	return at + (s.curX[0]-pos)*span, at + (s.curX[1]-pos)*span
 }
 
 // cursorVolts are a channel's volts at the voltage cursors.
@@ -329,13 +359,13 @@ func cursorVolts(s *sv, ch int) (va, vb float64) {
 
 // cursorLines is the MEASURE pane's cursor block.
 // TRLC-LINKS: REQ-SDS-217
-func cursorLines(s *sv, liveV [2][2]float64, liveOK [2]bool) []wsview.Span {
+func cursorLines(s *sv, liveV [2][2]float64, liveOK [2]bool, records float64) []wsview.Span {
 	switch {
 	case !s.curOn:
 		return []wsview.Span{{Text: "CURSORS OFF", Col: wsview.Dim}, {Text: "Push Adjust: time cursors", Col: wsview.Dim},
 			{Text: "then Adjust moves A,", Col: wsview.Dim}, {Text: "Position moves B.", Col: wsview.Dim}}
 	case s.curType == 0:
-		ta, tb := cursorTimes(s)
+		ta, tb := cursorTimes(s, records)
 		dt := math.Abs(tb - ta)
 		out := []wsview.Span{{Text: "CURSORS TIME", Col: wsview.Amber},
 			{Text: "A " + sgnSI(ta, "s") + "  B " + sgnSI(tb, "s"), Col: wsview.Text}}
@@ -416,7 +446,7 @@ func (c *Controller) measPane(s *sv) *wsview.MeasPane {
 		rows = append(rows, r)
 	}
 	all, allOK := a.allVals, a.allOK
-	liveV, liveOK := a.curV, a.curOK
+	liveV, liveOK, records := a.curV, a.curOK, a.curRecords
 	c.amu.Unlock()
 	if u.measAll {
 		p.Caption = "all values, both channels (live)"
@@ -452,7 +482,7 @@ func (c *Controller) measPane(s *sv) *wsview.MeasPane {
 				Min: fmtMeas(r.it.param, r.mn), Max: fmtMeas(r.it.param, r.mx), Sdev: sdev, N: fmt.Sprint(r.cnt)})
 		}
 	}
-	p.Cursor = cursorLines(s, liveV, liveOK)
+	p.Cursor = cursorLines(s, liveV, liveOK, records)
 	if s.st.MaskMode != 0 && s.st.MaskSet {
 		col := wsview.Mask
 		if s.st.MaskFail > 0 {

@@ -172,3 +172,45 @@ func TestBodeChannelsAndClear(t *testing.T) {
 		t.Fatalf("DEFAULT SETUP: mode %d ref %d dut %d", st.BodeMode, st.BodeRef, st.BodeDut)
 	}
 }
+
+// A marker left above the span a slower timebase gives goes back to the
+// largest peak: it named a frequency the spectrum no longer holds, with the
+// level of the span's top bin.
+// TRLC-LINKS: REQ-SDS-216
+func TestSpectrumMarkerOutsideTheSpan(t *testing.T) {
+	r := newViewRig(t)
+	c := r.c
+	press(t, c, "f3")
+	r.show(toneFrame(""))
+	c.amu.Lock()
+	span := c.ana.spec.SpanHz
+	c.amu.Unlock()
+	c.mu.Lock()
+	c.ui.specF, c.ui.specFSet = 0.9*span, true
+	c.mu.Unlock()
+	slow := toneFrame("")
+	slow.SampleS *= 10
+	slow.TdivS *= 10
+	r.show(slow)
+	v := c.View().Spec
+	if !v.HasMark || v.MarkHz > span/10 || !strings.Contains(v.Marker, "(largest peak)") {
+		t.Fatalf("marker at %s of a %s span: %q", si(v.MarkHz, "Hz"), si(span/10, "Hz"), v.Marker)
+	}
+}
+
+// SPECTRUM's Bode caption names the reference and DUT channels chosen (the
+// VIEW tab swaps them), not C1 / C2 always.
+// TRLC-LINKS: REQ-SDS-066
+func TestBodeCaptionNamesTheChannels(t *testing.T) {
+	r := newViewRig(t)
+	c := r.c
+	press(t, c, "f3", "f3", "f3") // FFT, spectrogram, Bode
+	r.eng.SetBodeMode(true, 1, 0)
+	if v := c.View().Spec; !v.Bode || !strings.Contains(v.Caption, "ref C2, DUT C1") {
+		t.Fatalf("sweeping, ref C2 DUT C1: %q", v.Caption)
+	}
+	r.eng.pts = []engine.BodePoint{{FreqHz: 1e3}, {FreqHz: 1e4}}
+	if v := c.View().Spec; !strings.Contains(v.Caption, "ref C2, DUT C1") {
+		t.Fatalf("2 points, ref C2 DUT C1: %q", v.Caption)
+	}
+}

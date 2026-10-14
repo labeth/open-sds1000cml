@@ -157,6 +157,7 @@ func (c *Controller) runAutoset(stop chan struct{}) {
 	sweep := []float64{1e-6, 1e-5, 1e-4, 1e-3, 1e-2}
 	var found *measure.Result
 	var foundCh int
+	var swing [2]*measure.Result // each channel's widest swing seen since the sweep found it
 	for _, td := range sweep {
 		if cancelled() {
 			return
@@ -185,6 +186,7 @@ func (c *Controller) runAutoset(stop chan struct{}) {
 				}
 			}
 			found = m[foundCh]
+			swing = m
 			break
 		}
 	}
@@ -202,6 +204,13 @@ func (c *Controller) runAutoset(stop chan struct{}) {
 		return
 	}
 	m, _ := c.measureChans()
+	for ch := range m {
+		// A bursty bus (FlexRay: two frames each 240 us, idle high between)
+		// can leave this capture without its burst: a flat line read as a few
+		// tens of mV fitted 100 mV/div and pushed the trace off the screen.
+		m[ch] = widestSwing(m[ch], swing[ch])
+		swing[ch] = m[ch]
+	}
 	if !has(m[0]) && !has(m[1]) {
 		noSignal()
 		return
@@ -233,8 +242,8 @@ func (c *Controller) runAutoset(stop chan struct{}) {
 			if !has(m[ch]) {
 				continue
 			}
-			errDiv := c.rawCenterErr(ch) // +ve => trace sits above centre
-			if errDiv > 0.4 || errDiv < -0.4 {
+			errDiv, full := c.centreErrOver(ch, swing[ch]) // +ve => trace sits above centre
+			if full && (errDiv > 0.4 || errDiv < -0.4) {
 				snap, _ := c.fe.Snapshot()
 				vdiv := analog.AnalogVdiv(snap[ch]) // raw-code divisions are on the analog range
 				c.fe.SetOffset(ch, c.fe.OffsetReqV(ch)-errDiv*vdiv)
@@ -265,7 +274,7 @@ func (c *Controller) runAutoset(stop chan struct{}) {
 				continue
 			}
 			for i := 0; i < len(analog.Detents); i++ {
-				if !c.offScreen(ch) {
+				if !c.offScreenFor(ch, swing[ch]) {
 					break // trace is on-screen AND centred — nothing to coarsen
 				}
 				snap, _ := c.fe.Snapshot()
@@ -277,6 +286,7 @@ func (c *Controller) runAutoset(stop chan struct{}) {
 					return
 				}
 				mc, _ := c.measureChans() // re-measure Vpp/midpoint at the new V/div
+				mc[ch] = widestSwing(mc[ch], swing[ch])
 				if !has(mc[ch]) {
 					break
 				}
@@ -285,8 +295,8 @@ func (c *Controller) runAutoset(stop chan struct{}) {
 				if !c.waitFrame(stop) {
 					return
 				}
-				errDiv := c.rawCenterErr(ch) // close the loop on centring (as in 3b)
-				if errDiv > 0.4 || errDiv < -0.4 {
+				errDiv, full := c.centreErrOver(ch, swing[ch]) // close the loop on centring (as in 3b)
+				if full && (errDiv > 0.4 || errDiv < -0.4) {
 					snap2, _ := c.fe.Snapshot()
 					vdiv := analog.AnalogVdiv(snap2[ch])
 					c.fe.SetOffset(ch, c.fe.OffsetReqV(ch)-errDiv*vdiv)
@@ -302,6 +312,9 @@ func (c *Controller) runAutoset(stop chan struct{}) {
 	//    midpoint on the stronger channel (this is why it must be measured AFTER
 	//    the vertical settles — else the level lands off-screen).
 	m, _ = c.measureChans()
+	for ch := range m {
+		m[ch] = widestSwing(m[ch], swing[ch])
+	}
 	src := autosetTrigSource(m)
 	if !has(m[src]) {
 		return
@@ -481,7 +494,13 @@ func (c *Controller) measureChans() ([2]*measure.Result, bool) {
 // it corrects any offset-DAC calibration drift.
 // TRLC-LINKS: REQ-SDS-137
 func (c *Controller) rawCenterErr(ch int) float64 {
-	var errDiv float64
+	errDiv, _ := c.rawCentre(ch)
+	return errDiv
+}
+
+// rawCentre is rawCenterErr and the trimmed span (codes) it was read over.
+// TRLC-LINKS: REQ-SDS-137
+func (c *Controller) rawCentre(ch int) (errDiv float64, span int) {
 	c.frameFn(func(f *engine.Frame) {
 		if f == nil {
 			return
@@ -516,9 +535,25 @@ func (c *Controller) rawCenterErr(ch int) float64 {
 				break
 			}
 		}
-		errDiv = (float64(lo+hi)/2 - 128) / 25
+		errDiv, span = (float64(lo+hi)/2-128)/25, hi-lo
 	})
-	return errDiv
+	return errDiv, span
+}
+
+// centreErrOver is rawCenterErr when the latest capture holds most of swing,
+// the channel's widest swing seen (volts): a capture of a bursty bus's idle
+// line alone reads its rail as the midpoint, and centring on it put the
+// burst's other rail near the screen's edge. full is false for such a
+// capture, whose midpoint says nothing.
+// TRLC-LINKS: REQ-SDS-137
+func (c *Controller) centreErrOver(ch int, swing *measure.Result) (errDiv float64, full bool) {
+	errDiv, span := c.rawCentre(ch)
+	if !has(swing) || c.fe == nil {
+		return errDiv, true
+	}
+	snap, _ := c.fe.Snapshot()
+	volts := float64(span) * analog.AnalogVdiv(snap[ch]) / 25 * c.fe.ProbeFactor(ch)
+	return errDiv, volts >= 0.7*swing.Vpp
 }
 
 // railing reports whether a channel's trace is clipped against a rail: more than
@@ -565,12 +600,44 @@ func (c *Controller) railing(ch int) bool {
 // midpoint read used by step 3b (+ve = above centre), so a legitimately centred
 // full-screen signal reads ≈0 and never false-coarsens.
 // TRLC-LINKS: REQ-SDS-137
-func (c *Controller) offScreen(ch int) bool {
-	return c.railing(ch) || math.Abs(c.rawCenterErr(ch)) > 2.5
+func (c *Controller) offScreen(ch int) bool { return c.offScreenFor(ch, nil) }
+
+// offScreenFor is offScreen judging the centre only on a capture that holds
+// most of swing (centreErrOver); a rail is off-screen in any capture.
+// TRLC-LINKS: REQ-SDS-137
+func (c *Controller) offScreenFor(ch int, swing *measure.Result) bool {
+	if c.railing(ch) {
+		return true
+	}
+	errDiv, full := c.centreErrOver(ch, swing)
+	return full && math.Abs(errDiv) > 2.5
 }
 
 // TRLC-LINKS: REQ-SDS-137
 func has(r *measure.Result) bool { return r != nil && r.Vpp > 0.02 }
+
+// widestSwing is r with its extremes widened to those of seen, an earlier
+// capture of the same channel in volts (tip-referred, so a V/div change since
+// does not matter): the vertical fit and the trigger midpoint then hold the
+// signal's whole swing although the latest capture missed a burst. Timing
+// stays r's.
+// TRLC-LINKS: REQ-SDS-137
+func widestSwing(r, seen *measure.Result) *measure.Result {
+	if !has(seen) {
+		return r
+	}
+	if !has(r) {
+		w := *seen
+		return &w
+	}
+	if seen.Vmax <= r.Vmax && seen.Vmin >= r.Vmin {
+		return r
+	}
+	w := *r
+	w.Vmax, w.Vmin = math.Max(r.Vmax, seen.Vmax), math.Min(r.Vmin, seen.Vmin)
+	w.Vpp = w.Vmax - w.Vmin
+	return &w
+}
 
 // TRLC-LINKS: REQ-SDS-137
 func strongerCh(m [2]*measure.Result) int {

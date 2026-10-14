@@ -712,7 +712,7 @@ func (h *Handler) execChannel(ch int, head, arg string) []byte {
 		return h.reply(fmt.Sprintf("C%d:CPL", ch+1), v)
 	case "ATTN":
 		v, err := parseNum(arg)
-		if err != nil || v <= 0 {
+		if err != nil || !(v > 0) || math.IsInf(v, 0) {
 			return errTok(errOutOfRange)
 		}
 		h.attn[ch] = v

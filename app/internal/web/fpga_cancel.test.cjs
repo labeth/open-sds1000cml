@@ -1,5 +1,4 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-WEB
-// TRLC-LINKS: REQ-SDS-141
 const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 const source=fs.readFileSync('app_superres.js','utf8');
 const reset=source.slice(source.indexOf('$("srReset").onclick'),source.indexOf('\n',source.indexOf('$("srReset").onclick')));

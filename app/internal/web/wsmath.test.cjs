@@ -2,7 +2,6 @@
 // wsmath.test.cjs — the workspaces' numeric helpers (wsmath.js): Welford
 // statistics, the reference difference, the master's repeat gate and the
 // shared mask dilation.
-// TRLC-LINKS: REQ-SDS-217, REQ-SDS-218
 "use strict";
 const assert = require("node:assert/strict");
 const W = require("./wsmath.js");

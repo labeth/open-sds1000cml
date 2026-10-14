@@ -1,5 +1,4 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-WEB
-// TRLC-LINKS: REQ-SDS-011, REQ-SDS-072
 const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
 // TRLC-LINKS: REQ-SDS-011, REQ-SDS-072
 const src=fs.readFileSync('app_controls.js','utf8'),els={};const c={$:id=>els[id]||=( {value:'stale'}),document:{activeElement:null}};

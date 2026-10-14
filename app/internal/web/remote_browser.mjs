@@ -10,7 +10,6 @@
 // shown control is at least 44 px, every text at least 13 px, nothing
 // scrolls sideways. No console errors. SKIP/exit 0 without a browser.
 // REMOTE_SHOTS=<dir> saves screenshots of every tab and sheet.
-// TRLC-LINKS: REQ-SDS-220
 import { findPlaywright, run } from "./scope_po.mjs";
 import { mkdirSync } from "node:fs";
 import path from "node:path";

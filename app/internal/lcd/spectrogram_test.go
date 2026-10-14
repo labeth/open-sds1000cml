@@ -181,3 +181,52 @@ func absU8(a, b uint8) int {
 	}
 	return int(b - a)
 }
+
+// A spectrum with more bins than plot columns draws each column at the largest
+// of its bins: a square wave's odd harmonics are single narrow tones, and a
+// column that sampled one bin drew every other harmonic tens of dB low (the
+// web's per-pixel maxima showed them all). The waterfall's pixels alike.
+// TRLC-LINKS: REQ-SDS-068, REQ-SDS-070
+func TestSpectrumColumnsShowNarrowTones(t *testing.T) {
+	const half = 4096
+	mags := make([]float64, half)
+	for k := range mags {
+		mags[k] = 1e-4
+	}
+	var tones []int
+	for k := 49; k < half-1; k += 98 { // odd harmonics of a square: every 98 bins from 49
+		mags[k] = 1
+		tones = append(tones, k)
+	}
+	sf := NewMemSurface()
+	p := fullPlot
+	drawSpectrum(sf, p, mags, 1, colC1, 83.3e6, 1, half-1)
+	span := half - 2
+	for _, k := range tones {
+		x := (k - 1) * (p.w - 1) / span
+		lit := false
+		for dx := -1; dx <= 1 && !lit; dx++ {
+			for y := p.top; y <= p.top+2; y++ {
+				if xx := x + dx; xx >= 0 && xx < p.w && sf.At(xx, y) == colC1 {
+					lit = true
+				}
+			}
+		}
+		if !lit {
+			t.Fatalf("tone at bin %d (column %d) not drawn at its 0 dB level", k, x)
+		}
+	}
+	sg := NewSpectrogram()
+	sg.pushMags(mags, 1)
+	lum := func(c uint16) int { return int((c>>11)&0x1f)*2 + int((c>>5)&0x3f) + int(c&0x1f) }
+	white := lum(heat(1))
+	for _, k := range tones {
+		x := 0
+		for x+1 < sgCols && (x+1)*half/sgCols <= k { // the pixel whose bins hold k
+			x++
+		}
+		if l := lum(sg.img.At(sgX0+x, sgY0)); l != white {
+			t.Fatalf("waterfall pixel %d holding the tone at bin %d is not the peak colour (lum %d, want %d)", x, k, l, white)
+		}
+	}
+}

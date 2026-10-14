@@ -567,3 +567,100 @@ func TestRenderMatchEditor(t *testing.T) {
 		t.Fatalf("the F-key column is not drawn beside the editor (%d px)", n)
 	}
 }
+
+// The empty Bode plot names the reference and DUT channels chosen.
+// TRLC-LINKS: REQ-SDS-021
+func TestBodeHintNamesTheChannels(t *testing.T) {
+	hud := defaultHUD()
+	hud.ViewMode, hud.BodeRef, hud.BodeDut = 3, 1, 0
+	m := NewMemSurface()
+	p := plotOf(hud.UI.Layout)
+	drawBode(m, p, hud)
+	want := NewMemSurface()
+	msg := "BODE / FRA - sweep the source frequency (ref C2, DUT C1)"
+	DrawText(want, (p.w-TextWidth(msg, 1))/2, p.y0+p.h/2, msg, colDim, 1)
+	for y := p.y0 + p.h/2; y < p.y0+p.h/2+8; y++ {
+		for x := 0; x < p.w; x++ {
+			if m.At(x, y) != want.At(x, y) {
+				t.Fatalf("the hint differs from %q at (%d,%d)", msg, x, y)
+			}
+		}
+	}
+}
+
+// A reference is drawn at the volts at the tip it was stored with: after a
+// x10 probe change it shows a tenth as tall, where the web draws it too.
+// TRLC-LINKS: REQ-SDS-138
+func TestRefDrawnThroughItsProbe(t *testing.T) {
+	hud := defaultHUD()
+	hud.TwoChan, hud.Probe1 = false, 10
+	ref := make([]uint8, 800)
+	for i := range ref {
+		ref[i] = 228 // 4 V at the tip through the x1 probe it was stored with
+	}
+	hud.RefC1[0], hud.RefShow[0], hud.RefVdiv[0][0], hud.RefProbe[0][0] = ref, true, 1, 1
+	m := NewMemSurface()
+	drawRefs(m, fullPlot, hud)
+	row := func(code float64) int {
+		n := 0
+		for x := 0; x < W; x++ {
+			if m.At(x, fullPlot.sy(code)) == colInfo {
+				n++
+			}
+		}
+		return n
+	}
+	if row(138) < W/2 || row(228) > 0 {
+		t.Fatalf("REF A at 4 V through a x10 probe at 1 V/div: %d px at 0.4 div, %d at 4 div", row(138), row(228))
+	}
+}
+
+// A packet with a fault of its own is drawn in red with the fault named, and
+// its address in the ADDR column, as the web's packet list shows them.
+// TRLC-LINKS: REQ-SDS-214
+func TestBusPaneFaultAndAddress(t *testing.T) {
+	p := plotOf(wsview.Layout{PlotTop: 136})
+	draw := func(ln wsview.BusLine) *MemSurface {
+		m := NewMemSurface()
+		drawBusPane(m, p, &wsview.BusPane{Lines: []wsview.BusLine{ln}})
+		return m
+	}
+	count := func(m *MemSurface, x0, x1 int, c uint16) int {
+		n := 0
+		for y := listY; y < listY+8; y++ {
+			for x := x0; x < x1; x++ {
+				if m.At(x, y) == c {
+					n++
+				}
+			}
+		}
+		return n
+	}
+	ok := draw(wsview.BusLine{Num: 1, Hex: []string{"55", "AA"}, Err: []bool{false, false}, Str: "U.", Bytes: 2, Addr: "123 W"})
+	bad := draw(wsview.BusLine{Num: 1, Hex: []string{"55", "AA"}, Err: []bool{false, false}, Str: "U.", Bytes: 2, Addr: "123 W", Fault: "CRC"})
+	if count(ok, hexIn, strX, colStale) != 0 || count(bad, hexIn, strX, colStale) == 0 {
+		t.Fatalf("hex in red: clean %d px, faulted %d px", count(ok, hexIn, strX, colStale), count(bad, hexIn, strX, colStale))
+	}
+	if count(bad, matchX, matchX+18, colStale) == 0 || count(ok, addrX, matchX, colInfo) == 0 {
+		t.Fatal("the fault is not named, or the address not shown")
+	}
+}
+
+// The zoom tag beside the timebase cannot be misread: "Z50x" in the 5x7
+// font read as "250x".
+// TRLC-LINKS: REQ-SDS-021
+func TestZoomTagReadsTheFactor(t *testing.T) {
+	hud := defaultHUD()
+	hud.Zoom = 50
+	m := NewMemSurface()
+	drawHUD(m, fullPlot, nil, hud)
+	want := NewMemSurface()
+	DrawText(want, 262, 2, "x50", colTrig, 1)
+	for y := 2; y < 10; y++ {
+		for x := 262; x < 298; x++ {
+			if (m.At(x, y) == colTrig) != (want.At(x, y) == colTrig) {
+				t.Fatalf("the zoom tag differs from \"x50\" at (%d,%d)", x, y)
+			}
+		}
+	}
+}

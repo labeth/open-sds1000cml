@@ -1,5 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-WEB
-// TRLC-LINKS: REQ-SDS-018
+// Run by TestUARTRepeatNotSENTJS (arinc_auto_node_test.go).
 // A 115200 Bd UART repeating one message reads, on some screens, as SENT with
 // one frame of two passing its 4-bit CRC by chance: auto-detect weighs the
 // clean UART at a standard rate over one distinct SENT frame, as the scope does

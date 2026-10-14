@@ -97,7 +97,6 @@ $("zoomSeg").onchange = () => {
 $("probe1").onchange = () => send("probe1", +$("probe1").value);
 // The bandwidth limit and the invert are the scope's CH1 / CH2 tab rows;
 // sheetsFollow shows their values.
-// TRLC-LINKS: REQ-SDS-211
 for (const ch of [1, 2]) {
   // TRLC-LINKS: REQ-SDS-211
   $("bwl" + ch).onchange = () => sheetSet("ch" + ch + ".bwl", +$("bwl" + ch).value);
@@ -129,7 +128,6 @@ $("lvl").onchange = () => { lvlDragging = false; send("triglevelcode", trigCodeF
 
 // TRLC-LINKS: REQ-SDS-204
 $("ttype").onchange = () => { send("trigtype", +$("ttype").value); if (st) st.trig_type = +$("ttype").value; updateQualRow(); };
-// TRLC-LINKS: REQ-SDS-023
 let qualifierQueue = Promise.resolve(), qualifierPending = 0;
 // TRLC-LINKS: REQ-SDS-023
 function sendParams(control, extra) {

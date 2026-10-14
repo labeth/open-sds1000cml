@@ -1,5 +1,4 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-WEB
-// TRLC-LINKS: REQ-SDS-071
 // A roll view's held ranges (no capture behind them) draw dimmed: the trace is
 // drawn twice, the held samples at a low alpha and the captured ones in full,
 // each with the other's samples as gaps; the split is kept per frame array.

@@ -95,11 +95,17 @@ func (sg *Spectrogram) Push(f *engine.Frame, ch int, effNyq float64) {
 	if !ok {
 		return
 	}
-	mags, peak := sp.Mags, sp.Peak
-	if len(mags) < 2 || !(peak > 0) {
+	if len(sp.Mags) < 2 || !(sp.Peak > 0) {
 		return
 	}
 	sg.effNyq = sp.SpanHz
+	sg.pushMags(sp.Mags, sp.Peak)
+}
+
+// pushMags scrolls the waterfall down one row and paints the half spectrum
+// mags (peak its largest) as the top row.
+// TRLC-LINKS: REQ-SDS-068
+func (sg *Spectrogram) pushMags(mags []float64, peak float64) {
 
 	// scroll the heatmap region down one row (copy each row into the one below)
 	rowBytes := W * 2
@@ -115,8 +121,9 @@ func (sg *Spectrogram) Push(f *engine.Frame, ch int, effNyq float64) {
 	}
 	invFloor := 1.0 / (-floor)
 	for x := 0; x < sgCols; x++ {
-		k := x * half / sgCols
-		db := 20 * math.Log10(mags[k]/peak+1e-12)
+		k0 := x * half / sgCols
+		k1 := min((x+1)*half/sgCols-1, half-1) // a pixel shows the largest of its bins
+		db := 20 * math.Log10(binMax(mags, k0, k1)/peak+1e-12)
 		t := 1 + db*invFloor // db=0 → 1, db=floorDB → 0
 		sg.img.SetPixel(sgX0+x, sgY0, heat(t))
 	}

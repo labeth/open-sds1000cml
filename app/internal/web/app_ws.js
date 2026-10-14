@@ -7,7 +7,6 @@
 // help sheet. Classic script; shares app.js globals.
 "use strict";
 
-// TRLC-LINKS: REQ-SDS-219
 const WSDEF = [
   { id: "scope", name: "SCOPE", alt: "Alt+1", view: "YT",
     blurb: "The scope with its horizontal, vertical, trigger and acquisition settings and quick measurements.",
@@ -36,7 +35,6 @@ const lr = (items, size, o) => Object.assign({ kind: "split", dir: "row", items,
 // TRLC-LINKS: REQ-SDS-219
 const lc = (items, size, o) => Object.assign({ kind: "split", dir: "col", items, size }, o || {});
 const SIDE = 372;
-// TRLC-LINKS: REQ-SDS-219
 const WS_LAYOUT = {
   // TRLC-LINKS: REQ-SDS-219
   scope: () => lr([

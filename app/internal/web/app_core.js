@@ -440,14 +440,15 @@ function showSuperseded() {
 let viewLeased = false; // the last poll asked for a view window
 
 // viewParam is the poll's view-window lease: zoomed into a running live
-// envelope (whose buckets spread over the whole screen), the scope reads the
-// shown stretch again at full detail (view=a,b,cols: screen widths from the
-// trigger, a little wider than shown, and the canvas columns); view=off once
-// it is not, so the reads stop at once.
+// envelope (whose buckets spread over the whole screen) in Y-T, the scope
+// reads the shown stretch again at full detail (view=a,b,cols: screen widths
+// from the trigger, a little wider than shown, and the canvas columns);
+// view=off once it is not (X-Y draws no zoomed stretch), so the reads, which
+// cost frames, stop at once.
 // TRLC-LINKS: REQ-SDS-202
 function viewParam() {
   const f = frame, w = view.win, n = f && f.c1 ? f.c1.length : 0;
-  if (userZoomed && f && f.peak_detect && f.win_frac > 0 && n > 1 && st && st.running) {
+  if (userZoomed && view.mode === "YT" && f && f.peak_detect && f.win_frac > 0 && n > 1 && st && st.running) {
     // value indices: the page draws value i at i/(n-1); edge_frac and
     // win_frac are fractions of n
     const anchor = f.edge_frac >= 0 ? f.edge_frac * n : n / 2, screen = f.win_frac * n;
@@ -513,7 +514,6 @@ async function fetchFftRaw() {
   } catch (e) { /* transient — the next tick retries */ } finally { fftRawBusy = false; }
 }
 
-// TRLC-LINKS: REQ-SDS-023
 let pollTimer = 0, pollBusy = false, pollKick = false;
 // TRLC-LINKS: REQ-SDS-023
 async function pollStatus() {
@@ -544,7 +544,6 @@ async function sheetSet(row, value) {
 // showing the scope's values, whoever set them (the scope's keys, the phone,
 // SCPI): when the scope's sheet changes (its SheetsSeq) the rows are fetched
 // once, so Stack master never writes a stale N over the depth set on the scope.
-// TRLC-LINKS: REQ-SDS-211
 let sheetsSeqSeen = -1, sheetsBusy = false;
 const SHEET_FOLLOW = [["bwl1", "ch1.bwl"], ["bwl2", "ch2.bwl"], ["inv1", "ch1.invert"], ["inv2", "ch2.invert"], ["masterN", "cmp.master_depth"]];
 // TRLC-LINKS: REQ-SDS-211
@@ -585,6 +584,11 @@ async function autoset() {
   autosetDone = new Promise(resolve => { finishAutoset = resolve; });
   const btn = $("autoset"); btn.classList.add("on");
   try {
+    // The last sweep that ended before the press: a press that cancels a sweep
+    // started elsewhere ends it before a status read may see it busy, and the
+    // sweep's end is named by AutosetDone moving on.
+    let doneBefore = 0;
+    try { doneBefore = ((await (await fetch("/api/status")).json()).panel || {}).AutosetDone || 0; } catch (e) { return; }
     // trigger the device autoset (the hard-button path — one implementation)
     try {
       const response = await fetch("/api/panel", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ button: "auto" }) });
@@ -599,7 +603,7 @@ async function autoset() {
       await new Promise(resolve => setTimeout(resolve, 100));
       const status = await (await fetch("/api/status")).json();
       if (status.panel && status.panel.AutosetBusy) sawBusy = true;
-      else if (sawBusy) {
+      else if (sawBusy || (status.panel && (status.panel.AutosetDone || 0) !== doneBefore)) {
         st = status;
         completed = true;
         break;

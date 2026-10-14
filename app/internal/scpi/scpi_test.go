@@ -813,3 +813,18 @@ func TestPAVAAll(t *testing.T) {
 		}
 	}
 }
+
+// A probe factor that is not a finite number is refused: an infinite probe
+// made every scaled figure infinite, and /api/status (JSON) stopped encoding,
+// leaving the web page without a connection.
+// TRLC-LINKS: REQ-SDS-024
+func TestATTNRefusesNonFinite(t *testing.T) {
+	h, _, fe := newHFE(t)
+	do(t, h, "C1:ATTN 10")
+	for _, v := range []string{"INF", "-INF", "NAN", "1E999"} {
+		do(t, h, "C1:ATTN "+v)
+		if p := fe.probe[0]; p != 10 {
+			t.Errorf("C1:ATTN %s left the probe at %v, want 10 kept", v, p)
+		}
+	}
+}

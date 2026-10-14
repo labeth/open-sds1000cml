@@ -1,5 +1,4 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-WEB
-// TRLC-LINKS: REQ-SDS-019, REQ-SDS-067
 const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
 (async()=>{
 for(const [file,key,loop,end] of [['app_eye.js','ej','ejLoop','// TRLC-LINKS: REQ-SDS-200\n$("ejEye")'],['app_superres.js','sr','srLoop','// TRLC-LINKS: REQ-SDS-019\n$("srArm")']]){

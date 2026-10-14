@@ -1,5 +1,4 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-WEB
-// TRLC-LINKS: REQ-SDS-204
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
@@ -58,5 +57,27 @@ const code = source.slice(source.indexOf('async function send(control, value)'))
   const blocked = sandbox.send('single', 1);
   await stuck;
   assert.equal((await blocked).ok, false);
+  // AUTO pressed while a sweep started on the scope runs cancels it: the sweep
+  // can end before the first status read shows it busy. Its end (AutosetDone)
+  // releases the page's controls, not the 15 s bound.
+  polls = 0; writes = []; now = 0;
+  let pressed = false;
+  // TRLC-LINKS: REQ-SDS-204
+  sandbox.fetch = async (url, options) => {
+    if (url === '/api/status') {
+      polls++;
+      // TRLC-LINKS: REQ-SDS-204
+      return {json: async () => ({panel: {AutosetBusy: !pressed, AutosetDone: pressed ? 7 : 6}})};
+    }
+    if (url === '/api/panel') pressed = true;
+    if (url === '/api/set') writes.push(JSON.parse(options.body));
+    // TRLC-LINKS: REQ-SDS-204
+    return {ok: true, json: async () => ({ok: true})};
+  };
+  const cancel = sandbox.autoset();
+  const queued = sandbox.send('single', 1);
+  await Promise.all([cancel, queued]);
+  assert.equal(writes.length, 1, 'a cancelling AUTO dropped the control sent meanwhile');
+  assert.ok(now < 2000, 'a cancelling AUTO waited ' + now + ' ms');
   console.log('ALL PASS');
 })().catch(e => { console.error(e); process.exit(1); });

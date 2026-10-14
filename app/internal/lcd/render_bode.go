@@ -13,7 +13,7 @@ import (
 func drawBode(sf Surface, p plotArea, hud HUD) {
 	n := len(hud.BodeFreq)
 	if n < 1 {
-		msg := "BODE / FRA - sweep the source frequency (ref C1, DUT C2)"
+		msg := fmt.Sprintf("BODE / FRA - sweep the source frequency (ref C%d, DUT C%d)", hud.BodeRef&1+1, hud.BodeDut&1+1)
 		DrawText(sf, (p.w-TextWidth(msg, 1))/2, p.y0+p.h/2, msg, colDim, 1)
 		return
 	}

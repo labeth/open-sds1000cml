@@ -1,5 +1,4 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-WEB
-// TRLC-LINKS: REQ-SDS-014
 const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 const text=fs.readFileSync('app_zonemask.js','utf8');
 const helper=text.slice(text.indexOf('function zmPackMask'),text.indexOf('// --- mask build from N raw frames'));

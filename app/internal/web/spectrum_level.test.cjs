@@ -1,5 +1,4 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-WEB
-// TRLC-LINKS: REQ-SDS-216
 // A peak's level in dBV comes from the transform's points, also when a
 // decimated capture's band keeps fewer bins: a 40-code tone at 0.04 V a code
 // is 1.13 V rms (1.07 dBV) - it read 11.4 dB high when the band kept 1103 of

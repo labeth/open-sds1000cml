@@ -2,9 +2,11 @@
 package panel
 
 import (
+	"math"
 	"testing"
 	"time"
 
+	"open-sds/app/internal/analog"
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/measure"
 )
@@ -221,5 +223,51 @@ func TestAutosetTriggersOnAResolvedChannel(t *testing.T) {
 	both := &measure.Result{Vpp: 3.91, Freq: 100e3}
 	if got := autosetTrigSource([2]*measure.Result{sq, both}); got != 1 {
 		t.Fatalf("both resolved: the stronger C2, got C%d", got+1)
+	}
+}
+
+// A bursty bus shows its burst at the sweep's band but not in every capture
+// after it (the bench FlexRay: two frames each 240 us, idle high between):
+// the vertical fit and the trigger keep the widest swing seen, so a flat idle
+// capture does not fit a sensitive V/div that pushes the signal off the
+// screen (it fitted 100 mV/div to a 3.3 V bus).
+// TRLC-LINKS: REQ-SDS-137
+func TestAutosetKeepsABurstsSwing(t *testing.T) {
+	c, e, fe := newC(t)
+	e.stats.TdivS = 1e-6
+	burst := make([]uint8, 200)
+	idle := make([]uint8, 200)
+	for i := range burst {
+		burst[i] = 200
+		if i%20 >= 10 {
+			burst[i] = 40
+		}
+		idle[i] = 200 + uint8(i%2)*2
+	}
+	c.SetFrameSource(func(fn func(*engine.Frame)) {
+		sig := idle
+		if e.stats.TdivS <= 1e-6 {
+			sig = burst
+		}
+		fn(&engine.Frame{C1: sig, C2: sig, Valid: len(sig), SampleS: 50e-9})
+	})
+	c.runAutoset(make(chan struct{}))
+	vidx, _ := fe.Snapshot()
+	got := fe.offReqV
+	want := detentForVpp(160 * analog.AnalogVdiv(nearestDetent(2.0)) / 25) // the burst read at the sweep's 2 V/div
+	// the midpoint the burst reads at that scale: the offset centres it (an
+	// idle-only capture's midpoint, its rail, must not re-centre it)
+	for ch := 0; ch < 2; ch++ {
+		c.setVdiv(ch, nearestDetent(2.0))
+	}
+	e.stats.TdivS = 1e-6
+	m, _ := c.measureChans()
+	for ch := 0; ch < 2; ch++ {
+		if vidx[ch] < want {
+			t.Fatalf("C%d fitted detent %d, want %d or coarser for the burst's swing", ch+1, vidx[ch], want)
+		}
+		if mid := (m[ch].Vmax + m[ch].Vmin) / 2; math.Abs(got[ch]+mid) > 0.05*m[ch].Vpp {
+			t.Fatalf("C%d offset %.3f V, want %.3f V (the burst's midpoint centred)", ch+1, got[ch], -mid)
+		}
 	}
 }

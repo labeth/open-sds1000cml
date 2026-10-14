@@ -46,6 +46,14 @@ func (c *Controller) specFrame(a *anaState, s *sv, f *engine.Frame) {
 		db[k] = 20 * math.Log10(4*m/float64(sp.N)*vpc/math.Sqrt2+1e-15)
 	}
 	a.spec, a.specDBV = sp, db
+	// A marker set above this span (a slower timebase) goes back to the
+	// largest peak: kept, it named a frequency the spectrum does not hold,
+	// with the level of the span's top bin.
+	c.mu.Lock()
+	if c.ui.specFSet && c.ui.specF > sp.SpanHz*(1+1e-9) {
+		c.ui.specFSet = false
+	}
+	c.mu.Unlock()
 	// The strongest peaks in frequency order: the table holds still frame to
 	// frame where a ranking by level would jitter.
 	a.peaks = anaPeaks(db, sp.BinHz, maxPeaks)
@@ -359,13 +367,13 @@ func (c *Controller) bodePane(s *sv, p *wsview.SpecPane) {
 	p.TimeLabel = "INPUTS"
 	p.Head = [4]string{"FREQ", "GAIN", "PHASE", ""}
 	if len(pts) == 0 {
-		p.Caption = "BODE  sweeping the source (ref C1, DUT C2)..."
+		p.Caption = fmt.Sprintf("BODE  sweeping the source (ref C%d, DUT C%d)...", s.st.BodeRef&1+1, s.st.BodeDut&1+1)
 		p.Empty = "Sweeping..."
 		if why := s.st.BodeWhy; why != "" { // a capture gave no point: say why
 			p.Empty = "No point: " + why
 		}
 	} else {
-		p.Caption = fmt.Sprintf("BODE  ref C1, DUT C2  %d points", len(pts))
+		p.Caption = fmt.Sprintf("BODE  ref C%d, DUT C%d  %d points", s.st.BodeRef&1+1, s.st.BodeDut&1+1, len(pts))
 		if why := s.st.BodeWhy; why != "" {
 			p.Caption += "  - " + why
 		}

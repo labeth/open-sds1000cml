@@ -157,9 +157,12 @@ func (c *Controller) refDiffFrame(a *anaState, s *sv, f *engine.Frame) {
 			}
 			vdivLive := analog.AnalogVdiv(s.vidx[src])
 			offLive := s.offV[src]
+			// compared at the probe tip, each through its own probe (as the
+			// web's difference): the reference's tip volts at the live probe
+			probes := max(r.probe[src], 1) / max(s.probe[src], 1)
 			ref := make([]float64, RefCols)
 			for x, v := range codes {
-				volts := (float64(v)-128)*r.vdiv[src]/25 - r.off[src]
+				volts := ((float64(v)-128)*r.vdiv[src]/25 - r.off[src]) * probes
 				ref[x] = (volts + offLive) / vdivLive
 			}
 			for x := range live { // live in divisions of the analog range
@@ -685,7 +688,7 @@ func (c *Controller) cmpPane(s *sv) *wsview.CmpPane {
 				c.mu.Lock()
 				ref := c.refs[k]
 				c.mu.Unlock()
-				r.Info = fmt.Sprintf("C1+C2 %s %s", si(ref.vdiv[src]*s.probe[src], "V"), si(ref.tdiv, "s"))
+				r.Info = fmt.Sprintf("C1+C2 %s %s", si(ref.vdiv[src]*max(ref.probe[src], 1), "V"), si(ref.tdiv, "s"))
 				r.Info += map[bool]string{true: "  shown", false: "  hidden"}[s.refShow[k]]
 				d := diffs[k]
 				switch {

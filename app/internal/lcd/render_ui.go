@@ -30,7 +30,7 @@ func drawUI(sf Surface, f *engine.Frame, hud HUD, p plotArea) {
 	} else {
 		switch {
 		case ui.Scope != nil:
-			drawScopeChrome(sf, p, hud)
+			drawScopeChrome(sf, p, f, hud)
 		case ui.Picker != nil:
 			drawPickerPane(sf, p, ui.Picker)
 		case ui.Bus != nil:
@@ -242,8 +242,8 @@ func cutText(s string, n int) string {
 // drawScopeChrome draws SCOPE's name in the top bar (clear of the trigger
 // pointer) and the Adjust tag in the bottom row.
 // TRLC-LINKS: REQ-SDS-211, REQ-SDS-213
-func drawScopeChrome(sf Surface, p plotArea, hud HUD) {
-	tx := trigX(p, hud)
+func drawScopeChrome(sf Surface, p plotArea, f *engine.Frame, hud HUD) {
+	tx := trigX(p, f, hud)
 	x := 410
 	if tx > 398 && tx < 448 {
 		x = tx + 8
@@ -297,7 +297,8 @@ var (
 	strIn  = strX + 6
 	strEnd = strIn + perRow*6 + 5
 	bytesR = strEnd + 34
-	matchX = strEnd + 46
+	addrX  = strEnd + 46
+	matchX = addrX + 66 // ADDR holds a CAN extended ID: "1FFFFFFF W"
 )
 
 // drawBusPane draws the packet list: a hex dump with a separate string box.
@@ -323,6 +324,7 @@ func drawBusPane(sf Surface, p plotArea, b *wsview.BusPane) {
 	DrawText(sf, hexIn, 26, "HEX", colDim, 1)
 	DrawText(sf, strIn, 26, "STRING", colDim, 1)
 	DrawTextRight(sf, bytesR, 26, "BYTES", colDim, 1)
+	DrawText(sf, addrX, 26, "ADDR", colDim, 1)
 	DrawText(sf, matchX, 26, "MATCH", colDim, 1)
 	strokeRect(sf, hexX, listY-3, strX-hexX+1, listN*10+4, colAxis)
 	strokeRect(sf, strX, listY-3, strEnd-strX, listN*10+4, colAxis)
@@ -345,17 +347,23 @@ func drawBusPane(sf Surface, p plotArea, b *wsview.BusPane) {
 			}
 			DrawTextRight(sf, 24, y, itoa(ln.Num), numCol, 1)
 			DrawTextRight(sf, bytesR, y, itoa(ln.Bytes), colDim, 1)
+			DrawText(sf, addrX, y, cutText(ln.Addr, (matchX-addrX)/6-1), colInfo, 1)
+			x := matchX
+			if ln.Fault != "" { // the packet's fault first, in red, as the web marks it
+				DrawText(sf, x, y, ln.Fault, colStale, 1)
+				x += (len(ln.Fault) + 1) * 6
+			}
 			if ln.Match != "" {
-				DrawText(sf, matchX, y, ln.Match, colTrig, 1)
+				DrawText(sf, x, y, cutText(ln.Match, (p.w-x-12)/6), colTrig, 1)
 			} else if ln.Cut != "" {
-				DrawText(sf, matchX, y, cutText(ln.Cut, (p.w-matchX-12)/6), colDim, 1)
+				DrawText(sf, x, y, cutText(ln.Cut, (p.w-x-12)/6), colDim, 1)
 			}
 		} else {
 			DrawTextRight(sf, 24, y, "+", colDim, 1)
 		}
 		for c, h := range ln.Hex {
 			col := colInfo
-			if c < len(ln.Err) && ln.Err[c] {
+			if (c < len(ln.Err) && ln.Err[c]) || ln.Fault != "" {
 				col = colStale
 			}
 			DrawText(sf, cellX(c), y, h, col, 1)
@@ -846,12 +854,11 @@ func drawMiniScope(sf Surface, f *engine.Frame, hud HUD, x0, y0, w, h int) {
 			}
 		}
 	}
-	tx := x0 + int(math.Min(math.Max(hud.TrigPosFrac, 0), 1)*float64(w-1))
-	if !(hud.TrigPosFrac >= 0 && hud.TrigPosFrac <= 1) {
-		tx = x0 + w/2
-	}
-	for dy := 0; dy <= 3; dy++ {
-		hline(sf, tx-(3-dy), tx+(3-dy), y0+1+dy, colTrig)
+	if frac, ok := trigFrac(f, hud); ok {
+		tx := x0 + int(frac*float64(w-1))
+		for dy := 0; dy <= 3; dy++ {
+			hline(sf, tx-(3-dy), tx+(3-dy), y0+1+dy, colTrig)
+		}
 	}
 	strokeRect(sf, x0, y0, w, h, colAxis)
 }

@@ -9,7 +9,6 @@
 // lists the row, else as the scope's (or another remote's, while the scope's
 // REMOTE line names it). Nothing here polls in a loop: the long-poll is the
 // only standing request.
-// TRLC-LINKS: REQ-SDS-220
 "use strict";
 
 (function () {

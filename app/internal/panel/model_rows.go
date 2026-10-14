@@ -508,8 +508,8 @@ func timeRows() []*row {
 	pan.presets = func(*sv) []preset { return []preset{{t: "On trigger", v: 0}} }
 	pan.def = func(c *Controller) error { return c.setZoomOff(0) }
 	roll := &row{id: "time.roll", label: "Roll mode", kind: wsview.Enum,
-		help: "How the trace scrolls at 100 ms/div and slower: chunked (instant) or a gap-free stream.",
-		rel:  func(s *sv) bool { return s.st.TdivSet() >= 100e-3 }, why: "Time/div 100 ms or slower",
+		help: "How the trace scrolls at 10 ms/div and slower: chunked (instant) or a gap-free stream.",
+		rel:  func(s *sv) bool { return s.st.TdivSet() >= engine.RollMinTdiv*0.999 }, why: "Time/div 10 ms or slower",
 		opts: staticOpts([]opt{{0, "Chunked"}, {1, "Stream"}}),
 		get:  func(s *sv) int { return b2ic(s.st.RollStream) },
 		set:  func(c *Controller, v int) error { return c.setRollStream(v == 1) },

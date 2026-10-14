@@ -11,7 +11,6 @@
 // Every change goes through the sheet model API (RN) and never opens, moves
 // or closes anything on the scope's LCD. Control state only: no waveform, no
 // readouts.
-// TRLC-LINKS: REQ-SDS-220
 "use strict";
 
 (function () {

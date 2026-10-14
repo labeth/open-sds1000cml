@@ -187,21 +187,25 @@ func drawSpectrum(sf Surface, p plotArea, mags []float64, peak float64, col uint
 		}
 		return p.top + int(-db/-floorDb*float64(p.bot-p.top))
 	}
-	// Draw + peak-search over the VISIBLE band [kLo,kHi] (magnified across the plot).
-	prevY, peakK := -1, kLo
+	// Draw over the VISIBLE band [kLo,kHi] (magnified across the plot). A
+	// column holding several bins draws their largest: a narrow tone between
+	// two sampled bins would otherwise be drawn tens of dB low or not at all
+	// (the web draws the same per-pixel maxima).
+	prevY := -1
 	for x := 0; x < p.w; x++ {
-		k := kLo + x*span/(p.w-1)
-		if k > kHi {
-			k = kHi
-		}
-		if k > 1 && mags[k] > mags[peakK] {
-			peakK = k
-		}
-		y := yFor(mags[k])
+		k0 := kLo + x*span/(p.w-1)
+		k1 := kLo + (x+1)*span/(p.w-1) - 1
+		y := yFor(binMax(mags, min(k0, kHi), min(k1, kHi)))
 		if prevY >= 0 {
 			drawLine(sf, x-1, prevY, x, y, col)
 		}
 		prevY = y
+	}
+	peakK := kLo
+	for k := max(kLo, 2); k <= kHi; k++ {
+		if mags[k] > mags[peakK] {
+			peakK = k
+		}
 	}
 	// Mark significant peaks (local maxima > -40 dBc) in the visible band.
 	markFloor := peak * math.Pow(10, -40.0/20)
@@ -225,4 +229,17 @@ func drawSpectrum(sf Surface, p plotArea, mags []float64, peak float64, col uint
 		}
 	}
 	return kref / float64(half) * effNyq
+}
+
+// binMax is the largest of mags[k0..k1] (mags[k0] when the range is empty):
+// the level one plot column or waterfall pixel holding those bins shows.
+// TRLC-LINKS: REQ-SDS-068, REQ-SDS-070
+func binMax(mags []float64, k0, k1 int) float64 {
+	m := mags[k0]
+	for k := k0 + 1; k <= k1 && k < len(mags); k++ {
+		if mags[k] > m {
+			m = mags[k]
+		}
+	}
+	return m
 }

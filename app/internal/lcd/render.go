@@ -77,6 +77,7 @@ type HUD struct {
 	DecFormat        int           // byte display: 0=hex,1=ascii,2=both
 	RefC1, RefC2     [2][]uint8    // saved reference waveforms (REF A/B), one code per column; nil if unset
 	RefVdiv, RefOff  [2][2]float64 // [slot][channel] analog V/div and offset volts at the save
+	RefProbe         [2][2]float64 // [slot][channel] the probe factor at the save (0: 1)
 	RefShow          [2]bool
 	TwoChan          bool
 
@@ -140,6 +141,8 @@ type HUD struct {
 	BodeFreq  []float64
 	BodeGain  []float64
 	BodePhase []float64
+	// BodeRef, BodeDut are the response's reference and DUT channels (0 = C1).
+	BodeRef, BodeDut int
 
 	// Spectrogram ("FFT over time", spectrogram.go): the scrolling waterfall
 	// image, accumulated by the LCD loop and blitted when ViewMode == 4.
@@ -666,7 +669,7 @@ func Render(sf Surface, f *engine.Frame, hud HUD, live bool, persist ...*MemSurf
 	// concepts — only overlay them in Y-T, not on the X-Y/FFT plots.
 	yt := traces && hud.ViewMode == 0 && !streamFullScreen(hud)
 	if yt {
-		drawMarkers(sf, p, hud)
+		drawMarkers(sf, p, f, hud)
 	}
 	drawHUD(sf, p, f, hud)
 	if yt && hud.ShowMeas && !ui.Layout.HideMeas {

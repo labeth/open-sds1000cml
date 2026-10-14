@@ -357,7 +357,7 @@ var softkeyY = [5]int{80, 160, 240, 320, 410}
 // trigger position (top pointer), and the per-channel ground/offset arrows on
 // the left edge — the same references the web canvas shows (spec 07 §6).
 // TRLC-LINKS: REQ-SDS-021
-func drawMarkers(sf Surface, p plotArea, hud HUD) {
+func drawMarkers(sf Surface, p plotArea, f *engine.Frame, hud HUD) {
 	px := func(x, y int, c uint16) {
 		if x >= 0 && x < p.w && y >= p.y0 && y < H {
 			sf.SetPixel(x, y, c)
@@ -376,9 +376,10 @@ func drawMarkers(sf Surface, p plotArea, hud HUD) {
 			}
 		}
 	}
-	// Trigger POSITION: downward pointer at the top.
-	tx := trigX(p, hud)
-	for dy := 0; dy <= 7; dy++ {
+	// Trigger POSITION: downward pointer at the top (none while a zoom's
+	// window leaves the trigger off the screen).
+	tx := trigX(p, f, hud)
+	for dy := 0; dy <= 7 && tx >= 0; dy++ {
 		hw := (7 - dy) / 2
 		for dx := -hw; dx <= hw; dx++ {
 			px(tx+dx, p.y0+dy+2, colTrig)
@@ -402,13 +403,36 @@ func drawMarkers(sf Surface, p plotArea, hud HUD) {
 	}
 }
 
-// trigX is the trigger position's column.
+// trigX is the trigger position's column, -1 when the screen does not show
+// it (trigFrac).
 // TRLC-LINKS: REQ-SDS-021
-func trigX(p plotArea, hud HUD) int {
-	if !(hud.TrigPosFrac >= 0 && hud.TrigPosFrac <= 1) {
-		return p.w / 2
+func trigX(p plotArea, f *engine.Frame, hud HUD) int {
+	frac, ok := trigFrac(f, hud)
+	if !ok {
+		return -1
 	}
-	return min(int(hud.TrigPosFrac*float64(p.w)), p.w-1)
+	return min(int(frac*float64(p.w)), p.w-1)
+}
+
+// trigFrac is where across the screen the trigger shows: the trigger
+// position, or zoomed, where the trace's window (traceWindow, centred on the
+// trigger plus the pan) puts it; false when that is off the screen.
+// TRLC-LINKS: REQ-SDS-021
+func trigFrac(f *engine.Frame, hud HUD) (float64, bool) {
+	frac := hud.TrigPosFrac
+	if !(frac >= 0 && frac <= 1) {
+		frac = 0.5
+	}
+	if hud.Zoom > 1 && f != nil && len(f.C1) > 0 {
+		valid := frameValid(f)
+		win, xc, posFrac := traceWindow(f, hud, valid)
+		anchor := f.EdgeX
+		if anchor < 0 {
+			anchor = float64(valid) / 2
+		}
+		frac = (anchor - (xc - float64(win)*posFrac)) / float64(win)
+	}
+	return frac, frac >= 0 && frac <= 1
 }
 
 // TRLC-LINKS: REQ-SDS-021
@@ -450,7 +474,7 @@ func drawHUD(sf Surface, p plotArea, f *engine.Frame, hud HUD) {
 	default:
 		DrawText(sf, 200, 2, "M "+fmtTdiv(hud.TdivS), colInfo, 1)
 		if hud.Zoom > 1 { // horizontal magnification tag
-			DrawText(sf, 262, 2, fmt.Sprintf("Z%dx", hud.Zoom), colTrig, 1)
+			DrawText(sf, 262, 2, fmt.Sprintf("x%d", hud.Zoom), colTrig, 1) // "Z50x" read as 250x
 		}
 	}
 	// Math legend so the purple trace is identified (and not confused with a ref).

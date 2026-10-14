@@ -1,5 +1,4 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-WEB
-// TRLC-LINKS: REQ-SDS-217
 // MEASURE's statistics count a reading once: by the frame measured (meas_seq;
 // the server reuses a reading for the frames of the next 100 ms while
 // running), the edge shape by its edge-window read (edge_read; carried to the

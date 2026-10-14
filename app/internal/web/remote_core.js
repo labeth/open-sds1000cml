@@ -6,7 +6,6 @@
 // remote.html (window.RC) and require()d by remote.test.cjs. The scope stays
 // the judge: every hint here is checked again by the device, whose own
 // answer is what the remote shows.
-// TRLC-LINKS: REQ-SDS-220
 "use strict";
 
 (function (root) {

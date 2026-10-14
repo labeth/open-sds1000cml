@@ -98,3 +98,23 @@ func TestZoomViewCoupledAsTheTrace(t *testing.T) {
 		t.Fatalf("AC: the detail drawn unshifted (%d stretches)", r)
 	}
 }
+
+// The trigger pointer marks where the screen shows the trigger: zoomed, the
+// screen is centred on the trigger plus the pan, and a trigger panned off the
+// screen has no pointer (the web's marker alike).
+// TRLC-LINKS: REQ-SDS-021
+func TestTriggerPointerFollowsZoom(t *testing.T) {
+	const n = 40000
+	f := &engine.Frame{C1: make([]uint8, n), Valid: n, WinCols: n / 4, EdgeX: 12000, TdivS: 1e-3}
+	p := plotArea{w: 560}
+	for _, tc := range []struct {
+		zoom     int
+		off, pos float64
+		want     int
+	}{{1, 0, 0.3, 168}, {10, 0, 0.3, 280}, {10, 0.01, 0.3, 56}, {10, -0.01, 0.8, 504}, {10, 0.05, 0.5, -1}} {
+		hud := HUD{Zoom: tc.zoom, ZoomOff: tc.off, TrigPosFrac: tc.pos}
+		if got := trigX(p, f, hud); got != tc.want {
+			t.Errorf("zoom %d pan %g trigger at %g: pointer at column %d, the trigger shows at %d", tc.zoom, tc.off, tc.pos, got, tc.want)
+		}
+	}
+}

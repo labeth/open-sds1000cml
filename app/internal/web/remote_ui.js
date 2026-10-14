@@ -7,7 +7,6 @@
 // keeping the phone awake (Screen Wake Lock, else a muted video behind the
 // page, or one with a silent sound track) and fullscreen, each with its real
 // state.
-// TRLC-LINKS: REQ-SDS-220
 "use strict";
 
 (function () {
@@ -378,7 +377,6 @@
   //    it) mixes it with other apps' music instead of stopping it.
   // The video seeks back before its end instead of looping (WebKit). The
   // first time a video with sound starts, a notice says so, once.
-  // TRLC-LINKS: REQ-SDS-220
   const Wake = {
     want: false, how: "", note: "", sentinel: null, video: null, fns: [], pending: null,
     // TRLC-LINKS: REQ-SDS-220
@@ -527,7 +525,6 @@
   // Full is fullscreen from a tap (Android and desktop browsers). An iPhone
   // has no Fullscreen API for pages: Add to Home Screen opens the remote
   // without browser bars (the page carries the manifest and the meta tags).
-  // TRLC-LINKS: REQ-SDS-220
   const Full = {
     note: "", fns: [],
     // TRLC-LINKS: REQ-SDS-220

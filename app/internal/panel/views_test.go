@@ -163,7 +163,7 @@ func (r *viewRig) hud() lcd.HUD {
 	h.TrigLvlV = (31437 - float64(st.TrigCode)) / 911
 	h.TrigLvlDiv = h.TrigLvlV / h.C1VdivV
 	for i, rw := range c.RefView() {
-		h.RefC1[i], h.RefC2[i], h.RefShow[i], h.RefVdiv[i], h.RefOff[i] = rw.C1, rw.C2, rw.Show, rw.Vdiv, rw.Off
+		h.RefC1[i], h.RefC2[i], h.RefShow[i], h.RefVdiv[i], h.RefOff[i], h.RefProbe[i] = rw.C1, rw.C2, rw.Show, rw.Vdiv, rw.Off, rw.Probe
 	}
 	for _, p := range r.eng.pts {
 		h.BodeFreq, h.BodeGain, h.BodePhase = append(h.BodeFreq, p.FreqHz), append(h.BodeGain, p.GainDB), append(h.BodePhase, p.PhaseDeg)

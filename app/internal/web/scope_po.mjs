@@ -119,7 +119,6 @@ export function pageObject(page) {
     ws: async (id) => { await page.click("#tab-" + id); await page.waitForFunction((w) => ws.cur === w, id, { timeout: 4000 }); },
     // TRLC-LINKS: REQ-SDS-180
     curWs: () => page.evaluate(() => ws.cur),
-    // TRLC-LINKS: REQ-SDS-180
     reveal,
     // the screen view: Y-T / X-Y are SCOPE's, FFT / spectrogram / Bode SPECTRUM's
     // TRLC-LINKS: REQ-SDS-180

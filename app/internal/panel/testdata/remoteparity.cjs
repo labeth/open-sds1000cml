@@ -3,7 +3,6 @@
 // si, fmtValue, parseNumber, numberHint, parseMatch) on the vectors of
 // TestRemoteCoreParity in remote_parity_node_test.go and prints what they say.
 // Usage: node remoteparity.cjs <vectors.json> <web dir>.
-// TRLC-LINKS: REQ-SDS-220
 "use strict";
 const fs = require("node:fs");
 const path = require("node:path");

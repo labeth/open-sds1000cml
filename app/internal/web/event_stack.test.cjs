@@ -1,5 +1,4 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-WEB
-// TRLC-LINKS: REQ-SDS-019
 const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 const lib=require('./superres.js'),{decodeUART}=require('./decode.js');
 const source=fs.readFileSync('app_superres.js','utf8');

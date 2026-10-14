@@ -9,7 +9,6 @@
 
 // The catalogue: [id, label, keywords]. Grouped; together with ALL_EXCLUDE it
 // names every control in the page (allsettings_browser.mjs checks that).
-// TRLC-LINKS: REQ-SDS-219
 const ALL_GROUPS = [
   ["Run control", [["run", "Run / Stop", "acquisition start halt space"], ["single", "Single shot", "one capture"], ["autoset", "Autoset", "auto fit"]]],
   ["Timebase & horizontal", [["tdiv", "Time/div", "timebase sweep horizontal scale", ["tdivDn", "tdivUp"]], ["tpos", "Trigger position", "horizontal position delay"],
@@ -66,7 +65,6 @@ const ALL_GROUPS = [
 ];
 // Controls that are not settings: navigation, menus, dialogs and the read-only
 // decode transcript.
-// TRLC-LINKS: REQ-SDS-219
 const ALL_EXCLUDE = new Set(["decodeText", "tab-scope", "tab-bus", "tab-spectrum", "tab-measure", "tab-compare", "allBtn", "allClose", "allFilter", "helpClose",
   "exportBtn", "setupsBtn", "quickMore", "pkDetect", "tdivDn", "tdivUp", "vdiv1Dn", "vdiv1Up", "vdiv2Dn", "vdiv2Up", "mYT", "mXY", "mFFT", "mSPG", "mBODE"]);
 
@@ -76,7 +74,6 @@ function allEntries() { const out = []; for (const [g, list] of ALL_GROUPS) for 
 
 // ALL_WHEN says when a control that is shown only in some settings shows: by
 // the class or id of the element that hides it.
-// TRLC-LINKS: REQ-SDS-219
 const ALL_WHEN = [
   [".dec-i2c", "with I²C decoding"], [".dec-spi", "with SPI decoding"], [".dec-uart", "with UART decoding"],
   [".dec-sent", "with SENT decoding"], [".dec-word", "with UART or Manchester decoding"],

@@ -3,7 +3,6 @@
 // as the scope writes them, the value a detent reaches, typed-entry and
 // match-byte hints, search with everyday words, the history's diff, merge
 // and undo targets, and the knob-job line. Run by TestRemoteCoreJS.
-// TRLC-LINKS: REQ-SDS-220
 "use strict";
 const assert = require("node:assert/strict");
 const RC = require("./remote_core.js");

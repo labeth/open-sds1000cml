@@ -89,7 +89,9 @@ async function slider(op, id, v) {
 async function clickId(op, id) {
   const el = await op.page.$("#" + id);
   if (!el) throw new Error(`button #${id} missing`);
-  if (!(await el.isVisible())) await reveal(op, id);
+  // brought on screen first even when "visible": a pane maximized over the
+  // workspace covers the controls of the others (Esc restores it)
+  await reveal(op, id);
   if (!(await el.isVisible())) return `#${id} hidden — skipped`;
   if (!(await el.isEnabled())) return `#${id} disabled — skipped`;
   await el.click({ timeout: 6000 });
@@ -165,7 +167,6 @@ const ACTIONS = [
   // takes many captures — it has its own browser test.
   // TRLC-LINKS: REQ-SDS-180
   { name: "ws-switch", w: 5, run: async (op) => { const w = pick(WS_IDS); await clickId(op, "tab-" + w); return "ws=" + w; } },
-  // TRLC-LINKS: REQ-SDS-180
   {
     // TRLC-LINKS: REQ-SDS-180
     name: "ws-again", w: 3, run: async (op) => {

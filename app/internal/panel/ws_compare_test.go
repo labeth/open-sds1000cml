@@ -166,3 +166,34 @@ func TestRepeatCaptionOutsideCompare(t *testing.T) {
 		t.Fatalf("COMPARE's caption %+v, want %q", v, cap)
 	}
 }
+
+// A reference keeps the probe it was stored with: after a probe change its
+// row names its own scale, and the live trace is compared in volts at the
+// tip, as the web's difference readout compares them.
+// TRLC-LINKS: REQ-SDS-218
+func TestCompareRefKeepsItsProbe(t *testing.T) {
+	r := newViewRig(t)
+	c := r.c
+	r.show(toneFrame(""))
+	press(t, c, "f5")
+	if res := c.SheetAction("cmp.store_a", "store"); !res.OK {
+		t.Fatalf("store REF A: %+v", res)
+	}
+	r.show(toneFrame(""))
+	row := c.View().Cmp.Rows[cmpRefA]
+	maxV := func(extra string) string { f := strings.Fields(extra); return f[min(1, len(f)-1)] }
+	if !strings.HasPrefix(row.Info, "C1+C2 1V ") || !strings.HasSuffix(maxV(row.Extra), "mV") {
+		t.Fatalf("same probe: %q / %q", row.Info, row.Extra)
+	}
+	if res := c.SheetSet("ch1.probe", 10, ""); !res.OK {
+		t.Fatalf("probe x10: %+v", res)
+	}
+	r.show(toneFrame("")) // the same codes: ten times the volts at the tip
+	row = c.View().Cmp.Rows[cmpRefA]
+	if !strings.HasPrefix(row.Info, "C1+C2 1V ") {
+		t.Fatalf("REF A row after a x10 probe: %q, want its own 1V/div", row.Info)
+	}
+	if m := maxV(row.Extra); strings.HasSuffix(m, "mV") || !strings.HasSuffix(m, "V") {
+		t.Fatalf("REF A against a live trace ten times its volts: %q", row.Extra)
+	}
+}

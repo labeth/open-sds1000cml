@@ -2,7 +2,6 @@
 // packets.test.cjs — BUS's packet grouping and the still-standing packet list
 // (packets.js), on records decoded by the real decoders: UART bursts, I²C
 // transactions and SPI bursts, with packets cut by the record edges.
-// TRLC-LINKS: REQ-SDS-214
 "use strict";
 const assert = require("node:assert/strict");
 const D = require("./decode.js");

@@ -39,8 +39,10 @@ func parseNumber(text, unit string) (float64, error) {
 	}
 	if l := strings.ToLower(s); strings.HasPrefix(l, "0x") || strings.HasPrefix(l, "-0x") {
 		neg := strings.HasPrefix(l, "-")
-		v, err := strconv.ParseInt(strings.TrimPrefix(strings.TrimPrefix(l, "-"), "0x"), 16, 64)
-		if err != nil {
+		digits := strings.TrimPrefix(strings.TrimPrefix(l, "-"), "0x")
+		// hex digits only: ParseInt takes a sign of its own ("0x-999")
+		v, err := strconv.ParseInt(digits, 16, 64)
+		if err != nil || strings.Trim(digits, "0123456789abcdef") != "" {
 			return 0, fmt.Errorf("bad hex number %q", text)
 		}
 		if neg {

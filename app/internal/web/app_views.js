@@ -155,6 +155,7 @@ for (const id of ["bodeRef", "bodeDut"]) $(id).onchange = () => {
     if (id === "bodeRef") dut = 1 - ref; else ref = 1 - dut;
     $("bodeRef").value = String(ref); $("bodeDut").value = String(dut);
   }
+  bode.pendingCh = { ref, dut, until: Date.now() + 3000 };
   fetch("/api/set", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ control: "bodemode", value: bode.armed ? 1 : 0, lo: ref, hi: dut }) }).catch(() => {});
 };
 // bodeFollow shows the scope's own Bode state: armed (its Bode view arms it
@@ -172,6 +173,13 @@ function bodeFollow() {
     bode.armed = armed;
     $("bodeArm").classList.toggle("on", armed);
     $("bodeArm").textContent = armed ? "STOP" : "ARM";
+  }
+  // the channels picked here alike (the other selector, swapped, had no
+  // focus, and ARM would send what it shows)
+  const pc = bode.pendingCh;
+  if (pc) {
+    if (!((st.bode_ref & 1) === pc.ref && (st.bode_dut & 1) === pc.dut) && Date.now() < pc.until) return;
+    bode.pendingCh = null;
   }
   for (const [id, v] of [["bodeRef", st.bode_ref], ["bodeDut", st.bode_dut]]) {
     if (Number.isInteger(v) && document.activeElement !== $(id) && $(id).value !== String(v & 1)) $(id).value = String(v & 1);

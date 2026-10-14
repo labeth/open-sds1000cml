@@ -86,7 +86,6 @@ setInterval(() => { if (ws.cur === "compare" && performance.now() - cmpT > 900) 
 WS_HOOKS.push({ enter(id) { if (id === "compare") { cmpT = 0; cmpRender(); } } });
 
 // ---- the stacked master ----------------------------------------------------------
-// TRLC-LINKS: REQ-SDS-218
 const master = { busy: false, abort: false };
 
 // TRLC-LINKS: REQ-SDS-218

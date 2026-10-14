@@ -1,5 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-WEB
-// TRLC-LINKS: REQ-SDS-203
+// Run by TestMathCalibrationJS (math_calibration_node_test.go).
 const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 const text=fs.readFileSync('app_draw.js','utf8');
 const code=text.slice(text.indexOf('function computeMath()'),text.indexOf('function drawRefTrace'));

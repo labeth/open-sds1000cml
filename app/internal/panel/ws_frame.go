@@ -77,6 +77,9 @@ type anaState struct {
 	allWin   [2]map[int]bool // the parameters taken from edge windows (carried between reads)
 	curV     [2][2]float64   // each channel's volts at the time cursors A and B
 	curOK    [2]bool
+	// the record's length in screens where the time cursors were read
+	// (cursorTimes: a zoomed screen's pan is a fraction of the record)
+	curRecords float64
 
 	// COMPARE
 	stabPrev []float64

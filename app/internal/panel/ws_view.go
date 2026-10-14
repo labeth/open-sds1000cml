@@ -332,7 +332,7 @@ func tabStatus(c *Controller, s *sv, t *tab) []wsview.Span {
 	case "curs":
 		if s.curOn {
 			if s.curType == 0 {
-				ta, tb := cursorTimes(s)
+				ta, tb := cursorTimes(s, 0) // their difference: the pan cancels
 				dt := tb - ta
 				line := "dt " + si(abs64(dt), "s")
 				if dt != 0 {
@@ -553,9 +553,12 @@ func (c *Controller) busPane(s *sv) *wsview.BusPane {
 	for r := 0; r < 8 && top+r < len(lines); r++ {
 		ln := lines[top+r]
 		q := rows[ln.pi]
-		bl := wsview.BusLine{Sel: ln.pi == sel, More: ln.more}
+		bl := wsview.BusLine{Sel: ln.pi == sel, More: ln.more, Fault: q.Err}
 		if ln.from == 0 {
 			bl.Num, bl.Bytes = ln.pi+1, len(q.Bytes)
+			if q.HasAddr { // as the web's list writes it
+				bl.Addr = fmt.Sprintf("%02X %s", q.Addr, map[bool]string{true: "R", false: "W"}[q.Read])
+			}
 			if len(toks) > 0 && tokMatch(toks, q) {
 				bl.Match = cut(strings.Join(toks, " "), 24)
 			} else if !q.Complete {

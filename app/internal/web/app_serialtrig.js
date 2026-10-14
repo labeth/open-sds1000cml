@@ -213,7 +213,6 @@ function stOnDecodeChange() {
 (function initSerialTrig() {
   if (!$("stArm")) return;
   stAdopt(); // the scope's stored match, armed or not
-  // TRLC-LINKS: REQ-SDS-206
   let arming = 0, cancel = false; // the arm under way (its generation): a bus search and the config push take seconds
   // TRLC-LINKS: REQ-SDS-206
   $("stArm").onclick = async () => {

@@ -118,3 +118,45 @@ process.exit(fail ? 1 : 0);
 		t.Fatalf("bode.js breaker failed: %v", err)
 	}
 }
+
+// The page's Bode REF / DUT choice is not undone by a status read taken
+// before it: the swapped selector had no focus and went back, and ARM then
+// sent the old channels. The choice shows until the scope agrees (3 s at
+// most), as ARM's click does.
+// TRLC-LINKS: REQ-SDS-125
+func TestBodeChannelsHoldAgainstStaleStatus(t *testing.T) {
+	testenv.NeedNode(t)
+	script := `
+const fs = require("fs"), vm = require("vm");
+const src = fs.readFileSync("app_views.js", "utf8");
+const code = src.slice(src.indexOf("// The channels are the scope's (its VIEW tab's"), src.indexOf("// 1 Hz: refresh the curve"));
+const el = (v) => ({ value: v, textContent: "", classList: { toggle() {} } });
+const els = { bodeRef: el("0"), bodeDut: el("1"), bodeArm: el("") };
+let now = 0;
+const c = { $: (id) => els[id], fetch: async () => ({}), bode: { armed: false, pending: null },
+  st: { bode_mode: 0, bode_ref: 0, bode_dut: 1 }, document: { activeElement: null },
+  Date: { now: () => now }, performance: { now: () => now }, Number, String };
+vm.createContext(c); vm.runInContext(code + "\nthis.bodeFollow = bodeFollow;", c);
+let fail = 0;
+const ok = (cond, m) => { if (!cond) { console.log("FAIL " + m); fail++; } };
+els.bodeDut.value = "0"; els.bodeDut.onchange(); // DUT C1: REF swaps to C2
+ok(els.bodeRef.value === "1" && els.bodeDut.value === "0", "swapped");
+now = 500; c.bodeFollow(); // the status read before the change
+ok(els.bodeRef.value === "1" && els.bodeDut.value === "0", "a stale status put back REF " + els.bodeRef.value + " DUT " + els.bodeDut.value);
+c.st = { bode_mode: 0, bode_ref: 1, bode_dut: 0 }; now = 1200; c.bodeFollow(); // the scope agrees
+c.st = { bode_mode: 0, bode_ref: 0, bode_dut: 1 }; now = 1500; c.bodeFollow(); // then set elsewhere
+ok(els.bodeRef.value === "0" && els.bodeDut.value === "1", "the scope's own change shows");
+els.bodeRef.value = "1"; els.bodeRef.onchange(); // REF C2, the scope refuses or never answers
+now = 5000; c.bodeFollow();
+ok(els.bodeRef.value === "0" && els.bodeDut.value === "1", "after 3 s the scope's channels show");
+console.log(fail ? fail + " FAILED" : "ALL PASS");
+process.exit(fail ? 1 : 0);
+`
+	cmd := exec.Command("node", "-e", script)
+	cmd.Dir = "."
+	out, err := cmd.CombinedOutput()
+	t.Logf("Bode channels:\n%s", out)
+	if err != nil || !strings.Contains(string(out), "ALL PASS") {
+		t.Fatalf("Bode channel selectors: %v", err)
+	}
+}

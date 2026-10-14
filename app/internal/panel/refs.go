@@ -46,6 +46,7 @@ type RefExport struct {
 type RefWave struct {
 	C1, C2    []uint8    // RefCols display codes, nil if the channel was absent
 	Vdiv, Off [2]float64 // per channel: analog V/div and offset volts at the save
+	Probe     [2]float64 // per channel: the probe factor at the save
 	Show      bool
 }
 
@@ -167,7 +168,7 @@ func (c *Controller) RefView() [2]RefWave {
 	var out [2]RefWave
 	for i, r := range c.refs {
 		if r.has {
-			out[i] = RefWave{C1: r.c1, C2: r.c2, Vdiv: r.vdiv, Off: r.off, Show: r.show}
+			out[i] = RefWave{C1: r.c1, C2: r.c2, Vdiv: r.vdiv, Off: r.off, Probe: r.probe, Show: r.show}
 		}
 	}
 	return out
