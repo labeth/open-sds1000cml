@@ -736,7 +736,8 @@ the match editor is a full-screen keyboard left of the F-key column.
 menu's title and, on each F-key's row (`softkeyY − 7`), the choice's label over its value; the current
 choice, or the key just pressed (for 350 ms), is filled amber.
 
-**Notices.** A short notice (`AUTO: UART 115200 8N1 on C1, decode on`, `Trigger to centre`) is a
+**Notices.** A short notice (`AUTO: UART 115200 8N1 on C1, decode on`: Auto filled in the decoder
+settings; `Trigger to centre`) is a
 boxed line centred on the plot for its duration; a remote change's `REMOTE  TRIG level 1.25V` line
 for 1.5 s; the autoset banner as before. All durations run on the panel controller's clock.
 

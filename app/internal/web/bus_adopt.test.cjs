@@ -1,28 +1,29 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-WEB
-// TRLC-LINKS: REQ-SDS-214
-// A page entering BUS with its decode off decodes the bus the scope already
-// decodes, with the scope's sheet settings (no detection that could step the
-// scope's timebase); the scope's Off or Auto leaves the page to detect.
+// TRLC-LINKS: REQ-SDS-214, REQ-SDS-222
+// The page decodes with the scope's own decoder settings, as the status's
+// panel Display has them: the protocol (Auto, a detection, is never one),
+// lines, rate, SPI mode and bit order.
 "use strict";
 const fs = require('node:fs'), vm = require('node:vm'), assert = require('node:assert/strict');
-const src = fs.readFileSync('app_bus.js', 'utf8');
-const code = src.slice(src.indexOf('// busScopeDecode is'), src.indexOf('// End of busScopeDecode.'));
+const dsrc = fs.readFileSync('app_decode.js', 'utf8');
+const code = dsrc.slice(dsrc.indexOf('// DEC_SCOPE_PROTOS names'), dsrc.indexOf('// End of decScopeSettings.'));
 const c = {};
 vm.createContext(c); vm.runInContext(code, c);
-// TRLC-LINKS: REQ-SDS-214
-const rows = (o) => Object.fromEntries(Object.entries(o).map(([k, v]) => [k, { ID: k, Value: v }]));
-assert.equal(c.busScopeDecode(rows({ 'bus.protocol': 0 })), null, 'scope decode Off: the page detects');
-assert.equal(c.busScopeDecode(rows({ 'bus.protocol': 1 })), null, 'scope Auto: the page detects');
-assert.deepEqual({ ...c.busScopeDecode(rows({ 'bus.protocol': 2, 'bus.baud': 115200, 'bus.source': 0, 'bus.bit_rate': 500000 })) },
+assert.deepEqual({ ...c.decScopeSettings({ DecProto: 0 }) }, { proto: 'off' }, 'scope decode Off: the page decodes nothing');
+assert.equal(c.decScopeSettings({ DecProto: 1 }), null, 'Auto is no decoder');
+assert.equal(c.decScopeSettings(null), null, 'no status yet');
+assert.deepEqual({ ...c.decScopeSettings({ DecProto: 2, DecBaud: 115200, DecChA: 0, DecChB: 1 }) },
   { proto: 'uart', line: 1, baud: 115200 }, 'the owner\'s UART on C1 at 115200');
-assert.deepEqual({ ...c.busScopeDecode(rows({ 'bus.protocol': 3, 'bus.scl': 1, 'bus.sda': 0 })) },
+assert.deepEqual({ ...c.decScopeSettings({ DecProto: 3, DecChA: 1, DecChB: 0 }) },
   { proto: 'i2c', scl: 2, sda: 1 }, 'I2C roles');
-assert.deepEqual({ ...c.busScopeDecode(rows({ 'bus.protocol': 4, 'bus.clk': 0, 'bus.data': 1, 'bus.spi_mode': 3 })) },
-  { proto: 'spi', clk: 1, data: 2, cpol: 1, cpha: 1 }, 'SPI mode 3');
-assert.deepEqual({ ...c.busScopeDecode(rows({ 'bus.protocol': 7, 'bus.source': 1, 'bus.bit_rate': 500000 })) },
+assert.deepEqual({ ...c.decScopeSettings({ DecProto: 4, DecChA: 0, DecChB: 1, DecCPOL: true, DecCPHA: true }) },
+  { proto: 'spi', clk: 1, data: 2, cpol: 1, cpha: 1, msb: true }, 'SPI mode 3, MSB first');
+assert.equal(c.decScopeSettings({ DecProto: 4, DecLSB: true }).msb, false, 'SPI LSB first');
+assert.deepEqual({ ...c.decScopeSettings({ DecProto: 7, DecChA: 1, DecChB: 0, DecBaud: 500000 }) },
   { proto: 'can', line: 2, baud: 500000 }, 'CAN on C2 at the scope\'s bit rate');
-assert.deepEqual({ ...c.busScopeDecode(rows({ 'bus.protocol': 6, 'bus.source': 0 })) },
+assert.deepEqual({ ...c.decScopeSettings({ DecProto: 6, DecChA: 0, DecBaud: 115200 }) },
   { proto: 'sent', line: 1 }, 'SENT keeps its own tick');
+const src = fs.readFileSync('app_bus.js', 'utf8');
 
 // The table lists the complete packets kept, or else the capture's cut ones.
 {

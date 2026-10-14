@@ -9,7 +9,11 @@ import (
 // PatternElem is one trigger pattern token (ADR-PROTOCOL-SEQUENCE-TRIGGER):
 // Kind 2 is a decoded unit (byte, word or ARINC data field) equal to Value
 // under Mask, in the decoder's own units; Mask 0 accepts any value. Kind 4 is
-// a decoder-reported error (CRC, parity, framing, stuffing or coding).
+// a decoder-reported error (CRC, parity, framing, stuffing or coding). Kind 1
+// is the start of a frame as the hardware decoder reports it (a START, SOF,
+// SYNC or the idle gap before an SPI word), so [start, any unit] fires on a
+// frame's first unit. A MIL-1553 unit may also require the command sync
+// (MILCommand in Value and Mask).
 // TRLC-LINKS: REQ-SDS-013
 type PatternElem struct {
 	Kind  int `json:"kind"`
@@ -19,9 +23,24 @@ type PatternElem struct {
 
 // Pattern token kinds.
 const (
+	patternStart = 1
 	patternData  = 2
 	patternError = 4
 )
+
+// MILCommand is the flag of a MIL-1553 word received after a command (or
+// status) sync, beside its sixteen bits in the matcher's event value.
+const MILCommand = 1 << 16
+
+// unitFlags are the event metadata bits a pattern unit may require beside
+// the unit (the MIL command sync).
+// TRLC-LINKS: REQ-SDS-013
+func unitFlags(p SerialParams) int {
+	if p.Proto == serMIL1553 {
+		return MILCommand
+	}
+	return 0
+}
 
 // nativeLimit is the longest plain pattern the protocol's own hardware
 // matcher takes; longer ones and any Pattern use the sequence trigger.
@@ -99,11 +118,14 @@ func planSequence(p SerialParams) sramcapture.SequenceTriggerConfig {
 	dataOnly := true
 	for i, e := range elems {
 		switch e.Kind {
+		case patternStart:
+			dataOnly = false
+			c.Elements[i] = sramcapture.SequenceElement{Kind: sramcapture.SequenceStart}
 		case patternError:
 			dataOnly = false
 			c.Elements[i] = sramcapture.SequenceElement{Kind: sramcapture.SequenceError}
 		case patternData:
-			if e.Value < 0 || e.Mask < 0 || e.Value&^unitMask(p) != 0 || e.Mask&^unitMask(p) != 0 {
+			if allowed := unitMask(p) | unitFlags(p); e.Value < 0 || e.Mask < 0 || e.Value&^allowed != 0 || e.Mask&^allowed != 0 {
 				return sramcapture.SequenceTriggerConfig{}
 			}
 			value, mask := uint32(e.Value&e.Mask), uint32(e.Mask)
@@ -148,6 +170,7 @@ func matchSequence(sp []decode.Span, p SerialParams) (bool, int) {
 	}
 	reset()
 	selected := p.Proto != serI2C
+	command := 0 // MILCommand while the word after a command sync is read
 	bad, hit := false, -1
 	finish := func() (bool, int) {
 		if hit >= 0 && !bad {
@@ -173,7 +196,16 @@ func matchSequence(sp []decode.Span, p SerialParams) (bool, int) {
 			if p.Proto == serI2C && s.Kind == "stop" {
 				selected = false
 			}
-			continue
+			if p.Proto == serMIL1553 {
+				command = 0
+				if s.Text == "csync" {
+					command = MILCommand
+				}
+			}
+			if s.Kind == "gap" || s.Kind == "stop" {
+				continue
+			}
+			kind = patternStart // a frame opens: a start element matches here
 		case "addr":
 			if p.Proto != serI2C {
 				continue
@@ -190,7 +222,7 @@ func matchSequence(sp []decode.Span, p SerialParams) (bool, int) {
 		}
 		for k := len(elems) - 1; k >= 0; k-- {
 			e := elems[k]
-			ok := e.Kind == kind && (kind != patternData || (s.Val^e.Value)&e.Mask == 0)
+			ok := e.Kind == kind && (kind != patternData || ((s.Val|command)^e.Value)&e.Mask == 0)
 			start := i
 			if k > 0 {
 				start = state[k-1]

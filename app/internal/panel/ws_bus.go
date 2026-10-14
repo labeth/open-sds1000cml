@@ -42,22 +42,14 @@ const (
 // TRLC-LINKS: REQ-SDS-214
 func eyeRows() int { return (480 - wsDefs[wsview.Bus].plotTop - 12) / 2 }
 
-// busDecoding reports a bus being decoded (not off, not an Auto that found none).
+// busDecoding reports a bus being decoded (decode not off).
 // TRLC-LINKS: REQ-SDS-214
-func busDecoding(s *sv, a *anaState) bool {
-	if s.decProto == framecalc.ProtoOff {
-		return false
-	}
-	if s.decProto == framecalc.ProtoAuto {
-		return a.resOK && a.res.Proto != "" && a.res.Proto != "off" && a.res.Proto != "none"
-	}
-	return true
-}
+func busDecoding(s *sv) bool { return s.decProto != framecalc.ProtoOff }
 
 // busListKey is what the packet list belongs to: a change starts it over.
 // TRLC-LINKS: REQ-SDS-214
 func busListKey(s *sv) string {
-	return fmt.Sprint(s.decProto, s.decBaud, s.decChA, s.decChB, s.decCPOL, s.decCPHA, s.st.TdivS)
+	return fmt.Sprint(s.decProto, s.decBaud, s.decChA, s.decChB, s.decCPOL, s.decCPHA, s.decLSB, s.st.TdivS)
 }
 
 // busFrame decodes the frame and offers its packets to the held list.
@@ -152,7 +144,7 @@ func busSelected(a *anaState, rows []Packet, partial bool) int {
 func (c *Controller) busAdjust(dir int) {
 	s := c.snap()
 	c.amu.Lock()
-	if !busDecoding(s, &c.ana) {
+	if !busDecoding(s) {
 		c.amu.Unlock()
 		c.toast("No bus decoded: push Adjust to try again", 1500*time.Millisecond)
 		return
@@ -182,7 +174,7 @@ func (c *Controller) busNextMatch(dir int) {
 	s := c.snap()
 	toks := matchTokens(s)
 	c.amu.Lock()
-	if !busDecoding(s, &c.ana) {
+	if !busDecoding(s) {
 		c.amu.Unlock()
 		c.toast("No bus decoded: push Adjust to try again", 1500*time.Millisecond)
 		return
@@ -318,7 +310,7 @@ func (c *Controller) zoomToggle() {
 
 // ---- detection ----
 
-// resultProto is the decoder an Auto result names (0: none).
+// resultProto is the decoder a detection names (0: none).
 // TRLC-LINKS: REQ-SDS-214
 func resultProto(res decode.Result) int {
 	if !res.OK {
@@ -330,21 +322,12 @@ func resultProto(res decode.Result) int {
 		"flexray": framecalc.ProtoFlexRay}[res.Proto]
 }
 
-// resultName names the bus an Auto result found: "UART 115200 8N1 on C1".
-// TRLC-LINKS: REQ-SDS-214
-func resultName(res decode.Result) string {
-	chB := res.Roles.ChB & 1
-	if chB == res.Roles.ChA&1 {
-		chB = 1 - chB
-	}
-	return busName(resultProto(res), res.Baud, res.Roles.ChA&1, chB, res.Roles.CPOL, res.Roles.CPHA)
-}
-
-// lockBus fixes the decoder to a detected bus (an Auto result): protocol,
-// lines and rate. A stream Auto was running ends, as leaving Auto ends it.
-// It reports whether the result named a bus.
-// TRLC-LINKS: REQ-SDS-214
-func (c *Controller) lockBus(res decode.Result) bool {
+// fillIn writes a detected bus into the decoder settings, as if entered by
+// hand: protocol, lines, rate, SPI mode and bit order. A stream running on the
+// bus before ends: it decoded another. It reports whether the result named a
+// bus.
+// TRLC-LINKS: REQ-SDS-214, REQ-SDS-222
+func (c *Controller) fillIn(res decode.Result) bool {
 	p := resultProto(res)
 	if p == 0 {
 		return false
@@ -358,10 +341,14 @@ func (c *Controller) lockBus(res decode.Result) bool {
 	}
 	if res.Baud > 0 {
 		c.decBaud = res.Baud
+		if rateProto(p) {
+			c.decBaud = standardRate(res.Baud)
+		}
 	}
 	if p == framecalc.ProtoSPI {
-		c.decCPOL, c.decCPHA = res.Roles.CPOL, res.Roles.CPHA
+		c.decCPOL, c.decCPHA, c.decLSB = res.Roles.CPOL, res.Roles.CPHA, !res.Roles.MSB
 	}
+	c.auto = autoWatch{filled: true, good: c.now()}
 	stream := c.decMode == decModeStream
 	if stream {
 		c.decMode = decModeView
@@ -375,17 +362,10 @@ func (c *Controller) lockBus(res decode.Result) bool {
 	return true
 }
 
-// lastAuto runs Auto on the frame on screen (the shared decode cache makes
-// it free when the LCD decoded it already). Not for use inside OnFrame.
-// TRLC-LINKS: REQ-SDS-214
-func (c *Controller) lastAuto() (decode.Result, bool) {
-	res, _, ok := c.lastAutoAt()
-	return res, ok
-}
-
-// lastAutoAt is lastAuto with the decoded frame's sample interval.
-// TRLC-LINKS: REQ-SDS-214
-func (c *Controller) lastAutoAt() (decode.Result, float64, bool) {
+// detectOnScreen runs the detection on the frame on screen. Not for use
+// inside OnFrame.
+// TRLC-LINKS: REQ-SDS-214, REQ-SDS-222
+func (c *Controller) detectOnScreen() (decode.Result, float64, bool) {
 	if c.frameFn == nil {
 		return decode.Result{}, 0, false
 	}
@@ -395,10 +375,30 @@ func (c *Controller) lastAutoAt() (decode.Result, float64, bool) {
 		if f == nil || f.IsEnv || (f.PeakDetect && !f.Ordered) || len(f.C1) < 32 {
 			return
 		}
-		res = framecalc.Decode(f, framecalc.DecodeParams{Proto: framecalc.ProtoAuto, Format: "hex"})
+		res = framecalc.Detect(f, "hex")
 		sampleS = f.SampleS
 	})
 	return res, sampleS, res.OK && res.Proto != "" && res.Proto != "off"
+}
+
+// decodeOnScreen decodes the frame on screen with the decoder settings. Not
+// for use inside OnFrame.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-214
+func (c *Controller) decodeOnScreen() (decode.Result, float64, bool) {
+	if c.frameFn == nil {
+		return decode.Result{}, 0, false
+	}
+	p := decodeParamsOf(c.snap())
+	var res decode.Result
+	var sampleS float64
+	c.frameFn(func(f *engine.Frame) {
+		if f == nil || f.IsEnv || (f.PeakDetect && !f.Ordered) || len(f.C1) < 32 {
+			return
+		}
+		res = framecalc.Decode(f, p)
+		sampleS = f.SampleS
+	})
+	return res, sampleS, res.OK && len(res.Bytes) > 0
 }
 
 // liveEnvelopePoints is the live readout's points per window at the least: an
@@ -736,10 +736,6 @@ func (c *Controller) noBusNote(none string) string {
 	return none
 }
 
-// autoPicked reports Protocol = Auto.
-// TRLC-LINKS: REQ-SDS-214
-func (c *Controller) autoPicked() bool { return c.snapProto() == framecalc.ProtoAuto }
-
 // offPanel runs fn off the panel goroutine, or inline in tests: a bus search
 // reads sampled frames, seconds at slow timebases.
 // TRLC-LINKS: REQ-SDS-214
@@ -752,39 +748,6 @@ func (c *Controller) offPanel(fn func()) {
 		return
 	}
 	go fn()
-}
-
-// offPanelErr is offPanel for a search that can fail: its error when it ran
-// inline; off the panel goroutine its notice says how it ended.
-// TRLC-LINKS: REQ-SDS-214
-func (c *Controller) offPanelErr(fn func() error) error {
-	c.mu.Lock()
-	sync := c.detectSync
-	c.mu.Unlock()
-	if sync {
-		return fn()
-	}
-	go func() { _ = fn() }()
-	return nil
-}
-
-// findAuto is Protocol = Auto's search when it is picked: Auto decodes the
-// live envelope, too coarse at slow timebases for a bus plain on screen (a
-// 115200 Bd UART at 500us/div matches no protocol there). The
-// bus is found on a sampled record as BUS's auto-detect finds it, and the
-// timebase steps to the slowest that reads it live; decode stays Auto.
-// TRLC-LINKS: REQ-SDS-214
-func (c *Controller) findAuto() {
-	res, sampleS, found, stepped := c.findBus(c.lastAutoAt, c.autoPicked)
-	if c.snapProto() != framecalc.ProtoAuto {
-		return // the protocol changed meanwhile
-	}
-	if found {
-		c.toast("AUTO: "+resultName(res)+c.readTimebase(res, sampleS, stepped), 2200*time.Millisecond)
-	} else {
-		c.toast("AUTO: "+c.noBusNote("no bus found on CH1 or CH2 yet"), 2200*time.Millisecond)
-	}
-	c.publish()
 }
 
 // readTimebase steps to the timebase that reads a bus findBus found live
@@ -836,11 +799,14 @@ func busName(proto, baud, chA, chB int, cpol, cpha bool) string {
 	return protoName(proto)
 }
 
-// autoDecode finds the bus with Auto, locks it and decodes it. It runs when
-// F2 enters BUS with decode off and on the Adjust push when nothing was found.
-// The engine first sends sampled frames (detection cannot read an envelope),
-// so the search runs off the panel goroutine.
-// TRLC-LINKS: REQ-SDS-214
+// autoDecode is Auto: it detects the bus once and fills in the decoder
+// settings (fillIn), which then decode it. It runs when Protocol is set to
+// Auto (the LCD, the web, the phone, a recalled setup that holds Auto), when
+// F2 enters BUS with decode off, on the Adjust push when nothing was found,
+// and once by itself when the bus it found stops decoding (watchBus). The
+// engine first sends sampled frames (detection cannot read an envelope), so
+// the search runs off the panel goroutine.
+// TRLC-LINKS: REQ-SDS-214, REQ-SDS-222
 func (c *Controller) autoDecode() {
 	c.mu.Lock()
 	if c.ui.busDetecting {
@@ -870,10 +836,10 @@ const detectWait = 6 * time.Second
 // 10 Mbit/s FlexRay at 500 us/div's 32 ns): with none found there, the search
 // runs again at the slowest timebase sampled at the converters' full rate,
 // which stays when the bus is found there.
-// TRLC-LINKS: REQ-SDS-214
+// TRLC-LINKS: REQ-SDS-214, REQ-SDS-222
 func (c *Controller) runDetect() {
 	c.mu.Lock()
-	gen := c.decGen
+	gen, prev := c.decGen, c.decProto
 	c.mu.Unlock()
 	// A protocol set while the search ran (seconds at slow timebases) stands:
 	// the search's lock, or its "decode stays off", must not undo a UART picked
@@ -883,7 +849,7 @@ func (c *Controller) runDetect() {
 		defer c.mu.Unlock()
 		return c.decGen == gen
 	}
-	res, sampleS, found, stepped := c.findBus(c.lastAutoAt, mine)
+	res, sampleS, found, stepped := c.findBus(c.detectOnScreen, mine)
 	if !mine() {
 		c.mu.Lock()
 		c.ui.busDetecting = false
@@ -891,25 +857,31 @@ func (c *Controller) runDetect() {
 		c.publish()
 		return
 	}
-	locked := found && c.lockBus(res)
+	locked := found && c.fillIn(res)
 	tdivNote, none := "", ""
+	frame := c.takeBusFrame()
 	if locked {
 		tdivNote = c.readTimebase(res, sampleS, stepped)
-	} else {
+		if frame != 0 {
+			tdivNote += "; " + c.frameBus(decode.FeatureSamples(res)*sampleS, frame == busFrameAuto)
+		}
+	} else if prev == framecalc.ProtoOff {
 		none = c.noBusNote("no bus found on CH1 or CH2 - decode stays off")
+	} else { // the settings in use stay: a bus found again decodes with them
+		none = c.noBusNote("no bus found on CH1 or CH2 - decode stays " + protoName(prev))
 	}
 	c.mu.Lock()
 	c.ui.busDetecting = false
-	c.ui.busFailed = !locked
+	c.ui.busFailed = !locked && prev == framecalc.ProtoOff
 	if locked {
-		c.toastLocked("AUTO: "+busName(c.decProto, c.decBaud, c.decChA, c.decChB, c.decCPOL, c.decCPHA)+", decode on"+tdivNote, 2200*time.Millisecond)
-	} else if c.decGen == gen {
-		c.decProto = framecalc.ProtoOff
-		c.decGen++
+		c.ui.busNote = busName(c.decProto, c.decBaud, c.decChA, c.decChB, c.decCPOL, c.decCPHA) + tdivNote
+		c.toastLocked("AUTO: "+c.ui.busNote+", decode on", 2200*time.Millisecond)
+	} else {
+		c.ui.busNote = none
 		c.toastLocked("AUTO: "+none, 2400*time.Millisecond)
 	}
 	c.mu.Unlock()
-	if !locked {
+	if !locked && prev == framecalc.ProtoOff {
 		c.syncDecodeView(false)
 	}
 	c.amu.Lock()
@@ -1010,17 +982,13 @@ func (c *Controller) openPickSub() error {
 // TRLC-LINKS: REQ-SDS-215
 func eyeConfig(s *sv, a *anaState) (ch int, bit float64, measured bool, why string) {
 	ch, bit, why = eyeConfigOf(s, a)
-	proto := s.decProto
-	if proto == framecalc.ProtoAuto {
-		proto = map[string]int{"spi": framecalc.ProtoSPI, "i2c": framecalc.ProtoI2C}[a.res.Proto]
-	}
-	return ch, bit, proto == framecalc.ProtoSPI || proto == framecalc.ProtoI2C, why
+	return ch, bit, s.decProto == framecalc.ProtoSPI || s.decProto == framecalc.ProtoI2C, why
 }
 
 // eyeConfigOf is eyeConfig's data line and bit time.
 // TRLC-LINKS: REQ-SDS-215
 func eyeConfigOf(s *sv, a *anaState) (ch int, bit float64, why string) {
-	if !busDecoding(s, a) {
+	if !busDecoding(s) {
 		return 0, 0, "No bus decoded: F2 again for Packets, then push Adjust to find it"
 	}
 	res := a.res
@@ -1028,12 +996,6 @@ func eyeConfigOf(s *sv, a *anaState) (ch int, bit float64, why string) {
 		return 0, 0, res.Error
 	}
 	proto, baud, chA, chB := s.decProto, s.decBaud, s.decChA, s.decChB
-	if proto == framecalc.ProtoAuto {
-		chA, chB, baud = res.Roles.ChA, res.Roles.ChB, res.Baud
-		proto = map[string]int{"uart": framecalc.ProtoUART, "i2c": framecalc.ProtoI2C, "spi": framecalc.ProtoSPI,
-			"manchester": framecalc.ProtoManchester, "canfd": framecalc.ProtoCAN, "mil1553": framecalc.ProtoMIL1553,
-			"arinc429": framecalc.ProtoARINC429, "usbls": framecalc.ProtoUSB, "flexray": framecalc.ProtoFlexRay}[res.Proto]
-	}
 	switch {
 	case proto == framecalc.ProtoUART || rateProto(proto):
 		ch = chA

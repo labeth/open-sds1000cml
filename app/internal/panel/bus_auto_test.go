@@ -1,0 +1,142 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-PANEL
+package panel
+
+import (
+	"strings"
+	"testing"
+	"time"
+
+	"open-sds/app/internal/engine"
+	"open-sds/app/internal/panel/framecalc"
+	"open-sds/app/internal/panel/wsview"
+)
+
+// AUTO in BUS scans for the bus anew: the bus decoded before is forgotten
+// (an I2C set by hand), the UART on the inputs is filled in, the trigger goes
+// on the start of its messages (the hardware pulse qualifier on the idle
+// before the first character) near the left of the screen, and the notice
+// says what it chose.
+// TRLC-LINKS: REQ-SDS-223
+func TestAutoInBusScansAndFramesTheBus(t *testing.T) {
+	c, eng, _ := newEnvRig(t)
+	eng.leased.Store(true) // sampled captures, as the sweep's lease gives
+	set(t, c, "bus.protocol", "I2C")
+	c.mu.Lock()
+	c.ui.ws = wsview.Bus
+	c.mu.Unlock()
+	press(t, c, "auto")
+	s := c.snap()
+	st := eng.Snapshot()
+	if s.decProto != framecalc.ProtoUART || s.decBaud != 115200 || !s.decAuto || c.AutosetBusy() {
+		t.Fatalf("AUTO in BUS: protocol %d baud %d filled %v busy %v", s.decProto, s.decBaud, s.decAuto, c.AutosetBusy())
+	}
+	if st.TrigType != 1 || st.TrigPosFrac != busTrigPos || !strings.Contains(s.ui.busNote, "TRIG: UART first byte (idle >") {
+		t.Fatalf("framing: trigger type %d at %g, note %q", st.TrigType, st.TrigPosFrac, s.ui.busNote)
+	}
+	if q := st.TrigQual; q.PulseCond != engine.CondGreater || !(q.PulseMaxNs > 87e3 && q.PulseMaxNs < 300e3) {
+		t.Fatalf("idle qualifier %+v: over a message's longest high time (10 bits, 87 us) and under its 300 us idle", q)
+	}
+}
+
+// AUTO in the other workspaces stays the autoset.
+// TRLC-LINKS: REQ-SDS-137, REQ-SDS-223
+func TestAutoOutsideBusIsAutoset(t *testing.T) {
+	c, _, _ := newC(t)
+	c.SetFrameSource(func(fn func(*engine.Frame)) { fn(fastUART()) })
+	press(t, c, "auto")
+	c.mu.Lock()
+	msg := c.autosetMsg
+	c.mu.Unlock()
+	if msg != "AUTOSET..." {
+		t.Fatalf("AUTO in SCOPE runs %q, not the autoset", msg)
+	}
+	press(t, c, "auto") // cancel
+	for i := 0; i < 400 && c.AutosetBusy(); i++ {
+		time.Sleep(5 * time.Millisecond)
+	}
+}
+
+// The frame start each bus's hardware matcher takes: I2C's own matcher with
+// any address and no bytes, SOF then any unit where the decoder reports a
+// frame's start, an ARINC 429 word, a MIL-1553 command word; none for UART.
+// TRLC-LINKS: REQ-SDS-223
+func TestFrameStartPatterns(t *testing.T) {
+	for proto, want := range map[int]string{framecalc.ProtoI2C: "", framecalc.ProtoSPI: "SOF ??", framecalc.ProtoCAN: "SOF ??",
+		framecalc.ProtoManchester: "SOF ??", framecalc.ProtoSENT: "SOF ??", framecalc.ProtoUSB: "SOF ??", framecalc.ProtoFlexRay: "SOF ??",
+		framecalc.ProtoARINC429: "??", framecalc.ProtoMIL1553: "CMD"} {
+		b, p, name, ok := sofPattern(proto)
+		if got := strings.Join(tokensOf(engine.SerialParams{Bytes: b, Pattern: p}), " "); !ok || got != want || name == "" {
+			t.Fatalf("%s: %q (%v %q), want %q", protoName(proto), got, ok, name, want)
+		}
+		if !defaultMatch(engine.SerialParams{Bytes: b, Pattern: p}) {
+			t.Fatalf("%s: its own frame-start match reads as the user's", protoName(proto))
+		}
+		bb, pp, err := compileTokens(tokensOf(engine.SerialParams{Bytes: b, Pattern: p}))
+		if err != nil || len(bb) != len(b) || len(pp) != len(p) {
+			t.Fatalf("%s: the tokens do not read back: %v %v %v", protoName(proto), bb, pp, err)
+		}
+	}
+	if _, _, _, ok := sofPattern(framecalc.ProtoUART); ok {
+		t.Fatal("UART's matcher fires on every character: no frame start")
+	}
+	for _, user := range []engine.SerialParams{{Bytes: []int{0xAA}}, {Pattern: []engine.PatternElem{{Kind: 2, Value: 0x55, Mask: 0xff}, {Kind: 2}}}} {
+		if defaultMatch(user) {
+			t.Fatalf("a match the user set reads as the default: %+v", user)
+		}
+	}
+}
+
+// Bytes the user set win over the frame start: the serial trigger arms on
+// them.
+// TRLC-LINKS: REQ-SDS-223
+func TestUserMatchWinsOverFrameStart(t *testing.T) {
+	r := newViewRig(t)
+	r.show(fastUART())
+	set(t, r.c, "bus.protocol", "UART")
+	if err := r.c.setMatchTokens([]string{"4F", "4B"}); err != nil {
+		t.Fatal(err)
+	}
+	note := r.c.frameTrigger(busMsgs{})
+	if p := r.eng.SerialConfig(); r.eng.stats.SerialMode == 0 || len(p.Bytes) != 2 || p.Bytes[0] != 0x4F || note != "TRIG: your match 4F 4B" {
+		t.Fatalf("armed %d on %+v: %q", r.eng.stats.SerialMode, p, note)
+	}
+}
+
+// BUS entry with decode off detects the bus and arms the frame start: a
+// UART's first character after the idle between its messages.
+// TRLC-LINKS: REQ-SDS-214, REQ-SDS-223
+func TestBusEntryArmsTheFrameStart(t *testing.T) {
+	r := newViewRig(t)
+	r.show(fastUART())
+	press(t, r.c, "f2")
+	r.show(fastUART())
+	if r.c.snapProto() != framecalc.ProtoUART || !strings.Contains(r.c.snap().ui.busNote, "TRIG: UART first byte") {
+		t.Fatalf("entry: protocol %d note %q", r.c.snapProto(), r.c.snap().ui.busNote)
+	}
+}
+
+// The idle the UART trigger starts after: midway between a message's longest
+// high time and the shortest idle between two; none when the messages run
+// into each other.
+// TRLC-LINKS: REQ-SDS-223
+func TestUARTIdleWidth(t *testing.T) {
+	if w := uartIdle(busMsgs{highRun: 100e-6, idle: 300e-6}); w < 199.9e-6 || w > 200.1e-6 {
+		t.Fatalf("idle %g", w)
+	}
+	if w := uartIdle(busMsgs{highRun: 100e-6, idle: 120e-6}); w != 0 {
+		t.Fatalf("no clear idle, but %g", w)
+	}
+}
+
+// A message longer than the screen after the trigger moves the timebase on
+// as long as the bus's bits stay resolved.
+// TRLC-LINKS: REQ-SDS-223
+func TestMessageTimebase(t *testing.T) {
+	c, _, _ := newC(t)
+	if td := c.messageTimebase(1e-3, 8.7e-6, 50e-6); td != 200e-6 {
+		t.Fatalf("a 1 ms message at 50us/div: %g", td)
+	}
+	if td := c.messageTimebase(1e-3, 0.1e-6, 50e-6); td != 50e-6 {
+		t.Fatalf("bits a slower timebase cannot resolve: %g", td)
+	}
+}

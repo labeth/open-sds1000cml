@@ -177,10 +177,17 @@ automatically.
 | Manchester | line | IEEE 802.3 and Thomas conventions |
 | USB low-speed | line | PID and payload bytes |
 
-* **Auto-detect** finds the protocol, channel roles, threshold and settings from a sampled capture at any
-  timebase, then steps to a timebase whose live view reads the bus, and says so. It looks at a
+* **Auto** detects the bus once from a sampled capture at any timebase and fills the protocol, channel
+  roles, rate, SPI mode and bit order into the decoder settings, where the LCD, the web page and the
+  phone show and edit them; then it steps to a timebase whose live view reads the bus, and says so.
+  Everything (the decode, the packet list, the stream, the serial trigger) runs on those settings. When
+  they stop decoding for about two seconds (the probes moved to another bus), Auto detects again. It looks at a
   decimated capture first, so UART, I2C, SPI, SENT and ARINC 429 are named in under a second and a half;
   buses that need the full sample rate (Manchester, MIL-1553, CAN, USB, FlexRay) take a few seconds.
+* **AUTO in BUS** scans for the bus anew and frames it for reading: the vertical fitted with the
+  threshold midway, the hardware trigger on the start of each frame (I2C's START, SPI's first word after
+  its idle, CAN's SOF, a MIL-1553 command word, the first UART character after an idle gap, ...), the
+  trigger near the left and whole messages on screen with every bit resolved.
 * **Continuous decoding:** a live decoded stream, with the full-rate record kept for every frame.
   UART at **921,600 baud ran lossless for 3 minutes** (16.6 M bytes). At higher rates a lost event
   is marked, never silently dropped.

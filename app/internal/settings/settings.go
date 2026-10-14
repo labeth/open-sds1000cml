@@ -72,14 +72,15 @@ type Acq struct {
 // reset to Off on every app restart).
 // TRLC-LINKS: REQ-SDS-072, REQ-SDS-089
 type Decode struct {
-	Proto  int  `json:"proto"` // 0=off 1=auto 2=uart 3=i2c 4=spi 5..11 the bit-rate and SENT decoders
+	Proto  int  `json:"proto"` // 0=off 2=uart 3=i2c 4=spi 5..11 the bit-rate and SENT decoders; 1, Auto, loads as a detection
 	Baud   int  `json:"baud"`
 	ChA    int  `json:"cha"` // UART source; I2C SCL; SPI CLK (0=C1 1=C2)
 	ChB    int  `json:"chb"` // I2C SDA; SPI DATA
 	CPOL   bool `json:"cpol"`
 	CPHA   bool `json:"cpha"`
-	Format int  `json:"format"` // 0=hex 1=ascii 2=both
-	// Decoded-stream trigger (Auto ▸ Stream): 0=error 1=value 2=manual, and
+	LSB    bool `json:"lsb,omitempty"` // SPI least significant bit first
+	Format int  `json:"format"`        // 0=hex 1=ascii 2=both
+	// Decoded-stream trigger (BUS ▸ Stream): 0=error 1=value 2=manual, and
 	// the value it waits for.
 	StreamTrig  int `json:"stream_trig,omitempty"`
 	StreamValue int `json:"stream_value,omitempty"`

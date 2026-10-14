@@ -30,14 +30,20 @@ type Display struct {
 	DecBaud          int
 	DecChA, DecChB   int
 	DecCPOL, DecCPHA bool
+	DecLSB           bool
 	DecFormat        int
-	CurOn            bool
-	CurType          int
-	CurSel           int
-	CurX, CurY       [2]float64
-	AutosetBusy      bool
-	AutosetMsg       string
-	Remote           string // the last remote change, while it shows
+	// Auto: a detection runs (DecDetecting); the settings are what it filled
+	// in (DecAuto); what the last one found, or why it found none (DecNote)
+	DecDetecting bool
+	DecAuto      bool
+	DecNote      string
+	CurOn        bool
+	CurType      int
+	CurSel       int
+	CurX, CurY   [2]float64
+	AutosetBusy  bool
+	AutosetMsg   string
+	Remote       string // the last remote change, while it shows
 }
 
 // Snapshot returns the display state and the UI view, read together.
@@ -456,7 +462,7 @@ func (c *Controller) busPane(s *sv) *wsview.BusPane {
 	}
 	c.amu.Lock()
 	a := &c.ana
-	dec := busDecoding(s, a)
+	dec := busDecoding(s)
 	res := a.res
 	rows, partial := busRows(a)
 	rows = append([]Packet(nil), rows...)
@@ -465,7 +471,7 @@ func (c *Controller) busPane(s *sv) *wsview.BusPane {
 	liveSel := selectedLive(a, partial, sel)
 	c.amu.Unlock()
 	if !dec {
-		failed := u.busFailed || s.decProto == framecalc.ProtoAuto
+		failed := u.busFailed
 		switch {
 		case u.busDetecting:
 			p.Caption, p.CapCol = "AUTO: detecting the bus on CH1 and CH2...", wsview.Amber
@@ -500,8 +506,8 @@ func (c *Controller) busPane(s *sv) *wsview.BusPane {
 		p.Right = fmt.Sprintf("match %s: %d %s", strings.Join(toks, " "), hits, plural(hits, "packet"))
 	}
 	name := busName(s.decProto, s.decBaud, s.decChA, s.decChB, s.decCPOL, s.decCPHA)
-	if s.decProto == framecalc.ProtoAuto {
-		name = "AUTO " + strings.ToUpper(res.Proto) + " " + res.Src
+	if s.decAuto {
+		name += " (Auto)"
 	}
 	if !res.OK {
 		p.Caption, p.CapCol, p.Error = res.Error, wsview.Stop, res.Error
@@ -519,6 +525,9 @@ func (c *Controller) busPane(s *sv) *wsview.BusPane {
 			cap += fmt.Sprintf(", %d cut at the edges", cutN)
 		}
 		p.Caption, p.CapCol = cap, wsview.Text
+	}
+	if u.busDetecting { // Auto again, on the bus decoded meanwhile
+		p.Caption, p.CapCol = "AUTO: detecting the bus on CH1 and CH2...", wsview.Amber
 	}
 	// The trigger is the FPGA's matcher (ADR-SERIAL-HARDWARE-TRIGGER): while
 	// none can take the request nothing triggers, and the caption says why.
@@ -614,7 +623,7 @@ func (c *Controller) eyePane(s *sv) *wsview.EyePane {
 	zoomed := s.zoom > 1
 	c.amu.Lock()
 	a := &c.ana
-	dec := busDecoding(s, a)
+	dec := busDecoding(s)
 	r, ok, why, ch := a.eyeRes, a.eyeOK, a.eyeWhy, a.eyeCh
 	g := a.g
 	th := eyeThreshold(u, r)

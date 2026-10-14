@@ -44,7 +44,7 @@ func TestBusDetectWaitsForSamples(t *testing.T) {
 		}
 		fn(raw)
 	})
-	if _, found := (&Controller{frameFn: func(fn func(*engine.Frame)) { fn(env) }}).lastAuto(); found {
+	if _, _, found := (&Controller{frameFn: func(fn func(*engine.Frame)) { fn(env) }}).detectOnScreen(); found {
 		t.Fatal("the test's envelope is decodable: it proves nothing")
 	}
 	c.runDetect()

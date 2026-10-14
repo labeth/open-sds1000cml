@@ -10,13 +10,15 @@ package framecalc
 import (
 	"math"
 	"sync"
-	"time"
 
 	"open-sds/app/internal/decode"
 	"open-sds/app/internal/engine"
 )
 
 // Protocol numbers, shared by the panel's decode setting and the LCD.
+// ProtoAuto is no decoder: it asks for the bus to be detected once and its
+// protocol and settings filled in (a setup saved when Auto was a decoding
+// mode holds it, and loads as that request).
 const (
 	ProtoOff = iota
 	ProtoAuto
@@ -39,6 +41,7 @@ type DecodeParams struct {
 	Baud       int // UART baud, or the bit rate of the bit-rate protocols
 	ChA, ChB   int // UART source / I2C SCL / SPI CLK, and I2C SDA / SPI DATA (0 = C1)
 	CPOL, CPHA bool
+	LSB        bool   // SPI least significant bit first
 	Format     string // span text: "hex", "ascii" or "both"
 }
 
@@ -55,13 +58,7 @@ var decodeCache struct {
 	key decodeKey
 	res decode.Result
 	ok  bool
-	at  time.Time // when Auto last ran its detection
 }
-
-// AutoRefresh paces Auto's detection, which tries every protocol: at the
-// live frame rate it was the largest share of an LCD frame. Between runs a
-// new frame is re-decoded as the protocol last detected.
-const AutoRefresh = 500 * time.Millisecond
 
 // Channel returns a frame channel's valid samples; C2 falls back to C1 when
 // the frame has no second channel.
@@ -85,7 +82,7 @@ func Valid(f *engine.Frame) int {
 // A zero Seq and Content (a hand-built frame) is never cached.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-214
 func Decode(f *engine.Frame, p DecodeParams) decode.Result {
-	if f == nil || len(f.C1) == 0 || p.Proto == ProtoOff {
+	if f == nil || len(f.C1) == 0 || p.Proto == ProtoOff || p.Proto == ProtoAuto {
 		return decode.Result{}
 	}
 	valid := Valid(f)
@@ -103,34 +100,8 @@ func Decode(f *engine.Frame, p DecodeParams) decode.Result {
 	if cacheable && decodeCache.ok && decodeCache.key == key {
 		return decodeCache.res
 	}
-	// Between detections a new frame is decoded as the last one detected: the
-	// cached spans belong to that frame's content, not this one's.
-	redecode := false
-	if prev := decodeCache.key; p.Proto == ProtoAuto && decodeCache.ok && time.Since(decodeCache.at) < AutoRefresh &&
-		prev.p == key.p && prev.valid == key.valid && prev.sampleS == key.sampleS {
-		if decodeCache.res.Proto == "off" {
-			return decodeCache.res
-		}
-		redecode = true
-	}
 	var res decode.Result
 	switch p.Proto {
-	case ProtoAuto: // detect protocol, channel roles and settings from the signal
-		// Strided: a full Autodetect of a 500 k-sample screen took 14 s on
-		// the scope's ARM and held the frame all that time.
-		var st float64
-		if redecode {
-			res, st = decode.RedecodeFast(decodeCache.res, ch(0), ch(1), f.SampleS, p.Format)
-		} else {
-			res, st = decode.AutodetectFast(ch(0), ch(1), f.SampleS, p.Format)
-		}
-		if k := int(st/f.SampleS + 0.5); k > 1 {
-			for i := range res.Spans { // back to the frame's sample indices
-				res.Spans[i].I0 *= k
-				res.Spans[i].I1 *= k
-			}
-			res.SPB *= float64(k)
-		}
 	case ProtoUART:
 		cfg := decode.UARTCfg{Baud: p.Baud, Format: p.Format}
 		if f.HasMatchEnd && f.EdgeX >= 0 && f.SampleS > 0 { // the hardware matcher's character fixes the framing
@@ -140,7 +111,7 @@ func Decode(f *engine.Frame, p DecodeParams) decode.Result {
 	case ProtoI2C:
 		res = decode.DecodeI2C(ch(p.ChA), ch(p.ChB), f.SampleS, decode.I2CCfg{Format: p.Format})
 	case ProtoSPI:
-		res = decode.DecodeSPI(ch(p.ChA), ch(p.ChB), f.SampleS, decode.SPICfg{CPOL: p.CPOL, CPHA: p.CPHA, MSB: true, Format: p.Format})
+		res = decode.DecodeSPI(ch(p.ChA), ch(p.ChB), f.SampleS, decode.SPICfg{CPOL: p.CPOL, CPHA: p.CPHA, MSB: !p.LSB, Format: p.Format})
 	case ProtoManchester:
 		// MSB first, as Auto found it and the web decodes it (LSB first reads
 		// 12 34 as 48 2C).
@@ -158,21 +129,38 @@ func Decode(f *engine.Frame, p DecodeParams) decode.Result {
 	case ProtoFlexRay:
 		res = decode.DecodeFlexRay(ch(p.ChA), f.SampleS, decode.FlexRayCfg{Bitrate: p.Baud})
 	}
-	if f.PeakDetect && f.Ordered {
-		switch {
-		case p.Proto == ProtoAuto && res.Proto == "off" && res.Error == "no protocol matched":
-			// a bus the envelope cannot resolve is not found either (a 115200
-			// Bd UART at 500us/div matches no protocol there)
-			res.Error = "no protocol resolved at this timebase - S/DIV faster, or SINGLE"
-		case !EnvelopeResolves(res):
-			res = decode.Result{Proto: res.Proto, Error: decode.Names[res.Proto] + " not resolved at this timebase - S/DIV faster, or SINGLE"}
+	if f.PeakDetect && f.Ordered && !EnvelopeResolves(res) {
+		res = decode.Result{Proto: res.Proto, Error: decode.Names[res.Proto] + " not resolved at this timebase - S/DIV faster, or SINGLE"}
+	}
+	decodeCache.key, decodeCache.res, decodeCache.ok = key, res, cacheable
+	return res
+}
+
+// Detect finds the bus on f's valid samples: the protocol, channel roles and
+// settings that decode it best (decode.Autodetect), with the spans in the
+// frame's sample indices. It is Auto's search on one frame, run when a
+// detection is asked for, never per frame.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-214, REQ-SDS-222
+func Detect(f *engine.Frame, format string) decode.Result {
+	if f == nil || len(f.C1) == 0 {
+		return decode.Result{}
+	}
+	valid := Valid(f)
+	// Strided: a full Autodetect of a 500 k-sample screen took 14 s on the
+	// scope's ARM.
+	res, st := decode.AutodetectFast(Channel(f, 0, valid), Channel(f, 1, valid), f.SampleS, format)
+	if k := int(st/f.SampleS + 0.5); k > 1 {
+		for i := range res.Spans { // back to the frame's sample indices
+			res.Spans[i].I0 *= k
+			res.Spans[i].I1 *= k
 		}
+		res.SPB *= float64(k)
 	}
-	at := time.Now()
-	if redecode {
-		at = decodeCache.at // the detection's pacing runs from the last detection
+	if f.PeakDetect && f.Ordered && res.Proto == "off" && res.Error == "no protocol matched" {
+		// a bus the envelope cannot resolve is not found either (a 115200 Bd
+		// UART at 500us/div matches no protocol there)
+		res.Error = "no protocol resolved at this timebase - S/DIV faster, or SINGLE"
 	}
-	decodeCache.key, decodeCache.res, decodeCache.ok, decodeCache.at = key, res, cacheable, at
 	return res
 }
 

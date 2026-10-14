@@ -355,28 +355,26 @@ func (c *Controller) Window(rows, top int) Page {
 	return p
 }
 
-// protoIDs maps Autodetect's protocol names to the serial-trigger registry.
-var protoIDs = map[string]int{"uart": 1, "i2c": 2, "spi": 3, "manchester": 4, "sent": 5,
-	"canfd": 6, "mil1553": 7, "arinc429": 8, "usbls": 9, "flexray": 10}
+// arincID is ARINC 429 in the serial-trigger registry.
+const arincID = 8
 
-// ParamsFromAuto turns what Autodetect found on a frame of colTimeS samples
-// into the hardware decoder's settings, so the stream starts with exactly
-// what the display decoded.
-// TRLC-LINKS: REQ-SDS-018, REQ-SDS-013
-func ParamsFromAuto(r decode.Result, colTimeS float64) (engine.SerialParams, error) {
-	id, ok := protoIDs[r.Proto]
-	if !r.OK || !ok {
-		return engine.SerialParams{}, fmt.Errorf("auto decode has found no protocol to stream")
+// ParamsFromDecode completes p, the hardware decoder's settings from the
+// decoder settings, with what a decode r of a frame of colTimeS samples with
+// those settings measured: the threshold it sliced at, an SPI clock rate,
+// SENT's tick, a CAN bit rate the settings leave open. The stream then starts
+// with exactly what the display decodes.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-013, REQ-SDS-222
+func ParamsFromDecode(p engine.SerialParams, r decode.Result, colTimeS float64) (engine.SerialParams, error) {
+	if !r.OK {
+		return engine.SerialParams{}, fmt.Errorf("the bus does not decode on screen: nothing to stream")
 	}
-	if r.Proto == "arinc429" {
+	if p.Proto == arincID {
 		return engine.SerialParams{}, fmt.Errorf("ARINC 429 streams from the web page, which sets its levels")
 	}
 	if !(colTimeS > 0) || !(r.Thr > 0 && r.Thr < 255) {
-		return engine.SerialParams{}, fmt.Errorf("auto decode has no usable threshold or sample time")
+		return engine.SerialParams{}, fmt.Errorf("the decode on screen has no usable threshold or sample time")
 	}
-	p := engine.SerialParams{Proto: id, ChA: r.Roles.ChA, ChB: r.Roles.ChB, Baud: r.Baud,
-		CPOL: r.Roles.CPOL, CPHA: r.Roles.CPHA, MSB: r.Roles.MSB, IEEE: true,
-		Threshold: r.Thr, HaveThr: true, Addr: -1, RW: 2}
+	p.Threshold, p.HaveThr = r.Thr, true
 	rate := 0.0
 	if r.SPB > 0 {
 		rate = 1 / (r.SPB * colTimeS)

@@ -125,3 +125,81 @@ func TestSequenceOnGeneralImage(t *testing.T) {
 		t.Fatalf("CAN plan %+v %+v", cfg.Packet, cfg.Sequence)
 	}
 }
+
+// A frame-start element plans the hardware's START event, so [start, any]
+// fires on a frame's first unit; a MIL-1553 unit may require the command
+// sync flag beside its sixteen bits. The software form matches the same.
+// TRLC-LINKS: REQ-SDS-013, REQ-SDS-223
+func TestFrameStartSequence(t *testing.T) {
+	c := planSequence(SerialParams{Proto: serSPI, Pattern: []PatternElem{{Kind: patternStart}, {Kind: patternData}}})
+	if c.Length != 2 || c.Qualify || c.Elements[0] != (sramcapture.SequenceElement{Kind: sramcapture.SequenceStart}) ||
+		c.Elements[1] != (sramcapture.SequenceElement{Kind: sramcapture.SequenceData}) {
+		t.Fatalf("SPI frame start %+v", c)
+	}
+	c = planSequence(SerialParams{Proto: serMIL1553, Pattern: []PatternElem{{Kind: patternData, Value: MILCommand, Mask: MILCommand}}})
+	if c.Length != 1 || c.Elements[0] != (sramcapture.SequenceElement{Kind: sramcapture.SequenceData, Value: MILCommand, Mask: MILCommand}) {
+		t.Fatalf("MIL command word %+v", c)
+	}
+	if c := planSequence(SerialParams{Proto: serCAN, Pattern: []PatternElem{{Kind: patternData, Value: MILCommand, Mask: MILCommand}}}); c.Length != 0 {
+		t.Fatalf("the command flag on CAN: %+v", c)
+	}
+	sp := []decode.Span{{I0: 0, I1: 9, Kind: "data", Val: 1}, {I0: 20, I1: 20, Kind: "start"}, {I0: 21, I1: 29, Kind: "data", Val: 2},
+		{I0: 30, I1: 39, Kind: "data", Val: 3}}
+	if ok, at := matchSequence(sp, SerialParams{Proto: serCAN, Pattern: []PatternElem{{Kind: patternStart}, {Kind: patternData}}}); !ok || at != 20 {
+		t.Fatalf("frame start matched %v at %d, want the frame opening at 20", ok, at)
+	}
+	mil := []decode.Span{{I0: 0, I1: 2, Kind: "start", Text: "dsync"}, {I0: 3, I1: 19, Kind: "data", Val: 0xAAAA},
+		{I0: 40, I1: 42, Kind: "start", Text: "csync"}, {I0: 43, I1: 59, Kind: "data", Val: 0x1234}}
+	if ok, at := matchSequence(mil, SerialParams{Proto: serMIL1553, Pattern: []PatternElem{{Kind: patternData, Value: MILCommand, Mask: MILCommand}}}); !ok || at != 43 {
+		t.Fatalf("command word matched %v at %d, want 43", ok, at)
+	}
+}
+
+// A frame-start match fires as the frame's first unit ends: the trigger
+// point goes to that unit's start, also on SPI, whose decoder marks no frame
+// start.
+// TRLC-LINKS: REQ-SDS-013, REQ-SDS-223
+func TestFrameUnitStart(t *testing.T) {
+	clk, dat := spiWave([]int{0x48, 0x69}, 10)
+	p := SerialParams{Proto: serSPI, ChA: 0, ChB: 1, MSB: true, Pattern: []PatternElem{{Kind: patternStart}, {Kind: patternData}}}
+	d, _ := serialDecoder(serSPI)
+	res := d.Decode(clk, dat, 1e-6, p)
+	var first, second [2]int
+	n := 0
+	for _, sp := range res.Spans {
+		if sp.Kind == "data" {
+			if n == 0 {
+				first = [2]int{sp.I0, sp.I1}
+			} else if n == 1 {
+				second = [2]int{sp.I0, sp.I1}
+			}
+			n++
+		}
+	}
+	if n < 2 {
+		t.Fatalf("the SPI test frame decodes %d units", n)
+	}
+	if got := frameUnitStart(clk, dat, 1e-6, p, first[1]+1, 100); got != float64(100+first[0]) {
+		t.Fatalf("trigger at the first unit's end placed at %g, want %d", got, 100+first[0])
+	}
+	if got := frameUnitStart(clk, dat, 1e-6, p, second[1], 0); got != float64(second[0]) {
+		t.Fatalf("placed at %g, want %d", got, second[0])
+	}
+}
+
+// The frame a frame-start trigger fires in opens at its SOF, SYNC or START,
+// past its own fields; a unit with nothing marked before it opens itself.
+// TRLC-LINKS: REQ-SDS-013, REQ-SDS-223
+func TestFrameOpening(t *testing.T) {
+	can := []decode.Span{{I0: 0, I1: 9, Kind: "data"}, {I0: 50, I1: 51, Kind: "sof"}, {I0: 52, I1: 80, Kind: "id"},
+		{I0: 81, I1: 90, Kind: "ctl"}, {I0: 91, I1: 110, Kind: "data"}}
+	if at := frameOpening(can, 111); at != 50 {
+		t.Fatalf("CAN frame opens at %d, want its SOF at 50", at)
+	}
+	if at := frameOpening(can, 10); at != 0 {
+		t.Fatalf("a unit with no opening before it: %d", at)
+	}
+	if at := frameOpening(can, 300); at != -1 {
+		t.Fatalf("no unit ends near 300: %d", at)
+	}
+}

@@ -58,8 +58,8 @@ func (c *Controller) setNorm(on bool) error {
 	return nil
 }
 
-// setTrigType sets Edge, Pulse, Slope, Video or Serial. Serial needs a fixed
-// bus: decode off refuses with a notice, Auto locks the bus it detected.
+// setTrigType sets Edge, Pulse, Slope, Video or Serial. Serial needs a bus
+// in the decoder settings: decode off refuses with a notice.
 // TRLC-LINKS: REQ-SDS-212, REQ-SDS-013
 func (c *Controller) setTrigType(v int) error {
 	st := c.eng.Snapshot()
@@ -73,8 +73,9 @@ func (c *Controller) setTrigType(v int) error {
 	return nil
 }
 
-// armSerial switches the trigger to Serial on the decoded bus.
-// TRLC-LINKS: REQ-SDS-013, REQ-SDS-214
+// armSerial switches the trigger to Serial on the bus the decoder settings
+// name, as they stand: typed in or filled in by Auto.
+// TRLC-LINKS: REQ-SDS-013, REQ-SDS-214, REQ-SDS-222
 func (c *Controller) armSerial() error {
 	c.mu.Lock()
 	proto := c.decProto
@@ -83,49 +84,11 @@ func (c *Controller) armSerial() error {
 		c.toast("Serial trigger needs a bus: BUS workspace (F2) finds it, or set Protocol", 2200*time.Millisecond)
 		return fmt.Errorf("the serial trigger needs a bus: decode is off")
 	}
-	if proto == framecalc.ProtoAuto { // lock the bus Auto found
-		res, sampleS, ok := c.lastAutoAt()
-		if !ok {
-			// Auto reads the live envelope, too coarse at slow timebases for a
-			// bus plain on screen: search a sampled record as BUS does, then arm
-			c.toast("AUTO: finding the bus to trigger on...", 3*time.Second)
-			return c.offPanelErr(c.armAuto)
-		}
-		if !c.lockBus(res) {
-			c.toast("AUTO: no bus found: pick the protocol", 2200*time.Millisecond)
-			return fmt.Errorf("auto decode found no bus")
-		}
-		proto = c.snapProto()
-		// a timebase that reads the bus live (the frame on screen can be a
-		// stream's sampled record at a timebase whose envelope cannot)
-		c.toast("Decode fixed to "+resultName(res)+" for the serial trigger"+c.readTimebase(res, sampleS, 0), 2200*time.Millisecond)
-	}
 	if !serialProto(proto) {
 		c.toast("The serial trigger needs a bus (decoding "+protoName(proto)+")", 2000*time.Millisecond)
 		return fmt.Errorf("the serial trigger needs a bus, not %s", protoName(proto))
 	}
 	c.setTrigTypeIndex(c.eng.Snapshot(), trigSerial)
-	return nil
-}
-
-// armAuto finds the bus Auto could not read on screen (findBus), fixes decode
-// to it, steps to the timebase that reads it live and arms the serial trigger
-// on it: at slow timebases the live envelope is too coarse to read a bus (a
-// 115200 Bd UART at 500us/div).
-// TRLC-LINKS: REQ-SDS-013, REQ-SDS-214
-func (c *Controller) armAuto() error {
-	res, sampleS, found, stepped := c.findBus(c.lastAutoAt, c.autoPicked)
-	if c.snapProto() != framecalc.ProtoAuto {
-		return fmt.Errorf("the protocol changed while Auto searched") // the user's change stands
-	}
-	defer c.publish()
-	if !found || !c.lockBus(res) {
-		c.toast("AUTO: "+c.noBusNote("no bus found: pick the protocol"), 2200*time.Millisecond)
-		return fmt.Errorf("auto decode found no bus")
-	}
-	note := c.readTimebase(res, sampleS, stepped)
-	c.setTrigTypeIndex(c.eng.Snapshot(), trigSerial)
-	c.toast("Decode fixed to "+resultName(res)+" for the serial trigger"+note, 2200*time.Millisecond)
 	return nil
 }
 

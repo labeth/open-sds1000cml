@@ -64,28 +64,15 @@ func (c *Controller) autoset() {
 
 // TRLC-LINKS: REQ-SDS-137
 func (c *Controller) runAutoset(stop chan struct{}) {
-	defer func() {
-		// the rows the sweep changed, for the remote that started it: kept
-		// with its number before the busy flag drops, so a snapshot that
-		// shows the sweep ended also lists them
-		c.mu.Lock()
-		run, from := c.autosetRun, c.autosetFrom
-		c.mu.Unlock()
-		changed, _ := c.changesSince(from)
-		c.mu.Lock()
-		c.autosetBusy = false
-		if c.autosetStop == stop {
-			c.autosetStop = nil
-		}
-		c.autosetDone, c.autosetChanged = run, changed
-		c.mu.Unlock()
-		// The sweep's sample lease ends with it: held on, the live view stayed
-		// the filtered decimated capture (2.34 MHz at 5us/div) for 3 s after.
-		if e, ok := c.eng.(interface{ LeaseSampleView(time.Duration) }); ok {
-			e.LeaseSampleView(0)
-		}
-		c.pushLEDs()
-	}()
+	defer c.endAutoset(stop)
+	c.autosetSweep(stop)
+}
+
+// autosetSweep is the autoset sweep: the signal found, the vertical fitted
+// and centred, an edge trigger at the midpoint, a few cycles on screen. It
+// reports whether it fitted a signal (false: no signal, or cancelled).
+// TRLC-LINKS: REQ-SDS-137
+func (c *Controller) autosetSweep(stop chan struct{}) bool {
 	cancelled := func() bool {
 		select {
 		case <-stop:
@@ -131,6 +118,7 @@ func (c *Controller) runAutoset(stop chan struct{}) {
 	c.mu.Lock()
 	c.norm, c.running = false, true // keep the shadows in step (RUN/STOP + LEDs)
 	c.mu.Unlock()
+	c.edgeOnGeneralImage() // the sweep measures on the general image, edge-triggered
 
 	// 1. Coarse vertical first so nothing is railed (a clipped trace measures as
 	//    ~0 Vpp and can't be fit), then sweep the timebase fast→slow to find the
@@ -151,7 +139,7 @@ func (c *Controller) runAutoset(stop chan struct{}) {
 	if entry.TdivS >= 5e-3 {
 		ss := c.setTdivNearest(500e-6)
 		if !c.waitBandFrame(stop, ss) {
-			return
+			return false
 		}
 	}
 	sweep := []float64{1e-6, 1e-5, 1e-4, 1e-3, 1e-2}
@@ -160,11 +148,11 @@ func (c *Controller) runAutoset(stop chan struct{}) {
 	var swing [2]*measure.Result // each channel's widest swing seen since the sweep found it
 	for _, td := range sweep {
 		if cancelled() {
-			return
+			return false
 		}
 		ss := c.setTdivNearest(td)
 		if !c.waitBandFrame(stop, ss) {
-			return
+			return false
 		}
 		m, _ := c.measureChans()
 		// "Found" requires a measurable FREQUENCY at this band, not just
@@ -192,7 +180,7 @@ func (c *Controller) runAutoset(stop chan struct{}) {
 	}
 	if found == nil || found.Freq <= 0 {
 		noSignal() // restore the user's scale + tell them nothing was found
-		return
+		return false
 	}
 
 	// 2. Fit the VERTICAL from a window holding MANY cycles: a short capture of an
@@ -201,7 +189,7 @@ func (c *Controller) runAutoset(stop chan struct{}) {
 	//    Measuring over ~30 cycles captures the true min/max regardless of pattern.
 	ss := c.setTdivNearest((measCycles / found.Freq) / divX)
 	if !c.waitBandFrame(stop, ss) {
-		return
+		return false
 	}
 	m, _ := c.measureChans()
 	for ch := range m {
@@ -213,7 +201,7 @@ func (c *Controller) runAutoset(stop chan struct{}) {
 	}
 	if !has(m[0]) && !has(m[1]) {
 		noSignal()
-		return
+		return false
 	}
 
 	// 3. Vertical: fit Vpp into <6 of 8 divisions, centred on the MIDPOINT
@@ -229,7 +217,7 @@ func (c *Controller) runAutoset(stop chan struct{}) {
 			c.fe.SetOffset(ch, -(m[ch].Vmax+m[ch].Vmin)/2/p)
 		}
 		if !c.waitFrame(stop) {
-			return
+			return false
 		}
 	}
 
@@ -250,7 +238,7 @@ func (c *Controller) runAutoset(stop chan struct{}) {
 			}
 		}
 		if !c.waitFrame(stop) {
-			return
+			return false
 		}
 	}
 
@@ -283,7 +271,7 @@ func (c *Controller) runAutoset(stop chan struct{}) {
 				}
 				c.setVdiv(ch, snap[ch]+1) // one detent coarser
 				if !c.waitFrame(stop) {
-					return
+					return false
 				}
 				mc, _ := c.measureChans() // re-measure Vpp/midpoint at the new V/div
 				mc[ch] = widestSwing(mc[ch], swing[ch])
@@ -293,7 +281,7 @@ func (c *Controller) runAutoset(stop chan struct{}) {
 				p := c.fe.ProbeFactor(ch)
 				c.fe.SetOffset(ch, -(mc[ch].Vmax+mc[ch].Vmin)/2/p) // re-centre on midpoint
 				if !c.waitFrame(stop) {
-					return
+					return false
 				}
 				errDiv, full := c.centreErrOver(ch, swing[ch]) // close the loop on centring (as in 3b)
 				if full && (errDiv > 0.4 || errDiv < -0.4) {
@@ -301,7 +289,7 @@ func (c *Controller) runAutoset(stop chan struct{}) {
 					vdiv := analog.AnalogVdiv(snap2[ch])
 					c.fe.SetOffset(ch, c.fe.OffsetReqV(ch)-errDiv*vdiv)
 					if !c.waitFrame(stop) {
-						return
+						return false
 					}
 				}
 			}
@@ -317,7 +305,7 @@ func (c *Controller) runAutoset(stop chan struct{}) {
 	}
 	src := autosetTrigSource(m)
 	if !has(m[src]) {
-		return
+		return true
 	}
 	mid := (m[src].Vmax + m[src].Vmin) / 2
 	// Per-detent cal maps tip-volts→code correctly at this V/div; fall back to
@@ -349,7 +337,7 @@ func (c *Controller) runAutoset(stop chan struct{}) {
 	// hardware: if the comparator isn't firing, scan the code range and centre
 	// on the band that fires (WYSIWYG — same discipline as the level recommit).
 	if !c.verifyTrigLevel(stop, uint16(code)) || cancelled() {
-		return
+		return false
 	}
 
 	// 5. Finally, set the DISPLAY timebase to a few cycles of the (accurately
@@ -358,6 +346,7 @@ func (c *Controller) runAutoset(stop chan struct{}) {
 	if f := m[src].Freq; f > 0 {
 		c.setTdivNearest((dispCycles / f) / divX)
 	}
+	return true
 }
 
 // trigFiring reports whether the comparator fired on most recent captures.

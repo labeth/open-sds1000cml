@@ -1921,7 +1921,8 @@ decisions:
     timestamped events through the isolated decoded-capture worker (about 100 k events/s, no loss at 1.5 Mbit/s) and
     retain the triggered 2 ns record under one epoch and record identity, but only the web API drives them.
   decision: The panel DECODE menu gains a Stream mode beside the sample decode (View). Stream starts a decoded
-    capture with the settings Auto last found (protocol, rate, channel roles, threshold), recalls no frames, and shows
+    capture with the decoder settings (protocol, rate, channel roles; the threshold measured on their decode;
+    ADR-DECODE-AUTO-FILLS-IN), recalls no frames, and shows
     a scrolling transcript of decoded units over the whole graticule with event rate, total and loss counters. Its
     trigger is any decode error, a unit value chosen with ADJUST, or manual STOP. On the trigger the capture ends, the
     acquisition owner adopts the retained full-rate record as a stopped capture, and the display shows its waveform
@@ -1942,8 +1943,7 @@ decisions:
     Manchester 26.0 k. FlexRay at a full 10 Mbit/s overflows the isolated worker's queue at about 35 k units/s;
     one 16 KiB IPC payload per call is the limit (about 80 k events/s sustained). Starting takes 4 to 15 s when
     an image load is needed.
-  - Stream starts from Auto run on the frame on screen when Stream is pressed, on a strided copy
-    (AutodetectFast, ten samples on the shortest pulse); the LCD's View decode uses the same, 0.9 s instead of
+  - A detection runs on a strided copy (AutodetectFast, ten samples on the shortest pulse), 0.9 s instead of
     14 s a frame on the ARM. The owner's pump reads up to eight IPC payloads an iteration, the stream consumer
     copies up to 32768 events a call, and the display repaints the transcript at 4 Hz.
 - id: ADR-STREAM-LINES-IN-WORKER
@@ -2222,10 +2222,8 @@ decisions:
     the scope, one recalled raw record on the web). When the record hid the bus, decimated or too short, they look
     again at the slowest timebase sampled at the full rate, keep it when the bus is found there and go back otherwise.
     Once a bus is found, BUS steps to the slowest timebase whose readout gives its feature 5 points, room for a serial
-    trigger's wider window, and says so. Protocol = Auto finds its bus the same way where the live envelope cannot;
-    picking Auto searches and steps the timebase (decode stays Auto), a decoded stream starts from the frame on
-    screen or else that search, and arming the serial trigger from Auto fixes decode to the bus found and steps to a
-    timebase that reads it. The step judges the timebase asked for, which a running stream holds until it ends.
+    trigger's wider window, and says so. Protocol = Auto runs the same search and fills in the decoder settings
+    (ADR-DECODE-AUTO-FILLS-IN). The step judges the timebase asked for, which a running stream holds until it ends.
   consequences:
   - 'Bench: after Default setup BUS entry says "AUTO: UART 115200 8N1 on C1, decode on, 200us/div to read it" and the
     LCD reads the message without errors; the web finds the UART at 500 us/div and, after Autoset, at 200 us/div.'
@@ -2237,3 +2235,50 @@ decisions:
   - A search's result stands only if no protocol was set, recalled or defaulted while it ran (seconds at slow
     timebases); a scope waiting for a trigger, which sends no new capture to search, says so instead of "no bus
     found", and the web's Detect refuses a bus the live envelope cannot resolve (I2C read as Manchester).
+- id: ADR-DECODE-AUTO-FILLS-IN
+  title: Auto detects the bus once and fills in the decoder settings
+  status: accepted
+  date: '2026-10-14'
+  context: Two autos existed. Protocol = Auto was a decoding mode that detected again on every frame twice a second,
+    decoded with its last result in between, and never wrote what it found into the settings; it could flip the
+    protocol on one bad frame and cost CPU on every one. BUS's detection searched once and fixed the decoder to the bus
+    found. Stream and parts of the web were built on the mode, so after BUS had fixed "UART 115200" Stream did nothing,
+    and the web ran a detector of its own in the browser.
+  decision: Auto is an action, not a mode. Chosen as the protocol (on the LCD, the web, the phone, or loaded from a
+    setup that holds it) it runs BUS's search once and fills the protocol, channel roles, rate, SPI mode and bit order
+    into the decoder settings, as if typed in. The decode, the BUS list, Stream, the serial trigger, the web page and
+    the phone all use those settings. Stream starts at once from them, measuring only what the hardware needs beyond
+    them (the threshold, an SPI clock rate, SENT's tick) on their decode of the frame on screen. While settings Auto
+    filled in stand, each capture is judged against them; when they have decoded nothing for 2 s and at least three
+    captures after decoding the bus (a capture's units nearly all errors counting as nothing; a capture the envelope
+    cannot resolve, one with no edges on either line, or none at all, not counted), Auto detects once more by itself. Settings typed in are never
+    replaced. The web page decodes with the scope's settings and sets them through the sheet rows; its Auto-detect
+    runs the scope's Auto, and the browser detector was removed.
+  consequences:
+  - The Protocol row never reads Auto; Auto is the last option (Position steps through the decoders without
+    detecting) and on F2 of the quick keys. A setup saved while Auto was a mode loads as one detection.
+  - The scope gains a Bit order row for SPI (saved with the setup); it keeps no threshold row, so Auto fills in none.
+  - A detection that finds nothing keeps the settings in use (from Off, decode stays off).
+  - The panel status carries the decoder settings, whether a detection runs and what the last one found, which the
+    web follows.
+- id: ADR-BUS-AUTO-FRAMES
+  title: AUTO in BUS scans for the bus and triggers on its frame starts in hardware
+  status: accepted
+  date: '2026-10-14'
+  context: AUTO was the autoset everywhere. In BUS it fitted a waveform and left the bus decoded as it was; the owner
+    asked for AUTO there to scan for the bus anew and frame it for reading, each message at the trigger point with
+    whole packets after it, the trigger decided by the FPGA.
+  decision: AUTO in BUS forgets the bus, runs the autoset's vertical fit (the threshold midway), detects the bus (Auto)
+    and puts the trigger on its frames' start, a tenth of the screen from the left, on a timebase that shows a whole
+    message with its bits resolved. Every image's sequence trigger already matches the decoders' START events, so
+    a START element followed by any unit fires on a frame's first unit (SPI after its idle gap, Manchester, SENT, CAN,
+    USB, FlexRay); I2C's own matcher with no bytes fires on every address byte after START; an ARINC 429 word is a
+    frame; a MIL-1553 message opens with a command word, a data element on the command-sync flag. UART's matcher fires
+    on every character and has no START event, so the hardware pulse qualifier triggers where a high time longer
+    than any inside a message ends - the first start bit after the idle. A software holdoff was not used, as it paces
+    re-arming, not where the next trigger falls. Match bytes the user set win. BUS entry's detection sets the same
+    trigger; AUTO elsewhere stays the autoset.
+  consequences:
+  - The match tokens gain SOF (a frame's start) and CMD (a MIL-1553 command word), on the LCD, the web and in saved
+    setups.
+  - The UART frame start loads the qualifier image; with no idle between messages the edge trigger stays.

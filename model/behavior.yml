@@ -810,8 +810,8 @@ behavior:
       ref: FU-APP-PANEL
       kind: control_action
       action: 'BUS packets (a fixed-column hex dump, a separate string box and the match; entered with decode off, the bus
-        on CH1/CH2 is detected on a sampled record and decoded, at a timebase whose live readout resolves it, with a
-        notice naming both (ADR-BUS-READABLE-DECODE); again: the eye diagram): ADJUST selects a packet (zoomed: pans
+        on CH1/CH2 is detected on a sampled record, filled into the decoder settings and decoded, at a timebase whose
+        live readout resolves it, with a notice naming both (ADR-BUS-READABLE-DECODE, ADR-DECODE-AUTO-FILLS-IN); again: the eye diagram): ADJUST selects a packet (zoomed: pans
         to it) and its push opens the byte picker (no bus: detects again); HORIZ POSITION goes to the next or previous
         packet holding the match and its push back to the trigger; the TIME/DIV push zooms onto the selected packet.'
       sourceRef: FU-APP-PANEL

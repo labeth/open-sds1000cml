@@ -114,6 +114,7 @@ type uiState struct {
 	cmpRow       int  // COMPARE: the chosen row
 	busFailed    bool // BUS: the last auto-detection found no bus
 	busDetecting bool
+	busNote      string  // what the last detection found, or why it found none
 	eyeX         float64 // BUS eye: the sample point, UI from the centre
 	eyeTh        float64 // the threshold, codes
 	eyeThSet     bool
@@ -236,7 +237,8 @@ func (c *Controller) snap() *sv {
 	s.chDisp, s.showMeas, s.persist = c.chDisp, c.showMeas, c.persist
 	s.viewMode, s.mathMode, s.zoom, s.zoomOff = c.viewMode, c.mathMode, c.zoom, c.zoomOff
 	s.decProto, s.decBaud, s.decChA, s.decChB = c.decProto, c.decBaud, c.decChA, c.decChB
-	s.decCPOL, s.decCPHA, s.decFormat = c.decCPOL, c.decCPHA, c.decFormat
+	s.decCPOL, s.decCPHA, s.decLSB, s.decFormat = c.decCPOL, c.decCPHA, c.decLSB, c.decFormat
+	s.decAuto = c.auto.filled
 	s.decMode, s.decTrig, s.decValue, s.streamList = c.decMode, c.decTrig, c.decValue, c.streamList
 	s.hasStream = c.stream != nil
 	s.curOn, s.curType, s.curSel, s.curX, s.curY = c.curOn, c.curType, c.curSel, c.curX, c.curY
@@ -259,7 +261,7 @@ func (c *Controller) snap() *sv {
 	s.ui = c.ui
 	stream := c.stream
 	c.mu.Unlock()
-	if stream != nil && s.decProto == 1 && s.decMode == decModeStream {
+	if stream != nil && serialProto(s.decProto) && s.decMode == decModeStream {
 		s.streamStopped = !stream.Active()
 	}
 	return s

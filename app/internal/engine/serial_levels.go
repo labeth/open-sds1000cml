@@ -408,11 +408,78 @@ func (e *Engine) serialMatchStart(f *Frame, hw float64) float64 {
 		lo = max(0, at-(n+2)*unit)
 		hi = min(f.Valid, at+2*unit)
 	}
+	if pat := patternOf(p); len(pat) == 2 && pat[0].Kind == patternStart && pat[1].Kind == patternData && pat[1].Mask == 0 {
+		// the whole frame around it: a decoder drops a frame cut short (a CAN
+		// frame read to its first data byte fails its CRC)
+		if unit := serialUnitSamples(p, f.SampleS, math.Float64frombits(e.serLv.spiHz.Load())); unit > 0 {
+			lo, hi = max(0, at-frameUnitsBefore*unit), min(f.Valid, at+frameUnitsAfter*unit)
+		}
+		return frameUnitStart(a[lo:hi], b[lo:hi], f.SampleS, p, at-lo, lo)
+	}
 	ok, start := serialMatchIn(a[lo:hi], b[lo:hi], f.SampleS, p, anchorSpan{target: at - lo, lo: 0, hi: at - lo})
 	if !ok || start < 0 || start > at-lo {
 		return -1
 	}
 	return float64(lo + start)
+}
+
+// frameUnitsBefore and frameUnitsAfter bound the record a frame-start match
+// is placed on, in units around the FPGA's trigger: the frame's opening (a
+// CAN identifier and control field, two units and a half) before it, the
+// rest of the longest frame (FlexRay's 254 bytes) after it.
+const (
+	frameUnitsBefore = 8
+	frameUnitsAfter  = 264
+)
+
+// frameUnitStart is where a frame-start match (a frame's start, then any
+// unit) began: the matcher fires as the frame's first unit ends, so the
+// decoded unit ending nearest the FPGA's trigger at, and the frame's opening
+// right before it (its start of a decoder that marks none: SPI's idle gap).
+// -1 when no unit ends near it.
+// TRLC-LINKS: REQ-SDS-013, REQ-SDS-223
+func frameUnitStart(a, b []uint8, sampleS float64, p SerialParams, at, lo int) float64 {
+	d, ok := serialDecoder(p.Proto)
+	if !ok {
+		return -1
+	}
+	if at := frameOpening(d.Decode(a, b, sampleS, p).Spans, at); at >= 0 {
+		return float64(lo + at)
+	}
+	return -1
+}
+
+// frameOpening is frameUnitStart on a decode's spans: the start of the frame
+// whose first unit ends nearest at, -1 for none.
+// TRLC-LINKS: REQ-SDS-013, REQ-SDS-223
+func frameOpening(spans []decode.Span, at int) int {
+	best, bestD := -1, math.MaxInt
+	for k, sp := range spans {
+		if sp.Kind != "data" || sp.I0 > at {
+			continue
+		}
+		dd := at - sp.I1
+		if dd < 0 {
+			dd = -dd
+		}
+		if dd < bestD && dd <= max(1, sp.I1-sp.I0) {
+			best, bestD = k, dd
+		}
+	}
+	if best < 0 {
+		return -1
+	}
+	// the frame opens before its first unit: its SYNC, SOF or START when the
+	// decoder marks one there, past the frame's own fields (a CAN identifier)
+	for k := best - 1; k >= 0; k-- {
+		switch sp := spans[k]; sp.Kind {
+		case "start", "sof", "sync":
+			return sp.I0
+		case "data", "gap", "stop", "frame-error", "parity-error", "crc":
+			return spans[best].I0
+		}
+	}
+	return spans[best].I0
 }
 
 // serialUnitSamples is one decoded unit's length in samples (a UART

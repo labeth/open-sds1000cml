@@ -47,7 +47,7 @@ func (c *Controller) SettingsView() settings.ViewState {
 		Decode: settings.Decode{
 			Proto: c.decProto, Baud: c.decBaud,
 			ChA: c.decChA, ChB: c.decChB,
-			CPOL: c.decCPOL, CPHA: c.decCPHA,
+			CPOL: c.decCPOL, CPHA: c.decCPHA, LSB: c.decLSB,
 			Format:     c.decFormat,
 			StreamTrig: c.decTrig, StreamValue: c.decValue,
 		},
@@ -108,10 +108,16 @@ func (c *Controller) restoreSerial(s settings.Serial) {
 // degrade to defaults — never a panic, never an out-of-domain field. A
 // recalled workspace is entered as F1..F5 enters it (its view applied). A
 // screen saver time the rows do not offer is the factory time.
-// TRLC-LINKS: REQ-SDS-136, REQ-SDS-211, REQ-SDS-221
+// TRLC-LINKS: REQ-SDS-136, REQ-SDS-211, REQ-SDS-221, REQ-SDS-222
 func (c *Controller) ApplySettingsView(v settings.ViewState) {
 	d := v.Decode
 	if d.Proto < framecalc.ProtoOff || d.Proto >= framecalc.NumProtos {
+		d.Proto = framecalc.ProtoOff
+	}
+	// A setup saved while Auto was a decoding mode holds it: Auto detects the
+	// bus once and fills in the settings.
+	detect := d.Proto == framecalc.ProtoAuto
+	if detect {
 		d.Proto = framecalc.ProtoOff
 	}
 	if d.Baud < 50 || d.Baud > 20000000 {
@@ -149,7 +155,8 @@ func (c *Controller) ApplySettingsView(v settings.ViewState) {
 	c.decProto, c.decBaud = d.Proto, d.Baud
 	c.decGen++
 	c.decChA, c.decChB = d.ChA, d.ChB
-	c.decCPOL, c.decCPHA = d.CPOL, d.CPHA
+	c.decCPOL, c.decCPHA, c.decLSB = d.CPOL, d.CPHA, d.LSB
+	c.auto = autoWatch{}
 	c.decFormat = d.Format
 	c.decTrig = mod3(d.StreamTrig)
 	c.decValue = (d.StreamValue%0x10000 + 0x10000) % 0x10000
@@ -219,6 +226,9 @@ func (c *Controller) ApplySettingsView(v settings.ViewState) {
 	}
 	c.syncDecodeView(d.Proto != framecalc.ProtoOff)
 	c.restoreSerial(v.Serial)
+	if detect {
+		c.autoDecode()
+	}
 }
 
 // syncDecodeView tells the engine whether the display decodes the frame, so

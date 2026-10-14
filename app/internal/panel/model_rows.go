@@ -1121,11 +1121,14 @@ func cmpRows() []*row {
 
 // ---- BUS ----
 
-// protoOpts are the decoders; the serial trigger takes every one.
-var protoOpts = []opt{{framecalc.ProtoOff, "Off"}, {framecalc.ProtoAuto, "Auto"}, {framecalc.ProtoUART, "UART"},
+// protoOpts are the decoders, the serial trigger takes every one, and Auto:
+// not a decoder but the detection that picks one and fills in its settings
+// (last, so Position < > steps through the decoders without detecting).
+var protoOpts = []opt{{framecalc.ProtoOff, "Off"}, {framecalc.ProtoUART, "UART"},
 	{framecalc.ProtoI2C, "I2C"}, {framecalc.ProtoSPI, "SPI"}, {framecalc.ProtoManchester, "Manch"},
 	{framecalc.ProtoSENT, "SENT"}, {framecalc.ProtoCAN, "CAN"}, {framecalc.ProtoMIL1553, "1553"},
-	{framecalc.ProtoARINC429, "ARINC"}, {framecalc.ProtoUSB, "USB LS"}, {framecalc.ProtoFlexRay, "FlexRay"}}
+	{framecalc.ProtoARINC429, "ARINC"}, {framecalc.ProtoUSB, "USB LS"}, {framecalc.ProtoFlexRay, "FlexRay"},
+	{framecalc.ProtoAuto, "Auto"}}
 
 // protoName names a protocol number.
 // TRLC-LINKS: REQ-SDS-214
@@ -1136,6 +1139,24 @@ func protoName(p int) string {
 		}
 	}
 	return "?"
+}
+
+// bitRates are the Bit rate row's knob steps: the rates the bit-rate buses
+// run at.
+var bitRates = []float64{10e3, 12.5e3, 50e3, 100e3, 125e3, 250e3, 500e3, 1e6, 1.5e6, 2e6, 2.5e6, 5e6, 10e6}
+
+// standardRate is a bit rate a detection measured, moved onto the Bit rate
+// row's rate within 3 % of it, as a UART's baud is (a 1 Mbit/s Manchester bus
+// measures 998 kb/s on one record, a 500 kbit/s CAN bus 509 kb/s); otherwise
+// it stands.
+// TRLC-LINKS: REQ-SDS-214, REQ-SDS-222
+func standardRate(rate int) int {
+	for _, r := range bitRates {
+		if math.Abs(float64(rate)-r) <= 0.03*r {
+			return int(r)
+		}
+	}
+	return rate
 }
 
 // bauds are the standard UART rates the Baud row writes out.
@@ -1180,21 +1201,21 @@ func defaultRate(p int) int {
 func busTabRows() []*row {
 	decOn := func(s *sv) bool { return s.decProto != framecalc.ProtoOff }
 	proto := &row{id: "bus.protocol", label: "Protocol", kind: wsview.Enum,
-		help:  "Protocol decoder for the bus on the inputs (Auto detects it each capture).",
-		knob:  "F1..F5 hold Off, Auto, UART, I2C, SPI; Position < > reaches all twelve.",
+		help:  "Protocol decoder for the bus on the inputs. Auto detects the bus once and fills in the protocol and its settings.",
+		knob:  "F1..F5 hold Off, Auto, UART, I2C, SPI; Position < > reaches every decoder. Auto again detects again.",
 		opts:  staticOpts(protoOpts),
 		quick: []int{framecalc.ProtoOff, framecalc.ProtoAuto, framecalc.ProtoUART, framecalc.ProtoI2C, framecalc.ProtoSPI},
 		get:   func(s *sv) int { return s.decProto },
-		set: func(c *Controller, v int) error {
-			was := c.snapProto()
-			if err := c.setDecProto(v); err != nil {
-				return err
+		long: func(s *sv) string {
+			switch {
+			case s.ui.busDetecting:
+				return "Auto: detecting..."
+			case s.decAuto:
+				return protoName(s.decProto) + " (Auto)"
 			}
-			if v == framecalc.ProtoAuto && was != framecalc.ProtoAuto {
-				c.offPanel(c.findAuto) // the bus on a sampled record, and a timebase that reads it
-			}
-			return nil
+			return protoName(s.decProto)
 		},
+		set: func(c *Controller, v int) error { return c.setDecProto(v) },
 		def: func(c *Controller) error { return c.setDecProto(framecalc.ProtoOff) },
 	}
 	format := &row{id: "bus.strip_format", label: "Strip format", kind: wsview.Enum,
@@ -1211,18 +1232,18 @@ func busTabRows() []*row {
 		},
 	}
 	format.def = func(c *Controller) error { return format.set(c, 0) }
-	isAuto := func(s *sv) bool { return s.decProto == framecalc.ProtoAuto && s.hasStream }
+	isAuto := func(s *sv) bool { return serialProto(s.decProto) && s.hasStream }
 	stream := &row{id: "bus.stream", label: "Stream", kind: wsview.Enum,
-		help: "Decode the bus continuously in hardware into a transcript (Auto: the protocol it found).",
+		help: "Decode the bus continuously in hardware into a transcript, with the settings below.",
 		knob: "Run/Stop stops and restarts a stream.",
-		rel:  isAuto, why: "Protocol = Auto",
+		rel:  isAuto, why: "a Protocol (decode on)",
 		opts: staticOpts(onOff),
 		get:  func(s *sv) int { return b2ic(s.decMode == decModeStream) },
 		set:  func(c *Controller, v int) error { return c.setStreamMode(v == 1) },
 		def:  func(c *Controller) error { return c.setStreamMode(false) },
 	}
 	streamTrig := &row{id: "bus.stream_trigger", label: "Stream stops", kind: wsview.Enum,
-		help: "What ends a stream: a decode error, a value, or Run/Stop by hand.", rel: isAuto, why: "Protocol = Auto",
+		help: "What ends a stream: a decode error, a value, or Run/Stop by hand.", rel: isAuto, why: "a Protocol (decode on)",
 		opts: staticOpts([]opt{{0, "On error"}, {1, "On value"}, {2, "By hand"}}),
 		get:  func(s *sv) int { return s.decTrig },
 		set: func(c *Controller, v int) error {
@@ -1289,9 +1310,7 @@ func busTabRows() []*row {
 		func(v float64) string { return si(v, "b/s") })
 	rate.help = "Bit rate of Manchester, CAN, MIL-1553, ARINC 429, USB LS or FlexRay."
 	rate.rel, rate.why = func(s *sv) bool { return rateProto(s.decProto) }, "a bit-rate protocol"
-	rate.ladder = func(*sv) []float64 {
-		return []float64{10e3, 12.5e3, 50e3, 100e3, 125e3, 250e3, 500e3, 1e6, 1.5e6, 2e6, 2.5e6, 5e6, 10e6}
-	}
+	rate.ladder = func(*sv) []float64 { return bitRates }
 	rate.stepN = func(c *Controller, n int) error {
 		l := rate.ladder(nil)
 		i := nearestLadder(l, math.Max(1, rate.val(c.snap())))
@@ -1333,11 +1352,25 @@ func busTabRows() []*row {
 		set: func(c *Controller, v int) error {
 			c.mu.Lock()
 			c.decCPOL, c.decCPHA = v&2 != 0, v&1 != 0
+			c.auto = autoWatch{} // set by hand
 			c.mu.Unlock()
 			c.syncSerialBus()
 			return nil
 		},
 	}
+	bitOrder := &row{id: "bus.bit_order", label: "Bit order", kind: wsview.Enum, help: "Which bit of an SPI word comes first.",
+		rel: isSPI, why: "Protocol = SPI", opts: staticOpts([]opt{{0, "MSB first"}, {1, "LSB first"}}),
+		get: func(s *sv) int { return b2ic(s.decLSB) },
+		set: func(c *Controller, v int) error {
+			c.mu.Lock()
+			c.decLSB = v == 1
+			c.auto = autoWatch{} // set by hand
+			c.mu.Unlock()
+			c.syncSerialBus()
+			return nil
+		},
+	}
+	bitOrder.def = func(c *Controller) error { return bitOrder.set(c, 0) }
 	serialBus := func(s *sv) bool { return s.hasSerial && s.decProto != framecalc.ProtoOff }
 	match := &row{id: "bus.match", label: "Match bytes", kind: wsview.Bytes, hdr: "SERIAL TRIGGER",
 		help: "Bytes the serial trigger waits for: hex like 55 AA, A? = one nibble, ?? = any byte, ERR = a framing error.",
@@ -1377,7 +1410,7 @@ func busTabRows() []*row {
 	addr.rel, addr.why = func(s *sv) bool { return serialBus(s) && s.decProto == framecalc.ProtoI2C }, "Protocol = I2C"
 	addr.presets = func(*sv) []preset { return []preset{{t: "Any", v: -1}} }
 	addr.def = func(c *Controller) error { return c.setI2CAddr(-1) }
-	return []*row{proto, format, stream, streamTrig, streamVal, streamScreen, baud, rate, line, scl, sda, clk, data, spiMode, match, arm, addr}
+	return []*row{proto, format, stream, streamTrig, streamVal, streamScreen, baud, rate, line, scl, sda, clk, data, spiMode, bitOrder, match, arm, addr}
 }
 
 // hexText writes a whole number as the hex rows do: 0x50, and -0x02 for a

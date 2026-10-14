@@ -23,6 +23,17 @@ run(async (t) => {
   const note = await po.text("toast"), baud = +(await po.value("decBaud"));
   t.ok(/115/.test(note) && (baud === 0 || Math.abs(baud - 115200) < 3000), `…naming the stream's rate, the decoder following it (bit rate ${baud === 0 ? "auto" : baud}): "${note}"`);
   t.ok(await page.evaluate(() => !document.querySelector("#tab-bus .tdot").hidden), "the BUS tab carries a dot while decoding");
+  // the detection is the scope's Auto: it filled in the scope's settings, which
+  // the page shows; a change made on the scope (the phone, the LCD) shows here
+  t.ok(baud === 115200 && await po.value("decLine") === "1", `the page shows the settings Auto filled in on the scope: ${baud} Bd on C${await po.value("decLine")}`);
+  await page.evaluate(() => fetch("/api/sheets/set", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ row: "bus.baud", value: 57600 }) }));
+  await t.until(async () => (await po.value("decBaud")) === "57600", "a rate set on the scope shows on the page", 4000);
+  await page.evaluate(() => fetch("/api/sheets/set", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ row: "bus.baud", value: 115200 }) }));
+  await t.until(async () => (await po.value("decBaud")) === "115200", "…and back", 4000);
+  await po.setSelect("decLine", "2");
+  await t.until(async () => (await page.evaluate(() => fetch("/api/status").then((r) => r.json()))).panel.Display.DecChA === 1, "a line picked on the page is the scope's", 4000);
+  await po.setSelect("decLine", "1");
+  await t.until(async () => (await page.evaluate(() => fetch("/api/status").then((r) => r.json()))).panel.Display.DecChA === 0, "…and back", 4000);
 
   // ---- the packet table ------------------------------------------------------------
   await t.until(async () => (await rows()).length === 2, "the table lists the two complete messages, not the one the record end cuts", 6000);

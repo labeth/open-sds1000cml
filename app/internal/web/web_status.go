@@ -24,7 +24,7 @@ type statusReply struct {
 	TrigCpv       float64       `json:"trig_cpv"`  // DAC codes per input-volt at the source detent
 	TrigCodeMin   uint16        `json:"trig_code_min"`
 	TrigCodeMax   uint16        `json:"trig_code_max"`
-	Stream        *streamStatus `json:"stream,omitempty"` // DECODE Auto Stream mode
+	Stream        *streamStatus `json:"stream,omitempty"` // the BUS sheet's Stream mode
 	Waiting       bool          `json:"waiting"`          // NORMAL, running, nothing published lately: WAIT, not the held frame's T'D
 	Vdivs         []float64     `json:"vdivs,omitempty"`
 	Vdiv1         float64       `json:"vdiv1,omitempty"`

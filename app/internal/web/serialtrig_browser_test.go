@@ -32,7 +32,7 @@ func TestSerialTrigBrowser(t *testing.T) {
 			TdivS: 500e-6, DisplayedS: 500e-6, SampleS: 800e-9}
 	}
 	fs := &fakeScope{frameGen: gen, stats: engine.Stats{Running: true, TrigPosFrac: 0.5}}
-	srv := httptest.NewServer(New(fs, nil, nil, nil).Handler())
+	srv := httptest.NewServer(New(fs, nil, newDecodePanel(fs, nil), nil).Handler())
 	defer srv.Close()
 
 	out, err := exec.Command("node", "serialtrig_browser.mjs", srv.URL).CombinedOutput()

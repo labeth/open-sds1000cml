@@ -51,11 +51,11 @@ func reachContexts() []reachContext {
 		{"spi", func(t *testing.T, r *viewRig) { set(t, r.c, "bus.protocol", "SPI") }},
 		{"manchester", func(t *testing.T, r *viewRig) { set(t, r.c, "bus.protocol", "Manch") }},
 		{"stream", func(t *testing.T, r *viewRig) {
-			set(t, r.c, "bus.protocol", "Auto")
+			set(t, r.c, "bus.protocol", "UART")
 			set(t, r.c, "bus.stream", "On")
 		}},
 		{"stream on value", func(t *testing.T, r *viewRig) {
-			set(t, r.c, "bus.protocol", "Auto")
+			set(t, r.c, "bus.protocol", "UART")
 			set(t, r.c, "bus.stream", "On")
 			set(t, r.c, "bus.stream_trigger", "On value")
 		}},

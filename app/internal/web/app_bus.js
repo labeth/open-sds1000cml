@@ -194,102 +194,26 @@ function busEyeOn() {
 function busEyeOff() { if (ej.armed) ejStop("eye view closed"); }
 
 // ---- detection on entry ---------------------------------------------------------
-// The live readout is an envelope of at least BUS_LIVE_POINTS over the screen
-// (sramcapture.EnvelopeBucketsQ8 pairs); a bus feature under
-// DECODE_MIN_ENVELOPE_FEATURE of them is not decoded. BUS steps to the
-// slowest timebase that reads the bus found, BUS_READABLE_FEATURE points
-// (room for a serial trigger's 12.5-division window), as the scope's BUS does.
-const BUS_LIVE_POINTS = 2048, BUS_READABLE_FEATURE = 5;
-// busReadableTimebase steps the scope's timebase when this one cannot read a
-// bus whose shortest feature is featureS; it returns what the toast adds.
-// TRLC-LINKS: REQ-SDS-214
-function busReadableTimebase(featureS) {
-  if (!(featureS > 0) || !st || !st.tdivs || !(st.tdiv_s > 0)) return "";
-  if (busLivePoints(featureS, st.tdiv_s) >= DECODE_MIN_ENVELOPE_FEATURE) return "";
-  const best = busSlowestReadable(featureS, 0);
-  if (!best) return "";
-  send("tdiv", best);
-  return ", " + fmtTdiv(best) + "/div to read it";
-}
-// busLivePoints is how many of the live readout's points a bus feature of
-// featureS spans at the timebase tdiv.
-// TRLC-LINKS: REQ-SDS-214
-function busLivePoints(featureS, tdiv) {
-  const window = st && st.serial_mode ? 12.5 : 10;
-  return featureS / (window * tdiv / BUS_LIVE_POINTS);
-}
-// busSlowestReadable is the slowest timebase (up to within, when above 0)
-// that reads a bus whose shortest feature is featureS; 0 for none.
-// TRLC-LINKS: REQ-SDS-214
-function busSlowestReadable(featureS, within) {
-  let best = 0;
-  for (const t of (st && st.tdivs) || []) {
-    if (busLivePoints(featureS, t) >= BUS_READABLE_FEATURE && t > best && !(within > 0 && t > within * 1.001)) best = t;
-  }
-  return best;
-}
-// busScopeDecode is the decode the scope's BUS sheet rows (by id) set, as this
-// page's settings (proto, roles, rates), or null when the scope decodes no bus
-// or detects it itself (Auto).
-// TRLC-LINKS: REQ-SDS-214
-function busScopeDecode(rows) {
-  // TRLC-LINKS: REQ-SDS-214
-  const v = (id) => rows[id] && rows[id].Value;
-  const proto = [null, null, "uart", "i2c", "spi", "manchester", "sent", "can", "mil1553", "arinc429", "usb", "flexray"][v("bus.protocol")];
-  if (!proto) return null;
-  // TRLC-LINKS: REQ-SDS-214
-  const ch = (id, dflt) => (v(id) === 0 || v(id) === 1 ? v(id) + 1 : dflt);
-  const d = { proto };
-  if (proto === "i2c") { d.scl = ch("bus.scl", 1); d.sda = ch("bus.sda", 2); }
-  else if (proto === "spi") { const m = v("bus.spi_mode") || 0; d.clk = ch("bus.clk", 1); d.data = ch("bus.data", 2); d.cpol = m >> 1 & 1; d.cpha = m & 1; }
-  else d.line = ch("bus.source", 1);
-  if (proto === "uart") d.baud = v("bus.baud") > 0 ? v("bus.baud") : 0;
-  else if (proto !== "i2c" && proto !== "spi" && proto !== "sent") d.baud = v("bus.bit_rate") > 0 ? v("bus.bit_rate") : 0;
-  return d;
-}
-// End of busScopeDecode.
-
-// busAdoptScope decodes, on entering BUS with this page's decode off, the bus
-// the scope already decodes, with its settings: a detection here would read
-// it again and could step the scope's timebase (the owner's serial-triggered
-// UART at 20 us/div went to 200 us/div when a page opened BUS). False when
-// the scope decodes no bus.
-// TRLC-LINKS: REQ-SDS-214
-async function busAdoptScope() {
-  let d = null;
-  try {
-    const m = await (await fetch("/api/sheets")).json();
-    const rows = {};
-    for (const t of m.Tabs || []) for (const r of t.Rows || []) rows[r.ID] = r;
-    d = busScopeDecode(rows);
-  } catch (e) { return false; }
-  if (!d || dcfg.proto !== "off") return false;
-  Object.assign(dcfg, d);
-  dcfg.auto = true;
-  if (d.proto === "sent") $("decSentTick").value = 0;
-  syncDecodeControls();
-  updateDecodePanel();
-  recompute();
-  if (typeof wsDots === "function") wsDots();
-  setDetectMsg("decoding as the scope does: " + $("decProto").selectedOptions[0].textContent);
-  toast("BUS: decoding the scope's " + $("decProto").selectedOptions[0].textContent + " bus (it stays on in the other workspaces)");
-  busRenderTable();
-  return true;
-}
-
-// TRLC-LINKS: REQ-SDS-214
+// BUS decodes the bus the scope decodes (the page follows the scope's decoder
+// settings: decFollowScope). With the scope's decode off, entering BUS asks
+// the scope's Auto to find the bus and fill in its settings, as F2 on the
+// scope does; the scope steps its timebase to one that reads the bus.
+// TRLC-LINKS: REQ-SDS-214, REQ-SDS-222
 async function busDetect(onEntry) {
   if (busDetecting) return;
   busDetecting = true;
+  let found = false;
   try {
-    // on entry the scope's own decode first (busAdoptScope), else a detection
-    if (onEntry && await busAdoptScope()) return;
-    await runAutodetect();
+    // the scope decodes a bus already (a status not yet followed): take it,
+    // never detect again over it (that could step the scope's timebase)
+    const scope = decScopeSettings(st && st.panel && st.panel.Display);
+    if (onEntry && scope && scope.proto !== "off") { decScopeSig = ""; decFollowScope(); return; }
+    found = await decDetect();
   } finally { busDetecting = false; }
-  const stepped = dcfg.proto !== "off" ? busReadableTimebase(dcfg.detectFeatureS) : "";
   if (typeof wsDots === "function") wsDots(); // the tab's dot with the notice
-  if (dcfg.proto !== "off") toast("BUS: detected " + $("decDetectMsg").textContent.replace(/^detected /, "") + " — decoding is on" + stepped + (onEntry ? " (it stays on in the other workspaces)" : ""));
-  else toast("BUS: no bus detected — " + ($("decDetectMsg").textContent || "choose a protocol in the Decoder pane"), "warn");
+  const note = $("decDetectMsg").textContent;
+  if (found) toast("BUS: " + note + " — decoding is on" + (onEntry ? " (it stays on in the other workspaces)" : ""));
+  else toast("BUS: " + (note || "no bus detected — choose a protocol in the Decoder pane"), "warn");
   busRenderTable();
 }
 // TRLC-LINKS: REQ-SDS-214
@@ -299,8 +223,8 @@ WS_HOOKS.push({
   // TRLC-LINKS: REQ-SDS-214
   enter(id) {
     if (id !== "bus") return;
-    // the user's protocol, when set, is kept (and a scope streaming is stopped);
-    // else the scope's own decode, else a detection
+    // the bus decoded, when one is, is kept (and a scope streaming is not
+    // stopped); else the scope's Auto finds it
     if (dcfg.proto === "off" && !(st && st.stream)) busDetect(true);
     if (ws.busView === "eye") busEyeOn();
     busRenderedV = -1; busRenderTable();

@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"open-sds/app/internal/analog"
-	"open-sds/app/internal/decode"
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/lcd"
 	"open-sds/app/internal/panel/wsview"
@@ -125,15 +124,21 @@ func newViewRig(t *testing.T) *viewRig {
 		fn(f)
 	})
 	c.SetInverter(&fakeInv{})
-	c.SetDecodeStream(&fakeStream{}, func() (decode.Result, float64, bool) { return decode.Result{}, 0, false })
+	c.SetDecodeStream(&fakeStream{})
 	return r
 }
+
+// rigContent numbers the rigs' frames' content.
+var rigContent atomic.Uint64
 
 // show publishes capture f (a new Seq) and lets the panel analyse it.
 // TRLC-LINKS: REQ-SDS-211, REQ-SDS-212, REQ-SDS-214, REQ-SDS-215, REQ-SDS-216, REQ-SDS-217, REQ-SDS-218
 func (r *viewRig) show(f *engine.Frame) {
 	r.seq++
 	f.Seq = r.seq
+	if f.Content == 0 { // the shared decode cache keys frames by content: unique across rigs
+		f.Content = rigContent.Add(1)
+	}
 	r.fmu.Lock()
 	r.f = f
 	r.fmu.Unlock()

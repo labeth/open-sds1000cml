@@ -366,22 +366,50 @@ shows its next view. Entering a workspace shows a short label beside its key for
 | F4 | MEASURE | statistics (now, mean, min, max, sdev, N) of the chosen readouts, cursors | statistics ↔ all values |
 | F5 | COMPARE | MASTER, REF A, REF B, MASK, MATH rows, live difference | stack a master (again: cancel) |
 
-Entry behaviour: BUS with decode off auto-detects the bus on CH1/CH2 and decodes it, with a notice
-(decoding stays on after leaving BUS). The search reads a decimated record first (a few thousand
+Auto: the BUS sheet's Protocol = Auto is no decoding mode but a detection. It finds the bus on CH1/CH2
+once and fills the protocol, channel roles, baud or bit rate, SPI mode and bit order into the decoder
+settings, as if typed in; the Protocol row then reads the protocol found, and the strip, the BUS list,
+Stream, the serial trigger, the web page and the phone all decode with those settings. Auto again
+detects again; settings typed in are used as they are. When the settings Auto filled in decode
+nothing for about 2 s of captures (at least three, a capture's units nearly all errors counting as
+nothing) after decoding the bus, Auto detects once more by itself; one bad capture does not, nor
+does a capture the live envelope cannot resolve or one with no edges on either line (a probe off, a
+pause in the traffic), nor a scope that captures nothing. A measured bit rate within 3 % of a Bit
+rate row step fills in as that step (a 500 kbit/s CAN bus measured at 509 kb/s). With no bus found
+the settings in use stay. A setup saved while Auto was a decoding mode holds Protocol = Auto: it loads
+as one detection. Stream starts at once from the settings (the threshold, an SPI clock rate and SENT's
+tick read off their decode of the frame on screen, else of a decimated record); the serial trigger
+arms on them as they stand.
+
+AUTO in BUS frames the bus for reading instead of the autoset: it forgets the bus decoded, fits the
+vertical as the autoset does (the threshold midway), runs Auto and puts the hardware trigger on the start
+of the bus's frames, the trigger a tenth of the screen from the left and the timebase on whole messages
+with every bit resolved. The frame start is the FPGA's: I2C's own matcher with no bytes (the address byte
+after every START); the sequence trigger on SOF then any unit for SPI (the first word after its idle),
+Manchester, SENT, CAN, USB and FlexRay; any word for ARINC 429 (each is a frame); a MIL-1553 command word
+(CMD); for UART, whose matcher fires on every character, the pulse qualifier on a high time longer than
+any inside a message (midway to the idle between messages), firing on the first start bit after it, or
+the edge trigger when the messages have no idle. Match bytes the user set win (the serial trigger arms on
+them). The notice says what was chosen ("TRIG: I2C START (address byte)", "TRIG: UART first byte (idle >
+200us)"). BUS entry's detection sets the same trigger. AUTO in the other workspaces is the autoset. Either sweep
+first puts the trigger back to an edge and waits for the general image: measured on the qualifier or a
+protocol image, or while the image went back, the vertical fit went wrong.
+
+Entry behaviour: BUS with decode off runs Auto, with a notice (decoding stays on after leaving BUS).
+The search reads a decimated record first (a few thousand
 filtered samples a screen, tens of milliseconds) and keeps a bus whose shortest feature spans 8 of
 its samples (6 for CAN and FlexRay, whose CRCs a misread record does not pass; a UART only at a rate
 UARTs use); else a full-rate record of the timebase on screen, unless the decimated record was the
 full-rate one already, resolves every edge it holds, or the timebase is slower than the short record
-below (a megasample at 200 us/div takes seconds). Each lease ends with its phase (the web's Detect
-alike). A reading of one byte, a UART with a fifth of its bytes misframed or an I2C clock faster than
+below (a megasample at 200 us/div takes seconds). Each lease ends with its phase. A reading of one byte, a UART with a fifth of its bytes misframed or an I2C clock faster than
 5 MHz is no bus. With no bus, or only a UART of under 4 bytes or at a rate no UART uses (as likely part
 of another bus's frame), the search looks again at the slowest timebase sampled at the full rate: its
 decimated record, then a full-rate record a quarter as long (a fast bus's short frames, in under a
 second), then its whole record. The timebase the bus is found at stays (found on the short record,
 BUS steps to the slowest timebase up to the full-rate one whose live view reads it); with nothing
-found the timebase goes back and the scant UART, if any, is named. A web page entering its BUS with its
-own decode off decodes the bus the scope decodes, with the scope's settings, and searches only when the
-scope decodes none. On a capture the FPGA's UART matcher triggered, the decode frames the characters back
+found the timebase goes back and the scant UART, if any, is named. A web page decodes with the scope's
+decoder settings and sets them (its controls are the BUS sheet's rows); its Auto-detect and its BUS
+entry with decode off run the scope's Auto. On a capture the FPGA's UART matcher triggered, the decode frames the characters back
 to back with the matched one from where the matcher received it: a record opening inside back-to-back
 traffic holds no idle to frame by. SPECTRUM starts on the FFT; MEASURE with nothing chosen picks
 Vpp and frequency of the shown channels. Each workspace remembers its view. A master (COMPARE again)
@@ -447,7 +475,7 @@ pushes theirs (Variable, Zero, Zoom). ADJUST and HORIZ POSITION are each workspa
 | TRIG LEVEL push (Zero) | `0x64`:9 | the level to 0 V |
 | RUN/STOP | `0x65`:2 | toggle running → `SetRunning` (a decoded stream: stop / restart it; a web page's decoded capture: end it first) |
 | SINGLE | `0x65`:10 | Normal, one triggered capture, then stop (a web page's decoded capture ends first) |
-| AUTO | `0x67`:10 | autoset (a second press cancels the sweep; a web page's decoded capture ends first) |
+| AUTO | `0x67`:10 | autoset; in BUS a new bus scan framed for reading (a second press cancels the sweep; a web page's decoded capture ends first) |
 
 Workspace tools (no menu open):
 

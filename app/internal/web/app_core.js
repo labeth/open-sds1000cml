@@ -520,7 +520,7 @@ async function pollStatus() {
   if (superseded) return; // taken over by another browser; stop loading the device
   clearTimeout(pollTimer);
   pollBusy = true; pollKick = false;
-  try { st = await (await fetch("/api/status")).json(); applyStatus(); sheetsFollow(); if (typeof cmpRepeat === "function") cmpRepeat(); if (typeof srScopeLine === "function") srScopeLine(); }
+  try { st = await (await fetch("/api/status")).json(); applyStatus(); sheetsFollow(); if (typeof decFollowScope === "function") decFollowScope(); if (typeof cmpRepeat === "function") cmpRepeat(); if (typeof srScopeLine === "function") srScopeLine(); }
   catch (e) { $("line").textContent = "no connection"; lastLineHTML = ""; } // reset the diff guard or a static status keeps "no connection" stuck
   pollBusy = false;
   // While a SINGLE is armed or the device is loading, poll fast so the self-stop

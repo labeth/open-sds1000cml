@@ -29,13 +29,12 @@ func TestJSDecoderParity(t *testing.T) {
 	type vec struct {
 		Proto  string  `json:"proto"`
 		Codes  []int   `json:"codes"`
-		Codes2 []int   `json:"codes2,omitempty"` // second channel: I2C/SPI + autodetect
+		Codes2 []int   `json:"codes2,omitempty"` // second channel: I2C/SPI
 		ColT   float64 `json:"colT"`
 		Cfg    jsCfg   `json:"cfg"`
 		OK     bool    `json:"ok"`
 		Bytes  []int   `json:"bytes"`
 		Text   string  `json:"text"`
-		Det    string  `json:"det,omitempty"` // autodetect: the protocol Go chose
 	}
 	u8 := func(c []uint8) []int {
 		out := make([]int, len(c))
@@ -59,7 +58,7 @@ func TestJSDecoderParity(t *testing.T) {
 			b = []int{}
 		}
 		vecs = append(vecs, vec{Proto: proto, Codes: u8(c1), Codes2: u8(c2), ColT: colT,
-			Cfg: cfg, OK: r.OK, Bytes: b, Text: r.Text, Det: r.Proto})
+			Cfg: cfg, OK: r.OK, Bytes: b, Text: r.Text})
 	}
 
 	// ---- Manchester: auto-bitrate across spb (incl. spb=5), both conventions.
@@ -280,102 +279,6 @@ func TestJSDecoderParity(t *testing.T) {
 		scl, sda := i2cWave(0x24, 0, []int{0x55, 0xAA}, 20)
 		add2("i2c", scl, sda, ct, jsCfg{}, DecodeI2C(scl, sda, ct, I2CCfg{}))
 		add2("i2c", sda, scl, ct, jsCfg{}, DecodeI2C(sda, scl, ct, I2CCfg{}))
-	}
-
-	// ---- Autodetect: the FINAL CHOICE (protocol + decoded bytes/text) must
-	// match byte-for-byte across all ten protocols, on either channel, plus the
-	// no-signal and corrupted-CRC shapes.
-	{
-		addAuto := func(c1, c2 []uint8, ct float64) {
-			add2("autodetect", c1, c2, ct, jsCfg{"fmt": "hex"}, Autodetect(c1, c2, ct, "hex"))
-		}
-		uaW2 := uartWave([]int{0x48, 0x69, 0x55, 0xAA}, 40)
-		clkW, datW := spiWave([]int{0x48, 0x69, 0x55, 0xAA}, 20)
-		sclW, sdaW := i2cWave(0x24, 0, []int{0x55, 0xAA}, 20)
-		manW2, manCT2 := bkBuild([]int{0xAA, 0xB3, 0x2C, 0x47, 0x99}, true, true, 8, 20, 100000, 0, 0)
-		milW2 := mil1553Wave([]int{0x1234, 0xAAAA}, []bool{true, false},
-			[]int{mil1553OddParity(0x1234), mil1553OddParity(0xAAAA)}, 20)
-		nibs2 := []int{0x1, 0xA, 0x5, 0xF, 0x0, 0xC, 0x3, 0}
-		nibs2[7] = sentCRC4(nibs2[1:7])
-		sntW2 := sentWave([][]int{nibs2}, 6, 0, 0)
-		_, cw2 := canStdFrame(0x123, 3, []int{0xDE, 0xAD, 0xBE})
-		canW2 := canRender(cw2, 20, true, 160, 160)
-		var arW2 []uint8
-		arincIdle(&arW2, 240)
-		arincAppendWord(&arW2, arincMakeWord(0o107, 1, 0x5A5A, 2), 40)
-		arincIdle(&arW2, 240)
-		usbW2 := usbWave([]usbPkt{{pid: 0xD, data: []int{0x12, 0x00}}, {pid: 0x2}}, 20)
-		flxW2 := brFlexFrame(brFlexFixCRC([]int{0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC, 0xDE}), 20, 8, 8, 8)
-
-		addAuto(uaW2, nil, 1e-6)
-		// noisy captures where the auto-baud's final estimate and its snap to a
-		// standard rate decide the bus (UART or none) and its bytes
-		var noisy []struct {
-			C1, C2 []uint8
-			ColT   float64
-		}
-		if raw, err := os.ReadFile("testdata/uart_autobaud_noisy.json"); err != nil || json.Unmarshal(raw, &noisy) != nil {
-			t.Fatalf("testdata/uart_autobaud_noisy.json: %v", err)
-		}
-		for _, v := range noisy {
-			addAuto(v.C1, v.C2, v.ColT)
-		}
-		addAuto(clkW, datW, 2e-7)
-		addAuto(datW, clkW, 2e-7) // SPI roles swapped
-		addAuto(sclW, sdaW, 2e-7)
-		addAuto(sdaW, sclW, 2e-7) // I2C roles swapped
-		addAuto(manW2, nil, manCT2)
-		addAuto(nil, manW2, manCT2)
-		addAuto(milW2, nil, 1.0/(20.0*1e6))
-		addAuto(nil, milW2, 1.0/(20.0*1e6))
-		addAuto(sntW2, nil, 1e-6)
-		addAuto(nil, sntW2, 1e-6)
-		addAuto(canW2, nil, 1.0/(20.0*500000.0))
-		addAuto(nil, canW2, 1.0/(20.0*500000.0))
-		addAuto(arW2, nil, 2.5e-7)
-		addAuto(nil, arW2, 2.5e-7)
-		addAuto(usbW2, nil, 1.0/(20.0*1.5e6))
-		addAuto(nil, usbW2, 1.0/(20.0*1.5e6))
-		addAuto(flxW2, nil, ctForExact(10_000_000, 20))
-		addAuto(nil, flxW2, ctForExact(10_000_000, 20))
-		// No signal / corrupted integrity: the (possibly "off") choice must agree.
-		flat := make([]uint8, 1500)
-		for i := range flat {
-			flat[i] = 128
-		}
-		addAuto(flat, nil, 1e-6)
-		badCan := append([]uint8{}, canW2...)
-		for i := 400; i < 420 && i < len(badCan); i++ {
-			badCan[i] = 255 - badCan[i]
-		}
-		addAuto(badCan, nil, 1.0/(20.0*500000.0))
-		// A bare clock (the constant-bit Manchester trap) must stay "off" in both.
-		var sq []uint8
-		for i := 0; i < 60*40; i++ {
-			if (i/20)%2 == 0 {
-				sq = append(sq, 210)
-			} else {
-				sq = append(sq, 40)
-			}
-		}
-		addAuto(sq, nil, 1e-6)
-		// A UART beside a free-running clock it has nothing to do with: UART on
-		// its own line in both, never SPI or I2C on the pair.
-		uaFree := uartWave([]int{0x48, 0x69, 0x55, 0xAA, 0x41, 0x42, 0x43, 0x44}, 40)
-		for _, hp := range []int{7, 61} {
-			ck := freeClock(len(uaFree), hp)
-			addAuto(uaFree, ck, 1/(40*115200.0))
-			addAuto(ck, uaFree, 1/(40*115200.0))
-		}
-		// Every SPI mode on sharp edges (CPHA from the launch edge) and a
-		// binary payload against text sent LSB first (the bit-order tie).
-		bin := []int{0x0F, 0xF0, 0x3C, 0xC3, 0x12, 0x34, 0x56, 0x78}
-		for _, mode := range [][2]bool{{false, false}, {false, true}, {true, false}, {true, true}} {
-			ck, dt := spiModeWave(bin, 6, 1, mode[0], mode[1], true)
-			addAuto(ck, dt, 1e-7)
-		}
-		ck, dt := spiModeWave([]int{'H', 'e', 'l', 'l', 'o', '!'}, 4, 0, true, true, false)
-		addAuto(dt, ck, 1e-7) // roles swapped
 	}
 
 	// ---- Corruption fuzz: flip/truncate random regions of each base waveform and

@@ -332,7 +332,7 @@ func (c *Controller) displayAndView(s *sv) (Display, wsview.View) {
 	d := Display{ShowC1: s.chDisp[0], ShowC2: s.chDisp[1], ShowMeas: s.showMeas, ViewMode: s.viewMode, MathMode: s.mathMode,
 		Zoom: max(s.zoom, 1), ZoomOff: s.zoomOff, Persist: s.persist, FFTSrc: s.fftSrc,
 		DecProto: s.decProto, DecBaud: s.decBaud, DecChA: s.decChA, DecChB: s.decChB, DecCPOL: s.decCPOL, DecCPHA: s.decCPHA,
-		DecFormat: s.decFormat, CurOn: s.curOn, CurType: s.curType, CurSel: s.curSel, CurX: s.curX, CurY: s.curY,
+		DecLSB: s.decLSB, DecFormat: s.decFormat, DecDetecting: s.ui.busDetecting, DecAuto: s.decAuto, DecNote: s.ui.busNote, CurOn: s.curOn, CurType: s.curType, CurSel: s.curSel, CurX: s.curX, CurY: s.curY,
 		AutosetBusy: busy, AutosetMsg: amsg}
 	for _, it := range s.meas {
 		d.MeasItems = append(d.MeasItems, fmt.Sprintf("%d:%s", it.ch+1, measParams[it.param].id))
@@ -835,9 +835,7 @@ func (c *Controller) adjustOpensMenu() bool {
 	case s.ui.ws == wsview.Scope:
 		return true
 	case s.ui.ws == wsview.Bus && !s.ui.busEye:
-		c.amu.Lock()
-		defer c.amu.Unlock()
-		return busDecoding(s, &c.ana)
+		return busDecoding(s)
 	}
 	return false
 }

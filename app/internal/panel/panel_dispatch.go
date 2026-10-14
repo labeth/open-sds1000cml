@@ -149,7 +149,7 @@ func (c *Controller) button(code int) {
 	defer c.afterInput()
 	switch code {
 	case btnRunStop:
-		if c.streaming() { // Auto Stream: STOP ends the stream (manual trigger), RUN restarts it
+		if c.streaming() { // Stream: STOP ends the stream (manual trigger), RUN restarts it
 			c.mu.Lock()
 			s := c.stream
 			c.mu.Unlock()

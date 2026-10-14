@@ -73,7 +73,8 @@ func (c *Controller) setTrigTypeIndex(st engine.Stats, next int) {
 // its I2C address and direction: the engine reads those for I2C only, so a
 // bus other than I2C keeps them for when it is I2C again (the I2C address
 // row reads the kept value, not in use). The bus is decoded as the BUS
-// workspace decodes it (Manchester IEEE, most significant bit first); the
+// workspace decodes it (Manchester IEEE and most significant bit first, SPI in
+// its bit order); the
 // engine measures what the panel does not set (the threshold, SENT's tick
 // and nibbles).
 // TRLC-LINKS: REQ-SDS-013
@@ -85,7 +86,7 @@ func (c *Controller) serialBus(p engine.SerialParams) engine.SerialParams {
 	}
 	p.ChA, p.ChB = c.decChA, c.decChB
 	p.Baud, p.Bits, p.Parity = c.decBaud, 8, "none"
-	p.CPOL, p.CPHA, p.MSB, p.IEEE = c.decCPOL, c.decCPHA, true, true
+	p.CPOL, p.CPHA, p.MSB, p.IEEE = c.decCPOL, c.decCPHA, !c.decLSB, true
 	p.HaveThr, p.TickNs, p.Nibbles, p.DataBaud = false, 0, 0, 0
 	return p
 }
@@ -99,7 +100,7 @@ func serialProto(proto int) bool {
 }
 
 // syncSerialBus re-sends the BUS settings to an armed serial trigger, or
-// disarms it when decode no longer names a bus (Off, Auto).
+// disarms it when decode no longer names a bus (Off).
 // TRLC-LINKS: REQ-SDS-013
 func (c *Controller) syncSerialBus() {
 	se := c.serialTrig()

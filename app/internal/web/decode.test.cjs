@@ -3,7 +3,7 @@
 // ui.html runs. Synthetic generators render ideal logic into 0..255 code arrays
 // at a chosen SPB (columns per bit); colTimeS is picked so baud = 1/(SPB*colTimeS).
 // Run: node decode.test.cjs   (exit 0 = pass).
-const { fmtByte, frameDtS, frameSpanS, sliceChannel, logicAt, decodeUART, decodeI2C, decodeSPI, decode, autodetect } = require("./decode.js");
+const { fmtByte, frameDtS, frameSpanS, sliceChannel, logicAt, decodeUART, decodeI2C, decodeSPI, decode } = require("./decode.js");
 
 let failed = 0;
 // TRLC-LINKS: REQ-SDS-181
@@ -99,7 +99,7 @@ const SPB = 40, COLT = 1 / (SPB * 115200);
 // --- 1b. dt_s is authoritative for the decode time base ----------------------
 // On the 1-200 ns/div bands col_span_s is a display nominal (2 ns capture
 // shown at 1 ns), so a baud derived from it reads 2x high. The frame helpers
-// and the dispatcher/autodetect must prefer the server's dt_s and fall back
+// and the dispatcher must prefer the server's dt_s and fall back
 // to col_span_s/n for frames that lack it (superres view, old captures).
 {
   const SPB = 16, dt = 1 / (SPB * 115200); // true col time for 115200 baud
@@ -113,9 +113,6 @@ const SPB = 40, COLT = 1 / (SPB * 115200);
   const r = decode(f, { protocol: "uart", baud: 115200 });
   ok(r.ok && r.bytes.length === 3 && r.bytes[0] === 0x41, "dispatcher decodes via dt_s");
   near(r.meta.baud, 115200, 6000, "dispatcher baud from dt_s, not the 2x nominal");
-  const ad = autodetect(f, {});
-  ok(ad.proto === "uart", "autodetect finds UART via dt_s");
-  near(ad.cfg.baud || ad.result.meta.baud, 115200, 6000, "autodetect baud from dt_s, not the 2x nominal");
 }
 
 // --- 2. UART auto-baud -------------------------------------------------------
@@ -218,61 +215,6 @@ const SPB = 40, COLT = 1 / (SPB * 115200);
   ok(!sliceChannel(gaps, {}).ok, "all-gap channel -> slice not ok (no crash)");
 }
 
-// --- 8. autodetect -----------------------------------------------------------
-{
-  // TRLC-LINKS: REQ-SDS-181
-  const mkFrame = (c1, c2) => ({ c1, c2, col_span_s: c1.length * COLT });
-  // TRLC-LINKS: REQ-SDS-181
-  const flat = n => new Array(n).fill(HI); // idle-high inactive line
-
-  const i2c = i2cGen([
-    { type: "start" }, { type: "byte", val: (0x50 << 1) }, { type: "ack" },
-    { type: "byte", val: 0x00 }, { type: "ack" }, { type: "byte", val: 0xFF }, { type: "nak" }, { type: "stop" },
-  ], SPB);
-  let d = autodetect(mkFrame(i2c.scl, i2c.sda), {});
-  ok(d.proto === "i2c" && d.roles.scl === 1 && d.roles.sda === 2, `autodetect I2C -> ${d.proto} scl=${d.roles.scl} sda=${d.roles.sda}`);
-  d = autodetect(mkFrame(i2c.sda, i2c.scl), {}); // swapped channels -> roles flip
-  ok(d.proto === "i2c" && d.roles.scl === 2 && d.roles.sda === 1, `autodetect I2C swapped -> scl=${d.roles.scl} sda=${d.roles.sda}`);
-
-  const spi = spiGen([0xA5, 0x3C, 0x5A, 0xC3], SPB, { cpol: 0, cpha: 0 });
-  d = autodetect(mkFrame(spi.clk, spi.data), {});
-  ok(d.proto === "spi" && d.roles.clk === 1 && d.roles.data === 2, `autodetect SPI -> ${d.proto} clk=${d.roles.clk} data=${d.roles.data}`);
-
-  const u = uartGen([0x48, 0x69, 0x21], SPB);
-  d = autodetect(mkFrame(u, flat(u.length)), {});
-  ok(d.proto === "uart" && d.roles.line === 1, `autodetect UART -> ${d.proto} line=${d.roles.line}`);
-  ok(d.result && d.result.text === "48 69 21", `autodetect UART decoded "${d.result && d.result.text}"`);
-
-  d = autodetect(mkFrame(flat(500), flat(500)), {});
-  ok(d.proto === "off", `autodetect flat -> ${d.proto} (${d.reason})`);
-
-  // CPHA disambiguation needs REAL edges: the wrong phase samples ON the data
-  // transition. Idealised instant edges sample a clean (shifted) rail either way,
-  // so add a linear ramp at each data transition; then the correct phase (samples
-  // mid-bit) has a high margin and the wrong phase (samples on the ramp) low.
-  // TRLC-LINKS: REQ-SDS-181
-  const ramp = (arr, w) => {
-    const out = arr.slice(), h = Math.floor(w / 2);
-    for (let i = 1; i < arr.length; i++) if (arr[i] !== arr[i - 1])
-      for (let k = -h; k <= h; k++) { const j = i + k; if (j >= 0 && j < out.length) out[j] = Math.round(arr[i - 1] + (arr[i] - arr[i - 1]) * (k + h) / w); }
-    return out;
-  };
-  for (const cpha of [0, 1]) {
-    const g = spiGen([0xA5, 0x3C, 0x99, 0x66], SPB, { cpol: 0, cpha });
-    const f = { c1: g.clk, c2: ramp(g.data, Math.round(SPB * 0.6)), col_span_s: g.clk.length * COLT };
-    const dd = autodetect(f, {});
-    ok(dd.proto === "spi" && dd.cfg.cpha === cpha, `autodetect SPI picks CPHA=${cpha} by sample margin (got proto=${dd.proto} cpha=${dd.cfg.cpha})`);
-  }
-  // MSB/LSB: a text payload decodes to readable ASCII in the true order and to
-  // gibberish in the reversed order -> printable heuristic picks the true order.
-  for (const bo of ["msb", "lsb"]) {
-    const g = spiGen([0x48, 0x65, 0x6C, 0x6C, 0x6F], SPB, { cpol: 0, cpha: 0, bitOrder: bo }); // "Hello"
-    const f = { c1: g.clk, c2: g.data, col_span_s: g.clk.length * COLT };
-    const dd = autodetect(f, {});
-    ok(dd.proto === "spi" && dd.cfg.msb === (bo === "msb"), `autodetect SPI picks bit order ${bo} by ASCII (got proto=${dd.proto} msb=${dd.cfg.msb})`);
-  }
-}
-
 // --- fuzz: hostile input must never hang or throw (parity of the Go fuzz) ---
 {
   let s = 12345 >>> 0;
@@ -289,7 +231,6 @@ const SPB = 40, COLT = 1 / (SPB * 115200);
       decodeUART(a, ct, { baud: [0, -9600, 110, 115200][Math.floor(rnd() * 4)], bits: [0, 5, 8, 9, 64][Math.floor(rnd() * 5)], parity: ["none", "even", "odd"][Math.floor(rnd() * 3)], fmt: fm });
       decodeI2C(a, b, ct, { fmt: fm });
       decodeSPI(a, b, ct, { cpol: rnd() < 0.5, cpha: rnd() < 0.5, fmt: fm });
-      autodetect({ c1: a, c2: b, col_span_s: n * ct }, {});
     } catch (e) { ok(false, `fuzz iter ${i} threw: ${e.message}`); break; }
     if (Date.now() - t0 > 15000) { ok(false, `fuzz hung after ${i} iters (DoS)`); break; }
   }

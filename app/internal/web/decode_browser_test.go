@@ -78,7 +78,7 @@ func TestDecodeBrowser(t *testing.T) {
 		}
 	}
 	fs := &fakeScope{frameGen: gen, stats: engine.Stats{Running: true, TrigPosFrac: 0.5}}
-	srv := httptest.NewServer(New(fs, nil, nil, nil).Handler())
+	srv := httptest.NewServer(New(fs, nil, newDecodePanel(fs, nil), nil).Handler())
 	defer srv.Close()
 
 	out, err := exec.Command("node", "decode_browser.mjs", srv.URL).CombinedOutput()

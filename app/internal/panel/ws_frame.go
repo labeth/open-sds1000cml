@@ -188,6 +188,7 @@ func (c *Controller) OnFrame(f *engine.Frame) {
 		}
 	}
 	c.amu.Unlock()
+	c.watchBus(s, f)
 	if s.stacking {
 		finish = c.stackProgress(f)
 	}
@@ -202,7 +203,7 @@ func (c *Controller) OnFrame(f *engine.Frame) {
 // TRLC-LINKS: REQ-SDS-214
 func decodeParamsOf(s *sv) framecalc.DecodeParams {
 	return framecalc.DecodeParams{Proto: s.decProto, Baud: s.decBaud, ChA: s.decChA, ChB: s.decChB,
-		CPOL: s.decCPOL, CPHA: s.decCPHA, Format: []string{"hex", "ascii", "both"}[mod3(s.decFormat)]}
+		CPOL: s.decCPOL, CPHA: s.decCPHA, LSB: s.decLSB, Format: []string{"hex", "ascii", "both"}[mod3(s.decFormat)]}
 }
 
 // codesOf returns a channel's valid samples as codes (Q8.8 when the frame

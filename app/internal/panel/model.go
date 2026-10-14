@@ -313,7 +313,8 @@ type sv struct {
 	memDepth          int // the depth asked for: on the SRAM images the one in use (Stats.MemDepth) follows the timebase
 
 	decProto, decBaud, decChA, decChB int
-	decCPOL, decCPHA                  bool
+	decCPOL, decCPHA, decLSB          bool
+	decAuto                           bool // the settings are what Auto filled in
 	decFormat                         int
 	decMode, decTrig, decValue        int
 	streamList                        bool

@@ -10,7 +10,6 @@ import (
 	"testing"
 	"time"
 
-	"open-sds/app/internal/decode"
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/panel/framecalc"
 	"open-sds/app/internal/streamview"
@@ -276,15 +275,16 @@ func (e *envEng) LeaseSampleView(d time.Duration) { e.sampled.Store(d > 0) }
 type recStream struct {
 	mu                     sync.Mutex
 	label, refused         string
+	params                 engine.SerialParams
 	active, started, stops int
 	eng                    *envEng
 }
 
 // TRLC-LINKS: REQ-SDS-214
-func (s *recStream) Start(_ engine.SerialParams, _ engine.StreamTrigger, _ int, label string) error {
+func (s *recStream) Start(p engine.SerialParams, _ engine.StreamTrigger, _ int, label string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.label, s.active, s.started = label, 1, s.started+1
+	s.label, s.params, s.active, s.started = label, p, 1, s.started+1
 	return nil
 }
 
@@ -324,8 +324,8 @@ func (s *recStream) Lines(int, int) streamview.LinesPage { return streamview.Lin
 func (s *recStream) LinesBinary(int, []byte) int { return 0 }
 
 // newEnvRig is a controller at 500us/div with a 115200 UART on C1 that its
-// live envelope (3.6 points a bit) cannot show, Auto starting a stream as the
-// app's does: on the frame on screen.
+// live envelope (3.6 points a bit) cannot show; sampled records come while a
+// decode or sample lease runs.
 // TRLC-LINKS: REQ-SDS-214
 func newEnvRig(t *testing.T) (*Controller, *envEng, *recStream) {
 	t.Helper()
@@ -345,85 +345,125 @@ func newEnvRig(t *testing.T) (*Controller, *envEng, *recStream) {
 		fn(&f)
 	})
 	st := &recStream{eng: eng}
-	c.SetDecodeStream(st, func() (decode.Result, float64, bool) {
-		var res decode.Result
-		var sampleS float64
-		c.frameFn(func(f *engine.Frame) {
-			if f.PeakDetect && !f.Ordered || f.IsEnv {
-				return
-			}
-			res, sampleS = decode.AutodetectFast(f.C1[:f.Valid], f.C2[:f.Valid], f.SampleS, "hex")
-		})
-		return res, sampleS, res.OK
-	})
+	c.SetDecodeStream(st)
 	c.setTdivNearest(500e-6)
-	if _, ok := c.lastAuto(); ok {
-		t.Fatal("Auto read the live envelope: the rig shows nothing")
+	if _, _, ok := c.detectOnScreen(); ok {
+		t.Fatal("the detection read the live envelope: the rig shows nothing")
 	}
 	return c, eng, st
 }
 
-// Picking Protocol = Auto finds a bus its live envelope cannot show, on a
-// sampled record as BUS does, and steps to the timebase that reads it (a
-// 115200 Bd UART plain on screen at 500us/div matches no protocol on the
-// envelope); decode stays Auto.
-// TRLC-LINKS: REQ-SDS-214
-func TestAutoFindsTheBusItsEnvelopeHides(t *testing.T) {
+// Protocol = Auto detects the bus once, on a sampled record when the live
+// envelope cannot show it, and fills it into the decoder settings as if typed
+// in (a 115200 Bd UART plain on screen at 500us/div matches no protocol on
+// the envelope); the timebase steps to the slowest that reads it. The row
+// then reads the protocol found, not Auto.
+// TRLC-LINKS: REQ-SDS-214, REQ-SDS-222
+func TestAutoFillsInTheBusItsEnvelopeHides(t *testing.T) {
 	c, eng, _ := newEnvRig(t)
 	set(t, c, "bus.protocol", "Auto")
-	if tdiv := eng.Snapshot().TdivS; tdiv != 200e-6 || c.snapProto() != framecalc.ProtoAuto ||
-		!strings.Contains(c.View().Notice, "AUTO: UART 115200 8N1 on C1, 200us/div to read it") {
-		t.Fatalf("Auto at 500us/div: tdiv %g protocol %d notice %q", tdiv, c.snapProto(), c.View().Notice)
+	s := c.snap()
+	if tdiv := eng.Snapshot().TdivS; tdiv != 200e-6 || s.decProto != framecalc.ProtoUART || s.decBaud != 115200 || s.decChA != 0 ||
+		!s.decAuto || !strings.Contains(c.View().Notice, "AUTO: UART 115200 8N1 on C1, 200us/div to read it") {
+		t.Fatalf("Auto at 500us/div: tdiv %g protocol %d baud %d source %d filled %v notice %q", tdiv, s.decProto, s.decBaud, s.decChA, s.decAuto, c.View().Notice)
+	}
+	if p, b, src := rowText(c, "bus.protocol"), rowText(c, "bus.baud"), rowText(c, "bus.source"); p != "UART" || b != "115k2" || src != "CH1" {
+		t.Fatalf("the rows read %q %q %q, not the bus Auto filled in", p, b, src)
+	}
+	if d, _ := c.Snapshot(); d.DecProto != framecalc.ProtoUART || !d.DecAuto || d.DecDetecting || !strings.Contains(d.DecNote, "UART 115200 8N1 on C1") {
+		t.Fatalf("the remote's view: %+v", d)
 	}
 }
 
-// Stream On with Protocol = Auto starts from the bus found on a sampled
-// record, not "Auto found no protocol on screen" with a UART plain on screen
-// at 500us/div.
-// TRLC-LINKS: REQ-SDS-018
-func TestAutoStreamStartsOnTheBusItsEnvelopeHides(t *testing.T) {
-	c, _, st := newEnvRig(t)
-	c.mu.Lock()
-	c.decProto = framecalc.ProtoAuto
-	c.mu.Unlock()
+// Auto with a bus decoding already and none found keeps the settings in use
+// (a bus found again decodes with them); from Off it leaves decode off.
+// TRLC-LINKS: REQ-SDS-214, REQ-SDS-222
+func TestAutoFindingNothingKeepsTheSettings(t *testing.T) {
+	idleLine := make([]uint8, 1000)
+	for i := range idleLine {
+		idleLine[i] = 210
+	}
+	for _, tc := range []struct {
+		from, want int
+	}{{framecalc.ProtoUART, framecalc.ProtoUART}, {framecalc.ProtoOff, framecalc.ProtoOff}} {
+		c, eng, _ := newC(t)
+		c.detectSync = true
+		c.SetFrameSource(func(fn func(*engine.Frame)) {
+			fn(&engine.Frame{C1: idleLine, C2: idleLine, Valid: len(idleLine), WinCols: len(idleLine), SampleS: 2e-9, TdivS: eng.Snapshot().TdivS})
+		})
+		if err := c.setDecProto(tc.from); err != nil {
+			t.Fatal(err)
+		}
+		set(t, c, "bus.protocol", "Auto")
+		if p := c.snapProto(); p != tc.want || !strings.Contains(c.View().Notice, "no bus found") {
+			t.Fatalf("from %d: protocol %d, notice %q", tc.from, p, c.View().Notice)
+		}
+	}
+}
+
+// Stream On starts at once from the decoder settings Auto filled in, with
+// the threshold read off their decode: no second detection, the protocol
+// and the timebase as they were.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-214, REQ-SDS-222
+func TestStreamStartsFromTheFilledInSettings(t *testing.T) {
+	c, eng, st := newEnvRig(t)
+	set(t, c, "bus.protocol", "Auto")
+	tdiv := eng.Snapshot().TdivS
 	set(t, c, "bus.stream", "On")
 	st.mu.Lock()
 	defer st.mu.Unlock()
-	if st.started != 1 || st.label != "UART 115200 b/s C1" || st.refused != "" {
-		t.Fatalf("stream: started %d label %q refused %q", st.started, st.label, st.refused)
+	if st.started != 1 || st.label != "UART 115200 8N1 on C1" || st.refused != "" || st.params.Proto != 1 ||
+		st.params.Baud != 115200 || !st.params.HaveThr || st.params.ChA != 0 {
+		t.Fatalf("stream: started %d label %q refused %q params %+v", st.started, st.label, st.refused, st.params)
+	}
+	if eng.Snapshot().TdivS != tdiv || c.snapProto() != framecalc.ProtoUART {
+		t.Fatalf("the stream's start moved the timebase to %g or the protocol to %d", eng.Snapshot().TdivS, c.snapProto())
 	}
 }
 
-// "Trigger on it" with Protocol = Auto arms on the bus found on a sampled
-// record when the frame on screen cannot show it, fixing decode to it and
-// ending the stream Auto ran (not "Auto decode found no bus" with a UART
-// plain on screen at 500us/div, the stream still running).
-// TRLC-LINKS: REQ-SDS-013, REQ-SDS-214
-func TestAutoTriggerArmsOnTheBusItsEnvelopeHides(t *testing.T) {
-	c, eng, st := newEnvRig(t)
-	c.mu.Lock()
-	c.decProto = framecalc.ProtoAuto
-	c.mu.Unlock()
+// Typed-in settings stream as they are: a UART typed in on C2 at 9600 Bd
+// streams that bus, though a detection would name the faster one on C1.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-222
+func TestStreamUsesTypedInSettingsAsTheyAre(t *testing.T) {
+	c, eng, _ := newC(t)
+	c.detectSync = true
+	fast := uartFrame([]string{"Hi U\x55\xaa"}, 115200, 300e-6, 20e-9, 200000)
+	slow := uartFrame([]string{"slow"}, 9600, 1e-3, 20e-9, 200000)
+	f := *fast
+	f.C2 = slow.C1
+	c.SetFrameSource(func(fn func(*engine.Frame)) {
+		g := f
+		g.TdivS = eng.Snapshot().TdivS
+		fn(&g)
+	})
+	st := &recStream{eng: &envEng{fakeEng: eng}}
+	c.SetDecodeStream(st)
+	set(t, c, "bus.protocol", "UART")
+	set(t, c, "bus.source", "CH2")
+	set(t, c, "bus.baud", "9600")
 	set(t, c, "bus.stream", "On")
-	eng.leased.Store(false) // the stream is running: the live envelope is back
+	filled := c.snap().decAuto
+	st.mu.Lock()
+	defer st.mu.Unlock()
+	if st.started != 1 || st.label != "UART 9600 8N1 on C2" || st.params.ChA != 1 || st.params.Baud != 9600 || filled {
+		t.Fatalf("stream: started %d label %q refused %q params %+v", st.started, st.label, st.refused, st.params)
+	}
+}
+
+// "Trigger on it" arms on the settings Auto filled in as they stand: the
+// serial trigger gets their bus, nothing is detected again.
+// TRLC-LINKS: REQ-SDS-013, REQ-SDS-214, REQ-SDS-222
+func TestTriggerArmsOnTheFilledInSettings(t *testing.T) {
+	c, eng, _ := newEnvRig(t)
+	set(t, c, "bus.protocol", "Auto")
+	c.mu.Lock()
+	c.ui.notice = ""
+	c.mu.Unlock()
 	set(t, c, "bus.trigger_on", "On")
-	if eng.Snapshot().SerialMode == 0 || c.snapProto() != framecalc.ProtoUART || eng.Snapshot().TdivS != 200e-6 ||
-		!strings.Contains(c.View().Notice, "Decode fixed to UART 115200 8N1 on C1 for the serial trigger, 200us/div to read it") {
-		t.Fatalf("armed %d protocol %d tdiv %g notice %q", eng.Snapshot().SerialMode, c.snapProto(), eng.Snapshot().TdivS, c.View().Notice)
+	p := eng.SerialConfig()
+	if eng.Snapshot().SerialMode == 0 || p.Proto != 1 || p.Baud != 115200 || p.ChA != 0 || strings.Contains(c.View().Notice, "AUTO") {
+		t.Fatalf("armed %d params %+v notice %q", eng.Snapshot().SerialMode, p, c.View().Notice)
 	}
-	for i := 0; ; i++ { // the stream stops off the panel goroutine
-		if !st.Active() {
-			break
-		}
-		if i == 100 {
-			t.Fatal("the stream kept running under the serial trigger")
-		}
-		time.Sleep(10 * time.Millisecond)
-	}
-	if c.streaming() {
-		t.Fatal("still in stream mode")
-	}
-	runsAgain(t, eng)
 }
 
 // runsAgain waits for RUN after a stream's end stopped the scope.
@@ -447,14 +487,12 @@ func TestLeavingAStreamRunsAgain(t *testing.T) {
 		do   func(*Controller)
 	}{
 		{"Stream Off", func(c *Controller) { set(t, c, "bus.stream", "Off") }},
-		{"Protocol UART", func(c *Controller) { set(t, c, "bus.protocol", "UART") }},
+		{"Protocol I2C", func(c *Controller) { set(t, c, "bus.protocol", "I2C") }},
 		{"Default setup", func(c *Controller) { c.DefaultSetup() }},
 	} {
 		t.Run(leave.name, func(t *testing.T) {
 			c, eng, st := newEnvRig(t)
-			c.mu.Lock()
-			c.decProto = framecalc.ProtoAuto
-			c.mu.Unlock()
+			set(t, c, "bus.protocol", "Auto")
 			set(t, c, "bus.stream", "On")
 			if !st.Active() {
 				t.Fatal("no stream")
@@ -471,61 +509,43 @@ func TestLeavingAStreamRunsAgain(t *testing.T) {
 	}
 }
 
-// "Trigger on it" with Protocol = Auto on a sampled frame on screen (a
-// stream's record) fixes decode to the bus there and steps to the timebase
-// that reads it live: armed at 500us/div, the decode strip cannot show the
-// bytes it triggers on.
-// TRLC-LINKS: REQ-SDS-013, REQ-SDS-214
-func TestAutoTriggerStepsToATimebaseThatReadsIt(t *testing.T) {
-	c, eng, _ := newEnvRig(t)
-	eng.leased.Store(true) // the frame on screen is sampled
-	c.mu.Lock()
-	c.decProto = framecalc.ProtoAuto
-	c.mu.Unlock()
-	set(t, c, "bus.trigger_on", "On")
-	if eng.Snapshot().SerialMode == 0 || eng.Snapshot().TdivS != 200e-6 ||
-		!strings.Contains(c.View().Notice, "Decode fixed to UART 115200 8N1 on C1 for the serial trigger, 200us/div to read it") {
-		t.Fatalf("armed %d tdiv %g notice %q", eng.Snapshot().SerialMode, eng.Snapshot().TdivS, c.View().Notice)
-	}
-}
-
 // A timebase asked for while a stream ran applies when the stream ends: the
-// readable-timebase step judges that one, not the running one ("Trigger on it"
-// from a stream at 200us/div with 500us/div pending would arm at 500us/div,
-// too coarse to show the bus).
+// readable-timebase step after a detection judges that one, not the running
+// one (Auto at 200us/div with 500us/div pending would leave 500us/div, too
+// coarse to show the bus).
 // TRLC-LINKS: REQ-SDS-214
 func TestReadableTimebaseJudgesTheTimebaseAskedFor(t *testing.T) {
 	c, eng, _ := newEnvRig(t)
 	eng.leased.Store(true)
 	c.setTdivNearest(200e-6)
 	eng.set(func(st *engine.Stats) { st.TdivSetS = 500e-6 }) // asked for, not yet applied
-	c.mu.Lock()
-	c.decProto = framecalc.ProtoAuto
-	c.mu.Unlock()
-	set(t, c, "bus.trigger_on", "On")
-	if st := eng.Snapshot(); st.SerialMode == 0 || st.TdivSet() != 200e-6 {
-		t.Fatalf("armed %d, timebase asked for %g", st.SerialMode, st.TdivSet())
+	set(t, c, "bus.protocol", "Auto")
+	if st := eng.Snapshot(); c.snapProto() != framecalc.ProtoUART || st.TdivSet() != 200e-6 {
+		t.Fatalf("protocol %d, timebase asked for %g", c.snapProto(), st.TdivSet())
 	}
 }
 
-// Auto on a live envelope too coarse for the bus says so, as a fixed protocol
-// does, not "AUTO: no protocol matched" with a 115200 Bd UART on screen at
-// 500us/div; the sampled record finds the UART.
+// A detection on a live envelope too coarse for the bus says so, as a fixed
+// protocol does, not "no protocol matched" with a 115200 Bd UART on screen at
+// 500us/div; the sampled record finds the UART. Auto decodes no frame.
 // TRLC-LINKS: REQ-SDS-214
 func TestCoarseEnvelopeAutoSaysWhy(t *testing.T) {
 	uart := uartFrame([]string{"Hi U\\x55\\xaa"}, 115200, 300e-6, 20e-9, 200000)
-	p := framecalc.DecodeParams{Proto: framecalc.ProtoAuto, Format: "hex"}
-	if res := framecalc.Decode(envelope2(uart, 244), p); res.OK || res.Error != "no protocol resolved at this timebase - S/DIV faster, or SINGLE" {
+	if res := framecalc.Detect(envelope2(uart, 244), "hex"); res.OK || res.Error != "no protocol resolved at this timebase - S/DIV faster, or SINGLE" {
 		t.Fatalf("coarse envelope: ok %v proto %q error %q", res.OK, res.Proto, res.Error)
 	}
-	if res := framecalc.Decode(uart, p); !res.OK || res.Proto != "uart" {
+	if res := framecalc.Detect(uart, "hex"); !res.OK || res.Proto != "uart" {
 		t.Fatalf("sampled: ok %v proto %q error %q", res.OK, res.Proto, res.Error)
+	}
+	if res := framecalc.Decode(uart, framecalc.DecodeParams{Proto: framecalc.ProtoAuto, Format: "hex"}); res.OK || res.Proto != "" {
+		t.Fatalf("Auto decoded a frame: %+v", res)
 	}
 }
 
 // A search whose caller no longer wants the bus gives the timebase back:
-// Auto picked after Autoset's 10us/div (about one UART byte) and changed
-// while the search looked at 200us/div must not leave the scope at 200us/div.
+// Auto picked after Autoset's 10us/div (about one UART byte) and a protocol
+// set while the search looked at 200us/div must not leave the scope at
+// 200us/div.
 // TRLC-LINKS: REQ-SDS-214
 func TestAutoSearchGivesTheTimebaseBackWhenLeft(t *testing.T) {
 	c, eng, _ := newC(t)
@@ -543,6 +563,7 @@ func TestAutoSearchGivesTheTimebaseBackWhenLeft(t *testing.T) {
 		}
 		c.mu.Lock()
 		c.decProto = framecalc.ProtoOff // picked meanwhile
+		c.decGen++
 		c.mu.Unlock()
 		u := *uart
 		u.TdivS = td
@@ -550,8 +571,8 @@ func TestAutoSearchGivesTheTimebaseBackWhenLeft(t *testing.T) {
 	})
 	c.setTdivNearest(10e-6)
 	set(t, c, "bus.protocol", "Auto")
-	if td := eng.Snapshot().TdivS; td != 10e-6 {
-		t.Fatalf("timebase %g after a search no longer wanted", td)
+	if td := eng.Snapshot().TdivS; td != 10e-6 || c.snapProto() != framecalc.ProtoOff {
+		t.Fatalf("timebase %g, protocol %d after a search no longer wanted", td, c.snapProto())
 	}
 }
 
@@ -650,15 +671,10 @@ func (s *slowStream) Active() bool {
 func TestStreamOnOffOnRuns(t *testing.T) {
 	c, eng, _ := newC(t)
 	uart := uartFrame([]string{"Hi U\x55\xaa"}, 115200, 300e-6, 20e-9, 200000)
-	res, sampleS := decode.AutodetectFast(uart.C1, uart.C2, uart.SampleS, "hex")
-	if !res.OK {
-		t.Fatal("no UART in the frame")
-	}
+	c.SetFrameSource(func(fn func(*engine.Frame)) { fn(uart) })
 	st := &slowStream{begin: func() { eng.SetRunning(false) }}
-	c.SetDecodeStream(st, func() (decode.Result, float64, bool) { return res, sampleS, true })
-	c.mu.Lock()
-	c.decProto = framecalc.ProtoAuto
-	c.mu.Unlock()
+	c.SetDecodeStream(st)
+	set(t, c, "bus.protocol", "UART")
 	for _, on := range []string{"On", "Off", "On"} {
 		set(t, c, "bus.stream", on)
 		time.Sleep(20 * time.Millisecond)

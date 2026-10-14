@@ -11,8 +11,8 @@ function decCodes(role) {
 
 // renewDecodeLease keeps the engine sending samples, not peak-detect pairs,
 // while this browser decodes (the lease lapses a few seconds after it stops).
-// At 100 us/div a peak-detect bucket is wider than an SPI clock, and auto-detect
-// names it Manchester or UART.
+// At 100 us/div a peak-detect bucket is wider than an SPI clock, and the SPI
+// decode reads no clock there.
 // TRLC-LINKS: REQ-SDS-207
 let decodeLeaseT = 0;
 // TRLC-LINKS: REQ-SDS-207
@@ -254,8 +254,8 @@ function updateDecodePanel() {
   if (typeof stOnDecodeChange === "function") stOnDecodeChange(); // serial trigger reuses this config
 }
 
-// syncDecodeControls: write dcfg back into the DOM controls (used after
-// autodetect picks settings so the dropdowns/inputs reflect what it chose).
+// syncDecodeControls: write dcfg back into the DOM controls (after the page
+// takes the scope's settings, so the dropdowns/inputs show them).
 // TRLC-LINKS: REQ-SDS-207
 function syncDecodeControls() {
   $("decProto").value = dcfg.proto;
@@ -269,23 +269,6 @@ function syncDecodeControls() {
   $("decAuto").classList.toggle("on", dcfg.auto);
 }
 
-// detectProtoUI maps a decoder's canonical proto name to the #decProto select
-// value (the decoders say "canfd"/"usbls"; the UI options are "can"/"usb").
-// TRLC-LINKS: REQ-SDS-207
-function detectProtoUI(p) { return p === "canfd" ? "can" : p === "usbls" ? "usb" : p; }
-
-// TRLC-LINKS: REQ-SDS-207
-function detectLabel(d) {
-  const b = d.result && d.result.meta || {};
-  if (d.proto === "uart") return "UART · C" + d.roles.line + " · " + (b.baud ? b.baud + " bd" : "auto");
-  if (d.proto === "i2c") return "I²C · SCL=C" + d.roles.scl + " SDA=C" + d.roles.sda;
-  if (d.proto === "spi") return "SPI · CLK=C" + d.roles.clk + " DATA=C" + d.roles.data + " · mode " + (d.cfg.cpol * 2 + d.cfg.cpha) + " · " + (d.cfg.msb ? "MSB" : "LSB");
-  // Single-wire protocols: name · line · detected bit rate (when known).
-  const names = { manchester: "Manchester", sent: "SENT", canfd: "CAN", mil1553: "MIL-1553B", arinc429: "ARINC 429", usbls: "USB LS/FS", flexray: "FlexRay" };
-  const name = names[d.proto] || d.proto;
-  return name + (d.roles.line ? " · C" + d.roles.line : "") + (b.bitrate ? " · " + b.bitrate + " bd" : "");
-}
-
 // TRLC-LINKS: REQ-SDS-207
 function setDetectMsg(t, err) {
   const el = $("decDetectMsg");
@@ -294,274 +277,102 @@ function setDetectMsg(t, err) {
   el.style.color = err ? "#e8604c" : "var(--dim)";
 }
 
-// fetchSampledFrame recalls one sampled record of the live acquisition that
-// accept takes, or null within waitMs: the full-rate feed the eye diagram and
-// super-res read (lease "raw"), or a decimated record (lease "samples": a
-// few thousand filtered samples a screen, read in tens of milliseconds).
-// TRLC-LINKS: REQ-SDS-207
-async function fetchSampledFrame(waitMs, accept, lease) {
-  const t0 = performance.now();
-  let since = 0;
-  while (performance.now() - t0 < waitMs) {
-    try {
-      const r = await fetch("/api/frame.bin?since=" + since + "&waitms=1000&raw=1&lease=" + (lease || "raw"));
-      if (!r.ok) return null;
-      const f = decodeBinFrame(await r.arrayBuffer());
-      if (f && !f.unchanged) {
-        since = f.seq;
-        if (f.c1 && !f.is_env && !f.peak_detect && (!accept || accept(f))) return f;
-      }
-    } catch { return null; }
-  }
-  return null;
+// ---- the scope's decoder settings ----
+// The page decodes with the scope's own decoder settings (its BUS sheet):
+// set on the LCD, a phone or here, or filled in by the scope's Auto, they are
+// one set, shown alike everywhere. Auto-detect asks the scope's Auto, which
+// detects the bus once and fills them in.
+
+// DEC_SCOPE_PROTOS names the scope's protocol numbers as this page's; 1 is
+// the scope's Auto, a detection, never a decoder.
+const DEC_SCOPE_PROTOS = ["off", null, "uart", "i2c", "spi", "manchester", "sent", "can", "mil1553", "arinc429", "usb", "flexray"];
+
+// decScopeSettings is the scope's decode (the status's panel Display) as this
+// page's settings: protocol, lines, rate, SPI mode and bit order; null when
+// the status names none.
+// TRLC-LINKS: REQ-SDS-207, REQ-SDS-214, REQ-SDS-222
+function decScopeSettings(d) {
+  const proto = d && DEC_SCOPE_PROTOS[d.DecProto];
+  if (!proto) return null;
+  const a = (d.DecChA & 1) + 1, b = (d.DecChB & 1) + 1, s = { proto };
+  if (proto === "i2c") { s.scl = a; s.sda = b; }
+  else if (proto === "spi") { s.clk = a; s.data = b; s.cpol = d.DecCPOL ? 1 : 0; s.cpha = d.DecCPHA ? 1 : 0; s.msb = !d.DecLSB; }
+  else if (proto !== "off") s.line = a;
+  if (proto !== "off" && proto !== "i2c" && proto !== "spi" && proto !== "sent") s.baud = d.DecBaud > 0 ? d.DecBaud : 0;
+  return s;
 }
+// End of decScopeSettings.
 
-// detectStands returns detection d, unless src is the live envelope (no
-// sampled record came: Normal with nothing triggering) and the bus d names is
-// too fine for it, which aliases into another (I2C's data line read as
-// Manchester at 102 kBd): then a refusal that says why.
-// TRLC-LINKS: REQ-SDS-207
-function detectStands(d, src, waiting) {
-  if (d.proto === "off" || !(src.peak_detect && src.ordered) || !d.result) return d;
-  const fs = decodeFeatureSamples(d.result);
-  if (!(fs > 0 && fs < DECODE_MIN_ENVELOPE_FEATURE)) return d;
-  return { proto: "off", reason: waiting ? "no new capture: the scope waits for a trigger - Auto or Force, then Detect"
-    : "the live view cannot resolve it - a faster time/div, then Detect" };
-}
+// DEC_PUSH_HOLD_MS is how long after this page set one of the scope's rows a
+// status is not followed: one read before the set reached the scope would put
+// the old value back.
+const DEC_PUSH_HOLD_MS = 1500;
+let decScopeSig = "", decPushT = -Infinity;
 
-// DETECT_DECIMATED_FEATURE is the samples of a decimated record a bus's
-// shortest feature must span for a detection on it to stand (a 115200 Bd UART
-// at 200 us/div spans 35); a faster bus is looked at at the full rate, as the
-// scope's BUS search does (panel decimatedFeature). DETECT_CHECKED_FEATURE is
-// the bound for a bus found by its frames' CRCs (CAN's CRC-15, FlexRay's
-// header CRC-11), which a misread record does not pass: a 500 kbit/s CAN bus
-// at 200 us/div spans 7.8 (panel decimatedCheckedFeature).
-const DETECT_DECIMATED_FEATURE = 8, DETECT_CHECKED_FEATURE = 6;
-
-// detectStandsDecimated reports whether a detection d on a decimated record
-// stands (DETECT_DECIMATED_FEATURE, DETECT_CHECKED_FEATURE). A UART at a rate
-// no UART uses does not: a faster bus the record aliases reads as one
-// (1 Mbit/s Manchester sampled every 1 us: "UART 32917"). As the scope's BUS
-// search has it (panel decimatedStands).
-// TRLC-LINKS: REQ-SDS-207
-function detectStandsDecimated(d) {
-  const fs = d.proto !== "off" && d.result ? decodeFeatureSamples(d.result) : 0;
-  if (d.proto === "canfd" || d.proto === "flexray") return fs >= DETECT_CHECKED_FEATURE;
-  if (d.proto === "uart") return fs >= DETECT_DECIMATED_FEATURE && detectStandardBaud(d.result.meta && d.result.meta.baud);
-  return fs >= DETECT_DECIMATED_FEATURE;
-}
-
-// detectStandardBaud reports whether baud is a rate UARTs use (within 3 %:
-// decode.js STANDARD_BAUDS, decode.StandardBaud).
-// TRLC-LINKS: REQ-SDS-207
-function detectStandardBaud(baud) {
-  return baud > 0 && STANDARD_BAUDS.some((b) => Math.abs(baud - b) <= 0.03 * b);
-}
-
-// DETECT_SCANT_BYTES is the bytes a UART found on the search's first record
-// must hold to end the search: a byte or two, or a rate no UART uses, on a
-// short record is as likely part of another bus's frame (CAN at 5 us/div read
-// as "UART 500000", a FlexRay frame failing its CRC as "UART 10002156"), so
-// the search looks on and names it only when it finds nothing else (panel
-// scantBytes, scantUART).
-const DETECT_SCANT_BYTES = 4;
-
-// detectScantUART reports a UART detection d of under DETECT_SCANT_BYTES
-// bytes or at a rate no UART uses.
-// TRLC-LINKS: REQ-SDS-207
-function detectScantUART(d) {
-  return d.proto === "uart" && !!d.result && ((d.result.bytes || []).length < DETECT_SCANT_BYTES || !detectStandardBaud(d.result.meta && d.result.meta.baud));
-}
-
-// detectScant reports a first find to look on from: a scant UART, or an SPI
-// or I2C bus of under DETECT_SCANT_BYTES bytes (panel scantFind).
-// TRLC-LINKS: REQ-SDS-207
-function detectScant(d) {
-  return detectScantUART(d) || ((d.proto === "spi" || d.proto === "i2c") && !!d.result && (d.result.bytes || []).length < DETECT_SCANT_BYTES);
-}
-
-// detectSampled detects on a sampled record of the live acquisition that
-// accept takes: a decimated one first, read in tens of milliseconds, standing
-// when the bus spans enough of its samples (detectStandsDecimated); else a
-// full-rate one within rawWaitMs. A short screen fits the sample lease
-// undecimated (its sample interval at most 1.25 fullS): that record was the
-// full-rate one, and what was found on it stands. A record that resolves its
-// every edge (a UART's bits at 10 us/div), or a timebase slower than
-// rawMaxTdiv, reads no full-rate record (a megasample at 200 us/div: seconds;
-// the search at the full-rate timebase reads a short one instead). It returns
-// {d, src, dec} (dec the decimated record's detection), or null when no
-// record came.
-// TRLC-LINKS: REQ-SDS-207
-async function detectSampled(accept, rawWaitMs, fullS, rawMaxTdiv) {
-  const dec = await detectDecimated(accept);
-  if (dec && (dec.stands || (fullS > 0 && dec.src.sample_s > 0 && dec.src.sample_s <= 1.25 * fullS))) return Object.assign({}, dec, { dec });
-  // a record that resolves its every edge shows at the full rate what it showed
-  if (dec && (dec.resolved || (rawMaxTdiv > 0 && dec.src.tdiv_s > rawMaxTdiv * 1.001))) return { d: { proto: "off", reason: "no protocol matched" }, src: dec.src, dec };
-  // the full-rate record, not a decimated one still in flight
-  const raw = await detectRaw((f) => (!accept || accept(f)) && !(fullS > 0 && f.sample_s > 1.25 * fullS), rawWaitMs);
-  return raw ? Object.assign(raw, { dec }) : null;
-}
-
-// detectDecimated detects on one decimated record that accept takes (lease
-// "samples", given back at once): {d, src, stands, resolved} - stands when
-// the bus found stands on it (detectStandsDecimated), resolved when no run
-// between two edges of either channel is under twice DETECT_DECIMATED_FEATURE
-// samples (panel runsResolved) - or null when no record came.
-// TRLC-LINKS: REQ-SDS-207
-async function detectDecimated(accept) {
-  const src = await fetchSampledFrame(1500, accept, "samples");
-  fetch("/api/frame.bin?lease=samples&end=1").catch(() => {});
-  if (!src) return null;
-  const d = autodetect(src, { fmt: dcfg.fmt });
-  const r1 = detectShortestRun(src.c1), r2 = detectShortestRun(src.c2);
-  const resolved = (!r1 || r1 >= 2 * DETECT_DECIMATED_FEATURE) && (!r2 || r2 >= 2 * DETECT_DECIMATED_FEATURE);
-  return { d, src, stands: detectStandsDecimated(d), resolved };
-}
-
-// detectShortestRun is the fewest samples between two edges of channel c
-// (sliced as the decoders slice it), 0 when it holds under three
-// (decode.ShortestRun).
-// TRLC-LINKS: REQ-SDS-207
-function detectShortestRun(c) {
-  const S = c ? sliceChannel(c) : null;
-  if (!S || !S.ok || S.edges.length < 3) return 0;
-  let run = 0;
-  for (let k = 1; k < S.edges.length; k++) {
-    const g = S.edges[k].i - S.edges[k - 1].i;
-    if (!run || g < run) run = g;
-  }
-  return run;
-}
-
-// detectRaw detects on one full-rate record that accept takes, within waitMs;
-// it returns {d, src}, or null when no record came.
-// TRLC-LINKS: REQ-SDS-207
-async function detectRaw(accept, waitMs) {
-  const raw = await fetchSampledFrame(waitMs, accept);
-  // given back at once: a full-rate lease left running outranks the next
-  // search's decimated one (and holds the live view at a frame in seconds)
-  fetch("/api/frame.bin?lease=raw&end=1").catch(() => {});
-  return raw ? { d: autodetect(raw, { fmt: dcfg.fmt }), src: raw } : null;
-}
-
-// DETECT_WINDOW_DIVS is how much shorter than the slowest full-rate
-// timebase's the record a fast bus is first looked for on is (panel
-// windowDivs): 500 us at 50 us/div, read in under a second against about four
-// for the whole 2 ms record (a tenth held too few frames: a FlexRay pair every
-// 240 us, one failing its CRC, read as a 10 MBd UART).
-const DETECT_WINDOW_DIVS = 4;
-
-// detectWindowTdiv is the slowest of tdivs at most a DETECT_WINDOW_DIVS-th of
-// the full-rate timebase full (0 for none), as panel windowTdiv picks it.
-// TRLC-LINKS: REQ-SDS-207
-function detectWindowTdiv(tdivs, full) {
-  let best = 0;
-  for (const t of tdivs || []) if (t <= full / DETECT_WINDOW_DIVS * 1.001 && t > best) best = t;
-  return best;
-}
-
-// detectAtFullRate looks again at the slowest full-rate timebase full when the
-// record on screen hid the bus: its record decimated (a slow bus, or long
-// frames; first, when the timebase on screen is full and its decimated record
-// was read), then a short full-rate record (detectWindowTdiv), then the whole
-// record at the full rate (a sparse bus); fullS is the full rate's sample
-// interval. It returns {found, stepped, within}: the timebase it was found at
-// (left set; 0: the one on screen) and, for the short record, the timebase up
-// to which BUS steps to the slowest that reads it; with none found the
-// timebase goes back to prev.
-// TRLC-LINKS: REQ-SDS-207
-async function detectAtFullRate(full, prev, tdivs, first, fullS) {
-  // a record of the timebase t (a frame that names none: the second after)
-  // TRLC-LINKS: REQ-SDS-207
-  const at = (t) => { let seen = 0; return (f) => f.tdiv_s > 0 ? Math.abs(f.tdiv_s - t) <= 1e-3 * t : ++seen >= 2; };
-  // ... at the full rate, not a decimated one still in flight
-  // TRLC-LINKS: REQ-SDS-207
-  const atRaw = (t) => { const a = at(t); return (f) => !(fullS > 0 && f.sample_s > 1.25 * fullS) && a(f); };
-  let dec = first;
-  if (!dec) {
-    setDetectMsg("looking again at " + fmtTdiv(full) + "/div…");
-    await send("tdiv", full);
-    dec = await detectDecimated(at(full));
-    if (dec && dec.stands) return { found: dec, stepped: full, within: 0 };
-  }
-  const w = detectWindowTdiv(tdivs, full);
-  if (w > 0 && w < full) {
-    setDetectMsg("looking at " + fmtTdiv(w) + "/div at the full rate…");
-    await send("tdiv", w);
-    const got = await detectRaw(atRaw(w), 6000);
-    if (got && got.d.proto !== "off") return { found: got, stepped: w, within: full };
-    await send("tdiv", full);
-  }
-  const got = await detectRaw(atRaw(full), 6000);
-  if (got && got.d.proto !== "off") return { found: got, stepped: Math.abs(full - prev) > 1e-3 * full ? full : 0, within: 0 };
-  if (Math.abs(full - prev) > 1e-3 * full) await send("tdiv", prev);
-  return null;
-}
-
-// runAutodetect: analyse the current frame, pick the best protocol + roles +
-// sub-settings, apply them to dcfg + the DOM controls, and re-decode.
-// TRLC-LINKS: REQ-SDS-207
-async function runAutodetect() {
-  if (!frame || !frame.c1 || frame.is_env) { setDetectMsg("no live waveform to analyse", true); return; }
-  let src = frame, found = null;
-  if (frame.peak_detect && !frozen) {
-    // Detect on samples, as the scope's BUS entry does: the live feed is a
-    // screen of min/max pairs (at 500 us/div after Default setup, 2.4 us a
-    // point: no protocol matches with a UART on screen), so recall a sampled
-    // record and detect on that.
-    setDetectMsg("fetching a sampled record…");
-    found = await detectSampled(null, 4000, st && st.full_rate_s, st && st.full_rate_tdiv_s > 0 ? detectWindowTdiv(st.tdivs, st.full_rate_tdiv_s) : 0);
-    if (found) src = found.src;
-    if (!frame || !frame.c1) { setDetectMsg("no live waveform to analyse", true); return; }
-  }
-  if ((src.peak_detect && !src.ordered) || src.is_env) { setDetectMsg("Sampled data required — select Normal acquisition and Run before detecting.", true); return; }
-  let d = detectStands(found ? found.d : autodetect(src, { fmt: dcfg.fmt }), src, !!(st && st.waiting)), stepped = 0;
-  // A record that hid the bus - too short (Autoset's 10 us/div holds about one
-  // UART byte) or decimated - is looked at again at the slowest
-  // full-rate timebase, kept when it finds the bus, else the timebase goes
-  // back: as the scope's BUS entry does.
-  const full = st && st.full_rate_tdiv_s, prev = st && st.tdiv_s;
-  let within = 0;
-  const scant = detectScant(d);
-  if ((d.proto === "off" || scant) && !frozen && st.running && full > 0 && prev > 0) {
-    // the timebase on screen is the full-rate one: its decimated record was read
-    const first = Math.abs(prev - full) <= 1e-3 * full && found ? found.dec : null;
-    const again = await detectAtFullRate(full, prev, st.tdivs, first, st.full_rate_s);
-    if (again) { d = again.found.d; src = again.found.src; stepped = again.stepped; within = again.within; }
-  }
-  // the found bus's shortest feature in seconds, for BUS's timebase step
-  dcfg.detectFeatureS = d.proto !== "off" && d.result ? decodeFeatureSamples(d.result) * frameDtS(src, src.c1.length) : 0;
-  // found on the short full-rate record: the slowest timebase that reads it
-  // live shows more of it (the timebase the scope's BUS steps to)
-  if (within > 0 && dcfg.detectFeatureS > 0 && typeof busSlowestReadable === "function") {
-    const t = busSlowestReadable(dcfg.detectFeatureS, within);
-    if (t > 0 && Math.abs(t - stepped) > 1e-3 * t) { await send("tdiv", t); stepped = t; }
-  }
-  if (d.proto === "off") {
-    const why = d.reason && d.reason !== "no protocol matched" ? d.reason : "show more of the signal (slower t/div) or check the probes";
-    setDetectMsg("no protocol matched — " + why, true); return;
-  }
-  dcfg.proto = detectProtoUI(d.proto);
-  if (d.roles.line) dcfg.line = d.roles.line;
-  if (d.roles.scl) { dcfg.scl = d.roles.scl; dcfg.sda = d.roles.sda; }
-  if (d.roles.clk) { dcfg.clk = d.roles.clk; dcfg.data = d.roles.data; }
-  if (d.cfg.baud != null) dcfg.baud = d.cfg.baud;     // 0 = keep auto-baud
-  if (d.cfg.bits) dcfg.bits = d.cfg.bits;
-  if (d.cfg.parity) dcfg.parity = d.cfg.parity;
-  if (d.cfg.cpol != null) dcfg.cpol = d.cfg.cpol;
-  if (d.cfg.cpha != null) dcfg.cpha = d.cfg.cpha;
-  if (d.cfg.msb != null) dcfg.msb = d.cfg.msb;
-  // SENT reads tick and nibble count from its own inputs: set them to what the
-  // detector decoded with, or the display decodes with the old ones ("detected
-  // SENT · 28 bytes" over "(no decode)").
-  if (d.cfg.sentNibbles) { $("decSentTick").value = d.cfg.sentTickNs; $("decSentNibbles").value = d.cfg.sentNibbles; }
-  dcfg.auto = true;                                    // let the threshold auto-track
-  if (d.result && d.result.ok) dcfg.good = { key: decKey(), r: d.result, dt: frameDtS(src, src.c1.length) };
+// decFollowScope takes the scope's decoder settings when they changed (the
+// scope's keys, a phone, SCPI, Auto, this page), so the page decodes the bus
+// the LCD decodes with the same settings. Called with each status.
+// TRLC-LINKS: REQ-SDS-207, REQ-SDS-214, REQ-SDS-222
+function decFollowScope() {
+  const d = st && st.panel && st.panel.Display;
+  const s = decScopeSettings(d);
+  if (!s || performance.now() - decPushT < DEC_PUSH_HOLD_MS) return;
+  const sig = JSON.stringify(s);
+  if (sig === decScopeSig) return;
+  decScopeSig = sig;
+  Object.assign(dcfg, s);
+  if (d.DecAuto) dcfg.auto = true; // Auto's settings: the threshold tracks the signal, as on the scope
+  if (s.proto === "sent") $("decSentTick").value = 0; // the tick from the SYNC, as the scope decodes it
   syncDecodeControls();
   updateDecodePanel();
   recompute();
-  const nb = d.result && d.result.bytes ? d.result.bytes.length : 0;
-  setDetectMsg("detected " + detectLabel(d) + " · " + nb + " bytes" + (stepped ? " · " + fmtTdiv(stepped) + "/div to read it" : ""));
+  if (typeof wsDots === "function") wsDots();
+}
+
+// decPush sets one of the scope's BUS sheet rows from this page's control; a
+// refusal puts the scope's settings back on the page.
+// TRLC-LINKS: REQ-SDS-207, REQ-SDS-214, REQ-SDS-222
+async function decPush(row, value) {
+  decPushT = performance.now();
+  const r = await sheetSet(row, value);
+  decPushT = performance.now();
+  if (!r || r.ok === false) { decScopeSig = ""; decPushT = -Infinity; }
+  return r;
+}
+
+// decPushRate sets the scope's UART baud or bit rate from the page's.
+// TRLC-LINKS: REQ-SDS-207, REQ-SDS-222
+function decPushRate() {
+  if (dcfg.proto === "sent" || dcfg.proto === "i2c" || dcfg.proto === "spi" || dcfg.proto === "off") return;
+  decPush(dcfg.proto === "uart" ? "bus.baud" : "bus.bit_rate", dcfg.baud);
+}
+
+// decDetect is Auto-detect: the scope's Auto detects the bus once and fills
+// in its decoder settings, which this page then follows. It resolves true
+// when a bus is decoded after it.
+// TRLC-LINKS: REQ-SDS-207, REQ-SDS-214, REQ-SDS-222
+async function decDetect() {
+  setDetectMsg("the scope is detecting the bus…");
+  const r = await sheetSet("bus.protocol", 1);
+  if (!r || r.ok === false) { setDetectMsg("the scope did not detect" + (r && r.error ? ": " + r.error : ""), true); return false; }
+  // Auto marks itself detecting before the set answers: a status that says it
+  // no longer is says it has ended.
+  for (const t0 = performance.now(); performance.now() - t0 < 30000;) {
+    let s = null;
+    try { s = await (await fetch("/api/status")).json(); } catch (e) { break; }
+    const d = (s && s.panel && s.panel.Display) || {};
+    if (!d.DecDetecting) {
+      st = s; applyStatus();
+      decPushT = -Infinity; // what Auto filled in, followed at once (unchanged settings stay as they are)
+      decFollowScope();
+      const found = dcfg.proto !== "off" && !/^no /.test(d.DecNote || ""); // "no bus found ...", "no new capture ..."
+      setDetectMsg(found ? "detected " + (d.DecNote || $("decProto").selectedOptions[0].textContent) : (d.DecNote || "no bus found"), !found);
+      return dcfg.proto !== "off";
+    }
+    await new Promise((res) => setTimeout(res, 250));
+  }
+  setDetectMsg("the scope's detection did not answer", true);
+  return false;
 }
 
 // ==== wiring ====
@@ -576,25 +387,29 @@ async function runAutodetect() {
   $("decSda").value = "2"; $("decData").value = "2"; $("decLine").value = "1";
   // TRLC-LINKS: REQ-SDS-207
   $("decSentTick").onchange = $("decSentNibbles").onchange = () => { recompute(); if (typeof stOnDecodeChange === "function") stOnDecodeChange(); };
-  $("decDetect").onclick = runAutodetect;
+  $("decDetect").onclick = decDetect;
   // TRLC-LINKS: REQ-SDS-207
-  $("decProto").onchange = () => { dcfg.proto = $("decProto").value; setDetectMsg(""); updateDecodePanel(); recompute(); };
+  $("decProto").onchange = () => { dcfg.proto = $("decProto").value; setDetectMsg(""); updateDecodePanel(); recompute(); decPush("bus.protocol", DEC_SCOPE_PROTOS.indexOf(dcfg.proto)); };
   // TRLC-LINKS: REQ-SDS-207
-  $("decScl").onchange = () => { dcfg.scl = +$("decScl").value; recompute(); };
+  $("decScl").onchange = () => { dcfg.scl = +$("decScl").value; recompute(); decPush("bus.scl", dcfg.scl - 1); };
   // TRLC-LINKS: REQ-SDS-207
-  $("decSda").onchange = () => { dcfg.sda = +$("decSda").value; recompute(); };
+  $("decSda").onchange = () => { dcfg.sda = +$("decSda").value; recompute(); decPush("bus.sda", dcfg.sda - 1); };
   // TRLC-LINKS: REQ-SDS-207
-  $("decClk").onchange = () => { dcfg.clk = +$("decClk").value; recompute(); };
+  $("decClk").onchange = () => { dcfg.clk = +$("decClk").value; recompute(); decPush("bus.clk", dcfg.clk - 1); };
   // TRLC-LINKS: REQ-SDS-207
-  $("decData").onchange = () => { dcfg.data = +$("decData").value; recompute(); };
+  $("decData").onchange = () => { dcfg.data = +$("decData").value; recompute(); decPush("bus.data", dcfg.data - 1); };
   // TRLC-LINKS: REQ-SDS-207
-  $("decLine").onchange = () => { dcfg.line = +$("decLine").value; recompute(); };
+  $("decLine").onchange = () => { dcfg.line = +$("decLine").value; recompute(); decPush("bus.source", dcfg.line - 1); };
   // TRLC-LINKS: REQ-SDS-207
   $("decAuto").onclick = () => { dcfg.auto = !dcfg.auto; $("decAuto").classList.toggle("on", dcfg.auto); recompute(); };
   // TRLC-LINKS: REQ-SDS-207
   $("decThr").oninput = () => { dcfg.auto = false; $("decAuto").classList.remove("on"); $("decThrV").textContent = $("decThr").value; recompute(); };
   // TRLC-LINKS: REQ-SDS-207
-  $("decBaud").onchange = () => { dcfg.baud = Math.max(0, +$("decBaud").value | 0); recompute(); }; // 0 = auto-baud
+  $("decBaud").onchange = () => {
+    const v = +$("decBaud").value | 0;
+    if (!(v >= 50)) { $("decBaud").value = dcfg.baud; return; } // a rate the scope takes: Auto-detect finds one
+    dcfg.baud = v; recompute(); decPushRate();
+  };
   // TRLC-LINKS: REQ-SDS-207
   // UART frames carry 5..9 data bits; Manchester words 1..16.
   $("decBits").onchange = () => {
@@ -606,11 +421,11 @@ async function runAutodetect() {
   // TRLC-LINKS: REQ-SDS-207
   $("decInverted").onchange = () => { dcfg.inverted = $("decInverted").checked; recompute(); };
   // TRLC-LINKS: REQ-SDS-207
-  $("decCpol").onchange = () => { dcfg.cpol = +$("decCpol").value; recompute(); };
+  $("decCpol").onchange = () => { dcfg.cpol = +$("decCpol").value; recompute(); decPush("bus.spi_mode", dcfg.cpol * 2 + dcfg.cpha); };
   // TRLC-LINKS: REQ-SDS-207
-  $("decCpha").onchange = () => { dcfg.cpha = +$("decCpha").value; recompute(); };
+  $("decCpha").onchange = () => { dcfg.cpha = +$("decCpha").value; recompute(); decPush("bus.spi_mode", dcfg.cpol * 2 + dcfg.cpha); };
   // TRLC-LINKS: REQ-SDS-207
-  $("decMsb").onchange = () => { dcfg.msb = $("decMsb").value === "1"; recompute(); };
+  $("decMsb").onchange = () => { dcfg.msb = $("decMsb").value === "1"; recompute(); decPush("bus.bit_order", dcfg.msb ? 0 : 1); };
   // TRLC-LINKS: REQ-SDS-207
   $("decFmt").onchange = () => { dcfg.fmt = $("decFmt").value; recompute(); }; // hex / ascii / both
   // TRLC-LINKS: REQ-SDS-207

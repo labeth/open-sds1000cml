@@ -316,7 +316,7 @@ func TestBusBrowser(t *testing.T) {
 	testenv.NeedNode(t)
 	const spb = 20
 	sc := newWsScope(uartSig([]byte("Hi"), spb, 300, 300), 1/(115200.0*spb))
-	srv := httptest.NewServer(New(sc, newFuzzAnalog(), &fuzzPanel{z: sc.fuzzScope}, nil).Handler())
+	srv := httptest.NewServer(New(sc, newFuzzAnalog(), newDecodePanel(sc, &fuzzPanel{z: sc.fuzzScope}), nil).Handler())
 	defer srv.Close()
 	wsDriver(t, "bus_browser.mjs", srv.URL)
 }

@@ -16,7 +16,6 @@ import (
 	"hash/fnv"
 	"math"
 	"net/http"
-	"open-sds/app/internal/decode"
 	"open-sds/app/internal/streamview"
 	"os"
 	"os/signal"
@@ -208,7 +207,7 @@ func buildHUD(e *engine.Engine, fe *analog.FrontEnd) lcd.HUD {
 		hud.Persist = d.Persist
 		hud.DecProto, hud.DecBaud = d.DecProto, d.DecBaud
 		hud.DecChA, hud.DecChB = d.DecChA, d.DecChB
-		hud.DecCPOL, hud.DecCPHA = d.DecCPOL, d.DecCPHA
+		hud.DecCPOL, hud.DecCPHA, hud.DecLSB = d.DecCPOL, d.DecCPHA, d.DecLSB
 		hud.DecFormat = d.DecFormat
 		rv := pc.RefView()
 		for i := 0; i < 2; i++ {
@@ -920,29 +919,10 @@ func main() {
 	pc := panel.New(e, pfe, keyFD, engine.SupportedTdivs(), 500e-6, logf)
 	pc.SetFrameSource(fo.WithFrame) // let the AUTO button measure the live signal
 	// Decoded stream (ADR-PANEL-DECODED-STREAM): the panel starts it from the
-	// settings the LCD's Auto decode last found.
+	// BUS sheet's decoder settings (typed in, or filled in by Auto).
 	sv := streamview.New(e, logf)
 	streamCtrl.Store(sv)
-	// The stream starts from an Auto decode of the frame on screen when
-	// Stream is pressed: the LCD's own Auto runs about once a second at long
-	// views, so its last result can belong to an earlier signal.
-	pc.SetDecodeStream(sv, func() (decode.Result, float64, bool) {
-		var c1, c2 []uint8
-		var sampleS float64
-		fo.WithFrame(func(f *engine.Frame) {
-			if f == nil || (f.PeakDetect && !f.Ordered) || f.IsEnv || f.Valid < 32 || len(f.C1) < f.Valid || len(f.C2) < f.Valid {
-				return
-			}
-			c1 = append([]uint8(nil), f.C1[:f.Valid]...)
-			c2 = append([]uint8(nil), f.C2[:f.Valid]...)
-			sampleS = f.SampleS
-		})
-		if c1 == nil {
-			return decode.Result{}, 0, false
-		}
-		res, st := decode.AutodetectFast(c1, c2, sampleS, "hex")
-		return res, st, res.OK
-	})
+	pc.SetDecodeStream(sv)
 	uiCtrl.Store(pc) // publish for the LCD render loop + SCDP screenshot
 	go pc.Run(stopFo)
 	logf("panel controller up (fpga_key fd=%d)", keyFD)

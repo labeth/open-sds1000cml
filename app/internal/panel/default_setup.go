@@ -111,6 +111,7 @@ func (c *Controller) DefaultSetup() {
 	// the bus settings too: a bus found later would start with the last one's
 	// bit rate (SENT with a Manchester rate)
 	c.decBaud, c.decChA, c.decChB, c.decCPOL, c.decCPHA, c.decFormat = 115200, 0, 1, false, false, 0
+	c.decLSB, c.auto = false, autoWatch{}
 	for i := range c.refs {
 		c.refs[i].show = false
 	}

@@ -79,19 +79,20 @@ func TestSerialTriggerType(t *testing.T) {
 	}
 }
 
-// Auto locks the bus it found before arming, and refuses a bus the serial
-// trigger cannot match.
-// TRLC-LINKS: REQ-SDS-013, REQ-SDS-214
-func TestSerialTriggerLocksAuto(t *testing.T) {
+// Auto fills in the bus it found, and the serial trigger arms on those
+// settings as they stand.
+// TRLC-LINKS: REQ-SDS-013, REQ-SDS-214, REQ-SDS-222
+func TestSerialTriggerArmsOnWhatAutoFilledIn(t *testing.T) {
 	r := newViewRig(t)
 	c := r.c
 	r.show(uartFrame([]string{"Hi\r\n"}, 115200, 200e-6, 200e-9, 20000))
 	c.SheetSet("bus.protocol", nil, "Auto")
-	if res := c.SheetSet("trig.type", nil, "Serial"); !res.OK || c.decProto != framecalc.ProtoUART || r.eng.stats.SerialMode == 0 {
-		t.Fatalf("Auto + Serial: %+v proto %d", res, c.decProto)
-	}
-	if !strings.Contains(c.View().Notice, "Decode fixed to UART") {
+	if !strings.Contains(c.View().Notice, "AUTO: UART 115200") {
 		t.Fatalf("notice %q", c.View().Notice)
+	}
+	if res := c.SheetSet("trig.type", nil, "Serial"); !res.OK || c.decProto != framecalc.ProtoUART || r.eng.stats.SerialMode == 0 ||
+		r.eng.SerialConfig().Baud != 115200 {
+		t.Fatalf("Auto + Serial: %+v proto %d %+v", res, c.decProto, r.eng.SerialConfig())
 	}
 }
 

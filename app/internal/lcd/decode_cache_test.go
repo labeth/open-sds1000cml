@@ -7,11 +7,11 @@ import (
 	"open-sds/app/internal/engine"
 )
 
-// Auto paces its full detection, but a newer frame inside the pacing window
-// is decoded afresh, or the cached spans sit where the earlier frame's bytes
-// had been (labels off the trace on a free-phase UART).
+// A newer frame with the same decoder settings is decoded afresh, or the
+// cached spans sit where the earlier frame's bytes had been (labels off the
+// trace on a free-phase UART).
 // TRLC-LINKS: REQ-SDS-018
-func TestAutoDecodeFollowsNewFrame(t *testing.T) {
+func TestDecodeFollowsNewFrame(t *testing.T) {
 	msg := []int{0x48, 0x69, 0x20, 0x55, 0xAA, 0x0F, 0xF0, 0x0A}
 	const n, spb = 4000, 20
 	w1 := goldenUARTWave(msg, spb, n)
@@ -20,7 +20,7 @@ func TestAutoDecodeFollowsNewFrame(t *testing.T) {
 	for len(w2) < n {
 		w2 = append(w2, 210)
 	}
-	hud := HUD{DecProto: 1}
+	hud := HUD{DecProto: 2, DecBaud: 50000} // UART at 20 samples a bit of 1 us
 	decode := func(w []uint8, seq uint64) int {
 		f := &engine.Frame{C1: w, C2: make([]uint8, n), Valid: n, SampleS: 1e-6, Seq: seq}
 		for i := range f.C2 {

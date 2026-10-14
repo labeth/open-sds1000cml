@@ -22,7 +22,9 @@ type Stream interface {
 	LinesBinary(from int, dst []byte) int
 }
 
-// AutoSource returns the latest Auto decode and its frame's sample time.
+// AutoSource is a decode of the frame on screen and its sample time: a
+// detection (detectOnScreen), or the decoder settings' decode
+// (decodeOnScreen); ok when it read a bus.
 type AutoSource func() (decode.Result, float64, bool)
 
 // decode-stream menu choices
@@ -34,54 +36,52 @@ const (
 var decTrigNames = [...]string{"Error", "Value", "Manual"}
 var decTrigKinds = [...]engine.StreamTrigger{engine.StreamOnError, engine.StreamOnValue, engine.StreamManual}
 
-// SetDecodeStream wires the decoded stream and the Auto decode it starts from.
+// SetDecodeStream wires the decoded stream.
 // TRLC-LINKS: REQ-SDS-018
-func (c *Controller) SetDecodeStream(s Stream, auto AutoSource) {
+func (c *Controller) SetDecodeStream(s Stream) {
 	c.mu.Lock()
-	c.stream, c.autoSrc = s, auto
+	c.stream = s
 	c.mu.Unlock()
 }
 
-// startStream streams with the settings Auto last found. Starting can load an
-// FPGA image, so it runs off the panel goroutine.
-// TRLC-LINKS: REQ-SDS-018
+// startStream streams the bus the decoder settings name, as they stand (typed
+// in, or filled in by Auto): no detection runs. What the hardware decoder
+// needs beyond them (the threshold, an SPI clock rate, SENT's tick) is read
+// off a decode of the frame on screen with those settings, else of a sampled
+// record (the live envelope is too coarse at slow timebases: a 115200 Bd
+// UART at 500us/div). Starting can load an FPGA image, so it runs off the
+// panel goroutine.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-222
 func (c *Controller) startStream() {
 	c.mu.Lock()
-	s, auto, trig, value := c.stream, c.autoSrc, c.decTrig, c.decValue
-	c.mu.Unlock()
-	if s == nil || auto == nil {
-		return
-	}
-	c.mu.Lock()
+	s, trig, value := c.stream, c.decTrig, c.decValue
 	c.streamList, c.streamTop = false, -1 // a new stream shows its live tail
 	c.mu.Unlock()
-	// Auto runs on the frame on screen, else on a sampled record found as
-	// BUS's auto-detect finds a bus: the live envelope is too coarse at slow
-	// timebases (a 115200 Bd UART at 500us/div reads as no protocol). Both take
-	// a while on long views, so they run with the
-	// start off the panel goroutine.
+	if s == nil {
+		return
+	}
 	c.offPanel(func() {
 		t0 := time.Now()
-		res, sampleS, ok := auto()
+		res, sampleS, ok := c.decodeOnScreen()
 		if !ok {
-			res, sampleS, ok, _ = c.findBus(auto, c.streaming)
+			all := func(*engine.Frame, bool) bool { return true }
+			l := c.detectWith(true, false, all, c.decodeOnScreen, decimatedWait)
+			res, sampleS, ok = l.res, l.sampleS, l.found
 		}
-		c.logf("panel: stream: auto %s in %v", res.Proto, time.Since(t0).Round(time.Millisecond))
+		sv := c.snap()
+		name := busName(sv.decProto, sv.decBaud, sv.decChA, sv.decChB, sv.decCPOL, sv.decCPHA)
+		c.logf("panel: stream: %s read in %v", name, time.Since(t0).Round(time.Millisecond))
 		if !c.streaming() {
-			return // Stream went off, or Protocol left Auto, meanwhile
+			return // Stream went off, or decode did, meanwhile
 		}
 		if !ok {
-			s.Refuse("Auto: " + c.noBusNote("no bus found on C1 or C2"))
+			s.Refuse(c.noBusNote("no " + name + " decoded on screen"))
 			return
 		}
-		p, err := streamview.ParamsFromAuto(res, sampleS)
+		p, err := streamview.ParamsFromDecode(c.serialBus(engine.SerialParams{Addr: -1, RW: 2}), res, sampleS)
 		if err != nil {
 			s.Refuse(err.Error())
 			return
-		}
-		label := fmt.Sprintf("%s %s", streamName(res.Proto), res.Src)
-		if res.Baud > 0 {
-			label = fmt.Sprintf("%s %d b/s %s", streamName(res.Proto), res.Baud, res.Src)
 		}
 		// A stream still starting or ending (Stream turned off and on again
 		// quickly) ends first: Start is refused while one is starting, and that
@@ -94,7 +94,7 @@ func (c *Controller) startStream() {
 			return
 		}
 		t1 := time.Now()
-		err = s.Start(p, decTrigKinds[trig%3], value, label)
+		err = s.Start(p, decTrigKinds[trig%3], value, name)
 		c.logf("panel: stream: started in %v", time.Since(t1).Round(time.Millisecond))
 		if err != nil {
 			c.logf("panel: stream: %v", err)
@@ -137,23 +137,29 @@ func (c *Controller) leaveStream() {
 	}()
 }
 
-// streaming reports the DECODE menu in Auto Stream mode.
+// streaming reports the BUS sheet's Stream on with a bus to stream.
 // TRLC-LINKS: REQ-SDS-018
 func (c *Controller) streaming() bool {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	return c.decProto == 1 && c.decMode == decModeStream && c.stream != nil
+	return serialProto(c.decProto) && c.decMode == decModeStream && c.stream != nil
 }
 
-// setDecProto sets the decoder (framecalc.ProtoOff..ProtoFlexRay). Leaving
-// Auto ends a stream; a bit-rate protocol starts at its usual rate; clock and
-// data stay on different channels; an armed serial trigger follows the bus.
-// TRLC-LINKS: REQ-SDS-018, REQ-SDS-214
+// setDecProto sets the decoder (framecalc.ProtoOff..ProtoFlexRay); Auto
+// detects the bus and fills the settings in (autoDecode). Another protocol
+// ends a stream; a bit-rate protocol starts at its usual rate; clock and data
+// stay on different channels; an armed serial trigger follows the bus.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-214, REQ-SDS-222
 func (c *Controller) setDecProto(p int) error {
 	if p < framecalc.ProtoOff || p >= framecalc.NumProtos {
 		return fmt.Errorf("no protocol %d", p)
 	}
+	if p == framecalc.ProtoAuto {
+		c.autoDecode()
+		return nil
+	}
 	c.mu.Lock()
+	c.auto = autoWatch{} // set by hand
 	prev := c.decProto
 	c.decProto = p
 	c.decGen++
@@ -166,7 +172,7 @@ func (c *Controller) setDecProto(p int) error {
 	if p == framecalc.ProtoUART && rateProto(prev) {
 		c.decBaud = 115200
 	}
-	stop := p != framecalc.ProtoAuto && c.decMode == decModeStream
+	stop := p != prev && c.decMode == decModeStream
 	if stop {
 		c.decMode = decModeView
 	}
@@ -194,6 +200,7 @@ func (c *Controller) setDecBaud(b int) error {
 	}
 	c.mu.Lock()
 	c.decBaud = b
+	c.auto = autoWatch{} // set by hand
 	c.mu.Unlock()
 	c.syncSerialBus()
 	return nil
@@ -205,6 +212,7 @@ func (c *Controller) setDecBaud(b int) error {
 // TRLC-LINKS: REQ-SDS-018
 func (c *Controller) setDecRole(first bool, ch int) error {
 	c.mu.Lock()
+	c.auto = autoWatch{} // set by hand
 	if first {
 		c.decChA = ch & 1
 		c.decChB = 1 - c.decChA
@@ -217,15 +225,15 @@ func (c *Controller) setDecRole(first bool, ch int) error {
 	return nil
 }
 
-// setStreamMode starts (Auto: with what it found) or stops the hardware
+// setStreamMode starts (with the decoder settings) or stops the hardware
 // decoded stream.
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-222
 func (c *Controller) setStreamMode(on bool) error {
 	c.mu.Lock()
-	if c.decProto != framecalc.ProtoAuto || c.stream == nil {
+	if !serialProto(c.decProto) || c.stream == nil {
 		c.mu.Unlock()
 		if on {
-			return fmt.Errorf("a stream needs Protocol = Auto")
+			return fmt.Errorf("a stream needs a bus: set Protocol (Auto finds it)")
 		}
 		return nil
 	}
@@ -251,7 +259,7 @@ func streamName(proto string) string {
 	return proto
 }
 
-// StreamMode reports the DECODE menu in Auto Stream mode, for the HUD.
+// StreamMode reports the BUS sheet's Stream on, for the HUD.
 // TRLC-LINKS: REQ-SDS-018
 func (c *Controller) StreamMode() bool { return c.streaming() }
 
@@ -337,7 +345,7 @@ func (c *Controller) streamListToTrigger() bool {
 }
 
 // StreamStatus reports the decoded stream for /api/status; ok is false
-// outside Auto Stream mode.
+// outside stream mode.
 // TRLC-LINKS: REQ-SDS-018
 func (c *Controller) StreamStatus() (streamview.View, bool) {
 	if !c.streaming() {
@@ -350,7 +358,7 @@ func (c *Controller) StreamStatus() (streamview.View, bool) {
 }
 
 // StreamLines reads the decoded stream's transcript from absolute line from,
-// for /api/stream/lines; ok is false outside Auto Stream mode.
+// for /api/stream/lines; ok is false without a stream.
 // TRLC-LINKS: REQ-SDS-018
 func (c *Controller) StreamLines(from, limit int) (streamview.LinesPage, bool) {
 	c.mu.Lock()

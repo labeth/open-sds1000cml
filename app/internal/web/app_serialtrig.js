@@ -25,8 +25,9 @@ function stParseBytes(s, maxValue = 255) {
 }
 // stParsePattern reads the trigger pattern (ADR-PROTOCOL-SEQUENCE-TRIGGER):
 // hex units, "??" for any unit, "?" digits as nibble wildcards (A? = A0..AF)
-// and ERR for a decoder-reported error. Plain hex stays a byte list; any
-// wildcard or error makes a token pattern. At most 32 units.
+// ERR for a decoder-reported error, SOF for the start of a frame and CMD for a
+// MIL-1553 command word. Plain hex stays a byte list; any wildcard or token
+// makes a token pattern. At most 32 units.
 // TRLC-LINKS: REQ-SDS-206
 function stParsePattern(s, maxValue = 255) {
   const toks = (s || "").trim().split(/[\s,]+/).filter(x => x !== "");
@@ -35,6 +36,8 @@ function stParsePattern(s, maxValue = 255) {
   let plain = true;
   for (const t of toks) {
     if (/^err(or)?$/i.test(t)) { pattern.push({ kind: 4, value: 0, mask: 0 }); plain = false; continue; }
+    if (/^sof$/i.test(t)) { pattern.push({ kind: 1, value: 0, mask: 0 }); plain = false; continue; }
+    if (/^cmd$/i.test(t)) { pattern.push({ kind: 2, value: 0x10000, mask: 0x10000 }); plain = false; continue; }
     if (!/^(0x)?[0-9a-fA-F?]{1,5}$/.test(t)) return null;
     const digits = t.replace(/^0x/i, "");
     const value = parseInt(digits.replace(/\?/g, "0"), 16);
@@ -101,7 +104,8 @@ let stConfigError = "";
 let stOwn = false, stAdopting = false;
 
 // stMatchText writes the scope's match as this page types it: hex units, "??"
-// any unit, "A?" a nibble wildcard, ERR a decoder error.
+// any unit, "A?" a nibble wildcard, ERR a decoder error, SOF a frame's start,
+// CMD a MIL-1553 command word.
 // TRLC-LINKS: REQ-SDS-206
 function stMatchText(p) {
   // TRLC-LINKS: REQ-SDS-206
@@ -109,6 +113,8 @@ function stMatchText(p) {
   if (p.pattern && p.pattern.length) {
     return p.pattern.map((u) => {
       if (u.kind === 4) return "ERR";
+      if (u.kind === 1) return "SOF";
+      if (u.mask & u.value & 0x10000) return "CMD";
       const n = Math.max(2, (u.value || 0).toString(16).length);
       if (!u.mask) return "?".repeat(n);
       let t = "";
@@ -224,9 +230,9 @@ function stOnDecodeChange() {
     try {
       // With decoding off, find the bus first (BUS's Trigger on bytes pane): a
       // serial trigger needs the decoder's protocol and settings.
-      if (on && stProtoNum() === 0 && typeof runAutodetect === "function") {
+      if (on && stProtoNum() === 0 && typeof decDetect === "function") {
         stStatus("detecting the bus…");
-        await runAutodetect();
+        await decDetect();
         if (generation !== stArmGeneration) return;
       }
       if (stProtoNum() === 0) { stStatus("turn on decode to arm a serial trigger"); return; }

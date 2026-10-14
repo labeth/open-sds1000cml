@@ -14,7 +14,7 @@ function dsSequence(p) {
   const tokens = p.pattern.length ? p.pattern : p.bytes.map(value => ({ kind: 2, value, mask: unit }));
   let dataOnly = true;
   const elements = tokens.map(t => {
-    if (t.kind === 4) { dataOnly = false; return { kind: 4, value: 0, mask: 0 }; }
+    if (t.kind === 4 || t.kind === 1) { dataOnly = false; return { kind: t.kind, value: 0, mask: 0 }; }
     let value = t.value & t.mask, mask = t.mask;
     if (p.proto === 8) { value = (value << 10) >>> 0; mask = (mask << 10) >>> 0; }
     if (p.proto === 2) mask |= 0x100;
@@ -33,9 +33,9 @@ function dsStandardBaud(b) {
 // sliced at, the bit rate, an SPI clock rate, SENT's tick, so Stream + trigger
 // does not refuse the decoder's defaults ("Set a manual decode threshold"); a
 // figure the decode did not find stays missing and dsConfig names it. The
-// figures are the last decode that read this bus (the BUS entry's detect
-// included): right after the detect the newest frame can still be one the
-// detect's new timebase replaces, unread.
+// figures are the last decode that read this bus: right after a detection the
+// newest frame can still be one the detection's new timebase replaces,
+// unread.
 // TRLC-LINKS: REQ-SDS-206
 function dsAutoFill(p) {
   const g = dcfg.good && dcfg.good.key === decKey() ? dcfg.good : null;

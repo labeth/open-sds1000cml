@@ -4,7 +4,6 @@ package lcd
 import (
 	"fmt"
 	"math"
-	"strings"
 
 	"open-sds/app/internal/decode"
 	"open-sds/app/internal/engine"
@@ -182,8 +181,9 @@ func decodeColor(kind string) uint16 {
 	}
 }
 
-// protoNames are the strip's protocol labels.
-var protoNames = []string{"", "AUTO", "UART", "I2C", "SPI", "MANCH", "SENT", "CAN", "1553", "ARINC", "USB", "FLEXR"}
+// protoNames are the strip's protocol labels (1, Auto, is a detection the
+// panel resolves to a protocol: never drawn).
+var protoNames = []string{"", "", "UART", "I2C", "SPI", "MANCH", "SENT", "CAN", "1553", "ARINC", "USB", "FLEXR"}
 
 // drawDecode runs the protocol decoder on the frame and draws the decoded byte
 // spans in a strip at the bottom of the plot (parity with the web decode
@@ -208,13 +208,6 @@ func drawDecode(sf Surface, p plotArea, f *engine.Frame, hud HUD, win int, xc, p
 	format := []string{"hex", "ascii", "both"}[hud.DecFormat%3]
 	res := decodeFrame(f, hud, valid, ch, format)
 	name := protoNames[hud.DecProto%len(protoNames)]
-	if hud.DecProto == 1 && res.Proto != "" && res.Proto != "off" { // Auto: label with what it found
-		auto := map[string]string{"uart": "UART", "i2c": "I2C", "spi": "SPI", "manchester": "MANCH", "sent": "SENT",
-			"canfd": "CAN", "mil1553": "1553", "arinc429": "ARINC", "usbls": "USB", "flexray": "FLEXR"}[res.Proto]
-		if auto != "" {
-			name = "AUTO " + auto
-		}
-	}
 	// Decode lane: a dark band that sits ABOVE the bottom Vpp/freq readout row
 	// (drawn later by drawHUD at H-9), so the two never overwrite each other.
 	yLbl, yTxt, yBar := H-36, H-26, H-14 // label / byte hex / span bars, top→bottom
@@ -224,18 +217,6 @@ func drawDecode(sf Surface, p plotArea, f *engine.Frame, hud HUD, win int, xc, p
 		return
 	}
 	label := name
-	if hud.DecProto == 1 { // Auto: show what it found, not just which protocol
-		if res.Baud > 0 {
-			if res.Proto == "uart" {
-				label += fmt.Sprintf(" %d Bd", res.Baud)
-			} else {
-				label += " " + strings.TrimSuffix(fmtFreq(float64(res.Baud)), "Hz") + "b/s"
-			}
-		}
-		if res.Src != "" {
-			label += " " + res.Src
-		}
-	}
 	unit := "bytes"
 	switch res.Proto {
 	case "mil1553", "arinc429", "manchester":
@@ -440,5 +421,5 @@ func decodeFrame(f *engine.Frame, hud HUD, valid int, ch func(int) []uint8, form
 // TRLC-LINKS: REQ-SDS-018
 func decodeParams(hud HUD, format string) framecalc.DecodeParams {
 	return framecalc.DecodeParams{Proto: hud.DecProto, Baud: hud.DecBaud, ChA: hud.DecChA, ChB: hud.DecChB,
-		CPOL: hud.DecCPOL, CPHA: hud.DecCPHA, Format: format}
+		CPOL: hud.DecCPOL, CPHA: hud.DecCPHA, LSB: hud.DecLSB, Format: format}
 }

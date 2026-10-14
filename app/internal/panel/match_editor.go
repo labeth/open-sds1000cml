@@ -109,6 +109,10 @@ func tokensOf(p engine.SerialParams) []string {
 		switch {
 		case e.Kind == 4:
 			out = append(out, "ERR")
+		case e.Kind == 1:
+			out = append(out, "SOF")
+		case e.Mask&engine.MILCommand != 0 && e.Value&engine.MILCommand != 0:
+			out = append(out, "CMD")
 		case e.Mask&0xff == 0:
 			out = append(out, "??")
 		case e.Mask&0xff == 0xf0:
@@ -129,8 +133,11 @@ func tokensOf(p engine.SerialParams) []string {
 func compileTokens(toks []string) (bytes []int, pattern []engine.PatternElem, err error) {
 	plain := true
 	for _, t := range toks {
-		if t == "ERR" {
-			pattern = append(pattern, engine.PatternElem{Kind: 4})
+		switch t {
+		case "ERR", "SOF", "CMD": // an error; a frame's start; a MIL-1553 command word
+			e := map[string]engine.PatternElem{"ERR": {Kind: 4}, "SOF": {Kind: 1},
+				"CMD": {Kind: 2, Value: engine.MILCommand, Mask: engine.MILCommand}}[t]
+			pattern = append(pattern, e)
 			plain = false
 			continue
 		}

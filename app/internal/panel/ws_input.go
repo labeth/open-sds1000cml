@@ -35,7 +35,7 @@ func (c *Controller) switchWS(i wsview.WS) {
 		c.seedMeas()
 	case wsview.Bus:
 		if dec == framecalc.ProtoOff {
-			c.autoDecode()
+			c.autoDecodeBus()
 		}
 	}
 	s := c.snap()
@@ -241,13 +241,11 @@ func (c *Controller) adjustPush() {
 		c.eyeClear()
 	case ws == wsview.Bus:
 		s := c.snap()
-		c.amu.Lock()
-		dec := busDecoding(s, &c.ana)
-		c.amu.Unlock()
+		dec := busDecoding(s)
 		if dec {
 			c.openPickWS()
 		} else {
-			c.autoDecode()
+			c.autoDecodeBus()
 		}
 	case ws == wsview.Spectrum:
 		c.specDelta()
@@ -323,9 +321,7 @@ func (c *Controller) tdivTurn(dir int) {
 func (c *Controller) tdivPush() {
 	s := c.snap()
 	if !s.ui.open && !s.ui.wpick && s.ui.ws == wsview.Bus && !s.ui.busEye {
-		c.amu.Lock()
-		dec := busDecoding(s, &c.ana)
-		c.amu.Unlock()
+		dec := busDecoding(s)
 		if dec {
 			c.busZoom()
 			return
@@ -415,9 +411,10 @@ func (c *Controller) scopeAdjustPush() {
 
 // ---- run control ----
 
-// runAuto is Auto: autoset; any menu closes and the workspace stays. Run
-// from a remote, it leaves the LCD's menus as they are.
-// TRLC-LINKS: REQ-SDS-137, REQ-SDS-211
+// runAuto is Auto: in BUS a new bus scan framed for reading (busAuto),
+// elsewhere autoset; any menu closes and the workspace stays. Run from a
+// remote, it leaves the LCD's menus as they are.
+// TRLC-LINKS: REQ-SDS-137, REQ-SDS-211, REQ-SDS-223
 func (c *Controller) runAuto() {
 	c.endWebCapture()
 	c.mu.Lock()
@@ -425,7 +422,12 @@ func (c *Controller) runAuto() {
 		c.closeSheetLocked()
 		c.closePickLocked()
 	}
+	ws := c.ui.ws
 	c.mu.Unlock()
+	if ws == wsview.Bus {
+		c.busAuto() // a new bus scan, framed for reading
+		return
+	}
 	c.autoset()
 }
 
@@ -458,7 +460,7 @@ func (c *Controller) defaultSetupUI() {
 	case wsview.Measure:
 		c.seedMeas()
 	case wsview.Bus:
-		c.autoDecode()
+		c.autoDecodeBus()
 	}
 }
 

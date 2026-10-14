@@ -173,20 +173,26 @@ type Controller struct {
 	zoom     int     // horizontal magnification (1,2,5,10,20,50); 1 = no zoom
 	zoomOff  float64 // pan offset of the zoom window, fraction of the record
 	persist  bool    // display persistence (afterglow)
-	// Protocol decode: proto 0=off,1=UART,2=I2C,3=SPI. chA/chB = channel roles
+	// Protocol decode: a framecalc protocol number, never ProtoAuto (Auto
+	// detects the bus and fills these in). chA/chB = channel roles
 	// (0=C1,1=C2): UART uses chA (source); I2C chA=SCL,chB=SDA; SPI chA=CLK,chB=DATA.
 	decProto         int
 	decBaud          int
 	decChA, decChB   int
 	decCPOL, decCPHA bool
-	decFormat        int // 0=hex, 1=ascii, 2=both
-	// Auto decode streaming (ADR-PANEL-DECODED-STREAM), guarded by mu.
+	decLSB           bool // SPI least significant bit first
+	decFormat        int  // 0=hex, 1=ascii, 2=both
+	// what Auto filled in, and whether the bus it found still decodes
+	auto autoWatch
+	// how the detection under way frames the bus: 0 not, busFrameEntry for
+	// BUS's own detection, busFrameAuto for AUTO in BUS
+	busFrameNext int
+	// Decoded streaming (ADR-PANEL-DECODED-STREAM), guarded by mu.
 	decMode  int         // decModeView / decModeStream
 	decTrig  int         // index into decTrigNames
 	decValue int         // StreamOnValue unit
 	kb       matchEditor // SERIAL trigger match editor (full-screen keyboard)
 	stream   Stream
-	autoSrc  AutoSource
 	// a stopped stream's screen: transcript list or the record's waveform
 	streamList bool
 	streamTop  int // list's first line; -1 follows the newest

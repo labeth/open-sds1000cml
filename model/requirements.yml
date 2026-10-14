@@ -501,7 +501,7 @@ requirements:
     CRC-named fixture is accepted without an error; native passing status excludes those disabled assertions.
     Decoders run on live time-ordered envelope frames (Ordered), so a decoding display leases no raw frames; the
     decodeview web control is accepted and ignored. The LCD caches each decode per
-    frame content and paces Auto detection to twice a second.'
+    frame content; Auto is no decoder (REQ-SDS-222) and detects only when asked or when the bus it found is lost.'
   verificationMethods:
   - inspection
   - test
@@ -510,8 +510,8 @@ requirements:
     bounded seeded no-panic inputs. CRC/field fixtures sometimes reuse or mirror production helpers, limiting independence.
     Separate overlays characterize FlexRay length-dependent CRC acceptance, SENT coding-error acceptance, classic
     CAN missing trailers and CAN-FD trailer omission. Seven additional reviewed tests cover fixed-seed robustness
-    (1500 sampled cases), literal truth vectors and 286 Node parity vectors. The robustness tests are ordinary tests,
-    not Go fuzz targets. Parity compares OK, integer-coerced bytes, text and auto-detected protocol, excluding span
+    (1500 sampled cases), literal truth vectors and 336 Node parity vectors. The robustness tests are ordinary tests,
+    not Go fuzz targets. Parity compares OK, integer-coerced bytes and text, excluding span
     coordinates and most metadata. Literal-vector publication attribution is not independently verified. Twelve
     original breaker tests across all ten fully reviewed breaker files add bounded seeded round trips, error and
     timing cases. Their assertion limits are recorded in the word, clock and framed breaker reviews. USB known-defect
@@ -3724,3 +3724,50 @@ requirements:
     the saver and then black, the Shelly plug shows the backlight's 1.5 W drop, and an input brings the workspace back.
   notes: GPIO 7 is the panel's only light control (ADR-SCREEN-SAVER); the tlc59108-bl backlight device does not dim this
     panel. Input is anything that runs on the panel goroutine; the web page's /api/set does not count.
+- id: REQ-SDS-222
+  title: Decoder Auto fills in the settings
+  text: The instrument shall, when Auto is chosen as the decode protocol, detect the bus once and write its protocol,
+    channel roles, rate, SPI mode and bit order into the decoder settings that every decode, stream and serial trigger
+    then uses, and detect it once more when settings it filled in have decoded nothing for about two seconds of
+    captures after decoding the bus.
+  status: draft
+  category: functional
+  appliesTo:
+  - FU-APP-PANEL
+  - FU-APP-WEB
+  - FU-WEB-APP-DECODE
+  - FU-APP-SETTINGS
+  verificationMethods:
+  - test
+  verificationCriteria: Panel tests check that Auto fills in the rows (the LCD sheet, the remote's view), that Stream and
+    the serial trigger start from the filled-in or typed-in settings without detecting, that losing the bus for two
+    seconds of captures detects again while one bad capture does not and settings set by hand are never replaced, and
+    that a saved setup holding Auto loads as one detection. Browser tests check that the page shows and sets the
+    scope's settings and that its Auto-detect runs the scope's Auto. On the device, every bench bus is named and its
+    rows filled in on the LCD, the web page and the phone, Stream starts right after a detection, and moving the
+    probes to another bus is detected again within a few seconds.
+  notes: Auto is an action in the Protocol options, never a mode the decoder sits in; a setup saved while it was one
+    holds Protocol = Auto and loads as a detection. The scope keeps no threshold setting (the decoders and the
+    hardware matcher measure it), so Auto fills in none.
+- id: REQ-SDS-223
+  title: AUTO in BUS frames the bus for reading
+  text: The instrument shall, when AUTO is pressed in the BUS workspace, forget the bus decoded, fit the vertical with
+    the threshold midway, detect the bus again and fill in the decoder settings, and put the hardware trigger on the
+    start of the bus's frames with a timebase that shows whole messages with every bit resolved.
+  status: draft
+  category: functional
+  appliesTo:
+  - FU-APP-PANEL
+  - FU-APP-ENGINE
+  verificationMethods:
+  - test
+  verificationCriteria: Panel tests check that AUTO in BUS scans anew (a bus set by hand is replaced by the bus on the
+    inputs), frames it (the trigger near the left, the UART idle qualifier between a message's longest high time and
+    its idle), that AUTO elsewhere stays the autoset, the frame-start match of each bus and that a match the user set
+    wins. Engine tests check the frame-start and MIL-1553 command elements of the sequence trigger. On the device,
+    AUTO in BUS on every bench bus names it, triggers in hardware on its frame starts and re-detects a moved source.
+  notes: The FPGA decides the trigger (ADR-SERIAL-HARDWARE-TRIGGER). I2C uses its own matcher with no bytes (the
+    address byte after every START); SPI, Manchester, SENT, CAN, USB and FlexRay the sequence trigger on START then any
+    unit; ARINC 429 any word (each is a frame); MIL-1553 a command word; UART, whose matcher fires on every character,
+    the pulse qualifier on an idle longer than any high time inside a message. BUS entry's detection sets the same
+    trigger. AUTO in the other workspaces is the autoset.

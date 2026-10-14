@@ -6,13 +6,11 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"os/exec"
 	"reflect"
 	"testing"
 	"time"
 
 	"open-sds/app/internal/engine"
-	"open-sds/app/internal/testenv"
 )
 
 // getBin fetches /api/frame.bin and returns the decoded header + raw payload.
@@ -418,8 +416,8 @@ type sampleLeaseScope struct {
 // TRLC-LINKS: REQ-SDS-207
 func (s *sampleLeaseScope) LeaseSampleView(d time.Duration) { s.lease = d }
 
-// Detect's decimated record (lease=samples) is given back as soon as the
-// search is done with it, so the live view comes back at once.
+// A decimated record's lease (lease=samples) is given back as soon as its
+// reader is done with it, so the live view comes back at once.
 // TRLC-LINKS: REQ-SDS-207
 func TestSampleLeaseEnds(t *testing.T) {
 	sc := &sampleLeaseScope{fakeScope: &fakeScope{}}
@@ -432,9 +430,5 @@ func TestSampleLeaseEnds(t *testing.T) {
 	s.Handler().ServeHTTP(rec, httptest.NewRequest("GET", "/api/frame.bin?lease=samples&end=1", nil))
 	if sc.lease != 0 || rec.Code != http.StatusNoContent {
 		t.Fatalf("release: lease %v, status %d", sc.lease, rec.Code)
-	}
-	testenv.NeedNode(t)
-	if out, err := exec.Command("node", "detect_sampled.test.cjs").CombinedOutput(); err != nil {
-		t.Fatalf("detect (page): %v\n%s", err, out)
 	}
 }
