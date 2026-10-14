@@ -272,6 +272,34 @@ function harmonics(peaks, spec) { // eslint-disable-line no-unused-vars
   return out;
 }
 
+// PICK_BINS is how far a picked peak follows its tone from frame to frame:
+// a drifting tone is followed, another peak is never taken for it (the
+// scope's marker allows the same 2.5 bins). PICK_LOST_MS is how long a pick
+// waits for its tone before it is cleared: one noisy frame does not drop it.
+const PICK_BINS = 2.5, PICK_LOST_MS = 500;
+
+// trackPicks follows the picked frequencies sel onto this frame's peaks: a
+// pick moves to the peak within PICK_BINS bins of it (two picks on one peak
+// become one); with none that near it keeps its frequency while its tone has
+// been gone under PICK_LOST_MS (lostSince: when each pick lost it), then is
+// cleared. Returns the picks kept, the indices of the peaks they hold and the
+// lost times to pass to the next frame.
+// TRLC-LINKS: REQ-SDS-070
+function trackPicks(sel, peaks, binHz, lostSince, now) {
+  const kept = [], idxs = new Set(), lost = new Map();
+  const reach = PICK_BINS * (binHz > 0 ? binHz : 0);
+  for (const f of sel) {
+    const i = nearestPeak(peaks, f);
+    if (i >= 0 && Math.abs(peaks[i].freq - f) <= reach) {
+      if (!idxs.has(i)) { idxs.add(i); kept.push(peaks[i].freq); }
+      continue;
+    }
+    const since = lostSince && lostSince.has(f) ? lostSince.get(f) : now;
+    if (now - since < PICK_LOST_MS) { kept.push(f); lost.set(f, since); }
+  }
+  return { sel: kept, idxs, lostSince: lost };
+}
+
 if (typeof module !== "undefined" && module.exports) {
-  module.exports = { fftInPlace, spectrum, fftReduce, detectPeaks, nearestPeak, component, fitTone, toneAmplitude, harmonics };
+  module.exports = { fftInPlace, spectrum, fftReduce, detectPeaks, nearestPeak, trackPicks, component, fitTone, toneAmplitude, harmonics };
 }

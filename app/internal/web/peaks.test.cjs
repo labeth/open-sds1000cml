@@ -4,7 +4,7 @@
 // synthetic scope frames, and checks the two things the user hit: selection
 // must survive frame-to-frame magnitude jitter, and you must be able to pick a
 // different peak afterwards. Run: node peaks.test.cjs  (exit 0 = pass).
-const { spectrum, detectPeaks, nearestPeak, component, toneAmplitude } = require("./peaks.js");
+const { spectrum, detectPeaks, nearestPeak, trackPicks, component, toneAmplitude } = require("./peaks.js");
 
 let failed = 0;
 // TRLC-LINKS: REQ-SDS-070
@@ -220,6 +220,28 @@ function frame(amp1, amp2, seed) {
     if (off === 0.5) ok(binErr < -1.4, `half a bin off, the bin reads ${binErr.toFixed(3)} dB (≈ −1.42)`);
     ok(Math.abs(pk[1].lvl - pk[1].db) < 1e-3, `offset ${off}: an on-bin tone's level is its bin level`);
   }
+}
+
+// --- picks follow their tone within a few bins and clear when it is gone -----
+// A pick follows a drifting tone, is never handed to another peak, waits out
+// one noisy frame, and is cleared once its tone has been gone half a second.
+{
+  const bin = 1000;
+  // TRLC-LINKS: REQ-SDS-070
+  const pk = (...fs) => fs.map((freq) => ({ freq }));
+  let t = trackPicks([100000], pk(50000, 101500), bin, null, 0);
+  ok(t.sel.length === 1 && t.sel[0] === 101500 && t.idxs.has(1), "a drifting tone is followed (1.5 bins)");
+  t = trackPicks(t.sel, pk(50000, 120000), bin, t.lostSince, 100);
+  ok(t.sel[0] === 101500 && t.idxs.size === 0, "a peak 18 bins away is not taken for it; the pick waits");
+  t = trackPicks(t.sel, pk(50000, 101800), bin, t.lostSince, 300);
+  ok(t.sel[0] === 101800 && t.idxs.has(1) && t.lostSince.size === 0, "the tone back within the wait: the pick holds it again");
+  t = trackPicks(t.sel, pk(50000), bin, t.lostSince, 400);
+  t = trackPicks(t.sel, pk(50000), bin, t.lostSince, 850);
+  ok(t.sel.length === 1, "gone under 500 ms: still picked");
+  t = trackPicks(t.sel, pk(50000), bin, t.lostSince, 950);
+  ok(t.sel.length === 0, "gone 550 ms: the pick is cleared");
+  t = trackPicks([100000, 100400], pk(100200), bin, null, 0);
+  ok(t.sel.length === 1 && t.idxs.size === 1, "two picks on one peak become one");
 }
 
 console.log(failed ? `\n${failed} FAILED` : "\nALL PASS");

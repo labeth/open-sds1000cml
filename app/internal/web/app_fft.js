@@ -123,13 +123,9 @@ function computePeaksCh(ch) {
   const spec = spectrumFor(ch);
   if (!spec) return null;
   S.peaks = detectPeaks(spec, { floorDb: -50, maxPeaks });
-  const idxs = new Set(), kept = [];
-  for (const f of S.sel) {
-    const i = nearestPeak(S.peaks, f);
-    if (i < 0) { kept.push(f); continue; }
-    if (!idxs.has(i)) { idxs.add(i); kept.push(S.peaks[i].freq); }
-  }
-  S.selIdx = idxs; S.sel = kept;
+  // picks follow their tones; a pick whose tone is gone is cleared
+  const t = trackPicks(S.sel, S.peaks, spec.binHz, S.lostSince, Date.now());
+  S.selIdx = t.idxs; S.sel = t.sel; S.lostSince = t.lostSince;
   return spec;
 }
 
