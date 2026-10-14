@@ -4,7 +4,7 @@
 // 2 MBd, 1 byte" or "Manchester, 1 byte"; auto-detect finds nothing there and
 // BUS looks again at a slower timebase (decode_autodetect.go, the real
 // capture mil1553_raw_1us). A UART reading with a fifth of its bytes
-// misframed is another protocol at any rate.
+// misframed is another protocol at any rate, and one at 100 MBd is ringing.
 const fs = require('node:fs'), vm = require('node:vm'), assert = require('node:assert/strict');
 const c = {}; vm.createContext(c);
 vm.runInContext(fs.readFileSync('decode.js', 'utf8'), c);
@@ -20,6 +20,8 @@ assert.ok(c.scoreResult(uart(3, 1, 500000)) < 0, '3 bytes, 1 misframed, standard
 assert.ok(c.scoreResult(uart(3, 0, 115200)) > 0, '3 clean bytes');
 assert.ok(c.scoreResult(uart(5, 1, 115200)) > 0, '5 bytes, 1 misframed');
 assert.equal(c.scoreResult(uart(8, 0, 115200)) - c.scoreResult(uart(8, 0, 66674)), 100, 'clean at a standard rate');
+assert.ok(c.scoreResult(uart(10, 0, 100058636)) < 0, '100 MBd: ringing, no UART');
+assert.ok(c.scoreResult(uart(10, 0, 12000000)) > 0, '12 MBd');
 // a clock's idle level is its gap between transfers; nothing but clocking
 // reads low (TestIdleLevelFromTheGap)
 // TRLC-LINKS: REQ-SDS-018

@@ -138,6 +138,8 @@ type BusLine struct {
 	Bytes int    // byte count (first line only)
 	Match string // the match bytes (amber), or Cut (dim)
 	Cut   string
+	Addr  string // the packet's address or ID ("24 W"; first line only)
+	Fault string // a fault of the packet as a whole ("CRC", "NAK"; red, every line)
 }
 
 // BusPane is the BUS workspace's packet list.

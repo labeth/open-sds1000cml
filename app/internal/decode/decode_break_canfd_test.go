@@ -3,7 +3,9 @@ package decode
 
 import (
 	"fmt"
+	"math"
 	"math/rand"
+	"strings"
 	"testing"
 )
 
@@ -204,6 +206,11 @@ func breakCANFalseNeg(t *testing.T) {
 		}
 		lead := 3 + rng.Intn(20)
 		trail := 3 + rng.Intn(20)
+		if class >= 2 {
+			// an FD frame carries no CRC check here: it is read only after
+			// the idle that tells a SOF from a stuff bit (canSOFIdleBits)
+			lead = 6 + rng.Intn(17)
+		}
 
 		switch class {
 		case 0: // classic standard
@@ -640,3 +647,76 @@ func breakCANEdge(t *testing.T) {
 
 // TRLC-LINKS: REQ-SDS-018
 func byte8(v int) int { return v & 0xff }
+
+// A record that opens inside a frame reads no frame from there: every
+// dominant bit after a recessive run of five bits or fewer could be a stuff
+// or data bit, and the bench CAN line read so gave frames of garbage (RTR,
+// FD, wrong bytes) that the BUS packet list then held. Each cut of the bench
+// line's three frames decodes only frames of the line itself.
+// TRLC-LINKS: REQ-SDS-018
+func TestCANRecordOpeningInsideAFrame(t *testing.T) {
+	_, w1 := canStdFrame(0x123, 4, []int{0x55, 0xAA, 0x0F, 0xF0})
+	_, w2 := canStdFrame(0x100, 2, []int{0x11, 0x22})
+	var wire []int
+	for i := 0; i < 20; i++ {
+		wire = append(wire, 1)
+	}
+	wire = append(wire, w1...)
+	for i := 0; i < 20; i++ {
+		wire = append(wire, 1)
+	}
+	wire = append(wire, w2...)
+	for i := 0; i < 20; i++ {
+		wire = append(wire, 1)
+	}
+	const spb = 8
+	full := canRender(wire, spb, true, 0, 0)
+	ct, cfg := exactBaudCfg(spb, true)
+	good := map[string]bool{"55 AA 0F F0": true, "11 22": true, "": false}
+	for cut := 0; cut < len(wire)*spb/2; cut += 3 {
+		r := DecodeCANFD(full[cut:], ct, cfg)
+		if !r.OK {
+			continue
+		}
+		var frame []string
+		flush := func() {
+			if len(frame) > 0 && !good[strings.Join(frame, " ")] {
+				t.Fatalf("cut at sample %d: a frame read %q (spans %s)", cut, strings.Join(frame, " "), spanKinds(r))
+			}
+			frame = frame[:0]
+		}
+		for _, sp := range r.Spans {
+			switch sp.Kind {
+			case "sof":
+				flush()
+			case "data":
+				frame = append(frame, sp.Text)
+			case "fd", "rtr":
+				if sp.Kind == "fd" || sp.Val == 1 {
+					t.Fatalf("cut at sample %d: a %s frame read from inside a frame", cut, sp.Kind)
+				}
+			}
+		}
+		flush()
+	}
+}
+
+// An inferred bit rate within 1.5% of a standard CAN rate is that rate: a
+// 500 kbit/s bench bus read as 502-507 kbit/s from a live record's edge gaps.
+// A rate far from any standard one stands.
+// TRLC-LINKS: REQ-SDS-018
+func TestCANBitRateSnapsToStandard(t *testing.T) {
+	data := []int{0x55, 0xAA, 0x0F, 0xF0}
+	_, w := canStdFrame(0x123, len(data), data)
+	for _, c := range []struct{ wire, want float64 }{{506000, 500000}, {494000, 500000}, {126500, 125000}, {300000, 300000}} {
+		const spb = 8
+		codes := canRender(w, spb, true, 12, 12)
+		r := DecodeCANFD(codes, 1/(spb*c.wire), CANFDCfg{DominantLow: true})
+		if !r.OK || fmtInts(r.Bytes) != fmtInts(data) {
+			t.Fatalf("%.0f bit/s: ok=%v bytes=%v err=%q", c.wire, r.OK, r.Bytes, r.Error)
+		}
+		if math.Abs(float64(r.Baud)-c.want) > 0.002*c.want {
+			t.Errorf("%.0f bit/s on the wire reads %d bit/s, want %.0f", c.wire, r.Baud, c.want)
+		}
+	}
+}

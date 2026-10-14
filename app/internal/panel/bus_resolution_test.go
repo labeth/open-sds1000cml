@@ -258,14 +258,18 @@ func TestBusDetectReadsAFreshFrame(t *testing.T) {
 }
 
 // envEng is the scope at a slow timebase: the live frames are the
-// time-ordered envelope, sampled frames only while a decode lease runs.
+// time-ordered envelope, sampled frames only while a decode or sample lease
+// runs.
 type envEng struct {
 	*fakeEng
-	leased atomic.Bool
+	leased, sampled atomic.Bool
 }
 
 // TRLC-LINKS: REQ-SDS-214
 func (e *envEng) LeaseDecodeView(d time.Duration) { e.leased.Store(d > 0) }
+
+// TRLC-LINKS: REQ-SDS-214
+func (e *envEng) LeaseSampleView(d time.Duration) { e.sampled.Store(d > 0) }
 
 // recStream records what the decoded stream was told. Its end stops the
 // scope a moment after Stop, as the engine ends a stream (its record shown).
@@ -334,7 +338,7 @@ func newEnvRig(t *testing.T) (*Controller, *envEng, *recStream) {
 	env := envelope2(uart, 244) // 2.44 us a point: 500us/div's live readout
 	c.SetFrameSource(func(fn func(*engine.Frame)) {
 		f := *env
-		if eng.leased.Load() {
+		if eng.leased.Load() || eng.sampled.Load() {
 			f = *uart
 		}
 		f.TdivS = eng.Snapshot().TdivS

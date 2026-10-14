@@ -213,10 +213,31 @@ function inferUARTspb(S) {
     for (const g of kg) { const m = Math.round(g / ref); if (m >= 1 && Math.abs(g - m * ref) <= 0.35 * ref) good++; }
     // >= keeps the LARGER candidate on an exact tie (candidates ascend).
     const frac = good / kg.length;
-    if (frac >= 0.7 && frac >= bestFrac) { best = ref; bestFrac = frac; }
+    if (frac >= 0.7 && frac >= bestFrac) {
+      // Final estimate over every fitting gap, multi-bit runs included: total
+      // time over total bits (decode_uart.go inferUARTspb). The 1-bit mean
+      // alone carries the edge quantization of each short gap; peak-detect
+      // frames read 115200 Bd 1.2% fast that way.
+      let sumG = 0, sumM = 0;
+      for (const g of kg) { const m = Math.round(g / ref); if (m >= 1 && Math.abs(g - m * ref) <= 0.35 * ref) { sumG += g; sumM += m; } }
+      if (sumM > 0) ref = sumG / sumM;
+      best = ref; bestFrac = frac;
+    }
   }
   if (best > 0) return { spb: best, reason: null };
   return { spb: 0, reason: "baud ambiguous — set it explicitly" };
+}
+
+// snapStandardBaud moves an inferred samples-per-bit onto the nearest standard
+// rate when one lies within 1.5% (decode_uart.go snapStandardBaud): an estimate
+// from a short record is a fraction of a sample off per bit, and the rate on
+// the wire is almost always a standard one. Otherwise the estimate stands.
+// TRLC-LINKS: REQ-SDS-018
+function snapStandardBaud(spb, colTimeS) {
+  if (!(spb > 0) || !(colTimeS > 0)) return spb;
+  const baud = 1 / (spb * colTimeS);
+  for (const std of STANDARD_BAUDS) if (Math.abs(baud - std) <= 0.015 * std) return 1 / (std * colTimeS);
+  return spb;
 }
 
 // UART_SYNC_FRAMES bounds the sync-in (Go uartSyncFrames).
@@ -272,7 +293,7 @@ function decodeUART(codes, colTimeS, cfg) {
   else {
     const inf = inferUARTspb(S);
     if (inf.reason) return fail("uart", inf.reason);
-    SPB = inf.spb;
+    SPB = snapStandardBaud(inf.spb, colTimeS);
     baud = 1 / (SPB * colTimeS);
   }
   if (!(SPB >= minSPB)) return fail("uart", SPB.toFixed(1) + " samples/bit; need >= " + minSPB, { samplesPerBit: SPB, baud });
@@ -490,6 +511,37 @@ const STANDARD_BAUDS = [300, 600, 1200, 2400, 4800, 9600, 14400, 19200, 28800, 3
 // margin; decode_autodetect.go i2cMinClockS).
 const I2C_MIN_CLOCK_S = 180e-9;
 
+// I2C_MIN_SETUP_S is how far an I2C START or STOP sits from SCL's edges at
+// the least, under the fastest mode's 0.26 us set-up and hold times: SDA
+// moving on an SCL edge is SPI's data, which reads as STARTs and STOPs
+// (decode_autodetect.go i2cMinSetupS).
+const I2C_MIN_SETUP_S = 100e-9;
+
+// i2cConditionsOnEdges reports whether most of an I2C decode's STARTs and
+// STOPs sit on an edge of SCL (sliced as S): within I2C_MIN_SETUP_S, and at
+// least a sample and a half, of one (decode_autodetect.go).
+// TRLC-LINKS: REQ-SDS-018
+function i2cConditionsOnEdges(r, S, colTimeS) {
+  const guard = Math.max(1.5, colTimeS > 0 ? I2C_MIN_SETUP_S / colTimeS : 0);
+  const edges = (S && S.edges) || [];
+  let on = 0, all = 0;
+  for (const s of r.spans || []) {
+    if (s.kind !== "start" && s.kind !== "stop") continue;
+    all++;
+    let lo = 0, hi = edges.length; // the first edge at or after the condition
+    while (lo < hi) { const m = (lo + hi) >> 1; if (edges[m].i >= s.i0) hi = m; else lo = m + 1; }
+    for (const j of [lo - 1, lo]) {
+      if (j >= 0 && j < edges.length && Math.abs(edges[j].i - s.i0) <= guard) { on++; break; }
+    }
+  }
+  return all > 0 && 2 * on > all;
+}
+
+// UART_MAX_BAUD is the fastest UART a detection names, well over the fastest
+// UARTs run: ringing on another bus's edges reads as one at the full rate
+// (decode_autodetect.go uartMaxBaud).
+const UART_MAX_BAUD = 40e6;
+
 // sentDistinctFrames counts the different CRC-valid frames among a SENT
 // decode's spans: each frame's nibbles from its SYNC to its CRC
 // (decode_autodetect.go).
@@ -531,6 +583,7 @@ function scoreResult(r) {
     // (a partial SENT frame read as "UART 66674 Bd, 5 bytes") — not a UART.
     const m = r.meta || {};
     if (m.samplesPerBit > 0 && m.samplesPerBit < 4) return -1e9;
+    if (m.baud > UART_MAX_BAUD) return -1e9;
     const stdBaud = STANDARD_BAUDS.some(b => Math.abs(m.baud - b) <= 0.03 * b);
     if (bytes < 8 && !stdBaud) return -1e9;
     // Over a fifth of the bytes misframed is another protocol read as UART, at
@@ -822,6 +875,9 @@ function autodetect(frame, opts) {
       // edge ringing on another bus (ARINC 429 at the full rate: an 18 ns
       // clock) - decode_autodetect.go i2cMinClockS
       if (r && r.meta && r.meta.colsPerClock > 0 && r.meta.colsPerClock * colTimeS < I2C_MIN_CLOCK_S) continue;
+      // STARTs and STOPs on SCL's edges are SPI's data - decode_autodetect.go
+      // i2cConditionsOnEdges
+      if (r && r.ok && i2cConditionsOnEdges(r, (scl === 1 ? clk1 : clk2).S, colTimeS)) continue;
       add("i2c", { scl, sda }, {}, r);
     }
     // SPI — only a clocked pair. CLK = the more-uniform channel; CPOL from its idle

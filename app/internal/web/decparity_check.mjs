@@ -83,7 +83,7 @@ const dispatch = {
   },
 };
 
-// TRLC-LINKS: REQ-SDS-181
+// TRLC-LINKS: REQ-SDS-181, REQ-SDS-073
 const arrEq = (a, b) => {
   a = a || [];
   b = b || [];

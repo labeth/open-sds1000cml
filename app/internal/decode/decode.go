@@ -54,6 +54,23 @@ func FeatureSamples(r Result) float64 {
 	return r.SPB
 }
 
+// ShortestRun is the fewest samples between two edges of a two-level
+// signal (sliced as the decoders slice it), 0 when it holds under three.
+// TRLC-LINKS: REQ-SDS-018
+func ShortestRun(codes []uint8) int {
+	s := sliceChannel(codes, 0, false)
+	if !s.ok || len(s.edges) < 3 {
+		return 0
+	}
+	run := 0
+	for k := 1; k < len(s.edges); k++ {
+		if g := s.edges[k].i - s.edges[k-1].i; run == 0 || g < run {
+			run = g
+		}
+	}
+	return run
+}
+
 // Names are the protocols as the screens name them.
 var Names = map[string]string{"uart": "UART", "i2c": "I2C", "spi": "SPI", "manchester": "Manchester", "sent": "SENT",
 	"canfd": "CAN", "mil1553": "MIL-1553", "arinc429": "ARINC 429", "usbls": "USB LS", "flexray": "FlexRay"}

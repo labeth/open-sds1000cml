@@ -415,10 +415,12 @@ const readableFeature = 5.0
 // liveEnvelopePoints over the screen (a quarter more while a serial trigger
 // is armed), and a bus feature under framecalc.MinEnvelopeFeature of its points
 // aliases (an I2C bus at 500us/div lists packets of no bytes). sampleS is the
-// decoded frame's sample interval. It returns
-// what the notice adds ("" when the timebase stays).
+// decoded frame's sample interval. within, when above 0, steps to the slowest
+// timebase up to it that reads the bus even when the current one does (a bus
+// found on a short record shows more of itself there). It returns what the
+// notice adds ("" when the timebase stays).
 // TRLC-LINKS: REQ-SDS-214
-func (c *Controller) readableTimebase(res decode.Result, sampleS float64) string {
+func (c *Controller) readableTimebase(res decode.Result, sampleS, within float64) string {
 	feature := decode.FeatureSamples(res) * sampleS
 	if !(feature > 0) || len(c.tdivs) == 0 {
 		return ""
@@ -430,14 +432,20 @@ func (c *Controller) readableTimebase(res decode.Result, sampleS float64) string
 	}
 	points := func(tdiv float64) float64 { return feature / (window * tdiv / liveEnvelopePoints) }
 	// the timebase asked for: one set while a stream ran applies when it ends
-	if points(s.st.TdivSet()) >= framecalc.MinEnvelopeFeature {
+	if within <= 0 && points(s.st.TdivSet()) >= framecalc.MinEnvelopeFeature {
 		return ""
 	}
-	best := 0
+	best := -1
 	for i, t := range c.tdivs {
-		if points(t) >= readableFeature && t > c.tdivs[best] {
+		if points(t) >= readableFeature && (best < 0 || t > c.tdivs[best]) && (within <= 0 || t <= within*1.001) {
 			best = i
 		}
+	}
+	switch {
+	case best < 0 && within > 0, best >= 0 && within > 0 && c.tdivs[best] == s.st.TdivSet():
+		return ""
+	case best < 0:
+		best = 0
 	}
 	if c.setTdivIdx(best) != nil {
 		return ""
@@ -445,21 +453,51 @@ func (c *Controller) readableTimebase(res decode.Result, sampleS float64) string
 	return ", " + si(c.tdivs[best], "s") + "/div to read it"
 }
 
-// detectOn waits for a sampled frame that accept takes and runs auto (Auto on
-// the frame on screen) on it. It asks first for a decimated record - a few
-// thousand filtered samples a screen, read in tens of milliseconds - and keeps
-// what auto finds there when the bus's shortest feature spans decimatedFeature
-// of its samples; else a full-rate record (bounded by detectWait, falling back
-// to the frame on screen at the end): a megasample at 200us/div, seconds to
-// read, made BUS take 8 s to name a UART. accept is told which record it is
-// offered (decimated). It returns the result, the decoded frame's sample
-// interval and whether a bus was found.
+// look is one phase of a bus search: auto's result, the decoded frame's
+// sample interval, whether it named a bus and, for a decimated record,
+// whether the record resolves every edge it holds (resolved).
 // TRLC-LINKS: REQ-SDS-214
-func (c *Controller) detectOn(accept func(f *engine.Frame, decimated bool) bool, auto AutoSource) (decode.Result, float64, bool) {
-	if res, sampleS, found := c.detectWith(true, accept, auto, decimatedWait); found && decode.FeatureSamples(res) >= decimatedFeature {
-		return res, sampleS, true
+type look struct {
+	res      decode.Result
+	sampleS  float64
+	found    bool
+	resolved bool
+}
+
+// detectOn waits for a sampled frame of the timebase on screen and runs auto
+// (Auto on the frame on screen) on it. It asks first for a decimated record -
+// a few thousand filtered samples a screen, read in tens of milliseconds - and
+// keeps what auto finds there when it stands (decimatedStands); else a
+// full-rate record (bounded by detectWait, falling back to the frame on
+// screen at the end) when that is short and can show more: a megasample at
+// 200us/div, seconds to read, made BUS take 8 s to name a UART, and the
+// search at the full-rate timebase reads a short record instead
+// (findAtFullRate). It returns the result, the decoded frame's sample
+// interval, whether a bus was found and the decimated record's look.
+// TRLC-LINKS: REQ-SDS-214
+func (c *Controller) detectOn(auto AutoSource) (decode.Result, float64, bool, look) {
+	all := func(*engine.Frame, bool) bool { return true }
+	dec := c.detectWith(true, false, all, auto, decimatedWait)
+	res, sampleS, found := dec.res, dec.sampleS, dec.found
+	if found && decimatedStands(res) {
+		return res, sampleS, true, dec
 	}
-	return c.detectWith(false, accept, auto, detectWait)
+	// A short screen fits the sample lease's budget undecimated: that record
+	// was the full-rate one already, and reading it again finds nothing new.
+	if full := c.fullRateS(); full > 0 && sampleS > 0 && sampleS <= 1.25*full {
+		return res, sampleS, found, dec
+	}
+	// A record that resolves its every edge shows at the full rate what it
+	// showed (a UART's bits at 10us/div); a long one costs more than the
+	// search at the full-rate timebase.
+	if w := c.windowTdiv(); dec.resolved || (w > 0 && c.snap().st.TdivSet() > w*1.001) {
+		return res, sampleS, false, dec
+	}
+	// the full-rate record, not a decimated one still in flight
+	full := c.fullRateS()
+	raw := func(f *engine.Frame, decimated bool) bool { return decimated || full <= 0 || f.SampleS <= 1.25*full }
+	l := c.detectWith(false, false, raw, auto, detectWait)
+	return l.res, l.sampleS, l.found, dec
 }
 
 // decimatedWait bounds the wait for a decimated record: a scope waiting for
@@ -469,15 +507,39 @@ const decimatedWait = 1500 * time.Millisecond
 // decimatedFeature is the samples of a decimated record a bus's shortest
 // feature must span for a detection on it to stand (a 115200 Bd UART at
 // 200us/div spans 35); a faster bus is looked at at the full rate.
-const decimatedFeature = 8.0
+// decimatedCheckedFeature is the bound for a bus found by its frames' CRCs
+// (CAN's CRC-15, FlexRay's header CRC-11), which a misread record does not
+// pass: a 500 kbit/s CAN bus at 200us/div spans 7.8.
+const (
+	decimatedFeature        = 8.0
+	decimatedCheckedFeature = 6.0
+)
+
+// decimatedStands reports whether a bus found on a decimated record stands
+// (decimatedFeature, decimatedCheckedFeature). A UART at a rate no UART uses
+// does not: a faster bus the record aliases reads as one (1 Mbit/s
+// Manchester sampled every 1 us: "UART 32917 8N1").
+// TRLC-LINKS: REQ-SDS-214
+func decimatedStands(res decode.Result) bool {
+	fs := decode.FeatureSamples(res)
+	switch res.Proto {
+	case "canfd", "flexray":
+		return fs >= decimatedCheckedFeature
+	case "uart":
+		return fs >= decimatedFeature && decode.StandardBaud(float64(res.Baud))
+	}
+	return fs >= decimatedFeature
+}
 
 // detectWith is one phase of detectOn: a decimated record (LeaseSampleView)
 // or a full-rate one (LeaseDecodeView), within wait. The lease ends with the
 // phase: a full-rate lease left running outranks the next phase's (the
 // search at 200us/div waited 4 s for a megasample instead of a decimated
-// record), and the live view comes back at once.
+// record), and the live view comes back at once. stepped says accept takes
+// only frames of a timebase the search stepped to, captured after it: no
+// frame in flight need be waited out.
 // TRLC-LINKS: REQ-SDS-214
-func (c *Controller) detectWith(decimated bool, accept func(*engine.Frame, bool) bool, auto AutoSource, wait time.Duration) (decode.Result, float64, bool) {
+func (c *Controller) detectWith(decimated, stepped bool, accept func(*engine.Frame, bool) bool, auto AutoSource, wait time.Duration) look {
 	deadline := c.now().Add(wait)
 	// While running, a frame captured after the search began: the one on
 	// screen, or one in flight, may predate a setting just changed (an ARINC
@@ -490,7 +552,7 @@ func (c *Controller) detectWith(decimated bool, accept func(*engine.Frame, bool)
 			}
 		})
 	}
-	fresh := func(f *engine.Frame) bool { return start == 0 || f.Seq >= start+2 }
+	fresh := func(f *engine.Frame) bool { return stepped || start == 0 || f.Seq >= start+2 }
 	lease := func(d time.Duration) {
 		if decimated {
 			if e, ok := c.eng.(interface{ LeaseSampleView(time.Duration) }); ok {
@@ -503,31 +565,42 @@ func (c *Controller) detectWith(decimated bool, accept func(*engine.Frame, bool)
 	defer lease(0)
 	for {
 		lease(3 * time.Second)
-		got, usable := false, false
+		got, usable, resolved := false, false, false
 		if c.frameFn != nil {
 			c.frameFn(func(f *engine.Frame) {
 				usable = f != nil && !f.IsEnv && !(f.PeakDetect && !f.Ordered) && f.Valid >= 32 && len(f.C1) >= f.Valid
 				got = usable && !f.PeakDetect && accept(f, decimated) && fresh(f)
+				resolved = got && decimated && len(f.C2) >= f.Valid && runsResolved(f.C1[:f.Valid]) && runsResolved(f.C2[:f.Valid])
 			})
 		}
 		last := c.detectSync || !c.now().Before(deadline)
 		if got || (usable && last && !decimated) {
-			return auto()
+			res, sampleS, found := auto()
+			return look{res, sampleS, found, resolved}
 		}
 		if last {
-			return decode.Result{}, 0, false
+			return look{}
 		}
 		time.Sleep(50 * time.Millisecond)
 	}
 }
 
+// runsResolved reports whether a decimated record's channel resolves every
+// edge it holds: no run between two of them under twice decimatedFeature
+// samples (or under three edges at all).
+// TRLC-LINKS: REQ-SDS-214
+func runsResolved(c []uint8) bool {
+	r := decode.ShortestRun(c)
+	return r == 0 || r >= 2*decimatedFeature
+}
+
 // findBus searches for a bus as BUS's auto-detect does: auto on a sampled
 // frame and, when that record hid the bus, again at the slowest timebase
-// sampled at the converters' full rate, which stays when the bus is found
-// there. A record hides a bus when it is decimated (a 10 Mbit/s FlexRay at
-// 500us/div's 32 ns) or too short (Autoset's 10us/div holds about one UART
-// byte). The timebase found there stays only while wanted (the
-// caller still needs the bus: Auto still picked, a stream still asked for).
+// sampled at the converters' full rate (findAtFullRate). A record hides a bus
+// when it is decimated (a 10 Mbit/s FlexRay at 500us/div's 32 ns) or too
+// short (Autoset's 10us/div holds about one UART byte). The timebase found
+// there stays only while wanted (the caller still needs the bus: Auto still
+// picked, a stream still asked for).
 // One search runs at a time. It returns auto's result, the decoded frame's
 // sample interval, whether a bus was found and the timebase it stepped to
 // (0: none).
@@ -535,20 +608,112 @@ func (c *Controller) detectWith(decimated bool, accept func(*engine.Frame, bool)
 func (c *Controller) findBus(auto AutoSource, wanted func() bool) (decode.Result, float64, bool, float64) {
 	c.searchMu.Lock()
 	defer c.searchMu.Unlock()
-	res, sampleS, found := c.detectOn(func(*engine.Frame, bool) bool { return true }, auto)
+	res, sampleS, found, dec := c.detectOn(auto)
+	// A UART of a byte or two, or at a rate no UART uses, on a short record is
+	// as likely part of another bus's frame (a CAN frame at 5us/div read as
+	// "UART 500000 8N1", USB at 2us/div as "UART 1500000 8N1", a FlexRay frame
+	// failing its CRC as "UART 10002156 8N1"): the search looks on, and names
+	// it only when it finds nothing else.
+	scant := found && scantUART(res)
 	// a scope waiting for a trigger captures nothing at the full rate either
-	if full, t := c.fullRateS(), c.fullRateTdiv(); full > 0 && t > 0 && !found && t != c.snap().st.TdivSet() && !c.waitingForTrigger(c.snap()) {
-		prev := c.snap().st.TdivSet()
-		c.setTdivNearest(t)
-		res, sampleS, found = c.detectOn(func(f *engine.Frame, decimated bool) bool {
-			return (decimated || f.SampleS <= 1.25*full) && (f.TdivS == 0 || math.Abs(f.TdivS-t) <= 1e-3*t)
-		}, auto)
-		if found && wanted() {
-			return res, sampleS, true, t
+	if full, t := c.fullRateS(), c.fullRateTdiv(); full > 0 && t > 0 && (!found || scant) && !c.waitingForTrigger(c.snap()) {
+		var first *look // the timebase on screen is the full-rate one: its decimated record is read
+		if math.Abs(c.snap().st.TdivSet()-t) <= 1e-3*t {
+			first = &dec
 		}
-		c.setTdivNearest(prev)
+		if r, s, ok, stepped := c.findAtFullRate(full, t, first, auto, wanted); ok {
+			return r, s, true, stepped
+		}
 	}
 	return res, sampleS, found, 0
+}
+
+// findAtFullRate is findBus's search at the slowest full-rate timebase t
+// (full the full rate's sample interval): its record decimated (first, when
+// read already), a short full-rate record (windowTdiv), then its whole record
+// at the full rate. The timebase the bus is found at stays while wanted, and
+// is returned (0: the timebase went back); with no bus found it goes back.
+// TRLC-LINKS: REQ-SDS-214
+func (c *Controller) findAtFullRate(full, t float64, first *look, auto AutoSource, wanted func() bool) (decode.Result, float64, bool, float64) {
+	prev := c.snap().st.TdivSet()
+	at := func(t float64) func(*engine.Frame, bool) bool {
+		return func(f *engine.Frame, decimated bool) bool {
+			return (decimated || f.SampleS <= 1.25*full) && (f.TdivS == 0 || math.Abs(f.TdivS-t) <= 1e-3*t)
+		}
+	}
+	keep := func(res decode.Result, sampleS, stepped float64) (decode.Result, float64, bool, float64) {
+		if wanted() {
+			if math.Abs(stepped-prev) <= 1e-3*stepped {
+				stepped = 0 // the timebase on screen
+			}
+			return res, sampleS, true, stepped
+		}
+		c.setTdivNearest(prev)
+		return res, sampleS, true, 0
+	}
+	// the whole record decimated: a slow bus, or one with long frames
+	var res decode.Result
+	var sampleS float64
+	var found bool
+	if first != nil {
+		res, sampleS, found = first.res, first.sampleS, first.found
+	} else {
+		c.setTdivNearest(t)
+		l := c.detectWith(true, true, at(t), auto, decimatedWait)
+		if res, sampleS, found = l.res, l.sampleS, l.found; found && decimatedStands(res) {
+			return keep(res, sampleS, t)
+		}
+	}
+	// A bus too fast for it is looked at at the full rate on a short record
+	// first: its frames are short, and the whole record takes seconds to
+	// read.
+	if w := c.windowTdiv(); w > 0 && w < t {
+		c.setTdivNearest(w)
+		if l := c.detectWith(false, true, at(w), auto, detectWait); l.found {
+			return keep(l.res, l.sampleS, w)
+		}
+		c.setTdivNearest(t)
+	}
+	// a sparse bus: no frame on the short record
+	l := c.detectWith(false, true, at(t), auto, detectWait)
+	if l.found {
+		return keep(l.res, l.sampleS, t)
+	}
+	c.setTdivNearest(prev)
+	return l.res, l.sampleS, false, 0
+}
+
+// scantUART reports a UART detection of under scantBytes bytes or at a rate
+// no UART uses.
+// TRLC-LINKS: REQ-SDS-214
+func scantUART(res decode.Result) bool {
+	return res.Proto == "uart" && (len(res.Bytes) < scantBytes || !decode.StandardBaud(float64(res.Baud)))
+}
+
+// scantBytes is the bytes a UART found on the search's first record must
+// hold to end the search.
+const scantBytes = 4
+
+// windowDivs is how much shorter than the slowest full-rate timebase's the
+// record a fast bus is first looked for on is: a quarter (50us/div: 500 us,
+// read in under a second against 2 ms in about four). A tenth held too few
+// frames: a FlexRay bus sending a pair every 240 us, one failing its CRC, read
+// as a 10 MBd UART on one record in six.
+const windowDivs = 4
+
+// windowTdiv is the timebase of the short full-rate record a fast bus is
+// first looked for on: the slowest at most a windowDivs-th of the full-rate
+// timebase (0 for none).
+// TRLC-LINKS: REQ-SDS-214
+func (c *Controller) windowTdiv() float64 {
+	t := c.fullRateTdiv()
+	best := 0.0
+	for _, d := range c.tdivs {
+		if d <= t/windowDivs*1.001 && d > best {
+			best = d
+		}
+	}
+	return best
 }
 
 // noBusNote is what a bus search that found nothing says: none says no bus
@@ -618,7 +783,11 @@ func (c *Controller) findAuto() {
 // full-rate timebase the search kept.
 // TRLC-LINKS: REQ-SDS-214
 func (c *Controller) readTimebase(res decode.Result, sampleS, stepped float64) string {
-	if note := c.readableTimebase(res, sampleS); note != "" || stepped == 0 {
+	within := 0.0
+	if t := c.fullRateTdiv(); stepped > 0 && stepped < t {
+		within = t // found on the short full-rate record
+	}
+	if note := c.readableTimebase(res, sampleS, within); note != "" || stepped == 0 {
 		return note
 	}
 	return ", " + si(stepped, "s") + "/div to read it"

@@ -180,15 +180,28 @@ const BUS_LIVE_POINTS = 2048, BUS_READABLE_FEATURE = 5;
 // TRLC-LINKS: REQ-SDS-214
 function busReadableTimebase(featureS) {
   if (!(featureS > 0) || !st || !st.tdivs || !(st.tdiv_s > 0)) return "";
-  const window = st.serial_mode ? 12.5 : 10;
-  // TRLC-LINKS: REQ-SDS-214
-  const points = (tdiv) => featureS / (window * tdiv / BUS_LIVE_POINTS);
-  if (points(st.tdiv_s) >= DECODE_MIN_ENVELOPE_FEATURE) return "";
-  let best = 0;
-  for (const t of st.tdivs) if (points(t) >= BUS_READABLE_FEATURE && t > best) best = t;
+  if (busLivePoints(featureS, st.tdiv_s) >= DECODE_MIN_ENVELOPE_FEATURE) return "";
+  const best = busSlowestReadable(featureS, 0);
   if (!best) return "";
   send("tdiv", best);
   return ", " + fmtTdiv(best) + "/div to read it";
+}
+// busLivePoints is how many of the live readout's points a bus feature of
+// featureS spans at the timebase tdiv.
+// TRLC-LINKS: REQ-SDS-214
+function busLivePoints(featureS, tdiv) {
+  const window = st && st.serial_mode ? 12.5 : 10;
+  return featureS / (window * tdiv / BUS_LIVE_POINTS);
+}
+// busSlowestReadable is the slowest timebase (up to within, when above 0)
+// that reads a bus whose shortest feature is featureS; 0 for none.
+// TRLC-LINKS: REQ-SDS-214
+function busSlowestReadable(featureS, within) {
+  let best = 0;
+  for (const t of (st && st.tdivs) || []) {
+    if (busLivePoints(featureS, t) >= BUS_READABLE_FEATURE && t > best && !(within > 0 && t > within * 1.001)) best = t;
+  }
+  return best;
 }
 // TRLC-LINKS: REQ-SDS-214
 async function busDetect(onEntry) {

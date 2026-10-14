@@ -9,6 +9,7 @@ import (
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/panel"
 	"open-sds/app/internal/streamview"
+	"slices"
 	"time"
 )
 
@@ -17,6 +18,7 @@ type statusReply struct {
 	engine.Stats
 	Tdivs         []float64     `json:"tdivs"`
 	FullRateTdivS float64       `json:"full_rate_tdiv_s"` // the slowest timebase sampled at the full rate (BUS detection's retry)
+	FullRateS     float64       `json:"full_rate_s"`      // that rate's sample interval: a record at it needs no full-rate look again
 	TrigVolts     float64       `json:"trig_volts"`
 	TrigZero      float64       `json:"trig_zero"` // active source-detent trig cal: code = zero − cpv·V (BNC volts)
 	TrigCpv       float64       `json:"trig_cpv"`  // DAC codes per input-volt at the source detent
@@ -70,6 +72,7 @@ func (s *Server) hStatus(w http.ResponseWriter, r *http.Request) {
 		Stats:         st,
 		Tdivs:         engine.SupportedTdivs(),
 		FullRateTdivS: engine.FullRateTdiv(engine.SupportedTdivs()),
+		FullRateS:     engine.PlanSRAM(slices.Min(engine.SupportedTdivs())).SampleS,
 		TrigVolts:     engine.TrigLevelVolts(st.TrigCode),
 		TrigCodeMin:   engine.TrigCodeMin,
 		TrigCodeMax:   engine.TrigCodeMax,

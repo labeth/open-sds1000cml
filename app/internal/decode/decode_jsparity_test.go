@@ -20,7 +20,7 @@ import (
 // truth, then replays the vectors through the JS twins under node and asserts an
 // exact {ok, bytes} match. Skips when node is unavailable — a hard failure
 // under CI_REQUIRE_BROWSER=1 (internal/testenv).
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-073
 func TestJSDecoderParity(t *testing.T) {
 	testenv.NeedNode(t)
 	node, _ := exec.LookPath("node")
@@ -138,6 +138,12 @@ func TestJSDecoderParity(t *testing.T) {
 		ct := 1.0 / (float64(spb) * 500000.0)
 		add("canfd", codes, ct, jsCfg{"nominalBaud": 500000, "dominantLow": true},
 			DecodeCANFD(codes, ct, CANFDCfg{NominalBaud: 500000, DominantLow: true}))
+		// a record opening inside a frame (no SOF read there), then the next
+		// frame, its rate inferred 1.2 % off the standard 500 kbit/s
+		two := append(append([]uint8{}, codes...), codes...)
+		cut := two[len(codes)/3:]
+		ct2 := 1.0 / (float64(spb) * 506000.0)
+		add("canfd", cut, ct2, jsCfg{"dominantLow": true}, DecodeCANFD(cut, ct2, CANFDCfg{DominantLow: true}))
 	}
 
 	// ---- ARINC 429: a complete word (auto bit-rate, pulse-count gate).
@@ -286,6 +292,18 @@ func TestJSDecoderParity(t *testing.T) {
 		flxW2 := brFlexFrame(brFlexFixCRC([]int{0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC, 0xDE}), 20, 8, 8, 8)
 
 		addAuto(uaW2, nil, 1e-6)
+		// noisy captures where the auto-baud's final estimate and its snap to a
+		// standard rate decide the bus (UART or none) and its bytes
+		var noisy []struct {
+			C1, C2 []uint8
+			ColT   float64
+		}
+		if raw, err := os.ReadFile("testdata/uart_autobaud_noisy.json"); err != nil || json.Unmarshal(raw, &noisy) != nil {
+			t.Fatalf("testdata/uart_autobaud_noisy.json: %v", err)
+		}
+		for _, v := range noisy {
+			addAuto(v.C1, v.C2, v.ColT)
+		}
 		addAuto(clkW, datW, 2e-7)
 		addAuto(datW, clkW, 2e-7) // SPI roles swapped
 		addAuto(sclW, sdaW, 2e-7)

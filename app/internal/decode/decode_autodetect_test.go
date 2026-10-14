@@ -116,10 +116,50 @@ func TestAutodetectRingingIsNotI2C(t *testing.T) {
 	}
 }
 
+// SPI's data moves on its clock's edges: an FPGA's a nanosecond ahead of its
+// clock, a decimated record's a sample, and SDA falling and rising "while SCL
+// is high" reads as I2C STARTs and STOPs, outscoring the SPI decode. An I2C
+// START or STOP sits well inside SCL's high level (0.26 us at the least):
+// SPI with a 200 kHz clock at 200us/div, decimated to 256 ns, is SPI.
+// TRLC-LINKS: REQ-SDS-018
+func TestAutodetectSPIDataOnClockEdgesIsNotI2C(t *testing.T) {
+	b, err := os.ReadFile("testdata/spi_decimated_200us.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var f struct {
+		SampleS float64 `json:"sample_s"`
+		C1, C2  []int
+	}
+	if err := json.Unmarshal(b, &f); err != nil {
+		t.Fatal(err)
+	}
+	c1, c2 := make([]uint8, len(f.C1)), make([]uint8, len(f.C2))
+	for i := range f.C1 {
+		c1[i], c2[i] = uint8(f.C1[i]), uint8(f.C2[i])
+	}
+	i2c := DecodeI2C(c1, c2, f.SampleS, I2CCfg{Format: "hex"})
+	if scoreResult(i2c) <= 0 {
+		t.Fatalf("the capture no longer reads as I2C at all (score %.0f): the test proves nothing", scoreResult(i2c))
+	}
+	if !i2cConditionsOnEdges(i2c, new(sliceChannel(c1, 0, false)), f.SampleS) {
+		t.Error("its STARTs and STOPs are not on SCL's edges")
+	}
+	if r, _ := AutodetectFast(c1, c2, f.SampleS, "hex"); r.Proto != "spi" {
+		t.Fatalf("SPI auto-detected as %q: %.60q", r.Proto, r.Text)
+	}
+	// a real I2C bus: its STARTs and STOPs in the middle of SCL high
+	scl, sda := i2cWave(0x24, 0, []int{0x55, 0xAA}, 20)
+	if r := DecodeI2C(scl, sda, 2e-7, I2CCfg{Format: "hex"}); !r.OK || i2cConditionsOnEdges(r, new(sliceChannel(scl, 0, false)), 2e-7) {
+		t.Errorf("a clean I2C transaction: ok %v, conditions on SCL's edges %v", r.OK, i2cConditionsOnEdges(r, new(sliceChannel(scl, 0, false)), 2e-7))
+	}
+}
+
 // A UART reading needs evidence: one byte is a stop bit that checks on half of
 // random lines, and a fifth of its bytes misframed is another protocol read
 // as UART at any rate (part of a CAN frame: 500000 Bd, 3 bytes, 1 misframed);
-// clean bytes at a standard rate weigh most.
+// clean bytes at a standard rate weigh most. No UART runs at 100 MBd: that is
+// ringing on another bus's edges.
 // TRLC-LINKS: REQ-SDS-018
 func TestUARTScoreNeedsEvidence(t *testing.T) {
 	uart := func(bytes, misframed int, baud int) Result {
@@ -143,6 +183,8 @@ func TestUARTScoreNeedsEvidence(t *testing.T) {
 		{"3 bytes, 1 misframed, standard rate", uart(3, 1, 500000), false},
 		{"3 clean bytes, standard rate", uart(3, 0, 115200), true},
 		{"5 bytes, 1 misframed, standard rate", uart(5, 1, 115200), true},
+		{"10 clean bytes at 100 MBd: ringing", uart(10, 0, 100058636), false},
+		{"10 clean bytes at 12 MBd", uart(10, 0, 12000000), true},
 	} {
 		if got := scoreResult(c.r) > 0; got != c.pass {
 			t.Errorf("%s: scored %.0f", c.name, scoreResult(c.r))
@@ -184,8 +226,33 @@ func TestIdleLevelFromTheGap(t *testing.T) {
 		{"idling high between transfers", clock(400, 200, 40, 0, 0), 1},
 		{"idling low, the gap cut short by the record's end", clock(10, 200, 41, 110, 50), 0},
 	} {
-		if got := idleLevel(sliceChannel(c.sig, 0, false)); got != c.want {
+		if got := idleLevel(new(sliceChannel(c.sig, 0, false))); got != c.want {
 			t.Errorf("%s: idle %d, want %d", c.name, got, c.want)
 		}
+	}
+}
+
+// A noisy SPI mode 3 capture (data moving on the falling clock edges, clock
+// idle high) is named mode 3, as the data's launch edges say and the web's
+// detection names it. The compiler (go1.26.0 to 1.26.2, amd64 and arm) merged
+// a copy of the clock's figures into the stack slot of the channels' while
+// the data line's were still to be read, so the vote counted the clock
+// against itself and both phases were tried: mode 2 won the tie.
+// TRLC-LINKS: REQ-SDS-018
+func TestAutodetectSPIPhaseFromLaunchEdges(t *testing.T) {
+	raw, err := os.ReadFile("testdata/spi_mode3_noisy.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var v struct {
+		C1, C2 []uint8
+		ColT   float64
+	}
+	if err := json.Unmarshal(raw, &v); err != nil {
+		t.Fatal(err)
+	}
+	r := Autodetect(v.C1, v.C2, v.ColT, "hex")
+	if r.Proto != "spi" || !r.Roles.CPOL || !r.Roles.CPHA || r.Text != "8C 28 23 B0 50 E3 31 22 E4 F4" {
+		t.Fatalf("%s %s %+v %q, want SPI mode 3: 8C 28 23 B0 ...", r.Proto, r.Src, r.Roles, r.Text)
 	}
 }

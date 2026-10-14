@@ -178,3 +178,35 @@ func TestSI5(t *testing.T) {
 		}
 	}
 }
+
+// The packet list names each packet's address (I2C "24 W") and a fault of the
+// packet as a whole (an I2C NAK, a CAN CRC) as the web's list does: a NAKed
+// write read like an answered one.
+// TRLC-LINKS: REQ-SDS-214
+func TestBusListNamesAddressAndFault(t *testing.T) {
+	r := newViewRig(t)
+	c := r.c
+	show := func(nack bool) {
+		f := i2cFrame(100e3, 100e-9, 40000, 0x55, 0xAA)
+		if nack { // SDA high in the address byte's ACK slot: no device answered
+			q := 1 / 100e3 / 4 / 100e-9
+			start := 8*q + 3*q // idle, START, SCL low
+			for i := int(start + 8*4*q); i < int(start+9*4*q); i++ {
+				f.C2[i] = 210
+			}
+		}
+		r.show(f)
+	}
+	show(false)
+	press(t, c, "f2")
+	show(false)
+	ln := c.View().Bus.Lines
+	if len(ln) == 0 || ln[0].Addr != "24 W" || ln[0].Fault != "" {
+		t.Fatalf("an answered write: %+v", ln)
+	}
+	show(true)
+	ln = c.View().Bus.Lines
+	if len(ln) == 0 || ln[0].Fault != "NAK" {
+		t.Fatalf("a NAKed write: %+v", ln)
+	}
+}

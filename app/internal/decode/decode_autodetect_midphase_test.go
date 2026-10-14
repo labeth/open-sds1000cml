@@ -79,12 +79,12 @@ func TestAutodetectUARTBesideFreeClock(t *testing.T) {
 				t.Errorf("hp %d, UART on %s: %s %s %v (%s)", hp, src, r.Proto, r.Src, r.Bytes, r.Error)
 			}
 		}
-		if share, n := phaseLock(clockScore(ck), sliceChannel(u, 0, false)); n >= 12 && share >= 0.6 {
+		if share, n := phaseLock(new(clockScore(ck)), new(sliceChannel(u, 0, false))); n >= 12 && share >= 0.6 {
 			t.Errorf("hp %d: the UART locks to the free clock (%.2f of %d edges)", hp, share, n)
 		}
 	}
 	clk, dat := spiWave([]int{0x48, 0x69, 0x55, 0xAA, 0x0F, 0xF0}, 20)
-	if share, n := phaseLock(clockScore(clk), sliceChannel(dat, 0, false)); n < 12 || share < 0.9 {
+	if share, n := phaseLock(new(clockScore(clk)), new(sliceChannel(dat, 0, false))); n < 12 || share < 0.9 {
 		t.Errorf("SPI data is not locked to its clock: %.2f of %d edges", share, n)
 	}
 	scl, sda := i2cWave(0x24, 0, []int{0x55, 0xAA, 0x0F}, 20)

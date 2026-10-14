@@ -2,12 +2,14 @@
 package panel
 
 import (
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
 
 	"open-sds/app/internal/decode"
 	"open-sds/app/internal/engine"
+	"open-sds/app/internal/panel/framecalc"
 )
 
 // searchLeaseEng records the sample and decode leases a bus search takes.
@@ -80,6 +82,195 @@ func TestBusSearchTakesADecimatedRecordFirst(t *testing.T) {
 		}
 		if eng.sampled.Load() || eng.raw.Load() {
 			t.Errorf("%.0f Bd: a lease outlived the search (sample %v, full rate %v)", c.baud, eng.sampled.Load(), eng.raw.Load())
+		}
+	}
+}
+
+// A bus too fast for the full-rate timebase's decimated record is looked for
+// on a short full-rate record (50us/div: 500 us, read in under a second)
+// before the whole one (2 ms, about four): a 2 MBd UART is found there, and
+// BUS steps to the slowest timebase that reads it. A timebase whose own
+// full-rate record is long (500us/div) is not read at the full rate at all.
+// TRLC-LINKS: REQ-SDS-214
+func TestBusSearchReadsAShortFullRateRecord(t *testing.T) {
+	_, base, fe := newC(t)
+	eng := &searchLeaseEng{fakeEng: base}
+	ctl := New(eng, fe, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
+	ctl.decode(idle(), true)
+	ctl.detectSync = true
+	msgs := []string{"Hi U\x55\xaa\x0f\xf0"}
+	raws := map[float64]int{}
+	ctl.SetFrameSource(func(fn func(*engine.Frame)) {
+		tdiv := eng.Snapshot().TdivS
+		var f engine.Frame
+		switch {
+		case eng.raw.Load():
+			raws[tdiv]++
+			f = *uartFrame(msgs, 2e6, 5e-6, 2e-9, int(10*tdiv/2e-9))
+		case eng.sampled.Load():
+			f = *uartFrame(msgs, 2e6, 5e-6, 256e-9, 8192) // 2 samples a bit: no bus
+		default:
+			f = *envelope2(uartFrame(msgs, 2e6, 5e-6, 2e-9, 100000), 50)
+		}
+		f.TdivS = tdiv
+		fn(&f)
+	})
+	ctl.runDetect()
+	ctl.mu.Lock()
+	proto, baud, notice := ctl.decProto, ctl.decBaud, ctl.ui.notice
+	ctl.mu.Unlock()
+	if proto != framecalc.ProtoUART || baud < 1.9e6 || baud > 2.1e6 {
+		t.Fatalf("found %d at %d Bd, notice %q", proto, baud, notice)
+	}
+	if len(raws) != 1 || raws[50e-6] == 0 {
+		t.Errorf("full-rate records read at %v, want only the short one at 50us/div", raws)
+	}
+	if tdiv := eng.Snapshot().TdivS; tdiv != 20e-6 || !strings.Contains(notice, "20us/div to read it") {
+		t.Errorf("tdiv %g notice %q: want the slowest that reads 500 ns bits, 20us/div", tdiv, notice)
+	}
+	if eng.sampled.Load() || eng.raw.Load() {
+		t.Errorf("a lease outlived the search (sample %v, full rate %v)", eng.sampled.Load(), eng.raw.Load())
+	}
+}
+
+// What a decimated record shows of a bus stands by the bus's evidence: CRCs
+// (CAN, FlexRay) stand on fewer samples a bit than a UART, and an odd-rate
+// UART is a faster bus aliased.
+// TRLC-LINKS: REQ-SDS-214
+func TestDecimatedStands(t *testing.T) {
+	r := func(proto string, spb float64, baud int) decode.Result {
+		return decode.Result{OK: true, Proto: proto, SPB: spb, Baud: baud}
+	}
+	for _, c := range []struct {
+		name string
+		res  decode.Result
+		want bool
+	}{
+		{"CAN at 500 kbit/s and 200us/div", r("canfd", 7.8, 500000), true},
+		{"CAN at 1 Mbit/s and 200us/div", r("canfd", 3.9, 1000000), false},
+		{"UART 115200 at 200us/div", r("uart", 34, 115200), true},
+		{"UART 500000 at 200us/div", r("uart", 7.8, 500000), false},
+		{"UART at an odd rate: Manchester aliased", r("uart", 29.7, 32917), false},
+		{"I2C", r("i2c", 19, 0), true},
+		{"SPI", r("spi", 19.5, 0), true},
+		{"Manchester", r("manchester", 31, 0), true},
+	} {
+		if got := decimatedStands(c.res); got != c.want {
+			t.Errorf("%s: stands %v", c.name, got)
+		}
+	}
+}
+
+// A UART of a byte or two, or at a rate no UART uses, on the record on
+// screen is as likely part of another bus's frame: the search looks on at
+// the full-rate timebase, and names it only when nothing else is found there.
+// TRLC-LINKS: REQ-SDS-214
+func TestBusSearchLooksPastAScantUART(t *testing.T) {
+	for _, c := range []struct {
+		name     string
+		atFull   bool
+		wantBaud int
+	}{{"a UART at the full-rate timebase", true, 115200}, {"nothing else", false, 500000}} {
+		ctl, eng, _ := newC(t)
+		ctl.detectSync = true
+		short := uartFrame([]string{"Hi"}, 500000, 0, 2e-9, 46000) // two bytes after the lead
+		idle := make([]uint8, 8192)
+		for i := range idle {
+			idle[i] = 210
+		}
+		ctl.SetFrameSource(func(fn func(*engine.Frame)) {
+			tdiv := eng.Snapshot().TdivS
+			var f engine.Frame
+			switch {
+			case tdiv < 50e-6:
+				f = *short
+			case tdiv >= 200e-6 && c.atFull:
+				f = *uartFrame([]string{"Hi U\x55\xaa"}, 115200, 30e-6, 256e-9, 8192)
+			default:
+				f = engine.Frame{C1: idle, C2: idle, Valid: len(idle), WinCols: len(idle), SampleS: 2e-9}
+			}
+			f.TdivS = tdiv
+			fn(&f)
+		})
+		ctl.setTdivNearest(5e-6)
+		ctl.runDetect()
+		ctl.mu.Lock()
+		proto, baud, notice := ctl.decProto, ctl.decBaud, ctl.ui.notice
+		ctl.mu.Unlock()
+		if proto != framecalc.ProtoUART || baud != c.wantBaud {
+			t.Errorf("%s: found %d at %d Bd (notice %q), want UART %d", c.name, proto, baud, notice, c.wantBaud)
+		}
+	}
+	for _, c := range []struct {
+		res   decode.Result
+		scant bool
+	}{
+		{decode.Result{Proto: "uart", Baud: 1500000, Bytes: make([]int, 3)}, true},
+		{decode.Result{Proto: "uart", Baud: 115200, Bytes: make([]int, 4)}, false},
+		{decode.Result{Proto: "uart", Baud: 10002156, Bytes: make([]int, 12)}, true},
+		{decode.Result{Proto: "manchester", Baud: 1000000, Bytes: make([]int, 2)}, false},
+	} {
+		if got := scantUART(c.res); got != c.scant {
+			t.Errorf("%s %d Bd, %d bytes: scant %v", c.res.Proto, c.res.Baud, len(c.res.Bytes), got)
+		}
+	}
+}
+
+// A decimated record that resolves its every edge (a UART's bits at
+// 10us/div, a few hundred samples each) shows at the full rate only what it
+// showed: the search reads no full-rate record of that screen and goes on to
+// the full-rate timebase. One with edges closer than it can tell apart (a
+// fast bus) is read at the full rate first.
+// TRLC-LINKS: REQ-SDS-214
+func TestBusSearchSkipsAFullRateRecordTheDecimatedOneResolves(t *testing.T) {
+	for _, c := range []struct {
+		name string
+		run  int // samples between the 10us/div record's edges
+		raw  bool
+	}{{"resolved", 300, false}, {"edges too close", 4, true}} {
+		_, base, fe := newC(t)
+		eng := &searchLeaseEng{fakeEng: base}
+		ctl := New(eng, fe, -1, engine.SupportedTdivs(), 10e-6, t.Logf)
+		ctl.decode(idle(), true)
+		ctl.detectSync = true
+		// edges c.run to 2*c.run samples apart, irregular (no clock); C2 idles
+		square, idleC2 := make([]uint8, 3125), make([]uint8, 3125)
+		level, next := uint8(40), c.run
+		for i := range square {
+			if i == next {
+				level = 250 - level
+				next += c.run + (i*7919)%(c.run+1)
+			}
+			square[i], idleC2[i] = level, 210
+		}
+		raws := map[float64]int{}
+		ctl.SetFrameSource(func(fn func(*engine.Frame)) {
+			tdiv := eng.Snapshot().TdivS
+			var f engine.Frame
+			switch {
+			case eng.raw.Load():
+				raws[tdiv]++
+				f = engine.Frame{C1: square, C2: idleC2, Valid: len(square), WinCols: len(square), SampleS: 2e-9}
+			case eng.sampled.Load() && tdiv >= 200e-6:
+				f = *uartFrame([]string{"Hi U\x55\xaa"}, 115200, 30e-6, 256e-9, 8192)
+			case eng.sampled.Load():
+				f = engine.Frame{C1: square, C2: idleC2, Valid: len(square), WinCols: len(square), SampleS: 32e-9}
+			default:
+				f = *envelope2(uartFrame([]string{"Hi"}, 115200, 30e-6, 2e-9, 100000), 50)
+			}
+			f.TdivS = tdiv
+			fn(&f)
+		})
+		ctl.setTdivNearest(10e-6)
+		ctl.runDetect()
+		ctl.mu.Lock()
+		proto, notice := ctl.decProto, ctl.ui.notice
+		ctl.mu.Unlock()
+		if proto != framecalc.ProtoUART {
+			t.Fatalf("%s: found %d, notice %q", c.name, proto, notice)
+		}
+		if read := raws[10e-6] > 0; read != c.raw {
+			t.Errorf("%s: the 10us/div screen read at the full rate %v, want %v (full-rate reads %v, notice %q)", c.name, read, c.raw, raws, notice)
 		}
 	}
 }

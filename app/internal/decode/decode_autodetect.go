@@ -20,6 +20,43 @@ import (
 // ARINC 429's two lines at the full rate read as I2C on an 18 ns clock.
 const i2cMinClockS = 180e-9
 
+// i2cMinSetupS is how far an I2C START or STOP sits from SCL's edges at the
+// least, under the fastest mode's 0.26 us set-up and hold times: SDA moving
+// on an SCL edge is SPI's data (an FPGA's a nanosecond ahead of its clock, or
+// a decimated record's a sample), which reads as STARTs and STOPs.
+const i2cMinSetupS = 100e-9
+
+// i2cConditionsOnEdges reports whether most of an I2C decode's STARTs and
+// STOPs sit on an edge of SCL (sliced as scl): within i2cMinSetupS, and at
+// least a sample and a half, of one.
+// TRLC-LINKS: REQ-SDS-018
+func i2cConditionsOnEdges(r Result, scl *sliced, colTimeS float64) bool {
+	guard := 1.5
+	if colTimeS > 0 {
+		guard = math.Max(guard, i2cMinSetupS/colTimeS)
+	}
+	on, all := 0, 0
+	for _, s := range r.Spans {
+		if s.Kind != "start" && s.Kind != "stop" {
+			continue
+		}
+		all++
+		k := sort.Search(len(scl.edges), func(j int) bool { return scl.edges[j].i >= s.I0 })
+		for _, j := range []int{k - 1, k} {
+			if j >= 0 && j < len(scl.edges) && math.Abs(float64(scl.edges[j].i-s.I0)) <= guard {
+				on++
+				break
+			}
+		}
+	}
+	return all > 0 && 2*on > all
+}
+
+// uartMaxBaud is the fastest UART a detection names, well over the fastest
+// UARTs run (12 to 20 MBd): ringing on another bus's edges reads as one at
+// the full rate (ARINC 429 at 10ns/div: "UART 100058636 8N1").
+const uartMaxBaud = 40e6
+
 // sentDistinctFrames counts the different CRC-valid frames among a SENT
 // decode's spans: each frame's nibbles from its SYNC to its CRC.
 // TRLC-LINKS: REQ-SDS-018
@@ -79,6 +116,9 @@ func scoreResult(r Result) float64 {
 		// Under 4 samples a bit a UART decode is guesswork: FlexRay at
 		// 31 MS/s (3.3 samples a bit) reads as "UART 9.5 MBd".
 		if r.SPB > 0 && r.SPB < 4 {
+			return -1e9
+		}
+		if float64(r.Baud) > uartMaxBaud {
 			return -1e9
 		}
 		// A few bytes at a rate no UART uses are not a UART: a partial SENT
@@ -239,7 +279,7 @@ func clockScore(codes []uint8) clockInfo {
 // I2C moves SDA in the middle of SCL low. Mostly mid-phase data is not SPI:
 // an I2C window without its START reads as "SPI mode 3, 3 bytes" otherwise.
 // TRLC-LINKS: REQ-SDS-018
-func midPhaseData(c clockInfo, d sliced) float64 {
+func midPhaseData(c *clockInfo, d *sliced) float64 {
 	if !c.ok || c.hp <= 0 || !d.ok || len(d.edges) == 0 || len(c.s.edges) == 0 {
 		return 0
 	}
@@ -269,7 +309,7 @@ func midPhaseData(c clockInfo, d sliced) float64 {
 // SDA at one delay into SCL low. A line that only shares the screen with a
 // clock, a UART beside a free-running clock, spreads over the whole cycle.
 // TRLC-LINKS: REQ-SDS-018
-func phaseLock(c clockInfo, d sliced) (share float64, n int) {
+func phaseLock(c *clockInfo, d *sliced) (share float64, n int) {
 	if !c.ok || c.hp <= 0 || !d.ok {
 		return 0, 0
 	}
@@ -313,7 +353,7 @@ func phaseLock(c clockInfo, d sliced) (share float64, n int) {
 // data's edges name the launch edge and with it CPHA, where the sampled
 // amplitude cannot: on sharp edges every sample is a full rail either way.
 // TRLC-LINKS: REQ-SDS-018
-func launchEdges(c clockInfo, d sliced) (fall, rise int) {
+func launchEdges(c *clockInfo, d *sliced) (fall, rise int) {
 	if !c.ok || c.hp <= 0 || !d.ok {
 		return 0, 0
 	}
@@ -351,7 +391,7 @@ func launchEdges(c clockInfo, d sliced) (fall, rise int) {
 // holds both alike, and a vote of 12759 samples to 12753 read a mode 0 clock
 // as mode 3. Low is SPI's usual idle (mode 0).
 // TRLC-LINKS: REQ-SDS-018
-func idleLevel(s sliced) int {
+func idleLevel(s *sliced) int {
 	if !s.ok {
 		return 0
 	}
@@ -427,6 +467,10 @@ func Autodetect(c1, c2 []uint8, colTimeS float64, format string) Result {
 	}
 	line := func(k int) Roles { return Roles{ChA: k, ChB: 1 - k} }
 
+	// The helpers below take the channels' figures by address: copies of
+	// them as arguments were merged by the compiler (go1.26) into the stack
+	// slot of clk while a pointer into clk was still to be read, and the SPI
+	// launch vote counted the clock against itself.
 	clk := [2]clockInfo{clockScore(c1), clockScore(c2)}
 	u0, u1 := clk[0].uniFrac, clk[1].uniFrac
 	hi, lo := math.Max(u0, u1), math.Min(u0, u1)
@@ -441,7 +485,7 @@ func Autodetect(c1, c2 []uint8, colTimeS float64, format string) Result {
 		if u1 > u0 {
 			ci = 1
 		}
-		share, n := phaseLock(clk[ci], clk[1-ci].s)
+		share, n := phaseLock(&clk[ci], &clk[1-ci].s)
 		freeClock = n >= 12 && share < 0.6
 	}
 	locked := clockedPair && !freeClock
@@ -489,6 +533,9 @@ func Autodetect(c1, c2 []uint8, colTimeS float64, format string) Result {
 			if r.SPB > 0 && r.SPB*colTimeS < i2cMinClockS {
 				continue
 			}
+			if r.OK && i2cConditionsOnEdges(r, &clk[ord[0]].s, colTimeS) {
+				continue
+			}
 			consider(r, "SCL "+chName(ord[0])+" SDA "+chName(ord[1]), Roles{ChA: ord[0], ChB: ord[1]})
 		}
 		if clockedPair {
@@ -497,15 +544,15 @@ func Autodetect(c1, c2 []uint8, colTimeS float64, format string) Result {
 				ci = 1
 			}
 			di := 1 - ci
-			if midPhaseData(clk[ci], clk[di].s) > 0.5 {
+			if midPhaseData(&clk[ci], &clk[di].s) > 0.5 {
 				return best // data moves between clock edges: I2C-like, never SPI
 			}
-			cpol := idleLevel(clk[ci].s)
+			cpol := idleLevel(&clk[ci].s)
 			// Data launched on the falling edge is sampled on the rising one
 			// (modes 0 and 3, CPHA = CPOL), on the rising edge on the falling
 			// one (modes 1 and 2); without a clear majority both are tried.
 			cphas := []bool{false, true}
-			if fall, rise := launchEdges(clk[ci], clk[di].s); fall >= 2*rise+2 {
+			if fall, rise := launchEdges(&clk[ci], &clk[di].s); fall >= 2*rise+2 {
 				cphas = []bool{cpol == 1}
 			} else if rise >= 2*fall+2 {
 				cphas = []bool{cpol == 0}
@@ -529,6 +576,10 @@ func Autodetect(c1, c2 []uint8, colTimeS float64, format string) Result {
 	}
 	return best
 }
+
+// StandardBaud reports whether baud is a rate UARTs use (within 3 %).
+// TRLC-LINKS: REQ-SDS-018
+func StandardBaud(baud float64) bool { return nearStandardBaud(baud, 0.03) }
 
 // nearStandardBaud reports whether baud lies within tol (fraction) of a
 // standard UART rate.

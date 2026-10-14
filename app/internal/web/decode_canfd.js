@@ -15,6 +15,23 @@ if (typeof sliceChannel === "undefined" && typeof require !== "undefined") {
   globalThis.fmtByte = _d.fmtByte;
 }
 
+// The recessive run (bits) a SOF must follow: longer than bit stuffing lets a
+// frame hold one (Go canSOFIdleBits).
+const CAN_SOF_IDLE_BITS = 5.5;
+
+// The common CAN bit rates an inferred rate snaps to (Go canStandardBauds).
+const CAN_STANDARD_BAUDS = [10000, 20000, 50000, 83333, 100000, 125000, 250000, 500000, 800000, 1000000];
+
+// canSnapBaud moves an inferred samples-per-bit onto the nearest standard CAN
+// rate within 1.5%; otherwise the estimate stands (Go snapCANBaud).
+// TRLC-LINKS: REQ-SDS-018
+function canSnapBaud(spb, colTimeS) {
+  if (!(spb > 0) || !(colTimeS > 0)) return spb;
+  const baud = 1 / (spb * colTimeS);
+  for (const std of CAN_STANDARD_BAUDS) if (Math.abs(baud - std) <= 0.015 * std) return 1 / (std * colTimeS);
+  return spb;
+}
+
 // TRLC-LINKS: REQ-SDS-018
 function canFail(reason) {
   return { ok: false, error: reason, proto: "canfd", spans: [], text: "", bytes: [] };
@@ -247,7 +264,8 @@ function canOneFrame(S, dominantLow, sofStart, spb, dataSpb) {
   toks.push("CRC:" + crcTxt);
 
   // CRC delimiter (stuffing still on to swallow a trailing stuff bit), then ACK.
-  if (!canReadField(r, 1).ok) return { ok: true, spans, toks, bytes, endI: Math.round(r.pos) };
+  const crcOK = crcKind === "crc";
+  if (!canReadField(r, 1).ok) return { ok: true, spans, toks, bytes, endI: Math.round(r.pos), crcOK };
   r.stuffOn = false;
   const ackF = canReadField(r, 1);
   if (ackF.ok) {
@@ -255,7 +273,7 @@ function canOneFrame(S, dominantLow, sofStart, spb, dataSpb) {
     else { spans.push({ i0: ackF.i0, i1: ackF.i1, text: "NAK", kind: "nak", val: 1 }); toks.push("NAK"); }
   }
 
-  return { ok: true, spans, toks, bytes, endI: Math.round(r.pos) };
+  return { ok: true, spans, toks, bytes, endI: Math.round(r.pos), crcOK };
 }
 
 // TRLC-LINKS: REQ-SDS-018
@@ -272,7 +290,7 @@ function decodeCANFD(codes, colTimeS, cfg) {
   } else {
     const inf = canInferSPB(S);
     if (inf.reason) return canFail(inf.reason);
-    spb = inf.spb;
+    spb = canSnapBaud(inf.spb, colTimeS);
   }
   if (!(spb >= 3)) return canFail(spb.toFixed(1) + " samples/bit; need >= 3");
   let dataSpb = spb;
@@ -284,11 +302,17 @@ function decodeCANFD(codes, colTimeS, cfg) {
   const sofDir = dominantLow ? -1 : 1;
   const spans = [], toks = [], bytes = [];
   let frames = 0, nextAllowed = 0;
-  for (const e of S.edges) {
+  for (let k = 0; k < S.edges.length; k++) {
+    const e = S.edges[k];
     if (e.dir !== sofDir || e.i < nextAllowed) continue;
+    // a SOF follows a recessive run longer than stuffing allows (5 bits): a
+    // record opening inside a frame reads no SOF there; at the record's start
+    // a shorter run keeps only a frame whose CRC checks (Go canIdleBefore)
+    const idle = e.x - (k > 0 ? S.edges[k - 1].x : 0) >= CAN_SOF_IDLE_BITS * spb;
+    if (!idle && k > 0) continue;
     if (frames >= 4096) break;
     const fr = canOneFrame(S, dominantLow, e.x, spb, dataSpb);
-    if (!fr.ok) continue;
+    if (!fr.ok || (!idle && !fr.crcOK)) continue;
     frames++;
     for (const s of fr.spans) spans.push(s);
     for (const t of fr.toks) toks.push(t);

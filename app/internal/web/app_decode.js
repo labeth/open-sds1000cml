@@ -329,27 +329,163 @@ function detectStands(d, src, waiting) {
 // DETECT_DECIMATED_FEATURE is the samples of a decimated record a bus's
 // shortest feature must span for a detection on it to stand (a 115200 Bd UART
 // at 200 us/div spans 35); a faster bus is looked at at the full rate, as the
-// scope's BUS search does (panel decimatedFeature).
-const DETECT_DECIMATED_FEATURE = 8;
+// scope's BUS search does (panel decimatedFeature). DETECT_CHECKED_FEATURE is
+// the bound for a bus found by its frames' CRCs (CAN's CRC-15, FlexRay's
+// header CRC-11), which a misread record does not pass: a 500 kbit/s CAN bus
+// at 200 us/div spans 7.8 (panel decimatedCheckedFeature).
+const DETECT_DECIMATED_FEATURE = 8, DETECT_CHECKED_FEATURE = 6;
+
+// detectStandsDecimated reports whether a detection d on a decimated record
+// stands (DETECT_DECIMATED_FEATURE, DETECT_CHECKED_FEATURE). A UART at a rate
+// no UART uses does not: a faster bus the record aliases reads as one
+// (1 Mbit/s Manchester sampled every 1 us: "UART 32917"). As the scope's BUS
+// search has it (panel decimatedStands).
+// TRLC-LINKS: REQ-SDS-207
+function detectStandsDecimated(d) {
+  const fs = d.proto !== "off" && d.result ? decodeFeatureSamples(d.result) : 0;
+  if (d.proto === "canfd" || d.proto === "flexray") return fs >= DETECT_CHECKED_FEATURE;
+  if (d.proto === "uart") return fs >= DETECT_DECIMATED_FEATURE && detectStandardBaud(d.result.meta && d.result.meta.baud);
+  return fs >= DETECT_DECIMATED_FEATURE;
+}
+
+// detectStandardBaud reports whether baud is a rate UARTs use (within 3 %:
+// decode.js STANDARD_BAUDS, decode.StandardBaud).
+// TRLC-LINKS: REQ-SDS-207
+function detectStandardBaud(baud) {
+  return baud > 0 && STANDARD_BAUDS.some((b) => Math.abs(baud - b) <= 0.03 * b);
+}
+
+// DETECT_SCANT_BYTES is the bytes a UART found on the search's first record
+// must hold to end the search: a byte or two, or a rate no UART uses, on a
+// short record is as likely part of another bus's frame (CAN at 5 us/div read
+// as "UART 500000", a FlexRay frame failing its CRC as "UART 10002156"), so
+// the search looks on and names it only when it finds nothing else (panel
+// scantBytes, scantUART).
+const DETECT_SCANT_BYTES = 4;
+
+// detectScantUART reports a UART detection d of under DETECT_SCANT_BYTES
+// bytes or at a rate no UART uses.
+// TRLC-LINKS: REQ-SDS-207
+function detectScantUART(d) {
+  return d.proto === "uart" && !!d.result && ((d.result.bytes || []).length < DETECT_SCANT_BYTES || !detectStandardBaud(d.result.meta && d.result.meta.baud));
+}
 
 // detectSampled detects on a sampled record of the live acquisition that
 // accept takes: a decimated one first, read in tens of milliseconds, standing
-// when the bus spans DETECT_DECIMATED_FEATURE of its samples; else a full-rate
-// one (a megasample at 200 us/div: seconds). It returns {d, src}, or null when
-// no record came.
+// when the bus spans enough of its samples (detectStandsDecimated); else a
+// full-rate one within rawWaitMs. A short screen fits the sample lease
+// undecimated (its sample interval at most 1.25 fullS): that record was the
+// full-rate one, and what was found on it stands. A record that resolves its
+// every edge (a UART's bits at 10 us/div), or a timebase slower than
+// rawMaxTdiv, reads no full-rate record (a megasample at 200 us/div: seconds;
+// the search at the full-rate timebase reads a short one instead). It returns
+// {d, src, dec} (dec the decimated record's detection), or null when no
+// record came.
 // TRLC-LINKS: REQ-SDS-207
-async function detectSampled(accept, rawWaitMs) {
-  const dec = await fetchSampledFrame(1500, accept, "samples");
+async function detectSampled(accept, rawWaitMs, fullS, rawMaxTdiv) {
+  const dec = await detectDecimated(accept);
+  if (dec && (dec.stands || (fullS > 0 && dec.src.sample_s > 0 && dec.src.sample_s <= 1.25 * fullS))) return Object.assign({}, dec, { dec });
+  // a record that resolves its every edge shows at the full rate what it showed
+  if (dec && (dec.resolved || (rawMaxTdiv > 0 && dec.src.tdiv_s > rawMaxTdiv * 1.001))) return { d: { proto: "off", reason: "no protocol matched" }, src: dec.src, dec };
+  // the full-rate record, not a decimated one still in flight
+  const raw = await detectRaw((f) => (!accept || accept(f)) && !(fullS > 0 && f.sample_s > 1.25 * fullS), rawWaitMs);
+  return raw ? Object.assign(raw, { dec }) : null;
+}
+
+// detectDecimated detects on one decimated record that accept takes (lease
+// "samples", given back at once): {d, src, stands, resolved} - stands when
+// the bus found stands on it (detectStandsDecimated), resolved when no run
+// between two edges of either channel is under twice DETECT_DECIMATED_FEATURE
+// samples (panel runsResolved) - or null when no record came.
+// TRLC-LINKS: REQ-SDS-207
+async function detectDecimated(accept) {
+  const src = await fetchSampledFrame(1500, accept, "samples");
   fetch("/api/frame.bin?lease=samples&end=1").catch(() => {});
-  if (dec) {
-    const d = autodetect(dec, { fmt: dcfg.fmt });
-    if (d.proto !== "off" && d.result && decodeFeatureSamples(d.result) >= DETECT_DECIMATED_FEATURE) return { d, src: dec };
+  if (!src) return null;
+  const d = autodetect(src, { fmt: dcfg.fmt });
+  const r1 = detectShortestRun(src.c1), r2 = detectShortestRun(src.c2);
+  const resolved = (!r1 || r1 >= 2 * DETECT_DECIMATED_FEATURE) && (!r2 || r2 >= 2 * DETECT_DECIMATED_FEATURE);
+  return { d, src, stands: detectStandsDecimated(d), resolved };
+}
+
+// detectShortestRun is the fewest samples between two edges of channel c
+// (sliced as the decoders slice it), 0 when it holds under three
+// (decode.ShortestRun).
+// TRLC-LINKS: REQ-SDS-207
+function detectShortestRun(c) {
+  const S = c ? sliceChannel(c) : null;
+  if (!S || !S.ok || S.edges.length < 3) return 0;
+  let run = 0;
+  for (let k = 1; k < S.edges.length; k++) {
+    const g = S.edges[k].i - S.edges[k - 1].i;
+    if (!run || g < run) run = g;
   }
-  const raw = await fetchSampledFrame(rawWaitMs, accept);
+  return run;
+}
+
+// detectRaw detects on one full-rate record that accept takes, within waitMs;
+// it returns {d, src}, or null when no record came.
+// TRLC-LINKS: REQ-SDS-207
+async function detectRaw(accept, waitMs) {
+  const raw = await fetchSampledFrame(waitMs, accept);
   // given back at once: a full-rate lease left running outranks the next
   // search's decimated one (and holds the live view at a frame in seconds)
   fetch("/api/frame.bin?lease=raw&end=1").catch(() => {});
   return raw ? { d: autodetect(raw, { fmt: dcfg.fmt }), src: raw } : null;
+}
+
+// DETECT_WINDOW_DIVS is how much shorter than the slowest full-rate
+// timebase's the record a fast bus is first looked for on is (panel
+// windowDivs): 500 us at 50 us/div, read in under a second against about four
+// for the whole 2 ms record (a tenth held too few frames: a FlexRay pair every
+// 240 us, one failing its CRC, read as a 10 MBd UART).
+const DETECT_WINDOW_DIVS = 4;
+
+// detectWindowTdiv is the slowest of tdivs at most a DETECT_WINDOW_DIVS-th of
+// the full-rate timebase full (0 for none), as panel windowTdiv picks it.
+// TRLC-LINKS: REQ-SDS-207
+function detectWindowTdiv(tdivs, full) {
+  let best = 0;
+  for (const t of tdivs || []) if (t <= full / DETECT_WINDOW_DIVS * 1.001 && t > best) best = t;
+  return best;
+}
+
+// detectAtFullRate looks again at the slowest full-rate timebase full when the
+// record on screen hid the bus: its record decimated (a slow bus, or long
+// frames; first, when the timebase on screen is full and its decimated record
+// was read), then a short full-rate record (detectWindowTdiv), then the whole
+// record at the full rate (a sparse bus); fullS is the full rate's sample
+// interval. It returns {found, stepped, within}: the timebase it was found at
+// (left set; 0: the one on screen) and, for the short record, the timebase up
+// to which BUS steps to the slowest that reads it; with none found the
+// timebase goes back to prev.
+// TRLC-LINKS: REQ-SDS-207
+async function detectAtFullRate(full, prev, tdivs, first, fullS) {
+  // a record of the timebase t (a frame that names none: the second after)
+  // TRLC-LINKS: REQ-SDS-207
+  const at = (t) => { let seen = 0; return (f) => f.tdiv_s > 0 ? Math.abs(f.tdiv_s - t) <= 1e-3 * t : ++seen >= 2; };
+  // ... at the full rate, not a decimated one still in flight
+  // TRLC-LINKS: REQ-SDS-207
+  const atRaw = (t) => { const a = at(t); return (f) => !(fullS > 0 && f.sample_s > 1.25 * fullS) && a(f); };
+  let dec = first;
+  if (!dec) {
+    setDetectMsg("looking again at " + fmtTdiv(full) + "/div…");
+    await send("tdiv", full);
+    dec = await detectDecimated(at(full));
+    if (dec && dec.stands) return { found: dec, stepped: full, within: 0 };
+  }
+  const w = detectWindowTdiv(tdivs, full);
+  if (w > 0 && w < full) {
+    setDetectMsg("looking at " + fmtTdiv(w) + "/div at the full rate…");
+    await send("tdiv", w);
+    const got = await detectRaw(atRaw(w), 6000);
+    if (got && got.d.proto !== "off") return { found: got, stepped: w, within: full };
+    await send("tdiv", full);
+  }
+  const got = await detectRaw(atRaw(full), 6000);
+  if (got && got.d.proto !== "off") return { found: got, stepped: Math.abs(full - prev) > 1e-3 * full ? full : 0, within: 0 };
+  if (Math.abs(full - prev) > 1e-3 * full) await send("tdiv", prev);
+  return null;
 }
 
 // runAutodetect: analyse the current frame, pick the best protocol + roles +
@@ -364,7 +500,7 @@ async function runAutodetect() {
     // point: no protocol matches with a UART on screen), so recall a sampled
     // record and detect on that.
     setDetectMsg("fetching a sampled record…");
-    found = await detectSampled(null, 4000);
+    found = await detectSampled(null, 4000, st && st.full_rate_s, st && st.full_rate_tdiv_s > 0 ? detectWindowTdiv(st.tdivs, st.full_rate_tdiv_s) : 0);
     if (found) src = found.src;
     if (!frame || !frame.c1) { setDetectMsg("no live waveform to analyse", true); return; }
   }
@@ -375,17 +511,22 @@ async function runAutodetect() {
   // full-rate timebase, kept when it finds the bus, else the timebase goes
   // back: as the scope's BUS entry does.
   const full = st && st.full_rate_tdiv_s, prev = st && st.tdiv_s;
-  if (d.proto === "off" && !frozen && st.running && full > 0 && prev > 0 && Math.abs(prev - full) > 1e-3 * full) {
-    setDetectMsg("looking again at " + fmtTdiv(full) + "/div…");
-    await send("tdiv", full);
-    // a record of the new timebase (a frame that names none: the second after)
-    let seen = 0;
-    const again = await detectSampled((f) => f.tdiv_s > 0 ? Math.abs(f.tdiv_s - full) <= 1e-3 * full : ++seen >= 2, 6000);
-    if (again && again.d.proto !== "off") { d = again.d; src = again.src; stepped = full; }
-    else await send("tdiv", prev);
+  let within = 0;
+  const scant = detectScantUART(d);
+  if ((d.proto === "off" || scant) && !frozen && st.running && full > 0 && prev > 0) {
+    // the timebase on screen is the full-rate one: its decimated record was read
+    const first = Math.abs(prev - full) <= 1e-3 * full && found ? found.dec : null;
+    const again = await detectAtFullRate(full, prev, st.tdivs, first, st.full_rate_s);
+    if (again) { d = again.found.d; src = again.found.src; stepped = again.stepped; within = again.within; }
   }
   // the found bus's shortest feature in seconds, for BUS's timebase step
   dcfg.detectFeatureS = d.proto !== "off" && d.result ? decodeFeatureSamples(d.result) * frameDtS(src, src.c1.length) : 0;
+  // found on the short full-rate record: the slowest timebase that reads it
+  // live shows more of it (the timebase the scope's BUS steps to)
+  if (within > 0 && dcfg.detectFeatureS > 0 && typeof busSlowestReadable === "function") {
+    const t = busSlowestReadable(dcfg.detectFeatureS, within);
+    if (t > 0 && Math.abs(t - stepped) > 1e-3 * t) { await send("tdiv", t); stepped = t; }
+  }
   if (d.proto === "off") {
     const why = d.reason && d.reason !== "no protocol matched" ? d.reason : "show more of the signal (slower t/div) or check the probes";
     setDetectMsg("no protocol matched — " + why, true); return;

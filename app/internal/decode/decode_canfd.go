@@ -185,6 +185,7 @@ type canFrame struct {
 	bytes []int
 	endI  int
 	ok    bool
+	crcOK bool // a classic frame whose CRC checks, without a stuffing violation
 }
 
 // DecodeCANFD decodes classic CAN (fully) and CAN-FD base frames (best-effort:
@@ -207,7 +208,7 @@ func DecodeCANFD(codes []uint8, colTimeS float64, cfg CANFDCfg) Result {
 		if reason != "" {
 			return Result{Proto: "canfd", Error: reason}
 		}
-		spb = s
+		spb = snapCANBaud(s, colTimeS)
 	}
 	if !(spb >= 3) {
 		return Result{Proto: "canfd", Error: fmt.Sprintf("%.1f samples/bit; need >= 3", spb)}
@@ -231,15 +232,19 @@ func DecodeCANFD(codes []uint8, colTimeS float64, cfg CANFDCfg) Result {
 	var allBytes []int
 	frames := 0
 	nextAllowed := 0
-	for _, e := range S.edges {
+	for k, e := range S.edges {
 		if e.dir != sofDir || e.i < nextAllowed {
+			continue
+		}
+		idle := canIdleBefore(S, k, spb)
+		if !idle && k > 0 {
 			continue
 		}
 		if frames >= 4096 { // bounded: never spin on a hostile capture
 			break
 		}
 		fr := decodeCANOneFrame(S, cfg, e.x, spb, dataSpb)
-		if !fr.ok {
+		if !fr.ok || !idle && !fr.crcOK {
 			continue
 		}
 		frames++
@@ -340,6 +345,45 @@ func inferCANspb(S sliced) (float64, string) {
 		return best, ""
 	}
 	return 0, "baud ambiguous — set it explicitly"
+}
+
+// canStandardBauds are the common CAN bit rates an inferred rate snaps to.
+var canStandardBauds = []float64{10000, 20000, 50000, 83333, 100000, 125000, 250000, 500000, 800000, 1000000}
+
+// snapCANBaud moves an inferred samples-per-bit onto the nearest standard CAN
+// rate within 1.5% (the edge-gap estimate of a 500 kbit/s bus reads 502-507
+// kbit/s on a live record); otherwise the estimate stands.
+// TRLC-LINKS: REQ-SDS-018
+func snapCANBaud(spb, colTimeS float64) float64 {
+	if !(spb > 0) || !(colTimeS > 0) {
+		return spb
+	}
+	baud := 1 / (spb * colTimeS)
+	for _, std := range canStandardBauds {
+		if math.Abs(baud-std) <= 0.015*std {
+			return 1 / (std * colTimeS)
+		}
+	}
+	return spb
+}
+
+// canSOFIdleBits is the recessive run a SOF must follow: longer than bit
+// stuffing lets a frame hold one (5 bits), so a record that opens inside a
+// frame does not read its next dominant bit as a SOF (bus idle is 11 bits:
+// ACK delimiter, end of frame and intermission).
+const canSOFIdleBits = 5.5
+
+// canIdleBefore reports whether edge k of S follows a recessive run of at
+// least canSOFIdleBits. A record that opens recessive less than that before
+// its first edge may have opened idle or inside a frame: a frame read from
+// there stands only when its CRC checks.
+// TRLC-LINKS: REQ-SDS-018
+func canIdleBefore(S sliced, k int, spb float64) bool {
+	from := 0.0
+	if k > 0 {
+		from = S.edges[k-1].x
+	}
+	return S.edges[k].x-from >= canSOFIdleBits*spb
 }
 
 // decodeCANOneFrame decodes a single frame starting at sofStart (the SOF bit
@@ -512,6 +556,7 @@ func decodeCANOneFrame(S sliced, cfg CANFDCfg, sofStart, spb, dataSpb float64) c
 	} // never pass such garbage off as a clean CAN frame
 	spans = append(spans, Span{c0, c1, "CRC:" + crcTxt, crcKind, crc})
 	toks = append(toks, "CRC:"+crcTxt)
+	fr.crcOK = crcKind == "crc"
 
 	// CRC delimiter — still with stuffing on so a trailing stuff bit (when the CRC
 	// ended on a 5-run) is consumed before the fixed-form delimiter. Then stuffing
