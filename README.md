@@ -224,7 +224,8 @@ automatically.
   scope: one stored on the LCD, the web page or the phone shows on all three, and the web's difference
   readout compares the live trace with the scope's references.
 * **AUTO frames the signal for the workspace:** SCOPE two cycles with the swing on about six
-  divisions; MEASURE at least ten cycles and SPECTRUM at least 50 (the marker on the fundamental),
+  divisions; MEASURE at least ten cycles, with the cursors on one period and on the top and base, and
+  SPECTRUM at least 50 (the marker on the fundamental),
   both with the largest swing that stays on the screen; COMPARE takes the setup of the mask or
   reference so the live trace sits on it; BUS frames the bus (below). A trace left past the screen's
   edge steps to a coarser V/div, and the notice says what AUTO did ("AUTO: 2 cycles, C1 500mV/div").

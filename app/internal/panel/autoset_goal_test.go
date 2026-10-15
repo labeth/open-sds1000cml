@@ -189,6 +189,26 @@ func TestAutoMeasureFramesTenCycles(t *testing.T) {
 	}
 }
 
+// MEASURE's AUTO sets the cursors up on the signal it framed: the time
+// cursors one period apart from the trigger's rising edge (dt reads the
+// period), the voltage cursors on the top and base (dV reads the amplitude).
+// TRLC-LINKS: REQ-SDS-217, REQ-SDS-224
+func TestAutoMeasurePlacesTheCursors(t *testing.T) {
+	t.Parallel()
+	sq := square(1e6, -0.725, 0.725)
+	b := newSimBench(t, func(tt, _ float64, _ int) float64 { return sq(tt) })
+	b.run(wsview.Measure, -1)
+	s := b.c.snap()
+	ta, tb := cursorTimes(s, 1)
+	if dt := tb - ta; math.Abs(dt-1e-6) > 0.05e-6 {
+		t.Fatalf("time cursors %g s apart (A %g, B %g), want one period: 1 us", dt, ta, tb)
+	}
+	va, vb := cursorVolts(s, 0)
+	if math.Abs(va-0.725) > 0.05 || math.Abs(vb+0.725) > 0.05 {
+		t.Fatalf("voltage cursors at %g V and %g V, want the top 0.725 and the base -0.725", va, vb)
+	}
+}
+
 // SPECTRUM takes fifty cycles of the FFT source on the fastest timebase
 // holding them, puts the marker on its fundamental and says the span: the
 // FFT source C2's 100 kHz beside a 1 MHz C1.

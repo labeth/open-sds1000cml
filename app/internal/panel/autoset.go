@@ -97,6 +97,9 @@ func (c *Controller) runAutosetFor(stop chan struct{}, ws wsview.WS, view int) {
 	if g.spectrum {
 		c.spectrumAuto(stop, &res)
 	}
+	if g.cursors {
+		c.measureCursors()
+	}
 	c.toast(autoNotice(g, res, c.vdivAt), autoNoticeFor)
 }
 
@@ -209,6 +212,7 @@ type autoGoal struct {
 	maxTdiv  float64 // the slowest display timebase (0: any)
 	spectrum bool    // timed on the FFT source, the marker on its fundamental
 	centre   bool    // a rising edge at mid-screen
+	cursors  bool    // the cursors on one period and the top and base (measureCursors)
 }
 
 // The workspaces' AUTO framings (REQ-SDS-224). SCOPE shows the waveform: two
@@ -222,10 +226,51 @@ type autoGoal struct {
 // frames the bus itself (busAuto).
 var (
 	goalScope    = autoGoal{cycles: 2, fill: 7.2, centre: true}
-	goalMeasure  = autoGoal{tag: "MEASURE", cycles: 10, atLeast: true, fill: 7.5, centre: true}
+	goalMeasure  = autoGoal{tag: "MEASURE", cycles: 10, atLeast: true, fill: 7.5, centre: true, cursors: true}
 	goalSpectrum = autoGoal{tag: "SPECTRUM", cycles: 50, atLeast: true, fill: 7.5, maxTdiv: 2e-3, spectrum: true, centre: true}
 	goalBus      = autoGoal{cycles: dispCycles, fill: 6}
 )
+
+// measureCursors sets MEASURE's cursors up on the signal AUTO framed, so a
+// measurement by hand starts from them: the time cursors on one period from
+// the trigger's rising edge (one period before it when the next is off the
+// screen), the voltage cursors on the trigger source's top and base. A
+// cursor stays where it was when the signal gives no period or level, or
+// the screen is zoomed.
+// TRLC-LINKS: REQ-SDS-217, REQ-SDS-224
+func (c *Controller) measureCursors() {
+	m, ok := c.measureChans()
+	s := c.snap()
+	src := s.st.TrigSource & 1
+	if !ok || m[src] == nil {
+		return
+	}
+	r := m[src]
+	pos := s.st.TrigPosFrac
+	if !(pos > 0 && pos <= 1) {
+		pos = 0.5
+	}
+	screen := 10 * s.st.TdivS
+	vd, off := s.vdivTip(src), s.offV[src]*s.probe[src]
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if r.HasTiming && r.Period > 0 && screen > 0 && s.zoom <= 1 {
+		p := r.Period / screen
+		a, b := pos, pos+p
+		if b > 1 {
+			a, b = pos-p, pos
+		}
+		if a >= 0 && b <= 1 {
+			c.curX = [2]float64{a, b}
+		}
+	}
+	if vd > 0 && r.Vtop > r.Vbase {
+		y := func(v float64) float64 { return (4 - (v+off)/vd) / 8 } // cursorVolts' inverse
+		if ya, yb := y(r.Vtop), y(r.Vbase); ya >= 0 && yb <= 1 {
+			c.curY = [2]float64{ya, yb}
+		}
+	}
+}
 
 // autoNoticeFor is how long AUTO's notice says what it did.
 const autoNoticeFor = 3 * time.Second

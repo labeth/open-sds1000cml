@@ -432,7 +432,7 @@ a change (a frame captured before it read a wrong midpoint). Then each workspace
 | Workspace | Timebase | Vertical | Also |
 |---|---|---|---|
 | SCOPE | the ladder step nearest two cycles | the swing on at most 7.2 of the 8 divisions (about six: 3.3 V logic at 500 mV/div) | rising edge, trigger at mid-screen |
-| MEASURE | the fastest step holding at least ten cycles | the swing on at most 7.5 divisions: the finest volts per code that stays on the screen | as SCOPE |
+| MEASURE | the fastest step holding at least ten cycles | the swing on at most 7.5 divisions: the finest volts per code that stays on the screen | as SCOPE; the cursors set up for a measurement by hand: the time cursors one period apart from the trigger's rising edge, the voltage cursors on the trigger source's top and base (a cursor with no period or level to take, or on a zoomed screen, stays) |
 | SPECTRUM (FFT, spectrogram) | the fastest step holding at least 50 cycles of the FFT source, at most 2 ms/div (the envelope bands from 5 ms/div hold no spectrum) | as MEASURE | timed and triggered on the FFT source, the marker on its fundamental; the span is what the sample rate there allows |
 | COMPARE | the setup the mask built on the scope was installed at, else REF A's, else REF B's (timebase, trigger position, each channel's V/div and offset, trigger source, slope, level and hardware type) | | without a mask or reference, as SCOPE |
 | BUS | the bus's own framing (above) | the swing on at most 6 divisions, the threshold midway | |

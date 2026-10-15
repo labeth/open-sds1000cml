@@ -3777,8 +3777,8 @@ requirements:
 - id: REQ-SDS-224
   title: AUTO frames the signal for the workspace's task
   text: The instrument shall, when AUTO is pressed outside the BUS workspace, frame the signal for the workspace's
-    task, with about two cycles and the swing on about six divisions in SCOPE, at least ten cycles and the largest
-    swing that stays on the screen in MEASURE, at least fifty cycles of the FFT source on a sampled timebase with the
+    task, with about two cycles and the swing on about six divisions in SCOPE, at least ten cycles, the largest
+    swing that stays on the screen and the cursors on one period and on the top and base in MEASURE, at least fifty cycles of the FFT source on a sampled timebase with the
     largest swing on the screen and the marker on its fundamental in SPECTRUM, and in COMPARE the setup a mask or
     reference was stored at.
   status: draft
