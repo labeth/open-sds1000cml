@@ -59,7 +59,7 @@ const code = source.slice(source.indexOf('async function send(control, value)'))
   assert.equal((await blocked).ok, false);
   // AUTO pressed while a sweep started on the scope runs cancels it: the sweep
   // can end before the first status read shows it busy. Its end (AutosetDone)
-  // releases the page's controls, not the 15 s bound.
+  // releases the page's controls, not the page's wait bound.
   polls = 0; writes = []; now = 0;
   let pressed = false;
   // TRLC-LINKS: REQ-SDS-204
@@ -79,5 +79,24 @@ const code = source.slice(source.indexOf('async function send(control, value)'))
   await Promise.all([cancel, queued]);
   assert.equal(writes.length, 1, 'a cancelling AUTO dropped the control sent meanwhile');
   assert.ok(now < 2000, 'a cancelling AUTO waited ' + now + ' ms');
+  // AUTO in BUS on a packet-image bus runs 11 to 14 s (two FPGA image loads):
+  // the page waits for its end, as the phone does, and its notice follows.
+  polls = 0; writes = []; now = 0;
+  // TRLC-LINKS: REQ-SDS-204
+  sandbox.fetch = async (url, options) => {
+    if (url === '/api/status') {
+      polls++;
+      // TRLC-LINKS: REQ-SDS-204
+      return {json: async () => ({panel: {AutosetBusy: polls < 180, AutosetDone: polls < 180 ? 7 : 8}})};
+    }
+    if (url === '/api/set') writes.push({polls, command: JSON.parse(options.body)});
+    // TRLC-LINKS: REQ-SDS-204
+    return {ok: true, json: async () => ({ok: true})};
+  };
+  const long = sandbox.autoset();
+  const after = sandbox.send('single', 1);
+  await Promise.all([long, after]);
+  assert.equal(writes.length, 1, 'the control sent during an 18 s AUTO was dropped');
+  assert.ok(writes[0].polls >= 180, 'the page released its controls before the 18 s AUTO ended');
   console.log('ALL PASS');
 })().catch(e => { console.error(e); process.exit(1); });

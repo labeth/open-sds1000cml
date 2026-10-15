@@ -576,6 +576,10 @@ async function send(control, value) {
   try { const r = await (await fetch("/api/set", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ control, value }) })).json(); kickStatus(); return r; }
   catch (e) { return { ok: false }; }
 }
+// AUTOSET_WAIT_MS bounds the page's wait for the scope's AUTO, as the phone's
+// (AUTOSET_MS): AUTO in BUS on a packet-image bus loads two FPGA images and
+// runs 11 to 14 s (ARINC 429), close to the 15 s the page waited.
+const AUTOSET_WAIT_MS = 30000;
 // TRLC-LINKS: REQ-SDS-204
 async function autoset() {
   if (autosetBusy) return;
@@ -603,7 +607,7 @@ async function autoset() {
     // sweeping. Wait for the actual panel operation before releasing controls.
     const t0 = Date.now();
     let sawBusy = false;
-    while (Date.now() - t0 < 15000) {
+    while (Date.now() - t0 < AUTOSET_WAIT_MS) {
       await new Promise(resolve => setTimeout(resolve, 100));
       const status = await (await fetch("/api/status")).json();
       if (status.panel && status.panel.AutosetBusy) sawBusy = true;
