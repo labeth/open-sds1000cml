@@ -219,3 +219,23 @@ func TestAutoKeepsTheBusAtAnotherTimebase(t *testing.T) {
 		t.Fatalf("the bus lost at its timebase: baud %d, notice %q", r.c.snap().decBaud, r.c.View().Notice)
 	}
 }
+
+// While Auto's detection runs, the Protocol row (the sheet's list, the
+// phone, the web) says so instead of naming the decoder still in use; the
+// found protocol replaces it when it is filled in.
+// TRLC-LINKS: REQ-SDS-222
+func TestProtocolRowSaysWhileAutoDetects(t *testing.T) {
+	r := newViewRig(t)
+	r.c.mu.Lock()
+	r.c.ui.busDetecting = true
+	r.c.mu.Unlock()
+	if got := rowText(r.c, "bus.protocol"); got != "Auto: detecting..." {
+		t.Fatalf("detecting: row reads %q", got)
+	}
+	r.c.mu.Lock()
+	r.c.ui.busDetecting = false
+	r.c.mu.Unlock()
+	if got := rowText(r.c, "bus.protocol"); got == "Auto: detecting..." {
+		t.Fatalf("after the detection the row still reads %q", got)
+	}
+}

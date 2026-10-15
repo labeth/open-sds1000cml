@@ -1211,6 +1211,14 @@ func busTabRows() []*row {
 		opts:  staticOpts(protoOpts),
 		quick: []int{framecalc.ProtoOff, framecalc.ProtoAuto, framecalc.ProtoUART, framecalc.ProtoI2C, framecalc.ProtoSPI},
 		get:   func(s *sv) int { return s.decProto },
+		// the decoder in use stays until Auto fills in what it found: the row,
+		// the phone and the web say a detection runs, not the old decoder
+		busy: func(s *sv) string {
+			if s.ui.busDetecting {
+				return "Auto: detecting..."
+			}
+			return ""
+		},
 		long: func(s *sv) string {
 			switch {
 			case s.ui.busDetecting:

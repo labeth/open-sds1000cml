@@ -55,6 +55,7 @@ type row struct {
 	set   func(c *Controller, v int) error
 	quick []int                             // the values on F1..F5 (default: the first five)
 	long  func(s *sv) string                // the full value text for the side panel
+	busy  func(s *sv) string                // the row's text while an action it started runs ("" when none)
 	parse func(s *sv, t string) (int, bool) // typed values beyond the labels (a custom baud)
 
 	// Number: val in unit; setN validates against lim and quantises like the
@@ -116,6 +117,11 @@ func (r *row) optIndex(s *sv) int {
 // valueText is the row's current value as written in the sheet.
 // TRLC-LINKS: REQ-SDS-212
 func (r *row) valueText(s *sv) string {
+	if r.busy != nil {
+		if t := r.busy(s); t != "" {
+			return t
+		}
+	}
 	switch r.kind {
 	case wsview.Enum:
 		if i := r.optIndex(s); i >= 0 {
