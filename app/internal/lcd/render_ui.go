@@ -449,7 +449,7 @@ func drawTokens(sf Surface, x, y, xmax int, toks []wsview.PickTok, cur int) {
 // drawPickerPane draws the BUS pane turned into the amber-framed byte picker.
 // TRLC-LINKS: REQ-SDS-214
 func drawPickerPane(sf Surface, p plotArea, pk *wsview.Picker) {
-	pn := wsview.Pane{Title: "PICK BYTES", Caption: pk.Caption, Right: "Menu On/Off: cancel"}
+	pn := wsview.Pane{Title: "PICK BYTES", Caption: pk.Caption, Right: "Menu On/Off: back"}
 	fillRect(sf, 0, 12, p.w, p.y0-12, colBG)
 	fillRect(sf, 0, 12, p.w, 12, colMenuBg)
 	DrawText(sf, 4, 14, pn.Title, colTrig, 1)

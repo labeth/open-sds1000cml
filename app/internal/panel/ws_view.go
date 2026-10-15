@@ -221,7 +221,7 @@ func (c *Controller) sideView(s *sv, r *row) wsview.Side {
 	case subPick:
 		return wsview.Side{Title: "PICK FROM SCREEN", Lines: []wsview.Span{text("Bytes decoded on screen,"), text("starting at the first"),
 			text("complete message."), text(""), text("Turn Adjust or Position:"), text("the first byte to match."), text(""),
-			text("F1..F4 set the match and"), text("switch the trigger to"), text("Serial. Push/F5: cancel.")}}
+			text("Push Adjust or F1: trigger"), text("on it (Serial); F2-F4: on"), text("2-4 bytes. F5/Menu: back.")}}
 	}
 	rel := r.relevant(s)
 	sd := wsview.Side{Label: r.label, Value: r.longText(s)}
@@ -431,8 +431,8 @@ func pickerView(s *sv) *wsview.Picker {
 	p := s.ui.pick
 	return &wsview.Picker{Caption: fmt.Sprintf("to trigger on  (%d decoded on screen)", len(p.toks)), Toks: p.toks, Cur: p.start,
 		Lines: []wsview.Span{{Text: "| = idle gap (a message starts).  Underlined: the bytes the F-keys would add.", Col: wsview.Dim},
-			{Text: "Turn Adjust or Position: the first byte.  F1-F4: trigger on 1-4 bytes from it (type Serial).", Col: wsview.Text},
-			{Text: "F5, Adjust push or Menu On/Off: cancel.", Col: wsview.Dim}},
+			{Text: "Turn Adjust or Position: the first byte.  Push Adjust (or F1): trigger on it; F2-F4: on 2-4 bytes.", Col: wsview.Text},
+			{Text: "F5 or Menu On/Off: back, the trigger as it was.", Col: wsview.Dim}},
 		Now: "Now: " + matchText(s) + map[bool]string{true: "  (serial trigger on)", false: ""}[s.st.SerialMode != 0]}
 }
 
@@ -487,7 +487,7 @@ func (c *Controller) busPane(s *sv) *wsview.BusPane {
 		}
 		p.Right = "Utility: BUS sheet"
 		p.Off = true
-		p.Tool = []wsview.Seg{{Key: "Adjust push", Job: "try again"}, {Key: "S/DIV push", Job: "zoom"}}
+		p.Tool = append([]wsview.Seg{{Key: "Adjust push", Job: "try again"}}, append(posTool(s), wsview.Seg{Key: "S/DIV push", Job: "zoom"})...)
 		return p
 	}
 	toks := matchTokens(s)
@@ -601,7 +601,7 @@ func (c *Controller) busPane(s *sv) *wsview.BusPane {
 		p.Marks = append(p.Marks, wsview.PacketMark{I0: q.I0, I1: q.I1, Sel: i == liveSel, Match: len(toks) > 0 && tokMatch(toks, q)})
 	}
 	p.SelNum = sel + 1
-	p.Tool = []wsview.Seg{{Key: "Adjust", Job: "packet"}, {Key: "push", Job: "pick bytes"}, {Key: "Position", Job: "next match"}, {Key: "push", Job: "to trigger"}, {Key: "Zoom", Job: zoomJob}}
+	p.Tool = append(append([]wsview.Seg{{Key: "Adjust", Job: "packet"}, {Key: "push", Job: "pick bytes"}}, posTool(s)...), wsview.Seg{Key: "Zoom", Job: zoomJob})
 	return p
 }
 
@@ -650,8 +650,7 @@ func (c *Controller) eyePane(s *sv) *wsview.EyePane {
 	if zoomed {
 		zoomJob = "zoom off"
 	}
-	p.Tool = []wsview.Seg{{Key: "Adjust", Job: "threshold"}, {Key: "push", Job: "clear eye"}, {Key: "Position", Job: "sample point"},
-		{Key: "push", Job: "centre both"}, {Key: "Zoom", Job: zoomJob}}
+	p.Tool = append(append([]wsview.Seg{{Key: "Adjust", Job: "threshold"}, {Key: "push", Job: "clear eye"}}, posTool(s)...), wsview.Seg{Key: "Zoom", Job: zoomJob})
 	if !ok {
 		p.Why = why
 		if p.Why == "" {

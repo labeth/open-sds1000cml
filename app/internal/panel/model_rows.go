@@ -486,7 +486,7 @@ func timeRows() []*row {
 		return math.Round(f * 100)
 	}, constLim(2, 100), constStep(1), func(c *Controller, v float64) error { return c.setTrigPos(v / 100) }, fmtPct)
 	pos.help = "Where the trigger sits across the screen (50 % = centre)."
-	pos.knob = "SCOPE and COMPARE: the Position knob; its push = centre."
+	pos.knob = "The Position knob in every workspace; its push = centre (BUS, SPECTRUM, MEASURE: the push switches the knob to their second job and back)."
 	pos.presets = func(*sv) []preset {
 		return []preset{{t: "Centre", run: (*Controller).centreTrigger}, {t: "10 %", v: 10}, {t: "90 %", v: 90}}
 	}
@@ -503,7 +503,7 @@ func timeRows() []*row {
 		constLim(-50, 50), constStep(2), func(c *Controller, v float64) error { return c.setZoomOff(v / 100) },
 		func(v float64) string { return fmtPct(math.Round(v*10) / 10) })
 	pan.help = "Move the zoom window along the record (% of the record from the trigger)."
-	pan.knob = "Zoomed: the Position knob (SCOPE, COMPARE); BUS moves it packet to packet."
+	pan.knob = "Zoomed: the Position knob; on BUS's next match it moves packet to packet."
 	pan.rel, pan.why = func(s *sv) bool { return s.zoom > 1 }, "Zoom on"
 	pan.presets = func(*sv) []preset { return []preset{{t: "On trigger", v: 0}} }
 	pan.def = func(c *Controller) error { return c.setZoomOff(0) }
@@ -801,7 +801,28 @@ func viewRows() []*row {
 			return fmt.Sprintf("%d %s", s.st.BodePoints, plural(s.st.BodePoints, "point"))
 		},
 	}
-	return []*row{view, src, persist, bodeRef, bodeDut, bodeClear}
+	marker := &row{id: "view.marker", label: "Marker", kind: wsview.Action,
+		help: "Put the SPECTRUM marker back on the largest peak, following it (Bode: on the newest point, following the sweep).",
+		knob: "Adjust steps it peak to peak; Position, pushed to fine marker, bin by bin.",
+		rel: func(s *sv) bool {
+			return s.viewMode == viewFFT || s.viewMode == viewSpectrogram || s.viewMode == viewBode
+		},
+		why: "a SPECTRUM view",
+		acts: func(s *sv) []act {
+			t := "Largest peak"
+			if s.viewMode == viewBode {
+				t = "Follow sweep"
+			}
+			return []act{{id: "home", t: t, run: func(c *Controller) error { c.specLargest(); return nil }}}
+		},
+		status: func(s *sv) string {
+			if s.viewMode == viewBode {
+				return map[bool]string{true: "on a point", false: "follows the sweep"}[s.ui.bodeIdx >= 0]
+			}
+			return map[bool]string{true: "set by hand", false: "on the largest peak"}[s.ui.specFSet]
+		},
+	}
+	return []*row{view, src, persist, bodeRef, bodeDut, bodeClear, marker}
 }
 
 // bodeChanRow is the Bode reference or DUT channel row: the engine's own
@@ -848,7 +869,13 @@ func measRows() []*row {
 		},
 		status: func(s *sv) string { return fmt.Sprintf("%d of at most %d", len(s.meas), maxMeasItems) },
 	}
-	rows := []*row{readouts, clear}
+	stats := &row{id: "meas.stats", label: "Statistics", kind: wsview.Action,
+		help: "Start the MEASURE statistics over (they also start over when a setting changes).",
+		acts: func(*sv) []act {
+			return []act{{id: "zero", t: "Zero", run: func(c *Controller) error { c.statsReset(); return nil }}}
+		},
+	}
+	rows := []*row{readouts, clear, stats}
 	for i, p := range measParams {
 		i, p := i, p
 		r := &row{id: "meas." + p.id, label: p.label, kind: wsview.Enum, meas: i + 1,
@@ -926,7 +953,7 @@ func cursRows() []*row {
 		if k == 0 {
 			r.knob = "MEASURE workspace: the Adjust knob."
 		} else {
-			r.knob = "MEASURE workspace: the Position knob."
+			r.knob = "MEASURE workspace: the Position knob, once its push has switched it to cursor B."
 		}
 		return r
 	}

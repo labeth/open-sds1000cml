@@ -185,13 +185,7 @@ func TestKnobToolsPerWorkspace(t *testing.T) {
 	r := newViewRig(t)
 	c := r.c
 	r.show(toneFrame(""))
-	tool := func() string {
-		var s []string
-		for _, sg := range c.PanelStatus().Tool {
-			s = append(s, sg.Knob+":"+sg.Job)
-		}
-		return strings.Join(s, " ")
-	}
+	tool := func() string { return toolText(c) }
 	// SCOPE: Adjust tunes the last value set in a sheet, Position the
 	// trigger position.
 	r.c.SheetSet("trig.level", nil, "0.5V")
@@ -213,18 +207,22 @@ func TestKnobToolsPerWorkspace(t *testing.T) {
 		t.Fatalf("SCOPE Position push: %g", p)
 	}
 
-	// MEASURE: Adjust and Position the cursors, the Position push zeroes
-	// the statistics.
+	// MEASURE: Adjust and (pushed to its second job) Position the cursors;
+	// the MEAS sheet's Statistics row zeroes the statistics.
 	press(t, c, "f4")
 	for i := 0; i < 3; i++ {
 		r.show(toneFrame(""))
 	}
-	if !strings.Contains(tool(), "Adjust:cursor A") || !strings.Contains(tool(), "Position:cursor B") {
+	if !strings.Contains(tool(), "Adjust:cursor A") || !strings.Contains(tool(), "Position:trigger position push:cursor B") {
 		t.Fatalf("MEASURE tool %q", tool())
 	}
 	press(t, c, "adjustpush") // cursors on (time)
 	a0, b0 := c.curX[0], c.curX[1]
 	turn(c, "adjust", 4)
+	press(t, c, "horizpospush")
+	if !strings.Contains(tool(), "Position:cursor B push:trigger position") {
+		t.Fatalf("MEASURE pushed tool %q", tool())
+	}
 	turn(c, "horizpos", -4)
 	if !c.curOn || c.curX[0] <= a0 || c.curX[1] >= b0 {
 		t.Fatalf("MEASURE cursors: on %v A %g->%g B %g->%g", c.curOn, a0, c.curX[0], b0, c.curX[1])
@@ -232,13 +230,15 @@ func TestKnobToolsPerWorkspace(t *testing.T) {
 	if v := c.View(); v.Meas.Stats[0].N != "3" {
 		t.Fatalf("statistics N %s", v.Meas.Stats[0].N)
 	}
-	press(t, c, "horizpospush")
+	if res := c.SheetAction("meas.stats", "zero"); !res.OK {
+		t.Fatalf("Statistics row: %+v", res)
+	}
 	if v := c.View(); v.Meas.Stats[0].N != "0" {
-		t.Fatalf("Position push left N %s", v.Meas.Stats[0].N)
+		t.Fatalf("Statistics row left N %s", v.Meas.Stats[0].N)
 	}
 
-	// SPECTRUM: Adjust peak to peak, Position bin by bin, the push back to
-	// the largest peak.
+	// SPECTRUM: Adjust peak to peak, Position (pushed to fine marker) bin by
+	// bin, the VIEW sheet's Marker row back to the largest peak.
 	press(t, c, "f3")
 	r.show(toneFrame(""))
 	v := c.View()
@@ -251,13 +251,14 @@ func TestKnobToolsPerWorkspace(t *testing.T) {
 		t.Fatalf("Adjust: marker %g (from %g)", v.Spec.MarkHz, f0)
 	}
 	f1 := c.View().Spec.MarkHz
+	press(t, c, "horizpospush")
 	turn(c, "horizpos", 2)
 	if v := c.View(); v.Spec.MarkHz-f1 < c.ana.spec.BinHz*1.5 || v.Spec.MarkHz-f1 > c.ana.spec.BinHz*2.5 {
 		t.Fatalf("Position: marker %g (from %g, bin %g)", v.Spec.MarkHz, f1, c.ana.spec.BinHz)
 	}
-	press(t, c, "horizpospush")
+	c.SheetAction("view.marker", "home")
 	if v := c.View(); v.Spec.MarkHz != f0 {
-		t.Fatalf("Position push: marker %g, want the largest peak %g", v.Spec.MarkHz, f0)
+		t.Fatalf("Marker row: marker %g, want the largest peak %g", v.Spec.MarkHz, f0)
 	}
 
 	// COMPARE: Adjust chooses a row, its push runs the row's action.

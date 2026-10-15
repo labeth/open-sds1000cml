@@ -59,6 +59,9 @@ type fkey struct {
 // TRLC-LINKS: REQ-SDS-212
 func (c *Controller) leaveModesLocked() {
 	c.ui.edit = false
+	if c.ui.sub == subPick {
+		c.toastLocked(pickCancelled, noticeFor)
+	}
 	if c.ui.sub != subNone {
 		c.ui.sub = subNone
 		c.kb.open = false
@@ -68,9 +71,13 @@ func (c *Controller) leaveModesLocked() {
 	}
 }
 
-// closePickLocked closes the workspace byte picker (c.mu held).
+// closePickLocked closes the workspace byte picker unused, with a notice
+// that it is cancelled (c.mu held).
 // TRLC-LINKS: REQ-SDS-214
 func (c *Controller) closePickLocked() {
+	if c.ui.wpick {
+		c.toastLocked(pickCancelled, noticeFor)
+	}
 	c.ui.wpick = false
 	c.ui.pick = pickState{}
 }
@@ -90,6 +97,7 @@ func (c *Controller) closeSheetLocked() {
 func (c *Controller) openSheetLocked(ti int, via string) {
 	c.closePickLocked()
 	c.leaveModesLocked()
+	c.ui.posJob = false // Position is back on the trigger when the sheet closes
 	c.ui.open, c.ui.tab, c.ui.via = true, ti, via
 }
 
@@ -370,7 +378,8 @@ func (c *Controller) sheetValueTurn(dir, steps int) {
 }
 
 // sheetAdjustPush is the Adjust push with a sheet open: edit / done; the
-// match editor on Match bytes; actions only explain (they run from F-keys).
+// match editor on Match bytes; picking bytes, trigger on the highlighted
+// one; actions only explain (they run from F-keys).
 // TRLC-LINKS: REQ-SDS-212
 func (c *Controller) sheetAdjustPush() {
 	c.mu.Lock()
@@ -381,9 +390,7 @@ func (c *Controller) sheetAdjustPush() {
 		c.matchTypeKey()
 		return
 	case subPick:
-		c.mu.Lock()
-		c.ui.sub, c.ui.pick = subNone, pickState{}
-		c.mu.Unlock()
+		c.pickUseKey(1)
 		return
 	}
 	s := c.snap()

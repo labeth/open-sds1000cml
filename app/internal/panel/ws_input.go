@@ -10,10 +10,13 @@ import (
 )
 
 // Input routing (REQ-SDS-211, REQ-SDS-213). F1..F5 switch workspaces with
-// no menu open and pick choices with one open. Adjust and Horizontal
-// Position (and their pushes) are each workspace's tool; V/DIV, vertical
-// Position, Level and S/DIV keep their printed jobs, as do the pushes
-// Variable, Zero and Zoom.
+// no menu open and pick choices with one open. Adjust and its push are each
+// workspace's tool. Horizontal Position moves the trigger position in every
+// workspace; where a workspace has a second Position job (BUS: next match or
+// the eye's sample point, SPECTRUM: the fine marker, MEASURE: cursor B) its
+// push switches Position to that job and back, else the push centres the
+// trigger. V/DIV, vertical Position, Level and S/DIV keep their printed
+// jobs, as do the pushes Variable, Zero and Zoom.
 
 // switchWS is F1..F5 with no menu open: that workspace, or its next view
 // when it is the active one.
@@ -26,7 +29,7 @@ func (c *Controller) switchWS(i wsview.WS) {
 		return
 	}
 	c.ui.views[c.ui.ws] = c.viewMode
-	c.ui.ws = i
+	c.ui.ws, c.ui.posJob = i, false
 	c.viewMode = c.ui.views[i]
 	dec := c.decProto
 	c.mu.Unlock()
@@ -54,6 +57,7 @@ func (c *Controller) switchWS(i wsview.WS) {
 func (c *Controller) nextView() {
 	c.mu.Lock()
 	ws := c.ui.ws
+	c.ui.posJob = false // the next view's Position starts on the trigger
 	var name, again string
 	switch ws {
 	case wsview.Scope:
@@ -116,8 +120,8 @@ func (c *Controller) fKey(i int) {
 	}
 }
 
-// menuKey is Menu On/Off: close the picker or the sheet, or open this
-// workspace's sheet.
+// menuKey is Menu On/Off: close the picker (a notice says it is cancelled)
+// or the sheet, or open this workspace's sheet.
 // TRLC-LINKS: REQ-SDS-212
 func (c *Controller) menuKey() {
 	c.mu.Lock()
@@ -173,33 +177,84 @@ func (c *Controller) adjustTurn(dir, steps int) {
 	}
 }
 
-// positionTurn is the Horizontal Position knob.
+// positionTurn is the Horizontal Position knob: the trigger position, or
+// the workspace's second job while the push has chosen it.
 // TRLC-LINKS: REQ-SDS-213
 func (c *Controller) positionTurn(dir, steps int) {
 	if c.scrollStreamList(dir * steps) { // an open stream transcript scrolls
 		return
 	}
-	c.mu.Lock()
-	wpick, open, ws, eye := c.ui.wpick, c.ui.open, c.ui.ws, c.ui.busEye
-	c.mu.Unlock()
+	s := c.snap()
 	switch {
-	case wpick:
+	case s.ui.wpick:
 		c.pickMove(dir)
-	case open:
+	case s.ui.open:
 		c.sheetPosition(dir, steps)
-	case ws == wsview.Bus && eye:
-		c.mu.Lock()
-		c.ui.eyeX = clampF(c.ui.eyeX+float64(dir*steps)/64, -0.5, 0.5)
-		c.mu.Unlock()
-	case ws == wsview.Bus:
-		c.busNextMatch(dir)
-	case ws == wsview.Spectrum:
-		c.specFine(dir, steps)
-	case ws == wsview.Measure:
-		c.measCursor(1, dir, steps)
-	default: // SCOPE, COMPARE: as printed
+	case s.ui.posJob && posJob2(s) != "":
+		c.posJobTurn(s, dir, steps)
+	default:
 		c.trigPosTurn(dir * steps)
 	}
+}
+
+// posJob2 is the workspace's second Position job ("" none: SCOPE, COMPARE,
+// and BUS with no bus decoded keep Position on the trigger).
+// TRLC-LINKS: REQ-SDS-213
+func posJob2(s *sv) string {
+	switch s.ui.ws {
+	case wsview.Bus:
+		if s.ui.busEye {
+			return "sample point"
+		}
+		if busDecoding(s) {
+			return "next match"
+		}
+	case wsview.Spectrum:
+		if s.viewMode == viewBode {
+			return "point"
+		}
+		return "fine marker"
+	case wsview.Measure:
+		return "cursor B"
+	}
+	return ""
+}
+
+// posJobTurn is Position on the workspace's second job.
+// TRLC-LINKS: REQ-SDS-213
+func (c *Controller) posJobTurn(s *sv, dir, steps int) {
+	switch s.ui.ws {
+	case wsview.Bus:
+		if s.ui.busEye {
+			c.mu.Lock()
+			c.ui.eyeX = clampF(c.ui.eyeX+float64(dir*steps)/64, -0.5, 0.5)
+			c.mu.Unlock()
+			return
+		}
+		c.busNextMatch(dir)
+	case wsview.Spectrum:
+		c.specFine(dir, steps)
+	case wsview.Measure:
+		c.measCursor(1, dir, steps)
+	}
+}
+
+// posTool is the tool line's Position and push segments: the job Position
+// does now and the one its push switches to (or Zero's centre).
+// TRLC-LINKS: REQ-SDS-213
+func posTool(s *sv) []wsview.Seg {
+	trig := "trigger position"
+	if s.zoom > 1 {
+		trig = "zoom position"
+	}
+	j := posJob2(s)
+	switch {
+	case j == "":
+		return []wsview.Seg{{Key: "Position", Job: trig}, {Key: "push", Job: "centre"}}
+	case s.ui.posJob:
+		return []wsview.Seg{{Key: "Position", Job: j}, {Key: "push", Job: trig}}
+	}
+	return []wsview.Seg{{Key: "Position", Job: trig}, {Key: "push", Job: j}}
 }
 
 // trigPosTurn moves the trigger position (zoomed: the zoom window).
@@ -226,7 +281,8 @@ func (c *Controller) trigPos() float64 {
 	return f
 }
 
-// adjustPush is the Adjust push.
+// adjustPush is the Adjust push (the byte picker: trigger on the
+// highlighted byte).
 // TRLC-LINKS: REQ-SDS-213
 func (c *Controller) adjustPush() {
 	c.mu.Lock()
@@ -234,7 +290,7 @@ func (c *Controller) adjustPush() {
 	c.mu.Unlock()
 	switch {
 	case wpick:
-		c.pickCancel()
+		c.pickUseKey(1)
 	case open:
 		c.sheetAdjustPush()
 	case ws == wsview.Bus && eye:
@@ -258,38 +314,52 @@ func (c *Controller) adjustPush() {
 	}
 }
 
-// positionPush is the Horizontal Position push (Zero).
+// positionPush is the Horizontal Position push: Position to the
+// workspace's second job and back, or (no second job) Zero: the trigger to
+// the centre.
 // TRLC-LINKS: REQ-SDS-213
 func (c *Controller) positionPush() {
 	if c.streamListToTrigger() { // an open stream transcript: back to the trigger line
 		return
 	}
-	c.mu.Lock()
-	wpick, open, ws, eye := c.ui.wpick, c.ui.open, c.ui.ws, c.ui.busEye
-	if wpick {
+	s := c.snap()
+	switch {
+	case s.ui.wpick:
+		c.mu.Lock()
 		c.ui.pick.start = c.ui.pick.first
 		c.mu.Unlock()
-		return
-	}
-	c.mu.Unlock()
-	switch {
-	case open:
+	case s.ui.open:
 		c.sheetPositionPush()
-	case ws == wsview.Bus && eye:
-		c.mu.Lock()
-		c.ui.eyeX, c.ui.eyeThSet = 0, false
-		c.toastLocked("Sample point to the eye centre, threshold to the crossing", 1400*time.Millisecond)
-		c.mu.Unlock()
-	case ws == wsview.Bus:
-		c.busToTrigger()
-	case ws == wsview.Spectrum:
-		c.specLargest()
-	case ws == wsview.Measure:
-		c.statsReset()
-	default:
+	case posJob2(s) == "":
 		c.centreTrigger()
 		c.toast("Trigger to centre", 900*time.Millisecond)
+	default:
+		c.posJobToggle(s)
 	}
+}
+
+// posJobToggle switches Position between the trigger position and the
+// workspace's second job. Back from BUS's next match, the packet list (and a
+// zoom window) returns to the trigger.
+// TRLC-LINKS: REQ-SDS-213, REQ-SDS-214
+func (c *Controller) posJobToggle(s *sv) {
+	j := posJob2(s)
+	trig := "trigger position"
+	if s.zoom > 1 {
+		trig = "zoom position"
+	}
+	c.mu.Lock()
+	on := !c.ui.posJob
+	c.ui.posJob = on
+	c.mu.Unlock()
+	if on {
+		c.toast("Position: "+j+"  (push: back to the "+trig+")", 1400*time.Millisecond)
+		return
+	}
+	if s.ui.ws == wsview.Bus && !s.ui.busEye {
+		c.busToTrigger(s)
+	}
+	c.toast("Position: "+trig+"  (push: "+j+")", 1400*time.Millisecond)
 }
 
 // tdivTurn is S/DIV: the sheet's tab, the zoom factor while zoomed

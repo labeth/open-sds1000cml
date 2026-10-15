@@ -45,13 +45,16 @@ func TestSpectrumTools(t *testing.T) {
 		t.Fatalf("Bode follows the sweep: %+v", v)
 	}
 	turn(c, "adjust", -1)
+	press(t, c, "horizpospush") // Position: point
 	turn(c, "horizpos", -1)
 	if v := c.View().Spec; v.BodeIdx != 0 || !strings.HasPrefix(v.Marker, "MKR 100Hz") {
 		t.Fatalf("Bode marker %d %q", v.BodeIdx, v.Marker)
 	}
-	press(t, c, "horizpospush")
+	if res := c.SheetAction("view.marker", "home"); !res.OK {
+		t.Fatalf("Marker row: %+v", res)
+	}
 	if v := c.View().Spec; v.BodeIdx != 2 {
-		t.Fatalf("Position push: %d", v.BodeIdx)
+		t.Fatalf("Marker row: %d, want the sweep followed", v.BodeIdx)
 	}
 }
 

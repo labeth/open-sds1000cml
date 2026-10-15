@@ -13,9 +13,10 @@ import (
 )
 
 // BUS: the list holds the complete packets still while the messages repeat;
-// Adjust selects a packet, Position jumps match to match and its push goes
-// back to the trigger, the S/DIV push zooms onto the selected packet (a
-// running scope stops so it holds still) and again zooms off.
+// Adjust selects a packet; the Position push switches Position to jumping
+// match to match, and pushed again the list goes back to the trigger; the
+// S/DIV push zooms onto the selected packet (a running scope stops so it
+// holds still) and again zooms off.
 // TRLC-LINKS: REQ-SDS-214
 func TestBusPacketTools(t *testing.T) {
 	r := newViewRig(t)
@@ -37,6 +38,10 @@ func TestBusPacketTools(t *testing.T) {
 		t.Fatalf("the list moved: %d -> %d rows", rows, len(c.ana.list.Rows()))
 	}
 	c.SheetSet("bus.match", nil, "4F 4B") // "OK"
+	press(t, c, "horizpospush")
+	if tl := toolText(c); !strings.Contains(tl, "Position:next match push:trigger position") {
+		t.Fatalf("next match tool line %q", tl)
+	}
 	turn(c, "horizpos", 1)
 	if sel := c.View().Bus.SelNum; sel != 3 {
 		t.Fatalf("Position: packet %d, want the first OK (3)", sel)
@@ -58,14 +63,14 @@ func TestBusPacketTools(t *testing.T) {
 		t.Fatalf("zoom off: %d", c.zoom)
 	}
 	press(t, c, "horizpospush")
-	if sel := c.View().Bus.SelNum; sel != 1 {
-		t.Fatalf("Position push: packet %d", sel)
+	if sel := c.View().Bus.SelNum; sel != 1 || !strings.Contains(toolText(c), "Position:trigger position push:next match") {
+		t.Fatalf("Position push: packet %d, tool %q", sel, toolText(c))
 	}
 }
 
-// BUS again: the eye folds the data line; Adjust moves the threshold and
-// Position the sample point, the Position push centres both, the Adjust
-// push clears the eye.
+// BUS again: the eye folds the data line; Adjust moves the threshold and,
+// pushed to its second job, Position the sample point; the Adjust push
+// clears the eye and puts both cursors back.
 // TRLC-LINKS: REQ-SDS-215
 func TestBusEyeTools(t *testing.T) {
 	r := newViewRig(t)
@@ -82,22 +87,23 @@ func TestBusEyeTools(t *testing.T) {
 	}
 	th := e.ThreshRow
 	turn(c, "adjust", 10)
+	press(t, c, "horizpospush") // Position: sample point
 	turn(c, "horizpos", 8)
 	e = c.View().Eye
 	if e.ThreshRow >= th || e.SampleCol <= e.Cols/2 || !strings.HasPrefix(e.Cursor, "SAMPLE PT +0.12 UI") {
 		t.Fatalf("cursors: row %d (was %d) col %d cursor %q", e.ThreshRow, th, e.SampleCol, e.Cursor)
 	}
-	press(t, c, "horizpospush")
-	if e = c.View().Eye; e.ThreshRow != th || e.SampleCol != e.Cols/2 {
-		t.Fatalf("Position push: row %d col %d", e.ThreshRow, e.SampleCol)
+	press(t, c, "horizpospush") // back to the trigger: the cursors stay
+	if e = c.View().Eye; e.SampleCol <= e.Cols/2 || c.ui.posJob {
+		t.Fatalf("Position push: col %d, second job %v", e.SampleCol, c.ui.posJob)
 	}
 	press(t, c, "adjustpush")
 	if e = c.View().Eye; e.Why == "" {
 		t.Fatal("Adjust push did not clear the eye")
 	}
 	uart()
-	if e = c.View().Eye; e.Why != "" {
-		t.Fatalf("the eye did not fold again: %q", e.Why)
+	if e = c.View().Eye; e.Why != "" || e.ThreshRow != th || e.SampleCol != e.Cols/2 {
+		t.Fatalf("the eye did not start over: %q row %d col %d", e.Why, e.ThreshRow, e.SampleCol)
 	}
 }
 

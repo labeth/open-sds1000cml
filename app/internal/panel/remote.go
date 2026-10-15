@@ -262,7 +262,7 @@ func (c *Controller) status(s *sv) Status {
 		if u.sub == subMatch {
 			st.Tool = []ToolSeg{{"Adjust", "key"}, {"push", "type"}, {"Position", "cursor"}, {"push", "clear"}}
 		} else if u.sub == subPick {
-			st.Tool = []ToolSeg{{"Adjust", "first byte"}, {"push", "cancel"}, {"Position", "first byte"}, {"push", "back to start"}}
+			st.Tool = pickTool
 		}
 	} else {
 		st.Tool, st.Again = paneTool(c, s, v)
@@ -290,13 +290,16 @@ func (c *Controller) status(s *sv) Status {
 	return st
 }
 
+// pickTool is the byte picker's tool line.
+var pickTool = []ToolSeg{{"Adjust", "byte"}, {"push", "trigger on it"}, {"Position", "byte"}, {"push", "back to start"}, {"Menu", "back"}}
+
 // paneTool is the tool line in workspace mode (SCOPE's from its Adjust tag).
 // TRLC-LINKS: REQ-SDS-211, REQ-SDS-212
 func paneTool(c *Controller, s *sv, v wsview.View) ([]ToolSeg, string) {
 	var p *wsview.Pane
 	switch {
 	case v.Picker != nil:
-		return []ToolSeg{{"Adjust", "first byte"}, {"push", "cancel"}, {"Position", "first byte"}, {"push", "back to start"}}, ""
+		return pickTool, ""
 	case v.Bus != nil:
 		p = &v.Bus.Pane
 	case v.Eye != nil:
@@ -319,11 +322,11 @@ func paneTool(c *Controller, s *sv, v wsview.View) ([]ToolSeg, string) {
 	if r := adjTarget(s); r != nil {
 		adj = r.label
 	}
-	pos := "trigger position"
-	if s.zoom > 1 {
-		pos = "zoom position"
+	out := []ToolSeg{{"Adjust", adj}, {"push", "open its sheet row"}}
+	for _, sg := range posTool(s) {
+		out = append(out, ToolSeg{sg.Key, sg.Job})
 	}
-	return []ToolSeg{{"Adjust", adj}, {"push", "open its sheet row"}, {"Position", pos}, {"push", "centre"}},
+	return out,
 		"F1 again: " + viewName(map[bool]int{true: viewXY, false: viewYT}[s.viewMode == viewYT])
 }
 

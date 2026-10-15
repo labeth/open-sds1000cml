@@ -468,8 +468,28 @@ func (c *Controller) pickKeys(s *sv) []fkey {
 		}
 		out = append(out, fkey{label: fmt.Sprintf("Trig on %d", n), value: v, dim: !ok, run: func() error { return c.pickUse(n) }})
 	}
-	out = append(out, fkey{label: "Cancel", value: "keep the match", run: func() error { c.pickCancel(); return nil }})
+	out = append(out, fkey{label: "Cancel", value: "keep the match", run: func() error { c.pickBack(); return nil }})
 	return out
+}
+
+// pickCancelled is the notice of a picker left without a trigger.
+const pickCancelled = "Pick cancelled: the trigger is as it was"
+
+// pickUseKey is the Adjust push in the picker (and F1..F4 through pickKeys):
+// trigger on n units from the highlighted one; a refusal says why and the
+// picker stays open.
+// TRLC-LINKS: REQ-SDS-214
+func (c *Controller) pickUseKey(n int) {
+	if err := c.pickUse(n); err != nil {
+		c.toast(err.Error(), 2000*time.Millisecond)
+	}
+}
+
+// pickBack is F5 in the picker: close it unused, with a notice.
+// TRLC-LINKS: REQ-SDS-214
+func (c *Controller) pickBack() {
+	c.pickCancel()
+	c.toast(pickCancelled, noticeFor)
 }
 
 // pickMove moves the first byte.
@@ -480,12 +500,13 @@ func (c *Controller) pickMove(dir int) {
 	c.mu.Unlock()
 }
 
-// pickCancel closes the picker without a change.
+// pickCancel closes the picker without a change or a notice (the caller
+// says what happened).
 // TRLC-LINKS: REQ-SDS-214
 func (c *Controller) pickCancel() {
 	c.mu.Lock()
 	if c.ui.wpick {
-		c.closePickLocked()
+		c.ui.wpick, c.ui.pick = false, pickState{}
 	} else if c.ui.sub == subPick {
 		c.ui.sub, c.ui.pick = subNone, pickState{}
 	}
@@ -514,6 +535,6 @@ func (c *Controller) pickUse(n int) error {
 	if err := c.armSerial(); err != nil {
 		return err
 	}
-	c.toast("Trigger on "+strings.Join(toks, " "), 1600*time.Millisecond)
+	c.toast("TRIG ON "+strings.Join(toks, " "), 1600*time.Millisecond)
 	return nil
 }

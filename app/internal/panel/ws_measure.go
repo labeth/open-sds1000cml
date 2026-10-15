@@ -93,7 +93,7 @@ func (c *Controller) statsResetLocked() {
 	c.ana.stats, c.ana.statLast, c.ana.statN = nil, nil, 0
 }
 
-// statsReset is the Position push in MEASURE: zero the statistics.
+// statsReset is the MEAS sheet's Statistics row: zero the statistics.
 // TRLC-LINKS: REQ-SDS-217
 func (c *Controller) statsReset() {
 	c.amu.Lock()
@@ -326,7 +326,7 @@ func (c *Controller) measCursorMode() {
 	s := c.snap()
 	next := map[int]int{0: 1, 1: 2, 2: 0}[map[bool]int{false: 0, true: 1 + s.curType}[s.curOn]]
 	c.setCursorMode(next)
-	c.toast("Cursors "+[]string{"off", "Time (Adjust: A, Position: B)", "Volts (Adjust: A, Position: B)"}[next], 1400*time.Millisecond)
+	c.toast("Cursors "+[]string{"off", "Time (Adjust: A; push Position, then turn it: B)", "Volts (Adjust: A; push Position, then turn it: B)"}[next], 1400*time.Millisecond)
 }
 
 // cursorTimes are the time cursors' positions from the trigger (seconds),
@@ -491,7 +491,7 @@ func (c *Controller) measPane(s *sv) *wsview.MeasPane {
 		p.MaskLine = wsview.Span{Text: fmt.Sprintf("MASK pass %d fail %d", s.st.MaskPass, s.st.MaskFail), Col: col}
 	}
 	next := []string{"Time", "Volts", "off"}[map[bool]int{false: 0, true: 1 + s.curType}[s.curOn]]
-	p.Tool = []wsview.Seg{{Key: "Adjust", Job: "cursor A"}, {Key: "push", Job: "cursors " + next}, {Key: "Position", Job: "cursor B"}, {Key: "push", Job: "zero statistics"}}
+	p.Tool = append([]wsview.Seg{{Key: "Adjust", Job: "cursor A"}, {Key: "push", Job: "cursors " + next}}, posTool(s)...)
 	p.Again = "F4 again: " + map[bool]string{true: "Statistics", false: "All values"}[u.measAll]
 	return p
 }

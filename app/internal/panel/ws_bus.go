@@ -20,9 +20,9 @@ import (
 // BUS (REQ-SDS-214): entering it with decode off finds the bus and decodes
 // it; the pane lists the complete packets as a fixed-column hex dump with a
 // separate string box, held still while the same messages repeat. Adjust
-// selects a packet, its push picks bytes to trigger on, Position jumps match
-// to match, its push goes back to the trigger, and the S/DIV push zooms onto
-// the selected packet. BUS again shows the eye diagram (REQ-SDS-215).
+// selects a packet, its push picks bytes to trigger on; Position moves the
+// trigger, and its push switches it to jumping match to match (pushed again,
+// back to the trigger); the S/DIV push zooms onto the selected packet. BUS again shows the eye diagram (REQ-SDS-215).
 
 // Eye grid size: 2 UI across 384 columns (2 px each, 768 px), the plot's
 // height in 2 px rows; the eye is fed at least eyeFeedSPU samples per UI
@@ -240,19 +240,17 @@ func (c *Controller) busNextMatch(dir int) {
 	c.toast("No more packets with "+strings.Join(toks, " ")+" "+where, 1500*time.Millisecond)
 }
 
-// busToTrigger is the Position push in BUS: back to the trigger.
+// busToTrigger is Position leaving BUS's next match: the packet list back
+// to the trigger's packet and a zoom window back on the trigger (the
+// trigger position stays where it was set).
 // TRLC-LINKS: REQ-SDS-214
-func (c *Controller) busToTrigger() {
-	s := c.snap()
+func (c *Controller) busToTrigger(s *sv) {
 	if s.zoom > 1 {
 		c.setZoomOff(0)
-	} else {
-		c.centreTrigger()
 	}
 	c.amu.Lock()
 	c.ana.list.Select(0)
 	c.amu.Unlock()
-	c.toast("Back to the trigger", 900*time.Millisecond)
 }
 
 // panToPacket centres the zoom window on a packet.
@@ -1000,7 +998,7 @@ func (c *Controller) openPickWS() {
 	_ = s
 	c.mu.Lock()
 	c.ui.pick = pickFrom(toks, starts, sel, pickUnitOf(c.ana.res.Proto))
-	c.ui.wpick = true
+	c.ui.wpick, c.ui.posJob = true, false
 	c.mu.Unlock()
 }
 
@@ -1282,7 +1280,9 @@ func dispVoltsPerCode(s *sv, ch int) float64 {
 	return analog.Detents[s.vidx[ch&1]].VdivV / 25 * s.probe[ch&1]
 }
 
-// eyeClear is the Adjust push in the eye: start folding again.
+// eyeClear is the Adjust push in the eye: start over, folding again from
+// the next capture with the sample point at the eye's centre and the
+// threshold on the crossing.
 // TRLC-LINKS: REQ-SDS-215
 func (c *Controller) eyeClear() {
 	c.amu.Lock()
@@ -1291,7 +1291,10 @@ func (c *Controller) eyeClear() {
 	}
 	c.ana.eyeRes, c.ana.eyeOK, c.ana.eyeFed = EyeResult{}, false, frameKey{}
 	c.amu.Unlock()
-	c.toast("Eye cleared: folding again from the next capture", 1400*time.Millisecond)
+	c.mu.Lock()
+	c.ui.eyeX, c.ui.eyeThSet = 0, false
+	c.mu.Unlock()
+	c.toast("Eye cleared: folding again; sample point centred, threshold on the crossing", 1600*time.Millisecond)
 }
 
 // eyeThreshold is the threshold cursor in displayed codes: set by Adjust,

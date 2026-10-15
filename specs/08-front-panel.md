@@ -505,7 +505,7 @@ beside them in the 116 px F-key column; actions run only from their labelled F-k
 |---|---|
 | TIME/DIV | the previous / next tab (wrapping); leaves an edit or a sub-mode |
 | ADJUST | the row (wrapping); in an edit: the value; in the match editor: the key |
-| ADJUST push | edit the row (again: done); on Match bytes: the match editor; in the editor: type the key |
+| ADJUST push | edit the row (again: done); on Match bytes: the match editor; in the editor: type the key; in the byte picker: trigger on the highlighted byte |
 | HORIZ POSITION | the row's value: the next option, or a knob step; in the editor: the cursor |
 | HORIZ POSITION push | the row's factory value; in the editor: clear |
 | F1..F5 | the row's choices; a number row: Down, Up and presets; an action row: its actions |
@@ -514,14 +514,30 @@ beside them in the 116 px F-key column; actions run only from their labelled F-k
 The BUS tab's Match bytes row opens the match editor (a full-screen keyboard of Hex, Text and Special
 keys, 32 units at most: F1 key set, F2 type, F3 delete, F4 OK, F5 cancel) or the byte picker (the
 bytes decoded on screen, the first complete message's first byte highlighted; F1..F4 trigger on 1..4
-bytes from it and set the trigger type Serial; F5 cancel). On MIL-1553 the picker steps and counts whole
+bytes from it and set the trigger type Serial; F5 cancel).
+
+The byte picker (from BUS Packets' ADJUST push or the Match bytes row's From screen): ADJUST and HORIZ
+POSITION move the highlighted byte (the HORIZ POSITION push: back to where it opened); the ADJUST push
+triggers on the highlighted byte, as F1 does: it sets the match, arms the hardware serial trigger (type
+Serial) and closes the picker with the notice `TRIG ON 4F`. F2..F4 trigger on 2..4 bytes from it. F5,
+MENU and any key that leaves the picker (a workspace, a sheet key, AUTO) back out with the notice
+`Pick cancelled: the trigger is as it was`, the match unchanged; the F-keys are then the workspace's
+or the sheet's again. Its tool line: `Adjust: byte  push: trigger on it  Position: byte  push: back to
+start  Menu: back`. On MIL-1553 the picker steps and counts whole
 words (two bytes each), on ARINC 429 it offers the one word (three bytes) a match can be: each ARINC word
 is a frame of its own, and a longer ARINC match is refused with that reason, the matcher not armed.
 
 ### 7.3 Knobs and pushes
 
 V/DIV, vertical POSITION, TRIG LEVEL and TIME/DIV keep their printed jobs in every workspace, and the
-pushes theirs (Variable, Zero, Zoom). ADJUST and HORIZ POSITION are each workspace's tools.
+pushes theirs (Variable, Zero, Zoom). ADJUST and its push are each workspace's tool. HORIZ POSITION
+moves the trigger position (zoomed: the zoom window) in every workspace and view. Where a workspace
+has a second Position job (BUS, SPECTRUM, MEASURE), the HORIZ POSITION push switches the knob to it
+and a second push back to the trigger position; switching the workspace or its view, or opening a sheet
+or the byte picker, puts it back on the trigger position. SCOPE and COMPARE have no second job: their
+push is Zero (the trigger to the centre). The tool line names the knob's job now and the push's
+(`Position: trigger position  push: next match`, then `Position: next match  push: trigger position`);
+the phone remote reads its knob jobs from the scope's tool line in `/api/status`.
 
 | Control | Source | Action |
 |---|---|---|
@@ -539,14 +555,18 @@ pushes theirs (Variable, Zero, Zoom). ADJUST and HORIZ POSITION are each workspa
 
 Workspace tools (no menu open):
 
-| Workspace | ADJUST | ADJUST push | HORIZ POSITION | HORIZ POSITION push |
-|---|---|---|---|---|
-| SCOPE | the last number set in a sheet (tagged in the bottom row), else the active cursor | open the sheet at that row | trigger position (zoomed: the zoom window) | centre |
-| BUS Packets | select a packet (zoomed: pan to it) | the byte picker (no bus: detect again) | the next / previous packet holding the match | back to the trigger |
-| BUS eye | the threshold cursor | clear the eye | the sample-point cursor | both cursors to the crossing and the eye centre |
-| SPECTRUM | the marker peak to peak (Bode: point to point) | a delta reference at the marker (again: off) | the marker bin by bin | the largest peak (Bode: follow the sweep) |
-| MEASURE | cursor A | cursors off / time / volts | cursor B | zero the statistics |
-| COMPARE | the row | the row's action (written at its right end) | trigger position | centre |
+| Workspace | ADJUST | ADJUST push | HORIZ POSITION | HORIZ POSITION push | Position's second job (after the push) |
+|---|---|---|---|---|---|
+| SCOPE | the last number set in a sheet (tagged in the bottom row), else the active cursor | open the sheet at that row | trigger position (zoomed: the zoom window) | centre | none |
+| BUS Packets | select a packet (zoomed: pan to it) | the byte picker (no bus: detect again) | trigger position | next match | the next / previous packet holding the match (zoomed: the window follows); the push back to the trigger position also returns the list's selection (and a zoom window) to the trigger |
+| BUS eye | the threshold cursor | clear the eye, the sample point to the eye centre and the threshold to the crossing | trigger position | sample point | the sample-point cursor |
+| SPECTRUM | the marker peak to peak (Bode: point to point) | a delta reference at the marker (again: off) | trigger position | fine marker (Bode: point) | the marker bin by bin (Bode: point to point) |
+| MEASURE | cursor A | cursors off / time / volts | trigger position | cursor B | cursor B |
+| COMPARE | the row | the row's action (written at its right end) | trigger position | centre | none |
+
+The marker back to the largest peak (Bode: following the sweep) is the VIEW sheet's Marker row
+(`view.marker`, action Largest peak / Follow sweep); zeroing the statistics is the MEAS sheet's
+Statistics row (`meas.stats`, action Zero).
 
 Stepping conventions and constants:
 

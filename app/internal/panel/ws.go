@@ -91,6 +91,9 @@ type uiState struct {
 	sub   int               // subNone / subMatch / subPick
 	pick  pickState
 	wpick bool // the workspace picker (BUS pane) is open
+	// posJob: Horizontal Position does the workspace's second job (its
+	// push toggles it); else it moves the trigger position.
+	posJob bool
 
 	flashRow   string // the F-key flash, tied to its row
 	flashI     int

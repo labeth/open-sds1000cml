@@ -250,8 +250,11 @@ automatically.
   work.
 * **On the scope itself:** the LCD and the real front-panel keys and knobs, as five task workspaces
   (SCOPE, BUS, SPECTRUM, MEASURE, COMPARE) on F1 to F5, each workspace's key again showing its next view;
-  MENU and the printed keys open full-screen settings sheets with every option written out. Settings are
-  kept across restarts.
+  MENU and the printed keys open full-screen settings sheets with every option written out. Horizontal
+  Position moves the trigger in every workspace; its push switches it to the workspace's second job
+  (BUS: next match or the eye's sample point, SPECTRUM: fine marker, MEASURE: cursor B) and back. In BUS,
+  push Adjust to pick a byte from the packets and push it again to trigger on it. Settings are kept
+  across restarts.
 * **Safe updates:** an on-device agent installs new versions over the network into A/B slots and
   rolls back automatically if a version fails its health check. Nothing is written to the scope's
   flash.

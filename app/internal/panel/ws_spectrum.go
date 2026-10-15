@@ -165,7 +165,8 @@ func (c *Controller) specAdjust(dir int) {
 	c.mu.Unlock()
 }
 
-// specFine is Position in SPECTRUM: the marker bin by bin (Bode: point).
+// specFine is Position's second job in SPECTRUM: the marker bin by bin
+// (Bode: point).
 // TRLC-LINKS: REQ-SDS-216, REQ-SDS-213
 func (c *Controller) specFine(dir, n int) {
 	s := c.snap()
@@ -223,7 +224,7 @@ func (c *Controller) specDelta() {
 	c.toastLocked("Delta reference at "+si(f, "Hz")+" (push again: off)", 1500*time.Millisecond)
 }
 
-// specLargest is the Position push in SPECTRUM: the marker back to the
+// specLargest is the VIEW sheet's Marker row: the marker back to the
 // largest peak (Bode: follow the sweep).
 // TRLC-LINKS: REQ-SDS-216
 func (c *Controller) specLargest() {
@@ -358,7 +359,7 @@ func (c *Controller) specPane(s *sv) *wsview.SpecPane {
 	if u.specRefSet {
 		delta = "delta off"
 	}
-	p.Tool = []wsview.Seg{{Key: "Adjust", Job: "peak"}, {Key: "push", Job: delta}, {Key: "Position", Job: "fine"}, {Key: "push", Job: "largest peak"}}
+	p.Tool = append([]wsview.Seg{{Key: "Adjust", Job: "peak"}, {Key: "push", Job: delta}}, posTool(s)...)
 	return p
 }
 
@@ -427,7 +428,7 @@ func (c *Controller) bodePane(s *sv, p *wsview.SpecPane) {
 	if u.bodeRef >= 0 {
 		delta = "delta off"
 	}
-	p.Tool = []wsview.Seg{{Key: "Adjust", Job: "point"}, {Key: "push", Job: delta}, {Key: "Position", Job: "point"}, {Key: "push", Job: "follow the sweep"}}
+	p.Tool = append([]wsview.Seg{{Key: "Adjust", Job: "point"}, {Key: "push", Job: delta}}, posTool(s)...)
 }
 
 // nextSpecView is SPECTRUM again: FFT, spectrogram, Bode, FFT.

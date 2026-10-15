@@ -508,12 +508,22 @@ test("snapshot follows settings and setup slots, not the run state or live statu
 
 // ---- the knob-job line ------------------------------------------------------------------------
 test("tools reads the scope's tool line into knob jobs and pushes", () => {
-  const t = RC.tools([{ Knob: "Adjust", Job: "packet" }, { Knob: "push", Job: "pick bytes" }, { Knob: "Position", Job: "next match" },
-    { Knob: "push", Job: "to trigger" }, { Knob: "Zoom", Job: "on packet" }]);
-  assert.deepEqual(t, { adjust: { job: "packet", push: "pick bytes" }, position: { job: "next match", push: "to trigger" }, zoom: "on packet" });
-  const n = RC.tools([{ Knob: "Adjust push", Job: "try again" }, { Knob: "S/DIV push", Job: "zoom" }]);
+  const t = RC.tools([{ Knob: "Adjust", Job: "packet" }, { Knob: "push", Job: "pick bytes" }, { Knob: "Position", Job: "trigger position" },
+    { Knob: "push", Job: "next match" }, { Knob: "Zoom", Job: "on packet" }]);
+  assert.deepEqual(t, { adjust: { job: "packet", push: "pick bytes" }, position: { job: "trigger position", push: "next match" }, zoom: "on packet" });
+  const m = RC.tools([{ Knob: "Adjust", Job: "packet" }, { Knob: "push", Job: "pick bytes" }, { Knob: "Position", Job: "next match" },
+    { Knob: "push", Job: "trigger position" }, { Knob: "Zoom", Job: "on packet" }]);
+  assert.deepEqual(m.position, { job: "next match", push: "trigger position" });
+  const n = RC.tools([{ Knob: "Adjust push", Job: "try again" }, { Knob: "Position", Job: "trigger position" }, { Knob: "push", Job: "centre" },
+    { Knob: "S/DIV push", Job: "zoom" }]);
   assert.equal(n.adjust.push, "try again");
+  assert.deepEqual(n.position, { job: "trigger position", push: "centre" });
   assert.equal(n.zoom, "zoom");
+  // the byte picker: the Adjust push triggers; Menu (backs out) is no knob job
+  const p = RC.tools([{ Knob: "Adjust", Job: "byte" }, { Knob: "push", Job: "trigger on it" }, { Knob: "Position", Job: "byte" },
+    { Knob: "push", Job: "back to start" }, { Knob: "Menu", Job: "back" }]);
+  assert.deepEqual(p, { adjust: { job: "byte", push: "trigger on it" }, position: { job: "byte", push: "back to start" }, zoom: "" });
+  assert.deepEqual(RC.turnWords("trigger position"), ["Left", "Right"]);
   assert.deepEqual(RC.turnWords("cursor A"), ["Left", "Right"]);
   assert.deepEqual(RC.turnWords("threshold"), ["Down", "Up"]);
   assert.deepEqual(RC.turnWords("packet"), ["Prev", "Next"]);

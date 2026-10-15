@@ -3576,9 +3576,12 @@ requirements:
   verificationCriteria: A reachability test sets every setting through panel inputs alone; sheet goldens.
 - id: REQ-SDS-213
   title: Workspace knob tools
-  text: The instrument shall give Adjust, Horizontal Position and their pushes one job named on a tool line in
-    each workspace, and keep the printed jobs of V/DIV, vertical Position, Level, S/DIV and their pushes
-    (Variable, Zero, Zoom), with V/DIV and S/DIV turning the way their printed arcs show.
+  text: The instrument shall give Adjust and its push one job named on a tool line in each workspace, move the
+    trigger position with Horizontal Position in every workspace until its push switches it to the workspace's
+    second job named on the tool line (a second push, a workspace or view change or an opened sheet returning
+    it to the trigger position, and the push centring the trigger where there is no second job), and keep the
+    printed jobs of V/DIV, vertical Position, Level, S/DIV and their pushes (Variable, Zero, Zoom), with V/DIV
+    and S/DIV turning the way their printed arcs show.
   status: draft
   category: functional
   appliesTo:

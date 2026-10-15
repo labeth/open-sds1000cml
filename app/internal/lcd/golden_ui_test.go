@@ -76,7 +76,7 @@ func TestGoldenBusPackets(t *testing.T) {
 			Bytes: 4, Match: "55 AA"}
 	}
 	b := &wsview.BusPane{Pane: wsview.Pane{Title: "BUS", Caption: "UART 31250 8N1 on C1  -  6 packets", Right: "match 55 AA: 6 packets",
-		Tool:  []wsview.Seg{{Key: "Adjust", Job: "packet"}, {Key: "push", Job: "pick bytes"}, {Key: "Position", Job: "next match"}, {Key: "push", Job: "to trigger"}, {Key: "Zoom", Job: "on packet"}},
+		Tool:  []wsview.Seg{{Key: "Adjust", Job: "packet"}, {Key: "push", Job: "pick bytes"}, {Key: "Position", Job: "trigger position"}, {Key: "push", Job: "next match"}, {Key: "Zoom", Job: "on packet"}},
 		Again: "F2 again: Eye diagram"}}
 	for i := 1; i <= 6; i++ {
 		b.Lines = append(b.Lines, line(i, i == 2))
@@ -104,7 +104,8 @@ func TestGoldenBusPicker(t *testing.T) {
 	toks[6].Text = "ERR"
 	pk := &wsview.Picker{Caption: "to trigger on  (12 decoded on screen)", Toks: toks, Cur: 4,
 		Lines: []wsview.Span{{Text: "| = idle gap (a message starts).  Underlined: the bytes the F-keys would add.", Col: wsview.Dim},
-			{Text: "Turn Adjust or Position: the first byte.  F1-F4: trigger on 1-4 bytes from it (type Serial).", Col: wsview.Text}},
+			{Text: "Turn Adjust or Position: the first byte.  Push Adjust (or F1): trigger on it; F2-F4: on 2-4 bytes.", Col: wsview.Text},
+			{Text: "F5 or Menu On/Off: back, the trigger as it was.", Col: wsview.Dim}},
 		Now: "Now: any byte"}
 	keys := &wsview.Keys{Title: "PICK BYTES", Top: 12, Items: [5]wsview.Key{{Label: "Trig on 1", Value: "48"}, {Label: "Trig on 2", Value: "48 69"},
 		{Label: "Trig on 3", Value: "48 69 ERR"}, {Label: "Trig on 4", Value: "48 69 ERR AA"}, {Label: "Cancel", Value: "keep the match"}}}
@@ -156,7 +157,7 @@ func TestGoldenBusEye(t *testing.T) {
 	const cols, rows = 384, 166
 	grid, mx := goldenEyeGrid(cols, rows)
 	e := &wsview.EyePane{Pane: wsview.Pane{Title: "BUS", Caption: "EYE  UART 31250 8N1 on C1", Right: "212 UI folded from 9 captures",
-		Tool:  []wsview.Seg{{Key: "Adjust", Job: "threshold"}, {Key: "push", Job: "clear eye"}, {Key: "Position", Job: "sample point"}, {Key: "push", Job: "centre both"}, {Key: "Zoom", Job: "finer samples"}},
+		Tool:  []wsview.Seg{{Key: "Adjust", Job: "threshold"}, {Key: "push", Job: "clear eye"}, {Key: "Position", Job: "sample point"}, {Key: "push", Job: "trigger position"}, {Key: "Zoom", Job: "finer samples"}},
 		Again: "F2 again: Packets"},
 		Figures: [3][4][2]string{{{"BIT RATE", "31.25 kbit/s"}, {"UI", "32us"}, {"CROSSING", "50 %"}, {"FOLDED", "212 UI"}},
 			{{"EYE HEIGHT", "6.4V"}, {"EYE WIDTH", "0.84 UI"}, {"RISE", "120ns"}, {"FALL", "118ns"}},
@@ -184,7 +185,7 @@ func TestGoldenSpectrumPeaks(t *testing.T) {
 		func(i int) float64 { return 128 + 50*math.Sin(2*math.Pi*float64(i)*410/n) })
 	f.SampleS = 50e-9
 	s := &wsview.SpecPane{Pane: wsview.Pane{Title: "SPECTRUM", Caption: "FFT C1  span 0-10MHz  RBW 4.88kHz  floor -71dBV", Right: "S/DIV: span",
-		Tool:  []wsview.Seg{{Key: "Adjust", Job: "peak"}, {Key: "push", Job: "delta"}, {Key: "Position", Job: "fine"}, {Key: "push", Job: "largest peak"}},
+		Tool:  []wsview.Seg{{Key: "Adjust", Job: "peak"}, {Key: "push", Job: "delta"}, {Key: "Position", Job: "trigger position"}, {Key: "push", Job: "fine marker"}},
 		Again: "F3 again: Spectrogram"},
 		Head: [4]string{"FREQ", "LEVEL", "VS TOP", "HARM"},
 		Rows: []wsview.SpecRow{{Num: 1, Freq: "1MHz", Level: "8.9dBV", Rel: "0dB", Harm: "H1", Sel: true},
@@ -203,7 +204,7 @@ func TestGoldenSpectrumPeaks(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-217
 func TestGoldenMeasureStats(t *testing.T) {
 	m := &wsview.MeasPane{Pane: wsview.Pane{Title: "MEASURE", Caption: "statistics  N 48  over 2.4 s", Right: "Measure key: choose",
-		Tool:  []wsview.Seg{{Key: "Adjust", Job: "cursor A"}, {Key: "push", Job: "cursors Volts"}, {Key: "Position", Job: "cursor B"}, {Key: "push", Job: "zero statistics"}},
+		Tool:  []wsview.Seg{{Key: "Adjust", Job: "cursor A"}, {Key: "push", Job: "cursors Volts"}, {Key: "Position", Job: "trigger position"}, {Key: "push", Job: "cursor B"}},
 		Again: "F4 again: All values"},
 		Stats: []wsview.StatRow{{Name: "C1 Vpp", Col: wsview.C1, Now: "5.68V", Mean: "5.68V", Min: "5.6V", Max: "5.76V", Sdev: "40mV", N: "48"},
 			{Name: "C1 Freq", Col: wsview.C1, Now: "1kHz", Mean: "1kHz", Min: "999Hz", Max: "1kHz", Sdev: "0.4Hz", N: "48"},
