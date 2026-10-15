@@ -81,13 +81,14 @@ func (c *Controller) runAutoset(stop chan struct{}) {
 func (c *Controller) runAutosetFor(stop chan struct{}, ws wsview.WS, view int) {
 	defer c.endAutoset(stop)
 	g := goalFor(ws, view)
+	entry := c.autoEntryNow()
+	c.autoClearMatch(entry)
 	if ws == wsview.Compare {
 		if note, ok := c.compareAuto(); ok {
 			c.toast(note, autoNoticeFor)
 			return
 		}
 	}
-	entry := c.autoEntryNow()
 	res, ok := c.autosetSweep(stop, g)
 	if !ok {
 		c.cancelledAuto(stop, entry)
@@ -114,6 +115,8 @@ type autoEntry struct {
 	norm, running bool
 	proto, mode   int
 	auto          autoWatch
+	match         []string // the serial trigger's match: AUTO starts without it
+	hasMatch      bool
 }
 
 // autoEntryNow reads what AUTO may change.
@@ -132,7 +135,20 @@ func (c *Controller) autoEntryNow() autoEntry {
 	c.mu.Lock()
 	e.proto, e.mode, e.auto = c.decProto, c.decMode, c.auto
 	c.mu.Unlock()
+	if se := c.serialTrig(); se != nil {
+		e.match, e.hasMatch = tokensOf(se.SerialConfig()), true
+	}
 	return e
+}
+
+// autoClearMatch starts AUTO from a clean setup: the serial trigger's match
+// from before goes (a recalled setup's bytes armed BUS's AUTO on them instead
+// of the frame start); a cancelled AUTO puts it back.
+// TRLC-LINKS: REQ-SDS-137, REQ-SDS-223
+func (c *Controller) autoClearMatch(e autoEntry) {
+	if e.hasMatch && len(e.match) > 0 {
+		_ = c.setMatchTokens(nil)
+	}
 }
 
 // cancelledAuto puts back what AUTO changed when a second press cancelled it
@@ -146,6 +162,9 @@ func (c *Controller) cancelledAuto(stop chan struct{}, e autoEntry) {
 	}
 	if e.tdiv > 0 {
 		c.setTdivNearest(e.tdiv)
+	}
+	if e.hasMatch {
+		_ = c.setMatchTokens(e.match)
 	}
 	if c.fe != nil {
 		for ch := 0; ch < 2; ch++ {

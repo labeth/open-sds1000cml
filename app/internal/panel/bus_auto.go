@@ -89,6 +89,7 @@ func (c *Controller) runBusAuto(stop chan struct{}) {
 		}()
 	}
 	entry := c.autoEntryNow()
+	c.autoClearMatch(entry)
 	entryTdiv := entry.tdiv
 	// the bus decoded before is forgotten: a serial trigger on it ends (its
 	// match stays for the bus found next)

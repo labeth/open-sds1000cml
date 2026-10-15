@@ -392,8 +392,9 @@ after every START); the sequence trigger on SOF then any unit for SPI (the first
 Manchester, SENT, CAN, USB and FlexRay; any word for ARINC 429 (each is a frame); a MIL-1553 command word
 (CMD); for UART, whose matcher fires on every character, the pulse qualifier on a high time longer than
 any inside a message (midway to the idle between messages), firing on the first start bit after it, or
-the edge trigger when the messages have no idle. Match bytes the user set win (the serial trigger arms on
-them). The notice says what was chosen ("TRIG: I2C START (address byte)", "TRIG: UART first byte (idle >
+the edge trigger when the messages have no idle. AUTO starts from a clean setup: a match stored before (a
+recalled setup's bytes) goes, and a cancelled AUTO puts it back; entering BUS keeps a match the user set
+(the serial trigger arms on it). The notice says what was chosen ("TRIG: I2C START (address byte)", "TRIG: UART first byte (idle >
 200us)"). Software places the trigger point on the frame the FPGA fired in: at its SYNC, SOF or START,
 back over the frame's units (the line image fires a few units into a Manchester or USB frame); an
 ARINC 429 or MIL-1553 word at its label or sync. Until a placement has been learned the record keeps

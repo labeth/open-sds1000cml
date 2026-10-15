@@ -256,3 +256,29 @@ func TestStreamImageNote(t *testing.T) {
 		}
 	}
 }
+
+// AUTO starts from a clean setup: a match stored before (a recalled setup's
+// AA) goes, and BUS's AUTO arms the frame start, not the old bytes.
+// TRLC-LINKS: REQ-SDS-223
+func TestAutoInBusDropsTheOldMatch(t *testing.T) {
+	c, eng, _ := newEnvRig(t)
+	eng.leased.Store(true)
+	if c.serialTrig() == nil {
+		t.Skip("rig without a serial trigger")
+	}
+	set(t, c, "bus.protocol", "UART")
+	if err := c.setMatchTokens([]string{"AA"}); err != nil {
+		t.Fatal(err)
+	}
+	c.mu.Lock()
+	c.ui.ws = wsview.Bus
+	c.mu.Unlock()
+	press(t, c, "auto")
+	s := c.snap()
+	if toks := tokensOf(c.serialTrig().SerialConfig()); len(toks) != 0 || strings.Contains(s.ui.busNote, "your match") {
+		t.Fatalf("AUTO kept the old match %q: %q", toks, s.ui.busNote)
+	}
+	if !strings.Contains(s.ui.busNote, "TRIG: UART first byte") {
+		t.Fatalf("AUTO did not arm the frame start: %q", s.ui.busNote)
+	}
+}
