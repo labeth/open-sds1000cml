@@ -126,6 +126,10 @@ run(async (t) => {
   await po.page.keyboard.press("Enter");
   await po.waitFor(() => document.getElementById("stArm").classList.contains("on"), null, 8000);
   await t.until(async () => !(await page.locator("#stStats").textContent()).includes("not applied"), "Enter in the match field arms; a successful retry clears the error", 3000);
-  await t.until(async () => /Serial 55/.test(await po.text("trigCap")), "the strip's trigger caption shows the armed serial trigger", 5000);
+  // the caption names what the scope's status confirms, so it follows the
+  // arm by a status round trip; on a loaded runner that has taken over 5 s
+  await t.until(async () => /Serial 55/.test(await po.text("trigCap")), "the strip's trigger caption shows the armed serial trigger", 15000);
+  if (!/Serial 55/.test(await po.text("trigCap")))
+    console.log("caption: " + JSON.stringify(await po.eval(() => ({ cap: $("trigCap").textContent, bytes: $("stBytes").value, mode: st.serial_mode, armed: stArmed(), own: stOwn }))));
   t.ok(pageErrors.length === 0, "no page errors: " + pageErrors.join("; "));
 });
