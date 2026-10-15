@@ -38,4 +38,10 @@ assert.equal(c.busPk.rows.length, 1, 'the new bus lists its own');
 c.dcfg.result = { ok: true, proto: 'uart', spans: [], bytes: [], text: '' };
 c.busOnDecode();
 assert.equal(c.busPk.rows.length, 1, 'a capture with no whole message keeps the list (same settings)');
+// another timebase: the rows' sample places are another record's
+// TRLC-LINKS: REQ-SDS-214
+c.frame.tdiv_s = 200e-6;
+c.dcfg.result = { ok: true, proto: 'uart', spans: [], bytes: [], text: '' };
+c.busOnDecode();
+assert.equal(c.busPk.rows.length, 0, 'rows from another timebase kept: ' + c.busPk.rows.length);
 console.log('ALL PASS');

@@ -12,16 +12,19 @@ let busLive = [];           // the last capture's packets, cut ones included
 let busSel = null;          // {i0, i1, n} of the packet zoomed onto, drawn on the trace
 let busRenderT = 0, busRenderedV = -1, busDetecting = false;
 
-// busListKey is the decoder settings the packet list belongs to: settings
-// that change (another protocol, rate, line or SPI mode) start it over, as the
-// scope's list does, so no packet the old settings decoded is listed.
+// busListKey is the decoder settings and the timebase the packet list belongs
+// to: a change (another protocol, rate, line or SPI mode; another timebase,
+// whose records place the packets at other samples) starts it over, as the
+// scope's list does, so no packet the old settings decoded is listed and no
+// row keeps a place from another timebase (rows from a 500us/div record read
+// times 0.4 of the true ones at 200us/div).
 let busListKey = "";
 
 // busOnDecode runs after every decode (updateDecodeResults): group the result
 // into packets and refresh the table when its content changed.
 // TRLC-LINKS: REQ-SDS-214
 function busOnDecode() {
-  const key = [decKey(), dcfg.baud, dcfg.cpol, dcfg.cpha, dcfg.msb].join("|");
+  const key = [decKey(), dcfg.baud, dcfg.cpol, dcfg.cpha, dcfg.msb, frame && frame.tdiv_s].join("|");
   if (key !== busListKey) {
     busListKey = key;
     if (busPk.rows.length) busPk.clear();
