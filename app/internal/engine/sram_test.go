@@ -287,3 +287,23 @@ func TestRawImageTimebaseFitsItsRecord(t *testing.T) {
 		}
 	}
 }
+
+// Only a raw read of an undecimated record in Normal (or Peak) acquisition is
+// full-rate: the eye diagram folds nothing else.
+// TRLC-LINKS: REQ-SDS-010, REQ-SDS-215
+func TestFullRateFrame(t *testing.T) {
+	for _, c := range []struct {
+		bucket, decimation uint32
+		acq                int32
+		want               bool
+	}{
+		{0, 1, AcqNormal, true}, {0, 0, AcqNormal, true}, {0, 1, AcqPeak, true},
+		{8, 1, AcqNormal, false},  // the live envelope
+		{0, 16, AcqNormal, false}, // a decimated record (a slow timebase, the sample lease)
+		{0, 1, AcqAverage, false}, {0, 1, AcqEres, false}, {0, 1, AcqPrecision, false},
+	} {
+		if got := fullRateFrame(c.bucket, c.decimation, c.acq); got != c.want {
+			t.Errorf("fullRateFrame(%d, %d, %d) = %v, want %v", c.bucket, c.decimation, c.acq, got, c.want)
+		}
+	}
+}

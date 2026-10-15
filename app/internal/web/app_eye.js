@@ -20,7 +20,7 @@ function ejIngest(f) {
   if (ej.ch && ch !== ej.ch) { ejStop("channel changed — re-ARM to analyze the other channel"); return; }
   ej.ch = ch;
   const raw = ch === 2 ? f.c2 : f.c1;
-  if (!raw || f.is_env || f.peak_detect) { ejStop("band became unsupported"); return; }
+  if (!raw || !f.full_rate) return; // only full-rate raw records fold (ejLoop holds the eye meanwhile)
   // the codes as the scope draws them (inverted, magnified at 2 and 5 mV/div),
   // as the LCD's eye folds them; a change of either starts the eye over
   const z = (st && (ch === 2 ? st.zoom2 : st.zoom1)) || 1, inv = !!(st && (ch === 2 ? st.inv2 : st.inv1));
@@ -39,6 +39,9 @@ function ejIngest(f) {
   ej.vpc0 = vpc;
   ej.vpc = vpc;
   const disp = ejFeed(ej.st, sig, f.cols, f.sample_s);
+  ej.foldAt = Date.now();
+  const heldShown = ej.heldShown; // the held line goes at once
+  ej.heldShown = false;
   // a t/div change alters the UI in samples: every record rejects forever while
   // the panel looks live — stop honestly like the V/div and channel guards
   if (disp === "rejected:ui-inconsistent") {
@@ -46,7 +49,7 @@ function ejIngest(f) {
     ej.incons = (ej.incons || 0) + 1;
     if (ej.incons >= 10) { ejStop("signal scale/timebase changed — data kept, re-ARM to continue"); return; }
   } else if (disp.startsWith("locked")) ej.incons = 0;
-  ejRender(false);
+  ejRender(heldShown);
 }
 
 // ejDisplayCodes is a channel's codes as the scope draws them, the LCD eye's
@@ -395,12 +398,16 @@ function ejWaitLock(timeoutMs) {
     poll();
   });
 }
+// ejTdivOK: a timebase whose live records are full-rate (the eye folds no
+// other), or under 5 ms/div where the scope does not say.
+// TRLC-LINKS: REQ-SDS-201, REQ-SDS-215
+function ejTdivOK(t) { return st && st.full_rate_tdiv_s > 0 ? t <= st.full_rate_tdiv_s * 1.001 : t < 5e-3; }
 // step the timebase one detent (dir<0 faster / more samples/UI, dir>0 slower),
-// staying on an eye-usable band (native-fast/decimated, tdiv < 5 ms). false at edge.
+// staying on an eye-usable band (ejTdivOK). false at edge.
 // TRLC-LINKS: REQ-SDS-201
 function ejStepTdiv(dir) {
   if (!st || !st.tdivs || !st.tdiv_s) return false;
-  const tds = st.tdivs.filter(t => t < 5e-3).sort((a, b) => a - b);
+  const tds = st.tdivs.filter(ejTdivOK).sort((a, b) => a - b);
   let i = tds.findIndex(t => Math.abs(t - st.tdiv_s) <= t * 1e-6);
   if (i < 0) { let best = Infinity; tds.forEach((t, k) => { const d = Math.abs(t - st.tdiv_s); if (d < best) { best = d; i = k; } }); }
   const ni = i + dir;
@@ -412,7 +419,7 @@ function ejStepTdiv(dir) {
 // TRLC-LINKS: REQ-SDS-201
 async function ejStepToNearest(want) {
   if (!st || !st.tdivs) return;
-  const tds = st.tdivs.filter(t => t < 5e-3);
+  const tds = st.tdivs.filter(ejTdivOK);
   let best = tds[0], bd = Infinity;
   for (const t of tds) { const d = Math.abs(t - want); if (d < bd) { bd = d; best = t; } }
   if (best) await send("tdiv", best);
@@ -520,7 +527,7 @@ $("ejArm").onclick = () => {
   if (sr.armed) srStop("stopped — eye/jitter armed (one raw consumer)");
   ej.st = ejNew({ eyeW: EJ_EYE_W, eyeH: EJ_EYE_H });
   ej.lastSeq = 0; ej.gen++; ej.fails = 0;
-  ej.rawWaitAt = 0;
+  ej.foldAt = 0;
   ej.ch = 0; ej.vpc0 = 0; ej.incons = 0;
   ej.armed = true;
   $("ejArm").textContent = "STOP";
@@ -543,20 +550,45 @@ async function ejLoop(gen) {
     ej.fails = 0;
     if (!f.unchanged && f.seq !== ej.lastSeq) {
       ej.lastSeq = f.seq;
-      if (f.is_env || f.peak_detect) {
-        ej.rawWaitAt ||= Date.now();
-        if (!st || !st.running || Date.now() - ej.rawWaitAt > 5000)
-          ejStop("sampled waveform required — select NORMAL and RUN, then re-ARM");
-        else ejStatus("waiting for sampled waveform…");
-      } else {
-        ej.rawWaitAt = 0;
-        ejIngest(f);
-      }
+      // Only full-rate raw records fold: the live envelope, a decimated record
+      // or a filtered acquisition between them would fold another picture.
+      // Any other frame leaves the eye as it is.
+      if (f.full_rate) ejIngest(f);
     }
+    ejHeld();
     setTimeout(() => ejLoop(gen), 10);
   } catch (e) {
     ej.fails++;
     setTimeout(() => ejLoop(gen), Math.min(2000, 250 * ej.fails) + 250 * Math.random());
+  }
+}
+// EJ_HELD_MS: running this long with no full-rate capture folded, the eye
+// says it is held (a raw 200us/div record takes about 3 s), as the LCD's.
+const EJ_HELD_MS = 6000;
+// ejRawFix is the setting that keeps full-rate captures from the eye, as what
+// to set ("" when none does): the LCD eye's eyeRawFix.
+// TRLC-LINKS: REQ-SDS-215
+function ejRawFix() {
+  if (!st) return "";
+  if ([1, 2, 4].includes(st.acq_mode)) return "set ACQ to Normal";
+  if (st.full_rate_tdiv_s > 0 && st.tdiv_s > st.full_rate_tdiv_s * 1.001) return "T/div " + eng(st.full_rate_tdiv_s, "s", 3) + " or faster";
+  return "";
+}
+// ejHeld says why the eye has nothing yet, or that it holds what it folded
+// while no full-rate capture comes.
+// TRLC-LINKS: REQ-SDS-215
+function ejHeld() {
+  if (ejOptBusy) return;
+  const fix = ejRawFix();
+  if (!ej.foldAt) {
+    ejStatus(fix ? "the eye folds full-rate captures: " + fix : "waiting for a full-rate capture…");
+    return;
+  }
+  const idle = Date.now() - ej.foldAt;
+  if (st && st.running && idle > EJ_HELD_MS) {
+    ej.heldShown = true;
+    ejStatus("held: no full-rate capture for " + Math.round(idle / 1000) + " s" + (fix ? " — " + fix : "") +
+      (ej.st && ej.st.records ? " · " + ej.st.records + " records" : ""));
   }
 }
 // TRLC-LINKS: REQ-SDS-200

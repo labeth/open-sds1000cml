@@ -293,6 +293,7 @@ func (s *Server) rawBinMsg(since uint64) []byte {
 		hdr.BandwidthHz, hdr.FilterGuard, hdr.Filter = f.BandwidthHz, f.FilterGuard, f.Filter
 		hdr.NoiseGainIdeal, hdr.PassbandHz = f.NoiseGainIdeal, f.PassbandHz
 		hdr.Decimation, hdr.CaptureDepth, hdr.TriggerKind = f.Decimation, f.CaptureDepth, f.TriggerKind
+		hdr.FullRate = f.FullRate
 		if len(f.Q1) == n && len(f.Q2) == n {
 			flags |= 0x20
 			hdr.FractionBits = 8

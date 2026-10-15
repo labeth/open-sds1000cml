@@ -196,7 +196,7 @@ func (e *Engine) etsFrame(norm bool) {
 	f.TrigPos = 0
 	f.Coherent = cov > 0
 	f.HaltOK = true
-	f.RollCodes = false
+	f.RollCodes, f.FullRate = false, false
 	f.TdivS = e.band.TdivS
 	f.DisplayedS = e.band.TdivS
 	f.SampleS = etColTime * 1e-9

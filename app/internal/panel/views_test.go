@@ -236,7 +236,7 @@ func uartFrame(msgs []string, baud, gapS, sampleS float64, n int) *engine.Frame 
 		c1[i] = uint8(int(c1[i]) + int(2*math.Sin(float64(i)*0.7)))
 	}
 	return &engine.Frame{C1: c1, C2: c2, Valid: n, WinCols: n, EdgeX: float64(n) / 2, Ptp: 170,
-		TdivS: float64(n) * sampleS / 10, SampleS: sampleS, Trigd: true}
+		TdivS: float64(n) * sampleS / 10, SampleS: sampleS, Trigd: true, FullRate: true}
 }
 
 // toneFrame is a 1 kHz square on C1 and a 3 kHz sine on C2 over 5 ms.

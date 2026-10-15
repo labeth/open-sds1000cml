@@ -43,6 +43,10 @@ type Frame struct {
 	// Ordered: a PeakDetect frame whose pairs are in time order (orderEnvelope),
 	// so it may be decoded and qualified as samples at SampleS spacing.
 	Ordered bool
+	// FullRate: the values are the converters' own samples at the full rate,
+	// one each (no envelope, decimation, roll, average, ERES or precision
+	// filter): the only frames an eye diagram folds.
+	FullRate bool
 	// Edge and EdgeOpp are full-rate windows of a live envelope frame's record
 	// around the trigger edge and the first edge the other way after it
 	// (edge_detail.go): the edge shape for the measurements. nil otherwise.

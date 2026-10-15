@@ -50,8 +50,9 @@ type anaState struct {
 	eyeWhy string
 	eyeCh  int
 	eyeOK  bool
-	eyeFed frameKey // the frame folded last (each is folded once)
-	eyeOff int      // captures in a row off the folded bit period
+	eyeFed frameKey  // the frame folded last (each is folded once)
+	eyeOff int       // captures in a row off the folded bit period
+	eyeAt  time.Time // when the eye last folded a full-rate capture
 	// specLease: SPECTRUM's FFT or spectrogram holds the spectrum lease; the
 	// first frame after it is left gives it back (its decimated frames are
 	// filtered: MEASURE's statistics took them for 3 s after)

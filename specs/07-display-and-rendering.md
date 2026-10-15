@@ -696,9 +696,13 @@ active key's next view in amber at its right end (`F2 again: Eye diagram`); an a
   a small live time trace and the figures (bit rate to five figures, UI with its samples per UI,
   crossing, UI folded, eye height and width, rise, fall, TIE rms and pk-pk, RJ / DJ, period and
   cycle-to-cycle jitter) with `<`/`>` on bounds when the edges fall between samples, and a warning
-  when sample-limited. The eye folds sampled records (it leases the decode view's samples, not the
-  envelope's), every sample of a fast bus; it starts over when its settings change, or when three
-  captures in a row are off its clock period. The web's eye draws the same picture with the same figures in the same order (one engine:
+  when sample-limited. The eye folds full-rate raw records only (`Frame.FullRate`: the converters' own
+  samples, no envelope, decimation, roll, average, ERES or precision filter; it leases them while shown
+  and between captures), every sample of a fast bus; any other frame leaves the eye as it is, so it never
+  flips to a coarser picture between them. Without a full-rate frame it says why (`Waiting for a
+  full-rate capture...`, or the S/DIV or ACQ setting that gives one), and an eye that has gone 6 s
+  without one while running is marked `Held: no full-rate capture for N s`. It starts over when its
+  settings change, or when three captures in a row are off its clock period. The web's eye draws the same picture with the same figures in the same order (one engine:
   the JS eye and its Go port agree step for step).
 - **SPECTRUM:** a small time trace, the peak table (frequency, level dBV, level against the top
   peak, harmonic) in frequency order, a readout (top peak, THD), the marker line; the plot shows the

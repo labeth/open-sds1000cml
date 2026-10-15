@@ -1114,25 +1114,36 @@ func eyeWhyText(err string, ch int) string {
 }
 
 // eyeFrame folds the screen's data line into the eye: decimated to about
-// eyeFeedSPU samples per UI and at most eyeMaxFed samples a capture. While it
-// folds it leases full-rate raw frames, as the web's eye does: the screen's
-// decimated readout (24 ns at 10us/div) smears the edges over its sample
-// interval and leaves rise, fall and TIE as bounds.
+// eyeFeedSPU samples per UI and at most eyeMaxFed samples a capture. It folds
+// full-rate raw frames only (Frame.FullRate), and leases them as the web's eye
+// does: the live envelope, a decimated record or a filtered acquisition
+// between them would fold another picture (a 200us/div envelope has 17.6
+// samples per 115200 Bd UI, the raw record 4340) and start the eye over on
+// each change. Any other frame leaves the eye as it is: it holds what it
+// folded.
 // TRLC-LINKS: REQ-SDS-215
 func (c *Controller) eyeFrame(a *anaState, s *sv, f *engine.Frame) {
-	ch, bit, measured, why := eyeConfig(s, a)
-	if why == "" {
-		if e, ok := c.eng.(interface{ LeaseDecodeView(time.Duration) }); ok {
-			e.LeaseDecodeView(3 * time.Second) // renewed by each capture; ends with the eye
+	if !f.FullRate {
+		// Not even its decode counts: the bit time of an envelope too coarse to
+		// decode would take the eye away.
+		switch {
+		case !busDecoding(s):
+			_, _, _, a.eyeWhy = eyeConfig(s, a)
+			a.eyeOK = false
+		case !a.eyeOK && (a.eyeFed == (frameKey{}) || a.eyeRes.LastErr == ""): // nothing folded since the eye started
+			c.leaseEyeRaw()
+			a.eyeWhy = c.eyeWaitWhy(s)
+		default:
+			c.leaseEyeRaw()
 		}
+		return
 	}
-	if why == "" && (f.IsEnv || f.PeakDetect && !f.Ordered) {
-		why = "The eye needs sampled captures (not peak detect or roll)"
-	}
+	ch, bit, measured, why := eyeConfig(s, a)
 	if why != "" {
 		a.eyeWhy, a.eyeOK = why, false
 		return
 	}
+	c.leaseEyeRaw()
 	// A clock period measured on each capture is no setting: the eye's own
 	// check (the period within 2 % of the folded one) keeps it, and a bus
 	// whose rate really changed restarts it below.
@@ -1181,9 +1192,50 @@ func (c *Controller) eyeFrame(a *anaState, s *sv, f *engine.Frame) {
 	a.eyeRes = r
 	a.eyeOK = r.Records > 0
 	a.eyeWhy = ""
+	a.eyeAt = c.now()
 	if !a.eyeOK {
 		a.eyeWhy = eyeWhyText(r.LastErr, ch)
 	}
+}
+
+// eyeHeldAfter is how long the eye goes without a full-rate capture, while
+// running, before it says it is held: a raw 200us/div record takes about 3 s.
+const eyeHeldAfter = 6 * time.Second
+
+// leaseEyeRaw asks the engine for full-rate raw live frames for the eye. It is
+// renewed by each capture and each redraw of the eye: a deep raw record (3 s at
+// 200us/div) outlasts a lease renewed per capture, and other work (a bus
+// search) may end it.
+// TRLC-LINKS: REQ-SDS-215
+func (c *Controller) leaseEyeRaw() {
+	if e, ok := c.eng.(interface{ LeaseDecodeView(time.Duration) }); ok {
+		e.LeaseDecodeView(3 * time.Second)
+	}
+}
+
+// eyeWaitWhy is why the eye has no full-rate capture to fold: the timebase
+// records decimated, the acquisition filters, or the next raw frame is on
+// its way.
+// TRLC-LINKS: REQ-SDS-215
+func (c *Controller) eyeWaitWhy(s *sv) string {
+	if fix := c.eyeRawFix(s); fix != "" {
+		return "The eye folds full-rate captures: " + fix
+	}
+	return "Waiting for a full-rate capture..."
+}
+
+// eyeRawFix is the setting that keeps full-rate captures from the eye, as
+// what to set ("" when none does).
+// TRLC-LINKS: REQ-SDS-215
+func (c *Controller) eyeRawFix(s *sv) string {
+	switch s.st.AcqMode {
+	case engine.AcqAverage, engine.AcqEres, engine.AcqPrecision:
+		return "set ACQ to Normal"
+	}
+	if full := c.fullRateTdiv(); full > 0 && s.st.TdivS > full*1.001 {
+		return "S/DIV " + si(full, "s") + " or faster"
+	}
+	return ""
 }
 
 // displayCodes is n samples of a channel from lo, every stride-th, as the

@@ -625,7 +625,7 @@ func (c *Controller) eyePane(s *sv) *wsview.EyePane {
 	a := &c.ana
 	dec := busDecoding(s)
 	r, ok, why, ch := a.eyeRes, a.eyeOK, a.eyeWhy, a.eyeCh
-	g := a.g
+	g, at := a.g, a.eyeAt
 	th := eyeThreshold(u, r)
 	var cur EyeBox
 	if ok && a.eye != nil {
@@ -634,6 +634,7 @@ func (c *Controller) eyePane(s *sv) *wsview.EyePane {
 	c.amu.Unlock()
 	name := "no bus decoded"
 	if dec {
+		c.leaseEyeRaw() // between captures too: a deep raw record outlasts a lease renewed per capture
 		name = busName(s.decProto, s.decBaud, s.decChA, s.decChB, s.decCPOL, s.decCPHA)
 	}
 	p.Caption = "EYE  " + name
@@ -697,6 +698,12 @@ func (c *Controller) eyePane(s *sv) *wsview.EyePane {
 	thV := ((th-128)/z)*voltsPerCode(s, ch) - s.offV[ch]*s.probe[ch]
 	p.Cursor = fmt.Sprintf("SAMPLE PT %+.2f UI: opening %s     THRESHOLD %s: opening %s", u.eyeX, ov, si(thV, "V"), oh)
 	switch {
+	case s.st.Running && !at.IsZero() && c.now().Sub(at) > eyeHeldAfter:
+		// The eye holds what it folded: no other frame feeds it.
+		p.Warn = fmt.Sprintf("Held: no full-rate capture for %.0f s", c.now().Sub(at).Seconds())
+		if fix := c.eyeRawFix(s); fix != "" {
+			p.Warn += " - " + fix
+		}
 	case r.SampleLimited:
 		fix := "S/DIV clockwise or Zoom"
 		if zoomed {

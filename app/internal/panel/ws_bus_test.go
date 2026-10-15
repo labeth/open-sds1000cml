@@ -2,9 +2,12 @@
 package panel
 
 import (
+	"fmt"
 	"math"
+	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"open-sds/app/internal/engine"
 )
@@ -122,7 +125,7 @@ func prbsSPIFrame(bitS, sampleS float64, n int, phase float64) *engine.Frame {
 		}
 	}
 	return &engine.Frame{C1: c1, C2: c2, Valid: n, WinCols: n, EdgeX: float64(n) / 2, Ptp: 170,
-		TdivS: float64(n) * sampleS / 10, SampleS: sampleS, Trigd: true}
+		TdivS: float64(n) * sampleS / 10, SampleS: sampleS, Trigd: true, FullRate: true}
 }
 
 // The eye of an SPI bus keeps folding capture after capture: the clock
@@ -161,6 +164,83 @@ func TestBusEyeAccumulatesAnSPIBus(t *testing.T) {
 	e = c.View().Eye
 	if e.Why != "" || e.Figures[0][0][1] != "2.5000 Mbit/s" || strings.HasSuffix(e.Right, "from 1 capture") {
 		t.Fatalf("eye after the rate changed: %q %q %q", e.Figures[0][0][1], e.Right, e.Why)
+	}
+}
+
+// The eye folds full-rate raw captures only: a frame source interleaving the
+// raw records with the live envelope, a decimated record and an averaged one
+// (the 200us/div screen alternated raw and envelope frames, and the eye
+// flipped between the real eye and a 17.6-samples-per-UI one folded from 1
+// capture) folds the raw ones, and the eye never changes on another frame.
+// Without a raw frame for a while the eye says it is held.
+// TRLC-LINKS: REQ-SDS-215
+func TestBusEyeFoldsOnlyFullRateFrames(t *testing.T) {
+	r := newViewRig(t)
+	c := r.c
+	raw := func(k int) *engine.Frame { return prbsSPIFrame(500e-9, 24e-9, 5000, 3+float64(k)*0.37) }
+	r.show(raw(0))
+	press(t, c, "f2") // BUS finds the bus
+	if d, _ := c.Snapshot(); d.DecProto == 0 {
+		t.Fatalf("BUS found no bus: %q", c.View().Notice)
+	}
+	others := []func(k int) *engine.Frame{
+		func(k int) *engine.Frame { // the live envelope: ordered (min, max) pairs
+			f := prbsSPIFrame(500e-9, 96e-9, 1250, 1+float64(k)*0.21)
+			f.PeakDetect, f.Ordered, f.CaptureSampleS, f.FullRate = true, true, 24e-9, false
+			return f
+		},
+		func(k int) *engine.Frame { // a decimated record
+			f := prbsSPIFrame(500e-9, 48e-9, 2500, 2+float64(k)*0.29)
+			f.Decimation, f.FullRate = 2, false
+			return f
+		},
+		func(k int) *engine.Frame { // an averaged record at the full rate's spacing
+			f := raw(k + 50)
+			f.Filter, f.FullRate = "; average 16", false
+			return f
+		},
+	}
+	// The eye entered on a frame it may not fold waits for one it may.
+	r.show(others[0](0))
+	press(t, c, "f2")
+	r.show(others[0](1))
+	if e := c.View().Eye; e == nil || e.Why != "Waiting for a full-rate capture..." || len(e.Grid) != 0 {
+		t.Fatalf("eye before a full-rate capture: %+v", e)
+	}
+	type look struct {
+		why, right string
+		figs       [3][4][2]string
+		grid       []uint32
+	}
+	lookOf := func() look {
+		e := c.View().Eye
+		return look{e.Why, e.Right, e.Figures, append([]uint32(nil), e.Grid...)}
+	}
+	for k := 1; k <= 6; k++ {
+		r.show(raw(k))
+		folded := lookOf()
+		if folded.why != "" || !strings.HasSuffix(folded.right, fmt.Sprintf("from %d %s", k, plural(k, "capture"))) {
+			t.Fatalf("raw capture %d: %q %q", k, folded.right, folded.why)
+		}
+		for i, other := range others {
+			r.show(other(k))
+			if got := lookOf(); !reflect.DeepEqual(got, folded) {
+				t.Fatalf("raw capture %d: frame kind %d changed the eye: %q -> %q (%q)", k, i, folded.right, got.right, got.why)
+			}
+		}
+	}
+	if e := c.View().Eye; e.Figures[0][0][1] != "2.0000 Mbit/s" || e.Warn != "" {
+		t.Fatalf("eye of the raw captures: %q warn %q", e.Figures[0][0][1], e.Warn)
+	}
+	// Envelope frames only, for longer than a raw record takes: held.
+	r.clk.advance(eyeHeldAfter + time.Second)
+	r.show(others[0](7))
+	if e := c.View().Eye; !strings.HasPrefix(e.Warn, "Held: no full-rate capture for 7 s") || !strings.HasSuffix(e.Right, "from 6 captures") {
+		t.Fatalf("held eye: warn %q right %q", e.Warn, e.Right)
+	}
+	r.show(raw(8))
+	if e := c.View().Eye; e.Warn != "" || !strings.HasSuffix(e.Right, "from 7 captures") {
+		t.Fatalf("eye after a raw capture again: warn %q right %q", e.Warn, e.Right)
 	}
 }
 

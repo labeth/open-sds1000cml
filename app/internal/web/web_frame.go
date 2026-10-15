@@ -32,6 +32,9 @@ type frameReply struct {
 	// Ordered: a peak-detect frame whose pairs are in time order, so it decodes
 	// as samples sample_s apart (the live envelope; engine orderEnvelope).
 	Ordered bool `json:"ordered,omitempty"`
+	// FullRate: the converters' own samples at the full rate (engine
+	// Frame.FullRate), the only frames the eye folds.
+	FullRate bool `json:"full_rate,omitempty"`
 	// CaptureSampleS is the converters' sample interval when it differs from
 	// sample_s (a peak-detect frame): the rate the scope really sampled at.
 	CaptureSampleS float64 `json:"capture_sample_s,omitempty"`
@@ -291,7 +294,7 @@ func (s *Server) buildReply(f *engine.Frame, cols int, full bool, since uint64, 
 		Seq:            f.Seq,
 		WinCols:        min(f.WinCols, f.Valid),
 		SampleS:        f.SampleS,
-		NoiseGainIdeal: f.NoiseGainIdeal, PassbandHz: f.PassbandHz, BandwidthHz: f.BandwidthHz, FilterGuard: f.FilterGuard, Filter: f.Filter, Decimation: f.Decimation, CaptureDepth: f.CaptureDepth, TriggerKind: f.TriggerKind,
+		NoiseGainIdeal: f.NoiseGainIdeal, PassbandHz: f.PassbandHz, BandwidthHz: f.BandwidthHz, FilterGuard: f.FilterGuard, Filter: f.Filter, Decimation: f.Decimation, FullRate: f.FullRate, CaptureDepth: f.CaptureDepth, TriggerKind: f.TriggerKind,
 		EdgeX:          f.EdgeX,
 		Ptp:            f.Ptp,
 		TdivS:          f.TdivS,

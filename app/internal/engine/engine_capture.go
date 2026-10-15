@@ -347,7 +347,7 @@ func (e *Engine) stitchFrame(norm bool) {
 
 	f.Valid, f.WinCols = cols, decimWin
 	f.EdgeX = -1
-	f.Interp, f.IsEnv, f.EnvCols, f.RollCodes = false, false, 0, false
+	f.Interp, f.IsEnv, f.EnvCols, f.RollCodes, f.FullRate = false, false, 0, false, false
 	f.Norm = norm
 	f.TdivS = e.band.TdivS
 	f.DisplayedS = e.band.DisplayedSdivS()

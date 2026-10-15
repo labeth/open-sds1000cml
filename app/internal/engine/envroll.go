@@ -139,7 +139,7 @@ func (e *Engine) envFrame(norm bool) {
 	f.TrigPos = 0
 	f.Coherent = haltOK && fillMoved
 	f.HaltOK = haltOK
-	f.RollCodes = false
+	f.RollCodes, f.FullRate = false, false
 	f.TdivS = e.band.TdivS
 	f.DisplayedS = e.band.DisplayedSdivS()
 	f.SampleS = e.band.CaptureIntervalNs() * 1e-9
@@ -364,7 +364,7 @@ func (e *Engine) rollUpdate(norm bool) {
 	f.TrigPos = 0
 	f.Coherent = got > 0 // live words arrived; there is no halt to confirm
 	f.HaltOK = true
-	f.RollCodes = false // stream samples are full-scale record words, not the factory half-scale FIFO
+	f.RollCodes, f.FullRate = false, false // stream samples are full-scale record words, not the factory half-scale FIFO
 	f.TdivS = e.band.TdivS
 	f.DisplayedS = e.band.DisplayedSdivS()
 	f.SampleS = e.band.CaptureIntervalNs() * 1e-9

@@ -28,3 +28,14 @@ func TestEyejitterJS(t *testing.T) {
 		t.Fatalf("eyejitter.js test did not report ALL PASS")
 	}
 }
+
+// TestEyeFullRateJS runs eye_fullrate.test.cjs: the web eye folds full-rate raw
+// records only - the live envelope, a decimated record and an averaged one fed
+// between them leave the eye as it is, and it says when it holds.
+// TRLC-LINKS: REQ-SDS-215
+func TestEyeFullRateJS(t *testing.T) {
+	testenv.NeedNode(t)
+	if out, err := exec.Command("node", "eye_fullrate.test.cjs").CombinedOutput(); err != nil || !strings.Contains(string(out), "ALL PASS") {
+		t.Fatalf("eye full-rate: %v\n%s", err, out)
+	}
+}

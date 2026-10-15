@@ -122,6 +122,17 @@ func PlanPrecisionSRAM(tdiv float64, log uint8) SRAMPlan {
 	return p
 }
 
+// fullRateFrame reports whether a frame read with bucket words a bucket (0:
+// raw) from a record of the given decimation, in acquisition mode acq, holds
+// the converters' own samples at the full rate (Frame.FullRate). The eye
+// diagram folds only these: a bucket envelope, a decimated record or a
+// filtered acquisition (average, ERES, precision) between them would fold
+// another picture.
+// TRLC-LINKS: REQ-SDS-010, REQ-SDS-215
+func fullRateFrame(bucket, decimation uint32, acq int32) bool {
+	return bucket == 0 && decimation <= 1 && acq != AcqAverage && acq != AcqEres && acq != AcqPrecision
+}
+
 // TRLC-LINKS: REQ-SDS-010, REQ-SDS-040
 type sramFrameWriter struct {
 	f *Frame
@@ -1044,6 +1055,7 @@ acquisitionLoop:
 			orderEnvelope(f.C2[:f.Valid], f.Q2)
 			f.Ordered = true
 		}
+		f.FullRate = fullRateFrame(bucket, m.Decimation, e.acqMode.Load())
 		if fullRecall {
 			f.Filter += "; stopped full record (single acquisition)"
 		}

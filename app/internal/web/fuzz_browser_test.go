@@ -93,6 +93,7 @@ func (z *fuzzScope) frameLocked() *engine.Frame {
 		C1: c1, C2: c2, Seq: z.seq, Valid: fuzzN, WinCols: fuzzN, EdgeX: fuzzN / 2,
 		TdivS: z.tdiv, DisplayedS: z.tdiv, SampleS: z.tdiv * 10 / fuzzN,
 		Trigd: true, Coherent: true, Norm: z.norm, Ptp: 120,
+		FullRate: z.acqMode != 1 && z.acqMode != 2 && z.acqMode != 4, // average, ERES, precision filter
 	}
 }
 

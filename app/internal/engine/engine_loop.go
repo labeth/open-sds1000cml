@@ -373,7 +373,7 @@ func (e *Engine) oneFrame(norm bool) {
 	f.Coherent = coherent
 	f.Degraded = degraded
 	f.HaltOK = haltOK
-	f.RollCodes = false
+	f.RollCodes, f.FullRate = false, false
 	f.TdivS = e.band.TdivS
 	f.DisplayedS = e.band.DisplayedSdivS()
 	f.SampleS = e.band.CaptureIntervalNs() * 1e-9
