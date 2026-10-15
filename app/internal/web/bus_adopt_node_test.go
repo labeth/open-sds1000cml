@@ -23,3 +23,11 @@ func TestBitOrderIsSPIsJS(t *testing.T) {
 		t.Fatalf("bit order on the page: %v\n%s", err, out)
 	}
 }
+
+// TRLC-LINKS: REQ-SDS-214
+func TestBusListFollowsTheSettingsJS(t *testing.T) {
+	testenv.NeedNode(t)
+	if out, err := exec.Command("node", "bus_list_key.test.cjs").CombinedOutput(); err != nil {
+		t.Fatalf("the BUS list and the decoder settings: %v\n%s", err, out)
+	}
+}

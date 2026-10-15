@@ -273,3 +273,19 @@ func TestSerialTriggerBitOrderIsSPIs(t *testing.T) {
 		}
 	}
 }
+
+// The match editor's title names the bus the match is for, every decoder's.
+// TRLC-LINKS: REQ-SDS-013
+func TestMatchEditorNamesTheBus(t *testing.T) {
+	for _, proto := range []string{"UART", "I2C", "SPI", "Manch", "SENT", "CAN", "1553", "ARINC", "USB LS", "FlexRay"} {
+		c, _, _ := newC(t)
+		c.SheetSet("bus.protocol", nil, proto)
+		c.SheetSet("trig.type", nil, "Serial")
+		press(t, c, "utility")
+		goRow(t, c, "bus.match")
+		pickKey(t, c, "Edit bytes")
+		if m := c.MatchEditor(); !m.Open || m.Proto != proto {
+			t.Fatalf("the editor of a %s match is titled %q", proto, m.Proto)
+		}
+	}
+}

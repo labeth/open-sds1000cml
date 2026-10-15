@@ -219,7 +219,9 @@ func (c *Controller) MatchEditor() MatchEditorView {
 	}
 	proto := ""
 	if se := c.serialTrig(); se != nil {
-		proto = [...]string{"UART", "I2C", "SPI"}[(se.SerialConfig().Proto+2)%3]
+		if p := se.SerialConfig().Proto; serialProto(p + 1) {
+			proto = protoName(p + 1) // the engine's numbering is the panel's less one
+		}
 	}
 	return MatchEditorView{Open: true, Set: kbSetNames[k.set], Keys: kbGrid(k.set), Row: k.row, Col: k.col,
 		Toks: k.toks, Cur: k.cur, Typing: k.typing, Proto: proto, Msg: k.msg}
