@@ -95,7 +95,13 @@ func (c *Controller) startStream() {
 			return
 		}
 		t1 := time.Now()
-		err = s.Start(p, decTrigKinds[trig%3], value, name)
+		if sn, ok := s.(interface {
+			StartNoted(engine.SerialParams, engine.StreamTrigger, int, string, string) error
+		}); ok {
+			err = sn.StartNoted(p, decTrigKinds[trig%3], value, name, streamImageNote(sv.decProto, c.eng.Snapshot().Image))
+		} else {
+			err = s.Start(p, decTrigKinds[trig%3], value, name)
+		}
 		// ARINC 429's slicer levels are learned from a sampled record a moment
 		// after the settings name it: a stream started right after BUS entry
 		// waits for them
@@ -108,6 +114,30 @@ func (c *Controller) startStream() {
 			c.logf("panel: stream: %v", err)
 		}
 	})
+}
+
+// streamImageNote says why a stream of proto takes seconds to start when the
+// loaded FPGA image (loaded, as the engine names it) has no receiver for it:
+// AUTO in BUS frames a UART on the qualifier image's idle qualifier, and its
+// stream needs the general image's UART receiver (a load of about four
+// seconds). "" when the image in use streams it.
+// TRLC-LINKS: REQ-SDS-018
+func streamImageNote(proto int, loaded string) string {
+	want := "general"
+	switch proto {
+	case framecalc.ProtoManchester, framecalc.ProtoUSB:
+		want = "line"
+	case framecalc.ProtoSENT, framecalc.ProtoCAN, framecalc.ProtoMIL1553, framecalc.ProtoARINC429, framecalc.ProtoFlexRay:
+		want = "packet"
+	}
+	if loaded == "" || loaded == want {
+		return ""
+	}
+	name := map[string]string{"qualify": "qualifier"}[loaded]
+	if name == "" {
+		name = loaded
+	}
+	return fmt.Sprintf("loading the %s FPGA image, about 4 s: the %s image has no %s receiver", want, name, protoName(proto))
 }
 
 // levelsWait bounds a stream's wait for the ARINC 429 levels.

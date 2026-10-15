@@ -86,14 +86,18 @@ func TestSpectrogramTracksSteppedFrequency(t *testing.T) {
 		}
 		return best
 	}
-	// push each frequency once; the newest is at row 0, previous at row 1, etc.
+	// push each frequency once; a 4096-sample record paints two rows, so the
+	// newest is at rows 0-1, the previous at rows 2-3, etc.
 	for _, f := range freqs {
 		sg.Push(sgSine(n, f, dt), 0, 0.5/dt)
 	}
-	// row 0 = last (100 MHz), row 1 = 60 MHz, row 2 = 20 MHz — columns increasing downward-to-up
+	// rows 0-1 = last (100 MHz), 2-3 = 60 MHz, 4-5 = 20 MHz — columns increasing downward-to-up
 	col0 := brightCol(0) // 100 MHz -> highest column
-	col1 := brightCol(1) // 60 MHz
-	col2 := brightCol(2) // 20 MHz -> lowest column
+	col1 := brightCol(2) // 60 MHz
+	col2 := brightCol(4) // 20 MHz -> lowest column
+	if brightCol(1) != col0 || brightCol(3) != col1 {
+		t.Errorf("a record's two rows differ: %d/%d, %d/%d", col0, brightCol(1), col1, brightCol(3))
+	}
 	if !(col0 > col1 && col1 > col2) {
 		t.Errorf("stepped frequency not tracked over rows: cols top→down = %d, %d, %d (want decreasing)", col0, col1, col2)
 	}
@@ -101,6 +105,41 @@ func TestSpectrogramTracksSteppedFrequency(t *testing.T) {
 	gotHz := float64(col0) / float64(sgCols) * sg.effNyq
 	if math.Abs(gotHz-100e6) > 100e6*0.06 {
 		t.Errorf("newest row peak %.0f MHz, want 100 MHz", gotHz/1e6)
+	}
+}
+
+// A record paints a row for each 2048-point stretch of it, the newest on
+// top: a tone that steps inside one capture shows its later frequency on the
+// top row and its earlier one below, and the waterfall fills four rows a
+// capture of 8192 samples.
+// TRLC-LINKS: REQ-SDS-068
+func TestSpectrogramRowsPerStretch(t *testing.T) {
+	const n, dt = 8192, 2e-9
+	early, late := sgSine(n, 20e6, dt), sgSine(n, 100e6, dt)
+	f := &engine.Frame{C1: append(append([]uint8{}, early.C1[:n/2]...), late.C1[n/2:]...), Valid: n, SampleS: dt}
+	f.C2 = f.C1
+	sg := NewSpectrogram()
+	sg.Push(f, 0, 0.5/dt)
+	if sg.Rows() != 4 {
+		t.Fatalf("an 8192-sample record painted %d rows, want 4", sg.Rows())
+	}
+	lum := func(c uint16) int { return int((c>>11)&0x1f)*2 + int((c>>5)&0x3f) + int(c&0x1f) }
+	hz := func(row int) float64 {
+		best, bestLum := 0, -1
+		for x := 0; x < sgCols; x++ {
+			if l := lum(sg.img.At(sgX0+x, sgY0+row)); l > bestLum {
+				bestLum, best = l, x
+			}
+		}
+		return float64(best) / float64(sgCols) * sg.effNyq
+	}
+	for row, want := range []float64{100e6, 100e6, 20e6, 20e6} {
+		if got := hz(row); math.Abs(got-want) > want*0.06 {
+			t.Errorf("row %d peaks at %.0f MHz, want %.0f MHz", row, got/1e6, want/1e6)
+		}
+	}
+	if math.Abs(sg.effNyq-250e6) > 1 {
+		t.Errorf("rows span %g Hz, want the record's 250 MHz", sg.effNyq)
 	}
 }
 

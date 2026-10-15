@@ -466,6 +466,7 @@ type Engine struct {
 	viewHeld      atomic.Bool
 	rolling       atomic.Bool // the SRAM loop is in roll mode (Stats.Roll)
 	rollStream    atomic.Bool // roll runs gap-free on the stream image (opt-in; SetRollStream)
+	holdQualify   atomic.Bool // an edge trigger keeps a loaded qualifier image (HoldQualifyImage)
 	shownScaleGen atomic.Uint64
 	etsWant       bool // staged ETS opt-in; applied at the frame boundary
 	tp            trigParams

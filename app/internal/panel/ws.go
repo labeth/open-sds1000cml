@@ -244,6 +244,7 @@ func (c *Controller) snap() *sv {
 	s.curOn, s.curType, s.curSel, s.curX, s.curY = c.curOn, c.curType, c.curSel, c.curX, c.curY
 	for i, r := range c.refs {
 		s.refHas[i], s.refShow[i] = r.has, r.show
+		s.refC2[i], s.refTdiv[i] = r.c2 != nil, r.tdiv
 	}
 	s.srActive, s.srFocus, s.srCh, s.srK = c.srActive, c.srFocus, c.srCh, c.srK
 	s.srSeeding = c.srSeeding

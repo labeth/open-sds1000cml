@@ -35,7 +35,7 @@ func TestAcceptanceBrowser(t *testing.T) {
 	}
 	// TrigCode 31434 ≈ 0 V (the level marker lands mid-screen so it's draggable).
 	fs := &fakeScope{frameGen: gen, stats: engine.Stats{Running: true, TrigPosFrac: 0.5, TrigCode: 31434}}
-	srv := httptest.NewServer(New(fs, nil, nil, nil).Handler())
+	srv := httptest.NewServer(New(fs, nil, &refsOnlyPanel{frames: fs.WithFrame}, nil).Handler())
 	defer srv.Close()
 
 	out, err := exec.Command("node", "acceptance_browser.mjs", srv.URL).CombinedOutput()

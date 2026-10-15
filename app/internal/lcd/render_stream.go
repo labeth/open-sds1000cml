@@ -18,6 +18,9 @@ func streamFullScreen(hud HUD) bool {
 // streamStatus is the stream's one-line status.
 // TRLC-LINKS: REQ-SDS-018
 func streamStatus(v streamview.View) string {
+	if v.State == streamview.Starting && v.Note != "" { // no counts yet: why it takes seconds
+		return fmt.Sprintf("STREAM %s  %s  %s", v.Label, v.State, v.Note)
+	}
 	s := fmt.Sprintf("STREAM %s  %s  %d units  %s/s  err %d  lost %d", v.Label, v.State, v.Units,
 		siScale(v.UnitsPerSecond, []siUnit{{1e6, "M"}, {1e3, "k"}, {1, ""}}), v.Errors, v.Lost)
 	if v.Err != "" {

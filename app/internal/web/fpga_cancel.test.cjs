@@ -15,6 +15,8 @@ const run=source.slice(source.indexOf('$("srFpga").onclick'));
  // TRLC-LINKS: REQ-SDS-141
  srExitView(){},
  // TRLC-LINKS: REQ-SDS-141
+ redraw(){},srModel:{c1:[1]},
+ // TRLC-LINKS: REQ-SDS-141
  srStop(){},
  // TRLC-LINKS: REQ-SDS-141
  srStatus:s=>message=s,
@@ -27,6 +29,6 @@ const run=source.slice(source.indexOf('$("srFpga").onclick'));
  vm.createContext(c);vm.runInContext(reset+'\n'+run,c);
  const pending=els.srFpga.onclick();assert.equal(c.sr.fpgaBusy,true);
  els.srReset.onclick();await pending;
- assert.equal(signal.aborted,true);assert.equal(c.sr.fpgaBusy,false);assert.equal(c.sr.fpga,null);assert.equal(message,'idle');assert.equal(shown,false);
+ assert.equal(signal.aborted,true);assert.equal(c.sr.fpgaBusy,false);assert.equal(c.sr.fpga,null);assert.equal(message,'idle');assert.equal(shown,false);assert.equal(c.srModel,null);
  console.log('ALL PASS');
 })().catch(e=>{console.error(e);process.exit(1)});

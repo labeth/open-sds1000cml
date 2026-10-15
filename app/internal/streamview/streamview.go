@@ -57,6 +57,7 @@ type View struct {
 	UnitsPerSecond  float64
 	Elapsed         time.Duration
 	Err             string
+	Note            string // while starting: why it takes seconds (an FPGA image to load)
 	RecordAvailable bool
 	TriggerLine     int // transcript line holding the trigger; -1 unknown
 }
@@ -116,13 +117,21 @@ func (c *Controller) Active() bool {
 // the settings for the display. A running stream is stopped first.
 // TRLC-LINKS: REQ-SDS-018
 func (c *Controller) Start(p engine.SerialParams, trig engine.StreamTrigger, value int, label string) error {
+	return c.StartNoted(p, trig, value, label, "")
+}
+
+// StartNoted is Start with a note shown while the stream starts: why it
+// takes seconds ("loading the general FPGA image: the qualifier image has no
+// UART receiver").
+// TRLC-LINKS: REQ-SDS-018
+func (c *Controller) StartNoted(p engine.SerialParams, trig engine.StreamTrigger, value int, label, note string) error {
 	c.Stop()
 	c.mu.Lock()
 	if c.view.State == Starting {
 		c.mu.Unlock()
 		return fmt.Errorf("a stream is already starting")
 	}
-	c.view = View{Label: label, TriggerLine: -1, State: Starting}
+	c.view = View{Label: label, TriggerLine: -1, State: Starting, Note: note}
 	c.t = decodedlines.New(p.Proto, historyLines)
 	c.stopReq = false
 	c.mu.Unlock()
@@ -135,10 +144,10 @@ func (c *Controller) Start(p engine.SerialParams, trig engine.StreamTrigger, val
 	c.start = time.Now()
 	if err != nil {
 		cancel()
-		c.view.State, c.view.Err = Failed, err.Error()
+		c.view.State, c.view.Err, c.view.Note = Failed, err.Error(), ""
 		return err
 	}
-	c.view.State = Streaming
+	c.view.State, c.view.Note = Streaming, ""
 	c.cancel, c.done = cancel, make(chan struct{})
 	go c.run(ctx, id, c.done) // a STOP pressed while starting is in stopReq
 	return nil

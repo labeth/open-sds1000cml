@@ -118,13 +118,13 @@ run(async (t) => {
   t.ok(await po.eval(() => view.mode === "YT"), "Y-T again");
 
   // --- reference waveforms (COMPARE) ----------------------------------------------
-  await po.click("refSaveA");
-  t.ok(await po.eval(() => !document.getElementById("refShowA").disabled && document.getElementById("refShowA").classList.contains("on")),
-    "Save A enables and shows REF A");
+  await po.click("refSaveA"); // the scope stores it; the page shows the scope's REF A
+  await t.until(() => po.eval(() => !document.getElementById("refShowA").disabled && document.getElementById("refShowA").classList.contains("on")),
+    "Save A enables and shows REF A", 6000);
   t.ok(await po.eval(() => typeof refs !== "undefined" && !!refs.A && refs.A.show), "REF A captured and visible");
   await t.until(async () => (await po.count("#diffBody tr[data-ref='A']")) > 0, "the difference readout compares the live trace with REF A");
   await po.click("refClearA");
-  t.ok(await po.eval(() => !refs.A && document.getElementById("refShowA").disabled), "clearing REF A empties it");
+  await t.until(() => po.eval(() => !refs.A && document.getElementById("refShowA").disabled), "clearing REF A empties it", 6000);
 
   // --- export (PNG data URL + CSV + sigrok, from the Export menu) ----------------
   t.ok((await po.eval(() => document.getElementById("scope").toDataURL("image/png"))).startsWith("data:image/png"),

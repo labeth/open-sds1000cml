@@ -62,17 +62,24 @@ func (c *Controller) autoset() {
 	c.autosetBusy, c.autosetStop, c.autosetMsg = true, stop, "AUTOSET..."
 	c.autosetRun++
 	c.autosetFrom = from
+	ws, view := c.autoTargetLocked()
 	c.mu.Unlock()
 	c.pushLEDs()
-	go c.runAutoset(stop)
+	go c.runAutosetFor(stop, ws, view)
 }
 
 // TRLC-LINKS: REQ-SDS-137, REQ-SDS-224
 func (c *Controller) runAutoset(stop chan struct{}) {
-	defer c.endAutoset(stop)
 	c.mu.Lock()
 	ws, view := c.ui.ws, c.viewMode
 	c.mu.Unlock()
+	c.runAutosetFor(stop, ws, view)
+}
+
+// runAutosetFor is the sweep for workspace ws showing view.
+// TRLC-LINKS: REQ-SDS-137, REQ-SDS-224, REQ-SDS-226
+func (c *Controller) runAutosetFor(stop chan struct{}, ws wsview.WS, view int) {
+	defer c.endAutoset(stop)
 	g := goalFor(ws, view)
 	if ws == wsview.Compare {
 		if note, ok := c.compareAuto(); ok {

@@ -249,6 +249,11 @@ func (e *Engine) wantImage() string {
 		if (typ != TrigEdge || e.zonesOn()) && e.images.HasQualify() { // and the zone trigger
 			return imageQualify
 		}
+		// The qualifier image captures and triggers on an edge as the general
+		// one does (precision decimation too); held, an edge stays on it.
+		if e.holdQualify.Load() && e.protocolImage == imageQualify {
+			return imageQualify
+		}
 		return ""
 	}
 	e.ser.mu.Lock()
@@ -262,6 +267,14 @@ func (e *Engine) wantImage() string {
 	}
 	return ""
 }
+
+// HoldQualifyImage keeps a loaded qualifier image while the trigger is an
+// edge, until released: AUTO in BUS measures and detects edge-triggered and
+// ends on a UART's idle qualifier, and the general image between cost two
+// loads of about four seconds. The image's UART, I2C and SPI receivers are
+// the general image's only; a serial trigger or a stream still loads it.
+// TRLC-LINKS: REQ-SDS-013, REQ-SDS-223
+func (e *Engine) HoldQualifyImage(on bool) { e.holdQualify.Store(on) }
 
 // serviceImage loads the image the serial trigger needs, between
 // acquisitions. It reports whether the fabric was replaced. A failed load

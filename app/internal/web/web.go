@@ -287,8 +287,9 @@ func (s *Server) superseded(r *http.Request) bool {
 // "workspace":"bus"} runs BUS's again only while BUS is active). A key or
 // knob with "remote":true is answered once it has run, with the rows it
 // changed and the notice it raised; it waits while Autoset sweeps, and with
-// "nomenu":true while a menu is open on the LCD.
-// TRLC-LINKS: REQ-SDS-162, REQ-SDS-220
+// "nomenu":true while a menu is open on the LCD. {"button":"auto","for":"bus"}
+// runs the AUTO of the workspace the page shows, whichever the LCD shows.
+// TRLC-LINKS: REQ-SDS-162, REQ-SDS-220, REQ-SDS-226
 func (s *Server) hPanel(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Button    string `json:"button"`
@@ -299,6 +300,7 @@ func (s *Server) hPanel(w http.ResponseWriter, r *http.Request) {
 		NoMenu    bool   `json:"nomenu"`
 		Workspace string `json:"workspace"`
 		Again     bool   `json:"again"`
+		For       string `json:"for"` // AUTO: the workspace it frames for
 		Type      *struct {
 			Text string `json:"text"`
 		} `json:"type"`
@@ -343,7 +345,9 @@ func (s *Server) hPanel(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ok := false
-	if req.Button != "" {
+	if pa, isAuto := s.panel.(panelAutoFor); isAuto && req.For != "" && strings.EqualFold(req.Button, "auto") {
+		ok = pa.InjectAutoFor(req.For)
+	} else if req.Button != "" {
 		ok = s.panel.InjectButton(req.Button)
 	} else if req.Knob != "" {
 		if req.Steps == 0 {

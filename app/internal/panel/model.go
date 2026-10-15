@@ -327,6 +327,8 @@ type sv struct {
 	curX, curY     [2]float64
 	refHas         [2]bool
 	refShow        [2]bool
+	refC2          [2]bool    // the reference holds C2 too
+	refTdiv        [2]float64 // the timebase it was stored at
 	srActive       bool
 	srSeeding      bool
 	srFocus        int

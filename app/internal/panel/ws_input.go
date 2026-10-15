@@ -413,8 +413,9 @@ func (c *Controller) scopeAdjustPush() {
 
 // runAuto is Auto: in BUS a new bus scan framed for reading (busAuto),
 // elsewhere autoset; any menu closes and the workspace stays. Run from a
-// remote, it leaves the LCD's menus as they are.
-// TRLC-LINKS: REQ-SDS-137, REQ-SDS-211, REQ-SDS-223
+// remote, it leaves the LCD's menus as they are. It frames for the LCD's
+// workspace, or for the one a page names (InjectAutoFor).
+// TRLC-LINKS: REQ-SDS-137, REQ-SDS-211, REQ-SDS-223, REQ-SDS-226
 func (c *Controller) runAuto() {
 	c.endWebCapture()
 	c.mu.Lock()
@@ -422,13 +423,51 @@ func (c *Controller) runAuto() {
 		c.closeSheetLocked()
 		c.closePickLocked()
 	}
-	ws := c.ui.ws
+	ws, _ := c.autoTargetLocked()
 	c.mu.Unlock()
 	if ws == wsview.Bus {
 		c.busAuto() // a new bus scan, framed for reading
 		return
 	}
 	c.autoset()
+}
+
+// autoTargetLocked is the workspace AUTO frames for and its view: the one a
+// page named for this press, else the LCD's. c.mu held.
+// TRLC-LINKS: REQ-SDS-226
+func (c *Controller) autoTargetLocked() (wsview.WS, int) {
+	if c.autoFor > 0 {
+		ws := wsview.WS(c.autoFor - 1)
+		if ws != c.ui.ws {
+			return ws, c.ui.views[ws]
+		}
+	}
+	return c.ui.ws, c.viewMode
+}
+
+// InjectAutoFor presses AUTO for workspace id ("bus", "SPECTRUM", ...) on
+// the panel goroutine: the AUTO of the workspace a page shows, whichever the
+// LCD shows. An unknown id is refused.
+// TRLC-LINKS: REQ-SDS-226
+func (c *Controller) InjectAutoFor(id string) bool {
+	ws := wsIndex(id)
+	if ws < 0 {
+		return false
+	}
+	select {
+	case c.inject <- func() {
+		c.mu.Lock()
+		c.autoFor = ws + 1
+		c.mu.Unlock()
+		c.button(btnAuto)
+		c.mu.Lock()
+		c.autoFor = 0
+		c.mu.Unlock()
+	}:
+		return true
+	default:
+		return false
+	}
 }
 
 // defaultSetupUI is Default Setup: factory settings, any menu closes, the

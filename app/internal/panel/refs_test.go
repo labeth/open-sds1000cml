@@ -126,3 +126,47 @@ func TestRefsExportForTheWeb(t *testing.T) {
 		t.Fatalf("tip V/div %v (want %v), tdiv %v, trigger at %v", a.Vdiv, 10*v, a.TdivS, a.PosFrac)
 	}
 }
+
+// A web page's REF A/B are the scope's: it stores, hides and deletes a slot
+// as the phone's COMPARE rows do, the status names each store so a page reads
+// it again, the export carries the probes and the setup it was stored at,
+// and the rows say what a slot holds.
+// TRLC-LINKS: REQ-SDS-227
+func TestWebRefActionsAreTheScopes(t *testing.T) {
+	c, eng, fe := newC(t)
+	eng.stats.TdivS = 100e-6
+	fe.SetProbe(1, 10)
+	n := 4096
+	f := &engine.Frame{C1: make([]uint8, n), C2: make([]uint8, n), Valid: n, WinCols: 2048, EdgeX: 2048}
+	c.SetFrameSource(func(fn func(*engine.Frame)) { fn(f) })
+	if r := c.RefAction(1, "store"); !r.OK {
+		t.Fatalf("store B: %+v", r)
+	}
+	tags := c.PanelStatus().Refs
+	if tags[0].Has || !tags[1].Has || !tags[1].Show || tags[1].Gen == 0 {
+		t.Fatalf("status refs after storing B: %+v", tags)
+	}
+	b := c.RefsExport()[1]
+	if b.Gen != tags[1].Gen || b.At == 0 || b.Probe != [2]float64{1, 10} || b.Setup == nil || b.Setup.TdivS != 100e-6 ||
+		b.Setup.Vdiv[1] != 10*analog.AnalogVdiv(fe.idx[1]) {
+		t.Fatalf("export of B: gen %d at %d probe %v setup %+v", b.Gen, b.At, b.Probe, b.Setup)
+	}
+	if got := rowText(c, "cmp.store_b"); got != "holds C1 and C2 at 100us/div" {
+		t.Fatalf("Store Ref B row says %q", got)
+	}
+	if r := c.RefAction(1, "hide"); !r.OK || c.RefsExport()[1].Show || c.PanelStatus().Refs[1].Show {
+		t.Fatalf("hide B: %+v, export show %v", r, c.RefsExport()[1].Show)
+	}
+	if r := c.RefAction(1, "store"); !r.OK || c.PanelStatus().Refs[1].Gen == tags[1].Gen {
+		t.Fatalf("a second store keeps the first one's name: %+v", c.PanelStatus().Refs[1])
+	}
+	if r := c.RefAction(0, "clear"); r.OK {
+		t.Fatalf("clearing an empty REF A was taken: %+v", r)
+	}
+	if r := c.RefAction(1, "clear"); !r.OK || c.PanelStatus().Refs[1].Has || c.RefsExport()[1].Has {
+		t.Fatalf("clear B: %+v", r)
+	}
+	if r := c.RefAction(0, "paint"); r.OK || r.Error == "" {
+		t.Fatalf("an unknown action: %+v", r)
+	}
+}

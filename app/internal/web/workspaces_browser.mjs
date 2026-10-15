@@ -142,9 +142,9 @@ run(async (t) => {
   await po.eval(() => { const e = document.getElementById("decProto"); e.value = "off"; e.dispatchEvent(new Event("change")); });
   await t.until(async () => !(await dot("bus")), "decode off: the BUS dot goes", 2500);
   await po.click("refSaveA");
-  await t.until(() => dot("compare"), "a shown reference puts a dot on COMPARE", 2500);
+  await t.until(() => dot("compare"), "a shown reference puts a dot on COMPARE", 6000);
   await po.click("refClearA");
-  await t.until(async () => !(await dot("compare")), "cleared: the COMPARE dot goes", 2500);
+  await t.until(async () => !(await dot("compare")), "cleared: the COMPARE dot goes", 6000);
 
   // ---- panes resize the GL canvas -------------------------------------------------------
   await page.click("#tab-measure");

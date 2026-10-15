@@ -126,6 +126,7 @@ func seen(last *frameKey, k frameKey) bool {
 type needKey struct {
 	ws           wsview.WS
 	measTab, eye bool
+	refs         [2]RefTag // a reference stored, shown or cleared while stopped is compared at once
 }
 
 // need reads the needKey (c.mu).
@@ -133,7 +134,11 @@ type needKey struct {
 func (c *Controller) need() needKey {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	return needKey{c.ui.ws, c.ui.open && sheetTabs[c.ui.tab].id == "meas", c.ui.busEye}
+	k := needKey{ws: c.ui.ws, measTab: c.ui.open && sheetTabs[c.ui.tab].id == "meas", eye: c.ui.busEye}
+	for i, r := range c.refs {
+		k.refs[i] = RefTag{Has: r.has, Show: r.has && r.show, Gen: r.gen}
+	}
+	return k
 }
 
 // OnFrame analyses a newly published frame for the active workspace. It is

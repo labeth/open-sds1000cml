@@ -183,3 +183,76 @@ func TestAutoWaitsForTheDetectionUnderWay(t *testing.T) {
 		t.Fatalf("AUTO after the detection: protocol %d busy %v", s.decProto, c.AutosetBusy())
 	}
 }
+
+// AUTO pressed on a page frames for the page's workspace: with the LCD on
+// SCOPE, a page on BUS gets BUS's scan and framing, not SCOPE's autoset, and
+// the LCD stays on SCOPE. An unknown workspace is refused.
+// TRLC-LINKS: REQ-SDS-226
+func TestPageAutoFramesThePagesWorkspace(t *testing.T) {
+	c, eng, _ := newEnvRig(t)
+	eng.leased.Store(true)
+	set(t, c, "bus.protocol", "I2C")
+	if c.InjectAutoFor("nowhere") {
+		t.Fatal("AUTO for an unknown workspace was taken")
+	}
+	if !c.InjectAutoFor("bus") {
+		t.Fatal("AUTO for BUS was not queued")
+	}
+	(<-c.inject)()
+	s := c.snap()
+	if s.ui.ws != wsview.Scope {
+		t.Fatalf("the LCD moved to workspace %d", s.ui.ws)
+	}
+	if s.decProto != framecalc.ProtoUART || !s.decAuto || eng.Snapshot().TrigPosFrac != busTrigPos {
+		t.Fatalf("a page's AUTO on BUS: protocol %d filled %v trigger at %g, want BUS's scan and framing", s.decProto, s.decAuto, eng.Snapshot().TrigPosFrac)
+	}
+	if c.autoFor != 0 {
+		t.Fatalf("the page's workspace outlived its press: %d", c.autoFor)
+	}
+}
+
+// With the LCD on BUS, a page on SPECTRUM gets SPECTRUM's framing (fifty
+// cycles of the FFT source), and the LCD key keeps the LCD's workspace.
+// TRLC-LINKS: REQ-SDS-226, REQ-SDS-224
+func TestPageAutoOnSpectrumWhileTheLCDIsOnBus(t *testing.T) {
+	t.Parallel()
+	sq := square(100e3, 0, 3.3)
+	b := newSimBench(t, func(tt, _ float64, _ int) float64 { return sq(tt) })
+	b.c.mu.Lock()
+	b.c.ui.ws = wsview.Bus
+	b.c.ui.views[wsview.Spectrum] = viewFFT
+	b.c.mu.Unlock()
+	if !b.c.InjectAutoFor("spectrum") {
+		t.Fatal("AUTO for SPECTRUM was not queued")
+	}
+	(<-b.c.inject)()
+	for end := time.Now().Add(20 * time.Second); b.c.AutosetBusy() && time.Now().Before(end); {
+		time.Sleep(20 * time.Millisecond)
+	}
+	b.c.mu.Lock()
+	n, lcd := b.c.ui.notice, b.c.ui.ws
+	b.c.mu.Unlock()
+	if !strings.HasPrefix(n, "AUTO (SPECTRUM): 50 cycles") || lcd != wsview.Bus {
+		t.Fatalf("notice %q, LCD on %d: want SPECTRUM's framing with the LCD left on BUS", n, lcd)
+	}
+}
+
+// A stream that needs another FPGA image says so while it starts: a UART
+// framed on the qualifier image streams on the general image's receiver.
+// TRLC-LINKS: REQ-SDS-018
+func TestStreamImageNote(t *testing.T) {
+	if n := streamImageNote(framecalc.ProtoUART, "qualify"); n != "loading the general FPGA image, about 4 s: the qualifier image has no UART receiver" {
+		t.Fatalf("UART on the qualifier image: %q", n)
+	}
+	if n := streamImageNote(framecalc.ProtoSENT, "general"); !strings.HasPrefix(n, "loading the packet FPGA image") {
+		t.Fatalf("SENT on the general image: %q", n)
+	}
+	for _, c := range []struct {
+		proto int
+		image string
+	}{{framecalc.ProtoUART, "general"}, {framecalc.ProtoCAN, "packet"}, {framecalc.ProtoUSB, "line"}, {framecalc.ProtoI2C, ""}} {
+		if n := streamImageNote(c.proto, c.image); n != "" {
+			t.Fatalf("proto %d on %q: %q, want none", c.proto, c.image, n)
+		}
+	}
+}

@@ -462,6 +462,18 @@ func (c *Controller) clearRefs() error {
 	return nil
 }
 
+// clearRef deletes one reference (REF A is the master).
+// TRLC-LINKS: REQ-SDS-212, REQ-SDS-227
+func (c *Controller) clearRef(i int) error {
+	c.mu.Lock()
+	c.refs[i&1] = refWave{}
+	if i&1 == 0 {
+		c.ui.hasMaster = false
+	}
+	c.mu.Unlock()
+	return nil
+}
+
 // showRef shows or hides a stored reference.
 // TRLC-LINKS: REQ-SDS-212, REQ-SDS-138
 func (c *Controller) showRef(i int, on bool) error {

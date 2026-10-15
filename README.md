@@ -190,7 +190,10 @@ automatically.
   its idle, CAN's SOF, a MIL-1553 command word, the first UART character after an idle gap, ...), the
   trigger near the left and whole messages on screen with every bit resolved. The trigger point sits on
   the frame's own SYNC or SOF. The protocol images for Manchester, USB, SENT, CAN, FlexRay, MIL-1553 and
-  ARINC 429 record 2.1 ms at the full rate, so their triggers run at 200 us/div or faster.
+  ARINC 429 record 2.1 ms at the full rate, so their triggers run at 200 us/div or faster. AUTO on a
+  UART framed before stays on the qualifier image it triggers with (about 5 s); a packet or line-code
+  bus loads the general image for the fit and detection and its own image again (11 to 15 s). A
+  stream that waits for an image load says so.
 * **Continuous decoding:** a live decoded stream, with the full-rate record kept for every frame.
   UART at **921,600 baud ran lossless for 3 minutes** (16.6 M bytes). At higher rates a lost event
   is marked, never silently dropped.
@@ -207,7 +210,9 @@ automatically.
 * **Cursors** in time and voltage, with Δt, 1/Δt and ΔV.
 * **Math:** C1 − C2, C2 − C1, C1 + C2, C1 × C2, and carrier removal using FFT peaks.
 * **FFT** with a peak table (up to 64 peaks; a peak you pick on the web follows its tone within a few bins; when
-  the tone is gone it reads greyed as lost for 3 s, then is cleared), and a **spectrogram** waterfall.
+  the tone is gone it reads greyed as lost for 3 s, then is cleared), and a **spectrogram** waterfall. On
+  the LCD each capture paints a row for every 2048-point stretch of its record, so the waterfall fills in
+  about 20 s at 5 us/div instead of 85 s, at the same frame rate.
 * **Eye diagram and jitter:** software clock recovery; TIE rms and peak-to-peak, RJ / DJ split,
   period and cycle-to-cycle jitter, eye height and width; TIE histogram and spectrum.
 * **Super-resolution:** stacks repeated edges on a time grid up to ×64 finer than the sample period,
@@ -215,12 +220,15 @@ automatically.
   stacking image** accumulates the hits in hardware, using the same captured records across
   every tile to avoid acquisition-dependent seams. Phase-coherent equivalent-time folding resolves clocks above the trigger
   comparator's range.
-* **Reference waveforms** (two), **persistence**, **XY mode** and **freeze**.
+* **Reference waveforms** (two), **persistence**, **XY mode** and **freeze**. REF A and B live on the
+  scope: one stored on the LCD, the web page or the phone shows on all three, and the web's difference
+  readout compares the live trace with the scope's references.
 * **AUTO frames the signal for the workspace:** SCOPE two cycles with the swing on about six
   divisions; MEASURE at least ten cycles and SPECTRUM at least 50 (the marker on the fundamental),
   both with the largest swing that stays on the screen; COMPARE takes the setup of the mask or
   reference so the live trace sits on it; BUS frames the bus (below). A trace left past the screen's
   edge steps to a coarser V/div, and the notice says what AUTO did ("AUTO: 2 cycles, C1 500mV/div").
+  AUTO on the web page frames for the workspace the page shows, whichever the LCD shows.
 
 ## Connect and control
 

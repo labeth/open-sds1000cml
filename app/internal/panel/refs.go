@@ -3,6 +3,7 @@ package panel
 
 import (
 	"fmt"
+	"time"
 
 	"open-sds/app/internal/analog"
 	"open-sds/app/internal/engine"
@@ -27,21 +28,47 @@ type refWave struct {
 	has       bool
 	show      bool
 	setup     cmpSetup // the setup it was stored at, for AUTO in COMPARE
+	gen       uint64   // names this store (a web page reloads the slot when it changes)
+	at        time.Time
 }
 
 // RefExport is a saved reference as the web app takes it (GET /api/refs):
 // its screen columns, the volts they were saved at, the timebase and where
-// the trigger sat, so a page can overlay the scope's REF A (the master).
+// the trigger sat, the probes then and the setup it was stored at, so a page
+// shows the scope's REF A and B as the LCD does.
 type RefExport struct {
 	Has     bool       `json:"has"`
 	Show    bool       `json:"show"`
+	Gen     uint64     `json:"gen"` // names the store: it changes with each one
+	At      int64      `json:"at"`  // when it was stored, Unix milliseconds
 	Cols    int        `json:"cols"`
 	C1      []int      `json:"c1,omitempty"`
 	C2      []int      `json:"c2,omitempty"`
 	Vdiv    [2]float64 `json:"vdiv"` // at the probe tip, as the web's volts per code
 	Off     [2]float64 `json:"off"`  // at the probe tip
+	Probe   [2]float64 `json:"probe"`
 	TdivS   float64    `json:"tdiv_s"`
 	PosFrac float64    `json:"pos_frac"`
+	Setup   *RefSetup  `json:"setup,omitempty"`
+}
+
+// RefSetup is the setup a reference was stored at (AUTO in COMPARE puts the
+// scope back on it): the timebase asked for, the trigger's place, source and
+// slope, and each channel's V/div at the probe tip.
+type RefSetup struct {
+	TdivS   float64    `json:"tdiv_s"`
+	PosFrac float64    `json:"pos_frac"`
+	Vdiv    [2]float64 `json:"vdiv"`
+	TrigSrc int        `json:"trig_src"`
+	Rising  bool       `json:"rising"`
+}
+
+// RefTag says what a reference slot holds, for the status: a page reads the
+// slot again (GET /api/refs) when its Gen or Show changes.
+type RefTag struct {
+	Has  bool
+	Show bool
+	Gen  uint64
 }
 
 // RefWave is the render-side view of a saved reference.
@@ -109,7 +136,10 @@ func (c *Controller) captureRefFrom(f *engine.Frame, slot int) {
 		r.c2 = screenColumns(analog.CoupleDisplay(f.C2[:valid], cpl[1]), left, win, f.Interp)
 	}
 	r.setup = c.takeSetup()
+	r.at = c.now()
 	c.mu.Lock()
+	c.refGen++
+	r.gen = c.refGen
 	c.refs[slot] = r
 	c.mu.Unlock()
 }
@@ -152,15 +182,52 @@ func (c *Controller) RefsExport() [2]RefExport {
 	var out [2]RefExport
 	for i, r := range c.refs {
 		if r.has {
-			e := RefExport{Has: true, Show: r.show, Cols: RefCols, C1: ints(r.c1), C2: ints(r.c2), TdivS: r.tdiv, PosFrac: r.posFrac}
+			e := RefExport{Has: true, Show: r.show, Gen: r.gen, At: r.at.UnixMilli(), Cols: RefCols, C1: ints(r.c1), C2: ints(r.c2),
+				TdivS: r.tdiv, PosFrac: r.posFrac}
 			for ch := range e.Vdiv {
 				p := max(r.probe[ch], 1)
-				e.Vdiv[ch], e.Off[ch] = r.vdiv[ch]*p, r.off[ch]*p
+				e.Vdiv[ch], e.Off[ch], e.Probe[ch] = r.vdiv[ch]*p, r.off[ch]*p, p
+			}
+			if s := r.setup; s.has {
+				e.Setup = &RefSetup{TdivS: s.tdiv, PosFrac: s.posFrac, TrigSrc: s.trigSrc, Rising: s.rising}
+				for ch := range e.Setup.Vdiv {
+					e.Setup.Vdiv[ch] = analog.AnalogVdiv(s.vidx[ch]) * e.Probe[ch]
+				}
 			}
 			out[i] = e
 		}
 	}
 	return out
+}
+
+// RefTags says what each reference slot holds (the status's Refs).
+// TRLC-LINKS: REQ-SDS-227
+func (c *Controller) RefTags() [2]RefTag {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	var out [2]RefTag
+	for i, r := range c.refs {
+		out[i] = RefTag{Has: r.has, Show: r.has && r.show, Gen: r.gen}
+	}
+	return out
+}
+
+// RefAction stores ("store"), shows ("show"), hides ("hide") or deletes
+// ("clear") reference slot 0 (A) or 1 (B) for a web page, as the phone's
+// COMPARE rows do: the LCD, the page and the phone show the same REF A/B.
+// TRLC-LINKS: REQ-SDS-227
+func (c *Controller) RefAction(slot int, op string) SetResult {
+	if slot < 0 || slot > 1 {
+		return SetResult{Error: "no reference slot " + fmt.Sprint(slot)}
+	}
+	n := string(rune('a' + slot))
+	switch op {
+	case "store", "clear":
+		return c.SheetAction("cmp.store_"+n, op)
+	case "show", "hide":
+		return c.SheetSet("cmp.show_"+n, b2ic(op == "show"), "")
+	}
+	return SetResult{Error: fmt.Sprintf("no reference action %q: store, show, hide or clear", op)}
 }
 
 // RefView returns a copy-free snapshot of both reference slots for the renderer

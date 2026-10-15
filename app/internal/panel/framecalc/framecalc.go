@@ -404,7 +404,17 @@ func Spectrum(f *engine.Frame, ch int, sampleS float64) (Spec, bool) {
 		return s.spec, true
 	}
 	stride := PairStride(f, valid/n)
-	mags, peak, peakK := Mags(BlockMeans(Channel(f, ch, valid), n, stride))
+	sp := specOf(BlockMeans(Channel(f, ch, valid), n, stride), stride, sampleS, f.BandwidthHz)
+	s.key, s.spec, s.ok = key, sp, cacheable
+	return sp, true
+}
+
+// specOf is the spectrum of samples, each the mean of stride record samples
+// sampleS apart, cut at a decimated capture's filter bandwidth bw (0: none).
+// TRLC-LINKS: REQ-SDS-070
+func specOf(samples []float64, stride int, sampleS, bw float64) Spec {
+	n := len(samples)
+	mags, peak, peakK := Mags(samples)
 	sp := Spec{Mags: mags, N: n, Stride: stride, Peak: peak, PeakK: peakK}
 	if sampleS > 0 {
 		sp.EffNyq = 0.5 / sampleS / float64(stride)
@@ -413,7 +423,7 @@ func Spectrum(f *engine.Frame, ch int, sampleS float64) (Spec, bool) {
 		// A decimated capture's filter ends the spectrum at its bandwidth: past
 		// it the bins hold nothing (a capture filtered at 4.2 MHz drawn to
 		// 15.6 MHz shows its harmonics above 4.2 MHz gone)
-		if bw := f.BandwidthHz; bw > 0 && bw < sp.EffNyq {
+		if bw > 0 && bw < sp.EffNyq {
 			kb := min(len(mags), max(4, int(math.Ceil(bw/sp.BinHz))))
 			sp.Mags, sp.SpanHz, sp.Peak, sp.PeakK = mags[:kb], float64(kb)*sp.BinHz, 1e-9, 1
 			for k := 1; k < kb; k++ {
@@ -423,6 +433,33 @@ func Spectrum(f *engine.Frame, ch int, sampleS float64) (Spec, bool) {
 			}
 		}
 	}
-	s.key, s.spec, s.ok = key, sp, cacheable
-	return sp, true
+	return sp
+}
+
+// RowFFT is the length of a spectrogram row's transform: a 2048-point
+// spectrum has 1024 bins, more than the waterfall's columns.
+const RowFFT = 2048
+
+// SpectrumRows is channel ch's record of frame f as spectrogram rows, oldest
+// first: the record in consecutive stretches, each transformed at RowFFT
+// points with the stride and span of the record's own spectrum (Spectrum),
+// so one capture paints several rows of the time it spans. A record whose
+// spectrum is shorter than two rows' gives that spectrum alone.
+// TRLC-LINKS: REQ-SDS-068, REQ-SDS-070
+func SpectrumRows(f *engine.Frame, ch int, sampleS float64) []Spec {
+	full, ok := Spectrum(f, ch, sampleS)
+	if !ok {
+		return nil
+	}
+	k := full.N / RowFFT
+	if k < 2 {
+		return []Spec{full}
+	}
+	src := Channel(f, ch&1, Valid(f))
+	seg := RowFFT * full.Stride
+	out := make([]Spec, 0, k)
+	for i := 0; i < k; i++ {
+		out = append(out, specOf(BlockMeans(src[i*seg:(i+1)*seg], RowFFT, full.Stride), full.Stride, sampleS, f.BandwidthHz))
+	}
+	return out
 }

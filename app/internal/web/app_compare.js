@@ -10,28 +10,33 @@
 
 let cmpT = 0;
 
-// refVoltsAt maps a reference onto the live record's sample grid by time from
-// the trigger (references keep their own sample pitch and trigger index), or
-// index-proportionally when either side has no trigger. Returns Float64Array
-// volts per live sample (NaN outside the reference).
-// TRLC-LINKS: REQ-SDS-218
-function refOnLive(r, ch, n, stride) {
+// liveOnRef compares on the reference's own grid, as the LCD compares its
+// screen columns: for each stored point the live record's volts at the same
+// time from the trigger (the sample there, linear between samples when the
+// frame interpolates, as the scope stores a reference), and the reference's
+// volts; both NaN where the live record does not reach. Without a trigger on
+// either side it maps index-proportionally.
+// TRLC-LINKS: REQ-SDS-218, REQ-SDS-227
+function liveOnRef(r, ch, live) {
   const codes = ch === 2 ? r.c2 : r.c1;
-  const vpc = ch === 2 ? r.vpc2 : r.vpc1, off = ch === 2 ? r.off2 : r.off1;
-  const m = Math.ceil(n / stride), out = new Float64Array(m).fill(NaN);
-  if (!codes || !codes.length) return out;
-  const len = codes.length, dtL = frameDtS(frame, n), edgeL = frame.edge_frac >= 0 ? frame.edge_frac * (n - 1) : -1;
+  const vpcR = ch === 2 ? r.vpc2 : r.vpc1, offR = ch === 2 ? r.off2 : r.off1;
+  const vpcL = (ch === 2 ? frame.vpc2 : frame.vpc1) || 1 / 25, offL = (ch === 2 ? frame.off2_v : frame.off1_v) || 0;
+  const m = codes ? codes.length : 0, n = live.length;
+  const lv = new Float64Array(m).fill(NaN), rv = new Float64Array(m).fill(NaN);
+  const dtL = frameDtS(frame, n), edgeL = frame.edge_frac >= 0 ? frame.edge_frac * n : -1;
   const timed = r.dt > 0 && r.edge >= 0 && dtL > 0 && edgeL >= 0;
-  for (let k = 0; k < m; k++) {
-    const i = k * stride;
-    const x = timed ? r.edge + (i - edgeL) * dtL / r.dt : i * (len - 1) / Math.max(1, n - 1);
-    if (!(x >= 0 && x <= len - 1)) continue;
-    const j = Math.floor(x), f = x - j;
-    const a = codes[j], b = j + 1 < len ? codes[j + 1] : a;
+  for (let j = 0; j < m; j++) {
+    const c = codes[j];
+    if (c < 0) continue;
+    const x = timed ? edgeL + (j - r.edge) * r.dt / dtL : j * (n - 1) / Math.max(1, m - 1);
+    if (!(x >= 0 && x <= n - 1)) continue;
+    const i = Math.floor(x + 1e-6), f = frame.interp ? Math.max(0, x - i) : 0; // the column's sample, past rounding
+    const a = live[i], b = i + 1 < n ? live[i + 1] : a;
     if (a < 0 || b < 0) continue;
-    out[k] = ((a + (b - a) * f) - 128) * vpc - off;
+    lv[j] = ((a + (b - a) * f) - 128) * vpcL - offL;
+    rv[j] = (c - 128) * vpcR - offR;
   }
-  return out;
+  return { lv, rv };
 }
 
 // cmpRender fills the difference readout: for every shown reference and each
@@ -49,12 +54,10 @@ function cmpRender() {
       const live = frame && !frame.is_env ? (ch === 1 ? frame.c1 : frame.c2) : null;
       if (!(ch === 1 ? view.c1 : view.c2) || !live) { rows.push([slot, name, "C" + ch + (live ? " is hidden — show it to compare" : " has no sampled record now")]); continue; }
       if (r.tdiv && frame.tdiv_s && Math.abs(r.tdiv - frame.tdiv_s) > r.tdiv * 1e-6) { rows.push([slot, name, "saved at " + fmtTdiv(r.tdiv) + "/div — set that timebase to compare"]); continue; }
-      const n = live.length, stride = Math.max(1, Math.ceil(n / 8192));
-      const vpc = (ch === 2 ? frame.vpc2 : frame.vpc1) || 1 / 25, off = (ch === 2 ? frame.off2_v : frame.off1_v) || 0;
-      const lv = new Float64Array(Math.ceil(n / stride));
-      for (let k = 0; k < lv.length; k++) { const c = live[k * stride]; lv[k] = c < 0 ? NaN : (c - 128) * vpc - off; }
-      const div = st ? (ch === 2 ? st.vdiv2 * probeOf(2) : st.vdiv1 * probeOf(1)) : 25 * vpc;
-      const d = refDiff(lv, refOnLive(r, ch, n, stride), 0.5 * div);
+      const vpc = (ch === 2 ? frame.vpc2 : frame.vpc1) || 1 / 25;
+      const div = (st && (ch === 2 ? st.vdiv2 * probeOf(2) : st.vdiv1 * probeOf(1))) || 25 * vpc;
+      const { lv, rv } = liveOnRef(r, ch, live);
+      const d = refDiff(lv, rv, 0.5 * div);
       if (!d.n) { rows.push([slot, name, "no overlap with the reference in time"]); continue; }
       // below a thousandth of a code is the arithmetic of the time mapping: 0
       const q = vpc * 1e-3, mx = d.maxAbs < q ? 0 : d.maxAbs, rms = d.rms < q ? 0 : d.rms;
@@ -129,23 +132,64 @@ async function masterRow() {
 
 // loadScopeRef makes the scope's saved reference a (GET /api/refs: its screen
 // columns, the tip volts it was saved at, the timebase and the trigger's place
-// across the screen) this page's reference slot.
-// TRLC-LINKS: REQ-SDS-218, REQ-SDS-203
+// across the screen, the probes and the setup it was stored at) this page's
+// reference slot. A label given names it ("master ×64"); without one a slot
+// still holding the same store keeps its label.
+// TRLC-LINKS: REQ-SDS-218, REQ-SDS-203, REQ-SDS-227
 function loadScopeRef(slot, a, label) {
   const n = a.cols || (a.c1 || a.c2 || []).length;
+  const prev = refs[slot];
   refs[slot] = {
     c1: a.c1 || null, c2: a.c2 || null,
     vpc1: (a.vdiv[0] || 1) / 25, vpc2: (a.vdiv[1] || 1) / 25,
     off1: a.off[0] || 0, off2: a.off[1] || 0,
-    show: true,
+    show: a.show !== false,
     dt: n ? 10 * a.tdiv_s / n : 0,
-    edge: n ? a.pos_frac * (n - 1) : -1,
+    edge: n ? a.pos_frac * n : -1, // column x sits x - pos_frac·n columns from the trigger (the LCD's screen)
     tdiv: a.tdiv_s || 0,
     vdiv1: a.vdiv[0] || 0, vdiv2: a.vdiv[1] || 0,
-    at: Date.now(), label: label || "",
+    probe: a.probe || [1, 1], setup: a.setup || null,
+    gen: a.gen || 0,
+    at: a.at || Date.now(), label: label !== undefined ? label : prev && prev.gen === a.gen ? prev.label : "",
   };
   updateRefRows(); redraw();
 }
+
+// takeScopeRefs makes the scope's two reference slots (GET /api/refs) this
+// page's REF A and B: a slot the scope holds no more empties here, a new
+// store loads, and the same store only follows its Show.
+// TRLC-LINKS: REQ-SDS-227
+function takeScopeRefs(arr) {
+  for (const [i, slot] of [[0, "A"], [1, "B"]]) {
+    const a = arr && arr[i], r = refs[slot];
+    if (!a || !a.has) { if (r) { refs[slot] = null; updateRefRows(); redraw(); } continue; }
+    if (r && r.gen === a.gen && a.gen) {
+      if (r.show !== !!a.show) { r.show = !!a.show; updateRefRows(); redraw(); }
+      continue;
+    }
+    loadScopeRef(slot, a);
+  }
+}
+
+let refsTag = "";
+let refsBusy = false;
+// refsTaken counts the scope's answers taken (a page's change answers with
+// both slots): a read sent before one is older than it and is dropped.
+let refsTaken = 0;
+// refsFollow reads the scope's references again when its status says they
+// changed (stored, shown, hidden or cleared on the LCD, the phone or here).
+// TRLC-LINKS: REQ-SDS-227
+async function refsFollow(force) {
+  const tag = st && st.panel && st.panel.Refs ? JSON.stringify(st.panel.Refs) : "";
+  if (refsBusy || (!force && tag === refsTag)) return;
+  refsBusy = true;
+  const sent = refsTaken;
+  try {
+    const j = await (await fetch("/api/refs")).json();
+    if (j && j.ok && sent === refsTaken) { refsTaken++; takeScopeRefs(j.refs); refsTag = tag; }
+  } catch (e) { /* the next status tries again */ } finally { refsBusy = false; }
+}
+refsFollow(true);
 
 // stackMaster has the scope stack its master, as COMPARE's key again does on
 // the LCD: the scope averages the trigger source while running (or refuses,

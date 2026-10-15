@@ -2,7 +2,7 @@
 // Real-browser e2e for the superres stacker (argv[2]=URL of a server whose
 // fakeScope generates a jittered noisy sine): arm → frames accumulate and
 // stats populate → view shows the stacked waveform as a frozen synthetic
-// frame (dense, Float32) → fit model lands in REF B → live resumes. The
+// frame (dense, Float32) → fit model draws as an overlay (not a reference) → live resumes. The
 // stacker's controls live in MEASURE's Super-res pane; the FFT and X-Y views
 // in SPECTRUM and SCOPE (the stack shows in every view).
 // SKIP/exit 0 when the browser is absent.
@@ -181,10 +181,10 @@ try {
   ok(noise.stack < noise.single / 1.5, `stack noise drops (σ ${noise.single.toFixed(2)}→${noise.stack.toFixed(3)}, +${noise.bits.toFixed(1)} bits)`);
   ok(noise.fill > 0.5, `fine grid fills (${(noise.fill * 100).toFixed(0)}%)`);
 
-  // Model fit lands in REF B.
+  // The model fit draws as a page overlay; the scope's REF B stays as it is.
   await click("srFit");
-  const fit = await page.evaluate(() => ({ has: !!(refs.B && refs.B.c1 && refs.B.c1.length), msg: $("srStats").textContent }));
-  ok(fit.has, `fit model → REF B (${fit.msg.slice(0, 60)})`);
+  const fit = await page.evaluate(() => ({ has: !!(srModel && srModel.c1 && srModel.c1.length), refB: !!refs.B, msg: $("srStats").textContent }));
+  ok(fit.has && !fit.refB && /^model overlay/.test(fit.msg), `fit model → overlay, REF B untouched (${fit.msg.slice(0, 60)})`);
 
   // Unfreeze → live frames take over again.
   await click("freeze");

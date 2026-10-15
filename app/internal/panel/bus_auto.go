@@ -76,6 +76,18 @@ func (c *Controller) busAuto() {
 // TRLC-LINKS: REQ-SDS-223
 func (c *Controller) runBusAuto(stop chan struct{}) {
 	defer c.endAutoset(stop)
+	// A UART framed before left the qualifier image loaded: the sweep and the
+	// detection run on it (an edge there is as on the general image), and the
+	// idle qualifier the UART is framed with needs it again, so neither load
+	// of about four seconds happens. Released once the bus is framed.
+	if h, ok := c.eng.(interface{ HoldQualifyImage(bool) }); ok {
+		h.HoldQualifyImage(true)
+		c.qualHeld.Store(true)
+		defer func() {
+			c.qualHeld.Store(false)
+			h.HoldQualifyImage(false)
+		}()
+	}
 	entry := c.autoEntryNow()
 	entryTdiv := entry.tdiv
 	// the bus decoded before is forgotten: a serial trigger on it ends (its
@@ -358,7 +370,8 @@ func (c *Controller) frameBus(featureS float64, auto bool) string {
 // for the general image: a pulse or serial trigger runs on the qualifier or a
 // protocol image, and a sweep that measured there, or while the image went
 // back, fitted the vertical wrong (an ARINC 429 bus then went unfound, a
-// UART's trigger was left off the signal).
+// UART's trigger was left off the signal). An edge on a qualifier image held
+// for AUTO in BUS (HoldQualifyImage) is as on the general image.
 // TRLC-LINKS: REQ-SDS-137, REQ-SDS-223
 func (c *Controller) edgeOnGeneralImage() {
 	if st := c.eng.Snapshot(); st.SerialMode != 0 || st.TrigType != 0 {
@@ -366,7 +379,8 @@ func (c *Controller) edgeOnGeneralImage() {
 	}
 	for end, settled := c.now().Add(imageWait), 0; settled < 5 && c.now().Before(end) && !c.detectSync; time.Sleep(100 * time.Millisecond) {
 		st := c.eng.Snapshot()
-		if (st.Image == "" || st.Image == "general") && !strings.HasPrefix(st.Busy, "loading") {
+		general := st.Image == "" || st.Image == "general" || (st.Image == "qualify" && c.qualHeld.Load())
+		if general && !strings.HasPrefix(st.Busy, "loading") {
 			settled++
 		} else {
 			settled = 0

@@ -703,6 +703,10 @@ active key's next view in amber at its right end (`F2 again: Eye diagram`); an a
 - **SPECTRUM:** a small time trace, the peak table (frequency, level dBV, level against the top
   peak, harmonic) in frequency order, a readout (top peak, THD), the marker line; the plot shows the
   marker as a dotted amber line with a triangle on its level and a label, and a dim delta reference.
+  The spectrogram paints a row for each 2048-point stretch of a capture whose spectrum has 4096 points
+  or more (the stretch at the spectrum's stride and span, the newest on top), else the spectrum as one
+  row; its caption adds the rows' resolution ("RBW 20.3kHz (rows 81.4kHz)"). On the bench at 5 us/div
+  it fills its 432 rows in about 20 s at 5 frames a second, where a row a capture took 85 s.
 - **MEASURE:** the statistics table (now, mean, min, max, sdev, N), or all values of both channels in
   two columns of nine (the 18 parameters, preshoot included, in the web's names and order), and the
   cursor block. The statistics count only while MEASURE is shown, as on the web. The readout boxes drawn

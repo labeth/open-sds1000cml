@@ -1287,8 +1287,10 @@ requirements:
     frames. Changing channels retains old rows and the last sequence; clearing does not allow the same frame to
     be repushed. A floor selection made before allocation is discarded. A real Chromium test with synthetic localhost
     frames passes accumulation, painted-pixel, enlarge, stop and clear checks; it does not test frequency labels,
-    LCD behavior or physical accuracy. LCD Push uses a strided power-of-two prefix and retains previous rows when
-    channel or effective Nyquist changes. Clear retains scale and floor. NaN/nonnegative floor values fall back
+    LCD behavior or physical accuracy. LCD Push paints a row for each 2048-point stretch of a record whose FFT view
+    spectrum has 4096 points or more (each stretch transformed at the stride and span of that spectrum, the newest
+    on top), else that spectrum as one row, and retains previous rows when channel or effective Nyquist changes.
+    Clear retains scale and floor. NaN/nonnegative floor values fall back
     for painting without updating the displayed field; negative-infinite floor paints white, and nonfinite Nyquist
     is retained. The helper accepts repeated sequences, envelope-tagged frames and flat records, while the reviewed
     LCD loop separately gates active view, new sequence and non-envelope frames and selects C1. Zero-value Spectrogram
@@ -2556,8 +2558,9 @@ requirements:
   - test
   verificationCriteria: 'Source presence and fake controls do not establish full clause coverage or physical
     qualification.'
-  notes: References retain screen-space data without scale metadata; returned slices depend on caller immutability.
-    No dedicated original reference test establishes copy isolation or invalid-frame semantics.
+  notes: References retain screen-space data with the volts, probes, timebase, trigger place and setup they were
+    stored at; the web page shows and changes the same slots (REQ-SDS-227). Returned slices depend on caller
+    immutability.
 - id: REQ-SDS-139
   title: Panel mask acquisition workflow
   text: The instrument shall offer a background golden-mask build from distinct eligible frames on the trigger-source
@@ -3394,7 +3397,7 @@ requirements:
     physical device command effects are not verified.
 - id: REQ-SDS-203
   title: Browser math traces and stored references
-  text: The instrument shall provide code-domain channel arithmetic, selected-tone residual traces and bounded copied
+  text: The instrument shall provide code-domain channel arithmetic, selected-tone residual traces and the scope's
     waveform references for browser display.
   status: draft
   category: functional
@@ -3410,9 +3413,9 @@ requirements:
     browser pixels and physical calibration require separate evidence.
   notes: Arithmetic clips to 0..255 and propagates negative gap sentinels, but does not normalize channel volts-per-code.
     Unequal channel lengths can produce NaN. Residual tone removal checks the changing residual sign before each
-    subtraction, so a negative intermediate can skip later tones. Reference arrays are stride-sampled to at most
-    65536 points without anti-alias filtering; normal saved references omit time-span metadata and remain index-proportional
-    across timebase changes.
+    subtraction, so a negative intermediate can skip later tones. References are the scope's 800 screen columns
+    (REQ-SDS-227), placed by time from the trigger; the super-res model overlay is stride-free and index-proportional,
+    drawn only on a matching time span.
 - id: REQ-SDS-204
   title: Browser shared state and operator controls
   text: The instrument shall maintain browser display state and operator controls for acquisition, triggering, scale,
@@ -3811,3 +3814,44 @@ requirements:
     filtered decimated capture, whose filter rings past a square's levels, a two-level signal is clipped when a level
     lies past the screen or a stretch is at the ADC's rail. The final screen's check looks at three captures and steps
     a channel at most twice, or on while the trace is at the ADC's rail. AUTO in BUS shares the fit (REQ-SDS-223).
+- id: REQ-SDS-226
+  title: AUTO from a page frames the page's workspace
+  text: The instrument shall, when AUTO is pressed on the web page, run the AUTO of the workspace the page shows,
+    whichever workspace the LCD shows, and leave the LCD's workspace as it is.
+  status: draft
+  category: functional
+  appliesTo:
+  - FU-APP-PANEL
+  - FU-APP-WEB
+  verificationMethods:
+  - test
+  verificationCriteria: Panel tests press AUTO for BUS with the LCD on SCOPE (BUS's scan and framing, the LCD stays
+    on SCOPE) and for SPECTRUM with the LCD on BUS (fifty cycles of the FFT source), and refuse an unknown workspace;
+    a handler test checks that the request carries the page's workspace; a browser test on the real panel checks
+    that the page on BUS runs BUS's AUTO and the page on COMPARE COMPARE's while the LCD shows SCOPE. On the device,
+    the page on BUS with the LCD on SCOPE names the bus and frames it, and the page on SPECTRUM frames for SPECTRUM.
+  notes: The AUTO key keeps the LCD's workspace. The phone remote shows the LCD's workspace, so its Auto tile frames
+    for it. The workspace's view is the one the scope keeps for it (SPECTRUM's Bode view frames as SCOPE). The web
+    eye's Optimize names SCOPE, whose edge trigger its fit needs.
+- id: REQ-SDS-227
+  title: The web page shows the scope's references
+  text: The instrument shall keep REF A and REF B on the scope, show on the web page the references the scope
+    holds with the setup and probes they were stored at, and store, show, hide and delete them on the scope when
+    the page does.
+  status: draft
+  category: functional
+  appliesTo:
+  - FU-APP-PANEL
+  - FU-APP-WEB
+  - FU-WEB-APP-COMPARE
+  verificationMethods:
+  - test
+  verificationCriteria: Panel tests store, hide, store again and clear a slot as a page does and check the status
+    tags, the export (probes, setup, store time) and the rows the phone shows; handler tests check POST /api/refs; a
+    browser test on the real panel stores a reference on the scope and sees it on the page, saves, hides and clears
+    on the page and sees it on the scope, and checks the difference readout of identical captures. On the device, a
+    reference stored on the LCD shows on the page and the phone, one saved on the page shows on the LCD, and the
+    page's difference readout agrees with the LCD's.
+  notes: The page keeps no references of its own; it reads both slots again when the status's Refs (each slot's
+    Has, Show and store generation) changes. The difference readout compares on the reference's 800 screen columns,
+    as the LCD does. The super-res model fit is a page overlay drawn in REF B's colour, not a reference.

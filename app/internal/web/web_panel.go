@@ -34,6 +34,12 @@ type panelWorkspaces interface {
 	RemoteAgain(want string) panel.SetResult
 }
 
+// panelAutoFor presses AUTO for a named workspace (type-asserted; without it
+// AUTO frames for the LCD's workspace).
+type panelAutoFor interface {
+	InjectAutoFor(ws string) bool
+}
+
 // panelKeys is the remote's keys and knobs: answered once they have run,
 // with what they did (type-asserted; without it a key is only queued).
 // panelRefs is the panel's saved references (GET /api/refs).
@@ -41,12 +47,19 @@ type panelRefs interface {
 	RefsExport() [2]panel.RefExport
 }
 
-// hRefs serves the scope's REF A and REF B (the master is REF A), so the web
-// app's Stack master shows the scope's master.
-// TRLC-LINKS: REQ-SDS-138, REQ-SDS-218
+// panelRefActions stores, shows, hides or deletes a reference slot.
+type panelRefActions interface {
+	RefAction(slot int, op string) panel.SetResult
+}
+
+// hRefs serves the scope's REF A and REF B (the master is REF A): the web
+// app shows the scope's references, not its own. POST {"slot":"A",
+// "op":"store"} (store, show, hide, clear) changes one on the scope, as the
+// phone's COMPARE rows do, and answers with both slots after it.
+// TRLC-LINKS: REQ-SDS-138, REQ-SDS-218, REQ-SDS-227
 func (s *Server) hRefs(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.Error(w, "GET only", http.StatusMethodNotAllowed)
+	if r.Method != http.MethodGet && r.Method != http.MethodPost {
+		http.Error(w, "GET or POST only", http.StatusMethodNotAllowed)
 		return
 	}
 	pr, ok := s.panel.(panelRefs)
@@ -54,7 +67,25 @@ func (s *Server) hRefs(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, map[string]any{"ok": false, "error": "no panel on this server"})
 		return
 	}
-	writeJSON(w, map[string]any{"ok": true, "refs": pr.RefsExport()})
+	if r.Method == http.MethodGet {
+		writeJSON(w, map[string]any{"ok": true, "refs": pr.RefsExport()})
+		return
+	}
+	pa, ok := s.panel.(panelRefActions)
+	if !ok {
+		writeJSON(w, map[string]any{"ok": false, "error": "this scope's references cannot be changed from here"})
+		return
+	}
+	var req struct {
+		Slot string `json:"slot"`
+		Op   string `json:"op"`
+	}
+	if err := json.NewDecoder(io.LimitReader(r.Body, 4<<10)).Decode(&req); err != nil || (req.Slot != "A" && req.Slot != "B") {
+		writeJSON(w, map[string]any{"ok": false, "error": "bad json: want {\"slot\":\"A\"|\"B\",\"op\":store|show|hide|clear}"})
+		return
+	}
+	res := pa.RefAction(int(req.Slot[0]-'A'), req.Op)
+	writeJSON(w, map[string]any{"ok": res.OK, "error": res.Error, "notice": res.Notice, "refs": pr.RefsExport()})
 }
 
 type panelKeys interface {

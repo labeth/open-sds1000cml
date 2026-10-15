@@ -75,13 +75,16 @@ func heat(t float64) uint16 {
 	return rgb(lerp(a[0], b[0]), lerp(a[1], b[1]), lerp(a[2], b[2]))
 }
 
-// Push takes the frame's spectrum, scrolls the image down one row, and paints
-// the new spectrum as the top row. Ch selects the source channel. The row is
-// the FFT view's spectrum (framecalc.Spectrum, cached per frame), so the
-// waterfall covers the span the SPECTRUM caption and the web's FFT and
-// waterfall show (a 2048-point stride of its own draws 0 to 20.8 MHz under a
-// caption of 0 to 83.3 MHz). effNyq is the frame's Nyquist, for a frame
-// without a sample interval.
+// Push takes the frame's record as spectrogram rows, scrolls the image down
+// by their count and paints them, the newest on top. Ch selects the source
+// channel. The rows have the span of the FFT view's spectrum
+// (framecalc.Spectrum, cached per frame), so the waterfall covers the span
+// the SPECTRUM caption and the web's FFT and waterfall show (a 2048-point
+// stride of its own drew 0 to 20.8 MHz under a caption of 0 to 83.3 MHz); a
+// record of several 2048-point stretches gives a row each
+// (framecalc.SpectrumRows), so the waterfall fills that many times faster
+// than a row a capture. effNyq is the frame's Nyquist, for a frame without a
+// sample interval.
 // TRLC-LINKS: REQ-SDS-068
 func (sg *Spectrogram) Push(f *engine.Frame, ch int, effNyq float64) {
 	if f == nil || len(f.C1) == 0 {
@@ -91,29 +94,52 @@ func (sg *Spectrogram) Push(f *engine.Frame, ch int, effNyq float64) {
 	if !(sampleS > 0) && effNyq > 0 {
 		sampleS = 0.5 / effNyq
 	}
-	sp, ok := framecalc.Spectrum(f, ch, sampleS)
-	if !ok {
+	rows := framecalc.SpectrumRows(f, ch, sampleS)
+	n := 0
+	for _, sp := range rows {
+		if len(sp.Mags) >= 2 && sp.Peak > 0 {
+			rows[n] = sp
+			n++
+		}
+	}
+	if n == 0 {
 		return
 	}
-	if len(sp.Mags) < 2 || !(sp.Peak > 0) {
-		return
+	sg.effNyq = rows[n-1].SpanHz
+	sg.scroll(n)
+	for i := 0; i < n; i++ { // the newest (last) stretch on the top row
+		sg.paintRow(sgY0+n-1-i, rows[i].Mags, rows[i].Peak)
 	}
-	sg.effNyq = sp.SpanHz
-	sg.pushMags(sp.Mags, sp.Peak)
+	sg.rows = min(sg.rows+n, sgRows)
 }
 
 // pushMags scrolls the waterfall down one row and paints the half spectrum
 // mags (peak its largest) as the top row.
 // TRLC-LINKS: REQ-SDS-068
 func (sg *Spectrogram) pushMags(mags []float64, peak float64) {
-
-	// scroll the heatmap region down one row (copy each row into the one below)
-	rowBytes := W * 2
-	for y := sgY1 - 1; y > sgY0; y-- {
-		copy(sg.img.Pix[y*rowBytes+sgX0*2:y*rowBytes+sgX1*2],
-			sg.img.Pix[(y-1)*rowBytes+sgX0*2:(y-1)*rowBytes+sgX1*2])
+	sg.scroll(1)
+	sg.paintRow(sgY0, mags, peak)
+	if sg.rows < sgRows {
+		sg.rows++
 	}
-	// paint the newest spectrum on the top row: column x → freq bin, dB → colour
+}
+
+// scroll moves the heatmap down n rows (one copy of the region, the oldest
+// rows dropping off the bottom).
+// TRLC-LINKS: REQ-SDS-068
+func (sg *Spectrogram) scroll(n int) {
+	n = min(n, sgRows)
+	rowBytes := W * 2
+	for y := sgY1 - 1; y >= sgY0+n; y-- {
+		copy(sg.img.Pix[y*rowBytes+sgX0*2:y*rowBytes+sgX1*2],
+			sg.img.Pix[(y-n)*rowBytes+sgX0*2:(y-n)*rowBytes+sgX1*2])
+	}
+}
+
+// paintRow paints the half spectrum mags (peak its largest) on image row y:
+// column x is a frequency bin, dB a colour.
+// TRLC-LINKS: REQ-SDS-068
+func (sg *Spectrogram) paintRow(y int, mags []float64, peak float64) {
 	half := len(mags)
 	floor := sg.floorDB
 	if !(floor < 0) { // NaN or >=0 would make invFloor Inf/NaN → poison the paint
@@ -125,10 +151,7 @@ func (sg *Spectrogram) pushMags(mags []float64, peak float64) {
 		k1 := min((x+1)*half/sgCols-1, half-1) // a pixel shows the largest of its bins
 		db := 20 * math.Log10(binMax(mags, k0, k1)/peak+1e-12)
 		t := 1 + db*invFloor // db=0 → 1, db=floorDB → 0
-		sg.img.SetPixel(sgX0+x, sgY0, heat(t))
-	}
-	if sg.rows < sgRows {
-		sg.rows++
+		sg.img.SetPixel(sgX0+x, y, heat(t))
 	}
 }
 

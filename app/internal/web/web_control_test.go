@@ -329,8 +329,88 @@ func TestRefsEndpoint(t *testing.T) {
 		t.Fatalf("no panel: %s", rec.Body.String())
 	}
 	rec = httptest.NewRecorder()
-	s.Handler().ServeHTTP(rec, httptest.NewRequest("POST", "/api/refs", nil))
+	s.Handler().ServeHTTP(rec, httptest.NewRequest("PUT", "/api/refs", nil))
 	if rec.Code != 405 {
-		t.Fatalf("POST: %d", rec.Code)
+		t.Fatalf("PUT: %d", rec.Code)
+	}
+}
+
+// actingRefs is a panel whose references a page changes (POST /api/refs).
+type actingRefs struct {
+	fakeRefs
+	got []string
+}
+
+// TRLC-LINKS: REQ-SDS-227
+func (p *actingRefs) RefAction(slot int, op string) panel.SetResult {
+	p.got = append(p.got, fmt.Sprint(slot, op))
+	return panel.SetResult{OK: op != "clear", Error: map[bool]string{true: "reference A is empty"}[op == "clear"]}
+}
+
+// POST /api/refs changes the scope's slot and answers with both slots after
+// it; a bad slot is refused before the scope sees it.
+// TRLC-LINKS: REQ-SDS-227
+func TestRefsEndpointChangesTheScopes(t *testing.T) {
+	p := &actingRefs{}
+	h := New(&fakeScope{}, nil, p, nil).Handler()
+	post := func(body string) map[string]any {
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, httptest.NewRequest("POST", "/api/refs", strings.NewReader(body)))
+		var out map[string]any
+		if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
+			t.Fatalf("%s: %v", rec.Body.String(), err)
+		}
+		return out
+	}
+	if out := post(`{"slot":"B","op":"store"}`); out["ok"] != true || out["refs"] == nil {
+		t.Fatalf("store B: %v", out)
+	}
+	if out := post(`{"slot":"A","op":"clear"}`); out["ok"] != false || out["error"] != "reference A is empty" {
+		t.Fatalf("a refused clear: %v", out)
+	}
+	if out := post(`{"slot":"C","op":"store"}`); out["ok"] != false {
+		t.Fatalf("slot C: %v", out)
+	}
+	if fmt.Sprint(p.got) != "[1store 0clear]" {
+		t.Fatalf("the scope saw %v", p.got)
+	}
+}
+
+// autoPanel records the workspace a page's AUTO names.
+type autoPanel struct {
+	fuzzPanel
+	forWs  []string
+	button []string
+}
+
+// TRLC-LINKS: REQ-SDS-226
+func (p *autoPanel) InjectAutoFor(ws string) bool {
+	p.forWs = append(p.forWs, ws)
+	return ws != "nowhere"
+}
+
+// TRLC-LINKS: REQ-SDS-226
+func (p *autoPanel) InjectButton(name string) bool { p.button = append(p.button, name); return true }
+
+// AUTO with the page's workspace runs that workspace's AUTO on the scope;
+// without one it is the AUTO key (the LCD's workspace).
+// TRLC-LINKS: REQ-SDS-226
+func TestPanelAutoForThePagesWorkspace(t *testing.T) {
+	p := &autoPanel{}
+	h := New(&fakeScope{}, nil, p, nil).Handler()
+	post := func(body string) string {
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, httptest.NewRequest("POST", "/api/panel", strings.NewReader(body)))
+		return strings.TrimSpace(rec.Body.String())
+	}
+	if got := post(`{"button":"auto","for":"bus"}`); got != `{"ok":true}` {
+		t.Fatalf("AUTO for BUS: %s", got)
+	}
+	if got := post(`{"button":"auto","for":"nowhere"}`); got != `{"ok":false}` {
+		t.Fatalf("AUTO for an unknown workspace: %s", got)
+	}
+	post(`{"button":"auto"}`)
+	if fmt.Sprint(p.forWs) != "[bus nowhere]" || fmt.Sprint(p.button) != "[auto]" {
+		t.Fatalf("AUTO for %v, keys %v", p.forWs, p.button)
 	}
 }

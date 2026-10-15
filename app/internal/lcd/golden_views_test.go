@@ -259,7 +259,8 @@ func TestGoldenSpectrogram(t *testing.T) {
 	sg := NewSpectrogram()
 	for s := 0; s < 8; s++ {
 		f := 10e6 + 15e6*float64(s) // 10..115 MHz staircase
-		for r := 0; r < 24; r++ {
+		// two rows a 4096-sample record: 24 a step
+		for r := 0; r < 12; r++ {
 			sg.Push(sgSine(n, f, dt), 0, 0.5/dt)
 		}
 	}

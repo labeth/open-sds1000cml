@@ -260,7 +260,9 @@ type Controller struct {
 	// autoset runs as a background sweep; autosetStop cancels it (second AUTO).
 	autosetBusy bool
 	autosetStop chan struct{}
-	autosetMsg  string // banner text while busy ("AUTOSET…" / a result note)
+	autosetMsg  string      // banner text while busy ("AUTOSET…" / a result note)
+	autoFor     int         // while a page's AUTO press runs: the workspace it frames for + 1 (0: the LCD's)
+	qualHeld    atomic.Bool // AUTO in BUS holds a loaded qualifier image (edgeOnGeneralImage)
 	// each sweep is numbered; when one ends, the rows it changed are kept for
 	// the remote that started it (Status.AutosetDone, AutosetChanged)
 	autosetRun     uint64
@@ -271,6 +273,7 @@ type Controller struct {
 	// notice).
 	hardcopy func() (string, error)
 	refs     [2]refWave // saved reference waveforms (REF A/B)
+	refGen   uint64     // counts reference stores (refWave.gen)
 
 	maskSetup    cmpSetup // the setup the mask built here was installed at
 	maskSetupGen uint64   // the engine's mask generation it names

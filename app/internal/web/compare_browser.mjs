@@ -1,7 +1,8 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-WEB
 // Real-browser e2e for the COMPARE workspace (argv[2]):
-//   * the difference readout: REF A against the live channels (max |Δ|, RMS,
-//     % within 0.5 div), following Show/Clear; math draws;
+//   * the difference readout: the scope's REF A (stored from the page) against
+//     the live channels (max |Δ|, RMS, % within 0.5 div), following Show/Clear;
+//     math draws;
 //   * Stack master has the scope stack its master (the scope's Stack master
 //     row, mocked here: the panel's master has its own tests): the page sets
 //     the depth, starts the stack, follows the row and takes the scope's REF A
@@ -21,19 +22,19 @@ run(async (t) => {
   // ---- the difference readout ------------------------------------------------------
   await page.click("#tab-compare");
   t.ok(/Save and show a reference/.test(await po.text("diffBody")), "with no reference the readout says what to do");
-  await po.click("refSaveA");
-  t.ok(/C1\+C2/.test(await po.text("refInfoA")), "Save A stores both shown channels: " + await po.text("refInfoA"));
+  await po.click("refSaveA"); // the scope stores it; the page shows the scope's REF A
+  await t.until(async () => /C1\+C2/.test(await po.text("refInfoA")), "Save A stores both channels on the scope", 6000);
   await t.until(async () => (await diff(page)).filter((r) => r.ref === "A" && r.cells.length === 3).length === 2, "REF A is compared with C1 and C2", 3000);
   const d0 = await diff(page);
   const a1 = d0.find((r) => r.head === "REF A vs C1");
   t.ok(a1 && /^0 V \(0\.00 div\)$/.test(a1.cells[0]) && a1.cells[2] === "100.0 %", "identical captures: max |Δ| 0, 100 % within 0.5 div: " + JSON.stringify(a1));
   await po.click("refShowA");
-  await t.until(async () => (await diff(page)).every((r) => r.ref !== "A"), "a hidden reference leaves the readout", 2000);
+  await t.until(async () => (await diff(page)).every((r) => r.ref !== "A"), "a hidden reference leaves the readout", 6000);
   t.ok(await page.evaluate(() => document.querySelector("#tab-compare .tdot").hidden), "…and COMPARE's dot goes");
   await po.click("refShowA");
-  await t.until(async () => (await diff(page)).some((r) => r.ref === "A"), "shown again, it is compared again", 2000);
+  await t.until(async () => (await diff(page)).some((r) => r.ref === "A"), "shown again, it is compared again", 6000);
   await po.click("refClearA");
-  t.ok(await po.text("refInfoA") === "empty" && await page.evaluate(() => document.getElementById("refShowA").disabled), "Clear empties REF A (Show disabled)");
+  await t.until(async () => await po.text("refInfoA") === "empty" && await page.evaluate(() => document.getElementById("refShowA").disabled), "Clear empties REF A (Show disabled)", 6000);
   await po.setSelect("mathFn", "c1-c2");
   await t.until(async () => /V\/div · zero at centre/.test(await po.text("mathScale")), "math C1 − C2 draws, with its scale", 2000);
   await po.setSelect("mathFn", "off");

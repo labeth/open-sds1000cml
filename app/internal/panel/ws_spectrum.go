@@ -303,7 +303,11 @@ func (c *Controller) specPane(s *sv) *wsview.SpecPane {
 		p.Caption = fmt.Sprintf("%s C%d  waiting for a sampled frame", kind, s.fftSrc+1)
 		p.Empty = "No spectrum: the frame on screen has no samples (roll or envelope)"
 	} else {
-		p.Caption = fmt.Sprintf("%s C%d  span 0-%s  RBW %s  floor %.0fdBV", kind, s.fftSrc+1, si(sp.SpanHz, "Hz"), si(sp.BinHz, "Hz"), floor)
+		rbw := si(sp.BinHz, "Hz")
+		if s.viewMode == viewSpectrogram && sp.N >= 2*framecalc.RowFFT { // a row a 2048-point stretch of the record
+			rbw += " (rows " + si(sp.BinHz*float64(sp.N/framecalc.RowFFT), "Hz") + ")"
+		}
+		p.Caption = fmt.Sprintf("%s C%d  span 0-%s  RBW %s  floor %.0fdBV", kind, s.fftSrc+1, si(sp.SpanHz, "Hz"), rbw, floor)
 	}
 	p.TimeLabel = "TIME"
 	if s.zoom > 1 {

@@ -446,7 +446,7 @@ async function ejOptimize() {
     //    search only slows down for a genuinely slow signal.
     const knownRate = ej.st && ej.st.records > 0 ? ejResult(ej.st).bitRate : 0;
     ejStatus("optimize: fitting the signal…");
-    try { await autoset(); } catch (e) { }
+    try { await autoset("scope"); } catch (e) { } // SCOPE's framing: an edge trigger, not BUS's frame start
     const sampledSRAM = st && st.band === "sram";
     await ejStepToNearest(sampledSRAM ? (knownRate > 0 ? 128 / (10 * knownRate) : 2e-6) : 5e-8);
     await ejSleep(500);

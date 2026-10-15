@@ -89,7 +89,8 @@ func (s *Server) hStatus(w http.ResponseWriter, r *http.Request) {
 	}); ok {
 		if v, on := sr.StreamStatus(); on {
 			rep.Stream = &streamStatus{State: v.State.String(), Label: v.Label, Units: v.Units, Errors: v.Errors,
-				Lost: v.Lost, Lines: v.Lines, UnitsPerSecond: v.UnitsPerSecond, Err: v.Err, Record: v.RecordAvailable, TriggerLine: v.TriggerLine}
+				Lost: v.Lost, Lines: v.Lines, UnitsPerSecond: v.UnitsPerSecond, Err: v.Err, Note: v.Note, Record: v.RecordAvailable,
+				TriggerLine: v.TriggerLine}
 		}
 	}
 	if reporter, ok := s.panel.(interface{ PanelStatus() panel.Status }); ok {
@@ -172,6 +173,7 @@ type streamStatus struct {
 	Lines          int     `json:"lines"`
 	UnitsPerSecond float64 `json:"units_per_s"`
 	Err            string  `json:"err,omitempty"`
+	Note           string  `json:"note,omitempty"` // while starting: why it takes seconds
 	Record         bool    `json:"record"`
 	TriggerLine    int     `json:"trigger_line"`
 }

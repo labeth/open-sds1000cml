@@ -75,6 +75,38 @@ func screenDivs(f *engine.Frame, s *sv, ch, cols int) []float64 {
 	return out
 }
 
+// screenPoints is channel ch of f at the LCD's RefCols screen columns, in
+// divisions of the analog range about the centre, sampled as a reference
+// stores them (screenColumns: the record at each column's start, linear when
+// the frame interpolates): a reference stored from the capture on screen is
+// 0 apart from it, and the web page's difference readout, which samples the
+// live record at the reference's columns, reads what the LCD reads.
+// TRLC-LINKS: REQ-SDS-218, REQ-SDS-227
+func screenPoints(f *engine.Frame, s *sv, ch int) []float64 {
+	valid := framecalc.Valid(f)
+	if ch == 1 && len(f.C2) < valid {
+		return nil
+	}
+	g := geom{valid: valid, winCols: f.WinCols, edgeX: f.EdgeX, sampleS: f.SampleS}
+	left, win := windowOf(g, s)
+	sig := framecalc.Channel(f, ch, valid)
+	if s.cpl[ch] != analog.CplDC {
+		sig = analog.CoupleDisplay(sig, s.cpl[ch])
+	}
+	z := float64(max(analog.Detents[s.vidx[ch]].Zoom, 1))
+	out := make([]float64, RefCols)
+	for x := range out {
+		pos := min(max(left+float64(x)*float64(win)/RefCols, 0), float64(valid-1))
+		i := int(pos)
+		v := float64(sig[i])
+		if f.Interp && i+1 < valid {
+			v += (float64(sig[i+1]) - v) * (pos - float64(i))
+		}
+		out[x] = (v - 128) * z / 25
+	}
+	return out
+}
+
 // stabKey is what the repeat test depends on.
 // TRLC-LINKS: REQ-SDS-218
 func stabKey(s *sv) string {
@@ -150,7 +182,7 @@ func (c *Controller) refDiffFrame(a *anaState, s *sv, f *engine.Frame) {
 			if src == 1 {
 				codes = r.c2
 			}
-			live := screenDivs(f, s, src, RefCols)
+			live := screenPoints(f, s, src)
 			if len(codes) != RefCols || live == nil {
 				d.why = "no trace"
 				break

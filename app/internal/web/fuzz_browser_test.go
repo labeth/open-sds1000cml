@@ -13,6 +13,7 @@ import (
 
 	"open-sds/app/internal/analog"
 	"open-sds/app/internal/engine"
+	"open-sds/app/internal/panel"
 	"open-sds/app/internal/testenv"
 )
 
@@ -404,9 +405,26 @@ func (a *fuzzAnalog) Coupling(ch int) int {
 // fuzzPanel answers the one hard button the web UI itself presses — AUTO
 // (autoset). The synthetic "device autoset" restores a sane acquisition
 // (RUN + the home timebase), which is exactly the observable contract the
-// UI's convergence wait needs.
+// UI's convergence wait needs. It keeps REF A/B as the scope does (frames:
+// the scope's frames, z's when nil).
 // TRLC-LINKS: REQ-SDS-180
-type fuzzPanel struct{ z *fuzzScope }
+type fuzzPanel struct {
+	z      *fuzzScope
+	frames func(func(*engine.Frame))
+	refs   fakeRefStore
+}
+
+// TRLC-LINKS: REQ-SDS-227
+func (p *fuzzPanel) RefsExport() [2]panel.RefExport { return p.refs.export() }
+
+// TRLC-LINKS: REQ-SDS-227
+func (p *fuzzPanel) RefAction(slot int, op string) panel.SetResult {
+	fr := p.frames
+	if fr == nil {
+		fr = p.z.WithFrame
+	}
+	return p.refs.act(fr, slot, op)
+}
 
 // TRLC-LINKS: REQ-SDS-180
 func (p *fuzzPanel) InjectButton(name string) bool {

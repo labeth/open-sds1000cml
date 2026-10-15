@@ -135,6 +135,9 @@ type Status struct {
 	// that started it books them as its own)
 	AutosetDone    uint64
 	AutosetChanged []string `json:",omitempty"`
+	// what REF A and B hold: a page reads them again (GET /api/refs) when
+	// one changes
+	Refs [2]RefTag
 }
 
 // SetResult is the outcome of a remote set, action or typed entry. A
@@ -224,6 +227,7 @@ func (c *Controller) status(s *sv) Status {
 	c.mu.Lock()
 	st.AutosetDone, st.AutosetChanged = c.autosetDone, c.autosetChanged
 	c.mu.Unlock()
+	st.Refs = c.RefTags()
 	switch {
 	case u.open && u.sub == subMatch:
 		st.Mode = "editor"

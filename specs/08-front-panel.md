@@ -406,7 +406,14 @@ ARINC 429) record raw samples only, one SRAM of 2.1 ms: on them the timebase goe
 2.1ms", also when a trigger armed at a slower timebase brings the image in). BUS entry's detection sets the same trigger. AUTO in the other workspaces is the autoset framed
 for the workspace's job (REQ-SDS-224). Either sweep first puts the trigger back to an edge and waits for the
 general image: measured on the qualifier or a protocol image, or while the image went back, the vertical fit
-went wrong.
+went wrong. AUTO in BUS holds a loaded qualifier image instead (an edge triggers and captures there as on the
+general image, decimation too): a UART framed before keeps it through the fit and the detection and is framed
+on it again, about 5 s with no image load where the load to the general image and back took 12 s. The packet
+and line images record 2.1 ms raw, too little for the fit's slower steps, so a bus framed on one loads the
+general image for the fit and its own again (11 to 15 s on SENT, CAN and ARINC 429). A stream that needs
+another image (a UART's stream the general image's receiver, after AUTO left the qualifier image) starts
+with the note "loading the general FPGA image, about 4 s: the qualifier image has no UART receiver" on the
+LCD's stream line and the web page's.
 
 The autoset finds the signal on a fast-to-slow timebase sweep at 2 V/div, widens each channel's swing with
 one capture of a 10 ms window (levels that change slower than the frequency found: an ARINC 429 line's data
@@ -442,7 +449,10 @@ a stretch is at the ADC's rail).
 The notice says what AUTO did: "AUTO: 2 cycles, C1 500mV/div, C2 1V/div", "AUTO (MEASURE): 10 cycles, ...",
 "AUTO (SPECTRUM): 50 cycles, span 83.3MHz, marker 1MHz", "AUTO (COMPARE): REF A's setup, 1us/div, ...", with
 "coarser: it clipped" when the check stepped. The web page and the phone remote show the scope's notice
-when the sweep they started ends.
+when the sweep they started ends. AUTO pressed on the web page frames for the workspace the page shows, whichever
+the LCD shows (the page on BUS with the LCD on SCOPE gets BUS's AUTO; the LCD stays on SCOPE); the AUTO key and
+the phone's Auto tile frame for the LCD's workspace (REQ-SDS-226). The web eye's Optimize fits with SCOPE's AUTO
+from BUS too: it needs an edge trigger on the signal, not BUS's frame-start trigger.
 
 Entry behaviour: BUS with decode off runs Auto, with a notice (decoding stays on after leaving BUS).
 The search reads a decimated record first (a few thousand

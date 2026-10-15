@@ -8,6 +8,7 @@ import (
 
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/measure"
+	"open-sds/app/internal/panel/framecalc"
 )
 
 // SPECTRUM: the peak table finds the square wave's odd harmonics with THD,
@@ -212,5 +213,28 @@ func TestBodeCaptionNamesTheChannels(t *testing.T) {
 	r.eng.pts = []engine.BodePoint{{FreqHz: 1e3}, {FreqHz: 1e4}}
 	if v := c.View().Spec; !strings.Contains(v.Caption, "ref C2, DUT C1") {
 		t.Fatalf("2 points, ref C2 DUT C1: %q", v.Caption)
+	}
+}
+
+// The spectrogram's caption names its rows' resolution too: a row is a
+// 2048-point stretch of the record, coarser than the peak table's spectrum.
+// TRLC-LINKS: REQ-SDS-068, REQ-SDS-216
+func TestSpectrogramCaptionNamesTheRowRBW(t *testing.T) {
+	r := newViewRig(t)
+	c := r.c
+	press(t, c, "f3")
+	r.show(toneFrame(""))
+	c.amu.Lock()
+	sp := c.ana.spec
+	c.amu.Unlock()
+	if v := c.View().Spec; strings.Contains(v.Caption, "rows") {
+		t.Fatalf("the FFT view's caption names rows: %q", v.Caption)
+	}
+	c.mu.Lock()
+	c.viewMode = viewSpectrogram
+	c.mu.Unlock()
+	want := "RBW " + si(sp.BinHz, "Hz") + " (rows " + si(sp.BinHz*float64(sp.N/framecalc.RowFFT), "Hz") + ")"
+	if v := c.View().Spec; sp.N < 2*framecalc.RowFFT || !strings.Contains(v.Caption, want) {
+		t.Fatalf("spectrogram caption %q, want %q (N %d)", v.Caption, want, sp.N)
 	}
 }

@@ -267,3 +267,30 @@ func TestLevelsAreNotLearnedAcrossAFrontEndWrite(t *testing.T) {
 		t.Fatalf("the steady capture after it: %g..%g", lo, hi)
 	}
 }
+
+// AUTO in BUS holds a loaded qualifier image: an edge trigger stays on it
+// (no load to the general image and back), a serial trigger still wants the
+// general image's receivers, and once released an edge goes to the general
+// image again.
+// TRLC-LINKS: REQ-SDS-013, REQ-SDS-223
+func TestHeldQualifierImageKeepsAnEdge(t *testing.T) {
+	e, b, _ := qualEngine(t)
+	e.SetTrigType(int(TrigPulse))
+	e.SetPulseParams(.5, 2000, 3000, CondInside)
+	if !e.serviceImage() || b.image != "qualify" {
+		t.Fatalf("Pulse: image %s", b.image)
+	}
+	e.HoldQualifyImage(true)
+	e.SetTrigType(int(TrigEdge))
+	if e.serviceImage() || b.image != "qualify" {
+		t.Fatalf("a held qualifier image was replaced for an edge: %s", b.image)
+	}
+	e.HoldQualifyImage(false)
+	if !e.serviceImage() || b.image != "general" {
+		t.Fatalf("released: an edge is on the %s image", b.image)
+	}
+	e.HoldQualifyImage(true)
+	if e.serviceImage() || b.image != "general" {
+		t.Fatalf("a hold loaded the qualifier image for an edge: %s", b.image)
+	}
+}

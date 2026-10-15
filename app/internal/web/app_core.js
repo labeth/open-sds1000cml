@@ -520,7 +520,7 @@ async function pollStatus() {
   if (superseded) return; // taken over by another browser; stop loading the device
   clearTimeout(pollTimer);
   pollBusy = true; pollKick = false;
-  try { st = await (await fetch("/api/status")).json(); applyStatus(); sheetsFollow(); if (typeof decFollowScope === "function") decFollowScope(); if (typeof cmpRepeat === "function") cmpRepeat(); if (typeof srScopeLine === "function") srScopeLine(); }
+  try { st = await (await fetch("/api/status")).json(); applyStatus(); sheetsFollow(); if (typeof decFollowScope === "function") decFollowScope(); if (typeof cmpRepeat === "function") cmpRepeat(); if (typeof refsFollow === "function") refsFollow(); if (typeof srScopeLine === "function") srScopeLine(); }
   catch (e) { $("line").textContent = "no connection"; lastLineHTML = ""; } // reset the diff guard or a static status keeps "no connection" stuck
   pollBusy = false;
   // While a SINGLE is armed or the device is loading, poll fast so the self-stop
@@ -580,8 +580,11 @@ async function send(control, value) {
 // (AUTOSET_MS): AUTO in BUS on a packet-image bus loads two FPGA images and
 // runs 11 to 14 s (ARINC 429), close to the 15 s the page waited.
 const AUTOSET_WAIT_MS = 30000;
-// TRLC-LINKS: REQ-SDS-204
-async function autoset() {
+// autoset runs the scope's AUTO for the workspace this page shows, or for
+// workspace forWs ("scope": the eye's fit wants SCOPE's edge-triggered
+// framing, not BUS's frame-start trigger).
+// TRLC-LINKS: REQ-SDS-204, REQ-SDS-226
+async function autoset(forWs) {
   if (autosetBusy) return;
   autosetBusy = true;
   let finishAutoset, completed = false;
@@ -597,9 +600,11 @@ async function autoset() {
       doneBefore = p.AutosetDone || 0;
       noticeBefore = p.Notice || "";
     } catch (e) { return; }
-    // trigger the device autoset (the hard-button path — one implementation)
+    // trigger the device autoset (the hard-button path — one implementation),
+    // framed for the workspace this page shows, whichever the LCD shows
+    if (typeof forWs !== "string") forWs = typeof ws !== "undefined" ? ws.cur : "";
     try {
-      const response = await fetch("/api/panel", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ button: "auto" }) });
+      const response = await fetch("/api/panel", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ button: "auto", for: forWs }) });
       if (!response.ok || !(await response.json()).ok) return;
     }
     catch (e) { return; }
@@ -623,7 +628,7 @@ async function autoset() {
     // what the scope's AUTO did, as its notice says ("AUTO: 2 cycles, C1 500mV/div");
     // BUS says what it found itself
     const p = st.panel || {};
-    if (p.Notice && p.Notice !== noticeBefore && /^AUTO/.test(p.Notice) && p.Workspace !== "BUS") toast(p.Notice);
+    if (p.Notice && p.Notice !== noticeBefore && /^AUTO/.test(p.Notice) && forWs !== "bus") toast(p.Notice);
   } catch (e) {
     // A failed status request must not release queued acquisition commands.
     completed = false;

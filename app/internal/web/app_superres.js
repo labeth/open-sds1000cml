@@ -453,7 +453,7 @@ $("srArm").onclick = async () => {
 };
 
 // TRLC-LINKS: REQ-SDS-019
-$("srReset").onclick = () => { if (sr.fpgaAbort) sr.fpgaAbort.abort(); sr.fpga = null; if (sr.showing) srExitView(); srStop(); sr.st = null; sr.etsSt = null; sr.etsDetect = null; sr.meta = null; sr.savedWin = null; srStatus("idle"); };
+$("srReset").onclick = () => { if (sr.fpgaAbort) sr.fpgaAbort.abort(); sr.fpga = null; if (sr.showing) srExitView(); srStop(); sr.st = null; sr.etsSt = null; sr.etsDetect = null; sr.meta = null; sr.savedWin = null; srModel = null; redraw(); srStatus("idle"); };
 
 // AUTOGATE: always (re-)place the markers on the best feature in the current
 // view, then show them. GATE: show/hide toggle — auto-places only the first time;
@@ -672,14 +672,14 @@ $("srFit").onclick = () => {
   const ac = sr.st.c[sr.st.align];
   const fit = srModelFit(am, sr.st.K, sr.st.sampleS, { spectrum, detectPeaks }, 6);
   if (!fit) { srStatus("model fit needs a filled gate with several cycles — widen the gate and re-ARM"); return; }
-  refs.B = {
+  srModel = {
     c1: Array.from(fit.synth(Math.min(am.length, 16384))),
     c2: null, vpc1: ac.vpc, vpc2: 1 / 25, off1: ac.offV, off2: 0, show: true,
     // only overlay on a matching time base; a gated stack spans just the gate
     srSpanS: (sr.st.gated ? sr.st.gridL : sr.st.n) * sr.st.sampleS,
   };
-  updateRefRows(); redraw();
-  srStatus("model → REF B: " + fit.freqs.map(f => eng(f, "Hz", 3)).join(", "));
+  redraw();
+  srStatus("model overlay: " + fit.freqs.map(f => eng(f, "Hz", 3)).join(", "));
 };
 
 // ==== FPGA stacking (ADR-STACKING-IMAGE-SPLIT) ====

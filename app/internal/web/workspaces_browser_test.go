@@ -281,7 +281,7 @@ func (f *wsSetups) SetupSlots() []SetupSlot {
 func TestWorkspacesBrowser(t *testing.T) {
 	testenv.NeedNode(t)
 	sc := newWsScope(squareSig(64, false), 0)
-	srv := httptest.NewServer(New(sc, newFuzzAnalog(), &fuzzPanel{z: sc.fuzzScope}, nil).Handler())
+	srv := httptest.NewServer(New(sc, newFuzzAnalog(), &fuzzPanel{z: sc.fuzzScope, frames: sc.WithFrame}, nil).Handler())
 	defer srv.Close()
 	wsDriver(t, "workspaces_browser.mjs", srv.URL)
 }
@@ -354,7 +354,7 @@ func TestCompareBrowser(t *testing.T) {
 	testenv.NeedNode(t)
 	sc := newWsScope(squareSig(64, false), 0)
 	sc.block = true
-	srv := httptest.NewServer(New(sc, newFuzzAnalog(), &fuzzPanel{z: sc.fuzzScope}, nil).Handler())
+	srv := httptest.NewServer(New(sc, newFuzzAnalog(), &fuzzPanel{z: sc.fuzzScope, frames: sc.WithFrame}, nil).Handler())
 	defer srv.Close()
 	wsDriver(t, "compare_browser.mjs", srv.URL)
 	for _, c := range sc.Calls() {

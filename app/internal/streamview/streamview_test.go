@@ -24,10 +24,14 @@ type fakeSource struct {
 	late      []sramcapture.DecodedEvent
 	worker    *decodedlines.Transcript // set: line mode, the worker builds lines
 	frozen    bool
+	begin     chan struct{} // set: the start waits for it (an image load)
 }
 
 // TRLC-LINKS: REQ-SDS-018
 func (f *fakeSource) BeginDecodedStream(context.Context, engine.SerialParams, engine.StreamTrigger, int) (sramcapture.RecordIdentity, error) {
+	if f.begin != nil {
+		<-f.begin
+	}
 	return sramcapture.RecordIdentity{Epoch: 1, Record: 1}, nil
 }
 
@@ -156,6 +160,24 @@ func TestStreamManualStop(t *testing.T) {
 	if v := c.Snapshot(); v.State != Stopped || !f.adopt {
 		t.Fatalf("after stop: %+v adopt=%v", v, f.adopt)
 	}
+}
+
+// While a stream starts (an image load) the view says why; once it streams
+// the note goes.
+// TRLC-LINKS: REQ-SDS-018
+func TestStartingNoteSaysWhy(t *testing.T) {
+	f := &fakeSource{begin: make(chan struct{})}
+	c := New(f, t.Logf)
+	go c.StartNoted(engine.SerialParams{Proto: 1}, engine.StreamManual, 0, "UART", "loading the general FPGA image")
+	v := wait(t, c, Starting)
+	if v.Note != "loading the general FPGA image" {
+		t.Fatalf("starting: note %q", v.Note)
+	}
+	close(f.begin)
+	if v := wait(t, c, Streaming); v.Note != "" {
+		t.Fatalf("streaming: note %q", v.Note)
+	}
+	c.Stop()
 }
 
 // The history keeps the newest lines, and a window clamps to it.

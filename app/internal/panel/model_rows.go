@@ -989,15 +989,20 @@ func cmpRows() []*row {
 	store := func(i int) *row {
 		n := string(rune('A' + i))
 		return &row{id: "cmp.store_" + strings.ToLower(n), label: "Store Ref " + n, kind: wsview.Action,
-			help: "Store the screen as reference " + n + " and show it (COMPARE: the REF " + n + " row push).",
-			acts: func(*sv) []act {
-				return []act{{id: "store", t: "Store now", run: func(c *Controller) error { return c.storeRef(i) }}}
+			help: "Store the screen as reference " + n + " and show it (COMPARE: the REF " + n + " row push), or delete it.",
+			acts: func(s *sv) []act {
+				return []act{{id: "store", t: "Store now", run: func(c *Controller) error { return c.storeRef(i) }},
+					{id: "clear", t: "Clear", dim: !s.refHas[i], run: func(c *Controller) error { return c.clearRef(i) }}}
 			},
 			status: func(s *sv) string {
-				if s.refHas[i] {
-					return "holds C1 and C2"
+				if !s.refHas[i] {
+					return "empty"
 				}
-				return "empty"
+				what := "holds C1"
+				if s.refC2[i] {
+					what = "holds C1 and C2"
+				}
+				return what + " at " + si(s.refTdiv[i], "s") + "/div"
 			},
 		}
 	}

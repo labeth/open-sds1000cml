@@ -339,8 +339,7 @@ function drawRefTrace(g, cols, refVpc, refOff, curVpc, curOff, color, zoom, tm) 
 
 // TRLC-LINKS: REQ-SDS-203
 function drawRefs(g) {
-  for (const slot of ["A", "B"]) {
-    const r = refs[slot];
+  for (const [slot, r] of [["A", refs.A], ["B", refs.B], ["B", srModel]]) {
     if (!r || !r.show) continue;
     // A superres model fit spans the raw record it was fit on; drawing it
     // index-proportionally over a different time base would silently show a
@@ -359,38 +358,24 @@ function drawRefs(g) {
   }
 }
 
-// TRLC-LINKS: REQ-SDS-203
-function saveRef(slot) {
-  if (!frame) return;
-  // Cap stored refs (a superres stack reaches 1.3M points; drawRefTrace
-  // strokes per sample, so an uncapped ref would jank every redraw).
-  // TRLC-LINKS: REQ-SDS-203
-  const cap = arr => {
-    if (!arr) return null;
-    const stride = Math.ceil(arr.length / 65536);
-    if (stride <= 1) return Array.from(arr);
-    const out = [];
-    for (let i = 0; i < arr.length; i += stride) out.push(arr[i]);
-    return out;
-  };
-  const n = frame.c1 ? frame.c1.length : frame.c2 ? frame.c2.length : 0;
-  const stride = n > 65536 ? Math.ceil(n / 65536) : 1;
-  refs[slot] = {
-    c1: view.c1 ? cap(frame.c1) : null,
-    c2: view.c2 ? cap(frame.c2) : null,
-    vpc1: frame.vpc1 || 1 / 25, vpc2: frame.vpc2 || 1 / 25,
-    off1: frame.off1_v || 0, off2: frame.off2_v || 0,
-    show: true,
-    // Timing, so the difference readout compares by time from the trigger even
-    // when the live record has another length: seconds per stored point, the
-    // trigger's stored index, and the timebase the reference was taken at.
-    dt: n ? frameDtS(frame, n) * stride : 0,
-    edge: frame.edge_frac >= 0 ? frame.edge_frac * (n - 1) / stride : -1,
-    tdiv: frame.tdiv_s || 0,
-    vdiv1: st ? st.vdiv1 * probeOf(1) : 0, vdiv2: st ? st.vdiv2 * probeOf(2) : 0,
-    at: Date.now(), label: "",
-  };
-  updateRefRows(); redraw();
+// saveRef has the scope store its screen as reference slot ("A"/"B"): the
+// page shows the scope's references, so the LCD, the phone and this page
+// hold the same REF A and B.
+// TRLC-LINKS: REQ-SDS-203, REQ-SDS-227
+function saveRef(slot) { return refAct(slot, "store"); }
+
+// refAct stores, shows, hides or clears a reference on the scope and takes
+// both of the scope's slots from its answer.
+// TRLC-LINKS: REQ-SDS-227
+async function refAct(slot, op) {
+  let j = null;
+  try {
+    j = await (await fetch("/api/refs", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slot, op }) })).json();
+  } catch (e) { j = null; }
+  if (!j) { toast("REF " + slot + ": no answer from the scope", "warn"); return false; }
+  if (j.refs) { refsTaken++; takeScopeRefs(j.refs); } // newer than any read still on its way
+  if (!j.ok) toast("REF " + slot + ": " + (j.error || "the scope refused it"), "warn");
+  return !!j.ok;
 }
 
 // updateRefRows syncs COMPARE's REF A/B controls with the stored references.
@@ -404,17 +389,31 @@ function updateRefRows() {
     show.classList.toggle("on", !!(r && r.show));
     show.setAttribute("aria-pressed", r && r.show ? "true" : "false");
     const chans = r ? [r.c1 ? "C1" : "", r.c2 ? "C2" : ""].filter(Boolean).join("+") : "";
-    info.textContent = !r ? "empty" : (r.label ? r.label + " · " : "") + (chans || "no trace") +
-      (r.tdiv ? " · " + fmtTdiv(r.tdiv) + "/div" : "") + " · " + new Date(r.at || Date.now()).toLocaleTimeString();
+    // each channel's V/div at the tip as stored, with its probe when not 1x
+    // TRLC-LINKS: REQ-SDS-227
+    const scale = (ch) => {
+      const v = ch === 1 ? r.vdiv1 : r.vdiv2, p = (r.probe || [1, 1])[ch - 1] || 1;
+      return v > 0 && (ch === 1 ? r.c1 : r.c2) ? "C" + ch + " " + fmtVdiv(+v.toPrecision(3)) + (p !== 1 ? " ×" + p : "") : "";
+    };
+    const vdivs = r ? [scale(1), scale(2)].filter(Boolean).join(", ") : "";
+    const text = !r ? "empty" : (r.label ? r.label + " · " : "") + (chans || "no trace") +
+      (r.tdiv ? " · " + fmtTdiv(r.tdiv) + "/div" : "") + (vdivs ? " · " + vdivs : "") + " · " + new Date(r.at || Date.now()).toLocaleTimeString();
+    if (info.textContent !== text) info.textContent = text;
+    // the setup it was stored at, which AUTO in COMPARE puts the scope back on
+    const su = r && r.setup;
+    const tip = su ? "Stored at " + fmtTdiv(su.tdiv_s) + "/div, trigger C" + (su.trig_src + 1) + (su.rising ? " rising" : " falling") +
+      " at " + Math.round(su.pos_frac * 100) + " %, C1 " + fmtVdiv(+su.vdiv[0].toPrecision(3)) + ", C2 " + fmtVdiv(+su.vdiv[1].toPrecision(3)) +
+      " (AUTO in COMPARE restores it)" : "";
+    if (info.title !== tip) info.title = tip;
   }
   if (typeof wsDots === "function") wsDots();
   if (typeof cmpRender === "function" && typeof ws !== "undefined" && ws.cur === "compare") cmpRender();
 }
 for (const slot of ["A", "B"]) {
   // TRLC-LINKS: REQ-SDS-203
-  $("refShow" + slot).onclick = () => { const r = refs[slot]; if (!r) return; r.show = !r.show; updateRefRows(); redraw(); };
+  $("refShow" + slot).onclick = () => { const r = refs[slot]; if (r) refAct(slot, r.show ? "hide" : "show"); };
   // TRLC-LINKS: REQ-SDS-203
-  $("refClear" + slot).onclick = () => { refs[slot] = null; updateRefRows(); redraw(); };
+  $("refClear" + slot).onclick = () => { if (refs[slot]) refAct(slot, "clear"); };
 }
 
 // TRLC-LINKS: REQ-SDS-071

@@ -183,7 +183,7 @@ func TestCompareRefKeepsItsProbe(t *testing.T) {
 	r.show(toneFrame(""))
 	row := c.View().Cmp.Rows[cmpRefA]
 	maxV := func(extra string) string { f := strings.Fields(extra); return f[min(1, len(f)-1)] }
-	if !strings.HasPrefix(row.Info, "C1+C2 1V ") || !strings.HasSuffix(maxV(row.Extra), "mV") {
+	if !strings.HasPrefix(row.Info, "C1+C2 1V ") || maxV(row.Extra) != "0V" { // the same capture
 		t.Fatalf("same probe: %q / %q", row.Info, row.Extra)
 	}
 	if res := c.SheetSet("ch1.probe", 10, ""); !res.OK {
@@ -194,7 +194,7 @@ func TestCompareRefKeepsItsProbe(t *testing.T) {
 	if !strings.HasPrefix(row.Info, "C1+C2 1V ") {
 		t.Fatalf("REF A row after a x10 probe: %q, want its own 1V/div", row.Info)
 	}
-	if m := maxV(row.Extra); strings.HasSuffix(m, "mV") || !strings.HasSuffix(m, "V") {
+	if m := maxV(row.Extra); m == "0V" || strings.HasSuffix(m, "mV") || !strings.HasSuffix(m, "V") {
 		t.Fatalf("REF A against a live trace ten times its volts: %q", row.Extra)
 	}
 }
@@ -216,5 +216,25 @@ func TestCompareMaskRowNamesSkips(t *testing.T) {
 	r.eng.set(func(st *engine.Stats) { st.MaskSkip = 505 })
 	if row := c.View().Cmp.Rows[cmpMask]; !strings.Contains(row.Extra, "skip 505") || row.ExtraCol != wsview.Amber {
 		t.Fatalf("505 skipped: row %q (colour %v)", row.Extra, row.ExtraCol)
+	}
+}
+
+// A reference stored while the scope is stopped is compared with the capture
+// on screen at once (it has no next frame): stored from it, it reads 0 apart
+// (the live trace sampled at the columns the reference holds).
+// TRLC-LINKS: REQ-SDS-218, REQ-SDS-227
+func TestCompareRefStoredWhileStopped(t *testing.T) {
+	r := newViewRig(t)
+	c := r.c
+	press(t, c, "f5")
+	f := toneFrame("")
+	r.show(f)
+	if res := c.RefAction(0, "store"); !res.OK {
+		t.Fatalf("store REF A: %+v", res)
+	}
+	c.OnFrame(f) // the stopped scope renders the same capture again
+	row := c.View().Cmp.Rows[cmpRefA]
+	if row.Extra != "max|d| 0V  rms 0V  100.0% in 0.5div" {
+		t.Fatalf("REF A stored from the capture on screen: %q", row.Extra)
 	}
 }

@@ -176,10 +176,14 @@ let mathFn = "off";
 // as componentMemo.
 let mathMemo = { c1: null, c2: null, fn: null, sel: "", out: null };
 
-// Reference waveforms: saved snapshots (codes + their volts/code + offset)
-// overlaid for comparison. A ref stays at its ABSOLUTE voltage — it is
-// re-mapped to the current V/div/offset when drawn, not pinned to screen codes.
+// Reference waveforms: the scope's REF A and B (GET /api/refs), overlaid for
+// comparison; the page keeps no references of its own. A ref stays at its
+// ABSOLUTE voltage — it is re-mapped to the current V/div/offset when drawn,
+// not pinned to screen codes.
 const refs = { A: null, B: null };
+// srModel is the super-res model fit, overlaid in REF B's colour (a page
+// overlay of the stack, not a reference: Reset removes it).
+let srModel = null;
 const REFCOL = { A: css.getPropertyValue("--ref-a").trim() || "#b48ead", B: css.getPropertyValue("--ref-b").trim() || "#a3be8c" };
 
 
