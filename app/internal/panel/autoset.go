@@ -264,6 +264,9 @@ func (c *Controller) autosetSweep(stop chan struct{}, g autoGoal) (autoResult, b
 			return false
 		}
 	}
+	if !c.awaitDetection(stop) {
+		return res, false
+	}
 	// Snapshot the entry scale so a no-signal sweep can restore it instead of
 	// abandoning the user on the coarse sweep state.
 	entry := c.eng.Snapshot()
@@ -329,6 +332,8 @@ func (c *Controller) autosetSweep(stop chan struct{}, g autoGoal) (autoResult, b
 	var found *measure.Result
 	var foundCh int
 	var swing [2]*measure.Result // each channel's widest swing seen in the sweep
+	var timed [2]bool            // a capture showed the channel's frequency
+	foundTd := 0.0               // the sweep step the signal was found at
 	for _, td := range sweep {
 		if cancelled() {
 			return res, false
@@ -341,6 +346,7 @@ func (c *Controller) autosetSweep(stop chan struct{}, g autoGoal) (autoResult, b
 		// every step's capture counts towards the swing: a pulse slower than
 		// the screen shows one level in one capture and the other in the next
 		for ch := range m {
+			timed[ch] = timed[ch] || has(m[ch]) && m[ch].Freq > 0
 			m[ch] = widestSwing(m[ch], swing[ch])
 			swing[ch] = m[ch]
 		}
@@ -362,13 +368,32 @@ func (c *Controller) autosetSweep(stop chan struct{}, g autoGoal) (autoResult, b
 					foundCh = 1
 				}
 			}
-			found = m[foundCh]
+			found, foundTd = m[foundCh], td
 			break
 		}
 	}
 	if found == nil || found.Freq <= 0 {
 		noSignal() // restore the user's scale + tell them nothing was found
 		return res, false
+	}
+
+	// 1b. One capture of a long window widens each channel's swing: levels that
+	//     change slower than the frequency found never showed in the sweep's
+	//     fast captures (an ARINC 429 line without the bandwidth limit, found
+	//     on its 50 MHz NULL toggle at 1us/div, read +-0.38 V there, fitted
+	//     200mV/div, and its 3.3 V data level ran off the screen).
+	if foundTd < swingTdiv {
+		ss := c.setTdivNearest(swingTdiv)
+		if !c.waitBandFrame(stop, ss) {
+			return res, false
+		}
+		ms, _ := c.measureChans()
+		for ch := range ms {
+			if has(ms[ch]) {
+				timed[ch] = timed[ch] || ms[ch].Freq > 0
+				swing[ch] = widestSwing(swing[ch], ms[ch])
+			}
+		}
 	}
 
 	// 2. Fit the VERTICAL from a window holding MANY cycles: a short capture of an
@@ -381,11 +406,25 @@ func (c *Controller) autosetSweep(stop chan struct{}, g autoGoal) (autoResult, b
 	}
 	m, _ := c.measureChans()
 	for ch := range m {
+		timed[ch] = timed[ch] || has(m[ch]) && m[ch].Freq > 0
 		// A bursty bus (FlexRay: two frames each 240 us, idle high between)
 		// can leave this capture without its burst: a flat line read as a few
 		// tens of mV fitted 100 mV/div and pushed the trace off the screen.
 		m[ch] = widestSwing(m[ch], swing[ch])
 		swing[ch] = m[ch]
+	}
+	// A channel that showed no frequency and no more swing than noise is a
+	// quiet line, or a pulse slower than every capture so far (a 10 Hz pulse
+	// beside a 1 kHz square, seen at one level): fitted, its level went off
+	// the screen when the other came. It keeps the sweep's 2 V/div at 0 V,
+	// where either level of a logic line shows, and is fitted no further.
+	if c.fe != nil {
+		for ch := 0; ch < 2; ch++ {
+			if has(m[ch]) && !timed[ch] && swing[ch].Vpp < refineMinVpp {
+				c.fe.SetOffset(ch, 0)
+				m[ch], swing[ch] = nil, nil
+			}
+		}
 	}
 	if !has(m[0]) && !has(m[1]) {
 		noSignal()
@@ -415,31 +454,7 @@ func (c *Controller) autosetSweep(stop chan struct{}, g autoGoal) (autoResult, b
 	//     capture holds the swing (a bursty or fast bus's may not), and take
 	//     a finer detent that fits.
 	if c.fe != nil {
-		// the smaller of two captures' readings: one read a 3.4 V square 3.8 V
-		mf, _ := c.measureChans()
-		if !c.waitFrame(stop) {
-			return res, false
-		}
-		m2, _ := c.measureChans()
-		for ch := range mf {
-			if has(m2[ch]) && (!has(mf[ch]) || m2[ch].Vpp < mf[ch].Vpp) {
-				mf[ch] = m2[ch]
-			}
-		}
-		moved := false
-		for ch := 0; ch < 2; ch++ {
-			if !has(m[ch]) || !has(mf[ch]) || swing[ch].Vpp < refineMinVpp || mf[ch].Vpp < refineShare*swing[ch].Vpp || c.clipped(ch) {
-				continue
-			}
-			p := c.fe.ProbeFactor(ch)
-			snap, _ := c.fe.Snapshot()
-			if d := detentFor(mf[ch].Vpp/p, g.fill); d < snap[ch] {
-				c.setVdiv(ch, d)
-				c.fe.SetOffset(ch, -(mf[ch].Vmax+mf[ch].Vmin)/2/p)
-				moved = true
-			}
-		}
-		if moved && !c.waitFrame(stop) {
+		if _, ok := c.refineVertical(stop, m, swing, g); !ok {
 			return res, false
 		}
 	}
@@ -534,6 +549,21 @@ func (c *Controller) autosetSweep(stop chan struct{}, g autoGoal) (autoResult, b
 		if !c.waitBandFrame(stop, ss) {
 			return res, false
 		}
+		// 5a. Refine on the screen AUTO leaves: the fit's capture, filtered at
+		//     a slower timebase, read a 1 MHz square's ringing (3.8 V of a
+		//     3.4 V swing) and fitted 1 V/div when the sweep timed the screen
+		//     by the slower signal on the other channel.
+		if c.fe != nil {
+			moved, ok := c.refineVertical(stop, m, swing, g)
+			if !ok {
+				return res, false
+			}
+			for ch := 0; ch < 2 && moved; ch++ {
+				if has(m[ch]) && c.nudgeCentre(ch, swing[ch], g) && !c.waitFrame(stop) {
+					return res, false
+				}
+			}
+		}
 	}
 
 	// 6. The clipping check on the screen AUTO leaves, over a few captures: a
@@ -553,8 +583,18 @@ func (c *Controller) autosetSweep(stop chan struct{}, g autoGoal) (autoResult, b
 					continue // (a railed trace measures no swing now: the sweep's says it had one)
 				}
 				// a trace pinned at the ADC's rail says nothing of how far past it
-				// the signal goes: it steps on past the two
-				for ; steps[ch] < len(analog.Detents) && c.clipped(ch) && (steps[ch] < autoClipSteps || c.railing(ch)); steps[ch]++ {
+				// the signal goes, and one whose own span is more than the screen
+				// cannot fit (an ARINC 429 line left at 200mV/div spanning 9.8
+				// div): those step on past the two
+				for ; steps[ch] < len(analog.Detents) && c.clipped(ch) && (steps[ch] < autoClipSteps || c.railing(ch) || c.overScreen(ch)); steps[ch]++ {
+					fixed, ok := c.recentreClipped(stop, ch, g)
+					if !ok {
+						return res, false
+					}
+					if fixed {
+						again = true
+						break
+					}
 					stepped, ok := c.coarsen(stop, ch, &swing, g)
 					if !ok {
 						return res, false
@@ -578,6 +618,31 @@ func (c *Controller) autosetSweep(stop chan struct{}, g autoGoal) (autoResult, b
 	return res, true
 }
 
+// detectionWait bounds how long AUTO waits for a bus detection under way.
+const detectionWait = 30 * time.Second
+
+// awaitDetection waits (bounded) for a bus detection under way to end before
+// the sweep: pressed during BUS entry's detection, both set the timebase and
+// the vertical each for itself (the detection's search at the full rate), and
+// the one ending last left its own. It returns false when cancelled.
+// TRLC-LINKS: REQ-SDS-137, REQ-SDS-223
+func (c *Controller) awaitDetection(stop chan struct{}) bool {
+	for end := time.Now().Add(detectionWait); time.Now().Before(end); {
+		c.mu.Lock()
+		busy := c.ui.busDetecting
+		c.mu.Unlock()
+		if !busy {
+			return true
+		}
+		select {
+		case <-stop:
+			return false
+		case <-time.After(50 * time.Millisecond):
+		}
+	}
+	return true
+}
+
 // freqOn steps the timebase a decade slower at a time, within the sampled
 // bands, until channel ch, showing a signal without a frequency, shows its
 // frequency. It returns false when cancelled.
@@ -597,6 +662,10 @@ func (c *Controller) freqOn(stop chan struct{}, ch int) bool {
 	return true
 }
 
+// swingTdiv is the timebase of the long window that widens the sweep's swing
+// (10 ms of the signal, decimated).
+const swingTdiv = 1e-3
+
 // autoClipSteps bounds the clipping check on the final screen, but for a
 // trace at the ADC's rail; it looks at autoClipLooks captures, as a bus's
 // level can show in one capture and not the next.
@@ -615,6 +684,49 @@ const (
 	refineShare  = 0.9
 )
 
+// refineVertical reads the swing again at the V/div in use, on two captures
+// (the smaller reading: one read a 3.4 V square 3.8 V), and takes a finer
+// detent that fits g, re-centred, for each channel whose capture holds the
+// swing seen: refineShare of its extremes or of its step (an edge's ringing
+// on the sweep's capture widened the extremes, not the step). It reports
+// whether a channel moved; ok false when cancelled.
+// TRLC-LINKS: REQ-SDS-137, REQ-SDS-224
+func (c *Controller) refineVertical(stop chan struct{}, m, swing [2]*measure.Result, g autoGoal) (moved, ok bool) {
+	mf, _ := c.measureChans()
+	if !c.waitFrame(stop) {
+		return false, false
+	}
+	m2, _ := c.measureChans()
+	for ch := range mf {
+		if has(m2[ch]) && (!has(mf[ch]) || m2[ch].Vpp < mf[ch].Vpp) {
+			mf[ch] = m2[ch]
+		}
+	}
+	step := func(r *measure.Result) float64 { return r.Vtop - r.Vbase }
+	for ch := 0; ch < 2; ch++ {
+		if !has(m[ch]) || !has(mf[ch]) || !has(swing[ch]) || swing[ch].Vpp < refineMinVpp || c.clipped(ch) ||
+			mf[ch].Vpp < refineShare*swing[ch].Vpp && !(step(mf[ch]) >= refineShare*step(swing[ch]) && step(swing[ch]) > 0) {
+			continue
+		}
+		p := c.fe.ProbeFactor(ch)
+		snap, _ := c.fe.Snapshot()
+		if d := detentFor(refineMargin*mf[ch].Vpp/p, g.fill); d < snap[ch] {
+			c.setVdiv(ch, d)
+			c.fe.SetOffset(ch, -(mf[ch].Vmax+mf[ch].Vmin)/2/p)
+			moved = true
+		}
+	}
+	if moved && !c.waitFrame(stop) {
+		return moved, false
+	}
+	return moved, true
+}
+
+// refineMargin is how much room a finer detent must leave: a swing at the
+// edge of g's fill (the bench's 100 kHz square, 3.55 V with its overshoot,
+// against 3.6 V at 500mV/div) read one capture finer and the next not.
+const refineMargin = 1.03
+
 // nudgeCentre moves a channel's offset so the swing it shows sits at the
 // screen's centre, read off the raw codes (centreErrOver), when it is off by
 // more than g's fill leaves room for.
@@ -629,6 +741,35 @@ func (c *Controller) nudgeCentre(ch int, swing *measure.Result, g autoGoal) bool
 	vdiv := analog.AnalogVdiv(snap[ch]) // raw-code divisions are on the analog range
 	c.fe.SetOffset(ch, c.fe.OffsetReqV(ch)-errDiv*vdiv)
 	return true
+}
+
+// overScreen reports a channel whose trace spans more than the screen's
+// eight divisions (1 % trimmed each end): no offset fits it.
+// TRLC-LINKS: REQ-SDS-225
+func (c *Controller) overScreen(ch int) bool {
+	_, span := c.rawCentre(ch)
+	return span > 8*25
+}
+
+// recentreClipped centres a clipped trace whose own span fits g's fill: it
+// runs past the screen's edge off centre, and centred it fits (an ARINC 429
+// line without the bandwidth limit, its NULL a 50 MHz toggle, was left 2 div
+// high at 500mV/div after two coarser steps). A trace at the ADC's rail shows
+// part of its span: centring that brings the rest in sight, or the step
+// coarser that follows does. fixed reports it no longer clips; ok false when
+// cancelled.
+// TRLC-LINKS: REQ-SDS-137, REQ-SDS-225
+func (c *Controller) recentreClipped(stop chan struct{}, ch int, g autoGoal) (fixed, ok bool) {
+	errDiv, span := c.rawCentre(ch)
+	if span <= 0 || float64(span) > g.fill*25 || math.Abs(errDiv) < 0.2 {
+		return false, true
+	}
+	snap, _ := c.fe.Snapshot()
+	c.fe.SetOffset(ch, c.fe.OffsetReqV(ch)-errDiv*analog.AnalogVdiv(snap[ch]))
+	if !c.waitFrame(stop) {
+		return false, false
+	}
+	return !c.clipped(ch), true
 }
 
 // coarsen steps a channel one detent coarser and re-centres it there on the
@@ -1159,9 +1300,9 @@ func has(r *measure.Result) bool { return r != nil && r.Vpp > 0.02 }
 
 // widestSwing is r with its extremes widened to those of seen, an earlier
 // capture of the same channel in volts (tip-referred, so a V/div change since
-// does not matter): the vertical fit and the trigger midpoint then hold the
-// signal's whole swing although the latest capture missed a burst. Timing
-// stays r's.
+// does not matter), and its step (top to base) the wider of the two: the
+// vertical fit and the trigger midpoint then hold the signal's whole swing
+// although the latest capture missed a burst. Timing stays r's.
 // TRLC-LINKS: REQ-SDS-137
 func widestSwing(r, seen *measure.Result) *measure.Result {
 	if !has(seen) {
@@ -1171,12 +1312,12 @@ func widestSwing(r, seen *measure.Result) *measure.Result {
 		w := *seen
 		return &w
 	}
-	if seen.Vmax <= r.Vmax && seen.Vmin >= r.Vmin {
-		return r
-	}
 	w := *r
 	w.Vmax, w.Vmin = math.Max(r.Vmax, seen.Vmax), math.Min(r.Vmin, seen.Vmin)
 	w.Vpp = w.Vmax - w.Vmin
+	if seen.Vtop-seen.Vbase > r.Vtop-r.Vbase {
+		w.Vtop, w.Vbase = seen.Vtop, seen.Vbase
+	}
 	return &w
 }
 

@@ -188,7 +188,9 @@ automatically.
 * **AUTO in BUS** scans for the bus anew and frames it for reading: the vertical fitted with the
   threshold midway, the hardware trigger on the start of each frame (I2C's START, SPI's first word after
   its idle, CAN's SOF, a MIL-1553 command word, the first UART character after an idle gap, ...), the
-  trigger near the left and whole messages on screen with every bit resolved.
+  trigger near the left and whole messages on screen with every bit resolved. The trigger point sits on
+  the frame's own SYNC or SOF. The protocol images for Manchester, USB, SENT, CAN, FlexRay, MIL-1553 and
+  ARINC 429 record 2.1 ms at the full rate, so their triggers run at 200 us/div or faster.
 * **Continuous decoding:** a live decoded stream, with the full-rate record kept for every frame.
   UART at **921,600 baud ran lossless for 3 minutes** (16.6 M bytes). At higher rates a lost event
   is marked, never silently dropped.

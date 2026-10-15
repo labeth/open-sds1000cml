@@ -223,6 +223,10 @@ type Stats struct {
 	// A web page's decoded capture holds the acquisition (decoded_capture.go).
 	DecodedWeb bool `json:"decoded_web,omitempty"`
 
+	// TdivMaxS is the slowest timebase the loaded image shows whole (0: any):
+	// the packet and line images record raw samples only, 2.1 ms.
+	TdivMaxS float64 `json:"tdiv_max_s,omitempty"`
+
 	// Zone trigger + mask testing (docs/zonemask-plan.md)
 	ZoneMode    int   `json:"zone_mode,omitempty"`  // 0 off, 1 trigger
 	ZoneCount   int   `json:"zone_count,omitempty"` // installed zones

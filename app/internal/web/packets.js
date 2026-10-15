@@ -154,25 +154,38 @@ function pkString(p) { return p.bytes.map((b) => (b >= 0x20 && b < 0x7f ? String
 function pkKey(p) { return (p.hasAddr ? p.addr + (p.read ? "R" : "W") + ":" : "") + pkHex(p) + (p.err ? "|" + p.err : ""); }
 
 // pkMatch reports whether a packet holds the pattern (serial-trigger tokens:
-// hex units, "??" any unit, "A?" a nibble wildcard, "ERR" an errored unit).
+// hex units, "??" any unit, "A?" a nibble wildcard, "ERR" an errored unit;
+// "SOF" the packet's start, the units after it opening the packet; "CMD" a
+// MIL-1553 message's command word, its first two bytes) - as the scope's
+// tokMatch.
 // TRLC-LINKS: REQ-SDS-214
 function pkMatch(p, tokens) {
+  if (tokens && tokens.length && /^(sof|cmd)$/i.test(tokens[0])) {
+    const skip = /^cmd$/i.test(tokens[0]) ? 2 : 0;
+    if (skip && (!p.hasAddr || p.bytes.length < 2)) return false;
+    if (tokens.length === 1) return p.bytes.length > 0;
+    const q = { bytes: p.bytes.slice(skip), byteErr: p.byteErr.slice(skip) };
+    return tokens.length - 1 <= q.bytes.length && pkMatchAt(q, tokens.slice(1), 0);
+  }
   if (!tokens || !tokens.length || tokens.length > p.bytes.length) return false;
+  for (let i = 0; i + tokens.length <= p.bytes.length; i++) if (pkMatchAt(p, tokens, i)) return true;
+  return false;
+}
+
+// pkMatchAt reports whether the tokens hold at byte i of a packet.
+// TRLC-LINKS: REQ-SDS-214
+function pkMatchAt(p, tokens, i) {
   // TRLC-LINKS: REQ-SDS-214
-  const one = (tok, i) => {
-    if (/^err(or)?$/i.test(tok)) return !!p.byteErr[i];
-    if (p.byteErr[i]) return false;
-    const h = p.bytes[i].toString(16).toUpperCase().padStart(tok.length, "0");
+  const one = (tok, k) => {
+    if (/^err(or)?$/i.test(tok)) return !!p.byteErr[k];
+    if (p.byteErr[k]) return false;
+    const h = p.bytes[k].toString(16).toUpperCase().padStart(tok.length, "0");
     if (h.length !== tok.length) return false;
-    for (let k = 0; k < tok.length; k++) if (tok[k] !== "?" && tok[k].toUpperCase() !== h[k]) return false;
+    for (let d = 0; d < tok.length; d++) if (tok[d] !== "?" && tok[d].toUpperCase() !== h[d]) return false;
     return true;
   };
-  for (let i = 0; i + tokens.length <= p.bytes.length; i++) {
-    let all = true;
-    for (let j = 0; j < tokens.length && all; j++) all = one(tokens[j], i + j);
-    if (all) return true;
-  }
-  return false;
+  for (let j = 0; j < tokens.length; j++) if (!one(tokens[j], i + j)) return false;
+  return true;
 }
 
 // PacketList keeps the rows of the packet table. Only complete packets are

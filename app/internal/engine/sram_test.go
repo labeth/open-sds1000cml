@@ -257,3 +257,33 @@ func TestSingleUsesThePreviewPlanInFilteredModes(t *testing.T) {
 		}
 	}
 }
+
+// The packet and line images record raw samples only, one SRAM (2.1 ms): a
+// slower timebase drew that record across a screen it called 500us/div. On
+// such an image the timebase steps to the slowest whose screen the record
+// holds, 200us/div, and says so; the general image keeps the one asked for.
+// TRLC-LINKS: REQ-SDS-010
+func TestRawImageTimebaseFitsItsRecord(t *testing.T) {
+	if got := rawScreenTdiv(); got != 200e-6 {
+		t.Fatalf("raw record screen %g, want 200us/div", got)
+	}
+	for _, raw := range []bool{false, true} {
+		e := &Engine{rawOnly: raw, band: Band{TdivS: 1e-3}}
+		e.trigPosFrac.Store(math.Float64bits(.5))
+		_, p, tdiv, _, _ := e.sramConfig()
+		set := e.band.TdivS
+		if e.pendSet {
+			set = e.pendBand.TdivS // what the next capture takes (Stats.TdivSet)
+		}
+		want, max := 1e-3, 0.0
+		if raw {
+			want, max = 200e-6, 200e-6
+		}
+		if tdiv != want || set != want || e.stats.TdivMaxS != max {
+			t.Fatalf("raw %v: timebase %g (set %g, most %g), want %g", raw, tdiv, set, e.stats.TdivMaxS, want)
+		}
+		if raw && float64(p.Samples)*p.SampleS < 10*tdiv*0.999 {
+			t.Fatalf("the raw record %g s does not hold the screen %g s", float64(p.Samples)*p.SampleS, 10*tdiv)
+		}
+	}
+}

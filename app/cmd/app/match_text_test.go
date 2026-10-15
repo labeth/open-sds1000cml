@@ -17,4 +17,13 @@ func TestMatchText(t *testing.T) {
 	if got := matchText(p); got != "A? ERR 55" {
 		t.Fatalf("pattern: %q", got)
 	}
+	// the frame-start triggers AUTO in BUS arms read "SER ?? ??" and "SER ?????"
+	sof := engine.SerialParams{Pattern: []engine.PatternElem{{Kind: 1}, {Kind: 2}}}
+	if got := matchText(sof); got != "SOF ??" {
+		t.Fatalf("frame start: %q", got)
+	}
+	cmd := engine.SerialParams{Pattern: []engine.PatternElem{{Kind: 2, Value: engine.MILCommand, Mask: engine.MILCommand}}}
+	if got := matchText(cmd); got != "CMD" {
+		t.Fatalf("MIL-1553 command word: %q", got)
+	}
 }

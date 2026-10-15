@@ -210,3 +210,31 @@ func TestBusListNamesAddressAndFault(t *testing.T) {
 		t.Fatalf("a NAKed write: %+v", ln)
 	}
 }
+
+// The frame-start matches AUTO in BUS arms count every packet they fire on:
+// SOF ?? any packet with a unit, CMD a MIL-1553 message opened by its command
+// word. The header read "TRIG ON SOF ??: 0 packets" on a bus triggering on
+// every frame.
+// TRLC-LINKS: REQ-SDS-214
+func TestTokMatchFrameStart(t *testing.T) {
+	man := Packet{Bytes: []byte{0x12, 0x34, 0x56, 0x78}}
+	for _, c := range []struct {
+		toks []string
+		p    Packet
+		want bool
+	}{
+		{[]string{"SOF", "??"}, man, true},
+		{[]string{"SOF", "12"}, man, true},
+		{[]string{"SOF", "34"}, man, false}, // 34 does not open the frame
+		{[]string{"34", "56"}, man, true},
+		{[]string{"SOF", "??"}, Packet{}, false},
+		{[]string{"CMD"}, Packet{Bytes: []byte{0xA5, 0x5A, 0x5A, 0xA5}, HasAddr: true}, true},
+		{[]string{"CMD"}, Packet{Bytes: []byte{0x5A, 0xA5}}, false}, // data words only: cut
+		{[]string{"CMD", "5A", "A5"}, Packet{Bytes: []byte{0xA5, 0x5A, 0x5A, 0xA5}, HasAddr: true}, true},
+		{[]string{"CMD", "ERR"}, Packet{Bytes: []byte{0xA5, 0x5A, 0, 0}, ByteErr: []bool{false, false, true, true}, HasAddr: true}, true},
+	} {
+		if got := tokMatch(c.toks, c.p); got != c.want {
+			t.Errorf("%v on % X: %v, want %v", c.toks, c.p.Bytes, got, c.want)
+		}
+	}
+}

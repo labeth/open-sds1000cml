@@ -80,7 +80,8 @@ func (w webSetups) SetupSlots() []web.SetupSlot {
 }
 
 // matchText is a serial trigger's match as the BUS table writes its units:
-// hex, "?" for a masked nibble, ERR for an error.
+// hex, "?" for a masked nibble, ERR for an error, SOF for a frame's start
+// and CMD for a MIL-1553 command word.
 // TRLC-LINKS: REQ-SDS-168
 func matchText(p engine.SerialParams) string {
 	var toks []string
@@ -91,8 +92,15 @@ func matchText(p engine.SerialParams) string {
 		return strings.Join(toks, " ")
 	}
 	for _, u := range p.Pattern {
-		if u.Kind == 4 {
+		switch {
+		case u.Kind == 4:
 			toks = append(toks, "ERR")
+			continue
+		case u.Kind == 1: // a frame's start
+			toks = append(toks, "SOF")
+			continue
+		case u.Mask&engine.MILCommand != 0 && u.Value&engine.MILCommand != 0:
+			toks = append(toks, "CMD")
 			continue
 		}
 		h := []byte(fmt.Sprintf("%02X", u.Value))

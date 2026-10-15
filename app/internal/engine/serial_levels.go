@@ -423,6 +423,31 @@ func (e *Engine) serialMatchStart(f *Frame, hw float64) float64 {
 	return float64(lo + start)
 }
 
+// frameStartLeadUnits is the record a frame-start match keeps before the
+// FPGA's trigger until one has been placed (and how far it moved is known):
+// the frame's opening and the units the image fires after it - a SENT
+// frame's SYNC and first nibble (the raw record at 200us/div held 0.2 ms
+// before the trigger, the SYNC began right at its start, and no frame start
+// was found); the line image fires on a Manchester frame's fourth word.
+const frameStartLeadUnits = 4
+
+// frameStartLeadS is frameStartLeadUnits units in seconds when the armed
+// match is a frame start (a frame's start, then any unit), else 0.
+// TRLC-LINKS: REQ-SDS-013, REQ-SDS-223
+func (e *Engine) frameStartLeadS(sampleS float64) float64 {
+	e.ser.mu.Lock()
+	p := e.ser.params
+	e.ser.mu.Unlock()
+	if planned, why := e.serialPlanParams(p); why == "" {
+		p = planned
+	}
+	pat := patternOf(p)
+	if len(pat) != 2 || pat[0].Kind != patternStart || pat[1].Kind != patternData || pat[1].Mask != 0 || !(sampleS > 0) {
+		return 0
+	}
+	return float64(frameStartLeadUnits*serialUnitSamples(p, sampleS, math.Float64frombits(e.serLv.spiHz.Load()))) * sampleS
+}
+
 // frameUnitsBefore and frameUnitsAfter bound the record a frame-start match
 // is placed on, in units around the FPGA's trigger: the frame's opening (a
 // CAN identifier and control field, two units and a half) before it, the
@@ -471,11 +496,21 @@ func frameOpening(spans []decode.Span, at int) int {
 	}
 	// the frame opens before its first unit: its SYNC, SOF or START when the
 	// decoder marks one there, past the frame's own fields (a CAN identifier)
+	// and its units before the one the FPGA fired on - the line and packet
+	// images fire a few units into the frame (a Manchester or USB frame's
+	// fourth), as they match buffered units. Units back to back belong to
+	// one frame; a unit with no opening marked before it opens itself.
+	prev := spans[best]
 	for k := best - 1; k >= 0; k-- {
 		switch sp := spans[k]; sp.Kind {
 		case "start", "sof", "sync":
 			return sp.I0
-		case "data", "gap", "stop", "frame-error", "parity-error", "crc":
+		case "data":
+			if prev.I0-sp.I1 > max(1, prev.I1-prev.I0) {
+				return spans[best].I0
+			}
+			prev = sp
+		case "gap", "stop", "frame-error", "parity-error", "crc":
 			return spans[best].I0
 		}
 	}

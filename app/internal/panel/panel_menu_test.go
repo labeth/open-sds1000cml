@@ -3,6 +3,7 @@ package panel
 
 import (
 	"math"
+	"strings"
 	"testing"
 
 	"open-sds/app/internal/engine"
@@ -268,5 +269,26 @@ func TestCursorAdjustAccelerates(t *testing.T) {
 	c.dispatch("adjust", 1, 10)
 	if got := c.curX[0]; got < before+0.099 || got > before+0.101 {
 		t.Fatalf("10-step Adjust moved cursor A %v -> %v, want +0.10", before, got)
+	}
+}
+
+// On an image that records 2.1 ms (a CAN, SENT or Manchester trigger's), the
+// timebase goes no slower than the screen that record fills: the row and the
+// S/DIV knob stop at 200us/div and say why.
+// TRLC-LINKS: REQ-SDS-212
+func TestTimebaseStopsAtTheImagesRecord(t *testing.T) {
+	c, e, _ := newC(t)
+	e.set(func(st *engine.Stats) { st.TdivS, st.TdivMaxS, st.RecordS = 200e-6, 200e-6, 2.097152e-3 })
+	set(t, c, "time.tdiv", "1ms")
+	if got := e.Snapshot().TdivS; got != 200e-6 {
+		t.Fatalf("timebase %g, want 200us/div", got)
+	}
+	if n := c.View().Notice; !strings.Contains(n, "200us/div at most") {
+		t.Fatalf("notice %q", n)
+	}
+	e.set(func(st *engine.Stats) { st.TdivMaxS = 0 })
+	set(t, c, "time.tdiv", "1ms")
+	if got := e.Snapshot().TdivS; got != 1e-3 {
+		t.Fatalf("on the general image: %g, want 1ms/div", got)
 	}
 }

@@ -256,3 +256,25 @@ func TestAutodetectSPIPhaseFromLaunchEdges(t *testing.T) {
 		t.Fatalf("%s %s %+v %q, want SPI mode 3: 8C 28 23 B0 ...", r.Proto, r.Src, r.Roles, r.Text)
 	}
 }
+
+// ARINC 429 words read at a rate no ARINC 429 bus runs are another bus's
+// pulses: a MIL-1553 bus searched at 500us/div was filled in as "ARINC
+// 35.9kb/s". The same words at 100 kbit/s or 12.5 kbit/s are ARINC 429.
+// TRLC-LINKS: REQ-SDS-018
+func TestAutodetectARINCOnlyAtItsRates(t *testing.T) {
+	words := func(baud int) Result {
+		r := Result{OK: true, Proto: "arinc429", Baud: baud}
+		for i := 0; i < 4; i++ {
+			r.Spans = append(r.Spans, Span{I0: i * 40, I1: i*40 + 8, Kind: "addr"}, Span{I0: i*40 + 8, I1: i*40 + 32, Kind: "data"})
+		}
+		return r
+	}
+	if s := scoreResult(words(35900)); s > 0 {
+		t.Fatalf("ARINC 429 at 35.9 kbit/s scores %.0f", s)
+	}
+	for _, b := range []int{100000, 12500, 14500} {
+		if s := scoreResult(words(b)); s <= 0 {
+			t.Fatalf("ARINC 429 at %d bit/s scores %.0f", b, s)
+		}
+	}
+}

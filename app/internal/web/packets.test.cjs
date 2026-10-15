@@ -154,5 +154,14 @@ function uartRecord(msgs, spb, gap, lead, tail) {
   const arinc = P.decodePackets({ ok: true, proto: "arinc429", spans: [...ar(100, 0o310, 0xABCD), ...ar(136, 0o205, 0x12345)] }, 400);
   assert.deepEqual(arinc.map(P.pkHex), ["00 AB CD", "01 23 45"], "ARINC words");
   assert.deepEqual(arinc.map((q) => P.pkAddrText("arinc429", q)), ["310", "205"]);
+  // the frame-start matches AUTO in BUS arms: SOF ?? any packet with a unit,
+  // SOF then units the packet's opening ones, CMD a message opened by its
+  // command word (as the scope's tokMatch)
+  // TRLC-LINKS: REQ-SDS-214
+  const man = { bytes: [0x12, 0x34, 0x56, 0x78], byteErr: [false, false, false, false] };
+  assert.ok(P.pkMatch(man, ["SOF", "??"]) && P.pkMatch(man, ["SOF", "12"]), "SOF ?? / SOF 12");
+  assert.ok(!P.pkMatch(man, ["SOF", "34"]) && P.pkMatch(man, ["34", "56"]), "34 does not open the frame");
+  assert.ok(P.pkMatch(mil[0], ["CMD"]) && P.pkMatch(mil[0], ["CMD", "5A", "A5"]), "CMD on a message");
+  assert.ok(!P.pkMatch({ bytes: [0x5A, 0xA5], byteErr: [false, false], hasAddr: false }, ["CMD"]), "data words only are no command");
 }
 console.log("ALL PASS");

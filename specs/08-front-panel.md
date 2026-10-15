@@ -392,15 +392,28 @@ Manchester, SENT, CAN, USB and FlexRay; any word for ARINC 429 (each is a frame)
 any inside a message (midway to the idle between messages), firing on the first start bit after it, or
 the edge trigger when the messages have no idle. Match bytes the user set win (the serial trigger arms on
 them). The notice says what was chosen ("TRIG: I2C START (address byte)", "TRIG: UART first byte (idle >
-200us)"). BUS entry's detection sets the same trigger. AUTO in the other workspaces is the autoset framed
+200us)"). Software places the trigger point on the frame the FPGA fired in: at its SYNC, SOF or START,
+back over the frame's units (the line image fires a few units into a Manchester or USB frame); until a
+placement has been learned the record keeps four units before the trigger (a SENT frame's SYNC and
+first nibble). The BUS header counts the packets the match holds ("TRIG ON SOF ??: 2 packets"; SOF is a
+packet's start, CMD a MIL-1553 message's command word) and the trigger read-out writes the match as
+typed ("T SER SOF ??"). The packet and line images (Manchester, USB, SENT, CAN, FlexRay, MIL-1553,
+ARINC 429) record raw samples only, one SRAM of 2.1 ms: on them the timebase goes no slower than
+200us/div, whose screen that record fills ("200us/div at most on this trigger: its image records
+2.1ms"). BUS entry's detection sets the same trigger. AUTO in the other workspaces is the autoset framed
 for the workspace's job (REQ-SDS-224). Either sweep first puts the trigger back to an edge and waits for the
 general image: measured on the qualifier or a protocol image, or while the image went back, the vertical fit
 went wrong.
 
-The autoset finds the signal on a fast-to-slow timebase sweep at 2 V/div, fits the vertical over about 30
-cycles, reads the swing again at the V/div it fitted (the smaller of two captures; a finer detent when it fits
-and the capture holds nine tenths of the swing seen), centres on the midpoint and puts a hardware edge
-trigger at the 50 % level. Its captures there are filtered decimated ones, which
+The autoset finds the signal on a fast-to-slow timebase sweep at 2 V/div, widens each channel's swing with
+one capture of a 10 ms window (levels that change slower than the frequency found: an ARINC 429 line's data
+level beside its NULL toggle), fits the vertical over about 30 cycles, reads the swing again at the V/div it
+fitted (the smaller of two captures; a finer detent when it fits with 3 % to spare and the capture holds nine
+tenths of the swing seen, or of its step from base to top), centres on the midpoint and puts a hardware edge
+trigger at the 50 % level. A channel that showed no frequency and no more swing than noise (four codes at
+2 V/div) is a quiet line or a pulse slower than every capture: it keeps 2 V/div at 0 V, where either level
+of a logic line shows. The swing is read again on the screen AUTO leaves, which is not filtered as the fit's
+slower one may be. Its captures there are filtered decimated ones, which
 ring on a square's edges (a 3.3 V square read 3.8 V): on a two-level signal the fit allows 2 % of the step
 past each level, as the screen's trace shows it. Each measurement waits for the second frame published after
 a change (a frame captured before it read a wrong midpoint). Then each workspace frames it:
@@ -417,7 +430,8 @@ Clipping (REQ-SDS-225): after the fit, and again on three captures of the screen
 capture runs past the screen's top or bottom for four samples or more steps to the next coarser V/div and is
 centred again on
 the widest swing seen (the capture that clipped counts, its rail a bound): at most twice on the final screen,
-or on until it is off the ADC's rail. A capture at the fit's timebase can miss part of the swing (a bus's rare
+or on until it is off the ADC's rail and spans no more than the screen. On the final screen a clipped trace
+whose own span fits is centred on its codes first (it ran off centre, not too large). A capture at the fit's timebase can miss part of the swing (a bus's rare
 level, a burst), and the swing counts every capture of the sweep. A filtered decimated capture rings past a
 square's levels on every edge, so there a two-level signal clips when a level itself lies past the screen (or
 a stretch is at the ADC's rail).

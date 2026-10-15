@@ -2,6 +2,7 @@
 package engine
 
 import (
+	"math"
 	"testing"
 
 	"open-sds/app/internal/decode"
@@ -201,5 +202,43 @@ func TestFrameOpening(t *testing.T) {
 	}
 	if at := frameOpening(can, 300); at != -1 {
 		t.Fatalf("no unit ends near 300: %d", at)
+	}
+	// The Manchester image fires as the frame's fourth word ends (the bench:
+	// 24 us past the SYNC at 1 Mb/s): the frame still opens at its SYNC. A
+	// frame before it, an idle gap away, is not this one's.
+	man := []decode.Span{{I0: 0, I1: 8, Kind: "data"}, {I0: 20, I1: 24, Kind: "start", Text: "SYNC"}, {I0: 20, I1: 28, Kind: "data"},
+		{I0: 28, I1: 36, Kind: "data"}, {I0: 36, I1: 44, Kind: "data"}, {I0: 44, I1: 52, Kind: "data"}}
+	if at := frameOpening(man, 52); at != 20 {
+		t.Fatalf("Manchester frame fired on its fourth word opens at %d, want its SYNC at 20", at)
+	}
+	usb := []decode.Span{{I0: 0, I1: 5, Kind: "start", Text: "SYNC"}, {I0: 5, I1: 10, Kind: "addr", Text: "DATA0"},
+		{I0: 10, I1: 15, Kind: "data"}, {I0: 15, I1: 20, Kind: "data"}, {I0: 20, I1: 25, Kind: "data"}}
+	if at := frameOpening(usb, 25); at != 0 {
+		t.Fatalf("USB packet fired on its third byte opens at %d, want its SYNC at 0", at)
+	}
+	gapped := []decode.Span{{I0: 0, I1: 4, Kind: "sync"}, {I0: 4, I1: 12, Kind: "data"}, {I0: 40, I1: 48, Kind: "data"}}
+	if at := frameOpening(gapped, 48); at != 40 {
+		t.Fatalf("a unit an idle gap after the last frame opens at %d, want itself at 40", at)
+	}
+}
+
+// Until a frame-start match has been placed, the record keeps four units
+// before the FPGA's trigger: a SENT frame's SYNC and first nibble. With the
+// trigger at 10 % of the raw record at 200us/div (0.2 ms), the SYNC began
+// at the record's start and no frame start was found to place it on.
+// TRLC-LINKS: REQ-SDS-013, REQ-SDS-223
+func TestFrameStartKeepsItsOpening(t *testing.T) {
+	pre := func(pattern []PatternElem) uint32 {
+		e := &Engine{band: Band{TdivS: 200e-6}, rawOnly: true}
+		e.trigPosFrac.Store(math.Float64bits(.1))
+		e.SetSerialParams(SerialParams{Proto: serSENT, TickNs: 3000, Pattern: pattern})
+		e.SetSerialMode(SerialTrigger)
+		c, _, _, _, _ := e.sramConfig()
+		return c.PreWords
+	}
+	plain, sof := pre([]PatternElem{{Kind: patternData, Value: 5, Mask: 0xf}}), pre([]PatternElem{{Kind: patternStart}, {Kind: patternData}})
+	// four of SENT's longest nibbles, 27 ticks of 3 us, at 2 ns a sample and two samples a word
+	if want := uint32(4 * 27 * 3000 / 2 / 2); sof-plain != want {
+		t.Fatalf("frame start keeps %d words more before the trigger, want %d", sof-plain, want)
 	}
 }

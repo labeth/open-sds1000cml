@@ -88,10 +88,47 @@ func selectedLive(a *anaState, partial bool, sel int) int {
 }
 
 // tokMatch reports whether a packet holds the match tokens (55, A?, ??, ERR).
+// SOF is the packet's start: the units after it open the packet. CMD is a
+// MIL-1553 message's command word, its first (two bytes); it opens the packet.
 // TRLC-LINKS: REQ-SDS-214
 func tokMatch(toks []string, p Packet) bool {
+	if len(toks) > 0 && (toks[0] == "SOF" || toks[0] == "CMD") {
+		skip := 0
+		if toks[0] == "CMD" {
+			if !p.HasAddr || len(p.Bytes) < 2 {
+				return false
+			}
+			skip = 2
+		}
+		if len(toks) == 1 {
+			return len(p.Bytes) > 0
+		}
+		q := p
+		q.Bytes = p.Bytes[skip:]
+		if len(p.ByteErr) > skip {
+			q.ByteErr = p.ByteErr[skip:]
+		} else {
+			q.ByteErr = nil
+		}
+		return tokMatchAt(toks[1:], q, 0)
+	}
 	n := len(toks)
 	if n == 0 || n > len(p.Bytes) {
+		return false
+	}
+	for i := 0; i+n <= len(p.Bytes); i++ {
+		if tokMatchAt(toks, p, i) {
+			return true
+		}
+	}
+	return false
+}
+
+// tokMatchAt reports whether the match tokens hold at byte i of a packet.
+// TRLC-LINKS: REQ-SDS-214
+func tokMatchAt(toks []string, p Packet, i int) bool {
+	n := len(toks)
+	if n == 0 || i+n > len(p.Bytes) {
 		return false
 	}
 	ok := func(t string, b byte, bad bool) bool {
@@ -104,17 +141,13 @@ func tokMatch(toks []string, p Packet) bool {
 		h := hex2(b)
 		return len(t) == 2 && (t[0] == '?' || t[0] == h[0]) && (t[1] == '?' || t[1] == h[1])
 	}
-	for i := 0; i+n <= len(p.Bytes); i++ {
-		all := true
-		for j := 0; j < n && all; j++ {
-			bad := i+j < len(p.ByteErr) && p.ByteErr[i+j]
-			all = ok(toks[j], p.Bytes[i+j], bad)
-		}
-		if all {
-			return true
+	for j := 0; j < n; j++ {
+		bad := i+j < len(p.ByteErr) && p.ByteErr[i+j]
+		if !ok(toks[j], p.Bytes[i+j], bad) {
+			return false
 		}
 	}
-	return false
+	return true
 }
 
 // busRows are the listed packets: the complete ones, or the fragments when
@@ -462,6 +495,7 @@ type look struct {
 	sampleS  float64
 	found    bool
 	resolved bool
+	runs     [2]int // a decimated record's shortest run between edges per channel (decode.ShortestRun)
 }
 
 // detectOn waits for a sampled frame of the timebase on screen and runs auto
@@ -479,7 +513,7 @@ func (c *Controller) detectOn(auto AutoSource) (decode.Result, float64, bool, lo
 	all := func(*engine.Frame, bool) bool { return true }
 	dec := c.detectWith(true, false, all, auto, decimatedWait)
 	res, sampleS, found := dec.res, dec.sampleS, dec.found
-	if found && decimatedStands(res) {
+	if found && decimatedStands(res) && !hidesFaster(dec) {
 		return res, sampleS, true, dec
 	}
 	// A short screen fits the sample lease's budget undecimated: that record
@@ -566,17 +600,21 @@ func (c *Controller) detectWith(decimated, stepped bool, accept func(*engine.Fra
 	for {
 		lease(3 * time.Second)
 		got, usable, resolved := false, false, false
+		var runs [2]int
 		if c.frameFn != nil {
 			c.frameFn(func(f *engine.Frame) {
 				usable = f != nil && !f.IsEnv && !(f.PeakDetect && !f.Ordered) && f.Valid >= 32 && len(f.C1) >= f.Valid
 				got = usable && !f.PeakDetect && accept(f, decimated) && fresh(f)
-				resolved = got && decimated && len(f.C2) >= f.Valid && runsResolved(f.C1[:f.Valid]) && runsResolved(f.C2[:f.Valid])
+				if got && decimated && len(f.C2) >= f.Valid {
+					runs = [2]int{decode.ShortestRun(f.C1[:f.Valid]), decode.ShortestRun(f.C2[:f.Valid])}
+					resolved = runsResolved(runs[0]) && runsResolved(runs[1])
+				}
 			})
 		}
 		last := c.detectSync || !c.now().Before(deadline)
 		if got || (usable && last && !decimated) {
 			res, sampleS, found := auto()
-			return look{res, sampleS, found, resolved}
+			return look{res, sampleS, found, resolved, runs}
 		}
 		if last {
 			return look{}
@@ -586,12 +624,26 @@ func (c *Controller) detectWith(decimated, stepped bool, accept func(*engine.Fra
 }
 
 // runsResolved reports whether a decimated record's channel resolves every
-// edge it holds: no run between two of them under twice decimatedFeature
-// samples (or under three edges at all).
+// edge it holds, from its shortest run (decode.ShortestRun): no run between
+// two of them under twice decimatedFeature samples (or under three edges at
+// all).
 // TRLC-LINKS: REQ-SDS-214
-func runsResolved(c []uint8) bool {
-	r := decode.ShortestRun(c)
-	return r == 0 || r >= 2*decimatedFeature
+func runsResolved(run int) bool {
+	return run == 0 || run >= 2*decimatedFeature
+}
+
+// hidesFaster reports a UART found on a decimated record whose line holds
+// runs well under its bit: a faster bus the record reads in part (a 500
+// kbit/s CAN frame at 500us/div filled in as "UART 113413 8N1": its 2 us
+// bits ran 3 samples, the UART's 14). A UART's line never changes within a
+// bit.
+// TRLC-LINKS: REQ-SDS-214
+func hidesFaster(l look) bool {
+	if l.res.Proto != "uart" || !(l.res.SPB > 0) {
+		return false
+	}
+	run := l.runs[l.res.Roles.ChA&1]
+	return run > 0 && float64(run) < 0.4*l.res.SPB
 }
 
 // findBus searches for a bus as BUS's auto-detect does: auto on a sampled
@@ -660,7 +712,7 @@ func (c *Controller) findAtFullRate(full, t float64, first *look, auto AutoSourc
 	} else {
 		c.setTdivNearest(t)
 		l := c.detectWith(true, true, at(t), auto, decimatedWait)
-		if res, sampleS, found = l.res, l.sampleS, l.found; found && decimatedStands(res) {
+		if res, sampleS, found = l.res, l.sampleS, l.found; found && decimatedStands(res) && !hidesFaster(l) {
 			return keep(res, sampleS, t)
 		}
 	}

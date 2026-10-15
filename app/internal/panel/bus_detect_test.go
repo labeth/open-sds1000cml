@@ -161,6 +161,24 @@ func TestDecimatedStands(t *testing.T) {
 	}
 }
 
+// A UART found on a decimated record whose line holds runs well under its
+// bit is a faster bus read in part: the bench's 500 kbit/s CAN frames at
+// 500us/div (2 us bits, 3 samples) filled in as "UART 113413 8N1" (14
+// samples a bit). A UART whose line changes no faster than its bits stands.
+// TRLC-LINKS: REQ-SDS-214
+func TestDecimatedUARTHidesAFasterBus(t *testing.T) {
+	uart := decode.Result{OK: true, Proto: "uart", SPB: 14, Baud: 113413, Roles: decode.Roles{ChA: 1}}
+	if !hidesFaster(look{res: uart, runs: [2]int{3, 3}}) {
+		t.Fatal("CAN read as a UART: the 3-sample runs under its 14-sample bit stand")
+	}
+	if hidesFaster(look{res: uart, runs: [2]int{3, 13}}) {
+		t.Fatal("a UART on C2 whose runs are bits, beside a fast C1: rejected")
+	}
+	if hidesFaster(look{res: decode.Result{OK: true, Proto: "i2c", SPB: 14}, runs: [2]int{3, 3}}) {
+		t.Fatal("only a UART find is judged by its runs")
+	}
+}
+
 // A UART of a byte or two, or at a rate no UART uses, on the record on
 // screen is as likely part of another bus's frame: the search looks on at
 // the full-rate timebase, and names it only when nothing else is found there.

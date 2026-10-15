@@ -60,6 +60,20 @@ func PlanSRAM(tdiv float64) SRAMPlan {
 	return p
 }
 
+// rawScreenTdiv is the slowest timebase whose ten divisions a raw record
+// (an image without decimation: 2 ns a sample, one SRAM deep) holds whole.
+// TRLC-LINKS: REQ-SDS-010
+func rawScreenTdiv() float64 {
+	rec := float64(sramcapture.SamplesPerChannel) * 2e-9
+	best := 0.0
+	for _, t := range SupportedTdivs() {
+		if 10*t <= rec && t > best {
+			best = t
+		}
+	}
+	return best
+}
+
 // liveScreenSamples bounds a live decimated screen (Average, ERES, Precision,
 // the sample lease). The fabric's only decimator, the precision filter, passes
 // 7.5 % of its output rate (-3 dB at 13.5 %), so the bound sets the live
@@ -251,6 +265,24 @@ func qBuffer(q []uint16, n int) []uint16 {
 // TRLC-LINKS: REQ-SDS-010, REQ-SDS-011, REQ-SDS-036, REQ-SDS-040
 func (e *Engine) sramConfig() (sramcapture.Config, SRAMPlan, float64, bool, trigParams) {
 	e.mu.Lock()
+	// The packet and line images record raw samples only (2.1 ms): a slower
+	// timebase drew that record stretched across a screen it called 500us/div
+	// (a SENT bus's frames read 2.4 times as long as they are). The timebase
+	// steps to the slowest whose screen the record holds whole.
+	e.stats.TdivMaxS = 0
+	if e.rawOnly {
+		lim := rawScreenTdiv()
+		e.stats.TdivMaxS = lim
+		cur := e.band.TdivS
+		if e.pendSet {
+			cur = e.pendBand.TdivS
+		}
+		if lim > 0 && cur > lim*(1+1e-6) {
+			if b, ok := PlanTdiv(lim); ok {
+				e.pendBand, e.pendSet = b, true
+			}
+		}
+	}
 	tdiv := e.band.TdivS
 	if e.pendSet {
 		tdiv = e.pendBand.TdivS
@@ -276,7 +308,11 @@ func (e *Engine) sramConfig() (sramcapture.Config, SRAMPlan, float64, bool, trig
 			// far as it last did: the record holds that before the hardware
 			// trigger too (at 200 us/div the record is one screen, and the
 			// screen's left edge would go flat).
-			if s := math.Float64frombits(e.serLv.shiftS.Load()); s > 0 {
+			s := math.Float64frombits(e.serLv.shiftS.Load())
+			if !(s > 0) {
+				s = e.frameStartLeadS(p.SampleS) // none placed yet
+			}
+			if s > 0 {
 				pre += min(uint32(s/p.SampleS)/uint32(perWord), words/2)
 			}
 		}

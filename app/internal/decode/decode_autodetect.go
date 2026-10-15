@@ -207,6 +207,12 @@ func scoreResult(r Result) float64 {
 		}
 		return float64(good*150 + c[0]*10 - c[1]*40)
 	case "arinc429":
+		// ARINC 429 runs at 100 kbit/s or 12-14.5 kbit/s: words read at
+		// another rate are another bus's pulses (a MIL-1553 bus at 500us/div
+		// read as "ARINC 35.9kb/s").
+		if !arincRate(float64(r.Baud)) {
+			return -1e9
+		}
 		// One "addr" (label) span per word; a parity-failed word adds "!P".
 		c := kinds("addr", "frame-error")
 		good := c[0] - c[1]
@@ -580,6 +586,14 @@ func Autodetect(c1, c2 []uint8, colTimeS float64, format string) Result {
 // StandardBaud reports whether baud is a rate UARTs use (within 3 %).
 // TRLC-LINKS: REQ-SDS-018
 func StandardBaud(baud float64) bool { return nearStandardBaud(baud, 0.03) }
+
+// arincRate reports a bit rate an ARINC 429 bus runs at, as read off a record:
+// high speed 100 kbit/s, low speed 12 to 14.5 kbit/s, with a tenth's margin
+// for a rate read off a decimated record's pulse spacing.
+// TRLC-LINKS: REQ-SDS-018
+func arincRate(baud float64) bool {
+	return (baud >= 90e3 && baud <= 110e3) || (baud >= 10.8e3 && baud <= 16e3)
+}
 
 // nearStandardBaud reports whether baud lies within tol (fraction) of a
 // standard UART rate.

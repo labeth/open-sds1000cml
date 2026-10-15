@@ -149,3 +149,37 @@ func TestMessageTimebase(t *testing.T) {
 		t.Fatalf("bits a slower timebase cannot resolve: %g", td)
 	}
 }
+
+// AUTO pressed while a detection runs (BUS entry's, seconds at the full
+// rate) sweeps once it has ended: the two set the timebase and the vertical
+// each for itself, and the one ending last left its own.
+// TRLC-LINKS: REQ-SDS-137, REQ-SDS-223
+func TestAutoWaitsForTheDetectionUnderWay(t *testing.T) {
+	c, eng, _ := newEnvRig(t)
+	eng.leased.Store(true)
+	c.mu.Lock()
+	c.ui.ws = wsview.Bus
+	c.ui.busDetecting = true // BUS entry's detection, under way
+	c.mu.Unlock()
+	tdiv0 := eng.Snapshot().TdivS
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		press(t, c, "auto")
+	}()
+	time.Sleep(300 * time.Millisecond)
+	if td := eng.Snapshot().TdivS; td != tdiv0 {
+		t.Fatalf("AUTO swept during the detection: timebase %g -> %g", tdiv0, td)
+	}
+	c.mu.Lock()
+	c.ui.busDetecting = false // the detection ends
+	c.mu.Unlock()
+	select {
+	case <-done:
+	case <-time.After(30 * time.Second):
+		t.Fatal("AUTO never ran after the detection ended")
+	}
+	if s := c.snap(); s.decProto != framecalc.ProtoUART || c.AutosetBusy() {
+		t.Fatalf("AUTO after the detection: protocol %d busy %v", s.decProto, c.AutosetBusy())
+	}
+}

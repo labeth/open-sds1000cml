@@ -426,3 +426,134 @@ func TestClipFiltered(t *testing.T) {
 		t.Fatal("a base at the ADC's rail not read as clipping")
 	}
 }
+
+// A 3.3 V square whose capture at the fit's slower timebase rings 0.25 V past
+// both levels (a filtered capture's ringing: the bench's 1 MHz square read
+// 3.8 V there and fitted 1 V/div one AUTO in eight) still ends on 500 mV/div:
+// AUTO reads the swing again on the screen it leaves, where it shows 3.3 V.
+// TRLC-LINKS: REQ-SDS-224
+func TestAutoRefinesOnTheScreenItLeaves(t *testing.T) {
+	t.Parallel()
+	sq := square(1e6, 0, 3.3)
+	b := newSimBench(t, func(tt, tdiv float64, _ int) float64 {
+		v := sq(tt)
+		if ph := math.Mod(tt*1e6, 0.5); tdiv >= 2e-6 && ph < 0.1 {
+			if v > 0 {
+				return v + 0.25
+			}
+			return v - 0.25
+		}
+		return v
+	})
+	b.run(wsview.Scope, -1)
+	if st := b.eng.Snapshot(); math.Abs(st.TdivS-200e-9) > 1e-12 {
+		t.Fatalf("timebase %g, want 200ns", st.TdivS)
+	}
+	for ch := 0; ch < 2; ch++ {
+		if v := b.vdivOf(ch); v != 0.5 {
+			t.Fatalf("C%d %g V/div, want 0.5 (3.3 V on the screen AUTO leaves)", ch+1, v)
+		}
+		b.onScreen(t, ch, 0.4)
+	}
+}
+
+// A clipped trace whose own span fits the screen is off centre, not too
+// large: the clipping check centres it rather than stepping coarser (an
+// ARINC 429 line without the bandwidth limit stayed 2 div high, clipped).
+// TRLC-LINKS: REQ-SDS-225
+func TestClippedTraceThatFitsIsCentred(t *testing.T) {
+	t.Parallel()
+	sq := square(1e6, 0, 3.3)
+	b := newSimBench(t, func(tt, _ float64, _ int) float64 { return sq(tt) })
+	b.c.setTdivNearest(1e-6)
+	b.c.setVdiv(1, nearestDetent(0.5))
+	b.fe.SetOffset(1, -1.06) // the 0..3.3 V square from code 75 to 240: past the top, short of the rail
+	if !b.c.clipped(1) {
+		t.Fatal("the rig's trace is not clipped: the test proves nothing")
+	}
+	fixed, ok := b.c.recentreClipped(make(chan struct{}), 1, goalScope)
+	if !ok || !fixed || b.vdivOf(1) != 0.5 {
+		t.Fatalf("fixed %v ok %v at %g V/div", fixed, ok, b.vdivOf(1))
+	}
+	b.onScreen(t, 1, 0.4)
+}
+
+// A 10 Hz pulse on C2 beside a 1 kHz square on C1: every capture AUTO takes
+// shows C2 at one level. Fitted to that level's noise, C2 went off the screen
+// when the other level came; as a quiet line it keeps 2 V/div at 0 V, where
+// both levels of the pulse show.
+// TRLC-LINKS: REQ-SDS-137, REQ-SDS-224
+func TestAutoLeavesAQuietChannelCoarse(t *testing.T) {
+	t.Parallel()
+	sq := square(1e3, 0, 3.3)
+	b := newSimBench(t, func(tt, _ float64, ch int) float64 {
+		if ch == 1 { // a 1 ms pulse 60 ms into each 100 ms: past every capture AUTO takes
+			if ph := math.Mod(tt, 0.1); ph >= 0.06 && ph < 0.061 {
+				return 3.3
+			}
+			return 0.1 * math.Sin(tt*7e6) // the low level, noise on it (a code or two at 2 V/div)
+		}
+		return sq(tt)
+	})
+	b.run(wsview.Scope, -1)
+	if v := b.vdivOf(0); v != 0.5 {
+		t.Fatalf("C1 %g V/div, want 0.5", v)
+	}
+	if v, off := b.vdivOf(1), b.fe.OffsetReqV(1); v != 2 || off != 0 {
+		t.Fatalf("C2 %g V/div at %g V, want 2 V/div at 0 V", v, off)
+	}
+	if b.c.clipped(1) {
+		t.Fatal("C2 left clipped")
+	}
+}
+
+// A trace whose own span is more than the screen's eight divisions is
+// over the screen (the clipping check steps it on coarser past its two
+// steps); one that fits is not.
+// TRLC-LINKS: REQ-SDS-225
+func TestOverScreen(t *testing.T) {
+	t.Parallel()
+	sq := square(1e6, -2.45, 2.45) // 4.9 V: 9.8 div at 500 mV/div, short of the rails
+	b := newSimBench(t, func(tt, _ float64, ch int) float64 {
+		if ch == 1 {
+			return sq(tt) / 2
+		}
+		return sq(tt)
+	})
+	b.c.setTdivNearest(1e-6)
+	for ch := 0; ch < 2; ch++ {
+		b.c.setVdiv(ch, nearestDetent(0.5))
+		b.fe.SetOffset(ch, 0)
+	}
+	if !b.c.overScreen(0) || b.c.railing(0) {
+		t.Fatalf("C1 9.8 div: over %v railing %v, want over and not railing", b.c.overScreen(0), b.c.railing(0))
+	}
+	if b.c.overScreen(1) {
+		t.Fatal("C2 4.9 div read as over the screen")
+	}
+}
+
+// A line whose level changes slower than the frequency AUTO finds on it (an
+// ARINC 429 line without the bandwidth limit: a 50 MHz NULL toggle of +-0.38
+// V in every fast capture, its 3.3 V data level only in a long window) is
+// fitted for its whole swing: the long window's capture widens it. Fitted to
+// the toggle, it took 200mV/div and the data level ran off the screen.
+// TRLC-LINKS: REQ-SDS-137, REQ-SDS-224
+func TestAutoFitsALevelSlowerThanItsToggle(t *testing.T) {
+	t.Parallel()
+	sq := square(1e6, 0, 3.3)
+	toggle := square(5e6, -0.3, 0.3)
+	b := newSimBench(t, func(tt, tdiv float64, ch int) float64 {
+		if ch == 1 {
+			if tdiv >= 1e-3 && math.Mod(tt, 1e-3) < 0.4e-3 {
+				return 3.3 // a word's data level
+			}
+			return toggle(tt)
+		}
+		return sq(tt)
+	})
+	b.run(wsview.Scope, -1)
+	if v := b.vdivOf(1); v < 0.5 {
+		t.Fatalf("C2 %g V/div: fitted to the toggle, its 3.3 V level off the screen", v)
+	}
+}
