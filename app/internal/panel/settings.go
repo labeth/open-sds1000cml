@@ -2,6 +2,7 @@
 package panel
 
 import (
+	"math"
 	"strings"
 
 	"open-sds/app/internal/panel/framecalc"
@@ -16,6 +17,7 @@ import (
 // TRLC-LINKS: REQ-SDS-136, REQ-SDS-211, REQ-SDS-221
 func (c *Controller) SettingsView() settings.ViewState {
 	ser := c.serialSettings() // engine state: read before the panel lock
+	s := c.snap()
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	ui := settings.UI{Set: true, Workspace: int(c.ui.ws), BusEye: c.ui.busEye, MeasAll: c.ui.measAll,
@@ -32,7 +34,8 @@ func (c *Controller) SettingsView() settings.ViewState {
 	}
 	disp := settings.Display{MathMode: c.mathMode, ShowMeas: c.showMeas, Persist: c.persist,
 		Hidden: [2]bool{!c.chDisp[0], !c.chDisp[1]},
-		Set:    true, CurX: c.curX, CurY: c.curY, CurSel: c.curSel, Zoom: c.zoom, ZoomOff: c.zoomOff}
+		Set:    true, CurX: s.curX, CurY: s.curY, CurAt: true, CurT: c.curT, CurV: c.curV, CurVCh: c.curVCh,
+		CurSel: c.curSel, Zoom: c.zoom, ZoomOff: c.zoomOff}
 	if c.curOn {
 		disp.CurMode = 1 + c.curType
 	}
@@ -139,8 +142,16 @@ func (c *Controller) ApplySettingsView(v settings.ViewState) {
 	var inv *[2]bool
 	if ds := v.Display; ds.Set {
 		c.curOn, c.curType = ds.CurMode == 1 || ds.CurMode == 2, max(0, min(ds.CurMode-1, 1))
-		for k := 0; k < 2; k++ {
-			c.curX[k], c.curY[k] = clampF(ds.CurX[k], 0, 1), clampF(ds.CurY[k], 0, 1)
+		// the cursors' signal times and levels; an older file's screen
+		// places are anchored at the scales restored
+		if ds.CurAt && finiteAll(ds.CurT[0], ds.CurT[1], ds.CurV[0], ds.CurV[1]) {
+			c.curT, c.curV, c.curVCh, c.curPend = ds.CurT, ds.CurV, ds.CurVCh&1, nil
+		} else {
+			p := [2][2]float64{}
+			for k := 0; k < 2; k++ {
+				p[0][k], p[1][k] = clampF(ds.CurX[k], 0, 1), clampF(ds.CurY[k], 0, 1)
+			}
+			c.curPend, c.curVCh = &p, 0
 		}
 		c.curSel = ds.CurSel & 1
 		c.zoom, c.zoomOff = 1, 0
@@ -238,4 +249,15 @@ func (c *Controller) syncDecodeView(on bool) {
 	if e, ok := c.eng.(interface{ SetDecodeView(bool) }); ok {
 		e.SetDecodeView(on)
 	}
+}
+
+// finiteAll reports whether every value is a number (not NaN or infinite).
+// TRLC-LINKS: REQ-SDS-136
+func finiteAll(v ...float64) bool {
+	for _, x := range v {
+		if math.IsNaN(x) || math.IsInf(x, 0) {
+			return false
+		}
+	}
+	return true
 }

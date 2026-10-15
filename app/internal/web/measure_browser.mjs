@@ -85,11 +85,17 @@ run(async (t) => {
   // cursors
   t.ok(/Cursors are off/.test(await po.text("curBody")), "the Cursors pane says how to turn them on");
   await po.click("tCursors");
-  await page.evaluate(() => { cur.t1 = 0.25; cur.t2 = 0.75; updateCursors(); });
+  await page.evaluate(() => { redraw(); cur.t1 = 0.25; cur.t2 = 0.75; curAnchor("t1"); curAnchor("t2"); updateCursors(); });
   const cu = await page.evaluate(() => Object.fromEntries([...document.querySelectorAll("#curBody tr")].map((r) => [r.querySelector("th").textContent, r.querySelector("td").textContent])));
   t.ok(["A / B", "Δt", "1/Δt", "ΔV C1", "ΔV C2"].every((k) => cu[k]), "the cursor readout: A / B, Δt, 1/Δt, ΔV per channel");
   // half the screen of a 10-division 500 µs/div sweep: 2.5 ms
   t.ok(/^2\.5\d* ms$/.test(cu["Δt"]), "Δt reads half the sweep: " + cu["Δt"]);
+  // the cursors stay on the signal: a zoom to the middle half moves them on
+  // the screen, the times between them are as they were
+  const z = await page.evaluate(() => { userZoomed = true; const a = view.win.a, b = view.win.b, q = (b - a) / 4; view.win.a = a + q; view.win.b = b - q;
+    updateCursors(); return { t1: cur.t1, t2: cur.t2, dt: document.querySelectorAll("#curBody tr")[1].querySelector("td").textContent }; });
+  t.ok(/^2\.5\d* ms$/.test(z.dt) && Math.abs(z.t1) < 0.02 && Math.abs(z.t2 - 1) < 0.02, "zoomed 2x, the cursors keep their times (at the screen's edges): " + JSON.stringify(z));
+  await page.evaluate(() => goHome());
   await po.click("tCursors");
 
   // the mask pane: build from the live square, test counts

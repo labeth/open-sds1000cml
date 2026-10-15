@@ -79,9 +79,6 @@ type anaState struct {
 	allWin   [2]map[int]bool // the parameters taken from edge windows (carried between reads)
 	curV     [2][2]float64   // each channel's volts at the time cursors A and B
 	curOK    [2]bool
-	// the record's length in screens where the time cursors were read
-	// (cursorTimes: a zoomed screen's pan is a fraction of the record)
-	curRecords float64
 
 	// COMPARE
 	stabPrev []float64
@@ -169,6 +166,9 @@ func (c *Controller) OnFrame(f *engine.Frame) {
 	a.key, a.need = k, need
 	a.g = geom{valid: framecalc.Valid(f), winCols: f.WinCols, edgeX: f.EdgeX, sampleS: f.SampleS, tdivS: f.TdivS,
 		peak: f.PeakDetect, captureS: f.CaptureSampleS}
+	if g := a.g.valid; g > 0 { // the cursors' zoomed screen: its pan is a fraction of the record
+		c.curRecords.Store(math.Float64bits(float64(g) / float64(max(min(f.WinCols, g), 1))))
+	}
 	switch s.ui.ws {
 	case wsview.Bus:
 		c.busFrame(a, s, f)

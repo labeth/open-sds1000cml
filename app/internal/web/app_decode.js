@@ -193,18 +193,18 @@ function updateDecodeResults() {
   $("decodeCount").textContent = r.bytes.length + " bytes" + (r.meta && r.meta.noCS ? " · no CS" : "");
 }
 
-// On-trace decode band (YT-only), placed in a reserved bottom lane. Uses the
-// windowed xForCol so labels track the trace at any zoom; spans off-window are
-// culled.
+// Decode band (YT-only) in the lane under the plot (plotH: the plot ends
+// above it). Uses the windowed xForCol so labels track the trace at any zoom;
+// spans off-window are culled.
 // TRLC-LINKS: REQ-SDS-207
 function drawDecode(g) {
   if (view.mode !== "YT" || dcfg.proto === "off" || !frame || frame.is_env) return;
   const r = dcfg.result;
   if (!r || !r.ok || !r.spans.length || !frame.c1) return;
-  const n = frame.c1.length, bandH = 20 * dpr, bandY = CH - bandH - 6 * dpr;
+  const PH = plotH(), n = frame.c1.length, bandH = 20 * dpr, bandY = PH + 4 * dpr;
   const spans = r.spans, cy = bandY + bandH / 2;
   g.save();
-  g.fillStyle = "rgba(5,8,12,0.6)"; g.fillRect(0, bandY - 2 * dpr, CW, bandH + 4 * dpr);
+  g.fillStyle = "#05080c"; g.fillRect(0, PH, CW, CH - PH);
   g.textBaseline = "middle"; g.font = "bold " + (11 * dpr) + "px system-ui";
   for (let i = 0; i < spans.length; i++) {
     const s = spans[i];

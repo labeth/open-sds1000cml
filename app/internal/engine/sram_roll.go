@@ -97,7 +97,7 @@ func (e *Engine) rollActive() bool {
 	case e.acqMode.Load() == AcqAverage, e.serialMode.Load() == SerialTrigger,
 		e.zoneMode.Load() == ZoneTrigger, e.maskMode.Load() != MaskOff, e.bodeMode.Load() == BodeOn:
 		return false
-	case e.leased(&e.decodeLease):
+	case e.rawLeased():
 		return false // a raw consumer wants triggered full-rate records
 	}
 	return true

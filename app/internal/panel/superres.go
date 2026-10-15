@@ -642,9 +642,7 @@ func (c *Controller) SuperresView() SuperresView {
 // stacking needs every sample, not the live display envelope.
 // TRLC-LINKS: REQ-SDS-140
 func (c *Controller) srLeaseRaw() {
-	if e, ok := c.eng.(interface{ LeaseDecodeView(time.Duration) }); ok {
-		e.LeaseDecodeView(3 * time.Second)
-	}
+	c.leaseRaw(rawForSuperres, 3*time.Second)
 }
 
 // srWaitRaw leases raw frames and waits (bounded) until a raw one is

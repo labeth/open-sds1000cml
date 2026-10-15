@@ -42,8 +42,9 @@ const view = { mode: "YT", persist: false, cursors: false, c1: true, c2: true,
 let userZoomed = false;   // true once the user pans/zooms → live frames stop re-homing
 let lastSig = "";         // acquisition signature; a change re-homes even if zoomed
 let lastEdgeFrac = null;  // previous frame's edge_frac, for EDGE-FOLLOW when zoomed
-// Normalized cursor positions (fractions of width/height).
-const cur = { t1: 0.33, t2: 0.66, v1: 0.4, v2: 0.6, drag: null };
+// Cursor positions (fractions of width/height); in Y-T taken from their
+// signal times and levels (at: see curSync) on each draw.
+const cur = { t1: 0.33, t2: 0.66, v1: 0.4, v2: 0.6, drag: null, at: null };
 // Super-res GATE markers: which region to super-res. a/b are EDGE-RELATIVE record
 // offsets — the record fraction FROM the trigger edge (see srGateRF), not an
 // absolute fraction. The served raw record is not phase-stable, so the display

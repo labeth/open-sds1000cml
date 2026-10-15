@@ -8,12 +8,32 @@
 function clearPersist() { if (GLR) GLR.persistClear(); }
 
 // ---- drawing ----
+// DEC_LANE_PX is the decode lane's height (CSS px) under the Y-T plot.
+const DEC_LANE_PX = 30;
+
+// decLaneOn reports whether the Y-T plot has the decode lane under it: a
+// protocol decoded, in Y-T, as the LCD's decode strip.
+// TRLC-LINKS: REQ-SDS-207
+function decLaneOn() {
+  return view.mode === "YT" && typeof dcfg !== "undefined" && dcfg.proto !== "off";
+}
+
+// plotH is the Y-T plot's height in canvas px: the canvas less the decode
+// lane while one shows, so the eight divisions end above the decoded bytes
+// and no trace, marker or cursor lies under them (the LCD's plot ends above
+// its decode strip alike).
+// TRLC-LINKS: REQ-SDS-071, REQ-SDS-207
+function plotH() {
+  return decLaneOn() ? Math.max(CH - DEC_LANE_PX * dpr, CH / 2) : CH;
+}
+
 // TRLC-LINKS: REQ-SDS-071
 function drawGrid(g) {
   g.fillStyle = "#05080c"; g.fillRect(0, 0, CW, CH);
   g.strokeStyle = "#182430"; g.lineWidth = dpr;
+  const PH = plotH();
   // TRLC-LINKS: REQ-SDS-071
-  const vline = xf => { const px = Math.round(xf) + .5; g.beginPath(); g.moveTo(px, 0); g.lineTo(px, CH); g.stroke(); };
+  const vline = xf => { const px = Math.round(xf) + .5; g.beginPath(); g.moveTo(px, 0); g.lineTo(px, PH); g.stroke(); };
   // Vertical (TIME) divisions. In Y-T each line marks one tdiv_s of SIGNAL,
   // anchored to the trigger — so the marker SPACING scales with zoom (further
   // apart zoomed in, closer zoomed out) while the time/div LABEL stays the fixed
@@ -29,13 +49,14 @@ function drawGrid(g) {
   if (!drewTime) for (let i = 1; i < DIVX; i++) vline(i * CW / DIVX);
   for (let i = 1; i < DIVY; i++) { // one line per 25 codes, mapped through the voltage window
     const y = Math.round(yFor(128 + (i - DIVY / 2) * 25, 1)) + .5;
-    if (y < 0 || y > CH) continue;
+    if (y < 0 || y > PH) continue;
     g.beginPath(); g.moveTo(0, y); g.lineTo(CW, y); g.stroke();
   }
+  if (PH < CH) { const y = Math.round(PH) - .5; g.beginPath(); g.moveTo(0, y); g.lineTo(CW, y); g.stroke(); } // the plot's bottom edge
   g.strokeStyle = "#26384a";
   vline(CW / 2);                                                    // screen-centre reference
   const yMid = yFor(128, 1);                                        // code-128 (0 V) reference
-  if (yMid >= 0 && yMid <= CH) { g.beginPath(); g.moveTo(0, yMid); g.lineTo(CW, yMid); g.stroke(); }
+  if (yMid >= 0 && yMid <= PH) { g.beginPath(); g.moveTo(0, yMid); g.lineTo(CW, yMid); g.stroke(); }
 }
 
 // yFor maps a code to a screen y through the VOLTAGE window (vwin) — box
@@ -45,7 +66,7 @@ function yFor(code, zoom) {
   zoom = zoom || 1;
   const v01 = 0.5 + (code - 128) * zoom / 200; // 0=bottom .. 1=top of full scale
   const w = view.vwin;
-  return CH * (1 - (v01 - w.a) / (w.b - w.a));
+  return plotH() * (1 - (v01 - w.a) / (w.b - w.a));
 }
 
 // codeAtY inverts yFor for interactions (marker drags, shift+click): cy is
@@ -54,7 +75,7 @@ function yFor(code, zoom) {
 function codeAtY(cy, zoom) {
   zoom = zoom || 1;
   const w = view.vwin;
-  const v01 = w.a + (1 - cy) * (w.b - w.a);
+  const v01 = w.a + (1 - cy * CH / plotH()) * (w.b - w.a); // cy is of the canvas, the plot ends above a decode lane
   return 128 + (v01 - 0.5) * 200 / zoom;
 }
 
@@ -102,7 +123,7 @@ function drawTrace(g, cols, color, zoom, inv) {
     if (v < 0) { pen = false; continue; }
     if (inv) v = 255 - v;
     const x = xForCol(i, n), y = yFor(v, zoom);
-    if (y < -4 || y > CH + 4) { pen = false; continue; }
+    if (y < -4 || y > plotH() + 4) { pen = false; continue; }
     if (pen) g.lineTo(x, y); else { g.moveTo(x, y); pen = true; }
   }
   g.stroke();
@@ -181,7 +202,7 @@ function drawTrigMarkers(g) {
     // centering anchor and the LCD marker).
     const off = (frame && (st.trig_source === 1 ? frame.off2_v : frame.off1_v)) || 0;
     const y = yFor(128 + (st.trig_volts + off) / vpc, 1);
-    if (y >= 0 && y <= CH) {
+    if (y >= 0 && y <= plotH()) {
       g.strokeStyle = TRIGCOL; g.globalAlpha = 0.7; g.setLineDash([6 * dpr, 5 * dpr]); g.lineWidth = dpr;
       g.beginPath(); g.moveTo(0, y + .5); g.lineTo(CW, y + .5); g.stroke(); g.setLineDash([]); g.globalAlpha = 1;
       g.fillStyle = TRIGCOL; // level handle on the right edge (drag it to move the level)
@@ -197,7 +218,7 @@ function drawTrigMarkers(g) {
   if (frac >= view.win.a && frac <= view.win.b) {
     const tx = (frac - view.win.a) / (view.win.b - view.win.a) * CW;
     g.strokeStyle = "rgba(255,159,46,.35)"; g.lineWidth = dpr;
-    g.beginPath(); g.moveTo(tx + .5, 0); g.lineTo(tx + .5, CH); g.stroke();
+    g.beginPath(); g.moveTo(tx + .5, 0); g.lineTo(tx + .5, plotH()); g.stroke();
     g.fillStyle = CURCOL; g.font = "bold " + (10 * dpr) + "px system-ui"; g.textBaseline = "top";
     g.beginPath(); g.moveTo(tx - 6 * dpr, 0); g.lineTo(tx + 6 * dpr, 0); g.lineTo(tx, 10 * dpr); g.fill();
     g.fillText("T", tx + 7 * dpr, 1 * dpr);
@@ -215,7 +236,7 @@ function drawChannelMarkers(g) {
   for (const [en, vpc, offV, zoom, col, lbl] of chans) {
     if (!en || !vpc) continue;
     const y = yFor(128 + (offV || 0) / vpc, zoom || 1);
-    const yc = Math.max(6 * dpr, Math.min(CH - 6 * dpr, y));
+    const yc = Math.max(6 * dpr, Math.min(plotH() - 6 * dpr, y));
     g.fillStyle = col;
     g.beginPath(); g.moveTo(0, yc - 5 * dpr); g.lineTo(9 * dpr, yc); g.lineTo(0, yc + 5 * dpr); g.fill();
     g.fillText(lbl, 12 * dpr, yc);
@@ -331,7 +352,7 @@ function drawRefTrace(g, cols, refVpc, refOff, curVpc, curOff, color, zoom, tm) 
     if (rc < 0) { pen = false; continue; }
     const code = 128 + ((rc - 128) * refVpc - refOff + curOff) / curVpc;
     const x = xOf(i), y = yFor(code, zoom);
-    if (y < -4 || y > CH + 4) { pen = false; continue; }
+    if (y < -4 || y > plotH() + 4) { pen = false; continue; }
     if (pen) g.lineTo(x, y); else { g.moveTo(x, y); pen = true; }
   }
   g.stroke(); g.globalAlpha = 1; g.setLineDash([]);
@@ -461,15 +482,30 @@ function drawXY() {
 // TRLC-LINKS: REQ-SDS-071
 function drawCursors() {
   if (!view.cursors) return;
-  const g = ctx;
+  curSync(); // Y-T: on their signal times and levels
+  const g = ctx, PH = view.mode === "YT" ? plotH() : CH;
+  // TRLC-LINKS: REQ-SDS-217
+  const onX = (t) => t >= 0 && t <= 1;
+  // TRLC-LINKS: REQ-SDS-217
+  const onY = (v) => v >= 0 && v * CH <= PH;
   g.lineWidth = dpr; g.strokeStyle = CURCOL; g.setLineDash([4 * dpr, 4 * dpr]);
-  for (const t of [cur.t1, cur.t2]) { const x = t * CW; g.beginPath(); g.moveTo(x, 0); g.lineTo(x, CH); g.stroke(); }
-  for (const v of [cur.v1, cur.v2]) { const y = v * CH; g.beginPath(); g.moveTo(0, y); g.lineTo(CW, y); g.stroke(); }
+  for (const t of [cur.t1, cur.t2]) { if (!onX(t)) continue; const x = t * CW; g.beginPath(); g.moveTo(x, 0); g.lineTo(x, PH); g.stroke(); }
+  for (const v of [cur.v1, cur.v2]) { if (!onY(v)) continue; const y = v * CH; g.beginPath(); g.moveTo(0, y); g.lineTo(CW, y); g.stroke(); }
   g.setLineDash([]);
-  // handles
-  g.fillStyle = CURCOL;
-  for (const [i, t] of [[1, cur.t1], [2, cur.t2]]) { g.fillRect(t * CW - 4 * dpr, 0, 8 * dpr, 8 * dpr); }
-  for (const [i, v] of [[1, cur.v1], [2, cur.v2]]) { g.fillRect(0, v * CH - 4 * dpr, 8 * dpr, 8 * dpr); }
+  // handles; a cursor beyond the screen keeps its value and shows an arrow
+  // at the side it is beyond
+  g.fillStyle = CURCOL; g.font = "bold " + (10 * dpr) + "px system-ui";
+  for (const [i, t] of [[1, cur.t1], [2, cur.t2]]) {
+    if (onX(t)) { g.fillRect(t * CW - 4 * dpr, 0, 8 * dpr, 8 * dpr); continue; }
+    const x = t < 0 ? 0 : CW, d = t < 0 ? 1 : -1, y = (14 + 12 * i) * dpr;
+    g.beginPath(); g.moveTo(x, y); g.lineTo(x + d * 10 * dpr, y - 6 * dpr); g.lineTo(x + d * 10 * dpr, y + 6 * dpr); g.fill();
+    g.fillText(i === 1 ? "A" : "B", x + d * 12 * dpr - (d < 0 ? 7 * dpr : 0), y + 4 * dpr);
+  }
+  for (const [i, v] of [[1, cur.v1], [2, cur.v2]]) {
+    if (onY(v)) { g.fillRect(0, v * CH - 4 * dpr, 8 * dpr, 8 * dpr); continue; }
+    const y = v < 0 ? 0 : PH, d = v < 0 ? 1 : -1, x = (20 + 16 * i) * dpr;
+    g.beginPath(); g.moveTo(x, y); g.lineTo(x - 6 * dpr, y + d * 10 * dpr); g.lineTo(x + 6 * dpr, y + d * 10 * dpr); g.fill();
+  }
 }
 
 // TRLC-LINKS: REQ-SDS-071

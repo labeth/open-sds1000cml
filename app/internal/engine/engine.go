@@ -380,6 +380,9 @@ type Engine struct {
 	forceReq        atomic.Bool            // FORCE: complete the armed capture once without a trigger
 	decodeView      atomic.Bool            // the display decodes the frame: send samples, not peak-detect pairs
 	decodeLease     atomic.Int64           // raw live frames until this time (unix ns; see LeaseDecodeView)
+	rawMu           sync.Mutex             // guards rawHolders and rawCancel
+	rawHolders      map[string]int64       // named raw leases: each holder's end (unix ns; LeaseRawFor)
+	rawCancel       func()                 // abandons the live raw read in flight for the leases (nil when none)
 	sampleLease     atomic.Int64           // evenly sampled live frames until this time (LeaseSampleView)
 	spectrumLease   atomic.Int64           // live frames for a spectrum until this time (LeaseSpectrumView)
 	views           [viewSurfaces]viewSlot // view windows at full detail (LeaseViewWindow)
@@ -1013,7 +1016,73 @@ func (e *Engine) SetDecodeView(on bool) { e.decodeView.Store(on) }
 // the frame rate on a deep screen. Renewed while in use, so a closed tab
 // cannot leave it on. d <= 0 ends it.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-010
-func (e *Engine) LeaseDecodeView(d time.Duration) { e.lease(&e.decodeLease, d) }
+func (e *Engine) LeaseDecodeView(d time.Duration) {
+	e.lease(&e.decodeLease, d)
+	if d <= 0 {
+		e.abandonRawRead()
+	}
+}
+
+// LeaseRawFor is LeaseDecodeView for one holder (the LCD's eye, super-res, a
+// bus search): its lease is its own, renewed and ended without touching the
+// others'. Ending the last one (d <= 0) abandons a live raw read still in
+// flight for the leases (at 200us/div a megasample takes seconds), so the
+// next capture is the fast live view at once; a read anything else needs (a
+// stopped or SINGLE record, averaging, a still-leased consumer) is left be.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-010
+func (e *Engine) LeaseRawFor(holder string, d time.Duration) {
+	e.rawMu.Lock()
+	if d <= 0 {
+		delete(e.rawHolders, holder)
+	} else {
+		if e.rawHolders == nil {
+			e.rawHolders = map[string]int64{}
+		}
+		e.rawHolders[holder] = e.clk.Now().Add(min(d, 10*time.Second)).UnixNano()
+	}
+	e.rawMu.Unlock()
+	if d <= 0 {
+		e.abandonRawRead()
+	}
+}
+
+// rawLeased reports whether any raw lease is current: the shared one
+// (LeaseDecodeView) or a holder's (LeaseRawFor).
+// TRLC-LINKS: REQ-SDS-010
+func (e *Engine) rawLeased() bool {
+	if e.leased(&e.decodeLease) {
+		return true
+	}
+	e.rawMu.Lock()
+	defer e.rawMu.Unlock()
+	if e.clk.Now == nil {
+		return false
+	}
+	now := e.clk.Now().UnixNano()
+	for h, end := range e.rawHolders {
+		if now < end {
+			return true
+		}
+		delete(e.rawHolders, h)
+	}
+	return false
+}
+
+// abandonRawRead cancels the live raw read in flight for the leases when no
+// lease wants it any more.
+// TRLC-LINKS: REQ-SDS-010
+func (e *Engine) abandonRawRead() {
+	if e.rawLeased() {
+		return
+	}
+	e.rawMu.Lock()
+	cancel := e.rawCancel
+	e.rawCancel = nil
+	e.rawMu.Unlock()
+	if cancel != nil {
+		cancel()
+	}
+}
 
 // LeaseSampleView asks for evenly sampled live frames for d from now (FFT,
 // autoset): an anti-aliased decimated capture serves, so the frame rate holds.

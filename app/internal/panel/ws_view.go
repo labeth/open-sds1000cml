@@ -40,7 +40,9 @@ type Display struct {
 	CurOn        bool
 	CurType      int
 	CurSel       int
-	CurX, CurY   [2]float64
+	CurX, CurY   [2]float64 // where the screen shows the cursors now: fractions across and down (beyond 0..1 off it)
+	CurT, CurV   [2]float64 // their signal: times from the trigger (s), volts at CurVCh's tip
+	CurVCh       int
 	AutosetBusy  bool
 	AutosetMsg   string
 	Remote       string // the last remote change, while it shows
@@ -58,6 +60,9 @@ func (c *Controller) View() wsview.View { return c.view(c.snap()) }
 // TRLC-LINKS: REQ-SDS-211, REQ-SDS-212
 func (c *Controller) view(s *sv) wsview.View {
 	u := &s.ui
+	if !(u.ws == wsview.Bus && u.busEye) {
+		c.endEyeRaw() // the eye left: nothing waits for its raw record
+	}
 	v := wsview.View{WS: u.ws}
 	if s.now.Before(u.noticeUnt) {
 		v.Notice = u.notice
@@ -339,7 +344,7 @@ func tabStatus(c *Controller, s *sv, t *tab) []wsview.Span {
 	case "curs":
 		if s.curOn {
 			if s.curType == 0 {
-				ta, tb := cursorTimes(s, 0) // their difference: the pan cancels
+				ta, tb := cursorTimes(s)
 				dt := tb - ta
 				line := "dt " + si(abs64(dt), "s")
 				if dt != 0 {

@@ -65,6 +65,9 @@ type row struct {
 	setN    func(c *Controller, v float64) error
 	stepN   func(c *Controller, n int) error
 	fmtN    func(v float64) string
+	fmtS    func(s *sv, v float64) string // fmtN, for a row whose unit follows the state
+	unitOf  func(s *sv) string            // unit, for a row whose unit follows the state
+	text    func(s *sv) string            // the value as written, when more than its number
 	lim     func(s *sv) (lo, hi float64)
 	step    func(s *sv) float64   // one knob step in unit (0 = a ladder)
 	ladder  func(s *sv) []float64 // the discrete values, when a ladder
@@ -129,7 +132,10 @@ func (r *row) valueText(s *sv) string {
 		}
 		return fmt.Sprint(r.get(s))
 	case wsview.Number:
-		return r.fmtN(r.val(s))
+		if r.text != nil {
+			return r.text(s)
+		}
+		return r.format(s, r.val(s))
 	case wsview.Bytes:
 		return matchText(s)
 	case wsview.Action, wsview.Slot:
@@ -195,7 +201,25 @@ func (r *row) gauge(s *sv) float64 {
 // TRLC-LINKS: REQ-SDS-212
 func (r *row) rangeText(s *sv) string {
 	lo, hi := r.lim(s)
-	return r.fmtN(lo) + " .. " + r.fmtN(hi)
+	return r.format(s, lo) + " .. " + r.format(s, hi)
+}
+
+// format writes a number row's value v.
+// TRLC-LINKS: REQ-SDS-212
+func (r *row) format(s *sv, v float64) string {
+	if r.fmtS != nil {
+		return r.fmtS(s, v)
+	}
+	return r.fmtN(v)
+}
+
+// unitFor is a number row's unit now.
+// TRLC-LINKS: REQ-SDS-212
+func (r *row) unitFor(s *sv) string {
+	if r.unitOf != nil {
+		return r.unitOf(s)
+	}
+	return r.unit
 }
 
 // setEnum applies option v, refusing a value the row does not offer.
@@ -226,7 +250,7 @@ func (r *row) setNumber(c *Controller, s *sv, v float64) error {
 	// a rounding allowance at each bound, scaled to that bound: one scaled to
 	// the larger lets 0 through a 10 ns .. 10 s row
 	if v < lo-1e-9*math.Abs(lo) || v > hi+1e-9*math.Abs(hi) {
-		return fmt.Errorf("%s %s is outside %s", strings.ToLower(r.label), r.fmtN(v), r.rangeText(s))
+		return fmt.Errorf("%s %s is outside %s", strings.ToLower(r.label), r.format(s, v), r.rangeText(s))
 	}
 	return r.setN(c, v)
 }
@@ -330,7 +354,10 @@ type sv struct {
 	curOn          bool
 	curType        int
 	curSel         int
-	curX, curY     [2]float64
+	curX, curY     [2]float64 // the cursors' screen fractions now (beyond 0..1 off the screen)
+	curT, curV     [2]float64 // their times from the trigger (s) and volts at curVCh's tip
+	curVCh         int
+	records        float64 // the record's length in screens (0: no frame yet)
 	refHas         [2]bool
 	refShow        [2]bool
 	refC2          [2]bool    // the reference holds C2 too

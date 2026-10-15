@@ -633,11 +633,20 @@ has timing (`HasTiming`).
 ### 10.2 Cursors
 
 A pair of time cursors (vertical) or volts cursors (horizontal), off by default (the CURS tab,
-or the Adjust push in MEASURE). Their positions are screen fractions (`curX`, `curY`). Each is a
+or the Adjust push in MEASURE). They are anchored to the signal, not the screen: a time cursor
+keeps its time from the trigger (seconds), a volts cursor its volts at the probe tip of the
+channel it was placed on (the trigger source for "At trigger" and AUTO, else the shown channel).
+A timebase, trigger position, zoom, V/div, offset or probe change moves them on the screen to
+the same instants and levels, so `dt` and `dV` read as before. The panel hands the renderer their
+screen fractions now (`curX`, `curY`, beyond 0..1 when off the screen). Each is a
 dashed line, one pixel every 2nd row (column) across the plot's ±4 divisions (the full plot
 width), the active one in `colTrig` and the other in `colDim` so it does not vanish into the
-graticule. The delta read-out sits in a box at the plot's top centre (`y = y0 + 24`):
+graticule; a cursor off the screen keeps its value and is drawn as a small arrow with its letter
+at the side it is beyond. A knob step moves a cursor a hundredth of the screen at the scale shown
+(an off-screen cursor comes in from its edge); the CURS rows give the time or volts and where it
+shows (`+1.2us (4.2div)`, `+3ms (right)`). The delta read-out sits in a box at the plot's top centre (`y = y0 + 24`):
 `dt <time>  1/dt <freq>` for time cursors, with `dt = |curX[0] − curX[1]| × 10 × time/div`
+(the same as the difference of their times)
 (divided by the zoom factor while zoomed) and `1/dt` only when `dt > 0`; `dV1 <volts>  dV2 <volts>`
 for volts cursors, each shown channel's `|curY[0] − curY[1]| × 8 × V/div × probe`. MEASURE's pane
 lists each cursor's time from the trigger, read through the trace window (§4.1), and the shown
@@ -664,7 +673,12 @@ plot below it:
 | COMPARE | `12..103` | `104..479` | the trace with references, mask and math |
 
 Under a pane the eight vertical divisions span the plot exactly (graticule and trace mapping move
-together); the graticule is drawn across `w`, not 800. The bottom Vpp/f readouts and the measurement
+together); the graticule is drawn across `w`, not 800. While a protocol is decoded the Y-T plot
+ends above the decode strip (rows `442..468`, above the bottom readout row), in every workspace:
+the −4 division row sits just over it and the eight divisions are that much shorter, the
+graticule, the trace mapping, the markers, cursors, mask and zones with them, so no trace (AUTO's
+fit or a trace placed low by hand) lies under the decoded bytes. The strip's label row carries the
+selected packet's number and the match ticks. The bottom Vpp/f readouts and the measurement
 boxes give way where a pane shows the same figures.
 
 **Rail.** One 28×34 tab per F-key, vertically centred on the physical F1..F5 (the `softkeyY` row
@@ -686,7 +700,7 @@ active key's next view in amber at its right end (`F2 again: Eye diagram`); an a
   non-printables), the byte count and the match bytes in amber (cut packets say so, dim). Eight lines,
   at most three per packet, scrolled to keep the selected packet (a `>` and a `colGrid` band) in view;
   framing errors are `ER` cells in `colStale`. Under the trace the decode strip boxes the selected
-  packet in amber with its number and ticks the packets holding the match.
+  packet in amber with its number and ticks the packets holding the match (both in its label row).
 - **Byte picker:** the pane framed in amber; the bytes at scale 2 in a window around the first byte
   (filled amber), the next three underlined, a bar before each message start, `ERR` in `colStale`.
 - **Eye diagram:** the plot shows two UI around the bit centre (192 grid columns per UI, 2 px each,
@@ -698,7 +712,8 @@ active key's next view in amber at its right end (`F2 again: Eye diagram`); an a
   cycle-to-cycle jitter) with `<`/`>` on bounds when the edges fall between samples, and a warning
   when sample-limited. The eye folds full-rate raw records only (`Frame.FullRate`: the converters' own
   samples, no envelope, decimation, roll, average, ERES or precision filter; it leases them while shown
-  and between captures), every sample of a fast bus; any other frame leaves the eye as it is, so it never
+  and between captures; leaving the eye, by F2 or another workspace, ends that lease, and a raw read
+  in flight only for it is abandoned, so the packets come from the live capture at once), every sample of a fast bus; any other frame leaves the eye as it is, so it never
   flips to a coarser picture between them. Without a full-rate frame it says why (`Waiting for a
   full-rate capture...`, or the S/DIV or ACQ setting that gives one), and an eye that has gone 6 s
   without one while running is marked `Held: no full-rate capture for N s`. It starts over when its

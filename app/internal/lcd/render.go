@@ -179,7 +179,7 @@ func drawGraticule(sf Surface, p plotArea) {
 		if c == 5 {
 			col = colAxis
 		}
-		vline(sf, x, p.y0, H-1, col)
+		vline(sf, x, p.y0, p.last(), col)
 	}
 	for r := 0; r <= 8; r++ {
 		y := p.gridY(r)
@@ -627,6 +627,9 @@ func Render(sf Surface, f *engine.Frame, hud HUD, live bool, persist ...*MemSurf
 	sheet := ui.Sheet != nil
 	p := plotOf(ui.Layout)
 	traces := !sheet && !ui.Layout.HideTraces
+	if traces && decodeStrip(hud) {
+		p = p.aboveStrip()
+	}
 	if traces {
 		drawGraticule(sf, p)
 	}

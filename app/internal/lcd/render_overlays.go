@@ -186,8 +186,8 @@ func decodeColor(kind string) uint16 {
 var protoNames = []string{"", "", "UART", "I2C", "SPI", "MANCH", "SENT", "CAN", "1553", "ARINC", "USB", "FLEXR"}
 
 // drawDecode runs the protocol decoder on the frame and draws the decoded byte
-// spans in a strip at the bottom of the plot (parity with the web decode
-// overlay). Only in Y-T; the span sample indices map to screen x through the
+// spans in a strip under the plot (decodeStrip: the plot ends above it, as
+// the web's decode lane). Only in Y-T; the span sample indices map to screen x through the
 // same trace window. In BUS the selected packet is boxed with its list
 // number and the packets holding the match bytes are ticked.
 // TRLC-LINKS: REQ-SDS-021, REQ-SDS-214
@@ -210,7 +210,7 @@ func drawDecode(sf Surface, p plotArea, f *engine.Frame, hud HUD, win int, xc, p
 	name := protoNames[hud.DecProto%len(protoNames)]
 	// Decode lane: a dark band that sits ABOVE the bottom Vpp/freq readout row
 	// (drawn later by drawHUD at H-9), so the two never overwrite each other.
-	yLbl, yTxt, yBar := H-36, H-26, H-14 // label / byte hex / span bars, top→bottom
+	yLbl, yTxt, yBar := decodeStripTop+2, H-26, H-14 // label / byte hex / span bars, top→bottom
 	fillRect(sf, 0, yLbl-2, p.w, 27, colBoxBg)
 	if !res.OK {
 		DrawText(sf, 10, yLbl, name+": "+res.Error, colStale, 1)
@@ -224,7 +224,9 @@ func drawDecode(sf Surface, p plotArea, f *engine.Frame, hud HUD, win int, xc, p
 	case "sent":
 		unit = "nibbles"
 	}
-	DrawText(sf, 10, yLbl, fmt.Sprintf("%s  %d %s", label, len(res.Bytes), unit), colDim, 1)
+	head := fmt.Sprintf("%s  %d %s", label, len(res.Bytes), unit)
+	DrawText(sf, 10, yLbl, head, colDim, 1)
+	headEnd := 10 + TextWidth(head, 1) + 6 // the label row's marks start right of it
 	// Map a sample index to screen x via the same window the trace uses.
 	left := xc - float64(win)*posFrac
 	sx := func(s float64) int { return int((s - left) * float64(p.w) / float64(win)) }
@@ -270,16 +272,18 @@ func drawDecode(sf Surface, p plotArea, f *engine.Frame, hud HUD, win int, xc, p
 				continue
 			}
 			x1 = max(x1, x0+2)
-			if m.Match {
-				fillTri(sf, max(2, x0), yLbl-6, 3, colTrig)
+			// the tick and the number in the strip's label row: above it
+			// they would hide the trace's bottom
+			if tx := max(2, x0); m.Match && tx-3 >= headEnd {
+				fillTri(sf, tx, yLbl, 3, colTrig)
 			}
 			if m.Sel {
 				strokeRect(sf, x0-2, yLbl+7, x1-x0+5, 20, colTrig)
 				lab := fmt.Sprintf("#%d", b.SelNum)
 				lw := TextWidth(lab, 1) + 4
-				lx := min(max(x0+6, 2), p.w-lw-2)
-				fillRect(sf, lx, yLbl-16, lw, 10, colBG)
-				DrawText(sf, lx+2, yLbl-15, lab, colTrig, 1)
+				lx := min(max(x0+6, headEnd), p.w-lw-2)
+				fillRect(sf, lx, yLbl-1, lw, 9, colBoxBg)
+				DrawText(sf, lx+2, yLbl, lab, colTrig, 1)
 			}
 		}
 	}

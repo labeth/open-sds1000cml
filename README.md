@@ -32,7 +32,7 @@ again switches to its next view.
 | | |
 |---|---|
 | ![SCOPE workspace: both channels' UART traces with readouts and the decoded bytes under the trace](docs/images/scope-scope.png) | ![SCOPE again: X-Y, a diagonal line because both channels carry the same signal](docs/images/scope-xy.png) |
-| **SCOPE:** the full trace, readouts and the decoded strip | **SCOPE again:** X-Y (here a diagonal: C1 and C2 carry the same signal) |
+| **SCOPE:** the full trace, readouts and the decoded strip (the trace ends above it) | **SCOPE again:** X-Y (here a diagonal: C1 and C2 carry the same signal) |
 | ![BUS again: an eye diagram of the UART with bit rate, eye height and width, and TIE jitter](docs/images/scope-bus-eye.png) | ![The match editor: a full-screen keypad for the trigger's match bytes, in hex](docs/images/scope-match-editor.png) |
 | **BUS again:** the eye diagram, with eye height, width and TIE jitter | **The match editor:** the knobs move over a full-screen keypad, hex or text |
 | ![SPECTRUM: the FFT with a peak table, harmonics and THD over a small time trace](docs/images/scope-spectrum.png) | ![SPECTRUM again: the spectrogram, the spectrum over time](docs/images/scope-spectrogram.png) |
@@ -207,7 +207,9 @@ automatically.
   around the trigger edge and the next edge the other way (twice a second, a few milliseconds
   each); so do the frequency, duty, widths and mean of a signal faster than the min/max points
   resolve (a 1 MHz square at 200 µs/div). The statistics count each reading once.
-* **Cursors** in time and voltage, with Δt, 1/Δt and ΔV.
+* **Cursors** in time and voltage, with Δt, 1/Δt and ΔV. They stay on the signal: a timebase, V/div,
+  offset or zoom change moves them with the waveform (an arrow marks one off the screen), so Δt and ΔV
+  keep reading the same edges and levels.
 * **Math:** C1 − C2, C2 − C1, C1 + C2, C1 × C2, and carrier removal using FFT peaks.
 * **FFT** with a peak table (up to 64 peaks; a peak you pick on the web follows its tone within a few bins; when
   the tone is gone it reads greyed as lost for 3 s, then is cleared), and a **spectrogram** waterfall. On

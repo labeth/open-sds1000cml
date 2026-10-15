@@ -564,6 +564,14 @@ Workspace tools (no menu open):
 | MEASURE | cursor A | cursors off / time / volts | trigger position | cursor B | cursor B |
 | COMPARE | the row | the row's action (written at its right end) | trigger position | centre | none |
 
+MEASURE's cursors stay on the signal: a time cursor keeps its time from the trigger, a volts
+cursor its volts at the tip (spec 07 §10.2), so changing TIME/DIV, V/DIV, the offset, the trigger
+position or the zoom (in BUS or anywhere else) and coming back finds them on the same edges and
+levels, `dt` and `dV` unchanged. A knob step is a hundredth of the screen at the scale shown; a
+cursor off the screen shows as an arrow at its side and the first step brings it in from there.
+Leaving the BUS eye (F2 again, or another workspace) ends its full-rate lease at once: the raw read
+in flight for it is abandoned and the packet list comes from the next live capture.
+
 The marker back to the largest peak (Bode: following the sweep) is the VIEW sheet's Marker row
 (`view.marker`, action Largest peak / Follow sweep); zeroing the statistics is the MEAS sheet's
 Statistics row (`meas.stats`, action Zero).

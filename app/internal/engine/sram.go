@@ -4,6 +4,7 @@ package engine
 import (
 	"context"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"math"
 	"open-sds/app/internal/dsp"
@@ -824,9 +825,11 @@ acquisitionLoop:
 			envBuckets = sramcapture.EnvelopeBucketsQ8 // two words a bucket
 		}
 		readout := "full record"
+		rawForLease := false // a live raw window read only for the raw leases: abandoned when they end
 		if !fullRecall {
 			if why := e.envelopeBlock(cfg, tp); why != "" {
 				readout = "raw window: " + why
+				rawForLease = why == blockRaw && !singleShot && !replay
 			} else {
 				bucket, recallOffset, recallWords = envelopeWindow(recallOffset, recallWords, envBuckets, m.Length)
 				readout = "raw window: short"
@@ -873,6 +876,12 @@ acquisitionLoop:
 		writer := sramFrameWriter{f: f, m: m}
 		e.setBusy("reading", 0) // the recall's burst loop reports progress
 		ctx, cancel = context.WithTimeout(context.Background(), 10*time.Second)
+		if rawForLease {
+			e.rawMu.Lock()
+			e.rawCancel = cancel
+			e.rawMu.Unlock()
+			e.abandonRawRead() // the last lease ended since the readout was chosen
+		}
 		recall := e.sram.Recall
 		if m.Revision == 10 {
 			recall = e.sram.RecallForward
@@ -909,7 +918,19 @@ acquisitionLoop:
 			}
 		}
 		recalledAt := e.clk.Now()
+		abandoned := rawForLease && errors.Is(ctx.Err(), context.Canceled)
 		cancel()
+		if rawForLease {
+			e.rawMu.Lock()
+			e.rawCancel = nil
+			e.rawMu.Unlock()
+		}
+		if abandoned {
+			// Nobody wants the raw record any more: no frame, and the next
+			// capture is the live view.
+			e.logf("engine: raw read abandoned after %v: the raw leases ended", recalledAt.Sub(recallAt).Round(time.Millisecond))
+			continue
+		}
 		if err != nil || writer.n != f.Valid {
 			if err == nil {
 				err = fmt.Errorf("short SRAM frame")

@@ -187,9 +187,9 @@ func checkUIInvariants(c *Controller) []string {
 	if !inIntRange(c.curType, 0, 1) || !inIntRange(c.curSel, 0, 1) {
 		fail("cursor type/sel %d/%d", c.curType, c.curSel)
 	}
-	for i := 0; i < 2; i++ {
-		if c.curX[i] < 0 || c.curX[i] > 1 || c.curY[i] < 0 || c.curY[i] > 1 {
-			fail("cursor %d off-screen x=%g y=%g", i, c.curX[i], c.curY[i])
+	for i := 0; i < 2; i++ { // anchored to the signal: off the screen is allowed, not a non-number
+		if !finiteAll(c.curT[i], c.curV[i]) || !inIntRange(c.curVCh, 0, 1) {
+			fail("cursor %d at t=%g v=%g on C%d", i, c.curT[i], c.curV[i], c.curVCh+1)
 		}
 	}
 	if !inIntRange(c.viewMode, 0, 4) || !inIntRange(c.mathMode, 0, 4) || !inIntRange(c.fftSrc, 0, 1) {

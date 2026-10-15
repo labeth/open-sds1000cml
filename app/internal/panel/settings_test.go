@@ -226,10 +226,21 @@ func TestSettingsViewDisplayStateRoundTrip(t *testing.T) {
 	if inv.inv != [2]bool{true, false} {
 		t.Fatalf("invert not restored: %v", inv.inv)
 	}
-	got := c.SettingsView().Display
+	full := c.SettingsView().Display
+	got := full
 	got.MathMode, got.ShowMeas, got.Persist, got.Hidden = 0, false, false, [2]bool{}
+	got.CurAt, got.CurT, got.CurV, got.CurVCh = false, [2]float64{}, [2]float64{}, 0
 	if got != want {
-		t.Fatalf("display state:\n got %+v\nwant %+v", got, want)
+		t.Fatalf("display state (an older file's screen places):\n got %+v\nwant %+v", got, want)
+	}
+	// saved anchored: the signal times and volts come back as they were
+	if !full.CurAt {
+		t.Fatalf("cursors not saved anchored to the signal: %+v", full)
+	}
+	full.CurT, full.CurV, full.CurVCh = [2]float64{-1e-3, 2e-3}, [2]float64{0.5, -0.25}, 1
+	c.ApplySettingsView(settings.ViewState{Display: full})
+	if back := c.SettingsView().Display; back.CurT != full.CurT || back.CurV != full.CurV || back.CurVCh != 1 {
+		t.Fatalf("anchored cursors: saved %v %v on C2, restored %v %v on C%d", full.CurT, full.CurV, back.CurT, back.CurV, back.CurVCh+1)
 	}
 	if rowText(c, "curs.mode") != "Volts" || rowText(c, "time.zoom") != "5x" || rowText(c, "ch1.invert") != "On" {
 		t.Fatalf("rows: cursors %q zoom %q C1 invert %q", rowText(c, "curs.mode"), rowText(c, "time.zoom"), rowText(c, "ch1.invert"))

@@ -340,6 +340,7 @@ func (c *Controller) displayAndView(s *sv) (Display, wsview.View) {
 		Zoom: max(s.zoom, 1), ZoomOff: s.zoomOff, Persist: s.persist, FFTSrc: s.fftSrc,
 		DecProto: s.decProto, DecBaud: s.decBaud, DecChA: s.decChA, DecChB: s.decChB, DecCPOL: s.decCPOL, DecCPHA: s.decCPHA,
 		DecLSB: s.decLSB, DecFormat: s.decFormat, DecDetecting: s.ui.busDetecting, DecAuto: s.decAuto, DecNote: s.ui.busNote, CurOn: s.curOn, CurType: s.curType, CurSel: s.curSel, CurX: s.curX, CurY: s.curY,
+		CurT: s.curT, CurV: s.curV, CurVCh: s.curVCh,
 		AutosetBusy: busy, AutosetMsg: amsg}
 	for _, it := range s.meas {
 		d.MeasItems = append(d.MeasItems, fmt.Sprintf("%d:%s", it.ch+1, measParams[it.param].id))
@@ -364,7 +365,7 @@ func rowModel(s *sv, r *row) RowModel {
 			m.Options = append(m.Options, OptModel{o.v, o.t})
 		}
 	case wsview.Number:
-		m.Kind, m.Value, m.Unit = "number", finiteOr(r.val(s)), r.unit
+		m.Kind, m.Value, m.Unit = "number", finiteOr(r.val(s)), r.unitFor(s)
 		lo, hi := r.lim(s)
 		m.Min, m.Max = ptr(finiteOr(lo)), ptr(finiteOr(hi))
 		if st := r.step(s); st > 0 {
@@ -995,7 +996,7 @@ func (c *Controller) applyRow(r *row, s *sv, value any, text string) error {
 		if r.id == "trig.holdoff" && strings.EqualFold(strings.TrimSpace(text), "off") {
 			return r.setNumber(c, s, 0)
 		}
-		v, err := parseNumber(text, r.unit)
+		v, err := parseNumber(text, r.unitFor(s))
 		if err != nil {
 			return fmt.Errorf("%s: %v", r.label, err)
 		}

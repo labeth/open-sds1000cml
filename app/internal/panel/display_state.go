@@ -143,11 +143,11 @@ func (c *Controller) SetMeasOn(on bool) {
 }
 
 // CursorState reports the manual cursors for SCPI CRVA?: on, the type
-// (0 time / 1 volts) and both cursors' screen fractions (x left->right,
-// y top->bottom).
+// (0 time / 1 volts) and both cursors' screen fractions where the screen
+// shows their signal times and levels now (x left->right, y top->bottom;
+// beyond 0..1 off the screen).
 // TRLC-LINKS: REQ-SDS-136
 func (c *Controller) CursorState() (on bool, typ int, x, y [2]float64) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	return c.curOn, c.curType, c.curX, c.curY
+	s := c.snap()
+	return s.curOn, s.curType, s.curX, s.curY
 }

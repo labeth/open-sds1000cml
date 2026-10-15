@@ -244,15 +244,25 @@ type Controller struct {
 	searchMu       sync.Mutex             // one bus search at a time (findBus steps the timebase)
 	decGen         uint64                 // counts the protocol settings (set, recalled, defaulted, locked): a search's result stands only if none came meanwhile
 	// On-screen cursors (spec 08 §6): two X (time) and two Y (volts) cursors,
-	// positions as screen fractions; ADJUST moves the selected one.
-	curOn    bool
-	curType  int // 0 = X (time), 1 = Y (volts)
-	curSel   int // 0 = A, 1 = B
-	curX     [2]float64
-	curY     [2]float64
-	inject   chan func()
-	looping  atomic.Bool // Run is serving inject (else a remote change runs inline)
-	inlineMu sync.Mutex  // orders inline remote changes without the loop
+	// anchored to the signal: the time cursors' times from the trigger (s),
+	// the voltage cursors' volts at the tip of channel curVCh; ADJUST moves
+	// the selected one. curPend holds screen fractions (across, down) to
+	// anchor at the next state read (the power-on and factory places, an older
+	// settings file's).
+	curOn   bool
+	curType int // 0 = X (time), 1 = Y (volts)
+	curSel  int // 0 = A, 1 = B
+	curT    [2]float64
+	curV    [2]float64
+	curVCh  int
+	curPend *[2][2]float64
+	// the record's length in screens of the last frame analysed (a zoomed
+	// screen's pan is a fraction of the record): float64 bits
+	curRecords atomic.Uint64
+	eyeLeased  atomic.Bool // the eye holds a raw lease (leaseEyeRaw, endEyeRaw)
+	inject     chan func()
+	looping    atomic.Bool // Run is serving inject (else a remote change runs inline)
+	inlineMu   sync.Mutex  // orders inline remote changes without the loop
 
 	// frameFn reads the latest published frame (fo.WithFrame) for autoset; nil
 	// until SetFrameSource is called (AUTO then falls back to plain AUTO/run).
@@ -350,8 +360,7 @@ func New(eng Engine, fe Analog, keyFD int, tdivs []float64, startTdiv float64, l
 		vIdx:     [2]int{analog.BootDetent, analog.BootDetent},
 		trigCode: 31437, // 0 V threshold (measured global fit zero)
 		chDisp:   [2]bool{true, true},
-		curX:     [2]float64{0.35, 0.65},
-		curY:     [2]float64{0.35, 0.65},
+		curPend:  &cursorHome,
 		inject:   make(chan func(), 32),
 		running:  true,
 		zoom:     1,

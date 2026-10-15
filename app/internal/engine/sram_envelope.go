@@ -28,8 +28,8 @@ func (e *Engine) envelopeBlock(cfg sramcapture.Config, tp trigParams) string {
 	switch {
 	case e.bodeMode.Load() == BodeOn:
 		return "bode" // a single-bin DFT needs true samples; its screens are short
-	case e.leased(&e.decodeLease):
-		return "raw requested"
+	case e.rawLeased():
+		return blockRaw
 	case e.leased(&e.spectrumLease):
 		return blockSpectrum
 	case e.leased(&e.sampleLease):
@@ -39,6 +39,9 @@ func (e *Engine) envelopeBlock(cfg sramcapture.Config, tp trigParams) string {
 	}
 	return ""
 }
+
+// blockRaw is the envelope block of a raw lease (LeaseDecodeView, LeaseRawFor).
+const blockRaw = "raw requested"
 
 // blockSpectrum is the envelope block of a spectrum lease (LeaseSpectrumView).
 const blockSpectrum = "spectrum requested"
@@ -85,7 +88,7 @@ func liveBudget(block string) int {
 // full-rate samples.
 // TRLC-LINKS: REQ-SDS-010
 func liveDecimates(block string) bool {
-	return block != "" && block != "bode" && block != "raw requested"
+	return block != "" && block != "bode" && block != blockRaw
 }
 
 // envelopeWindow buckets a live recall window for the display: words per

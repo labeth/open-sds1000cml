@@ -2,6 +2,7 @@
 package panel
 
 import (
+	"math"
 	"time"
 
 	"open-sds/app/internal/engine"
@@ -244,7 +245,17 @@ func (c *Controller) snap() *sv {
 	s.decAuto = c.auto.filled
 	s.decMode, s.decTrig, s.decValue, s.streamList = c.decMode, c.decTrig, c.decValue, c.streamList
 	s.hasStream = c.stream != nil
-	s.curOn, s.curType, s.curSel, s.curX, s.curY = c.curOn, c.curType, c.curSel, c.curX, c.curY
+	s.records = math.Float64frombits(c.curRecords.Load())
+	if c.curPend != nil { // anchor fractions to the signal on the scales now
+		for k := 0; k < 2; k++ {
+			c.curT[k], c.curV[k] = cursorTimeAt(s, c.curPend[0][k]), cursorVoltAt(s, c.curPend[1][k], c.curVCh)
+		}
+		c.curPend = nil
+	}
+	s.curOn, s.curType, s.curSel, s.curT, s.curV, s.curVCh = c.curOn, c.curType, c.curSel, c.curT, c.curV, c.curVCh
+	for k := 0; k < 2; k++ {
+		s.curX[k], s.curY[k] = cursorXOf(s, s.curT[k]), cursorYOf(s, s.curV[k], s.curVCh)
+	}
 	for i, r := range c.refs {
 		s.refHas[i], s.refShow[i] = r.has, r.show
 		s.refC2[i], s.refTdiv[i] = r.c2 != nil, r.tdiv

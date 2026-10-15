@@ -101,6 +101,78 @@ function updateMeas() {
 }
 
 let lastCurHTML = "";
+
+// ---- cursors anchored to the signal ----
+// In Y-T the cursors keep the signal's time (s from the trigger) and volts
+// (at the probe tip, on cur.at.ch), as the scope's own do: a zoom, a
+// timebase, a V/div or an offset change moves them on the screen to the same
+// instants and levels. cur.t1..v2 are their screen fractions now (beyond
+// 0..1 when off the screen), recomputed per draw.
+
+// curTimeAt is the time from the trigger (s) at screen fraction x.
+// TRLC-LINKS: REQ-SDS-202, REQ-SDS-217
+function curTimeAt(x) {
+  const edge = frame.edge_frac >= 0 ? frame.edge_frac : 0.5;
+  return ((view.win.a + x * (view.win.b - view.win.a)) - edge) * (frame.col_span_s || 0);
+}
+
+// curXAt is the screen fraction of time t from the trigger.
+// TRLC-LINKS: REQ-SDS-202, REQ-SDS-217
+function curXAt(t) {
+  const edge = frame.edge_frac >= 0 ? frame.edge_frac : 0.5;
+  return (edge + t / frame.col_span_s - view.win.a) / (view.win.b - view.win.a);
+}
+
+// curScale is channel ch's volts per code (at the tip), detent zoom and offset.
+// TRLC-LINKS: REQ-SDS-202, REQ-SDS-217
+function curScale(ch) {
+  return { vpc: (ch === 2 ? frame.vpc2 : frame.vpc1) || 1 / 25, z: (st && (ch === 2 ? st.zoom2 : st.zoom1)) || 1,
+    off: (ch === 2 ? frame.off2_v : frame.off1_v) || 0 };
+}
+
+// curVoltAt is channel ch's volts at canvas fraction y.
+// TRLC-LINKS: REQ-SDS-202, REQ-SDS-217
+function curVoltAt(y, ch) {
+  const k = curScale(ch);
+  return (codeAtY(y, k.z) - 128) * k.vpc - k.off;
+}
+
+// curYAt is the canvas fraction of channel ch's volts v.
+// TRLC-LINKS: REQ-SDS-202, REQ-SDS-217
+function curYAt(v, ch) {
+  const k = curScale(ch);
+  return yFor(128 + (v + k.off) / k.vpc, k.z) / CH;
+}
+
+// curAnchored reports whether the cursors map to the signal now (Y-T, a
+// frame with a known record span).
+// TRLC-LINKS: REQ-SDS-202, REQ-SDS-217
+function curAnchored() {
+  return view.mode === "YT" && !!frame && frame.col_span_s > 0 && view.win.b > view.win.a;
+}
+
+// curSync places the cursors on their signal times and levels; the first
+// time, it takes them from where they are on the screen.
+// TRLC-LINKS: REQ-SDS-202, REQ-SDS-217
+function curSync() {
+  if (!curAnchored()) return;
+  if (!cur.at) {
+    const ch = view.c1 || !view.c2 ? 1 : 2;
+    cur.at = { t1: curTimeAt(cur.t1), t2: curTimeAt(cur.t2), v1: curVoltAt(cur.v1, ch), v2: curVoltAt(cur.v2, ch), ch };
+    return;
+  }
+  cur.t1 = curXAt(cur.at.t1); cur.t2 = curXAt(cur.at.t2);
+  cur.v1 = curYAt(cur.at.v1, cur.at.ch); cur.v2 = curYAt(cur.at.v2, cur.at.ch);
+}
+
+// curAnchor takes cursor k's (t1, t2, v1, v2) signal value from its screen
+// place, after a drag.
+// TRLC-LINKS: REQ-SDS-202, REQ-SDS-217
+function curAnchor(k) {
+  if (!curAnchored() || !cur.at) return;
+  cur.at[k] = k[0] === "t" ? curTimeAt(cur[k]) : curVoltAt(cur[k], cur.at.ch);
+}
+
 // updateCursors fills MEASURE's cursor table: the A/B time and voltage cursor
 // positions and their differences, per channel.
 // TRLC-LINKS: REQ-SDS-202, REQ-SDS-217
@@ -111,28 +183,20 @@ function updateCursors() {
     if (lastCurHTML !== t) { lastCurHTML = t; body.innerHTML = t; }
     return;
   }
-  // Cursors are screen fractions; the screen now spans (b-a) of the record.
-  const span = (frame.col_span_s || 0) * (view.win.b - view.win.a);
-  const dt = Math.abs(cur.t2 - cur.t1) * span;
-  // Time of a cursor relative to the trigger (t = 0 at the edge).
-  const edge = frame.edge_frac >= 0 ? frame.edge_frac : 0.5;
-  // TRLC-LINKS: REQ-SDS-202
-  const tAt = (x) => ((view.win.a + x * (view.win.b - view.win.a)) - edge) * (frame.col_span_s || 0);
-  // A full-height drag spans 200 codes ÷ vertical zoom (the 2 mV/5 mV detents
-  // render magnified), times volts/code (already probe-scaled). Per channel.
-  const z1 = (st && st.zoom1) || 1, z2 = (st && st.zoom2) || 1;
-  const vspan = view.vwin.b - view.vwin.a; // a full-height drag spans the ZOOMED voltage range
-  const vFull1 = 200 * vspan * (frame.vpc1 || 1 / 25) / z1, vFull2 = 200 * vspan * (frame.vpc2 || 1 / 25) / z2;
-  const dv1 = Math.abs(cur.v2 - cur.v1) * vFull1, dv2 = Math.abs(cur.v2 - cur.v1) * vFull2;
-  // TRLC-LINKS: REQ-SDS-202
-  const vAt = (y, ch) => { const vpc = (ch === 2 ? frame.vpc2 : frame.vpc1) || 1 / 25, z = ch === 2 ? z2 : z1; return (codeAtY(y, z) - 128) * vpc - ((ch === 2 ? frame.off2_v : frame.off1_v) || 0); };
+  curSync();
+  // Time of a cursor relative to the trigger (t = 0 at the edge), volts at a
+  // channel's tip: the anchored values themselves.
+  const ta = curTimeAt(cur.t1), tb = curTimeAt(cur.t2), dt = Math.abs(tb - ta);
+  // TRLC-LINKS: REQ-SDS-217
+  const v = (y, ch) => cur.at && ch === cur.at.ch && curAnchored() ? cur.at[y] : curVoltAt(cur[y], ch);
+  const dv1 = Math.abs(v("v2", 1) - v("v1", 1)), dv2 = Math.abs(v("v2", 2) - v("v1", 2));
   const html =
-    `<tr><th>A / B</th><td>${eng(tAt(cur.t1), "s")}</td><td>${eng(tAt(cur.t2), "s")}</td></tr>` +
+    `<tr><th>A / B</th><td>${eng(ta, "s")}</td><td>${eng(tb, "s")}</td></tr>` +
     `<tr><th>Δt</th><td colspan="2">${eng(dt, "s")}</td></tr>` +
     `<tr><th>1/Δt</th><td colspan="2">${dt > 0 ? eng(1 / dt, "Hz") : "—"}</td></tr>` +
-    `<tr><th class="cc1">C1 A / B</th><td class="cc1">${eng(vAt(cur.v1, 1), "V")}</td><td class="cc1">${eng(vAt(cur.v2, 1), "V")}</td></tr>` +
+    `<tr><th class="cc1">C1 A / B</th><td class="cc1">${eng(v("v1", 1), "V")}</td><td class="cc1">${eng(v("v2", 1), "V")}</td></tr>` +
     `<tr><th>ΔV C1</th><td colspan="2" class="cc1">${eng(dv1, "V")}</td></tr>` +
-    `<tr><th class="cc2">C2 A / B</th><td class="cc2">${eng(vAt(cur.v1, 2), "V")}</td><td class="cc2">${eng(vAt(cur.v2, 2), "V")}</td></tr>` +
+    `<tr><th class="cc2">C2 A / B</th><td class="cc2">${eng(v("v1", 2), "V")}</td><td class="cc2">${eng(v("v2", 2), "V")}</td></tr>` +
     `<tr><th>ΔV C2</th><td colspan="2" class="cc2">${eng(dv2, "V")}</td></tr>`;
   if (lastCurHTML !== html) { lastCurHTML = html; body.innerHTML = html; }
 }

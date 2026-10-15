@@ -921,24 +921,34 @@ func cursRows() []*row {
 		if k == 1 {
 			name = "b"
 		}
-		r := &row{id: "curs." + name, label: "Cursor " + strings.ToUpper(name), kind: wsview.Number, unit: "div",
-			help: "Position of the cursor (divisions from the left, or from the bottom for volts).",
+		r := &row{id: "curs." + name, label: "Cursor " + strings.ToUpper(name), kind: wsview.Number,
+			help: "The cursor's time from the trigger, or its volts. It stays on the signal: a timebase, V/div or offset change moves it on the screen, not off its time or level.",
 			rel:  on, why: "Cursors on",
-			val: func(s *sv) float64 { return cursorDiv(s, k) },
-			lim: func(s *sv) (float64, float64) {
+			unitOf: func(s *sv) string {
 				if s.curType == 1 {
-					return 0, 8
+					return "V"
 				}
-				return 0, 10
+				return "s"
 			},
-			step: func(s *sv) float64 {
+			val: func(s *sv) float64 {
 				if s.curType == 1 {
-					return 0.08
+					return s.curV[k]
 				}
-				return 0.1
+				return s.curT[k]
 			},
-			fmtN: fmtDiv,
-			setN: func(c *Controller, v float64) error { c.setCursorDiv(k, v); return nil },
+			text: func(s *sv) string { return cursorText(s, k) },
+			lim:  func(s *sv) (float64, float64) { return cursorRange(s) },
+			step: func(s *sv) float64 { // a hundredth of the screen
+				lo, hi := cursorRange(s)
+				return (hi - lo) / 100
+			},
+			fmtS: func(s *sv, v float64) string {
+				if s.curType == 1 {
+					return si(v, "V")
+				}
+				return si(v, "s")
+			},
+			setN: func(c *Controller, v float64) error { c.setCursorAt(k, v); return nil },
 			presets: func(*sv) []preset {
 				return []preset{{t: "Centre", run: func(c *Controller) error { c.centreCursor(k); return nil }},
 					{t: "At trigger", run: func(c *Controller) error { c.cursorAtTrigger(k); return nil }}}
@@ -979,7 +989,47 @@ func cursRows() []*row {
 	return []*row{mode, pos(0), pos(1), active}
 }
 
-// cursorDiv is a cursor's position in divisions.
+// cursorText is a cursor's signal time or volts and where the screen shows
+// it: "+1.2us (4.2div)", "+3ms (right)" off the screen.
+// TRLC-LINKS: REQ-SDS-212, REQ-SDS-217
+func cursorText(s *sv, k int) string {
+	d, at := cursorDiv(s, k), ""
+	if s.curType == 1 {
+		switch {
+		case d < 0:
+			at = "below"
+		case d > 8:
+			at = "above"
+		}
+	} else {
+		switch {
+		case d < 0:
+			at = "left"
+		case d > 10:
+			at = "right"
+		}
+	}
+	if at == "" {
+		at = strconv.FormatFloat(d, 'f', 1, 64) + "div"
+	}
+	if s.curType == 1 {
+		return sgnSI(s.curV[k&1], "V") + " (" + at + ")"
+	}
+	return sgnSI(s.curT[k&1], "s") + " (" + at + ")"
+}
+
+// cursorRange is the times (or the voltage cursors' channel's volts) the
+// screen spans now.
+// TRLC-LINKS: REQ-SDS-212, REQ-SDS-217
+func cursorRange(s *sv) (lo, hi float64) {
+	if s.curType == 1 {
+		return cursorVoltAt(s, 1, s.curVCh), cursorVoltAt(s, 0, s.curVCh)
+	}
+	return cursorTimeAt(s, 0), cursorTimeAt(s, 1)
+}
+
+// cursorDiv is a cursor's position in divisions (beyond the screen's when
+// its signal time or level is off the screen).
 // TRLC-LINKS: REQ-SDS-212
 func cursorDiv(s *sv, k int) float64 {
 	if s.curType == 1 {

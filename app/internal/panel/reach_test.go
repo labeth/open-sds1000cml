@@ -353,7 +353,7 @@ func TestSheetsModelListsEveryRow(t *testing.T) {
 				need(r.setN != nil, "setN")
 				need(r.stepN != nil, "stepN")
 				need(r.lim != nil, "lim")
-				need(r.fmtN != nil, "fmtN")
+				need(r.fmtN != nil || r.fmtS != nil, "fmtN")
 			case wsview.Action, wsview.Slot:
 				need(r.acts != nil, "acts")
 			}

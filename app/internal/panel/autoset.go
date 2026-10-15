@@ -261,13 +261,13 @@ func (c *Controller) measureCursors() {
 			a, b = pos-p, pos
 		}
 		if a >= 0 && b <= 1 {
-			c.curX = [2]float64{a, b}
+			c.curT = [2]float64{(a - pos) * screen, (b - pos) * screen}
 		}
 	}
 	if vd > 0 && r.Vtop > r.Vbase {
-		y := func(v float64) float64 { return (4 - (v+off)/vd) / 8 } // cursorVolts' inverse
+		y := func(v float64) float64 { return (4 - (v+off)/vd) / 8 } // cursorVoltAt's inverse
 		if ya, yb := y(r.Vtop), y(r.Vbase); ya >= 0 && yb <= 1 {
-			c.curY = [2]float64{ya, yb}
+			c.curV, c.curVCh = [2]float64{r.Vtop, r.Vbase}, src
 		}
 	}
 }

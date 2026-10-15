@@ -33,6 +33,9 @@ func (c *Controller) switchWS(i wsview.WS) {
 	c.viewMode = c.ui.views[i]
 	dec := c.decProto
 	c.mu.Unlock()
+	if i != wsview.Bus {
+		c.endEyeRaw() // the eye left with BUS
+	}
 	switch i {
 	case wsview.Measure:
 		c.seedMeas()
@@ -92,8 +95,12 @@ func (c *Controller) nextView() {
 		}
 		return
 	}
+	left := ws == wsview.Bus && !c.ui.busEye
 	c.railNoteLocked(wsview.Names[ws]+": "+name, "again: "+again)
 	c.mu.Unlock()
+	if left {
+		c.endEyeRaw() // the packets want the live capture now, not the eye's raw record
+	}
 }
 
 // fKey is F1..F5: the picker's choice, the sheet's choice, or a workspace.

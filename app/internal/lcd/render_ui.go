@@ -1271,6 +1271,9 @@ func drawThumb(sf Surface, f *engine.Frame, hud HUD, sh *wsview.Sheet) {
 					col = colTrig
 				}
 				lab := string(rune('A' + k))
+				if f := [2]float64{hud.CurX[k], hud.CurY[k]}[hud.CurType&1]; f < 0 || f > 1 {
+					continue // off the screen
+				}
 				if hud.CurType == 0 {
 					xx := x0 + int(hud.CurX[k]*float64(w-1))
 					vdash(sf, xx, y0+1, y0+h-2, col)

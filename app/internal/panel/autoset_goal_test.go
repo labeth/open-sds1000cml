@@ -199,7 +199,7 @@ func TestAutoMeasurePlacesTheCursors(t *testing.T) {
 	b := newSimBench(t, func(tt, _ float64, _ int) float64 { return sq(tt) })
 	b.run(wsview.Measure, -1)
 	s := b.c.snap()
-	ta, tb := cursorTimes(s, 1)
+	ta, tb := cursorTimes(s)
 	if dt := tb - ta; math.Abs(dt-1e-6) > 0.05e-6 {
 		t.Fatalf("time cursors %g s apart (A %g, B %g), want one period: 1 us", dt, ta, tb)
 	}

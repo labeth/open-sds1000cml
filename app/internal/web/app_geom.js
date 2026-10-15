@@ -193,7 +193,8 @@ function applyBoxZoom() {
   if (b.hpx >= 12) {
     const vw = view.vwin, vspan = vw.b - vw.a;
     // screen y grows downward; vwin is bottom→top
-    const na = vw.a + (1 - b.y1) * vspan, nb = vw.a + (1 - b.y0) * vspan;
+    const k = CH / plotH(); // the box is of the canvas; the plot ends above a decode lane
+    const na = vw.a + (1 - Math.min(1, b.y1 * k)) * vspan, nb = vw.a + (1 - Math.min(1, b.y0 * k)) * vspan;
     if (nb - na > 1e-4) { view.vwin.a = na; view.vwin.b = nb; }
   }
   userZoomed = true;
@@ -205,7 +206,8 @@ function moveCursor(ev) {
   const p = ptToNorm(ev);
   // TRLC-LINKS: REQ-SDS-202
   const clamp = x => Math.max(0, Math.min(1, x));
-  if (cur.drag[0] === "t") cur[cur.drag] = clamp(p.x); else cur[cur.drag] = clamp(p.y);
+  if (cur.drag[0] === "t") cur[cur.drag] = clamp(p.x); else cur[cur.drag] = Math.min(clamp(p.y), plotH() / CH);
+  curAnchor(cur.drag); // Y-T: the cursor now keeps this time or level
   scheduleRender();
 }
 

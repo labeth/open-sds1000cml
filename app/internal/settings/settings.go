@@ -182,7 +182,14 @@ type Display struct {
 	Invert  [2]bool    `json:"invert"`   // the channel drawn upside down (the CH tabs' Invert)
 	CurMode int        `json:"cur_mode"` // the cursors: 0 off, 1 time, 2 volts
 	CurX    [2]float64 `json:"cur_x"`    // A and B, screen fractions across
-	CurY    [2]float64 `json:"cur_y"`    // A and B, screen fractions up
+	CurY    [2]float64 `json:"cur_y"`    // A and B, screen fractions down
+	// The cursors anchored to the signal (CurAt; an older file has only
+	// their screen places): times from the trigger (s), volts at the tip of
+	// channel CurVCh.
+	CurAt   bool       `json:"cur_at,omitempty"`
+	CurT    [2]float64 `json:"cur_t"`
+	CurV    [2]float64 `json:"cur_v"`
+	CurVCh  int        `json:"cur_v_ch"`
 	CurSel  int        `json:"cur_sel"`  // the cursor Adjust moves: 0 A, 1 B
 	Zoom    int        `json:"zoom"`     // horizontal magnification (1 none)
 	ZoomOff float64    `json:"zoom_off"` // the zoom window's pan

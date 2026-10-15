@@ -217,15 +217,15 @@ func TestKnobToolsPerWorkspace(t *testing.T) {
 		t.Fatalf("MEASURE tool %q", tool())
 	}
 	press(t, c, "adjustpush") // cursors on (time)
-	a0, b0 := c.curX[0], c.curX[1]
+	a0, b0 := c.snap().curX[0], c.snap().curX[1]
 	turn(c, "adjust", 4)
 	press(t, c, "horizpospush")
 	if !strings.Contains(tool(), "Position:cursor B push:trigger position") {
 		t.Fatalf("MEASURE pushed tool %q", tool())
 	}
 	turn(c, "horizpos", -4)
-	if !c.curOn || c.curX[0] <= a0 || c.curX[1] >= b0 {
-		t.Fatalf("MEASURE cursors: on %v A %g->%g B %g->%g", c.curOn, a0, c.curX[0], b0, c.curX[1])
+	if !c.curOn || c.snap().curX[0] <= a0 || c.snap().curX[1] >= b0 {
+		t.Fatalf("MEASURE cursors: on %v A %g->%g B %g->%g", c.curOn, a0, c.snap().curX[0], b0, c.snap().curX[1])
 	}
 	if v := c.View(); v.Meas.Stats[0].N != "3" {
 		t.Fatalf("statistics N %s", v.Meas.Stats[0].N)

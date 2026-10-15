@@ -82,7 +82,7 @@ func TestRemoteCoreParity(t *testing.T) {
 		}
 		for _, v := range vals {
 			vec.Fmt = append(vec.Fmt, fmtVec{m, v})
-			wantFmt = append(wantFmt, r.fmtN(v))
+			wantFmt = append(wantFmt, r.format(s, v))
 		}
 		// a value out of range, above or below: refused with the same words,
 		// nothing clamped (a negative one written as itself: -1s, -0x01)

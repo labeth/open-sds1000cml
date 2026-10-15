@@ -165,9 +165,6 @@ func (c *Controller) measFrame(a *anaState, s *sv, f *engine.Frame) {
 	}
 	if s.curOn && s.curType == 0 {
 		a.curV, a.curOK = cursorTraceVolts(f, s)
-		if g := framecalc.Valid(f); g > 0 {
-			a.curRecords = float64(g) / float64(max(min(f.WinCols, g), 1))
-		}
 	}
 	if k := statKey(s); k != a.statKey {
 		a.statKey, a.statFed = k, frameKey{}
@@ -234,15 +231,109 @@ func (c *Controller) setCursorMode(v int) {
 	c.pushLEDs()
 }
 
-// setCursorDiv places cursor k at d divisions (from the left, or from the
-// bottom for volts).
+// cursorHome is the cursors' power-on and factory place: screen fractions
+// across and down, A at 0.35, B at 0.65.
+var cursorHome = [2][2]float64{{0.35, 0.65}, {0.35, 0.65}}
+
+// cursorScreen is how the screen shows time: the screen fraction pos where
+// the time at shows, and the screen's span (s) at the timebase set (a new
+// one is drawn from the next capture: the cursors go there with it, and an
+// older settings file's places are anchored at the timebase restored).
+// Zoomed, the screen is centred on the trigger plus the pan, a fraction of
+// the record, which is s.records screens long (0: unknown, the pan left out).
+// TRLC-LINKS: REQ-SDS-217
+func cursorScreen(s *sv) (pos, span, at float64) {
+	pos = s.st.TrigPosFrac
+	if !(pos > 0 && pos <= 1) {
+		pos = 0.5
+	}
+	screen := 10 * s.st.TdivSet()
+	span = screen
+	if s.zoom > 1 {
+		span /= float64(s.zoom)
+		pos, at = 0.5, s.zoomOff*s.records*screen
+	}
+	return pos, span, at
+}
+
+// cursorXOf is the screen fraction across where time t from the trigger
+// shows (beyond 0..1 off the screen).
+// TRLC-LINKS: REQ-SDS-217
+func cursorXOf(s *sv, t float64) float64 {
+	pos, span, at := cursorScreen(s)
+	if !(span > 0) {
+		return 0.5
+	}
+	return pos + (t-at)/span
+}
+
+// cursorTimeAt is the time from the trigger shown at screen fraction x.
+// TRLC-LINKS: REQ-SDS-217
+func cursorTimeAt(s *sv, x float64) float64 {
+	pos, span, at := cursorScreen(s)
+	return at + (x-pos)*span
+}
+
+// cursorYOf is the screen fraction down (0 the +4 division row, 1 the -4)
+// where channel ch shows v volts at its tip.
+// TRLC-LINKS: REQ-SDS-217
+func cursorYOf(s *sv, v float64, ch int) float64 {
+	vd := s.vdivTip(ch)
+	if !(vd > 0) {
+		return 0.5
+	}
+	return (4 - (v+s.offV[ch&1]*s.probe[ch&1])/vd) / 8
+}
+
+// cursorVoltAt is channel ch's volts at its tip at screen fraction y down.
+// TRLC-LINKS: REQ-SDS-217
+func cursorVoltAt(s *sv, y float64, ch int) float64 {
+	return (4-y*8)*s.vdivTip(ch) - s.offV[ch&1]*s.probe[ch&1]
+}
+
+// cursorVoltChLocked is the channel the voltage cursors are placed on: ch,
+// or (ch < 0) the one they are on, the other when only that one shows. A
+// change of channel keeps both where the screen shows them (c.mu held).
+// TRLC-LINKS: REQ-SDS-217
+func (c *Controller) cursorVoltChLocked(s *sv, ch int) int {
+	if ch < 0 {
+		ch = c.curVCh
+		if !s.chDisp[ch] && s.chDisp[1-ch] {
+			ch = 1 - ch
+		}
+	}
+	if ch != c.curVCh {
+		for k := 0; k < 2; k++ {
+			c.curV[k] = cursorVoltAt(s, cursorYOf(s, c.curV[k], c.curVCh), ch)
+		}
+		c.curVCh = ch
+	}
+	return ch
+}
+
+// placeCursorLocked anchors cursor k at screen fraction f (across for time,
+// down for volts) to the signal it shows there (c.mu held).
+// TRLC-LINKS: REQ-SDS-217
+func (c *Controller) placeCursorLocked(s *sv, k int, f float64) {
+	if c.curType == 1 {
+		ch := c.cursorVoltChLocked(s, -1)
+		c.curV[k&1] = cursorVoltAt(s, f, ch)
+	} else {
+		c.curT[k&1] = cursorTimeAt(s, f)
+	}
+}
+
+// setCursorAt puts cursor k on time v from the trigger, or on v volts (at
+// the tip of the channel the voltage cursors are on).
 // TRLC-LINKS: REQ-SDS-212, REQ-SDS-217
-func (c *Controller) setCursorDiv(k int, d float64) {
+func (c *Controller) setCursorAt(k int, v float64) {
+	s := c.snap()
 	c.mu.Lock()
 	if c.curType == 1 {
-		c.curY[k&1] = clampF(1-d/8, 0, 1)
+		c.cursorVoltChLocked(s, -1)
+		c.curV[k&1] = v
 	} else {
-		c.curX[k&1] = clampF(d/10, 0, 1)
+		c.curT[k&1] = v
 	}
 	c.curSel = k & 1
 	c.mu.Unlock()
@@ -251,59 +342,33 @@ func (c *Controller) setCursorDiv(k int, d float64) {
 // centreCursor puts cursor k at the screen centre.
 // TRLC-LINKS: REQ-SDS-212
 func (c *Controller) centreCursor(k int) {
+	s := c.snap()
 	c.mu.Lock()
-	if c.curType == 1 {
-		c.curY[k&1] = 0.5
-	} else {
-		c.curX[k&1] = 0.5
-	}
+	c.placeCursorLocked(s, k, 0.5)
 	c.mu.Unlock()
 }
 
-// cursorAtTrigger puts cursor k on the trigger (time) or its level (volts).
+// cursorAtTrigger puts cursor k on the trigger (time) or its level (volts,
+// on the trigger source).
 // TRLC-LINKS: REQ-SDS-212
 func (c *Controller) cursorAtTrigger(k int) {
 	s := c.snap()
-	records := c.recordScreens()
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if c.curType == 1 {
-		src := s.st.TrigSource & 1
-		div := (s.trigV + s.offV[src]*s.probe[src]) / s.vdivTip(src)
-		c.curY[k&1] = clampF(0.5-div/8, 0, 1)
+		c.cursorVoltChLocked(s, s.st.TrigSource&1)
+		c.curV[k&1] = s.trigV
 		return
 	}
-	pos := s.st.TrigPosFrac
-	if !(pos > 0 && pos <= 1) {
-		pos = 0.5
-	}
-	if s.zoom > 1 { // the zoomed screen is centred on the trigger plus the pan
-		pos = 0.5 - s.zoomOff*records*float64(s.zoom)
-	}
-	c.curX[k&1] = clampF(pos, 0, 1)
+	c.curT[k&1] = 0
 }
 
-// recordScreens is the frame on screen's record length in screens (its
-// values over the screen's), 0 with no frame.
-// TRLC-LINKS: REQ-SDS-217
-func (c *Controller) recordScreens() float64 {
-	n := 0.0
-	if c.frameFn != nil {
-		c.frameFn(func(f *engine.Frame) {
-			if f == nil {
-				return
-			}
-			if v := framecalc.Valid(f); v > 0 {
-				n = float64(v) / float64(max(min(f.WinCols, v), 1))
-			}
-		})
-	}
-	return n
-}
-
-// measCursor moves cursor k by n knob steps (MEASURE: Adjust A, Position B).
+// measCursor moves cursor k by n knob steps (MEASURE: Adjust A, Position B):
+// a step is a hundredth of the screen at the scale now; a cursor off the
+// screen comes in from the edge it is beyond.
 // TRLC-LINKS: REQ-SDS-217, REQ-SDS-213
 func (c *Controller) measCursor(k, dir, n int) {
+	s := c.snap()
 	c.mu.Lock()
 	if !c.curOn {
 		c.toastLocked("Cursors are off: push Adjust for time cursors", 1500*time.Millisecond)
@@ -313,9 +378,9 @@ func (c *Controller) measCursor(k, dir, n int) {
 	c.curSel = k & 1
 	step := 0.01 * float64(dir*max(n, 1))
 	if c.curType == 1 {
-		c.curY[k&1] = clampF(c.curY[k&1]-step, 0, 1) // clockwise raises the cursor
+		c.placeCursorLocked(s, k, clampF(clampF(s.curY[k&1], 0, 1)-step, 0, 1)) // clockwise raises the cursor
 	} else {
-		c.curX[k&1] = clampF(c.curX[k&1]+step, 0, 1)
+		c.placeCursorLocked(s, k, clampF(clampF(s.curX[k&1], 0, 1)+step, 0, 1))
 	}
 	c.mu.Unlock()
 }
@@ -329,43 +394,29 @@ func (c *Controller) measCursorMode() {
 	c.toast("Cursors "+[]string{"off", "Time (Adjust: A; push Position, then turn it: B)", "Volts (Adjust: A; push Position, then turn it: B)"}[next], 1400*time.Millisecond)
 }
 
-// cursorTimes are the time cursors' positions from the trigger (seconds),
-// as the screen shows them (windowOf): zoomed, the screen is centred on the
-// trigger plus the pan, a fraction of the record, which is records screens
-// long (0: unknown, the pan left out).
+// cursorTimes are the time cursors' times from the trigger (seconds).
 // TRLC-LINKS: REQ-SDS-217
-func cursorTimes(s *sv, records float64) (ta, tb float64) {
-	pos := s.st.TrigPosFrac
-	if !(pos > 0 && pos <= 1) {
-		pos = 0.5
-	}
-	screen := 10 * s.st.TdivS
-	span, at := screen, 0.0
-	if s.zoom > 1 {
-		span /= float64(s.zoom)
-		pos, at = 0.5, s.zoomOff*records*screen
-	}
-	return at + (s.curX[0]-pos)*span, at + (s.curX[1]-pos)*span
-}
+func cursorTimes(s *sv) (ta, tb float64) { return s.curT[0], s.curT[1] }
 
-// cursorVolts are a channel's volts at the voltage cursors.
+// cursorVolts are a channel's volts at the voltage cursors: their own on the
+// channel they are placed on, the other's where the screen shows them.
 // TRLC-LINKS: REQ-SDS-217
 func cursorVolts(s *sv, ch int) (va, vb float64) {
-	vd := s.vdivTip(ch)
-	off := s.offV[ch] * s.probe[ch]
-	at := func(y float64) float64 { return (4-y*8)*vd - off }
-	return at(s.curY[0]), at(s.curY[1])
+	if ch&1 == s.curVCh {
+		return s.curV[0], s.curV[1]
+	}
+	return cursorVoltAt(s, s.curY[0], ch), cursorVoltAt(s, s.curY[1], ch)
 }
 
 // cursorLines is the MEASURE pane's cursor block.
 // TRLC-LINKS: REQ-SDS-217
-func cursorLines(s *sv, liveV [2][2]float64, liveOK [2]bool, records float64) []wsview.Span {
+func cursorLines(s *sv, liveV [2][2]float64, liveOK [2]bool) []wsview.Span {
 	switch {
 	case !s.curOn:
 		return []wsview.Span{{Text: "CURSORS OFF", Col: wsview.Dim}, {Text: "Push Adjust: time cursors", Col: wsview.Dim},
 			{Text: "then Adjust moves A,", Col: wsview.Dim}, {Text: "Position moves B.", Col: wsview.Dim}}
 	case s.curType == 0:
-		ta, tb := cursorTimes(s, records)
+		ta, tb := cursorTimes(s)
 		dt := math.Abs(tb - ta)
 		out := []wsview.Span{{Text: "CURSORS TIME", Col: wsview.Amber},
 			{Text: "A " + sgnSI(ta, "s") + "  B " + sgnSI(tb, "s"), Col: wsview.Text}}
@@ -408,7 +459,11 @@ func cursorTraceVolts(f *engine.Frame, s *sv) (v [2][2]float64, ok [2]bool) {
 		}
 		sig := framecalc.Channel(f, ch, g.valid)
 		for k := 0; k < 2; k++ {
-			i := clampInt(int(left+s.curX[k]*float64(win)), 0, g.valid-1)
+			i := int(math.Floor(left + s.curX[k]*float64(win)))
+			if i < 0 || i >= g.valid { // a cursor beyond the record: no trace there
+				v[ch][k] = math.NaN()
+				continue
+			}
 			v[ch][k] = (float64(sig[i])-128)*voltsPerCode(s, ch) - s.offV[ch]*s.probe[ch]
 		}
 		ok[ch] = true
@@ -446,7 +501,7 @@ func (c *Controller) measPane(s *sv) *wsview.MeasPane {
 		rows = append(rows, r)
 	}
 	all, allOK := a.allVals, a.allOK
-	liveV, liveOK, records := a.curV, a.curOK, a.curRecords
+	liveV, liveOK := a.curV, a.curOK
 	c.amu.Unlock()
 	if u.measAll {
 		p.Caption = "all values, both channels (live)"
@@ -482,7 +537,7 @@ func (c *Controller) measPane(s *sv) *wsview.MeasPane {
 				Min: fmtMeas(r.it.param, r.mn), Max: fmtMeas(r.it.param, r.mx), Sdev: sdev, N: fmt.Sprint(r.cnt)})
 		}
 	}
-	p.Cursor = cursorLines(s, liveV, liveOK, records)
+	p.Cursor = cursorLines(s, liveV, liveOK)
 	if s.st.MaskMode != 0 && s.st.MaskSet {
 		col := wsview.Mask
 		if s.st.MaskFail > 0 {

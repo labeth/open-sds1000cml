@@ -2,6 +2,7 @@
 package settings_test
 
 import (
+	"math"
 	"testing"
 	"time"
 
@@ -100,6 +101,15 @@ func TestApplyRestoreCollectFidelity(t *testing.T) {
 	// engine the stats keep the pre-restore value. Everything else must
 	// round-trip exactly.
 	got.TdivS, want.TdivS = 0, 0
+	// The cursors come back anchored to the signal (an older file's screen
+	// places at the scales restored): their screen places as they were.
+	gd := got.Display
+	if !gd.CurAt || math.Abs(gd.CurX[0]-0.25) > 1e-9 || math.Abs(gd.CurX[1]-0.75) > 1e-9 ||
+		math.Abs(gd.CurY[0]-0.4) > 1e-9 || math.Abs(gd.CurY[1]-0.55) > 1e-9 {
+		t.Fatalf("cursors: %+v", gd)
+	}
+	got.Display.CurX, got.Display.CurY = want.Display.CurX, want.Display.CurY
+	got.Display.CurAt, got.Display.CurT, got.Display.CurV, got.Display.CurVCh = false, [2]float64{}, [2]float64{}, 0
 	if got != want {
 		t.Fatalf("restore→collect mismatch:\n got %+v\nwant %+v", got, want)
 	}

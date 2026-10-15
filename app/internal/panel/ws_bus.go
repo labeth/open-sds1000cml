@@ -591,8 +591,8 @@ func (c *Controller) detectWith(decimated, stepped bool, accept func(*engine.Fra
 			if e, ok := c.eng.(interface{ LeaseSampleView(time.Duration) }); ok {
 				e.LeaseSampleView(d)
 			}
-		} else if e, ok := c.eng.(interface{ LeaseDecodeView(time.Duration) }); ok {
-			e.LeaseDecodeView(d)
+		} else {
+			c.leaseRaw(rawForSearch, d)
 		}
 	}
 	defer lease(0)
@@ -1200,14 +1200,48 @@ func (c *Controller) eyeFrame(a *anaState, s *sv, f *engine.Frame) {
 // running, before it says it is held: a raw 200us/div record takes about 3 s.
 const eyeHeldAfter = 6 * time.Second
 
-// leaseEyeRaw asks the engine for full-rate raw live frames for the eye. It is
-// renewed by each capture and each redraw of the eye: a deep raw record (3 s at
-// 200us/div) outlasts a lease renewed per capture, and other work (a bus
-// search) may end it.
+// The raw lease holders (leaseRaw): each lease is its holder's own.
+const (
+	rawForEye      = "eye"
+	rawForSearch   = "bus search"
+	rawForSuperres = "super-res"
+)
+
+// leaseRaw asks the engine for full-rate raw live frames for d from now as
+// holder, or ends holder's lease (d <= 0): ending the last abandons a raw
+// read nobody wants any more (engine LeaseRawFor). An engine without named
+// leases has the shared one.
+// TRLC-LINKS: REQ-SDS-215, REQ-SDS-214
+func (c *Controller) leaseRaw(holder string, d time.Duration) {
+	if e, ok := c.eng.(interface{ LeaseRawFor(string, time.Duration) }); ok {
+		e.LeaseRawFor(holder, d)
+	} else if e, ok := c.eng.(interface{ LeaseDecodeView(time.Duration) }); ok {
+		e.LeaseDecodeView(d)
+	}
+}
+
+// leaseEyeRaw asks the engine for full-rate raw live frames for the eye while
+// BUS shows it. It is renewed by each capture and each redraw of the eye: a
+// deep raw record (3 s at 200us/div) outlasts a lease renewed per capture.
 // TRLC-LINKS: REQ-SDS-215
 func (c *Controller) leaseEyeRaw() {
-	if e, ok := c.eng.(interface{ LeaseDecodeView(time.Duration) }); ok {
-		e.LeaseDecodeView(3 * time.Second)
+	c.mu.Lock()
+	on := c.ui.ws == wsview.Bus && c.ui.busEye // a frame analysed as the eye closed renews nothing
+	c.mu.Unlock()
+	if !on {
+		return
+	}
+	c.eyeLeased.Store(true)
+	c.leaseRaw(rawForEye, 3*time.Second)
+}
+
+// endEyeRaw ends the eye's raw lease when the eye is left (F2 back to the
+// packets, another workspace, a recalled setup): the raw read in flight for
+// it is abandoned and the live capture resumes at once, as the packets want.
+// TRLC-LINKS: REQ-SDS-215
+func (c *Controller) endEyeRaw() {
+	if c.eyeLeased.Swap(false) {
+		c.leaseRaw(rawForEye, 0)
 	}
 }
 

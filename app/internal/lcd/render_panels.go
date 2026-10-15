@@ -229,6 +229,17 @@ func measBox(sf Surface, p plotArea, f *engine.Frame, hud HUD, ch, x int, params
 	return true
 }
 
+// edgeArrow draws a small filled arrow with its tip at (x, y), pointing
+// along (dx, dy): one of left, right, up, down.
+// TRLC-LINKS: REQ-SDS-021, REQ-SDS-217
+func edgeArrow(sf Surface, x, y, dx, dy int, c uint16) {
+	for d := 0; d <= 6; d++ {
+		for w := -d / 2; w <= d/2; w++ {
+			sf.SetPixel(x-dx*d+w*absI(dy), y-dy*d+w*absI(dx), c)
+		}
+	}
+}
+
 // drawCursors draws the on-screen X (time) or Y (volts) cursor pair and a Δ
 // readout. Time Δ uses the labelled t/div × 10 divisions; volts Δ uses each
 // shown channel's probe-scaled V/div × 8 divisions.
@@ -254,12 +265,43 @@ func drawCursors(sf Surface, p plotArea, hud HUD) {
 			}
 		}
 	}
+	// A cursor stays on its signal time or level: beyond the screen it shows
+	// as an arrow at the side it is beyond, with its letter.
+	off := func(vertical bool, f float64, k int) bool {
+		col := colDim
+		if hud.CurSel == k {
+			col = colTrig
+		}
+		lab := string(rune('A' + k))
+		switch {
+		case vertical && f < 0:
+			y := p.top + 30 + 14*k
+			edgeArrow(sf, 0, y, -1, 0, col)
+			DrawText(sf, 9, y-3, lab, col, 1)
+		case vertical && f > 1:
+			y := p.top + 30 + 14*k
+			edgeArrow(sf, p.w-1, y, 1, 0, col)
+			DrawText(sf, p.w-15, y-3, lab, col, 1)
+		case !vertical && f < 0:
+			x := p.w/2 + 60 + 20*k
+			edgeArrow(sf, x, p.y0, 0, -1, col)
+			DrawText(sf, x+8, p.y0+2, lab, col, 1)
+		case !vertical && f > 1:
+			x, y := p.w/2+60+20*k, min(p.last(), H-12) // above the bottom readout row
+			edgeArrow(sf, x, y, 0, 1, col)
+			DrawText(sf, x+8, y-8, lab, col, 1)
+		default:
+			return false
+		}
+		return true
+	}
 	var label string
 	if hud.CurType == 0 { // X (time) cursors
-		xA := int(hud.CurX[0] * float64(p.w-1))
-		xB := int(hud.CurX[1] * float64(p.w-1))
-		dash(true, xA, hud.CurSel == 0)
-		dash(true, xB, hud.CurSel == 1)
+		for k := 0; k < 2; k++ {
+			if !off(true, hud.CurX[k], k) {
+				dash(true, int(hud.CurX[k]*float64(p.w-1)), hud.CurSel == k)
+			}
+		}
 		span := hud.TdivS * 10
 		if hud.Zoom > 1 {
 			span /= float64(hud.Zoom)
@@ -270,10 +312,11 @@ func drawCursors(sf Surface, p plotArea, hud HUD) {
 			label += "  1/dt " + fmtFreq(1/dt)
 		}
 	} else { // Y (volts) cursors — report ΔV for BOTH channels (web parity)
-		yA := p.top + int(hud.CurY[0]*float64(p.bot-p.top))
-		yB := p.top + int(hud.CurY[1]*float64(p.bot-p.top))
-		dash(false, yA, hud.CurSel == 0)
-		dash(false, yB, hud.CurSel == 1)
+		for k := 0; k < 2; k++ {
+			if !off(false, hud.CurY[k], k) {
+				dash(false, p.top+int(hud.CurY[k]*float64(p.bot-p.top)), hud.CurSel == k)
+			}
+		}
 		frac := math.Abs(hud.CurY[0] - hud.CurY[1])
 		dvOf := func(vdiv, probe float64) string {
 			if probe < 1 {

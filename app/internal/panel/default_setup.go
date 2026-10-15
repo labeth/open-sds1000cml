@@ -95,7 +95,7 @@ func (c *Controller) DefaultSetup() {
 	c.chDisp = [2]bool{true, true}
 	c.showMeas, c.viewMode, c.mathMode, c.persist = false, 0, 0, false
 	c.curOn, c.curType, c.curSel = false, 0, 0
-	c.curX, c.curY = [2]float64{0.35, 0.65}, [2]float64{0.35, 0.65}
+	c.curPend, c.curVCh = &cursorHome, 0
 	c.zoom, c.zoomOff = 1, 0
 	// the mask build and super-res's settings: a restart keeps them, so they
 	// reset here like every other setting

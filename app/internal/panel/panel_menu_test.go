@@ -25,20 +25,20 @@ func TestCursorRows(t *testing.T) {
 		t.Fatal("Time did not enable the time cursors")
 	}
 	press(t, c, "cursors") // back to SCOPE: Adjust moves cursor A
-	before := c.curX[0]
+	before := c.snap().curX[0]
 	turn(c, "adjust", 2)
-	if c.curX[0] <= before {
-		t.Fatalf("Adjust did not move cursor A: %v -> %v", before, c.curX[0])
+	if c.snap().curX[0] <= before {
+		t.Fatalf("Adjust did not move cursor A: %v -> %v", before, c.snap().curX[0])
 	}
 	press(t, c, "cursors")
 	goRow(t, c, "curs.active")
 	pickKey(t, c, "Cursor B")
 	press(t, c, "cursors")
-	a := c.curX[0]
-	b := c.curX[1]
+	a := c.snap().curX[0]
+	b := c.snap().curX[1]
 	turn(c, "adjust", -1)
-	if c.curX[0] != a || c.curX[1] >= b {
-		t.Fatalf("Adjust after Cursor B: A %v -> %v, B %v -> %v", a, c.curX[0], b, c.curX[1])
+	if c.snap().curX[0] != a || c.snap().curX[1] >= b {
+		t.Fatalf("Adjust after Cursor B: A %v -> %v, B %v -> %v", a, c.snap().curX[0], b, c.snap().curX[1])
 	}
 	c.SheetSet("curs.mode", nil, "Volts")
 	if d, _ := c.Snapshot(); d.CurType != 1 {
@@ -216,13 +216,15 @@ func TestCursorTimesFollowTheZoomedScreen(t *testing.T) {
 		off, pos   float64
 		curA, curB float64
 	}{{1, 0, 0.3, 0.2, 0.7}, {10, 0, 0.3, 0.2, 0.7}, {10, 0.05, 0.5, 0.4, 0.9}, {5, -0.1, 0.8, 0.1, 0.6}} {
-		s := &sv{zoom: tc.zoom, zoomOff: tc.off}
+		s := &sv{zoom: tc.zoom, zoomOff: tc.off, records: float64(valid) / winCols}
 		s.st.TdivS, s.st.TrigPosFrac = tdiv, tc.pos
-		s.curX = [2]float64{tc.curA, tc.curB}
+		x := [2]float64{tc.curA, tc.curB}
 		left, win := windowOf(g, s)
-		ta, tb := cursorTimes(s, float64(valid)/winCols)
-		for k, got := range []float64{ta, tb} {
-			want := (left + s.curX[k]*float64(win) - g.edgeX) * sampleS
+		for k, got := range []float64{cursorTimeAt(s, x[0]), cursorTimeAt(s, x[1])} {
+			if back := cursorXOf(s, got); math.Abs(back-x[k]) > 1e-9 {
+				t.Errorf("cursor %c at %g of the screen reads back at %g", 'A'+k, x[k], back)
+			}
+			want := (left + x[k]*float64(win) - g.edgeX) * sampleS
 			if math.Abs(got-want) > 1e-9 {
 				t.Errorf("zoom %d pan %g trigger at %g: cursor %c at %s, the screen shows it at %s",
 					tc.zoom, tc.off, tc.pos, 'A'+k, si(got, "s"), si(want, "s"))
@@ -251,10 +253,10 @@ func TestCursorAtTriggerZoomed(t *testing.T) {
 	}
 	// the pan is 1 % of 4 screens, 0.4 of a 10x zoomed screen: the trigger
 	// shows at 0.5 - 0.4
-	if got := c.curX[0]; math.Abs(got-0.1) > 1e-9 {
+	if got := c.snap().curX[0]; math.Abs(got-0.1) > 1e-9 {
 		t.Fatalf("cursor A at %.3f of the screen, the trigger shows at 0.100", got)
 	}
-	if ta, _ := cursorTimes(c.snap(), 4); math.Abs(ta) > 1e-12 {
+	if ta, _ := cursorTimes(c.snap()); math.Abs(ta) > 1e-12 {
 		t.Fatalf("cursor A at the trigger reads %s", si(ta, "s"))
 	}
 }
@@ -265,9 +267,9 @@ func TestCursorAtTriggerZoomed(t *testing.T) {
 func TestCursorAdjustAccelerates(t *testing.T) {
 	c, _, _ := newC(t)
 	c.SheetSet("curs.mode", nil, "Time")
-	before := c.curX[0]
+	before := c.snap().curX[0]
 	c.dispatch("adjust", 1, 10)
-	if got := c.curX[0]; got < before+0.099 || got > before+0.101 {
+	if got := c.snap().curX[0]; got < before+0.099 || got > before+0.101 {
 		t.Fatalf("10-step Adjust moved cursor A %v -> %v, want +0.10", before, got)
 	}
 }
