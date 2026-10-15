@@ -326,6 +326,10 @@ func TestWorkspaceScreens(t *testing.T) {
 	if v := r.shot("bus_eye"); v.Eye == nil || v.Eye.Why != "" || len(v.Eye.Grid) == 0 {
 		t.Fatalf("BUS eye %+v", v.Eye)
 	}
+	press(t, c, "f2") // the Stream view: the stream of the bus decoded
+	if v := r.shot("bus_stream"); v.Bus == nil || !strings.HasPrefix(v.Bus.Caption, "STREAM  UART") {
+		t.Fatalf("BUS stream %+v", v.Bus)
+	}
 	press(t, c, "f2", "utility")
 	goRow(t, c, "bus.match")
 	r.shot("bus_sheet")

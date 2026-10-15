@@ -88,6 +88,7 @@ func (c *Controller) runBusAuto(stop chan struct{}) {
 			h.HoldQualifyImage(false)
 		}()
 	}
+	c.syncStream(true) // a stream ends: the fit sweeps live captures
 	entry := c.autoEntryNow()
 	c.autoClearMatch(entry)
 	entryTdiv := entry.tdiv
@@ -412,5 +413,6 @@ func (c *Controller) endAutoset(stop chan struct{}) {
 	if e, ok := c.eng.(interface{ LeaseSampleView(time.Duration) }); ok {
 		e.LeaseSampleView(0)
 	}
+	c.syncStreamView() // BUS's Stream view streams again, the bus as AUTO left it
 	c.pushLEDs()
 }

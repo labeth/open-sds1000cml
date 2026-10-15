@@ -12,6 +12,7 @@ import (
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/panel/framecalc"
 	"open-sds/app/internal/panel/wsview"
+	"open-sds/app/internal/streamview"
 )
 
 // Display is the instrument display state the LCD renders the frame with
@@ -96,6 +97,8 @@ func (c *Controller) view(s *sv) wsview.View {
 		case u.busEye:
 			v.Layout.HideTraces, v.Layout.HideBottom = true, true
 			v.Eye = c.eyePane(s)
+		case u.busStream:
+			v.Bus = c.streamPane(s)
 		default:
 			v.Bus = c.busPane(s)
 		}
@@ -610,6 +613,78 @@ func (c *Controller) busPane(s *sv) *wsview.BusPane {
 	return p
 }
 
+// streamPane builds BUS's Stream view: the stream's state, what stops it
+// and the controls, over the transcript the plot shows (or, with no bus,
+// why there is none and how to find it).
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-228
+func (c *Controller) streamPane(s *sv) *wsview.BusPane {
+	u := &s.ui
+	p := &wsview.BusPane{Off: true}
+	p.Title, p.Again = "BUS", "F2 again: Packets"
+	stops := streamStopText(s.decTrig, s.decValue)
+	switch {
+	case u.busDetecting:
+		p.Caption, p.CapCol = "STREAM: detecting the bus on CH1 and CH2...", wsview.Amber
+		p.Msg = []wsview.Span{{Text: "DETECTING...", Col: wsview.Text},
+			{Text: "The stream starts on the bus found.", Col: wsview.Dim}}
+		p.Tool = posTool(s)
+		return p
+	case !busDecoding(s):
+		p.Caption, p.CapCol = "STREAM: no bus decoded", wsview.Dim
+		p.Msg = []wsview.Span{{Text: map[bool]string{true: "NO BUS FOUND", false: "NO BUS DECODED"}[u.busFailed], Col: wsview.Text},
+			{Text: "Push Adjust: detect the bus on CH1/CH2 - the stream then starts on it", Col: wsview.Amber},
+			{Text: "Utility or Menu On/Off: set the protocol, baud and lines by hand on the BUS sheet", Col: wsview.Dim},
+			{Text: "A stream decodes the bus without a gap in hardware into a transcript", Col: wsview.Dim}}
+		if u.busFailed {
+			p.Msg[3] = wsview.Span{Text: "Check that the bus is connected and its channel is not on GND coupling.", Col: wsview.Dim}
+		}
+		p.Right = "Utility: BUS sheet"
+		p.Tool = append([]wsview.Seg{{Key: "Adjust push", Job: "detect the bus"}}, posTool(s)...)
+		return p
+	case !s.hasStream || !serialProto(s.decProto):
+		p.Caption, p.CapCol = "STREAM: "+protoName(s.decProto), wsview.Dim
+		p.Msg = []wsview.Span{{Text: "NO HARDWARE STREAM", Col: wsview.Text},
+			{Text: "This scope has no hardware decoder to stream " + protoName(s.decProto) + ".", Col: wsview.Dim}}
+		p.Tool = posTool(s)
+		return p
+	}
+	name := busName(s.decProto, s.decBaud, s.decChA, s.decChB, s.decCPOL, s.decCPHA)
+	p.Caption, p.CapCol = "STREAM  "+name, wsview.Text
+	p.Right = "stops " + stops
+	v, _ := c.StreamStatus()
+	head, col := "STARTING", wsview.Amber
+	push, again := "stop", "Run/Stop or push Adjust: stop - the record goes on screen"
+	switch v.State {
+	case streamview.Streaming:
+		head, col = "STREAMING", wsview.Text
+	case streamview.Triggered:
+		head, col = "STOPPED ON THE TRIGGER", wsview.Amber
+	case streamview.Stopped:
+		head, col = "STOPPED", wsview.Amber
+	case streamview.Failed:
+		head, col = "NOT STREAMING", wsview.Stop
+	}
+	if s.streamStopped {
+		push, again = "stream again", "Run/Stop or push Adjust: stream again"
+	}
+	p.Msg = []wsview.Span{{Text: head, Col: wsview.Text},
+		{Text: fmt.Sprintf("%d units  %s/s  errors %d  lost %d", v.Units, si(math.Round(v.UnitsPerSecond), ""), v.Errors, v.Lost), Col: col}}
+	switch {
+	case v.Err != "":
+		p.Msg = append(p.Msg, wsview.Span{Text: cut(v.Err, 120), Col: wsview.Stop})
+	case v.Note != "" && v.State == streamview.Starting:
+		p.Msg = append(p.Msg, wsview.Span{Text: cut(v.Note, 120), Col: wsview.Amber})
+	}
+	p.Msg = append(p.Msg, wsview.Span{Text: again, Col: wsview.Dim},
+		wsview.Span{Text: "Adjust: what stops it (an error, the Stream value, by hand)", Col: wsview.Dim})
+	p.Tool = append([]wsview.Seg{{Key: "Adjust", Job: "stops " + map[int]string{0: "on error", 1: "on value", 2: "by hand"}[mod3(s.decTrig)]},
+		{Key: "push", Job: push}}, posTool(s)...)
+	if s.streamStopped {
+		p.Tool = append(p.Tool, wsview.Seg{Key: "Zoom", Job: map[bool]string{true: "wave", false: "list"}[s.streamList]})
+	}
+	return p
+}
+
 // plural is "1 packet" / "2 packets".
 // TRLC-LINKS: REQ-SDS-214
 func plural(n int, w string) string {
@@ -624,7 +699,7 @@ func plural(n int, w string) string {
 func (c *Controller) eyePane(s *sv) *wsview.EyePane {
 	u := &s.ui
 	p := &wsview.EyePane{}
-	p.Title, p.Again = "BUS", "F2 again: Packets"
+	p.Title, p.Again = "BUS", "F2 again: Stream"
 	zoomed := s.zoom > 1
 	c.amu.Lock()
 	a := &c.ana

@@ -1310,7 +1310,7 @@ func busTabRows() []*row {
 	}
 	format := &row{id: "bus.strip_format", label: "Strip format", kind: wsview.Enum,
 		help: "Format of the decode strip under the trace: Hex, String (text) or both. The BUS packet list always shows hex and string.",
-		knob: "Set here only (default Hex). F2 again in BUS switches Packets / Eye diagram.",
+		knob: "Set here only (default Hex). F2 again in BUS cycles Packets / Eye diagram / Stream.",
 		rel:  decOn, why: "a Protocol (decode on)",
 		opts: staticOpts([]opt{{0, "Hex"}, {1, "String"}, {2, "Hex+String"}}),
 		get:  func(s *sv) int { return s.decFormat },
@@ -1324,8 +1324,8 @@ func busTabRows() []*row {
 	format.def = func(c *Controller) error { return format.set(c, 0) }
 	isAuto := func(s *sv) bool { return serialProto(s.decProto) && s.hasStream }
 	stream := &row{id: "bus.stream", label: "Stream", kind: wsview.Enum,
-		help: "Decode the bus continuously in hardware into a transcript, with the settings below.",
-		knob: "Run/Stop stops and restarts a stream.",
+		help: "Decode the bus continuously in hardware into a transcript, with the settings below: BUS's Stream view, which On shows and Off leaves.",
+		knob: "F2 again in BUS (after the eye diagram) starts it, F2 once more ends it. Run/Stop stops and restarts a stream.",
 		rel:  isAuto, why: "a Protocol (decode on)",
 		opts: staticOpts(onOff),
 		get:  func(s *sv) int { return b2ic(s.decMode == decModeStream) },
@@ -1345,17 +1345,18 @@ func busTabRows() []*row {
 	}
 	streamTrig.def = func(c *Controller) error { return streamTrig.set(c, 0) }
 	streamVal := numRow("bus.stream_value", "Stream value", "", func(s *sv) float64 { return float64(s.decValue) },
-		constLim(0, 0xFFFF), constStep(1), func(c *Controller, v float64) error {
+		constLim(0, streamValueMax), constStep(1), func(c *Controller, v float64) error {
 			c.mu.Lock()
-			c.decValue = clampInt(int(math.Round(v)), 0, 0xFFFF)
+			c.decValue = clampInt(int(math.Round(v)), 0, streamValueMax)
 			c.mu.Unlock()
 			return nil
 		}, hexText)
-	streamVal.help = "The decoded value that ends a stream (Stream stops = On value)."
+	streamVal.help = "The decoded unit that ends a stream (Stream stops = On value): a byte, a MIL-1553 word, an ARINC 429 word's 19-bit data field."
 	streamVal.rel, streamVal.why = func(s *sv) bool { return isAuto(s) && s.decTrig == 1 }, "Stream stops = On value"
 	streamVal.def = func(c *Controller) error { return streamVal.setN(c, 0) }
 	streamScreen := &row{id: "bus.stream_screen", label: "Stream shows", kind: wsview.Enum,
-		help: "A stopped stream: its record's waveform, or the transcript list (Position scrolls it).",
+		help: "A stopped stream: its record's waveform, or the transcript list (Position, once pushed, scrolls it).",
+		knob: "S/DIV push (Zoom) in BUS Stream switches them.",
 		rel:  func(s *sv) bool { return isAuto(s) && s.decMode == decModeStream && s.streamStopped }, why: "a stopped stream",
 		opts: staticOpts([]opt{{0, "Wave"}, {1, "List"}}),
 		get:  func(s *sv) int { return b2ic(s.streamList) },

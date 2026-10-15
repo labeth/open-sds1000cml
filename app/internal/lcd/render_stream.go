@@ -30,8 +30,8 @@ func streamStatus(v streamview.View) string {
 }
 
 // drawStream fills the plot with the hexdump transcript: status, column
-// header, the page of lines, and on a stopped stream where the page sits and
-// which controls move it.
+// header, the page of lines, and on a stopped or scrolled-back stream where
+// the page sits and which controls move it.
 // TRLC-LINKS: REQ-SDS-018
 func drawStream(sf Surface, p plotArea, hud HUD) {
 	v, pg := hud.Stream, hud.StreamPage
@@ -54,9 +54,12 @@ func drawStream(sf Surface, p plotArea, hud HUD) {
 		}
 		DrawText(sf, 6, y, l, c, 1)
 	}
-	if v.State != streamview.Streaming && v.State != streamview.Failed {
-		last := pg.Top + len(pg.Lines)
-		DrawText(sf, 6, H-24, fmt.Sprintf("lines %d-%d of %d   Position: scroll  push: trigger   BUS tab Stream shows: Wave   Run/Stop: stream again",
+	last := pg.Top + len(pg.Lines)
+	switch {
+	case v.State == streamview.Streaming && last < pg.Total: // scrolled back: held there
+		DrawText(sf, 6, H-24, fmt.Sprintf("lines %d-%d of %d   push Position: follow the newest", pg.Top+1, last, pg.Total), colDim, 1)
+	case v.State != streamview.Streaming && v.State != streamview.Failed:
+		DrawText(sf, 6, H-24, fmt.Sprintf("lines %d-%d of %d   Position pushed: scroll   Zoom: wave   Run/Stop: stream again",
 			pg.Top+1, last, pg.Total), colDim, 1)
 	}
 }
@@ -68,7 +71,7 @@ func drawStreamStrip(sf Surface, p plotArea, hud HUD) {
 	v, pg := hud.Stream, hud.StreamPage
 	const lineH = 10
 	fillRect(sf, 0, p.y0+14, p.w, 26+lineH*len(pg.Lines), colBoxBg)
-	DrawText(sf, 6, p.y0+16, streamStatus(v)+"   BUS tab Stream shows: List", colInfo, 1)
+	DrawText(sf, 6, p.y0+16, streamStatus(v)+"   Zoom: list", colInfo, 1)
 	DrawText(sf, 6, p.y0+26, pg.Header, colDim, 1)
 	for i, l := range pg.Lines {
 		c := colC1

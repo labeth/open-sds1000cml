@@ -145,13 +145,13 @@ func TestSettingsViewDisplayRoundTrip(t *testing.T) {
 func TestSettingsViewStreamTriggerRoundTrip(t *testing.T) {
 	a, _, _ := newC(t)
 	a.mu.Lock()
-	a.decProto, a.decTrig, a.decValue = 1, 1, 0x55
+	a.decProto, a.decTrig, a.decValue = 1, 1, 0x12345 // an ARINC 429 data field
 	a.mu.Unlock()
 	b, _, _ := newC(t)
 	b.ApplySettingsView(a.SettingsView())
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	if b.decTrig != 1 || b.decValue != 0x55 {
+	if b.decTrig != 1 || b.decValue != 0x12345 {
 		t.Fatalf("stream trigger lost: trig %d value %#x", b.decTrig, b.decValue)
 	}
 }

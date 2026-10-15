@@ -52,7 +52,7 @@ type wsDef struct {
 // wsDefs are the five workspaces (REQ-SDS-211).
 var wsDefs = [wsview.Count]wsDef{
 	{tabs: []string{"trig", "ch1", "ch2", "time", "acq"}, plotTop: 0, view: viewYT, cycle: "Y-T / X-Y"},
-	{tabs: []string{"bus", "trig", "time"}, plotTop: 136, view: viewYT, cycle: "Packets / Eye diagram"},
+	{tabs: []string{"bus", "trig", "time"}, plotTop: 136, view: viewYT, cycle: "Packets / Eye diagram / Stream"},
 	{tabs: []string{"view", "acq", "time"}, plotTop: 150, view: viewFFT, cycle: "FFT / Spectrogram / Bode"},
 	{tabs: []string{"meas", "curs", "acq"}, plotTop: 142, view: viewYT, cycle: "statistics / all values"},
 	{tabs: []string{"cmp", "ch1", "ch2"}, plotTop: 104, view: viewYT, cycle: "stack a master"},
@@ -78,10 +78,13 @@ type pickState struct {
 
 // uiState is the workspace UI (guarded by Controller.mu).
 type uiState struct {
-	ws      wsview.WS
-	views   [wsview.Count]int // the display view each workspace remembers
-	busEye  bool              // BUS shows the eye diagram (else the packets)
-	measAll bool              // MEASURE shows all values (else statistics)
+	ws     wsview.WS
+	views  [wsview.Count]int // the display view each workspace remembers
+	busEye bool              // BUS shows the eye diagram
+	// busStream: BUS shows the decoded stream, its third view (else, with
+	// busEye false, the packets)
+	busStream bool
+	measAll   bool // MEASURE shows all values (else statistics)
 
 	open  bool              // a settings sheet is open
 	tab   int               // the sheet's tab (index into sheetTabs)

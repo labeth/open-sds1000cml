@@ -112,7 +112,26 @@ run(async (t) => {
   t.ok(/^[1-9]\d* UI$/.test(f.folded), "the UIs folded: " + f.folded);
   t.ok(!/[≤≥]/.test(f["eye width"] + f.rise + f.fall), "at 20 samples per UI the figures are measurements, not bounds");
   await page.keyboard.press("Alt+2");
-  t.ok(!(await po.hasClass("ejArm", "on")) && await po.isVisible("pktable"), "BUS again: back to the packets, the eye stops");
+  t.ok(!(await po.hasClass("ejArm", "on")) && await po.isVisible("streamStops") && await po.text("pkTitle") === "Stream",
+    "BUS again: the Stream view, the eye stops");
+  await page.keyboard.press("Alt+2");
+  t.ok(await po.isVisible("pktable"), "BUS again: back to the packets");
+  // the page's Stream view is the scope's: choosing it puts the scope on its
+  // Stream view, another view takes it back to its packets
+  // TRLC-LINKS: REQ-SDS-228
+  const scopeView = () => page.evaluate(() => fetch("/api/status").then((r) => r.json()).then((s) => s.panel.View));
+  // TRLC-LINKS: REQ-SDS-228
+  const scopeStream = (on) => page.evaluate((v) => fetch("/api/sheets/set", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ row: "bus.stream", value: v }) }), on ? 1 : 0);
+  await page.evaluate(() => { const b = document.querySelector('#busView button[data-value="stream"]'); b.click(); });
+  await t.until(async () => await scopeView() === "Stream", "the page's Stream view puts the scope on its Stream view", 4000);
+  await page.evaluate(() => { const b = document.querySelector('#busView button[data-value="packets"]'); b.click(); });
+  await t.until(async () => await scopeView() === "Packets", "…and the page's packets take it back to its packets", 4000);
+  // the page follows the scope's view: the scope on its Stream view (its
+  // keys, the phone) shows the page's, back on its packets the page's packets
+  await scopeStream(true);
+  await t.until(async () => await po.text("pkTitle") === "Stream", "the scope on its Stream view: the page shows its Stream view", 6000);
+  await scopeStream(false);
+  await t.until(async () => await po.text("pkTitle") === "Packets", "the scope back on its packets: the page's packets too", 6000);
 
   // ---- decoding stays on elsewhere -------------------------------------------------------
   await page.click("#tab-scope");

@@ -12,8 +12,8 @@ import (
 // Input routing (REQ-SDS-211, REQ-SDS-213). F1..F5 switch workspaces with
 // no menu open and pick choices with one open. Adjust and its push are each
 // workspace's tool. Horizontal Position moves the trigger position in every
-// workspace; where a workspace has a second Position job (BUS: next match or
-// the eye's sample point, SPECTRUM: the fine marker, MEASURE: cursor B) its
+// workspace; where a workspace has a second Position job (BUS: next match,
+// the eye's sample point or the stream's transcript, SPECTRUM: the fine marker, MEASURE: cursor B) its
 // push switches Position to that job and back, else the push centres the
 // trigger. V/DIV, vertical Position, Level and S/DIV keep their printed
 // jobs, as do the pushes Variable, Zero and Zoom.
@@ -36,6 +36,7 @@ func (c *Controller) switchWS(i wsview.WS) {
 	if i != wsview.Bus {
 		c.endEyeRaw() // the eye left with BUS
 	}
+	c.syncStreamView() // the stream ends with BUS, and starts again on its Stream view
 	switch i {
 	case wsview.Measure:
 		c.seedMeas()
@@ -72,11 +73,16 @@ func (c *Controller) nextView() {
 		c.ui.views[ws] = c.viewMode
 		name, again = viewName(c.viewMode), viewName(map[bool]int{true: viewXY, false: viewYT}[c.viewMode == viewYT])
 	case wsview.Bus:
-		c.ui.busEye = !c.ui.busEye
-		if c.ui.busEye {
+		// Packets -> Eye diagram -> Stream -> Packets
+		eye, stream := !c.ui.busEye && !c.ui.busStream, c.ui.busEye
+		c.ui.busEye, c.ui.busStream = eye, stream
+		if eye || stream {
 			c.closePickLocked()
 		}
-		name, again = map[bool]string{true: "Eye diagram", false: "Packets"}[c.ui.busEye], map[bool]string{true: "Packets", false: "Eye diagram"}[c.ui.busEye]
+		name, again = busViewName(&c.ui), busViewNext(&c.ui)
+		if stream {
+			again += " (the stream ends)"
+		}
 	case wsview.Spectrum:
 		c.viewMode = nextSpecView(c.viewMode)
 		c.ui.views[ws] = c.viewMode
@@ -101,6 +107,33 @@ func (c *Controller) nextView() {
 	if left {
 		c.endEyeRaw() // the packets want the live capture now, not the eye's raw record
 	}
+	if ws == wsview.Bus {
+		c.syncStreamView()
+	}
+}
+
+// busViewName names BUS's view: Packets, Eye diagram or Stream.
+// TRLC-LINKS: REQ-SDS-211, REQ-SDS-228
+func busViewName(u *uiState) string {
+	switch {
+	case u.busStream:
+		return "Stream"
+	case u.busEye:
+		return "Eye diagram"
+	}
+	return "Packets"
+}
+
+// busViewNext names the view BUS's key again shows.
+// TRLC-LINKS: REQ-SDS-211, REQ-SDS-228
+func busViewNext(u *uiState) string {
+	switch {
+	case u.busStream:
+		return "Packets"
+	case u.busEye:
+		return "Stream"
+	}
+	return "Eye diagram"
 }
 
 // fKey is F1..F5: the picker's choice, the sheet's choice, or a workspace.
@@ -162,7 +195,7 @@ func (c *Controller) helpKey() {
 // TRLC-LINKS: REQ-SDS-213
 func (c *Controller) adjustTurn(dir, steps int) {
 	c.mu.Lock()
-	wpick, open, ws, eye := c.ui.wpick, c.ui.open, c.ui.ws, c.ui.busEye
+	wpick, open, ws, eye, stream := c.ui.wpick, c.ui.open, c.ui.ws, c.ui.busEye, c.ui.busStream
 	c.mu.Unlock()
 	switch {
 	case wpick:
@@ -171,6 +204,8 @@ func (c *Controller) adjustTurn(dir, steps int) {
 		c.sheetAdjust(dir, steps)
 	case ws == wsview.Bus && eye:
 		c.eyeThresholdTurn(dir * steps)
+	case ws == wsview.Bus && stream:
+		c.streamStopsTurn(dir)
 	case ws == wsview.Bus:
 		c.busAdjust(dir)
 	case ws == wsview.Spectrum:
@@ -188,9 +223,6 @@ func (c *Controller) adjustTurn(dir, steps int) {
 // the workspace's second job while the push has chosen it.
 // TRLC-LINKS: REQ-SDS-213
 func (c *Controller) positionTurn(dir, steps int) {
-	if c.scrollStreamList(dir * steps) { // an open stream transcript scrolls
-		return
-	}
 	s := c.snap()
 	switch {
 	case s.ui.wpick:
@@ -210,10 +242,14 @@ func (c *Controller) positionTurn(dir, steps int) {
 func posJob2(s *sv) string {
 	switch s.ui.ws {
 	case wsview.Bus:
-		if s.ui.busEye {
+		switch {
+		case s.ui.busEye:
 			return "sample point"
-		}
-		if busDecoding(s) {
+		case s.ui.busStream:
+			if streamOn(s) {
+				return "transcript"
+			}
+		case busDecoding(s):
 			return "next match"
 		}
 	case wsview.Spectrum:
@@ -232,13 +268,16 @@ func posJob2(s *sv) string {
 func (c *Controller) posJobTurn(s *sv, dir, steps int) {
 	switch s.ui.ws {
 	case wsview.Bus:
-		if s.ui.busEye {
+		switch {
+		case s.ui.busEye:
 			c.mu.Lock()
 			c.ui.eyeX = clampF(c.ui.eyeX+float64(dir*steps)/64, -0.5, 0.5)
 			c.mu.Unlock()
-			return
+		case s.ui.busStream:
+			c.scrollStreamList(dir * steps)
+		default:
+			c.busNextMatch(dir)
 		}
-		c.busNextMatch(dir)
 	case wsview.Spectrum:
 		c.specFine(dir, steps)
 	case wsview.Measure:
@@ -293,7 +332,7 @@ func (c *Controller) trigPos() float64 {
 // TRLC-LINKS: REQ-SDS-213
 func (c *Controller) adjustPush() {
 	c.mu.Lock()
-	wpick, open, ws, eye := c.ui.wpick, c.ui.open, c.ui.ws, c.ui.busEye
+	wpick, open, ws, eye, stream := c.ui.wpick, c.ui.open, c.ui.ws, c.ui.busEye, c.ui.busStream
 	c.mu.Unlock()
 	switch {
 	case wpick:
@@ -302,6 +341,8 @@ func (c *Controller) adjustPush() {
 		c.sheetAdjustPush()
 	case ws == wsview.Bus && eye:
 		c.eyeClear()
+	case ws == wsview.Bus && stream:
+		c.streamAdjustPush()
 	case ws == wsview.Bus:
 		s := c.snap()
 		dec := busDecoding(s)
@@ -326,9 +367,6 @@ func (c *Controller) adjustPush() {
 // the centre.
 // TRLC-LINKS: REQ-SDS-213
 func (c *Controller) positionPush() {
-	if c.streamListToTrigger() { // an open stream transcript: back to the trigger line
-		return
-	}
 	s := c.snap()
 	switch {
 	case s.ui.wpick:
@@ -359,11 +397,14 @@ func (c *Controller) posJobToggle(s *sv) {
 	on := !c.ui.posJob
 	c.ui.posJob = on
 	c.mu.Unlock()
+	if s.ui.ws == wsview.Bus && s.ui.busStream {
+		c.streamScrollJob(on)
+	}
 	if on {
 		c.toast("Position: "+j+"  (push: back to the "+trig+")", 1400*time.Millisecond)
 		return
 	}
-	if s.ui.ws == wsview.Bus && !s.ui.busEye {
+	if s.ui.ws == wsview.Bus && !s.ui.busEye && !s.ui.busStream {
 		c.busToTrigger(s)
 	}
 	c.toast("Position: "+trig+"  (push: "+j+")", 1400*time.Millisecond)
@@ -393,11 +434,15 @@ func (c *Controller) tdivTurn(dir int) {
 }
 
 // tdivPush is the S/DIV push (Zoom): zoom on/off; in BUS Packets onto the
-// selected packet.
-// TRLC-LINKS: REQ-SDS-213, REQ-SDS-214
+// selected packet; in BUS Stream, a stopped stream's transcript or waveform.
+// TRLC-LINKS: REQ-SDS-213, REQ-SDS-214, REQ-SDS-228
 func (c *Controller) tdivPush() {
 	s := c.snap()
-	if !s.ui.open && !s.ui.wpick && s.ui.ws == wsview.Bus && !s.ui.busEye {
+	if !s.ui.open && !s.ui.wpick && s.ui.ws == wsview.Bus && s.ui.busStream && s.streamStopped {
+		c.toggleStreamList() // a stopped stream: its transcript or its record's waveform
+		return
+	}
+	if !s.ui.open && !s.ui.wpick && s.ui.ws == wsview.Bus && !s.ui.busEye && !s.ui.busStream {
 		dec := busDecoding(s)
 		if dec {
 			c.busZoom()

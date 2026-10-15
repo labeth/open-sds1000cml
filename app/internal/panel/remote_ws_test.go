@@ -83,7 +83,7 @@ func TestRemoteAgainLeavesTheLCDSheet(t *testing.T) {
 		t.Fatalf("mode %s", st.Mode)
 	}
 	steps := []struct{ ws, view, next string }{
-		{"scope", "X-Y", "Y-T"}, {"bus", "Eye diagram", "Packets"}, {"spectrum", "Spectrogram", "Bode"},
+		{"scope", "X-Y", "Y-T"}, {"bus", "Eye diagram", "Stream"}, {"spectrum", "Spectrogram", "Bode"},
 		{"measure", "All values", "Statistics"},
 	}
 	for _, s := range steps {

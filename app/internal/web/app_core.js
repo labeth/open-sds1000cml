@@ -609,7 +609,7 @@ async function sheetSet(row, value) {
 // SCPI): when the scope's sheet changes (its SheetsSeq) the rows are fetched
 // once, so Stack master never writes a stale N over the depth set on the scope.
 let sheetsSeqSeen = -1, sheetsBusy = false;
-const SHEET_FOLLOW = [["bwl1", "ch1.bwl"], ["bwl2", "ch2.bwl"], ["inv1", "ch1.invert"], ["inv2", "ch2.invert"], ["masterN", "cmp.master_depth"]];
+const SHEET_FOLLOW = [["bwl1", "ch1.bwl"], ["bwl2", "ch2.bwl"], ["inv1", "ch1.invert"], ["inv2", "ch2.invert"], ["masterN", "cmp.master_depth"], ["streamStops", "bus.stream_trigger"]];
 // TRLC-LINKS: REQ-SDS-211
 async function sheetsFollow() {
   const seq = st && st.panel ? st.panel.SheetsSeq : undefined;

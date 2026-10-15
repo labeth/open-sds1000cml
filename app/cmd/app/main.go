@@ -192,7 +192,7 @@ func buildHUD(e *engine.Engine, fe *analog.FrontEnd) lcd.HUD {
 			} else {
 				switch {
 				case v.State == streamview.Streaming:
-					hud.StreamPage = sv.Window(streamview.ListRows, -1) // follow the newest
+					hud.StreamPage = sv.Window(streamview.ListRows, top) // -1 follows the newest
 				case hud.StreamList:
 					hud.StreamPage = sv.Window(streamview.ListRows, top)
 				case v.TriggerLine >= 0: // waveform: a strip of the lines around the trigger

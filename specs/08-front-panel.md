@@ -361,10 +361,27 @@ shows its next view. Entering a workspace shows a short label beside its key for
 | Key | Workspace | Pane | Key again |
 |---|---|---|---|
 | F1 | SCOPE | none: the full trace | Y-T ↔ X-Y |
-| F2 | BUS | the decoded packets: a fixed-column hex dump, a separate string box, the match | Packets ↔ eye diagram |
+| F2 | BUS | the decoded packets: a fixed-column hex dump, a separate string box, the match | Packets → eye diagram → Stream |
 | F3 | SPECTRUM | the FFT large, a small time trace, a peak table, marker, THD | FFT → spectrogram → Bode |
 | F4 | MEASURE | statistics (now, mean, min, max, sdev, N) of the chosen readouts, cursors | statistics ↔ all values |
 | F5 | COMPARE | MASTER, REF A, REF B, MASK, MATH rows, live difference | stack a master (again: cancel) |
+
+BUS's third view, Stream, streams the bus in hardware (ADR-PANEL-DECODED-STREAM, REQ-SDS-228): entering
+it starts the stream on the bus as the decoder settings name it (no detection) with the BUS sheet's stop (on
+a decode error, on the Stream value, by hand), and the plot shows the live transcript; the pane says what
+the stream does (STARTING, STREAMING, STOPPED ON THE TRIGGER, STOPPED, NOT STREAMING with the reason), its
+units, rate, errors and losses, and what stops it. Leaving the view (F2 again to the packets, another
+workspace, the Stream row Off) ends the stream; its record goes to the display as a stopped stream's does,
+and the scope runs again, so the packets list live. With no bus decoded the view says so and the Adjust
+push detects one; the stream then starts on it. Its tools: Adjust picks the stop (a stream under way starts
+again with it), its push stops and restarts the stream, as RUN/STOP does; Position moves the trigger
+position, its push turns it to scrolling the transcript (a running transcript holds where it is scrolled to;
+the push back follows the newest lines again); Zoom shows a stopped stream's transcript list or its
+record's waveform with the lines around the trigger. Changing the protocol streams the new bus; a detection
+or AUTO ends the stream while it sweeps and the view streams the bus it leaves. The BUS sheet's Stream row
+is the view's: On (on the LCD, the phone or the web page) puts BUS on its Stream view, Off back on the
+packets. The web page's BUS view follows the scope's: the scope entering its Stream view shows the page's
+Stream view, leaving it the packets; the page's own Stream view puts the scope on its Stream view.
 
 Auto: the BUS sheet's Protocol = Auto is no decoding mode but a detection. It finds the bus on CH1/CH2
 once and fills the protocol, channel roles, baud or bit rate, SPI mode and bit order into the decoder

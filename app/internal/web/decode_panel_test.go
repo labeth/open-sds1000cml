@@ -23,6 +23,7 @@ type decodePanel struct {
 	d     panel.Display
 	seq   uint64
 	sets  []string // the rows set, in order
+	view  string   // BUS's view: the Stream row On puts it on Stream
 }
 
 // newDecodePanel is decode off, C1 then C2, 115200 Bd.
@@ -47,7 +48,11 @@ func (noKeys) InjectKnob(string, int, int) bool { return false }
 func (p *decodePanel) PanelStatus() panel.Status {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	return panel.Status{Seq: p.seq, SheetsSeq: p.seq, Display: p.d}
+	view := p.view
+	if view == "" {
+		view = "Packets"
+	}
+	return panel.Status{Seq: p.seq, SheetsSeq: p.seq, Display: p.d, Workspace: "BUS", WorkspaceID: "bus", View: view}
 }
 
 // TRLC-LINKS: REQ-SDS-214, REQ-SDS-222
@@ -104,6 +109,9 @@ func (p *decodePanel) SheetSet(row string, value any, _ string) panel.SetResult 
 		d.DecCPOL, d.DecCPHA = n&2 != 0, n&1 != 0
 	case "bus.bit_order":
 		d.DecLSB = n == 1
+	case "bus.stream":
+		p.view = map[bool]string{true: "Stream", false: "Packets"}[n == 1]
+	case "bus.stream_trigger":
 	default:
 		return panel.SetResult{Row: row, Error: "no row " + row}
 	}

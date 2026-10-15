@@ -2,6 +2,7 @@
 package panel
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"time"
@@ -9,6 +10,7 @@ import (
 	"open-sds/app/internal/decode"
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/panel/framecalc"
+	"open-sds/app/internal/panel/wsview"
 	"open-sds/app/internal/streamview"
 )
 
@@ -51,19 +53,40 @@ func (c *Controller) SetDecodeStream(s Stream) {
 // off a decode of the frame on screen with those settings, else of a sampled
 // record (the live envelope is too coarse at slow timebases: a 115200 Bd
 // UART at 500us/div). Starting can load an FPGA image, so it runs off the
-// panel goroutine.
-// TRLC-LINKS: REQ-SDS-018, REQ-SDS-222
+// panel goroutine. A stream still running (the stop setting changed, or the
+// bus) ends first; a start superseded meanwhile gives way to the newer one.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-222, REQ-SDS-228
 func (c *Controller) startStream() {
 	c.mu.Lock()
 	s, trig, value := c.stream, c.decTrig, c.decValue
 	c.streamList, c.streamTop = false, -1 // a new stream shows its live tail
+	c.streamGen++
+	gen := c.streamGen
 	c.mu.Unlock()
 	if s == nil {
 		return
 	}
+	current := func() bool {
+		c.mu.Lock()
+		defer c.mu.Unlock()
+		return c.streamGen == gen
+	}
 	c.offPanel(func() {
 		t0 := time.Now()
+		if s.Active() { // started again: the image it runs on stays for the next
+			if h, ok := c.eng.(interface {
+				HoldDecodedImage(context.Context) error
+			}); ok {
+				ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+				h.HoldDecodedImage(ctx)
+				cancel()
+			}
+			stopWait(s)
+		}
 		res, sampleS, ok := c.decodeOnScreen()
+		if !ok && !c.eng.Snapshot().Running { // a stopped stream's record decodes with other settings
+			c.eng.SetRunning(true)
+		}
 		if !ok {
 			all := func(*engine.Frame, bool) bool { return true }
 			l := c.detectWith(true, false, all, c.decodeOnScreen, decimatedWait)
@@ -72,8 +95,8 @@ func (c *Controller) startStream() {
 		sv := c.snap()
 		name := busName(sv.decProto, sv.decBaud, sv.decChA, sv.decChB, sv.decCPOL, sv.decCPHA)
 		c.logf("panel: stream: %s read in %v", name, time.Since(t0).Round(time.Millisecond))
-		if !c.streaming() {
-			return // Stream went off, or decode did, meanwhile
+		if !c.streaming() || !current() {
+			return // Stream went off, or decode did, or a newer start runs
 		}
 		if !ok {
 			s.Refuse(c.noBusNote("no " + name + " decoded on screen"))
@@ -87,11 +110,8 @@ func (c *Controller) startStream() {
 		// A stream still starting or ending (Stream turned off and on again
 		// quickly) ends first: Start is refused while one is starting, and that
 		// one then stops as the Off asked, leaving Stream On with none running.
-		for end := time.Now().Add(30 * time.Second); s.Active() && time.Now().Before(end); {
-			s.Stop()
-			time.Sleep(50 * time.Millisecond)
-		}
-		if !c.streaming() {
+		stopWait(s)
+		if !c.streaming() || !current() {
 			return
 		}
 		t1 := time.Now()
@@ -105,7 +125,7 @@ func (c *Controller) startStream() {
 		// ARINC 429's slicer levels are learned from a sampled record a moment
 		// after the settings name it: a stream started right after BUS entry
 		// waits for them
-		for end := time.Now().Add(levelsWait); errors.Is(err, engine.ErrLevelsLearning) && time.Now().Before(end) && c.streaming(); {
+		for end := time.Now().Add(levelsWait); errors.Is(err, engine.ErrLevelsLearning) && time.Now().Before(end) && c.streaming() && current(); {
 			time.Sleep(250 * time.Millisecond)
 			err = s.Start(p, decTrigKinds[trig%3], value, name)
 		}
@@ -140,6 +160,10 @@ func streamImageNote(proto int, loaded string) string {
 	return fmt.Sprintf("loading the %s FPGA image, about 4 s: the %s image has no %s receiver", want, name, protoName(proto))
 }
 
+// streamValueMax is the widest unit a stream stops on: an ARINC 429 word's
+// 19-bit data field (a MIL-1553 word is 16 bits, the other units 8).
+const streamValueMax = 0x7FFFF
+
 // levelsWait bounds a stream's wait for the ARINC 429 levels.
 const levelsWait = 5 * time.Second
 
@@ -150,35 +174,59 @@ func (c *Controller) stopStream() {
 	s := c.stream
 	c.mu.Unlock()
 	if s != nil && s.Active() {
-		go s.Stop()
+		c.offPanel(s.Stop)
 	}
 }
 
-// leaveStream ends stream mode's stream and resumes live captures. The engine
-// ends a stream stopped, its record on the display, so RUN waits for that end:
-// a RUN before it leaves the scope stopped ("Trigger on it" or DEFAULT SETUP
-// from a stream).
+// stopWait ends a stream for live captures or another stream (its record is
+// not shown: End, where the stream has it) and waits (bounded) for its end:
+// one still starting ends at its first read.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-228
+func stopWait(s Stream) {
+	stop := s.Stop
+	if e, ok := s.(interface{ End() }); ok {
+		stop = e.End
+	}
+	for end := time.Now().Add(30 * time.Second); s.Active() && time.Now().Before(end); {
+		stop()
+		time.Sleep(50 * time.Millisecond)
+	}
+}
+
+// leaveStream ends stream mode's stream and resumes live captures, off the
+// panel goroutine while a stream runs (endStream).
 // TRLC-LINKS: REQ-SDS-018
 func (c *Controller) leaveStream() {
 	c.mu.Lock()
 	s := c.stream
 	c.mu.Unlock()
 	if s == nil || !s.Active() {
-		c.eng.SetRunning(true)
+		c.endStream()
 		return
 	}
-	go func() {
-		s.Stop()
-		for end := time.Now().Add(30 * time.Second); s.Active() && time.Now().Before(end); {
-			time.Sleep(50 * time.Millisecond) // a stream still starting ends at its first read
-		}
-		if !c.streaming() { // Stream on again meanwhile: its own start stops the scope
-			c.eng.SetRunning(true)
-		}
-	}()
+	c.offPanel(c.endStream)
 }
 
-// streaming reports the BUS sheet's Stream on with a bus to stream.
+// endStream ends stream mode's stream and resumes live captures. The engine
+// ends a stream stopped, its record on the display, so RUN waits for that
+// end: a RUN before it leaves the scope stopped (the packets frozen on the
+// stream's record after the Stream view, "Trigger on it" or DEFAULT SETUP
+// from a stream).
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-228
+func (c *Controller) endStream() {
+	c.mu.Lock()
+	s := c.stream
+	c.mu.Unlock()
+	if s != nil {
+		stopWait(s)
+	}
+	if !c.streaming() { // Stream on again meanwhile: its own start stops the scope
+		c.eng.SetRunning(true)
+	}
+}
+
+// streaming reports a stream wanted: BUS's Stream view (or the BUS sheet's
+// Stream row) on with a bus to stream.
 // TRLC-LINKS: REQ-SDS-018
 func (c *Controller) streaming() bool {
 	c.mu.Lock()
@@ -186,10 +234,137 @@ func (c *Controller) streaming() bool {
 	return serialProto(c.decProto) && c.decMode == decModeStream && c.stream != nil
 }
 
+// streamOn is streaming for a state read.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-228
+func streamOn(s *sv) bool {
+	return serialProto(s.decProto) && s.decMode == decModeStream && s.hasStream
+}
+
+// syncStreamView keeps the stream with BUS's Stream view: shown with a bus
+// to stream and no detection or AUTO under way, the stream runs with the BUS
+// sheet's settings and stop; else none does. Called on every change of those
+// (the view, the workspace, the bus, a detection or AUTO ending).
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-228
+func (c *Controller) syncStreamView() { c.syncStream(false) }
+
+// syncStream is syncStreamView; wait ends a stream before it returns (AUTO
+// sweeps on live captures).
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-228
+func (c *Controller) syncStream(wait bool) {
+	c.mu.Lock()
+	want := c.ui.ws == wsview.Bus && c.ui.busStream && serialProto(c.decProto) && c.stream != nil &&
+		!c.ui.busDetecting && !c.autosetBusy
+	was := c.decMode == decModeStream
+	c.decMode = decModeView
+	if want {
+		c.decMode = decModeStream
+	}
+	c.mu.Unlock()
+	switch {
+	case want && !was:
+		c.startStream()
+	case !want && was && wait:
+		c.endStream()
+	case !want && was:
+		c.leaveStream()
+	}
+}
+
+// showBusView puts BUS on its Stream view (stream) or, from it, on its
+// packets: the BUS sheet's Stream row, set on the LCD, the web page or the
+// phone, starts and ends the stream as the view does.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-228
+func (c *Controller) showBusView(stream bool) {
+	c.mu.Lock()
+	if stream && c.ui.ws != wsview.Bus {
+		c.ui.views[c.ui.ws] = c.viewMode
+		c.ui.ws, c.ui.posJob = wsview.Bus, false
+		c.viewMode = c.ui.views[wsview.Bus]
+	}
+	if stream != c.ui.busStream {
+		c.ui.posJob = false
+	}
+	if stream {
+		c.ui.busEye = false
+		c.closePickLocked()
+	}
+	c.ui.busStream = stream
+	c.mu.Unlock()
+	c.endEyeRaw()
+	c.syncStreamView()
+}
+
+// streamStopsTurn is Adjust in BUS Stream: what stops the stream (a decode
+// error, the Stream value, Run/Stop by hand); a stream under way starts
+// again with it.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-228
+func (c *Controller) streamStopsTurn(dir int) {
+	c.mu.Lock()
+	c.decTrig = mod3(c.decTrig + dir)
+	t := c.decTrig
+	c.mu.Unlock()
+	c.toast("Stream stops "+streamStopText(t, c.snap().decValue), 1400*time.Millisecond)
+	if c.streaming() {
+		c.startStream()
+	}
+}
+
+// streamStopText says what stops a stream: trig is decTrig.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-228
+func streamStopText(trig, value int) string {
+	switch mod3(trig) {
+	case 1:
+		return "on the value " + hexText(float64(value))
+	case 2:
+		return "by hand (Run/Stop)"
+	}
+	return "on a decode error"
+}
+
+// streamAdjustPush is the Adjust push in BUS Stream: with no bus, detect it
+// (the stream then starts); else stop the stream, or start it again.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-228
+func (c *Controller) streamAdjustPush() {
+	s := c.snap()
+	switch {
+	case s.ui.busDetecting:
+	case !busDecoding(s):
+		c.autoDecodeBus()
+	case !s.hasStream || !serialProto(s.decProto):
+		c.toast("No hardware stream for "+protoName(s.decProto), 1600*time.Millisecond)
+	case !streamOn(s):
+	case s.streamStopped:
+		c.startStream()
+	default:
+		c.stopStream()
+	}
+}
+
+// streamScrollJob is Position's push in BUS Stream: on, Position scrolls the
+// transcript (a stopped stream's list opens on its trigger line); off, the
+// transcript follows the newest lines again.
+// TRLC-LINKS: REQ-SDS-213, REQ-SDS-228
+func (c *Controller) streamScrollJob(on bool) {
+	s, stopped := c.streamStopped()
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.streamTop = -1
+	if !on || s == nil {
+		return
+	}
+	if v := s.Snapshot(); stopped {
+		c.streamList = true
+		if v.TriggerLine >= 0 {
+			c.streamTop = max(0, v.TriggerLine-streamview.ListRows/2)
+		}
+	}
+}
+
 // setDecProto sets the decoder (framecalc.ProtoOff..ProtoFlexRay); Auto
 // detects the bus and fills the settings in (autoDecode). Another protocol
-// ends a stream; a bit-rate protocol starts at its usual rate; clock and data
-// stay on different channels; an armed serial trigger follows the bus.
+// ends a stream (BUS's Stream view then streams the new bus); a bit-rate
+// protocol starts at its usual rate; clock and data stay on different
+// channels; an armed serial trigger follows the bus.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-214, REQ-SDS-222
 func (c *Controller) setDecProto(p int) error {
 	if p < framecalc.ProtoOff || p >= framecalc.NumProtos {
@@ -230,6 +405,7 @@ func (c *Controller) setDecProto(p int) error {
 	if stop {
 		c.leaveStream()
 	}
+	c.syncStreamView()
 	return nil
 }
 
@@ -267,25 +443,18 @@ func (c *Controller) setDecRole(first bool, ch int) error {
 }
 
 // setStreamMode starts (with the decoder settings) or stops the hardware
-// decoded stream.
-// TRLC-LINKS: REQ-SDS-018, REQ-SDS-222
+// decoded stream: BUS on its Stream view, or back on its packets.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-222, REQ-SDS-228
 func (c *Controller) setStreamMode(on bool) error {
 	c.mu.Lock()
-	if !serialProto(c.decProto) || c.stream == nil {
-		c.mu.Unlock()
-		if on {
-			return fmt.Errorf("a stream needs a bus: set Protocol (Auto finds it)")
-		}
-		return nil
-	}
-	was := c.decMode == decModeStream
-	c.decMode = map[bool]int{true: decModeStream, false: decModeView}[on]
+	bus := serialProto(c.decProto) && c.stream != nil
+	inView := c.ui.busStream
 	c.mu.Unlock()
 	switch {
-	case on && !was:
-		c.startStream()
-	case !on && was:
-		c.leaveStream()
+	case on && !bus:
+		return fmt.Errorf("a stream needs a bus: set Protocol (Auto finds it)")
+	case on || inView:
+		c.showBusView(on)
 	}
 	return nil
 }
@@ -313,7 +482,8 @@ func (c *Controller) StreamList() (bool, int) {
 	return c.streamList, c.streamTop
 }
 
-// streamStopped is a stream that has ended (trigger, STOP or failure).
+// streamStopped is the stream wanted (nil none) and whether it has ended
+// (trigger, STOP or failure).
 // TRLC-LINKS: REQ-SDS-018
 func (c *Controller) streamStopped() (Stream, bool) {
 	if !c.streaming() {
@@ -325,8 +495,9 @@ func (c *Controller) streamStopped() (Stream, bool) {
 	return s, !s.Active()
 }
 
-// toggleStreamList is F2 on a stopped stream: Wave <-> List. Opening the list
-// centres the trigger line when there is one.
+// toggleStreamList is Zoom on a stopped stream in BUS Stream (and the BUS
+// sheet's Stream shows row): Wave <-> List. Opening the list centres the
+// trigger line when there is one.
 // TRLC-LINKS: REQ-SDS-018
 func (c *Controller) toggleStreamList() {
 	s, stopped := c.streamStopped()
@@ -345,19 +516,20 @@ func (c *Controller) toggleStreamList() {
 	c.mu.Unlock()
 }
 
-// scrollStreamList moves the open list by lines; it reports whether the knob
-// was used for that.
-// TRLC-LINKS: REQ-SDS-018
-func (c *Controller) scrollStreamList(lines int) bool {
+// scrollStreamList moves the transcript by lines: a stream under way holds
+// still where it is scrolled to (the newest lines go on below it), a stopped
+// stream's waveform opens its list.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-228
+func (c *Controller) scrollStreamList(lines int) {
 	s, stopped := c.streamStopped()
-	if !stopped {
-		return false
+	if s == nil {
+		return
 	}
 	v := s.Snapshot()
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	if !c.streamList {
-		return false
+	if stopped {
+		c.streamList = true
 	}
 	last := max(0, v.Lines-streamview.ListRows)
 	top := c.streamTop
@@ -365,24 +537,6 @@ func (c *Controller) scrollStreamList(lines int) bool {
 		top = last
 	}
 	c.streamTop = min(max(top+lines, 0), last)
-	return true
-}
-
-// streamListToTrigger centres the open list on the trigger line.
-// TRLC-LINKS: REQ-SDS-018
-func (c *Controller) streamListToTrigger() bool {
-	s, stopped := c.streamStopped()
-	if !stopped {
-		return false
-	}
-	v := s.Snapshot()
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	if !c.streamList || v.TriggerLine < 0 {
-		return false
-	}
-	c.streamTop = max(0, v.TriggerLine-streamview.ListRows/2)
-	return true
 }
 
 // StreamStatus reports the decoded stream for /api/status; ok is false

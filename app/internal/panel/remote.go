@@ -195,7 +195,7 @@ func lampNames(w uint16) []string {
 func workspaceView(s *sv, ws wsview.WS) string {
 	switch ws {
 	case wsview.Bus:
-		return map[bool]string{true: "Eye diagram", false: "Packets"}[s.ui.busEye]
+		return busViewName(&s.ui)
 	case wsview.Measure:
 		return map[bool]string{true: "All values", false: "Statistics"}[s.ui.measAll]
 	case wsview.Compare:
@@ -842,7 +842,7 @@ func (c *Controller) adjustOpensMenu() bool {
 	switch {
 	case s.ui.ws == wsview.Scope:
 		return true
-	case s.ui.ws == wsview.Bus && !s.ui.busEye:
+	case s.ui.ws == wsview.Bus && !s.ui.busEye && !s.ui.busStream:
 		return busDecoding(s)
 	}
 	return false
@@ -897,7 +897,7 @@ func (c *Controller) remoteAgain() SetResult {
 func (c *Controller) againNext(s *sv) string {
 	switch s.ui.ws {
 	case wsview.Bus:
-		return map[bool]string{true: "Packets", false: "Eye diagram"}[s.ui.busEye]
+		return busViewNext(&s.ui)
 	case wsview.Spectrum:
 		return viewName(nextSpecView(s.viewMode))
 	case wsview.Measure:

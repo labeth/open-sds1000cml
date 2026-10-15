@@ -34,7 +34,7 @@ const ALL_GROUPS = [
     ["fftClear", "Clear picked peaks", "fft"], ["spgArm", "Spectrogram", "waterfall run"], ["spgCh", "Spectrogram channel", ""], ["spgFloor", "Spectrogram floor", "db"],
     ["spgClear", "Clear spectrogram", "waterfall"], ["bodeArm", "Bode / FRA", "frequency response sweep"], ["bodeRef", "Bode reference channel", "fra"],
     ["bodeDut", "Bode DUT channel", "fra"], ["bodeClear", "Clear Bode points", "fra"]]],
-  ["Decode (BUS)", [["decProto", "Protocol", "decode uart i2c spi can sent manchester"], ["decDetect", "Auto-detect the bus", "find protocol"], ["busView", "BUS view", "packets log eye"],
+  ["Decode (BUS)", [["decProto", "Protocol", "decode uart i2c spi can sent manchester"], ["decDetect", "Auto-detect the bus", "find protocol"], ["busView", "BUS view", "packets log eye stream"], ["streamStops", "What stops the scope's stream", "stream trigger error value hand"],
     ["decScl", "I²C SCL channel", "i2c clock"], ["decSda", "I²C SDA channel", "i2c data"], ["decClk", "SPI clock channel", ""], ["decData", "SPI data channel", ""],
     ["decLine", "Decode line", "uart channel"], ["decBaud", "Baud / bit rate", "uart speed"], ["decBits", "Data bits", "uart word"], ["decParity", "UART parity", "none even odd"],
     ["decSentTick", "SENT tick", "ns"], ["decSentNibbles", "SENT nibbles", ""], ["decCpol", "SPI CPOL", "mode"], ["decCpha", "SPI CPHA", "mode"], ["decMsb", "SPI bit order", "msb lsb"],
@@ -66,7 +66,7 @@ const ALL_GROUPS = [
 // Controls that are not settings: navigation, menus, dialogs and the read-only
 // decode transcript.
 const ALL_EXCLUDE = new Set(["decodeText", "tab-scope", "tab-bus", "tab-spectrum", "tab-measure", "tab-compare", "allBtn", "allClose", "allFilter", "helpClose",
-  "exportBtn", "setupsBtn", "quickMore", "pkDetect", "tdivDn", "tdivUp", "vdiv1Dn", "vdiv1Up", "vdiv2Dn", "vdiv2Up", "mYT", "mXY", "mFFT", "mSPG", "mBODE"]);
+  "exportBtn", "setupsBtn", "quickMore", "pkDetect", "streamDetect", "tdivDn", "tdivUp", "vdiv1Dn", "vdiv1Up", "vdiv2Dn", "vdiv2Up", "mYT", "mXY", "mFFT", "mSPG", "mBODE"]);
 
 let allBuilt = false, allW = 380;
 // TRLC-LINKS: REQ-SDS-219

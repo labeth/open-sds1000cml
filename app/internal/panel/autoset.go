@@ -80,6 +80,7 @@ func (c *Controller) runAutoset(stop chan struct{}) {
 // TRLC-LINKS: REQ-SDS-137, REQ-SDS-224, REQ-SDS-226
 func (c *Controller) runAutosetFor(stop chan struct{}, ws wsview.WS, view int) {
 	defer c.endAutoset(stop)
+	c.syncStream(true) // a stream ends (a page's AUTO while BUS streams): the sweep reads live captures
 	g := goalFor(ws, view)
 	entry := c.autoEntryNow()
 	c.autoClearMatch(entry)

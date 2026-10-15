@@ -2,11 +2,13 @@
 package lcd
 
 import (
+	"fmt"
 	"math"
 	"testing"
 
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/panel/wsview"
+	"open-sds/app/internal/streamview"
 )
 
 // Golden coverage for the task-workspace UI (ADR-TASK-WORKSPACES): the rail,
@@ -170,6 +172,30 @@ func TestGoldenBusEye(t *testing.T) {
 	h := goldenUIHUD(v)
 	h.TdivS, h.SampleS = 100e-6, 0.5e-6
 	goldenRender(t, "ws_bus_eye", goldenBusFrame(), h)
+}
+
+// TestGoldenBusStream pins BUS's Stream view: the stream's state, what stops
+// it and the controls in the pane, the transcript filling the plot.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-228
+func TestGoldenBusStream(t *testing.T) {
+	b := &wsview.BusPane{Pane: wsview.Pane{Title: "BUS", Caption: "STREAM  UART 115200 8N1 on C1", Right: "stops on a decode error",
+		Tool: []wsview.Seg{{Key: "Adjust", Job: "stops on error"}, {Key: "push", Job: "stop"}, {Key: "Position", Job: "trigger position"},
+			{Key: "push", Job: "transcript"}},
+		Again: "F2 again: Packets"}, Off: true,
+		Msg: []wsview.Span{{Text: "STREAMING", Col: wsview.Text}, {Text: "37961 units  8.78k/s  errors 0  lost 0", Col: wsview.Text},
+			{Text: "Run/Stop or push Adjust: stop - the record goes on screen", Col: wsview.Dim},
+			{Text: "Adjust: what stops it (an error, the Stream value, by hand)", Col: wsview.Dim}}}
+	v := wsview.View{WS: wsview.Bus, Layout: paneLayout(136), Rail: true, Bus: b}
+	h := goldenUIHUD(v)
+	h.TdivS, h.SampleS = 100e-6, 0.5e-6
+	h.StreamOn, h.StreamList = true, true
+	h.Stream = streamview.View{State: streamview.Streaming, Label: "UART 115200 8N1 on C1", Units: 37961, UnitsPerSecond: 8778, Lines: 2373, TriggerLine: -1}
+	pg := streamview.Page{Top: 2340, Total: 2373, TriggerLine: -1, Header: "         t ms        hex                                              text"}
+	for i := 0; i < 30; i++ {
+		pg.Lines = append(pg.Lines, fmt.Sprintf("%13.4f        48 69 20 55 AA 0F F0 0A 48 69 20 55 AA 0F F0 0A  Hi U....Hi U....", 4270.3+1.8227*float64(i)))
+	}
+	h.StreamPage = pg
+	goldenRender(t, "ws_bus_stream", goldenBusFrame(), h)
 }
 
 // TestGoldenSpectrumPeaks pins SPECTRUM: the FFT under its pane with the

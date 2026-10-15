@@ -3594,7 +3594,8 @@ requirements:
   text: The instrument shall auto-detect the bus and turn decoding on when the BUS workspace is entered with
     decoding off, list complete packets with their bytes as hex and as a separate left-aligned string column in
     fixed columns that hold still while the same messages repeat, default the decode strip to hex, let the user
-    select packets and pick bytes to trigger on, and toggle an eye diagram when F2 is pressed again.
+    select packets and pick bytes to trigger on, and cycle the packets, an eye diagram and a decoded stream when F2
+    is pressed again.
   status: draft
   category: functional
   appliesTo:
@@ -3858,3 +3859,26 @@ requirements:
   notes: The page keeps no references of its own; it reads both slots again when the status's Refs (each slot's
     Has, Show and store generation) changes. The difference readout compares on the reference's 800 screen columns,
     as the LCD does. The super-res model fit is a page overlay drawn in REF B's colour, not a reference.
+- id: REQ-SDS-228
+  title: BUS Stream view
+  text: The instrument shall, while the BUS workspace shows its Stream view, stream the bus the decoder settings name
+    in hardware with the stop the BUS sheet holds and show its transcript, and end that stream when the view is
+    left.
+  status: draft
+  category: functional
+  appliesTo:
+  - FU-APP-PANEL
+  - FU-APP-LCD
+  - FU-APP-WEB
+  - FU-WEB-APP-BUS
+  verificationMethods:
+  - test
+  verificationCriteria: Panel tests cycle Packets, Eye diagram and Stream with F2 and check that the Stream view starts
+    the stream with the sheet's stop and value, that F2, another workspace and the Stream row Off end it with the
+    scope running again, that the Stream row reads the view's state and puts BUS on the view from another workspace,
+    and that with no bus the view says so and the Adjust push detects one; an LCD golden of the view. On the device,
+    the view cycle on the FPGA UART source with its timings, and every bench bus streamed with each stop.
+  notes: Adjust picks the stop (a decode error, the Stream value, Run/Stop by hand) and a running stream starts again
+    with it; its push and Run/Stop stop and restart the stream; Position's push turns Position to scrolling the
+    transcript; Zoom shows a stopped stream's list or its record's waveform. A detection or AUTO ends the stream for
+    its sweep and the view streams the bus it leaves. The web page's BUS view follows the scope's view.

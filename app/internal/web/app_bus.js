@@ -3,8 +3,8 @@
 // bus and turns decoding on (decoding then stays on); the packet table lists
 // complete packets as hex plus a separate string column and holds still while
 // the same messages repeat; a click zooms onto a packet; BUS again (or the
-// pane's view switch) shows the eye diagram of the decoded line. Classic
-// script; shares app.js globals.
+// pane's view switch) shows the eye diagram of the decoded line, then the
+// scope's hardware stream of the bus. Classic script; shares app.js globals.
 "use strict";
 
 const busPk = new PacketList(200);
@@ -164,16 +164,41 @@ $("pkBody").addEventListener("keydown", (ev) => {
 // Unfreezing (or leaving the zoom) releases the packet highlight.
 $("freeze").addEventListener("click", () => { if (!frozen) { busSel = null; busRenderedV = -1; } });
 
-// ---- views: packets / log / eye ------------------------------------------------
-// TRLC-LINKS: REQ-SDS-214, REQ-SDS-215
-function busSetView(v) {
+// ---- views: packets / log / eye / stream ----------------------------------------
+// The Stream view is the scope's: choosing it puts the scope's BUS on its
+// Stream view (the BUS sheet's Stream row), which streams the bus, and another
+// view here takes the scope back to its packets. byScope: the scope's view
+// changed and the page follows it (nothing is sent back).
+// TRLC-LINKS: REQ-SDS-214, REQ-SDS-215, REQ-SDS-228
+function busSetView(v, byScope) {
+  const was = ws.busView;
   ws.busView = v;
   $("busView").value = v;
   for (const el of document.querySelectorAll("#p-packets .bview")) el.hidden = el.dataset.view !== v;
-  $("pkTitle").textContent = { packets: "Packets", log: "Decode log", eye: "Eye diagram" }[v];
+  $("pkTitle").textContent = { packets: "Packets", log: "Decode log", eye: "Eye diagram", stream: "Stream" }[v];
   if (v === "eye") busEyeOn(); else busEyeOff();
   busRoom(v === "eye");
   if (v === "packets") { busRenderedV = -1; busRenderTable(); }
+  if (!byScope && v === "stream") busAskStream(true);
+  if (!byScope && was === "stream" && v !== "stream") busAskStream(false);
+  busScopeStream();
+}
+
+// busAskStream puts the scope on its Stream view or back on its packets. Until
+// the status shows the scope there (or 5 s pass), a status from before is
+// not the scope's view changing.
+// TRLC-LINKS: REQ-SDS-228
+function busAskStream(on) {
+  busStreamAsk = { on, until: Date.now() + 5000 };
+  busScopeWas = on;
+  sheetSet("bus.stream", on ? 1 : 0);
+}
+
+// busScopeStreaming reports the scope's BUS on its Stream view.
+// TRLC-LINKS: REQ-SDS-228
+function busScopeStreaming() {
+  const p = st && st.panel;
+  return !!(p && p.WorkspaceID === "bus" && p.View === "Stream");
 }
 // TRLC-LINKS: REQ-SDS-214, REQ-SDS-215
 $("busView").onchange = () => { if (ws.cur !== "bus") setWs("bus"); busSetView($("busView").value); };
@@ -248,12 +273,22 @@ WS_HOOKS.push({
 });
 
 // ---- the scope's own stream ----------------------------------------------------------
-// While the scope streams its bus in hardware (BUS Stream, on the scope or the
-// phone) the Packets view shows it: its status and newest transcript lines as
-// the LCD's list writes them.
-let busStreamBusy = false;
-// TRLC-LINKS: REQ-SDS-018
+// While the scope streams its bus in hardware (its BUS Stream view, entered on
+// the scope, the phone or here) the Stream view shows it: its status and newest
+// transcript lines as the LCD's list writes them. The page follows the scope:
+// the scope entering its Stream view shows this one, leaving it the packets.
+let busStreamBusy = false, busScopeWas = false, busStreamAsk = null;
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-228
 async function busScopeStream() {
+  const on = busScopeStreaming();
+  if (busStreamAsk && (on === busStreamAsk.on || Date.now() > busStreamAsk.until)) busStreamAsk = null;
+  if (!busStreamAsk && on !== busScopeWas) {
+    busScopeWas = on;
+    if (on && ws.busView !== "stream") busSetView("stream", true);
+    else if (!on && ws.busView === "stream") busSetView("packets", true);
+  }
+  const d = st && st.panel && st.panel.Display;
+  $("streamEmpty").hidden = !(ws.busView === "stream" && d && d.DecProto === 0 && !d.DecDetecting);
   const s = st && st.stream, box = $("scopeStream");
   if (!s || !s.state) { if (!box.hidden) { box.hidden = true; $("scopeStreamText").textContent = ""; } return; }
   box.hidden = false;
@@ -271,6 +306,10 @@ async function busScopeStream() {
   } catch (e) { /* the next tick reads again */ } finally { busStreamBusy = false; }
 }
 setInterval(busScopeStream, 500);
+// TRLC-LINKS: REQ-SDS-228
+$("streamStops").onchange = () => sheetSet("bus.stream_trigger", +$("streamStops").value);
+// TRLC-LINKS: REQ-SDS-228
+$("streamDetect").onclick = () => busDetect(false);
 
 // ---- trigger on bytes --------------------------------------------------------------
 // TRLC-LINKS: REQ-SDS-206

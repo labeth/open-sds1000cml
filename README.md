@@ -195,6 +195,8 @@ automatically.
   bus loads the general image for the fit and detection and its own image again (11 to 15 s). A
   stream that waits for an image load says so.
 * **Continuous decoding:** a live decoded stream, with the full-rate record kept for every frame.
+  BUS's third view (F2, F2, F2) streams the bus as decoded, with the transcript on the LCD; leaving the
+  view ends the stream.
   UART at **921,600 baud ran lossless for 3 minutes** (16.6 M bytes). At higher rates a lost event
   is marked, never silently dropped.
 * Hex, ASCII and combined views, and a watch buffer with regex search.

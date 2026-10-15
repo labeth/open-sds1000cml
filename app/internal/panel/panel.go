@@ -196,6 +196,7 @@ type Controller struct {
 	// a stopped stream's screen: transcript list or the record's waveform
 	streamList bool
 	streamTop  int // list's first line; -1 follows the newest
+	streamGen  int // counts stream starts: a start superseded meanwhile gives way
 
 	// UI state (ADR-TASK-WORKSPACES): written by the panel goroutine, read by
 	// the LCD renderer and the remote, guarded by mu. inject runs API-driven

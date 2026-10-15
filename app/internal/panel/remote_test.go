@@ -406,7 +406,7 @@ func TestTypedCommaAndNegativeTexts(t *testing.T) {
 		t.Fatalf("1,250V: %+v", res)
 	}
 	for _, x := range [][3]string{{"trig.holdoff", "-5", "holdoff -5s is outside Off .. 10s"},
-		{"bus.stream_value", "-1", "stream value -0x01 is outside 0x00 .. 0xFFFF"},
+		{"bus.stream_value", "-1", "stream value -0x01 is outside 0x00 .. 0x7FFFF"},
 		{"bus.i2c_address", "-2", "i2c address -0x02 is outside Any .. 0x7F"}} {
 		if res := c.SheetSet(x[0], nil, x[1]); res.OK || res.Error != x[2] {
 			t.Fatalf("%s %s: %+v", x[0], x[1], res)

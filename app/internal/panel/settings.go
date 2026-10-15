@@ -170,7 +170,7 @@ func (c *Controller) ApplySettingsView(v settings.ViewState) {
 	c.auto = autoWatch{}
 	c.decFormat = d.Format
 	c.decTrig = mod3(d.StreamTrig)
-	c.decValue = (d.StreamValue%0x10000 + 0x10000) % 0x10000
+	c.decValue = clampInt(d.StreamValue, 0, streamValueMax)
 	if u := v.UI; u.Set {
 		ws := wsview.WS(clampInt(u.Workspace, 0, wsview.Count-1))
 		for i := range c.ui.views {

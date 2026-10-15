@@ -25,6 +25,14 @@ type fakeSource struct {
 	worker    *decodedlines.Transcript // set: line mode, the worker builds lines
 	frozen    bool
 	begin     chan struct{} // set: the start waits for it (an image load)
+	discarded bool          // the record was dropped before the end
+}
+
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-228
+func (f *fakeSource) DiscardDecodedRecord() {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.discarded = true
 }
 
 // TRLC-LINKS: REQ-SDS-018
@@ -159,6 +167,22 @@ func TestStreamManualStop(t *testing.T) {
 	c.Stop()
 	if v := c.Snapshot(); v.State != Stopped || !f.adopt {
 		t.Fatalf("after stop: %+v adopt=%v", v, f.adopt)
+	}
+}
+
+// A stream ended for live captures (End: BUS's Stream view left) drops its
+// record instead of handing it to the display.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-228
+func TestStreamEndDropsTheRecord(t *testing.T) {
+	f := &fakeSource{}
+	c := New(f, t.Logf)
+	if err := c.Start(engine.SerialParams{Proto: 2}, engine.StreamManual, 0, "I2C"); err != nil {
+		t.Fatal(err)
+	}
+	wait(t, c, Streaming)
+	c.End()
+	if v := c.Snapshot(); v.State != Stopped || v.RecordAvailable || !f.discarded || !f.ended {
+		t.Fatalf("after End: %+v discarded=%v ended=%v", v, f.discarded, f.ended)
 	}
 }
 

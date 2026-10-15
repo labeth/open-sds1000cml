@@ -191,6 +191,30 @@ func (e *Engine) EndDecodedStream(ctx context.Context, id sramcapture.RecordIden
 	return meta, adopted, e.EndDecodedCapture(ctx, id)
 }
 
+// HoldDecodedImage keeps the loaded image while a decoded stream ends to be
+// started again (another stop, another bus) - at most a few seconds, until
+// the next stream's capture begins: between the two the acquisition loop
+// would load the trigger's image and the next stream its own again.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-228
+func (e *Engine) HoldDecodedImage(ctx context.Context) error {
+	_, err := e.decodedCall(ctx, func() (any, error) {
+		e.decodedStarting = e.clk.Now().Add(10 * time.Second)
+		return nil, nil
+	})
+	return err
+}
+
+// DiscardDecodedRecord drops a decoded stream's frozen record before the
+// stream ends: a stream left for live captures (BUS's Stream view left, or
+// started again) needs no recall of it, which reads the full record (about
+// 2.5 s) before the next capture or image load.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-228
+func (e *Engine) DiscardDecodedRecord() {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	e.adopt = nil
+}
+
 // takeAdopted hands an adopted record to the acquisition loop once.
 // TRLC-LINKS: REQ-SDS-013
 func (e *Engine) takeAdopted() *adoptedRecord {

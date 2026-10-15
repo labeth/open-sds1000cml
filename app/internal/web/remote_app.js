@@ -22,7 +22,7 @@
 
   const WS = [
     { id: "scope", name: "SCOPE", tag: "SCOP", icon: "wave", what: "The full-height trace: Y-T or X-Y.", words: "scope general y-t x-y yt xy trace" },
-    { id: "bus", name: "BUS", tag: "BUS", icon: "bus", what: "Decoded packets, serial trigger, eye.", words: "bus decode packets packet hex string uart i2c spi serial eye diagram" },
+    { id: "bus", name: "BUS", tag: "BUS", icon: "bus", what: "Decoded packets, serial trigger, eye, stream.", words: "bus decode packets packet hex string uart i2c spi serial eye diagram stream transcript" },
     { id: "spectrum", name: "SPECTRUM", tag: "SPEC", icon: "spectrum", what: "FFT with peak marker, spectrogram, Bode.", words: "spectrum fft spectrogram bode frequency harmonics thd marker peak" },
     { id: "measure", name: "MEASURE", tag: "MEAS", icon: "measure", what: "Statistics; cursors on Adjust and Position.", words: "measure measurements statistics stats cursors values" },
     { id: "compare", name: "COMPARE", tag: "COMP", icon: "compare", what: "Master, references, mask test and math.", words: "compare master stack golden mask reference references refs math" },

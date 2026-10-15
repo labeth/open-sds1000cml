@@ -923,6 +923,7 @@ func (c *Controller) runDetect() {
 		c.mu.Lock()
 		c.ui.busDetecting = false
 		c.mu.Unlock()
+		c.syncStreamView()
 		c.publish()
 		return
 	}
@@ -957,6 +958,7 @@ func (c *Controller) runDetect() {
 	c.ana.list.Reset()
 	c.ana.listKey = ""
 	c.amu.Unlock()
+	c.syncStreamView() // BUS's Stream view streams the bus found
 	c.publish()
 }
 

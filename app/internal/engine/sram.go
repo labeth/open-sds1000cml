@@ -582,6 +582,7 @@ func (e *Engine) runSRAM() {
 	var held heldRecall       // the stopped record's recall, kept for re-scaled replays
 	var lastPace float64      // the previous frame's pacing hold (FrameStages)
 	var roll rollView         // the slow-timebase scrolling view (sram_roll.go)
+	var streamShown bool      // stopped on a decoded stream's record: its image stays
 acquisitionLoop:
 	for !e.stopReq.Load() {
 		e.setBusy("", 0) // set again only around a recall and its processing
@@ -607,13 +608,17 @@ acquisitionLoop:
 			retained, recalled, adopting = true, false, true
 			e.logf("engine: showing the decoded stream's record (%d words, trigger word %d)", a.m.Length, a.m.TriggerIndex)
 		}
+		// Stopped on a stream's record, the image the stream ran on stays: a
+		// switch drops the record, and the stream started again (RUN/STOP in
+		// BUS Stream) needs that image back (two loads of about four seconds).
+		streamShown = (streamShown || adopting) && retained && !e.running.Load()
 		// Image-switching jobs run only here, between acquisitions. The switch
 		// drops the fabric's record metadata, so the retained record is gone.
 		if !adopting && e.decodedSession == nil && e.serviceSRAMJobs() {
 			retained, recalled = false, false
 			continue
 		}
-		if !adopting && e.decodedSession == nil && !e.clk.Now().Before(e.decodedStarting) && e.images != nil && e.serviceImage() {
+		if !adopting && !streamShown && e.decodedSession == nil && !e.clk.Now().Before(e.decodedStarting) && e.images != nil && e.serviceImage() {
 			retained, recalled = false, false
 			continue
 		}

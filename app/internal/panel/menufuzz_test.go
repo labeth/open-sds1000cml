@@ -91,8 +91,8 @@ func fuzzAlphabet() []fuzzAction {
 			for i := 0; i < 2 && (r.c.ui.open || r.c.ui.wpick); i++ {
 				r.c.button(btnMenuOnOff)
 			}
-			if r.c.ui.ws != wsview.Bus || r.c.ui.busEye {
-				r.c.button(btnF2)
+			for i := 0; i < 3 && (r.c.ui.ws != wsview.Bus || r.c.ui.busEye || r.c.ui.busStream); i++ {
+				r.c.button(btnF2) // BUS, then on to its packets
 			}
 			r.show(uartFrame([]string{"Hello\r\n", "OK\r\n"}, 460800, 80e-6, 100e-9, 8000))
 			r.c.button(btnAdjustPsh)

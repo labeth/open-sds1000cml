@@ -212,11 +212,10 @@
 
 <section class="pane" id="p-packets" data-title="Packets">
   <div class="ph"><span class="pt" id="pkTitle">Packets</span><span class="ps" id="decodeCount"></span><span class="pa">
-    <span class="seg xs" id="busView" aria-label="BUS view" aria-keyshortcuts="Alt+2" data-value="packets"><button data-value="packets">Packets</button><button data-value="log">Log</button><button data-value="eye">Eye</button></span>
+    <span class="seg xs" id="busView" aria-label="BUS view" aria-keyshortcuts="Alt+2" data-value="packets"><button data-value="packets">Packets</button><button data-value="log">Log</button><button data-value="eye">Eye</button><button data-value="stream">Stream</button></span>
   </span></div>
   <div class="pb">
     <div class="bview" data-view="packets">
-      <div id="scopeStream" hidden><div id="scopeStreamHead" class="sub"></div><pre id="scopeStreamText" class="transcript" aria-label="the scope's stream"></pre></div>
       <div id="pkEmpty" class="empty"><span>Decode is off. Choose a protocol in the Decoder pane, or let the scope find the bus:</span><button type="button" id="pkDetect" class="sm">Auto-detect the bus</button></div>
       <table class="pkt" id="pktable" aria-label="Decoded packets">
         <colgroup><col class="c-n"><col class="c-t"><col class="c-a"><col class="c-hex"><col class="c-str"><col class="c-b"></colgroup>
@@ -224,6 +223,11 @@
         <tbody id="pkBody"></tbody>
       </table>
       <div id="pkNote" class="sub"></div>
+    </div>
+    <div class="bview" data-view="stream" hidden>
+      <div class="r"><label class="hl"><span class="lbl">stops</span><select id="streamStops" aria-label="what stops the stream"><option value="0">on a decode error</option><option value="1">on the Stream value</option><option value="2">by hand (RUN/STOP)</option></select></label><span id="streamHint" class="sub grow">The scope streams the bus in hardware while this view is shown; another view ends it.</span></div>
+      <div id="streamEmpty" class="empty" hidden><span>No bus is decoded: the stream starts once the scope has one.</span><button type="button" id="streamDetect" class="sm">Auto-detect the bus</button></div>
+      <div id="scopeStream" hidden><div id="scopeStreamHead" class="sub"></div><pre id="scopeStreamText" class="transcript" aria-label="the scope's stream"></pre></div>
     </div>
     <div class="bview" data-view="log" hidden>
       <div class="r"><button type="button" id="decStream" class="xs tog" title="Stitch back-to-back captures into a continuous history">Stream log</button><button type="button" id="decHistClear" class="xs">Clear log</button><button type="button" id="decodeCopy" class="xs">Copy</button></div>

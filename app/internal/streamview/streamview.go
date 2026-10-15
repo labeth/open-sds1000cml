@@ -85,6 +85,7 @@ type Controller struct {
 	cancel  context.CancelFunc
 	done    chan struct{}
 	stopReq bool
+	discard bool // the stop wants live captures next: the record is not kept
 }
 
 // New makes a controller over src.
@@ -125,7 +126,7 @@ func (c *Controller) Start(p engine.SerialParams, trig engine.StreamTrigger, val
 // UART receiver").
 // TRLC-LINKS: REQ-SDS-018
 func (c *Controller) StartNoted(p engine.SerialParams, trig engine.StreamTrigger, value int, label, note string) error {
-	c.Stop()
+	c.End()
 	c.mu.Lock()
 	if c.view.State == Starting {
 		c.mu.Unlock()
@@ -133,7 +134,7 @@ func (c *Controller) StartNoted(p engine.SerialParams, trig engine.StreamTrigger
 	}
 	c.view = View{Label: label, TriggerLine: -1, State: Starting, Note: note}
 	c.t = decodedlines.New(p.Proto, historyLines)
-	c.stopReq = false
+	c.stopReq, c.discard = false, false
 	c.mu.Unlock()
 	ctx, cancel := context.WithCancel(context.Background())
 	begin, cancelBegin := context.WithTimeout(ctx, 20*time.Second)
@@ -156,11 +157,22 @@ func (c *Controller) StartNoted(p engine.SerialParams, trig engine.StreamTrigger
 // Stop ends a running stream by hand; the retained record, when there is
 // one, goes to the display.
 // TRLC-LINKS: REQ-SDS-018
-func (c *Controller) Stop() {
+func (c *Controller) Stop() { c.stop(false) }
+
+// End ends a running stream for live captures (BUS's Stream view left, or a
+// stream started again): its record is not handed to the display, whose
+// recall would hold the next capture for seconds.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-228
+func (c *Controller) End() { c.stop(true) }
+
+// stop is Stop and End.
+// TRLC-LINKS: REQ-SDS-018
+func (c *Controller) stop(discard bool) {
 	c.mu.Lock()
 	done := c.done
 	if done != nil || c.view.State == Starting {
 		c.stopReq = true
+		c.discard = c.discard || discard
 	}
 	c.mu.Unlock()
 	if done != nil {
@@ -260,6 +272,13 @@ func (c *Controller) finish(id sramcapture.RecordIdentity, state State, cause er
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	m, adopted, err := c.src.FreezeDecodedStream(ctx, id)
+	c.mu.Lock()
+	discard := c.discard && state == Stopped
+	c.mu.Unlock()
+	if d, ok := c.src.(interface{ DiscardDecodedRecord() }); ok && discard && adopted {
+		d.DiscardDecodedRecord() // before the end: the loop takes the record only after it
+		adopted = false
+	}
 	if err == nil {
 		// The record is frozen and acquisition halted; the units queued up to
 		// that moment - the record's own span among them - still belong in
