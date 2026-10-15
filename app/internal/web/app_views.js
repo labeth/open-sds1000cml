@@ -98,10 +98,12 @@ function spgPushCurrent() {
   if (!src || src.length < 32) return;
   spg.lastSeq = f.seq;
   const g = gapFill(f.peak_detect ? pairMids(src) : src);
-  const s = g && fftReduce(g, peakNyq(), f.bandwidth_hz || 0, FFT_MAX);
-  if (!s) return;
+  // a row per stretch of the record, as the scope's waterfall (oldest first,
+  // so the newest lands on top)
+  const rows = g ? fftRows(g, peakNyq(), f.bandwidth_hz || 0, FFT_MAX) : [];
+  if (!rows.length) return;
   const sg = spgEnsure();
-  sgPushRow(sg, s.mags, s.half, s.peak, s.nyq);
+  for (const s of rows) sgPushRow(sg, s.mags, s.half, s.peak, s.nyq);
 }
 
 // spgRender repaints the waterfall when SPECTRUM shows it (on the scope canvas).

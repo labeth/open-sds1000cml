@@ -4,7 +4,7 @@
 // synthetic scope frames, and checks the two things the user hit: selection
 // must survive frame-to-frame magnitude jitter, and you must be able to pick a
 // different peak afterwards. Run: node peaks.test.cjs  (exit 0 = pass).
-const { spectrum, detectPeaks, nearestPeak, trackPicks, component, toneAmplitude } = require("./peaks.js");
+const { spectrum, fftReduce, fftRows, SPG_ROW_POINTS, detectPeaks, nearestPeak, trackPicks, component, toneAmplitude } = require("./peaks.js");
 
 let failed = 0;
 // TRLC-LINKS: REQ-SDS-070
@@ -243,6 +243,22 @@ function frame(amp1, amp2, seed) {
   ok(t.sel.length === 0, "gone 3 s: the pick is cleared");
   t = trackPicks([100000, 100400], pk(100200), bin, null, 0);
   ok(t.sel.length === 1 && t.idxs.size === 1, "two picks on one peak become one");
+}
+
+// --- spectrogram rows: a row per 2048-point stretch, at the record's span --
+// as the scope's waterfall (framecalc.SpectrumRows): an 8192-point record
+// gives four rows, each with the span of the record's own spectrum and the
+// tone in the same place; a short record gives its spectrum alone.
+{
+  const n = 8192, nyq0 = 50e6, tone = 5e6;
+  const g = Float64Array.from({ length: n }, (_, i) => 128 + 60 * Math.sin(2 * Math.PI * tone * i / (2 * nyq0)));
+  const full = fftReduce(g, nyq0, 0, 8192), rows = fftRows(g, nyq0, 0, 8192);
+  ok(rows.length === n / SPG_ROW_POINTS, `${n} points give ${n / SPG_ROW_POINTS} rows (${rows.length})`);
+  ok(rows.every((r) => Math.abs(r.nyq - full.nyq) < 1e-6 && r.half === SPG_ROW_POINTS / 2), "each row has the record's span and 1024 bins");
+  // TRLC-LINKS: REQ-SDS-068
+  const at = (s) => { let k = 1; for (let i = 1; i < s.half; i++) if (s.mags[i] > s.mags[k]) k = i; return k * s.binHz; };
+  ok(rows.every((r) => Math.abs(at(r) - tone) <= r.binHz), "the tone sits in the same place on every row");
+  ok(fftRows(g.subarray(0, 2048), nyq0, 0, 8192).length === 1, "a record of one row's points gives one row");
 }
 
 console.log(failed ? `\n${failed} FAILED` : "\nALL PASS");

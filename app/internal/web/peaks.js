@@ -88,6 +88,32 @@ function fftReduce(g, nyq0, bandHz, maxN) {
   return s;
 }
 
+// SPG_ROW_POINTS is a spectrogram row's transform length, as the scope's
+// (framecalc.RowFFT): 1024 bins, more than the waterfall's columns.
+const SPG_ROW_POINTS = 2048;
+
+// fftRows is a record as spectrogram rows, oldest first, as the scope's
+// waterfall takes it (framecalc.SpectrumRows): the record in consecutive
+// stretches, each transformed at SPG_ROW_POINTS points with the stride and
+// span of the record's own spectrum (fftReduce), so a capture paints a row
+// for each stretch of the time it spans. A record whose spectrum is shorter
+// than two rows' gives that spectrum alone.
+// TRLC-LINKS: REQ-SDS-068, REQ-SDS-070
+function fftRows(g, nyq0, bandHz, maxN) {
+  const full = fftReduce(g, nyq0, bandHz, maxN);
+  if (!full) return [];
+  const k = Math.floor(full.points / SPG_ROW_POINTS);
+  if (k < 2) return [full];
+  const stride = Math.max(1, Math.floor(g.length / full.points)), seg = SPG_ROW_POINTS * stride;
+  const rows = [];
+  for (let i = 0; i < k; i++) {
+    const part = g.subarray ? g.subarray(i * seg, (i + 1) * seg) : g.slice(i * seg, (i + 1) * seg);
+    const s = fftReduce(part, nyq0, bandHz, SPG_ROW_POINTS);
+    if (s) rows.push(s);
+  }
+  return rows;
+}
+
 // hannGain is a Hann window's response to a tone d bins (|d| ≤ 0.5) off a bin,
 // relative to a tone on the bin: sinc(d) / (1 − d²) (analysis.hannGain).
 // TRLC-LINKS: REQ-SDS-216
@@ -302,5 +328,5 @@ function trackPicks(sel, peaks, binHz, lostSince, now) {
 }
 
 if (typeof module !== "undefined" && module.exports) {
-  module.exports = { fftInPlace, spectrum, fftReduce, detectPeaks, nearestPeak, trackPicks, PICK_LOST_MS, component, fitTone, toneAmplitude, harmonics };
+  module.exports = { fftInPlace, spectrum, fftReduce, fftRows, SPG_ROW_POINTS, detectPeaks, nearestPeak, trackPicks, PICK_LOST_MS, component, fitTone, toneAmplitude, harmonics };
 }
