@@ -575,6 +575,7 @@ func decimatedStands(res decode.Result) bool {
 // TRLC-LINKS: REQ-SDS-214
 func (c *Controller) detectWith(decimated, stepped bool, accept func(*engine.Frame, bool) bool, auto AutoSource, wait time.Duration) look {
 	deadline := c.now().Add(wait)
+	loadEnd := deadline.Add(imageWait) // the longest an image load holds the wait
 	// While running, a frame captured after the search began: the one on
 	// screen, or one in flight, may predate a setting just changed (an ARINC
 	// bus is not found in a frame from before its bandwidth limit).
@@ -611,6 +612,15 @@ func (c *Controller) detectWith(decimated, stepped bool, accept func(*engine.Fra
 				}
 			})
 		}
+		// No capture comes while an FPGA image loads (four seconds after DEFAULT
+		// turned a pulse or serial trigger back to an edge), and the frame on
+		// screen from before it is no sample of the bus now: the wait starts
+		// after the load (a UART streamed before was found on an I2C bus).
+		if !got && strings.HasPrefix(c.eng.Snapshot().Busy, "loading") {
+			if d := c.now().Add(wait); d.After(deadline) {
+				deadline = minTime(d, loadEnd)
+			}
+		}
 		last := c.detectSync || !c.now().Before(deadline)
 		if got || (usable && last && !decimated) {
 			res, sampleS, found := auto()
@@ -621,6 +631,15 @@ func (c *Controller) detectWith(decimated, stepped bool, accept func(*engine.Fra
 		}
 		time.Sleep(50 * time.Millisecond)
 	}
+}
+
+// minTime is the earlier of two times.
+// TRLC-LINKS: REQ-SDS-214
+func minTime(a, b time.Time) time.Time {
+	if a.Before(b) {
+		return a
+	}
+	return b
 }
 
 // runsResolved reports whether a decimated record's channel resolves every

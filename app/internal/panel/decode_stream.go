@@ -2,6 +2,7 @@
 package panel
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
@@ -95,12 +96,22 @@ func (c *Controller) startStream() {
 		}
 		t1 := time.Now()
 		err = s.Start(p, decTrigKinds[trig%3], value, name)
+		// ARINC 429's slicer levels are learned from a sampled record a moment
+		// after the settings name it: a stream started right after BUS entry
+		// waits for them
+		for end := time.Now().Add(levelsWait); errors.Is(err, engine.ErrLevelsLearning) && time.Now().Before(end) && c.streaming(); {
+			time.Sleep(250 * time.Millisecond)
+			err = s.Start(p, decTrigKinds[trig%3], value, name)
+		}
 		c.logf("panel: stream: started in %v", time.Since(t1).Round(time.Millisecond))
 		if err != nil {
 			c.logf("panel: stream: %v", err)
 		}
 	})
 }
+
+// levelsWait bounds a stream's wait for the ARINC 429 levels.
+const levelsWait = 5 * time.Second
 
 // stopStream ends a running stream by hand; its record goes to the display.
 // TRLC-LINKS: REQ-SDS-018

@@ -3,6 +3,7 @@ package engine
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -32,6 +33,11 @@ type adoptedRecord struct {
 	m   sramcapture.Metadata
 	cfg sramcapture.Config
 }
+
+// ErrLevelsLearning is a stream refused while the ARINC 429 slicer levels
+// are still being learned from a sampled record (a moment after the decoder
+// settings name ARINC 429).
+var ErrLevelsLearning = errors.New("the ARINC 429 levels are not learned yet")
 
 // BeginDecodedStream starts a decoded capture for the scope's own display: it
 // loads the image whose decoder serves p, builds a native full-depth
@@ -65,6 +71,9 @@ func (e *Engine) BeginDecodedStream(ctx context.Context, p SerialParams, trig St
 				return nil, err
 			}
 			e.loadImage(want)
+		}
+		if p.Proto == serARINC && e.arincAux.Load() == 0 {
+			return nil, fmt.Errorf("%w: show the bus decoded a moment, then start again", ErrLevelsLearning)
 		}
 		words := uint32(sramcapture.SamplesPerChannel / 2)
 		c := sramcapture.Config{Source: sramcapture.ADC, PreWords: words / 2, PostWords: words - words/2, Normal: true}

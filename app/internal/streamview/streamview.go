@@ -355,21 +355,16 @@ func (c *Controller) Window(rows, top int) Page {
 	return p
 }
 
-// arincID is ARINC 429 in the serial-trigger registry.
-const arincID = 8
-
 // ParamsFromDecode completes p, the hardware decoder's settings from the
 // decoder settings, with what a decode r of a frame of colTimeS samples with
 // those settings measured: the threshold it sliced at, an SPI clock rate,
 // SENT's tick, a CAN bit rate the settings leave open. The stream then starts
-// with exactly what the display decodes.
+// with exactly what the display decodes. ARINC 429's slicer levels are the
+// engine's, learned from a sampled record while the settings name ARINC 429.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-013, REQ-SDS-222
 func ParamsFromDecode(p engine.SerialParams, r decode.Result, colTimeS float64) (engine.SerialParams, error) {
 	if !r.OK {
 		return engine.SerialParams{}, fmt.Errorf("the bus does not decode on screen: nothing to stream")
-	}
-	if p.Proto == arincID {
-		return engine.SerialParams{}, fmt.Errorf("ARINC 429 streams from the web page, which sets its levels")
 	}
 	if !(colTimeS > 0) || !(r.Thr > 0 && r.Thr < 255) {
 		return engine.SerialParams{}, fmt.Errorf("the decode on screen has no usable threshold or sample time")

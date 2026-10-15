@@ -309,3 +309,39 @@ func TestBusSearchSkipsAFullRateRecordTheDecimatedOneResolves(t *testing.T) {
 		}
 	}
 }
+
+// While an FPGA image loads no capture comes, and the frame on screen is from
+// before it: the search waits for the load and reads a capture after it. A
+// UART streamed just before was found on the I2C bus flashed in meanwhile:
+// the search's wait ran out during the load and it read the old frame.
+// TRLC-LINKS: REQ-SDS-214
+func TestDetectionWaitsOutAnImageLoad(t *testing.T) {
+	c, e, _ := newC(t)
+	stale := uartFrame([]string{"old bus\r\n"}, 115200, 60e-6, 100e-9, 20000)
+	stale.Seq, stale.Content = 7, 7001
+	var loading atomic.Bool
+	loading.Store(true)
+	var seq atomic.Uint64
+	seq.Store(100)
+	e.set(func(st *engine.Stats) { st.Running, st.Busy = true, "loading general image" })
+	c.SetFrameSource(func(fn func(*engine.Frame)) {
+		if loading.Load() {
+			fn(stale)
+			return
+		}
+		f := fastUART()
+		f.Seq = seq.Add(1)
+		f.Content = 9000 + f.Seq
+		fn(f)
+	})
+	go func() {
+		time.Sleep(400 * time.Millisecond)
+		e.set(func(st *engine.Stats) { st.Busy = "" })
+		loading.Store(false)
+	}()
+	all := func(*engine.Frame, bool) bool { return true }
+	l := c.detectWith(false, false, all, c.detectOnScreen, 150*time.Millisecond)
+	if !l.found || l.res.Baud != 460800 {
+		t.Fatalf("the search read baud %d (found %v): the frame from before the image load", l.res.Baud, l.found)
+	}
+}

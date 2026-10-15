@@ -379,8 +379,10 @@ screen holds a few bits of one character), nor a scope that captures nothing. A 
 rate row step fills in as that step (a 500 kbit/s CAN bus measured at 509 kb/s). With no bus found
 the settings in use stay. A setup saved while Auto was a decoding mode holds Protocol = Auto: it loads
 as one detection. Stream starts at once from the settings (the threshold, an SPI clock rate and SENT's
-tick read off their decode of the frame on screen, else of a decimated record); the serial trigger
-arms on them as they stand.
+tick read off their decode of the frame on screen, else of a decimated record; ARINC 429's slicer levels
+the engine learns from a sampled record once the settings name it, which Stream waits up to 5 s for);
+the serial trigger arms on them as they stand. A detection waits out an FPGA image load: no capture
+comes during one, and the frame on screen from before it is no sample of the bus now.
 
 AUTO in BUS frames the bus for reading instead of the autoset: it forgets the bus decoded, fits the
 vertical as the autoset does (the threshold midway), runs Auto and puts the hardware trigger on the start

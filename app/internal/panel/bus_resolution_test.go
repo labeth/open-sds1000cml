@@ -277,6 +277,7 @@ type recStream struct {
 	label, refused         string
 	params                 engine.SerialParams
 	active, started, stops int
+	learning               int // starts refused while the engine learns ARINC 429 levels
 	eng                    *envEng
 }
 
@@ -284,6 +285,10 @@ type recStream struct {
 func (s *recStream) Start(p engine.SerialParams, _ engine.StreamTrigger, _ int, label string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if s.learning > 0 {
+		s.learning--
+		return engine.ErrLevelsLearning
+	}
 	s.label, s.params, s.active, s.started = label, p, 1, s.started+1
 	return nil
 }
@@ -418,6 +423,24 @@ func TestStreamStartsFromTheFilledInSettings(t *testing.T) {
 	}
 	if eng.Snapshot().TdivS != tdiv || c.snapProto() != framecalc.ProtoUART {
 		t.Fatalf("the stream's start moved the timebase to %g or the protocol to %d", eng.Snapshot().TdivS, c.snapProto())
+	}
+}
+
+// A stream asked for while the engine still learns the ARINC 429 levels (a
+// moment after the settings name ARINC 429: Stream right after BUS entry)
+// waits for them and starts; it failed at once.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-222
+func TestStreamWaitsForTheLevels(t *testing.T) {
+	c, _, st := newEnvRig(t)
+	set(t, c, "bus.protocol", "Auto")
+	st.mu.Lock()
+	st.learning = 2
+	st.mu.Unlock()
+	set(t, c, "bus.stream", "On")
+	st.mu.Lock()
+	defer st.mu.Unlock()
+	if st.started != 1 || st.learning != 0 {
+		t.Fatalf("stream: started %d, refusals left %d", st.started, st.learning)
 	}
 }
 

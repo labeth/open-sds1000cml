@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"open-sds/app/internal/decode"
 	"open-sds/app/internal/decodedlines"
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/sramcapture"
@@ -274,5 +275,16 @@ func TestLineModeFollowsWorker(t *testing.T) {
 	}
 	if !strings.Contains(text, "Hello, scope! 0123456789abcdeftail") {
 		t.Fatalf("lines %q", p.Lines)
+	}
+}
+
+// An ARINC 429 bus streams from its decoder settings as the others do: the
+// stream takes the decode's threshold, the engine its slicer levels. It was
+// refused on the LCD and the phone ("streams from the web page").
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-222
+func TestParamsFromDecodeARINC(t *testing.T) {
+	p, err := ParamsFromDecode(engine.SerialParams{Proto: 8, Baud: 100000}, decode.Result{OK: true, Proto: "arinc429", Thr: 131, SPB: 50}, 200e-9)
+	if err != nil || !p.HaveThr || p.Threshold != 131 || p.Baud != 100000 {
+		t.Fatalf("ARINC 429: %+v, %v", p, err)
 	}
 }
