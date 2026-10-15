@@ -193,7 +193,37 @@ func serialMatchIn(chA, chB []uint8, sampleS float64, p SerialParams, at anchorS
 	if sequenceNeeded(p) {
 		match = matchSequence
 	}
-	return pickSerialMatch(res.Spans, p, match, at)
+	ok, start := pickSerialMatch(res.Spans, p, match, at)
+	if ok && (p.Proto == serARINC || p.Proto == serMIL1553) {
+		start = wordOpening(res.Spans, start)
+	}
+	return ok, start
+}
+
+// wordOpening is where the word whose data field starts at sample at begins:
+// an ARINC 429 word at its label, a MIL-1553 word at its sync, when the
+// decoder marks one right before the field (an ARINC 429 word's trigger point
+// sat on its data field, 100 us into the word; a MIL-1553 command word's 3 us
+// after its sync). at itself otherwise.
+// TRLC-LINKS: REQ-SDS-013, REQ-SDS-223
+func wordOpening(spans []decode.Span, at int) int {
+	for k, sp := range spans {
+		if sp.I0 != at || sp.Kind != "data" {
+			continue
+		}
+		for j := k - 1; j >= 0; j-- {
+			o := spans[j]
+			if o.I1 > at {
+				continue // a span over the field (a decoder note)
+			}
+			if (o.Kind == "addr" || o.Kind == "start" || o.Kind == "sync") && at-o.I1 <= max(1, (sp.I1-sp.I0)/4) {
+				return o.I0
+			}
+			break
+		}
+		break
+	}
+	return at
 }
 
 // pickSerialMatch walks the record's matches in order and keeps the one

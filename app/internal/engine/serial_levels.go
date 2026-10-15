@@ -431,21 +431,29 @@ func (e *Engine) serialMatchStart(f *Frame, hw float64) float64 {
 // was found); the line image fires on a Manchester frame's fourth word.
 const frameStartLeadUnits = 4
 
-// frameStartLeadS is frameStartLeadUnits units in seconds when the armed
-// match is a frame start (a frame's start, then any unit), else 0.
+// matchLeadS is the record a match keeps before the FPGA's trigger, in
+// seconds, until a placement has been learned: frameStartLeadUnits for a
+// frame start, else the matched units, which end at the trigger (an ARINC
+// 429 word of 320 us did not fit the 0.2 ms before it at 200us/div, and the
+// trigger stayed at the word's end, off its start). 0 when a unit's length
+// is not known (I2C).
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-223
-func (e *Engine) frameStartLeadS(sampleS float64) float64 {
+func (e *Engine) matchLeadS(sampleS float64) float64 {
 	e.ser.mu.Lock()
 	p := e.ser.params
 	e.ser.mu.Unlock()
 	if planned, why := e.serialPlanParams(p); why == "" {
 		p = planned
 	}
-	pat := patternOf(p)
-	if len(pat) != 2 || pat[0].Kind != patternStart || pat[1].Kind != patternData || pat[1].Mask != 0 || !(sampleS > 0) {
+	if !(sampleS > 0) {
 		return 0
 	}
-	return float64(frameStartLeadUnits*serialUnitSamples(p, sampleS, math.Float64frombits(e.serLv.spiHz.Load()))) * sampleS
+	pat := patternOf(p)
+	units := len(pat)
+	if len(pat) == 2 && pat[0].Kind == patternStart && pat[1].Kind == patternData && pat[1].Mask == 0 {
+		units = frameStartLeadUnits
+	}
+	return float64(units*serialUnitSamples(p, sampleS, math.Float64frombits(e.serLv.spiHz.Load()))) * sampleS
 }
 
 // frameUnitsBefore and frameUnitsAfter bound the record a frame-start match

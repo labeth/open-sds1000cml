@@ -395,9 +395,10 @@ any inside a message (midway to the idle between messages), firing on the first 
 the edge trigger when the messages have no idle. Match bytes the user set win (the serial trigger arms on
 them). The notice says what was chosen ("TRIG: I2C START (address byte)", "TRIG: UART first byte (idle >
 200us)"). Software places the trigger point on the frame the FPGA fired in: at its SYNC, SOF or START,
-back over the frame's units (the line image fires a few units into a Manchester or USB frame); until a
-placement has been learned the record keeps four units before the trigger (a SENT frame's SYNC and
-first nibble). The BUS header counts the packets the match holds ("TRIG ON SOF ??: 2 packets"; SOF is a
+back over the frame's units (the line image fires a few units into a Manchester or USB frame); an
+ARINC 429 or MIL-1553 word at its label or sync. Until a placement has been learned the record keeps
+before the trigger what the match covers: a frame start's four units (a SENT frame's SYNC and first
+nibble), else the matched units, which end at the trigger (an ARINC 429 word of 320 us). The BUS header counts the packets the match holds ("TRIG ON SOF ??: 2 packets"; SOF is a
 packet's start, CMD a MIL-1553 message's command word) and the trigger read-out writes the match as
 typed ("T SER SOF ??"). The packet and line images (Manchester, USB, SENT, CAN, FlexRay, MIL-1553,
 ARINC 429) record raw samples only, one SRAM of 2.1 ms: on them the timebase goes no slower than

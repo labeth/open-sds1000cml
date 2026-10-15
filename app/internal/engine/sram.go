@@ -310,7 +310,7 @@ func (e *Engine) sramConfig() (sramcapture.Config, SRAMPlan, float64, bool, trig
 			// screen's left edge would go flat).
 			s := math.Float64frombits(e.serLv.shiftS.Load())
 			if !(s > 0) {
-				s = e.frameStartLeadS(p.SampleS) // none placed yet
+				s = e.matchLeadS(p.SampleS) // none placed yet
 			}
 			if s > 0 {
 				pre += min(uint32(s/p.SampleS)/uint32(perWord), words/2)

@@ -222,23 +222,52 @@ func TestFrameOpening(t *testing.T) {
 	}
 }
 
-// Until a frame-start match has been placed, the record keeps four units
-// before the FPGA's trigger: a SENT frame's SYNC and first nibble. With the
-// trigger at 10 % of the raw record at 200us/div (0.2 ms), the SYNC began
-// at the record's start and no frame start was found to place it on.
+// Until a match has been placed, the record keeps before the FPGA's trigger
+// what the match covers: a frame start's four units (a SENT frame's SYNC and
+// first nibble: with the trigger at 10 % of the raw record at 200us/div, 0.2
+// ms, the SYNC began at the record's start and no frame start was found to
+// place it on), or the matched units, which end at the trigger (an ARINC 429
+// word of 320 us).
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-223
-func TestFrameStartKeepsItsOpening(t *testing.T) {
-	pre := func(pattern []PatternElem) uint32 {
+func TestMatchKeepsItsUnits(t *testing.T) {
+	pre := func(p SerialParams) uint32 {
 		e := &Engine{band: Band{TdivS: 200e-6}, rawOnly: true}
 		e.trigPosFrac.Store(math.Float64bits(.1))
-		e.SetSerialParams(SerialParams{Proto: serSENT, TickNs: 3000, Pattern: pattern})
+		e.SetSerialParams(p)
 		e.SetSerialMode(SerialTrigger)
 		c, _, _, _, _ := e.sramConfig()
 		return c.PreWords
 	}
-	plain, sof := pre([]PatternElem{{Kind: patternData, Value: 5, Mask: 0xf}}), pre([]PatternElem{{Kind: patternStart}, {Kind: patternData}})
+	sent := SerialParams{Proto: serSENT, TickNs: 3000}
+	base := pre(sent)
+	sent.Pattern = []PatternElem{{Kind: patternStart}, {Kind: patternData}}
 	// four of SENT's longest nibbles, 27 ticks of 3 us, at 2 ns a sample and two samples a word
-	if want := uint32(4 * 27 * 3000 / 2 / 2); sof-plain != want {
-		t.Fatalf("frame start keeps %d words more before the trigger, want %d", sof-plain, want)
+	if got, want := pre(sent)-base, uint32(4*27*3000/2/2); got != want {
+		t.Fatalf("frame start keeps %d words more before the trigger, want %d", got, want)
+	}
+	arinc := SerialParams{Proto: serARINC, Baud: 100000}
+	base = pre(arinc)
+	arinc.Pattern = []PatternElem{{Kind: patternData}}
+	// one word with its gap, 36 bits at 100 kbit/s
+	if got, want := pre(arinc)-base, uint32(36*10000/2/2); got != want {
+		t.Fatalf("an ARINC 429 word keeps %d words more before the trigger, want %d", got, want)
+	}
+}
+
+// A word bus's matched word begins before its data field: an ARINC 429 word
+// at its label, a MIL-1553 word at its sync. Other fields stay where they are.
+// TRLC-LINKS: REQ-SDS-013, REQ-SDS-223
+func TestWordOpening(t *testing.T) {
+	arinc := []decode.Span{{I0: 0, I1: 80, Kind: "addr"}, {I0: 100, I1: 290, Kind: "data"}, {I0: 290, I1: 310, Kind: "gap"}}
+	if at := wordOpening(arinc, 100); at != 0 {
+		t.Fatalf("ARINC 429 word opens at %d, want its label at 0", at)
+	}
+	mil := []decode.Span{{I0: 40, I1: 42, Kind: "start", Text: "csync"}, {I0: 43, I1: 59, Kind: "data"}}
+	if at := wordOpening(mil, 43); at != 40 {
+		t.Fatalf("MIL-1553 word opens at %d, want its sync at 40", at)
+	}
+	far := []decode.Span{{I0: 0, I1: 10, Kind: "addr"}, {I0: 200, I1: 290, Kind: "data"}}
+	if at := wordOpening(far, 200); at != 200 {
+		t.Fatalf("a label far before the field taken: %d", at)
 	}
 }

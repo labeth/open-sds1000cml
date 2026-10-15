@@ -251,17 +251,22 @@ func TestSerialPreRoomHoldsTheMatchStart(t *testing.T) {
 // samples (an ARINC 429 field begins 0.44 ms before the trigger).
 // TRLC-LINKS: REQ-SDS-013
 func TestRecordHoldsTheMatchBeforeTheTrigger(t *testing.T) {
-	e := levelsEngine(SerialParams{Proto: serUART, ChA: 0, ChB: 1, Baud: 115200, Bits: 8, Parity: "none", Bytes: []int{0x48}})
+	e := levelsEngine(SerialParams{Proto: serUART, ChA: 0, ChB: 1, Baud: 115200, Bits: 8, Parity: "none"})
 	e.band = Band{TdivS: 200e-6}
-	c0, plan, _, _, _ := e.sramConfig()
+	c0, plan, _, _, _ := e.sramConfig()                                                                  // no match: nothing kept before the trigger
+	words := func(s float64) uint32 { return uint32(s/plan.SampleS) / uint32(2-boolInt(plan.Log != 0)) } // samples a word
+	near := func(got, want uint32) bool { d := int(got) - int(want); return d >= -1 && d <= 1 }
+	e.SetSerialParams(SerialParams{Proto: serUART, ChA: 0, ChB: 1, Baud: 115200, Bits: 8, Parity: "none", Bytes: []int{0x48}})
+	if c, _, _, _, _ := e.sramConfig(); !near(c.PreWords, c0.PreWords+words(10/115200.0)) {
+		t.Fatalf("before a placement: pre %d, want the matched character kept, %d", c.PreWords, c0.PreWords+words(10/115200.0))
+	}
 	e.serLv.shiftS.Store(math.Float64bits(440e-6))
 	c1, _, _, _, _ := e.sramConfig()
-	want := c0.PreWords + uint32(440e-6/plan.SampleS)/uint32(2-boolInt(plan.Log != 0)) // samples a word
-	if d := int(c1.PreWords) - int(want); d < -1 || d > 1 || c1.PreWords+c1.PostWords != c0.PreWords+c0.PostWords {
+	if want := c0.PreWords + words(440e-6); !near(c1.PreWords, want) || c1.PreWords+c1.PostWords != c0.PreWords+c0.PostWords {
 		t.Fatalf("pre %d -> %d words, want %d (record %d words)", c0.PreWords, c1.PreWords, want, c0.PreWords+c0.PostWords)
 	}
 	e.SetSerialParams(SerialParams{Proto: serUART, ChA: 0, Baud: 9600, Bytes: []int{0x48}}) // another request: measured anew
-	if c2, _, _, _, _ := e.sramConfig(); c2.PreWords != c0.PreWords {
+	if c2, _, _, _, _ := e.sramConfig(); !near(c2.PreWords, c0.PreWords+words(10/9600.0)) {
 		t.Fatalf("a new request kept the old shift: pre %d", c2.PreWords)
 	}
 }
