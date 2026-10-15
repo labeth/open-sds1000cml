@@ -80,14 +80,96 @@ func (c *Controller) runAutoset(stop chan struct{}) {
 			return
 		}
 	}
+	entry := c.autoEntryNow()
 	res, ok := c.autosetSweep(stop, g)
 	if !ok {
+		c.cancelledAuto(stop, entry)
 		return
 	}
 	if g.spectrum {
 		c.spectrumAuto(stop, &res)
 	}
 	c.toast(autoNotice(g, res, c.vdivAt), autoNoticeFor)
+}
+
+// autoEntry is what AUTO changes, as it stood when AUTO was pressed: a second
+// press puts it back. A cancelled sweep left the scope at its 2 V/div and
+// 1us/div, the user's setup gone, and said nothing (in BUS the decoder off
+// and the trigger an edge too).
+type autoEntry struct {
+	tdiv          float64
+	vidx          [2]int
+	off           [2]float64
+	trig          int // the TRIG sheet's type: Serial for an armed serial trigger
+	src           int
+	rising        bool
+	code          uint16
+	norm, running bool
+	proto, mode   int
+	auto          autoWatch
+}
+
+// autoEntryNow reads what AUTO may change.
+// TRLC-LINKS: REQ-SDS-137
+func (c *Controller) autoEntryNow() autoEntry {
+	st := c.eng.Snapshot()
+	e := autoEntry{tdiv: st.TdivSet(), trig: st.TrigType, src: st.TrigSource, rising: st.TrigRising, code: st.TrigCode,
+		norm: st.Norm, running: st.Running}
+	if st.SerialMode != 0 {
+		e.trig = trigSerial
+	}
+	if c.fe != nil {
+		e.vidx, _ = c.fe.Snapshot()
+		e.off = [2]float64{c.fe.OffsetReqV(0), c.fe.OffsetReqV(1)}
+	}
+	c.mu.Lock()
+	e.proto, e.mode, e.auto = c.decProto, c.decMode, c.auto
+	c.mu.Unlock()
+	return e
+}
+
+// cancelledAuto puts back what AUTO changed when a second press cancelled it
+// (a sweep that found no signal restores the scale itself), and says so.
+// TRLC-LINKS: REQ-SDS-137
+func (c *Controller) cancelledAuto(stop chan struct{}, e autoEntry) {
+	select {
+	case <-stop:
+	default:
+		return // not cancelled
+	}
+	if e.tdiv > 0 {
+		c.setTdivNearest(e.tdiv)
+	}
+	if c.fe != nil {
+		for ch := 0; ch < 2; ch++ {
+			c.setVdiv(ch, e.vidx[ch])
+			c.fe.SetOffset(ch, e.off[ch])
+		}
+	}
+	c.mu.Lock()
+	restoreBus := c.decProto != e.proto
+	if restoreBus {
+		c.decProto, c.decMode, c.auto = e.proto, e.mode, e.auto
+		c.decGen++
+	}
+	c.mu.Unlock()
+	if restoreBus {
+		c.syncDecodeView(true)
+	}
+	c.eng.SetTrigSource(e.src)
+	c.eng.SetTrigSlope(e.rising)
+	if e.code != 0 {
+		c.eng.SetTrigLevelCode(e.code)
+	}
+	if st := c.eng.Snapshot(); e.trig != st.TrigType || (e.trig == trigSerial) != (st.SerialMode != 0) {
+		c.setTrigTypeIndex(st, e.trig)
+	}
+	c.eng.SetNorm(e.norm)
+	c.eng.SetRunning(e.running)
+	c.mu.Lock()
+	c.norm, c.running = e.norm, e.running
+	c.mu.Unlock()
+	c.toast("AUTO cancelled: the settings are as before", autoNoticeFor)
 }
 
 // autoGoal is what AUTO frames the signal for in a workspace: the cycles of

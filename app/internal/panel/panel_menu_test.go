@@ -292,3 +292,20 @@ func TestTimebaseStopsAtTheImagesRecord(t *testing.T) {
 		t.Fatalf("on the general image: %g, want 1ms/div", got)
 	}
 }
+
+// A serial trigger armed at 500us/div on the packet image: the engine steps
+// the timebase to 200us/div when the image is in, with no key turned. The
+// panel says why and its S/DIV knob steps on from there.
+// TRLC-LINKS: REQ-SDS-212
+func TestTimebaseCapIsNoted(t *testing.T) {
+	r := newViewRig(t)
+	set(t, r.c, "time.tdiv", "500us")
+	r.eng.set(func(st *engine.Stats) { st.TdivS, st.TdivMaxS, st.RecordS = 200e-6, 200e-6, 2.097152e-3 })
+	r.show(uartFrame([]string{"Hi"}, 115200, 100e-6, 100e-9, 2000))
+	if n := r.c.View().Notice; !strings.Contains(n, "200us/div at most on this trigger") {
+		t.Fatalf("notice %q", n)
+	}
+	if got := r.c.tdivs[r.c.tdivIdx]; got != 200e-6 {
+		t.Fatalf("the knob's place %g, want 200us/div", got)
+	}
+}

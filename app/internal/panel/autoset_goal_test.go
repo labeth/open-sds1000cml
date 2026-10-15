@@ -6,6 +6,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"open-sds/app/internal/analog"
 	"open-sds/app/internal/engine"
@@ -555,5 +556,40 @@ func TestAutoFitsALevelSlowerThanItsToggle(t *testing.T) {
 	b.run(wsview.Scope, -1)
 	if v := b.vdivOf(1); v < 0.5 {
 		t.Fatalf("C2 %g V/div: fitted to the toggle, its 3.3 V level off the screen", v)
+	}
+}
+
+// A second AUTO press cancels the sweep and puts back what it changed: the
+// timebase, the V/div and offsets, the trigger. Cancelled, it left the
+// sweep's 2 V/div and 1us/div and said nothing.
+// TRLC-LINKS: REQ-SDS-137
+func TestAutoCancelPutsTheSettingsBack(t *testing.T) {
+	t.Parallel()
+	sq := square(1e6, 0, 3.3)
+	b := newSimBench(t, func(tt, _ float64, _ int) float64 { return sq(tt) })
+	b.c.setVdiv(0, nearestDetent(0.2))
+	b.fe.SetOffset(0, -0.3)
+	b.eng.SetTrigSource(1)
+	vidx0, _ := b.fe.Snapshot()
+	tdiv0 := b.eng.Snapshot().TdivS
+	b.c.autoset()
+	time.Sleep(600 * time.Millisecond) // the sweep is under way: 2 V/div, a fast timebase
+	if !b.c.AutosetBusy() {
+		t.Fatal("the sweep ended before the second press: the test proves nothing")
+	}
+	b.c.autoset() // cancel
+	for end := time.Now().Add(10 * time.Second); b.c.AutosetBusy() && time.Now().Before(end); {
+		time.Sleep(20 * time.Millisecond)
+	}
+	vidx, _ := b.fe.Snapshot()
+	st := b.eng.Snapshot()
+	if st.TdivSet() != tdiv0 || vidx != vidx0 || b.fe.OffsetReqV(0) != -0.3 || st.TrigSource != 1 {
+		t.Fatalf("after the cancel: tdiv %g (was %g), V/div %v (was %v), C1 offset %g, trigger C%d", st.TdivSet(), tdiv0, vidx, vidx0, b.fe.OffsetReqV(0), st.TrigSource+1)
+	}
+	b.c.mu.Lock()
+	n := b.c.ui.notice
+	b.c.mu.Unlock()
+	if !strings.Contains(n, "AUTO cancelled") {
+		t.Fatalf("notice %q", n)
 	}
 }

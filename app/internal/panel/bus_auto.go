@@ -76,7 +76,8 @@ func (c *Controller) busAuto() {
 // TRLC-LINKS: REQ-SDS-223
 func (c *Controller) runBusAuto(stop chan struct{}) {
 	defer c.endAutoset(stop)
-	entryTdiv := c.eng.Snapshot().TdivSet()
+	entry := c.autoEntryNow()
+	entryTdiv := entry.tdiv
 	// the bus decoded before is forgotten: a serial trigger on it ends (its
 	// match stays for the bus found next)
 	c.mu.Lock()
@@ -85,10 +86,12 @@ func (c *Controller) runBusAuto(stop chan struct{}) {
 	c.auto = autoWatch{}
 	c.mu.Unlock()
 	if _, ok := c.autosetSweep(stop, goalBus); !ok {
+		c.cancelledAuto(stop, entry)
 		return
 	}
 	select {
 	case <-stop:
+		c.cancelledAuto(stop, entry)
 		return
 	default:
 	}

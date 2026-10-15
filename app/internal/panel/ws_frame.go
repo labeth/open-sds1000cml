@@ -2,6 +2,7 @@
 package panel
 
 import (
+	"fmt"
 	"math"
 	"sort"
 	"time"
@@ -189,6 +190,7 @@ func (c *Controller) OnFrame(f *engine.Frame) {
 	}
 	c.amu.Unlock()
 	c.watchBus(s, f)
+	c.noteTdivCap(s)
 	if s.stacking {
 		finish = c.stackProgress(f)
 	}
@@ -197,6 +199,27 @@ func (c *Controller) OnFrame(f *engine.Frame) {
 	} else if !s.stacking {
 		c.masterMaskFrame(f)
 	}
+}
+
+// noteTdivCap says when the loaded image stepped the timebase down to the
+// slowest whose screen its record fills, with no key turned (a serial
+// trigger on the packet or line image armed at 500us/div: the scope went to
+// 200us/div by itself), and keeps the S/DIV knob's place there.
+// TRLC-LINKS: REQ-SDS-212
+func (c *Controller) noteTdivCap(s *sv) {
+	most := s.st.TdivMaxS
+	if !(most > 0) {
+		return
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.tdivIdx >= len(c.tdivs) || c.tdivs[c.tdivIdx] <= most*(1+1e-6) {
+		return
+	}
+	for c.tdivIdx > 0 && c.tdivs[c.tdivIdx] > most*(1+1e-6) {
+		c.tdivIdx--
+	}
+	c.toastLocked(fmt.Sprintf("%s/div at most on this trigger: its image records %s", si(c.tdivs[c.tdivIdx], "s"), si(max(s.st.RecordS, 10*most), "s")), 3*time.Second)
 }
 
 // decodeParams are the panel's decode settings.

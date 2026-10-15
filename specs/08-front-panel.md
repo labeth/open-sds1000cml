@@ -400,7 +400,7 @@ packet's start, CMD a MIL-1553 message's command word) and the trigger read-out 
 typed ("T SER SOF ??"). The packet and line images (Manchester, USB, SENT, CAN, FlexRay, MIL-1553,
 ARINC 429) record raw samples only, one SRAM of 2.1 ms: on them the timebase goes no slower than
 200us/div, whose screen that record fills ("200us/div at most on this trigger: its image records
-2.1ms"). BUS entry's detection sets the same trigger. AUTO in the other workspaces is the autoset framed
+2.1ms", also when a trigger armed at a slower timebase brings the image in). BUS entry's detection sets the same trigger. AUTO in the other workspaces is the autoset framed
 for the workspace's job (REQ-SDS-224). Either sweep first puts the trigger back to an edge and waits for the
 general image: measured on the qualifier or a protocol image, or while the image went back, the vertical fit
 went wrong.
@@ -521,7 +521,7 @@ pushes theirs (Variable, Zero, Zoom). ADJUST and HORIZ POSITION are each workspa
 | TRIG LEVEL push (Zero) | `0x64`:9 | the level to 0 V |
 | RUN/STOP | `0x65`:2 | toggle running → `SetRunning` (a decoded stream: stop / restart it; a web page's decoded capture: end it first) |
 | SINGLE | `0x65`:10 | Normal, one triggered capture, then stop (a web page's decoded capture ends first) |
-| AUTO | `0x67`:10 | autoset framed for the workspace (SCOPE two cycles, MEASURE ten, SPECTRUM 50 of the FFT source, COMPARE the mask's or reference's setup); in BUS a new bus scan framed for reading (a second press cancels the sweep; a web page's decoded capture ends first) |
+| AUTO | `0x67`:10 | autoset framed for the workspace (SCOPE two cycles, MEASURE ten, SPECTRUM 50 of the FFT source, COMPARE the mask's or reference's setup); in BUS a new bus scan framed for reading (a second press cancels the sweep and puts back what it changed - timebase, V/div, offsets, trigger, run mode, BUS's decoder - with the notice "AUTO cancelled: the settings are as before"; a web page's decoded capture ends first) |
 
 Workspace tools (no menu open):
 

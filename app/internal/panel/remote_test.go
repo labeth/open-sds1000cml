@@ -535,34 +535,38 @@ func TestTimebaseAskedForLeadsUntilApplied(t *testing.T) {
 	}
 }
 
-// An Autoset a remote starts is named in its answer; when the sweep ends
-// (here cancelled by a second press) the snapshot names it as the last one
-// done, with the rows it changed.
+// An Autoset a remote starts is named in its answer; when the sweep ends the
+// snapshot names it as the last one done, with the rows it changed. A second
+// press cancels it and puts back what it changed: none are named.
 // TRLC-LINKS: REQ-SDS-137, REQ-SDS-220
 func TestAutosetSaysWhatItChanged(t *testing.T) {
-	c, _, _ := newC(t)
-	c.SheetSet("trig.mode", nil, "Normal")
-	sig := make([]uint8, 200)
-	for i := range sig {
-		sig[i] = uint8(40 + 160*(i/10%2))
+	sq := square(1e6, 0, 3.3)
+	c := newSimBench(t, func(tt, _ float64, _ int) float64 { return sq(tt) }).c
+	wait := func() {
+		for end := time.Now().Add(30 * time.Second); c.AutosetBusy() && time.Now().Before(end); {
+			time.Sleep(10 * time.Millisecond)
+		}
 	}
-	c.SetFrameSource(func(fn func(*engine.Frame)) {
-		fn(&engine.Frame{C1: sig, C2: sig, Valid: len(sig), SampleS: 50e-9})
-	})
+	c.SheetSet("trig.mode", nil, "Normal")
 	res := c.SheetAction("sys.autoset", "")
 	if !res.OK || res.Autoset == 0 || !c.AutosetBusy() {
 		t.Fatalf("autoset: %+v busy %v", res, c.AutosetBusy())
 	}
-	time.Sleep(30 * time.Millisecond)
+	wait()
+	st := c.PanelStatus()
+	if c.AutosetBusy() || st.AutosetDone != res.Autoset || !slices.Contains(st.AutosetChanged, "trig.mode") || !slices.Contains(st.AutosetChanged, "time.tdiv") {
+		t.Fatalf("after the sweep: done %d (started %d), changed %v", st.AutosetDone, res.Autoset, st.AutosetChanged)
+	}
+	c.SheetSet("trig.mode", nil, "Normal")
+	res = c.SheetAction("sys.autoset", "")
+	time.Sleep(300 * time.Millisecond)
 	if again := c.SheetAction("sys.autoset", ""); !again.OK || again.Autoset != 0 {
 		t.Fatalf("the second press cancels: %+v", again)
 	}
-	for i := 0; i < 400 && c.AutosetBusy(); i++ {
-		time.Sleep(5 * time.Millisecond)
-	}
-	st := c.PanelStatus()
-	if c.AutosetBusy() || st.AutosetDone != res.Autoset || !slices.Contains(st.AutosetChanged, "trig.mode") {
-		t.Fatalf("after the sweep: done %d (started %d), changed %v", st.AutosetDone, res.Autoset, st.AutosetChanged)
+	wait()
+	st = c.PanelStatus()
+	if c.AutosetBusy() || st.AutosetDone != res.Autoset || len(st.AutosetChanged) != 0 || rowText(c, "trig.mode") != "Normal" {
+		t.Fatalf("after the cancel: done %d (started %d), changed %v, mode %s", st.AutosetDone, res.Autoset, st.AutosetChanged, rowText(c, "trig.mode"))
 	}
 }
 
