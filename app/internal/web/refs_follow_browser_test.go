@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"open-sds/app/internal/engine"
+	"open-sds/app/internal/panel"
 	"open-sds/app/internal/testenv"
 )
 
@@ -14,33 +15,34 @@ import (
 // panel stores references and runs AUTO on them.
 // TRLC-LINKS: REQ-SDS-227
 func framedRig(t *testing.T) *remoteRig {
-	r := newRemoteRig(t)
 	const n = 2048
 	var seq uint64
-	r.eng.lock(func() {
-		f := r.eng.fakeScope
-		f.mu.Lock()
-		// called under f.mu (fakeScope.WithFrame)
-		f.frameGen = func() *engine.Frame {
-			seq++
-			c1, c2 := make([]uint8, n), make([]uint8, n)
-			for i := range c1 {
-				c1[i], c2[i] = 68, 98
-				if i%128 < 64 {
-					c1[i] = 188
+	// wired before the panel's loop runs: it reads the frame source
+	return newRemoteRig(t, func(pc *panel.Controller, eng *remoteEngine) {
+		eng.lock(func() {
+			f := eng.fakeScope
+			f.mu.Lock()
+			// called under f.mu (fakeScope.WithFrame)
+			f.frameGen = func() *engine.Frame {
+				seq++
+				c1, c2 := make([]uint8, n), make([]uint8, n)
+				for i := range c1 {
+					c1[i], c2[i] = 68, 98
+					if i%128 < 64 {
+						c1[i] = 188
+					}
+					if i%512 < 256 {
+						c2[i] = 158
+					}
 				}
-				if i%512 < 256 {
-					c2[i] = 158
-				}
+				tdiv := f.stats.TdivS
+				return &engine.Frame{C1: c1, C2: c2, Seq: seq, Valid: n, WinCols: n, EdgeX: n / 2, TdivS: tdiv, DisplayedS: tdiv,
+					SampleS: tdiv * 10 / n, Trigd: true, Coherent: true}
 			}
-			tdiv := f.stats.TdivS
-			return &engine.Frame{C1: c1, C2: c2, Seq: seq, Valid: n, WinCols: n, EdgeX: n / 2, TdivS: tdiv, DisplayedS: tdiv,
-				SampleS: tdiv * 10 / n, Trigd: true, Coherent: true}
-		}
-		f.mu.Unlock()
+			f.mu.Unlock()
+		})
+		pc.SetFrameSource(eng.WithFrame)
 	})
-	r.pc.SetFrameSource(r.eng.WithFrame)
-	return r
 }
 
 // TestWebRefsAndAutoFollowTheScope: the page's REF A/B are the scope's (a

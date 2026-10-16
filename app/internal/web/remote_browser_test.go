@@ -298,9 +298,10 @@ type remoteRig struct {
 // /knob?name=&dir= (the scope's own keys and knobs), /status (what the LCD
 // shows), /engine (the engine's state), /reset (factory settings, SCOPE,
 // no menu on the LCD), /mask?pass= (a mask test's count) and /hits (the
-// phones' requests by path since the last /hits).
+// phones' requests by path since the last /hits). The before hooks wire the
+// controller and the engine before its loop runs (a frame source, frames).
 // TRLC-LINKS: REQ-SDS-220
-func newRemoteRig(t testing.TB) *remoteRig {
+func newRemoteRig(t testing.TB, before ...func(*panel.Controller, *remoteEngine)) *remoteRig {
 	eng := newRemoteEngine()
 	fe := analog.New(remoteSPI{}, func(time.Duration) {}, nil)
 	fe.OnOffset(eng.SetOffsetDAC)
@@ -309,6 +310,9 @@ func newRemoteRig(t testing.TB) *remoteRig {
 		ws: func() int {
 			return map[string]int{"bus": 1, "spectrum": 2, "measure": 3, "compare": 4}[pc.PanelStatus().WorkspaceID]
 		}})
+	for _, fn := range before {
+		fn(pc, eng)
+	}
 	stop := make(chan struct{})
 	go pc.Run(stop)
 	gate := &remoteGate{h: New(eng, nil, pc, nil).Handler()}
