@@ -3935,3 +3935,30 @@ requirements:
     window is t_V after the sampling edge; a record cannot tell bit k late from bit k+1 early, so the bursts' ends
     decide (a device that settles late launches once more after the last sampling edge). The receiver's register
     holds -8 to 8 ns with the channels' phase.
+- id: REQ-SDS-231
+  title: Converters brought up and checked after every image load
+  text: The instrument shall, after every configuration of the acquisition FPGA (at start and after every image
+    load), restart the converters' encode clocks and check that every converter core converts, check again every
+    minute while acquiring and on a full-rate record with a held core, bring cores that hold one code under a moving
+    input back by restarting the encode clocks and then by loading the image again, and show a notice and a status
+    flag naming the converters that stay stuck.
+  status: draft
+  category: functional
+  appliesTo:
+  - FU-APP-ENGINE
+  - FU-APP-SRAMCAPTURE
+  - FU-APP-PANEL
+  verificationMethods:
+  - test
+  verificationCriteria: Snapshots of a moving input with held cores find exactly the held cores, and a quiet, flat,
+    clipped or slow input finds none; an image load is followed by an encode restart and a check, then for stuck
+    cores by another encode restart and a check and then reloads with an encode restart and a check each, stopping
+    at the first healthy check; cores still stuck set the notice until a later check finds them converting, and a
+    full-rate record with a held core brings the next check forward. On the device, a loop of image switches leaves
+    no capture with stuck cores, and an encode stopped by hand is found and restarted within a second.
+  notes: About one configuration in a hundred left some converters' cores holding a code while the other cores
+    follow the signal, a pattern at a fifth of the sample rate under every capture; the encode clocks start with the
+    configuration as its PLL locks, and stopping and starting them again (register 15) brought the converters back,
+    as another configuration did. A held core is told from a live one only while the input moves (a snapshot of the
+    ten cores at 64 instants, three codes off a core's median in an eighth of them); 64 snapshots take about 80 to
+    130 ms of bus reads, so between checks the full-rate records' own samples are looked at once a second.

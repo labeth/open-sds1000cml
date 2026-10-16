@@ -95,6 +95,13 @@ The leg that rises at the pair's base phase is given; the other leg rises 5 ns l
 
 Holding a leg low stops its core.
 
+The converters do not always start on the encode clocks a configuration brings up: about one
+configuration in a hundred leaves whole converters not converting, both their cores holding one
+code. Holding every leg low for 1 ms and starting them again brings them back. A design should
+let the host stop and start the legs (the reference design: register 15, one enable a leg, bit
+2*p* the `enc_p` leg of pair E(*p*+1), bit 2*p*+1 its `enc_n` leg, `0x3ff` at configuration) and
+the host should do so once the fabric is configured.
+
 ### 4.2 Sample order
 
 Within each 10 ns period the ten samples are taken in this order (sample instant in ns):

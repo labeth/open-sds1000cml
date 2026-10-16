@@ -591,6 +591,24 @@ advanced / flat frame), `FPS` (published frames/sec), `LastPtp`, `LastTrigPos`, 
   CONF_DONE `CS3 0x07 & 0x80` clear) so the watchdog does not false-positive a quiet NORM
   display.
 
+**Converter health (SRAM images).** A configuration of the acquisition FPGA occasionally leaves
+converters not converting (spec 12 §4.1): their cores hold one code while the channel's other
+cores follow the signal. On every freshly configured fabric (at start and after every image
+load, the same bring-up) the owner restarts the encode clocks (register 15 = 0, 1 ms,
+register 15 = `0x3ff`) and checks the ten cores; it checks again every minute while running,
+and as soon as a full-rate record shows a core whose every fifth sample holds one code (looked
+at once a second, on the raw codes before any correction):
+
+- A check reads 64 snapshots of the cores (command 6, selectors 20–24; byte 2p is converter
+  E(p+1)'s CH1 core, 2p+1 its CH2 core). A core is stuck when all 64 read one code while a core
+  of its channel moves (an eighth of its snapshots three or more codes off its median). A quiet,
+  flat, slow or clipped input moves no core and is never a fault.
+- Stuck cores are recovered in order, each followed by a fresh check: an encode restart, then
+  up to three reloads of the loaded image, each with its encode restart.
+- Cores still stuck set `adc_fault` (the LCD and remote show it as a notice naming the
+  converters) and are tried again after five minutes; `adc_recoveries` and `adc_recovery` count
+  and describe the recoveries, `adc_check_ms` the last check's time (about 80–130 ms).
+
 ---
 
 ## 12. Load-bearing constraints (why the design is shaped this way)

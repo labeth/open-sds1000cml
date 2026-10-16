@@ -2,6 +2,7 @@
 package engine
 
 import (
+	"fmt"
 	"math"
 	"time"
 
@@ -322,33 +323,31 @@ func (e *Engine) serviceImage() bool {
 	return e.loadImage(want)
 }
 
-// loadImage switches to a protocol image, or the general image for "".
+// imageLoader is the switcher's load of a protocol image, or of the general
+// image for "".
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-005
-func (e *Engine) loadImage(name string) bool {
-	load := e.images.LoadGeneral
+func (e *Engine) imageLoader(name string) func() error {
 	switch name {
 	case imagePacket:
-		load = e.images.LoadPacket
+		return e.images.LoadPacket
 	case imageLine:
-		load = e.images.LoadLine
+		return e.images.LoadLine
 	case imageStream:
-		load = e.images.LoadStream
+		return e.images.LoadStream
 	case imageQualify:
-		load = e.images.LoadQualify
+		return e.images.LoadQualify
 	case imageFast:
-		load = e.images.LoadFast
+		return e.images.LoadFast
 	}
-	shown := name
-	if shown == "" {
-		shown = "general"
-	}
-	e.logf("engine: loading the %s image", shown)
-	e.setBusy("loading "+shown+" image", 0) // the loading indicator covers the reload
-	e.noteBackendsLoading(name)
-	// A load takes seconds without bus reads; beat so the OTA agent does not
-	// judge the app hung and restart it.
+	return e.images.LoadGeneral
+}
+
+// beatWhile keeps the health beat going for the seconds an image load takes
+// without bus reads, so the OTA agent does not judge the app hung and
+// restart it; the returned func stops it.
+// TRLC-LINKS: REQ-SDS-005, REQ-SDS-025
+func (e *Engine) beatWhile() func() {
 	beating := make(chan struct{})
-	defer close(beating)
 	go func() {
 		tick := time.NewTicker(200 * time.Millisecond)
 		defer tick.Stop()
@@ -361,6 +360,22 @@ func (e *Engine) loadImage(name string) bool {
 			}
 		}
 	}()
+	return func() { close(beating) }
+}
+
+// loadImage switches to a protocol image, or the general image for "", and
+// brings the converters up on it (startConverters), as at start.
+// TRLC-LINKS: REQ-SDS-013, REQ-SDS-005, REQ-SDS-231
+func (e *Engine) loadImage(name string) bool {
+	load := e.imageLoader(name)
+	shown := name
+	if shown == "" {
+		shown = "general"
+	}
+	e.logf("engine: loading the %s image", shown)
+	e.setBusy("loading "+shown+" image", 0) // the loading indicator covers the reload
+	e.noteBackendsLoading(name)
+	defer e.beatWhile()()
 	if err := load(); err != nil {
 		e.logf("engine: %s image: %v", shown, err)
 		if name != "" {
@@ -381,7 +396,41 @@ func (e *Engine) loadImage(name string) bool {
 	e.mu.Lock()
 	e.stats.Image = shown
 	e.mu.Unlock()
+	e.startConverters("loading the " + shown + " image")
 	return true
+}
+
+// reloadImage configures the loaded image again (a converter recovery):
+// the same load as a switch, with the hardware probes after it.
+// TRLC-LINKS: REQ-SDS-231, REQ-SDS-005
+func (e *Engine) reloadImage() error {
+	if e.images == nil {
+		return fmt.Errorf("no image switcher")
+	}
+	shown := e.protocolImage
+	if shown == "" {
+		shown = "general"
+	}
+	e.setBusy("reloading "+shown+" image", 0)
+	defer e.beatWhile()()
+	if err := e.imageLoader(e.protocolImage)(); err != nil {
+		if e.protocolImage == "" {
+			return err
+		}
+		// as a failed switch: back to the general image
+		e.failedImage, e.protocolImage = e.protocolImage, ""
+		if restore := e.images.LoadGeneral(); restore != nil {
+			return restore
+		}
+		e.mu.Lock()
+		e.stats.Image = "general"
+		e.mu.Unlock()
+	}
+	e.probeSerialHardware()
+	if err := e.applyPanelScan(); err != nil {
+		e.logf("engine: panel scan: %v", err)
+	}
+	return nil
 }
 
 // noteARINCLevels takes the ARINC slicer levels from a raw record the first

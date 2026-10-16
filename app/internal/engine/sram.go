@@ -553,6 +553,7 @@ func (e *Engine) runSRAM() {
 	e.stats.Image = "general"
 	e.mu.Unlock()
 	e.logf("engine: full-depth SRAM capture; software protocol qualification has capture dead time")
+	e.startConverters("the start") // as after every image load (loadImage)
 	var previousFrozen time.Time
 	var scratch []uint16
 	var average sramAverage
@@ -627,6 +628,10 @@ acquisitionLoop:
 				e.decodedService.maxPause = max(e.decodedService.maxPause, time.Since(stage))
 			}
 			continue
+		}
+		// Between acquisitions: a stopped record stays (a recovery reloads).
+		if e.running.Load() && !e.rollActive() {
+			e.checkCoresDue()
 		}
 		e.bumpFrames()
 		e.viewHeld.Store(retained)
@@ -933,6 +938,9 @@ acquisitionLoop:
 			}
 			e.busErr(err)
 			continue
+		}
+		if bucket == 0 && !replay && m.Decimation <= 1 && m.FractionBits == 0 && m.SamplesPerWord == 2 {
+			e.noteRecordCores(f.C1[:f.Valid], f.C2[:f.Valid]) // raw codes, before any conditioning
 		}
 		// A live envelope holds no edge shape, nor a mean where the signal is
 		// faster than a bucket: read the trigger edge and the next edge the

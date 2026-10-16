@@ -773,6 +773,21 @@ func (c *Capture) Snapshot(ctx context.Context) (out [10]uint8, err error) {
 	return out, nil
 }
 
+// RestartEncode stops the ten converter cores' encode clocks (register 15,
+// one enable a core) and starts them again: a converter whose encode came up
+// without converting starts afresh. Between acquisitions only: the cores
+// hold their last codes while stopped.
+// TRLC-LINKS: REQ-SDS-231
+func (c *Capture) RestartEncode() error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if err := c.write(15, 0); err != nil {
+		return err
+	}
+	time.Sleep(time.Millisecond)
+	return c.write(15, 0x3ff)
+}
+
 // Recall streams an immutable frozen window. It never rearms or writes SRAM.
 // A failed/partial host write leaves the record intact for another recall.
 // Zero count means an empty window, not full depth. Byte layout is documented

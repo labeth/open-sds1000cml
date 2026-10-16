@@ -68,6 +68,8 @@ func (c *Controller) view(s *sv) wsview.View {
 	v := wsview.View{WS: u.ws}
 	if s.now.Before(u.noticeUnt) {
 		v.Notice = u.notice
+	} else if s.st.ADCFault != "" {
+		v.Notice = s.st.ADCFault // stays while converters do not convert
 	}
 	if u.open {
 		v.Layout = wsview.Layout{MenuW: 116, Sheet: true, HideTraces: true, HideBottom: true}

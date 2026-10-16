@@ -103,6 +103,12 @@ anything on the scope's screen.
   Changing V/div, offset or timebase on a stopped record redraws it from memory.
 * **Calibrated five-way interleaving.** Each channel runs five 100 MS/s converters in turn. Per-core
   correction removes the interleave pattern (the comb drops from 11 codes to 0.15).
+* **Converters checked.** About one FPGA load in a hundred left some converters not converting,
+  which put a fake pattern at a fifth of the sample rate under every capture. The scope restarts
+  the converters' encode clocks after every load and reads the ten cores; it reads them again
+  every minute and whenever a full-rate record shows a core holding one code, and brings stuck
+  ones back (an encode restart, then reloading the image). If they stay stuck, a notice names them ("ADC fault: converter E2 not converting - restart the
+  scope") and `/api/status` carries `adc_fault`; `adc_recoveries` counts the ones brought back.
 * **Precision mode.** At slow timebases the FPGA decimates by a power of two, ×16 to ×1,048,576,
   through a CIC filter. The ARM applies a 63-tap compensation filter and keeps 16-bit samples, so a
   slow record gains resolution instead of aliasing. The UI shows the resulting bandwidth and bit

@@ -255,6 +255,16 @@ type Stats struct {
 	SerialMatches int64  `json:"serial_matches,omitempty"` // frames that matched the pattern
 	SerialSet     bool   `json:"serial_set,omitempty"`     // a match pattern is configured
 
+	// Converter health (adc_health.go): ADCFault names the converters that
+	// stay stuck after the recoveries (empty while every core converts);
+	// ADCRecoveries counts stuck cores brought back and ADCRecovery says how
+	// the last were (an encode restart or an image reload) and after what;
+	// ADCCheckMs is the last check's duration.
+	ADCFault      string  `json:"adc_fault,omitempty"`
+	ADCRecoveries int64   `json:"adc_recoveries,omitempty"`
+	ADCRecovery   string  `json:"adc_recovery,omitempty"`
+	ADCCheckMs    float64 `json:"adc_check_ms,omitempty"`
+
 	// FRA / Bode plot (bode.go)
 	BodeMode     int     `json:"bode_mode,omitempty"`      // 0 off, 1 armed
 	BodeRef      int     `json:"bode_ref"`                 // the reference (DUT input) channel, 0 = C1
@@ -312,6 +322,7 @@ type Engine struct {
 	logf                  func(string, ...any)
 	arena                 *arena
 	sram                  *sramcapture.Capture
+	adc                   adcHealth // the converters' health checks (adc_health.go)
 	panelScan             sramcapture.PanelConfig
 	panelScanSet          bool
 	panelMu               sync.Mutex
