@@ -157,9 +157,13 @@ function loadScopeRef(slot, a, label) {
 
 // takeScopeRefs makes the scope's two reference slots (GET /api/refs) this
 // page's REF A and B: a slot the scope holds no more empties here, a new
-// store loads, and the same store only follows its Show.
+// store loads, and the same store only follows its Show. Slots taken from
+// an answer to this page's own change match no status tag: the next status
+// reads them again (refsFollow sets the tag of its own read after this), or
+// the scope going back to the tag before the change would not be followed.
 // TRLC-LINKS: REQ-SDS-227
 function takeScopeRefs(arr) {
+  refsTag = "";
   for (const [i, slot] of [[0, "A"], [1, "B"]]) {
     const a = arr && arr[i], r = refs[slot];
     if (!a || !a.has) { if (r) { refs[slot] = null; updateRefRows(); redraw(); } continue; }

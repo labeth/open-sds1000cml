@@ -30,3 +30,14 @@ func TestSerialFollowJS(t *testing.T) {
 		t.Fatalf("serial follow: %v\n%s", err, out)
 	}
 }
+
+// TestRefsFollowJS: after the page hides a reference itself, the scope
+// showing it again is followed, whatever reads were on their way.
+// TRLC-LINKS: REQ-SDS-227
+func TestRefsFollowJS(t *testing.T) {
+	testenv.NeedNode(t)
+	out, err := exec.Command("node", "refs_follow.test.cjs").CombinedOutput()
+	if err != nil || !strings.Contains(string(out), "refs follow PASS") {
+		t.Fatalf("refs follow: %v\n%s", err, out)
+	}
+}
