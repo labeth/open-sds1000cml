@@ -130,7 +130,7 @@ func (c *Controller) forgetBus() {
 	c.decProto, c.decMode = framecalc.ProtoOff, decModeView
 	c.decGen++
 	c.auto = autoWatch{}
-	c.decDelayAuto, c.spiEye = true, decode.SPIEye{}
+	c.decDelayAuto, c.spiEye, c.spiEyeKey, c.spiEyeVotes = true, decode.SPIEye{}, "", decode.SPIEyeVotes{}
 	c.mu.Unlock()
 	// the clock rate is measured again too: a rate set for another bus
 	// framed the next one by the wrong gap

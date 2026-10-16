@@ -116,7 +116,7 @@ func (c *Controller) DefaultSetup() {
 	c.decBaud, c.decChA, c.decChB, c.decCPOL, c.decCPHA, c.decFormat = 115200, 0, 1, false, false, 0
 	c.decLSB, c.auto = false, autoWatch{}
 	c.decDelayNs, c.decDelayAuto, c.decFine, c.spiEye = 0, false, false, decode.SPIEye{}
-	c.spiEyeKey, c.spiEyeEnds, c.spiEyeLaunched = "", 0, 0
+	c.spiEyeKey, c.spiEyeVotes = "", decode.SPIEyeVotes{}
 	for i := range c.refs {
 		c.refs[i].show = false
 	}

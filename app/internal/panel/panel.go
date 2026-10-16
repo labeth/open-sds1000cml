@@ -190,11 +190,12 @@ type Controller struct {
 	decDelayAuto bool
 	decFine      bool
 	spiEye       decode.SPIEye // the last full-rate SPI record's eye (PeriodS 0: none)
-	// the bursts' ends counted on the records since the SPI bus changed
-	// (spiEyeKey), and those whose data was launched after the last edge
-	spiEyeKey                  string
-	spiEyeEnds, spiEyeLaunched int
-	decFormat                  int // 0=hex, 1=ascii, 2=both
+	// the bursts' ends and starts weighed on the records since the SPI bus
+	// or its clock rate changed (spiEyeKey): the middle after the edge or
+	// before it
+	spiEyeKey   string
+	spiEyeVotes decode.SPIEyeVotes
+	decFormat   int // 0=hex, 1=ascii, 2=both
 	// what Auto filled in, and whether the bus it found still decodes
 	auto autoWatch
 	// how the detection under way frames the bus: 0 not, busFrameEntry for

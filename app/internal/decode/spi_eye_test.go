@@ -2,8 +2,14 @@
 package decode
 
 import (
+	"compress/gzip"
+	"encoding/json"
 	"math"
+	"os"
+	"path/filepath"
 	"reflect"
+	"slices"
+	"strings"
 	"testing"
 )
 
@@ -83,5 +89,146 @@ func TestSampleSPIRuntPulse(t *testing.T) {
 		if got, err := frameBytes(ev); err != nil || !reflect.DeepEqual(got, frames) {
 			t.Fatalf("runt %.1f ns: % x %v", runt*1e9, got, err)
 		}
+	}
+}
+
+// flash104Records are records of the 104 MHz flash look-alike (clock C2, data
+// C1, mode 0, the data 7 ns after the launching edge) taken by the
+// instrument at 2 ns: four at 100 ns/div, the serial trigger on a burst's
+// start (its start and first 2.5 us, no end), and two at 1 us/div.
+// TRLC-LINKS: REQ-SDS-230
+func flash104Records(t *testing.T) (r []struct {
+	TdivS  float64 `json:"tdiv_s"`
+	C1, C2 []uint8
+}) {
+	t.Helper()
+	f, err := os.Open(filepath.Join("testdata", "spi_flash104_records.json.gz"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+	z, err := gzip.NewReader(f)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var v struct {
+		Records []struct {
+			TdivS  float64 `json:"tdiv_s"`
+			C1, C2 []uint8
+		}
+	}
+	if err := json.NewDecoder(z).Decode(&v); err != nil {
+		t.Fatal(err)
+	}
+	return v.Records
+}
+
+// The flash look-alike's records at 100 ns/div hold a burst's start and no
+// end: nothing tells the middle after the edge (+7.3 ns) from the one a
+// period before it (-2.3 ns), and Auto reads after the edge, resolving, as
+// a device's data settles after the edge launching it; the burst then reads
+// as sent, where before the edge every bit read one clock off ("85 80 08 00
+// 7F A9"). The records at 1 us/div hold ends, and the launches after them
+// keep the reading after the edge.
+// TRLC-LINKS: REQ-SDS-229, REQ-SDS-230
+func TestSPIEyeFlashStartsOnly(t *testing.T) {
+	var v SPIEyeVotes
+	for i, r := range flash104Records(t) {
+		cfg := SPICfg{MSB: true, Threshold: 128, HaveThr: true, DataLag: SPIDataLag(1, 2e-9)}
+		eye, ok := MeasureSPIEye(r.C2, r.C1, 2e-9, cfg)
+		if !ok {
+			t.Fatalf("record %d: no eye", i)
+		}
+		v.Add(eye)
+		one, all := eye, eye.Resolve(v)
+		for _, e := range []SPIEye{one, all} {
+			if !e.Late || e.DelayS < 6.5e-9 || e.DelayS > 8e-9 || (r.TdivS < 1e-6 && !e.Resolving) {
+				t.Fatalf("record %d (%g s/div): %+v", i, r.TdivS, e)
+			}
+		}
+		cfg.DataDelay = all.DelayS / 2e-9
+		res := DecodeSPI(r.C2, r.C1, 2e-9, cfg)
+		if want := []int{0x0B, 0x00, 0x10, 0x00, 0xFF, 0x53, 0x50, 0x49}; !res.OK || !slices.Contains(starts(res.Bytes, want), true) {
+			t.Fatalf("record %d at %+.2f ns: % x", i, all.DelayS*1e9, res.Bytes)
+		}
+	}
+}
+
+// starts reports, for each offset of b, whether want begins there.
+// TRLC-LINKS: REQ-SDS-230
+func starts(b, want []int) []bool {
+	var out []bool
+	for i := 0; i+len(want) <= len(b); i++ {
+		out = append(out, slices.Equal(b[i:i+len(want)], want))
+	}
+	return out
+}
+
+// The bench source's 104 MHz bursts change data 1.8 ns before the clock's
+// other edge, and nothing after a burst's last edge: across records of two
+// or three bursts, their ends without a launch read the middle before the
+// edge, and the bursts read as sent.
+// TRLC-LINKS: REQ-SDS-229, REQ-SDS-230
+func TestSPIEyeEarlyAcrossRecords(t *testing.T) {
+	c1, c2 := lines(readCapture(t, "spi_sample_104mhz.bin.gz"))
+	cfg := SPICfg{MSB: true, Threshold: 128, HaveThr: true, DataLag: SPIDataLag(1, 2e-9)}
+	var v SPIEyeVotes
+	var eye SPIEye
+	for start := 0; start+5000 <= len(c1); start += 5000 {
+		e, ok := MeasureSPIEye(c2[start:start+5000], c1[start:start+5000], 2e-9, cfg)
+		if !ok {
+			t.Fatalf("record at %d: no eye", start)
+		}
+		v.Add(e)
+		eye = e.Resolve(v)
+	}
+	if eye.Late || eye.Resolving || eye.DelayS > -1e-9 || eye.DelayS < -2.5e-9 {
+		t.Fatalf("eye %+v, votes %+v", eye, v)
+	}
+	cfg.DataDelay = eye.DelayS / 2e-9
+	if r := DecodeSPI(c2, c1, 2e-9, cfg); !r.OK || strings.Count(string(intsToBytes(r.Bytes)), "SPI FLASH 104MHZ OPEN-SDS 0123") < 6 {
+		t.Fatalf("at %+.2f ns: %q", eye.DelayS*1e9, intsToBytes(r.Bytes))
+	}
+}
+
+// The reading follows the votes, not the first ones: a bus read before the
+// edge on ends without launches turns after it within a few bursts that
+// launch, and back; a clock period changed by more than 3% starts the votes
+// over; with no burst seen a middle past any device's settling reads
+// before the edge (a host's data changing at the other edge, skewed).
+// TRLC-LINKS: REQ-SDS-230
+func TestSPIEyeVotesFollowBursts(t *testing.T) {
+	const T = 9.6e-9
+	mid := SPIEye{MiddleS: 7.3e-9, PeriodS: T}
+	var v SPIEyeVotes
+	for range 30 {
+		v.Add(SPIEye{PeriodS: T, Ends: 2, Starts: 2})
+	}
+	if e := mid.Resolve(v); e.Late || e.Resolving || math.Abs(e.DelayS+2.3e-9) > 1e-12 {
+		t.Fatalf("ends without launches: %+v %+v", e, v)
+	}
+	n := 0
+	for ; mid.Resolve(v).DelayS < 0; n++ {
+		v.Add(SPIEye{PeriodS: T, Ends: 1, Launched: n % 2, Starts: 1})
+	}
+	if n > 6 {
+		t.Fatalf("after the edge after %d records: %+v", n, v)
+	}
+	for n = 0; mid.Resolve(v).DelayS > 0; n++ {
+		v.Add(SPIEye{PeriodS: T, Ends: 1, Starts: 1, Ahead: 1})
+	}
+	if n > 8 {
+		t.Fatalf("before the edge after %d records: %+v", n, v)
+	}
+	v.Add(SPIEye{PeriodS: 1 / 100e6})
+	if v.Late != 0 || v.Early != 0 {
+		t.Fatalf("votes kept across a rate change: %+v", v)
+	}
+	if e := mid.Resolve(v); !e.Late || !e.Resolving {
+		t.Fatalf("no bursts: %+v", e)
+	}
+	host := SPIEye{MiddleS: 98.6e-9, PeriodS: 100e-9}
+	if e := host.Resolve(SPIEyeVotes{}); e.Late || !e.Resolving || math.Abs(e.DelayS+1.4e-9) > 1e-12 {
+		t.Fatalf("10 MHz host: %+v", e)
 	}
 }

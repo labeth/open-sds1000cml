@@ -54,7 +54,8 @@ func spiMarginNs(s *sv) (fpgaNs, marginNs float64, ok bool) {
 // spiDelayText is the data delay row's value: the delay, Auto's, and the
 // margin left each side of it on the last record ("Auto +3.7 ns, margin
 // +-2.1 ns"); the FPGA's own delay when its register cannot reach the one
-// asked.
+// asked; Auto's "resolving" while the bursts seen have not told the middle
+// after the edge from the one before it (decode.SPIEye.Resolve).
 // TRLC-LINKS: REQ-SDS-230
 func spiDelayText(s *sv) string {
 	t := fmt.Sprintf("%+.1f ns", s.spiDelayNs())
@@ -70,6 +71,9 @@ func spiDelayText(s *sv) string {
 	}
 	if ok {
 		t += fmt.Sprintf(", margin %+.1f ns", margin)
+	}
+	if s.decDelayAuto && s.spiEye.Resolving {
+		t += ", resolving"
 	}
 	return t
 }
@@ -132,16 +136,19 @@ func (c *Controller) noteSPIEye(s *sv, f *engine.Frame) {
 	if !ok {
 		return
 	}
-	// the bursts' ends of the records since the bus changed decide whether
-	// the middle lies after the edge or before it (a record shows a few)
+	// the bursts' ends and starts of the records since the bus or the
+	// clock rate it is framed by changed decide whether the middle lies
+	// after the edge or before it (a record shows a few, or none)
 	key := fmt.Sprint(s.decChA, s.decChB, s.decCPOL, s.decCPHA)
+	if s.hasSerial {
+		key += fmt.Sprint(" ", s.serial.SPIClockHz)
+	}
 	c.mu.Lock()
 	if key != c.spiEyeKey {
-		c.spiEyeKey, c.spiEyeEnds, c.spiEyeLaunched = key, 0, 0
+		c.spiEyeKey, c.spiEyeVotes = key, decode.SPIEyeVotes{}
 	}
-	c.spiEyeEnds += eye.Ends
-	c.spiEyeLaunched += eye.Launched
-	eye = eye.Resolve(c.spiEyeEnds, c.spiEyeLaunched)
+	c.spiEyeVotes.Add(eye)
+	eye = eye.Resolve(c.spiEyeVotes)
 	moved := math.Abs(eye.DelayS-c.spiEye.DelayS) > 0.25e-9 || c.spiEye.PeriodS <= 0
 	c.spiEye = eye
 	auto := c.decDelayAuto
@@ -185,7 +192,7 @@ func spiTimingRows(isSPI func(*sv) bool) []*row {
 	clk.def = func(c *Controller) error { return c.setSPIClock(0) }
 	delay := numRow("bus.spi_delay", "Data delay", "s", func(s *sv) float64 { return s.spiDelayNs() * 1e-9 },
 		constLim(spiDelayMinNs*1e-9, spiDelayMaxNs*1e-9), constStep(0.25e-9), func(c *Controller, v float64) error { return c.setSPIDelay(v * 1e9) }, siFmt("s"))
-	delay.help = "Where the data line is read after the clock's sampling edge: a device's data settles late (a flash read at 104 MHz: 6 to 8 ns after the edge that launches it). Auto reads it at the middle of the data's eye on the record; the margin is the time left each side."
+	delay.help = "Where the data line is read after the clock's sampling edge: a device's data settles late (a flash read at 104 MHz: 6 to 8 ns after the edge that launches it). Auto reads it at the middle of the data's eye on the record; the margin is the time left each side. A middle past half a period is a late device's after the edge or an early one's before it: the bursts' ends and starts tell (a late device launches once more after the last clock edge, an early one sets its first bit up before the first); until they have, Auto says resolving."
 	delay.knob = "Auto follows the record; a value set here stays."
 	delay.rel, delay.why = isSPI, "Protocol = SPI"
 	delay.text = spiDelayText
