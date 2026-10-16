@@ -6,6 +6,7 @@ import (
 	"math"
 	"slices"
 	"sync/atomic"
+	"time"
 
 	"open-sds/app/internal/decode"
 )
@@ -21,13 +22,18 @@ import (
 
 // serialLevels is what the captures taught about the lines.
 type serialLevels struct {
-	volts   [2]atomic.Uint64 // each channel's decoder threshold in volts at the BNC (float64 bits)
-	have    [2]atomic.Bool
-	spiHz   atomic.Uint64 // the clock rate on the armed SPI request's clock line (float64 bits), 0 unknown
-	baud    atomic.Uint64 // the bit rate on the armed UART request's line (float64 bits), 0 unknown
-	sentNs  atomic.Uint64 // the armed SENT request's tick in ns (float64 bits), 0 unknown
-	sentNib atomic.Int32  // the nibbles of its frames (status, data, CRC), 0 unknown
-	shiftS  atomic.Uint64 // how far the last match began before the FPGA's trigger, s (float64 bits)
+	volts [2]atomic.Uint64 // each channel's decoder threshold in volts at the BNC (float64 bits)
+	have  [2]atomic.Bool
+	spiHz atomic.Uint64 // the clock rate on the armed SPI request's clock line (float64 bits), 0 unknown
+	// spiQuiet is when the hardware last triggered on the learned SPI clock,
+	// or its plan began (unix ns, 0 none); spiProbe asks one untriggered
+	// capture to measure the clock again (spiQuietCheck).
+	spiQuiet atomic.Int64
+	spiProbe atomic.Bool
+	baud     atomic.Uint64 // the bit rate on the armed UART request's line (float64 bits), 0 unknown
+	sentNs   atomic.Uint64 // the armed SENT request's tick in ns (float64 bits), 0 unknown
+	sentNib  atomic.Int32  // the nibbles of its frames (status, data, CRC), 0 unknown
+	shiftS   atomic.Uint64 // how far the last match began before the FPGA's trigger, s (float64 bits)
 }
 
 // learnSerialLevels keeps each channel's decoder threshold from a capture
@@ -74,8 +80,11 @@ func (e *Engine) learnSerialLevels(f *Frame, sc [2]chScale) {
 	line = line[:min(f.Valid, len(line))]
 	switch {
 	case p.Proto == serSPI && p.SPIClockHz <= 0:
-		if hz := clockRate(line, f.SampleS); hz > 0 {
+		if hz := clockRate(line, f.SampleS, f.PeakDetect); hz > 0 {
 			e.serLv.spiHz.Store(math.Float64bits(hz))
+		}
+		if e.serLv.spiProbe.Swap(false) && e.clk.Now != nil {
+			e.serLv.spiQuiet.Store(e.clk.Now().UnixNano())
 		}
 	case p.Proto == serUART && p.Baud <= 0:
 		if b := uartBaud(line, f.SampleS); b > 0 {
@@ -190,11 +199,12 @@ func uartBaud(codes []uint8, sampleS float64) float64 {
 }
 
 // clockRate measures a clock line's rate: the interval between rising edges
-// that a quarter of them are no longer than (a word's clocks, not the gaps
-// between words), from at least eight edges each four or more samples apart.
-// 0 when the line shows no clock at this sample interval.
-// TRLC-LINKS: REQ-SDS-013
-func clockRate(codes []uint8, sampleS float64) float64 {
+// near the one a quarter of them are no longer than (a word's clocks, not the
+// gaps between words), from at least eight edges each four or more samples
+// apart; extremes says the codes are bucket extremes (peak detect). 0 when
+// the line shows no clock at this sample interval.
+// TRLC-LINKS: REQ-SDS-013, REQ-SDS-229
+func clockRate(codes []uint8, sampleS float64, extremes bool) float64 {
 	thr, ok := decode.AutoThreshold(codes)
 	if !ok || !(sampleS > 0) {
 		return 0
@@ -216,11 +226,51 @@ func clockRate(codes []uint8, sampleS float64) float64 {
 		gaps[i] = rises[i+1] - rises[i]
 	}
 	slices.Sort(gaps)
-	period := gaps[len(gaps)/4]
-	if period < 4 {
-		return 0 // the clock is not resolved at this timebase
+	// The mean of the gaps near the lower quartile's: a clock of a
+	// non-integer number of samples (104 MHz: 4.8 at 2 ns) alternates.
+	seed := gaps[len(gaps)/4]
+	sum, n := 0, 0
+	for _, g := range gaps {
+		if 2*g >= seed && 2*g <= 3*seed {
+			sum += g
+			n++
+		}
 	}
-	return 1 / (float64(period) * sampleS)
+	period := float64(sum) / float64(n)
+	// The clock is not resolved at this timebase under four samples a period,
+	// nor in bucket extremes (peak detect) under four buckets: a clock faster
+	// than the buckets alternates their minima and maxima at a rate of the
+	// buckets' own (a 25 MHz clock in 32 ns buckets read as 15.6 MHz).
+	if period < 4 || (extremes && period < 8) {
+		return 0
+	}
+	return 1 / (period * sampleS)
+}
+
+// spiMeasuring is serialPlanParams' reason while the SPI clock is measured.
+const spiMeasuring = "measuring the SPI clock rate"
+
+// spiQuietNs is how long a learned SPI clock may go without a hardware
+// trigger before one capture measures it again.
+const spiQuietNs = int64(2 * time.Second)
+
+// spiQuietCheck: a learned SPI clock the hardware has not triggered on for
+// spiQuietNs is measured again from one untriggered capture. The bus may
+// have slowed: a gap planned for the faster clock splits every byte, nothing
+// triggers, and no triggered capture would teach the new rate.
+// TRLC-LINKS: REQ-SDS-013, REQ-SDS-229
+func (e *Engine) spiQuietCheck(p SerialParams) {
+	if p.Proto != serSPI || p.SPIClockHz > 0 || !(math.Float64frombits(e.serLv.spiHz.Load()) > 0) || e.clk.Now == nil {
+		e.serLv.spiQuiet.Store(0)
+		return
+	}
+	now := e.clk.Now().UnixNano()
+	switch at := e.serLv.spiQuiet.Load(); {
+	case at == 0:
+		e.serLv.spiQuiet.Store(now)
+	case now-at > spiQuietNs:
+		e.serLv.spiProbe.Store(true)
+	}
 }
 
 // serialPlanParams is p as the hardware matcher takes it: without a threshold
@@ -241,8 +291,8 @@ func (e *Engine) serialPlanParams(p SerialParams) (SerialParams, string) {
 	}
 	if p.Proto == serSPI && p.SPIClockHz <= 0 {
 		hz := math.Float64frombits(e.serLv.spiHz.Load())
-		if !(hz > 0) {
-			return p, "measuring the SPI clock rate"
+		if !(hz > 0) || e.serLv.spiProbe.Load() {
+			return p, spiMeasuring
 		}
 		p.SPIClockHz = int(math.Round(hz))
 	}

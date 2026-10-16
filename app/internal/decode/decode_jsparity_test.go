@@ -271,6 +271,24 @@ func TestJSDecoderParity(t *testing.T) {
 		aclk, adat := spiWaveAsym([]int{0x5A, 0x3C}, 2, 12)
 		add2("spi", aclk, adat, ct, jsCfg{"cpol": false, "cpha": false, "bitOrder": "msb"},
 			DecodeSPI(aclk, adat, ct, SPICfg{MSB: true, Format: "hex"}))
+		// Under six samples a clock period: the data line at the clock's
+		// interpolated crossing plus the channels' phase (75 and 104 MHz at 2 ns).
+		for _, b := range synthCases() {
+			if b.rateHz < 75e6 || b.inverted {
+				continue
+			}
+			c1, c2 := lines(b.words())
+			fclk, fdat, lag := c2, c1, SPIDataLag(1, 2e-9)
+			if b.clockCh == 0 {
+				fclk, fdat, lag = c1, c2, SPIDataLag(0, 2e-9)
+			}
+			bo := "lsb"
+			if b.msb {
+				bo = "msb"
+			}
+			add2("spi", fclk, fdat, 2e-9, jsCfg{"cpol": b.cpol, "cpha": b.cpha, "bitOrder": bo, "threshold": 120, "dataLag": lag},
+				DecodeSPI(fclk, fdat, 2e-9, SPICfg{CPOL: b.cpol, CPHA: b.cpha, MSB: b.msb, Format: "hex", Threshold: 120, HaveThr: true, DataLag: lag}))
+		}
 	}
 
 	// ---- I2C: a full transaction, plus the channel swap (SCL<->SDA).

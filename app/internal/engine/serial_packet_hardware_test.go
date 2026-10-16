@@ -19,9 +19,11 @@ type packetEngineBus struct{ *stackEngineBus }
 
 // TRLC-LINKS: REQ-SDS-013
 func (b packetEngineBus) Read(p uint8, s uint16) (uint16, error) {
-	if b.image == "packet" || b.image == "line" || b.image == "general" || b.image == "qualify" {
-		packet, line, general, qualify := b.image == "packet", b.image == "line", b.image == "general", b.image == "qualify"
+	if b.image == "packet" || b.image == "line" || b.image == "general" || b.image == "qualify" || b.image == "fast" {
+		packet, line, general, qualify, fast := b.image == "packet", b.image == "line", b.image == "general", b.image == "qualify", b.image == "fast"
 		switch s {
+		case 64:
+			return map[bool]uint16{true: 0x5301}[general] | map[bool]uint16{true: 0x5302}[fast], nil
 		case 43:
 			return 0x454e, nil
 		case 47:
@@ -107,6 +109,16 @@ func (f *packetImages) LoadQualify() error {
 
 // TRLC-LINKS: REQ-SDS-011
 func (f *packetImages) HasQualify() bool { return true }
+
+// TRLC-LINKS: REQ-SDS-229
+func (f *packetImages) LoadFast() error {
+	f.loads = append(f.loads, "fast")
+	f.b.image = "fast"
+	return nil
+}
+
+// TRLC-LINKS: REQ-SDS-229
+func (f *packetImages) HasFast() bool { return true }
 
 // TRLC-LINKS: REQ-SDS-005
 func (f *packetImages) LoadGeneral() error {
@@ -306,5 +318,37 @@ func TestARINCLevelsWaitForASampledRecord(t *testing.T) {
 	e.noteARINCLevels(&Frame{C1: codes, C2: codes, Valid: len(codes), SampleS: 1e-6, Decimation: 1})
 	if e.arincAux.Load() == 0 {
 		t.Fatal("no levels from a sampled record")
+	}
+}
+
+// SPI past the general image's level receiver loads the fast image, whose
+// receiver on the samples takes it with its gap and the channels' phase; a
+// slower clock stays on the general image.
+// TRLC-LINKS: REQ-SDS-229
+func TestFastImageTakesFastSPI(t *testing.T) {
+	e, b, images := newPacketTestEngine(t)
+	e.SetSerialParams(SerialParams{Proto: serSPI, SPIClockHz: 1000000, ChA: 1, ChB: 0, MSB: true, HaveThr: true, Threshold: 128, Bytes: []int{0x4f}})
+	e.SetSerialMode(SerialTrigger)
+	if e.serviceImage() || b.image != "general" || !e.hardwareSPI || e.hardwareSampleSPI {
+		t.Fatalf("1 MHz left the general image: %v", images.loads)
+	}
+	if cfg, _, _, _, _ := e.sramConfig(); !cfg.SPI.Enabled || cfg.SPI.GapTicks != 188 || cfg.SPI.Delay != 0 {
+		t.Fatalf("1 MHz plan %+v", cfg.SPI)
+	}
+	e.SetSerialParams(SerialParams{Proto: serSPI, SPIClockHz: 104000000, ChA: 1, ChB: 0, MSB: true, HaveThr: true, Threshold: 128, Bytes: []int{0x4f}})
+	if !e.serviceImage() || b.image != "fast" || e.protocolImage != imageFast || !e.hardwareSampleSPI || !e.rawOnly {
+		t.Fatalf("104 MHz: loads %v image %s", images.loads, b.image)
+	}
+	cfg, _, _, _, _ := e.sramConfig()
+	if !cfg.Normal || cfg.TriggerChannel != 1 || cfg.TriggerLevel != 128 ||
+		cfg.SPI != (sramcapture.SPITriggerConfig{Enabled: true, ClockChannel: 1, MSB: true, GapTicks: 4, Pattern: 0x4f, Length: 1, Delay: 23}) {
+		t.Fatalf("104 MHz plan %+v", cfg.SPI)
+	}
+	if hardwareSerialName(cfg) != "spi" {
+		t.Fatalf("backend %q", hardwareSerialName(cfg))
+	}
+	e.SetSerialParams(SerialParams{Proto: serSPI, SPIClockHz: 1000000, ChA: 1, ChB: 0, MSB: true, HaveThr: true, Threshold: 128})
+	if !e.serviceImage() || b.image != "general" || strings.Join(images.loads, ",") != "fast,general" {
+		t.Fatalf("back to 1 MHz: loads %v", images.loads)
 	}
 }

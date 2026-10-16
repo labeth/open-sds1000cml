@@ -321,6 +321,7 @@ type Engine struct {
 	hardwareUART          bool      // immutable while runSRAM owns the loaded image
 	hardwareI2C           bool
 	hardwareSPI           bool
+	hardwareSampleSPI     bool // the SPI receiver on the samples (spi_sample.v)
 	hardwareSENT          bool
 	hardwareMIL1553       bool
 	hardwareUSBLS         bool

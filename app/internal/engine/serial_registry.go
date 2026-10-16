@@ -72,7 +72,7 @@ func init() {
 			return decode.DecodeI2C(a, b, sampleS, decode.I2CCfg{Inverted: p.Inverted, Threshold: p.Threshold, HaveThr: p.HaveThr})
 		}, Match: matchI2C},
 		{ID: serSPI, Name: "SPI", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
-			return decode.DecodeSPI(a, b, sampleS, decode.SPICfg{Inverted: p.Inverted, CPOL: p.CPOL, CPHA: p.CPHA, MSB: p.MSB, Threshold: p.Threshold, HaveThr: p.HaveThr})
+			return decode.DecodeSPI(a, b, sampleS, decode.SPICfg{Inverted: p.Inverted, CPOL: p.CPOL, CPHA: p.CPHA, MSB: p.MSB, Threshold: p.Threshold, HaveThr: p.HaveThr, DataLag: decode.SPIDataLag(p.ChA, sampleS)})
 		}, Match: byteMatch},
 		{ID: serManchester, Name: "Manchester", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
 			return decode.DecodeManchester(a, sampleS, decode.ManchesterCfg{Bitrate: p.Baud, IEEE: p.IEEE, MSB: p.MSB, Bits: p.Bits, Threshold: p.Threshold, HaveThr: p.HaveThr})

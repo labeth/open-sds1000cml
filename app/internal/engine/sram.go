@@ -338,6 +338,7 @@ func (e *Engine) sramConfig() (sramcapture.Config, SRAMPlan, float64, bool, trig
 			e.ser.mu.Lock()
 			serial := e.ser.params
 			e.ser.mu.Unlock()
+			e.spiQuietCheck(serial)
 			// The matcher slices at the learned level when the request names none.
 			if serial, why := e.serialPlanParams(serial); why != arincOneWord {
 				e.planSerial(&c, serial, tp.typ == TrigEdge && e.serialMode.Load() != SerialTrigger)
@@ -423,7 +424,7 @@ func (e *Engine) planSerial(c *sramcapture.Config, serial SerialParams, fallback
 		c.UART = planHardwareUART(serial)
 	}
 	if e.hardwareSPI {
-		c.SPI = planHardwareSPI(serial)
+		c.SPI = planHardwareSPI(serial, e.hardwareSampleSPI)
 	}
 	if e.hardwareI2C {
 		c.I2C = planHardwareI2C(serial)
@@ -1171,6 +1172,9 @@ acquisitionLoop:
 			f.TriggerKind = "hardware-" + name
 			if qualified {
 				e.serialMatches.Add(1)
+				if cfg.SPI.Enabled && e.clk.Now != nil {
+					e.serLv.spiQuiet.Store(e.clk.Now().UnixNano())
+				}
 				hw := f.EdgeX
 				if at := e.serialMatchStart(f, f.EdgeX); at >= 0 {
 					e.serLv.shiftS.Store(math.Float64bits((f.EdgeX - at) * f.SampleS))

@@ -69,7 +69,9 @@ function computeDecode() {
   else if (dcfg.proto === "i2c")
     r = decodeI2C(decCodes(dcfg.scl), decCodes(dcfg.sda), colTimeS, cfg);
   else if (dcfg.proto === "spi")
-    r = decodeSPI(decCodes(dcfg.clk), decCodes(dcfg.data), colTimeS, Object.assign(cfg, { cpol: dcfg.cpol, cpha: dcfg.cpha, bitOrder: dcfg.msb ? "msb" : "lsb" }));
+    // dataLag: C2 samples 23/16 ns after C1 (decode.ChannelPhase16), in samples
+    r = decodeSPI(decCodes(dcfg.clk), decCodes(dcfg.data), colTimeS, Object.assign(cfg, { cpol: dcfg.cpol, cpha: dcfg.cpha, bitOrder: dcfg.msb ? "msb" : "lsb",
+      dataLag: colTimeS > 0 ? (dcfg.clk === 2 ? 1 : -1) * 23 / 16e9 / colTimeS : 0 }));
   else if (dcfg.proto === "manchester") // single line, self-clocking (auto bit rate)
     r = decodeManchester(decCodes(dcfg.line), colTimeS, Object.assign(cfg, { bitrate: dcfg.baud > 0 ? dcfg.baud : 0, ieee: true, msb: true, bits: dcfg.bits || 8, haveThr: !dcfg.auto }));
   else if (dcfg.proto === "sent") // single line, tick auto-derived from the 56-tick sync

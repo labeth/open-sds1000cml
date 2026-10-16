@@ -512,7 +512,12 @@ function decodeSPI(clk, data, colTimeS, cfg) {
   let pSum = 0, pCnt = 0;
   for (const g of sgaps) if (Math.abs(g - period) <= 0.5 * period) { pSum += g; pCnt++; }
   if (pCnt) period = pSum / pCnt;
-  if (period < 6) return fail("spi", period.toFixed(1) + " cols/clock; too few samples/bit", { colsPerClock: period });
+  // Under six samples a clock period, on the converters' own samples (2 ns or
+  // finer), the data line is taken at the clock's interpolated crossing plus
+  // cfg.dataLag (the channels' sampling phase), as the FPGA's receiver on the
+  // samples does. Mirrors decode_i2c_spi.go.
+  const fine = period < 6 && colTimeS <= 2.05e-9, dataLag = +cfg.dataLag || 0;
+  if ((period < 6 && !fine) || period < 3.5) return fail("spi", period.toFixed(1) + " cols/clock; too few samples/bit", { colsPerClock: period });
   // With no CS to frame bytes, re-align on a clock-idle gap: consecutive
   // sampling edges are one clock period apart within a burst; a gap longer than
   // ~1.5 typical periods means a new transaction, so restart the byte.
@@ -532,9 +537,10 @@ function decodeSPI(clk, data, colTimeS, cfg) {
     if (pck < 0) continue;
     const rising = pck === 0 && ck === 1, falling = pck === 1 && ck === 0;
     if ((sampleRising && rising) || (!sampleRising && falling)) {
-      const bit = logicAt(DA, i);
+      const at = fine ? crossingAt(CK, i, rising) + dataLag : i;
+      const bit = logicAt(DA, at);
       if (bit < 0) continue;
-      const cd = DA.codes[i];
+      const cd = DA.codes[Math.round(at)];
       if (cd >= 0) { mSum += Math.min(1, Math.abs(cd - DA.threshold) / halfAmp); mN++; }
       if (lastSample >= 0 && i - lastSample > gapReset && bitCount > 0) { bitCount = 0; val = 0; } // idle gap → new frame
       lastSample = i;
@@ -550,6 +556,18 @@ function decodeSPI(clk, data, colTimeS, cfg) {
   }
   return { ok: true, error: null, proto: "spi", spans, text: toks.join(" "), bytes,
     meta: { cpol, cpha, sampleOnRising: sampleRising, bitOrder: msb ? "msb" : "lsb", noCS: true, colsPerClock: period, threshold: CK.threshold, sampleMargin: mN ? mSum / mN : 0 } };
+}
+
+// crossingAt: where a sliced line crossed its threshold before the sample i
+// its level changed on, linear between the two samples around the threshold
+// (decode_i2c_spi.go crossingAt).
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-229
+function crossingAt(s, i, rising) {
+  let j = i;
+  while (j > 0 && s.codes[j - 1] >= 0 && (s.codes[j - 1] >= s.threshold) === rising) j--;
+  if (j === 0 || s.codes[j] < 0 || (s.codes[j] >= s.threshold) !== rising || s.codes[j - 1] < 0) return i;
+  const a = s.codes[j - 1], b = s.codes[j];
+  return j - 1 + (s.threshold - a) / (b - a);
 }
 
 // decode: dispatcher used by node tests. frame = { c1, c2, col_span_s }.

@@ -6,6 +6,7 @@ import (
 	"math"
 	"strings"
 	"testing"
+	"time"
 
 	"open-sds/app/internal/sramcapture"
 )
@@ -73,7 +74,7 @@ func TestLearnedLevelPlansTheHardwareMatcher(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-013
 func TestSPIClockRateFromTheClockLine(t *testing.T) {
 	clk, data := spiWave([]int{0x55, 0xaa, 0x0f}, 10) // 20-sample clock periods
-	if hz := clockRate(clk, 1e-8); math.Abs(hz-5e6) > 1 {
+	if hz := clockRate(clk, 1e-8, false); math.Abs(hz-5e6) > 1 {
 		t.Fatalf("clock %v Hz, want 5 MHz", hz)
 	}
 	e := levelsEngine(SerialParams{Proto: serSPI, ChA: 0, ChB: 1, MSB: true, Bytes: []int{0x55}})
@@ -290,5 +291,57 @@ func TestWordPatternsGroupByUnit(t *testing.T) {
 	}
 	if _, why := e.serialPlanParams(SerialParams{Proto: serARINC, Baud: 100000, HaveThr: true, Threshold: 128, Bytes: []int{0x00, 0xAB, 0xCD, 0x01, 0x23, 0x45}}); why != arincOneWord {
 		t.Fatal("two ARINC 429 words planned without a word")
+	}
+}
+
+// A clock of a non-integer number of samples (104 MHz at 2 ns: 4.8) reads at
+// its rate, and a learned clock the hardware has not triggered on for two
+// seconds is measured again from one untriggered capture: a slower bus is
+// learned and planned, the faster plan's gap would split its every byte.
+// TRLC-LINKS: REQ-SDS-013, REQ-SDS-229
+func TestSPIClockMeasuredAgainWhenQuiet(t *testing.T) {
+	square := func(n int, period float64) []uint8 {
+		c := make([]uint8, n)
+		for i := range c {
+			if math.Mod(float64(i), period) < period/2 {
+				c[i] = 200
+			} else {
+				c[i] = 50
+			}
+		}
+		return c
+	}
+	if hz := clockRate(square(4000, 4.8), 2e-9, false); math.Abs(hz-104.17e6) > 1e6 {
+		t.Fatalf("104 MHz clock read as %v", hz)
+	}
+	// Bucket extremes two entries a bucket: alternating, a clock unresolved.
+	if hz := clockRate(square(4000, 4), 16e-9, true); hz != 0 {
+		t.Fatalf("peak-detect alternation read as a %v Hz clock", hz)
+	}
+	if hz := clockRate(square(4000, 20), 16e-9, true); math.Abs(hz-3.125e6) > 1e3 {
+		t.Fatalf("a resolved clock in bucket extremes read as %v", hz)
+	}
+	now := time.Unix(1000, 0)
+	e := levelsEngine(SerialParams{Proto: serSPI, ChA: 1, ChB: 0, MSB: true, Bytes: []int{0x4f}})
+	e.clk = Clock{Now: func() time.Time { return now }, Sleep: func(time.Duration) {}}
+	e.hardwareSampleSPI = true
+	sc := [2]chScale{{1, 0}, {1, 0}}
+	fast := square(4000, 4.8)
+	e.learnSerialLevels(&Frame{C1: fast, C2: fast, Valid: len(fast), SampleS: 2e-9}, sc)
+	c, _, _, _, _ := e.sramConfig()
+	if !c.SPI.Enabled || c.SPI.GapTicks != 4 {
+		t.Fatalf("104 MHz: %+v", c.SPI)
+	}
+	now = now.Add(3 * time.Second)
+	if c, _, _, _, _ = e.sramConfig(); c.SPI.Enabled {
+		t.Fatalf("a quiet learned clock stayed planned: %+v", c.SPI)
+	}
+	if _, why := e.serialPlanParams(e.ser.params); why != spiMeasuring {
+		t.Fatalf("plan while measuring again: %q", why)
+	}
+	slow := square(4000, 25) // 10 MHz at 4 ns
+	e.learnSerialLevels(&Frame{C1: slow, C2: slow, Valid: len(slow), SampleS: 4e-9}, sc)
+	if c, _, _, _, _ = e.sramConfig(); !c.SPI.Enabled || c.SPI.GapTicks != 19 {
+		t.Fatalf("10 MHz after measuring again: %+v", c.SPI)
 	}
 }

@@ -68,3 +68,25 @@ func TestHardwareSPIRejectsInvalidConfiguration(t *testing.T) {
 		}
 	}
 }
+
+// The receiver on the samples takes the data line's delay in register 57;
+// the level receiver has no such register and is not written there.
+// TRLC-LINKS: REQ-SDS-229
+func TestHardwareSampleSPIDelay(t *testing.T) {
+	for _, capability := range []uint16{0x5302, 0x5301} {
+		f := frozenBus()
+		f.revision = 10
+		c := client(t, f)
+		c.bus = spiBus{f, capability}
+		if ok, err := c.SupportsSampleSPI(); err != nil || ok != (capability == 0x5302) {
+			t.Fatalf("capability %x: sample receiver %v %v", capability, ok, err)
+		}
+		cfg := Config{Normal: true, PostWords: 16, SPI: SPITriggerConfig{Enabled: true, ClockChannel: 1, MSB: true, GapTicks: 4, Pattern: 0x4f50, Length: 2, Delay: -23}}
+		if err := c.Arm(context.Background(), cfg); err != nil {
+			t.Fatal(err)
+		}
+		if v, ok := f.staged[57]; ok != (capability == 0x5302) || (ok && v != 0xe9) {
+			t.Fatalf("capability %x: register 57 = %x (%v)", capability, v, ok)
+		}
+	}
+}

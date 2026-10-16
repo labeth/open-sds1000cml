@@ -1,7 +1,7 @@
 // ENGMODEL-OWNER-UNIT: FU-FPGA-BUILD
 // Builds one FPGA image for the EP4CE10F17C8 with headless Quartus 21.1 Lite:
 //
-//   node --experimental-strip-types fpga/build.ts --image=general|packet|line|qualify|stacking|stream [--seed=N] [--prepare-only] [--install]
+//   node --experimental-strip-types fpga/build.ts --image=general|packet|line|qualify|stacking|stream|fast [--seed=N] [--prepare-only] [--install]
 //
 // Every image is common/ (the acquisition top, SRAM record and transport, ADC
 // interleave, panel scan, clocks and GPMC) plus its own decoders or engine:
@@ -21,7 +21,7 @@ const args=process.argv.slice(2);
 const flag=(f:string)=>args.includes(f);
 const value=(k:string)=>args.find(a=>a.startsWith(k+'='))?.slice(k.length+1);
 if(args.some(a=>!['--prepare-only','--install'].includes(a) && !/^--image=\w+$/.test(a) && !/^--seed=\d+$/.test(a)))
- throw Error('usage: build.ts --image=general|packet|line|qualify|stacking|stream [--seed=N] [--prepare-only] [--install]');
+ throw Error('usage: build.ts --image=general|packet|line|qualify|stacking|stream|fast [--seed=N] [--prepare-only] [--install]');
 
 type Image={dir:string,files:string[],defines:string[],seed:number,trigger:boolean,precision:boolean,bare?:boolean};
 // Shared by every image (the stacking build used the same PLL text).
@@ -39,6 +39,10 @@ const images:Record<string,Image>={
   defines:['TRIG_ARINC','TRIG_CAN','TRIG_FLEXRAY','TRIG_MIL','TRIG_SENT','SEQUENCE_ONLY'],seed:6,trigger:true,precision:false},
  line:{dir:'images/line',files:['manchester_receive.v','manchester_trigger.v','usbls_trigger.v','protocol_scratch.v'],
   defines:['TRIG_MAN','TRIG_USB','SEQUENCE_ONLY'],seed:7,trigger:true,precision:false},
+ // ADR-SAMPLE-DOMAIN-SPI: SPI decoded and triggered on the samples to a
+ // 125 MHz clock (sample_edges.v, spi_sample.v); the general image has no
+ // room for it at 250 MHz. Raw samples only, with the sequence trigger.
+ fast:{dir:'images/fast',files:['sample_edges.v','spi_sample.v'],defines:['TRIG_SPI','SPI_SAMPLES'],seed:2,trigger:true,precision:false},
  // ADR-STREAM-IMAGE: continuous capture for roll and loss-free streaming; no
  // protocol decoders, so the packetizer, banks and precision decimation fit.
  // STREAM_DRUM: the stream goes through the external SRAM as a FIFO, whose

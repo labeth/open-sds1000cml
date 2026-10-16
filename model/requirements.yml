@@ -3882,3 +3882,26 @@ requirements:
     with it; its push and Run/Stop stop and restart the stream; Position's push turns Position to scrolling the
     transcript; Zoom shows a stopped stream's list or its record's waveform. A detection or AUTO ends the stream for
     its sweep and the view streams the bus it leaves. The web page's BUS view follows the scope's view.
+- id: REQ-SDS-229
+  title: SPI decoded on the samples
+  text: The instrument shall decode two-wire SPI in the FPGA from the converters' samples, timing each clock edge by
+    interpolation between samples, and trigger on the decoded bytes for clock rates up to 104 MHz.
+  status: draft
+  category: functional
+  appliesTo:
+  - FU-RTL-ACQ-SRAM-TOP
+  - FU-APP-DECODE
+  - FU-APP-ENGINE
+  - FU-APP-SRAMCAPTURE
+  verificationMethods:
+  - test
+  verificationCriteria: The Go model of the receiver decodes synthetic buses at 1, 10, 25, 50, 75 and 104 MHz in all
+    four modes, both bit orders and inverted, and records of the bench source at 10 to 104 MHz, without a bit error;
+    the RTL (sample_edges.v, spi_sample.v) finds the model's edges and publishes its events and matches on the same
+    clocks; the planner takes 104 MHz to the receiver with its gap and the channels' phase. On the device, a byte
+    trigger on the bench source fires once a burst at 10, 25, 50, 75 and 104 MHz and the decoded bytes match the
+    source.
+  notes: Four samples a channel per 125 MHz receiver clock; a crossing is the first sample at or past the level
+    after one beyond the re-arm band, timed in sixteenths of a nanosecond; the data line is taken at the sample
+    nearest the crossing plus the channels' sampling phase (C2 1.44 ns after C1). One sampling edge a receiver
+    clock bounds the clock at 125 MHz. Frames are split by an idle gap, as the level receiver's were.

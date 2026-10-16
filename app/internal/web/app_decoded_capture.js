@@ -94,7 +94,14 @@ function dsConfig() {
     else {
       const hz = +$("dsClock").value || p.spiClockHz;
       if (!Number.isFinite(hz) || hz <= 0) throw Error("Enter the SPI clock frequency.");
-      cfg.spi = { enabled: true, clock_channel: p.chA, inverted: p.inverted, cpol: p.cpol, cpha: p.cpha, msb: p.msb, gap_ticks: Math.round(1.5 * 125e6 / hz), pattern, length: p.bytes.length };
+      // A gap of 1.5 clock periods; under nine receiver clocks (a clock past
+      // about 20 MHz) the fast image's receiver on the samples (spi_sample.v)
+      // takes it, with a gap at least two clocks past one period and the data
+      // line at the clock's crossing, C2 sampling 23/16 ns after C1.
+      const period = 125e6 / hz, gap = Math.round(1.5 * period);
+      cfg.spi = { enabled: true, clock_channel: p.chA, inverted: p.inverted, cpol: p.cpol, cpha: p.cpha, msb: p.msb,
+        gap_ticks: gap, pattern, length: p.bytes.length };
+      if (gap < 9) Object.assign(cfg.spi, { gap_ticks: Math.max(gap, Math.ceil(period) + 2), delay: p.chA === 1 ? 23 : -23 });
     }
   }
   return cfg;

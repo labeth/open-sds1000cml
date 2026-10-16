@@ -418,8 +418,12 @@ ARINC 429 or MIL-1553 word at its label or sync. Until a placement has been lear
 before the trigger what the match covers: a frame start's four units (a SENT frame's SYNC and first
 nibble), else the matched units, which end at the trigger (an ARINC 429 word of 320 us). The BUS header counts the packets the match holds ("TRIG ON SOF ??: 2 packets"; SOF is a
 packet's start, CMD a MIL-1553 message's command word) and the trigger read-out writes the match as
-typed ("T SER SOF ??"). The packet and line images (Manchester, USB, SENT, CAN, FlexRay, MIL-1553,
-ARINC 429) record raw samples only, one SRAM of 2.1 ms: on them the timebase goes no slower than
+typed ("T SER SOF ??"). SPI whose clock is past the general image's level receiver (about 20 MHz) loads
+the fast image, whose receiver works on the samples (ADR-SAMPLE-DOMAIN-SPI) to a 125 MHz clock: the clock
+is measured from a capture that resolves it (a full-rate timebase, 1 us/div or faster for 50 MHz and up) and
+kept at slower ones; one that has not triggered for 2 s is measured again from one untriggered capture,
+so a bus that slowed is learned anew. The packet, line and fast images (Manchester, USB, SENT, CAN,
+FlexRay, MIL-1553, ARINC 429, fast SPI) record raw samples only, one SRAM of 2.1 ms: on them the timebase goes no slower than
 200us/div, whose screen that record fills ("200us/div at most on this trigger: its image records
 2.1ms", also when a trigger armed at a slower timebase brings the image in). BUS entry's detection sets the same trigger. AUTO in the other workspaces is the autoset framed
 for the workspace's job (REQ-SDS-224). Either sweep first puts the trigger back to an edge and waits for the

@@ -2282,3 +2282,36 @@ decisions:
   - The match tokens gain SOF (a frame's start) and CMD (a MIL-1553 command word), on the LCD, the web and in saved
     setups.
   - The UART frame start loads the qualifier image; with no idle between messages the edge trigger stays.
+- id: ADR-SAMPLE-DOMAIN-SPI
+  title: SPI is decoded on the samples in a fast image
+  status: accepted
+  date: '2026-10-16'
+  context: 'The owner''s rule: every trigger is decided in the FPGA. The general image''s SPI receiver samples the
+    lines as levels on the 125 MHz receiver clock, so a bit needs several of its 8 ns ticks and the planner stops at a
+    clock of about 20 MHz; SPI flash runs to 104 MHz. The converters sample each channel every 2 ns (C2 1.44 ns after
+    C1), and a record of a 104 MHz bus decodes without error when the clock''s crossings are interpolated between
+    samples and the data line is read at them. The general image holds 97 percent of the logic and meets 250 MHz
+    timing by a few picoseconds: with a receiver on the samples in place of its level receiver it fitted, but nine
+    builds (seeds 1 to 8, two layouts) missed timing by 0.1 to 0.9 ns on its own record and command paths.'
+  decision: 'A receiver on the samples: sample_edges.v pairs the 250 MHz acquisition words for the 125 MHz receiver
+    clock (four samples a channel), finds the clock line''s sampling edges (the first sample at or past the level
+    after one beyond the trigger''s re-arm band, at most one a clock), times each crossing by linear interpolation in
+    sixteenths of a nanosecond and reads the data line at the sample nearest the crossing plus a delay (register 57:
+    the channels'' sampling phase); spi_sample.v frames bytes by the idle gap and publishes the level receiver''s events
+    and match, so the decoded-event transport and the sequence trigger are unchanged. It runs in an image of its own,
+    fast: the protocol foundation with this receiver only, raw samples, no precision decimation (70 percent of the
+    logic). The engine loads it for an SPI request its level receiver cannot plan (a gap under nine receiver clocks),
+    as the packet and line images are loaded; a decoded capture asks for it with such a gap or a data delay. The Go
+    model of the receiver (decode/spi_sample.go) is its pipeline clock for clock, checked against the RTL in
+    simulation. The software decoders take the data line at the clock''s interpolated crossing under six samples a
+    clock period, so the BUS view reads what the trigger matched.'
+  consequences:
+  - An SPI trigger past about 20 MHz costs an image switch, and its captures are raw-only; below it SPI stays on the
+    general image's level receiver with UART and I2C, unchanged.
+  - One sampling edge a receiver clock bounds the clock at 125 MHz; the trigger fires about 90 ns after the byte's
+    last sampling edge (the receiver's eight clocks and the crossing to the record), and software places it on
+    the match as for every serial trigger.
+  - The data line is read at the crossing plus the channels' phase, the middle of a bit whose data changes on the
+    other clock edge; a source whose data lags its clock by much of a half period needs the delay moved.
+  - The extractor gives UART and I2C (and the packet decoders' lines) their edges at sample resolution when they move
+    onto it.

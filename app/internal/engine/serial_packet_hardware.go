@@ -166,7 +166,8 @@ func (e *Engine) probeSerialHardware() {
 		fn   func() (bool, error)
 	}{
 		{"UART", &e.hardwareUART, e.sram.SupportsUART}, {"I2C", &e.hardwareI2C, e.sram.SupportsI2C},
-		{"SPI", &e.hardwareSPI, e.sram.SupportsSPI}, {"SENT", &e.hardwareSENT, e.sram.SupportsSENT},
+		{"SPI", &e.hardwareSPI, e.sram.SupportsSPI}, {"SPI on the samples", &e.hardwareSampleSPI, e.sram.SupportsSampleSPI},
+		{"SENT", &e.hardwareSENT, e.sram.SupportsSENT},
 		{"USB", &e.hardwareUSBLS, e.sram.SupportsUSBLS}, {"MIL-STD-1553", &e.hardwareMIL1553, e.sram.SupportsMIL1553},
 		{"Manchester", &e.hardwareManchester, e.sram.SupportsManchester},
 		{"sequence", &e.hardwareSequence, e.sram.SupportsSequence},
@@ -197,17 +198,26 @@ const (
 	// imageStream is the continuous-capture image roll mode runs on
 	// (ADR-STREAM-IMAGE).
 	imageStream = "stream"
+	// imageFast has SPI on the samples to a 125 MHz clock
+	// (ADR-SAMPLE-DOMAIN-SPI).
+	imageFast = "fast"
 )
 
 // protocolImage names the image whose hardware triggers p, or "" for the
-// general image with UART, I2C and SPI (ADR-IMAGE-REGROUP-DECIMATION).
-// TRLC-LINKS: REQ-SDS-013
+// general image with UART, I2C and SPI (ADR-IMAGE-REGROUP-DECIMATION). An SPI
+// clock past the general image's level receiver (about 20 MHz) runs on the
+// fast image's receiver on the samples (ADR-SAMPLE-DOMAIN-SPI).
+// TRLC-LINKS: REQ-SDS-013, REQ-SDS-229
 func protocolImage(p SerialParams) string {
 	switch p.Proto {
 	case serManchester, serUSB:
 		return imageLine
 	case serCAN, serARINC, serFlexRay, serMIL1553, serSENT:
 		return imagePacket
+	case serSPI:
+		if !planHardwareSPI(p, false).Enabled && planHardwareSPI(p, true).Enabled {
+			return imageFast
+		}
 	}
 	return ""
 }
@@ -224,13 +234,15 @@ func (e *Engine) hasImage(name string) bool {
 		return e.images.HasStream()
 	case imageQualify:
 		return e.images.HasQualify()
+	case imageFast:
+		return e.images.HasFast()
 	}
 	return true
 }
 
-// wantImage: a hardware-plannable Manchester, CAN, ARINC or FlexRay trigger
-// needs its protocol image; everything else runs on the general image, which
-// also keeps precision decimation.
+// wantImage: a hardware-plannable Manchester, CAN, ARINC or FlexRay trigger,
+// or SPI past the level receiver, needs its protocol image; everything else
+// runs on the general image, which also keeps precision decimation.
 // TRLC-LINKS: REQ-SDS-013
 func (e *Engine) wantImage() string {
 	if e.images == nil {
@@ -261,8 +273,14 @@ func (e *Engine) wantImage() string {
 	e.ser.mu.Unlock()
 	// The request as the matcher takes it: a threshold the engine learned
 	// (a request from the scope names none) makes it plannable.
-	p, _ = e.serialPlanParams(p)
-	if name := protocolImage(p); name != "" && serialThresholdOK(p) && e.hasImage(name) {
+	p, why := e.serialPlanParams(p)
+	// An SPI clock measured again stays on the image it ran on: the fast
+	// image's captures measure it as well, without two loads.
+	if why == spiMeasuring && e.protocolImage == imageFast {
+		return imageFast
+	}
+	// (protocolImage plans SPI itself: its clock, not a baud.)
+	if name := protocolImage(p); name != "" && (name == imageFast || serialThresholdOK(p)) && e.hasImage(name) {
 		return name
 	}
 	return ""
@@ -304,6 +322,8 @@ func (e *Engine) loadImage(name string) bool {
 		load = e.images.LoadStream
 	case imageQualify:
 		load = e.images.LoadQualify
+	case imageFast:
+		load = e.images.LoadFast
 	}
 	shown := name
 	if shown == "" {

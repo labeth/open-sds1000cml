@@ -180,12 +180,17 @@ func (e *Engine) BeginDecodedCapture(ctx context.Context, cfg sramcapture.Config
 func (e *Engine) beginDecodedCapture(ctx context.Context, cfg sramcapture.Config, lineProto int, web bool) (sramcapture.RecordIdentity, error) {
 	value, err := e.decodedCall(ctx, func() (any, error) {
 		e.decodedStarting = time.Time{} // the session (or its failure) takes over the image
-		// Only UART, I2C and SPI stream from the general image.
+		// Only UART, I2C and SPI stream from the general image; SPI framed
+		// tighter than its level receiver takes (a clock past about 20 MHz),
+		// or with a data delay (the receiver on the samples), streams from
+		// the fast image.
 		want := ""
 		if cfg.Packet.Enabled || cfg.MIL1553.Enabled || cfg.SENT.Enabled {
 			want = imagePacket
 		} else if cfg.Manchester.Enabled || cfg.USBLS.Enabled {
 			want = imageLine
+		} else if cfg.SPI.Enabled && (cfg.SPI.GapTicks < 9 || cfg.SPI.Delay != 0) {
+			want = imageFast
 		}
 		if e.images != nil && e.hasImage(want) && want != e.protocolImage {
 			if err := e.sram.Halt(ctx); err != nil {

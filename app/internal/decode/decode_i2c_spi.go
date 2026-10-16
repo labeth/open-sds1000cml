@@ -25,6 +25,11 @@ type SPICfg struct {
 	Format     string
 	Threshold  float64
 	HaveThr    bool
+	// DataLag is how far the data line's samples sit before the clock
+	// line's, in samples: under six samples a clock period the data line is
+	// taken at the clock's interpolated crossing plus DataLag (the channels'
+	// sampling phase, C2 0.72 samples after C1 at 2 ns).
+	DataLag float64
 }
 
 // DecodeI2C decodes I2C given SCL + SDA codes (decode.js decodeI2C).
@@ -219,7 +224,15 @@ func DecodeSPI(clk, data []uint8, colTimeS float64, cfg SPICfg) Result {
 	if cnt > 0 {
 		period = sum / float64(cnt)
 	}
-	if period < 6 {
+	// Under six samples a clock period (past about 80 MHz at 2 ns) the first
+	// sample past the clock's crossing lies up to a third of a bit late: the
+	// data line is taken at the crossing itself, interpolated between the two
+	// samples around the threshold, as the FPGA's receiver on the samples
+	// takes it (spi_sample.go). Only on the converters' own samples (2 ns or
+	// finer): decimated samples are filtered across the edges, and a capture
+	// at the full rate reads the bus.
+	fine := period < 6 && colTimeS <= 2.05e-9
+	if period < 6 && !fine || period < 3.5 {
 		return Result{Proto: "spi", Error: fmt.Sprintf("%.1f cols/clock; too few samples/bit", period)}
 	}
 	gapReset := 1.5 * period
@@ -244,11 +257,15 @@ func DecodeSPI(clk, data []uint8, colTimeS float64, cfg SPICfg) Result {
 		rising := pck == 0 && ck == 1
 		falling := pck == 1 && ck == 0
 		if (sampleRising && rising) || (!sampleRising && falling) {
-			bit := logicAt(DA, float64(i))
+			at := float64(i)
+			if fine {
+				at = crossingAt(CK, i, rising) + cfg.DataLag
+			}
+			bit := logicAt(DA, at)
 			if bit < 0 {
 				continue
 			}
-			mSum += math.Min(1, math.Abs(float64(DA.codes[i])-DA.threshold)/halfAmp)
+			mSum += math.Min(1, math.Abs(float64(DA.codes[int(math.Round(at))])-DA.threshold)/halfAmp)
 			mN++
 			if lastSample >= 0 && float64(i-lastSample) > gapReset && bitCount > 0 {
 				bitCount, val = 0, 0 // idle gap → new frame
@@ -277,4 +294,21 @@ func DecodeSPI(clk, data []uint8, colTimeS float64, cfg SPICfg) Result {
 	}
 	return Result{OK: true, Proto: "spi", Spans: spans, Text: strings.Join(toks, " "),
 		Bytes: bytes, SPB: period, Thr: CK.threshold, Margin: margin}
+}
+
+// crossingAt is where a sliced line crossed its threshold before the sample
+// i its level changed on, in samples: linear between the two samples around
+// the threshold.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-229
+func crossingAt(s sliced, i int, rising bool) float64 {
+	past := func(j int) bool { return (float64(s.codes[j]) >= s.threshold) == rising }
+	j := i
+	for j > 0 && past(j-1) {
+		j--
+	}
+	if j == 0 || !past(j) {
+		return float64(i)
+	}
+	a, b := float64(s.codes[j-1]), float64(s.codes[j])
+	return float64(j-1) + (s.threshold-a)/(b-a)
 }

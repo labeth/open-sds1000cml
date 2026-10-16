@@ -32,6 +32,9 @@ type ImageSwitcher interface {
 	// (ADR-HARDWARE-QUALIFIERS).
 	LoadQualify() error
 	HasQualify() bool
+	// LoadFast loads the image with SPI on the samples (ADR-SAMPLE-DOMAIN-SPI).
+	LoadFast() error
+	HasFast() bool
 }
 
 // FPGAStackRequest stacks Records fresh captures at the current timebase, raw

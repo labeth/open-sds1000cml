@@ -440,11 +440,21 @@ module acq_sram_top(
  assign uart_match=0,uart_byte_valid=0,uart_frame_error=0,uart_byte=0;
 `endif
 `ifdef TRIG_SPI
+`ifdef SPI_SAMPLES
+ // ADR-SAMPLE-DOMAIN-SPI: the receiver on the samples (spi_sample.v), to a
+ // 125 MHz clock; register 57 holds the data line's delay, 1/16 ns.
+ reg [7:0] spi_delay=8'd23;
+ spi_sample_trigger spi(.core(core),.clk(halfclk),.reset(protocol_receiver_reset),.enable(!man_cfg_rx[0] && !usb_cfg_rx[0] && spi_cfg_rx[0] && !sent_cfg_rx[0] && !mil_cfg_rx[0]),
+  .word(il_raw_word),.valid(frontend_run && il_raw_valid),.clock_ch(spi_cfg_rx[1]),.inverted(spi_cfg_rx[2]),.cpol(spi_cfg_rx[3]),.cpha(spi_cfg_rx[4]),.msb(spi_cfg_rx[5]),
+  .level(level_l),.low(level_low_l),.high(level_high_l),.delay(spi_delay),.gap_ticks(protocol_ticks_rx),.pattern(protocol_pattern_rx[31:0]),.pattern_len(`NATIVE_LEN(spi_cfg_rx[8:6])),
+  .match(spi_match),.event_valid(spi_event_valid),.event_kind(spi_event_kind),.event_data(spi_event_data));
+`else
  spi_trigger spi(.clk(halfclk),.reset(protocol_receiver_reset),
   .enable(!man_cfg_rx[0] && !usb_cfg_rx[0] && spi_cfg_rx[0] && !sent_cfg_rx[0] && !mil_cfg_rx[0]),.tick(1'b1),.sck(uart_line_sync[1]^spi_cfg_rx[2]),.data(i2c_line_sync[1]^spi_cfg_rx[2]),
   .cpol(spi_cfg_rx[3]),.cpha(spi_cfg_rx[4]),.msb(spi_cfg_rx[5]),.gap_ticks(protocol_ticks_rx),
   .pattern(protocol_pattern_rx[31:0]),.pattern_len(`NATIVE_LEN(spi_cfg_rx[8:6])),.match(spi_match),
   .event_valid(spi_event_valid),.event_kind(spi_event_kind),.event_data(spi_event_data));
+`endif
 `else
  assign spi_match=0,spi_event_valid=0,spi_event_kind=0,spi_event_data=0;
 `endif
@@ -867,6 +877,9 @@ module acq_sram_top(
   64:spi_cfg<=wd;
   65:spi_gap[15:0]<=wd;66:spi_gap[23:16]<=wd[7:0];
   67:spi_pattern[15:0]<=wd;68:spi_pattern[31:16]<=wd;
+`ifdef SPI_SAMPLES
+  57:spi_delay<=wd[7:0];
+`endif
 `endif
 `ifdef ENVELOPE_RECALL
   43:env_bucket_lo<=wd;44:env_control<=wd;45:env_skip_host<=wd[4:0];
@@ -1431,7 +1444,11 @@ module acq_sram_top(
    93:rd=16'h4d01; // MIL-STD-1553 complete 16-bit word with odd parity
 `endif
 `ifdef TRIG_SPI
+`ifdef SPI_SAMPLES
+   64:rd=16'h5302; // SPI on the samples: four modes, both bit orders, idle gap, data delay 57
+`else
    64:rd=16'h5301; // SPI four modes, both bit orders, explicit idle gap
+`endif
 `endif
 `ifdef TRIG_I2C
    53:rd=16'h4901; // I2C seven-bit address/direction, up to four data bytes

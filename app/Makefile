@@ -39,6 +39,10 @@ STREAM_EMBED := internal/fpgaload/stream.rbf
 # decided in the FPGA. Optional until it ships in fpga/bitstreams.
 QUALIFY_RBF ?= $(wildcard ../fpga/bitstreams/qualify.rbf)
 QUALIFY_EMBED := internal/fpgaload/qualify.rbf
+# SPI on the samples (ADR-SAMPLE-DOMAIN-SPI). Optional until it ships in
+# fpga/bitstreams.
+FAST_RBF ?= $(wildcard ../fpga/bitstreams/fast.rbf)
+FAST_EMBED := internal/fpgaload/fast.rbf
 
 .PHONY: all app app-release test vet clean
 
@@ -78,9 +82,13 @@ app-release:
 	  test "$$(stat -c %s "$(QUALIFY_RBF)")" = 368011 || { echo "app-release: $(QUALIFY_RBF) is not a 368011-byte EP4CE10 .rbf"; exit 1; }; \
 	  cp "$(QUALIFY_RBF)" $(QUALIFY_EMBED); \
 	else rm -f $(QUALIFY_EMBED); fi
+	@if [ -n "$(FAST_RBF)" ]; then \
+	  test "$$(stat -c %s "$(FAST_RBF)")" = 368011 || { echo "app-release: $(FAST_RBF) is not a 368011-byte EP4CE10 .rbf"; exit 1; }; \
+	  cp "$(FAST_RBF)" $(FAST_EMBED); \
+	else rm -f $(FAST_EMBED); fi
 	CGO_ENABLED=0 GOOS=linux GOARCH=arm GOARM=7 \
-	  go build -trimpath -tags "withgeneralbitstream$(if $(STACK_RBF), withstackbitstream)$(if $(PACKET_RBF), withpacketbitstream)$(if $(LINE_RBF), withlinebitstream)$(if $(STREAM_RBF), withstreambitstream)$(if $(QUALIFY_RBF), withqualifybitstream)" -ldflags "$(LDFLAGS)" -o $(DIST)/app-arm ./cmd/app
-	@echo "app-release: $(DIST)/app-arm embeds $(RBF) ($$(sha256sum "$(RBF)" | cut -c1-16)…)$(if $(STACK_RBF), stacking image $(STACK_RBF))$(if $(PACKET_RBF), packet image $(PACKET_RBF))$(if $(LINE_RBF), line image $(LINE_RBF))$(if $(STREAM_RBF), stream image $(STREAM_RBF))$(if $(QUALIFY_RBF), qualifier image $(QUALIFY_RBF))"
+	  go build -trimpath -tags "withgeneralbitstream$(if $(STACK_RBF), withstackbitstream)$(if $(PACKET_RBF), withpacketbitstream)$(if $(LINE_RBF), withlinebitstream)$(if $(STREAM_RBF), withstreambitstream)$(if $(QUALIFY_RBF), withqualifybitstream)$(if $(FAST_RBF), withfastbitstream)" -ldflags "$(LDFLAGS)" -o $(DIST)/app-arm ./cmd/app
+	@echo "app-release: $(DIST)/app-arm embeds $(RBF) ($$(sha256sum "$(RBF)" | cut -c1-16)…)$(if $(STACK_RBF), stacking image $(STACK_RBF))$(if $(PACKET_RBF), packet image $(PACKET_RBF))$(if $(LINE_RBF), line image $(LINE_RBF))$(if $(STREAM_RBF), stream image $(STREAM_RBF))$(if $(QUALIFY_RBF), qualifier image $(QUALIFY_RBF))$(if $(FAST_RBF), fast image $(FAST_RBF))"
 
 test:
 	go test ./...

@@ -111,7 +111,7 @@ func Decode(f *engine.Frame, p DecodeParams) decode.Result {
 	case ProtoI2C:
 		res = decode.DecodeI2C(ch(p.ChA), ch(p.ChB), f.SampleS, decode.I2CCfg{Format: p.Format})
 	case ProtoSPI:
-		res = decode.DecodeSPI(ch(p.ChA), ch(p.ChB), f.SampleS, decode.SPICfg{CPOL: p.CPOL, CPHA: p.CPHA, MSB: !p.LSB, Format: p.Format})
+		res = decode.DecodeSPI(ch(p.ChA), ch(p.ChB), f.SampleS, decode.SPICfg{CPOL: p.CPOL, CPHA: p.CPHA, MSB: !p.LSB, Format: p.Format, DataLag: decode.SPIDataLag(p.ChA, f.SampleS)})
 	case ProtoManchester:
 		// MSB first, as Auto found it and the web decodes it (LSB first reads
 		// 12 34 as 48 2C).

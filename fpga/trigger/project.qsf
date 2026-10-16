@@ -403,6 +403,8 @@ set_global_assignment -name VERILOG_FILE uart_trigger.v
 
 set_global_assignment -name VERILOG_FILE i2c_trigger.v
 set_global_assignment -name VERILOG_FILE spi_trigger.v
+set_global_assignment -name VERILOG_FILE sample_edges.v
+set_global_assignment -name VERILOG_FILE spi_sample.v
 
 set_global_assignment -name LAST_QUARTUS_VERSION "21.1.0 Lite Edition"
 set_global_assignment -name RESERVE_ALL_UNUSED_PINS_NO_OUTPUT_GND "AS INPUT TRI-STATED"

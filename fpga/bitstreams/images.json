@@ -18,11 +18,16 @@
   "stream": {
     "seed": 32,
     "sha256": "54f00a835fb2300595ab3b2b88883d971de26c4a71dce96fdd6825bd1c0ec926",
-    "inputs": "fd13411bd6f59234ba75adda89fcedc476f2b88e0662ddc0467dd418bce29cfe"
+    "inputs": "8ef6a0301eb0575aa92b96388cd39704268d3cf7185795eebfd4ea2217973874"
   },
   "qualify": {
     "seed": 10,
     "sha256": "a0be05da3d9c3efcc1b3483984675c04a3c21a444840f06bb83eb4c511efc4e6",
-    "inputs": "cd745928d5a27d82713a4a32705250d58dfe0cd7fb0bf25dade709acb917dedb"
+    "inputs": "01086e0fe2b7731766e20c931f84b613a65651cfe1084928f9fee99a81f6adf6"
+  },
+  "fast": {
+    "seed": 2,
+    "sha256": "437731f54706650939393715b37fba87a5fb3e5faa1f181a6a8188b338a502de",
+    "inputs": "5438e657ba3c960b3504eca4c086e4bfe904074f2bfc9b69adab4b7298f26561"
   }
 }
