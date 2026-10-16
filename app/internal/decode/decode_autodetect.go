@@ -320,26 +320,30 @@ func phaseLock(c *clockInfo, d *sliced) (share float64, n int) {
 	if !c.ok || c.hp <= 0 || !d.ok {
 		return 0, 0
 	}
-	var falls []int
+	// Phases from the interpolated crossings: whole samples quantize a fast
+	// clock's cycle (4.8 samples at 104 MHz) coarser than the quarter the
+	// lock is judged in, and the flash's data, 7 ns after the edge, read as
+	// unlocked (a share of 0.57).
+	var falls []float64
 	for _, e := range c.s.edges {
 		if e.dir < 0 {
-			falls = append(falls, e.i)
+			falls = append(falls, e.x)
 		}
 	}
 	var bins [16]int
 	j := 0
 	for _, e := range d.edges {
-		for j+1 < len(falls) && falls[j+1] <= e.i {
+		for j+1 < len(falls) && falls[j+1] <= e.x {
 			j++
 		}
-		if j+1 >= len(falls) || falls[j] > e.i {
+		if j+1 >= len(falls) || falls[j] > e.x {
 			continue
 		}
 		p := falls[j+1] - falls[j]
-		if float64(p) > 3*c.hp { // a cycle is 2 half-periods; longer is a gap
+		if !(p > 0) || p > 3*c.hp { // a cycle is 2 half-periods; longer is a gap
 			continue
 		}
-		bins[16*(e.i-falls[j])/p]++
+		bins[min(15, int(16*(e.x-falls[j])/p))]++
 		n++
 	}
 	if n == 0 {

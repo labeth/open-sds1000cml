@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"open-sds/app/internal/decode"
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/panel/framecalc"
 )
@@ -92,15 +93,10 @@ func (c *Controller) runBusAuto(stop chan struct{}) {
 	entry := c.autoEntryNow()
 	c.autoClearMatch(entry)
 	entryTdiv := entry.tdiv
-	// the bus decoded before is forgotten: a serial trigger on it ends (its
-	// match stays for the bus found next)
-	c.mu.Lock()
-	c.decProto, c.decMode = framecalc.ProtoOff, decModeView
-	c.decGen++
-	c.auto = autoWatch{}
-	c.mu.Unlock()
+	c.forgetBus()
 	if _, ok := c.autosetSweep(stop, goalBus); !ok {
 		c.cancelledAuto(stop, entry)
+		c.noSignalBus(stop)
 		return
 	}
 	select {
@@ -121,6 +117,45 @@ func (c *Controller) runBusAuto(stop chan struct{}) {
 	c.pushLEDs()
 	c.syncDecodeView(true)
 	c.runDetect()
+}
+
+// forgetBus is AUTO in BUS forgetting the bus decoded before: a serial
+// trigger on it ends (its match stays for the bus found next), and an SPI
+// bus found next samples its data at the middle of the eye measured on it
+// (Data delay Auto): a delay kept from before, or Default setup's 0 ns, sat
+// on the 104 MHz flash's data edges (margin -4 ns) and its bytes read wrong.
+// TRLC-LINKS: REQ-SDS-223, REQ-SDS-230
+func (c *Controller) forgetBus() {
+	c.mu.Lock()
+	c.decProto, c.decMode = framecalc.ProtoOff, decModeView
+	c.decGen++
+	c.auto = autoWatch{}
+	c.decDelayAuto, c.spiEye = true, decode.SPIEye{}
+	c.mu.Unlock()
+}
+
+// busAutoNoticeFor is how long the notice says what AUTO in BUS did: the
+// frame-start trigger it arms can load an FPGA image for seconds after, and
+// the notice outlasts that.
+const busAutoNoticeFor = 8 * time.Second
+
+// noSignalBus ends an AUTO in BUS whose sweep found no signal to fit (not
+// one cancelled): no bus is searched for, and BUS and the notice say so
+// instead of showing decode off as if AUTO had not run.
+// TRLC-LINKS: REQ-SDS-223
+func (c *Controller) noSignalBus(stop chan struct{}) {
+	select {
+	case <-stop:
+		return // cancelled: cancelledAuto said so
+	default:
+	}
+	note := c.noBusNote("no signal on CH1 or CH2 - no bus to find, decode stays off")
+	c.mu.Lock()
+	c.ui.busFailed = c.decProto == framecalc.ProtoOff
+	c.ui.busNote = note
+	c.toastLocked("AUTO: "+note, busAutoNoticeFor)
+	c.mu.Unlock()
+	c.publish()
 }
 
 // autoDecodeBus is BUS's own detection (entry with decode off, Adjust when

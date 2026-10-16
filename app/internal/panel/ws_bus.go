@@ -494,7 +494,10 @@ type look struct {
 	sampleS  float64
 	found    bool
 	resolved bool
-	runs     [2]int // a decimated record's shortest run between edges per channel (decode.ShortestRun)
+	runs     [2]int     // a decimated record's shortest run between edges per channel (decode.ShortestRun)
+	envRun   [2]float64 // the live envelope's bound on each channel's edge spacing where busy, seconds (decode.EnvelopeRun; 0: none)
+	envBusy  [2]float64 // the share of the envelope's buckets each channel swings across
+	envSeen  bool       // a live envelope of the timebase was read
 }
 
 // detectOn waits for a sampled frame of the timebase on screen and runs auto
@@ -512,7 +515,7 @@ func (c *Controller) detectOn(auto AutoSource) (decode.Result, float64, bool, lo
 	all := func(*engine.Frame, bool) bool { return true }
 	dec := c.detectWith(true, false, all, auto, decimatedWait)
 	res, sampleS, found := dec.res, dec.sampleS, dec.found
-	if found && decimatedStands(res) && !hidesFaster(dec) {
+	if c.weighEnvelope(&dec, all) {
 		return res, sampleS, true, dec
 	}
 	// A short screen fits the sample lease's budget undecimated: that record
@@ -597,6 +600,11 @@ func (c *Controller) detectWith(decimated, stepped bool, accept func(*engine.Fra
 		}
 	}
 	defer lease(0)
+	var envRun, envBusy [2]float64
+	envSeen := false
+	if decimated && !stepped { // the frame on screen, no wait (a find that needs one reads it, weighEnvelope)
+		envRun, envBusy, envSeen = c.envelopeRuns(false, accept, deadline)
+	}
 	for {
 		lease(3 * time.Second)
 		got, usable, resolved := false, false, false
@@ -623,13 +631,129 @@ func (c *Controller) detectWith(decimated, stepped bool, accept func(*engine.Fra
 		last := c.detectSync || !c.now().Before(deadline)
 		if got || (usable && last && !decimated) {
 			res, sampleS, found := auto()
-			return look{res, sampleS, found, resolved, runs}
+			return look{res, sampleS, found, resolved, runs, envRun, envBusy, envSeen}
 		}
 		if last {
 			return look{}
 		}
 		time.Sleep(50 * time.Millisecond)
 	}
+}
+
+// envWait bounds the wait for the live envelope of a timebase the search
+// stepped to: its first capture there, tens of milliseconds.
+const envWait = 400 * time.Millisecond
+
+// envelopeRuns reads the live envelope of a timebase (decode.EnvelopeRun per
+// channel: the bound on its busy runs, and the share of buckets it is busy
+// in): the edges of a line faster than a decimated record's samples show
+// there, and nowhere in the record. wait waits (bounded by envWait and
+// deadline) for the timebase's first envelope, a capture with no sample
+// lease; else only the frame on screen is looked at. seen is false (and the
+// figures zeros) when none is seen.
+// TRLC-LINKS: REQ-SDS-214
+func (c *Controller) envelopeRuns(wait bool, accept func(*engine.Frame, bool) bool, deadline time.Time) (runs, busy [2]float64, seen bool) {
+	if c.frameFn == nil {
+		return runs, busy, false
+	}
+	end := minTime(deadline, c.now().Add(envWait))
+	for {
+		c.frameFn(func(f *engine.Frame) {
+			if f == nil || !f.PeakDetect || !f.Ordered || f.Valid < 64 || len(f.C1) < f.Valid || len(f.C2) < f.Valid || !accept(f, true) {
+				return
+			}
+			seen = true
+			for ch, codes := range [2][]uint8{f.C1[:f.Valid], f.C2[:f.Valid]} {
+				runs[ch], busy[ch] = decode.EnvelopeRun(codes, f.SampleS)
+			}
+		})
+		if seen || !wait || c.detectSync || !c.now().Before(end) {
+			return runs, busy, seen
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+}
+
+// shortRunShare is the share of a find's shortest feature a run of its bus
+// lines must stay under for shortRuns: the flash read as I2C held runs of 1
+// or 2 samples on its data and 7 on its clock against a 14-sample half clock.
+const shortRunShare = 0.75
+
+// shortRuns reports a find on a decimated record with a line of its bus
+// holding runs under shortRunShare of its shortest feature
+// (decode.ShortestRun): a glitch, or a faster bus the record averaged.
+// TRLC-LINKS: REQ-SDS-214
+func shortRuns(l look) bool {
+	fs := decode.FeatureSamples(l.res)
+	for _, ch := range busLines(l.res) {
+		if r := l.runs[ch]; r > 0 && float64(r) < shortRunShare*fs {
+			return true
+		}
+	}
+	return false
+}
+
+// busLines are the channels a found bus uses: its line, and SDA or data.
+// TRLC-LINKS: REQ-SDS-214
+func busLines(res decode.Result) []int {
+	lines := []int{res.Roles.ChA & 1}
+	if res.Proto == "i2c" || res.Proto == "spi" {
+		lines = append(lines, res.Roles.ChB&1)
+	}
+	return lines
+}
+
+// weighEnvelope is whether a find on a decimated record stands once a line of
+// its bus holds runs under its shortest feature (shortRuns): weighed
+// against the live envelope (envHides), read now when the look holds none.
+// A find no envelope could be read for does not stand: the search goes on
+// at the full rate (the 104 MHz flash read as I2C, with no envelope after
+// AUTO's sweep).
+// TRLC-LINKS: REQ-SDS-214
+func (c *Controller) weighEnvelope(l *look, accept func(*engine.Frame, bool) bool) bool {
+	if !stands(*l) || !shortRuns(*l) {
+		return stands(*l)
+	}
+	if !l.envSeen {
+		l.envRun, l.envBusy, l.envSeen = c.envelopeRuns(true, accept, c.now().Add(envWait))
+	}
+	return l.envSeen && stands(*l)
+}
+
+// stands reports whether a bus found on a decimated record stands: enough
+// samples for its shortest feature (decimatedStands), and no line it uses
+// showing faster edges in the record (hidesFaster) or the live envelope
+// (envHides).
+// TRLC-LINKS: REQ-SDS-214
+func stands(l look) bool {
+	return l.found && decimatedStands(l.res) && !hidesFaster(l) && !envHides(l)
+}
+
+// envHidesRatio is how much shorter than a found bus's shortest feature the
+// live envelope's run (decode.EnvelopeRun) must be for the bus not to stand:
+// a line of that bus changes no faster than its feature, so the mean spacing
+// of its edges where busy is at least the feature (a 115200 Bd UART at
+// 1ms/div: 9.7 us buckets, 8.7 us bits).
+const envHidesRatio = 0.5
+
+// envHides reports a bus found on a decimated record on a line the live
+// envelope shows changing far faster than the bus's shortest feature: the
+// record averaged a faster bus into one it is not (a 104 MHz SPI flash at
+// 200us/div read as I2C, its data swinging fully in every 0.98 us bucket of
+// a burst - edges 1.3 us apart at most - against the I2C's 3.6 us half
+// clock).
+// TRLC-LINKS: REQ-SDS-214
+func envHides(l look) bool {
+	feature := decode.FeatureSamples(l.res) * l.sampleS
+	if !(feature > 0) {
+		return false
+	}
+	for _, ch := range busLines(l.res) {
+		if r := l.envRun[ch]; r > 0 && r < envHidesRatio*feature {
+			return true
+		}
+	}
+	return false
 }
 
 // minTime is the earlier of two times.
@@ -722,17 +846,29 @@ func (c *Controller) findAtFullRate(full, t float64, first *look, auto AutoSourc
 		return res, sampleS, true, 0
 	}
 	// the whole record decimated: a slow bus, or one with long frames
-	var res decode.Result
-	var sampleS float64
-	var found bool
+	var dec look
 	if first != nil {
-		res, sampleS, found = first.res, first.sampleS, first.found
+		dec = *first
 	} else {
 		c.setTdivNearest(t)
-		l := c.detectWith(true, true, at(t), auto, decimatedWait)
-		if res, sampleS, found = l.res, l.sampleS, l.found; found && decimatedStands(res) && !hidesFaster(l) {
-			return keep(res, sampleS, t)
+		// A find with a line holding runs under its shortest feature is
+		// weighed against the live envelope first, one capture more (the
+		// 104 MHz flash read as I2C at 200us/div, its data's runs a sample or
+		// two against a 14-sample half clock).
+		if dec = c.detectWith(true, true, at(t), auto, decimatedWait); c.weighEnvelope(&dec, at(t)) {
+			return keep(dec.res, dec.sampleS, t)
 		}
+	}
+	// A bus the live envelope shows busy over much of the screen, faster than
+	// the record resolves, is looked for on a shorter record still: the
+	// 104 MHz flash's 2 ms screen holds hundreds of bursts, and its record at
+	// windowTdiv took 8 s to read and process.
+	if d := c.denseTdiv(); d > 0 && denseFast(dec) {
+		c.setTdivNearest(d)
+		if l := c.detectWith(false, true, at(d), auto, detectWait); l.found {
+			return keep(l.res, l.sampleS, d)
+		}
+		c.setTdivNearest(t)
 	}
 	// A bus too fast for it is looked at at the full rate on a short record
 	// first: its frames are short, and the whole record takes seconds to
@@ -779,6 +915,45 @@ const scantBytes = 4
 // frames: a FlexRay bus sending a pair every 240 us, one failing its CRC, read
 // as a 10 MBd UART on one record in six.
 const windowDivs = 4
+
+// denseDivs is how much shorter than the slowest full-rate timebase's the
+// record a dense fast bus is first looked for on is (denseFast): a
+// twentieth (10us/div: 100 us, 50 k samples). denseBusy is the share of
+// the envelope's buckets a line must be busy in for it: the flash's 0.85 and
+// MIL-1553's 0.7 at 200us/div, not a USB LS bus's 0.45, whose frames the
+// short record holds too few of (one read as a UART).
+const (
+	denseDivs = 20
+	denseBusy = 0.6
+)
+
+// denseFast reports a decimated look whose live envelope shows a line both
+// faster than the record resolves (decode.EnvelopeRun) and busy in at least
+// denseBusy of its buckets: a short full-rate record holds its frames.
+// TRLC-LINKS: REQ-SDS-214
+func denseFast(l look) bool {
+	for ch := range l.envRun {
+		if l.envRun[ch] > 0 && l.envBusy[ch] >= denseBusy {
+			return true
+		}
+	}
+	return false
+}
+
+// denseTdiv is the timebase of the record a dense fast bus is first looked
+// for on: the slowest at most a denseDivs-th of the full-rate timebase (0
+// for none).
+// TRLC-LINKS: REQ-SDS-214
+func (c *Controller) denseTdiv() float64 {
+	t := c.fullRateTdiv()
+	best := 0.0
+	for _, d := range c.tdivs {
+		if d <= t/denseDivs*1.001 && d > best {
+			best = d
+		}
+	}
+	return best
+}
 
 // windowTdiv is the timebase of the short full-rate record a fast bus is
 // first looked for on: the slowest at most a windowDivs-th of the full-rate
@@ -921,8 +1096,13 @@ func (c *Controller) runDetect() {
 	}
 	res, sampleS, found, stepped := c.findBus(c.detectOnScreen, mine)
 	if !mine() {
+		auto := c.takeBusFrame() == busFrameAuto
 		c.mu.Lock()
 		c.ui.busDetecting = false
+		if auto {
+			c.ui.busNote = protoName(c.decProto) + " set during the search stays"
+			c.toastLocked("AUTO: "+c.ui.busNote, busAutoNoticeFor)
+		}
 		c.mu.Unlock()
 		c.syncStreamView()
 		c.publish()
@@ -941,15 +1121,21 @@ func (c *Controller) runDetect() {
 	} else { // the settings in use stay: a bus found again decodes with them
 		none = c.noBusNote("no bus found on CH1 or CH2 - decode stays " + protoName(prev))
 	}
+	// AUTO in BUS says what it did for longer than BUS entry's detection: its
+	// frame-start trigger may load an image after the search
+	foundFor, noneFor := 2200*time.Millisecond, 2400*time.Millisecond
+	if frame == busFrameAuto {
+		foundFor, noneFor = busAutoNoticeFor, busAutoNoticeFor
+	}
 	c.mu.Lock()
 	c.ui.busDetecting = false
 	c.ui.busFailed = !locked && prev == framecalc.ProtoOff
 	if locked {
 		c.ui.busNote = busName(c.decProto, c.decBaud, c.decChA, c.decChB, c.decCPOL, c.decCPHA) + tdivNote
-		c.toastLocked("AUTO: "+c.ui.busNote+", decode on", 2200*time.Millisecond)
+		c.toastLocked("AUTO: "+c.ui.busNote+", decode on", foundFor)
 	} else {
 		c.ui.busNote = none
-		c.toastLocked("AUTO: "+none, 2400*time.Millisecond)
+		c.toastLocked("AUTO: "+none, noneFor)
 	}
 	c.mu.Unlock()
 	if !locked && prev == framecalc.ProtoOff {

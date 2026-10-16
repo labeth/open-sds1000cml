@@ -71,6 +71,73 @@ func ShortestRun(codes []uint8) int {
 	return run
 }
 
+// EnvelopeRun bounds, from an ordered peak-detect envelope (each bucket's
+// extremes as a pair in time order, sampleS apart), how far apart a line's
+// edges are where it is busy: when most buckets that swing across the line
+// come in stretches of envStretch or more in a row, each holding an edge,
+// the line changes about once a bucket there, and EnvelopeRun is the mean
+// spacing that allows, 4/3 of a bucket (8/3*sampleS), in seconds. A
+// decimated record's samples average a line faster than that into a level
+// (a 104 MHz SPI clock in 256 ns samples reads as a slow pulse). 0 when the
+// envelope shows no such stretch: a line quiet, slow or seldom busy (an
+// ARINC 429 word's 5 us half bits swing in single 1 us buckets). busy is
+// the share of the buckets that swing across the line.
+// TRLC-LINKS: REQ-SDS-214
+func EnvelopeRun(codes []uint8, sampleS float64) (run, busy float64) {
+	const (
+		swingFrac  = 0.2  // a full swing reaches within this share of the swing of both extremes
+		minFull    = 16   // full-swing buckets the envelope must hold
+		envStretch = 4    // buckets in a row that make a stretch
+		minShare   = 0.75 // of the full-swing buckets, the share in stretches
+	)
+	// The line's extremes, not its rails' means: an ARINC 429 leg's null level
+	// between them, full of fast noise, is no swing across the line.
+	if !(sampleS > 0) || len(codes) < 64 {
+		return 0, 0
+	}
+	var hist [256]int
+	for _, v := range codes {
+		hist[v]++
+	}
+	pct := func(p float64) float64 {
+		need, acc := int(p*float64(len(codes))), 0
+		for v, k := range hist {
+			if acc += k; acc > need {
+				return float64(v)
+			}
+		}
+		return 255
+	}
+	lo, hi := pct(0.02), pct(0.98)
+	amp := hi - lo
+	if amp < 20 {
+		return 0, 0
+	}
+	n := len(codes) / 2
+	nFull, inStretch, row := 0, 0, 0
+	for k := 0; k <= n; k++ {
+		full := false
+		if k < n {
+			a, b := float64(codes[2*k]), float64(codes[2*k+1])
+			full = min(a, b) <= lo+swingFrac*amp && max(a, b) >= hi-swingFrac*amp
+		}
+		if full {
+			nFull++
+			row++
+			continue
+		}
+		if row >= envStretch {
+			inStretch += row
+		}
+		row = 0
+	}
+	busy = float64(nFull) / float64(n)
+	if nFull < minFull || float64(inStretch) < minShare*float64(nFull) {
+		return 0, busy
+	}
+	return 8.0 / 3 * sampleS, busy
+}
+
 // Names are the protocols as the screens name them.
 var Names = map[string]string{"uart": "UART", "i2c": "I2C", "spi": "SPI", "manchester": "Manchester", "sent": "SENT",
 	"canfd": "CAN", "mil1553": "MIL-1553", "arinc429": "ARINC 429", "usbls": "USB LS", "flexray": "FlexRay"}

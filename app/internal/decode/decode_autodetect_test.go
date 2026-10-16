@@ -2,6 +2,7 @@
 package decode
 
 import (
+	"compress/gzip"
 	"encoding/json"
 	"os"
 	"testing"
@@ -276,5 +277,76 @@ func TestAutodetectARINCOnlyAtItsRates(t *testing.T) {
 		if s := scoreResult(words(b)); s <= 0 {
 			t.Fatalf("ARINC 429 at %d bit/s scores %.0f", b, s)
 		}
+	}
+}
+
+// loadGzJSON reads a recorded two-channel capture (sample_s, c1, c2).
+// TRLC-LINKS: REQ-SDS-018
+func loadGzJSON(t *testing.T, path string) (c1, c2 []uint8, sampleS float64) {
+	t.Helper()
+	f, err := os.Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+	z, err := gzip.NewReader(f)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var v struct {
+		SampleS float64 `json:"sample_s"`
+		C1, C2  []int
+	}
+	if err := json.NewDecoder(z).Decode(&v); err != nil {
+		t.Fatal(err)
+	}
+	c1, c2 = make([]uint8, len(v.C1)), make([]uint8, len(v.C2))
+	for i := range v.C1 {
+		c1[i], c2[i] = uint8(v.C1[i]), uint8(v.C2[i])
+	}
+	return c1, c2, v.SampleS
+}
+
+// A 62.5 MBd UART that sends 32 characters (5 us) a millisecond, recorded at
+// the full rate: 330 us of it holds the burst on under 2 % of the samples,
+// and its low level stays under the decoders' histogram noise floor (no
+// active signal). AutodetectFast cuts the record to the burst and names the
+// UART, its spans back at the record's own samples.
+// TRLC-LINKS: REQ-SDS-018
+func TestAutodetectFastFindsASparseBurst(t *testing.T) {
+	c1, c2, sampleS := loadGzJSON(t, "testdata/uart_62mbd_sparse.json.gz")
+	if r := Autodetect(c1, c2, sampleS, "hex"); r.OK {
+		t.Fatalf("the whole record already reads as %s: the fixture no longer shows the case", r.Proto)
+	}
+	r, st := AutodetectFast(c1, c2, sampleS, "hex")
+	if r.Proto != "uart" || r.Baud < 61e6 || r.Baud > 64e6 || len(r.Bytes) < 16 {
+		t.Fatalf("%s %d Bd, %d bytes: want the 62.5 MBd UART", r.Proto, r.Baud, len(r.Bytes))
+	}
+	k := int(st/sampleS + 0.5)
+	if i := r.Spans[0].I0 * k; i < 40000 || i > 43000 {
+		t.Errorf("first span at sample %d, want the burst's start near 40000", i)
+	}
+	if keep := activeBlocks(make([]uint8, 100000), nil); keep != nil {
+		t.Errorf("a flat record cut to %d blocks", len(keep))
+	}
+}
+
+// The bench's 104 MHz SPI flash look-alike at the full rate (2 ns, 4.8
+// samples a clock): its data moves 7 ns after the falling edge, one place in
+// the clock's cycle, and is SPI mode 0 with the clock on C2. Its edges' phases
+// in whole samples spread over more than the quarter cycle the lock is
+// judged in, and the pair read as a clock beside a line it does not clock
+// (no bus on most records).
+// TRLC-LINKS: REQ-SDS-018
+func TestAutodetectFastSPIDataLocksToItsClock(t *testing.T) {
+	c1, c2, sampleS := loadGzJSON(t, "testdata/spi_flash104_10us.json.gz")
+	clk := clockScore(c2)
+	d := sliceChannel(c1, 0, false)
+	if share, n := phaseLock(&clk, &d); n < 12 || share < 0.9 {
+		t.Errorf("data locked to the clock: share %.2f of %d edges, want over 0.9", share, n)
+	}
+	r := Autodetect(c1, c2, sampleS, "hex")
+	if r.Proto != "spi" || r.Roles.ChA != 1 || r.Roles.CPOL || r.Roles.CPHA || !r.Roles.MSB || len(r.Bytes) < 100 {
+		t.Fatalf("%s %s %+v, %d bytes: want SPI mode 0, clock C2, MSB first", r.Proto, r.Src, r.Roles, len(r.Bytes))
 	}
 }

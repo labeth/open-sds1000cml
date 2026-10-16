@@ -3,11 +3,27 @@ package decode
 
 // AutodetectFast is Autodetect on a strided copy of long records: the
 // decoders need only a few samples per bit, and on the scope's ARM a full
-// Autodetect of a 500 k-sample screen takes 14 s. It keeps
+// Autodetect of a 500 k-sample screen takes 14 s. A record that idles
+// most of the time is cut to its bursts first (activeBlocks). It keeps
 // about ten samples on the shortest real pulse of either channel and returns
 // the result with the sample time it was decoded at (colTimeS × stride).
 // TRLC-LINKS: REQ-SDS-018
 func AutodetectFast(c1, c2 []uint8, colTimeS float64, format string) (Result, float64) {
+	if keep := activeBlocks(c1, c2); keep != nil {
+		res, st := autodetectStrided(compact(c1, keep), compact(c2, keep), colTimeS, format)
+		k := int(st/colTimeS + 0.5)
+		back := func(i int) int { return uncompact(i*k, keep) / k }
+		for j := range res.Spans {
+			res.Spans[j].I0, res.Spans[j].I1 = back(res.Spans[j].I0), back(res.Spans[j].I1)
+		}
+		return res, st
+	}
+	return autodetectStrided(c1, c2, colTimeS, format)
+}
+
+// autodetectStrided is AutodetectFast on the record as given.
+// TRLC-LINKS: REQ-SDS-018
+func autodetectStrided(c1, c2 []uint8, colTimeS float64, format string) (Result, float64) {
 	stride := autoStride(c1, c2)
 	if stride <= 1 {
 		return Autodetect(c1, c2, colTimeS, format), colTimeS
@@ -24,6 +40,93 @@ func AutodetectFast(c1, c2 []uint8, colTimeS float64, format string) (Result, fl
 	}
 	st := colTimeS * float64(stride)
 	return Autodetect(pick(c1), pick(c2), st, format), st
+}
+
+// activeBlock is the samples a block of activeBlocks spans; activeShare
+// the most of a record's blocks that may be busy for it to be cut down.
+const (
+	activeBlock = 1024
+	activeShare = 0.1
+)
+
+// activeBlocks finds the bursts of a long record that idles most of the
+// time: the blocks of activeBlock samples either line swings across in,
+// with two blocks of idle each side. A 62.5 MBd UART sending 5 us a
+// millisecond at 2 ns holds its low level on a tenth of a percent of the
+// samples, under the decoders' histogram noise floor (no active signal).
+// It returns the kept blocks' starts, nil to keep the whole record.
+// TRLC-LINKS: REQ-SDS-018
+func activeBlocks(c1, c2 []uint8) []int {
+	n := len(c1)
+	if n < 32*activeBlock || (c2 != nil && len(c2) != n) {
+		return nil
+	}
+	nb := n / activeBlock
+	busy := make([]bool, nb)
+	for _, c := range [][]uint8{c1, c2} {
+		if c == nil {
+			continue
+		}
+		lo, hi := make([]uint8, nb), make([]uint8, nb)
+		gLo, gHi := uint8(255), uint8(0)
+		for b := range nb {
+			l, h := uint8(255), uint8(0)
+			for _, v := range c[b*activeBlock : (b+1)*activeBlock] {
+				l, h = min(l, v), max(h, v)
+			}
+			lo[b], hi[b] = l, h
+			gLo, gHi = min(gLo, l), max(gHi, h)
+		}
+		swing := int(gHi) - int(gLo)
+		if swing < 20 {
+			continue
+		}
+		for b := range nb {
+			if 2*(int(hi[b])-int(lo[b])) >= swing {
+				busy[b] = true
+			}
+		}
+	}
+	nBusy := 0
+	for _, b := range busy {
+		if b {
+			nBusy++
+		}
+	}
+	if nBusy == 0 || float64(nBusy) > activeShare*float64(nb) {
+		return nil
+	}
+	var keep []int
+	for b := range nb {
+		near := false
+		for d := -2; d <= 2; d++ {
+			near = near || (b+d >= 0 && b+d < nb && busy[b+d])
+		}
+		if near {
+			keep = append(keep, b*activeBlock)
+		}
+	}
+	return keep
+}
+
+// compact is the record's kept blocks (activeBlocks) end to end.
+// TRLC-LINKS: REQ-SDS-018
+func compact(c []uint8, keep []int) []uint8 {
+	if c == nil {
+		return nil
+	}
+	out := make([]uint8, 0, len(keep)*activeBlock)
+	for _, b := range keep {
+		out = append(out, c[b:b+activeBlock]...)
+	}
+	return out
+}
+
+// uncompact maps a sample index of a compacted record back to the record's.
+// TRLC-LINKS: REQ-SDS-018
+func uncompact(i int, keep []int) int {
+	b := min(max(i/activeBlock, 0), len(keep)-1)
+	return keep[b] + i - b*activeBlock
 }
 
 // autoStride is how many samples AutodetectFast may skip: a tenth of the

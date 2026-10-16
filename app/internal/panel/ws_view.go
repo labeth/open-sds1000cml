@@ -491,6 +491,9 @@ func (c *Controller) busPane(s *sv) *wsview.BusPane {
 				{Text: "Push Adjust: try again - auto-detects UART, I2C, SPI and more on CH1/CH2 and decodes it", Col: wsview.Amber},
 				{Text: "Utility or Menu On/Off: set the protocol, baud and lines by hand on the BUS sheet", Col: wsview.Dim}}
 			if failed {
+				if u.busNote != "" { // what the search did: AUTO, BUS entry or Adjust
+					p.Caption = "AUTO: " + u.busNote
+				}
 				p.Msg = append(p.Msg, wsview.Span{Text: "Check that the bus is connected and its channel is not on GND coupling.", Col: wsview.Dim})
 			}
 		}
