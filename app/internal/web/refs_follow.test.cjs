@@ -19,11 +19,15 @@ let scope = [{has: false}, slot(true)];
 const held = []; // GET /api/refs answers held back, as on a loaded network
 let holdGets = false;
 // TRLC-LINKS: REQ-SDS-227
-const el = () => ({textContent: '', className: '', dataset: {}, classList: {toggle() {}}, onclick: null});
+const el = () => ({textContent: '', className: '', dataset: {}, classList: {
+  // TRLC-LINKS: REQ-SDS-227
+  toggle() {}}, onclick: null});
 const c = {
   // TRLC-LINKS: REQ-SDS-227
   $: () => el(),
-  WS_TICKS: [], WS_HOOKS: [], ws: {cur: 'scope'}, st: null, refs: {A: null, B: null}, performance: {now: () => 0},
+  WS_TICKS: [], WS_HOOKS: [], ws: {cur: 'scope'}, st: null, refs: {A: null, B: null}, performance: {
+    // TRLC-LINKS: REQ-SDS-227
+    now: () => 0},
   // TRLC-LINKS: REQ-SDS-227
   setInterval: () => 0,
   // TRLC-LINKS: REQ-SDS-227
