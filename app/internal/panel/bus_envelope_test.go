@@ -219,16 +219,26 @@ func TestBusAutoSaysWhatItDid(t *testing.T) {
 	}
 }
 
-// AUTO in BUS forgets the bus decoded before and takes the SPI data delay
-// from the eye measured on the bus found next (Data delay Auto): Default
-// setup's 0 ns sat on the 104 MHz flash's data edges.
+// AUTO in BUS forgets the bus decoded before, takes the SPI data delay from
+// the eye measured on the bus found next (Data delay Auto: Default setup's
+// 0 ns sat on the 104 MHz flash's data edges) and measures the clock rate
+// again (a rate set for another bus stayed).
 // TRLC-LINKS: REQ-SDS-223, REQ-SDS-230
 func TestBusAutoForgetsTheBusAndTakesTheDelayFromTheEye(t *testing.T) {
 	c, _, _ := newC(t)
 	c.mu.Lock()
 	c.decProto, c.decDelayNs, c.decDelayAuto, c.spiEye = framecalc.ProtoSPI, 0, false, decode.SPIEye{PeriodS: 9.6e-9}
 	c.mu.Unlock()
+	if c.serialTrig() == nil {
+		t.Fatal("rig without a serial trigger: the clock rate is not checked")
+	}
+	if err := c.setSPIClock(10_400_000); err != nil {
+		t.Fatal(err)
+	}
 	c.forgetBus()
+	if hz := c.serialTrig().SerialConfig().SPIClockHz; hz != 0 {
+		t.Errorf("Clock rate kept at %d Hz: AUTO measures it again", hz)
+	}
 	s := c.snap()
 	if s.decProto != framecalc.ProtoOff || !s.decDelayAuto || s.spiEye.PeriodS != 0 {
 		t.Fatalf("proto %d, delay auto %v, eye %+v", s.decProto, s.decDelayAuto, s.spiEye)

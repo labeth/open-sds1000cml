@@ -132,6 +132,11 @@ func (c *Controller) forgetBus() {
 	c.auto = autoWatch{}
 	c.decDelayAuto, c.spiEye = true, decode.SPIEye{}
 	c.mu.Unlock()
+	// the clock rate is measured again too: a rate set for another bus
+	// framed the next one by the wrong gap
+	if se := c.serialTrig(); se != nil && se.SerialConfig().SPIClockHz != 0 {
+		_ = c.setSPIClock(0)
+	}
 }
 
 // busAutoNoticeFor is how long the notice says what AUTO in BUS did: the
