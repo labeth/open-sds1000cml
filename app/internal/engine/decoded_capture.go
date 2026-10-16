@@ -180,16 +180,17 @@ func (e *Engine) BeginDecodedCapture(ctx context.Context, cfg sramcapture.Config
 func (e *Engine) beginDecodedCapture(ctx context.Context, cfg sramcapture.Config, lineProto int, web bool) (sramcapture.RecordIdentity, error) {
 	value, err := e.decodedCall(ctx, func() (any, error) {
 		e.decodedStarting = time.Time{} // the session (or its failure) takes over the image
-		// Only UART, I2C and SPI stream from the general image; SPI framed
-		// tighter than its level receiver takes (a clock past about 20 MHz),
-		// or with a data delay (the receiver on the samples), streams from
-		// the fast image.
+		// Only UART, I2C and SPI stream from the general image; a request for
+		// a receiver on the samples streams from the fast image: SPI framed
+		// tighter than its level receiver takes (a clock past about 20 MHz)
+		// or with a data delay, a UART bit time in sixteenths of a
+		// nanosecond, I2C asking for it.
 		want := ""
 		if cfg.Packet.Enabled || cfg.MIL1553.Enabled || cfg.SENT.Enabled {
 			want = imagePacket
 		} else if cfg.Manchester.Enabled || cfg.USBLS.Enabled {
 			want = imageLine
-		} else if cfg.SPI.Enabled && (cfg.SPI.GapTicks < 9 || cfg.SPI.Delay != 0) {
+		} else if (cfg.SPI.Enabled && (cfg.SPI.GapTicks < 9 || cfg.SPI.Delay != 0)) || (cfg.UART.Enabled && cfg.UART.Period16 != 0) || (cfg.I2C.Enabled && cfg.I2C.Samples) {
 			want = imageFast
 		}
 		if e.images != nil && e.hasImage(want) && want != e.protocolImage {

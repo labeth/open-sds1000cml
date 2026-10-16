@@ -76,4 +76,23 @@ c.stParams = () => ({...auto, proto: 1, threshold: 90, haveThr: true, baud: 9600
 const m = c.dsConfig();
 assert.equal(m.trigger_level, 90, 'a manual threshold wins');
 assert.equal(m.uart.bit_ticks, Math.round(125e6 / 9600), 'a set baud wins');
+// Past the general receiver (5 MBd with a transmitter's 2 %), or not 8N1: the
+// fast image's receiver on the samples, a bit time in sixteenths of a ns.
+// TRLC-LINKS: REQ-SDS-206, REQ-SDS-229
+c.stParams = () => ({...auto, proto: 1, threshold: 90, haveThr: true, baud: 62500000});
+assert.deepEqual(JSON.parse(JSON.stringify(c.dsConfig().uart)), {enabled: true, channel: 0, inverted: false, bit_ticks: 0, period16: 256, bits: 8, parity: 0, resync: true, pattern: 0xAA, length: 1});
+// TRLC-LINKS: REQ-SDS-206, REQ-SDS-229
+c.stParams = () => ({...auto, proto: 1, threshold: 90, haveThr: true, baud: 9600, bits: 7, parity: 'even', bytes: [0x41]});
+assert.equal(c.dsConfig().uart.period16, Math.round(16e9 / 9600), '7E1 at 9600 Bd: the receiver on the samples');
+// TRLC-LINKS: REQ-SDS-206, REQ-SDS-229
+c.stParams = () => ({...auto, proto: 1, threshold: 90, haveThr: true, baud: 5000000});
+assert.equal(c.dsConfig().uart.bit_ticks, 25, '5 MBd 8N1 stays on the general receiver');
+// High-speed I2C (the clock the decode measured: 147 samples of 2 ns) takes the receiver on the samples.
+// TRLC-LINKS: REQ-SDS-206, REQ-SDS-229
+c.stParams = () => ({...auto, proto: 2, chA: 0, chB: 1, bytes: []});
+c.dcfg.result = {ok: true, meta: {threshold: 128, colsPerClock: 147}};
+const hs = c.dsConfig().i2c;
+assert.equal(hs.samples, true); assert.equal(hs.delay, -23);
+c.dcfg.result = {ok: true, meta: {threshold: 128, colsPerClock: 1250}};
+assert.equal(c.dsConfig().i2c.samples, undefined, '400 kHz stays on the general receiver');
 console.log('ALL PASS');

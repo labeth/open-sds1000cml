@@ -42,33 +42,66 @@ continuously while the drum runs.
 
 ## Fast image
 
-The general image's SPI receiver (`images/general/spi_trigger.v`) samples
-the lines as 125 MHz levels, which reaches a clock of about 20 MHz. The fast
-image decodes SPI from the samples themselves (ADR-SAMPLE-DOMAIN-SPI), on
-the 125 MHz receiver clock with four samples a channel per clock (two
-acquisition words, paired from the 250 MHz clock):
+The general image's SPI, UART and I2C receivers sample the lines as 125 MHz
+levels: SPI reaches a clock of about 20 MHz, the UART counts whole 8 ns ticks
+a bit and never re-times (8N1, about 5 MBd with a transmitter's 2 %), I2C
+reads SDA to a tick. The fast image decodes all three from the samples
+themselves (ADR-SAMPLE-DOMAIN-SPI), on the 125 MHz receiver clock with four
+samples a channel per clock (two acquisition words, paired from the 250 MHz
+clock), in `images/fast/sample_bus.v`:
 
-- `images/fast/sample_edges.v` finds the clock line's sampling edges: the
-  first sample at or past the level after a sample beyond the re-arm band
-  (the trigger's hysteresis), at most one a receiver clock (a clock up to
-  125 MHz). Each crossing is timed by linear interpolation between the two
-  samples around the level, in sixteenths of a nanosecond (a six-bit
-  restoring division over three clocks), and the data line's level is taken
-  at the sample nearest the crossing plus a delay: the channels' sampling
-  phase (C2 1.44 ns after C1) and any offset into the bit, register 57 in
-  sixteenths of a nanosecond on the clock line's sample grid.
-- `images/fast/spi_sample.v` frames bytes by an idle gap, as the level
-  receiver did, and publishes the same events and pattern match, so the
-  decoded-event transport and the sequence trigger take them unchanged.
-  Register 64 reads 0x5302 (the level receiver's 0x5301).
+- `images/fast/sample_edges.v` finds one line's crossings in the directions
+  asked: the first sample at or past the level after a sample beyond the
+  re-arm band (the trigger's hysteresis), at most one a receiver clock. A
+  direction re-arms once the line has been beyond the band's other edge
+  since its last crossing (a Schmitt trigger: the converters sit up to 11
+  codes apart, and on a slow edge their samples dip back across the band),
+  or after a whole clock beyond the band's own edge (a runt pulse that
+  crossed the level but not the band). Each crossing is timed by linear
+  interpolation between the two samples around the level, in sixteenths of
+  a nanosecond (a six-bit restoring division over three clocks); the other
+  line's level is taken at the sample nearest the crossing plus a delay,
+  and the line's own four levels of the clock come out with it. Two
+  extractors run: one on the first line (SPI's clock, the UART line, I2C's
+  SCL) with the delay of register 58 (the channels' sampling phase, C2
+  1.44 ns after C1, and SPI's data delay, in sixteenths of a nanosecond on
+  the first line's grid), one on the other (I2C's SDA) with its negation.
+- `images/fast/spi_sample.v` frames SPI bytes by an idle gap, as the level
+  receiver did, reading the data line at each sampling edge. Register 64
+  reads 0x5303 (the level receiver's 0x5301).
+- `images/fast/uart_sample.v` starts a frame at a falling crossing of the
+  idle line and reads bit k at its interpolated time plus k and a half bit
+  times (register 49/50: the bit time in sixteenths of a nanosecond, at
+  least 256: 62.5 MBd); with resync (register 48 bit 12) every crossing in
+  the frame moves the next bit to half a bit time after it. 5 to 9 data bits
+  LSB first (bits 9:6), no, even or odd parity (bits 11:10), the stop bit
+  checked: data (kind 2) or an error (kind 4), and uart_trigger.v's match
+  over the low eight bits. What a crossing gives on its own (its half bit,
+  whether that falls in its clock) is worked out a clock ahead. Register 48
+  reads 0x5503.
+- `images/fast/i2c_sample.v` takes the two lines' crossings in the order of
+  their interpolated times (one held to the next clock when both come in one;
+  the ordering takes a clock of its own): SCL's rising crossing reads SDA at
+  its time (the bit); SDA's crossing reads SCL at its time and, SCL high, is a
+  START (falling) or STOP (rising). Events, metadata and the match are
+  i2c_trigger.v's. Register 53 reads 0x4902.
 
-An edge reaches the framing stage eight receiver clocks after its word; no
-idle gap is counted until words have passed the pipeline, so a frame never
-starts mid-transaction after a reset. The app's Go model
-(`app/internal/decode/spi_sample.go`) is the pipeline clock for clock: its
-test drives `images/fast/sim/tb_spi_sample.v` with synthetic buses (1 to
-104 MHz, every mode) and records of the bench source and requires the same
-edges, events and matches on the same clocks.
+Every receiver publishes its level receiver's events and match, so the
+decoded-event transport and the sequence trigger take them unchanged. An
+edge reaches SPI's framing eight receiver clocks after its word, the UART and
+I2C receivers nine; nothing is counted until words have passed the pipeline,
+so a frame never starts mid-transaction after a reset. The app's Go models
+(`app/internal/decode/spi_sample.go`, `sample_bus.go`) are the pipelines
+clock for clock: their tests drive `images/fast/sim/tb_spi_sample.v` and
+`tb_sample_rx.v` with synthetic buses (SPI 1 to 104 MHz in every mode; UART
+115200 Bd to 62.5 MBd in every width and parity, 2 % off rate; I2C 100 kHz to
+3.4 MHz with open-drain rises) and records of the bench sources, and require
+the same edges, events and matches on the same clocks;
+`images/fast/sim/tb_top_fast.v` checks the image's top level (registers over
+GPMC, both channels, the events and the trigger) against the models.
+
+The fast image: 8,668 logic elements of 10,320 (84 %), 327,520 memory bits,
+seed 2, worst internal slack 0.134 ns.
 
 ## Qualify image
 

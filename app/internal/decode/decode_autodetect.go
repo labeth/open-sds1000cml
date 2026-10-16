@@ -52,10 +52,11 @@ func i2cConditionsOnEdges(r Result, scl *sliced, colTimeS float64) bool {
 	return all > 0 && 2*on > all
 }
 
-// uartMaxBaud is the fastest UART a detection names, well over the fastest
-// UARTs run (12 to 20 MBd): ringing on another bus's edges reads as one at
-// the full rate (ARINC 429 at 10ns/div: "UART 100058636 8N1").
-const uartMaxBaud = 40e6
+// uartMaxBaud is the fastest UART a detection names: the fast image's
+// receiver's 62.5 MBd and a transmitter's 2 %. Ringing on another bus's
+// edges reads as one faster at the full rate (ARINC 429 at 10ns/div: "UART
+// 100058636 8N1").
+const uartMaxBaud = 64e6
 
 // sentDistinctFrames counts the different CRC-valid frames among a SENT
 // decode's spans: each frame's nibbles from its SYNC to its CRC.

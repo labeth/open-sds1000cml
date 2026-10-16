@@ -95,7 +95,10 @@ type Config struct {
 	TriggerHysteresis uint8                   `json:"trigger_hysteresis,omitempty"`
 }
 
-// UARTTriggerConfig describes the optional 125 MHz, 8N1 hardware matcher.
+// UARTTriggerConfig describes the optional hardware matcher: the 125 MHz,
+// 8N1 receiver on line levels (BitTicks), or the receiver on the samples
+// (capability 0x5503, uart_sample.v; Period16 set), which takes 5 to 9 data
+// bits, parity and a bit time in sixteenths of a nanosecond to 62.5 MBd.
 // Pattern is packed chronologically, e.g. length 2 and pattern 0x4869.
 // TRLC-LINKS: REQ-SDS-013
 type UARTTriggerConfig struct {
@@ -105,6 +108,36 @@ type UARTTriggerConfig struct {
 	BitTicks uint32 `json:"bit_ticks"`
 	Pattern  uint32 `json:"pattern"`
 	Length   uint8  `json:"length"`
+	Period16 uint32 `json:"period16,omitempty"` // 256 (16 ns) .. 2^24-1
+	Bits     uint8  `json:"bits,omitempty"`     // 5..9, 0 is 8
+	Parity   uint8  `json:"parity,omitempty"`   // 0 none, 1 even, 2 odd
+	Resync   bool   `json:"resync,omitempty"`   // every edge in a frame re-times the bits after it
+}
+
+// UART receiver capabilities (register 48).
+const (
+	uartLevels  = 0x5502
+	uartSamples = 0x5503
+)
+
+// sampleUART reports a request for the receiver on the samples.
+// TRLC-LINKS: REQ-SDS-229
+func (u UARTTriggerConfig) sampleUART() bool { return u.Period16 != 0 }
+
+// valid reports a request either receiver takes.
+// TRLC-LINKS: REQ-SDS-013, REQ-SDS-229
+func (u UARTTriggerConfig) valid() bool {
+	if u.Channel > 1 || u.Length > 4 {
+		return false
+	}
+	if u.sampleUART() {
+		bits := u.Bits
+		if bits == 0 {
+			bits = 8
+		}
+		return u.Period16 >= 256 && u.Period16 <= 0xffffff && bits >= 5 && bits <= 9 && u.Parity <= 2
+	}
+	return u.BitTicks >= 4 && u.BitTicks <= 0xffffff && (u.Bits == 0 || u.Bits == 8) && u.Parity == 0
 }
 
 // Metadata counters are stable for recall only when Ready and Frozen are true.
@@ -218,7 +251,20 @@ func (c *Capture) SupportsUART() (bool, error) {
 		return false, err
 	}
 	capability, err := c.read(48)
-	return capability == 0x5502 && err == nil, err
+	return (capability == uartLevels || capability == uartSamples) && err == nil, err
+}
+
+// SupportsSampleUART reports the UART receiver on the samples (uart_sample.v).
+// TRLC-LINKS: REQ-SDS-229
+func (c *Capture) SupportsSampleUART() (bool, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	revision, err := c.read(13)
+	if err != nil || revision < 10 {
+		return false, err
+	}
+	capability, err := c.read(48)
+	return capability == uartSamples && err == nil, err
 }
 
 // TRLC-LINKS: REQ-SDS-040, REQ-SDS-083
@@ -482,7 +528,7 @@ func (c *Capture) Arm(ctx context.Context, cfg Config) error {
 	if cfg.I2C.Enabled && (cfg.UART.Enabled || cfg.Source != ADC || !cfg.Normal || cfg.I2C.ClockChannel > 1 || cfg.I2C.Address < -1 || cfg.I2C.Address > 127 || cfg.I2C.Direction > 2 || cfg.I2C.Length > 4) {
 		return fmt.Errorf("sramcapture: invalid hardware I2C configuration")
 	}
-	if cfg.UART.Enabled && (cfg.Source != ADC || !cfg.Normal || cfg.UART.Channel > 1 || cfg.UART.Length > 4 || cfg.UART.BitTicks < 4 || cfg.UART.BitTicks > 0xffffff) {
+	if cfg.UART.Enabled && (cfg.Source != ADC || !cfg.Normal || !cfg.UART.valid()) {
 		return fmt.Errorf("sramcapture: invalid hardware UART configuration")
 	}
 	if (cfg.DecimationLog2 != 0 && (cfg.DecimationLog2 < 4 || cfg.DecimationLog2 > 20)) || cfg.Source > Counter || cfg.Pair > 4 || cfg.TriggerChannel > 1 || cfg.PostWords == 0 || uint64(cfg.PreWords)+uint64(cfg.PostWords) > uint64(Words) {
@@ -570,16 +616,32 @@ func (c *Capture) Arm(ctx context.Context, cfg Config) error {
 		if err != nil {
 			return err
 		}
-		if capability == 0x5502 {
+		if capability == uartLevels || capability == uartSamples {
+			u := cfg.UART
+			if u.Enabled && u.sampleUART() != (capability == uartSamples) {
+				return fmt.Errorf("sramcapture: the loaded image's UART receiver takes the other configuration")
+			}
 			control := uint16(0)
-			if cfg.UART.Enabled {
-				control = 1 | uint16(cfg.UART.Channel)<<1 | uint16(cfg.UART.Length)<<3
-				if cfg.UART.Inverted {
+			if u.Enabled {
+				control = 1 | uint16(u.Channel)<<1 | uint16(u.Length)<<3
+				if u.Inverted {
 					control |= 4
 				}
+				ticks := u.BitTicks
+				if u.sampleUART() {
+					bits := u.Bits
+					if bits == 0 {
+						bits = 8
+					}
+					control |= uint16(bits)<<6 | uint16(u.Parity)<<10
+					if u.Resync {
+						control |= 1 << 12
+					}
+					ticks = u.Period16
+				}
 				for _, r := range []struct{ sel, value uint16 }{
-					{49, uint16(cfg.UART.BitTicks)}, {50, uint16(cfg.UART.BitTicks >> 16)},
-					{51, uint16(cfg.UART.Pattern)}, {52, uint16(cfg.UART.Pattern >> 16)},
+					{49, uint16(ticks)}, {50, uint16(ticks >> 16)},
+					{51, uint16(u.Pattern)}, {52, uint16(u.Pattern >> 16)},
 				} {
 					if err := c.write(r.sel, r.value); err != nil {
 						return err

@@ -1,7 +1,10 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-PANEL
 package panel
 
-import "open-sds/app/internal/analog"
+import (
+	"open-sds/app/internal/analog"
+	"open-sds/app/internal/decode"
+)
 
 // DefaultSetup returns the instrument to its power-on setup (DEFAULT SETUP key,
 // SCPI *RST): AUTO and running on a rising CH1 edge at 0 V, 500 us/div with the
@@ -112,6 +115,8 @@ func (c *Controller) DefaultSetup() {
 	// bit rate (SENT with a Manchester rate)
 	c.decBaud, c.decChA, c.decChB, c.decCPOL, c.decCPHA, c.decFormat = 115200, 0, 1, false, false, 0
 	c.decLSB, c.auto = false, autoWatch{}
+	c.decDelayNs, c.decDelayAuto, c.decFine, c.spiEye = 0, false, false, decode.SPIEye{}
+	c.spiEyeKey, c.spiEyeEnds, c.spiEyeLaunched = "", 0, 0
 	for i := range c.refs {
 		c.refs[i].show = false
 	}

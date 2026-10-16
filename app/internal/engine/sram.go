@@ -421,13 +421,13 @@ func (e *Engine) planSerial(c *sramcapture.Config, serial SerialParams, fallback
 		c.SENT = planHardwareSENT(serial)
 	}
 	if e.hardwareUART {
-		c.UART = planHardwareUART(serial)
+		c.UART = planHardwareUART(serial, e.hardwareSampleUART)
 	}
 	if e.hardwareSPI {
 		c.SPI = planHardwareSPI(serial, e.hardwareSampleSPI)
 	}
 	if e.hardwareI2C {
-		c.I2C = planHardwareI2C(serial)
+		c.I2C = planHardwareI2C(serial, e.hardwareSampleI2C)
 	}
 	if c.USBLS.Enabled {
 		c.Normal = true
@@ -505,32 +505,22 @@ func (e *Engine) planHysteresis(c *sramcapture.Config, decimated bool) {
 		band = math.Max(band, spread(1-int(c.TriggerChannel)))
 	}
 	c.TriggerHysteresis = uint8(math.Min(255, math.Max(4, math.Ceil(band)+2)))
+	if c.SPI.Enabled && c.SPI.GapTicks <= sampleSPIFastGap && c.TriggerHysteresis > sampleSPIFastBand {
+		// SPI on the samples at 25 MHz and up: its edges take a few ns, too
+		// fast for a converter's offset to cross the level back on them, and
+		// its sampled swing shrinks (104 MHz at 1 V/div with 10x probes dipped
+		// to 116 of the 115 the offsets' band asked, and a clock edge was lost)
+		c.TriggerHysteresis = sampleSPIFastBand
+	}
 }
 
-// TRLC-LINKS: REQ-SDS-013
-func planHardwareUART(p SerialParams) sramcapture.UARTTriggerConfig {
-	// Hardware must not silently substitute the edge-trigger level for the
-	// decoder's automatic threshold. Auto slicing remains a software request.
-	if !p.HaveThr || p.Proto != serUART || p.Baud <= 0 || (p.Bits != 0 && p.Bits != 8) ||
-		(p.Parity != "" && p.Parity != "none") || len(p.Bytes) > 4 || p.ChA < 0 || p.ChA > 1 {
-		return sramcapture.UARTTriggerConfig{}
-	}
-	if p.HaveThr && (math.IsNaN(p.Threshold) || math.IsInf(p.Threshold, 0) || p.Threshold < 0 || p.Threshold > 255) {
-		return sramcapture.UARTTriggerConfig{}
-	}
-	ticks := math.Round(125e6 / float64(p.Baud))
-	if ticks < 4 || ticks > 0xffffff {
-		return sramcapture.UARTTriggerConfig{}
-	}
-	c := sramcapture.UARTTriggerConfig{Enabled: true, Channel: uint8(p.ChA), Inverted: p.Inverted, BitTicks: uint32(ticks), Length: uint8(len(p.Bytes))}
-	for _, b := range p.Bytes {
-		if b < 0 || b > 255 {
-			return sramcapture.UARTTriggerConfig{}
-		}
-		c.Pattern = c.Pattern<<8 | uint32(b)
-	}
-	return c
-}
+// sampleSPIFastGap is the idle gap of an SPI clock of 25 MHz and up (in
+// receiver clocks), and sampleSPIFastBand the re-arm band its receiver on
+// the samples takes (codes each side of the level).
+const (
+	sampleSPIFastGap  = 8
+	sampleSPIFastBand = 6
+)
 
 // runSRAM exclusively owns the revisioned SRAM backend. It never writes a
 // legacy CS1 selector. Fast capture is explicitly freeze/read/rearm; a frozen
@@ -1182,7 +1172,14 @@ acquisitionLoop:
 					f.TrigPos = int(at)
 				}
 				if name == "uart" && hw >= 0 && f.EdgeX >= 0 {
-					f.MatchEndS, f.HasMatchEnd = (hw-f.EdgeX)*f.SampleS, true
+					// the matched frame's stop bit: the receiver on the samples
+					// publishes its match a fixed time after it, longer than a
+					// stop bit at its rates
+					end := hw
+					if cfg.UART.Period16 != 0 && f.SampleS > 0 {
+						end = math.Max(f.EdgeX, hw-sampleUARTMatchLagS/f.SampleS)
+					}
+					f.MatchEndS, f.HasMatchEnd = (end-f.EdgeX)*f.SampleS, true
 				}
 			}
 		} else if e.serialMode.Load() == SerialTrigger {

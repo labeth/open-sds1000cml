@@ -39,10 +39,12 @@ const images:Record<string,Image>={
   defines:['TRIG_ARINC','TRIG_CAN','TRIG_FLEXRAY','TRIG_MIL','TRIG_SENT','SEQUENCE_ONLY'],seed:6,trigger:true,precision:false},
  line:{dir:'images/line',files:['manchester_receive.v','manchester_trigger.v','usbls_trigger.v','protocol_scratch.v'],
   defines:['TRIG_MAN','TRIG_USB','SEQUENCE_ONLY'],seed:7,trigger:true,precision:false},
- // ADR-SAMPLE-DOMAIN-SPI: SPI decoded and triggered on the samples to a
- // 125 MHz clock (sample_edges.v, spi_sample.v); the general image has no
- // room for it at 250 MHz. Raw samples only, with the sequence trigger.
- fast:{dir:'images/fast',files:['sample_edges.v','spi_sample.v'],defines:['TRIG_SPI','SPI_SAMPLES'],seed:2,trigger:true,precision:false},
+ // ADR-SAMPLE-DOMAIN-SPI: SPI, UART and I2C decoded and triggered on the
+ // samples (sample_bus.v: sample_edges.v, spi_sample.v, uart_sample.v,
+ // i2c_sample.v); the general image has no room for them at 250 MHz. Raw
+ // samples only, with the sequence trigger.
+ fast:{dir:'images/fast',files:['sample_bus.v','sample_edges.v','spi_sample.v','uart_sample.v','i2c_sample.v'],
+  defines:['TRIG_UART','TRIG_I2C','TRIG_SPI','SAMPLE_BUS'],seed:2,trigger:true,precision:false},
  // ADR-STREAM-IMAGE: continuous capture for roll and loss-free streaming; no
  // protocol decoders, so the packetizer, banks and precision decimation fit.
  // STREAM_DRUM: the stream goes through the external SRAM as a FIFO, whose

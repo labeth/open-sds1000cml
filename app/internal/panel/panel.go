@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"open-sds/app/internal/analog"
+	"open-sds/app/internal/decode"
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/settings"
 	"open-sds/app/internal/superres"
@@ -181,7 +182,19 @@ type Controller struct {
 	decChA, decChB   int
 	decCPOL, decCPHA bool
 	decLSB           bool // SPI least significant bit first
-	decFormat        int  // 0=hex, 1=ascii, 2=both
+	// SPI's data line is read decDelayNs after the clock's sampling edge, or
+	// with decDelayAuto at the middle of the data's eye measured on the
+	// full-rate records (spiEye); decFine asks for the FPGA's receivers on
+	// the samples (the fast image) at any rate.
+	decDelayNs   float64
+	decDelayAuto bool
+	decFine      bool
+	spiEye       decode.SPIEye // the last full-rate SPI record's eye (PeriodS 0: none)
+	// the bursts' ends counted on the records since the SPI bus changed
+	// (spiEyeKey), and those whose data was launched after the last edge
+	spiEyeKey                  string
+	spiEyeEnds, spiEyeLaunched int
+	decFormat                  int // 0=hex, 1=ascii, 2=both
 	// what Auto filled in, and whether the bus it found still decodes
 	auto autoWatch
 	// how the detection under way frames the bus: 0 not, busFrameEntry for

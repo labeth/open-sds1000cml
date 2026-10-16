@@ -166,9 +166,9 @@ automatically.
 
 | Protocol | FPGA image | Highlights |
 |---|---|---|
-| UART | general | auto baud from 300 Bd to 3 MBd |
-| I²C | general | 7-bit address, direction, data bytes |
-| SPI | general; fast past 20 MHz | all four modes, both bit orders; to 104 MHz decoded on the samples |
+| UART | general; fast past 5 MBd or not 8N1 | 5 to 9 data bits, parity; to 62.5 MBd decoded on the samples |
+| I²C | general; fast in high-speed mode | 7-bit address, direction, data bytes; to 3.4 MHz on the samples |
+| SPI | general; fast past 20 MHz | all four modes, both bit orders; to 104 MHz on the samples, with a data delay |
 | CAN / CAN FD | packet | Classic CAN CRC check; CAN FD ID/data decode (CRC not checked) |
 | FlexRay | packet | header and payload; header CRC |
 | ARINC 429 | packet | masked 32-bit word |
@@ -200,6 +200,41 @@ automatically.
   UART at **921,600 baud ran lossless for 3 minutes** (16.6 M bytes). At higher rates a lost event
   is marked, never silently dropped.
 * Hex, ASCII and combined views, and a watch buffer with regex search.
+
+## Full-speed protocol decoding in the FPGA
+
+The `fast` FPGA image decodes SPI, UART and I²C from the converters' own samples instead of 125 MHz
+line levels. Each line's crossings are found in the raw 2 ns samples and timed to a sixteenth of a
+nanosecond by interpolation; the receivers read the bits at those times. A byte trigger decided in the
+FPGA fires on the matched frame, and the decoded stream carries every byte.
+
+| | Bench source | FPGA trigger | Decoded in the FPGA |
+|---|---|---|---|
+| **SPI** | 104 MHz flash fast-read look-alike, its data settling 6.7 ns after the launching edge; and 10 to 104 MHz with data on the other edge | `OPEN`: every record's trigger 6 to 8 acquisition words after the receiver's match | 3,947 of 3,947 bursts exact at the eye's middle (none at the edge); 4,945 of 4,945 at 104 MHz |
+| **UART** | 62.5 MBd in 8N1, 7E1 and 9O1, characters back to back; the same line inverted | `-SDS`, and a counting character on the inverted line | 3,961 bursts of 32 characters (8N1) and 3,982 (9O1), 0 errors; 10, 25 and 50 MBd as well |
+| **I²C** | 3.4 MHz high-speed mode: a ten-bit address, a repeated START, NACKs | a read of address 0x50; a write of `00 10` | 3,799 transfers, 0 errors; 100 kHz, 400 kHz and 1 MHz as well |
+
+All three run in one `fast` image (84 % of the FPGA's logic, timing met). The general image's
+receivers stay for everything they read: UART to 5 MBd 8N1, I²C to fast-mode plus, SPI to about 20 MHz.
+Past that, or with **Receiver = Samples** on the BUS sheet, the scope loads the fast image by itself (about
+four seconds). Detection names these buses too: a 62.5 MBd UART and high-speed I²C.
+
+**SPI data delay.** A flash read at 104 MHz puts its data out 6 to 8 ns after the clock edge that
+launches it, most of a period late. The BUS sheet's **Data delay = Auto** reads the record's data eye:
+every data transition between clock edges gives its phase, and the eye is the widest phase interval
+holding none. The receiver reads the data at the middle of that interval, and the row shows the delay
+and the timing margin left on each side.
+
+| | |
+|---|---|
+| ![Native LCD, BUS workspace: the 104 MHz SPI flash look-alike decoded and triggered on OPEN](docs/images/scope-fast-spi.png) | ![The BUS sheet: Data delay Auto with the eye's margin, the clock rate and the receiver](docs/images/scope-fast-spi-sheet.png) |
+| **SPI 104 MHz:** the flash look-alike, triggered on `OPEN` | **Data delay = Auto:** the eye's middle and the margin |
+| ![Native LCD, BUS workspace: a 62.5 MBd UART decoded and triggered](docs/images/scope-fast-uart.png) | ![Native LCD, BUS workspace: 3.4 MHz high-speed I2C decoded and triggered on a read of 0x50](docs/images/scope-fast-i2c.png) |
+| **UART 62.5 MBd** | **I²C 3.4 MHz** |
+| ![Web BUS workspace: the 104 MHz SPI bus decoded at the data delay, the hardware trigger's matches counted](docs/images/web-fast-spi.png) | ![Web BUS workspace: the 62.5 MBd UART, triggered on -SDS](docs/images/web-fast-uart.png) |
+| **Web, SPI 104 MHz** | **Web, UART 62.5 MBd** |
+| ![Web BUS workspace: 3.4 MHz I2C transfers listed with their addresses](docs/images/web-fast-i2c.png) | |
+| **Web, I²C 3.4 MHz** | |
 
 ## Analysis
 

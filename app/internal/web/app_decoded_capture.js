@@ -49,6 +49,7 @@ function dsAutoFill(p) {
     if (rate > 0) q.baud = q.proto === 1 ? dsStandardBaud(rate) : Math.round(rate);
   }
   if (q.proto === 3 && !(q.spiClockHz > 0) && m.colsPerClock > 0 && dt > 0) q.spiClockHz = Math.round(1 / (m.colsPerClock * dt));
+  if (q.proto === 2 && !(q.i2cClockHz > 0) && m.colsPerClock > 0 && dt > 0) q.i2cClockHz = Math.round(1 / (m.colsPerClock * dt));
   if (q.proto === 5 && !(q.tickNs > 0) && m.tickSamples > 0 && dt > 0) q.tickNs = m.tickSamples * dt * 1e9;
   return q;
 }
@@ -74,8 +75,20 @@ function dsConfig() {
   if (sequence) cfg.sequence = sequence;
   if (packet) return dsPacketConfig(p, cfg);
   if (p.proto === 1) {
-    if (p.baud <= 0 || p.bits !== 8 || p.parity !== "none") throw Error("UART streaming requires an explicit baud rate and 8N1.");
-    cfg.uart = { enabled: true, channel: p.chA, inverted: p.inverted, bit_ticks: Math.round(125e6 / p.baud), pattern, length: p.bytes.length };
+    if (p.baud <= 0) throw Error("UART streaming requires an explicit baud rate.");
+    const bits = p.bits || 8, parity = { none: 0, even: 1, odd: 2 }[p.parity || "none"];
+    if (bits === 8 && parity === 0 && dsGeneralUART(p.baud)) {
+      cfg.uart = { enabled: true, channel: p.chA, inverted: p.inverted, bit_ticks: Math.round(125e6 / p.baud), pattern, length: p.bytes.length };
+    } else {
+      // Past the general image's receiver, or in another format: the fast
+      // image's receiver on the samples (uart_sample.v), a bit time in
+      // sixteenths of a nanosecond, every edge re-timing the bits after it.
+      let period16 = Math.round(16e9 / p.baud);
+      if (period16 < 256 && 50 * period16 >= 49 * 256) period16 = 256; // up to 2 % past 62.5 MBd: it re-times on every edge
+      if (period16 < 256 || period16 > 0xffffff || bits < 5 || bits > 9 || parity === undefined || p.bytes.some(b => b >= 1 << bits))
+        throw Error("UART streaming takes 5 to 9 data bits, no, even or odd parity, and 954 Bd to 62.5 MBd.");
+      cfg.uart = { enabled: true, channel: p.chA, inverted: p.inverted, bit_ticks: 0, period16, bits, parity, resync: true, pattern, length: p.bytes.length };
+    }
   } else if (p.proto === 9) {
     const ticks = Math.round(125e6 * 256 / p.baud);
     if (p.baud <= 0 || ticks < 2048 || ticks > 0xffffff) throw Error("USB streaming requires an explicit bit rate within the hardware range.");
@@ -90,7 +103,13 @@ function dsConfig() {
     cfg.sent = { enabled: true, channel: p.chA, inverted: p.inverted, tick_ticks: ticks, nibbles: p.nibbles, pattern, length: p.bytes.length };
   } else {
     if (p.chA === p.chB) throw Error("Clock and data must use different channels.");
-    if (p.proto === 2) cfg.i2c = { enabled: true, clock_channel: p.chA, inverted: p.inverted, address: p.addr, direction: p.rw, pattern, length: p.bytes.length };
+    if (p.proto === 2) {
+      cfg.i2c = { enabled: true, clock_channel: p.chA, inverted: p.inverted, address: p.addr, direction: p.rw, pattern, length: p.bytes.length };
+      // High-speed mode, past the general image's receiver on 125 MHz line
+      // levels: the fast image's on the samples, SDA read at SCL's crossing
+      // plus the channels' phase (C2 23/16 ns after C1).
+      if (p.i2cClockHz > 1.5e6) Object.assign(cfg.i2c, { samples: true, delay: p.chA === 1 ? 23 : -23 });
+    }
     else {
       const hz = +$("dsClock").value || p.spiClockHz;
       if (!Number.isFinite(hz) || hz <= 0) throw Error("Enter the SPI clock frequency.");
@@ -105,6 +124,15 @@ function dsConfig() {
     }
   }
   return cfg;
+}
+// dsGeneralUART mirrors the engine's generalUARTReach: the general image's
+// receiver counts whole 125 MHz ticks a bit and never re-times, so the bit's
+// rounding and a transmitter's 2 % over a 10-bit frame, and a tick each for
+// the start edge and the slicing, must stay inside half a bit (8N1 to 5 MBd).
+// TRLC-LINKS: REQ-SDS-206, REQ-SDS-229
+function dsGeneralUART(baud) {
+  const bit = 125e6 / baud, ticks = Math.round(bit);
+  return ticks >= 4 && ticks <= 0xffffff && 9.5 * (Math.abs(ticks - bit) + 0.02 * bit) + 2 <= bit / 2;
 }
 // dsPacketConfig builds the packet image's Manchester or packet block. The
 // 64-bit pattern is a BigInt, written into the JSON text as a plain integer.

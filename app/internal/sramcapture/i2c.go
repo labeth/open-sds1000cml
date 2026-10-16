@@ -12,7 +12,20 @@ type I2CTriggerConfig struct {
 	Direction    uint8  `json:"direction"` // 0 write, 1 read, 2 either
 	Pattern      uint32 `json:"pattern"`
 	Length       uint8  `json:"length"`
+	// Samples asks for the receiver on the samples (capability 0x4902,
+	// i2c_sample.v), which reads SDA Delay sixteenths of a nanosecond after
+	// SCL's interpolated crossing (the channels' sampling phase): it holds
+	// high-speed mode's 10 ns setup.
+	Samples bool `json:"samples,omitempty"`
+	Delay   int8 `json:"delay,omitempty"`
 }
+
+// I2C receiver capabilities (register 53): on the 125 MHz line levels, or
+// on the converters' samples with interpolated edges.
+const (
+	i2cLevels  = 0x4901
+	i2cSamples = 0x4902
+)
 
 // TRLC-LINKS: REQ-SDS-013
 func (c *Capture) SupportsI2C() (bool, error) {
@@ -23,7 +36,16 @@ func (c *Capture) SupportsI2C() (bool, error) {
 		return false, err
 	}
 	capability, err := c.read(53)
-	return capability == 0x4901 && err == nil, err
+	return (capability == i2cLevels || capability == i2cSamples) && err == nil, err
+}
+
+// SupportsSampleI2C reports the I2C receiver on the samples (i2c_sample.v).
+// TRLC-LINKS: REQ-SDS-229
+func (c *Capture) SupportsSampleI2C() (bool, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	v, err := c.read(53)
+	return v == i2cSamples && err == nil, err
 }
 
 // Called with the capture lock held and the fabric idle.
@@ -37,7 +59,7 @@ func (c *Capture) configureI2C(revision uint16, p I2CTriggerConfig) error {
 			return err
 		}
 	}
-	if capability != 0x4901 {
+	if (capability != i2cLevels && capability != i2cSamples) || (p.Enabled && p.Samples && capability != i2cSamples) {
 		if p.Enabled {
 			return fmt.Errorf("sramcapture: fabric lacks hardware I2C trigger")
 		}
@@ -52,7 +74,11 @@ func (c *Capture) configureI2C(revision uint16, p I2CTriggerConfig) error {
 		if p.Address < 0 {
 			control |= 32
 		}
-		for _, r := range []struct{ sel, value uint16 }{{54, uint16(p.Address) & 127}, {55, uint16(p.Pattern)}, {56, uint16(p.Pattern >> 16)}} {
+		regs := []struct{ sel, value uint16 }{{54, uint16(p.Address) & 127}, {55, uint16(p.Pattern)}, {56, uint16(p.Pattern >> 16)}}
+		if capability == i2cSamples {
+			regs = append(regs, struct{ sel, value uint16 }{regSampleDelay, uint16(uint8(p.Delay))})
+		}
+		for _, r := range regs {
 			if err := c.write(r.sel, r.value); err != nil {
 				return err
 			}

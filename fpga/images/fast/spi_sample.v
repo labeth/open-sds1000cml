@@ -72,30 +72,3 @@ module spi_sample(
  end
 endmodule
 
-// The fast image's SPI trigger: the acquisition words (two samples a
-// channel on the 250 MHz clock) paired for the 125 MHz receiver clock, the
-// edge extractor on the clock line and the receiver.
-// TRLC-LINKS: REQ-SDS-013, REQ-SDS-229
-module spi_sample_trigger(
- input wire core,clk,reset,enable,
- input wire [31:0] word,input wire valid,  // core clock: CH1, CH2, CH1, CH2 bytes, the earliest lowest
- input wire clock_ch,inverted,cpol,cpha,msb,
- input wire [7:0] level,low,high,delay,    // delay: spi_sample.v's, held (host clock)
- input wire [23:0] gap_ticks,
- input wire [31:0] pattern,input wire [2:0] pattern_len,
- output wire match,event_valid,
- output wire [7:0] event_kind,event_data
-);
- // The receiver clock (in phase, half the rate) takes the two words since
- // its last edge.
- reg [31:0] w0=0,w1=0;reg v0=0,v1=0;
- always @(posedge core)begin w0<=word;w1<=w0;v0<=valid;v1<=v0;end
- reg [7:0] delay_h=0;
- always @(posedge clk)delay_h<=delay;
- wire live,found,other;wire signed [7:0] when;
- sample_edges edges(.clk(clk),.reset(reset || !enable),.valid(v0 && v1),.word({w0,w1}),.ch(clock_ch),.rising((cpol==cpha)!=inverted),
-  .level(level),.low(low),.high(high),.delay(delay_h),.live(live),.found(found),.when(when),.other(other));
- spi_sample receiver(.clk(clk),.reset(reset),.enable(enable),.live(live),.found(found),.other(other),
-  .inverted(inverted),.msb(msb),.gap_ticks(gap_ticks),.pattern(pattern),.pattern_len(pattern_len),
-  .match(match),.event_valid(event_valid),.event_kind(event_kind),.event_data(event_data));
-endmodule

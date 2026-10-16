@@ -31,6 +31,8 @@ type spiBus struct {
 	riseS           float64 // 10-90 %
 	noise           float64 // codes rms
 	seed            int64
+	dataLateS       float64 // the data line settles this long after the edge that launches it
+	runtS           float64 // the burst's last clock pulse lasts this long (a gated clock's runt)
 }
 
 // synthPhaseS is C2's sampling instant after C1's (the bench: 1.44 ns).
@@ -62,18 +64,26 @@ func (p spiBus) words() []uint64 {
 				}
 				start := t + float64(b)*period
 				if !p.cpha {
-					set(&dat, &dl, start, bit)
+					set(&dat, &dl, start+p.dataLateS, bit)
 				}
 				set(&clk, &cl, start+period/2, !p.cpol)
 				if p.cpha {
-					set(&dat, &dl, start+period/2, bit)
+					set(&dat, &dl, start+period/2+p.dataLateS, bit)
+				}
+				if p.runtS > 0 && b == 8*len(f)-1 {
+					set(&clk, &cl, start+period/2+p.runtS, p.cpol)
 				}
 				set(&clk, &cl, start+period, p.cpol)
 				b++
 			}
 		}
 		t += float64(b) * period
-		set(&dat, &dl, t+period/2, false)
+		if p.dataLateS > 0 {
+			// a device reading on launches the next bit on the last edge too
+			set(&dat, &dl, t+p.dataLateS, !dl)
+		} else {
+			set(&dat, &dl, t+period/2, false)
+		}
 		t += p.idleS
 	}
 	n := int(t/2e-9) + 64
@@ -294,6 +304,10 @@ func TestSampleSPIRTL(t *testing.T) {
 		c.Pattern, c.Length = 0xffa55a, 3
 		runs = append(runs, run{fmt.Sprintf("synthetic %.0fMHz mode %d%d msb %v inv %v", p.rateHz/1e6, b2u8(p.cpol), b2u8(p.cpha), p.msb, p.inverted), p.words(), c})
 	}
+	runt := spiBus{rateHz: 50e6, msb: true, clockCh: 1, frames: [][]byte{benchFrame(1)[:12], benchFrame(2)[:12]}, idleS: 1e-6, riseS: 3e-9, noise: 1, seed: 5, runtS: 2.2e-9}
+	rc := runt.config()
+	rc.High, rc.Pattern, rc.Length = 150, 0x0b, 1
+	runs = append(runs, run{"synthetic runt pulses", runt.words(), rc})
 	for _, c := range spiCaptures {
 		words := readCapture(t, c.file)
 		cfg := captureConfig(c.rateHz)

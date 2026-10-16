@@ -271,3 +271,48 @@ func TestAutosetKeepsABurstsSwing(t *testing.T) {
 		}
 	}
 }
+
+// AUTO finds a 3.3 V logic square through 10x probes and fits it as with
+// 1x: the sweep's coarse 2 V/div is at the probe tip (at the BNC it was
+// 20 V/div at the tip, the swing four codes, and AUTO said no signal). With
+// the factor left at 1x on a 10x probe (Default setup), a second pass at
+// 200 mV/div finds it.
+// TRLC-LINKS: REQ-SDS-137
+func TestAutosetFindsALogicSignalThroughA10xProbe(t *testing.T) {
+	for _, pr := range []struct{ set, physical float64 }{{1, 1}, {10, 10}, {1, 10}} {
+		c, e, fe := newC(t)
+		e.stats.TdivS = 1e-6
+		fe.SetProbe(0, pr.set)
+		fe.SetProbe(1, pr.set)
+		c.SetFrameSource(func(fn func(*engine.Frame)) {
+			idx, _ := fe.Snapshot()
+			var codes [2][]uint8
+			for ch := 0; ch < 2; ch++ {
+				for i := 0; i < 400; i++ {
+					tip := 0.0
+					if i%20 >= 10 {
+						tip = 3.3
+					}
+					// centred on the screen: the fake engine keeps no offset
+					code := 128 + (tip-1.65)/pr.physical/analog.AnalogVdiv(idx[ch])*25 + float64(i%3) - 1
+					codes[ch] = append(codes[ch], uint8(math.Max(0, math.Min(255, math.Round(code)))))
+				}
+			}
+			fn(&engine.Frame{C1: codes[0], C2: codes[1], Valid: 400, SampleS: 50e-9})
+		})
+		c.runAutoset(make(chan struct{}))
+		c.mu.Lock()
+		msg := c.autosetMsg
+		c.mu.Unlock()
+		if msg == "AUTOSET: no signal" {
+			t.Fatalf("%+v: no signal", pr)
+		}
+		vidx, _ := fe.Snapshot()
+		for ch := 0; ch < 2; ch++ {
+			// the 3.3 V swing fitted to 500 mV or 1 V a division at the tip
+			if tip := analog.Detents[vidx[ch]].VdivV * pr.physical; tip < 0.45 || tip > 1.05 {
+				t.Fatalf("%+v: C%d fitted %g V/div at the BNC, %g at the tip", pr, ch+1, analog.Detents[vidx[ch]].VdivV, tip)
+			}
+		}
+	}
+}

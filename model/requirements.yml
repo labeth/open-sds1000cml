@@ -3883,9 +3883,10 @@ requirements:
     transcript; Zoom shows a stopped stream's list or its record's waveform. A detection or AUTO ends the stream for
     its sweep and the view streams the bus it leaves. The web page's BUS view follows the scope's view.
 - id: REQ-SDS-229
-  title: SPI decoded on the samples
-  text: The instrument shall decode two-wire SPI in the FPGA from the converters' samples, timing each clock edge by
-    interpolation between samples, and trigger on the decoded bytes for clock rates up to 104 MHz.
+  title: SPI, UART and I2C decoded on the samples
+  text: The instrument shall decode two-wire SPI, UART and I2C in the FPGA from the converters' samples, timing each
+    line's edges by interpolation between samples, and trigger on the decoded bytes for SPI clocks up to 104 MHz,
+    UART rates up to 62.5 MBd and I2C clocks up to 3.4 MHz.
   status: draft
   category: functional
   appliesTo:
@@ -3893,15 +3894,44 @@ requirements:
   - FU-APP-DECODE
   - FU-APP-ENGINE
   - FU-APP-SRAMCAPTURE
+  - FU-APP-PANEL
+  - FU-APP-WEB
   verificationMethods:
   - test
-  verificationCriteria: The Go model of the receiver decodes synthetic buses at 1, 10, 25, 50, 75 and 104 MHz in all
-    four modes, both bit orders and inverted, and records of the bench source at 10 to 104 MHz, without a bit error;
-    the RTL (sample_edges.v, spi_sample.v) finds the model's edges and publishes its events and matches on the same
-    clocks; the planner takes 104 MHz to the receiver with its gap and the channels' phase. On the device, a byte
-    trigger on the bench source fires once a burst at 10, 25, 50, 75 and 104 MHz and the decoded bytes match the
-    source.
+  verificationCriteria: The Go models of the receivers decode without a bit error synthetic buses (SPI at 1 to 104 MHz
+    in all four modes, both bit orders and inverted; UART at 115200 Bd to 62.5 MBd in 5 to 9 data bits, no, even and
+    odd parity, one and two stop bits, inverted, with the transmitter 2 % fast and slow; I2C at 100 kHz, 400 kHz, 1 MHz
+    and 3.4 MHz with open-drain rise times, ten-bit addresses, repeated STARTs and NACKs, SDA held 5 ns) and records of
+    the bench sources (SPI 10 to 104 MHz, UART 1 to 62.5 MBd, I2C 400 kHz to 3.4 MHz); the RTL finds the models' edges
+    and publishes their events and matches on the same clocks, and the fast image's top level decodes and triggers on
+    them from register writes. On the device, byte triggers fire on the model's match in every triggered record, and
+    decoded-event streams carry every character and transfer the sources sent, at each rate.
   notes: Four samples a channel per 125 MHz receiver clock; a crossing is the first sample at or past the level
-    after one beyond the re-arm band, timed in sixteenths of a nanosecond; the data line is taken at the sample
-    nearest the crossing plus the channels' sampling phase (C2 1.44 ns after C1). One sampling edge a receiver
-    clock bounds the clock at 125 MHz. Frames are split by an idle gap, as the level receiver's were.
+    after one beyond the re-arm band (re-armed once beyond the band's other edge, or after a whole clock beyond its
+    own), timed in sixteenths of a nanosecond. SPI reads the data line at the sample nearest the clock's crossing
+    plus the channels' sampling phase (C2 1.44 ns after C1) and a data delay; one sampling edge a receiver clock
+    bounds the clock at 125 MHz and an idle gap frames bytes. UART reads bit k at the start's crossing plus k and a
+    half bit times, re-timed by every edge in the frame; a bit of at least 16 ns. I2C orders the two lines'
+    crossings in a clock by their times; SCL's rising reads SDA, SDA's crossings read SCL (START, STOP).
+- id: REQ-SDS-230
+  title: SPI data delay
+  text: The instrument shall read SPI's data line, in the FPGA's receiver on the samples and in the software
+    decoders, at the data delay the BUS sheet holds after the clock's sampling edge (on Auto, the middle of the
+    data's eye measured on the full-rate record), and show the delay and the timing margin left each side of it.
+  status: draft
+  category: functional
+  appliesTo:
+  - FU-APP-DECODE
+  - FU-APP-ENGINE
+  - FU-APP-PANEL
+  verificationMethods:
+  - test
+  verificationCriteria: A synthetic bus whose data settles 0, 3 and 7 ns after the launching edge at 104 MHz reads its
+    eye's middle within 0.6 ns, and the receiver on the samples and the software decoder at that delay read every
+    byte where the data at the edge does not; the bench's recorded 104 MHz bursts read data 1.8 ns early with the
+    margin of 3.7 ns each side; the planner moves the receiver's delay register within its range and the panel row
+    reads Auto's delay and margin. On the device, the flash look-alike's late data reads exactly at Auto's delay.
+  notes: Bit k is launched on the clock edge before its sampling edge and settles t_V later, so the middle of its
+    window is t_V after the sampling edge; a record cannot tell bit k late from bit k+1 early, so the bursts' ends
+    decide (a device that settles late launches once more after the last sampling edge). The receiver's register
+    holds -8 to 8 ns with the channels' phase.

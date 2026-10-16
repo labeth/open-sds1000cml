@@ -418,12 +418,24 @@ ARINC 429 or MIL-1553 word at its label or sync. Until a placement has been lear
 before the trigger what the match covers: a frame start's four units (a SENT frame's SYNC and first
 nibble), else the matched units, which end at the trigger (an ARINC 429 word of 320 us). The BUS header counts the packets the match holds ("TRIG ON SOF ??: 2 packets"; SOF is a
 packet's start, CMD a MIL-1553 message's command word) and the trigger read-out writes the match as
-typed ("T SER SOF ??"). SPI whose clock is past the general image's level receiver (about 20 MHz) loads
-the fast image, whose receiver works on the samples (ADR-SAMPLE-DOMAIN-SPI) to a 125 MHz clock: the clock
-is measured from a capture that resolves it (a full-rate timebase, 1 us/div or faster for 50 MHz and up) and
-kept at slower ones; one that has not triggered for 2 s is measured again from one untriggered capture,
-so a bus that slowed is learned anew. The packet, line and fast images (Manchester, USB, SENT, CAN,
-FlexRay, MIL-1553, ARINC 429, fast SPI) record raw samples only, one SRAM of 2.1 ms: on them the timebase goes no slower than
+typed ("T SER SOF ??"). SPI, UART and I2C past the general image's receivers on 125 MHz line levels load
+the fast image, whose receivers work on the samples (ADR-SAMPLE-DOMAIN-SPI): SPI past a clock of about
+20 MHz (to 125 MHz), a UART past 5 MBd 8N1 (the general receiver never re-times, so a whole-tick bit and a
+transmitter's 2 % must keep the stop bit's sample inside it) or in any other format (5 to 9 data bits,
+parity; to 62.5 MBd), I2C whose SCL is measured past 1.5 MHz (high-speed mode). The BUS sheet's Receiver
+row = Samples takes them there at any rate. The SPI clock is measured from a capture that resolves it (a
+full-rate timebase, 1 us/div or faster for 50 MHz and up) and kept at slower ones, or set on the BUS sheet's
+Clock rate row; one that has not triggered for 2 s is measured again from one untriggered capture, so a bus
+that slowed is learned anew. The BUS sheet's Data delay row sets where SPI's data line is read after the
+clock's sampling edge (-8 to 9 ns; the receiver's register holds 8 ns with the channels' phase): a device's
+data settles late (a flash read at 104 MHz, 6 to 8 ns after the edge that launches it). Auto reads it at
+the middle of the data's eye on the last full-rate record: every data transition between sampling edges
+gives its phase, the eye is the widest phase interval holding none; whether the middle lies after the edge
+(data settling late) or before it (data a little early) is told from the bursts' ends, where a device that
+settles late launches once more after the last sampling edge. The row reads the delay and the margin left
+each side of it ("Auto -1.8 ns, margin +3.7 ns"); the software decoders read the data at the same delay.
+The packet, line and fast images (Manchester, USB, SENT, CAN,
+FlexRay, MIL-1553, ARINC 429, fast SPI, UART and I2C) record raw samples only, one SRAM of 2.1 ms: on them the timebase goes no slower than
 200us/div, whose screen that record fills ("200us/div at most on this trigger: its image records
 2.1ms", also when a trigger armed at a slower timebase brings the image in). BUS entry's detection sets the same trigger. AUTO in the other workspaces is the autoset framed
 for the workspace's job (REQ-SDS-224). Either sweep first puts the trigger back to an edge and waits for the
@@ -437,7 +449,10 @@ another image (a UART's stream the general image's receiver, after AUTO left the
 with the note "loading the general FPGA image, about 4 s: the qualifier image has no UART receiver" on the
 LCD's stream line and the web page's.
 
-The autoset finds the signal on a fast-to-slow timebase sweep at 2 V/div, widens each channel's swing with
+The autoset finds the signal on a fast-to-slow timebase sweep at 2 V/div at the probe tip (the detent
+nearest 2 V over the probe factor: with 10x probes at the BNC it read a 3.3 V logic swing as four codes and
+found no signal), and finding nothing sweeps again at 200 mV/div at the tip (a 10x probe whose factor reads
+1x, as Default setup leaves it), widens each channel's swing with
 one capture of a 10 ms window (levels that change slower than the frequency found: an ARINC 429 line's data
 level beside its NULL toggle), fits the vertical over about 30 cycles, reads the swing again at the V/div it
 fitted (the smaller of two captures; a finer detent when it fits with 3 % to spare and the capture holds nine

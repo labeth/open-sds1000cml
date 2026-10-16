@@ -49,7 +49,7 @@ func busDecoding(s *sv) bool { return s.decProto != framecalc.ProtoOff }
 // busListKey is what the packet list belongs to: a change starts it over.
 // TRLC-LINKS: REQ-SDS-214
 func busListKey(s *sv) string {
-	return fmt.Sprint(s.decProto, s.decBaud, s.decChA, s.decChB, s.decCPOL, s.decCPHA, s.decLSB, s.st.TdivS)
+	return fmt.Sprint(s.decProto, s.decBaud, s.decChA, s.decChB, s.decCPOL, s.decCPHA, s.decLSB, s.st.TdivS, s.spiDelayNs())
 }
 
 // busFrame decodes the frame and offers its packets to the held list.
@@ -61,6 +61,7 @@ func (c *Controller) busFrame(a *anaState, s *sv, f *engine.Frame) {
 	}
 	a.res = framecalc.Decode(f, decodeParamsOf(s))
 	a.resOK = a.res.OK
+	c.noteSPIEye(s, f)
 	if !a.resOK {
 		a.live = nil
 		return

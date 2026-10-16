@@ -30,6 +30,11 @@ type SPICfg struct {
 	// taken at the clock's interpolated crossing plus DataLag (the channels'
 	// sampling phase, C2 0.72 samples after C1 at 2 ns).
 	DataLag float64
+	// DataDelay, when set, takes the data line that many samples after the
+	// clock's interpolated crossing (plus DataLag) at any samples a period:
+	// where a device's data settles late (MeasureSPIEye), as the FPGA's
+	// receiver on the samples takes it with a delay.
+	DataDelay float64
 }
 
 // DecodeI2C decodes I2C given SCL + SDA codes (decode.js decodeI2C).
@@ -258,8 +263,8 @@ func DecodeSPI(clk, data []uint8, colTimeS float64, cfg SPICfg) Result {
 		falling := pck == 1 && ck == 0
 		if (sampleRising && rising) || (!sampleRising && falling) {
 			at := float64(i)
-			if fine {
-				at = crossingAt(CK, i, rising) + cfg.DataLag
+			if fine || cfg.DataDelay != 0 {
+				at = crossingAt(CK, i, rising) + cfg.DataLag + cfg.DataDelay
 			}
 			bit := logicAt(DA, at)
 			if bit < 0 {

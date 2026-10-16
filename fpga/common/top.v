@@ -262,7 +262,14 @@ module acq_sram_top(
  reg uart_sample_valid=0,uart_compare_valid=0,uart_high=0,uart_low=0;
  reg i2c_high=0,i2c_low=0,i2c_line=1;
  wire uart_match;
- wire uart_byte_valid,uart_frame_error;wire [7:0] uart_byte;
+ wire uart_byte_valid,uart_frame_error;
+`ifdef SAMPLE_BUS
+ wire [8:0] uart_byte; // five to nine data bits
+`define UART_VALUE {23'd0,uart_byte}
+`else
+ wire [7:0] uart_byte;
+`define UART_VALUE {24'd0,uart_byte}
+`endif
  wire event_enabled,event_available,event_error,event_pop,event_rewind,event_clear,event_read_hit;
  wire [31:0] event_epoch;
  wire [3:0] event_cursor;wire [15:0] event_data,event_read_data;
@@ -431,7 +438,25 @@ module acq_sram_top(
    i2c_cfg_l<=i2c_cfg;i2c_address_l<=i2c_address;
   end
  end
-`ifdef TRIG_UART
+`ifdef SAMPLE_BUS
+ // ADR-SAMPLE-DOMAIN-SPI: SPI, UART and I2C on the samples (sample_bus.v),
+ // one enabled at a time; register 58 holds the first line's delay (SPI's
+ // data, I2C's SDA after SCL), 1/16 ns.
+ reg [7:0] sample_delay=8'd23;
+ wire uart_event_valid;wire [7:0] uart_event_kind;
+ sample_bus bus(.core(core),.clk(halfclk),.reset(protocol_receiver_reset),.word(il_raw_word),.valid(frontend_run && il_raw_valid),
+  .level(level_l),.low(level_low_l),.high(level_high_l),.delay(sample_delay),.ticks(protocol_ticks_rx),.pattern(protocol_pattern_rx[31:0]),
+  .spi_en(!man_cfg_rx[0] && !usb_cfg_rx[0] && spi_cfg_rx[0] && !sent_cfg_rx[0] && !mil_cfg_rx[0]),.spi_ch(spi_cfg_rx[1]),.spi_inverted(spi_cfg_rx[2]),
+  .cpol(spi_cfg_rx[3]),.cpha(spi_cfg_rx[4]),.msb(spi_cfg_rx[5]),.spi_len(`NATIVE_LEN(spi_cfg_rx[8:6])),
+  .uart_en(!man_cfg_rx[0] && !usb_cfg_rx[0] && uart_cfg_rx[0] && !i2c_cfg_rx[0] && !spi_cfg_rx[0] && !sent_cfg_rx[0] && !mil_cfg_rx[0]),
+  .uart_ch(uart_cfg_rx[1]),.uart_inverted(uart_cfg_rx[2]),.uart_resync(uart_cfg_rx[12]),.uart_bits(uart_cfg_rx[9:6]),.uart_parity(uart_cfg_rx[11:10]),.uart_len(`NATIVE_LEN(uart_cfg_rx[5:3])),
+  .i2c_en(!man_cfg_rx[0] && !usb_cfg_rx[0] && i2c_cfg_rx[0] && !spi_cfg_rx[0] && !sent_cfg_rx[0] && !mil_cfg_rx[0]),.i2c_ch(i2c_cfg_rx[1]),.i2c_inverted(i2c_cfg_rx[2]),
+  .i2c_address(i2c_address_rx),.i2c_any(i2c_cfg_rx[5]),.i2c_direction(i2c_cfg_rx[4:3]),.i2c_len(`NATIVE_LEN(i2c_cfg_rx[8:6])),
+  .spi_match(spi_match),.spi_event_valid(spi_event_valid),.spi_event_kind(spi_event_kind),.spi_event_data(spi_event_data),
+  .uart_match(uart_match),.uart_event_valid(uart_event_valid),.uart_event_kind(uart_event_kind),.uart_event_data(uart_byte),
+  .i2c_match(i2c_match),.i2c_event_valid(i2c_event_valid),.i2c_event_kind(i2c_event_kind),.i2c_event_data(i2c_event_data),.i2c_event_meta(i2c_event_meta),.i2c_selected(i2c_selected));
+ assign uart_byte_valid=uart_event_valid && uart_event_kind==8'd2,uart_frame_error=uart_event_valid && uart_event_kind==8'd4;
+`elsif TRIG_UART
  uart_trigger uart(.clk(halfclk),.reset(protocol_receiver_reset),.enable(!man_cfg_rx[0] && !usb_cfg_rx[0] && uart_cfg_rx[0] && !i2c_cfg_rx[0] && !spi_cfg_rx[0] && !sent_cfg_rx[0] && !mil_cfg_rx[0]),
   .tick(1'b1),.line(uart_line_sync[1]),.inverted(uart_cfg_rx[2]),
   .bit_ticks(protocol_ticks_rx),.pattern(protocol_pattern_rx[31:0]),.pattern_len(`NATIVE_LEN(uart_cfg_rx[5:3])),
@@ -440,14 +465,8 @@ module acq_sram_top(
  assign uart_match=0,uart_byte_valid=0,uart_frame_error=0,uart_byte=0;
 `endif
 `ifdef TRIG_SPI
-`ifdef SPI_SAMPLES
- // ADR-SAMPLE-DOMAIN-SPI: the receiver on the samples (spi_sample.v), to a
- // 125 MHz clock; register 57 holds the data line's delay, 1/16 ns.
- reg [7:0] spi_delay=8'd23;
- spi_sample_trigger spi(.core(core),.clk(halfclk),.reset(protocol_receiver_reset),.enable(!man_cfg_rx[0] && !usb_cfg_rx[0] && spi_cfg_rx[0] && !sent_cfg_rx[0] && !mil_cfg_rx[0]),
-  .word(il_raw_word),.valid(frontend_run && il_raw_valid),.clock_ch(spi_cfg_rx[1]),.inverted(spi_cfg_rx[2]),.cpol(spi_cfg_rx[3]),.cpha(spi_cfg_rx[4]),.msb(spi_cfg_rx[5]),
-  .level(level_l),.low(level_low_l),.high(level_high_l),.delay(spi_delay),.gap_ticks(protocol_ticks_rx),.pattern(protocol_pattern_rx[31:0]),.pattern_len(`NATIVE_LEN(spi_cfg_rx[8:6])),
-  .match(spi_match),.event_valid(spi_event_valid),.event_kind(spi_event_kind),.event_data(spi_event_data));
+`ifdef SAMPLE_BUS
+ // on the samples: sample_bus.v above
 `else
  spi_trigger spi(.clk(halfclk),.reset(protocol_receiver_reset),
   .enable(!man_cfg_rx[0] && !usb_cfg_rx[0] && spi_cfg_rx[0] && !sent_cfg_rx[0] && !mil_cfg_rx[0]),.tick(1'b1),.sck(uart_line_sync[1]^spi_cfg_rx[2]),.data(i2c_line_sync[1]^spi_cfg_rx[2]),
@@ -565,7 +584,7 @@ module acq_sram_top(
  wire packet_channel=flex_cfg_rx[0] ? flex_cfg_rx[1] : can_cfg_rx[0] ? can_cfg_rx[1] : arinc_cfg_rx[1];
  wire selected_event_valid=packet_selected ? packet_event_valid : man_cfg_rx[0] ? man_event_valid : usb_cfg_rx[0] ? usb_event_valid : mil_cfg_rx[0] ? mil_event_valid : sent_cfg_rx[0] ? sent_event_valid : spi_cfg_rx[0] ? spi_event_valid : (i2c_cfg_rx[0] ? i2c_event_valid : (uart_byte_valid || uart_frame_error));
  wire [7:0] selected_event_kind=packet_selected ? packet_event_kind : man_cfg_rx[0] ? man_event_kind : usb_cfg_rx[0] ? usb_event_kind : mil_cfg_rx[0] ? mil_event_kind : sent_cfg_rx[0] ? sent_event_kind : spi_cfg_rx[0] ? spi_event_kind : (i2c_cfg_rx[0] ? i2c_event_kind : (uart_frame_error ? 8'd4 : 8'd2));
- wire [31:0] selected_event_data=packet_selected ? packet_event_data : man_cfg_rx[0] ? {16'd0,man_event_data} : usb_cfg_rx[0] ? {24'd0,usb_event_data} : mil_cfg_rx[0] ? {16'd0,mil_event_data} : sent_cfg_rx[0] ? {24'd0,sent_event_data} : spi_cfg_rx[0] ? {24'd0,spi_event_data} : (i2c_cfg_rx[0] ? {24'd0,i2c_event_data} : {24'd0,uart_byte});
+ wire [31:0] selected_event_data=packet_selected ? packet_event_data : man_cfg_rx[0] ? {16'd0,man_event_data} : usb_cfg_rx[0] ? {24'd0,usb_event_data} : mil_cfg_rx[0] ? {16'd0,mil_event_data} : sent_cfg_rx[0] ? {24'd0,sent_event_data} : spi_cfg_rx[0] ? {24'd0,spi_event_data} : (i2c_cfg_rx[0] ? {24'd0,i2c_event_data} : `UART_VALUE);
  wire [7:0] selected_event_protocol=flex_cfg_rx[0] ? 8'd10 : can_cfg_rx[0] ? 8'd6 : arinc_cfg_rx[0] ? 8'd8 : man_cfg_rx[0] ? 8'd4 : usb_cfg_rx[0] ? 8'd9 : mil_cfg_rx[0] ? 8'd7 : sent_cfg_rx[0] ? 8'd5 : spi_cfg_rx[0] ? 8'd3 : (i2c_cfg_rx[0] ? 8'd2 : 8'd1);
  wire [7:0] selected_event_flags=((selected_event_kind==4 || selected_event_kind==5 || (man_cfg_rx[0] && selected_event_kind==3 && man_event_data!=0)) ? 8'd0 : 8'd4) |
   (packet_selected ? (packet_channel ? 8'd2 : 8'd1) : man_cfg_rx[0] ? (man_cfg_rx[1] ? 8'd2 : 8'd1) : usb_cfg_rx[0] ? (usb_cfg_rx[1] ? 8'd2 : 8'd1) : mil_cfg_rx[0] ? (mil_cfg_rx[1] ? 8'd2 : 8'd1) : sent_cfg_rx[0] ? (sent_cfg_rx[1] ? 8'd2 : 8'd1) : (spi_cfg_rx[0] || i2c_cfg_rx[0]) ? 8'd3 : (uart_cfg_rx[1] ? 8'd2 : 8'd1));
@@ -602,7 +621,9 @@ module acq_sram_top(
 `else
  assign seq_match=0,seq_overflows=0,seq_write=0;
 `endif
-`ifdef TRIG_I2C
+`ifdef SAMPLE_BUS
+ // on the samples: sample_bus.v above
+`elsif TRIG_I2C
  i2c_trigger i2c(.clk(halfclk),.reset(protocol_receiver_reset),.enable(!man_cfg_rx[0] && !usb_cfg_rx[0] && i2c_cfg_rx[0] && !spi_cfg_rx[0] && !sent_cfg_rx[0] && !mil_cfg_rx[0]),.tick(1'b1),
   .scl(uart_line_sync[1]^i2c_cfg_rx[2]),.sda(i2c_line_sync[1]^i2c_cfg_rx[2]),
   .address(i2c_address_rx),.any_address(i2c_cfg_rx[5]),.direction(i2c_cfg_rx[4:3]),
@@ -877,8 +898,8 @@ module acq_sram_top(
   64:spi_cfg<=wd;
   65:spi_gap[15:0]<=wd;66:spi_gap[23:16]<=wd[7:0];
   67:spi_pattern[15:0]<=wd;68:spi_pattern[31:16]<=wd;
-`ifdef SPI_SAMPLES
-  57:spi_delay<=wd[7:0];
+`ifdef SAMPLE_BUS
+  58:sample_delay<=wd[7:0];
 `endif
 `endif
 `ifdef ENVELOPE_RECALL
@@ -1428,7 +1449,9 @@ module acq_sram_top(
    89:rd=timeline_id[15:0];90:rd=timeline_id[31:16];
    91:rd=timeline_epoch[15:0];92:rd=timeline_epoch[31:16];
    73:rd=16'h5201; // Stable retained record identity, epoch captured at arm
-`ifdef TRIG_UART
+`ifdef SAMPLE_BUS
+   48:rd=16'h5503; // UART on the samples: 5-9 bits, parity, bit time 1/16 ns, resync
+`elsif TRIG_UART
    48:rd=16'h5502; // UART 8N1, up to four bytes, 125 MHz receiver clock
 `endif
 `ifdef TRIG_SENT
@@ -1444,13 +1467,15 @@ module acq_sram_top(
    93:rd=16'h4d01; // MIL-STD-1553 complete 16-bit word with odd parity
 `endif
 `ifdef TRIG_SPI
-`ifdef SPI_SAMPLES
-   64:rd=16'h5302; // SPI on the samples: four modes, both bit orders, idle gap, data delay 57
+`ifdef SAMPLE_BUS
+   64:rd=16'h5303; // SPI on the samples: four modes, both bit orders, idle gap, data delay 58
 `else
    64:rd=16'h5301; // SPI four modes, both bit orders, explicit idle gap
 `endif
 `endif
-`ifdef TRIG_I2C
+`ifdef SAMPLE_BUS
+   53:rd=16'h4902; // I2C on the samples: as 0x4901, SDA delay 58
+`elsif TRIG_I2C
    53:rd=16'h4901; // I2C seven-bit address/direction, up to four data bytes
 `endif
 `ifdef ENVELOPE_RECALL

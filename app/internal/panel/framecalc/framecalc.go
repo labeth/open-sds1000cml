@@ -43,6 +43,9 @@ type DecodeParams struct {
 	CPOL, CPHA bool
 	LSB        bool   // SPI least significant bit first
 	Format     string // span text: "hex", "ascii" or "both"
+	// DataDelayS is where SPI's data line is read after the clock's
+	// sampling edge (0: at the edge, the channels' phase only).
+	DataDelayS float64
 }
 
 type decodeKey struct {
@@ -111,7 +114,11 @@ func Decode(f *engine.Frame, p DecodeParams) decode.Result {
 	case ProtoI2C:
 		res = decode.DecodeI2C(ch(p.ChA), ch(p.ChB), f.SampleS, decode.I2CCfg{Format: p.Format})
 	case ProtoSPI:
-		res = decode.DecodeSPI(ch(p.ChA), ch(p.ChB), f.SampleS, decode.SPICfg{CPOL: p.CPOL, CPHA: p.CPHA, MSB: !p.LSB, Format: p.Format, DataLag: decode.SPIDataLag(p.ChA, f.SampleS)})
+		cfg := decode.SPICfg{CPOL: p.CPOL, CPHA: p.CPHA, MSB: !p.LSB, Format: p.Format, DataLag: decode.SPIDataLag(p.ChA, f.SampleS)}
+		if f.SampleS > 0 {
+			cfg.DataDelay = p.DataDelayS / f.SampleS
+		}
+		res = decode.DecodeSPI(ch(p.ChA), ch(p.ChB), f.SampleS, cfg)
 	case ProtoManchester:
 		// MSB first, as Auto found it and the web decodes it (LSB first reads
 		// 12 34 as 48 2C).

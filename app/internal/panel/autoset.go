@@ -466,7 +466,10 @@ func (c *Controller) autosetSweep(stop chan struct{}, g autoGoal) (autoResult, b
 	//    screen and native — not decimated — so the frequency reads true).
 	if c.fe != nil {
 		for ch := 0; ch < 2; ch++ {
-			c.setVdiv(ch, nearestDetent(2.0)) // 2 V/div: ±8 V unclipped
+			// 2 V/div at the probe tip: ±8 V unclipped. The detents are the
+			// BNC's: with a 10x probe 2 V/div there was 20 V/div at the tip,
+			// a 3.3 V logic swing four codes, and AUTO found no signal.
+			c.setVdiv(ch, nearestDetent(2.0/c.fe.ProbeFactor(ch)))
 			c.fe.SetOffset(ch, 0)
 		}
 	}
@@ -488,42 +491,57 @@ func (c *Controller) autosetSweep(stop chan struct{}, g autoGoal) (autoResult, b
 	var swing [2]*measure.Result // each channel's widest swing seen in the sweep
 	var timed [2]bool            // a capture showed the channel's frequency
 	foundTd := 0.0               // the sweep step the signal was found at
-	for _, td := range sweep {
-		if cancelled() {
-			return res, false
-		}
-		ss := c.setTdivNearest(td)
-		if !c.waitBandFrame(stop, ss) {
-			return res, false
-		}
-		m, _ := c.measureChans()
-		// every step's capture counts towards the swing: a pulse slower than
-		// the screen shows one level in one capture and the other in the next
-		for ch := range m {
-			timed[ch] = timed[ch] || has(m[ch]) && m[ch].Freq > 0
-			m[ch] = widestSwing(m[ch], swing[ch])
-			swing[ch] = m[ch]
-		}
-		// "Found" requires a measurable FREQUENCY at this band, not just
-		// amplitude: a low-duty pulse train (e.g. a 400 µs-period, 100 µs-wide
-		// pulse) shows only a brief edge at a fast band — enough amplitude to
-		// trip a Vpp test but NO visible period, so autoset would lock a far-
-		// too-fast timebase and read no frequency. Requiring Freq>0 makes the
-		// sweep continue to a band where the repetition is actually resolved.
-		// The LAST (slowest) sweep step falls back to amplitude-only so a
-		// genuinely aperiodic-looking capture is still fitted rather than lost.
-		lastStep := td == sweep[len(sweep)-1]
-		fq := func(r *measure.Result) bool { return has(r) && r.Freq > 0 }
-		if fq(m[0]) || fq(m[1]) || (lastStep && (has(m[0]) || has(m[1]))) {
-			foundCh = strongerCh(m)
-			if fq(m[0]) || fq(m[1]) { // prefer the channel that actually has timing
-				foundCh = 0
-				if fq(m[1]) && (!fq(m[0]) || m[1].Vpp > m[0].Vpp) {
-					foundCh = 1
-				}
+	// A signal under a few codes at 2 V/div (a 3.3 V logic line through a 10x
+	// probe whose factor reads 1x, as Default setup leaves it) is looked for
+	// again at 200 mV/div at the tip before AUTO says there is none.
+	for pass, tip := range []float64{2.0, 0.2} {
+		if pass > 0 {
+			if c.fe == nil || (found != nil && found.Freq > 0) {
+				break
 			}
-			found, foundTd = m[foundCh], td
-			break
+			found, swing, timed = nil, [2]*measure.Result{}, [2]bool{}
+			for ch := 0; ch < 2; ch++ {
+				c.setVdiv(ch, nearestDetent(tip/c.fe.ProbeFactor(ch)))
+				c.fe.SetOffset(ch, 0)
+			}
+		}
+		for _, td := range sweep {
+			if cancelled() {
+				return res, false
+			}
+			ss := c.setTdivNearest(td)
+			if !c.waitBandFrame(stop, ss) {
+				return res, false
+			}
+			m, _ := c.measureChans()
+			// every step's capture counts towards the swing: a pulse slower than
+			// the screen shows one level in one capture and the other in the next
+			for ch := range m {
+				timed[ch] = timed[ch] || has(m[ch]) && m[ch].Freq > 0
+				m[ch] = widestSwing(m[ch], swing[ch])
+				swing[ch] = m[ch]
+			}
+			// "Found" requires a measurable FREQUENCY at this band, not just
+			// amplitude: a low-duty pulse train (e.g. a 400 µs-period, 100 µs-wide
+			// pulse) shows only a brief edge at a fast band — enough amplitude to
+			// trip a Vpp test but NO visible period, so autoset would lock a far-
+			// too-fast timebase and read no frequency. Requiring Freq>0 makes the
+			// sweep continue to a band where the repetition is actually resolved.
+			// The LAST (slowest) sweep step falls back to amplitude-only so a
+			// genuinely aperiodic-looking capture is still fitted rather than lost.
+			lastStep := td == sweep[len(sweep)-1]
+			fq := func(r *measure.Result) bool { return has(r) && r.Freq > 0 }
+			if fq(m[0]) || fq(m[1]) || (lastStep && (has(m[0]) || has(m[1]))) {
+				foundCh = strongerCh(m)
+				if fq(m[0]) || fq(m[1]) { // prefer the channel that actually has timing
+					foundCh = 0
+					if fq(m[1]) && (!fq(m[0]) || m[1].Vpp > m[0].Vpp) {
+						foundCh = 1
+					}
+				}
+				found, foundTd = m[foundCh], td
+				break
+			}
 		}
 	}
 	if found == nil || found.Freq <= 0 {
@@ -829,7 +847,7 @@ const (
 )
 
 // refineMinVpp is the least swing autoset refines: four codes of the
-// sweep's 2 V/div; less is a quiet line's noise. The capture at the fitted
+// sweep's 2 V/div at the probe tip; less is a quiet line's noise. The capture at the fitted
 // V/div must hold refineShare of the swing: a filtered capture of a fast bus
 // read its bits smaller (2.9 V of FlexRay's 3.3 V), refined to 500 mV/div,
 // and the bus clipped at the full rate.

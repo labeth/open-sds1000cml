@@ -289,6 +289,17 @@ func TestJSDecoderParity(t *testing.T) {
 			add2("spi", fclk, fdat, 2e-9, jsCfg{"cpol": b.cpol, "cpha": b.cpha, "bitOrder": bo, "threshold": 120, "dataLag": lag},
 				DecodeSPI(fclk, fdat, 2e-9, SPICfg{CPOL: b.cpol, CPHA: b.cpha, MSB: b.msb, Format: "hex", Threshold: 120, HaveThr: true, DataLag: lag}))
 		}
+		// A device's data settling 7 ns late, read at the data delay (and,
+		// without it, a bit early) at 104 and 25 MHz.
+		for _, rate := range []float64{104e6, 25e6} {
+			b := spiBus{rateHz: rate, msb: true, clockCh: 1, frames: [][]byte{benchFrame(0)[:16], {0x00, 0xff, 0xa5}}, idleS: 2e-6, riseS: 3e-9, noise: 1, seed: 3, dataLateS: 7e-9}
+			c1, c2 := lines(b.words())
+			lag := SPIDataLag(1, 2e-9)
+			for _, delay := range []float64{0, 3.5} {
+				add2("spi", c2, c1, 2e-9, jsCfg{"cpol": false, "cpha": false, "bitOrder": "msb", "threshold": 120, "dataLag": lag, "dataDelay": delay},
+					DecodeSPI(c2, c1, 2e-9, SPICfg{MSB: true, Format: "hex", Threshold: 120, HaveThr: true, DataLag: lag, DataDelay: delay}))
+			}
+		}
 	}
 
 	// ---- I2C: a full transaction, plus the channel swap (SCL<->SDA).

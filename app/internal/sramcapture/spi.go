@@ -6,7 +6,7 @@ import "fmt"
 // SPITriggerConfig selects two-wire, eight-bit SPI with explicit idle framing.
 // GapTicks is the maximum interval between sampling edges at 125 MHz; use
 // 1.5 clock periods. No chip-select input is inferred from the two analog inputs.
-// Delay is where a receiver on the samples (capability 0x5302, spi_sample.v)
+// Delay is where a receiver on the samples (capability 0x5303, spi_sample.v)
 // takes the data line after the clock line's crossing, in sixteenths of a
 // nanosecond on the clock line's sample grid: the clock channel's sampling
 // phase less the data channel's, plus any offset into the bit.
@@ -28,8 +28,12 @@ type SPITriggerConfig struct {
 // the converters' samples with interpolated clock edges.
 const (
 	spiLevels  = 0x5301
-	spiSamples = 0x5302
+	spiSamples = 0x5303
 )
+
+// regSampleDelay is the receivers on the samples' delay register: SPI's data
+// line, I2C's SDA, after the first line's crossing (sample_bus.v).
+const regSampleDelay = 58
 
 // TRLC-LINKS: REQ-SDS-013
 func (c *Capture) SupportsSPI() (bool, error) {
@@ -82,7 +86,7 @@ func (c *Capture) configureSPI(revision uint16, p SPITriggerConfig) error {
 		}
 		regs := []struct{ sel, value uint16 }{{65, uint16(p.GapTicks)}, {66, uint16(p.GapTicks >> 16)}, {67, uint16(p.Pattern)}, {68, uint16(p.Pattern >> 16)}}
 		if capability == spiSamples {
-			regs = append(regs, struct{ sel, value uint16 }{57, uint16(uint8(p.Delay))})
+			regs = append(regs, struct{ sel, value uint16 }{regSampleDelay, uint16(uint8(p.Delay))})
 		}
 		for _, r := range regs {
 			if err := c.write(r.sel, r.value); err != nil {

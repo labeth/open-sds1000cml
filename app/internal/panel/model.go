@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"open-sds/app/internal/analog"
+	"open-sds/app/internal/decode"
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/panel/wsview"
 )
@@ -344,6 +345,9 @@ type sv struct {
 
 	decProto, decBaud, decChA, decChB int
 	decCPOL, decCPHA, decLSB          bool
+	decDelayNs                        float64 // SPI's data delay set by hand (ns)
+	decDelayAuto, decFine             bool
+	spiEye                            decode.SPIEye
 	decAuto                           bool // the settings are what Auto filled in
 	decFormat                         int
 	decMode, decTrig, decValue        int

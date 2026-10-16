@@ -23,7 +23,7 @@ func (b packetEngineBus) Read(p uint8, s uint16) (uint16, error) {
 		packet, line, general, qualify, fast := b.image == "packet", b.image == "line", b.image == "general", b.image == "qualify", b.image == "fast"
 		switch s {
 		case 64:
-			return map[bool]uint16{true: 0x5301}[general] | map[bool]uint16{true: 0x5302}[fast], nil
+			return map[bool]uint16{true: 0x5301}[general] | map[bool]uint16{true: 0x5303}[fast], nil
 		case 43:
 			return 0x454e, nil
 		case 47:
@@ -41,9 +41,9 @@ func (b packetEngineBus) Read(p uint8, s uint16) (uint16, error) {
 		case 73:
 			return 0x5201, nil
 		case 48:
-			return map[bool]uint16{true: 0x5502}[general], nil
+			return map[bool]uint16{true: 0x5502}[general] | map[bool]uint16{true: 0x5503}[fast], nil
 		case 53:
-			return map[bool]uint16{true: 0x4901}[general], nil
+			return map[bool]uint16{true: 0x4901}[general] | map[bool]uint16{true: 0x4902}[fast], nil
 		case 13:
 			return 10, nil
 		case 109:

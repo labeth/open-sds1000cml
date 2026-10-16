@@ -231,8 +231,12 @@ func (c *Controller) noteTdivCap(s *sv) {
 // decodeParams are the panel's decode settings.
 // TRLC-LINKS: REQ-SDS-214
 func decodeParamsOf(s *sv) framecalc.DecodeParams {
-	return framecalc.DecodeParams{Proto: s.decProto, Baud: s.decBaud, ChA: s.decChA, ChB: s.decChB,
+	p := framecalc.DecodeParams{Proto: s.decProto, Baud: s.decBaud, ChA: s.decChA, ChB: s.decChB,
 		CPOL: s.decCPOL, CPHA: s.decCPHA, LSB: s.decLSB, Format: []string{"hex", "ascii", "both"}[mod3(s.decFormat)]}
+	if s.decProto == framecalc.ProtoSPI {
+		p.DataDelayS = s.spiDelayNs() * 1e-9
+	}
+	return p
 }
 
 // codesOf returns a channel's valid samples as codes (Q8.8 when the frame

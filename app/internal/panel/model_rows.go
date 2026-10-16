@@ -1388,7 +1388,7 @@ func busTabRows() []*row {
 		long:  func(s *sv) string { return fmt.Sprintf("%d baud", s.decBaud) },
 		parse: func(s *sv, t string) (int, bool) {
 			v, err := parseNumber(t, "Bd")
-			if err != nil || v < 50 || v > 20e6 {
+			if err != nil || v < 50 || v > 64e6 { // the fast image's receiver: 62.5 MBd
 				return 0, false
 			}
 			return int(math.Round(v)), true
@@ -1501,7 +1501,9 @@ func busTabRows() []*row {
 	addr.rel, addr.why = func(s *sv) bool { return serialBus(s) && s.decProto == framecalc.ProtoI2C }, "Protocol = I2C"
 	addr.presets = func(*sv) []preset { return []preset{{t: "Any", v: -1}} }
 	addr.def = func(c *Controller) error { return c.setI2CAddr(-1) }
-	return []*row{proto, format, stream, streamTrig, streamVal, streamScreen, baud, rate, line, scl, sda, clk, data, spiMode, bitOrder, match, arm, addr}
+	rows := []*row{proto, format, stream, streamTrig, streamVal, streamScreen, baud, rate, line, scl, sda, clk, data, spiMode, bitOrder}
+	rows = append(rows, spiTimingRows(isSPI)...)
+	return append(rows, match, arm, addr, receiverRow())
 }
 
 // hexText writes a whole number as the hex rows do: 0x50, and -0x02 for a

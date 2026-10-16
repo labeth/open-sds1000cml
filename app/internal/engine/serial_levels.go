@@ -30,6 +30,7 @@ type serialLevels struct {
 	// capture to measure the clock again (spiQuietCheck).
 	spiQuiet atomic.Int64
 	spiProbe atomic.Bool
+	sclHz    atomic.Uint64 // the clock rate on the armed I2C request's SCL (float64 bits), 0 unknown
 	baud     atomic.Uint64 // the bit rate on the armed UART request's line (float64 bits), 0 unknown
 	sentNs   atomic.Uint64 // the armed SENT request's tick in ns (float64 bits), 0 unknown
 	sentNib  atomic.Int32  // the nibbles of its frames (status, data, CRC), 0 unknown
@@ -85,6 +86,10 @@ func (e *Engine) learnSerialLevels(f *Frame, sc [2]chScale) {
 		}
 		if e.serLv.spiProbe.Swap(false) && e.clk.Now != nil {
 			e.serLv.spiQuiet.Store(e.clk.Now().UnixNano())
+		}
+	case p.Proto == serI2C && p.I2CClockHz <= 0:
+		if hz := clockRate(line, f.SampleS, f.PeakDetect); hz > 0 {
+			e.serLv.sclHz.Store(math.Float64bits(hz))
 		}
 	case p.Proto == serUART && p.Baud <= 0:
 		if b := uartBaud(line, f.SampleS); b > 0 {
@@ -295,6 +300,11 @@ func (e *Engine) serialPlanParams(p SerialParams) (SerialParams, string) {
 			return p, spiMeasuring
 		}
 		p.SPIClockHz = int(math.Round(hz))
+	}
+	if p.Proto == serI2C && p.I2CClockHz <= 0 { // measured on SCL; until then the general image's receiver
+		if hz := math.Float64frombits(e.serLv.sclHz.Load()); hz > 0 {
+			p.I2CClockHz = int(math.Round(hz))
+		}
 	}
 	if p.Proto == serUART && p.Baud <= 0 { // a decoder's auto baud (the web's)
 		b := math.Float64frombits(e.serLv.baud.Load())

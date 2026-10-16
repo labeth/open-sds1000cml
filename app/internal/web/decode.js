@@ -515,8 +515,9 @@ function decodeSPI(clk, data, colTimeS, cfg) {
   // Under six samples a clock period, on the converters' own samples (2 ns or
   // finer), the data line is taken at the clock's interpolated crossing plus
   // cfg.dataLag (the channels' sampling phase), as the FPGA's receiver on the
-  // samples does. Mirrors decode_i2c_spi.go.
-  const fine = period < 6 && colTimeS <= 2.05e-9, dataLag = +cfg.dataLag || 0;
+  // samples does; with cfg.dataDelay (a device's late data, in samples) at
+  // any samples a period, that much later. Mirrors decode_i2c_spi.go.
+  const fine = period < 6 && colTimeS <= 2.05e-9, dataLag = +cfg.dataLag || 0, dataDelay = +cfg.dataDelay || 0;
   if ((period < 6 && !fine) || period < 3.5) return fail("spi", period.toFixed(1) + " cols/clock; too few samples/bit", { colsPerClock: period });
   // With no CS to frame bytes, re-align on a clock-idle gap: consecutive
   // sampling edges are one clock period apart within a burst; a gap longer than
@@ -537,7 +538,7 @@ function decodeSPI(clk, data, colTimeS, cfg) {
     if (pck < 0) continue;
     const rising = pck === 0 && ck === 1, falling = pck === 1 && ck === 0;
     if ((sampleRising && rising) || (!sampleRising && falling)) {
-      const at = fine ? crossingAt(CK, i, rising) + dataLag : i;
+      const at = fine || dataDelay ? crossingAt(CK, i, rising) + dataLag + dataDelay : i;
       const bit = logicAt(DA, at);
       if (bit < 0) continue;
       const cd = DA.codes[Math.round(at)];

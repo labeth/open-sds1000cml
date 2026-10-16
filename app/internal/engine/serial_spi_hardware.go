@@ -23,6 +23,14 @@ func planHardwareSPI(p SerialParams, sample bool) sramcapture.SPITriggerConfig {
 	}
 	rate := float64(p.SPIClockHz)
 	ticks := math.Round(1.5 * 125e6 / rate)
+	if math.IsNaN(p.SPIDelayNs) || math.IsInf(p.SPIDelayNs, 0) {
+		return sramcapture.SPITriggerConfig{}
+	}
+	if !sample && math.Abs(p.SPIDelayNs)+8 >= 0.5e9/rate {
+		// the level receiver reads the data at the edge to a tick: a delay
+		// the eye does not hold around that needs the receiver on the samples
+		return sramcapture.SPITriggerConfig{}
+	}
 	if sample {
 		// One sampling edge a 125 MHz receiver clock.
 		if rate > 125e6 {
@@ -37,10 +45,7 @@ func planHardwareSPI(p SerialParams, sample bool) sramcapture.SPITriggerConfig {
 	}
 	c := sramcapture.SPITriggerConfig{Enabled: true, ClockChannel: uint8(p.ChA), Inverted: p.Inverted, CPOL: p.CPOL, CPHA: p.CPHA, MSB: p.MSB, GapTicks: uint32(ticks), Length: uint8(len(p.Bytes))}
 	if sample {
-		c.Delay = spiPhase16
-		if p.ChA == 0 {
-			c.Delay = -spiPhase16
-		}
+		c.Delay = int8(spiDelay16(p.SPIDelayNs, p.ChA))
 	}
 	for _, b := range p.Bytes {
 		if b < 0 || b > 255 {
@@ -49,4 +54,29 @@ func planHardwareSPI(p SerialParams, sample bool) sramcapture.SPITriggerConfig {
 		c.Pattern = c.Pattern<<8 | uint32(b)
 	}
 	return c
+}
+
+// spiDelay16 is the receiver on the samples' data delay register for a
+// delay of ns after the sampling edge with the clock on clockCh: the
+// channels' phase and the delay, in sixteenths of a nanosecond, within the
+// register's -128..127.
+// TRLC-LINKS: REQ-SDS-229, REQ-SDS-230
+func spiDelay16(ns float64, clockCh int) int {
+	phase := spiPhase16
+	if clockCh == 0 {
+		phase = -spiPhase16
+	}
+	return max(-128, min(127, phase+int(math.Round(ns*16))))
+}
+
+// SPIDelayFPGA is the delay after the sampling edge the receiver on the
+// samples reads SPI's data at for a delay of ns asked, with the clock on
+// clockCh: its register holds -8 to 8 ns with the channels' phase.
+// TRLC-LINKS: REQ-SDS-229, REQ-SDS-230
+func SPIDelayFPGA(ns float64, clockCh int) float64 {
+	phase := spiPhase16
+	if clockCh == 0 {
+		phase = -spiPhase16
+	}
+	return float64(spiDelay16(ns, clockCh)-phase) / 16
 }

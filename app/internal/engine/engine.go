@@ -322,6 +322,8 @@ type Engine struct {
 	hardwareI2C           bool
 	hardwareSPI           bool
 	hardwareSampleSPI     bool // the SPI receiver on the samples (spi_sample.v)
+	hardwareSampleUART    bool // the UART receiver on the samples (uart_sample.v)
+	hardwareSampleI2C     bool // the I2C receiver on the samples (i2c_sample.v)
 	hardwareSENT          bool
 	hardwareMIL1553       bool
 	hardwareUSBLS         bool

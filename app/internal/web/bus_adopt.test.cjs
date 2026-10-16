@@ -17,7 +17,8 @@ assert.deepEqual({ ...c.decScopeSettings({ DecProto: 2, DecBaud: 115200, DecChA:
 assert.deepEqual({ ...c.decScopeSettings({ DecProto: 3, DecChA: 1, DecChB: 0 }) },
   { proto: 'i2c', scl: 2, sda: 1 }, 'I2C roles');
 assert.deepEqual({ ...c.decScopeSettings({ DecProto: 4, DecChA: 0, DecChB: 1, DecCPOL: true, DecCPHA: true }) },
-  { proto: 'spi', clk: 1, data: 2, cpol: 1, cpha: 1, msb: true }, 'SPI mode 3, MSB first');
+  { proto: 'spi', clk: 1, data: 2, cpol: 1, cpha: 1, msb: true, delayNs: 0 }, 'SPI mode 3, MSB first');
+assert.equal(c.decScopeSettings({ DecProto: 4, DecChA: 1, DecChB: 0, DecDelayNs: 7.1875 }).delayNs, 7.1875, 'SPI read at the scope\'s data delay');
 assert.equal(c.decScopeSettings({ DecProto: 4, DecLSB: true }).msb, false, 'SPI LSB first');
 assert.deepEqual({ ...c.decScopeSettings({ DecProto: 7, DecChA: 1, DecChB: 0, DecBaud: 500000 }) },
   { proto: 'can', line: 2, baud: 500000 }, 'CAN on C2 at the scope\'s bit rate');

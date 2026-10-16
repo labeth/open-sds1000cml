@@ -51,6 +51,7 @@ func (c *Controller) SettingsView() settings.ViewState {
 			Proto: c.decProto, Baud: c.decBaud,
 			ChA: c.decChA, ChB: c.decChB,
 			CPOL: c.decCPOL, CPHA: c.decCPHA, LSB: c.decLSB,
+			DelayNs: c.decDelayNs, DelayAuto: c.decDelayAuto, Fine: c.decFine,
 			Format:     c.decFormat,
 			StreamTrig: c.decTrig, StreamValue: c.decValue,
 		},
@@ -167,6 +168,7 @@ func (c *Controller) ApplySettingsView(v settings.ViewState) {
 	c.decGen++
 	c.decChA, c.decChB = d.ChA, d.ChB
 	c.decCPOL, c.decCPHA, c.decLSB = d.CPOL, d.CPHA, d.LSB
+	c.decDelayNs, c.decDelayAuto, c.decFine = clampF(d.DelayNs, spiDelayMinNs, spiDelayMaxNs), d.DelayAuto, d.Fine
 	c.auto = autoWatch{}
 	c.decFormat = d.Format
 	c.decTrig = mod3(d.StreamTrig)

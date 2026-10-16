@@ -11,10 +11,10 @@ module tb_spi_sample;
  reg reset=1,valid=1;reg [63:0] word=0;
  reg [63:0] mem[0:(1<<21)-1];
  integer n,i,ch,rising,level,low,high,inverted,msb,delay,gap,pattern,len;
- wire live,found,other;wire signed [7:0] when;
+ wire live,found,other,dir;wire signed [7:0] when;wire [3:0] levels;
  wire match,ev;wire [7:0] kind,value;
- sample_edges edges(.clk(clk),.reset(reset),.valid(valid),.word(word),.ch(ch[0]),.rising(rising[0]),
-  .level(level[7:0]),.low(low[7:0]),.high(high[7:0]),.delay(delay[7:0]),.live(live),.found(found),.when(when),.other(other));
+ sample_edges edges(.clk(clk),.reset(reset),.valid(valid),.word(word),.ch(ch[0]),.rise_en(rising[0]),.fall_en(!rising[0]),
+  .level(level[7:0]),.low(low[7:0]),.high(high[7:0]),.delay(delay[7:0]),.live(live),.found(found),.when(when),.rising(dir),.other(other),.levels(levels));
  spi_sample spi(.clk(clk),.reset(reset),.enable(1'b1),.live(live),.found(found),.other(other),
   .inverted(inverted[0]),.msb(msb[0]),.gap_ticks(gap[23:0]),
   .pattern(pattern),.pattern_len(len[2:0]),.match(match),.event_valid(ev),.event_kind(kind),.event_data(value));

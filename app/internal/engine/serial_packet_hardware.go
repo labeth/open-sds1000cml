@@ -167,6 +167,7 @@ func (e *Engine) probeSerialHardware() {
 	}{
 		{"UART", &e.hardwareUART, e.sram.SupportsUART}, {"I2C", &e.hardwareI2C, e.sram.SupportsI2C},
 		{"SPI", &e.hardwareSPI, e.sram.SupportsSPI}, {"SPI on the samples", &e.hardwareSampleSPI, e.sram.SupportsSampleSPI},
+		{"UART on the samples", &e.hardwareSampleUART, e.sram.SupportsSampleUART}, {"I2C on the samples", &e.hardwareSampleI2C, e.sram.SupportsSampleI2C},
 		{"SENT", &e.hardwareSENT, e.sram.SupportsSENT},
 		{"USB", &e.hardwareUSBLS, e.sram.SupportsUSBLS}, {"MIL-STD-1553", &e.hardwareMIL1553, e.sram.SupportsMIL1553},
 		{"Manchester", &e.hardwareManchester, e.sram.SupportsManchester},
@@ -198,15 +199,19 @@ const (
 	// imageStream is the continuous-capture image roll mode runs on
 	// (ADR-STREAM-IMAGE).
 	imageStream = "stream"
-	// imageFast has SPI on the samples to a 125 MHz clock
-	// (ADR-SAMPLE-DOMAIN-SPI).
+	// imageFast has SPI, UART and I2C on the samples: SPI to a 125 MHz
+	// clock, UART to 62.5 MBd, I2C's high-speed mode (ADR-SAMPLE-DOMAIN-SPI).
 	imageFast = "fast"
 )
 
 // protocolImage names the image whose hardware triggers p, or "" for the
-// general image with UART, I2C and SPI (ADR-IMAGE-REGROUP-DECIMATION). An SPI
-// clock past the general image's level receiver (about 20 MHz) runs on the
-// fast image's receiver on the samples (ADR-SAMPLE-DOMAIN-SPI).
+// general image with UART, I2C and SPI (ADR-IMAGE-REGROUP-DECIMATION). SPI,
+// UART and I2C past the reach of the general image's receivers on 125 MHz
+// line levels (an SPI clock of about 20 MHz, a UART of about 10 MBd or any
+// format but 8N1, an I2C clock past fast-mode plus), or with Fine asking
+// for the best timing, run on the fast image's receivers on the samples
+// (ADR-SAMPLE-DOMAIN-SPI); otherwise the general image stays, without a
+// load of seconds.
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-229
 func protocolImage(p SerialParams) string {
 	switch p.Proto {
@@ -215,7 +220,15 @@ func protocolImage(p SerialParams) string {
 	case serCAN, serARINC, serFlexRay, serMIL1553, serSENT:
 		return imagePacket
 	case serSPI:
-		if !planHardwareSPI(p, false).Enabled && planHardwareSPI(p, true).Enabled {
+		if (p.Fine || !planHardwareSPI(p, false).Enabled) && planHardwareSPI(p, true).Enabled {
+			return imageFast
+		}
+	case serUART:
+		if (p.Fine || !planHardwareUART(p, false).Enabled) && planHardwareUART(p, true).Enabled {
+			return imageFast
+		}
+	case serI2C:
+		if (p.Fine || p.I2CClockHz > generalI2CReachHz) && planHardwareI2C(p, true).Enabled {
 			return imageFast
 		}
 	}

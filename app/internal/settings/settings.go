@@ -80,6 +80,11 @@ type Decode struct {
 	CPHA   bool `json:"cpha"`
 	LSB    bool `json:"lsb,omitempty"` // SPI least significant bit first
 	Format int  `json:"format"`        // 0=hex 1=ascii 2=both
+	// SPI's data delay after the sampling edge (ns), or Auto (the data's eye
+	// measured); Fine: the FPGA's receivers on the samples at any rate.
+	DelayNs   float64 `json:"delay_ns,omitempty"`
+	DelayAuto bool    `json:"delay_auto,omitempty"`
+	Fine      bool    `json:"fine,omitempty"`
 	// Decoded-stream trigger (BUS ▸ Stream): 0=error 1=value 2=manual, and
 	// the value it waits for.
 	StreamTrig  int `json:"stream_trig,omitempty"`

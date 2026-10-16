@@ -44,8 +44,17 @@ const (
 // the setter (never mutated in place).
 // TRLC-LINKS: REQ-SDS-013
 type SerialParams struct {
-	SPIClockHz int  `json:"spiClockHz"` // explicit clock for acquisition-time SPI gap framing; zero uses software inference
-	Inverted   bool `json:"inverted"`   // UART/I2C/SPI/SENT input polarity; independent of display inversion
+	SPIClockHz int `json:"spiClockHz"` // explicit clock for acquisition-time SPI gap framing; zero uses software inference
+	// I2CClockHz is the I2C clock rate (0: measured on SCL); past the general
+	// image's receiver it runs on the fast image's.
+	I2CClockHz int `json:"i2cClockHz,omitempty"`
+	// Fine asks for the receivers on the samples (the fast image) for SPI,
+	// UART and I2C at any rate they take: sub-nanosecond edge timing.
+	Fine bool `json:"fine,omitempty"`
+	// SPIDelayNs is where SPI's data line is read after the clock's sampling
+	// edge (a device whose data settles late), beyond the channels' phase.
+	SPIDelayNs float64 `json:"spiDelayNs,omitempty"`
+	Inverted   bool    `json:"inverted"` // UART/I2C/SPI/SENT input polarity; independent of display inversion
 	// Decode settings — mirrored from the operator's live decode config so the
 	// trigger decodes IDENTICALLY to the decode strip (the UI does not re-enter
 	// these; it sends whatever decode is set to).

@@ -3,8 +3,8 @@ package decode
 
 import "math"
 
-// The sample-domain SPI receiver the general FPGA image runs
-// (fpga/images/general/sample_edges.v, spi_sample.v), modelled clock for
+// The sample-domain SPI receiver the fast FPGA image runs
+// (fpga/images/fast/sample_edges.v, spi_sample.v), modelled clock for
 // clock so its fixtures check the RTL bit for bit. It works on the
 // converters' own codes, four samples a channel per 125 MHz receiver clock:
 // C1 samples at even and C2 at odd nanoseconds (spec 12 §4). The clock line's
@@ -74,60 +74,19 @@ func sampleOf(w uint64, ch, j int) uint8 { return uint8(w >> (16*j + 8*ch)) }
 // TRLC-LINKS: REQ-SDS-229
 func SampleSPI(wide []uint64, c SampleSPIConfig) ([]SampleSPIEvent, []SampleSPIEdge) {
 	n := len(wide)
-	dataCh := 1 - c.ClockCh
 	rising := (c.CPOL == c.CPHA) != c.Inverted
-	levels := make([]bool, 4*n) // the data line's samples at or above the level
-	for k, w := range wide {
-		for j := 0; j < 4; j++ {
-			levels[4*k+j] = sampleOf(w, dataCh, j) >= c.Level
-		}
-	}
-	// The edge stage: per receiver clock, at most one sampling edge.
+	// The edge stage (sample_edges.v): per receiver clock, at most one
+	// sampling edge and the data line at it.
+	out := SampleEdges(wide, SampleLineConfig{Ch: c.ClockCh, Rise: rising, Fall: !rising, Level: c.Level, Low: c.Low, High: c.High, Delay: c.Delay})
 	strobe := make([]bool, n)
 	bit := make([]bool, n)
 	var edges []SampleSPIEdge
-	armed := false
-	prev := uint8(0)
-	for k, w := range wide {
-		fired, pos := false, 0
-		for j := 0; j < 4; j++ {
-			s := sampleOf(w, c.ClockCh, j)
-			hit, far := s >= c.Level, s <= c.Low
-			if !rising {
-				hit, far = s < c.Level, s >= c.High
-			}
-			if armed && hit {
-				if !fired {
-					fired, pos = true, j
-				}
-				armed = false
-			}
-			if far {
-				armed = true
-			}
-		}
-		if fired {
-			a := prev
-			if pos > 0 {
-				a = sampleOf(w, c.ClockCh, pos-1)
-			}
-			b := sampleOf(w, c.ClockCh, pos)
-			num, den := int(c.Level)-int(a), int(b)-int(a)
-			if !rising {
-				num, den = int(a)-int(c.Level), int(a)-int(b)
-			}
-			q := 32 * num / den // 0..32 sixteenths of a nanosecond past sample pos-1
-			t := 32*(pos-1) + q
-			m := (t + c.Delay + 16) >> 5 // the data sample nearest t+Delay, from this clock's first
-			d := false                   // before the first word: the receiver's zeros
-			if i := 4*k + m; i >= 0 && i < len(levels) {
-				d = levels[i]
-			}
-			d = d != c.Inverted
+	for k, o := range out {
+		if o.Found {
+			d := o.Other != c.Inverted
 			strobe[k], bit[k] = true, d
-			edges = append(edges, SampleSPIEdge{Clock: k, Time: 128*k + t, Bit: d})
+			edges = append(edges, SampleSPIEdge{Clock: k, Time: 128*k + o.Time, Bit: d})
 		}
-		prev = sampleOf(w, c.ClockCh, 3)
 	}
 	// The framing stage, SampleSPILatency clocks later: spi_trigger.v's.
 	var events []SampleSPIEvent

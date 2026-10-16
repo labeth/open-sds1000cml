@@ -69,9 +69,10 @@ function computeDecode() {
   else if (dcfg.proto === "i2c")
     r = decodeI2C(decCodes(dcfg.scl), decCodes(dcfg.sda), colTimeS, cfg);
   else if (dcfg.proto === "spi")
-    // dataLag: C2 samples 23/16 ns after C1 (decode.ChannelPhase16), in samples
+    // dataLag: C2 samples 23/16 ns after C1 (decode.ChannelPhase16), in samples;
+    // dataDelay: the scope's data delay (a device's late data), in samples
     r = decodeSPI(decCodes(dcfg.clk), decCodes(dcfg.data), colTimeS, Object.assign(cfg, { cpol: dcfg.cpol, cpha: dcfg.cpha, bitOrder: dcfg.msb ? "msb" : "lsb",
-      dataLag: colTimeS > 0 ? (dcfg.clk === 2 ? 1 : -1) * 23 / 16e9 / colTimeS : 0 }));
+      dataLag: colTimeS > 0 ? (dcfg.clk === 2 ? 1 : -1) * 23 / 16e9 / colTimeS : 0, dataDelay: colTimeS > 0 ? (+dcfg.delayNs || 0) * 1e-9 / colTimeS : 0 }));
   else if (dcfg.proto === "manchester") // single line, self-clocking (auto bit rate)
     r = decodeManchester(decCodes(dcfg.line), colTimeS, Object.assign(cfg, { bitrate: dcfg.baud > 0 ? dcfg.baud : 0, ieee: true, msb: true, bits: dcfg.bits || 8, haveThr: !dcfg.auto }));
   else if (dcfg.proto === "sent") // single line, tick auto-derived from the 56-tick sync
@@ -298,7 +299,7 @@ function decScopeSettings(d) {
   if (!proto) return null;
   const a = (d.DecChA & 1) + 1, b = (d.DecChB & 1) + 1, s = { proto };
   if (proto === "i2c") { s.scl = a; s.sda = b; }
-  else if (proto === "spi") { s.clk = a; s.data = b; s.cpol = d.DecCPOL ? 1 : 0; s.cpha = d.DecCPHA ? 1 : 0; s.msb = !d.DecLSB; }
+  else if (proto === "spi") { s.clk = a; s.data = b; s.cpol = d.DecCPOL ? 1 : 0; s.cpha = d.DecCPHA ? 1 : 0; s.msb = !d.DecLSB; s.delayNs = +d.DecDelayNs || 0; }
   else if (proto !== "off") s.line = a;
   if (proto !== "off" && proto !== "i2c" && proto !== "spi" && proto !== "sent") s.baud = d.DecBaud > 0 ? d.DecBaud : 0;
   return s;

@@ -88,6 +88,10 @@ func (c *Controller) serialBus(p engine.SerialParams) engine.SerialParams {
 	p.Baud, p.Bits, p.Parity = c.decBaud, 8, "none"
 	p.CPOL, p.CPHA, p.MSB, p.IEEE = c.decCPOL, c.decCPHA, !c.decLSB || c.decProto != framecalc.ProtoSPI, true
 	p.HaveThr, p.TickNs, p.Nibbles, p.DataBaud = false, 0, 0, 0
+	p.Fine, p.SPIDelayNs = c.decFine, 0
+	if c.decProto == framecalc.ProtoSPI {
+		p.SPIDelayNs = spiDelayOf(c.decDelayAuto, c.decDelayNs, c.spiEye)
+	}
 	return p
 }
 

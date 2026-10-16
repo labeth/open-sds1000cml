@@ -53,3 +53,28 @@ func TestHardwareI2CProgrammingAndDisable(t *testing.T) {
 		t.Fatal("unsupported request wrote registers")
 	}
 }
+
+// The receiver on the samples takes SDA's delay in register 58; a request
+// for it is refused by the level receiver.
+// TRLC-LINKS: REQ-SDS-229
+func TestHardwareSampleI2CDelay(t *testing.T) {
+	f := frozenBus()
+	f.revision = 10
+	c := client(t, f)
+	c.bus = i2cBus{f, 0x4902}
+	if ok, err := c.SupportsSampleI2C(); !ok || err != nil {
+		t.Fatalf("sample I2C %v %v", ok, err)
+	}
+	cfg := Config{Normal: true, PostWords: 16, I2C: I2CTriggerConfig{Enabled: true, Address: 0x50, Direction: 2, Samples: true, Delay: -23}}
+	if err := c.Arm(context.Background(), cfg); err != nil {
+		t.Fatal(err)
+	}
+	if f.staged[58] != 0xe9 || f.staged[53] != 1|2<<3 {
+		t.Fatalf("registers 53=%x 58=%x", f.staged[53], f.staged[58])
+	}
+	f.flags = 4 | 16 | 32 | 64
+	c.bus = i2cBus{f, 0x4901}
+	if err := c.Arm(context.Background(), cfg); err == nil {
+		t.Fatal("the level receiver accepted a receiver on the samples' configuration")
+	}
+}
