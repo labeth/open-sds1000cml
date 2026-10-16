@@ -26,13 +26,7 @@ func TestDecodeFollowsNewFrame(t *testing.T) {
 		for i := range f.C2 {
 			f.C2[i] = 128
 		}
-		ch := func(c int) []uint8 {
-			if c == 1 {
-				return f.C2
-			}
-			return f.C1
-		}
-		res := decodeFrame(f, hud, n, ch, "hex")
+		res := decodeFrame(f, hud)
 		for _, s := range res.Spans {
 			if s.Kind == "data" {
 				return s.I0

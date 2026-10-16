@@ -117,3 +117,19 @@ func TestDecodeFramesFromTheHardwareMatch(t *testing.T) {
 		t.Fatalf("decoded %q, want 55 AA 0F F0 in sync", r.Text)
 	}
 }
+
+// The settings' parameters: SPI's data delay in seconds (no other protocol
+// takes one), and the format index wrapped onto the three formats, so the
+// panel and the LCD ask Decode the same question.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-214
+func TestParams(t *testing.T) {
+	delayNs := 7.5
+	p := Params(ProtoSPI, 0, 1, 0, false, true, true, 4, delayNs)
+	want := DecodeParams{Proto: ProtoSPI, ChA: 1, CPHA: true, LSB: true, Format: "ascii", DataDelayS: delayNs * 1e-9}
+	if p != want {
+		t.Fatalf("SPI: %+v, want %+v", p, want)
+	}
+	if p := Params(ProtoUART, 115200, 0, 1, false, false, false, -1, 7.5); p.DataDelayS != 0 || p.Format != "both" || p.Baud != 115200 {
+		t.Fatalf("UART: %+v", p)
+	}
+}

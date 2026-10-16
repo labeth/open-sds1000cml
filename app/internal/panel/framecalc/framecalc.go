@@ -48,6 +48,25 @@ type DecodeParams struct {
 	DataDelayS float64
 }
 
+// Formats are the span text formats by the decode setting's format index.
+var Formats = [3]string{"hex", "ascii", "both"}
+
+// Params are the decode settings as the panel holds them, made into
+// DecodeParams. The panel's packet list and the LCD's strip both take them
+// from here, so they ask Decode the same question: they share one decode of
+// the record (the cache is keyed by the parameters), and the strip reads the
+// bytes the list does (the strip without SPI's data delay read a late
+// 104 MHz device one bit behind the list).
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-214
+func Params(proto, baud, chA, chB int, cpol, cpha, lsb bool, format int, spiDelayNs float64) DecodeParams {
+	p := DecodeParams{Proto: proto, Baud: baud, ChA: chA, ChB: chB, CPOL: cpol, CPHA: cpha, LSB: lsb,
+		Format: Formats[((format%3)+3)%3]}
+	if proto == ProtoSPI {
+		p.DataDelayS = spiDelayNs * 1e-9
+	}
+	return p
+}
+
 type decodeKey struct {
 	id, seq bool
 	ident   uint64

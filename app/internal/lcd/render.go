@@ -83,6 +83,7 @@ type HUD struct {
 	DecChA, DecChB   int // channel roles (0=C1,1=C2)
 	DecCPOL, DecCPHA bool
 	DecLSB           bool          // SPI least significant bit first
+	DecDelayNs       float64       // SPI's data delay in use after the sampling edge (ns)
 	DecFormat        int           // byte display: 0=hex,1=ascii,2=both
 	RefC1, RefC2     [2][]uint8    // saved reference waveforms (REF A/B), one code per column; nil if unset
 	RefVdiv, RefOff  [2][2]float64 // [slot][channel] analog V/div and offset volts at the save

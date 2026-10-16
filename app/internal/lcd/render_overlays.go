@@ -198,15 +198,7 @@ func drawDecode(sf Surface, p plotArea, f *engine.Frame, hud HUD, win int, xc, p
 	if !(posFrac >= 0 && posFrac <= 1) { // same normalization as drawTrace/drawZoneMask:
 		posFrac = 0.5 // an invalid fraction must not shift the strip off the trace
 	}
-	valid := frameValid(f)
-	ch := func(c int) []uint8 {
-		if c == 1 && len(f.C2) >= valid {
-			return f.C2[:valid]
-		}
-		return f.C1[:valid]
-	}
-	format := []string{"hex", "ascii", "both"}[hud.DecFormat%3]
-	res := decodeFrame(f, hud, valid, ch, format)
+	res := decodeFrame(f, hud)
 	name := protoNames[hud.DecProto%len(protoNames)]
 	// Decode lane: a dark band that sits ABOVE the bottom Vpp/freq readout row
 	// (drawn later by drawHUD at H-9), so the two never overwrite each other.
@@ -413,17 +405,16 @@ func drawMaskHUD(sf Surface, hud HUD) {
 
 // decodeFrame decodes the frame's protocol through the shared per-frame
 // cache (framecalc.Decode), so the strip and the BUS packet list decode a
-// frame once. valid and ch are the caller's view of the frame; the cache
-// derives the same channels from f.
+// frame once, all of its record: the strip's spans are the list's, in record
+// sample indices, and the screen shows those it reaches.
 // TRLC-LINKS: REQ-SDS-018
-func decodeFrame(f *engine.Frame, hud HUD, valid int, ch func(int) []uint8, format string) decode.Result {
-	_, _ = valid, ch
-	return framecalc.Decode(f, decodeParams(hud, format))
+func decodeFrame(f *engine.Frame, hud HUD) decode.Result {
+	return framecalc.Decode(f, decodeParams(hud))
 }
 
-// decodeParams are the HUD's decode settings.
+// decodeParams are the HUD's decode settings: the panel's (framecalc.Params),
+// so the strip shares the packet list's decode of the record and its bytes.
 // TRLC-LINKS: REQ-SDS-018
-func decodeParams(hud HUD, format string) framecalc.DecodeParams {
-	return framecalc.DecodeParams{Proto: hud.DecProto, Baud: hud.DecBaud, ChA: hud.DecChA, ChB: hud.DecChB,
-		CPOL: hud.DecCPOL, CPHA: hud.DecCPHA, LSB: hud.DecLSB, Format: format}
+func decodeParams(hud HUD) framecalc.DecodeParams {
+	return framecalc.Params(hud.DecProto, hud.DecBaud, hud.DecChA, hud.DecChB, hud.DecCPOL, hud.DecCPHA, hud.DecLSB, hud.DecFormat, hud.DecDelayNs)
 }

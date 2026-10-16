@@ -228,15 +228,11 @@ func (c *Controller) noteTdivCap(s *sv) {
 	c.toastLocked(fmt.Sprintf("%s/div at most on this trigger: its image records %s", si(c.tdivs[c.tdivIdx], "s"), si(max(s.st.RecordS, 10*most), "s")), 3*time.Second)
 }
 
-// decodeParams are the panel's decode settings.
+// decodeParams are the panel's decode settings, as the LCD's strip takes
+// them from the Display (framecalc.Params).
 // TRLC-LINKS: REQ-SDS-214
 func decodeParamsOf(s *sv) framecalc.DecodeParams {
-	p := framecalc.DecodeParams{Proto: s.decProto, Baud: s.decBaud, ChA: s.decChA, ChB: s.decChB,
-		CPOL: s.decCPOL, CPHA: s.decCPHA, LSB: s.decLSB, Format: []string{"hex", "ascii", "both"}[mod3(s.decFormat)]}
-	if s.decProto == framecalc.ProtoSPI {
-		p.DataDelayS = s.spiDelayNs() * 1e-9
-	}
-	return p
+	return framecalc.Params(s.decProto, s.decBaud, s.decChA, s.decChB, s.decCPOL, s.decCPHA, s.decLSB, s.decFormat, s.spiDelayNs())
 }
 
 // codesOf returns a channel's valid samples as codes (Q8.8 when the frame
