@@ -1388,7 +1388,7 @@ func busTabRows() []*row {
 		long:  func(s *sv) string { return fmt.Sprintf("%d baud", s.decBaud) },
 		parse: func(s *sv, t string) (int, bool) {
 			v, err := parseNumber(t, "Bd")
-			if err != nil || v < 50 || v > 64e6 { // the fast image's receiver: 62.5 MBd
+			if err != nil || v < 50 || v > maxDecBaud {
 				return 0, false
 			}
 			return int(math.Round(v)), true

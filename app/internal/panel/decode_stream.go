@@ -409,11 +409,16 @@ func (c *Controller) setDecProto(p int) error {
 	return nil
 }
 
+// maxDecBaud is the fastest UART the decoder settings hold: the fast
+// image's receiver on the samples reads 62.5 MBd, from a transmitter up to
+// 2 % fast.
+const maxDecBaud = 64_000_000
+
 // setDecBaud sets the UART baud or the bit rate of a bit-rate protocol.
 // TRLC-LINKS: REQ-SDS-018
 func (c *Controller) setDecBaud(b int) error {
-	if b < 50 || b > 20000000 {
-		return fmt.Errorf("baud %d is outside 50..20000000", b)
+	if b < 50 || b > maxDecBaud {
+		return fmt.Errorf("baud %d is outside 50..%d", b, maxDecBaud)
 	}
 	c.mu.Lock()
 	c.decBaud = b

@@ -124,7 +124,7 @@ func (c *Controller) ApplySettingsView(v settings.ViewState) {
 	if detect {
 		d.Proto = framecalc.ProtoOff
 	}
-	if d.Baud < 50 || d.Baud > 20000000 {
+	if d.Baud < 50 || d.Baud > maxDecBaud {
 		d.Baud = 115200
 	}
 	d.ChA &= 1

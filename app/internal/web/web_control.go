@@ -85,7 +85,7 @@ func (s *Server) hSerial(w http.ResponseWriter, r *http.Request) {
 	if p.Addr > 127 || p.Addr < -1 {
 		p.Addr = -1 // out of 7-bit range → "any" (never a silent never-match)
 	}
-	if p.Baud < 0 || p.Baud > 50_000_000 {
+	if p.Baud < 0 || p.Baud > 64_000_000 { // the fast image's UART receiver: 62.5 MBd
 		p.Baud = 0
 	}
 	if p.Bits != 0 {

@@ -45,6 +45,17 @@ func TestSerialTriggerEndpoints(t *testing.T) {
 		}
 	}
 
+	// a UART's rate reaches the fast image's receiver (62.5 MBd); past any
+	// receiver it is cleared
+	for _, tc := range []struct{ baud, want int }{{62_500_000, 62_500_000}, {25_000_000, 25_000_000}, {65_000_000, 0}} {
+		body, _ = json.Marshal(map[string]any{"proto": 1, "baud": tc.baud, "bytes": []int{0x55}})
+		rec = httptest.NewRecorder()
+		s.Handler().ServeHTTP(rec, httptest.NewRequest("POST", "/api/serial", bytes.NewReader(body)))
+		if got := fs.serialParams.Baud; rec.Code != 200 || got != tc.want {
+			t.Fatalf("baud %d posted: the trigger has %d, want %d", tc.baud, got, tc.want)
+		}
+	}
+
 	// the SPI clock rate, the data delay and the receiver stay the scope's
 	// (its BUS rows set them): a post, a stale page's too, keeps them
 	fs.serialParams.SPIClockHz, fs.serialParams.SPIDelayNs, fs.serialParams.Fine = 104_000_000, 7.5, true
