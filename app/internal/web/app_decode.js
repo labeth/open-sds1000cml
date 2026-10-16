@@ -350,6 +350,11 @@ function decPushRate() {
   decPush(dcfg.proto === "uart" ? "bus.baud" : "bus.bit_rate", dcfg.baud);
 }
 
+// decPageEdit gives a decoder setting edited here that the scope keeps no row
+// for to the serial trigger this page armed.
+// TRLC-LINKS: REQ-SDS-206, REQ-SDS-207
+function decPageEdit() { if (typeof stOnPageEdit === "function") stOnPageEdit(); }
+
 // decDetect is Auto-detect: the scope's Auto detects the bus once and fills
 // in its decoder settings, which this page then follows. It resolves true
 // when a bus is decoded after it.
@@ -389,7 +394,7 @@ async function decDetect() {
   }
   $("decSda").value = "2"; $("decData").value = "2"; $("decLine").value = "1";
   // TRLC-LINKS: REQ-SDS-207
-  $("decSentTick").onchange = $("decSentNibbles").onchange = () => { recompute(); if (typeof stOnDecodeChange === "function") stOnDecodeChange(); };
+  $("decSentTick").onchange = $("decSentNibbles").onchange = () => { recompute(); decPageEdit(); };
   $("decDetect").onclick = decDetect;
   // TRLC-LINKS: REQ-SDS-207
   $("decProto").onchange = () => { dcfg.proto = $("decProto").value; setDetectMsg(""); updateDecodePanel(); recompute(); decPush("bus.protocol", DEC_SCOPE_PROTOS.indexOf(dcfg.proto)); };
@@ -404,9 +409,10 @@ async function decDetect() {
   // TRLC-LINKS: REQ-SDS-207
   $("decLine").onchange = () => { dcfg.line = +$("decLine").value; recompute(); decPush("bus.source", dcfg.line - 1); };
   // TRLC-LINKS: REQ-SDS-207
-  $("decAuto").onclick = () => { dcfg.auto = !dcfg.auto; $("decAuto").classList.toggle("on", dcfg.auto); recompute(); };
+  $("decAuto").onclick = () => { dcfg.auto = !dcfg.auto; $("decAuto").classList.toggle("on", dcfg.auto); recompute(); decPageEdit(); };
   // TRLC-LINKS: REQ-SDS-207
   $("decThr").oninput = () => { dcfg.auto = false; $("decAuto").classList.remove("on"); $("decThrV").textContent = $("decThr").value; recompute(); };
+  $("decThr").onchange = decPageEdit;
   // TRLC-LINKS: REQ-SDS-207
   $("decBaud").onchange = () => {
     const v = +$("decBaud").value | 0;
@@ -417,12 +423,12 @@ async function decDetect() {
   // UART frames carry 5..9 data bits; Manchester words 1..16.
   $("decBits").onchange = () => {
     const manchester = dcfg.proto === "manchester";
-    dcfg.bits = Math.max(manchester ? 1 : 5, Math.min(manchester ? 16 : 9, +$("decBits").value | 0)); recompute();
+    dcfg.bits = Math.max(manchester ? 1 : 5, Math.min(manchester ? 16 : 9, +$("decBits").value | 0)); recompute(); decPageEdit();
   };
   // TRLC-LINKS: REQ-SDS-207
-  $("decParity").onchange = () => { dcfg.parity = $("decParity").value; recompute(); };
+  $("decParity").onchange = () => { dcfg.parity = $("decParity").value; recompute(); decPageEdit(); };
   // TRLC-LINKS: REQ-SDS-207
-  $("decInverted").onchange = () => { dcfg.inverted = $("decInverted").checked; recompute(); };
+  $("decInverted").onchange = () => { dcfg.inverted = $("decInverted").checked; recompute(); decPageEdit(); };
   // TRLC-LINKS: REQ-SDS-207
   $("decCpol").onchange = () => { dcfg.cpol = +$("decCpol").value; recompute(); decPush("bus.spi_mode", dcfg.cpol * 2 + dcfg.cpha); };
   // TRLC-LINKS: REQ-SDS-207

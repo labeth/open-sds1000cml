@@ -111,7 +111,7 @@ function dsConfig() {
       if (p.i2cClockHz > 1.5e6) Object.assign(cfg.i2c, { samples: true, delay: p.chA === 1 ? 23 : -23 });
     }
     else {
-      const hz = +$("dsClock").value || p.spiClockHz;
+      const hz = p.spiClockHz; // the scope's Clock rate row, or on Auto the rate the decode measured
       if (!Number.isFinite(hz) || hz <= 0) throw Error("Enter the SPI clock frequency.");
       // A gap of 1.5 clock periods; under nine receiver clocks (a clock past
       // about 20 MHz) the fast image's receiver on the samples (spi_sample.v)

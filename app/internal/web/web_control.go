@@ -53,6 +53,10 @@ func (s *Server) hZones(w http.ResponseWriter, r *http.Request) {
 // hSerial installs the serial/protocol-trigger config (POST JSON = SerialParams:
 // {proto,chA,chB,baud,cpol,cpha,msb,addr,rw,bytes}). Arm/disarm is separate, via
 // /api/set {control:"serialmode"}. Match values retain the protocol's word width.
+// The SPI clock rate, the data delay and the receiver stay the scope's: its
+// BUS rows set them (bus.spi_clock, bus.spi_delay, bus.receiver, the one
+// path for the LCD, a phone and a page), so a page's post, one running an
+// older build's scripts too, never replaces them.
 // TRLC-LINKS: REQ-SDS-162
 func (s *Server) hSerial(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
@@ -105,6 +109,10 @@ func (s *Server) hSerial(w http.ResponseWriter, r *http.Request) {
 	}
 	for i := range p.Bytes {
 		p.Bytes[i] = clampI(p.Bytes[i], 0, maxValue)
+	}
+	if sc, ok := s.sc.(interface{ SerialConfig() engine.SerialParams }); ok {
+		cur := sc.SerialConfig()
+		p.SPIClockHz, p.SPIDelayNs, p.Fine = cur.SPIClockHz, cur.SPIDelayNs, cur.Fine
 	}
 	s.sc.SetSerialParams(p)
 	writeJSON(w, map[string]any{"ok": true})

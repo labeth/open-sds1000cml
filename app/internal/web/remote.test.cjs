@@ -223,6 +223,8 @@ test("numKey edits the keypad text; unit keys replace the unit; digits go in bef
   assert.equal(RC.numKey("1.250", "clear", units), "");
   assert.deepEqual(RC.unitKeys({ Unit: "s" }), ["ns", "us", "ms", "s"]);
   assert.deepEqual(RC.unitKeys({ Unit: "", Max: 100000 }), ["k"]);
+  assert.deepEqual(RC.unitKeys({ Unit: "Hz", Max: 125e6 }), ["k", "M"], "a rate in Hz takes k and M, not nine digits");
+  assert.equal(RC.parseNumber("104M", "Hz").value, 104e6);
   assert.deepEqual(RC.unitKeys({ Unit: "", Max: 127 }), []);
 });
 

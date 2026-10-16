@@ -4,8 +4,10 @@
 // parity, CPOL/CPHA/MSB and threshold all come from decode, so the operator only
 // enters the MATCH pattern here. Decode must be a concrete protocol to arm; the
 // sub-panel is inside #decRoles, so it hides automatically when decode is off,
-// and turning decode off auto-disarms. Config → POST /api/serial (the whole
-// SerialParams, assembled from dcfg + the match), arm → /api/set serialmode.
+// and turning decode off auto-disarms. Config → POST /api/serial (the scope's
+// SerialParams with this page's match and decoder settings), arm → /api/set
+// serialmode. The scope is authoritative: the clock rate, the data delay and
+// the receiver are the scope's, and the page sends only what is edited here.
 "use strict";
 
 // strict hex-token parse: "FF 3C" / "0x24" → [255,60] / 0x24; a token that is
@@ -65,10 +67,15 @@ function stProtoNum() { return { uart: 1, i2c: 2, spi: 3, manchester: 4, sent: 5
 // TRLC-LINKS: REQ-SDS-206
 function stArmed() { return $("stArm") && $("stArm").classList.contains("on"); }
 
-// build the full SerialParams from the live decode config + the match inputs;
-// returns null if the match pattern has invalid hex.
+// stScope is the scope's serial trigger as /api/serial last gave it: what the
+// page builds on, so the clock rate, the data delay and the receiver set on
+// the scope (its rows, AUTO in BUS, a phone) are never replaced by the page's.
+let stScope = null;
+
+// build the SerialParams: the scope's (base), with the live decode config and
+// the match inputs; returns null if the match pattern has invalid hex.
 // TRLC-LINKS: REQ-SDS-206
-function stParams() {
+function stParams(base = stScope) {
   const P = stProtoNum();
   // TRLC-LINKS: REQ-SDS-206
   const rc = r => (r === 2 ? 1 : 0);             // dcfg role 1/2 → engine chan 0/1
@@ -79,11 +86,12 @@ function stParams() {
   if (addr === null || parsed === null) return null;
   const bytes = parsed.bytes;
   return {
+    ...(base || {}),
     proto: P,
     chA: P === 2 ? rc(dcfg.scl) : P === 3 ? rc(dcfg.clk) : rc(dcfg.line),
     chB: P === 2 ? rc(dcfg.sda) : P === 3 ? rc(dcfg.data) : 0,
     baud: dcfg.baud > 0 ? dcfg.baud : 0,
-    spiClockHz: P === 3 ? Math.max(0, +$("dsClock").value || 0) : 0,
+    spiClockHz: P === 3 && base ? Math.max(0, base.spiClockHz || 0) : 0, // the scope's Clock rate row (0: Auto)
     bits: dcfg.bits || 8,
     parity: dcfg.parity || "none",
     inverted: !!dcfg.inverted,
@@ -95,13 +103,45 @@ function stParams() {
   };
 }
 
+// stLastSig is the scope's match as this page last read or sent it: a
+// different one read later was set on the scope (the LCD, a phone, AUTO in
+// BUS, another page), which ends this page's ownership.
 let stLastSig = "";
 let stConfigError = "";
 // stOwn: this page armed the trigger, or its match was edited here since. Only
-// then does the page push its settings or disarm: a trigger armed on the LCD, a
+// then does the page send an edit or disarm: a trigger armed on the LCD, a
 // phone or another page is shown here as the scope has it (stAdopt), never
-// replaced by this page's empty match or its own decode settings.
+// replaced by this page's empty match or its own decode settings. A match
+// changed on the scope ends it.
 let stOwn = false, stAdopting = false;
+// stSendGen counts this page's sends: a read begun before one may still hold
+// the match it replaced.
+let stSendGen = 0;
+
+// stMatchSig is a trigger's match: units, I2C address and direction.
+// TRLC-LINKS: REQ-SDS-206
+function stMatchSig(p) { return JSON.stringify([p.bytes || [], p.pattern || [], p.addr == null ? -1 : p.addr, p.rw == null ? 2 : p.rw]); }
+
+// stShowClock shows the scope's SPI Clock rate row in the page's field (MHz;
+// empty is Auto, its placeholder the rate Auto measured), not while it is
+// being typed.
+// TRLC-LINKS: REQ-SDS-206, REQ-SDS-229
+function stShowClock(hz, text) {
+  const el = $("dsClock");
+  if (!el || document.activeElement === el) return;
+  const v = hz > 0 ? String(+(hz / 1e6).toPrecision(9)) : "";
+  if (el.value !== v) el.value = v;
+  if (text !== undefined) el.placeholder = hz > 0 ? "" : text;
+}
+// stSetClock writes the field's clock rate to the scope's Clock rate row, the
+// row the LCD and the phone set (empty: Auto).
+// TRLC-LINKS: REQ-SDS-206, REQ-SDS-229
+function stSetClock() {
+  const t = String($("dsClock").value).trim();
+  const hz = t === "" ? 0 : Math.round(+t * 1e6);
+  if (!Number.isFinite(hz) || hz < 0) { stShowClock(stScope ? stScope.spiClockHz : 0); return Promise.resolve(); }
+  return sheetSet("bus.spi_clock", hz).then(() => stAdopt());
+}
 
 // stMatchText writes the scope's match as this page types it: hex units, "??"
 // any unit, "A?" a nibble wildcard, ERR a decoder error, SOF a frame's start,
@@ -128,17 +168,27 @@ function stMatchText(p) {
 // stScopeProto is the protocol of the scope's serial trigger (stAdopt), named
 // when it was armed on the scope or the phone and this page decodes nothing.
 let stScopeProto = 0;
-// stAdopt shows the trigger as the scope has it armed: the match, I2C address
-// and direction (not while one of them is being typed).
+// stAdopt reads the scope's serial trigger: its settings for the page to
+// build on and show (the clock rate), and, unless this page owns it, the
+// match, I2C address and direction (not while one of them is being typed). A
+// match changed on the scope since this page read or sent it ends the
+// page's ownership: the scope's is shown from then on.
 // TRLC-LINKS: REQ-SDS-206
 function stAdopt() {
   if (stAdopting) return Promise.resolve();
-  const a = document.activeElement;
-  if (a && (a.id === "stBytes" || a.id === "stAddr" || (a.closest && a.closest("#stRW")))) return Promise.resolve();
   stAdopting = true;
+  const gen = stSendGen;
   return fetch("/api/serial").then((r) => r.json()).then((j) => {
-    if (!j || !j.ok || stOwn) return;
+    if (!j || !j.ok || gen !== stSendGen) return;
     const p = j.params || {};
+    stScope = p;
+    stShowClock(p.spiClockHz || 0);
+    const sig = stMatchSig(p);
+    if (stOwn && stLastSig && sig !== stLastSig) stOwn = false;
+    stLastSig = sig;
+    if (stOwn) return;
+    const a = document.activeElement;
+    if (a && (a.id === "stBytes" || a.id === "stAddr" || (a.closest && a.closest("#stRW")))) return;
     stScopeProto = p.proto || 0;
     $("stBytes").value = stMatchText(p);
     $("stAddr").value = p.addr >= 0 ? p.addr.toString(16).toUpperCase().padStart(2, "0") : "";
@@ -151,15 +201,26 @@ function stAdopt() {
 // TRLC-LINKS: REQ-SDS-206
 function stFollowScope() { stOwn = false; stLastSig = ""; return stAdopt(); }
 let stModePending = null, stModeGeneration = 0, stArmGeneration = 0;
+// stPush sends this page's match and decoder settings, on an edit made here,
+// over the scope's serial trigger as it is now (read first), so the scope's
+// own settings stay.
 // TRLC-LINKS: REQ-SDS-206
 function stPush() {
-  const p = stParams();
-  if (!p) return Promise.reject(new Error("bad pattern")); // stStatus() surfaces the invalid hex
-  const signature = JSON.stringify(p);
-  return fetch("/api/serial", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(p) })
-    .then(async r => { const j = await r.json(); if (!r.ok || !j || !j.ok) throw new Error("rejected"); })
-    .then(() => { stLastSig = signature; if (stConfigError) { stConfigError = ""; stStatus(); } })
-    .catch(error => { stConfigError = "Trigger settings were not applied. Check the connection and retry."; stStatus(); throw error; });
+  if (!stParams()) return Promise.reject(new Error("bad pattern")); // stStatus() surfaces the invalid hex
+  const gen = ++stSendGen;
+  return fetch("/api/serial").then((r) => r.json()).then((j) => { if (j && j.ok && j.params) stScope = j.params; }, () => {})
+    .then(() => {
+      const p = stParams();
+      if (!p) throw new Error("bad pattern");
+      if (!p.proto) throw new Error("decode off"); // turned off meanwhile: nothing to send
+      return fetch("/api/serial", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(p) })
+        .then(async r => { const j = await r.json(); if (!r.ok || !j || !j.ok) throw new Error("rejected"); return p; });
+    })
+    .then((p) => { stScope = p; stLastSig = stMatchSig(p); if (gen === stSendGen) ++stSendGen; if (stConfigError) { stConfigError = ""; stStatus(); } })
+    .catch(error => {
+      if (error.message !== "decode off") { stConfigError = "Trigger settings were not applied. Check the connection and retry."; stStatus(); }
+      throw error;
+    });
 }
 
 // TRLC-LINKS: REQ-SDS-206
@@ -205,13 +266,20 @@ function stStatus(msg) {
   $("stStats").textContent = `armed · ${backend} · ${(st && st.serial_matches) || 0} matches`;
 }
 
-// called by the decode panel (updateDecodePanel) when the decode config changes:
-// disarm if decode was turned off, else re-push the (now different) config.
+// called by the decode panel (updateDecodePanel) when the decode config changes,
+// here or on the scope: disarm if decode was turned off. The bus itself (its
+// protocol, lines, mode) the scope gives its armed trigger.
 // TRLC-LINKS: REQ-SDS-206
 function stOnDecodeChange() {
   if (!$("stArm")) return;
-  if (stProtoNum() === 0) { ++stArmGeneration; if (stOwn && (stArmed() || stModePending === 1)) stSetArmed(false); stStatus(""); return; }
-  if (stArmed() && stOwn) stPush().catch(() => {});
+  if (stProtoNum() === 0) { ++stArmGeneration; if (stOwn && (stArmed() || stModePending === 1)) stSetArmed(false); stStatus(""); }
+}
+// stOnPageEdit sends a decoder setting edited on this page that the scope has
+// no row for (UART word and parity, inverted inputs, the threshold, SENT's
+// tick and nibbles) to a trigger this page armed.
+// TRLC-LINKS: REQ-SDS-206
+function stOnPageEdit() {
+  if ($("stArm") && stProtoNum() && stArmed() && stOwn) stPush().catch(() => {});
 }
 
 // ==== wiring ====
@@ -257,18 +325,20 @@ function stOnDecodeChange() {
       }
     }
   };
-  for (const id of ["stAddr", "stRW", "stBytes", "dsClock"])
+  for (const id of ["stAddr", "stRW", "stBytes"])
     // TRLC-LINKS: REQ-SDS-206
     $(id).onchange = () => { stOwn = true; if (stArmed()) stPush().catch(() => {}); stStatus(); };
+  $("dsClock").onchange = stSetClock;
 })();
 
-// resync + live status (both directions); re-push if the config drifted.
+// resync + live status: the page follows the scope and sends nothing here.
 setInterval(() => {
-  if (!$("stArm") || !st) return;
-  // the scope's match, armed or not, unless this page edited its own: set or
-  // cleared elsewhere (the LCD, a phone, Default setup), the field follows;
-  // armed, the strip's caption names it too
-  if (!stOwn && !document.hidden && !(typeof superseded !== "undefined" && superseded)) stAdopt();
+  if (!$("stArm") || !st || (typeof superseded !== "undefined" && superseded)) return;
+  // the scope's trigger, armed or not: its settings, and its match unless
+  // this page edited its own (set or cleared elsewhere - the LCD, a phone,
+  // Default setup, AUTO - the field follows; armed, the strip's caption
+  // names it too)
+  if (!document.hidden) stAdopt();
   // Ignore pre-command status polls until one acknowledges the requested mode.
   if (stModePending !== null) {
     if ((st.serial_mode || 0) === stModePending) stModePending = null;
@@ -279,9 +349,5 @@ setInterval(() => {
   if (st.serial_mode && !stArmed()) $("stArm").classList.add("on");   // engine armed, UI didn't know
   if (!st.serial_mode && stArmed()) { $("stArm").classList.remove("on"); stOwn = false; } // engine disarmed elsewhere
   if (stProtoNum() === 0) { if (stOwn && stArmed()) stSetArmed(false); stStatus(); return; }
-  if (stArmed() && stOwn) { // a trigger this page owns: push what changed here
-    const p = stParams();
-    if (p && JSON.stringify(p) !== stLastSig) stPush().catch(() => {}); // decode/match changed here
-  }
   stStatus();
 }, 1000);

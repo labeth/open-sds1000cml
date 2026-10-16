@@ -38,7 +38,7 @@ const ALL_GROUPS = [
     ["decScl", "I²C SCL channel", "i2c clock"], ["decSda", "I²C SDA channel", "i2c data"], ["decClk", "SPI clock channel", ""], ["decData", "SPI data channel", ""],
     ["decLine", "Decode line", "uart channel"], ["decBaud", "Baud / bit rate", "uart speed"], ["decBits", "Data bits", "uart word"], ["decParity", "UART parity", "none even odd"],
     ["decSentTick", "SENT tick", "ns"], ["decSentNibbles", "SENT nibbles", ""], ["decCpol", "SPI CPOL", "mode"], ["decCpha", "SPI CPHA", "mode"], ["decMsb", "SPI bit order", "msb lsb"],
-    ["dsClock", "SPI clock frequency", "hz"], ["decInverted", "Inverted inputs", "polarity"], ["decAuto", "Auto threshold", "level"], ["decThr", "Decode threshold", "level"],
+    ["dsClock", "SPI clock rate", "hz mhz frequency auto"], ["decInverted", "Inverted inputs", "polarity"], ["decAuto", "Auto threshold", "level"], ["decThr", "Decode threshold", "level"],
     ["decFmt", "Decode strip format", "hex ascii string"], ["decStream", "Stream log", "history stitch"], ["decHistClear", "Clear decode log", ""],
     ["decodeCopy", "Copy transcript", "clipboard"], ["decWatch", "Watch decoded windows", "capture review"], ["decWatchErr", "Watch errors", ""],
     ["decWatchMatch", "Watch match", "regex text"], ["capLive", "Back to live (captures)", "review"], ["capCopy", "Copy captures", ""], ["capClear", "Clear captures", ""]]],

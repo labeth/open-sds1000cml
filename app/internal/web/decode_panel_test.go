@@ -112,6 +112,15 @@ func (p *decodePanel) SheetSet(row string, value any, _ string) panel.SetResult 
 	case "bus.stream":
 		p.view = map[bool]string{true: "Stream", false: "Packets"}[n == 1]
 	case "bus.stream_trigger":
+	case "bus.spi_clock": // the scope's Clock rate row: the serial trigger's
+		if se, ok := p.sc.(interface {
+			SerialConfig() engine.SerialParams
+			SetSerialParams(engine.SerialParams)
+		}); ok {
+			sp := se.SerialConfig()
+			sp.SPIClockHz = n
+			se.SetSerialParams(sp)
+		}
 	default:
 		return panel.SetResult{Row: row, Error: "no row " + row}
 	}

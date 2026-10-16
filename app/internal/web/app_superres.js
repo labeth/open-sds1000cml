@@ -387,10 +387,15 @@ function srEvtRestore() {
   $("stBytes").value = prev.bytes;
   stOwn = prev.own;
   if (!prev.armed) stSetArmed(false);
-  // the scope's own settings back, armed or not (its stored match)
+  // the scope's match back, armed or not (its stored one), over the scope's
+  // settings as they are now (a clock rate or delay set meanwhile stays)
   if (prev.params) {
-    fetch("/api/serial", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(prev.params) })
-      .catch(() => {}).finally(() => { stLastSig = ""; stStatus(); });
+    const m = prev.params;
+    fetch("/api/serial").then((r) => r.json()).then((j) => {
+      const now = j && j.ok && j.params ? j.params : m;
+      return fetch("/api/serial", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...now, bytes: m.bytes, pattern: m.pattern, addr: m.addr, rw: m.rw }) });
+    }).catch(() => {}).finally(() => { stLastSig = ""; stStatus(); });
   } else if (prev.armed) stPush().catch(() => {}).finally(() => stStatus());
 }
 

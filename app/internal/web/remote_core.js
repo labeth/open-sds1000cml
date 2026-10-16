@@ -260,7 +260,7 @@
 
   // The unit keys a number row's keypad gets (none for a row the scope
   // writes in hex: its keypad has A-F and 0x instead).
-  const UNIT_KEYS = { V: ["mV", "V"], s: ["ns", "us", "ms", "s"], "%": ["%"], "b/s": ["k", "M"] };
+  const UNIT_KEYS = { V: ["mV", "V"], s: ["ns", "us", "ms", "s"], "%": ["%"], "b/s": ["k", "M"], Hz: ["k", "M"] };
 
   // TRLC-LINKS: REQ-SDS-220
   function unitKeys(row) {

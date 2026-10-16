@@ -131,5 +131,19 @@ run(async (t) => {
   await t.until(async () => /Serial 55/.test(await po.text("trigCap")), "the strip's trigger caption shows the armed serial trigger", 15000);
   if (!/Serial 55/.test(await po.text("trigCap")))
     console.log("caption: " + JSON.stringify(await po.eval(() => ({ cap: $("trigCap").textContent, bytes: $("stBytes").value, mode: st.serial_mode, armed: stArmed(), own: stOwn }))));
+  // the scope is authoritative: a clock rate set on it (its Clock rate row,
+  // AUTO in BUS) while this page owns the armed trigger is shown here and
+  // never sent back, while the page follows the scope's decode (status round
+  // trips can take over 5 s on a loaded runner)
+  await po.setSelect("decProto", "spi");
+  const owned = posts.filter((p) => /\/api\/serial/.test(p.url)).length;
+  await fetch(process.argv[2] + "/api/sheets/set", { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ row: "bus.spi_clock", value: 104e6 }) });
+  await t.until(async () => (await po.value("dsClock")) === "104", "the page shows the scope's SPI clock rate (104 MHz)", 15000);
+  await new Promise((r) => setTimeout(r, 6000));
+  const back = posts.filter((p) => /\/api\/serial/.test(p.url)).slice(owned);
+  t.ok(back.length === 0, "the page sends no serial settings back over the scope's: " + JSON.stringify(back.map((p) => p.body.spiClockHz)));
+  const now = await (await fetch(process.argv[2] + "/api/serial")).json();
+  t.ok(now.params.spiClockHz === 104e6, "the scope keeps its clock rate: " + JSON.stringify(now.params));
   t.ok(pageErrors.length === 0, "no page errors: " + pageErrors.join("; "));
 });

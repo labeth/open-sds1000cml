@@ -18,3 +18,15 @@ func TestSerialStatusJS(t *testing.T) {
 		t.Fatalf("serial status: %v\n%s", err, out)
 	}
 }
+
+// TestSerialFollowJS: with a serial trigger this page armed, a clock rate or
+// match set on the scope is followed and never sent back; an edit made on
+// the page reaches the scope once.
+// TRLC-LINKS: REQ-SDS-206
+func TestSerialFollowJS(t *testing.T) {
+	testenv.NeedNode(t)
+	out, err := exec.Command("node", "serial_follow.test.cjs").CombinedOutput()
+	if err != nil || !strings.Contains(string(out), "serial follow PASS") {
+		t.Fatalf("serial follow: %v\n%s", err, out)
+	}
+}

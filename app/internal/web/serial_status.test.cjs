@@ -27,10 +27,13 @@ assert.equal(el.textContent, 'armed · no hardware trigger yet: measuring the UA
 console.log('ALL PASS');
 
 // TRLC-LINKS: REQ-SDS-206
-const paramsContext = {dcfg:{proto:'spi',clk:1,data:2,bits:8,msb:true,auto:false}, $: id=>({value: {stAddr:'',stBytes:'55 AA',stRW:'2',decThr:'128',dsClock:'200000'}[id]})};
+const paramsContext = {dcfg:{proto:'spi',clk:1,data:2,bits:8,msb:true,auto:false}, $: id=>({value: {stAddr:'',stBytes:'55 AA',stRW:'2',decThr:'128',dsClock:'10.4'}[id]})};
 vm.createContext(paramsContext);
 vm.runInContext(source.slice(0,source.indexOf('let stLastSig')),paramsContext);
-assert.equal(paramsContext.stParams().spiClockHz,200000);
+// the clock rate and the data delay are the scope's, never the page's field
+assert.equal(paramsContext.stParams().spiClockHz,0);
+assert.equal(paramsContext.stParams({spiClockHz:104000000,spiDelayNs:7.5}).spiClockHz,104000000);
+assert.equal(paramsContext.stParams({spiClockHz:104000000,spiDelayNs:7.5}).spiDelayNs,7.5);
 assert.equal(paramsContext.stParams().chA,0);
 assert.equal(paramsContext.stParams().chB,1);
 

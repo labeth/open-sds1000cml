@@ -620,6 +620,8 @@ async function sheetsFollow() {
     const rows = {};
     for (const t of m.Tabs || []) for (const r of t.Rows || []) rows[r.ID] = r;
     for (const [id, row] of SHEET_FOLLOW) if (rows[row] && rows[row].Value !== undefined) setFromStatus($(id), rows[row].Value);
+    const clock = rows["bus.spi_clock"];
+    if (clock && typeof stShowClock === "function") stShowClock(+clock.Value || 0, clock.Text); // MHz in the field, Auto's rate as its placeholder
     sheetsSeqSeen = seq;
   } catch (e) { /* the next status poll tries again */ } finally { sheetsBusy = false; }
 }

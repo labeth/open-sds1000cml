@@ -4,6 +4,8 @@ package web
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
+	"net/http"
 	"net/http/httptest"
 	"sync"
 	"testing"
@@ -504,5 +506,34 @@ func TestRootServesUI(t *testing.T) {
 	s.Handler().ServeHTTP(rec, req)
 	if rec.Code != 200 || !bytes.Contains(rec.Body.Bytes(), []byte("open-sds1000cml")) {
 		t.Fatalf("root: code=%d", rec.Code)
+	}
+}
+
+// TestClaimSupersedesEarlierRun: until a page claims, no epoch is refused (a
+// page from before a restart keeps running); once one claims, an older epoch
+// and one this run never issued (a page claimed before the restart, running
+// the old build's scripts) are refused, the claimed one is not.
+// TRLC-LINKS: REQ-SDS-161
+func TestClaimSupersedesEarlierRun(t *testing.T) {
+	s := New(&fakeScope{}, nil, nil, nil)
+	req := func(e uint64) *http.Request {
+		return httptest.NewRequest("GET", fmt.Sprintf("/api/frame.bin?epoch=%d", e), nil)
+	}
+	if s.superseded(req(3)) {
+		t.Fatal("before any claim in this run, a page from before the restart was refused")
+	}
+	rr := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rr, httptest.NewRequest("GET", "/api/claim", nil))
+	var c struct{ Epoch uint64 }
+	if err := json.Unmarshal(rr.Body.Bytes(), &c); err != nil || c.Epoch <= 3 {
+		t.Fatalf("claim: %v %s", err, rr.Body.String())
+	}
+	for _, e := range []uint64{3, c.Epoch - 1, c.Epoch + 5} {
+		if !s.superseded(req(e)) {
+			t.Errorf("epoch %d not refused after claim %d", e, c.Epoch)
+		}
+	}
+	if s.superseded(req(c.Epoch)) || s.superseded(req(0)) {
+		t.Error("the claimed page or an unclaimed client was refused")
 	}
 }

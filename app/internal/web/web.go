@@ -153,8 +153,11 @@ type Server struct {
 	// second browser "steals" the device and the first stops polling — the device
 	// serves at most ONE live client, bounding the CPU that competes with the
 	// engine's drain (spec 03 §2). epoch 0 (unclaimed: SCPI, curl, tests) is never
-	// refused.
-	epoch atomic.Uint64
+	// refused. It starts at the server's start time (epoch0), so a page claimed
+	// before a restart (its scripts the old build's) holds an epoch this run
+	// never issued and is refused once a page claims in this run.
+	epoch  atomic.Uint64
+	epoch0 uint64
 
 	// Single-entry auto-measurement cache. measure.Compute over a deep record
 	// is the heaviest in-lock CPU besides serialization, and every /api/frame
@@ -186,7 +189,9 @@ type measVal struct {
 
 // TRLC-LINKS: REQ-SDS-161, REQ-SDS-162, REQ-SDS-163, REQ-SDS-164
 func New(sc Scope, fe Analog, panel Panel, screen func() []byte) *Server {
-	return &Server{sc: sc, fe: fe, panel: panel, screen: screen}
+	s := &Server{sc: sc, fe: fe, panel: panel, screen: screen, epoch0: uint64(time.Now().UnixMilli())}
+	s.epoch.Store(s.epoch0)
+	return s
 }
 
 // SetInvertSource wires the SCPI INVS shadow — the single source of truth for
@@ -264,8 +269,10 @@ func (s *Server) hTune(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, s.sc.Tune(t))
 }
 
-// superseded reports whether a request's ?epoch is older than the active client
-// (a newer browser has claimed). epoch 0 / absent (SCPI, curl, tests) is exempt.
+// superseded reports whether a request's ?epoch is not the active client's
+// once a browser has claimed in this run: an older one (a newer browser has
+// claimed) or one from before a restart. epoch 0 / absent (SCPI, curl,
+// tests) is exempt, and so is every page until a claim in this run.
 // TRLC-LINKS: REQ-SDS-161
 func (s *Server) superseded(r *http.Request) bool {
 	q := r.URL.Query().Get("epoch")
@@ -274,7 +281,8 @@ func (s *Server) superseded(r *http.Request) bool {
 	}
 	var e uint64
 	fmt.Sscanf(q, "%d", &e)
-	return e != 0 && e < s.epoch.Load()
+	cur := s.epoch.Load()
+	return e != 0 && cur != s.epoch0 && e != cur
 }
 
 // hPanel injects a front-panel button or knob event (spec 08 §6), or types
