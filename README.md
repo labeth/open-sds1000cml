@@ -2,7 +2,7 @@
 
 Open replacement firmware for the **Siglent SDS1000CML+** two-channel oscilloscope (developed on the
 SDS1102CML+). It turns a budget 100 MHz scope into a deep-memory protocol and analysis instrument:
-both channels at 500 MS/s into a 1 M-sample record, hardware triggers on ten serial protocols,
+both channels at 500 MS/s into a 1 M-sample record, hardware triggers on thirty serial protocols,
 continuous decoding, super-resolution and a full web interface. It replaces the application on the
 scope's ARM processor and the FPGA images that application loads. Nothing is flashed: a power cycle
 always brings back the factory firmware.
@@ -95,7 +95,7 @@ anything on the scope's screen.
 | **Timebase** | 1 ns/div to 50 s/div |
 | **Roll mode** | AUTO at 10 ms/div and slower scrolls continuously; optional gap-free streaming, verified loss-free at **~1 M samples/s per channel (3.9 MB/s)** with **about 1 s of buffering** in the scope's SRAM |
 | **Vertical** | 2 mV/div to 10 V/div; DC, AC or GND (AC and GND applied to the samples); 20 MHz bandwidth limit; probe ×1, ×10 or ×100 |
-| **Serial protocols** | **10**, each with hardware trigger and decode: UART, I²C, SPI, CAN / CAN FD, FlexRay, ARINC 429, MIL-STD-1553, SENT, Manchester, USB low-speed |
+| **Serial protocols** | **30**, each with a hardware trigger, decode and AUTO detection: UART, I²C, SPI, CAN / CAN FD, FlexRay, ARINC 429, MIL-STD-1553, SENT, Manchester, USB low and full speed, LIN, DMX512, MIDI, Modbus RTU, 1-Wire, WS281x, DHT / AM230x, HDMI-CEC, SAE J1850 VPW, IR NEC, IR Sony SIRC, IR RC-5, IR RC-6, DALI, USB Power Delivery, S/PDIF, PS/2, SWD, MDIO, Wiegand |
 | **Streaming decode** | **continuous, gap-free protocol decoding**, not one capture at a time: 921,600-baud UART ran for 3 minutes without losing a byte, with the full-rate record kept for every frame |
 | **Analysis** | 18 automatic measurements, cursors, math, FFT, spectrogram, eye diagram and jitter, mask test |
 | **Interfaces** | web UI in any browser, SCPI over VXI-11 (LAN), the scope's own LCD and front panel |
@@ -166,8 +166,12 @@ while keeping the full record in SRAM for STOP, SINGLE and detailed review.
 * **Pulse width, slope and video** (PAL / NTSC, line select) in hardware: the `qualify` FPGA image
   measures the width or slope time in 4 ns ticks and counts video lines, and fires on the event.
 * **Auto, normal and single** modes; holdoff up to 10 s; force trigger.
-* **Protocol triggers in the FPGA** for all ten protocols. Match a byte, word, address, ID or frame
-  pattern, with masks and wildcards.
+* **Protocol triggers in the FPGA** for all thirty protocols. Match a byte, word, address, ID or frame
+  pattern, with masks and wildcards. The twenty added last (LIN to Wiegand) share one programmable
+  block in the `qualify` image: it times each run of a line, classifies it through a table the app
+  writes, takes the bits by pulse width, by a re-timed sampler or by a clock line, and matches a 64-bit
+  window. AUTO in BUS finds a bus from an edge-triggered capture and arms its frame-start trigger.
+  The decoded-event stream (BUS Stream view) covers the first ten.
 * **Sequence trigger:** chain up to **32 protocol events**, including **trigger on error**.
 * **Zone trigger:** draw up to four boxes on the screen that the waveform must cross or avoid; the
   FPGA keeps a history of where the signal was and decides each edge.
@@ -346,7 +350,7 @@ maximum), and edge, pulse, video, slope and alternate triggers. It lists no seri
 triggering or decoding. This firmware adds:
 
 * the full 1 M-sample record on **both** channels on every acquisition;
-* hardware triggering and decoding for **ten serial protocols**, sequence triggers and trigger on
+* hardware triggering and decoding for **thirty serial protocols**, sequence triggers and trigger on
   error;
 * **streaming decode**: protocol traffic decoded continuously, without the gaps between captures;
 * zone triggering, eye-diagram and jitter analysis, a spectrogram, precision mode and
