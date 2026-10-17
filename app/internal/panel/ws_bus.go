@@ -139,6 +139,9 @@ func tokMatchAt(toks []string, p Packet, i int) bool {
 		if bad {
 			return false
 		}
+		if t == "STS" { // a MIDI status byte
+			return b >= 0x80
+		}
 		h := hex2(b)
 		return len(t) == 2 && (t[0] == '?' || t[0] == h[0]) && (t[1] == '?' || t[1] == h[1])
 	}

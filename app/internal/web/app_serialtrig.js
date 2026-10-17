@@ -27,8 +27,8 @@ function stParseBytes(s, maxValue = 255) {
 }
 // stParsePattern reads the trigger pattern (ADR-PROTOCOL-SEQUENCE-TRIGGER):
 // hex units, "??" for any unit, "?" digits as nibble wildcards (A? = A0..AF)
-// ERR for a decoder-reported error, SOF for the start of a frame and CMD for a
-// MIL-1553 command word. Plain hex stays a byte list; any wildcard or token
+// ERR for a decoder-reported error, SOF for the start of a frame, CMD for a
+// MIL-1553 command word and STS for a MIDI status byte (top bit set). Plain hex stays a byte list; any wildcard or token
 // makes a token pattern. At most 32 units.
 // TRLC-LINKS: REQ-SDS-206
 function stParsePattern(s, maxValue = 255) {
@@ -40,6 +40,7 @@ function stParsePattern(s, maxValue = 255) {
     if (/^err(or)?$/i.test(t)) { pattern.push({ kind: 4, value: 0, mask: 0 }); plain = false; continue; }
     if (/^sof$/i.test(t)) { pattern.push({ kind: 1, value: 0, mask: 0 }); plain = false; continue; }
     if (/^cmd$/i.test(t)) { pattern.push({ kind: 2, value: 0x10000, mask: 0x10000 }); plain = false; continue; }
+    if (/^sts$/i.test(t)) { pattern.push({ kind: 2, value: 0x80, mask: 0x80 }); plain = false; continue; }
     if (!/^(0x)?[0-9a-fA-F?]{1,5}$/.test(t)) return null;
     const digits = t.replace(/^0x/i, "");
     const value = parseInt(digits.replace(/\?/g, "0"), 16);
@@ -159,6 +160,7 @@ function stMatchText(p) {
       if (u.kind === 4) return "ERR";
       if (u.kind === 1) return "SOF";
       if (u.mask & u.value & 0x10000) return "CMD";
+      if ((u.mask & 0xff) === 0x80 && (u.value & 0x80)) return "STS";
       const n = Math.max(2, (u.value || 0).toString(16).length);
       if (!u.mask) return "?".repeat(n);
       let t = "";

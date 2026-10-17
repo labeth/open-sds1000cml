@@ -278,7 +278,7 @@ func sofPattern(proto int) (bytes []int, pattern []engine.PatternElem, name stri
 	case framecalc.ProtoSPI, framecalc.ProtoManchester, framecalc.ProtoSENT, framecalc.ProtoCAN, framecalc.ProtoUSB, framecalc.ProtoFlexRay:
 		return nil, []engine.PatternElem{{Kind: 1}, any}, protoName(proto) + " frame start", true
 	case framecalc.ProtoMIDI: // a status byte opens a message: the UART receiver's unit match
-		return nil, []engine.PatternElem{{Kind: 2, Value: 0x80, Mask: 0x80}}, "MIDI status byte", true
+		return nil, []engine.PatternElem{midiStatus}, "MIDI status byte", true
 	}
 	if proto > framecalc.ProtoFlexRay && proto < framecalc.NumProtos { // a break, a reset, a leader: the frame start
 		return nil, []engine.PatternElem{{Kind: 1}, any}, protoName(proto) + " frame start", true
@@ -302,7 +302,7 @@ func defaultMatch(p engine.SerialParams) bool {
 	case len(p.Pattern) == 2:
 		return p.Pattern[0].Kind == 1 && anyUnit(p.Pattern[1])
 	}
-	return len(p.Pattern) == 1 && (anyUnit(p.Pattern[0]) || p.Pattern[0] == cmd)
+	return len(p.Pattern) == 1 && (anyUnit(p.Pattern[0]) || p.Pattern[0] == cmd || p.Pattern[0] == midiStatus)
 }
 
 // frameTrigger puts the hardware trigger on the start of the bus's frames

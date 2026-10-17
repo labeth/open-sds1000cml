@@ -177,7 +177,7 @@ func parseMatchText(text string) ([]string, error) {
 	var toks []string
 	for _, f := range strings.FieldsFunc(s, func(r rune) bool { return unicode.IsSpace(r) || r == ',' }) {
 		u := strings.ToUpper(f)
-		if u == "ERR" || u == "??" || u == "SOF" || u == "CMD" {
+		if u == "ERR" || u == "??" || u == "SOF" || u == "CMD" || u == "STS" {
 			toks = append(toks, u)
 			continue
 		}
