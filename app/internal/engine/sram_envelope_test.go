@@ -2,6 +2,7 @@
 package engine
 
 import (
+	"math"
 	"testing"
 	"time"
 
@@ -144,5 +145,36 @@ func TestSpectrumLease(t *testing.T) {
 	e.LeaseSpectrumView(0)
 	if e.envelopeBlock(sramcapture.Config{}, edge) != "" {
 		t.Fatal("an ended lease still blocks the envelope")
+	}
+}
+
+// A search lease (BUS's slow look) stops the roll and reads decimated
+// records of SearchLiveSamples a screen, a record a screen and a half long;
+// the sample lease (autoset, the look on screen) keeps its screen and reads
+// as short a record.
+// TRLC-LINKS: REQ-SDS-010, REQ-SDS-214
+func TestSearchLease(t *testing.T) {
+	e := &Engine{hardwareEnvelope: true, clk: Clock{Now: time.Now}, band: Band{TdivS: 20e-3}}
+	e.running.Store(true)
+	e.trigPosFrac.Store(math.Float64bits(.5))
+	if !e.rollActive() {
+		t.Fatal("20ms/div does not roll")
+	}
+	e.LeaseSearchView(3 * time.Second)
+	e.LeaseSampleView(3 * time.Second)
+	if e.rollActive() || e.envelopeBlock(sramcapture.Config{}, e.tp) != blockSearch {
+		t.Fatalf("search lease: roll %v, block %q", e.rollActive(), e.envelopeBlock(sramcapture.Config{}, e.tp))
+	}
+	_, p, _, _, _ := e.sramConfig()
+	if p.Screen < SearchLiveSamples/2 || p.Screen > SearchLiveSamples || p.Samples > 2*p.Screen {
+		t.Fatalf("search record: %d samples, screen %d", p.Samples, p.Screen)
+	}
+	e.LeaseSearchView(0)
+	if e.envelopeBlock(sramcapture.Config{}, e.tp) != blockSamples {
+		t.Fatal("the sample lease no longer blocks the envelope")
+	}
+	e.band.TdivS = 5e-3
+	if _, p, _, _, _ := e.sramConfig(); p.Screen > liveScreenSamples || p.Samples > max(2*p.Screen, 8192) {
+		t.Fatalf("sample record: %d samples, screen %d", p.Samples, p.Screen)
 	}
 }

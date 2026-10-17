@@ -116,7 +116,8 @@ func (s *Server) hFrameBin(w http.ResponseWriter, r *http.Request) {
 	// closed analyzer lets it expire): lease=raw for full-rate samples (eye,
 	// super-res), lease=spectrum for the frames a spectrum is taken of (FFT,
 	// spectrogram: the LCD's SPECTRUM asks for the same), lease=samples for
-	// evenly sampled ones. Live frames are otherwise time-ordered envelopes,
+	// evenly sampled ones, lease=search for the whole records BUS's search
+	// reads at slow timebases (no roll). Live frames are otherwise time-ordered envelopes,
 	// fast whatever is enabled.
 	switch r.URL.Query().Get("lease") {
 	case "raw":
@@ -145,6 +146,15 @@ func (s *Server) hFrameBin(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			sc.LeaseSampleView(3 * time.Second)
+		}
+	case "search":
+		if sc, ok := s.sc.(interface{ LeaseSearchView(time.Duration) }); ok {
+			if r.URL.Query().Get("end") == "1" { // the records the scope's bus search reads, no longer wanted
+				sc.LeaseSearchView(0)
+				w.WriteHeader(http.StatusNoContent)
+				return
+			}
+			sc.LeaseSearchView(3 * time.Second)
 		}
 	}
 	// The page zoomed into a live envelope asks for its stretch at full detail

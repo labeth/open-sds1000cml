@@ -32,8 +32,10 @@ func (e *Engine) envelopeBlock(cfg sramcapture.Config, tp trigParams) string {
 		return blockRaw
 	case e.leased(&e.spectrumLease):
 		return blockSpectrum
+	case e.leased(&e.searchLease):
+		return blockSearch
 	case e.leased(&e.sampleLease):
-		return "samples requested"
+		return blockSamples
 	case !e.hardwareEnvelope:
 		return "fabric lacks envelope"
 	}
@@ -45,6 +47,25 @@ const blockRaw = "raw requested"
 
 // blockSpectrum is the envelope block of a spectrum lease (LeaseSpectrumView).
 const blockSpectrum = "spectrum requested"
+
+// blockSearch is the envelope block of a search lease (LeaseSearchView).
+const blockSearch = "search requested"
+
+// blockSamples is the envelope block of a sample lease (LeaseSampleView).
+const blockSamples = "samples requested"
+
+// SearchLiveSamples bounds a bus search's decimated screen: four times the
+// live view's, so a screen of 20ms/div still samples every 8 us (a Wiegand
+// pulse of 50 us spans six samples, an IR remote's 562 us mark 68), read in
+// about a tenth of a second.
+const SearchLiveSamples = 32768
+
+// leaseRecord is the record of a sample or search lease's capture in
+// screens (autoset, BUS's search: they read the screen only): a quarter
+// screen either side of it, not the live view's four screens - a capture
+// waits out its record's prehistory and the rest after the trigger, and
+// AUTO's fit at 5ms/div read 16 of them (a second more each at 20ms/div).
+const leaseRecord = 1.5
 
 // SpectrumRawSamples is the longest screen a spectrum lease reads at the full
 // rate: the web's largest FFT (FFT_MAX); a longer one is decimated, filtered.
@@ -75,8 +96,11 @@ const spectrumLiveSamples = 16384
 // stays at the full rate), every other liveScreenSamples.
 // TRLC-LINKS: REQ-SDS-010, REQ-SDS-070
 func liveBudget(block string) int {
-	if block == blockSpectrum {
+	switch block {
+	case blockSpectrum:
 		return spectrumLiveSamples
+	case blockSearch:
+		return SearchLiveSamples
 	}
 	return liveScreenSamples
 }

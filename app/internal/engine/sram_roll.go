@@ -99,6 +99,8 @@ func (e *Engine) rollActive() bool {
 		return false
 	case e.rawLeased():
 		return false // a raw consumer wants triggered full-rate records
+	case e.leased(&e.searchLease):
+		return false // a bus search wants whole records
 	}
 	return true
 }

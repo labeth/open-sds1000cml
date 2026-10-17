@@ -404,6 +404,7 @@ type Engine struct {
 	rawCancel       func()                 // abandons the live raw read in flight for the leases (nil when none)
 	sampleLease     atomic.Int64           // evenly sampled live frames until this time (LeaseSampleView)
 	spectrumLease   atomic.Int64           // live frames for a spectrum until this time (LeaseSpectrumView)
+	searchLease     atomic.Int64           // whole decimated records for a bus search until this time (LeaseSearchView)
 	views           [viewSurfaces]viewSlot // view windows at full detail (LeaseViewWindow)
 	adopt           *adoptedRecord         // a decoded stream's record for the stopped loop to show (guarded by mu)
 	decodedCfg      sramcapture.Config     // the running decoded capture's configuration (acquisition owner)
@@ -1107,6 +1108,13 @@ func (e *Engine) abandonRawRead() {
 // autoset): an anti-aliased decimated capture serves, so the frame rate holds.
 // TRLC-LINKS: REQ-SDS-010
 func (e *Engine) LeaseSampleView(d time.Duration) { e.lease(&e.sampleLease, d) }
+
+// LeaseSearchView asks for live frames a bus search can read whole frames of
+// slow buses in, for d from now: decimated captures of SearchLiveSamples a
+// screen in records of leaseRecord screens, and no roll - a roll view's chunks leave gaps of
+// held samples that cut an IR remote's 67 ms frame or a CEC message apart.
+// TRLC-LINKS: REQ-SDS-010, REQ-SDS-214
+func (e *Engine) LeaseSearchView(d time.Duration) { e.lease(&e.searchLease, d) }
 
 // LeaseSpectrumView asks for live frames a spectrum can be taken of, for d
 // from now (the FFT and the spectrogram, on the LCD and the web alike): the

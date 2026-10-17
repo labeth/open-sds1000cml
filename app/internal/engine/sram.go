@@ -385,6 +385,9 @@ func (e *Engine) sramConfig() (sramcapture.Config, SRAMPlan, float64, bool, trig
 	acq := e.acqMode.Load()
 	filtered := acq == AcqAverage || acq == AcqPrecision || acq == AcqEres
 	if live, ok := liveSRAMPlan(p, liveBudget(block)); ok && (!e.singleArmed.Load() || filtered) && !e.rawOnly && !qualRaw && liveDecimatesPlan(block, p) {
+		if block == blockSearch || block == blockSamples {
+			live.Samples = min(live.Samples, max(int(leaseRecord*float64(live.Screen)), 8192))
+		}
 		c, p = build(live)
 	}
 	return c, p, tdiv, norm, tp
