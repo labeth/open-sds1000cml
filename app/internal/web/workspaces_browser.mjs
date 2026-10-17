@@ -214,5 +214,14 @@ run(async (t) => {
   t.ok(await po.value("slope") !== sl0, "E flips the trigger slope");
   await key("e");
 
+  // V/div reads at the probe tip, as on the LCD: 10x at a BNC range reads ten times it
+  // TRLC-LINKS: REQ-SDS-125
+  const vdivText = () => po.eval(() => { const el = document.getElementById("vdiv1"); return [+el.value, el.options[el.selectedIndex].textContent]; });
+  const [bnc] = await vdivText();
+  await po.seg("probe1", "10");
+  await t.until(async () => (await vdivText())[1] === (await po.eval((v) => fmtVdiv(+(v * 10).toPrecision(3)), bnc)), "with a 10x probe the C1 V/div reads at the tip (ten times the BNC range)");
+  await po.seg("probe1", "1");
+  await t.until(async () => (await vdivText())[1] === (await po.eval((v) => fmtVdiv(v), bnc)), "…and back at 1x it reads the BNC range");
+
   t.ok(pageErrors.length === 0, "no page errors: " + pageErrors.join("; "));
 });

@@ -293,7 +293,13 @@ function applyStatus() {
   if ($("tdiv").options.length === 0 && st.tdivs)
     for (const t of st.tdivs) { const o = document.createElement("option"); o.value = t; o.textContent = fmtTdiv(t); $("tdiv").appendChild(o); }
   if ($("vdiv1").options.length === 0 && st.vdivs)
-    for (const id of ["vdiv1", "vdiv2"]) for (const v of st.vdivs) { const o = document.createElement("option"); o.value = v; o.textContent = fmtVdiv(v); $(id).appendChild(o); }
+    for (const id of ["vdiv1", "vdiv2"]) for (const v of st.vdivs) { const o = document.createElement("option"); o.value = v; $(id).appendChild(o); }
+  // The options carry the range at the BNC (what the scope takes) and read
+  // at the probe tip, as the LCD and SCPI do: 10x at the 0.2 V range is 2 V.
+  for (const ch of [1, 2]) {
+    const el = $("vdiv" + ch), p = probeOf(ch);
+    if (el._probe !== p) { el._probe = p; for (const o of el.options) o.textContent = fmtVdiv(+(o.value * p).toPrecision(3)); }
+  }
   for (const [id, val] of [["tdiv", st.tdiv_s], ["vdiv1", st.vdiv1], ["vdiv2", st.vdiv2]]) {
     const el = $(id);
     if (val && document.activeElement !== el && !(el._userAt && performance.now() - el._userAt < 1500))
