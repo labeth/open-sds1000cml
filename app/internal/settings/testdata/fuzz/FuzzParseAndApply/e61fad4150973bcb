@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("{\"version\":1,\"tdiv_s\":0.0005,\"ch\":[{\"vdiv_v\":1}],\"vert_set\":true,\"trigger\":{\"level_code\":30500,\"rising\":true,\"source\":1,\"type\":2,\"norm\":true,\"holdoff_s\":0.001},\"acq\":{\"mode\":1,\"avg_count\":64,\"eres_len\":1},\"decode\":{\"proto\":7,\"0000\":1000,\"000\":0,\"000\":0,\"0000\":true,\"0000\":true,\"000000\":0},\"000000000\":0}")
