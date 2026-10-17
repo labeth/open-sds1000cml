@@ -102,12 +102,12 @@ function decodeIRSIRC(codes, colTimeS, cfg) {
     o.unitUs = 600;
     for (let i = 0; i < m.length; i++) {
       const w = us(m[i].x1 - m[i].x0);
-      if (w < 2000 || w > 2800) continue;
+      if (w < 2100 || w > 2620) continue;
       const bits = [];
       let j = i + 1;
       for (; j < m.length && bits.length < 20; j++) {
         const sp = us(m[j].x0 - m[j - 1].x1);
-        if (sp < 350 || sp > 1000) break;
+        if (sp < 450 || sp > 800) break;
         const mk = us(m[j].x1 - m[j].x0);
         if (mk >= 350 && mk < 900) bits.push(0);
         else if (mk >= 900 && mk <= 1500) bits.push(1);

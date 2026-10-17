@@ -239,7 +239,7 @@ func scoreResult(r Result) float64 {
 		}
 		return float64(c[0]*400 + len(r.Bytes)*2 - c[1]*50)
 	}
-	return -1e9
+	return scoreProto(r)
 }
 
 // TRLC-LINKS: REQ-SDS-018
@@ -510,10 +510,15 @@ func Autodetect(c1, c2 []uint8, colTimeS float64, format string) Result {
 
 	// UART — async single-wire. Skip on a clocked pair (that's SPI) or a lone clock
 	// (else auto-baud invents bogus 0x55s from the square wave).
+	var uartBaud [2]float64 // each line's UART rate, as read: MIDI's evidence
 	if !locked {
 		for _, k := range active {
 			if !isClocky(k) {
-				consider(DecodeUART(chans[k], colTimeS, UARTCfg{Bits: 8, Parity: "none", Format: format}), chName(k), line(k))
+				ru := DecodeUART(chans[k], colTimeS, UARTCfg{Bits: 8, Parity: "none", Format: format})
+				if ru.OK {
+					uartBaud[k] = float64(ru.Baud)
+				}
+				consider(ru, chName(k), line(k))
 			}
 		}
 	}
@@ -537,6 +542,13 @@ func Autodetect(c1, c2 []uint8, colTimeS float64, format string) Result {
 		consider(DecodeARINC429(chans[k], colTimeS, ARINC429Cfg{}), chName(k), line(k))
 		consider(DecodeUSBLS(chans[k], colTimeS, USBLSCfg{}), chName(k), line(k))
 		consider(DecodeFlexRay(chans[k], colTimeS, FlexRayCfg{}), chName(k), line(k))
+		// LIN through S/PDIF, each by its own check (decode_autodetect_proto.go)
+		considerLines(chans[k], colTimeS, format, uartBaud[k], func(r Result) { consider(r, chName(k), line(k)) })
+	}
+	if len(active) >= 2 && !freeClock { // PS/2, SWD, MDIO, Wiegand: clock (D0) and data (D1) either way round
+		considerPairs(c1, c2, colTimeS, format, func(r Result, a int) {
+			consider(r, "CLK "+chName(a)+" DATA "+chName(1-a), Roles{ChA: a, ChB: 1 - a})
+		})
 	}
 	if len(active) >= 2 && !freeClock {
 		for _, ord := range [][2]int{{0, 1}, {1, 0}} { // I2C: scoring resolves SCL/SDA order

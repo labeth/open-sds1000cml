@@ -87,6 +87,7 @@ func DecodePS2(clk, data []uint8, colTimeS float64, cfg ClockedCfg) Result {
 	var toks []string
 	var units []int
 	good := false
+	explained := 0
 	free := false // the last frame just ended: the next may follow at once
 	for i := 0; i < len(F); i++ {
 		quiet := (i == 0 && F[0].x >= 1.4*per) || (i > 0 && F[i].x-F[i-1].x >= 1.4*per)
@@ -132,8 +133,10 @@ func DecodePS2(clk, data []uint8, colTimeS float64, cfg ClockedCfg) Result {
 		spans = append(spans, pspan(F[i+1].x, F[i+9].x, n, txt, kind, v))
 		toks = append(toks, txt)
 		units = append(units, v)
+		explained += 11
 		last := i + 10
 		if host {
+			explained++
 			spans = append(spans, pspan(F[i+11].x, F[i+11].x+per, n, "ACK", "ack", 0))
 			toks = append(toks, "ACK")
 			last++
@@ -145,7 +148,7 @@ func DecodePS2(clk, data []uint8, colTimeS float64, cfg ClockedCfg) Result {
 		return Result{Proto: "ps2", Error: "no PS/2 frame"}
 	}
 	res := Result{OK: good, Proto: "ps2", Spans: spans, Text: strings.Join(toks, " "), Bytes: units,
-		Thr: C.threshold, SPB: per}
+		Thr: C.threshold, SPB: per, Cover: float64(explained) / float64(len(F))}
 	if colTimeS > 0 {
 		res.Baud = int(1/(per*colTimeS) + 0.5)
 	}
@@ -209,6 +212,16 @@ func DecodeSWD(clk, dio []uint8, colTimeS float64, cfg ClockedCfg) Result {
 			toks = append(toks, "LINERESET")
 		}
 	}
+	// cycles explained: the transfers', the resets' and idle ones (low)
+	explained := 0
+	for _, rs := range resets {
+		explained += rs[1] - rs[0]
+	}
+	for _, y := range cy {
+		if y.dr == 0 && y.df == 0 {
+			explained++
+		}
+	}
 	next := -1 // where the transfer just read lets the next request start
 	for c := 0; c+12 <= len(cy); c++ {
 		flushResets(c)
@@ -237,6 +250,7 @@ func DecodeSWD(clk, dio []uint8, colTimeS float64, cfg ClockedCfg) Result {
 		toks = append(toks, ackTxt)
 		units = append(units, ack)
 		if ack != 1 {
+			explained += swdUnexplained(cy[c : c+12])
 			c += 11 // the turnaround after the acknowledge ends with the next rise
 			next = c + 1
 			continue
@@ -270,6 +284,7 @@ func DecodeSWD(clk, dio []uint8, colTimeS float64, cfg ClockedCfg) Result {
 		spans = append(spans, pspan(cy[first].xf, cy[first+31].xr+per/2, n, dtxt, kind, v))
 		toks = append(toks, dtxt)
 		units = append(units, v)
+		explained += swdUnexplained(cy[c : first+33])
 		c = first + 32 // a read's turnaround ends with its parity cycle's rise
 		next = c + 1
 	}
@@ -278,7 +293,7 @@ func DecodeSWD(clk, dio []uint8, colTimeS float64, cfg ClockedCfg) Result {
 		return Result{Proto: "swd", Error: "no SWD request"}
 	}
 	res := Result{OK: good, Proto: "swd", Spans: spans, Text: strings.Join(toks, " "), Bytes: units,
-		Thr: C.threshold, SPB: per}
+		Thr: C.threshold, SPB: per, Cover: min(1, float64(explained)/float64(max(1, len(cy))))}
 	if colTimeS > 0 {
 		res.Baud = int(1/(per*colTimeS) + 0.5)
 	}
@@ -286,6 +301,18 @@ func DecodeSWD(clk, dio []uint8, colTimeS float64, cfg ClockedCfg) Result {
 		res.Error = "no SWD transfer acknowledged OK whose parity checks"
 	}
 	return res
+}
+
+// swdUnexplained counts a transfer's cycles not counted as idle already.
+// TRLC-LINKS: REQ-SDS-018
+func swdUnexplained(cy []swdCycle) int {
+	n := 0
+	for _, y := range cy {
+		if y.dr != 0 || y.df != 0 {
+			n++
+		}
+	}
+	return n
 }
 
 // DecodeMDIO decodes MDIO management frames (IEEE 802.3 clause 22 and 45):
@@ -313,7 +340,7 @@ func DecodeMDIO(mdc, mdio []uint8, colTimeS float64, cfg ClockedCfg) Result {
 	var toks []string
 	var units []int
 	good := false
-	ones := 0
+	ones, explained := 0, 0
 	for i := 0; i < len(R); i++ {
 		if R[i].d == 1 {
 			ones++
@@ -321,6 +348,9 @@ func DecodeMDIO(mdc, mdio []uint8, colTimeS float64, cfg ClockedCfg) Result {
 		}
 		pre := ones
 		ones = 0
+		if pre >= 16 {
+			explained += pre // a preamble (or idle) before a frame
+		}
 		if pre < 16 || i+31 >= len(R) {
 			continue
 		}
@@ -363,13 +393,15 @@ func DecodeMDIO(mdc, mdio []uint8, colTimeS float64, cfg ClockedCfg) Result {
 		spans = append(spans, pspan(R[i+16].x, R[i+31].x+per, n, dtxt, kind, data))
 		toks = append(toks, dtxt)
 		units = append(units, data)
+		explained += 32
 		i += 31
 	}
+	explained += ones // the idle after the last frame
 	if len(spans) == 0 {
 		return Result{Proto: "mdio", Error: "no MDIO frame"}
 	}
 	res := Result{OK: good, Proto: "mdio", Spans: spans, Text: strings.Join(toks, " "), Bytes: units,
-		Thr: C.threshold, SPB: per}
+		Thr: C.threshold, SPB: per, Cover: min(1, float64(explained)/float64(max(1, len(R))))}
 	if colTimeS > 0 {
 		res.Baud = int(1/(per*colTimeS) + 0.5)
 	}

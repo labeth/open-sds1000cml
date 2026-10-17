@@ -197,14 +197,15 @@ func DecodeIRSIRC(codes []uint8, colTimeS float64, cfg IRCfg) Result {
 	return irDecode("irsirc", codes, colTimeS, cfg, func(m []irMark, us func(float64) float64, n int, o *irOut) {
 		o.unitUs = 600
 		for i := 0; i < len(m); i++ {
-			if w := us(m[i].x1 - m[i].x0); w < 2000 || w > 2800 {
+			// (RC-6's leader is a 2.67 ms mark and its spaces 444 or 889 us)
+			if w := us(m[i].x1 - m[i].x0); w < 2100 || w > 2620 {
 				continue
 			}
 			var bits []int
 			j := i + 1
 			for ; j < len(m) && len(bits) < 20; j++ {
 				sp := us(m[j].x0 - m[j-1].x1)
-				if sp < 350 || sp > 1000 {
+				if sp < 450 || sp > 800 {
 					break
 				}
 				mk := us(m[j].x1 - m[j].x0)
