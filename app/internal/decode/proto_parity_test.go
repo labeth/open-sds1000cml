@@ -118,6 +118,34 @@ func protoParityVectors(add parityAdd, add2 parityAdd2, corrupt func([]uint8) []
 		bases = append(bases, base{"j1850", 1e-6, cfg{}, j18, func(c []uint8) Result { return DecodeJ1850(c, 1e-6, J1850Cfg{}) }})
 	}
 
+	// ---- infrared remotes, each as a receiver's output and a modulated drive
+	for _, lf := range []struct {
+		high bool
+		hz   float64
+	}{{false, 0}, {true, 38e3}} {
+		const sr = 500e3
+		gen := func(f func(l irLine)) []uint8 {
+			w := newTimeline(sr)
+			l := irLine{w, lf.high, lf.hz}
+			l.space(20e-3)
+			f(l)
+			return w.codes()
+		}
+		nec := gen(func(l irLine) { necFrame(l, 0x04, -1, 0x08); necRepeat(l); necFrame(l, 0x34, 0x12, 0x5A) })
+		sirc := gen(func(l irLine) {
+			sircFrame(l, 12, 0x15, 1, 0)
+			sircFrame(l, 15, 0x33, 0xA4, 0)
+			sircFrame(l, 20, 0x7F, 0x1A, 0xC3)
+		})
+		rc5 := gen(func(l irLine) { rc5Frame(l, 0, 0, 0x0C); rc5Frame(l, 1, 0x1F, 0x3F); rc5Frame(l, 0, 5, 0x50) })
+		rc6 := gen(func(l irLine) { rc6Frame(l, 0, 0, []int{0, 0x0C}); rc6Frame(l, 6, 1, []int{0x80, 0x0F, 4, 0x31}) })
+		bases = append(bases,
+			base{"irnec", 1 / sr, cfg{}, nec, func(c []uint8) Result { return DecodeIRNEC(c, 1/sr, IRCfg{}) }},
+			base{"irsirc", 1 / sr, cfg{}, sirc, func(c []uint8) Result { return DecodeIRSIRC(c, 1/sr, IRCfg{}) }},
+			base{"irrc5", 1 / sr, cfg{}, rc5, func(c []uint8) Result { return DecodeIRRC5(c, 1/sr, IRCfg{}) }},
+			base{"irrc6", 1 / sr, cfg{}, rc6, func(c []uint8) Result { return DecodeIRRC6(c, 1/sr, IRCfg{}) }})
+	}
+
 	for _, b := range bases {
 		add(b.proto, b.w, b.colT, b.cfg, b.dec(b.w))
 		for it := 0; it < 16; it++ {
