@@ -25,7 +25,7 @@ func TestJSDecoderParity(t *testing.T) {
 	testenv.NeedNode(t)
 	node, _ := exec.LookPath("node")
 
-	type jsCfg map[string]interface{}
+	type jsCfg = map[string]interface{}
 	type vec struct {
 		Proto  string  `json:"proto"`
 		Codes  []int   `json:"codes"`
@@ -392,6 +392,9 @@ func TestJSDecoderParity(t *testing.T) {
 			add(bc.proto, w, bc.colT, bc.cfg, bc.dec(w))
 		}
 	}
+	// The protocols beyond the first ten: clean, flagged and corrupted
+	// vectors per protocol (proto_parity_test.go).
+	protoParityVectors(add, add2, corrupt)
 
 	dir := t.TempDir()
 	jf := filepath.Join(dir, "vecs.json")

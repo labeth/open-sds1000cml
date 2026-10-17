@@ -33,6 +33,12 @@ type Result struct {
 	Margin float64 // SPI: mean |sample−threshold|/halfAmp (autodetect CPHA tiebreak)
 	Src    string  // Autodetect: the roles and settings it chose, e.g. "C2" or "CLK C2 DATA C1 mode 0 MSB"
 	Roles  Roles   // Autodetect: the same choice, for configuring a hardware decoder
+	// Parity is the character framing a UART-framed protocol read
+	// (Modbus RTU: "even", "odd" or "none").
+	Parity string
+	// Inverted reports a line read with its marks at the high level (the
+	// IR decoders find the idle level themselves).
+	Inverted bool
 }
 
 // FeatureSamples is the shortest feature a decode's bus holds, in samples: a
