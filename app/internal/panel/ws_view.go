@@ -9,6 +9,7 @@ import (
 
 	"open-sds/app/internal/analog"
 	"open-sds/app/internal/analysis"
+	"open-sds/app/internal/buildinfo"
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/panel/framecalc"
 	"open-sds/app/internal/panel/wsview"
@@ -347,6 +348,9 @@ func tabStatus(c *Controller, s *sv, t *tab) []wsview.Span {
 		if trigTypeIndex(s.st) == 0 && s.st.NoiseTriggers > noiseTriggerWarn {
 			out = append(out, wsview.Span{Text: fmt.Sprintf("%.0f%% of triggers dropped as noise: raise the gain or move the level", 100*s.st.NoiseTriggers), Col: wsview.Warn})
 		}
+	case "sys":
+		// The firmware's name and version, read on the scope itself.
+		out = append(out, dim("open-sds1000cml "+buildinfo.Version+"  ("+buildinfo.Commit+")"))
 	case "curs":
 		if s.curOn {
 			if s.curType == 0 {
