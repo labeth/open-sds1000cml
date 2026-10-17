@@ -217,6 +217,10 @@ type autoGoal struct {
 	cursors  bool    // the cursors on one period and the top and base (measureCursors)
 }
 
+// sparseLooks is the captures more the sweep's slowest step reads while it
+// sees no signal.
+const sparseLooks = 2
+
 // The workspaces' AUTO framings (REQ-SDS-224). SCOPE shows the waveform: two
 // cycles, the swing on about six of the eight divisions - at most 7.2, as
 // the detents step 1-2-5 and a 3.3 V logic swing, read to a code at the
@@ -517,6 +521,15 @@ func (c *Controller) autosetSweep(stop chan struct{}, g autoGoal) (autoResult, b
 				return res, false
 			}
 			m, _ := c.measureChans()
+			// The slowest step reads up to two captures more while it sees
+			// nothing: a bus that sends a 23 ms frame every 120 ms (an IR
+			// remote) is missed by a 100 ms screen now and then.
+			for k := 0; k < sparseLooks && td == sweep[len(sweep)-1] && !has(m[0]) && !has(m[1]); k++ {
+				if !c.waitFrame(stop) {
+					return res, false
+				}
+				m, _ = c.measureChans()
+			}
 			// every step's capture counts towards the swing: a pulse slower than
 			// the screen shows one level in one capture and the other in the next
 			for ch := range m {
