@@ -398,6 +398,44 @@ done`)
 	}
 }
 
+// An app runs until an operator restart (the next update); it must be confirmed
+// while it runs, or that update overwrites the confirmed slot and a crash-looping
+// update rolls back to the emergency binary instead of the previous version.
+// TRLC-LINKS: REQ-SDS-028
+func TestRunAppOnceConfirmsSlotWhileRunning(t *testing.T) {
+	t.Setenv("OTA_STABLE", "0.3")
+	t.Setenv("OTA_APP_GRACE", "10")
+	t.Setenv("OTA_HEALTH_TIMEOUT", "10")
+	a := testAgent(t)
+	_ = a.store.Init()
+	writeSlotBinary(t, a, slots.SlotB,
+		`while true; do
+  date +%s%N > "$OTA_HEALTH_PATH"
+  sleep 0.1
+done`)
+	_ = a.store.SetActive(slots.SlotB)
+	_ = a.store.SetConfirmed(slots.SlotA)
+
+	done := make(chan struct{})
+	go func() { a.runAppOnce(slots.SlotB, false); close(done) }()
+	deadline := time.Now().Add(5 * time.Second)
+	for a.store.Confirmed() != slots.SlotB && time.Now().Before(deadline) {
+		time.Sleep(50 * time.Millisecond)
+	}
+	got := a.store.Confirmed()
+	if err := a.ctlRequest("restart", 5*time.Second); err != nil {
+		t.Fatal(err)
+	}
+	<-done
+	if got != slots.SlotB {
+		t.Errorf("confirmed = %s while B ran healthy past STABLE, want B", got)
+	}
+	// The operator restart is not a failure and keeps the confirmation.
+	if c := a.store.Confirmed(); c != slots.SlotB {
+		t.Errorf("confirmed after restart = %s, want B", c)
+	}
+}
+
 // TRLC-LINKS: REQ-SDS-028
 func TestRunAppOnceCrashCountsAsFailure(t *testing.T) {
 	t.Setenv("OTA_APP_GRACE", "10")

@@ -261,12 +261,20 @@ loop:
 			break loop
 		case <-tick.C:
 			h.poll()
-			a.setAppState(func(s *appState) { s.Health = h.status() })
+			hs := h.status()
+			a.setAppState(func(s *appState) { s.Health = hs })
 			if ok, why := h.verdict(a.cfg.AppGrace, a.cfg.HealthTimeout); !ok {
 				reason = "unhealthy: " + why
 				a.terminate(cmd, exit)
 				break loop
 			}
+			// A slot that has run healthy for STABLE seconds is confirmed while it
+			// still runs: an app normally runs until the next update restarts it,
+			// and that update overwrites the other slot. Confirming only at exit
+			// left the pointer on the slot the update was about to overwrite, so a
+			// crash-looping update fell to the emergency binary instead of the
+			// version that ran before it.
+			a.confirmIfStable(slot, emergency, hs, time.Since(start))
 		}
 	}
 
@@ -281,10 +289,7 @@ loop:
 		// Operator action, not a failure.
 		a.setAppState(func(s *appState) { *s = appState{LastExit: reason, Fails: 0} })
 	case hs.HealthyOnce && ran >= a.cfg.StableSecs && !emergency:
-		if a.store.Confirmed() != slot {
-			_ = a.store.SetConfirmed(slot)
-			a.event("app.confirmed", map[string]any{"slot": slot})
-		}
+		a.confirmIfStable(slot, emergency, hs, ran)
 		a.setAppState(func(s *appState) { *s = appState{LastExit: reason, Fails: 0} })
 		a.idleWait(time.Second) // stable run that ended: relaunch after a beat
 	default:
@@ -292,6 +297,17 @@ loop:
 		a.rollbackIfNeeded(slot, emergency)
 		a.idleWait(2 * time.Second)
 	}
+}
+
+// confirmIfStable points the confirmed slot at slot once it has been healthy
+// for STABLE seconds (never the emergency binary).
+// TRLC-LINKS: REQ-SDS-028
+func (a *Agent) confirmIfStable(slot string, emergency bool, hs healthStatus, ran time.Duration) {
+	if emergency || !hs.HealthyOnce || ran < a.cfg.StableSecs || a.store.Confirmed() == slot {
+		return
+	}
+	_ = a.store.SetConfirmed(slot)
+	a.event("app.confirmed", map[string]any{"slot": slot})
 }
 
 // terminate asks the app to land the engine (SIGTERM), then SIGKILLs the
