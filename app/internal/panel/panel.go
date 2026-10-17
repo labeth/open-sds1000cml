@@ -265,8 +265,8 @@ type Controller struct {
 	maskAutoTest   bool                   // the COMPARE MASK row: count once built
 	detectSync     bool                   // tests: run the bus detection inline
 	searchMu       sync.Mutex             // one bus search at a time (findBus steps the timebase)
-	searchGen      atomic.Uint64          // AUTO in BUS ends the bus search running (searchDropped)
-	searchRun      uint64                 // searchGen when the running search began (guarded by searchMu)
+	autoSearch     atomic.Bool            // the next bus search is AUTO's own (runBusAuto)
+	searchOwn      bool                   // the running bus search is AUTO's own (guarded by searchMu)
 	decGen         uint64                 // counts the protocol settings (set, recalled, defaulted, locked): a search's result stands only if none came meanwhile
 	// On-screen cursors (spec 08 §6): two X (time) and two Y (volts) cursors,
 	// anchored to the signal: the time cursors' times from the trigger (s),

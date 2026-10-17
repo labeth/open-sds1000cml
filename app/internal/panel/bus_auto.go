@@ -63,7 +63,6 @@ func (c *Controller) busAuto() {
 		return
 	}
 	stop := make(chan struct{})
-	c.searchGen.Add(1) // the search running, BUS entry's, gives way
 	c.autosetBusy, c.autosetStop, c.autosetMsg = true, stop, "AUTO: framing the bus..."
 	c.autosetRun++
 	c.autosetFrom = from
@@ -95,6 +94,13 @@ func (c *Controller) runBusAuto(stop chan struct{}) {
 		}()
 	}
 	c.syncStream(true) // a stream ends: the fit sweeps live captures
+	// The search running gives way (searchDropped) and puts the timebase
+	// back: the entry is the scope's, not a timebase that search stepped to
+	// (20ms/div, where a UART is no more than averaged bursts).
+	if !c.awaitDetection(stop) {
+		c.cancelledAuto(stop, c.autoEntryNow())
+		return
+	}
 	entry := c.autoEntryNow()
 	c.autoClearMatch(entry)
 	entryTdiv := entry.tdiv
@@ -124,7 +130,9 @@ func (c *Controller) runBusAuto(stop chan struct{}) {
 	c.mu.Unlock()
 	c.pushLEDs()
 	c.syncDecodeView(true)
+	c.autoSearch.Store(true)
 	c.runDetect()
+	c.autoSearch.Store(false)
 }
 
 // forgetBus is AUTO in BUS forgetting the bus decoded before: a serial

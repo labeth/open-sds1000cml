@@ -524,11 +524,21 @@ func (c *Controller) autosetSweep(stop chan struct{}, g autoGoal) (autoResult, b
 			// The slowest step reads up to two captures more while it sees
 			// nothing: a bus that sends a 23 ms frame every 120 ms (an IR
 			// remote) is missed by a 100 ms screen now and then.
-			for k := 0; k < sparseLooks && td == sweep[len(sweep)-1] && !has(m[0]) && !has(m[1]); k++ {
-				if !c.waitFrame(stop) {
-					return res, false
+			if td == sweep[len(sweep)-1] && !has(m[0]) && !has(m[1]) {
+				// whole records, not the roll view's chunks with their gaps
+				e, ok := c.eng.(interface{ LeaseSearchView(time.Duration) })
+				for k := 0; k < sparseLooks && !has(m[0]) && !has(m[1]); k++ {
+					if ok {
+						e.LeaseSearchView(2 * time.Second)
+					}
+					if !c.waitFrame(stop) || !c.waitFrame(stop) {
+						return res, false
+					}
+					m, _ = c.measureChans()
 				}
-				m, _ = c.measureChans()
+				if ok {
+					e.LeaseSearchView(0)
+				}
 			}
 			// every step's capture counts towards the swing: a pulse slower than
 			// the screen shows one level in one capture and the other in the next

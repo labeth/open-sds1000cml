@@ -818,7 +818,7 @@ func hidesFaster(l look) bool {
 func (c *Controller) findBus(auto AutoSource, wanted func() bool) (decode.Result, float64, bool, float64) {
 	c.searchMu.Lock()
 	defer c.searchMu.Unlock()
-	c.searchRun = c.searchGen.Load()
+	c.searchOwn = c.autoSearch.Load()
 	res, sampleS, found, dec := c.detectOn(auto)
 	at := 0.0 // the timebase the search stepped to
 	// A UART of a byte or two, or at a rate no UART uses, on a short record is
@@ -827,21 +827,24 @@ func (c *Controller) findBus(auto AutoSource, wanted func() bool) (decode.Result
 	// failing its CRC as "UART 10002156 8N1"): the search looks on, and names
 	// it only when it finds nothing else.
 	scant := found && scantFind(res)
-	// a slow line's record (slowEdges) is weighed against the live envelope
-	if !found && dec.resolved && (dec.runs[0] > 0 || dec.runs[1] > 0) && !dec.envSeen {
+	// a record resolving its edges is weighed against the live envelope (slowFirst)
+	if !found && dec.resolved && !dec.envSeen {
 		dec.envRun, dec.envBusy, dec.envSeen = c.envelopeRuns(true, func(*engine.Frame, bool) bool { return true }, c.now().Add(envWait))
 	}
 	// A record of the timebase on screen with no edges on either line (an IR
-	// remote's 67 ms frame among its idle, at 500us/div) is looked for slower
-	// first: the full-rate search reads seconds of the same idle.
-	slowFirst := !found && dec.runs == [2]int{} && !c.waitingForTrigger(c.snap())
+	// remote's 67 ms frame among its idle, at 500us/div), or one resolving
+	// every edge it holds (a CEC bit of 2.4 ms), is looked for slower first:
+	// the full-rate search reads seconds of the same idle. Not when the live
+	// envelope shows a line busy faster than the record (a CAN or USB bus's
+	// bursts, averaged away in the record).
+	slowFirst := !found && dec.resolved && dec.envRun == [2]float64{} && !c.waitingForTrigger(c.snap())
 	if slowFirst {
 		if r, s, ok, stepped := c.findSlowBus(auto, wanted, ""); ok {
 			return r, s, true, stepped
 		}
 	}
 	// a scope waiting for a trigger captures nothing at the full rate either
-	if full, t := c.fullRateS(), c.fullRateTdiv(); full > 0 && t > 0 && (!found || scant || weakFind(res)) && !(!found && slowEdges(dec)) && !c.waitingForTrigger(c.snap()) {
+	if full, t := c.fullRateS(), c.fullRateTdiv(); full > 0 && t > 0 && (!found || scant || weakFind(res)) && !c.waitingForTrigger(c.snap()) {
 		var first *look // the timebase on screen is the full-rate one: its decimated record is read
 		if math.Abs(c.snap().st.TdivSet()-t) <= 1e-3*t {
 			first = &dec
@@ -871,28 +874,24 @@ func (c *Controller) findBus(auto AutoSource, wanted func() bool) (decode.Result
 	return res, sampleS, found, at
 }
 
-// slowEdges reports a decimated look whose record resolves every edge it
-// holds, with edges on a line, and whose live envelope shows no line faster
-// than the record: the full rate shows nothing it did not, and its whole
-// record takes seconds to read (a CEC bus at 500us/div took 18 s to name),
-// so the search goes on at the slow timebases.
-// TRLC-LINKS: REQ-SDS-214
-func slowEdges(l look) bool {
-	return l.resolved && (l.runs[0] > 0 || l.runs[1] > 0) && l.envSeen && l.envRun == [2]float64{}
-}
-
 // fewUARTBytes is the bytes a UART find must hold for the search to end on
 // it (fewUART): a record of 5 ms holds four bytes of a 9600 Bd Modbus
 // message, read as "UART 9600 8E1"; one of 50 ms holds whole messages.
 const fewUARTBytes = 16
 
-// searchDropped reports a bus search AUTO in BUS has ended: BUS entry's
-// search on a front end Default setup left unfitted found nothing in nine
-// seconds, and AUTO waited for it before fitting the vertical. Read by the
-// search itself (under searchMu).
+// searchDropped reports a bus search that gives way to an AUTO running, not
+// AUTO's own: BUS entry's search on a front end Default setup left unfitted
+// found nothing in nine seconds, and AUTO waited for it before fitting the
+// vertical - also when it began just after the press. Read by the search
+// itself (under searchMu).
 // TRLC-LINKS: REQ-SDS-214, REQ-SDS-223
 func (c *Controller) searchDropped() bool {
-	return c.searchGen.Load() != c.searchRun
+	if c.searchOwn {
+		return false
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.autosetBusy
 }
 
 // weakFind reports a find the search looks on from, slower too: a UART of a

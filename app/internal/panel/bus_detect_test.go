@@ -355,10 +355,11 @@ func TestAutoEndsTheSearchRunning(t *testing.T) {
 	e.set(func(st *engine.Stats) { st.Running = true })
 	c.SetFrameSource(func(fn func(*engine.Frame)) {}) // no frame comes
 	none := func(*engine.Frame, bool) bool { return false }
-	c.searchRun = c.searchGen.Load()
 	go func() {
 		time.Sleep(100 * time.Millisecond)
-		c.searchGen.Add(1) // AUTO pressed
+		c.mu.Lock()
+		c.autosetBusy = true // AUTO pressed
+		c.mu.Unlock()
 	}()
 	t0 := time.Now()
 	if l := c.detectWith(true, true, none, c.detectOnScreen, 3*time.Second); l.found {
@@ -367,7 +368,7 @@ func TestAutoEndsTheSearchRunning(t *testing.T) {
 	if d := time.Since(t0); d > time.Second {
 		t.Fatalf("the search waited %v after AUTO", d)
 	}
-	c.searchRun = c.searchGen.Load() // AUTO's search
+	c.searchOwn = true // AUTO's search
 	if c.searchDropped() {
 		t.Fatal("AUTO's own search dropped")
 	}
