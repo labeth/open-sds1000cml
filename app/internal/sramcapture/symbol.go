@@ -49,7 +49,7 @@ type SymbolTriggerConfig struct {
 	Pattern    uint64 `json:"pattern"`
 	Mask       uint64 `json:"mask"`
 	// Table is the run table, {leader code[7:4], data code[3:0]} an entry.
-	Table *[SymbolTableSize]uint8 `json:"-"`
+	Table [SymbolTableSize]uint8 `json:"-"`
 }
 
 // TRLC-LINKS: REQ-SDS-013
@@ -58,7 +58,7 @@ func (p SymbolTriggerConfig) validate() error {
 		return nil
 	}
 	if p.Channel > 1 || p.Mode > SymbolClocked || p.LeadLen > 4 || p.Prescale > 7 || p.UnitQ8 < 2048 || p.UnitQ8 >= 1<<28 ||
-		p.FrameUnits > 63 || p.Period > 63 || p.Phase0 > 63 || (p.Period != 0 && p.Phase0 >= p.Period) || p.K > 1023 || p.Table == nil {
+		p.FrameUnits > 63 || p.Period > 63 || p.Phase0 > 63 || (p.Period != 0 && p.Phase0 >= p.Period) || p.K > 1023 {
 		return fmt.Errorf("sramcapture: invalid hardware symbol trigger configuration")
 	}
 	return nil
@@ -120,7 +120,7 @@ func (c *Capture) configureSymbol(revision uint16, p SymbolTriggerConfig) error 
 	if err != nil {
 		return err
 	}
-	if loaded&1 == 0 || !c.symbolTableOK || c.symbolTable != *p.Table {
+	if loaded&1 == 0 || !c.symbolTableOK || c.symbolTable != p.Table {
 		c.symbolTableOK = false
 		if err := c.write(98, 0); err != nil {
 			return err
@@ -136,7 +136,7 @@ func (c *Capture) configureSymbol(revision uint16, p SymbolTriggerConfig) error 
 		if err := c.write(98, 1); err != nil {
 			return err
 		}
-		c.symbolTable, c.symbolTableOK = *p.Table, true
+		c.symbolTable, c.symbolTableOK = p.Table, true
 	}
 	for _, r := range SymbolRegisters(p) {
 		if err := c.write(r[0], r[1]); err != nil {

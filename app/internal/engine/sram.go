@@ -762,10 +762,12 @@ acquisitionLoop:
 		var cancel context.CancelFunc
 		var err error
 		forced, aborted := savedForced, false
+		symbolArmCount := -1
 		userForced := false
 		m := savedM
 		if !replay {
 			retained = false
+			symbolArmCount = e.symbolCount(cfg)
 			ctx, cancel = context.WithTimeout(context.Background(), 3*time.Second)
 			err = e.sram.Arm(ctx, cfg)
 			cancel()
@@ -837,6 +839,7 @@ acquisitionLoop:
 		}
 		if !replay {
 			savedScale = e.liveScale()
+			e.noteSymbolMatches(cfg, symbolArmCount, e.clk.Now().Sub(armedAt))
 		}
 		shownScaleGen = e.scaleGen.Load()
 		e.shownScaleGen.Store(shownScaleGen)
@@ -1548,4 +1551,33 @@ func offRecord(valid, winCols int, posFrac float64, anchor int) int {
 	left := anchor - int(math.Round(posFrac*float64(winCols)))
 	right := left + winCols - valid
 	return max(0, -left) + max(0, right)
+}
+
+// symbolCount reads the symbol trigger's match count (modulo 2^16), or -1
+// without the block.
+// TRLC-LINKS: REQ-SDS-013
+func (e *Engine) symbolCount(cfg sramcapture.Config) int {
+	if !cfg.Symbol.Enabled {
+		return -1
+	}
+	v, err := e.sram.SymbolMatches()
+	if err != nil {
+		return -1
+	}
+	return int(v)
+}
+
+// noteSymbolMatches publishes the symbol trigger's matches during the record
+// just frozen and how long it was armed (it counts only while armed): their
+// ratio is the bus's rate of matches.
+// TRLC-LINKS: REQ-SDS-013
+func (e *Engine) noteSymbolMatches(cfg sramcapture.Config, armed int, took time.Duration) {
+	done := e.symbolCount(cfg)
+	n := int64(-1)
+	if armed >= 0 && done >= 0 {
+		n = int64((done - armed) & 0xffff)
+	}
+	e.mu.Lock()
+	e.stats.SymbolMatches, e.stats.SymbolArmedS = n, took.Seconds()
+	e.mu.Unlock()
 }

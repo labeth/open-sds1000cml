@@ -56,7 +56,11 @@ func TestSymbolTopRTL(t *testing.T) {
 		p    SerialParams
 		wave func() *symWave
 	}{
-		{"WS281x", func() SerialParams { p := symParams(serWS281x, 800000); p.Pattern = []PatternElem{symStart, symData(0x11, 0xff)}; return p }(), func() *symWave {
+		{"WS281x", func() SerialParams {
+			p := symParams(serWS281x, 800000)
+			p.Pattern = []PatternElem{symStart, symData(0x11, 0xff)}
+			return p
+		}(), func() *symWave {
 			w := &symWave{}
 			w.hold(false, true, 20*us)
 			for f := 0; f < 3; f++ {
@@ -73,7 +77,11 @@ func TestSymbolTopRTL(t *testing.T) {
 			}
 			return w
 		}},
-		{"DMX", func() SerialParams { p := symParams(serDMX, 250000); p.Pattern = []PatternElem{symStart, symData(0, 0xff)}; return p }(), func() *symWave {
+		{"DMX", func() SerialParams {
+			p := symParams(serDMX, 250000)
+			p.Pattern = []PatternElem{symStart, symData(0, 0xff)}
+			return p
+		}(), func() *symWave {
 			w := &symWave{}
 			w.hold(true, true, 20*us)
 			for f := 0; f < 3; f++ {
@@ -89,7 +97,11 @@ func TestSymbolTopRTL(t *testing.T) {
 			}
 			return w
 		}},
-		{"SWD", func() SerialParams { p := symParams(serSWD, 5000000); p.Pattern = []PatternElem{symStart, symData(0xa5, 0xff)}; return p }(), func() *symWave {
+		{"SWD", func() SerialParams {
+			p := symParams(serSWD, 5000000)
+			p.Pattern = []PatternElem{symStart, symData(0xa5, 0xff)}
+			return p
+		}(), func() *symWave {
 			w := &symWave{}
 			T := 0.2 * us
 			bits := func(v, n int) {

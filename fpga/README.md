@@ -9,7 +9,7 @@ the FPGA; the app only places the trigger point on the event.
 | `general` | UART, I²C and SPI triggers; precision decimation |
 | `packet` | ARINC 429, CAN, FlexRay, MIL-1553 and SENT triggers |
 | `line` | Manchester and USB low-speed triggers |
-| `qualify` | pulse width, slope time and video line triggers, and the zone trigger (four zones around the edge); precision decimation |
+| `qualify` | pulse width, slope time and video line triggers, and the zone trigger (four zones around the edge); the symbol trigger for buses of timed pulses (LIN, DMX512, Modbus, 1-Wire, WS281x, DHT, CEC, J1850, IR, DALI, USB PD, S/PDIF, PS/2, SWD, MDIO, Wiegand); precision decimation |
 | `stacking` | FPGA super-resolution stacking engine |
 | `stream` | continuous capture for gap-free roll: decimated or peak-detect (bucket min/max) words, buffered in the SRAM ("drum") and streamed to the host through two ping-pong banks |
 | `fast` | SPI (to a 125 MHz clock), UART (to 62.5 MBd) and I²C (to high-speed mode) decoded and triggered on the samples; raw samples only, with the sequence trigger |
@@ -132,6 +132,32 @@ it was entered in its window around the edge; it fires a fixed time after
 the edge (the wait plus 48 half clocks), so the app can move the trigger
 point back onto the edge. Registers 21, 22, 24 and 26-28 hold the qualifier,
 83-92 and 69-73 the zones; register 74 reads 0x5154 and 75 the kinds.
+
+`images/qualify/symbol_trigger.v` (ADR-SYMBOL-TRIGGER) triggers the serial
+buses of timed pulses: LIN, DMX512 and Modbus RTU characters after their
+break or gap, 1-Wire, WS281x, DHT, HDMI-CEC, J1850 VPW, IR NEC and SIRC pulse
+widths, RC-5, RC-6 and DALI Manchester, USB Power Delivery and S/PDIF
+biphase mark, PS/2, SWD, MDIO and Wiegand clocked lines. On the 125 MHz
+receiver clock, line A (the trigger channel at register 7's level) and line B
+(the other channel at register 59's) are sliced from the raw samples. Each run
+of the run line (A, or A and B) counts floor((W-1)/2^p) prescaled clocks and,
+with its level, addresses a host-written table on a log scale (index {level,
+e, m}: the count under 64, else the count's top bit less five and the six bits
+below it): a leader code (step s of a leader of up to four runs, or a
+separator) and a data code (end, separator, bit 0, bit 1, restart). Bits come
+from the runs' data codes, from a unit sampler re-timed to half a unit on
+every edge (the line's level or whether an edge came in each unit; with F
+units a frame it waits for the next edge: UART characters), or from line B at
+the run line's rising or falling edges. The last 64 bits under a mask are
+compared at bit K after the leader (and every P bits after it, or every bit);
+a match fires and holds until the next arm. Registers 93-108 hold the block
+(93 control, 94/95 the unit in 1/256 clocks, 96 period and frame units, 97
+phase and K, 98 the table-loaded flag, 99 the table address, 100 an entry,
+101-104 the pattern, 105-108 the mask); register 76 reads 0x5359 and 78
+counts the matches. The app's Go model (`app/internal/decode/symbol_trigger.go`)
+is the block clock for clock (`tb_symbol_trigger.v`), and
+`tb_top_qualify.v` checks it through the image's top level. The qualify
+image: 9,120 logic elements of 10,320 (88 %).
 
 ## Source layout
 

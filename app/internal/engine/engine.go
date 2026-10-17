@@ -253,7 +253,11 @@ type Stats struct {
 	// Image names the loaded acquisition image: general or packet.
 	Image         string `json:"image,omitempty"`
 	SerialMatches int64  `json:"serial_matches,omitempty"` // frames that matched the pattern
-	SerialSet     bool   `json:"serial_set,omitempty"`     // a match pattern is configured
+	// SymbolMatches is the symbol trigger's matches during the last record
+	// (from its arm to its freeze; -1 unknown, absent without the block).
+	SymbolMatches int64   `json:"symbol_matches,omitempty"`
+	SymbolArmedS  float64 `json:"symbol_armed_s,omitempty"` // that record's arm to freeze
+	SerialSet     bool    `json:"serial_set,omitempty"`     // a match pattern is configured
 
 	// Converter health (adc_health.go): ADCFault names the converters that
 	// stay stuck after the recoveries (empty while every core converts);

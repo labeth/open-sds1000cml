@@ -119,13 +119,12 @@ func symParams(proto, baud int) SerialParams {
 	return SerialParams{Proto: proto, ChA: 0, ChB: 1, Baud: baud, Threshold: 128, HaveThr: true, ThresholdB: 128, HaveThrB: true}
 }
 
-// Every symbol-trigger protocol on synthetic buses through the planner and
-// the block's Go model (bit-exact with the RTL): the frame start fires once
-// a frame, and unit values fire only on the frames that carry them.
-// TRLC-LINKS: REQ-SDS-013, REQ-SDS-018
-func TestSymbolTriggerProtocols(t *testing.T) {
+// symbolCases are synthetic buses of every symbol-trigger protocol with
+// requests and the frames each must match.
+// TRLC-LINKS: REQ-SDS-013
+func symbolCases() []symCase {
 	us, ms := 1e-6, 1e-3
-	cases := []symCase{
+	return []symCase{
 		{name: "LIN", p: symParams(serLIN, 19200), wave: func() *symWave {
 			T := 1 / 19200.0
 			w := &symWave{}
@@ -546,7 +545,14 @@ func TestSymbolTriggerProtocols(t *testing.T) {
 			return w
 		}, reqs: []symReq{{[]PatternElem{symStart}, 3}, {[]PatternElem{symStart, symAny}, 3}, {[]PatternElem{symStart, symData(0x2a, 0xff), symData(0x1234, 0xffff)}, 2}}},
 	}
-	for _, tc := range cases {
+}
+
+// Every symbol-trigger protocol on synthetic buses through the planner and
+// the block's Go model (bit-exact with the RTL): the frame start fires once
+// a frame, and unit values fire only on the frames that carry them.
+// TRLC-LINKS: REQ-SDS-013, REQ-SDS-018
+func TestSymbolTriggerProtocols(t *testing.T) {
+	for _, tc := range symbolCases() {
 		t.Run(tc.name, func(t *testing.T) {
 			w := tc.wave()
 			for _, r := range tc.reqs {

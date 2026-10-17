@@ -2347,3 +2347,38 @@ decisions:
   - The added logic is two 8-bit comparator bands' registers in the general image and one 8-bit level register an
     extractor in the fast image; the Go models (decode/sample_bus.go, spi_sample.go) take the per-line levels.
   - A decoded stream started from a decode with one threshold still slices both lines at it.
+- id: ADR-SYMBOL-TRIGGER
+  title: One programmable symbol trigger in the qualify image takes the buses of timed pulses
+  status: accepted
+  date: '2026-10-17'
+  context: 'Every serial trigger is decided in the FPGA. Twenty further buses of one or two lines are timed pulses,
+    not bytes of a shared receiver: UART characters framed by a break or an idle gap (LIN, DMX512, Modbus RTU),
+    pulse-width codes (1-Wire, WS281x, DHT, HDMI-CEC, J1850 VPW, IR NEC and SIRC), Manchester and biphase-mark line
+    codes (RC-5, RC-6, DALI, USB Power Delivery, S/PDIF) and clocked two-wire buses (PS/2, SWD, MDIO, Wiegand). A
+    receiver for each would need images the device cannot hold, and most frames take milliseconds, past a raw
+    record: their image needs precision decimation. The general image is full; the qualify image, which has
+    decimation and which AUTO in BUS already holds while it detects a bus, had a fifth of its logic free.'
+  decision: 'symbol_trigger.v in the qualify image, on the 125 MHz receiver clock and two lines sliced from the raw
+    samples (line A on the trigger channel at register 7''s level, line B on the other at register 59''s). Each run
+    of the run line (A, or A and B) is measured in prescaled clocks and looked up, on a log scale with 1/64 steps,
+    in a host-written 2048-entry table (block RAM) by its level: a leader code (a step of a leader of up to four runs,
+    or a separator) and a data code (end, separator, bit 0, bit 1, restart). Bits come from the runs'' codes, from a
+    unit sampler re-timed to the middle of a unit on every edge that takes the level or whether an edge came (with
+    UART framing: F units, then wait for an edge), or from line B at the run line''s clock edges. A masked 64-bit
+    window is compared at bit K after the frame''s leader, at every P bits after it, or at every bit (sliding). The
+    engine compiles each protocol''s timing windows and a request''s frame start and units into the table, the mode
+    and the window (engine/serial_symbol_hardware.go); the decode package''s Go model is the block clock for clock.
+    MIDI is UART characters on the general image''s receiver and USB full speed is the line image''s USB receiver at
+    its rate. Register 76 reads 0x5359, 78 counts the block''s matches.'
+  consequences:
+  - Every bus here triggers in hardware with one image and no decoder logic of its own; a further protocol of timed
+    pulses is a table and a few lines of the planner.
+  - Frame starts and units at fixed line positions after the leader match exactly; a unit inside a frame matches at
+    any unit boundary where units are alike. Error tokens are not matched, and a request beyond the 64-bit window is
+    refused (the TRIG view says why).
+  - A match fires and holds until the next arm, as the protocol receivers' matches do; a one-clock fire is lost
+    whenever the record writes no word on its clock (decimated records write one clock in many).
+  - Lines are sliced at 8 ns: clocked buses reach about 20 MHz clocks, unit sampling five clocks a unit (S/PDIF at
+    192 kHz), UART framing 16 clocks a bit. The decoded event stream is not available on this image.
+  - SWD frames have no leader: a request's start, stop and park bits with an OK acknowledge can also appear inside a
+    data phase.

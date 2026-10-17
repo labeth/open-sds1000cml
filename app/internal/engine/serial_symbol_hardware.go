@@ -393,7 +393,10 @@ func symbolSpec(p SerialParams) (symSpec, bool) {
 			b.skip(4)     // trailer (the toggle), two units a half
 			return true
 		}
-		s.unit = func(b *symBits, _ int, u symUnit) bool { b.manchester(u.value, u.mask, 8, true, [2]int{0, 1}); return true }
+		s.unit = func(b *symBits, _ int, u symUnit) bool {
+			b.manchester(u.value, u.mask, 8, true, [2]int{0, 1})
+			return true
+		}
 	case serDALI:
 		// half bits of 416.7 us; a 1 rises mid-bit; idle high
 		half := T / 2
@@ -401,7 +404,10 @@ func symbolSpec(p SerialParams) (symSpec, bool) {
 		s.cfg.UnitQ8 = q8(half)
 		s.tab.both(true, 1.8*T, inf, leadStep0, decode.SymDataRestart)
 		s.start = func(b *symBits, _ []symUnit) bool { b.fixed(0, 1); return true }
-		s.unit = func(b *symBits, _ int, u symUnit) bool { b.manchester(u.value, u.mask, 8, true, [2]int{0, 1}); return true }
+		s.unit = func(b *symBits, _ int, u symUnit) bool {
+			b.manchester(u.value, u.mask, 8, true, [2]int{0, 1})
+			return true
+		}
 	case serUSBPD:
 		// half UI units, edges; SOP is Sync-1 x3, Sync-2, a byte two 4b5b
 		// symbols, low nibble first, each LSB first
@@ -651,7 +657,7 @@ func planHardwareSymbol(p SerialParams) sramcapture.SymbolTriggerConfig {
 		}
 	}
 	table := s.tab.t
-	c.Table = &table
+	c.Table = table
 	return c
 }
 
@@ -660,9 +666,6 @@ func planHardwareSymbol(p SerialParams) sramcapture.SymbolTriggerConfig {
 func symbolCfg(c sramcapture.SymbolTriggerConfig) decode.SymbolCfg {
 	d := decode.SymbolCfg{InvA: c.InvA, InvB: c.InvB, AndAB: c.AndAB, ClockFall: c.ClockFall, Mode: int(c.Mode), LeadLen: int(c.LeadLen),
 		Prescale: int(c.Prescale), UnitQ8: c.UnitQ8, FrameUnits: int(c.FrameUnits), Period: int(c.Period), Phase0: int(c.Phase0),
-		K: int(c.K), Pattern: c.Pattern, Mask: c.Mask}
-	if c.Table != nil {
-		d.Table = *c.Table
-	}
+		K: int(c.K), Pattern: c.Pattern, Mask: c.Mask, Table: c.Table}
 	return d
 }

@@ -485,7 +485,10 @@ architecture:
       level crossings on sums of five consecutive samples (five_sum), one per interleaved converter, so the
       converters'' offsets cancel. zone_qual.v keeps, per zone, a running count of buckets with a sample inside its
       codes (1024 buckets of power-of-two 8 ns half clocks in block RAM) and fires a fixed time after the edge when
-      every intersect zone was entered in its window around it and no avoid zone was.'
+      every intersect zone was entered in its window around it and no avoid zone was. symbol_trigger.v
+      (ADR-SYMBOL-TRIGGER) triggers the serial buses of timed pulses on one or two lines: runs classified through a
+      host-written table, bits from the runs, a unit sampler or a clock line, a masked 64-bit window compared at a
+      bit count after the frame''s leader.'
     tags:
     - source-backed
     - experimental

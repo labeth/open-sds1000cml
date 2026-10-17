@@ -805,12 +805,18 @@ module acq_sram_top(
   .inv_a(sym_cfg[2]),.inv_b(sym_cfg[3]),.and_ab(sym_cfg[4]),.clk_fall(sym_cfg[5]),.mode(sym_cfg[7:6]),.lead_len(sym_cfg[10:8]),.prescale(sym_cfg[13:11]),
   .unit_q8(sym_unit),.frame_units(sym_fp[5:0]),.period(sym_fp[13:8]),.phase0(sym_kp[15:10]),.k(sym_kp[9:0]),
   .pattern(sym_pattern),.mask(sym_mask),.wr_clk(clk),.wr_en(sym_we),.wr_addr(sym_wa),.wr_data(sym_wd),.match(sym_match));
- // One clock of fire per match, in the acquisition clock; the host counts
+ // A match once the record holds its history fires and holds until the
+ // next arm, as the protocol triggers do: the record takes a trigger only
+ // with a word written (decimated, one clock in many). The host counts
  // matches through a toggle.
+`ifndef UART_TRIGGER
+ wire history_ready;
+`endif
  reg [2:0] sym_match_sync=0;reg sym_fire=0,sym_toggle=0;
  always @(posedge core)begin
   sym_match_sync<={sym_match_sync[1:0],sym_match};
-  sym_fire<=sym_on && sym_match_sync[1] && !sym_match_sync[2];
+  if(!running || arm || !history_ready)sym_fire<=0;
+  else if(sym_on && sym_match_sync[1] && !sym_match_sync[2])sym_fire<=1;
  end
  always @(posedge halfclk)if(sym_match)sym_toggle<=!sym_toggle;
  reg [2:0] sym_toggle_sync=0;reg [15:0] sym_count=0;
@@ -1229,6 +1235,8 @@ module acq_sram_top(
  sram_record #(.CONFIG_VALIDATED(1),.DERIVED_CONFIG(1)) record(.clk(core),.reset(1'b0),.arm(arm),.halt(halt),.pre_count(pre_cfg),.post_count(post_cfg),
   .pre_start_config(pre_start_host),.pre_plus_one_config(pre_plus_one_host),.post_minus_one_config(post_minus_one_host),
 `ifdef UART_TRIGGER
+  .history_ready(history_ready),
+`elsif SYMBOL_TRIGGER
   .history_ready(history_ready),
 `endif
   .step(step),.trigger(record_fire),.running(running),.done(record_done),.triggered(triggered),.config_error(config_error),
