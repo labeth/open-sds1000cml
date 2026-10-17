@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"golang.org/x/sys/unix"
 )
 
 // The tests never open a real /dev node: a plain temp file stands in for the
@@ -175,5 +177,27 @@ func TestReacquireAfterDisarm(t *testing.T) {
 	defer w.Disarm()
 	if !w.Status().Armed {
 		t.Error("should be armed after re-acquire")
+	}
+}
+
+// The agent's watchdog fd must not leak into what it starts (the app, otactl
+// sh/exec): an app holding it keeps the next agent generation from acquiring
+// the watchdog after an agent self-update (EBUSY) while nobody pets it.
+// TRLC-LINKS: REQ-SDS-026, REQ-SDS-086
+func TestAcquiredFdClosesOnExec(t *testing.T) {
+	w := New(fakeDev(t))
+	if err := w.Acquire(time.Second, time.Hour); err != nil {
+		t.Fatalf("acquire: %v", err)
+	}
+	defer w.Disarm()
+	w.mu.Lock()
+	fd := w.fd
+	w.mu.Unlock()
+	flags, err := unix.FcntlInt(uintptr(fd), unix.F_GETFD, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if flags&unix.FD_CLOEXEC == 0 {
+		t.Fatalf("watchdog fd flags %#x: no FD_CLOEXEC, children inherit it", flags)
 	}
 }

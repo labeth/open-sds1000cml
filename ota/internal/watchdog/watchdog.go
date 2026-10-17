@@ -52,7 +52,7 @@ func (w *Watchdog) Acquire(timeout, petEvery time.Duration) error {
 	deadline := time.Now().Add(timeout)
 	var lastErr error
 	for {
-		fd, err := unix.Open(w.dev, unix.O_RDWR, 0)
+		fd, err := unix.Open(w.dev, unix.O_RDWR|unix.O_CLOEXEC, 0) // never inherited by the app or a shell
 		if err == nil {
 			w.mu.Lock()
 			w.fd = fd
