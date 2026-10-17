@@ -553,9 +553,12 @@ const decimatedWait = 1500 * time.Millisecond
 // decimatedFeature is the samples of a decimated record a bus's shortest
 // feature must span for a detection on it to stand (a 115200 Bd UART at
 // 200us/div spans 35); a faster bus is looked at at the full rate.
-// decimatedCheckedFeature is the bound for a bus found by its frames' CRCs
-// (CAN's CRC-15, FlexRay's header CRC-11), which a misread record does not
-// pass: a 500 kbit/s CAN bus at 200us/div spans 7.8.
+// decimatedCheckedFeature is the bound for a bus found by its frames' checks
+// (CAN's CRC-15, FlexRay's header CRC-11, Modbus's CRC-16, J1850's CRC-8,
+// USB PD's CRC-32, the LIN and DHT checksums, Wiegand's parities) or by a
+// handshake (1-Wire's reset and presence pulse), which a misread record does
+// not pass: a 500 kbit/s CAN bus at 200us/div spans 7.8, a 1-Wire slot's 15
+// us at 500us/div 6.1, a Wiegand pulse at 20ms/div 6.1.
 const (
 	decimatedFeature        = 8.0
 	decimatedCheckedFeature = 6.0
@@ -569,7 +572,7 @@ const (
 func decimatedStands(res decode.Result) bool {
 	fs := decode.FeatureSamples(res)
 	switch res.Proto {
-	case "canfd", "flexray":
+	case "canfd", "flexray", "modbus", "j1850", "usbpd", "lin", "dht", "wiegand", "onewire":
 		return fs >= decimatedCheckedFeature
 	case "uart":
 		return fs >= decimatedFeature && decode.StandardBaud(float64(res.Baud))
@@ -813,61 +816,134 @@ func (c *Controller) findBus(auto AutoSource, wanted func() bool) (decode.Result
 	c.searchMu.Lock()
 	defer c.searchMu.Unlock()
 	res, sampleS, found, dec := c.detectOn(auto)
+	at := 0.0 // the timebase the search stepped to
 	// A UART of a byte or two, or at a rate no UART uses, on a short record is
 	// as likely part of another bus's frame (a CAN frame at 5us/div read as
 	// "UART 500000 8N1", USB at 2us/div as "UART 1500000 8N1", a FlexRay frame
 	// failing its CRC as "UART 10002156 8N1"): the search looks on, and names
 	// it only when it finds nothing else.
 	scant := found && scantFind(res)
+	// a slow line's record (slowEdges) is weighed against the live envelope
+	if !found && dec.resolved && (dec.runs[0] > 0 || dec.runs[1] > 0) && !dec.envSeen {
+		dec.envRun, dec.envBusy, dec.envSeen = c.envelopeRuns(true, func(*engine.Frame, bool) bool { return true }, c.now().Add(envWait))
+	}
 	// a scope waiting for a trigger captures nothing at the full rate either
-	if full, t := c.fullRateS(), c.fullRateTdiv(); full > 0 && t > 0 && (!found || scant) && !c.waitingForTrigger(c.snap()) {
+	if full, t := c.fullRateS(), c.fullRateTdiv(); full > 0 && t > 0 && (!found || scant || fewUART(res)) && !(!found && slowEdges(dec)) && !c.waitingForTrigger(c.snap()) {
 		var first *look // the timebase on screen is the full-rate one: its decimated record is read
 		if math.Abs(c.snap().st.TdivSet()-t) <= 1e-3*t {
 			first = &dec
 		}
-		if r, s, ok, stepped := c.findAtFullRate(full, t, first, auto, wanted); ok {
+		r, s, ok, stepped := c.findAtFullRate(full, t, first, auto, wanted)
+		if ok && !fewUART(r) {
+			return r, s, true, stepped
+		}
+		if ok {
+			res, sampleS, found, at = r, s, true, stepped
+		}
+	}
+	// A UART of a few bytes may be a frame of a slow bus built on one (a LIN
+	// frame of 10 ms, a Modbus RTU message at 9600 Bd) that a record of
+	// milliseconds holds a part of: the slow look names it when it finds
+	// another bus there, and keeps the UART otherwise.
+	if (!found || fewUART(res)) && !c.waitingForTrigger(c.snap()) {
+		if r, s, ok, stepped := c.findSlowBus(auto, wanted, found); ok {
 			return r, s, true, stepped
 		}
 	}
-	if !found && !c.waitingForTrigger(c.snap()) {
-		if r, s, ok, stepped := c.findSlowBus(auto, wanted); ok {
-			return r, s, true, stepped
-		}
-	}
-	return res, sampleS, found, 0
+	return res, sampleS, found, at
+}
+
+// slowEdges reports a decimated look whose record resolves every edge it
+// holds, with edges on a line, and whose live envelope shows no line faster
+// than the record: the full rate shows nothing it did not, and its whole
+// record takes seconds to read (a CEC bus at 500us/div took 18 s to name),
+// so the search goes on at the slow timebases.
+// TRLC-LINKS: REQ-SDS-214
+func slowEdges(l look) bool {
+	return l.resolved && (l.runs[0] > 0 || l.runs[1] > 0) && l.envSeen && l.envRun == [2]float64{}
+}
+
+// fewUARTBytes is the bytes a UART find must hold for the search to end on
+// it (fewUART): a record of 5 ms holds four bytes of a 9600 Bd Modbus
+// message, read as "UART 9600 8E1"; one of 50 ms holds whole messages.
+const fewUARTBytes = 16
+
+// fewUART reports a UART find of under fewUARTBytes bytes.
+// TRLC-LINKS: REQ-SDS-214
+func fewUART(res decode.Result) bool {
+	return res.Proto == "uart" && len(res.Bytes) < fewUARTBytes
 }
 
 // slowTdivs are the timebases a bus found nowhere faster is looked for at:
 // the buses whose frames last tens of milliseconds (IR remotes, HDMI-CEC,
-// DALI, Wiegand) show whole frames there, in a decimated record whose
-// samples still resolve their bits.
+// DALI, Wiegand, a DHT reading, LIN and Modbus frames) show whole frames
+// there, in the decimated record of a search (LeaseSearchView) whose samples
+// still resolve their bits: every 2 us at 5ms/div, every 8 us at 20ms/div.
 var slowTdivs = []float64{5e-3, 20e-3}
 
 // findSlowBus is findBus's last look: the decimated record at each of
-// slowTdivs slower than the timebase on screen. The timebase a bus is found
-// at stays while wanted; with none found the timebase goes back.
+// slowTdivs, read as a search reads (LeaseSearchView: a deeper screen than
+// the look on screen had, and whole records where the live view rolled).
+// other says a UART found there does not count (one was found faster). The
+// timebase a bus is found at stays while wanted; with none
+// found the timebase goes back.
 // TRLC-LINKS: REQ-SDS-214
-func (c *Controller) findSlowBus(auto AutoSource, wanted func() bool) (decode.Result, float64, bool, float64) {
+func (c *Controller) findSlowBus(auto AutoSource, wanted func() bool, other bool) (decode.Result, float64, bool, float64) {
 	prev := c.snap().st.TdivSet()
-	for _, t := range slowTdivs {
-		if t <= prev*1.001 || len(c.tdivs) == 0 || slices.Max(c.tdivs) < t*0.999 {
+	e, searching := c.eng.(interface{ LeaseSearchView(time.Duration) })
+	if searching {
+		e.LeaseSearchView(10 * time.Second)
+		defer e.LeaseSearchView(0)
+	}
+	for i, t := range slowTdivs {
+		if len(c.tdivs) == 0 || slices.Max(c.tdivs) < t*0.999 {
 			continue
 		}
 		c.setTdivNearest(t)
 		at := c.snap().st.TdivSet()
-		accept := func(f *engine.Frame, decimated bool) bool { return f.TdivS == 0 || math.Abs(f.TdivS-at) <= 1e-3*at }
-		// a screen of slow frames takes its own time to capture
-		l := c.detectWith(true, true, accept, auto, decimatedWait+time.Duration(20*at*float64(time.Second)))
-		if l.found && decimatedStands(l.res) {
-			if !wanted() {
-				c.setTdivNearest(prev)
-				return l.res, l.sampleS, true, 0
+		var seen uint64 // the newest frame a look here was offered
+		for look := 0; look < slowLooks(i); look++ {
+			after := seen
+			// a frame of the search's own screen, not one the live view or
+			// the look on screen read at the timebase (four times coarser),
+			// and newer than the look before read
+			accept := func(f *engine.Frame, decimated bool) bool {
+				ok := (f.TdivS == 0 || math.Abs(f.TdivS-at) <= 1e-3*at) && (after == 0 || f.Seq > after) &&
+					(!searching || f.SampleS <= 2*10*at/engine.SearchLiveSamples)
+				if ok {
+					seen = max(seen, f.Seq)
+				}
+				return ok
 			}
-			return l.res, l.sampleS, true, at
+			// a screen of slow frames takes its own time to capture
+			l := c.detectWith(true, true, accept, auto, decimatedWait+time.Duration(20*at*float64(time.Second)))
+			if l.found && decimatedStands(l.res) && other && l.res.Proto == "uart" {
+				c.setTdivNearest(prev)
+				return decode.Result{}, 0, false, 0 // the UART again, whole
+			}
+			if l.found && decimatedStands(l.res) {
+				if !wanted() {
+					c.setTdivNearest(prev)
+					return l.res, l.sampleS, true, 0
+				}
+				return l.res, l.sampleS, true, at
+			}
 		}
 	}
 	c.setTdivNearest(prev)
 	return decode.Result{}, 0, false, 0
+}
+
+// slowLooks is how many records findSlowBus reads at the i-th of slowTdivs:
+// two at the slowest, where a bus that sends a frame now and then (an IR
+// remote's 67 ms frame among repeat codes, a card read) can fall across
+// the record's end on one record and whole in the next.
+// TRLC-LINKS: REQ-SDS-214
+func slowLooks(i int) int {
+	if i == len(slowTdivs)-1 {
+		return 2
+	}
+	return 1
 }
 
 // findAtFullRate is findBus's search at the slowest full-rate timebase t

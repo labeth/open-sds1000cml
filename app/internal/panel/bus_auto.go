@@ -36,6 +36,10 @@ const imageWait = 10 * time.Second
 // Default setup's.
 const busSearchTdiv = 500e-6
 
+// busSearchMaxTdiv is the timebase AUTO in BUS searches from at the slowest:
+// under engine.RollMinTdiv.
+const busSearchMaxTdiv = 5e-3
+
 // busTrigPos is where AUTO in BUS puts the trigger: near the left, so the
 // message that starts there fills the screen.
 const busTrigPos = 0.1
@@ -107,8 +111,11 @@ func (c *Controller) runBusAuto(stop chan struct{}) {
 	}
 	// The search starts where BUS entry's does after Default setup, on a screen
 	// of many messages: the autoset's few cycles of the fastest edge rate held
-	// part of an ARINC 429 word, and the search found no bus.
-	c.setTdivNearest(max(entryTdiv, busSearchTdiv))
+	// part of an ARINC 429 word, and the search found no bus. A rolling
+	// screen's chunks leave gaps no frame survives: an entry there searches
+	// from the slowest timebase that does not roll (slower buses are looked
+	// for after, findSlowBus).
+	c.setTdivNearest(min(max(entryTdiv, busSearchTdiv), busSearchMaxTdiv))
 	c.mu.Lock()
 	c.autosetMsg = "AUTO: finding the bus..."
 	c.ui.busDetecting = true

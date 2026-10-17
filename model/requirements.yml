@@ -4085,7 +4085,12 @@ requirements:
   verificationCriteria: Each protocol's synthetic capture, on either channel (or in either channel order) and with
     converter noise and slow edges, is named as itself and no other; text on a UART at LIN's, DMX512's, MIDI's and
     Modbus's rates stays a UART; the first ten protocols' detection corpus is named as before; BUS entry on a LIN
-    capture fills in LIN at its rate and arms the match "SOF ??"; AUTO's match for MIDI is a status byte (STS).
-  notes: A search that finds no bus on the screen or at the full rate looks again at 5 and 20 ms/div, where the
-    millisecond-scale buses (IR remotes, HDMI-CEC, DALI, Wiegand) show whole frames. The FPGA decides every trigger;
-    until its image has a matcher for a protocol, the serial trigger's status says so.
+    capture fills in LIN at its rate and arms the match "SOF ??"; AUTO's match for MIDI is a status byte (STS);
+    the records the scope read of bench sources of LIN, Modbus RTU, J1850, USB PD, 1-Wire, DHT, HDMI-CEC, IR NEC,
+    Wiegand, PS/2 and SWD are named as themselves, and those read decimated stand there for the search.
+  notes: A search that finds no bus on the screen, or a UART of a few bytes, looks again at 5 and 20 ms/div, where
+    the millisecond-scale buses (IR remotes, HDMI-CEC, DALI, Wiegand, DHT, LIN and Modbus frames) show whole frames,
+    on whole records of a search lease (no roll, four times the live view's samples) and a second record at 20
+    ms/div. A line whose decimated record resolves its every edge, with no faster edges in the live envelope, skips
+    the full-rate search. The FPGA decides every trigger; until its image has a matcher for a protocol, the serial
+    trigger's status says so.
