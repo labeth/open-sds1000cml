@@ -138,6 +138,15 @@ func init() {
 		{ID: serIRRC6, Name: "IR RC-6", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
 			return decode.DecodeIRRC6(a, sampleS, decode.IRCfg{Threshold: p.Threshold, HaveThr: p.HaveThr})
 		}, Match: byteMatch},
+		{ID: serDALI, Name: "DALI", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
+			return decode.DecodeDALI(a, sampleS, decode.DALICfg{Threshold: p.Threshold, HaveThr: p.HaveThr})
+		}, Match: byteMatch},
+		{ID: serUSBPD, Name: "USB PD", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
+			return decode.DecodeUSBPD(a, sampleS, decode.USBPDCfg{Baud: p.Baud, Threshold: p.Threshold, HaveThr: p.HaveThr})
+		}, Match: byteMatch},
+		{ID: serSPDIF, Name: "S/PDIF", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
+			return decode.DecodeSPDIF(a, sampleS, decode.SPDIFCfg{Threshold: p.Threshold, HaveThr: p.HaveThr})
+		}, Match: byteMatch},
 	} {
 		switch {
 		case d.ID == serSENT, d.ID == serCAN, d.ID == serMIL1553, d.ID == serARINC, d.ID == serUSB, d.ID == serFlexRay,

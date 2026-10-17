@@ -146,6 +146,34 @@ func protoParityVectors(add parityAdd, add2 parityAdd2, corrupt func([]uint8) []
 			base{"irrc6", 1 / sr, cfg{}, rc6, func(c []uint8) Result { return DecodeIRRC6(c, 1/sr, IRCfg{}) }})
 	}
 
+	// ---- biphase
+	{
+		wd := newTimeline(200e3)
+		wd.idle(5e-3)
+		daliFrame(wd, 16, 0x0190, 3e-3)
+		daliFrame(wd, 8, 0x5A, 10e-3)
+		daliFrame(wd, 24, 0x123456, 10e-3)
+		dali := wd.codes()
+		bases = append(bases, base{"dali", 5e-6, cfg{}, dali, func(c []uint8) Result { return DecodeDALI(c, 5e-6, DALICfg{}) }})
+		wp := newTimeline(25e6)
+		wp.add(0, 20e-6)
+		pdMessage(wp, pdSOP, 0x1161, []uint32{0x0801912C}, false)
+		pdMessage(wp, pdSOP, 0x0041, nil, false)
+		pdMessage(wp, pdSOPPrime, 0x1042, []uint32{0x12345678}, true)
+		pdMessage(wp, pdHardReset, 0, nil, false)
+		pd := wp.codes()
+		bases = append(bases, base{"usbpd", 4e-8, cfg{}, pd, func(c []uint8) Result { return DecodeUSBPD(c, 4e-8, USBPDCfg{}) }})
+		ws := newTimeline(250e6)
+		ws.add(0, 50e-9)
+		var smp [][2]int
+		for i := 0; i < 5; i++ {
+			smp = append(smp, [2]int{(i * 0x1357) & 0xffffff, 0xFFFFF0 - i*0x10})
+		}
+		spdifStream(ws, 48e3, 190, smp)
+		sp := ws.codes()
+		bases = append(bases, base{"spdif", 4e-9, cfg{}, sp, func(c []uint8) Result { return DecodeSPDIF(c, 4e-9, SPDIFCfg{}) }})
+	}
+
 	for _, b := range bases {
 		add(b.proto, b.w, b.colT, b.cfg, b.dec(b.w))
 		for it := 0; it < 16; it++ {
