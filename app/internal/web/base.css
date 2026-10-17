@@ -36,7 +36,7 @@
   input[type=range] { width: 110px; accent-color: var(--trigger); min-width: 48px; }
   .mono { font-family: var(--mono); }
   .num { font-size: 11px; }
-  .w-xs { width: 46px; } .w-sm { width: 56px; } .w-md { width: 70px; } .w-num { width: 4.6em; }
+  .w-xs { width: 46px; } .w-sm { width: 56px; } .w-md { width: 70px; } .w-lg { width: 120px; } .w-num { width: 4.6em; }
   .grow { flex: 1 1 auto; min-width: 0; }
   input[type=range].grow { width: 0; min-width: 56px; }
   .cc1 { color: var(--c1); } .cc2 { color: var(--c2); } .ccm { color: var(--math); }
