@@ -429,7 +429,8 @@ Clock rate row; one that has not triggered for 2 s is measured again from one un
 that slowed is learned anew. The BUS sheet's Data delay row sets where SPI's data line is read after the
 clock's sampling edge (-8 to 9 ns; the receiver's register holds 8 ns with the channels' phase): a device's
 data settles late (a flash read at 104 MHz, 6 to 8 ns after the edge that launches it). Auto reads it at
-the middle of the data's eye on the last full-rate record: every data transition between sampling edges
+the middle of the data's eye on the last full-rate record (an SPI bus BUS entry or AUTO in BUS finds starts
+with Auto; a delay set by hand on the bus in use stays): every data transition between sampling edges
 gives its phase, the eye is the widest phase interval holding none; whether the middle lies after the edge
 (data settling late) or before it (data a little early) is told from the bursts' ends, where a device that
 settles late launches once more after the last sampling edge. The row reads the delay and the margin left
@@ -437,7 +438,9 @@ each side of it ("Auto -1.8 ns, margin +3.7 ns"); the software decoders read the
 The packet, line and fast images (Manchester, USB, SENT, CAN,
 FlexRay, MIL-1553, ARINC 429, fast SPI, UART and I2C) record raw samples only, one SRAM of 2.1 ms: on them the timebase goes no slower than
 200us/div, whose screen that record fills ("200us/div at most on this trigger: its image records
-2.1ms", also when a trigger armed at a slower timebase brings the image in). BUS entry's detection sets the same trigger. AUTO in the other workspaces is the autoset framed
+2.1ms", also when a trigger armed at a slower timebase brings the image in). A pulse width, slope or video
+trigger does the same on the qualify image: its qualifier fires on the full-rate record only, so those captures
+stay at the full rate (200us/div at most; Average, ERES and Precision average full-rate captures, slower to update). BUS entry's detection sets the same trigger. AUTO in the other workspaces is the autoset framed
 for the workspace's job (REQ-SDS-224). Either sweep first puts the trigger back to an edge and waits for the
 general image: measured on the qualifier or a protocol image, or while the image went back, the vertical fit
 went wrong. AUTO in BUS holds a loaded qualifier image instead (an edge triggers and captures there as on the

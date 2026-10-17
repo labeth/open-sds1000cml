@@ -282,7 +282,12 @@ func (e *Engine) sramConfig() (sramcapture.Config, SRAMPlan, float64, bool, trig
 	// (a SENT bus's frames read 2.4 times as long as they are). The timebase
 	// steps to the slowest whose screen the record holds whole.
 	e.stats.TdivMaxS = 0
-	if e.rawOnly {
+	// The FPGA's pulse, slope and video qualifier fires only on a full-rate
+	// record (on a decimated one it never fired: Auto ran free, Normal waited
+	// for ever): with it the capture stays at the full rate, as on a raw-only
+	// image.
+	qualRaw := e.hardwareQualifier && e.tp.typ != TrigEdge && e.serialMode.Load() != SerialTrigger
+	if e.rawOnly || qualRaw {
 		lim := rawScreenTdiv()
 		e.stats.TdivMaxS = lim
 		cur := e.band.TdivS
@@ -302,7 +307,7 @@ func (e *Engine) sramConfig() (sramcapture.Config, SRAMPlan, float64, bool, trig
 	norm, tp := e.norm, e.tp
 	e.mu.Unlock()
 	p := PlanSRAM(tdiv)
-	if e.acqMode.Load() == AcqPrecision && !e.rawOnly {
+	if e.acqMode.Load() == AcqPrecision && !e.rawOnly && !qualRaw {
 		p = PlanPrecisionSRAM(tdiv, uint8(e.precisionLog.Load()))
 	}
 	if e.rawOnly && p.Log != 0 {
@@ -379,10 +384,25 @@ func (e *Engine) sramConfig() (sramcapture.Config, SRAMPlan, float64, bool, trig
 	// took minutes, and a raw deep record is noisier than the preview).
 	acq := e.acqMode.Load()
 	filtered := acq == AcqAverage || acq == AcqPrecision || acq == AcqEres
-	if live, ok := liveSRAMPlan(p, liveBudget(block)); ok && (!e.singleArmed.Load() || filtered) && !e.rawOnly && liveDecimatesPlan(block, p) {
+	if live, ok := liveSRAMPlan(p, liveBudget(block)); ok && (!e.singleArmed.Load() || filtered) && !e.rawOnly && !qualRaw && liveDecimatesPlan(block, p) {
 		c, p = build(live)
 	}
 	return c, p, tdiv, norm, tp
+}
+
+// averageAlignEdge is the crossing an average aligns a capture on, near
+// hint (the FPGA's trigger point in local). A serial match's edge and a
+// pulse, slope or video qualifier's closing edge go either way (a UART start
+// bit falls; a high pulse closes falling): with nearer the crossing nearest
+// the hint, else the nearest crossing of the trigger's slope. Aligned on the
+// slope's own direction, a pulse trigger's captures found none in the window
+// and the average never started ("average 0/64").
+// TRLC-LINKS: REQ-SDS-011, REQ-SDS-013, REQ-SDS-218
+func averageAlignEdge(local []uint8, hint float64, nearer, rising bool) float64 {
+	if nearer {
+		return nearerCrossHint(local, midLevel(local), hint)
+	}
+	return centerCrossHint(local, midLevel(local), rising, hint)
 }
 
 // planSerial installs the hardware decoder and, beyond its native matcher,
@@ -1234,15 +1254,7 @@ acquisitionLoop:
 				// Already the exact trigger-level crossing (refineTriggerEdge).
 				edge = f.EdgeX - float64(lo)
 			} else if hi > lo {
-				local := disc[lo:hi]
-				if e.serialMode.Load() == SerialTrigger {
-					// the match's own edge, which goes either way (a UART start
-					// bit falls): the nearest rising edge put the average up to
-					// a bit away from the live captures, centred on the match
-					edge = nearerCrossHint(local, midLevel(local), f.EdgeX-float64(lo))
-				} else {
-					edge = centerCrossHint(local, midLevel(local), !cfg.Falling, f.EdgeX-float64(lo))
-				}
+				edge = averageAlignEdge(disc[lo:hi], f.EdgeX-float64(lo), e.serialMode.Load() == SerialTrigger || tp.typ != TrigEdge, !cfg.Falling)
 			}
 			if edge >= 0 {
 				f.EdgeX = edge + float64(lo)

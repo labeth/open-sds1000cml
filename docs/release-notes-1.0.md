@@ -69,6 +69,9 @@ settings tab (the Help key), at the end of the web UI's status line and in `/api
   and AUTO in BUS on a packet or line-code bus 11 to 15 s, as it fits the bus on the general image
   first. The `fast`, packet and line images record raw samples only (2.1 ms at the full rate, no
   precision decimation), so while one of them is loaded the timebase stays at 200 µs/div or faster.
+* **Pulse width, slope and video triggers** fire on full-rate captures only, so with one of them the
+  timebase stays at 200 µs/div or faster, and Average, ERES and Precision update slowly (Average at
+  200 µs/div about 0.3 captures a second).
 * **Full record:** reading the 1 M-sample record on STOP or SINGLE takes about 4 s.
 * **Streaming:** gap-free roll is loss-free to about 978,000 samples a second per channel
   (decimation ×512, 3.9 MB/s); the SRAM covers a stall of the ARM of about 0.5 s at ×512 and 1 s at

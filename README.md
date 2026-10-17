@@ -197,7 +197,8 @@ automatically.
   its idle, CAN's SOF, a MIL-1553 command word, the first UART character after an idle gap, ...), the
   trigger near the left and whole messages on screen with every bit resolved. The trigger point sits on
   the frame's own SYNC or SOF. The protocol images for Manchester, USB, SENT, CAN, FlexRay, MIL-1553 and
-  ARINC 429 record 2.1 ms at the full rate, so their triggers run at 200 us/div or faster. AUTO on a
+  ARINC 429 record 2.1 ms at the full rate, so their triggers run at 200 us/div or faster, as do the
+  pulse width, slope and video triggers (they fire on full-rate captures only). AUTO on a
   UART framed before stays on the qualifier image it triggers with (about 5 s); a packet or line-code
   bus loads the general image for the fit and detection and its own image again (11 to 15 s). A
   stream that waits for an image load says so.
