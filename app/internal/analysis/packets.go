@@ -19,6 +19,7 @@ import "fmt"
 import (
 	"math"
 	"sort"
+	"strings"
 
 	"open-sds/app/internal/decode"
 )
@@ -87,6 +88,9 @@ func Packets(r decode.Result, recordLen int) []Packet {
 		g.can(r.Spans)
 	case "manchester", "flexray", "usbls", "mil1553", "arinc429", "sent":
 		g.framed(r.Proto, r.Spans)
+	case "lin", "dmx512", "midi", "modbus", "onewire", "ws281x", "dht", "cec", "j1850", "irnec", "irsirc", "irrc5",
+		"irrc6", "dali", "usbpd", "spdif", "ps2", "swd", "mdio", "wiegand":
+		g.opened(r.Proto, r.Spans)
 	default: // uart, spi, and any byte stream to come
 		g.gaps(r.Proto == "uart", r.Spans)
 	}
@@ -103,6 +107,9 @@ func wordWidth(r decode.Result) int {
 		return 3
 	case "i2c", "spi", "canfd", "usbls", "flexray", "sent":
 		return 1
+	case "lin", "dmx512", "midi", "modbus", "onewire", "ws281x", "dht", "cec", "j1850", "irnec", "irsirc", "irrc5",
+		"irrc6", "dali", "usbpd", "spdif", "ps2", "swd", "mdio", "wiegand":
+		return 1 // opened sets each unit's own (openedWidth)
 	}
 	top := 0 // UART and Manchester words take 1..16 bits
 	for _, sp := range r.Spans {
@@ -409,6 +416,94 @@ func (g *grouper) framed(proto string, spans []decode.Span) {
 		case "frame-error":
 			g.frameError(proto, sp)
 		}
+	}
+	end(false)
+}
+
+// openedFault names the fault an error span marks in the protocols that
+// open each frame with a start marker (opened).
+var openedFault = map[string]string{"lin": FaultCRC, "modbus": FaultCRC, "j1850": FaultCRC, "usbpd": FaultCRC,
+	"dht": FaultCRC, "onewire": FaultCRC, "ps2": FaultParity, "swd": FaultParity, "wiegand": FaultParity,
+	"spdif": FaultParity, "irnec": FaultParity, "dmx512": FaultCoding, "midi": FaultCoding, "cec": FaultCoding,
+	"irsirc": FaultCoding, "irrc5": FaultCoding, "irrc6": FaultCoding, "dali": FaultCoding, "mdio": FaultNAK}
+
+// openedWidth is the bytes a unit of the protocols with wide units takes in
+// Packet.Bytes: an MDIO header and data word and a Wiegand field are 16
+// bits, an S/PDIF sample 24, an SWD data word 32 (its request and
+// acknowledge one byte each).
+// TRLC-LINKS: REQ-SDS-214
+func openedWidth(proto string, sp decode.Span) int {
+	switch proto {
+	case "mdio", "wiegand":
+		return 2
+	case "spdif":
+		return 3
+	case "swd":
+		if t := strings.TrimPrefix(sp.Text, "!"); len(t) == 8 {
+			return 4
+		}
+	}
+	return 1
+}
+
+// opened takes the frames of the protocols beyond the first ten, each from
+// its start marker ("sof": a break, a reset, a leader, a start bit or
+// condition, a preamble, a status byte): units become the packet's bytes,
+// most significant byte first; a unit flagged bad marks its bytes and the
+// packet's fault. A frame is complete with the next start marker after it,
+// or with a tenth of the record after it. The first unit names the packet's
+// address where a protocol has one (LIN's frame ID, Modbus's server
+// address, CEC's header, an IR remote's address, an MDIO frame's PHY).
+// TRLC-LINKS: REQ-SDS-214
+func (g *grouper) opened(proto string, spans []decode.Span) {
+	tail := float64(g.n) / 10
+	end := func(next bool) {
+		if g.cur != nil {
+			g.close(next || g.room(g.cur.I1, tail))
+		}
+	}
+	units := 0
+	for _, sp := range spans {
+		if sp.Kind == "sof" {
+			end(true)
+			g.open(sp.I0, true)
+			units = 0
+			continue
+		}
+		if sp.Kind == "gap" {
+			end(true)
+			continue
+		}
+		if g.cur == nil {
+			g.open(sp.I0, false)
+			units = 0
+		}
+		g.span(sp)
+		bad := sp.Kind == "frame-error" || sp.Kind == "parity-error"
+		if sp.Kind != "data" && !bad {
+			continue
+		}
+		if bad && sp.Text == "!" { // a frame cut short: no unit
+			g.cur.Err = openedFault[proto]
+			continue
+		}
+		g.width = openedWidth(proto, sp)
+		g.word(sp, bad)
+		if bad {
+			g.cur.Err = openedFault[proto]
+		}
+		if units == 0 {
+			switch proto {
+			case "lin":
+				g.cur.Addr, g.cur.HasAddr = sp.Val&0x3f, true
+			case "modbus", "cec", "irnec", "irrc5", "irrc6", "dali":
+				g.cur.Addr, g.cur.HasAddr = sp.Val, true
+			case "mdio":
+				g.cur.Addr, g.cur.HasAddr = sp.Val>>5&0x1f, true
+				g.cur.Read = sp.Val>>11&1 == 1
+			}
+		}
+		units++
 	}
 	end(false)
 }

@@ -182,6 +182,11 @@ type Controller struct {
 	decChA, decChB   int
 	decCPOL, decCPHA bool
 	decLSB           bool // SPI least significant bit first
+	// decParity is Modbus RTU's framing ("even", "odd", "none"; "" the
+	// decoder finds it); decInv says the IR or DALI line's marks are at its
+	// high level (an emitter's drive), as detected.
+	decParity string
+	decInv    bool
 	// SPI's data line is read decDelayNs after the clock's sampling edge, or
 	// with decDelayAuto at the middle of the data's eye measured on the
 	// full-rate records (spiEye); decFine asks for the FPGA's receivers on

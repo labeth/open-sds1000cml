@@ -216,6 +216,7 @@ func buildHUD(e *engine.Engine, fe *analog.FrontEnd) lcd.HUD {
 		hud.DecProto, hud.DecBaud = d.DecProto, d.DecBaud
 		hud.DecChA, hud.DecChB = d.DecChA, d.DecChB
 		hud.DecCPOL, hud.DecCPHA, hud.DecLSB = d.DecCPOL, d.DecCPHA, d.DecLSB
+		hud.DecParity = d.DecParity
 		hud.DecFormat, hud.DecDelayNs = d.DecFormat, d.DecDelayNs
 		rv := pc.RefView()
 		for i := 0; i < 2; i++ {

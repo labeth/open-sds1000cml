@@ -351,7 +351,13 @@ func resultProto(res decode.Result) int {
 	return map[string]int{"uart": framecalc.ProtoUART, "i2c": framecalc.ProtoI2C, "spi": framecalc.ProtoSPI,
 		"manchester": framecalc.ProtoManchester, "sent": framecalc.ProtoSENT, "canfd": framecalc.ProtoCAN,
 		"mil1553": framecalc.ProtoMIL1553, "arinc429": framecalc.ProtoARINC429, "usbls": framecalc.ProtoUSB,
-		"flexray": framecalc.ProtoFlexRay}[res.Proto]
+		"flexray": framecalc.ProtoFlexRay, "lin": framecalc.ProtoLIN, "dmx512": framecalc.ProtoDMX,
+		"midi": framecalc.ProtoMIDI, "modbus": framecalc.ProtoModbus, "onewire": framecalc.ProtoOneWire,
+		"ws281x": framecalc.ProtoWS281x, "dht": framecalc.ProtoDHT, "cec": framecalc.ProtoCEC,
+		"j1850": framecalc.ProtoJ1850, "irnec": framecalc.ProtoIRNEC, "irsirc": framecalc.ProtoIRSIRC,
+		"irrc5": framecalc.ProtoIRRC5, "irrc6": framecalc.ProtoIRRC6, "dali": framecalc.ProtoDALI,
+		"usbpd": framecalc.ProtoUSBPD, "spdif": framecalc.ProtoSPDIF, "ps2": framecalc.ProtoPS2,
+		"swd": framecalc.ProtoSWD, "mdio": framecalc.ProtoMDIO, "wiegand": framecalc.ProtoWiegand}[res.Proto]
 }
 
 // fillIn writes a detected bus into the decoder settings, as if entered by
@@ -385,6 +391,10 @@ func (c *Controller) fillIn(res decode.Result) bool {
 	}
 	if p == framecalc.ProtoSPI {
 		c.decCPOL, c.decCPHA, c.decLSB = res.Roles.CPOL, res.Roles.CPHA, !res.Roles.MSB
+	}
+	c.decParity, c.decInv = res.Parity, res.Inverted
+	if res.Baud <= 0 && !rateProto(p) && p != framecalc.ProtoUART {
+		c.decBaud = defaultRate(p) // the hardware matcher's rate
 	}
 	c.auto = autoWatch{filled: true, good: c.now()}
 	stream := c.decMode == decModeStream
@@ -825,7 +835,45 @@ func (c *Controller) findBus(auto AutoSource, wanted func() bool) (decode.Result
 			return r, s, true, stepped
 		}
 	}
+	if !found && !c.waitingForTrigger(c.snap()) {
+		if r, s, ok, stepped := c.findSlowBus(auto, wanted); ok {
+			return r, s, true, stepped
+		}
+	}
 	return res, sampleS, found, 0
+}
+
+// slowTdivs are the timebases a bus found nowhere faster is looked for at:
+// the buses whose frames last tens of milliseconds (IR remotes, HDMI-CEC,
+// DALI, Wiegand) show whole frames there, in a decimated record whose
+// samples still resolve their bits.
+var slowTdivs = []float64{5e-3, 20e-3}
+
+// findSlowBus is findBus's last look: the decimated record at each of
+// slowTdivs slower than the timebase on screen. The timebase a bus is found
+// at stays while wanted; with none found the timebase goes back.
+// TRLC-LINKS: REQ-SDS-214
+func (c *Controller) findSlowBus(auto AutoSource, wanted func() bool) (decode.Result, float64, bool, float64) {
+	prev := c.snap().st.TdivSet()
+	for _, t := range slowTdivs {
+		if t <= prev*1.001 || len(c.tdivs) == 0 || slices.Max(c.tdivs) < t*0.999 {
+			continue
+		}
+		c.setTdivNearest(t)
+		at := c.snap().st.TdivSet()
+		accept := func(f *engine.Frame, decimated bool) bool { return f.TdivS == 0 || math.Abs(f.TdivS-at) <= 1e-3*at }
+		// a screen of slow frames takes its own time to capture
+		l := c.detectWith(true, true, accept, auto, decimatedWait+time.Duration(20*at*float64(time.Second)))
+		if l.found && decimatedStands(l.res) {
+			if !wanted() {
+				c.setTdivNearest(prev)
+				return l.res, l.sampleS, true, 0
+			}
+			return l.res, l.sampleS, true, at
+		}
+	}
+	c.setTdivNearest(prev)
+	return decode.Result{}, 0, false, 0
 }
 
 // findAtFullRate is findBus's search at the slowest full-rate timebase t
@@ -1096,6 +1144,14 @@ func busName(proto, baud, chA, chB int, cpol, cpha bool) string {
 		return fmt.Sprintf("SPI mode %d on C%d/C%d", b2ic(cpol)<<1|b2ic(cpha), chA+1, chB+1)
 	case framecalc.ProtoSENT:
 		return fmt.Sprintf("SENT on C%d", chA+1)
+	case framecalc.ProtoLIN, framecalc.ProtoModbus:
+		return fmt.Sprintf("%s %d on C%d", protoName(proto), baud, chA+1)
+	}
+	if framecalc.TwoLine(proto) {
+		return fmt.Sprintf("%s on C%d/C%d", protoName(proto), chA+1, chB+1)
+	}
+	if proto > framecalc.ProtoFlexRay {
+		return fmt.Sprintf("%s on C%d", protoName(proto), chA+1)
 	}
 	if rateProto(proto) {
 		return fmt.Sprintf("%s %s on C%d", protoName(proto), si(float64(baud), "b/s"), chA+1)
@@ -1316,7 +1372,7 @@ func eyeConfigOf(s *sv, a *anaState) (ch int, bit float64, why string) {
 	}
 	proto, baud, chA, chB := s.decProto, s.decBaud, s.decChA, s.decChB
 	switch {
-	case proto == framecalc.ProtoUART || rateProto(proto):
+	case proto == framecalc.ProtoUART || rateProto(proto) || baudProto(proto) || proto == framecalc.ProtoDMX || proto == framecalc.ProtoMIDI:
 		ch = chA
 		if baud > 0 {
 			bit = 1 / float64(baud)

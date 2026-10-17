@@ -277,6 +277,11 @@ func sofPattern(proto int) (bytes []int, pattern []engine.PatternElem, name stri
 		return nil, []engine.PatternElem{{Kind: 2, Value: engine.MILCommand, Mask: engine.MILCommand}}, "1553 command word", true
 	case framecalc.ProtoSPI, framecalc.ProtoManchester, framecalc.ProtoSENT, framecalc.ProtoCAN, framecalc.ProtoUSB, framecalc.ProtoFlexRay:
 		return nil, []engine.PatternElem{{Kind: 1}, any}, protoName(proto) + " frame start", true
+	case framecalc.ProtoMIDI: // a status byte opens a message: the UART receiver's unit match
+		return nil, []engine.PatternElem{{Kind: 2, Value: 0x80, Mask: 0x80}}, "MIDI status byte", true
+	}
+	if proto > framecalc.ProtoFlexRay && proto < framecalc.NumProtos { // a break, a reset, a leader: the frame start
+		return nil, []engine.PatternElem{{Kind: 1}, any}, protoName(proto) + " frame start", true
 	}
 	return nil, nil, "", false
 }

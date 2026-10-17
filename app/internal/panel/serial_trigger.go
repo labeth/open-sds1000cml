@@ -89,6 +89,18 @@ func (c *Controller) serialBus(p engine.SerialParams) engine.SerialParams {
 	p.CPOL, p.CPHA, p.MSB, p.IEEE = c.decCPOL, c.decCPHA, !c.decLSB || c.decProto != framecalc.ProtoSPI, true
 	p.HaveThr, p.TickNs, p.Nibbles, p.DataBaud = false, 0, 0, 0
 	p.Fine, p.SPIDelayNs = c.decFine, 0
+	p.Inverted, p.Overdrive = false, false
+	switch c.decProto {
+	case framecalc.ProtoModbus: // the framing the frames' CRCs showed, RTU's even parity before
+		p.Parity = c.decParity
+		if p.Parity == "" {
+			p.Parity = "even"
+		}
+	case framecalc.ProtoIRNEC, framecalc.ProtoIRSIRC, framecalc.ProtoIRRC5, framecalc.ProtoIRRC6, framecalc.ProtoDALI:
+		p.Inverted = c.decInv // marks at the high level, as detected
+	case framecalc.ProtoOneWire:
+		p.Overdrive = c.decBaud >= 100000
+	}
 	if c.decProto == framecalc.ProtoSPI {
 		p.SPIDelayNs = spiDelayOf(c.decDelayAuto, c.decDelayNs, c.spiEye)
 	}
@@ -96,11 +108,11 @@ func (c *Controller) serialBus(p engine.SerialParams) engine.SerialParams {
 }
 
 // serialProto reports a decoder the serial trigger matches: every one, from
-// UART to FlexRay (the packet and line FPGA images match the buses the
-// general image does not).
+// UART to Wiegand (the packet, line and qualifier FPGA images match the
+// buses the general image does not).
 // TRLC-LINKS: REQ-SDS-013
 func serialProto(proto int) bool {
-	return proto >= framecalc.ProtoUART && proto <= framecalc.ProtoFlexRay
+	return proto >= framecalc.ProtoUART && proto < framecalc.NumProtos
 }
 
 // syncSerialBus re-sends the BUS settings to an armed serial trigger, or

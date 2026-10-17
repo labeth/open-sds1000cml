@@ -441,8 +441,10 @@ func pickUnitOf(proto string) int {
 	switch proto {
 	case "mil1553":
 		return 2
-	case "arinc429":
+	case "arinc429", "spdif":
 		return 3
+	case "mdio", "wiegand":
+		return 2
 	}
 	return 1
 }

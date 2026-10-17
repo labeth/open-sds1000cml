@@ -183,7 +183,9 @@ func decodeColor(kind string) uint16 {
 
 // protoNames are the strip's protocol labels (1, Auto, is a detection the
 // panel resolves to a protocol: never drawn).
-var protoNames = []string{"", "", "UART", "I2C", "SPI", "MANCH", "SENT", "CAN", "1553", "ARINC", "USB", "FLEXR"}
+var protoNames = []string{"", "", "UART", "I2C", "SPI", "MANCH", "SENT", "CAN", "1553", "ARINC", "USB", "FLEXR",
+	"LIN", "DMX", "MIDI", "MODBUS", "1WIRE", "WS281X", "DHT", "CEC", "J1850", "NEC", "SIRC", "RC5", "RC6", "DALI",
+	"USBPD", "SPDIF", "PS2", "SWD", "MDIO", "WIEG"}
 
 // drawDecode runs the protocol decoder on the frame and draws the decoded byte
 // spans in a strip under the plot (decodeStrip: the plot ends above it, as
@@ -416,5 +418,5 @@ func decodeFrame(f *engine.Frame, hud HUD) decode.Result {
 // so the strip shares the packet list's decode of the record and its bytes.
 // TRLC-LINKS: REQ-SDS-018
 func decodeParams(hud HUD) framecalc.DecodeParams {
-	return framecalc.Params(hud.DecProto, hud.DecBaud, hud.DecChA, hud.DecChB, hud.DecCPOL, hud.DecCPHA, hud.DecLSB, hud.DecFormat, hud.DecDelayNs)
+	return framecalc.Params(hud.DecProto, hud.DecBaud, hud.DecChA, hud.DecChB, hud.DecCPOL, hud.DecCPHA, hud.DecLSB, hud.DecFormat, hud.DecDelayNs, hud.DecParity)
 }

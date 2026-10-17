@@ -358,6 +358,10 @@ func (e *Engine) serialPlanParams(p SerialParams) (SerialParams, string) {
 		p.Bytes = joinBytes(p.Bytes, 0x7ffff)
 	case p.Proto == serARINC && len(p.Bytes) > 3 && len(p.Bytes)%3 == 0:
 		p.Bytes = joinGroups(p.Bytes, 3, 0x7ffff)
+	case (p.Proto == serMDIO || p.Proto == serWiegand) && len(p.Bytes) >= 2 && len(p.Bytes)%2 == 0:
+		p.Bytes = joinGroups(p.Bytes, 2, 0xffff) // MDIO's header and data, Wiegand's fields: 16 bits each
+	case p.Proto == serSPDIF && len(p.Bytes) >= 3 && len(p.Bytes)%3 == 0:
+		p.Bytes = joinGroups(p.Bytes, 3, 0xffffff) // an S/PDIF sample: 24 bits
 	case p.Proto == serMIL1553 && len(p.Pattern) >= 2:
 		p.Pattern = groupPattern(p.Pattern, 2, 0xffff)
 	case p.Proto == serARINC && len(p.Pattern) >= 3:

@@ -1209,7 +1209,14 @@ func cmpRows() []*row {
 var protoOpts = []opt{{framecalc.ProtoOff, "Off"}, {framecalc.ProtoUART, "UART"},
 	{framecalc.ProtoI2C, "I2C"}, {framecalc.ProtoSPI, "SPI"}, {framecalc.ProtoManchester, "Manch"},
 	{framecalc.ProtoSENT, "SENT"}, {framecalc.ProtoCAN, "CAN"}, {framecalc.ProtoMIL1553, "1553"},
-	{framecalc.ProtoARINC429, "ARINC"}, {framecalc.ProtoUSB, "USB LS"}, {framecalc.ProtoFlexRay, "FlexRay"},
+	{framecalc.ProtoARINC429, "ARINC"}, {framecalc.ProtoUSB, "USB"}, {framecalc.ProtoFlexRay, "FlexRay"},
+	{framecalc.ProtoLIN, "LIN"}, {framecalc.ProtoDMX, "DMX512"}, {framecalc.ProtoMIDI, "MIDI"},
+	{framecalc.ProtoModbus, "Modbus"}, {framecalc.ProtoOneWire, "1-Wire"}, {framecalc.ProtoWS281x, "WS281x"},
+	{framecalc.ProtoDHT, "DHT"}, {framecalc.ProtoCEC, "CEC"}, {framecalc.ProtoJ1850, "J1850"},
+	{framecalc.ProtoIRNEC, "IR NEC"}, {framecalc.ProtoIRSIRC, "IR Sony"}, {framecalc.ProtoIRRC5, "IR RC-5"},
+	{framecalc.ProtoIRRC6, "IR RC-6"}, {framecalc.ProtoDALI, "DALI"}, {framecalc.ProtoUSBPD, "USB PD"},
+	{framecalc.ProtoSPDIF, "S/PDIF"}, {framecalc.ProtoPS2, "PS/2"}, {framecalc.ProtoSWD, "SWD"},
+	{framecalc.ProtoMDIO, "MDIO"}, {framecalc.ProtoWiegand, "Wiegand"},
 	{framecalc.ProtoAuto, "Auto"}}
 
 // protoName names a protocol number.
@@ -1258,8 +1265,20 @@ func rateProto(p int) bool {
 // lineProto reports a single-line protocol (one channel: the Source row).
 // TRLC-LINKS: REQ-SDS-214
 func lineProto(p int) bool {
-	return p == framecalc.ProtoUART || p == framecalc.ProtoSENT || rateProto(p)
+	return p != framecalc.ProtoOff && p != framecalc.ProtoAuto && !framecalc.TwoLine(p)
 }
+
+// baudProto reports a protocol whose rate is a UART's (the Baud row): UART,
+// LIN and Modbus RTU.
+// TRLC-LINKS: REQ-SDS-214
+func baudProto(p int) bool {
+	return p == framecalc.ProtoUART || p == framecalc.ProtoLIN || p == framecalc.ProtoModbus
+}
+
+// clockedProto reports a protocol on a clock and a data line (the CLK and
+// DATA rows): SPI, PS/2, SWD, MDIO and Wiegand (D0 and D1).
+// TRLC-LINKS: REQ-SDS-214
+func clockedProto(p int) bool { return framecalc.TwoLine(p) && p != framecalc.ProtoI2C }
 
 // defaultRate is a protocol's usual bit rate, seeded when it is chosen.
 // TRLC-LINKS: REQ-SDS-214
@@ -1276,8 +1295,21 @@ func defaultRate(p int) int {
 	case framecalc.ProtoFlexRay:
 		return 10000000
 	}
+	if r, ok := protoRates[p]; ok {
+		return r
+	}
 	return 115200
 }
+
+// protoRates are the usual rates of the protocols beyond the first ten: the
+// bit rate a hardware matcher needs (the clocked ones' clock, the pulse
+// codes' bit), seeded when one is chosen and filled in by Auto.
+var protoRates = map[int]int{framecalc.ProtoLIN: 19200, framecalc.ProtoDMX: 250000, framecalc.ProtoMIDI: 31250,
+	framecalc.ProtoModbus: 19200, framecalc.ProtoOneWire: 16300, framecalc.ProtoWS281x: 800000, framecalc.ProtoDHT: 10000,
+	framecalc.ProtoCEC: 417, framecalc.ProtoJ1850: 10400, framecalc.ProtoIRNEC: 889, framecalc.ProtoIRSIRC: 1667,
+	framecalc.ProtoIRRC5: 562, framecalc.ProtoIRRC6: 1126, framecalc.ProtoDALI: 1200, framecalc.ProtoUSBPD: 300000,
+	framecalc.ProtoSPDIF: 3072000, framecalc.ProtoPS2: 12500, framecalc.ProtoSWD: 1000000, framecalc.ProtoMDIO: 2500000,
+	framecalc.ProtoWiegand: 1000}
 
 // TRLC-LINKS: REQ-SDS-214
 func busTabRows() []*row {
@@ -1374,14 +1406,14 @@ func busTabRows() []*row {
 			o = append(o, opt{b, baudName(b)})
 			std = std || b == s.decBaud
 		}
-		if !std && s.decBaud > 0 && s.decProto == framecalc.ProtoUART {
+		if !std && s.decBaud > 0 && baudProto(s.decProto) {
 			o = append(o, opt{s.decBaud, baudName(s.decBaud)})
 		}
 		return o
 	}
 	baud := &row{id: "bus.baud", label: "Baud", kind: wsview.Enum, hdr: "UART AND LINE BUSES",
-		help: "UART bit rate.", knob: "F1..F5 hold the common rates; Position < > reaches all; typed entry takes any rate.",
-		rel: func(s *sv) bool { return s.decProto == framecalc.ProtoUART }, why: "Protocol = UART",
+		help: "UART, LIN or Modbus RTU bit rate.", knob: "F1..F5 hold the common rates; Position < > reaches all; typed entry takes any rate.",
+		rel: func(s *sv) bool { return baudProto(s.decProto) }, why: "Protocol = UART, LIN or Modbus",
 		opts:  baudOpts,
 		quick: []int{9600, 19200, 38400, 57600, 115200},
 		get:   func(s *sv) int { return s.decBaud },
@@ -1399,7 +1431,7 @@ func busTabRows() []*row {
 	rate := numRow("bus.bit_rate", "Bit rate", "b/s", func(s *sv) float64 { return float64(s.decBaud) },
 		constLim(1000, 20e6), constStep(0), func(c *Controller, v float64) error { return c.setDecBaud(int(math.Round(v))) },
 		func(v float64) string { return si(v, "b/s") })
-	rate.help = "Bit rate of Manchester, CAN, MIL-1553, ARINC 429, USB LS or FlexRay."
+	rate.help = "Bit rate of Manchester, CAN, MIL-1553, ARINC 429, USB (1.5 or 12 Mb/s) or FlexRay."
 	rate.rel, rate.why = func(s *sv) bool { return rateProto(s.decProto) }, "a bit-rate protocol"
 	rate.ladder = func(*sv) []float64 { return bitRates }
 	rate.stepN = func(c *Controller, n int) error {
@@ -1427,13 +1459,16 @@ func busTabRows() []*row {
 		get: func(s *sv) int { return s.decChB },
 		set: func(c *Controller, v int) error { return c.setDecRole(false, v) },
 	}
-	clk := &row{id: "bus.clk", label: "CLK", kind: wsview.Enum, hdr: "SPI", help: "SPI clock channel.",
-		rel: isSPI, why: "Protocol = SPI", opts: staticOpts(chans),
+	isClocked := func(s *sv) bool { return clockedProto(s.decProto) }
+	clk := &row{id: "bus.clk", label: "CLK", kind: wsview.Enum, hdr: "SPI AND CLOCKED BUSES",
+		help: "Clock channel: SPI CLK, PS/2 CLK, SWD SWCLK, MDIO MDC; Wiegand D0.",
+		rel:  isClocked, why: "Protocol = SPI, PS/2, SWD, MDIO or Wiegand", opts: staticOpts(chans),
 		get: func(s *sv) int { return s.decChA },
 		set: func(c *Controller, v int) error { return c.setDecRole(true, v) },
 	}
-	data := &row{id: "bus.data", label: "DATA", kind: wsview.Enum, help: "SPI data channel.",
-		rel: isSPI, why: "Protocol = SPI", opts: staticOpts(chans),
+	data := &row{id: "bus.data", label: "DATA", kind: wsview.Enum,
+		help: "Data channel: SPI DATA, PS/2 DATA, SWD SWDIO, MDIO MDIO; Wiegand D1.",
+		rel:  isClocked, why: "Protocol = SPI, PS/2, SWD, MDIO or Wiegand", opts: staticOpts(chans),
 		get: func(s *sv) int { return s.decChB },
 		set: func(c *Controller, v int) error { return c.setDecRole(false, v) },
 	}
@@ -1501,7 +1536,24 @@ func busTabRows() []*row {
 	addr.rel, addr.why = func(s *sv) bool { return serialBus(s) && s.decProto == framecalc.ProtoI2C }, "Protocol = I2C"
 	addr.presets = func(*sv) []preset { return []preset{{t: "Any", v: -1}} }
 	addr.def = func(c *Controller) error { return c.setI2CAddr(-1) }
-	rows := []*row{proto, format, stream, streamTrig, streamVal, streamScreen, baud, rate, line, scl, sda, clk, data, spiMode, bitOrder}
+	parity := &row{id: "bus.parity", label: "Parity", kind: wsview.Enum,
+		help: "Modbus RTU character framing: even parity (the standard), odd, or none with two stop bits; Auto reads it off the frames' CRCs.",
+		rel:  func(s *sv) bool { return s.decProto == framecalc.ProtoModbus }, why: "Protocol = Modbus",
+		opts: staticOpts([]opt{{0, "Auto"}, {1, "Even"}, {2, "Odd"}, {3, "None"}}),
+		get: func(s *sv) int {
+			return map[string]int{"even": 1, "odd": 2, "none": 3}[s.decParity]
+		},
+		set: func(c *Controller, v int) error {
+			c.mu.Lock()
+			c.decParity = []string{"", "even", "odd", "none"}[clampInt(v, 0, 3)]
+			c.auto = autoWatch{} // set by hand
+			c.mu.Unlock()
+			c.syncSerialBus()
+			return nil
+		},
+	}
+	parity.def = func(c *Controller) error { return parity.set(c, 0) }
+	rows := []*row{proto, format, stream, streamTrig, streamVal, streamScreen, baud, rate, parity, line, scl, sda, clk, data, spiMode, bitOrder}
 	rows = append(rows, spiTimingRows(isSPI)...)
 	return append(rows, match, arm, addr, receiverRow())
 }

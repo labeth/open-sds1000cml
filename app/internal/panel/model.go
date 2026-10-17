@@ -345,6 +345,8 @@ type sv struct {
 
 	decProto, decBaud, decChA, decChB int
 	decCPOL, decCPHA, decLSB          bool
+	decParity                         string
+	decInv                            bool
 	decDelayNs                        float64 // SPI's data delay set by hand (ns)
 	decDelayAuto, decFine             bool
 	spiEye                            decode.SPIEye
