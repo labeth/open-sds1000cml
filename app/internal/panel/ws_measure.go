@@ -221,7 +221,19 @@ func (c *Controller) measFrame(a *anaState, s *sv, f *engine.Frame) {
 // moves the active cursor.
 // TRLC-LINKS: REQ-SDS-212, REQ-SDS-217
 func (c *Controller) setCursorMode(v int) {
+	s := c.snap()
 	c.mu.Lock()
+	// Turned on with both cursors off the screen (placed at another timebase
+	// or V/div), they come home onto it; on, they keep their place on the signal.
+	if !c.curOn && v != 0 {
+		pos := s.curX
+		if v == 2 {
+			pos = s.curY
+		}
+		if offScreen(pos[0]) && offScreen(pos[1]) {
+			c.curPend = &cursorHome
+		}
+	}
 	c.curOn = v != 0
 	if v != 0 {
 		c.curType = v - 1
@@ -230,6 +242,10 @@ func (c *Controller) setCursorMode(v int) {
 	c.mu.Unlock()
 	c.pushLEDs()
 }
+
+// offScreen reports a cursor's screen fraction outside the screen.
+// TRLC-LINKS: REQ-SDS-217
+func offScreen(x float64) bool { return !(x >= 0 && x <= 1) }
 
 // cursorHome is the cursors' power-on and factory place: screen fractions
 // across and down, A at 0.35, B at 0.65.
