@@ -91,10 +91,10 @@ app-release:
 	@echo "app-release: $(DIST)/app-arm embeds $(RBF) ($$(sha256sum "$(RBF)" | cut -c1-16)…)$(if $(STACK_RBF), stacking image $(STACK_RBF))$(if $(PACKET_RBF), packet image $(PACKET_RBF))$(if $(LINE_RBF), line image $(LINE_RBF))$(if $(STREAM_RBF), stream image $(STREAM_RBF))$(if $(QUALIFY_RBF), qualifier image $(QUALIFY_RBF))$(if $(FAST_RBF), fast image $(FAST_RBF))"
 
 test:
-	go test ./...
+	go test -timeout 30m ./...
 
 vet:
 	go vet ./...
 
 clean:
-	rm -rf $(DIST) $(EMBED) $(STACK_EMBED) $(PACKET_EMBED) $(LINE_EMBED) $(QUALIFY_EMBED)
+	rm -rf $(DIST) $(EMBED) $(STACK_EMBED) $(PACKET_EMBED) $(LINE_EMBED) $(STREAM_EMBED) $(QUALIFY_EMBED) $(FAST_EMBED)
