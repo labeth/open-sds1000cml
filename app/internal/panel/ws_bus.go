@@ -981,6 +981,59 @@ func (c *Controller) noBusNote(none string) string {
 	return none
 }
 
+// smallSwingCodes is the least swing (codes) the detection slices
+// (decode's minimum amplitude); smallSwingSeen the least it calls a signal.
+const (
+	smallSwingCodes = 20
+	smallSwingSeen  = 4
+)
+
+// smallSwing names a channel whose signal swings too little at its V/div for
+// the detection to slice it (a 3.3 V bus through a 10x probe set as 1x, as
+// Default setup leaves it): "" when none does. The search found no bus, but
+// "check the connection" would send the owner the wrong way.
+// TRLC-LINKS: REQ-SDS-214
+func (c *Controller) smallSwing() string {
+	if c.frameFn == nil {
+		return ""
+	}
+	note := ""
+	c.frameFn(func(f *engine.Frame) {
+		if f == nil || f.Valid <= 0 {
+			return
+		}
+		for ch, codes := range [2][]uint8{f.C1, f.C2} {
+			n := min(f.Valid, len(codes))
+			if n == 0 {
+				continue
+			}
+			var h [256]int
+			for _, v := range codes[:n] {
+				h[v]++
+			}
+			lo, hi := codePercentile(&h, n, 0.02), codePercentile(&h, n, 0.98)
+			if sw := hi - lo; sw >= smallSwingSeen && sw < smallSwingCodes {
+				note = fmt.Sprintf("no bus found: CH%d swings only %.1f div - AUTO (or V/DIV) brings it up", ch+1, float64(sw)/25)
+				return
+			}
+		}
+	})
+	return note
+}
+
+// codePercentile is the code below which a share q of a histogram's n counts lie.
+// TRLC-LINKS: REQ-SDS-214
+func codePercentile(h *[256]int, n int, q float64) int {
+	want, acc := int(q*float64(n)), 0
+	for v := 0; v < 256; v++ {
+		acc += h[v]
+		if acc > want {
+			return v
+		}
+	}
+	return 255
+}
+
 // offPanel runs fn off the panel goroutine, or inline in tests: a bus search
 // reads sampled frames, seconds at slow timebases.
 // TRLC-LINKS: REQ-SDS-214
@@ -1116,6 +1169,8 @@ func (c *Controller) runDetect() {
 		if frame != 0 {
 			tdivNote += "; " + c.frameBus(decode.FeatureSamples(res)*sampleS, frame == busFrameAuto)
 		}
+	} else if small := c.smallSwing(); small != "" {
+		none = c.noBusNote(small)
 	} else if prev == framecalc.ProtoOff {
 		none = c.noBusNote("no bus found on CH1 or CH2 - decode stays off")
 	} else { // the settings in use stay: a bus found again decodes with them
