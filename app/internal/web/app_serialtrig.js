@@ -97,7 +97,7 @@ function stParams(base = stScope) {
     chB: P === 2 ? rc(dcfg.sda) : P === 3 || P >= 27 ? rc(dcfg.data) : 0,
     baud: dcfg.baud > 0 ? dcfg.baud : 0,
     spiClockHz: P === 3 && base ? Math.max(0, base.spiClockHz || 0) : 0, // the scope's Clock rate row (0: Auto)
-    bits: dcfg.bits || 8,
+    bits: P === 21 || P === 30 ? dcfg.frameBits || 0 : dcfg.bits || 8,
     parity: P === 14 ? (dcfg.modbusParity || "even") : dcfg.parity || "none",
     inverted: !!dcfg.inverted,
     cpol: !!dcfg.cpol, cpha: !!dcfg.cpha, msb: P !== 3 || !!dcfg.msb, // the bit order is SPI's; the others MSB first, as the scope decodes them

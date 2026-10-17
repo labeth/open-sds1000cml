@@ -39,6 +39,9 @@ type Result struct {
 	// Inverted reports a line read with its marks at the high level (the
 	// IR decoders find the idle level themselves).
 	Inverted bool
+	// FrameBits is the bits of the first whole frame of a protocol whose
+	// frames come in several lengths (SIRC 12, 15 or 20; Wiegand 26, 34...).
+	FrameBits int
 	// Cover is the share of the clock's cycles the decode's frames, idle and
 	// resets explain (PS/2, SWD, MDIO): data an SPI bus clocks reads as a
 	// few frames among many cycles none explains.

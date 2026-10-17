@@ -488,8 +488,12 @@ func DecodeWiegand(d0, d1 []uint8, colTimeS float64, cfg ClockedCfg) Result {
 	var units []int
 	good := false
 	var interval float64
+	frameBits := 0
 	emit := func(fr []pulse) {
 		nb := len(fr)
+		if frameBits == 0 || (frameBits != 26 && frameBits != 34 && (nb == 26 || nb == 34)) {
+			frameBits = nb
+		}
 		spans = append(spans, pspan(fr[0].x0, fr[0].x0, n, "", "sof", 0))
 		lbl := fmt.Sprintf("%db", nb)
 		spans = append(spans, pspan(fr[0].x0, fr[nb-1].x1, n, lbl, "rw", nb))
@@ -553,7 +557,7 @@ func DecodeWiegand(d0, d1 []uint8, colTimeS float64, cfg ClockedCfg) Result {
 		thr = B.threshold
 	}
 	res := Result{OK: good, Proto: "wiegand", Spans: spans, Text: strings.Join(toks, " "), Bytes: units,
-		Thr: thr, SPB: interval}
+		Thr: thr, SPB: interval, FrameBits: frameBits}
 	if interval > 0 {
 		res.Baud = int(1/(interval*colTimeS) + 0.5)
 	}

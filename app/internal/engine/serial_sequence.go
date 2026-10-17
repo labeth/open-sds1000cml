@@ -89,7 +89,9 @@ func unitMask(p SerialParams) int {
 	case serSPDIF:
 		return 0xffffff
 	case serSWD:
-		return 0xffffffff // a data word (the request and acknowledge fit too)
+		// a data word's low 31 bits (a pattern unit is an int, 32 bits on the
+		// scope); the request and acknowledge fit too
+		return 0x7fffffff
 	case serManchester:
 		bits := p.Bits
 		if bits <= 0 || bits > 16 {

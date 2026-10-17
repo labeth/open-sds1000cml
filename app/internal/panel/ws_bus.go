@@ -386,7 +386,7 @@ func (c *Controller) fillIn(res decode.Result) bool {
 	if p == framecalc.ProtoSPI {
 		c.decCPOL, c.decCPHA, c.decLSB = res.Roles.CPOL, res.Roles.CPHA, !res.Roles.MSB
 	}
-	c.decParity, c.decInv = res.Parity, res.Inverted
+	c.decParity, c.decInv, c.decBits = res.Parity, res.Inverted, res.FrameBits
 	if res.Baud <= 0 && !rateProto(p) && p != framecalc.ProtoUART {
 		c.decBaud = defaultRate(p) // the hardware matcher's rate
 	}

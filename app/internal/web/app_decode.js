@@ -360,6 +360,7 @@ function decScopeSettings(d) {
   else if (proto !== "off") s.line = a;
   if (proto !== "off" && proto !== "i2c" && proto !== "spi" && proto !== "sent") s.baud = d.DecBaud > 0 ? d.DecBaud : 0;
   if (proto === "modbus") s.modbusParity = d.DecParity || "";
+  if (proto === "irsirc" || proto === "wiegand") s.frameBits = +d.DecBits || 0;
   return s;
 }
 // End of decScopeSettings.

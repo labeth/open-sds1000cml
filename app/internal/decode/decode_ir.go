@@ -73,7 +73,7 @@ func irDecode(proto string, codes []uint8, colTimeS float64, cfg IRCfg,
 		return Result{Proto: proto, Error: "no " + irNames[proto] + " frame"}
 	}
 	res := Result{OK: out.good, Proto: proto, Spans: out.spans, Text: strings.Join(out.toks, " "), Bytes: out.units,
-		Thr: S.threshold, Inverted: high, SPB: out.unitUs * 1e-6 / colTimeS}
+		Thr: S.threshold, Inverted: high, SPB: out.unitUs * 1e-6 / colTimeS, FrameBits: out.frameBits}
 	if out.unitUs > 0 {
 		res.Baud = int(math.Round(1e6 / out.unitUs))
 	}
@@ -88,12 +88,13 @@ var irNames = map[string]string{"irnec": "NEC", "irsirc": "SIRC", "irrc5": "RC-5
 
 // irOut collects a decode's spans, transcript and units.
 type irOut struct {
-	spans  []Span
-	toks   []string
-	units  []int
-	good   bool
-	format string
-	unitUs float64 // the protocol's bit time
+	spans     []Span
+	toks      []string
+	units     []int
+	good      bool
+	format    string
+	unitUs    float64 // the protocol's bit time
+	frameBits int     // the first whole frame's bits (SIRC)
 }
 
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-234
@@ -239,6 +240,9 @@ func DecodeIRSIRC(codes []uint8, colTimeS float64, cfg IRCfg) Result {
 					v |= bits[from+k] << k
 				}
 				o.add(m[i+1+from].x0, m[i+from+cnt].x1, n, pfx+hex2(v), "data", v, true)
+			}
+			if o.frameBits == 0 {
+				o.frameBits = nb
 			}
 			field(0, 7, "C")
 			switch nb {
