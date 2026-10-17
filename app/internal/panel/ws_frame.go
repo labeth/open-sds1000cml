@@ -182,6 +182,13 @@ func (c *Controller) OnFrame(f *engine.Frame) {
 	case wsview.Compare:
 		c.refDiffFrame(a, s, f)
 	}
+	// An armed SPI trigger reads its data at the delay measured on the eye:
+	// on Auto with none measured yet (after a restart, or a new bus) it read
+	// a fast bus's data on its edges, matched nothing and never triggered
+	// while BUS was not shown.
+	if s.ui.ws != wsview.Bus && s.st.SerialMode != 0 && s.decDelayAuto {
+		c.noteSPIEye(s, f)
+	}
 	// whether the trigger source repeats, for COMPARE and the web's COMPARE
 	// alike (400 columns a frame: cheap enough to keep up everywhere)
 	c.stabFrame(a, s, f)

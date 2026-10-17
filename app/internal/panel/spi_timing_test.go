@@ -13,6 +13,7 @@ import (
 	"open-sds/app/internal/decode"
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/panel/framecalc"
+	"open-sds/app/internal/panel/wsview"
 )
 
 // SPI's data delay: Auto takes the eye's middle measured on the record, a
@@ -233,5 +234,34 @@ func TestSPIEyeChoiceFollowsBursts(t *testing.T) {
 	feed(l1, l2, 1)
 	if v := c.spiEyeVotes; v.Late >= before.Late {
 		t.Fatalf("votes kept across the clock rate: %+v then %+v", before, v)
+	}
+}
+
+// An armed SPI trigger with its data delay on Auto measures the eye in
+// every workspace: after a restart in COMPARE nothing measured it, the
+// trigger read the 104 MHz flash's data on its edges and never fired until
+// BUS was shown.
+// TRLC-LINKS: REQ-SDS-229, REQ-SDS-230
+func TestSPIEyeMeasuredOutsideBus(t *testing.T) {
+	_, frames := flashRecords(t)
+	for _, armed := range []bool{true, false} {
+		c, eng, _ := newC(t)
+		c.mu.Lock()
+		c.decProto, c.decChA, c.decChB, c.decDelayAuto = framecalc.ProtoSPI, 1, 0, true
+		c.ui.ws = wsview.Compare
+		c.mu.Unlock()
+		if armed {
+			eng.SetSerialMode(engine.SerialTrigger)
+		}
+		for _, f := range frames {
+			c.OnFrame(f)
+		}
+		d := c.snap().spiDelayNs()
+		if armed && (d < 6.5 || d > 8) {
+			t.Fatalf("armed in COMPARE: delay %+.2f ns, eye %+v", d, c.snap().spiEye)
+		}
+		if !armed && c.snap().spiEye.PeriodS > 0 {
+			t.Fatalf("not armed: the eye was measured outside BUS (%+v)", c.snap().spiEye)
+		}
 	}
 }
