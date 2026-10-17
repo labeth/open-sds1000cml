@@ -317,6 +317,10 @@ func DecodeUSBLS(dp []uint8, colTimeS float64, cfg USBLSCfg) Result {
 			}
 		}
 		crcBad := usbIsData(pid4) && nBytes >= 2 && usbCRC16(payload[:nBytes-2]) != payload[nBytes-2]|payload[nBytes-1]<<8
+		if usbIsToken(pid4) && nBytes == 2 { // address and endpoint (SOF: frame number) and their CRC5
+			w := payload[0] | payload[1]<<8
+			crcBad = usbCRC5(w&0x7ff) != w>>11
+		}
 		for b, val := range payload {
 			base := 16 + b*8
 			text, kind := hex2(val), "data"
@@ -342,6 +346,28 @@ func DecodeUSBLS(dp []uint8, colTimeS float64, cfg USBLSCfg) Result {
 	}
 	return Result{OK: true, Proto: "usbls", Spans: spans, Text: strings.Join(toks, " "),
 		Bytes: bytesOut, Baud: baud, SPB: T, Thr: S.threshold}
+}
+
+// usbIsToken reports a token PID (OUT, IN, SOF, SETUP, PING), whose 11
+// bits after the PID end in a CRC5.
+// TRLC-LINKS: REQ-SDS-018
+func usbIsToken(pid4 int) bool { return pid4&3 == 1 || pid4 == 0x4 }
+
+// usbCRC5 is the USB token CRC: x^5+x^2+1 over the 11 bits in wire order
+// (least significant first) from all ones, inverted, its highest term sent
+// first: as the field reads least significant bit first, bit-reversed.
+// TRLC-LINKS: REQ-SDS-018
+func usbCRC5(v int) int {
+	c := 0x1F
+	for i := 0; i < 11; i++ {
+		c <<= 1
+		if v>>i&1 != c>>5 {
+			c ^= 0x25
+		}
+		c &= 0x1F
+	}
+	c ^= 0x1F
+	return c>>4&1 | c>>2&2 | c&4 | c<<2&8 | c<<4&16
 }
 
 // usbIsData reports a DATA0/DATA1/DATA2/MDATA PID, whose payload ends in a CRC16.

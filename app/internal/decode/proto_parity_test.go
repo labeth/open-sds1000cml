@@ -174,6 +174,18 @@ func protoParityVectors(add parityAdd, add2 parityAdd2, corrupt func([]uint8) []
 		bases = append(bases, base{"spdif", 4e-9, cfg{}, sp, func(c []uint8) Result { return DecodeSPDIF(c, 4e-9, SPDIFCfg{}) }})
 	}
 
+	// ---- USB full speed (tokens' CRC5, data CRC16)
+	{
+		dp, _ := oracleUSBFSWave(120e6, [][]int{
+			usblsPacketBits(0xD, usblsTokenBits(0x15, 0xE)),
+			usblsPacketBits(0x3, usblsDataBits([]int{0x80, 0x06, 0x00, 0x01}, 0)),
+			usblsPacketBits(0x9, usblsTokenBits(0x01, 0x1)[:15]),
+			usblsPacketBits(0xB, usblsDataBits([]int{0xFF, 0x00}, 0x1)),
+		}, 12)
+		fs := bitsToCodes(dp)
+		bases = append(bases, base{"usbls", 1 / 120e6, cfg{}, fs, func(c []uint8) Result { return DecodeUSBLS(c, 1/120e6, USBLSCfg{}) }})
+	}
+
 	// ---- clocked two-line: clean, and each line corrupted in turn
 	{
 		type base2 struct {

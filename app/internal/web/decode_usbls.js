@@ -186,7 +186,11 @@ function decodeUSBLS(dp, colTimeS, cfg) {
       for (let i = 0; i < 8; i++) val |= bitsArr[base + i] << i;
       payload.push(val);
     }
-    const crcBad = (pid4 & 3) === 3 && nBytes >= 2 && usbCRC16(payload.slice(0, nBytes - 2)) !== (payload[nBytes - 2] | payload[nBytes - 1] << 8);
+    let crcBad = (pid4 & 3) === 3 && nBytes >= 2 && usbCRC16(payload.slice(0, nBytes - 2)) !== (payload[nBytes - 2] | payload[nBytes - 1] << 8);
+    if (((pid4 & 3) === 1 || pid4 === 0x4) && nBytes === 2) { // token: 11 bits and their CRC5
+      const w = payload[0] | (payload[1] << 8);
+      crcBad = usbCRC5(w & 0x7ff) !== (w >> 11);
+    }
     for (let b = 0; b < nBytes; b++) {
       const base = 16 + b * 8, val = payload[b];
       const bad = crcBad && b >= nBytes - 2;
@@ -202,6 +206,19 @@ function decodeUSBLS(dp, colTimeS, cfg) {
   if (colTimeS > 0) baud = snapRate(Math.round(1 / (T * colTimeS)), [1.5e6, 12e6]);
   return { ok: true, error: null, proto: "usbls", spans, text: toks.join(" "), bytes,
     meta: { bitrate: baud, samplesPerBit: T, threshold: S.threshold, lowRail: S.lowRail, highRail: S.highRail } };
+}
+
+// usbCRC5 is the USB token CRC (decode_usbls.go usbCRC5).
+// TRLC-LINKS: REQ-SDS-018
+function usbCRC5(v) {
+  let c = 0x1F;
+  for (let i = 0; i < 11; i++) {
+    c <<= 1;
+    if (((v >> i) & 1) !== (c >> 5)) c ^= 0x25;
+    c &= 0x1F;
+  }
+  c ^= 0x1F;
+  return ((c >> 4) & 1) | ((c >> 2) & 2) | (c & 4) | ((c << 2) & 8) | ((c << 4) & 16);
 }
 
 // usbCRC16 is the USB data CRC: 0x8005 reflected (0xA001), init all ones,
