@@ -223,7 +223,7 @@ function busRoom(eye) {
 // TRLC-LINKS: REQ-SDS-215
 function busEyeOn() {
   const p = dcfg.proto;
-  const ch = p === "spi" ? dcfg.data : p === "i2c" ? dcfg.sda : p !== "off" ? dcfg.line : +$("ejCh").value;
+  const ch = p === "spi" || DEC_CLOCKED.includes(p) ? dcfg.data : p === "i2c" ? dcfg.sda : p !== "off" ? dcfg.line : +$("ejCh").value;
   if (ej.armed && ej.ch && ej.ch !== ch) ejStop("channel changed");
   $("ejCh").value = String(ch === 2 ? 2 : 1);
   if (!ej.armed) $("ejArm").click();
@@ -339,7 +339,9 @@ function busSummary() {
   const el = $("stSum");
   const armed = stArmed(), pat = $("stBytes").value.trim() || "any unit";
   let cls = "tsum", txt;
-  const scopeProto = ["", "UART", "I²C", "SPI", "Manchester", "SENT", "CAN", "MIL-1553", "ARINC 429", "USB LS", "FlexRay"][stScopeProto] || "";
+  const scopeProto = ["", "UART", "I²C", "SPI", "Manchester", "SENT", "CAN", "MIL-1553", "ARINC 429", "USB", "FlexRay",
+    "LIN", "DMX512", "MIDI", "Modbus RTU", "1-Wire", "WS281x", "DHT", "HDMI-CEC", "J1850 VPW", "IR NEC", "IR Sony", "IR RC-5",
+    "IR RC-6", "DALI", "USB PD", "S/PDIF", "PS/2", "SWD", "MDIO", "Wiegand"][stScopeProto] || "";
   if (!armed) txt = "Not armed — the trigger is " + ["Edge", "Pulse", "Slope", "Video"][(st && st.trig_type) || 0] + " on C" + ((st && st.trig_source) === 1 ? 2 : 1) + ".";
   else if (dcfg.proto === "off" && !stOwn && scopeProto) { cls += " is-on"; txt = "Armed on the scope: triggering on " + pat + " in its " + scopeProto + " decode (decode here to list the packets)."; }
   else if (dcfg.proto === "off") { cls += " is-warn"; txt = "Armed, but decoding is off — choose a protocol."; }

@@ -38,6 +38,14 @@ function decodeFeatureSamples(r) {
   const m = (r && r.ok && r.meta) || {};
   if (m.colsPerClock > 0) return m.colsPerClock / 2;
   if (m.tickSamples > 0) return 4 * m.tickSamples;
+  if (m.spb > 0) { // the decoders beyond the first ten (decode.FeatureSamples)
+    if (["dali", "usbpd", "spdif", "irnec", "irrc5", "irrc6", "ps2", "swd", "mdio"].includes(r.proto)) return m.spb / 2;
+    if (r.proto === "ws281x") return m.spb / 3;
+    if (r.proto === "cec") return m.spb / 4;
+    if (r.proto === "dht") return 26 * m.spb;
+    if (r.proto === "wiegand") return m.spb / 20;
+    return m.spb;
+  }
   if (!(m.samplesPerBit > 0)) return 0;
   return ["manchester", "mil1553", "arinc429"].includes(r.proto) ? m.samplesPerBit / 2 : m.samplesPerBit;
 }
@@ -47,7 +55,49 @@ function decodeFeatureSamples(r) {
 // points a bit read 0A as 02), so it is not decoded from it
 // (framecalc.MinEnvelopeFeature).
 const DECODE_MIN_ENVELOPE_FEATURE = 4;
-const DECODE_NAMES = { uart: "UART", i2c: "I2C", spi: "SPI", manchester: "Manchester", sent: "SENT", canfd: "CAN", mil1553: "MIL-1553", arinc429: "ARINC 429", usbls: "USB LS", flexray: "FlexRay" };
+const DECODE_NAMES = { uart: "UART", i2c: "I2C", spi: "SPI", manchester: "Manchester", sent: "SENT", canfd: "CAN", mil1553: "MIL-1553", arinc429: "ARINC 429", usbls: "USB", flexray: "FlexRay",
+  lin: "LIN", dmx512: "DMX512", midi: "MIDI", modbus: "Modbus RTU", onewire: "1-Wire", ws281x: "WS281x", dht: "DHT", cec: "HDMI-CEC", j1850: "J1850 VPW",
+  irnec: "IR NEC", irsirc: "IR Sony", irrc5: "IR RC-5", irrc6: "IR RC-6", dali: "DALI", usbpd: "USB PD", spdif: "S/PDIF", ps2: "PS/2", swd: "SWD", mdio: "MDIO", wiegand: "Wiegand" };
+
+// DEC_CLOCKED are the protocols on a clock (or D0) and a data (or D1) line
+// besides SPI: they take the Clock/data roles.
+const DEC_CLOCKED = ["ps2", "swd", "mdio", "wiegand"];
+
+// DEC_FIXED_TIMING are the protocols whose timing is their own, no rate to set.
+const DEC_FIXED_TIMING = ["dmx512", "midi", "onewire", "ws281x", "dht", "cec", "j1850", "irnec", "irsirc", "irrc5", "irrc6", "dali", "usbpd", "spdif"];
+
+// decodeMore decodes the protocols beyond the first ten (framecalc
+// decodeMore): the line, or the clock and data lines, with the scope's
+// settings.
+// TRLC-LINKS: REQ-SDS-207
+function decodeMore(p, colTimeS, cfg) {
+  const a = decCodes(dcfg.line);
+  const two = { threshold: cfg.threshold, thresholdB: cfg.threshold, format: cfg.fmt };
+  const opts = Object.assign({}, cfg, { format: cfg.fmt });
+  switch (p) {
+    case "lin": return decodeLIN(a, colTimeS, Object.assign(opts, { baud: dcfg.baud > 0 ? dcfg.baud : 0 }));
+    case "dmx512": return decodeDMX512(a, colTimeS, opts);
+    case "midi": return decodeMIDI(a, colTimeS, opts);
+    case "modbus": return decodeModbus(a, colTimeS, Object.assign(opts, { baud: dcfg.baud > 0 ? dcfg.baud : 0, parity: dcfg.modbusParity || "" }));
+    case "onewire": return decodeOneWire(a, colTimeS, Object.assign(opts, { overdrive: dcfg.baud >= 100000 }));
+    case "ws281x": return decodeWS281x(a, colTimeS, opts);
+    case "dht": return decodeDHT(a, colTimeS, opts);
+    case "cec": return decodeCEC(a, colTimeS, opts);
+    case "j1850": return decodeJ1850(a, colTimeS, opts);
+    case "irnec": return decodeIRNEC(a, colTimeS, opts);
+    case "irsirc": return decodeIRSIRC(a, colTimeS, opts);
+    case "irrc5": return decodeIRRC5(a, colTimeS, opts);
+    case "irrc6": return decodeIRRC6(a, colTimeS, opts);
+    case "dali": return decodeDALI(a, colTimeS, opts);
+    case "usbpd": return decodeUSBPD(a, colTimeS, opts);
+    case "spdif": return decodeSPDIF(a, colTimeS, opts);
+    case "ps2": return decodePS2(decCodes(dcfg.clk), decCodes(dcfg.data), colTimeS, two);
+    case "swd": return decodeSWD(decCodes(dcfg.clk), decCodes(dcfg.data), colTimeS, two);
+    case "mdio": return decodeMDIO(decCodes(dcfg.clk), decCodes(dcfg.data), colTimeS, two);
+    case "wiegand": return decodeWiegand(decCodes(dcfg.clk), decCodes(dcfg.data), colTimeS, two);
+  }
+  return null;
+}
 
 // decKey names the bus a decode reads: protocol, lines, polarity.
 // TRLC-LINKS: REQ-SDS-207
@@ -87,6 +137,7 @@ function computeDecode() {
     r = decodeUSBLS(decCodes(dcfg.line), colTimeS, Object.assign(cfg, { bitrate: dcfg.baud > 0 ? dcfg.baud : 0, haveThr: !dcfg.auto }));
   else if (dcfg.proto === "flexray") // single line, BSS-framed bytes
     r = decodeFlexRay(decCodes(dcfg.line), colTimeS, Object.assign(cfg, { bitrate: dcfg.baud > 0 ? dcfg.baud : 0, haveThr: !dcfg.auto }));
+  else r = decodeMore(dcfg.proto, colTimeS, cfg);
   if (r && r.ok && frame.peak_detect && frame.ordered) {
     const fs = decodeFeatureSamples(r);
     if (fs > 0 && fs < DECODE_MIN_ENVELOPE_FEATURE)
@@ -246,10 +297,13 @@ function updateDecodePanel() {
   for (const c of document.querySelectorAll(".dec-uart")) c.style.display = p === "uart" ? "flex" : "none";
   for (const c of document.querySelectorAll(".dec-i2c")) c.style.display = p === "i2c" ? "flex" : "none";
   for (const c of document.querySelectorAll(".dec-spi")) c.style.display = p === "spi" ? "flex" : "none";
+  for (const c of document.querySelectorAll(".dec-clkdata")) c.style.display = p === "spi" || DEC_CLOCKED.includes(p) ? "flex" : "none";
   for (const c of document.querySelectorAll(".dec-sent")) c.style.display = p === "sent" ? "flex" : "none";
-  const single = p !== "off" && p !== "i2c" && p !== "spi";
+  const single = p !== "off" && p !== "i2c" && p !== "spi" && !DEC_CLOCKED.includes(p);
   for (const c of document.querySelectorAll(".dec-single")) c.style.display = single ? "flex" : "none";
-  for (const c of document.querySelectorAll(".dec-rate")) c.style.display = single && p !== "sent" ? "flex" : "none";
+  // a rate the decoder takes (the protocols of fixed timings take none)
+  const rated = single && p !== "sent" && !DEC_FIXED_TIMING.includes(p);
+  for (const c of document.querySelectorAll(".dec-rate")) c.style.display = rated ? "flex" : "none";
   for (const c of document.querySelectorAll(".dec-word")) c.style.display = p === "uart" || p === "manchester" ? "flex" : "none";
   for (const c of document.querySelectorAll(".dec-polarity")) c.style.display = p === "uart" || p === "i2c" || p === "spi" || p === "sent" || p === "mil1553" ? "flex" : "none";
   updateDecodeResults();
@@ -288,7 +342,9 @@ function setDetectMsg(t, err) {
 
 // DEC_SCOPE_PROTOS names the scope's protocol numbers as this page's; 1 is
 // the scope's Auto, a detection, never a decoder.
-const DEC_SCOPE_PROTOS = ["off", null, "uart", "i2c", "spi", "manchester", "sent", "can", "mil1553", "arinc429", "usb", "flexray"];
+const DEC_SCOPE_PROTOS = ["off", null, "uart", "i2c", "spi", "manchester", "sent", "can", "mil1553", "arinc429", "usb", "flexray",
+  "lin", "dmx512", "midi", "modbus", "onewire", "ws281x", "dht", "cec", "j1850", "irnec", "irsirc", "irrc5", "irrc6", "dali",
+  "usbpd", "spdif", "ps2", "swd", "mdio", "wiegand"];
 
 // decScopeSettings is the scope's decode (the status's panel Display) as this
 // page's settings: protocol, lines, rate, SPI mode and bit order; null when
@@ -300,8 +356,10 @@ function decScopeSettings(d) {
   const a = (d.DecChA & 1) + 1, b = (d.DecChB & 1) + 1, s = { proto };
   if (proto === "i2c") { s.scl = a; s.sda = b; }
   else if (proto === "spi") { s.clk = a; s.data = b; s.cpol = d.DecCPOL ? 1 : 0; s.cpha = d.DecCPHA ? 1 : 0; s.msb = !d.DecLSB; s.delayNs = +d.DecDelayNs || 0; }
+  else if (DEC_CLOCKED.includes(proto)) { s.clk = a; s.data = b; }
   else if (proto !== "off") s.line = a;
   if (proto !== "off" && proto !== "i2c" && proto !== "spi" && proto !== "sent") s.baud = d.DecBaud > 0 ? d.DecBaud : 0;
+  if (proto === "modbus") s.modbusParity = d.DecParity || "";
   return s;
 }
 // End of decScopeSettings.

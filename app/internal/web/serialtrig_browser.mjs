@@ -99,7 +99,8 @@ run(async (t) => {
   await t.until(() => { const off = posts.filter(p => /\/api\/set/.test(p.url) && p.body.control === "serialmode").pop(); return !!off && off.body.value === 0; },
     "disarm POSTed serialmode=0", 3000);
 
-  for (const [proto, id] of [["manchester", 4], ["sent", 5], ["can", 6], ["mil1553", 7], ["arinc429", 8], ["usb", 9], ["flexray", 10]]) {
+  for (const [proto, id] of [["manchester", 4], ["sent", 5], ["can", 6], ["mil1553", 7], ["arinc429", 8], ["usb", 9], ["flexray", 10],
+    ["lin", 11], ["dmx512", 12], ["modbus", 14], ["onewire", 15], ["irnec", 20], ["dali", 24], ["spdif", 26]]) {
     await po.setSelect("decProto", proto);
     await po.setSelect("decLine", "2");
     const word = proto === "mil1553" ? "ABCD" : proto === "arinc429" ? "7ABCD" : "";
@@ -114,6 +115,17 @@ run(async (t) => {
     await po.setSelect("decProto", "off");
     await po.waitFor(() => !document.getElementById("stArm").classList.contains("on"), null, 8000);
   }
+  // a clocked bus arms with its clock and data roles
+  await po.setSelect("decProto", "ps2");
+  await po.setSelect("decClk", "2");
+  await po.setSelect("decData", "1");
+  t.ok(await page.locator("#decClk").isVisible(), "PS/2 clock selection visible");
+  await po.click("stArm");
+  await po.waitFor(() => document.getElementById("stArm").classList.contains("on"), null, 8000);
+  const ps2 = posts.filter(p => /\/api\/serial/.test(p.url)).pop();
+  t.ok(ps2?.body.proto === 27 && ps2.body.chA === 1 && ps2.body.chB === 0, "PS/2 arms with CLK C2, DATA C1");
+  await po.setSelect("decProto", "off");
+  await po.waitFor(() => !document.getElementById("stArm").classList.contains("on"), null, 8000);
   await po.setSelect("decProto", "uart");
   await po.eval(() => { document.getElementById("stBytes").value = "55"; });
   await page.route("**/api/serial", route => route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ ok: false }) }));

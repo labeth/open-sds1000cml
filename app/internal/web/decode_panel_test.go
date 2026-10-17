@@ -138,17 +138,14 @@ func (p *decodePanel) detect() {
 	found := false
 	p.sc.WithFrame(func(f *engine.Frame) {
 		r := framecalc.Detect(f, "hex")
-		proto := map[string]int{"uart": framecalc.ProtoUART, "i2c": framecalc.ProtoI2C, "spi": framecalc.ProtoSPI,
-			"manchester": framecalc.ProtoManchester, "sent": framecalc.ProtoSENT, "canfd": framecalc.ProtoCAN,
-			"mil1553": framecalc.ProtoMIL1553, "arinc429": framecalc.ProtoARINC429, "usbls": framecalc.ProtoUSB,
-			"flexray": framecalc.ProtoFlexRay}[r.Proto]
+		proto := framecalc.ProtoOf(r.Proto)
 		if !r.OK || proto == 0 {
 			return
 		}
 		found = true
 		res = framecalc.DecodeParams{Proto: proto, Baud: r.Baud, ChA: r.Roles.ChA & 1, ChB: 1 - r.Roles.ChA&1,
 			CPOL: r.Roles.CPOL, CPHA: r.Roles.CPHA, LSB: !r.Roles.MSB}
-		if proto == framecalc.ProtoI2C || proto == framecalc.ProtoSPI {
+		if framecalc.TwoLine(proto) {
 			res.ChB = r.Roles.ChB & 1
 		}
 		note = fmt.Sprintf("%s %d on C%d", strings.ToUpper(r.Proto), r.Baud, res.ChA+1)

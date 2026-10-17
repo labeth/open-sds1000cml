@@ -18,7 +18,7 @@ const c = {
   // TRLC-LINKS: REQ-SDS-206
   stBandInactive: () => false};
 vm.createContext(c); vm.runInContext(status, c);
-for (const [backend, label] of [['hardware-uart','hardware UART'],['hardware-i2c','hardware I²C'],['hardware-spi','hardware SPI'],['hardware-can-sequence','hardware CAN sequence'],['hardware-mil1553-sequence','hardware MIL-1553 sequence'],['hardware-usbls','hardware USB LS'],['','waiting for the scope']]) {
+for (const [backend, label] of [['hardware-uart','hardware UART'],['hardware-i2c','hardware I²C'],['hardware-spi','hardware SPI'],['hardware-can-sequence','hardware CAN sequence'],['hardware-mil1553-sequence','hardware MIL-1553 sequence'],['hardware-usbls','hardware USB'],['','waiting for the scope']]) {
   c.st = {serial_backend: backend, serial_matches: 7}; c.stStatus();
   assert.equal(el.textContent, `armed · ${label} · 7 matches`);
 }

@@ -63,7 +63,11 @@ function stParseAddr(s) {
 }
 
 // TRLC-LINKS: REQ-SDS-206
-function stProtoNum() { return { uart: 1, i2c: 2, spi: 3, manchester: 4, sent: 5, can: 6, mil1553: 7, arinc429: 8, usb: 9, flexray: 10 }[dcfg.proto] || 0; }
+function stProtoNum() {
+  return { uart: 1, i2c: 2, spi: 3, manchester: 4, sent: 5, can: 6, mil1553: 7, arinc429: 8, usb: 9, flexray: 10,
+    lin: 11, dmx512: 12, midi: 13, modbus: 14, onewire: 15, ws281x: 16, dht: 17, cec: 18, j1850: 19, irnec: 20,
+    irsirc: 21, irrc5: 22, irrc6: 23, dali: 24, usbpd: 25, spdif: 26, ps2: 27, swd: 28, mdio: 29, wiegand: 30 }[dcfg.proto] || 0;
+}
 // TRLC-LINKS: REQ-SDS-206
 function stArmed() { return $("stArm") && $("stArm").classList.contains("on"); }
 
@@ -88,12 +92,12 @@ function stParams(base = stScope) {
   return {
     ...(base || {}),
     proto: P,
-    chA: P === 2 ? rc(dcfg.scl) : P === 3 ? rc(dcfg.clk) : rc(dcfg.line),
-    chB: P === 2 ? rc(dcfg.sda) : P === 3 ? rc(dcfg.data) : 0,
+    chA: P === 2 ? rc(dcfg.scl) : P === 3 || P >= 27 ? rc(dcfg.clk) : rc(dcfg.line),
+    chB: P === 2 ? rc(dcfg.sda) : P === 3 || P >= 27 ? rc(dcfg.data) : 0,
     baud: dcfg.baud > 0 ? dcfg.baud : 0,
     spiClockHz: P === 3 && base ? Math.max(0, base.spiClockHz || 0) : 0, // the scope's Clock rate row (0: Auto)
     bits: dcfg.bits || 8,
-    parity: dcfg.parity || "none",
+    parity: P === 14 ? (dcfg.modbusParity || "even") : dcfg.parity || "none",
     inverted: !!dcfg.inverted,
     cpol: !!dcfg.cpol, cpha: !!dcfg.cpha, msb: P !== 3 || !!dcfg.msb, // the bit order is SPI's; the others MSB first, as the scope decodes them
     ieee: true, tickNs: P === 5 ? +$("decSentTick").value : 0, nibbles: P === 5 ? +$("decSentNibbles").value : 0, dataBaud: 0,
@@ -266,7 +270,7 @@ function stStatus(msg) {
   if (backendName.startsWith("none: ")) { $("stStats").textContent = `armed · no hardware trigger yet: ${backendName.slice(6)}`; return; }
   const name = backendName.replace(/^hardware-/, "");
   const protocol = name.replace(/-sequence$/, "");
-  const labels = {uart: "UART", i2c: "I²C", spi: "SPI", sent: "SENT", mil1553: "MIL-1553", usbls: "USB LS", manchester: "Manchester", can: "CAN", arinc429: "ARINC 429", flexray: "FlexRay"};
+  const labels = {uart: "UART", i2c: "I²C", spi: "SPI", sent: "SENT", mil1553: "MIL-1553", usbls: "USB", manchester: "Manchester", can: "CAN", arinc429: "ARINC 429", flexray: "FlexRay"};
   const backend = /^hardware-/.test(backendName)
     ? `hardware ${labels[protocol] || protocol}${name.endsWith("-sequence") ? " sequence" : ""}` : "waiting for the scope";
   $("stStats").textContent = `armed · ${backend} · ${(st && st.serial_matches) || 0} matches`;

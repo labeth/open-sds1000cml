@@ -72,6 +72,22 @@ run(async (t) => {
   t.ok(spill.includes("00") && spill.includes("FF"),
     `both narrow-box bytes still labelled via gap-spill (drew: ${spill.join(",") || "none"})`);
 
+  // Every decoder beyond the first ten is in the page and runs on the frame
+  // shown (an I2C one: each says what it did not find, none throws).
+  const more = await po.eval(() => {
+    const out = [], keep = dcfg.proto;
+    for (const p of ["lin", "dmx512", "midi", "modbus", "onewire", "ws281x", "dht", "cec", "j1850", "irnec", "irsirc",
+      "irrc5", "irrc6", "dali", "usbpd", "spdif", "ps2", "swd", "mdio", "wiegand"]) {
+      dcfg.proto = p;
+      try { computeDecode(); out.push(dcfg.result && typeof dcfg.result.ok === "boolean" ? "" : p + ": no result"); }
+      catch (e) { out.push(p + ": " + e.message); }
+    }
+    dcfg.proto = keep;
+    computeDecode();
+    return out.filter(Boolean);
+  });
+  t.ok(more.length === 0, "the twenty decoders beyond the first ten run in the page: " + more.join("; "));
+
   // Decoding stays on after leaving BUS (the strip keeps drawing elsewhere).
   await po.ws("scope");
   t.ok(await po.eval(() => dcfg.proto === "i2c"), "decoding stays on in SCOPE");
