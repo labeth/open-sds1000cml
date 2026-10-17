@@ -33,6 +33,10 @@ jobs:
       - name: Set SOURCE_DATE_EPOCH from the tagged commit
         run: echo "SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)" >> "$GITHUB_ENV"
 
+      # The app's RTL tests drive the FPGA testbenches through iverilog, as in CI.
+      - name: Install iverilog
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends iverilog
+
       - name: Test + vet (both modules) — a red build must not ship
         run: |
           (cd app && go vet ./... && go test ./...)
