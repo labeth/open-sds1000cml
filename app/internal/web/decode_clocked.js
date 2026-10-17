@@ -89,6 +89,11 @@ function decodeSWD(clk, dio, colTimeS, cfg) {
     if (ones >= 50) resets.push([c - ones, c]);
     ones = 0;
   }
+  let explained = 0;
+  for (const rs of resets) explained += rs[1] - rs[0];
+  for (const y of cy) if (y.dr === 0 && y.df === 0) explained++;
+  // TRLC-LINKS: REQ-SDS-018
+  const unexplained = (from, to) => { let n2 = 0; for (let k = from; k < to; k++) if (cy[k].dr !== 0 || cy[k].df !== 0) n2++; return n2; };
   let ri = 0;
   // TRLC-LINKS: REQ-SDS-018
   const flushResets = (upTo) => {
@@ -115,7 +120,7 @@ function decodeSWD(clk, dio, colTimeS, cfg) {
     const ackTxt = { 1: "OK", 2: "WAIT", 4: "FAULT" }[ack];
     spans.push(pspan(cy[c + 9].xf, cy[c + 11].xr + per / 2, n, ackTxt, "data", ack));
     toks.push(ackTxt); units.push(ack);
-    if (ack !== 1) { c += 11; next = c + 1; continue; }
+    if (ack !== 1) { explained += unexplained(c, c + 12); c += 11; next = c + 1; continue; }
     const first = rnw === 0 ? c + 13 : c + 12;
     if (first + 33 > cy.length) break;
     let v = 0, cnt = 0;
@@ -129,10 +134,20 @@ function decodeSWD(clk, dio, colTimeS, cfg) {
     if (cnt % 2 !== p) { dtxt = "!" + dtxt; kind = "parity-error"; } else good = true;
     spans.push(pspan(cy[first].xf, cy[first + 31].xr + per / 2, n, dtxt, kind, v));
     toks.push(dtxt); units.push(v);
+    explained += unexplained(c, first + 33);
     c = first + 32;
     next = c + 1;
   }
   flushResets(cy.length);
+  const cover = Math.min(1, explained / Math.max(1, cy.length));
+  let run = 0, even = 0;
+  for (let k = 1; k < cy.length; k++) {
+    const g = cy[k].xf - cy[k - 1].xf;
+    if (g > 4 * per) continue;
+    run++;
+    if (g >= 0.75 * per && g <= 1.25 * per) even++;
+  }
+  good = good && cover >= 0.5 && run > 0 && even >= 0.8 * run;
   if (!spans.length) return fail("swd", "no SWD request");
   const res = { ok: good, proto: "swd", spans, text: toks.join(" "), bytes: units, meta: { threshold: C.threshold, spb: per } };
   if (colTimeS > 0) res.meta.baud = Math.floor(1 / (per * colTimeS) + 0.5);

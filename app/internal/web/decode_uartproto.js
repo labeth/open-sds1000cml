@@ -145,13 +145,12 @@ function decodeLIN(codes, colTimeS, cfg) {
     let pidKind = p.kind;
     if (pidKind === "data" && linPIDParity(p.val & 0x3f) !== p.val) pidKind = "parity-error";
     unit(p, p.val, "ID" + hex2(p.val & 0x3f), pidKind);
-    if (pidKind === "data") good = true;
     const resp = [];
     let last = p.x1;
     while (k + 1 < chars.length && chars[k + 1].kind !== "break" && chars[k + 1].x0 - last <= 20 * spb) {
       k++; resp.push(chars[k]); last = chars[k].x1;
     }
-    if (!resp.length) continue;
+    if (!resp.length) { good = good || pidKind === "data"; continue; }
     const data = [];
     for (const c of resp.slice(0, resp.length - 1)) { unit(c, c.val, fmtByte(c.val, cfg.format), c.kind); data.push(c.val); }
     const ck = resp[resp.length - 1];
@@ -162,6 +161,7 @@ function decodeLIN(codes, colTimeS, cfg) {
       if (!enh && linChecksum(p.val, data, false) !== ck.val) kind = "frame-error";
     }
     unit(ck, ck.val, "CK" + hex2(ck.val), kind);
+    good = good || (pidKind === "data" && kind === "data");
   }
   if (!spans.length) return fail("lin", "no LIN break");
   const r = { ok: good, proto: "lin", spans, text: toks.join(" "), bytes: units,

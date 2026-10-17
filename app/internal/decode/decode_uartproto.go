@@ -215,7 +215,7 @@ func snapSPB(spb, colTimeS float64, rates []float64, tol float64) float64 {
 // 0x3C and 0x3D) or classic. Spans: "sof" BREAK, "rw" SYNC, then the units:
 // the PID ("ID3C"), the data bytes and the checksum ("CK5A"); a bad parity
 // or checksum is that unit's error span. OK needs a frame whose sync and
-// identifier read right.
+// identifier read right and whose checksum checks (or no response).
 // TRLC-LINKS: REQ-SDS-018
 func DecodeLIN(codes []uint8, colTimeS float64, cfg LINCfg) Result {
 	S := sliceChannel(codes, cfg.Threshold, cfg.HaveThr)
@@ -274,9 +274,6 @@ func DecodeLIN(codes []uint8, colTimeS float64, cfg LINCfg) Result {
 			pidKind = "parity-error"
 		}
 		unit(p, p.val, fmt.Sprintf("ID%02X", p.val&0x3f), pidKind)
-		if pidKind == "data" {
-			good = true
-		}
 		// the response: characters each within two characters of the last
 		var resp []uchar
 		last := p.x1
@@ -286,6 +283,7 @@ func DecodeLIN(codes []uint8, colTimeS float64, cfg LINCfg) Result {
 			last = chars[k].x1
 		}
 		if len(resp) == 0 {
+			good = good || pidKind == "data" // a header no node answered
 			continue
 		}
 		var data []int
@@ -303,6 +301,7 @@ func DecodeLIN(codes []uint8, colTimeS float64, cfg LINCfg) Result {
 			}
 		}
 		unit(ck, ck.val, "CK"+hex2(ck.val), kind)
+		good = good || pidKind == "data" && kind == "data"
 	}
 	if len(spans) == 0 {
 		return Result{Proto: "lin", Error: "no LIN break"}

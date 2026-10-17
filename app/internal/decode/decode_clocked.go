@@ -292,8 +292,13 @@ func DecodeSWD(clk, dio []uint8, colTimeS float64, cfg ClockedCfg) Result {
 	if len(spans) == 0 {
 		return Result{Proto: "swd", Error: "no SWD request"}
 	}
+	cover := min(1, float64(explained)/float64(max(1, len(cy))))
+	// data an SPI bus clocks holds request-like bits now and then; SWD's
+	// transfers, idle and resets explain most of its clock, which runs at
+	// one rate while it runs
+	good = good && cover >= 0.5 && swdSteady(cy, per)
 	res := Result{OK: good, Proto: "swd", Spans: spans, Text: strings.Join(toks, " "), Bytes: units,
-		Thr: C.threshold, SPB: per, Cover: min(1, float64(explained)/float64(max(1, len(cy))))}
+		Thr: C.threshold, SPB: per, Cover: cover}
 	if colTimeS > 0 {
 		res.Baud = int(1/(per*colTimeS) + 0.5)
 	}
@@ -301,6 +306,24 @@ func DecodeSWD(clk, dio []uint8, colTimeS float64, cfg ClockedCfg) Result {
 		res.Error = "no SWD transfer acknowledged OK whose parity checks"
 	}
 	return res
+}
+
+// swdSteady reports a clock whose cycles while it runs (gaps under four
+// periods) are mostly a period long.
+// TRLC-LINKS: REQ-SDS-018
+func swdSteady(cy []swdCycle, per float64) bool {
+	run, even := 0, 0
+	for k := 1; k < len(cy); k++ {
+		g := cy[k].xf - cy[k-1].xf
+		if g > 4*per {
+			continue
+		}
+		run++
+		if g >= 0.75*per && g <= 1.25*per {
+			even++
+		}
+	}
+	return run > 0 && float64(even) >= 0.8*float64(run)
 }
 
 // swdUnexplained counts a transfer's cycles not counted as idle already.
