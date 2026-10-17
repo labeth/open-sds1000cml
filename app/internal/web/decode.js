@@ -531,12 +531,17 @@ function decodeSPI(clk, data, colTimeS, cfg) {
   // the data transition (low margin): the detection picks CPHA by it (Go Result.Margin).
   const halfAmp = DA.amp / 2 || 1;
   let mSum = 0, mN = 0;
+  // Under six samples a clock period the clock's edges are the FPGA
+  // receiver's, each direction armed on its own (decode_i2c_spi.go
+  // armedCrossings): a sampled half-period short of the band keeps its bit.
+  const armed = fine ? armedCrossings(CK, n) : null;
   for (let i = 0; i < n; i++) {
     const l = CK.level[i];
     if (l < 0) { ck = -1; continue; }
     const pck = ck; ck = l;
     if (pck < 0) continue;
-    const rising = pck === 0 && ck === 1, falling = pck === 1 && ck === 0;
+    let rising = pck === 0 && ck === 1, falling = pck === 1 && ck === 0;
+    if (armed) { rising = armed.rise[i] === 1; falling = armed.fall[i] === 1; }
     if ((sampleRising && rising) || (!sampleRising && falling)) {
       const at = fine || dataDelay ? crossingAt(CK, i, rising) + dataLag + dataDelay : i;
       const bit = logicAt(DA, at);
@@ -557,6 +562,25 @@ function decodeSPI(clk, data, colTimeS, cfg) {
   }
   return { ok: true, error: null, proto: "spi", spans, text: toks.join(" "), bytes,
     meta: { cpol, cpha, sampleOnRising: sampleRising, bitOrder: msb ? "msb" : "lsb", noCS: true, colsPerClock: period, threshold: CK.threshold, sampleMargin: mN ? mSum / mN : 0 } };
+}
+
+// armedCrossings: a sliced line's crossings as the FPGA's receiver on the
+// samples takes them, each direction armed by a sample beyond the opposite
+// edge of the band; a missing sample disarms both (decode_i2c_spi.go).
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-229
+function armedCrossings(s, n) {
+  const rise = new Uint8Array(n);
+  const fall = new Uint8Array(n);
+  let upArmed = false, downArmed = false;
+  for (let i = 0; i < n; i++) {
+    const c = s.codes[i];
+    if (c < 0) { upArmed = false; downArmed = false; continue; }
+    if (upArmed && c >= s.threshold) { rise[i] = 1; upArmed = false; }
+    if (downArmed && c < s.threshold) { fall[i] = 1; downArmed = false; }
+    if (c <= s.thLo) upArmed = true;
+    if (c >= s.thHi) downArmed = true;
+  }
+  return { rise, fall };
 }
 
 // crossingAt: where a sliced line crossed its threshold before the sample i

@@ -300,6 +300,12 @@ func TestJSDecoderParity(t *testing.T) {
 					DecodeSPI(c2, c1, 2e-9, SPICfg{MSB: true, Format: "hex", Threshold: 120, HaveThr: true, DataLag: lag, DataDelay: delay}))
 			}
 		}
+		// The scope's 104 MHz flash read with a clock half sampled short of
+		// the band, at the learned threshold.
+		c1, c2 := loadSPIRunt(t)
+		lag := SPIDataLag(1, 2e-9)
+		add2("spi", c2, c1, 2e-9, jsCfg{"cpol": false, "cpha": false, "bitOrder": "msb", "dataLag": lag, "dataDelay": 3.7},
+			DecodeSPI(c2, c1, 2e-9, SPICfg{MSB: true, Format: "hex", DataLag: lag, DataDelay: 3.7}))
 	}
 
 	// ---- I2C: a full transaction, plus the channel swap (SCL<->SDA).

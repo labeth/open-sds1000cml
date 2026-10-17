@@ -252,6 +252,15 @@ func DecodeSPI(clk, data []uint8, colTimeS float64, cfg SPICfg) Result {
 	}
 	var mSum float64
 	mN := 0
+	// Under six samples a clock period a sampled high or low half can stop
+	// short of the hysteresis band (the samples fall either side of its peak:
+	// 36 69 68 47 against a band to 69.1), and the band would drop that bit.
+	// There the clock's edges are the FPGA receiver's: each direction's
+	// crossing armed by a sample beyond the opposite band (sample_edges.v).
+	var armedRise, armedFall []bool
+	if fine {
+		armedRise, armedFall = armedCrossings(CK, n)
+	}
 	for i := 0; i < n; i++ {
 		l := int(CK.level[i])
 		pck := ck
@@ -261,6 +270,9 @@ func DecodeSPI(clk, data []uint8, colTimeS float64, cfg SPICfg) Result {
 		}
 		rising := pck == 0 && ck == 1
 		falling := pck == 1 && ck == 0
+		if fine {
+			rising, falling = armedRise[i], armedFall[i]
+		}
 		if (sampleRising && rising) || (!sampleRising && falling) {
 			at := float64(i)
 			if fine || cfg.DataDelay != 0 {
@@ -299,6 +311,34 @@ func DecodeSPI(clk, data []uint8, colTimeS float64, cfg SPICfg) Result {
 	}
 	return Result{OK: true, Proto: "spi", Spans: spans, Text: strings.Join(toks, " "),
 		Bytes: bytes, SPB: period, Thr: CK.threshold, Margin: margin}
+}
+
+// armedCrossings marks a sliced line's crossings as the FPGA's receiver on
+// the samples takes them: a rising one at the first sample at or past the
+// threshold after a sample at or below the band's low edge, a falling one at
+// the first sample below it after one at or above the high edge. Each
+// direction is armed on its own, so a half-period whose samples miss the far
+// edge of the band still gives the next crossing.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-229
+func armedCrossings(s sliced, n int) (rise, fall []bool) {
+	rise, fall = make([]bool, n), make([]bool, n)
+	upArmed, downArmed := false, false
+	for i := 0; i < n; i++ {
+		c := float64(s.codes[i])
+		if upArmed && c >= s.threshold {
+			rise[i], upArmed = true, false
+		}
+		if downArmed && c < s.threshold {
+			fall[i], downArmed = true, false
+		}
+		if c <= s.thLo {
+			upArmed = true
+		}
+		if c >= s.thHi {
+			downArmed = true
+		}
+	}
+	return rise, fall
 }
 
 // crossingAt is where a sliced line crossed its threshold before the sample
