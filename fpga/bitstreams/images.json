@@ -22,9 +22,9 @@
     "inputs": "de049ccce133610c28a40566923073720555178c4b2ef32f03038e1e0ee48620"
   },
   "qualify": {
-    "seed": 10,
-    "sha256": "8e4fea9b10a17f598a9f586b28dbaf0bdfcc9a9887082ebdb328928344625c3d",
-    "inputs": "7bd1d3cba399891b8610c57b5bab81b990be333b29d9af90640a34701c85414e"
+    "seed": 20,
+    "sha256": "662947ee57e92c4e388531362a1e74fd25e665008167df05c45259b3bf718962",
+    "inputs": "49137d23d40db4468b14dc20982cdbabf8fa566d2d8234fbc22f5c7b569e7639"
   },
   "fast": {
     "seed": 2,

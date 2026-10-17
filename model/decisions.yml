@@ -2378,7 +2378,7 @@ decisions:
     refused (the TRIG view says why).
   - A match fires and holds until the next arm, as the protocol receivers' matches do; a one-clock fire is lost
     whenever the record writes no word on its clock (decimated records write one clock in many).
-  - Lines are sliced at 8 ns: clocked buses reach about 20 MHz clocks, unit sampling five clocks a unit (S/PDIF at
+  - Lines are sliced at 8 ns, so clocked buses reach about 20 MHz clocks, unit sampling five clocks a unit (S/PDIF at
     192 kHz), UART framing 16 clocks a bit. The decoded event stream is not available on this image.
-  - SWD frames have no leader: a request's start, stop and park bits with an OK acknowledge can also appear inside a
+  - SWD frames have no leader, and a request's start, stop and park bits with an OK acknowledge can also appear inside a
     data phase.

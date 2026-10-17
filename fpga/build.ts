@@ -55,7 +55,7 @@ const images:Record<string,Image>={
  // envelope recall (the general image has no room left for them).
  // ADR-SYMBOL-TRIGGER: and the serial buses of timed pulses (symbol_trigger.v),
  // whose frames take milliseconds and want the long decimated records.
- qualify:{dir:'images/qualify',files:['qual_trigger.v','zone_qual.v','sum_edge_pair.v','symbol_trigger.v','general/precision.v','general/precision_tail.v'],defines:['QUAL_TRIGGER','SYMBOL_TRIGGER'],seed:10,trigger:true,precision:true,bare:true},
+ qualify:{dir:'images/qualify',files:['qual_trigger.v','zone_qual.v','sum_edge_pair.v','symbol_trigger.v','general/precision.v','general/precision_tail.v'],defines:['QUAL_TRIGGER','SYMBOL_TRIGGER'],seed:20,trigger:true,precision:true,bare:true},
  stacking:{dir:'images/stacking',files:['stack_engine_port.v','stack_edge_accumulator.v','stack_edge_hits.v','stack_tiled_accumulator.v',
   'stack_tile_access.v','stack_tile_transfer.v','stack_state_tile.v','stack_resample_store.v','stack_resample.v','stack_positions.v',
   'stack_interpolate.v','stack_accumulate.v','stack_bin_writer.v','stack_record_cache.v'],defines:[],seed:11,trigger:false,precision:false},

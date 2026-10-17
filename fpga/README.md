@@ -157,7 +157,7 @@ phase and K, 98 the table-loaded flag, 99 the table address, 100 an entry,
 counts the matches. The app's Go model (`app/internal/decode/symbol_trigger.go`)
 is the block clock for clock (`tb_symbol_trigger.v`), and
 `tb_top_qualify.v` checks it through the image's top level. The qualify
-image: 9,120 logic elements of 10,320 (88 %).
+image: 9,124 logic elements of 10,320 (88 %), seed 20, worst internal slack 0.028 ns.
 
 ## Source layout
 
