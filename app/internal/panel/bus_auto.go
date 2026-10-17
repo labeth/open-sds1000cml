@@ -63,6 +63,7 @@ func (c *Controller) busAuto() {
 		return
 	}
 	stop := make(chan struct{})
+	c.searchGen.Add(1) // the search running, BUS entry's, gives way
 	c.autosetBusy, c.autosetStop, c.autosetMsg = true, stop, "AUTO: framing the bus..."
 	c.autosetRun++
 	c.autosetFrom = from

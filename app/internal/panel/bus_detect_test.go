@@ -345,3 +345,30 @@ func TestDetectionWaitsOutAnImageLoad(t *testing.T) {
 		t.Fatalf("the search read baud %d (found %v): the frame from before the image load", l.res.Baud, l.found)
 	}
 }
+
+// AUTO in BUS ends the bus search running (BUS entry's, on a front end
+// Default setup left unfitted): its wait for a frame ends at once, not after
+// the seconds of its looks, and AUTO's own search runs undisturbed.
+// TRLC-LINKS: REQ-SDS-214, REQ-SDS-223
+func TestAutoEndsTheSearchRunning(t *testing.T) {
+	c, e, _ := newC(t)
+	e.set(func(st *engine.Stats) { st.Running = true })
+	c.SetFrameSource(func(fn func(*engine.Frame)) {}) // no frame comes
+	none := func(*engine.Frame, bool) bool { return false }
+	c.searchRun = c.searchGen.Load()
+	go func() {
+		time.Sleep(100 * time.Millisecond)
+		c.searchGen.Add(1) // AUTO pressed
+	}()
+	t0 := time.Now()
+	if l := c.detectWith(true, true, none, c.detectOnScreen, 3*time.Second); l.found {
+		t.Fatal("found a bus without a frame")
+	}
+	if d := time.Since(t0); d > time.Second {
+		t.Fatalf("the search waited %v after AUTO", d)
+	}
+	c.searchRun = c.searchGen.Load() // AUTO's search
+	if c.searchDropped() {
+		t.Fatal("AUTO's own search dropped")
+	}
+}

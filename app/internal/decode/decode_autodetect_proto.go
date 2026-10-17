@@ -242,7 +242,11 @@ func scoreProto(r Result) float64 {
 		}
 		return float64(data*20 - errs*40)
 	case "ps2":
-		if data < 2 || errs*3 > data || r.Cover < 0.8 {
+		// One whole frame is evidence SPI lacks: 11 clocks, a start 0, odd
+		// parity and a stop 1, the clock idle high either side (a record at
+		// 500us/div holds one or two of a keyboard's frames, and the SPI
+		// reading of its byte won)
+		if data < 1 || errs*3 > data || r.Cover < 0.8 {
 			return -1e9
 		}
 		return float64(data*150 - errs*60)

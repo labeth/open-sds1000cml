@@ -211,6 +211,7 @@ type autoGoal struct {
 	atLeast  bool    // cycles is a floor (the fastest timebase holding them), else the nearest
 	fill     float64 // the most divisions the swing may span (of the eight)
 	maxTdiv  float64 // the slowest display timebase (0: any)
+	fitTdiv  float64 // the slowest timebase the vertical is fitted at (0: any)
 	spectrum bool    // timed on the FFT source, the marker on its fundamental
 	centre   bool    // a rising edge at mid-screen
 	cursors  bool    // the cursors on one period and the top and base (measureCursors)
@@ -224,12 +225,14 @@ type autoGoal struct {
 // resolution (on a sampled timebase: the envelope bands from 5 ms/div hold
 // no spectrum); both fit the swing as large as stays on the screen, the
 // finest volts per code. BUS fits the vertical as it always has and then
-// frames the bus itself (busAuto).
+// frames the bus itself (busAuto); its fit reads at 1 ms/div at the
+// slowest: a bus found only at 10 ms/div (an IR remote) has its swing from
+// the sweep already, and the fit's captures at 5 ms/div took 6 s.
 var (
 	goalScope    = autoGoal{cycles: 2, fill: 7.2, centre: true}
 	goalMeasure  = autoGoal{tag: "MEASURE", cycles: 10, atLeast: true, fill: 7.5, centre: true, cursors: true}
 	goalSpectrum = autoGoal{tag: "SPECTRUM", cycles: 50, atLeast: true, fill: 7.5, maxTdiv: 2e-3, spectrum: true, centre: true}
-	goalBus      = autoGoal{cycles: dispCycles, fill: 6}
+	goalBus      = autoGoal{cycles: dispCycles, fill: 6, fitTdiv: 1e-3}
 )
 
 // measureCursors sets MEASURE's cursors up on the signal AUTO framed, so a
@@ -572,7 +575,11 @@ func (c *Controller) autosetSweep(stop chan struct{}, g autoGoal) (autoResult, b
 	//    aperiodic/serial signal (UART, a bursty stream) can miss the full swing,
 	//    under-reading Vpp — which then picks a too-sensitive V/div that CLIPS.
 	//    Measuring over ~30 cycles captures the true min/max regardless of pattern.
-	ss := c.setTdivNearest((measCycles / found.Freq) / divX)
+	fit := (measCycles / found.Freq) / divX
+	if g.fitTdiv > 0 {
+		fit = min(fit, g.fitTdiv)
+	}
+	ss := c.setTdivNearest(fit)
 	if !c.waitBandFrame(stop, ss) {
 		return res, false
 	}

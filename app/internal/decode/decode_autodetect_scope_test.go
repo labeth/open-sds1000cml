@@ -32,7 +32,9 @@ var scopeCaptures = []scopeCapture{
 	{"scope_wiegand_search_20ms.json.gz", "wiegand", 0},
 	{"scope_wiegand_samples_5ms.json.gz", "wiegand", 0},
 	{"scope_ps2_samples_500us.json.gz", "ps2", 0},
+	{"scope_ps2_oneframe_500us.json.gz", "ps2", 0},
 	{"scope_swd_raw_50us.json.gz", "swd", 0},
+	{"scope_swd_samples_500us.json.gz", "swd", 0},
 }
 
 // TestAutodetectNamesScopeCaptures: each record the scope read of a bench

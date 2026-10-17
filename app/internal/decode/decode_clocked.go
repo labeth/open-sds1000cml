@@ -187,6 +187,17 @@ func DecodeSWD(clk, dio []uint8, colTimeS float64, cfg ClockedCfg) Result {
 			cy = append(cy, swdCycle{E[k].x, E[k+1].x, E[k].d, E[k+1].d})
 		}
 	}
+	// The target's bits are read at the falls (it drives them from a rise);
+	// a target that moves them at the fall, as the host does its own, reads
+	// at the rises instead: the edge whose reading acknowledges more
+	// requests OK.
+	atRise := swdTargetAtRise(cy)
+	tb := func(k int) int {
+		if atRise {
+			return cy[k].dr
+		}
+		return cy[k].df
+	}
 	n := C.n
 	var spans []Span
 	var toks []string
@@ -234,7 +245,7 @@ func DecodeSWD(clk, dio []uint8, colTimeS float64, cfg ClockedCfg) Result {
 		apdp, rnw, a2, a3, par := r(1), r(2), r(3), r(4), r(5)
 		req := 1 | apdp<<1 | rnw<<2 | a2<<3 | a3<<4 | par<<5 | 1<<7
 		parOK := (apdp+rnw+a2+a3)%2 == par
-		ack := cy[c+9].df | cy[c+10].df<<1 | cy[c+11].df<<2
+		ack := tb(c+9) | tb(c+10)<<1 | tb(c+11)<<2
 		if !parOK || (ack != 1 && ack != 2 && ack != 4) {
 			continue // not a request a target answered
 		}
@@ -264,14 +275,14 @@ func DecodeSWD(clk, dio []uint8, colTimeS float64, cfg ClockedCfg) Result {
 		}
 		v, cnt := 0, 0
 		for k := 0; k < 32; k++ {
-			b := cy[first+k].df
+			b := tb(first + k)
 			if rnw == 0 {
 				b = cy[first+k].dr
 			}
 			v |= b << k
 			cnt += b
 		}
-		p := cy[first+32].df
+		p := tb(first + 32)
 		if rnw == 0 {
 			p = cy[first+32].dr
 		}
@@ -306,6 +317,27 @@ func DecodeSWD(clk, dio []uint8, colTimeS float64, cfg ClockedCfg) Result {
 		res.Error = "no SWD transfer acknowledged OK whose parity checks"
 	}
 	return res
+}
+
+// swdTargetAtRise reports whether more of the requests on a clock
+// (start 1, stop 0, park 1, parity checking) read an OK acknowledge at the
+// rises than at the falls.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-236
+func swdTargetAtRise(cy []swdCycle) bool {
+	fall, rise := 0, 0
+	for c := 0; c+12 <= len(cy); c++ {
+		r := func(k int) int { return cy[c+k].dr }
+		if r(0) != 1 || r(6) != 0 || r(7) != 1 || (r(1)+r(2)+r(3)+r(4))%2 != r(5) {
+			continue
+		}
+		if cy[c+9].df == 1 && cy[c+10].df == 0 && cy[c+11].df == 0 {
+			fall++
+		}
+		if r(9) == 1 && r(10) == 0 && r(11) == 0 {
+			rise++
+		}
+	}
+	return rise > fall
 }
 
 // swdSteady reports a clock whose cycles while it runs (gaps under four

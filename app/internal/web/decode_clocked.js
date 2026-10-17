@@ -70,6 +70,27 @@ function decodePS2(clk, data, colTimeS, cfg) {
   return res;
 }
 
+// swdTargetAtRise: whether more requests on the clock (start 1, stop 0,
+// park 1, parity checking) read an OK acknowledge at the rises than at the
+// falls (decode.go swdTargetAtRise).
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-236
+function swdTargetAtRise(cy) {
+  let fall = 0;
+  let rise = 0;
+  for (let c = 0; c + 12 <= cy.length; c++) {
+    const r0 = cy[c].dr;
+    const r1 = cy[c + 1].dr;
+    const r2 = cy[c + 2].dr;
+    const r3 = cy[c + 3].dr;
+    const r4 = cy[c + 4].dr;
+    const r5 = cy[c + 5].dr;
+    if (r0 !== 1 || cy[c + 6].dr !== 0 || cy[c + 7].dr !== 1 || (r1 + r2 + r3 + r4) % 2 !== r5) continue;
+    if (cy[c + 9].df === 1 && cy[c + 10].df === 0 && cy[c + 11].df === 0) fall++;
+    if (cy[c + 9].dr === 1 && cy[c + 10].dr === 0 && cy[c + 11].dr === 0) rise++;
+  }
+  return rise > fall;
+}
+
 // decodeSWD mirrors decode_clocked.go DecodeSWD.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-236
 function decodeSWD(clk, dio, colTimeS, cfg) {
@@ -80,6 +101,11 @@ function decodeSWD(clk, dio, colTimeS, cfg) {
   const cy = [];
   for (let k = 0; k + 1 < E.length; k++)
     if (E[k].dir < 0 && E[k + 1].dir > 0) cy.push({ xf: E[k].x, xr: E[k + 1].x, df: E[k].d, dr: E[k + 1].d });
+  // the target's bits at the falls, or at the rises when that reads more OK
+  // acknowledges (decode.go swdTargetAtRise)
+  const atRise = swdTargetAtRise(cy);
+  // TRLC-LINKS: REQ-SDS-018, REQ-SDS-236
+  const tb = (k) => (atRise ? cy[k].dr : cy[k].df);
   const n = C.n, spans = [], toks = [], units = [];
   let good = false;
   const resets = [];
@@ -111,7 +137,7 @@ function decodeSWD(clk, dio, colTimeS, cfg) {
     const apdp = r(1), rnw = r(2), a2 = r(3), a3 = r(4), par = r(5);
     const req = 1 | (apdp << 1) | (rnw << 2) | (a2 << 3) | (a3 << 4) | (par << 5) | (1 << 7);
     const parOK = (apdp + rnw + a2 + a3) % 2 === par;
-    const ack = cy[c + 9].df | (cy[c + 10].df << 1) | (cy[c + 11].df << 2);
+    const ack = tb(c + 9) | (tb(c + 10) << 1) | (tb(c + 11) << 2);
     if (!parOK || (ack !== 1 && ack !== 2 && ack !== 4)) continue;
     spans.push(pspan(cy[c].xr, cy[c].xr, n, "", "sof", 0));
     const txt = (rnw ? "R" : "W") + (apdp ? "AP" : "DP") + ((a2 | (a3 << 1)) << 2).toString(16).toUpperCase();
@@ -125,11 +151,11 @@ function decodeSWD(clk, dio, colTimeS, cfg) {
     if (first + 33 > cy.length) break;
     let v = 0, cnt = 0;
     for (let k = 0; k < 32; k++) {
-      const b = rnw === 0 ? cy[first + k].dr : cy[first + k].df;
+      const b = rnw === 0 ? cy[first + k].dr : tb(first + k);
       v = (v | (b << k)) >>> 0;
       cnt += b;
     }
-    const p = rnw === 0 ? cy[first + 32].dr : cy[first + 32].df;
+    const p = rnw === 0 ? cy[first + 32].dr : tb(first + 32);
     let dtxt = v.toString(16).toUpperCase().padStart(8, "0"), kind = "data";
     if (cnt % 2 !== p) { dtxt = "!" + dtxt; kind = "parity-error"; } else good = true;
     spans.push(pspan(cy[first].xf, cy[first + 31].xr + per / 2, n, dtxt, kind, v));
