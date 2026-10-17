@@ -14,15 +14,24 @@ always brings back the factory firmware.
 
 ## In action
 
-![Native scope LCD in the BUS workspace: the decoded UART packet 48 69 20 55 AA 0F F0 0A in a hex column and a string box, the serial trigger matching AA, and the packet centred on the trace](docs/images/scope-bus.png)
+![Native scope LCD in the BUS workspace: a 104 MHz SPI flash read triggered on its Fast Read command 0B 00 10 00, the idle bus before the trigger and the clock starting at it, and 286 decoded reads of SPI FLASH 104MHZ OPEN-SDS in the packet table](docs/images/scope-bus.png)
 
-**Trigger on the data, directly on the scope.** The serial trigger matches the byte `AA` in a
-115,200-baud UART and centres it. The BUS workspace lists each decoded packet in a fixed hex column
-with its text in a separate box, so the table does not jump as the bytes change.
+**Trigger on the data of a 104 MHz SPI flash, directly on the scope.** The FPGA decodes the bus from
+the converters' samples and triggers on the flash's Fast Read command `0B 00 10 00` (read at address
+0x001000). The BUS workspace lists each decoded read in a fixed hex column with its text beside it:
+here the 286 reads in one stopped record, every byte of them.
 
-<sub>Every capture here is from a live SDS1102CML+ running this firmware. An Alchitry Au drives the same
-115,200-baud UART message (`Hi U`, then `55 AA 0F F0 0A`) into C1 and C2, and the serial trigger matches
-`AA`. LCD images are the native 800 × 480 screen.</sub>
+> **One capture, 1,048,576 samples a channel.** A SINGLE capture holds 2.1 ms at the full 500 MSa/s.
+> The bar under the trace below is that whole record, all 286 flash reads in it; the large view is
+> 2 µs of it at 200 ns/div, the triggered read with every clock edge resolved and its bytes decoded
+> under it; the packet list decodes all 19,769 bytes of the one capture.
+>
+> ![Web BUS workspace after one SINGLE capture: the bar under the trace shows the whole 2.1 ms record of 286 flash reads, the large view 2 us of it at 200 ns/div with the bytes 0B 00 10 00 FF 53 50 49 decoded under the trace, and the packet list of every read](docs/images/web-single-1m.png)
+
+<sub>Every capture here is from a live SDS1102CML+ running this firmware, with 10x probes. An Alchitry Au
+drives a look-alike of an SPI flash read at 104 MHz (clock on C2, data on C1; each read is `0B 00 10 00`,
+a dummy byte, `SPI FLASH 104MHZ OPEN-SDS 0123` and 32 counting bytes), and the serial trigger matches
+`0B 00 10 00`. LCD images are the native 800 × 480 screen.</sub>
 
 ### On the scope
 
@@ -31,16 +40,16 @@ again switches to its next view.
 
 | | |
 |---|---|
-| ![SCOPE workspace: both channels' UART traces with readouts and the decoded bytes under the trace](docs/images/scope-scope.png) | ![SCOPE again: X-Y, a diagonal line because both channels carry the same signal](docs/images/scope-xy.png) |
-| **SCOPE:** the full trace, readouts and the decoded strip (the trace ends above it) | **SCOPE again:** X-Y (here a diagonal: C1 and C2 carry the same signal) |
-| ![BUS again: an eye diagram of the UART with bit rate, eye height and width, and TIE jitter](docs/images/scope-bus-eye.png) | ![The match editor: a full-screen keypad for the trigger's match bytes, in hex](docs/images/scope-match-editor.png) |
-| **BUS again:** the eye diagram, with eye height, width and TIE jitter | **The match editor:** the knobs move over a full-screen keypad, hex or text |
-| ![SPECTRUM: the FFT with a peak table, harmonics and THD over a small time trace](docs/images/scope-spectrum.png) | ![SPECTRUM again: the spectrogram, the spectrum over time](docs/images/scope-spectrogram.png) |
-| **SPECTRUM:** the FFT, peak table, harmonics and THD | **SPECTRUM again:** the spectrogram (and then Bode, for a swept source) |
+| ![SCOPE workspace: the SPI data on C1 and its 104 MHz clock on C2 with readouts, and the decoded bytes under the trace](docs/images/scope-scope.png) | ![SCOPE again: X-Y, the SPI data against its clock](docs/images/scope-xy.png) |
+| **SCOPE:** the full trace, readouts and the decoded strip (the trace ends above it) | **SCOPE again:** X-Y (here the data against its clock) |
+| ![BUS again: the eye diagram of the 104 Mbit/s SPI data with bit rate, eye height and width, and TIE jitter](docs/images/scope-bus-eye.png) | ![The match editor: a full-screen keypad for the trigger's match bytes, in hex](docs/images/scope-match-editor.png) |
+| **BUS again:** the eye diagram of the 104 Mbit/s data, with eye height, width and TIE jitter | **The match editor:** the knobs move over a full-screen keypad, hex or text |
+| ![SPECTRUM: the FFT of the SPI clock with its 104 MHz peak marked and the peak table over a small time trace](docs/images/scope-spectrum.png) | ![SPECTRUM again: the spectrogram, the spectrum over time](docs/images/scope-spectrogram.png) |
+| **SPECTRUM:** the FFT and peak table (the clock at 104 MHz) | **SPECTRUM again:** the spectrogram (and then Bode, for a swept source) |
 | ![MEASURE: statistics of the chosen readouts, now, mean, min, max and sdev](docs/images/scope-measure.png) | ![MEASURE again: every value of both channels](docs/images/scope-measure-all.png) |
 | **MEASURE:** statistics of the chosen readouts | **MEASURE again:** every value of both channels |
-| ![COMPARE: a master stacked from 64 captures in REF A and its mask testing live captures](docs/images/scope-compare.png) | ![The TRIG settings sheet: every trigger setting written out, with a live preview and help](docs/images/scope-sheet-trig.png) |
-| **COMPARE:** a master stacked from 64 captures (REF A), its mask testing live captures | **A settings sheet:** every option written out, with a live preview and help |
+| ![COMPARE: a master stacked from 64 captures of a UART in REF A and its mask testing live captures](docs/images/scope-compare.png) | ![The BUS settings sheet: the SPI decoder, the clock rate and data delay measured on the bus, and the match, with a live preview and help](docs/images/scope-sheet-bus.png) |
+| **COMPARE:** a master stacked from 64 captures (REF A), its mask testing live captures (a 115,200-baud UART: a master wants a signal sampled many times a period) | **A settings sheet:** every option written out, with a live preview and help |
 
 ### In a browser
 
@@ -50,16 +59,16 @@ next view, as on the scope.
 
 | | |
 |---|---|
-| ![Web SCOPE workspace](docs/images/web-scope.png) | ![Web SCOPE in X-Y: C1 against C2, a diagonal because both channels carry the same signal](docs/images/web-xy.png) |
+| ![Web SCOPE workspace](docs/images/web-scope.png) | ![Web SCOPE in X-Y: the SPI data against its clock](docs/images/web-xy.png) |
 | **SCOPE** | **SCOPE again:** X-Y |
-| ![Web BUS workspace: the decoder, the packet table and the trigger on bytes](docs/images/web-bus.png) | ![Web BUS eye diagram with jitter analysis](docs/images/web-bus-eye.png) |
+| ![Web BUS workspace: the decoder, the packet table of a stopped record's 286 flash reads and the trigger on bytes](docs/images/web-bus.png) | ![Web BUS eye diagram of the 104 Mbit/s data with jitter analysis](docs/images/web-bus-eye.png) |
 | **BUS:** decoder, packet table, trigger on bytes | **BUS again:** the eye diagram and jitter, drawn as on the scope with the same figures |
-| ![Web SPECTRUM: FFT with peaks and THD](docs/images/web-spectrum.png) | ![Web spectrogram](docs/images/web-spectrogram.png) |
-| **SPECTRUM:** FFT, peaks, THD | **SPECTRUM again:** spectrogram |
+| ![Web SPECTRUM: FFT with the peak table of the 104 MHz clock](docs/images/web-spectrum.png) | ![Web spectrogram](docs/images/web-spectrogram.png) |
+| **SPECTRUM:** FFT and peaks | **SPECTRUM again:** spectrogram |
 | ![Web MEASURE: statistics, cursors and the mask test](docs/images/web-measure.png) | ![Web MEASURE, All values: every measurement of both channels in this capture](docs/images/web-measure-all.png) |
 | **MEASURE:** statistics, cursors, mask and zones | **MEASURE again:** every value of both channels |
 | ![Web COMPARE: REF A against the live trace with the difference readout, and the mask test counting](docs/images/web-compare.png) | ![All settings: every control of the app in one list, with where it lives](docs/images/web-allsettings.png) |
-| **COMPARE:** REF A against the live trace, and the mask test counting a master stacked on the scope | **All settings:** every control, and where it lives |
+| **COMPARE:** REF A against the live trace, and the mask test counting a master stacked on the scope (the UART) | **All settings:** every control, and where it lives |
 
 ### On a phone
 
