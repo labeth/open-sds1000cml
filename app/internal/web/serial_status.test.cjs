@@ -12,6 +12,7 @@ const c = {
   // TRLC-LINKS: REQ-SDS-206
   stParams: () => ({}),
   stConfigError: '',
+  stStatusHeld: 0,
   // TRLC-LINKS: REQ-SDS-206
   stArmed: () => true,
   // TRLC-LINKS: REQ-SDS-206

@@ -246,10 +246,16 @@ function stBandInactive() {
   return !!(st && (st.band === "envelope" || st.band === "roll" || st.stream || st.ets));
 }
 
+// A message (arming cancelled, turn on decode) stays a few seconds over the
+// live status, which would otherwise wipe it within a second; an error or
+// this page's own arm or edit replaces it (stStatusHeld = 0).
+let stStatusHeld = 0;
+
 // TRLC-LINKS: REQ-SDS-206
 function stStatus(msg) {
   if (!$("stStats")) return;
-  if (msg !== undefined) { $("stStats").textContent = msg; return; }
+  if (msg !== undefined) { stStatusHeld = Date.now() + 3000; $("stStats").textContent = msg; return; }
+  if (Date.now() < stStatusHeld && !stConfigError) return;
   if (stProtoNum() && stParams() === null) { $("stStats").textContent = "invalid hex in the match pattern" + (stArmed() ? " · previous settings remain armed" : ""); return; }
   if (stConfigError) { $("stStats").textContent = stConfigError + (stArmed() ? " Previous settings remain armed." : ""); return; }
   if (!stArmed()) { $("stStats").textContent = ""; return; }
@@ -311,10 +317,11 @@ function stOnPageEdit() {
       if (generation !== stArmGeneration) return;
       stOwn = on;
       if (on) {
-        try { await stPush(); } catch { stStatus(); return; } // install config BEFORE arming; abort on invalid/rejected
+        try { await stPush(); } catch { stStatusHeld = 0; stStatus(); return; } // install config BEFORE arming; abort on invalid/rejected
       }
       if (generation !== stArmGeneration || stProtoNum() === 0) return;
       await stSetArmed(on);
+      stStatusHeld = 0;
       stStatus();
     } finally {
       if (arming === generation) {
@@ -327,7 +334,7 @@ function stOnPageEdit() {
   };
   for (const id of ["stAddr", "stRW", "stBytes"])
     // TRLC-LINKS: REQ-SDS-206
-    $(id).onchange = () => { stOwn = true; if (stArmed()) stPush().catch(() => {}); stStatus(); };
+    $(id).onchange = () => { stOwn = true; if (stArmed()) stPush().catch(() => {}); stStatusHeld = 0; stStatus(); };
   $("dsClock").onchange = stSetClock;
 })();
 
