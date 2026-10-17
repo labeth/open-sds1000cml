@@ -94,4 +94,4 @@ jobs:
 
             Host controller: grab the matching `otactl-<os>-<arch>` (first run: macOS `chmod +x … && xattr -d com.apple.quarantine …`; Linux `chmod +x …`; Windows SmartScreen → *More info → Run anyway*). The README's *Install, update and remove* section covers updating, rolling back and removing the firmware; `docs/` has the release notes and known limitations.
 
-            > ⚠️ Experimental firmware for the SDS1000CML+ series only. It takes over **whatever** SDS1000CML+ you boot it in (to coexist instead, set `OTA_AUTO_TAKEOVER=0` in `ota/agent.env` on the stick and delete `ota/state.json` from it). No warranty.
+            > ⚠️ Experimental firmware for the SDS1000CML+ series only. It takes over **whatever** SDS1000CML+ you boot it in, at every boot with the stick in; take the stick out for the factory firmware. No warranty.

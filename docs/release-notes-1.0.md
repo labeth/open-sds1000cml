@@ -42,9 +42,7 @@ primary partition; a GPT stick is not seen), extract the zip onto the root of th
 web UI is at `http://<scope-ip>:8080/`; the LCD shows the address. `SHA256SUMS` covers every file of
 the release.
 
-To boot the stick without taking over the scope, set `OTA_AUTO_TAKEOVER=0` in `ota/agent.env` on
-the stick and delete `ota/state.json` from it if it is there: once the stick has taken over a scope,
-that file makes it take over at every boot.
+With the stick in, the scope runs this firmware at every boot; without it, the factory firmware.
 
 ## Update, roll back, remove
 
@@ -77,6 +75,8 @@ settings tab (the Help key), at the end of the web UI's status line and in `/api
   (decimation ×512, 3.9 MB/s); the SRAM covers a stall of the ARM of about 0.5 s at ×512 and 1 s at
   ×1024. A longer stall is reported as a gap. Streaming decode kept a 921,600-baud UART for
   3 minutes without loss; at higher rates a lost event is marked.
+* **Roll:** the default Chunked roll averages each chunk, so a signal much faster than a column
+  (a 1 MHz square at 20 ms/div) shows as a flat line; Roll in Stream shows its full band.
 * **Protocols:** CAN FD frames are decoded but their CRC is not checked. ARINC 429 has not been
   tested on a physical ARINC 429 bus.
 * **Converters:** about one FPGA load in a hundred leaves a converter not converting. The scope

@@ -17,9 +17,6 @@ series oscilloscope (developed and validated on the SDS1102CML+).
 - There is NO WARRANTY. You are responsible for your instrument. See LICENSE (MIT).
 
 Recovery: remove the USB stick and power-cycle to boot the factory firmware again.
-(To boot the stick WITHOUT taking over, edit ota/agent.env on the stick and set
-OTA_AUTO_TAKEOVER=0, and delete ota/state.json from the stick if it is there: once
-the stick has taken over, that file makes it take over at every boot. The agent
-then only provides remote access and coexists.)
+With the stick in, the scope runs this firmware at every boot.
 
 Project + full docs: https://github.com/labeth/open-sds1000cml

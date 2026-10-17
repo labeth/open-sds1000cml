@@ -376,9 +376,7 @@ kept on the stick.
 5. Open `http://<scope-ip>:8080/` (the phone remote is `/r`). The LCD shows the address; your router's
    DHCP client list has it too.
 
-To boot the stick without taking over (remote access only, the factory firmware keeps the screen),
-set `OTA_AUTO_TAKEOVER=0` in `ota/agent.env` on the stick and delete `ota/state.json` from it if it is
-there: once the stick has taken over a scope, that file makes it take over at every boot.
+With the stick in, the scope runs this firmware at every boot; without it, the factory firmware.
 
 **Update:** extract the new release's zip onto the stick the same way, replacing the files, and
 power-cycle. Settings stay (they live in `scope-settings.json` on the stick, which the zip does not
