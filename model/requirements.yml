@@ -320,7 +320,8 @@ requirements:
     by itself after 2 minutes without a client call; the LCD names it while it holds the acquisition. The registered
     matchers are the FPGA images' protocol matchers (ADR-SERIAL-HARDWARE-TRIGGER); the engine plans them from the
     request and the levels and rates it learns from the captures, and software decoding only places the trigger
-    point on the match.
+    point on the match. SPI's and I2C's two lines are each sliced at the level learned on its own channel, at that
+    channel's V/div and offset (ADR-LINE-LEVELS).
   verificationMethods:
   - inspection
   - test

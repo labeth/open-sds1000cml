@@ -274,7 +274,7 @@ func TestJSDecoderParity(t *testing.T) {
 		// Under six samples a clock period: the data line at the clock's
 		// interpolated crossing plus the channels' phase (75 and 104 MHz at 2 ns).
 		for _, b := range synthCases() {
-			if b.rateHz < 75e6 || b.inverted {
+			if b.rateHz < 75e6 || b.inverted || b.shift != [2]float64{} { // one threshold slices both lines
 				continue
 			}
 			c1, c2 := lines(b.words())

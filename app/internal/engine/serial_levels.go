@@ -252,6 +252,15 @@ func clockRate(codes []uint8, sampleS float64, extremes bool) float64 {
 	return 1 / (period * sampleS)
 }
 
+// learnedCode is channel ch's learned decoder threshold as a code at its
+// current V/div and offset.
+// TRLC-LINKS: REQ-SDS-013
+func (e *Engine) learnedCode(ch int) float64 {
+	v := math.Float64frombits(e.serLv.volts[ch].Load())
+	off := math.Float64frombits(e.trigOffV[ch].Load())
+	return math.Round(math.Max(1, math.Min(254, 128+(v+off)*25/e.chVdivV(ch))))
+}
+
 // spiMeasuring is serialPlanParams' reason while the SPI clock is measured.
 const spiMeasuring = "measuring the SPI clock rate"
 
@@ -280,19 +289,31 @@ func (e *Engine) spiQuietCheck(p SerialParams) {
 
 // serialPlanParams is p as the hardware matcher takes it: without a threshold
 // of its own, the learned decoder threshold of its first line at the current
-// V/div and offset; for SPI without a clock rate, the measured one. why says
-// what is still missing, "" when p is complete.
+// V/div and offset, and of SPI's and I2C's second line at its own (the
+// channels may sit apart on the screen: one level for both slices one of
+// them off its swing, and the matcher never fires); for SPI without a clock
+// rate, the measured one. why says what is still missing, "" when p is
+// complete.
 // TRLC-LINKS: REQ-SDS-013
 func (e *Engine) serialPlanParams(p SerialParams) (SerialParams, string) {
+	twoLines := p.Proto == serSPI || p.Proto == serI2C
 	if !p.HaveThr {
-		ch := p.ChA & 1
-		if !e.serLv.have[ch].Load() {
-			return p, fmt.Sprintf("learning the line levels on C%d", ch+1)
+		lines := []int{p.ChA & 1}
+		if twoLines && !p.HaveThrB {
+			lines = append(lines, 1-p.ChA&1)
 		}
-		v := math.Float64frombits(e.serLv.volts[ch].Load())
-		off := math.Float64frombits(e.trigOffV[ch].Load())
-		p.Threshold = math.Round(math.Max(1, math.Min(254, 128+(v+off)*25/e.chVdivV(ch))))
-		p.HaveThr = true
+		for _, ch := range lines {
+			if !e.serLv.have[ch].Load() {
+				return p, fmt.Sprintf("learning the line levels on C%d", ch+1)
+			}
+		}
+		p.Threshold, p.HaveThr = e.learnedCode(lines[0]), true
+		if len(lines) == 2 {
+			p.ThresholdB, p.HaveThrB = e.learnedCode(lines[1]), true
+		}
+	}
+	if twoLines && !p.HaveThrB {
+		p.ThresholdB, p.HaveThrB = p.Threshold, true
 	}
 	if p.Proto == serSPI && p.SPIClockHz <= 0 {
 		hz := math.Float64frombits(e.serLv.spiHz.Load())

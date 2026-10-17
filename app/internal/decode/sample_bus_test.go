@@ -21,7 +21,8 @@ type lineTr struct {
 // lineSet is two logic lines as the converters see them: each line's
 // transitions and idle level, its rise and fall times (10-90 %), the
 // converters' own offsets, noise, C1 sampled at even and C2 at odd
-// nanoseconds plus the bench's 0.44 ns.
+// nanoseconds plus the bench's 0.44 ns; shift moves a channel's codes (the
+// channels at different offsets).
 type lineSet struct {
 	tr         [2][]lineTr
 	idle       [2]bool
@@ -30,6 +31,7 @@ type lineSet struct {
 	noise      float64
 	seed       int64
 	inverted   bool
+	shift      [2]float64
 }
 
 // TRLC-LINKS: REQ-SDS-229
@@ -74,7 +76,7 @@ func (p lineSet) words() []uint64 {
 			if p.inverted {
 				v = 1 - v
 			}
-			code := 70 + 100*v + offsets[ch][i%5] + rng.NormFloat64()*p.noise
+			code := 70 + 100*v + p.shift[ch] + offsets[ch][i%5] + rng.NormFloat64()*p.noise
 			codes[ch][i] = uint8(math.Max(0, math.Min(255, math.Round(code))))
 		}
 	}
@@ -307,6 +309,7 @@ type i2cBus struct {
 	noise      float64
 	seed       int64
 	transfers  [][]i2cOp
+	shift      [2]float64 // each channel's codes moved (C1, C2)
 }
 
 // i2cOp is a START (repeated when inside a transfer), a byte with the
@@ -373,7 +376,7 @@ func (b i2cBus) lines() lineSet {
 		}
 		t += 4 * period
 	}
-	set := lineSet{endS: t + 2e-6, rise: [2]float64{b.rise, b.rise}, fall: [2]float64{b.fall, b.fall}, noise: b.noise, seed: b.seed, inverted: b.inverted}
+	set := lineSet{endS: t + 2e-6, rise: [2]float64{b.rise, b.rise}, fall: [2]float64{b.fall, b.fall}, noise: b.noise, seed: b.seed, inverted: b.inverted, shift: b.shift}
 	set.tr[b.clockCh], set.tr[1-b.clockCh] = scl, sda
 	set.idle = [2]bool{true, true}
 	return set
@@ -385,7 +388,9 @@ func (b i2cBus) config() SampleI2CConfig {
 	if b.clockCh == 0 {
 		delay = -delay
 	}
-	return SampleI2CConfig{ClockCh: b.clockCh, Level: 120, Low: 107, High: 133, Inverted: b.inverted, Delay: delay, Address: -1, Direction: 2}
+	scl, sda := uint8(120+b.shift[b.clockCh]), uint8(120+b.shift[1-b.clockCh])
+	return SampleI2CConfig{ClockCh: b.clockCh, Level: scl, Low: scl - 13, High: scl + 13, SDALevel: sda, SDALow: sda - 13, SDAHigh: sda + 13,
+		Inverted: b.inverted, Delay: delay, Address: -1, Direction: 2}
 }
 
 // want is the events the bus carries: START, each byte with its address
@@ -434,12 +439,18 @@ func i2cCases() []i2cBus {
 	}
 	tight := i2cBus{rateHz: 3.4e6, hold: 5e-9, rise: 10e-9, fall: 5e-9, clockCh: 0, noise: 1, seed: 99}
 	tight.transfers = i2cTransfers(0x70)
-	return append(cases, tight)
+	// the lines apart on the screen: each sliced at its own level, neither
+	// line's swing reaching the other's
+	apart := i2cBus{rateHz: 3.4e6, hold: 0.25 / 3.4e6, rise: 40e-9, fall: 10e-9, clockCh: 1, noise: 1, seed: 98, shift: [2]float64{75, -60}}
+	apart.transfers = i2cTransfers(0x60)
+	slow := i2cBus{rateHz: 400e3, hold: 0.25 / 400e3, rise: 300e-9, fall: 10e-9, clockCh: 0, noise: 1, seed: 97, shift: [2]float64{-60, 75}}
+	slow.transfers = i2cTransfers(0x30)
+	return append(cases, tight, apart, slow)
 }
 
 // TRLC-LINKS: REQ-SDS-229
 func i2cName(b i2cBus) string {
-	return fmt.Sprintf("%.0fkHz/rise%.0fns/hold%.0fns/inv%v/SCL C%d", b.rateHz/1e3, b.rise*1e9, b.hold*1e9, b.inverted, b.clockCh+1)
+	return fmt.Sprintf("%.0fkHz/rise%.0fns/hold%.0fns/inv%v/SCL C%d/shift%v", b.rateHz/1e3, b.rise*1e9, b.hold*1e9, b.inverted, b.clockCh+1, b.shift)
 }
 
 // The I2C receiver reads every synthetic bus exactly.
@@ -632,7 +643,7 @@ func TestSampleUARTRTL(t *testing.T) {
 				fmt.Sprintf("+high=%d", c.High), fmt.Sprintf("+inverted=%d", b2u8(c.Inverted)), fmt.Sprintf("+period=%d", c.Period16),
 				fmt.Sprintf("+bits=%d", c.Bits), fmt.Sprintf("+parity=%d", c.Parity), fmt.Sprintf("+resync=%d", b2u8(c.Resync)),
 				fmt.Sprintf("+pattern=%d", c.Pattern), fmt.Sprintf("+len=%d", c.Length))
-			sameEdges(t, "line", r.a, modelEdges(SampleEdges(words, SampleLineConfig{Ch: c.Ch, Rise: true, Fall: true, Level: c.Level, Low: c.Low, High: c.High})))
+			sameEdges(t, "line", r.a, modelEdges(SampleEdges(words, SampleLineConfig{Ch: c.Ch, Rise: true, Fall: true, Level: c.Level, Low: c.Low, High: c.High, OtherLevel: c.Level})))
 			sameEvents(t, r.events, ev)
 			if len(ev) == 0 {
 				t.Fatal("no events")
@@ -662,10 +673,11 @@ func TestSampleI2CRTL(t *testing.T) {
 				t.Fatal("no matches")
 			}
 			r := sim.runRx(t, words, "+proto=2", fmt.Sprintf("+ch=%d", c.ClockCh), fmt.Sprintf("+level=%d", c.Level), fmt.Sprintf("+low=%d", c.Low),
-				fmt.Sprintf("+high=%d", c.High), fmt.Sprintf("+inverted=%d", b2u8(c.Inverted)), fmt.Sprintf("+delay=%d", c.Delay&0xff),
+				fmt.Sprintf("+high=%d", c.High), fmt.Sprintf("+level2=%d", c.SDALevel), fmt.Sprintf("+low2=%d", c.SDALow), fmt.Sprintf("+high2=%d", c.SDAHigh),
+				fmt.Sprintf("+inverted=%d", b2u8(c.Inverted)), fmt.Sprintf("+delay=%d", c.Delay&0xff),
 				fmt.Sprintf("+address=%d", c.Address), fmt.Sprintf("+direction=%d", c.Direction), fmt.Sprintf("+pattern=%d", c.Pattern), fmt.Sprintf("+len=%d", c.Length))
-			sameEdges(t, "SCL", r.a, modelEdges(SampleEdges(words, SampleLineConfig{Ch: c.ClockCh, Rise: !c.Inverted, Fall: c.Inverted, Level: c.Level, Low: c.Low, High: c.High, Delay: c.Delay})))
-			sameEdges(t, "SDA", r.b, modelEdges(SampleEdges(words, SampleLineConfig{Ch: 1 - c.ClockCh, Rise: true, Fall: true, Level: c.Level, Low: c.Low, High: c.High, Delay: wrap8(-c.Delay)})))
+			sameEdges(t, "SCL", r.a, modelEdges(SampleEdges(words, SampleLineConfig{Ch: c.ClockCh, Rise: !c.Inverted, Fall: c.Inverted, Level: c.Level, Low: c.Low, High: c.High, OtherLevel: c.SDALevel, Delay: c.Delay})))
+			sameEdges(t, "SDA", r.b, modelEdges(SampleEdges(words, SampleLineConfig{Ch: 1 - c.ClockCh, Rise: true, Fall: true, Level: c.SDALevel, Low: c.SDALow, High: c.SDAHigh, OtherLevel: c.Level, Delay: wrap8(-c.Delay)})))
 			sameEvents(t, r.events, ev)
 			if !reflect.DeepEqual(r.matches, matches) {
 				t.Fatalf("matches RTL %v model %v", r.matches, matches)
@@ -812,7 +824,7 @@ func i2cTokens(ev []SampleBusEvent) []string {
 func TestSampleI2CCaptures(t *testing.T) {
 	for _, f := range []string{"i2c_sample_400khz.bin.gz", "i2c_sample_1mhz.bin.gz", "i2c_sample_3400khz.bin.gz"} {
 		t.Run(f, func(t *testing.T) {
-			ev, _ := SampleI2C(readCapture(t, f), SampleI2CConfig{ClockCh: 0, Level: 128, Low: 115, High: 141, Delay: -ChannelPhase16, Address: -1, Direction: 2})
+			ev, _ := SampleI2C(readCapture(t, f), SampleI2CConfig{ClockCh: 0, Level: 128, Low: 115, High: 141, SDALevel: 128, SDALow: 115, SDAHigh: 141, Delay: -ChannelPhase16, Address: -1, Direction: 2})
 			got := i2cTokens(ev)
 			// align on the first transfer start of a pass: a START then A0a (the
 			// register write), F4a or 78aN

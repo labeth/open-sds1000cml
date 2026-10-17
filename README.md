@@ -222,7 +222,7 @@ FPGA fires on the matched frame, and the decoded stream carries every byte.
 | **UART** | 62.5 MBd in 8N1, 7E1 and 9O1, characters back to back; the same line inverted | `-SDS`, and a counting character on the inverted line | 3,961 bursts of 32 characters (8N1) and 3,982 (9O1), 0 errors; 10, 25 and 50 MBd as well |
 | **I²C** | 3.4 MHz high-speed mode: a ten-bit address, a repeated START, NACKs | a read of address 0x50; a write of `00 10` | 3,799 transfers, 0 errors; 100 kHz, 400 kHz and 1 MHz as well |
 
-All three run in one `fast` image (84 % of the FPGA's logic, timing met). The general image's
+All three run in one `fast` image (86 % of the FPGA's logic, timing met). The general image's
 receivers stay for everything they read: UART to 5 MBd 8N1, I²C to fast-mode plus, SPI to about 20 MHz.
 Past that, or with **Receiver = Samples** on the BUS sheet, the scope loads the fast image by itself (about
 four seconds). Detection names these buses too: a 62.5 MBd UART and high-speed I²C.

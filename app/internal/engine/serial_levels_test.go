@@ -345,3 +345,42 @@ func TestSPIClockMeasuredAgainWhenQuiet(t *testing.T) {
 		t.Fatalf("10 MHz after measuring again: %+v", c.SPI)
 	}
 }
+
+// SPI's and I2C's lines apart on the screen (the user separated the traces:
+// other offsets, another V/div): each line is sliced at its own learned level
+// at its own scale. One level for both slices the second line off its swing,
+// and the matcher never fires.
+// TRLC-LINKS: REQ-SDS-013
+func TestTwoLineBusPlansEachLineLevel(t *testing.T) {
+	for _, proto := range []int{serSPI, serI2C} {
+		e := levelsEngine(SerialParams{Proto: proto, ChA: 1, ChB: 0, MSB: true, SPIClockHz: 5000000, Addr: -1, RW: 2, Bytes: []int{0x55}})
+		e.hardwareI2C = true
+		clk, data := spiWave([]int{0x55, 0xaa, 0x0f}, 10) // rails 40 and 210: threshold 125 on each
+		f := &Frame{C1: data, C2: clk, Valid: len(clk), SampleS: 1e-8}
+		e.learnSerialLevels(f, [2]chScale{{1, 0}, {1, 0}})
+		c, _, _, _, _ := e.sramConfig()
+		if c.TriggerChannel != 1 || c.TriggerLevel != 125 || c.SecondLevel != 125 {
+			t.Fatalf("proto %d equal traces: channel %d levels %d, %d", proto, c.TriggerChannel, c.TriggerLevel, c.SecondLevel)
+		}
+		// C1 (the data line) up 0.6 V at 1 V/div, C2 (the clock) at 2 V/div down 1 V
+		e.trigOffV[0].Store(math.Float64bits(0.6))
+		e.chVdivBits[1].Store(math.Float64bits(2))
+		e.trigOffV[1].Store(math.Float64bits(-1))
+		c, _, _, _, _ = e.sramConfig()
+		if !(c.SPI.Enabled || c.I2C.Enabled) || c.TriggerLevel != 114 || c.SecondLevel != 140 {
+			t.Fatalf("proto %d traces apart: levels %d (clock, want 114), %d (data, want 140)", proto, c.TriggerLevel, c.SecondLevel)
+		}
+	}
+	// a second line not yet seen holds the plan back
+	e := levelsEngine(SerialParams{Proto: serSPI, ChA: 0, ChB: 1, SPIClockHz: 5000000, Bytes: []int{0x55}})
+	e.serLv.volts[0].Store(math.Float64bits(0))
+	e.serLv.have[0].Store(true)
+	if _, why := e.serialPlanParams(e.ser.params); why != "learning the line levels on C2" {
+		t.Fatalf("plan before the data line's levels: %q", why)
+	}
+	// a request's own threshold slices both lines
+	p, why := e.serialPlanParams(SerialParams{Proto: serSPI, ChA: 0, ChB: 1, SPIClockHz: 5000000, Threshold: 100, HaveThr: true})
+	if why != "" || p.ThresholdB != 100 || !p.HaveThrB {
+		t.Fatalf("explicit threshold: %+v (%q)", p, why)
+	}
+}

@@ -35,6 +35,10 @@ const (
 // line, I2C's SDA, after the first line's crossing (sample_bus.v).
 const regSampleDelay = 58
 
+// regSecondLevel is the second line's level (SPI's data, I2C's SDA), in
+// every image with those receivers; register 7's hysteresis is its band.
+const regSecondLevel = 59
+
 // TRLC-LINKS: REQ-SDS-013
 func (c *Capture) SupportsSPI() (bool, error) {
 	c.mu.Lock()

@@ -6,12 +6,15 @@
 // clock, the UART line, I2C's SCL) and one on the other (I2C's SDA), and the
 // SPI, UART and I2C receivers, one enabled at a time. The second line's
 // extractor reads the first at its crossings with the first's delay negated
-// (the channels' sampling phase).
+// (the channels' sampling phase). Each line is sliced at its own level (the
+// first line's, register 7; the other's, register 59), wherever it is read:
+// the channels may sit at any offset and V/div (ADR-LINE-LEVELS).
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-229
 module sample_bus(
  input wire core,clk,reset,
  input wire [31:0] word,input wire valid,  // core clock: CH1, CH2, CH1, CH2 bytes, the earliest lowest
- input wire [7:0] level,low,high,delay,    // delay: the first line's, held (host clock)
+ input wire [7:0] level,low,high,delay,    // the first line's level, band and delay, held (host clock)
+ input wire [7:0] level2,low2,high2,       // the other line's level and band, held
  input wire [23:0] ticks,                  // SPI's idle gap in receiver clocks, UART's bit time in 1/16 ns
  input wire [31:0] pattern,
  input wire spi_en,spi_ch,spi_inverted,cpol,cpha,msb,input wire [2:0] spi_len,
@@ -37,10 +40,10 @@ module sample_bus(
  end
  wire live_a,found_a,rising_a,other_a;wire signed [7:0] when_a;wire [3:0] levels_a;
  sample_edges edges_a(.clk(clk),.reset(reset || !run_a),.valid(v0 && v1),.word({w0,w1}),.ch(ch_a),.rise_en(rise_a),.fall_en(fall_a),
-  .level(level),.low(low),.high(high),.delay(delay_a),.live(live_a),.found(found_a),.when(when_a),.rising(rising_a),.other(other_a),.levels(levels_a));
+  .level(level),.low(low),.high(high),.other_level(level2),.delay(delay_a),.live(live_a),.found(found_a),.when(when_a),.rising(rising_a),.other(other_a),.levels(levels_a));
  wire live_b,found_b,rising_b,other_b;wire signed [7:0] when_b;wire [3:0] levels_b;
  sample_edges edges_b(.clk(clk),.reset(reset || !run_b),.valid(v0 && v1),.word({w0,w1}),.ch(!ch_a),.rise_en(1'b1),.fall_en(1'b1),
-  .level(level),.low(low),.high(high),.delay(delay_b),.live(live_b),.found(found_b),.when(when_b),.rising(rising_b),.other(other_b),.levels(levels_b));
+  .level(level2),.low(low2),.high(high2),.other_level(level),.delay(delay_b),.live(live_b),.found(found_b),.when(when_b),.rising(rising_b),.other(other_b),.levels(levels_b));
  spi_sample spi(.clk(clk),.reset(reset),.enable(spi_en),.live(live_a),.found(found_a),.other(other_a),
   .inverted(spi_inverted),.msb(msb),.gap_ticks(ticks),.pattern(pattern),.pattern_len(spi_len),
   .match(spi_match),.event_valid(spi_event_valid),.event_kind(spi_event_kind),.event_data(spi_event_data));

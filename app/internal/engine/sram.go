@@ -474,12 +474,12 @@ func (e *Engine) planSerial(c *sramcapture.Config, serial SerialParams, fallback
 	if c.SPI.Enabled {
 		c.Normal = true
 		c.TriggerChannel = c.SPI.ClockChannel
-		c.TriggerLevel = uint8(math.Round(serial.Threshold))
+		c.TriggerLevel, c.SecondLevel = uint8(math.Round(serial.Threshold)), secondLevel(serial)
 	}
 	if c.I2C.Enabled {
 		c.Normal = true
 		c.TriggerChannel = c.I2C.ClockChannel
-		c.TriggerLevel = uint8(math.Round(serial.Threshold))
+		c.TriggerLevel, c.SecondLevel = uint8(math.Round(serial.Threshold)), secondLevel(serial)
 	}
 	if needSequence && hardwareSerialName(*c) != "" {
 		if c.Sequence = planSequence(request); c.Sequence.Length == 0 {
@@ -489,6 +489,16 @@ func (e *Engine) planSerial(c *sramcapture.Config, serial SerialParams, fallback
 			c.Normal = fallbackNormal
 		}
 	}
+}
+
+// secondLevel is the code SPI's data line or I2C's SDA is sliced at: its
+// own threshold when planned (serialPlanParams), else the first line's.
+// TRLC-LINKS: REQ-SDS-013
+func secondLevel(p SerialParams) uint8 {
+	if p.HaveThrB && p.ThresholdB >= 0 && p.ThresholdB <= 255 {
+		return uint8(math.Round(p.ThresholdB))
+	}
+	return uint8(math.Round(p.Threshold))
 }
 
 // planHysteresis sets the fabric trigger's re-arm band from the converter

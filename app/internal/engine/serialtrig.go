@@ -73,6 +73,11 @@ type SerialParams struct {
 	DataBaud  int     `json:"dataBaud"`  // can-fd: data-phase baud (0 = same as nominal Baud)
 	Threshold float64 `json:"threshold"` // slice threshold code, used only if HaveThr
 	HaveThr   bool    `json:"haveThr"`   // false = decode auto-threshold
+	// ThresholdB slices the second line (I2C's SDA, SPI's data) in the
+	// hardware when HaveThrB; otherwise that line's learned level when the
+	// first line's is learned too, else Threshold.
+	ThresholdB float64 `json:"thresholdB,omitempty"`
+	HaveThrB   bool    `json:"haveThrB,omitempty"`
 	// match spec:
 	Addr  int   `json:"addr"`  // i2c 7-bit address; <0 = any
 	RW    int   `json:"rw"`    // i2c: 0=write 1=read 2=any

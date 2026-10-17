@@ -91,3 +91,28 @@ func TestHardwareSampleSPIDelay(t *testing.T) {
 		}
 	}
 }
+
+// The second line's level goes to register 59 with SPI or I2C armed; 0
+// takes the trigger level.
+// TRLC-LINKS: REQ-SDS-013
+func TestSecondLineLevelRegister(t *testing.T) {
+	f := frozenBus()
+	f.revision = 10
+	c := client(t, f)
+	c.bus = spiBus{f, 0x5301}
+	cfg := Config{Normal: true, PostWords: 16, TriggerLevel: 150, SecondLevel: 90, SPI: SPITriggerConfig{Enabled: true, GapTicks: 100}}
+	if err := c.Arm(context.Background(), cfg); err != nil {
+		t.Fatal(err)
+	}
+	if f.staged[7]&0xff != 150 || f.staged[regSecondLevel] != 90 {
+		t.Fatalf("levels %d, %d", f.staged[7]&0xff, f.staged[regSecondLevel])
+	}
+	f.flags = 4 | 16 | 32 | 64
+	cfg.SecondLevel = 0
+	if err := c.Arm(context.Background(), cfg); err != nil {
+		t.Fatal(err)
+	}
+	if f.staged[regSecondLevel] != 150 {
+		t.Fatalf("second level %d, want the trigger level", f.staged[regSecondLevel])
+	}
+}

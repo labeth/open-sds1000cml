@@ -32,7 +32,7 @@ const trigger=['sample_timeline.v','event_sequence.v','envelope_reduce.v','decod
  'decoded_event_reader.v','decoded_event_transport.v','decoded_event_port.v'];
 const images:Record<string,Image>={
  general:{dir:'images/general',files:['uart_trigger.v','i2c_trigger.v','spi_trigger.v','precision.v','precision_tail.v'],
-  defines:['TRIG_UART','TRIG_I2C','TRIG_SPI'],seed:1,trigger:true,precision:true},
+  defines:['TRIG_UART','TRIG_I2C','TRIG_SPI'],seed:8,trigger:true,precision:true},
  // Line held Manchester, MIL-1553, USB and SENT at 94% and missed timing on
  // four seeds; MIL-1553 and SENT moved to the packet image.
  packet:{dir:'images/packet',files:['arinc429_trigger.v','can_trigger.v','flexray_trigger.v','mil1553_trigger.v','sent_trigger.v'],

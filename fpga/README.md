@@ -40,6 +40,17 @@ words arrive one pulse late (READ_DELAY 1), so a fresh read starts 17 words
 early and a continued read would lose a word; the front end is drained
 continuously while the drum runs.
 
+## Two-line buses
+
+SPI's and I2C's receivers, in the general and the fast image, slice each line
+at its own level: register 7 holds the first line's (SPI's clock, I2C's SCL)
+and the hysteresis, register 59 the second's (SPI's data, I2C's SDA; bits
+7:0, banded by register 7's hysteresis). The channels may sit at any offset
+and V/div; with one level the second line's swing could lie wholly on one
+side of it and nothing would match. The engine plans each from the threshold
+learned on its own channel. Images without these receivers do not have
+register 59.
+
 ## Fast image
 
 The general image's SPI, UART and I2C receivers sample the lines as 125 MHz
@@ -60,7 +71,8 @@ clock), in `images/fast/sample_bus.v`:
   crossed the level but not the band). Each crossing is timed by linear
   interpolation between the two samples around the level, in sixteenths of
   a nanosecond (a six-bit restoring division over three clocks); the other
-  line's level is taken at the sample nearest the crossing plus a delay,
+  line's level (at that line's own level) is taken at the sample nearest the
+  crossing plus a delay,
   and the line's own four levels of the clock come out with it. Two
   extractors run: one on the first line (SPI's clock, the UART line, I2C's
   SCL) with the delay of register 58 (the channels' sampling phase, C2
@@ -100,8 +112,8 @@ the same edges, events and matches on the same clocks;
 `images/fast/sim/tb_top_fast.v` checks the image's top level (registers over
 GPMC, both channels, the events and the trigger) against the models.
 
-The fast image: 8,668 logic elements of 10,320 (84 %), 327,520 memory bits,
-seed 2, worst internal slack 0.134 ns.
+The fast image: 8,825 logic elements of 10,320 (86 %), 327,520 memory bits,
+seed 2, worst internal slack 0.121 ns.
 
 ## Qualify image
 

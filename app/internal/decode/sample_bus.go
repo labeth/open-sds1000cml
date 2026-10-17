@@ -12,8 +12,8 @@ package decode
 // other edge since its last crossing (a Schmitt trigger), so the converters'
 // offsets and noise on a slow edge make one crossing, not several, or has
 // stayed beyond the band's own edge for a whole clock (after a runt pulse); it is timed by linear interpolation between the two samples around
-// the level, in sixteenths of a nanosecond; the other line's level is taken
-// at the sample nearest that time plus a delay; and the line's own levels
+// the level, in sixteenths of a nanosecond; the other line's level (sliced at
+// that line's own level) is taken at the sample nearest that time plus a delay; and the line's own levels
 // come out with it, for a receiver that samples the line at times of its own.
 
 // SampleLineConfig is one extractor's configuration, as its registers hold it.
@@ -21,6 +21,9 @@ type SampleLineConfig struct {
 	Ch               int  // 0: C1, 1: C2
 	Rise, Fall       bool // the crossings found
 	Level, Low, High uint8
+	// OtherLevel slices the other line where it is read (that line's own
+	// level: the channels may sit at different offsets and V/div).
+	OtherLevel uint8
 	// Delay is where the other line is read after a crossing, in sixteenths
 	// of a nanosecond on this line's sample grid (-128..127).
 	Delay int
@@ -44,10 +47,10 @@ type SampleLineEdge struct {
 func SampleEdges(wide []uint64, c SampleLineConfig) []SampleLineEdge {
 	n := len(wide)
 	other := 1 - c.Ch
-	levels := make([]bool, 4*n) // the other line's samples at or above the level
+	levels := make([]bool, 4*n) // the other line's samples at or above its level
 	for k, w := range wide {
 		for j := 0; j < 4; j++ {
-			levels[4*k+j] = sampleOf(w, other, j) >= c.Level
+			levels[4*k+j] = sampleOf(w, other, j) >= c.OtherLevel
 		}
 	}
 	out := make([]SampleLineEdge, n)
@@ -269,9 +272,11 @@ func SampleUART(wide []uint64, c SampleUARTConfig) []SampleBusEvent {
 // SampleI2CConfig is the I2C receiver's configuration, as its registers
 // hold it.
 type SampleI2CConfig struct {
-	ClockCh          int // SCL's channel; SDA is on the other
-	Level, Low, High uint8
-	Inverted         bool
+	ClockCh          int   // SCL's channel; SDA is on the other
+	Level, Low, High uint8 // SCL's level and re-arm band
+	// SDA's level and re-arm band (register 59, register 7's hysteresis).
+	SDALevel, SDALow, SDAHigh uint8
+	Inverted                  bool
 	// Delay is where SDA is read after an SCL crossing, in sixteenths of a
 	// nanosecond on SCL's sample grid: the channels' sampling phase (SCL's
 	// less SDA's); SCL is read after an SDA crossing at its negation.
@@ -295,8 +300,8 @@ func SampleI2C(wide []uint64, c SampleI2CConfig) (events []SampleBusEvent, match
 	if c.Length < 0 || c.Length > 4 || c.Direction < 0 || c.Direction > 2 {
 		return nil, nil
 	}
-	scl := SampleEdges(wide, SampleLineConfig{Ch: c.ClockCh, Rise: !c.Inverted, Fall: c.Inverted, Level: c.Level, Low: c.Low, High: c.High, Delay: c.Delay})
-	sda := SampleEdges(wide, SampleLineConfig{Ch: 1 - c.ClockCh, Rise: true, Fall: true, Level: c.Level, Low: c.Low, High: c.High, Delay: wrap8(-c.Delay)})
+	scl := SampleEdges(wide, SampleLineConfig{Ch: c.ClockCh, Rise: !c.Inverted, Fall: c.Inverted, Level: c.Level, Low: c.Low, High: c.High, OtherLevel: c.SDALevel, Delay: c.Delay})
+	sda := SampleEdges(wide, SampleLineConfig{Ch: 1 - c.ClockCh, Rise: true, Fall: true, Level: c.SDALevel, Low: c.SDALow, High: c.SDAHigh, OtherLevel: c.Level, Delay: wrap8(-c.Delay)})
 	type crossing struct {
 		valid, isSDA, rising, other bool
 	}

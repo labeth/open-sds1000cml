@@ -31,8 +31,9 @@ type spiBus struct {
 	riseS           float64 // 10-90 %
 	noise           float64 // codes rms
 	seed            int64
-	dataLateS       float64 // the data line settles this long after the edge that launches it
-	runtS           float64 // the burst's last clock pulse lasts this long (a gated clock's runt)
+	dataLateS       float64    // the data line settles this long after the edge that launches it
+	runtS           float64    // the burst's last clock pulse lasts this long (a gated clock's runt)
+	shift           [2]float64 // each channel's codes moved (C1, C2): the traces apart
 }
 
 // synthPhaseS is C2's sampling instant after C1's (the bench: 1.44 ns).
@@ -122,7 +123,7 @@ func (p spiBus) words() []uint64 {
 			if p.inverted {
 				v = 1 - v
 			}
-			code := 70 + 100*v + offsets[ch][i%5] + rng.NormFloat64()*p.noise
+			code := 70 + 100*v + p.shift[ch] + offsets[ch][i%5] + rng.NormFloat64()*p.noise
 			codes[ch][i] = uint8(math.Max(0, math.Min(255, math.Round(code))))
 		}
 	}
@@ -141,8 +142,9 @@ func (p spiBus) config() SampleSPIConfig {
 	if p.clockCh == 0 {
 		delay = -delay
 	}
-	return SampleSPIConfig{ClockCh: p.clockCh, Level: 120, Low: 107, High: 133, Inverted: p.inverted, CPOL: p.cpol, CPHA: p.cpha, MSB: p.msb,
-		Delay: delay, GapClocks: SampleSPIGap(p.rateHz)}
+	clock := uint8(120 + p.shift[p.clockCh])
+	return SampleSPIConfig{ClockCh: p.clockCh, Level: clock, Low: clock - 13, High: clock + 13, DataLevel: uint8(120 + p.shift[1-p.clockCh]),
+		Inverted: p.inverted, CPOL: p.cpol, CPHA: p.cpha, MSB: p.msb, Delay: delay, GapClocks: SampleSPIGap(p.rateHz)}
 }
 
 // frameBytes groups the receiver's events into frames; a frame that ends
@@ -197,6 +199,13 @@ func synthCases() []spiBus {
 			cases = append(cases, p)
 		}
 	}
+	// the traces apart on the screen: each line sliced at its own level,
+	// neither line's swing reaching the other's
+	for i, rate := range []float64{104e6, 10e6} {
+		p := spiBus{rateHz: rate, msb: true, cpha: i == 1, clockCh: 1 - i, frames: frames, idleS: 2e-6 + 3/rate, riseS: 3e-9, noise: 1, seed: int64(90 + i),
+			shift: [2]float64{75, -60}}
+		cases = append(cases, p)
+	}
 	return cases
 }
 
@@ -204,7 +213,7 @@ func synthCases() []spiBus {
 // TRLC-LINKS: REQ-SDS-229
 func TestSampleSPISynthetic(t *testing.T) {
 	for _, p := range synthCases() {
-		name := fmt.Sprintf("%.0fMHz/cpol%v/cpha%v/msb%v/inv%v/clockC%d", p.rateHz/1e6, p.cpol, p.cpha, p.msb, p.inverted, p.clockCh+1)
+		name := fmt.Sprintf("%.0fMHz/cpol%v/cpha%v/msb%v/inv%v/clockC%d/shift%v", p.rateHz/1e6, p.cpol, p.cpha, p.msb, p.inverted, p.clockCh+1, p.shift)
 		t.Run(name, func(t *testing.T) {
 			ev, _ := SampleSPI(p.words(), p.config())
 			got, err := frameBytes(ev)
@@ -252,7 +261,7 @@ var spiCaptures = []spiCapture{
 
 // TRLC-LINKS: REQ-SDS-229
 func captureConfig(rate float64) SampleSPIConfig {
-	return SampleSPIConfig{ClockCh: 1, Level: 128, Low: 115, High: 141, MSB: true, Delay: 23, GapClocks: SampleSPIGap(rate)}
+	return SampleSPIConfig{ClockCh: 1, Level: 128, Low: 115, High: 141, DataLevel: 128, MSB: true, Delay: 23, GapClocks: SampleSPIGap(rate)}
 }
 
 // Every whole burst in the recorded captures decodes without a bit error;
@@ -302,7 +311,7 @@ func TestSampleSPIRTL(t *testing.T) {
 		}
 		c := p.config()
 		c.Pattern, c.Length = 0xffa55a, 3
-		runs = append(runs, run{fmt.Sprintf("synthetic %.0fMHz mode %d%d msb %v inv %v", p.rateHz/1e6, b2u8(p.cpol), b2u8(p.cpha), p.msb, p.inverted), p.words(), c})
+		runs = append(runs, run{fmt.Sprintf("synthetic %.0fMHz mode %d%d msb %v inv %v shift %v", p.rateHz/1e6, b2u8(p.cpol), b2u8(p.cpha), p.msb, p.inverted, p.shift), p.words(), c})
 	}
 	runt := spiBus{rateHz: 50e6, msb: true, clockCh: 1, frames: [][]byte{benchFrame(1)[:12], benchFrame(2)[:12]}, idleS: 1e-6, riseS: 3e-9, noise: 1, seed: 5, runtS: 2.2e-9}
 	rc := runt.config()
@@ -406,7 +415,7 @@ func (s rtlSim) run(t *testing.T, words []uint64, c SampleSPIConfig) ([]SampleSP
 	rising := (c.CPOL == c.CPHA) != c.Inverted
 	out, err := runCmd("vvp", "-N", s.image, "+input="+path, fmt.Sprintf("+n=%d", len(words)), fmt.Sprintf("+ch=%d", c.ClockCh),
 		fmt.Sprintf("+rising=%d", b2u8(rising)), fmt.Sprintf("+level=%d", c.Level), fmt.Sprintf("+low=%d", c.Low), fmt.Sprintf("+high=%d", c.High),
-		fmt.Sprintf("+inverted=%d", b2u8(c.Inverted)), fmt.Sprintf("+msb=%d", b2u8(c.MSB)), fmt.Sprintf("+delay=%d", c.Delay&0xff),
+		fmt.Sprintf("+level2=%d", c.DataLevel), fmt.Sprintf("+inverted=%d", b2u8(c.Inverted)), fmt.Sprintf("+msb=%d", b2u8(c.MSB)), fmt.Sprintf("+delay=%d", c.Delay&0xff),
 		fmt.Sprintf("+gap=%d", c.GapClocks), fmt.Sprintf("+pattern=%d", c.Pattern), fmt.Sprintf("+len=%d", c.Length))
 	if err != nil {
 		t.Fatalf("simulate: %v\n%s", err, out)
@@ -477,7 +486,7 @@ func lines(wide []uint64) (c1, c2 []uint8) {
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-229
 func TestDecodeSPIFine(t *testing.T) {
 	for _, p := range synthCases() {
-		if p.rateHz < 75e6 || p.inverted {
+		if p.rateHz < 75e6 || p.inverted || p.shift != [2]float64{} { // one threshold slices both lines
 			continue
 		}
 		c1, c2 := lines(p.words())
@@ -511,4 +520,40 @@ func intsToBytes(v []int) []byte {
 		b[i] = byte(x)
 	}
 	return b
+}
+
+// Lines apart on the screen read only at their own levels: the data line
+// (SDA) sliced at the clock's level reads one value throughout, so no frame
+// decodes and no match fires (an SPI or I2C trigger that never fires).
+// TRLC-LINKS: REQ-SDS-013, REQ-SDS-229
+func TestSampleLinesApartOwnLevels(t *testing.T) {
+	for _, p := range synthCases() {
+		if p.shift == [2]float64{} {
+			continue
+		}
+		c := p.config()
+		ev, _ := SampleSPI(p.words(), c)
+		if got, err := frameBytes(ev); err != nil || !reflect.DeepEqual(got, p.frames) {
+			t.Fatalf("%.0f MHz at their own levels: frames % x (%v)", p.rateHz/1e6, got, err)
+		}
+		c.DataLevel = c.Level
+		ev, _ = SampleSPI(p.words(), c)
+		if got, _ := frameBytes(ev); reflect.DeepEqual(got, p.frames) {
+			t.Fatalf("%.0f MHz: the data line read at the clock's level decoded", p.rateHz/1e6)
+		}
+	}
+	for _, b := range i2cCases() {
+		if b.shift == [2]float64{} {
+			continue
+		}
+		c := b.config()
+		ev, _ := SampleI2C(b.lines().words(), c)
+		if got := stripEvents(ev); !reflect.DeepEqual(got, b.want()) {
+			t.Fatalf("%s at their own levels: events %v", i2cName(b), got)
+		}
+		c.SDALevel, c.SDALow, c.SDAHigh = c.Level, c.Low, c.High
+		if ev, _ := SampleI2C(b.lines().words(), c); reflect.DeepEqual(stripEvents(ev), b.want()) {
+			t.Fatalf("%s: SDA read at SCL's level decoded", i2cName(b))
+		}
+	}
 }

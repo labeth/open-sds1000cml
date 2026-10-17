@@ -2309,7 +2309,7 @@ decisions:
     parity; i2c_sample.v takes the two lines'' crossings in time order (SCL''s rising reads SDA, SDA''s read SCL for
     START and STOP). Each publishes its level receiver''s events and match, so the decoded-event transport and the
     sequence trigger are unchanged. They run in an image of their own, fast: the protocol foundation with these
-    receivers only, raw samples, no precision decimation (84 percent of the logic). The engine loads it for SPI,
+    receivers only, raw samples, no precision decimation (86 percent of the logic). The engine loads it for SPI,
     UART or I2C past the general receivers'' reach, or when the BUS sheet''s Receiver asks for it, as the packet and
     line images are loaded; a decoded capture asks for it with an SPI gap under nine receiver clocks or a data delay,
     a UART bit time in sixteenths of a nanosecond, or I2C on the samples. The Go models of the receivers
@@ -2324,3 +2324,26 @@ decisions:
     receiver clocks after the word that ended it), and software places it on the match as for every serial trigger.
   - SPI's data is read at the crossing plus the channels' phase and the BUS sheet's data delay, which Auto takes
     from the middle of the data's eye on the record (a flash's late data).
+- id: ADR-LINE-LEVELS
+  title: Each line of a two-line serial bus is sliced at its own level
+  status: accepted
+  date: '2026-10-17'
+  context: 'SPI''s and I2C''s receivers read two channels: the general image''s level receivers compared both
+    channels'' codes with one band, the fast image''s edge extractors read the other line at the first line''s
+    level, and the engine planned that level from the first line''s learned threshold. Channels at different offsets
+    or V/div (traces moved apart on the screen, a normal step) put the second line''s swing wholly on one side of the
+    first line''s level: it read one value throughout, the matcher never fired, and Auto ran untriggered and Normal
+    and SINGLE waited, silently (a 104 MHz SPI flash at 2 V/div with C1 at +0.6 V and C2 at -5.4 V: no match). The
+    general image holds 97 percent of the logic at 250 MHz.'
+  decision: 'Register 59 holds the second line''s level (SPI''s data, I2C''s SDA) in every image with those
+    receivers (LINE_LEVELS in top.v), its band register 7''s hysteresis. The general image compares the second
+    channel''s codes with that band; the fast image''s extractors take each line at its own level and band and read
+    the other line at the other''s level (sample_edges.v other_level). The engine plans each line''s level from the
+    threshold learned on its own channel, at that channel''s V/div and offset, and waits for both lines'' levels
+    before arming; a request''s own threshold still slices both. Images without these receivers are unchanged, bit
+    for bit.'
+  consequences:
+  - SPI and I2C trigger with the traces anywhere on the screen and at any V/div per channel.
+  - The added logic is two 8-bit comparator bands' registers in the general image and one 8-bit level register an
+    extractor in the fast image; the Go models (decode/sample_bus.go, spi_sample.go) take the per-line levels.
+  - A decoded stream started from a decode with one threshold still slices both lines at it.

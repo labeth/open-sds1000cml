@@ -50,6 +50,15 @@
 `define NATIVE_LEN(x) x
 `define NATIVE_ANY(x) x
 `endif
+// ADR-LINE-LEVELS: a two-line receiver (SPI, I2C) slices its second line at
+// a level of its own (register 59), so the channels may sit at any offset
+// and V/div.
+`ifdef TRIG_SPI
+`define LINE_LEVELS
+`endif
+`ifdef TRIG_I2C
+`define LINE_LEVELS
+`endif
 // ADR-PROTOCOL-SEQUENCE-TRIGGER: every raw-only protocol image has the matcher.
 `ifdef PROTOCOL_SET
 `define SEQUENCE_TRIGGER
@@ -73,6 +82,9 @@ module acq_sram_top(
  output k1,k2,g1,g2,d1,d2,f1,f2,j2,a11,output [4:0] enc_p,enc_n
 );
  reg [7:0] level_l=128,level_low_l=124,level_high_l=132;
+`ifdef LINE_LEVELS
+ reg [7:0] level2_l=128,level2_low_l=124,level2_high_l=132;
+`endif
 `ifdef PACKET_TRIGGER
  // Bit n advertises protocol ID n in the packet block.
  localparam [15:0] PACKET_PROTOCOLS=
@@ -401,6 +413,11 @@ module acq_sram_top(
  wire [7:0] uart_code=protocol_channel ? il_raw_word[31:24] : il_raw_word[23:16];
  wire [7:0] i2c_code=protocol_channel ? il_raw_word[23:16] : il_raw_word[31:24];
  (* preserve, dont_merge *) reg [7:0] protocol_low=0,protocol_high=0;
+`ifdef LINE_LEVELS
+ // The second line (SPI's data, I2C's SDA) at its own level.
+ (* preserve, dont_merge *) reg [7:0] protocol_low2=0,protocol_high2=0;
+ always @(posedge core)begin protocol_low2<=level2_low_l;protocol_high2<=level2_high_l;end
+`endif
  // Partial comparison replaces the old sample register, retaining latency.
  // TRLC-LINKS: REQ-SDS-013, REQ-SDS-039
  function [6:0] compare_parts(input [7:0] a,b);begin
@@ -410,7 +427,11 @@ module acq_sram_top(
  always @(posedge core)begin
   uart_sample_valid<=il_raw_valid;
   uart_high_parts<=compare_parts(uart_code,protocol_high);uart_low_parts<=compare_parts(protocol_low,uart_code);
+`ifdef LINE_LEVELS
+  i2c_high_parts<=compare_parts(i2c_code,protocol_high2);i2c_low_parts<=compare_parts(protocol_low2,i2c_code);
+`else
   i2c_high_parts<=compare_parts(i2c_code,protocol_high);i2c_low_parts<=compare_parts(protocol_low,i2c_code);
+`endif
   i2c_high<=i2c_high_parts[6] || (i2c_high_parts[5] && (i2c_high_parts[4] || (i2c_high_parts[3] && (i2c_high_parts[2] || (i2c_high_parts[1] && i2c_high_parts[0])))));
   i2c_low<=i2c_low_parts[6] || (i2c_low_parts[5] && (i2c_low_parts[4] || (i2c_low_parts[3] && (i2c_low_parts[2] || (i2c_low_parts[1] && i2c_low_parts[0])))));
   uart_high<=uart_high_parts[6] || (uart_high_parts[5] && (uart_high_parts[4] || (uart_high_parts[3] && (uart_high_parts[2] || (uart_high_parts[1] && uart_high_parts[0])))));
@@ -445,7 +466,7 @@ module acq_sram_top(
  reg [7:0] sample_delay=8'd23;
  wire uart_event_valid;wire [7:0] uart_event_kind;
  sample_bus bus(.core(core),.clk(halfclk),.reset(protocol_receiver_reset),.word(il_raw_word),.valid(frontend_run && il_raw_valid),
-  .level(level_l),.low(level_low_l),.high(level_high_l),.delay(sample_delay),.ticks(protocol_ticks_rx),.pattern(protocol_pattern_rx[31:0]),
+  .level(level_l),.low(level_low_l),.high(level_high_l),.level2(level2_l),.low2(level2_low_l),.high2(level2_high_l),.delay(sample_delay),.ticks(protocol_ticks_rx),.pattern(protocol_pattern_rx[31:0]),
   .spi_en(!man_cfg_rx[0] && !usb_cfg_rx[0] && spi_cfg_rx[0] && !sent_cfg_rx[0] && !mil_cfg_rx[0]),.spi_ch(spi_cfg_rx[1]),.spi_inverted(spi_cfg_rx[2]),
   .cpol(spi_cfg_rx[3]),.cpha(spi_cfg_rx[4]),.msb(spi_cfg_rx[5]),.spi_len(`NATIVE_LEN(spi_cfg_rx[8:6])),
   .uart_en(!man_cfg_rx[0] && !usb_cfg_rx[0] && uart_cfg_rx[0] && !i2c_cfg_rx[0] && !spi_cfg_rx[0] && !sent_cfg_rx[0] && !mil_cfg_rx[0]),
@@ -827,6 +848,14 @@ module acq_sram_top(
   host_level_low<=level>=hysteresis ? level-hysteresis : 8'd0;
   host_level_high<=({1'b0,level}+{1'b0,hysteresis})<=255 ? level+hysteresis : 8'd255;
  end
+`ifdef LINE_LEVELS
+ // The second line's level; its band is register 7's hysteresis.
+ reg [7:0] level2=128,host_level2_low=124,host_level2_high=132;
+ always @(posedge clk)begin
+  host_level2_low<=level2>=hysteresis ? level2-hysteresis : 8'd0;
+  host_level2_high<=({1'b0,level2}+{1'b0,hysteresis})<=255 ? level2+hysteresis : 8'd255;
+ end
+`endif
 `ifdef QUAL_TRIGGER
  // The slope levels in five-sample sums and their bands, at the host clock.
  reg [10:0] qual_a5_host=640,qual_b5_host=640;
@@ -867,6 +896,9 @@ module acq_sram_top(
   2:pre_cfg[15:0]<=wd;3:pre_cfg[19:16]<=wd[3:0];
   4:post_cfg[15:0]<=wd;5:post_cfg[19:16]<=wd[3:0];
   6:config_word<=wd;7:begin level<=wd[7:0];hysteresis<=wd[15:8]!=0 ? wd[15:8] : 8'd4;end
+`ifdef LINE_LEVELS
+  59:level2<=wd[7:0];
+`endif
 `ifdef TRIG_UART
   48:uart_cfg<=wd;
   49:uart_ticks[15:0]<=wd;
@@ -1321,6 +1353,9 @@ module acq_sram_top(
   if(config_idle)begin cfg<=config_word;level_l<=level;
    level_low_l<=host_level_low;
    level_high_l<=host_level_high;
+`ifdef LINE_LEVELS
+   level2_l<=level2;level2_low_l<=host_level2_low;level2_high_l<=host_level2_high;
+`endif
 `ifdef STREAM_CAPTURE
    stream_mode<=stream_cfg;
    stream_auto<=!stream_cfg[1] && !config_word[4];

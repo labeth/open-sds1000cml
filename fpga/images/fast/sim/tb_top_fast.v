@@ -2,7 +2,8 @@
 `timescale 1ns/1ps
 // Fast image top level (ADR-SAMPLE-DOMAIN-SPI): two channels of recorded or
 // synthetic acquisition words through the interleave stub, the SPI, UART or
-// I2C receiver on the samples configured over GPMC, a normal-trigger record
+// I2C receiver on the samples (or, +general, the general image's receivers
+// on the line levels) configured over GPMC, a normal-trigger record
 // frozen in modelled SRAM. Checks the image's capability registers, prints
 // the selected receiver's events and the acquisition word at the trigger;
 // the app's Go test (internal/decode, TestFastImageTopRTL) compares them with
@@ -73,7 +74,9 @@ module tb_top_fast;
   for(cycles=0;cycles<524288;cycles=cycles+1)mem[cycles]=32'hdeadbeef;
   repeat(20)@(negedge clk);
   check_reg(0,16'h5a52);check_reg(13,16'h000a);check_reg(30,16'h4e44);
-  check_reg(48,16'h5503);check_reg(53,16'h4902);check_reg(64,16'h5303);
+  // +general: the general image's level receivers on the same words
+  if($test$plusargs("general"))begin check_reg(48,16'h5502);check_reg(53,16'h4901);check_reg(64,16'h5301);end
+  else begin check_reg(48,16'h5503);check_reg(53,16'h4902);check_reg(64,16'h5303);end
   check_reg(109,0);check_reg(102,0);check_reg(93,0);check_reg(97,0);check_reg(77,0);
   check_reg(118,16'h5351);check_reg(63,16'h4501);
   // +regs lists the "register value" writes: the level, the receiver's block.
@@ -85,7 +88,8 @@ module tb_top_fast;
   write_bus(2,pre);write_bus(3,0);write_bus(4,post);write_bus(5,0);
   write_bus(6,16'h0011);host_command(1);
   cycles=0;read_bus(1);
-  while(!(value[4] && value[2]))begin read_bus(1);cycles=cycles+1;if(cycles>400000)$fatal(1,"no trigger %h",value);end
+  // no trigger by the words' end (and the record after it): none comes
+  while(!(value[4] && value[2]))begin read_bus(1);cycles=cycles+1;if(cycles>400000 || (!value[5] && dut.frontend.n>dut.frontend.length+post+1000))$fatal(1,"no trigger %h",value);end
   if(!value[5])$fatal(1,"record frozen without a trigger");
   $display("PASS fast top");$finish;
  end

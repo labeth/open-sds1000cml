@@ -12,13 +12,14 @@ import "math"
 // beyond the re-arm band; its crossing time is interpolated between the two
 // samples around the level, in sixteenths of a nanosecond; the data bit is
 // the data line's sample nearest to that time plus a delay (the channels'
-// sampling phase difference and any chosen offset), sliced at the level.
+// sampling phase difference and any chosen offset), sliced at its own level.
 // Frames are split by an idle gap, as the level-sampling receiver did.
 
 // SampleSPIConfig is the receiver's configuration, as its registers hold it.
 type SampleSPIConfig struct {
 	ClockCh          int   // 0: C1 carries the clock, 1: C2
-	Level, Low, High uint8 // the slicing level and the clock's re-arm band
+	Level, Low, High uint8 // the clock's slicing level and re-arm band
+	DataLevel        uint8 // the data line's slicing level (register 59)
 	Inverted         bool  // both lines inverted
 	CPOL, CPHA, MSB  bool
 	// Delay is where the data line is sampled after the clock line's
@@ -77,7 +78,7 @@ func SampleSPI(wide []uint64, c SampleSPIConfig) ([]SampleSPIEvent, []SampleSPIE
 	rising := (c.CPOL == c.CPHA) != c.Inverted
 	// The edge stage (sample_edges.v): per receiver clock, at most one
 	// sampling edge and the data line at it.
-	out := SampleEdges(wide, SampleLineConfig{Ch: c.ClockCh, Rise: rising, Fall: !rising, Level: c.Level, Low: c.Low, High: c.High, Delay: c.Delay})
+	out := SampleEdges(wide, SampleLineConfig{Ch: c.ClockCh, Rise: rising, Fall: !rising, Level: c.Level, Low: c.Low, High: c.High, OtherLevel: c.DataLevel, Delay: c.Delay})
 	strobe := make([]bool, n)
 	bit := make([]bool, n)
 	var edges []SampleSPIEdge

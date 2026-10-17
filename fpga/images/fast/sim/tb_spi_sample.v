@@ -10,11 +10,11 @@ module tb_spi_sample;
  reg clk=0;always #4 clk=~clk;
  reg reset=1,valid=1;reg [63:0] word=0;
  reg [63:0] mem[0:(1<<21)-1];
- integer n,i,ch,rising,level,low,high,inverted,msb,delay,gap,pattern,len;
+ integer n,i,ch,rising,level,low,high,level2,inverted,msb,delay,gap,pattern,len;
  wire live,found,other,dir;wire signed [7:0] when;wire [3:0] levels;
  wire match,ev;wire [7:0] kind,value;
  sample_edges edges(.clk(clk),.reset(reset),.valid(valid),.word(word),.ch(ch[0]),.rise_en(rising[0]),.fall_en(!rising[0]),
-  .level(level[7:0]),.low(low[7:0]),.high(high[7:0]),.delay(delay[7:0]),.live(live),.found(found),.when(when),.rising(dir),.other(other),.levels(levels));
+  .level(level[7:0]),.low(low[7:0]),.high(high[7:0]),.other_level(level2[7:0]),.delay(delay[7:0]),.live(live),.found(found),.when(when),.rising(dir),.other(other),.levels(levels));
  spi_sample spi(.clk(clk),.reset(reset),.enable(1'b1),.live(live),.found(found),.other(other),
   .inverted(inverted[0]),.msb(msb[0]),.gap_ticks(gap[23:0]),
   .pattern(pattern),.pattern_len(len[2:0]),.match(match),.event_valid(ev),.event_kind(kind),.event_data(value));
@@ -27,6 +27,7 @@ module tb_spi_sample;
   if(!$value$plusargs("level=%d",level))level=128;
   if(!$value$plusargs("low=%d",low))low=116;
   if(!$value$plusargs("high=%d",high))high=140;
+  if(!$value$plusargs("level2=%d",level2))level2=level; // the data line's
   if(!$value$plusargs("inverted=%d",inverted))inverted=0;
   if(!$value$plusargs("msb=%d",msb))msb=1;
   if(!$value$plusargs("delay=%d",delay))delay=0;

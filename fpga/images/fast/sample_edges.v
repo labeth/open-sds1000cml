@@ -11,8 +11,8 @@
 // offsets and noise on a slow edge make one edge, not several, or has stayed
 // beyond the band's own edge for a whole clock (after a runt). At most one
 // edge a clock: lines up to 125 MHz. With each edge it takes the other
-// line's level (its code at or above the level) at the sample nearest the
-// crossing plus delay, for a receiver that samples that line at the edge
+// line's level (its code at or above that line's own level) at the sample
+// nearest the crossing plus delay, for a receiver that samples that line at the edge
 // (spi_sample.v, i2c_sample.v), and it gives the line's own four levels of
 // the edge's clock, for a receiver that samples the line at times of its own
 // (uart_sample.v). The app's Go model (internal/decode sample_bus.go) is
@@ -24,6 +24,7 @@ module sample_edges(
  input ch,                      // the line whose edges are found: 0 C1, 1 C2
  input rise_en,fall_en,         // the crossings found
  input [7:0] level,low,high,
+ input [7:0] other_level,       // the other line's slicing level
  input signed [7:0] delay,      // the other line's sample after the crossing, 1/16 ns on this line's sample grid
  output reg live=0,             // the outputs come from words (not from the reset's fill)
  output reg found=0,            // an edge in clock k's samples, seven clocks on
@@ -33,10 +34,10 @@ module sample_edges(
  output reg [3:0] levels=0      // the line's own levels in clock k, the earliest lowest
 );
  // Local copies of the held configuration beside the comparators (timing).
- (* preserve, dont_merge *) reg [7:0] lv=128,lo=124,hi=132;
+ (* preserve, dont_merge *) reg [7:0] lv=128,lo=124,hi=132,olv=128;
  reg ren=1,fen=0,sel=0;
  reg signed [7:0] dl=0;
- always @(posedge clk)begin lv<=level;lo<=low;hi<=high;ren<=rise_en;fen<=fall_en;sel<=ch;dl<=delay;end
+ always @(posedge clk)begin lv<=level;lo<=low;hi<=high;olv<=other_level;ren<=rise_en;fen<=fall_en;sel<=ch;dl<=delay;end
  // 0: the line's samples and the other line's.
  reg [7:0] s0[0:3],d0[0:3];reg v0=0;
  // 1: comparisons; the previous clock's last sample.
@@ -55,7 +56,7 @@ module sample_edges(
    hit1[j]<=s0[j]>=lv;
    low1[j]<=s0[j]<=lo;
    high1[j]<=s0[j]>=hi;
-   dl1[j]<=d0[j]>=lv;
+   dl1[j]<=d0[j]>=olv;
   end
  end
  // 2: the two re-arm chains across the clock's four samples; the first

@@ -11,14 +11,14 @@ module tb_sample_rx;
  reg clk=0;always #4 clk=~clk;
  reg reset=1,valid=1;reg [63:0] word=0;
  reg [63:0] mem[0:(1<<21)-1];
- integer n,i,proto,ch,level,low,high,inverted,delay,period,bits,parity,resync,pattern,len,address,direction;
+ integer n,i,proto,ch,level,low,high,level2,low2,high2,inverted,delay,period,bits,parity,resync,pattern,len,address,direction;
  wire live_a,found_a,rising_a,other_a,live_b,found_b,rising_b,other_b;
  wire signed [7:0] when_a,when_b;wire [3:0] levels_a,levels_b;
  wire i2c=proto==2;
  sample_edges a(.clk(clk),.reset(reset),.valid(valid),.word(word),.ch(ch[0]),.rise_en(i2c ? !inverted[0] : 1'b1),.fall_en(i2c ? inverted[0] : 1'b1),
-  .level(level[7:0]),.low(low[7:0]),.high(high[7:0]),.delay(delay[7:0]),.live(live_a),.found(found_a),.when(when_a),.rising(rising_a),.other(other_a),.levels(levels_a));
+  .level(level[7:0]),.low(low[7:0]),.high(high[7:0]),.other_level(level2[7:0]),.delay(delay[7:0]),.live(live_a),.found(found_a),.when(when_a),.rising(rising_a),.other(other_a),.levels(levels_a));
  sample_edges b(.clk(clk),.reset(reset),.valid(valid),.word(word),.ch(!ch[0]),.rise_en(1'b1),.fall_en(1'b1),
-  .level(level[7:0]),.low(low[7:0]),.high(high[7:0]),.delay(-delay[7:0]),.live(live_b),.found(found_b),.when(when_b),.rising(rising_b),.other(other_b),.levels(levels_b));
+  .level(level2[7:0]),.low(low2[7:0]),.high(high2[7:0]),.other_level(level[7:0]),.delay(-delay[7:0]),.live(live_b),.found(found_b),.when(when_b),.rising(rising_b),.other(other_b),.levels(levels_b));
  wire u_match,u_ev;wire [7:0] u_kind;wire [8:0] u_data;
  uart_sample uart(.clk(clk),.reset(reset),.enable(proto==1),.live(live_a),.found(found_a),.rising(rising_a),.when(when_a),.levels(levels_a),
   .inverted(inverted[0]),.resync(resync[0]),.period(period[23:0]),.bits(bits[3:0]),.parity(parity[1:0]),.pattern(pattern),.pattern_len(len[2:0]),
@@ -36,6 +36,10 @@ module tb_sample_rx;
   if(!$value$plusargs("level=%d",level))level=128;
   if(!$value$plusargs("low=%d",low))low=116;
   if(!$value$plusargs("high=%d",high))high=140;
+  // the other line's level and band (I2C's SDA)
+  if(!$value$plusargs("level2=%d",level2))level2=level;
+  if(!$value$plusargs("low2=%d",low2))low2=low;
+  if(!$value$plusargs("high2=%d",high2))high2=high;
   if(!$value$plusargs("inverted=%d",inverted))inverted=0;
   if(!$value$plusargs("delay=%d",delay))delay=0;
   if(!$value$plusargs("period=%d",period))period=320;

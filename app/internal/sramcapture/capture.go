@@ -93,6 +93,10 @@ type Config struct {
 	TriggerChannel    uint8                   `json:"trigger_channel"`
 	TriggerLevel      uint8                   `json:"trigger_level"`
 	TriggerHysteresis uint8                   `json:"trigger_hysteresis,omitempty"`
+	// SecondLevel slices a two-line receiver's second line (SPI's data,
+	// I2C's SDA; register 59, its band TriggerHysteresis), so the channels
+	// may sit at different offsets and V/div; 0 is TriggerLevel.
+	SecondLevel uint8 `json:"second_level,omitempty"`
 }
 
 // UARTTriggerConfig describes the optional hardware matcher: the 125 MHz,
@@ -686,6 +690,15 @@ func (c *Capture) Arm(ctx context.Context, cfg Config) error {
 	}
 	if e = c.write(7, uint16(cfg.TriggerLevel)|uint16(cfg.TriggerHysteresis)<<8); e != nil {
 		return e
+	}
+	if cfg.SPI.Enabled || cfg.I2C.Enabled {
+		second := cfg.SecondLevel
+		if second == 0 {
+			second = cfg.TriggerLevel
+		}
+		if e = c.write(regSecondLevel, uint16(second)); e != nil {
+			return e
+		}
 	}
 	if cfg.DecodedEvents {
 		if _, e = c.enableDecodedEvents(true); e != nil {
