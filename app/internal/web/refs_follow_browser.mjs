@@ -91,5 +91,13 @@ run(async (t) => {
   t.ok(/"for":"scope"/.test(eyeBody), "the eye's fit asks for SCOPE's AUTO from BUS: " + eyeBody);
   await page.unroute("**/api/panel");
 
+  // ---- SPECTRUM's channel is the scope's FFT source ------------------------------------------
+  await page.evaluate(() => setWs("spectrum"));
+  r = await post("/api/sheets/set", { row: "view.fft_source", value: 1 });
+  t.ok(r && r.ok, "the scope's FFT source set to CH2 (as the LCD or a phone sets it)");
+  await t.until(async () => (await po.eval(() => pkChannel())) === 2, "the page's SPECTRUM channel follows it to C2", RT);
+  await po.seg("pkCh", "1");
+  await t.until(async () => ((await row("view.fft_source")) || {}).Value === 0, "C1 picked on the page is the scope's FFT source", RT);
+
   t.ok(pageErrors.length === 0, "no page errors: " + pageErrors.join("; "));
 });

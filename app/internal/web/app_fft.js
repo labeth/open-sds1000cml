@@ -480,5 +480,17 @@ $("fftN").oninput = $("fftN").onchange = () => {
   for (const ch of [1, 2]) computePeaksCh(ch);
   updateFFTLists(); redraw();
 };
+// pkShow shows SPECTRUM's peak table for the channel chosen.
 // TRLC-LINKS: REQ-SDS-070, REQ-SDS-216
-$("pkCh").onchange = () => { $("fftBody").dataset.sig = ""; $("fftSel").textContent = ""; computePeaksCh(pkChannel()); updateFFTLists(); };
+function pkShow() { $("fftBody").dataset.sig = ""; $("fftSel").textContent = ""; computePeaksCh(pkChannel()); updateFFTLists(); }
+// pkFollow shows the scope's FFT source (view.fft_source, set on the LCD,
+// a phone or this page) as SPECTRUM's channel.
+// TRLC-LINKS: REQ-SDS-216
+function pkFollow(ch) {
+  const el = $("pkCh"), before = el.value;
+  setFromStatus(el, ch);
+  if (el.value !== before) pkShow();
+}
+// A choice here is the scope's FFT source, as on the LCD.
+// TRLC-LINKS: REQ-SDS-070, REQ-SDS-216
+$("pkCh").onchange = () => { $("pkCh")._userAt = performance.now(); pkShow(); sheetSet("view.fft_source", pkChannel() - 1); };
