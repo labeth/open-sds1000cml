@@ -63,6 +63,61 @@ func protoParityVectors(add parityAdd, add2 parityAdd2, corrupt func([]uint8) []
 		}
 	}
 
+	// ---- pulse-coded single wire
+	{
+		w := newTimeline(4e6)
+		w.idle(100e-6)
+		rom := owROM(0x28, 0xFF, 0x4C, 0x60, 0x91, 0x16, 0x05)
+		owReset(w, false, true)
+		owByte(w, 0x55, false)
+		for _, v := range rom {
+			owByte(w, v, false)
+		}
+		owByte(w, 0x44, false)
+		owReset(w, false, true)
+		owByte(w, 0xF0, false)
+		owSearchROM(w, rom[:3])
+		owReset(w, false, true)
+		owByte(w, 0x69, false)
+		for _, v := range rom {
+			owByte(w, v^1, true)
+		}
+		owReset(w, true, true)
+		owByte(w, 0xBE, true)
+		w.idle(100e-6)
+		ow := w.codes()
+		bases = append(bases, base{"onewire", 2.5e-7, cfg{}, ow, func(c []uint8) Result { return DecodeOneWire(c, 2.5e-7, OneWireCfg{}) }})
+		for _, rate := range []float64{800e3, 400e3} {
+			ww := newTimeline(50e6)
+			ww.add(0, 60e-6)
+			wsFrame(ww, rate, []int{0xFF, 0x00, 0x80, 0x12, 0x34, 0x56})
+			wsFrame(ww, rate, []int{0x01, 0x02, 0x03, 0x04})
+			ws := ww.codes()
+			bases = append(bases, base{"ws281x", 2e-8, cfg{}, ws, func(c []uint8) Result { return DecodeWS281x(c, 2e-8, WS281xCfg{}) }})
+		}
+		wd := newTimeline(2e6)
+		wd.idle(1e-3)
+		dhtReading(wd, 1000, [4]int{0x02, 0x8C, 0x01, 0x5F}, -1)
+		wd.idle(1e-3)
+		dhtReading(wd, 18000, [4]int{0x2D, 0x00, 0x17, 0x00}, 0x11)
+		dht := wd.codes()
+		bases = append(bases, base{"dht", 5e-7, cfg{}, dht, func(c []uint8) Result { return DecodeDHT(c, 5e-7, DHTCfg{}) }})
+		wc := newTimeline(200e3)
+		wc.idle(5e-3)
+		cecMessage(wc, []int{0x40, 0x04}, []int{0, 0})
+		cecMessage(wc, []int{0x4F, 0x82, 0x10, 0x00}, []int{1, 1, 0, 1})
+		cecMessage(wc, []int{0x01}, []int{1})
+		cec := wc.codes()
+		bases = append(bases, base{"cec", 5e-6, cfg{}, cec, func(c []uint8) Result { return DecodeCEC(c, 5e-6, CECCfg{}) }})
+		wj := newTimeline(1e6)
+		wj.add(0, 500e-6)
+		j1850Frame(wj, []int{0x68, 0x6A, 0xF1, 0x01, 0x00}, false)
+		j1850Frame(wj, []int{0x48, 0x6B, 0x10, 0x41, 0x00, 0xBE}, false)
+		j1850Frame(wj, []int{0x68, 0x6A, 0xF1}, true)
+		j18 := wj.codes()
+		bases = append(bases, base{"j1850", 1e-6, cfg{}, j18, func(c []uint8) Result { return DecodeJ1850(c, 1e-6, J1850Cfg{}) }})
+	}
+
 	for _, b := range bases {
 		add(b.proto, b.w, b.colT, b.cfg, b.dec(b.w))
 		for it := 0; it < 16; it++ {

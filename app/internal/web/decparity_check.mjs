@@ -35,10 +35,11 @@ const files = [
   "decode_usbls.js",
   "decode_flexray.js",
   "decode_uartproto.js",
+  "decode_pulsewire.js",
 ];
 let src = files.map((f) => fs.readFileSync(path.join(here, f), "utf8")).join("\n;\n");
 src +=
-  "\n;this.__D = { decodeManchester, decodeMIL1553, decodeFlexRay, decodeSENT, decodeCANFD, decodeARINC429, decodeUSBLS, decodeUART, decodeI2C, decodeSPI, decodeLIN, decodeDMX512, decodeMIDI, decodeModbus };\n";
+  "\n;this.__D = { decodeManchester, decodeMIL1553, decodeFlexRay, decodeSENT, decodeCANFD, decodeARINC429, decodeUSBLS, decodeUART, decodeI2C, decodeSPI, decodeLIN, decodeDMX512, decodeMIDI, decodeModbus, decodeOneWire, decodeWS281x, decodeDHT, decodeCEC, decodeJ1850 };\n";
 
 const ctx = { console, module: { exports: {} } };
 vm.createContext(ctx);
@@ -78,6 +79,16 @@ const dispatch = {
   midi: (v) => D.decodeMIDI(v.codes, v.colT, v.cfg),
   // TRLC-LINKS: REQ-SDS-181
   modbus: (v) => D.decodeModbus(v.codes, v.colT, v.cfg),
+  // TRLC-LINKS: REQ-SDS-181
+  onewire: (v) => D.decodeOneWire(v.codes, v.colT, v.cfg),
+  // TRLC-LINKS: REQ-SDS-181
+  ws281x: (v) => D.decodeWS281x(v.codes, v.colT, v.cfg),
+  // TRLC-LINKS: REQ-SDS-181
+  dht: (v) => D.decodeDHT(v.codes, v.colT, v.cfg),
+  // TRLC-LINKS: REQ-SDS-181
+  cec: (v) => D.decodeCEC(v.codes, v.colT, v.cfg),
+  // TRLC-LINKS: REQ-SDS-181
+  j1850: (v) => D.decodeJ1850(v.codes, v.colT, v.cfg),
 };
 
 // TRLC-LINKS: REQ-SDS-181, REQ-SDS-073
