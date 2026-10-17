@@ -2,11 +2,16 @@
 package agent
 
 import (
+	"os"
+	"os/exec"
+	"path/filepath"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 
 	"open-sds/ota/internal/fdinherit"
+	"open-sds/ota/internal/slots"
 )
 
 // TRLC-LINKS: REQ-SDS-027
@@ -131,5 +136,61 @@ func TestUntakeoverReleasesControl(t *testing.T) {
 	a2 := New(a.cfg)
 	if got := a2.st.get(); got.TakenOver || got.AutoTakeover {
 		t.Errorf("persisted state = %+v, want cleared", got)
+	}
+}
+
+// An agent self-update leaves the running app to the next agent generation:
+// reparented to init it holds the bus and is no descendant, but it runs from
+// a slot and is adopted, never killed as a factory bus holder (that SIGKILLed
+// a healthy app mid-acquisition on every update-agent).
+// TRLC-LINKS: REQ-SDS-027, REQ-SDS-028
+func TestFactoryCandidatesSkipOurOrphanApp(t *testing.T) {
+	a := testAgent(t)
+	_ = a.store.Init()
+	if err := os.WriteFile(a.cfg.GpmcDev, nil, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	sleepBin, err := exec.LookPath("sleep")
+	if err != nil {
+		t.Skip("no sleep binary")
+	}
+	data, err := os.ReadFile(sleepBin)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(a.store.SlotDir(slots.SlotB), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	app := a.store.BinPath(slots.SlotB)
+	if err := os.WriteFile(app, data, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	other := filepath.Join(t.TempDir(), "factory_app")
+	if err := os.WriteFile(other, data, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	// Both detach (the shell exits): not descendants of this process.
+	for _, bin := range []string{app, other} {
+		cmd := exec.Command("/bin/sh", "-c", bin+" 20 3<"+a.cfg.GpmcDev+" >/dev/null 2>&1 &")
+		if err := cmd.Run(); err != nil {
+			t.Fatal(err)
+		}
+	}
+	defer func() {
+		for _, h := range fdinherit.HoldersOf(a.cfg.GpmcDev) {
+			_ = syscall.Kill(h.PID, syscall.SIGKILL)
+		}
+	}()
+	var cands []fdinherit.Holder
+	deadline := time.Now().Add(3 * time.Second)
+	for time.Now().Before(deadline) {
+		if len(fdinherit.HoldersOf(a.cfg.GpmcDev)) == 2 {
+			break
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	cands = a.factoryCandidates()
+	if len(cands) != 1 || filepath.Base(cands[0].Exe) != "factory_app" {
+		t.Fatalf("factoryCandidates = %+v, want only the factory_app (the slot's app is ours)", cands)
 	}
 }

@@ -88,6 +88,12 @@ func (a *Agent) factoryCandidates() []fdinherit.Holder {
 	desc := fdinherit.DescendantsOfSelf()
 	ourExe, _ := os.Executable()
 	ourExe, _ = filepath.EvalSymlinks(ourExe)
+	// Our own apps run from the slot root (A, B, emergency): one a previous
+	// agent generation left running is adopted (superviseLoop), not killed.
+	slotRoot, err := filepath.EvalSymlinks(a.store.Root())
+	if err != nil {
+		slotRoot = filepath.Clean(a.store.Root())
+	}
 
 	var out []fdinherit.Holder
 	for _, h := range fdinherit.HoldersOf(a.cfg.GpmcDev) {
@@ -98,6 +104,8 @@ func (a *Agent) factoryCandidates() []fdinherit.Holder {
 		if h.Exe != "" {
 			if rp, err := filepath.EvalSymlinks(h.Exe); err == nil && rp == ourExe {
 				continue // another agent generation
+			} else if err == nil && strings.HasPrefix(rp, slotRoot+string(filepath.Separator)) {
+				continue // our app, left by another agent generation
 			}
 		}
 		if shellish[base] && !a.matchesFactoryName(h) {
