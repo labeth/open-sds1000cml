@@ -720,7 +720,12 @@ func (e *Engine) serialNoHardware() string {
 	packet := func(proto int) bool { return e.hardwarePacket&(1<<proto) != 0 }
 	have := map[int]bool{serUART: e.hardwareUART, serI2C: e.hardwareI2C, serSPI: e.hardwareSPI, serManchester: e.hardwareManchester,
 		serSENT: e.hardwareSENT, serCAN: packet(serCAN), serMIL1553: e.hardwareMIL1553, serARINC: packet(serARINC),
-		serUSB: e.hardwareUSBLS, serFlexRay: packet(serFlexRay)}
+		serUSB: e.hardwareUSBLS, serFlexRay: packet(serFlexRay), serMIDI: e.hardwareUART}
+	for proto := serLIN; proto <= serWiegand; proto++ {
+		if symbolProtocol(proto) {
+			have[proto] = e.hardwareSymbol
+		}
+	}
 	if known, ok := have[p.Proto]; ok && !known {
 		return "this FPGA image has no matcher for the bus"
 	}

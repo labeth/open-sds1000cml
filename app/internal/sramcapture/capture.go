@@ -52,7 +52,10 @@ type Capture struct {
 	envelopeOn      bool
 	envelopeRejects int
 	envelopeLast    string
-	beats           atomic.Uint64
+	// symbolTable is the symbol trigger's table last written (symbolTableOK).
+	symbolTable   [SymbolTableSize]uint8
+	symbolTableOK bool
+	beats         atomic.Uint64
 }
 
 // TRLC-LINKS: REQ-SDS-032, REQ-SDS-040
@@ -73,6 +76,7 @@ const (
 type Config struct {
 	Qualifier         QualifierConfig         `json:"qualifier"`
 	Zones             ZoneConfig              `json:"zones"`
+	Symbol            SymbolTriggerConfig     `json:"symbol"`
 	Sequence          SequenceTriggerConfig   `json:"sequence"`
 	Packet            PacketTriggerConfig     `json:"packet"`
 	Manchester        ManchesterTriggerConfig `json:"manchester"`
@@ -492,6 +496,14 @@ func (c *Capture) Arm(ctx context.Context, cfg Config) error {
 	if err := cfg.Zones.validate(); err != nil {
 		return err
 	}
+	if err := cfg.Symbol.validate(); err != nil {
+		return err
+	}
+	// The symbol trigger fires on its own matches in place of the trigger edge.
+	if cfg.Symbol.Enabled && (cfg.Qualifier.Enabled || cfg.Zones.Enabled() || cfg.Sequence.Length != 0 || cfg.Packet.Enabled || cfg.Manchester.Enabled ||
+		cfg.USBLS.Enabled || cfg.MIL1553.Enabled || cfg.SENT.Enabled || cfg.SPI.Enabled || cfg.I2C.Enabled || cfg.UART.Enabled || cfg.Source != ADC || !cfg.Normal) {
+		return fmt.Errorf("sramcapture: a symbol trigger requires exclusive ADC normal triggering")
+	}
 	if cfg.Zones.Enabled() && (cfg.Source != ADC || !cfg.Normal) {
 		return fmt.Errorf("sramcapture: zones qualify a normal ADC trigger")
 	}
@@ -587,6 +599,9 @@ func (c *Capture) Arm(ctx context.Context, cfg Config) error {
 		return err
 	}
 	if err := c.configureZones(revision, cfg.Zones); err != nil {
+		return err
+	}
+	if err := c.configureSymbol(revision, cfg.Symbol); err != nil {
 		return err
 	}
 	if err := c.configureSequence(cfg.Sequence); err != nil {
@@ -691,7 +706,7 @@ func (c *Capture) Arm(ctx context.Context, cfg Config) error {
 	if e = c.write(7, uint16(cfg.TriggerLevel)|uint16(cfg.TriggerHysteresis)<<8); e != nil {
 		return e
 	}
-	if cfg.SPI.Enabled || cfg.I2C.Enabled {
+	if cfg.SPI.Enabled || cfg.I2C.Enabled || (cfg.Symbol.Enabled && cfg.Symbol.TwoLines) {
 		second := cfg.SecondLevel
 		if second == 0 {
 			second = cfg.TriggerLevel

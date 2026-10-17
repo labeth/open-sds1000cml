@@ -339,7 +339,7 @@ func (e *Engine) sramConfig() (sramcapture.Config, SRAMPlan, float64, bool, trig
 		c := sramcapture.Config{Source: sramcapture.ADC, DecimationLog2: p.Log, PreWords: pre, PostWords: words - pre,
 			Normal: tp.typ == TrigEdge && e.serialMode.Load() != SerialTrigger, Falling: !e.trigRising.Load(),
 			TriggerChannel: uint8(e.trigSrc.Load()), TriggerLevel: uint8(e.trigLevelWord())}
-		if (e.hardwareUART || e.hardwareI2C || e.hardwareSPI || e.hardwareSENT || e.hardwareMIL1553 || e.hardwareUSBLS || e.hardwareManchester || e.hardwarePacket != 0) && e.serialMode.Load() == SerialTrigger {
+		if (e.hardwareUART || e.hardwareI2C || e.hardwareSPI || e.hardwareSENT || e.hardwareMIL1553 || e.hardwareUSBLS || e.hardwareManchester || e.hardwarePacket != 0 || e.hardwareSymbol) && e.serialMode.Load() == SerialTrigger {
 			e.ser.mu.Lock()
 			serial := e.ser.params
 			e.ser.mu.Unlock()
@@ -410,6 +410,31 @@ func averageAlignEdge(local []uint8, hint float64, nearer, rising bool) float64 
 // trigger left when the request cannot be planned in hardware.
 // TRLC-LINKS: REQ-SDS-013
 func (e *Engine) planSerial(c *sramcapture.Config, serial SerialParams, fallbackNormal bool) {
+	if symbolProtocol(serial.Proto) {
+		// ADR-SYMBOL-TRIGGER: the whole request compiles into the symbol
+		// trigger (it has no sequence trigger: the units are its window's).
+		if e.hardwareSymbol {
+			c.Symbol = planHardwareSymbol(serial)
+		}
+		if !c.Symbol.Enabled {
+			c.Normal = fallbackNormal
+			return
+		}
+		c.Normal, c.TriggerChannel = true, c.Symbol.Channel
+		first, second := uint8(math.Round(serial.Threshold)), secondLevel(serial)
+		if int(c.Symbol.Channel) != serial.ChA {
+			first, second = second, first
+		}
+		c.TriggerLevel = first
+		if c.Symbol.TwoLines {
+			c.SecondLevel = second
+		}
+		return
+	}
+	if serial.Proto == serMIDI {
+		// MIDI is UART characters, 8N1, on the UART receiver.
+		serial.Proto, serial.Bits, serial.Parity = serUART, 8, "none"
+	}
 	// A request beyond the protocol's native matcher runs the decoder
 	// unfiltered and matches with the sequence trigger; without that
 	// trigger it stays a software qualification.
@@ -531,7 +556,7 @@ func (e *Engine) planHysteresis(c *sramcapture.Config, decimated bool) {
 		return hi - lo
 	}
 	band := spread(int(c.TriggerChannel))
-	if c.I2C.Enabled || c.SPI.Enabled {
+	if c.I2C.Enabled || c.SPI.Enabled || (c.Symbol.Enabled && c.Symbol.TwoLines) {
 		band = math.Max(band, spread(1-int(c.TriggerChannel)))
 	}
 	c.TriggerHysteresis = uint8(math.Min(255, math.Max(4, math.Ceil(band)+2)))

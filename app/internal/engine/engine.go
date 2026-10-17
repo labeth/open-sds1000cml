@@ -342,6 +342,7 @@ type Engine struct {
 	hardwareSequence      bool
 	hardwareEnvelope      bool
 	hardwareQualifier     bool // the image measures pulse widths, slopes and video lines (ADR-HARDWARE-QUALIFIERS)
+	hardwareSymbol        bool // the image has the symbol trigger for timed-pulse buses (ADR-SYMBOL-TRIGGER)
 	// sequenceOnly: the image's decoders take no pattern of their own.
 	sequenceOnly bool
 	// hardwarePacket is the packet block's protocol mask (bit n = protocol n).

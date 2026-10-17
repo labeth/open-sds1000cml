@@ -65,6 +65,10 @@ func (e *Engine) BeginDecodedStream(ctx context.Context, p SerialParams, trig St
 				e.decodedStarting = time.Time{}
 			}
 		}()
+		if symbolProtocol(p.Proto) {
+			// ADR-SYMBOL-TRIGGER: the symbol trigger's image has no decoded event transport.
+			return nil, fmt.Errorf("the image that triggers this protocol cannot stream its decoded events")
+		}
 		want := protocolImage(p)
 		if e.images != nil && e.hasImage(want) && want != e.protocolImage {
 			if err := e.sram.Halt(ctx); err != nil {

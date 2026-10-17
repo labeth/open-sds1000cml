@@ -133,6 +133,8 @@ func hardwareSerialName(c sramcapture.Config) string {
 // TRLC-LINKS: REQ-SDS-013
 func decoderName(c sramcapture.Config) string {
 	switch {
+	case c.Symbol.Enabled:
+		return "symbol"
 	case c.Packet.Enabled && c.Packet.Protocol == sramcapture.PacketCAN:
 		return "can"
 	case c.Packet.Enabled && c.Packet.Protocol == sramcapture.PacketARINC:
@@ -175,6 +177,7 @@ func (e *Engine) probeSerialHardware() {
 		{"sequence", &e.hardwareSequence, e.sram.SupportsSequence},
 		{"envelope", &e.hardwareEnvelope, e.sram.SupportsEnvelope},
 		{"qualifier", &e.hardwareQualifier, e.sram.SupportsQualifier},
+		{"symbol", &e.hardwareSymbol, e.sram.SupportsSymbol},
 		{"sequence-only", &e.sequenceOnly, e.sram.SequenceOnly},
 	} {
 		var err error
@@ -215,6 +218,9 @@ const (
 // load of seconds.
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-229
 func protocolImage(p SerialParams) string {
+	if symbolProtocol(p.Proto) {
+		return imageQualify
+	}
 	switch p.Proto {
 	case serManchester, serUSB:
 		return imageLine

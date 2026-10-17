@@ -59,6 +59,9 @@
 `ifdef TRIG_I2C
 `define LINE_LEVELS
 `endif
+`ifdef SYMBOL_TRIGGER
+`define LINE_LEVELS
+`endif
 // ADR-PROTOCOL-SEQUENCE-TRIGGER: every raw-only protocol image has the matcher.
 `ifdef PROTOCOL_SET
 `define SEQUENCE_TRIGGER
@@ -760,12 +763,73 @@ module acq_sram_top(
 `else
  wire qual_configured=1'b0;
 `endif
+`ifdef SYMBOL_TRIGGER
+ // ADR-SYMBOL-TRIGGER: the serial buses of timed pulses on one or two lines
+ // (symbol_trigger.v), on the raw samples whatever the record's decimation.
+ // Host registers: 93 control {prescale[13:11], leader runs[10:8],
+ // mode[7:6], clock falling[5], A and B[4], invert B[3], invert A[2],
+ // channel of line A[1], enable[0]}; 94/95 the unit in 1/256 receiver
+ // clocks; 96 {period[13:8], frame units[5:0]}; 97 {phase0[15:10], k[9:0]};
+ // 98 the table-loaded flag; 99 the table address and 100 an entry (the
+ // address steps); 101..104 the pattern, 105..108 the mask. Read 76 the
+ // block, 78 its matches (modulo 2^16), 98 the flag. The block reads its
+ // settings straight from these registers: the host holds them while armed.
+ reg [15:0] sym_cfg=0,sym_fp=0,sym_kp=0;reg [27:0] sym_unit=28'd2048;reg [63:0] sym_pattern=0,sym_mask=0;
+ reg sym_loaded=0,sym_we=0;reg [10:0] sym_addr=0,sym_wa=0;reg [7:0] sym_wd=0;
+ always @(posedge clk)begin sym_we<=wc && ws==100;sym_wa<=sym_addr;sym_wd<=wd[7:0];end
+ (* preserve, dont_merge *) reg sym_ch=0,sym_on=0;
+ always @(posedge core)if(config_idle)begin sym_ch<=sym_cfg[1];sym_on<=sym_cfg[0];end
+ wire sym_configured=sym_on;
+ // Line A on the selected channel at the trigger level (register 7), line B
+ // on the other at its own (register 59), each with the trigger's re-arm band:
+ // one sample a word, as the general image's UART takes it.
+ (* preserve, dont_merge *) reg [7:0] sym_low=0,sym_high=0,sym_low2=0,sym_high2=0;
+ reg [7:0] sym_code_a=0,sym_code_b=0;reg sym_code_valid=0,sym_line_a=1,sym_line_b=1;
+ always @(posedge core)begin
+  sym_low<=level_low_l;sym_high<=level_high_l;sym_low2<=level2_low_l;sym_high2<=level2_high_l;
+  sym_code_a<=sym_ch ? il_raw_word[31:24] : il_raw_word[23:16];
+  sym_code_b<=sym_ch ? il_raw_word[23:16] : il_raw_word[31:24];
+  sym_code_valid<=frontend_run && il_raw_valid;
+  if(sym_code_valid)begin
+   if(sym_code_a>=sym_high)sym_line_a<=1;else if(sym_code_a<=sym_low)sym_line_a<=0;
+   if(sym_code_b>=sym_high2)sym_line_b<=1;else if(sym_code_b<=sym_low2)sym_line_b<=0;
+  end
+ end
+ reg [1:0] sym_a_sync=2'b11,sym_b_sync=2'b11,sym_run_sync=0;
+ always @(posedge halfclk)begin
+  sym_a_sync<={sym_a_sync[0],sym_line_a};sym_b_sync<={sym_b_sync[0],sym_line_b};
+  sym_run_sync<={sym_run_sync[0],running && !arm && sym_on};
+ end
+ wire sym_match;
+ symbol_trigger symbols(.clk(halfclk),.reset(!sym_run_sync[1]),.a(sym_a_sync[1]),.b(sym_b_sync[1]),
+  .inv_a(sym_cfg[2]),.inv_b(sym_cfg[3]),.and_ab(sym_cfg[4]),.clk_fall(sym_cfg[5]),.mode(sym_cfg[7:6]),.lead_len(sym_cfg[10:8]),.prescale(sym_cfg[13:11]),
+  .unit_q8(sym_unit),.frame_units(sym_fp[5:0]),.period(sym_fp[13:8]),.phase0(sym_kp[15:10]),.k(sym_kp[9:0]),
+  .pattern(sym_pattern),.mask(sym_mask),.wr_clk(clk),.wr_en(sym_we),.wr_addr(sym_wa),.wr_data(sym_wd),.match(sym_match));
+ // One clock of fire per match, in the acquisition clock; the host counts
+ // matches through a toggle.
+ reg [2:0] sym_match_sync=0;reg sym_fire=0,sym_toggle=0;
+ always @(posedge core)begin
+  sym_match_sync<={sym_match_sync[1:0],sym_match};
+  sym_fire<=sym_on && sym_match_sync[1] && !sym_match_sync[2];
+ end
+ always @(posedge halfclk)if(sym_match)sym_toggle<=!sym_toggle;
+ reg [2:0] sym_toggle_sync=0;reg [15:0] sym_count=0;
+ always @(posedge clk)begin
+  sym_toggle_sync<={sym_toggle_sync[1:0],sym_toggle};
+  if(sym_toggle_sync[2]!=sym_toggle_sync[1])sym_count<=sym_count+1'b1;
+ end
+`endif
  always @(posedge core)if(config_idle)begin
   edge_auto<=!cfg[4];
   protocol_enable<=cfg[0] && cfg[4] && protocol_configured;
   // A qualifier fires on its own event instead of every edge.
+`ifdef SYMBOL_TRIGGER
+  edge_rise_enable<=(!protocol_configured && !qual_configured && !sym_configured && cfg[0] && cfg[4] && !cfg[5]) ? (cfg[6] ? 2'b10 : 2'b01) : 2'b00;
+  edge_fall_enable<=(!protocol_configured && !qual_configured && !sym_configured && cfg[0] && cfg[4] && cfg[5]) ? (cfg[6] ? 2'b10 : 2'b01) : 2'b00;
+`else
   edge_rise_enable<=(!protocol_configured && !qual_configured && cfg[0] && cfg[4] && !cfg[5]) ? (cfg[6] ? 2'b10 : 2'b01) : 2'b00;
   edge_fall_enable<=(!protocol_configured && !qual_configured && cfg[0] && cfg[4] && cfg[5]) ? (cfg[6] ? 2'b10 : 2'b01) : 2'b00;
+`endif
  end
  genvar tc;generate for(tc=0;tc<2;tc=tc+1)begin:trigger_compare
   sram_edge_pair #(.PIPELINED(1)) edges(.clk(core),.enable(frontend_run),.valid(frontend_run && selected_valid),
@@ -786,7 +850,11 @@ module acq_sram_top(
 `else
 `ifdef QUAL_TRIGGER
   // With zones on, only the candidates the zones pass fire.
+`ifdef SYMBOL_TRIGGER
+  il_fire_stage<=force_trigger || edge_auto || (zone_on ? zone_fire : (|(rise_ch & edge_rise_enable)) || (|(fall_ch & edge_fall_enable)) || qual_fire || sym_fire)
+`else
   il_fire_stage<=force_trigger || edge_auto || (zone_on ? zone_fire : (|(rise_ch & edge_rise_enable)) || (|(fall_ch & edge_fall_enable)) || qual_fire)
+`endif
 `ifdef UART_TRIGGER
    || (protocol_enable && uart_fired)
 `endif
@@ -956,6 +1024,12 @@ module acq_sram_top(
   110:packet_ticks[15:0]<=wd;111:packet_ticks[23:16]<=wd[7:0];
   112:packet_aux[15:0]<=wd;113:packet_aux[31:16]<=wd;
   114:packet_pattern[15:0]<=wd;115:packet_pattern[31:16]<=wd;116:packet_pattern[47:32]<=wd;117:packet_pattern[63:48]<=wd;
+`endif
+`ifdef SYMBOL_TRIGGER
+  93:sym_cfg<=wd;94:sym_unit[15:0]<=wd;95:sym_unit[27:16]<=wd[11:0];96:sym_fp<=wd;97:sym_kp<=wd;98:sym_loaded<=wd[0];
+  99:sym_addr<=wd[10:0];100:sym_addr<=sym_addr+1'b1;
+  101:sym_pattern[15:0]<=wd;102:sym_pattern[31:16]<=wd;103:sym_pattern[47:32]<=wd;104:sym_pattern[63:48]<=wd;
+  105:sym_mask[15:0]<=wd;106:sym_mask[31:16]<=wd;107:sym_mask[47:32]<=wd;108:sym_mask[63:48]<=wd;
 `endif
 `ifdef QUAL_TRIGGER
   21:qual_cfg<=wd;22:qual_min<=wd;24:qual_max<=wd;26:qual_levels<=wd;27:qual_video<=wd;28:qual_pre<=wd;
@@ -1537,6 +1611,10 @@ module acq_sram_top(
 `ifdef QUAL_TRIGGER
    // ADR-HARDWARE-QUALIFIERS: the qualifier block and its kinds {zone, video, slope, pulse}.
    74:rd=16'h5154;75:rd=16'h000f;
+`ifdef SYMBOL_TRIGGER
+   // ADR-SYMBOL-TRIGGER: the symbol block, its matches and its table flag.
+   76:rd=16'h5359;78:rd=sym_count;98:rd={15'd0,sym_loaded};
+`endif
 `ifndef UART_TRIGGER
 `ifdef ENVELOPE_RECALL
    43:rd=16'h454e;46:rd=env_words;
