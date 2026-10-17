@@ -99,9 +99,49 @@ func init() {
 		{ID: serFlexRay, Name: "FlexRay", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
 			return decode.DecodeFlexRay(a, sampleS, decode.FlexRayCfg{Bitrate: p.Baud, Threshold: p.Threshold, HaveThr: p.HaveThr})
 		}, Match: byteMatch},
+		{ID: serLIN, Name: "LIN", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
+			return decode.DecodeLIN(a, sampleS, decode.LINCfg{Baud: p.Baud, Threshold: p.Threshold, HaveThr: p.HaveThr})
+		}, Match: byteMatch},
+		{ID: serDMX, Name: "DMX512", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
+			return decode.DecodeDMX512(a, sampleS, decode.DMXCfg{Baud: p.Baud, Threshold: p.Threshold, HaveThr: p.HaveThr})
+		}, Match: byteMatch},
+		{ID: serMIDI, Name: "MIDI", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
+			return decode.DecodeMIDI(a, sampleS, decode.MIDICfg{Baud: p.Baud, Threshold: p.Threshold, HaveThr: p.HaveThr})
+		}, Match: byteMatch},
+		{ID: serModbus, Name: "Modbus RTU", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
+			return decode.DecodeModbus(a, sampleS, decode.ModbusCfg{Baud: p.Baud, Parity: p.Parity, Threshold: p.Threshold, HaveThr: p.HaveThr})
+		}, Match: byteMatch},
+		{ID: serOneWire, Name: "1-Wire", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
+			return decode.DecodeOneWire(a, sampleS, decode.OneWireCfg{Overdrive: p.Overdrive, Threshold: p.Threshold, HaveThr: p.HaveThr})
+		}, Match: byteMatch},
+		{ID: serWS281x, Name: "WS281x", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
+			return decode.DecodeWS281x(a, sampleS, decode.WS281xCfg{Threshold: p.Threshold, HaveThr: p.HaveThr})
+		}, Match: byteMatch},
+		{ID: serDHT, Name: "DHT", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
+			return decode.DecodeDHT(a, sampleS, decode.DHTCfg{Threshold: p.Threshold, HaveThr: p.HaveThr})
+		}, Match: byteMatch},
+		{ID: serCEC, Name: "HDMI-CEC", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
+			return decode.DecodeCEC(a, sampleS, decode.CECCfg{Threshold: p.Threshold, HaveThr: p.HaveThr})
+		}, Match: byteMatch},
+		{ID: serJ1850, Name: "J1850 VPW", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
+			return decode.DecodeJ1850(a, sampleS, decode.J1850Cfg{Threshold: p.Threshold, HaveThr: p.HaveThr})
+		}, Match: byteMatch},
+		{ID: serIRNEC, Name: "IR NEC", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
+			return decode.DecodeIRNEC(a, sampleS, decode.IRCfg{Threshold: p.Threshold, HaveThr: p.HaveThr})
+		}, Match: byteMatch},
+		{ID: serIRSIRC, Name: "IR Sony", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
+			return decode.DecodeIRSIRC(a, sampleS, decode.IRCfg{Threshold: p.Threshold, HaveThr: p.HaveThr})
+		}, Match: byteMatch},
+		{ID: serIRRC5, Name: "IR RC-5", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
+			return decode.DecodeIRRC5(a, sampleS, decode.IRCfg{Threshold: p.Threshold, HaveThr: p.HaveThr})
+		}, Match: byteMatch},
+		{ID: serIRRC6, Name: "IR RC-6", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
+			return decode.DecodeIRRC6(a, sampleS, decode.IRCfg{Threshold: p.Threshold, HaveThr: p.HaveThr})
+		}, Match: byteMatch},
 	} {
-		switch d.ID {
-		case serSENT, serCAN, serMIL1553, serARINC, serUSB, serFlexRay:
+		switch {
+		case d.ID == serSENT, d.ID == serCAN, d.ID == serMIL1553, d.ID == serARINC, d.ID == serUSB, d.ID == serFlexRay,
+			d.ID >= serLIN && d.ID != serMIDI:
 			d.Match = func(s []decode.Span, p SerialParams) (bool, int) {
 				return matchPackets(s, p.Bytes)
 			}
@@ -110,4 +150,11 @@ func init() {
 			panic(err)
 		}
 	}
+}
+
+// clockedTwoLine reports the clocked two-line protocols beyond SPI and
+// I2C: PS/2, SWD and MDIO (clock and data), Wiegand (D0 and D1).
+// TRLC-LINKS: REQ-SDS-013
+func clockedTwoLine(proto int) bool {
+	return proto == serPS2 || proto == serSWD || proto == serMDIO || proto == serWiegand
 }

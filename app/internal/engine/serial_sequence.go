@@ -102,7 +102,7 @@ func framedProtocol(proto int) bool {
 	case serCAN, serFlexRay, serUSB, serSENT, serManchester, serARINC:
 		return true
 	}
-	return false
+	return proto >= serLIN && proto != serMIDI // the decoders that frame their units
 }
 
 // planSequence maps the request into the hardware's event values: ARINC's

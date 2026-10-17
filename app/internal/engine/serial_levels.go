@@ -296,7 +296,7 @@ func (e *Engine) spiQuietCheck(p SerialParams) {
 // complete.
 // TRLC-LINKS: REQ-SDS-013
 func (e *Engine) serialPlanParams(p SerialParams) (SerialParams, string) {
-	twoLines := p.Proto == serSPI || p.Proto == serI2C
+	twoLines := p.Proto == serSPI || p.Proto == serI2C || clockedTwoLine(p.Proto)
 	if !p.HaveThr {
 		lines := []int{p.ChA & 1}
 		if twoLines && !p.HaveThrB {
@@ -646,6 +646,26 @@ func serialUnitSamples(p SerialParams, sampleS, spiHz float64) int {
 		bits = 36 // 32 and the 4-bit gap
 	case serCAN, serFlexRay, serUSB:
 		bits = 10
+	case serLIN, serMIDI:
+		bits = 10
+	case serDMX, serModbus:
+		bits = 11
+	case serOneWire, serWS281x, serDHT, serJ1850, serIRNEC, serIRRC6, serDALI, serMDIO:
+		bits = 8 // a byte (RC-6 and DALI, MDIO: their bit times at Baud)
+	case serIRSIRC, serIRRC5:
+		bits = 8 // the longest field: SIRC's address, RC-5's command
+	case serCEC:
+		bits = 10 // a block
+	case serUSBPD:
+		bits = 10 // a byte: two 4b5b symbols
+	case serSPDIF:
+		bits = 32 // a subframe
+	case serPS2:
+		bits = 11
+	case serSWD:
+		bits = 46 // request, turnaround, ACK and a data word
+	case serWiegand:
+		bits = 16
 	case serSENT:
 		if p.TickNs > 0 {
 			return int(math.Ceil(27 * p.TickNs * 1e-9 / sampleS))

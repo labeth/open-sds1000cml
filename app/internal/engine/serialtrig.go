@@ -34,8 +34,31 @@ const (
 	serCAN        = 6
 	serMIL1553    = 7
 	serARINC      = 8
-	serUSB        = 9
+	serUSB        = 9 // USB low and full speed (Baud 1.5e6 or 12e6)
 	serFlexRay    = 10
+	serLIN        = 11
+	serDMX        = 12
+	serMIDI       = 13
+	serModbus     = 14
+	serOneWire    = 15
+	serWS281x     = 16
+	serDHT        = 17
+	serCEC        = 18
+	serJ1850      = 19
+	serIRNEC      = 20
+	serIRSIRC     = 21
+	serIRRC5      = 22
+	serIRRC6      = 23
+	serDALI       = 24
+	serUSBPD      = 25
+	serSPDIF      = 26
+	serPS2        = 27
+	serSWD        = 28
+	serMDIO       = 29
+	serWiegand    = 30
+
+	// SerialProtocols bounds the protocol ids (1..SerialProtocols-1).
+	SerialProtocols = 31
 )
 
 // SerialParams is the self-contained serial-trigger config: the protocol +
@@ -58,19 +81,22 @@ type SerialParams struct {
 	// Decode settings — mirrored from the operator's live decode config so the
 	// trigger decodes IDENTICALLY to the decode strip (the UI does not re-enter
 	// these; it sends whatever decode is set to).
-	Proto     int     `json:"proto"`  // 0 off, 1 uart, 2 i2c, 3 spi
-	ChA       int     `json:"chA"`    // primary channel role: 0=C1 1=C2 (uart line / i2c SCL / spi CLK)
-	ChB       int     `json:"chB"`    // secondary channel role (i2c SDA / spi DATA)
-	Baud      int     `json:"baud"`   // uart: 0 = auto-infer
-	Bits      int     `json:"bits"`   // uart: data bits (0 = decode default 8)
-	Parity    string  `json:"parity"` // uart: "none"|"even"|"odd" ("" = none)
-	CPOL      bool    `json:"cpol"`
-	CPHA      bool    `json:"cpha"`
-	MSB       bool    `json:"msb"`       // spi bit order (true = MSB-first) / manchester bit order
-	IEEE      bool    `json:"ieee"`      // manchester: true = IEEE 802.3, false = Thomas/G.E.
-	TickNs    float64 `json:"tickNs"`    // sent: tick override (ns); 0 = auto from the 56-tick SYNC
-	Nibbles   int     `json:"nibbles"`   // sent: nibbles per frame (0 = default 8)
-	DataBaud  int     `json:"dataBaud"`  // can-fd: data-phase baud (0 = same as nominal Baud)
+	Proto    int     `json:"proto"`  // 0 off, 1 uart, 2 i2c, 3 spi ... 30 Wiegand (the ser* ids)
+	ChA      int     `json:"chA"`    // primary channel role: 0=C1 1=C2 (uart line / i2c SCL / spi CLK)
+	ChB      int     `json:"chB"`    // secondary channel role (i2c SDA / spi DATA)
+	Baud     int     `json:"baud"`   // uart: 0 = auto-infer
+	Bits     int     `json:"bits"`   // uart: data bits (0 = decode default 8)
+	Parity   string  `json:"parity"` // uart: "none"|"even"|"odd" ("" = none)
+	CPOL     bool    `json:"cpol"`
+	CPHA     bool    `json:"cpha"`
+	MSB      bool    `json:"msb"`      // spi bit order (true = MSB-first) / manchester bit order
+	IEEE     bool    `json:"ieee"`     // manchester: true = IEEE 802.3, false = Thomas/G.E.
+	TickNs   float64 `json:"tickNs"`   // sent: tick override (ns); 0 = auto from the 56-tick SYNC
+	Nibbles  int     `json:"nibbles"`  // sent: nibbles per frame (0 = default 8)
+	DataBaud int     `json:"dataBaud"` // can-fd: data-phase baud (0 = same as nominal Baud)
+	// Overdrive is 1-Wire's overdrive speed (its resets and slots a tenth
+	// as long).
+	Overdrive bool    `json:"overdrive,omitempty"`
 	Threshold float64 `json:"threshold"` // slice threshold code, used only if HaveThr
 	HaveThr   bool    `json:"haveThr"`   // false = decode auto-threshold
 	// ThresholdB slices the second line (I2C's SDA, SPI's data) in the
