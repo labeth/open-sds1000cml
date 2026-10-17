@@ -38,10 +38,11 @@ const files = [
   "decode_pulsewire.js",
   "decode_ir.js",
   "decode_biphase.js",
+  "decode_clocked.js",
 ];
 let src = files.map((f) => fs.readFileSync(path.join(here, f), "utf8")).join("\n;\n");
 src +=
-  "\n;this.__D = { decodeManchester, decodeMIL1553, decodeFlexRay, decodeSENT, decodeCANFD, decodeARINC429, decodeUSBLS, decodeUART, decodeI2C, decodeSPI, decodeLIN, decodeDMX512, decodeMIDI, decodeModbus, decodeOneWire, decodeWS281x, decodeDHT, decodeCEC, decodeJ1850, decodeIRNEC, decodeIRSIRC, decodeIRRC5, decodeIRRC6, decodeDALI, decodeUSBPD, decodeSPDIF };\n";
+  "\n;this.__D = { decodeManchester, decodeMIL1553, decodeFlexRay, decodeSENT, decodeCANFD, decodeARINC429, decodeUSBLS, decodeUART, decodeI2C, decodeSPI, decodeLIN, decodeDMX512, decodeMIDI, decodeModbus, decodeOneWire, decodeWS281x, decodeDHT, decodeCEC, decodeJ1850, decodeIRNEC, decodeIRSIRC, decodeIRRC5, decodeIRRC6, decodeDALI, decodeUSBPD, decodeSPDIF, decodePS2, decodeSWD, decodeMDIO, decodeWiegand };\n";
 
 const ctx = { console, module: { exports: {} } };
 vm.createContext(ctx);
@@ -105,6 +106,14 @@ const dispatch = {
   usbpd: (v) => D.decodeUSBPD(v.codes, v.colT, v.cfg),
   // TRLC-LINKS: REQ-SDS-181
   spdif: (v) => D.decodeSPDIF(v.codes, v.colT, v.cfg),
+  // TRLC-LINKS: REQ-SDS-181
+  ps2: (v) => D.decodePS2(v.codes, c2of(v), v.colT, v.cfg),
+  // TRLC-LINKS: REQ-SDS-181
+  swd: (v) => D.decodeSWD(v.codes, c2of(v), v.colT, v.cfg),
+  // TRLC-LINKS: REQ-SDS-181
+  mdio: (v) => D.decodeMDIO(v.codes, c2of(v), v.colT, v.cfg),
+  // TRLC-LINKS: REQ-SDS-181
+  wiegand: (v) => D.decodeWiegand(v.codes, c2of(v), v.colT, v.cfg),
 };
 
 // TRLC-LINKS: REQ-SDS-181, REQ-SDS-073
