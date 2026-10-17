@@ -144,11 +144,14 @@ func (c *Controller) startStream() {
 // TRLC-LINKS: REQ-SDS-018
 func streamImageNote(proto int, loaded string) string {
 	want := "general"
-	switch proto {
-	case framecalc.ProtoManchester, framecalc.ProtoUSB:
+	switch {
+	case proto == framecalc.ProtoManchester || proto == framecalc.ProtoUSB:
 		want = "line"
-	case framecalc.ProtoSENT, framecalc.ProtoCAN, framecalc.ProtoMIL1553, framecalc.ProtoARINC429, framecalc.ProtoFlexRay:
+	case proto == framecalc.ProtoSENT || proto == framecalc.ProtoCAN || proto == framecalc.ProtoMIL1553 ||
+		proto == framecalc.ProtoARINC429 || proto == framecalc.ProtoFlexRay:
 		want = "packet"
+	case proto > framecalc.ProtoFlexRay && proto != framecalc.ProtoMIDI:
+		want = "qualify" // the symbol receiver beside the qualifiers
 	}
 	if loaded == "" || loaded == want {
 		return ""
@@ -379,10 +382,10 @@ func (c *Controller) setDecProto(p int) error {
 	prev := c.decProto
 	c.decProto = p
 	c.decGen++
-	if p == framecalc.ProtoI2C || p == framecalc.ProtoSPI {
+	if framecalc.TwoLine(p) {
 		c.decChB = 1 - c.decChA
 	}
-	if rateProto(p) && p != prev {
+	if (rateProto(p) || p > framecalc.ProtoFlexRay) && p != prev {
 		c.decBaud = defaultRate(p)
 	}
 	if p == framecalc.ProtoUART && rateProto(prev) {
@@ -467,7 +470,10 @@ func (c *Controller) setStreamMode(on bool) error {
 // TRLC-LINKS: REQ-SDS-018
 func streamName(proto string) string {
 	names := map[string]string{"uart": "UART", "i2c": "I2C", "spi": "SPI", "manchester": "MANCH", "sent": "SENT",
-		"canfd": "CAN", "mil1553": "1553", "usbls": "USB", "flexray": "FLEXR"}
+		"canfd": "CAN", "mil1553": "1553", "usbls": "USB", "flexray": "FLEXR", "lin": "LIN", "dmx512": "DMX",
+		"midi": "MIDI", "modbus": "MODBUS", "onewire": "1WIRE", "ws281x": "WS281X", "dht": "DHT", "cec": "CEC",
+		"j1850": "J1850", "irnec": "NEC", "irsirc": "SIRC", "irrc5": "RC5", "irrc6": "RC6", "dali": "DALI",
+		"usbpd": "USBPD", "spdif": "SPDIF", "ps2": "PS2", "swd": "SWD", "mdio": "MDIO", "wiegand": "WIEG"}
 	if n, ok := names[proto]; ok {
 		return n
 	}

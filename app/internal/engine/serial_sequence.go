@@ -84,6 +84,12 @@ func unitMask(p SerialParams) int {
 		return 0x7ffff
 	case serSENT:
 		return 0xf
+	case serMDIO, serWiegand:
+		return 0xffff
+	case serSPDIF:
+		return 0xffffff
+	case serSWD:
+		return 0xffffffff // a data word (the request and acknowledge fit too)
 	case serManchester:
 		bits := p.Bits
 		if bits <= 0 || bits > 16 {

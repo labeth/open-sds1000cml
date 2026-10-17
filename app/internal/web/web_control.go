@@ -79,7 +79,7 @@ func (s *Server) hSerial(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, map[string]any{"ok": false, "err": "bad json"})
 		return
 	}
-	p.Proto = clampI(p.Proto, 0, engine.SerialProtocols-1)
+	p.Proto = clampI(p.Proto, 0, engine.SerialProtocols-1) // 0 off … 10 flexray, 11 lin … 30 wiegand
 	p.ChA, p.ChB = p.ChA&1, p.ChB&1
 	p.RW = clampI(p.RW, 0, 2)
 	if p.Addr > 127 || p.Addr < -1 {

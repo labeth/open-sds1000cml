@@ -32,12 +32,43 @@ const (
 	ProtoARINC429
 	ProtoUSB
 	ProtoFlexRay
+	ProtoLIN
+	ProtoDMX
+	ProtoMIDI
+	ProtoModbus
+	ProtoOneWire
+	ProtoWS281x
+	ProtoDHT
+	ProtoCEC
+	ProtoJ1850
+	ProtoIRNEC
+	ProtoIRSIRC
+	ProtoIRRC5
+	ProtoIRRC6
+	ProtoDALI
+	ProtoUSBPD
+	ProtoSPDIF
+	ProtoPS2
+	ProtoSWD
+	ProtoMDIO
+	ProtoWiegand
 	NumProtos
 )
 
+// TwoLine reports a protocol of two lines (ChA and ChB): I2C, SPI and the
+// clocked PS/2, SWD, MDIO and Wiegand.
+// TRLC-LINKS: REQ-SDS-018
+func TwoLine(p int) bool {
+	switch p {
+	case ProtoI2C, ProtoSPI, ProtoPS2, ProtoSWD, ProtoMDIO, ProtoWiegand:
+		return true
+	}
+	return false
+}
+
 // DecodeParams selects the decoder and its settings.
 type DecodeParams struct {
-	Proto      int // ProtoOff..ProtoFlexRay
+	Proto      int // ProtoOff..ProtoWiegand
 	Baud       int // UART baud, or the bit rate of the bit-rate protocols
 	ChA, ChB   int // UART source / I2C SCL / SPI CLK, and I2C SDA / SPI DATA (0 = C1)
 	CPOL, CPHA bool
@@ -46,6 +77,9 @@ type DecodeParams struct {
 	// DataDelayS is where SPI's data line is read after the clock's
 	// sampling edge (0: at the edge, the channels' phase only).
 	DataDelayS float64
+	// Parity is Modbus RTU's character framing ("even", "odd", "none"; ""
+	// the decoder finds it).
+	Parity string
 }
 
 // Formats are the span text formats by the decode setting's format index.
@@ -58,11 +92,14 @@ var Formats = [3]string{"hex", "ascii", "both"}
 // bytes the list does (the strip without SPI's data delay read a late
 // 104 MHz device one bit behind the list).
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-214
-func Params(proto, baud, chA, chB int, cpol, cpha, lsb bool, format int, spiDelayNs float64) DecodeParams {
+func Params(proto, baud, chA, chB int, cpol, cpha, lsb bool, format int, spiDelayNs float64, parity string) DecodeParams {
 	p := DecodeParams{Proto: proto, Baud: baud, ChA: chA, ChB: chB, CPOL: cpol, CPHA: cpha, LSB: lsb,
 		Format: Formats[((format%3)+3)%3]}
 	if proto == ProtoSPI {
 		p.DataDelayS = spiDelayNs * 1e-9
+	}
+	if proto == ProtoModbus {
+		p.Parity = parity
 	}
 	return p
 }
@@ -154,12 +191,66 @@ func Decode(f *engine.Frame, p DecodeParams) decode.Result {
 		res = decode.DecodeUSBLS(ch(p.ChA), f.SampleS, decode.USBLSCfg{Bitrate: p.Baud})
 	case ProtoFlexRay:
 		res = decode.DecodeFlexRay(ch(p.ChA), f.SampleS, decode.FlexRayCfg{Bitrate: p.Baud})
+	default:
+		res = decodeMore(p, ch, f.SampleS)
 	}
 	if f.PeakDetect && f.Ordered && !EnvelopeResolves(res) {
 		res = decode.Result{Proto: res.Proto, Error: decode.Names[res.Proto] + " not resolved at this timebase - S/DIV faster, or SINGLE"}
 	}
 	decodeCache.key, decodeCache.res, decodeCache.ok = key, res, cacheable
 	return res
+}
+
+// decodeMore decodes the protocols beyond the first ten with p's settings;
+// ch gives a channel's samples.
+// TRLC-LINKS: REQ-SDS-018
+func decodeMore(p DecodeParams, ch func(int) []uint8, sampleS float64) decode.Result {
+	a := ch(p.ChA)
+	ir := decode.IRCfg{Format: p.Format}
+	two := decode.ClockedCfg{Format: p.Format}
+	switch p.Proto {
+	case ProtoLIN:
+		return decode.DecodeLIN(a, sampleS, decode.LINCfg{Baud: p.Baud, Format: p.Format})
+	case ProtoDMX:
+		return decode.DecodeDMX512(a, sampleS, decode.DMXCfg{Format: p.Format})
+	case ProtoMIDI:
+		return decode.DecodeMIDI(a, sampleS, decode.MIDICfg{Format: p.Format})
+	case ProtoModbus:
+		return decode.DecodeModbus(a, sampleS, decode.ModbusCfg{Baud: p.Baud, Parity: p.Parity, Format: p.Format})
+	case ProtoOneWire:
+		return decode.DecodeOneWire(a, sampleS, decode.OneWireCfg{Overdrive: p.Baud >= 100000, Format: p.Format})
+	case ProtoWS281x:
+		return decode.DecodeWS281x(a, sampleS, decode.WS281xCfg{Format: p.Format})
+	case ProtoDHT:
+		return decode.DecodeDHT(a, sampleS, decode.DHTCfg{Format: p.Format})
+	case ProtoCEC:
+		return decode.DecodeCEC(a, sampleS, decode.CECCfg{Format: p.Format})
+	case ProtoJ1850:
+		return decode.DecodeJ1850(a, sampleS, decode.J1850Cfg{Format: p.Format})
+	case ProtoIRNEC:
+		return decode.DecodeIRNEC(a, sampleS, ir)
+	case ProtoIRSIRC:
+		return decode.DecodeIRSIRC(a, sampleS, ir)
+	case ProtoIRRC5:
+		return decode.DecodeIRRC5(a, sampleS, ir)
+	case ProtoIRRC6:
+		return decode.DecodeIRRC6(a, sampleS, ir)
+	case ProtoDALI:
+		return decode.DecodeDALI(a, sampleS, decode.DALICfg{Format: p.Format})
+	case ProtoUSBPD:
+		return decode.DecodeUSBPD(a, sampleS, decode.USBPDCfg{Format: p.Format})
+	case ProtoSPDIF:
+		return decode.DecodeSPDIF(a, sampleS, decode.SPDIFCfg{Format: p.Format})
+	case ProtoPS2:
+		return decode.DecodePS2(a, ch(p.ChB), sampleS, two)
+	case ProtoSWD:
+		return decode.DecodeSWD(a, ch(p.ChB), sampleS, two)
+	case ProtoMDIO:
+		return decode.DecodeMDIO(a, ch(p.ChB), sampleS, two)
+	case ProtoWiegand:
+		return decode.DecodeWiegand(a, ch(p.ChB), sampleS, two)
+	}
+	return decode.Result{}
 }
 
 // Detect finds the bus on f's valid samples: the protocol, channel roles and

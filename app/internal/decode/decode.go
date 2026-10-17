@@ -39,23 +39,40 @@ type Result struct {
 	// Inverted reports a line read with its marks at the high level (the
 	// IR decoders find the idle level themselves).
 	Inverted bool
+	// Cover is the share of the clock's cycles the decode's frames, idle and
+	// resets explain (PS/2, SWD, MDIO): data an SPI bus clocks reads as a
+	// few frames among many cycles none explains.
+	Cover float64
 }
 
 // FeatureSamples is the shortest feature a decode's bus holds, in samples: a
-// bit of an NRZ line (UART, CAN, USB, FlexRay), half a clock (I2C, SPI), half
-// a bit of a line code (Manchester, MIL-1553, ARINC 429's return to zero),
-// SENT's shortest pulse of four ticks. 0 when the result names none
-// (decode.js decodeFeatureSamples).
+// bit of an NRZ line (UART, CAN, USB, FlexRay, the UART-framed protocols,
+// J1850's short symbol), half a clock (I2C, SPI, PS/2, SWD, MDIO), half a bit
+// of a line code (Manchester, MIL-1553, ARINC 429's return to zero, DALI,
+// USB PD, S/PDIF, the IR codes), SENT's shortest pulse of four ticks, a
+// WS281x bit's short high (a third of the bit), CEC's short low (a quarter of
+// its bit), a microsecond for 1-Wire's write slot (SPB is a microsecond),
+// DHT's short high of 26 us, a Wiegand pulse (a twentieth of its bit
+// interval). 0 when the result names none (decode.js decodeFeatureSamples).
 // TRLC-LINKS: REQ-SDS-018
 func FeatureSamples(r Result) float64 {
 	if !r.OK || !(r.SPB > 0) {
 		return 0
 	}
 	switch r.Proto {
-	case "i2c", "spi", "manchester", "mil1553", "arinc429":
+	case "i2c", "spi", "manchester", "mil1553", "arinc429", "dali", "usbpd", "spdif", "irnec", "irrc5", "irrc6",
+		"ps2", "swd", "mdio":
 		return r.SPB / 2
 	case "sent":
 		return 4 * r.SPB
+	case "ws281x":
+		return r.SPB / 3
+	case "cec":
+		return r.SPB / 4
+	case "dht":
+		return 26 * r.SPB
+	case "wiegand":
+		return r.SPB / 20
 	}
 	return r.SPB
 }
@@ -146,7 +163,11 @@ func EnvelopeRun(codes []uint8, sampleS float64) (run, busy float64) {
 
 // Names are the protocols as the screens name them.
 var Names = map[string]string{"uart": "UART", "i2c": "I2C", "spi": "SPI", "manchester": "Manchester", "sent": "SENT",
-	"canfd": "CAN", "mil1553": "MIL-1553", "arinc429": "ARINC 429", "usbls": "USB LS", "flexray": "FlexRay"}
+	"canfd": "CAN", "mil1553": "MIL-1553", "arinc429": "ARINC 429", "usbls": "USB", "flexray": "FlexRay",
+	"lin": "LIN", "dmx512": "DMX512", "midi": "MIDI", "modbus": "Modbus RTU", "onewire": "1-Wire", "ws281x": "WS281x",
+	"dht": "DHT", "cec": "HDMI-CEC", "j1850": "J1850 VPW", "irnec": "IR NEC", "irsirc": "IR Sony", "irrc5": "IR RC-5",
+	"irrc6": "IR RC-6", "dali": "DALI", "usbpd": "USB PD", "spdif": "S/PDIF", "ps2": "PS/2", "swd": "SWD", "mdio": "MDIO",
+	"wiegand": "Wiegand"}
 
 // Roles is the channel assignment and SPI framing Autodetect chose: ChA is the
 // line (or I2C SCL / SPI CLK), ChB the I2C SDA / SPI DATA, 0 = C1.

@@ -72,7 +72,7 @@ type Acq struct {
 // reset to Off on every app restart).
 // TRLC-LINKS: REQ-SDS-072, REQ-SDS-089
 type Decode struct {
-	Proto  int  `json:"proto"` // 0=off 2=uart 3=i2c 4=spi 5..11 the bit-rate and SENT decoders; 1, Auto, loads as a detection
+	Proto  int  `json:"proto"` // 0=off 2=uart 3=i2c 4=spi 5..31 the other decoders (framecalc's numbers); 1, Auto, loads as a detection
 	Baud   int  `json:"baud"`
 	ChA    int  `json:"cha"` // UART source; I2C SCL; SPI CLK (0=C1 1=C2)
 	ChB    int  `json:"chb"` // I2C SDA; SPI DATA
@@ -89,6 +89,10 @@ type Decode struct {
 	// the value it waits for.
 	StreamTrig  int `json:"stream_trig,omitempty"`
 	StreamValue int `json:"stream_value,omitempty"`
+	// Parity is Modbus RTU's framing ("even", "odd", "none"; "" found by the
+	// decoder); Inverted, an IR or DALI line's marks at its high level.
+	Parity   string `json:"parity,omitempty"`
+	Inverted bool   `json:"inverted,omitempty"`
 }
 
 // Settings is the whole persisted setup. Every field is comparable, so the

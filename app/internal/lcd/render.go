@@ -78,11 +78,12 @@ type HUD struct {
 	Zoom             int       // horizontal magnification (1 = none)
 	ZoomOff          float64   // zoom-window pan offset (fraction of the record)
 	Persist          bool      // display persistence (afterglow)
-	DecProto         int       // 0=off,2=UART,3=I2C,4=SPI,5=Manchester,6=SENT,7=CAN,8=MIL1553,9=ARINC429,10=USB,11=FlexRay (1, Auto, is a detection, never decoded)
+	DecProto         int       // framecalc's numbers: 0=off,2=UART,3=I2C,4=SPI ... 11=FlexRay, 12=LIN ... 31=Wiegand (1, Auto, is a detection, never decoded)
 	DecBaud          int
 	DecChA, DecChB   int // channel roles (0=C1,1=C2)
 	DecCPOL, DecCPHA bool
 	DecLSB           bool          // SPI least significant bit first
+	DecParity        string        // Modbus RTU's framing ("": found by the decoder)
 	DecDelayNs       float64       // SPI's data delay in use after the sampling edge (ns)
 	DecFormat        int           // byte display: 0=hex,1=ascii,2=both
 	RefC1, RefC2     [2][]uint8    // saved reference waveforms (REF A/B), one code per column; nil if unset

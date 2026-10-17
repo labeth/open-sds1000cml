@@ -54,6 +54,7 @@ func (c *Controller) SettingsView() settings.ViewState {
 			DelayNs: c.decDelayNs, DelayAuto: c.decDelayAuto, Fine: c.decFine,
 			Format:     c.decFormat,
 			StreamTrig: c.decTrig, StreamValue: c.decValue,
+			Parity: c.decParity, Inverted: c.decInv,
 		},
 		UI:     ui,
 		Serial: ser,
@@ -129,7 +130,7 @@ func (c *Controller) ApplySettingsView(v settings.ViewState) {
 	}
 	d.ChA &= 1
 	d.ChB &= 1
-	if d.Proto == framecalc.ProtoI2C || d.Proto == framecalc.ProtoSPI || d.ChB == d.ChA {
+	if framecalc.TwoLine(d.Proto) || d.ChB == d.ChA {
 		d.ChB = 1 - d.ChA // data on the OTHER channel
 	}
 	d.Format = mod3(d.Format)
@@ -168,6 +169,10 @@ func (c *Controller) ApplySettingsView(v settings.ViewState) {
 	c.decGen++
 	c.decChA, c.decChB = d.ChA, d.ChB
 	c.decCPOL, c.decCPHA, c.decLSB = d.CPOL, d.CPHA, d.LSB
+	c.decParity, c.decInv = "", d.Inverted
+	if d.Parity == "even" || d.Parity == "odd" || d.Parity == "none" {
+		c.decParity = d.Parity
+	}
 	c.decDelayNs, c.decDelayAuto, c.decFine = clampF(d.DelayNs, spiDelayMinNs, spiDelayMaxNs), d.DelayAuto, d.Fine
 	c.auto = autoWatch{}
 	c.decFormat = d.Format

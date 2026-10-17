@@ -125,7 +125,7 @@ func TestDecodeStripReadsTheListsBytes(t *testing.T) {
 	h.DecProto, h.DecChA, h.DecChB, h.DecDelayNs = 4, 1, 0, delayNs
 	strip := decodeFrame(f, h)
 	// the packet list: the panel's decode of the record, grouped
-	list := analysis.Packets(framecalc.Decode(f, framecalc.Params(framecalc.ProtoSPI, 0, 1, 0, false, false, false, 0, delayNs)), n)
+	list := analysis.Packets(framecalc.Decode(f, framecalc.Params(framecalc.ProtoSPI, 0, 1, 0, false, false, false, 0, delayNs, "")), n)
 	if !strip.OK || len(list) == 0 {
 		t.Fatalf("strip %v %q, %d packets", strip.OK, strip.Error, len(list))
 	}

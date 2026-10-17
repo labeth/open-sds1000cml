@@ -239,7 +239,7 @@ func (c *Controller) noteTdivCap(s *sv) {
 // them from the Display (framecalc.Params).
 // TRLC-LINKS: REQ-SDS-214
 func decodeParamsOf(s *sv) framecalc.DecodeParams {
-	return framecalc.Params(s.decProto, s.decBaud, s.decChA, s.decChB, s.decCPOL, s.decCPHA, s.decLSB, s.decFormat, s.spiDelayNs())
+	return framecalc.Params(s.decProto, s.decBaud, s.decChA, s.decChB, s.decCPOL, s.decCPHA, s.decLSB, s.decFormat, s.spiDelayNs(), s.decParity)
 }
 
 // codesOf returns a channel's valid samples as codes (Q8.8 when the frame

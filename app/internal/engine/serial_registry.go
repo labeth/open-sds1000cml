@@ -138,6 +138,27 @@ func init() {
 		{ID: serIRRC6, Name: "IR RC-6", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
 			return decode.DecodeIRRC6(a, sampleS, decode.IRCfg{Threshold: p.Threshold, HaveThr: p.HaveThr})
 		}, Match: byteMatch},
+		{ID: serDALI, Name: "DALI", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
+			return decode.DecodeDALI(a, sampleS, decode.DALICfg{Threshold: p.Threshold, HaveThr: p.HaveThr})
+		}, Match: byteMatch},
+		{ID: serUSBPD, Name: "USB PD", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
+			return decode.DecodeUSBPD(a, sampleS, decode.USBPDCfg{Baud: p.Baud, Threshold: p.Threshold, HaveThr: p.HaveThr})
+		}, Match: byteMatch},
+		{ID: serSPDIF, Name: "S/PDIF", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
+			return decode.DecodeSPDIF(a, sampleS, decode.SPDIFCfg{Threshold: p.Threshold, HaveThr: p.HaveThr})
+		}, Match: byteMatch},
+		{ID: serPS2, Name: "PS/2", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
+			return decode.DecodePS2(a, b, sampleS, clockedCfg(p))
+		}, Match: byteMatch},
+		{ID: serSWD, Name: "SWD", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
+			return decode.DecodeSWD(a, b, sampleS, clockedCfg(p))
+		}, Match: byteMatch},
+		{ID: serMDIO, Name: "MDIO", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
+			return decode.DecodeMDIO(a, b, sampleS, clockedCfg(p))
+		}, Match: byteMatch},
+		{ID: serWiegand, Name: "Wiegand", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
+			return decode.DecodeWiegand(a, b, sampleS, clockedCfg(p))
+		}, Match: byteMatch},
 	} {
 		switch {
 		case d.ID == serSENT, d.ID == serCAN, d.ID == serMIL1553, d.ID == serARINC, d.ID == serUSB, d.ID == serFlexRay,
@@ -150,6 +171,12 @@ func init() {
 			panic(err)
 		}
 	}
+}
+
+// clockedCfg is a request's two thresholds as the clocked decoders take them.
+// TRLC-LINKS: REQ-SDS-013
+func clockedCfg(p SerialParams) decode.ClockedCfg {
+	return decode.ClockedCfg{Threshold: p.Threshold, HaveThr: p.HaveThr, ThresholdB: p.ThresholdB, HaveThrB: p.HaveThrB}
 }
 
 // clockedTwoLine reports the clocked two-line protocols beyond SPI and

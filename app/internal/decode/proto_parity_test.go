@@ -146,6 +146,100 @@ func protoParityVectors(add parityAdd, add2 parityAdd2, corrupt func([]uint8) []
 			base{"irrc6", 1 / sr, cfg{}, rc6, func(c []uint8) Result { return DecodeIRRC6(c, 1/sr, IRCfg{}) }})
 	}
 
+	// ---- biphase
+	{
+		wd := newTimeline(200e3)
+		wd.idle(5e-3)
+		daliFrame(wd, 16, 0x0190, 3e-3)
+		daliFrame(wd, 8, 0x5A, 10e-3)
+		daliFrame(wd, 24, 0x123456, 10e-3)
+		dali := wd.codes()
+		bases = append(bases, base{"dali", 5e-6, cfg{}, dali, func(c []uint8) Result { return DecodeDALI(c, 5e-6, DALICfg{}) }})
+		wp := newTimeline(25e6)
+		wp.add(0, 20e-6)
+		pdMessage(wp, pdSOP, 0x1161, []uint32{0x0801912C}, false)
+		pdMessage(wp, pdSOP, 0x0041, nil, false)
+		pdMessage(wp, pdSOPPrime, 0x1042, []uint32{0x12345678}, true)
+		pdMessage(wp, pdHardReset, 0, nil, false)
+		pd := wp.codes()
+		bases = append(bases, base{"usbpd", 4e-8, cfg{}, pd, func(c []uint8) Result { return DecodeUSBPD(c, 4e-8, USBPDCfg{}) }})
+		ws := newTimeline(250e6)
+		ws.add(0, 50e-9)
+		var smp [][2]int
+		for i := 0; i < 5; i++ {
+			smp = append(smp, [2]int{(i * 0x1357) & 0xffffff, 0xFFFFF0 - i*0x10})
+		}
+		spdifStream(ws, 48e3, 190, smp)
+		sp := ws.codes()
+		bases = append(bases, base{"spdif", 4e-9, cfg{}, sp, func(c []uint8) Result { return DecodeSPDIF(c, 4e-9, SPDIFCfg{}) }})
+	}
+
+	// ---- USB full speed (tokens' CRC5, data CRC16)
+	{
+		dp, _ := oracleUSBFSWave(120e6, [][]int{
+			usblsPacketBits(0xD, usblsTokenBits(0x15, 0xE)),
+			usblsPacketBits(0x3, usblsDataBits([]int{0x80, 0x06, 0x00, 0x01}, 0)),
+			usblsPacketBits(0x9, usblsTokenBits(0x01, 0x1)[:15]),
+			usblsPacketBits(0xB, usblsDataBits([]int{0xFF, 0x00}, 0x1)),
+		}, 12)
+		fs := bitsToCodes(dp)
+		bases = append(bases, base{"usbls", 1 / 120e6, cfg{}, fs, func(c []uint8) Result { return DecodeUSBLS(c, 1/120e6, USBLSCfg{}) }})
+	}
+
+	// ---- clocked two-line: clean, and each line corrupted in turn
+	{
+		type base2 struct {
+			proto  string
+			colT   float64
+			c1, c2 []uint8
+			dec    func(a, b []uint8) Result
+		}
+		var b2 []base2
+		lp := newTwoLine(1e6)
+		lp.add(1, 1, 300e-6)
+		ps2Frame(lp, 0x1C, false, false, 80e-6, 200e-6)
+		ps2Frame(lp, 0xF0, false, false, 80e-6, 100e-6)
+		ps2Frame(lp, 0xED, true, false, 80e-6, 500e-6)
+		ps2Frame(lp, 0x33, false, true, 80e-6, 500e-6)
+		b2 = append(b2, base2{"ps2", 1e-6, lp.a.codes(), lp.b.codes(), func(a, b []uint8) Result { return DecodePS2(a, b, 1e-6, ClockedCfg{}) }})
+		s := &swdLine{t: newTwoLine(20e6), per: 1e-6}
+		s.host(0, 0)
+		s.lineReset()
+		s.transfer(false, true, 0, 1, 0x2BA01477, false, 2)
+		s.transfer(false, false, 8, 1, 0x000000F0, false, 0)
+		s.transfer(true, true, 0xC, 2, 0, false, 2)
+		s.transfer(true, true, 0xC, 1, 0xDEADBEEF, true, 2)
+		b2 = append(b2, base2{"swd", 5e-8, s.t.a.codes(), s.t.b.codes(), func(a, b []uint8) Result { return DecodeSWD(a, b, 5e-8, ClockedCfg{}) }})
+		lm := newTwoLine(25e6)
+		lm.add(1, 1, 2e-6)
+		mdioFrame(lm, 400e-9, 32, 1, 2, 0x01, 0x02, 0x796D, 0)
+		mdioFrame(lm, 400e-9, 20, 0, 3, 0x02, 0x01, 0xBEEF, 0)
+		mdioFrame(lm, 400e-9, 32, 1, 2, 0x05, 0x02, 0xFFFF, 1)
+		b2 = append(b2, base2{"mdio", 4e-8, lm.a.codes(), lm.b.codes(), func(a, b []uint8) Result { return DecodeMDIO(a, b, 4e-8, ClockedCfg{}) }})
+		lw := newTwoLine(100e3)
+		lw.add(1, 1, 10e-3)
+		wiegandFrame(lw, wiegandBits(26, 12, 4660), 2e-3)
+		wiegandFrame(lw, wiegandBits(34, 1000, 65535), 1e-3)
+		wiegandFrame(lw, "1010110011", 2e-3)
+		b2 = append(b2, base2{"wiegand", 1e-5, lw.a.codes(), lw.b.codes(), func(a, b []uint8) Result { return DecodeWiegand(a, b, 1e-5, ClockedCfg{}) }})
+		for _, b := range b2 {
+			add2(b.proto, b.c1, b.c2, b.colT, cfg{}, b.dec(b.c1, b.c2))
+			for it := 0; it < 12; it++ {
+				c1, c2 := b.c1, b.c2
+				if it%2 == 0 {
+					c1 = corrupt(c1)
+				} else {
+					c2 = corrupt(c2)
+				}
+				if len(c1) != len(c2) { // a truncated line: both end there
+					m := min(len(c1), len(c2))
+					c1, c2 = c1[:m], c2[:m]
+				}
+				add2(b.proto, c1, c2, b.colT, cfg{}, b.dec(c1, c2))
+			}
+		}
+	}
+
 	for _, b := range bases {
 		add(b.proto, b.w, b.colT, b.cfg, b.dec(b.w))
 		for it := 0; it < 16; it++ {
