@@ -1,6 +1,6 @@
 #!/bin/sh
 # ENGMODEL-OWNER-UNIT: FU-TOOLS
-# deploy.sh — build the release app (all four FPGA images embedded) and install it
+# deploy.sh — build the release app (all seven FPGA images embedded) and install it
 # on the instrument through the OTA agent.
 #
 #   tools/deploy.sh            # build + update-app + status

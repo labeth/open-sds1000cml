@@ -46,7 +46,11 @@ jobs:
       - name: Build otactl host controllers (linux / macOS / Windows)
         working-directory: ota
         run: |
-          LD="-s -w -X open-sds/ota/internal/buildinfo.Version=${VERSION}"
+          # the same stamp as the agent's (ota/Makefile): version, commit, and
+          # the build time from SOURCE_DATE_EPOCH, so `otactl version` names them
+          BUILT=$(date -u -d "@${SOURCE_DATE_EPOCH}" +%Y-%m-%dT%H:%M:%SZ)
+          BI=open-sds/ota/internal/buildinfo
+          LD="-s -w -X ${BI}.Version=${VERSION} -X ${BI}.Commit=$(git rev-parse --short HEAD) -X ${BI}.Built=${BUILT}"
           for t in linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64; do
             os=${t%/*}; arch=${t#*/}; ext=""; [ "$os" = windows ] && ext=.exe
             echo "building otactl-$os-$arch$ext"
@@ -56,13 +60,13 @@ jobs:
 
       - name: Package + checksums
         run: |
-          cp LICENSE SAFETY.txt dist/
+          cp LICENSE SAFETY.txt THIRD_PARTY_LICENSES.txt dist/
           cd dist
           # fail loudly if the zip is missing/empty (guards against a silent build slip)
           test -s open-sds1000cml-*-usb.zip || { echo "::error::USB zip missing or empty"; exit 1; }
           # checksum EVERY uploaded artifact (zip + controllers + license/safety
           # text), so `sha256sum -c SHA256SUMS` verifies the whole download set
-          sha256sum open-sds1000cml-*-usb.zip otactl-* LICENSE SAFETY.txt > SHA256SUMS
+          sha256sum open-sds1000cml-*-usb.zip otactl-* LICENSE SAFETY.txt THIRD_PARTY_LICENSES.txt > SHA256SUMS
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
@@ -75,6 +79,7 @@ jobs:
             dist/SHA256SUMS
             dist/LICENSE
             dist/SAFETY.txt
+            dist/THIRD_PARTY_LICENSES.txt
           body: |
             Clean-room replacement firmware for the Siglent SDS1000CML+ (validated on the SDS1102CML+).
 
@@ -83,10 +88,10 @@ jobs:
             2. Format a USB stick as **MBR + FAT32** (Windows: **Rufus**, Partition scheme MBR + FAT32 — the built-in tools can't make FAT32 above 32 GB · macOS: Disk Utility, **MS-DOS (FAT)** + **Master Boot Record** · Linux: GParted **msdos** + **fat32**).
             3. Extract the zip so its contents land on the **root** of the stick — the top level must be `startup.sh`, `ota/`, `agent-slots/`. On Windows, "Extract All" adds a folder named after the zip: **clear it so the destination is just the drive letter (e.g. `E:\`)**, then confirm `startup.sh` sits directly on the drive, not inside a subfolder.
             4. Eject the stick (wait for the flush to finish), plug it into the scope, and **reboot the scope**. It takes over and serves the web UI within a couple of seconds.
-            5. Open `http://<scope-ip>:8080/`. Find the IP in your **router's DHCP/client list** (the vendor network menu is gone once it takes over).
+            5. Open `http://<scope-ip>:8080/`: the scope's LCD shows the address at the top (your router's DHCP client list has it too). The phone remote is `/r`.
 
             Verify a download: `sha256sum -c SHA256SUMS` (Linux) / `shasum -a 256 -c SHA256SUMS` (macOS) / `CertUtil -hashfile <file> SHA256` (Windows), against `SHA256SUMS`.
 
-            Host controller: grab the matching `otactl-<os>-<arch>` (first run: macOS `chmod +x … && xattr -d com.apple.quarantine …`; Linux `chmod +x …`; Windows SmartScreen → *More info → Run anyway*). See the README for full instructions.
+            Host controller: grab the matching `otactl-<os>-<arch>` (first run: macOS `chmod +x … && xattr -d com.apple.quarantine …`; Linux `chmod +x …`; Windows SmartScreen → *More info → Run anyway*). The README's *Install, update and remove* section covers updating, rolling back and removing the firmware; `docs/` has the release notes and known limitations.
 
-            > ⚠️ Experimental firmware for the SDS1000CML+ series only. It takes over **whatever** SDS1000CML+ you boot it in (edit `ota/agent.env` on the stick, `OTA_AUTO_TAKEOVER=0`, to coexist instead). No warranty.
+            > ⚠️ Experimental firmware for the SDS1000CML+ series only. It takes over **whatever** SDS1000CML+ you boot it in (to coexist instead, set `OTA_AUTO_TAKEOVER=0` in `ota/agent.env` on the stick and delete `ota/state.json` from it). No warranty.

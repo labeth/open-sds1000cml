@@ -26,8 +26,8 @@ experimental 8192-word-buffer revision 11 image. No persistent internal writes.
 Source headers: Linux 3.2 from
 https://cdn.kernel.org/pub/linux/kernel/v3.x/linux-3.2.tar.xz.
 The copied `edma-3.2.h` is the GPLv2 TI DaVinci EDMA header from that release.
-Compiler: existing Android ARM GCC 4.9 at
-`/home/labeth/ws/lineageOS/prebuilts/gcc/linux-x86/arm/arm-linux-androideabi-4.9/bin/arm-linux-androideabi-gcc`.
+Compiler: the Android NDK/AOSP prebuilt ARM GCC 4.9
+(`prebuilts/gcc/linux-x86/arm/arm-linux-androideabi-4.9/bin/arm-linux-androideabi-gcc`).
 Kernel work directory: `/tmp/acq-kernel-build/linux-3.2`.
 
 Use the archived `kernel.config` and `Module.symvers` in

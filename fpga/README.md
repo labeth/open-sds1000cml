@@ -12,7 +12,7 @@ the FPGA; the app only places the trigger point on the event.
 | `qualify` | pulse width, slope time and video line triggers, and the zone trigger (four zones around the edge); precision decimation |
 | `stacking` | FPGA super-resolution stacking engine |
 | `stream` | continuous capture for gap-free roll: decimated or peak-detect (bucket min/max) words, buffered in the SRAM ("drum") and streamed to the host through two ping-pong banks |
-| `fast` | SPI decoded and triggered on the samples, to a 125 MHz clock; raw samples only, with the sequence trigger |
+| `fast` | SPI (to a 125 MHz clock), UART (to 62.5 MBd) and I²C (to high-speed mode) decoded and triggered on the samples; raw samples only, with the sequence trigger |
 
 The board around the FPGA (balls, clocks, ADCs, SRAM, GPMC bus, panel,
 configuration) is specified in

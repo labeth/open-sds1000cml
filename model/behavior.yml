@@ -305,13 +305,14 @@ behavior:
         resumes only when the operator requests Run.
   - id: FLOW-ACQUISITION-IMAGE-SWITCH
     title: Planned acquisition image selection and safe reconfiguration
-    description: Multiple-image behavior, implemented for four images (ADR-IMAGE-REGROUP-DECIMATION). The
+    description: Multiple-image behavior, implemented for seven images (ADR-IMAGE-REGROUP-DECIMATION). The
       general image (UART, I2C, SPI, precision decimation, the sequence trigger and envelope recall) is the power-on
       selection; the packet (ARINC 429, CAN, FlexRay, MIL-STD-1553, SENT) and line-code (Manchester, USB) images load
-      when a hardware trigger or decoded stream selects their protocol, and the stacking image for an FPGA stacking
-      session. The engine switches between acquisitions,
-      beats health during the load, re-probes capabilities and returns to the general image when no request needs
-      another. Switching creates an explicit acquisition gap and is never an implicit step of active decoded
+      when a hardware trigger or decoded stream selects their protocol, the fast image for SPI, UART or I2C past the
+      general image's receivers (ADR-SAMPLE-DOMAIN-SPI), the qualify image for pulse, slope, video and zone
+      triggers, the stream image for gap-free roll, and the stacking image for an FPGA stacking session. The engine
+      switches between acquisitions, beats health during the load, re-probes capabilities, restarts and checks the
+      converters, and returns to the general image when no request needs another. Switching creates an explicit acquisition gap and is never an implicit step of active decoded
       streaming or retained raw recall. Reference-then-stack preservation below remains planned, not implemented.
     entry:
     - STEP-IMAGE-SELECT

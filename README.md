@@ -85,7 +85,7 @@ anything on the scope's screen.
 | **Super-resolution** | up to a **×64 time grid** (31.25 ps); about **+4 bits** from FPGA stacking |
 | **Timebase** | 1 ns/div to 50 s/div |
 | **Roll mode** | AUTO at 10 ms/div and slower scrolls continuously; optional gap-free streaming, verified loss-free at **~1 M samples/s per channel (3.9 MB/s)** with **about 1 s of buffering** in the scope's SRAM |
-| **Vertical** | 2 mV/div to 10 V/div; DC, AC or GND; 20 MHz bandwidth limit; probe ×1, ×10 or ×100 |
+| **Vertical** | 2 mV/div to 10 V/div; DC, AC or GND (AC and GND applied to the samples); 20 MHz bandwidth limit; probe ×1, ×10 or ×100 |
 | **Serial protocols** | **10**, each with hardware trigger and decode: UART, I²C, SPI, CAN / CAN FD, FlexRay, ARINC 429, MIL-STD-1553, SENT, Manchester, USB low-speed |
 | **Streaming decode** | **continuous, gap-free protocol decoding**, not one capture at a time: 921,600-baud UART ran for 3 minutes without losing a byte, with the full-rate record kept for every frame |
 | **Analysis** | 18 automatic measurements, cursors, math, FFT, spectrogram, eye diagram and jitter, mask test |
@@ -107,8 +107,9 @@ anything on the scope's screen.
   which put a fake pattern at a fifth of the sample rate under every capture. The scope restarts
   the converters' encode clocks after every load and reads the ten cores; it reads them again
   every minute and whenever a full-rate record shows a core holding one code, and brings stuck
-  ones back (an encode restart, then reloading the image). If they stay stuck, a notice names them ("ADC fault: converter E2 not converting - restart the
-  scope") and `/api/status` carries `adc_fault`; `adc_recoveries` counts the ones brought back.
+  ones back (an encode restart, then reloading the image). If they stay stuck, a notice on the LCD and the
+  web UI's status line names them ("ADC fault: converter E2 not converting - restart the scope") and
+  `/api/status` carries `adc_fault`; `adc_recoveries` counts the ones brought back.
 * **Precision mode.** At slow timebases the FPGA decimates by a power of two, ×16 to ×1,048,576,
   through a CIC filter. The ARM applies a 63-tap compensation filter and keeps 16-bit samples, so a
   slow record gains resolution instead of aliasing. The UI shows the resulting bandwidth and bit
@@ -342,6 +343,61 @@ triggering or decoding. This firmware adds:
   super-resolution;
 * a complete browser interface, sigrok export, and open source you can extend.
 
+## Install, update and remove
+
+**Requirements:** a Siglent SDS1000CML+ (developed and validated on the SDS1102CML+), a USB stick,
+the scope on a LAN for the web UI, the phone remote and SCPI, and a browser with WebGL.
+Nothing is written to the scope's own flash: the firmware runs from the stick, and its settings are
+kept on the stick.
+
+**Install** from a [release](https://github.com/labeth/open-sds1000cml/releases), no build needed
+(what is new and the known limitations: [release notes](docs/release-notes-1.0.md)):
+
+1. Download `open-sds1000cml-<version>-usb.zip` (and `SHA256SUMS` to check it:
+   `sha256sum -c SHA256SUMS --ignore-missing`).
+2. Format the stick as **MBR + FAT32**, one primary partition (Windows: Rufus, partition scheme MBR,
+   FAT32, as Windows' own tools stop at 32 GB; macOS: Disk Utility, MS-DOS (FAT) with Master Boot
+   Record; Linux: GParted, an msdos table with one fat32 partition). A GPT stick is not seen.
+3. Extract the zip onto the **root** of the stick: `startup.sh`, `ota/` and `agent-slots/` must be at
+   the top, not inside a folder named after the zip.
+4. Eject the stick, plug it into the scope and **power-cycle** the scope. The factory firmware runs
+   `startup.sh` from the stick at boot; a few seconds later this firmware takes over the LCD and the
+   front panel.
+5. Open `http://<scope-ip>:8080/` (the phone remote is `/r`). The LCD shows the address; your router's
+   DHCP client list has it too.
+
+To boot the stick without taking over (remote access only, the factory firmware keeps the screen),
+set `OTA_AUTO_TAKEOVER=0` in `ota/agent.env` on the stick and delete `ota/state.json` from it if it is
+there: once the stick has taken over a scope, that file makes it take over at every boot.
+
+**Update:** extract the new release's zip onto the stick the same way, replacing the files, and
+power-cycle. Settings stay (they live in `scope-settings.json` on the stick, which the zip does not
+contain); `ota/agent.env` is the zip's again, so make any edits to it again. Or update over the network with `otactl` (below): it installs a new app into the other
+of two app slots and goes back to the previous one if the new one fails its health check.
+
+**Roll back:** `otactl -tcp <scope-ip>:5900 activate A` (or `B`) runs the app in the other slot; after
+a zip install both slots hold the same app, so the earlier release's zip is the way back.
+
+**Remove:** take the stick out and power-cycle. The scope boots the factory firmware, unchanged.
+
+**Network:** the web UI (8080), SCPI (VXI-11) and the agent's control port (5900) have no
+authentication: anyone who can reach the scope can control it, and port 5900 runs commands on it as
+root. Use the scope on a trusted network. `OTA_LISTEN=127.0.0.1:5900` in `ota/agent.env` closes port
+5900 to the network (updates then go by the stick).
+
+**Version:** the scope's SYS settings tab (the Help key) names it, the web UI's status line ends with
+it, and `/api/status` has it (`version`). `otactl version` and `otactl -tcp <scope-ip>:5900 status`
+name the controller's and the agent's.
+
+**otactl** is the host controller for the agent on the scope (status, logs, updates, rollback). The
+release has it for Linux, macOS and Windows; see [`ota/README.md`](ota/README.md):
+
+```sh
+otactl -tcp <scope-ip>:5900 status
+otactl -tcp <scope-ip>:5900 update-app agent-slots/A/app   # the app from a release zip
+otactl -tcp <scope-ip>:5900 logs agent
+```
+
 ## Documentation
 
 The engineering model is the documentation: requirements, architecture, behaviour and design
@@ -352,7 +408,7 @@ behavioural specifications the implementation was written from are in [`specs/`]
 
 | Path | What it is |
 |---|---|
-| `app/` | The scope application (Go, ARMv7): acquisition engine, triggers, decoders, LCD, front panel, web UI, SCPI/VXI-11. Embeds the six FPGA images. |
+| `app/` | The scope application (Go, ARMv7): acquisition engine, triggers, decoders, LCD, front panel, web UI, SCPI/VXI-11. Embeds the seven FPGA images. |
 | `fpga/` | The FPGA images (Verilog, Cyclone IV EP4CE10): what is common, what each image adds, the shipping bitstreams and the build. |
 | `ota/` | The on-device agent and `otactl`: install, launch, health, A/B slots, USB stick builder. |
 | `tools/deploy.sh` | Build the release app and install it on a scope over the network. |

@@ -11,10 +11,15 @@ series oscilloscope (developed and validated on the SDS1102CML+).
   acquisition bus). A bug can wedge the acquisition engine or leave the front end
   in an unexpected state.
 - It is for the SDS1000CML+ SERIES ONLY. Do not run it on other hardware.
+- Its network services (web UI on port 8080, SCPI, the agent's control port 5900)
+  have NO AUTHENTICATION; port 5900 runs commands on the scope as root. Use it on
+  a trusted network only.
 - There is NO WARRANTY. You are responsible for your instrument. See LICENSE (MIT).
 
 Recovery: remove the USB stick and power-cycle to boot the factory firmware again.
 (To boot the stick WITHOUT taking over, edit ota/agent.env on the stick and set
-OTA_AUTO_TAKEOVER=0 — the agent then only provides remote access and coexists.)
+OTA_AUTO_TAKEOVER=0, and delete ota/state.json from the stick if it is there: once
+the stick has taken over, that file makes it take over at every boot. The agent
+then only provides remote access and coexists.)
 
 Project + full docs: https://github.com/labeth/open-sds1000cml

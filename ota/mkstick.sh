@@ -96,6 +96,7 @@ write_files() {
   # all copies; the takeover firmware reaches the user with safety text present).
   [ -f "$repo/LICENSE" ]    && cp -a "$repo/LICENSE"    "$mnt/LICENSE.txt"
   [ -f "$repo/SAFETY.txt" ] && cp -a "$repo/SAFETY.txt" "$mnt/SAFETY.txt"
+  [ -f "$repo/THIRD_PARTY_LICENSES.txt" ] && cp -a "$repo/THIRD_PARTY_LICENSES.txt" "$mnt/THIRD_PARTY_LICENSES.txt"
   mkdir -p "$mnt/ota"; cp -a "$tree/ota/." "$mnt/ota/"
   for d in A B emergency staging; do mkdir -p "$mnt/agent-slots/$d"; done
   cp -f "$appbin"  "$mnt/agent-slots/A/app"

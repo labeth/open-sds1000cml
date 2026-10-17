@@ -34,6 +34,11 @@ import (
 	"github.com/nats-io/nats.go"
 )
 
+// defaultStageDir is where uploads stage on the scope: the agent's staging
+// directory on the stick (mounted at U-disk0), the one writable file system,
+// as the scope's root file system, /tmp included, is read-only.
+const defaultStageDir = "/usr/bin/siglent/usr/media/U-disk0/agent-slots/staging"
+
 // TRLC-LINKS: REQ-SDS-109, REQ-SDS-110, REQ-SDS-111, REQ-SDS-112, REQ-SDS-175
 func main() {
 	var (
@@ -42,7 +47,7 @@ func main() {
 		device   = flag.String("device", envOr("OTA_DEVICE_ID", ""), "device id (NATS transport)")
 		timeoutS = flag.Int("timeout", 30, "RPC timeout seconds")
 		shellyIP = flag.String("shelly", envOr("OTA_SHELLY", ""), "Shelly plug host for power control")
-		stageDir = flag.String("stage", "/tmp", "device staging dir for uploads")
+		stageDir = flag.String("stage", defaultStageDir, "device staging dir for uploads")
 	)
 	flag.Usage = usage
 	flag.Parse()
@@ -488,7 +493,8 @@ GLOBAL FLAGS
   -nats url         NATS broker URL (alternative transport)
   -device id        device id (with -nats)
   -shelly host      Shelly power plug host (for the power command)
-  -stage dir        device staging dir for uploads (default /tmp)
+  -stage dir        device staging dir for uploads (default the stick's
+                    /usr/bin/siglent/usr/media/U-disk0/agent-slots/staging)
   -timeout n        RPC timeout seconds (default 30)
 
 COMMANDS
