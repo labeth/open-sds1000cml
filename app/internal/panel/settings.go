@@ -54,7 +54,7 @@ func (c *Controller) SettingsView() settings.ViewState {
 			DelayNs: c.decDelayNs, DelayAuto: c.decDelayAuto, Fine: c.decFine,
 			Format:     c.decFormat,
 			StreamTrig: c.decTrig, StreamValue: c.decValue,
-			Parity: c.decParity, Inverted: c.decInv,
+			Parity: c.decParity, Inverted: c.decInv, FrameBits: c.decBits,
 		},
 		UI:     ui,
 		Serial: ser,
@@ -169,7 +169,7 @@ func (c *Controller) ApplySettingsView(v settings.ViewState) {
 	c.decGen++
 	c.decChA, c.decChB = d.ChA, d.ChB
 	c.decCPOL, c.decCPHA, c.decLSB = d.CPOL, d.CPHA, d.LSB
-	c.decParity, c.decInv = "", d.Inverted
+	c.decParity, c.decInv, c.decBits = "", d.Inverted, clampInt(d.FrameBits, 0, 64)
 	if d.Parity == "even" || d.Parity == "odd" || d.Parity == "none" {
 		c.decParity = d.Parity
 	}

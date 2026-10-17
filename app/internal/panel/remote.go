@@ -339,7 +339,7 @@ func (c *Controller) displayAndView(s *sv) (Display, wsview.View) {
 	d := Display{ShowC1: s.chDisp[0], ShowC2: s.chDisp[1], ShowMeas: s.showMeas, ViewMode: s.viewMode, MathMode: s.mathMode,
 		Zoom: max(s.zoom, 1), ZoomOff: s.zoomOff, Persist: s.persist, FFTSrc: s.fftSrc,
 		DecProto: s.decProto, DecBaud: s.decBaud, DecChA: s.decChA, DecChB: s.decChB, DecCPOL: s.decCPOL, DecCPHA: s.decCPHA,
-		DecLSB: s.decLSB, DecParity: s.decParity, DecInverted: s.decInv, DecDelayNs: s.spiDelayNs(), DecFormat: s.decFormat, DecDetecting: s.ui.busDetecting, DecAuto: s.decAuto, DecNote: s.ui.busNote, CurOn: s.curOn, CurType: s.curType, CurSel: s.curSel, CurX: s.curX, CurY: s.curY,
+		DecLSB: s.decLSB, DecParity: s.decParity, DecInverted: s.decInv, DecBits: s.decBits, DecDelayNs: s.spiDelayNs(), DecFormat: s.decFormat, DecDetecting: s.ui.busDetecting, DecAuto: s.decAuto, DecNote: s.ui.busNote, CurOn: s.curOn, CurType: s.curType, CurSel: s.curSel, CurX: s.curX, CurY: s.curY,
 		CurT: s.curT, CurV: s.curV, CurVCh: s.curVCh,
 		AutosetBusy: busy, AutosetMsg: amsg}
 	for _, it := range s.meas {

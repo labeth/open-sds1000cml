@@ -14,7 +14,7 @@ import (
 )
 
 // irOracleLine builds an active-low IR record at sr.
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-234
 func irOracleLine(sr float64, f func(l irLine)) *timeline {
 	w := newTimeline(sr)
 	l := irLine{w: w}
@@ -23,7 +23,7 @@ func irOracleLine(sr float64, f func(l irLine)) *timeline {
 	return w
 }
 
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-234
 func TestOracleIRNEC(t *testing.T) {
 	const sr = 200000
 	w := irOracleLine(sr, func(l irLine) {
@@ -65,7 +65,7 @@ func TestOracleIRNEC(t *testing.T) {
 	}
 }
 
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-234
 func TestOracleIRSIRC(t *testing.T) {
 	needSigrokPD(t, "ir_sirc")
 	const sr = 200000
@@ -104,7 +104,7 @@ func TestOracleIRSIRC(t *testing.T) {
 	}
 }
 
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-234
 func TestOracleIRRC5(t *testing.T) {
 	const sr = 200000
 	for _, ext := range []bool{false, true} {
@@ -154,7 +154,7 @@ func TestOracleIRRC5(t *testing.T) {
 	}
 }
 
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-234
 func TestOracleIRRC6(t *testing.T) {
 	const sr = 200000
 	w := irOracleLine(sr, func(l irLine) {

@@ -7,9 +7,14 @@
 const fs = require('node:fs'), vm = require('node:vm'), assert = require('node:assert/strict');
 const dsrc = fs.readFileSync('app_decode.js', 'utf8');
 const code = dsrc.slice(dsrc.indexOf('// DEC_SCOPE_PROTOS names'), dsrc.indexOf('// End of decScopeSettings.'));
-const c = {};
+const c = { DEC_CLOCKED: ['ps2', 'swd', 'mdio', 'wiegand'] };
 vm.createContext(c); vm.runInContext(code, c);
 assert.deepEqual({ ...c.decScopeSettings({ DecProto: 0 }) }, { proto: 'off' }, 'scope decode Off: the page decodes nothing');
+assert.deepEqual({ ...c.decScopeSettings({ DecProto: 28, DecChA: 1, DecChB: 0, DecBaud: 12500 }) },
+  { proto: 'ps2', clk: 2, data: 1, baud: 12500 }, 'PS/2: clock and data roles');
+assert.deepEqual({ ...c.decScopeSettings({ DecProto: 15, DecChA: 0, DecChB: 1, DecBaud: 19200, DecParity: 'none' }) },
+  { proto: 'modbus', line: 1, baud: 19200, modbusParity: 'none' }, 'Modbus with the framing the scope found');
+assert.equal(c.decScopeSettings({ DecProto: 31 }).proto, 'wiegand', 'the last protocol number');
 assert.equal(c.decScopeSettings({ DecProto: 1 }), null, 'Auto is no decoder');
 assert.equal(c.decScopeSettings(null), null, 'no status yet');
 assert.deepEqual({ ...c.decScopeSettings({ DecProto: 2, DecBaud: 115200, DecChA: 0, DecChB: 1 }) },

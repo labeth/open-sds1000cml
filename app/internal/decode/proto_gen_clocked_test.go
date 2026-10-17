@@ -7,10 +7,10 @@ package decode
 // twoLine is two timelines written in step.
 type twoLine struct{ a, b *timeline }
 
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-236
 func newTwoLine(sr float64) twoLine { return twoLine{newTimeline(sr), newTimeline(sr)} }
 
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-236
 func (t twoLine) add(la, lb byte, d float64) {
 	t.a.add(la, d)
 	t.b.add(lb, d)
@@ -19,7 +19,7 @@ func (t twoLine) add(la, lb byte, d float64) {
 // ps2Frame appends a PS/2 frame at a clock period per: a device's (11
 // clocks, data changed while the clock is high) or a host's (the request,
 // then 12 clocks with the device's acknowledge), then gap of idle.
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-236
 func ps2Frame(t twoLine, v int, host, badParity bool, per, gap float64) {
 	ones := 0
 	bits := []byte{0}
@@ -73,7 +73,7 @@ type swdLine struct {
 	per float64
 }
 
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-236
 func (s *swdLine) cycles(lo, hi []byte) {
 	for i := range lo {
 		s.t.add(0, lo[i], s.per/2)
@@ -82,11 +82,11 @@ func (s *swdLine) cycles(lo, hi []byte) {
 }
 
 // host drives bits in turn.
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-236
 func (s *swdLine) host(b ...byte) { s.cycles(b, b) }
 
 // lineReset clocks 56 cycles with SWDIO high, then two idle cycles.
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-236
 func (s *swdLine) lineReset() {
 	for i := 0; i < 56; i++ {
 		s.host(1)
@@ -99,7 +99,7 @@ func (s *swdLine) lineReset() {
 // The target's bits (acknowledge, read data) are read at the falls of the
 // cycles after the turnaround's: each cycle's low half holds the bit read
 // at its fall, the previous cycle's high half drives it.
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-236
 func (s *swdLine) transfer(ap, read bool, addr int, ack int, data uint32, badParity bool, idle int) {
 	b := func(v bool) byte {
 		if v {
@@ -149,7 +149,7 @@ func (s *swdLine) transfer(ap, read bool, addr int, ack int, data uint32, badPar
 // mdioFrame appends an MDIO frame (st 1: clause 22, 0: clause 45) at clock
 // period per: the preamble of pre ones, start, opcode, addresses, the
 // turnaround (taBit2 its second bit) and the data, then idle.
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-236
 func mdioFrame(t twoLine, per float64, pre, st, op, phy, reg, data int, taBit2 byte) {
 	bit := func(b byte) { // data set while the clock is low, read at the rise
 		t.add(0, b, per/2)
@@ -177,7 +177,7 @@ func mdioFrame(t twoLine, per float64, pre, st, op, phy, reg, data int, taBit2 b
 // wiegandFrame appends a Wiegand frame of the bits (MSB first given as
 // a string of 0 and 1): 50 us pulses on D0 or D1 every interval, then
 // 30 ms of idle.
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-236
 func wiegandFrame(t twoLine, bits string, interval float64) {
 	for _, c := range bits {
 		if c == '0' {
@@ -192,7 +192,7 @@ func wiegandFrame(t twoLine, bits string, interval float64) {
 
 // wiegandBits is a 26- or 34-bit frame of facility fc and card with its
 // parities, as wiegandFrame takes it.
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-236
 func wiegandBits(nb, fc, card int) string {
 	fcBits := 8
 	if nb == 34 {

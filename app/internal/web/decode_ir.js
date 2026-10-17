@@ -8,7 +8,7 @@ const IR_MERGE_US = 150;
 const IR_NAMES = { irnec: "NEC", irsirc: "SIRC", irrc5: "RC-5", irrc6: "RC-6" };
 
 // irMarks finds the line's marks and whether they are its high level.
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-234
 function irMarks(S, colTimeS) {
   const runs = levelRuns(S);
   let longest = -1, idle = 1;
@@ -26,7 +26,7 @@ function irMarks(S, colTimeS) {
 }
 
 // irDecode runs a line through irMarks and a protocol's frame reader.
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-234
 function irDecode(proto, codes, colTimeS, cfg, read) {
   cfg = cfg || {};
   const S = sliceChannel(codes, cfg);
@@ -34,13 +34,13 @@ function irDecode(proto, codes, colTimeS, cfg, read) {
   if (!(colTimeS > 0)) return fail(proto, "no sample time");
   const { marks, high } = irMarks(S, colTimeS);
   const o = { spans: [], toks: [], units: [], good: false, format: cfg.format, unitUs: 0 };
-  // TRLC-LINKS: REQ-SDS-018
+  // TRLC-LINKS: REQ-SDS-018, REQ-SDS-234
   o.add = (x0, x1, n, text, kind, val, unit) => {
     o.spans.push(pspan(x0, x1, n, text, kind, val));
     if (text !== "") o.toks.push(text);
     if (unit) o.units.push(val);
   };
-  // TRLC-LINKS: REQ-SDS-018
+  // TRLC-LINKS: REQ-SDS-018, REQ-SDS-234
   const us = (d) => d * colTimeS * 1e6;
   read(marks, us, S.n, o);
   if (!o.spans.length) return fail(proto, "no " + IR_NAMES[proto] + " frame");
@@ -52,7 +52,7 @@ function irDecode(proto, codes, colTimeS, cfg, read) {
 }
 
 // decodeIRNEC mirrors decode_ir.go DecodeIRNEC.
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-234
 function decodeIRNEC(codes, colTimeS, cfg) {
   return irDecode("irnec", codes, colTimeS, cfg, (m, us, n, o) => {
     o.unitUs = 1125;
@@ -96,7 +96,7 @@ function decodeIRNEC(codes, colTimeS, cfg) {
 }
 
 // decodeIRSIRC mirrors decode_ir.go DecodeIRSIRC.
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-234
 function decodeIRSIRC(codes, colTimeS, cfg) {
   return irDecode("irsirc", codes, colTimeS, cfg, (m, us, n, o) => {
     o.unitUs = 600;
@@ -126,7 +126,7 @@ function decodeIRSIRC(codes, colTimeS, cfg) {
         i = j - 1;
         continue;
       }
-      // TRLC-LINKS: REQ-SDS-018
+      // TRLC-LINKS: REQ-SDS-018, REQ-SDS-234
       const field = (from, cnt, pfx) => {
         let v = 0;
         for (let k = 0; k < cnt; k++) v |= bits[from + k] << k;
@@ -143,7 +143,7 @@ function decodeIRSIRC(codes, colTimeS, cfg) {
 }
 
 // irHalves mirrors decode_ir.go irHalves.
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-234
 function irHalves(m, from, unit, maxUnits, us) {
   const lv = [], xs = [];
   for (let j = from; j < m.length; j++) {
@@ -161,7 +161,7 @@ function irHalves(m, from, unit, maxUnits, us) {
 }
 
 // decodeIRRC5 mirrors decode_ir.go DecodeIRRC5.
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-234
 function decodeIRRC5(codes, colTimeS, cfg) {
   return irDecode("irrc5", codes, colTimeS, cfg, (m, us, n, o) => {
     const half = 889;
@@ -182,7 +182,7 @@ function decodeIRRC5(codes, colTimeS, cfg) {
       }
       o.add(xs[0], xs[0] + 2 * hx, n, "RC5", "sof", 0, false);
       if (!ok || bits[0] !== 1) { o.add(xs[0], xs[0], n, "!", "frame-error", 0, false); continue; }
-      // TRLC-LINKS: REQ-SDS-018
+      // TRLC-LINKS: REQ-SDS-018, REQ-SDS-234
       const bx = (b) => xs[2 * b];
       o.add(bx(2), bx(3), n, "T" + bits[2], "rw", bits[2], false);
       let a = 0, c = 0;
@@ -197,7 +197,7 @@ function decodeIRRC5(codes, colTimeS, cfg) {
 }
 
 // decodeIRRC6 mirrors decode_ir.go DecodeIRRC6.
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-234
 function decodeIRRC6(codes, colTimeS, cfg) {
   return irDecode("irrc6", codes, colTimeS, cfg, (m, us, n, o) => {
     const t = 444;
@@ -208,7 +208,7 @@ function decodeIRRC6(codes, colTimeS, cfg) {
       o.add(m[i].x0, m[i + 1].x0, n, "RC6", "sof", 0, false);
       const { lv, xs } = irHalves(m, i + 1, t, 3, us);
       const ux = t / us(1);
-      // TRLC-LINKS: REQ-SDS-018
+      // TRLC-LINKS: REQ-SDS-018, REQ-SDS-234
       const pair = (u) => {
         if (u + 1 >= lv.length) return -1;
         if (lv[u] === 1 && lv[u + 1] === 0) return 1;

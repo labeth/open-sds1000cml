@@ -8,7 +8,7 @@ package decode
 
 // tlUART appends one UART character (start, 8 data bits LSB first, parity
 // "even"/"odd"/"none", stops stop bits) at baud.
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-232
 func tlUART(w *timeline, v int, baud float64, parity string, stops int) {
 	bit := 1 / baud
 	w.add(0, bit)
@@ -30,7 +30,7 @@ func tlUART(w *timeline, v int, baud float64, parity string, stops int) {
 // linFrame appends a LIN frame: a break of breakBits, a one-bit delimiter,
 // the sync, the protected identifier of id and, unless data is nil, the
 // response with its checksum (enhanced unless classic or a diagnostic ID).
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-232
 func linFrame(w *timeline, baud float64, breakBits float64, id int, data []int, classic bool) {
 	bit := 1 / baud
 	w.add(0, breakBits*bit)
@@ -55,13 +55,13 @@ func linFrame(w *timeline, baud float64, breakBits float64, id int, data []int, 
 // of mabUs, the start code and the slots (8N2 at 250 kbit/s), then 40 us of
 // mark (under a break's 88 us: sigrok's decoder takes a longer mark for a
 // break of the other polarity).
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-232
 func dmxPacket(w *timeline, breakUs, mabUs float64, start int, slots []int) {
 	dmxPacketGap(w, breakUs, mabUs, 0, start, slots)
 }
 
 // dmxPacketGap is dmxPacket with mbsUs of mark between the slots.
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-232
 func dmxPacketGap(w *timeline, breakUs, mabUs, mbsUs float64, start int, slots []int) {
 	w.add(0, breakUs*1e-6)
 	w.add(1, mabUs*1e-6)
@@ -74,7 +74,7 @@ func dmxPacketGap(w *timeline, breakUs, mabUs, mbsUs float64, start int, slots [
 }
 
 // modbusFrame appends an RTU frame with its CRC, then 4 characters of idle.
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-232
 func modbusFrame(w *timeline, baud float64, parity string, stops int, b []int) {
 	crc := modbusCRC(b)
 	for _, v := range append(append([]int{}, b...), crc&0xff, crc>>8) {
@@ -84,9 +84,9 @@ func modbusFrame(w *timeline, baud float64, parity string, stops int, b []int) {
 }
 
 // idle appends a high line for d seconds.
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-232
 func (w *timeline) idle(d float64) { w.add(1, d) }
 
 // codes is the timeline as two-level ADC codes.
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-232
 func (w *timeline) codes() []uint8 { return bitsToCodes(w.bits) }

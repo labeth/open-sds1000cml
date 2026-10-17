@@ -7,7 +7,7 @@
 
 // uartChars reads the characters of a line idling high (decode_uartproto.go
 // uartChars): parity "even"/"odd"/"none", stops 1 or 2, breaks of breakBits.
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-232
 function uartChars(S, spb, parity, stops, breakBits) {
   const out = [];
   const pc = parity !== "none" ? 1 : 0;
@@ -53,7 +53,7 @@ function uartChars(S, spb, parity, stops, breakBits) {
   return out;
 }
 
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-232
 function uiClamp(x, n) {
   const i = Math.round(x);
   return i < 0 ? 0 : (i > n - 1 ? n - 1 : i);
@@ -62,23 +62,23 @@ function uiClamp(x, n) {
 const LIN_RATES = [1200, 2400, 4800, 9600, 10417, 19200, 20000];
 const LIN_BREAK_BITS = 11;
 
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-232
 function linPIDParity(id) {
-  // TRLC-LINKS: REQ-SDS-018
+  // TRLC-LINKS: REQ-SDS-018, REQ-SDS-232
   const b = (k) => (id >> k) & 1;
   const p0 = b(0) ^ b(1) ^ b(2) ^ b(4);
   const p1 = 1 - (b(1) ^ b(3) ^ b(4) ^ b(5));
   return (id & 0x3f) | (p0 << 6) | (p1 << 7);
 }
 
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-232
 function linChecksum(pid, data, enhanced) {
   let s = enhanced ? pid : 0;
   for (const d of data) { s += d; if (s > 0xff) s -= 0xff; }
   return 0xff - s;
 }
 
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-232
 function linSyncSPB(S) {
   const cands = [];
   const E = S.edges;
@@ -99,7 +99,7 @@ function linSyncSPB(S) {
   return cands[cands.length >> 1];
 }
 
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-232
 function snapSPB(spb, colTimeS, rates, tol) {
   if (!(spb > 0) || !(colTimeS > 0)) return spb;
   const baud = 1 / (spb * colTimeS);
@@ -108,7 +108,7 @@ function snapSPB(spb, colTimeS, rates, tol) {
 }
 
 // decodeLIN mirrors decode_uartproto.go DecodeLIN.
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-232
 function decodeLIN(codes, colTimeS, cfg) {
   cfg = cfg || {};
   const S = sliceChannel(codes, cfg);
@@ -118,7 +118,7 @@ function decodeLIN(codes, colTimeS, cfg) {
   const chars = uartChars(S, spb, "none", 1, LIN_BREAK_BITS);
   const n = S.n, spans = [], toks = [], units = [];
   let good = false;
-  // TRLC-LINKS: REQ-SDS-018
+  // TRLC-LINKS: REQ-SDS-018, REQ-SDS-232
   const unit = (c, v, txt, kind) => {
     if (kind !== "data") txt = "!" + txt;
     spans.push({ i0: uiClamp(c.x0, n), i1: uiClamp(c.x1, n), text: txt, kind, val: v });
@@ -145,13 +145,12 @@ function decodeLIN(codes, colTimeS, cfg) {
     let pidKind = p.kind;
     if (pidKind === "data" && linPIDParity(p.val & 0x3f) !== p.val) pidKind = "parity-error";
     unit(p, p.val, "ID" + hex2(p.val & 0x3f), pidKind);
-    if (pidKind === "data") good = true;
     const resp = [];
     let last = p.x1;
     while (k + 1 < chars.length && chars[k + 1].kind !== "break" && chars[k + 1].x0 - last <= 20 * spb) {
       k++; resp.push(chars[k]); last = chars[k].x1;
     }
-    if (!resp.length) continue;
+    if (!resp.length) { good = good || pidKind === "data"; continue; }
     const data = [];
     for (const c of resp.slice(0, resp.length - 1)) { unit(c, c.val, fmtByte(c.val, cfg.format), c.kind); data.push(c.val); }
     const ck = resp[resp.length - 1];
@@ -162,6 +161,7 @@ function decodeLIN(codes, colTimeS, cfg) {
       if (!enh && linChecksum(p.val, data, false) !== ck.val) kind = "frame-error";
     }
     unit(ck, ck.val, "CK" + hex2(ck.val), kind);
+    good = good || (pidKind === "data" && kind === "data");
   }
   if (!spans.length) return fail("lin", "no LIN break");
   const r = { ok: good, proto: "lin", spans, text: toks.join(" "), bytes: units,
@@ -173,7 +173,7 @@ function decodeLIN(codes, colTimeS, cfg) {
 const DMX_BREAK_BITS = 22;
 
 // decodeDMX512 mirrors decode_uartproto.go DecodeDMX512.
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-232
 function decodeDMX512(codes, colTimeS, cfg) {
   cfg = cfg || {};
   const S = sliceChannel(codes, cfg);
@@ -214,7 +214,7 @@ function decodeDMX512(codes, colTimeS, cfg) {
   return r;
 }
 
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-232
 function midiDataLen(st) {
   switch (st >> 4) {
     case 0x8: case 0x9: case 0xA: case 0xB: case 0xE: return 2;
@@ -229,7 +229,7 @@ function midiDataLen(st) {
 const MIDI_SYS = { 0xF0: "SYX", 0xF1: "MTC", 0xF2: "SPP", 0xF3: "SNG", 0xF6: "TUN", 0xF7: "EOX",
   0xF8: "CLK", 0xFA: "START", 0xFB: "CONT", 0xFC: "STOP", 0xFE: "SENS", 0xFF: "RST" };
 
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-232
 function midiName(st) {
   const ch = ["OFF", "ON", "PAT", "CC", "PC", "CAT", "PB"];
   if (st < 0xF0) return ch[(st >> 4) - 8] + ((st & 0xf) + 1);
@@ -238,7 +238,7 @@ function midiName(st) {
 }
 
 // decodeMIDI mirrors decode_uartproto.go DecodeMIDI.
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-232
 function decodeMIDI(codes, colTimeS, cfg) {
   cfg = cfg || {};
   const S = sliceChannel(codes, cfg);
@@ -301,7 +301,7 @@ function decodeMIDI(codes, colTimeS, cfg) {
   return r;
 }
 
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-232
 function modbusCRC(b) {
   let c = 0xFFFF;
   for (const v of b) {
@@ -311,7 +311,7 @@ function modbusCRC(b) {
   return c;
 }
 
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-232
 function modbusFrames(chars, spb) {
   const out = [];
   let cur = [];
@@ -323,7 +323,7 @@ function modbusFrames(chars, spb) {
   return out;
 }
 
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-232
 function modbusGood(frames) {
   let good = 0, bad = 0;
   for (const f of frames) {
@@ -336,7 +336,7 @@ function modbusGood(frames) {
 }
 
 // decodeModbus mirrors decode_uartproto.go DecodeModbus.
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-232
 function decodeModbus(codes, colTimeS, cfg) {
   cfg = cfg || {};
   const S = sliceChannel(codes, cfg);

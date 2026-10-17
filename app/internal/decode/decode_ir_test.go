@@ -15,7 +15,7 @@ var irLines = []struct {
 	carrierHz  float64
 }{{"receiver", false, 0}, {"emitter", true, 0}, {"carrier", true, 38e3}}
 
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-234
 func TestDecodeIRNECRoundTrip(t *testing.T) {
 	for _, lf := range irLines {
 		sr := 1e6
@@ -32,7 +32,7 @@ func TestDecodeIRNECRoundTrip(t *testing.T) {
 	}
 }
 
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-234
 func TestDecodeIRSIRCRoundTrip(t *testing.T) {
 	for _, lf := range irLines {
 		sr := 1e6
@@ -49,7 +49,7 @@ func TestDecodeIRSIRCRoundTrip(t *testing.T) {
 	}
 }
 
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-234
 func TestDecodeIRRC5RoundTrip(t *testing.T) {
 	for _, lf := range irLines {
 		sr := 1e6
@@ -66,7 +66,7 @@ func TestDecodeIRRC5RoundTrip(t *testing.T) {
 	}
 }
 
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-234
 func TestDecodeIRRC6RoundTrip(t *testing.T) {
 	for _, lf := range irLines {
 		sr := 1e6

@@ -115,7 +115,7 @@ func (c *Controller) DefaultSetup() {
 	// bit rate (SENT with a Manchester rate)
 	c.decBaud, c.decChA, c.decChB, c.decCPOL, c.decCPHA, c.decFormat = 115200, 0, 1, false, false, 0
 	c.decLSB, c.auto = false, autoWatch{}
-	c.decParity, c.decInv = "", false
+	c.decParity, c.decInv, c.decBits = "", false, 0
 	c.decDelayNs, c.decDelayAuto, c.decFine, c.spiEye = 0, false, false, decode.SPIEye{}
 	c.spiEyeKey, c.spiEyeVotes = "", decode.SPIEyeVotes{}
 	for i := range c.refs {

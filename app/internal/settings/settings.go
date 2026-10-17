@@ -93,6 +93,8 @@ type Decode struct {
 	// decoder); Inverted, an IR or DALI line's marks at its high level.
 	Parity   string `json:"parity,omitempty"`
 	Inverted bool   `json:"inverted,omitempty"`
+	// FrameBits is SIRC's or Wiegand's frame length (0: not known).
+	FrameBits int `json:"frame_bits,omitempty"`
 }
 
 // Settings is the whole persisted setup. Every field is comparable, so the

@@ -56,6 +56,7 @@ function dsAutoFill(p) {
 // TRLC-LINKS: REQ-SDS-206
 function dsConfig() {
   let p = stParams();
+  if (p && p.proto >= 11) throw Error("This page streams the first ten protocols' hardware decoders; the scope's BUS Stream view streams the others where its FPGA image does.");
   if (!p || ![1, 2, 3, 4, 5, 6, 7, 8, 9, 10].includes(p.proto)) throw Error("Choose a protocol decoder to stream.");
   p = dsAutoFill(p);
   if (!p.haveThr) throw Error("Set a manual decode threshold before streaming.");

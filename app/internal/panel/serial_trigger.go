@@ -101,6 +101,9 @@ func (c *Controller) serialBus(p engine.SerialParams) engine.SerialParams {
 	case framecalc.ProtoOneWire:
 		p.Overdrive = c.decBaud >= 100000
 	}
+	if c.decProto == framecalc.ProtoIRSIRC || c.decProto == framecalc.ProtoWiegand {
+		p.Bits = c.decBits // the frame length sets the units' widths
+	}
 	if c.decProto == framecalc.ProtoSPI {
 		p.SPIDelayNs = spiDelayOf(c.decDelayAuto, c.decDelayNs, c.spiEye)
 	}

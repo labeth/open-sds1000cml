@@ -35,6 +35,7 @@ type Display struct {
 	DecLSB           bool
 	DecParity        string  // Modbus RTU's framing ("": found by the decoder)
 	DecInverted      bool    // the IR and DALI lines' marks at the high level
+	DecBits          int     // SIRC's or Wiegand's frame length (0: not known)
 	DecDelayNs       float64 // SPI's data delay in use after the sampling edge (ns)
 	DecFormat        int
 	// Auto: a detection runs (DecDetecting); the settings are what it filled

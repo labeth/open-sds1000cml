@@ -139,6 +139,9 @@ func tokMatchAt(toks []string, p Packet, i int) bool {
 		if bad {
 			return false
 		}
+		if t == "STS" { // a MIDI status byte
+			return b >= 0x80
+		}
 		h := hex2(b)
 		return len(t) == 2 && (t[0] == '?' || t[0] == h[0]) && (t[1] == '?' || t[1] == h[1])
 	}
@@ -348,16 +351,7 @@ func resultProto(res decode.Result) int {
 	if !res.OK {
 		return 0
 	}
-	return map[string]int{"uart": framecalc.ProtoUART, "i2c": framecalc.ProtoI2C, "spi": framecalc.ProtoSPI,
-		"manchester": framecalc.ProtoManchester, "sent": framecalc.ProtoSENT, "canfd": framecalc.ProtoCAN,
-		"mil1553": framecalc.ProtoMIL1553, "arinc429": framecalc.ProtoARINC429, "usbls": framecalc.ProtoUSB,
-		"flexray": framecalc.ProtoFlexRay, "lin": framecalc.ProtoLIN, "dmx512": framecalc.ProtoDMX,
-		"midi": framecalc.ProtoMIDI, "modbus": framecalc.ProtoModbus, "onewire": framecalc.ProtoOneWire,
-		"ws281x": framecalc.ProtoWS281x, "dht": framecalc.ProtoDHT, "cec": framecalc.ProtoCEC,
-		"j1850": framecalc.ProtoJ1850, "irnec": framecalc.ProtoIRNEC, "irsirc": framecalc.ProtoIRSIRC,
-		"irrc5": framecalc.ProtoIRRC5, "irrc6": framecalc.ProtoIRRC6, "dali": framecalc.ProtoDALI,
-		"usbpd": framecalc.ProtoUSBPD, "spdif": framecalc.ProtoSPDIF, "ps2": framecalc.ProtoPS2,
-		"swd": framecalc.ProtoSWD, "mdio": framecalc.ProtoMDIO, "wiegand": framecalc.ProtoWiegand}[res.Proto]
+	return framecalc.ProtoOf(res.Proto)
 }
 
 // fillIn writes a detected bus into the decoder settings, as if entered by
@@ -392,7 +386,7 @@ func (c *Controller) fillIn(res decode.Result) bool {
 	if p == framecalc.ProtoSPI {
 		c.decCPOL, c.decCPHA, c.decLSB = res.Roles.CPOL, res.Roles.CPHA, !res.Roles.MSB
 	}
-	c.decParity, c.decInv = res.Parity, res.Inverted
+	c.decParity, c.decInv, c.decBits = res.Parity, res.Inverted, res.FrameBits
 	if res.Baud <= 0 && !rateProto(p) && p != framecalc.ProtoUART {
 		c.decBaud = defaultRate(p) // the hardware matcher's rate
 	}

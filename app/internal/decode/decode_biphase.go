@@ -14,7 +14,7 @@ import (
 // decode_biphase.js.
 
 // DALICfg configures the DALI decode.
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-235
 type DALICfg struct {
 	Threshold float64
 	HaveThr   bool
@@ -27,7 +27,7 @@ type DALICfg struct {
 // an answer "R5A"), 16 (forward: address "A01" and opcode "D90") or 24
 // bits most significant first, then idle. The idle level is the level of
 // the line's longest run. OK needs a whole frame.
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-235
 func DecodeDALI(codes []uint8, colTimeS float64, cfg DALICfg) Result {
 	S := sliceChannel(codes, cfg.Threshold, cfg.HaveThr)
 	if !S.ok {
@@ -112,7 +112,7 @@ func DecodeDALI(codes []uint8, colTimeS float64, cfg DALICfg) Result {
 
 // USBPDCfg configures the USB Power Delivery decode: Baud 0 is the
 // standard 300 kbit/s.
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-235
 type USBPDCfg struct {
 	Baud      int
 	Threshold float64
@@ -142,7 +142,7 @@ var pdDataNames = map[int]string{1: "SrcCap", 2: "Request", 3: "BIST", 4: "SnkCa
 
 // crc32IEEE is the IEEE 802.3 CRC-32 (reflected 0xEDB88320, from all ones,
 // inverted), as USB PD sends it.
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-235
 func crc32IEEE(b []int) uint32 {
 	c := uint32(0xFFFFFFFF)
 	for _, v := range b {
@@ -167,7 +167,7 @@ type bmcBit struct {
 // bmcBits decodes biphase-mark runs: a run of about a bit time is a 0, two
 // of about half one a 1; a run over 1.5 bit times (or any other) ends a burst.
 // It returns the bursts.
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-235
 func bmcBits(S sliced, bit float64) [][]bmcBit {
 	var out [][]bmcBit
 	var cur []bmcBit
@@ -210,7 +210,7 @@ func bmcBits(S sliced, bit float64) [][]bmcBit {
 // nibble first: the 16-bit header (its first byte named by the message type,
 // "Request"), the data objects and the CRC-32 (flagged when it does not
 // check), then EOP. OK needs a message whose CRC checks.
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-235
 func DecodeUSBPD(codes []uint8, colTimeS float64, cfg USBPDCfg) Result {
 	S := sliceChannel(codes, cfg.Threshold, cfg.HaveThr)
 	if !S.ok {
@@ -347,7 +347,7 @@ func DecodeUSBPD(codes []uint8, colTimeS float64, cfg USBPDCfg) Result {
 }
 
 // SPDIFCfg configures the S/PDIF decode.
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-235
 type SPDIFCfg struct {
 	Threshold float64
 	HaveThr   bool
@@ -357,7 +357,7 @@ type SPDIFCfg struct {
 // spdifHalf finds S/PDIF's half cell, in samples: the mean of the shortest
 // cluster of edge gaps (each is one, two or three half cells), 0 when the
 // line shows too few edges.
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-235
 func spdifHalf(S sliced) float64 {
 	var gaps []float64
 	for k := 1; k < len(S.edges); k++ {
@@ -388,7 +388,7 @@ func spdifHalf(S sliced) float64 {
 // significant first; a unit, "1A2B3C"), the validity, user, channel status
 // and parity bits (even parity over the 28; a sample whose parity fails is
 // flagged). OK needs two subframes whose parity checks.
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-235
 func DecodeSPDIF(codes []uint8, colTimeS float64, cfg SPDIFCfg) Result {
 	S := sliceChannel(codes, cfg.Threshold, cfg.HaveThr)
 	if !S.ok {

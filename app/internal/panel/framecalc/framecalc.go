@@ -55,6 +55,19 @@ const (
 	NumProtos
 )
 
+// protoNumbers are the protocol numbers by a decode's Proto name.
+var protoNumbers = map[string]int{"uart": ProtoUART, "i2c": ProtoI2C, "spi": ProtoSPI, "manchester": ProtoManchester,
+	"sent": ProtoSENT, "canfd": ProtoCAN, "mil1553": ProtoMIL1553, "arinc429": ProtoARINC429, "usbls": ProtoUSB,
+	"flexray": ProtoFlexRay, "lin": ProtoLIN, "dmx512": ProtoDMX, "midi": ProtoMIDI, "modbus": ProtoModbus,
+	"onewire": ProtoOneWire, "ws281x": ProtoWS281x, "dht": ProtoDHT, "cec": ProtoCEC, "j1850": ProtoJ1850,
+	"irnec": ProtoIRNEC, "irsirc": ProtoIRSIRC, "irrc5": ProtoIRRC5, "irrc6": ProtoIRRC6, "dali": ProtoDALI,
+	"usbpd": ProtoUSBPD, "spdif": ProtoSPDIF, "ps2": ProtoPS2, "swd": ProtoSWD, "mdio": ProtoMDIO, "wiegand": ProtoWiegand}
+
+// ProtoOf is the protocol number of a decode's Proto name (decode.Result's
+// "uart", "lin"...), 0 for none.
+// TRLC-LINKS: REQ-SDS-018
+func ProtoOf(name string) int { return protoNumbers[name] }
+
 // TwoLine reports a protocol of two lines (ChA and ChB): I2C, SPI and the
 // clocked PS/2, SWD, MDIO and Wiegand.
 // TRLC-LINKS: REQ-SDS-018

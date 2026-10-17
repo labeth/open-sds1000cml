@@ -27,8 +27,8 @@ function stParseBytes(s, maxValue = 255) {
 }
 // stParsePattern reads the trigger pattern (ADR-PROTOCOL-SEQUENCE-TRIGGER):
 // hex units, "??" for any unit, "?" digits as nibble wildcards (A? = A0..AF)
-// ERR for a decoder-reported error, SOF for the start of a frame and CMD for a
-// MIL-1553 command word. Plain hex stays a byte list; any wildcard or token
+// ERR for a decoder-reported error, SOF for the start of a frame, CMD for a
+// MIL-1553 command word and STS for a MIDI status byte (top bit set). Plain hex stays a byte list; any wildcard or token
 // makes a token pattern. At most 32 units.
 // TRLC-LINKS: REQ-SDS-206
 function stParsePattern(s, maxValue = 255) {
@@ -40,6 +40,7 @@ function stParsePattern(s, maxValue = 255) {
     if (/^err(or)?$/i.test(t)) { pattern.push({ kind: 4, value: 0, mask: 0 }); plain = false; continue; }
     if (/^sof$/i.test(t)) { pattern.push({ kind: 1, value: 0, mask: 0 }); plain = false; continue; }
     if (/^cmd$/i.test(t)) { pattern.push({ kind: 2, value: 0x10000, mask: 0x10000 }); plain = false; continue; }
+    if (/^sts$/i.test(t)) { pattern.push({ kind: 2, value: 0x80, mask: 0x80 }); plain = false; continue; }
     if (!/^(0x)?[0-9a-fA-F?]{1,5}$/.test(t)) return null;
     const digits = t.replace(/^0x/i, "");
     const value = parseInt(digits.replace(/\?/g, "0"), 16);
@@ -63,7 +64,11 @@ function stParseAddr(s) {
 }
 
 // TRLC-LINKS: REQ-SDS-206
-function stProtoNum() { return { uart: 1, i2c: 2, spi: 3, manchester: 4, sent: 5, can: 6, mil1553: 7, arinc429: 8, usb: 9, flexray: 10 }[dcfg.proto] || 0; }
+function stProtoNum() {
+  return { uart: 1, i2c: 2, spi: 3, manchester: 4, sent: 5, can: 6, mil1553: 7, arinc429: 8, usb: 9, flexray: 10,
+    lin: 11, dmx512: 12, midi: 13, modbus: 14, onewire: 15, ws281x: 16, dht: 17, cec: 18, j1850: 19, irnec: 20,
+    irsirc: 21, irrc5: 22, irrc6: 23, dali: 24, usbpd: 25, spdif: 26, ps2: 27, swd: 28, mdio: 29, wiegand: 30 }[dcfg.proto] || 0;
+}
 // TRLC-LINKS: REQ-SDS-206
 function stArmed() { return $("stArm") && $("stArm").classList.contains("on"); }
 
@@ -88,12 +93,12 @@ function stParams(base = stScope) {
   return {
     ...(base || {}),
     proto: P,
-    chA: P === 2 ? rc(dcfg.scl) : P === 3 ? rc(dcfg.clk) : rc(dcfg.line),
-    chB: P === 2 ? rc(dcfg.sda) : P === 3 ? rc(dcfg.data) : 0,
+    chA: P === 2 ? rc(dcfg.scl) : P === 3 || P >= 27 ? rc(dcfg.clk) : rc(dcfg.line),
+    chB: P === 2 ? rc(dcfg.sda) : P === 3 || P >= 27 ? rc(dcfg.data) : 0,
     baud: dcfg.baud > 0 ? dcfg.baud : 0,
     spiClockHz: P === 3 && base ? Math.max(0, base.spiClockHz || 0) : 0, // the scope's Clock rate row (0: Auto)
-    bits: dcfg.bits || 8,
-    parity: dcfg.parity || "none",
+    bits: P === 21 || P === 30 ? dcfg.frameBits || 0 : dcfg.bits || 8,
+    parity: P === 14 ? (dcfg.modbusParity || "even") : dcfg.parity || "none",
     inverted: !!dcfg.inverted,
     cpol: !!dcfg.cpol, cpha: !!dcfg.cpha, msb: P !== 3 || !!dcfg.msb, // the bit order is SPI's; the others MSB first, as the scope decodes them
     ieee: true, tickNs: P === 5 ? +$("decSentTick").value : 0, nibbles: P === 5 ? +$("decSentNibbles").value : 0, dataBaud: 0,
@@ -155,6 +160,7 @@ function stMatchText(p) {
       if (u.kind === 4) return "ERR";
       if (u.kind === 1) return "SOF";
       if (u.mask & u.value & 0x10000) return "CMD";
+      if ((u.mask & 0xff) === 0x80 && (u.value & 0x80)) return "STS";
       const n = Math.max(2, (u.value || 0).toString(16).length);
       if (!u.mask) return "?".repeat(n);
       let t = "";
@@ -266,7 +272,7 @@ function stStatus(msg) {
   if (backendName.startsWith("none: ")) { $("stStats").textContent = `armed · no hardware trigger yet: ${backendName.slice(6)}`; return; }
   const name = backendName.replace(/^hardware-/, "");
   const protocol = name.replace(/-sequence$/, "");
-  const labels = {uart: "UART", i2c: "I²C", spi: "SPI", sent: "SENT", mil1553: "MIL-1553", usbls: "USB LS", manchester: "Manchester", can: "CAN", arinc429: "ARINC 429", flexray: "FlexRay"};
+  const labels = {uart: "UART", i2c: "I²C", spi: "SPI", sent: "SENT", mil1553: "MIL-1553", usbls: "USB", manchester: "Manchester", can: "CAN", arinc429: "ARINC 429", flexray: "FlexRay"};
   const backend = /^hardware-/.test(backendName)
     ? `hardware ${labels[protocol] || protocol}${name.endsWith("-sequence") ? " sequence" : ""}` : "waiting for the scope";
   $("stStats").textContent = `armed · ${backend} · ${(st && st.serial_matches) || 0} matches`;

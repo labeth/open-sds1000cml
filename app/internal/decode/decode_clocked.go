@@ -13,7 +13,7 @@ import (
 
 // ClockedCfg configures PS/2, SWD, MDIO and Wiegand: a, the clock (D0 for
 // Wiegand), and b, the data (D1).
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-236
 type ClockedCfg struct {
 	Threshold, ThresholdB float64
 	HaveThr, HaveThrB     bool
@@ -30,7 +30,7 @@ type clkEdge struct {
 // clockedLines slices both lines and lists the clock's edges with the data
 // read at each; the clock's period (median between edges of one direction)
 // in samples.
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-236
 func clockedLines(a, b []uint8, cfg ClockedCfg) ([]clkEdge, float64, sliced, string) {
 	if b == nil {
 		return nil, 0, sliced{}, "needs both lines (clock and data)"
@@ -70,7 +70,7 @@ func clockedLines(a, b []uint8, cfg ClockedCfg) ([]clkEdge, float64, sliced, str
 // opens on a start bit after the clock idled for 1.4 periods (or right
 // after the last frame). Parity and stop errors flag the byte. OK needs a
 // frame that checks.
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-236
 func DecodePS2(clk, data []uint8, colTimeS float64, cfg ClockedCfg) Result {
 	E, per, C, why := clockedLines(clk, data, cfg)
 	if why != "" {
@@ -174,7 +174,7 @@ type swdCycle struct {
 // from a rise, the host reads it at the next fall. Fifty or more rises with
 // SWDIO high are a line reset ("rw" LINERESET). OK needs a transfer
 // acknowledged OK whose parities check.
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-236
 func DecodeSWD(clk, dio []uint8, colTimeS float64, cfg ClockedCfg) Result {
 	E, per, C, why := clockedLines(clk, dio, cfg)
 	if why != "" {
@@ -292,8 +292,13 @@ func DecodeSWD(clk, dio []uint8, colTimeS float64, cfg ClockedCfg) Result {
 	if len(spans) == 0 {
 		return Result{Proto: "swd", Error: "no SWD request"}
 	}
+	cover := min(1, float64(explained)/float64(max(1, len(cy))))
+	// data an SPI bus clocks holds request-like bits now and then; SWD's
+	// transfers, idle and resets explain most of its clock, which runs at
+	// one rate while it runs
+	good = good && cover >= 0.5 && swdSteady(cy, per)
 	res := Result{OK: good, Proto: "swd", Spans: spans, Text: strings.Join(toks, " "), Bytes: units,
-		Thr: C.threshold, SPB: per, Cover: min(1, float64(explained)/float64(max(1, len(cy))))}
+		Thr: C.threshold, SPB: per, Cover: cover}
 	if colTimeS > 0 {
 		res.Baud = int(1/(per*colTimeS) + 0.5)
 	}
@@ -303,8 +308,26 @@ func DecodeSWD(clk, dio []uint8, colTimeS float64, cfg ClockedCfg) Result {
 	return res
 }
 
+// swdSteady reports a clock whose cycles while it runs (gaps under four
+// periods) are mostly a period long.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-236
+func swdSteady(cy []swdCycle, per float64) bool {
+	run, even := 0, 0
+	for k := 1; k < len(cy); k++ {
+		g := cy[k].xf - cy[k-1].xf
+		if g > 4*per {
+			continue
+		}
+		run++
+		if g >= 0.75*per && g <= 1.25*per {
+			even++
+		}
+	}
+	return run > 0 && float64(even) >= 0.8*float64(run)
+}
+
 // swdUnexplained counts a transfer's cycles not counted as idle already.
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-236
 func swdUnexplained(cy []swdCycle) int {
 	n := 0
 	for _, y := range cy {
@@ -323,7 +346,7 @@ func swdUnexplained(cy []swdCycle) int {
 // bits; "RD 01.02", "WR45 01.03") and the data ("ABCD"); a turnaround whose
 // second bit is not driven low (no PHY answered) flags the data. OK needs a
 // frame whose turnaround is good.
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-236
 func DecodeMDIO(mdc, mdio []uint8, colTimeS float64, cfg ClockedCfg) Result {
 	E, per, C, why := clockedLines(mdc, mdio, cfg)
 	if why != "" {
@@ -419,7 +442,7 @@ func DecodeMDIO(mdc, mdio []uint8, colTimeS float64, cfg ClockedCfg) Result {
 // decimal as readers print them; flagged when its parity fails). Other
 // lengths are their bits in bytes, most significant first. OK needs a 26-
 // or 34-bit frame whose parities check.
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-236
 func DecodeWiegand(d0, d1 []uint8, colTimeS float64, cfg ClockedCfg) Result {
 	if d1 == nil {
 		return Result{Proto: "wiegand", Error: "needs both lines (D0 and D1)"}
@@ -465,8 +488,12 @@ func DecodeWiegand(d0, d1 []uint8, colTimeS float64, cfg ClockedCfg) Result {
 	var units []int
 	good := false
 	var interval float64
+	frameBits := 0
 	emit := func(fr []pulse) {
 		nb := len(fr)
+		if frameBits == 0 || (frameBits != 26 && frameBits != 34 && (nb == 26 || nb == 34)) {
+			frameBits = nb
+		}
 		spans = append(spans, pspan(fr[0].x0, fr[0].x0, n, "", "sof", 0))
 		lbl := fmt.Sprintf("%db", nb)
 		spans = append(spans, pspan(fr[0].x0, fr[nb-1].x1, n, lbl, "rw", nb))
@@ -530,7 +557,7 @@ func DecodeWiegand(d0, d1 []uint8, colTimeS float64, cfg ClockedCfg) Result {
 		thr = B.threshold
 	}
 	res := Result{OK: good, Proto: "wiegand", Spans: spans, Text: strings.Join(toks, " "), Bytes: units,
-		Thr: thr, SPB: interval}
+		Thr: thr, SPB: interval, FrameBits: frameBits}
 	if interval > 0 {
 		res.Baud = int(1/(interval*colTimeS) + 0.5)
 	}

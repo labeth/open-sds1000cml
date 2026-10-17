@@ -10,7 +10,7 @@ import (
 	"testing"
 )
 
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-235
 func TestOracleDALI(t *testing.T) {
 	const sr = 100000
 	w := newTimeline(sr)
@@ -44,7 +44,7 @@ func TestOracleDALI(t *testing.T) {
 	}
 }
 
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-235
 func TestOracleUSBPD(t *testing.T) {
 	const sr = 20000000
 	w := newTimeline(sr)
@@ -113,7 +113,7 @@ func TestOracleUSBPD(t *testing.T) {
 	}
 }
 
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-235
 func TestOracleSPDIF(t *testing.T) {
 	const sr = 100000000
 	w := newTimeline(sr)

@@ -187,6 +187,9 @@ type Controller struct {
 	// high level (an emitter's drive), as detected.
 	decParity string
 	decInv    bool
+	// decBits is SIRC's or Wiegand's frame length (0: not known), the
+	// widths of their units for the hardware matcher.
+	decBits int
 	// SPI's data line is read decDelayNs after the clock's sampling edge, or
 	// with decDelayAuto at the middle of the data's eye measured on the
 	// full-rate records (spiEye); decFine asks for the FPGA's receivers on

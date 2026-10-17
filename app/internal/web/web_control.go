@@ -89,7 +89,11 @@ func (s *Server) hSerial(w http.ResponseWriter, r *http.Request) {
 		p.Baud = 0
 	}
 	if p.Bits != 0 {
-		p.Bits = clampI(p.Bits, 1, 16)
+		hi := 16
+		if p.Proto == 21 || p.Proto == 30 { // SIRC's and Wiegand's frame length
+			hi = 64
+		}
+		p.Bits = clampI(p.Bits, 1, hi)
 	}
 	if len(p.Bytes) > 64 { // a match pattern longer than a record is pointless
 		p.Bytes = p.Bytes[:64]
@@ -106,6 +110,12 @@ func (s *Server) hSerial(w http.ResponseWriter, r *http.Request) {
 		maxValue = 65535
 	case 8: // ARINC 429 data field
 		maxValue = 0x7ffff
+	case 29, 30: // MDIO header and data, Wiegand fields
+		maxValue = 0xffff
+	case 26: // an S/PDIF sample
+		maxValue = 0xffffff
+	case 28: // an SWD data word's low 31 bits
+		maxValue = 0x7fffffff
 	}
 	for i := range p.Bytes {
 		p.Bytes[i] = clampI(p.Bytes[i], 0, maxValue)

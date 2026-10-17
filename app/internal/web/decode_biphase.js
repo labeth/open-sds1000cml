@@ -5,7 +5,7 @@
 // irMarks/irHalves from decode_ir.js.
 
 // decodeDALI mirrors decode_biphase.go DecodeDALI.
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-235
 function decodeDALI(codes, colTimeS, cfg) {
   cfg = cfg || {};
   const S = sliceChannel(codes, cfg);
@@ -13,7 +13,7 @@ function decodeDALI(codes, colTimeS, cfg) {
   if (!(colTimeS > 0)) return fail("dali", "no sample time");
   const { marks, high } = irMarks(S, colTimeS);
   const n = S.n;
-  // TRLC-LINKS: REQ-SDS-018
+  // TRLC-LINKS: REQ-SDS-018, REQ-SDS-235
   const us = (d) => d * colTimeS * 1e6;
   const half = 416.67;
   const hx = half / us(1);
@@ -70,7 +70,7 @@ const PD_CTRL_NAMES = { 1: "GoodCRC", 2: "GotoMin", 3: "Accept", 4: "Reject", 5:
   7: "GetSrcCap", 8: "GetSnkCap", 9: "DR_Swap", 10: "PR_Swap", 11: "VCONN_Swap", 12: "Wait", 13: "SoftReset" };
 const PD_DATA_NAMES = { 1: "SrcCap", 2: "Request", 3: "BIST", 4: "SnkCap", 15: "VDM" };
 
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-235
 function crc32IEEE(b) {
   let c = 0xFFFFFFFF;
   for (const v of b) {
@@ -81,7 +81,7 @@ function crc32IEEE(b) {
 }
 
 // bmcBits mirrors decode_biphase.go bmcBits.
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-235
 function bmcBits(S, bit) {
   const out = [];
   let cur = [], half = false, hx = 0;
@@ -105,7 +105,7 @@ function bmcBits(S, bit) {
 }
 
 // decodeUSBPD mirrors decode_biphase.go DecodeUSBPD.
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-235
 function decodeUSBPD(codes, colTimeS, cfg) {
   cfg = cfg || {};
   const S = sliceChannel(codes, cfg);
@@ -118,7 +118,7 @@ function decodeUSBPD(codes, colTimeS, cfg) {
   let good = false;
   for (const burst of bmcBits(S, bit)) {
     if (burst.length < 60) continue;
-    // TRLC-LINKS: REQ-SDS-018
+    // TRLC-LINKS: REQ-SDS-018, REQ-SDS-235
     const sym = (i) => {
       let v = 0;
       for (let k = 0; k < 5; k++) v |= burst[i + k].v << k;
@@ -133,14 +133,14 @@ function decodeUSBPD(codes, colTimeS, cfg) {
       }
     }
     if (at < 0) continue;
-    // TRLC-LINKS: REQ-SDS-018
+    // TRLC-LINKS: REQ-SDS-018, REQ-SDS-235
     const end = (i) => i < burst.length ? burst[i].x0 : burst[burst.length - 1].x0 + bit;
     spans.push(pspan(burst[at].x0, end(at + 20), n, name, "sof", 0));
     toks.push(name);
     if (name === "HRST" || name === "CRST") continue;
     let idx = at + 20, bad = false;
     const vals = [], xs = [];
-    // TRLC-LINKS: REQ-SDS-018
+    // TRLC-LINKS: REQ-SDS-018, REQ-SDS-235
     const readByte = () => {
       if (idx + 10 > burst.length) return false;
       const lo = sym(idx), hi = sym(idx + 5);
@@ -184,7 +184,7 @@ function decodeUSBPD(codes, colTimeS, cfg) {
 }
 
 // spdifHalf mirrors decode_biphase.go spdifHalf.
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-235
 function spdifHalf(S) {
   const gaps = [];
   for (let k = 1; k < S.edges.length; k++) gaps.push(S.edges[k].x - S.edges[k - 1].x);
@@ -197,7 +197,7 @@ function spdifHalf(S) {
 }
 
 // decodeSPDIF mirrors decode_biphase.go DecodeSPDIF.
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-235
 function decodeSPDIF(codes, colTimeS, cfg) {
   cfg = cfg || {};
   const S = sliceChannel(codes, cfg);

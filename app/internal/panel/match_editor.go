@@ -113,6 +113,8 @@ func tokensOf(p engine.SerialParams) []string {
 			out = append(out, "SOF")
 		case e.Mask&engine.MILCommand != 0 && e.Value&engine.MILCommand != 0:
 			out = append(out, "CMD")
+		case e.Mask&0xff == 0x80 && e.Value&0x80 != 0:
+			out = append(out, "STS")
 		case e.Mask&0xff == 0:
 			out = append(out, "??")
 		case e.Mask&0xff == 0xf0:
@@ -126,6 +128,10 @@ func tokensOf(p engine.SerialParams) []string {
 	return out
 }
 
+// midiStatus is the STS token: a unit with its top bit set, a MIDI status
+// byte (a message's start).
+var midiStatus = engine.PatternElem{Kind: 2, Value: 0x80, Mask: 0x80}
+
 // compileTokens turns editor tokens into the trigger's match, as the web's
 // stParsePattern does: plain hex stays a byte list; any wildcard or error
 // makes a token pattern.
@@ -134,9 +140,9 @@ func compileTokens(toks []string) (bytes []int, pattern []engine.PatternElem, er
 	plain := true
 	for _, t := range toks {
 		switch t {
-		case "ERR", "SOF", "CMD": // an error; a frame's start; a MIL-1553 command word
+		case "ERR", "SOF", "CMD", "STS": // an error; a frame's start; a MIL-1553 command word; a MIDI status byte
 			e := map[string]engine.PatternElem{"ERR": {Kind: 4}, "SOF": {Kind: 1},
-				"CMD": {Kind: 2, Value: engine.MILCommand, Mask: engine.MILCommand}}[t]
+				"CMD": {Kind: 2, Value: engine.MILCommand, Mask: engine.MILCommand}, "STS": midiStatus}[t]
 			pattern = append(pattern, e)
 			plain = false
 			continue

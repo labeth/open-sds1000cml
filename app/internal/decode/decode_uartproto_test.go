@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-232
 func TestDecodeLINRoundTrip(t *testing.T) {
 	for _, baud := range []float64{9600, 19200, 10417} {
 		sr := 1e6
@@ -31,7 +31,7 @@ func TestDecodeLINRoundTrip(t *testing.T) {
 	}
 }
 
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-232
 func TestDecodeLINFlagsErrors(t *testing.T) {
 	sr := 1e6
 	w := newTimeline(sr)
@@ -56,7 +56,7 @@ func TestDecodeLINFlagsErrors(t *testing.T) {
 	}
 }
 
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-232
 func TestDecodeDMX512RoundTrip(t *testing.T) {
 	sr := 10e6
 	w := newTimeline(sr)
@@ -80,7 +80,7 @@ func TestDecodeDMX512RoundTrip(t *testing.T) {
 	}
 }
 
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-232
 func TestDecodeMIDIRoundTrip(t *testing.T) {
 	sr := 1e6
 	w := newTimeline(sr)
@@ -98,7 +98,7 @@ func TestDecodeMIDIRoundTrip(t *testing.T) {
 	}
 }
 
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-232
 func TestDecodeModbusRoundTrip(t *testing.T) {
 	for _, tc := range []struct {
 		parity string

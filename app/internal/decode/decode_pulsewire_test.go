@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-233
 func TestDecodeOneWireRoundTrip(t *testing.T) {
 	sr := 4e6
 	w := newTimeline(sr)
@@ -43,7 +43,7 @@ func TestDecodeOneWireRoundTrip(t *testing.T) {
 	}
 }
 
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-233
 func TestDecodeWS281xRoundTrip(t *testing.T) {
 	for _, rate := range []float64{800e3, 400e3} {
 		sr := 50e6
@@ -59,7 +59,7 @@ func TestDecodeWS281xRoundTrip(t *testing.T) {
 	}
 }
 
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-233
 func TestDecodeDHTRoundTrip(t *testing.T) {
 	sr := 2e6
 	w := newTimeline(sr)
@@ -73,7 +73,7 @@ func TestDecodeDHTRoundTrip(t *testing.T) {
 	}
 }
 
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-233
 func TestDecodeCECRoundTrip(t *testing.T) {
 	sr := 200e3
 	w := newTimeline(sr)
@@ -88,7 +88,7 @@ func TestDecodeCECRoundTrip(t *testing.T) {
 	}
 }
 
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-233
 func TestDecodeJ1850RoundTrip(t *testing.T) {
 	sr := 1e6
 	w := newTimeline(sr)

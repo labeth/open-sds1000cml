@@ -3963,3 +3963,129 @@ requirements:
     as another configuration did. A held core is told from a live one only while the input moves (a snapshot of the
     ten cores at 64 instants, three codes off a core's median in an eighth of them); 64 snapshots take about 80 to
     130 ms of bus reads, so between checks the full-rate records' own samples are looked at once a second.
+- id: REQ-SDS-232
+  title: UART-framed protocol decoding
+  text: The instrument shall decode LIN (break, sync, protected identifier and checksum), DMX512 (break, mark after
+    break, start code and slots), MIDI (status and data bytes with running status) and Modbus RTU (address, function,
+    data and CRC-16) from one line, on the LCD and the web page alike.
+  status: draft
+  category: functional
+  appliesTo:
+  - FU-APP-DECODE
+  - FU-WEB-DECODE
+  - FU-APP-PANEL
+  verificationMethods:
+  - test
+  verificationCriteria: Synthetic buses (LIN at 9600, 10417 and 19200 bit/s with classic and enhanced checksums and
+    a header no node answers; DMX512 packets of 1 to 512 slots; MIDI channel, system and real-time messages with
+    running status; Modbus RTU in 8E1, 8O1 and 8N2) decode to the frames sent, a wrong checksum, CRC or parity is
+    flagged, the decoders agree with sigrok's lin, dmx512, midi and modbus decoders on the same records, and the
+    JavaScript twins return the Go decoders' bytes and text.
+  notes: The four read characters off the UART line with one reader (a start bit at each falling edge from idle, the
+    bits sampled mid-bit); a zero character whose low lasts 11 bits or more is a LIN break, 22 bits (88 us) a DMX512
+    break. LIN's rate is read off its sync fields; Modbus's framing is the one whose frames' CRCs check.
+- id: REQ-SDS-233
+  title: Pulse-coded single-wire protocol decoding
+  text: The instrument shall decode 1-Wire (resets, presence, time slots in standard and overdrive speed, ROM commands
+    and the ROM CRC-8), WS281x LED data (800 and 400 kbit/s), DHT11, DHT22 and AM230x readings with their checksum,
+    HDMI-CEC messages with their end-of-message and acknowledge bits, and SAE J1850 VPW frames with their CRC-8.
+  status: draft
+  category: functional
+  appliesTo:
+  - FU-APP-DECODE
+  - FU-WEB-DECODE
+  - FU-APP-PANEL
+  verificationMethods:
+  - test
+  verificationCriteria: Synthetic lines (1-Wire Match, Read, Search and Skip ROM transactions and an overdrive
+    transaction; WS2812 and WS2811 frames; DHT readings from a 1 ms and an 18 ms start; CEC directed and broadcast
+    messages and a poll nobody answers; J1850 frames and an in-frame response) decode to what was sent, broken checks
+    are flagged, the decoders agree with sigrok's onewire_link and onewire_network, rgb_led_ws281x, am230x, cec and
+    sae_j1850_vpw decoders, and the JavaScript twins return the Go decoders' bytes and text.
+  notes: Each reads the line as runs of one level between its crossings and classifies them by their length in
+    microseconds.
+- id: REQ-SDS-234
+  title: Infrared remote protocol decoding
+  text: The instrument shall decode NEC (frames and repeats), Sony SIRC (12, 15 and 20 bits), RC-5 (and RC-5X) and
+    RC-6 remote-control frames from a demodulating receiver's output, an emitter's drive or a still-modulated carrier.
+  status: draft
+  category: functional
+  appliesTo:
+  - FU-APP-DECODE
+  - FU-WEB-DECODE
+  - FU-APP-PANEL
+  verificationMethods:
+  - test
+  verificationCriteria: Each protocol's synthetic frames on an active-low line, an active-high line and a 38 kHz
+    modulated line decode to the address and command sent; an NEC command whose inverse does not match is flagged;
+    the decoders agree with sigrok's ir_nec, ir_sirc, ir_rc5 and ir_rc6 decoders, and the JavaScript twins return the
+    Go decoders' bytes and text.
+  notes: The idle level is the level of the line's longest run; marks closer than 150 us (a carrier's gaps) are one
+    mark.
+- id: REQ-SDS-235
+  title: Biphase protocol decoding
+  text: The instrument shall decode DALI forward, backward and 24-bit frames, USB Power Delivery messages (ordered
+    sets, 4b5b symbols, header and CRC-32) on a CC line, and S/PDIF subframes (B, M and W preambles, 24-bit samples
+    and parity) at sample rates from 32 to 192 kHz.
+  status: draft
+  category: functional
+  appliesTo:
+  - FU-APP-DECODE
+  - FU-WEB-DECODE
+  - FU-APP-PANEL
+  verificationMethods:
+  - test
+  verificationCriteria: Synthetic DALI frames, USB PD messages (control and data, SOP and SOP', a hard reset, a
+    broken CRC-32) and S/PDIF streams at 48 and 96 kHz decode to what was sent, the decoders agree with sigrok's dali,
+    usb_power_delivery and spdif decoders, and the JavaScript twins return the Go decoders' bytes and text.
+- id: REQ-SDS-236
+  title: Clocked two-line protocol decoding
+  text: The instrument shall decode PS/2 device frames and host requests, SWD requests, acknowledges and data words
+    with their parities, MDIO clause 22 and clause 45 frames, and Wiegand 26 and 34-bit card frames with their
+    parities, from a clock (or D0) line and a data (or D1) line on either channel.
+  status: draft
+  category: functional
+  appliesTo:
+  - FU-APP-DECODE
+  - FU-WEB-DECODE
+  - FU-APP-PANEL
+  verificationMethods:
+  - test
+  verificationCriteria: Synthetic PS/2 keyboard traffic and a host command, SWD line resets and reads and writes (OK,
+    WAIT, a parity error), MDIO reads and writes in both clauses and a frame no PHY answers, and Wiegand frames decode
+    to what was sent; the decoders agree with sigrok's ps2, swd, mdio and wiegand decoders, and the JavaScript twins
+    return the Go decoders' bytes and text.
+- id: REQ-SDS-237
+  title: USB low and full speed
+  text: The instrument shall decode USB packets at low speed (1.5 Mbit/s) and full speed (12 Mbit/s) on one data
+    line, checking each token's CRC5 and each data packet's CRC16.
+  status: draft
+  category: functional
+  appliesTo:
+  - FU-APP-DECODE
+  - FU-WEB-DECODE
+  verificationMethods:
+  - test
+  verificationCriteria: Full-speed packets (SETUP, DATA0, ACK, a token and a data packet with a broken CRC16) decode
+    to the PIDs and bytes sigrok's usb_signalling and usb_packet decoders read from the same pair; the CRC5 agrees
+    with sigrok's for every 11-bit value.
+- id: REQ-SDS-238
+  title: Detection and frame start of the protocols beyond the first ten
+  text: The instrument shall, on Auto and AUTO in BUS, detect each protocol of REQ-SDS-232 to REQ-SDS-236 from an
+    edge-triggered capture, naming it only on its own check, fill in its settings and arm its frame-start match on
+    the FPGA's serial trigger.
+  status: draft
+  category: functional
+  appliesTo:
+  - FU-APP-DECODE
+  - FU-APP-PANEL
+  - FU-APP-ENGINE
+  verificationMethods:
+  - test
+  verificationCriteria: Each protocol's synthetic capture, on either channel (or in either channel order) and with
+    converter noise and slow edges, is named as itself and no other; text on a UART at LIN's, DMX512's, MIDI's and
+    Modbus's rates stays a UART; the first ten protocols' detection corpus is named as before; BUS entry on a LIN
+    capture fills in LIN at its rate and arms the match "SOF ??"; AUTO's match for MIDI is a status byte (STS).
+  notes: A search that finds no bus on the screen or at the full rate looks again at 5 and 20 ms/div, where the
+    millisecond-scale buses (IR remotes, HDMI-CEC, DALI, Wiegand) show whole frames. The FPGA decides every trigger;
+    until its image has a matcher for a protocol, the serial trigger's status says so.
