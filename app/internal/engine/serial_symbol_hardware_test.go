@@ -76,6 +76,35 @@ func (w *symWave) halves(v, n int, one [2]bool, half float64) {
 	}
 }
 
+// symCheck is a CRC of width bits over bytes, from all ones and inverted:
+// reflected (poly given reflected, as USB PD's CRC-32) or MSB first (as
+// J1850's CRC-8), so the bench frames carry the checks real buses do.
+// TRLC-LINKS: REQ-SDS-013
+func symCheck(b []int, width int, poly, init int, reflected bool) int {
+	top, all := 1<<(width-1), 1<<width-1
+	c := init
+	for _, v := range b {
+		if reflected {
+			c ^= v & 0xff
+		} else {
+			c ^= (v & 0xff) << (width - 8)
+		}
+		for i := 0; i < 8; i++ {
+			switch {
+			case reflected && c&1 != 0:
+				c = c>>1 ^ poly
+			case reflected:
+				c >>= 1
+			case c&top != 0:
+				c = (c<<1 ^ poly) & all
+			default:
+				c = c << 1 & all
+			}
+		}
+	}
+	return c ^ all
+}
+
 // symMatches runs the planned trigger's Go model over the wave.
 // TRLC-LINKS: REQ-SDS-013
 func symMatches(t *testing.T, p SerialParams, w *symWave) []int {
@@ -290,7 +319,8 @@ func symbolCases() []symCase {
 				w.mark()
 				w.hold(true, true, 200*us)
 				level := false
-				for _, v := range []int{hdr, 0x6a, 0xf1, 0x01, 0x00} {
+				frame := []int{hdr, 0x6a, 0xf1, 0x01}
+				for _, v := range append(frame, symCheck(frame, 8, 0x1d, 0xff, false)) {
 					for i := 7; i >= 0; i-- {
 						one := v>>i&1 != 0
 						d := 64 * us
@@ -418,7 +448,9 @@ func symbolCases() []symCase {
 				for _, k := range []int{0b11000, 0b11000, 0b11000, 0b10001} {
 					sym(k)
 				}
-				for _, by := range []int{hdr, 0x10, 0x2c, 0x91} {
+				msg := []int{hdr, 0x10, 0x2c, 0x91, 0x01, 0x00} // one data object
+				crc := symCheck(msg, 32, 0xedb88320, 0xffffffff, true)
+				for _, by := range append(msg, crc&255, crc>>8&255, crc>>16&255, crc>>24&255) {
 					sym(enc[by&15])
 					sym(enc[by>>4])
 				}
