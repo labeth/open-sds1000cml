@@ -365,6 +365,12 @@ func (c *Controller) fillIn(res decode.Result) bool {
 		return false
 	}
 	c.mu.Lock()
+	if p == framecalc.ProtoSPI && c.decProto != framecalc.ProtoSPI {
+		// a new SPI bus samples its data at the middle of the eye measured on
+		// it, as AUTO in BUS does (forgetBus): a fixed delay kept from before,
+		// or Default setup's 0 ns, sat on a fast bus's data edges
+		c.decDelayAuto, c.spiEye, c.spiEyeKey, c.spiEyeVotes = true, decode.SPIEye{}, "", decode.SPIEyeVotes{}
+	}
 	c.decProto = p
 	c.decGen++
 	c.decChA, c.decChB = res.Roles.ChA&1, res.Roles.ChB&1
