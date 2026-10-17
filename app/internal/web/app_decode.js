@@ -42,6 +42,7 @@ function decodeFeatureSamples(r) {
     if (["dali", "usbpd", "spdif", "irnec", "irrc5", "irrc6", "ps2", "swd", "mdio"].includes(r.proto)) return m.spb / 2;
     if (r.proto === "ws281x") return m.spb / 3;
     if (r.proto === "cec") return m.spb / 4;
+    if (r.proto === "onewire") return 15 * m.spb;
     if (r.proto === "dht") return 26 * m.spb;
     if (r.proto === "wiegand") return m.spb / 20;
     return m.spb;

@@ -128,6 +128,12 @@ func scoreResult(r Result) float64 {
 		if len(r.Bytes) < 8 && !std {
 			return -1e9
 		}
+		// Bytes of all zeros and all ones at a rate no UART uses are a pulse
+		// train read as one: a 1-Wire bus's slots at 500us/div, "UART 141887
+		// Bd" of 29 such bytes, outscored its reset and ROM command.
+		if !std && pulseBytes(r.Bytes) {
+			return -1e9
+		}
 		c := kinds("frame-error", "parity-error")
 		// Over a fifth of the bytes misframed is another protocol read as UART,
 		// at an odd rate (an undersampled SENT: "UART 45701 Bd") or a standard
@@ -622,4 +628,15 @@ func nearStandardBaud(baud, tol float64) bool {
 		}
 	}
 	return false
+}
+
+// pulseBytes reports bytes that are each all zeros or all ones.
+// TRLC-LINKS: REQ-SDS-018
+func pulseBytes(b []int) bool {
+	for _, v := range b {
+		if v&0xff != 0 && v&0xff != 0xff {
+			return false
+		}
+	}
+	return len(b) > 0
 }

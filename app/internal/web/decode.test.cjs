@@ -94,6 +94,12 @@ const SPB = 40, COLT = 1 / (SPB * 115200);
   ok(logicAt(s, SPB * 4 + SPB * 0.5) === 0, "logicAt reads the start bit low (raw threshold)");
   const flat = new Array(500).fill(128);
   ok(!sliceChannel(flat, {}).ok, "slice: flat DC -> not ok");
+  // a line pulsed seldom (a Wiegand line: 0.3 % low, over five codes) finds
+  // both rails, its tails taken by their sum (decode.go rails)
+  const sparse = new Array(10000).fill(200);
+  for (let p = 0; p < 6; p++) for (let k = 0; k < 5; k++) sparse[1000 + 1500 * p + k] = 48 + k;
+  const sp = sliceChannel(sparse, {});
+  ok(sp.ok && sp.lowRail < 60 && sp.edges.length === 12, `slice: sparse pulses ok=${sp.ok} low rail ${sp.lowRail} edges ${sp.edges && sp.edges.length}`);
 }
 
 // --- 1b. dt_s is authoritative for the decode time base ----------------------

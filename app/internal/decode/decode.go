@@ -54,9 +54,9 @@ type Result struct {
 // of a line code (Manchester, MIL-1553, ARINC 429's return to zero, DALI,
 // USB PD, S/PDIF, the IR codes), SENT's shortest pulse of four ticks, a
 // WS281x bit's short high (a third of the bit), CEC's short low (a quarter of
-// its bit), a microsecond for 1-Wire's write slot (SPB is a microsecond),
-// DHT's short high of 26 us, a Wiegand pulse (a twentieth of its bit
-// interval). 0 when the result names none (decode.js decodeFeatureSamples).
+// its bit), 1-Wire's 15 us within which a slot's low ends for a 1 (SPB is a
+// microsecond; a 0 holds it 60 us), DHT's short high of 26 us, a Wiegand
+// pulse (a twentieth of its bit interval). 0 when the result names none (decode.js decodeFeatureSamples).
 // TRLC-LINKS: REQ-SDS-018
 func FeatureSamples(r Result) float64 {
 	if !r.OK || !(r.SPB > 0) {
@@ -72,6 +72,8 @@ func FeatureSamples(r Result) float64 {
 		return r.SPB / 3
 	case "cec":
 		return r.SPB / 4
+	case "onewire":
+		return 15 * r.SPB
 	case "dht":
 		return 26 * r.SPB
 	case "wiegand":
@@ -287,9 +289,15 @@ func Extent(codes []uint8) (lo, hi int, ok bool) {
 // rails finds a channel's low and high levels: the code histogram's extent
 // without its sparse noise tails, split at the middle, each half's mean. The
 // reason is set when there are too few samples or the swing is under minAmp.
+// A line resting at one level and pulsed seldom (a Wiegand line's 50 us
+// pulses, a fraction of a percent of a record, spread over the codes of their
+// edges) holds no code of its other level as often as the noise floor: when
+// the per-code tails leave no swing, they are cut where their counts add up
+// to the floor instead, if the line holds its other level as a level does
+// (heldBeyond): a quiet line's noise spikes are single samples
+// (decode.js sliceChannel).
 // TRLC-LINKS: REQ-SDS-018
 func rails(codes []uint8) (lowRail, highRail float64, reason string) {
-	const minAmp = 20.0
 	var h [256]float64
 	valid := 0
 	for _, v := range codes {
@@ -308,6 +316,52 @@ func rails(codes []uint8) (lowRail, highRail float64, reason string) {
 	for gmax > 0 && h[gmax] < noiseFloor {
 		gmax--
 	}
+	lowRail, highRail, reason = railsWithin(&h, gmin, gmax)
+	if reason == "" {
+		return lowRail, highRail, ""
+	}
+	gmin, gmax = 0, 255
+	for acc := h[0]; gmin < 255 && acc < noiseFloor; acc += h[gmin] {
+		gmin++
+	}
+	for acc := h[255]; gmax > 0 && acc < noiseFloor; acc += h[gmax] {
+		gmax--
+	}
+	if l, hi, r := railsWithin(&h, gmin, gmax); r == "" && heldBeyond(codes, (l+hi)/2) >= noiseFloor {
+		return l, hi, ""
+	}
+	return lowRail, highRail, reason
+}
+
+// heldBeyond counts the samples of a line's rarer side of thr that lie in
+// runs of three or more: a pulse holds its level, a noise spike does not.
+// TRLC-LINKS: REQ-SDS-018
+func heldBeyond(codes []uint8, thr float64) float64 {
+	var held [2]int
+	run, side := 0, -1
+	for _, v := range codes {
+		s := 0
+		if float64(v) >= thr {
+			s = 1
+		}
+		if s == side {
+			run++
+		} else {
+			run, side = 1, s
+		}
+		if run == 3 {
+			held[s] += 3
+		} else if run > 3 {
+			held[s]++
+		}
+	}
+	return float64(min(held[0], held[1]))
+}
+
+// railsWithin is rails over the histogram's codes gmin..gmax.
+// TRLC-LINKS: REQ-SDS-018
+func railsWithin(h *[256]float64, gmin, gmax int) (lowRail, highRail float64, reason string) {
+	const minAmp = 20.0
 	if gmax <= gmin {
 		return 0, 0, "flat/no transitions"
 	}

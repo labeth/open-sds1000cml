@@ -9,16 +9,43 @@ package decode
 // the result with the sample time it was decoded at (colTimeS × stride).
 // TRLC-LINKS: REQ-SDS-018
 func AutodetectFast(c1, c2 []uint8, colTimeS float64, format string) (Result, float64) {
+	c1, c2 = quietFlat(c1), quietFlat(c2)
 	if keep := activeBlocks(c1, c2); keep != nil {
 		res, st := autodetectStrided(compact(c1, keep), compact(c2, keep), colTimeS, format)
-		k := int(st/colTimeS + 0.5)
-		back := func(i int) int { return uncompact(i*k, keep) / k }
-		for j := range res.Spans {
-			res.Spans[j].I0, res.Spans[j].I1 = back(res.Spans[j].I0), back(res.Spans[j].I1)
+		// The cut keeps a pulse-width bus's edges but not its long levels (a
+		// 1-Wire reset's 480 us low): what it does not name is looked for on
+		// the whole record.
+		if res.OK && res.Proto != "" && res.Proto != "off" {
+			k := int(st/colTimeS + 0.5)
+			back := func(i int) int { return uncompact(i*k, keep) / k }
+			for j := range res.Spans {
+				res.Spans[j].I0, res.Spans[j].I1 = back(res.Spans[j].I0), back(res.Spans[j].I1)
+			}
+			return res, st
 		}
-		return res, st
 	}
 	return autodetectStrided(c1, c2, colTimeS, format)
+}
+
+// quietFlat is a line with no swing of its own (rails) as one level: its
+// noise spikes, a sample or two a burst, picked by the stride or kept by the
+// cut to bursts, read as a level of their own and made a quiet probe beside
+// a 1-Wire line the data of an SPI bus.
+// TRLC-LINKS: REQ-SDS-018
+func quietFlat(c []uint8) []uint8 {
+	if c == nil {
+		return nil
+	}
+	lo, hi, why := rails(c)
+	if why == "" {
+		return c
+	}
+	out := make([]uint8, len(c))
+	v := uint8(max(0, min(255, (lo+hi)/2)))
+	for i := range out {
+		out[i] = v
+	}
+	return out
 }
 
 // autodetectStrided is AutodetectFast on the record as given.

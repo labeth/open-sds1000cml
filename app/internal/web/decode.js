@@ -65,6 +65,45 @@ function fail(proto, error, meta) {
   return { ok: false, error, proto, spans: [], text: "", bytes: [], meta: meta || {} };
 }
 
+// decHeldBeyond counts the samples of a line's rarer side of thr that lie in
+// runs of three or more: a pulse holds its level, a noise spike does not
+// (decode.go heldBeyond).
+// TRLC-LINKS: REQ-SDS-018
+function decHeldBeyond(codes, thr) {
+  const held = [0, 0];
+  let run = 0;
+  let side = -1;
+  for (let i = 0; i < codes.length; i++) {
+    const s = codes[i] >= thr ? 1 : 0;
+    if (s === side) run++;
+    else { run = 1; side = s; }
+    if (run === 3) held[s] += 3;
+    else if (run > 3) held[s]++;
+  }
+  return Math.min(held[0], held[1]);
+}
+
+// decRailsWithin is sliceChannel's rails over the histogram's codes
+// gmin..gmax: each half's count-weighted centroid (decode.go railsWithin).
+// TRLC-LINKS: REQ-SDS-018
+function decRailsWithin(h, gmin, gmax, minAmp) {
+  if (gmax <= gmin) return { reason: "flat/no transitions" };
+  const mid0 = (gmin + gmax) / 2;
+  let lw = 0;
+  let ls = 0;
+  let hw = 0;
+  let hs = 0;
+  for (let c = gmin; c <= gmax; c++) {
+    if (c <= mid0) { lw += h[c] * c; ls += h[c]; }
+    else { hw += h[c] * c; hs += h[c]; }
+  }
+  const lowRail = ls ? lw / ls : gmin;
+  const highRail = hs ? hw / hs : gmax;
+  const amp = highRail - lowRail;
+  if (amp < minAmp) return { reason: "amplitude " + amp.toFixed(0) + " < " + minAmp, lowRail, highRail };
+  return { lowRail, highRail };
+}
+
 // sliceChannel: analog code stream -> digital. Finds the two rails as
 // count-weighted centroids (an idle line sits on one rail most of the time, so
 // percentiles would bias the threshold), sets a mid threshold with a hysteresis
@@ -89,16 +128,22 @@ function sliceChannel(codes, opts) {
   const noiseFloor = Math.max(1, 0.001 * valid);
   let gmin = 0; while (gmin < 255 && h[gmin] < noiseFloor) gmin++;
   let gmax = 255; while (gmax > 0 && h[gmax] < noiseFloor) gmax--;
-  if (gmax <= gmin) return { ok: false, reason: "flat/no transitions" };
-  const mid0 = (gmin + gmax) / 2;
-  let lw = 0, ls = 0, hw = 0, hs = 0;
-  for (let c = gmin; c <= gmax; c++) {
-    if (c <= mid0) { lw += h[c] * c; ls += h[c]; }
-    else { hw += h[c] * c; hs += h[c]; }
+  let r = decRailsWithin(h, gmin, gmax, minAmp);
+  if (r.reason) {
+    // A line pulsed seldom (a Wiegand line) holds no code of its other level
+    // as often as the floor: its tails are cut where their counts add up to it
+    // (decode.go rails).
+    let cmin = 0;
+    for (let acc = h[0]; cmin < 255 && acc < noiseFloor; acc += h[cmin]) cmin++;
+    let cmax = 255;
+    for (let acc = h[255]; cmax > 0 && acc < noiseFloor; acc += h[cmax]) cmax--;
+    const c = decRailsWithin(h, cmin, cmax, minAmp);
+    if (!c.reason && decHeldBeyond(codes, (c.lowRail + c.highRail) / 2) >= noiseFloor) r = c;
   }
-  const lowRail = ls ? lw / ls : gmin, highRail = hs ? hw / hs : gmax;
+  if (r.reason) return { ok: false, reason: r.reason };
+  const lowRail = r.lowRail;
+  const highRail = r.highRail;
   const amp = highRail - lowRail;
-  if (amp < minAmp) return { ok: false, reason: "amplitude " + amp.toFixed(0) + " < " + minAmp };
   const threshold = opts.threshold != null ? opts.threshold : (lowRail + highRail) / 2;
   const band = hystFrac * amp / 2, thHi = threshold + band, thLo = threshold - band;
 
