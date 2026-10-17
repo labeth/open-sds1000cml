@@ -10,7 +10,10 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-MEASURE
 package measure
 
-import "math"
+import (
+	"math"
+	"slices"
+)
 
 // Result is the full auto-measurement set: volts, seconds and Hz. HasTiming is
 // false when the record has no resolvable edge (flat/DC or sub-noise), in which
@@ -573,7 +576,7 @@ func compute[T ~uint8 | ~uint16](sig []T, voltsPerCode, offV, sampleS, scale flo
 	}
 
 	if len(riseIdx) >= 2 {
-		period := (riseIdx[len(riseIdx)-1] - riseIdx[0]) / float64(len(riseIdx)-1) * sampleS
+		period := cyclePeriod(riseIdx) * sampleS
 		if period > 0 {
 			r.Period, r.Freq, r.HasTiming = period, 1/period, true
 		}
@@ -626,6 +629,34 @@ func modeInRange(hist []int, lo, hi int) int {
 		}
 	}
 	return best
+}
+
+// cyclePeriod is the period of the rising crossings at idx (in samples): the
+// mean of the edge-to-edge intervals within a quarter of their median. A
+// steady signal keeps every interval (the mean is then the span over the
+// cycles, to a fraction of a sample); a burst clock (an SPI flash read)
+// leaves out the idle gaps between its bursts, which as a span over the
+// record read a 104 MHz clock as 75 MHz.
+// TRLC-LINKS: REQ-SDS-017
+func cyclePeriod(idx []float64) float64 {
+	gaps := make([]float64, 0, len(idx)-1)
+	for k := 1; k < len(idx); k++ {
+		gaps = append(gaps, idx[k]-idx[k-1])
+	}
+	sorted := append([]float64(nil), gaps...)
+	slices.Sort(sorted)
+	med := sorted[len(sorted)/2]
+	sum, n := 0.0, 0
+	for _, g := range gaps {
+		if math.Abs(g-med) <= 0.25*med {
+			sum += g
+			n++
+		}
+	}
+	if n == 0 {
+		return med
+	}
+	return sum / float64(n)
 }
 
 // avgWidth returns the mean sample-count from each `from` crossing to the next

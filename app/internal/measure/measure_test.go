@@ -688,3 +688,23 @@ func TestWindowTimingWhenTheEnvelopeHasNone(t *testing.T) {
 		t.Fatalf("the envelope's timing replaced: %.0f Hz", kept.Freq)
 	}
 }
+
+// TestBurstClockFrequency: a clock in bursts (an SPI flash read: 69 bytes of
+// a 100 MHz clock, then an idle gap) reads its clock's frequency, not the
+// average rate across the gaps (a 104 MHz read measured 75.5 MHz).
+// TRLC-LINKS: REQ-SDS-017
+func TestBurstClockFrequency(t *testing.T) {
+	sig := make([]uint8, 0, 20000)
+	for len(sig) < 19000 {
+		for c := 0; c < 552; c++ {
+			sig = append(sig, 40, 40, 200, 200, 200) // 10 ns at 2 ns a sample, wrong duty on purpose
+		}
+		for k := 0; k < 1000; k++ {
+			sig = append(sig, 40)
+		}
+	}
+	r := Compute(sig, 0.04, 0, 2e-9)
+	if !r.HasTiming || math.Abs(r.Freq/100e6-1) > .001 {
+		t.Fatalf("freq %.2f MHz, want the burst's 100 MHz", r.Freq/1e6)
+	}
+}
