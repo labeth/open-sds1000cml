@@ -326,6 +326,7 @@ func symbolSpec(p SerialParams) (symSpec, bool) {
 		set(sramcapture.SymbolClass, 2, 10*ms, decode.SymDataEnd)
 		s.tab.both(false, 8*ms, 10*ms, leadStep0, decode.SymDataRestart)
 		s.tab.lead(true, 4*ms, 5*ms, leadStep1)
+		s.tab.lead(true, 2*ms, 2.5*ms, leadStep1) // a repeat code opens a frame of no bits
 		s.tab.data(false, 0.4*ms, 0.75*ms, decode.SymDataSep)
 		s.tab.data(true, 0.4*ms, 0.75*ms, decode.SymDataBit0)
 		s.tab.data(true, 1.3*ms, 2.0*ms, decode.SymDataBit1)

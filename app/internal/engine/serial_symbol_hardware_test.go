@@ -138,10 +138,15 @@ func symbolCases() []symCase {
 					w.hold(true, true, 2.5*T) // inter-byte space
 				}
 				w.uart(pid, 8, "none", 1, T)
+				sum := pid // the enhanced checksum: the PID and the data, carries added back
 				for _, d := range []int{0x12, 0x34, 0xab} {
 					w.uart(d, 8, "none", 1, T)
 					w.hold(true, true, 0.7*T)
+					if sum += d; sum > 255 {
+						sum -= 255
+					}
 				}
+				w.uart(^sum&255, 8, "none", 1, T)
 				w.hold(true, true, 3*ms)
 			}
 			return w
@@ -172,6 +177,18 @@ func symbolCases() []symCase {
 			w.hold(true, true, 5*ms)
 			for f, frame := range [][]int{{0x11, 0x03, 0x00, 0x6b, 0x00, 0x03}, {0x01, 0x06, 0x00, 0x01}, {0x11, 0x10, 0x55}} {
 				w.mark()
+				crc := 0xffff // CRC-16/MODBUS, low byte first
+				for _, v := range frame {
+					crc ^= v
+					for k := 0; k < 8; k++ {
+						if crc&1 != 0 {
+							crc = crc>>1 ^ 0xa001
+						} else {
+							crc >>= 1
+						}
+					}
+				}
+				frame = append(frame, crc&255, crc>>8)
 				for i, v := range frame {
 					w.uart(v, 8, "even", 1, T)
 					if i == 1 && f == 1 {
@@ -312,7 +329,7 @@ func symbolCases() []symCase {
 				w.hold(true, true, 40*ms)
 			}
 			return w
-		}, reqs: []symReq{{[]PatternElem{symStart}, 3}, {[]PatternElem{symStart, symData(0x04, 0xff)}, 1}, {[]PatternElem{symStart, symAny, symAny, symData(0x16, 0xff)}, 3}}},
+		}, reqs: []symReq{{[]PatternElem{symStart}, 6}, {[]PatternElem{symStart, symData(0x04, 0xff)}, 1}, {[]PatternElem{symStart, symAny, symAny, symData(0x16, 0xff)}, 3}}},
 		{name: "SIRC", p: func() SerialParams { p := symParams(serIRSIRC, 1667); p.Bits = 12; return p }(), wave: func() *symWave {
 			w := &symWave{}
 			w.hold(true, true, 10*ms)
@@ -484,23 +501,39 @@ func symbolCases() []symCase {
 		{name: "SWD", p: symParams(serSWD, 1000000), wave: func() *symWave {
 			w := &symWave{}
 			T := 1e-6
-			bits := func(v, n int) {
+			// The host sets its bits as SWCLK falls; the target sets its own
+			// (acknowledge, read data) 20 ns after a rise, for the next rise.
+			type cyc struct{ b, target bool }
+			var cs []cyc
+			bits := func(v, n int, target bool) {
 				for i := 0; i < n; i++ {
-					b := v>>i&1 != 0
-					w.hold(false, b, T/2) // the host sets data while the clock is low
-					w.hold(true, b, T/2)
+					cs = append(cs, cyc{v>>i&1 != 0, target})
 				}
 			}
-			bits(0, 8)
+			var marks []int
+			bits(0, 8, false)
 			for _, req := range []int{0xa5, 0x8d, 0xa5} {
-				w.mark()
-				bits(req, 8)
-				bits(0, 1) // turnaround
-				bits(1, 3) // ACK OK
-				bits(0x0000ffff, 32)
-				bits(0, 1) // parity
-				bits(0, 1) // turnaround
-				bits(0, 8) // idle
+				marks = append(marks, len(cs))
+				bits(req, 8, false)
+				bits(0, 1, false)          // turnaround
+				bits(1, 3, true)           // ACK OK
+				bits(0x0000ffff, 32, true) // read data
+				bits(0, 1, true)           // parity
+				bits(0, 1, false)          // turnaround
+				bits(0, 8, false)          // idle
+			}
+			for i, c := range cs {
+				if len(marks) > 0 && marks[0] == i {
+					w.mark()
+					marks = marks[1:]
+				}
+				w.hold(false, c.b, T/2)
+				if i+1 < len(cs) && cs[i+1].target {
+					w.hold(true, c.b, 20e-9)
+					w.hold(true, cs[i+1].b, T/2-20e-9)
+				} else {
+					w.hold(true, c.b, T/2)
+				}
 			}
 			return w
 		}, reqs: []symReq{{[]PatternElem{symStart}, 3}, {[]PatternElem{symStart, symData(0xa5, 0xff)}, 2}, {[]PatternElem{symStart, symData(0xa5, 0xff), symData(1, 7), symData(0x0000ffff, 0xffffffff)}, 2}}},
