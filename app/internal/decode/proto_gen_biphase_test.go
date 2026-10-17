@@ -5,7 +5,7 @@ package decode
 
 // daliFrame appends a DALI frame of nbits (8, 16 or 24) of v, most
 // significant first, on a bus idling high, then idle.
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-235
 func daliFrame(w *timeline, nbits, v int, idleS float64) {
 	const h = 1 / 2400.0
 	bit := func(b int) {
@@ -37,7 +37,7 @@ type bmcLine struct {
 	bit float64
 }
 
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-235
 func (b *bmcLine) put(v int) {
 	b.lvl ^= 1
 	if v == 1 {
@@ -49,7 +49,7 @@ func (b *bmcLine) put(v int) {
 	b.w.add(b.lvl, b.bit)
 }
 
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-235
 func (b *bmcLine) sym(s int) {
 	for k := 0; k < 5; k++ {
 		b.put(pdEnc5[s] >> k & 1)
@@ -59,7 +59,7 @@ func (b *bmcLine) sym(s int) {
 // pdMessage appends a USB PD message at 300 kbit/s: preamble, the ordered
 // set (four K-codes of pdEnc5), the header and data objects with their
 // CRC-32 (spoiled when badCRC), EOP, then idle.
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-235
 func pdMessage(w *timeline, sop [4]int, header int, objs []uint32, badCRC bool) {
 	b := &bmcLine{w: w, bit: 1 / 300e3}
 	for i := 0; i < 64; i++ {
@@ -96,7 +96,7 @@ var (
 
 // spdifStream appends S/PDIF frames (two subframes each) of the samples
 // (pairs: channel A, channel B) at fs, the first frame opening a block.
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-235
 func spdifStream(w *timeline, fs float64, frame0 int, samples [][2]int) {
 	cell := 1 / (64 * fs)
 	lvl := byte(0)

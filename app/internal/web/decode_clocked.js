@@ -5,11 +5,11 @@
 // decode_pulsewire.js. cfg.threshold slices the first line (clock, D0),
 // cfg.thresholdB the second (data, D1).
 
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-236
 function clockedOpts(thr) { return thr != null ? { threshold: thr } : {}; }
 
 // clockedLines mirrors decode_clocked.go clockedLines.
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-236
 function clockedLines(a, b, cfg) {
   if (!b) return { why: "needs both lines (clock and data)" };
   const C = sliceChannel(a, clockedOpts(cfg.threshold));
@@ -31,7 +31,7 @@ function clockedLines(a, b, cfg) {
 }
 
 // decodePS2 mirrors decode_clocked.go DecodePS2.
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-236
 function decodePS2(clk, data, colTimeS, cfg) {
   cfg = cfg || {};
   const L = clockedLines(clk, data, cfg);
@@ -71,7 +71,7 @@ function decodePS2(clk, data, colTimeS, cfg) {
 }
 
 // decodeSWD mirrors decode_clocked.go DecodeSWD.
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-236
 function decodeSWD(clk, dio, colTimeS, cfg) {
   cfg = cfg || {};
   const L = clockedLines(clk, dio, cfg);
@@ -92,10 +92,10 @@ function decodeSWD(clk, dio, colTimeS, cfg) {
   let explained = 0;
   for (const rs of resets) explained += rs[1] - rs[0];
   for (const y of cy) if (y.dr === 0 && y.df === 0) explained++;
-  // TRLC-LINKS: REQ-SDS-018
+  // TRLC-LINKS: REQ-SDS-018, REQ-SDS-236
   const unexplained = (from, to) => { let n2 = 0; for (let k = from; k < to; k++) if (cy[k].dr !== 0 || cy[k].df !== 0) n2++; return n2; };
   let ri = 0;
-  // TRLC-LINKS: REQ-SDS-018
+  // TRLC-LINKS: REQ-SDS-018, REQ-SDS-236
   const flushResets = (upTo) => {
     for (; ri < resets.length && resets[ri][1] <= upTo; ri++) {
       spans.push(pspan(cy[resets[ri][0]].xr, cy[resets[ri][1]].xr, n, "LINERESET", "rw", 0));
@@ -105,7 +105,7 @@ function decodeSWD(clk, dio, colTimeS, cfg) {
   let next = -1;
   for (let c = 0; c + 12 <= cy.length; c++) {
     flushResets(c);
-    // TRLC-LINKS: REQ-SDS-018
+    // TRLC-LINKS: REQ-SDS-018, REQ-SDS-236
     const r = (k) => cy[c + k].dr;
     if (r(0) !== 1 || r(6) !== 0 || r(7) !== 1 || (c > 0 && cy[c - 1].dr !== 0 && c !== next)) continue;
     const apdp = r(1), rnw = r(2), a2 = r(3), a3 = r(4), par = r(5);
@@ -159,7 +159,7 @@ const MDIO_C22 = { 1: "WR", 2: "RD" };
 const MDIO_C45 = { 0: "ADDR", 1: "WR45", 2: "RDI45", 3: "RD45" };
 
 // decodeMDIO mirrors decode_clocked.go DecodeMDIO.
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-236
 function decodeMDIO(mdc, mdio, colTimeS, cfg) {
   cfg = cfg || {};
   const L = clockedLines(mdc, mdio, cfg);
@@ -173,7 +173,7 @@ function decodeMDIO(mdc, mdio, colTimeS, cfg) {
     const pre = ones;
     ones = 0;
     if (pre < 16 || i + 31 >= R.length) continue;
-    // TRLC-LINKS: REQ-SDS-018
+    // TRLC-LINKS: REQ-SDS-018, REQ-SDS-236
     const bits = (from, cnt) => { let v = 0; for (let k = 0; k < cnt; k++) v = (v << 1) | R[i + from + k].d; return v; };
     const st = bits(0, 2);
     if (st !== 1 && st !== 0) continue;
@@ -199,7 +199,7 @@ function decodeMDIO(mdc, mdio, colTimeS, cfg) {
 }
 
 // decodeWiegand mirrors decode_clocked.go DecodeWiegand.
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-236
 function decodeWiegand(d0, d1, colTimeS, cfg) {
   cfg = cfg || {};
   if (!d1) return fail("wiegand", "needs both lines (D0 and D1)");
@@ -226,16 +226,16 @@ function decodeWiegand(d0, d1, colTimeS, cfg) {
   const n = Math.max(A.ok ? A.n : 0, B.ok ? B.n : 0);
   const spans = [], toks = [], units = [];
   let good = false, interval = 0;
-  // TRLC-LINKS: REQ-SDS-018
+  // TRLC-LINKS: REQ-SDS-018, REQ-SDS-236
   const emit = (fr) => {
     const nb = fr.length;
     spans.push(pspan(fr[0].x0, fr[0].x0, n, "", "sof", 0));
     const lbl = nb + "b";
     spans.push(pspan(fr[0].x0, fr[nb - 1].x1, n, lbl, "rw", nb));
     toks.push(lbl);
-    // TRLC-LINKS: REQ-SDS-018
+    // TRLC-LINKS: REQ-SDS-018, REQ-SDS-236
     const bits = (from, cnt) => { let v = 0, ones = 0; for (let k = 0; k < cnt; k++) { v = v * 2 + fr[from + k].v; ones += fr[from + k].v; } return { v, ones }; };
-    // TRLC-LINKS: REQ-SDS-018
+    // TRLC-LINKS: REQ-SDS-018, REQ-SDS-236
     const field = (from, cnt, pfx, bad) => {
       const { v } = bits(from, cnt);
       let txt = pfx + v, kind = "data";

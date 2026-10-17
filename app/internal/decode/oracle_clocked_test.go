@@ -12,7 +12,7 @@ import (
 	"testing"
 )
 
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-236
 func TestOraclePS2(t *testing.T) {
 	// sigrok 0.5 reads a frame at the clock fall after its eleventh, later
 	// releases at the rise after it: a lone clock pulse with the data line
@@ -55,7 +55,7 @@ func TestOraclePS2(t *testing.T) {
 	}
 }
 
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-236
 func TestOracleSWD(t *testing.T) {
 	const sr = 10000000
 	s := &swdLine{t: newTwoLine(sr), per: 1e-6}
@@ -104,7 +104,7 @@ func TestOracleSWD(t *testing.T) {
 	}
 }
 
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-236
 func TestOracleMDIO(t *testing.T) {
 	const sr = 25000000
 	l := newTwoLine(sr)
@@ -142,7 +142,7 @@ func TestOracleMDIO(t *testing.T) {
 	}
 }
 
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-236
 func TestOracleWiegand(t *testing.T) {
 	const sr = 100000
 	l := newTwoLine(sr)

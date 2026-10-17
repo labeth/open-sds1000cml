@@ -12,7 +12,7 @@ import (
 // linFrameRecord is a 20 ms record of LIN frames at 19200 bit/s on C1 (C2
 // flat): break, sync, protected identifier, two data bytes and the enhanced
 // checksum, every 4 ms.
-// TRLC-LINKS: REQ-SDS-214, REQ-SDS-223
+// TRLC-LINKS: REQ-SDS-214, REQ-SDS-223, REQ-SDS-238
 func linFrameRecord() *engine.Frame {
 	const n, sampleS, baud = 20000, 1e-6, 19200.0
 	c1, c2 := make([]uint8, n), make([]uint8, n)
@@ -63,7 +63,7 @@ func linFrameRecord() *engine.Frame {
 
 // BUS entry finds a LIN bus and arms its frame start (the hardware's break
 // and sync, then the identifier) with the protocol, line and rate filled in.
-// TRLC-LINKS: REQ-SDS-214, REQ-SDS-223
+// TRLC-LINKS: REQ-SDS-214, REQ-SDS-223, REQ-SDS-238
 func TestBusEntryFramesALINBus(t *testing.T) {
 	r := newViewRig(t)
 	r.show(linFrameRecord())

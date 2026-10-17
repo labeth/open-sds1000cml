@@ -12,7 +12,7 @@ type irLine struct {
 	carrierHz  float64
 }
 
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-234
 func (l irLine) level(mark bool) byte {
 	if mark == l.activeHigh {
 		return 1
@@ -21,7 +21,7 @@ func (l irLine) level(mark bool) byte {
 }
 
 // mark appends a mark of d seconds.
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-234
 func (l irLine) mark(d float64) {
 	if l.carrierHz <= 0 {
 		l.w.add(l.level(true), d)
@@ -38,12 +38,12 @@ func (l irLine) mark(d float64) {
 }
 
 // space appends a space of d seconds.
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-234
 func (l irLine) space(d float64) { l.w.add(l.level(false), d) }
 
 // necFrame appends an NEC frame of addr and cmd (addrHi < 0: the address's
 // inverse) and the 40 ms after it.
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-234
 func necFrame(l irLine, addr, addrHi, cmd int) {
 	if addrHi < 0 {
 		addrHi = addr ^ 0xff
@@ -65,7 +65,7 @@ func necFrame(l irLine, addr, addrHi, cmd int) {
 }
 
 // necRepeat appends an NEC repeat code and the 96 ms after it.
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-234
 func necRepeat(l irLine) {
 	l.mark(9e-3)
 	l.space(2.25e-3)
@@ -74,7 +74,7 @@ func necRepeat(l irLine) {
 }
 
 // sircFrame appends a SIRC frame of nbits (12, 15 or 20) and the gap to 45 ms.
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-234
 func sircFrame(l irLine, nbits, cmd, addr, ext int) {
 	bits := make([]int, 0, nbits)
 	push := func(v, n int) {
@@ -108,7 +108,7 @@ func sircFrame(l irLine, nbits, cmd, addr, ext int) {
 
 // rc5Frame appends an RC-5 frame (address 5 bits, command 6 or 7 bits:
 // RC-5X) and 100 ms of idle.
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-234
 func rc5Frame(l irLine, toggle, addr, cmd int) {
 	s2 := 1 - (cmd>>6)&1
 	bits := []int{1, s2, toggle}
@@ -133,7 +133,7 @@ func rc5Frame(l irLine, toggle, addr, cmd int) {
 
 // rc6Frame appends an RC-6 frame of the mode and payload bytes and 100 ms
 // of idle.
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-234
 func rc6Frame(l irLine, mode, toggle int, payload []int) {
 	const t = 444e-6
 	bit := func(b int, u float64) {

@@ -5,7 +5,7 @@
 // fmtByte and fail from decode.js and uiClamp from decode_uartproto.js.
 
 // levelRuns: the sliced line as runs of one level (decode_pulsewire.go).
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-233
 function levelRuns(S) {
   const E = S.edges;
   if (!E.length) return [{ lvl: logicAt(S, 0), x0: 0, x1: S.n, open: true }];
@@ -17,13 +17,13 @@ function levelRuns(S) {
   return out;
 }
 
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-233
 function runUs(r, colTimeS) { return (r.x1 - r.x0) * colTimeS * 1e6; }
 
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-233
 function pspan(x0, x1, n, text, kind, val) { return { i0: uiClamp(x0, n), i1: uiClamp(x1, n), text, kind, val }; }
 
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-233
 function crc8Maxim(b) {
   let c = 0;
   for (const v of b) {
@@ -37,7 +37,7 @@ const ONEWIRE_ROM = { 0x33: "RDROM", 0x0F: "RDROM", 0x55: "MATCH", 0xF0: "SEARCH
   0xCC: "SKIP", 0x3C: "ODSKIP", 0x69: "ODMATCH", 0xA5: "RESUME" };
 
 // decodeOneWire mirrors decode_pulsewire.go DecodeOneWire.
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-233
 function decodeOneWire(codes, colTimeS, cfg) {
   cfg = cfg || {};
   const S = sliceChannel(codes, cfg);
@@ -48,12 +48,12 @@ function decodeOneWire(codes, colTimeS, cfg) {
   const spans = [], toks = [], units = [];
   let bits = [];
   let good = false, inTx = false, phase = 0, romLeft = 0, rom = [];
-  // TRLC-LINKS: REQ-SDS-018
+  // TRLC-LINKS: REQ-SDS-018, REQ-SDS-233
   const flushByte = (bs, v, txt, kind) => {
     spans.push(pspan(bs[0].x0, bs[bs.length - 1].x1, n, txt, kind, v));
     toks.push(txt); units.push(v);
   };
-  // TRLC-LINKS: REQ-SDS-018
+  // TRLC-LINKS: REQ-SDS-018, REQ-SDS-233
   const takeBits = () => {
     while (phase !== 2 && bits.length >= 8) {
       const b = bits.slice(0, 8);
@@ -86,7 +86,7 @@ function decodeOneWire(codes, colTimeS, cfg) {
       if (++romLeft === 8) { phase = 3; romLeft = 0; }
     }
   };
-  // TRLC-LINKS: REQ-SDS-018
+  // TRLC-LINKS: REQ-SDS-018, REQ-SDS-233
   const endTx = () => {
     if (bits.length) { spans.push(pspan(bits[0].x0, bits[bits.length - 1].x1, n, "?", "gap", 0)); toks.push("?"); }
     bits = [];
@@ -131,7 +131,7 @@ function decodeOneWire(codes, colTimeS, cfg) {
 }
 
 // decodeWS281x mirrors decode_pulsewire.go DecodeWS281x.
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-233
 function decodeWS281x(codes, colTimeS, cfg) {
   cfg = cfg || {};
   const S = sliceChannel(codes, cfg);
@@ -141,7 +141,7 @@ function decodeWS281x(codes, colTimeS, cfg) {
   const spans = [], toks = [], units = [], periods = [];
   let good = false;
   let frame = [];
-  // TRLC-LINKS: REQ-SDS-018
+  // TRLC-LINKS: REQ-SDS-018, REQ-SDS-233
   const flush = (latch) => {
     if (!frame.length) return;
     let lo = Infinity, hi = 0;
@@ -201,7 +201,7 @@ function decodeWS281x(codes, colTimeS, cfg) {
 }
 
 // decodeDHT mirrors decode_pulsewire.go DecodeDHT.
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-233
 function decodeDHT(codes, colTimeS, cfg) {
   cfg = cfg || {};
   const S = sliceChannel(codes, cfg);
@@ -210,7 +210,7 @@ function decodeDHT(codes, colTimeS, cfg) {
   const runs = levelRuns(S), n = S.n;
   const spans = [], toks = [], units = [];
   let good = false;
-  // TRLC-LINKS: REQ-SDS-018
+  // TRLC-LINKS: REQ-SDS-018, REQ-SDS-233
   const inr = (r, lo, hi) => { const w = runUs(r, colTimeS); return !r.open && w >= lo && w <= hi; };
   for (let k = 0; k + 4 < runs.length; k++) {
     const st = runs[k];
@@ -255,7 +255,7 @@ function decodeDHT(codes, colTimeS, cfg) {
 }
 
 // decodeCEC mirrors decode_pulsewire.go DecodeCEC.
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-233
 function decodeCEC(codes, colTimeS, cfg) {
   cfg = cfg || {};
   const S = sliceChannel(codes, cfg);
@@ -264,9 +264,9 @@ function decodeCEC(codes, colTimeS, cfg) {
   const runs = levelRuns(S), n = S.n;
   const spans = [], toks = [], units = [];
   let good = false;
-  // TRLC-LINKS: REQ-SDS-018
+  // TRLC-LINKS: REQ-SDS-018, REQ-SDS-233
   const ms = (r) => runUs(r, colTimeS) / 1000;
-  // TRLC-LINKS: REQ-SDS-018
+  // TRLC-LINKS: REQ-SDS-018, REQ-SDS-233
   const bitAt = (j) => {
     if (j + 1 >= runs.length || runs[j].lvl !== 0 || runs[j].open) return null;
     const lw = ms(runs[j]);
@@ -324,7 +324,7 @@ function decodeCEC(codes, colTimeS, cfg) {
   return res;
 }
 
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-233
 function j1850CRC(b) {
   let c = 0xff;
   for (const v of b) {
@@ -335,7 +335,7 @@ function j1850CRC(b) {
 }
 
 // decodeJ1850 mirrors decode_pulsewire.go DecodeJ1850.
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-233
 function decodeJ1850(codes, colTimeS, cfg) {
   cfg = cfg || {};
   const S = sliceChannel(codes, cfg);
@@ -344,7 +344,7 @@ function decodeJ1850(codes, colTimeS, cfg) {
   const runs = levelRuns(S), n = S.n;
   const spans = [], toks = [], units = [];
   let good = false;
-  // TRLC-LINKS: REQ-SDS-018
+  // TRLC-LINKS: REQ-SDS-018, REQ-SDS-233
   const emit = (vals, xs, crc) => {
     vals.forEach((v, i) => {
       let txt = fmtByte(v, cfg.format), kind = "data";

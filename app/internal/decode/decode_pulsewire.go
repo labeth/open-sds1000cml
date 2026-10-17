@@ -15,7 +15,7 @@ import (
 
 // lrun is one run of a level: from crossing x0 to crossing x1 (samples);
 // the record's first and last runs are open at the record's ends.
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-233
 type lrun struct {
 	lvl    int
 	x0, x1 float64
@@ -23,7 +23,7 @@ type lrun struct {
 }
 
 // levelRuns is the sliced line as its runs.
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-233
 func levelRuns(S sliced) []lrun {
 	E := S.edges
 	if len(E) == 0 {
@@ -50,17 +50,17 @@ func levelRuns(S sliced) []lrun {
 }
 
 // us is a run's length in microseconds.
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-233
 func (r lrun) us(colTimeS float64) float64 { return (r.x1 - r.x0) * colTimeS * 1e6 }
 
 // pspan is a span between two sample positions, clamped into the record.
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-233
 func pspan(x0, x1 float64, n int, text, kind string, val int) Span {
 	return Span{ui(x0, n), ui(x1, n), text, kind, val}
 }
 
 // crc8Maxim is the 1-Wire ROM CRC-8 (x^8+x^5+x^4+1, reflected 0x8C, from 0).
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-233
 func crc8Maxim(b []int) int {
 	c := 0
 	for _, v := range b {
@@ -79,7 +79,7 @@ func crc8Maxim(b []int) int {
 // OneWireCfg configures the 1-Wire decode; Overdrive starts in overdrive
 // speed (the decode enters it on an Overdrive Skip or Match ROM and leaves
 // it on a standard reset).
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-233
 type OneWireCfg struct {
 	Overdrive bool
 	Threshold float64
@@ -106,7 +106,7 @@ type owBit struct {
 // slots come in threes (the bit, its complement, the direction) whose
 // directions make the ROM bytes. OK needs a reset with a presence pulse and
 // a byte after it.
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-233
 func DecodeOneWire(codes []uint8, colTimeS float64, cfg OneWireCfg) Result {
 	S := sliceChannel(codes, cfg.Threshold, cfg.HaveThr)
 	if !S.ok {
@@ -252,7 +252,7 @@ func DecodeOneWire(codes []uint8, colTimeS float64, cfg OneWireCfg) Result {
 }
 
 // WS281xCfg configures the WS281x LED-strip decode.
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-233
 type WS281xCfg struct {
 	Threshold float64
 	HaveThr   bool
@@ -265,7 +265,7 @@ type WS281xCfg struct {
 // first in wire order (G, R, B of each LED). A low of 50 us or more
 // latches the frame ("rw" RST); each frame opens with a zero-width "sof".
 // OK needs a frame of whole LEDs at a steady bit rate.
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-233
 func DecodeWS281x(codes []uint8, colTimeS float64, cfg WS281xCfg) Result {
 	S := sliceChannel(codes, cfg.Threshold, cfg.HaveThr)
 	if !S.ok {
@@ -385,7 +385,7 @@ func DecodeWS281x(codes []uint8, colTimeS float64, cfg WS281xCfg) Result {
 }
 
 // DHTCfg configures the DHT11/DHT22/AM230x decode.
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-233
 type DHTCfg struct {
 	Threshold float64
 	HaveThr   bool
@@ -399,7 +399,7 @@ type DHTCfg struct {
 // (2 bytes), temperature (2) and the checksum, the low byte of the sum of
 // the four (flagged when it does not check). OK needs a reading whose
 // checksum checks.
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-233
 func DecodeDHT(codes []uint8, colTimeS float64, cfg DHTCfg) Result {
 	S := sliceChannel(codes, cfg.Threshold, cfg.HaveThr)
 	if !S.ok {
@@ -484,7 +484,7 @@ func DecodeDHT(codes []uint8, colTimeS float64, cfg DHTCfg) Result {
 }
 
 // CECCfg configures the HDMI-CEC decode.
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-233
 type CECCfg struct {
 	Threshold float64
 	HaveThr   bool
@@ -499,7 +499,7 @@ type CECCfg struct {
 // operands. A directly addressed block is acknowledged by the follower
 // holding the bit low ("ack" A, else "nak" N); a broadcast one the other way.
 // OK needs a message whose bits all keep their timing.
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-233
 func DecodeCEC(codes []uint8, colTimeS float64, cfg CECCfg) Result {
 	S := sliceChannel(codes, cfg.Threshold, cfg.HaveThr)
 	if !S.ok {
@@ -619,7 +619,7 @@ func DecodeCEC(codes []uint8, colTimeS float64, cfg CECCfg) Result {
 }
 
 // J1850Cfg configures the SAE J1850 VPW decode.
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-233
 type J1850Cfg struct {
 	Threshold float64
 	HaveThr   bool
@@ -627,7 +627,7 @@ type J1850Cfg struct {
 }
 
 // j1850CRC is the SAE J1850 CRC-8: polynomial 0x1D from all ones, inverted.
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-233
 func j1850CRC(b []int) int {
 	c := 0xff
 	for _, v := range b {
@@ -651,7 +651,7 @@ func j1850CRC(b []int) int {
 // ends the data (EOD), the last byte the CRC-8 (flagged when it does not
 // check). An in-frame response after the EOD (a normalization bit, then
 // bytes) is read on into the same frame. OK needs a frame whose CRC checks.
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-233
 func DecodeJ1850(codes []uint8, colTimeS float64, cfg J1850Cfg) Result {
 	S := sliceChannel(codes, cfg.Threshold, cfg.HaveThr)
 	if !S.ok {

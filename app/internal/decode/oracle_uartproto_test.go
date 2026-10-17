@@ -20,7 +20,7 @@ type oracleItem struct {
 	OK   bool
 }
 
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-232
 func TestOracleLIN(t *testing.T) {
 	const sr = 1000000
 	w := newTimeline(sr)
@@ -99,7 +99,7 @@ func TestOracleLIN(t *testing.T) {
 	}
 }
 
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-232
 func TestOracleDMX512(t *testing.T) {
 	// sigrok's DMX512 decoder (0.5) reads a packet to its 512th slot and
 	// a slot from the edge after a mark, so the packets here are full ones
@@ -137,7 +137,7 @@ func TestOracleDMX512(t *testing.T) {
 	eqBytes(t, "DMX512 generated", r.Bytes, want)
 }
 
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-232
 func TestOracleMIDI(t *testing.T) {
 	const sr = 1000000
 	w := newTimeline(sr)
@@ -190,7 +190,7 @@ func TestOracleMIDI(t *testing.T) {
 	}
 }
 
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-232
 func TestOracleModbus(t *testing.T) {
 	const sr = 2000000
 	for _, tc := range []struct {

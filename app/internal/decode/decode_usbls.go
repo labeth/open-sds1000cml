@@ -350,13 +350,13 @@ func DecodeUSBLS(dp []uint8, colTimeS float64, cfg USBLSCfg) Result {
 
 // usbIsToken reports a token PID (OUT, IN, SOF, SETUP, PING), whose 11
 // bits after the PID end in a CRC5.
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-237
 func usbIsToken(pid4 int) bool { return pid4&3 == 1 || pid4 == 0x4 }
 
 // usbCRC5 is the USB token CRC: x^5+x^2+1 over the 11 bits in wire order
 // (least significant first) from all ones, inverted, its highest term sent
 // first: as the field reads least significant bit first, bit-reversed.
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-237
 func usbCRC5(v int) int {
 	c := 0x1F
 	for i := 0; i < 11; i++ {

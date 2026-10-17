@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-236
 func TestDecodePS2RoundTrip(t *testing.T) {
 	sr := 1e6
 	l := newTwoLine(sr)
@@ -23,7 +23,7 @@ func TestDecodePS2RoundTrip(t *testing.T) {
 	}
 }
 
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-236
 func TestDecodeSWDRoundTrip(t *testing.T) {
 	sr := 100e6
 	s := &swdLine{t: newTwoLine(sr), per: 1e-6}
@@ -41,7 +41,7 @@ func TestDecodeSWDRoundTrip(t *testing.T) {
 	}
 }
 
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-236
 func TestDecodeMDIORoundTrip(t *testing.T) {
 	sr := 50e6
 	l := newTwoLine(sr)
@@ -58,7 +58,7 @@ func TestDecodeMDIORoundTrip(t *testing.T) {
 	}
 }
 
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-236
 func TestDecodeWiegandRoundTrip(t *testing.T) {
 	sr := 200e3
 	l := newTwoLine(sr)

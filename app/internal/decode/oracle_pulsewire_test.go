@@ -14,7 +14,7 @@ import (
 )
 
 // sortAnns orders annotations of several classes by their start.
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-233
 func sortAnns(a []ann) []ann {
 	for i := 1; i < len(a); i++ {
 		for j := i; j > 0 && a[j].I0 < a[j-1].I0; j-- {
@@ -24,7 +24,7 @@ func sortAnns(a []ann) []ann {
 	return a
 }
 
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-233
 func TestOracleOneWire(t *testing.T) {
 	const sr = 2000000
 	w := newTimeline(sr)
@@ -114,7 +114,7 @@ func TestOracleOneWire(t *testing.T) {
 	}
 }
 
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-233
 func TestOracleWS281x(t *testing.T) {
 	const sr = 20000000
 	w := newTimeline(sr)
@@ -141,7 +141,7 @@ func TestOracleWS281x(t *testing.T) {
 	}
 }
 
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-233
 func TestOracleDHT(t *testing.T) {
 	const sr = 1000000
 	w := newTimeline(sr)
@@ -177,7 +177,7 @@ func TestOracleDHT(t *testing.T) {
 	}
 }
 
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-233
 func TestOracleCEC(t *testing.T) {
 	const sr = 100000
 	w := newTimeline(sr)
@@ -214,7 +214,7 @@ func TestOracleCEC(t *testing.T) {
 	}
 }
 
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-233
 func TestOracleJ1850(t *testing.T) {
 	needSigrokPD(t, "sae_j1850_vpw")
 	const sr = 1000000

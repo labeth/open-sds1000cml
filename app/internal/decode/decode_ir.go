@@ -22,7 +22,7 @@ const irMergeUs = 150.0
 type irMark struct{ x0, x1 float64 }
 
 // IRCfg configures the infrared decoders.
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-234
 type IRCfg struct {
 	Threshold float64
 	HaveThr   bool
@@ -30,7 +30,7 @@ type IRCfg struct {
 }
 
 // irMarks finds the line's marks and whether they are its high level.
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-234
 func irMarks(S sliced, colTimeS float64) ([]irMark, bool) {
 	runs := levelRuns(S)
 	longest, idle := -1.0, 1
@@ -56,7 +56,7 @@ func irMarks(S sliced, colTimeS float64) ([]irMark, bool) {
 }
 
 // irDecode runs the line through irMarks and a protocol's frame reader.
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-234
 func irDecode(proto string, codes []uint8, colTimeS float64, cfg IRCfg,
 	read func(m []irMark, us func(float64) float64, n int, out *irOut)) Result {
 	S := sliceChannel(codes, cfg.Threshold, cfg.HaveThr)
@@ -96,7 +96,7 @@ type irOut struct {
 	unitUs float64 // the protocol's bit time
 }
 
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-234
 func (o *irOut) add(x0, x1 float64, n int, text, kind string, val int, unit bool) {
 	o.spans = append(o.spans, pspan(x0, x1, n, text, kind, val))
 	if text != "" {
@@ -113,7 +113,7 @@ func (o *irOut) add(x0, x1 float64, n int, text, kind string, val int, unit bool
 // byte of a 16-bit address), command and its inverse (flagged when it is
 // not one), and a stop mark. A 9 ms mark with a 2.25 ms space is a repeat
 // ("sof" REP). OK needs a frame whose command checks.
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-234
 func DecodeIRNEC(codes []uint8, colTimeS float64, cfg IRCfg) Result {
 	return irDecode("irnec", codes, colTimeS, cfg, func(m []irMark, us func(float64) float64, n int, o *irOut) {
 		o.unitUs = 1125
@@ -192,7 +192,7 @@ func DecodeIRNEC(codes []uint8, colTimeS float64, cfg IRCfg) Result {
 // command ("C15"), the address (5 bits, or 8 for 15) and for 20 bits an
 // 8-bit extension ("E1A"). Another length is an error. OK needs a frame
 // of a valid length.
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-234
 func DecodeIRSIRC(codes []uint8, colTimeS float64, cfg IRCfg) Result {
 	return irDecode("irsirc", codes, colTimeS, cfg, func(m []irMark, us func(float64) float64, n int, o *irOut) {
 		o.unitUs = 600
@@ -260,7 +260,7 @@ func DecodeIRSIRC(codes []uint8, colTimeS float64, cfg IRCfg) Result {
 // level of each unit (1 a mark) from x on, until a run is not 1..maxUnits
 // units long (a space that long ends the frame). It returns the levels and
 // each unit's start.
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-234
 func irHalves(m []irMark, from int, unit float64, maxUnits int, us func(float64) float64) ([]int, []float64) {
 	var lv []int
 	var xs []float64
@@ -294,7 +294,7 @@ func irHalves(m []irMark, from int, unit float64, maxUnits int, us func(float64)
 // second start bit inverted as the command's seventh bit, RC-5X). Each
 // frame opens after an idle of 5 ms or more ("sof" RC5). OK needs a whole
 // frame.
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-234
 func DecodeIRRC5(codes []uint8, colTimeS float64, cfg IRCfg) Result {
 	return irDecode("irrc5", codes, colTimeS, cfg, func(m []irMark, us func(float64) float64, n int, o *irOut) {
 		const half = 889.0
@@ -353,7 +353,7 @@ func DecodeIRRC5(codes []uint8, colTimeS float64, cfg IRCfg) Result {
 // in Manchester bits of 2t (a 1 a mark then a space), most significant
 // first: mode 0's 8-bit address and command; other modes' payload bytes.
 // OK needs a frame with a whole payload.
-// TRLC-LINKS: REQ-SDS-018
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-234
 func DecodeIRRC6(codes []uint8, colTimeS float64, cfg IRCfg) Result {
 	return irDecode("irrc6", codes, colTimeS, cfg, func(m []irMark, us func(float64) float64, n int, o *irOut) {
 		const t = 444.0
