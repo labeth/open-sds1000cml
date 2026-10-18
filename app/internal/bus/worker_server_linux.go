@@ -32,6 +32,7 @@ type acquisitionWorker struct {
 	active      bool
 	epoch       uint32
 	fault       error
+	queueLost   uint64 // events the full queue dropped (errWorkerQueueOverflow)
 	head, count int
 	ring        []byte
 	events      [512]sramcapture.DecodedEvent
@@ -152,6 +153,10 @@ func RunAcquisitionWorker(gpmcFD, socketFD int, logf func(string, ...any)) error
 	return w.serve(socketFD)
 }
 
+// errWorkerQueueOverflow is the event queue's overflow: an explicit end of a
+// transcript of events, a marked loss once the worker builds the lines.
+var errWorkerQueueOverflow = fmt.Errorf("isolated decoded queue overflow; transcript incomplete")
+
 // pump runs independently of GUI requests. The bounded ring can absorb client
 // scheduling gaps, but exhaustion is explicit and never masquerades as lossless.
 // TRLC-LINKS: REQ-SDS-013
@@ -174,7 +179,8 @@ func (w *acquisitionWorker) pump() {
 	}
 	for _, event := range events {
 		if w.count == workerQueueEvents {
-			w.fault = fmt.Errorf("isolated decoded queue overflow; transcript incomplete")
+			w.fault = errWorkerQueueOverflow
+			w.queueLost += uint64(len(events))
 			return
 		}
 		index := (w.head + w.count) % workerQueueEvents
@@ -318,6 +324,15 @@ func (w *acquisitionWorker) handle(request []byte) int {
 			}
 			w.linesStore.Reset(int(value))
 			w.lines = w.linesStore
+			if w.fault == errWorkerQueueOverflow {
+				// The queue overflowed before the switch (a busy bus fills it
+				// while the stream is being set up, about a second): the
+				// transcript says so and goes on, as it does for the FIFO's
+				// own losses.
+				w.fault = nil
+				w.lines.Add([]sramcapture.DecodedEvent{{Kind: sramcapture.EventLoss, Count: uint32(min(w.queueLost, 1<<31))}})
+			}
+			w.queueLost = 0
 			// Events drained before the switch go into the transcript too.
 			for ; w.count > 0; w.count-- {
 				e, perr := sramcapture.ParseDecodedEvent(w.ring[w.head*32 : (w.head+1)*32])

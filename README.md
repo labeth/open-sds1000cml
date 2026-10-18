@@ -222,10 +222,11 @@ automatically.
   UART at **921,600 baud ran lossless for 3 minutes** (16.6 M bytes). At higher rates a lost event
   is marked, never silently dropped.
   The buses on the symbol trigger stream in one of two modes, shown on the LCD, the web page and the phone:
-  **gap-free** for LIN, DMX512, Modbus RTU, 1-Wire, DHT, HDMI-CEC, J1850 VPW, the four IR codes, DALI, PS/2
-  and Wiegand (the `stream` image's continuous peak stream, decoded in software as it arrives), and
-  **captures** for WS281x, USB PD, S/PDIF, SWD, MDIO and 1-Wire overdrive (back-to-back records armed on the
-  symbol trigger, with the share of signal time they read). They stop on a value or by hand: the symbol
+  **gap-free** for LIN, Modbus RTU (to 57,600 Bd), DHT, HDMI-CEC, J1850 VPW, the four IR codes, DALI, PS/2
+  and Wiegand (the `stream` image's continuous peak stream, decoded in software as it arrives, at most
+  244 k words a second: the single core decodes no faster), and **captures** for DMX512, 1-Wire, WS281x,
+  USB PD, S/PDIF, SWD and MDIO (back-to-back records armed on the symbol trigger, with the share of signal
+  time they read). They stop on a value or by hand: the symbol
   trigger has no error token. A gap-free stream stopped on a value shows the FPGA's record of its next
   occurrence.
 * Hex, ASCII and combined views, and a watch buffer with regex search.

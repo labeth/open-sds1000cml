@@ -32,7 +32,7 @@ func StreamTiming(proto string, baud float64) (feature, longest, quiet float64, 
 	case "onewire": // a reset (480 us low, presence) and its bytes, slots of at least 60 us
 		// The shortest stretch: a 1's low pulse (1 to 15 us, about 6) and
 		// the recovery between slots.
-		return 5e-6, 20e-3, 20e-3, true
+		return 5e-6, 20e-3, 2e-3, true // a pause between bytes stays under 2 ms
 	case "ws281x": // a reset of 50 us or more ends a frame; a bit's short high is a third of it
 		b := bit(800000)
 		return b / 3, 10e-3, 100e-6, true
@@ -43,9 +43,11 @@ func StreamTiming(proto string, baud float64) (feature, longest, quiet float64, 
 	case "j1850": // SOF and up to 12 bytes of 64/128 us symbols
 		return 64e-6, 15e-3, 15e-3, true
 	case "irnec", "irsirc", "irrc5", "irrc6":
-		// A frame of at most 70 ms (NEC's 67.5); a modulated line's 38 kHz
-		// carrier is the shortest stretch (13 us).
-		return 13e-6, 80e-3, 80e-3, true
+		// A frame of at most 70 ms (NEC's 67.5). A modulated line's 38 kHz
+		// carrier needs no resolving: a bucket holds both its levels, the
+		// mark reads as runs the decoders merge, so the shortest stretch is
+		// a fraction of a mark (RC-6's 444 us half bit).
+		return 50e-6, 80e-3, 80e-3, true
 	case "dali": // 1200 Bd biphase, a backward frame 8 bits, a forward one up to 24
 		b := bit(1200)
 		return b / 2, 30 * b, 30 * b, true
@@ -83,10 +85,14 @@ func StreamRecordHead(proto string, feature, longest float64) float64 {
 	return 4 * feature
 }
 
-// StreamGapFreeMinLog is the finest decimation the gap-free roll stream
-// carries without loss: one peak word per 2^9 samples (about 978 k words a
-// second); 2^8 outruns the SRAM drum.
-const StreamGapFreeMinLog = 9
+// StreamGapFreeMinLog is the finest decimation the scope decodes gap-free in
+// software: one peak word per 2^11 samples (about 244 k words a second).
+// The stream itself carries 2^9 without loss, but on the device's single
+// core a word costs about 0.9 us to fetch from the bus worker, 0.45 us to
+// turn into samples and 1.5 to 3 us to decode, while the worker's bus
+// transfers take their own share: at 2^9 the worker's ring overflowed within
+// a second.
+const StreamGapFreeMinLog = 11
 
 // StreamBucketLog picks the gap-free stream's decimation for a shortest
 // feature of feature seconds: the coarsest bucket of 2^log samples (2 ns

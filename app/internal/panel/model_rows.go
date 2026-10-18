@@ -1394,7 +1394,7 @@ func busTabRows() []*row {
 			c.mu.Unlock()
 			return nil
 		}, hexText)
-	streamVal.help = "The decoded unit that ends a stream (Stream stops = On value): a byte, a MIL-1553 word, an ARINC 429 word's 19-bit data field."
+	streamVal.help = "The decoded unit that ends a stream (Stream stops = On value): a byte, a MIL-1553, MDIO or Wiegand word, an ARINC 429 word's 19-bit data field, an S/PDIF sample."
 	streamVal.rel, streamVal.why = func(s *sv) bool { return isAuto(s) && s.decTrig == 1 }, "Stream stops = On value"
 	streamVal.def = func(c *Controller) error { return streamVal.setN(c, 0) }
 	streamScreen := &row{id: "bus.stream_screen", label: "Stream shows", kind: wsview.Enum,

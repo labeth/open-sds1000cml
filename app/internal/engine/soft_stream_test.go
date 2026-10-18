@@ -149,22 +149,41 @@ func TestSoftStreamPeakWordsToEvents(t *testing.T) {
 	}
 }
 
+// A stop value the symbol trigger cannot match at any unit (an IR code's
+// address) is matched at its place in the frame, where the transcript read it.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func TestSoftStreamValuePatternPlaces(t *testing.T) {
+	for _, c := range []struct {
+		proto, baud, value, unit int
+		bits                     int
+	}{{serIRSIRC, 1667, 0x01, 1, 12}, {serIRRC5, 562, 0x0C, 1, 0}, {serDALI, 1200, 0x80, 1, 0}, {serWiegand, 1000, 0x1234, 1, 26}} {
+		s := &softStream{p: SerialParams{Proto: c.proto, Baud: c.baud, Bits: c.bits, ChA: 0, ChB: 1, Threshold: 128, HaveThr: true,
+			ThresholdB: 128, HaveThrB: true}, value: c.value, mask: unitMask(SerialParams{Proto: c.proto})}
+		if !s.symbolPlans(s.valuePattern(-1)) && !s.symbolPlans(s.valuePattern(c.unit)) {
+			t.Errorf("protocol %d: %X matches neither at any unit nor as unit %d", c.proto, c.value, c.unit)
+		}
+	}
+}
+
 // Which buses stream gap-free from the continuous stream and which as
 // captures, at their usual rates (the bench sources' and the panel's).
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
 func TestSoftStreamModes(t *testing.T) {
-	for proto, want := range map[int]string{serLIN: "gap-free", serDMX: "gap-free", serModbus: "gap-free",
-		serOneWire: "gap-free", serDHT: "gap-free", serCEC: "gap-free", serJ1850: "gap-free", serIRNEC: "gap-free",
+	for proto, want := range map[int]string{serLIN: "gap-free", serDMX: "captures", serModbus: "gap-free",
+		serOneWire: "captures", serDHT: "gap-free", serCEC: "gap-free", serJ1850: "gap-free", serIRNEC: "gap-free",
 		serIRSIRC: "gap-free", serIRRC5: "gap-free", serIRRC6: "gap-free", serDALI: "gap-free", serPS2: "gap-free",
 		serWiegand: "gap-free", serUSBPD: "captures", serSPDIF: "captures", serSWD: "captures", serMDIO: "captures",
 		serWS281x: "captures", serUART: "", serMIDI: "", serUSB: ""} {
-		baud := map[int]int{serLIN: 19200, serDMX: 250000, serModbus: 115200, serOneWire: 16300, serDHT: 20000,
+		baud := map[int]int{serLIN: 19200, serDMX: 250000, serModbus: 19200, serOneWire: 16300, serDHT: 20000,
 			serCEC: 417, serJ1850: 10400, serIRNEC: 889, serIRSIRC: 1667, serIRRC5: 562, serIRRC6: 1126, serDALI: 1200,
 			serPS2: 16700, serWiegand: 1000, serUSBPD: 300000, serSPDIF: 3072000, serSWD: 1000000, serMDIO: 1000000,
 			serWS281x: 800000}[proto]
 		if got := SoftStreamMode(proto, baud, false); got != want {
 			t.Errorf("protocol %d at %d: %q, want %q", proto, baud, got, want)
 		}
+	}
+	if got := SoftStreamMode(serModbus, 115200, false); got != "captures" {
+		t.Errorf("Modbus at 115200 Bd: %q", got)
 	}
 	if got := SoftStreamMode(serOneWire, 160000, true); got != "captures" {
 		t.Errorf("1-Wire overdrive: %q", got)

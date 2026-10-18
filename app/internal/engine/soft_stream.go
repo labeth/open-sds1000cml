@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"slices"
 	"time"
 
 	"open-sds/app/internal/bus"
@@ -92,7 +93,8 @@ type softStream struct {
 	isolated  bool
 	deadline  *bus.DecodedDeadline
 	expected  uint64
-	buf       [32768]byte
+	buf       [65536]byte
+	raw       []byte
 	pendA     []uint8
 	pendB     []uint8
 	pushN     int
@@ -109,6 +111,7 @@ type softStream struct {
 	capWait   time.Duration
 	read      time.Duration // signal time read
 	nextOrd   uint64
+	stopUnit  int    // the stop value's unit in its frame
 	stopFirst uint64 // the stop frame's first and last sample ordinals
 	stopLast  uint64
 
@@ -187,6 +190,15 @@ func (e *Engine) beginSoftStream(ctx context.Context, p SerialParams, trig Strea
 		feature, longest, quiet = feature/10, longest/10, quiet/10
 	}
 	log, gapFree := softGapFreeLog(name, p.Baud, p.Overdrive)
+	if !gapFree && trig == StreamOnValue {
+		// Captures stop on a record the symbol trigger fired on; the value
+		// must be one it matches wherever it comes.
+		q := p
+		q.Bytes, q.Pattern = nil, []PatternElem{{Kind: patternData, Value: value & unitMask(p), Mask: unitMask(p)}}
+		if !planHardwareSymbol(q).Enabled {
+			return sramcapture.RecordIdentity{}, fmt.Errorf("%s streams as captures, and the FPGA's symbol trigger matches %X only at a fixed place in a frame: stop it by hand", d.Name, value&unitMask(p))
+		}
+	}
 	s := &softStream{p: p, proto: name, decoder: d, trig: trig, value: value & unitMask(p), mask: unitMask(p),
 		gapFree: gapFree, quiet: quiet, log: uint8(log)}
 	v, err := e.decodedCall(ctx, func() (any, error) {
@@ -218,7 +230,9 @@ func (e *Engine) beginSoftStream(ctx context.Context, p SerialParams, trig Strea
 			bucket := float64(uint64(1)<<log) * 2e-9
 			s.sampleS = bucket / 2
 			s.ordStep = float64(uint64(1) << (log - 1))
-			s.pushN = int(math.Max(0.05, quiet) / s.sampleS)
+			// Decode a fifth of a second at a time: each decode reads the open
+			// window again, so short pushes cost the window over and over.
+			s.pushN = int(math.Max(0.2, 2*quiet) / s.sampleS)
 			s.dec = decode.NewStreamDecoder(s.decodeFunc(), int(quiet/s.sampleS), int((longest+quiet)/s.sampleS))
 			// The stream starts on the loop's next step (softDrain), after
 			// the loop has ended a roll stream that may hold the banks.
@@ -353,7 +367,7 @@ func (e *Engine) softDrain(s *softStream) {
 			return
 		}
 	}
-	var raw []byte
+	raw := s.raw[:0]
 	w := byteSink{dst: &raw}
 	for end := e.clk.Now().Add(100 * time.Millisecond); e.clk.Now().Before(end) && !e.stopReq.Load(); {
 		if s.isolated {
@@ -387,6 +401,7 @@ func (e *Engine) softDrain(s *softStream) {
 	if len(raw) > 0 {
 		s.feedPeak(raw, e.interleaveCalibration)
 	}
+	s.raw = raw[:0]
 	if len(s.pendA) >= s.pushN {
 		e.softPush(s)
 	} else if len(raw) == 0 {
@@ -431,45 +446,46 @@ func (s *softStream) ord(i uint64) uint64 { return uint64(s.ordBase + float64(i)
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240, REQ-SDS-010
 func (s *softStream) feedPeak(raw []byte, cal *InterleaveCalibration) {
 	n := len(raw) / 4
-	var out [2][]uint8
-	for ch := 0; ch < 2; ch++ {
-		sig := make([]uint8, 2*n)
-		q := make([]uint16, 2*n)
-		for i := 0; i < n; i++ {
-			sig[2*i], sig[2*i+1] = raw[4*i+ch], raw[4*i+2+ch] // min, max
-		}
-		if cal != nil {
-			cal.debiasEnvelope(ch, sig, q, false)
-		} else {
-			for i, v := range sig {
-				q[i] = uint16(v) << 8
-			}
-		}
-		prev, have := int(s.last[ch]), s.haveLast
-		for i := 0; i+1 < len(q); i += 2 {
-			if !have {
-				prev, have = (int(q[i])+int(q[i+1]))/2, true
-			}
-			if abs(int(q[i+1])-prev) < abs(int(q[i])-prev) {
-				q[i], q[i+1] = q[i+1], q[i]
-			}
-			prev = int(q[i+1])
-		}
-		if len(q) > 0 {
-			s.last[ch] = q[len(q)-1]
-		}
-		for i, v := range q {
-			sig[i] = roundQ8(v)
-		}
-		out[ch] = sig
-	}
-	s.haveLast = n > 0 || s.haveLast
-	a, b := out[s.p.ChA&1], out[1-s.p.ChA&1]
-	s.pendA = append(s.pendA, a...)
+	lines := 1
 	if clockedTwoLine(s.p.Proto) {
-		s.learnB(b)
-		s.pendB = append(s.pendB, b...)
+		lines = 2
 	}
+	// One pass a line, appending to the queued samples: at 2^9 the stream
+	// brings about a million words a second to a single core.
+	for k := 0; k < lines; k++ {
+		ch := s.p.ChA & 1
+		dst := &s.pendA
+		if k == 1 {
+			ch, dst = 1-ch, &s.pendB
+		}
+		var off [2]int
+		if cal != nil {
+			off = cal.envelopeOffsets(ch)
+		}
+		at := len(*dst)
+		out := slices.Grow(*dst, 2*n)[:at+2*n]
+		prev, have := int(s.last[ch]), s.haveLast
+		for i := 0; i < n; i++ {
+			lo, hi := int(raw[4*i+ch])<<8, int(raw[4*i+2+ch])<<8
+			if cal != nil {
+				lo, hi = debiasQ(lo, off[0]), debiasQ(hi, off[1])
+			}
+			if !have {
+				prev, have = (lo+hi)/2, true
+			}
+			if abs(hi-prev) < abs(lo-prev) {
+				lo, hi = hi, lo
+			}
+			prev = hi
+			out[at+2*i], out[at+2*i+1] = roundQ8(uint16(lo)), roundQ8(uint16(hi))
+		}
+		s.last[ch] = uint16(prev)
+		*dst = out
+		if k == 1 {
+			s.learnB(out[at:])
+		}
+	}
+	s.haveLast = s.haveLast || n > 0
 }
 
 // learnB follows line B's extremes for its slicing level.
@@ -508,20 +524,33 @@ func (e *Engine) softPush(s *softStream) {
 func (s *softStream) emit(frames []decode.StreamFrame, ord func(uint64) uint64) bool {
 	for _, f := range frames {
 		s.addEvent(sramcapture.DecodedEvent{Kind: sramcapture.EventStart, Sample: ord(f.I0), Value: decodedlines.StartNoteCode(frameStart(f))})
-		hit := false
+		hit, unit := false, 0
 		for _, sp := range f.Spans {
 			switch sp.Kind {
 			case "data":
 				v := sp.Val & s.mask
 				s.addEvent(sramcapture.DecodedEvent{Kind: sramcapture.EventData, Sample: ord(sp.I0), Value: uint32(v), Valid: true})
-				hit = hit || (s.trig == StreamOnValue && v == s.value)
+				if !hit && s.trig == StreamOnValue && v == s.value {
+					hit, s.stopUnit = true, unit
+				}
+				unit++
 			case "frame-error", "parity-error", "gap":
 				s.addEvent(sramcapture.DecodedEvent{Kind: sramcapture.EventError, Sample: ord(sp.I0)})
 			}
 		}
 		s.addEvent(sramcapture.DecodedEvent{Kind: sramcapture.EventEnd, Sample: ord(f.I1)})
 		if hit {
+			// The frame's line starts at its named start or, unnamed (PS/2,
+			// Wiegand), at its first unit: the trigger mark goes on that line.
 			s.stopFirst, s.stopLast = ord(f.I0), ord(f.I1)
+			if decodedlines.StartNoteCode(frameStart(f)) == 0 {
+				for _, sp := range f.Spans {
+					if sp.Kind == "data" || sp.Kind == "frame-error" || sp.Kind == "parity-error" || sp.Kind == "gap" {
+						s.stopFirst = ord(sp.I0)
+						break
+					}
+				}
+			}
 			s.addEvent(sramcapture.DecodedEvent{Kind: sramcapture.EventTrigger, Sample: ord(f.I0)})
 			return true
 		}
@@ -556,16 +585,58 @@ func (s *softStream) addEvent(ev sramcapture.DecodedEvent) {
 	s.events = append(s.events, ev)
 }
 
-// softRecordConfig is the full-rate record the symbol trigger takes on
-// the stop value, as a hardware stream's record is.
+// valuePattern is the stop value as the symbol trigger matches it: at any
+// unit (at < 0), or as unit at of a frame - the buses whose units differ in
+// width or meaning (an IR code's address and command, Wiegand's facility
+// and card) match a unit only at its place after the frame's start.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
-func (e *Engine) softRecordConfig(s *softStream, words uint32, log uint8, pattern bool) sramcapture.Config {
+func (s *softStream) valuePattern(at int) []PatternElem {
+	if at < 0 {
+		return []PatternElem{{Kind: patternData, Value: s.value, Mask: s.mask}}
+	}
+	pat := []PatternElem{{Kind: patternStart}}
+	for i := 0; i < at; i++ {
+		pat = append(pat, PatternElem{Kind: patternData})
+	}
+	pat = append(pat, PatternElem{Kind: patternData, Value: s.value, Mask: s.mask})
+	// The unit at that place may be narrower than the transcript's (an IR
+	// address of 5 bits): the mask its width takes, the widest that plans.
+	for w := bitsLen(s.mask); w > 0 && s.value>>w == 0; w-- {
+		pat[len(pat)-1].Mask = 1<<w - 1
+		if s.symbolPlans(pat) {
+			break
+		}
+	}
+	return pat
+}
+
+// bitsLen is the bits of a mask of low ones.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func bitsLen(mask int) int {
+	n := 0
+	for ; mask > 0; mask >>= 1 {
+		n++
+	}
+	return n
+}
+
+// symbolPlans reports a pattern the symbol trigger takes for the stream's
+// bus.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func (s *softStream) symbolPlans(pat []PatternElem) bool {
+	p := s.p
+	p.Bytes, p.Pattern = nil, pat
+	return planHardwareSymbol(p).Enabled
+}
+
+// softRecordConfig is a record of words at decimation log on the symbol
+// trigger, armed on pattern (nil: a frame start), as a hardware stream's
+// record is.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func (e *Engine) softRecordConfig(s *softStream, words uint32, log uint8, pattern []PatternElem) sramcapture.Config {
 	c := sramcapture.Config{Source: sramcapture.ADC, DecimationLog2: log, PreWords: words / 2, PostWords: words - words/2, Normal: true}
 	p := s.p
-	p.Bytes, p.Pattern = nil, nil
-	if pattern {
-		p.Pattern = []PatternElem{{Kind: patternData, Value: s.value, Mask: s.mask}}
-	}
+	p.Bytes, p.Pattern = nil, pattern
 	e.planSerial(&c, p, false)
 	e.planHysteresis(&c, log != 0)
 	return c
@@ -587,7 +658,11 @@ func (e *Engine) softArmRecord(s *softStream) {
 		}
 	}
 	words := uint32(sramcapture.SamplesPerChannel / 2)
-	c := e.softRecordConfig(s, words, 0, true)
+	pat := s.valuePattern(-1)
+	if !s.symbolPlans(pat) {
+		pat = s.valuePattern(s.stopUnit) // the value where the transcript read it
+	}
+	c := e.softRecordConfig(s, words, 0, pat)
 	if !c.Symbol.Enabled {
 		s.err = fmt.Errorf("the symbol trigger cannot match %X: no record", s.value)
 		return
@@ -639,7 +714,17 @@ func (e *Engine) softCapture(s *softStream) {
 		if log == 0 {
 			words *= 4 // full rate: a record holds a few of the fast frames
 		}
-		c := e.softRecordConfig(s, words, log, s.trig == StreamOnValue)
+		// A frame is handed out once Close follows it: a record holds four.
+		wordS := float64(uint64(1)<<log) * 2e-9
+		if log == 0 {
+			wordS = 4e-9
+		}
+		words = uint32(min(float64(sramcapture.Words), max(float64(words), math.Ceil(4*s.quiet/wordS))))
+		var pat []PatternElem
+		if s.trig == StreamOnValue {
+			pat = s.valuePattern(-1)
+		}
+		c := e.softRecordConfig(s, words, log, pat)
 		s.symCount = e.symbolCount(c)
 		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 		err := e.sram.Arm(ctx, c)

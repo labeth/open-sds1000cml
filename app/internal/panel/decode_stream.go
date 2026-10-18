@@ -188,9 +188,11 @@ func streamModeText(s *sv) string {
 	return "gap-free, the FPGA's decoded events"
 }
 
-// streamValueMax is the widest unit a stream stops on: an ARINC 429 word's
-// 19-bit data field (a MIL-1553 word is 16 bits, the other units 8).
-const streamValueMax = 0x7FFFF
+// streamValueMax is the widest unit a stream stops on: an S/PDIF sample's 24
+// bits (an ARINC 429 data field is 19, a MIL-1553, MDIO or Wiegand unit 16,
+// the others 8; an SWD data word stops on its low 24). Wider, the sheet's
+// range check (a relative tolerance of 1e-9) would let -1 in.
+const streamValueMax = 0xFFFFFF
 
 // levelsWait bounds a stream's wait for the ARINC 429 levels.
 const levelsWait = 5 * time.Second

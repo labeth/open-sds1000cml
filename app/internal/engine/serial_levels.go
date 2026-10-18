@@ -488,7 +488,10 @@ func (e *Engine) serialMatchStart(f *Frame, hw float64) float64 {
 	}
 	at := int(hw)
 	lo, hi := 0, f.Valid
-	if unit := serialUnitSamples(p, f.SampleS, math.Float64frombits(e.serLv.spiHz.Load())); unit > 0 {
+	// A unit is at most the record: a slow bus's unit on a full-rate record
+	// (an HDMI-CEC block of 24 ms is 12 M samples at 2 ns) times the frame's
+	// units overflows a 32-bit int.
+	if unit := min(serialUnitSamples(p, f.SampleS, math.Float64frombits(e.serLv.spiHz.Load())), f.Valid); unit > 0 {
 		n := max(1, len(patternOf(p)))
 		lo = max(0, at-(n+2)*unit)
 		hi = min(f.Valid, at+2*unit)
@@ -496,7 +499,7 @@ func (e *Engine) serialMatchStart(f *Frame, hw float64) float64 {
 	if pat := patternOf(p); len(pat) == 2 && pat[0].Kind == patternStart && pat[1].Kind == patternData && pat[1].Mask == 0 {
 		// the whole frame around it: a decoder drops a frame cut short (a CAN
 		// frame read to its first data byte fails its CRC)
-		if unit := serialUnitSamples(p, f.SampleS, math.Float64frombits(e.serLv.spiHz.Load())); unit > 0 {
+		if unit := min(serialUnitSamples(p, f.SampleS, math.Float64frombits(e.serLv.spiHz.Load())), f.Valid); unit > 0 {
 			lo, hi = max(0, at-frameUnitsBefore*unit), min(f.Valid, at+frameUnitsAfter*unit)
 		}
 		return frameUnitStart(a[lo:hi], b[lo:hi], f.SampleS, p, at-lo, lo)
@@ -538,7 +541,7 @@ func (e *Engine) matchLeadS(sampleS float64) float64 {
 	if len(pat) == 2 && pat[0].Kind == patternStart && pat[1].Kind == patternData && pat[1].Mask == 0 {
 		units = frameStartLeadUnits
 	}
-	return float64(units*serialUnitSamples(p, sampleS, math.Float64frombits(e.serLv.spiHz.Load()))) * sampleS
+	return float64(units) * float64(serialUnitSamples(p, sampleS, math.Float64frombits(e.serLv.spiHz.Load()))) * sampleS
 }
 
 // frameUnitsBefore and frameUnitsAfter bound the record a frame-start match

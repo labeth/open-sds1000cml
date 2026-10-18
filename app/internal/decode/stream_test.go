@@ -215,14 +215,20 @@ var captureCases = []streamCase{
 // frames inside the records come out.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
 func TestStreamRecordCaptures(t *testing.T) {
-	for _, c := range captureCases {
+	cases := captureCases
+	for _, c := range streamCases {
+		if feature, _, _, _ := StreamTiming(strings.TrimSuffix(c.name, "-carrier"), c.baud); !gapFree(feature) {
+			cases = append(cases, c) // too fast for the gap-free stream
+		}
+	}
+	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			rng := rand.New(rand.NewSource(7))
 			feature, longest, quiet, ok := StreamTiming(c.name, c.baud)
 			if !ok {
 				t.Fatal("no timing")
 			}
-			if _, ok := StreamBucketLog(feature); ok {
+			if gapFree(feature) {
 				t.Fatalf("%s fits the gap-free stream", c.name)
 			}
 			pitch := feature / 8
@@ -282,6 +288,13 @@ func TestStreamRecordCaptures(t *testing.T) {
 			t.Logf("%d of the %d frames inside the records", got, inside)
 		})
 	}
+}
+
+// gapFree reports a feature the gap-free stream resolves.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func gapFree(feature float64) bool {
+	_, ok := StreamBucketLog(feature)
+	return ok
 }
 
 // peakStream reduces fine samples (m per bucket) to the gap-free stream's
@@ -347,7 +360,7 @@ func TestStreamDecoderGapFree(t *testing.T) {
 			}
 			log, ok := StreamBucketLog(feature)
 			if !ok {
-				t.Fatalf("%s: feature %g s is too short for the gap-free stream", name, feature)
+				return // streamed as records: TestStreamRecordCaptures
 			}
 			bucket := float64(uint64(1)<<log) * 2e-9
 			const m = 8
