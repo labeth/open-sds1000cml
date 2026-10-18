@@ -26,7 +26,15 @@ type flash104 map[string]struct {
 // TRLC-LINKS: REQ-SDS-214
 func loadFlash104(t *testing.T) flash104 {
 	t.Helper()
-	f, err := os.Open("testdata/spi_flash104_search.json.gz")
+	return loadSearchRecords(t, "testdata/spi_flash104_search.json.gz")
+}
+
+// loadSearchRecords reads a bench bus's records as a search reads them
+// (keyed by how and at what timebase).
+// TRLC-LINKS: REQ-SDS-214
+func loadSearchRecords(t *testing.T, path string) flash104 {
+	t.Helper()
+	f, err := os.Open(path)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -322,5 +330,48 @@ func TestAShortRunFindNeedsTheEnvelope(t *testing.T) {
 	bench := look{res: i2c, sampleS: 256e-9, found: true, runs: [2]int{14, 14}}
 	if !c.weighEnvelope(&bench, all) {
 		t.Error("a bench I2C did not stand")
+	}
+}
+
+// The bench's SWD bus (clock C1, about 1 MHz, three requests every 170 us),
+// busy over most of the envelope like the flash: its 100 us dense record
+// reads as "SPI, 14 bytes", its frames whole only on the window's 500 us
+// record. A few SPI bytes on the dense record do not end the search: the
+// window's record names the SWD bus.
+// TRLC-LINKS: REQ-SDS-214, REQ-SDS-223
+func TestBusSearchLooksPastAFewDenseSPIBytes(t *testing.T) {
+	fx := loadFlash104(t)
+	swd := loadSearchRecords(t, "testdata/swd_search.json.gz")
+	if res := framecalc.Detect(swd.frame("full10us", 10e-6), "hex"); res.Proto != "spi" || !fewDenseSPI(res) {
+		t.Fatalf("the dense record reads as %q, %d bytes: it no longer shows the misreading", res.Proto, len(res.Bytes))
+	}
+	quiet := make([]uint8, 4000)
+	for i := range quiet {
+		quiet[i] = 128
+	}
+	_, base, fe := newC(t)
+	eng := &searchLeaseEng{fakeEng: base}
+	ctl := New(eng, fe, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
+	ctl.decode(idle(), true)
+	ctl.detectSync = true
+	ctl.SetFrameSource(func(fn func(*engine.Frame)) {
+		tdiv := eng.Snapshot().TdivS
+		switch {
+		case eng.raw.Load() && tdiv < 20e-6:
+			fn(swd.frame("full10us", tdiv))
+		case eng.raw.Load():
+			fn(swd.frame("full50us", tdiv))
+		case eng.sampled.Load():
+			fn(&engine.Frame{C1: quiet, C2: quiet, Valid: len(quiet), WinCols: len(quiet), SampleS: 10 * tdiv / float64(len(quiet)), TdivS: tdiv})
+		default: // busy over most of the envelope, as the flash is
+			fn(fx.frame("env100us", tdiv))
+		}
+	})
+	ctl.runDetect()
+	ctl.mu.Lock()
+	proto, note := ctl.decProto, ctl.ui.notice
+	ctl.mu.Unlock()
+	if proto != framecalc.ProtoSWD {
+		t.Fatalf("found %s (notice %q), want SWD", protoName(proto), note)
 	}
 }

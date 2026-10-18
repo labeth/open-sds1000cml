@@ -1057,10 +1057,14 @@ func (c *Controller) findAtFullRate(full, t float64, first *look, auto AutoSourc
 	if !dec.envSeen {
 		dec.envRun, dec.envBusy, dec.envSeen = c.envelopeRuns(true, at(t), c.now().Add(envWait))
 	}
+	var dense *look // a few SPI bytes on the dense record: kept, should the window's show nothing
+	denseAt := 0.0
 	if d := c.denseTdiv(); d > 0 && denseFast(dec) {
 		c.setTdivNearest(d)
-		if l := c.detectWith(false, true, at(d), auto, detectWait); l.found {
+		if l := c.detectWith(false, true, at(d), auto, detectWait); l.found && !fewDenseSPI(l.res) {
 			return keep(l.res, l.sampleS, d)
+		} else if l.found {
+			dense, denseAt = &l, d
 		}
 		c.setTdivNearest(t)
 	}
@@ -1073,6 +1077,10 @@ func (c *Controller) findAtFullRate(full, t float64, first *look, auto AutoSourc
 			return keep(l.res, l.sampleS, w)
 		}
 		c.setTdivNearest(t)
+	}
+	if dense != nil {
+		c.setTdivNearest(denseAt)
+		return keep(dense.res, dense.sampleS, denseAt)
 	}
 	// a sparse bus: no frame on the short record
 	l := c.detectWith(false, true, at(t), auto, detectWait)
@@ -1132,6 +1140,17 @@ func denseFast(l look) bool {
 		}
 	}
 	return false
+}
+
+// denseSPIBytes is the SPI bytes a find on the dense record must hold to end
+// the search there: an SWD bus's 100 us read as "SPI, 14 bytes" (its frames
+// are whole on the window's record), the 104 MHz flash's as hundreds.
+const denseSPIBytes = 32
+
+// fewDenseSPI reports an SPI find of under denseSPIBytes bytes.
+// TRLC-LINKS: REQ-SDS-214
+func fewDenseSPI(res decode.Result) bool {
+	return res.Proto == "spi" && len(res.Bytes) < denseSPIBytes
 }
 
 // denseTdiv is the timebase of the record a dense fast bus is first looked
