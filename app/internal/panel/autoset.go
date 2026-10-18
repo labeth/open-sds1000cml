@@ -215,6 +215,7 @@ type autoGoal struct {
 	spectrum bool    // timed on the FFT source, the marker on its fundamental
 	centre   bool    // a rising edge at mid-screen
 	cursors  bool    // the cursors on one period and the top and base (measureCursors)
+	searched bool    // the caller sets the timebase after (AUTO in BUS's search): no display timebase of its own
 }
 
 // sparseLooks is the captures more the sweep's slowest step reads while it
@@ -236,7 +237,7 @@ var (
 	goalScope    = autoGoal{cycles: 2, fill: 7.2, centre: true}
 	goalMeasure  = autoGoal{tag: "MEASURE", cycles: 10, atLeast: true, fill: 7.5, centre: true, cursors: true}
 	goalSpectrum = autoGoal{tag: "SPECTRUM", cycles: 50, atLeast: true, fill: 7.5, maxTdiv: 2e-3, spectrum: true, centre: true}
-	goalBus      = autoGoal{cycles: dispCycles, fill: 6, fitTdiv: 1e-3}
+	goalBus      = autoGoal{cycles: dispCycles, fill: 6, fitTdiv: 1e-3, searched: true}
 )
 
 // measureCursors sets MEASURE's cursors up on the signal AUTO framed, so a
@@ -752,8 +753,9 @@ func (c *Controller) autosetSweep(stop chan struct{}, g autoGoal) (autoResult, b
 
 	// 5. Finally, set the DISPLAY timebase to g's cycles of the (accurately
 	//    measured) signal. The trigger level is in volts, so this timebase
-	//    change does not disturb it.
-	if f := m[src].Freq; f > 0 {
+	//    change does not disturb it. A searched goal's caller sets the
+	//    timebase next: the clipping check below reads the fit's.
+	if f := m[src].Freq; f > 0 && !g.searched {
 		ss := c.setTdivNearest(c.displayTdiv(g, f))
 		res.tdiv = c.eng.Snapshot().TdivSet()
 		if !c.waitBandFrame(stop, ss) {

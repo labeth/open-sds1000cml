@@ -440,7 +440,7 @@ func (c *Controller) edgeOnGeneralImage() {
 	if st := c.eng.Snapshot(); st.SerialMode != 0 || st.TrigType != 0 {
 		c.setTrigTypeIndex(st, 0)
 	}
-	for end, settled := c.now().Add(imageWait), 0; settled < 5 && c.now().Before(end) && !c.detectSync; time.Sleep(100 * time.Millisecond) {
+	for end, settled := c.now().Add(imageWait), 0; settled < 2 && c.now().Before(end) && !c.detectSync; time.Sleep(100 * time.Millisecond) {
 		st := c.eng.Snapshot()
 		general := st.Image == "" || st.Image == "general" || (st.Image == "qualify" && c.qualHeld.Load())
 		if general && !strings.HasPrefix(st.Busy, "loading") {
