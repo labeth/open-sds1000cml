@@ -160,14 +160,20 @@ func scorePhys(r Result) float64 {
 		}
 		return float64(frames*100 + n*4)
 	case "morse":
-		// dots and dashes of one and three units, letters of several
+		// dots and dashes of one and three units, letters of several; both
+		// seen, or the unit is not known (a record of dashes alone reads
+		// them as dots of a unit three times too long)
 		long := 0
+		var code string
 		for _, s := range r.Spans {
-			if s.Kind == "data" && len(MorseOf(byte(s.Val))) > 1 {
-				long++
+			if s.Kind == "data" {
+				code += MorseOf(byte(s.Val))
+				if len(MorseOf(byte(s.Val))) > 1 {
+					long++
+				}
 			}
 		}
-		if data < 3 || errs*4 > data || r.Cover < 0.9 || long == 0 {
+		if data < 3 || errs*4 > data || r.Cover < 0.9 || long == 0 || !strings.Contains(code, ".") || !strings.Contains(code, "-") {
 			return -1e9
 		}
 		return float64(15 * min(data, 40))
