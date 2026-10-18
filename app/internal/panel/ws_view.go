@@ -678,7 +678,7 @@ func (c *Controller) streamPane(s *sv) *wsview.BusPane {
 		p.Msg = []wsview.Span{{Text: map[bool]string{true: "NO BUS FOUND", false: "NO BUS DECODED"}[u.busFailed], Col: wsview.Text},
 			{Text: "Push Adjust: detect the bus on CH1/CH2 - the stream then starts on it", Col: wsview.Amber},
 			{Text: "Utility or Menu On/Off: set the protocol, baud and lines by hand on the BUS sheet", Col: wsview.Dim},
-			{Text: "A stream decodes the bus without a gap in hardware into a transcript", Col: wsview.Dim}}
+			{Text: "A stream decodes the bus into a transcript (Stream mode on the BUS sheet says how)", Col: wsview.Dim}}
 		if u.busFailed {
 			p.Msg[3] = wsview.Span{Text: "Check that the bus is connected and its channel is not on GND coupling.", Col: wsview.Dim}
 		}
@@ -712,7 +712,8 @@ func (c *Controller) streamPane(s *sv) *wsview.BusPane {
 		push, again = "stream again", "Run/Stop or push Adjust: stream again"
 	}
 	p.Msg = []wsview.Span{{Text: head, Col: wsview.Text},
-		{Text: fmt.Sprintf("%d units  %s/s  errors %d  lost %d", v.Units, si(math.Round(v.UnitsPerSecond), ""), v.Errors, v.Lost), Col: col}}
+		{Text: fmt.Sprintf("%d units  %s/s  errors %d  lost %d", v.Units, si(math.Round(v.UnitsPerSecond), ""), v.Errors, v.Lost), Col: col},
+		{Text: "Mode: " + streamModeText(s), Col: wsview.Dim}}
 	switch {
 	case v.Err != "":
 		p.Msg = append(p.Msg, wsview.Span{Text: cut(v.Err, 120), Col: wsview.Stop})

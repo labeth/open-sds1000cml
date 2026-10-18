@@ -284,6 +284,7 @@ func (c *Controller) snap() *sv {
 	c.mu.Unlock()
 	if stream != nil && serialProto(s.decProto) && s.decMode == decModeStream {
 		s.streamStopped = !stream.Active()
+		s.streamMode = stream.Snapshot().Mode
 	}
 	return s
 }

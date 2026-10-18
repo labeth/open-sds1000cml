@@ -389,7 +389,7 @@ func (e *Engine) rollStep(r *rollView) {
 	for !e.stopReq.Load() {
 		e.serviceCommands()
 		e.beatN.Add(1)
-		if !e.rollActive() || e.decodedSession != nil || len(e.sramJobs) != 0 {
+		if !e.rollActive() || e.decodedSession != nil || e.soft != nil || len(e.sramJobs) != 0 {
 			aborted = true
 			break
 		}

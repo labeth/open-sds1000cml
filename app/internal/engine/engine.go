@@ -222,6 +222,9 @@ type Stats struct {
 
 	// A web page's decoded capture holds the acquisition (decoded_capture.go).
 	DecodedWeb bool `json:"decoded_web,omitempty"`
+	// DecodedStreamMode says how the decoded stream runs: gap-free from the
+	// FPGA's events or the continuous stream, or captures (soft_stream.go).
+	DecodedStreamMode string `json:"decoded_stream_mode,omitempty"`
 
 	// TdivMaxS is the slowest timebase the loaded image shows whole (0: any):
 	// the packet and line images record raw samples only, 2.1 ms.
@@ -511,8 +514,10 @@ type Engine struct {
 	decodedError              error
 	decodedService            decodedServiceStats
 	decodedDeadline           *bus.DecodedDeadline
-	decodedWeb                bool      // the session is a web page's (BeginDecodedCapture), not the scope's stream
-	decodedContact            time.Time // a client's last call on the session (status, events, record)
+	decodedWeb                bool        // the session is a web page's (BeginDecodedCapture), not the scope's stream
+	decodedContact            time.Time   // a client's last call on the session (status, events, record)
+	soft                      *softStream // a software-decoded stream (soft_stream.go)
+	softEpoch                 uint32
 
 	// Owner-private state (no locking needed).
 	acqShadow, trigShadow uint16 // last ACQ_CTRL / TRIG_LEVEL words written (compare-on-change)

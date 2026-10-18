@@ -599,6 +599,9 @@ func (e *Engine) runSRAM() {
 		if err := e.closeDecodedDeadline(); err != nil {
 			e.logf("decoded shutdown scheduling: %v", err)
 		}
+		if e.soft != nil {
+			e.softStreamStop(e.soft)
+		}
 	}()
 	// A press lights its lamp mid-recall, not after a multi-second deep recall.
 	e.sram.SetSpanHook(func(done, total int) {
@@ -646,13 +649,16 @@ acquisitionLoop:
 		// Only once the capture has ended: the adoption and the end are two
 		// owner calls, and an iteration between them must leave the record.
 		var a *adoptedRecord
-		if e.decodedSession == nil {
+		if e.decodedSession == nil && e.soft == nil {
 			a = e.takeAdopted()
 		}
 		if a != nil {
 			savedM, savedCfg = a.m, a.cfg
 			savedScale = e.liveScale()
 			savedPlan = SRAMPlan{Samples: int(a.m.Length) * 2, SampleS: 2e-9}
+			if a.m.SampleRateHz > 0 && a.m.SamplesPerWord > 0 { // a decimated record (a software stream's capture)
+				savedPlan = SRAMPlan{Log: a.cfg.DecimationLog2, Samples: int(a.m.Length) * int(a.m.SamplesPerWord), SampleS: 1 / a.m.SampleRateHz}
+			}
 			savedPlan = retainedSRAMPlan(savedPlan, e.Snapshot().TdivS)
 			savedNorm, savedForced, savedTP = true, false, trigParams{typ: TrigEdge}
 			retained, recalled, adopting = true, false, true
@@ -662,6 +668,11 @@ acquisitionLoop:
 		// switch drops the record, and the stream started again (RUN/STOP in
 		// BUS Stream) needs that image back (two loads of about four seconds).
 		streamShown = (streamShown || adopting) && retained && !e.running.Load()
+		if e.soft != nil { // a software-decoded stream owns the acquisition (soft_stream.go)
+			retained, recalled = false, false
+			e.softStep()
+			continue
+		}
 		// Image-switching jobs run only here, between acquisitions. The switch
 		// drops the fabric's record metadata, so the retained record is gone.
 		if !adopting && e.decodedSession == nil && e.serviceSRAMJobs() {
@@ -789,7 +800,7 @@ acquisitionLoop:
 			autoWait := 100*time.Millisecond + time.Duration(float64(cfg.PreWords)*float64(2-boolInt(plan.Log != 0))*plan.SampleS*1e9)
 			for !e.stopReq.Load() {
 				e.serviceCommands()
-				if e.decodedSession != nil {
+				if e.decodedSession != nil || e.soft != nil {
 					continue acquisitionLoop
 				}
 				e.beatN.Add(1)

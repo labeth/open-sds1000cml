@@ -275,21 +275,36 @@ func DefaultInterleaveCalibration() (*InterleaveCalibration, error) {
 // holds the samples), and sig its rounding.
 // TRLC-LINKS: REQ-SDS-016, REQ-SDS-010
 func (c *InterleaveCalibration) debiasEnvelope(ch int, sig []uint8, q []uint16, fromQ bool) {
-	lo, hi := c.Offset[ch&1][0], c.Offset[ch&1][0]
-	for _, v := range c.Offset[ch&1] {
-		lo, hi = min(lo, v), max(hi, v)
-	}
-	// Q8.8 integers, not float per sample: this runs on every live envelope.
-	off := [2]int{int(math.Round(lo * 256)), int(math.Round(hi * 256))}
+	off := c.envelopeOffsets(ch)
 	for i := range sig {
 		x := int(sig[i]) << 8
 		if fromQ {
 			x = int(q[i])
 		}
-		if x > 128 && x < 254*256+128 { // rails (within half a code) stay
-			x = min(max(x-off[i&1], 0), 255*256)
-		}
-		q[i] = uint16(x)
+		q[i] = uint16(debiasQ(x, off[i&1]))
 		sig[i] = roundQ8(q[i])
 	}
+}
+
+// envelopeOffsets are the lowest and highest converter offsets of channel ch
+// in Q8.8, which an envelope bucket's minimum and maximum carry
+// (debiasEnvelope). Q8.8 integers, not float per sample: they run on every
+// live envelope and every word of a software-decoded stream.
+// TRLC-LINKS: REQ-SDS-016, REQ-SDS-010
+func (c *InterleaveCalibration) envelopeOffsets(ch int) [2]int {
+	lo, hi := c.Offset[ch&1][0], c.Offset[ch&1][0]
+	for _, v := range c.Offset[ch&1] {
+		lo, hi = min(lo, v), max(hi, v)
+	}
+	return [2]int{int(math.Round(lo * 256)), int(math.Round(hi * 256))}
+}
+
+// debiasQ removes offset off from the Q8.8 extreme x; rails (within half a
+// code) stay.
+// TRLC-LINKS: REQ-SDS-016, REQ-SDS-010
+func debiasQ(x, off int) int {
+	if x > 128 && x < 254*256+128 {
+		x = min(max(x-off, 0), 255*256)
+	}
+	return x
 }

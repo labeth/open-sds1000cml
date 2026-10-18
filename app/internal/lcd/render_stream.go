@@ -23,6 +23,9 @@ func streamStatus(v streamview.View) string {
 	}
 	s := fmt.Sprintf("STREAM %s  %s  %d units  %s/s  err %d  lost %d", v.Label, v.State, v.Units,
 		siScale(v.UnitsPerSecond, []siUnit{{1e6, "M"}, {1e3, "k"}, {1, ""}}), v.Errors, v.Lost)
+	if v.Mode != "" {
+		s += "  " + v.Mode
+	}
 	if v.Err != "" {
 		s += "  " + v.Err
 	}
