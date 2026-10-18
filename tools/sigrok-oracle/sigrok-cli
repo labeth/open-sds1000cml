@@ -1,0 +1,11 @@
+#!/bin/sh
+# ENGMODEL-OWNER-UNIT: FU-TOOLS
+# sigrok-cli stand-in for the decoder oracle tests: runs the libsigrokdecode
+# protocol decoders found in $SRD_DECODERS (a libsigrokdecode source tree's
+# decoders/ directory) on the tests' CSV captures, with the pure-Python
+# sigrokdecode module beside this script. It covers the options the tests
+# use (-i, -I csv, -P, -A, --protocol-decoder-samplenum, -L), so decoders
+# newer than a distribution's sigrok (ir_sirc, sae_j1850_vpw) can be checked.
+: "${SRD_DECODERS:?set SRD_DECODERS to a libsigrokdecode decoders/ directory}"
+export SRD_DECODERS
+exec python3 -I "$(dirname "$0")/srdrun.py" "$@"

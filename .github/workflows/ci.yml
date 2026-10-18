@@ -124,6 +124,23 @@ jobs:
         env:
           CI_REQUIRE_SIGROK: "1"
         run: go test -timeout 10m -run 'TestOracle' -v ./internal/decode/
+      # Ubuntu's sigrok has no ir_sirc or sae_j1850_vpw decoder: those two run
+      # against libsigrokdecode's own decoders at a pinned commit, through the
+      # sigrok-cli stand-in in tools/sigrok-oracle (no sigrok code is vendored).
+      - name: Fetch libsigrokdecode's decoders (pinned)
+        run: |
+          git init -q "$RUNNER_TEMP/lsd"
+          git -C "$RUNNER_TEMP/lsd" fetch -q --depth 1 https://github.com/sigrokproject/libsigrokdecode.git 71f451443029322d57376214c330b518efd84f88
+          git -C "$RUNNER_TEMP/lsd" checkout -q FETCH_HEAD
+      - name: sigrok-oracle cross-check of the decoders newer than Ubuntu's sigrok
+        working-directory: app
+        env:
+          CI_REQUIRE_SIGROK: "1"
+        run: |
+          set -o pipefail
+          export SRD_DECODERS="$RUNNER_TEMP/lsd/decoders"
+          PATH="$GITHUB_WORKSPACE/tools/sigrok-oracle:$PATH" go test -count=1 -timeout 10m -run 'TestOracleIRSIRC|TestOracleJ1850' -v ./internal/decode/ | tee "$RUNNER_TEMP/new.log"
+          ! grep -q -- '--- SKIP' "$RUNNER_TEMP/new.log"
 
   # Self-checking RTL testbenches (fpga/sim.sh); the fixture-driven ones run
   # inside the app's Go tests.
