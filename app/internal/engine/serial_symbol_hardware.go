@@ -13,13 +13,14 @@ import (
 // MIDI is plain UART characters and runs on the general image's receiver.
 // TRLC-LINKS: REQ-SDS-013
 func symbolProtocol(proto int) bool {
-	return proto >= serLIN && proto <= serWiegand && proto != serMIDI
+	return proto >= serLIN && proto < SerialProtocols && proto != serMIDI
 }
 
-// symbolTwoLines reports the clocked two-wire protocols (line B in use).
+// symbolTwoLines reports the protocols of two lines (line B in use): the
+// clocked two-wire buses, the encoder's and the stepper's pairs.
 // TRLC-LINKS: REQ-SDS-013
 func symbolTwoLines(proto int) bool {
-	return proto == serPS2 || proto == serSWD || proto == serMDIO || proto == serWiegand
+	return clockedTwoLine(proto)
 }
 
 // symBits is a frame's line bits in arrival order, each either required to
@@ -179,15 +180,25 @@ type symUnit struct{ value, mask int }
 // second start bit carries a command bit), each unit's bits, the width of
 // the unit (for its value) and the bits a unit takes at any unit boundary
 // (period; 0 where units are not all alike). sliding: the window carries the
-// frame start itself (no leader).
+// frame start itself (no leader). noFrame: every unit opens its own frame
+// (a PWM period), so a start asks nothing; oneFrame: a request's units lie
+// in one frame (each frame opens after an idle), so it is anchored at the
+// start. custom builds the pattern itself (units at fixed places in a
+// frame, letters of variable length): the bits, and the period of an
+// unanchored match (0: anchored). dropFreeTail leaves the trailing units
+// that ask nothing out: a start fires at the frame's opening.
 type symSpec struct {
-	cfg     sramcapture.SymbolTriggerConfig
-	tab     *symTab
-	start   func(b *symBits, units []symUnit) bool
-	unit    func(b *symBits, i int, u symUnit) bool
-	width   func(i int) int
-	period  int
-	sliding bool
+	cfg          sramcapture.SymbolTriggerConfig
+	tab          *symTab
+	start        func(b *symBits, units []symUnit) bool
+	unit         func(b *symBits, i int, u symUnit) bool
+	width        func(i int) int
+	period       int
+	sliding      bool
+	noFrame      bool
+	oneFrame     bool
+	dropFreeTail bool
+	custom       func(units []symUnit, anchored bool) (symBits, int, bool)
 }
 
 const (
@@ -558,7 +569,9 @@ func symbolSpec(p SerialParams) (symSpec, bool) {
 			return true
 		}
 	default:
-		return s, false
+		if !physSymbolSpec(p, &s) {
+			return s, false
+		}
 	}
 	if s.cfg.Mode == sramcapture.SymbolLevel || s.cfg.Mode == sramcapture.SymbolEdge {
 		if s.cfg.UnitQ8 < 5*256 || s.cfg.UnitQ8 >= 1<<28 {
@@ -593,6 +606,12 @@ func planHardwareSymbol(p SerialParams) sramcapture.SymbolTriggerConfig {
 		elems = []PatternElem{{Kind: patternStart}}
 	}
 	anchored := elems[0].Kind == patternStart
+	switch {
+	case s.noFrame:
+		anchored = false
+	case s.oneFrame:
+		anchored = true
+	}
 	var units []symUnit
 	for i, e := range elems {
 		switch {
@@ -610,6 +629,34 @@ func planHardwareSymbol(p SerialParams) sramcapture.SymbolTriggerConfig {
 		default:
 			return off
 		}
+	}
+	for s.dropFreeTail && len(units) > 0 && units[len(units)-1].mask == 0 {
+		units = units[:len(units)-1]
+	}
+	if s.custom != nil {
+		b, period, ok := s.custom(units, anchored)
+		n := len(b.val)
+		if !ok || n > 1023 || (period != 0 && (n == 0 || n > 64)) {
+			return off
+		}
+		for i := 0; i < n-64; i++ {
+			if b.care[i] {
+				return off
+			}
+		}
+		c := s.cfg
+		c.K, c.Period = uint16(n), uint8(period)
+		for i := max(0, n-64); i < n; i++ {
+			c.Pattern, c.Mask = c.Pattern<<1, c.Mask<<1
+			if b.val[i] {
+				c.Pattern |= 1
+			}
+			if b.care[i] {
+				c.Mask |= 1
+			}
+		}
+		c.Table = s.tab.t
+		return c
 	}
 	var b symBits
 	if anchored && !s.start(&b, units) {

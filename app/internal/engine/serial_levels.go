@@ -358,8 +358,8 @@ func (e *Engine) serialPlanParams(p SerialParams) (SerialParams, string) {
 		p.Bytes = joinBytes(p.Bytes, 0x7ffff)
 	case p.Proto == serARINC && len(p.Bytes) > 3 && len(p.Bytes)%3 == 0:
 		p.Bytes = joinGroups(p.Bytes, 3, 0x7ffff)
-	case (p.Proto == serMDIO || p.Proto == serWiegand) && len(p.Bytes) >= 2 && len(p.Bytes)%2 == 0:
-		p.Bytes = joinGroups(p.Bytes, 2, 0xffff) // MDIO's header and data, Wiegand's fields: 16 bits each
+	case (p.Proto == serMDIO || p.Proto == serWiegand || p.Proto == serIRMP) && len(p.Bytes) >= 2 && len(p.Bytes)%2 == 0:
+		p.Bytes = joinGroups(p.Bytes, 2, 0xffff) // MDIO's header and data, Wiegand's fields, IR addresses and commands: 16 bits each
 	case p.Proto == serSPDIF && len(p.Bytes) >= 3 && len(p.Bytes)%3 == 0:
 		p.Bytes = joinGroups(p.Bytes, 3, 0xffffff) // an S/PDIF sample: 24 bits
 	case p.Proto == serMIL1553 && len(p.Pattern) >= 2:
@@ -670,6 +670,30 @@ func serialUnitSamples(p SerialParams, sampleS, spiHz float64) int {
 		bits = 46 // request, turnaround, ACK and a data word
 	case serWiegand:
 		bits = 16
+	case serQuad, serStepper, serPWM:
+		bits = 1 // a step or a period (Baud their rate)
+	case serRCEncode, serMiller, serEM4100, serSDQ, serDSI, serSDCard, serMaple:
+		bits = 8 // a trit's four pulses of two shorts, or a byte
+	case serOOK:
+		bits = 4
+	case serMorse:
+		bits = 20 // a letter's units
+	case serDCF77:
+		bits = 8 // a field's seconds
+	case serEM4305:
+		bits = 9 * 32 // a byte and its parity, in field clocks (Baud the field's)
+	case serT55xx:
+		bits = 8 * 56
+	case serSWIM, serQi:
+		bits = 11
+	case serPJDL, serPDI:
+		bits = 12
+	case serCJTAG:
+		bits = 3 * 32 // a 32-bit scan, three TCKC cycles a TCK
+	case serCaliper:
+		bits = 24
+	case serIRMP:
+		bits = 16 * 3 // a 16-bit field of pulses and pauses (Baud: 1/pulse)
 	case serSENT:
 		if p.TickNs > 0 {
 			return int(math.Ceil(27 * p.TickNs * 1e-9 / sampleS))
@@ -725,7 +749,7 @@ func (e *Engine) serialNoHardware() string {
 	have := map[int]bool{serUART: e.hardwareUART, serI2C: e.hardwareI2C, serSPI: e.hardwareSPI, serManchester: e.hardwareManchester,
 		serSENT: e.hardwareSENT, serCAN: packet(serCAN), serMIL1553: e.hardwareMIL1553, serARINC: packet(serARINC),
 		serUSB: e.hardwareUSBLS, serFlexRay: packet(serFlexRay), serMIDI: e.hardwareUART}
-	for proto := serLIN; proto <= serWiegand; proto++ {
+	for proto := serLIN; proto < SerialProtocols; proto++ {
 		if symbolProtocol(proto) {
 			have[proto] = e.hardwareSymbol
 		}

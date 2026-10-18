@@ -56,9 +56,31 @@ const (
 	serSWD        = 28
 	serMDIO       = 29
 	serWiegand    = 30
+	serQuad       = 31 // a quadrature encoder: A (ChA) and B
+	serStepper    = 32 // STEP (ChA) and DIR
+	serPWM        = 33
+	serRCEncode   = 34 // PT2262 trits (Bits 12) or EV1527 bits (Bits 24)
+	serOOK        = 35 // Oregon Scientific bursts (Bits 3 or 21: the protocol)
+	serMiller     = 36
+	serMorse      = 37
+	serDCF77      = 38
+	serEM4100     = 39
+	serEM4305     = 40 // a reader's commands (Inverted: read off its carrier)
+	serT55xx      = 41 // likewise; Bits 70 or 38, the write's length
+	serSWIM       = 42
+	serSDQ        = 43
+	serPJDL       = 44 // PJON over PJDL (Bits: the mode, 1..4)
+	serDSI        = 45
+	serQi         = 46
+	serSDCard     = 47 // CLK (ChA) and CMD
+	serPDI        = 48 // PDI_CLK (ChA) and PDI_DATA
+	serCJTAG      = 49 // TCKC (ChA) and TMSC
+	serMaple      = 50 // SDCKA (ChA) and SDCKB
+	serCaliper    = 51 // CLK (ChA) and DATA
+	serIRMP       = 52 // the IR multi protocols (Bits: IRMP's number)
 
 	// SerialProtocols bounds the protocol ids (1..SerialProtocols-1).
-	SerialProtocols = 31
+	SerialProtocols = 53
 )
 
 // SerialParams is the self-contained serial-trigger config: the protocol +
@@ -81,7 +103,7 @@ type SerialParams struct {
 	// Decode settings — mirrored from the operator's live decode config so the
 	// trigger decodes IDENTICALLY to the decode strip (the UI does not re-enter
 	// these; it sends whatever decode is set to).
-	Proto    int     `json:"proto"`  // 0 off, 1 uart, 2 i2c, 3 spi ... 30 Wiegand (the ser* ids)
+	Proto    int     `json:"proto"`  // 0 off, 1 uart, 2 i2c, 3 spi ... 52 IR multi (the ser* ids)
 	ChA      int     `json:"chA"`    // primary channel role: 0=C1 1=C2 (uart line / i2c SCL / spi CLK)
 	ChB      int     `json:"chB"`    // secondary channel role (i2c SDA / spi DATA)
 	Baud     int     `json:"baud"`   // uart: 0 = auto-infer

@@ -153,7 +153,7 @@ func symParams(proto, baud int) SerialParams {
 // TRLC-LINKS: REQ-SDS-013
 func symbolCases() []symCase {
 	us, ms := 1e-6, 1e-3
-	return []symCase{
+	return append([]symCase{
 		{name: "LIN", p: symParams(serLIN, 19200), wave: func() *symWave {
 			T := 1 / 19200.0
 			w := &symWave{}
@@ -609,7 +609,7 @@ func symbolCases() []symCase {
 			}
 			return w
 		}, reqs: []symReq{{[]PatternElem{symStart}, 3}, {[]PatternElem{symStart, symAny}, 3}, {[]PatternElem{symStart, symData(0x2a, 0xff), symData(0x1234, 0xffff)}, 2}}},
-	}
+	}, physSymbolCases()...)
 }
 
 // Every symbol-trigger protocol on synthetic buses through the planner and

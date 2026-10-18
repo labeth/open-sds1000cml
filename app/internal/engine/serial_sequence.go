@@ -84,8 +84,14 @@ func unitMask(p SerialParams) int {
 		return 0x7ffff
 	case serSENT:
 		return 0xf
-	case serMDIO, serWiegand:
+	case serMDIO, serWiegand, serIRMP:
 		return 0xffff
+	case serQuad, serStepper:
+		return 1 // a step: its direction
+	case serOOK:
+		return 0xf // a nibble
+	case serCJTAG:
+		return 0x7fffffff // a scan's low 31 bits
 	case serSPDIF:
 		return 0xffffff
 	case serSWD:

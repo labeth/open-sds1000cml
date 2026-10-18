@@ -159,6 +159,72 @@ func init() {
 		{ID: serWiegand, Name: "Wiegand", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
 			return decode.DecodeWiegand(a, b, sampleS, clockedCfg(p))
 		}, Match: byteMatch},
+		{ID: serQuad, Name: "Quadrature", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
+			return decode.DecodeQuadrature(a, b, sampleS, clockedCfg(p))
+		}, Match: byteMatch},
+		{ID: serStepper, Name: "Stepper", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
+			return decode.DecodeStepper(a, b, sampleS, clockedCfg(p))
+		}, Match: byteMatch},
+		{ID: serPWM, Name: "PWM", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
+			return decode.DecodePWM(a, sampleS, lineCfg(p, false))
+		}, Match: byteMatch},
+		{ID: serRCEncode, Name: "RC encode", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
+			return decode.DecodeRCEncode(a, sampleS, lineCfg(p, false))
+		}, Match: byteMatch},
+		{ID: serOOK, Name: "OOK", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
+			return decode.DecodeOOK(a, sampleS, lineCfg(p, false))
+		}, Match: byteMatch},
+		{ID: serMiller, Name: "Miller", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
+			return decode.DecodeMiller(a, sampleS, lineCfg(p, true))
+		}, Match: byteMatch},
+		{ID: serMorse, Name: "Morse", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
+			return decode.DecodeMorse(a, sampleS, lineCfg(p, false))
+		}, Match: byteMatch},
+		{ID: serDCF77, Name: "DCF77", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
+			return decode.DecodeDCF77(a, sampleS, lineCfg(p, true))
+		}, Match: byteMatch},
+		{ID: serEM4100, Name: "EM4100", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
+			return decode.DecodeEM4100(a, sampleS, lineCfg(p, true))
+		}, Match: byteMatch},
+		{ID: serEM4305, Name: "EM4305", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
+			return decode.DecodeEM4305(a, sampleS, lineCfg(p, true))
+		}, Match: byteMatch},
+		{ID: serT55xx, Name: "T55xx", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
+			return decode.DecodeT55xx(a, sampleS, lineCfg(p, true))
+		}, Match: byteMatch},
+		{ID: serSWIM, Name: "SWIM", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
+			return decode.DecodeSWIM(a, sampleS, lineCfg(p, false))
+		}, Match: byteMatch},
+		{ID: serSDQ, Name: "SDQ", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
+			return decode.DecodeSDQ(a, sampleS, lineCfg(p, true))
+		}, Match: byteMatch},
+		{ID: serPJDL, Name: "PJON", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
+			return decode.DecodePJDL(a, sampleS, lineCfg(p, false))
+		}, Match: byteMatch},
+		{ID: serDSI, Name: "DSI", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
+			return decode.DecodeDSI(a, sampleS, lineCfg(p, false))
+		}, Match: byteMatch},
+		{ID: serQi, Name: "Qi", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
+			return decode.DecodeQi(a, sampleS, lineCfg(p, false))
+		}, Match: byteMatch},
+		{ID: serSDCard, Name: "SD card", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
+			return decode.DecodeSDCard(a, b, sampleS, clockedCfg(p))
+		}, Match: byteMatch},
+		{ID: serPDI, Name: "PDI", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
+			return decode.DecodePDI(a, b, sampleS, clockedCfg(p))
+		}, Match: byteMatch},
+		{ID: serCJTAG, Name: "cJTAG", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
+			return decode.DecodeCJTAG(a, b, sampleS, clockedCfg(p))
+		}, Match: byteMatch},
+		{ID: serMaple, Name: "Maple", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
+			return decode.DecodeMaple(a, b, sampleS, clockedCfg(p))
+		}, Match: byteMatch},
+		{ID: serCaliper, Name: "Caliper", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
+			return decode.DecodeCaliper(a, b, sampleS, clockedCfg(p))
+		}, Match: byteMatch},
+		{ID: serIRMP, Name: "IR multi", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
+			return decode.DecodeIRMP(a, sampleS, lineCfg(p, false))
+		}, Match: byteMatch},
 	} {
 		switch {
 		case d.ID == serSENT, d.ID == serCAN, d.ID == serMIL1553, d.ID == serARINC, d.ID == serUSB, d.ID == serFlexRay,
@@ -179,9 +245,28 @@ func clockedCfg(p SerialParams) decode.ClockedCfg {
 	return decode.ClockedCfg{Threshold: p.Threshold, HaveThr: p.HaveThr, ThresholdB: p.ThresholdB, HaveThrB: p.HaveThrB}
 }
 
+// lineCfg is a request's settings as the single-line decoders beyond the
+// first thirty take them: Bits their sub-protocol, Baud the rate they would
+// otherwise measure where rate says the decoder takes one (DCF77's scale,
+// a Miller, EM4100 or SDQ bit rate, a reader's field frequency).
+// TRLC-LINKS: REQ-SDS-013
+func lineCfg(p SerialParams, rate bool) decode.LineCfg {
+	c := decode.LineCfg{Threshold: p.Threshold, HaveThr: p.HaveThr, Variant: p.Bits}
+	if rate {
+		c.Baud = p.Baud
+	}
+	return c
+}
+
 // clockedTwoLine reports the clocked two-line protocols beyond SPI and
-// I2C: PS/2, SWD and MDIO (clock and data), Wiegand (D0 and D1).
+// I2C: PS/2, SWD and MDIO (clock and data), Wiegand (D0 and D1), a
+// quadrature encoder (A and B), a stepper (STEP and DIR), an SD card's CLK
+// and CMD, PDI, cJTAG, Maple (SDCKA and SDCKB) and calipers.
 // TRLC-LINKS: REQ-SDS-013
 func clockedTwoLine(proto int) bool {
-	return proto == serPS2 || proto == serSWD || proto == serMDIO || proto == serWiegand
+	switch proto {
+	case serPS2, serSWD, serMDIO, serWiegand, serQuad, serStepper, serSDCard, serPDI, serCJTAG, serMaple, serCaliper:
+		return true
+	}
+	return false
 }
