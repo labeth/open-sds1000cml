@@ -2,8 +2,11 @@
 package decode
 
 import (
+	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -35,4 +38,30 @@ func sigrokLogicDMX(t *testing.T) bool {
 		return true // an older sigrok-cli: assume the 0.5 decoder
 	}
 	return !strings.Contains(string(out), "uart")
+}
+
+// skipSigrokDefect skips a cross-check when the installed sigrok's decoder
+// cannot run it, told by symptom in its output on a short idle capture of
+// the channels names: libsigrokdecode 0.5.3's swim decoder reads its sample
+// rate before sigrok-cli has set it, and its sdcard_sd has no "commands"
+// annotation. CI runs those cross-checks again against libsigrokdecode's own
+// decoders, where a skip fails.
+// TRLC-LINKS: REQ-SDS-018
+func skipSigrokDefect(t *testing.T, names []string, pdSpec, annSpec, symptom string) {
+	t.Helper()
+	needSigrok(t)
+	var sb strings.Builder
+	sb.WriteString(strings.Join(names, ",") + "\n")
+	for i := 0; i < 64; i++ {
+		sb.WriteString(strings.Repeat("1,", len(names)-1) + "1\n")
+	}
+	csv := filepath.Join(t.TempDir(), "idle.csv")
+	if err := os.WriteFile(csv, []byte(sb.String()), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	out, _ := exec.Command("sigrok-cli", "-i", csv, "-I", "csv:column_formats="+strconv.Itoa(len(names))+"l:samplerate=1000000",
+		"-P", pdSpec, "-A", annSpec).CombinedOutput()
+	if strings.Contains(string(out), symptom) {
+		t.Skipf("this sigrok's %s decoder cannot run the cross-check: %s", strings.SplitN(pdSpec, ":", 2)[0], symptom)
+	}
 }

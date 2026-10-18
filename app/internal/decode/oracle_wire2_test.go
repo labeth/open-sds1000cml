@@ -53,10 +53,8 @@ func TestOracleSDCard(t *testing.T) {
 	}
 	// sigrok reads CMD at the clock's rises: channels CMD, CLK
 	chans := [][]byte{l.b.bits, l.a.bits}
+	skipSigrokDefect(t, []string{"CMD", "CLK"}, "sdcard_sd:cmd=CMD:clk=CLK", "sdcard_sd=commands", "Annotation 'commands' not found")
 	anns := sigrokDecode(t, sr, []string{"CMD", "CLK"}, chans, "sdcard_sd:cmd=CMD:clk=CLK", "sdcard_sd=commands")
-	if len(anns) == 0 { // the 0.5 releases' row, their replies "Reply: R1"
-		anns = sigrokDecode(t, sr, []string{"CMD", "CLK"}, chans, "sdcard_sd:cmd=CMD:clk=CLK", "sdcard_sd=cmd")
-	}
 	var orc []string
 	for _, a := range sortAnns(anns) {
 		switch {

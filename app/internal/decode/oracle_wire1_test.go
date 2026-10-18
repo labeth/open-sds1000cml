@@ -60,6 +60,7 @@ func TestOracleSWIM(t *testing.T) {
 			repo = append(repo, sp.Text)
 		}
 	}
+	skipSigrokDefect(t, []string{"D"}, "swim:swim=D", "swim=protocol", "no attribute 'samplerate'")
 	anns := sigrokDecode(t, sr, []string{"D"}, [][]byte{w.bits}, "swim:swim=D", "swim=protocol")
 	var orc []string
 	for _, a := range sortAnns(anns) {
