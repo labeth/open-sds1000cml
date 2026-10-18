@@ -162,6 +162,17 @@ func TestEnvelopeHidesOnlyTheBusLines(t *testing.T) {
 			t.Errorf("%s: hides %v", c.name, got)
 		}
 	}
+	// a find whose frames' checks passed stands whatever the envelope shows
+	// (USB PD's CRC-32: its half bits are close to the buckets at 200us/div);
+	// one with no check does not
+	pd := look{found: true, res: decode.Result{OK: true, Proto: "usbpd", SPB: 13, Baud: 300000}, sampleS: 256e-9, envRun: [2]float64{0.6e-6, 0}}
+	if !envHides(pd) || !stands(pd) {
+		t.Errorf("USB PD with its CRC checked: hides %v, stands %v", envHides(pd), stands(pd))
+	}
+	flash := look{found: true, res: i2c, sampleS: 128e-9, envRun: [2]float64{1.31e-6, 0}}
+	if stands(flash) {
+		t.Error("the flash read as I2C stands")
+	}
 }
 
 // AUTO in BUS always says what it did. A sweep that finds no signal to fit

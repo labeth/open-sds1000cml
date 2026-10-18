@@ -571,13 +571,26 @@ const (
 // TRLC-LINKS: REQ-SDS-214
 func decimatedStands(res decode.Result) bool {
 	fs := decode.FeatureSamples(res)
-	switch res.Proto {
-	case "canfd", "flexray", "modbus", "j1850", "usbpd", "lin", "dht", "wiegand", "onewire":
+	switch {
+	case checkedFind(res):
 		return fs >= decimatedCheckedFeature
-	case "uart":
+	case res.Proto == "uart":
 		return fs >= decimatedFeature && decode.StandardBaud(float64(res.Baud))
 	}
 	return fs >= decimatedFeature
+}
+
+// checkedFind reports a bus found by its frames' checks (CAN's CRC-15,
+// FlexRay's header CRC-11, Modbus's CRC-16, J1850's CRC-8, USB PD's CRC-32,
+// the LIN and DHT checksums, Wiegand's parities) or by a handshake (1-Wire's
+// reset and presence pulse), which a misread record does not pass.
+// TRLC-LINKS: REQ-SDS-214
+func checkedFind(res decode.Result) bool {
+	switch res.Proto {
+	case "canfd", "flexray", "modbus", "j1850", "usbpd", "lin", "dht", "wiegand", "onewire":
+		return true
+	}
+	return false
 }
 
 // detectWith is one phase of detectOn: a decimated record (LeaseSampleView)
@@ -724,10 +737,13 @@ func busLines(res decode.Result) []int {
 // against the live envelope (envHides), read now when the look holds none.
 // A find no envelope could be read for does not stand: the search goes on
 // at the full rate (the 104 MHz flash read as I2C, with no envelope after
-// AUTO's sweep).
+// AUTO's sweep). A checked find (checkedFind) stands without: no faster bus
+// averaged passes its frames' checks, and a USB PD bus, its half bits a run
+// or two under the feature now and then, went on to a full-rate record
+// read as Manchester.
 // TRLC-LINKS: REQ-SDS-214
 func (c *Controller) weighEnvelope(l *look, accept func(*engine.Frame, bool) bool) bool {
-	if !stands(*l) || !shortRuns(*l) {
+	if !stands(*l) || !shortRuns(*l) || checkedFind(l.res) {
 		return stands(*l)
 	}
 	if !l.envSeen {
@@ -738,11 +754,11 @@ func (c *Controller) weighEnvelope(l *look, accept func(*engine.Frame, bool) boo
 
 // stands reports whether a bus found on a decimated record stands: enough
 // samples for its shortest feature (decimatedStands), and no line it uses
-// showing faster edges in the record (hidesFaster) or the live envelope
-// (envHides).
+// showing faster edges in the record (hidesFaster) or, unless its frames'
+// checks passed (checkedFind), the live envelope (envHides).
 // TRLC-LINKS: REQ-SDS-214
 func stands(l look) bool {
-	return l.found && decimatedStands(l.res) && !hidesFaster(l) && !envHides(l)
+	return l.found && decimatedStands(l.res) && !hidesFaster(l) && (checkedFind(l.res) || !envHides(l))
 }
 
 // envHidesRatio is how much shorter than a found bus's shortest feature the
