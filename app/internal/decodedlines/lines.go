@@ -46,7 +46,11 @@ type Transcript struct {
 	trig, recFirst, recLast uint64
 	marked                  bool
 	triggerHint             bool // a trigger or retained-record event arrived
-	lineUnits               int  // units pushed into lines, from first on
+	seenUnit                bool // a frame start or unit arrived: errors count from here
+	// Cut counts errors before the stream's first unit: the frame the
+	// receiver's start cut (Add).
+	Cut       uint64
+	lineUnits int // units pushed into lines, from first on
 }
 
 // New makes a transcript for a serial-registry protocol holding capacity
@@ -137,6 +141,9 @@ func (t *Transcript) Add(events []sramcapture.DecodedEvent) {
 		if e.Kind != sramcapture.EventLoss && !t.haveFirst {
 			t.first, t.haveFirst = e.Sample, true
 		}
+		if e.Kind == sramcapture.EventStart || e.Kind == sramcapture.EventData {
+			t.seenUnit = true
+		}
 		switch e.Kind {
 		case sramcapture.EventStart:
 			t.Flush()
@@ -168,6 +175,15 @@ func (t *Transcript) Add(events []sramcapture.DecodedEvent) {
 		case sramcapture.EventEnd:
 			t.Flush()
 		case sramcapture.EventError:
+			if !t.seenUnit {
+				// A receiver started inside a frame reads its rest as an
+				// error (a UART's stop bit lands mid-byte). It precedes the
+				// stream's first unit and lies in the record's history, where
+				// the FPGA's trigger is not yet live: an error the stream
+				// could not stop on, about a frame the stream never saw.
+				t.Cut++
+				continue
+			}
 			t.Errors++
 			// An error closing a unit-less packet (an I2C address, a USB
 			// token) marks its note; a software stream's frame start names

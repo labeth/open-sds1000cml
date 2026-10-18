@@ -17,6 +17,34 @@ func uart(text string, start uint64) []sramcapture.DecodedEvent {
 	return ev
 }
 
+// A stream whose receiver started inside a frame reads that frame's rest as
+// an error before its first unit: the FPGA's trigger is not live then (the
+// record's history is still filling), so a stream stopping on errors runs
+// on, and the transcript must not show an error it could not stop on. Errors
+// after the first unit count and fill their slots.
+// TRLC-LINKS: REQ-SDS-018
+func TestErrorBeforeFirstUnitIsTheCutFrame(t *testing.T) {
+	for _, proto := range []int{1, 2, 3, 4, 6, 9, 13} {
+		tr := New(proto, 100)
+		ev := []sramcapture.DecodedEvent{{Kind: sramcapture.EventError, Sample: 900}}
+		ev = append(ev, uart("AB", 5000)...)
+		ev = append(ev, sramcapture.DecodedEvent{Kind: sramcapture.EventError, Sample: 14000})
+		ev = append(ev, uart("C", 18000)...)
+		tr.Add(ev)
+		tr.Flush()
+		if tr.Errors != 1 || tr.Cut != 1 || tr.Units != 3 {
+			t.Fatalf("protocol %d: errors %d cut %d units %d", proto, tr.Errors, tr.Cut, tr.Units)
+		}
+		var errs uint16
+		for i := 0; i < tr.Count(); i++ {
+			errs |= tr.At(i).Errs
+		}
+		if l := tr.At(0); l.Sample != 5000 || errs != 1<<2 {
+			t.Fatalf("protocol %d: first line at %d, error slots %b", proto, l.Sample, errs)
+		}
+	}
+}
+
 // Lines built in one transcript cross the wire and re-form, indices and
 // counters intact, in another; the formatting matches.
 // TRLC-LINKS: REQ-SDS-018

@@ -224,6 +224,36 @@ func TestPacketImageTopRTL(t *testing.T) {
 			t.Fatalf("error trigger at %d, bad CRC ends at %d", r.trigger, crcEnd)
 		}
 	})
+	t.Run("can-error-in-history", func(t *testing.T) {
+		// A stream armed inside a frame: the CAN receiver waits for the bus
+		// idle before a start of frame, so the cut frame publishes nothing,
+		// and a bad CRC after the record's history is in fires.
+		_, cutFrame := canStdFrame(0x321, 2, []int{0x12, 0x34})
+		in, _ := canStdFrame(0x123, 4, []int{0x55, 0xAA, 0x0F, 0xF0})
+		crc := canCRC15(in) ^ 0x10
+		bad, rv, rl := canStuffCore(append(append([]int{}, in...), canBitsMSB(crc, 15)...))
+		if rl == 5 {
+			bad = append(bad, 1-rv)
+		}
+		bad = append(bad, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1)
+		_, good := canStdFrame(0x100, 2, []int{0x11, 0x22})
+		lead := append(cutFrame[len(cutFrame)/2:], ones(20)...)
+		wire := append(append(append(append(lead, good...), good...), bad...), ones(10)...)
+		r := runPacketTop(t, dir, image, bitsEntries(wire, 210, 40), 500, 1|6<<8, 32000, 32000, 0,
+			append([]string{"+pre=20000"}, seqArgs("can-err-history", []seqElem{{4, 0, 0}}, false, false)...)...)
+		for _, e := range r.events {
+			if e[1] == 1 {
+				break
+			}
+			if e[1] == 4 {
+				t.Fatalf("an error before the first start of frame: %v", r.events)
+			}
+		}
+		crcEnd := int64(len(lead)+2*len(good)+len(bad)-13) * 500
+		if r.trigger < crcEnd-1000 || r.trigger > crcEnd+2000 {
+			t.Fatalf("error trigger at %d, bad CRC ends at %d", r.trigger, crcEnd)
+		}
+	})
 	uart := func(bytes []int, badStop int) []int {
 		wire := ones(20)
 		for i, b := range bytes {
@@ -253,6 +283,24 @@ func TestPacketImageTopRTL(t *testing.T) {
 		end := int64(20+18*11) * 500
 		if r.trigger < end-3000 || r.trigger > end+1000 {
 			t.Fatalf("trigger at %d, message ends near %d", r.trigger, end)
+		}
+	})
+	t.Run("general-uart-error-in-history", func(t *testing.T) {
+		// A stream armed inside a character: the receiver reads its rest as a
+		// framing error, the stream's first event, while the record's history
+		// (20000 words here, half a megaword on the scope) still fills - the
+		// trigger is not live and does not fire; the transcript drops that
+		// error (decodedlines). A later bad stop bit fires it.
+		cut := append(append(ones(1), zeros(10)...), ones(12)...)
+		wire := append(cut, uart([]int{0x41, 0x42, 0x43, 0x44, 0x45, 0x46, 0x47, 0x48}, 6)...)
+		r := runPacketTop(t, dir, generalImage, bitsEntries(wire, 210, 40), 500, 0, 0, 0, 0,
+			append([]string{"+serial", "+pre=20000"}, seqArgs("uart-err-history", []seqElem{{4, 0, 0}}, false, false, uartRegs...)...)...)
+		if len(r.events) == 0 || r.events[0][1] != 4 || r.events[0][3] > 20000*2 {
+			t.Fatalf("the cut character's error is not the first event, in the history: %v", r.events)
+		}
+		stop := int64(len(cut)+20+6*11+9) * 500
+		if r.trigger < stop || r.trigger > stop+3000 {
+			t.Fatalf("error trigger at %d, the later bad stop bit at %d (events %v)", r.trigger, stop, r.events)
 		}
 	})
 	t.Run("general-uart-error", func(t *testing.T) {
