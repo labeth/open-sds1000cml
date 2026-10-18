@@ -41,6 +41,12 @@ var scopeCaptures = []scopeCapture{
 	{"scope_ook_search_20ms.json.gz", "ook", 0},
 	{"scope_em4305_search_5ms.json.gz", "em4305", 0},
 	{"scope_t55xx_search_5ms.json.gz", "t55xx", 0},
+	// records cut a frame at either end: a PDI instruction's first
+	// characters, a DSI frame's last bits
+	{"scope_pdi_raw_500us.json.gz", "pdi", 0},
+	{"scope_dsi_search_20ms.json.gz", "dsi", 0},
+	{"scope_cjtag_samples_200us.json.gz", "cjtag", 0},
+	{"scope_caliper_search_5ms.json.gz", "caliper", 0},
 }
 
 // TestScopeRFIDStandsDecimated: a reader's commands found on the envelope

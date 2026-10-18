@@ -84,6 +84,10 @@ func scorePhys(r Result) float64 {
 	n := len(r.Bytes)
 	c := r.count("sof", "frame-error", "parity-error", "data")
 	frames, errs, data := c[0], c[1]+c[2], c[3]
+	// errors between the first and the last good unit: a record cuts a
+	// frame at either end (a PDI instruction's first characters, a DSI
+	// frame's last bits), which is no evidence against the bus
+	inner := innerErrs(r)
 	switch r.Proto {
 	case "quad":
 		// steps without a glitch (a phase jump of two: lines that change
@@ -151,7 +155,7 @@ func scorePhys(r Result) float64 {
 	case "miller":
 		// modified Miller's pauses, or a classic line's bit-and-a-half
 		// spacings (Manchester and NRZ have none)
-		if frames < 2 || errs > 0 || (!r.Inverted && r.Cover < 0.15) {
+		if frames < 2 || inner > 0 || (!r.Inverted && r.Cover < 0.15) {
 			return -1e9
 		}
 		return float64(frames*100 + n*4)
@@ -205,12 +209,12 @@ func scorePhys(r Result) float64 {
 		}
 		return float64(data*60 - errs*40)
 	case "sdq":
-		if frames == 0 || n < 2 || errs > 0 {
+		if frames == 0 || n < 2 || inner > 0 {
 			return -1e9
 		}
 		return float64(50 + 5*min(n, 20))
 	case "dsi":
-		if data < 2 || errs > 0 {
+		if data < 2 || inner > 0 {
 			return -1e9
 		}
 		return float64(60 * min(data, 10))
@@ -221,7 +225,8 @@ func scorePhys(r Result) float64 {
 		}
 		return float64(good*400 + n*3)
 	case "pdi":
-		if frames < 2 || errs > 0 {
+		// instructions in a row; the cut ones at the record's ends few
+		if frames < 3 || n < 6 || inner > 0 || errs > 4 {
 			return -1e9
 		}
 		return float64(frames*40 + n*8)
@@ -309,4 +314,26 @@ func pwmSteady(r Result) bool {
 		}
 	}
 	return true
+}
+
+// innerErrs is r's error spans between its first and its last good unit
+// ("data" spans).
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-256
+func innerErrs(r Result) int {
+	first, last := -1, -1
+	for i, s := range r.Spans {
+		if s.Kind == "data" {
+			if first < 0 {
+				first = i
+			}
+			last = i
+		}
+	}
+	n := 0
+	for i := first + 1; first >= 0 && i < last; i++ {
+		if k := r.Spans[i].Kind; k == "frame-error" || k == "parity-error" {
+			n++
+		}
+	}
+	return n
 }

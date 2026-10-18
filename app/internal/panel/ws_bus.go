@@ -966,7 +966,8 @@ func (c *Controller) findSlowBus(auto AutoSource, wanted func() bool, prior stri
 	}
 	// a Manchester line found faster may be a slower burst's middle (an
 	// Oregon sensor's 100 ms message at 5 ms/div reads as Manchester or
-	// RC-5): held while the slowest look sees whether it is one
+	// RC-5), and a PWM line a DCF77 code's seconds without its minute
+	// marker: held while the slowest look sees whether it is one
 	var held *look
 	heldAt := 0.0
 	keep := func(l look, at float64) (decode.Result, float64, bool, float64, bool) {
@@ -1004,10 +1005,10 @@ func (c *Controller) findSlowBus(auto AutoSource, wanted func() bool, prior stri
 				return decode.Result{}, 0, false, 0, true // the bus found faster, again
 			}
 			if l.found && decimatedStands(l.res) {
-				if held != nil && l.res.Proto != "ook" {
+				if held != nil && l.res.Proto != heldFor(held.res.Proto) {
 					return keep(*held, heldAt)
 				}
-				if held == nil && i < len(slowTdivs)-1 && manchesterLike(l.res.Proto) {
+				if held == nil && i < len(slowTdivs)-1 && heldFor(l.res.Proto) != "" {
 					held, heldAt = &l, at
 					break
 				}
@@ -1022,11 +1023,18 @@ func (c *Controller) findSlowBus(auto AutoSource, wanted func() bool, prior stri
 	return decode.Result{}, 0, false, 0, false
 }
 
-// manchesterLike reports the line codes a slower burst's middle reads as
-// (findSlowBus).
+// heldFor is the slower bus a find may be part of (findSlowBus): an
+// Oregon burst's middle reads as a Manchester line or RC-5, a DCF77 code's
+// seconds as PWM; "" for none.
 // TRLC-LINKS: REQ-SDS-214, REQ-SDS-256
-func manchesterLike(proto string) bool {
-	return proto == "manchester" || proto == "irrc5" || proto == "irrc6"
+func heldFor(proto string) string {
+	switch proto {
+	case "manchester", "irrc5", "irrc6":
+		return "ook"
+	case "pwm":
+		return "dcf77"
+	}
+	return ""
 }
 
 // slowLooks is how many records findSlowBus reads at the i-th of slowTdivs:
@@ -1131,10 +1139,24 @@ func scantUART(res decode.Result) bool {
 // scantFind reports a first find to look on from: a scant UART, or an SPI or
 // I2C bus of under scantBytes bytes (Autoset's 5us/div holds one byte of the
 // bench's 200 kHz SPI: BUS stayed there listing a single byte, where the
-// search at the full-rate timebase shows its messages).
+// search at the full-rate timebase shows its messages), or a single PS/2
+// frame (a caliper's 24-bit reading at 200us/div reads as one).
 // TRLC-LINKS: REQ-SDS-214
 func scantFind(res decode.Result) bool {
-	return scantUART(res) || (res.Proto == "spi" || res.Proto == "i2c") && len(res.Bytes) < scantBytes
+	return scantUART(res) || (res.Proto == "spi" || res.Proto == "i2c") && len(res.Bytes) < scantBytes ||
+		res.Proto == "ps2" && frameStarts(res) <= 1
+}
+
+// frameStarts is the frames a decode opened ("sof" spans).
+// TRLC-LINKS: REQ-SDS-214
+func frameStarts(res decode.Result) int {
+	n := 0
+	for _, s := range res.Spans {
+		if s.Kind == "sof" {
+			n++
+		}
+	}
+	return n
 }
 
 // scantBytes is the bytes a UART found on the search's first record must
