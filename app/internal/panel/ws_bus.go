@@ -1051,7 +1051,12 @@ func (c *Controller) findAtFullRate(full, t float64, first *look, auto AutoSourc
 	// A bus the live envelope shows busy over much of the screen, faster than
 	// the record resolves, is looked for on a shorter record still: the
 	// 104 MHz flash's 2 ms screen holds hundreds of bursts, and its record at
-	// windowTdiv took 8 s to read and process.
+	// windowTdiv took 8 s to read and process. The envelope is read for a
+	// look that found nothing too (the flash's decimated record names no
+	// bus: 16 s to find it on the window's record).
+	if !dec.envSeen {
+		dec.envRun, dec.envBusy, dec.envSeen = c.envelopeRuns(true, at(t), c.now().Add(envWait))
+	}
 	if d := c.denseTdiv(); d > 0 && denseFast(dec) {
 		c.setTdivNearest(d)
 		if l := c.detectWith(false, true, at(d), auto, detectWait); l.found {
