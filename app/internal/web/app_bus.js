@@ -293,7 +293,7 @@ async function busScopeStream() {
   if (!s || !s.state) { if (!box.hidden) { box.hidden = true; $("scopeStreamText").textContent = ""; } return; }
   box.hidden = false;
   const head = "On the scope: " + s.state + " · " + s.label + " · " + s.units + " units" + (s.units_per_s > 0 ? " · " + eng(s.units_per_s, "/s", 3) : "") +
-    " · err " + s.errors + " · lost " + s.lost + (s.err ? " · " + s.err : "") + (s.note ? " · " + s.note : "");
+    " · err " + s.errors + " · lost " + s.lost + (s.mode ? " · " + s.mode : "") + (s.err ? " · " + s.err : "") + (s.note ? " · " + s.note : "");
   if ($("scopeStreamHead").textContent !== head) $("scopeStreamHead").textContent = head;
   if (ws.cur !== "bus" || busStreamBusy || document.hidden) return;
   busStreamBusy = true;

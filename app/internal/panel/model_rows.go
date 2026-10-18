@@ -1356,7 +1356,7 @@ func busTabRows() []*row {
 	format.def = func(c *Controller) error { return format.set(c, 0) }
 	isAuto := func(s *sv) bool { return serialProto(s.decProto) && s.hasStream }
 	stream := &row{id: "bus.stream", label: "Stream", kind: wsview.Enum,
-		help: "Decode the bus continuously in hardware into a transcript, with the settings below: BUS's Stream view, which On shows and Off leaves.",
+		help: "Decode the bus continuously into a transcript (Stream mode says how), with the settings below: BUS's Stream view, which On shows and Off leaves.",
 		knob: "F2 again in BUS (after the eye diagram) starts it, F2 once more ends it. Run/Stop stops and restarts a stream.",
 		rel:  isAuto, why: "a Protocol (decode on)",
 		opts: staticOpts(onOff),
@@ -1376,6 +1376,17 @@ func busTabRows() []*row {
 		},
 	}
 	streamTrig.def = func(c *Controller) error { return streamTrig.set(c, 0) }
+	streamMode := &row{id: "bus.stream_mode", label: "Stream mode", kind: wsview.Action,
+		help: "How the bus streams: gap-free from the FPGA's decoded events, gap-free from software decode of the " +
+			"continuous stream (the buses on the symbol trigger, slow enough for it), or captures of back-to-back records " +
+			"that miss what lies between them (the fast ones), with the share of the signal time read.",
+		rel: isAuto, why: "a Protocol (decode on)",
+		acts: func(s *sv) []act {
+			return []act{{id: "stream", t: "Stream", dim: s.decMode == decModeStream,
+				run: func(c *Controller) error { return c.setStreamMode(true) }}}
+		},
+		status: streamModeText,
+	}
 	streamVal := numRow("bus.stream_value", "Stream value", "", func(s *sv) float64 { return float64(s.decValue) },
 		constLim(0, streamValueMax), constStep(1), func(c *Controller, v float64) error {
 			c.mu.Lock()
@@ -1553,7 +1564,7 @@ func busTabRows() []*row {
 		},
 	}
 	parity.def = func(c *Controller) error { return parity.set(c, 0) }
-	rows := []*row{proto, format, stream, streamTrig, streamVal, streamScreen, baud, rate, parity, line, scl, sda, clk, data, spiMode, bitOrder}
+	rows := []*row{proto, format, stream, streamTrig, streamVal, streamMode, streamScreen, baud, rate, parity, line, scl, sda, clk, data, spiMode, bitOrder}
 	rows = append(rows, spiTimingRows(isSPI)...)
 	return append(rows, match, arm, addr, receiverRow())
 }

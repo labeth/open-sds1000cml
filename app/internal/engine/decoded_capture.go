@@ -180,6 +180,9 @@ func (e *Engine) BeginDecodedCapture(ctx context.Context, cfg sramcapture.Config
 func (e *Engine) beginDecodedCapture(ctx context.Context, cfg sramcapture.Config, lineProto int, web bool) (sramcapture.RecordIdentity, error) {
 	value, err := e.decodedCall(ctx, func() (any, error) {
 		e.decodedStarting = time.Time{} // the session (or its failure) takes over the image
+		if e.soft != nil {
+			return nil, fmt.Errorf("a decoded stream is already running")
+		}
 		if cfg.Symbol.Enabled {
 			return nil, fmt.Errorf("the image that triggers this protocol cannot stream its decoded events")
 		}
@@ -303,6 +306,11 @@ func (e *Engine) ReadDecodedBatchInto(ctx context.Context, id sramcapture.Record
 		if err := ctx.Err(); err != nil {
 			return nil, err
 		}
+		if e.softFor(id) {
+			var err error
+			n, err = e.softRead(id, dst)
+			return nil, err
+		}
 		if err := e.decodedIdentity(id); err != nil {
 			return nil, err
 		}
@@ -334,6 +342,9 @@ func (e *Engine) ReadDecodedBatchInto(ctx context.Context, id sramcapture.Record
 // TRLC-LINKS: REQ-SDS-013
 func (e *Engine) DecodedCaptureStatus(ctx context.Context, id sramcapture.RecordIdentity) (sramcapture.Metadata, error) {
 	value, err := e.decodedCall(ctx, func() (any, error) {
+		if e.softFor(id) {
+			return e.softStatus(id)
+		}
 		if err := e.decodedIdentity(id); err != nil {
 			return nil, err
 		}
@@ -403,6 +414,9 @@ func (e *Engine) RecallDecodedRecord(ctx context.Context, id sramcapture.RecordI
 // TRLC-LINKS: REQ-SDS-013
 func (e *Engine) EndDecodedCapture(ctx context.Context, id sramcapture.RecordIdentity) error {
 	_, err := e.decodedCall(ctx, func() (any, error) {
+		if e.softFor(id) {
+			return nil, e.softEnd(ctx, id)
+		}
 		if err := e.decodedIdentity(id); err != nil {
 			return nil, err
 		}

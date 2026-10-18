@@ -357,6 +357,7 @@ type sv struct {
 	streamList                        bool
 	hasStream                         bool
 	streamStopped                     bool
+	streamMode                        string // a stream's own mode, as it ran ("" none)
 
 	curOn          bool
 	curType        int

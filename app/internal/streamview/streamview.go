@@ -60,6 +60,10 @@ type View struct {
 	Note            string // while starting: why it takes seconds (an FPGA image to load)
 	RecordAvailable bool
 	TriggerLine     int // transcript line holding the trigger; -1 unknown
+	// Mode says how the stream runs: gap-free from the FPGA's decoded events
+	// or from software decode of the continuous stream, or captures with the
+	// share of signal time read (the source's DecodedStreamMode).
+	Mode string
 }
 
 // Page is a window of formatted transcript lines.
@@ -354,6 +358,9 @@ func (c *Controller) refreshLocked() {
 	v, t := &c.view, c.t
 	v.Lines, v.Events, v.Units, v.Lost, v.Errors = t.Count(), t.Events, t.Units, t.Lost, t.Errors
 	v.TriggerLine = t.TriggerLine()
+	if m, ok := c.src.(interface{ DecodedStreamMode() string }); ok && v.State == Streaming {
+		v.Mode = m.DecodedStreamMode() // kept as it was at the end once stopped
+	}
 	if v.State == Streaming {
 		v.Elapsed = time.Since(c.start)
 	}

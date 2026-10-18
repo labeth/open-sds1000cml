@@ -2382,3 +2382,31 @@ decisions:
     192 kHz), UART framing 16 clocks a bit. The decoded event stream is not available on this image.
   - SWD frames have no leader, and a request's start, stop and park bits with an OK acknowledge can also appear inside a
     data phase.
+- id: ADR-STREAM-SOFT-DECODE
+  title: The symbol trigger's buses stream decoded in software, gap-free from the continuous stream where it resolves them
+  status: accepted
+  date: '2026-10-18'
+  context: 'BUS''s Stream view streams the first ten protocols from their receivers'' decoded events. The twenty buses
+    of the symbol trigger (ADR-SYMBOL-TRIGGER) have no receiver and no event transport, and the qualify image has no
+    room for one (88 % of its logic, two seeds of twenty close timing). The stream image carries a continuous
+    peak-detect stream to the host without loss at 2^9 samples a word and coarser (ADR-STREAM-IMAGE), which
+    resolves the millisecond-scale buses but not the fast ones. Every trigger is decided in the FPGA.'
+  decision: 'The engine decodes these buses in software with their decoders (soft_stream.go). Where the protocol''s
+    shortest feature at its rate spans three and a half buckets of the finest lossless decimation, it runs the
+    stream image''s continuous peak stream at the coarsest decimation keeping six buckets in that feature, orders
+    each bucket''s extremes into two samples, and decodes the samples as they come with decode.StreamDecoder: a
+    window that starts in a silence between frames and hands out a frame only once Close samples follow it
+    without a decoded span, then moves its start half way into the silence after it, so a frame is decoded whole
+    and handed out once. The faster buses run back-to-back records on the qualify image, each armed on the symbol
+    trigger (the frame start, or the stop value) and forced after its history fills, decoded whole, a frame cut by
+    a record''s ends dropped; the stream reports the share of the signal time read. A stop on a value ends a
+    gap-free transcript at that frame, then arms the symbol trigger on the value for the record shown; in captures
+    the record the symbol trigger fired on is the stop.'
+  consequences:
+  - Every protocol streams into the same transcript, LCD list, web and phone views as the first ten, with its mode
+    on the BUS sheet's Stream mode row, the LCD's stream status and the web's.
+  - No FPGA change and no further image; the gap-free decode costs the CPU about 2 to 9 ns a sample on the host,
+    twenty times that on the device, and a frame shows Close (the longest frame) after it ends.
+  - A stop on a decode error is refused for these buses; the gap-free record is the value's next occurrence, not
+    the one the transcript ends on.
+  - Captures miss what lies between records, for the fastest buses most of the signal time (the readout dominates).

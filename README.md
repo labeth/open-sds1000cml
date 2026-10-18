@@ -171,7 +171,8 @@ while keeping the full record in SRAM for STOP, SINGLE and detailed review.
   block in the `qualify` image: it times each run of a line, classifies it through a table the app
   writes, takes the bits by pulse width, by a re-timed sampler or by a clock line, and matches a 64-bit
   window. AUTO in BUS finds a bus from an edge-triggered capture and arms its frame-start trigger.
-  The decoded-event stream (BUS Stream view) covers the first ten.
+  The decoded-event stream (BUS Stream view) carries the first ten, MIDI and USB full speed; the
+  twenty on the symbol trigger stream decoded in software, the BUS sheet's Stream mode row saying how.
 * **Sequence trigger:** chain up to **32 protocol events**, including **trigger on error**.
 * **Zone trigger:** draw up to four boxes on the screen that the waveform must cross or avoid; the
   FPGA keeps a history of where the signal was and decides each edge.
@@ -220,6 +221,13 @@ automatically.
   view ends the stream.
   UART at **921,600 baud ran lossless for 3 minutes** (16.6 M bytes). At higher rates a lost event
   is marked, never silently dropped.
+  The buses on the symbol trigger stream in one of two modes, shown on the LCD, the web page and the phone:
+  **gap-free** for LIN, DMX512, Modbus RTU, 1-Wire, DHT, HDMI-CEC, J1850 VPW, the four IR codes, DALI, PS/2
+  and Wiegand (the `stream` image's continuous peak stream, decoded in software as it arrives), and
+  **captures** for WS281x, USB PD, S/PDIF, SWD, MDIO and 1-Wire overdrive (back-to-back records armed on the
+  symbol trigger, with the share of signal time they read). They stop on a value or by hand: the symbol
+  trigger has no error token. A gap-free stream stopped on a value shows the FPGA's record of its next
+  occurrence.
 * Hex, ASCII and combined views, and a watch buffer with regex search.
 
 ## Full-speed protocol decoding in the FPGA

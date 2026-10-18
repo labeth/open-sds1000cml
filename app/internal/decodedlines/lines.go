@@ -73,7 +73,31 @@ func (t *Transcript) Reset(proto int) {
 		t.perLine, t.hexDigits, t.ascii = 8, 4, false
 	case 8: // ARINC 429 words
 		t.perLine, t.hexDigits, t.ascii = 4, 8, false
+	case 29, 30: // MDIO registers, Wiegand fields: 16 bits
+		t.perLine, t.hexDigits, t.ascii = 8, 4, false
+	case 26: // S/PDIF samples: 24 bits
+		t.perLine, t.hexDigits, t.ascii = 4, 6, false
+	case 28: // SWD data words: 32 bits
+		t.perLine, t.hexDigits, t.ascii = 4, 8, false
 	}
+}
+
+// startNotes are the start-of-frame names a software-decoded stream's
+// EventStart carries (its Value indexes them, 0 none): the decoders' "sof"
+// texts.
+var startNotes = []string{"", "LDR", "REP", "SIRC", "RC5", "RC6", "RST", "START", "SOF", "BRK", "B", "SOP", "SOP'",
+	"SOP\"", "SOP'D", "SOP\"D", "HRST", "CRST"}
+
+// StartNoteCode is the EventStart Value naming a start of frame text (0 for
+// none, or one the transcript does not name).
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func StartNoteCode(text string) uint32 {
+	for i, s := range startNotes {
+		if i > 0 && s == text {
+			return uint32(i)
+		}
+	}
+	return 0
 }
 
 // Proto is the transcript's protocol.
@@ -119,6 +143,9 @@ func (t *Transcript) Add(events []sramcapture.DecodedEvent) {
 			if name, ok := usbPIDs[e.Value&0xff]; t.proto == 9 && ok { // USB: the packet's PID
 				t.cur.Sample, t.cur.Note = e.Sample, name
 			}
+			if t.proto > 10 && e.Value > 0 && int(e.Value) < len(startNotes) { // a software stream's start of frame
+				t.cur.Sample, t.cur.Note = e.Sample, startNotes[e.Value]
+			}
 		case sramcapture.EventData:
 			t.Units++
 			// I2C DATA metadata rides in Count: bit 0 address byte, bit 1 NACK.
@@ -142,7 +169,10 @@ func (t *Transcript) Add(events []sramcapture.DecodedEvent) {
 			t.Flush()
 		case sramcapture.EventError:
 			t.Errors++
-			if t.cur.N == 0 && t.cur.Note != "" { // an error closing a unit-less packet marks its note
+			// An error closing a unit-less packet (an I2C address, a USB
+			// token) marks its note; a software stream's frame start names
+			// the frame, and its errors stay in their slots.
+			if t.proto <= 10 && t.cur.N == 0 && t.cur.Note != "" {
 				t.cur.Note += "!"
 				t.Flush()
 				continue

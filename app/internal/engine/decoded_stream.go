@@ -46,6 +46,11 @@ var ErrLevelsLearning = errors.New("the ARINC 429 levels are not learned yet")
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-018
 func (e *Engine) BeginDecodedStream(ctx context.Context, p SerialParams, trig StreamTrigger, value int) (sramcapture.RecordIdentity, error) {
 	p.Bytes, p.Addr, p.RW = nil, -1, 2
+	if symbolProtocol(p.Proto) {
+		// ADR-STREAM-SOFT-DECODE: the symbol trigger's image has no decoded
+		// event transport; these buses are decoded in software.
+		return e.beginSoftStream(ctx, p, trig, value)
+	}
 	switch trig {
 	case StreamOnError:
 		p.Pattern = []PatternElem{{Kind: patternError}}
@@ -65,10 +70,6 @@ func (e *Engine) BeginDecodedStream(ctx context.Context, p SerialParams, trig St
 				e.decodedStarting = time.Time{}
 			}
 		}()
-		if symbolProtocol(p.Proto) {
-			// ADR-SYMBOL-TRIGGER: the symbol trigger's image has no decoded event transport.
-			return nil, fmt.Errorf("the image that triggers this protocol cannot stream its decoded events")
-		}
 		want := protocolImage(p)
 		if e.images != nil && e.hasImage(want) && want != e.protocolImage {
 			if err := e.sram.Halt(ctx); err != nil {
@@ -99,7 +100,13 @@ func (e *Engine) BeginDecodedStream(ctx context.Context, p SerialParams, trig St
 		return sramcapture.RecordIdentity{}, err
 	}
 	// Install worker transcript mode in the same owner call that starts capture.
-	return e.beginDecodedCapture(ctx, cfgValue.(sramcapture.Config), p.Proto, false)
+	id, err := e.beginDecodedCapture(ctx, cfgValue.(sramcapture.Config), p.Proto, false)
+	if err == nil {
+		e.mu.Lock()
+		e.stats.DecodedStreamMode = "gap-free, the FPGA's decoded events"
+		e.mu.Unlock()
+	}
+	return id, err
 }
 
 // ReadDecodedLines fetches transcript lines the worker built, from absolute
@@ -111,6 +118,9 @@ func (e *Engine) ReadDecodedLines(ctx context.Context, id sramcapture.RecordIden
 	var n int
 	var lines bool
 	_, err := e.decodedCall(ctx, func() (any, error) {
+		if e.softFor(id) {
+			return nil, e.softIdentity(id) // event mode
+		}
 		if err := e.decodedIdentity(id); err != nil {
 			return nil, err
 		}
@@ -137,6 +147,14 @@ func (e *Engine) ReadDecodedLines(ctx context.Context, id sramcapture.RecordIden
 func (e *Engine) FreezeDecodedStream(ctx context.Context, id sramcapture.RecordIdentity) (sramcapture.Metadata, bool, error) {
 	var adopted bool
 	var meta sramcapture.Metadata
+	if e.softFor(id) {
+		_, err := e.decodedCall(ctx, func() (any, error) {
+			var err error
+			meta, adopted, err = e.softFreeze(ctx, id)
+			return nil, err
+		})
+		return meta, adopted, err
+	}
 	{
 		_, err := e.decodedCall(ctx, func() (any, error) {
 			if err := e.decodedIdentity(id); err != nil {

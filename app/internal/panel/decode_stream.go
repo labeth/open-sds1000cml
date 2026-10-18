@@ -118,7 +118,7 @@ func (c *Controller) startStream() {
 		if sn, ok := s.(interface {
 			StartNoted(engine.SerialParams, engine.StreamTrigger, int, string, string) error
 		}); ok {
-			err = sn.StartNoted(p, decTrigKinds[trig%3], value, name, streamImageNote(sv.decProto, c.eng.Snapshot().Image))
+			err = sn.StartNoted(p, decTrigKinds[trig%3], value, name, streamImageNote(sv.decProto, sv.decBaud, c.eng.Snapshot().Image))
 		} else {
 			err = s.Start(p, decTrigKinds[trig%3], value, name)
 		}
@@ -136,14 +136,16 @@ func (c *Controller) startStream() {
 	})
 }
 
-// streamImageNote says why a stream of proto takes seconds to start when the
-// loaded FPGA image (loaded, as the engine names it) has no receiver for it:
-// AUTO in BUS frames a UART on the qualifier image's idle qualifier, and its
-// stream needs the general image's UART receiver (a load of about four
-// seconds). "" when the image in use streams it.
-// TRLC-LINKS: REQ-SDS-018
-func streamImageNote(proto int, loaded string) string {
+// streamImageNote says why a stream of proto at rate baud takes seconds to
+// start when the loaded FPGA image (loaded, as the engine names it) has no
+// receiver for it: AUTO in BUS frames a UART on the qualifier image's idle
+// qualifier, and its stream needs the general image's UART receiver (a load
+// of about four seconds); a bus decoded gap-free in software streams on the
+// stream image. "" when the image in use streams it.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func streamImageNote(proto, baud int, loaded string) string {
 	want := "general"
+	soft := ""
 	switch {
 	case proto == framecalc.ProtoManchester || proto == framecalc.ProtoUSB:
 		want = "line"
@@ -151,16 +153,39 @@ func streamImageNote(proto int, loaded string) string {
 		proto == framecalc.ProtoARINC429 || proto == framecalc.ProtoFlexRay:
 		want = "packet"
 	case proto > framecalc.ProtoFlexRay && proto != framecalc.ProtoMIDI:
-		want = "qualify" // the symbol receiver beside the qualifiers
+		want = "qualify" // the symbol trigger, its records decoded in software
+		if soft = engine.SoftStreamMode(proto-1, baud, proto == framecalc.ProtoOneWire && baud >= 100000); soft == "gap-free" {
+			want = "stream"
+		}
 	}
 	if loaded == "" || loaded == want {
 		return ""
+	}
+	if soft == "gap-free" {
+		return fmt.Sprintf("loading the stream FPGA image, about 4 s: %s is decoded gap-free from its continuous stream", protoName(proto))
 	}
 	name := map[string]string{"qualify": "qualifier"}[loaded]
 	if name == "" {
 		name = loaded
 	}
 	return fmt.Sprintf("loading the %s FPGA image, about 4 s: the %s image has no %s receiver", want, name, protoName(proto))
+}
+
+// streamModeText says how the bus streams (ADR-STREAM-SOFT-DECODE): the
+// running stream's own words when it has them (a captures stream's share of
+// signal time read), else what the protocol at its rate gets.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func streamModeText(s *sv) string {
+	if s.streamMode != "" {
+		return s.streamMode
+	}
+	switch engine.SoftStreamMode(s.decProto-1, s.decBaud, s.decProto == framecalc.ProtoOneWire && s.decBaud >= 100000) {
+	case "gap-free":
+		return "gap-free, software decode of the continuous stream"
+	case "captures":
+		return "captures, not gap-free (back-to-back records)"
+	}
+	return "gap-free, the FPGA's decoded events"
 }
 
 // streamValueMax is the widest unit a stream stops on: an ARINC 429 word's
