@@ -532,11 +532,15 @@ func (c *Controller) autosetSweep(stop chan struct{}, g autoGoal) (autoResult, b
 			}
 			// The slowest step reads up to two captures more while it sees
 			// nothing: a bus that sends a 23 ms frame every 120 ms (an IR
-			// remote) is missed by a 100 ms screen now and then.
-			if td == sweep[len(sweep)-1] && !has(m[0]) && !has(m[1]) {
+			// remote) is missed by a 100 ms screen now and then. The last
+			// pass's, while nothing is timed: a quiet line's noise at
+			// 200 mV/div reads as a swing, and an IR bus was left unfound.
+			lastPass := pass == 1 || c.fe == nil
+			missing := func() bool { return !has(m[0]) && !has(m[1]) || lastPass && !fq2(m) }
+			if td == sweep[len(sweep)-1] && missing() {
 				// whole records, not the roll view's chunks with their gaps
 				e, ok := c.eng.(interface{ LeaseSearchView(time.Duration) })
-				for k := 0; k < sparseLooks && !has(m[0]) && !has(m[1]); k++ {
+				for k := 0; k < sparseLooks && missing(); k++ {
 					if ok {
 						e.LeaseSearchView(2 * time.Second)
 					}
