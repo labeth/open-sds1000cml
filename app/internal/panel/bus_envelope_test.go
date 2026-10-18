@@ -101,6 +101,21 @@ func TestBusSearchNamesTheFastSPIFlashNotI2C(t *testing.T) {
 	if res := framecalc.Detect(fx.frame("dec100us", 100e-6), "hex"); res.Proto != "i2c" {
 		t.Fatalf("the fixture's decimated record reads as %q: it no longer shows the misreading", res.Proto)
 	}
+	// and a decimated record that names no bus at all: the envelope is read
+	// for it too, and the short record is the dense one
+	quiet := make([]uint8, 4000)
+	for i := range quiet {
+		quiet[i] = 128
+	}
+	for _, named := range []bool{true, false} {
+		searchFlash(t, fx, named, quiet)
+	}
+}
+
+// searchFlash runs the search of TestBusSearchNamesTheFastSPIFlashNotI2C,
+// its decimated records the fixture's (named: read as I2C) or quiet.
+// TRLC-LINKS: REQ-SDS-214, REQ-SDS-223
+func searchFlash(t *testing.T, fx flash104, named bool, quiet []uint8) {
 	_, base, fe := newC(t)
 	eng := &searchLeaseEng{fakeEng: base}
 	ctl := New(eng, fe, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
@@ -117,6 +132,8 @@ func TestBusSearchNamesTheFastSPIFlashNotI2C(t *testing.T) {
 		case eng.raw.Load():
 			raws[tdiv]++
 			fn(fx.frame("full20us", tdiv))
+		case eng.sampled.Load() && !named:
+			fn(&engine.Frame{C1: quiet, C2: quiet, Valid: len(quiet), WinCols: len(quiet), SampleS: 10 * tdiv / float64(len(quiet)), TdivS: tdiv})
 		case eng.sampled.Load():
 			fn(fx.frame("dec"+slow, tdiv))
 		default:
@@ -135,7 +152,7 @@ func TestBusSearchNamesTheFastSPIFlashNotI2C(t *testing.T) {
 		t.Errorf("notice %q", note)
 	}
 	if len(raws) != 1 || raws[10e-6] == 0 {
-		t.Errorf("full-rate records read at %v, want only the dense one at 10us/div", raws)
+		t.Errorf("named %v: full-rate records read at %v, want only the dense one at 10us/div", named, raws)
 	}
 }
 
