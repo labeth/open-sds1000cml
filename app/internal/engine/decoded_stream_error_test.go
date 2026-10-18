@@ -4,6 +4,7 @@ package engine
 import (
 	"testing"
 
+	"open-sds/app/internal/decodedlines"
 	"open-sds/app/internal/sramcapture"
 )
 
@@ -45,6 +46,9 @@ func TestDecodedStreamOnErrorPlansTheErrorToken(t *testing.T) {
 		if err != nil {
 			t.Errorf("protocol %d on the %s image: %v", c.p.Proto, c.image, err)
 			continue
+		}
+		if uint64(cfg.PreWords)*2 != decodedlines.HistorySamples {
+			t.Errorf("protocol %d: a history of %d words, the transcript's window %d samples", c.p.Proto, cfg.PreWords, decodedlines.HistorySamples)
 		}
 		if cfg.Sequence.Length != 1 || cfg.Sequence.Elements[0].Kind != sramcapture.SequenceError || cfg.Sequence.Qualify || !cfg.Normal {
 			t.Errorf("protocol %d (%s): sequence %+v", c.p.Proto, hardwareSerialName(cfg), cfg.Sequence)

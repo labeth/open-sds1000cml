@@ -17,30 +17,31 @@ func uart(text string, start uint64) []sramcapture.DecodedEvent {
 	return ev
 }
 
-// A stream whose receiver started inside a frame reads that frame's rest as
-// an error before its first unit: the FPGA's trigger is not live then (the
-// record's history is still filling), so a stream stopping on errors runs
-// on, and the transcript must not show an error it could not stop on. Errors
-// after the first unit count and fill their slots.
+// A stream armed inside a character reads its rest as an error, and on a
+// busy line re-syncs over a few more (garbled units, another error) before
+// its first good frame - all inside the record's history, where the FPGA's
+// trigger is not live, so a stream stopping on errors runs on: the
+// transcript must not show errors it could not stop on. Errors after the
+// history count and fill their slots; a software-decoded stream (protocols
+// past the tenth but MIDI) has no such window.
 // TRLC-LINKS: REQ-SDS-018
-func TestErrorBeforeFirstUnitIsTheCutFrame(t *testing.T) {
-	for _, proto := range []int{1, 2, 3, 4, 6, 9, 13} {
+func TestErrorsInTheStartHistoryAreTheCutFrame(t *testing.T) {
+	for _, proto := range []int{1, 2, 3, 4, 6, 9, 13, 11} {
 		tr := New(proto, 100)
 		ev := []sramcapture.DecodedEvent{{Kind: sramcapture.EventError, Sample: 900}}
-		ev = append(ev, uart("AB", 5000)...)
-		ev = append(ev, sramcapture.DecodedEvent{Kind: sramcapture.EventError, Sample: 14000})
-		ev = append(ev, uart("C", 18000)...)
+		ev = append(ev, uart("A", 5000)...)
+		ev = append(ev, sramcapture.DecodedEvent{Kind: sramcapture.EventError, Sample: 9000})
+		ev = append(ev, uart("B", 900+HistorySamples-10)...)
+		ev = append(ev, sramcapture.DecodedEvent{Kind: sramcapture.EventError, Sample: 900 + HistorySamples})
+		ev = append(ev, uart("C", 900+HistorySamples+4000)...)
 		tr.Add(ev)
 		tr.Flush()
-		if tr.Errors != 1 || tr.Cut != 1 || tr.Units != 3 {
+		errs, cut := uint64(1), uint64(2)
+		if proto == 11 {
+			errs, cut = 3, 0
+		}
+		if tr.Errors != errs || tr.Cut != cut || tr.Units != 3 {
 			t.Fatalf("protocol %d: errors %d cut %d units %d", proto, tr.Errors, tr.Cut, tr.Units)
-		}
-		var errs uint16
-		for i := 0; i < tr.Count(); i++ {
-			errs |= tr.At(i).Errs
-		}
-		if l := tr.At(0); l.Sample != 5000 || errs != 1<<2 {
-			t.Fatalf("protocol %d: first line at %d, error slots %b", proto, l.Sample, errs)
 		}
 	}
 }
@@ -51,7 +52,7 @@ func TestErrorBeforeFirstUnitIsTheCutFrame(t *testing.T) {
 func TestEncodeDecodeAppend(t *testing.T) {
 	w := New(1, 64)
 	w.Add(uart("Hello, scope! 0123456789abcdef", 1000))
-	w.Add([]sramcapture.DecodedEvent{{Kind: sramcapture.EventError, Sample: 1000 + 30*4340}, {Kind: sramcapture.EventRetained}})
+	w.Add([]sramcapture.DecodedEvent{{Kind: sramcapture.EventError, Sample: 1000 + HistorySamples}, {Kind: sramcapture.EventRetained}})
 	w.Flush()
 	buf := make([]byte, 4096)
 	b, err := DecodeLines(buf[:w.EncodeLines(0, buf)])

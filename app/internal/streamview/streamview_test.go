@@ -128,7 +128,7 @@ func uart(text string, start uint64) []sramcapture.DecodedEvent {
 func TestStreamHexdumpAndTriggerMarks(t *testing.T) {
 	f := &fakeSource{triggered: true}
 	f.events = uart("Hello, scope! 0123456789abcdef", 1000)
-	f.events = append(f.events, sramcapture.DecodedEvent{Kind: sramcapture.EventError, Sample: 1000 + 30*4340, Protocol: 1})
+	f.events = append(f.events, sramcapture.DecodedEvent{Kind: sramcapture.EventError, Sample: 1000 + decodedlines.HistorySamples, Protocol: 1})
 	trig := uint64(1000 + 16*4340) // the second line's first unit
 	f.meta = sramcapture.Metadata{HasSampleTimeline: true, SampleFirst: trig - 2000, SampleLast: trig + 200000, TriggerIndex: 1000}
 	c := New(f, t.Logf)
@@ -268,7 +268,7 @@ func TestUSBPIDNotes(t *testing.T) {
 	tr := decodedlines.New(9, historyLines)
 	tr.Add([]sramcapture.DecodedEvent{
 		{Kind: sramcapture.EventStart, Value: 0xC3}, {Kind: sramcapture.EventData, Value: 0xFF}, {Kind: sramcapture.EventEnd, Value: 0xC3},
-		{Kind: sramcapture.EventStart, Value: 0xD2}, {Kind: sramcapture.EventError, Value: 0xD2},
+		{Kind: sramcapture.EventStart, Value: 0xD2, Sample: decodedlines.HistorySamples}, {Kind: sramcapture.EventError, Value: 0xD2, Sample: decodedlines.HistorySamples},
 	})
 	if l := tr.Format(0); !strings.Contains(l, "DATA0") || !strings.Contains(l, " FF") {
 		t.Fatalf("data line %q", l)
