@@ -100,13 +100,14 @@ jobs:
         env:
           CI_REQUIRE_BROWSER: "1"
           CI_REQUIRE_SIGROK: "1"
-        run: go test -timeout 25m ./internal/web/ ./internal/decode/ ./internal/superres/
+        run: go test -timeout 25m ./internal/web/ ./internal/decode/ ./internal/superres/ ./internal/analysis/
 
   # Oracle lane: libsigrokdecode's protocol decoders (via sigrok-cli) act as
   # the reference implementation for the Go protocol decoders — the
   # oracle_*_test.go suites in internal/decode generate identical waveforms,
   # decode them with both, and require agreement on payloads, errors, and
-  # alignment. CI_REQUIRE_SIGROK=1 turns the no-sigrok self-skip into a hard
+  # alignment; those in internal/analysis hold the bus layers to the decoders
+  # sigrok stacks on its bus decoders. CI_REQUIRE_SIGROK=1 turns the no-sigrok self-skip into a hard
   # failure so the suite can never silently vanish from CI (same policy as
   # the browser lane's CI_REQUIRE_BROWSER).
   oracle-decode:
@@ -123,11 +124,14 @@ jobs:
         working-directory: app
         env:
           CI_REQUIRE_SIGROK: "1"
-        run: go test -timeout 10m -run 'TestOracle' -v ./internal/decode/
-      # Ubuntu's sigrok has no ir_sirc, sae_j1850_vpw, sdq, pjdl, cjtag,
-      # caliper or ir_irmp decoder, nor rc_encode's EV1527 coding: those run
-      # against libsigrokdecode's own decoders at a pinned commit, through the
-      # sigrok-cli stand-in in tools/sigrok-oracle (no sigrok code is vendored).
+        run: go test -timeout 10m -run 'TestOracle' -v ./internal/decode/ ./internal/analysis/
+      # Ubuntu's sigrok has no ir_sirc, sae_j1850_vpw, sdq, pjdl, cjtag, caliper or
+      # ir_irmp decoder, nor rc_encode's EV1527 coding, nor the stacked
+      # ones added since 0.5 (ad5626, ad79x0, adxl345, i2cfilter, ltc242x,
+      # ltc26x7, max72xx, mcp230xx, nrf905, sbus_futaba, st25r39xx_spi) and
+      # avr_isp's memory instructions: those run against libsigrokdecode's own
+      # decoders at a pinned commit, through the sigrok-cli stand-in in
+      # tools/sigrok-oracle (no sigrok code is vendored).
       - name: Fetch libsigrokdecode's decoders (pinned)
         run: |
           git init -q "$RUNNER_TEMP/lsd"
@@ -148,7 +152,7 @@ jobs:
           set -o pipefail
           export SRD_DECODERS="$RUNNER_TEMP/lsd/decoders"
           export LD_LIBRARY_PATH="$RUNNER_TEMP/irmp${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
-          PATH="$GITHUB_WORKSPACE/tools/sigrok-oracle:$PATH" go test -count=1 -timeout 10m -run 'TestOracleIRSIRC|TestOracleJ1850|TestOracleSDQ|TestOraclePJDL|TestOracleCJTAG|TestOracleCaliper|TestOracleIRMP|TestOracleRCEncode' -v ./internal/decode/ | tee "$RUNNER_TEMP/new.log"
+          PATH="$GITHUB_WORKSPACE/tools/sigrok-oracle:$PATH" go test -count=1 -timeout 10m -run 'TestOracleIRSIRC|TestOracleJ1850|TestOracleSDQ|TestOraclePJDL|TestOracleCJTAG|TestOracleCaliper|TestOracleIRMP|TestOracleRCEncode|TestOracleLayer(AD5626|AD79x0|ADXL345|I2CFilter|LTC242x|LTC26x7|MAX72xx|MCP23008|MCP23017|NRF905|SBUS|ST25R39xx|AVRISP)$' -v ./internal/decode/ ./internal/analysis/ | tee "$RUNNER_TEMP/new.log"
           ! grep -q -- '--- SKIP' "$RUNNER_TEMP/new.log"
 
   # Self-checking RTL testbenches (fpga/sim.sh); the fixture-driven ones run

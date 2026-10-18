@@ -1554,8 +1554,8 @@ func busTabRows() []*row {
 	addr.presets = func(*sv) []preset { return []preset{{t: "Any", v: -1}} }
 	addr.def = func(c *Controller) error { return c.setI2CAddr(-1) }
 	parity := &row{id: "bus.parity", label: "Parity", kind: wsview.Enum,
-		help: "Modbus RTU character framing: even parity (the standard), odd, or none with two stop bits; Auto reads it off the frames' CRCs.",
-		rel:  func(s *sv) bool { return s.decProto == framecalc.ProtoModbus }, why: "Protocol = Modbus",
+		help: "Modbus RTU character framing: even parity (the standard), odd, or none with two stop bits; Auto reads it off the frames' CRCs. A UART's parity bit (Auto: none).",
+		rel:  func(s *sv) bool { return s.decProto == framecalc.ProtoModbus || s.decProto == framecalc.ProtoUART }, why: "Protocol = Modbus or UART",
 		opts: staticOpts([]opt{{0, "Auto"}, {1, "Even"}, {2, "Odd"}, {3, "None"}}),
 		get: func(s *sv) int {
 			return map[string]int{"even": 1, "odd": 2, "none": 3}[s.decParity]
@@ -1570,8 +1570,10 @@ func busTabRows() []*row {
 		},
 	}
 	parity.def = func(c *Controller) error { return parity.set(c, 0) }
-	rows := []*row{proto, format, stream, streamTrig, streamVal, streamScreen, baud, rate, parity, line, scl, sda, clk, data, spiMode, bitOrder}
+	rows := []*row{proto, format, stream, streamTrig, streamVal, streamScreen, baud, rate, parity, uartLineRow(), line, scl, sda, clk,
+		data, spiMode, bitOrder}
 	rows = append(rows, spiTimingRows(isSPI)...)
+	rows = append(rows, layerRows()...)
 	return append(rows, match, arm, addr, receiverRow())
 }
 

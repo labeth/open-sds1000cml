@@ -4094,6 +4094,162 @@ requirements:
     ms/div. A line whose decimated record resolves its every edge, with no faster edges in the live envelope, skips
     the full-rate search. The FPGA decides every trigger; until its image has a matcher for a protocol, the serial
     trigger's status says so.
+- id: REQ-SDS-241
+  title: Bus layers
+  text: The instrument shall read the packets of a decoded SPI, I2C, UART, 1-Wire, MDIO or USB bus as the transactions
+    of the chip or protocol layer chosen for that bus, and name each transaction in the BUS packet list, the decode
+    strip and the web page's packet table.
+  status: draft
+  category: functional
+  appliesTo:
+  - FU-APP-ANALYSIS
+  - FU-WEB-PACKETS
+  - FU-APP-PANEL
+  - FU-APP-LCD
+  - FU-WEB-APP-BUS
+  verificationMethods:
+  - test
+  verificationCriteria: Each layer's curated records read to the notes held in the golden file; the web page's twin
+    writes the same notes for those records and for seeded random ones, and lists the same layers in the same order;
+    the BUS sheet's Layer row offers a protocol's layers only, a restart keeps the layer and a protocol change drops
+    it; with a layer the packet list writes one note a packet and the strip captions the packets.
+  notes: The scope holds an SPI bus's clock and one data line, without its chip select. A transaction is a packet,
+    the burst of bytes the clock's pause of 1.5 byte times ends, and each SPI layer reads the line it names (MOSI for
+    the commands a host sends, MISO for the converters and pads that only answer); a read's data on the other line is
+    counted, not shown. A master that pauses inside a transaction splits it.
+- id: REQ-SDS-242
+  title: SPI chip layers
+  text: The instrument shall name the transactions of an SPI flash, an SD card in SPI mode, AVR in-system
+    programming, nRF24L01, nRF905, CC1101, RFM12, MRF24J40, ENC28J60, ST25R39xx, ADXL345, ADNS-5020, ADE7758,
+    ADF4350/1, AD5626, AD7910/20, LTC2421/2, MAX7219/21, X2444, RGB LED strings, an NES gamepad and SSI32 from the
+    bytes of one SPI data line.
+  status: draft
+  category: functional
+  appliesTo:
+  - FU-APP-ANALYSIS
+  - FU-WEB-PACKETS
+  verificationMethods:
+  - test
+  verificationCriteria: Each chip's synthetic SPI bus, decoded from its clock and one data line, names the commands,
+    registers, addresses and written values that libsigrokdecode's spiflash, sdcard_spi, avr_isp, nrf24l01, nrf905,
+    cc1101, rfm12, mrf24j40, enc28j60, st25r39xx_spi, adxl345, adns5020, ade77xx, adf435x, ad5626, ad79x0, ltc242x,
+    max72xx, x2444m, rgb_led_spi, nes_gamepad and ssi32 decoders name from the four lines; a broken CRC7, an
+    unaligned erase or a cut command is flagged.
+- id: REQ-SDS-243
+  title: I2C device layers
+  text: The instrument shall name the transfers of EDID, an XFP module, 24xx EEPROMs, the DS1307 and RTC-8564 clocks,
+    ATSHA204A, MLX90614, a Wii Nunchuk, HDCP, LM75, LTC2607/17/27, TCA6408A, PCA9571, MCP23008, MCP23017 and
+    MXC6225XU from an I2C bus, following each device's register pointer from transfer to transfer.
+  status: draft
+  category: functional
+  appliesTo:
+  - FU-APP-ANALYSIS
+  - FU-WEB-PACKETS
+  verificationMethods:
+  - test
+  verificationCriteria: Each device's synthetic I2C bus names what libsigrokdecode's edid, xfp, eeprom24xx, ds1307,
+    rtc8564, atsha204a, nunchuk, hdcp, lm75, ltc26x7, tca6408a, pca9571, mcp230xx and mxc6225xu decoders name (the
+    vendor, product and preferred mode; the module's fields; the operations, word addresses and bytes; the date and
+    time; the commands; the reports; the registers and temperatures); a bad EDID checksum, a time not in BCD, a
+    broken ATSHA204A CRC or a bad SMBus PEC is flagged.
+  notes: sigrok's mlx90614 reads a temperature only from a write after a repeated START, never from the chip's SMBus
+    word read, so the MLX90614 layer is checked against the datasheet's word format and PEC.
+- id: REQ-SDS-244
+  title: UART layers
+  text: The instrument shall name the frames of Futaba S.BUS (setting its UART's 100 kbaud even-parity inverted
+    framing), the ARM ITM, TPIU and ETMv3 trace streams, Amulet LCD ASCII commands and PAN1321 AT commands from a UART
+    line.
+  status: draft
+  category: functional
+  appliesTo:
+  - FU-APP-ANALYSIS
+  - FU-WEB-PACKETS
+  - FU-APP-PANEL
+  verificationMethods:
+  - test
+  verificationCriteria: Synthetic UART lines read to the channels and flags of libsigrokdecode's sbus_futaba, the
+    synchronization, stimulus, overflow and timestamp packets of arm_itm (also behind arm_tpiu's stream 1), the
+    synchronization, I-sync, branch, atom and exception packets of arm_etmv3, the commands of amulet_ascii and
+    pan1321; choosing S.BUS sets the decode's and the hardware trigger's framing.
+- id: REQ-SDS-245
+  title: 1-Wire network and device layers
+  text: The instrument shall name a 1-Wire transaction's ROM command and ROM code and the function commands of the
+    DS28EA00 and DS18B20 thermometers, the DS2408 switch and the DS2431/32/33 EEPROMs, with their CRCs checked.
+  status: draft
+  category: functional
+  appliesTo:
+  - FU-APP-ANALYSIS
+  - FU-WEB-PACKETS
+  verificationMethods:
+  - test
+  verificationCriteria: Synthetic 1-Wire lines read to the ROM commands, ROM codes and data of libsigrokdecode's
+    onewire_network, and the function commands, addresses, data and CRC verdicts of its ds28ea00, ds2408 and ds243x
+    decoders; a scratchpad's temperature is the one its first two bytes hold.
+- id: REQ-SDS-246
+  title: CFP and USB request layers
+  text: The instrument shall name the CFP module register accesses on an MDIO bus's clause 45 frames and the
+    control requests, descriptors and handshakes of a USB bus's transactions.
+  status: draft
+  category: functional
+  appliesTo:
+  - FU-APP-ANALYSIS
+  - FU-WEB-PACKETS
+  verificationMethods:
+  - test
+  verificationCriteria: Synthetic MDIO frames read to the CFP register regions and module identifier that
+    libsigrokdecode's cfp decoder names; a synthetic full-speed enumeration reads to the requests and the device's
+    IDs of the control transfers its usb_request decoder writes.
+- id: REQ-SDS-247
+  title: Bus layers chosen on their evidence
+  text: The instrument shall, on Auto and AUTO in BUS, choose a bus layer only when the bus's packets prove it.
+  status: draft
+  category: functional
+  appliesTo:
+  - FU-APP-ANALYSIS
+  - FU-APP-PANEL
+  verificationMethods:
+  - test
+  verificationCriteria: BUS entry on a synthetic SPI flash session chooses the SPI flash layer and on an I2C EEPROM's
+    random reads the EEPROM layer; each layer with a proof is named on its curated records and the stronger proof
+    wins (EDID over an EEPROM at 0x50); random SPI bursts, I2C transfers, UART text and bytes, 1-Wire transactions
+    without a ROM command, USB packets without a control request and clause 22 MDIO frames name no layer; a raw
+    S.BUS line (100 kbaud 8E2 idling low, frames every 7 or 14 ms) is named S.BUS, its UART framing filled in and the
+    serial trigger armed on its frames' 0F, while UART, LIN, DMX512, MIDI and Modbus captures, inverted UART text and
+    lines nearly S.BUS (another header, frame length, end byte, spacing, parity or idle level) are not.
+  notes: The proofs are an SPI flash's known commands at the lengths they take, SD command tokens with a good CRC7,
+    an AVR Programming Enable, an EDID header, an XFP identifier, a clock's registers read as a valid date and time,
+    an ATSHA204A command's CRC, an SMBus PEC, a Nunchuk's init and report, an HDCP identity register read, an
+    EEPROM's random read, S.BUS frames, ITM and TPIU synchronization, a PAN1321 command, a 1-Wire ROM command and
+    family code, CFP register regions and a USB SETUP request. The UART search reads idle-high lines, so S.BUS's
+    framing is tried only on a line of about 10 us bits that idles low, and kept only on whole frames from 0x0F with
+    a valid end byte at S.BUS's spacing.
+- id: REQ-SDS-248
+  title: Bus layer transactions as hardware trigger matches
+  text: The instrument shall set the serial trigger's match from the selected packet's transaction as its layer
+    names it, as the bus's own match tokens and I2C address, for the FPGA's matcher to trigger on.
+  status: draft
+  category: functional
+  appliesTo:
+  - FU-APP-ANALYSIS
+  - FU-APP-PANEL
+  verificationMethods:
+  - test
+  verificationCriteria: From layer on a selected SPI flash READ arms the match "SOF 03 00 10 00"; on a selected
+    EEPROM word address write it arms address 0x50 and the word address; without a layer it is refused.
+- id: REQ-SDS-249
+  title: I2C address split and filter
+  text: The instrument shall number an I2C bus's devices and each device's transfers, and list only the transfers to
+    one address in one direction when the address filter layer is chosen.
+  status: draft
+  category: functional
+  appliesTo:
+  - FU-APP-ANALYSIS
+  - FU-WEB-PACKETS
+  - FU-APP-PANEL
+  verificationMethods:
+  - test
+  verificationCriteria: The filter keeps the transfers libsigrokdecode's i2cfilter forwards to the decoder stacked on
+    it; the split numbers devices in the order they first appear; the filter's address and direction rows set it.
 - id: REQ-SDS-250
   title: Motion and pulse-width decoding
   text: The instrument shall decode a quadrature encoder's A and B lines (steps and direction), a stepper driver's STEP
@@ -4211,8 +4367,8 @@ requirements:
   verificationCriteria: Each protocol's synthetic capture, on either channel (or in either channel order) and with
     converter noise, is named as itself; the detection corpus of the first thirty protocols and the records the scope
     read of bench sources are named as before; random lines and pairs are named as none of them.
-  notes: Morse and DCF77 run at human and one-second timing; Auto names them from a record that holds them (a slow
-    timebase on screen).
+  notes: Morse and DCF77 at human and one-second timing are named from a record that holds them (a slow timebase on
+    screen); a test source's faster code (a 2 ms Morse unit, a DCF77 second of 3 ms) is found by AUTO's own search.
 - id: REQ-SDS-257
   title: Hardware frame start of the protocols beyond the first thirty
   text: The instrument shall trigger in the FPGA on the frame start and on unit values of each protocol of

@@ -61,6 +61,11 @@ type Packet struct {
 	Read     bool
 	Complete bool // not cut by the record's edges
 	Err      string
+	// Note is what the bus's layer (ApplyLayer) reads the packet as ("READ
+	// 0x001000, 64 bytes"); NoteErr says the layer found it broken (a check
+	// that fails, a command it does not know).
+	Note    string
+	NoteErr bool
 }
 
 // Packets groups the spans of r into packets in record order. recordLen is

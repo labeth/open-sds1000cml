@@ -215,6 +215,7 @@ type autoGoal struct {
 	spectrum bool    // timed on the FFT source, the marker on its fundamental
 	centre   bool    // a rising edge at mid-screen
 	cursors  bool    // the cursors on one period and the top and base (measureCursors)
+	searched bool    // the caller sets the timebase after (AUTO in BUS's search): no display timebase of its own
 }
 
 // sparseLooks is the captures more the sweep's slowest step reads while it
@@ -236,7 +237,7 @@ var (
 	goalScope    = autoGoal{cycles: 2, fill: 7.2, centre: true}
 	goalMeasure  = autoGoal{tag: "MEASURE", cycles: 10, atLeast: true, fill: 7.5, centre: true, cursors: true}
 	goalSpectrum = autoGoal{tag: "SPECTRUM", cycles: 50, atLeast: true, fill: 7.5, maxTdiv: 2e-3, spectrum: true, centre: true}
-	goalBus      = autoGoal{cycles: dispCycles, fill: 6, fitTdiv: 1e-3}
+	goalBus      = autoGoal{cycles: dispCycles, fill: 6, fitTdiv: 1e-3, searched: true}
 )
 
 // measureCursors sets MEASURE's cursors up on the signal AUTO framed, so a
@@ -521,13 +522,25 @@ func (c *Controller) autosetSweep(stop chan struct{}, g autoGoal) (autoResult, b
 				return res, false
 			}
 			m, _ := c.measureChans()
+			// A signal switching a few codes at 2 V/div, with none larger
+			// beside it, is timed by the 200 mV/div pass: the steps left here
+			// read the same few codes (a 3.3 V bus through a 10x probe set as
+			// 1x spent 1.5 s, and 4.5 s with the slowest step's extra looks,
+			// before that pass began).
+			if pass == 0 && c.fe != nil && !fq2(m) && c.smallActive() {
+				break
+			}
 			// The slowest step reads up to two captures more while it sees
 			// nothing: a bus that sends a 23 ms frame every 120 ms (an IR
-			// remote) is missed by a 100 ms screen now and then.
-			if td == sweep[len(sweep)-1] && !has(m[0]) && !has(m[1]) {
+			// remote) is missed by a 100 ms screen now and then. The last
+			// pass's, while nothing is timed: a quiet line's noise at
+			// 200 mV/div reads as a swing, and an IR bus was left unfound.
+			lastPass := pass == 1 || c.fe == nil
+			missing := func() bool { return !has(m[0]) && !has(m[1]) || lastPass && !fq2(m) }
+			if td == sweep[len(sweep)-1] && missing() {
 				// whole records, not the roll view's chunks with their gaps
 				e, ok := c.eng.(interface{ LeaseSearchView(time.Duration) })
-				for k := 0; k < sparseLooks && !has(m[0]) && !has(m[1]); k++ {
+				for k := 0; k < sparseLooks && missing(); k++ {
 					if ok {
 						e.LeaseSearchView(2 * time.Second)
 					}
@@ -744,8 +757,9 @@ func (c *Controller) autosetSweep(stop chan struct{}, g autoGoal) (autoResult, b
 
 	// 5. Finally, set the DISPLAY timebase to g's cycles of the (accurately
 	//    measured) signal. The trigger level is in volts, so this timebase
-	//    change does not disturb it.
-	if f := m[src].Freq; f > 0 {
+	//    change does not disturb it. A searched goal's caller sets the
+	//    timebase next: the clipping check below reads the fit's.
+	if f := m[src].Freq; f > 0 && !g.searched {
 		ss := c.setTdivNearest(c.displayTdiv(g, f))
 		res.tdiv = c.eng.Snapshot().TdivSet()
 		if !c.waitBandFrame(stop, ss) {
@@ -1499,6 +1513,78 @@ func (c *Controller) offScreenFor(ch int, swing *measure.Result) bool {
 
 // TRLC-LINKS: REQ-SDS-137
 func has(r *measure.Result) bool { return r != nil && r.Vpp > 0.02 }
+
+// fq2 reports a capture that timed either channel's frequency.
+// TRLC-LINKS: REQ-SDS-137
+func fq2(m [2]*measure.Result) bool {
+	return has(m[0]) && m[0].Freq > 0 || has(m[1]) && m[1].Freq > 0
+}
+
+// Codes a line's swing spans for smallActive: from smallActiveMin (a 3.3 V
+// logic line through a 10x probe set as 1x spans four at 2 V/div, a quiet
+// line's noise two) to smallActiveMax, over which a signal is timed at the
+// coarse scale (and could clip at the fine one).
+const (
+	smallActiveMin = 4
+	smallActiveMax = 8
+)
+
+// smallActive reports a capture with a line switching across a swing of
+// smallActiveMin to smallActiveMax codes - crossing its midpoint with a code
+// of hysteresis at least four times - and no line swinging wider.
+// TRLC-LINKS: REQ-SDS-137
+func (c *Controller) smallActive() bool {
+	if c.frameFn == nil {
+		return false
+	}
+	small, wide := false, false
+	c.frameFn(func(f *engine.Frame) {
+		if f == nil || f.IsEnv || f.Valid < 64 {
+			return
+		}
+		for _, codes := range [2][]uint8{f.C1, f.C2} {
+			if len(codes) < f.Valid {
+				continue
+			}
+			sw, x := codeSwing(codes[:f.Valid])
+			switch {
+			case sw > smallActiveMax:
+				wide = true
+			case sw >= smallActiveMin && x >= 4:
+				small = true
+			}
+		}
+	})
+	return small && !wide
+}
+
+// codeSwing is a line's swing in codes (its 1st to 99th percentile) and how
+// often it crosses the middle of that swing by more than a code either way.
+// TRLC-LINKS: REQ-SDS-137
+func codeSwing(codes []uint8) (swing, crossings int) {
+	var h [256]int
+	for _, v := range codes {
+		h[v]++
+	}
+	lo, hi := codePercentile(&h, len(codes), 0.01), codePercentile(&h, len(codes), 0.99)
+	mid2 := lo + hi // twice the midpoint
+	state := -1
+	for _, v := range codes {
+		switch {
+		case 2*int(v) > mid2+2:
+			if state == 0 {
+				crossings++
+			}
+			state = 1
+		case 2*int(v) < mid2-2:
+			if state == 1 {
+				crossings++
+			}
+			state = 0
+		}
+	}
+	return hi - lo, crossings
+}
 
 // widestSwing is r with its extremes widened to those of seen, an earlier
 // capture of the same channel in volts (tip-referred, so a V/div change since

@@ -219,7 +219,7 @@
       <div id="pkEmpty" class="empty"><span>Decode is off. Choose a protocol in the Decoder pane, or let the scope find the bus:</span><button type="button" id="pkDetect" class="sm">Auto-detect the bus</button></div>
       <table class="pkt" id="pktable" aria-label="Decoded packets">
         <colgroup><col class="c-n"><col class="c-t"><col class="c-a"><col class="c-hex"><col class="c-str"><col class="c-b"></colgroup>
-        <thead><tr><th class="l">#</th><th>Time</th><th class="l">Addr</th><th class="l">Hex</th><th class="l">String</th><th>Bytes</th></tr></thead>
+        <thead><tr><th class="l">#</th><th>Time</th><th class="l">Addr</th><th class="l">Hex</th><th class="l" id="pkStrHead">String</th><th>Bytes</th></tr></thead>
         <tbody id="pkBody"></tbody>
       </table>
       <div id="pkNote" class="sub"></div>
@@ -290,6 +290,7 @@
       <div class="r dec-sent"><span class="l">SENT</span><span class="hint">tick ns</span><input id="decSentTick" type="number" min="0" value="3000" class="w-md" aria-label="SENT tick ns (0 = auto)"><span class="hint">nibbles</span><input id="decSentNibbles" type="number" min="1" max="64" value="8" class="w-xs" aria-label="SENT nibbles"></div>
       <div class="r dec-spi"><span class="l">Mode</span><span class="hint">CPOL</span><span class="seg xs" id="decCpol" aria-label="SPI CPOL" data-value="0"><button data-value="0">0</button><button data-value="1">1</button></span><span class="hint">CPHA</span><span class="seg xs" id="decCpha" aria-label="SPI CPHA" data-value="0"><button data-value="0">0</button><button data-value="1">1</button></span><span class="seg xs" id="decMsb" aria-label="SPI bit order" data-value="1"><button data-value="1">MSB</button><button data-value="0">LSB</button></span></div>
       <div class="r dec-spi"><span class="l">SPI clock</span><input id="dsClock" type="number" min="0" step="any" placeholder="Auto" autocomplete="off" class="w-lg" aria-label="SPI clock MHz"><span class="hint">MHz, empty: Auto (the scope's Clock rate)</span></div>
+      <div class="r dec-layer"><span class="l">Layer</span><select id="decLayer" aria-label="the chip or protocol the bus carries" title="The chip or protocol the bus carries: the packet table names each transaction (the scope's BUS sheet Layer row; AUTO chooses one when the packets prove it)"></select></div>
       <div class="r dec-polarity"><span class="l">Polarity</span><label class="row-tight"><input id="decInverted" type="checkbox"> inverted inputs</label></div>
       <div class="r"><span class="l">Threshold</span><button type="button" id="decAuto" class="xs tog on" title="Track the threshold automatically">Auto</button><input type="range" id="decThr" min="0" max="255" value="128" class="grow" aria-label="decode threshold code"><span id="decThrV" class="readout xs">128</span></div>
     </div>
@@ -536,6 +537,8 @@
 <script src="decode_wire2.js"></script>
 <script src="decode_irmp.js"></script>
 <script src="packets.js"></script>
+<script src="layer_tables.js"></script>
+<script src="layers.js"></script>
 <script src="wsmath.js"></script>
 <script src="binframe.js"></script>
 <script src="sigrok_export.js"></script>

@@ -105,6 +105,11 @@ func (c *Controller) serialBus(p engine.SerialParams) engine.SerialParams {
 		p.Inverted = c.decInv // the reader's carrier itself, not its envelope
 	case framecalc.ProtoOneWire:
 		p.Overdrive = c.decBaud >= 100000
+	case framecalc.ProtoUART: // the framing detection or the S.BUS layer set
+		if c.decParity != "" {
+			p.Parity = c.decParity
+		}
+		p.Inverted = c.decInv
 	}
 	switch c.decProto {
 	case framecalc.ProtoIRSIRC, framecalc.ProtoWiegand, framecalc.ProtoT55xx:

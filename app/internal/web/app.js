@@ -67,6 +67,7 @@ const dcfg = {
   proto: "off", scl: 1, sda: 2, clk: 1, data: 2, line: 1,
   threshold: null, auto: true, baud: 115200, bits: 8, parity: "none",
   cpol: 0, cpha: 0, msb: true, fmt: "hex", result: null,
+  layer: "", layerAddr: -1, layerDir: 0, // the bus's layer (layers.js) and the I2C filter's address and direction
   good: null, // {key, r, dt}: the last decode that read this bus (Stream + trigger takes its figures)
   stream: false, hist: [], lastStreamSeq: 0,   // stitched high-bandwidth decode + packet history
   // Watch/capture: save decoded windows matching a rule to a client buffer for

@@ -51,6 +51,10 @@ func reachContexts() []reachContext {
 		{"spi", func(t *testing.T, r *viewRig) { set(t, r.c, "bus.protocol", "SPI") }},
 		{"manchester", func(t *testing.T, r *viewRig) { set(t, r.c, "bus.protocol", "Manch") }},
 		{"modbus", func(t *testing.T, r *viewRig) { set(t, r.c, "bus.protocol", "Modbus") }},
+		{"i2c filter", func(t *testing.T, r *viewRig) {
+			set(t, r.c, "bus.protocol", "I2C")
+			set(t, r.c, "bus.layer", "Address filter")
+		}},
 		{"stream", func(t *testing.T, r *viewRig) {
 			set(t, r.c, "bus.protocol", "UART")
 			set(t, r.c, "bus.stream", "On")

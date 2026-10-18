@@ -35,6 +35,8 @@ var scopeCaptures = []scopeCapture{
 	{"scope_ps2_oneframe_500us.json.gz", "ps2", 0},
 	{"scope_swd_raw_50us.json.gz", "swd", 0},
 	{"scope_swd_samples_500us.json.gz", "swd", 0},
+	// a 10 MHz SPI read (clock C2): its data line, taken for MDC, clocked MDIO frames out of the clock
+	{"scope_spi10_raw_50us.json.gz", "spi", 1},
 }
 
 // TestAutodetectNamesScopeCaptures: each record the scope read of a bench
@@ -50,6 +52,18 @@ func TestAutodetectNamesScopeCaptures(t *testing.T) {
 			continue
 		}
 		t.Logf("%-38s %-8s %.60s", sc.file, r.Proto, r.Text)
+	}
+}
+
+// The 104 MHz SPI flash's decimated record at 200us/div (0.26 us samples, a
+// burst of bytes every 7 us) holds one START, address and bytes among 200
+// bare START STOP pairs - data edges while the averaged clock rests high: no
+// I2C bus, where AUTO in BUS named one now and then.
+// TRLC-LINKS: REQ-SDS-018
+func TestAutodetectNoI2COnADecimatedFlash(t *testing.T) {
+	c1, c2, sampleS := loadGzJSON(t, "testdata/scope_flash104_samples_200us.json.gz")
+	if r, _ := AutodetectFast(c1, c2, sampleS, "hex"); r.Proto == "i2c" {
+		t.Errorf("named %q (%s) %.60s", r.Proto, r.Src, r.Text)
 	}
 }
 

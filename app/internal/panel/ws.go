@@ -246,6 +246,7 @@ func (c *Controller) snap() *sv {
 	s.decProto, s.decBaud, s.decChA, s.decChB = c.decProto, c.decBaud, c.decChA, c.decChB
 	s.decCPOL, s.decCPHA, s.decLSB, s.decFormat = c.decCPOL, c.decCPHA, c.decLSB, c.decFormat
 	s.decParity, s.decInv, s.decBits = c.decParity, c.decInv, c.decBits
+	s.decLayer, s.decLayerAddr, s.decLayerDir = c.decLayer, c.decLayerAddr, c.decLayerDir
 	s.decDelayNs, s.decDelayAuto, s.decFine, s.spiEye = c.decDelayNs, c.decDelayAuto, c.decFine, c.spiEye
 	s.decAuto = c.auto.filled
 	s.decMode, s.decTrig, s.decValue, s.streamList = c.decMode, c.decTrig, c.decValue, c.streamList

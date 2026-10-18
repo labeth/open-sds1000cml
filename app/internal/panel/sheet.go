@@ -241,6 +241,9 @@ func (c *Controller) rowKeys(s *sv, r *row) []fkey {
 			fkey{label: "Edit bytes", value: "keyboard", run: func() error { c.openMatchSub(); return nil }},
 			fkey{label: "From screen", value: "pick decoded", run: func() error { return c.openPickSub() }},
 			fkey{label: "Any byte", value: "clear match", run: func() error { return c.setMatchTokens(nil) }})
+		if s.decLayer != "" { // the selected packet's transaction, as its layer names it
+			out = append(out, fkey{label: "From layer", value: "selected packet", run: c.matchFromLayer})
+		}
 	}
 	return out
 }

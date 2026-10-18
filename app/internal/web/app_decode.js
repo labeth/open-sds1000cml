@@ -331,9 +331,24 @@ function updateDecodePanel() {
   for (const c of document.querySelectorAll(".dec-rate")) c.style.display = rated ? "flex" : "none";
   for (const c of document.querySelectorAll(".dec-word")) c.style.display = p === "uart" || p === "manchester" ? "flex" : "none";
   for (const c of document.querySelectorAll(".dec-polarity")) c.style.display = p === "uart" || p === "i2c" || p === "spi" || p === "sent" || p === "mil1553" ? "flex" : "none";
+  decLayerOptions();
   updateDecodeResults();
   updateCaptureList();
   if (typeof stOnDecodeChange === "function") stOnDecodeChange(); // serial trigger reuses this config
+}
+
+// decLayerOptions lists the layers the protocol carries in the Layer row
+// (hidden for a bus without layers) and shows the one in use.
+// TRLC-LINKS: REQ-SDS-241
+function decLayerOptions() {
+  const ls = typeof layersOn === "function" ? layersOn(dcfg.proto) : [["", "None"]];
+  for (const c of document.querySelectorAll(".dec-layer")) c.style.display = ls.length > 1 ? "flex" : "none";
+  const sel = $("decLayer");
+  if (!sel) return;
+  const html = ls.map((l) => `<option value="${l[0]}">${l[1]}</option>`).join("");
+  if (sel.dataset.opts !== html) { sel.innerHTML = html; sel.dataset.opts = html; }
+  if (!ls.some((l) => l[0] === dcfg.layer)) dcfg.layer = "";
+  sel.value = dcfg.layer;
 }
 
 // syncDecodeControls: write dcfg back into the DOM controls (after the page
@@ -349,6 +364,7 @@ function syncDecodeControls() {
   $("decCpol").value = String(dcfg.cpol); $("decCpha").value = String(dcfg.cpha);
   $("decMsb").value = dcfg.msb ? "1" : "0"; $("decFmt").value = dcfg.fmt;
   $("decAuto").classList.toggle("on", dcfg.auto);
+  decLayerOptions();
 }
 
 // TRLC-LINKS: REQ-SDS-207
@@ -390,6 +406,9 @@ function decScopeSettings(d) {
   else if (proto !== "off") s.line = a;
   if (proto !== "off" && proto !== "i2c" && proto !== "spi" && proto !== "sent") s.baud = d.DecBaud > 0 ? d.DecBaud : 0;
   if (proto === "modbus") s.modbusParity = d.DecParity || "";
+  if (proto === "uart") { s.parity = d.DecParity || "none"; s.inverted = !!d.DecInverted; } // the framing Auto or the S.BUS layer set
+  if (proto !== "off") s.layer = d.DecLayer || ""; // the bus's layer (BUS sheet)
+  if (proto === "i2c") { s.layerAddr = d.DecLayerAddr === undefined ? -1 : d.DecLayerAddr; s.layerDir = d.DecLayerDir || 0; }
   if (DEC_FRAME_BITS.includes(proto)) s.frameBits = +d.DecBits || 0;
   return s;
 }
@@ -515,9 +534,21 @@ async function decDetect() {
     dcfg.bits = Math.max(manchester ? 1 : 5, Math.min(manchester ? 16 : 9, +$("decBits").value | 0)); recompute(); decPageEdit();
   };
   // TRLC-LINKS: REQ-SDS-207
-  $("decParity").onchange = () => { dcfg.parity = $("decParity").value; recompute(); decPageEdit(); };
+  $("decParity").onchange = () => {
+    dcfg.parity = $("decParity").value; recompute(); decPageEdit();
+    if (dcfg.proto === "uart") decPush("bus.parity", { even: 1, odd: 2, none: 3 }[dcfg.parity] || 3); // the scope's UART framing too
+  };
   // TRLC-LINKS: REQ-SDS-207
-  $("decInverted").onchange = () => { dcfg.inverted = $("decInverted").checked; recompute(); decPageEdit(); };
+  $("decInverted").onchange = () => {
+    dcfg.inverted = $("decInverted").checked; recompute(); decPageEdit();
+    if (dcfg.proto === "uart") decPush("bus.uart_line", dcfg.inverted ? 1 : 0);
+  };
+  // TRLC-LINKS: REQ-SDS-241
+  $("decLayer").onchange = () => {
+    dcfg.layer = $("decLayer").value;
+    recompute();
+    decPush("bus.layer", LAYERS.findIndex((l) => l[0] === dcfg.layer));
+  };
   // TRLC-LINKS: REQ-SDS-207
   $("decCpol").onchange = () => { dcfg.cpol = +$("decCpol").value; recompute(); decPush("bus.spi_mode", dcfg.cpol * 2 + dcfg.cpha); };
   // TRLC-LINKS: REQ-SDS-207

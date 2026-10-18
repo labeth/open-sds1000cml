@@ -391,6 +391,12 @@ func (c *Controller) setDecProto(p int) error {
 	if p == framecalc.ProtoUART && rateProto(prev) {
 		c.decBaud = 115200
 	}
+	if p != prev {
+		// another bus: its framing and polarity are its own (a Modbus's even
+		// parity is no UART's), and a layer of the old bus reads nothing here
+		c.decParity, c.decInv = "", false
+		c.dropLayerLocked()
+	}
 	stop := p != prev && c.decMode == decModeStream
 	if stop {
 		c.decMode = decModeView

@@ -106,6 +106,13 @@ func scoreResult(r Result) float64 {
 			// SPI decode. Keep it only as a last resort.
 			return 5
 		}
+		// A START opens an addressed transfer: STARTs and STOPs with no
+		// address between, outnumbering the transfers, are data edges while a
+		// clock rests high (a 104 MHz SPI flash's decimated record read as
+		// "I2C": one transfer among 200 bare START STOP pairs).
+		if bare := starts - addrs; bare > 4 && bare > addrs {
+			return -1e9
+		}
 		return float64(addrs*100 + acks*30 + datas*20 + starts*5)
 	case "uart":
 		// One byte is no UART: its stop bit checks on half of random lines - a
@@ -142,8 +149,10 @@ func scoreResult(r Result) float64 {
 			return -1e9
 		}
 		score := float64(len(r.Bytes)*10 - c[0]*35 - c[1]*18 + 15)
-		// Clean at a rate UARTs use: every byte's stop bit checked.
-		if std && c[0] == 0 && c[1] == 0 && len(r.Bytes) >= 8 {
+		// Clean at a rate UARTs use: every byte's stop bit checked. S.BUS's
+		// framing (considerSBUS) is tried only on a line its frames prove.
+		sbus := r.Inverted && r.Parity == "even" && r.Baud == sbusBaud
+		if (std || sbus) && c[0] == 0 && c[1] == 0 && len(r.Bytes) >= 8 {
 			score += 100
 		}
 		return score
@@ -552,7 +561,14 @@ func Autodetect(c1, c2 []uint8, colTimeS float64, format string) Result {
 		considerLines(chans[k], colTimeS, format, uartBaud[k], func(r Result) { consider(r, chName(k), line(k)) })
 	}
 	if len(active) >= 2 && !freeClock { // PS/2, SWD, MDIO, Wiegand: clock (D0) and data (D1) either way round
-		considerPairs(c1, c2, colTimeS, format, func(r Result, a int) {
+		clockLine := -1 // a clocked pair's clock: PS/2, SWD and MDIO are clocked by it, not by its data
+		if clockedPair {
+			clockLine = 0
+			if u1 > u0 {
+				clockLine = 1
+			}
+		}
+		considerPairs(c1, c2, colTimeS, format, clockLine, func(r Result, a int) {
 			consider(r, "CLK "+chName(a)+" DATA "+chName(1-a), Roles{ChA: a, ChB: 1 - a})
 		})
 	}

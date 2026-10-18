@@ -97,6 +97,12 @@ type Decode struct {
 	// the variant detected (an RC code's trits or bytes, Oregon's version,
 	// the PJON mode, the IR multi protocol); 0: not known.
 	FrameBits int `json:"frame_bits,omitempty"`
+	// Layer is the bus's application layer (analysis.Layers' ID); the I2C
+	// filter layer's address is LayerAddr less one (0: any) and its
+	// direction LayerDir (0 both, 1 read, 2 write).
+	Layer     string `json:"layer,omitempty"`
+	LayerAddr int    `json:"layer_addr,omitempty"`
+	LayerDir  int    `json:"layer_dir,omitempty"`
 }
 
 // Settings is the whole persisted setup. Every field is comparable, so the

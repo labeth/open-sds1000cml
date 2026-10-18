@@ -36,7 +36,7 @@ const ALL_GROUPS = [
     ["bodeDut", "Bode DUT channel", "fra"], ["bodeClear", "Clear Bode points", "fra"]]],
   ["Decode (BUS)", [["decProto", "Protocol", "decode uart i2c spi can sent manchester"], ["decDetect", "Auto-detect the bus", "find protocol"], ["busView", "BUS view", "packets log eye stream"], ["streamStops", "What stops the scope's stream", "stream trigger error value hand"],
     ["decScl", "I²C SCL channel", "i2c clock"], ["decSda", "I²C SDA channel", "i2c data"], ["decClk", "Clock channel (SPI, PS/2, SWD, MDIO, SD, PDI, cJTAG, Maple, caliper; Wiegand D0; encoder A; STEP)", ""], ["decData", "Data channel (SPI, PS/2, SWD, MDIO, SD, PDI, cJTAG, Maple, caliper; Wiegand D1; encoder B; DIR)", ""],
-    ["decLine", "Decode line", "uart channel"], ["decBaud", "Baud / bit rate", "uart speed"], ["decBits", "Data bits", "uart word"], ["decParity", "UART parity", "none even odd"],
+    ["decLine", "Decode line", "uart channel"], ["decBaud", "Baud / bit rate", "uart speed"], ["decBits", "Data bits", "uart word"], ["decParity", "UART parity", "none even odd"], ["decLayer", "Bus layer", "layer chip flash eeprom rtc itm sbus edid"],
     ["decSentTick", "SENT tick", "ns"], ["decSentNibbles", "SENT nibbles", ""], ["decCpol", "SPI CPOL", "mode"], ["decCpha", "SPI CPHA", "mode"], ["decMsb", "SPI bit order", "msb lsb"],
     ["dsClock", "SPI clock rate", "hz mhz frequency auto"], ["decInverted", "Inverted inputs", "polarity"], ["decAuto", "Auto threshold", "level"], ["decThr", "Decode threshold", "level"],
     ["decFmt", "Decode strip format", "hex ascii string"], ["decStream", "Stream log", "history stitch"], ["decHistClear", "Clear decode log", ""],

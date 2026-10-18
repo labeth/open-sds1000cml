@@ -7,6 +7,7 @@ OUTPUT_ANN = 0
 OUTPUT_PYTHON = 1
 OUTPUT_BINARY = 2
 OUTPUT_META = 3
+OUTPUT_LOGIC = 4  # a decoder's logic output (port expanders): the stand-in drops it
 SRD_CONF_SAMPLERATE = 10000
 
 

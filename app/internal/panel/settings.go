@@ -5,6 +5,7 @@ import (
 	"math"
 	"strings"
 
+	"open-sds/app/internal/analysis"
 	"open-sds/app/internal/panel/framecalc"
 	"open-sds/app/internal/panel/wsview"
 	"open-sds/app/internal/settings"
@@ -55,6 +56,7 @@ func (c *Controller) SettingsView() settings.ViewState {
 			Format:     c.decFormat,
 			StreamTrig: c.decTrig, StreamValue: c.decValue,
 			Parity: c.decParity, Inverted: c.decInv, FrameBits: c.decBits,
+			Layer: c.decLayer, LayerAddr: c.decLayerAddr + 1, LayerDir: c.decLayerDir,
 		},
 		UI:     ui,
 		Serial: ser,
@@ -170,6 +172,10 @@ func (c *Controller) ApplySettingsView(v settings.ViewState) {
 	c.decChA, c.decChB = d.ChA, d.ChB
 	c.decCPOL, c.decCPHA, c.decLSB = d.CPOL, d.CPHA, d.LSB
 	c.decParity, c.decInv, c.decBits = "", d.Inverted, clampInt(d.FrameBits, 0, 70)
+	c.decLayer, c.decLayerAddr, c.decLayerDir = "", clampInt(d.LayerAddr-1, -1, 127), clampInt(d.LayerDir, 0, 2)
+	if l, ok := analysis.LayerByID(d.Layer); ok && l.Bus == framecalc.ResultName(d.Proto) {
+		c.decLayer = d.Layer
+	}
 	if d.Parity == "even" || d.Parity == "odd" || d.Parity == "none" {
 		c.decParity = d.Parity
 	}
