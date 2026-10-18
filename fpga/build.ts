@@ -162,8 +162,11 @@ const summary=readFileSync(join(out,'output_files','bench.sta.summary'),'utf8');
 const slack=[...summary.matchAll(/^Slack\s*:\s*([-+\d.]+)/gm)].map(m=>Number(m[1]));
 if(!slack.length || slack.some(s=>!Number.isFinite(s)||s<0))throw Error('Timing failed or summary missing; refusing to publish');
 run('quartus_asm',['bench']);
-run('quartus_cpf',['-c','-o','bitstream_compression=off','output_files/bench.sof','bench.rbf']);
-if(statSync(join(out,'bench.rbf')).size!==368011)throw Error('Unexpected FPGA image size');
+// Compressed: the device decompresses in passive serial, and an image of
+// about half the bits switches in half the time (the shifting is the load).
+run('quartus_cpf',['-c','-o','bitstream_compression=on','output_files/bench.sof','bench.rbf']);
+const rbfSize=statSync(join(out,'bench.rbf')).size;
+if(rbfSize<92002 || rbfSize>=368011)throw Error('Unexpected FPGA image size '+rbfSize);
 if(!image.trigger)auditStacking();
 const rbfSha=sha(readFileSync(join(out,'bench.rbf')));
 writeFileSync(join(out,'image.json'),JSON.stringify({image:name,seed,sha256:rbfSha,minimumInternalSlackNs:Math.min(...slack),inputs},null,2)+'\n');

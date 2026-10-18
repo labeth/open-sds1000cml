@@ -572,13 +572,26 @@ const (
 // TRLC-LINKS: REQ-SDS-214
 func decimatedStands(res decode.Result) bool {
 	fs := decode.FeatureSamples(res)
-	switch res.Proto {
-	case "canfd", "flexray", "modbus", "j1850", "usbpd", "lin", "dht", "wiegand", "onewire":
+	switch {
+	case checkedFind(res):
 		return fs >= decimatedCheckedFeature
-	case "uart":
+	case res.Proto == "uart":
 		return fs >= decimatedFeature && decode.StandardBaud(float64(res.Baud))
 	}
 	return fs >= decimatedFeature
+}
+
+// checkedFind reports a bus found by its frames' checks (CAN's CRC-15,
+// FlexRay's header CRC-11, Modbus's CRC-16, J1850's CRC-8, USB PD's CRC-32,
+// the LIN and DHT checksums, Wiegand's parities) or by a handshake (1-Wire's
+// reset and presence pulse), which a misread record does not pass.
+// TRLC-LINKS: REQ-SDS-214
+func checkedFind(res decode.Result) bool {
+	switch res.Proto {
+	case "canfd", "flexray", "modbus", "j1850", "usbpd", "lin", "dht", "wiegand", "onewire":
+		return true
+	}
+	return false
 }
 
 // detectWith is one phase of detectOn: a decimated record (LeaseSampleView)
@@ -725,10 +738,13 @@ func busLines(res decode.Result) []int {
 // against the live envelope (envHides), read now when the look holds none.
 // A find no envelope could be read for does not stand: the search goes on
 // at the full rate (the 104 MHz flash read as I2C, with no envelope after
-// AUTO's sweep).
+// AUTO's sweep). A checked find (checkedFind) stands without: no faster bus
+// averaged passes its frames' checks, and a USB PD bus, its half bits a run
+// or two under the feature now and then, went on to a full-rate record
+// read as Manchester.
 // TRLC-LINKS: REQ-SDS-214
 func (c *Controller) weighEnvelope(l *look, accept func(*engine.Frame, bool) bool) bool {
-	if !stands(*l) || !shortRuns(*l) {
+	if !stands(*l) || !shortRuns(*l) || checkedFind(l.res) {
 		return stands(*l)
 	}
 	if !l.envSeen {
@@ -739,11 +755,11 @@ func (c *Controller) weighEnvelope(l *look, accept func(*engine.Frame, bool) boo
 
 // stands reports whether a bus found on a decimated record stands: enough
 // samples for its shortest feature (decimatedStands), and no line it uses
-// showing faster edges in the record (hidesFaster) or the live envelope
-// (envHides).
+// showing faster edges in the record (hidesFaster) or, unless its frames'
+// checks passed (checkedFind), the live envelope (envHides).
 // TRLC-LINKS: REQ-SDS-214
 func stands(l look) bool {
-	return l.found && decimatedStands(l.res) && !hidesFaster(l) && !envHides(l)
+	return l.found && decimatedStands(l.res) && !hidesFaster(l) && (checkedFind(l.res) || !envHides(l))
 }
 
 // envHidesRatio is how much shorter than a found bus's shortest feature the
@@ -840,9 +856,25 @@ func (c *Controller) findBus(auto AutoSource, wanted func() bool) (decode.Result
 	// bursts, averaged away in the record).
 	slowFirst := !found && dec.resolved && dec.envRun == [2]float64{} && !c.waitingForTrigger(c.snap())
 	if slowFirst {
-		if r, s, ok, stepped := c.findSlowBus(auto, wanted, ""); ok {
+		if r, s, ok, stepped, _ := c.findSlowBus(auto, wanted, ""); ok {
 			return r, s, true, stepped
 		}
+	}
+	// A UART of a few bytes at a rate UARTs use, on a record resolving its bits,
+	// is a frame of a slow bus read in part as often (a LIN frame, a Modbus
+	// message): it is looked for slower first, and stands when the slow look
+	// finds it again. The full-rate records hold no more of a bus that slow (a
+	// 19200 Bd LIN bus read 5 s of them before the slow look named it).
+	slowDone := false
+	if found && fewUART(res) && !scant && !c.waitingForTrigger(c.snap()) {
+		r, s, ok, stepped, again := c.findSlowBus(auto, wanted, res.Proto)
+		if ok {
+			return r, s, true, stepped
+		}
+		if again {
+			return res, sampleS, true, at
+		}
+		slowDone = true
 	}
 	// a scope waiting for a trigger captures nothing at the full rate either
 	if full, t := c.fullRateS(), c.fullRateTdiv(); full > 0 && t > 0 && (!found || scant || weakFind(res)) && !c.waitingForTrigger(c.snap()) {
@@ -863,12 +895,12 @@ func (c *Controller) findBus(auto AutoSource, wanted func() bool) (decode.Result
 	// milliseconds holds a part of, and an SPI byte or two part of a PS/2
 	// frame the full-rate record cut: the slow look names it when it finds
 	// another bus there, and keeps the first find otherwise.
-	if (!found && !slowFirst || weakFind(res)) && !c.waitingForTrigger(c.snap()) {
+	if (!found && !slowFirst || weakFind(res)) && !slowDone && !c.waitingForTrigger(c.snap()) {
 		prior := ""
 		if found {
 			prior = res.Proto
 		}
-		if r, s, ok, stepped := c.findSlowBus(auto, wanted, prior); ok {
+		if r, s, ok, stepped, _ := c.findSlowBus(auto, wanted, prior); ok {
 			return r, s, true, stepped
 		}
 	}
@@ -919,10 +951,10 @@ var slowTdivs = []float64{5e-3, 20e-3}
 // slowTdivs, read as a search reads (LeaseSearchView: a deeper screen than
 // the look on screen had, and whole records where the live view rolled).
 // prior is the protocol of a weak find made faster ("" for none): found
-// again here it does not count, and the look ends. The timebase a bus is found at stays while wanted; with none
+// again here it does not count, and the look ends (again). The timebase a bus is found at stays while wanted; with none
 // found the timebase goes back.
 // TRLC-LINKS: REQ-SDS-214
-func (c *Controller) findSlowBus(auto AutoSource, wanted func() bool, prior string) (decode.Result, float64, bool, float64) {
+func (c *Controller) findSlowBus(auto AutoSource, wanted func() bool, prior string) (r decode.Result, sampleS float64, found bool, stepped float64, again bool) {
 	prev := c.snap().st.TdivSet()
 	e, searching := c.eng.(interface{ LeaseSearchView(time.Duration) })
 	if searching {
@@ -953,19 +985,19 @@ func (c *Controller) findSlowBus(auto AutoSource, wanted func() bool, prior stri
 			l := c.detectWith(true, true, accept, auto, decimatedWait+time.Duration(20*at*float64(time.Second)))
 			if l.found && decimatedStands(l.res) && l.res.Proto == prior {
 				c.setTdivNearest(prev)
-				return decode.Result{}, 0, false, 0 // the bus found faster, again
+				return decode.Result{}, 0, false, 0, true // the bus found faster, again
 			}
 			if l.found && decimatedStands(l.res) {
 				if !wanted() {
 					c.setTdivNearest(prev)
-					return l.res, l.sampleS, true, 0
+					return l.res, l.sampleS, true, 0, false
 				}
-				return l.res, l.sampleS, true, at
+				return l.res, l.sampleS, true, at, false
 			}
 		}
 	}
 	c.setTdivNearest(prev)
-	return decode.Result{}, 0, false, 0
+	return decode.Result{}, 0, false, 0, false
 }
 
 // slowLooks is how many records findSlowBus reads at the i-th of slowTdivs:
@@ -1020,11 +1052,20 @@ func (c *Controller) findAtFullRate(full, t float64, first *look, auto AutoSourc
 	// A bus the live envelope shows busy over much of the screen, faster than
 	// the record resolves, is looked for on a shorter record still: the
 	// 104 MHz flash's 2 ms screen holds hundreds of bursts, and its record at
-	// windowTdiv took 8 s to read and process.
+	// windowTdiv took 8 s to read and process. The envelope is read for a
+	// look that found nothing too (the flash's decimated record names no
+	// bus: 16 s to find it on the window's record).
+	if !dec.envSeen {
+		dec.envRun, dec.envBusy, dec.envSeen = c.envelopeRuns(true, at(t), c.now().Add(envWait))
+	}
+	var dense *look // a few SPI bytes on the dense record: kept, should the window's show nothing
+	denseAt := 0.0
 	if d := c.denseTdiv(); d > 0 && denseFast(dec) {
 		c.setTdivNearest(d)
-		if l := c.detectWith(false, true, at(d), auto, detectWait); l.found {
+		if l := c.detectWith(false, true, at(d), auto, detectWait); l.found && !fewDenseSPI(l.res) {
 			return keep(l.res, l.sampleS, d)
+		} else if l.found {
+			dense, denseAt = &l, d
 		}
 		c.setTdivNearest(t)
 	}
@@ -1037,6 +1078,10 @@ func (c *Controller) findAtFullRate(full, t float64, first *look, auto AutoSourc
 			return keep(l.res, l.sampleS, w)
 		}
 		c.setTdivNearest(t)
+	}
+	if dense != nil {
+		c.setTdivNearest(denseAt)
+		return keep(dense.res, dense.sampleS, denseAt)
 	}
 	// a sparse bus: no frame on the short record
 	l := c.detectWith(false, true, at(t), auto, detectWait)
@@ -1096,6 +1141,17 @@ func denseFast(l look) bool {
 		}
 	}
 	return false
+}
+
+// denseSPIBytes is the SPI bytes a find on the dense record must hold to end
+// the search there: an SWD bus's 100 us read as "SPI, 14 bytes" (its frames
+// are whole on the window's record), the 104 MHz flash's as hundreds.
+const denseSPIBytes = 32
+
+// fewDenseSPI reports an SPI find of under denseSPIBytes bytes.
+// TRLC-LINKS: REQ-SDS-214
+func fewDenseSPI(res decode.Result) bool {
+	return res.Proto == "spi" && len(res.Bytes) < denseSPIBytes
 }
 
 // denseTdiv is the timebase of the record a dense fast bus is first looked

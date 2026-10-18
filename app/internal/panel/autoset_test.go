@@ -3,6 +3,7 @@ package panel
 
 import (
 	"math"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -313,6 +314,90 @@ func TestAutosetFindsALogicSignalThroughA10xProbe(t *testing.T) {
 			if tip := analog.Detents[vidx[ch]].VdivV * pr.physical; tip < 0.45 || tip > 1.05 {
 				t.Fatalf("%+v: C%d fitted %g V/div at the BNC, %g at the tip", pr, ch+1, analog.Detents[vidx[ch]].VdivV, tip)
 			}
+		}
+	}
+}
+
+// A bus sending a frame now and then (an IR remote's, through a 10x probe set
+// as 1x) that the fine pass's slowest screen misses shows only the quiet
+// line's noise there, a swing at 200 mV/div but no timing: the step reads
+// more captures and finds the frame, where the sweep said "no signal".
+// TRLC-LINKS: REQ-SDS-137
+func TestAutosetLooksAgainForASparseBus(t *testing.T) {
+	_, base, fe := newC(t)
+	e := &searchViewEng{fakeEng: base}
+	c := New(e, fe, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
+	c.decode(idle(), true)
+	base.stats.TdivS = 1e-6
+	fe.SetProbe(0, 1)
+	fe.SetProbe(1, 1)
+	c.SetFrameSource(func(fn func(*engine.Frame)) {
+		idx, _ := fe.Snapshot()
+		if e.search.Load() { // a whole record holds a frame
+			var codes []uint8
+			for i := 0; i < 1000; i++ {
+				tip := 0.0
+				if i%100 >= 50 {
+					tip = 3.3
+				}
+				codes = append(codes, uint8(math.Round(128+(tip-1.65)/10/analog.AnalogVdiv(idx[0])*25)))
+			}
+			fn(&engine.Frame{C1: codes, C2: codes, Valid: len(codes), SampleS: 1e-4})
+			return
+		}
+		// a quiet line: a swing over the least one the sweep counts, no timing
+		noise := make([]uint8, 1000)
+		for i := range noise {
+			noise[i] = 128
+		}
+		noise[500] = 134
+		fn(&engine.Frame{C1: noise, C2: noise, Valid: len(noise), SampleS: 1e-6})
+	})
+	c.runAutoset(make(chan struct{}))
+	c.mu.Lock()
+	msg := c.autosetMsg
+	c.mu.Unlock()
+	if msg == "AUTOSET: no signal" {
+		t.Fatalf("%q", msg)
+	}
+}
+
+// searchViewEng serves whole records while a search view is leased.
+type searchViewEng struct {
+	*fakeEng
+	search atomic.Bool
+}
+
+// TRLC-LINKS: REQ-SDS-137
+func (e *searchViewEng) LeaseSearchView(d time.Duration) { e.search.Store(d > 0) }
+
+// A 3.3 V logic line through a 10x probe set as 1x switches four codes at the
+// sweep's 2 V/div: the coarse pass gives way to the fine one at once
+// (smallActive). A quiet line's two codes of noise, or a wider signal beside
+// the small one, keep the coarse pass going.
+// TRLC-LINKS: REQ-SDS-137
+func TestSmallActiveLine(t *testing.T) {
+	c, _, _ := newC(t)
+	// TRLC-LINKS: REQ-SDS-137
+	line := func(swing int) []uint8 {
+		s := make([]uint8, 1000)
+		for i := range s {
+			v := 130 + i%3 - 1 // two codes of noise
+			if swing > 0 && i%100 >= 50 {
+				v += swing
+			}
+			s[i] = uint8(v)
+		}
+		return s
+	}
+	for _, tc := range []struct {
+		c1, c2 int
+		want   bool
+	}{{4, 0, true}, {0, 4, true}, {6, 5, true}, {0, 0, false}, {4, 30, false}, {12, 0, false}} {
+		f := &engine.Frame{C1: line(tc.c1), C2: line(tc.c2), Valid: 1000}
+		c.SetFrameSource(func(fn func(*engine.Frame)) { fn(f) })
+		if got := c.smallActive(); got != tc.want {
+			t.Errorf("swings %d/%d codes: smallActive %v, want %v", tc.c1, tc.c2, got, tc.want)
 		}
 	}
 }

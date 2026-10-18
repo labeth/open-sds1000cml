@@ -54,36 +54,41 @@ app:
 	CGO_ENABLED=0 GOOS=linux GOARCH=arm GOARM=7 \
 	  go build -trimpath -ldflags "$(LDFLAGS)" -o $(DIST)/app-arm ./cmd/app
 
+# rbfsize: the image's size is an EP4CE10 .rbf's, uncompressed or compressed
+rbfsize = s=$$(stat -c %s "$(1)"); test "$$s" -eq 368011 || { test "$$s" -ge 92002 && test "$$s" -lt 368011; }
+
 # app-release: embeds the canonical general image and loads it at startup with
 # visible LCD progress, then verifies SRAM transport before acquiring. Refuses to build
 # without the .rbf (an empty embed would be a silent verify-only binary) or
-# with an .rbf of the wrong size (368011 bytes = uncompressed EP4CE10).
+# with an .rbf of the wrong size: an EP4CE10 image is 368011 bytes
+# uncompressed, and from a quarter of that up compressed (fpgaload.validLen;
+# the images ship compressed, which halves an image switch).
 app-release:
 	@test -f "$(RBF)" || { echo "app-release: missing $(RBF) — build it with fpga/build.ts"; exit 1; }
-	@test "$$(stat -c %s "$(RBF)")" = 368011 || { echo "app-release: $(RBF) is $$(stat -c %s "$(RBF)") bytes, want 368011 (uncompressed EP4CE10 .rbf)"; exit 1; }
+	@$(call rbfsize,$(RBF)) || { echo "app-release: $(RBF) is $$(stat -c %s "$(RBF)") bytes, not an EP4CE10 .rbf (368011 uncompressed, 92002..368010 compressed)"; exit 1; }
 	cp "$(RBF)" $(EMBED)
 	@if [ -n "$(STACK_RBF)" ]; then \
-	  test "$$(stat -c %s "$(STACK_RBF)")" = 368011 || { echo "app-release: $(STACK_RBF) is not a 368011-byte EP4CE10 .rbf"; exit 1; }; \
+	  $(call rbfsize,$(STACK_RBF)) || { echo "app-release: $(STACK_RBF) is not an EP4CE10 .rbf"; exit 1; }; \
 	  cp "$(STACK_RBF)" $(STACK_EMBED); \
 	else rm -f $(STACK_EMBED); fi
 	@if [ -n "$(PACKET_RBF)" ]; then \
-	  test "$$(stat -c %s "$(PACKET_RBF)")" = 368011 || { echo "app-release: $(PACKET_RBF) is not a 368011-byte EP4CE10 .rbf"; exit 1; }; \
+	  $(call rbfsize,$(PACKET_RBF)) || { echo "app-release: $(PACKET_RBF) is not an EP4CE10 .rbf"; exit 1; }; \
 	  cp "$(PACKET_RBF)" $(PACKET_EMBED); \
 	else rm -f $(PACKET_EMBED); fi
 	@if [ -n "$(LINE_RBF)" ]; then \
-	  test "$$(stat -c %s "$(LINE_RBF)")" = 368011 || { echo "app-release: $(LINE_RBF) is not a 368011-byte EP4CE10 .rbf"; exit 1; }; \
+	  $(call rbfsize,$(LINE_RBF)) || { echo "app-release: $(LINE_RBF) is not an EP4CE10 .rbf"; exit 1; }; \
 	  cp "$(LINE_RBF)" $(LINE_EMBED); \
 	else rm -f $(LINE_EMBED); fi
 	@if [ -n "$(STREAM_RBF)" ]; then \
-	  test "$$(stat -c %s "$(STREAM_RBF)")" = 368011 || { echo "app-release: $(STREAM_RBF) is not a 368011-byte EP4CE10 .rbf"; exit 1; }; \
+	  $(call rbfsize,$(STREAM_RBF)) || { echo "app-release: $(STREAM_RBF) is not an EP4CE10 .rbf"; exit 1; }; \
 	  cp "$(STREAM_RBF)" $(STREAM_EMBED); \
 	else rm -f $(STREAM_EMBED); fi
 	@if [ -n "$(QUALIFY_RBF)" ]; then \
-	  test "$$(stat -c %s "$(QUALIFY_RBF)")" = 368011 || { echo "app-release: $(QUALIFY_RBF) is not a 368011-byte EP4CE10 .rbf"; exit 1; }; \
+	  $(call rbfsize,$(QUALIFY_RBF)) || { echo "app-release: $(QUALIFY_RBF) is not an EP4CE10 .rbf"; exit 1; }; \
 	  cp "$(QUALIFY_RBF)" $(QUALIFY_EMBED); \
 	else rm -f $(QUALIFY_EMBED); fi
 	@if [ -n "$(FAST_RBF)" ]; then \
-	  test "$$(stat -c %s "$(FAST_RBF)")" = 368011 || { echo "app-release: $(FAST_RBF) is not a 368011-byte EP4CE10 .rbf"; exit 1; }; \
+	  $(call rbfsize,$(FAST_RBF)) || { echo "app-release: $(FAST_RBF) is not an EP4CE10 .rbf"; exit 1; }; \
 	  cp "$(FAST_RBF)" $(FAST_EMBED); \
 	else rm -f $(FAST_EMBED); fi
 	CGO_ENABLED=0 GOOS=linux GOARCH=arm GOARM=7 \
