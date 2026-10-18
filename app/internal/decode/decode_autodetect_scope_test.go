@@ -37,6 +37,26 @@ var scopeCaptures = []scopeCapture{
 	{"scope_swd_samples_500us.json.gz", "swd", 0},
 	// a 10 MHz SPI read (clock C2): its data line, taken for MDC, clocked MDIO frames out of the clock
 	{"scope_spi10_raw_50us.json.gz", "spi", 1},
+	// an Oregon sensor's bursts, and RFID readers' commands on the field's envelope
+	{"scope_ook_search_20ms.json.gz", "ook", 0},
+	{"scope_em4305_search_5ms.json.gz", "em4305", 0},
+	{"scope_t55xx_search_5ms.json.gz", "t55xx", 0},
+}
+
+// TestScopeRFIDStandsDecimated: a reader's commands found on the envelope
+// in a search's decimated record span the samples a checked find needs
+// there (six, panel decimatedStands): their shortest feature is a gap of
+// field clocks, not the field's cycle.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-256
+func TestScopeRFIDStandsDecimated(t *testing.T) {
+	for _, f := range []string{"scope_em4305_search_5ms.json.gz", "scope_t55xx_search_5ms.json.gz"} {
+		c1, c2, sampleS := loadGzJSON(t, "testdata/"+f)
+		r, st := AutodetectFast(c1, c2, sampleS, "hex")
+		r.SPB *= st / sampleS // in the record's samples, as the panel's Detect gives it
+		if fs := FeatureSamples(r); fs < 6 {
+			t.Errorf("%s: %s feature %.1f samples", f, r.Proto, fs)
+		}
+	}
 }
 
 // TestAutodetectNamesScopeCaptures: each record the scope read of a bench

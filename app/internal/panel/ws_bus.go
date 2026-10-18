@@ -964,6 +964,19 @@ func (c *Controller) findSlowBus(auto AutoSource, wanted func() bool, prior stri
 		e.LeaseSearchView(10 * time.Second)
 		defer e.LeaseSearchView(0)
 	}
+	// a Manchester line found faster may be a slower burst's middle (an
+	// Oregon sensor's 100 ms message at 5 ms/div reads as Manchester or
+	// RC-5): held while the slowest look sees whether it is one
+	var held *look
+	heldAt := 0.0
+	keep := func(l look, at float64) (decode.Result, float64, bool, float64, bool) {
+		if !wanted() {
+			c.setTdivNearest(prev)
+			return l.res, l.sampleS, true, 0, false
+		}
+		c.setTdivNearest(at)
+		return l.res, l.sampleS, true, at, false
+	}
 	for i, t := range slowTdivs {
 		if len(c.tdivs) == 0 || slices.Max(c.tdivs) < t*0.999 {
 			continue
@@ -991,16 +1004,29 @@ func (c *Controller) findSlowBus(auto AutoSource, wanted func() bool, prior stri
 				return decode.Result{}, 0, false, 0, true // the bus found faster, again
 			}
 			if l.found && decimatedStands(l.res) {
-				if !wanted() {
-					c.setTdivNearest(prev)
-					return l.res, l.sampleS, true, 0, false
+				if held != nil && l.res.Proto != "ook" {
+					return keep(*held, heldAt)
 				}
-				return l.res, l.sampleS, true, at, false
+				if held == nil && i < len(slowTdivs)-1 && manchesterLike(l.res.Proto) {
+					held, heldAt = &l, at
+					break
+				}
+				return keep(l, at)
 			}
 		}
 	}
+	if held != nil {
+		return keep(*held, heldAt)
+	}
 	c.setTdivNearest(prev)
 	return decode.Result{}, 0, false, 0, false
+}
+
+// manchesterLike reports the line codes a slower burst's middle reads as
+// (findSlowBus).
+// TRLC-LINKS: REQ-SDS-214, REQ-SDS-256
+func manchesterLike(proto string) bool {
+	return proto == "manchester" || proto == "irrc5" || proto == "irrc6"
 }
 
 // slowLooks is how many records findSlowBus reads at the i-th of slowTdivs:

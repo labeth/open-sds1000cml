@@ -169,7 +169,7 @@ function decodeOOK(codes, colTimeS, cfg) {
   const hpg = shortestRunCluster(runs);
   if (!(hpg > 0)) return fail("ook", "no bursts");
   const n = S.n, spans = [], toks = [], units = [];
-  let good = false, ver = 0, hp = hpg, hpRead = hpg;
+  let good = false, ver = 0, cut = false, hp = hpg, hpRead = hpg;
   for (let k = 0; k < runs.length; k++) {
     if (!runs[k].open && runs[k].x1 - runs[k].x0 < 8 * hpg) continue;
     let e = k + 1;
@@ -225,12 +225,14 @@ function decodeOOK(codes, colTimeS, cfg) {
       toks.push(txt); units.push(nib[j]);
     }
     if (ck >= 0) good = true;
+    else if (e === runs.length) cut = true;
     k = e - 1;
   }
   if (!spans.length) return fail("ook", "no Oregon burst");
   const res = { ok: good, proto: "ook", spans, text: toks.join(" "), bytes: units,
     meta: { threshold: S.threshold, spb: 2 * hpRead, frameBits: ver } };
   if (colTimeS > 0) res.meta.baud = Math.round(1 / (2 * hpRead * colTimeS));
+  if (cut) res.meta.cover = 1;
   if (!good) res.error = "no Oregon burst whose checksum checks";
   return res;
 }

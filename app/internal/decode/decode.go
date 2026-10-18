@@ -91,7 +91,12 @@ func FeatureSamples(r Result) float64 {
 		return r.SPB / 4 // a quarter cycle between A's and B's edges
 	case "stepper", "pwm":
 		return r.Feature
-	case "ook", "miller", "em4100", "em4305", "t55xx", "dsi", "qi", "sdcard", "pdi", "cjtag", "maple", "caliper":
+	case "em4305", "t55xx":
+		if r.Inverted { // the carrier's half cycle
+			return r.SPB / 2
+		}
+		return 8 * r.SPB // the envelope's shortest gap or field: eight field clocks
+	case "ook", "miller", "em4100", "dsi", "qi", "sdcard", "pdi", "cjtag", "maple", "caliper":
 		return r.SPB / 2
 	case "dcf77":
 		return r.SPB / 10 // a 0's 100 ms pulse

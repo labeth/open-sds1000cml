@@ -136,9 +136,14 @@ func scorePhys(r Result) float64 {
 		}
 		return float64(good * 250)
 	case "ook", "qi", "pjdl", "maple":
-		// bursts, packets and frames whose checksum or CRC checks
+		// bursts, packets and frames whose checksum or CRC checks; an
+		// Oregon burst the record cut after its sync and eight nibbles (a
+		// 100 ms message at 5 ms/div) stands on the sync alone
 		bad := c[1]
 		good := frames - bad
+		if good <= 0 && r.Proto == "ook" && r.Cover > 0 && n >= 8 {
+			return 300
+		}
 		if good <= 0 {
 			return -1e9
 		}

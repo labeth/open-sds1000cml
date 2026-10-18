@@ -47,7 +47,8 @@ function decodeFeatureSamples(r) {
     if (r.proto === "wiegand") return m.spb / 20;
     if (r.proto === "quad") return m.spb / 4;
     if (r.proto === "stepper" || r.proto === "pwm") return m.feature || 0;
-    if (["ook", "miller", "em4100", "em4305", "t55xx", "dsi", "qi", "sdcard", "pdi", "cjtag", "maple", "caliper"].includes(r.proto)) return m.spb / 2;
+    if (r.proto === "em4305" || r.proto === "t55xx") return m.inverted ? m.spb / 2 : 8 * m.spb;
+    if (["ook", "miller", "em4100", "dsi", "qi", "sdcard", "pdi", "cjtag", "maple", "caliper"].includes(r.proto)) return m.spb / 2;
     if (r.proto === "dcf77") return m.spb / 10;
     if (r.proto === "swim") return m.spb / 11;
     if (r.proto === "sdq") return m.spb / 4;

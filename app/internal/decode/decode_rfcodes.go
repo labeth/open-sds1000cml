@@ -267,8 +267,9 @@ func shortestRunCluster(runs []lrun) float64 {
 // bit first: units, hex. The checksum, the sum of the nibbles before it
 // (2.1: or that sum less ten), sits low nibble first at the end or before a
 // two-nibble CRC; a burst whose checksum does not check is flagged.
-// Variant is 21 or 3, the version read first. OK needs a burst whose
-// checksum checks.
+// Variant is 21 or 3, the version read first. Cover is 1 when a burst
+// after its sync ran past the record's end (its checksum cut off). OK needs
+// a burst whose checksum checks.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-251
 func DecodeOOK(codes []uint8, colTimeS float64, cfg LineCfg) Result {
 	S := sliceChannel(codes, cfg.Threshold, cfg.HaveThr)
@@ -284,7 +285,7 @@ func DecodeOOK(codes []uint8, colTimeS float64, cfg LineCfg) Result {
 	var spans []Span
 	var toks []string
 	var units []int
-	good, ver := false, 0
+	good, ver, cut := false, 0, false
 	hp, hpRead := hpg, hpg // a burst's half bit; the last read one's
 	for k := 0; k < len(runs); k++ {
 		if !runs[k].open && runs[k].x1-runs[k].x0 < 8*hpg {
@@ -390,6 +391,8 @@ func DecodeOOK(codes []uint8, colTimeS float64, cfg LineCfg) Result {
 		}
 		if ck >= 0 {
 			good = true
+		} else if e == len(runs) {
+			cut = true
 		}
 		k = e - 1 // the idle after the burst opens the next
 	}
@@ -400,6 +403,9 @@ func DecodeOOK(codes []uint8, colTimeS float64, cfg LineCfg) Result {
 		Thr: S.threshold, SPB: 2 * hpRead, FrameBits: ver}
 	if colTimeS > 0 {
 		res.Baud = int(math.Round(1 / (2 * hpRead * colTimeS)))
+	}
+	if cut {
+		res.Cover = 1
 	}
 	if !good {
 		res.Error = "no Oregon burst whose checksum checks"
