@@ -106,6 +106,13 @@ func scoreResult(r Result) float64 {
 			// SPI decode. Keep it only as a last resort.
 			return 5
 		}
+		// A START opens an addressed transfer: STARTs and STOPs with no
+		// address between, outnumbering the transfers, are data edges while a
+		// clock rests high (a 104 MHz SPI flash's decimated record read as
+		// "I2C": one transfer among 200 bare START STOP pairs).
+		if bare := starts - addrs; bare > 4 && bare > addrs {
+			return -1e9
+		}
 		return float64(addrs*100 + acks*30 + datas*20 + starts*5)
 	case "uart":
 		// One byte is no UART: its stop bit checks on half of random lines - a

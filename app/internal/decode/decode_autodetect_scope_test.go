@@ -55,6 +55,18 @@ func TestAutodetectNamesScopeCaptures(t *testing.T) {
 	}
 }
 
+// The 104 MHz SPI flash's decimated record at 200us/div (0.26 us samples, a
+// burst of bytes every 7 us) holds one START, address and bytes among 200
+// bare START STOP pairs - data edges while the averaged clock rests high: no
+// I2C bus, where AUTO in BUS named one now and then.
+// TRLC-LINKS: REQ-SDS-018
+func TestAutodetectNoI2COnADecimatedFlash(t *testing.T) {
+	c1, c2, sampleS := loadGzJSON(t, "testdata/scope_flash104_samples_200us.json.gz")
+	if r, _ := AutodetectFast(c1, c2, sampleS, "hex"); r.Proto == "i2c" {
+		t.Errorf("named %q (%s) %.60s", r.Proto, r.Src, r.Text)
+	}
+}
+
 // A 1-Wire bus at the full rate beside a quiet probe whose converter spikes
 // a sample now and then: the quiet line stays quiet (quietFlat) however the
 // record is cut and strided, and no SPI bus is read off the pair (the scope
