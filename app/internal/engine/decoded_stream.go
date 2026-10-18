@@ -80,21 +80,7 @@ func (e *Engine) BeginDecodedStream(ctx context.Context, p SerialParams, trig St
 		if p.Proto == serARINC && e.arincAux.Load() == 0 {
 			return nil, fmt.Errorf("%w: show the bus decoded a moment, then start again", ErrLevelsLearning)
 		}
-		words := uint32(sramcapture.SamplesPerChannel / 2)
-		c := sramcapture.Config{Source: sramcapture.ADC, PreWords: words / 2, PostWords: words - words/2, Normal: true}
-		e.planSerial(&c, p, false)
-		if hardwareSerialName(c) == "" {
-			return nil, fmt.Errorf("the loaded image cannot stream this protocol with that trigger")
-		}
-		if trig == StreamManual {
-			if c.Sequence.Length != 1 {
-				return nil, fmt.Errorf("the loaded image has no sequence trigger for a manual stream")
-			}
-			c.Sequence.Qualify = false
-			c.Sequence.Elements[0] = sramcapture.SequenceElement{Kind: sramcapture.SequenceData, Value: streamNever, Mask: streamNever}
-		}
-		e.planHysteresis(&c, false)
-		return c, nil
+		return e.decodedStreamConfig(p, trig)
 	})
 	if err != nil {
 		return sramcapture.RecordIdentity{}, err
@@ -107,6 +93,28 @@ func (e *Engine) BeginDecodedStream(ctx context.Context, p SerialParams, trig St
 		e.mu.Unlock()
 	}
 	return id, err
+}
+
+// decodedStreamConfig is a hardware decoded stream's capture on the loaded
+// image: a full-depth record, p's decoder and its pattern (the stop: an error
+// token, a value, or for a manual stream an element no unit matches).
+// TRLC-LINKS: REQ-SDS-013, REQ-SDS-018
+func (e *Engine) decodedStreamConfig(p SerialParams, trig StreamTrigger) (sramcapture.Config, error) {
+	words := uint32(sramcapture.SamplesPerChannel / 2)
+	c := sramcapture.Config{Source: sramcapture.ADC, PreWords: words / 2, PostWords: words - words/2, Normal: true}
+	e.planSerial(&c, p, false)
+	if hardwareSerialName(c) == "" {
+		return c, fmt.Errorf("the loaded image cannot stream this protocol with that trigger")
+	}
+	if trig == StreamManual {
+		if c.Sequence.Length != 1 {
+			return c, fmt.Errorf("the loaded image has no sequence trigger for a manual stream")
+		}
+		c.Sequence.Qualify = false
+		c.Sequence.Elements[0] = sramcapture.SequenceElement{Kind: sramcapture.SequenceData, Value: streamNever, Mask: streamNever}
+	}
+	e.planHysteresis(&c, false)
+	return c, nil
 }
 
 // ReadDecodedLines fetches transcript lines the worker built, from absolute

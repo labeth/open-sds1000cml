@@ -66,7 +66,7 @@ module tb_top_packet;
   $display("E %0d %0d %08x %0d",dut.selected_event_protocol,dut.selected_event_kind,dut.selected_event_data,dut.frontend.n);
  reg fired=0;
  always @(posedge dut.core)if(dut.uart_fired && !fired)begin fired<=1;$display("T %0d",dut.frontend.n);end
- integer control,ticks,aux,len,cycles,nregs;reg [63:0] pattern;
+ integer control,ticks,aux,len,cycles,nregs,pre;reg [63:0] pattern;
  reg [31:0] regs[0:511];reg [4095:0] regs_file;
  integer env_k;reg [18:0] env_pos,env_target,env_start,env_skip;reg [31:0] env_word;
  initial begin
@@ -107,7 +107,10 @@ module tb_top_packet;
    $readmemh(regs_file,regs,0,2*nregs-1);
    for(cycles=0;cycles<nregs;cycles=cycles+1)write_bus(regs[2*cycles][6:0],regs[2*cycles+1][15:0]);
   end
-  write_bus(2,2000);write_bus(3,0);write_bus(4,2000);write_bus(5,0);
+  // +pre=N: the record's history in words (2000 by default); the trigger is
+  // live only once it is written.
+  pre=2000;cycles=$value$plusargs("pre=%d",pre);
+  write_bus(2,pre[15:0]);write_bus(3,pre[31:16]);write_bus(4,2000);write_bus(5,0);
   write_bus(6,16'h0011);host_command(1);
   cycles=0;read_bus(1);
   while(!(value[4] && value[2]))begin read_bus(1);cycles=cycles+1;if(cycles>400000)$fatal(1,"no trigger %h",value);end
