@@ -316,3 +316,34 @@ func TestAutosetFindsALogicSignalThroughA10xProbe(t *testing.T) {
 		}
 	}
 }
+
+// A 3.3 V logic line through a 10x probe set as 1x switches four codes at the
+// sweep's 2 V/div: the coarse pass gives way to the fine one at once
+// (smallActive). A quiet line's two codes of noise, or a wider signal beside
+// the small one, keep the coarse pass going.
+// TRLC-LINKS: REQ-SDS-137
+func TestSmallActiveLine(t *testing.T) {
+	c, _, _ := newC(t)
+	// TRLC-LINKS: REQ-SDS-137
+	line := func(swing int) []uint8 {
+		s := make([]uint8, 1000)
+		for i := range s {
+			v := 130 + i%3 - 1 // two codes of noise
+			if swing > 0 && i%100 >= 50 {
+				v += swing
+			}
+			s[i] = uint8(v)
+		}
+		return s
+	}
+	for _, tc := range []struct {
+		c1, c2 int
+		want   bool
+	}{{4, 0, true}, {0, 4, true}, {6, 5, true}, {0, 0, false}, {4, 30, false}, {12, 0, false}} {
+		f := &engine.Frame{C1: line(tc.c1), C2: line(tc.c2), Valid: 1000}
+		c.SetFrameSource(func(fn func(*engine.Frame)) { fn(f) })
+		if got := c.smallActive(); got != tc.want {
+			t.Errorf("swings %d/%d codes: smallActive %v, want %v", tc.c1, tc.c2, got, tc.want)
+		}
+	}
+}
