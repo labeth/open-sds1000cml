@@ -124,7 +124,8 @@ jobs:
         env:
           CI_REQUIRE_SIGROK: "1"
         run: go test -timeout 10m -run 'TestOracle' -v ./internal/decode/
-      # Ubuntu's sigrok has no ir_sirc or sae_j1850_vpw decoder: those two run
+      # Ubuntu's sigrok has no ir_sirc, sae_j1850_vpw, sdq, pjdl, cjtag,
+      # caliper or ir_irmp decoder, nor rc_encode's EV1527 coding: those run
       # against libsigrokdecode's own decoders at a pinned commit, through the
       # sigrok-cli stand-in in tools/sigrok-oracle (no sigrok code is vendored).
       - name: Fetch libsigrokdecode's decoders (pinned)
@@ -132,6 +133,13 @@ jobs:
           git init -q "$RUNNER_TEMP/lsd"
           git -C "$RUNNER_TEMP/lsd" fetch -q --depth 1 https://github.com/sigrokproject/libsigrokdecode.git 71f451443029322d57376214c330b518efd84f88
           git -C "$RUNNER_TEMP/lsd" checkout -q FETCH_HEAD
+      # ir_irmp drives the IRMP library through ctypes: built from the same
+      # commit's irmp/ sources.
+      - name: Build libsigrokdecode's IRMP library (pinned)
+        run: |
+          sudo apt-get install -y --no-install-recommends libglib2.0-dev python3-dev
+          mkdir -p "$RUNNER_TEMP/irmp"
+          gcc -shared -fPIC -O2 $(pkg-config --cflags glib-2.0) $(python3-config --includes) -o "$RUNNER_TEMP/irmp/libirmp.so" "$RUNNER_TEMP/lsd/irmp/irmp-main-sharedlib.c" $(pkg-config --libs glib-2.0)
       - name: sigrok-oracle cross-check of the decoders newer than Ubuntu's sigrok
         working-directory: app
         env:
@@ -139,7 +147,8 @@ jobs:
         run: |
           set -o pipefail
           export SRD_DECODERS="$RUNNER_TEMP/lsd/decoders"
-          PATH="$GITHUB_WORKSPACE/tools/sigrok-oracle:$PATH" go test -count=1 -timeout 10m -run 'TestOracleIRSIRC|TestOracleJ1850' -v ./internal/decode/ | tee "$RUNNER_TEMP/new.log"
+          export LD_LIBRARY_PATH="$RUNNER_TEMP/irmp${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+          PATH="$GITHUB_WORKSPACE/tools/sigrok-oracle:$PATH" go test -count=1 -timeout 10m -run 'TestOracleIRSIRC|TestOracleJ1850|TestOracleSDQ|TestOraclePJDL|TestOracleCJTAG|TestOracleCaliper|TestOracleIRMP|TestOracleRCEncode' -v ./internal/decode/ | tee "$RUNNER_TEMP/new.log"
           ! grep -q -- '--- SKIP' "$RUNNER_TEMP/new.log"
 
   # Self-checking RTL testbenches (fpga/sim.sh); the fixture-driven ones run
