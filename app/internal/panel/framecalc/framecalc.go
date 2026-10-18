@@ -68,6 +68,18 @@ var protoNumbers = map[string]int{"uart": ProtoUART, "i2c": ProtoI2C, "spi": Pro
 // TRLC-LINKS: REQ-SDS-018
 func ProtoOf(name string) int { return protoNumbers[name] }
 
+// ResultName is the Proto name a decode of protocol p reports ("uart",
+// "i2c"...), "" for none.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-241
+func ResultName(p int) string {
+	for name, n := range protoNumbers {
+		if n == p {
+			return name
+		}
+	}
+	return ""
+}
+
 // TwoLine reports a protocol of two lines (ChA and ChB): I2C, SPI and the
 // clocked PS/2, SWD, MDIO and Wiegand.
 // TRLC-LINKS: REQ-SDS-018
@@ -91,8 +103,10 @@ type DecodeParams struct {
 	// sampling edge (0: at the edge, the channels' phase only).
 	DataDelayS float64
 	// Parity is Modbus RTU's character framing ("even", "odd", "none"; ""
-	// the decoder finds it).
-	Parity string
+	// the decoder finds it), and a UART's ("" none); Inverted, a UART line
+	// idling low (S.BUS).
+	Parity   string
+	Inverted bool
 }
 
 // Formats are the span text formats by the decode setting's format index.
@@ -175,7 +189,7 @@ func Decode(f *engine.Frame, p DecodeParams) decode.Result {
 	var res decode.Result
 	switch p.Proto {
 	case ProtoUART:
-		cfg := decode.UARTCfg{Baud: p.Baud, Format: p.Format}
+		cfg := decode.UARTCfg{Baud: p.Baud, Format: p.Format, Parity: p.Parity, Inverted: p.Inverted}
 		if f.HasMatchEnd && f.EdgeX >= 0 && f.SampleS > 0 { // the hardware matcher's character fixes the framing
 			cfg.Anchor, cfg.HasAnchor = f.EdgeX+f.MatchEndS/f.SampleS, true
 		}

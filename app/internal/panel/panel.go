@@ -190,6 +190,12 @@ type Controller struct {
 	// decBits is SIRC's or Wiegand's frame length (0: not known), the
 	// widths of their units for the hardware matcher.
 	decBits int
+	// decLayer is the bus's application layer (analysis.Layers' ID, ""
+	// none); decLayerAddr and decLayerDir are the I2C filter layer's address
+	// (-1 any) and direction (0 both, 1 read, 2 write).
+	decLayer     string
+	decLayerAddr int
+	decLayerDir  int
 	// SPI's data line is read decDelayNs after the clock's sampling edge, or
 	// with decDelayAuto at the middle of the data's eye measured on the
 	// full-rate records (spiEye); decFine asks for the FPGA's receivers on
@@ -381,16 +387,17 @@ type Controller struct {
 func New(eng Engine, fe Analog, keyFD int, tdivs []float64, startTdiv float64, logf func(string, ...any)) *Controller {
 	c := &Controller{
 		eng: eng, fe: fe, keyFD: keyFD, logf: logf,
-		tdivs:    tdivs,
-		vIdx:     [2]int{analog.BootDetent, analog.BootDetent},
-		trigCode: 31437, // 0 V threshold (measured global fit zero)
-		chDisp:   [2]bool{true, true},
-		curPend:  &cursorHome,
-		inject:   make(chan func(), 32),
-		running:  true,
-		zoom:     1,
-		decBaud:  115200,
-		decChA:   0, decChB: 1, // UART on C1; I2C/SPI clk on C1, data on C2
+		tdivs:        tdivs,
+		vIdx:         [2]int{analog.BootDetent, analog.BootDetent},
+		trigCode:     31437, // 0 V threshold (measured global fit zero)
+		chDisp:       [2]bool{true, true},
+		curPend:      &cursorHome,
+		inject:       make(chan func(), 32),
+		running:      true,
+		zoom:         1,
+		decBaud:      115200,
+		decLayerAddr: -1,
+		decChA:       0, decChB: 1, // UART on C1; I2C/SPI clk on C1, data on C2
 		// Super-res defaults: fine-grid ×32, stop on +4 bits (the user's example),
 		// stacking C1. Menu stop-mode order is bit→stacks→time (0/1/2).
 		srK: 32, srStopMode: 0, srStopVal: 4, srCh: 0,

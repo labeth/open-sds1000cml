@@ -33,11 +33,16 @@ type Display struct {
 	DecChA, DecChB   int
 	DecCPOL, DecCPHA bool
 	DecLSB           bool
-	DecParity        string  // Modbus RTU's framing ("": found by the decoder)
-	DecInverted      bool    // the IR and DALI lines' marks at the high level
-	DecBits          int     // SIRC's or Wiegand's frame length (0: not known)
-	DecDelayNs       float64 // SPI's data delay in use after the sampling edge (ns)
-	DecFormat        int
+	DecParity        string // Modbus RTU's framing ("": found by the decoder)
+	DecInverted      bool   // the IR and DALI lines' marks at the high level
+	DecBits          int    // SIRC's or Wiegand's frame length (0: not known)
+	// DecLayer is the bus's layer (analysis.Layers' ID, "" none) and
+	// DecLayerAddr/Dir the I2C filter's address (-1 any) and direction.
+	DecLayer     string
+	DecLayerAddr int
+	DecLayerDir  int
+	DecDelayNs   float64 // SPI's data delay in use after the sampling edge (ns)
+	DecFormat    int
 	// Auto: a detection runs (DecDetecting); the settings are what it filled
 	// in (DecAuto); what the last one found, or why it found none (DecNote)
 	DecDetecting bool
@@ -530,6 +535,9 @@ func (c *Controller) busPane(s *sv) *wsview.BusPane {
 	if s.decAuto {
 		name += " (Auto)"
 	}
+	if l, ok := analysis.LayerByID(s.decLayer); ok && s.decLayer != "" {
+		name += " / " + l.Name
+	}
 	if !res.OK {
 		p.Caption, p.CapCol, p.Error = res.Error, wsview.Stop, res.Error
 	} else {
@@ -558,15 +566,27 @@ func (c *Controller) busPane(s *sv) *wsview.BusPane {
 	if len(rows) == 0 {
 		p.Empty = "No packets on screen"
 	}
-	// the lines: 16 bytes each, at most 3 per packet
+	// the lines: 16 bytes each, at most 3 per packet; with a layer, its note
+	// on one line a packet and the selected packet's bytes on at most two
 	type line struct {
 		pi, from, to int
-		more         bool
+		more, note   bool
+	}
+	layered := s.decLayer != ""
+	if l, ok := analysis.LayerByID(s.decLayer); ok && layered {
+		p.Layer = l.Name
 	}
 	var lines []line
 	for i, q := range rows {
 		n := len(q.Bytes)
 		k := min(3, max(1, (n+15)/16))
+		if layered {
+			lines = append(lines, line{pi: i, note: true})
+			if i != sel || n == 0 {
+				continue
+			}
+			k = min(2, k)
+		}
 		for part := 0; part < k; part++ {
 			more := part == k-1 && n > k*16
 			to := min(n, part*16+16)
@@ -585,7 +605,13 @@ func (c *Controller) busPane(s *sv) *wsview.BusPane {
 		ln := lines[top+r]
 		q := rows[ln.pi]
 		bl := wsview.BusLine{Sel: ln.pi == sel, More: ln.more, Fault: q.Err}
-		if ln.from == 0 {
+		if ln.note {
+			bl.Note, bl.NoteErr = q.Note, q.NoteErr
+			if bl.Note == "" {
+				bl.Note = fmt.Sprintf("(%d %s)", len(q.Bytes), plural(len(q.Bytes), "byte"))
+			}
+		}
+		if ln.from == 0 && (ln.note || !layered) {
 			bl.Num, bl.Bytes = ln.pi+1, len(q.Bytes)
 			if q.HasAddr { // as the web's list writes it
 				bl.Addr = analysis.AddrText(res.Proto, q)
@@ -595,6 +621,10 @@ func (c *Controller) busPane(s *sv) *wsview.BusPane {
 			} else if !q.Complete {
 				bl.Cut = "cut at the record edge"
 			}
+		}
+		if ln.note {
+			p.Lines = append(p.Lines, bl)
+			continue
 		}
 		var str []byte
 		for k := ln.from; k < ln.to; k++ {
@@ -619,7 +649,8 @@ func (c *Controller) busPane(s *sv) *wsview.BusPane {
 	p.Up, p.Dn = top > 0, top+8 < len(lines)
 	// the strip: the selected packet boxed (found by its message), matches ticked
 	for i, q := range live {
-		p.Marks = append(p.Marks, wsview.PacketMark{I0: q.I0, I1: q.I1, Sel: i == liveSel, Match: len(toks) > 0 && tokMatch(toks, q)})
+		p.Marks = append(p.Marks, wsview.PacketMark{I0: q.I0, I1: q.I1, Sel: i == liveSel, Match: len(toks) > 0 && tokMatch(toks, q),
+			Text: q.Note, Err: q.NoteErr})
 	}
 	p.SelNum = sel + 1
 	p.Tool = append(append([]wsview.Seg{{Key: "Adjust", Job: "packet"}, {Key: "push", Job: "pick bytes"}}, posTool(s)...), wsview.Seg{Key: "Zoom", Job: zoomJob})

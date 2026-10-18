@@ -100,6 +100,11 @@ func (c *Controller) serialBus(p engine.SerialParams) engine.SerialParams {
 		p.Inverted = c.decInv // marks at the high level, as detected
 	case framecalc.ProtoOneWire:
 		p.Overdrive = c.decBaud >= 100000
+	case framecalc.ProtoUART: // the framing detection or the S.BUS layer set
+		if c.decParity != "" {
+			p.Parity = c.decParity
+		}
+		p.Inverted = c.decInv
 	}
 	if c.decProto == framecalc.ProtoIRSIRC || c.decProto == framecalc.ProtoWiegand {
 		p.Bits = c.decBits // the frame length sets the units' widths

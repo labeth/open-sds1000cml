@@ -321,8 +321,12 @@ func drawBusPane(sf Surface, p plotArea, b *wsview.BusPane) {
 		return
 	}
 	DrawTextRight(sf, 24, 26, "#", colDim, 1)
-	DrawText(sf, hexIn, 26, "HEX", colDim, 1)
-	DrawText(sf, strIn, 26, "STRING", colDim, 1)
+	if b.Layer != "" {
+		DrawText(sf, hexIn, 26, "TRANSACTION ("+b.Layer+")", colDim, 1)
+	} else {
+		DrawText(sf, hexIn, 26, "HEX", colDim, 1)
+		DrawText(sf, strIn, 26, "STRING", colDim, 1)
+	}
 	DrawTextRight(sf, bytesR, 26, "BYTES", colDim, 1)
 	DrawText(sf, addrX, 26, "ADDR", colDim, 1)
 	DrawText(sf, matchX, 26, "MATCH", colDim, 1)
@@ -360,6 +364,14 @@ func drawBusPane(sf Surface, p plotArea, b *wsview.BusPane) {
 			}
 		} else {
 			DrawTextRight(sf, 24, y, "+", colDim, 1)
+		}
+		if ln.Note != "" { // the layer's reading across the hex and string boxes
+			col := colInfo
+			if ln.NoteErr {
+				col = colStale
+			}
+			DrawText(sf, hexIn, y, cutText(ln.Note, (strEnd-hexIn-4)/6), col, 1)
+			continue
 		}
 		for c, h := range ln.Hex {
 			col := colInfo

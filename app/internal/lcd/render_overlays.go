@@ -8,6 +8,7 @@ import (
 	"open-sds/app/internal/decode"
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/panel/framecalc"
+	"open-sds/app/internal/panel/wsview"
 )
 
 // drawXY plots C1 (x) against C2 (y) — the Lissajous view (parity with the web
@@ -225,6 +226,9 @@ func drawDecode(sf Surface, p plotArea, f *engine.Frame, hud HUD, win int, xc, p
 	left := xc - float64(win)*posFrac
 	sx := func(s float64) int { return int((s - left) * float64(p.w) / float64(win)) }
 	lastEnd, lastLen := -1<<30, 0 // the last label drawn
+	// A bus layer's notes caption the packets in the byte row instead of
+	// their bytes (the bars stay): one transaction read as a whole.
+	captions := hud.UI.Bus != nil && layerNotes(hud.UI.Bus.Marks)
 	for i, s := range res.Spans {
 		x0, x1 := sx(float64(s.I0)), sx(float64(s.I1))
 		if x1 < 0 || x0 >= p.w {
@@ -253,13 +257,16 @@ func drawDecode(sf Surface, p plotArea, f *engine.Frame, hud HUD, win int, xc, p
 			gap = 2
 		}
 		tx := max(x0+1, lastEnd+gap)
-		if end := tx + len(s.Text)*6; x0 >= 0 && s.Text != "" && end <= p.w && end <= nextX0 {
+		if end := tx + len(s.Text)*6; !captions && x0 >= 0 && s.Text != "" && end <= p.w && end <= nextX0 {
 			DrawText(sf, tx, yTxt, s.Text, col, 1)
 			lastEnd, lastLen = end, len(s.Text)
 		}
 	}
 	// BUS: the selected packet boxed (with its list number), the matches ticked
 	if b := hud.UI.Bus; b != nil {
+		if captions {
+			drawLayerCaptions(sf, p, b.Marks, sx, yTxt)
+		}
 		for _, m := range b.Marks {
 			x0, x1 := sx(float64(m.I0)), sx(float64(m.I1))
 			if x1 < 0 || x0 >= p.w {
@@ -280,6 +287,43 @@ func drawDecode(sf Surface, p plotArea, f *engine.Frame, hud HUD, win int, xc, p
 				DrawText(sf, lx+2, yLbl, lab, colTrig, 1)
 			}
 		}
+	}
+}
+
+// layerNotes reports packets a bus layer has noted.
+// TRLC-LINKS: REQ-SDS-241
+func layerNotes(ms []wsview.PacketMark) bool {
+	for _, m := range ms {
+		if m.Text != "" {
+			return true
+		}
+	}
+	return false
+}
+
+// drawLayerCaptions writes each packet's layer note in the strip's byte row
+// from the packet's start to the next packet's (or the screen's end), cut to
+// fit; a note with fewer than four characters of room is left out.
+// TRLC-LINKS: REQ-SDS-241
+func drawLayerCaptions(sf Surface, p plotArea, ms []wsview.PacketMark, sx func(float64) int, y int) {
+	for i, m := range ms {
+		if m.Text == "" {
+			continue
+		}
+		x0 := max(sx(float64(m.I0)), 0)
+		lim := p.w - 2
+		if i+1 < len(ms) {
+			lim = min(lim, sx(float64(ms[i+1].I0))-4)
+		}
+		n := (lim - x0) / 6
+		if x0 >= p.w || n < 4 {
+			continue
+		}
+		col := colInfo
+		if m.Err {
+			col = colStale
+		}
+		DrawText(sf, x0, y, cutText(m.Text, n), col, 1)
 	}
 }
 

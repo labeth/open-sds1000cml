@@ -49,7 +49,8 @@ func busDecoding(s *sv) bool { return s.decProto != framecalc.ProtoOff }
 // busListKey is what the packet list belongs to: a change starts it over.
 // TRLC-LINKS: REQ-SDS-214
 func busListKey(s *sv) string {
-	return fmt.Sprint(s.decProto, s.decBaud, s.decChA, s.decChB, s.decCPOL, s.decCPHA, s.decLSB, s.st.TdivS, s.spiDelayNs())
+	return fmt.Sprint(s.decProto, s.decBaud, s.decChA, s.decChB, s.decCPOL, s.decCPHA, s.decLSB, s.st.TdivS, s.spiDelayNs(),
+		s.decLayer, s.decLayerAddr, s.decLayerDir, s.decParity, s.decInv)
 }
 
 // busFrame decodes the frame and offers its packets to the held list.
@@ -66,7 +67,7 @@ func (c *Controller) busFrame(a *anaState, s *sv, f *engine.Frame) {
 		a.live = nil
 		return
 	}
-	a.live = anaPackets(a.res, a.g.valid)
+	a.live = layerPackets(s, a.res.Proto, anaPackets(a.res, a.g.valid))
 	if k := busListKey(s); k != a.listKey {
 		a.list.Reset()
 		a.listKey = k
@@ -1331,6 +1332,9 @@ func (c *Controller) runDetect() {
 	frame := c.takeBusFrame()
 	if locked {
 		tdivNote = c.readTimebase(res, sampleS, stepped)
+		if l := c.detectLayer(res, 0); l != "" { // a layer the packets prove
+			tdivNote += "; layer " + l
+		}
 		if frame != 0 {
 			tdivNote += "; " + c.frameBus(decode.FeatureSamples(res)*sampleS, frame == busFrameAuto)
 		}

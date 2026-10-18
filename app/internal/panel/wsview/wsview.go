@@ -125,6 +125,8 @@ type PacketMark struct {
 	I0, I1 int // sample span in the frame
 	Sel    bool
 	Match  bool
+	Text   string // the bus layer's note ("" none)
+	Err    bool   // the layer found the transaction broken
 }
 
 // BusLine is one line of the packet list (a hex dump).
@@ -140,6 +142,11 @@ type BusLine struct {
 	Cut   string
 	Addr  string // the packet's address or ID ("24 W"; first line only)
 	Fault string // a fault of the packet as a whole ("CRC", "NAK"; red, every line)
+	// Note is the bus layer's reading of the packet: with a layer each packet
+	// takes one line, its note in place of the hex dump (the selected one's
+	// bytes follow on continuation lines); NoteErr draws it as a fault.
+	Note    string
+	NoteErr bool
 }
 
 // BusPane is the BUS workspace's packet list.
@@ -153,7 +160,8 @@ type BusPane struct {
 	Marks    []PacketMark
 	SelNum   int // the list number of the selected packet (strip label)
 	Empty    string
-	Snapshot bool // the list is the whole capture kept for a zoom
+	Snapshot bool   // the list is the whole capture kept for a zoom
+	Layer    string // the bus layer's name: the lines are its notes ("" none)
 }
 
 // EyePane is the BUS eye diagram: figures in the pane, the eye in the plot.

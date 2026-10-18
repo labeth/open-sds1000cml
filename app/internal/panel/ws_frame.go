@@ -239,7 +239,11 @@ func (c *Controller) noteTdivCap(s *sv) {
 // them from the Display (framecalc.Params).
 // TRLC-LINKS: REQ-SDS-214
 func decodeParamsOf(s *sv) framecalc.DecodeParams {
-	return framecalc.Params(s.decProto, s.decBaud, s.decChA, s.decChB, s.decCPOL, s.decCPHA, s.decLSB, s.decFormat, s.spiDelayNs(), s.decParity)
+	p := framecalc.Params(s.decProto, s.decBaud, s.decChA, s.decChB, s.decCPOL, s.decCPHA, s.decLSB, s.decFormat, s.spiDelayNs(), s.decParity)
+	if s.decProto == framecalc.ProtoUART { // the framing detection or the S.BUS layer set (8N1 by default)
+		p.Parity, p.Inverted = s.decParity, s.decInv
+	}
+	return p
 }
 
 // codesOf returns a channel's valid samples as codes (Q8.8 when the frame

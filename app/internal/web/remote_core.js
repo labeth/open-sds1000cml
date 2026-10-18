@@ -67,6 +67,8 @@
     "bus.stream_value": (v) => hexText(v),
     // TRLC-LINKS: REQ-SDS-220
     "bus.i2c_address": (v) => (v === -1 ? "Any" : hexText(v)),
+    // TRLC-LINKS: REQ-SDS-220, REQ-SDS-243
+    "bus.layer_address": (v) => (v === -1 ? "Any" : hexText(v)),
     // TRLC-LINKS: REQ-SDS-220
     "acq.sr_target": (v) => g3(v),
   };
@@ -228,7 +230,7 @@
     const t = String(text == null ? "" : text).trim();
     if (!t) return { ok: false, empty: true, error: "" };
     let v;
-    if (row.ID === "bus.i2c_address" && /^any$/i.test(t)) v = -1;
+    if ((row.ID === "bus.i2c_address" || row.ID === "bus.layer_address") && /^any$/i.test(t)) v = -1;
     else if (row.ID === "trig.holdoff" && /^off$/i.test(t)) v = 0;
     else {
       const p = parseNumber(t, row.Unit || "");
@@ -271,7 +273,7 @@
   }
 
   // The rows the scope writes in hex ("0x50").
-  const HEX = { "bus.i2c_address": 1, "bus.stream_value": 1 };
+  const HEX = { "bus.i2c_address": 1, "bus.layer_address": 1, "bus.stream_value": 1 };
 
   // TRLC-LINKS: REQ-SDS-220
   function isHex(row) { return !!row && !!HEX[row.ID]; }

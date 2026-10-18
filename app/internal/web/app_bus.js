@@ -24,7 +24,7 @@ let busListKey = "";
 // into packets and refresh the table when its content changed.
 // TRLC-LINKS: REQ-SDS-214
 function busOnDecode() {
-  const key = [decKey(), dcfg.baud, dcfg.cpol, dcfg.cpha, dcfg.msb, frame && frame.tdiv_s].join("|");
+  const key = [decKey(), dcfg.baud, dcfg.cpol, dcfg.cpha, dcfg.msb, frame && frame.tdiv_s, dcfg.layer, dcfg.layerAddr, dcfg.layerDir, dcfg.parity].join("|");
   if (key !== busListKey) {
     busListKey = key;
     if (busPk.rows.length) busPk.clear();
@@ -39,6 +39,7 @@ function busOnDecode() {
   if (!r || !r.ok || !frame || !frame.c1) { busRenderTable(); return; }
   if (frozen && dcfg.reviewIdx < 0 && busSel) return; // a zoomed packet holds the list
   busLive = decodePackets(r, frame.c1.length);
+  if (dcfg.layer && typeof layerApply === "function") busLive = layerApply(dcfg.layer, r.proto, busLive, { addr: dcfg.layerAddr, dir: dcfg.layerDir });
   busPk.update(busLive);
   busRenderTable();
 }
@@ -69,7 +70,11 @@ function busRenderTable() {
   if (off) { $("pkNote").textContent = ""; busRenderedV = -1; $("pkBody").innerHTML = ""; return; }
   const toks = busTokens();
   const shown = busShownRows(busPk.rows, busLive);
-  const sig = busPk.version + "|" + toks.join(" ") + "|" + (r && !r.ok ? r.error : "") +
+  const layer = dcfg.layer && typeof LAYERS !== "undefined" ? (LAYERS.find((l) => l[0] === dcfg.layer) || [])[1] : "";
+  $("pkStrHead").textContent = layer || "String";
+  // TRLC-LINKS: REQ-SDS-214, REQ-SDS-241
+  const cell = (p, str) => (layer ? `<td class="str${p.noteErr ? " bad" : ""}" title="${escHTML(p.note || "")}">${escHTML(p.note || "")}</td>` : `<td class="str" title="${escHTML(str)}">${escHTML(str)}</td>`);
+  const sig = busPk.version + "|" + toks.join(" ") + "|" + layer + "|" + (r && !r.ok ? r.error : "") +
     (shown.partial ? "|" + shown.rows.map((p) => pkHex(p)).join("/") : "");
   if (sig === busRenderedV) return;
   busRenderedV = sig;
@@ -90,7 +95,7 @@ function busRenderTable() {
       const addr = pkAddrText(r && r.proto, p);
       const hex = pkHex(p), hit = toks.length && pkMatch(p, toks);
       html += `<tr class="cut${hit ? " hit" : ""}" title="Cut by the record edges"><td class="n">${i + 1}${hit ? " ◆" : ""}</td><td>${t}</td><td class="addr">${addr}</td>` +
-        `<td class="hex${p.err ? " bad" : ""}">${escHTML(hex)}</td><td class="str">${escHTML(pkString(p))}</td><td>${p.bytes.length}</td></tr>`;
+        `<td class="hex${p.err ? " bad" : ""}">${escHTML(hex)}</td>${cell(p, pkString(p))}<td>${p.bytes.length}</td></tr>`;
     });
   }
   busPk.rows.forEach((p, i) => {
@@ -100,7 +105,7 @@ function busRenderTable() {
     html += `<tr data-i="${i}" data-id="${p.id}" tabindex="0" class="${busPk.selKey === p.key ? "is-sel" : ""}${hit ? " hit" : ""}" title="Zoom onto this packet (Enter)">` +
       `<td class="n">${i + 1}${hit ? " ◆" : ""}</td><td>${t}</td><td class="addr">${addr}</td>` +
       `<td class="hex${p.err ? " bad" : ""}" title="${escHTML(hex)}">${escHTML(hex) || "(no data bytes)"}</td>` +
-      `<td class="str" title="${escHTML(str)}">${escHTML(str)}</td><td>${p.bytes.length}</td></tr>`;
+      `${cell(p, str)}<td>${p.bytes.length}</td></tr>`;
   });
   if (!shown.rows.length) html = `<tr><td class="e" colspan="6">No packet in this capture yet. A slower timebase shows more of the bus.</td></tr>`;
   tb.innerHTML = html;
