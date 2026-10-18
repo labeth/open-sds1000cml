@@ -310,12 +310,20 @@ func TestARINCLevelsWaitForASampledRecord(t *testing.T) {
 		codes = append(codes, uint8(v+(i*7)%3-1))
 	}
 	e.learnSerialLevels(&Frame{C1: codes, C2: codes, Valid: len(codes), SampleS: 1e-6}, [2]chScale{{1, 0}, {1, 0}})
-	env := &Frame{C1: codes, C2: codes, Valid: len(codes), SampleS: 1e-6, PeakDetect: true, Ordered: true}
+	// a decimated envelope too (200us/div's): a decimated sampled record is
+	// asked for, which reads in milliseconds
+	env := &Frame{C1: codes, C2: codes, Valid: len(codes), SampleS: 1e-6, PeakDetect: true, Ordered: true, Decimation: 64}
 	e.noteARINCLevels(env)
-	if e.arincAux.Load() != 0 || !e.leased(&e.decodeLease) {
-		t.Fatalf("levels from an envelope %#x, a sampled record asked for %v", e.arincAux.Load(), e.leased(&e.decodeLease))
+	if e.arincAux.Load() != 0 || !e.leased(&e.sampleLease) {
+		t.Fatalf("levels from an envelope %#x, a sampled record asked for %v", e.arincAux.Load(), e.leased(&e.sampleLease))
 	}
-	e.noteARINCLevels(&Frame{C1: codes, C2: codes, Valid: len(codes), SampleS: 1e-6, Decimation: 1})
+	// a decimated record too coarse for the bits asks for the full rate
+	e.noteARINCLevels(&Frame{C1: codes, C2: codes, Valid: len(codes), SampleS: 2e-6, Decimation: 1000})
+	if e.arincAux.Load() != 0 || !e.leased(&e.decodeLease) {
+		t.Fatalf("levels from a coarse record %#x, the full rate asked for %v", e.arincAux.Load(), e.leased(&e.decodeLease))
+	}
+	// a decimated record resolving the bits (1 us samples, 10 us bits) gives them
+	e.noteARINCLevels(&Frame{C1: codes, C2: codes, Valid: len(codes), SampleS: 1e-6, Decimation: 500})
 	if e.arincAux.Load() == 0 {
 		t.Fatal("no levels from a sampled record")
 	}

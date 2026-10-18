@@ -50,9 +50,18 @@ const (
 	wordIdle  uint16 = BitNCONFIG
 
 	// Bitstream size for EP4CE10, uncompressed (fpga-specs 05 §3.3). Anything
-	// else is a different device, a changed fit, or compression left on.
+	// longer is a different device; shorter, a compressed image (the device
+	// decompresses in passive serial), whose shifting takes half the time.
 	RBFLen = 368011
+	// MinCompressedLen is the shortest compressed image taken: a quarter of
+	// the uncompressed one (the images compress to about half).
+	MinCompressedLen = RBFLen / 4
 )
+
+// validLen reports a container length the loader takes: the uncompressed
+// EP4CE10 image's, or a compressed one's.
+// TRLC-LINKS: REQ-SDS-005
+func validLen(n int) bool { return n == RBFLen || n >= MinCompressedLen && n < RBFLen }
 
 // Options tunes the reload; zero values take the defaults below.
 // TRLC-LINKS: REQ-SDS-005, REQ-SDS-092
@@ -80,8 +89,9 @@ type Options struct {
 	// Attempts is the number of full cycles tried before giving up (default 3,
 	// the vendor loader's count).
 	Attempts int
-	// RequireLen refuses an image that is not exactly RBFLen bytes (default
-	// true). Tests use short containers.
+	// AllowAnyLen takes an image of any length; else one that is not RBFLen
+	// bytes or a compressed image's length is refused (validLen). Tests use
+	// short containers.
 	AllowAnyLen bool
 	// Sleep is injectable so tests do not wait (default time.Sleep).
 	Sleep func(time.Duration)
@@ -137,8 +147,8 @@ func bitrev(b byte) byte {
 // TRLC-LINKS: REQ-SDS-005, REQ-SDS-092
 func Reload(p Port, rbf []byte, o Options) error {
 	o.withDefaults()
-	if !o.AllowAnyLen && len(rbf) != RBFLen {
-		return fmt.Errorf("fpgaload: bitstream is %d bytes, want %d (uncompressed EP4CE10 .rbf) — refusing", len(rbf), RBFLen)
+	if !o.AllowAnyLen && !validLen(len(rbf)) {
+		return fmt.Errorf("fpgaload: bitstream is %d bytes, want %d (uncompressed EP4CE10 .rbf) or %d..%d (compressed) — refusing", len(rbf), RBFLen, MinCompressedLen, RBFLen-1)
 	}
 	// Decide the wire order BEFORE the fabric is touched: an image we cannot
 	// read is refused with the live fabric intact.

@@ -451,4 +451,11 @@ func TestRBFLen(t *testing.T) {
 	if cfgByteOff != 0x0E {
 		t.Fatalf("config port byte offset %#x, want 0x0E (physical 0x0300000E)", cfgByteOff)
 	}
+	// the uncompressed image and a compressed one (about half) load; a longer
+	// one, or one too short to be an EP4CE10 image, does not
+	for n, want := range map[int]bool{RBFLen: true, 178568: true, MinCompressedLen: true, RBFLen + 1: false, MinCompressedLen - 1: false, 0: false} {
+		if validLen(n) != want {
+			t.Errorf("validLen(%d) = %v, want %v", n, !want, want)
+		}
+	}
 }
