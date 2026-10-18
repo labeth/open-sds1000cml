@@ -46,6 +46,10 @@ type Result struct {
 	// resets explain (PS/2, SWD, MDIO): data an SPI bus clocks reads as a
 	// few frames among many cycles none explains.
 	Cover float64
+	// Feature is the shortest run the decode read, in samples, where its
+	// bit time does not tell it (a PWM line's narrowest high or low, a
+	// stepper's STEP pulse); 0 otherwise.
+	Feature float64
 }
 
 // FeatureSamples is the shortest feature a decode's bus holds, in samples: a
@@ -56,7 +60,12 @@ type Result struct {
 // WS281x bit's short high (a third of the bit), CEC's short low (a quarter of
 // its bit), 1-Wire's 15 us within which a slot's low ends for a 1 (SPB is a
 // microsecond; a 0 holds it 60 us), DHT's short high of 26 us, a Wiegand
-// pulse (a twentieth of its bit interval). 0 when the result names none (decode.js decodeFeatureSamples).
+// pulse (a twentieth of its bit interval), a quadrature encoder's quarter
+// cycle, a stepper's STEP pulse and a PWM line's narrowest run (Feature),
+// half a bit of OOK, Miller, EM4100, DSI and Qi, half a clock of the
+// clocked buses and half a field clock of a reader's line, DCF77's 100 ms
+// pulse, a SWIM 1's low (a bit's 2 of 22 clocks), an SDQ 1's quarter bit.
+// 0 when the result names none (decode.js decodeFeatureSamples).
 // TRLC-LINKS: REQ-SDS-018
 func FeatureSamples(r Result) float64 {
 	if !r.OK || !(r.SPB > 0) {
@@ -78,6 +87,18 @@ func FeatureSamples(r Result) float64 {
 		return 26 * r.SPB
 	case "wiegand":
 		return r.SPB / 20
+	case "quad":
+		return r.SPB / 4 // a quarter cycle between A's and B's edges
+	case "stepper", "pwm":
+		return r.Feature
+	case "ook", "miller", "em4100", "em4305", "t55xx", "dsi", "qi", "sdcard", "pdi", "cjtag", "maple", "caliper":
+		return r.SPB / 2
+	case "dcf77":
+		return r.SPB / 10 // a 0's 100 ms pulse
+	case "swim":
+		return r.SPB / 11 // a 1's low: 2 of a bit's 22 SWIM clocks
+	case "sdq":
+		return r.SPB / 4
 	}
 	return r.SPB
 }
@@ -172,7 +193,10 @@ var Names = map[string]string{"uart": "UART", "i2c": "I2C", "spi": "SPI", "manch
 	"lin": "LIN", "dmx512": "DMX512", "midi": "MIDI", "modbus": "Modbus RTU", "onewire": "1-Wire", "ws281x": "WS281x",
 	"dht": "DHT", "cec": "HDMI-CEC", "j1850": "J1850 VPW", "irnec": "IR NEC", "irsirc": "IR Sony", "irrc5": "IR RC-5",
 	"irrc6": "IR RC-6", "dali": "DALI", "usbpd": "USB PD", "spdif": "S/PDIF", "ps2": "PS/2", "swd": "SWD", "mdio": "MDIO",
-	"wiegand": "Wiegand"}
+	"wiegand": "Wiegand", "quad": "Quadrature", "stepper": "Stepper", "pwm": "PWM", "rcencode": "RC encode", "ook": "OOK",
+	"miller": "Miller", "morse": "Morse", "dcf77": "DCF77", "em4100": "EM4100", "em4305": "EM4305", "t55xx": "T55xx",
+	"swim": "SWIM", "sdq": "SDQ", "pjdl": "PJON", "dsi": "DSI", "qi": "Qi", "sdcard": "SD card", "pdi": "PDI", "cjtag": "cJTAG",
+	"maple": "Maple", "caliper": "Caliper", "irmp": "IR multi"}
 
 // Roles is the channel assignment and SPI framing Autodetect chose: ChA is the
 // line (or I2C SCL / SPI CLK), ChB the I2C SDA / SPI DATA, 0 = C1.
