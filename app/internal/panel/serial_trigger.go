@@ -96,13 +96,21 @@ func (c *Controller) serialBus(p engine.SerialParams) engine.SerialParams {
 		if p.Parity == "" {
 			p.Parity = "even"
 		}
-	case framecalc.ProtoIRNEC, framecalc.ProtoIRSIRC, framecalc.ProtoIRRC5, framecalc.ProtoIRRC6, framecalc.ProtoDALI:
+	case framecalc.ProtoIRNEC, framecalc.ProtoIRSIRC, framecalc.ProtoIRRC5, framecalc.ProtoIRRC6, framecalc.ProtoDALI,
+		framecalc.ProtoIRMP, framecalc.ProtoDSI:
 		p.Inverted = c.decInv // marks at the high level, as detected
+	case framecalc.ProtoRCEncode, framecalc.ProtoMorse, framecalc.ProtoDCF77:
+		p.Inverted = c.decInv // marks at the low level, as detected
+	case framecalc.ProtoEM4305, framecalc.ProtoT55xx:
+		p.Inverted = c.decInv // the reader's carrier itself, not its envelope
 	case framecalc.ProtoOneWire:
 		p.Overdrive = c.decBaud >= 100000
 	}
-	if c.decProto == framecalc.ProtoIRSIRC || c.decProto == framecalc.ProtoWiegand {
+	switch c.decProto {
+	case framecalc.ProtoIRSIRC, framecalc.ProtoWiegand, framecalc.ProtoT55xx:
 		p.Bits = c.decBits // the frame length sets the units' widths
+	case framecalc.ProtoRCEncode, framecalc.ProtoOOK, framecalc.ProtoPJDL, framecalc.ProtoIRMP:
+		p.Bits = c.decBits // the variant detected: trits or bytes, Oregon's version, the PJON mode, the IR protocol
 	}
 	if c.decProto == framecalc.ProtoSPI {
 		p.SPIDelayNs = spiDelayOf(c.decDelayAuto, c.decDelayNs, c.spiEye)

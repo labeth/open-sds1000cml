@@ -555,7 +555,9 @@ const decimatedWait = 1500 * time.Millisecond
 // 200us/div spans 35); a faster bus is looked at at the full rate.
 // decimatedCheckedFeature is the bound for a bus found by its frames' checks
 // (CAN's CRC-15, FlexRay's header CRC-11, Modbus's CRC-16, J1850's CRC-8,
-// USB PD's CRC-32, the LIN and DHT checksums, Wiegand's parities) or by a
+// USB PD's CRC-32, the LIN and DHT checksums, Wiegand's parities; an SD
+// card's CRC-7, PJON's CRC-8, Oregon's and Qi's checksums, the parities of
+// the RFID tags, DCF77, PDI and SWIM, Maple's check byte) or by a
 // handshake (1-Wire's reset and presence pulse), which a misread record does
 // not pass: a 500 kbit/s CAN bus at 200us/div spans 7.8, a 1-Wire slot's 15
 // us at 500us/div 6.1, a Wiegand pulse at 20ms/div 6.1.
@@ -572,7 +574,8 @@ const (
 func decimatedStands(res decode.Result) bool {
 	fs := decode.FeatureSamples(res)
 	switch res.Proto {
-	case "canfd", "flexray", "modbus", "j1850", "usbpd", "lin", "dht", "wiegand", "onewire":
+	case "canfd", "flexray", "modbus", "j1850", "usbpd", "lin", "dht", "wiegand", "onewire", "sdcard", "pjdl", "ook",
+		"em4100", "em4305", "maple", "dcf77", "qi", "pdi", "swim":
 		return fs >= decimatedCheckedFeature
 	case "uart":
 		return fs >= decimatedFeature && decode.StandardBaud(float64(res.Baud))

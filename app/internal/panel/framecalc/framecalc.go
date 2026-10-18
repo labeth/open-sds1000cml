@@ -52,6 +52,28 @@ const (
 	ProtoSWD
 	ProtoMDIO
 	ProtoWiegand
+	ProtoQuad
+	ProtoStepper
+	ProtoPWM
+	ProtoRCEncode
+	ProtoOOK
+	ProtoMiller
+	ProtoMorse
+	ProtoDCF77
+	ProtoEM4100
+	ProtoEM4305
+	ProtoT55xx
+	ProtoSWIM
+	ProtoSDQ
+	ProtoPJDL
+	ProtoDSI
+	ProtoQi
+	ProtoSDCard
+	ProtoPDI
+	ProtoCJTAG
+	ProtoMaple
+	ProtoCaliper
+	ProtoIRMP
 	NumProtos
 )
 
@@ -61,19 +83,26 @@ var protoNumbers = map[string]int{"uart": ProtoUART, "i2c": ProtoI2C, "spi": Pro
 	"flexray": ProtoFlexRay, "lin": ProtoLIN, "dmx512": ProtoDMX, "midi": ProtoMIDI, "modbus": ProtoModbus,
 	"onewire": ProtoOneWire, "ws281x": ProtoWS281x, "dht": ProtoDHT, "cec": ProtoCEC, "j1850": ProtoJ1850,
 	"irnec": ProtoIRNEC, "irsirc": ProtoIRSIRC, "irrc5": ProtoIRRC5, "irrc6": ProtoIRRC6, "dali": ProtoDALI,
-	"usbpd": ProtoUSBPD, "spdif": ProtoSPDIF, "ps2": ProtoPS2, "swd": ProtoSWD, "mdio": ProtoMDIO, "wiegand": ProtoWiegand}
+	"usbpd": ProtoUSBPD, "spdif": ProtoSPDIF, "ps2": ProtoPS2, "swd": ProtoSWD, "mdio": ProtoMDIO, "wiegand": ProtoWiegand,
+	"quad": ProtoQuad, "stepper": ProtoStepper, "pwm": ProtoPWM, "rcencode": ProtoRCEncode, "ook": ProtoOOK,
+	"miller": ProtoMiller, "morse": ProtoMorse, "dcf77": ProtoDCF77, "em4100": ProtoEM4100, "em4305": ProtoEM4305,
+	"t55xx": ProtoT55xx, "swim": ProtoSWIM, "sdq": ProtoSDQ, "pjdl": ProtoPJDL, "dsi": ProtoDSI, "qi": ProtoQi,
+	"sdcard": ProtoSDCard, "pdi": ProtoPDI, "cjtag": ProtoCJTAG, "maple": ProtoMaple, "caliper": ProtoCaliper,
+	"irmp": ProtoIRMP}
 
 // ProtoOf is the protocol number of a decode's Proto name (decode.Result's
 // "uart", "lin"...), 0 for none.
 // TRLC-LINKS: REQ-SDS-018
 func ProtoOf(name string) int { return protoNumbers[name] }
 
-// TwoLine reports a protocol of two lines (ChA and ChB): I2C, SPI and the
-// clocked PS/2, SWD, MDIO and Wiegand.
-// TRLC-LINKS: REQ-SDS-018
+// TwoLine reports a protocol of two lines (ChA and ChB): I2C, SPI, the
+// clocked PS/2, SWD, MDIO and Wiegand, an encoder's or a stepper's pair and
+// the clocked SD card, PDI, cJTAG, Maple and caliper buses.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-258
 func TwoLine(p int) bool {
 	switch p {
-	case ProtoI2C, ProtoSPI, ProtoPS2, ProtoSWD, ProtoMDIO, ProtoWiegand:
+	case ProtoI2C, ProtoSPI, ProtoPS2, ProtoSWD, ProtoMDIO, ProtoWiegand, ProtoQuad, ProtoStepper, ProtoSDCard,
+		ProtoPDI, ProtoCJTAG, ProtoMaple, ProtoCaliper:
 		return true
 	}
 	return false
@@ -81,7 +110,7 @@ func TwoLine(p int) bool {
 
 // DecodeParams selects the decoder and its settings.
 type DecodeParams struct {
-	Proto      int // ProtoOff..ProtoWiegand
+	Proto      int // ProtoOff..ProtoIRMP
 	Baud       int // UART baud, or the bit rate of the bit-rate protocols
 	ChA, ChB   int // UART source / I2C SCL / SPI CLK, and I2C SDA / SPI DATA (0 = C1)
 	CPOL, CPHA bool
@@ -263,7 +292,43 @@ func decodeMore(p DecodeParams, ch func(int) []uint8, sampleS float64) decode.Re
 	case ProtoWiegand:
 		return decode.DecodeWiegand(a, ch(p.ChB), sampleS, two)
 	}
-	return decode.Result{}
+	return decodePhys(p, a, ch(p.ChB), sampleS)
+}
+
+// decodePhys decodes the sigrok protocols beyond the first thirty on line a
+// (and b, the two-line ones'). Each finds its own timing and variant on the
+// record (a tag's data rate, an RC code's trits or bytes, a PJON mode, the
+// IR protocol), as Auto's detection does.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-258
+func decodePhys(p DecodeParams, a, b []uint8, sampleS float64) decode.Result {
+	two := decode.ClockedCfg{Format: p.Format}
+	lc := decode.LineCfg{Format: p.Format}
+	switch p.Proto {
+	case ProtoQuad:
+		return decode.DecodeQuadrature(a, b, sampleS, two)
+	case ProtoStepper:
+		return decode.DecodeStepper(a, b, sampleS, two)
+	case ProtoSDCard:
+		return decode.DecodeSDCard(a, b, sampleS, two)
+	case ProtoPDI:
+		return decode.DecodePDI(a, b, sampleS, two)
+	case ProtoCJTAG:
+		return decode.DecodeCJTAG(a, b, sampleS, two)
+	case ProtoMaple:
+		return decode.DecodeMaple(a, b, sampleS, two)
+	case ProtoCaliper:
+		return decode.DecodeCaliper(a, b, sampleS, two)
+	}
+	line := map[int]func([]uint8, float64, decode.LineCfg) decode.Result{
+		ProtoPWM: decode.DecodePWM, ProtoRCEncode: decode.DecodeRCEncode, ProtoOOK: decode.DecodeOOK,
+		ProtoMiller: decode.DecodeMiller, ProtoMorse: decode.DecodeMorse, ProtoDCF77: decode.DecodeDCF77,
+		ProtoEM4100: decode.DecodeEM4100, ProtoEM4305: decode.DecodeEM4305, ProtoT55xx: decode.DecodeT55xx,
+		ProtoSWIM: decode.DecodeSWIM, ProtoSDQ: decode.DecodeSDQ, ProtoPJDL: decode.DecodePJDL, ProtoDSI: decode.DecodeDSI,
+		ProtoQi: decode.DecodeQi, ProtoIRMP: decode.DecodeIRMP}[p.Proto]
+	if line == nil {
+		return decode.Result{}
+	}
+	return line(a, sampleS, lc)
 }
 
 // Detect finds the bus on f's valid samples: the protocol, channel roles and

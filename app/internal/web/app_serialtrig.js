@@ -67,7 +67,10 @@ function stParseAddr(s) {
 function stProtoNum() {
   return { uart: 1, i2c: 2, spi: 3, manchester: 4, sent: 5, can: 6, mil1553: 7, arinc429: 8, usb: 9, flexray: 10,
     lin: 11, dmx512: 12, midi: 13, modbus: 14, onewire: 15, ws281x: 16, dht: 17, cec: 18, j1850: 19, irnec: 20,
-    irsirc: 21, irrc5: 22, irrc6: 23, dali: 24, usbpd: 25, spdif: 26, ps2: 27, swd: 28, mdio: 29, wiegand: 30 }[dcfg.proto] || 0;
+    irsirc: 21, irrc5: 22, irrc6: 23, dali: 24, usbpd: 25, spdif: 26, ps2: 27, swd: 28, mdio: 29, wiegand: 30,
+    quad: 31, stepper: 32, pwm: 33, rcencode: 34, ook: 35, miller: 36, morse: 37, dcf77: 38, em4100: 39, em4305: 40,
+    t55xx: 41, swim: 42, sdq: 43, pjdl: 44, dsi: 45, qi: 46, sdcard: 47, pdi: 48, cjtag: 49, maple: 50, caliper: 51,
+    irmp: 52 }[dcfg.proto] || 0;
 }
 // TRLC-LINKS: REQ-SDS-206
 function stArmed() { return $("stArm") && $("stArm").classList.contains("on"); }
@@ -90,16 +93,20 @@ function stParams(base = stScope) {
   const parsed = stParsePattern($("stBytes").value, maxValue);
   if (addr === null || parsed === null) return null;
   const bytes = parsed.bytes;
+  const two = P === 3 || DEC_CLOCKED.includes(dcfg.proto);
+  // the line polarity a detection found on the scope (an RC or IR line's marks
+  // high, an RFID reader's carrier) stands: the page has no row for it
+  const scopePolarity = [34, 37, 38, 40, 41, 45, 52].includes(P);
   return {
     ...(base || {}),
     proto: P,
-    chA: P === 2 ? rc(dcfg.scl) : P === 3 || P >= 27 ? rc(dcfg.clk) : rc(dcfg.line),
-    chB: P === 2 ? rc(dcfg.sda) : P === 3 || P >= 27 ? rc(dcfg.data) : 0,
+    chA: P === 2 ? rc(dcfg.scl) : two ? rc(dcfg.clk) : rc(dcfg.line),
+    chB: P === 2 ? rc(dcfg.sda) : two ? rc(dcfg.data) : 0,
     baud: dcfg.baud > 0 ? dcfg.baud : 0,
     spiClockHz: P === 3 && base ? Math.max(0, base.spiClockHz || 0) : 0, // the scope's Clock rate row (0: Auto)
-    bits: P === 21 || P === 30 ? dcfg.frameBits || 0 : dcfg.bits || 8,
+    bits: DEC_FRAME_BITS.includes(dcfg.proto) ? dcfg.frameBits || 0 : dcfg.bits || 8,
     parity: P === 14 ? (dcfg.modbusParity || "even") : dcfg.parity || "none",
-    inverted: !!dcfg.inverted,
+    inverted: scopePolarity && base ? !!base.inverted : !!dcfg.inverted,
     cpol: !!dcfg.cpol, cpha: !!dcfg.cpha, msb: P !== 3 || !!dcfg.msb, // the bit order is SPI's; the others MSB first, as the scope decodes them
     ieee: true, tickNs: P === 5 ? +$("decSentTick").value : 0, nibbles: P === 5 ? +$("decSentNibbles").value : 0, dataBaud: 0,
     threshold: dcfg.auto ? 0 : (+$("decThr").value || 0),

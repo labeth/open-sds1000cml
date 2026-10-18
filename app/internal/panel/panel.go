@@ -184,11 +184,15 @@ type Controller struct {
 	decLSB           bool // SPI least significant bit first
 	// decParity is Modbus RTU's framing ("even", "odd", "none"; "" the
 	// decoder finds it); decInv says the IR or DALI line's marks are at its
-	// high level (an emitter's drive), as detected.
+	// high level (an emitter's drive), as detected, and for the protocols
+	// whose decoders report it the polarity or line they found (Result.Inverted:
+	// an RC, Morse or DCF77 line's marks low, a DSI line's high, an RFID
+	// reader's carrier).
 	decParity string
 	decInv    bool
-	// decBits is SIRC's or Wiegand's frame length (0: not known), the
-	// widths of their units for the hardware matcher.
+	// decBits is SIRC's, Wiegand's or a T55xx command's frame length (0:
+	// not known), the widths of their units for the hardware matcher, or the
+	// variant a detection found (Result.FrameBits).
 	decBits int
 	// SPI's data line is read decDelayNs after the clock's sampling edge, or
 	// with decDelayAuto at the middle of the data's eye measured on the

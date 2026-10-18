@@ -169,7 +169,7 @@ func (c *Controller) ApplySettingsView(v settings.ViewState) {
 	c.decGen++
 	c.decChA, c.decChB = d.ChA, d.ChB
 	c.decCPOL, c.decCPHA, c.decLSB = d.CPOL, d.CPHA, d.LSB
-	c.decParity, c.decInv, c.decBits = "", d.Inverted, clampInt(d.FrameBits, 0, 64)
+	c.decParity, c.decInv, c.decBits = "", d.Inverted, clampInt(d.FrameBits, 0, 70)
 	if d.Parity == "even" || d.Parity == "odd" || d.Parity == "none" {
 		c.decParity = d.Parity
 	}

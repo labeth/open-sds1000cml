@@ -35,7 +35,7 @@ const ALL_GROUPS = [
     ["spgClear", "Clear spectrogram", "waterfall"], ["bodeArm", "Bode / FRA", "frequency response sweep"], ["bodeRef", "Bode reference channel", "fra"],
     ["bodeDut", "Bode DUT channel", "fra"], ["bodeClear", "Clear Bode points", "fra"]]],
   ["Decode (BUS)", [["decProto", "Protocol", "decode uart i2c spi can sent manchester"], ["decDetect", "Auto-detect the bus", "find protocol"], ["busView", "BUS view", "packets log eye stream"], ["streamStops", "What stops the scope's stream", "stream trigger error value hand"],
-    ["decScl", "I²C SCL channel", "i2c clock"], ["decSda", "I²C SDA channel", "i2c data"], ["decClk", "Clock channel (SPI, PS/2, SWD, MDIO; Wiegand D0)", ""], ["decData", "Data channel (SPI, PS/2, SWD, MDIO; Wiegand D1)", ""],
+    ["decScl", "I²C SCL channel", "i2c clock"], ["decSda", "I²C SDA channel", "i2c data"], ["decClk", "Clock channel (SPI, PS/2, SWD, MDIO, SD, PDI, cJTAG, Maple, caliper; Wiegand D0; encoder A; STEP)", ""], ["decData", "Data channel (SPI, PS/2, SWD, MDIO, SD, PDI, cJTAG, Maple, caliper; Wiegand D1; encoder B; DIR)", ""],
     ["decLine", "Decode line", "uart channel"], ["decBaud", "Baud / bit rate", "uart speed"], ["decBits", "Data bits", "uart word"], ["decParity", "UART parity", "none even odd"],
     ["decSentTick", "SENT tick", "ns"], ["decSentNibbles", "SENT nibbles", ""], ["decCpol", "SPI CPOL", "mode"], ["decCpha", "SPI CPHA", "mode"], ["decMsb", "SPI bit order", "msb lsb"],
     ["dsClock", "SPI clock rate", "hz mhz frequency auto"], ["decInverted", "Inverted inputs", "polarity"], ["decAuto", "Auto threshold", "level"], ["decThr", "Decode threshold", "level"],
@@ -75,7 +75,7 @@ function allEntries() { const out = []; for (const [g, list] of ALL_GROUPS) for 
 // ALL_WHEN says when a control that is shown only in some settings shows: by
 // the class or id of the element that hides it.
 const ALL_WHEN = [
-  [".dec-i2c", "with I²C decoding"], [".dec-spi", "with SPI decoding"], [".dec-clkdata", "with SPI, PS/2, SWD, MDIO or Wiegand decoding"], [".dec-uart", "with UART decoding"],
+  [".dec-i2c", "with I²C decoding"], [".dec-spi", "with SPI decoding"], [".dec-clkdata", "with SPI or a clocked two-line bus (PS/2, SWD, MDIO, Wiegand, encoder, stepper, SD, PDI, cJTAG, Maple, caliper)"], [".dec-uart", "with UART decoding"],
   [".dec-sent", "with SENT decoding"], [".dec-word", "with UART or Manchester decoding"],
   [".dec-rate", "with a one-line protocol whose rate is a setting (UART, Manchester, CAN, MIL-1553, ARINC, USB, FlexRay, LIN, Modbus)"],
   [".dec-single", "with a one-line protocol"], [".dec-polarity", "with UART, I²C, SPI, SENT or MIL-1553 decoding"],

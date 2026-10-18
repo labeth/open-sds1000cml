@@ -449,8 +449,10 @@ func pickUnitOf(proto string) int {
 		return 2
 	case "arinc429", "spdif":
 		return 3
-	case "mdio", "wiegand":
+	case "mdio", "wiegand", "irmp":
 		return 2
+	case "cjtag":
+		return 4
 	}
 	return 1
 }

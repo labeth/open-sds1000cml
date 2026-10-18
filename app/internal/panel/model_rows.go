@@ -1217,6 +1217,13 @@ var protoOpts = []opt{{framecalc.ProtoOff, "Off"}, {framecalc.ProtoUART, "UART"}
 	{framecalc.ProtoIRRC6, "IR RC-6"}, {framecalc.ProtoDALI, "DALI"}, {framecalc.ProtoUSBPD, "USB PD"},
 	{framecalc.ProtoSPDIF, "S/PDIF"}, {framecalc.ProtoPS2, "PS/2"}, {framecalc.ProtoSWD, "SWD"},
 	{framecalc.ProtoMDIO, "MDIO"}, {framecalc.ProtoWiegand, "Wiegand"},
+	{framecalc.ProtoQuad, "Quadrature"}, {framecalc.ProtoStepper, "Stepper"}, {framecalc.ProtoPWM, "PWM"},
+	{framecalc.ProtoRCEncode, "RC encode"}, {framecalc.ProtoOOK, "OOK"}, {framecalc.ProtoMiller, "Miller"},
+	{framecalc.ProtoMorse, "Morse"}, {framecalc.ProtoDCF77, "DCF77"}, {framecalc.ProtoEM4100, "EM4100"},
+	{framecalc.ProtoEM4305, "EM4305"}, {framecalc.ProtoT55xx, "T55xx"}, {framecalc.ProtoSWIM, "SWIM"},
+	{framecalc.ProtoSDQ, "SDQ"}, {framecalc.ProtoPJDL, "PJON"}, {framecalc.ProtoDSI, "DSI"}, {framecalc.ProtoQi, "Qi"},
+	{framecalc.ProtoSDCard, "SD card"}, {framecalc.ProtoPDI, "PDI"}, {framecalc.ProtoCJTAG, "cJTAG"},
+	{framecalc.ProtoMaple, "Maple"}, {framecalc.ProtoCaliper, "Caliper"}, {framecalc.ProtoIRMP, "IR multi"},
 	{framecalc.ProtoAuto, "Auto"}}
 
 // protoName names a protocol number.
@@ -1309,7 +1316,17 @@ var protoRates = map[int]int{framecalc.ProtoLIN: 19200, framecalc.ProtoDMX: 2500
 	framecalc.ProtoCEC: 417, framecalc.ProtoJ1850: 10400, framecalc.ProtoIRNEC: 889, framecalc.ProtoIRSIRC: 1667,
 	framecalc.ProtoIRRC5: 562, framecalc.ProtoIRRC6: 1126, framecalc.ProtoDALI: 1200, framecalc.ProtoUSBPD: 300000,
 	framecalc.ProtoSPDIF: 3072000, framecalc.ProtoPS2: 12500, framecalc.ProtoSWD: 1000000, framecalc.ProtoMDIO: 2500000,
-	framecalc.ProtoWiegand: 1000}
+	framecalc.ProtoWiegand: 1000,
+	// an encoder's, a stepper's and a PWM's steps or periods a second, an RC
+	// code's short pulse, Oregon's bit, a Morse unit, the DCF77 second, a
+	// tag's bit (RF/64), a reader's field, the clocked buses' clocks, the IR
+	// codes' unit
+	framecalc.ProtoQuad: 1000, framecalc.ProtoStepper: 1000, framecalc.ProtoPWM: 1000, framecalc.ProtoRCEncode: 2857,
+	framecalc.ProtoOOK: 1024, framecalc.ProtoMiller: 106000, framecalc.ProtoMorse: 17, framecalc.ProtoDCF77: 1,
+	framecalc.ProtoEM4100: 1953, framecalc.ProtoEM4305: 125000, framecalc.ProtoT55xx: 125000, framecalc.ProtoSWIM: 363636,
+	framecalc.ProtoSDQ: 98425, framecalc.ProtoPJDL: 22727, framecalc.ProtoDSI: 600, framecalc.ProtoQi: 2000,
+	framecalc.ProtoSDCard: 400000, framecalc.ProtoPDI: 1000000, framecalc.ProtoCJTAG: 1000000, framecalc.ProtoMaple: 2000000,
+	framecalc.ProtoCaliper: 12500, framecalc.ProtoIRMP: 1786}
 
 // TRLC-LINKS: REQ-SDS-214
 func busTabRows() []*row {
@@ -1461,14 +1478,14 @@ func busTabRows() []*row {
 	}
 	isClocked := func(s *sv) bool { return clockedProto(s.decProto) }
 	clk := &row{id: "bus.clk", label: "CLK", kind: wsview.Enum, hdr: "SPI AND CLOCKED BUSES",
-		help: "Clock channel: SPI CLK, PS/2 CLK, SWD SWCLK, MDIO MDC; Wiegand D0.",
-		rel:  isClocked, why: "Protocol = SPI, PS/2, SWD, MDIO or Wiegand", opts: staticOpts(chans),
+		help: "Clock channel: SPI CLK, PS/2 CLK, SWD SWCLK, MDIO MDC, SD CLK, PDI_CLK, cJTAG TCKC, Maple SDCKA, caliper CLK; Wiegand D0; an encoder's A, a stepper's STEP.",
+		rel:  isClocked, why: "Protocol = SPI or a clocked two-line bus", opts: staticOpts(chans),
 		get: func(s *sv) int { return s.decChA },
 		set: func(c *Controller, v int) error { return c.setDecRole(true, v) },
 	}
 	data := &row{id: "bus.data", label: "DATA", kind: wsview.Enum,
-		help: "Data channel: SPI DATA, PS/2 DATA, SWD SWDIO, MDIO MDIO; Wiegand D1.",
-		rel:  isClocked, why: "Protocol = SPI, PS/2, SWD, MDIO or Wiegand", opts: staticOpts(chans),
+		help: "Data channel: SPI DATA, PS/2 DATA, SWD SWDIO, MDIO MDIO, SD CMD, PDI_DATA, cJTAG TMSC, Maple SDCKB, caliper DATA; Wiegand D1; an encoder's B, a stepper's DIR.",
+		rel:  isClocked, why: "Protocol = SPI or a clocked two-line bus", opts: staticOpts(chans),
 		get: func(s *sv) int { return s.decChB },
 		set: func(c *Controller, v int) error { return c.setDecRole(false, v) },
 	}

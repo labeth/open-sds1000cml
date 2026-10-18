@@ -72,7 +72,7 @@ type Acq struct {
 // reset to Off on every app restart).
 // TRLC-LINKS: REQ-SDS-072, REQ-SDS-089
 type Decode struct {
-	Proto  int  `json:"proto"` // 0=off 2=uart 3=i2c 4=spi 5..31 the other decoders (framecalc's numbers); 1, Auto, loads as a detection
+	Proto  int  `json:"proto"` // 0=off 2=uart 3=i2c 4=spi 5..53 the other decoders (framecalc's numbers); 1, Auto, loads as a detection
 	Baud   int  `json:"baud"`
 	ChA    int  `json:"cha"` // UART source; I2C SCL; SPI CLK (0=C1 1=C2)
 	ChB    int  `json:"chb"` // I2C SDA; SPI DATA
@@ -93,7 +93,9 @@ type Decode struct {
 	// decoder); Inverted, an IR or DALI line's marks at its high level.
 	Parity   string `json:"parity,omitempty"`
 	Inverted bool   `json:"inverted,omitempty"`
-	// FrameBits is SIRC's or Wiegand's frame length (0: not known).
+	// FrameBits is SIRC's, Wiegand's or a T55xx command's frame length, or
+	// the variant detected (an RC code's trits or bytes, Oregon's version,
+	// the PJON mode, the IR multi protocol); 0: not known.
 	FrameBits int `json:"frame_bits,omitempty"`
 }
 
