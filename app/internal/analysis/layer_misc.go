@@ -193,9 +193,10 @@ func crc16Maxim(b []byte) int {
 	return crc ^ 0xffff
 }
 
-// ds28ea00Fn reads DS28EA00 function commands (the DS18B20 shares its
-// scratchpad): Convert T, the scratchpad read with the temperature in
-// sixteenths of a degree and its CRC-8, the scratchpad write, and the rest.
+// ds28ea00Fn reads DS28EA00 function commands, which the DS18B20 shares
+// with its scratchpad: Convert T, the scratchpad read with the temperature
+// in sixteenths of a degree and its CRC-8, the scratchpad write, and the
+// rest.
 // TRLC-LINKS: REQ-SDS-245
 func ds28ea00Fn(fn []byte) (string, bool) {
 	names := map[int]string{0x4e: "Write scratchpad", 0xbe: "Read scratchpad", 0x48: "Copy scratchpad",

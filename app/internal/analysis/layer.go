@@ -284,7 +284,7 @@ func le(b []byte) int {
 // regName names register r from a table, or writes it as hex.
 // TRLC-LINKS: REQ-SDS-241
 func regName(t map[int]string, r int) string {
-	if n, ok := t[r]; ok && n != "" {
+	if n, ok := t[r]; ok && n != "" && n != "-" {
 		return n
 	}
 	return "0x" + hx(r, 2)

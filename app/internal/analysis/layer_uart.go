@@ -245,7 +245,7 @@ func itmParse(b []byte) (items []string, bad bool) {
 func itmNotes(ps []Packet) {
 	eachNote(ps, func(b []byte) (string, bool) {
 		items, bad := itmParse(b)
-		return "ITM " + strings.Join(items, " "), bad
+		return "ITM " + joinItems(items), bad
 	})
 }
 
@@ -330,7 +330,8 @@ func tpiuDemux(b []byte) (ids []int, data [][]byte, cut bool) {
 }
 
 // tpiuNotes writes each burst's TPIU streams: stream 1 read as ITM (the
-// usual ATB ID of a Cortex-M's ITM), the others as bytes.
+// usual ATB ID of a Cortex-M's ITM), the others as bytes, the null stream
+// and the reserved ID 0x7F (padding) left out.
 // TRLC-LINKS: REQ-SDS-244
 func tpiuNotes(ps []Packet) {
 	eachNote(ps, func(b []byte) (string, bool) {
@@ -338,10 +339,13 @@ func tpiuNotes(ps []Packet) {
 		var parts []string
 		bad := cut
 		for k, id := range ids {
+			if id == 0 || id == 0x7f { // the null stream and the reserved ID: padding
+				continue
+			}
 			if id == 1 {
 				items, ib := itmParse(data[k])
 				bad = bad || ib
-				parts = append(parts, "ITM "+strings.Join(items, " "))
+				parts = append(parts, "ITM "+joinItems(items))
 				continue
 			}
 			parts = append(parts, fmt.Sprintf("id%d %s", id, hexList(data[k], 8)))
@@ -349,7 +353,7 @@ func tpiuNotes(ps []Packet) {
 		if len(parts) == 0 {
 			parts = append(parts, "(no stream)")
 		}
-		s := "TPIU " + strings.Join(parts, "; ")
+		s := "TPIU " + joinNotes(parts)
 		if cut {
 			s += " (frame cut)"
 		}
@@ -517,7 +521,7 @@ func etmNotes(ps []Packet) {
 	st := &etmState{}
 	eachNote(ps, func(b []byte) (string, bool) {
 		items, bad := st.parse(b)
-		return "ETM " + strings.Join(items, " "), bad
+		return "ETM " + joinItems(items), bad
 	})
 }
 

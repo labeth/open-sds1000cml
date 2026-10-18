@@ -1,0 +1,877 @@
+== flash session (spiflash on spi)
+ 0   9F 00 00 00
+     RDID, 3 bytes
+ 1   06
+     WREN
+ 2   02 00 01 00 01 02 03 04
+     PP 0x000100, 4 bytes: 01 02 03 04
+ 3   05 00
+     RDSR, 1 byte
+ 4   03 00 10 00 00 00 00 00
+     READ 0x001000, 4 bytes
+ 5   0B 01 02 03 00 09 09
+     FAST_READ 0x010203, 2 bytes
+ 6   20 00 10 00
+     SE 4K 0x001000
+ 7   D8 01 00 00
+     BE 64K 0x010000
+ 8 ! 20 00 10 10
+     SE 4K 0x001010 (not aligned)
+ 9   AB
+     RES (release)
+10   AB 00 00 00 14
+     RES, 1 byte
+11 ! 77 01
+     ? 0x77, 2 bytes
+12 ! 03 00
+     READ (cut)
+13 ! 06 01
+     WREN (+1 byte)
+14   90 00 00 00 EF 13
+     REMS 0x000000, 2 bytes
+15   01 02
+     WRSR, 1 byte: 02
+16   C7
+     CE
+== sd card init (sdcard on spi)
+ 0   FF 40 00 00 00 00 95 FF FF
+     CMD0 GO_IDLE_STATE
+ 1   48 00 00 01 AA 87
+     CMD8 SEND_IF_COND 0x000001AA
+ 2   77 00 00 00 00 65
+     CMD55 APP_CMD
+ 3   69 40 00 00 00 77
+     ACMD41 SD_SEND_OP_COND 0x40000000
+ 4   51 00 00 10 00 01
+     CMD17 READ_SINGLE_BLOCK 0x00001000
+ 5 ! 58 00 00 00 08 12
+     CMD24 WRITE_BLOCK 0x00000008 (CRC7)
+ 6   FE 01 02 03 04
+     data block, 4 bytes
+ 7   FD
+     stop token
+ 8 ! 42 01 02
+     CMD2 (cut)
+ 9 ! 13
+     ? 0x13
+== avr isp (avrisp on spi)
+ 0   AC 53 00 00
+     PROGRAMMING ENABLE
+ 1   30 00 00 00 30 00 01 00 30 00 02 00
+     READ SIGNATURE 0; READ SIGNATURE 1; READ SIGNATURE 2
+ 2   AC 80 00 00
+     CHIP ERASE
+ 3   50 00 00 00
+     READ FUSE
+ 4   58 08 00 00
+     READ HIGH FUSE
+ 5   50 08 00 00
+     READ EXT FUSE
+ 6   58 00 00 00
+     READ LOCK
+ 7   A0 01 23 00
+     READ EEPROM 0x123
+ 8   28 01 23 00
+     READ FLASH H 0x123
+ 9   40 00 05 AB
+     LOAD PAGE L 0x05 = AB
+10   4C 01 02 00
+     WRITE PAGE 0x48
+11 ! 01 02 03 04
+     ? 01 02 03 04
+12 ! 01 02
+     (cut)
+== nrf24 (nrf24l01 on spi)
+ 0   20 0E
+     W_REGISTER CONFIG = 0E
+ 1   2A E7 E6 E5 E4 E3
+     W_REGISTER RX_ADDR_P0 = E3 E4 E5 E6 E7
+ 2   07 00
+     R_REGISTER STATUS, 1 byte
+ 3   A0 68 69 00
+     W_TX_PAYLOAD 3 bytes 'hi.'
+ 4   B0 01
+     W_TX_PAYLOAD_NOACK 1 byte '.'
+ 5   A9 78
+     W_ACK_PAYLOAD pipe 1 1 byte 'x'
+ 6   61 00 00 00
+     R_RX_PAYLOAD, 3 bytes
+ 7   60 00
+     R_RX_PL_WID
+ 8   E1
+     FLUSH_TX
+ 9   E2
+     FLUSH_RX
+10   E3
+     REUSE_TX_PL
+11   FF
+     NOP
+12   50 73
+     ACTIVATE = 73
+13 ! 50 12
+     ACTIVATE = 12
+14 ! 70
+     ? 0x70
+== nrf905 (nrf905 on spi)
+ 0   00 6C 0C 44 20 20
+     W_CONFIG 0 = 6C 0C 44 20 20
+ 1   10 00 00
+     R_CONFIG 0, 2 bytes
+ 2   20 01 02
+     W_TX_PAYLOAD = 01 02
+ 3   21 00
+     R_TX_PAYLOAD, 1 byte
+ 4   22 E7 E7 E7 E7
+     W_TX_ADDRESS = E7 E7 E7 E7
+ 5   23 00
+     R_TX_ADDRESS, 1 byte
+ 6   24 00 00
+     R_RX_PAYLOAD, 2 bytes
+ 7   8F 6C
+     CHANNEL_CONFIG CH 364 868/915MHz +10dBm
+ 8 ! 80
+     CHANNEL_CONFIG (cut)
+ 9 ! 0C 01
+     W_CONFIG 12 = 01
+10 ! EE
+     ? 0xEE
+== cc1101 (cc1101 on spi)
+ 0   30
+     STROBE SRES
+ 1   34
+     STROBE SRX
+ 2   0D 10
+     WRITE FREQ2 = 10
+ 3   7E C0 C8
+     BURST WRITE PATABLE = C0 C8
+ 4   80 00
+     READ IOCFG2, 1 byte
+ 5   C0 00 00
+     BURST READ IOCFG2, 2 bytes
+ 6   F5 00
+     STATUS READ MARCSTATE, 1 byte
+ 7   B5
+     STROBE STX
+ 8 ! 37
+     STROBE 0x37
+ 9   3F 01 02
+     WRITE FIFO = 01 02
+== rfm12 (rfm12 on spi)
+ 0   80 D7
+     CONFIG 433MHz 12.0pF
+ 1   82 39
+     POWER 0x39
+ 2   A6 40
+     FREQ 1600
+ 3   C6 23
+     DATA RATE 9.579kbps
+ 4   94 A2
+     RX CTRL BW 134kHz
+ 5   C2 AC
+     DATA FILTER
+ 6   CA 81
+     FIFO RESET level 8
+ 7   CE D4
+     SYNC 0xD4
+ 8   B0 00
+     FIFO READ
+ 9   C4 83
+     AFC During receiving
+10   98 50
+     TX CTRL 75kHz
+11   CC 77
+     PLL
+12   B8 AA
+     TX BYTE 0xAA
+13   FE 00
+     RESET
+14   E0 00
+     WAKE-UP TIMER
+15   C8 00
+     LOW DUTY CYCLE
+16   C0 E0
+     LOW BATTERY 2.25V
+17   00 00
+     STATUS READ
+18 ! 12 00
+     ? 0x1200
+19 ! 80
+     (cut)
+20   C6 80
+     DATA RATE 43.103kbps
+== mrf24j40 (mrf24j40 on spi)
+ 0   01 01
+     W RXMCR = 01
+ 1   02 00
+     R PANIDL, 1 byte
+ 2   80 10 41
+     W TX[0x00] = 41
+ 3   C0 00 00
+     R RFCON0, 1 byte
+ 4   E0 10 05 03 02
+     W RX[0x00] = 05; W PANIDL = 02
+ 5 ! 05
+     (cut)
+ 6 ! 90 10
+     (cut)
+== enc28j60 (enc28j60 on spi)
+ 0   00 00
+     RCR bank? 0x00, 1 byte
+ 1   5F 02
+     WCR ECON1 = 02
+ 2   14 00
+     RCR MIREGADR, 1 byte
+ 3   9F 01
+     BFS ECON1 = 01
+ 4   14 00
+     RCR 0x14, 1 byte
+ 5   BF 03
+     BFC ECON1 = 03
+ 6   14 00
+     RCR EDMADSTL, 1 byte
+ 7   3A 00 00 00
+     RBM, 3 bytes
+ 8   7A 01 02 03
+     WBM 3 bytes = 01 02 03
+ 9   FF
+     SRC (soft reset)
+10 ! 5F
+     WCR ECON1
+11 ! 3B
+     ? 0x3B
+12 ! E5
+     ? 0xE5
+== st25 (st25r39xx on spi)
+ 0   02 80
+     WRITE OPCTRL = 80
+ 1   42 00
+     READ OPCTRL, 1 byte
+ 2   FB 05 01
+     SPACE B; WRITE B EMDSUPPRCONF = 01
+ 3   FC 41 00
+     TEST ACCESS; READ T ANTSTOBS, 1 byte
+ 4   80 01 02 03
+     FIFO LOAD = 01 02 03
+ 5   9F 00 00
+     FIFO READ, 2 bytes
+ 6   A0 01
+     PT LOAD A = 01
+ 7   BF 00
+     PT READ, 1 byte
+ 8   C1
+     CMD SET_DEFAULT
+ 9   C2 DB
+     CMD STOP; CMD CLRFIFO
+10   FA
+     CMD RFU
+11 ! E9
+     ? 0xE9
+== adxl345 (adxl345 on spi)
+ 0   80 00
+     R DEVID, 1 byte
+ 1   2D 08
+     W POWER_CTL = 08 (measure)
+ 2   2C 0A
+     W BW_RATE = 0A (100 Hz)
+ 3   31 0B
+     W DATA_FORMAT = 0B (+-16g)
+ 4   F2 00 00 00 00 00 00
+     R DATAX0, 6 bytes
+ 5 ! 1E 01 02
+     W OFSX = 01 02
+ 6   5E 01 02 03
+     W OFSX = 01 02 03
+ 7   2D 00
+     W POWER_CTL = 00 (standby)
+ 8   05 09
+     W 0x05 = 09
+== adns5020 (adns5020 on spi)
+ 0   02 00 03 00 04 00
+     R Motion; R Delta_X; R Delta_Y
+ 1   8D 01
+     W Mouse_Control = 01
+ 2   63 00
+     R Motion_Burst
+ 3   70 00
+     R Unknown 0x70
+ 4 ! 05
+     SQUAL (cut)
+== ade7758 (ade77xx on spi)
+ 0   93 04
+     W OPMODE = 0x04
+ 1   0D 00 00 00
+     R AVRMS, 3 bytes
+ 2   9B 12 34
+     W ZXTOUT = 0x1234
+ 3 ! 10 00
+     R FREQ (short)
+ 4 ! 50 00
+     ? register 0x50
+ 5 ! 9B 12
+     W ZXTOUT (short)
+ 6   7F 00
+     R Version, 1 byte
+== adf4351 (adf435x on spi)
+ 0   00 58 00 05
+     R5 LD pin 1
+ 1   00 00 80 29
+     R1 MOD 5 phase 1 prescaler 4/5
+ 2   00 00 4E 42
+     R2 R 1 CP 7 MUXOUT 0
+ 3   00 00 04 B3
+     R3 clock divider 150
+ 4   00 8C 80 3C
+     R4 RF divider /1 power 5dBm out on
+ 5   00 58 00 05
+     R5 LD pin 1
+ 6 ! 01 02 03
+     ? 3 bytes (32-bit words)
+== ad5626 (ad5626 on spi)
+ 0   07 FF
+     DAC 2.047 V (0x7FF)
+ 1   0F FF
+     DAC 4.095 V (0xFFF)
+ 2   00 01
+     DAC 0.001 V (0x001)
+ 3 ! 01
+     ? 1 byte (16-bit loads)
+== ad79x0 (ad79x0 on spi)
+ 0   07 FF
+     ADC 2047/4095 (0.4999 Vref)
+ 1   0F FF
+     ADC power-up (invalid)
+ 2   00
+     ADC power-down
+ 3 ! 01 02 03
+     ? 3 bytes
+ 4 ! 80 00
+     ADC 0/4095 (0.0000 Vref)
+== ltc242x (ltc242x on spi)
+ 0   20 00 00
+     CH0 0.000000 Vref
+ 1   3F FF FF
+     CH0 2.000001 Vref
+ 2   50 00 00
+     CH1 -1.000001 Vref
+ 3 ! 9F 00 01
+     CH0 -0.062499 Vref
+ 4 ! 01
+     ? 1 byte (24-bit conversions)
+== max7219 (max72xx on spi)
+ 0   0C 01
+     Shutdown off
+ 1   0A 08
+     Intensity 8
+ 2   0B 07
+     Scan limit 8
+ 3   09 FF
+     Decode FF
+ 4   0F 00
+     Display test off
+ 5   01 7E 02 30
+     chip 1: Digit 1 = 7E; chip 2: Digit 2 = 30
+ 6   00 00
+     No-op
+ 7 ! 0E 01
+     ? register 0E
+ 8 ! 01
+     ? 1 byte (pairs)
+== x2444 (x2444m on spi)
+ 0   84
+     WREN
+ 1   9B 12 34
+     WRITE 0x3 = 0x1234
+ 2   8E 00 00
+     READ 0x1
+ 3   81
+     STO
+ 4   85
+     RCL
+ 5   82
+     SLEEP
+ 6   80
+     WRDS
+ 7 ! 81 01
+     STO
+ 8 ! 00
+     ? 0x00
+== rgb leds (rgbled on spi)
+ 0   FF 00 00 00 FF 00 00 00 FF
+     3 LEDs: #FF0000 #00FF00 #0000FF
+ 1   01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F 10 11 12 13 14 15
+     7 LEDs: #010203 #040506 #070809 #0A0B0C #0D0E0F #101112 ..
+ 2 ! 01 02
+     ? 2 bytes (3 a LED)
+== nes (nesgamepad on spi)
+ 0   FF
+     no button
+ 1   00
+     not connected
+ 2   7F
+     A
+ 3   6E FE
+     A+Start+Right; Right
+== ssi32 (ssi32 on spi)
+ 0   80 00 00 00
+     ACK 0x80
+ 1   01 02 04 55 01 02 03 04
+     CTRL 0x01 LUN 0x02 SIZE 4 CRC 0x55: 01 02 03 04
+ 2 ! 01 00 09 00 01
+     CTRL 0x01 LUN 0x00 SIZE 9 CRC 0x00: 01
+ 3 ! 01 02
+     CTRL (cut)
+== edid in two reads (edid on i2c)
+ 0   00
+     EDID offset 0
+ 1   00 FF FF FF FF FF FF 00 10 AC 34 12 00 00 00 00 00 00 01 03 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 02 3A 80 18 71 38 2D 40 00 00
+     EDID read @0, 64 bytes
+ 2   40
+     EDID offset 64
+ 3   00 00 00 00 00 00 00 00 00 00 00 FC 00 54 45 53 54 4D 4F 4E 0A 20 20 20 20 20 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 46
+     EDID DEL 1234 'TESTMON' 1920x1080@60Hz v1.3 checksum ok
+ 4   01 02
+     EDID read @128, 2 bytes
+== edid one read, checksum bad (edid on i2c)
+ 0 ! 00 FF FF FF FF FF FF 00 10 AC 34 12 00 00 00 00 00 00 01 03 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 02 3A 80 18 71 38 2D 40 00 00 00 00 00 00 00 00 00 00 00 00 00 FC 00 54 45 53 54 4D 4F 4E 0A 20 20 20 20 20 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 47
+     EDID DEL 1234 'TESTMON' 1920x1080@60Hz v1.3 checksum bad
+== eeprom 1-byte addresses (eeprom24xx on i2c)
+ 0   10
+     EEPROM 50 set address @0x10
+ 1   01 02 03
+     EEPROM 50 read @0x10, 3 bytes: 01 02 03
+ 2   20 AB
+     EEPROM 50 byte write @0x20: AB
+ 3   09
+     EEPROM 50 read @0x21, 1 byte: 09
+ 4   00 01 02 03 04 05 06 07 08 09
+     EEPROM 51 page write @0x00, 9 bytes: 01 02 03 04 05 06 07 08 ..
+ 5   
+     EEPROM 50 busy (no ACK)
+ 6   01
+     
+== eeprom 2-byte addresses (eeprom24xx on i2c)
+ 0   01
+     EEPROM 57 read (current address), 1 byte: 01
+ 1   01 00
+     EEPROM 57 set address @0x0100
+ 2   01 02
+     EEPROM 57 read @0x0100, 2 bytes: 01 02
+ 3   02 00 07 08
+     EEPROM 57 page write @0x0200, 2 bytes: 07 08
+== ds1307 (ds1307 on i2c)
+ 0   00
+     RTC set register Seconds
+ 1   56 34 12 07 18 10 26
+     RTC read 2026-10-18 12:34:56 Sat
+ 2   00 00 45 71 02 31 12 99
+     RTC write 2099-12-31 11:45:00 PM Mon
+ 3   07 10
+     RTC write Control=10
+ 4   10
+     RTC read 0x08=10
+ 5   08 01 02 03 04 05
+     RTC write 0x08=01 0x09=02 0x0A=03 0x0B=04 ..
+ 6 ! 00 99 99 99 99 99 99 99
+     RTC write time not BCD: 99 99 99 99 99 99 99
+== rtc8564 (rtc8564 on i2c)
+ 0   02
+     RTC set register Seconds
+ 1   56 34 12 18 00 10 26
+     RTC read 2026-10-18 12:34:56 Sun
+ 2   00 00 00
+     RTC write Control1=00 Control2=00
+ 3   12 45
+     RTC read Seconds=12 Minutes=45
+== lm75 (lm75 on i2c)
+ 0   19 80
+     LM75 48 read Temperature 25.5 C
+ 1   01
+     LM75 48 pointer Config
+ 2   02
+     LM75 48 read Config 02: normal interrupt
+ 3   03 50 00
+     LM75 48 write T_OS 80.0 C
+ 4   E7 00
+     LM75 49 read Temperature -25.0 C
+ 5   02 4B
+     LM75 4F write T_HYST, 1 byte
+== mlx90614 (mlx90614 on i2c)
+ 0   07
+     MLX90614 command Tobj1
+ 1 ! A8 3A 00
+     MLX90614 Tobj1 27.17 C PEC bad
+ 2   06
+     MLX90614 command Ta
+ 3 ! 9B 3A 6F
+     MLX90614 Ta 26.91 C PEC bad
+ 4   24 FF FF 00
+     MLX90614 write Emissivity = 0xFFFF
+ 5   01
+     MLX90614 read, 1 byte
+== atsha204a (atsha204a on i2c)
+ 0   
+     ATSHA204A wake
+ 1   04 11 33 43
+     ATSHA204A status ready
+ 2   03 07 02 00 00 00 1E 2D
+     ATSHA204A Read param1 00 param2 0000
+ 3 ! 07 01 02 03 04 00 00
+     ATSHA204A response, 4 bytes CRC bad
+ 4   01
+     ATSHA204A sleep
+ 5 ! 03 07 1B 00 00 00 01 02
+     ATSHA204A Random param1 00 param2 0000 CRC bad
+== hdcp (hdcp on i2c)
+ 0   00
+     HDCP offset Bksv
+ 1   01 02 03 04 05
+     HDCP read Bksv: 01 02 03 04 05
+ 2   41
+     HDCP offset Bstatus
+ 3   02 10
+     HDCP read Bstatus 2 devices depth 0 HDMI
+ 4   50
+     HDCP offset HDCP2Version
+ 5   04
+     HDCP read HDCP2Version HDCP2
+ 6   70
+     HDCP offset RxStatus
+ 7   10 05
+     HDCP read RxStatus length 272 ready
+ 8   60 02 09 09
+     HDCP write Write_Message AKE_Init
+ 9   80
+     HDCP offset Read_Message
+10   03
+     HDCP read Read_Message AKE_Send_Cert
+== ltc2607 (ltc26x7 on i2c)
+ 0   30 80 00
+     LTC26x7 Write+Update DAC A 0x8000 (0.5000 Vref)
+ 1   1F
+     LTC26x7 Update all DACs
+ 2   41
+     LTC26x7 Power down DAC B
+ 3 ! 22 01 02
+     LTC26x7 ? 0x22
+== tca6408a (tca6408a on i2c)
+ 0   03 F0
+     TCA6408A 20 write Config=F0
+ 1   01 0F
+     TCA6408A 20 write Output=0F
+ 2   00
+     TCA6408A 20 register Input
+ 3   AA
+     TCA6408A 20 read Input=AA
+ 4   01
+     
+== pca9571 (pca9571 on i2c)
+ 0   55
+     PCA9571 outputs 55
+ 1   55
+     PCA9571 read 55
+ 2   01
+     
+== mcp23017 (mcp23017 on i2c)
+ 0   00 00 FF
+     MCP23017 20 write IODIRA=00 IODIRB=FF
+ 1   12
+     MCP23017 20 register GPIOA
+ 2   55 AA
+     MCP23017 20 read GPIOA=55 GPIOB=AA
+ 3   0A 20
+     MCP23017 27 write IOCON=20
+ 4   01 02 03 04 05 06
+     MCP23017 21 read (no register), 6 bytes
+== mcp23008 (mcp23008 on i2c)
+ 0   00 00
+     MCP23008 20 write IODIR=00
+ 1   09
+     MCP23008 20 register GPIO
+ 2   5A
+     MCP23008 20 read GPIO=5A
+== mxc6225xu (mxc6225xu on i2c)
+ 0   00
+     MXC6225XU register XOUT
+ 1   10 F0 45
+     MXC6225XU read XOUT=16 YOUT=-16 STATUS=45
+ 2   03 80
+     MXC6225XU write DETECTION=80
+== nunchuk (nunchuk on i2c)
+ 0   40 00
+     Nunchuk init
+ 1   00
+     Nunchuk request report
+ 2   80 7F 80 81 B0 5D
+     Nunchuk stick 128/127 accel 515/517/705 C
+ 3   F0 55
+     Nunchuk init (unencrypted) F0 55
+ 4   FB 00
+     Nunchuk init (unencrypted) FB 00
+ 5   01 02 03
+     Nunchuk read, 3 bytes
+ 6   01 02 03 04 05 03
+     Nunchuk stick 1/2 accel 12/16/20
+== xfp (xfp on i2c)
+ 0   00
+     XFP offset 0
+ 1   06 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 23 40 00 00 0B B8 13 88 0F A0 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 01 06 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 41 43 4D 45 20 4F 50 54 49 43 53 20 20 20 20 20 00 00 00 00 58 46 50 2D 31 30 47 2D 53 52 20 20 20 20 20 20 00 00 66 58 00 00 00 00 00 00 00 00 53 4E 30 30 30 31 20 20 20 20 20 20 20 20 20 20 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+     XFP XFP 35.3 C bias 0.60 mA TX 0.500 mW RX 0.400 mW XFP 'ACME OPTICS' PN 'XFP-10G-SR' 1310.00 nm SN 'SN0001'
+ 2   60
+     XFP offset 96
+ 3   23 40 00 00 0B B8 13 88 0F A0 00 00 00 00
+     XFP 35.3 C bias 0.60 mA TX 0.500 mW RX 0.400 mW
+ 4   7F 01
+     XFP write @127: 01
+== demux (i2cdemux on i2c)
+ 0   01
+     dev 1 (0x50) #1 write, 1 byte
+ 1   01 02
+     dev 2 (0x68) #1 read, 2 bytes
+ 2   03
+     dev 1 (0x50) #2 read, 1 byte
+ 3   
+     dev 3 (0x20) #1 write, 0 bytes
+== filter 0x50 reads (i2cfilter on i2c)
+ 0   03
+     0x50 read, 1 byte
+ 1   
+     0x50 read, 0 bytes
+== filter writes any (i2cfilter on i2c)
+ 0   01
+     0x50 write, 1 byte
+ 1   
+     0x20 write, 0 bytes
+== sbus (sbus on uart)
+ 0   0F AC 80 08 5D B0 C3 23 50 11 0C 6D CC 83 21 25 F1 C9 55 E0 92 18 D1 0C 00
+     S.BUS 172 272 372 472 572 672 772 872 972 1072 1172 1272 1372 1472 1572 1672 lost failsafe
+ 1   0F AC 80 08 5D B0 C3 23 50 11 0C 6D CC 83 21 25 F1 C9 55 E0 92 18 D1 03 14
+     S.BUS 172 272 372 472 572 672 772 872 972 1072 1172 1272 1372 1472 1572 1672 ch17 ch18
+ 2 ! 0F AC 80 08 5D B0 C3 23 50 11 0C 6D CC 83 21 25 F1 C9 55 E0 92 18 D1 00 55
+     S.BUS 172 272 372 472 572 672 772 872 972 1072 1172 1272 1372 1472 1572 1672 end 55
+ 3 ! 0F AC 80 08 5D B0 C3 23 50 11 0C 6D CC 83 21 25 F1 C9 55 E0 92 18 D1 00 00
+     S.BUS 172 272 372 472 572 672 772 872 972 1072 1172 1272 1372 1472 1572 1672 (parity)
+ 4 ! 0F 01 02
+     S.BUS? 3 bytes (25 from 0x0F)
+== itm (arm_itm on uart)
+ 0   00 00 00 00 00 80 01 68 01 69 01 0A 0B 01 02 03 04
+     ITM SYNC ch0 'hi.' ch1 0x04030201
+ 1   09 61 02 34 12 0E 0F 10 17 78 56 34 12 05 21
+     ITM ch1 'a' ch0 0x1234 enter SysTick PC 0x12345678 DWT events 0x21
+ 2 ! 70 10 C0 81 01 08 84 01 8D 22 47 01 02 03 04 4E 01 02 55 09 09
+     ITM OVERFLOW TS +1 TS +129 EXT ? 0x84 ch0 0x8D ch4 0x0147 ch0 0x0403 WP0 addr 0x0201 HW10 0x09 (cut)
+ 3 ! 94 00 00
+     ITM ? 0x94 (zeros)
+ 4 ! 03
+     ITM (cut)
+ 5 ! C0 80
+     ITM TS (cut)
+ 6 ! 00 00 01
+     ITM (zeros) (cut)
+== tpiu (arm_tpiu on uart)
+ 0   FF FF FF 7F 03 01 4E 01 4A 02 34 12 05 08 08 00 FF 00 FF 26
+     TPIU ITM ch0 'OK' ch0 0x1234; id2 08 09 00
+ 1 ! 03 01 4E 01 4A 02 34 12 05 08 08 00 FF 00 FF 26 01 02
+     TPIU ITM ch0 'OK' ch0 0x1234; id2 08 09 00 (frame cut)
+ 2 ! 01 02 03
+     TPIU (no stream) (frame cut)
+== etm (arm_etmv3 on uart)
+ 0   00 00 00 00 80 08 20 01 01 00 08 84 88
+     ETM A-SYNC I-SYNC 0x08000100 thumb trace on 1E 2E
+ 1   25 83 02 0C 76 7E 66 C4 8A 86
+     ETM B 0x08000124 B 0x08000102 TRIGGER EXC EXIT EXC ENTRY 1E 1N 2 atoms NE 2 atoms EN
+ 2   81 80 80 80 10 FD 80 01 42 05 04 83 01
+     ETM B 0x00000000 B 0x0000407C TS CYC
+ 3 ! 01 08 00
+     ETM B 0x00004040 I-SYNC (cut)
+ 4 ! 81 81
+     ETM B (cut)
+ 5 ! 50
+     ETM ? 0x50
+== amulet (amulet on uart)
+ 0   D0 31 41
+     GBV 0x1A
+ 1   D5 30 32 46 66
+     SBV 0x02 = 0xFF
+ 2   D6 30 33 31 32 33 34
+     SWV 0x03 = 0x1234
+ 3   D7 30 34 68 69 00
+     SSV 0x04 'hi'
+ 4 ! A0 02 30 31 2D
+     PAGE 0x01 (bad)
+ 5   F0 F1
+     ACK; NACK
+ 6   D9 30 30 30 31 30 30 30 32 30 30 30 33 30 30 30 34
+     LINE 1,2,3,4
+ 7 ! D0 31
+     GBV (cut)
+ 8 ! D5 78 79 31 32
+     SBV 0x00 = 0x12 (bad)
+ 9 ! 41
+     ? 0x41
+10 ! D7 30 31 61
+     SSV (no NUL)
+== pan1321 (pan1321 on uart)
+ 0   41 54 2B 4A 53 4C 4E 3D 30 35 2C 68 65 6C 6C 6F 0D 0A 41 54 2B 4A 53 45 43 3D 31 2C 31 2C 32 2C 30 34 2C 31 32 33 34 0D 0A
+     PAN1321 name 'hello'; PIN 1234
+ 1   52 4F 4B 0D 0A 4F 4B 0D 0A 41 54 2B 4A 41 41 43 3D 31 0D
+     PAN1321 ready; OK
+ 2 ! 0A 41 54 2B 4A 53 44 41 3D 30 33 2C 61 62 63 0D 0A 45 52 52 3D 2D 35 0D 0A
+     PAN1321 auto-accept on; send 03: 'abc'; ERR -5
+ 3 ! 41 54 2B 4A 52 45 53 0D 0A 41 54 2B 4A 50 52 4F 3D 30 0D 0A 41 54 2B 4A 53 44 41 3D 30 39 2C 78 79 0D 0A 68 65 6C 6C 6F 0D 0A 41 54 2B 4A 41 41 43 3D 37 0D 0A
+     PAN1321 reset; production mode 0; send 09: 'xy'; 'hello'; auto-accept off
+== 1-wire net (onewire_net on onewire)
+ 0   55 28 2C 1B 6A 05 00 00 67 44
+     MATCH ROM 28-0000056A1B2C: 44
+ 1   CC BE 91 01 4B 46 7F FF 0F 10 25
+     SKIP ROM: BE 91 01 4B 46 7F FF 0F 10 25
+ 2   33 42 01 02 03 04 05 06 3D
+     READ ROM 42-060504030201
+ 3   F0 01 02 03 04 05 06 07 08
+     SEARCH ROM 01-070605040302
+ 4   CC 4E 4B 46 7F
+     SKIP ROM: 4E 4B 46 7F
+ 5   A5 12
+     RESUME: 12
+ 6   
+     RESET
+ 7   
+     
+ 8 ! 55 01 02
+     MATCH ROM (cut ROM) (CRC)
+ 9 ! 99 01
+     ROM 0x99: 01
+== ds28ea00 (ds28ea00 on onewire)
+ 0   55 28 2C 1B 6A 05 00 00 67 44
+     MATCH ROM 28-0000056A1B2C: Convert T
+ 1   CC BE 91 01 4B 46 7F FF 0F 10 25
+     SKIP ROM: Read scratchpad 25.0625 C CRC ok
+ 2   33 42 01 02 03 04 05 06 3D
+     READ ROM 42-060504030201
+ 3   F0 01 02 03 04 05 06 07 08
+     SEARCH ROM 01-070605040302
+ 4   CC 4E 4B 46 7F
+     SKIP ROM: Write scratchpad 4B 46 7F
+ 5 ! A5 12
+     RESUME: ? function 0x12
+ 6   
+     RESET
+ 7   
+     
+ 8 ! 55 01 02
+     MATCH ROM (cut ROM) (CRC)
+ 9 ! 99 01
+     ROM 0x99: ? function 0x01
+10   CC A5 0F F0
+     SKIP ROM: PIO write 0x0F
+11   CC 48
+     SKIP ROM: Copy scratchpad
+12 ! CC 13
+     SKIP ROM: ? function 0x13
+== ds2408 (ds2408 on onewire)
+ 0   CC F0 88 00 FF 00
+     SKIP ROM: Read PIO registers @0x0088: FF 00
+ 1   CC F5 FF FE
+     SKIP ROM: Channel access read FF FE
+ 2   CC 5A 0F F0 AA 0F
+     SKIP ROM: Channel access write 0x0F done
+ 3 ! CC 5A 0F F1
+     SKIP ROM: Channel access write 0x0F (complement bad)
+ 4   CC CC 8B 00 01
+     SKIP ROM: Write cond. search register @0x008B: 01
+ 5   CC C3 AA
+     SKIP ROM: Reset activity latches done
+ 6   CC 3C
+     SKIP ROM: Disable test mode
+ 7 ! CC 77
+     SKIP ROM: ? function 0x77
+== ds243x (ds243x on onewire)
+ 0   CC 0F 00 00 01 02 03 04 05 06 07 08 3F 2F
+     SKIP ROM: Write scratchpad @0x0000: 01 02 03 04 05 06 07 08 CRC ok
+ 1 ! CC AA 00 00 07 01 02 03 04 05 06 07 08 B3 D2
+     SKIP ROM: Read scratchpad @0x0000 E/S 07: 01 02 03 04 05 06 07 08 CRC bad
+ 2   CC 55 00 00 07
+     SKIP ROM: Copy scratchpad @0x0000 E/S 07
+ 3   CC F0 20 00 01 02 03
+     SKIP ROM: Read memory @0x0020, 3 bytes: 01 02 03
+ 4   CC 5A 00 00
+     SKIP ROM: Load first secret @0x0000
+ 5   CC 33 00 00
+     SKIP ROM: Compute next secret @0x0000
+ 6   CC A5 00 00
+     SKIP ROM: Read authenticated page @0x0000
+ 7 ! CC 01
+     SKIP ROM: ? function 0x01
+== cfp (cfp on mdio)
+ 0   00 01 80 00
+     CFP 0.1 address NVR1 0x8000
+ 1   0C 01 00 0E
+     CFP 0.1 read NVR1 0x8000 = 0x000E (CFP)
+ 2   00 01 80 10
+     CFP 0.1 address NVR1 0x8010
+ 3   08 01 12 34
+     CFP 0.1 read NVR1 0x8010 = 0x1234
+ 4   0C 01 56 78
+     CFP 0.1 read NVR1 0x8011 = 0x5678
+ 5   04 01 A0 00
+     CFP 0.1 write NVR1 0x8011 = 0xA000
+ 6   0C 41 00 00
+     CFP 2.1 read (no address) 0x0000
+ 7   04 61 00 01
+     CFP 3.1 write (no address) 0x0001
+ 8   18 22 79 6D
+     
+ 9   00 01 A0 10
+     CFP 0.1 address Module VR1 0xA010
+10 ! 0C 01 FF FF
+     CFP 0.1 read Module VR1 0xA010 = 0xFFFF
+== usb enumeration (usb_request on usbls)
+ 0   2A 00
+     SOF 42
+ 1   00 10
+     SETUP 0.0
+ 2   80 06 00 01 00 00 12 00 00 00
+     GET_DESCRIPTOR Device len 18
+ 3   
+     ACK
+ 4   00 10
+     IN 0.0
+ 5   12 01 00 02 00 00 00 40 34 12 78 56 00 01 01 02 03 01 00 00
+     Device USB 2.00 class 00 VID 1234 PID 5678
+ 6   
+     ACK
+ 7   00 10
+     OUT 0.0
+ 8   00 00
+     zero-length data
+ 9   
+     ACK
+10   00 10
+     SETUP 0.0
+11   00 05 07 00 00 00 00 00 00 00
+     SET_ADDRESS 7
+12   
+     NAK
+13   07 10
+     SETUP 7.0
+14   21 09 00 02 00 00 01 00 00 00
+     class request 0x09 OUT value 0x0200 index 0x0000 len 1
+15   
+     STALL
+16   07 11
+     IN 7.2
+17   01 02 03 00 00
+     data 3 bytes: 01 02 03
+18   
+     NYET
+19   
+     PRE
+20   
+     PID 0x4
+21 ! 01 02 03
+     data CRC bad
+22 ! 01
+     token (cut)
+23 ! 
+     SOF
+24 ! 
+     data (cut)

@@ -19,9 +19,28 @@ func eachNote(ps []Packet, f func(b []byte) (string, bool)) {
 	}
 }
 
-// joinNotes joins the notes of the commands one transaction holds.
+// maxParts bounds the commands (and trace items) one note names: a long
+// burst's note says how many more there are.
+const maxParts = 8
+
+// joinNotes joins the notes of the commands one transaction holds, at most
+// maxParts of them.
 // TRLC-LINKS: REQ-SDS-242
-func joinNotes(parts []string) string { return strings.Join(parts, "; ") }
+func joinNotes(parts []string) string {
+	if len(parts) > maxParts {
+		return strings.Join(parts[:maxParts], "; ") + fmt.Sprintf("; .. (+%d)", len(parts)-maxParts)
+	}
+	return strings.Join(parts, "; ")
+}
+
+// joinItems joins a trace burst's items, at most 2*maxParts of them.
+// TRLC-LINKS: REQ-SDS-244
+func joinItems(items []string) string {
+	if len(items) > 2*maxParts {
+		return strings.Join(items[:2*maxParts], " ") + fmt.Sprintf(" .. (+%d)", len(items)-2*maxParts)
+	}
+	return strings.Join(items, " ")
+}
 
 // ---- SPI flash (xx25 series NOR flash and EEPROM) ----
 
@@ -126,6 +145,9 @@ func flashFits(b []byte) (string, bool) {
 	c, ok := flashCmds[int(b[0])]
 	if !ok || c.name == "2READ" || c.name == "4READ" || c.name == "QPP" {
 		return "", false
+	}
+	if c.name == "RES" && len(b) == 1 { // the release from deep power-down
+		return c.name, true
 	}
 	head := 1 + c.dummy
 	if c.addr {
@@ -298,18 +320,20 @@ func sdNotes(ps []Packet) {
 	eachNote(ps, st.note)
 }
 
-// sdDetect: two or more command tokens whose CRC7 checks (a token of six
-// random bytes checks once in 128 times).
+// sdDetect: two or more transactions that open (after the host's 0xFF
+// fill) with a command token whose CRC7 checks: a token of six random bytes
+// checks once in 128 times.
 // TRLC-LINKS: REQ-SDS-247
 func sdDetect(ps []Packet) string {
 	n := 0
 	for _, p := range ps {
 		b := p.Bytes
-		for i := 0; i+6 <= len(b); i++ {
-			if b[i]&0xc0 == 0x40 && int(b[i+5]) == sdCRC7(b[i:i+5])<<1|1 {
-				n++
-				i += 5
-			}
+		i := 0
+		for i < len(b) && b[i] == 0xff {
+			i++
+		}
+		if i+6 <= len(b) && b[i]&0xc0 == 0x40 && int(b[i+5]) == sdCRC7(b[i:i+5])<<1|1 {
+			n++
 		}
 	}
 	if n < 2 {
@@ -1014,6 +1038,9 @@ func x2444Note(b []byte) (string, bool) {
 // rgbNote reads RGB LED data: three bytes a LED, red green blue.
 // TRLC-LINKS: REQ-SDS-242
 func rgbNote(b []byte) (string, bool) {
+	if len(b) < 3 {
+		return fmt.Sprintf("? %s (3 a LED)", plural(len(b), "byte")), len(b) > 0
+	}
 	var parts []string
 	for i := 0; i+3 <= len(b); i += 3 {
 		if len(parts) == 6 {

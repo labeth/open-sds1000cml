@@ -1,10 +1,11 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ANALYSIS
 package analysis
 
-// layerList is the BUS sheet's Layer list: none, then each bus's layers.
-// The order is the settings' and the web page's (layers.js LAYERS): a
-// layer's place may grow, never change. Detection tries a bus's layers in
-// this order, the ones with the stronger proof first.
+// layerList is the BUS sheet's Layer list: none, then each bus's layers,
+// in the web page's order too (layers.js LAYERS; the settings keep a
+// layer's ID). Detection tries a bus's layers in this order, the ones with
+// the stronger proof first: a clock, a sensor or a Nunchuk at 0x51..0x57
+// before the EEPROMs that answer there.
 var layerList = []Layer{
 	{ID: "", Name: "None"},
 	// SPI (the data line the scope holds)
@@ -33,12 +34,12 @@ var layerList = []Layer{
 	// I2C
 	{ID: "edid", Name: "EDID", Bus: "i2c"},
 	{ID: "xfp", Name: "XFP module", Bus: "i2c"},
-	{ID: "eeprom24xx", Name: "24xx EEPROM", Bus: "i2c"},
 	{ID: "ds1307", Name: "DS1307 RTC", Bus: "i2c"},
 	{ID: "rtc8564", Name: "RTC-8564", Bus: "i2c"},
 	{ID: "atsha204a", Name: "ATSHA204A", Bus: "i2c"},
 	{ID: "mlx90614", Name: "MLX90614", Bus: "i2c"},
 	{ID: "nunchuk", Name: "Wii Nunchuk", Bus: "i2c"},
+	{ID: "eeprom24xx", Name: "24xx EEPROM", Bus: "i2c"},
 	{ID: "hdcp", Name: "HDCP", Bus: "i2c"},
 	{ID: "lm75", Name: "LM75", Bus: "i2c"},
 	{ID: "ltc26x7", Name: "LTC2607/17/27", Bus: "i2c"},
@@ -57,7 +58,7 @@ var layerList = []Layer{
 	{ID: "pan1321", Name: "PAN1321", Bus: "uart"},
 	{ID: "amulet", Name: "Amulet ASCII", Bus: "uart"},
 	// 1-Wire
-	{ID: "ds28ea00", Name: "DS28EA00", Bus: "onewire"},
+	{ID: "ds28ea00", Name: "DS28EA00/DS18B20", Bus: "onewire"},
 	{ID: "ds2408", Name: "DS2408", Bus: "onewire"},
 	{ID: "ds243x", Name: "DS243x", Bus: "onewire"},
 	{ID: "onewire_net", Name: "1-Wire ROM", Bus: "onewire"},
@@ -125,7 +126,7 @@ var layerImpls = map[string]layerFns{
 	"amulet":    {notes: func(ps []Packet) { eachNote(ps, amuletNote) }, match: uartFirst(1)},
 
 	"ds28ea00": {notes: owDevNotes(ds28ea00Fn), match: owMatch,
-		detect: func(ps []Packet) string { return owFamilyDetect(ps, "DS28EA00", 0x42) }},
+		detect: func(ps []Packet) string { return owFamilyDetect(ps, "DS28EA00, DS18B20", 0x42, 0x28) }},
 	"ds2408": {notes: owDevNotes(ds2408Fn), match: owMatch,
 		detect: func(ps []Packet) string { return owFamilyDetect(ps, "DS2408", 0x29) }},
 	"ds243x": {notes: owDevNotes(ds243xFn), match: owMatch,

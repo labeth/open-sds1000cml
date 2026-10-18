@@ -19,15 +19,16 @@ const LAYERS = [
   ["ad79x0", "AD7910/20 ADC", "spi", "MISO"], ["ltc242x", "LTC2421/2 ADC", "spi", "MISO"], ["max72xx", "MAX7219/21", "spi", "MOSI"],
   ["x2444m", "X2444M/P", "spi", "MOSI"], ["rgbled", "RGB LEDs", "spi", "MOSI"], ["nesgamepad", "NES gamepad", "spi", "MISO"],
   ["ssi32", "SSI32", "spi", "MOSI"],
-  ["edid", "EDID", "i2c", ""], ["xfp", "XFP module", "i2c", ""], ["eeprom24xx", "24xx EEPROM", "i2c", ""],
+  ["edid", "EDID", "i2c", ""], ["xfp", "XFP module", "i2c", ""],
   ["ds1307", "DS1307 RTC", "i2c", ""], ["rtc8564", "RTC-8564", "i2c", ""], ["atsha204a", "ATSHA204A", "i2c", ""],
-  ["mlx90614", "MLX90614", "i2c", ""], ["nunchuk", "Wii Nunchuk", "i2c", ""], ["hdcp", "HDCP", "i2c", ""],
+  ["mlx90614", "MLX90614", "i2c", ""], ["nunchuk", "Wii Nunchuk", "i2c", ""], ["eeprom24xx", "24xx EEPROM", "i2c", ""],
+  ["hdcp", "HDCP", "i2c", ""],
   ["lm75", "LM75", "i2c", ""], ["ltc26x7", "LTC2607/17/27", "i2c", ""], ["tca6408a", "TCA6408A", "i2c", ""],
   ["pca9571", "PCA9571", "i2c", ""], ["mcp23008", "MCP23008", "i2c", ""], ["mcp23017", "MCP23017", "i2c", ""],
   ["mxc6225xu", "MXC6225XU", "i2c", ""], ["i2cdemux", "By address", "i2c", ""], ["i2cfilter", "Address filter", "i2c", ""],
   ["sbus", "S.BUS", "uart", ""], ["arm_itm", "ARM ITM", "uart", ""], ["arm_tpiu", "ARM TPIU", "uart", ""],
   ["arm_etmv3", "ARM ETMv3", "uart", ""], ["pan1321", "PAN1321", "uart", ""], ["amulet", "Amulet ASCII", "uart", ""],
-  ["ds28ea00", "DS28EA00", "onewire", ""], ["ds2408", "DS2408", "onewire", ""], ["ds243x", "DS243x", "onewire", ""],
+  ["ds28ea00", "DS28EA00/DS18B20", "onewire", ""], ["ds2408", "DS2408", "onewire", ""], ["ds243x", "DS243x", "onewire", ""],
   ["onewire_net", "1-Wire ROM", "onewire", ""],
   ["cfp", "CFP module", "mdio", ""],
   ["usb_request", "USB requests", "usbls", ""],
@@ -88,15 +89,19 @@ function lyBE(b) { let v = 0; for (const x of b) v = v * 256 + x; return v; }
 // TRLC-LINKS: REQ-SDS-241
 function lyLE(b) { let v = 0; for (let i = b.length - 1; i >= 0; i--) v = v * 256 + b[i]; return v; }
 // TRLC-LINKS: REQ-SDS-241
-function lyReg(t, r) { const n = t && t[r]; return n ? n : "0x" + lyHx(r, 2); }
+function lyReg(t, r) { const n = t && t[r]; return n && n !== "-" ? n : "0x" + lyHx(r, 2); }
 // TRLC-LINKS: REQ-SDS-241
 function lyAnyBad(p) { return (p.byteErr || []).some(Boolean) || !!p.err; }
 // TRLC-LINKS: REQ-SDS-241
 function lyInt8(v) { return (v << 24) >> 24; }
 // TRLC-LINKS: REQ-SDS-241
 function lyInt16(v) { return (v << 16) >> 16; }
+// lyJoin joins a transaction's commands, at most eight (the scope's maxParts).
 // TRLC-LINKS: REQ-SDS-242
-function lyJoin(parts) { return parts.join("; "); }
+function lyJoin(parts) { return parts.length > 8 ? parts.slice(0, 8).join("; ") + "; .. (+" + (parts.length - 8) + ")" : parts.join("; "); }
+// lyItems joins a trace burst's items, at most sixteen.
+// TRLC-LINKS: REQ-SDS-244
+function lyItems(items) { return items.length > 16 ? items.slice(0, 16).join(" ") + " .. (+" + (items.length - 16) + ")" : items.join(" "); }
 // lyEach writes every packet's note with one transaction reader.
 // TRLC-LINKS: REQ-SDS-242
 function lyEach(ps, f) { for (const p of ps) { const r = f(p.bytes); p.note = r[0]; p.noteErr = r[1]; } }
@@ -515,6 +520,7 @@ function lyX2444Note(b) {
 
 // TRLC-LINKS: REQ-SDS-242
 function lyRgbNote(b) {
+  if (b.length < 3) return ["? " + lyPlural(b.length, "byte") + " (3 a LED)", b.length > 0];
   const parts = [];
   for (let i = 0; i + 3 <= b.length; i += 3) {
     if (parts.length === 6) { parts.push(".."); break; }
@@ -583,7 +589,8 @@ function lyEepromNotes(ps) {
     const p = ps[i], q = ps[i + 1];
     if (!p.hasAddr || p.read || !q.read || q.addr !== p.addr || p.err) continue;
     const n = p.bytes.length;
-    if ((n === 1 || n === 2) && (widths[p.addr] || 0) < n) widths[p.addr] = n;
+    if (n === 1) widths[p.addr] = 1;
+    else if (n === 2 && !widths[p.addr]) widths[p.addr] = 2;
   }
   for (const p of ps) {
     if (!lyDev(p, 0x50, 0x57)) continue;
@@ -889,7 +896,11 @@ function lyMxcNotes(ps) {
     const a = r.take(p, 1);
     if (!a.known) p.note = "MXC6225XU " + lyRW(p) + ", " + lyPlural(a.data.length, "byte");
     else if (a.ptrOnly) p.note = "MXC6225XU register " + lyReg(T, a.reg);
-    else p.note = "MXC6225XU " + lyRW(p) + " " + a.data.map((v, k) => (a.reg + k <= 1 ? lyReg(T, a.reg + k) + "=" + lyInt8(v) : lyReg(T, a.reg + k) + "=" + lyHx(v, 2))).join(" ");
+    else {
+      const parts = a.data.slice(0, 4).map((v, k) => (a.reg + k <= 1 ? lyReg(T, a.reg + k) + "=" + lyInt8(v) : lyReg(T, a.reg + k) + "=" + lyHx(v, 2)));
+      if (a.data.length > 4) parts.push("..");
+      p.note = "MXC6225XU " + lyRW(p) + " " + parts.join(" ");
+    }
   }
 }
 
@@ -1480,7 +1491,7 @@ function lyMcp23017Notes(ps) { lyRegNotes(ps, 0x20, 0x27, "MCP23017", LAYER_TABL
 // TRLC-LINKS: REQ-SDS-244
 function lySbusNotes(ps) { for (const p of ps) { const r = lySbusNote(p); p.note = r[0]; p.noteErr = r[1]; } }
 // TRLC-LINKS: REQ-SDS-244
-function lyItmNote(b) { const r = lyItmParse(b); return ["ITM " + r[0].join(" "), r[1]]; }
+function lyItmNote(b) { const r = lyItmParse(b); return ["ITM " + lyItems(r[0]), r[1]]; }
 
 // lyTpiuNote reads a burst's TPIU streams: stream 1 as ITM, the others as bytes.
 // TRLC-LINKS: REQ-SDS-244
@@ -1488,17 +1499,18 @@ function lyTpiuNote(b) {
   const [ids, data, cut] = lyTpiuDemux(b), parts = [];
   let bad = cut;
   for (let k = 0; k < ids.length; k++) {
-    if (ids[k] === 1) { const [it, ib] = lyItmParse(data[k]); bad = bad || ib; parts.push("ITM " + it.join(" ")); }
+    if (ids[k] === 0 || ids[k] === 0x7f) continue; // the null stream and the reserved ID: padding
+    if (ids[k] === 1) { const [it, ib] = lyItmParse(data[k]); bad = bad || ib; parts.push("ITM " + lyItems(it)); }
     else parts.push("id" + ids[k] + " " + lyHexList(data[k], 8));
   }
   if (!parts.length) parts.push("(no stream)");
-  return ["TPIU " + parts.join("; ") + (cut ? " (frame cut)" : ""), bad];
+  return ["TPIU " + lyJoin(parts) + (cut ? " (frame cut)" : ""), bad];
 }
 
 // TRLC-LINKS: REQ-SDS-244
 function lyEtmNotes(ps) {
   const st = { addr: 0n, thumb: false };
-  for (const p of ps) { const r = lyEtmParse(st, p.bytes); p.note = "ETM " + r[0].join(" "); p.noteErr = r[1]; }
+  for (const p of ps) { const r = lyEtmParse(st, p.bytes); p.note = "ETM " + lyItems(r[0]); p.noteErr = r[1]; }
 }
 
 // TRLC-LINKS: REQ-SDS-245

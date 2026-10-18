@@ -3,6 +3,7 @@ package analysis
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -70,12 +71,20 @@ func TestJSLayerParity(t *testing.T) {
 		Errs   []bool   `json:"errs"`
 		N      int      `json:"n"`
 		Layers []string `json:"layers"`
+		All    []string `json:"all"`
 	}
 	if err := json.Unmarshal(out, &js); err != nil {
 		t.Fatal(err)
 	}
-	if len(js) != len(vs) {
-		t.Fatalf("layers.js answered %d of %d records", len(js), len(vs))
+	if len(js) != len(vs)+1 {
+		t.Fatalf("layers.js answered %d of %d records", len(js)-1, len(vs))
+	}
+	var all []string
+	for _, l := range Layers() {
+		all = append(all, l.ID+"|"+l.Name+"|"+l.Bus+"|"+l.Line)
+	}
+	if fmt.Sprint(all) != fmt.Sprint(js[len(vs)].All) {
+		t.Fatalf("layer lists differ:\n Go %q\n JS %q", all, js[len(vs)].All)
 	}
 	bad := 0
 	for i, v := range vs {
@@ -85,7 +94,7 @@ func TestJSLayerParity(t *testing.T) {
 		for _, l := range LayersOn(v.Proto) {
 			ids = append(ids, l.ID)
 		}
-		if len(ids) != len(w.Layers) {
+		if fmt.Sprint(ids) != fmt.Sprint(w.Layers) {
 			t.Errorf("%s: layers on %s: Go %v, JS %v", v.Name, v.Proto, ids, w.Layers)
 		}
 		if len(ps) != w.N {

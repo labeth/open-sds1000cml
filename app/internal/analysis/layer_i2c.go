@@ -74,7 +74,9 @@ func rw(p Packet) string {
 
 // eepromWidths finds each device's word address width: a write of exactly
 // one or two bytes followed by a read of the same device is a random read's
-// address; 1 when none says.
+// address. One byte so set proves a one-byte part (a 24C32 and up never
+// takes one); two prove two only without it (a small part's byte write
+// before a current address read looks alike); 1 when none says.
 // TRLC-LINKS: REQ-SDS-243
 func eepromWidths(ps []Packet) map[int]int {
 	w := map[int]int{}
@@ -83,9 +85,12 @@ func eepromWidths(ps []Packet) map[int]int {
 		if !p.HasAddr || p.Read || !q.Read || q.Addr != p.Addr || p.Err != "" {
 			continue
 		}
-		if n := len(p.Bytes); n == 1 || n == 2 {
-			if w[p.Addr] < n {
-				w[p.Addr] = n
+		switch len(p.Bytes) {
+		case 1:
+			w[p.Addr] = 1
+		case 2:
+			if w[p.Addr] == 0 {
+				w[p.Addr] = 2
 			}
 		}
 	}
@@ -730,29 +735,36 @@ func hdcpNotes(ps []Packet) {
 	}
 }
 
-// hdcpDetect: two or more transfers at 0x3A, every write's offset one of
-// HDCP's registers.
+// hdcpReads are the HDCP registers a transmitter reads and their lengths:
+// Bksv, Bcaps, Bstatus, HDCP2Version.
+var hdcpReads = map[int]int{0x00: 5, 0x40: 1, 0x41: 2, 0x50: 1}
+
+// hdcpDetect: at 0x3A, one of the receiver's identity or capability
+// registers set as the offset and read at its length, and no write to an
+// offset HDCP does not have.
 // TRLC-LINKS: REQ-SDS-247
 func hdcpDetect(ps []Packet) string {
-	n := 0
-	for _, p := range ps {
-		if !i2cDevs(p, 0x3a, 0x3a) {
+	found := ""
+	for i, p := range ps {
+		if !i2cDevs(p, 0x3a, 0x3a) || p.Read {
 			continue
 		}
-		if !p.Read {
-			if len(p.Bytes) == 0 {
-				return ""
-			}
-			if _, ok := hdcpRegs[int(p.Bytes[0])]; !ok {
-				return ""
-			}
+		if len(p.Bytes) == 0 {
+			return ""
 		}
-		n++
+		off := int(p.Bytes[0])
+		if _, ok := hdcpRegs[off]; !ok {
+			return ""
+		}
+		if n, ok := hdcpReads[off]; ok && len(p.Bytes) == 1 && i+1 < len(ps) && i2cDevs(ps[i+1], 0x3a, 0x3a) &&
+			ps[i+1].Read && len(ps[i+1].Bytes) == n {
+			found = hdcpRegs[off]
+		}
 	}
-	if n < 2 {
+	if found == "" {
 		return ""
 	}
-	return fmt.Sprintf("%d HDCP register transfers at 0x3A", n)
+	return "HDCP " + found + " read at 0x3A"
 }
 
 // ---- LTC2607/2617/2627 dual DAC ----
@@ -897,6 +909,10 @@ func mxcNotes(ps []Packet) {
 			var parts []string
 			for k, v := range a.data {
 				reg := a.reg + k
+				if len(parts) == 4 {
+					parts = append(parts, "..")
+					break
+				}
 				if reg <= 1 {
 					parts = append(parts, fmt.Sprintf("%s=%d", regName(mxcRegs, reg), int8(v)))
 				} else {

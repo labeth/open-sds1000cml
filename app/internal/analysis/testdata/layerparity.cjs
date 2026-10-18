@@ -22,4 +22,6 @@ const out = vecs.map((v) => {
   return { notes: shown.map((p) => p.note), errs: shown.map((p) => !!p.noteErr), n: shown.length,
     layers: L.layersOn(v.proto).map((l) => l[0]) };
 });
+// the whole list last: the scope's Layer row and the page's select index it alike
+out.push({ all: L.LAYERS.map((l) => l.join("|")) });
 process.stdout.write(JSON.stringify(out));
