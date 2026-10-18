@@ -439,9 +439,14 @@ func (e *Engine) reloadImage() error {
 	return nil
 }
 
-// noteARINCLevels takes the ARINC slicer levels from a raw record the first
-// time the current decode parameters need them; hardware ARINC triggering and
-// streaming wait for them.
+// arincBitSamples is the samples a bit a decimated record must hold for the
+// ARINC slicer levels to be taken from it: its filter rounds the edges, not
+// the levels a half bit holds.
+const arincBitSamples = 8
+
+// noteARINCLevels takes the ARINC slicer levels from a sampled record the
+// first time the current decode parameters need them; hardware ARINC
+// triggering and streaming wait for them.
 // TRLC-LINKS: REQ-SDS-018
 func (e *Engine) noteARINCLevels(f *Frame) {
 	if e.arincAux.Load() != 0 {
@@ -454,11 +459,19 @@ func (e *Engine) noteARINCLevels(f *Frame) {
 	// the slicer levels are the decoder's own from a sampled record. A live
 	// envelope's (min, max) pairs give wrong ones, kept until the request
 	// changes, and the matcher never fires: the levels wait for a sampled
-	// record, which a short lease asks for.
-	if planned, _ := e.serialPlanParams(p); p.Proto != serARINC || !serialThresholdOK(planned) || f.Valid < 8 || f.Decimation > 1 {
+	// record, which a short lease asks for - a decimated one where it resolves
+	// the bits, read in milliseconds where the full-rate record of 200us/div
+	// takes seconds (and a decimated envelope asked for none: the trigger
+	// waited for a record something else asked for).
+	if planned, _ := e.serialPlanParams(p); p.Proto != serARINC || !serialThresholdOK(planned) || f.Valid < 8 {
 		return
 	}
-	if f.PeakDetect || f.IsEnv {
+	resolves := f.Decimation <= 1 || p.Baud > 0 && f.SampleS > 0 && f.SampleS*arincBitSamples <= 1/float64(p.Baud)
+	switch {
+	case (f.PeakDetect || f.IsEnv) && p.Baud > 0:
+		e.lease(&e.sampleLease, time.Second)
+		return
+	case f.PeakDetect || f.IsEnv || !resolves:
 		e.lease(&e.decodeLease, time.Second)
 		return
 	}
