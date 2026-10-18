@@ -77,7 +77,9 @@ run(async (t) => {
   const more = await po.eval(() => {
     const out = [], keep = dcfg.proto;
     for (const p of ["lin", "dmx512", "midi", "modbus", "onewire", "ws281x", "dht", "cec", "j1850", "irnec", "irsirc",
-      "irrc5", "irrc6", "dali", "usbpd", "spdif", "ps2", "swd", "mdio", "wiegand"]) {
+      "irrc5", "irrc6", "dali", "usbpd", "spdif", "ps2", "swd", "mdio", "wiegand", "quad", "stepper", "pwm", "rcencode", "ook",
+      "miller", "morse", "dcf77", "em4100", "em4305", "t55xx", "swim", "sdq", "pjdl", "dsi", "qi", "sdcard", "pdi", "cjtag", "maple",
+      "caliper", "irmp"]) {
       dcfg.proto = p;
       try { computeDecode(); out.push(dcfg.result && typeof dcfg.result.ok === "boolean" ? "" : p + ": no result"); }
       catch (e) { out.push(p + ": " + e.message); }
@@ -86,7 +88,7 @@ run(async (t) => {
     computeDecode();
     return out.filter(Boolean);
   });
-  t.ok(more.length === 0, "the twenty decoders beyond the first ten run in the page: " + more.join("; "));
+  t.ok(more.length === 0, "the decoders beyond the first ten run in the page: " + more.join("; "));
 
   // Decoding stays on after leaving BUS (the strip keeps drawing elsewhere).
   await po.ws("scope");

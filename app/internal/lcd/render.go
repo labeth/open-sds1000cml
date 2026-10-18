@@ -78,7 +78,7 @@ type HUD struct {
 	Zoom             int       // horizontal magnification (1 = none)
 	ZoomOff          float64   // zoom-window pan offset (fraction of the record)
 	Persist          bool      // display persistence (afterglow)
-	DecProto         int       // framecalc's numbers: 0=off,2=UART,3=I2C,4=SPI ... 11=FlexRay, 12=LIN ... 31=Wiegand (1, Auto, is a detection, never decoded)
+	DecProto         int       // framecalc's numbers: 0=off,2=UART,3=I2C,4=SPI ... 11=FlexRay, 12=LIN ... 31=Wiegand ... 53=IR multi (1, Auto, is a detection, never decoded)
 	DecBaud          int
 	DecChA, DecChB   int // channel roles (0=C1,1=C2)
 	DecCPOL, DecCPHA bool

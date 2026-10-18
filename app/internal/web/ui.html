@@ -268,12 +268,23 @@
       <option value="dali">DALI</option><option value="usbpd">USB PD</option>
       <option value="spdif">S/PDIF</option><option value="ps2">PS/2</option>
       <option value="swd">SWD</option><option value="mdio">MDIO</option>
-      <option value="wiegand">Wiegand</option></select>
+      <option value="wiegand">Wiegand</option><option value="quad">Quadrature encoder</option>
+      <option value="stepper">Stepper STEP/DIR</option><option value="pwm">PWM</option>
+      <option value="rcencode">RC encode (PT2262/EV1527)</option><option value="ook">OOK (Oregon)</option>
+      <option value="miller">Miller (ISO 14443)</option><option value="morse">Morse</option>
+      <option value="dcf77">DCF77</option><option value="em4100">EM4100</option>
+      <option value="em4305">EM4305</option><option value="t55xx">T55xx</option>
+      <option value="swim">SWIM</option><option value="sdq">SDQ</option>
+      <option value="pjdl">PJON (PJDL)</option><option value="dsi">DSI</option>
+      <option value="qi">Qi</option><option value="sdcard">SD card (SD mode)</option>
+      <option value="pdi">PDI</option><option value="cjtag">cJTAG</option>
+      <option value="maple">Maple bus</option><option value="caliper">Caliper</option>
+      <option value="irmp">IR multi (IRMP)</option></select>
       <button type="button" id="decDetect" class="sm" title="The scope's Auto: detect the bus once and fill in the protocol, channel roles and settings">Auto-detect</button></div>
     <div id="decDetectMsg" class="sub"></div>
     <div id="decRoles">
       <div class="r dec-i2c"><span class="l">I²C</span><span class="hint">SCL</span><select id="decScl" class="rolesel" aria-label="I2C SCL channel"></select><span class="hint">SDA</span><select id="decSda" class="rolesel" aria-label="I2C SDA channel"></select></div>
-      <div class="r dec-clkdata"><span class="l">Clock/data</span><span class="hint">CLK</span><select id="decClk" class="rolesel" aria-label="clock channel (SPI CLK, PS/2 CLK, SWD SWCLK, MDIO MDC, Wiegand D0)"></select><span class="hint">DATA</span><select id="decData" class="rolesel" aria-label="data channel (SPI DATA, PS/2 DATA, SWD SWDIO, MDIO MDIO, Wiegand D1)"></select></div>
+      <div class="r dec-clkdata"><span class="l">Clock/data</span><span class="hint">CLK</span><select id="decClk" class="rolesel" aria-label="clock channel (SPI CLK, PS/2 CLK, SWD SWCLK, MDIO MDC, Wiegand D0, encoder A, STEP, SD CLK, PDI_CLK, TCKC, SDCKA, caliper CLK)"></select><span class="hint">DATA</span><select id="decData" class="rolesel" aria-label="data channel (SPI DATA, PS/2 DATA, SWD SWDIO, MDIO MDIO, Wiegand D1, encoder B, DIR, SD CMD, PDI_DATA, TMSC, SDCKB, caliper DATA)"></select></div>
       <div class="r dec-single"><span class="l">Line</span><select id="decLine" class="rolesel" aria-label="decode line channel"></select></div>
       <div class="r dec-rate"><span class="l">Bit rate</span><input id="decBaud" type="number" value="115200" min="50" class="w-md" aria-label="baud or bit rate" title="Baud or bit rate (Auto-detect fills it in)"><span class="dec-word"><span class="hint">bits</span><input id="decBits" type="number" min="1" max="16" value="8" class="w-xs" aria-label="data bits"></span><span class="seg xs dec-uart" id="decParity" aria-label="UART parity" data-value="none"><button data-value="none">N</button><button data-value="even">E</button><button data-value="odd">O</button></span></div>
       <div class="r dec-sent"><span class="l">SENT</span><span class="hint">tick ns</span><input id="decSentTick" type="number" min="0" value="3000" class="w-md" aria-label="SENT tick ns (0 = auto)"><span class="hint">nibbles</span><input id="decSentNibbles" type="number" min="1" max="64" value="8" class="w-xs" aria-label="SENT nibbles"></div>
@@ -519,6 +530,12 @@
 <script src="decode_ir.js"></script>
 <script src="decode_biphase.js"></script>
 <script src="decode_clocked.js"></script>
+<script src="decode_motion.js"></script>
+<script src="decode_rfcodes.js"></script>
+<script src="decode_rfid.js"></script>
+<script src="decode_wire1.js"></script>
+<script src="decode_wire2.js"></script>
+<script src="decode_irmp.js"></script>
 <script src="packets.js"></script>
 <script src="layer_tables.js"></script>
 <script src="layers.js"></script>

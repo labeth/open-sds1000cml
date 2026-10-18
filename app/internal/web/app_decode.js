@@ -45,6 +45,13 @@ function decodeFeatureSamples(r) {
     if (r.proto === "onewire") return 15 * m.spb;
     if (r.proto === "dht") return 26 * m.spb;
     if (r.proto === "wiegand") return m.spb / 20;
+    if (r.proto === "quad") return m.spb / 4;
+    if (r.proto === "stepper" || r.proto === "pwm") return m.feature || 0;
+    if (r.proto === "em4305" || r.proto === "t55xx") return m.inverted ? m.spb / 2 : 8 * m.spb;
+    if (["ook", "miller", "em4100", "dsi", "qi", "sdcard", "pdi", "cjtag", "maple", "caliper"].includes(r.proto)) return m.spb / 2;
+    if (r.proto === "dcf77") return m.spb / 10;
+    if (r.proto === "swim") return m.spb / 11;
+    if (r.proto === "sdq") return m.spb / 4;
     return m.spb;
   }
   if (!(m.samplesPerBit > 0)) return 0;
@@ -58,14 +65,30 @@ function decodeFeatureSamples(r) {
 const DECODE_MIN_ENVELOPE_FEATURE = 4;
 const DECODE_NAMES = { uart: "UART", i2c: "I2C", spi: "SPI", manchester: "Manchester", sent: "SENT", canfd: "CAN", mil1553: "MIL-1553", arinc429: "ARINC 429", usbls: "USB", flexray: "FlexRay",
   lin: "LIN", dmx512: "DMX512", midi: "MIDI", modbus: "Modbus RTU", onewire: "1-Wire", ws281x: "WS281x", dht: "DHT", cec: "HDMI-CEC", j1850: "J1850 VPW",
-  irnec: "IR NEC", irsirc: "IR Sony", irrc5: "IR RC-5", irrc6: "IR RC-6", dali: "DALI", usbpd: "USB PD", spdif: "S/PDIF", ps2: "PS/2", swd: "SWD", mdio: "MDIO", wiegand: "Wiegand" };
+  irnec: "IR NEC", irsirc: "IR Sony", irrc5: "IR RC-5", irrc6: "IR RC-6", dali: "DALI", usbpd: "USB PD", spdif: "S/PDIF", ps2: "PS/2", swd: "SWD", mdio: "MDIO", wiegand: "Wiegand",
+  quad: "Quadrature", stepper: "Stepper", pwm: "PWM", rcencode: "RC encode", ook: "OOK", miller: "Miller", morse: "Morse", dcf77: "DCF77",
+  em4100: "EM4100", em4305: "EM4305", t55xx: "T55xx", swim: "SWIM", sdq: "SDQ", pjdl: "PJON", dsi: "DSI", qi: "Qi", sdcard: "SD card",
+  pdi: "PDI", cjtag: "cJTAG", maple: "Maple", caliper: "Caliper", irmp: "IR multi" };
 
 // DEC_CLOCKED are the protocols on a clock (or D0) and a data (or D1) line
 // besides SPI: they take the Clock/data roles.
-const DEC_CLOCKED = ["ps2", "swd", "mdio", "wiegand"];
+const DEC_CLOCKED = ["ps2", "swd", "mdio", "wiegand", "quad", "stepper", "sdcard", "pdi", "cjtag", "maple", "caliper"];
+
+// DEC_PHYS_LINE are the one-line protocols beyond the first thirty: each
+// finds its own timing and variant on the record (framecalc decodePhys).
+const DEC_PHYS_LINE = { pwm: "decodePWM", rcencode: "decodeRCEncode", ook: "decodeOOK", miller: "decodeMiller", morse: "decodeMorse",
+  dcf77: "decodeDCF77", em4100: "decodeEM4100", em4305: "decodeEM4305", t55xx: "decodeT55xx", swim: "decodeSWIM", sdq: "decodeSDQ",
+  pjdl: "decodePJDL", dsi: "decodeDSI", qi: "decodeQi", irmp: "decodeIRMP" };
+
+// DEC_PHYS_TWO are the two-line protocols beyond the first thirty: the
+// first line (A, STEP, CLK, TCKC, SDCKA) and the second.
+const DEC_PHYS_TWO = { quad: "decodeQuadrature", stepper: "decodeStepper", sdcard: "decodeSDCard", pdi: "decodePDI", cjtag: "decodeCJTAG",
+  maple: "decodeMaple", caliper: "decodeCaliper" };
 
 // DEC_FIXED_TIMING are the protocols whose timing is their own, no rate to set.
-const DEC_FIXED_TIMING = ["dmx512", "midi", "onewire", "ws281x", "dht", "cec", "j1850", "irnec", "irsirc", "irrc5", "irrc6", "dali", "usbpd", "spdif"];
+const DEC_FIXED_TIMING = ["dmx512", "midi", "onewire", "ws281x", "dht", "cec", "j1850", "irnec", "irsirc", "irrc5", "irrc6", "dali", "usbpd", "spdif",
+  "quad", "stepper", "pwm", "rcencode", "ook", "miller", "morse", "dcf77", "em4100", "em4305", "t55xx", "swim", "sdq", "pjdl", "dsi", "qi",
+  "sdcard", "pdi", "cjtag", "maple", "caliper", "irmp"];
 
 // decodeMore decodes the protocols beyond the first ten (framecalc
 // decodeMore): the line, or the clock and data lines, with the scope's
@@ -97,6 +120,8 @@ function decodeMore(p, colTimeS, cfg) {
     case "mdio": return decodeMDIO(decCodes(dcfg.clk), decCodes(dcfg.data), colTimeS, two);
     case "wiegand": return decodeWiegand(decCodes(dcfg.clk), decCodes(dcfg.data), colTimeS, two);
   }
+  if (DEC_PHYS_LINE[p]) return globalThis[DEC_PHYS_LINE[p]](a, colTimeS, opts);
+  if (DEC_PHYS_TWO[p]) return globalThis[DEC_PHYS_TWO[p]](decCodes(dcfg.clk), decCodes(dcfg.data), colTimeS, two);
   return null;
 }
 
@@ -361,7 +386,12 @@ function setDetectMsg(t, err) {
 // the scope's Auto, a detection, never a decoder.
 const DEC_SCOPE_PROTOS = ["off", null, "uart", "i2c", "spi", "manchester", "sent", "can", "mil1553", "arinc429", "usb", "flexray",
   "lin", "dmx512", "midi", "modbus", "onewire", "ws281x", "dht", "cec", "j1850", "irnec", "irsirc", "irrc5", "irrc6", "dali",
-  "usbpd", "spdif", "ps2", "swd", "mdio", "wiegand"];
+  "usbpd", "spdif", "ps2", "swd", "mdio", "wiegand", "quad", "stepper", "pwm", "rcencode", "ook", "miller", "morse", "dcf77",
+  "em4100", "em4305", "t55xx", "swim", "sdq", "pjdl", "dsi", "qi", "sdcard", "pdi", "cjtag", "maple", "caliper", "irmp"];
+
+// DEC_FRAME_BITS are the protocols whose frame length or detected variant
+// the scope keeps (DecBits) for its hardware matcher.
+const DEC_FRAME_BITS = ["irsirc", "wiegand", "t55xx", "rcencode", "ook", "pjdl", "irmp"];
 
 // decScopeSettings is the scope's decode (the status's panel Display) as this
 // page's settings: protocol, lines, rate, SPI mode and bit order; null when
@@ -380,7 +410,7 @@ function decScopeSettings(d) {
   if (proto === "uart") { s.parity = d.DecParity || "none"; s.inverted = !!d.DecInverted; } // the framing Auto or the S.BUS layer set
   if (proto !== "off") s.layer = d.DecLayer || ""; // the bus's layer (BUS sheet)
   if (proto === "i2c") { s.layerAddr = d.DecLayerAddr === undefined ? -1 : d.DecLayerAddr; s.layerDir = d.DecLayerDir || 0; }
-  if (proto === "irsirc" || proto === "wiegand") s.frameBits = +d.DecBits || 0;
+  if (DEC_FRAME_BITS.includes(proto)) s.frameBits = +d.DecBits || 0;
   return s;
 }
 // End of decScopeSettings.

@@ -4278,3 +4278,155 @@ requirements:
     error token); a stop on a value ends a gap-free transcript at the frame software read it in, and the record
     shown is the symbol trigger's on that value. MIDI and USB full speed stream through their receivers' decoded
     events.
+- id: REQ-SDS-250
+  title: Motion and pulse-width decoding
+  text: The instrument shall decode a quadrature encoder's A and B lines (steps and direction), a stepper driver's STEP
+    and DIR lines (steps and direction) and a PWM line (each period's duty cycle), on either channel.
+  status: draft
+  category: functional
+  appliesTo:
+  - FU-APP-DECODE
+  - FU-WEB-DECODE
+  - FU-APP-PANEL
+  verificationMethods:
+  - test
+  verificationCriteria: Synthetic encoder motions forward and back, stepper bursts in both directions and PWM lines of
+    varying duty decode to the steps, directions and duty cycles sent; the decoders agree with sigrok's graycode,
+    stepper_motor and pwm decoders on the same records, and the JavaScript twins return the Go decoders' bytes and
+    text.
+  notes: A motion opens after its first line rested two step periods; an encoder's direction is B's level at A's rising
+    edges.
+- id: REQ-SDS-251
+  title: Radio, time and keyed codes
+  text: The instrument shall decode PT2262 and EV1527 remote codes (trits or bytes after their sync), Oregon Scientific
+    OOK sensor messages (protocols 2.1 and 3 with their checksums), ISO 14443 modified Miller (106 kbit/s, pauses or
+    edges), Morse (letters at the timing found on the line) and DCF77 time code (minute, hour and date fields with
+    their parities).
+  status: draft
+  category: functional
+  appliesTo:
+  - FU-APP-DECODE
+  - FU-WEB-DECODE
+  - FU-APP-PANEL
+  verificationMethods:
+  - test
+  verificationCriteria: Synthetic code trains of each decode to what was sent, a broken checksum or parity is flagged,
+    the decoders agree with sigrok's rc_encode, ook and ook_oregon, miller, morse and dcf77 decoders, and the
+    JavaScript twins return the Go decoders' bytes and text.
+  notes: ook_vis is a display aid of sigrok's, not a protocol, and is not offered.
+- id: REQ-SDS-252
+  title: RFID tag and reader decoding
+  text: The instrument shall decode EM4100 tag frames (header, rows with their parities, column parity) and the
+    EM4305 and T55xx reader commands (login, write, read, the block and lock bits) from the field's envelope or its
+    125 kHz carrier.
+  status: draft
+  category: functional
+  appliesTo:
+  - FU-APP-DECODE
+  - FU-WEB-DECODE
+  - FU-APP-PANEL
+  verificationMethods:
+  - test
+  verificationCriteria: Synthetic tags at RF/32 and RF/64 and reader commands on an envelope and on a carrier decode to
+    the IDs, commands, addresses and words sent, a parity error is flagged, the decoders agree with sigrok's em4100,
+    em4305 and t55xx decoders, and the JavaScript twins return the Go decoders' bytes and text.
+- id: REQ-SDS-253
+  title: Single-wire debug and accessory protocols
+  text: The instrument shall decode STM8 SWIM transactions (commands, count, address and bytes with parity and
+    acknowledge), Apple SDQ bytes, PJON over PJDL frames (modes 1 to 4, header, CRC-8 and CRC-32), DSI frames, Qi
+    wireless-power packets (preamble, header, payload and checksum) and their errors.
+  status: draft
+  category: functional
+  appliesTo:
+  - FU-APP-DECODE
+  - FU-WEB-DECODE
+  - FU-APP-PANEL
+  verificationMethods:
+  - test
+  verificationCriteria: Synthetic lines of each decode to what was sent, a broken parity, CRC or checksum is flagged,
+    the decoders agree with sigrok's swim, sdq, pjdl and pjon, dsi and qi decoders, and the JavaScript twins return
+    the Go decoders' bytes and text.
+  notes: sigrok's pjon_link is not among its decoders; the PJON frame is decoded on top of PJDL.
+- id: REQ-SDS-254
+  title: Clocked debug, card and peripheral buses
+  text: The instrument shall decode SD card commands and responses in SD mode (CMD at CLK, CRC-7, application
+    commands), AVR PDI instructions, cJTAG escapes, the online activation code and OScan1 scans, Sega Maple bus frames
+    and digital caliper readings, from a clock line and a data line on either channel.
+  status: draft
+  category: functional
+  appliesTo:
+  - FU-APP-DECODE
+  - FU-WEB-DECODE
+  - FU-APP-PANEL
+  verificationMethods:
+  - test
+  verificationCriteria: Synthetic buses of each decode to what was sent, a broken CRC or parity is flagged, the
+    decoders agree with sigrok's sdcard_sd, avr_pdi, cjtag, maple_bus and caliper decoders, and the JavaScript twins
+    return the Go decoders' bytes and text.
+- id: REQ-SDS-255
+  title: IR remotes of many protocols
+  text: The instrument shall decode the common IR remote protocols beyond NEC, SIRC, RC-5 and RC-6 (Samsung, Samsung32,
+    JVC, NEC16, NEC42, Kaseikyo, Matsushita and Denon/Sharp) from a receiver's output or an emitter's drive, naming
+    the protocol and its address and command.
+  status: draft
+  category: functional
+  appliesTo:
+  - FU-APP-DECODE
+  - FU-WEB-DECODE
+  - FU-APP-PANEL
+  verificationMethods:
+  - test
+  verificationCriteria: Synthetic frames of each protocol decode to the protocol, address and command sent; the decoder
+    agrees with sigrok's ir_irmp decoder (the IRMP library) on the same records, and the JavaScript twin returns the Go
+    decoder's bytes and text.
+  notes: NEC's 32-bit frames stay IR NEC's (REQ-SDS-234).
+- id: REQ-SDS-256
+  title: Detection of the protocols beyond the first thirty
+  text: The instrument shall, on Auto and AUTO in BUS, name each protocol of REQ-SDS-250 to REQ-SDS-255 from a capture
+    only on its own evidence (its checks, its timing classes or its handshake) and fill in its settings, without
+    naming any other protocol's capture as one of them.
+  status: draft
+  category: functional
+  appliesTo:
+  - FU-APP-DECODE
+  - FU-APP-PANEL
+  verificationMethods:
+  - test
+  verificationCriteria: Each protocol's synthetic capture, on either channel (or in either channel order) and with
+    converter noise, is named as itself; the detection corpus of the first thirty protocols and the records the scope
+    read of bench sources are named as before; random lines and pairs are named as none of them.
+  notes: Morse and DCF77 at human and one-second timing are named from a record that holds them (a slow timebase on
+    screen); a test source's faster code (a 2 ms Morse unit, a DCF77 second of 3 ms) is found by AUTO's own search.
+- id: REQ-SDS-257
+  title: Hardware frame start of the protocols beyond the first thirty
+  text: The instrument shall trigger in the FPGA on the frame start and on unit values of each protocol of
+    REQ-SDS-250 to REQ-SDS-255, using the qualify image's symbol trigger, with AUTO in BUS arming that frame start.
+  status: draft
+  category: functional
+  appliesTo:
+  - FU-APP-ENGINE
+  - FU-APP-PANEL
+  verificationMethods:
+  - test
+  verificationCriteria: On synthetic buses of each protocol the planned symbol trigger's Go model (bit-exact with the
+    RTL) matches the frame start once a frame and unit values only on the frames that carry them, as many frames as
+    the protocol's software decoder opens and matches.
+  notes: The FPGA decides every trigger. A SWIM command is its frame's first six bits, so a byte frame whose top bits
+    read as a command, its parity and an ack fires a command match too; an RFID reader's carrier fires on its gaps
+    only (unit values need its envelope); cJTAG, Maple and an RFID carrier trigger on the frame start alone.
+- id: REQ-SDS-258
+  title: The protocols beyond the first thirty in BUS, on the LCD, the web page and the phone
+  text: The instrument shall offer each protocol of REQ-SDS-250 to REQ-SDS-255 in BUS, on the LCD strip, on the web
+    page and on the phone remote with its line or clock and data roles, keep it in a setup, list its frames as
+    packets and send its detected variant and polarity to the serial trigger.
+  status: draft
+  category: functional
+  appliesTo:
+  - FU-APP-PANEL
+  - FU-APP-LCD
+  - FU-APP-WEB
+  - FU-APP-SETTINGS
+  verificationMethods:
+  - test
+  verificationCriteria: Each protocol is chosen in BUS and on the web page, its decode runs there, its frames group into
+    packets, and the serial trigger receives its protocol number, roles, variant and polarity.

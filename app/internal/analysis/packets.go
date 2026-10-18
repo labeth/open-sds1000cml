@@ -94,7 +94,9 @@ func Packets(r decode.Result, recordLen int) []Packet {
 	case "manchester", "flexray", "usbls", "mil1553", "arinc429", "sent":
 		g.framed(r.Proto, r.Spans)
 	case "lin", "dmx512", "midi", "modbus", "onewire", "ws281x", "dht", "cec", "j1850", "irnec", "irsirc", "irrc5",
-		"irrc6", "dali", "usbpd", "spdif", "ps2", "swd", "mdio", "wiegand":
+		"irrc6", "dali", "usbpd", "spdif", "ps2", "swd", "mdio", "wiegand",
+		"quad", "stepper", "pwm", "rcencode", "ook", "miller", "morse", "dcf77", "em4100", "em4305", "t55xx", "swim",
+		"sdq", "pjdl", "dsi", "qi", "sdcard", "pdi", "cjtag", "maple", "caliper", "irmp":
 		g.opened(r.Proto, r.Spans)
 	default: // uart, spi, and any byte stream to come
 		g.gaps(r.Proto == "uart", r.Spans)
@@ -113,7 +115,9 @@ func wordWidth(r decode.Result) int {
 	case "i2c", "spi", "canfd", "usbls", "flexray", "sent":
 		return 1
 	case "lin", "dmx512", "midi", "modbus", "onewire", "ws281x", "dht", "cec", "j1850", "irnec", "irsirc", "irrc5",
-		"irrc6", "dali", "usbpd", "spdif", "ps2", "swd", "mdio", "wiegand":
+		"irrc6", "dali", "usbpd", "spdif", "ps2", "swd", "mdio", "wiegand",
+		"quad", "stepper", "pwm", "rcencode", "ook", "miller", "morse", "dcf77", "em4100", "em4305", "t55xx", "swim",
+		"sdq", "pjdl", "dsi", "qi", "sdcard", "pdi", "cjtag", "maple", "caliper", "irmp":
 		return 1 // opened sets each unit's own (openedWidth)
 	}
 	top := 0 // UART and Manchester words take 1..16 bits
@@ -430,17 +434,25 @@ func (g *grouper) framed(proto string, spans []decode.Span) {
 var openedFault = map[string]string{"lin": FaultCRC, "modbus": FaultCRC, "j1850": FaultCRC, "usbpd": FaultCRC,
 	"dht": FaultCRC, "onewire": FaultCRC, "ps2": FaultParity, "swd": FaultParity, "wiegand": FaultParity,
 	"spdif": FaultParity, "irnec": FaultParity, "dmx512": FaultCoding, "midi": FaultCoding, "cec": FaultCoding,
-	"irsirc": FaultCoding, "irrc5": FaultCoding, "irrc6": FaultCoding, "dali": FaultCoding, "mdio": FaultNAK}
+	"irsirc": FaultCoding, "irrc5": FaultCoding, "irrc6": FaultCoding, "dali": FaultCoding, "mdio": FaultNAK,
+	"quad": FaultCoding, "stepper": FaultCoding, "pwm": FaultCoding, "rcencode": FaultCoding, "ook": FaultCRC,
+	"miller": FaultCoding, "morse": FaultCoding, "dcf77": FaultParity, "em4100": FaultParity, "em4305": FaultParity,
+	"t55xx": FaultCoding, "swim": FaultParity, "sdq": FaultCoding, "pjdl": FaultCRC, "dsi": FaultCoding,
+	"qi": FaultParity, "sdcard": FaultCRC, "pdi": FaultParity, "cjtag": FaultCoding, "maple": FaultCRC,
+	"caliper": FaultCoding, "irmp": FaultCoding}
 
 // openedWidth is the bytes a unit of the protocols with wide units takes in
 // Packet.Bytes: an MDIO header and data word and a Wiegand field are 16
 // bits, an S/PDIF sample 24, an SWD data word 32 (its request and
-// acknowledge one byte each).
+// acknowledge one byte each), an IR multi address or command 16, a cJTAG
+// scan's low 31 bits 32.
 // TRLC-LINKS: REQ-SDS-214
 func openedWidth(proto string, sp decode.Span) int {
 	switch proto {
-	case "mdio", "wiegand":
+	case "mdio", "wiegand", "irmp":
 		return 2
+	case "cjtag":
+		return 4
 	case "spdif":
 		return 3
 	case "swd":

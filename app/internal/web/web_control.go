@@ -79,7 +79,7 @@ func (s *Server) hSerial(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, map[string]any{"ok": false, "err": "bad json"})
 		return
 	}
-	p.Proto = clampI(p.Proto, 0, engine.SerialProtocols-1) // 0 off … 10 flexray, 11 lin … 30 wiegand
+	p.Proto = clampI(p.Proto, 0, engine.SerialProtocols-1) // 0 off … 10 flexray, 11 lin … 30 wiegand … 52 IR multi
 	p.ChA, p.ChB = p.ChA&1, p.ChB&1
 	p.RW = clampI(p.RW, 0, 2)
 	if p.Addr > 127 || p.Addr < -1 {
@@ -90,8 +90,13 @@ func (s *Server) hSerial(w http.ResponseWriter, r *http.Request) {
 	}
 	if p.Bits != 0 {
 		hi := 16
-		if p.Proto == 21 || p.Proto == 30 { // SIRC's and Wiegand's frame length
+		switch p.Proto {
+		case 21, 30: // SIRC's and Wiegand's frame length
 			hi = 64
+		case 34, 35, 44, 52: // an RC code's bits, Oregon's version, the PJON mode, the IR multi protocol
+			hi = 64
+		case 41: // a T55xx command's bits
+			hi = 70
 		}
 		p.Bits = clampI(p.Bits, 1, hi)
 	}
@@ -115,6 +120,14 @@ func (s *Server) hSerial(w http.ResponseWriter, r *http.Request) {
 	case 26: // an S/PDIF sample
 		maxValue = 0xffffff
 	case 28: // an SWD data word's low 31 bits
+		maxValue = 0x7fffffff
+	case 31, 32: // an encoder's or a stepper's step direction
+		maxValue = 1
+	case 35: // an Oregon nibble
+		maxValue = 15
+	case 52: // an IR multi address or command
+		maxValue = 0xffff
+	case 49: // a cJTAG scan's low 31 bits
 		maxValue = 0x7fffffff
 	}
 	for i := range p.Bytes {

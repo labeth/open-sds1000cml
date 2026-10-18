@@ -100,6 +100,7 @@ func considerLines(codes []uint8, colTimeS float64, format string, uartBaud floa
 	if t.minRun <= 0.3 && t.edges >= 64 {
 		consider(DecodeSPDIF(codes, colTimeS, SPDIFCfg{Format: format}))
 	}
+	considerPhysLines(codes, colTimeS, format, t, consider)
 }
 
 // considerPairs tries the two-line protocols beyond SPI and I2C on both
@@ -131,6 +132,7 @@ func considerPairs(c1, c2 []uint8, colTimeS float64, format string, clockLine in
 		if ta.maxHigh >= 200 {
 			consider(DecodeWiegand(x, y, colTimeS, cfg), a)
 		}
+		considerPhysPairs(x, y, colTimeS, format, ta, func(r Result) { consider(r, a) })
 	}
 }
 
@@ -287,7 +289,7 @@ func scoreProto(r Result) float64 {
 		}
 		return float64(good*300 - errs*150)
 	}
-	return -1e9
+	return scorePhys(r)
 }
 
 // linFrames counts a LIN decode's frames whose identifier and checksum

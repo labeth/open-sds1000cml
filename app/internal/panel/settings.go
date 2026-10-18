@@ -171,7 +171,7 @@ func (c *Controller) ApplySettingsView(v settings.ViewState) {
 	c.decGen++
 	c.decChA, c.decChB = d.ChA, d.ChB
 	c.decCPOL, c.decCPHA, c.decLSB = d.CPOL, d.CPHA, d.LSB
-	c.decParity, c.decInv, c.decBits = "", d.Inverted, clampInt(d.FrameBits, 0, 64)
+	c.decParity, c.decInv, c.decBits = "", d.Inverted, clampInt(d.FrameBits, 0, 70)
 	c.decLayer, c.decLayerAddr, c.decLayerDir = "", clampInt(d.LayerAddr-1, -1, 127), clampInt(d.LayerDir, 0, 2)
 	if l, ok := analysis.LayerByID(d.Layer); ok && l.Bus == framecalc.ResultName(d.Proto) {
 		c.decLayer = d.Layer

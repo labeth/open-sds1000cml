@@ -395,6 +395,8 @@ func TestJSDecoderParity(t *testing.T) {
 	// The protocols beyond the first ten: clean, flagged and corrupted
 	// vectors per protocol (proto_parity_test.go).
 	protoParityVectors(add, add2, corrupt)
+	// The sigrok protocols beyond the first thirty (proto_parity2_test.go).
+	physParityVectors(add, add2, corrupt)
 
 	dir := t.TempDir()
 	jf := filepath.Join(dir, "vecs.json")

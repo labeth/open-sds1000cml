@@ -39,10 +39,16 @@ const files = [
   "decode_ir.js",
   "decode_biphase.js",
   "decode_clocked.js",
+  "decode_motion.js",
+  "decode_rfcodes.js",
+  "decode_rfid.js",
+  "decode_wire1.js",
+  "decode_wire2.js",
+  "decode_irmp.js",
 ];
 let src = files.map((f) => fs.readFileSync(path.join(here, f), "utf8")).join("\n;\n");
 src +=
-  "\n;this.__D = { decodeManchester, decodeMIL1553, decodeFlexRay, decodeSENT, decodeCANFD, decodeARINC429, decodeUSBLS, decodeUART, decodeI2C, decodeSPI, decodeLIN, decodeDMX512, decodeMIDI, decodeModbus, decodeOneWire, decodeWS281x, decodeDHT, decodeCEC, decodeJ1850, decodeIRNEC, decodeIRSIRC, decodeIRRC5, decodeIRRC6, decodeDALI, decodeUSBPD, decodeSPDIF, decodePS2, decodeSWD, decodeMDIO, decodeWiegand };\n";
+  "\n;this.__D = { decodeManchester, decodeMIL1553, decodeFlexRay, decodeSENT, decodeCANFD, decodeARINC429, decodeUSBLS, decodeUART, decodeI2C, decodeSPI, decodeLIN, decodeDMX512, decodeMIDI, decodeModbus, decodeOneWire, decodeWS281x, decodeDHT, decodeCEC, decodeJ1850, decodeIRNEC, decodeIRSIRC, decodeIRRC5, decodeIRRC6, decodeDALI, decodeUSBPD, decodeSPDIF, decodePS2, decodeSWD, decodeMDIO, decodeWiegand, decodeQuadrature, decodeStepper, decodePWM, decodeRCEncode, decodeOOK, decodeMiller, decodeMorse, decodeDCF77, decodeEM4100, decodeEM4305, decodeT55xx, decodeSWIM, decodeSDQ, decodePJDL, decodeDSI, decodeQi, decodeSDCard, decodePDI, decodeCJTAG, decodeMaple, decodeCaliper, decodeIRMP };\n";
 
 const ctx = { console, module: { exports: {} } };
 vm.createContext(ctx);
@@ -114,6 +120,50 @@ const dispatch = {
   mdio: (v) => D.decodeMDIO(v.codes, c2of(v), v.colT, v.cfg),
   // TRLC-LINKS: REQ-SDS-181
   wiegand: (v) => D.decodeWiegand(v.codes, c2of(v), v.colT, v.cfg),
+  // TRLC-LINKS: REQ-SDS-181
+  quad: (v) => D.decodeQuadrature(v.codes, c2of(v), v.colT, v.cfg),
+  // TRLC-LINKS: REQ-SDS-181
+  stepper: (v) => D.decodeStepper(v.codes, c2of(v), v.colT, v.cfg),
+  // TRLC-LINKS: REQ-SDS-181
+  pwm: (v) => D.decodePWM(v.codes, v.colT, v.cfg),
+  // TRLC-LINKS: REQ-SDS-181
+  rcencode: (v) => D.decodeRCEncode(v.codes, v.colT, v.cfg),
+  // TRLC-LINKS: REQ-SDS-181
+  ook: (v) => D.decodeOOK(v.codes, v.colT, v.cfg),
+  // TRLC-LINKS: REQ-SDS-181
+  miller: (v) => D.decodeMiller(v.codes, v.colT, v.cfg),
+  // TRLC-LINKS: REQ-SDS-181
+  morse: (v) => D.decodeMorse(v.codes, v.colT, v.cfg),
+  // TRLC-LINKS: REQ-SDS-181
+  dcf77: (v) => D.decodeDCF77(v.codes, v.colT, v.cfg),
+  // TRLC-LINKS: REQ-SDS-181
+  em4100: (v) => D.decodeEM4100(v.codes, v.colT, v.cfg),
+  // TRLC-LINKS: REQ-SDS-181
+  em4305: (v) => D.decodeEM4305(v.codes, v.colT, v.cfg),
+  // TRLC-LINKS: REQ-SDS-181
+  t55xx: (v) => D.decodeT55xx(v.codes, v.colT, v.cfg),
+  // TRLC-LINKS: REQ-SDS-181
+  swim: (v) => D.decodeSWIM(v.codes, v.colT, v.cfg),
+  // TRLC-LINKS: REQ-SDS-181
+  sdq: (v) => D.decodeSDQ(v.codes, v.colT, v.cfg),
+  // TRLC-LINKS: REQ-SDS-181
+  pjdl: (v) => D.decodePJDL(v.codes, v.colT, v.cfg),
+  // TRLC-LINKS: REQ-SDS-181
+  dsi: (v) => D.decodeDSI(v.codes, v.colT, v.cfg),
+  // TRLC-LINKS: REQ-SDS-181
+  qi: (v) => D.decodeQi(v.codes, v.colT, v.cfg),
+  // TRLC-LINKS: REQ-SDS-181
+  sdcard: (v) => D.decodeSDCard(v.codes, c2of(v), v.colT, v.cfg),
+  // TRLC-LINKS: REQ-SDS-181
+  pdi: (v) => D.decodePDI(v.codes, c2of(v), v.colT, v.cfg),
+  // TRLC-LINKS: REQ-SDS-181
+  cjtag: (v) => D.decodeCJTAG(v.codes, c2of(v), v.colT, v.cfg),
+  // TRLC-LINKS: REQ-SDS-181
+  maple: (v) => D.decodeMaple(v.codes, c2of(v), v.colT, v.cfg),
+  // TRLC-LINKS: REQ-SDS-181
+  caliper: (v) => D.decodeCaliper(v.codes, c2of(v), v.colT, v.cfg),
+  // TRLC-LINKS: REQ-SDS-181
+  irmp: (v) => D.decodeIRMP(v.codes, v.colT, v.cfg),
 };
 
 // TRLC-LINKS: REQ-SDS-181, REQ-SDS-073
