@@ -19,9 +19,10 @@ All balls are **3.3-V LVTTL**. Unused balls are reserved **as inputs, tri-stated
 | 18×18 multipliers | 23 |
 | PLLs | 2 |
 | Configuration | passive serial, volatile, loaded by the ARM at every boot (§2) |
-| Bitstream | uncompressed `.rbf`, **368,011 bytes** |
+| Bitstream | compressed `.rbf`, about 172-189 KB (368,011 bytes uncompressed) |
 
-Project settings an image must keep: on-chip bitstream decompression **off**; nCEO and the flash
+Project settings an image must keep: on-chip bitstream decompression **on** (the device decompresses in
+passive serial; half the bits load in half the time, about 1.7 s against 3.4 s); nCEO and the flash
 nCE pin **used as regular I/O**.
 
 ---
