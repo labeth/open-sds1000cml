@@ -93,7 +93,8 @@ function stParams(base = stScope) {
   const parsed = stParsePattern($("stBytes").value, maxValue);
   if (addr === null || parsed === null) return null;
   const bytes = parsed.bytes;
-  const two = P === 3 || DEC_CLOCKED.includes(dcfg.proto);
+  // SPI and the clocked two-line buses take the clock and data roles
+  const two = [3, 27, 28, 29, 30, 31, 32, 47, 48, 49, 50, 51].includes(P);
   // the line polarity a detection found on the scope (an RC or IR line's marks
   // high, an RFID reader's carrier) stands: the page has no row for it
   const scopePolarity = [34, 37, 38, 40, 41, 45, 52].includes(P);
@@ -104,7 +105,7 @@ function stParams(base = stScope) {
     chB: P === 2 ? rc(dcfg.sda) : two ? rc(dcfg.data) : 0,
     baud: dcfg.baud > 0 ? dcfg.baud : 0,
     spiClockHz: P === 3 && base ? Math.max(0, base.spiClockHz || 0) : 0, // the scope's Clock rate row (0: Auto)
-    bits: DEC_FRAME_BITS.includes(dcfg.proto) ? dcfg.frameBits || 0 : dcfg.bits || 8,
+    bits: [21, 30, 34, 35, 41, 44, 52].includes(P) ? dcfg.frameBits || 0 : dcfg.bits || 8, // a frame length or detected variant
     parity: P === 14 ? (dcfg.modbusParity || "even") : dcfg.parity || "none",
     inverted: scopePolarity && base ? !!base.inverted : !!dcfg.inverted,
     cpol: !!dcfg.cpol, cpha: !!dcfg.cpha, msb: P !== 3 || !!dcfg.msb, // the bit order is SPI's; the others MSB first, as the scope decodes them
