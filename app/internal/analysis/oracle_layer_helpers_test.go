@@ -115,6 +115,17 @@ func orcDecode(t *testing.T, sr int, names []string, chans [][]byte, pd, ann str
 	return anns
 }
 
+// sortAnns orders annotations by where they start (a decoder may write one
+// out after a later one).
+// TRLC-LINKS: REQ-SDS-249
+func sortAnns(as []orcAnn) {
+	for i := 1; i < len(as); i++ {
+		for j := i; j > 0 && as[j].I0 < as[j-1].I0; j-- {
+			as[j], as[j-1] = as[j-1], as[j]
+		}
+	}
+}
+
 // orcTexts are the annotations' texts.
 // TRLC-LINKS: REQ-SDS-249
 func orcTexts(as []orcAnn) []string {
@@ -476,6 +487,17 @@ func orcMDIOWaves(sr, per float64, fs []orcMDIOFrame) (mdc, mdio []byte) {
 	return c.bits, d.bits
 }
 
+// decodeMDIO decodes management frames as the scope does.
+// TRLC-LINKS: REQ-SDS-249
+func decodeMDIO(t *testing.T, sr float64, mdc, mdio []byte) decode.Result {
+	t.Helper()
+	r := decode.DecodeMDIO(orcCodes(mdc), orcCodes(mdio), 1/sr, decode.ClockedCfg{})
+	if !r.OK {
+		t.Fatalf("MDIO decode: %s", r.Error)
+	}
+	return r
+}
+
 // ---- USB full speed ----
 
 // orcUSBLSB is v as n bits, least significant first.
@@ -563,6 +585,17 @@ func orcUSBData(d []byte) []int {
 		b = append(b, orcUSBLSB(int(v), 8)...)
 	}
 	return append(b, orcUSBLSB(orcUSBCRC16(b), 16)...)
+}
+
+// orcUSBLayer decodes D+ as the scope does and reads it with the layer.
+// TRLC-LINKS: REQ-SDS-249
+func orcUSBLayer(t *testing.T, sr float64, dp []byte, layer string) []Packet {
+	t.Helper()
+	r := decode.DecodeUSBLS(orcCodes(dp), 1/sr, decode.USBLSCfg{})
+	if !r.OK {
+		t.Fatalf("USB decode: %s", r.Error)
+	}
+	return ApplyLayer(layer, "usbls", Packets(r, len(dp)), LayerArgs{Addr: -1})
 }
 
 // orcUSBWaves renders packets as the full-speed pair (J: D+ high), NRZI,
