@@ -27,7 +27,7 @@ import (
 
 // orcNeed skips (or under CI_REQUIRE_SIGROK=1 fails) without sigrok-cli and
 // without the decoders the test stacks.
-// TRLC-LINKS: REQ-SDS-249
+// TRLC-LINKS: REQ-SDS-241
 func orcNeed(t *testing.T, pds ...string) {
 	t.Helper()
 	if _, err := exec.LookPath("sigrok-cli"); err != nil {
@@ -49,7 +49,7 @@ func orcNeed(t *testing.T, pds ...string) {
 
 // orcNewer reports a libsigrokdecode newer than the 0.5 releases (it ships
 // ltc26x7, added after them): its decoders read more than 0.5.3's.
-// TRLC-LINKS: REQ-SDS-249
+// TRLC-LINKS: REQ-SDS-241
 func orcNewer() bool {
 	out, err := exec.Command("sigrok-cli", "-L").CombinedOutput()
 	return err == nil && regexp.MustCompile(`(?m)^\s+ltc26x7\s`).Match(out)
@@ -65,7 +65,7 @@ var orcAnnRe = regexp.MustCompile(`^(\d+)-(\d+) [\w-]+: (.*)$`)
 
 // orcDecode writes the channels as a logic CSV and returns the annotations
 // sigrok-cli prints for the -A selection.
-// TRLC-LINKS: REQ-SDS-249
+// TRLC-LINKS: REQ-SDS-241
 func orcDecode(t *testing.T, sr int, names []string, chans [][]byte, pd, ann string) []orcAnn {
 	t.Helper()
 	n := 0
@@ -117,7 +117,7 @@ func orcDecode(t *testing.T, sr int, names []string, chans [][]byte, pd, ann str
 
 // sortAnns orders annotations by where they start (a decoder may write one
 // out after a later one).
-// TRLC-LINKS: REQ-SDS-249
+// TRLC-LINKS: REQ-SDS-241
 func sortAnns(as []orcAnn) {
 	for i := 1; i < len(as); i++ {
 		for j := i; j > 0 && as[j].I0 < as[j-1].I0; j-- {
@@ -127,7 +127,7 @@ func sortAnns(as []orcAnn) {
 }
 
 // orcTexts are the annotations' texts.
-// TRLC-LINKS: REQ-SDS-249
+// TRLC-LINKS: REQ-SDS-241
 func orcTexts(as []orcAnn) []string {
 	var out []string
 	for _, a := range as {
@@ -137,7 +137,7 @@ func orcTexts(as []orcAnn) []string {
 }
 
 // orcEq fails the test when the scope's and sigrok's readings differ.
-// TRLC-LINKS: REQ-SDS-249
+// TRLC-LINKS: REQ-SDS-241
 func orcEq(t *testing.T, what string, repo, orc []string) {
 	t.Helper()
 	if fmt.Sprint(repo) != fmt.Sprint(orc) {
@@ -157,7 +157,7 @@ type orcLine struct {
 	bits []byte
 }
 
-// TRLC-LINKS: REQ-SDS-249
+// TRLC-LINKS: REQ-SDS-241
 func (w *orcLine) add(level byte, dur float64) {
 	w.t += dur
 	for len(w.bits) < int(w.t*w.sr) {
@@ -166,7 +166,7 @@ func (w *orcLine) add(level byte, dur float64) {
 }
 
 // orcCodes are a logic line as the converter's two levels.
-// TRLC-LINKS: REQ-SDS-249
+// TRLC-LINKS: REQ-SDS-241
 func orcCodes(bits []byte) []uint8 {
 	out := make([]uint8, len(bits))
 	for i, b := range bits {
@@ -179,7 +179,7 @@ func orcCodes(bits []byte) []uint8 {
 }
 
 // orcNotes are the layer's notes of the packets that carry one.
-// TRLC-LINKS: REQ-SDS-249
+// TRLC-LINKS: REQ-SDS-241
 func orcNotes(ps []Packet) []string {
 	var out []string
 	for _, p := range ps {
@@ -198,7 +198,7 @@ type orcSPITxn struct{ mosi, miso []byte }
 
 // orcSPIWaves renders transactions at rate with chip select (active low;
 // high between transactions for gap bit times), mode 0, MSB first.
-// TRLC-LINKS: REQ-SDS-249
+// TRLC-LINKS: REQ-SDS-241
 func orcSPIWaves(sr, rate float64, txns []orcSPITxn, gap float64) (clk, mosi, miso, cs []byte) {
 	c, o, i, s := &orcLine{sr: sr}, &orcLine{sr: sr}, &orcLine{sr: sr}, &orcLine{sr: sr}
 	bt := 1 / rate
@@ -231,7 +231,7 @@ func orcSPIWaves(sr, rate float64, txns []orcSPITxn, gap float64) (clk, mosi, mi
 
 // orcSPILayer decodes the clock and one data line as the scope does and
 // reads the packets with the layer.
-// TRLC-LINKS: REQ-SDS-249
+// TRLC-LINKS: REQ-SDS-241
 func orcSPILayer(t *testing.T, sr float64, clk, data []byte, layer string) []Packet {
 	t.Helper()
 	r := decode.DecodeSPI(orcCodes(clk), orcCodes(data), 1/sr, decode.SPICfg{MSB: true})
@@ -242,7 +242,7 @@ func orcSPILayer(t *testing.T, sr float64, clk, data []byte, layer string) []Pac
 }
 
 // orcSPI is the sigrok stack for an SPI layer: the four lines.
-// TRLC-LINKS: REQ-SDS-249
+// TRLC-LINKS: REQ-SDS-241
 func orcSPI(t *testing.T, sr int, clk, mosi, miso, cs []byte, pd, ann string) []orcAnn {
 	return orcDecode(t, sr, []string{"CLK", "MOSI", "MISO", "CS"}, [][]byte{clk, mosi, miso, cs},
 		"spi:clk=CLK:mosi=MOSI:miso=MISO:cs=CS,"+pd, ann)
@@ -260,7 +260,7 @@ type orcI2CTxn struct {
 }
 
 // orcI2CWaves renders transfers at fclk.
-// TRLC-LINKS: REQ-SDS-249
+// TRLC-LINKS: REQ-SDS-241
 func orcI2CWaves(sr, fclk float64, txns []orcI2CTxn) (scl, sda []byte) {
 	c, d := &orcLine{sr: sr}, &orcLine{sr: sr}
 	bt := 1 / fclk
@@ -313,7 +313,7 @@ func orcI2CWaves(sr, fclk float64, txns []orcI2CTxn) (scl, sda []byte) {
 }
 
 // orcI2CLayer decodes the bus as the scope does and reads it with the layer.
-// TRLC-LINKS: REQ-SDS-249
+// TRLC-LINKS: REQ-SDS-241
 func orcI2CLayer(t *testing.T, sr float64, scl, sda []byte, layer string) []Packet {
 	t.Helper()
 	r := decodeI2COrFail(t, sr, scl, sda)
@@ -321,7 +321,7 @@ func orcI2CLayer(t *testing.T, sr float64, scl, sda []byte, layer string) []Pack
 }
 
 // decodeI2COrFail decodes the bus as the scope does.
-// TRLC-LINKS: REQ-SDS-249
+// TRLC-LINKS: REQ-SDS-241
 func decodeI2COrFail(t *testing.T, sr float64, scl, sda []byte) decode.Result {
 	t.Helper()
 	r := decode.DecodeI2C(orcCodes(scl), orcCodes(sda), 1/sr, decode.I2CCfg{})
@@ -332,7 +332,7 @@ func decodeI2COrFail(t *testing.T, sr float64, scl, sda []byte) decode.Result {
 }
 
 // orcI2C is the sigrok stack for an I2C layer.
-// TRLC-LINKS: REQ-SDS-249
+// TRLC-LINKS: REQ-SDS-241
 func orcI2C(t *testing.T, sr int, scl, sda []byte, pd, ann string) []orcAnn {
 	return orcDecode(t, sr, []string{"SCL", "SDA"}, [][]byte{scl, sda}, "i2c:scl=SCL:sda=SDA,"+pd, ann)
 }
@@ -341,7 +341,7 @@ func orcI2C(t *testing.T, sr int, scl, sda []byte, pd, ann string) []orcAnn {
 
 // orcUARTWave renders bursts of characters (8 data bits, parity, stops),
 // gap bit times of idle after each burst; inverted idles low.
-// TRLC-LINKS: REQ-SDS-249
+// TRLC-LINKS: REQ-SDS-241
 func orcUARTWave(sr, baud float64, parity string, stops int, inverted bool, bursts [][]byte, gap float64) []byte {
 	w := &orcLine{sr: sr}
 	bt := 1 / baud
@@ -377,7 +377,7 @@ func orcUARTWave(sr, baud float64, parity string, stops int, inverted bool, burs
 }
 
 // orcUARTLayer decodes the line as the scope does and reads it with the layer.
-// TRLC-LINKS: REQ-SDS-249
+// TRLC-LINKS: REQ-SDS-241
 func orcUARTLayer(t *testing.T, sr float64, line []byte, baud int, parity string, inverted bool, layer string) []Packet {
 	t.Helper()
 	r := decode.DecodeUART(orcCodes(line), 1/sr, decode.UARTCfg{Baud: baud, Parity: parity, Inverted: inverted})
@@ -390,7 +390,7 @@ func orcUARTLayer(t *testing.T, sr float64, line []byte, baud int, parity string
 // ---- 1-Wire ----
 
 // orcOWReset appends a reset with a presence pulse.
-// TRLC-LINKS: REQ-SDS-249
+// TRLC-LINKS: REQ-SDS-241
 func orcOWReset(w *orcLine) {
 	w.add(0, 500e-6)
 	w.add(1, 30e-6)
@@ -399,7 +399,7 @@ func orcOWReset(w *orcLine) {
 }
 
 // orcOWByte appends a byte's time slots, least significant bit first.
-// TRLC-LINKS: REQ-SDS-249
+// TRLC-LINKS: REQ-SDS-241
 func orcOWByte(w *orcLine, v byte) {
 	for k := 0; k < 8; k++ {
 		if v>>k&1 == 1 {
@@ -413,7 +413,7 @@ func orcOWByte(w *orcLine, v byte) {
 }
 
 // orcOWWave renders transactions: each a reset, then its bytes.
-// TRLC-LINKS: REQ-SDS-249
+// TRLC-LINKS: REQ-SDS-241
 func orcOWWave(sr float64, txns [][]byte) []byte {
 	w := &orcLine{sr: sr}
 	w.add(1, 200e-6)
@@ -429,7 +429,7 @@ func orcOWWave(sr float64, txns [][]byte) []byte {
 }
 
 // orcOWLayer decodes the line as the scope does and reads it with the layer.
-// TRLC-LINKS: REQ-SDS-249
+// TRLC-LINKS: REQ-SDS-241
 func orcOWLayer(t *testing.T, sr float64, line []byte, layer string) []Packet {
 	t.Helper()
 	r := decode.DecodeOneWire(orcCodes(line), 1/sr, decode.OneWireCfg{})
@@ -440,7 +440,7 @@ func orcOWLayer(t *testing.T, sr float64, line []byte, layer string) []Packet {
 }
 
 // orcROM is a ROM code with its CRC-8.
-// TRLC-LINKS: REQ-SDS-249
+// TRLC-LINKS: REQ-SDS-241
 func orcROM(family byte, serial ...byte) []byte {
 	r := append([]byte{family}, serial...)
 	return append(r, byte(crc8Maxim(r)))
@@ -452,7 +452,7 @@ func orcROM(family byte, serial ...byte) []byte {
 type orcMDIOFrame struct{ st, op, port, dev, data int }
 
 // orcMDIOWaves renders frames (a preamble of 32 ones each) at per a bit.
-// TRLC-LINKS: REQ-SDS-249
+// TRLC-LINKS: REQ-SDS-241
 func orcMDIOWaves(sr, per float64, fs []orcMDIOFrame) (mdc, mdio []byte) {
 	c, d := &orcLine{sr: sr}, &orcLine{sr: sr}
 	bit := func(b byte) {
@@ -488,7 +488,7 @@ func orcMDIOWaves(sr, per float64, fs []orcMDIOFrame) (mdc, mdio []byte) {
 }
 
 // decodeMDIO decodes management frames as the scope does.
-// TRLC-LINKS: REQ-SDS-249
+// TRLC-LINKS: REQ-SDS-241
 func decodeMDIO(t *testing.T, sr float64, mdc, mdio []byte) decode.Result {
 	t.Helper()
 	r := decode.DecodeMDIO(orcCodes(mdc), orcCodes(mdio), 1/sr, decode.ClockedCfg{})
@@ -501,7 +501,7 @@ func decodeMDIO(t *testing.T, sr float64, mdc, mdio []byte) decode.Result {
 // ---- USB full speed ----
 
 // orcUSBLSB is v as n bits, least significant first.
-// TRLC-LINKS: REQ-SDS-249
+// TRLC-LINKS: REQ-SDS-241
 func orcUSBLSB(v, n int) []int {
 	out := make([]int, n)
 	for i := range out {
@@ -511,7 +511,7 @@ func orcUSBLSB(v, n int) []int {
 }
 
 // orcUSBRev reverses the low count bits of v.
-// TRLC-LINKS: REQ-SDS-249
+// TRLC-LINKS: REQ-SDS-241
 func orcUSBRev(v, count int) int {
 	out := 0
 	for i := 0; i < count; i++ {
@@ -523,7 +523,7 @@ func orcUSBRev(v, count int) int {
 }
 
 // orcUSBCRC5 and orcUSBCRC16 are the token and data CRCs over the wire bits.
-// TRLC-LINKS: REQ-SDS-249
+// TRLC-LINKS: REQ-SDS-241
 func orcUSBCRC5(bits []int) int {
 	crc := 0x1f
 	for _, b := range bits {
@@ -536,7 +536,7 @@ func orcUSBCRC5(bits []int) int {
 	return orcUSBRev(crc^0x1f, 5)
 }
 
-// TRLC-LINKS: REQ-SDS-249
+// TRLC-LINKS: REQ-SDS-241
 func orcUSBCRC16(bits []int) int {
 	crc := 0xffff
 	for _, b := range bits {
@@ -550,7 +550,7 @@ func orcUSBCRC16(bits []int) int {
 }
 
 // orcUSBPacket is one packet's bit-stuffed bits: SYNC, PID, payload.
-// TRLC-LINKS: REQ-SDS-249
+// TRLC-LINKS: REQ-SDS-241
 func orcUSBPacket(pid int, payload []int) []int {
 	bits := []int{0, 0, 0, 0, 0, 0, 0, 1}
 	bits = append(bits, orcUSBLSB(pid&0xf|(^pid&0xf)<<4, 8)...)
@@ -572,13 +572,13 @@ func orcUSBPacket(pid int, payload []int) []int {
 }
 
 // orcUSBToken and orcUSBData are a token's and a data packet's payload bits.
-// TRLC-LINKS: REQ-SDS-249
+// TRLC-LINKS: REQ-SDS-241
 func orcUSBToken(addr, ep int) []int {
 	b := append(orcUSBLSB(addr, 7), orcUSBLSB(ep, 4)...)
 	return append(b, orcUSBLSB(orcUSBCRC5(b), 5)...)
 }
 
-// TRLC-LINKS: REQ-SDS-249
+// TRLC-LINKS: REQ-SDS-241
 func orcUSBData(d []byte) []int {
 	var b []int
 	for _, v := range d {
@@ -588,7 +588,7 @@ func orcUSBData(d []byte) []int {
 }
 
 // orcUSBLayer decodes D+ as the scope does and reads it with the layer.
-// TRLC-LINKS: REQ-SDS-249
+// TRLC-LINKS: REQ-SDS-241
 func orcUSBLayer(t *testing.T, sr float64, dp []byte, layer string) []Packet {
 	t.Helper()
 	r := decode.DecodeUSBLS(orcCodes(dp), 1/sr, decode.USBLSCfg{})
@@ -600,7 +600,7 @@ func orcUSBLayer(t *testing.T, sr float64, dp []byte, layer string) []Packet {
 
 // orcUSBWaves renders packets as the full-speed pair (J: D+ high), NRZI,
 // an EOP after each and gap bit times of idle.
-// TRLC-LINKS: REQ-SDS-249
+// TRLC-LINKS: REQ-SDS-241
 func orcUSBWaves(sr float64, packets [][]int, gap float64) (dp, dm []byte) {
 	bt := 1.0 / 12e6
 	p, m := &orcLine{sr: sr}, &orcLine{sr: sr}
