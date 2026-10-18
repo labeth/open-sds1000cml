@@ -103,8 +103,11 @@ func considerLines(codes []uint8, colTimeS float64, format string, uartBaud floa
 
 // considerPairs tries the two-line protocols beyond SPI and I2C on both
 // channel orders: PS/2, SWD and MDIO (clock and data), Wiegand (D0, D1).
+// clockLine is the pair's clock when one line is clearly the clock (-1:
+// neither): the clocked buses are not read with its data line as their clock
+// (a 10 MHz SPI bus's data line clocking its clock read as MDIO frames).
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-238
-func considerPairs(c1, c2 []uint8, colTimeS float64, format string, consider func(Result, int)) {
+func considerPairs(c1, c2 []uint8, colTimeS float64, format string, clockLine int, consider func(Result, int)) {
 	if c1 == nil || c2 == nil || !(colTimeS > 0) {
 		return
 	}
@@ -117,11 +120,13 @@ func considerPairs(c1, c2 []uint8, colTimeS float64, format string, consider fun
 		ta := timingOf(S[a], colTimeS)
 		cfg := ClockedCfg{Format: format}
 		x, y := chans[a], chans[1-a]
-		if ta.minRun >= 20 && ta.minRun <= 120 {
-			consider(DecodePS2(x, y, colTimeS, cfg), a)
+		if clockLine < 0 || clockLine == a {
+			if ta.minRun >= 20 && ta.minRun <= 120 {
+				consider(DecodePS2(x, y, colTimeS, cfg), a)
+			}
+			consider(DecodeSWD(x, y, colTimeS, cfg), a)
+			consider(DecodeMDIO(x, y, colTimeS, cfg), a)
 		}
-		consider(DecodeSWD(x, y, colTimeS, cfg), a)
-		consider(DecodeMDIO(x, y, colTimeS, cfg), a)
 		if ta.maxHigh >= 200 {
 			consider(DecodeWiegand(x, y, colTimeS, cfg), a)
 		}

@@ -552,7 +552,14 @@ func Autodetect(c1, c2 []uint8, colTimeS float64, format string) Result {
 		considerLines(chans[k], colTimeS, format, uartBaud[k], func(r Result) { consider(r, chName(k), line(k)) })
 	}
 	if len(active) >= 2 && !freeClock { // PS/2, SWD, MDIO, Wiegand: clock (D0) and data (D1) either way round
-		considerPairs(c1, c2, colTimeS, format, func(r Result, a int) {
+		clockLine := -1 // a clocked pair's clock: PS/2, SWD and MDIO are clocked by it, not by its data
+		if clockedPair {
+			clockLine = 0
+			if u1 > u0 {
+				clockLine = 1
+			}
+		}
+		considerPairs(c1, c2, colTimeS, format, clockLine, func(r Result, a int) {
 			consider(r, "CLK "+chName(a)+" DATA "+chName(1-a), Roles{ChA: a, ChB: 1 - a})
 		})
 	}

@@ -35,6 +35,8 @@ var scopeCaptures = []scopeCapture{
 	{"scope_ps2_oneframe_500us.json.gz", "ps2", 0},
 	{"scope_swd_raw_50us.json.gz", "swd", 0},
 	{"scope_swd_samples_500us.json.gz", "swd", 0},
+	// a 10 MHz SPI read (clock C2): its data line, taken for MDC, clocked MDIO frames out of the clock
+	{"scope_spi10_raw_50us.json.gz", "spi", 1},
 }
 
 // TestAutodetectNamesScopeCaptures: each record the scope read of a bench
