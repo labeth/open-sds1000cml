@@ -9,6 +9,7 @@ import (
 
 	"open-sds/app/internal/analysis"
 	"open-sds/app/internal/decode"
+	"open-sds/app/internal/engine"
 	"open-sds/app/internal/panel/framecalc"
 	"open-sds/app/internal/panel/wsview"
 )
@@ -249,4 +250,25 @@ func (c *Controller) detectLayer(res decode.Result, valid int) string {
 	}
 	l, _ := analysis.LayerByID(id)
 	return l.Name + " (" + why + ")"
+}
+
+// sbusHeader is an S.BUS frame's first byte, its frame start for the
+// hardware matcher: the UART matcher on S.BUS's framing fires on it.
+const sbusHeader = 0x0f
+
+// sbusStart reports the S.BUS frame-start match (0F alone), which AUTO may
+// set again.
+// TRLC-LINKS: REQ-SDS-244, REQ-SDS-223
+func sbusStart(p engine.SerialParams) bool {
+	return len(p.Pattern) == 0 && len(p.Bytes) == 1 && p.Bytes[0] == sbusHeader
+}
+
+// busNameLocked names the bus a detection filled in (c.mu held): S.BUS by
+// its name, the UART framing it runs on after it.
+// TRLC-LINKS: REQ-SDS-214, REQ-SDS-244
+func (c *Controller) busNameLocked() string {
+	if c.decProto == framecalc.ProtoUART && c.decLayer == "sbus" {
+		return fmt.Sprintf("S.BUS on C%d (UART %d 8E2, idle low)", c.decChA+1, c.decBaud)
+	}
+	return busName(c.decProto, c.decBaud, c.decChA, c.decChB, c.decCPOL, c.decCPHA)
 }

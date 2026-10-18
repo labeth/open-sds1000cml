@@ -331,6 +331,11 @@ func (c *Controller) frameTrigger(m busMsgs) string {
 	se := c.serialTrig()
 	if se != nil {
 		p := se.SerialConfig()
+		if s.decProto == framecalc.ProtoUART && s.decLayer == "sbus" && (defaultMatch(p) || sbusStart(p)) {
+			p.Bytes, p.Pattern = []int{sbusHeader}, nil
+			c.armSerialWith(p)
+			return "TRIG: S.BUS frame start (0F)"
+		}
 		if !defaultMatch(p) {
 			c.armSerialWith(p)
 			return "TRIG: your match " + strings.Join(tokensOf(p), " ")

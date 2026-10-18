@@ -149,8 +149,10 @@ func scoreResult(r Result) float64 {
 			return -1e9
 		}
 		score := float64(len(r.Bytes)*10 - c[0]*35 - c[1]*18 + 15)
-		// Clean at a rate UARTs use: every byte's stop bit checked.
-		if std && c[0] == 0 && c[1] == 0 && len(r.Bytes) >= 8 {
+		// Clean at a rate UARTs use: every byte's stop bit checked. S.BUS's
+		// framing (considerSBUS) is tried only on a line its frames prove.
+		sbus := r.Inverted && r.Parity == "even" && r.Baud == sbusBaud
+		if (std || sbus) && c[0] == 0 && c[1] == 0 && len(r.Bytes) >= 8 {
 			score += 100
 		}
 		return score

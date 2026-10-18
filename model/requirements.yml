@@ -4212,12 +4212,17 @@ requirements:
   verificationCriteria: BUS entry on a synthetic SPI flash session chooses the SPI flash layer and on an I2C EEPROM's
     random reads the EEPROM layer; each layer with a proof is named on its curated records and the stronger proof
     wins (EDID over an EEPROM at 0x50); random SPI bursts, I2C transfers, UART text and bytes, 1-Wire transactions
-    without a ROM command, USB packets without a control request and clause 22 MDIO frames name no layer.
+    without a ROM command, USB packets without a control request and clause 22 MDIO frames name no layer; a raw
+    S.BUS line (100 kbaud 8E2 idling low, frames every 7 or 14 ms) is named S.BUS, its UART framing filled in and the
+    serial trigger armed on its frames' 0F, while UART, LIN, DMX512, MIDI and Modbus captures, inverted UART text and
+    lines nearly S.BUS (another header, frame length, end byte, spacing, parity or idle level) are not.
   notes: The proofs are an SPI flash's known commands at the lengths they take, SD command tokens with a good CRC7,
     an AVR Programming Enable, an EDID header, an XFP identifier, a clock's registers read as a valid date and time,
     an ATSHA204A command's CRC, an SMBus PEC, a Nunchuk's init and report, an HDCP identity register read, an
     EEPROM's random read, S.BUS frames, ITM and TPIU synchronization, a PAN1321 command, a 1-Wire ROM command and
-    family code, CFP register regions and a USB SETUP request.
+    family code, CFP register regions and a USB SETUP request. The UART search reads idle-high lines, so S.BUS's
+    framing is tried only on a line of about 10 us bits that idles low, and kept only on whole frames from 0x0F with
+    a valid end byte at S.BUS's spacing.
 - id: REQ-SDS-248
   title: Bus layer transactions as hardware trigger matches
   text: The instrument shall set the serial trigger's match from the selected packet's transaction as its layer

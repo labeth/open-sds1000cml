@@ -313,3 +313,68 @@ func TestMatchFromLayer(t *testing.T) {
 		t.Fatal("a match from no layer")
 	}
 }
+
+// sbusLineFrame is an S.BUS receiver's line on C1 (100 kBd 8E2, idling
+// low), a frame every 7 ms over 30 ms, C2 idle.
+// TRLC-LINKS: REQ-SDS-244, REQ-SDS-247
+func sbusLineFrame() *engine.Frame {
+	f := &twoLineFrame{c1: make([]uint8, 30000), c2: make([]uint8, 30000), sampleS: 1e-6}
+	const bt = 10e-6
+	bit := func(b int) { f.seg(b == 0, false, bt) } // inverted: a mark is low
+	f.seg(false, false, 1.2e-3)
+	for k := 0; f.t < 28e-3; k++ {
+		t0 := f.t
+		frame := make([]int, 25)
+		frame[0] = 0x0f
+		for i := 1; i < 23; i++ {
+			frame[i] = (i*37 + k*11) & 0xff
+		}
+		for _, v := range frame {
+			bit(0)
+			ones := 0
+			for j := 0; j < 8; j++ {
+				bit(v >> j & 1)
+				ones += v >> j & 1
+			}
+			bit(ones & 1)
+			bit(1)
+			bit(1)
+		}
+		f.seg(false, false, 7e-3-(f.t-t0))
+	}
+	return f.frame()
+}
+
+// BUS entry on an S.BUS line names it S.BUS: the UART on S.BUS's framing,
+// the S.BUS layer, and the serial trigger armed on its frames' 0F. A match
+// the user typed still wins.
+// TRLC-LINKS: REQ-SDS-244, REQ-SDS-247, REQ-SDS-223
+func TestBusEntryNamesSBUS(t *testing.T) {
+	r := newViewRig(t)
+	r.show(sbusLineFrame())
+	press(t, r.c, "f2")
+	r.show(sbusLineFrame())
+	s := r.c.snap()
+	if s.decProto != framecalc.ProtoUART || s.decLayer != "sbus" || s.decBaud != 100000 || s.decParity != "even" || !s.decInv {
+		t.Fatalf("protocol %d layer %q %d Bd %q inverted %v: %q", s.decProto, s.decLayer, s.decBaud, s.decParity, s.decInv, s.ui.busNote)
+	}
+	if !strings.HasPrefix(s.ui.busNote, "S.BUS on C1") || !strings.Contains(s.ui.busNote, "TRIG: S.BUS frame start (0F)") {
+		t.Fatalf("note %q", s.ui.busNote)
+	}
+	if p := r.eng.SerialConfig(); r.eng.stats.SerialMode == 0 || len(p.Bytes) != 1 || p.Bytes[0] != 0x0f || p.Parity != "even" || !p.Inverted {
+		t.Fatalf("trigger %d on %+v", r.eng.stats.SerialMode, p)
+	}
+	_, v := r.c.Snapshot()
+	if v.Bus == nil || v.Bus.Layer != "S.BUS" {
+		t.Fatalf("BUS pane %+v", v.Bus)
+	}
+	if !sbusStart(engine.SerialParams{Bytes: []int{0x0f}}) || sbusStart(engine.SerialParams{Bytes: []int{0x0f, 0x00}}) {
+		t.Fatal("sbusStart")
+	}
+	if err := r.c.setMatchTokens([]string{"0F", "E0"}); err != nil {
+		t.Fatal(err)
+	}
+	if note := r.c.frameTrigger(busMsgs{}); note != "TRIG: your match 0F E0" {
+		t.Fatalf("user match: %q", note)
+	}
+}

@@ -59,6 +59,7 @@ func considerLines(codes []uint8, colTimeS float64, format string, uartBaud floa
 	if t.maxLow >= 80 && t.minRun >= 3 && t.minRun <= 4.8 {
 		consider(DecodeDMX512(codes, colTimeS, DMXCfg{Format: format}))
 	}
+	considerSBUS(codes, colTimeS, t, format, consider)
 	if near(uartBaud, 31250, 0.03) {
 		consider(DecodeMIDI(codes, colTimeS, MIDICfg{Format: format}))
 	}

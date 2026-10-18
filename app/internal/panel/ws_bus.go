@@ -1411,7 +1411,7 @@ func (c *Controller) runDetect() {
 	c.ui.busDetecting = false
 	c.ui.busFailed = !locked && prev == framecalc.ProtoOff
 	if locked {
-		c.ui.busNote = busName(c.decProto, c.decBaud, c.decChA, c.decChB, c.decCPOL, c.decCPHA) + tdivNote
+		c.ui.busNote = c.busNameLocked() + tdivNote
 		c.toastLocked("AUTO: "+c.ui.busNote+", decode on", foundFor)
 	} else {
 		c.ui.busNote = none
