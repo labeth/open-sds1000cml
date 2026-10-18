@@ -373,3 +373,57 @@ func TestAutoEndsTheSearchRunning(t *testing.T) {
 		t.Fatal("AUTO's own search dropped")
 	}
 }
+
+// A UART of a few bytes at a rate UARTs use, on a record resolving its bits
+// (a LIN frame's bytes at 500us/div), is looked for slower before any
+// full-rate record: the slow look names the LIN bus, or finds the UART again
+// and it stands. No full-rate record is read either way (a LIN bus read 5 s
+// of them first).
+// TRLC-LINKS: REQ-SDS-214
+func TestBusSearchLooksSlowerFirstForAFewByteUART(t *testing.T) {
+	idle5k := make([]uint8, 5000)
+	for i := range idle5k {
+		idle5k[i] = 210
+	}
+	for _, c := range []struct {
+		name  string
+		slow  func() *engine.Frame
+		proto int
+	}{
+		{"a LIN bus", linFrameRecord, framecalc.ProtoLIN},
+		{"the UART again", func() *engine.Frame {
+			return uartFrame([]string{"Hi U\x55\xaa"}, 19200, 0, 4e-6, 25000)
+		}, framecalc.ProtoUART},
+	} {
+		_, base, fe := newC(t)
+		eng := &searchLeaseEng{fakeEng: base}
+		ctl := New(eng, fe, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
+		ctl.decode(idle(), true)
+		ctl.detectSync = true
+		ctl.SetFrameSource(func(fn func(*engine.Frame)) {
+			tdiv := eng.Snapshot().TdivS
+			var f engine.Frame
+			switch {
+			case eng.raw.Load():
+				t.Errorf("%s: a full-rate record read at %g s/div", c.name, tdiv)
+				f = *uartFrame([]string{"Hi"}, 19200, 0, 2e-9, 100000)
+			case tdiv >= 5e-3:
+				f = *c.slow()
+			case tdiv < 400e-6: // between frames at the full-rate timebase
+				f = engine.Frame{C1: idle5k, C2: idle5k, Valid: len(idle5k), WinCols: len(idle5k), SampleS: 400e-9}
+			default: // five bytes of the frame at 500us/div
+				f = *uartFrame([]string{"\x55\x12\xa5\x5a\x2c"}, 19200, 0, 1e-6, 5000)
+			}
+			f.TdivS = tdiv
+			fn(&f)
+		})
+		ctl.setTdivNearest(500e-6)
+		ctl.runDetect()
+		ctl.mu.Lock()
+		proto, notice := ctl.decProto, ctl.ui.notice
+		ctl.mu.Unlock()
+		if proto != c.proto {
+			t.Errorf("%s: found %d (notice %q), want %d", c.name, proto, notice, c.proto)
+		}
+	}
+}
