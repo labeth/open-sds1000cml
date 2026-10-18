@@ -18,7 +18,7 @@ func (e *Engine) Run() {
 	defer close(e.done)
 	defer func() {
 		if r := recover(); r != nil {
-			e.logf("engine: PANIC (wedged, parked): %v", r)
+			e.logf("engine: PANIC (wedged, parked): %v\n%s", r, debug.Stack()) // the stack: a parked panic is found only from the log
 			e.mu.Lock()
 			e.stats.Wedged = true
 			e.mu.Unlock()

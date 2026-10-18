@@ -3863,8 +3863,8 @@ requirements:
 - id: REQ-SDS-228
   title: BUS Stream view
   text: The instrument shall, while the BUS workspace shows its Stream view, stream the bus the decoder settings name
-    in hardware with the stop the BUS sheet holds and show its transcript, and end that stream when the view is
-    left.
+    (in hardware, or in software for REQ-SDS-240) with the stop the BUS sheet holds and show its transcript, and end
+    that stream when the view is left.
   status: draft
   category: functional
   appliesTo:
@@ -4250,3 +4250,31 @@ requirements:
   - test
   verificationCriteria: The filter keeps the transfers libsigrokdecode's i2cfilter forwards to the decoder stacked on
     it; the split numbers devices in the order they first appear; the filter's address and direction rows set it.
+- id: REQ-SDS-240
+  title: Decoded stream of the protocols beyond the first ten
+  text: The instrument shall stream each protocol of REQ-SDS-232 to REQ-SDS-236 into the decoded-stream transcript,
+    gap-free where its shortest feature spans three and a half buckets of the gap-free stream, and as back-to-back
+    records otherwise, and show which of the two it streams in.
+  status: draft
+  category: functional
+  appliesTo:
+  - FU-APP-DECODE
+  - FU-APP-ENGINE
+  - FU-APP-PANEL
+  - FU-APP-LCD
+  - FU-APP-WEB
+  verificationMethods:
+  - test
+  verificationCriteria: Each gap-free protocol's synthetic frames, reduced to the stream's peak words (with converter
+    noise) and arriving in pieces from one sample to sixty thousand, decode to every frame exactly once, as the
+    full-rate signal decodes them; each fast protocol's records cut at random from a long signal give only frames
+    the whole signal holds there; on the device, each bench source streamed for a minute or more with its frames
+    counted against the source's (none lost, none doubled in the gap-free mode), and the stops working.
+  notes: Gap-free means the stream image's continuous peak stream at 2^11 samples a word (two samples a bucket)
+    or coarser, decoded in software (ADR-STREAM-SOFT-DECODE); the stream carries 2^9 without loss, but the
+    device's single core cannot fetch and decode a million words a second. The fast buses (DMX512, 1-Wire,
+    WS281x, USB PD, S/PDIF, SWD, MDIO, Modbus RTU past 57,600 Bd) stream as records armed on the symbol trigger,
+    with the share of the signal time they read. A stop on a decode error is refused (the symbol trigger has no
+    error token); a stop on a value ends a gap-free transcript at the frame software read it in, and the record
+    shown is the symbol trigger's on that value. MIDI and USB full speed stream through their receivers' decoded
+    events.

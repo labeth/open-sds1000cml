@@ -141,7 +141,7 @@ func (e *Engine) FPGAStack(ctx context.Context, req FPGAStackRequest) (FPGAStack
 		return FPGAStackResult{}, fmt.Errorf("records %d out of range", req.Records)
 	}
 	value, err := e.sramCall(ctx, func(ctx context.Context) (any, error) {
-		if e.decodedSession != nil {
+		if e.decodedSession != nil || e.soft != nil {
 			return nil, fmt.Errorf("decoded capture is active")
 		}
 		cfg, _, _, _, _ := e.sramConfig()
