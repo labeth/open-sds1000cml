@@ -259,7 +259,9 @@ func scoreProto(r Result) float64 {
 		}
 		return float64(data*150 - errs*60)
 	case "swd":
-		if r.Cover < 0.8 {
+		// no debug probe clocks SWD past 60 MHz: a 104 MHz SPI flash's
+		// data reads as a request and an OK now and then
+		if r.Cover < 0.8 || r.Baud > 60e6 {
 			return -1e9
 		}
 		return float64(frames*300 + n*4 - errs*80)
