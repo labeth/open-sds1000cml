@@ -16,6 +16,10 @@ type streamCase struct {
 	gen   func(l twoLine, i int, rng *rand.Rand)
 	dec   func(a, b []uint8, sampleS float64) Result
 	lines int
+	// idle is the lines' idle levels before and after the frames (nil:
+	// high, or for the records low then high); frames how many (0: 60).
+	idle   *[2]byte
+	frames int
 }
 
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
@@ -216,7 +220,7 @@ var captureCases = []streamCase{
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
 func TestStreamRecordCaptures(t *testing.T) {
 	cases := captureCases
-	for _, c := range streamCases {
+	for _, c := range append(streamCases, moreStreamCases...) {
 		if feature, _, _, _ := StreamTiming(strings.TrimSuffix(c.name, "-carrier"), c.baud); !gapFree(feature) {
 			cases = append(cases, c) // too fast for the gap-free stream
 		}
@@ -237,9 +241,10 @@ func TestStreamRecordCaptures(t *testing.T) {
 				sr = 500e6
 			}
 			l := newTwoLine(sr)
-			l.add(0, 1, 50e-6)
-			if c.name == "mdio" {
-				l.b.bits[len(l.b.bits)-1] = 1
+			if c.idle != nil {
+				l.add(c.idle[0], c.idle[1], 50e-6)
+			} else {
+				l.add(0, 1, 50e-6)
 			}
 			for i := 0; l.a.t < 30e-3*float64(map[string]int{"spdif": 1}[c.name]+1)/2 || i < 40; i++ {
 				c.gen(l, i, rng)
@@ -254,7 +259,7 @@ func TestStreamRecordCaptures(t *testing.T) {
 				at[f.I0] = frameKey(f)
 			}
 			A, B := l.a.codes(), l.b.codes()
-			words := 16384
+			words := max(16384, int(8*quiet/ss), recordCut(c.name, 2*longest, ss)) // as the engine sizes a record
 			if c.name == "spdif" {
 				words = 2 * 65536 // a full-rate record: two samples a word
 			}
@@ -264,7 +269,11 @@ func TestStreamRecordCaptures(t *testing.T) {
 				if c.lines == 2 {
 					b = B[pos : pos+words]
 				}
-				for _, f := range StreamRecord(A[pos:pos+words], b, dec, int(quiet/ss), int(StreamRecordHead(c.name, feature, longest)/ss), c.name == "spdif") {
+				record := StreamRecord // as the engine reads a record
+				if StreamRecordAfterIdle(c.name) {
+					record = StreamRecordFromIdle
+				}
+				for _, f := range record(A[pos:pos+words], b, dec, int(quiet/ss), int(StreamRecordHead(c.name, feature, longest)/ss), recordCut(c.name, longest, ss), c.name == "spdif") {
 					want, ok := "", false
 					for d := uint64(0); d <= 2 && !ok; d++ { // edges a sample apart
 						if want, ok = at[uint64(pos)+f.I0+d]; !ok && uint64(pos)+f.I0 >= d {
@@ -272,7 +281,13 @@ func TestStreamRecordCaptures(t *testing.T) {
 						}
 					}
 					if !ok || want != frameKey(f) {
-						t.Fatalf("record at %d: frame at %d %q, the whole signal %q (%v)", pos, f.I0, frameKey(f), want, ok)
+						near := ""
+						for _, tf := range truth {
+							if tf.I1+2000 > uint64(pos)+f.I0 && tf.I0 < uint64(pos)+f.I1+2000 {
+								near += fmt.Sprintf(" [%d..%d %q]", int64(tf.I0)-int64(pos), int64(tf.I1)-int64(pos), frameKey(tf))
+							}
+						}
+						t.Fatalf("record at %d: frame at %d..%d %q, the whole signal %q (%v); near:%s", pos, f.I0, f.I1, frameKey(f), want, ok, near)
 					}
 					got++
 				}
@@ -288,6 +303,15 @@ func TestStreamRecordCaptures(t *testing.T) {
 			t.Logf("%d of the %d frames inside the records", got, inside)
 		})
 	}
+}
+
+// recordCut is StreamRecord's cutN for a protocol, as the engine passes it.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-260
+func recordCut(proto string, longest, ss float64) int {
+	if StreamEdgeFramed(proto) {
+		return int(longest / ss)
+	}
+	return 0
 }
 
 // gapFree reports a feature the gap-free stream resolves.
@@ -350,7 +374,7 @@ func frameKey(f StreamFrame) string {
 // out once, as the whole full-rate signal decodes it.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
 func TestStreamDecoderGapFree(t *testing.T) {
-	for _, c := range streamCases {
+	for _, c := range append(streamCases, moreStreamCases...) {
 		t.Run(c.name, func(t *testing.T) {
 			rng := rand.New(rand.NewSource(int64(len(c.name))))
 			name := strings.TrimSuffix(c.name, "-carrier")
@@ -365,16 +389,22 @@ func TestStreamDecoderGapFree(t *testing.T) {
 			bucket := float64(uint64(1)<<log) * 2e-9
 			const m = 8
 			fine := newTwoLine(m / bucket)
-			l0 := byte(1)
+			idle := [2]byte{1, 1}
 			if name == "j1850" || c.name == "irnec-carrier" {
-				l0 = 0
+				idle[0] = 0
 			}
-			fine.add(l0, 1, quiet+2e-3)
-			const frames = 60
+			if c.idle != nil {
+				idle = *c.idle
+			}
+			fine.add(idle[0], idle[1], quiet+2e-3)
+			frames := 60
+			if c.frames > 0 {
+				frames = c.frames
+			}
 			for i := 0; i < frames; i++ {
 				c.gen(fine, i, rng)
 			}
-			fine.add(l0, 1, 2*quiet+longest)
+			fine.add(idle[0], idle[1], 2*quiet+longest)
 			// What the full-rate signal decodes to, frame by frame.
 			sampleS := 1 / fine.a.sr
 			whole := NewStreamDecoder(func(a, b []uint8) Result { return c.dec(a, b, sampleS) }, int(quiet/sampleS), 1<<40)
@@ -395,6 +425,7 @@ func TestStreamDecoderGapFree(t *testing.T) {
 			}
 			for _, sizes := range [][2]int{{1, 64}, {500, 5000}, {5000, 60000}} {
 				d := NewStreamDecoder(func(a, b []uint8) Result { return c.dec(a, b, ss) }, int(quiet/ss), int((longest+quiet)/ss))
+				d.SetLead(int(StreamLead(name, c.baud) / ss))
 				var got []StreamFrame
 				for at := 0; at < len(a); {
 					n := min(len(a)-at, sizes[0]+rng.Intn(sizes[1]-sizes[0]+1))

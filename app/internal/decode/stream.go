@@ -44,7 +44,13 @@ type StreamDecoder struct {
 	// Subframes: S/PDIF's frames run without a pause and only every 192nd
 	// opens with a "sof" (B); its M and W subframes open frames too.
 	subframes bool
+	leadN     int
 }
+
+// SetLead keeps n samples of line before a frame's start in the window
+// (StreamLead).
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-260
+func (d *StreamDecoder) SetLead(n int) { d.leadN = max(n, 0) }
 
 // StreamRecord decodes one record of a stream of records (a, b its lines'
 // samples, b nil for one line): the frames it holds whole. A frame its end
@@ -52,14 +58,115 @@ type StreamDecoder struct {
 // its first head samples, which its start can cut and the decoder read from
 // the middle.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
-func StreamRecord(a, b []uint8, decode func(a, b []uint8) Result, closeN, head int, subframes bool) []StreamFrame {
+func StreamRecord(a, b []uint8, decode func(a, b []uint8) Result, closeN, head, cutN int, subframes bool) []StreamFrame {
+	from := 0
+	if cutN > 0 {
+		// A decoder that finds its frames by their first edge and follows a
+		// transaction (Miller, SWIM) reads a cut frame's rest as frames
+		// of its own, and the frames after it in the wrong place of the
+		// transaction: it decodes from the record's first quiet line, if one
+		// comes within cutN.
+		at := quietAt(a, b, closeN)
+		if at < 0 || at > cutN {
+			return nil
+		}
+		from = max(0, at-closeN/2)
+	}
 	d := NewStreamDecoder(decode, closeN, len(a)+1)
 	d.SetSubframes(subframes)
-	frames := d.Push(a, b)
+	var bl []uint8
+	if b != nil {
+		bl = b[from:]
+	}
+	frames := d.Push(a[from:], bl)
+	for i := range frames {
+		f := &frames[i]
+		f.I0, f.I1 = f.I0+uint64(from), f.I1+uint64(from)
+		for k := range f.Spans {
+			f.Spans[k].I0 += uint64(from)
+			f.Spans[k].I1 += uint64(from)
+		}
+	}
 	for len(frames) > 0 && frames[0].I0 < uint64(head) {
 		frames = frames[1:]
 	}
+	// A frame cut by the record's start decodes without its start of frame
+	// (a 1-Wire transaction's bytes without their reset).
+	if len(frames) > 0 && len(frames[0].Spans) > 0 && frames[0].Spans[0].Kind != "sof" && frames[0].Spans[0].Kind != "break" {
+		frames = frames[1:]
+	}
 	return frames
+}
+
+// StreamRecordFromIdle is StreamRecord for a protocol a decoder opened in
+// the middle of its frames reads out of step (StreamRecordAfterIdle): it
+// decodes from the record's first idle line - the first gap between two
+// decoded characters longer than half of one, past the stop bits that
+// part characters sent back to back - and returns nothing from a record
+// with none. A device's reply after its
+// guard time follows an idle line too; a record whose first idle is that
+// one reads the reply as an instruction.
+// TRLC-LINKS: REQ-SDS-260
+func StreamRecordFromIdle(a, b []uint8, decode func(a, b []uint8) Result, closeN, head, cutN int, subframes bool) []StreamFrame {
+	r := decode(a, b)
+	from, last := -1, -1
+	for k := 0; k < len(r.Spans) && from < 0; k++ {
+		q := r.Spans[k]
+		if q.I1 <= q.I0 { // a mark, as a start of frame
+			continue
+		}
+		if last >= 0 {
+			if p := r.Spans[last]; 2*(q.I0-p.I1) > p.I1-p.I0 {
+				from = p.I1
+			}
+		}
+		last = k
+	}
+	if from < 0 {
+		return nil
+	}
+	var bl []uint8
+	if b != nil {
+		bl = b[from:]
+	}
+	frames := StreamRecord(a[from:], bl, decode, closeN, head, cutN, subframes)
+	for i := range frames {
+		f := &frames[i]
+		f.I0, f.I1 = f.I0+uint64(from), f.I1+uint64(from)
+		for k := range f.Spans {
+			f.Spans[k].I0 += uint64(from)
+			f.Spans[k].I1 += uint64(from)
+		}
+	}
+	return frames
+}
+
+// quietAt is the first sample after n samples in which neither line swings
+// a quarter of its range, -1 none.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-260
+func quietAt(a, b []uint8, n int) int {
+	last := -1 // the last sample where a line moved
+	moved := func(codes []uint8) func(i int) bool {
+		if codes == nil {
+			return func(int) bool { return false }
+		}
+		lo, hi := codes[0], codes[0]
+		for _, v := range codes {
+			lo, hi = min(lo, v), max(hi, v)
+		}
+		mid := (int(lo) + int(hi)) / 2
+		return func(i int) bool { return i > 0 && (int(codes[i]) > mid) != (int(codes[i-1]) > mid) }
+	}
+	ma, mb := moved(a), moved(b)
+	for i := range a {
+		if ma(i) || mb(i) {
+			last = i
+		}
+		if i-last >= n {
+			return i
+		}
+	}
+	return -1
 }
 
 // SetSubframes makes the "rw" spans open frames as well (S/PDIF's M and W
@@ -206,13 +313,17 @@ func (d *StreamDecoder) run() []StreamFrame {
 		}
 		cut = max(last+1, last+(next-last)/2)
 		cut = min(cut, max(last+1, n-d.closeN), next)
+		// A frame the decoder finds by what precedes it (DCF77's second 0 by
+		// the missing pulse before it) keeps Lead samples before it; the
+		// last frame's spans that come again lie before done and are dropped.
+		cut = max(0, min(cut, next-d.leadN))
 		d.done = d.base + uint64(last) + 1
 	} else if k == len(groups) || groups[k].from >= groups[k].to {
 		// Nothing decoded: keep only the Close samples a frame can open in.
-		cut = max(0, n-d.closeN)
+		cut = max(0, n-d.closeN-d.leadN)
 	} else {
 		// A frame under way: what lies Close before it decoded to nothing.
-		cut = max(0, groups[k].i0-d.closeN)
+		cut = max(0, groups[k].i0-d.closeN-d.leadN)
 	}
 	if cut > 0 {
 		cut = min(cut, n)

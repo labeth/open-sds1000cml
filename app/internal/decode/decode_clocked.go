@@ -233,7 +233,11 @@ func DecodeSWD(clk, dio []uint8, colTimeS float64, cfg ClockedCfg) Result {
 			explained++
 		}
 	}
-	next := -1 // where the transfer just read lets the next request start
+	next := -1                  // where the transfer just read lets the next request start
+	firstC, lastC := len(cy), 0 // the first transfer's or reset's cycle, and the cycle after the last
+	for _, rs := range resets {
+		firstC, lastC = min(firstC, rs[0]), max(lastC, rs[1])
+	}
 	for c := 0; c+12 <= len(cy); c++ {
 		flushResets(c)
 		r := func(k int) int { return cy[c+k].dr }
@@ -260,10 +264,12 @@ func DecodeSWD(clk, dio []uint8, colTimeS float64, cfg ClockedCfg) Result {
 		spans = append(spans, pspan(cy[c+9].xf, cy[c+11].xr+per/2, n, ackTxt, "data", ack))
 		toks = append(toks, ackTxt)
 		units = append(units, ack)
+		firstC = min(firstC, c)
 		if ack != 1 {
 			explained += swdUnexplained(cy[c : c+12])
 			c += 11 // the turnaround after the acknowledge ends with the next rise
 			next = c + 1
+			lastC = max(lastC, next)
 			continue
 		}
 		first := c + 12 // read: the falls of cycles c+12 .. c+44
@@ -298,12 +304,31 @@ func DecodeSWD(clk, dio []uint8, colTimeS float64, cfg ClockedCfg) Result {
 		explained += swdUnexplained(cy[c : first+33])
 		c = first + 32 // a read's turnaround ends with its parity cycle's rise
 		next = c + 1
+		lastC = max(lastC, next)
 	}
 	flushResets(len(cy))
 	if len(spans) == 0 {
 		return Result{Proto: "swd", Error: "no SWD request"}
 	}
-	cover := min(1, float64(explained)/float64(max(1, len(cy))))
+	// The record's ends cut a transfer as often as not: the busy cycles
+	// before the first transfer and after the last, up to a transfer's
+	// length each, are its rest, not cycles SWD leaves unexplained (a record
+	// cut through a transfer at both ends fell to 0.78 and the pair read as
+	// SPI now and then).
+	cut := func(cs []swdCycle) int {
+		busy := 0
+		for _, y := range cs {
+			if y.dr != 0 || y.df != 0 {
+				busy++
+			}
+		}
+		return min(busy, swdTransferCycles)
+	}
+	edges := 0
+	if firstC < len(cy) {
+		edges = cut(cy[:firstC]) + cut(cy[min(lastC, len(cy)):])
+	}
+	cover := min(1, float64(explained)/float64(max(1, len(cy)-edges)))
 	// data an SPI bus clocks holds request-like bits now and then; SWD's
 	// transfers, idle and resets explain most of its clock, which runs at
 	// one rate while it runs
@@ -357,6 +382,10 @@ func swdSteady(cy []swdCycle, per float64) bool {
 	}
 	return run > 0 && float64(even) >= 0.8*float64(run)
 }
+
+// swdTransferCycles is the longest SWD transfer: an 8-bit request, the
+// turnaround, a 3-bit acknowledge, a turnaround, 32 data bits and parity.
+const swdTransferCycles = 46
 
 // swdUnexplained counts a transfer's cycles not counted as idle already.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-236

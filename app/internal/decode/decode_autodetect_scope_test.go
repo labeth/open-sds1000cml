@@ -35,6 +35,9 @@ var scopeCaptures = []scopeCapture{
 	{"scope_ps2_oneframe_500us.json.gz", "ps2", 0},
 	{"scope_swd_raw_50us.json.gz", "swd", 0},
 	{"scope_swd_samples_500us.json.gz", "swd", 0},
+	// cut through a transfer at both ends (32 ns samples at 20us/div): their
+	// rest left a fifth of the clock unexplained, and SPI mode 3 won
+	{"scope_swd_cut_20us.json.gz", "swd", 0},
 	// a 10 MHz SPI read (clock C2): its data line, taken for MDC, clocked MDIO frames out of the clock
 	{"scope_spi10_raw_50us.json.gz", "spi", 1},
 	// an Oregon sensor's bursts, and RFID readers' commands on the field's envelope

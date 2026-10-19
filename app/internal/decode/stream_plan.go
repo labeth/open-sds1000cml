@@ -69,6 +69,72 @@ func StreamTiming(proto string, baud float64) (feature, longest, quiet float64, 
 	case "wiegand": // up to 64 pulses at the bit interval, each a twentieth of it
 		b := bit(1000)
 		return b / 20, 64 * b, 64 * b, true
+	// The rate of the protocols past the thirtieth is their panel rate: an
+	// encoder's or a stepper's cycles a second, a PWM's frequency, an RC
+	// code's short pulse, a tag's or a line's bit, a reader's field, a
+	// clocked bus's clock, Morse units, DCF77's code bits a second.
+	case "quad", "stepper": // a step each cycle; two cycles of rest open a motion
+		b := bit(1000)
+		return b / 4, 64 * b, 3 * b, true
+	case "pwm": // each period a frame; its duty read to a sixty-fourth
+		b := bit(1000)
+		return b / 64, 4 * b, 3 * b, true
+	case "rcencode": // 24 pulses of four short ones, then the sync of 32
+		b := bit(2857)
+		return b, 140 * b, 140 * b, true
+	case "ook": // Oregon bursts: preamble, sync and up to 80 nibbles of Manchester (2.1 at half the bit)
+		b := bit(1024)
+		return b / 4, 400 * b, 400 * b, true
+	case "miller": // a modified Miller pause is a quarter bit; an idle of 2.5 bits ends a message
+		b := bit(106000)
+		return b / 4, 600 * b, 4 * b, true
+	case "morse": // a letter's marks come before its span: up to 16 units
+		b := bit(17)
+		return b, 120 * b, 20 * b, true
+	case "dcf77": // a minute's fields come at seconds 28, 35 and 58 of 60; pulses of 100 and 200 ms
+		b := bit(1)
+		return 0.1 * b, 61 * b, 32 * b, true
+	case "em4100": // 64 Manchester bits
+		b := bit(1953)
+		return b / 2, 66 * b, 66 * b, true
+	case "em4305": // gaps of 12 field clocks; a Write of 57 bits of 32 clocks and 300 to end it
+		b := bit(125000)
+		return 12 * b, 2400 * b, 2400 * b, true
+	case "t55xx": // gaps of 16 field clocks; 70 bits of up to 64 clocks
+		b := bit(125000)
+		return 16 * b, 4800 * b, 4800 * b, true
+	case "swim": // a 1's low is two of a bit's 22 SWIM clocks
+		b := bit(363636)
+		return b / 11, 300 * b, 20 * b, true // a frame's spans come at its end: 13 bits and a gap
+	case "sdq": // a 1's low pulse under an eighth of a bit
+		b := bit(98425)
+		return b / 8, 100 * b, 50 * b, true
+	case "pjdl": // bytes of a sync pad and eight data times, frames of up to 30 bytes
+		b := bit(22727)
+		return b, 400 * b, 40 * b, true
+	case "dsi": // a start and eight Manchester bits
+		b := bit(600)
+		return b / 2, 12 * b, 12 * b, true
+	case "qi": // packets of up to 30 bytes of 11 biphase-mark bits
+		b := bit(2000)
+		return b / 2, 360 * b, 360 * b, true
+	case "sdcard": // a token of 48 or 136 clocks
+		b := bit(400000)
+		return b / 2, 150 * b, 150 * b, true
+	case "pdi": // an instruction of up to nine 12-clock characters
+		b := bit(1000000)
+		return b / 2, 120 * b, 120 * b, true
+	case "cjtag": // three TCKC rises a TCK; a scan's bits come at its UPDATE
+		b := bit(1000000)
+		return b / 2, 512 * b, 512 * b, true
+	case "maple": // frames of up to 255 words; bytes come as they end
+		b := bit(2000000)
+		return b / 2, 8192 * b, 64 * b, true
+	case "caliper": // 24 clocks after 10 ms of quiet
+		b := bit(12500)
+		return b / 2, 30 * b, 30 * b, true
+	case "irmp": // as the IR codes; Denon's frame comes twice, 65 ms apart
+		return 50e-6, 0.2, 0.2, true
 	}
 	return 0, 0, 0, false
 }
@@ -85,6 +151,49 @@ func StreamRecordHead(proto string, feature, longest float64) float64 {
 	return 4 * feature
 }
 
+// StreamRecordAfterIdle reports a protocol whose frames carry no mark a
+// decoder opened in their middle can find, only the idle line between them
+// (StreamRecordFromIdle). PDI runs its characters back to back and its
+// instructions too: a record opened inside an instruction reads its
+// operands as opcodes, and on a periodic bus stays out of step for good.
+// TRLC-LINKS: REQ-SDS-260
+func StreamRecordAfterIdle(proto string) bool {
+	return proto == "pdi"
+}
+
+// StreamEdgeFramed reports a protocol whose decoder finds a frame by its
+// first edge, with no leader of its own (Miller), or follows a transaction
+// whose place a cut loses (SWIM): in a record, a frame cut by the
+// record's start reads as frames until a quiet line (StreamRecord's cutN, a
+// longest frame).
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-260
+func StreamEdgeFramed(proto string) bool {
+	switch proto {
+	case "miller", "swim":
+		return true
+	}
+	return false
+}
+
+// StreamLead is how much line (seconds) a protocol's decoder needs before a
+// frame's start to find it: DCF77 knows second 0 by the missing pulse before
+// it, so the pulse before that; a JVC repeat comes without a leader and is
+// read only after the frame it repeats (IRMP), a longest frame earlier.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-260
+func StreamLead(proto string, baud float64) float64 {
+	switch proto {
+	case "dcf77":
+		if baud <= 0 {
+			baud = 1
+		}
+		return 3 / baud
+	case "irmp":
+		_, longest, _, _ := StreamTiming(proto, baud)
+		return longest
+	}
+	return 0
+}
+
 // StreamGapFreeMinLog is the finest decimation the scope decodes gap-free in
 // software: one peak word per 2^11 samples (about 244 k words a second).
 // The stream itself carries 2^9 without loss, but on the device's single
@@ -93,6 +202,10 @@ func StreamRecordHead(proto string, feature, longest float64) float64 {
 // transfers take their own share: at 2^9 the worker's ring overflowed within
 // a second.
 const StreamGapFreeMinLog = 11
+
+// StreamMaxLog is the coarsest decimation the stream carries (2^20 samples
+// a word, 2.1 ms): a DCF77 minute is then 29 k samples a decode, not 930 k.
+const StreamMaxLog = 20
 
 // StreamBucketLog picks the gap-free stream's decimation for a shortest
 // feature of feature seconds: the coarsest bucket of 2^log samples (2 ns
@@ -107,7 +220,7 @@ func StreamBucketLog(feature float64) (log int, ok bool) {
 		return 0, false
 	}
 	log = StreamGapFreeMinLog
-	for log < 16 && bucket(log+1)*6 <= feature {
+	for log < StreamMaxLog && bucket(log+1)*6 <= feature {
 		log++
 	}
 	return log, true
