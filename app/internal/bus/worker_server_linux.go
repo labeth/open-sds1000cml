@@ -448,6 +448,19 @@ func (w *sliceWriter) Write(p []byte) (int, error) {
 	return k, nil
 }
 
+// workerPollWait is how long the worker waits for a request after a pump
+// that took busy: at least 500 us, and as long as the pump took, so the
+// pumps take at most half the core. During a decoded stream the worker runs
+// at real-time priority; a bus whose events never let up (a 104 MHz SPI
+// flash read without pause) kept it pumping nine tenths of the time, and
+// the app, the panel and the OTA agent starved until the agent killed the
+// app for a stale health token. An event FIFO that overflows meanwhile
+// marks the loss in the transcript.
+// TRLC-LINKS: REQ-SDS-013, REQ-SDS-001
+func workerPollWait(busy time.Duration) time.Duration {
+	return max(500*time.Microsecond, busy)
+}
+
 // serve polls a local packet socket with a 500 us deadline. Commands wake it
 // immediately; absent commands still leave the FPGA drain independent of Go's
 // GUI goroutines. All packet and event buffers are allocated before streaming.
@@ -472,8 +485,10 @@ func (w *acquisitionWorker) serve(fd int) error {
 	var request [workerHeader + workerRecallParams + 1]byte
 	pending := 0
 	for {
+		t0 := time.Now()
 		w.pump()
 		w.streamPump()
+		busy := time.Since(t0)
 		if pending != 0 {
 			n, _, errno := syscall.RawSyscall(syscall.SYS_WRITE, uintptr(fd), uintptr(unsafe.Pointer(&w.response[0])), uintptr(pending))
 			if errno == 0 {
@@ -523,7 +538,7 @@ func (w *acquisitionWorker) serve(fd int) error {
 		if pending != 0 {
 			poll.Events = 4
 		}
-		timeout := syscall.NsecToTimespec(500000)
+		timeout := syscall.NsecToTimespec(int64(workerPollWait(busy)))
 		_, _, errno := syscall.RawSyscall6(syscall.SYS_PPOLL, uintptr(unsafe.Pointer(&poll)), 1, uintptr(unsafe.Pointer(&timeout)), 0, 0, 0)
 		if errno != 0 && errno != syscall.EINTR {
 			return errno
