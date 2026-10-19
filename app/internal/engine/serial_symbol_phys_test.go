@@ -137,7 +137,7 @@ func physSymbolCases() []symCase {
 					w.hold(false, true, 1.5*us)
 					cur = t + 1.5*us
 				}
-				w.hold(true, true, float64(len(all))*T-cur+60*us)
+				w.hold(true, true, float64(len(all))*T-cur+100*us)
 			}
 			return w
 		}, reqs: []symReq{{[]PatternElem{symStart}, 3}, {[]PatternElem{symStart, symData(0x9a, 0xff)}, 2}, {[]PatternElem{symStart, symAny, symData(0xb8, 0xff)}, 1}}},

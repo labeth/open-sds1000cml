@@ -662,7 +662,11 @@ func planHardwareSymbol(p SerialParams) sramcapture.SymbolTriggerConfig {
 	if anchored && !s.start(&b, units) {
 		return off
 	}
+	asked := -1 // where the first unit a value is asked of begins
 	for i, u := range units {
+		if asked < 0 && u.mask != 0 {
+			asked = len(b.val)
+		}
 		if !s.unit(&b, i, u) {
 			return off
 		}
@@ -679,9 +683,15 @@ func planHardwareSymbol(p SerialParams) sramcapture.SymbolTriggerConfig {
 		if n > 1023 {
 			return off
 		}
-		for i := 0; i < n-64; i++ {
-			if b.care[i] {
-				return off // the window holds the last 64 bits
+		// the window holds the last 64 bits: a value asked before them is
+		// out of reach; the frame start's and the free units' own fixed
+		// bits there (a start bit, a pad, a stop) are left unchecked, the
+		// frame placed by its leader and the bit count
+		if asked >= 0 && asked < n-64 {
+			for i := asked; i < n-64; i++ {
+				if b.care[i] {
+					return off
+				}
 			}
 		}
 		c.K = uint16(n)

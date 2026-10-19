@@ -141,28 +141,17 @@ func physSymbolSpec(p SerialParams, s *symSpec) bool {
 		s.cfg.UnitQ8 = q8(half)
 		s.tab.both(true, 2.5*T, inf, leadStep0, decode.SymDataRestart)
 		s.tab.both(false, 2.5*T, inf, leadStep0, decode.SymDataRestart)
-		prev, known := 0, true
+		// A bit is read in its second half alone: a 1 has its edge at the
+		// middle, a 0 none (a 0 after a 0 also has one at its start, which
+		// says nothing the second half does not). Bits past a message's end
+		// read as 0s there, as the decoder gives a last unit's missing bits:
+		// the idle after it has no edges.
 		s.period = 16
-		s.start = func(b *symBits, _ []symUnit) bool {
-			prev, known = 0, true // after the idle: a 0's edge at its start
-			return true
-		}
-		s.unit = func(b *symBits, i int, u symUnit) bool {
-			if i == 0 && len(b.val) == 0 {
-				known = false // at any unit boundary: the bit before is not known
-			}
+		s.start = func(b *symBits, _ []symUnit) bool { return true }
+		s.unit = func(b *symBits, _ int, u symUnit) bool {
 			for k := 0; k < 8; k++ {
-				v, care := u.value>>k&1, u.mask>>k&1 != 0
-				switch {
-				case care && v == 1:
-					b.fixed(0, 1)
-				case care:
-					b.put(prev == 0, known) // a 0 after a 0 has its edge at its start
-					b.fixed(0)
-				default:
-					b.skip(2)
-				}
-				prev, known = v, care
+				b.skip(1)
+				b.put(u.value>>k&1 != 0, u.mask>>k&1 != 0)
 			}
 			return true
 		}
@@ -310,7 +299,9 @@ func physSymbolSpec(p SerialParams, s *symSpec) bool {
 				return 8 // a write's address: 4 (s.unit refuses more)
 			}
 			s.start = func(b *symBits, units []symUnit) bool {
-				write = len(units) > 0 && units[0].mask == 7 && units[0].value == 2
+				// a write's address follows its command: a write asked for,
+				// or six units (a login holds five)
+				write = len(units) > 0 && units[0].mask == 7 && units[0].value == 2 || len(units) == 6
 				return true
 			}
 			s.unit = func(b *symBits, i int, u symUnit) bool {
