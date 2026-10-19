@@ -141,7 +141,12 @@ func (s *Server) hSoundBin(w http.ResponseWriter, r *http.Request) {
 		ch := info.MarkCfg.Ch & 1
 		h.MarkV = (float64(info.MarkCfg.Level)-128)*h.Scales[k-1].VPC[ch] - h.Scales[k-1].Off[ch]
 	}
-	hj, _ := json.Marshal(h)
+	hj, err := json.Marshal(h)
+	if err != nil {
+		// A scale or level that is no number (a front end not set yet) goes
+		// as null: an empty header broke the page's whole stream.
+		hj, _ = json.Marshal(jsonSafe(reflect.ValueOf(h)))
+	}
 	buf := make([]byte, 8, 8+len(hj)+4*b.N)
 	copy(buf, soundBinMagic[:])
 	binary.LittleEndian.PutUint32(buf[4:8], uint32(len(hj)))
