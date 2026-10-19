@@ -44,6 +44,7 @@ var scopeCaptures = []scopeCapture{
 	// records cut a frame at either end: a PDI instruction's first
 	// characters, a DSI frame's last bits
 	{"scope_pdi_raw_500us.json.gz", "pdi", 0},
+	{"scope_pdi_samples_200us.json.gz", "pdi", 0}, // opens inside an instruction: misframed characters first
 	{"scope_dsi_search_20ms.json.gz", "dsi", 0},
 	{"scope_cjtag_samples_200us.json.gz", "cjtag", 0},
 	{"scope_caliper_search_5ms.json.gz", "caliper", 0},

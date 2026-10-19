@@ -240,11 +240,12 @@ func scorePhys(r Result) float64 {
 		}
 		return float64(good*400 + n*3)
 	case "pdi":
-		// instructions in a row; the cut ones at the record's ends few
-		if frames < 3 || n < 6 || inner > 0 || errs > 4 {
+		// instructions in a row, a record's misframed characters (one that
+		// opens inside an instruction) few beside the good ones
+		if frames < 3 || n < 6 || errs*4 > n {
 			return -1e9
 		}
-		return float64(frames*40 + n*8)
+		return float64(frames*40 + n*20) // characters with parity and two stops: more than SPI reads of them
 	case "cjtag":
 		scans := 0
 		for _, s := range r.Spans {
