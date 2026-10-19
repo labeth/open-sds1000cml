@@ -218,6 +218,11 @@ func scoreResult(r Result) float64 {
 		if c[0] == 0 {
 			return -1e9
 		}
+		// a nominal rate past CAN's 1 Mbit/s is another bus's line whose
+		// bits passed a CRC-15 by chance (a Maple bus's SDCKB read at 4 Mbit/s)
+		if r.Baud > 1100000 {
+			return -1e9
+		}
 		return float64(c[0]*500 + len(r.Bytes)*2 - c[1]*60)
 	case "mil1553":
 		// One "data" span per word; a parity-failed word adds one frame-error.
