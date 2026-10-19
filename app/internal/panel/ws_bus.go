@@ -1151,12 +1151,13 @@ func scantUART(res decode.Result) bool {
 // TRLC-LINKS: REQ-SDS-214
 func scantFind(res decode.Result) bool {
 	return scantUART(res) || (res.Proto == "spi" || res.Proto == "i2c") && len(res.Bytes) < scantBytes ||
-		res.Proto == "ps2" && frameStarts(res) <= 1 || slowManchester(res)
+		res.Proto == "ps2" && frameStarts(res) <= 1 || slowManchester(res) || usbPDRateManchester(res)
 }
 
 // usbPDRateManchester reports a Manchester line at USB Power Delivery's
 // 300 kbit/s (within 10 %): a short record that cuts a PD message's CRC
-// reads its biphase mark code as plain Manchester (findAtFullRate).
+// reads its biphase mark code as plain Manchester (a scant find, and held
+// in findAtFullRate while the whole record is read).
 // TRLC-LINKS: REQ-SDS-214, REQ-SDS-256
 func usbPDRateManchester(res decode.Result) bool {
 	return res.Proto == "manchester" && res.Baud >= 270000 && res.Baud <= 330000
