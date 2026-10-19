@@ -661,7 +661,11 @@ func (s *soundSvc) arm(on bool) {
 	s.adsrRes, s.adsrEnv = sound.ADSR{}, nil
 	if e != nil {
 		e.LeaseSound(3 * time.Second)
-		s.armedAt = e.SoundInfo().Next
+		// Marks count from a third of a second on: the gate's level and
+		// channel reach the FPGA within a service tick and a drain step, and
+		// marks of the cycle trace's level before them must not start it.
+		in := e.SoundInfo()
+		s.armedAt = in.Next + uint64(0.33*in.RateHz)
 	}
 }
 
