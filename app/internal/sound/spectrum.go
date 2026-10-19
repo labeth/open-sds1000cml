@@ -27,10 +27,18 @@ func AudioSpectrum(x []float64, fs float64, n int) Spectrum {
 		return Spectrum{}
 	}
 	x = x[len(x)-n:]
-	re, im := make([]float64, n), make([]float64, n)
+	re, im := getScratch(n), getScratch(n)
+	defer putScratch(re)
+	defer putScratch(im)
 	m := mean(x)
+	win := hannTable(n)
 	for i, v := range x {
-		re[i] = (v - m) * hann(i, n)
+		if win != nil {
+			re[i] = (v - m) * win[i]
+		} else {
+			re[i] = (v - m) * hann(i, n)
+		}
+		im[i] = 0
 	}
 	fft(re, im, false)
 	sp := Spectrum{N: n, BinHz: fs / float64(n), DBV: make([]float64, n/2)}

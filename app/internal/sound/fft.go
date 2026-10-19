@@ -3,6 +3,7 @@ package sound
 
 import (
 	"math"
+	"math/bits"
 	"sync"
 )
 
@@ -28,6 +29,53 @@ func twiddle(n int) ([]float64, []float64) {
 	}
 	twiddles.Store(n, &[2][]float64{c, s})
 	return c, s
+}
+
+var hannTables sync.Map // n -> []float64, hann(i, n) for i < n
+
+// hannTable is hann(i, n) for every i, kept per power-of-two n (nil for
+// another n): the tuner and the spectra window the same few sizes several
+// times a second, and a cosine a sample cost the instrument as much as
+// their transforms.
+// TRLC-LINKS: REQ-SDS-267, REQ-SDS-270
+func hannTable(n int) []float64 {
+	if n < 2 || n&(n-1) != 0 || n > 1<<20 {
+		return nil
+	}
+	if t, ok := hannTables.Load(n); ok {
+		return t.([]float64)
+	}
+	w := make([]float64, n)
+	for i := range w {
+		w[i] = hann(i, n)
+	}
+	hannTables.Store(n, w)
+	return w
+}
+
+// scratchPools lend float64 buffers to one analysis call, a pool per
+// power-of-two capacity: windows of up to a quarter million samples several
+// times a second, freshly allocated, kept the collector running (5 MB/s)
+// under the app's memory limit.
+var scratchPools [32]sync.Pool
+
+// getScratch is a buffer of n (contents undefined) from the pool.
+// TRLC-LINKS: REQ-SDS-267, REQ-SDS-269, REQ-SDS-270
+func getScratch(n int) []float64 {
+	k := bits.Len(uint(max(n, 1) - 1))
+	if p, ok := scratchPools[k].Get().(*[]float64); ok {
+		return (*p)[:n]
+	}
+	return make([]float64, n, 1<<k)
+}
+
+// putScratch gives b (from getScratch) back to its pool; the caller keeps
+// no reference.
+// TRLC-LINKS: REQ-SDS-267, REQ-SDS-269, REQ-SDS-270
+func putScratch(b []float64) {
+	if c := cap(b); c > 0 && c&(c-1) == 0 {
+		scratchPools[bits.Len(uint(c-1))].Put(&b)
+	}
 }
 
 // fft transforms re, im in place (len a power of two); inverse runs the
@@ -134,8 +182,13 @@ func toneAt(x []float64, f, fs float64) (re, im float64) {
 	w := 2 * math.Pi * f / fs
 	c, s := math.Cos(w), math.Sin(w)
 	ck, sk := 1.0, 0.0
+	win := hannTable(n)
 	for i, v := range x {
-		v = (v - m) * hann(i, n)
+		if win != nil {
+			v = (v - m) * win[i]
+		} else {
+			v = (v - m) * hann(i, n)
+		}
 		re += v * ck
 		im -= v * sk
 		ck, sk = ck*c-sk*s, sk*c+ck*s

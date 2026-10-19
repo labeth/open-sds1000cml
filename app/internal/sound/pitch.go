@@ -138,8 +138,16 @@ func yinDifference(x []float64, w, tauMax int) []float64 {
 	n := len(x)
 	m := mean(x)
 	size := pow2(n + w)
-	ar, ai := make([]float64, size), make([]float64, size)
-	br, bi := make([]float64, size), make([]float64, size)
+	ar, ai := getScratch(size), getScratch(size)
+	br, bi := getScratch(size), getScratch(size)
+	defer putScratch(ar)
+	defer putScratch(ai)
+	defer putScratch(br)
+	defer putScratch(bi)
+	clear(ar)
+	clear(ai)
+	clear(br)
+	clear(bi)
 	for i := 0; i < n; i++ {
 		br[i] = x[i] - m
 		if i < w {
@@ -156,7 +164,9 @@ func yinDifference(x []float64, w, tauMax int) []float64 {
 	}
 	fft(ar, ai, true)
 	// Prefix sums of the squares for the energies.
-	cum := make([]float64, n+1)
+	cum := getScratch(n + 1)
+	defer putScratch(cum)
+	cum[0] = 0
 	for i := 0; i < n; i++ {
 		v := x[i] - m
 		cum[i+1] = cum[i] + v*v

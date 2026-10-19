@@ -40,7 +40,15 @@ func Demodulate(x []float64, fs, fc, outRate float64) Demod {
 	c, s := math.Cos(w), math.Sin(w)
 	ck, sk := 1.0, 0.0
 	// Prefix sums of the mixed signal, then of the first boxcar's output.
-	cr, ci := make([]float64, n+1), make([]float64, n+1)
+	cr, ci := getScratch(n+1), getScratch(n+1)
+	b1r, b1i := getScratch(n+1), getScratch(n+1)
+	defer putScratch(cr)
+	defer putScratch(ci)
+	defer putScratch(b1r)
+	defer putScratch(b1i)
+	cr[0], ci[0] = 0, 0
+	clear(b1r[:min(p1, n+1)])
+	clear(b1i[:min(p1, n+1)])
 	for i, v := range x {
 		v -= m
 		cr[i+1] = cr[i] + v*ck
@@ -52,7 +60,6 @@ func Demodulate(x []float64, fs, fc, outRate float64) Demod {
 		}
 	}
 	// First boxcar (p1) at i: (cum[i+1]-cum[i+1-p1])/p1, defined from i = p1-1.
-	b1r, b1i := make([]float64, n+1), make([]float64, n+1)
 	for i := p1 - 1; i < n; i++ {
 		b1r[i+1] = b1r[i] + (cr[i+1]-cr[i+1-p1])/float64(p1)
 		b1i[i+1] = b1i[i] + (ci[i+1]-ci[i+1-p1])/float64(p1)

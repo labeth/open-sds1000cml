@@ -532,12 +532,8 @@ func runLCD(e *engine.Engine, fe *analog.FrontEnd, fo *frames.Fanout) {
 				}
 				return
 			}
-			// Repaint only when the picture changed. Time-evolving views and active
-			// tests bypass the cache and always repaint (afterglow decay, the Bode
-			// sweep, the spectrogram waterfall, super-res review, a running mask/zone
-			// test whose live counters advance faster than the published frame seq).
-			force := hud.Persist || hud.ViewMode >= 3 || hud.SRActive ||
-				hud.MaskMode > 0 || hud.ZoneMode > 0
+			// Repaint only when the picture changed.
+			force := lcdForceRepaint(hud)
 			sig := renderSigOf(f, hud, live)
 			slot := statusSlot{hud.Busy, int(hud.BusyPct), hud.BusyPhase}
 			// Stopped and the engine is re-showing the held record at the new
@@ -574,6 +570,23 @@ func runLCD(e *engine.Engine, fe *analog.FrontEnd, fo *frames.Fanout) {
 		idle = !present && lastSeq == seenSeq
 		e.QuietRUnlock()
 	}
+}
+
+// lcdSoundView is the SOUND view's ViewMode (panel's viewSound).
+const lcdSoundView = 5
+
+// lcdForceRepaint reports a picture that changes without a frame or a UI
+// change the render signature sees, which bypasses the repaint cache:
+// afterglow decay, the Bode sweep, the spectrogram waterfall, super-res
+// review, a running mask/zone test whose live counters advance faster than
+// the published frame seq. The SOUND view is not one: its pane is in the
+// signature and changes with each of the sound service's readings; forced,
+// it was redrawn as fast as the core allowed (a fifth of it) and the audio
+// stream's listeners ran dry.
+// TRLC-LINKS: REQ-SDS-168, REQ-SDS-273
+func lcdForceRepaint(hud lcd.HUD) bool {
+	return hud.Persist || (hud.ViewMode >= 3 && hud.ViewMode != lcdSoundView) || hud.SRActive ||
+		hud.MaskMode > 0 || hud.ZoneMode > 0
 }
 
 // lcdIdleWait bounds how long a still display waits for something to change
