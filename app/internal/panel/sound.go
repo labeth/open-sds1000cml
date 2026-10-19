@@ -110,6 +110,20 @@ const soundCycleKeep = 6
 // stripSeconds is the pitch strip's span.
 const stripSeconds = 10.0
 
+// voctMax bounds the V/oct table: the automatic points come every time the
+// CV steps and holds (a sequencer looping all night), and every report
+// copies and fits the table.
+const voctMax = 128
+
+// addVOct appends a V/oct point, the oldest going past voctMax (s.mu held).
+// TRLC-LINKS: REQ-SDS-267
+func (s *soundSvc) addVOct(p sound.VOctPoint) {
+	s.voct = append(s.voct, p)
+	if n := len(s.voct); n > voctMax {
+		s.voct = append(s.voct[:0], s.voct[n-voctMax:]...)
+	}
+}
+
 // soundTick is the service's period.
 const soundTick = 125 * time.Millisecond
 
@@ -401,7 +415,7 @@ func (s *soundSvc) readTuner(e soundEngine, set SoundSettings, t float64) {
 	}
 	if set.VOctAuto {
 		if pt, ok := s.auto.Add(t, cv, s.hz); ok {
-			s.voct = append(s.voct, pt)
+			s.addVOct(pt)
 		}
 	}
 }
@@ -800,7 +814,7 @@ func (s *soundSvc) voctCapture() error {
 	}
 	s.mu.Lock()
 	s.cv = cv
-	s.voct = append(s.voct, sound.VOctPoint{V: cv, Hz: hz})
+	s.addVOct(sound.VOctPoint{V: cv, Hz: hz})
 	s.mu.Unlock()
 	return nil
 }

@@ -230,3 +230,19 @@ func TestSoundEnvelopeCapture(t *testing.T) {
 		t.Fatalf("gate marks %+v", e.mark)
 	}
 }
+
+// TestSoundVOctBounded takes many more V/oct points than the table holds:
+// it keeps the newest voctMax, and a report carries no more.
+// TRLC-LINKS: REQ-SDS-267
+func TestSoundVOctBounded(t *testing.T) {
+	s := newSoundSvc(&Controller{})
+	s.hz = 440
+	for i := 0; i < 3*voctMax; i++ {
+		if err := s.action("voct_capture"); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if r := s.Report(); len(s.voct) != voctMax || len(r.VOct) != voctMax {
+		t.Fatalf("table %d, report %d points", len(s.voct), len(r.VOct))
+	}
+}
