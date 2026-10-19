@@ -419,6 +419,36 @@ func heldBeyond(codes []uint8, thr float64) float64 {
 	return float64(min(held[0], held[1]))
 }
 
+// railsAround is rails for a line sliced at a stated threshold, when rails
+// finds none: a line that holds its rarer level (runs of three samples or
+// more, not noise spikes) at all is a line, however seldom it is pulsed -
+// a Wiegand frame's few D0 pulses in a long window of idle (the gap-free
+// stream's decode window grows with what follows a frame) hold fewer
+// samples than rails' floor, and the frame read without them is garbled.
+// Each rail is the mean of the codes on its side; the swing must reach
+// rails' minimum still (decode.js decRailsAround).
+// TRLC-LINKS: REQ-SDS-018
+func railsAround(codes []uint8, thr float64, reason string) (lowRail, highRail float64, why string) {
+	if heldBeyond(codes, thr) < 3 {
+		return 0, 0, reason
+	}
+	var ls, lw, hs, hw int
+	for _, v := range codes {
+		if float64(v) >= thr {
+			hs++
+			hw += int(v)
+		} else {
+			ls++
+			lw += int(v)
+		}
+	}
+	lowRail, highRail = float64(lw)/float64(ls), float64(hw)/float64(hs)
+	if highRail-lowRail < 20 {
+		return 0, 0, reason
+	}
+	return lowRail, highRail, ""
+}
+
 // railsWithin is rails over the histogram's codes gmin..gmax.
 // TRLC-LINKS: REQ-SDS-018
 func railsWithin(h *[256]float64, gmin, gmax int) (lowRail, highRail float64, reason string) {
@@ -458,6 +488,9 @@ func sliceChannel(codes []uint8, thr float64, haveThr bool) sliced {
 	const hystFrac = 0.20
 	n := len(codes)
 	lowRail, highRail, reason := rails(codes)
+	if reason != "" && haveThr {
+		lowRail, highRail, reason = railsAround(codes, thr, reason)
+	}
 	if reason != "" {
 		return sliced{reason: reason}
 	}

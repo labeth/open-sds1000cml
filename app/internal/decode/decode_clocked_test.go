@@ -58,6 +58,27 @@ func TestDecodeMDIORoundTrip(t *testing.T) {
 	}
 }
 
+// TestDecodeWiegandSparseD0 decodes a frame with few zeros (few D0 pulses)
+// in a window long enough that they hold under a thousandth of its
+// samples, as the gap-free stream's window does once a long idle follows a
+// frame: at the stated thresholds the frame reads as in a short window, not
+// as D1's pulses alone split into garbage frames.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-236, REQ-SDS-240
+func TestDecodeWiegandSparseD0(t *testing.T) {
+	sr := 100e3
+	cfg := ClockedCfg{Threshold: 128, HaveThr: true, ThresholdB: 128, HaveThrB: true}
+	for _, idle := range []float64{20e-3, 2} {
+		l := newTwoLine(sr)
+		l.add(1, 1, 10e-3)
+		wiegandFrame(l, wiegandBits(26, 255, 65534), 2e-3)
+		l.add(1, 1, idle)
+		r := DecodeWiegand(l.a.codes(), l.b.codes(), 1/sr, cfg)
+		if !r.OK || r.Text != "26b F255 C65534" {
+			t.Errorf("idle %v s after the frame: ok=%v %q (%s)", idle, r.OK, r.Text, r.Error)
+		}
+	}
+}
+
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-236
 func TestDecodeWiegandRoundTrip(t *testing.T) {
 	sr := 200e3
