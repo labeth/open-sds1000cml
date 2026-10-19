@@ -178,7 +178,9 @@ func scorePhys(r Result) float64 {
 				}
 			}
 		}
-		if data < 3 || errs*4 > data || r.Cover < 0.9 || long == 0 || !strings.Contains(code, ".") || !strings.Contains(code, "-") {
+		// and a word gap between two words: without one the record's
+		// longest run, the idle level, may be a dash (the line read inverted)
+		if data < 3 || frames < 2 || errs*4 > data || r.Cover < 0.9 || long == 0 || !strings.Contains(code, ".") || !strings.Contains(code, "-") {
 			return -1e9
 		}
 		return float64(15 * min(data, 40))
