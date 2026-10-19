@@ -268,3 +268,28 @@ func TestSoundVOctBounded(t *testing.T) {
 		t.Fatalf("table %d, report %d points", len(s.voct), len(r.VOct))
 	}
 }
+
+// busySoundEng is an audio stream that cannot run (a decoded stream holds
+// the fabric).
+type busySoundEng struct{ *soundEng }
+
+// TRLC-LINKS: REQ-SDS-273
+func (e *busySoundEng) SoundInfo() engine.SoundInfo {
+	return engine.SoundInfo{State: "a decoded stream runs (BUS): stop it to listen", RateHz: e.fs}
+}
+
+// TestSoundAutoFitNoStream runs AUTO in SOUND while the stream cannot run:
+// its notice says so, not that both channels were fitted.
+// TRLC-LINKS: REQ-SDS-273
+func TestSoundAutoFitNoStream(t *testing.T) {
+	quiet := func(float64) float64 { return 0 }
+	e := &busySoundEng{newSoundEng([2]func(float64) float64{quiet, quiet}, 1)}
+	c := New(e, &fakeFE{idx: [2]int{8, 8}}, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
+	c.soundAutoFit(make(chan struct{}))
+	c.mu.Lock()
+	msg := c.ui.notice
+	c.mu.Unlock()
+	if !strings.Contains(msg, "no audio stream") || !strings.Contains(msg, "decoded stream runs") {
+		t.Fatalf("AUTO's notice %q", msg)
+	}
+}
