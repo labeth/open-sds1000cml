@@ -660,10 +660,22 @@ function sndBesselErr(beta, ks, amps, norm) {
   return e;
 }
 
+// SND_SB_MAX_LINES bounds the lines the sideband search weighs (Go's
+// sbMaxLines: the search is quadratic in them).
+const SND_SB_MAX_LINES = 64;
+
+// sndStrongestLines keeps the n strongest lines, in bin order.
+// TRLC-LINKS: REQ-SDS-269
+function sndStrongestLines(l, n) {
+  if (l.length <= n) return l;
+  const c = l.slice().sort((a, b) => b.amp - a.amp).slice(0, n);
+  return c.sort((a, b) => a.bin - b.bin);
+}
+
 // TRLC-LINKS: REQ-SDS-269
 function sndSidebands(db, binHz) {
   const sb = { ok: false, why: "", fc: 0, fm: 0, ratio: "", beta: 0, fit: 0, lines: 0 };
-  const lines = sndFindLines(db, 40);
+  const lines = sndStrongestLines(sndFindLines(db, 40), SND_SB_MAX_LINES);
   if (lines.length < 3) { sb.why = "fewer than three lines"; return sb; }
   const gaps = [];
   for (let i = 1; i < lines.length; i++) gaps.push(lines[i].bin - lines[i - 1].bin);

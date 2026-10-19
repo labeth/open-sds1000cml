@@ -353,6 +353,25 @@ func findLines(db []float64, below float64) []specPeak {
 	return out
 }
 
+// sbMaxLines bounds the lines the sideband search weighs: it compares every
+// line with every other, and a noisy or wideband spectrum has thousands
+// within 40 dB of its top (seconds a call on the instrument). An FM tone's
+// lines worth reading are far fewer.
+const sbMaxLines = 64
+
+// strongestLines keeps the n strongest lines, in bin order.
+// TRLC-LINKS: REQ-SDS-269
+func strongestLines(l []specPeak, n int) []specPeak {
+	if len(l) <= n {
+		return l
+	}
+	c := append([]specPeak(nil), l...)
+	sort.SliceStable(c, func(i, j int) bool { return c[i].amp > c[j].amp })
+	c = c[:n]
+	sort.Slice(c, func(i, j int) bool { return c[i].bin < c[j].bin })
+	return c
+}
+
 // AnalyzeSidebands reads audio-rate FM from a Hann spectrum db (dB, any
 // reference) with bins binHz apart. The carrier is the line the others sit
 // most symmetrically about, the modulator their common spacing; the index
@@ -360,7 +379,7 @@ func findLines(db []float64, below float64) []specPeak {
 // TRLC-LINKS: REQ-SDS-269
 func AnalyzeSidebands(db []float64, binHz float64) Sidebands {
 	sb := Sidebands{}
-	lines := findLines(db, 40)
+	lines := strongestLines(findLines(db, 40), sbMaxLines)
 	if len(lines) < 3 {
 		sb.Why = "fewer than three lines"
 		return sb

@@ -308,6 +308,17 @@ func TestSidebands(t *testing.T) {
 			t.Errorf("%+v: %+v", c, sb)
 		}
 	}
+	// A flat noise spectrum has thousands of lines within 40 dB: the search
+	// weighs only the strongest (it once took seconds a call on the ARM).
+	rng := rand.New(rand.NewSource(5))
+	noise := make([]float64, 16384)
+	for i := range noise {
+		noise[i] = -60 + 6*rng.Float64()
+	}
+	if n := len(strongestLines(findLines(noise, 40), sbMaxLines)); n != sbMaxLines {
+		t.Errorf("noise kept %d lines, want %d", n, sbMaxLines)
+	}
+	_ = AnalyzeSidebands(noise, 1)
 	if RatioText(5) != "5:1" || RatioText(1.5) != "3:2" || RatioText(20.0/3) != "20:3" || RatioText(math.Sqrt2) != "1.41" {
 		t.Errorf("ratios %s %s %s %s", RatioText(5), RatioText(1.5), RatioText(20.0/3), RatioText(math.Sqrt2))
 	}
