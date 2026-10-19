@@ -69,6 +69,8 @@ func goReading(v pvec) any {
 	case "pitch":
 		p := DetectPitch(v.X, v.Fs, PitchRange(v.Range))
 		return map[string]any{"hz": num(p.Hz), "clarity": num(p.Clarity), "ok": p.OK}
+	case "window":
+		return map[string]any{"n": float64(TunerWindow(v.F, v.Fs))}
 	case "note":
 		n := NoteOf(v.F, v.A4)
 		return map[string]any{"name": n.Name, "octave": float64(n.Octave), "midi": float64(n.Midi), "cents": num(n.Cents), "text": n.String()}
@@ -222,6 +224,9 @@ func TestSoundJSParity(t *testing.T) {
 		add(pvec{Kind: "note", Name: fmt.Sprint(f), F: f, A4: 440})
 	}
 	add(pvec{Kind: "note", Name: "432", F: 440, A4: 432})
+	for _, f := range []float64{0, 1e-300, 1e-4, 0.5, 20, 440, 5000, 1e9} {
+		add(pvec{Kind: "window", Name: fmt.Sprint("window ", f), F: f, Fs: fs})
+	}
 	n := int(1.4 * fs)
 	add(pvec{Kind: "adsr", Name: "tone gated", Fs: fs, X: gen(n, fs, adsrSignal(0.05, 0.04, 0.5, 0.6, 0.08, false), 0.002, 11), On: 0.1, Off: 0.75})
 	add(pvec{Kind: "adsr", Name: "tone found", Fs: fs, X: gen(n, fs, adsrSignal(0.02, 0.1, 0.3, 0.5, 0.2, false), 0.002, 12), On: -1, Off: -1})

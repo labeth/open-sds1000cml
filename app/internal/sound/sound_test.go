@@ -5,6 +5,7 @@ import (
 	"math"
 	"math/rand"
 	"testing"
+	"time"
 )
 
 // fsTest is the stream's rate.
@@ -532,6 +533,35 @@ func TestBreakers(t *testing.T) {
 		CompareAB(x, x, fsTest, 0)
 		PlaceMark(x, len(x)/2, 0, true)
 		ExtractCycles(x, fsTest, 1, 50, 2, 100)
+	}
+}
+
+// TestPow2Bounded asks the power-of-two helpers and the tuner's window for
+// sizes past any int (a pitch near zero, a float past an int's range):
+// they end, at the bound. Doubling past it wrapped the int and never ended
+// (on the scope's 32-bit int, int(+Inf) is MaxInt32 and every such size
+// hung the SOUND service).
+// TRLC-LINKS: REQ-SDS-267, REQ-SDS-270
+func TestPow2Bounded(t *testing.T) {
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		if p := pow2(math.MaxInt); p != 1<<30 {
+			t.Errorf("pow2(MaxInt) = %d", p)
+		}
+		if p := floorPow2(math.MaxInt); p != 1<<30 {
+			t.Errorf("floorPow2(MaxInt) = %d", p)
+		}
+		for _, f := range []float64{1e-300, 1e-6, 0.01} {
+			if n := TunerWindow(f, fsTest); n != 32768 {
+				t.Errorf("TunerWindow(%g) = %d", f, n)
+			}
+		}
+	}()
+	select {
+	case <-done:
+	case <-time.After(10 * time.Second):
+		t.Fatal("a power-of-two size past an int's range never ended")
 	}
 }
 

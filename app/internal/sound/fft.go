@@ -72,7 +72,7 @@ func fft(re, im []float64, inverse bool) {
 // TRLC-LINKS: REQ-SDS-267, REQ-SDS-270
 func pow2(n int) int {
 	p := 1
-	for p < n {
+	for p < n && p < 1<<30 { // doubling on would wrap a 32-bit int and never end
 		p <<= 1
 	}
 	return p
@@ -85,7 +85,7 @@ func floorPow2(n int) int {
 		return 0
 	}
 	p := 1
-	for p*2 <= n {
+	for p*2 <= n && p < 1<<30 {
 		p <<= 1
 	}
 	return p

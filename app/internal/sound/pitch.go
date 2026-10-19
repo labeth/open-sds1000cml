@@ -269,7 +269,9 @@ func Cents(a, b float64) float64 {
 func TunerWindow(f, fs float64) int {
 	n := 8192
 	if f > 0 {
-		n = pow2(int(16 * fs / f))
+		// bounded before the conversion: a float past an int's range converts
+		// to the platform's choice (MaxInt32 on the scope, MinInt64 here)
+		n = pow2(int(math.Min(16*fs/f, 65536)))
 	}
 	return min(32768, max(4096, n))
 }

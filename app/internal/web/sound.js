@@ -63,10 +63,10 @@ function sndFFT(re, im, inverse) {
 }
 
 // TRLC-LINKS: REQ-SDS-267, REQ-SDS-270
-function sndPow2(n) { let p = 1; while (p < n) p <<= 1; return p; }
+function sndPow2(n) { let p = 1; while (p < n && p < 0x40000000) p <<= 1; return p; }
 
 // TRLC-LINKS: REQ-SDS-267, REQ-SDS-270
-function sndFloorPow2(n) { if (n < 1) return 0; let p = 1; while (p * 2 <= n) p <<= 1; return p; }
+function sndFloorPow2(n) { if (n < 1) return 0; let p = 1; while (p * 2 <= n && p < 0x40000000) p <<= 1; return p; }
 
 // TRLC-LINKS: REQ-SDS-267, REQ-SDS-270
 function sndHann(i, n) { return 0.5 - 0.5 * Math.cos(2 * Math.PI * i / (n - 1)); }
@@ -267,7 +267,7 @@ function sndCents(a, b) { return a > 0 && b > 0 ? 1200 * Math.log2(a / b) : NaN;
 // TRLC-LINKS: REQ-SDS-267
 function sndTunerWindow(f, fs) {
   let n = 8192;
-  if (f > 0) n = sndPow2(Math.floor(16 * fs / f));
+  if (f > 0) n = sndPow2(Math.floor(Math.min(16 * fs / f, 65536)));
   return Math.min(32768, Math.max(4096, n));
 }
 
