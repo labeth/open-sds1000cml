@@ -461,7 +461,7 @@ func DecodeMaple(a, b []uint8, colTimeS float64, cfg ClockedCfg) Result {
 		la, lb int
 	}
 	var evs []ev
-	la, lb := int(A.level[0]), int(Bs.level[0])
+	la, lb := int(A.first), int(Bs.first)
 	ia, ib := 0, 0
 	for ia < len(A.edges) || ib < len(Bs.edges) {
 		if ib >= len(Bs.edges) || (ia < len(A.edges) && A.edges[ia].x <= Bs.edges[ib].x) {

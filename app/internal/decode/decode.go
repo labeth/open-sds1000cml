@@ -286,8 +286,26 @@ type sliced struct {
 	highRail   float64
 	amp        float64
 	thHi, thLo float64
-	level      []int8
+	first      int8 // the level of sample 0
 	edges      []edge
+}
+
+// levels is the level of every sample (the edges set it): built only for
+// the decoders that read it, not on every slicing.
+// TRLC-LINKS: REQ-SDS-018
+func (s *sliced) levels() []int8 {
+	level := make([]int8, s.n)
+	cur, at := s.first, 0
+	for _, e := range s.edges {
+		for ; at < e.i; at++ {
+			level[at] = cur
+		}
+		cur = int8((e.dir + 1) / 2)
+	}
+	for ; at < s.n; at++ {
+		level[at] = cur
+	}
+	return level
 }
 
 // AutoThreshold is the slicing level the decoders use when none is set: the
@@ -450,7 +468,6 @@ func sliceChannel(codes []uint8, thr float64, haveThr bool) sliced {
 	}
 	band := hystFrac * amp / 2
 	thHi, thLo := threshold+band, threshold-band
-	level := make([]int8, n)
 	var edges []edge
 	// The codes are integers, so v >= t is v >= ceil(t) and v <= t is
 	// v <= floor(t): the loop compares integers and walks each level's run
@@ -460,6 +477,7 @@ func sliceChannel(codes []uint8, thr float64, haveThr bool) sliced {
 	if n > 0 && int(codes[0]) >= on {
 		cur = 1
 	}
+	first := int8(cur)
 	for i := 0; i < n; {
 		j := i
 		if cur == 0 {
@@ -468,7 +486,6 @@ func sliceChannel(codes []uint8, thr float64, haveThr bool) sliced {
 			}
 		} else {
 			for j < n && int(codes[j]) > loAt {
-				level[j] = 1
 				j++
 			}
 		}
@@ -484,14 +501,18 @@ func sliceChannel(codes []uint8, thr float64, haveThr bool) sliced {
 			if cur == 1 {
 				d = -1
 			}
+			if len(edges) == cap(edges) {
+				// Doubled: append grows a long slice by a quarter, and a busy
+				// window holds tens of thousands of edges.
+				edges = append(make([]edge, 0, max(64, 2*cap(edges))), edges...)
+			}
 			edges = append(edges, edge{j, d, frac})
 			cur = 1 - cur
 		}
-		level[j] = int8(cur)
 		i = j + 1
 	}
 	return sliced{ok: true, n: n, codes: codes, threshold: threshold, lowRail: lowRail,
-		highRail: highRail, amp: amp, thHi: thHi, thLo: thLo, level: level, edges: edges}
+		highRail: highRail, amp: amp, thHi: thHi, thLo: thLo, first: first, edges: edges}
 }
 
 // codeCeil is the least code at or above t (256: none, as for NaN).

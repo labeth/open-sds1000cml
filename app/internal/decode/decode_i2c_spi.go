@@ -83,8 +83,9 @@ func DecodeI2C(scl, sda []uint8, colTimeS float64, cfg I2CCfg) Result {
 	cl, da := -1, -1
 	inTxn, expectAddr := false, false
 	bitCount, val, bitStart := 0, 0, 0
+	clLevel, daLevel := CL.levels(), DA.levels()
 	for i := 0; i < n; i++ {
-		l, d := int(CL.level[i]), int(DA.level[i])
+		l, d := int(clLevel[i]), int(daLevel[i])
 		pcl, pda := cl, da
 		cl, da = l, d
 		if pcl < 0 || pda < 0 {
@@ -261,8 +262,9 @@ func DecodeSPI(clk, data []uint8, colTimeS float64, cfg SPICfg) Result {
 	if fine {
 		armedRise, armedFall = armedCrossings(CK, n)
 	}
+	ckLevel := CK.levels()
 	for i := 0; i < n; i++ {
-		l := int(CK.level[i])
+		l := int(ckLevel[i])
 		pck := ck
 		ck = l
 		if pck < 0 {

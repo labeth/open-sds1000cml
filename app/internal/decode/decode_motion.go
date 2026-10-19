@@ -114,10 +114,10 @@ func decodeSteps(proto string, a, b []uint8, colTimeS float64, cfg ClockedCfg, q
 	var toks []string
 	var units []int
 	count := 0
-	la := int(A.level[0])
+	la := int(A.first)
 	lb := 0
 	if B.ok {
-		lb = int(B.level[0])
+		lb = int(B.first)
 	}
 	phase := func() int { g := la | lb<<1; return g ^ g>>1 }
 	ph := phase()
