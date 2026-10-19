@@ -474,22 +474,43 @@ func (s *softStream) feedPeak(raw []byte, cal *InterleaveCalibration) {
 		if cal != nil {
 			off = cal.envelopeOffsets(ch)
 		}
+		// Each extreme is a byte: its debiased Q8.8 value and that value
+		// rounded come from tables, not from per-word arithmetic.
+		var q [2][256]int32
+		var r [2][256]uint8
+		for k := range 2 {
+			for b := range 256 {
+				x := b << 8
+				if cal != nil {
+					x = debiasQ(x, off[k])
+				}
+				q[k][b], r[k][b] = int32(x), roundQ8(uint16(x))
+			}
+		}
 		at := len(*dst)
 		out := slices.Grow(*dst, 2*n)[:at+2*n]
-		prev, have := int(s.last[ch]), s.haveLast
+		prev := int32(s.last[ch])
+		if !s.haveLast && n > 0 {
+			prev = (q[0][raw[ch]] + q[1][raw[2+ch]]) / 2
+		}
+		o := out[at:]
 		for i := 0; i < n; i++ {
-			lo, hi := int(raw[4*i+ch])<<8, int(raw[4*i+2+ch])<<8
-			if cal != nil {
-				lo, hi = debiasQ(lo, off[0]), debiasQ(hi, off[1])
+			bl, bh := raw[4*i+ch], raw[4*i+2+ch]
+			lo, hi := q[0][bl], q[1][bh]
+			dl, dh := lo-prev, hi-prev
+			if dl < 0 {
+				dl = -dl
 			}
-			if !have {
-				prev, have = (lo+hi)/2, true
+			if dh < 0 {
+				dh = -dh
 			}
-			if abs(hi-prev) < abs(lo-prev) {
-				lo, hi = hi, lo
+			if dh < dl { // the pair continues from the sample before it
+				o[2*i], o[2*i+1] = r[1][bh], r[0][bl]
+				prev = lo
+			} else {
+				o[2*i], o[2*i+1] = r[0][bl], r[1][bh]
+				prev = hi
 			}
-			prev = hi
-			out[at+2*i], out[at+2*i+1] = roundQ8(uint16(lo)), roundQ8(uint16(hi))
 		}
 		s.last[ch] = uint16(prev)
 		*dst = out
