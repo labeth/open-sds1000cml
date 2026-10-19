@@ -153,6 +153,7 @@ type soundSvc struct {
 	mu   sync.Mutex
 	set  SoundSettings
 	info engine.SoundInfo
+	tick uint64 // service ticks run: the tuner and the meters take turns
 
 	// Who wants it, until when: the LCD's view sets lcd, a web or phone page
 	// wants the shared readouts (api) or the edge marks (marks).
@@ -181,7 +182,8 @@ type soundSvc struct {
 	cycle    sound.Cycle
 	cycleAt  uint64 // the mark of the newest cycle drawn
 	cycleWhy string
-	markLvl  int // the level (code) asked for the cycle marks, -1 none
+	pane     soundPaneTraces // the cycles as the pane draws them
+	markLvl  int             // the level (code) asked for the cycle marks, -1 none
 
 	adsr     string
 	adsrWhy  string
@@ -292,6 +294,15 @@ func (s *soundSvc) run(stop <-chan struct{}) {
 	}
 }
 
+// soundPaneTraces is the cycle traces converted for the pane, kept until a
+// new cycle comes.
+type soundPaneTraces struct {
+	n      int      // cycles converted
+	newest *float64 // the newest cycle's first sample
+	traces [][]float32
+	lo, hi float64
+}
+
 // step is one tick: lease the stream while needed, read it and update what
 // is in use.
 // TRLC-LINKS: REQ-SDS-273
@@ -317,10 +328,14 @@ func (s *soundSvc) step(now time.Time) {
 		return
 	}
 	t := now.Sub(s.t0).Seconds()
-	if readouts || set.VOctAuto || set.Drift {
+	// The tuner and the meters read on alternate ticks, each four times a
+	// second: both every tick, with the LCD's SOUND view, kept the core busy
+	// enough that a Listening page's replies came late and its audio ran dry.
+	s.tick++
+	if s.tick%2 == 1 && (readouts || set.VOctAuto || set.Drift) {
 		s.readTuner(e, set, t)
 	}
-	if readouts {
+	if s.tick%2 == 0 && readouts {
 		s.readLevels(e, set)
 	}
 	s.runADSR(e, set)
@@ -456,10 +471,15 @@ func (s *soundSvc) readLevels(e soundEngine, set SoundSettings) {
 	s.mu.Unlock()
 }
 
-// readPage runs the shown page's analysis: modulation every two seconds
-// (its four-second window's demodulation is the heaviest analysis on the
-// instrument; a tremolo's figures move slowly), the sidebands with it, A/B
-// and harmonics twice a second.
+// soundModEvery is how often the modulation page reads its four-second
+// window: once a window, each reading on new samples. Its demodulation is
+// the heaviest analysis on the instrument (every two seconds it took a
+// tenth of the core beside a Listening page) and a tremolo's figures move
+// slowly.
+const soundModEvery = 4 * time.Second
+
+// readPage runs the shown page's analysis: modulation every soundModEvery,
+// the sidebands with it, A/B and harmonics twice a second.
 // TRLC-LINKS: REQ-SDS-269, REQ-SDS-270, REQ-SDS-271
 func (s *soundSvc) readPage(e soundEngine, set SoundSettings, now time.Time) {
 	s.mu.Lock()
@@ -467,7 +487,7 @@ func (s *soundSvc) readPage(e soundEngine, set SoundSettings, now time.Time) {
 	s.mu.Unlock()
 	switch set.Page {
 	case soundPageMod:
-		if now.Sub(at) < 2*time.Second {
+		if now.Sub(at) < soundModEvery {
 			return
 		}
 		x, _ := s.latest(e, int(4*fs), set.Ch)
@@ -479,7 +499,7 @@ func (s *soundSvc) readPage(e soundEngine, set SoundSettings, now time.Time) {
 			l = sound.AnalyzeLFO(x, fs)
 		}
 		sb := s.sb
-		if now.Sub(s.sbAt) >= 2*time.Second && hz > 0 {
+		if now.Sub(s.sbAt) >= soundModEvery && hz > 0 {
 			sp := sound.AudioSpectrum(x, fs, 32768)
 			sb = sound.AnalyzeSidebands(sp.DBV, sp.BinHz)
 			s.sbAt = now

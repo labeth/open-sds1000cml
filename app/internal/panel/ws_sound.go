@@ -90,21 +90,31 @@ func (c *Controller) soundPane(s *sv) *wsview.SoundPane {
 	// The cycle trace.
 	p.TraceWhy = ss.cycleWhy
 	if len(ss.cycles) > 0 && ss.cycleWhy == "" {
-		lo, hi := math.Inf(1), math.Inf(-1)
-		for _, tr := range ss.cycles {
-			for _, v := range tr {
-				lo, hi = math.Min(lo, v), math.Max(hi, v)
+		// The pane is built for every LCD tick and every snapshot; its traces
+		// only with a new cycle.
+		newest := ss.cycles[len(ss.cycles)-1]
+		if len(newest) == 0 || ss.pane.n != len(ss.cycles) || ss.pane.newest != &newest[0] {
+			ss.pane = soundPaneTraces{n: len(ss.cycles)}
+			if len(newest) > 0 {
+				ss.pane.newest = &newest[0]
+			}
+			lo, hi := math.Inf(1), math.Inf(-1)
+			for _, tr := range ss.cycles {
+				for _, v := range tr {
+					lo, hi = math.Min(lo, v), math.Max(hi, v)
+				}
+			}
+			pad := 0.1*(hi-lo) + 1e-6
+			ss.pane.lo, ss.pane.hi = lo-pad, hi+pad
+			for _, tr := range ss.cycles {
+				f := make([]float32, len(tr))
+				for i, v := range tr {
+					f[i] = float32(v)
+				}
+				ss.pane.traces = append(ss.pane.traces, f)
 			}
 		}
-		pad := 0.1*(hi-lo) + 1e-6
-		p.TraceLo, p.TraceHi = lo-pad, hi+pad
-		for _, tr := range ss.cycles {
-			f := make([]float32, len(tr))
-			for i, v := range tr {
-				f[i] = float32(v)
-			}
-			p.Traces = append(p.Traces, f)
-		}
+		p.TraceLo, p.TraceHi, p.Traces = ss.pane.lo, ss.pane.hi, ss.pane.traces
 		cy := ss.cycle
 		p.TraceTop = []wsview.Span{{Text: fmt.Sprintf("%d %s, trigger: FPGA edge mark C%d", set.Cycles, plural(set.Cycles, "cycle"), set.Ch+1), Col: wsview.Dim},
 			{Text: "period " + si(cy.PeriodS, "s") + "  duty " + fmt.Sprintf("%.1f%%", cy.DutyPct) + "  Vpp " + si(cy.Vpp, "V"), Col: wsview.Text},
