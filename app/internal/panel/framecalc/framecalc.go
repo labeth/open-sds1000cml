@@ -688,4 +688,3 @@ func SpectrumRows(f *engine.Frame, ch int, sampleS float64) []Spec {
 	}
 	return out
 }
-

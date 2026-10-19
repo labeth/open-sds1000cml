@@ -52,9 +52,11 @@ type acquisitionWorker struct {
 	sMaxGap, sMaxDrain time.Duration // longest pump-to-pump gap and bank drain
 }
 
-// workerStreamBytes bounds the stream ring: a million words, 30 s of a
-// 10 ms/div roll and half a second at the fabric's fastest stream.
-const workerStreamBytes = 4 << 20
+// workerStreamBytes bounds the stream ring: two million words, two seconds
+// of the 2^9 stream a software decode reads gap-free (its reader falls
+// half a second behind now and then, while it decodes and the display
+// draws) and a minute of a 10 ms/div roll.
+const workerStreamBytes = 8 << 20
 
 // TRLC-LINKS: REQ-SDS-035
 type streamRingWriter struct{ w *acquisitionWorker }
@@ -85,11 +87,18 @@ func (w *acquisitionWorker) streamPump() {
 		w.sMaxGap = max(w.sMaxGap, now.Sub(w.sLastPump))
 	}
 	w.sLastPump = now
+	// The banks' DMA sleeps through its transfers: the app decodes the
+	// stream meanwhile (the worker runs at real-time priority).
+	if d, ok := w.bus.(*Dev); ok && d.SetStreamYield(true) {
+		defer d.SetStreamYield(false)
+	}
+	// No deadline: a bank's drain never waits (the DMA's own poll bounds
+	// it), and a timer a pass cost a tenth of the worker at the fastest
+	// stream.
+	ctx := context.Background()
 	for i := 0; i < 8; i++ {
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 		t0 := time.Now()
 		block, err := w.capture.DrainStream(ctx, w.sExpected, streamRingWriter{w})
-		cancel()
 		if err == sramcapture.ErrNoStreamBlock {
 			return
 		}

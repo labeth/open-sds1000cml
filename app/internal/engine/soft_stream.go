@@ -93,7 +93,6 @@ type softStream struct {
 	isolated  bool
 	deadline  *bus.DecodedDeadline
 	expected  uint64
-	buf       [65536]byte
 	raw       []byte
 	pendA     []uint8
 	pendB     []uint8
@@ -383,7 +382,11 @@ func (e *Engine) softDrain(s *softStream) {
 	w := byteSink{dst: &raw}
 	for end := e.clk.Now().Add(100 * time.Millisecond); e.clk.Now().Before(end) && !e.stopReq.Load(); {
 		if s.isolated {
-			first, n, _, err := e.b.(streamPumper).ReadIsolatedStream(s.buf[:])
+			// The worker's words land at the end of raw, with no copy between.
+			at := len(raw)
+			raw = slices.Grow(raw, softReadBytes)[:at+softReadBytes]
+			first, n, _, err := e.b.(streamPumper).ReadIsolatedStream(raw[at:])
+			raw = raw[:at+n]
 			if err == nil && n > 0 && first != s.expected {
 				err = fmt.Errorf("stream ordinal %d, want %d", first, s.expected)
 			}
@@ -394,7 +397,6 @@ func (e *Engine) softDrain(s *softStream) {
 			if n == 0 {
 				break
 			}
-			raw = append(raw, s.buf[:n]...)
 			s.expected += uint64(n / 4)
 			continue
 		}
@@ -602,6 +604,9 @@ func frameStart(f decode.StreamFrame) string {
 	}
 	return ""
 }
+
+// softReadBytes is one read of the worker's stream words (a worker packet).
+const softReadBytes = 65536
 
 // softEventsMax bounds the queued events: a reader that stops reading ends
 // the transcript rather than the memory.

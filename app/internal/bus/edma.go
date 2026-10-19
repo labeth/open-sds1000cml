@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"os"
 	"syscall"
+	"time"
 	"unsafe"
 
 	"open-sds/app/internal/iface"
@@ -105,7 +106,25 @@ type edmaDrainer struct {
 	inv        func(b []byte)
 	persistent *dmaBuf // reused buffer, only with inv
 	closeFn    func()
+	// yield sleeps through most of a transfer instead of polling it to the
+	// end (the stream pump's banks: at the fabric's fastest stream the bus
+	// is busy most of the time, and polling it kept the core from the app).
+	// nsPerWord is the transfer time a 16-bit word learned from transfers
+	// polled from their start; every yieldLearn-th one is.
+	yield     bool
+	nsPerWord float64
+	transfers int
 }
+
+// yieldLearn: one transfer in this many is polled whole to learn its time.
+const yieldLearn = 32
+
+// yieldOvershoot is how much longer than asked the device sleeps (about
+// 110 us): a sleep through a transfer asks that much less.
+const yieldOvershoot = 120 * time.Microsecond
+
+// yieldMin is the shortest transfer slept through.
+const yieldMin = 80 * time.Microsecond
 
 // newEDMADrainer maps the TPCC, validates the pagemap path once, and picks the
 // coherency strategy. Any failure returns an error and the caller stays on ioctl.
@@ -258,13 +277,56 @@ func (e *edmaDrainer) runParam(src, dst, bcnt uint32) bool {
 	e.cc.W(offShadow0+offICR+hi, cb)  // clear a stale completion
 	e.cc.W(offShadow0+offEESR+hi, cb) // enable the event
 	e.cc.W(offShadow0+offESR+hi, cb)  // trigger
+	var t0 time.Time
+	learn := false
+	if e.yield {
+		e.transfers++
+		learn = e.nsPerWord == 0 || e.transfers%yieldLearn == 0
+		if learn {
+			t0 = time.Now()
+		} else if d := time.Duration(e.nsPerWord * float64(bcnt)); d >= yieldMin {
+			// The shortest sleep outlasts a page's transfer (about 100 us):
+			// the bank is late by the difference, which the fabric's FIFO
+			// holds, and the core is the app's meanwhile.
+			sleepThread(max(d-yieldOvershoot, time.Microsecond))
+		}
+	}
 	for i := 0; i < e.pollMax; i++ {
 		if e.cc.R(offShadow0+offIPR+hi)&cb != 0 {
 			e.cc.W(offShadow0+offICR+hi, cb)
+			if learn && bcnt > 0 {
+				e.nsPerWord = float64(time.Since(t0)) / float64(bcnt)
+			}
 			return true
 		}
 	}
 	return false
+}
+
+// sleepThread sleeps this thread for d (the worker's locked thread: no Go
+// timer in between).
+// TRLC-LINKS: REQ-SDS-035
+func sleepThread(d time.Duration) {
+	ts := syscall.NsecToTimespec(int64(d))
+	for {
+		var rem syscall.Timespec
+		_, _, err := syscall.RawSyscall(syscall.SYS_NANOSLEEP, uintptr(unsafe.Pointer(&ts)), uintptr(unsafe.Pointer(&rem)), 0)
+		if err != syscall.EINTR {
+			return
+		}
+		ts = rem
+	}
+}
+
+// SetStreamYield makes the DMA sleep through most of each transfer (on)
+// rather than poll it whole; false without the DMA.
+// TRLC-LINKS: REQ-SDS-035
+func (d *Dev) SetStreamYield(on bool) bool {
+	if d.edma == nil {
+		return false
+	}
+	d.edma.yield = on
+	return true
 }
 
 // drainWords drains n words from the fixed pop port at src into dst — one

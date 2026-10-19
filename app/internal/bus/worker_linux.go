@@ -161,12 +161,21 @@ func (c *workerClient) call(op uint16, plane uint8, selector, value uint16, epoc
 // callWith is call with params sent after the request's header.
 // TRLC-LINKS: REQ-SDS-001, REQ-SDS-013
 func (c *workerClient) callWith(op uint16, plane uint8, selector, value uint16, epoch uint32, params, dst []byte) (int, error) {
+	return c.callSplit(op, plane, selector, value, epoch, params, nil, dst)
+}
+
+// callSplit is callWith with the reply's first len(head) bytes copied to
+// head and the rest to dst: a stream reply's ordinal goes apart from its
+// words, which land where the caller keeps them.
+// TRLC-LINKS: REQ-SDS-001, REQ-SDS-013, REQ-SDS-035
+func (c *workerClient) callSplit(op uint16, plane uint8, selector, value uint16, epoch uint32, params, head, dst []byte) (int, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if c.failed != nil {
 		return 0, c.failed
 	}
-	if len(dst) > workerPayload {
+	want := len(head) + len(dst)
+	if want > workerPayload {
 		return 0, fmt.Errorf("bus: oversized worker response")
 	}
 	c.sequence++
@@ -181,7 +190,7 @@ func (c *workerClient) callWith(op uint16, plane uint8, selector, value uint16, 
 	request[10], request[11] = plane, 1
 	binary.LittleEndian.PutUint16(request[12:14], selector)
 	binary.LittleEndian.PutUint16(request[14:16], value)
-	binary.LittleEndian.PutUint32(request[16:20], uint32(len(dst)))
+	binary.LittleEndian.PutUint32(request[16:20], uint32(want))
 	binary.LittleEndian.PutUint32(request[20:24], epoch)
 	_ = c.conn.SetDeadline(time.Now().Add(3 * time.Second))
 	n, err := c.conn.Write(request)
@@ -202,12 +211,13 @@ func (c *workerClient) callWith(op uint16, plane uint8, selector, value uint16, 
 	if c.response[10] != 0 {
 		return 0, fmt.Errorf("bus worker: %s", c.response[workerHeader:n])
 	}
-	if n-workerHeader > len(dst) {
+	if n-workerHeader > want {
 		c.failed = fmt.Errorf("bus: oversized worker payload")
 		c.conn.Close()
 		return 0, c.failed
 	}
-	return copy(dst, c.response[workerHeader:n]), nil
+	k := copy(head, c.response[workerHeader:n])
+	return k + copy(dst, c.response[workerHeader+k:n]), nil
 }
 
 // RecallIsolated has the worker make reads of the frozen record (epoch,
@@ -288,17 +298,16 @@ func (d *Dev) ReadIsolatedStream(dst []byte) (first uint64, n int, owned bool, e
 	if d.remote == nil {
 		return 0, 0, false, nil
 	}
-	var buf [workerPayload]byte
+	var head [8]byte
 	limit := min(len(dst), workerPayload-8) &^ 3
-	m, err := d.remote.call(workerStreamWords, 0, 0, 0, 0, buf[:limit+8])
+	m, err := d.remote.callSplit(workerStreamWords, 0, 0, 0, 0, nil, head[:], dst[:limit])
 	if err != nil || m < 8 {
 		if err == nil {
 			err = fmt.Errorf("bus: short worker stream reply")
 		}
 		return 0, 0, true, err
 	}
-	first = binary.LittleEndian.Uint64(buf[:8])
-	return first, copy(dst, buf[8:m]), true, nil
+	return binary.LittleEndian.Uint64(head[:]), m - 8, true, nil
 }
 
 // TRLC-LINKS: REQ-SDS-001, REQ-SDS-013
