@@ -374,6 +374,17 @@ func (w *acquisitionWorker) handle(request []byte) int {
 			if err == nil && n != count {
 				err = fmt.Errorf("recall produced %d of %d bytes", n, count)
 			}
+		case workerPanel:
+			if count != 22 {
+				err = fmt.Errorf("invalid panel request")
+				break
+			}
+			var words [11]uint16
+			words, err = w.capture.PanelWords()
+			for i, v := range words {
+				binary.LittleEndian.PutUint16(data[2*i:], v)
+			}
+			n = 22
 		case workerStreamPump:
 			if count != 0 {
 				err = fmt.Errorf("invalid stream pump request")

@@ -37,6 +37,9 @@ const (
 	// (sramcapture.Capture.RecallRecord); the request carries its parameters
 	// after its header, the record's epoch in the header's.
 	workerRecall
+	// workerPanel: the front panel's scan frame and counters
+	// (sramcapture.Capture.ReadPanel) in one round trip, not 22.
+	workerPanel
 )
 
 // workerRecallParams bounds a workerRecall request's parameters: the
@@ -227,6 +230,28 @@ func (d *Dev) RecallIsolated(epoch, record uint32, windows []uint32, dst []byte)
 		err = fmt.Errorf("bus: short worker recall: %d of %d bytes", n, len(dst))
 	}
 	return true, err
+}
+
+// ReadIsolatedPanel has the worker read the front panel's scan frame and
+// counters (sramcapture.Capture.ReadPanel's eleven words, in its order);
+// owned is false without a worker. The panel is read 25 times a second.
+// TRLC-LINKS: REQ-SDS-022, REQ-SDS-013
+func (d *Dev) ReadIsolatedPanel() (words [11]uint16, owned bool, err error) {
+	if d.remote == nil {
+		return words, false, nil
+	}
+	var buf [22]byte
+	n, err := d.remote.call(workerPanel, 0, 0, 0, 0, buf[:])
+	if err == nil && n != len(buf) {
+		err = fmt.Errorf("bus: short worker panel read")
+	}
+	if err != nil {
+		return words, true, err
+	}
+	for i := range words {
+		words[i] = binary.LittleEndian.Uint16(buf[2*i:])
+	}
+	return words, true, nil
 }
 
 // ReadIsolatedDecodedBytes bypasses hardware FIFO reads only when this Dev is a
