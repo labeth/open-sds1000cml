@@ -223,6 +223,7 @@ func (e *Engine) beginSoftStream(ctx context.Context, p SerialParams, trig Strea
 		if e.images == nil || !e.hasImage(want) {
 			return nil, fmt.Errorf("this build has no %s FPGA image to stream %s", want, d.Name)
 		}
+		e.soundYield()
 		if err := e.sram.Halt(ctx); err != nil {
 			return nil, err
 		}
