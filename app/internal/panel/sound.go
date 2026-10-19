@@ -176,6 +176,7 @@ type soundSvc struct {
 	gateOff  uint64
 	hasOff   bool
 	adsrPeak float64
+	armFloor float64 // the quietest level seen while armed: the source's own floor
 	quietFor float64
 	adsrRes  sound.ADSR
 	adsrEnv  []float64
@@ -441,8 +442,10 @@ func (s *soundSvc) readLevels(e soundEngine, set SoundSettings) {
 	s.mu.Unlock()
 }
 
-// readPage runs the shown page's analysis: modulation once a second (the
-// sidebands every two), A/B and harmonics twice a second.
+// readPage runs the shown page's analysis: modulation every two seconds
+// (its four-second window's demodulation is the heaviest analysis on the
+// instrument; a tremolo's figures move slowly), the sidebands with it, A/B
+// and harmonics twice a second.
 // TRLC-LINKS: REQ-SDS-269, REQ-SDS-270, REQ-SDS-271
 func (s *soundSvc) readPage(e soundEngine, set SoundSettings, now time.Time) {
 	s.mu.Lock()
@@ -450,7 +453,7 @@ func (s *soundSvc) readPage(e soundEngine, set SoundSettings, now time.Time) {
 	s.mu.Unlock()
 	switch set.Page {
 	case soundPageMod:
-		if now.Sub(at) < time.Second {
+		if now.Sub(at) < 2*time.Second {
 			return
 		}
 		x, _ := s.latest(e, int(4*fs), set.Ch)
@@ -658,6 +661,7 @@ func (s *soundSvc) arm(on bool) {
 		return
 	}
 	s.adsr, s.adsrWhy, s.hasOff, s.adsrPeak, s.quietFor = adsrArmed, "", false, 0, 0
+	s.armFloor = math.Inf(1)
 	s.adsrRes, s.adsrEnv = sound.ADSR{}, nil
 	if e != nil {
 		e.LeaseSound(3 * time.Second)
@@ -686,6 +690,12 @@ func (s *soundSvc) runADSR(e soundEngine, set SoundSettings) {
 	}
 	info := e.SoundInfo()
 	if state == adsrArmed {
+		if x, _ := s.latest(e, int(0.1*fs), set.Ch); len(x) > 0 && set.Gate >= 0 && !set.EnvCV {
+			pk := sound.Measure(x).Peak
+			s.mu.Lock()
+			s.armFloor = math.Min(s.armFloor, pk)
+			s.mu.Unlock()
+		}
 		for _, m := range e.SoundMarksSince(armedAt) {
 			if m.Rising && m.Ch == gateCh && m.At >= armedAt {
 				s.mu.Lock()
@@ -720,7 +730,13 @@ func (s *soundSvc) runADSR(e soundEngine, set SoundSettings) {
 	}
 	s.mu.Lock()
 	s.adsrPeak = math.Max(s.adsrPeak, lvl)
-	if lvl < 0.03*s.adsrPeak && (s.hasOff || set.Gate < 0 && !set.EnvCV) {
+	// Quiet is 3 % of the peak, or above the source's own floor (hum, a
+	// DAC's ripple) where that is higher, up to a third of the peak.
+	quiet := 0.03 * s.adsrPeak
+	if !math.IsInf(s.armFloor, 1) {
+		quiet = math.Min(0.3*s.adsrPeak, math.Max(quiet, 2*s.armFloor))
+	}
+	if lvl < quiet && (s.hasOff || set.Gate < 0 && !set.EnvCV) {
 		s.quietFor += soundTick.Seconds()
 	} else {
 		s.quietFor = 0

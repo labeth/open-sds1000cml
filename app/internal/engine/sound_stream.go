@@ -280,6 +280,7 @@ type soundState struct {
 	marksOn   bool
 	markSeen  [2]uint16 // the image's rise and fall counts last read
 	markWant  uint64    // the mark config generation in force
+	reload    bool      // a loss ended the last stream: load the image again first
 }
 
 // sound returns the sound state, made on first use.
@@ -443,7 +444,11 @@ func (e *Engine) soundStep() bool {
 // TRLC-LINKS: REQ-SDS-265
 func (e *Engine) soundStart(s *soundState) error {
 	s.setState("starting", false, nil)
-	if e.protocolImage != imageStream {
+	// After a fault the stream image can fault every new stream at its first
+	// word until it is loaded again (seen on the instrument); a fresh load
+	// costs about a second, once per loss.
+	if e.protocolImage != imageStream || s.reload {
+		s.reload = false
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 		err := e.sram.Halt(ctx)
 		cancel()
@@ -596,6 +601,7 @@ func (e *Engine) soundLoss(s *soundState, err error) {
 	s.mu.Lock()
 	s.info.Losses++
 	s.mu.Unlock()
+	s.reload = true
 	e.soundStop(s)
 }
 

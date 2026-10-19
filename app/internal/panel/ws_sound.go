@@ -39,7 +39,11 @@ func (c *Controller) soundPane(s *sv) *wsview.SoundPane {
 	case in.Active:
 		p.Caption = fmt.Sprintf("gap-free stream %.1f kSa/s", in.RateHz/1000)
 		if in.Losses > 0 {
-			p.Caption += fmt.Sprintf("  %d %s", in.Losses, plural(in.Losses, "loss"))
+			losses := "losses"
+			if in.Losses == 1 {
+				losses = "loss"
+			}
+			p.Caption += fmt.Sprintf("  %d %s", in.Losses, losses)
 		}
 	case in.State == "" || in.State == "off":
 		p.Caption, p.State = "starting the audio stream", "starting the audio stream (the stream image loads)"
