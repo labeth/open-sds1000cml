@@ -314,8 +314,10 @@ const maxMeasItems = 12
 // front-end reads use their own thread-safe getters. Rows read sv alone, so
 // building a view never re-enters c.mu.
 type sv struct {
-	now time.Time
-	st  engine.Stats
+	now    time.Time
+	st     engine.Stats
+	snd    SoundSettings // SOUND's settings
+	sndRow soundRowInfo  // and what its rows show
 
 	fe       bool
 	vidx     [2]int

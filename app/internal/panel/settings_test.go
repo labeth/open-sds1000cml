@@ -24,6 +24,7 @@ func TestSettingsViewRoundTrip(t *testing.T) {
 	got := c.SettingsView()
 	got.UI = settings.UI{}         // a file without the workspace UI keeps the UI as it is
 	got.Serial = settings.Serial{} // ... and one without the serial block keeps the trigger
+	got.Sound = settings.Sound{}   // ... and one without SOUND's block keeps SOUND's settings
 	// ... and one without the display state (invert, cursors, zoom) keeps it: as at power-on here
 	if ds := got.Display; !ds.Set || ds.CurMode != 0 || ds.Zoom != 1 || ds.Invert != [2]bool{} {
 		t.Fatalf("the display state kept: %+v", ds)
@@ -81,7 +82,7 @@ func TestApplySettingsViewClamps(t *testing.T) {
 		},
 	})
 	got := c.SettingsView()
-	if got.ViewMode != mod5(-7) {
+	if got.ViewMode != modViews(-7) {
 		t.Errorf("view mode not wrapped like the VIEW tab: %d", got.ViewMode)
 	}
 	if got.Decode.Proto != 0 {

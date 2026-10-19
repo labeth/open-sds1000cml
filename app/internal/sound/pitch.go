@@ -48,13 +48,26 @@ func DetectPitch(x []float64, fs float64, o PitchOpts) Pitch {
 	if !(o.Threshold > 0) {
 		o.Threshold = DefaultPitchOpts.Threshold
 	}
-	tauMax := min(n/2, int(math.Ceil(fs/o.Fmin))+2)
-	tauMin := max(2, int(math.Floor(fs/o.Fmax)))
+	// Past yinMax samples the difference is taken on block means: the
+	// period needs no more, the cost grows with the window, and the
+	// refinement below reads the full-rate samples.
+	y, yfs := x, fs
+	if n > yinMax {
+		dec := 1
+		for n/dec > yinMax {
+			dec *= 2
+		}
+		y, yfs = blockMeanN(x, dec), fs/float64(dec)
+		o.Fmax = math.Min(o.Fmax, yfs/4)
+		n = len(y)
+	}
+	tauMax := min(n/2, int(math.Ceil(yfs/o.Fmin))+2)
+	tauMin := max(2, int(math.Floor(yfs/o.Fmax)))
 	if tauMax <= tauMin+2 {
 		return Pitch{}
 	}
 	w := n - tauMax
-	d := yinDifference(x, w, tauMax)
+	d := yinDifference(y, w, tauMax)
 	// Cumulative mean normalised difference.
 	cm := make([]float64, tauMax)
 	cm[0] = 1
@@ -97,8 +110,25 @@ func DetectPitch(x []float64, fs float64, o PitchOpts) Pitch {
 			ft += 0.5 * (a - c) / den
 		}
 	}
-	f := fs / ft
+	f := yfs / ft
 	return Pitch{Hz: refinePitch(x, fs, f), Clarity: math.Max(0, 1-dip), OK: true}
+}
+
+// yinMax is the longest stretch YIN's difference runs on.
+const yinMax = 8192
+
+// blockMeanN averages x in blocks of k samples (a partial block dropped).
+// TRLC-LINKS: REQ-SDS-267
+func blockMeanN(x []float64, k int) []float64 {
+	out := make([]float64, len(x)/k)
+	for i := range out {
+		s := 0.0
+		for _, v := range x[i*k : i*k+k] {
+			s += v
+		}
+		out[i] = s / float64(k)
+	}
+	return out
 }
 
 // yinDifference is YIN's squared difference d(tau) for tau < tauMax over a

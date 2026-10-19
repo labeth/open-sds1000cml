@@ -235,6 +235,7 @@ type Controller struct {
 	// panel events on the panel goroutine so dispatch stays single-threaded.
 	mu       sync.Mutex
 	ui       uiState
+	snd      *soundSvc        // SOUND's settings and service (sound.go)
 	clock    func() time.Time // nil: time.Now (tests drive notices with their own)
 	chDisp   [2]bool
 	showMeas bool
@@ -419,6 +420,7 @@ func New(eng Engine, fe Analog, keyFD int, tdivs []float64, startTdiv float64, l
 		saverMin:      defSaverMin,
 		offMin:        defOffMin,
 	}
+	c.snd = newSoundSvc(c)
 	for i := range c.slotWS {
 		c.slotWS[i] = -1
 	}

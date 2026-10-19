@@ -45,7 +45,7 @@ func TestWorkspaceKeysSwitchAndCycleViews(t *testing.T) {
 	}
 	again("f1", "SCOPE", "X-Y", "Y-T") // F1 on SCOPE: its next view
 	again("f2", "BUS", "Packets", "Eye diagram", "Stream", "Packets")
-	again("f3", "SPECTRUM", "FFT", "Spectrogram", "Bode", "FFT")
+	again("f3", "SPECTRUM", "FFT", "Spectrogram", "Bode", "Sound", "FFT")
 	again("f4", "MEASURE", "Statistics", "All values", "Statistics")
 	// The workspaces remember their views.
 	press(t, c, "f3", "f3") // SPECTRUM: spectrogram

@@ -121,6 +121,7 @@ type Settings struct {
 	UI       UI         `json:"ui"`
 	Serial   Serial     `json:"serial"`
 	Bode     Bode       `json:"bode,omitzero"`
+	Sound    Sound      `json:"sound,omitzero"`
 	Screen   Screen     `json:"screen,omitzero"` // the instrument's, never in a saved setup
 }
 
@@ -132,6 +133,29 @@ type Bode struct {
 	Set bool `json:"set"`
 	Ref int  `json:"ref"`
 	Dut int  `json:"dut"`
+}
+
+// Sound is SOUND's settings (ADR-SOUND): the tuner's reference, channel,
+// range and smoothing, the meters' 0 dB, the LCD's readout page, the cycles
+// drawn, A/B's input, the envelope's trigger and the V/oct and drift jobs.
+// Set marks a saved block (an older file has none and keeps the power-on
+// settings).
+// TRLC-LINKS: REQ-SDS-273, REQ-SDS-089
+type Sound struct {
+	Set      bool    `json:"set"`
+	A4       float64 `json:"a4"`
+	Ch       int     `json:"ch"`
+	Ref      string  `json:"ref"`
+	Range    string  `json:"range,omitempty"`
+	Slow     bool    `json:"slow,omitempty"`
+	Page     int     `json:"page"`
+	Cycles   int     `json:"cycles"`
+	ABIn     int     `json:"ab_in"`
+	EnvCV    bool    `json:"env_cv,omitempty"`
+	Gate     int     `json:"gate"`
+	GateV    float64 `json:"gate_v"`
+	VOctAuto bool    `json:"voct_auto,omitempty"`
+	Drift    bool    `json:"drift,omitempty"`
 }
 
 // Screen is the screen saver (ADR-SCREEN-SAVER): minutes without input

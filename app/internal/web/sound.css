@@ -1,0 +1,27 @@
+/* sound.css — the SOUND workspace (ADR-SOUND): the Listen bar, the tuner's
+   note, the level meters and the readout tables, over the shared palette. */
+  .snd-listen .r { flex-wrap: wrap; gap: 6px; }
+  button.snd-big { font-size: 15px; font-weight: 600; padding: 6px 16px; min-width: 112px; }
+  button.snd-big.on { background: var(--on-bg); border-color: var(--run); color: var(--run); }
+  .snd-note { display: flex; align-items: baseline; gap: 14px; padding: 2px 4px 4px; font-variant-numeric: tabular-nums; }
+  #sndNote { font: 700 44px/1 var(--mono); min-width: 2.6em; color: var(--dim); }
+  #sndNote.in { color: var(--run); } #sndNote.near { color: var(--trigger); } #sndNote.off { color: var(--text); }
+  .snd-cents { font: 600 20px/1 var(--mono); min-width: 5em; }
+  .snd-hz { font: 14px/1 var(--mono); color: var(--dim); }
+  canvas.snd-tunercv { display: block; width: 100%; height: 150px; border-radius: 4px; }
+  canvas.snd-driftcv { display: block; width: 100%; height: 140px; border-radius: 4px; }
+  #sndViewCv { display: block; width: 100%; height: 100%; }
+  .snd-meters { display: flex; gap: 10px; }
+  .snd-meter { flex: 1 1 0; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+  .snd-mh { display: flex; justify-content: space-between; align-items: center; }
+  .snd-clip { background: var(--stop); color: var(--bg); font-size: 10px; font-weight: 700; padding: 0 4px; border-radius: 3px; }
+  .snd-bar { position: relative; height: 14px; background: var(--well); border: 1px solid var(--edge2); border-radius: 3px; overflow: hidden; }
+  .snd-bar > i { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: var(--c1); }
+  #sndMeter2 .snd-bar > i { background: var(--c2); }
+  .snd-bar > i.hot { background: var(--warn); }
+  .snd-bar > b { position: absolute; top: 0; bottom: 0; width: 2px; left: 0; background: var(--text); }
+  .snd-mv { font: 12px/1.45 var(--mono); white-space: pre; color: var(--text); }
+  .snd-mv .big { font-size: 15px; font-weight: 600; }
+  table.snd-tab td, table.snd-tab th { font-variant-numeric: tabular-nums; padding: 1px 6px; }
+  table.snd-tab td.k { color: var(--dim); }
+  table.snd-tab td.w { color: var(--warn); }

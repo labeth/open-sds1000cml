@@ -228,6 +228,8 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/api/mask", s.hMask)
 	mux.HandleFunc("/api/maskfail", s.hMaskFail)
 	mux.HandleFunc("/api/bode", s.hBode)
+	mux.HandleFunc("GET /api/sound.bin", s.hSoundBin)
+	mux.HandleFunc("/api/sound", s.hSound)
 	mux.HandleFunc("/api/screen.png", s.hScreen)
 	mux.HandleFunc("/api/claim", s.hClaim)
 	mux.HandleFunc("/api/setup", s.hSetup)

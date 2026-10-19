@@ -229,6 +229,8 @@ func (c *Controller) positionTurn(dir, steps int) {
 		c.pickMove(dir)
 	case s.ui.open:
 		c.sheetPosition(dir, steps)
+	case s.ui.ws == wsview.Spectrum && s.viewMode == viewSound:
+		c.soundPosition(dir)
 	case s.ui.posJob && posJob2(s) != "":
 		c.posJobTurn(s, dir, steps)
 	default:
@@ -375,6 +377,8 @@ func (c *Controller) positionPush() {
 		c.mu.Unlock()
 	case s.ui.open:
 		c.sheetPositionPush()
+	case s.ui.ws == wsview.Spectrum && s.viewMode == viewSound:
+		c.soundChannel()
 	case posJob2(s) == "":
 		c.centreTrigger()
 		c.toast("Trigger to centre", 900*time.Millisecond)

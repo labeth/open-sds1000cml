@@ -93,6 +93,10 @@ func TestApplyRestoreCollectFidelity(t *testing.T) {
 		Display: settings.Display{Set: true, CurMode: 2, CurX: [2]float64{0.25, 0.75}, CurY: [2]float64{0.4, 0.55},
 			CurSel: 1, Zoom: 10, ZoomOff: -0.2},
 		Bode: settings.Bode{Set: true, Ref: 1, Dut: 0},
+		// SOUND: tuned on C2 at A4 = 442 Hz, meters on Eurorack's 10 Vpp,
+		// the harmonics page, four cycles, a gate on C1 for the envelope.
+		Sound: settings.Sound{Set: true, A4: 442, Ch: 1, Ref: "euro", Range: "bass", Slow: true, Page: 3, Cycles: 4, ABIn: 1,
+			EnvCV: true, Gate: 0, GateV: 1.5, VOctAuto: true, Drift: true},
 	}
 	settings.Apply(want, e, fe, pc, t.Logf)
 	got := settings.Collect(e, fe, pc)
@@ -191,7 +195,7 @@ func TestApplyHostileValuesClampThroughSetters(t *testing.T) {
 	if v.Decode.ChA != 1 || v.Decode.Format != 2 {
 		t.Fatalf("decode chan/format not clamped into domain: %+v", v.Decode)
 	}
-	if v.ViewMode < 0 || v.ViewMode > 4 {
+	if v.ViewMode < 0 || v.ViewMode > 5 {
 		t.Fatalf("view mode out of domain: %d", v.ViewMode)
 	}
 	u := v.UI
@@ -199,7 +203,7 @@ func TestApplyHostileValuesClampThroughSetters(t *testing.T) {
 		t.Fatalf("hostile workspace UI not clamped into domain: %+v", u)
 	}
 	for _, view := range u.Views {
-		if view < 0 || view > 4 {
+		if view < 0 || view > 5 {
 			t.Fatalf("a workspace view out of domain: %+v", u.Views)
 		}
 	}

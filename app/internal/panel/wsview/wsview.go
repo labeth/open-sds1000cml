@@ -112,6 +112,7 @@ type View struct {
 	Spec     *SpecPane
 	Meas     *MeasPane
 	Cmp      *CmpPane
+	Sound    *SoundPane
 }
 
 // ScopePane is SCOPE's chrome: its name in the top bar and the Adjust tag.
@@ -212,6 +213,44 @@ type SpecPane struct {
 	RefHz    float64
 	BodeIdx  int // Bode: the marked point (-1 none)
 	BodeRef  int // Bode: the delta reference point (-1 none)
+}
+
+// SoundMeter is one channel's level meter in the SOUND view.
+type SoundMeter struct {
+	On     bool
+	DB     float64 // RMS against the reference (the bar)
+	PeakDB float64 // the peak's sine equivalent (the tick)
+	Lines  []string
+	Clip   bool
+}
+
+// SoundPane is SPECTRUM's SOUND view (ADR-SOUND): the tuner, the two
+// meters, the readout page the Adjust knob picks and the cycle trace.
+type SoundPane struct {
+	Pane
+	Ch       int     // the tuned channel (0 = C1)
+	HasPitch bool    //
+	Note     string  // "A4"
+	Cents    float64 // -50..50
+	Hz       string  // "440.02 Hz"
+	Sub      string  // the tuner's second line: "A4 = 440 Hz  clarity 0.98"
+	Strobe   float64 // the strobe band's offset, 0..1
+	Strip    []float32
+	StripOK  []bool
+	Meter    [2]SoundMeter
+	RefName  string
+	Page     string // the readout page's title
+	PageNum  int
+	Pages    int
+	Lines    []Span
+	// The cycle trace: the newest last (older ones dimmed), volts, between
+	// TraceLo and TraceHi; TraceWhy says why there is none.
+	Traces   [][]float32
+	TraceLo  float64
+	TraceHi  float64
+	TraceWhy string
+	TraceTop []Span // its readouts over the plot
+	State    string // the stream's state when it is not streaming
 }
 
 // StatRow is one MEASURE statistics row.

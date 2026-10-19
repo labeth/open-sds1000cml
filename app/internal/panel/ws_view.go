@@ -75,6 +75,7 @@ func (c *Controller) view(s *sv) wsview.View {
 		c.endEyeRaw() // the eye left: nothing waits for its raw record
 	}
 	v := wsview.View{WS: u.ws}
+	c.snd.setLCD(!u.open && u.ws == wsview.Spectrum && s.viewMode == viewSound)
 	if s.now.Before(u.noticeUnt) {
 		v.Notice = u.notice
 	} else if s.st.ADCFault != "" {
@@ -116,6 +117,11 @@ func (c *Controller) view(s *sv) wsview.View {
 		}
 	case wsview.Spectrum:
 		v.Layout.HideViewCaptions, v.Layout.HideBottom = true, true
+		if s.viewMode == viewSound {
+			v.Layout.PlotTop, v.Layout.HideMeas = soundPlotTop, true
+			v.Sound = c.soundPane(s)
+			break
+		}
 		v.Spec = c.specPane(s)
 	case wsview.Measure:
 		v.Layout.HideMeas = true

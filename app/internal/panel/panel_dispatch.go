@@ -23,6 +23,7 @@ func (c *Controller) Run(stop <-chan struct{}) {
 	c.adoptQual(c.eng.Snapshot())
 	c.mu.Unlock()
 	c.looping.Store(true) // the remote's changes now run on this goroutine
+	go c.snd.run(stop)    // SOUND reads the audio stream while something needs it
 	defer c.looping.Store(false)
 
 	sigio := make(chan os.Signal, 8)

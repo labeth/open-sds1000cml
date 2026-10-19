@@ -44,6 +44,8 @@ func drawUI(sf Surface, f *engine.Frame, hud HUD, p plotArea) {
 			drawMeasPane(sf, p, ui.Meas)
 		case ui.Cmp != nil:
 			drawCmpPane(sf, p, ui.Cmp)
+		case ui.Sound != nil:
+			drawSoundPane(sf, p, ui.Sound)
 		}
 	}
 	if hud.Match.Open {

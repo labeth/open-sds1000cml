@@ -28,6 +28,7 @@ const (
 	tabTime
 	tabAcq
 	tabView
+	tabSnd
 	tabMeas
 	tabCurs
 	tabCmp
@@ -98,6 +99,7 @@ func init() {
 		{id: "time", name: "TIME", title: "Horizontal", key: "Hori Menu", rows: timeRows()},
 		{id: "acq", name: "ACQ", title: "Acquire", key: "Acquire", rows: acqRows()},
 		{id: "view", name: "VIEW", title: "Display", key: "Display", rows: viewRows()},
+		{id: "snd", name: "SOUND", title: "Sound: tuner, meters, readouts", rows: soundRows()},
 		{id: "meas", name: "MEAS", title: "Measure", key: "Measure", rows: measRows(), home: 2},
 		{id: "curs", name: "CURS", title: "Cursors", key: "Cursors", rows: cursRows()},
 		{id: "cmp", name: "MATH/REF", title: "Math, references, mask, master", key: "Math or Ref", rows: cmpRows()},
@@ -762,9 +764,9 @@ func acqRows() []*row {
 // TRLC-LINKS: REQ-SDS-212
 func viewRows() []*row {
 	view := &row{id: "view.view", label: "View", kind: wsview.Enum,
-		help: "Time view, X-Y, spectrum (FFT), frequency response (Bode) or spectrogram.",
-		knob: "F1 again in SCOPE: Y-T / X-Y. F3 again in SPECTRUM: FFT / Spectrogram / Bode.",
-		opts: staticOpts([]opt{{viewYT, "Y-T"}, {viewXY, "X-Y"}, {viewFFT, "FFT"}, {viewBode, "Bode"}, {viewSpectrogram, "Spectrogram"}}),
+		help: "Time view, X-Y, spectrum (FFT), frequency response (Bode), spectrogram or SOUND (tuner, meters, readouts).",
+		knob: "F1 again in SCOPE: Y-T / X-Y. F3 again in SPECTRUM: FFT / Spectrogram / Bode / Sound.",
+		opts: staticOpts([]opt{{viewYT, "Y-T"}, {viewXY, "X-Y"}, {viewFFT, "FFT"}, {viewBode, "Bode"}, {viewSpectrogram, "Spectrogram"}, {viewSound, "Sound"}}),
 		get:  func(s *sv) int { return s.viewMode },
 		set:  func(c *Controller, v int) error { return c.setView(v) },
 		def:  func(c *Controller) error { return c.setView(viewYT) },

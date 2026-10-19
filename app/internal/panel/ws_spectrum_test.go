@@ -115,7 +115,7 @@ func TestSpectrumLeasesSpectrumFrames(t *testing.T) {
 	if r.eng.specReleases.Load() != 1 {
 		t.Fatalf("Bode: %d releases, want 1", r.eng.specReleases.Load())
 	}
-	press(t, c, "f3") // FFT again
+	press(t, c, "f3", "f3") // SOUND, then FFT again
 	r.show(toneFrame(""))
 	press(t, c, "f4") // MEASURE
 	r.show(toneFrame(""))

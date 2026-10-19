@@ -144,6 +144,10 @@ func specMarker(u *uiState, a *anaState) (f, db float64, row int, ok bool) {
 // TRLC-LINKS: REQ-SDS-216, REQ-SDS-213
 func (c *Controller) specAdjust(dir int) {
 	s := c.snap()
+	if s.viewMode == viewSound {
+		c.soundAdjust(dir)
+		return
+	}
 	if s.viewMode == viewBode {
 		c.bodeMove(s, dir)
 		return
@@ -191,6 +195,10 @@ func (c *Controller) specFine(dir, n int) {
 // TRLC-LINKS: REQ-SDS-216
 func (c *Controller) specDelta() {
 	s := c.snap()
+	if s.viewMode == viewSound {
+		c.soundPush()
+		return
+	}
 	if s.viewMode == viewBode {
 		c.mu.Lock()
 		defer c.mu.Unlock()
@@ -431,14 +439,16 @@ func (c *Controller) bodePane(s *sv, p *wsview.SpecPane) {
 	p.Tool = append([]wsview.Seg{{Key: "Adjust", Job: "point"}, {Key: "push", Job: delta}}, posTool(s)...)
 }
 
-// nextSpecView is SPECTRUM again: FFT, spectrogram, Bode, FFT.
-// TRLC-LINKS: REQ-SDS-216
+// nextSpecView is SPECTRUM again: FFT, spectrogram, Bode, SOUND, FFT.
+// TRLC-LINKS: REQ-SDS-216, REQ-SDS-273
 func nextSpecView(v int) int {
 	switch v {
 	case viewFFT:
 		return viewSpectrogram
 	case viewSpectrogram:
 		return viewBode
+	case viewBode:
+		return viewSound
 	}
 	return viewFFT
 }

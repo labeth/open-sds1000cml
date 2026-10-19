@@ -742,6 +742,8 @@ func drawViews(sf, traceTarget Surface, p plotArea, f *engine.Frame, hud HUD) {
 		drawFFT(sf, p, f, hud)
 	case hud.ViewMode == 3:
 		drawBode(sf, p, hud)
+	case hud.ViewMode == 5:
+		drawSoundTrace(sf, p, hud.UI.Sound)
 	case hud.ViewMode == 4:
 		drawSpectrogramMark(sf, p, hud.Spect, hud.UI.Layout.HideViewCaptions, hud.UI.Spec)
 	case f != nil && len(f.C1) > 0:

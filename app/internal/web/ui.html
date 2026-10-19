@@ -6,6 +6,7 @@
 <title>open-sds1000cml</title>
 <link rel="stylesheet" href="tokens.css"><!-- palette generated from tokens.json, shared with the LCD -->
 <link rel="stylesheet" href="base.css">
+<link rel="stylesheet" href="sound.css">
 </head>
 <body data-ws="scope">
 <!-- Task workspaces (ADR-TASK-WORKSPACES): five workspaces over one fixed
@@ -20,6 +21,7 @@
     <button type="button" role="tab" class="wstab" id="tab-spectrum" data-ws="spectrum" aria-controls="ws-spectrum" aria-selected="false" aria-keyshortcuts="Alt+3" tabindex="-1"><kbd>Alt+3</kbd><span>SPECTRUM</span><i class="tdot" hidden></i></button>
     <button type="button" role="tab" class="wstab" id="tab-measure" data-ws="measure" aria-controls="ws-measure" aria-selected="false" aria-keyshortcuts="Alt+4" tabindex="-1"><kbd>Alt+4</kbd><span>MEASURE</span><i class="tdot" hidden></i></button>
     <button type="button" role="tab" class="wstab" id="tab-compare" data-ws="compare" aria-controls="ws-compare" aria-selected="false" aria-keyshortcuts="Alt+5" tabindex="-1"><kbd>Alt+5</kbd><span>COMPARE</span><i class="tdot" hidden></i></button>
+    <button type="button" role="tab" class="wstab" id="tab-sound" data-ws="sound" aria-controls="ws-sound" aria-selected="false" aria-keyshortcuts="Alt+6" tabindex="-1"><kbd>Alt+6</kbd><span>SOUND</span><i class="tdot" hidden></i></button>
   </div>
   <span class="grow"></span>
   <span id="trigChip" data-state="" role="status" title="Trigger state (press ? for help)" aria-label="trigger state">—</span>
@@ -38,6 +40,7 @@
     <div class="ws" id="ws-spectrum" role="tabpanel" aria-labelledby="tab-spectrum" hidden></div>
     <div class="ws" id="ws-measure" role="tabpanel" aria-labelledby="tab-measure" hidden></div>
     <div class="ws" id="ws-compare" role="tabpanel" aria-labelledby="tab-compare" hidden></div>
+    <div class="ws" id="ws-sound" role="tabpanel" aria-labelledby="tab-sound" hidden></div>
   </div>
   <div id="allgut" class="gut gut-v" role="separator" tabindex="0" aria-orientation="vertical" aria-label="Resize the All settings pane" hidden></div>
   <aside id="allcol" hidden>
@@ -497,6 +500,89 @@
 <div class="pop" id="setpop" role="dialog" aria-label="Setups" hidden>
   <div class="hd">Setups — every setting, in the scope's 20 setup slots</div>
   <div id="setSlots" class="slots"></div>
+
+<!-- ======================== SOUND ======================== -->
+<section class="pane" id="p-snd-listen" data-title="Listen">
+  <div class="ph"><span class="pt">Listen</span><span class="ps" id="sndRateSub">the gap-free audio stream</span></div>
+  <div class="pb snd-listen">
+    <div class="r">
+      <button type="button" id="sndListen" class="snd-big" aria-pressed="false" title="Play the scope's stream on this computer's sound output (a click is needed to start audio)">Listen ▶</button>
+      <span class="seg sm" id="sndSrc" aria-label="Listen source" data-value="c1"><button data-value="c1" class="cc1">C1</button><button data-value="c2" class="cc2">C2</button><button data-value="st" title="C1 left, C2 right">Stereo</button><button data-value="ab" title="The output less the gain- and delay-matched input: what the circuit adds">A−B</button></span>
+      <button type="button" id="sndMute" class="sm tog" title="Mute (the stream keeps running)">Mute</button>
+      <span class="hl"><span class="lbl">Vol</span><input type="range" id="sndVol" min="0" max="1" step="0.01" value="0.7" aria-label="listen volume"></span>
+    </div>
+    <div class="r">
+      <span class="hl"><span class="lbl">Gain</span><span class="seg xs" id="sndGainMode" aria-label="Gain" data-value="auto"><button data-value="auto" title="Normalise to the measured peak: a 10 Vpp Eurorack signal and a 50 mV pickup both play at a sane level">Auto</button><button data-value="man">Manual</button></span>
+      <input type="range" id="sndGain" min="-20" max="60" step="1" value="0" aria-label="manual gain dB" title="Manual gain: 0 dB plays 1 V as full scale"><span id="sndGainV" class="readout xs">0 dB</span></span>
+      <button type="button" id="sndHP" class="xs tog on" title="20 Hz high-pass: the inputs are DC-coupled">HP 20 Hz</button>
+      <button type="button" id="sndLP" class="xs tog" title="5 kHz low-pass">LP 5 kHz</button>
+      <button type="button" id="sndNotch" class="xs tog" title="Notch the fundamental (the tuner's pitch): hear only distortion and noise">Notch F0</button>
+    </div>
+    <div class="r sub" id="sndStatus">Listen idle</div>
+  </div>
+</section>
+
+<section class="pane" id="p-snd-view" data-title="Sound view">
+  <div class="ph"><span class="pt">Sound view</span><span class="ps" id="sndViewSub"></span><span class="pa">
+    <span class="seg sm" id="sndView" aria-label="Sound view" data-value="cycle"><button data-value="cycle" title="Pitch-locked waveform from the FPGA's edge marks, placed on their crossings">Cycle</button><button data-value="env" title="The envelope capture (ADSR)">Envelope</button><button data-value="mod" title="Amplitude and pitch over time: tremolo and vibrato">Modulation</button><button data-value="spec" title="Audio spectrum: log axis with notes, harmonics, the scope's floor">Spectrum</button><button data-value="ab" title="Input against output: transfer curve and both spectra">A/B</button></span>
+    <span class="seg xs" id="sndCycles" aria-label="Cycles shown" data-value="2"><button data-value="1">1</button><button data-value="2">2</button><button data-value="4">4</button></span>
+  </span></div>
+  <div class="pb flush"><canvas id="sndViewCv" aria-label="sound view"></canvas></div>
+</section>
+
+<section class="pane" id="p-snd-ctx" data-title="Details">
+  <div class="ph"><span class="pt" id="sndCtxTitle">Details</span><span class="ps" id="sndCtxSub"></span></div>
+  <div class="pb"><table class="meas snd-tab"><tbody id="sndCtxBody"></tbody></table></div>
+</section>
+
+<section class="pane" id="p-snd-tuner" data-title="Tuner">
+  <div class="ph"><span class="pt">Tuner</span><span class="ps" id="sndTunerSub"></span><span class="pa">
+    <span class="seg xs" id="sndCh" aria-label="Tuned channel" data-value="0"><button data-value="0" class="cc1">C1</button><button data-value="1" class="cc2">C2</button></span>
+  </span></div>
+  <div class="pb">
+    <div class="snd-note"><span id="sndNote">--</span><span class="snd-cents" id="sndCents">— c</span><span class="snd-hz" id="sndHz">no pitch</span></div>
+    <canvas id="sndTunerCv" class="snd-tunercv" aria-label="cents needle, strobe and the last ten seconds of pitch"></canvas>
+    <div class="r"><span class="l">A4</span><input type="number" id="sndA4" class="num w-sm" min="400" max="480" step="0.1" value="440" aria-label="A4 reference Hz"><span class="hint">Hz</span>
+      <select id="sndRange" aria-label="tuner range"><option value="">Auto</option><option value="bass">Bass</option><option value="high">High</option></select>
+      <span class="seg xs" id="sndSlow" aria-label="smoothing" data-value="0"><button data-value="0">Fast</button><button data-value="1">Slow</button></span></div>
+  </div>
+</section>
+
+<section class="pane" id="p-snd-meters" data-title="Meters">
+  <div class="ph"><span class="pt">Meters</span><span class="ps"></span><span class="pa">
+    <select id="sndRef" aria-label="meter 0 dB reference"><option value="dbu">dBu</option><option value="dbv">dBV</option><option value="euro">Eurorack 10 Vpp</option><option value="pro">+4 dBu line</option><option value="consumer">-10 dBV</option><option value="guitar">guitar 100 mV</option></select>
+  </span></div>
+  <div class="pb snd-meters">
+    <div class="snd-meter" id="sndMeter1"><div class="snd-mh"><b class="cc1">C1</b><span class="snd-clip" hidden>CLIP</span></div><div class="snd-bar"><i></i><b></b></div><div class="snd-mv"></div></div>
+    <div class="snd-meter" id="sndMeter2"><div class="snd-mh"><b class="cc2">C2</b><span class="snd-clip" hidden>CLIP</span></div><div class="snd-bar"><i></i><b></b></div><div class="snd-mv"></div></div>
+  </div>
+</section>
+
+<section class="pane" id="p-snd-read" data-title="Readouts">
+  <div class="ph"><span class="pt">Readouts</span><span class="ps"></span><span class="pa">
+    <span class="seg xs" id="sndRead" aria-label="Readout" data-value="adsr"><button data-value="adsr">ADSR</button><button data-value="voct">V/oct</button><button data-value="drift">Drift</button></span>
+  </span></div>
+  <div class="pb">
+    <div id="sndReadAdsr">
+      <div class="r"><button type="button" id="sndArm" class="sm" title="The next FPGA edge of the trigger starts a capture; it ends when the sound has died away">Arm</button>
+        <select id="sndGate" aria-label="envelope trigger"><option value="-1">Signal level</option><option value="0">Gate C1</option><option value="1">Gate C2</option></select>
+        <input type="number" id="sndGateV" class="num w-sm" step="0.05" value="0.1" aria-label="trigger level V"><span class="hint">V</span>
+        <span class="seg xs" id="sndEnvCV" aria-label="envelope of" data-value="0"><button data-value="0">Tone</button><button data-value="1">CV</button></span></div>
+      <table class="meas snd-tab"><tbody id="sndAdsrBody"></tbody></table>
+    </div>
+    <div id="sndReadVoct" hidden>
+      <div class="r"><button type="button" id="sndVTake" class="sm" title="Take a point: the CV on the other channel, the pitch of the tuned one">Take point</button><button type="button" id="sndVUndo" class="xs">Undo</button><button type="button" id="sndVClear" class="xs">Clear</button>
+        <span class="seg xs" id="sndVAuto" aria-label="automatic points" data-value="0"><button data-value="0">By hand</button><button data-value="1">Auto</button></span></div>
+      <table class="meas snd-tab"><thead><tr><th>CV</th><th>Hz</th><th>Note</th><th>vs 1 V/oct</th><th>fit</th></tr></thead><tbody id="sndVoctBody"></tbody></table>
+      <div class="sub" id="sndVoctFit"></div>
+    </div>
+    <div id="sndReadDrift" hidden>
+      <div class="r"><span class="seg xs" id="sndDriftOn" aria-label="drift log" data-value="0"><button data-value="0">Off</button><button data-value="1">Logging</button></span><button type="button" id="sndDriftClear" class="xs">Clear</button></div>
+      <canvas id="sndDriftCv" class="snd-driftcv" aria-label="drift: cents against time"></canvas>
+      <div class="sub" id="sndDriftSub"></div>
+    </div>
+  </div>
+</section>
 </div>
 
 <div id="help" role="dialog" aria-modal="true" aria-label="Help">
@@ -553,6 +639,7 @@
 <script src="eyejitter.js"></script>
 <script src="bode.js"></script>
 <script src="spectrogram.js"></script>
+<script src="sound.js"></script>
 <!-- The client, in load order: shared state first, then the UI primitives and
      pure helpers, then the orchestration/transport core, then one file per
      feature (its functions AND its event wiring together), then the
@@ -581,6 +668,7 @@
 <script src="app_spectrum.js"></script>   <!-- SPECTRUM: peaks, THD, readout, time trace -->
 <script src="app_measure.js"></script>    <!-- MEASURE: statistics, values, cursors -->
 <script src="app_compare.js"></script>    <!-- COMPARE: references, difference, master -->
+<script src="app_sound.js"></script>      <!-- SOUND: listen, meters, tuner, views, readouts -->
 <script src="app_allset.js"></script>     <!-- All settings + setups -->
 <script src="app_init.js"></script>       <!-- layout + first paint + first poll (must be last) -->
 </body>

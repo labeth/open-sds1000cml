@@ -73,6 +73,10 @@ func b2ic(b bool) int {
 // TRLC-LINKS: REQ-SDS-136
 func mod5(x int) int { return ((x % 5) + 5) % 5 }
 
+// modViews wraps a display view number into the views there are.
+// TRLC-LINKS: REQ-SDS-273
+func modViews(x int) int { return ((x % numViews) + numViews) % numViews }
+
 // TRLC-LINKS: REQ-SDS-136
 func mod3(x int) int { return ((x % 3) + 3) % 3 }
 

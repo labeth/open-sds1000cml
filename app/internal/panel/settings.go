@@ -61,7 +61,22 @@ func (c *Controller) SettingsView() settings.ViewState {
 		UI:     ui,
 		Serial: ser,
 		Screen: settings.Screen{Set: true, SaverMin: c.saverMin, OffMin: c.offMin},
+		Sound:  soundSettingsOut(c.snd.Settings()),
 	}
+}
+
+// soundSettingsOut is SOUND's settings as the settings file keeps them.
+// TRLC-LINKS: REQ-SDS-273, REQ-SDS-089
+func soundSettingsOut(s SoundSettings) settings.Sound {
+	return settings.Sound{Set: true, A4: s.A4, Ch: s.Ch, Ref: s.Ref, Range: s.Range, Slow: s.Slow, Page: s.Page, Cycles: s.Cycles,
+		ABIn: s.ABIn, EnvCV: s.EnvCV, Gate: s.Gate, GateV: s.GateV, VOctAuto: s.VOctAuto, Drift: s.Drift}
+}
+
+// soundSettingsIn is a saved SOUND block as settings (bounded on the way in).
+// TRLC-LINKS: REQ-SDS-273, REQ-SDS-089
+func soundSettingsIn(s settings.Sound) SoundSettings {
+	return SoundSettings{A4: s.A4, Ch: s.Ch, Ref: s.Ref, Range: s.Range, Slow: s.Slow, Page: s.Page, Cycles: s.Cycles,
+		ABIn: s.ABIn, EnvCV: s.EnvCV, Gate: s.Gate, GateV: s.GateV, VOctAuto: s.VOctAuto, Drift: s.Drift}.clean()
 }
 
 // serialSettings is the serial trigger as the settings file keeps it.
@@ -136,7 +151,7 @@ func (c *Controller) ApplySettingsView(v settings.ViewState) {
 		d.ChB = 1 - d.ChA // data on the OTHER channel
 	}
 	d.Format = mod3(d.Format)
-	view := mod5(v.ViewMode)
+	view := modViews(v.ViewMode)
 
 	c.mu.Lock()
 	c.viewMode = view
@@ -187,7 +202,7 @@ func (c *Controller) ApplySettingsView(v settings.ViewState) {
 	if u := v.UI; u.Set {
 		ws := wsview.WS(clampInt(u.Workspace, 0, wsview.Count-1))
 		for i := range c.ui.views {
-			c.ui.views[i] = mod5(u.Views[i])
+			c.ui.views[i] = modViews(u.Views[i])
 		}
 		c.ui.ws, c.ui.busEye, c.ui.measAll = ws, u.BusEye, u.MeasAll
 		c.viewMode = c.ui.views[ws]
@@ -237,6 +252,10 @@ func (c *Controller) ApplySettingsView(v settings.ViewState) {
 				c.srStopVal = u.SrTarget
 			}
 		}
+	}
+	if v.Sound.Set {
+		snd := soundSettingsIn(v.Sound)
+		c.snd.update(func(s *SoundSettings) { *s = snd })
 	}
 	if sc := v.Screen; sc.Set {
 		c.saverMin = oneOf(sc.SaverMin, saverMins, defSaverMin)

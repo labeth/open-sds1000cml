@@ -343,6 +343,21 @@ func (e *Engine) SoundLatest(n int, q1, q2 []uint16) SoundBlock {
 	return s.ring.latest(n, q1, q2, s.info.RateHz)
 }
 
+// SoundMarksSince is the marks from ordinal from on.
+// TRLC-LINKS: REQ-SDS-272, REQ-SDS-268
+func (e *Engine) SoundMarksSince(from uint64) []SoundMark {
+	r := e.sound().ring
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	var out []SoundMark
+	for _, m := range r.marks {
+		if m.At >= from {
+			out = append(out, m)
+		}
+	}
+	return out
+}
+
 // SoundWait parks until the ring holds samples past after (or timeout) and
 // returns the next ordinal.
 // TRLC-LINKS: REQ-SDS-265

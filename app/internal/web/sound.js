@@ -204,10 +204,17 @@ function sndPitch(x, fs, o) {
   o = Object.assign({}, SND_PITCH_DEFAULT, o || {});
   const n = x.length;
   if (n < 64 || !(fs > 0)) return { hz: 0, clarity: 0, ok: false };
-  const tauMax = Math.min(Math.floor(n / 2), Math.ceil(fs / o.fmin) + 2);
-  const tauMin = Math.max(2, Math.floor(fs / o.fmax));
+  let y = x, yfs = fs, ny = n;
+  if (n > SND_YIN_MAX) {
+    let dec = 1;
+    while (Math.floor(n / dec) > SND_YIN_MAX) dec *= 2;
+    y = sndBlockMeanN(x, dec); yfs = fs / dec; ny = y.length;
+    o.fmax = Math.min(o.fmax, yfs / 4);
+  }
+  const tauMax = Math.min(Math.floor(ny / 2), Math.ceil(yfs / o.fmin) + 2);
+  const tauMin = Math.max(2, Math.floor(yfs / o.fmax));
   if (tauMax <= tauMin + 2) return { hz: 0, clarity: 0, ok: false };
-  const d = sndYinDiff(x, n - tauMax, tauMax);
+  const d = sndYinDiff(y, ny - tauMax, tauMax);
   const cm = new Float64Array(tauMax);
   cm[0] = 1;
   let run = 0;
@@ -232,7 +239,16 @@ function sndPitch(x, fs, o) {
     const a = cm[tau - 1], b = cm[tau], c = cm[tau + 1], den = a - 2 * b + c;
     if (den > 0) ft += 0.5 * (a - c) / den;
   }
-  return { hz: sndRefine(x, fs, fs / ft), clarity: Math.max(0, 1 - dip), ok: true };
+  return { hz: sndRefine(x, fs, yfs / ft), clarity: Math.max(0, 1 - dip), ok: true };
+}
+
+const SND_YIN_MAX = 8192;
+
+// TRLC-LINKS: REQ-SDS-267
+function sndBlockMeanN(x, k) {
+  const out = new Float64Array(Math.floor(x.length / k));
+  for (let i = 0; i < out.length; i++) { let s = 0; for (let j = i * k; j < i * k + k; j++) s += x[j]; out[i] = s / k; }
+  return out;
 }
 
 // TRLC-LINKS: REQ-SDS-267

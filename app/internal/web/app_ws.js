@@ -23,6 +23,9 @@ const WSDEF = [
   { id: "compare", name: "COMPARE", alt: "Alt+5", view: "YT",
     blurb: "References A and B, math and the mask against the live trace, with a live difference readout.",
     again: "stack a master (average, REF A, mask, test)" },
+  { id: "sound", name: "SOUND", alt: "Alt+6", view: "SOUND",
+    blurb: "Listen to the probe, level meters, a tuner with V/oct tracking, envelope, modulation, the audio spectrum and input against output, from the gap-free audio stream (triggered captures pause while it runs).",
+    again: "cycle → envelope → modulation → spectrum → A/B" },
 ];
 const WSBY = Object.fromEntries(WSDEF.map((w) => [w.id, w]));
 
@@ -56,12 +59,16 @@ const WS_LAYOUT = {
   compare: () => lr([
     lc([lp("p-cmp-scope", 500, { grow: true, min: 200 }), lp("p-diff", 150, { minW: 380, min: 100 })], 900, { grow: true }),
     lc([lp("p-refs", 222), lp("p-math", 104), lp("p-mask", 300, { grow: true })], SIDE, { minW: 330 })]),
+  // TRLC-LINKS: REQ-SDS-274
+  sound: () => lr([
+    lc([lp("p-snd-listen", 112, { min: 90 }), lp("p-snd-view", 470, { grow: true, min: 200 }), lp("p-snd-ctx", 150, { min: 80 })], 900, { grow: true }),
+    lc([lp("p-snd-tuner", 270), lp("p-snd-meters", 196), lp("p-snd-read", 300, { grow: true })], SIDE, { minW: 330 })]),
 };
 const SCOPE_PANES = { scope: "p-scope", bus: "p-bus-scope", spectrum: "p-analysis", measure: "p-meas-scope", compare: "p-cmp-scope" };
 
 // The per-workspace screen view and sub-views. Only the view is per workspace:
 // the instrument (and its settings) is one.
-const WSV = { scope: "YT", bus: "YT", spectrum: "FFT", measure: "YT", compare: "YT" };
+const WSV = { scope: "YT", bus: "YT", spectrum: "FFT", measure: "YT", compare: "YT", sound: "SOUND" };
 const ws = { cur: null, trees: {}, built: {}, maxed: {}, busView: "packets", measView: "stats", flashT: 0 };
 // Workspace modules (app_bus.js, app_spectrum.js…) register enter/leave/view
 // hooks here; setWs and setWsView call them in order. WS_TICKS run once per
@@ -309,11 +316,12 @@ function setWs(id) {
   }
   document.body.dataset.ws = id;
   placePanes(id);
-  // the one scope display moves into this workspace's scope pane
-  const sp = $(SCOPE_PANES[id]);
-  const slot = sp.querySelector("[data-scope-slot]");
+  // the one scope display moves into this workspace's scope pane (SOUND has
+  // none: the audio stream owns the fabric while it is shown)
+  const sp = SCOPE_PANES[id] ? $(SCOPE_PANES[id]) : null;
+  const slot = sp && sp.querySelector("[data-scope-slot]");
   if (slot && $("scopeunit").parentElement !== slot) slot.appendChild($("scopeunit"));
-  const tools = sp.querySelector("[data-tools-slot]");
+  const tools = sp && sp.querySelector("[data-tools-slot]");
   if (tools && $("scopetools").parentElement !== tools) tools.appendChild($("scopetools"));
   if (stranded) { try { $("tab-" + id).focus({ preventScroll: true }); } catch (e) { /* ignore */ } }
   popClose();
@@ -330,6 +338,7 @@ function applyWsView(id) {
   const v = WSV[id];
   if (id === "scope") $("viewScope").value = v;
   if (id === "spectrum") { $("viewSpec").value = v; anaTools(v); }
+  if (id === "sound") { resize(); return; }
   if (view.mode !== v) setMode(v);
   else resize();
 }
@@ -361,6 +370,7 @@ function wsAgain(id) {
   else if (id === "spectrum") setWsView({ FFT: "SPG", SPG: "BODE", BODE: "FFT" }[WSV.spectrum] || "FFT");
   else if (id === "measure") measSetView(ws.measView === "stats" ? "values" : "stats");
   else if (id === "compare") stackMaster();
+  else if (id === "sound") sndNextView();
 }
 
 // TRLC-LINKS: REQ-SDS-219
@@ -394,6 +404,8 @@ function wsDots() {
   const refOn = !!((refs.A && refs.A.show) || (refs.B && refs.B.show)), mathOn = mathFn !== "off";
   const mst = typeof master !== "undefined" && master.busy;
   set("compare", refOn || mathOn || mst, false, mst ? "stacking a master" : refOn ? "references shown" : "math on");
+  const listening = typeof snd !== "undefined" && snd.audio.on;
+  set("sound", listening, false, "listening");
 }
 setInterval(wsDots, 1000);
 
@@ -450,7 +462,7 @@ function flash(el) {
 }
 
 // ---- keyboard ---------------------------------------------------------------------
-// One keydown handler for the whole app. Alt+1..5 are matched on the key CODE so
+// One keydown handler for the whole app. Alt+1..6 are matched on the key CODE so
 // macOS Option+digit (which types a symbol) works too; F1-F5 are deliberately
 // not bound (F5 is the browser's reload). Single letters are ignored while
 // typing, and Space/Enter keep their meaning on a focused control.
@@ -465,10 +477,10 @@ function wsKeydown(e) {
     if (ws.maxed[ws.cur] && !editableFocused()) { toggleMax(ws.maxed[ws.cur]); e.preventDefault(); return; }
     return;
   }
-  const dg = /^(?:Digit|Numpad)([1-5])$/.exec(e.code || "");
+  const dg = /^(?:Digit|Numpad)([1-6])$/.exec(e.code || "");
   if (dg && e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
     // while typing, an Option+digit that produces a character belongs to the field
-    if (editableFocused() && k.length === 1 && !/^[1-5]$/.test(k)) return;
+    if (editableFocused() && k.length === 1 && !/^[1-6]$/.test(k)) return;
     e.preventDefault();
     wsKey(WSDEF[+dg[1] - 1].id);
     return;
@@ -517,7 +529,7 @@ function toggleHelp(force) {
       `<tr><th colspan="2" class="cap">Workspaces</th></tr>` +
       WSDEF.map((w) => `<tr><td><kbd>${w.alt}</kbd></td><td><b>${w.name}</b> <span class="dim">${esc(w.blurb)} Again: ${esc(w.again)}.</span></td></tr>`).join("");
     $("helpKeys").innerHTML = `<tr><th colspan="2" class="cap">Keys</th></tr>` +
-      rows([{ label: "Alt+1 – 5", desc: "Workspace; the shown workspace's key again shows its next view" },
+      rows([{ label: "Alt+1 – 6", desc: "Workspace; the shown workspace's key again shows its next view" },
         { label: "Ctrl+,", desc: "All settings" }]) + rows(KEYMAP) +
       rows([{ label: "Esc", desc: "Close help, menus, a maximized pane; cancel a master" }]);
     $("helpMouse").innerHTML = `<tr><th colspan="2" class="cap">Mouse</th></tr>` +

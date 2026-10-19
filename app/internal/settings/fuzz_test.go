@@ -47,7 +47,7 @@ func FuzzParseAndApply(f *testing.F) {
 		v := pc.SettingsView()
 		// (a decoder of the BUS tab's: framecalc's protocols, Auto loading as
 		// a detection, never itself)
-		if v.ViewMode < 0 || v.ViewMode > 4 || v.Decode.Proto < 0 || v.Decode.Proto >= framecalc.NumProtos || v.Decode.Proto == framecalc.ProtoAuto ||
+		if v.ViewMode < 0 || v.ViewMode > 5 || v.Decode.Proto < 0 || v.Decode.Proto >= framecalc.NumProtos || v.Decode.Proto == framecalc.ProtoAuto ||
 			v.Decode.ChA>>1 != 0 || v.Decode.ChB>>1 != 0 || v.Decode.Format < 0 || v.Decode.Format > 2 {
 			t.Fatalf("hostile input escaped the domain clamps: %+v", v)
 		}

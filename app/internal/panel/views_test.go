@@ -281,7 +281,7 @@ func TestWorkspaceScreens(t *testing.T) {
 	if v := r.shot("scope_sheet_trig"); v.Sheet == nil || v.Keys == nil || v.Sheet.Tabs[0].Name != "TRIG" || !v.Sheet.Tabs[0].Active {
 		t.Fatalf("SCOPE sheet %+v", v.Sheet)
 	}
-	for _, tab := range []string{"ch1", "ch2", "time", "acq", "view", "meas", "curs", "cmp", "bus", "file", "sys"} {
+	for _, tab := range []string{"ch1", "ch2", "time", "acq", "view", "snd", "meas", "curs", "cmp", "bus", "file", "sys"} {
 		turn(c, "tdiv", 1)
 		if got := c.PanelStatus().Sheet.Tab; got != tab {
 			t.Fatalf("S/DIV reached %s, want %s", got, tab)

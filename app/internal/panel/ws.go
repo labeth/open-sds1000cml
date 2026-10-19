@@ -22,6 +22,7 @@ const (
 	viewFFT
 	viewBode
 	viewSpectrogram
+	viewSound
 	numViews
 )
 
@@ -37,6 +38,8 @@ func viewName(v int) string {
 		return "Bode"
 	case viewSpectrogram:
 		return "Spectrogram"
+	case viewSound:
+		return "Sound"
 	}
 	return "Y-T"
 }
@@ -53,7 +56,7 @@ type wsDef struct {
 var wsDefs = [wsview.Count]wsDef{
 	{tabs: []string{"trig", "ch1", "ch2", "time", "acq"}, plotTop: 0, view: viewYT, cycle: "Y-T / X-Y"},
 	{tabs: []string{"bus", "trig", "time"}, plotTop: 136, view: viewYT, cycle: "Packets / Eye diagram / Stream"},
-	{tabs: []string{"view", "acq", "time"}, plotTop: 150, view: viewFFT, cycle: "FFT / Spectrogram / Bode"},
+	{tabs: []string{"view", "snd", "acq", "time"}, plotTop: 150, view: viewFFT, cycle: "FFT / Spectrogram / Bode / Sound"},
 	{tabs: []string{"meas", "curs", "acq"}, plotTop: 142, view: viewYT, cycle: "statistics / all values"},
 	{tabs: []string{"cmp", "ch1", "ch2"}, plotTop: 104, view: viewYT, cycle: "stack a master"},
 }
@@ -280,6 +283,7 @@ func (c *Controller) snap() *sv {
 	s.remoteNotices, s.hasHardcopy = c.remoteNotices, c.hardcopy != nil
 	s.saverMin, s.offMin, s.screen = c.saverMin, c.offMin, c.screenLocked(s.now)
 	s.ui = c.ui
+	s.snd, s.sndRow = c.snd.Settings(), c.snd.rowInfo()
 	stream := c.stream
 	c.mu.Unlock()
 	if stream != nil && serialProto(s.decProto) && s.decMode == decModeStream {
