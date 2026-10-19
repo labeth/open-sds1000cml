@@ -112,6 +112,9 @@ type softStream struct {
 	read      time.Duration // signal time read
 	nextOrd   uint64
 	stopUnit  int    // the stop value's unit in its frame
+	noStop    bool   // emit: the value read does not stop (the FPGA did not fire)
+	valueRead bool   // emit: the value was read
+	missed    int    // records in a row whose decode read the value the FPGA did not fire on
 	stopFirst uint64 // the stop frame's first and last sample ordinals
 	stopLast  uint64
 
@@ -122,11 +125,18 @@ type softStream struct {
 	recDue  time.Time
 }
 
+// softValueMisses is how many records in a row may hold the stop value
+// the symbol trigger did not fire on before a captures stream gives up.
+const softValueMisses = 8
+
 // softProtoNames are the decode package's names of the symbol protocols.
 var softProtoNames = map[int]string{serLIN: "lin", serDMX: "dmx512", serModbus: "modbus", serOneWire: "onewire",
 	serWS281x: "ws281x", serDHT: "dht", serCEC: "cec", serJ1850: "j1850", serIRNEC: "irnec", serIRSIRC: "irsirc",
 	serIRRC5: "irrc5", serIRRC6: "irrc6", serDALI: "dali", serUSBPD: "usbpd", serSPDIF: "spdif", serPS2: "ps2",
-	serSWD: "swd", serMDIO: "mdio", serWiegand: "wiegand"}
+	serSWD: "swd", serMDIO: "mdio", serWiegand: "wiegand", serQuad: "quad", serStepper: "stepper", serPWM: "pwm",
+	serRCEncode: "rcencode", serOOK: "ook", serMiller: "miller", serMorse: "morse", serDCF77: "dcf77", serEM4100: "em4100",
+	serEM4305: "em4305", serT55xx: "t55xx", serSWIM: "swim", serSDQ: "sdq", serPJDL: "pjdl", serDSI: "dsi", serQi: "qi",
+	serSDCard: "sdcard", serPDI: "pdi", serCJTAG: "cjtag", serMaple: "maple", serCaliper: "caliper", serIRMP: "irmp"}
 
 // SoftStreamMode says how the scope streams proto at bit rate baud (the
 // decoder settings'): "gap-free" from the continuous stream, "captures" of
@@ -230,10 +240,12 @@ func (e *Engine) beginSoftStream(ctx context.Context, p SerialParams, trig Strea
 			bucket := float64(uint64(1)<<log) * 2e-9
 			s.sampleS = bucket / 2
 			s.ordStep = float64(uint64(1) << (log - 1))
-			// Decode a fifth of a second at a time: each decode reads the open
-			// window again, so short pushes cost the window over and over.
-			s.pushN = int(math.Max(0.2, 2*quiet) / s.sampleS)
+			// Decode a fifth of a second at a time, or twice Close (each decode
+			// reads the open window again, so short pushes cost it over and
+			// over), but at least once a second: a DCF77 minute's Close is 32 s.
+			s.pushN = int(math.Max(0.2, math.Min(1, 2*quiet)) / s.sampleS)
 			s.dec = decode.NewStreamDecoder(s.decodeFunc(), int(quiet/s.sampleS), int((longest+quiet)/s.sampleS))
+			s.dec.SetLead(int(decode.StreamLead(name, float64(p.Baud)) / s.sampleS))
 			// The stream starts on the loop's next step (softDrain), after
 			// the loop has ended a roll stream that may hold the banks.
 		} else {
@@ -531,7 +543,10 @@ func (s *softStream) emit(frames []decode.StreamFrame, ord func(uint64) uint64) 
 				v := sp.Val & s.mask
 				s.addEvent(sramcapture.DecodedEvent{Kind: sramcapture.EventData, Sample: ord(sp.I0), Value: uint32(v), Valid: true})
 				if !hit && s.trig == StreamOnValue && v == s.value {
-					hit, s.stopUnit = true, unit
+					s.valueRead = true
+					if !s.noStop {
+						hit, s.stopUnit = true, unit
+					}
 				}
 				unit++
 			case "frame-error", "parity-error", "gap":
@@ -610,6 +625,22 @@ func (s *softStream) valuePattern(at int) []PatternElem {
 	return pat
 }
 
+// stopPattern is the symbol trigger's request for the value a gap-free
+// stream stopped on: the value at any unit, else where the transcript read
+// it - and always there on a bus whose request reads its units at their
+// places in one frame (an IR code's address and command), where a value
+// alone asks the first unit. Not a Morse letter's place, which a run of
+// letters of other lengths moves.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240, REQ-SDS-260
+func (s *softStream) stopPattern() []PatternElem {
+	pat := s.valuePattern(-1)
+	spec, ok := symbolSpec(s.p)
+	if (ok && spec.oneFrame || !s.symbolPlans(pat)) && s.proto != "morse" {
+		pat = s.valuePattern(s.stopUnit)
+	}
+	return pat
+}
+
 // bitsLen is the bits of a mask of low ones.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
 func bitsLen(mask int) int {
@@ -658,13 +689,9 @@ func (e *Engine) softArmRecord(s *softStream) {
 		}
 	}
 	words := uint32(sramcapture.SamplesPerChannel / 2)
-	pat := s.valuePattern(-1)
-	if !s.symbolPlans(pat) {
-		pat = s.valuePattern(s.stopUnit) // the value where the transcript read it
-	}
-	c := e.softRecordConfig(s, words, 0, pat)
+	c := e.softRecordConfig(s, words, 0, s.stopPattern())
 	if !c.Symbol.Enabled {
-		s.err = fmt.Errorf("the symbol trigger cannot match %X: no record", s.value)
+		s.err = fmt.Errorf("the FPGA's symbol trigger cannot match %X where it came (unit %d of its frame, past its 64-bit window or among units of other lengths): no record", s.value, s.stopUnit+1)
 		return
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
@@ -714,12 +741,17 @@ func (e *Engine) softCapture(s *softStream) {
 		if log == 0 {
 			words *= 4 // full rate: a record holds a few of the fast frames
 		}
-		// A frame is handed out once Close follows it: a record holds four.
+		// A frame is handed out once Close follows it, and the first only after
+		// a quiet Close: a record holds eight, so most of its frames come out.
 		wordS := float64(uint64(1)<<log) * 2e-9
 		if log == 0 {
 			wordS = 4e-9
 		}
-		words = uint32(min(float64(sramcapture.Words), max(float64(words), math.Ceil(4*s.quiet/wordS))))
+		need := 8 * s.quiet
+		if decode.StreamEdgeFramed(s.proto) {
+			need = max(need, 2*longest) // its first longest frame is dropped unless after a quiet line
+		}
+		words = uint32(min(float64(sramcapture.Words), max(float64(words), math.Ceil(need/wordS))))
 		var pat []PatternElem
 		if s.trig == StreamOnValue {
 			pat = s.valuePattern(-1)
@@ -805,8 +837,31 @@ func (e *Engine) softCapture(s *softStream) {
 	s.sampleS = 1 / m.SampleRateHz
 	s.ordBase, s.ordStep = float64(first), s.sampleS/2e-9
 	s.nextOrd = s.ord(uint64(n)) + 1
-	frames := decode.StreamRecord(a, b, s.decodeFunc(), int(s.quiet/s.sampleS), int(decode.StreamRecordHead(s.proto, feature, longest)/s.sampleS), s.proto == "spdif")
+	cutN := 0
+	if decode.StreamEdgeFramed(s.proto) {
+		cutN = int(longest / s.sampleS)
+	}
+	record := decode.StreamRecord
+	if decode.StreamRecordAfterIdle(s.proto) {
+		record = decode.StreamRecordFromIdle
+	}
+	frames := record(a, b, s.decodeFunc(), int(s.quiet/s.sampleS), int(decode.StreamRecordHead(s.proto, feature, longest)/s.sampleS), cutN, s.proto == "spdif")
+	s.noStop, s.valueRead = !hit, false
 	stop := s.emit(frames, s.ord)
+	s.noStop = false
+	if s.valueRead && !hit {
+		// The decode read the value in a record the symbol trigger did not
+		// fire on: before it was armed, now and then; in every record, a
+		// value the trigger cannot read where it comes (the last byte of
+		// a Miller frame).
+		if s.missed++; s.missed >= softValueMisses {
+			s.err = fmt.Errorf("the FPGA's symbol trigger did not fire on %X, which the decode read in %d records in a row: no record", s.value, s.missed)
+			s.phase = softDone
+			return
+		}
+	} else if hit {
+		s.missed = 0
+	}
 	if hit {
 		if !stop { // the FPGA matched where the decode did not read the value
 			at := s.ord(uint64(m.TriggerIndex) * uint64(m.SamplesPerWord))

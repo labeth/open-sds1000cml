@@ -80,8 +80,12 @@ func (t *Transcript) Reset(proto int) {
 		t.perLine, t.hexDigits, t.ascii = 8, 4, false
 	case 26: // S/PDIF samples: 24 bits
 		t.perLine, t.hexDigits, t.ascii = 4, 6, false
-	case 28: // SWD data words: 32 bits
+	case 28, 49: // SWD data words, cJTAG scans: 32 bits
 		t.perLine, t.hexDigits, t.ascii = 4, 8, false
+	case 52: // IR multi addresses and commands: 16 bits
+		t.perLine, t.hexDigits, t.ascii = 8, 4, false
+	case 31, 32, 35: // an encoder's or a stepper's steps (their direction), Oregon nibbles
+		t.hexDigits, t.ascii = 1, false
 	}
 }
 
@@ -95,7 +99,7 @@ const HistorySamples = 524288
 // EventStart carries (its Value indexes them, 0 none): the decoders' "sof"
 // texts.
 var startNotes = []string{"", "LDR", "REP", "SIRC", "RC5", "RC6", "RST", "START", "SOF", "BRK", "B", "SOP", "SOP'",
-	"SOP\"", "SOP'D", "SOP\"D", "HRST", "CRST"}
+	"SOP\"", "SOP'D", "SOP\"D", "HRST", "CRST", "MATSUSH", "KASEIKYO", "SAMSUNG", "DENON", "SAMSG32", "JVC", "NEC16", "NEC42"}
 
 // StartNoteCode is the EventStart Value naming a start of frame text (0 for
 // none, or one the transcript does not name).

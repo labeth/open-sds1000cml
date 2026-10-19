@@ -335,17 +335,66 @@ func TestAShortRunFindNeedsTheEnvelope(t *testing.T) {
 	}
 }
 
+// AUTO's search begins at 500us/div after its sweep, whose last frames, at
+// 5us/div, are still in flight: one of them (54 us, the bench SWD's transfer
+// cut, recorded on the scope) reads as "SPI mode 0, 6 bytes" and named the
+// bus one search in ten. The first look takes only a frame spanning the
+// screen of the timebase set.
+// TRLC-LINKS: REQ-SDS-214, REQ-SDS-223
+func TestBusSearchSkipsAFrameInFlight(t *testing.T) {
+	fx := loadFlash104(t)
+	swd := loadSearchRecords(t, "testdata/swd_search.json.gz")
+	inflight := loadSearchRecords(t, "testdata/swd_inflight.json.gz").frame("inflight5us", 5e-6)
+	if res := framecalc.Detect(inflight, "hex"); res.Proto != "spi" {
+		t.Fatalf("the frame in flight reads as %q: it no longer shows the misreading", res.Proto)
+	}
+	quiet := make([]uint8, 4000)
+	for i := range quiet {
+		quiet[i] = 128
+	}
+	_, base, fe := newC(t)
+	eng := &searchLeaseEng{fakeEng: base}
+	ctl := New(eng, fe, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
+	ctl.decode(idle(), true)
+	ctl.detectSync = true
+	looks := 0
+	ctl.SetFrameSource(func(fn func(*engine.Frame)) {
+		looks++
+		tdiv := eng.Snapshot().TdivS
+		switch {
+		case looks <= 4: // the sweep's last frames, still coming
+			fn(inflight)
+		case eng.raw.Load() && tdiv < 20e-6:
+			fn(swd.frame("full10us", tdiv))
+		case eng.raw.Load():
+			fn(swd.frame("full50us", tdiv))
+		case eng.sampled.Load():
+			fn(&engine.Frame{C1: quiet, C2: quiet, Valid: len(quiet), WinCols: len(quiet), SampleS: 10 * tdiv / float64(len(quiet)), TdivS: tdiv})
+		default:
+			fn(fx.frame("env100us", tdiv))
+		}
+	})
+	ctl.runDetect()
+	ctl.mu.Lock()
+	proto, note := ctl.decProto, ctl.ui.notice
+	ctl.mu.Unlock()
+	if proto != framecalc.ProtoSWD {
+		t.Fatalf("found %s (notice %q), want SWD", protoName(proto), note)
+	}
+}
+
 // The bench's SWD bus (clock C1, about 1 MHz, three requests every 170 us),
 // busy over most of the envelope like the flash: its 100 us dense record
 // reads as "SPI, 14 bytes", its frames whole only on the window's 500 us
 // record. A few SPI bytes on the dense record do not end the search: the
-// window's record names the SWD bus.
+// window's record names the SWD bus. (SWD's cover now leaves out the
+// transfers the record's ends cut, so the dense record names SWD itself.)
 // TRLC-LINKS: REQ-SDS-214, REQ-SDS-223
 func TestBusSearchLooksPastAFewDenseSPIBytes(t *testing.T) {
 	fx := loadFlash104(t)
 	swd := loadSearchRecords(t, "testdata/swd_search.json.gz")
-	if res := framecalc.Detect(swd.frame("full10us", 10e-6), "hex"); res.Proto != "spi" || !fewDenseSPI(res) {
-		t.Fatalf("the dense record reads as %q, %d bytes: it no longer shows the misreading", res.Proto, len(res.Bytes))
+	if res := framecalc.Detect(swd.frame("full10us", 10e-6), "hex"); res.Proto != "swd" && (res.Proto != "spi" || !fewDenseSPI(res)) {
+		t.Fatalf("the dense record reads as %q, %d bytes", res.Proto, len(res.Bytes))
 	}
 	quiet := make([]uint8, 4000)
 	for i := range quiet {

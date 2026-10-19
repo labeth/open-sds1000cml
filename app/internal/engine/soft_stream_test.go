@@ -165,6 +165,58 @@ func TestSoftStreamValuePatternPlaces(t *testing.T) {
 	}
 }
 
+// A record the symbol trigger did not fire on keeps every frame, though its
+// decode read the stop value: the stream goes on, and says it read it.
+// TRLC-LINKS: REQ-SDS-260
+func TestSoftStreamEmitReadsOnWhereTheFPGADidNotFire(t *testing.T) {
+	frame := func(i0 uint64, v int) decode.StreamFrame {
+		return decode.StreamFrame{I0: i0, I1: i0 + 10, Spans: []decode.StreamSpan{{Kind: "data", Val: v, I0: i0, I1: i0 + 10}}}
+	}
+	frames := []decode.StreamFrame{frame(0, 1), frame(20, 6), frame(40, 2)}
+	s := &softStream{trig: StreamOnValue, value: 6, mask: 0xff}
+	s.noStop = true
+	if s.emit(frames, func(x uint64) uint64 { return x }) || !s.valueRead {
+		t.Fatalf("no stop: stopped or did not read the value")
+	}
+	ends := 0
+	for _, ev := range s.events {
+		if ev.Kind == sramcapture.EventEnd {
+			ends++
+		}
+		if ev.Kind == sramcapture.EventTrigger {
+			t.Fatalf("a trigger mark where the FPGA did not fire")
+		}
+	}
+	if ends != 3 {
+		t.Fatalf("%d frames kept, want 3", ends)
+	}
+	s.noStop = false
+	if !s.emit(frames, func(x uint64) uint64 { return x }) || s.stopUnit != 0 {
+		t.Fatalf("the FPGA fired: no stop")
+	}
+}
+
+// An IR code's command stops a stream where it came, the second unit of
+// its frame: the symbol trigger reads a lone value as the address.
+// TRLC-LINKS: REQ-SDS-260
+func TestSoftStreamStopPatternAtItsPlace(t *testing.T) {
+	s := &softStream{p: SerialParams{Proto: serIRMP, Baud: 1818, Bits: decode.IRSamsung32, Threshold: 128, HaveThr: true},
+		proto: "irmp", value: 0xFD02, mask: 0xffff, stopUnit: 1}
+	pat := s.stopPattern()
+	if len(pat) != 3 || pat[0].Kind != patternStart || pat[1].Mask != 0 || pat[2].Value != 0xFD02 || pat[2].Mask != 0xffff {
+		t.Fatalf("Samsung32 command FD02: %+v", pat)
+	}
+	s.value, s.stopUnit = 0x0707, 0 // the address: unit 0
+	if pat := s.stopPattern(); len(pat) != 2 || pat[1].Value != 0x0707 {
+		t.Fatalf("Samsung32 address 0707: %+v", pat)
+	}
+	u := &softStream{p: SerialParams{Proto: serLIN, Baud: 19200, Threshold: 128, HaveThr: true}, proto: "lin", value: 0x55,
+		mask: 0xff, stopUnit: 3}
+	if pat := u.stopPattern(); len(pat) != 1 { // LIN: the value at any unit
+		t.Fatalf("LIN 55: %+v", pat)
+	}
+}
+
 // Which buses stream gap-free from the continuous stream and which as
 // captures, at their usual rates (the bench sources' and the panel's).
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
@@ -173,11 +225,18 @@ func TestSoftStreamModes(t *testing.T) {
 		serOneWire: "captures", serDHT: "gap-free", serCEC: "gap-free", serJ1850: "gap-free", serIRNEC: "gap-free",
 		serIRSIRC: "gap-free", serIRRC5: "gap-free", serIRRC6: "gap-free", serDALI: "gap-free", serPS2: "gap-free",
 		serWiegand: "gap-free", serUSBPD: "captures", serSPDIF: "captures", serSWD: "captures", serMDIO: "captures",
-		serWS281x: "captures", serUART: "", serMIDI: "", serUSB: ""} {
+		serWS281x: "captures", serUART: "", serMIDI: "", serUSB: "",
+		serQuad: "gap-free", serStepper: "gap-free", serPWM: "captures", serRCEncode: "gap-free", serOOK: "gap-free",
+		serMiller: "captures", serMorse: "gap-free", serDCF77: "gap-free", serEM4100: "gap-free", serEM4305: "gap-free",
+		serT55xx: "gap-free", serSWIM: "captures", serSDQ: "captures", serPJDL: "gap-free", serDSI: "gap-free", serQi: "gap-free",
+		serSDCard: "captures", serPDI: "captures", serCJTAG: "captures", serMaple: "captures", serCaliper: "gap-free", serIRMP: "gap-free"} {
 		baud := map[int]int{serLIN: 19200, serDMX: 250000, serModbus: 19200, serOneWire: 16300, serDHT: 20000,
 			serCEC: 417, serJ1850: 10400, serIRNEC: 889, serIRSIRC: 1667, serIRRC5: 562, serIRRC6: 1126, serDALI: 1200,
 			serPS2: 16700, serWiegand: 1000, serUSBPD: 300000, serSPDIF: 3072000, serSWD: 1000000, serMDIO: 1000000,
-			serWS281x: 800000}[proto]
+			serWS281x: 800000, serQuad: 10000, serStepper: 5000, serPWM: 10000, serRCEncode: 2857, serOOK: 1024, serMiller: 106007,
+			serMorse: 500, serDCF77: 333, serEM4100: 1953, serEM4305: 125000, serT55xx: 125000, serSWIM: 363636, serSDQ: 98425,
+			serPJDL: 22727, serDSI: 600, serQi: 2000, serSDCard: 250000, serPDI: 250000, serCJTAG: 250000, serMaple: 1333333,
+			serCaliper: 12500, serIRMP: 1786}[proto]
 		if got := SoftStreamMode(proto, baud, false); got != want {
 			t.Errorf("protocol %d at %d: %q, want %q", proto, baud, got, want)
 		}

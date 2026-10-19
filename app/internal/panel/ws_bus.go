@@ -523,7 +523,14 @@ type look struct {
 // interval, whether a bus was found and the decimated record's look.
 // TRLC-LINKS: REQ-SDS-214
 func (c *Controller) detectOn(auto AutoSource) (decode.Result, float64, bool, look) {
-	all := func(*engine.Frame, bool) bool { return true }
+	// A frame spanning the screen of the timebase set, not one still in
+	// flight from a faster one before: AUTO's search at 500us/div read its
+	// sweep's 5us/div frame (54 us, one SWD transfer cut) and named SPI, one
+	// search in ten.
+	set := c.snap().st.TdivSet()
+	all := func(f *engine.Frame, _ bool) bool {
+		return set <= 0 || !(f.SampleS > 0) || float64(f.Valid)*f.SampleS >= 5*set
+	}
 	dec := c.detectWith(true, false, all, auto, decimatedWait)
 	res, sampleS, found := dec.res, dec.sampleS, dec.found
 	if c.weighEnvelope(&dec, all) {

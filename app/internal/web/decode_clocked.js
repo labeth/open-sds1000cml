@@ -129,6 +129,9 @@ function decodeSWD(clk, dio, colTimeS, cfg) {
     }
   };
   let next = -1;
+  let firstC = cy.length;
+  let lastC = 0;
+  for (const rs of resets) { firstC = Math.min(firstC, rs[0]); lastC = Math.max(lastC, rs[1]); }
   for (let c = 0; c + 12 <= cy.length; c++) {
     flushResets(c);
     // TRLC-LINKS: REQ-SDS-018, REQ-SDS-236
@@ -146,7 +149,8 @@ function decodeSWD(clk, dio, colTimeS, cfg) {
     const ackTxt = { 1: "OK", 2: "WAIT", 4: "FAULT" }[ack];
     spans.push(pspan(cy[c + 9].xf, cy[c + 11].xr + per / 2, n, ackTxt, "data", ack));
     toks.push(ackTxt); units.push(ack);
-    if (ack !== 1) { explained += unexplained(c, c + 12); c += 11; next = c + 1; continue; }
+    firstC = Math.min(firstC, c);
+    if (ack !== 1) { explained += unexplained(c, c + 12); c += 11; next = c + 1; lastC = Math.max(lastC, next); continue; }
     const first = rnw === 0 ? c + 13 : c + 12;
     if (first + 33 > cy.length) break;
     let v = 0, cnt = 0;
@@ -163,9 +167,13 @@ function decodeSWD(clk, dio, colTimeS, cfg) {
     explained += unexplained(c, first + 33);
     c = first + 32;
     next = c + 1;
+    lastC = Math.max(lastC, next);
   }
   flushResets(cy.length);
-  const cover = Math.min(1, explained / Math.max(1, cy.length));
+  // the record's ends cut a transfer: the busy cycles before the first and
+  // after the last, up to a transfer's 46 each, are its rest (decode_clocked.go)
+  const edges = firstC < cy.length ? Math.min(unexplained(0, firstC), 46) + Math.min(unexplained(Math.min(lastC, cy.length), cy.length), 46) : 0;
+  const cover = Math.min(1, explained / Math.max(1, cy.length - edges));
   let run = 0, even = 0;
   for (let k = 1; k < cy.length; k++) {
     const g = cy[k].xf - cy[k - 1].xf;

@@ -4430,3 +4430,29 @@ requirements:
   - test
   verificationCriteria: Each protocol is chosen in BUS and on the web page, its decode runs there, its frames group into
     packets, and the serial trigger receives its protocol number, roles, variant and polarity.
+- id: REQ-SDS-260
+  title: Decoded stream of the protocols past the thirtieth
+  text: The instrument shall stream each protocol of REQ-SDS-250 to REQ-SDS-255 into the decoded-stream transcript
+    as REQ-SDS-240 streams its protocols, gap-free or as back-to-back records, and show which of the two it streams
+    in.
+  status: draft
+  category: functional
+  appliesTo:
+  - FU-APP-DECODE
+  - FU-APP-ENGINE
+  - FU-APP-PANEL
+  verificationMethods:
+  - test
+  verificationCriteria: Each gap-free protocol's synthetic frames (an EM4305 reader's on its carrier too), reduced
+    to the stream's peak words and arriving in pieces of every size, decode to every frame exactly once; each
+    record protocol's records cut at random give only frames the whole signal holds, and records cut at many
+    places from a scope capture of back-to-back PDI instructions only the instructions sent; an IR command
+    stops the stream where it came in its frame; on the device, each bench source streamed a minute with no
+    frame lost or doubled in the gap-free mode, and its stops working or refused with the reason.
+  notes: A record's frames are whole only from a start of frame; Miller and SWIM, found by their first edge or
+    within a transaction, decode from a record's first quiet line, and PDI, whose instructions run back to back,
+    from its first idle line. DCF77 keeps three seconds of line before a minute (its second 0 is the missing
+    pulse) and the IR multi protocols a longest frame (a JVC repeat follows its frame). The stream reaches 2^20
+    samples a word, so a DCF77 minute decodes from 29 k samples. A captures stream whose decode reads the stop
+    value in eight records in a row the symbol trigger did not fire on ends with that reason (a Miller frame's
+    last byte).
