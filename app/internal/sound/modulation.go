@@ -31,8 +31,12 @@ func Demodulate(x []float64, fs, fc, outRate float64) Demod {
 	if n < 16 || !(fs > 0) || !(fc > 0) || fc >= fs/2 {
 		return d
 	}
-	p1 := max(1, int(math.Floor(fs/fc)))
-	p2 := max(1, int(math.Ceil(fs/fc)))
+	// A carrier period past the stretch demodulates nothing; bounded so, the
+	// boxcars' lengths stay ints on the scope (a float past MaxInt32
+	// converts to it there, and their sum wrapped negative).
+	per := math.Min(fs/fc, float64(n)+1)
+	p1 := max(1, int(math.Floor(per)))
+	p2 := max(1, int(math.Ceil(per)))
 	dec := max(1, int(math.Round(fs/math.Max(outRate, 1))))
 	d.Fs = fs / float64(dec)
 	m := mean(x)
