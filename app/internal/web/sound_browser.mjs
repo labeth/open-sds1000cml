@@ -41,8 +41,15 @@ run(async (t) => {
   }
   await page.click('#sndView button[data-value="spec"]');
   await t.until(() => po.eval(() => snd.harm && snd.harm.ok && Math.abs(snd.harm.f0 - 440.76) < 0.5), "the spectrum's H1 is the tone", 3000);
+  // SOUND_SHOTS=<dir> keeps a picture of each view (for a look, not compared)
+  const shots = process.env.SOUND_SHOTS;
+  if (shots) await page.screenshot({ path: shots + "/web_sound_spec.png" });
   await page.click('#sndView button[data-value="ab"]');
   await t.until(() => po.eval(() => snd.ab && snd.ab.ok), "A/B reads", 3000);
+  if (shots) {
+    await page.screenshot({ path: shots + "/web_sound_ab.png" });
+    for (const v of ["cycle", "mod"]) { await page.click(`#sndView button[data-value="${v}"]`); await po.wait(1500); await page.screenshot({ path: shots + "/web_sound_" + v + ".png" }); }
+  }
   const ab = await po.eval(() => snd.ab);
   t.near(ab.gainDB, -6.02, 0.2, "A/B gain");
   t.near(ab.phaseDeg, -15.87, 1, "A/B phase (0.1 ms at 440.8 Hz)");
@@ -59,4 +66,23 @@ run(async (t) => {
   await po.waitFor(() => ws.cur === "scope", null, 3000);
   t.ok(await po.eval(() => !snd.shown && !snd.audio.on), "leaving SOUND stops the stream and Listen");
   t.ok(pageErrors.length === 0, "no page errors: " + pageErrors.join(" | "));
+
+  // the phone: the Sound tab's tuner, meters and Listen
+  const phone = await browser.newPage({ viewport: { width: 412, height: 915 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+  const phoneErrors = [];
+  phone.on("pageerror", (e) => phoneErrors.push(e.message));
+  await phone.goto(process.argv[2] + "/remote", { waitUntil: "domcontentloaded", timeout: 15000 });
+  await phone.waitForSelector("#tab-sound", { timeout: 8000 });
+  await phone.tap("#tab-sound");
+  await t.until(() => phone.evaluate(() => window.RSOUND.state.hz > 0), "the phone's tuner reads a pitch", 6000);
+  t.ok((await phone.textContent("#view-sound .snd-note")) === "A4", "the phone shows A4");
+  t.ok(/dBu/.test(await phone.textContent("#view-sound .snd-meter")), "the phone's meter reads dBu");
+  await phone.tap("#view-sound .snd-listen");
+  await t.until(() => phone.evaluate(() => window.RSOUND.client.audio.on && window.RSOUND.client.audio.stat.primed), "the phone plays the stream", 5000);
+  await phone.waitForTimeout(2000);
+  if (shots) await phone.screenshot({ path: shots + "/phone_sound.png" });
+  t.ok((await phone.evaluate(() => window.RSOUND.client.audio.stat.under || 0)) <= 1, "the phone's player runs without underruns");
+  await phone.tap("#tab-home");
+  t.ok(await phone.evaluate(() => !window.RSOUND.client.shown && !window.RSOUND.client.audio.on), "leaving the Sound tab stops the stream");
+  t.ok(phoneErrors.length === 0, "no phone page errors: " + phoneErrors.join(" | "));
 });

@@ -4456,3 +4456,182 @@ requirements:
     samples a word, so a DCF77 minute decodes from 29 k samples. A captures stream whose decode reads the stop
     value in eight records in a row the symbol trigger did not fire on ends with that reason (a Miller frame's
     last byte).
+- id: REQ-SDS-265
+  title: Listen to the probe
+  text: The instrument shall stream both channels gap-free at an audio rate to a web page or phone that listens and
+    play C1, C2, both as stereo or the output less the gain- and delay-matched input, with a 20 Hz high-pass, an
+    optional low-pass and notch of the fundamental, automatic or manual gain, a limiter and mute, reporting the
+    buffer, the rate correction, underruns and the latency.
+  status: draft
+  category: functional
+  appliesTo:
+  - FU-APP-ENGINE
+  - FU-APP-SRAMCAPTURE
+  - FU-APP-WEB
+  - FU-WEB-SOUND
+  - FU-WEB-APP-SOUND
+  - FU-WEB-REMOTE
+  verificationMethods:
+  - test
+  verificationCriteria: The ring keeps every sample in order across its wrap with the scale, gaps and marks; a
+    headless browser plays a synthetic stream with its buffer primed and no underruns, on the web page and the
+    phone; on the device a crystal tone plays without underruns and the end-to-end latency is measured.
+  notes: The stream is the stream image's continuous decimated stream at 2^13 (61.035 kSa/s), so the scope's
+    triggered captures pause while it runs (ADR-SOUND).
+- id: REQ-SDS-266
+  title: Level meters
+  text: The instrument shall show each channel's level as RMS, peak, peak-to-peak, DC and crest factor in volts and in
+    dB against dBu, dBV or a nominal level (Eurorack 10 Vpp, +4 dBu, -10 dBV, a guitar's 100 mV), with a clip mark
+    when the converter's range is reached.
+  status: draft
+  category: functional
+  appliesTo:
+  - FU-APP-SOUND
+  - FU-APP-PANEL
+  - FU-APP-LCD
+  - FU-WEB-SOUND
+  - FU-WEB-APP-SOUND
+  verificationMethods:
+  - test
+  verificationCriteria: A 1 V sine on 0.5 V DC reads 707 mV RMS, 0.5 V DC, 2 Vpp and a 3.01 dB crest; the dBu, dBV and
+    nominal references read 0 dB at their levels; Go and sound.js agree.
+- id: REQ-SDS-267
+  title: Tuner, pitch strip, V/oct and drift
+  text: The instrument shall name the tuned channel's pitch as a note and cents against a settable A4 with a needle,
+    a strobe and the last ten seconds of pitch, tabulate V/oct points of a CV on the other channel against the
+    pitch with the scale and high-end errors, and log the pitch once a second.
+  status: draft
+  category: functional
+  appliesTo:
+  - FU-APP-SOUND
+  - FU-APP-PANEL
+  - FU-APP-LCD
+  - FU-WEB-SOUND
+  - FU-WEB-APP-SOUND
+  - FU-WEB-REMOTE
+  verificationMethods:
+  - test
+  verificationCriteria: Sines from 27.5 Hz to 4.2 kHz through the stream's quantization read within half a cent;
+    squares, saws and a weak fundamental within a cent; noise reads no pitch; a VCO 1 % off in scale and 15 cents flat
+    at the top reads both; Go and sound.js agree; on the device a crystal tone reads within 2 cents.
+- id: REQ-SDS-268
+  title: Envelope (ADSR) capture
+  text: The instrument shall, when armed, capture a note's envelope from the FPGA's edge on a gate or on the signal's
+    level until the sound has died away, and read its attack (10-90 % and start to peak), decay with its time
+    constant, sustain, release with its time constant and peak, from a tone's amplitude or a CV read directly.
+  status: draft
+  category: functional
+  appliesTo:
+  - FU-APP-SOUND
+  - FU-APP-PANEL
+  - FU-APP-ENGINE
+  - FU-WEB-APP-SOUND
+  verificationMethods:
+  - test
+  verificationCriteria: Synthetic envelopes (gated and found, tone and CV, percussive) read their attack within 5 ms,
+    sustain within 3 %, decay and release within a few milliseconds; a gate-armed capture on the gate's marks reads
+    its envelope; on the device the generator's envelope times are read.
+  notes: The capture starts only on a mark the FPGA put in the stream; software places it on the crossing.
+- id: REQ-SDS-269
+  title: Modulation
+  text: The instrument shall read a tone's tremolo depth, rate and shape, its vibrato deviation in cents and Hz, rate
+    and shape, wow, flutter and a weighted wow-and-flutter figure, audio-rate FM's carrier-to-modulator ratio and
+    index from its sidebands, and, without a pitch, an LFO's rate, levels, rise share and shape.
+  status: draft
+  category: functional
+  appliesTo:
+  - FU-APP-SOUND
+  - FU-APP-PANEL
+  - FU-WEB-SOUND
+  - FU-WEB-APP-SOUND
+  verificationMethods:
+  - test
+  verificationCriteria: A 30 % 5 Hz tremolo reads within 1 % and 0.05 Hz; a +-20 cent 6 Hz vibrato on a square within
+    a cent; FM at index 0.6 to 3.2 within 0.1; triangle, ramp and square LFOs by rate and shape; Go and sound.js agree;
+    on the device the generator's rates and depths are read.
+- id: REQ-SDS-270
+  title: Audio spectrum and harmonics
+  text: The instrument shall show the audio spectrum on a log frequency axis with a note grid and the scope's own
+    floor, and read H1 to H10 against H1 with THD, the even/odd balance and mains hum.
+  status: draft
+  category: functional
+  appliesTo:
+  - FU-APP-SOUND
+  - FU-APP-PANEL
+  - FU-APP-LCD
+  - FU-WEB-SOUND
+  - FU-WEB-APP-SOUND
+  verificationMethods:
+  - test
+  verificationCriteria: A 1 V RMS tone with H2 at -40 dB and H3 at -30 dB reads 0 dBV, -40 and -30 dB, THD 3.32 % and
+    odd character; 50 Hz hum at -60 dBV is found; Go and sound.js agree.
+  notes: Harmonics more than 90 dB under H1 do not count (past an 8-bit converter's linearity).
+- id: REQ-SDS-271
+  title: Input against output
+  text: The instrument shall compare a circuit's input on one channel with its output on the other by gain and phase
+    at the fundamental, broadband gain, delay and the distortion the circuit adds, with the output against the input
+    as a transfer curve and both spectra overlaid.
+  status: draft
+  category: functional
+  appliesTo:
+  - FU-APP-SOUND
+  - FU-APP-PANEL
+  - FU-WEB-SOUND
+  - FU-WEB-APP-SOUND
+  verificationMethods:
+  - test
+  verificationCriteria: Half the input 0.25 ms late at 1 kHz reads -6.02 dB and -90 degrees; a 37-sample delay of
+    noise reads within 0.05 samples; a clipper adds THD; Go and sound.js agree.
+- id: REQ-SDS-272
+  title: Pitch-locked cycle on the FPGA's edge
+  text: The instrument shall draw one, two or four periods of the tuned channel from a level crossing the FPGA marked
+    in the stream, placed on that crossing between samples, with the previous cycles fading behind, and read the
+    period, duty, peak-to-peak, rise, fall and slew.
+  status: draft
+  category: functional
+  appliesTo:
+  - FU-APP-SOUND
+  - FU-APP-SRAMCAPTURE
+  - FU-APP-ENGINE
+  - FU-APP-PANEL
+  - FU-APP-LCD
+  - FU-WEB-APP-SOUND
+  verificationMethods:
+  - test
+  verificationCriteria: A mark is placed on its sine crossing within 0.01 samples and a mark with no crossing beside it
+    is dropped; the mark registers read back as the image holds them; on the device the trace holds still on a tone.
+  notes: The FPGA decides every trigger; software only places the mark on its crossing (the mark level follows the
+    signal's centre as autoset places a trigger level).
+- id: REQ-SDS-273
+  title: SOUND on the LCD
+  text: The instrument shall show SOUND as SPECTRUM's fourth view on the LCD with the tuner, two meters, a readout
+    column that Adjust turns through modulation, envelope, A/B, harmonics and V/oct, and the pitch-locked trace, and
+    keep SOUND's settings in a setup.
+  status: draft
+  category: functional
+  appliesTo:
+  - FU-APP-PANEL
+  - FU-APP-LCD
+  - FU-APP-SETTINGS
+  verificationMethods:
+  - test
+  verificationCriteria: F3 again reaches SOUND after Bode; the view reads a synthetic tone's note and cents, both
+    meters and the cycle from the marks; Adjust turns the pages and its push takes a V/oct point; the settings
+    survive a save and restore; LCD goldens pin the view.
+- id: REQ-SDS-274
+  title: SOUND on the web page and the phone
+  text: The instrument shall offer SOUND on the web page as its own workspace (Alt+6) and on the phone remote as a
+    Sound tab with the tuner, the meters and Listen, sharing SOUND's settings and readouts with the LCD.
+  status: draft
+  category: functional
+  appliesTo:
+  - FU-APP-WEB
+  - FU-WEB-APP-SOUND
+  - FU-WEB-APP-WS
+  - FU-WEB-REMOTE
+  - FU-APP-PANEL
+  verificationMethods:
+  - test
+  verificationCriteria: A headless browser reaches SOUND with Alt+6, reads a synthetic tone's note and cents, the
+    meters, the cycle, the spectrum's H1 and A/B's gain and phase, posts settings and actions to the scope, and
+    leaving SOUND stops the stream; the phone's Sound tab reads the tone and plays it.

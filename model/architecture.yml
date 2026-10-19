@@ -162,6 +162,18 @@ architecture:
       master repeat test.'
     tags:
     - source-backed
+  - id: FU-APP-SOUND
+    name: Sound analysis
+    group: FG-APP
+    prose: 'Pure audio analysis for SOUND (ADR-SOUND) on the audio-rate stream: level meters against dBu, dBV and
+      nominal-level presets, the tuner (YIN, then the phase a harmonic advances between the window''s halves),
+      the envelope and its ADSR reading, tremolo, vibrato, wow and flutter, audio-rate FM from its sidebands, an
+      LFO read directly, the audio spectrum with H1..H10, THD, the even/odd balance, mains hum and the scope''s
+      floor, input against output (gain and phase as the Bode measurement, delay, added distortion), V/oct
+      tracking, the drift log and placing the cycle trace on an FPGA edge mark. sound.js is its twin in the
+      browser, held to it by a node parity test.'
+    tags:
+    - source-backed
   - id: FU-APP-PANEL
     name: Panel policy and menus
     group: FG-APP
@@ -823,6 +835,23 @@ architecture:
       crossings with hysteresis (±15% of swing) and sub-sample linear interpolation. Returns {t:[...positions in
       samples], pol:[+1/-1]} or null when the record has no usable swing. Base/top levels by DUAL HISTOGRAM MODE
       (IEEE pulse-measurement style): the two dominant population levels, regardless of duty.'
+    tags:
+    - source-backed
+  - id: FU-WEB-SOUND
+    name: Web sound core
+    group: FG-WEB
+    prose: 'sound.js (the SOUND analysis, the twin of internal/sound), sound_client.js (the audio stream from
+      /api/sound.bin in a ring of volts with the FPGA''s edge marks, and Listen''s chain: source, high-pass,
+      low-pass, notch, auto gain) and sound_worklet.js (the AudioWorklet player: a jitter buffer resampled at a
+      rate that follows its fill, a fade over gaps, a -6 dBFS limiter), shared by the web page and the phone.'
+    tags:
+    - source-backed
+  - id: FU-WEB-APP-SOUND
+    name: Web App SOUND workspace
+    group: FG-WEB
+    prose: 'app_sound.js - SOUND (Alt+6): Listen with its controls and latency, the meters, the tuner with its strobe
+      and ten-second strip, the views (pitch-locked cycle from the FPGA''s marks, envelope, modulation, audio
+      spectrum, A/B) with their details, and the scope''s shared readouts (envelope capture, V/oct table, drift log).'
     tags:
     - source-backed
   - id: FU-WEB-PEAKS

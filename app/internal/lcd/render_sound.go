@@ -183,7 +183,7 @@ func drawMeters(sf Surface, s *wsview.SoundPane, bottom int) {
 		}
 		y := yOf(m.DB)
 		col := chanCol(ch)
-		if m.DB > 0 {
+		if m.Hot {
 			col = colWarn
 		}
 		fillRect(sf, bx+2, y, 18, top+barH-y, col)

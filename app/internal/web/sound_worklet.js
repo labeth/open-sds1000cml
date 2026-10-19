@@ -34,6 +34,7 @@ class SoundPlayer extends AudioWorkletProcessor {
     this.over = 0;
     this.quiet = 0;
     this.lastReport = 0;
+    // TRLC-LINKS: REQ-SDS-265
     this.port.onmessage = (e) => this.onMsg(e.data);
   }
 

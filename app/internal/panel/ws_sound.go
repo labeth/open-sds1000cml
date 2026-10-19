@@ -77,6 +77,7 @@ func (c *Controller) soundPane(s *sv) *wsview.SoundPane {
 			continue
 		}
 		m.On, m.DB, m.PeakDB, m.Clip = true, l.DB, l.PeakDB, l.Clip
+		m.Hot = l.DB > 0 && set.Ref != "dbu" && set.Ref != "dbv"
 		m.Lines = []string{dbText(l.DB, set.Ref), "rms " + si(l.RMS, "V"), "pk " + si(l.Peak, "V"),
 			"Vpp " + si(l.Vpp, "V"), "DC " + sgnSI(l.DC, "V"), fmt.Sprintf("crest %.1fdB", l.CrestDB)}
 	}

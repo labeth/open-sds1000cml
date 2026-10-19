@@ -1599,6 +1599,27 @@ decisions:
   consequences:
   - The host validates ordinals and tokens (REQ-SDS-035); DrainStream and the worker pump both drain it.
   - Image switching to and from it is a stopped acquisition transition.
+- id: ADR-SOUND
+  title: SOUND runs on the gap-free audio-rate stream, its triggers the FPGA's edge marks
+  status: accepted
+  date: '2026-10-19'
+  context: Sound work (listening to a probe, tuning, envelopes, modulation, distortion, a circuit's input against its
+    output) needs seconds of signal without gaps at an audio rate; triggered records are short and leave gaps. The
+    LCD's five F-keys are fixed, so the LCD view is SPECTRUM's fourth (FFT, spectrogram, Bode, SOUND); the web page
+    has its own SOUND tab and the phone a Sound tab with the tuner, the meters and Listen. Every trigger is the
+    FPGA's.
+  decision: While a SOUND consumer leases it, the acquisition owner runs the stream image's continuous stream of
+    decimated words at 2^13 (61.035 kSa/s a channel through the precision decimator's CIC) into a ring of the
+    newest 2^20 samples a channel; triggered captures pause and resume when the lease ends. The browser takes the
+    stream over /api/sound.bin and plays it through an AudioWorklet (a 120 ms jitter buffer whose resampling rate
+    follows its fill, a limiter at -6 dBFS); the analysis runs where it is shown (sound.js in the browser, its Go
+    twin for the LCD, the V/oct table, the drift log and the envelope capture). The stream image's edge comparator
+    marks the stream word a level crossing falls in (registers 54..60); the cycle trace and the gate-armed
+    envelope start only on such a mark, which software places on its crossing.
+  consequences:
+  - The scope's own captures stop while SOUND streams; leaving SOUND restarts them (an image load, seconds).
+  - Listening latency is the bank seal (about 17 ms), the network, the jitter buffer and the sound card's output.
+  - A decoded stream (BUS) and SOUND exclude each other; SOUND reports why it cannot start.
 - id: ADR-STREAM-DRUM
   title: Buffer the stream in the SRAM as a drum
   status: accepted

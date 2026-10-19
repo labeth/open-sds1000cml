@@ -29,7 +29,7 @@
   ];
   const WS_BY = Object.fromEntries(WS.map((w) => [w.id, w]));
   // each workspace's own sheet tabs (the device's wsDefs), shown first in Menus
-  const OWN_TABS = { scope: ["trig", "ch1", "ch2", "time", "acq"], bus: ["bus", "trig", "time"], spectrum: ["view", "acq", "time"],
+  const OWN_TABS = { scope: ["trig", "ch1", "ch2", "time", "acq"], bus: ["bus", "trig", "time"], spectrum: ["view", "snd", "acq", "time"],
     measure: ["meas", "curs", "acq"], compare: ["cmp", "ch1", "ch2"] };
   // Home: the four big knobs first in every workspace (fixed places), then the workspace's own tiles
   const COMMON = ["time.tdiv", "trig.level", "ch1.vdiv", "ch2.vdiv"];
@@ -177,7 +177,7 @@
   const banner = h("div", { class: "banner", id: "banner", role: "alert", hidden: true });
   const views = h("main", { class: "views" });
   const V = {};
-  for (const k of ["home", "menus", "hist", "keys"]) {
+  for (const k of ["home", "menus", "hist", "keys", "sound"]) {
     V[k] = h("section", { class: "view scroll", id: "view-" + k, data: { view: k }, hidden: k !== "home", role: "tabpanel", "aria-labelledby": "tab-" + k });
     views.appendChild(V[k]);
   }
@@ -317,6 +317,7 @@
     }
     if (S.tab === "menus") setTitle("Menus", "Every setting " + DOT + " long press to pin");
     else if (S.tab === "hist") setTitle("History", n ? n + (n === 1 ? " change" : " changes") + ", kept on this phone" : "Every change, newest first");
+    else if (S.tab === "sound") setTitle("Sound", "Tuner, meters, Listen " + DOT + " captures pause");
     else setTitle("Keys", "Pushes, keys and the phone");
     bar.append(ttl, awakeB, fsB);
   }
@@ -351,7 +352,7 @@
   // ---- the tab bar ----------------------------------------------------------------------------
 
   const tabBtns = {};
-  for (const [id, label, ic] of [["home", "Home", "home"], ["menus", "Menus", "sliders"], ["hist", "History", "clock"], ["keys", "Keys", "keypad"]]) {
+  for (const [id, label, ic] of [["home", "Home", "home"], ["menus", "Menus", "sliders"], ["hist", "History", "clock"], ["keys", "Keys", "keypad"], ["sound", "Sound", "note"]]) {
     const b = h("button", { type: "button", class: "tab", id: "tab-" + id, role: "tab", "aria-selected": id === "home" ? "true" : "false",
       "aria-controls": "view-" + id, data: { tabbar: id } });
     b.innerHTML = icon(ic, 24);
@@ -373,8 +374,11 @@
       renderBar();
       return;
     }
+    // Sound streams the scope's audio while it shows (its captures pause)
+    if (S.tab === "sound" && window.RSOUND) window.RSOUND.hide();
     S.tab = id;
     for (const k of Object.keys(V)) V[k].hidden = k !== id;
+    if (id === "sound" && window.RSOUND) window.RSOUND.show(V.sound);
     for (const k of Object.keys(tabBtns)) tabBtns[k].setAttribute("aria-selected", k === id ? "true" : "false");
     if (id === "menus") renderMenus();
     if (id === "home") renderHome(true);

@@ -222,6 +222,7 @@ type SoundMeter struct {
 	PeakDB float64 // the peak's sine equivalent (the tick)
 	Lines  []string
 	Clip   bool
+	Hot    bool // past a nominal level's 0 dB (not on the dBu and dBV scales)
 }
 
 // SoundPane is SPECTRUM's SOUND view (ADR-SOUND): the tuner, the two
