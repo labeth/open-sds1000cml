@@ -268,6 +268,11 @@ func (e *Engine) wantImage() string {
 	if e.images == nil {
 		return ""
 	}
+	// The audio stream runs on the stream image while it is leased or still
+	// streaming: a trigger's image would replace the fabric under the stream.
+	if (e.soundWanted() || e.snd != nil && e.snd.streaming) && e.images.HasStream() {
+		return imageStream
+	}
 	// Roll streaming (opt-in) runs gap-free on the stream image; a stop keeps
 	// it, so RUN resumes without a reload.
 	if e.rollStream.Load() && e.images.HasStream() && (e.rollActive() || (!e.running.Load() && e.protocolImage == imageStream)) {
