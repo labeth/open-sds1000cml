@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"testing"
 
 	"open-sds/app/internal/testenv"
@@ -39,6 +40,12 @@ func TestJSLayerParity(t *testing.T) {
 	}
 	vs := append(layerCurated(), layerRandom(1)...)
 	vs = append(vs, layerRandom(2)...)
+	// LAYER_PARITY_SEEDS=n adds seeds 3..n for local campaigns (CI: 1 and 2).
+	if n, err := strconv.Atoi(os.Getenv("LAYER_PARITY_SEEDS")); err == nil {
+		for seed := int64(3); seed <= int64(n); seed++ {
+			vs = append(vs, layerRandom(seed)...)
+		}
+	}
 	var in []jv
 	for _, v := range vs {
 		x := jv{ID: v.ID, Proto: v.Proto, Addr: v.Args.Addr, Dir: v.Args.Dir}
