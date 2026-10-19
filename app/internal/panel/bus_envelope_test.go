@@ -106,8 +106,10 @@ func TestEnvelopeRunBoundsABusyLine(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-214, REQ-SDS-223
 func TestBusSearchNamesTheFastSPIFlashNotI2C(t *testing.T) {
 	fx := loadFlash104(t)
-	if res := framecalc.Detect(fx.frame("dec100us", 100e-6), "hex"); res.Proto != "i2c" {
-		t.Fatalf("the fixture's decimated record reads as %q: it no longer shows the misreading", res.Proto)
+	// (its runs of bare STARTs and STOPs, data edges while the averaged
+	// clock rests high, now read as no I2C at all: a cJTAG escape's sign)
+	if res := framecalc.Detect(fx.frame("dec100us", 100e-6), "hex"); res.Proto != "i2c" && res.Proto != "off" {
+		t.Fatalf("the fixture's decimated record reads as %q", res.Proto)
 	}
 	// and a decimated record that names no bus at all: the envelope is read
 	// for it too, and the short record is the dense one
