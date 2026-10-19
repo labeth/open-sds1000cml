@@ -881,15 +881,38 @@ type SoundReport struct {
 	Harm sound.HarmonicReport `json:"harm"`
 }
 
+// driftReportMax bounds the drift points a report carries: a page draws the
+// log across its width, and two hours of it (7200 points) cost the scope a
+// third of a megabyte of JSON a report.
+const driftReportMax = 1000
+
+// reduceDrift is every k-th point of the drift log, at most max of them,
+// and always its newest.
+// TRLC-LINKS: REQ-SDS-267
+func reduceDrift(pts []sound.DriftPoint, max int) []sound.DriftPoint {
+	k := (len(pts) + max - 1) / max
+	if k <= 1 {
+		return append([]sound.DriftPoint(nil), pts...)
+	}
+	out := make([]sound.DriftPoint, 0, max+1)
+	for i := 0; i < len(pts); i += k {
+		out = append(out, pts[i])
+	}
+	if out[len(out)-1] != pts[len(pts)-1] {
+		out = append(out, pts[len(pts)-1])
+	}
+	return out
+}
+
 // Report snapshots the shared readouts; the envelope comes reduced to at
-// most 2000 points.
+// most 2000 points and the drift log to about driftReportMax.
 // TRLC-LINKS: REQ-SDS-274
 func (s *soundSvc) Report() SoundReport {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	r := SoundReport{Info: s.info, Settings: s.set, Hz: s.hz, Clarity: s.clarity, Levels: s.levels, CV: s.cv,
 		ADSR: s.adsr, ADSRWhy: s.adsrWhy, ADSRRes: s.adsrRes, ADSREFs: s.adsrEFs,
-		VOct: append([]sound.VOctPoint(nil), s.voct...), Drift: append([]sound.DriftPoint(nil), s.drift.Points...),
+		VOct: append([]sound.VOctPoint(nil), s.voct...), Drift: reduceDrift(s.drift.Points, driftReportMax),
 		Mod: s.mod, LFO: s.lfo, SB: s.sb, AB: s.ab, Harm: s.harm}
 	if s.hz > 0 {
 		n := sound.NoteOf(s.hz, s.set.A4)

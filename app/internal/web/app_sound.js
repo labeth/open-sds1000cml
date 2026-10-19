@@ -575,7 +575,7 @@ function sndRenderReadouts() {
       `CV on C${2 - snd.settings.ch}, VCO on C${snd.settings.ch + 1}: take points at several CVs`;
   } else {
     const pts = rep.drift || [];
-    $("sndDriftSub").textContent = pts.length ? `${pts.length} s · now ${pts[pts.length - 1].cents.toFixed(2)} c from the first second (${pts[pts.length - 1].hz.toFixed(3)} Hz)` : "the pitch of the tuned channel, once a second";
+    $("sndDriftSub").textContent = pts.length ? `${Math.round(pts[pts.length - 1].t + 1)} s · now ${pts[pts.length - 1].cents.toFixed(2)} c from the first second (${pts[pts.length - 1].hz.toFixed(3)} Hz)` : "the pitch of the tuned channel, once a second";
     const cv = $("sndDriftCv");
     if (!fitCanvas(cv)) return;
     const g = glCardCtx(cv, "#05080c");
@@ -585,7 +585,9 @@ function sndRenderReadouts() {
     for (const p of pts) if (p && Number.isFinite(p.cents)) span = Math.max(span, Math.abs(p.cents));
     g.strokeStyle = "#182430"; g.beginPath(); g.moveTo(0, H / 2); g.lineTo(W, H / 2); g.stroke();
     g.strokeStyle = snd.settings.ch === 1 ? C2COL : C1COL; g.beginPath();
-    pts.forEach((p, i) => { const x = W * i / Math.max(1, pts.length - 1), y = H / 2 - (p.cents || 0) / (span * 1.1) * (H / 2); if (i) g.lineTo(x, y); else g.moveTo(x, y); });
+    const t0 = pts.length ? pts[0].t : 0;
+    const tSpan = pts.length ? Math.max(1, pts[pts.length - 1].t - t0) : 1;
+    pts.forEach((p, i) => { const x = W * (p.t - t0) / tSpan, y = H / 2 - (p.cents || 0) / (span * 1.1) * (H / 2); if (i) g.lineTo(x, y); else g.moveTo(x, y); });
     g.stroke();
     g.fillStyle = DIMCOL; g.font = (10 * (window.devicePixelRatio || 1)) + "px monospace"; g.fillText("±" + span.toFixed(1) + " c", 4, 12);
     glCardEnd(cv);

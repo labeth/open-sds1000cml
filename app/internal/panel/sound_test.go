@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"open-sds/app/internal/engine"
+	"open-sds/app/internal/sound"
 )
 
 // soundEng is the panel's fake engine with an audio stream: two channels of
@@ -228,6 +229,27 @@ func TestSoundEnvelopeCapture(t *testing.T) {
 	}
 	if e.mark.Ch != 1 || !e.mark.Rising || !e.mark.Falling {
 		t.Fatalf("gate marks %+v", e.mark)
+	}
+}
+
+// TestSoundDriftReportReduced logs two hours of drift: a report carries
+// about driftReportMax points of it, the newest among them.
+// TRLC-LINKS: REQ-SDS-267
+func TestSoundDriftReportReduced(t *testing.T) {
+	s := newSoundSvc(&Controller{})
+	for i := 0; i <= 7200*4; i++ {
+		s.drift.Add(float64(i)/4, 440+float64(i%40)/100)
+	}
+	r := s.Report()
+	last := s.drift.Points[len(s.drift.Points)-1]
+	if n := len(r.Drift); n > driftReportMax+1 || n < driftReportMax/2 || r.Drift[n-1] != last || r.Drift[0] != s.drift.Points[0] {
+		t.Fatalf("%d of %d points, last %+v (log's %+v)", n, len(s.drift.Points), r.Drift[n-1], last)
+	}
+	s.drift = sound.Drift{}
+	s.drift.Add(0, 440)
+	s.drift.Add(1.5, 441)
+	if r := s.Report(); len(r.Drift) != 1 {
+		t.Fatalf("a short log comes whole: %+v", r.Drift)
 	}
 }
 
