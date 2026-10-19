@@ -100,6 +100,11 @@ func scoreResult(r Result) float64 {
 		if addrs == 0 { // no addressed device -> a channel-swap mis-read, not real I2C
 			return -1e9
 		}
+		// START STOP START STOP START with nothing between: data edges in
+		// one clock high, a cJTAG escape (no I2C master sends that)
+		if i2cEscape(r) {
+			return -1e9
+		}
 		if addrs == 1 && datas == 0 {
 			// One stray START on SPI data (a data change while the clock is
 			// high) reads as one bare address; it can outscore a real 18-byte
@@ -655,4 +660,26 @@ func pulseBytes(b []int) bool {
 		}
 	}
 	return len(b) > 0
+}
+
+// i2cEscape reports an I2C decode holding five STARTs and STOPs in a row
+// with nothing between them: a cJTAG escape's TMSC edges while TCKC is high.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-256
+func i2cEscape(r Result) bool {
+	run, last := 0, ""
+	for _, s := range r.Spans {
+		switch {
+		case (s.Kind == "start" || s.Kind == "stop") && s.Kind != last:
+			run++
+		case s.Kind == "start" || s.Kind == "stop":
+			run = 1
+		default:
+			run = 0
+		}
+		last = s.Kind
+		if run >= 5 {
+			return true
+		}
+	}
+	return false
 }

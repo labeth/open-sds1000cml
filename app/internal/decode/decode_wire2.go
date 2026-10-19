@@ -288,7 +288,8 @@ func jtagNext(s, tms int) int {
 // SHIFT-DR, first bit least significant, are a unit at UPDATE ("IR" or
 // "DR", the TDI value), its TDO beside it. Baud is TCKC's rate, Cover the
 // share of its periods within a fifth of their median (a clock's). OK needs
-// a scan.
+// a scan, or an escape and its whole activation code (a short record of a
+// slow probe holds no scan).
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-254
 func DecodeCJTAG(a, b []uint8, colTimeS float64, cfg ClockedCfg) Result {
 	if b == nil {
@@ -361,6 +362,7 @@ func DecodeCJTAG(a, b []uint8, colTimeS float64, cfg ClockedCfg) Result {
 			}
 			if oacp > oaclen {
 				mode, cyc, state = oscan, 1, 0
+				good = true
 			}
 			continue
 		}

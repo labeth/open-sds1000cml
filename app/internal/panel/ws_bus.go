@@ -1005,10 +1005,10 @@ func (c *Controller) findSlowBus(auto AutoSource, wanted func() bool, prior stri
 				return decode.Result{}, 0, false, 0, true // the bus found faster, again
 			}
 			if l.found && decimatedStands(l.res) {
-				if held != nil && l.res.Proto != heldFor(held.res.Proto) {
+				if held != nil && !slices.Contains(heldFor(held.res.Proto), l.res.Proto) {
 					return keep(*held, heldAt)
 				}
-				if held == nil && i < len(slowTdivs)-1 && heldFor(l.res.Proto) != "" {
+				if held == nil && i < len(slowTdivs)-1 && len(heldFor(l.res.Proto)) > 0 {
 					held, heldAt = &l, at
 					break
 				}
@@ -1023,18 +1023,18 @@ func (c *Controller) findSlowBus(auto AutoSource, wanted func() bool, prior stri
 	return decode.Result{}, 0, false, 0, false
 }
 
-// heldFor is the slower bus a find may be part of (findSlowBus): an
-// Oregon burst's middle reads as a Manchester line or RC-5, a DCF77 code's
-// seconds as PWM; "" for none.
+// heldFor is the slower buses a find may be part of (findSlowBus): an
+// Oregon burst's middle, or an EM4100 tag's 64-bit frame cut, reads as a
+// Manchester line or RC-5, a DCF77 code's seconds as PWM; nil for none.
 // TRLC-LINKS: REQ-SDS-214, REQ-SDS-256
-func heldFor(proto string) string {
+func heldFor(proto string) []string {
 	switch proto {
 	case "manchester", "irrc5", "irrc6":
-		return "ook"
+		return []string{"ook", "em4100"}
 	case "pwm":
-		return "dcf77"
+		return []string{"dcf77"}
 	}
-	return ""
+	return nil
 }
 
 // slowLooks is how many records findSlowBus reads at the i-th of slowTdivs:
@@ -1144,7 +1144,15 @@ func scantUART(res decode.Result) bool {
 // TRLC-LINKS: REQ-SDS-214
 func scantFind(res decode.Result) bool {
 	return scantUART(res) || (res.Proto == "spi" || res.Proto == "i2c") && len(res.Bytes) < scantBytes ||
-		res.Proto == "ps2" && frameStarts(res) <= 1
+		res.Proto == "ps2" && frameStarts(res) <= 1 || slowManchester(res)
+}
+
+// slowManchester reports a Manchester line under 10 kbit/s: a tag's or a
+// sensor's code (EM4100 at RF/64 is 1.95 kbit/s, an Oregon burst 1 kbit/s)
+// the slow look may show whole.
+// TRLC-LINKS: REQ-SDS-214, REQ-SDS-256
+func slowManchester(res decode.Result) bool {
+	return res.Proto == "manchester" && res.Baud > 0 && res.Baud < 10000
 }
 
 // frameStarts is the frames a decode opened ("sof" spans).

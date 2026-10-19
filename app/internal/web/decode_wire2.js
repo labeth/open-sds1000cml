@@ -205,7 +205,7 @@ function decodeCJTAG(a, b, colTimeS, cfg) {
     if (mode === OAC) {
       oacp++;
       if (oacp === 8 && tmsc === 0) oaclen = 36;
-      if (oacp > oaclen) { mode = OSCAN; cyc = 1; state = 0; }
+      if (oacp > oaclen) { mode = OSCAN; cyc = 1; state = 0; good = true; }
       continue;
     }
     if (mode !== OSCAN) continue;

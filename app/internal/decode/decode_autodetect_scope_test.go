@@ -149,3 +149,21 @@ func TestRailsOfASparselyPulsedLine(t *testing.T) {
 		t.Fatalf("sliced ok=%v with %d edges, want the six pulses' 12", s.ok, len(s.edges))
 	}
 }
+
+// TestScopePartialFramesNotStolen: records that hold a bus's bits but none
+// of its frames whole are named as no other bus: a WS281x frame's middle at
+// 10us/div (its two pulse widths are no PWM output) and a cJTAG escape cut
+// from its scan (its TMSC edges while TCKC is high are no I2C STARTs).
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-256
+func TestScopePartialFramesNotStolen(t *testing.T) {
+	for _, c := range []struct{ file, not string }{
+		{"scope_ws281x_samples_10us.json.gz", "pwm"},
+		{"scope_cjtag_raw_10us_escape.json.gz", "i2c"},
+	} {
+		c1, c2, sampleS := loadGzJSON(t, "testdata/"+c.file)
+		r, _ := AutodetectFast(c1, c2, sampleS, "hex")
+		if r.OK && r.Proto == c.not {
+			t.Errorf("%s: named %s %.60s", c.file, r.Proto, r.Text)
+		}
+	}
+}

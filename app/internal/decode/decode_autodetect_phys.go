@@ -1,7 +1,10 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
 package decode
 
-import "strings"
+import (
+	"slices"
+	"strings"
+)
 
 // Detection of the sigrok protocols beyond the first thirty. Those with a
 // check (a CRC, a checksum, parities, an inverse) are named on it; the rest
@@ -116,7 +119,9 @@ func scorePhys(r Result) float64 {
 		for _, v := range r.Bytes {
 			lo, hi = min(lo, v), max(hi, v)
 		}
-		if n < 6 || float64(hi-lo) < 13+512/r.SPB || !pwmSteady(r) {
+		// and more than two duty cycles: two are a pulse-width code's bits
+		// (WS281x's 1/3 and 2/3 of 1.25 us, DCF77's 100 and 200 ms)
+		if n < 6 || float64(hi-lo) < 13+512/r.SPB || !pwmSteady(r) || pwmTwoLevel(r.Bytes, 6+256/r.SPB) {
 			return -1e9
 		}
 		return float64(60 + min(n, 20))
@@ -243,7 +248,9 @@ func scorePhys(r Result) float64 {
 				scans++
 			}
 		}
-		if scans == 0 || !strings.Contains(r.Text, "ESC6") || r.Cover < 0.8 {
+		// an escape and the activation code after it stand alone: a short
+		// record of a slow probe holds the escape and no whole scan
+		if !strings.Contains(r.Text, "ESC6") || r.Cover < 0.8 {
 			return -1e9
 		}
 		// an escape (six data edges within one clock high) is no I2C
@@ -342,4 +349,31 @@ func innerErrs(r Result) int {
 		}
 	}
 	return n
+}
+
+// pwmTwoLevel reports duty cycles (of 256) that lie within tol of one of
+// two values far apart: the bits of a pulse-width code, not a PWM output.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-256
+func pwmTwoLevel(duty []int, tol float64) bool {
+	if len(duty) == 0 {
+		return false
+	}
+	v := append([]int(nil), duty...)
+	slices.Sort(v)
+	// the widest gap between neighbours splits the two classes
+	cut, gap := 0, 0
+	for i := 1; i < len(v); i++ {
+		if g := v[i] - v[i-1]; g > gap {
+			cut, gap = i, g
+		}
+	}
+	if float64(gap) < 3*tol {
+		return false
+	}
+	for _, part := range [][]int{v[:cut], v[cut:]} {
+		if float64(part[len(part)-1]-part[0]) > 2*tol {
+			return false
+		}
+	}
+	return true
 }
