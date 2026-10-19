@@ -74,29 +74,47 @@ func (c *Capture) ConfigurePanel(p PanelConfig) error {
 // ReadPanel reads the last frame and the counters.
 // TRLC-LINKS: REQ-SDS-022
 func (c *Capture) ReadPanel() (PanelFrame, error) {
+	var w [11]uint16
+	var err error
+	if iso, ok := c.bus.(interface {
+		ReadIsolatedPanel() ([11]uint16, bool, error)
+	}); ok {
+		var owned bool
+		c.mu.Lock() // as the reads themselves: no other sequence in between
+		w, owned, err = iso.ReadIsolatedPanel()
+		c.mu.Unlock()
+		if !owned {
+			w, err = c.PanelWords()
+		}
+	} else {
+		w, err = c.PanelWords()
+	}
+	if err != nil {
+		return PanelFrame{}, err
+	}
+	var f PanelFrame
+	copy(f.Words[:], w[0:4])
+	copy(f.Knobs[:], w[4:8])
+	f.Frames, f.Changes, f.Pins = w[8], w[9], w[10]
+	return f, nil
+}
+
+// PanelWords reads the panel's eleven words (ReadPanel) on this bus: the
+// acquisition worker reads them for the app in one round trip.
+// TRLC-LINKS: REQ-SDS-022
+func (c *Capture) PanelWords() ([11]uint16, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	var f PanelFrame
+	var w [11]uint16
 	for i := uint16(0); i < 11; i++ {
 		if err := c.write(34, i); err != nil {
-			return f, err
+			return w, err
 		}
 		v, err := c.read(44)
 		if err != nil {
-			return f, err
+			return w, err
 		}
-		switch {
-		case i < 4:
-			f.Words[i] = v
-		case i < 8:
-			f.Knobs[i-4] = v
-		case i == 8:
-			f.Frames = v
-		case i == 9:
-			f.Changes = v
-		default:
-			f.Pins = v
-		}
+		w[i] = v
 	}
-	return f, nil
+	return w, nil
 }

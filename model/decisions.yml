@@ -2413,8 +2413,9 @@ decisions:
     peak-detect stream to the host without loss at 2^9 samples a word and coarser (ADR-STREAM-IMAGE), which
     resolves the millisecond-scale buses but not the fast ones. Every trigger is decided in the FPGA.'
   decision: 'The engine decodes these buses in software with their decoders (soft_stream.go). Where the protocol''s
-    shortest feature at its rate spans three and a half buckets of 2^11 samples, it runs the
-    stream image''s continuous peak stream at the coarsest decimation keeping six buckets in that feature, orders
+    shortest feature at its rate spans three and a half buckets of 2^9 samples, it runs the
+    stream image''s continuous peak stream at the coarsest decimation keeping six buckets in that feature (from
+    2^11; a feature 2^11 does not resolve takes 2^10 or 2^9, whichever coarser keeps three and a half), orders
     each bucket''s extremes into two samples, and decodes the samples as they come with decode.StreamDecoder: a
     window that starts in a silence between frames and hands out a frame only once Close samples follow it
     without a decoded span, then moves its start half way into the silence after it, so a frame is decoded whole
@@ -2426,11 +2427,11 @@ decisions:
   consequences:
   - Every protocol streams into the same transcript, LCD list, web and phone views as the first ten, with its mode
     on the BUS sheet's Stream mode row, the LCD's stream status and the web's.
-  - No FPGA change and no further image. The device's single core sets the gap-free floor at 2^11 samples a word
-    (about 244 k words a second), not the stream's 2^9, since a word costs about 0.9 us to fetch from the bus worker,
-    0.45 us to turn into samples and 1.5 to 3 us to decode, and at 2^9 the worker's ring overflowed within a
-    second. DMX512 and 1-Wire (4 and 5 us features) therefore stream as captures. A frame shows Close (the
-    longest frame) after it ends.
+  - No FPGA change and no further image. The gap-free floor is the stream's own 2^9 samples a word (about 977 k
+    words a second), as a word costs about 0.1 us to fetch from the bus worker, 0.1 us to turn into samples and 0.15
+    to 0.3 us to decode (the decoders slice in integers), the worker sleeps through its bank transfers, and its
+    ring holds two seconds of the stream, so DMX512 and 1-Wire (4 and 5 us features) stream gap-free. A frame
+    shows Close (the longest frame) after it ends.
   - A stop on a decode error is refused for these buses; the gap-free record is the value's next occurrence, not
     the one the transcript ends on.
   - Captures miss what lies between records, for the fastest buses most of the signal time (the readout dominates).

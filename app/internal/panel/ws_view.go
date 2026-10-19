@@ -493,11 +493,15 @@ func (c *Controller) busPane(s *sv) *wsview.BusPane {
 	a := &c.ana
 	dec := busDecoding(s)
 	res := a.res
+	// No copies: the list's rows and a frame's packets are replaced whole,
+	// never changed in place, so these stay as they are after the unlock.
 	rows, partial := busRows(a)
-	rows = append([]Packet(nil), rows...)
 	sel := busSelected(a, rows, partial)
-	live := append([]Packet(nil), a.live...)
+	live := a.live
 	liveSel := selectedLive(a, partial, sel)
+	toks := matchTokens(s)
+	hits := a.matchHits(rows, toks)
+	marks, marksGen := a.packetMarks(live, liveSel, toks)
 	c.amu.Unlock()
 	if !dec {
 		failed := u.busFailed
@@ -521,13 +525,6 @@ func (c *Controller) busPane(s *sv) *wsview.BusPane {
 		p.Off = true
 		p.Tool = append([]wsview.Seg{{Key: "Adjust push", Job: "try again"}}, append(posTool(s), wsview.Seg{Key: "S/DIV push", Job: "zoom"})...)
 		return p
-	}
-	toks := matchTokens(s)
-	hits := 0
-	for _, q := range rows {
-		if tokMatch(toks, q) {
-			hits++
-		}
 	}
 	switch {
 	case len(toks) == 0:
@@ -582,14 +579,16 @@ func (c *Controller) busPane(s *sv) *wsview.BusPane {
 	if l, ok := analysis.LayerByID(s.decLayer); ok && layered {
 		p.Layer = l.Name
 	}
-	var lines []line
-	for i, q := range rows {
+	// A row's lines, built only for the rows on screen: a deep record holds
+	// thousands of packets.
+	rowLines := func(i int, dst []line) []line {
+		q := &rows[i]
 		n := len(q.Bytes)
 		k := min(3, max(1, (n+15)/16))
 		if layered {
-			lines = append(lines, line{pi: i, note: true})
+			dst = append(dst, line{pi: i, note: true})
 			if i != sel || n == 0 {
-				continue
+				return dst
 			}
 			k = min(2, k)
 		}
@@ -599,18 +598,55 @@ func (c *Controller) busPane(s *sv) *wsview.BusPane {
 			if more {
 				to = part*16 + 15
 			}
-			lines = append(lines, line{pi: i, from: part * 16, to: to, more: more})
+			dst = append(dst, line{pi: i, from: part * 16, to: to, more: more})
 		}
+		return dst
 	}
-	selLine := 0
-	for selLine < len(lines) && lines[selLine].pi != sel {
-		selLine++
+	// rowCount is len(rowLines(i)), counted.
+	rowCount := func(i int) int {
+		n := len(rows[i].Bytes)
+		k := min(3, max(1, (n+15)/16))
+		if layered {
+			if i != sel || n == 0 {
+				return 1
+			}
+			return 1 + min(2, k)
+		}
+		return k
 	}
-	top := clampInt(selLine-2, 0, max(0, len(lines)-8))
-	for r := 0; r < 8 && top+r < len(lines); r++ {
-		ln := lines[top+r]
+	nLines, selLine := 0, -1
+	for i := range rows {
+		if i == sel {
+			selLine = nLines
+		}
+		nLines += rowCount(i)
+	}
+	if selLine < 0 {
+		selLine = nLines
+	}
+	top := clampInt(selLine-2, 0, max(0, nLines-8))
+	// The rows from the one holding line top.
+	var lines []line
+	first, at := 0, 0
+	for first < len(rows) {
+		k := rowCount(first)
+		if at+k > top {
+			break
+		}
+		at += k
+		first++
+	}
+	for i := first; i < len(rows) && len(lines) < top-at+8; i++ {
+		lines = rowLines(i, lines)
+	}
+	lines = lines[min(len(lines), top-at):]
+	for r := 0; r < 8 && r < len(lines); r++ {
+		ln := lines[r]
 		q := rows[ln.pi]
 		bl := wsview.BusLine{Sel: ln.pi == sel, More: ln.more, Fault: q.Err}
+		if ln.to > ln.from {
+			bl.Hex, bl.Err = make([]string, 0, ln.to-ln.from), make([]bool, 0, ln.to-ln.from)
+		}
 		if ln.note {
 			bl.Note, bl.NoteErr = q.Note, q.NoteErr
 			if bl.Note == "" {
@@ -652,12 +688,9 @@ func (c *Controller) busPane(s *sv) *wsview.BusPane {
 		bl.Str = string(str)
 		p.Lines = append(p.Lines, bl)
 	}
-	p.Up, p.Dn = top > 0, top+8 < len(lines)
+	p.Up, p.Dn = top > 0, top+8 < nLines
 	// the strip: the selected packet boxed (found by its message), matches ticked
-	for i, q := range live {
-		p.Marks = append(p.Marks, wsview.PacketMark{I0: q.I0, I1: q.I1, Sel: i == liveSel, Match: len(toks) > 0 && tokMatch(toks, q),
-			Text: q.Note, Err: q.NoteErr})
-	}
+	p.Marks, p.MarksGen = marks, marksGen
 	p.SelNum = sel + 1
 	p.Tool = append(append([]wsview.Seg{{Key: "Adjust", Job: "packet"}, {Key: "push", Job: "pick bytes"}}, posTool(s)...), wsview.Seg{Key: "Zoom", Job: zoomJob})
 	return p

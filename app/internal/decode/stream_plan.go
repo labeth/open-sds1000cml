@@ -195,13 +195,17 @@ func StreamLead(proto string, baud float64) float64 {
 }
 
 // StreamGapFreeMinLog is the finest decimation the scope decodes gap-free in
-// software: one peak word per 2^11 samples (about 244 k words a second).
-// The stream itself carries 2^9 without loss, but on the device's single
-// core a word costs about 0.9 us to fetch from the bus worker, 0.45 us to
-// turn into samples and 1.5 to 3 us to decode, while the worker's bus
-// transfers take their own share: at 2^9 the worker's ring overflowed within
-// a second.
-const StreamGapFreeMinLog = 11
+// software, the stream's own finest: one peak word per 2^9 samples (about
+// 977 k words a second). On the device's single core a word there costs
+// about 0.1 us to fetch from the bus worker, 0.1 us to turn into samples
+// and 0.15 to 0.3 us to decode, and the worker's bank transfers about a
+// third of the core: a DMX512 bus streamed for minutes without a loss.
+const StreamGapFreeMinLog = 9
+
+// streamCheapLog is the decimation a feature that resolves there keeps:
+// a finer one (2^10, 2^9) only for the features 2^11 does not resolve, as
+// it costs the core two or four times the words.
+const streamCheapLog = 11
 
 // StreamMaxLog is the coarsest decimation the stream carries (2^20 samples
 // a word, 2.1 ms): a DCF77 minute is then 29 k samples a decode, not 930 k.
@@ -210,16 +214,22 @@ const StreamMaxLog = 20
 // StreamBucketLog picks the gap-free stream's decimation for a shortest
 // feature of feature seconds: the coarsest bucket of 2^log samples (2 ns
 // each; a peak word gives a bucket's two extremes, so two samples) that
-// keeps six buckets in the feature, and never finer than the stream
-// carries. ok is false when even the finest leaves fewer than three and a
-// half buckets in it: the edges then move by a bucket within a feature.
+// keeps six buckets in the feature, and never finer than 2^11; a feature
+// 2^11 leaves fewer than three and a half buckets in takes the coarsest
+// finer one that leaves it that many (streamCheapLog). ok is false when even
+// the finest leaves fewer: the edges then move by a bucket within a feature.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
 func StreamBucketLog(feature float64) (log int, ok bool) {
 	bucket := func(l int) float64 { return float64(uint64(1)<<l) * 2e-9 }
-	if feature < 3.5*bucket(StreamGapFreeMinLog) {
+	if feature < 3.5*bucket(streamCheapLog) {
+		for log = streamCheapLog - 1; log >= StreamGapFreeMinLog; log-- {
+			if feature >= 3.5*bucket(log) {
+				return log, true
+			}
+		}
 		return 0, false
 	}
-	log = StreamGapFreeMinLog
+	log = streamCheapLog
 	for log < StreamMaxLog && bucket(log+1)*6 <= feature {
 		log++
 	}

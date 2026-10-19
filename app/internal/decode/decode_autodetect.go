@@ -450,13 +450,13 @@ func idleLevel(s *sliced) int {
 		sort.Ints(runs)
 		median = runs[len(runs)/2]
 		if longest > 2*median {
-			if l := s.level[min(at+longest/2, s.n-1)]; l == 0 || l == 1 {
+			if l := s.levels()[min(at+longest/2, s.n-1)]; l == 0 || l == 1 {
 				return int(l)
 			}
 		}
 	}
 	hi, lo := 0, 0
-	for _, l := range s.level {
+	for _, l := range s.levels() {
 		if l == 1 {
 			hi++
 		} else if l == 0 {

@@ -168,8 +168,17 @@ type decodeKey struct {
 	p       DecodeParams
 }
 
+// decodeCache holds the last few decodes: the LCD, the packet list and the
+// remote can ask with different settings or frames in turn, and one entry
+// would decode the held record again on every display tick.
 var decodeCache struct {
 	sync.Mutex
+	e    [4]decodeEntry
+	next int
+}
+
+// decodeEntry is one cached decode.
+type decodeEntry struct {
 	key decodeKey
 	res decode.Result
 	ok  bool
@@ -212,8 +221,12 @@ func Decode(f *engine.Frame, p DecodeParams) decode.Result {
 	ch := func(c int) []uint8 { return Channel(f, c, valid) }
 	decodeCache.Lock()
 	defer decodeCache.Unlock()
-	if cacheable && decodeCache.ok && decodeCache.key == key {
-		return decodeCache.res
+	if cacheable {
+		for i := range decodeCache.e {
+			if c := &decodeCache.e[i]; c.ok && c.key == key {
+				return c.res
+			}
+		}
 	}
 	var res decode.Result
 	switch p.Proto {
@@ -253,7 +266,10 @@ func Decode(f *engine.Frame, p DecodeParams) decode.Result {
 	if f.PeakDetect && f.Ordered && !EnvelopeResolves(res) {
 		res = decode.Result{Proto: res.Proto, Error: decode.Names[res.Proto] + " not resolved at this timebase - S/DIV faster, or SINGLE"}
 	}
-	decodeCache.key, decodeCache.res, decodeCache.ok = key, res, cacheable
+	if cacheable {
+		decodeCache.e[decodeCache.next] = decodeEntry{key: key, res: res, ok: true}
+		decodeCache.next = (decodeCache.next + 1) % len(decodeCache.e)
+	}
 	return res
 }
 

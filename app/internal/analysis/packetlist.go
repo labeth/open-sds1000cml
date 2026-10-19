@@ -21,13 +21,14 @@ const maxKnown = 4096
 // it again. The zero value is an empty list.
 // TRLC-LINKS: REQ-SDS-214
 type PacketList struct {
-	rows   []Packet
-	keys   []string            // content key per row
-	shown  int                 // distinct messages in the rows
-	known  map[string]struct{} // every message seen since Reset
-	sel    int
-	selKey string // the message the selection follows
-	hasSel bool
+	rows    []Packet
+	keys    []string            // content key per row
+	shown   int                 // distinct messages in the rows
+	known   map[string]struct{} // every message seen since Reset
+	sel     int
+	selKey  string // the message the selection follows
+	hasSel  bool
+	selMemo selMemo
 }
 
 // Update offers the packets of a new capture (Packets' result; incomplete
@@ -116,12 +117,42 @@ func (l *PacketList) SelectedIn(ps []Packet) int {
 		return -1
 	}
 	want := l.keys[s]
+	// A capture's packets are replaced whole, never changed in place: the
+	// answer holds for the same packets, row and message (the display asks
+	// at every tick).
+	var first *Packet
+	if len(ps) > 0 {
+		first = &ps[0]
+	}
+	if m := l.selMemo; m.ok && m.ps == first && m.n == len(ps) && m.sel == s && m.want == want {
+		return m.res
+	}
+	best := nearestMessage(ps, want, s)
+	l.selMemo = selMemo{ps: first, n: len(ps), sel: s, want: want, res: best, ok: true}
+	return best
+}
+
+// selMemo is SelectedIn's last answer and what it was for.
+type selMemo struct {
+	ps     *Packet
+	n, sel int
+	want   string
+	res    int
+	ok     bool
+}
+
+// nearestMessage is the complete packet of ps with content key want whose
+// place among the complete packets is nearest s, -1 none.
+// TRLC-LINKS: REQ-SDS-214
+func nearestMessage(ps []Packet, want string, s int) int {
 	best, bestD, c := -1, 0, 0
-	for i, p := range ps {
+	var buf [256]byte
+	for i := range ps {
+		p := &ps[i]
 		if !p.Complete {
 			continue
 		}
-		if contentKey(p) == want {
+		if string(appendContentKey(buf[:0], p)) == want {
 			if d := abs(c - s); best < 0 || d < bestD {
 				best, bestD = i, d
 			}
@@ -260,7 +291,14 @@ func samePackets(rows, ps []Packet, keys []string) bool {
 // fault, bytes and flagged bytes, not where it sits in the record.
 // TRLC-LINKS: REQ-SDS-214
 func contentKey(p Packet) string {
-	b := make([]byte, 0, 16+len(p.Err)+len(p.Bytes)+len(p.Bytes)/8)
+	return string(appendContentKey(make([]byte, 0, 16+len(p.Err)+len(p.Bytes)+len(p.Bytes)/8), &p))
+}
+
+// appendContentKey appends p's contentKey to b: a caller that only compares
+// keys builds them in a buffer of its own (the display looks for the
+// selected message in every packet of the record at each tick).
+// TRLC-LINKS: REQ-SDS-214
+func appendContentKey(b []byte, p *Packet) []byte {
 	var flags byte
 	if p.HasAddr {
 		flags |= 1
@@ -286,5 +324,5 @@ func contentKey(p Packet) string {
 			bits = 0
 		}
 	}
-	return string(b)
+	return b
 }

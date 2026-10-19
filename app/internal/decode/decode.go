@@ -220,8 +220,17 @@ func invertLogic(codes []uint8) []uint8 {
 	return out
 }
 
+// hexBytes are the 256 two-digit hex texts: a decode names every byte, and
+// formatting each one anew is a good share of a stream decode on the device.
+var hexBytes = func() (t [256]string) {
+	for i := range t {
+		t[i] = fmt.Sprintf("%02X", i)
+	}
+	return t
+}()
+
 // TRLC-LINKS: REQ-SDS-018
-func hex2(b int) string { return fmt.Sprintf("%02X", b&0xff) }
+func hex2(b int) string { return hexBytes[b&0xff] }
 
 // TRLC-LINKS: REQ-SDS-018
 func popcount(v int) int {
@@ -277,8 +286,26 @@ type sliced struct {
 	highRail   float64
 	amp        float64
 	thHi, thLo float64
-	level      []int8
+	first      int8 // the level of sample 0
 	edges      []edge
+}
+
+// levels is the level of every sample (the edges set it): built only for
+// the decoders that read it, not on every slicing.
+// TRLC-LINKS: REQ-SDS-018
+func (s *sliced) levels() []int8 {
+	level := make([]int8, s.n)
+	cur, at := s.first, 0
+	for _, e := range s.edges {
+		for ; at < e.i; at++ {
+			level[at] = cur
+		}
+		cur = int8((e.dir + 1) / 2)
+	}
+	for ; at < s.n; at++ {
+		level[at] = cur
+	}
+	return level
 }
 
 // AutoThreshold is the slicing level the decoders use when none is set: the
@@ -327,11 +354,16 @@ func Extent(codes []uint8) (lo, hi int, ok bool) {
 // (decode.js sliceChannel).
 // TRLC-LINKS: REQ-SDS-018
 func rails(codes []uint8) (lowRail, highRail float64, reason string) {
-	var h [256]float64
-	valid := 0
+	// Counted in integers: on the device's VFP a float add per sample costs
+	// more than the rest of a decode.
+	var counts [256]int32
 	for _, v := range codes {
-		h[v]++
-		valid++
+		counts[v]++
+	}
+	valid := len(codes)
+	var h [256]float64
+	for c, k := range counts {
+		h[c] = float64(k)
 	}
 	if valid < 8 {
 		return 0, 0, "no/too-few valid samples"
@@ -436,40 +468,69 @@ func sliceChannel(codes []uint8, thr float64, haveThr bool) sliced {
 	}
 	band := hystFrac * amp / 2
 	thHi, thLo := threshold+band, threshold-band
-	level := make([]int8, n)
 	var edges []edge
-	cur := -1
-	for i := 0; i < n; i++ {
-		v := float64(codes[i])
-		nl := cur
-		switch {
-		case cur < 0:
-			if v >= threshold {
-				nl = 1
-			} else {
-				nl = 0
+	// The codes are integers, so v >= t is v >= ceil(t) and v <= t is
+	// v <= floor(t): the loop compares integers and walks each level's run
+	// (a float compare per sample is most of a decode on the device's VFP).
+	on, hiAt, loAt := codeCeil(threshold), codeCeil(thHi), codeFloor(thLo)
+	cur := 0
+	if n > 0 && int(codes[0]) >= on {
+		cur = 1
+	}
+	first := int8(cur)
+	for i := 0; i < n; {
+		j := i
+		if cur == 0 {
+			for j < n && int(codes[j]) < hiAt {
+				j++
 			}
-		case cur == 0 && v >= thHi:
-			nl = 1
-		case cur == 1 && v <= thLo:
-			nl = 0
+		} else {
+			for j < n && int(codes[j]) > loAt {
+				j++
+			}
 		}
-		if cur >= 0 && nl != cur {
-			frac := float64(i)
-			if p := i - 1; p >= 0 && codes[i] != codes[p] {
-				frac = float64(p) + (threshold-float64(codes[p]))/(float64(codes[i])-float64(codes[p]))
-			}
-			d := -1
-			if nl > cur {
-				d = 1
-			}
-			edges = append(edges, edge{i, d, frac})
+		if j >= n {
+			break
 		}
-		cur = nl
-		level[i] = int8(nl)
+		if j > 0 { // sample 0 only sets the first level
+			frac := float64(j)
+			if p := j - 1; codes[j] != codes[p] {
+				frac = float64(p) + (threshold-float64(codes[p]))/(float64(codes[j])-float64(codes[p]))
+			}
+			d := 1
+			if cur == 1 {
+				d = -1
+			}
+			if len(edges) == cap(edges) {
+				// Doubled: append grows a long slice by a quarter, and a busy
+				// window holds tens of thousands of edges.
+				edges = append(make([]edge, 0, max(64, 2*cap(edges))), edges...)
+			}
+			edges = append(edges, edge{j, d, frac})
+			cur = 1 - cur
+		}
+		i = j + 1
 	}
 	return sliced{ok: true, n: n, codes: codes, threshold: threshold, lowRail: lowRail,
-		highRail: highRail, amp: amp, thHi: thHi, thLo: thLo, level: level, edges: edges}
+		highRail: highRail, amp: amp, thHi: thHi, thLo: thLo, first: first, edges: edges}
+}
+
+// codeCeil is the least code at or above t (256: none, as for NaN).
+// TRLC-LINKS: REQ-SDS-018
+func codeCeil(t float64) int {
+	if !(t <= 255) {
+		return 256
+	}
+	return int(max(0, math.Ceil(t)))
+}
+
+// codeFloor is the greatest code at or below t (-1: none, as for NaN).
+// TRLC-LINKS: REQ-SDS-018
+func codeFloor(t float64) int {
+	if !(t >= 0) {
+		return -1
+	}
+	return int(min(255, math.Floor(t)))
 }
 
 // TRLC-LINKS: REQ-SDS-018

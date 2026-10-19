@@ -221,8 +221,8 @@ func TestSoftStreamStopPatternAtItsPlace(t *testing.T) {
 // captures, at their usual rates (the bench sources' and the panel's).
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
 func TestSoftStreamModes(t *testing.T) {
-	for proto, want := range map[int]string{serLIN: "gap-free", serDMX: "captures", serModbus: "gap-free",
-		serOneWire: "captures", serDHT: "gap-free", serCEC: "gap-free", serJ1850: "gap-free", serIRNEC: "gap-free",
+	for proto, want := range map[int]string{serLIN: "gap-free", serDMX: "gap-free", serModbus: "gap-free",
+		serOneWire: "gap-free", serDHT: "gap-free", serCEC: "gap-free", serJ1850: "gap-free", serIRNEC: "gap-free",
 		serIRSIRC: "gap-free", serIRRC5: "gap-free", serIRRC6: "gap-free", serDALI: "gap-free", serPS2: "gap-free",
 		serWiegand: "gap-free", serUSBPD: "captures", serSPDIF: "captures", serSWD: "captures", serMDIO: "captures",
 		serWS281x: "captures", serUART: "", serMIDI: "", serUSB: "",
@@ -241,8 +241,20 @@ func TestSoftStreamModes(t *testing.T) {
 			t.Errorf("protocol %d at %d: %q, want %q", proto, baud, got, want)
 		}
 	}
-	if got := SoftStreamMode(serModbus, 115200, false); got != "captures" {
-		t.Errorf("Modbus at 115200 Bd: %q", got)
+	// Modbus streams gap-free to 230,400 Bd (4.3 us bits at 2^9), finer
+	// decimations only for the features 2^11 does not resolve.
+	for _, c := range []struct {
+		baud int
+		mode string
+		log  int
+	}{{19200, "gap-free", 12}, {57600, "gap-free", 11}, {115200, "gap-free", 10}, {230400, "gap-free", 9}, {460800, "captures", 0}} {
+		log, _ := softGapFreeLog("modbus", c.baud, false)
+		if got := SoftStreamMode(serModbus, c.baud, false); got != c.mode || log != c.log {
+			t.Errorf("Modbus at %d Bd: %q at 2^%d, want %q at 2^%d", c.baud, got, log, c.mode, c.log)
+		}
+	}
+	if log, _ := softGapFreeLog("dmx512", 250000, false); log != 9 {
+		t.Errorf("DMX512 at 2^%d, want 2^9", log)
 	}
 	if got := SoftStreamMode(serOneWire, 160000, true); got != "captures" {
 		t.Errorf("1-Wire overdrive: %q", got)

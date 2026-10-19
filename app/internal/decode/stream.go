@@ -270,7 +270,7 @@ func (d *StreamDecoder) run() []StreamFrame {
 	var out []StreamFrame
 	cut, last := 0, -1 // last: the end of the last frame handed out
 	take := func(g group) {
-		f := StreamFrame{I0: d.base + uint64(g.i0), I1: d.base + uint64(g.i1)}
+		f := StreamFrame{I0: d.base + uint64(g.i0), I1: d.base + uint64(g.i1), Spans: make([]StreamSpan, 0, g.to-g.from)}
 		for _, s := range sp[g.from:g.to] {
 			f.Spans = append(f.Spans, StreamSpan{I0: d.base + uint64(s.I0), I1: d.base + uint64(s.I1), Text: s.Text, Kind: s.Kind, Val: s.Val})
 		}
