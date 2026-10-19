@@ -80,14 +80,14 @@ func (w *symWave) halves(v, n int, one [2]bool, half float64) {
 // reflected (poly given reflected, as USB PD's CRC-32) or MSB first (as
 // J1850's CRC-8), so the bench frames carry the checks real buses do.
 // TRLC-LINKS: REQ-SDS-013
-func symCheck(b []int, width int, poly, init int, reflected bool) int {
-	top, all := 1<<(width-1), 1<<width-1
+func symCheck(b []int, width int, poly, init uint64, reflected bool) int {
+	top, all := uint64(1)<<(width-1), uint64(1)<<width-1
 	c := init
 	for _, v := range b {
 		if reflected {
-			c ^= v & 0xff
+			c ^= uint64(v & 0xff)
 		} else {
-			c ^= (v & 0xff) << (width - 8)
+			c ^= uint64(v&0xff) << (width - 8)
 		}
 		for i := 0; i < 8; i++ {
 			switch {
@@ -102,7 +102,7 @@ func symCheck(b []int, width int, poly, init int, reflected bool) int {
 			}
 		}
 	}
-	return c ^ all
+	return int(int64(c ^ all)) // the low 32 bits, the bytes callers take, on any int
 }
 
 // symMatches runs the planned trigger's Go model over the wave.
@@ -568,7 +568,7 @@ func symbolCases() []symCase {
 				}
 			}
 			return w
-		}, reqs: []symReq{{[]PatternElem{symStart}, 3}, {[]PatternElem{symStart, symData(0xa5, 0xff)}, 2}, {[]PatternElem{symStart, symData(0xa5, 0xff), symData(1, 7), symData(0x0000ffff, 0xffffffff)}, 2}}},
+		}, reqs: []symReq{{[]PatternElem{symStart}, 3}, {[]PatternElem{symStart, symData(0xa5, 0xff)}, 2}, {[]PatternElem{symStart, symData(0xa5, 0xff), symData(1, 7), symData(0x0000ffff, 0x7fffffff)}, 2}}},
 		{name: "MDIO", p: symParams(serMDIO, 1000000), wave: func() *symWave {
 			w := &symWave{}
 			T := 1e-6
