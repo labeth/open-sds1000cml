@@ -30,7 +30,7 @@ type uchar struct {
 // lasts breakBits or more is a break (breakBits 0: none).
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-232
 func uartChars(S sliced, spb float64, parity string, stops int, breakBits float64) []uchar {
-	var out []uchar
+	out := make([]uchar, 0, len(S.edges)/4+1) // a character takes two edges or more
 	pc := 0
 	if parity != "none" {
 		pc = 1
@@ -349,9 +349,10 @@ func DecodeDMX512(codes []uint8, colTimeS float64, cfg DMXCfg) Result {
 	}
 	chars := uartChars(S, spb, "none", 2, dmxBreakBits)
 	n := S.n
-	var spans []Span
-	var toks []string
-	var units []int
+	// Sized for the characters: a DMX512 packet is hundreds of them.
+	spans := make([]Span, 0, len(chars)+len(chars)/8+2)
+	toks := make([]string, 0, cap(spans))
+	units := make([]int, 0, len(chars))
 	good := false
 	for k := 0; k < len(chars); k++ {
 		if chars[k].kind != "break" {
@@ -391,6 +392,9 @@ func DecodeDMX512(codes []uint8, colTimeS float64, cfg DMXCfg) Result {
 	}
 	if len(spans) == 0 {
 		return Result{Proto: "dmx512", Error: "no DMX512 break"}
+	}
+	if len(units) == 0 {
+		units = nil // as a decode with no slot has always read
 	}
 	res := Result{OK: good, Proto: "dmx512", Spans: spans, Text: strings.Join(toks, " "), Bytes: units,
 		Baud: baud, SPB: spb, Thr: S.threshold}
