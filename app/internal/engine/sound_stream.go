@@ -287,11 +287,20 @@ type soundState struct {
 // TRLC-LINKS: REQ-SDS-265
 func (e *Engine) sound() *soundState {
 	e.soundOnce.Do(func() {
-		e.snd = &soundState{ring: newSoundRing(soundRingLog2)}
-		e.snd.info.State = "off"
-		e.snd.info.RateHz = 500e6 / float64(uint64(1)<<SoundLog2)
+		s := &soundState{ring: newSoundRing(soundRingLog2)}
+		s.info.State = "off"
+		s.info.RateHz = 500e6 / float64(uint64(1)<<SoundLog2)
+		e.snd.Store(s)
 	})
-	return e.snd
+	return e.snd.Load()
+}
+
+// soundStreaming reports a running audio stream (the acquisition owner's
+// view), without making the sound state.
+// TRLC-LINKS: REQ-SDS-265
+func (e *Engine) soundStreaming() bool {
+	s := e.snd.Load()
+	return s != nil && s.streaming
 }
 
 // LeaseSound keeps the audio stream running for d from now (0 releases).
@@ -308,10 +317,11 @@ func (e *Engine) LeaseSound(d time.Duration) {
 // soundWanted reports a current lease.
 // TRLC-LINKS: REQ-SDS-265
 func (e *Engine) soundWanted() bool {
-	if e.snd == nil {
+	s := e.snd.Load()
+	if s == nil {
 		return false
 	}
-	v := e.snd.lease.Load()
+	v := s.lease.Load()
 	return v != 0 && e.clk.Now != nil && e.clk.Now().UnixNano() < v
 }
 

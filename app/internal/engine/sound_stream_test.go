@@ -93,6 +93,29 @@ func TestUnwrapWord(t *testing.T) {
 	}
 }
 
+// TestSoundFirstLeaseRace takes the first lease on a web request's
+// goroutine while the acquisition owner asks whether the stream is wanted:
+// the sound state made on first use reaches the owner safely (go test
+// -race).
+// TRLC-LINKS: REQ-SDS-265
+func TestSoundFirstLeaseRace(t *testing.T) {
+	fb := newFakeBus()
+	e, _ := newTestEngine(t, fb)
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		e.LeaseSound(2 * time.Second)
+		e.SoundRead(0, 16, nil, nil)
+	}()
+	for i := 0; i < 1000 && !e.soundWanted(); i++ {
+		e.soundStreaming()
+	}
+	<-done
+	if !e.soundWanted() {
+		t.Fatal("the lease did not reach the owner")
+	}
+}
+
 // A lease holds the stream for its time; the info starts off.
 // TRLC-LINKS: REQ-SDS-265
 func TestSoundLease(t *testing.T) {
