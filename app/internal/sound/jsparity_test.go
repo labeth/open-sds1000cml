@@ -226,6 +226,7 @@ func TestSoundJSParity(t *testing.T) {
 	add(pvec{Kind: "adsr", Name: "tone gated", Fs: fs, X: gen(n, fs, adsrSignal(0.05, 0.04, 0.5, 0.6, 0.08, false), 0.002, 11), On: 0.1, Off: 0.75})
 	add(pvec{Kind: "adsr", Name: "tone found", Fs: fs, X: gen(n, fs, adsrSignal(0.02, 0.1, 0.3, 0.5, 0.2, false), 0.002, 12), On: -1, Off: -1})
 	add(pvec{Kind: "adsr", Name: "cv found", Fs: fs, CV: true, X: gen(n, fs, adsrSignal(0.1, 0.05, 0.7, 0.6, 0.1, true), 0.002, 13), On: -1, Off: -1})
+	add(pvec{Kind: "adsr", Name: "held to the end", Fs: fs, X: gen(n, fs, adsrSignal(0.02, 0.1, 0.6, 5, 0.2, false), 0.002, 25), On: -1, Off: -1})
 	add(pvec{Kind: "adsr", Name: "percussive", Fs: fs, X: gen(n, fs, func(t float64) float64 {
 		if t < 0.1 {
 			return 0

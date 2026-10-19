@@ -89,7 +89,7 @@ func CompareAB(a, b []float64, fs, f0 float64) AB {
 // TRLC-LINKS: REQ-SDS-271
 func Delay(a, b []float64, fs, maxS float64) (float64, bool) {
 	n := min(len(a), len(b), 65536)
-	if n < 64 {
+	if n < 64 || !(maxS*fs >= 0) {
 		return 0, false
 	}
 	a, b = a[len(a)-n:], b[len(b)-n:]
@@ -110,7 +110,7 @@ func Delay(a, b []float64, fs, maxS float64) (float64, bool) {
 		ar[k], ai[k] = re, im
 	}
 	fft(ar, ai, true)
-	lim := min(n-1, int(maxS*fs))
+	lim := int(math.Min(float64(n-1), maxS*fs))
 	at := func(l int) float64 { // lag l (negative wraps)
 		if l < 0 {
 			l += size

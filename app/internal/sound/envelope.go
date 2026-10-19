@@ -220,7 +220,9 @@ func AnalyzeADSR(env []float64, fs, gateOn, gateOff float64) ADSR {
 		if be > bs && float64(be-bs) >= 0.1*fs {
 			sus = median(e[bs:be])
 			r.HasSustain = sus > 0.03
-			rel = be
+			if be < n { // a sustain held to the capture's end has no release in it
+				rel = be
+			}
 		}
 	}
 	if !r.HasSustain {

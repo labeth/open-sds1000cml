@@ -405,7 +405,11 @@ function sndADSR(env, fs, gateOn, gateOff) {
     r.hasSustain = sus > 0.03;
   } else {
     const [bs, be] = sndFlatStretch(e, pi, fs);
-    if (be > bs && be - bs >= 0.1 * fs) { sus = sndMedian(Array.from(e.subarray(bs, be))); r.hasSustain = sus > 0.03; rel = be; }
+    if (be > bs && be - bs >= 0.1 * fs) {
+      sus = sndMedian(Array.from(e.subarray(bs, be)));
+      r.hasSustain = sus > 0.03;
+      if (be < n) rel = be; // a sustain held to the capture's end has no release in it
+    }
   }
   if (!r.hasSustain) sus = 0;
   r.sustain = low + sus * (pk - low);

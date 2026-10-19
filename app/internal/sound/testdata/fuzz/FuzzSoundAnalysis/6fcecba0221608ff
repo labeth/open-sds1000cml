@@ -1,0 +1,7 @@
+go test fuzz v1
+byte('\x00')
+uint16(4154)
+float64(-36.7)
+float64(4359.654017857143)
+float64(64.6)
+[]byte("")
