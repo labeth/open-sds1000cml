@@ -138,31 +138,34 @@ func yinDifference(x []float64, w, tauMax int) []float64 {
 	n := len(x)
 	m := mean(x)
 	size := pow2(n + w)
-	ar, ai := getScratch(size), getScratch(size)
-	br, bi := getScratch(size), getScratch(size)
-	defer putScratch(ar)
-	defer putScratch(ai)
-	defer putScratch(br)
-	defer putScratch(bi)
-	clear(ar)
-	clear(ai)
-	clear(br)
-	clear(bi)
+	// Both real sequences in one complex transform, z = b + i a (b the whole
+	// stretch, a its first w samples): a third fewer transforms than one
+	// each, the tuner's largest cost on the instrument.
+	zr, zi := getScratch(size), getScratch(size)
+	pr, pi := getScratch(size), getScratch(size)
+	defer putScratch(zr)
+	defer putScratch(zi)
+	defer putScratch(pr)
+	defer putScratch(pi)
+	clear(zr)
+	clear(zi)
 	for i := 0; i < n; i++ {
-		br[i] = x[i] - m
+		zr[i] = x[i] - m
 		if i < w {
-			ar[i] = br[i]
+			zi[i] = zr[i]
 		}
 	}
-	fft(ar, ai, false)
-	fft(br, bi, false)
-	for k := range ar {
+	fft(zr, zi, false)
+	for k := 0; k < size; k++ {
+		j := (size - k) & (size - 1)
+		// B = (Z[k] + conj Z[-k]) / 2, A = (Z[k] - conj Z[-k]) / 2i
+		br, bi := (zr[k]+zr[j])/2, (zi[k]-zi[j])/2
+		ar, ai := (zi[k]+zi[j])/2, -(zr[k]-zr[j])/2
 		// conj(A) * B
-		re := ar[k]*br[k] + ai[k]*bi[k]
-		im := ar[k]*bi[k] - ai[k]*br[k]
-		ar[k], ai[k] = re, im
+		pr[k] = ar*br + ai*bi
+		pi[k] = ar*bi - ai*br
 	}
-	fft(ar, ai, true)
+	fft(pr, pi, true)
 	// Prefix sums of the squares for the energies.
 	cum := getScratch(n + 1)
 	defer putScratch(cum)
@@ -174,7 +177,7 @@ func yinDifference(x []float64, w, tauMax int) []float64 {
 	d := make([]float64, tauMax)
 	e0 := cum[w]
 	for t := 0; t < tauMax; t++ {
-		r := ar[t] / float64(size)
+		r := pr[t] / float64(size)
 		et := cum[t+w] - cum[t]
 		d[t] = math.Max(0, e0+et-2*r)
 	}
