@@ -216,8 +216,10 @@ func scorePhys(r Result) float64 {
 		return float64(frames*250 + n*2)
 	case "swim":
 		// a whole transaction: a read or write on the fly, its count, the
-		// three address bytes and a byte, each acknowledged with its parity
-		if !swimTransaction(r) {
+		// three address bytes and a byte, each acknowledged with its parity;
+		// at a SWIM rate (high speed at 16 MHz is 1.6 Mbit/s: a 10 MHz SPI
+		// data line read as SWIM reads ten)
+		if !swimTransaction(r) || r.Baud > 2000000 {
 			return -1e9
 		}
 		return float64(data*60 - errs*40)

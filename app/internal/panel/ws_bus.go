@@ -1109,10 +1109,13 @@ func (c *Controller) findAtFullRate(full, t float64, first *look, auto AutoSourc
 	// A bus too fast for it is looked at at the full rate on a short record
 	// first: its frames are short, and the whole record takes seconds to
 	// read.
+	var cut *look // a find the short record may have cut a frame of: kept, should the whole record show nothing else
 	if w := c.windowTdiv(); w > 0 && w < t {
 		c.setTdivNearest(w)
-		if l := c.detectWith(false, true, at(w), auto, detectWait); l.found {
+		if l := c.detectWith(false, true, at(w), auto, detectWait); l.found && !usbPDRateManchester(l.res) {
 			return keep(l.res, l.sampleS, w)
+		} else if l.found {
+			cut = &l
 		}
 		c.setTdivNearest(t)
 	}
@@ -1124,6 +1127,10 @@ func (c *Controller) findAtFullRate(full, t float64, first *look, auto AutoSourc
 	l := c.detectWith(false, true, at(t), auto, detectWait)
 	if l.found {
 		return keep(l.res, l.sampleS, t)
+	}
+	if cut != nil {
+		c.setTdivNearest(c.windowTdiv())
+		return keep(cut.res, cut.sampleS, c.windowTdiv())
 	}
 	c.setTdivNearest(prev)
 	return l.res, l.sampleS, false, 0
@@ -1145,6 +1152,14 @@ func scantUART(res decode.Result) bool {
 func scantFind(res decode.Result) bool {
 	return scantUART(res) || (res.Proto == "spi" || res.Proto == "i2c") && len(res.Bytes) < scantBytes ||
 		res.Proto == "ps2" && frameStarts(res) <= 1 || slowManchester(res)
+}
+
+// usbPDRateManchester reports a Manchester line at USB Power Delivery's
+// 300 kbit/s (within 10 %): a short record that cuts a PD message's CRC
+// reads its biphase mark code as plain Manchester (findAtFullRate).
+// TRLC-LINKS: REQ-SDS-214, REQ-SDS-256
+func usbPDRateManchester(res decode.Result) bool {
+	return res.Proto == "manchester" && res.Baud >= 270000 && res.Baud <= 330000
 }
 
 // slowManchester reports a Manchester line under 10 kbit/s: a tag's or a
