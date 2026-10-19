@@ -97,7 +97,7 @@ anything on the scope's screen.
 | **Vertical** | 2 mV/div to 10 V/div; DC, AC or GND (AC and GND applied to the samples); 20 MHz bandwidth limit; probe ×1, ×10 or ×100 |
 | **Serial protocols** | **52**, each with a hardware trigger, decode and AUTO detection: UART, I²C, SPI, CAN / CAN FD, FlexRay, ARINC 429, MIL-STD-1553, SENT, Manchester, USB low and full speed, LIN, DMX512, MIDI, Modbus RTU, 1-Wire, WS281x, DHT / AM230x, HDMI-CEC, SAE J1850 VPW, IR NEC, IR Sony SIRC, IR RC-5, IR RC-6, DALI, USB Power Delivery, S/PDIF, PS/2, SWD, MDIO, Wiegand, quadrature encoder, stepper STEP/DIR, PWM, PT2262 / EV1527 remote codes, Oregon Scientific OOK, ISO 14443 Miller, Morse, DCF77, EM4100, EM4305, T55xx, STM8 SWIM, SDQ, PJON (PJDL), DSI, Qi, SD card (SD mode), AVR PDI, cJTAG, Maple bus, digital caliper, IR multi-protocol (Samsung, JVC, NEC16/42, Kaseikyo, Matsushita, Denon) |
 | **Streaming decode** | **continuous, gap-free protocol decoding**, not one capture at a time: 921,600-baud UART ran for 3 minutes without losing a byte, with the full-rate record kept for every frame |
-| **Analysis** | 18 automatic measurements, cursors, math, FFT, spectrogram, eye diagram and jitter, mask test |
+| **Analysis** | 18 automatic measurements, cursors, math, FFT, spectrogram, eye diagram and jitter, mask test, bus layers, SOUND (audio meters, tuner, envelope, modulation, harmonics, Listen) |
 | **Interfaces** | web UI in any browser, SCPI over VXI-11 (LAN), the scope's own LCD and front panel |
 
 ## Acquisition
@@ -172,7 +172,7 @@ while keeping the full record in SRAM for STOP, SINGLE and detailed review.
   writes, takes the bits by pulse width, by a re-timed sampler or by a clock line, and matches a 64-bit
   window. AUTO in BUS finds a bus from an edge-triggered capture and arms its frame-start trigger.
   The decoded-event stream (BUS Stream view) carries the first ten, MIDI and USB full speed; the
-  twenty on the symbol trigger stream decoded in software, the BUS sheet's Stream mode row saying how.
+  forty-one on the symbol trigger stream decoded in software, the BUS sheet's Stream mode row saying how.
 * **Sequence trigger:** chain up to **32 protocol events**, including **trigger on error**.
 * **Zone trigger:** draw up to four boxes on the screen that the waveform must cross or avoid; the
   FPGA keeps a history of where the signal was and decides each edge.
@@ -291,6 +291,17 @@ and the timing margin left on each side.
   stacking image** accumulates the hits in hardware, using the same captured records across
   every tile to avoid acquisition-dependent seams. Phase-coherent equivalent-time folding resolves clocks above the trigger
   comparator's range.
+* **Bus layers:** application decoders stacked on a decoded bus, as sigrok's: SPI flash, SD card, AVR ISP,
+  radios, network chips, converters and sensors on SPI (22); EDID, clocks, EEPROMs, port expanders and
+  sensors on I²C (16, with by-address and address-filter views); S.BUS, ARM trace, a Bluetooth module and
+  Amulet displays on UART (6); the 1-Wire ROM layer and three 1-Wire devices; CFP modules on MDIO; USB
+  requests. The BUS sheet's Layer row picks one, or Auto names it from the packets.
+* **SOUND** (SPECTRUM's fourth view on the LCD, its own tab on the web page, tuner and meters on the
+  phone): both channels streamed gap-free at 61 kSa/s; level meters against dBu, dBV or a preset
+  reference (Eurorack, line levels, guitar); a tuner with cents, strobe and pitch over time, V/oct
+  tracking and a drift log; envelope (ADSR) capture; tremolo, vibrato and FM index; the audio spectrum
+  with harmonics and THD; input against output (gain, phase, delay, added distortion, XY transfer); a
+  pitch-locked cycle view on the FPGA's edge marks; and Listen, the stream played in the browser.
 * **Reference waveforms** (two), **persistence**, **XY mode** and **freeze**. REF A and B live on the
   scope: one stored on the LCD, the web page or the phone shows on all three, and the web's difference
   readout compares the live trace with the scope's references.
