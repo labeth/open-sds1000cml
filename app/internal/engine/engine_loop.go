@@ -14,6 +14,21 @@ import (
 // (71 MB of its 125 MB left 25 MB free).
 const memBackstopMin = 60 << 20
 
+// setMemoryBackstop sets the soft memory limit (device only) above the
+// measured working set: only a genuine leak (e.g. engine parked while the
+// web keeps serving) climbs to it, where GC beats an OOM-kill into a slot
+// rollback. A stopped deep record holds about 35 MB live (its Q8.8 copy,
+// the published frame, the held recall): a limit at or under that keeps
+// the collector running without end, half the core, while nothing moves.
+// Both acquisition loops need it: the SRAM loop, the instrument's, ran
+// under the start's 48 MB limit.
+// TRLC-LINKS: REQ-SDS-001, REQ-SDS-006
+func (e *Engine) setMemoryBackstop() {
+	var ms runtime.MemStats
+	runtime.ReadMemStats(&ms)
+	debug.SetMemoryLimit(max(int64(ms.Sys)+32<<20, memBackstopMin))
+}
+
 // Run is the engine owner loop. It must be the only goroutine that ever
 // touches the Bus. A panic is contained: logged, marked wedged, owner parks
 // (no process exit — a fast crash-loop would trigger slot rollback, and the
@@ -35,6 +50,9 @@ func (e *Engine) Run() {
 		}
 	}()
 
+	if e.armBusy {
+		e.setMemoryBackstop()
+	}
 	if e.sram != nil {
 		e.runSRAM()
 		return
@@ -68,18 +86,6 @@ func (e *Engine) Run() {
 	const gcEvery = 8
 	gcTick := 0
 	lastGcCtl := false
-	if e.armBusy {
-		// OOM backstop, sized above the measured working set: in steady state the
-		// per-loop manual GC keeps the heap far below this, so it never fires during
-		// a settle; only a genuine leak (e.g. engine parked while the web keeps
-		// serving) climbs to it, where GC beats an OOM-kill into a slot rollback.
-		// A stopped deep record holds about 35 MB live (its Q8.8 copy, the
-		// published frame, the held recall): a backstop at or under that keeps
-		// the collector running without end, half the core, while nothing moves.
-		var ms runtime.MemStats
-		runtime.ReadMemStats(&ms)
-		debug.SetMemoryLimit(max(int64(ms.Sys)+32<<20, memBackstopMin))
-	}
 
 	for !e.stopReq.Load() {
 		e.serviceCommands()
