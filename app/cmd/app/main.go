@@ -420,8 +420,52 @@ func runLCD(e *engine.Engine, fe *analog.FrontEnd, fo *frames.Fanout) {
 	scr := panel.ScreenOn
 	var saverT0, saverAt time.Time
 	lit := true
+	idle := false // the last tick drew nothing and saw no new frame
+	var busyDrawAt time.Time
+	wasBusy := false
 	for {
-		time.Sleep(e.RenderPeriod()) // tunable display cadence
+		switch {
+		case wasBusy:
+			time.Sleep(lcdIdleWait) // busy mode: only its own few draws a second
+		case idle:
+			// Nothing moved: wait for the next frame, or lcdIdleWait for the
+			// UI's own changes. Checking at the render cadence (2 ms) built
+			// the whole HUD 500 times a second on a still screen.
+			fo.WaitNext(lastSeq, max(e.RenderPeriod(), lcdIdleWait))
+		default:
+			time.Sleep(e.RenderPeriod()) // tunable display cadence
+		}
+		seenSeq := lastSeq
+		// Busy mode: while the engine reads a full record or loads an image,
+		// and while AUTO searches, the display draws only what shows the work
+		// going on (lcdBusyDraw), a few times a second; one full redraw
+		// follows.
+		pc := uiCtrl.Load()
+		st := e.Snapshot()
+		if mode := lcdBusyMode(st, pc != nil && pc.AutosetBusy(), pc != nil && pc.StreamMode()); mode != busyNone && scr == panel.ScreenOn {
+			if now := time.Now(); now.Sub(busyDrawAt) >= lcdBusyEvery || !wasBusy {
+				busyDrawAt, wasBusy = now, true
+				e.QuietRLock()
+				if lcdBusyDraw(mode, st, back) {
+					fb.PresentRows(back, 0, lcd.StatusSlotRows)
+				} else {
+					hud := buildHUD(e, fe)
+					fo.WithFrame(func(f *engine.Frame) {
+						lcd.Render(back, f, hud, true, persistLayer)
+						if f != nil && f.Seq != lastPresented {
+							lastSeq, lastFresh, lastPresented = f.Seq, now, f.Seq
+							e.NoteLCDFrame()
+						}
+					})
+					fb.Present(back)
+				}
+				e.QuietRUnlock()
+			}
+			continue
+		}
+		if wasBusy {
+			wasBusy, haveSig = false, false // the work is done: one full redraw
+		}
 		// Render only OUTSIDE the engine's load-sensitive windows (arm-settle +
 		// drain): a concurrent render burst there corrupts the HW capture on this
 		// single core. This pauses ~19ms/frame; the wait+pace (~90ms) is free.
@@ -527,8 +571,52 @@ func runLCD(e *engine.Engine, fe *analog.FrontEnd, fo *frames.Fanout) {
 			}
 			lit = want
 		}
+		idle = !present && lastSeq == seenSeq
 		e.QuietRUnlock()
 	}
+}
+
+// lcdIdleWait bounds how long a still display waits for something to change
+// that brings no frame (a menu, a notice, the loading indicator).
+const lcdIdleWait = 20 * time.Millisecond
+
+// lcdBusyEvery is the busy mode's drawing period: the work shown going on
+// a few times a second, the core left to the work.
+const lcdBusyEvery = 250 * time.Millisecond
+
+// The display's busy modes (lcdBusyMode).
+const (
+	busyNone    = iota
+	busyLoad    // a full-record read or an image switch: the loading indicator alone
+	busyAutoset // AUTO's search: the whole screen, with its banner, a few times a second
+)
+
+// lcdBusyMode is the display's busy mode: the engine's loading work (shown
+// after the indicator's grace, so a quick read never enters it), else
+// AUTO's search. A decoded stream is never one: its live view is the point.
+// TRLC-LINKS: REQ-SDS-168
+func lcdBusyMode(st engine.Stats, autoset, streaming bool) int {
+	switch {
+	case streaming:
+		return busyNone
+	case st.Busy != "" && st.BusyMs >= 150:
+		return busyLoad
+	case autoset:
+		return busyAutoset
+	}
+	return busyNone
+}
+
+// lcdBusyDraw draws the loading indicator alone into back and reports true
+// for busyLoad; for busyAutoset it draws nothing and reports false (the
+// caller renders the whole screen).
+// TRLC-LINKS: REQ-SDS-168
+func lcdBusyDraw(mode int, st engine.Stats, back *lcd.MemSurface) bool {
+	if mode != busyLoad {
+		return false
+	}
+	lcd.RedrawStatusSlot(back, lcd.HUD{Busy: st.Busy, BusyPct: st.BusyPct, BusyPhase: int(st.BusyMs / 250), URL: lcd.DeviceURL()})
+	return true
 }
 
 // TRLC-LINKS: REQ-SDS-167

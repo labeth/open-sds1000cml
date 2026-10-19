@@ -341,3 +341,25 @@ func (fb *FB) Present(back *MemSurface) {
 		copy(fb.mem[p*pageBytes:(p+1)*pageBytes], back.Pix)
 	}
 }
+
+// StatusSlotRows are the rows the status slot spans (RedrawStatusSlot).
+const StatusSlotRows = 11
+
+// PresentRows publishes rows y0..y1-1 of the back buffer into the page on
+// show, in place: a small region (the loading indicator) without copying
+// the screen or flipping. The next Present copies the whole buffer.
+// TRLC-LINKS: REQ-SDS-021
+func (fb *FB) PresentRows(back *MemSurface, y0, y1 int) {
+	y0, y1 = max(0, y0), min(H, y1)
+	if y1 <= y0 {
+		return
+	}
+	a, b := y0*W*2, y1*W*2
+	if fb.panOK {
+		copy(fb.mem[fb.cur*pageBytes+a:fb.cur*pageBytes+b], back.Pix[a:b])
+		return
+	}
+	for p := 0; p < fb.pages; p++ {
+		copy(fb.mem[p*pageBytes+a:p*pageBytes+b], back.Pix[a:b])
+	}
+}

@@ -1,4 +1,4 @@
-// ENGMODEL-OWNER-UNIT: FU-APP-MAIN
+// ENGMODEL-OWNER-UNIT: FU-APP-APP
 package main
 
 import (
