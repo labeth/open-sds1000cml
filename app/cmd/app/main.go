@@ -13,13 +13,13 @@ package main
 import (
 	"context"
 	"fmt"
-	"hash/fnv"
 	"math"
 	"net/http"
 	"open-sds/app/internal/streamview"
 	"os"
 	"os/signal"
 	"path/filepath"
+	"reflect"
 	"runtime/debug"
 	"strconv"
 	"strings"
@@ -345,46 +345,14 @@ type statusSlot struct {
 // signature has the frame's Seq.
 // TRLC-LINKS: REQ-SDS-168, REQ-SDS-211
 func uiSig(v wsview.View) uint64 {
-	h := fnv.New64a()
-	fmt.Fprint(h, v.WS, v.Layout, v.Rail, v.Notice)
-	if v.RailNote != nil {
-		fmt.Fprint(h, "|note", *v.RailNote)
-	}
-	if v.Keys != nil {
-		fmt.Fprint(h, "|keys", *v.Keys)
-	}
-	if v.Sheet != nil {
-		sh := *v.Sheet
-		if sh.Sub != nil {
-			fmt.Fprint(h, "|sub", *sh.Sub)
-			sh.Sub = nil
-		}
-		fmt.Fprint(h, "|sheet", sh)
-	}
-	if v.Picker != nil {
-		fmt.Fprint(h, "|pick", *v.Picker)
-	}
-	if v.Scope != nil {
-		fmt.Fprint(h, "|scope", *v.Scope)
-	}
-	if v.Bus != nil {
-		fmt.Fprint(h, "|bus", *v.Bus)
-	}
 	if v.Eye != nil {
 		e := *v.Eye
 		e.Grid = nil
-		fmt.Fprint(h, "|eye", e)
+		v.Eye = &e
 	}
-	if v.Spec != nil {
-		fmt.Fprint(h, "|spec", *v.Spec)
-	}
-	if v.Meas != nil {
-		fmt.Fprint(h, "|meas", *v.Meas)
-	}
-	if v.Cmp != nil {
-		fmt.Fprint(h, "|cmp", *v.Cmp)
-	}
-	return h.Sum64()
+	h := sigOffset
+	h.add(reflect.ValueOf(&v).Elem())
+	return uint64(h)
 }
 
 // TRLC-LINKS: REQ-SDS-168

@@ -43,6 +43,8 @@ type anaState struct {
 	live    []Packet // this frame's packets (complete and cut)
 	list    PacketList
 	listKey string
+	hits    busHits  // the rows the match tokens hit, for the caption
+	marks   busMarks // the strip's marks of live
 	// BUS eye
 	eye    *Eye
 	eyeKey string

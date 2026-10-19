@@ -152,13 +152,16 @@ type BusLine struct {
 // BusPane is the BUS workspace's packet list.
 type BusPane struct {
 	Pane
-	Off      bool   // no bus decoded: Msg explains
-	Msg      []Span // the explanation lines (big first line)
-	Error    string // a decode error (shown in red)
-	Lines    []BusLine
-	Up, Dn   bool // more lines above / below
-	Marks    []PacketMark
-	SelNum   int // the list number of the selected packet (strip label)
+	Off    bool   // no bus decoded: Msg explains
+	Msg    []Span // the explanation lines (big first line)
+	Error  string // a decode error (shown in red)
+	Lines  []BusLine
+	Up, Dn bool // more lines above / below
+	// Marks are every packet of the record (thousands on a deep one): a
+	// display's repaint check reads MarksGen, which changes with them.
+	Marks    []PacketMark `sig:"-"`
+	MarksGen uint64       `json:"-"`
+	SelNum   int          // the list number of the selected packet (strip label)
 	Empty    string
 	Snapshot bool   // the list is the whole capture kept for a zoom
 	Layer    string // the bus layer's name: the lines are its notes ("" none)

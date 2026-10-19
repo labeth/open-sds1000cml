@@ -6,6 +6,7 @@ import (
 	"math"
 	"slices"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"open-sds/app/internal/analog"
@@ -77,6 +78,74 @@ func (c *Controller) busFrame(a *anaState, s *sv, f *engine.Frame) {
 	} else {
 		a.list.Replace(a.live) // stopped: the capture on screen
 	}
+}
+
+// busHits counts the rows the match tokens hit: the rows and a frame's
+// packets are replaced whole, never changed in place, so the count holds
+// for the same rows and tokens (the caption asks at every display tick).
+type busHits struct {
+	rows    *Packet
+	n, hits int
+	toks    string
+	have    bool
+}
+
+// matchHits is how many of rows hold the match tokens (c.amu).
+// TRLC-LINKS: REQ-SDS-214
+func (a *anaState) matchHits(rows []Packet, toks []string) int {
+	var first *Packet
+	if len(rows) > 0 {
+		first = &rows[0]
+	}
+	key := strings.Join(toks, " ")
+	if h := a.hits; h.have && h.rows == first && h.n == len(rows) && h.toks == key {
+		return h.hits
+	}
+	n := 0
+	for i := range rows {
+		if tokMatch(toks, rows[i]) {
+			n++
+		}
+	}
+	a.hits = busHits{rows: first, n: len(rows), hits: n, toks: key, have: true}
+	return n
+}
+
+// busMarks are the strip's packet marks for a frame's packets, the
+// selected one and the match tokens, built once for them; gen numbers each
+// build.
+type busMarks struct {
+	live   *Packet
+	n, sel int
+	toks   string
+	marks  []wsview.PacketMark
+	gen    uint64
+	have   bool
+}
+
+// marksGen numbers the strip's mark builds (wsview.BusPane.MarksGen).
+var marksGen atomic.Uint64
+
+// packetMarks are the strip's marks of live: the selected packet (liveSel)
+// boxed, those holding the match tokens ticked (c.amu). The slice is shared
+// and must not be changed.
+// TRLC-LINKS: REQ-SDS-214
+func (a *anaState) packetMarks(live []Packet, liveSel int, toks []string) ([]wsview.PacketMark, uint64) {
+	var first *Packet
+	if len(live) > 0 {
+		first = &live[0]
+	}
+	key := strings.Join(toks, " ")
+	if m := a.marks; m.have && m.live == first && m.n == len(live) && m.sel == liveSel && m.toks == key {
+		return m.marks, m.gen
+	}
+	var marks []wsview.PacketMark
+	for i, q := range live {
+		marks = append(marks, wsview.PacketMark{I0: q.I0, I1: q.I1, Sel: i == liveSel, Match: len(toks) > 0 && tokMatch(toks, q),
+			Text: q.Note, Err: q.NoteErr})
+	}
+	a.marks = busMarks{live: first, n: len(live), sel: liveSel, toks: key, marks: marks, gen: marksGen.Add(1), have: true}
+	return marks, a.marks.gen
 }
 
 // selectedLive is the selected packet's index among the frame's packets
