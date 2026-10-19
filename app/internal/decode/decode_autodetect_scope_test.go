@@ -47,6 +47,8 @@ var scopeCaptures = []scopeCapture{
 	{"scope_dsi_search_20ms.json.gz", "dsi", 0},
 	{"scope_cjtag_samples_200us.json.gz", "cjtag", 0},
 	{"scope_caliper_search_5ms.json.gz", "caliper", 0},
+	// a SWIM transaction from its address on (the window opens inside it)
+	{"scope_swim_raw_50us.json.gz", "swim", 0},
 }
 
 // TestScopeRFIDStandsDecimated: a reader's commands found on the envelope

@@ -283,9 +283,23 @@ func scorePhys(r Result) float64 {
 }
 
 // swimTransaction reports a SWIM decode holding a whole read or write on
-// the fly.
+// the fly, or its address's three bytes and a data byte after them (a
+// record that opens inside a transaction: the decoder reads addresses
+// only after a command and its count).
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-256
 func swimTransaction(r Result) bool {
+	at := 0 // address bytes in a row
+	for _, s := range r.Spans {
+		switch {
+		case s.Kind != "data":
+		case s.Text[0] == '@':
+			at++
+		case at >= 3 && (s.Text[0] == 'R' || s.Text[0] == 'W'):
+			return true
+		default:
+			at = 0
+		}
+	}
 	step := 0
 	for _, s := range r.Spans {
 		switch {
