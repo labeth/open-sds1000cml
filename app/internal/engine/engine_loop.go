@@ -9,6 +9,11 @@ import (
 	"time"
 )
 
+// memBackstopMin is the least soft memory limit on the device: above a
+// stopped deep record's working set, below the RSS the unit has room for
+// (71 MB of its 125 MB left 25 MB free).
+const memBackstopMin = 60 << 20
+
 // Run is the engine owner loop. It must be the only goroutine that ever
 // touches the Bus. A panic is contained: logged, marked wedged, owner parks
 // (no process exit — a fast crash-loop would trigger slot rollback, and the
@@ -68,9 +73,12 @@ func (e *Engine) Run() {
 		// per-loop manual GC keeps the heap far below this, so it never fires during
 		// a settle; only a genuine leak (e.g. engine parked while the web keeps
 		// serving) climbs to it, where GC beats an OOM-kill into a slot rollback.
+		// A stopped deep record holds about 35 MB live (its Q8.8 copy, the
+		// published frame, the held recall): a backstop at or under that keeps
+		// the collector running without end, half the core, while nothing moves.
 		var ms runtime.MemStats
 		runtime.ReadMemStats(&ms)
-		debug.SetMemoryLimit(int64(ms.Sys) + 32<<20)
+		debug.SetMemoryLimit(max(int64(ms.Sys)+32<<20, memBackstopMin))
 	}
 
 	for !e.stopReq.Load() {
