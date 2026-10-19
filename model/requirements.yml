@@ -4270,11 +4270,11 @@ requirements:
     full-rate signal decodes them; each fast protocol's records cut at random from a long signal give only frames
     the whole signal holds there; on the device, each bench source streamed for a minute or more with its frames
     counted against the source's (none lost, none doubled in the gap-free mode), and the stops working.
-  notes: Gap-free means the stream image's continuous peak stream at 2^11 samples a word (two samples a bucket)
-    or coarser, decoded in software (ADR-STREAM-SOFT-DECODE); the stream carries 2^9 without loss, but the
-    device's single core cannot fetch and decode a million words a second. The fast buses (DMX512, 1-Wire,
-    WS281x, USB PD, S/PDIF, SWD, MDIO, Modbus RTU past 57,600 Bd) stream as records armed on the symbol trigger,
-    with the share of the signal time they read. A stop on a decode error is refused (the symbol trigger has no
+  notes: Gap-free means the stream image's continuous peak stream at 2^9 samples a word (two samples a bucket)
+    or coarser, decoded in software (ADR-STREAM-SOFT-DECODE); 2^9 and 2^10 only for the features 2^11 does not
+    resolve (DMX512, 1-Wire, Modbus RTU past 57,600 Bd), since they cost the single core two or four times the
+    words. The fast buses (1-Wire overdrive, WS281x, USB PD, S/PDIF, SWD, MDIO, Modbus RTU past 230,400 Bd)
+    stream as records armed on the symbol trigger, with the share of the signal time they read. A stop on a decode error is refused (the symbol trigger has no
     error token); a stop on a value ends a gap-free transcript at the frame software read it in, and the record
     shown is the symbol trigger's on that value. MIDI and USB full speed stream through their receivers' decoded
     events.
