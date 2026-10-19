@@ -1,23 +1,29 @@
 // ENGMODEL-OWNER-UNIT: FU-WEB-SOUND
-// sound_worklet.js — the Listen player (ADR-SOUND), an AudioWorkletProcessor:
-// a jitter buffer of the scope's stream (stereo, at the stream's rate),
-// resampled to the sound card's rate with a rate that follows the buffer's
-// fill (the scope's crystal and the sound card's drift apart; without the
-// correction the buffer slowly runs dry or overflows), a fade over every
-// gap, and a peak limiter at -6 dBFS before the output. It reports its fill,
-// the corrections, underruns and overruns, and when a burst after quiet
-// left it (the latency probe).
+// sound_worklet.js — the Listen player (ADR-SOUND): a jitter buffer of the
+// scope's stream (stereo, at the stream's rate), resampled to the sound
+// card's rate with a rate that follows the buffer's fill (the scope's
+// crystal and the sound card's drift apart; without the correction the
+// buffer slowly runs dry or overflows), a fade over every gap, and a peak
+// limiter at -6 dBFS before the output. It reports its fill, the
+// corrections, underruns and overruns, and when a burst after quiet left it
+// (the latency probe). SoundPlayerCore is the player; it runs as an
+// AudioWorkletProcessor where the page may load one, and on the page's own
+// thread behind a ScriptProcessorNode where it may not: browsers give
+// AudioWorklet to secure contexts only, and the scope serves its pages over
+// plain http on the bench network.
 "use strict";
 
 const SW_LIMIT = 0.5; // -6 dBFS
 const SW_FADE = 0.004; // seconds of fade over a gap or an underrun
 
 // TRLC-LINKS: REQ-SDS-265
-class SoundPlayer extends AudioWorkletProcessor {
+class SoundPlayerCore {
+  // post sends a report or a burst to the page; rate is the output's rate.
   // TRLC-LINKS: REQ-SDS-265
-  constructor(opts) {
-    super();
-    const o = (opts && opts.processorOptions) || {};
+  constructor(o, rate, post) {
+    o = o || {};
+    this.rate = rate;
+    this.post = post;
     this.srcRate = o.srcRate || 61035.15625;
     this.target = o.targetMs || 120;
     this.size = 1 << 17;
@@ -33,9 +39,7 @@ class SoundPlayer extends AudioWorkletProcessor {
     this.under = 0;
     this.over = 0;
     this.quiet = 0;
-    this.lastReport = 0;
-    // TRLC-LINKS: REQ-SDS-265
-    this.port.onmessage = (e) => this.onMsg(e.data);
+    this.lastReport = -1;
   }
 
   // TRLC-LINKS: REQ-SDS-265
@@ -61,19 +65,18 @@ class SoundPlayer extends AudioWorkletProcessor {
     }
   }
 
+  // render fills oL and oR (the same array for mono) at time now (seconds).
   // TRLC-LINKS: REQ-SDS-265
-  process(inputs, outputs) {
-    const out = outputs[0];
-    const oL = out[0];
-    const oR = out[1] || out[0];
+  render(oL, oR, now) {
+    const sampleRate = this.rate;
     const n = oL.length;
     const fill = this.w - this.r;
     const targetS = this.target / 1000 * this.srcRate;
     if (!this.primed) {
       oL.fill(0); if (oR !== oL) oR.fill(0);
       if (fill >= targetS) { this.primed = true; this.fade = 0; }
-      this.report(fill);
-      return true;
+      this.report(fill, now);
+      return;
     }
     // The rate follows the fill: half a percent at most, slowly.
     const err = (fill - targetS) / targetS;
@@ -105,18 +108,36 @@ class SoundPlayer extends AudioWorkletProcessor {
       this.r += step;
     }
     if (this.gapAt >= 0 && this.r > this.gapAt + 2) this.gapAt = -1;
-    if (burst) this.port.postMessage({ burst: currentTime });
-    this.report(fill);
-    return true;
+    if (burst) this.post({ burst: now });
+    this.report(fill, now);
   }
 
   // TRLC-LINKS: REQ-SDS-265
-  report(fill) {
-    if (currentTime - this.lastReport < 0.25) return;
-    this.lastReport = currentTime;
-    this.port.postMessage({ fillMs: fill / this.srcRate * 1000, ratio: this.ratio, under: this.under, over: this.over,
-      primed: this.primed, gain: this.gain, t: currentTime });
+  report(fill, now) {
+    if (this.lastReport >= 0 && now - this.lastReport < 0.25) return;
+    this.lastReport = now;
+    this.post({ fillMs: fill / this.srcRate * 1000, ratio: this.ratio, under: this.under, over: this.over,
+      primed: this.primed, gain: this.gain, t: now });
   }
 }
 
-registerProcessor("sound-player", SoundPlayer);
+if (typeof AudioWorkletProcessor !== "undefined") {
+  // TRLC-LINKS: REQ-SDS-265
+  class SoundPlayer extends AudioWorkletProcessor {
+    // TRLC-LINKS: REQ-SDS-265
+    constructor(opts) {
+      super();
+      this.core = new SoundPlayerCore(opts && opts.processorOptions, sampleRate, (m) => this.port.postMessage(m));
+      // TRLC-LINKS: REQ-SDS-265
+      this.port.onmessage = (e) => this.core.onMsg(e.data);
+    }
+
+    // TRLC-LINKS: REQ-SDS-265
+    process(inputs, outputs) {
+      const out = outputs[0];
+      this.core.render(out[0], out[1] || out[0], currentTime);
+      return true;
+    }
+  }
+  registerProcessor("sound-player", SoundPlayer);
+}

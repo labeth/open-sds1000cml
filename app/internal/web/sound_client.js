@@ -256,11 +256,18 @@ async function sndClientListen(c, on) {
   if (!a.ctx) {
     const AC = window.AudioContext || window.webkitAudioContext;
     a.ctx = new AC({ latencyHint: "interactive" });
-    await a.ctx.audioWorklet.addModule("sound_worklet.js");
-    a.node = new AudioWorkletNode(a.ctx, "sound-player", { numberOfInputs: 0, outputChannelCount: [2],
-      processorOptions: { srcRate: c.rate, targetMs: 120 } });
-    // TRLC-LINKS: REQ-SDS-265
-    a.node.port.onmessage = (e) => sndWorkletMsg(c, e);
+    const opts = { srcRate: c.rate, targetMs: 120 };
+    if (a.ctx.audioWorklet) {
+      await a.ctx.audioWorklet.addModule("sound_worklet.js");
+      a.node = new AudioWorkletNode(a.ctx, "sound-player", { numberOfInputs: 0, outputChannelCount: [2],
+        processorOptions: opts });
+      // TRLC-LINKS: REQ-SDS-265
+      a.node.port.onmessage = (e) => sndWorkletMsg(c, e);
+    } else {
+      // Plain http (the scope's pages): no AudioWorklet outside a secure
+      // context, so the same player runs on this thread.
+      a.node = sndMainPlayer(c, a.ctx, opts);
+    }
     a.node.connect(a.ctx.destination);
   }
   await a.ctx.resume();
@@ -268,6 +275,23 @@ async function sndClientListen(c, on) {
   a.filt = null;
   a.on = true;
   return true;
+}
+
+// sndMainPlayer is the player (sound_worklet.js's SoundPlayerCore) behind a
+// ScriptProcessorNode, with a port that hands messages to it directly. Its
+// 1024-frame block adds about 21 ms at 48 kHz to the worklet's latency.
+// TRLC-LINKS: REQ-SDS-265
+function sndMainPlayer(c, ctx, opts) {
+  const node = ctx.createScriptProcessor(1024, 0, 2);
+  const core = new SoundPlayerCore(opts, ctx.sampleRate, (m) => sndWorkletMsg(c, { data: m }));
+  // TRLC-LINKS: REQ-SDS-265
+  node.onaudioprocess = (e) => {
+    const out = e.outputBuffer;
+    core.render(out.getChannelData(0), out.getChannelData(1), e.playbackTime || ctx.currentTime);
+  };
+  // TRLC-LINKS: REQ-SDS-265
+  node.port = { postMessage: (m) => core.onMsg(m) };
+  return node;
 }
 
 // sndLatencyText is the latency the listener hears now, part by part.
