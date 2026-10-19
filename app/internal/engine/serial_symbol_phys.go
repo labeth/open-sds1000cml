@@ -133,25 +133,54 @@ func physSymbolSpec(p SerialParams, s *symSpec) bool {
 			return true
 		}
 	case serMiller:
-		// edges in half bits: a message opens at its first edge after an
-		// idle of two and a half bits; its first unit's first bit is the
-		// start 0 (an edge then none), as the decoder's bytes hold it
-		half := T / 2
+		// edges in units: a message opens at its first edge after an idle
+		// of two and a half bits; its first unit's first bit is the start 0,
+		// as the decoder's bytes hold it. A bit is read in its second half
+		// alone: a 1 has its edge (or pause) at the middle, a 0 none (a 0
+		// after a 0 also has one at its start, which says nothing the second
+		// half does not). Bits past a message's end read as 0s there, as the
+		// decoder gives a last unit's missing bits: the idle has no edges.
 		set(sramcapture.SymbolEdge, 1, 2.5*T, decode.SymDataSep)
-		s.cfg.UnitQ8 = q8(half)
 		s.tab.both(true, 2.5*T, inf, leadStep0, decode.SymDataRestart)
 		s.tab.both(false, 2.5*T, inf, leadStep0, decode.SymDataRestart)
-		// A bit is read in its second half alone: a 1 has its edge at the
-		// middle, a 0 none (a 0 after a 0 also has one at its start, which
-		// says nothing the second half does not). Bits past a message's end
-		// read as 0s there, as the decoder gives a last unit's missing bits:
-		// the idle after it has no edges.
-		s.period = 16
 		s.start = func(b *symBits, _ []symUnit) bool { return true }
+		if !p.Inverted {
+			// a classic line's one edge a transition, units of half a bit
+			s.cfg.UnitQ8, s.period = q8(T/2), 16
+			s.unit = func(b *symBits, _ int, u symUnit) bool {
+				for k := 0; k < 8; k++ {
+					b.skip(1)
+					b.put(u.value>>k&1 != 0, u.mask>>k&1 != 0)
+				}
+				return true
+			}
+			break
+		}
+		// Modified Miller's pauses: two edges each, and the block's sampler
+		// takes its phase from the last (the pause's end). In units of a
+		// quarter bit q, a pause of q/2 to 3q/2 (ISO 14443's 2 to 3 us at
+		// 106 kbit/s) puts its fall and its end in the two units of its half
+		// bit (the sampler runs on through the idle): the half bits are unit
+		// pairs from the frame's opening pause on. Units of half a bit
+		// sampled a pause's end plus a quarter bit, a breath before the next
+		// half bit: a pause widened by the line's edges read in the half bit
+		// after (a frame's last byte, its bits fewest, matched seldom).
+		s.cfg.UnitQ8 = q8(T / 4)
+		bitN := 0
+		s.start = func(b *symBits, _ []symUnit) bool {
+			b.skip(2) // the first half of the start bit: the opening pause
+			bitN = 0
+			return true
+		}
 		s.unit = func(b *symBits, _ int, u symUnit) bool {
 			for k := 0; k < 8; k++ {
-				b.skip(1)
-				b.put(u.value>>k&1 != 0, u.mask>>k&1 != 0)
+				if bitN > 0 {
+					b.skip(2) // the bit's first half
+				}
+				v, care := u.value>>k&1 != 0, u.mask>>k&1 != 0
+				b.put(v, care)
+				b.put(v, care)
+				bitN++
 			}
 			return true
 		}

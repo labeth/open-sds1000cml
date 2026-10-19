@@ -112,35 +112,10 @@ func physSymbolCases() []symCase {
 			}
 			return w
 		}, reqs: []symReq{{[]PatternElem{symStart}, 3}, {[]PatternElem{symStart, symData(0xF, 0xF), symData(0x8, 0xF)}, 3}}},
-		{name: "Miller", p: symParams(serMiller, 106000), wave: func() *symWave {
-			w := &symWave{}
-			T := 1 / 106000.0
-			w.hold(true, true, 40*us)
-			for _, msg := range [][]int{{1, 0, 1, 1, 0, 0, 1, 0, 0, 0, 1, 1, 1, 0, 1, 0}, {0, 0, 1, 0, 1, 1, 1, 1, 0, 1, 0, 0, 1, 1, 0, 1}, {1, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 0, 0, 1, 0, 1}} {
-				w.mark()
-				all := append([]int{0}, msg...)
-				var at []float64
-				prev := 1
-				for i, b := range all {
-					t0 := float64(i) * T
-					switch {
-					case b == 1:
-						at = append(at, t0+T/2)
-					case prev == 0 || i == 0:
-						at = append(at, t0)
-					}
-					prev = b
-				}
-				cur := 0.0
-				for _, t := range at {
-					w.hold(true, true, t-cur)
-					w.hold(false, true, 1.5*us)
-					cur = t + 1.5*us
-				}
-				w.hold(true, true, float64(len(all))*T-cur+100*us)
-			}
-			return w
-		}, reqs: []symReq{{[]PatternElem{symStart}, 3}, {[]PatternElem{symStart, symData(0x9a, 0xff)}, 2}, {[]PatternElem{symStart, symAny, symData(0xb8, 0xff)}, 1}}},
+		{name: "Miller", p: millerParams(true), wave: func() *symWave { return millerSymWave(1.5 * us) }, reqs: []symReq{{[]PatternElem{symStart}, 3}, {[]PatternElem{symStart, symData(0x9a, 0xff)}, 2}, {[]PatternElem{symStart, symAny, symData(0xb8, 0xff)}, 1}}},
+		{name: "Miller 2 us pauses", p: millerParams(true), wave: func() *symWave { return millerSymWave(2 * us) }, reqs: []symReq{{[]PatternElem{symStart}, 3}, {[]PatternElem{symStart, symData(0x9a, 0xff)}, 2}, {[]PatternElem{symStart, symAny, symData(0xb8, 0xff)}, 1}}},
+		{name: "Miller 3 us pauses", p: millerParams(true), wave: func() *symWave { return millerSymWave(3 * us) }, reqs: []symReq{{[]PatternElem{symStart}, 3}, {[]PatternElem{symStart, symData(0x9a, 0xff)}, 2}, {[]PatternElem{symStart, symAny, symData(0xb8, 0xff)}, 1}}},
+		{name: "Miller classic", p: millerParams(false), wave: func() *symWave { return millerSymWave(0) }, reqs: []symReq{{[]PatternElem{symStart}, 3}, {[]PatternElem{symStart, symData(0x9a, 0xff)}, 2}, {[]PatternElem{symStart, symAny, symData(0xb8, 0xff)}, 1}}},
 		{name: "Morse", p: symParams(serMorse, 1000), wave: func() *symWave {
 			w := &symWave{}
 			u := 1 * ms
@@ -709,4 +684,55 @@ func emBits(cmd, addr int, word [4]int) []int {
 		b = append(b, col>>i&1)
 	}
 	return append(b, 0)
+}
+
+// millerParams are a Miller bus's at 106 kbit/s, of pauses (ISO 14443's
+// modified Miller) or a classic line's edges.
+// TRLC-LINKS: REQ-SDS-013, REQ-SDS-257
+func millerParams(pauses bool) SerialParams {
+	p := symParams(serMiller, 106000)
+	p.Inverted = pauses
+	return p
+}
+
+// millerSymWave is three Miller messages (a start 0 and the bits given) at
+// 106 kbit/s, each followed by 100 us of idle: pauses of the width given at
+// each transition point, or (pause 0) a level that changes there.
+// TRLC-LINKS: REQ-SDS-013, REQ-SDS-257
+func millerSymWave(pause float64) *symWave {
+	us := 1e-6
+	w := &symWave{}
+	T := 1 / 106000.0
+	w.hold(true, true, 40*us)
+	level := true
+	for _, msg := range [][]int{{1, 0, 1, 1, 0, 0, 1, 0, 0, 0, 1, 1, 1, 0, 1, 0}, {0, 0, 1, 0, 1, 1, 1, 1, 0, 1, 0, 0, 1, 1, 0, 1}, {1, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 0, 0, 1, 0, 1}} {
+		w.mark()
+		all := append([]int{0}, msg...)
+		var at []float64
+		prev := 1
+		for i, b := range all {
+			t0 := float64(i) * T
+			switch {
+			case b == 1:
+				at = append(at, t0+T/2)
+			case prev == 0 || i == 0:
+				at = append(at, t0)
+			}
+			prev = b
+		}
+		cur := 0.0
+		for _, t := range at {
+			if pause > 0 {
+				w.hold(true, true, t-cur)
+				w.hold(false, true, pause)
+				cur = t + pause
+				continue
+			}
+			w.hold(level, true, t-cur)
+			level = !level
+			cur = t
+		}
+		w.hold(pause > 0 || level, true, float64(len(all))*T-cur+100*us)
+	}
+	return w
 }
