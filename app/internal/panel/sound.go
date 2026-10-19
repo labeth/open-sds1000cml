@@ -316,6 +316,9 @@ func (s *soundSvc) step(now time.Time) {
 	set := s.set
 	s.mu.Unlock()
 	if !use {
+		// Nothing uses the service: its stream copies (a four-second window
+		// in volts, 2 MB) go until it is used again.
+		s.x, s.q1, s.q2 = nil, nil, nil
 		return
 	}
 	e.LeaseSound(3 * time.Second)

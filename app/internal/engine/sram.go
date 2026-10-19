@@ -266,9 +266,13 @@ func (h *heldRecall) restore(f *Frame) int {
 	return h.n
 }
 
+// qBuffer is q sized to n, reused when it holds n; a buffer four times
+// larger than needed (a deep stopped record's, under live frames again) is
+// let go: the frame slots kept a 1 M-sample record's Q8.8 codes for good,
+// and with the other held copies the heap sat at the memory limit.
 // TRLC-LINKS: REQ-SDS-040
 func qBuffer(q []uint16, n int) []uint16 {
-	if cap(q) < n {
+	if cap(q) < n || cap(q) >= 1<<18 && cap(q) > 4*n {
 		return make([]uint16, n)
 	}
 	return q[:n]
@@ -785,6 +789,7 @@ acquisitionLoop:
 		m := savedM
 		if !replay {
 			retained = false
+			held = heldRecall{} // a new capture: the stopped record's copies go
 			symbolArmCount = e.symbolCount(cfg)
 			ctx, cancel = context.WithTimeout(context.Background(), 3*time.Second)
 			err = e.sram.Arm(ctx, cfg)

@@ -103,22 +103,36 @@ type soundRing struct {
 	marks  []SoundMark
 	wake   chan struct{} // closed and replaced on every append
 	last   time.Time
+	size   int    // samples a channel when allocated
+	from0  uint64 // nothing before this ordinal is held (a release)
 }
 
 // newSoundRing makes an empty ring of 2^log2 samples a channel.
 // TRLC-LINKS: REQ-SDS-265
 func newSoundRing(log2 int) *soundRing {
 	n := 1 << log2
-	return &soundRing{q: [2][]uint16{make([]uint16, n), make([]uint16, n)}, wake: make(chan struct{})}
+	return &soundRing{q: [2][]uint16{make([]uint16, n), make([]uint16, n)}, wake: make(chan struct{}), size: n}
+}
+
+// release lets the samples go (4 MB) while no stream runs; the next push
+// allocates them again. Ordinals go on from where they were.
+// TRLC-LINKS: REQ-SDS-265
+func (r *soundRing) release() {
+	r.mu.Lock()
+	r.q = [2][]uint16{}
+	r.from0 = r.next
+	r.scales, r.gaps, r.marks = nil, nil, nil
+	r.mu.Unlock()
 }
 
 // oldest is the oldest ordinal held (r.mu held).
 // TRLC-LINKS: REQ-SDS-265
 func (r *soundRing) oldestLocked() uint64 {
+	old := uint64(0)
 	if size := uint64(len(r.q[0])); r.next > size {
-		return r.next - size
+		old = r.next - size
 	}
-	return 0
+	return max(old, r.from0)
 }
 
 // pushWords appends stream words (CH1 Q8.8, CH2 Q8.8, little-endian) at
@@ -130,6 +144,9 @@ func (r *soundRing) pushWords(raw []byte, sc SoundScale, gap bool, now time.Time
 		return
 	}
 	r.mu.Lock()
+	if len(r.q[0]) == 0 {
+		r.q = [2][]uint16{make([]uint16, r.size), make([]uint16, r.size)}
+	}
 	mask := uint64(len(r.q[0]) - 1)
 	if gap && r.next > 0 && (len(r.gaps) == 0 || r.gaps[len(r.gaps)-1] != r.next) {
 		r.gaps = append(r.gaps, r.next)
@@ -200,7 +217,7 @@ func (r *soundRing) read(from uint64, max int, q1, q2 []uint16, rate float64) So
 	}
 	n := int(min(uint64(max), r.next-from))
 	b.First, b.N = from, n
-	b.Q1, b.Q2 = append(q1[:0], make([]uint16, n)...), append(q2[:0], make([]uint16, n)...)
+	b.Q1, b.Q2 = grow16(q1, n), grow16(q2, n)
 	mask := uint64(len(r.q[0]) - 1)
 	for i := 0; i < n; i++ {
 		j := (from + uint64(i)) & mask
@@ -223,6 +240,15 @@ func (r *soundRing) read(from uint64, max int, q1, q2 []uint16, rate float64) So
 		}
 	}
 	return b
+}
+
+// grow16 is q with n entries, reallocated only when too small.
+// TRLC-LINKS: REQ-SDS-265
+func grow16(q []uint16, n int) []uint16 {
+	if cap(q) < n {
+		return make([]uint16, n)
+	}
+	return q[:n]
 }
 
 // latest copies the newest n samples.
@@ -432,6 +458,7 @@ func (e *Engine) soundStep() bool {
 		}
 		if s.info.State != "off" {
 			s.setState("off", false, nil)
+			s.ring.release()
 		}
 		return false
 	}
