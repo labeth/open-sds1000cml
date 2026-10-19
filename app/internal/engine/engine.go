@@ -517,6 +517,8 @@ type Engine struct {
 	decodedWeb                bool        // the session is a web page's (BeginDecodedCapture), not the scope's stream
 	decodedContact            time.Time   // a client's last call on the session (status, events, record)
 	soft                      *softStream // a software-decoded stream (soft_stream.go)
+	snd                       *soundState // the audio stream (sound_stream.go)
+	soundOnce                 sync.Once
 	softEpoch                 uint32
 
 	// Owner-private state (no locking needed).

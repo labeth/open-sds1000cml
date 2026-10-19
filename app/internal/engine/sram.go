@@ -673,6 +673,10 @@ acquisitionLoop:
 			e.softStep()
 			continue
 		}
+		if (e.soundWanted() || e.snd != nil && e.snd.streaming) && e.soundStep() { // the audio stream (sound_stream.go)
+			retained, recalled = false, false
+			continue
+		}
 		// Image-switching jobs run only here, between acquisitions. The switch
 		// drops the fabric's record metadata, so the retained record is gone.
 		if !adopting && e.decodedSession == nil && e.serviceSRAMJobs() {
