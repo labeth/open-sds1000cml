@@ -114,12 +114,14 @@ module acq_sram_top(
  localparam BUF_WORDS=(1<<BUF_AW);
  wire core,sample_clk,locked;
 `ifdef STREAM_CAPTURE
- reg [2:0] stream_cfg=0,stream_mode=0; // [0] stream, [1] continuous (no trigger), [2] peak-detect words
+ reg [4:0] stream_cfg=0,stream_mode=0; // [0] stream, [1] continuous (no trigger), [2] peak-detect words, [3]/[4] rising/falling edge marks
  reg [1:0] stream_rise_enable=0,stream_fall_enable=0;reg stream_auto=0;
  reg streaming_fault=0;
 `ifdef STREAM_DRUM
  // ADR-STREAM-IMAGE: the stream runs through the SRAM as a FIFO (stream_drum.v).
  reg drum_active=0;
+ // ADR-SOUND: the edge marks' directions on the trigger channel (stream_marks.v).
+ reg [1:0] mark_rise_enable=0,mark_fall_enable=0;
  wire drum_cmd,drum_cmd_read,drum_cmd_discard,drum_cmd_continue,drum_wvalid,drum_wstop,drum_fault;
  wire [19:0] drum_cmd_count;wire [31:0] drum_wdata;
 `endif
@@ -1052,7 +1054,7 @@ module acq_sram_top(
   18:decim_request<=wd[4:0];
 `endif
 `ifdef STREAM_CAPTURE
-  19:stream_cfg<=wd[2:0];
+  19:stream_cfg<=wd[4:0];
 `endif
   16:buffer_index<=wd[BUF_AW-1:0];
  endcase
@@ -1323,6 +1325,13 @@ module acq_sram_top(
   .hclk(halfclk),.bank_ready(drum_bank_ready),.packet_valid(stream_packet_valid),.packet_data(stream_packet_data),
   .packet_single(stream_packet_single),.packet_seal(stream_packet_seal));
  assign packetizer_fault=drum_fault,stream_finished=!drum_active,stream_seal_ok=1'b1;
+ // ADR-SOUND: the trigger comparator's crossings on the streamed words, as
+ // the ordinals of the words they fall in (registered: timing at 250 MHz).
+ reg mark_rise=0,mark_fall=0;
+ always @(posedge core)begin mark_rise<=|(rise_ch & mark_rise_enable);mark_fall<=|(fall_ch & mark_fall_enable);end
+ wire [31:0] mark_rise_word,mark_fall_word;wire [15:0] mark_rise_count,mark_fall_count;
+ stream_marks marks(.clk(core),.active(drum_active),.word(drum_in_valid),.rise(mark_rise),.fall(mark_fall),
+  .rise_word(mark_rise_word),.fall_word(mark_fall_word),.rise_count(mark_rise_count),.fall_count(mark_fall_count));
 `else
  // Isolate the live-stream tap from SRAM arm/priming decode fanout. Stop and
  // data validity take the same extra clock, retaining the last accepted word.
@@ -1445,6 +1454,10 @@ module acq_sram_top(
    stream_rise_enable[1]<=!stream_cfg[1] && config_word[0] && config_word[4] && !config_word[5] && config_word[6];
    stream_fall_enable[0]<=!stream_cfg[1] && config_word[0] && config_word[4] && config_word[5] && !config_word[6];
    stream_fall_enable[1]<=!stream_cfg[1] && config_word[0] && config_word[4] && config_word[5] && config_word[6];
+`ifdef STREAM_DRUM
+   mark_rise_enable<=stream_cfg[3] ? (config_word[6] ? 2'b10 : 2'b01) : 2'b00;
+   mark_fall_enable<=stream_cfg[4] ? (config_word[6] ? 2'b10 : 2'b01) : 2'b00;
+`endif
 `endif
   end
 `ifdef INTERLEAVE
@@ -1673,6 +1686,10 @@ module acq_sram_top(
    33:rd=stream_count0;34:rd=stream_count1;
    35:rd=stream_first0[15:0];36:rd=stream_first0[31:16];37:rd=stream_first0[47:32];38:rd=stream_first0[63:48];
    39:rd=stream_first1[15:0];40:rd=stream_first1[31:16];41:rd=stream_first1[47:32];42:rd=stream_first1[63:48];
+`ifdef STREAM_DRUM
+   54:rd=16'h4d01;55:rd=mark_rise_count;56:rd=mark_rise_word[15:0];57:rd=mark_rise_word[31:16];
+   58:rd=mark_fall_count;59:rd=mark_fall_word[15:0];60:rd=mark_fall_word[31:16];
+`endif
 `endif
 `else
    13:rd=16'h0007;

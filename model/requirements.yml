@@ -4596,6 +4596,7 @@ requirements:
   - FU-APP-PANEL
   - FU-APP-LCD
   - FU-WEB-APP-SOUND
+  - FU-RTL-ACQ-SRAM-TOP
   verificationMethods:
   - test
   verificationCriteria: A mark is placed on its sine crossing within 0.01 samples and a mark with no crossing beside it

@@ -35,6 +35,14 @@ reported as a fault. Reading back what was just written costs one lap of
 the counter (2.1 ms), so the FIFO must hold a lap of input: ×256 (4.2k words
 a lap, 7.8 MB/s) is beyond both the FIFO and the GPMC bus (about 5.1 MB/s).
 
+While the drum streams, the trigger's edge comparator keeps running on the
+decimated words: `images/stream/stream_marks.v` counts the stream's words and
+latches the count on each rising or falling crossing of the trigger level on
+the trigger channel (register 19 bits 3 and 4 ask for them; registers 54..60
+read the capability 0x4D01, each direction's count and its newest word). The
+SOUND cycle view and its gate-armed envelope trigger on these marks
+(ADR-SOUND): the FPGA decides each crossing, the host only places it.
+
 Board facts the drum relies on (also modelled in `images/stream/sim/`): read
 words arrive one pulse late (READ_DELAY 1), so a fresh read starts 17 words
 early and a continued read would lose a word; the front end is drained
