@@ -294,6 +294,9 @@ func (s *softStream) modeText(elapsed time.Duration) string {
 // softStreamStart starts the stream image's continuous peak stream.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240, REQ-SDS-035
 func (e *Engine) softStreamStart(s *softStream) error {
+	if err := e.freshStreamImage(); err != nil {
+		return err
+	}
 	ch := uint8(s.p.ChA & 1)
 	cfg := sramcapture.Config{Source: sramcapture.ADC, DecimationLog2: s.log, PreWords: sramcapture.Words - 17, PostWords: 17,
 		TriggerChannel: ch, TriggerLevel: uint8(math.Round(s.p.Threshold))}
@@ -444,6 +447,7 @@ func (w byteSink) Write(b []byte) (int, error) {
 func (e *Engine) softLoss(s *softStream, err error) {
 	s.losses++
 	e.logf("engine: software stream lost words after %d: %v", s.expected, err)
+	e.noteStreamLoss(s.expected)
 	e.softPush(s) // what arrived before the loss
 	s.dec.Skip(0)
 	s.haveLast = false

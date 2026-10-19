@@ -360,6 +360,9 @@ type Engine struct {
 	// failedImage stops reloading one after a failed load until the serial
 	// choice changes.
 	protocolImage, failedImage string
+	// streamReload: a stream faulted before its first word; the next stream
+	// of any kind (roll, decoded, audio) loads the stream image first.
+	streamReload bool
 	// arincAux caches the ARINC slicer levels from a recent record for the
 	// current serial parameters; zero when unknown.
 	arincAux atomic.Uint32

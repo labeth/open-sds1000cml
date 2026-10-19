@@ -543,6 +543,11 @@ func (e *Engine) rollStreamStep(r *rollView) {
 	}
 	r.feGen = e.feGen.Load()
 	if !r.streaming {
+		if err := e.freshStreamImage(); err != nil {
+			e.busErr(err)
+			e.sleepBeating(100 * time.Millisecond)
+			return
+		}
 		cfg := sramcapture.Config{Source: sramcapture.ADC, DecimationLog2: p.log, PreWords: sramcapture.Words - 17, PostWords: 17,
 			TriggerChannel: uint8(e.trigSrc.Load()), TriggerLevel: uint8(e.trigLevelWord())}
 		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
@@ -598,6 +603,7 @@ func (e *Engine) rollStreamStep(r *rollView) {
 			if err != nil {
 				r.losses++
 				e.logf("roll: stream ended after %d words: %v", r.expected, err)
+				e.noteStreamLoss(r.expected)
 				e.rollStreamStop(r)
 				break
 			}
@@ -636,6 +642,7 @@ func (e *Engine) rollStreamStep(r *rollView) {
 			raw, _ := e.sram.StreamStatus()
 			e.logf("roll: stream ended after %d words, %.1f ms since the last block: %v (status %+v)", r.expected,
 				float64(e.clk.Now().Sub(r.lastBlock))/float64(time.Millisecond), err, raw)
+			e.noteStreamLoss(r.expected)
 			e.rollStreamStop(r)
 			break
 		}
@@ -771,4 +778,36 @@ func (f *Frame) MeasureRange() (int, int) {
 		at = -1
 	}
 	return bestAt, bestAt + best
+}
+
+// noteStreamLoss notes a stream that lost words: one lost before its first
+// word means the stream image can fault every new stream at its first word
+// until it is loaded again (seen on the instrument, a load in a few hundred,
+// for roll and audio streams alike), so the next stream loads it first.
+// TRLC-LINKS: REQ-SDS-035
+func (e *Engine) noteStreamLoss(expected uint64) {
+	if expected == 0 {
+		e.streamReload = true
+	}
+}
+
+// freshStreamImage loads the stream image again when a stream faulted at
+// its first word (noteStreamLoss), before the next stream starts.
+// TRLC-LINKS: REQ-SDS-035
+func (e *Engine) freshStreamImage() error {
+	if !e.streamReload || e.images == nil || !e.images.HasStream() {
+		return nil
+	}
+	e.streamReload = false
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	err := e.sram.Halt(ctx)
+	cancel()
+	if err != nil {
+		return err
+	}
+	e.loadImage(imageStream)
+	if e.protocolImage != imageStream {
+		return fmt.Errorf("the stream image did not load")
+	}
+	return nil
 }

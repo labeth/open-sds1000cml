@@ -462,8 +462,8 @@ func (e *Engine) soundStart(s *soundState) error {
 	// After a fault the stream image can fault every new stream at its first
 	// word until it is loaded again (seen on the instrument); a fresh load
 	// costs about a second, once per loss.
-	if e.protocolImage != imageStream || s.reload {
-		s.reload = false
+	if e.protocolImage != imageStream || s.reload || e.streamReload {
+		s.reload, e.streamReload = false, false
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 		err := e.sram.Halt(ctx)
 		cancel()
