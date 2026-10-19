@@ -73,13 +73,13 @@ run(async (t) => {
   t.ok(fkeys.every((p) => !p) && await cur() === "compare", "F1–F5 are not taken (F5 keeps reloading the page)");
 
   // ---- roving focus on the tabs ---------------------------------------------------------
-  await page.focus("#tab-compare");
+  await page.focus("#tab-sound");
   await page.keyboard.press("ArrowRight");
   t.ok(await cur() === "scope" && await page.evaluate(() => document.activeElement.id) === "tab-scope", "ArrowRight on the last tab wraps to SCOPE and focuses it");
   await page.keyboard.press("ArrowRight");
   t.ok(await cur() === "bus", "ArrowRight opens the next workspace");
   await page.keyboard.press("End");
-  t.ok(await cur() === "compare", "End opens the last workspace");
+  t.ok(await cur() === "sound", "End opens the last workspace");
   await page.keyboard.press("Home");
   t.ok(await cur() === "scope" && await page.evaluate(() => document.activeElement.id) === "tab-scope", "Home opens SCOPE, focus follows");
 

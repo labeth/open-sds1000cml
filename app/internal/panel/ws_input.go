@@ -562,6 +562,9 @@ func (c *Controller) runAuto() {
 // page named for this press, else the LCD's. c.mu held.
 // TRLC-LINKS: REQ-SDS-226
 func (c *Controller) autoTargetLocked() (wsview.WS, int) {
+	if c.autoFor == int(wsview.Count)+1 {
+		return wsview.Spectrum, viewSound
+	}
 	if c.autoFor > 0 {
 		ws := wsview.WS(c.autoFor - 1)
 		if ws != c.ui.ws {
@@ -577,6 +580,9 @@ func (c *Controller) autoTargetLocked() (wsview.WS, int) {
 // TRLC-LINKS: REQ-SDS-226
 func (c *Controller) InjectAutoFor(id string) bool {
 	ws := wsIndex(id)
+	if id == "sound" { // the web's SOUND tab: SPECTRUM's SOUND view, whatever the LCD shows
+		ws = int(wsview.Count)
+	}
 	if ws < 0 {
 		return false
 	}

@@ -6,6 +6,7 @@ import (
 	"math"
 	"time"
 
+	"open-sds/app/internal/analog"
 	"open-sds/app/internal/panel/wsview"
 	"open-sds/app/internal/sound"
 )
@@ -378,4 +379,59 @@ func (c *Controller) SoundWant(api, marks bool) { c.snd.want(api, marks, 3*time.
 func (c *Controller) SoundReport(api, marks bool) SoundReport {
 	c.snd.want(api, marks, 3*time.Second)
 	return c.snd.Report()
+}
+
+// soundAutoFit is AUTO in SOUND: each channel's V/div and offset fitted to
+// the stream, the signal about six divisions tall and centred (a clipped
+// channel steps two detents up first), settling between steps. Triggered
+// captures stay paused: the stream keeps running.
+// TRLC-LINKS: REQ-SDS-273, REQ-SDS-266
+func (c *Controller) soundAutoFit(stop chan struct{}) {
+	e, ok := c.eng.(soundEngine)
+	if !ok || c.fe == nil {
+		c.toast("AUTO: no audio stream here", autoNoticeFor)
+		return
+	}
+	e.LeaseSound(3 * time.Second)
+	var done [2]bool
+	for try := 0; try < 8 && !(done[0] && done[1]); try++ {
+		select {
+		case <-stop:
+			return
+		case <-time.After(400 * time.Millisecond): // the front end settles, new samples come
+		}
+		e.LeaseSound(3 * time.Second)
+		info := e.SoundInfo()
+		if !info.Active || info.RateHz <= 0 {
+			continue
+		}
+		b := e.SoundLatest(int(0.3*info.RateHz), nil, nil)
+		idx, _ := c.fe.Snapshot()
+		for ch := 0; ch < 2; ch++ {
+			if done[ch] {
+				continue
+			}
+			q := b.Q1
+			if ch == 1 {
+				q = b.Q2
+			}
+			if sound.ClipCodes(q) {
+				_ = c.setVdivIdx(ch, idx[ch]+2)
+				continue
+			}
+			l := sound.Measure(c.snd.volts(b, ch, nil))
+			p := c.fe.ProbeFactor(ch)
+			want := len(analog.Detents) - 1
+			for i, d := range analog.Detents {
+				if d.VdivV*p*6 >= l.Vpp {
+					want = i
+					break
+				}
+			}
+			c.fe.SetOffset(ch, -(l.Max+l.Min)/2/p)
+			done[ch] = want == idx[ch]
+			_ = c.setVdivIdx(ch, want)
+		}
+	}
+	c.toast("AUTO: both channels fitted to the stream", autoNoticeFor)
 }

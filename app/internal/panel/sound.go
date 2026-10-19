@@ -838,6 +838,13 @@ type SoundReport struct {
 	VOct     []sound.VOctPoint  `json:"voct"`
 	VOctFit  sound.VOctFit      `json:"voct_fit"`
 	Drift    []sound.DriftPoint `json:"drift"`
+	// The readout pages' figures, as the LCD's SOUND view last read them (a
+	// page reads only while the LCD shows it).
+	Mod  sound.Modulation     `json:"mod"`
+	LFO  sound.LFO            `json:"lfo"`
+	SB   sound.Sidebands      `json:"sidebands"`
+	AB   sound.AB             `json:"ab"`
+	Harm sound.HarmonicReport `json:"harm"`
 }
 
 // Report snapshots the shared readouts; the envelope comes reduced to at
@@ -848,7 +855,8 @@ func (s *soundSvc) Report() SoundReport {
 	defer s.mu.Unlock()
 	r := SoundReport{Info: s.info, Settings: s.set, Hz: s.hz, Clarity: s.clarity, Levels: s.levels, CV: s.cv,
 		ADSR: s.adsr, ADSRWhy: s.adsrWhy, ADSRRes: s.adsrRes, ADSREFs: s.adsrEFs,
-		VOct: append([]sound.VOctPoint(nil), s.voct...), Drift: append([]sound.DriftPoint(nil), s.drift.Points...)}
+		VOct: append([]sound.VOctPoint(nil), s.voct...), Drift: append([]sound.DriftPoint(nil), s.drift.Points...),
+		Mod: s.mod, LFO: s.lfo, SB: s.sb, AB: s.ab, Harm: s.harm}
 	if s.hz > 0 {
 		n := sound.NoteOf(s.hz, s.set.A4)
 		r.Note, r.Cents = n.String(), n.Cents

@@ -192,7 +192,7 @@ func checkUIInvariants(c *Controller) []string {
 			fail("cursor %d at t=%g v=%g on C%d", i, c.curT[i], c.curV[i], c.curVCh+1)
 		}
 	}
-	if !inIntRange(c.viewMode, 0, 4) || !inIntRange(c.mathMode, 0, 4) || !inIntRange(c.fftSrc, 0, 1) {
+	if !inIntRange(c.viewMode, 0, numViews-1) || !inIntRange(c.mathMode, 0, 4) || !inIntRange(c.fftSrc, 0, 1) {
 		fail("view %d math %d fft source %d", c.viewMode, c.mathMode, c.fftSrc)
 	}
 	if c.pulseLvl < 0.05 || c.pulseLvl > 0.95 || c.slopeLo < 0.05 || c.slopeHi > 0.95 || c.slopeLo >= c.slopeHi {

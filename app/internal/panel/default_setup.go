@@ -40,6 +40,7 @@ func (c *Controller) DefaultSetup() {
 	c.eng.SetHoldoff(0)
 	c.eng.SetETS(false)
 	c.clearMask()
+	c.snd.update(func(s *SoundSettings) { *s = defaultSoundSettings() }) // SOUND's settings; its V/oct table and drift log stay
 	if e, ok := c.eng.(interface{ SetZoneMode(int) }); ok {
 		e.SetZoneMode(0)
 	}

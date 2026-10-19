@@ -60,12 +60,21 @@ const ALL_GROUPS = [
     ["srEvtByte", "Decode-trigger byte", ""], ["srComp", "BW compensation", "bandwidth"], ["srCompBw", "BW target", ""], ["srFpga", "FPGA stack", "stacking image"],
     ["srFpgaN", "FPGA records", ""], ["srFpgaMatch", "FPGA shape match", ""], ["srFpgaPts", "FPGA match points", ""], ["srFpgaTol", "FPGA match tolerance", ""]]],
   ["Precision", [["precisionModel", "Fit model", "sine triangle periodic"], ["precisionChannel", "Fit channel", ""], ["precisionFit", "Fit current view", "residual"]]],
+  ["Sound", [["sndListen", "Listen", "audio play headphones probe tracer"], ["sndSrc", "Listen source", "c1 c2 stereo a-b difference"],
+    ["sndMute", "Mute", "audio"], ["sndVol", "Listen volume", "audio"], ["sndGainMode", "Listen gain", "auto manual normalise"], ["sndGain", "Manual gain", "db"],
+    ["sndHP", "High-pass 20 Hz", "dc block filter"], ["sndLP", "Low-pass 5 kHz", "filter"], ["sndNotch", "Notch the fundamental", "residual distortion"],
+    ["sndView", "Sound view", "cycle envelope modulation spectrum a/b"], ["sndCycles", "Cycles drawn", "pitch-locked waveform"], ["sndCh", "Tuned channel", "tuner pitch"],
+    ["sndA4", "A4 reference", "tuner pitch 440 432"], ["sndRange", "Tuner range", "bass high"], ["sndSlow", "Tuner smoothing", "fast slow"],
+    ["sndRef", "Meter 0 dB", "dbu dbv eurorack line guitar level"], ["sndRead", "Sound readouts", "adsr v/oct drift"], ["sndArm", "Arm the envelope capture", "adsr gate"],
+    ["sndGate", "Envelope trigger", "gate signal level"], ["sndGateV", "Envelope trigger level", "volts"], ["sndEnvCV", "Envelope of", "tone cv"],
+    ["sndVTake", "Take a V/oct point", "vco tracking cv"], ["sndVUndo", "Undo the last V/oct point", ""], ["sndVClear", "Clear the V/oct table", ""],
+    ["sndVAuto", "V/oct points", "automatic by hand"], ["sndDriftOn", "Drift log", "pitch warm-up"], ["sndDriftClear", "Clear the drift log", ""]]],
   ["Export & system", [["ePNG", "Export PNG", "image screenshot"], ["eCSV", "Export CSV", "data"], ["eSR", "Export sigrok .sr", "pulseview"], ["eVCD", "Export VCD", "gtkwave"],
     ["eWAV", "Export WAV", "audio"], ["ePrint", "Device screenshot (PRINT)", "lcd"], ["defaultBtn", "Default setup", "reset factory"], ["helpBtn", "Help", "keys mouse"]]],
 ];
 // Controls that are not settings: navigation, menus, dialogs and the read-only
 // decode transcript.
-const ALL_EXCLUDE = new Set(["decodeText", "tab-scope", "tab-bus", "tab-spectrum", "tab-measure", "tab-compare", "allBtn", "allClose", "allFilter", "helpClose",
+const ALL_EXCLUDE = new Set(["decodeText", "tab-scope", "tab-bus", "tab-spectrum", "tab-measure", "tab-compare", "tab-sound", "allBtn", "allClose", "allFilter", "helpClose",
   "exportBtn", "setupsBtn", "quickMore", "pkDetect", "streamDetect", "tdivDn", "tdivUp", "vdiv1Dn", "vdiv1Up", "vdiv2Dn", "vdiv2Up", "mYT", "mXY", "mFFT", "mSPG", "mBODE"]);
 
 let allBuilt = false, allW = 380;

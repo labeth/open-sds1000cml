@@ -95,7 +95,7 @@ function sndIngest(c, buf) {
 // TRLC-LINKS: REQ-SDS-265
 async function sndPump(c, gen) {
   while (c.shown && gen === c.gen) {
-    let url = "/api/sound.bin?max=16384&wait=600";
+    let url = "/api/sound.bin?max=16384&min=1024&wait=600";
     if (c.cursor !== null) url += "&from=" + c.cursor;
     if (c.wantMarks()) url += "&marks=1";
     try {

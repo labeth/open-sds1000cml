@@ -85,7 +85,8 @@ func (s *Server) probeOf(ch int) float64 {
 }
 
 // hSoundBin serves the stream from ordinal from (or the newest stretch),
-// parking up to wait ms for samples not yet there: a binary header (magic,
+// parking up to wait ms for samples not yet there (or for min of them): a
+// binary header (magic,
 // flags, the JSON length) and JSON, then N little-endian Q8.8 codes of C1
 // and N of C2.
 // TRLC-LINKS: REQ-SDS-265
@@ -111,8 +112,15 @@ func (s *Server) hSoundBin(w http.ResponseWriter, r *http.Request) {
 	} else if info.Next > 4096 {
 		from = info.Next - 4096 // a new listener starts near now
 	}
-	if wait, err := strconv.Atoi(q.Get("wait")); err == nil && wait > 0 && from >= info.Next {
-		src.SoundWait(from, time.Duration(min(wait, 1500))*time.Millisecond)
+	// wait parks the reply until samples come; min until that many have:
+	// a listener's request a seal period long, not one per bank, keeps the
+	// replies (and the scope's work for them) to about fifty a second.
+	minN := 1
+	if v, err := strconv.Atoi(q.Get("min")); err == nil && v > 1 {
+		minN = min(v, maxN)
+	}
+	if wait, err := strconv.Atoi(q.Get("wait")); err == nil && wait > 0 && from+uint64(minN) > info.Next {
+		src.SoundWait(from+uint64(minN)-1, time.Duration(min(wait, 1500))*time.Millisecond)
 		info = src.SoundInfo()
 	}
 	b := src.SoundRead(from, maxN, nil, nil)
