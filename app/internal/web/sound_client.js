@@ -256,7 +256,7 @@ async function sndClientListen(c, on) {
   if (!a.ctx) {
     const AC = window.AudioContext || window.webkitAudioContext;
     a.ctx = new AC({ latencyHint: "interactive" });
-    const opts = { srcRate: c.rate, targetMs: 120 };
+    const opts = { srcRate: c.rate, targetMs: 160 };
     if (a.ctx.audioWorklet) {
       await a.ctx.audioWorklet.addModule("sound_worklet.js");
       a.node = new AudioWorkletNode(a.ctx, "sound-player", { numberOfInputs: 0, outputChannelCount: [2],

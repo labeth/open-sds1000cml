@@ -15,6 +15,10 @@
 
 const SW_LIMIT = 0.5; // -6 dBFS
 const SW_FADE = 0.004; // seconds of fade over a gap or an underrun
+const SW_TARGET_STEP = 40; // ms the jitter buffer's target grows at an underrun
+const SW_TARGET_MAX = 400; // ms
+const SW_CALM = 20; // seconds of clean play before the target steps back
+const SW_LOW = 25; // ms left in the buffer that count as nearly dry
 
 // TRLC-LINKS: REQ-SDS-265
 class SoundPlayerCore {
@@ -26,6 +30,16 @@ class SoundPlayerCore {
     this.post = post;
     this.srcRate = o.srcRate || 61035.15625;
     this.target = o.targetMs || 120;
+    // The target grows by a step when the buffer nearly or fully runs dry,
+    // to SW_TARGET_MAX, and comes back a step after each SW_CALM of clean
+    // play: the scope's replies arrive later when its core is busy (the
+    // LCD's SOUND view beside Listen), and a fixed target ran dry a few
+    // times a minute.
+    this.base = this.target;
+    // A start has a step in hand: the first late reply comes before any
+    // growth could help.
+    this.target += SW_TARGET_STEP;
+    this.calm = -1; // when the target last grew or stepped back (seconds), -1 never
     this.size = 1 << 17;
     this.L = new Float32Array(this.size);
     this.R = new Float32Array(this.size);
@@ -44,8 +58,8 @@ class SoundPlayerCore {
 
   // TRLC-LINKS: REQ-SDS-265
   onMsg(m) {
-    if (m.reset) { this.w = 0; this.r = 0; this.primed = false; return; }
-    if (m.targetMs) this.target = m.targetMs;
+    if (m.reset) { this.w = 0; this.r = 0; this.primed = false; this.target = Math.max(this.target, this.base + SW_TARGET_STEP); return; }
+    if (m.targetMs) { this.base = m.targetMs; this.target = m.targetMs + SW_TARGET_STEP; }
     if (!m.l) return;
     const n = m.l.length;
     if (m.gap) this.gapAt = this.w; // a discontinuity before these samples
@@ -78,6 +92,12 @@ class SoundPlayerCore {
       this.report(fill, now);
       return;
     }
+    // Nearly dry (SW_LOW left): the replies come later than the target
+    // allows; grow it before the buffer runs out (once a second).
+    if (fill < SW_LOW / 1000 * this.srcRate && now - this.calm > 1 && this.target < SW_TARGET_MAX) {
+      this.target = Math.min(SW_TARGET_MAX, this.target + SW_TARGET_STEP);
+      this.calm = now;
+    }
     // The rate follows the fill: half a percent at most, slowly.
     const err = (fill - targetS) / targetS;
     const want = 1 + Math.max(-0.005, Math.min(0.005, 0.01 * err));
@@ -90,6 +110,8 @@ class SoundPlayerCore {
         for (let j = i; j < n; j++) { oL[j] = 0; if (oR !== oL) oR[j] = 0; }
         this.primed = false;
         this.under++;
+        this.target = Math.min(SW_TARGET_MAX, this.target + SW_TARGET_STEP);
+        this.calm = now;
         break;
       }
       const ri = Math.floor(this.r), f = this.r - ri;
@@ -108,6 +130,11 @@ class SoundPlayerCore {
       this.r += step;
     }
     if (this.gapAt >= 0 && this.r > this.gapAt + 2) this.gapAt = -1;
+    if (this.calm < 0) this.calm = now;
+    if (now - this.calm > SW_CALM && this.target > this.base) {
+      this.target = Math.max(this.base, this.target - SW_TARGET_STEP);
+      this.calm = now;
+    }
     if (burst) this.post({ burst: now });
     this.report(fill, now);
   }
@@ -117,7 +144,7 @@ class SoundPlayerCore {
     if (this.lastReport >= 0 && now - this.lastReport < 0.25) return;
     this.lastReport = now;
     this.post({ fillMs: fill / this.srcRate * 1000, ratio: this.ratio, under: this.under, over: this.over,
-      primed: this.primed, gain: this.gain, t: now });
+      primed: this.primed, gain: this.gain, targetMs: this.target, t: now });
   }
 }
 
