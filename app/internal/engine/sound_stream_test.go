@@ -4,6 +4,8 @@ package engine
 import (
 	"testing"
 	"time"
+
+	"open-sds/app/internal/sramcapture"
 )
 
 // words packs n stream words whose CH1 code is the sample's ordinal from
@@ -93,6 +95,29 @@ func TestUnwrapWord(t *testing.T) {
 	}
 }
 
+// TestSoundFirstLeaseRace takes the first lease on a web request's
+// goroutine while the acquisition owner asks whether the stream is wanted:
+// the sound state made on first use reaches the owner safely (go test
+// -race).
+// TRLC-LINKS: REQ-SDS-265
+func TestSoundFirstLeaseRace(t *testing.T) {
+	fb := newFakeBus()
+	e, _ := newTestEngine(t, fb)
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		e.LeaseSound(2 * time.Second)
+		e.SoundRead(0, 16, nil, nil)
+	}()
+	for i := 0; i < 1000 && !e.soundWanted(); i++ {
+		e.soundStreaming()
+	}
+	<-done
+	if !e.soundWanted() {
+		t.Fatal("the lease did not reach the owner")
+	}
+}
+
 // A lease holds the stream for its time; the info starts off.
 // TRLC-LINKS: REQ-SDS-265
 func TestSoundLease(t *testing.T) {
@@ -120,5 +145,50 @@ func TestSoundLease(t *testing.T) {
 	e.SetSoundMarks(SoundMarkConfig{Ch: 3, Level: 130, Rising: true})
 	if in := e.SoundInfo(); in.MarkCfg.Ch != 1 || in.MarkCfg.Level != 130 {
 		t.Fatalf("mark config %+v", in.MarkCfg)
+	}
+}
+
+// recHaltBus is haltBus recording the registers written.
+type recHaltBus struct {
+	haltBus
+	wrote []uint16
+}
+
+// TRLC-LINKS: REQ-SDS-265
+func (b *recHaltBus) RawWrite(s, v uint16) error {
+	b.wrote = append(b.wrote, s)
+	return b.haltBus.RawWrite(s, v)
+}
+
+// TestSoundLeavesADecodedStream holds a decoded capture while an audio
+// stream session the capture's start did not end is still marked running
+// and its lease lapses (a phone's SOUND page closed while the LCD streams a
+// bus): the audio stream lets go without a write to the fabric - its stop
+// would halt the decoded capture's acquisition. A decoded stream's start
+// ends a running audio stream itself.
+// TRLC-LINKS: REQ-SDS-265, REQ-SDS-018
+func TestSoundLeavesADecodedStream(t *testing.T) {
+	e := webSessionEngine(t, false, 0)
+	rb := &recHaltBus{}
+	capture, err := sramcapture.New(rb)
+	if err != nil {
+		t.Fatal(err)
+	}
+	e.sram = capture
+	s := e.sound()
+	s.streaming = true
+	rb.wrote = nil
+	if e.soundStep() {
+		t.Fatal("the audio stream stepped over a decoded capture")
+	}
+	if s.streaming || len(rb.wrote) != 0 {
+		t.Fatalf("streaming %v, fabric writes %v", s.streaming, rb.wrote)
+	}
+	// Without a decoded capture, yielding stops a running stream for real.
+	e.decodedSession = nil
+	s.streaming = true
+	e.soundYield()
+	if s.streaming || len(rb.wrote) == 0 {
+		t.Fatalf("yield: streaming %v, fabric writes %v", s.streaming, rb.wrote)
 	}
 }

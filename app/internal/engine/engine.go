@@ -517,9 +517,12 @@ type Engine struct {
 	decodedWeb                bool        // the session is a web page's (BeginDecodedCapture), not the scope's stream
 	decodedContact            time.Time   // a client's last call on the session (status, events, record)
 	soft                      *softStream // a software-decoded stream (soft_stream.go)
-	snd                       *soundState // the audio stream (sound_stream.go)
-	soundOnce                 sync.Once
-	softEpoch                 uint32
+	// snd is the audio stream (sound_stream.go), made on first use by a web
+	// request or the panel and read by the acquisition owner: published
+	// atomically.
+	snd       atomic.Pointer[soundState]
+	soundOnce sync.Once
+	softEpoch uint32
 
 	// Owner-private state (no locking needed).
 	acqShadow, trigShadow uint16 // last ACQ_CTRL / TRIG_LEVEL words written (compare-on-change)

@@ -96,7 +96,7 @@ var moreStreamCases = []streamCase{
 	{name: "t55xx", baud: 125000, lines: 1, frames: 30, gen: func(l twoLine, i int, rng *rand.Rand) {
 		f := rfidField{l.a, false}
 		f.on(500 * rfidFC)
-		t55xxCommand(f, t55xxBits(2, -1, 0, uint32(0xDEAD0000|i), i%8))
+		t55xxCommand(f, t55xxBits(2, -1, 0, 0xDEAD0000|uint32(i), i%8))
 		f.on(rng.Float64() * 2e-3)
 		oneLine(l)
 	}, dec: func(a, b []uint8, s float64) Result {

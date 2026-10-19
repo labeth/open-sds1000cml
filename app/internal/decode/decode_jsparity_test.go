@@ -13,6 +13,10 @@ import (
 	"open-sds/app/internal/testenv"
 )
 
+// parityMult is PARITY_MULT, the corruption count multiplier (1 in CI).
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-073
+func parityMult() int { return fuzzKnob("PARITY_MULT", 1) }
+
 // TestJSDecoderParity guarantees the browser JS twins (internal/web/decode_*.js)
 // decode byte-for-byte identically to the Go decoders, so the web overlay and the
 // on-device LCD never disagree. It generates a battery of waveforms with the SAME
@@ -320,7 +324,9 @@ func TestJSDecoderParity(t *testing.T) {
 	// require the JS twin to reproduce Go's {ok, bytes, text} EXACTLY. This drives
 	// the reject/flag paths (bad CRC, stuff violations, framing errors, dropped
 	// words, record-end truncation) that clean vectors never reach.
-	rng := rand.New(rand.NewSource(0xDEC0DE))
+	// PARITY_SEED shifts the corruptions' seed and PARITY_MULT multiplies
+	// their counts for local campaigns; CI runs the fixed defaults.
+	rng := rand.New(rand.NewSource(int64(0xDEC0DE + fuzzKnob("PARITY_SEED", 0))))
 	corrupt := func(base []uint8) []uint8 {
 		w := append([]uint8{}, base...)
 		for r := 0; r < 1+rng.Intn(3); r++ {
@@ -387,7 +393,7 @@ func TestJSDecoderParity(t *testing.T) {
 			func(w []uint8) Result { return DecodeUART(w, uaCT, UARTCfg{Baud: uaBaud, Parity: "odd"}) }},
 	}
 	for _, bc := range bases {
-		for it := 0; it < 24; it++ {
+		for it := 0; it < 24*parityMult(); it++ {
 			w := corrupt(bc.w)
 			add(bc.proto, w, bc.colT, bc.cfg, bc.dec(w))
 		}

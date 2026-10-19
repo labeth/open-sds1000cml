@@ -673,7 +673,7 @@ acquisitionLoop:
 			e.softStep()
 			continue
 		}
-		if (e.soundWanted() || e.snd != nil && e.snd.streaming) && e.soundStep() { // the audio stream (sound_stream.go)
+		if (e.soundWanted() || e.soundStreaming()) && e.soundStep() { // the audio stream (sound_stream.go)
 			retained, recalled = false, false
 			continue
 		}

@@ -287,11 +287,20 @@ type soundState struct {
 // TRLC-LINKS: REQ-SDS-265
 func (e *Engine) sound() *soundState {
 	e.soundOnce.Do(func() {
-		e.snd = &soundState{ring: newSoundRing(soundRingLog2)}
-		e.snd.info.State = "off"
-		e.snd.info.RateHz = 500e6 / float64(uint64(1)<<SoundLog2)
+		s := &soundState{ring: newSoundRing(soundRingLog2)}
+		s.info.State = "off"
+		s.info.RateHz = 500e6 / float64(uint64(1)<<SoundLog2)
+		e.snd.Store(s)
 	})
-	return e.snd
+	return e.snd.Load()
+}
+
+// soundStreaming reports a running audio stream (the acquisition owner's
+// view), without making the sound state.
+// TRLC-LINKS: REQ-SDS-265
+func (e *Engine) soundStreaming() bool {
+	s := e.snd.Load()
+	return s != nil && s.streaming
 }
 
 // LeaseSound keeps the audio stream running for d from now (0 releases).
@@ -308,10 +317,11 @@ func (e *Engine) LeaseSound(d time.Duration) {
 // soundWanted reports a current lease.
 // TRLC-LINKS: REQ-SDS-265
 func (e *Engine) soundWanted() bool {
-	if e.snd == nil {
+	s := e.snd.Load()
+	if s == nil {
 		return false
 	}
-	v := e.snd.lease.Load()
+	v := s.lease.Load()
 	return v != 0 && e.clk.Now != nil && e.clk.Now().UnixNano() < v
 }
 
@@ -411,6 +421,11 @@ func (e *Engine) soundBusy() string {
 // TRLC-LINKS: REQ-SDS-265
 func (e *Engine) soundStep() bool {
 	s := e.sound()
+	if s.streaming && e.soundBusy() != "" {
+		// Another stream took the fabric without ending this one: its
+		// stop would halt that stream's acquisition.
+		e.soundDrop(s)
+	}
 	if !e.soundWanted() {
 		if s.streaming {
 			e.soundStop(s)
@@ -521,6 +536,34 @@ func (e *Engine) soundStop(s *soundState) {
 	}
 	s.streaming = false
 	s.gapNext = true
+}
+
+// soundYield ends a running audio stream before another stream (a decoded
+// capture, a software-decoded stream) takes the fabric; the audio stream
+// then waits, its state saying why, until the fabric is free.
+// TRLC-LINKS: REQ-SDS-265, REQ-SDS-018
+func (e *Engine) soundYield() {
+	if s := e.snd.Load(); s != nil && s.streaming {
+		e.soundStop(s)
+		s.setState("off", false, nil)
+	}
+}
+
+// soundDrop forgets a stream session whose fabric another stream holds,
+// writing nothing to the fabric (its pump and deadline released).
+// TRLC-LINKS: REQ-SDS-265
+func (e *Engine) soundDrop(s *soundState) {
+	if s.isolated {
+		if _, err := e.b.(streamPumper).SetIsolatedStreamPump(false); err != nil {
+			e.busErr(err)
+		}
+		s.isolated = false
+	}
+	if s.deadline != nil {
+		_ = s.deadline.Close()
+		s.deadline = nil
+	}
+	s.streaming, s.gapNext = false, true
 }
 
 // soundDrain moves the stream's words into the ring for up to 40 ms.

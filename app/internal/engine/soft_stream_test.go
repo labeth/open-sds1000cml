@@ -272,3 +272,45 @@ func TestSoftStreamModes(t *testing.T) {
 		t.Fatal("software stream epochs overlap the fabric's")
 	}
 }
+
+// TestSoftEventsQueue queues a software stream's events past the bound the
+// FPGA's decoded events have, reading them as a client does in batches
+// between the adds: every event read once, in order, the queue held to
+// the bound (the transcript ends incomplete, not the memory).
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func TestSoftEventsQueue(t *testing.T) {
+	s := &softStream{id: sramcapture.RecordIdentity{Epoch: softEpochBase | 1, Record: 1}}
+	e := &Engine{soft: s}
+	dst := make([]sramcapture.DecodedEvent, 4096)
+	next := uint32(0)
+	read := func() int {
+		n, err := e.softRead(s.id, dst)
+		if err != nil && n > 0 {
+			t.Fatal(err)
+		}
+		for _, ev := range dst[:n] {
+			if ev.Sequence != next {
+				t.Fatalf("read sequence %d, want %d", ev.Sequence, next)
+			}
+			next++
+		}
+		return n
+	}
+	for i := 0; i < 50000; i++ {
+		s.addEvent(sramcapture.DecodedEvent{Kind: sramcapture.EventData, Value: uint32(i)})
+		if i%3000 == 0 {
+			read()
+		}
+	}
+	for read() > 0 {
+	}
+	if next != 50000 || s.err != nil {
+		t.Fatalf("read %d of 50000 (err %v)", next, s.err)
+	}
+	for i := 0; i < 2*softEventsMax; i++ {
+		s.addEvent(sramcapture.DecodedEvent{Kind: sramcapture.EventData})
+	}
+	if q := len(s.events) - s.evHead; q != softEventsMax || s.err == nil || cap(s.events) > 2*softEventsMax {
+		t.Fatalf("queued %d (bound %d, cap %d), err %v", q, softEventsMax, cap(s.events), s.err)
+	}
+}

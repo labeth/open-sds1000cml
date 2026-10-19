@@ -186,6 +186,7 @@ func (e *Engine) beginDecodedCapture(ctx context.Context, cfg sramcapture.Config
 		if cfg.Symbol.Enabled {
 			return nil, fmt.Errorf("the image that triggers this protocol cannot stream its decoded events")
 		}
+		e.soundYield()
 		// Only UART, I2C and SPI stream from the general image; a request for
 		// a receiver on the samples streams from the fast image: SPI framed
 		// tighter than its level receiver takes (a clock past about 20 MHz)

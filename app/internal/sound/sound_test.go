@@ -5,6 +5,7 @@ import (
 	"math"
 	"math/rand"
 	"testing"
+	"time"
 )
 
 // fsTest is the stream's rate.
@@ -532,5 +533,74 @@ func TestBreakers(t *testing.T) {
 		CompareAB(x, x, fsTest, 0)
 		PlaceMark(x, len(x)/2, 0, true)
 		ExtractCycles(x, fsTest, 1, 50, 2, 100)
+	}
+}
+
+// TestPow2Bounded asks the power-of-two helpers and the tuner's window for
+// sizes past any int (a pitch near zero, a float past an int's range):
+// they end, at the bound. Doubling past it wrapped the int and never ended
+// (on the scope's 32-bit int, int(+Inf) is MaxInt32 and every such size
+// hung the SOUND service).
+// TRLC-LINKS: REQ-SDS-267, REQ-SDS-270
+func TestPow2Bounded(t *testing.T) {
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		if p := pow2(math.MaxInt); p != 1<<30 {
+			t.Errorf("pow2(MaxInt) = %d", p)
+		}
+		if p := floorPow2(math.MaxInt); p != 1<<30 {
+			t.Errorf("floorPow2(MaxInt) = %d", p)
+		}
+		for _, f := range []float64{1e-300, 1e-6, 0.01} {
+			if n := TunerWindow(f, fsTest); n != 32768 {
+				t.Errorf("TunerWindow(%g) = %d", f, n)
+			}
+		}
+	}()
+	select {
+	case <-done:
+	case <-time.After(10 * time.Second):
+		t.Fatal("a power-of-two size past an int's range never ended")
+	}
+}
+
+// TestDelayBadReach asks Delay for a reach that is no number of samples:
+// no reading, no index from it.
+// TRLC-LINKS: REQ-SDS-271
+func TestDelayBadReach(t *testing.T) {
+	x := gen(4096, fsTest, sine(1, 440, 0), 0.01, 5)
+	for _, maxS := range []float64{math.NaN(), math.Inf(-1), -1} {
+		if _, ok := Delay(x, x, fsTest, maxS); ok {
+			t.Errorf("reach %v read a delay", maxS)
+		}
+	}
+	if d, ok := Delay(x, x, fsTest, 1e9); !ok || d != 0 {
+		t.Errorf("a reach past the stretch: %v %v", d, ok)
+	}
+}
+
+// TestADSRHeldToTheEnd reads a note still sustaining when the capture ends
+// (a held note outlasting the capture's bound): a sustain, no release, and
+// no index past the envelope.
+// TRLC-LINKS: REQ-SDS-268
+func TestADSRHeldToTheEnd(t *testing.T) {
+	n := int(1.4 * fsTest)
+	for _, cv := range []bool{false, true} {
+		x := gen(n, fsTest, adsrSignal(0.02, 0.1, 0.6, 5, 0.2, cv), 0.002, 3)
+		env, efs := Envelope(x, fsTest, 0.02, 0.001)
+		if cv {
+			env, efs = BlockMeans(x, fsTest, 0.001)
+		}
+		r := AnalyzeADSR(env, efs, -1, -1)
+		if !r.OK || !r.HasSustain || math.Abs(r.SustainPct-60) > 5 || !math.IsNaN(r.ReleaseAt) || !math.IsNaN(r.Release) {
+			t.Errorf("cv %v: %+v", cv, r)
+		}
+	}
+	// The same with the gate's start known and no end.
+	x := gen(n, fsTest, adsrSignal(0.02, 0.1, 0.6, 5, 0.2, false), 0.002, 4)
+	env, efs := Envelope(x, fsTest, 0.02, 0.001)
+	if r := AnalyzeADSR(env, efs, 0.1, -1); !r.OK || !math.IsNaN(r.Release) {
+		t.Errorf("gate on only: %+v", r)
 	}
 }

@@ -110,6 +110,20 @@ const soundCycleKeep = 6
 // stripSeconds is the pitch strip's span.
 const stripSeconds = 10.0
 
+// voctMax bounds the V/oct table: the automatic points come every time the
+// CV steps and holds (a sequencer looping all night), and every report
+// copies and fits the table.
+const voctMax = 128
+
+// addVOct appends a V/oct point, the oldest going past voctMax (s.mu held).
+// TRLC-LINKS: REQ-SDS-267
+func (s *soundSvc) addVOct(p sound.VOctPoint) {
+	s.voct = append(s.voct, p)
+	if n := len(s.voct); n > voctMax {
+		s.voct = append(s.voct[:0], s.voct[n-voctMax:]...)
+	}
+}
+
 // soundTick is the service's period.
 const soundTick = 125 * time.Millisecond
 
@@ -401,7 +415,7 @@ func (s *soundSvc) readTuner(e soundEngine, set SoundSettings, t float64) {
 	}
 	if set.VOctAuto {
 		if pt, ok := s.auto.Add(t, cv, s.hz); ok {
-			s.voct = append(s.voct, pt)
+			s.addVOct(pt)
 		}
 	}
 }
@@ -800,7 +814,7 @@ func (s *soundSvc) voctCapture() error {
 	}
 	s.mu.Lock()
 	s.cv = cv
-	s.voct = append(s.voct, sound.VOctPoint{V: cv, Hz: hz})
+	s.addVOct(sound.VOctPoint{V: cv, Hz: hz})
 	s.mu.Unlock()
 	return nil
 }
@@ -867,15 +881,38 @@ type SoundReport struct {
 	Harm sound.HarmonicReport `json:"harm"`
 }
 
+// driftReportMax bounds the drift points a report carries: a page draws the
+// log across its width, and two hours of it (7200 points) cost the scope a
+// third of a megabyte of JSON a report.
+const driftReportMax = 1000
+
+// reduceDrift is every k-th point of the drift log, at most max of them,
+// and always its newest.
+// TRLC-LINKS: REQ-SDS-267
+func reduceDrift(pts []sound.DriftPoint, max int) []sound.DriftPoint {
+	k := (len(pts) + max - 1) / max
+	if k <= 1 {
+		return append([]sound.DriftPoint(nil), pts...)
+	}
+	out := make([]sound.DriftPoint, 0, max+1)
+	for i := 0; i < len(pts); i += k {
+		out = append(out, pts[i])
+	}
+	if out[len(out)-1] != pts[len(pts)-1] {
+		out = append(out, pts[len(pts)-1])
+	}
+	return out
+}
+
 // Report snapshots the shared readouts; the envelope comes reduced to at
-// most 2000 points.
+// most 2000 points and the drift log to about driftReportMax.
 // TRLC-LINKS: REQ-SDS-274
 func (s *soundSvc) Report() SoundReport {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	r := SoundReport{Info: s.info, Settings: s.set, Hz: s.hz, Clarity: s.clarity, Levels: s.levels, CV: s.cv,
 		ADSR: s.adsr, ADSRWhy: s.adsrWhy, ADSRRes: s.adsrRes, ADSREFs: s.adsrEFs,
-		VOct: append([]sound.VOctPoint(nil), s.voct...), Drift: append([]sound.DriftPoint(nil), s.drift.Points...),
+		VOct: append([]sound.VOctPoint(nil), s.voct...), Drift: reduceDrift(s.drift.Points, driftReportMax),
 		Mod: s.mod, LFO: s.lfo, SB: s.sb, AB: s.ab, Harm: s.harm}
 	if s.hz > 0 {
 		n := sound.NoteOf(s.hz, s.set.A4)

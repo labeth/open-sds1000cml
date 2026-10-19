@@ -141,7 +141,12 @@ func (s *Server) hSoundBin(w http.ResponseWriter, r *http.Request) {
 		ch := info.MarkCfg.Ch & 1
 		h.MarkV = (float64(info.MarkCfg.Level)-128)*h.Scales[k-1].VPC[ch] - h.Scales[k-1].Off[ch]
 	}
-	hj, _ := json.Marshal(h)
+	hj, err := json.Marshal(h)
+	if err != nil {
+		// A scale or level that is no number (a front end not set yet) goes
+		// as null: an empty header broke the page's whole stream.
+		hj, _ = json.Marshal(jsonSafe(reflect.ValueOf(h)))
+	}
 	buf := make([]byte, 8, 8+len(hj)+4*b.N)
 	copy(buf, soundBinMagic[:])
 	binary.LittleEndian.PutUint32(buf[4:8], uint32(len(hj)))
@@ -209,6 +214,48 @@ func (s *Server) hSound(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, out)
 }
 
+// finiteSeries reports a slice or array of finite floats, or of structs of
+// finite floats, ints, bools and strings without JSON tag options (their
+// encoding/json form is jsonSafe's).
+// TRLC-LINKS: REQ-SDS-274
+func finiteSeries(v reflect.Value) bool {
+	et := v.Type().Elem()
+	switch et.Kind() {
+	case reflect.Float64, reflect.Float32:
+		for i := 0; i < v.Len(); i++ {
+			if f := v.Index(i).Float(); math.IsNaN(f) || math.IsInf(f, 0) {
+				return false
+			}
+		}
+		return true
+	case reflect.Struct:
+		var floats []int
+		for i := 0; i < et.NumField(); i++ {
+			f := et.Field(i)
+			if !f.IsExported() || strings.Contains(f.Tag.Get("json"), ",") || f.Anonymous {
+				return false
+			}
+			switch f.Type.Kind() {
+			case reflect.Float64, reflect.Float32:
+				floats = append(floats, i)
+			case reflect.Int, reflect.Int64, reflect.Int32, reflect.Uint64, reflect.Uint32, reflect.Bool, reflect.String:
+			default:
+				return false
+			}
+		}
+		for i := 0; i < v.Len(); i++ {
+			e := v.Index(i)
+			for _, k := range floats {
+				if f := e.Field(k).Float(); math.IsNaN(f) || math.IsInf(f, 0) {
+					return false
+				}
+			}
+		}
+		return true
+	}
+	return false
+}
+
 // jsonSafe turns v into plain JSON values with every NaN and infinity as
 // null (encoding/json refuses them): structs by their JSON names.
 // TRLC-LINKS: REQ-SDS-274
@@ -246,6 +293,14 @@ func jsonSafe(v reflect.Value) any {
 	case reflect.Slice, reflect.Array:
 		if v.Kind() == reflect.Slice && v.IsNil() {
 			return []any{}
+		}
+		// A long series of plain finite numbers (the drift log, the envelope)
+		// goes to encoding/json whole: a value built per element costs the
+		// scope's CPU hundreds of milliseconds a report for a long log.
+		if v.Len() > 16 && finiteSeries(v) {
+			if b, err := json.Marshal(v.Interface()); err == nil {
+				return json.RawMessage(b)
+			}
 		}
 		out := make([]any, v.Len())
 		for i := range out {

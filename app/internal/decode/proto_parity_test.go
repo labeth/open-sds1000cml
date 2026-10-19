@@ -222,9 +222,18 @@ func protoParityVectors(add parityAdd, add2 parityAdd2, corrupt func([]uint8) []
 		wiegandFrame(lw, wiegandBits(34, 1000, 65535), 1e-3)
 		wiegandFrame(lw, "1010110011", 2e-3)
 		b2 = append(b2, base2{"wiegand", 1e-5, lw.a.codes(), lw.b.codes(), func(a, b []uint8) Result { return DecodeWiegand(a, b, 1e-5, ClockedCfg{}) }})
+		// A frame's few pulses in a long idle, at stated thresholds: the
+		// lines hold under a thousandth of the window at their pulse level.
+		ls := newTwoLine(100e3)
+		ls.add(1, 1, 10e-3)
+		wiegandFrame(ls, wiegandBits(26, 255, 65534), 2e-3)
+		ls.add(1, 1, 2)
+		thr := ClockedCfg{Threshold: 128, HaveThr: true, ThresholdB: 128, HaveThrB: true}
+		add2("wiegand", ls.a.codes(), ls.b.codes(), 1e-5, cfg{"threshold": 128, "thresholdB": 128}, DecodeWiegand(ls.a.codes(), ls.b.codes(), 1e-5, thr))
+		add2("wiegand", ls.a.codes(), ls.b.codes(), 1e-5, cfg{}, DecodeWiegand(ls.a.codes(), ls.b.codes(), 1e-5, ClockedCfg{}))
 		for _, b := range b2 {
 			add2(b.proto, b.c1, b.c2, b.colT, cfg{}, b.dec(b.c1, b.c2))
-			for it := 0; it < 12; it++ {
+			for it := 0; it < 12*parityMult(); it++ {
 				c1, c2 := b.c1, b.c2
 				if it%2 == 0 {
 					c1 = corrupt(c1)
@@ -242,7 +251,7 @@ func protoParityVectors(add parityAdd, add2 parityAdd2, corrupt func([]uint8) []
 
 	for _, b := range bases {
 		add(b.proto, b.w, b.colT, b.cfg, b.dec(b.w))
-		for it := 0; it < 16; it++ {
+		for it := 0; it < 16*parityMult(); it++ {
 			w := corrupt(b.w)
 			add(b.proto, w, b.colT, b.cfg, b.dec(w))
 		}

@@ -398,6 +398,7 @@ func (c *Controller) soundAutoFit(stop chan struct{}) {
 	}
 	e.LeaseSound(3 * time.Second)
 	var done [2]bool
+	active, state := false, ""
 	for try := 0; try < 8 && !(done[0] && done[1]); try++ {
 		select {
 		case <-stop:
@@ -406,9 +407,10 @@ func (c *Controller) soundAutoFit(stop chan struct{}) {
 		}
 		e.LeaseSound(3 * time.Second)
 		info := e.SoundInfo()
-		if !info.Active || info.RateHz <= 0 {
+		if state = info.State; !info.Active || info.RateHz <= 0 {
 			continue
 		}
+		active = true
 		b := e.SoundLatest(int(0.3*info.RateHz), nil, nil)
 		idx, _ := c.fe.Snapshot()
 		for ch := 0; ch < 2; ch++ {
@@ -437,5 +439,12 @@ func (c *Controller) soundAutoFit(stop chan struct{}) {
 			_ = c.setVdivIdx(ch, want)
 		}
 	}
-	c.toast("AUTO: both channels fitted to the stream", autoNoticeFor)
+	switch {
+	case !active:
+		c.toast("AUTO: no audio stream: "+state, autoNoticeFor)
+	case !(done[0] && done[1]):
+		c.toast("AUTO: the level kept moving; fitted to the last reading", autoNoticeFor)
+	default:
+		c.toast("AUTO: both channels fitted to the stream", autoNoticeFor)
+	}
 }

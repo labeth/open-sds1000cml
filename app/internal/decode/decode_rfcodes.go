@@ -691,7 +691,11 @@ func DecodeMorse(codes []uint8, colTimeS float64, cfg LineCfg) Result {
 	var toks []string
 	var units []int
 	letters := 0
-	code := ""
+	// A letter's code is at most six elements: past seven it is no letter,
+	// and keeping it whole made a line that never pauses for a letter (a
+	// fast bus, noise) cost quadratic time and memory.
+	var code [8]byte
+	nc := 0
 	x0 := 0.0
 	timed := 0 // marks within a quarter of a dot or a dash
 	for _, k := range m {
@@ -700,21 +704,22 @@ func DecodeMorse(codes []uint8, colTimeS float64, cfg LineCfg) Result {
 		}
 	}
 	for i, k := range m {
-		if code == "" {
+		if nc == 0 {
 			x0 = k.x0
 			if i == 0 || lead(m, i) >= 5*u {
 				spans = append(spans, pspan(k.x0, k.x0, n, "", "sof", 0))
 			}
 		}
+		el := byte('-')
 		if k.x1-k.x0 < 2*u {
-			code += "."
-		} else {
-			code += "-"
+			el = '.'
 		}
+		code[min(nc, len(code)-1)] = el
+		nc = min(nc+1, len(code))
 		if k.gap < 2*u {
 			continue
 		}
-		c, ok := morseCode[code]
+		c, ok := morseCode[string(code[:nc])]
 		txt, kind := string(rune(c)), "data"
 		if !ok {
 			txt, kind, c = "?", "frame-error", '?'
@@ -725,7 +730,7 @@ func DecodeMorse(codes []uint8, colTimeS float64, cfg LineCfg) Result {
 		if ok {
 			letters++
 		}
-		code = ""
+		nc = 0
 	}
 	good := letters >= 2
 	res := Result{OK: good, Proto: "morse", Spans: spans, Text: strings.Join(toks, " "), Bytes: units,

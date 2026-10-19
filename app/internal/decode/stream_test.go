@@ -141,7 +141,7 @@ var streamCases = []streamCase{
 	}},
 	// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
 	{name: "dali", baud: 1200, lines: 1, gen: func(l twoLine, i int, rng *rand.Rand) {
-		daliFrame(l.a, []int{16, 8, 24}[i%3], (i*2654435761)&0xffffff>>uint(8*(2-i%3)), 10e-3+rng.Float64()*10e-3)
+		daliFrame(l.a, []int{16, 8, 24}[i%3], int(uint32(i)*2654435761&0xffffff)>>uint(8*(2-i%3)), 10e-3+rng.Float64()*10e-3)
 		oneLine(l)
 	}, dec: func(a, b []uint8, s float64) Result {
 		return DecodeDALI(a, s, DALICfg{Threshold: 128, HaveThr: true})
@@ -251,7 +251,7 @@ func TestStreamRecordCaptures(t *testing.T) {
 			}
 			ss := 1 / sr
 			dec := func(a, b []uint8) Result { return c.dec(a, b, ss) }
-			whole := NewStreamDecoder(dec, int(quiet/ss), 1<<40)
+			whole := NewStreamDecoder(dec, int(quiet/ss), 1<<30)
 			whole.SetSubframes(c.name == "spdif")
 			truth := append(whole.Push(l.a.codes(), l.b.codes()), whole.Flush()...)
 			at := map[uint64]string{}
@@ -407,7 +407,7 @@ func TestStreamDecoderGapFree(t *testing.T) {
 			fine.add(idle[0], idle[1], 2*quiet+longest)
 			// What the full-rate signal decodes to, frame by frame.
 			sampleS := 1 / fine.a.sr
-			whole := NewStreamDecoder(func(a, b []uint8) Result { return c.dec(a, b, sampleS) }, int(quiet/sampleS), 1<<40)
+			whole := NewStreamDecoder(func(a, b []uint8) Result { return c.dec(a, b, sampleS) }, int(quiet/sampleS), 1<<30)
 			truth := whole.Push(fine.a.codes(), fine.b.codes())
 			truth = append(truth, whole.Flush()...)
 			if len(truth) < frames {
@@ -415,7 +415,7 @@ func TestStreamDecoderGapFree(t *testing.T) {
 			}
 			a, b := peakStream(fine.a.codes(), m, rng), peakStream(fine.b.codes(), m, rng)
 			ss := bucket / 2
-			coarse := NewStreamDecoder(func(a, b []uint8) Result { return c.dec(a, b, ss) }, int(quiet/ss), 1<<40)
+			coarse := NewStreamDecoder(func(a, b []uint8) Result { return c.dec(a, b, ss) }, int(quiet/ss), 1<<30)
 			cf := append(coarse.Push(a, b), coarse.Flush()...)
 			for k := 0; k < min(len(cf), len(truth)); k++ {
 				if frameKey(cf[k]) != frameKey(truth[k]) {

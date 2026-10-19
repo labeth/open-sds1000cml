@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"open-sds/app/internal/engine"
+	"open-sds/app/internal/sound"
 )
 
 // soundEng is the panel's fake engine with an audio stream: two channels of
@@ -228,5 +229,67 @@ func TestSoundEnvelopeCapture(t *testing.T) {
 	}
 	if e.mark.Ch != 1 || !e.mark.Rising || !e.mark.Falling {
 		t.Fatalf("gate marks %+v", e.mark)
+	}
+}
+
+// TestSoundDriftReportReduced logs two hours of drift: a report carries
+// about driftReportMax points of it, the newest among them.
+// TRLC-LINKS: REQ-SDS-267
+func TestSoundDriftReportReduced(t *testing.T) {
+	s := newSoundSvc(&Controller{})
+	for i := 0; i <= 7200*4; i++ {
+		s.drift.Add(float64(i)/4, 440+float64(i%40)/100)
+	}
+	r := s.Report()
+	last := s.drift.Points[len(s.drift.Points)-1]
+	if n := len(r.Drift); n > driftReportMax+1 || n < driftReportMax/2 || r.Drift[n-1] != last || r.Drift[0] != s.drift.Points[0] {
+		t.Fatalf("%d of %d points, last %+v (log's %+v)", n, len(s.drift.Points), r.Drift[n-1], last)
+	}
+	s.drift = sound.Drift{}
+	s.drift.Add(0, 440)
+	s.drift.Add(1.5, 441)
+	if r := s.Report(); len(r.Drift) != 1 {
+		t.Fatalf("a short log comes whole: %+v", r.Drift)
+	}
+}
+
+// TestSoundVOctBounded takes many more V/oct points than the table holds:
+// it keeps the newest voctMax, and a report carries no more.
+// TRLC-LINKS: REQ-SDS-267
+func TestSoundVOctBounded(t *testing.T) {
+	s := newSoundSvc(&Controller{})
+	s.hz = 440
+	for i := 0; i < 3*voctMax; i++ {
+		if err := s.action("voct_capture"); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if r := s.Report(); len(s.voct) != voctMax || len(r.VOct) != voctMax {
+		t.Fatalf("table %d, report %d points", len(s.voct), len(r.VOct))
+	}
+}
+
+// busySoundEng is an audio stream that cannot run (a decoded stream holds
+// the fabric).
+type busySoundEng struct{ *soundEng }
+
+// TRLC-LINKS: REQ-SDS-273
+func (e *busySoundEng) SoundInfo() engine.SoundInfo {
+	return engine.SoundInfo{State: "a decoded stream runs (BUS): stop it to listen", RateHz: e.fs}
+}
+
+// TestSoundAutoFitNoStream runs AUTO in SOUND while the stream cannot run:
+// its notice says so, not that both channels were fitted.
+// TRLC-LINKS: REQ-SDS-273
+func TestSoundAutoFitNoStream(t *testing.T) {
+	quiet := func(float64) float64 { return 0 }
+	e := &busySoundEng{newSoundEng([2]func(float64) float64{quiet, quiet}, 1)}
+	c := New(e, &fakeFE{idx: [2]int{8, 8}}, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
+	c.soundAutoFit(make(chan struct{}))
+	c.mu.Lock()
+	msg := c.ui.notice
+	c.mu.Unlock()
+	if !strings.Contains(msg, "no audio stream") || !strings.Contains(msg, "decoded stream runs") {
+		t.Fatalf("AUTO's notice %q", msg)
 	}
 }

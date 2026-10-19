@@ -104,6 +104,28 @@ function decRailsWithin(h, gmin, gmax, minAmp) {
   return { lowRail, highRail };
 }
 
+// decRailsAround is the rails of a line sliced at a stated threshold when
+// the histogram finds none: a line holding its rarer level at all (runs of
+// three samples or more) is a line, however seldom pulsed; each rail the
+// mean of its side's codes (decode.go railsAround).
+// TRLC-LINKS: REQ-SDS-018
+function decRailsAround(codes, thr, minAmp) {
+  if (decHeldBeyond(codes, thr) < 3) return null;
+  let ls = 0;
+  let lw = 0;
+  let hs = 0;
+  let hw = 0;
+  for (let i = 0; i < codes.length; i++) {
+    const v = codes[i];
+    if (v < 0) continue;
+    if (v >= thr) { hs++; hw += v; } else { ls++; lw += v; }
+  }
+  const lowRail = lw / ls;
+  const highRail = hw / hs;
+  if (highRail - lowRail < minAmp) return null;
+  return { lowRail, highRail };
+}
+
 // sliceChannel: analog code stream -> digital. Finds the two rails as
 // count-weighted centroids (an idle line sits on one rail most of the time, so
 // percentiles would bias the threshold), sets a mid threshold with a hysteresis
@@ -139,6 +161,10 @@ function sliceChannel(codes, opts) {
     for (let acc = h[255]; cmax > 0 && acc < noiseFloor; acc += h[cmax]) cmax--;
     const c = decRailsWithin(h, cmin, cmax, minAmp);
     if (!c.reason && decHeldBeyond(codes, (c.lowRail + c.highRail) / 2) >= noiseFloor) r = c;
+  }
+  if (r.reason && opts.threshold != null) {
+    const a = decRailsAround(codes, opts.threshold, minAmp);
+    if (a) r = a;
   }
   if (r.reason) return { ok: false, reason: r.reason };
   const lowRail = r.lowRail;

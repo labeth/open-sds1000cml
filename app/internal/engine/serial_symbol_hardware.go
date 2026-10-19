@@ -574,8 +574,8 @@ func symbolSpec(p SerialParams) (symSpec, bool) {
 		}
 	}
 	if s.cfg.Mode == sramcapture.SymbolLevel || s.cfg.Mode == sramcapture.SymbolEdge {
-		if s.cfg.UnitQ8 < 5*256 || s.cfg.UnitQ8 >= 1<<28 {
-			return s, false // five receiver clocks a unit at least
+		if s.cfg.UnitQ8 < 8*256 || s.cfg.UnitQ8 >= 1<<28 {
+			return s, false // eight receiver clocks a unit at least (the block's floor)
 		}
 	}
 	s.cfg.Prescale = uint8(s.tab.prescale)
@@ -656,6 +656,9 @@ func planHardwareSymbol(p SerialParams) sramcapture.SymbolTriggerConfig {
 			}
 		}
 		c.Table = s.tab.t
+		if c.Validate() != nil {
+			return off
+		}
 		return c
 	}
 	var b symBits
@@ -716,6 +719,9 @@ func planHardwareSymbol(p SerialParams) sramcapture.SymbolTriggerConfig {
 	}
 	table := s.tab.t
 	c.Table = table
+	if c.Validate() != nil {
+		return off
+	}
 	return c
 }
 

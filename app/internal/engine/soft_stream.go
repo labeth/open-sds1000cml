@@ -80,6 +80,7 @@ type softStream struct {
 	ordBase, ordStep float64
 
 	events []sramcapture.DecodedEvent
+	evHead int // the next event to read: events[evHead:] are queued
 	seq    uint32
 
 	// Line B's slicing level, learned from the stream when the request has
@@ -222,6 +223,7 @@ func (e *Engine) beginSoftStream(ctx context.Context, p SerialParams, trig Strea
 		if e.images == nil || !e.hasImage(want) {
 			return nil, fmt.Errorf("this build has no %s FPGA image to stream %s", want, d.Name)
 		}
+		e.soundYield()
 		if err := e.sram.Halt(ctx); err != nil {
 			return nil, err
 		}
@@ -608,18 +610,25 @@ func frameStart(f decode.StreamFrame) string {
 // softReadBytes is one read of the worker's stream words (a worker packet).
 const softReadBytes = 65536
 
-// softEventsMax bounds the queued events: a reader that stops reading ends
-// the transcript rather than the memory.
-const softEventsMax = 1 << 20
+// softEventsMax bounds the queued events, as the FPGA's decoded events are
+// (decodedBufferLimit, 5 MiB): a reader that stops reading ends the
+// transcript rather than the memory.
+const softEventsMax = decodedBufferLimit
 
 // addEvent queues one event.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
 func (s *softStream) addEvent(ev sramcapture.DecodedEvent) {
-	if len(s.events) >= softEventsMax {
+	if len(s.events)-s.evHead >= softEventsMax {
 		if s.err == nil {
 			s.err = fmt.Errorf("decoded host buffer overflow; transcript incomplete")
 		}
 		return
+	}
+	if s.evHead > 0 && s.evHead >= len(s.events)/2 {
+		// The read half moves out once: reads move only a head, not the
+		// whole queue behind it each time.
+		s.events = s.events[:copy(s.events, s.events[s.evHead:])]
+		s.evHead = 0
 	}
 	ev.Epoch, ev.Sequence = s.id.Epoch, s.seq
 	s.seq++
@@ -923,8 +932,10 @@ func (e *Engine) softRead(id sramcapture.RecordIdentity, dst []sramcapture.Decod
 		return 0, err
 	}
 	s := e.soft
-	n := copy(dst, s.events)
-	s.events = s.events[:copy(s.events, s.events[n:])]
+	n := copy(dst, s.events[s.evHead:])
+	if s.evHead += n; s.evHead == len(s.events) {
+		s.events, s.evHead = s.events[:0], 0
+	}
 	if n == 0 && s.err != nil && s.phase != softDone {
 		return 0, s.err
 	}

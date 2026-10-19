@@ -18,6 +18,7 @@ function run(v) {
     case "measure": return S.sndMeasure(x);
     case "pitch": return S.sndPitch(x, v.fs, S.sndPitchRange(v.range || ""));
     case "note": return S.sndNote(v.f, v.a4);
+    case "window": return { n: S.sndTunerWindow(v.f, v.fs) };
     case "adsr": {
       const e = v.cv ? S.sndBlockMeans(x, v.fs, 0.001) : S.sndEnvelope(x, v.fs, 0.02, 0.001);
       return { envN: e.env.length, envFs: e.fs, adsr: S.sndADSR(e.env, e.fs, v.on, v.off) };

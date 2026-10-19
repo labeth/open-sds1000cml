@@ -1,0 +1,5 @@
+go test fuzz v1
+byte('\\')
+int64(-37)
+byte('\x06')
+[]byte("7\xc8000")
