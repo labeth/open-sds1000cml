@@ -325,6 +325,15 @@ func (d *StreamDecoder) run() []StreamFrame {
 		// A frame under way: what lies Close before it decoded to nothing.
 		cut = max(0, groups[k].i0-d.closeN-d.leadN)
 	}
+	// Past twice Max (and the lead) no frame is under way, whatever a
+	// decoder makes of the line: a span it reports up to the window's end
+	// on a line that is no bus of it (Morse's endless letter on a steady
+	// square) kept the window, and each push's decode of it, growing for the
+	// whole session.
+	if limit := 2*d.maxN + d.leadN; n-cut > limit {
+		cut = n - limit
+		d.done = max(d.done, d.base+uint64(cut))
+	}
 	if cut > 0 {
 		cut = min(cut, n)
 		d.a = d.a[:copy(d.a, d.a[cut:])]
