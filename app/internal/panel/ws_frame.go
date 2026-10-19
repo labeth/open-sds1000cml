@@ -74,6 +74,7 @@ type anaState struct {
 	statLast map[measItem]float64
 	statKey  string
 	statN    int
+	statAt   time.Time    // the last reading counted
 	statFed  frameKey     // the frame counted last
 	statEdge uint64       // the edge-window read counted last (Frame.EdgeRead)
 	allVals  [2][]float64 // MEASURE all values: per channel, per parameter

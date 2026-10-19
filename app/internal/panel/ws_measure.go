@@ -212,6 +212,7 @@ func (c *Controller) measFrame(a *anaState, s *sv, f *engine.Frame) {
 	}
 	if any {
 		a.statN++
+		a.statAt = c.now()
 	}
 }
 
@@ -496,7 +497,7 @@ func (c *Controller) measPane(s *sv) *wsview.MeasPane {
 	p.Right = "Measure key: choose"
 	c.amu.Lock()
 	a := &c.ana
-	n := a.statN
+	n, statAt := a.statN, a.statAt
 	type rowv struct {
 		it                    measItem
 		now, mean, mn, mx, sd float64
@@ -537,7 +538,14 @@ func (c *Controller) measPane(s *sv) *wsview.MeasPane {
 		}
 		p.AllN, p.AllSplit = min(len(measAllOrder), len(p.AllRows)), measAllSplit
 	} else {
-		p.Caption = fmt.Sprintf("statistics  N %d  over %.1f s", n, s.now.Sub(u.statT).Seconds())
+		// The span runs to the last reading counted, not to now: stopped,
+		// a caption that kept counting redrew the whole LCD ten times a
+		// second (a deep record's decode and measurements each time).
+		span := 0.0
+		if n > 0 && statAt.After(u.statT) {
+			span = statAt.Sub(u.statT).Seconds()
+		}
+		p.Caption = fmt.Sprintf("statistics  N %d  over %.1f s", n, span)
 		p.Empty = len(rows) == 0
 		for i, r := range rows {
 			if i >= 8 {
