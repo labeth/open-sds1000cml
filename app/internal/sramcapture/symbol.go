@@ -52,6 +52,13 @@ type SymbolTriggerConfig struct {
 	Table [SymbolTableSize]uint8 `json:"-"`
 }
 
+// Validate refuses a configuration the block cannot run (a unit under
+// eight receiver clocks among them): the planner checks its plans with it,
+// so a request the block refuses is unplannable rather than an arm that
+// fails on every capture.
+// TRLC-LINKS: REQ-SDS-013
+func (p SymbolTriggerConfig) Validate() error { return p.validate() }
+
 // TRLC-LINKS: REQ-SDS-013
 func (p SymbolTriggerConfig) validate() error {
 	if !p.Enabled {
