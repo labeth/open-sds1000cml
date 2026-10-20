@@ -65,6 +65,10 @@ func (e *Engine) BeginDecodedStream(ctx context.Context, p SerialParams, trig St
 		// image back, so a packet stream loads packet, general, packet (three
 		// multi-second loads).
 		e.decodedStarting = e.clk.Now().Add(30 * time.Second) // lapses if the capture never begins
+		// The audio stream ends before this image load: left running, the load
+		// lost its words, it loaded the stream image back, and the BUS stream
+		// fought it for the fabric (or failed).
+		e.soundYield()
 		defer func() {
 			if err != nil {
 				e.decodedStarting = time.Time{}

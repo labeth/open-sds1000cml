@@ -433,7 +433,7 @@ func (s *soundState) setState(state string, active bool, err error) {
 // TRLC-LINKS: REQ-SDS-265
 func (e *Engine) soundBusy() string {
 	switch {
-	case e.decodedSession != nil || e.soft != nil:
+	case e.decodedSession != nil || e.soft != nil || e.clk.Now != nil && e.clk.Now().Before(e.decodedStarting):
 		return "a decoded stream runs (BUS): stop it to listen"
 	case e.images == nil || !e.images.HasStream():
 		return "this build has no stream image"
