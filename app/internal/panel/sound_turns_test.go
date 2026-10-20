@@ -3,6 +3,7 @@ package panel
 
 import (
 	"math"
+	"strings"
 	"testing"
 	"time"
 
@@ -72,5 +73,27 @@ func TestSoundModulationOnceAWindow(t *testing.T) {
 	}
 	if n := e.reads[int(4*se.fs)]; n != 2 {
 		t.Fatalf("8 s read the modulation window %d times, want 2", n)
+	}
+}
+
+// In the SOUND view the panel status (the phone's and the web's tool line)
+// names SOUND's own knob jobs and F3's next view, not SCOPE's.
+// TRLC-LINKS: REQ-SDS-273, REQ-SDS-211
+func TestSoundViewStatusTool(t *testing.T) {
+	se := newSoundEng([2]func(float64) float64{
+		func(t float64) float64 { return math.Sin(2 * math.Pi * 440 * t) },
+		func(t float64) float64 { return 0 },
+	}, 1)
+	c := New(se, &fakeFE{idx: [2]int{8, 8}}, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
+	c.decode(idle(), true)
+	press(t, c, "f3", "f3", "f3", "f3")
+	st := c.PanelStatus()
+	var jobs []string
+	for _, sg := range st.Tool {
+		jobs = append(jobs, sg.Knob+":"+sg.Job)
+	}
+	got := strings.Join(jobs, " ")
+	if !strings.Contains(got, "Adjust:readout") || !strings.Contains(got, "Position:cycles") || !strings.HasPrefix(st.Again, "F3 again") {
+		t.Fatalf("tool %q, again %q", got, st.Again)
 	}
 }
