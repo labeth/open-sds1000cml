@@ -727,7 +727,10 @@ func (s *soundSvc) runADSR(e soundEngine, set SoundSettings) {
 	}
 	info := e.SoundInfo()
 	if state == adsrArmed {
-		if x, _ := s.latest(e, int(0.1*fs), set.Ch); len(x) > 0 && set.Gate >= 0 && !set.EnvCV {
+		// The quietest level while armed is the source's floor, with a gate
+		// channel and self-gated alike: self-gated, a repeating note over a
+		// floor above 3 % of its peak ran every capture to the bound.
+		if x, _ := s.latest(e, int(0.1*fs), set.Ch); len(x) > 0 && !set.EnvCV {
 			pk := sound.Measure(x).Peak
 			s.mu.Lock()
 			s.armFloor = math.Min(s.armFloor, pk)
