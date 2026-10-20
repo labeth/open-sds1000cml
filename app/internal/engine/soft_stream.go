@@ -65,6 +65,7 @@ type softStream struct {
 	proto   string
 	decoder SerialDecoder
 	trig    StreamTrigger
+	byHand  bool // asked to stop on an error, which the symbol trigger cannot match
 	value   int
 	mask    int
 	gapFree bool
@@ -189,8 +190,12 @@ func (e *Engine) beginSoftStream(ctx context.Context, p SerialParams, trig Strea
 	if name == "" || !ok {
 		return sramcapture.RecordIdentity{}, fmt.Errorf("no software stream for protocol %d", p.Proto)
 	}
-	if trig == StreamOnError {
-		return sramcapture.RecordIdentity{}, fmt.Errorf("%s streams stop on a value or by hand: the FPGA's symbol trigger matches no decode error", d.Name)
+	// The FPGA's symbol trigger matches no decode error: an On-error stream
+	// (the setting's default) runs until stopped by hand and says so. Refused,
+	// every symbol bus's Stream view failed from Default setup.
+	onError := trig == StreamOnError
+	if onError {
+		trig = StreamManual
 	}
 	if !p.HaveThr {
 		return sramcapture.RecordIdentity{}, fmt.Errorf("%s streams need the decode's threshold", d.Name)
@@ -210,7 +215,7 @@ func (e *Engine) beginSoftStream(ctx context.Context, p SerialParams, trig Strea
 		}
 	}
 	s := &softStream{p: p, proto: name, decoder: d, trig: trig, value: value & unitMask(p), mask: unitMask(p),
-		gapFree: gapFree, quiet: quiet, log: uint8(log)}
+		gapFree: gapFree, quiet: quiet, log: uint8(log), byHand: onError}
 	v, err := e.decodedCall(ctx, func() (any, error) {
 		e.decodedStarting = time.Time{}
 		if e.decodedSession != nil || e.soft != nil {
@@ -282,13 +287,19 @@ func (s *softStream) decodeFunc() func(a, b []uint8) decode.Result {
 // modeText is the stream's mode for the displays.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
 func (s *softStream) modeText(elapsed time.Duration) string {
-	if s.gapFree {
-		return fmt.Sprintf("gap-free, software decode of the %.3g us stream", s.sampleS*2e6)
+	t := ""
+	switch {
+	case s.gapFree:
+		t = fmt.Sprintf("gap-free, software decode of the %.3g us stream", s.sampleS*2e6)
+	case elapsed <= 0:
+		t = "captures, not gap-free"
+	default:
+		t = fmt.Sprintf("captures, not gap-free: %.2g %% of the signal time read", 100*s.read.Seconds()/elapsed.Seconds())
 	}
-	if elapsed <= 0 {
-		return "captures, not gap-free"
+	if s.byHand {
+		t += "; stops by hand (the FPGA matches no decode error here)"
 	}
-	return fmt.Sprintf("captures, not gap-free: %.2g %% of the signal time read", 100*s.read.Seconds()/elapsed.Seconds())
+	return t
 }
 
 // softStreamStart starts the stream image's continuous peak stream.
