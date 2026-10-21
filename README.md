@@ -104,7 +104,7 @@ anything on the scope's screen.
 
 * **Full-depth capture on both channels.** Every acquisition fills the scope's 2 MiB SRAM: 1 M
   samples per channel at 500 MS/s, 2.1 ms. While running, only a display-sized view of it is read,
-  so the screen keeps up; **STOP or SINGLE reads the full record** (about 4 s, with a loading
+  so the screen keeps up; **STOP or SINGLE reads the full record** (0.2 to 0.4 s, with a loading
   indicator), which can then be zoomed, measured, decoded and exported at full resolution. SINGLE
   shows its capture at once, as a live frame, and stops; the full record of that same capture
   follows. In Average, ERES and Precision, SINGLE completes one result as the live view does
@@ -212,10 +212,10 @@ automatically.
   trigger near the left and whole messages on screen with every bit resolved. The trigger point sits on
   the frame's own SYNC or SOF. The protocol images for Manchester, USB, SENT, CAN, FlexRay, MIL-1553 and
   ARINC 429 record 2.1 ms at the full rate, so their triggers run at 200 us/div or faster, as do the
-  pulse width, slope and video triggers (they fire on full-rate captures only). AUTO on a
-  UART framed before stays on the qualifier image it triggers with (about 5 s); a packet or line-code
-  bus loads the general image for the fit and detection and its own image again (11 to 15 s). A
-  stream that waits for an image load says so.
+  pulse width, slope and video triggers (they fire on full-rate captures only). AUTO names a bus
+  from Default setup in about 4 to 9 s (5.2 s on average over 60 bench buses of all 52 protocols), and
+  arms its trigger about 2 s later when the protocol's FPGA image has to load (an image switch takes
+  about 1.8 s). A stream that waits for an image load says so.
 * **Continuous decoding:** a live decoded stream, with the full-rate record kept for every frame.
   BUS's third view (F2, F2, F2) streams the bus as decoded, with the transcript on the LCD; leaving the
   view ends the stream.
@@ -302,6 +302,9 @@ and the timing margin left on each side.
   tracking and a drift log; envelope (ADSR) capture; tremolo, vibrato and FM index; the audio spectrum
   with harmonics and THD; input against output (gain, phase, delay, added distortion, XY transfer); a
   pitch-locked cycle view on the FPGA's edge marks; and Listen, the stream played in the browser.
+  STOP freezes a take of up to 15 s to scroll, measure and replay; SINGLE and NORMAL take one around
+  an edge the FPGA marks. The stream and the other workspaces share one acquisition: while a web or
+  phone SOUND page holds it, the LCD says so, and AUTO (or any other key) takes it back.
 * **Reference waveforms** (two), **persistence**, **XY mode** and **freeze**. REF A and B live on the
   scope: one stored on the LCD, the web page or the phone shows on all three, and the web's difference
   readout compares the live trace with the scope's references.
