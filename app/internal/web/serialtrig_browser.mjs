@@ -163,6 +163,10 @@ run(async (t) => {
   await fetch(process.argv[2] + "/api/sheets/set", { method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ row: "bus.spi_clock", value: 104e6 }) });
   await t.until(async () => (await po.value("dsClock")) === "104", "the page shows the scope's SPI clock rate (104 MHz)", 15000);
+  if ((await po.value("dsClock")) !== "104")
+    console.log("clock: " + JSON.stringify(await po.eval(() => ({ value: $("dsClock").value, placeholder: $("dsClock").placeholder,
+      focus: document.activeElement && document.activeElement.id, hidden: document.hidden, superseded, adopting: stAdopting,
+      sheetsBusy, sheetsSeq: st && st.panel ? st.panel.SheetsSeq : null, sheetsSeqSeen, scopeHz: stScope ? stScope.spiClockHz : null }))));
   await new Promise((r) => setTimeout(r, 6000));
   const back = posts.filter((p) => /\/api\/serial/.test(p.url)).slice(owned);
   t.ok(back.length === 0, "the page sends no serial settings back over the scope's: " + JSON.stringify(back.map((p) => p.body.spiClockHz)));
