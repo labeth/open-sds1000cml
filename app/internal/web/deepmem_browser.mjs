@@ -46,12 +46,17 @@ try {
   ok(span < 0.5, `navigator shows the whole record; window is a ${(span * 100).toFixed(0)}% slice you can pan`);
 
   // Wheel-zoom-OUT reaches (nearly) the full record now that we're not at {0,1}.
-  await page.evaluate(() => {
-    const s = document.getElementById("scope"), r = s.getBoundingClientRect();
-    for (let i = 0; i < 12; i++) s.dispatchEvent(new WheelEvent("wheel", { deltaY: 300, clientX: r.left + r.width / 2, clientY: r.top + r.height / 2, bubbles: true, cancelable: true }));
-  });
-  await page.waitForTimeout(120);
-  const zoomedOut = await page.evaluate(() => view.win.b - view.win.a);
+  // A frame whose acquisition changed re-homes the window, so on a loaded
+  // runner the zoom is tried again until it holds.
+  let zoomedOut = 0;
+  for (const until = Date.now() + 3000; zoomedOut <= 0.9 && Date.now() < until;) {
+    await page.evaluate(() => {
+      const s = document.getElementById("scope"), r = s.getBoundingClientRect();
+      for (let i = 0; i < 12; i++) s.dispatchEvent(new WheelEvent("wheel", { deltaY: 300, clientX: r.left + r.width / 2, clientY: r.top + r.height / 2, bubbles: true, cancelable: true }));
+    });
+    await page.waitForTimeout(120);
+    zoomedOut = await page.evaluate(() => view.win.b - view.win.a);
+  }
   ok(zoomedOut > 0.9, `wheel-zoom-out reaches the full record (span ${zoomedOut.toFixed(2)})`);
 
   // Double-click nav returns to the trigger-centered home slice.
