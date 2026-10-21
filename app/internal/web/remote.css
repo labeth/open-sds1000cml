@@ -373,6 +373,7 @@ body.sheet-on .toast { top: calc(var(--safe-t) + 8px); bottom: auto; }
 /* ---- Sound: the tuner, the meters, Listen (remote_sound.js) ---- */
 .snd-card { margin: 12px 16px; padding: 12px; border: 1px solid var(--edge); border-radius: 14px; background: var(--panel); display: flex; flex-direction: column; gap: 10px; }
 .snd-row { display: flex; align-items: center; gap: 16px; }
+.snd-takecard .snd-row .btn { flex: 1 1 0; }
 .snd-note { font: 700 54px/1 var(--mono, ui-monospace, monospace); min-width: 2.6em; color: var(--dim); }
 .snd-note.in { color: var(--run); } .snd-note.near { color: var(--trigger); } .snd-note.off { color: var(--text); }
 .snd-cents { font: 600 24px/1.1 var(--mono, ui-monospace, monospace); }

@@ -74,6 +74,38 @@ func TestGoldenSoundEnvelope(t *testing.T) {
 	goldenSoundRender(t, "ws_sound_env", s)
 }
 
+// TestGoldenSoundTake pins a SINGLE take in the plot: a bass note's onset
+// on C2 under a sawtooth melody on C1, each in its lane, the trigger's
+// dashed line and marker, the window's bar and the knobs' jobs.
+// TRLC-LINKS: REQ-SDS-275, REQ-SDS-273
+func TestGoldenSoundTake(t *testing.T) {
+	s := goldenSoundPane("MODULATION", []wsview.Span{{Text: "TREMOLO (AM)", Col: wsview.Amber}, {Text: "none (0.4%)", Col: wsview.Text}})
+	s.Caption = "STOP: the take (RUN: live)"
+	s.Note, s.Hz, s.Cents = "D3", "146.80 Hz", -0.2
+	s.Tool = []wsview.Seg{{Key: "Adjust", Job: "readout"}, {Key: "push", Job: "clear strip"}, {Key: "Position", Job: "scroll"},
+		{Key: "push", Job: "trigger/all"}, {Key: "S/DIV", Job: "zoom"}}
+	const n = 780
+	tk := &wsview.SoundTake{TrigX: 0.25, TrigCh: 1, From: 0.1, To: 0.6, Title: "SINGLE take 5.0 s  view 2.5s at -0.500 s",
+		Hint: "Position: scroll  push: trigger/all  S/DIV: zoom  RUN: live", VLo: [2]float64{-1.2, -1.6}, VHi: [2]float64{1.2, 1.6}}
+	for ch := 0; ch < 2; ch++ {
+		tk.Lo[ch], tk.Hi[ch] = make([]float32, n), make([]float32, n)
+		for i := 0; i < n; i++ {
+			a := 1.0
+			if ch == 1 {
+				a = 0.02
+				if i >= n/4 {
+					a = 1.5 * math.Exp(-float64(i-n/4)/900)
+				}
+			} else {
+				a = 0.6 + 0.4*math.Abs(math.Sin(float64(i)/40))
+			}
+			tk.Lo[ch][i], tk.Hi[ch][i] = float32(-a), float32(a)
+		}
+	}
+	s.Take = tk
+	goldenSoundRender(t, "ws_sound_take", s)
+}
+
 // TestGoldenSoundHarmonics pins the harmonics page with the stream not yet
 // running.
 // TRLC-LINKS: REQ-SDS-273, REQ-SDS-270

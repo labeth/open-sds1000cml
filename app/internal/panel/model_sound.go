@@ -137,5 +137,23 @@ func soundRows() []*row {
 		},
 		status: func(s *sv) string { return fmt.Sprintf("%d s", s.sndRow.drift) },
 	}
-	return []*row{ch, a4, rng, slow, ref, page, cyc, abIn, env, gate, gateV, arm, auto, voct, drift, driftClear}
+	pre := numRow("snd.pre", "Pre-trigger", "s", func(s *sv) float64 { return s.snd.PreS }, constLim(0, 10), constStep(0.1),
+		func(c *Controller, v float64) error {
+			c.snd.update(func(s *SoundSettings) { s.PreS = v })
+			return nil
+		}, siFmt("s"))
+	pre.hdr = "TAKES (RUN/STOP, SINGLE, TRIG mode NORMAL)"
+	pre.help = "A triggered take's time before the trigger. STOP keeps the last 15 s; NORMAL and SINGLE take this much before the FPGA's edge and the post-trigger time after."
+	pre.knob = "In the SOUND view, armed: turn Position (the trigger within the take)."
+	pre.def = func(c *Controller) error { return pre.setN(c, 1) }
+	post := numRow("snd.post", "Post-trigger", "s", func(s *sv) float64 { return s.snd.PostS }, constLim(0.1, 15.9), constStep(0.1),
+		func(c *Controller, v float64) error {
+			c.snd.update(func(s *SoundSettings) { s.PostS = v })
+			return nil
+		}, siFmt("s"))
+	post.help = "A triggered take's time after the trigger (pre and post together at most 16 s)."
+	post.def = func(c *Controller) error { return post.setN(c, 4) }
+	tfrom := sndEnum("snd.trig_gate", "Take trigger", "The FPGA edge a take triggers on: the TRIG source, level and slope, or the envelope's gate (its channel and level, rising).",
+		[]opt{{0, "TRIG"}, {1, "Gate"}}, func(s SoundSettings) int { return b2ic(s.TrigGate) }, func(s *SoundSettings, v int) { s.TrigGate = v == 1 })
+	return []*row{ch, a4, rng, slow, ref, page, cyc, abIn, env, gate, gateV, arm, auto, voct, drift, driftClear, pre, post, tfrom}
 }

@@ -137,7 +137,8 @@ type Bode struct {
 
 // Sound is SOUND's settings (ADR-SOUND): the tuner's reference, channel,
 // range and smoothing, the meters' 0 dB, the LCD's readout page, the cycles
-// drawn, A/B's input, the envelope's trigger and the V/oct and drift jobs.
+// drawn, A/B's input, the envelope's trigger, the V/oct and drift jobs and a
+// triggered take's pre- and post-trigger times and trigger.
 // Set marks a saved block (an older file has none and keeps the power-on
 // settings).
 // TRLC-LINKS: REQ-SDS-273, REQ-SDS-089
@@ -156,6 +157,9 @@ type Sound struct {
 	GateV    float64 `json:"gate_v"`
 	VOctAuto bool    `json:"voct_auto,omitempty"`
 	Drift    bool    `json:"drift,omitempty"`
+	PreS     float64 `json:"pre_s,omitempty"`
+	PostS    float64 `json:"post_s,omitempty"`
+	TrigGate bool    `json:"trig_gate,omitempty"`
 }
 
 // Screen is the screen saver (ADR-SCREEN-SAVER): minutes without input

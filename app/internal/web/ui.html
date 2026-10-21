@@ -518,13 +518,25 @@
       <button type="button" id="sndLP" class="xs tog" title="5 kHz low-pass">LP 5 kHz</button>
       <button type="button" id="sndNotch" class="xs tog" title="Notch the fundamental (the tuner's pitch): hear only distortion and noise">Notch F0</button>
     </div>
+    <div class="r" id="sndTakeBar">
+      <button type="button" id="sndRun" class="sm" title="RUN: the live stream (AUTO) or armed (NORMAL); STOP: the last 15 s become a take">STOP ■</button>
+      <button type="button" id="sndSingle" class="sm" title="SINGLE: arm on the FPGA's edge, take the stretch around the trigger, stop">SINGLE</button>
+      <span class="seg xs" id="sndTrigMode" aria-label="Trigger mode" data-value="auto"><button data-value="auto" title="Live stream">AUTO</button><button data-value="norm" title="A take on every trigger">NORMAL</button></span>
+      <span class="hl"><span class="lbl">Pre</span><input type="number" id="sndPre" class="num w-sm" min="0" max="10" step="0.1" value="1" aria-label="pre-trigger seconds"><span class="hint">s</span></span>
+      <span class="hl"><span class="lbl">Post</span><input type="number" id="sndPost" class="num w-sm" min="0.1" max="15.9" step="0.1" value="4" aria-label="post-trigger seconds"><span class="hint">s</span></span>
+      <select id="sndTrigFrom" aria-label="take trigger" title="The FPGA edge a take triggers on"><option value="0">TRIG edge</option><option value="1">Gate</option></select>
+      <span class="hl"><span class="lbl">Take</span><button type="button" id="sndLoop" class="xs tog on" title="Listen loops the take's window">Loop</button>
+        <span class="seg xs" id="sndSpeed" aria-label="Take playback speed" data-value="1"><button data-value="1">1×</button><button data-value="0.5">½×</button><button data-value="0.25">¼×</button></span>
+        <button type="button" id="sndTakeTrig" class="xs" title="The trigger to the window's centre">Trigger</button><button type="button" id="sndTakeAll" class="xs" title="All of the take">All</button></span>
+      <span class="sub" id="sndTakeSt"></span>
+    </div>
     <div class="r sub" id="sndStatus">Listen idle</div>
   </div>
 </section>
 
 <section class="pane" id="p-snd-view" data-title="Sound view">
   <div class="ph"><span class="pt">Sound view</span><span class="ps" id="sndViewSub"></span><span class="pa">
-    <span class="seg sm" id="sndView" aria-label="Sound view" data-value="cycle"><button data-value="cycle" title="Pitch-locked waveform from the FPGA's edge marks, placed on their crossings">Cycle</button><button data-value="env" title="The envelope capture (ADSR)">Envelope</button><button data-value="mod" title="Amplitude and pitch over time: tremolo and vibrato">Modulation</button><button data-value="spec" title="Audio spectrum: log axis with notes, harmonics, the scope's floor">Spectrum</button><button data-value="ab" title="Input against output: transfer curve and both spectra">A/B</button></span>
+    <span class="seg sm" id="sndView" aria-label="Sound view" data-value="cycle"><button data-value="cycle" title="Pitch-locked waveform from the FPGA's edge marks, placed on their crossings">Cycle</button><button data-value="env" title="The envelope capture (ADSR)">Envelope</button><button data-value="mod" title="Amplitude and pitch over time: tremolo and vibrato">Modulation</button><button data-value="spec" title="Audio spectrum: log axis with notes, harmonics, the scope's floor">Spectrum</button><button data-value="ab" title="Input against output: transfer curve and both spectra">A/B</button><button data-value="take" title="The take: waveform, spectrogram, pitch and cursors (STOP, SINGLE, NORMAL)">Take</button></span>
     <span class="seg xs" id="sndCycles" aria-label="Cycles shown" data-value="2"><button data-value="1">1</button><button data-value="2">2</button><button data-value="4">4</button></span>
   </span></div>
   <div class="pb flush"><canvas id="sndViewCv" aria-label="sound view"></canvas></div>
@@ -671,6 +683,7 @@
 <script src="app_measure.js"></script>    <!-- MEASURE: statistics, values, cursors -->
 <script src="app_compare.js"></script>    <!-- COMPARE: references, difference, master -->
 <script src="app_sound.js"></script>      <!-- SOUND: listen, meters, tuner, views, readouts -->
+<script src="app_sound_take.js"></script> <!-- SOUND takes: RUN/STOP, SINGLE, NORMAL, the take view, cursors, take playback -->
 <script src="app_allset.js"></script>     <!-- All settings + setups -->
 <script src="app_init.js"></script>       <!-- layout + first paint + first poll (must be last) -->
 </body>

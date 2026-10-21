@@ -255,6 +255,24 @@ type SoundPane struct {
 	TraceWhy string
 	TraceTop []Span // its readouts over the plot
 	State    string // the stream's state when it is not streaming
+	// A take shown (STOP, a NORMAL or SINGLE trigger's) in place of the
+	// cycle trace; nil while the stream is live.
+	Take *SoundTake
+}
+
+// SoundTake is a SOUND take's window for the plot: per column the lowest
+// and highest volts of each channel (each in its own lane, between its
+// VLo and VHi), the trigger's
+// place (0..1 across, -1 outside the window), where the window sits in the
+// take (From..To of 0..1) and the lines above and below.
+type SoundTake struct {
+	Lo, Hi   [2][]float32
+	VLo, VHi [2]float64
+	TrigX    float64
+	TrigCh   int
+	From, To float64
+	Title    string
+	Hint     string
 }
 
 // StatRow is one MEASURE statistics row.

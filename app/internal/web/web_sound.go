@@ -127,7 +127,16 @@ func (s *Server) hSoundBin(w http.ResponseWriter, r *http.Request) {
 	h := soundBinHeader{First: b.First, N: b.N, Next: b.Next, Rate: b.RateHz, Gaps: b.Gaps, Marks: b.Marks,
 		State: info.State, Active: info.Active, Losses: info.Losses, MarksOn: info.Marks, MarkCh: info.MarkCfg.Ch,
 		ServerMS: time.Now().UnixMilli(), Err: info.Err}
-	for _, sc := range b.Scales {
+	h.Scales = s.scalesOut(b.Scales)
+	h.MarkV = levelVolts(h.Scales, info.MarkCfg.Ch, info.MarkCfg.Level)
+	writeSoundBin(w, h, b, 5*time.Second)
+}
+
+// scalesOut is the scales as volts at the probe tip.
+// TRLC-LINKS: REQ-SDS-265
+func (s *Server) scalesOut(scales []engine.SoundScale) []soundScaleOut {
+	var out []soundScaleOut
+	for _, sc := range scales {
 		var o soundScaleOut
 		o.From = sc.From
 		for ch := 0; ch < 2; ch++ {
@@ -135,12 +144,28 @@ func (s *Server) hSoundBin(w http.ResponseWriter, r *http.Request) {
 			p := s.probeOf(ch)
 			o.VPC[ch], o.Off[ch] = vpc*p, off*p
 		}
-		h.Scales = append(h.Scales, o)
+		out = append(out, o)
 	}
-	if k := len(h.Scales); k > 0 {
-		ch := info.MarkCfg.Ch & 1
-		h.MarkV = (float64(info.MarkCfg.Level)-128)*h.Scales[k-1].VPC[ch] - h.Scales[k-1].Off[ch]
+	return out
+}
+
+// levelVolts is an 8-bit code on channel ch as volts at the tip, at the
+// newest scale (0 with none).
+// TRLC-LINKS: REQ-SDS-272, REQ-SDS-275
+func levelVolts(sc []soundScaleOut, ch int, code uint8) float64 {
+	k := len(sc)
+	if k == 0 {
+		return 0
 	}
+	ch &= 1
+	return (float64(code)-128)*sc[k-1].VPC[ch] - sc[k-1].Off[ch]
+}
+
+// writeSoundBin writes a header and block b as /api/sound.bin's format:
+// magic, the JSON's length, the JSON, then N little-endian Q8.8 codes of C1
+// and N of C2.
+// TRLC-LINKS: REQ-SDS-265, REQ-SDS-275
+func writeSoundBin(w http.ResponseWriter, h any, b engine.SoundBlock, deadline time.Duration) {
 	hj, err := json.Marshal(h)
 	if err != nil {
 		// A scale or level that is no number (a front end not set yet) goes
@@ -158,8 +183,54 @@ func (s *Server) hSoundBin(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/octet-stream")
 	w.Header().Set("Cache-Control", "no-store")
-	_ = http.NewResponseController(w).SetWriteDeadline(time.Now().Add(5 * time.Second))
+	_ = http.NewResponseController(w).SetWriteDeadline(time.Now().Add(deadline))
 	_, _ = w.Write(buf)
+}
+
+// soundTaker is the engine's takes (engine/sound_take.go).
+type soundTaker interface {
+	SoundTake() *engine.SoundTake
+}
+
+// soundTakeHeader is the JSON header of a /api/sound/take.bin reply.
+type soundTakeHeader struct {
+	ID         uint64             `json:"id"`
+	Why        string             `json:"why"`
+	First      uint64             `json:"first"`
+	N          int                `json:"n"`
+	Rate       float64            `json:"rate"`
+	Scales     []soundScaleOut    `json:"scales"`
+	Gaps       []uint64           `json:"gaps"`
+	Marks      []engine.SoundMark `json:"marks"`
+	HasTrig    bool               `json:"has_trig"`
+	Trig       uint64             `json:"trig"`
+	TrigCh     int                `json:"trig_ch"`
+	TrigRising bool               `json:"trig_rising"`
+	TrigV      float64            `json:"trig_v"` // the trigger's level, volts at the tip
+}
+
+// hSoundTakeBin serves the take shown (STOP, or a NORMAL or SINGLE
+// trigger's) in /api/sound.bin's format with the take's header; 404 with
+// none. A page fetches it once per take (its id in /api/sound's info).
+// TRLC-LINKS: REQ-SDS-275
+func (s *Server) hSoundTakeBin(w http.ResponseWriter, r *http.Request) {
+	src, ok := s.sc.(soundSource)
+	tk, ok2 := s.sc.(soundTaker)
+	if !ok || !ok2 {
+		http.Error(w, "no audio stream", http.StatusNotFound)
+		return
+	}
+	src.LeaseSound(soundLease)
+	t := tk.SoundTake()
+	if t == nil {
+		http.Error(w, "no take", http.StatusNotFound)
+		return
+	}
+	h := soundTakeHeader{ID: t.ID, Why: t.Why, First: t.First, N: t.N, Rate: t.RateHz, Gaps: t.Gaps, Marks: t.Marks,
+		HasTrig: t.HasTrig, Trig: t.Trig, TrigCh: t.TrigCh, TrigRising: t.TrigRising}
+	h.Scales = s.scalesOut(t.Scales)
+	h.TrigV = levelVolts(h.Scales, t.TrigCh, t.TrigLevel)
+	writeSoundBin(w, h, t.SoundBlock, 20*time.Second)
 }
 
 // soundPost is a /api/sound change: settings (only the fields sent change)
@@ -207,6 +278,9 @@ func (s *Server) hSound(w http.ResponseWriter, r *http.Request) {
 	// that does not analyse the stream itself); the web page and the phone
 	// analyse their copy and leave the scope's CPU to the stream.
 	rep := sp.SoundReport(r.URL.Query().Get("api") == "1", r.URL.Query().Get("marks") == "1")
+	if src, ok := s.sc.(soundSource); ok {
+		rep.Info = src.SoundInfo() // the stream's state now (the service reads it only while it runs)
+	}
 	out := map[string]any{"ok": errText == "", "report": jsonSafe(reflect.ValueOf(rep))}
 	if errText != "" {
 		out["err"] = errText

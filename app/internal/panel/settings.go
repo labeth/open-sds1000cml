@@ -69,14 +69,18 @@ func (c *Controller) SettingsView() settings.ViewState {
 // TRLC-LINKS: REQ-SDS-273, REQ-SDS-089
 func soundSettingsOut(s SoundSettings) settings.Sound {
 	return settings.Sound{Set: true, A4: s.A4, Ch: s.Ch, Ref: s.Ref, Range: s.Range, Slow: s.Slow, Page: s.Page, Cycles: s.Cycles,
-		ABIn: s.ABIn, EnvCV: s.EnvCV, Gate: s.Gate, GateV: s.GateV, VOctAuto: s.VOctAuto, Drift: s.Drift}
+		ABIn: s.ABIn, EnvCV: s.EnvCV, Gate: s.Gate, GateV: s.GateV, VOctAuto: s.VOctAuto, Drift: s.Drift, PreS: s.PreS, PostS: s.PostS, TrigGate: s.TrigGate}
 }
 
 // soundSettingsIn is a saved SOUND block as settings (bounded on the way in).
 // TRLC-LINKS: REQ-SDS-273, REQ-SDS-089
 func soundSettingsIn(s settings.Sound) SoundSettings {
+	if s.PostS == 0 && s.PreS == 0 {
+		s.PreS, s.PostS = 1, 4 // a file from before takes
+	}
 	return SoundSettings{A4: s.A4, Ch: s.Ch, Ref: s.Ref, Range: s.Range, Slow: s.Slow, Page: s.Page, Cycles: s.Cycles,
-		ABIn: s.ABIn, EnvCV: s.EnvCV, Gate: s.Gate, GateV: s.GateV, VOctAuto: s.VOctAuto, Drift: s.Drift}.clean()
+		ABIn: s.ABIn, EnvCV: s.EnvCV, Gate: s.Gate, GateV: s.GateV, VOctAuto: s.VOctAuto, Drift: s.Drift,
+		PreS: s.PreS, PostS: s.PostS, TrigGate: s.TrigGate}.clean()
 }
 
 // serialSettings is the serial trigger as the settings file keeps it.

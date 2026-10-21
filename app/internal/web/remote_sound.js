@@ -2,7 +2,9 @@
 // remote_sound.js — the phone remote's Sound tab (ADR-SOUND): the tuner
 // (note, cents needle, Hz), the two meters and Listen, so the phone in a
 // pocket is a wireless signal tracer: probe with one hand, listen on
-// earbuds. The stream and the player are sound_client.js, the analysis
+// earbuds. RUN/STOP and SINGLE work as on the scope: stopped, or on a
+// trigger, the scope shows a take; the tuner and meters read it and
+// Listen plays it (looped). The stream and the player are sound_client.js, the analysis
 // sound.js, as on the web page. While the tab shows, the audio stream owns
 // the scope's fabric (its triggered captures pause); leaving the tab stops
 // it.
@@ -11,7 +13,7 @@
 (function () {
   const { h, button, toast } = window.RU;
   const c = sndClient(() => false);
-  const S = { el: null, tuner: sndTuner(false), hz: 0, timer: 0, settings: { a4: 440, ch: 0, ref: "dbu" }, built: false };
+  const S = { el: null, tuner: sndTuner(false), hz: 0, timer: 0, settings: { a4: 440, ch: 0, ref: "dbu" }, built: false, pollAt: 0, running: true, single: false };
   const E = {};
 
   // TRLC-LINKS: REQ-SDS-274
@@ -49,7 +51,13 @@
     E.vol.addEventListener("input", () => { c.audio.vol = +E.vol.value; });
     E.status = h("div", { class: "snd-status", text: "" });
     const listenCard = h("section", { class: "snd-card", "aria-label": "Listen" }, E.listen, E.src, E.vol, E.status);
-    root.append(tuner, meters, listenCard);
+    // TRLC-LINKS: REQ-SDS-275
+    E.run = button({ label: "STOP", sub: "freeze a take", cls: "snd-run", aria: "Run or stop", onTap: () => ctl("runtoggle", 0) });
+    // TRLC-LINKS: REQ-SDS-275
+    E.single = button({ label: "SINGLE", sub: "on the trigger", cls: "snd-single", aria: "Single", onTap: () => ctl("single", 1) });
+    E.take = h("div", { class: "snd-status", text: "" });
+    const takeCard = h("section", { class: "snd-card snd-takecard", "aria-label": "Take" }, h("div", { class: "snd-row" }, E.run, E.single), E.take);
+    root.append(tuner, meters, takeCard, listenCard);
     paintSeg();
     S.built = true;
   }
@@ -75,11 +83,37 @@
     if (E.listen.setSub) E.listen.setSub(c.audio.on ? "playing · tap to stop" : "tap to play");
   }
 
-  // TRLC-LINKS: REQ-SDS-266, REQ-SDS-267
+  // ctl sends RUN/STOP or SINGLE to the scope.
+  // TRLC-LINKS: REQ-SDS-275
+  async function ctl(control, value) {
+    try { await fetch("/api/set", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ control, value }) }); } catch (e) { toast("SOUND: " + e.message, "err"); }
+    S.pollAt = 0;
+  }
+
+  // poll follows the scope: its run state, the stream's mode and the take.
+  // TRLC-LINKS: REQ-SDS-275
+  async function poll() {
+    try {
+      const [snd, stj] = await Promise.all([fetch("/api/sound", { cache: "no-store" }).then((r) => r.json()), fetch("/api/status", { cache: "no-store" }).then((r) => r.json())]);
+      if (snd.report) sndClientSync(c, snd.report.info);
+      S.running = !!stj.running; S.single = !!stj.single;
+    } catch (e) { /* the stream's status line says why */ }
+  }
+
+  // TRLC-LINKS: REQ-SDS-266, REQ-SDS-267, REQ-SDS-275
   function tick() {
     if (!S.el || S.el.hidden) return;
-    const fs = c.rate, set = S.settings;
-    if (c.next > 0) {
+    const fs = c.rate, set = S.settings, now = performance.now();
+    if (now - S.pollAt > 500) { S.pollAt = now; poll(); }
+    c.play.loop = true;
+    sndTakeFeed(c);
+    E.run.setLabel(S.running ? "STOP" : "RUN");
+    E.run.setSub(S.running ? "freeze a take" : "live again");
+    E.single.classList.toggle("warn", S.single);
+    const t = c.take;
+    E.take.textContent = c.mode === "live" ? "live" : c.mode === "stopped" ? (t && c.takeOn ? `stopped · take ${(t.n / t.rate).toFixed(1)} s · Listen loops it` : "stopped") :
+      c.mode === "armed" ? "armed: waiting for the FPGA's edge" : c.mode === "triggered" ? "triggered" + (t && c.takeOn ? ` · take ${(t.n / t.rate).toFixed(1)} s` : "") : c.mode;
+    if (c.next > 0 || c.takeOn) {
       const n = sndTunerWindow(S.hz, fs), x = sndClientLatest(c, set.ch, n);
       const p = x.length >= n / 2 ? sndPitch(x, fs) : { ok: false, hz: 0 };
       S.hz = sndTunerAdd(S.tuner, p);
@@ -97,7 +131,7 @@
       }
       const ref = sndPreset(set.ref), unit = ref.id === "dbu" ? "dBu" : ref.id === "dbv" ? "dBV" : "dB";
       for (let ch = 0; ch < 2; ch++) {
-        const m = sndMeasure(sndClientLatest(c, ch, Math.round(0.2 * fs))), mt = E.meters[ch];
+        const m = sndMeasure(sndClientLatest(c, ch, Math.round(c.takeOn ? Math.min(c.tview.span, 4 * fs) : 0.2 * fs))), mt = E.meters[ch];
         const db = sndDB(m.rms, ref.vrms), pk = sndDB(m.peak / Math.SQRT2, ref.vrms);
         // TRLC-LINKS: REQ-SDS-266
         const frac = (v) => Math.max(0, Math.min(1, (v + 60) / 66));

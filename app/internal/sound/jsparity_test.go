@@ -138,6 +138,9 @@ func goReading(v pvec) any {
 		}
 		return map[string]any{"ok": f.OK, "rows": rows, "octPerV": num(f.OctPerV), "scaleCents": num(f.ScaleCents), "trimPct": num(f.TrimPct),
 			"hfDevCents": num(f.HFDevCents), "spanOctaves": num(f.SpanOctaves)}
+	case "columns":
+		lo, hi := MinMaxColumns(v.X, v.N)
+		return map[string]any{"lo": nums(lo), "hi": nums(hi)}
 	case "cycle":
 		at, ok := PlaceMark(v.X, v.Mark, 0, true)
 		out := map[string]any{"at": num(at), "ok": ok, "c": nil}
@@ -269,6 +272,10 @@ func TestSoundJSParity(t *testing.T) {
 	add(pvec{Kind: "voct", Name: "five points", Pts: pts})
 	add(pvec{Kind: "voct", Name: "one point", Pts: pts[:1]})
 	add(pvec{Kind: "cycle", Name: "square", Fs: fs, X: gen(4096, fs, square(1, 300, fs), 0, 0), Mark: int(2*fs/300) + 2, Period: fs / 300})
+	for _, c := range []int{1, 7, 640, 5000} {
+		add(pvec{Kind: "columns", Name: fmt.Sprint("columns ", c), X: gen(3001, fs, sine(1, 440, 0), 0.01, 26), N: c})
+	}
+	add(pvec{Kind: "columns", Name: "columns of none", N: 4})
 	add(pvec{Kind: "cycle", Name: "no crossing", Fs: fs, X: make([]float64, 100), Mark: 50, Period: 20})
 
 	dir := t.TempDir()

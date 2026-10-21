@@ -35,6 +35,9 @@ type SoundSettings struct {
 	GateV    float64 `json:"gate_v"`    // its level, volts (the signal's: above its quiet mean)
 	VOctAuto bool    `json:"voct_auto"` // take V/oct points when the CV and pitch hold still
 	Drift    bool    `json:"drift"`     // log the pitch a second
+	PreS     float64 `json:"pre_s"`     // a triggered take's seconds before the trigger
+	PostS    float64 `json:"post_s"`    // and after it
+	TrigGate bool    `json:"trig_gate"` // a take's trigger is the gate (Gate, GateV), not the TRIG settings
 }
 
 // The LCD's readout pages, the Adjust knob's order.
@@ -53,7 +56,7 @@ var soundPageNames = [numSoundPages]string{"MODULATION", "ENVELOPE", "A/B", "HAR
 // defaultSoundSettings are the power-on choices.
 // TRLC-LINKS: REQ-SDS-273
 func defaultSoundSettings() SoundSettings {
-	return SoundSettings{A4: 440, Ref: "dbu", Cycles: 2, Gate: -1, GateV: 0.1}
+	return SoundSettings{A4: 440, Ref: "dbu", Cycles: 2, Gate: -1, GateV: 0.1, PreS: 1, PostS: 4}
 }
 
 // clean bounds every field.
@@ -80,6 +83,8 @@ func (s SoundSettings) clean() SoundSettings {
 	if !(s.GateV >= -50 && s.GateV <= 50) {
 		s.GateV = 0.1
 	}
+	s.PreS, s.PostS = engine.SoundTakeTimes(s.PreS, s.PostS)
+	s.PreS, s.PostS = math.Round(s.PreS*1000)/1000, math.Round(s.PostS*1000)/1000
 	return s
 }
 
@@ -206,6 +211,9 @@ type soundSvc struct {
 	q1, q2 []uint16
 	x, y   []float64
 	t0     time.Time
+
+	tv     soundTakeView // the take shown (sound_take.go)
+	pushed bool          // the take settings reached the engine once
 }
 
 // newSoundSvc makes the service with the power-on settings.
@@ -244,6 +252,7 @@ func (s *soundSvc) update(fn func(*SoundSettings)) SoundSettings {
 	if s.set.Drift && !old.Drift {
 		s.drift = sound.Drift{}
 	}
+	s.pushTakeSettings(s.set)
 	return s.set
 }
 
@@ -322,14 +331,29 @@ func (s *soundSvc) step(now time.Time) {
 		return
 	}
 	e.LeaseSound(3 * time.Second)
+	if !s.pushed {
+		s.pushed = true
+		s.pushTakeSettings(set)
+	}
 	info := e.SoundInfo()
 	s.mu.Lock()
 	s.info = info
 	s.fs = info.RateHz
+	tk := s.syncTake(s.taker())
 	s.mu.Unlock()
+	if tk != nil {
+		// A take shown: the readouts read its window; the marks and the
+		// envelope capture wait for the live stream.
+		s.stepTake(e, set, now, readouts)
+		if info.Active {
+			s.manageTakeGate(e, set)
+		}
+		return
+	}
 	if !info.Active || info.Next == 0 {
 		return
 	}
+	s.manageTakeGate(e, set)
 	t := now.Sub(s.t0).Seconds()
 	// The tuner and the meters read on alternate ticks, each four times a
 	// second: both every tick, with the LCD's SOUND view, kept the core busy
@@ -379,6 +403,9 @@ func (s *soundSvc) volts(b engine.SoundBlock, ch int, dst []float64) []float64 {
 // latest is the newest n samples of channel ch in volts (and the block).
 // TRLC-LINKS: REQ-SDS-265
 func (s *soundSvc) latest(e soundEngine, n, ch int) ([]float64, engine.SoundBlock) {
+	if x, b, ok := s.takeLatest(n, ch); ok {
+		return x, b
+	}
 	b := e.SoundLatest(n, s.q1, s.q2)
 	s.q1, s.q2 = b.Q1, b.Q2
 	s.x = s.volts(b, ch, s.x)
@@ -456,8 +483,14 @@ func mean(x []float64) float64 {
 func (s *soundSvc) readLevels(e soundEngine, set SoundSettings) {
 	ref := sound.PresetByID(set.Ref).Vrms
 	var lv [2]SoundLevel
+	n := int(0.2 * s.fs)
+	s.mu.Lock()
+	if s.tv.tk != nil {
+		n = int(math.Min(s.tv.span, 4*s.fs)) // a take: over its window (at most four seconds)
+	}
+	s.mu.Unlock()
 	for ch := 0; ch < 2; ch++ {
-		x, b := s.latest(e, int(0.2*s.fs), ch)
+		x, b := s.latest(e, n, ch)
 		if len(x) == 0 {
 			continue
 		}

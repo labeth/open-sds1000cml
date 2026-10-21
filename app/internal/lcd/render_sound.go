@@ -209,6 +209,10 @@ func drawSoundTrace(sf Surface, p plotArea, s *wsview.SoundPane) {
 	if s.State != "" {
 		DrawText(sf, 8, p.y0+6, cutText(s.State, (p.w-16)/6), colWarn, 1)
 	}
+	if s.Take != nil {
+		drawSoundTake(sf, p, s.Take)
+		return
+	}
 	if len(s.Traces) == 0 || !(s.TraceHi > s.TraceLo) {
 		msg := "Cycle trace: " + s.TraceWhy
 		if s.TraceWhy == "" {
@@ -247,6 +251,60 @@ func drawSoundTrace(sf Surface, p plotArea, s *wsview.SoundPane) {
 	}
 	DrawTextRight(sf, p.w-6, p.y0+6, si3(s.TraceHi)+"V", colDim, 1)
 	DrawTextRight(sf, p.w-6, p.y0+p.h-12, si3(s.TraceLo)+"V", colDim, 1)
+}
+
+// drawSoundTake draws a take's window in the plot: each channel in its own
+// lane (C1 above, C2 below) as a band of its lowest and highest volts a
+// column, the trigger as a dashed line with its marker on top, a bar of
+// where the window sits in the take, and the title and the knobs' jobs.
+// TRLC-LINKS: REQ-SDS-275, REQ-SDS-273
+func drawSoundTake(sf Surface, p plotArea, t *wsview.SoundTake) {
+	top, h := p.y0+16, p.h-30
+	lane := h / 2
+	for ch := 0; ch < 2; ch++ {
+		lo, hi := t.Lo[ch], t.Hi[ch]
+		n := len(lo)
+		vlo, vhi := t.VLo[ch], t.VHi[ch]
+		if n == 0 || !(vhi > vlo) {
+			continue
+		}
+		y0 := top + ch*lane
+		yOf := func(v float32) int {
+			f := (float64(v) - vlo) / (vhi - vlo)
+			return y0 + lane - 2 - int(math.Max(0, math.Min(1, f))*float64(lane-3))
+		}
+		if vlo < 0 && vhi > 0 {
+			hline(sf, 0, p.w-1, yOf(0), colAxis)
+		}
+		if ch == 1 {
+			hline(sf, 0, p.w-1, y0, colGrid)
+		}
+		col := chanCol(ch)
+		for x := 0; x < p.w; x++ {
+			i := min(n-1, x*n/p.w)
+			vline(sf, x, yOf(hi[i]), yOf(lo[i]), col)
+		}
+		DrawTextRight(sf, p.w-6, y0+2, si3(vhi)+"V", colDim, 1)
+		DrawTextRight(sf, p.w-6, y0+lane-11, si3(vlo)+"V", colDim, 1)
+	}
+	if t.TrigX >= 0 {
+		x := int(t.TrigX * float64(p.w-1))
+		for y := top; y < top+h; y += 4 {
+			vline(sf, x, y, min(y+1, top+h-1), colTrig)
+		}
+		for k := 0; k < 5; k++ { // the marker: a small triangle on top
+			hline(sf, x-4+k, x+4-k, top+k, colTrig)
+		}
+	}
+	// Where the window sits in the take.
+	by := p.y0 + p.h - 10
+	fillRect(sf, 4, by, p.w-8, 5, colBoxBg)
+	a, b := 4+int(t.From*float64(p.w-8)), 4+int(t.To*float64(p.w-8))
+	fillRect(sf, a, by, max(2, b-a), 5, colDim)
+	DrawText(sf, 6, p.y0+3, cutText(t.Title, (p.w-12)/6), colInfo, 1)
+	hint := cutText(t.Hint, (p.w-80)/6)
+	fillRect(sf, 4, by-12, TextWidth(hint, 1)+4, 11, colBG)
+	DrawText(sf, 6, by-11, hint, colDim, 1)
 }
 
 // si3 writes v to three significant digits.

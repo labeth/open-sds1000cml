@@ -55,6 +55,25 @@ func (c *Controller) soundPane(s *sv) *wsview.SoundPane {
 	}
 	p.Tool = []wsview.Seg{{Key: "Adjust", Job: "readout"}, {Key: "push", Job: soundPushJob(set.Page)},
 		{Key: "Position", Job: "cycles"}, {Key: "push", Job: "C1/C2"}}
+	trigFrom := "TRIG"
+	if set.TrigGate {
+		trigFrom = "the gate"
+	}
+	switch in.Mode {
+	case "stopped":
+		p.Caption, p.State = "STOP: the take (RUN: live)", ""
+	case "armed", "triggered":
+		p.Caption += fmt.Sprintf("  %s on %s, %.2g s / %.2g s", in.Mode, trigFrom, in.PreS, in.PostS)
+		p.Tool[2].Job = "trigger in take"
+	case "live", "":
+	default:
+		p.State = in.Mode
+	}
+	if ss.tv.tk != nil {
+		p.Take = ss.takePaneLocked(soundTakeWidth)
+		p.Tool[2].Job, p.Tool[3].Job = "scroll", "trigger/all"
+		p.Tool = append(p.Tool, wsview.Seg{Key: "S/DIV", Job: "zoom"})
+	}
 	// The tuner.
 	if ss.hz > 0 {
 		n := sound.NoteOf(ss.hz, set.A4)
@@ -341,9 +360,21 @@ func (c *Controller) soundPush() {
 	c.toast(msg, 1200*time.Millisecond)
 }
 
-// soundPosition steps the cycles drawn: 1, 2, 4.
-// TRLC-LINKS: REQ-SDS-272, REQ-SDS-273
+// soundPosition scrolls a take shown, moves the trigger within the take
+// while a triggered mode is armed, else steps the cycles drawn: 1, 2, 4.
+// TRLC-LINKS: REQ-SDS-272, REQ-SDS-273, REQ-SDS-275
 func (c *Controller) soundPosition(dir int) {
+	if c.snd.takeScroll(dir) {
+		return
+	}
+	c.snd.mu.Lock()
+	mode := c.snd.info.Mode
+	c.snd.mu.Unlock()
+	if mode == "armed" || mode == "triggered" {
+		set := c.snd.moveTrigger(dir)
+		c.toast(fmt.Sprintf("Take: %.2g s before the trigger, %.2g s after", set.PreS, set.PostS), 900*time.Millisecond)
+		return
+	}
 	set := c.snd.update(func(s *SoundSettings) {
 		order := []int{1, 2, 4}
 		i := 1
@@ -360,9 +391,14 @@ func (c *Controller) soundPosition(dir int) {
 	c.toast(fmt.Sprintf("Cycle trace: %d %s", set.Cycles, plural(set.Cycles, "cycle")), 900*time.Millisecond)
 }
 
-// soundChannel swaps the tuned channel.
-// TRLC-LINKS: REQ-SDS-267, REQ-SDS-273
+// soundChannel puts a take's trigger at the centre (or shows all of the
+// take); live, it swaps the tuned channel.
+// TRLC-LINKS: REQ-SDS-267, REQ-SDS-273, REQ-SDS-275
 func (c *Controller) soundChannel() {
+	if msg := c.snd.takeToTrigger(); msg != "" {
+		c.toast(msg, 900*time.Millisecond)
+		return
+	}
 	set := c.snd.update(func(s *SoundSettings) { s.Ch = 1 - s.Ch })
 	c.toast(fmt.Sprintf("Tuner: C%d", set.Ch+1), 900*time.Millisecond)
 }

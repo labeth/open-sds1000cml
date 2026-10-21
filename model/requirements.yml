@@ -4636,3 +4636,32 @@ requirements:
   verificationCriteria: A headless browser reaches SOUND with Alt+6, reads a synthetic tone's note and cents, the
     meters, the cycle, the spectrum's H1 and A/B's gain and phase, posts settings and actions to the scope, and
     leaving SOUND stops the stream; the phone's Sound tab reads the tone and plays it.
+- id: REQ-SDS-275
+  title: SOUND takes on STOP and on the FPGA's trigger
+  text: The instrument shall freeze SOUND into takes as its other views freeze, namely on STOP the last 10 s or more
+    of both channels, and in the NORMAL trigger mode (armed again after each take) and on SINGLE (stopping after it)
+    an adjustable pre- and post-trigger stretch around the FPGA's edge on the TRIG source, level and slope or SOUND's
+    gate, with AUTO the live stream; the take shown on the LCD with its trigger (Position scrolling, S/DIV zooming,
+    Position moving the trigger while armed), on the web page as a scrolled and zoomed waveform, spectrogram and pitch
+    with two cursors reading time, volts, frequency, level and their differences, played by Listen looped at full,
+    half or quarter speed, with RUN/STOP and SINGLE on the phone, and the readouts reading the take at the cursor or
+    over the visible window.
+  status: draft
+  category: functional
+  appliesTo:
+  - FU-APP-ENGINE
+  - FU-APP-PANEL
+  - FU-APP-LCD
+  - FU-APP-WEB
+  - FU-APP-SOUND
+  - FU-WEB-SOUND
+  - FU-WEB-APP-SOUND
+  - FU-WEB-REMOTE
+  verificationMethods:
+  - test
+  verificationCriteria: The engine's trigger takes the first crossing after the arm (a mark that came with others
+    placed on the first crossing of the FPGA's level), publishes the take with the trigger at the pre-trigger time
+    and stops on SINGLE; STOP keeps the newest seconds; the LCD's take view scrolls, zooms and moves the trigger; a
+    headless browser stops a stream into the Take view, places cursors, reads the take's pitch and plays it at half
+    speed; the phone stops and plays the take; on the instrument SINGLE on a bass note's onset puts the trigger at
+    the onset.

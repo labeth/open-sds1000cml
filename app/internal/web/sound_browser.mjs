@@ -61,6 +61,33 @@ run(async (t) => {
   await page.click("#sndVTake");
   await po.wait(400);
 
+  // takes: STOP shows the take (its trigger at the marker), the cursors read
+  // it, the tuner reads it, Listen plays it at half speed; RUN is live again
+  await page.click("#sndRun");
+  await t.until(() => po.eval(() => snd.takeOn && snd.view === "take"), "STOP shows the take in the Take view", 5000);
+  const tk = await po.eval(() => ({ n: snd.take.n, trig: snd.take.trig - snd.take.first, has: snd.take.hasTrig }));
+  t.ok(tk.has && Math.abs(tk.n - 3 * 61035) < 2 && Math.abs(tk.trig - 61035) < 2, "the take: 3 s, the trigger a second in: " + JSON.stringify(tk));
+  const cv = await page.locator("#sndViewCv").boundingBox();
+  await page.mouse.click(cv.x + cv.width * 0.5, cv.y + cv.height * 0.2);
+  await page.keyboard.down("Shift");
+  await page.mouse.click(cv.x + cv.width * 0.6, cv.y + cv.height * 0.2);
+  await page.keyboard.up("Shift");
+  await po.wait(600);
+  const rows = await po.eval(() => $("sndCtxBody").innerText);
+  t.ok(/Δt/.test(rows) && /440\.\d+ Hz A4/.test(rows), "the cursors read time, volts, the pitch and Δt: " + rows.replace(/\s+/g, " ").slice(0, 160));
+  await t.until(() => po.eval(() => Math.abs(snd.hz - 440.76) < 0.3), "the tuner reads the take", 3000);
+  await page.click('#sndSpeed button[data-value="0.5"]');
+  await t.until(() => po.eval(() => snd.play.on && snd.play.pos > 0), "Listen plays the take", 3000);
+  const p0 = await po.eval(() => snd.play.pos);
+  await po.wait(1000);
+  const p1 = await po.eval(() => snd.play.pos);
+  t.ok(p1 !== p0, "the take's playback moves: " + p0 + " → " + p1);
+  await po.eval(() => sndTakeZoom(snd, 0.1, snd.take.trig - snd.take.first));
+  t.ok(await po.eval(() => Math.abs(snd.tview.span - snd.take.n * 0.1) < 2), "the take zooms about the trigger");
+  if (shots) { await po.wait(800); await page.screenshot({ path: shots + "/web_sound_take.png" }); }
+  await page.click("#sndRun");
+  await t.until(() => po.eval(() => !snd.takeOn && snd.view !== "take"), "RUN: live again, the view before the take", 5000);
+
   // leaving SOUND stops Listen and the stream
   await page.keyboard.press("Alt+Digit1");
   await po.waitFor(() => ws.cur === "scope", null, 3000);
@@ -82,6 +109,12 @@ run(async (t) => {
   await phone.waitForTimeout(2000);
   if (shots) await phone.screenshot({ path: shots + "/phone_sound.png" });
   t.ok((await phone.evaluate(() => window.RSOUND.client.audio.stat.under || 0)) <= 1, "the phone's player runs without underruns");
+  await phone.tap("#view-sound .snd-run");
+  await t.until(() => phone.evaluate(() => window.RSOUND.client.takeOn), "the phone's STOP shows the take", 5000);
+  await t.until(() => phone.evaluate(() => window.RSOUND.client.play.on), "the phone's Listen plays the take", 3000);
+  if (shots) await phone.screenshot({ path: shots + "/phone_sound_take.png" });
+  await phone.tap("#view-sound .snd-run");
+  await t.until(() => phone.evaluate(() => !window.RSOUND.client.takeOn), "the phone's RUN is live again", 5000);
   await phone.tap("#tab-home");
   t.ok(await phone.evaluate(() => !window.RSOUND.client.shown && !window.RSOUND.client.audio.on), "leaving the Sound tab stops the stream");
   t.ok(phoneErrors.length === 0, "no phone page errors: " + phoneErrors.join(" | "));

@@ -31,6 +31,15 @@ function sndClient(wantMarks) {
     shown: false,
     gen: 0,
     wantMarks: wantMarks || (() => false),
+    // the take shown (STOP, a NORMAL or SINGLE trigger's): its samples in
+    // volts, the window the readouts and the drawing use, Listen's place in it
+    mode: "live",
+    take: null,
+    takeOn: false,
+    takeBusy: 0,
+    tview: { from: 0, span: 0 },
+    focus: -1,
+    play: { pos: 0, loop: true, speed: 1, fed: 0, on: false },
     audio: {
       on: false, ctx: null, node: null, src: "c1", mute: false, vol: 0.7, auto: true, gainDB: 0, hp: true, lp: false, notch: false,
       hz: 0, agc: 1, peak: 0, stat: {}, filt: null, delay: [], abMatch: 1, abDelay: 0, quiet: 0,
@@ -88,7 +97,119 @@ function sndIngest(c, buf) {
   while (c.marks.length && c.marks[0].at < c.validFrom) c.marks.shift();
   if (c.marks.length > 2048) c.marks.splice(0, c.marks.length - 2048);
   for (const [ch, q] of [[0, p.q1], [1, p.q2]]) if (sndClipCodes(q)) c.clipAt[ch] = performance.now();
-  if (c.audio.on) sndAudioFeed(c, v1, v2, gap);
+  if (c.audio.on && !c.takeOn) sndAudioFeed(c, v1, v2, gap);
+}
+
+// ---- takes ------------------------------------------------------------------------
+// sndClientSync follows the scope's stream state (a report's info): its
+// mode, and the take it shows, fetched once per take.
+// TRLC-LINKS: REQ-SDS-275
+function sndClientSync(c, info) {
+  if (!info) return;
+  c.mode = info.mode || "live";
+  const want = c.mode !== "live" && info.take ? info.take : 0;
+  if (want && (!c.take || c.take.id !== want) && c.takeBusy !== want) sndTakeFetch(c, want);
+  const on = !!(want && c.take); // a newer take shows once it is here
+  if (on !== c.takeOn) {
+    c.takeOn = on;
+    c.play.on = false;
+    if (c.audio.node) c.audio.node.port.postMessage({ reset: true, srcRate: c.rate });
+  }
+}
+
+// sndTakeFetch reads the take (/api/sound/take.bin) into volts: shown whole,
+// Listen from its start.
+// TRLC-LINKS: REQ-SDS-275
+async function sndTakeFetch(c, id) {
+  c.takeBusy = id;
+  try {
+    const r = await fetch("/api/sound/take.bin", { cache: "no-store" });
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    const p = sndParse(await r.arrayBuffer());
+    if (!p) throw new Error("not a take");
+    const h = p.hdr;
+    c.take = { id: h.id, why: h.why, first: h.first, n: h.n | 0, rate: h.rate || c.rate, c1: sndVoltsOf(c, h, p.q1, 0), c2: sndVoltsOf(c, h, p.q2, 1),
+      hasTrig: !!h.has_trig, trig: h.trig, trigCh: h.trig_ch | 0, trigRising: !!h.trig_rising, trigV: h.trig_v, marks: h.marks || [], gaps: h.gaps || [] };
+    // A NORMAL refresh of the same length keeps the window, the cursor and
+    // Listen's place; another take is shown whole.
+    if (!c.tview.span || c.tview.from + c.tview.span > c.take.n || c.take.why === "stop") {
+      c.tview = { from: 0, span: c.take.n };
+      c.focus = -1;
+      c.play.pos = 0;
+    }
+  } catch (e) {
+    c.err = "take: " + (e.message || e);
+  }
+  c.takeBusy = 0;
+}
+
+// sndTakeAround is n samples of channel ch around the focus (the cursor, or
+// the window's centre), clipped to the take.
+// TRLC-LINKS: REQ-SDS-275
+function sndTakeAround(c, ch, n) {
+  const t = c.take, src = ch === 1 ? t.c2 : t.c1;
+  n = Math.max(0, Math.min(n, t.n));
+  const mid = c.focus >= 0 ? c.focus : c.tview.from + c.tview.span / 2;
+  const a = Math.max(0, Math.min(t.n - n, Math.round(mid - n / 2)));
+  return Float64Array.from(src.subarray(a, a + n));
+}
+
+// sndTakeWindow is the window's samples of channel ch.
+// TRLC-LINKS: REQ-SDS-275
+function sndTakeWindow(c, ch) {
+  const t = c.take, src = ch === 1 ? t.c2 : t.c1, a = Math.max(0, Math.floor(c.tview.from)), b = Math.min(t.n, Math.ceil(c.tview.from + c.tview.span));
+  return src.subarray(a, b);
+}
+
+// sndTakeZoom scales the window by k about sample at (k < 1 narrows), from
+// 64 samples to the whole take.
+// TRLC-LINKS: REQ-SDS-275
+function sndTakeZoom(c, k, at) {
+  const t = c.take, v = c.tview;
+  if (!t) return;
+  const span = Math.max(Math.min(64, t.n), Math.min(t.n, v.span * k));
+  const f = v.span > 0 ? (at - v.from) / v.span : 0.5;
+  v.from = Math.max(0, Math.min(t.n - span, at - f * span));
+  v.span = span;
+}
+
+// sndTakeScroll moves the window by d samples.
+// TRLC-LINKS: REQ-SDS-275
+function sndTakeScroll(c, d) {
+  const t = c.take, v = c.tview;
+  if (t) v.from = Math.max(0, Math.min(t.n - v.span, v.from + d));
+}
+
+// sndTakeFeed keeps Listen playing the take: the window looped (or once),
+// at the speed chosen (the player told the slower rate), the buffer a
+// quarter of a second ahead.
+// TRLC-LINKS: REQ-SDS-275, REQ-SDS-265
+function sndTakeFeed(c) {
+  const a = c.audio, t = c.take, p = c.play;
+  if (!a.on || !a.node || !c.takeOn || !t) return;
+  if (!p.on) {
+    p.on = true;
+    p.fed = p.speed;
+    if (p.pos < c.tview.from || p.pos >= c.tview.from + c.tview.span) p.pos = Math.floor(c.tview.from);
+    a.node.port.postMessage({ reset: true, srcRate: c.rate * p.speed });
+    a.filt = null;
+  }
+  if (p.fed !== p.speed) { p.fed = p.speed; a.node.port.postMessage({ reset: true, srcRate: c.rate * p.speed }); }
+  const fill = (a.stat && a.stat.fillMs) || 0;
+  if (a.stat && a.stat.primed && fill > 250) return;
+  const lo = Math.floor(c.tview.from), hi = Math.min(t.n, Math.ceil(c.tview.from + c.tview.span));
+  if (hi - lo < 16) return;
+  let n = Math.round(c.rate * 0.1);
+  const v1 = new Float32Array(n), v2 = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    if (p.pos >= hi || p.pos < lo) {
+      if (!p.loop && p.pos >= hi) { n = i; break; }
+      p.pos = lo;
+    }
+    v1[i] = t.c1[p.pos]; v2[i] = t.c2[p.pos];
+    p.pos++;
+  }
+  if (n > 0) sndAudioFeed(c, v1.subarray(0, n), v2.subarray(0, n), false);
 }
 
 // sndPump long-polls the stream while the client is started.
@@ -128,9 +249,11 @@ function sndClientStop(c) {
   if (c.audio.on) sndClientListen(c, false);
 }
 
-// sndClientLatest is the newest n samples of channel ch that are one signal.
-// TRLC-LINKS: REQ-SDS-265
+// sndClientLatest is the newest n samples of channel ch that are one signal
+// (a take shown: n of its samples around the cursor or the window's centre).
+// TRLC-LINKS: REQ-SDS-265, REQ-SDS-275
 function sndClientLatest(c, ch, n) {
+  if (c.takeOn) return sndTakeAround(c, ch, n);
   const have = Math.max(0, c.next - c.validFrom);
   n = Math.max(0, Math.min(n, have, SND_RING));
   const out = new Float64Array(n), src = ch === 1 ? c.c2 : c.c1, from = c.next - n;
@@ -142,6 +265,10 @@ function sndClientLatest(c, ch, n) {
 // held).
 // TRLC-LINKS: REQ-SDS-272
 function sndClientRange(c, ch, from, n) {
+  if (c.takeOn) {
+    const t = c.take, a = Math.max(from, t.first), b = Math.min(from + n, t.first + t.n), src = ch === 1 ? t.c2 : t.c1;
+    return { from: a, x: Float64Array.from(src.subarray(Math.max(0, a - t.first), Math.max(0, b - t.first))) };
+  }
   const a = Math.max(from, c.validFrom), b = Math.min(from + n, c.next);
   const out = new Float64Array(Math.max(0, b - a)), src = ch === 1 ? c.c2 : c.c1;
   for (let i = 0; i < out.length; i++) out[i] = src[(a + i) & SND_MASK];

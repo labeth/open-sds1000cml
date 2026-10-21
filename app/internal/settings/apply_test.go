@@ -96,7 +96,7 @@ func TestApplyRestoreCollectFidelity(t *testing.T) {
 		// SOUND: tuned on C2 at A4 = 442 Hz, meters on Eurorack's 10 Vpp,
 		// the harmonics page, four cycles, a gate on C1 for the envelope.
 		Sound: settings.Sound{Set: true, A4: 442, Ch: 1, Ref: "euro", Range: "bass", Slow: true, Page: 3, Cycles: 4, ABIn: 1,
-			EnvCV: true, Gate: 0, GateV: 1.5, VOctAuto: true, Drift: true},
+			EnvCV: true, Gate: 0, GateV: 1.5, VOctAuto: true, Drift: true, PreS: 2.5, PostS: 6, TrigGate: true},
 	}
 	settings.Apply(want, e, fe, pc, t.Logf)
 	got := settings.Collect(e, fe, pc)

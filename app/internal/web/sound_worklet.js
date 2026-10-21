@@ -58,6 +58,7 @@ class SoundPlayerCore {
 
   // TRLC-LINKS: REQ-SDS-265
   onMsg(m) {
+    if (m.srcRate > 0) this.srcRate = m.srcRate; // a take played slower: its samples at a lower rate
     if (m.reset) { this.w = 0; this.r = 0; this.primed = false; this.target = Math.max(this.target, this.base + SW_TARGET_STEP); return; }
     if (m.targetMs) { this.base = m.targetMs; this.target = m.targetMs + SW_TARGET_STEP; }
     if (!m.l) return;

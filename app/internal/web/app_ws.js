@@ -61,7 +61,7 @@ const WS_LAYOUT = {
     lc([lp("p-refs", 222), lp("p-math", 104), lp("p-mask", 300, { grow: true })], SIDE, { minW: 330 })]),
   // TRLC-LINKS: REQ-SDS-274
   sound: () => lr([
-    lc([lp("p-snd-listen", 132, { min: 100 }), lp("p-snd-view", 470, { grow: true, min: 200 }), lp("p-snd-ctx", 150, { min: 80 })], 900, { grow: true }),
+    lc([lp("p-snd-listen", 168, { min: 120 }), lp("p-snd-view", 470, { grow: true, min: 200 }), lp("p-snd-ctx", 150, { min: 80 })], 900, { grow: true }),
     lc([lp("p-snd-tuner", 270), lp("p-snd-meters", 196), lp("p-snd-read", 300, { grow: true })], SIDE, { minW: 330 })]),
 };
 const SCOPE_PANES = { scope: "p-scope", bus: "p-bus-scope", spectrum: "p-analysis", measure: "p-meas-scope", compare: "p-cmp-scope" };

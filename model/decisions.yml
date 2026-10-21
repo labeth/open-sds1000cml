@@ -1615,11 +1615,18 @@ decisions:
     follows its fill, a limiter at -6 dBFS); the analysis runs where it is shown (sound.js in the browser, its Go
     twin for the LCD, the V/oct table, the drift log and the envelope capture). The stream image's edge comparator
     marks the stream word a level crossing falls in (registers 54..60); the cycle trace and the gate-armed
-    envelope start only on such a mark, which software places on its crossing.
+    envelope start only on such a mark, which software places on its crossing. SOUND works like the rest of the
+    scope. STOP freezes the newest 15 s into a take (the stream ends, its ring goes); NORMAL and SINGLE run the
+    stream armed on the TRIG source, level and slope (or SOUND's gate) as marks and take the pre- and
+    post-trigger time around the mark that fires; a mark read with others since the last read (the image keeps
+    only the newest crossing a direction) is placed on the first crossing of the same level after the arm.
+    Takes are served whole (/api/sound/take.bin); the readouts read a take's visible window.
   consequences:
   - The scope's own captures stop while SOUND streams; leaving SOUND restarts them (an image load, seconds).
   - Listening latency is the bank seal (about 17 ms), the network, the jitter buffer and the sound card's output.
   - A decoded stream (BUS) and SOUND exclude each other; SOUND reports why it cannot start.
+  - A take costs up to 3.7 MB while it is shown; leaving SOUND lets it go.
+  - A NORMAL trigger needs the pre-trigger time streamed since the last gap; the next arms after the take ends.
 - id: ADR-STREAM-DRUM
   title: Buffer the stream in the SRAM as a drum
   status: accepted

@@ -421,9 +421,12 @@ func (c *Controller) tdivTurn(dir int) {
 	c.mu.Lock()
 	open, z := c.ui.open, c.zoom
 	c.mu.Unlock()
+	s := c.snap()
 	switch {
 	case open:
 		c.sheetTurnTab(dir)
+	case s.ui.ws == wsview.Spectrum && s.viewMode == viewSound && c.snd.takeZoom(dir):
+		// a SOUND take: S/DIV zooms it
 	case z > 1:
 		i := 0
 		for k, f := range zoomFactors {

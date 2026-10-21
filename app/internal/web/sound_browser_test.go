@@ -25,6 +25,7 @@ type soundScope struct {
 	fs     float64
 	leases int
 	mu     sync.Mutex
+	take   *engine.SoundTake
 }
 
 // TRLC-LINKS: REQ-SDS-274
@@ -44,10 +45,30 @@ func (s *soundScope) nextOrd() uint64 { return uint64(time.Since(s.t0).Seconds()
 // TRLC-LINKS: REQ-SDS-274
 func (s *soundScope) LeaseSound(time.Duration) { s.mu.Lock(); s.leases++; s.mu.Unlock() }
 
-// TRLC-LINKS: REQ-SDS-274
+// TRLC-LINKS: REQ-SDS-274, REQ-SDS-275
 func (s *soundScope) SoundInfo() engine.SoundInfo {
-	return engine.SoundInfo{State: "streaming", Active: true, RateHz: s.fs, Next: s.nextOrd(), Marks: true,
+	in := engine.SoundInfo{State: "streaming", Active: true, RateHz: s.fs, Next: s.nextOrd(), Marks: true, Mode: "live",
 		MarkCfg: engine.SoundMarkConfig{Ch: 0, Level: 128, Hyst: 2, Rising: true}}
+	if t := s.SoundTake(); t != nil {
+		in.State, in.Active, in.Mode, in.Take = "stopped", false, "stopped", t.ID
+	}
+	return in
+}
+
+// SoundTake is, while STOPped, three seconds of the tone with a trigger a
+// second in (as a SINGLE's take).
+// TRLC-LINKS: REQ-SDS-275
+func (s *soundScope) SoundTake() *engine.SoundTake {
+	if s.Snapshot().Running {
+		return nil
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.take == nil {
+		b := s.SoundRead(1000, int(3*s.fs), nil, nil)
+		s.take = &engine.SoundTake{SoundBlock: b, ID: 7, Why: "single", HasTrig: true, Trig: 1000 + uint64(s.fs), TrigLevel: 128, TrigRising: true}
+	}
+	return s.take
 }
 
 // TRLC-LINKS: REQ-SDS-274

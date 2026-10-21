@@ -165,3 +165,25 @@ func percentile(x []float64, p float64) float64 {
 // median is the 0.5 percentile.
 // TRLC-LINKS: REQ-SDS-267, REQ-SDS-268
 func median(x []float64) float64 { return percentile(x, 0.5) }
+
+// MinMaxColumns reduces x to cols columns of their lowest and highest
+// values: column i covers samples i·n/cols up to (i+1)·n/cols, at least the
+// one under it (a take's window drawn at any zoom).
+// TRLC-LINKS: REQ-SDS-275
+func MinMaxColumns(x []float64, cols int) (lo, hi []float64) {
+	n := len(x)
+	if n == 0 || cols <= 0 {
+		return nil, nil
+	}
+	lo, hi = make([]float64, cols), make([]float64, cols)
+	for i := 0; i < cols; i++ {
+		a := min(i*n/cols, n-1)
+		b := min(max(a+1, (i+1)*n/cols), n)
+		l, h := x[a], x[a]
+		for _, v := range x[a+1 : b] {
+			l, h = math.Min(l, v), math.Max(h, v)
+		}
+		lo[i], hi[i] = l, h
+	}
+	return lo, hi
+}

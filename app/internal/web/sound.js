@@ -1087,8 +1087,64 @@ function sndCycles(x, fs, at, period, cycles, points) {
   return c;
 }
 
+// sndMinMaxColumns reduces x to cols columns of their lowest and highest
+// values (Go's MinMaxColumns).
+// TRLC-LINKS: REQ-SDS-275
+function sndMinMaxColumns(x, cols) {
+  const n = x.length;
+  if (!n || cols <= 0) return { lo: [], hi: [] };
+  const lo = new Float64Array(cols);
+  const hi = new Float64Array(cols);
+  for (let i = 0; i < cols; i++) {
+    const a = Math.min(Math.floor(i * n / cols), n - 1);
+    const b = Math.min(Math.max(a + 1, Math.floor((i + 1) * n / cols)), n);
+    let l = x[a], h = x[a];
+    for (let k = a + 1; k < b; k++) { l = Math.min(l, x[k]); h = Math.max(h, x[k]); }
+    lo[i] = l; hi[i] = h;
+  }
+  return { lo, hi };
+}
+
+// sndSpectrogram is cols Hann spectra (dBV, n points each) of x centred at
+// even steps across [from, from+span): a take's spectrogram. Each column is
+// the half spectrum's bins (binHz apart).
+// TRLC-LINKS: REQ-SDS-275
+function sndSpectrogram(x, fs, from, span, cols, n) {
+  const out = [];
+  const re = new Float64Array(n);
+  const im = new Float64Array(n);
+  const k = 4 / n / Math.SQRT2;
+  for (let c = 0; c < cols; c++) {
+    const mid = Math.round(from + (c + 0.5) * span / cols), a = mid - n / 2;
+    let m = 0, have = 0;
+    for (let i = 0; i < n; i++) { const j = a + i; if (j >= 0 && j < x.length) { m += x[j]; have++; } }
+    m = have ? m / have : 0;
+    for (let i = 0; i < n; i++) { const j = a + i; re[i] = j >= 0 && j < x.length ? (x[j] - m) * sndHann(i, n) : 0; im[i] = 0; }
+    sndFFT(re, im, false);
+    const db = new Float32Array(n / 2);
+    for (let i = 0; i < n / 2; i++) db[i] = 20 * Math.log10(Math.hypot(re[i], im[i]) * k + 1e-12);
+    out.push(db);
+  }
+  return { binHz: fs / n, cols: out };
+}
+
+// sndPitchTrack is the pitch at cols points across [from, from+span) of x
+// (the tuner's YIN on a window each), 0 where none.
+// TRLC-LINKS: REQ-SDS-275, REQ-SDS-267
+function sndPitchTrack(x, fs, from, span, cols, range) {
+  const n = sndTunerWindow(0, fs) / 2;
+  const hz = new Float64Array(cols);
+  for (let c = 0; c < cols; c++) {
+    const mid = Math.round(from + (c + 0.5) * span / cols), a = Math.max(0, Math.min(x.length - n, mid - n / 2));
+    if (a < 0 || x.length < n) continue;
+    const p = sndPitch(x.subarray ? x.subarray(a, a + n) : x.slice(a, a + n), fs, sndPitchRange(range || ""));
+    hz[c] = p.ok ? p.hz : 0;
+  }
+  return hz;
+}
+
 if (typeof module !== "undefined" && module.exports) {
-  module.exports = { SND_LOG2, SND_PRESETS, sndRate, sndFFT, sndMeasure, sndClipCodes, sndVolts, sndDB, sndPreset,
+  module.exports = { SND_LOG2, SND_PRESETS, sndRate, sndFFT, sndMeasure, sndClipCodes, sndVolts, sndDB, sndPreset, sndMinMaxColumns, sndSpectrogram, sndPitchTrack,
     sndPitch, sndNote, sndCents, sndTunerWindow, sndPitchRange, sndTuner, sndTunerAdd, sndEnvelope, sndBlockMeans, sndADSR,
     sndDemod, sndModulation, sndModRate, sndShape, sndSidebands, sndBesselJ, sndRatioText, sndLFO, sndSpectrum, sndHarmonics,
     sndHum, sndFloorDBV, sndLogX, sndNoteGrid, sndDelay, sndCompareAB, sndFitVOct, sndVOctAuto, sndVOctAutoAdd, sndDrift,

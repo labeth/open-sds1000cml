@@ -22,7 +22,7 @@ const snd = Object.assign(sndClient(() => snd.view === "cycle"), {
   strobe: 0,
   lastT: 0,
   levels: [null, null],
-  settings: { a4: 440, ch: 0, ref: "dbu", range: "", slow: false, cycles: 2, ab_in: 0, env_cv: false, gate: -1, gate_v: 0.1, voct_auto: false, drift: false },
+  settings: { a4: 440, ch: 0, ref: "dbu", range: "", slow: false, cycles: 2, ab_in: 0, env_cv: false, gate: -1, gate_v: 0.1, voct_auto: false, drift: false, pre_s: 1, post_s: 4, trig_gate: false },
   report: null,
   reportAt: 0,
   view: "cycle",
@@ -74,6 +74,7 @@ async function sndPoll() {
 function sndTakeReport(rep) {
   snd.report = rep;
   snd.reportAt = performance.now();
+  sndClientSync(snd, rep.info);
   const s = rep.settings || {};
   snd.settings = Object.assign(snd.settings, s);
   const set = snd.settings;
@@ -122,10 +123,13 @@ async function sndListen(on) {
 function sndTick() {
   if (!snd.shown) return;
   const now = performance.now(), set = snd.settings, fs = snd.rate;
-  if (now - snd.reportAt > 500) { snd.reportAt = now; sndPoll(); }
-  if (snd.next > 0) {
+  if (now - snd.reportAt > (snd.mode === "live" ? 500 : 250)) { snd.reportAt = now; sndPoll(); }
+  sndTakeTick();
+  if (snd.next > 0 || snd.takeOn) {
+    // a take: the meters over its window (at most four seconds)
+    const nlev = snd.takeOn ? Math.round(Math.min(snd.tview.span, 4 * fs)) : Math.round(0.2 * fs);
     for (let ch = 0; ch < 2; ch++) {
-      const x = sndLatest(ch, Math.round(0.2 * fs));
+      const x = sndLatest(ch, nlev);
       snd.levels[ch] = x.length ? sndMeasure(x) : null;
     }
     const n = sndTunerWindow(snd.hz, fs), x = sndLatest(set.ch, n);
@@ -142,7 +146,7 @@ function sndTick() {
       if (dt > 0 && dt < 1) snd.strobe = ((snd.strobe + cents / 2 * dt) % 1 + 1) % 1;
     }
     snd.lastT = t;
-    snd.strip.push({ t, cents, ok: snd.hz > 0 });
+    if (!snd.takeOn) snd.strip.push({ t, cents, ok: snd.hz > 0 });
     while (snd.strip.length && t - snd.strip[0].t > 10) snd.strip.shift();
     sndViewUpdate(now);
   }
@@ -347,6 +351,7 @@ function sndRenderView() {
     g.stroke();
   };
   switch (snd.view) {
+    case "take": sndTakeRender(g, W, H, d); break;
     case "cycle": {
       grid();
       if (!snd.cycles.length || snd.cycleWhy) { msg("Cycle: " + (snd.cycleWhy || "waiting")); break; }
@@ -482,6 +487,7 @@ function sndRenderCtx() {
   const pct = (v) => Number.isFinite(v) ? v.toFixed(2) + " %" : "—";
   let title = "Details";
   switch (snd.view) {
+    case "take": title = "Take cursors"; rows.push(...sndTakeCursorRows()); break;
     case "cycle": {
       title = "Cycle";
       const c = snd.cycle;
@@ -595,7 +601,7 @@ function sndRenderReadouts() {
 }
 
 // ---- views, keys, enter and leave ------------------------------------------------------
-const SND_VIEWS = ["cycle", "env", "mod", "spec", "ab"];
+const SND_VIEWS = ["cycle", "env", "mod", "spec", "ab", "take"];
 
 // sndNextView is SOUND again (Alt+6 on SOUND): the next view.
 // TRLC-LINKS: REQ-SDS-274

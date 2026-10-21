@@ -52,6 +52,7 @@ type SoundMark struct {
 	At     uint64 `json:"at"`
 	Ch     int    `json:"ch"`
 	Rising bool   `json:"rising"`
+	N      int    `json:"n,omitempty"` // crossings since the last read (the image keeps the newest)
 }
 
 // SoundMarkConfig asks the FPGA for marks: the channel, the level (8-bit
@@ -77,6 +78,13 @@ type SoundInfo struct {
 	Started  time.Time       `json:"started"`
 	LastData time.Time       `json:"last_data"`
 	Err      string          `json:"err,omitempty"`
+	// Takes (sound_take.go): "live", "armed", "triggered" or "stopped" (or
+	// why a trigger cannot run), the take shown (0 none) and the times.
+	Mode     string  `json:"mode"`
+	Take     uint64  `json:"take"`
+	PreS     float64 `json:"pre_s"`
+	PostS    float64 `json:"post_s"`
+	TrigGate bool    `json:"trig_gate"`
 }
 
 // SoundBlock is a copy of the ring: samples First..First+N-1 of each
@@ -292,7 +300,12 @@ type soundState struct {
 	mu      sync.Mutex
 	info    SoundInfo
 	markCfg SoundMarkConfig
-	markGen uint64
+
+	// Takes (sound_take.go).
+	take     atomic.Pointer[SoundTake]
+	preBits  atomic.Uint64
+	postBits atomic.Uint64
+	gateCfg  atomic.Pointer[SoundMarkConfig]
 
 	// Owner-only.
 	streaming bool
@@ -304,9 +317,22 @@ type soundState struct {
 	retryAt   time.Time
 	gapNext   bool
 	marksOn   bool
-	markSeen  [2]uint16 // the image's rise and fall counts last read
-	markWant  uint64    // the mark config generation in force
-	reload    bool      // a loss ended the last stream: load the image again first
+	markSeen  [2]uint16       // the image's rise and fall counts last read
+	applied   SoundMarkConfig // the marks the image makes now
+	cfgFrom   uint64          // marks from this sample on are of applied
+	reload    bool            // a loss ended the last stream: load the image again first
+
+	// The take's trigger (owner-only, sound_take.go).
+	takeSeq    uint64
+	frozen     bool // STOPped: the take made, the stream ended
+	trigMode   bool // NORMAL or SINGLE: the stream runs armed
+	armed      bool
+	pending    bool   // triggered, the post-trigger time streaming
+	armFrom    uint64 // marks from here count
+	armAt      uint64 // the first sample a trigger may fall on (the pre-trigger time streamed)
+	nextArm    uint64 // NORMAL: the next arm after the take
+	trigAt     uint64
+	trigRising bool
 }
 
 // sound returns the sound state, made on first use.
@@ -316,6 +342,10 @@ func (e *Engine) sound() *soundState {
 		s := &soundState{ring: newSoundRing(soundRingLog2)}
 		s.info.State = "off"
 		s.info.RateHz = 500e6 / float64(uint64(1)<<SoundLog2)
+		s.info.Mode = "live"
+		pre, post := SoundTakeTimes(1, 4)
+		s.preBits.Store(math.Float64bits(pre))
+		s.postBits.Store(math.Float64bits(post))
 		e.snd.Store(s)
 	})
 	return e.snd.Load()
@@ -357,8 +387,15 @@ func (e *Engine) SoundInfo() SoundInfo {
 	s := e.sound()
 	s.mu.Lock()
 	in := s.info
-	in.MarkCfg = s.markCfg
+	if !s.info.Active {
+		in.MarkCfg = s.markCfg // while streaming, the marks in force
+	}
 	s.mu.Unlock()
+	in.PreS, in.PostS = s.takeTimes()
+	in.TrigGate = s.gateCfg.Load() != nil
+	if t := s.take.Load(); t != nil {
+		in.Take = t.ID
+	}
 	s.ring.mu.Lock()
 	in.Next, in.Oldest, in.LastData = s.ring.next, s.ring.oldestLocked(), s.ring.last
 	s.ring.mu.Unlock()
@@ -410,10 +447,7 @@ func (e *Engine) SetSoundMarks(c SoundMarkConfig) {
 	s := e.sound()
 	c.Ch &= 1
 	s.mu.Lock()
-	if c != s.markCfg {
-		s.markCfg = c
-		s.markGen++
-	}
+	s.markCfg = c
 	s.mu.Unlock()
 }
 
@@ -460,6 +494,9 @@ func (e *Engine) soundStep() bool {
 			s.setState("off", false, nil)
 			s.ring.release()
 		}
+		// Nothing shows SOUND: its take goes with it.
+		s.take.Store(nil)
+		s.frozen, s.armed, s.pending = false, false, false
 		return false
 	}
 	if why := e.soundBusy(); why != "" {
@@ -467,6 +504,24 @@ func (e *Engine) soundStep() bool {
 		return false
 	}
 	e.beatN.Add(1)
+	if !e.running.Load() {
+		e.soundFreeze(s)
+		s.setMode("stopped")
+		return true
+	}
+	trig := e.soundTrigMode()
+	if s.frozen || trig != s.trigMode {
+		// RUN again, or the trigger mode changed: AUTO is the live stream
+		// (no take); a triggered mode keeps the take shown until the next.
+		s.frozen, s.armed, s.pending, s.nextArm = false, false, false, 0
+		if !trig {
+			s.take.Store(nil)
+		}
+	}
+	s.trigMode = trig
+	if !trig {
+		s.setMode("live")
+	}
 	if !s.streaming {
 		if e.clk.Now().Before(s.retryAt) {
 			e.sleepBeating(20 * time.Millisecond)
@@ -479,7 +534,18 @@ func (e *Engine) soundStep() bool {
 		}
 	}
 	e.soundDrain(s)
+	if trig && s.streaming {
+		e.soundTrigStep(s)
+	}
 	return true
+}
+
+// setMode publishes the take's mode.
+// TRLC-LINKS: REQ-SDS-275
+func (s *soundState) setMode(m string) {
+	s.mu.Lock()
+	s.info.Mode = m
+	s.mu.Unlock()
 }
 
 // soundStart loads the stream image if needed and starts the stream.
@@ -502,9 +568,7 @@ func (e *Engine) soundStart(s *soundState) error {
 			return fmt.Errorf("the stream image did not load")
 		}
 	}
-	s.mu.Lock()
-	mc, gen := s.markCfg, s.markGen
-	s.mu.Unlock()
+	mc := e.soundMarkWant(s)
 	cfg := sramcapture.Config{Source: sramcapture.ADC, DecimationLog2: SoundLog2, PreWords: sramcapture.Words - 17, PostWords: 17,
 		TriggerChannel: uint8(mc.Ch), TriggerLevel: mc.Level, TriggerHysteresis: mc.Hyst, Normal: true}
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
@@ -513,10 +577,11 @@ func (e *Engine) soundStart(s *soundState) error {
 	if err := e.sram.StartStreamMarked(ctx, cfg, sramcapture.StreamMarkMode{Rise: marks && mc.Rising, Fall: marks && mc.Falling}); err != nil {
 		return err
 	}
-	s.streaming, s.expected, s.markWant, s.marksOn = true, 0, gen, marks
+	s.streaming, s.expected, s.applied, s.marksOn = true, 0, mc, marks
 	s.markSeen = [2]uint16{}
 	s.ring.mu.Lock()
 	s.base = s.ring.next
+	s.cfgFrom = s.base
 	s.ring.mu.Unlock()
 	if p, ok := e.b.(streamPumper); ok {
 		owned, err := p.SetIsolatedStreamPump(true)
@@ -533,6 +598,7 @@ func (e *Engine) soundStart(s *soundState) error {
 	}
 	s.mu.Lock()
 	s.info.Marks = marks
+	s.info.MarkCfg = mc
 	s.info.Started = e.clk.Now()
 	s.mu.Unlock()
 	s.setState("streaming", true, nil)
@@ -596,17 +662,18 @@ func (e *Engine) soundDrop(s *soundState) {
 // soundDrain moves the stream's words into the ring for up to 40 ms.
 // TRLC-LINKS: REQ-SDS-265
 func (e *Engine) soundDrain(s *soundState) {
-	s.mu.Lock()
-	gen := s.markGen
-	mc := s.markCfg
-	s.mu.Unlock()
-	if gen != s.markWant && s.marksOn {
-		// The level and channel latch while the drum runs; the directions
-		// with the stream mode, which a restart writes.
+	if mc := e.soundMarkWant(s); mc != s.applied && s.marksOn {
+		// The level, channel and directions latch while the drum runs.
 		if err := e.sram.SetStreamMarks(mc.Ch, mc.Level, mc.Hyst, sramcapture.StreamMarkMode{Rise: mc.Rising, Fall: mc.Falling}); err != nil {
 			e.busErr(err)
 		}
-		s.markWant = gen
+		s.applied = mc
+		s.ring.mu.Lock()
+		s.cfgFrom = s.ring.next // marks of the configuration before do not count
+		s.ring.mu.Unlock()
+		s.mu.Lock()
+		s.info.MarkCfg = mc
+		s.mu.Unlock()
 	}
 	got := 0
 	for end := e.clk.Now().Add(40 * time.Millisecond); e.clk.Now().Before(end) && !e.stopReq.Load(); {
@@ -683,15 +750,13 @@ func (e *Engine) soundReadMarks(s *soundState) {
 	if err != nil {
 		return
 	}
-	s.mu.Lock()
-	ch := s.markCfg.Ch
-	s.mu.Unlock()
+	ch := s.applied.Ch
 	var out []SoundMark
 	if m.RiseCount != s.markSeen[0] {
-		out = append(out, SoundMark{At: s.base + unwrapWord(m.RiseWord, s.expected), Ch: ch, Rising: true})
+		out = append(out, SoundMark{At: s.base + unwrapWord(m.RiseWord, s.expected), Ch: ch, Rising: true, N: int(m.RiseCount - s.markSeen[0])})
 	}
 	if m.FallCount != s.markSeen[1] {
-		out = append(out, SoundMark{At: s.base + unwrapWord(m.FallWord, s.expected), Ch: ch, Rising: false})
+		out = append(out, SoundMark{At: s.base + unwrapWord(m.FallWord, s.expected), Ch: ch, Rising: false, N: int(m.FallCount - s.markSeen[1])})
 	}
 	s.markSeen = [2]uint16{m.RiseCount, m.FallCount}
 	if len(out) == 2 && out[1].At < out[0].At {

@@ -39,6 +39,10 @@ function run(v) {
     }
     case "ab": return S.sndCompareAB(x, y, v.fs, v.f0);
     case "voct": return S.sndFitVOct(v.pts, 440);
+    case "columns": {
+      const r = S.sndMinMaxColumns(x, v.n);
+      return { lo: Array.from(r.lo), hi: Array.from(r.hi) };
+    }
     case "cycle": {
       const [at, ok] = S.sndPlaceMark(x, v.mark, 0, true);
       const c = ok ? S.sndCycles(x, v.fs, at, v.period, 2, 64) : null;
