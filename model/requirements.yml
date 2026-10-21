@@ -4665,3 +4665,37 @@ requirements:
     headless browser stops a stream into the Take view, places cursors, reads the take's pitch and plays it at half
     speed; the phone stops and plays the take; on the instrument SINGLE on a bass note's onset puts the trigger at
     the onset.
+- id: REQ-SDS-276
+  title: SOUND's drift log ends with SOUND
+  text: The instrument shall end SOUND's drift log when neither the LCD nor any web or phone page shows SOUND, and
+    restore it off from a saved setup.
+  status: draft
+  category: functional
+  appliesTo:
+  - FU-APP-PANEL
+  - FU-APP-SETTINGS
+  verificationMethods:
+  - test
+  verificationCriteria: Drift on in the LCD's SOUND view runs and leases the stream; F3 to the FFT view ends it and
+    the lease; on from a page it ends once the page stops asking; a setup saved with it on restores it off.
+- id: REQ-SDS-277
+  title: The scope's keys take the acquisition back from a SOUND page
+  text: The instrument shall give the acquisition to the last one to act, namely on a key or knob of the LCD outside
+    SOUND, or AUTO, RUN/STOP or SINGLE, end a web or phone page's audio stream at once and refuse its stream until
+    the page takes the scope again, show the page paused with a button to take the scope, and name a page holding
+    the stream on the LCD with AUTO as the key that takes it back.
+  status: draft
+  category: functional
+  appliesTo:
+  - FU-APP-PANEL
+  - FU-APP-WEB
+  - FU-WEB-SOUND
+  - FU-WEB-APP-SOUND
+  - FU-WEB-REMOTE
+  verificationMethods:
+  - test
+  verificationCriteria: With a page's SOUND streaming the LCD names the web page or the phone; a key through
+    /api/panel ends the lease, the page's stream replies come paused without leasing and its report says paused;
+    take_scope streams again; AUTO ends the lease before its sweep, which reads only real captures; a headless page
+    and phone show "paused - the scope is in use" with Take the scope, which streams again; the other tabs never
+    lease.

@@ -21,7 +21,10 @@ import (
 // /api/sound reads and changes the settings and the scope's shared
 // readouts (V/oct table, drift log, envelope capture). Every request keeps
 // the stream leased for a few seconds; when the last page goes, the stream
-// stops and the scope captures again.
+// stops and the scope captures again. The stream takes the whole
+// acquisition, so the last one to act wins: a key on the LCD takes it back
+// and the pages' requests are refused (the page paused) until one takes
+// the scope again (the action "take_scope").
 
 // soundSource is the engine's audio stream (engine/sound_stream.go).
 type soundSource interface {
@@ -38,6 +41,12 @@ type soundPanel interface {
 	SoundAction(string) error
 	SoundReport(api, marks bool) panel.SoundReport
 	SoundWant(api, marks bool)
+}
+
+// soundLeaser is the panel's arbitration of the stream between the LCD and
+// the pages (panel/ws_sound.go).
+type soundLeaser interface {
+	SoundRemoteLease(who string, lease func()) bool
 }
 
 // soundBinMagic starts every /api/sound.bin reply ("SB", version 1).
@@ -63,6 +72,23 @@ type soundBinHeader struct {
 	MarkV    float64            `json:"mark_v"` // the marks' level, volts at the tip
 	ServerMS int64              `json:"server_ms"`
 	Err      string             `json:"err,omitempty"`
+	Paused   bool               `json:"paused,omitempty"` // the LCD holds the acquisition: no samples until the page takes the scope
+}
+
+// leaseSound is a page's SOUND request holding the stream: through the
+// panel, which refuses it while the LCD holds the acquisition (false: the
+// page is paused), or directly without one. who=phone names the phone.
+// TRLC-LINKS: REQ-SDS-277, REQ-SDS-265
+func (s *Server) leaseSound(src soundSource, r *http.Request) bool {
+	who := ""
+	if r.URL.Query().Get("who") == "phone" {
+		who = "phone"
+	}
+	if sl, ok := s.panel.(soundLeaser); ok {
+		return sl.SoundRemoteLease(who, func() { src.LeaseSound(soundLease) })
+	}
+	src.LeaseSound(soundLease)
+	return true
 }
 
 // soundScaleOut is a scale as volts at the probe tip: v = (q/256 - 128)*vpc - off.
@@ -97,7 +123,22 @@ func (s *Server) hSoundBin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	q := r.URL.Query()
-	src.LeaseSound(soundLease)
+	if !s.leaseSound(src, r) {
+		// Paused: no samples; the reply waits as a parked one would, so a
+		// paused page does not poll the scope in a tight loop.
+		if wait, err := strconv.Atoi(q.Get("wait")); err == nil && wait > 0 {
+			select {
+			case <-r.Context().Done():
+				return
+			case <-time.After(time.Duration(min(wait, 600)) * time.Millisecond):
+			}
+		}
+		info := src.SoundInfo()
+		h := soundBinHeader{First: info.Next, Next: info.Next, Rate: info.RateHz, State: panel.SoundPausedText,
+			Paused: true, ServerMS: time.Now().UnixMilli()}
+		writeSoundBin(w, h, engine.SoundBlock{}, 5*time.Second)
+		return
+	}
 	if sp, ok := s.panel.(soundPanel); ok {
 		sp.SoundWant(false, q.Get("marks") == "1")
 	}
@@ -220,7 +261,7 @@ func (s *Server) hSoundTakeBin(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "no audio stream", http.StatusNotFound)
 		return
 	}
-	src.LeaseSound(soundLease)
+	s.leaseSound(src, r) // paused, the take shown (if any) still comes
 	t := tk.SoundTake()
 	if t == nil {
 		http.Error(w, "no take", http.StatusNotFound)
@@ -250,16 +291,25 @@ func (s *Server) hSound(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "no SOUND here", http.StatusNotFound)
 		return
 	}
-	if src, ok := s.sc.(soundSource); ok && r.URL.Query().Get("lease") != "0" {
-		src.LeaseSound(soundLease)
-	}
 	var errText string
+	var req soundPost
 	if r.Method == http.MethodPost {
-		var req soundPost
 		if err := json.NewDecoder(io.LimitReader(r.Body, 8<<10)).Decode(&req); err != nil {
 			writeJSON(w, map[string]any{"ok": false, "err": "bad json"})
 			return
 		}
+		if req.Action == "take_scope" {
+			// Before the lease: the page takes the scope back from the LCD.
+			if err := sp.SoundAction(req.Action); err != nil {
+				errText = err.Error()
+			}
+			req.Action = ""
+		}
+	}
+	if src, ok := s.sc.(soundSource); ok && r.URL.Query().Get("lease") != "0" {
+		s.leaseSound(src, r)
+	}
+	if r.Method == http.MethodPost {
 		if len(req.Settings) > 0 {
 			cur := sp.SoundSettings()
 			if err := json.Unmarshal(req.Settings, &cur); err != nil {

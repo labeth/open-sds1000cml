@@ -73,13 +73,15 @@ func soundSettingsOut(s SoundSettings) settings.Sound {
 }
 
 // soundSettingsIn is a saved SOUND block as settings (bounded on the way in).
-// TRLC-LINKS: REQ-SDS-273, REQ-SDS-089
+// The drift log comes back off: it runs only while SOUND shows, and on at
+// power-on it held the audio stream before anything showed SOUND.
+// TRLC-LINKS: REQ-SDS-273, REQ-SDS-089, REQ-SDS-276
 func soundSettingsIn(s settings.Sound) SoundSettings {
 	if s.PostS == 0 && s.PreS == 0 {
 		s.PreS, s.PostS = 1, 4 // a file from before takes
 	}
 	return SoundSettings{A4: s.A4, Ch: s.Ch, Ref: s.Ref, Range: s.Range, Slow: s.Slow, Page: s.Page, Cycles: s.Cycles,
-		ABIn: s.ABIn, EnvCV: s.EnvCV, Gate: s.Gate, GateV: s.GateV, VOctAuto: s.VOctAuto, Drift: s.Drift,
+		ABIn: s.ABIn, EnvCV: s.EnvCV, Gate: s.Gate, GateV: s.GateV, VOctAuto: s.VOctAuto,
 		PreS: s.PreS, PostS: s.PostS, TrigGate: s.TrigGate}.clean()
 }
 

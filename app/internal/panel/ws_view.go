@@ -75,11 +75,14 @@ func (c *Controller) view(s *sv) wsview.View {
 		c.endEyeRaw() // the eye left: nothing waits for its raw record
 	}
 	v := wsview.View{WS: u.ws}
-	c.snd.setLCD(!u.open && u.ws == wsview.Spectrum && s.viewMode == viewSound)
+	inSound := u.ws == wsview.Spectrum && s.viewMode == viewSound
+	c.snd.setLCD(!u.open && inSound, inSound)
 	if s.now.Before(u.noticeUnt) {
 		v.Notice = u.notice
 	} else if s.st.ADCFault != "" {
 		v.Notice = s.st.ADCFault // stays while converters do not convert
+	} else if n := c.snd.remoteNotice(time.Now()); n != "" {
+		v.Notice = n // the LCD's captures wait while a page streams SOUND
 	}
 	if u.open {
 		v.Layout = wsview.Layout{MenuW: 116, Sheet: true, HideTraces: true, HideBottom: true}

@@ -13,8 +13,10 @@ const SND_MASK = SND_RING - 1;
 // sndClient makes a stream client; wantMarks says when a page shows the
 // cycle (the scope then keeps marking the tuned channel's edges).
 // TRLC-LINKS: REQ-SDS-265
-function sndClient(wantMarks) {
+function sndClient(wantMarks, who) {
   return {
+    who: who || "", // "phone": the scope's notice names the phone
+    paused: false, // the scope's own keys hold the acquisition: no samples until the page takes the scope
     rate: sndRate(SND_LOG2),
     c1: new Float32Array(SND_RING),
     c2: new Float32Array(SND_RING),
@@ -84,6 +86,8 @@ function sndIngest(c, buf) {
   const h = p.hdr, n = h.n | 0;
   c.hdr = h;
   c.markV = h.mark_v;
+  c.paused = !!h.paused;
+  if (c.paused) { c.cursor = null; return; } // the stream resumes from near now
   if (!n) { if (c.cursor === null || c.cursor > h.next) c.cursor = h.next; return; }
   const gap = c.cursor === null || h.first !== c.cursor || (h.gaps && h.gaps.length > 0);
   const v1 = sndVoltsOf(c, h, p.q1, 0), v2 = sndVoltsOf(c, h, p.q2, 1);
@@ -219,6 +223,7 @@ async function sndPump(c, gen) {
     let url = "/api/sound.bin?max=16384&min=1024&wait=600";
     if (c.cursor !== null) url += "&from=" + c.cursor;
     if (c.wantMarks()) url += "&marks=1";
+    if (c.who) url += "&who=" + c.who;
     try {
       const r = await fetch(url, { cache: "no-store" });
       if (!r.ok) throw new Error("HTTP " + r.status);
@@ -229,6 +234,16 @@ async function sndPump(c, gen) {
       await new Promise((res) => setTimeout(res, 600));
     }
   }
+}
+
+// sndTakeScope takes the scope back from its own keys: the page's stream
+// runs again (the scope's captures wait until a key there takes it back).
+// TRLC-LINKS: REQ-SDS-277
+async function sndTakeScope(c) {
+  const r = await fetch("/api/sound" + (c.who ? "?who=" + c.who : ""), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "take_scope" }) });
+  const j = await r.json();
+  if (j.report) c.paused = !!j.report.paused;
+  return j;
 }
 
 // sndClientStart starts streaming (a fresh signal from now).

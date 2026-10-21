@@ -33,7 +33,7 @@ func TestSoundTunerAndMetersTakeTurns(t *testing.T) {
 	}, 4)
 	e := &countEng{soundEng: se, reads: map[int]int{}}
 	c := New(e, &fakeFE{idx: [2]int{8, 8}}, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
-	c.snd.setLCD(true)
+	c.snd.setLCD(true, true)
 	now := time.Now()
 	se.next = int(se.fs)
 	for i := 0; i < 8; i++ {
@@ -62,7 +62,7 @@ func TestSoundModulationOnceAWindow(t *testing.T) {
 	}, 14)
 	e := &countEng{soundEng: se, reads: map[int]int{}}
 	c := New(e, &fakeFE{idx: [2]int{8, 8}}, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
-	c.snd.setLCD(true)
+	c.snd.setLCD(true, true)
 	c.SetSoundSettings(SoundSettings{A4: 440, Page: soundPageMod, Cycles: 2, Gate: -1})
 	now := time.Now()
 	se.next = int(4.5 * se.fs)

@@ -85,6 +85,7 @@ func (c *Controller) runAutosetFor(stop chan struct{}, ws wsview.WS, view int) {
 		return
 	}
 	c.syncStream(true) // a stream ends (a page's AUTO while BUS streams): the sweep reads live captures
+	c.waitSoundOff(stop)
 	g := goalFor(ws, view)
 	entry := c.autoEntryNow()
 	c.autoClearMatch(entry)

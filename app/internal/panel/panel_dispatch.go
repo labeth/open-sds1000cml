@@ -127,7 +127,7 @@ func (c *Controller) decode(m [5]uint16, knobsOn bool) {
 		pressed := (c.prev[i] &^ m[i]) &^ uint16(knobPhaseMask)
 		for bit := 0; bit < 16; bit++ {
 			if pressed&(1<<uint(bit)) != 0 && !c.noteInput(true) { // a key that wakes the screen does nothing else
-				c.button(bcode(i, bit))
+				c.lcdButton(bcode(i, bit))
 			}
 		}
 	}
@@ -292,7 +292,7 @@ func (c *Controller) knob(m [5]uint16) {
 		if c.noteInput(true) {
 			return // it woke the screen: nothing else
 		}
-		c.dispatch(k.name, dir, steps)
+		c.lcdKnob(k.name, dir, steps)
 		return // exactly one knob per interrupt
 	}
 }

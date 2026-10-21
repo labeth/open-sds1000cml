@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"open-sds/app/internal/analog"
+	"open-sds/app/internal/engine"
 	"open-sds/app/internal/panel/wsview"
 	"open-sds/app/internal/sound"
 )
@@ -492,5 +493,77 @@ func (c *Controller) soundAutoFit(stop chan struct{}) {
 		c.toast("AUTO: the level kept moving; fitted to the last reading", autoNoticeFor)
 	default:
 		c.toast("AUTO: both channels fitted to the stream", autoNoticeFor)
+	}
+}
+
+// SoundRemoteLease is a page's SOUND request: it records the page showing
+// SOUND and, unless the LCD took the acquisition back, runs lease (the
+// page's hold on the stream) and reports true; false is the page paused.
+// who is "phone" for the phone remote (the LCD's notice names it).
+// TRLC-LINKS: REQ-SDS-277
+func (c *Controller) SoundRemoteLease(who string, lease func()) bool {
+	return c.snd.remoteLease(who, lease)
+}
+
+// SoundPaused reports the pages' SOUND leases refused (the LCD holds the
+// acquisition until a page takes the scope).
+// TRLC-LINKS: REQ-SDS-277
+func (c *Controller) SoundPaused() bool { return c.snd.remotePaused() }
+
+// lcdInSoundLocked reports SOUND as the LCD's workspace (c.mu held).
+// TRLC-LINKS: REQ-SDS-277
+func (c *Controller) lcdInSoundLocked() bool {
+	return c.ui.ws == wsview.Spectrum && c.viewMode == viewSound
+}
+
+// lcdActs is the LCD's key or knob acting on the scope: the acquisition is
+// the LCD's from now (the last one to act wins), so a page's audio stream
+// ends and its leases are refused until it takes the scope again; on the
+// SOUND view the stream is the LCD's own and runs on.
+// TRLC-LINKS: REQ-SDS-277
+func (c *Controller) lcdActs() {
+	c.mu.Lock()
+	in := c.lcdInSoundLocked()
+	c.mu.Unlock()
+	c.snd.lcdTake(in)
+}
+
+// lcdButton runs a key pressed on the LCD (or injected as one): the
+// acquisition taken before it (an AUTO's sweep then reads captures) and
+// again after it (a key leaving SOUND).
+// TRLC-LINKS: REQ-SDS-277, REQ-SDS-135
+func (c *Controller) lcdButton(code int) {
+	c.lcdActs()
+	c.button(code)
+	c.lcdActs()
+}
+
+// lcdKnob runs a knob turned on the LCD (or injected as one), the
+// acquisition taken as for a key.
+// TRLC-LINKS: REQ-SDS-277, REQ-SDS-135
+func (c *Controller) lcdKnob(name string, dir, steps int) {
+	c.lcdActs()
+	c.dispatch(name, dir, steps)
+	c.lcdActs()
+}
+
+// soundOffWait bounds waitSoundOff.
+const soundOffWait = 3 * time.Second
+
+// waitSoundOff waits (bounded, or until stop) for an audio stream that
+// gave the fabric back to stop, so a sweep's first captures are captures.
+// TRLC-LINKS: REQ-SDS-277
+func (c *Controller) waitSoundOff(stop chan struct{}) {
+	e, ok := c.eng.(interface{ SoundInfo() engine.SoundInfo })
+	if !ok {
+		return
+	}
+	end := time.Now().Add(soundOffWait)
+	for e.SoundInfo().Active && time.Now().Before(end) {
+		select {
+		case <-stop:
+			return
+		case <-time.After(50 * time.Millisecond):
+		}
 	}
 }

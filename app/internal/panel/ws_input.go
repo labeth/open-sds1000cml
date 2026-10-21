@@ -552,8 +552,14 @@ func (c *Controller) runAuto() {
 		c.closeSheetLocked()
 		c.closePickLocked()
 	}
-	ws, _ := c.autoTargetLocked()
+	ws, view := c.autoTargetLocked()
+	inSound := c.lcdInSoundLocked()
 	c.mu.Unlock()
+	if !(ws == wsview.Spectrum && view == viewSound) {
+		// AUTO frames captures: a page's audio stream gives the fabric back
+		// first, or the sweep would search a stream for a signal.
+		c.snd.lcdTake(inSound)
+	}
 	if ws == wsview.Bus {
 		c.busAuto() // a new bus scan, framed for reading
 		return

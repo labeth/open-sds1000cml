@@ -166,6 +166,18 @@ type soundSvc struct {
 	marksUntil time.Time
 	lcd        bool
 
+	// Who holds the acquisition. The audio stream takes the whole fabric, so
+	// the last one to act wins: lcdWS says the LCD's workspace is SOUND (its
+	// menu open or not), pageUntil that a web or phone page shows SOUND,
+	// remoteUntil that such a page holds the stream now, and lcdTook that
+	// the LCD took the acquisition back with a key, which refuses the pages'
+	// leases until one of them takes the scope again.
+	lcdWS       bool
+	pageUntil   time.Time
+	remoteUntil time.Time
+	remoteWho   string // "phone" or "" (a web page): the page holding it
+	lcdTook     bool
+
 	tuner   sound.Tuner
 	hz      float64
 	clarity float64
@@ -271,21 +283,122 @@ func (s *soundSvc) want(api, marks bool, d time.Duration) {
 	s.mu.Unlock()
 }
 
-// setLCD says whether the LCD shows the SOUND view.
-// TRLC-LINKS: REQ-SDS-273
-func (s *soundSvc) setLCD(on bool) {
+// setLCD says whether the LCD shows the SOUND view (on: drawn, its menu
+// closed) and whether SOUND is its workspace (ws).
+// TRLC-LINKS: REQ-SDS-273, REQ-SDS-276
+func (s *soundSvc) setLCD(on, ws bool) {
 	s.mu.Lock()
-	s.lcd = on
+	s.lcd, s.lcdWS = on, ws
 	s.mu.Unlock()
 }
 
 // needed reports whether anything uses the service now, and whether the
-// readouts are wanted (beyond the background jobs).
-// TRLC-LINKS: REQ-SDS-273
+// readouts are wanted (beyond the background jobs). A page's wants and the
+// envelope capture count only while the pages may hold the stream; the
+// V/oct points and the drift log only while SOUND shows somewhere, or a
+// setting left on would keep the scope from capturing in every workspace
+// (s.mu held).
+// TRLC-LINKS: REQ-SDS-273, REQ-SDS-276, REQ-SDS-277
 func (s *soundSvc) needed(now time.Time) (any, readouts bool) {
-	readouts = s.lcd || now.Before(s.apiUntil)
-	any = readouts || now.Before(s.marksUntil) || s.set.VOctAuto || s.set.Drift || s.adsr == adsrArmed || s.adsr == adsrCapturing
+	remote := s.remoteOKLocked()
+	shown := s.lcdWS || now.Before(s.pageUntil)
+	readouts = s.lcd || remote && now.Before(s.apiUntil)
+	any = readouts || remote && (now.Before(s.marksUntil) || s.adsr == adsrArmed || s.adsr == adsrCapturing) ||
+		remote && shown && (s.set.VOctAuto || s.set.Drift)
 	return
+}
+
+// remoteOKLocked reports whether a page may hold the stream: the LCD has not
+// taken the acquisition back, or the LCD shows SOUND itself (the stream runs
+// for it anyway). s.mu held.
+// TRLC-LINKS: REQ-SDS-277
+func (s *soundSvc) remoteOKLocked() bool { return !s.lcdTook || s.lcdWS }
+
+// soundPageFor is how long a page's SOUND request counts as the page
+// showing SOUND (it polls a few times a second).
+const soundPageFor = 3 * time.Second
+
+// SoundPausedText is what a page shows while the LCD holds the acquisition.
+const SoundPausedText = "paused: the scope is in use"
+
+// soundRemoteNotice is the LCD's notice while a web page holds the
+// acquisition (the captures wait: the scope looks broken without it), and
+// soundPhoneNotice while the phone does. AUTO takes the scope back and then
+// frames the signal; any other key takes it back too.
+const (
+	soundRemoteNotice = "A web page is on SOUND and is using the scope. Press AUTO to take it back."
+	soundPhoneNotice  = "A phone is on SOUND and is using the scope. Press AUTO to take it back."
+)
+
+// remoteLease records a page showing SOUND and, unless the LCD took the
+// acquisition back, runs lease (the page's hold on the stream) and reports
+// true; who is "phone" for the phone remote. The lease runs under the lock,
+// so an LCD key between the check and the lease cannot be overtaken by it.
+// TRLC-LINKS: REQ-SDS-277
+func (s *soundSvc) remoteLease(who string, lease func()) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	now := time.Now()
+	s.pageUntil = now.Add(soundPageFor)
+	if !s.remoteOKLocked() {
+		return false
+	}
+	s.remoteUntil, s.remoteWho = now.Add(soundPageFor), who
+	if lease != nil {
+		lease()
+	}
+	return true
+}
+
+// remotePaused reports whether the pages' leases are refused now.
+// TRLC-LINKS: REQ-SDS-277
+func (s *soundSvc) remotePaused() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return !s.remoteOKLocked()
+}
+
+// remoteNotice is the LCD's notice while a page holds the stream and the
+// LCD shows another workspace ("" none): its captures wait.
+// TRLC-LINKS: REQ-SDS-277
+func (s *soundSvc) remoteNotice(now time.Time) string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	switch {
+	case s.lcdWS || !now.Before(s.remoteUntil):
+		return ""
+	case s.remoteWho == "phone":
+		return soundPhoneNotice
+	}
+	return soundRemoteNotice
+}
+
+// lcdTake gives the acquisition to the LCD: the pages' leases are refused
+// until a page takes the scope again, and outside SOUND a lease running now
+// ends at once, so the LCD's next capture (an AUTO's first) gets the fabric
+// instead of searching a stream for a signal. inSound says the LCD's
+// workspace is SOUND: its own stream runs on.
+// TRLC-LINKS: REQ-SDS-277
+func (s *soundSvc) lcdTake(inSound bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.lcdWS, s.lcdTook = inSound, true
+	s.remoteUntil = time.Time{}
+	if inSound {
+		return
+	}
+	if e, ok := s.c.eng.(interface{ LeaseSound(time.Duration) }); ok {
+		e.LeaseSound(0)
+	}
+}
+
+// takeScope is a page taking the scope back from the LCD: its leases hold
+// again until the LCD's next key.
+// TRLC-LINKS: REQ-SDS-277
+func (s *soundSvc) takeScope() {
+	s.mu.Lock()
+	s.lcdTook = false
+	s.mu.Unlock()
 }
 
 // run ticks the service until stop.
@@ -317,12 +430,23 @@ type soundPaneTraces struct {
 // TRLC-LINKS: REQ-SDS-273
 func (s *soundSvc) step(now time.Time) {
 	e := s.engine()
+	s.mu.Lock()
+	if s.set.Drift && !s.lcdWS && !now.Before(s.pageUntil) {
+		// SOUND left on the LCD and on every page: the drift log ends (its
+		// points stay), or it would hold the stream from every workspace.
+		s.set.Drift = false
+	}
 	if e == nil {
+		s.mu.Unlock()
 		return
 	}
-	s.mu.Lock()
 	use, readouts := s.needed(now)
 	set := s.set
+	if use {
+		// Under the lock: an LCD key taking the acquisition back between
+		// the check and the lease would be overtaken by it.
+		e.LeaseSound(3 * time.Second)
+	}
 	s.mu.Unlock()
 	if !use {
 		// Nothing uses the service: its stream copies (a four-second window
@@ -330,7 +454,6 @@ func (s *soundSvc) step(now time.Time) {
 		s.x, s.q1, s.q2 = nil, nil, nil
 		return
 	}
-	e.LeaseSound(3 * time.Second)
 	if !s.pushed {
 		s.pushed = true
 		s.pushTakeSettings(set)
@@ -734,7 +857,9 @@ func (s *soundSvc) arm(on bool) {
 	s.armFloor = math.Inf(1)
 	s.adsrRes, s.adsrEnv = sound.ADSR{}, nil
 	if e != nil {
-		e.LeaseSound(3 * time.Second)
+		if s.remoteOKLocked() {
+			e.LeaseSound(3 * time.Second)
+		}
 		// Marks count from a third of a second on: the gate's level and
 		// channel reach the FPGA within a service tick and a drain step, and
 		// marks of the cycle trace's level before them must not start it.
@@ -906,6 +1031,8 @@ func (s *soundSvc) action(name string) error {
 		s.mu.Lock()
 		s.strip = nil
 		s.mu.Unlock()
+	case "take_scope":
+		s.takeScope()
 	default:
 		return fmt.Errorf("no SOUND action %q", name)
 	}
@@ -931,6 +1058,10 @@ type SoundReport struct {
 	VOct     []sound.VOctPoint  `json:"voct"`
 	VOctFit  sound.VOctFit      `json:"voct_fit"`
 	Drift    []sound.DriftPoint `json:"drift"`
+	// Paused: the LCD took the acquisition back; the pages' leases are
+	// refused until one takes the scope (the action "take_scope").
+	Paused    bool   `json:"paused"`
+	PausedWhy string `json:"paused_why,omitempty"`
 	// The readout pages' figures, as the LCD's SOUND view last read them (a
 	// page reads only while the LCD shows it).
 	Mod  sound.Modulation     `json:"mod"`
@@ -973,6 +1104,9 @@ func (s *soundSvc) Report() SoundReport {
 		ADSR: s.adsr, ADSRWhy: s.adsrWhy, ADSRRes: s.adsrRes, ADSREFs: s.adsrEFs,
 		VOct: append([]sound.VOctPoint(nil), s.voct...), Drift: reduceDrift(s.drift.Points, driftReportMax),
 		Mod: s.mod, LFO: s.lfo, SB: s.sb, AB: s.ab, Harm: s.harm}
+	if !s.remoteOKLocked() {
+		r.Paused, r.PausedWhy = true, SoundPausedText
+	}
 	if s.hz > 0 {
 		n := sound.NoteOf(s.hz, s.set.A4)
 		r.Note, r.Cents = n.String(), n.Cents

@@ -74,6 +74,7 @@ async function sndPoll() {
 function sndTakeReport(rep) {
   snd.report = rep;
   snd.reportAt = performance.now();
+  snd.paused = !!rep.paused;
   sndClientSync(snd, rep.info);
   const s = rep.settings || {};
   snd.settings = Object.assign(snd.settings, s);
@@ -240,9 +241,10 @@ function sndRender() {
   sndRenderCtx();
   sndRenderReadouts();
   const a = snd.audio, h = snd.hdr;
-  let st = snd.err ? "stream: " + snd.err : !h ? "starting the audio stream…" : !h.active ? "audio stream: " + h.state + (h.err ? " — " + h.err : "") :
-    `gap-free ${(h.rate / 1000).toFixed(1)} kSa/s · ${h.losses || 0} losses`;
-  if (a.on) st += ` · buffer ${(a.stat.fillMs || 0).toFixed(0)} ms · rate ${(((a.stat.ratio || 1) - 1) * 1e6).toFixed(0)} ppm · ${a.stat.under || 0} underruns · ${a.stat.over || 0} overruns · ${sndLatencyText(snd)}`;
+  let st = snd.err ? "stream: " + snd.err : snd.paused ? "paused: the scope is in use (its keys took it back)" : !h ? "starting the audio stream…" :
+    !h.active ? "audio stream: " + h.state + (h.err ? " — " + h.err : "") : `gap-free ${(h.rate / 1000).toFixed(1)} kSa/s · ${h.losses || 0} losses`;
+  $("sndPaused").hidden = !snd.paused;
+  if (a.on && !snd.paused) st += ` · buffer ${(a.stat.fillMs || 0).toFixed(0)} ms · rate ${(((a.stat.ratio || 1) - 1) * 1e6).toFixed(0)} ppm · ${a.stat.under || 0} underruns · ${a.stat.over || 0} overruns · ${sndLatencyText(snd)}`;
   $("sndStatus").textContent = st;
   $("sndGainV").textContent = a.auto ? (20 * Math.log10(a.agc)).toFixed(0) + " dB" : a.gainDB + " dB";
 }
@@ -709,6 +711,13 @@ function sndWire() {
   $("sndVAuto").onchange = () => sndSet({ voct_auto: $("sndVAuto").value === "1" });
   // TRLC-LINKS: REQ-SDS-274
   $("sndDriftOn").onchange = () => sndSet({ drift: $("sndDriftOn").value === "1" });
+  // TRLC-LINKS: REQ-SDS-277
+  $("sndTakeScope").onclick = async () => {
+    try {
+      const j = await sndTakeScope(snd);
+      if (j.report) sndTakeReport(j.report);
+    } catch (e) { toast("SOUND: " + e.message, "err"); }
+  };
   // TRLC-LINKS: REQ-SDS-274
   $("sndDriftClear").onclick = () => sndPost({ action: "drift_clear" });
   sndSetView(sndPref("view", "cycle"));

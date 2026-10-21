@@ -96,7 +96,7 @@ func (c *Controller) InjectButton(name string) bool {
 		return false
 	}
 	select {
-	case c.inject <- func() { c.button(code) }:
+	case c.inject <- func() { c.lcdButton(code) }:
 		return true
 	default:
 		return false
@@ -114,7 +114,7 @@ func (c *Controller) InjectButtonWait(name string, timeout time.Duration) bool {
 	}
 	done := make(chan struct{})
 	select {
-	case c.inject <- func() { c.button(code); close(done) }:
+	case c.inject <- func() { c.lcdButton(code); close(done) }:
 	case <-time.After(timeout):
 		return false
 	}
@@ -141,7 +141,7 @@ func (c *Controller) InjectKnob(name string, dir, steps int) bool {
 		dir = -1
 	}
 	select {
-	case c.inject <- func() { c.resync(); c.dispatch(name, dir, steps) }:
+	case c.inject <- func() { c.resync(); c.lcdKnob(name, dir, steps) }:
 		return true
 	default:
 		return false

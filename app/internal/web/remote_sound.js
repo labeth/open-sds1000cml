@@ -12,7 +12,7 @@
 
 (function () {
   const { h, button, toast } = window.RU;
-  const c = sndClient(() => false);
+  const c = sndClient(() => false, "phone");
   const S = { el: null, tuner: sndTuner(false), hz: 0, timer: 0, settings: { a4: 440, ch: 0, ref: "dbu" }, built: false, pollAt: 0, running: true, single: false };
   const E = {};
 
@@ -50,7 +50,10 @@
     E.vol = h("input", { type: "range", min: "0", max: "1", step: "0.01", value: "0.7", "aria-label": "Volume", class: "snd-vol" });
     E.vol.addEventListener("input", () => { c.audio.vol = +E.vol.value; });
     E.status = h("div", { class: "snd-status", text: "" });
-    const listenCard = h("section", { class: "snd-card", "aria-label": "Listen" }, E.listen, E.src, E.vol, E.status);
+    // TRLC-LINKS: REQ-SDS-277
+    E.takeScope = button({ label: "Take the scope", sub: "its keys took it back", cls: "snd-takescope", aria: "Take the scope", onTap: takeScope });
+    E.takeScope.hidden = true;
+    const listenCard = h("section", { class: "snd-card", "aria-label": "Listen" }, E.listen, E.src, E.vol, E.status, E.takeScope);
     // TRLC-LINKS: REQ-SDS-275
     E.run = button({ label: "STOP", sub: "freeze a take", cls: "snd-run", aria: "Run or stop", onTap: () => ctl("runtoggle", 0) });
     // TRLC-LINKS: REQ-SDS-275
@@ -73,7 +76,7 @@
     S.settings.ch = v;
     S.tuner = sndTuner(false);
     paintSeg();
-    try { await fetch("/api/sound", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ settings: { ch: v } }) }); } catch (e) { /* shown by the stream's status */ }
+    try { await fetch("/api/sound?who=phone", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ settings: { ch: v } }) }); } catch (e) { /* shown by the stream's status */ }
   }
 
   // TRLC-LINKS: REQ-SDS-265
@@ -81,6 +84,12 @@
     try { await sndClientListen(c, on); } catch (e) { toast("Listen: " + e.message, "err"); c.audio.on = false; }
     E.listen.classList.toggle("on", c.audio.on);
     if (E.listen.setSub) E.listen.setSub(c.audio.on ? "playing · tap to stop" : "tap to play");
+  }
+
+  // takeScope streams SOUND again after the scope's keys took it back.
+  // TRLC-LINKS: REQ-SDS-277
+  async function takeScope() {
+    try { await sndTakeScope(c); } catch (e) { toast("SOUND: " + e.message, "err"); }
   }
 
   // ctl sends RUN/STOP or SINGLE to the scope.
@@ -94,8 +103,8 @@
   // TRLC-LINKS: REQ-SDS-275
   async function poll() {
     try {
-      const [snd, stj] = await Promise.all([fetch("/api/sound", { cache: "no-store" }).then((r) => r.json()), fetch("/api/status", { cache: "no-store" }).then((r) => r.json())]);
-      if (snd.report) sndClientSync(c, snd.report.info);
+      const [snd, stj] = await Promise.all([fetch("/api/sound?who=phone", { cache: "no-store" }).then((r) => r.json()), fetch("/api/status", { cache: "no-store" }).then((r) => r.json())]);
+      if (snd.report) { sndClientSync(c, snd.report.info); c.paused = !!snd.report.paused; }
       S.running = !!stj.running; S.single = !!stj.single;
     } catch (e) { /* the stream's status line says why */ }
   }
@@ -142,8 +151,9 @@
       }
     }
     const hd = c.hdr, a = c.audio;
-    let st = c.err ? "stream: " + c.err : !hd ? "starting the audio stream…" : !hd.active ? "stream: " + hd.state : `gap-free ${(hd.rate / 1000).toFixed(1)} kSa/s`;
-    if (a.on) st += ` · buffer ${(a.stat.fillMs || 0).toFixed(0)} ms · ${a.stat.under || 0} underruns · ` + sndLatencyText(c);
+    let st = c.err ? "stream: " + c.err : c.paused ? "paused: the scope is in use" : !hd ? "starting the audio stream…" : !hd.active ? "stream: " + hd.state : `gap-free ${(hd.rate / 1000).toFixed(1)} kSa/s`;
+    E.takeScope.hidden = !c.paused;
+    if (a.on && !c.paused) st += ` · buffer ${(a.stat.fillMs || 0).toFixed(0)} ms · ${a.stat.under || 0} underruns · ` + sndLatencyText(c);
     E.status.textContent = st;
   }
 
@@ -156,7 +166,7 @@
     clearInterval(S.timer);
     S.timer = setInterval(tick, 120);
     try {
-      const j = await (await fetch("/api/sound?lease=1", { cache: "no-store" })).json();
+      const j = await (await fetch("/api/sound?lease=1&who=phone", { cache: "no-store" })).json();
       if (j.report && j.report.settings) { Object.assign(S.settings, j.report.settings); paintSeg(); }
     } catch (e) { /* the status line says why the stream is not there */ }
   }
