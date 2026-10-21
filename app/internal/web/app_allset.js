@@ -76,10 +76,11 @@ const ALL_GROUPS = [
   ["Export & system", [["ePNG", "Export PNG", "image screenshot"], ["eCSV", "Export CSV", "data"], ["eSR", "Export sigrok .sr", "pulseview"], ["eVCD", "Export VCD", "gtkwave"],
     ["eWAV", "Export WAV", "audio"], ["ePrint", "Device screenshot (PRINT)", "lcd"], ["defaultBtn", "Default setup", "reset factory"], ["helpBtn", "Help", "keys mouse"]]],
 ];
-// Controls that are not settings: navigation, menus, dialogs and the read-only
-// decode transcript.
+// Controls that are not settings: navigation, menus, dialogs, the read-only
+// decode transcript and SOUND's Take the scope (shown only while paused).
 const ALL_EXCLUDE = new Set(["decodeText", "tab-scope", "tab-bus", "tab-spectrum", "tab-measure", "tab-compare", "tab-sound", "allBtn", "allClose", "allFilter", "helpClose",
-  "exportBtn", "setupsBtn", "quickMore", "pkDetect", "streamDetect", "tdivDn", "tdivUp", "vdiv1Dn", "vdiv1Up", "vdiv2Dn", "vdiv2Up", "mYT", "mXY", "mFFT", "mSPG", "mBODE"]);
+  "exportBtn", "setupsBtn", "quickMore", "pkDetect", "streamDetect", "tdivDn", "tdivUp", "vdiv1Dn", "vdiv1Up", "vdiv2Dn", "vdiv2Up", "mYT", "mXY", "mFFT", "mSPG", "mBODE",
+  "sndTakeScope"]);
 
 let allBuilt = false, allW = 380;
 // TRLC-LINKS: REQ-SDS-219
