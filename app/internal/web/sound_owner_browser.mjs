@@ -57,6 +57,16 @@ run(async (t) => {
   await t.until(async () => (await po.eval(() => snd.next)) > n0 + 20000, "samples arrive again", 6000);
   t.ok((await leases()).on, "the page holds the stream again");
 
+  // opening SOUND again is acting on the scope: the page takes it without a click
+  await lcdKey("set50");
+  await t.until(() => po.eval(() => snd.paused), "a key on the scope pauses the page again", 4000);
+  await page.keyboard.press("Alt+Digit1");
+  await po.waitFor(() => ws.cur === "scope", null, 3000);
+  await sleep(3500); // the page's lease runs out
+  await page.keyboard.press("Alt+Digit6");
+  await t.until(() => po.eval(() => !snd.paused && $("sndPaused").hidden), "opening SOUND takes the scope", 4000);
+  await t.until(async () => (await leases()).on, "the reopened SOUND holds the stream", 4000);
+
   await page.keyboard.press("Alt+Digit1");
   await po.waitFor(() => ws.cur === "scope", null, 3000);
   t.ok(pageErrors.length === 0, "no page errors: " + pageErrors.join(" | "));
@@ -84,6 +94,12 @@ run(async (t) => {
   await phone.tap("#view-sound .snd-takescope");
   await t.until(() => phone.evaluate(() => !window.RSOUND.client.paused), "the phone takes the scope back", 4000);
   await t.until(async () => (await leases()).on, "the phone holds the stream again", 4000);
+  await lcdKey("set50");
+  await t.until(() => phone.evaluate(() => window.RSOUND.client.paused), "a key on the scope pauses the phone again", 4000);
+  await phone.tap("#tab-home");
+  await sleep(3500);
+  await phone.tap("#tab-sound");
+  await t.until(() => phone.evaluate(() => !window.RSOUND.client.paused), "opening the phone's Sound tab takes the scope", 4000);
   await phone.tap("#tab-home");
   t.ok(phoneErrors.length === 0, "no phone page errors: " + phoneErrors.join(" | "));
 });

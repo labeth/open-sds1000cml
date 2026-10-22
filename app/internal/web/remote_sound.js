@@ -157,11 +157,13 @@
     E.status.textContent = st;
   }
 
-  // show starts the tab: the scope's SOUND settings, the stream, the tick.
-  // TRLC-LINKS: REQ-SDS-274
+  // show starts the tab: the scope (opening the tab is acting on it, as on
+  // the web page), the scope's SOUND settings, the stream, the tick.
+  // TRLC-LINKS: REQ-SDS-274, REQ-SDS-277
   async function show(root) {
     S.el = root;
     if (!S.built) build(root);
+    sndTakeScope(c).catch(() => {});
     sndClientStart(c);
     clearInterval(S.timer);
     S.timer = setInterval(tick, 120);

@@ -4682,8 +4682,8 @@ requirements:
   title: The scope's keys take the acquisition back from a SOUND page
   text: The instrument shall give the acquisition to the last one to act, namely on a key or knob of the LCD outside
     SOUND, or AUTO, RUN/STOP or SINGLE, end a web or phone page's audio stream at once and refuse its stream until
-    the page takes the scope again, show the page paused with a button to take the scope, and name a page holding
-    the stream on the LCD with AUTO as the key that takes it back.
+    a page takes the scope again (its button, or SOUND shown anew), show the page paused with a button to take the
+    scope, and name a page holding the stream on the LCD with AUTO as the key that takes it back.
   status: draft
   category: functional
   appliesTo:

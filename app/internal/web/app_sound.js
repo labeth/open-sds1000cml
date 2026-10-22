@@ -620,9 +620,13 @@ function sndSetView(v) {
 
 let sndTimer = 0;
 
-// sndEnter starts the stream (and the readouts) as SOUND is shown.
-// TRLC-LINKS: REQ-SDS-274
+// sndEnter starts the stream (and the readouts) as SOUND is shown. Showing
+// SOUND is acting on the scope, so the page takes it (the last one to act
+// wins), even if a key on the scope took it back long ago; a page left on
+// SOUND stays paused after a key until it is shown again or Take the scope.
+// TRLC-LINKS: REQ-SDS-274, REQ-SDS-277
 function sndEnter() {
+  sndTakeScope(snd).catch(() => {});
   sndClientStart(snd);
   sndPoll();
   clearInterval(sndTimer);
