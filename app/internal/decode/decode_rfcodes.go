@@ -4,7 +4,6 @@ package decode
 import (
 	"fmt"
 	"math"
-	"sort"
 	"strings"
 )
 
@@ -57,9 +56,7 @@ func quantile(v []float64, q float64) float64 {
 	if len(v) == 0 {
 		return 0
 	}
-	c := append([]float64(nil), v...)
-	sort.Float64s(c)
-	return c[int(q*float64(len(c)-1))]
+	return nthValue(v, int(q*float64(len(v)-1)))
 }
 
 // rcTrit reads a PT2262 trit from two pulses (high, low, high, low) the way

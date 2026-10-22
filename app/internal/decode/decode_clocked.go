@@ -58,8 +58,7 @@ func clockedLines(a, b []uint8, cfg ClockedCfg) ([]clkEdge, float64, sliced, str
 	if len(gaps) < 4 {
 		return nil, 0, C, "too few clock edges"
 	}
-	sort.Float64s(gaps)
-	return out, gaps[len(gaps)/2], C, ""
+	return out, nthValue(gaps, len(gaps)/2), C, ""
 }
 
 // DecodePS2 decodes PS/2 keyboard and mouse traffic: the data line read

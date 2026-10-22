@@ -4,7 +4,6 @@ package decode
 import (
 	"fmt"
 	"math"
-	"sort"
 	"strconv"
 	"strings"
 )
@@ -35,9 +34,7 @@ func medianOf(v []float64) float64 {
 	if len(v) == 0 {
 		return 0
 	}
-	c := append([]float64(nil), v...)
-	sort.Float64s(c)
-	return c[len(c)/2]
+	return nthValue(v, len(v)/2)
 }
 
 // stepPeriod is a stepping line's median time between rising edges.
