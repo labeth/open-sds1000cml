@@ -108,7 +108,8 @@ func TestSoundAPIHostile(t *testing.T) {
 	cl := srv.Client()
 	for _, q := range []string{"", "from=0", "from=999", "from=1000", "from=71000", "from=99999999", "from=18446744073709551615",
 		"from=-1", "from=x", "max=-1", "max=0", "max=99999999", "max=65536", "min=-5", "min=99999999&wait=1",
-		"wait=-1", "wait=999999999", "wait=10&from=71000&min=1000", "marks=1&max=1", "from=18446744073709551000&min=60000&wait=5"} {
+		"wait=-1", "wait=999999999", "wait=10&from=71000&min=1000", "marks=1&max=1", "from=18446744073709551000&min=60000&wait=5",
+		"who=phone", "who=", "who=%00%ff", "who=" + strings.Repeat("p", 5000), "who=phone&who=web&marks=1"} {
 		r, err := cl.Get(srv.URL + "/api/sound.bin?" + q)
 		if err != nil {
 			t.Fatalf("%s: %v", q, err)
@@ -129,8 +130,9 @@ func TestSoundAPIHostile(t *testing.T) {
 	}
 	for _, body := range []string{``, `{`, `null`, `[]`, `{"settings":7}`, `{"settings":{"a4":"x"}}`, `{"settings":{"a4":1e999}}`,
 		`{"settings":{"ch":99,"cycles":-4,"page":2147483648}}`, `{"action":"nope"}`, `{"action":"adsr_arm","settings":{}}`,
-		`{"settings":{"ref":"` + strings.Repeat("A", 9000) + `"}}`} {
-		r, err := cl.Post(srv.URL+"/api/sound", "application/json", strings.NewReader(body))
+		`{"settings":{"ref":"` + strings.Repeat("A", 9000) + `"}}`, `{"action":"take_scope"}`, `{"action":"take_scope","settings":{"drift":true}}`,
+		`{"settings":{"pre_s":-1,"post_s":1e308}}`, `{"settings":{"pre_s":1e308,"post_s":-1e308,"trig_gate":true}}`, `{"settings":{"pre_s":"x"}}`} {
+		r, err := cl.Post(srv.URL+"/api/sound?who=phone", "application/json", strings.NewReader(body))
 		if err != nil {
 			t.Fatalf("%q: %v", body, err)
 		}
@@ -139,6 +141,16 @@ func TestSoundAPIHostile(t *testing.T) {
 		var out map[string]any
 		if r.StatusCode >= 500 || json.Unmarshal(b, &out) != nil {
 			t.Fatalf("%q: status %d, reply %q", body[:min(len(body), 60)], r.StatusCode, b[:min(len(b), 200)])
+		}
+	}
+	for _, q := range []string{"", "?who=phone", "?x=%zz"} {
+		r, err := cl.Get(srv.URL + "/api/sound/take.bin" + q)
+		if err != nil {
+			t.Fatalf("take.bin%s: %v", q, err)
+		}
+		r.Body.Close()
+		if r.StatusCode >= 500 {
+			t.Fatalf("take.bin%s: status %d", q, r.StatusCode)
 		}
 	}
 }
