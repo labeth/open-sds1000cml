@@ -13,6 +13,7 @@ import (
 	"open-sds/app/internal/analysis"
 	"open-sds/app/internal/decode"
 	"open-sds/app/internal/engine"
+	"open-sds/app/internal/frames"
 	"open-sds/app/internal/panel/framecalc"
 	"open-sds/app/internal/panel/wsview"
 	"open-sds/app/internal/sramcapture"
@@ -481,16 +482,37 @@ func (c *Controller) detectOnScreen() (decode.Result, float64, bool) {
 	if c.frameFn == nil {
 		return decode.Result{}, 0, false
 	}
-	var res decode.Result
-	var sampleS float64
+	f := c.frameCopy(searchable)
+	if f == nil {
+		return decode.Result{}, 0, false
+	}
+	res := framecalc.Detect(f, "hex")
+	return res, f.SampleS, res.OK && res.Proto != "" && res.Proto != "off"
+}
+
+// searchable reports a frame a bus search or a decode can read: samples in
+// time order, enough of them.
+// TRLC-LINKS: REQ-SDS-214
+func searchable(f *engine.Frame) bool {
+	return f != nil && !f.IsEnv && !(f.PeakDetect && !f.Ordered) && len(f.C1) >= 32
+}
+
+// frameCopy is a copy of the frame on screen when ok accepts it (nil
+// otherwise), for long work: a bus search or a decode of the record run on
+// the snapshot itself would hold the fan-out's read lock meanwhile, and with
+// it the next snapshot and every reader after it (the LCD, the web page's
+// status) froze for as long as the search took (over a minute on a busy line
+// on the scope's ARM). Not for use inside OnFrame.
+// TRLC-LINKS: REQ-SDS-020, REQ-SDS-214
+func (c *Controller) frameCopy(ok func(*engine.Frame) bool) *engine.Frame {
+	var cp *engine.Frame
 	c.frameFn(func(f *engine.Frame) {
-		if f == nil || f.IsEnv || (f.PeakDetect && !f.Ordered) || len(f.C1) < 32 {
-			return
+		if ok(f) {
+			cp = new(engine.Frame)
+			frames.CopyFrame(cp, f)
 		}
-		res = framecalc.Detect(f, "hex")
-		sampleS = f.SampleS
 	})
-	return res, sampleS, res.OK && res.Proto != "" && res.Proto != "off"
+	return cp
 }
 
 // decodeOnScreen decodes the frame on screen with the decoder settings. Not
@@ -501,16 +523,12 @@ func (c *Controller) decodeOnScreen() (decode.Result, float64, bool) {
 		return decode.Result{}, 0, false
 	}
 	p := decodeParamsOf(c.snap())
-	var res decode.Result
-	var sampleS float64
-	c.frameFn(func(f *engine.Frame) {
-		if f == nil || f.IsEnv || (f.PeakDetect && !f.Ordered) || len(f.C1) < 32 {
-			return
-		}
-		res = framecalc.Decode(f, p)
-		sampleS = f.SampleS
-	})
-	return res, sampleS, res.OK && len(res.Bytes) > 0
+	f := c.frameCopy(searchable)
+	if f == nil {
+		return decode.Result{}, 0, false
+	}
+	res := framecalc.Decode(f, p)
+	return res, f.SampleS, res.OK && len(res.Bytes) > 0
 }
 
 // liveEnvelopePoints is the live readout's points per window at the least: an
@@ -1633,12 +1651,10 @@ func (c *Controller) openPickSub() error {
 	}
 	var valid int
 	if c.frameFn != nil {
-		c.frameFn(func(f *engine.Frame) {
-			if f != nil && len(f.C1) > 0 {
-				res = framecalc.Decode(f, decodeParamsOf(s))
-				valid = framecalc.Valid(f)
-			}
-		})
+		if f := c.frameCopy(func(f *engine.Frame) bool { return f != nil && len(f.C1) > 0 }); f != nil {
+			res = framecalc.Decode(f, decodeParamsOf(s))
+			valid = framecalc.Valid(f)
+		}
 	}
 	ps := anaPackets(res, valid)
 	if len(ps) == 0 {

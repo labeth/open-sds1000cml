@@ -45,7 +45,7 @@ func (fo *Fanout) Run(src Source, stop <-chan struct{}) {
 				continue
 			}
 			fo.mu.Lock()
-			copyFrame(&fo.latest, f)
+			CopyFrame(&fo.latest, f)
 			fo.has = true
 			close(fo.wake)                // wake WaitNext parkers; close never blocks,
 			fo.wake = make(chan struct{}) // so a stuck waiter can't stall this tick
@@ -83,7 +83,10 @@ func (fo *Fanout) WaitNext(last uint64, timeout time.Duration) uint64 {
 }
 
 // WithFrame runs fn on the latest snapshot under the read lock; fn must not
-// retain the pointer. fn receives nil when nothing has been published yet.
+// retain the pointer, and must be quick: while it runs the next snapshot
+// waits, and every reader after it (the LCD, the web page's status) waits
+// on that. Long work copies the frame (CopyFrame) and runs outside. fn
+// receives nil when nothing has been published yet.
 // TRLC-LINKS: REQ-SDS-020
 func (fo *Fanout) WithFrame(fn func(*engine.Frame)) {
 	fo.mu.RLock()
@@ -95,8 +98,11 @@ func (fo *Fanout) WithFrame(fn func(*engine.Frame)) {
 	fn(&fo.latest)
 }
 
+// CopyFrame deep-copies src into dst, reusing dst's buffers: the
+// snapshot's copy, and the copy a reader takes for long work (a bus search)
+// so that it does not hold the read lock meanwhile.
 // TRLC-LINKS: REQ-SDS-020
-func copyFrame(dst, src *engine.Frame) {
+func CopyFrame(dst, src *engine.Frame) {
 	c1, c2 := dst.C1, dst.C2
 	q1, q2 := dst.Q1, dst.Q2
 	e1n, e1x, e2n, e2x := dst.EnvMin, dst.EnvMax, dst.EnvMin2, dst.EnvMax2
