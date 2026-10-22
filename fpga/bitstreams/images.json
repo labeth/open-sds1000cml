@@ -17,9 +17,9 @@
     "sha256": "1ed52cd95dfcab8e2200c98f04c13452aac49436d4d195b2b98c39fbae3407cd"
   },
   "stream": {
-    "seed": 32,
-    "sha256": "fbbedd56ac1db696715760dfe84bf873581dfc3e1654b4cbf393ff66636976a0",
-    "inputs": "7ab81b22bd6f6d45d820130b9986cf21d85c14fdf8390ab3c906b0036eed1094"
+    "seed": 2,
+    "sha256": "26b3de7e4f474511778cf527e42ca34b09f698f5e65e0f4878bbaa724dc04240",
+    "inputs": "ddbc03c15b791cf3995c27190c8dddf948e9236eb52279919bfc8ba484b54d86"
   },
   "qualify": {
     "seed": 20,

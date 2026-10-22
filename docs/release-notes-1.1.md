@@ -81,8 +81,8 @@ settings tab (the Help key), at the end of the web UI's status line and in `/api
   trigger has no error token, so the protocols on it stop on a value or by hand, not on an error.
   SWD has no frame leader, so a match can also land inside a data phase. CAN FD frames are decoded but
   their CRC is not checked. ARINC 429 has not been tested on a physical ARINC 429 bus.
-* **Streams:** about one load of the stream image in two hundred starts its streams faulted; the
-  scope reloads the image and the stream runs after a gap of about 1 s.
+* **Streams:** should a load of the stream image start its streams faulted, the scope reloads the
+  image and the stream runs after a gap of about 1 s.
 * **SOUND:** Listen plays about 0.33 s behind the input (stream, jitter buffer and browser output).
   The distortion floor is the 8-bit converters' (about -45 to -55 dB, 0.2 to 0.5 % THD). Modulation
   readouts follow a change in the source within two 4 s windows. SOUND and the other workspaces share
