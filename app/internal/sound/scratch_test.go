@@ -13,6 +13,9 @@ import (
 // demodulation kept the collector running under the app's memory limit).
 // TRLC-LINKS: REQ-SDS-269, REQ-SDS-267, REQ-SDS-270
 func TestAnalysesReuseTheirBuffers(t *testing.T) {
+	if raceBuild {
+		t.Skip("the race detector's sync.Pool drops buffers on purpose")
+	}
 	x := make([]float64, int(4*fsTest))
 	for i := range x {
 		x[i] = math.Sin(2 * math.Pi * 440 * float64(i) / fsTest)
