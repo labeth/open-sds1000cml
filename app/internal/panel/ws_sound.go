@@ -203,6 +203,8 @@ func soundPageLines(ss *soundSvc, set SoundSettings) []wsview.Span {
 			l := ss.lfo
 			out = append(out, a("LFO (no pitch: read directly)"), t("rate "+fmt.Sprintf("%.3g Hz", l.RateHz)+"  "+l.Shape),
 				t("Vpp "+si(l.Vpp, "V")+"  mean "+sgnSI(l.Mean, "V")), t(fmt.Sprintf("rise %.0f%% of a cycle", l.RisePct)))
+		case !m.OK && m.Why != "":
+			out = append(out, d(m.Why))
 		case !m.OK:
 			out = append(out, d("waiting for a tone"))
 			if ss.lfo.Why != "" && ss.hz <= 0 {

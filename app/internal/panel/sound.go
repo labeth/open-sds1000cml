@@ -637,6 +637,27 @@ func (s *soundSvc) readLevels(e soundEngine, set SoundSettings) {
 // slowly.
 const soundModEvery = 4 * time.Second
 
+// soundModMinCodes is the least swing, in converter codes peak to peak, a
+// tone's modulation is read on: a 10x probe after Default setup leaves a
+// line-level tone three codes tall, and its demodulation read a 6 Hz sine
+// vibrato of 20 cents as a 7.7 Hz saw of 23 cents (12 codes read it within
+// a cent and a hundredth of a hertz).
+const soundModMinCodes = 12
+
+// swingCodes is the swing of q (Q8.8 converter words) in codes, peak to
+// peak.
+// TRLC-LINKS: REQ-SDS-269
+func swingCodes(q []uint16) float64 {
+	if len(q) == 0 {
+		return 0
+	}
+	lo, hi := q[0], q[0]
+	for _, v := range q {
+		lo, hi = min(lo, v), max(hi, v)
+	}
+	return float64(hi-lo) / 256
+}
+
 // readPage runs the shown page's analysis: modulation every soundModEvery,
 // the sidebands with it, A/B and harmonics twice a second.
 // TRLC-LINKS: REQ-SDS-269, REQ-SDS-270, REQ-SDS-271
@@ -649,10 +670,19 @@ func (s *soundSvc) readPage(e soundEngine, set SoundSettings, now time.Time) {
 		if now.Sub(at) < soundModEvery {
 			return
 		}
-		x, _ := s.latest(e, int(4*fs), set.Ch)
+		x, b := s.latest(e, int(4*fs), set.Ch)
 		var m sound.Modulation
 		var l sound.LFO
-		if hz > 0 {
+		q := b.Q1
+		if set.Ch == 1 {
+			q = b.Q2
+		}
+		if len(x) <= len(q) {
+			q = q[len(q)-len(x):] // what follows the last gap, as x
+		}
+		if codes := swingCodes(q); hz > 0 && codes < soundModMinCodes {
+			m.Why = fmt.Sprintf("the tone spans %.0f codes: AUTO fits the channel", codes)
+		} else if hz > 0 {
 			m = sound.AnalyzeModulation(sound.Demodulate(x, fs, hz, 1000))
 		} else {
 			l = sound.AnalyzeLFO(x, fs)

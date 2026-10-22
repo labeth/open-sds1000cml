@@ -97,3 +97,35 @@ func TestSoundViewStatusTool(t *testing.T) {
 		t.Fatalf("tool %q, again %q", got, st.Again)
 	}
 }
+
+// A tone a few converter codes tall (a 10x probe after Default setup) is
+// not read for modulation: the page says so and names AUTO, where it read a
+// 6 Hz sine vibrato as a 7.7 Hz saw on the scope; fitted, the vibrato reads.
+// TRLC-LINKS: REQ-SDS-269
+func TestSoundModulationNeedsASwing(t *testing.T) {
+	for _, amp := range []float64{0.06, 2} {
+		vib := func(t float64) float64 {
+			return amp * math.Sin(2*math.Pi*440*t+20.0/1200*math.Ln2*440/6*-math.Cos(2*math.Pi*6*t))
+		}
+		se := newSoundEng([2]func(float64) float64{vib, func(t float64) float64 { return 0 }}, 14)
+		c := New(se, &fakeFE{idx: [2]int{8, 8}}, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
+		c.snd.setLCD(true, true)
+		c.SetSoundSettings(SoundSettings{A4: 440, Page: soundPageMod, Cycles: 2, Gate: -1})
+		now := time.Now()
+		se.next = int(4.5 * se.fs)
+		for d := time.Duration(0); d < 6*time.Second; d += soundTick {
+			se.next += int(soundTick.Seconds() * se.fs)
+			now = now.Add(soundTick)
+			c.snd.step(now)
+		}
+		c.snd.mu.Lock()
+		m := c.snd.mod
+		c.snd.mu.Unlock()
+		switch {
+		case amp < 1 && (m.OK || !strings.Contains(m.Why, "3 codes: AUTO")):
+			t.Errorf("a 3-code tone: ok %v, why %q", m.OK, m.Why)
+		case amp > 1 && !(m.OK && m.HasFM && math.Abs(m.FMRate-6) < 0.1 && math.Abs(m.FMCents-20) < 1):
+			t.Errorf("a fitted tone: %+v", m)
+		}
+	}
+}

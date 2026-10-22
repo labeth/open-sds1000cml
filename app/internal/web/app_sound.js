@@ -154,6 +154,20 @@ function sndTick() {
   sndRender();
 }
 
+// SND_MOD_MIN_CODES is the least swing, in converter codes peak to peak, a
+// tone's modulation is read on (the scope's soundModMinCodes): a few codes
+// read a 6 Hz sine vibrato as a 7.7 Hz saw.
+const SND_MOD_MIN_CODES = 12;
+
+// sndSwingCodes is x's swing in converter codes (vpc volts a code; 0 without).
+// TRLC-LINKS: REQ-SDS-269
+function sndSwingCodes(x, vpc) {
+  if (!(vpc > 0) || !x.length) return Infinity;
+  let lo = Infinity, hi = -Infinity;
+  for (const v of x) { if (v < lo) lo = v; if (v > hi) hi = v; }
+  return (hi - lo) / vpc;
+}
+
 // sndViewUpdate runs the shown view's analysis at its rate.
 // TRLC-LINKS: REQ-SDS-269, REQ-SDS-270, REQ-SDS-271, REQ-SDS-272
 function sndViewUpdate(now) {
@@ -165,7 +179,11 @@ function sndViewUpdate(now) {
       snd.modAt = now;
       {
         const x = sndLatest(set.ch, Math.round(4 * fs));
-        if (snd.hz > 0) {
+        const codes = sndSwingCodes(x, snd.lastVpc[set.ch]);
+        if (snd.hz > 0 && codes < SND_MOD_MIN_CODES) {
+          snd.mod = { ok: false, why: `the tone spans ${codes.toFixed(0)} codes: AUTO fits the channel` };
+          snd.modDemod = null; snd.lfo = null;
+        } else if (snd.hz > 0) {
           snd.modDemod = sndDemod(x, fs, snd.hz, 1000);
           snd.mod = sndModulation(snd.modDemod);
           const sp = sndSpectrum(x, fs, 32768);
@@ -397,7 +415,7 @@ function sndRenderView() {
       $("sndViewSub").textContent = snd.hz > 0 ? "amplitude (top) and pitch in cents (bottom), 4 s" : "no pitch: the LFO read directly";
       if (!dm || !dm.amp.length) {
         if (snd.lfo && snd.lfo.ok) { grid(); const x = sndLatest(set.ch, Math.round(8 * snd.rate)); const red = sndBlockMeans(x, snd.rate, 0.005).env; let lo = Infinity, hi = -Infinity; for (const v of red) { lo = Math.min(lo, v); hi = Math.max(hi, v); } line(red, 0, W, (v) => H - (v - lo) / (hi - lo || 1) * H, col); break; }
-        msg("Modulation: waiting for a tone"); break;
+        msg("Modulation: " + (snd.mod && snd.mod.why ? snd.mod.why : "waiting for a tone")); break;
       }
       grid();
       let amax = 0;
@@ -508,6 +526,8 @@ function sndRenderCtx() {
           sndRow("W&F weighted 2σ", pct(m.wfPct), "wow / flutter", `${pct(m.wowPct)} / ${pct(m.flutterPct)}`));
         const sb = snd.sb;
         if (sb && sb.ok && sb.lines >= 3 && sb.fit > 0.8 && sb.beta > 0.2) rows.push(sndRow("audio-rate FM", `C:M ${sb.ratio} · index ${sb.beta.toFixed(2)}`, "fm / fit", `${eng(sb.fm, "Hz")} / ${sb.fit.toFixed(2)}`));
+      } else if (m && m.why) {
+        rows.push(sndRow("modulation", m.why, "", ""));
       } else if (snd.lfo && snd.lfo.ok) {
         const l = snd.lfo;
         rows.push(sndRow("LFO rate", `${l.rateHz.toPrecision(4)} Hz ${l.shape}`, "Vpp", eng(l.vpp, "V")), sndRow("mean", eng(l.mean, "V"), "rise share", l.risePct.toFixed(0) + " %"));
