@@ -186,7 +186,18 @@ func TestSoundBrowser(t *testing.T) {
 	if pp.set.A4 != 442 || pp.set.Ch != 0 {
 		t.Fatalf("the page's settings did not reach the scope: %+v", pp.set)
 	}
-	if len(pp.actions) == 0 || pp.actions[0] != "voct_capture" {
+	// opening SOUND takes the scope (the last one to act); the page's own
+	// action is the V/oct capture
+	var own []string
+	took := false
+	for _, a := range pp.actions {
+		if a == "take_scope" {
+			took = true
+		} else {
+			own = append(own, a)
+		}
+	}
+	if !took || len(own) == 0 || own[0] != "voct_capture" {
 		t.Fatalf("actions %v", pp.actions)
 	}
 	sc.mu.Lock()
