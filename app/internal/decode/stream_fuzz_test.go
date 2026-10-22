@@ -84,7 +84,10 @@ func FuzzStreamChunks(f *testing.F) {
 		var got []StreamFrame
 		for at, k := 0, 0; at < len(a); k++ {
 			s := sizes[k%len(sizes)]
-			n := min(len(a)-at, 64+int(s&0x1f)<<(s>>5*2)) // 64 .. 64 + 31 << 14
+			// 64 .. 64 + 31 << 14, and at most about 512 pushes: each push
+			// decodes the window again (the scope pushes 0.2 to 1 s of signal
+			// at a time), so thousands of tiny pushes only time the fuzzer out.
+			n := min(len(a)-at, max(64+int(s&0x1f)<<(s>>5*2), len(a)/512))
 			var bl []uint8
 			if b != nil {
 				bl = b[at : at+n]
