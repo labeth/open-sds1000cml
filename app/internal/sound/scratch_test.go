@@ -26,13 +26,19 @@ func TestAnalysesReuseTheirBuffers(t *testing.T) {
 		AudioSpectrum(x, fsTest, 32768)
 	}
 	run()
-	var a, b runtime.MemStats
-	runtime.ReadMemStats(&a)
-	for i := 0; i < 5; i++ {
-		run()
+	// The pools empty at a collection: a round it falls in allocates
+	// again, so the least of a few tries is the reuse.
+	best := uint64(math.MaxUint64)
+	for try := 0; try < 4; try++ {
+		var a, b runtime.MemStats
+		runtime.ReadMemStats(&a)
+		for i := 0; i < 5; i++ {
+			run()
+		}
+		runtime.ReadMemStats(&b)
+		best = min(best, (b.TotalAlloc-a.TotalAlloc)/5)
 	}
-	runtime.ReadMemStats(&b)
-	if per := (b.TotalAlloc - a.TotalAlloc) / 5; per > 1<<20 {
-		t.Fatalf("%d kB allocated a round, want under 1 MB", per>>10)
+	if best > 1<<20 {
+		t.Fatalf("%d kB allocated a round, want under 1 MB", best>>10)
 	}
 }

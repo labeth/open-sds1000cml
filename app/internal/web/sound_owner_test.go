@@ -155,8 +155,8 @@ func TestSoundLCDKeyPausesThePage(t *testing.T) {
 		t.Fatalf("the LCD's notice: %q", n)
 	}
 	soundBinHead(t, h, "/api/sound.bin?max=64&who=phone")
-	if n := pc.View().Notice; !strings.Contains(n, "phone is on SOUND") {
-		t.Fatalf("the LCD's notice for the phone: %q", n)
+	if n := pc.View().Notice; !strings.Contains(n, "a phone are on SOUND") {
+		t.Fatalf("the LCD's notice for the web page and the phone: %q", n)
 	}
 
 	rec := httptest.NewRecorder()
