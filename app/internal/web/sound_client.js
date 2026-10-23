@@ -459,20 +459,53 @@ async function sndClientListen(c, on) {
 }
 
 // sndMainPlayer is the player (sound_worklet.js's SoundPlayerCore) behind a
-// ScriptProcessorNode, with a port that hands messages to it directly. Its
-// 1024-frame block adds about 21 ms at 48 kHz to the worklet's latency.
+// ScriptProcessorNode, with a port that hands messages to it directly: the
+// scope's pages are plain http, no AudioWorklet there, so the audio callback
+// runs on the page's thread and a page busy longer than one block plays
+// silence. The block starts at 4096 frames (85 ms at 48 kHz); a callback that
+// comes late (its playback time a block or more after the last) counts in
+// a.late and the node is rebuilt on the same player with twice the block, up
+// to 8192 (a longer block makes the player's own buffer, and the latency,
+// grow past a second); the first 3 s, the page and the audio starting, do
+// not count.
 // TRLC-LINKS: REQ-SDS-265
-function sndMainPlayer(c, ctx, opts) {
-  const node = ctx.createScriptProcessor(1024, 0, 2);
-  const core = new SoundPlayerCore(opts, ctx.sampleRate, (m) => sndWorkletMsg(c, { data: m }));
+function sndMainPlayer(c, ctx, opts, frames, core) {
+  const a = c.audio;
+  frames = frames || 4096;
+  core = core || new SoundPlayerCore(opts, ctx.sampleRate, (m) => sndWorkletMsg(c, { data: m }));
+  const node = ctx.createScriptProcessor(frames, 0, 2), blockS = frames / ctx.sampleRate, t0 = ctx.currentTime;
+  a.mainFrames = frames;
+  // the buffer's target above one block: a block's pull below it would
+  // empty the buffer each callback and the rate follow would chase it
+  core.onMsg({ targetMs: Math.max(opts.targetMs || 160, 1000 * blockS + 80) });
+  let last = 0;
   // TRLC-LINKS: REQ-SDS-265
   node.onaudioprocess = (e) => {
-    const out = e.outputBuffer;
-    core.render(out.getChannelData(0), out.getChannelData(1), e.playbackTime || ctx.currentTime);
+    const out = e.outputBuffer, t = e.playbackTime || ctx.currentTime;
+    if (last && t - last > 1.5 * blockS && t - t0 > 3) {
+      a.late = (a.late || 0) + 1;
+      if (frames < 8192 && !a.regrow) a.regrow = setTimeout(() => sndRegrowPlayer(c, ctx, opts, frames * 2, core), 0);
+    }
+    last = t;
+    core.render(out.getChannelData(0), out.getChannelData(1), t);
   };
   // TRLC-LINKS: REQ-SDS-265
   node.port = { postMessage: (m) => core.onMsg(m) };
   return node;
+}
+
+// sndRegrowPlayer swaps the page-thread player's node for one with a longer
+// block, the same player (its buffer) behind it.
+// TRLC-LINKS: REQ-SDS-265
+function sndRegrowPlayer(c, ctx, opts, frames, core) {
+  const a = c.audio;
+  a.regrow = 0;
+  if (!a.node || !a.ctx || a.ctx !== ctx) return;
+  const old = a.node;
+  a.node = sndMainPlayer(c, ctx, opts, frames, core);
+  a.node.connect(ctx.destination);
+  old.onaudioprocess = null;
+  old.disconnect();
 }
 
 // sndLatencyText is the latency the listener hears now, part by part.
@@ -480,7 +513,7 @@ function sndMainPlayer(c, ctx, opts) {
 function sndLatencyText(c) {
   const a = c.audio;
   if (!a.on || !a.ctx) return "";
-  const buf = a.stat.fillMs || 0, out = 1000 * ((a.ctx.outputLatency || 0) + (a.ctx.baseLatency || 0));
+  const buf = a.stat.fillMs || 0, out = 1000 * ((a.ctx.outputLatency || 0) + (a.ctx.baseLatency || 0) + (a.mainFrames || 0) / a.ctx.sampleRate);
   // The scope seals a stream bank about every 17 ms and the reply follows
   // it at once; that and the network are about 25 ms on a LAN.
   const dev = 25;
