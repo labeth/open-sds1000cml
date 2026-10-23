@@ -3,9 +3,11 @@ package web
 
 import (
 	"bytes"
+	"compress/gzip"
 	"encoding/json"
 	"fmt"
 	"image/png"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -44,7 +46,7 @@ func TestRemotePageServed(t *testing.T) {
 	if rec.Code != 200 || !strings.HasPrefix(rec.Header().Get("Content-Type"), "text/html") || rec.Header().Get("Content-Security-Policy") != pageCSP {
 		t.Fatalf("/remote: %d %q csp %q", rec.Code, rec.Header().Get("Content-Type"), rec.Header().Get("Content-Security-Policy"))
 	}
-	for _, want := range []string{`<script src="remote_core.js">`, `<script src="remote_app.js">`, `rel="manifest" href="remote.webmanifest"`,
+	for _, want := range []string{`<script src="remote_core.js?v=`, `<script src="remote_app.js?v=`, `rel="manifest" href="remote.webmanifest"`,
 		`rel="apple-touch-icon" href="remote-icon-180.png"`, `name="apple-mobile-web-app-capable" content="yes"`, "viewport-fit=cover"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("remote.html lacks %s", want)
@@ -303,5 +305,44 @@ func TestPanelWorkspaceWithAnLCDSheetOpen(t *testing.T) {
 	_, out = httpCall(t, s, "POST", "/api/panel", map[string]any{"again": true})
 	if out["ok"] != true || out["view"] != "Spectrogram" || out["next"] != "Bode" || pc.PanelStatus().Sheet.Tab != "trig" {
 		t.Fatalf("again: %v", out)
+	}
+}
+
+// The page names each script and stylesheet with its current tag, a request
+// carrying that tag is cached for good, and text goes gzip-encoded to a
+// browser that takes it (decoding to the file itself, its own ETag).
+// TRLC-LINKS: REQ-SDS-161
+func TestAssetsVersionedAndCompressed(t *testing.T) {
+	s := New(&fakeScope{}, nil, nil, nil)
+	page := get(s, "/").Body.String()
+	want := `src="app_core.js?v=` + strings.Trim(assetTags["app_core.js"], `"`) + `"`
+	if !strings.Contains(page, want) {
+		t.Fatalf("the page lacks %s", want)
+	}
+	if r := get(s, "/app_core.js?v="+strings.Trim(assetTags["app_core.js"], `"`)); r.Header().Get("Cache-Control") != "public, max-age=31536000, immutable" {
+		t.Fatalf("a tagged request: cache %q", r.Header().Get("Cache-Control"))
+	} else if _, dated := r.Header()["Date"]; dated && r.Header()["Date"] != nil {
+		t.Fatal("a tagged file carries the scope's Date (a browser ages it from that clock)")
+	}
+	if r := get(s, "/app_core.js?v=0000"); r.Header().Get("Cache-Control") != "no-cache" {
+		t.Fatalf("another tag: cache %q", r.Header().Get("Cache-Control"))
+	}
+	raw, _ := assetFS.ReadFile("app_core.js")
+	r := get(s, "/app_core.js", "Accept-Encoding", "gzip, deflate")
+	if r.Header().Get("Content-Encoding") != "gzip" || r.Body.Len() >= len(raw)/2 || r.Header().Get("ETag") == assetTags["app_core.js"] {
+		t.Fatalf("gzip: encoding %q, %d of %d bytes, etag %q", r.Header().Get("Content-Encoding"), r.Body.Len(), len(raw), r.Header().Get("ETag"))
+	}
+	zr, err := gzip.NewReader(r.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := io.ReadAll(zr); !bytes.Equal(got, raw) {
+		t.Fatal("the gzip body is not the file")
+	}
+	if again := get(s, "/app_core.js", "Accept-Encoding", "gzip", "If-None-Match", r.Header().Get("ETag")); again.Code != http.StatusNotModified {
+		t.Fatalf("gzip revalidated: %d", again.Code)
+	}
+	if v := get(s, "/remote-awake.mp4", "Accept-Encoding", "gzip"); v.Header().Get("Content-Encoding") != "" {
+		t.Fatal("a video was gzip-encoded")
 	}
 }

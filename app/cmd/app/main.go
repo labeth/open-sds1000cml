@@ -712,6 +712,7 @@ func healthLoop(e *engine.Engine, path string, fabricOK bool, diagBeat bool) {
 			heartbeatMode.Store(mode)
 			if mode == "frames" {
 				logf("health: %d coherent frames — health token attests FRAMES", s.Coherent)
+				startMark("frames")
 			} else {
 				logf("health: DIAG HEARTBEAT — fabric verified and engine alive, no coherent frames yet; token tagged mode=diag (set SCOPE_DIAG_HEARTBEAT=0 to disable)")
 			}
@@ -736,6 +737,15 @@ func healthLoop(e *engine.Engine, path string, fabricOK bool, diagBeat bool) {
 const appMemoryLimit = 48 << 20
 
 // TRLC-LINKS: REQ-SDS-167
+// startAt is the app's start, for the start-up stages in the log.
+var startAt = time.Now()
+
+// startMark logs a start-up stage and the time since the start.
+// TRLC-LINKS: REQ-SDS-001
+func startMark(stage string) {
+	logf("start: %s at %v", stage, time.Since(startAt).Round(time.Millisecond))
+}
+
 func main() {
 	if len(os.Args) == 2 && os.Args[1] == "--acquisition-worker" {
 		if err := bus.RunAcquisitionWorker(3, 4, logf); err != nil {
@@ -807,10 +817,12 @@ func main() {
 	readCS1 := func(sel uint16) (uint16, error) { return b.Read(bus.PlaneCS1, sel) }
 	var sramBackend *sramcapture.Capture
 	if sramDefault {
+		startMark("loading the general image")
 		if err := loadGeneralImage(gpmcFD); err != nil {
 			logf("FATAL: general image load: %v", err)
 			return
 		}
+		startMark("general image loaded")
 		var err error
 		sramBackend, err = sramcapture.New(b)
 		if err != nil {
@@ -878,6 +890,7 @@ func main() {
 		}
 	}
 	logf("bus up, fabric verified=%v, fast drain=%v", fabricOK, b.FastDrain())
+	startMark("bus up")
 	if sramDefault && fabricOK {
 		executable, err := os.Executable()
 		if err == nil {
@@ -1004,6 +1017,7 @@ func main() {
 	uiCtrl.Store(pc) // publish for the LCD render loop + SCDP screenshot
 	go pc.Run(stopFo)
 	logf("panel controller up (fpga_key fd=%d)", keyFD)
+	startMark("panel up")
 
 	// Device-screen PNG for the web /api/screen.png endpoint: the exact LCD render.
 	screenPNG := func() []byte { return lcd.EncodePNG(renderScreen(e, fe, fo)) }
@@ -1076,6 +1090,8 @@ func main() {
 	srv := &http.Server{Addr: listen, Handler: ws.Handler()}
 	go func() {
 		logf("web ui listening on %s", listen)
+		startMark("web up")
+		go web.Precompress()
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			logf("web server: %v", err)
 		}
