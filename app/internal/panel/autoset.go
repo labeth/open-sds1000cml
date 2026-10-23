@@ -17,10 +17,11 @@ import (
 
 const divX = 10 // horizontal graticule divisions (spec 07)
 
-// settleMs is how long autoset waits after each scale change before re-measuring
-// — long enough for the offset DAC to move AND a fresh frame to publish (~13 fps)
-// so the trigger level is read off the trace we actually settled on.
-const settleMs = 220
+// settleMs is how long autoset waits after each scale change before it waits
+// for frames captured after it (waitFrame): the offset DAC and the relays
+// moving. 100 ms frames as 220 did, a third faster; at 50 ms traces not yet
+// settled framed two-cycle views at one and a half.
+const settleMs = 100
 
 // Cycle counts for the two autoset scales: fit the vertical over many cycles so
 // Vpp is read on the full swing (measCycles), then show a few cycles (dispCycles).
