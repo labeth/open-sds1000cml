@@ -397,6 +397,7 @@ type sv struct {
 	slotUsed       [setupSlots + 1]bool
 	slotSum        [setupSlots + 1]string
 	remoteNotices  bool
+	autoBusy       bool   // AUTO runs (its sweep's frames need no spectrum)
 	saverMin       int    // the Screen saver row (minutes, 0 = off)
 	offMin         int    // the Screen off row
 	screen         Screen // what the LCD shows now

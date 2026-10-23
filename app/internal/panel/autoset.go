@@ -66,6 +66,9 @@ func (c *Controller) autoset() {
 	ws, view := c.autoTargetLocked()
 	c.mu.Unlock()
 	c.pushLEDs()
+	if e, ok := c.eng.(interface{ LeaseSpectrumView(time.Duration) }); ok {
+		e.LeaseSpectrumView(0) // the sweep's frames come faster without (spectrumAuto takes it back)
+	}
 	go c.runAutosetFor(stop, ws, view)
 }
 

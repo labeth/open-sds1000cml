@@ -23,10 +23,12 @@ const maxPeaks = 8
 // specFrame computes the FFT source's spectrum in dBV and its peaks.
 // TRLC-LINKS: REQ-SDS-216
 func (c *Controller) specFrame(a *anaState, s *sv, f *engine.Frame) {
-	if s.viewMode == viewFFT || s.viewMode == viewSpectrogram {
+	if (s.viewMode == viewFFT || s.viewMode == viewSpectrogram) && !s.autoBusy {
 		// the frames a spectrum can be taken of, as the web's FFT asks for: the
 		// full-rate record on short screens, else the filtered decimated one,
-		// not the live envelope's extremes
+		// not the live envelope's extremes. Not during AUTO's sweep: its
+		// steps wait for frames, and a spectrum's come at a third of the rate
+		// (AUTO leases one itself for its last reading).
 		if e, ok := c.eng.(interface{ LeaseSpectrumView(time.Duration) }); ok {
 			e.LeaseSpectrumView(3 * time.Second)
 			a.specLease = true

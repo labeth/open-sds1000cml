@@ -281,6 +281,7 @@ func (c *Controller) snap() *sv {
 	s.fftSrc, s.stackN, s.stacking = c.fftSrc, c.stackN, c.stack != nil
 	s.slotUsed, s.slotSum = c.slotUsed, c.slotSum
 	s.remoteNotices, s.hasHardcopy = c.remoteNotices, c.hardcopy != nil
+	s.autoBusy = c.autosetBusy
 	s.saverMin, s.offMin, s.screen = c.saverMin, c.offMin, c.screenLocked(s.now)
 	s.ui = c.ui
 	s.snd, s.sndRow = c.snd.Settings(), c.snd.rowInfo()
