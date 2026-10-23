@@ -40,6 +40,9 @@ const (
 	// workerPanel: the front panel's scan frame and counters
 	// (sramcapture.Capture.ReadPanel) in one round trip, not 22.
 	workerPanel
+	// workerReadMany: the registers whose selectors follow the header, 16
+	// bits each, of one plane, read in order in one round trip.
+	workerReadMany
 )
 
 // workerRecallParams bounds a workerRecall request's parameters: the
@@ -308,6 +311,41 @@ func (d *Dev) ReadIsolatedStream(dst []byte) (first uint64, n int, owned bool, e
 		return 0, 0, true, err
 	}
 	return binary.LittleEndian.Uint64(head[:]), m - 8, true, nil
+}
+
+// ReadMany reads the registers sels of plane into dst in order: with a bus
+// worker in one round trip, not one each (a capture's status reads twenty).
+// TRLC-LINKS: REQ-SDS-001, REQ-SDS-129
+func (d *Dev) ReadMany(plane uint8, sels, dst []uint16) error {
+	if len(dst) < len(sels) {
+		return fmt.Errorf("bus: read of %d registers into %d", len(sels), len(dst))
+	}
+	if d.remote == nil || len(sels) < 2 || 2*len(sels) > workerRecallParams || !validPlane(plane) {
+		for i, sel := range sels {
+			v, err := d.Read(plane, sel)
+			if err != nil {
+				return err
+			}
+			dst[i] = v
+		}
+		return nil
+	}
+	var params [workerRecallParams]byte
+	for i, sel := range sels {
+		binary.LittleEndian.PutUint16(params[2*i:], sel)
+	}
+	var out [workerRecallParams]byte
+	n, err := d.remote.callWith(workerReadMany, plane, 0, 0, 0, params[:2*len(sels)], out[:2*len(sels)])
+	if err != nil {
+		return fmt.Errorf("bus: read cs%d: %w", plane, err)
+	}
+	if n != 2*len(sels) {
+		return fmt.Errorf("bus: short worker register reads")
+	}
+	for i := range sels {
+		dst[i] = binary.LittleEndian.Uint16(out[2*i:])
+	}
+	return nil
 }
 
 // TRLC-LINKS: REQ-SDS-001, REQ-SDS-013

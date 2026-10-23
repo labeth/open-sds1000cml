@@ -281,3 +281,45 @@ func TestWorkerRecallRequest(t *testing.T) {
 		t.Fatal("a recall request without whole windows was served")
 	}
 }
+
+// ReadMany through a worker reads the registers in order in one round trip,
+// reports a failed read, refuses the worker's decoded port, and without a
+// worker reads them one by one.
+// TRLC-LINKS: REQ-SDS-001, REQ-SDS-129
+func TestWorkerReadMany(t *testing.T) {
+	d, f := workerFixture(t)
+	got := make([]uint16, 4)
+	if err := d.ReadMany(1, []uint16{13, 61, 73, 14}, got); err != nil {
+		t.Fatal(err)
+	}
+	if want := []uint16{10, 7, 0x5201, sramcapture.QualifiedMapID}; fmt.Sprint(got) != fmt.Sprint(want) {
+		t.Fatalf("got %v, want %v", got, want)
+	}
+	if err := d.ReadMany(3, []uint16{1, 2}, got); err != nil || got[0] != 1^0x55 || got[1] != 2^0x55 {
+		t.Fatalf("CS3 reads %v, %v", got[:2], err)
+	}
+	if err := d.ReadMany(1, []uint16{13, 1}, got); err == nil || !strings.Contains(err.Error(), "unexpected fake read 1") {
+		t.Fatalf("a failed read: %v", err)
+	}
+	if err := d.ReadMany(1, []uint16{13, 200}, got); err == nil {
+		t.Fatal("a selector past the schema was read")
+	}
+	f.active.Store(0)
+	w := &acquisitionWorker{bus: f, active: true}
+	var request [workerHeader + 4]byte
+	binary.LittleEndian.PutUint16(request[8:10], workerReadMany)
+	request[10] = 1
+	binary.LittleEndian.PutUint32(request[16:20], 4)
+	binary.LittleEndian.PutUint16(request[workerHeader:], 13)
+	binary.LittleEndian.PutUint16(request[workerHeader+2:], 59)
+	w.handle(request[:])
+	if w.response[10] != 1 {
+		t.Fatal("the worker's decoded event port was read for the parent")
+	}
+	if err := (&Dev{fd: -1}).ReadMany(1, []uint16{13, 14}, got); err == nil {
+		t.Fatal("without a worker or a device, a read succeeded")
+	}
+	if err := d.ReadMany(1, []uint16{13, 14}, got[:1]); err == nil {
+		t.Fatal("a read into a short buffer succeeded")
+	}
+}

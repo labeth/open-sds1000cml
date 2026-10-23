@@ -226,6 +226,32 @@ func (c *Capture) read(s uint16) (uint16, error) {
 // TRLC-LINKS: REQ-SDS-025
 func (c *Capture) Beats() uint64 { return c.beats.Load() }
 
+// manyReader is a bus that reads several registers in one call (a bus
+// worker: one round trip for them all).
+type manyReader interface {
+	ReadMany(plane uint8, sels, dst []uint16) error
+}
+
+// readMany reads the CS1 registers sels into dst in order.
+// TRLC-LINKS: REQ-SDS-082
+func (c *Capture) readMany(sels []uint16, dst []uint16) error {
+	if m, ok := c.bus.(manyReader); ok {
+		if err := m.ReadMany(1, sels, dst); err != nil {
+			return err
+		}
+		c.beats.Add(uint64(len(sels)))
+		return nil
+	}
+	for i, s := range sels {
+		v, err := c.read(s)
+		if err != nil {
+			return err
+		}
+		dst[i] = v
+	}
+	return nil
+}
+
 // TRLC-LINKS: REQ-SDS-082
 func (c *Capture) write(s, v uint16) error { return c.bus.RawWrite(s, v) }
 
@@ -277,47 +303,40 @@ func (c *Capture) SupportsSampleUART() (bool, error) {
 
 // TRLC-LINKS: REQ-SDS-040, REQ-SDS-083
 func (c *Capture) status() (m Metadata, err error) {
-	s, err := c.read(1)
-	if err != nil {
+	// Read as few batches as the revision allows: each read through a bus
+	// worker is a round trip, and this runs for every frame.
+	var r [13]uint16
+	if err = c.readMany([]uint16{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 14}, r[:]); err != nil {
 		return m, err
 	}
+	s := r[0]
 	m.Ready = s&4 != 0
 	m.Locked = s&64 != 0
 	m.Running = s&8 != 0
 	m.Frozen = s&16 != 0
 	m.Triggered = s&32 != 0
 	m.Prefetched = s&1024 != 0
-	for _, f := range []struct {
-		sel uint16
-		v   *uint32
-	}{{2, &m.Length}, {4, &m.Start}, {6, &m.TriggerIndex}, {8, &m.Position}, {10, &m.Origin}} {
-		*f.v, err = c.read32(f.sel)
-		if err != nil {
+	m.Length = uint32(r[1]) | uint32(r[2])<<16
+	m.Start = uint32(r[3]) | uint32(r[4])<<16
+	m.TriggerIndex = uint32(r[5]) | uint32(r[6])<<16
+	m.Position = uint32(r[7]) | uint32(r[8])<<16
+	m.Origin = uint32(r[9]) | uint32(r[10])<<16
+	m.Revision, m.MapID = r[11], r[12]
+	// From revision 10 the later reads are one batch too: the capability,
+	// then rate, flags, decimation and format (revisions 6 and 9).
+	var late [5]uint16
+	haveLate := m.Revision >= 10
+	if haveLate {
+		if err = c.readMany([]uint16{73, 15, 19, 28, 29}, late[:]); err != nil {
 			return m, err
 		}
-	}
-	m.Revision, err = c.read(13)
-	if err != nil {
-		return m, err
-	}
-	m.MapID, err = c.read(14)
-	if err != nil {
-		return m, err
-	}
-	if m.Revision >= 10 {
-		capability, e := c.read(73)
-		if e != nil {
-			return m, e
-		}
-		if capability == 0x5201 {
-			m.RecordID, e = c.read32(69)
-			if e != nil {
-				return m, e
+		if late[0] == 0x5201 {
+			var id [4]uint16
+			if err = c.readMany([]uint16{69, 70, 71, 72}, id[:]); err != nil {
+				return m, err
 			}
-			m.EventEpoch, e = c.read32(71)
-			if e != nil {
-				return m, e
-			}
+			m.RecordID = uint32(id[0]) | uint32(id[1])<<16
+			m.EventEpoch = uint32(id[2]) | uint32(id[3])<<16
 			m.HasRecordIdentity = true
 		}
 	}
@@ -326,14 +345,20 @@ func (c *Capture) status() (m Metadata, err error) {
 	m.SampleBits = 8
 	m.SamplesPerWord = 2
 	if m.Revision >= 6 {
-		rate, e := c.read(15)
+		rate, e := late[1], error(nil)
+		if !haveLate {
+			rate, e = c.read(15)
+		}
 		if e != nil {
 			return m, e
 		}
 		if rate != 500 {
 			return m, fmt.Errorf("sramcapture: unknown interleave rate %d", rate)
 		}
-		flags, e := c.read(19)
+		flags := late[2]
+		if !haveLate {
+			flags, e = c.read(19)
+		}
 		if e != nil {
 			return m, e
 		}
@@ -343,11 +368,13 @@ func (c *Capture) status() (m Metadata, err error) {
 		m.Locked = m.Locked && flags&2 != 0
 	}
 	if m.Revision >= 9 {
-		log, e := c.read(28)
-		if e != nil {
-			return m, e
+		log, bits, e := late[3], late[4], error(nil)
+		if !haveLate {
+			log, e = c.read(28)
+			if e == nil {
+				bits, e = c.read(29)
+			}
 		}
-		bits, e := c.read(29)
 		if e != nil {
 			return m, e
 		}
@@ -383,22 +410,12 @@ func (c *Capture) sampleTimeline(m *Metadata) error {
 	if err != nil || valid&1 == 0 {
 		return err
 	}
-	low, err := c.read32(85)
-	if err != nil {
+	var t [8]uint16
+	if err := c.readMany([]uint16{85, 86, 87, 88, 89, 90, 91, 92}, t[:]); err != nil {
 		return err
 	}
-	high, err := c.read32(87)
-	if err != nil {
-		return err
-	}
-	id, err := c.read32(89)
-	if err != nil {
-		return err
-	}
-	epoch, err := c.read32(91)
-	if err != nil {
-		return err
-	}
+	low, high := uint32(t[0])|uint32(t[1])<<16, uint32(t[2])|uint32(t[3])<<16
+	id, epoch := uint32(t[4])|uint32(t[5])<<16, uint32(t[6])|uint32(t[7])<<16
 	if id != m.RecordID || epoch != m.EventEpoch {
 		return fmt.Errorf("sramcapture: sample timeline identity changed")
 	}
