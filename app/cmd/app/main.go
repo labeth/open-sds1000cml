@@ -736,7 +736,6 @@ func healthLoop(e *engine.Engine, path string, fabricOK bool, diagBeat bool) {
 // appMemoryLimit is the Go runtime's soft memory limit on the device.
 const appMemoryLimit = 48 << 20
 
-// TRLC-LINKS: REQ-SDS-167
 // startAt is the app's start, for the start-up stages in the log.
 var startAt = time.Now()
 
@@ -746,6 +745,7 @@ func startMark(stage string) {
 	logf("start: %s at %v", stage, time.Since(startAt).Round(time.Millisecond))
 }
 
+// TRLC-LINKS: REQ-SDS-167
 func main() {
 	if len(os.Args) == 2 && os.Args[1] == "--acquisition-worker" {
 		if err := bus.RunAcquisitionWorker(3, 4, logf); err != nil {
