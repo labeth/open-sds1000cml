@@ -30,14 +30,17 @@ power-cycle, and the factory firmware is back.
   continuous stream (now including DMX512, 1-Wire and Modbus to 230,400 Bd), and as back-to-back
   captures, with the share of the signal time they read, where it is not.
 * **SOUND**, for analog sound design: SPECTRUM's fourth view on the LCD, its own tab on the web page
-  (Alt+6) and the phone. Listen to C1, C2, stereo or A−B in the browser; level meters in V, dBu and dBV;
+  (Alt+6) and the phone. Listen to C1, C2, stereo or A−B in the browser, through adjustable high-
+  and low-pass filters; level meters in V, dBu and dBV;
   a tuner with cents and a pitch strip; V/oct tracking; envelope (ADSR) times; tremolo, vibrato and
   FM index; harmonics and THD; input against output (gain, phase, transfer curve); a pitch-locked
   cycle view. STOP freezes a take of up to 15 s to scroll, zoom, measure with cursors and replay
   (also at half or quarter speed); SINGLE and NORMAL capture a take around a trigger the FPGA marks.
-* **Faster and lighter.** With the scope stopped, the app uses 13 to 43 % of the CPU across the
+* **Faster and lighter.** The live display runs 28 to 40 frames a second from 1 µs/div to 1 ms/div
+  (16 to 24 in 1.0). With the scope stopped, the app uses 13 to 43 % of the CPU across the
   workspaces (41 to 92 % in 1.0); reading the full record on STOP or SINGLE takes 0.2 to 0.4 s (about
-  4 s in 1.0); an FPGA image switch takes about 1.8 s (the images ship compressed). During a
+  4 s in 1.0); an FPGA image switch takes about 1 s (the images ship compressed); AUTO frames a
+  signal in about 2 s, and the scope shows frames about 2 s after the app starts. During a
   full-record read, an image switch and AUTO the LCD draws only their progress; streams keep their
   full display.
 * **Fixes from two bug hunts**, among them: a long session no longer slows the stopped scope down
@@ -83,7 +86,8 @@ settings tab (the Help key), at the end of the web UI's status line and in `/api
   their CRC is not checked. ARINC 429 has not been tested on a physical ARINC 429 bus.
 * **Streams:** should a load of the stream image start its streams faulted, the scope reloads the
   image and the stream runs after a gap of about 1 s.
-* **SOUND:** Listen plays about 0.33 s behind the input (stream, jitter buffer and browser output).
+* **SOUND:** Listen plays about 0.5 to 0.7 s behind the input: the page is served over plain http,
+  where the browser plays it on the page's main thread with a larger buffer.
   The distortion floor is the 8-bit converters' (about -45 to -55 dB, 0.2 to 0.5 % THD). Modulation
   readouts follow a change in the source within two 4 s windows. SOUND and the other workspaces share
   one acquisition, and the last to act holds it: while a web or phone SOUND page holds it, the LCD

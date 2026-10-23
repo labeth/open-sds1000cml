@@ -449,7 +449,7 @@ on it again, about 5 s with no image load where the load to the general image an
 and line images record 2.1 ms raw, too little for the fit's slower steps, so a bus framed on one loads the
 general image for the fit and its own again (11 to 15 s on SENT, CAN and ARINC 429). A stream that needs
 another image (a UART's stream the general image's receiver, after AUTO left the qualifier image) starts
-with the note "loading the general FPGA image, about 4 s: the qualifier image has no UART receiver" on the
+with the note "loading the general FPGA image, about 1 s: the qualifier image has no UART receiver" on the
 LCD's stream line and the web page's.
 
 The autoset finds the signal on a fast-to-slow timebase sweep at 2 V/div at the probe tip (the detent

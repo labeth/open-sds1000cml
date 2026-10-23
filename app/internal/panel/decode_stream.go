@@ -170,13 +170,13 @@ func streamImageNote(proto, baud int, loaded string) string {
 		return ""
 	}
 	if soft == "gap-free" {
-		return fmt.Sprintf("loading the stream FPGA image, about 1.5 s: %s is decoded gap-free from its continuous stream", protoName(proto))
+		return fmt.Sprintf("loading the stream FPGA image, about 1 s: %s is decoded gap-free from its continuous stream", protoName(proto))
 	}
 	name := map[string]string{"qualify": "qualifier"}[loaded]
 	if name == "" {
 		name = loaded
 	}
-	return fmt.Sprintf("loading the %s FPGA image, about 1.5 s: the %s image has no %s receiver", want, name, protoName(proto))
+	return fmt.Sprintf("loading the %s FPGA image, about 1 s: the %s image has no %s receiver", want, name, protoName(proto))
 }
 
 // streamModeText says how the bus streams (ADR-STREAM-SOFT-DECODE): the

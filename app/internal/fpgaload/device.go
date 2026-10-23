@@ -53,8 +53,8 @@ func (p *ioctlPort) ReadCfg() (uint16, error) {
 }
 
 // memPort drives the same port through a /dev/mem O_SYNC mapping of the CS3
-// window: one 16-bit store per DCLK edge, ≈2.5 s per load (tools/fpga_reload
-// measured 1.18 Mbit/s). Reads go through the mapping as well (the port is a
+// window: one 16-bit store per DCLK edge, about 0.9 s per load at the short
+// write cycle a shift runs at (cs3timing.go). Reads go through the mapping as well (the port is a
 // plain register in the MAX V; the double-shift trap is checked at open by
 // comparing a mmap read against an ioctl read).
 // TRLC-LINKS: REQ-SDS-005
@@ -138,7 +138,7 @@ func Bringup(gpmcFD int, read Reader, logf func(string, ...any)) error {
 	} else {
 		defer mp.Close()
 		port = mp
-		logf("fpgaload: /dev/mem CS3 port verified — mmap bit-bang (~3 s)")
+		logf("fpgaload: /dev/mem CS3 port verified — mmap bit-bang (~1 s)")
 	}
 	return EnsureDefault(read, port, rbf, Options{Logf: logf})
 }

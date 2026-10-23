@@ -246,7 +246,7 @@ func TestPageAutoOnSpectrumWhileTheLCDIsOnBus(t *testing.T) {
 // framed on the qualifier image streams on the general image's receiver.
 // TRLC-LINKS: REQ-SDS-018
 func TestStreamImageNote(t *testing.T) {
-	if n := streamImageNote(framecalc.ProtoUART, 115200, "qualify"); n != "loading the general FPGA image, about 1.5 s: the qualifier image has no UART receiver" {
+	if n := streamImageNote(framecalc.ProtoUART, 115200, "qualify"); n != "loading the general FPGA image, about 1 s: the qualifier image has no UART receiver" {
 		t.Fatalf("UART on the qualifier image: %q", n)
 	}
 	if n := streamImageNote(framecalc.ProtoSENT, 0, "general"); !strings.HasPrefix(n, "loading the packet FPGA image") {

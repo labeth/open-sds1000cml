@@ -89,7 +89,7 @@ anything on the scope's screen.
 | **Channels** | 2, sampled together |
 | **Sample rate** | **500 MS/s per channel**, real time, on both channels at once (1 GS/s aggregate) |
 | **Record length** | **1,048,576 samples per channel** at full rate, captured on every acquisition; the full record is read on STOP or SINGLE |
-| **Live display** | **16–24 frames/s** from 1 µs/div to 1 ms/div, protocol decode included (about 12 at 5 ms/div) |
+| **Live display** | **28–40 frames/s** from 1 µs/div to 1 ms/div, protocol decode included (about 12 at 5 ms/div) |
 | **Precision mode** | 16-bit filtered samples, 524,288 per channel; decimation ×16 to ×1,048,576 for long records (137 s at 50 s/div) |
 | **Super-resolution** | up to a **×64 time grid** (31.25 ps); about **+4 bits** from FPGA stacking |
 | **Timebase** | 1 ns/div to 50 s/div |
@@ -214,8 +214,8 @@ automatically.
   ARINC 429 record 2.1 ms at the full rate, so their triggers run at 200 us/div or faster, as do the
   pulse width, slope and video triggers (they fire on full-rate captures only). AUTO names a bus
   from Default setup in about 4 to 9 s (5.2 s on average over 60 bench buses of all 52 protocols), and
-  arms its trigger about 2 s later when the protocol's FPGA image has to load (an image switch takes
-  about 1.8 s). A stream that waits for an image load says so.
+  arms its trigger about 1 s later when the protocol's FPGA image has to load (an image switch takes
+  about 1 s). A stream that waits for an image load says so.
 * **Continuous decoding:** a live decoded stream, with the full-rate record kept for every frame.
   BUS's third view (F2, F2, F2) streams the bus as decoded, with the transcript on the LCD; leaving the
   view ends the stream.
