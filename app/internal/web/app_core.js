@@ -383,10 +383,14 @@ function updateStatusLine() {
   // Converters left not converting after the scope's recoveries: the LCD's
   // notice, here too (every capture carries a fake pattern until a restart).
   const adcTxt = st.adc_fault ? ' · <b style="color:var(--stale,#e66)">⚠ ' + escHTML(st.adc_fault) + "</b>" : "";
+  // Another page (a phone, another browser) holds the audio stream: the
+  // captures wait here too, and AUTO on this page takes the scope back. On
+  // this page's own SOUND tab the holder is this page.
+  const heldTxt = st.sound_held && !(typeof ws !== "undefined" && ws.cur === "sound") ? ' · <b style="color:var(--stale,#e66)">⚠ ' + escHTML(st.sound_held) + "</b>" : "";
   const html =
     "<b>" + fmtTdiv(b) + "/div</b>" + zoomTxt + " · " + st.band + " · " + st.fps.toFixed(0) + " fps · seq <b>" + st.seq + "</b>" +
     " · cols " + reqCols + (st.mmap_drain ? "" : " (ioctl)") + (st.dead_runs ? " · DEAD " + st.dead_runs : "") +
-    degradedTxt + adcTxt +
+    degradedTxt + adcTxt + heldTxt +
     " · cal:" + (st.cal_source || "?") + " · " + st.version;
   if (html !== lastLineHTML) { lastLineHTML = html; $("line").innerHTML = html; }
   const aria = "oscilloscope — trigger " + trigState() + ", " + fmtTdiv(b) + "/div";

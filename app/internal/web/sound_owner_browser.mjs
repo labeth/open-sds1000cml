@@ -87,6 +87,7 @@ run(async (t) => {
   t.ok(m1.n === m0.n && !m1.on, `the phone's other tabs leased nothing (${m0.n} -> ${m1.n})`);
   await phone.tap("#tab-sound");
   await t.until(async () => (await leases()).on, "the phone's Sound tab leases the stream", 4000);
+  await t.until(async () => /A phone is on SOUND and is using the scope/.test(await po.text("line")), "the web page's SCOPE tab says the phone holds the scope", 4000);
   await lcdKey("set50");
   await t.until(() => phone.evaluate(() => window.RSOUND.client.paused), "a key on the scope pauses the phone", 4000);
   await t.until(() => phone.evaluate(() => !document.querySelector("#view-sound .snd-takescope").hidden), "the phone offers Take the scope", 2000);

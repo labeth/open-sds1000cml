@@ -512,6 +512,12 @@ func (c *Controller) SoundRemoteLease(who string, lease func()) bool {
 // TRLC-LINKS: REQ-SDS-277
 func (c *Controller) SoundPaused() bool { return c.snd.remotePaused() }
 
+// SoundHeld is the LCD's notice while a page holds the audio stream and the
+// LCD shows another workspace ("" none), for the web page's other tabs: its
+// captures wait there too, and AUTO on the page takes the scope back.
+// TRLC-LINKS: REQ-SDS-277
+func (c *Controller) SoundHeld() string { return c.snd.remoteNotice(time.Now()) }
+
 // lcdInSoundLocked reports SOUND as the LCD's workspace (c.mu held).
 // TRLC-LINKS: REQ-SDS-277
 func (c *Controller) lcdInSoundLocked() bool {

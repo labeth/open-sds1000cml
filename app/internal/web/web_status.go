@@ -24,8 +24,9 @@ type statusReply struct {
 	TrigCpv       float64       `json:"trig_cpv"`  // DAC codes per input-volt at the source detent
 	TrigCodeMin   uint16        `json:"trig_code_min"`
 	TrigCodeMax   uint16        `json:"trig_code_max"`
-	Stream        *streamStatus `json:"stream,omitempty"` // the BUS sheet's Stream mode
-	Waiting       bool          `json:"waiting"`          // NORMAL, running, nothing published lately: WAIT, not the held frame's T'D
+	Stream        *streamStatus `json:"stream,omitempty"`     // the BUS sheet's Stream mode
+	Waiting       bool          `json:"waiting"`              // NORMAL, running, nothing published lately: WAIT, not the held frame's T'D
+	SoundHeld     string        `json:"sound_held,omitempty"` // a page holds the audio stream: the LCD's notice
 	Vdivs         []float64     `json:"vdivs,omitempty"`
 	Vdiv1         float64       `json:"vdiv1,omitempty"`
 	Vdiv2         float64       `json:"vdiv2,omitempty"`
@@ -96,6 +97,9 @@ func (s *Server) hStatus(w http.ResponseWriter, r *http.Request) {
 	if reporter, ok := s.panel.(interface{ PanelStatus() panel.Status }); ok {
 		view := reporter.PanelStatus()
 		rep.Panel = &view
+	}
+	if sh, ok := s.panel.(interface{ SoundHeld() string }); ok {
+		rep.SoundHeld = sh.SoundHeld()
 	}
 	if rc, ok := s.panel.(interface{ RepeatCaption() (string, bool) }); ok {
 		rep.TrigRepeat, rep.TrigRepeatWarn = rc.RepeatCaption()
