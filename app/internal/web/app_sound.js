@@ -248,6 +248,24 @@ function sndCycleUpdate() {
   snd.cycle = c;
   snd.cycles.push(c.trace);
   if (snd.cycles.length > 8) snd.cycles.shift();
+  // the readouts: the median of the last eight cycles, refreshed twice a
+  // second (each cycle's own figures jump from cycle to cycle)
+  snd.cycleHist = (snd.cycleHist || []).concat([c]).slice(-8);
+  const now = performance.now();
+  if (!snd.cycleShown || now - (snd.cycleShownAt || 0) >= 500) {
+    snd.cycleShownAt = now;
+    snd.cycleShown = sndCycleMedian(snd.cycleHist);
+  }
+}
+
+// sndCycleMedian is the median of each of the cycles' figures.
+// TRLC-LINKS: REQ-SDS-272
+function sndCycleMedian(cs) {
+  const med = (k) => {
+    const v = cs.map((c) => c[k]).filter(Number.isFinite).sort((a, b) => a - b);
+    return v.length ? v[v.length >> 1] : NaN;
+  };
+  return { periodS: med("periodS"), vpp: med("vpp"), dutyPct: med("dutyPct"), riseS: med("riseS"), fallS: med("fallS"), slewVus: med("slewVus"), n: cs.length };
 }
 
 // ---- drawing ------------------------------------------------------------------------
@@ -510,7 +528,7 @@ function sndRenderCtx() {
     case "take": title = "Take cursors"; rows.push(...sndTakeCursorRows()); break;
     case "cycle": {
       title = "Cycle";
-      const c = snd.cycle;
+      const c = snd.cycleShown;
       if (c && !snd.cycleWhy) rows.push(sndRow("period", eng(c.periodS, "s", 4), "frequency", eng(1 / c.periodS, "Hz", 5)),
         sndRow("Vpp", eng(c.vpp, "V"), "duty", c.dutyPct.toFixed(1) + " %"),
         sndRow("rise 10-90", eng(c.riseS, "s"), "fall", eng(c.fallS, "s")),
@@ -634,7 +652,7 @@ function sndSetView(v) {
   snd.view = v;
   $("sndView").value = v;
   $("sndCycles").hidden = v !== "cycle";
-  snd.cycles = []; snd.cycleAt = -1; snd.modAt = 0; snd.specAt = 0; snd.abAt = 0; snd.spec = [null, null];
+  snd.cycles = []; snd.cycleAt = -1; snd.cycleHist = []; snd.cycleShown = null; snd.modAt = 0; snd.specAt = 0; snd.abAt = 0; snd.spec = [null, null];
   try { localStorage.setItem(SND_PREF + "view", v); } catch (e) { /* private window */ }
 }
 
@@ -676,15 +694,40 @@ function sndPref(k, def) { try { const v = localStorage.getItem(SND_PREF + k); r
 // TRLC-LINKS: REQ-SDS-265
 function sndPrefSet(k, v) { try { localStorage.setItem(SND_PREF + k, String(v)); } catch (e) { /* private window */ } }
 
+// sndFilterHz is a filter slider's cutoff: a log scale, the high-pass 20 Hz
+// to 5 kHz and the low-pass 100 Hz to 20 kHz.
+// TRLC-LINKS: REQ-SDS-265
+function sndFilterHz(kind, pos) {
+  const [lo, hi] = kind === "hp" ? [20, 5000] : [100, 20000];
+  return lo * Math.pow(hi / lo, Math.max(0, Math.min(1, pos)));
+}
+
 // sndWire connects the controls.
 // TRLC-LINKS: REQ-SDS-274, REQ-SDS-265
 function sndWire() {
   for (const id of ["sndSrc", "sndGainMode", "sndView", "sndCycles", "sndCh", "sndSlow", "sndRead", "sndEnvCV", "sndVAuto", "sndDriftOn"]) segInit($(id));
   const a = snd.audio;
   a.src = sndPref("src", "c1"); a.auto = sndPref("auto", "1") === "1"; a.gainDB = +sndPref("gain", "0"); a.vol = +sndPref("vol", "0.7");
-  a.hp = sndPref("hp", "1") === "1"; a.lp = sndPref("lp", "0") === "1";
   $("sndSrc").value = a.src; $("sndGainMode").value = a.auto ? "auto" : "man"; $("sndGain").value = a.gainDB; $("sndVol").value = a.vol;
-  $("sndHP").classList.toggle("on", a.hp); $("sndLP").classList.toggle("on", a.lp);
+  // the high- and low-pass: on/off and a cutoff each (a log slider)
+  const filt = { hp: { on: sndPref("hpOn", "0") === "1", pos: +sndPref("hpPos", "0.3") }, lp: { on: sndPref("lpOn", "0") === "1", pos: +sndPref("lpPos", "0.6") } };
+  // TRLC-LINKS: REQ-SDS-265
+  const apply = () => {
+    for (const k of ["hp", "lp"]) {
+      const hz = sndFilterHz(k, filt[k].pos), id = k === "hp" ? "sndHP" : "sndLP";
+      a[k] = filt[k].on ? hz : 0;
+      $(id).classList.toggle("on", filt[k].on);
+      $(id + "f").value = filt[k].pos;
+      $(id + "v").textContent = eng(hz, "Hz", 3);
+    }
+  };
+  apply();
+  for (const [id, k] of [["sndHP", "hp"], ["sndLP", "lp"]]) {
+    // TRLC-LINKS: REQ-SDS-274
+    $(id).onclick = () => { filt[k].on = !filt[k].on; sndPrefSet(k + "On", filt[k].on ? 1 : 0); apply(); };
+    // TRLC-LINKS: REQ-SDS-274
+    $(id + "f").oninput = () => { filt[k].pos = +$(id + "f").value; filt[k].on = true; sndPrefSet(k + "Pos", filt[k].pos); sndPrefSet(k + "On", 1); apply(); };
+  }
   // TRLC-LINKS: REQ-SDS-274
   $("sndListen").onclick = () => sndListen(!a.on);
   // TRLC-LINKS: REQ-SDS-274
@@ -697,10 +740,8 @@ function sndWire() {
   $("sndGainMode").onchange = () => { a.auto = $("sndGainMode").value === "auto"; sndPrefSet("auto", a.auto ? 1 : 0); };
   // TRLC-LINKS: REQ-SDS-274
   $("sndGain").oninput = () => { a.gainDB = +$("sndGain").value; a.auto = false; $("sndGainMode").value = "man"; sndPrefSet("gain", a.gainDB); sndPrefSet("auto", 0); };
-  for (const [id, k] of [["sndHP", "hp"], ["sndLP", "lp"], ["sndNotch", "notch"]]) {
-    // TRLC-LINKS: REQ-SDS-274
-    $(id).onclick = () => { a[k] = !a[k]; $(id).classList.toggle("on", a[k]); a.filt = null; if (k !== "notch") sndPrefSet(k, a[k] ? 1 : 0); };
-  }
+  // TRLC-LINKS: REQ-SDS-274
+  $("sndNotch").onclick = () => { a.notch = !a.notch; $("sndNotch").classList.toggle("on", a.notch); };
   // TRLC-LINKS: REQ-SDS-274
   $("sndView").onchange = () => sndSetView($("sndView").value);
   // TRLC-LINKS: REQ-SDS-274

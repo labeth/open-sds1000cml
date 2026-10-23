@@ -4,6 +4,7 @@ package panel
 import (
 	"fmt"
 	"math"
+	"slices"
 	"sync"
 	"time"
 
@@ -189,19 +190,24 @@ type soundSvc struct {
 	cv      float64 // the CV channel's mean (V/oct)
 	fs      float64
 
-	mod      sound.Modulation
-	lfo      sound.LFO
-	sb       sound.Sidebands
-	ab       sound.AB
-	harm     sound.HarmonicReport
-	heavyAt  time.Time
-	sbAt     time.Time
-	cycles   [][]float64 // newest last, volts
-	cycle    sound.Cycle
-	cycleAt  uint64 // the mark of the newest cycle drawn
-	cycleWhy string
-	pane     soundPaneTraces // the cycles as the pane draws them
-	markLvl  int             // the level (code) asked for the cycle marks, -1 none
+	mod     sound.Modulation
+	lfo     sound.LFO
+	sb      sound.Sidebands
+	ab      sound.AB
+	harm    sound.HarmonicReport
+	heavyAt time.Time
+	sbAt    time.Time
+	cycles  [][]float64 // newest last, volts
+	cycle   sound.Cycle
+	// the readouts: the median of the last cycles, refreshed twice a second
+	// (each cycle's own figures jump from cycle to cycle)
+	cycleHist    []sound.Cycle
+	cycleShown   sound.Cycle
+	cycleShownAt time.Time
+	cycleAt      uint64 // the mark of the newest cycle drawn
+	cycleWhy     string
+	pane         soundPaneTraces // the cycles as the pane draws them
+	markLvl      int             // the level (code) asked for the cycle marks, -1 none
 
 	adsr     string
 	adsrWhy  string
@@ -880,6 +886,42 @@ func (s *soundSvc) readCycle(e soundEngine, set SoundSettings) {
 	if len(s.cycles) > soundCycleKeep {
 		s.cycles = s.cycles[len(s.cycles)-soundCycleKeep:]
 	}
+	s.cycleHist = append(s.cycleHist, c)
+	if len(s.cycleHist) > soundCycleKeep {
+		s.cycleHist = s.cycleHist[len(s.cycleHist)-soundCycleKeep:]
+	}
+	if now := time.Now(); !s.cycleShown.OK || now.Sub(s.cycleShownAt) >= 500*time.Millisecond {
+		s.cycleShown, s.cycleShownAt = cycleMedian(s.cycleHist), now
+	}
+}
+
+// cycleMedian is the median of each of the cycles' figures.
+// TRLC-LINKS: REQ-SDS-272
+func cycleMedian(cs []sound.Cycle) sound.Cycle {
+	if len(cs) == 0 {
+		return sound.Cycle{}
+	}
+	med := func(f func(sound.Cycle) float64) float64 {
+		v := make([]float64, 0, len(cs))
+		for _, c := range cs {
+			if x := f(c); !math.IsNaN(x) {
+				v = append(v, x)
+			}
+		}
+		if len(v) == 0 {
+			return math.NaN()
+		}
+		slices.Sort(v)
+		return v[len(v)/2]
+	}
+	out := cs[len(cs)-1]
+	out.PeriodS = med(func(c sound.Cycle) float64 { return c.PeriodS })
+	out.Vpp = med(func(c sound.Cycle) float64 { return c.Vpp })
+	out.DutyPct = med(func(c sound.Cycle) float64 { return c.DutyPct })
+	out.RiseS = med(func(c sound.Cycle) float64 { return c.RiseS })
+	out.FallS = med(func(c sound.Cycle) float64 { return c.FallS })
+	out.SlewVus = med(func(c sound.Cycle) float64 { return c.SlewVus })
+	return out
 }
 
 // arm starts (or cancels) a gate-armed envelope capture.

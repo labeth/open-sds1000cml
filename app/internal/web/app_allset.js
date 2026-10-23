@@ -62,7 +62,7 @@ const ALL_GROUPS = [
   ["Precision", [["precisionModel", "Fit model", "sine triangle periodic"], ["precisionChannel", "Fit channel", ""], ["precisionFit", "Fit current view", "residual"]]],
   ["Sound", [["sndListen", "Listen", "audio play headphones probe tracer"], ["sndSrc", "Listen source", "c1 c2 stereo a-b difference"],
     ["sndMute", "Mute", "audio"], ["sndVol", "Listen volume", "audio"], ["sndGainMode", "Listen gain", "auto manual normalise"], ["sndGain", "Manual gain", "db"],
-    ["sndHP", "High-pass 20 Hz", "dc block filter"], ["sndLP", "Low-pass 5 kHz", "filter"], ["sndNotch", "Notch the fundamental", "residual distortion"],
+    ["sndHP", "High-pass on", "filter"], ["sndHPf", "High-pass cutoff", "filter hz"], ["sndLP", "Low-pass on", "filter"], ["sndLPf", "Low-pass cutoff", "filter hz"], ["sndNotch", "Notch the fundamental", "residual distortion"],
     ["sndView", "Sound view", "cycle envelope modulation spectrum a/b take"], ["sndCycles", "Cycles drawn", "pitch-locked waveform"], ["sndCh", "Tuned channel", "tuner pitch"],
     ["sndA4", "A4 reference", "tuner pitch 440 432"], ["sndRange", "Tuner range", "bass high"], ["sndSlow", "Tuner smoothing", "fast slow"],
     ["sndRef", "Meter 0 dB", "dbu dbv eurorack line guitar level"], ["sndRead", "Sound readouts", "adsr v/oct drift"], ["sndArm", "Arm the envelope capture", "adsr gate"],

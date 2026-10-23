@@ -135,7 +135,7 @@ func (c *Controller) soundPane(s *sv) *wsview.SoundPane {
 			}
 		}
 		p.TraceLo, p.TraceHi, p.Traces = ss.pane.lo, ss.pane.hi, ss.pane.traces
-		cy := ss.cycle
+		cy := ss.cycleShown
 		p.TraceTop = []wsview.Span{{Text: fmt.Sprintf("%d %s, trigger: FPGA edge mark C%d", set.Cycles, plural(set.Cycles, "cycle"), set.Ch+1), Col: wsview.Dim},
 			{Text: "period " + si(cy.PeriodS, "s") + "  duty " + fmt.Sprintf("%.1f%%", cy.DutyPct) + "  Vpp " + si(cy.Vpp, "V"), Col: wsview.Text},
 			{Text: "rise " + si(cy.RiseS, "s") + "  fall " + si(cy.FallS, "s") + "  slew " + fmt.Sprintf("%.3g V/us", cy.SlewVus), Col: wsview.Text}}
