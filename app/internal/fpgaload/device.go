@@ -154,9 +154,30 @@ func ConfigureVolatile(gpmcFD int, rbf []byte, options Options) error {
 	p := &ioctlPort{fd: gpmcFD}
 	if m, err := openMemPort(p); err == nil {
 		defer m.Close()
-		return Reload(m, rbf, options)
+		return reloadFast(m, rbf, options)
 	}
 	return Reload(p, rbf, options)
+}
+
+// reloadFast is Reload through the mapped port with CS3's short write
+// cycle (withFastWrites), once; a load that does not configure there is
+// run again at the vendor's timing.
+// TRLC-LINKS: REQ-SDS-005
+func reloadFast(m *memPort, rbf []byte, options Options) error {
+	once := options
+	once.Attempts = 1
+	ran, err := withFastWrites(func() error { return Reload(m, rbf, once) })
+	if ran && err == nil {
+		return nil
+	}
+	if options.Logf != nil {
+		if ran {
+			options.Logf("fpgaload: the short CS3 write cycle did not configure (%v): at the vendor's timing", err)
+		} else {
+			options.Logf("fpgaload: CS3 write cycle unchanged (%v)", err)
+		}
+	}
+	return Reload(m, rbf, options)
 }
 
 // ConfigStatus reads the configuration port through the inherited fd (a read
