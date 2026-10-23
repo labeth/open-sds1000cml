@@ -330,7 +330,7 @@ func EncodeBMP(m *MemSurface) []byte {
 func (fb *FB) Present(back *MemSurface) {
 	if fb.panOK {
 		next := 1 - fb.cur
-		copy(fb.mem[next*pageBytes:(next+1)*pageBytes], back.Pix)
+		copyPage(fb.mem[next*pageBytes:(next+1)*pageBytes], back.Pix)
 		if fb.pan(next) == nil {
 			fb.cur = next
 			return
@@ -338,7 +338,7 @@ func (fb *FB) Present(back *MemSurface) {
 		fb.panOK = false
 	}
 	for p := 0; p < fb.pages; p++ {
-		copy(fb.mem[p*pageBytes:(p+1)*pageBytes], back.Pix)
+		copyPage(fb.mem[p*pageBytes:(p+1)*pageBytes], back.Pix)
 	}
 }
 
