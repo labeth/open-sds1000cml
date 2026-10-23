@@ -367,7 +367,28 @@ func (e *Engine) LeaseSound(d time.Duration) {
 		s.lease.Store(0)
 		return
 	}
+	was := e.soundWanted()
 	s.lease.Store(e.clk.Now().Add(min(d, soundLeaseMax)).UnixNano())
+	if !was {
+		// SOUND starts: a record read in flight is not wanted (its frame
+		// would be dropped), so the stream need not wait for it. The owner
+		// checks the rest (soundStarting; a read cut when another stream
+		// holds the fabric costs one frame); while the stream runs no
+		// record is read.
+		e.rawMu.Lock()
+		cut := e.recallCancel
+		e.rawMu.Unlock()
+		if cut != nil {
+			cut()
+		}
+	}
+}
+
+// soundStarting reports a lease that will start the stream (none running,
+// nothing holding the fabric): a record read now would only be dropped.
+// TRLC-LINKS: REQ-SDS-265
+func (e *Engine) soundStarting() bool {
+	return e.soundWanted() && !e.soundStreaming() && e.soundBusy() == ""
 }
 
 // soundWanted reports a current lease.

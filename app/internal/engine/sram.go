@@ -964,6 +964,9 @@ acquisitionLoop:
 			e.rawMu.Unlock()
 			e.abandonRawRead() // the last lease ended since the readout was chosen
 		}
+		e.rawMu.Lock()
+		e.recallCancel = cancel // a SOUND lease starting abandons it (LeaseSound)
+		e.rawMu.Unlock()
 		recall := e.sram.Recall
 		if m.Revision == 10 {
 			recall = e.sram.RecallForward
@@ -1000,12 +1003,20 @@ acquisitionLoop:
 			}
 		}
 		recalledAt := e.clk.Now()
-		abandoned := rawForLease && errors.Is(ctx.Err(), context.Canceled)
+		cancelled := errors.Is(ctx.Err(), context.Canceled)
+		soundCut := cancelled && e.soundStarting()
+		abandoned := rawForLease && cancelled
 		cancel()
+		e.rawMu.Lock()
+		e.recallCancel = nil
 		if rawForLease {
-			e.rawMu.Lock()
 			e.rawCancel = nil
-			e.rawMu.Unlock()
+		}
+		e.rawMu.Unlock()
+		if soundCut {
+			// SOUND takes the fabric: the record would be dropped anyway.
+			e.logf("engine: record read abandoned after %v: SOUND starts", recalledAt.Sub(recallAt).Round(time.Millisecond))
+			continue
 		}
 		if abandoned {
 			// Nobody wants the raw record any more: no frame, and the next
@@ -1059,6 +1070,11 @@ acquisitionLoop:
 		}
 		e.windows(f, &views, m, recallOffset, bucket, savedScale)
 		detailAt := e.clk.Now()
+		if e.soundStarting() {
+			// SOUND starts: a second of conditioning for a frame it drops.
+			e.logf("engine: record dropped before processing: SOUND starts")
+			continue
+		}
 		e.setBusy("processing", 0)
 		// CPU-only conditioning: let a staged lamp latch meanwhile (SetLEDs).
 		e.cpuStage.Unlock()

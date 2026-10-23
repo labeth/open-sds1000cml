@@ -408,6 +408,7 @@ type Engine struct {
 	rawMu           sync.Mutex             // guards rawHolders and rawCancel
 	rawHolders      map[string]int64       // named raw leases: each holder's end (unix ns; LeaseRawFor)
 	rawCancel       func()                 // abandons the live raw read in flight for the leases (nil when none)
+	recallCancel    func()                 // abandons any record read in flight (SOUND starting; nil when none)
 	sampleLease     atomic.Int64           // evenly sampled live frames until this time (LeaseSampleView)
 	spectrumLease   atomic.Int64           // live frames for a spectrum until this time (LeaseSpectrumView)
 	searchLease     atomic.Int64           // whole decimated records for a bus search until this time (LeaseSearchView)
