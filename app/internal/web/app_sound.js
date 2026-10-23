@@ -133,12 +133,18 @@ function sndTick() {
       const x = sndLatest(ch, nlev);
       snd.levels[ch] = x.length ? sndMeasure(x) : null;
     }
+    // the pitch in the worker (the tuner window of a bass note is tens of
+    // milliseconds of work): the newest reading feeds the tuner
     const n = sndTunerWindow(snd.hz, fs), x = sndLatest(set.ch, n);
-    const p = x.length >= n / 2 ? sndPitch(x, fs, sndPitchRange(set.range)) : { ok: false, hz: 0, clarity: 0 };
-    snd.tuner.slow = !!set.slow;
-    snd.hz = sndTunerAdd(snd.tuner, p);
-    snd.audio.hz = snd.hz;
-    snd.clarity = p.clarity;
+    sndAnalyse("pitch", { x: Float64Array.from(x), fs, range: sndPitchRange(set.range), enough: x.length >= n / 2 });
+    const p = snd.pitchNew;
+    snd.pitchNew = null;
+    if (p) {
+      snd.tuner.slow = !!set.slow;
+      snd.hz = sndTunerAdd(snd.tuner, p);
+      snd.audio.hz = snd.hz;
+      snd.clarity = p.clarity;
+    }
     const t = now / 1000;
     let cents = 0;
     if (snd.hz > 0) {
@@ -168,6 +174,69 @@ function sndSwingCodes(x, vpc) {
   return (hi - lo) / vpc;
 }
 
+// sndAnalyse runs a view's heavy analysis in the worker (sound_analysis.js),
+// one of each kind at a time (a new one waits for the last to come back),
+// and applies its reply; without workers it runs here.
+// TRLC-LINKS: REQ-SDS-269, REQ-SDS-270, REQ-SDS-271
+function sndAnalyse(kind, job) {
+  const w = snd.worker || (snd.worker = sndStartWorker());
+  snd.busy = snd.busy || {};
+  if (snd.busy[kind]) return;
+  job.kind = kind; job.gen = kind === "pitch" ? -1 : snd.genView || 0;
+  if (!w) { sndApply({ kind, gen: job.gen, r: sndAnalyseHere(job) }); return; }
+  snd.busy[kind] = true;
+  w.postMessage(job);
+}
+
+// sndStartWorker starts the analysis worker (null where there is none).
+// TRLC-LINKS: REQ-SDS-269
+function sndStartWorker() {
+  try {
+    const w = new Worker("sound_analysis.js");
+    // TRLC-LINKS: REQ-SDS-269
+    w.onmessage = (e) => { snd.busy[e.data.kind] = false; sndApply(e.data); };
+    // TRLC-LINKS: REQ-SDS-269
+    w.onerror = () => { snd.busy = {}; };
+    return w;
+  } catch (e) { return null; }
+}
+
+// sndAnalyseHere is the worker's job on the page's thread (no worker).
+// TRLC-LINKS: REQ-SDS-269
+function sndAnalyseHere(j) {
+  if (j.kind === "pitch") return { p: j.enough ? sndPitch(j.x, j.fs, j.range) : { ok: false, hz: 0, clarity: 0 } };
+  if (j.kind === "mod") {
+    if (!(j.hz > 0)) return { modDemod: null, mod: null, lfo: sndLFO(j.x, j.fs) };
+    const demod = sndDemod(j.x, j.fs, j.hz, 1000), sp = sndSpectrum(j.x, j.fs, 32768);
+    return { modDemod: demod, mod: sndModulation(demod), sb: sndSidebands(sp.dbv, sp.binHz), lfo: null };
+  }
+  if (j.kind === "spec") return { sp: j.xs.map((x) => sndSpectrum(x, j.fs, 16384)) };
+  return { ab: sndCompareAB(j.a, j.b, j.fs, j.hz), specA: sndSpectrum(j.a, j.fs, 16384), specB: sndSpectrum(j.b, j.fs, 16384) };
+}
+
+// sndApply takes an analysis's reply into the page (a reply for a view
+// since left is dropped).
+// TRLC-LINKS: REQ-SDS-269, REQ-SDS-270, REQ-SDS-271
+function sndApply(m) {
+  const r = m.r, set = snd.settings;
+  if (m.kind === "pitch") { snd.pitchNew = r.p; return; }
+  if (m.gen !== (snd.genView || 0)) return;
+  if (m.kind === "mod") {
+    snd.modDemod = r.modDemod; snd.mod = r.mod; snd.lfo = r.lfo;
+    if (r.sb !== undefined) snd.sb = r.sb;
+  } else if (m.kind === "spec") {
+    r.sp.forEach((sp, ch) => {
+      const prev = snd.spec[ch];
+      if (prev && prev.n === sp.n) for (let i = 0; i < sp.dbv.length; i++) sp.dbv[i] = 10 * Math.log10(0.7 * Math.pow(10, prev.dbv[i] / 10) + 0.3 * Math.pow(10, sp.dbv[i] / 10));
+      snd.spec[ch] = sp;
+    });
+    snd.harm = snd.spec[set.ch] ? sndHarmonics(snd.spec[set.ch], snd.hz) : null;
+  } else if (m.kind === "ab") {
+    snd.ab = r.ab; snd.specA = r.specA; snd.specB = r.specB;
+    if (r.ab.ok) { snd.audio.abMatch = r.ab.match > 0 ? 1 / r.ab.match : 1; snd.audio.abDelay = r.ab.delayOK ? Math.max(0, Math.round(r.ab.delayS * snd.rate)) : 0; }
+  }
+}
+
 // sndViewUpdate runs the shown view's analysis at its rate.
 // TRLC-LINKS: REQ-SDS-269, REQ-SDS-270, REQ-SDS-271, REQ-SDS-272
 function sndViewUpdate(now) {
@@ -183,35 +252,21 @@ function sndViewUpdate(now) {
         if (snd.hz > 0 && codes < SND_MOD_MIN_CODES) {
           snd.mod = { ok: false, why: `the tone spans ${codes.toFixed(0)} codes: AUTO fits the channel` };
           snd.modDemod = null; snd.lfo = null;
-        } else if (snd.hz > 0) {
-          snd.modDemod = sndDemod(x, fs, snd.hz, 1000);
-          snd.mod = sndModulation(snd.modDemod);
-          const sp = sndSpectrum(x, fs, 32768);
-          snd.sb = sndSidebands(sp.dbv, sp.binHz);
-          snd.lfo = null;
-        } else { snd.mod = null; snd.modDemod = null; snd.lfo = sndLFO(x, fs); }
+        } else sndAnalyse("mod", { x: Float64Array.from(x), fs, hz: snd.hz });
       }
       break;
     case "spec":
       if (now - snd.specAt < 300) break;
       snd.specAt = now;
-      for (let ch = 0; ch < 2; ch++) {
-        const sp = sndSpectrum(sndLatest(ch, 16384), fs, 16384);
-        const prev = snd.spec[ch];
-        if (prev && prev.n === sp.n) for (let i = 0; i < sp.dbv.length; i++) sp.dbv[i] = 10 * Math.log10(0.7 * Math.pow(10, prev.dbv[i] / 10) + 0.3 * Math.pow(10, sp.dbv[i] / 10));
-        snd.spec[ch] = sp;
-      }
-      snd.harm = snd.spec[set.ch] ? sndHarmonics(snd.spec[set.ch], snd.hz) : null;
+      sndAnalyse("spec", { xs: [0, 1].map((ch) => Float64Array.from(sndLatest(ch, 16384))), fs });
       break;
     case "ab":
       if (now - snd.abAt < 500) break;
       snd.abAt = now;
       {
         const a = sndLatest(set.ab_in, 16384), b = sndLatest(1 - set.ab_in, 16384);
-        snd.ab = sndCompareAB(a, b, fs, snd.hz);
         snd.abA = a; snd.abB = b;
-        snd.specA = sndSpectrum(a, fs, 16384); snd.specB = sndSpectrum(b, fs, 16384);
-        if (snd.ab.ok) { snd.audio.abMatch = snd.ab.match > 0 ? 1 / snd.ab.match : 1; snd.audio.abDelay = snd.ab.delayOK ? Math.max(0, Math.round(snd.ab.delayS * fs)) : 0; }
+        sndAnalyse("ab", { a: Float64Array.from(a), b: Float64Array.from(b), fs, hz: snd.hz });
       }
       break;
   }
@@ -258,6 +313,40 @@ function sndCycleUpdate() {
   }
 }
 
+// sndCycleStale says the cycle view has had no new cycle for a second: a
+// cycle missed now and then (an edge without its crossing, a moment without
+// a pitch) keeps the last ones on screen instead of a message that blinks.
+// TRLC-LINKS: REQ-SDS-272
+function sndCycleStale() {
+  if (!snd.cycleWhy) { snd.cycleWhyAt = 0; return false; }
+  const now = performance.now();
+  if (!snd.cycleWhyAt) snd.cycleWhyAt = now;
+  return now - snd.cycleWhyAt > 1000 || !snd.cycleShown;
+}
+
+// sndHoldRange is the cycle view's vertical range: on round volts, widened at
+// once to hold a trace, narrowed only once the traces have used under half
+// of it for two seconds, so the grid and the traces stay put.
+// TRLC-LINKS: REQ-SDS-272
+function sndHoldRange(st, lo, hi) {
+  const now = performance.now(), span = Math.max(hi - lo, 1e-6);
+  const step = sndNiceStep(span / 4), want = { lo: Math.floor((lo - 0.05 * span) / step) * step, hi: Math.ceil((hi + 0.05 * span) / step) * step };
+  const r = st.cycleRange;
+  if (!r || lo < r.lo || hi > r.hi) { st.cycleRange = { ...want, smallSince: 0 }; return st.cycleRange; }
+  if (span < 0.5 * (r.hi - r.lo)) {
+    if (!r.smallSince) r.smallSince = now;
+    else if (now - r.smallSince > 2000) { st.cycleRange = { ...want, smallSince: 0 }; return st.cycleRange; }
+  } else r.smallSince = 0;
+  return r;
+}
+
+// sndNiceStep is the 1-2-5 step at or above x.
+// TRLC-LINKS: REQ-SDS-272
+function sndNiceStep(x) {
+  const p = Math.pow(10, Math.floor(Math.log10(x))), m = x / p;
+  return (m <= 1 ? 1 : m <= 2 ? 2 : m <= 5 ? 5 : 10) * p;
+}
+
 // sndCycleMedian is the median of each of the cycles' figures.
 // TRLC-LINKS: REQ-SDS-272
 function sndCycleMedian(cs) {
@@ -281,7 +370,7 @@ function sndRender() {
   let st = snd.err ? "stream: " + snd.err : snd.paused ? "paused: the scope is in use (its keys took it back)" : !h ? "starting the audio stream…" :
     !h.active ? "audio stream: " + h.state + (h.err ? " — " + h.err : "") : `gap-free ${(h.rate / 1000).toFixed(1)} kSa/s · ${h.losses || 0} losses`;
   $("sndPaused").hidden = !snd.paused;
-  if (a.on && !snd.paused) st += ` · buffer ${(a.stat.fillMs || 0).toFixed(0)} ms · rate ${(((a.stat.ratio || 1) - 1) * 1e6).toFixed(0)} ppm · ${a.stat.under || 0} underruns · ${a.stat.over || 0} overruns · ${sndLatencyText(snd)}`;
+  if (a.on && !snd.paused) st += ` · buffer ${(a.stat.fillMs || 0).toFixed(0)} ms · rate ${(((a.stat.ratio || 1) - 1) * 1e6).toFixed(0)} ppm · ${a.stat.under || 0} underruns · ${a.stat.over || 0} overruns${a.mainFrames ? ` · ${a.late || 0} late (block ${a.mainFrames})` : ""} · ${sndLatencyText(snd)}`;
   $("sndStatus").textContent = st;
   $("sndGainV").textContent = a.auto ? (20 * Math.log10(a.agc)).toFixed(0) + " dB" : a.gainDB + " dB";
 }
@@ -393,11 +482,10 @@ function sndRenderView() {
     case "take": sndTakeRender(g, W, H, d); break;
     case "cycle": {
       grid();
-      if (!snd.cycles.length || snd.cycleWhy) { msg("Cycle: " + (snd.cycleWhy || "waiting")); break; }
+      if (!snd.cycles.length || sndCycleStale()) { msg("Cycle: " + (snd.cycleWhy || "waiting")); break; }
       let lo = Infinity, hi = -Infinity;
       for (const t of snd.cycles) for (let i = 0; i < t.length; i++) { lo = Math.min(lo, t[i]); hi = Math.max(hi, t[i]); }
-      const pad = 0.1 * (hi - lo) + 1e-6;
-      lo -= pad; hi += pad;
+      ({ lo, hi } = sndHoldRange(snd, lo, hi));
       // TRLC-LINKS: REQ-SDS-272
       const y = (v) => H - (v - lo) / (hi - lo) * H;
       snd.cycles.forEach((t, k) => { g.globalAlpha = k === snd.cycles.length - 1 ? 1 : 0.15 + 0.4 * k / snd.cycles.length; line(t, 0, W, y, col); });
@@ -521,6 +609,12 @@ function sndRow(k, ...v) { return `<tr><td class="k">${k}</td>${v.map((x) => `<t
 
 // TRLC-LINKS: REQ-SDS-269, REQ-SDS-270, REQ-SDS-271, REQ-SDS-272
 function sndRenderCtx() {
+  // the readouts change at most twice a second, each the median of the
+  // view's last few readings (sndSteady); the take's cursors follow at once
+  const now = performance.now();
+  if (snd.view !== "take" && snd.ctxView === snd.view && now - (snd.ctxAt || 0) < 500) return;
+  snd.ctxAt = now;
+  if (snd.ctxView !== snd.view) { snd.ctxView = snd.view; snd.steady = {}; }
   const set = snd.settings, rows = [];
   // TRLC-LINKS: REQ-SDS-269
   const pct = (v) => Number.isFinite(v) ? v.toFixed(2) + " %" : "—";
@@ -530,7 +624,7 @@ function sndRenderCtx() {
     case "cycle": {
       title = "Cycle";
       const c = snd.cycleShown;
-      if (c && !snd.cycleWhy) rows.push(sndRow("period", eng(c.periodS, "s", 4), "frequency", eng(1 / c.periodS, "Hz", 5)),
+      if (c && !sndCycleStale()) rows.push(sndRow("period", eng(c.periodS, "s", 4), "frequency", eng(1 / c.periodS, "Hz", 5)),
         sndRow("Vpp", eng(c.vpp, "V"), "duty", c.dutyPct.toFixed(1) + " %"),
         sndRow("rise 10-90", eng(c.riseS, "s"), "fall", eng(c.fallS, "s")),
         sndRow("slew", c.slewVus.toPrecision(3) + " V/µs", "trigger", "FPGA mark, placed"));
@@ -538,24 +632,24 @@ function sndRenderCtx() {
     }
     case "mod": {
       title = "Modulation";
-      const m = snd.mod;
+      const m = sndSteady("mod", snd.mod), sbS = sndSteady("sb", snd.sb);
       if (m && m.ok) {
         rows.push(sndRow("tremolo (AM)", m.hasAM ? `${m.amPct.toFixed(1)} % (${m.amDB.toFixed(1)} dB)` : `none (${m.amPct.toFixed(1)} %)`, "rate", m.hasAM ? `${m.amRate.toPrecision(3)} Hz ${m.amShape}` : "—"),
           sndRow("vibrato (FM)", m.hasFM ? `±${m.fmCents.toFixed(1)} c (±${m.fmHz.toPrecision(3)} Hz)` : `none (±${m.fmCents.toFixed(1)} c)`, "rate", m.hasFM ? `${m.fmRate.toPrecision(3)} Hz ${m.fmShape}` : "—"),
           sndRow("W&F weighted 2σ", pct(m.wfPct), "wow / flutter", `${pct(m.wowPct)} / ${pct(m.flutterPct)}`));
-        const sb = snd.sb;
+        const sb = sbS;
         if (sb && sb.ok && sb.lines >= 3 && sb.fit > 0.8 && sb.beta > 0.2) rows.push(sndRow("audio-rate FM", `C:M ${sb.ratio} · index ${sb.beta.toFixed(2)}`, "fm / fit", `${eng(sb.fm, "Hz")} / ${sb.fit.toFixed(2)}`));
       } else if (m && m.why) {
         rows.push(sndRow("modulation", m.why, "", ""));
       } else if (snd.lfo && snd.lfo.ok) {
-        const l = snd.lfo;
+        const l = sndSteady("lfo", snd.lfo);
         rows.push(sndRow("LFO rate", `${l.rateHz.toPrecision(4)} Hz ${l.shape}`, "Vpp", eng(l.vpp, "V")), sndRow("mean", eng(l.mean, "V"), "rise share", l.risePct.toFixed(0) + " %"));
       }
       break;
     }
     case "spec": {
       title = "Harmonics";
-      const h = snd.harm;
+      const h = sndSteady("harm", snd.harm);
       if (h && h.ok) {
         rows.push(sndRow("H1", eng(h.f0, "Hz", 5), h.h[0].dbv.toFixed(1) + " dBV"));
         for (let i = 1; i < h.h.length; i += 2) {
@@ -570,7 +664,7 @@ function sndRenderCtx() {
     }
     case "ab": {
       title = "A/B";
-      const r = snd.ab;
+      const r = sndSteady("ab", snd.ab);
       if (r && r.ok) rows.push(sndRow("gain at " + eng(r.f0, "Hz"), r.gainDB.toFixed(2) + " dB", "phase", r.phaseDeg.toFixed(1) + "°"),
         sndRow("RMS gain", r.rmsGainDB.toFixed(2) + " dB", "delay", r.delayOK ? eng(r.delayS, "s") : "—"),
         sndRow("THD in", pct(r.thdA), "THD out", pct(r.thdB)), sndRow("added THD", pct(r.addedPct), "", ""));
@@ -586,6 +680,36 @@ function sndRenderCtx() {
   }
   $("sndCtxTitle").textContent = title;
   $("sndCtxBody").innerHTML = rows.join("") || `<tr><td class="k">—</td></tr>`;
+}
+
+// sndSteady is a view's reading as shown: the median of each number over its
+// last six readings (each harmonic's own), the newest for the rest (a shape,
+// a character); a reading that is not ok shows at once and starts again.
+// TRLC-LINKS: REQ-SDS-269, REQ-SDS-270, REQ-SDS-271
+function sndSteady(key, obj) {
+  if (!obj) return obj;
+  const st = snd.steady || (snd.steady = {});
+  const h = st[key] || (st[key] = { last: null, list: [] });
+  if (obj.ok === false) { h.last = obj; h.list = []; return obj; }
+  if (obj !== h.last) { h.last = obj; h.list = h.list.concat([obj]).slice(-6); }
+  return sndMedianOf(h.list);
+}
+
+// sndMedianOf is the element-wise median of like readings.
+// TRLC-LINKS: REQ-SDS-269, REQ-SDS-270, REQ-SDS-271
+function sndMedianOf(list) {
+  const last = list[list.length - 1];
+  if (typeof last === "number") {
+    const v = list.filter(Number.isFinite).sort((a, b) => a - b);
+    return v.length ? v[v.length >> 1] : last;
+  }
+  if (Array.isArray(last)) return last.map((x, i) => sndMedianOf(list.map((o) => (Array.isArray(o) ? o[i] : undefined)).filter((o) => o !== undefined)));
+  if (last && typeof last === "object" && !(last instanceof Float32Array) && !(last instanceof Float64Array)) {
+    const out = {};
+    for (const k of Object.keys(last)) out[k] = sndMedianOf(list.map((o) => o && o[k]).filter((o) => o !== undefined));
+    return out;
+  }
+  return last;
 }
 
 // sndAdsrRows are the envelope's figures (the scope's reading).
@@ -653,7 +777,8 @@ function sndSetView(v) {
   snd.view = v;
   $("sndView").value = v;
   $("sndCycles").hidden = v !== "cycle";
-  snd.cycles = []; snd.cycleAt = -1; snd.cycleHist = []; snd.cycleShown = null; snd.modAt = 0; snd.specAt = 0; snd.abAt = 0; snd.spec = [null, null];
+  snd.cycles = []; snd.cycleAt = -1; snd.cycleHist = []; snd.cycleShown = null; snd.cycleRange = null;
+  snd.genView = (snd.genView || 0) + 1; snd.busy = {}; // replies for the view before are dropped snd.modAt = 0; snd.specAt = 0; snd.abAt = 0; snd.spec = [null, null];
   try { localStorage.setItem(SND_PREF + "view", v); } catch (e) { /* private window */ }
 }
 
