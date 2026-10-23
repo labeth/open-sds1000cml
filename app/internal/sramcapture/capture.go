@@ -47,7 +47,12 @@ type Capture struct {
 	streamBytes    []byte
 	mu             sync.Mutex
 	bus            Bus
-	spanHook       func(done, total int) // between recall bursts (SetSpanHook)
+	// armRead holds the registers Arm reads in one batch (armSels); while
+	// it runs, the constant ones answer its parts' reads, which would each
+	// be a round trip.
+	armRead  [len(armSels)]uint16
+	armReady bool
+	spanHook func(done, total int) // between recall bursts (SetSpanHook)
 	// envelopeOn: an envelope recall may have left the reducer enabled.
 	envelopeOn      bool
 	envelopeRejects int
@@ -214,6 +219,13 @@ func New(b Bus) (*Capture, error) {
 
 // TRLC-LINKS: REQ-SDS-082, REQ-SDS-025
 func (c *Capture) read(s uint16) (uint16, error) {
+	if c.armReady {
+		for i, a := range armSels[1:] { // not the status, which moves
+			if a == s {
+				return c.armRead[1+i], nil
+			}
+		}
+	}
 	v, err := c.bus.Read(1, s)
 	if err == nil {
 		c.beats.Add(1)
@@ -225,6 +237,11 @@ func (c *Capture) read(s uint16) (uint16, error) {
 // A supervisor can observe progress without taking ownership from a transfer.
 // TRLC-LINKS: REQ-SDS-025
 func (c *Capture) Beats() uint64 { return c.beats.Load() }
+
+// armSels are the registers Arm reads in one batch: the status, which it
+// checks once, then the revision and the stream, record identity, packet
+// and qualifier capabilities, which no write changes.
+var armSels = [...]uint16{1, 13, 63, 73, 110, qualCapability}
 
 // manyReader is a bus that reads several registers in one call (a bus
 // worker: one round trip for them all).
@@ -572,10 +589,12 @@ func (c *Capture) Arm(ctx context.Context, cfg Config) error {
 	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	s, e := c.read(1)
-	if e != nil {
+	if e := c.readMany(armSels[:], c.armRead[:]); e != nil {
 		return e
 	}
+	c.armReady = true
+	defer func() { c.armReady = false }()
+	s := c.armRead[0]
 	if s&4 == 0 || s&8 != 0 {
 		return fmt.Errorf("sramcapture: halt the current acquisition before rearming")
 	}
