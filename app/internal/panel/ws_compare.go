@@ -63,8 +63,8 @@ func screenDivs(f *engine.Frame, s *sv, ch, cols int) []float64 {
 	z := float64(max(analog.Detents[s.vidx[ch]].Zoom, 1))
 	out := make([]float64, cols)
 	for x := range out {
-		lo := clampInt(int(math.Floor(left+float64(x)*float64(win)/float64(cols))), 0, valid-1)
-		hi := clampInt(int(math.Floor(left+float64(x+1)*float64(win)/float64(cols)))-1, lo, valid-1)
+		lo := clampInt(floorInt(left+float64(x)*float64(win)/float64(cols)), 0, valid-1)
+		hi := clampInt(floorInt(left+float64(x+1)*float64(win)/float64(cols))-1, lo, valid-1)
 		mn, mx := sig[lo], sig[lo]
 		for _, v := range sig[lo : hi+1] {
 			mn, mx = min(mn, v), max(mx, v)
@@ -73,6 +73,21 @@ func screenDivs(f *engine.Frame, s *sv, ch, cols int) []float64 {
 		out[x] = out[x] * z / 25
 	}
 	return out
+}
+
+// floorInt is int(math.Floor(v)) for the sample position of a screen
+// column: math.Floor is a software routine on this ARM and this runs per
+// column per frame. Out of int32 range, or NaN, it defers to math.Floor.
+// TRLC-LINKS: REQ-SDS-218
+func floorInt(v float64) int {
+	if !(v > -1<<31 && v < 1<<31) {
+		return int(math.Floor(v))
+	}
+	i := int(v)
+	if float64(i) > v {
+		i--
+	}
+	return i
 }
 
 // screenPoints is channel ch of f at the LCD's RefCols screen columns, in

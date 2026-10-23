@@ -360,7 +360,13 @@ func drawAcquiring(sf Surface, p plotArea, hud HUD) {
 // TRLC-LINKS: REQ-SDS-021
 func drawDenseTrace(sf Surface, p plotArea, id traceID, sig []uint8, held []bool, left float64, win int, col uint16, z float64) {
 	cols := denseColumns(id, sig, left, win, p.w)
-	y := func(v uint8) int { return p.sy(128 + (float64(v)-128)*z) }
+	// The row of each of the 256 codes, once: three per column cost more,
+	// as floating point is slow on this ARM.
+	var rows [256]int16
+	for v := range rows {
+		rows[v] = int16(p.sy(128 + (float64(v)-128)*z))
+	}
+	y := func(v uint8) int { return int(rows[v]) }
 	var top, bot [W]int16
 	var cc [W]uint16
 	w := min(p.w, W)
@@ -433,13 +439,28 @@ func fillSpans(sf Surface, top, bot []int16, cc []uint16) {
 	}
 }
 
+// floorInt is int(math.Floor(v)) for the sample positions of a plot column:
+// math.Floor is a software routine on this ARM and these run per column per
+// frame. Out of int32 range, or NaN, it defers to math.Floor.
+// TRLC-LINKS: REQ-SDS-021
+func floorInt(v float64) int {
+	if !(v > -1<<31 && v < 1<<31) {
+		return int(math.Floor(v))
+	}
+	i := int(v)
+	if float64(i) > v {
+		i--
+	}
+	return i
+}
+
 // columnHeld reports whether every sample of plot column x is held (or off
 // the record past a held end).
 // TRLC-LINKS: REQ-SDS-021
 func columnHeld(held []bool, left float64, win, w, x int) bool {
 	n := len(held)
-	a := int(math.Floor(left + float64(x)*float64(win)/float64(w)))
-	b := int(math.Floor(left + float64(x+1)*float64(win)/float64(w)))
+	a := floorInt(left + float64(x)*float64(win)/float64(w))
+	b := floorInt(left + float64(x+1)*float64(win)/float64(w))
 	a, b = min(max(a, 0), n-1), min(max(b, a+1), n)
 	for i := a; i < b; i++ {
 		if !held[i] {
@@ -492,9 +513,12 @@ func denseColumns(id traceID, sig []uint8, left float64, win, ncols int) *denseC
 	}
 	n := len(sig)
 	step := float64(win) / float64(ncols)
+	next := floorInt(left)
 	for x := 0; x < ncols; x++ {
-		lo := int(math.Floor(left + float64(x)*step))
-		hi := int(math.Floor(left+float64(x+1)*step)) - 1
+		// Column x ends where x+1 starts: one floor a column.
+		lo := next
+		next = floorInt(left + float64(x+1)*step)
+		hi := next - 1
 		lo, hi = min(max(lo, 0), n-1), min(max(hi, 0), n-1)
 		mn, mx := sig[lo], sig[lo]
 		for _, v := range sig[lo : hi+1] {
