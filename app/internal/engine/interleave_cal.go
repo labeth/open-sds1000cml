@@ -115,12 +115,17 @@ func (c *InterleaveCalibration) apply(a, b []uint8, q1, q2 []uint16, scale [2]fl
 	for ch, x := range [][]uint8{a, b} {
 		var count [5]int
 		var sums [5]uint32
-		for i, v := range x {
-			if v == 0 || v == 255 {
-				continue
+		// The phase is counted, not i%5: there is no divider on this ARM
+		// and this runs over every sample of every frame.
+		ph := 0
+		for _, v := range x {
+			if v != 0 && v != 255 {
+				sums[ph] += uint32(v)
+				count[ph]++
 			}
-			sums[i%5] += uint32(v)
-			count[i%5]++
+			if ph++; ph == 5 {
+				ph = 0
+			}
 		}
 		usable[ch] = true
 		avg := 0.0
@@ -194,13 +199,18 @@ func (c *InterleaveCalibration) apply(a, b []uint8, q1, q2 []uint16, scale [2]fl
 		if c.GainVdiv[ch] > 0 && scale[ch] == c.GainVdiv[ch] {
 			mode = 1
 		}
+		tbl := &c.table[ch][mode]
+		ph := rotation % 5
 		for i, v := range x {
 			if v == 0 || v == 255 {
 				q[i] = uint16(v) << 8
-				continue
+			} else {
+				q[i] = tbl[ph][v]
+				x[i] = roundQ8(q[i])
 			}
-			q[i] = c.table[ch][mode][(i+rotation)%5][v]
-			x[i] = roundQ8(q[i])
+			if ph++; ph == 5 {
+				ph = 0
+			}
 		}
 		if c.TimingVdiv[ch] > 0 && scale[ch] == c.TimingVdiv[ch] && sampleS == 2e-9 {
 			correctAperture(q, x, c.TimingNs[ch], rotation)
