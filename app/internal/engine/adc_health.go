@@ -173,6 +173,11 @@ func (e *Engine) checkCores() (uint16, time.Duration, error) {
 	}
 	start := time.Now()
 	snaps := make([][10]uint8, adcSnaps)
+	// Only a core that read one code in every snapshot can be stuck: once
+	// every core has read two, none is, and the rest of the check cannot
+	// change that (a live input ends it after a few snapshots, not 64).
+	var differs uint16
+	stuck := uint16(0)
 	for i := range snaps {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 		s, err := snapshot(ctx)
@@ -181,12 +186,24 @@ func (e *Engine) checkCores() (uint16, time.Duration, error) {
 			return 0, time.Since(start), err
 		}
 		snaps[i] = s
+		for k := range s {
+			if s[k] != snaps[0][k] {
+				differs |= 1 << k
+			}
+		}
+		if differs == 1<<10-1 {
+			snaps = snaps[:i+1]
+			break
+		}
+	}
+	if len(snaps) == adcSnaps {
+		stuck = stuckCores(snaps)
 	}
 	took := time.Since(start)
 	e.mu.Lock()
 	e.stats.ADCCheckMs = float64(took.Microseconds()) / 1000
 	e.mu.Unlock()
-	return stuckCores(snaps), took, nil
+	return stuck, took, nil
 }
 
 // restartEncode restarts every converter's encode clock.

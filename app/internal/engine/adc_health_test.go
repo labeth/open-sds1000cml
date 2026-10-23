@@ -301,3 +301,26 @@ func TestRecordStuckBringsCheckForward(t *testing.T) {
 		t.Error("a held core did not bring the check forward")
 	}
 }
+
+// A check ends once every core has read two codes (none can be stuck), a few
+// snapshots into a live input; a core that holds one code is still found,
+// on all 64.
+// TRLC-LINKS: REQ-SDS-231
+func TestConverterCheckEndsWhenEveryCoreMoved(t *testing.T) {
+	conv := &fakeConverters{}
+	e, _, _ := newConvEngine(t, conv)
+	stuck, _, err := e.checkCores()
+	if err != nil || stuck != 0 {
+		t.Fatalf("live cores: stuck %b err %v", stuck, err)
+	}
+	if conv.n >= adcSnaps/4 {
+		t.Fatalf("live cores read %d snapshots, want a few", conv.n)
+	}
+	conv.n, conv.stuck = 0, map[int]uint8{2: 165}
+	if stuck, _, err = e.checkCores(); err != nil || stuck != 1<<2 {
+		t.Fatalf("a held core: stuck %b err %v", stuck, err)
+	}
+	if conv.n != adcSnaps {
+		t.Fatalf("a held core read %d snapshots, want %d", conv.n, adcSnaps)
+	}
+}

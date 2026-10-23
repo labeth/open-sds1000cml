@@ -199,29 +199,15 @@ func configureOnce(p Port, rbf []byte, rev bool, o *Options) error {
 	}
 	// 4. shift every bit MSB-first of the (bit-reversed) byte: present DATA0
 	//    with DCLK low, then raise DCLK to latch. nCONFIG stays high.
+	tShift := time.Now()
 	if o.Progress != nil {
 		o.Progress(0, len(rbf))
 	}
-	for i, by := range rbf {
-		if rev {
-			by = bitrev(by)
-		}
-		for bit := 7; bit >= 0; bit-- {
-			w := wordIdle
-			if (by>>uint(bit))&1 == 1 {
-				w |= BitDATA0
-			}
-			if err := p.WriteCfg(w); err != nil {
-				return fmt.Errorf("byte %d bit %d: %w", i, bit, err)
-			}
-			if err := p.WriteCfg(w | BitDCLK); err != nil {
-				return fmt.Errorf("byte %d bit %d clock: %w", i, bit, err)
-			}
-		}
-		if o.Progress != nil && ((i+1)%16384 == 0 || i+1 == len(rbf)) {
-			o.Progress(i+1, len(rbf))
-		}
+	if err := fifoShift(func() error { return shiftAll(p, rbf, rev, o) }); err != nil {
+		return err
 	}
+	shift := time.Since(tShift)
+	o.Logf("fpgaload: shifted %d bytes in %v (%.2f Mbit/s)", len(rbf), shift.Round(time.Millisecond), float64(8*len(rbf))/shift.Seconds()/1e6)
 	// 5. init clocks (DATA0 low).
 	for i := 0; i < o.InitClocks; i++ {
 		if err := p.WriteCfg(wordIdle); err != nil {
@@ -321,4 +307,72 @@ func EnsureDefault(read Reader, p Port, rbf []byte, o Options) error {
 	}
 	o.Logf("fpgaload: loaded and verified build-ID %#08x (fabric %#04x)", iface.BuildID, iface.FabricID)
 	return nil
+}
+
+// shiftAll shifts every bit MSB-first of the (bit-reversed) bytes: DATA0
+// presented with DCLK low, then DCLK raised to latch.
+// TRLC-LINKS: REQ-SDS-005
+func shiftAll(p Port, rbf []byte, rev bool, o *Options) error {
+	if mp, ok := p.(*memPort); ok {
+		return shiftMem(mp, rbf, rev, o)
+	}
+	for i, by := range rbf {
+		if rev {
+			by = bitrev(by)
+		}
+		for bit := 7; bit >= 0; bit-- {
+			w := wordIdle
+			if (by>>uint(bit))&1 == 1 {
+				w |= BitDATA0
+			}
+			if err := p.WriteCfg(w); err != nil {
+				return fmt.Errorf("byte %d bit %d: %w", i, bit, err)
+			}
+			if err := p.WriteCfg(w | BitDCLK); err != nil {
+				return fmt.Errorf("byte %d bit %d clock: %w", i, bit, err)
+			}
+		}
+		if o.Progress != nil && ((i+1)%16384 == 0 || i+1 == len(rbf)) {
+			o.Progress(i+1, len(rbf))
+		}
+	}
+	return nil
+}
+
+// shiftMem is shiftAll on the mapped port: each byte's sixteen port words
+// from a table, stored straight to the port (no interface call a write;
+// store16 stays a call, so no two stores to the port merge).
+// TRLC-LINKS: REQ-SDS-005
+func shiftMem(p *memPort, rbf []byte, rev bool, o *Options) error {
+	words := portWords(rev)
+	for i, by := range rbf {
+		for _, w := range &words[by] {
+			store16(p.word, w)
+		}
+		if o.Progress != nil && ((i+1)%16384 == 0 || i+1 == len(rbf)) {
+			o.Progress(i+1, len(rbf))
+		}
+	}
+	return nil
+}
+
+// portWords is each byte's sixteen port words, as shiftAll writes them.
+// TRLC-LINKS: REQ-SDS-005
+func portWords(rev bool) *[256][16]uint16 {
+	words := new([256][16]uint16)
+	for b := 0; b < 256; b++ {
+		by := byte(b)
+		if rev {
+			by = bitrev(by)
+		}
+		for bit := 7; bit >= 0; bit-- {
+			w := wordIdle
+			if (by>>uint(bit))&1 == 1 {
+				w |= BitDATA0
+			}
+			k := 2 * (7 - bit)
+			words[b][k], words[b][k+1] = w, w|BitDCLK
+		}
+	}
+	return words
 }

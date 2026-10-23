@@ -387,7 +387,10 @@ func (e *Engine) loadImage(name string) bool {
 	e.setBusy("loading "+shown+" image", 0) // the loading indicator covers the reload
 	e.noteBackendsLoading(name)
 	defer e.beatWhile()()
-	if err := load(); err != nil {
+	t0 := time.Now()
+	err := load()
+	tLoad := time.Now()
+	if err != nil {
 		e.logf("engine: %s image: %v", shown, err)
 		if name != "" {
 			e.failedImage = name
@@ -404,10 +407,13 @@ func (e *Engine) loadImage(name string) bool {
 	if err := e.applyPanelScan(); err != nil {
 		e.logf("engine: panel scan: %v", err)
 	}
+	tProbe := time.Now()
 	e.mu.Lock()
 	e.stats.Image = shown
 	e.mu.Unlock()
 	e.startConverters("loading the " + shown + " image")
+	e.logf("engine: the %s image in %v (configure %v, probes %v, converters %v)", shown, time.Since(t0).Round(time.Millisecond),
+		tLoad.Sub(t0).Round(time.Millisecond), tProbe.Sub(tLoad).Round(time.Millisecond), time.Since(tProbe).Round(time.Millisecond))
 	return true
 }
 

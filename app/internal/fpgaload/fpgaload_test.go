@@ -459,3 +459,28 @@ func TestRBFLen(t *testing.T) {
 		}
 	}
 }
+
+// The mapped port's table writes each byte as the generic shift does: the
+// same sixteen words in the same order, both bit orders.
+// TRLC-LINKS: REQ-SDS-005
+func TestPortWordsMatchTheShift(t *testing.T) {
+	for _, rev := range []bool{false, true} {
+		words := portWords(rev)
+		for b := 0; b < 256; b++ {
+			f := &fakePort{}
+			o := Options{}
+			o.withDefaults()
+			if err := shiftAll(f, []byte{byte(b)}, rev, &o); err != nil {
+				t.Fatal(err)
+			}
+			if len(f.writes) != 16 {
+				t.Fatalf("byte %#x: %d writes", b, len(f.writes))
+			}
+			for k, w := range f.writes {
+				if words[b][k] != w {
+					t.Fatalf("rev %v byte %#x write %d: table %#04x, shift %#04x", rev, b, k, words[b][k], w)
+				}
+			}
+		}
+	}
+}
