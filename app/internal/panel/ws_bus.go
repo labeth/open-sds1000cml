@@ -486,7 +486,8 @@ func (c *Controller) detectOnScreen() (decode.Result, float64, bool) {
 	if f == nil {
 		return decode.Result{}, 0, false
 	}
-	res := framecalc.Detect(f, "hex")
+	var res decode.Result
+	atSearchPriority(func() { res = framecalc.Detect(f, "hex") })
 	return res, f.SampleS, res.OK && res.Proto != "" && res.Proto != "off"
 }
 
