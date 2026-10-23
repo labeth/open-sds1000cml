@@ -700,7 +700,12 @@ func checkedFind(res decode.Result) bool {
 // frame in flight need be waited out.
 // TRLC-LINKS: REQ-SDS-214
 func (c *Controller) detectWith(decimated, stepped bool, accept func(*engine.Frame, bool) bool, auto AutoSource, wait time.Duration) look {
-	deadline := c.now().Add(wait)
+	t0 := c.now()
+	kind := "full-rate"
+	if decimated {
+		kind = "decimated"
+	}
+	deadline := t0.Add(wait)
 	loadEnd := deadline.Add(imageWait) // the longest an image load holds the wait
 	// While running, a frame captured after the search began: the one on
 	// screen, or one in flight, may predate a setting just changed (an ARINC
@@ -757,10 +762,15 @@ func (c *Controller) detectWith(decimated, stepped bool, accept func(*engine.Fra
 		}
 		last := c.detectSync || !c.now().Before(deadline)
 		if got || (usable && last && !decimated) {
+			t1 := c.now()
 			res, sampleS, found := auto()
+			// The search's steps in the log: where AUTO's seconds went.
+			c.logf("panel: bus search: %s look at %s/div waited %v, searched %v: %s", kind, si(c.snap().st.TdivSet(), "s"),
+				t1.Sub(t0).Round(time.Millisecond), c.now().Sub(t1).Round(time.Millisecond), map[bool]string{true: res.Proto, false: "nothing"}[found])
 			return look{res, sampleS, found, resolved, runs, envRun, envBusy, envSeen}
 		}
 		if last {
+			c.logf("panel: bus search: %s look: no capture in %v", kind, c.now().Sub(t0).Round(time.Millisecond))
 			return look{}
 		}
 		time.Sleep(50 * time.Millisecond)

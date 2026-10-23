@@ -48,9 +48,93 @@ func quietFlat(c []uint8) []uint8 {
 	return out
 }
 
-// autodetectStrided is AutodetectFast on the record as given.
+// autoEdgeBudget bounds the crossings a channel brings to Autodetect: every
+// decoder walks every edge, and a busy line (a sigma-delta source switching
+// every few samples, 200 k crossings a 1M record) took the bus search 20 to
+// 40 s a look on the scope's ARM, to name no bus (14 s with fifty thousand,
+// 3 s with twenty). Twenty thousand crossings hold a thousand or more of any
+// bus's units (1250 SPI bytes, 5000 UART characters).
+const autoEdgeBudget = 20000
+
+// budgetEnd is the length of the record from its start in which no channel
+// has more than budget crossings (shortestPulse's), the whole record when
+// none has.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-214
+func budgetEnd(c1, c2 []uint8, budget int) int {
+	n := len(c1)
+	for _, c := range [][]uint8{c1, c2} {
+		if c != nil && len(c) == len(c1) {
+			if e := crossingsEnd(c, budget); e < n {
+				n = e
+			}
+		}
+	}
+	return n
+}
+
+// crossingsEnd is the index at which channel c makes its budget-th crossing
+// of its mid level (hysteresis a tenth of its swing, the new level held
+// three samples, as shortestPulse), or len(c).
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-214
+func crossingsEnd(c []uint8, budget int) int {
+	if len(c) < 64 {
+		return len(c)
+	}
+	var hist [256]int
+	for _, v := range c {
+		hist[v]++
+	}
+	pct := func(p float64) int {
+		need, acc := int(p*float64(len(c))), 0
+		for v, k := range hist {
+			if acc += k; acc > need {
+				return v
+			}
+		}
+		return 255
+	}
+	lo, hi := pct(0.05), pct(0.95)
+	if hi-lo < 20 {
+		return len(c)
+	}
+	mid, h := (lo+hi)/2, (hi-lo)/10
+	high, crossings := int(c[0]) > mid, 0
+	side := func(v uint8, wantHigh bool) bool {
+		if wantHigh {
+			return int(v) > mid+h
+		}
+		return int(v) < mid-h
+	}
+	for i, v := range c {
+		next := !high
+		if !side(v, next) {
+			continue
+		}
+		held := true
+		for k := 1; k <= 2 && i+k < len(c); k++ {
+			held = held && side(c[i+k], next)
+		}
+		if !held {
+			continue
+		}
+		high = next
+		if crossings++; crossings >= budget {
+			return i
+		}
+	}
+	return len(c)
+}
+
+// autodetectStrided is AutodetectFast on the record as given, from its start
+// to where its busiest channel spends autoEdgeBudget crossings.
 // TRLC-LINKS: REQ-SDS-018
 func autodetectStrided(c1, c2 []uint8, colTimeS float64, format string) (Result, float64) {
+	if n := budgetEnd(c1, c2, autoEdgeBudget); n < len(c1) {
+		c1 = c1[:n]
+		if c2 != nil {
+			c2 = c2[:min(n, len(c2))]
+		}
+	}
 	stride := autoStride(c1, c2)
 	if stride <= 1 {
 		return Autodetect(c1, c2, colTimeS, format), colTimeS
