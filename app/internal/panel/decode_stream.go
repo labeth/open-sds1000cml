@@ -71,8 +71,12 @@ func (c *Controller) startStream() {
 		defer c.mu.Unlock()
 		return c.streamGen == gen
 	}
+	queued := time.Now()
 	c.offPanel(func() {
 		t0 := time.Now()
+		if d := t0.Sub(queued); d > 50*time.Millisecond {
+			c.logf("panel: stream: waited %v to start", d.Round(time.Millisecond))
+		}
 		if s.Active() { // started again: the image it runs on stays for the next
 			if h, ok := c.eng.(interface {
 				HoldDecodedImage(context.Context) error
@@ -110,7 +114,11 @@ func (c *Controller) startStream() {
 		// A stream still starting or ending (Stream turned off and on again
 		// quickly) ends first: Start is refused while one is starting, and that
 		// one then stops as the Off asked, leaving Stream On with none running.
+		tStop := time.Now()
 		stopWait(s)
+		if d := time.Since(tStop); d > 50*time.Millisecond {
+			c.logf("panel: stream: the stream before took %v to end", d.Round(time.Millisecond))
+		}
 		if !c.streaming() || !current() {
 			return
 		}
@@ -162,13 +170,13 @@ func streamImageNote(proto, baud int, loaded string) string {
 		return ""
 	}
 	if soft == "gap-free" {
-		return fmt.Sprintf("loading the stream FPGA image, about 4 s: %s is decoded gap-free from its continuous stream", protoName(proto))
+		return fmt.Sprintf("loading the stream FPGA image, about 1.5 s: %s is decoded gap-free from its continuous stream", protoName(proto))
 	}
 	name := map[string]string{"qualify": "qualifier"}[loaded]
 	if name == "" {
 		name = loaded
 	}
-	return fmt.Sprintf("loading the %s FPGA image, about 4 s: the %s image has no %s receiver", want, name, protoName(proto))
+	return fmt.Sprintf("loading the %s FPGA image, about 1.5 s: the %s image has no %s receiver", want, name, protoName(proto))
 }
 
 // streamModeText says how the bus streams (ADR-STREAM-SOFT-DECODE): the
