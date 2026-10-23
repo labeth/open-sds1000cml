@@ -3,7 +3,7 @@
 // by the web page's SOUND tab and the phone remote: /api/sound.bin long-polled
 // into a ring of volts (the newest 2^20 samples a channel), the FPGA's edge
 // marks beside it, and Listen: the listen source through high-pass,
-// low-pass, notch and gain into the AudioWorklet player (sound_worklet.js:
+// low-pass and gain into the AudioWorklet player (sound_worklet.js:
 // jitter buffer, rate following, limiter). No DOM: the pages draw.
 "use strict";
 
@@ -43,7 +43,7 @@ function sndClient(wantMarks, who) {
     focus: -1,
     play: { pos: 0, loop: true, speed: 1, fed: 0, on: false },
     audio: {
-      on: false, ctx: null, node: null, src: "c1", mute: false, vol: 0.7, auto: true, gainDB: 0, hp: 0, lp: 0, notch: false,
+      on: false, ctx: null, node: null, src: "c1", mute: false, vol: 0.7, auto: true, gainDB: 0, hp: 0, lp: 0,
       hz: 0, agc: 1, peak: 0, stat: {}, filt: null, delay: [], abMatch: 1, abDelay: 0, quiet: 0,
       probe: { recv: [], bursts: [] },
     },
@@ -305,13 +305,6 @@ function sndBqRun(f, x) {
   }
 }
 
-// sndNotchB is a notch at f0 (Q 8): the fundamental out, its harmonics in.
-// TRLC-LINKS: REQ-SDS-265
-function sndNotchB(f0, fs) {
-  const w = 2 * Math.PI * f0 / fs, cw = Math.cos(w), al = Math.sin(w) / 16, a0 = 1 + al;
-  return [1 / a0, -2 * cw / a0, 1 / a0, -2 * cw / a0, (1 - al) / a0];
-}
-
 // sndButter4 is a 4th-order Butterworth high- or low-pass at f as two
 // biquads' coefficients (Q 0.5412 and 1.3066): 24 dB an octave, a filter
 // that shapes what is heard.
@@ -320,24 +313,19 @@ function sndButter4(kind, f, fs) { return [0.5412, 1.3066].map((q) => sndRbj(kin
 
 // sndFilters builds the listen chain's filters for both outputs: an
 // always-on 5 Hz DC blocker (the inputs are DC-coupled), the high-pass and
-// low-pass at their cutoffs, the notch at the tuned pitch. A change later
+// low-pass at their cutoffs. A change later
 // swaps a filter's coefficients and keeps its state (sndFilterTune): a
 // filter rebuilt from rest clicks.
 // TRLC-LINKS: REQ-SDS-265
 function sndFilters(c) {
-  c.audio.filt = [0, 1].map(() => ({ dc: { x1: 0, y1: 0, primed: false }, hp: null, lp: null, hpHz: 0, lpHz: 0,
-    notch: sndBq(sndNotchB(1000, c.rate)), notchHz: 0 }));
-  c.audio.notchCand = 0;
-  c.audio.notchHeld = 0;
+  c.audio.filt = [0, 1].map(() => ({ dc: { x1: 0, y1: 0, primed: false }, hp: null, lp: null, hpHz: 0, lpHz: 0 }));
   sndFilterTune(c, 0);
 }
 
 // sndFilterTune follows the settings without a reset, once a sub-block of n
 // samples: a cutoff glides toward the one set (12 % a call, 128 samples: three
 // octaves in about 40 ms), swapping the biquads' coefficients and keeping
-// their state, so a slider moved does not click; the notch follows the
-// tuner's pitch once it has held within 10 cents for 0.15 s (a melody's
-// notes, not every wobble).
+// their state, so a slider moved does not click.
 // TRLC-LINKS: REQ-SDS-265
 function sndFilterTune(c, n) {
   const a = c.audio, fs = c.rate;
@@ -352,14 +340,6 @@ function sndFilterTune(c, n) {
       if (f[k]) f[k].forEach((q, i) => { q.b = bs[i]; });
       else f[k] = bs.map(sndBq);
     }
-  }
-  if (!(a.hz > 0)) return;
-  if (!(a.notchCand > 0) || Math.abs(sndCents(a.hz, a.notchCand)) > 10) { a.notchCand = a.hz; a.notchHeld = 0; return; }
-  a.notchHeld += n;
-  const f0 = a.filt[0];
-  if (a.notchHeld >= 0.15 * fs && (!(f0.notchHz > 0) || Math.abs(sndCents(a.notchCand, f0.notchHz)) > 10)) {
-    const b = sndNotchB(a.notchCand, fs);
-    for (const f of a.filt) { f.notch.b = b; f.notchHz = a.notchCand; }
   }
 }
 
@@ -377,7 +357,7 @@ function sndDC(d, x, fs) {
 }
 
 // sndAudioFeed turns a block into the player's two outputs: the source, the
-// high-pass, low-pass and notch, the gain (auto: the measured peak to a
+// DC blocker, high-pass and low-pass, the gain (auto: the measured peak to a
 // quarter of full scale, held through quiet so noise is not raised), volume
 // and mute.
 // TRLC-LINKS: REQ-SDS-265
@@ -407,7 +387,6 @@ function sndAudioFeed(c, v1, v2, gap) {
       sndDC(f.dc, x, c.rate);
       if (f.hp) for (const q of f.hp) sndBqRun(q, x);
       if (f.lp) for (const q of f.lp) sndBqRun(q, x);
-      if (a.notch && f.notchHz > 0) sndBqRun(f.notch, x);
     }
   }
   // the latency probe: a burst after a fifth of a second of quiet, received

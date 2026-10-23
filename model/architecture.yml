@@ -841,8 +841,8 @@ architecture:
     name: Web sound core
     group: FG-WEB
     prose: 'sound.js (the SOUND analysis, the twin of internal/sound), sound_client.js (the audio stream from
-      /api/sound.bin in a ring of volts with the FPGA''s edge marks, and Listen''s chain: source, high-pass,
-      low-pass, notch, auto gain) and sound_worklet.js (the player, an AudioWorklet in a secure context and on the
+      /api/sound.bin in a ring of volts with the FPGA''s edge marks, and Listen''s chain: source, DC blocker,
+      high-pass, low-pass, auto gain) and sound_worklet.js (the player, an AudioWorklet in a secure context and on the
       page''s thread over plain http: a jitter buffer resampled at a
       rate that follows its fill, a fade over gaps, a -6 dBFS limiter), shared by the web page and the phone.'
     tags:

@@ -4459,9 +4459,9 @@ requirements:
 - id: REQ-SDS-265
   title: Listen to the probe
   text: The instrument shall stream both channels gap-free at an audio rate to a web page or phone that listens and
-    play C1, C2, both as stereo or the output less the gain- and delay-matched input, with a 20 Hz high-pass, an
-    optional low-pass and notch of the fundamental, automatic or manual gain, a limiter and mute, reporting the
-    buffer, the rate correction, underruns and the latency.
+    play C1, C2, both as stereo or the output less the gain- and delay-matched input, with the DC blocked, a
+    high-pass and a low-pass each with an adjustable cutoff, automatic or manual gain, a limiter and mute, reporting
+    the buffer, the rate correction, underruns and the latency.
   status: draft
   category: functional
   appliesTo:

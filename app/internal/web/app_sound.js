@@ -1,7 +1,7 @@
 // ENGMODEL-OWNER-UNIT: FU-WEB-APP-SOUND
 // app_sound.js — the SOUND workspace (ADR-SOUND): the gap-free audio stream
 // (/api/sound.bin) in a ring here, Listen through an AudioWorklet (jitter
-// buffer, rate following, limiter) with source, gain, filters, notch and A−B,
+// buffer, rate following, limiter) with source, gain, filters and A−B,
 // the meters, the tuner (note, cents, strobe, ten-second strip), the views
 // (pitch-locked cycle from the FPGA's edge marks, envelope, modulation,
 // spectrum, A/B) and the scope's shared readouts (envelope capture, V/oct,
@@ -261,6 +261,7 @@ function sndCycleUpdate() {
 // sndCycleMedian is the median of each of the cycles' figures.
 // TRLC-LINKS: REQ-SDS-272
 function sndCycleMedian(cs) {
+  // TRLC-LINKS: REQ-SDS-272
   const med = (k) => {
     const v = cs.map((c) => c[k]).filter(Number.isFinite).sort((a, b) => a - b);
     return v.length ? v[v.length >> 1] : NaN;
@@ -740,8 +741,6 @@ function sndWire() {
   $("sndGainMode").onchange = () => { a.auto = $("sndGainMode").value === "auto"; sndPrefSet("auto", a.auto ? 1 : 0); };
   // TRLC-LINKS: REQ-SDS-274
   $("sndGain").oninput = () => { a.gainDB = +$("sndGain").value; a.auto = false; $("sndGainMode").value = "man"; sndPrefSet("gain", a.gainDB); sndPrefSet("auto", 0); };
-  // TRLC-LINKS: REQ-SDS-274
-  $("sndNotch").onclick = () => { a.notch = !a.notch; $("sndNotch").classList.toggle("on", a.notch); };
   // TRLC-LINKS: REQ-SDS-274
   $("sndView").onchange = () => sndSetView($("sndView").value);
   // TRLC-LINKS: REQ-SDS-274
