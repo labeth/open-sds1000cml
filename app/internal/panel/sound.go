@@ -169,14 +169,15 @@ type soundSvc struct {
 	// Who holds the acquisition. The audio stream takes the whole fabric, so
 	// the last one to act wins: lcdWS says the LCD's workspace is SOUND (its
 	// menu open or not), pageUntil that a web or phone page shows SOUND,
-	// remoteUntil that such a page holds the stream now, and lcdTook that
+	// webUntil and phoneUntil that such a page holds the stream now (both may:
+	// they share it), and lcdTook that
 	// the LCD took the acquisition back with a key, which refuses the pages'
 	// leases until one of them takes the scope again.
-	lcdWS       bool
-	pageUntil   time.Time
-	remoteUntil time.Time
-	remoteWho   string // "phone" or "" (a web page): the page holding it
-	lcdTook     bool
+	lcdWS      bool
+	pageUntil  time.Time
+	webUntil   time.Time
+	phoneUntil time.Time
+	lcdTook    bool
 
 	tuner   sound.Tuner
 	hz      float64
@@ -328,6 +329,7 @@ const SoundPausedText = "paused: the scope is in use"
 const (
 	soundRemoteNotice = "A web page is on SOUND and is using the scope. Press AUTO to take it back."
 	soundPhoneNotice  = "A phone is on SOUND and is using the scope. Press AUTO to take it back."
+	soundBothNotice   = "A web page and a phone are on SOUND and are using the scope. Press AUTO to take it back."
 )
 
 // remoteLease records a page showing SOUND and, unless the LCD took the
@@ -343,7 +345,11 @@ func (s *soundSvc) remoteLease(who string, lease func()) bool {
 	if !s.remoteOKLocked() {
 		return false
 	}
-	s.remoteUntil, s.remoteWho = now.Add(soundPageFor), who
+	if who == "phone" {
+		s.phoneUntil = now.Add(soundPageFor)
+	} else {
+		s.webUntil = now.Add(soundPageFor)
+	}
 	if lease != nil {
 		lease()
 	}
@@ -364,10 +370,13 @@ func (s *soundSvc) remotePaused() bool {
 func (s *soundSvc) remoteNotice(now time.Time) string {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	web, phone := now.Before(s.webUntil), now.Before(s.phoneUntil)
 	switch {
-	case s.lcdWS || !now.Before(s.remoteUntil):
+	case s.lcdWS || !web && !phone:
 		return ""
-	case s.remoteWho == "phone":
+	case web && phone:
+		return soundBothNotice
+	case phone:
 		return soundPhoneNotice
 	}
 	return soundRemoteNotice
@@ -383,7 +392,7 @@ func (s *soundSvc) lcdTake(inSound bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.lcdWS, s.lcdTook = inSound, true
-	s.remoteUntil = time.Time{}
+	s.webUntil, s.phoneUntil = time.Time{}, time.Time{}
 	if inSound {
 		return
 	}

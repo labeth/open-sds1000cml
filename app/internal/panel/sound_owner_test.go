@@ -102,8 +102,8 @@ func TestSoundLCDTakesTheScopeBack(t *testing.T) {
 		t.Fatalf("the LCD's notice while a web page streams: %q", n)
 	}
 	c.SoundRemoteLease("phone", lease)
-	if n := c.View().Notice; n != soundPhoneNotice {
-		t.Fatalf("the LCD's notice while the phone streams: %q", n)
+	if n := c.View().Notice; n != soundBothNotice {
+		t.Fatalf("the LCD's notice while the web page and the phone stream: %q", n)
 	}
 
 	lcdPress(t, c, "set50")
@@ -247,5 +247,31 @@ func TestSoundAutoTakesTheScopeFirst(t *testing.T) {
 	}
 	if n == 0 || e.leased() {
 		t.Fatalf("the page's polls were not refused (%d refused, leased %v)", n, e.leased())
+	}
+}
+
+// A web page and a phone on SOUND at once share the stream, and the notice
+// names both, whichever asked last; a key on the scope ends both.
+// TRLC-LINKS: REQ-SDS-277
+func TestSoundNoticeNamesBothPages(t *testing.T) {
+	quiet := func(float64) float64 { return 0 }
+	e := newSoundEng([2]func(float64) float64{quiet, quiet}, 1)
+	c := New(e, &fakeFE{idx: [2]int{8, 8}}, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
+	c.decode(idle(), true)
+	lease := func() { e.LeaseSound(3 * time.Second) }
+	for _, who := range []string{"", "phone", "", "phone"} {
+		if !c.SoundRemoteLease(who, lease) {
+			t.Fatalf("%q was refused", who)
+		}
+		if n := c.View().Notice; n != soundBothNotice && who == "phone" || n == soundPhoneNotice {
+			t.Fatalf("after %q: notice %q", who, n)
+		}
+	}
+	if n := c.SoundHeld(); n != soundBothNotice {
+		t.Fatalf("held %q", n)
+	}
+	lcdPress(t, c, "set50")
+	if n := c.SoundHeld(); n != "" {
+		t.Fatalf("after a key: held %q", n)
 	}
 }
