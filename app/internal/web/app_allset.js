@@ -83,6 +83,7 @@ const ALL_EXCLUDE = new Set(["decodeText", "tab-scope", "tab-bus", "tab-spectrum
   "sndTakeScope"]);
 
 let allBuilt = false, allW = 380;
+let allIndex = null;
 // TRLC-LINKS: REQ-SDS-219
 function allEntries() { const out = []; for (const [g, list] of ALL_GROUPS) for (const e of list) out.push({ group: g, id: e[0], label: e[1], kw: e[2] || "", also: e[3] || [] }); return out; }
 
@@ -181,21 +182,35 @@ function allBuild() {
   syncMirrors();
 }
 
+// allIndexOf lists the built sections with their rows and search texts once:
+// the list is fixed after allBuild and every keystroke refilters all of it.
+// TRLC-LINKS: REQ-SDS-219
+function allIndexOf() {
+  const out = [];
+  for (const sec of $("allList").querySelectorAll(".ag")) {
+    const rows = [];
+    for (const el of sec.querySelectorAll(".ar")) rows.push({ el, text: el.dataset.text });
+    out.push({ sec, rows, cnt: sec.querySelector(".agn"), box: sec.querySelector(".agb") });
+  }
+  return out;
+}
+
 // TRLC-LINKS: REQ-SDS-219
 function allFilterApply() {
   const words = $("allFilter").value.toLowerCase().split(/\s+/).filter(Boolean);
+  if (!allIndex) allIndex = allIndexOf();
   let shown = 0;
-  for (const sec of $("allList").querySelectorAll(".ag")) {
+  for (const g of allIndex) {
     let n = 0;
-    for (const r of sec.querySelectorAll(".ar")) {
-      const hit = !words.length || words.every((w) => r.dataset.text.includes(w));
-      r.hidden = !hit;
+    for (const r of g.rows) {
+      let hit = true;
+      for (const w of words) if (!r.text.includes(w)) { hit = false; break; }
+      if (r.el.hidden !== !hit) r.el.hidden = !hit;
       if (hit) n++;
     }
-    sec.hidden = !n;
-    const cnt = sec.querySelector(".agn");
-    if (cnt) cnt.textContent = words.length ? n + " found" : String(sec.querySelectorAll(".ar").length);
-    if (words.length && n) { const b = sec.querySelector(".agb"); b.hidden = false; }
+    if (g.sec.hidden !== !n) g.sec.hidden = !n;
+    if (g.cnt) g.cnt.textContent = words.length ? n + " found" : String(g.rows.length);
+    if (words.length && n) g.box.hidden = false;
     shown += n;
   }
   $("allNone").hidden = shown > 0;
