@@ -145,9 +145,9 @@ function srAlign(ref, sig, maxLag, base, wLo, wHi) {
 // TRLC-LINKS: REQ-SDS-019
 function srMidSwing(sig) {
   const stride = Math.max(1, Math.floor(sig.length / 4096));
-  const s = [];
-  for (let i = 0; i < sig.length; i += stride) s.push(sig[i]);
-  s.sort((a, b) => a - b);
+  const s = new Float64Array(Math.ceil(sig.length / stride)); // sorted typed: numeric, no comparator call
+  for (let i = 0, k = 0; i < sig.length; i += stride) s[k++] = sig[i];
+  s.sort();
   return (s[Math.floor(s.length * 0.1)] + s[Math.floor(s.length * 0.9)]) / 2;
 }
 
