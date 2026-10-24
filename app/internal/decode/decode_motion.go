@@ -2,7 +2,6 @@
 package decode
 
 import (
-	"fmt"
 	"math"
 	"strconv"
 	"strings"
@@ -240,12 +239,13 @@ func DecodePWM(codes []uint8, colTimeS float64, cfg LineCfg) Result {
 		return Result{Proto: "pwm", Error: S.reason}
 	}
 	n := S.n
-	var spans []Span
-	var toks []string
-	var units []int
-	var pers []float64
-	narrow := math.Inf(1) // the narrowest high or low
 	E := S.edges
+	periods := len(E)/2 + 1 // a period from each rising edge
+	spans := make([]Span, 0, 2*periods)
+	toks := make([]string, 0, periods)
+	units := make([]int, 0, periods)
+	pers := make([]float64, 0, periods)
+	narrow := math.Inf(1) // the narrowest high or low
 	for k := 0; k < len(E); k++ {
 		if E[k].dir < 0 || k+2 >= len(E) {
 			continue
@@ -255,7 +255,7 @@ func DecodePWM(codes []uint8, colTimeS float64, cfg LineCfg) Result {
 		ratio := (f - r0) / per
 		v := min(255, int(ratio*256))
 		d10 := int(math.Floor(ratio*1000 + 0.5))
-		txt := fmt.Sprintf("%d.%d%%", d10/10, d10%10)
+		txt := strconv.Itoa(d10/10) + "." + strconv.Itoa(d10%10) + "%"
 		spans = append(spans, pspan(r0, r0, n, "", "sof", 0), pspan(r0, r1, n, txt, "data", v))
 		toks = append(toks, txt)
 		units = append(units, v)
