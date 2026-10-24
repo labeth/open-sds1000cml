@@ -200,6 +200,7 @@ func (a *Agent) superviseAdopted(pid int) {
 func (a *Agent) runAppOnce(slot string, emergency bool) {
 	bin := a.store.BinPath(slot)
 	h := newHealthWatcher(a.cfg.HealthPath())
+	a.confirmedRun = ""
 
 	cmd := exec.Command(bin)
 	cmd.Dir = a.store.SlotDir(slot)
@@ -302,12 +303,19 @@ loop:
 // confirmIfStable points the confirmed slot at slot once it has been healthy
 // for STABLE seconds (never the emergency binary).
 // TRLC-LINKS: REQ-SDS-028
+//
+// The slot found confirmed is remembered for the run (confirmedRun, set by
+// the supervisor alone, the pointer's only writer): a healthy app's every
+// tick otherwise read both pointer files off the stick.
 func (a *Agent) confirmIfStable(slot string, emergency bool, hs healthStatus, ran time.Duration) {
-	if emergency || !hs.HealthyOnce || ran < a.cfg.StableSecs || a.store.Confirmed() == slot {
+	if emergency || !hs.HealthyOnce || ran < a.cfg.StableSecs || a.confirmedRun == slot {
 		return
 	}
-	_ = a.store.SetConfirmed(slot)
-	a.event("app.confirmed", map[string]any{"slot": slot})
+	if a.store.Confirmed() != slot {
+		_ = a.store.SetConfirmed(slot)
+		a.event("app.confirmed", map[string]any{"slot": slot})
+	}
+	a.confirmedRun = slot
 }
 
 // terminate asks the app to land the engine (SIGTERM), then SIGKILLs the

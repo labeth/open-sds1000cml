@@ -79,7 +79,8 @@ type Agent struct {
 	appMu        sync.Mutex
 	app          appState
 	paused       bool
-	useEmergency bool // recovery ladder forced the emergency binary
+	useEmergency bool   // recovery ladder forced the emergency binary
+	confirmedRun string // the slot this run found confirmed (supervisor only)
 
 	// upload staging sessions
 	upMu sync.Mutex
