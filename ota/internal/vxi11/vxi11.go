@@ -62,16 +62,18 @@ func (x *xdrBuf) opaque(p []byte) *xdrBuf {
 // TRLC-LINKS: REQ-SDS-100
 func rpcCall(conn net.Conn, timeout time.Duration, prog, vers, proc uint32, args []byte) ([]byte, error) {
 	xid := uint32(time.Now().UnixNano())
-	var msg xdrBuf
+	// The record mark is reserved at the front and filled in last: the call
+	// is built and written as one buffer.
+	msg := xdrBuf{b: make([]byte, 4, 4+40+len(args))}
 	msg.u32(xid).u32(0 /*CALL*/).u32(2 /*rpcvers*/).u32(prog).u32(vers).u32(proc)
 	msg.u32(0).u32(0) // cred AUTH_NULL
 	msg.u32(0).u32(0) // verf AUTH_NULL
 	msg.b = append(msg.b, args...)
+	binary.BigEndian.PutUint32(msg.b[:4], 0x80000000|uint32(len(msg.b)-4))
 
 	_ = conn.SetDeadline(time.Now().Add(timeout))
 	var rm [4]byte
-	binary.BigEndian.PutUint32(rm[:], 0x80000000|uint32(len(msg.b)))
-	if _, err := conn.Write(append(rm[:], msg.b...)); err != nil {
+	if _, err := conn.Write(msg.b); err != nil {
 		return nil, fmt.Errorf("vxi11: write: %w", err)
 	}
 
@@ -82,11 +84,11 @@ func rpcCall(conn net.Conn, timeout time.Duration, prog, vers, proc uint32, args
 			return nil, fmt.Errorf("vxi11: read record mark: %w", err)
 		}
 		h := binary.BigEndian.Uint32(rm[:])
-		frag := make([]byte, h&0x7fffffff)
-		if _, err := io.ReadFull(conn, frag); err != nil {
+		at := len(reply) // each fragment read straight onto the reply
+		reply = append(reply, make([]byte, h&0x7fffffff)...)
+		if _, err := io.ReadFull(conn, reply[at:]); err != nil {
 			return nil, fmt.Errorf("vxi11: read fragment: %w", err)
 		}
-		reply = append(reply, frag...)
 		if h&0x80000000 != 0 {
 			break
 		}
