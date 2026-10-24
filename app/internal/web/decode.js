@@ -144,7 +144,7 @@ function sliceChannel(codes, opts) {
   const minAmp = opts.minAmp != null ? opts.minAmp : 20;
   const n = codes.length;
   let valid = 0;
-  const h = new Float64Array(256);
+  const h = new Uint32Array(256); // integer counts: no float add a sample
   for (let i = 0; i < n; i++) { const v = codes[i]; if (v >= 0 && v <= 255) { h[v | 0]++; valid++; } }
   if (valid < 8) return { ok: false, reason: "no/too-few valid samples" };
   const noiseFloor = Math.max(1, 0.001 * valid);
@@ -175,22 +175,29 @@ function sliceChannel(codes, opts) {
 
   const level = new Int8Array(n);
   const edges = [];
+  // Seed from the first valid sample, then one compare a sample against the
+  // band edge the current level leaves by. p is the last valid sample, the
+  // other end of a crossing interpolated at the threshold.
   let cur = -1;
-  for (let i = 0; i < n; i++) {
+  let i = 0;
+  for (; i < n; i++) {
     const v = codes[i];
     if (v < 0) { level[i] = -1; continue; }
-    let nl = cur;
-    if (cur < 0) nl = v >= threshold ? 1 : 0;   // seed from the first valid sample
-    else if (cur === 0 && v >= thHi) nl = 1;
-    else if (cur === 1 && v <= thLo) nl = 0;
-    if (cur >= 0 && nl !== cur) {
-      // interpolate the threshold crossing between i-1 and i
-      let p = i - 1; while (p >= 0 && codes[p] < 0) p--;
-      let frac = i;
-      if (p >= 0 && codes[i] !== codes[p]) frac = p + (threshold - codes[p]) / (codes[i] - codes[p]);
-      edges.push({ i, dir: nl > cur ? 1 : -1, x: frac });
+    cur = v >= threshold ? 1 : 0;
+    level[i++] = cur;
+    break;
+  }
+  let p = i - 1;
+  for (; i < n; i++) {
+    const v = codes[i];
+    if (v < 0) { level[i] = -1; continue; }
+    if (cur === 0 ? v >= thHi : v <= thLo) {
+      const a = codes[p];
+      edges.push({ i, dir: cur === 0 ? 1 : -1, x: v !== a ? p + (threshold - a) / (v - a) : i });
+      cur ^= 1;
     }
-    cur = nl; level[i] = nl;
+    level[i] = cur;
+    p = i;
   }
   return { ok: true, reason: null, n, codes, lowRail, highRail, amp, threshold, thHi, thLo, level, edges };
 }
@@ -405,12 +412,21 @@ function decodeUART(codes, colTimeS, cfg) {
   };
   // scan reads the frames whose start edges lie in [from, to) onto spans.
   // TRLC-LINKS: REQ-SDS-018
+  // The level a sample at a time is carried from one to the next: two
+  // logicAt calls (each a Math.round) a sample were most of a decode.
+  const sc = S.codes, thr = S.threshold, sn = S.n;
+  // TRLC-LINKS: REQ-SDS-018
+  const lv = (k) => (k < 0 || k >= sn || sc[k] < 0 ? -1 : sc[k] >= thr ? 1 : 0);
+  // TRLC-LINKS: REQ-SDS-018
   const scan = (spans, from, to) => {
+    let prev = lv(from - 1);
     for (let i = from; i < n - need - guard && i < to; i++) {
-      if (logicAt(S, i - 1) === idle && logicAt(S, i) === (1 - idle)) { // start edge
+      const cur = lv(i);
+      if (prev === idle && cur === (1 - idle)) { // start edge
         const fr = frameAt(i);
-        if (fr) { spans.push(fr.sp); i = fr.next - 1; }
+        if (fr) { spans.push(fr.sp); i = fr.next - 1; prev = lv(i); continue; }
       }
+      prev = cur;
     }
     return spans;
   };
