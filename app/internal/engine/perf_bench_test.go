@@ -1011,3 +1011,104 @@ func BenchmarkSoftStreamMode(b *testing.B) {
 		SoftStreamMode(serUART, 115200, false)
 	}
 }
+
+// TRLC-LINKS: REQ-SDS-013
+func BenchmarkBufferDecoded(b *testing.B) {
+	e, _ := newTestEngine(&testing.T{}, newFakeBus())
+	batch := make([]sramcapture.DecodedEvent, 1024)
+	for b.Loop() {
+		for i := range batch {
+			batch[i].Sequence = e.decodedSequence + uint32(i)
+		}
+		e.bufferDecoded(batch)
+		e.decodedHead, e.decodedCount = (e.decodedHead+e.decodedCount)%decodedBufferLimit, 0 // a consumer took them
+	}
+}
+
+// TRLC-LINKS: REQ-SDS-013
+func BenchmarkBufferDecodedRef(b *testing.B) {
+	e, _ := newTestEngine(&testing.T{}, newFakeBus())
+	batch := make([]sramcapture.DecodedEvent, 1024)
+	s := &e.decodedService
+	for b.Loop() {
+		for i := range batch {
+			batch[i].Sequence = e.decodedSequence + uint32(i)
+		}
+		for _, v := range batch { // the per-event loop it replaced
+			if v.Kind == sramcapture.EventLoss {
+				s.lost += uint64(v.Count)
+			}
+			if v.Sequence != e.decodedSequence || e.decodedCount >= decodedBufferLimit {
+				break
+			}
+			e.decodedSequence++
+			if len(e.decodedBuffer) != decodedBufferLimit {
+				e.decodedBuffer = make([]sramcapture.DecodedEvent, decodedBufferLimit)
+			}
+			e.decodedBuffer[(e.decodedHead+e.decodedCount)%decodedBufferLimit] = v
+			e.decodedCount++
+			s.maxBuffered = max(s.maxBuffered, e.decodedCount)
+		}
+		e.decodedHead, e.decodedCount = (e.decodedHead+e.decodedCount)%decodedBufferLimit, 0
+	}
+}
+
+// bufferDecoded keeps the events, sequence and errors the per-event loop
+// did: a clean batch, a sequence gap mid-batch, a buffer filling, a wrap.
+// TRLC-LINKS: REQ-SDS-013
+func TestBufferDecodedSame(t *testing.T) {
+	run := func(head, count int, seq uint32, batch []sramcapture.DecodedEvent, ref bool) (string, error) {
+		e, _ := newTestEngine(t, newFakeBus())
+		e.decodedBuffer = make([]sramcapture.DecodedEvent, decodedBufferLimit)
+		e.decodedHead, e.decodedCount, e.decodedSequence = head, count, seq
+		var err error
+		if ref {
+			s := &e.decodedService
+			for _, v := range batch {
+				if v.Kind == sramcapture.EventLoss {
+					s.lost += uint64(v.Count)
+				}
+				if v.Sequence != e.decodedSequence {
+					err = fmt.Errorf("decoded event sequence discontinuity")
+					break
+				}
+				if e.decodedCount >= decodedBufferLimit {
+					err = fmt.Errorf("decoded host buffer overflow; transcript incomplete")
+					break
+				}
+				e.decodedSequence++
+				e.decodedBuffer[(e.decodedHead+e.decodedCount)%decodedBufferLimit] = v
+				e.decodedCount++
+				s.maxBuffered = max(s.maxBuffered, e.decodedCount)
+			}
+		} else {
+			err = e.bufferDecoded(batch)
+		}
+		var tail []sramcapture.DecodedEvent
+		for i := 0; i < e.decodedCount && i < 50; i++ {
+			tail = append(tail, e.decodedBuffer[(e.decodedHead+e.decodedCount-1-i)%decodedBufferLimit])
+		}
+		return fmt.Sprint(e.decodedCount, e.decodedSequence, e.decodedService.lost, e.decodedService.maxBuffered, tail), err
+	}
+	mk := func(seq uint32, n, gapAt int) []sramcapture.DecodedEvent {
+		b := make([]sramcapture.DecodedEvent, n)
+		for i := range b {
+			b[i].Sequence, b[i].Kind, b[i].Count = seq+uint32(i), uint8(i%3), uint32(i)
+			if gapAt >= 0 && i >= gapAt {
+				b[i].Sequence++
+			}
+		}
+		return b
+	}
+	for _, c := range []struct{ head, count, n, gap int }{{0, 0, 40, -1}, {5, 3, 40, 17}, {decodedBufferLimit - 10, 0, 40, -1}, {0, decodedBufferLimit - 7, 40, -1}, {100, 5, 40, 0}} {
+		for _, kind := range []uint8{0} {
+			_ = kind
+			b := mk(1000, c.n, c.gap)
+			got, gerr := run(c.head, c.count, 1000, b, false)
+			want, werr := run(c.head, c.count, 1000, b, true)
+			if got != want || fmt.Sprint(gerr) != fmt.Sprint(werr) {
+				t.Fatalf("%+v: %s %v, want %s %v", c, got, gerr, want, werr)
+			}
+		}
+	}
+}

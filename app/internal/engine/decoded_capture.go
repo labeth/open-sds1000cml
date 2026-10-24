@@ -141,30 +141,57 @@ func (e *Engine) pumpDecodedEvents() {
 			e.decodedError = err
 			return
 		}
-		for _, v := range batch {
-			if v.Kind == sramcapture.EventLoss {
-				s.lost += uint64(v.Count)
-			}
-			if v.Sequence != e.decodedSequence {
-				e.decodedError = fmt.Errorf("decoded event sequence discontinuity")
-				return
-			}
-			if e.decodedCount >= decodedBufferLimit {
-				e.decodedError = fmt.Errorf("decoded host buffer overflow; transcript incomplete")
-				return
-			}
-			e.decodedSequence++
-			if len(e.decodedBuffer) != decodedBufferLimit {
-				e.decodedBuffer = make([]sramcapture.DecodedEvent, decodedBufferLimit)
-			}
-			e.decodedBuffer[(e.decodedHead+e.decodedCount)%decodedBufferLimit] = v
-			e.decodedCount++
-			s.maxBuffered = max(s.maxBuffered, e.decodedCount)
+		if e.decodedError = e.bufferDecoded(batch); e.decodedError != nil {
+			return
 		}
 		if len(batch) < len(e.decodedScratch) {
 			return
 		}
 	}
+}
+
+// bufferDecoded appends a read's events to the host buffer, in sequence:
+// an error ends the transcript (a sequence gap, the buffer full). The
+// buffer is checked once a read and its slot found by wrapping, not a
+// modulo an event.
+// TRLC-LINKS: REQ-SDS-013
+func (e *Engine) bufferDecoded(batch []sramcapture.DecodedEvent) error {
+	if len(batch) == 0 {
+		return nil
+	}
+	if len(e.decodedBuffer) != decodedBufferLimit {
+		e.decodedBuffer = make([]sramcapture.DecodedEvent, decodedBufferLimit)
+	}
+	s := &e.decodedService
+	// The events that go in: those in sequence, while the buffer has room;
+	// the losses counted as the loop met them (it stopped at the first that
+	// could not go in, after counting its loss).
+	var err error
+	k := 0
+	for ; k < len(batch); k++ {
+		v := &batch[k]
+		if v.Kind == sramcapture.EventLoss {
+			s.lost += uint64(v.Count)
+		}
+		if v.Sequence != e.decodedSequence+uint32(k) {
+			err = fmt.Errorf("decoded event sequence discontinuity")
+			break
+		}
+		if e.decodedCount+k >= decodedBufferLimit {
+			err = fmt.Errorf("decoded host buffer overflow; transcript incomplete")
+			break
+		}
+	}
+	// copied in at most two stretches: to the ring's end, then from its start
+	at := (e.decodedHead + e.decodedCount) % decodedBufferLimit
+	n := copy(e.decodedBuffer[at:], batch[:k])
+	copy(e.decodedBuffer, batch[n:k])
+	e.decodedSequence += uint32(k)
+	e.decodedCount += k
+	if k > 0 { // the mark moves with an event taken in
+		s.maxBuffered = max(s.maxBuffered, e.decodedCount)
+	}
+	return err
 }
 
 // BeginDecodedCapture pauses normal frame rearming and keeps all register work
