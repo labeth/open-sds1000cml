@@ -124,11 +124,15 @@ function decodeUSBPD(codes, colTimeS, cfg) {
       for (let k = 0; k < 5; k++) v |= burst[i + k].v << k;
       return PD_4B5B[v];
     };
+    // The symbol at every offset, decoded once: the ordered-set search reads
+    // each four times over for every set.
+    const syms = new Array(Math.max(0, burst.length - 4));
+    for (let i = 0; i < syms.length; i++) syms[i] = sym(i);
     let at = -1, name = "";
     for (let i = 0; i + 20 <= burst.length && at < 0; i++) {
       for (const [k, nm] of PD_ORDERED_SETS) {
         let hits = 0;
-        for (let q = 0; q < 4; q++) if (sym(i + 5 * q) === k[q]) hits++;
+        for (let q = 0; q < 4; q++) if (syms[i + 5 * q] === k[q]) hits++;
         if (hits >= 3) { at = i; name = nm; break; }
       }
     }
