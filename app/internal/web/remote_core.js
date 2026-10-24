@@ -530,6 +530,8 @@
     return v;
   }
 
+  const VOCAB = new WeakMap(); // model -> its vocabulary's words (search)
+
   // search finds rows by their name, tab, section, options and help, and by
   // the everyday words above. Every word must match; a name match ranks
   // first, the help text last. When nothing matches, a word of 5 letters or
@@ -541,9 +543,12 @@
     if (!ws.length) return [];
     let out = find(model, ws, (w) => [w].concat(SYN[w] || []));
     if (!out.length) {
-      const vocab = vocabulary(model);
+      // The vocabulary is kept per model: a model changes only values in
+      // place (which no word comes from), and a keystroke rebuilt it whole.
+      let vocab = VOCAB.get(model);
+      if (!vocab) { vocab = [...vocabulary(model)]; VOCAB.set(model, vocab); }
       out = find(model, ws, (w) => {
-        const alts = w.length < 5 ? [] : [...vocab].filter((x) => x !== w && within1(w, x));
+        const alts = w.length < 5 ? [] : vocab.filter((x) => x !== w && within1(w, x));
         return [w].concat(SYN[w] || [], ...alts.map((x) => [x].concat(SYN[x] || [])));
       });
     }
