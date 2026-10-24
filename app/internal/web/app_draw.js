@@ -100,14 +100,16 @@ function drawTrace(g, cols, color, zoom, inv) {
     for (let px = 0; px < CW; px++) {
       const a = Math.max(iLo, Math.ceil(fracForX(px) * (n - 1)));
       const b = Math.min(iHi, Math.ceil(fracForX(px + 1) * (n - 1)) - 1);
+      // the column's extremes of the stored codes; inverted, those swap
+      // (255 - min is the max): no invert a sample
       let lo = Infinity, hi = -Infinity;
       for (let i = a; i <= b; i++) {
-        let v = cols[i];
+        const v = cols[i];
         if (v < 0) continue;
-        if (inv) v = 255 - v;
         if (v < lo) lo = v;
         if (v > hi) hi = v;
       }
+      if (inv && hi >= lo) { const t = lo; lo = 255 - hi; hi = 255 - t; }
       if (hi < lo) { pen = false; continue; }
       const y1 = yFor(hi, zoom), y2 = yFor(lo, zoom);
       if (pen) g.lineTo(px, y1); else g.moveTo(px, y1);
