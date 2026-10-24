@@ -420,8 +420,12 @@ const _glColCache = new Map();
 // TRLC-LINKS: REQ-SDS-071
 function glCol(css, alpha) {
   if (Array.isArray(css) || css instanceof Float32Array) return css;
-  const key = css + "|" + (alpha == null ? "" : alpha);
-  let c = _glColCache.get(key);
+  // Looked up by the colour, then the alpha: no key string built a call
+  // (every fill and stroke of a frame asks).
+  let byA = _glColCache.get(css);
+  if (!byA) { byA = new Map(); _glColCache.set(css, byA); }
+  const ak = alpha == null ? "" : alpha;
+  let c = byA.get(ak);
   if (c) return c;
   let r = 1, g = 1, b = 1, a = alpha == null ? 1 : alpha;
   const s = String(css).trim();
@@ -434,7 +438,7 @@ function glCol(css, alpha) {
     const m = s.match(/rgba?\(([^)]+)\)/);
     if (m) { const p = m[1].split(",").map(parseFloat); r = p[0] / 255; g = p[1] / 255; b = p[2] / 255; if (p[3] != null && alpha == null) a = p[3]; }
   }
-  c = [r, g, b, a]; _glColCache.set(key, c); return c;
+  c = [r, g, b, a]; byA.set(ak, c); return c;
 }
 
 // ---- glContext2D: a CanvasRenderingContext2D-shaped facade over a GL renderer.
