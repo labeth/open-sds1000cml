@@ -25,12 +25,15 @@ function liveOnRef(r, ch, live) {
   const lv = new Float64Array(m).fill(NaN), rv = new Float64Array(m).fill(NaN);
   const dtL = frameDtS(frame, n), edgeL = frame.edge_frac >= 0 ? frame.edge_frac * n : -1;
   const timed = r.dt > 0 && r.edge >= 0 && dtL > 0 && edgeL >= 0;
+  // the loop's constants in locals: a reference holds a record's points
+  const rEdge = r.edge, rDt = r.dt, interp = !!frame.interp, last = n - 1, span = Math.max(1, m - 1);
   for (let j = 0; j < m; j++) {
     const c = codes[j];
     if (c < 0) continue;
-    const x = timed ? edgeL + (j - r.edge) * r.dt / dtL : j * (n - 1) / Math.max(1, m - 1);
-    if (!(x >= 0 && x <= n - 1)) continue;
-    const i = Math.floor(x + 1e-6), f = frame.interp ? Math.max(0, x - i) : 0; // the column's sample, past rounding
+    const x = timed ? edgeL + (j - rEdge) * rDt / dtL : j * last / span;
+    if (!(x >= 0 && x <= last)) continue;
+    // the column's sample, past rounding (x is in [0, n-1]: truncation floors)
+    const i = (x + 1e-6) | 0, fr = x - i, f = interp && fr > 0 ? fr : 0;
     const a = live[i], b = i + 1 < n ? live[i + 1] : a;
     if (a < 0 || b < 0) continue;
     lv[j] = ((a + (b - a) * f) - 128) * vpcL - offL;
