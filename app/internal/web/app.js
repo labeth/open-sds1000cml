@@ -123,6 +123,9 @@ function resize() {
 }
 
 // ---- formatting ----
+// ENG_PFX are eng's prefixes, made once (every readout formats through eng).
+const ENG_PFX = [["G", 1e9], ["M", 1e6], ["k", 1e3], ["", 1], ["m", 1e-3], ["µ", 1e-6], ["n", 1e-9], ["p", 1e-12]];
+
 // TRLC-LINKS: REQ-SDS-125
 function eng(x, unit, digits) {
   digits = digits || 3;
@@ -131,7 +134,7 @@ function eng(x, unit, digits) {
   if (typeof x !== "number" || !isFinite(x)) return "— " + unit;
   const a = Math.abs(x);
   if (a === 0) return "0 " + unit;
-  const pfx = [["G",1e9],["M",1e6],["k",1e3],["",1],["m",1e-3],["µ",1e-6],["n",1e-9],["p",1e-12]];
+  const pfx = ENG_PFX;
   for (let i = 0; i < pfx.length; i++) {
     const [p, s] = pfx[i];
     if (a >= s) {
