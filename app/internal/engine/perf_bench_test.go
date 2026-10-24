@@ -425,3 +425,16 @@ func BenchmarkBuildMask(b *testing.B) {
 		BuildMaskFromEnvelope(lo, hi, len(lo), 20, 24, 0)
 	}
 }
+
+// TRLC-LINKS: REQ-SDS-011
+func BenchmarkRefineTriggerEdge(b *testing.B) {
+	sig := discernSig(20000)
+	q := make([]uint16, len(sig))
+	for i, v := range sig {
+		q[i] = uint16(v)<<8 | uint16(i*37&0xff)
+	}
+	for b.Loop() {
+		refineTriggerEdge(sig, q, len(sig), 9030.4, 128, true)
+		refineTriggerEdge(sig, nil, len(sig), 9630.4, 128, false)
+	}
+}

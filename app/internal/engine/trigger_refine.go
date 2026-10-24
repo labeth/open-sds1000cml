@@ -21,17 +21,26 @@ func refineTriggerEdge(sig []uint8, q []uint16, valid int, edgeX, level float64,
 	if valid < 2 || !(edgeX >= 0) || math.IsInf(edgeX, 0) {
 		return edgeX
 	}
-	at := func(i int) float64 {
-		if len(q) >= valid {
-			return float64(q[i]) / 256
-		}
-		return float64(sig[i])
-	}
 	centre := int(edgeX)
 	lo, hi := max(centre-triggerRefineSpan, 0), min(centre+triggerRefineSpan, valid-1)
+	if lo >= hi {
+		return edgeX
+	}
+	// the span's samples, from the source chosen once
+	var buf [2*triggerRefineSpan + 1]float64
+	v := buf[:hi-lo+1]
+	if len(q) >= valid {
+		for k := range v {
+			v[k] = float64(q[lo+k]) / 256
+		}
+	} else {
+		for k := range v {
+			v[k] = float64(sig[lo+k])
+		}
+	}
 	best, bestDist := edgeX, math.Inf(1)
 	for i := lo; i < hi; i++ {
-		a, b := at(i), at(i+1)
+		a, b := v[i-lo], v[i-lo+1]
 		crossed := a < level && b >= level
 		if !rising {
 			crossed = a > level && b <= level
