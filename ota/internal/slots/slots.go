@@ -21,6 +21,9 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
+	"syscall"
+	"time"
 )
 
 const (
@@ -31,7 +34,22 @@ const (
 )
 
 // TRLC-LINKS: REQ-SDS-087
-type Store struct{ root string }
+type Store struct {
+	root string
+	// sums keeps each slot binary's sha256 against the file it was read
+	// from (path, inode, size, mtime): a status call hashed every ~15 MB
+	// binary off the stick again.
+	mu   sync.Mutex
+	sums map[string]fileSum
+}
+
+// fileSum is a file's sha256 and the identity it was computed for.
+// TRLC-LINKS: REQ-SDS-087
+type fileSum struct {
+	ino, size int64
+	mod       time.Time
+	sum       string
+}
 
 // TRLC-LINKS: REQ-SDS-087
 func New(root string) *Store { return &Store{root: root} }
@@ -193,7 +211,7 @@ func (s *Store) Status() Status {
 	st := Status{Active: s.Active(), Confirmed: s.Confirmed(), Root: s.root, Binaries: map[string]string{}}
 	for _, slot := range []string{SlotA, SlotB, SlotEmergency} {
 		if s.HasBinary(slot) {
-			sum, err := FileSHA256(s.BinPath(slot))
+			sum, err := s.cachedSHA256(s.BinPath(slot))
 			if err != nil {
 				sum = "unreadable: " + err.Error()
 			}
@@ -202,4 +220,37 @@ func (s *Store) Status() Status {
 	}
 	st.HasEmerg = s.HasBinary(SlotEmergency)
 	return st
+}
+
+// cachedSHA256 is FileSHA256, reused while the file is the one it hashed.
+// Install replaces a binary by rename, a new inode.
+// TRLC-LINKS: REQ-SDS-087
+func (s *Store) cachedSHA256(path string) (string, error) {
+	fi, err := os.Stat(path)
+	if err != nil {
+		return "", err
+	}
+	var ino int64
+	if sys, ok := fi.Sys().(*syscall.Stat_t); ok {
+		ino = int64(sys.Ino)
+	}
+	id := fileSum{ino: ino, size: fi.Size(), mod: fi.ModTime()}
+	s.mu.Lock()
+	c, ok := s.sums[path]
+	s.mu.Unlock()
+	if ok && c.ino == id.ino && c.size == id.size && c.mod.Equal(id.mod) {
+		return c.sum, nil
+	}
+	sum, err := FileSHA256(path)
+	if err != nil {
+		return "", err
+	}
+	id.sum = sum
+	s.mu.Lock()
+	if s.sums == nil {
+		s.sums = map[string]fileSum{}
+	}
+	s.sums[path] = id
+	s.mu.Unlock()
+	return sum, nil
 }
