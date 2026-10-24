@@ -764,6 +764,21 @@ function sndLFO(x, fs) {
 }
 
 // ---- audio spectrum ----
+// sndHannWindow is sndHann over n points, kept per size: a cosine a sample
+// every spectrum otherwise.
+// TRLC-LINKS: REQ-SDS-270
+function sndHannWindow(n) {
+  let w = SND_HANN.get(n);
+  if (!w) {
+    w = new Float64Array(n);
+    for (let i = 0; i < n; i++) w[i] = sndHann(i, n);
+    SND_HANN.set(n, w);
+  }
+  return w;
+}
+
+const SND_HANN = new Map();
+
 // TRLC-LINKS: REQ-SDS-270
 function sndSpectrum(x, fs, n) {
   n = sndFloorPow2(Math.min(n, x.length));
@@ -772,7 +787,8 @@ function sndSpectrum(x, fs, n) {
   let m = 0;
   for (let i = 0; i < n; i++) m += x[off + i];
   m /= n;
-  for (let i = 0; i < n; i++) re[i] = (x[off + i] - m) * sndHann(i, n);
+  const w = sndHannWindow(n);
+  for (let i = 0; i < n; i++) re[i] = (x[off + i] - m) * w[i];
   sndFFT(re, im, false);
   const dbv = new Float64Array(n / 2), k = 4 / n / Math.SQRT2;
   for (let i = 0; i < n / 2; i++) dbv[i] = 20 * Math.log10(Math.hypot(re[i], im[i]) * k + 1e-12);
