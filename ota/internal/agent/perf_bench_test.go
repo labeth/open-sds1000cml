@@ -43,8 +43,8 @@ func BenchmarkPutChunk(b *testing.B) {
 	}
 	chunk := make([]byte, 128*1024)
 	rand.Read(chunk)
-	req, _ := json.Marshal(map[string]any{"cmd": "put.chunk", "args": map[string]any{
-		"id": id, "offset": 0, "data": base64.StdEncoding.EncodeToString(chunk)}})
+	req, _ := json.Marshal(Request{Cmd: "put.chunk", Args: mustJSON(map[string]any{
+		"id": id, "offset": 0, "data": base64.StdEncoding.EncodeToString(chunk)})})
 	for b.Loop() {
 		if r := a.DispatchJSON(req); len(r) < 10 {
 			b.Fatal(string(r))
@@ -59,10 +59,20 @@ func BenchmarkGetChunk(b *testing.B) {
 	data := make([]byte, 256*1024)
 	rand.Read(data)
 	os.WriteFile(p, data, 0o644)
-	req, _ := json.Marshal(map[string]any{"cmd": "get", "args": map[string]any{"path": p, "offset": 0, "len": 256 * 1024}})
+	req, _ := json.Marshal(Request{Cmd: "get", Args: mustJSON(map[string]any{"path": p, "offset": 0, "len": 256 * 1024})})
 	for b.Loop() {
 		if r := a.DispatchJSON(req); len(r) < 1000 {
 			b.Fatal(string(r))
 		}
 	}
+}
+
+// mustJSON marshals args the way otactl does, inside a cmd-first Request.
+// TRLC-LINKS: REQ-SDS-113
+func mustJSON(v any) json.RawMessage {
+	b, err := json.Marshal(v)
+	if err != nil {
+		panic(err)
+	}
+	return b
 }
