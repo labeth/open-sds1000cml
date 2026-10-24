@@ -3,6 +3,7 @@ package engine
 
 import (
 	"math"
+	"math/bits"
 
 	"open-sds/app/internal/sramcapture"
 )
@@ -17,6 +18,8 @@ func eresQ8(src, scratch []uint16, length int) {
 	}
 	half := length / 2
 	lo, hi, sum := 0, 0, uint32(0)
+	var by recip // division by the window's samples, rebuilt where it shrinks
+	byN := uint32(0)
 	for i := range src {
 		end := i + half + 1
 		if end > len(src) {
@@ -35,7 +38,10 @@ func eresQ8(src, scratch []uint16, length int) {
 			lo++
 		}
 		n := uint32(hi - lo)
-		scratch[i] = uint16((sum + n/2) / n)
+		if n != byN {
+			by, byN = newRecip(n), n
+		}
+		scratch[i] = uint16(by.div(sum + n/2))
 	}
 	copy(src, scratch[:len(src)])
 }
@@ -126,6 +132,7 @@ func (a *sramAverage) push(f *Frame, target int) int {
 	// Once full, a sum holds target times the average: it loses its own
 	// 1/target share for the new record's.
 	running, t := a.count >= target, uint32(target)
+	byT := newRecip(t)
 	for i := 0; i < m; i++ {
 		if a.count == 0 {
 			a.sum1[i] = 0
@@ -141,17 +148,18 @@ func (a *sramAverage) push(f *Frame, target int) int {
 			x2 = uint32(math.Round(float64(f.Q2[j])*(1-frac) + float64(f.Q2[j+1])*frac))
 		}
 		if running {
-			a.sum1[i] -= a.sum1[i] / t
-			a.sum2[i] -= a.sum2[i] / t
+			a.sum1[i] -= byT.div(a.sum1[i])
+			a.sum2[i] -= byT.div(a.sum2[i])
 		}
 		a.sum1[i] += x1
 		a.sum2[i] += x2
 	}
 	count := uint32(min(a.count+1, target))
+	byC := newRecip(count)
 	for i := a.lo; i < a.hi; i++ {
 		out := i - a.lo
-		f.Q1[out] = uint16((a.sum1[i] + count/2) / count)
-		f.Q2[out] = uint16((a.sum2[i] + count/2) / count)
+		f.Q1[out] = uint16(byC.div(a.sum1[i] + count/2))
+		f.Q2[out] = uint16(byC.div(a.sum2[i] + count/2))
 		f.C1[out] = roundQ8(f.Q1[out])
 		f.C2[out] = roundQ8(f.Q2[out])
 	}
@@ -166,3 +174,24 @@ func (a *sramAverage) push(f *Frame, target int) int {
 	a.count = int(count)
 	return a.count
 }
+
+// recip divides by d with a multiply and a shift (the ARM has no divide
+// instruction; a division is a library call): exact, by Granlund and
+// Montgomery's bound, for every dividend below 2^(17+⌈log₂d⌉), which a sum of
+// at most d 16-bit samples and half d is.
+type recip struct {
+	m uint64
+	s uint
+}
+
+// newRecip is division by d (at least 1).
+// TRLC-LINKS: REQ-SDS-012
+func newRecip(d uint32) recip {
+	l := uint(bits.Len32(d - 1)) // ⌈log₂d⌉
+	s := 17 + 2*l
+	return recip{m: (uint64(1)<<s + uint64(d) - 1) / uint64(d), s: s}
+}
+
+// div is x/d, rounded down.
+// TRLC-LINKS: REQ-SDS-012
+func (r recip) div(x uint32) uint32 { return uint32(uint64(x) * r.m >> r.s) }

@@ -251,3 +251,32 @@ func BenchmarkOneFrameSmall(b *testing.B) {
 		e.oneFrame(false)
 	}
 }
+
+// TRLC-LINKS: REQ-SDS-012
+func BenchmarkEresQ8(b *testing.B) {
+	src := make([]uint16, 20000)
+	for i := range src {
+		src[i] = uint16(32768 + (i*7919)%3000)
+	}
+	work, scratch := make([]uint16, len(src)), make([]uint16, len(src))
+	for b.Loop() {
+		copy(work, src)
+		eresQ8(work, scratch, 15)
+	}
+}
+
+// TRLC-LINKS: REQ-SDS-012
+func BenchmarkSramAverage(b *testing.B) {
+	const n = 20000
+	f := &Frame{C1: make([]uint8, n), C2: make([]uint8, n), Valid: n, EdgeX: 9000.25, WinCols: n}
+	var a sramAverage
+	for b.Loop() {
+		f.Valid, f.EdgeX, f.WinCols = n, 9000.25, n
+		f.Q1, f.Q2 = qBuffer(f.Q1, n), qBuffer(f.Q2, n)
+		for i := range f.Q1[:n] {
+			f.Q1[i], f.Q2[i] = uint16(32768+i), uint16(30000+i)
+		}
+		f.C1, f.C2 = f.C1[:n], f.C2[:n]
+		a.push(f, 16)
+	}
+}
