@@ -163,13 +163,22 @@ func (c *Controller) sheetView(s *sv) *wsview.Sheet {
 	t := sheetTabs[u.tab]
 	sh := &wsview.Sheet{WSName: wsview.Names[u.ws], ThumbView: s.viewMode, FFTCh: s.fftSrc}
 	own := len(wsDefs[u.ws].tabs)
-	for i, ti := range tabOrder(u.ws) {
+	order := tabOrder(u.ws)
+	sh.Tabs = make([]wsview.Tab, 0, len(order))
+	for i, ti := range order {
 		sh.Tabs = append(sh.Tabs, wsview.Tab{Name: sheetTabs[ti].name, Own: i < own, Active: ti == u.tab})
 	}
 	focus := clampInt(u.rowAt[u.tab], 0, len(t.rows)-1)
 	c.amu.Lock()
 	allVals, allOK := c.ana.allVals, c.ana.allOK
 	c.amu.Unlock()
+	nrows := len(t.rows)
+	for _, r := range t.rows {
+		if r.hdr != "" {
+			nrows++
+		}
+	}
+	sh.Rows = make([]wsview.Row, 0, nrows)
 	for i, r := range t.rows {
 		if r.hdr != "" {
 			sh.Rows = append(sh.Rows, wsview.Row{Kind: wsview.Header, Header: r.hdr})
@@ -201,7 +210,9 @@ func (c *Controller) rowView(s *sv, r *row, focus, edit bool, allVals [2][]float
 	switch r.kind {
 	case wsview.Enum:
 		cur := r.get(s)
-		for _, o := range r.options(s) {
+		opts := r.options(s)
+		rv.Opts = make([]wsview.Opt, 0, len(opts))
+		for _, o := range opts {
 			sel := o.v == cur
 			rv.Opts = append(rv.Opts, wsview.Opt{Text: o.t, Sel: sel, Quiet: sel && (o.t == "Off" || !rel)})
 		}
