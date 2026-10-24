@@ -26,6 +26,7 @@ package bus
 import (
 	"fmt"
 	"os"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -169,8 +170,16 @@ func (t CS1Timing) Fields() TimingFields {
 // String is the compact read-side summary used in logs.
 // TRLC-LINKS: REQ-SDS-131
 func (t CS1Timing) String() string {
-	return fmt.Sprintf("rdcycle=%d rdaccess=%d oe=%d..%d cs=%d..%d gap=%d", t.RdCycle(), t.RdAccess(),
-		t.OEOn(), t.OEOff(), t.CSOn(), t.CSRdOff(), t.Gap())
+	u := func(b []byte, v uint32) []byte { return strconv.AppendUint(b, uint64(v), 10) }
+	b := make([]byte, 0, 64)
+	b = u(append(b, "rdcycle="...), t.RdCycle())
+	b = u(append(b, " rdaccess="...), t.RdAccess())
+	b = u(append(b, " oe="...), t.OEOn())
+	b = u(append(b, ".."...), t.OEOff())
+	b = u(append(b, " cs="...), t.CSOn())
+	b = u(append(b, ".."...), t.CSRdOff())
+	b = u(append(b, " gap="...), t.Gap())
+	return string(b)
 }
 
 // ReadTicks is the nominal FCLK ticks per read cycle including the gap (the

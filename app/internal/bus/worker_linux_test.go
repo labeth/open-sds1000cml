@@ -88,7 +88,7 @@ func (f *workerFake) PopBytesChecked(sel uint16, dst []byte) error {
 }
 
 // TRLC-LINKS: REQ-SDS-001, REQ-SDS-013
-func workerFixture(t *testing.T) (*Dev, *workerFake) {
+func workerFixture(t testing.TB) (*Dev, *workerFake) {
 	t.Helper()
 	f := &workerFake{}
 	capture, err := sramcapture.New(f)

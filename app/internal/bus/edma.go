@@ -358,10 +358,18 @@ func (e *edmaDrainer) drainWords(src uint32, dst []uint16, n int) bool {
 	if e.inv != nil {
 		e.inv(b.buf[:n*2])
 	}
-	for i := 0; i < n; i++ {
-		dst[i] = uint16(b.buf[i*2]) | uint16(b.buf[i*2+1])<<8 // little-endian word
-	}
+	leWords(dst[:n], b.buf[:n*2])
 	return true
+}
+
+// leWords fills dst with the little-endian words in src: on these
+// little-endian CPUs a copy of the bytes, not a word assembled at a time.
+// TRLC-LINKS: REQ-SDS-081
+func leWords(dst []uint16, src []byte) {
+	if len(dst) == 0 {
+		return
+	}
+	copy(unsafe.Slice((*byte)(unsafe.Pointer(&dst[0])), 2*len(dst)), src)
 }
 
 // TRLC-LINKS: REQ-SDS-081

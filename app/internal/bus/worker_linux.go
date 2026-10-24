@@ -57,6 +57,7 @@ type workerClient struct {
 	cmd       *exec.Cmd
 	done      chan error
 	sequence  uint32
+	deadline  time.Time // the socket's deadline as last set (callSplit)
 	failed    error
 	fast      bool
 	closeOnce sync.Once
@@ -195,7 +196,13 @@ func (c *workerClient) callSplit(op uint16, plane uint8, selector, value uint16,
 	binary.LittleEndian.PutUint16(request[14:16], value)
 	binary.LittleEndian.PutUint32(request[16:20], uint32(want))
 	binary.LittleEndian.PutUint32(request[20:24], epoch)
-	_ = c.conn.SetDeadline(time.Now().Add(3 * time.Second))
+	// The 3 s deadline is moved on only once less than 2 s of it is left:
+	// a hung worker still fails a call within 3 s, and a call does not pay
+	// for re-arming the poller's timer every time.
+	if now := time.Now(); now.After(c.deadline.Add(-2 * time.Second)) {
+		c.deadline = now.Add(3 * time.Second)
+		_ = c.conn.SetDeadline(c.deadline)
+	}
 	n, err := c.conn.Write(request)
 	if err == nil && n != len(request) {
 		err = fmt.Errorf("short worker request")

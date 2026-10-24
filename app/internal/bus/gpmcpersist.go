@@ -46,6 +46,7 @@
 package bus
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -185,8 +186,14 @@ func writeJSONAtomic(path string, v any) error {
 	if err != nil {
 		return err
 	}
+	b = append(b, '\n')
+	// The same content already there is left alone (no write, no rename on
+	// the stick).
+	if old, err := os.ReadFile(path); err == nil && bytes.Equal(old, b) {
+		return nil
+	}
 	tmp := path + ".tmp"
-	if err := os.WriteFile(tmp, append(b, '\n'), 0o644); err != nil {
+	if err := os.WriteFile(tmp, b, 0o644); err != nil {
 		return err
 	}
 	return os.Rename(tmp, path)

@@ -182,10 +182,12 @@ func (d *Dev) BurstInto(c1, c2 []uint8, n int) {
 		return
 	}
 	if d.remote != nil {
-		words := make([]uint16, n)
-		if d.PopWordsChecked(iface.SelBurst, words) == nil {
-			for i, v := range words {
-				c1[i], c2[i] = uint8(v>>8), uint8(v)
+		// The worker's bytes split straight into the channels: one buffer,
+		// no words in between.
+		data := make([]byte, 2*n)
+		if d.PopBytesChecked(iface.SelBurst, data) == nil {
+			for i := range n {
+				c1[i], c2[i] = data[2*i+1], data[2*i]
 			}
 		}
 		return

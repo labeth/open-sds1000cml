@@ -3,6 +3,7 @@ package bus
 
 import (
 	"fmt"
+	mbits "math/bits"
 	"os"
 	"syscall"
 )
@@ -93,13 +94,7 @@ func gpmcCSConfig(cs, n int) uint32 { return uint32(0x60 + cs*0x30 + (n-1)*4) }
 // 0xF = 16 MB ... 0x0 = 256 MB.
 // TRLC-LINKS: REQ-SDS-133
 func maskToMB(mask uint32) int {
-	mb := 256
-	for i := 0; i < 4; i++ {
-		if mask&(1<<uint(i)) != 0 {
-			mb >>= 1
-		}
-	}
-	return mb
+	return 256 >> mbits.OnesCount32(mask&0xF) // a halving a set bit
 }
 
 // TRLC-LINKS: REQ-SDS-133

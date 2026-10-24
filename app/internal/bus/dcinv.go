@@ -2,7 +2,6 @@
 package bus
 
 import (
-	"bufio"
 	_ "embed"
 	"errors"
 	"fmt"
@@ -124,13 +123,16 @@ func dcinvMajor(e dcinvEnv) (int, bool) {
 	if err != nil {
 		return 0, false
 	}
-	sc := bufio.NewScanner(strings.NewReader(s))
-	for sc.Scan() {
-		f := strings.Fields(sc.Text())
-		if len(f) == 2 && f[1] == "dcinv" {
-			if m, err := strconv.Atoi(f[0]); err == nil {
-				return m, true
-			}
+	// Line by line in place: "<major> dcinv" exactly.
+	for s != "" {
+		var line string
+		line, s, _ = strings.Cut(s, "\n")
+		major, name, ok := strings.Cut(strings.TrimSpace(line), " ")
+		if !ok || strings.TrimSpace(name) != "dcinv" || strings.ContainsAny(strings.TrimSpace(name), " \t") {
+			continue
+		}
+		if m, err := strconv.Atoi(strings.TrimSpace(major)); err == nil {
+			return m, true
 		}
 	}
 	return 0, false

@@ -21,8 +21,10 @@
 package bus
 
 import (
+	"bytes"
 	"fmt"
 	"time"
+	"unsafe"
 
 	"open-sds/app/internal/iface"
 )
@@ -220,7 +222,7 @@ func CheckExact(r DrainResult, words []uint16, tsrc uint16, ref []uint16) Exactn
 			if e.Err == "" {
 				e.Err = fmt.Sprintf("reference has %d words, drained %d", len(ref), n)
 			}
-		} else {
+		} else if !sameWords(words, ref) { // a clean window: one memory compare
 			for i := 0; i < n; i++ {
 				if words[i] != ref[i] {
 					if e.FirstDiff < 0 {
@@ -483,4 +485,13 @@ func RampCheck(b Bus, o TsrcOptions, passes int, sleep func(time.Duration)) (Ram
 		return RampReport{}, err
 	}
 	return c.run(passes)
+}
+
+// sameWords reports a == b (same length) by comparing their memory.
+// TRLC-LINKS: REQ-SDS-130
+func sameWords(a, b []uint16) bool {
+	if len(a) == 0 {
+		return len(b) == 0
+	}
+	return len(a) == len(b) && bytes.Equal(unsafe.Slice((*byte)(unsafe.Pointer(&a[0])), 2*len(a)), unsafe.Slice((*byte)(unsafe.Pointer(&b[0])), 2*len(b)))
 }
