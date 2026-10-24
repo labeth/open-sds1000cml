@@ -79,3 +79,19 @@ func BenchmarkClippedSwing(b *testing.B) {
 		scanEnvelope(env)
 	}
 }
+
+// An envelope longer than the timing's stack buffers takes heap ones.
+// TRLC-LINKS: REQ-SDS-021
+func TestEnvelopeTimingLongEnvelope(t *testing.T) {
+	env := make([]uint8, 2*5000)
+	for i := 0; i < 5000; i++ {
+		v := uint8(70)
+		if i/50%2 == 1 {
+			v = 190
+		}
+		env[2*i], env[2*i+1] = v, v+1
+	}
+	if r := Compute(env, 0.02, 0, 1e-7).WithEnvelopeTiming(env, 0.02, 0, 1e-7); !r.HasTiming {
+		t.Fatalf("no timing on a 5000-bucket square: %+v", r)
+	}
+}

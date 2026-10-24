@@ -57,7 +57,7 @@ type Capture struct {
 	// otherwise be its own round trip through the bus worker.
 	queueWrites bool
 	pending     [][2]uint16
-	spanHook func(done, total int) // between recall bursts (SetSpanHook)
+	spanHook    func(done, total int) // between recall bursts (SetSpanHook)
 	// envelopeOn: an envelope recall may have left the reducer enabled.
 	envelopeOn      bool
 	envelopeRejects int

@@ -231,8 +231,10 @@ func (r *Result) WithEnvelopeTiming(env []uint8, voltsPerCode, offV, sampleS flo
 	// edge-count checks: each used to rescan the envelope for itself.
 	q := scanEnvelope(env)
 	var midBuf, classBuf [2048]uint8
-	mids, class := midBuf[:n:n], classBuf[:n:n]
-	if n > len(midBuf) {
+	var mids, class []uint8
+	if n <= len(midBuf) {
+		mids, class = midBuf[:n:n], classBuf[:n:n]
+	} else {
 		mids, class = make([]uint8, n), make([]uint8, n)
 	}
 	spans := 0
