@@ -670,3 +670,13 @@ func TestStuckCoresSame(t *testing.T) {
 		}
 	}
 }
+
+// TRLC-LINKS: REQ-SDS-011
+func BenchmarkQualifyPulse(b *testing.B) {
+	sig := discernSig(20000)
+	p := defaultTrigParams()
+	for b.Loop() {
+		qualifyPulse(sig, 2, p, true)
+		qualifyPulse(sig, 2, p, false)
+	}
+}

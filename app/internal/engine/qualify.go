@@ -147,16 +147,18 @@ func qualifyPulseAt(disc []uint8, intervalNs float64, p trigParams, rising bool,
 
 	bestX, bestDist := -1.0, n+1
 	enter := -1
+	// A low pulse is a high one of the inverted codes: one loop, no
+	// direction test a sample (a > lvl is 255-a < 255-lvl).
+	flip, l := 0, lvl
+	if !rising {
+		flip, l = 255, 255-lvl
+	}
+	prev := int(disc[0]) ^ flip
 	for c := 1; c < n; c++ {
-		a, b := int(disc[c-1]), int(disc[c])
-		var entering, exiting bool
-		if rising { // high pulse: enter rising, exit falling
-			entering = a < lvl && b >= lvl
-			exiting = a > lvl && b <= lvl
-		} else { // low pulse: enter falling, exit rising
-			entering = a > lvl && b <= lvl
-			exiting = a < lvl && b >= lvl
-		}
+		a, b := prev, int(disc[c])^flip
+		prev = b
+		entering := a < l && b >= l // into the pulse
+		exiting := a > l && b <= l  // out of it
 		if entering {
 			enter = c
 			continue
