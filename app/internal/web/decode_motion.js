@@ -11,8 +11,20 @@ function lineOpts(thr) { return thr != null ? { threshold: thr } : {}; }
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-250
 function medianOf(v) {
   if (!v.length) return 0;
-  const c = v.slice().sort((a, b) => a - b);
-  return c[c.length >> 1];
+  // The middle element by selection (Hoare), not a full sort of a copy.
+  const c = v.slice(), k = c.length >> 1;
+  let lo = 0, hi = c.length - 1;
+  while (lo < hi) {
+    const p = c[(lo + hi) >> 1];
+    let i = lo, j = hi;
+    while (i <= j) {
+      while (c[i] < p) i++;
+      while (c[j] > p) j--;
+      if (i <= j) { const t = c[i]; c[i] = c[j]; c[j] = t; i++; j--; }
+    }
+    if (k <= j) hi = j; else if (k >= i) lo = i; else break;
+  }
+  return c[k];
 }
 
 // stepPeriod mirrors decode_motion.go stepPeriod.
