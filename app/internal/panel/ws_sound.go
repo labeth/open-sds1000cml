@@ -4,6 +4,7 @@ package panel
 import (
 	"fmt"
 	"math"
+	"strconv"
 	"time"
 
 	"open-sds/app/internal/analog"
@@ -86,11 +87,20 @@ func (c *Controller) soundPane(s *sv) *wsview.SoundPane {
 	} else {
 		p.Note, p.Hz = "--", "no pitch"
 	}
-	p.Sub = fmt.Sprintf("A4 = %g Hz  %s", set.A4, map[string]string{"": "auto", "bass": "bass", "high": "high"}[set.Range])
+	rng := ""
+	switch set.Range {
+	case "":
+		rng = "auto"
+	case "bass", "high":
+		rng = set.Range
+	}
+	p.Sub = "A4 = " + strconv.FormatFloat(set.A4, 'g', -1, 64) + " Hz  " + rng // %g
 	p.Strobe = ss.phase
-	for _, pt := range ss.strip {
-		p.Strip = append(p.Strip, float32(pt.cents))
-		p.StripOK = append(p.StripOK, pt.ok)
+	if len(ss.strip) > 0 { // none: nil, as appending nothing left them
+		p.Strip, p.StripOK = make([]float32, len(ss.strip)), make([]bool, len(ss.strip))
+	}
+	for i, pt := range ss.strip {
+		p.Strip[i], p.StripOK[i] = float32(pt.cents), pt.ok
 	}
 	// The meters.
 	ref := sound.PresetByID(set.Ref)

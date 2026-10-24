@@ -222,3 +222,19 @@ func BenchmarkSnapFE(b *testing.B) {
 		c.snap()
 	}
 }
+
+// TRLC-LINKS: REQ-SDS-273
+func BenchmarkSoundPane(b *testing.B) {
+	c, _, _ := newC(&testing.T{})
+	ss := c.snd
+	ss.mu.Lock()
+	ss.hz = 440.8
+	for i := 0; i < 80; i++ {
+		ss.strip = append(ss.strip, stripPoint{cents: float64(i % 7), ok: i > 3})
+	}
+	ss.mu.Unlock()
+	s := c.snap()
+	for b.Loop() {
+		c.soundPane(s)
+	}
+}
