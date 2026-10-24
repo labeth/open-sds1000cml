@@ -23,6 +23,10 @@ type stateFile struct {
 	mu   sync.Mutex
 	path string
 	s    State
+	// disk is what the file is known to hold (loaded or last written), so a
+	// no-change update skips an fsync'd rewrite on the stick. The agent is
+	// the file's only writer.
+	disk State
 }
 
 // TRLC-LINKS: REQ-SDS-104
@@ -31,6 +35,7 @@ func loadState(path string) *stateFile {
 	if b, err := os.ReadFile(path); err == nil {
 		_ = json.Unmarshal(b, &sf.s)
 	}
+	sf.disk = sf.s
 	return sf
 }
 
@@ -46,6 +51,9 @@ func (sf *stateFile) update(fn func(*State)) error {
 	sf.mu.Lock()
 	defer sf.mu.Unlock()
 	fn(&sf.s)
+	if sf.s == sf.disk {
+		return nil
+	}
 	b, err := json.MarshalIndent(sf.s, "", "  ")
 	if err != nil {
 		return err
@@ -74,6 +82,7 @@ func (sf *stateFile) update(fn func(*State)) error {
 	if err := os.Rename(tmp, sf.path); err != nil {
 		return err
 	}
+	sf.disk = sf.s
 	if d, err := os.Open(filepath.Dir(sf.path)); err == nil {
 		_ = d.Sync() // directory entry (the rename) -- best effort, VFAT may not support it
 		d.Close()
