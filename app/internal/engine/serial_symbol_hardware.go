@@ -112,8 +112,9 @@ func newSymTab(longest float64, lead, data uint8) *symTab {
 	for t.prescale < 7 && clocks/float64(int(1)<<t.prescale) >= decode.SymbolMaxCount-1 {
 		t.prescale++
 	}
-	for i := range t.t {
-		t.t[i] = lead<<4 | data
+	t.t[0] = lead<<4 | data
+	for n := 1; n < len(t.t); n *= 2 { // every entry: the filled part copied over the rest
+		copy(t.t[n:], t.t[:n])
 	}
 	return t
 }
