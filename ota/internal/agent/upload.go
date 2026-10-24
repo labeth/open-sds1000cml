@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"hash"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -29,6 +30,11 @@ type uploadSession struct {
 	mode    os.FileMode
 	written int64
 	created time.Time
+	// hash covers bytes [0, hashed) while chunks arrive in order, so commit
+	// need not read the file back off the stick; -1 once a chunk lands
+	// anywhere else.
+	hash   hash.Hash
+	hashed int64
 }
 
 // TRLC-LINKS: REQ-SDS-106
@@ -68,6 +74,7 @@ func (a *Agent) newUpload(dest string, size int64, sha string, mode uint32) (str
 	a.ups[id] = &uploadSession{
 		id: id, dest: dest, tmp: tmp, f: f, size: size,
 		sha: strings.ToLower(sha), mode: m, created: time.Now(),
+		hash: sha256.New(),
 	}
 	return id, nil
 }
@@ -98,6 +105,12 @@ func (a *Agent) writeUpload(id string, offset int64, data []byte) (int, error) {
 		return 0, fmt.Errorf("upload: chunk exceeds declared size")
 	}
 	n, err := s.f.WriteAt(data, offset)
+	if offset == s.hashed {
+		s.hash.Write(data[:n])
+		s.hashed += int64(n)
+	} else {
+		s.hashed = -1
+	}
 	if err != nil {
 		return n, err
 	}
@@ -138,8 +151,10 @@ func (a *Agent) commitUpload(id string) (string, string, error) {
 		os.Remove(s.tmp)
 		return "", "", fmt.Errorf("upload: sha256 required when size is declared (guards against sparse/out-of-order gaps)")
 	}
-	sum, err := fileSHA(s.tmp)
-	if err != nil {
+	var sum string
+	if s.hashed == s.written {
+		sum = hex.EncodeToString(s.hash.Sum(nil))
+	} else if sum, err = fileSHA(s.tmp); err != nil {
 		return "", "", err
 	}
 	if s.sha != "" && sum != s.sha {
