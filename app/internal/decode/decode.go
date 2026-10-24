@@ -7,6 +7,7 @@ package decode
 import (
 	"fmt"
 	"math"
+	"strconv"
 )
 
 // Span is one decoded token spanning sample indices [I0,I1].
@@ -324,9 +325,11 @@ func AutoThreshold(codes []uint8) (float64, bool) {
 // is flat or holds too few samples.
 // TRLC-LINKS: REQ-SDS-011
 func Extent(codes []uint8) (lo, hi int, ok bool) {
+	var counts [4][256]int32
+	histogram4(&counts, codes)
 	var h [256]int
-	for _, v := range codes {
-		h[v]++
+	for c := range h {
+		h[c] = int(counts[0][c] + counts[1][c] + counts[2][c] + counts[3][c])
 	}
 	if len(codes) < 8 {
 		return 0, 0, false
@@ -359,17 +362,7 @@ func rails(codes []uint8) (lowRail, highRail float64, reason string) {
 	// Four tables, summed after: a run of one code would otherwise make
 	// each increment wait for the previous one's store.
 	var counts [4][256]int32
-	i := 0
-	for ; i+4 <= len(codes); i += 4 {
-		q := codes[i : i+4 : i+4]
-		counts[0][q[0]]++
-		counts[1][q[1]]++
-		counts[2][q[2]]++
-		counts[3][q[3]]++
-	}
-	for _, v := range codes[i:] {
-		counts[0][v]++
-	}
+	histogram4(&counts, codes)
 	valid := len(codes)
 	var h [256]float64
 	for c := range h {
@@ -459,6 +452,28 @@ func railsAround(codes []uint8, thr float64, reason string) (lowRail, highRail f
 	return lowRail, highRail, ""
 }
 
+// histogram4 counts codes into four tables, alternating, so runs of one code
+// do not wait on the previous increment's store. Out of line on purpose: in
+// a caller's large frame each table address is reloaded from a literal pool
+// per sample, here the tables sit behind one register.
+// TRLC-LINKS: REQ-SDS-018
+//
+//go:noinline
+func histogram4(h *[4][256]int32, codes []uint8) {
+	h0, h1, h2, h3 := &h[0], &h[1], &h[2], &h[3]
+	for len(codes) >= 4 {
+		a, b, c, d := codes[0], codes[1], codes[2], codes[3] // loads first: their latency overlaps
+		h0[a]++
+		h1[b]++
+		h2[c]++
+		h3[d]++
+		codes = codes[4:]
+	}
+	for _, v := range codes {
+		h0[v]++
+	}
+}
+
 // railsWithin is rails over the histogram's codes gmin..gmax.
 // TRLC-LINKS: REQ-SDS-018
 func railsWithin(h *[256]float64, gmin, gmax int) (lowRail, highRail float64, reason string) {
@@ -486,7 +501,8 @@ func railsWithin(h *[256]float64, gmin, gmax int) (lowRail, highRail float64, re
 		highRail = hw / hs
 	}
 	if amp := highRail - lowRail; amp < minAmp {
-		return lowRail, highRail, fmt.Sprintf("amplitude %.0f < %g", amp, minAmp)
+		// Concatenated, not Sprintf: a quiet line fails here every frame.
+		return lowRail, highRail, "amplitude " + strconv.FormatFloat(amp, 'f', 0, 64) + " < " + strconv.FormatFloat(minAmp, 'g', -1, 64)
 	}
 	return lowRail, highRail, ""
 }
