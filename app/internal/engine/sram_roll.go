@@ -507,10 +507,7 @@ func (e *Engine) rollPublish(r *rollView, decimation uint32, filter, readout, st
 	e.lastPublish = now
 	e.stats.Seq = e.seq
 	e.lastPubAt = now
-	e.pubTimes = append(e.pubTimes, now)
-	if len(e.pubTimes) > 64 {
-		e.pubTimes = e.pubTimes[len(e.pubTimes)-64:]
-	}
+	e.notePublish(now)
 	e.stats.ValidDepth, e.stats.MemDepth, e.stats.WinCols = p.screen, p.screen, p.screen
 	e.stats.RecordS, e.stats.DisplayedS = float64(p.screen)*p.sampleS, tdiv
 	e.stats.LiveReadout, e.stats.FrameStages = readout, stages

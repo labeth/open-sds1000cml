@@ -4,6 +4,7 @@ package engine
 import (
 	"math"
 	"testing"
+	"time"
 
 	"open-sds/app/internal/decode"
 )
@@ -325,5 +326,48 @@ func TestEnvColumnStep(t *testing.T) {
 				t.Fatalf("n %d i %d: column %d, want %d", n, i, c, i*envDisplayCols/n)
 			}
 		}
+	}
+}
+
+// TRLC-LINKS: REQ-SDS-009
+func BenchmarkNotePublish(b *testing.B) {
+	e, _ := newTestEngine(&testing.T{}, newFakeBus())
+	t := e.clk.Now()
+	for b.Loop() {
+		e.notePublish(t)
+	}
+}
+
+// TRLC-LINKS: REQ-SDS-009
+func BenchmarkNotePublishRef(b *testing.B) {
+	e, _ := newTestEngine(&testing.T{}, newFakeBus())
+	t := e.clk.Now()
+	var pub []time.Time // the append-and-reslice window it replaced
+	for b.Loop() {
+		pub = append(pub, t)
+		if len(pub) > 64 {
+			pub = pub[len(pub)-64:]
+		}
+	}
+	_ = pub
+}
+
+// The FPS window counts the publishes of the last second, the ring full or not.
+// TRLC-LINKS: REQ-SDS-009
+func TestNotePublishFPS(t *testing.T) {
+	e, clk := newTestEngine(t, newFakeBus())
+	for i := 0; i < 30; i++ {
+		e.notePublish(e.clk.Now())
+		clk.t = clk.t.Add(10 * time.Millisecond)
+	}
+	if fps := e.Snapshot().FPS; fps != 30 {
+		t.Fatalf("FPS %v after 30 publishes in 0.3 s, want 30", fps)
+	}
+	for i := 0; i < 200; i++ {
+		e.notePublish(e.clk.Now())
+		clk.t = clk.t.Add(10 * time.Millisecond)
+	}
+	if fps := e.Snapshot().FPS; fps != 64 { // the window holds 64
+		t.Fatalf("FPS %v, want 64", fps)
 	}
 }

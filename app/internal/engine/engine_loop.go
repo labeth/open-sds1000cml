@@ -668,10 +668,7 @@ func (e *Engine) oneFrame(norm bool) {
 		e.lastPublish = e.clk.Now()
 		e.stats.Seq = e.seq
 		e.lastPubAt = e.clk.Now()
-		e.pubTimes = append(e.pubTimes, e.lastPubAt)
-		if len(e.pubTimes) > 64 {
-			e.pubTimes = e.pubTimes[len(e.pubTimes)-64:]
-		}
+		e.notePublish(e.lastPubAt)
 		e.mu.Unlock()
 		// True single-shot: a real triggered frame just published — stop and
 		// hold it. Gate on `lock`, NOT `coherent`: on a native-fast band every

@@ -375,9 +375,15 @@ func (e *Engine) stitchFrame(norm bool) {
 	e.stats.DrainMs = float64(drainMs) / float64(time.Millisecond)
 	e.stats.GapMs = float64(gapNs) / float64(time.Millisecond)
 	e.stats.Stream = true
-	e.pubTimes = append(e.pubTimes, e.clk.Now())
-	if len(e.pubTimes) > 64 {
-		e.pubTimes = e.pubTimes[len(e.pubTimes)-64:]
-	}
+	e.notePublish(e.clk.Now())
 	e.mu.Unlock()
+}
+
+// notePublish records a publish's time in the FPS window's ring, the oldest
+// overwritten: an append and a re-slice reallocated the window every few
+// dozen publishes.
+// TRLC-LINKS: REQ-SDS-009
+func (e *Engine) notePublish(t time.Time) {
+	e.pubTimes[e.pubAt] = t
+	e.pubAt = (e.pubAt + 1) % len(e.pubTimes)
 }

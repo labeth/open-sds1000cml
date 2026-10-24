@@ -1423,10 +1423,7 @@ acquisitionLoop:
 			e.lastPublish = e.clk.Now()
 			e.stats.Seq = e.seq
 			e.lastPubAt = e.clk.Now()
-			e.pubTimes = append(e.pubTimes, e.lastPubAt)
-			if len(e.pubTimes) > 64 {
-				e.pubTimes = e.pubTimes[len(e.pubTimes)-64:]
-			}
+			e.notePublish(e.lastPubAt)
 			e.mu.Unlock()
 			if (qualified && averageDone || userForced) && e.singleArmed.Load() && !fullRecall && singleGen == e.singleGen.Load() {
 				if acq := e.acqMode.Load(); acq == AcqAverage || acq == AcqPrecision {

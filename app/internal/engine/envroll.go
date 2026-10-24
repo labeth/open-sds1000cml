@@ -498,9 +498,6 @@ func (e *Engine) commitPublish(f *Frame) {
 	e.stats.Published++
 	e.lastPublish = e.clk.Now()
 	e.stats.Seq = e.seq
-	e.pubTimes = append(e.pubTimes, e.clk.Now())
-	if len(e.pubTimes) > 64 {
-		e.pubTimes = e.pubTimes[len(e.pubTimes)-64:]
-	}
+	e.notePublish(e.clk.Now())
 	e.mu.Unlock()
 }
