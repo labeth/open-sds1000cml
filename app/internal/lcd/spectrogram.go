@@ -192,10 +192,34 @@ func drawSpectrogramMark(sf Surface, p plotArea, sg *Spectrogram, hideCaptions b
 		return
 	}
 	// blit the heatmap region, nearest neighbour when the plot is smaller
-	for y := 0; y < rows; y++ {
-		sy := sgY0 + y*sgRows/rows
-		for x := 0; x < cols; x++ {
-			sf.SetPixel(x0+x, y0+y, sg.img.At(sgX0+x*sgCols/cols, sy))
+	if m, ok := sf.(*MemSurface); ok && x0 >= 0 && x1 <= W && y0 >= 0 && y1 <= H {
+		// Row by row from the image's pixels: the full-screen plot is a
+		// straight copy, a smaller one maps its columns once.
+		dst, src := m.px(), sg.img.px()
+		var xmap []int
+		if cols != sgCols {
+			xmap = make([]int, cols)
+			for x := range xmap {
+				xmap[x] = sgX0 + x*sgCols/cols
+			}
+		}
+		for y := 0; y < rows; y++ {
+			srow := src[(sgY0+y*sgRows/rows)*W:]
+			drow := dst[(y0+y)*W+x0 : (y0+y)*W+x0+cols]
+			if xmap == nil {
+				copy(drow, srow[sgX0:sgX0+cols])
+				continue
+			}
+			for x, sx := range xmap {
+				drow[x] = srow[sx]
+			}
+		}
+	} else {
+		for y := 0; y < rows; y++ {
+			sy := sgY0 + y*sgRows/rows
+			for x := 0; x < cols; x++ {
+				sf.SetPixel(x0+x, y0+y, sg.img.At(sgX0+x*sgCols/cols, sy))
+			}
 		}
 	}
 	// frequency axis (0 .. effNyq) with a few ticks

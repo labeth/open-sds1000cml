@@ -2,10 +2,12 @@
 package lcd
 
 import (
+	"bytes"
 	"math"
 	"testing"
 
 	"open-sds/app/internal/engine"
+	"open-sds/app/internal/panel/wsview"
 )
 
 // TRLC-LINKS: REQ-SDS-068
@@ -266,6 +268,26 @@ func TestSpectrumColumnsShowNarrowTones(t *testing.T) {
 		}
 		if l := lum(sg.img.At(sgX0+x, sgY0)); l != white {
 			t.Fatalf("waterfall pixel %d holding the tone at bin %d is not the peak colour (lum %d, want %d)", x, k, l, white)
+		}
+	}
+}
+
+// The waterfall blit into the back buffer equals the pixel-by-pixel blit,
+// full screen and scaled into a smaller plot.
+// TRLC-LINKS: REQ-SDS-068
+func TestSpectrogramBlitMatchesPixels(t *testing.T) {
+	sg := NewSpectrogram()
+	for s := 0; s < 6; s++ {
+		for r := 0; r < 10; r++ {
+			sg.Push(sgSine(4096, 10e6+15e6*float64(s), 2e-9), 0, 0.5/2e-9)
+		}
+	}
+	for _, p := range []plotArea{fullPlot, plotOf(paneLayout(136)), plotOf(wsview.Layout{MenuW: 116})} {
+		fast, slow := NewMemSurface(), NewMemSurface()
+		drawSpectrogram(fast, p, sg, false)
+		drawSpectrogram(pixelSurface{slow}, p, sg, false)
+		if !bytes.Equal(fast.Pix, slow.Pix) {
+			t.Fatalf("plot %+v: fast blit differs from the pixel blit", p)
 		}
 	}
 }

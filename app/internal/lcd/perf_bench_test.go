@@ -2,6 +2,7 @@
 package lcd
 
 import (
+	"math"
 	"testing"
 
 	"open-sds/app/internal/streamview"
@@ -139,4 +140,66 @@ func BenchmarkDrawMatchEditor(b *testing.B) {
 	for b.Loop() {
 		drawMatchEditor(sf, m)
 	}
+}
+
+// TRLC-LINKS: REQ-SDS-021
+func BenchmarkRenderBode(b *testing.B) {
+	h := defaultHUD()
+	h.ViewMode = 3
+	const fc = 30e3
+	for i := 0; i < 25; i++ {
+		f := 1e3 * math.Pow(10, 3*float64(i)/24)
+		h.BodeFreq = append(h.BodeFreq, f)
+		h.BodeGain = append(h.BodeGain, -10*math.Log10(1+(f/fc)*(f/fc)))
+		h.BodePhase = append(h.BodePhase, -math.Atan(f/fc)*180/math.Pi)
+	}
+	benchRender(b, nil, h)
+}
+
+// TRLC-LINKS: REQ-SDS-070
+func BenchmarkRenderFFT(b *testing.B) {
+	const n = 4096
+	f := goldenFrame(n,
+		func(i int) float64 {
+			th := 2 * math.Pi * float64(i) / n
+			return 128 + 70*math.Sin(205*th) + 18*math.Sin(614*th) + 7*math.Sin(1024*th)
+		},
+		func(i int) float64 { return 128 + 50*math.Sin(2*math.Pi*410*float64(i)/n) })
+	f.TdivS, f.SampleS = 20e-6, 50e-9
+	h := defaultHUD()
+	h.TdivS, h.SampleS = 20e-6, 50e-9
+	h.ViewMode = 2
+	benchRender(b, f, h)
+}
+
+// TRLC-LINKS: REQ-SDS-068
+func BenchmarkSpectrogramPush(b *testing.B) {
+	sg := NewSpectrogram()
+	x := sgSine(4096, 25e6, 2e-9)
+	for b.Loop() {
+		sg.Push(x, 0, 0.5/2e-9)
+	}
+}
+
+// TRLC-LINKS: REQ-SDS-068
+func BenchmarkRenderSpectrogram(b *testing.B) {
+	sg := NewSpectrogram()
+	for s := 0; s < 8; s++ {
+		for r := 0; r < 12; r++ {
+			sg.Push(sgSine(4096, 10e6+15e6*float64(s), 2e-9), 0, 0.5/2e-9)
+		}
+	}
+	h := defaultHUD()
+	h.ViewMode = 4
+	h.Spect = sg
+	benchRender(b, nil, h)
+}
+
+// TRLC-LINKS: REQ-SDS-021
+func BenchmarkRenderCursorsMeasure(b *testing.B) {
+	h := goldenYTHUD()
+	h.CurOn, h.CurType, h.CurSel = true, 0, 0
+	h.CurX = [2]float64{0.3, 0.7}
+	h.ShowMeas = true
+	benchRender(b, goldenYTFrame(), h)
 }
