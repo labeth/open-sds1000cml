@@ -176,7 +176,7 @@ func (d *fakeDisplay) MenuOpen() bool { return d.menu }
 func (d *fakeDisplay) SetMenuOpen(on bool) { d.menu = on }
 
 // TRLC-LINKS: REQ-SDS-024
-func newH(t *testing.T) (*Handler, *fakeScope) {
+func newH(t testing.TB) (*Handler, *fakeScope) {
 	t.Helper()
 	f := &engine.Frame{
 		C1: make([]uint8, 2048), C2: make([]uint8, 2048),
@@ -195,7 +195,7 @@ func newH(t *testing.T) (*Handler, *fakeScope) {
 // newHFE is newH plus a truthful fake front end (VDIV/OFST round-trips) and a
 // fake display (XYDS/PESU/MENU round-trips).
 // TRLC-LINKS: REQ-SDS-024
-func newHFE(t *testing.T) (*Handler, *fakeScope, *fakeFE) {
+func newHFE(t testing.TB) (*Handler, *fakeScope, *fakeFE) {
 	t.Helper()
 	h, fs := newH(t)
 	fe := &fakeFE{fs: fs, probe: [2]float64{1, 1}}

@@ -264,9 +264,11 @@ func (h *Handler) HandleLine(line []byte) []byte {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	var out []byte
-	for _, part := range strings.Split(strings.TrimRight(string(line), "\r\n"), ";") {
-		part = strings.TrimSpace(part)
-		if part == "" {
+	rest := strings.TrimRight(string(line), "\r\n")
+	for more := true; more; {
+		var part string
+		part, rest, more = strings.Cut(rest, ";")
+		if part = strings.TrimSpace(part); part == "" {
 			continue
 		}
 		out = append(out, h.exec(part)...)

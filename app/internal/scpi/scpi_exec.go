@@ -13,7 +13,13 @@ import (
 
 // TRLC-LINKS: REQ-SDS-024
 func (h *Handler) execGlobal(head, arg string) []byte {
-	st := h.sc.Snapshot()
+	// The engine's snapshot, for the commands that read it only: copying it
+	// for every command was most of a query's time.
+	var st engine.Stats
+	switch head {
+	case "TDIV?", "TRDL", "TRDL?", "TRMD?", "TRLV?", "TRSL?", "TRSE?", "ACQW?", "AVGA?", "SAST?":
+		st = h.sc.Snapshot()
+	}
 	switch head {
 	case "*IDN?":
 		// No header prefix; exactly 4 comma-separated fields.

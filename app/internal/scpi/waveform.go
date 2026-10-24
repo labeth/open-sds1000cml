@@ -79,6 +79,13 @@ func (h *Handler) dat2(ch int, f *engine.Frame) []byte {
 		np = max
 	}
 	out := make([]byte, np)
+	if !f.RollCodes {
+		// The common case without the roll branch in the loop.
+		for i := range out {
+			out[i] = sig[h.wfFP+i*sp] ^ 0x80
+		}
+		return out
+	}
 	for i := 0; i < np; i++ {
 		v := sig[h.wfFP+i*sp]
 		if f.RollCodes {

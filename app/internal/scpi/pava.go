@@ -4,6 +4,7 @@ package scpi
 import (
 	"fmt"
 	"math"
+	"strings"
 
 	"open-sds/app/internal/analog"
 	"open-sds/app/internal/engine"
@@ -128,11 +129,16 @@ func (h *Handler) pava(ch int, arg string) []byte {
 		r = r.Inverted() // measure what the inverted trace shows
 	}
 	if arg == "ALL" { // every parameter from one measurement
-		out := "ALL"
+		var out strings.Builder // one buffer, not a new string a parameter
+		out.Grow(400)
+		out.WriteString("ALL")
 		for _, name := range pavaOrder {
-			out += "," + name + "," + pavaValue(name, r)
+			out.WriteString(",")
+			out.WriteString(name)
+			out.WriteString(",")
+			out.WriteString(pavaValue(name, r))
 		}
-		return h.reply(fmt.Sprintf("C%d:PAVA", ch+1), out)
+		return h.reply(fmt.Sprintf("C%d:PAVA", ch+1), out.String())
 	}
 	return h.reply(fmt.Sprintf("C%d:PAVA", ch+1), arg+","+pavaValue(arg, r))
 }

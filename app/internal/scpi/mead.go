@@ -28,17 +28,20 @@ func findEdges(c []uint8) *edges {
 	}
 	mid := float64(lo+hi) / 2
 	hy := float64(hi-lo) / 10
+	// The bands as whole codes: a code is past mid+hy exactly when it is at
+	// least its ceiling, so the loop compares bytes, not floats.
+	up, down := int(math.Ceil(mid+hy)), int(math.Floor(mid-hy))
 	e := &edges{}
 	state := 0 // unknown until the first excursion past a hysteresis band
 	for i := 1; i < len(c); i++ {
-		v := float64(c[i])
+		v := int(c[i])
 		switch {
-		case v >= mid+hy && state <= 0:
+		case v >= up && state <= 0:
 			if state < 0 {
 				e.rise = append(e.rise, crossing(c, i, mid))
 			}
 			state = 1
-		case v <= mid-hy && state >= 0:
+		case v <= down && state >= 0:
 			if state > 0 {
 				e.fall = append(e.fall, crossing(c, i, mid))
 			}
