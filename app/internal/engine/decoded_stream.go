@@ -3,9 +3,9 @@ package engine
 
 import (
 	"context"
-	"sync"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	"open-sds/app/internal/decodedlines"

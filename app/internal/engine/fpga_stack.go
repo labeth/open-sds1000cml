@@ -4,6 +4,7 @@ package engine
 import (
 	"context"
 	"fmt"
+	"math/bits"
 	"time"
 
 	"open-sds/app/internal/sramcapture"
@@ -255,9 +256,7 @@ func (e *Engine) runFPGAStack(ctx context.Context, cfg sramcapture.Config, req F
 			if err = e.sram.StackDownload(ctx, part); err != nil {
 				return res, err
 			}
-			for i := range state {
-				superres.AddFPGAMoments(&state[i], part[i])
-			}
+			addTileMoments(state, part)
 			res.DownloadS += time.Since(t0).Seconds()
 		}
 		if req.Progress != nil {
@@ -278,6 +277,25 @@ func (e *Engine) runFPGAStack(ctx context.Context, cfg sramcapture.Config, req F
 	res.Records = req.Records
 	res.SampleS, res.Factor = 1/m.SampleRateHz, req.Stack.Factor
 	return res, nil
+}
+
+// addTileMoments is superres.AddFPGAMoments over a tile, by pointer: a whole
+// downloaded tile is folded in per record with the owner loop held.
+// TRLC-LINKS: REQ-SDS-141
+func addTileMoments(state, part []superres.FPGAStackMoments) {
+	part = part[:len(state)]
+	for i := range state {
+		a, b := &state[i], &part[i]
+		var c uint64
+		a.Sum[0], c = bits.Add64(a.Sum[0], b.Sum[0], 0)
+		a.Sum[1] += b.Sum[1] + c
+		a.SumSquares[0], c = bits.Add64(a.SumSquares[0], b.SumSquares[0], 0)
+		a.SumSquares[1] += b.SumSquares[1] + c
+		a.SumOdd[0], c = bits.Add64(a.SumOdd[0], b.SumOdd[0], 0)
+		a.SumOdd[1] += b.SumOdd[1] + c
+		a.Count += b.Count
+		a.CountOdd += b.CountOdd
+	}
 }
 
 // captureOne arms an auto-triggered raw capture and waits until it is frozen.
