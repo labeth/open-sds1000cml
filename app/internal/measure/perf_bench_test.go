@@ -68,3 +68,14 @@ func BenchmarkEnvelopeTiming(b *testing.B) {
 		r.WithEnvelopeTiming(env, 0.02, 0, 2e-7)
 	}
 }
+
+// Every channel frame is checked for clipping and its envelope's swing read.
+// TRLC-LINKS: REQ-SDS-021
+func BenchmarkClippedSwing(b *testing.B) {
+	raw, _ := benchSquare(5000)
+	env := benchEnvelope()
+	for b.Loop() {
+		Clipped(raw)
+		scanEnvelope(env)
+	}
+}
