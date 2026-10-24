@@ -126,3 +126,17 @@ func BenchmarkStreamStatus(b *testing.B) {
 		_ = streamStatus(v)
 	}
 }
+
+// TRLC-LINKS: REQ-SDS-214
+func BenchmarkDrawMatchEditor(b *testing.B) {
+	toks := make([]string, 32)
+	for i := range toks {
+		toks[i] = [...]string{"48", "65", "6C", "?F", "??", "ERR", "20"}[i%7]
+	}
+	m := MatchView{Open: true, Set: "Hex", Proto: "UART", Toks: toks, Cur: 30,
+		Keys: [][]string{{"0", "1", "2", "3", "4", "5"}, {"6", "7", "8", "9", "A", "B"}, {"C", "D", "E", "F", "?", "??"}}, Row: 1, Col: 4}
+	sf := NewMemSurface()
+	for b.Loop() {
+		drawMatchEditor(sf, m)
+	}
+}
