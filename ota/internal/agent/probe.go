@@ -3,6 +3,7 @@ package agent
 
 import (
 	"strings"
+	"sync"
 	"time"
 
 	"open-sds/ota/internal/fdinherit"
@@ -50,6 +51,9 @@ func (a *Agent) probe(readGpmc bool) ProbeReport {
 	}
 	// Read-only environment queries, surfaced through `otactl probe`. Each is
 	// bounded and best-effort; missing applets simply yield an error string.
+	// They run side by side: the report waits for the slowest, not the sum.
+	var mu sync.Mutex
+	var wg sync.WaitGroup
 	for name, script := range map[string]string{
 		"cmdline":  "cat /proc/cmdline",
 		"ps":       "ps 2>/dev/null | head -60",
@@ -63,9 +67,14 @@ func (a *Agent) probe(readGpmc bool) ProbeReport {
 		"busybox":  "busybox 2>&1 | sed -n '1,3p'; echo ---; busybox --list 2>/dev/null | tr '\\n' ' '",
 		"devmem":   "cat /sys/kernel/security/lsm 2>/dev/null; grep -i strict /proc/config.gz 2>/dev/null; echo done",
 	} {
-		out, _ := a.runShell(script, 6*time.Second)
-		r.Cmds[name] = strings.TrimSpace(string(out))
+		wg.Go(func() {
+			out, _ := a.runShell(script, 6*time.Second)
+			mu.Lock()
+			r.Cmds[name] = strings.TrimSpace(string(out))
+			mu.Unlock()
+		})
 	}
+	wg.Wait()
 
 	if readGpmc && a.gpmc.OK() {
 		if v, ok := a.gpmc.VerifyVersion(); ok {
