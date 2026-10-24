@@ -50,3 +50,13 @@ func BenchmarkRowValues(b *testing.B) {
 		}
 	}
 }
+
+// TRLC-LINKS: REQ-SDS-136
+func BenchmarkStepNs(b *testing.B) {
+	for b.Loop() {
+		for _, v := range []float64{10, 37, 1e3, 2e6, 9.9e9} {
+			stepNs(v, 1, false)
+			stepNs(v, -1, true)
+		}
+	}
+}

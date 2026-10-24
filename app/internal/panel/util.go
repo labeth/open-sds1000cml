@@ -8,11 +8,7 @@ import "fmt"
 // reaches 10 s so a UART idle or a slow pulse can be qualified from the panel.
 // TRLC-LINKS: REQ-SDS-136
 func stepNs(cur float64, dir int, wrap bool) float64 {
-	var ladder []float64
-	for d := 10.0; d <= 1e10*(1+1e-9); d *= 10 {
-		ladder = append(ladder, d, 2*d, 5*d)
-	}
-	ladder = ladder[:len(ladder)-2] // ... 5 s, 10 s
+	ladder := nsLadder
 	idx := 0
 	for i, v := range ladder {
 		if cur >= v*(1-1e-9) {
@@ -21,6 +17,15 @@ func stepNs(cur float64, dir int, wrap bool) float64 {
 	}
 	return ladder[stepIndex(idx, dir, len(ladder), wrap)]
 }
+
+// nsLadder is stepNs's ladder, built once.
+var nsLadder = func() []float64 {
+	var ladder []float64
+	for d := 10.0; d <= 1e10*(1+1e-9); d *= 10 {
+		ladder = append(ladder, d, 2*d, 5*d)
+	}
+	return ladder[:len(ladder)-2] // ... 5 s, 10 s
+}()
 
 // orderNs keeps a min/max time window open: when an edit closes or inverts
 // it, the other limit moves one ladder step away (maxEdited: the max was
