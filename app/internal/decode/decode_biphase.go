@@ -412,6 +412,7 @@ func DecodeSPDIF(codes []uint8, colTimeS float64, cfg SPDIFCfg) Result {
 	var toks []string
 	var units []int
 	goodN := 0
+	bits := make([]int, 0, 28) // a subframe's cells, reused
 	for i := 1; i+3 < len(E); i++ {
 		if k[i] != 3 {
 			continue
@@ -429,7 +430,7 @@ func DecodeSPDIF(codes []uint8, colTimeS float64, cfg SPDIFCfg) Result {
 		}
 		// 28 cells: a gap of two halves a 0, two of one a 1
 		j := i + 4
-		var bits []int
+		bits = bits[:0]
 		for len(bits) < 28 && j < len(E) {
 			if k[j] == 2 {
 				bits = append(bits, 0)
@@ -463,7 +464,7 @@ func DecodeSPDIF(codes []uint8, colTimeS float64, cfg SPDIFCfg) Result {
 			}
 			ones += bits[b]
 		}
-		txt, kd := fmt.Sprintf("%06X", v), "data"
+		txt, kd := hex6(v), "data"
 		if ones%2 != 0 {
 			txt, kd = "!"+txt, "parity-error"
 		} else {
@@ -487,4 +488,15 @@ func DecodeSPDIF(codes []uint8, colTimeS float64, cfg SPDIFCfg) Result {
 		res.Error = "no S/PDIF subframes whose parity checks"
 	}
 	return res
+}
+
+// hex6 is a 24-bit sample as six upper-case hex digits (fmt's "%06X").
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-235
+func hex6(v int) string {
+	var b [6]byte
+	for i := 5; i >= 0; i-- {
+		b[i] = "0123456789ABCDEF"[v&0xf]
+		v >>= 4
+	}
+	return string(b[:])
 }
