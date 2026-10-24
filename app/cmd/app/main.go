@@ -468,6 +468,9 @@ func runLCD(e *engine.Engine, fe *analog.FrontEnd, fo *frames.Fanout) {
 	lit := true
 	idle := false // the last tick drew nothing and saw no new frame
 	var busyDrawAt time.Time
+	var renderDue time.Time // when the next full picture may start
+	var govAt time.Time     // when lcdGovern last set lcdPeriod
+	lcdPeriod := lcdFramePeriod
 	wasBusy := false
 	for {
 		switch {
@@ -480,6 +483,16 @@ func runLCD(e *engine.Engine, fe *analog.FrontEnd, fo *frames.Fanout) {
 			fo.WaitNext(lastSeq, max(e.RenderPeriod(), lcdIdleWait))
 		default:
 			time.Sleep(e.RenderPeriod()) // tunable display cadence
+			// never faster than the panel refreshes, nor than the engine's
+			// frame rate allows (lcdGovern): a picture costs the engine
+			// frames (polled: one long sleep overshoots on this kernel's
+			// timer)
+			if now := time.Now(); scr == panel.ScreenOn && now.Before(renderDue) {
+				if now.Sub(govAt) >= lcdGovEvery {
+					govAt, lcdPeriod = now, lcdGovern(lcdPeriod, e.Snapshot())
+				}
+				continue
+			}
 		}
 		seenSeq := lastSeq
 		// Busy mode: while the engine reads a full record or loads an image,
@@ -595,6 +608,14 @@ func runLCD(e *engine.Engine, fe *analog.FrontEnd, fo *frames.Fanout) {
 				return // nothing else visible changed — skip the rasterize
 			}
 			lastSig, haveSig, lastSlot = sig, true, slot
+			// the next picture is due a period after this one was: a start
+			// late by the poll or the engine's quiet window is not added to
+			// the next, and a long pause does not bring a burst
+			now := time.Now()
+			renderDue = renderDue.Add(lcdPeriod)
+			if renderDue.Before(now) {
+				renderDue = now.Add(lcdPeriod / 2)
+			}
 			lcd.Render(back, f, hud, live, persistLayer)
 			present = true
 		})
@@ -638,6 +659,40 @@ func lcdForceRepaint(hud lcd.HUD) bool {
 // lcdIdleWait bounds how long a still display waits for something to change
 // that brings no frame (a menu, a notice, the loading indicator).
 const lcdIdleWait = 20 * time.Millisecond
+
+// lcdFramePeriod is the panel's refresh period (800x480 at 52 Hz): the
+// display loop puts up at most one picture a refresh.
+const lcdFramePeriod = time.Second / 52
+
+// The display shares the one core with the engine: a picture (render and
+// copy, ~6 ms) costs it frames, measured 53 fps with the panel at 51 and
+// 64 with it at 32. lcdGovern keeps the engine at lcdEngineFPS or more
+// where only the display holds it back: below it the display's period
+// grows, to lcdSlowestPeriod at most; with room above it the period
+// shrinks back to the panel's. A timebase whose records take longer than
+// a 60th of a second leaves the display at most a few frames short of
+// what it could show.
+const (
+	lcdEngineFPS     = 61
+	lcdEngineRoom    = 64
+	lcdSlowestPeriod = time.Second / 30
+	lcdGovStep       = time.Millisecond
+	lcdGovEvery      = 250 * time.Millisecond
+)
+
+// lcdGovern is the display period after one look at the engine.
+// TRLC-LINKS: REQ-SDS-168
+func lcdGovern(p time.Duration, st engine.Stats) time.Duration {
+	switch {
+	case !st.Running:
+		return lcdFramePeriod
+	case st.FPS < lcdEngineFPS:
+		return min(p+lcdGovStep, lcdSlowestPeriod)
+	case st.FPS >= lcdEngineRoom:
+		return max(p-lcdGovStep, lcdFramePeriod)
+	}
+	return p
+}
 
 // lcdBusyEvery is the busy mode's drawing period: the work shown going on
 // a few times a second, the core left to the work.

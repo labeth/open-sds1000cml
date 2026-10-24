@@ -5,6 +5,7 @@ import (
 	"math/rand"
 	"strings"
 	"testing"
+	"time"
 
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/panel/wsview"
@@ -20,6 +21,15 @@ func noiseFrame(rng *rand.Rand) *engine.Frame {
 	return f
 }
 
+// stabSpaced gives c a clock that step moves a little more than the repeat
+// test's spacing: each capture shown after a step is tested.
+// TRLC-LINKS: REQ-SDS-218
+func stabSpaced(c *Controller) (step func()) {
+	at := time.Unix(1000, 0)
+	c.clock = func() time.Time { return at }
+	return func() { at = at.Add(stabEvery + time.Millisecond) }
+}
+
 // COMPARE again stacks a master only from a trigger source that repeats:
 // otherwise it refuses and says how to fix the trigger.
 // TRLC-LINKS: REQ-SDS-218
@@ -28,7 +38,9 @@ func TestMasterRefusedWhileTheSourceDoesNotRepeat(t *testing.T) {
 	c := r.c
 	rng := rand.New(rand.NewSource(3))
 	press(t, c, "f5")
+	step := stabSpaced(c)
 	for i := 0; i < 8; i++ {
+		step()
 		r.show(noiseFrame(rng))
 	}
 	if !strings.Contains(c.View().Cmp.Again, "needs a stable trigger") {
@@ -155,7 +167,9 @@ func TestRepeatCaptionOutsideCompare(t *testing.T) {
 	if cap, _ := c.RepeatCaption(); !strings.Contains(cap, "checking that it repeats") {
 		t.Fatalf("before captures: %q", cap)
 	}
+	step := stabSpaced(c)
 	for i := 0; i < 8; i++ {
+		step()
 		r.show(toneFrame(""))
 	}
 	cap, warn := c.RepeatCaption()

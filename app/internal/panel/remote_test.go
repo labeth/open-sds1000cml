@@ -184,7 +184,9 @@ func TestCompareStabilityLeavesTheSeqAlone(t *testing.T) {
 	press(t, c, "f5")
 	c.Sheets()
 	rng := rand.New(rand.NewSource(3))
+	step := stabSpaced(c)
 	for i := 0; i < 8; i++ {
+		step()
 		r.show(toneFrame(""))
 	}
 	st0 := c.PanelStatus()
@@ -192,6 +194,7 @@ func TestCompareStabilityLeavesTheSeqAlone(t *testing.T) {
 		t.Fatalf("COMPARE: again %q next %q", st0.Again, st0.AgainNext)
 	}
 	for i := 0; i < 8; i++ {
+		step()
 		r.show(noiseFrame(rng))
 	}
 	if !strings.Contains(c.View().Cmp.Again, "needs a stable trigger") {

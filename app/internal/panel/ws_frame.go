@@ -87,7 +87,8 @@ type anaState struct {
 	stabPrev []float64
 	stabRes  []bool
 	stabKey  stabK
-	stabFed  frameKey // the frame tested last
+	stabFed  frameKey  // the frame tested last
+	stabAt   time.Time // when it was tested
 	refDiff  [2]refDiffResult
 }
 
@@ -103,6 +104,11 @@ const (
 	stabN   = 12
 	stabMin = 6
 )
+
+// stabEvery is the least time between two repeat tests: a capture against
+// one about this much older. Testing every capture cost a millisecond of
+// each frame at 60 fps for a verdict read when a master starts.
+const stabEvery = 60 * time.Millisecond
 
 // frameKey names a published frame; the zero key (a hand-built frame) is
 // never taken as seen.

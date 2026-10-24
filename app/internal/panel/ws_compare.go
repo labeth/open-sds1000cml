@@ -166,9 +166,14 @@ func (c *Controller) stabFrame(a *anaState, s *sv, f *engine.Frame) {
 	if k := stabKey(s); k != a.stabKey {
 		a.stabKey, a.stabPrev, a.stabRes, a.stabFed = k, nil, nil, frameKey{}
 	}
+	now := c.now()
+	if d := now.Sub(a.stabAt); a.stabPrev != nil && d >= 0 && d < stabEvery {
+		return // tested a moment ago
+	}
 	if seen(&a.stabFed, keyOf(f)) {
 		return // tested already
 	}
+	a.stabAt = now
 	cur := screenDivs(f, s, src, stabCols)
 	if cur == nil {
 		return
