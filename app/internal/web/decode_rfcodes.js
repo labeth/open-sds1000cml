@@ -28,7 +28,7 @@ function markLead(m, i) { return i === 0 ? m[0].x0 : m[i - 1].gap; }
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-251
 function quantile(v, q) {
   if (!v.length) return 0;
-  const c = v.slice().sort((a, b) => a - b);
+  const c = Float64Array.from(v).sort(); // numeric without a comparator call
   return c[Math.trunc(q * (c.length - 1))];
 }
 
