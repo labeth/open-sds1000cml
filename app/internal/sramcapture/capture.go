@@ -1129,6 +1129,10 @@ func (c *Capture) recallChecked(ctx context.Context, offset, count uint32, dst i
 	return c.recallFrozen(ctx, m, offset, count, dst, forward)
 }
 
+// recallPositionSels are the read pointer (low, high) and the status a recall
+// span starts from.
+var recallPositionSels = [3]uint16{8, 9, 1}
+
 // recallFrozen recalls the window of the record m, read just now. Called
 // with c.mu held.
 // TRLC-LINKS: REQ-SDS-033
@@ -1139,6 +1143,14 @@ func (c *Capture) recallFrozen(ctx context.Context, m Metadata, offset, count ui
 	if !m.Ready || !m.Frozen || m.Running {
 		return 0, fmt.Errorf("sramcapture: record is not frozen")
 	}
+	// Writes queue until the next read or burst, as in Arm.
+	c.queueWrites = true
+	defer func() {
+		c.queueWrites = false
+		if e := c.flushWrites(); e != nil && err == nil {
+			err = e
+		}
+	}()
 	if c.envelopeOn {
 		if err = c.write(44, 0); err != nil {
 			return 0, err
@@ -1197,14 +1209,12 @@ func (c *Capture) recallFrozen(ctx context.Context, m Metadata, offset, count ui
 		}
 		n := span.count
 		target := (m.Origin + m.Start + offset + span.offset - prefix) & addressMask
-		position, e := c.read32(8)
+		var pf [3]uint16 // the position (8, 9) and the flags, in one read
+		e := c.readMany(recallPositionSels[:], pf[:])
 		if e != nil {
 			return written, e
 		}
-		flags, e := c.read(1)
-		if e != nil {
-			return written, e
-		}
+		position, flags := uint32(pf[0])|uint32(pf[1])<<16, pf[2]
 		op := uint16(2)
 		if prefix == 0 && flags&1024 != 0 && target == (position-1)&addressMask {
 			op = 7
@@ -1250,6 +1260,9 @@ func (c *Capture) recallFrozen(ctx context.Context, m Metadata, offset, count ui
 				}
 			}
 			if e = c.write(17, uint16(prefix*2)); e != nil {
+				return written, e
+			}
+			if e = c.flushWrites(); e != nil {
 				return written, e
 			}
 			if pop, ok := c.bus.(interface{ PopWordsChecked(uint16, []uint16) error }); ok {
