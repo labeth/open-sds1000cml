@@ -902,3 +902,11 @@ func BenchmarkFundamentalHz(b *testing.B) {
 		fundamentalHz(sig, 2e-9)
 	}
 }
+
+// TRLC-LINKS: REQ-SDS-011
+func BenchmarkQualName(b *testing.B) {
+	for b.Loop() {
+		qualName(sramcapture.QualPulse)
+		qualName(sramcapture.QualVideo)
+	}
+}
