@@ -55,12 +55,15 @@ const (
 const workerRecallParams = 4 + 12*sramcapture.RecordReadsMax
 
 type workerClient struct {
-	mu        sync.Mutex
-	conn      net.Conn
-	cmd       *exec.Cmd
-	done      chan error
-	sequence  uint32
-	deadline  time.Time // the socket's deadline as last set (callSplit)
+	mu       sync.Mutex
+	conn     net.Conn
+	cmd      *exec.Cmd
+	done     chan error
+	sequence uint32
+	deadline time.Time // the socket's deadline as last set (callSplit)
+	// request is callSplit's packet, kept (under mu): a socket write takes
+	// it to the heap, a fresh one a register access.
+	request   [workerHeader + workerRecallParams]byte
 	failed    error
 	fast      bool
 	closeOnce sync.Once
@@ -189,8 +192,7 @@ func (c *workerClient) callSplit(op uint16, plane uint8, selector, value uint16,
 	if len(params) > workerRecallParams {
 		return 0, fmt.Errorf("bus: oversized worker request")
 	}
-	var buf [workerHeader + workerRecallParams]byte
-	request := buf[:workerHeader+copy(buf[workerHeader:], params)]
+	request := c.request[:workerHeader+copy(c.request[workerHeader:], params)]
 	binary.LittleEndian.PutUint32(request[:4], workerMagic)
 	binary.LittleEndian.PutUint32(request[4:8], c.sequence)
 	binary.LittleEndian.PutUint16(request[8:10], op)
