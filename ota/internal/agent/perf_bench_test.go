@@ -145,3 +145,11 @@ func BenchmarkStateUpdateSame(b *testing.B) {
 		}
 	}
 }
+
+// TRLC-LINKS: REQ-SDS-114
+func BenchmarkProbe(b *testing.B) {
+	a := benchAgent(b)
+	for b.Loop() {
+		a.probe(false)
+	}
+}
