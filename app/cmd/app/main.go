@@ -471,6 +471,7 @@ func runLCD(e *engine.Engine, fe *analog.FrontEnd, fo *frames.Fanout) {
 	var renderDue time.Time // when the next full picture may start
 	var govAt time.Time     // when lcdGovern last set lcdPeriod
 	lcdPeriod := lcdFramePeriod
+	var cpu cpuMeter
 	wasBusy := false
 	for {
 		switch {
@@ -489,7 +490,7 @@ func runLCD(e *engine.Engine, fe *analog.FrontEnd, fo *frames.Fanout) {
 			// timer)
 			if now := time.Now(); scr == panel.ScreenOn && now.Before(renderDue) {
 				if now.Sub(govAt) >= lcdGovEvery {
-					govAt, lcdPeriod = now, lcdGovern(lcdPeriod, e.Snapshot())
+					govAt, lcdPeriod = now, lcdGovern(lcdPeriod, e.Snapshot(), cpu.busy())
 				}
 				continue
 			}
@@ -665,33 +666,87 @@ const lcdIdleWait = 20 * time.Millisecond
 const lcdFramePeriod = time.Second / 52
 
 // The display shares the one core with the engine: a picture (render and
-// copy, ~6 ms) costs it frames, measured 53 fps with the panel at 51 and
-// 64 with it at 32. lcdGovern keeps the engine at lcdEngineFPS or more
-// where only the display holds it back: below it the display's period
-// grows, to lcdSlowestPeriod at most; with room above it the period
-// shrinks back to the panel's. A timebase whose records take longer than
-// a 60th of a second leaves the display at most a few frames short of
-// what it could show.
+// copy, ~6 ms; with SPECTRUM's analysis, ~25) costs it frames, measured 53
+// fps with the panel at 51 and 64 with it at 32. lcdGovern keeps the engine
+// at lcdEngineFPS or more where the display holds it back, the core busy:
+// below it the display's period grows, to lcdSlowestPeriod at most; with
+// room above it, or the core waiting (a record that takes longer than a
+// 60th of a second to come), the period shrinks back to the panel's.
 const (
 	lcdEngineFPS     = 61
 	lcdEngineRoom    = 64
-	lcdSlowestPeriod = time.Second / 30
-	lcdGovStep       = time.Millisecond
+	lcdSlowestPeriod = time.Second / 15
+	lcdCoreBusy      = 0.90
+	lcdCoreWaiting   = 0.85
+	lcdGovStep       = 2 * time.Millisecond
 	lcdGovEvery      = 250 * time.Millisecond
 )
 
-// lcdGovern is the display period after one look at the engine.
+// lcdGovern is the display period after one look at the engine and the
+// core's busy fraction since the last.
 // TRLC-LINKS: REQ-SDS-168
-func lcdGovern(p time.Duration, st engine.Stats) time.Duration {
+func lcdGovern(p time.Duration, st engine.Stats, busy float64) time.Duration {
 	switch {
 	case !st.Running:
 		return lcdFramePeriod
-	case st.FPS < lcdEngineFPS:
+	case st.FPS < lcdEngineFPS && busy >= lcdCoreBusy:
 		return min(p+lcdGovStep, lcdSlowestPeriod)
-	case st.FPS >= lcdEngineRoom:
+	case st.FPS >= lcdEngineRoom || busy < lcdCoreWaiting:
 		return max(p-lcdGovStep, lcdFramePeriod)
 	}
 	return p
+}
+
+// cpuMeter reads the core's busy fraction from /proc/stat.
+type cpuMeter struct{ total, idle uint64 }
+
+// busy is the fraction of the core's time not idle (nor waiting on I/O)
+// since the last call; 1 when /proc/stat cannot be read, so the governor
+// acts on the frame rate alone.
+// TRLC-LINKS: REQ-SDS-168
+func (m *cpuMeter) busy() float64 {
+	b, err := os.ReadFile("/proc/stat")
+	if err != nil {
+		return 1
+	}
+	total, idle, ok := cpuTimes(b)
+	if !ok {
+		return 1
+	}
+	dt, di := total-m.total, idle-m.idle
+	m.total, m.idle = total, idle
+	if dt == 0 || dt < di {
+		return 1
+	}
+	return 1 - float64(di)/float64(dt)
+}
+
+// cpuTimes sums the first "cpu" line of /proc/stat: all its times, and the
+// idle and iowait ones.
+// TRLC-LINKS: REQ-SDS-168
+func cpuTimes(b []byte) (total, idle uint64, ok bool) {
+	if len(b) < 4 || string(b[:4]) != "cpu " {
+		return 0, 0, false
+	}
+	field, v, in := 0, uint64(0), false
+	for _, c := range b[4:] {
+		if c >= '0' && c <= '9' {
+			v, in = v*10+uint64(c-'0'), true
+			continue
+		}
+		if in {
+			total += v
+			if field == 3 || field == 4 {
+				idle += v
+			}
+			field++
+			v, in = 0, false
+		}
+		if c == '\n' {
+			break
+		}
+	}
+	return total, idle, field >= 5
 }
 
 // lcdBusyEvery is the busy mode's drawing period: the work shown going on

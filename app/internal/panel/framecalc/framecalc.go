@@ -546,11 +546,14 @@ func Mags(samples []float64) ([]float64, float64, int) {
 	mags := make([]float64, half)
 	peak, peakK := 1e-9, 1
 	for k := 0; k < half; k++ {
-		j := (half - k) % half
+		j := half - k // (half-k) mod half, without a division a bin
+		if k == 0 {
+			j = 0
+		}
 		er, ei := (zr[k]+zr[j])/2, (zi[k]-zi[j])/2 // the even samples' transform
 		or, oi := (zi[k]+zi[j])/2, (zr[j]-zr[k])/2 // the odd samples'
 		c, s := tab.cos[k], tab.sin[k]
-		mags[k] = math.Hypot(er+c*or+s*oi, ei+c*oi-s*or)
+		mags[k] = hypotFinite(er+c*or+s*oi, ei+c*oi-s*or)
 		if k >= 1 && mags[k] > peak {
 			peak, peakK = mags[k], k
 		}

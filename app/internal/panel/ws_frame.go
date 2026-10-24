@@ -454,6 +454,45 @@ func median(xs []float64) float64 {
 		return math.NaN()
 	}
 	s := append([]float64(nil), xs...)
-	sort.Float64s(s)
-	return s[len(s)/2]
+	for _, v := range s {
+		if v != v { // NaN: sorting's order (NaN first) decides
+			sort.Float64s(s)
+			return s[len(s)/2]
+		}
+	}
+	return nthFloat(s, len(s)/2)
+}
+
+// nthFloat returns the value sorting would put at x[k] (Hoare selection,
+// reordering x; no NaN): the spectrum's noise floor is the median of its
+// bins each frame, and a sort of them was most of its cost.
+// TRLC-LINKS: REQ-SDS-216
+func nthFloat(x []float64, k int) float64 {
+	lo, hi := 0, len(x)-1
+	for lo < hi {
+		p := x[lo+(hi-lo)/2]
+		i, j := lo, hi
+		for i <= j {
+			for x[i] < p {
+				i++
+			}
+			for x[j] > p {
+				j--
+			}
+			if i <= j {
+				x[i], x[j] = x[j], x[i]
+				i++
+				j--
+			}
+		}
+		switch {
+		case k <= j:
+			hi = j
+		case k >= i:
+			lo = i
+		default:
+			return x[k]
+		}
+	}
+	return x[k]
 }
