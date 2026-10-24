@@ -149,7 +149,37 @@ func LayerMatch(id string, p Packet) (toks []string, addr int, ok bool) {
 
 // hx writes v in upper-case hex, at least n digits.
 // TRLC-LINKS: REQ-SDS-241
-func hx[T ~int | ~int64](v T, n int) string { return fmt.Sprintf("%0*X", n, v) }
+func hx[T ~int | ~int64](v T, n int) string {
+	if v < 0 {
+		return fmt.Sprintf("%0*X", n, v)
+	}
+	if v < 256 && n == 2 { // a byte: from the table
+		return hexByte[v]
+	}
+	// %0*X written directly: no fmt call a value.
+	var b [24]byte
+	i := len(b)
+	for u := uint64(v); u != 0 || i == len(b); u >>= 4 {
+		i--
+		b[i] = "0123456789ABCDEF"[u&15]
+	}
+	for len(b)-i < n && i > 0 {
+		i--
+		b[i] = '0'
+	}
+	if len(b)-i < n {
+		return fmt.Sprintf("%0*X", n, v)
+	}
+	return string(b[i:])
+}
+
+// hexByte is every byte as two upper-case hex digits.
+var hexByte = func() (t [256]string) {
+	for i := range t {
+		t[i] = fmt.Sprintf("%02X", i)
+	}
+	return t
+}()
 
 // hexList writes bytes as "12 34 56", at most max of them and ".." after.
 // TRLC-LINKS: REQ-SDS-241

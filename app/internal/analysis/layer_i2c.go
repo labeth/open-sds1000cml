@@ -3,6 +3,7 @@ package analysis
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 )
 
@@ -132,11 +133,11 @@ func eepromNotes(ps []Packet) {
 		case a.write && len(a.data) == 1:
 			p.Note = pre + " byte write " + at + ": " + hx(int(a.data[0]), 2)
 		case a.write:
-			p.Note = fmt.Sprintf("%s page write %s, %s: %s", pre, at, plural(len(a.data), "byte"), hexList(a.data, 8))
+			p.Note = pre + " page write " + at + ", " + plural(len(a.data), "byte") + ": " + hexList(a.data, 8)
 		case !a.known:
-			p.Note = fmt.Sprintf("%s read (current address), %s: %s", pre, plural(len(a.data), "byte"), hexList(a.data, 8))
+			p.Note = pre + " read (current address), " + plural(len(a.data), "byte") + ": " + hexList(a.data, 8)
 		default:
-			p.Note = fmt.Sprintf("%s read %s, %s: %s", pre, at, plural(len(a.data), "byte"), hexList(a.data, 8))
+			p.Note = pre + " read " + at + ", " + plural(len(a.data), "byte") + ": " + hexList(a.data, 8)
 		}
 	}
 }
@@ -356,7 +357,7 @@ func rtcNotes(ps []Packet, c rtcSpec, addr int) {
 		}
 		a := r.take(*p, 1)
 		if !a.known {
-			p.Note = fmt.Sprintf("%s %s (no register), %s", c.name, rw(*p), plural(len(a.data), "byte"))
+			p.Note = c.name + " " + rw(*p) + " (no register), " + plural(len(a.data), "byte")
 			continue
 		}
 		if a.ptrOnly {
@@ -370,9 +371,9 @@ func rtcNotes(ps []Packet, c rtcSpec, addr int) {
 		if a.reg <= lo && a.reg+len(a.data) > hi {
 			t, ok := c.clock(img)
 			if ok {
-				p.Note = fmt.Sprintf("%s %s %s", c.name, rw(*p), t)
+				p.Note = c.name + " " + rw(*p) + " " + t
 			} else {
-				p.Note, p.NoteErr = fmt.Sprintf("%s %s time not BCD: %s", c.name, rw(*p), hexList(a.data, 8)), true
+				p.Note, p.NoteErr = c.name+" "+rw(*p)+" time not BCD: "+hexList(a.data, 8), true
 			}
 			continue
 		}
@@ -388,7 +389,7 @@ func rtcNotes(ps []Packet, c rtcSpec, addr int) {
 			}
 			parts = append(parts, name+"="+hx(int(v), 2))
 		}
-		p.Note = fmt.Sprintf("%s %s %s", c.name, rw(*p), strings.Join(parts, " "))
+		p.Note = c.name + " " + rw(*p) + " " + strings.Join(parts, " ")
 	}
 }
 
@@ -1117,7 +1118,7 @@ func demuxNotes(ps []Packet) {
 			devs[p.Addr] = len(devs) + 1
 		}
 		count[p.Addr]++
-		p.Note = fmt.Sprintf("dev %d (0x%s) #%d %s, %s", devs[p.Addr], hx(p.Addr, 2), count[p.Addr], rw(*p), plural(len(p.Bytes), "byte"))
+		p.Note = "dev " + strconv.Itoa(devs[p.Addr]) + " (0x" + hx(p.Addr, 2) + ") #" + strconv.Itoa(count[p.Addr]) + " " + rw(*p) + ", " + plural(len(p.Bytes), "byte")
 	}
 }
 
@@ -1130,7 +1131,7 @@ func FilterI2C(ps []Packet, addr, dir int) []Packet {
 		if !p.HasAddr || (addr >= 0 && p.Addr != addr) || (dir == 1 && !p.Read) || (dir == 2 && p.Read) {
 			continue
 		}
-		p.Note = fmt.Sprintf("0x%s %s, %s", hx(p.Addr, 2), rw(p), plural(len(p.Bytes), "byte"))
+		p.Note = "0x" + hx(p.Addr, 2) + " " + rw(p) + ", " + plural(len(p.Bytes), "byte")
 		out = append(out, p)
 	}
 	return out

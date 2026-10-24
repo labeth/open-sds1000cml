@@ -3,6 +3,7 @@ package analysis
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 )
 
@@ -118,10 +119,11 @@ func itmText(v byte) bool { return (v >= 0x20 && v < 0x7f) || (v >= 9 && v <= 13
 // trace. The items are what the bytes hold, in order.
 // TRLC-LINKS: REQ-SDS-244
 func itmParse(b []byte) (items []string, bad bool) {
+	items = make([]string, 0, len(b)/2+1) // room for an item every two bytes: grown once at most
 	textCh, text := -1, []byte{}
 	flush := func() {
 		if textCh >= 0 {
-			items = append(items, fmt.Sprintf("ch%d %s", textCh, quoted(text, 24)))
+			items = append(items, "ch"+strconv.Itoa(textCh)+" "+quoted(text, 24)) // as %d %s, without fmt
 			textCh, text = -1, text[:0]
 		}
 	}
@@ -150,7 +152,7 @@ func itmParse(b []byte) (items []string, bad bool) {
 		case h&0x0f == 0x00: // local timestamp
 			flush()
 			if h&0x80 == 0 {
-				items = append(items, fmt.Sprintf("TS +%d", h>>4))
+				items = append(items, "TS +"+strconv.Itoa(int(h>>4)))
 				i++
 				continue
 			}
@@ -166,7 +168,7 @@ func itmParse(b []byte) (items []string, bad bool) {
 				items = append(items, "TS (cut)")
 				return items, true
 			}
-			items = append(items, fmt.Sprintf("TS +%d", ts))
+			items = append(items, "TS +"+strconv.Itoa(ts))
 			i = j
 			continue
 		case h&0x0b == 0x08: // extension: continuation bytes

@@ -146,7 +146,15 @@ func spiFirst(n int) func(p Packet) ([]string, int) {
 		if len(p.Bytes) == 0 {
 			return nil, -1
 		}
-		return sofToks(p.Bytes[:min(n, len(p.Bytes))]), -1
+		// "SOF" and the bytes in one list (sofToks builds the bytes' list and
+		// copies it again).
+		b := p.Bytes[:min(n, len(p.Bytes))]
+		toks := make([]string, 1, 1+len(b))
+		toks[0] = "SOF"
+		for _, v := range b {
+			toks = append(toks, hx(int(v), 2))
+		}
+		return toks, -1
 	}
 }
 

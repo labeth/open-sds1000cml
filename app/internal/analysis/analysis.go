@@ -30,7 +30,7 @@ func jsRound(x float64) float64 {
 
 // finite reports whether x is neither NaN nor infinite.
 // TRLC-LINKS: REQ-SDS-215
-func finite(x float64) bool { return !math.IsNaN(x) && !math.IsInf(x, 0) }
+func finite(x float64) bool { return x-x == 0 } // NaN and ±Inf give NaN: one subtraction
 
 // truthy is JavaScript's truth test on a number: neither 0 nor NaN.
 // TRLC-LINKS: REQ-SDS-215

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"sync"
 )
 
 // layerNameTables are the name tables the web page's layers read too, by
@@ -25,7 +26,10 @@ var layerNameTables = map[string]map[int]string{
 // LayerTablesJS is layer_tables.js: the layers' name and command tables as
 // one JavaScript object, so the web page's layers name what the scope's do.
 // TRLC-LINKS: REQ-SDS-241
-func LayerTablesJS() string {
+func LayerTablesJS() string { return layerTablesJS() }
+
+// layerTablesJS is the text, built once: the tables are fixed.
+var layerTablesJS = sync.OnceValue(func() string {
 	obj := map[string]any{}
 	for name, t := range layerNameTables {
 		obj[name] = jsKeyed(t)
@@ -77,7 +81,7 @@ func LayerTablesJS() string {
 	sb.WriteString("};\n")
 	sb.WriteString("if (typeof module !== \"undefined\" && module.exports) module.exports = { LAYER_TABLES };\n")
 	return sb.String()
-}
+})
 
 // jsKeyed is a table keyed by its numbers as decimal strings.
 // TRLC-LINKS: REQ-SDS-241

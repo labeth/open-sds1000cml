@@ -1,7 +1,10 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ANALYSIS
 package analysis
 
-import "fmt"
+import (
+	"fmt"
+	"strconv"
+)
 
 // The 1-Wire, MDIO and USB layers (REQ-SDS-245, REQ-SDS-246).
 
@@ -516,10 +519,18 @@ func (st *usbState) note(p Packet) (string, bool) {
 		}
 		w := le(b)
 		st.tok, st.addr, st.ep = pid, w&0x7f, w>>7&0xf
-		return fmt.Sprintf("%s %d.%d", map[int]string{1: "OUT", 9: "IN", 0xd: "SETUP"}[pid], st.addr, st.ep), p.Err != ""
+		// "%s %d.%d" without fmt, and the name without a map made a packet
+		name := "SETUP"
+		switch pid {
+		case 0x1:
+			name = "OUT"
+		case 0x9:
+			name = "IN"
+		}
+		return name + " " + strconv.Itoa(st.addr) + "." + strconv.Itoa(st.ep), p.Err != ""
 	case 0x5:
 		if len(b) == 2 {
-			return fmt.Sprintf("SOF %d", le(b)&0x7ff), p.Err != ""
+			return "SOF " + strconv.Itoa(le(b)&0x7ff), p.Err != ""
 		}
 		return "SOF", true
 	case 0x3, 0xb, 0x7, 0xf: // DATA0 DATA1 DATA2 MDATA
@@ -542,7 +553,7 @@ func (st *usbState) note(p Packet) (string, bool) {
 		case len(d) == 0:
 			return "zero-length data", false
 		}
-		return fmt.Sprintf("data %s: %s", plural(len(d), "byte"), hexList(d, 8)), false
+		return "data " + plural(len(d), "byte") + ": " + hexList(d, 8), false
 	case 0x2:
 		return "ACK", false
 	case 0xa:

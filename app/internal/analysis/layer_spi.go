@@ -1057,14 +1057,23 @@ func rgbNote(b []byte) (string, bool) {
 // order A B Select Start Up Down Left Right from the first bit clocked.
 // TRLC-LINKS: REQ-SDS-242
 func nesNote(b []byte) (string, bool) {
-	var parts []string
+	parts := make([]string, len(b))
+	for i, v := range b {
+		parts[i] = nesButtons[v]
+	}
+	return joinNotes(parts), false
+}
+
+// nesButtons is each controller byte's text, made once: the buttons held
+// (a bit low), joined with "+".
+var nesButtons = func() (t [256]string) {
 	names := []string{"A", "B", "Select", "Start", "Up", "Down", "Left", "Right"}
-	for _, v := range b {
+	for v := range t {
 		switch v {
 		case 0xff:
-			parts = append(parts, "no button")
+			t[v] = "no button"
 		case 0x00:
-			parts = append(parts, "not connected")
+			t[v] = "not connected"
 		default:
 			var on []string
 			for k := 0; k < 8; k++ {
@@ -1072,11 +1081,11 @@ func nesNote(b []byte) (string, bool) {
 					on = append(on, names[k])
 				}
 			}
-			parts = append(parts, strings.Join(on, "+"))
+			t[v] = strings.Join(on, "+")
 		}
 	}
-	return joinNotes(parts), false
-}
+	return t
+}()
 
 // ssi32Note reads SSI32 messages (host side): an acknowledge of four bytes
 // (bit 7 of the first set), or a control message: control, LUN, size, CRC,

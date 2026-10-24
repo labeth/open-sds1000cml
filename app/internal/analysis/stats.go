@@ -29,8 +29,8 @@ func (s *Stats) Add(v float64) {
 	d := v - s.mean
 	s.mean += d / float64(s.n)
 	s.m2 += d * (v - s.mean)
-	s.min = math.Min(s.min, v)
-	s.max = math.Max(s.max, v)
+	s.min = min(s.min, v) // the builtins: math.Min's results (signed zeros too), inline
+	s.max = max(s.max, v)
 	s.last = v
 }
 
