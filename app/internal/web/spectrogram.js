@@ -34,16 +34,25 @@ function sgPushRow(sg, mags, half, peak, nyq) {
   data.copyWithin(w * 4, 0, w * 4 * (h - 1)); // scroll down 1 row
   const floor = sg.floorDb < 0 ? sg.floorDb : -60; // NaN/>=0 → Inf/NaN paint
   const invFloor = 1 / (-floor);
+  // The linear level the floor maps to, less a margin: below it the colour
+  // is black (t = 0) whatever the rounding of the log would be. NaN floors
+  // keep the old path (blackBelow = 0).
+  const blackBelow = floor < 0 ? Math.pow(10, floor / 20) * (1 - 1e-6) : 0;
   for (let x = 0; x < w; x++) {
     // a pixel shows the largest of its bins: one sampled bin misses a narrow tone
     const k0 = Math.min(half - 1, Math.floor(x * half / w));
     const k1 = Math.min(half - 1, Math.floor((x + 1) * half / w) - 1);
     let m = mags[k0];
     for (let k = k0 + 1; k <= k1; k++) if (mags[k] > m) m = mags[k];
-    const db = 20 * Math.log10(m / peak + 1e-12);
+    const o = x * 4;
+    const lin = m / peak + 1e-12;
+    if (lin < blackBelow) { // under the floor by a margin: black, without the log
+      data[o] = 0; data[o + 1] = 0; data[o + 2] = 0; data[o + 3] = 255;
+      continue;
+    }
+    const db = 20 * Math.log10(lin);
     const t = Math.max(0, Math.min(1, 1 + db * invFloor));
     const [r, g, b] = sgHeat(t);
-    const o = x * 4;
     data[o] = r; data[o + 1] = g; data[o + 2] = b; data[o + 3] = 255;
   }
   if (nyq) sg.nyq = nyq;
