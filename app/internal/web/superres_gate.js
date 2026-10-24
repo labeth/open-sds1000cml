@@ -154,9 +154,19 @@ function srGateFind(st, sig, base, R) {
   if (hi < lo) return [];
   const M = hi - lo + 1;
   const ncc = new Float64Array(M);
+  // Whole codes sum exactly, so a window's sum can slide (add the sample
+  // entering, drop the one leaving) to the same value the window's own sum
+  // gives; a record holding fractions sums each window afresh.
+  let whole = true;
+  for (let i = lo; i < hi + L && whole; i++) whole = Number.isInteger(sig[i]);
+  let wsum = 0;
+  if (whole) for (let i = 0; i < L; i++) wsum += sig[lo + i];
   for (let loc = lo; loc <= hi; loc++) {
     let mean = 0;
-    for (let i = 0; i < L; i++) mean += sig[loc + i];
+    if (whole) {
+      if (loc > lo) wsum += sig[loc + L - 1] - sig[loc - 1];
+      mean = wsum;
+    } else for (let i = 0; i < L; i++) mean += sig[loc + i];
     mean /= L;
     let dot = 0, ss = 0;
     for (let i = 0; i < L; i++) { const s = sig[loc + i] - mean; const p = data[i] * s; dot += p; const q = s * s; ss += q; }
