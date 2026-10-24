@@ -157,7 +157,10 @@ function srCompFFT(re, im, inverse) {
       }
     }
   }
-  if (inverse) for (let i = 0; i < n; i++) { re[i] /= n; im[i] /= n; }
+  if (inverse) { // n is a power of two: * (1/n) is exactly / n, without a divide a bin
+    const inv = 1 / n;
+    for (let i = 0; i < n; i++) { re[i] *= inv; im[i] *= inv; }
+  }
 }
 
 // srCompResample: circular linear resample src[0..M-1] → length Ndst over the
@@ -168,7 +171,8 @@ function srCompResample(src, M, Ndst) {
   const ratio = M / Ndst;
   for (let j = 0; j < Ndst; j++) {
     const t = j * ratio, i0 = Math.floor(t), w = t - i0;
-    const a = src[i0 % M], b = src[(i0 + 1) % M];
+    // i0 < M (t < M); only the last point's right neighbour wraps: no modulo a point
+    const a = src[i0 < M ? i0 : i0 % M], i1 = i0 + 1, b = src[i1 < M ? i1 : i1 % M];
     dst[j] = a * (1 - w) + b * w;
   }
   return dst;
