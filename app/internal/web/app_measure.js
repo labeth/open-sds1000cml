@@ -44,6 +44,9 @@ function measValue(key, m) {
 // TRLC-LINKS: REQ-SDS-217
 function measReset() { measStats.clear(); measRenderT = 0; measRender(true); }
 
+// MEAS_IDS are the readouts' statistics keys ("1:Vpp"), per channel, made once.
+const MEAS_IDS = [1, 2].map((ch) => MEAS_ALL.map((k) => ch + ":" + k));
+
 // measAccumulate adds a new reading's values once: by the frame measured
 // (meas_seq: the server reuses a reading for the frames of the next 100 ms
 // while running), and the edge shape by its edge-window read (edge_read:
@@ -63,9 +66,11 @@ function measAccumulate() {
   for (const ch of [1, 2]) {
     const m = ch === 1 ? frame.m1 : frame.m2;
     if (!m) continue;
-    for (const k of MEAS_ALL) {
+    const ids = MEAS_IDS[ch - 1];
+    for (let j = 0; j < MEAS_ALL.length; j++) {
+      const k = MEAS_ALL[j];
       if (!freshEdge && MEAS_WINDOW.some(([flag, set]) => m[flag] && set.has(k))) continue;
-      const id = ch + ":" + k;
+      const id = ids[j];
       let s = measStats.get(id);
       if (!s) { s = new RunStats(); measStats.set(id, s); }
       s.add(measValue(k, m));
