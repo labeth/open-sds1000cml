@@ -73,6 +73,17 @@ func (p plotArea) sy(v float64) int {
 	return min(max(y, p.y0), p.last())
 }
 
+// codeRows is the row of each of the 256 display codes at vertical zoom z,
+// as sy maps 128+(code-128)*z: a trace looks its rows up instead of three
+// floating-point steps a point, which are slow on this ARM.
+// TRLC-LINKS: REQ-SDS-021
+func (p plotArea) codeRows(z float64) (rows [256]int16) {
+	for v := range rows {
+		rows[v] = int16(p.sy(128 + (float64(v)-128)*z))
+	}
+	return rows
+}
+
 // gridY is the row of graticule line r (0..8, top to bottom).
 // TRLC-LINKS: REQ-SDS-021
 func (p plotArea) gridY(r int) int { return p.y0 + r*(p.h-1)/8 }

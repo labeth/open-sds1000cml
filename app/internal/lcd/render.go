@@ -384,12 +384,7 @@ func drawAcquiring(sf Surface, p plotArea, hud HUD) {
 // TRLC-LINKS: REQ-SDS-021
 func drawDenseTrace(sf Surface, p plotArea, id traceID, sig []uint8, held []bool, left float64, win int, col uint16, z float64) {
 	cols := denseColumns(id, sig, left, win, p.w)
-	// The row of each of the 256 codes, once: three per column cost more,
-	// as floating point is slow on this ARM.
-	var rows [256]int16
-	for v := range rows {
-		rows[v] = int16(p.sy(128 + (float64(v)-128)*z))
-	}
+	rows := p.codeRows(z)
 	y := func(v uint8) int { return int(rows[v]) }
 	var top, bot [W]int16
 	var cc [W]uint16
@@ -570,14 +565,14 @@ func drawEnvelope(sf Surface, p plotArea, mn, mx []uint8, cols int, col uint16, 
 	var top, bot [W]int16
 	var cc [W]uint16
 	w := min(p.w, W)
+	rows := p.codeRows(z)
 	for x := 0; x < w; x++ {
 		top[x], bot[x], cc[x] = 1, 0, col // nothing drawn
 		c := x * cols / p.w
 		if c >= cols || c >= len(mn) || c >= len(mx) {
 			continue
 		}
-		yTop := p.sy(128 + (float64(mx[c])-128)*z)
-		yBot := p.sy(128 + (float64(mn[c])-128)*z)
+		yTop, yBot := int(rows[mx[c]]), int(rows[mn[c]])
 		if yTop > yBot {
 			yTop, yBot = yBot, yTop
 		}

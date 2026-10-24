@@ -275,3 +275,18 @@ func BenchmarkSRResample(b *testing.B) {
 		srResampleArray(h.SRMean, 4096)
 	}
 }
+
+// TRLC-LINKS: REQ-SDS-021
+func BenchmarkDrawEnvelope(b *testing.B) {
+	const cols = 800
+	mn, mx := make([]uint8, cols), make([]uint8, cols)
+	for i := range mn {
+		a := 40 + 25*math.Sin(2*math.Pi*3*float64(i)/cols)
+		mn[i], mx[i] = uint8(128-a), uint8(128+a)
+	}
+	sf := NewMemSurface()
+	for b.Loop() {
+		drawEnvelope(sf, fullPlot, mn, mx, cols, colC1, 1)
+		drawEnvelope(sf, fullPlot, mn, mx, cols, colC2, 1)
+	}
+}
