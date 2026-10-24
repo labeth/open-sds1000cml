@@ -443,8 +443,11 @@ func fillSpans(sf Surface, top, bot []int16, cc []uint16) {
 				cBot = -1
 			}
 		}
-		if cBot-cTop < 8 { // little in common: a column at a time
-			for x := x0; x < x1; x++ {
+		if cBot-cTop < 8 { // little in common
+			if denseBlock(px, top[x0:x1], bot[x0:x1], cc[x0:x1], x0) {
+				continue
+			}
+			for x := x0; x < x1; x++ { // a column at a time
 				vl(x, int(top[x]), int(bot[x]), cc[x])
 			}
 			continue
@@ -461,6 +464,51 @@ func fillSpans(sf Surface, top, bot []int16, cc []uint16) {
 		for x := x0; x < x1; x++ {
 			vl(x, int(top[x]), int(cTop)-1, c)
 			vl(x, int(cBot)+1, int(bot[x]), c)
+		}
+	}
+}
+
+// denseBlock fills a block of columns starting at x0 a row at a time when
+// they cover most of the rows between their extremes (a fast signal's ragged
+// columns), and reports whether it did: a row costs a compare a column but
+// its stores are sequential, where a column's each wait on a cache line.
+// TRLC-LINKS: REQ-SDS-021
+func denseBlock(px []uint16, top, bot []int16, cc []uint16, x0 int) bool {
+	nb := len(top)
+	if nb > spanBlock || x0+nb > W {
+		return false
+	}
+	var t0, ht [spanBlock]int32
+	rTop, rBot, cover := int32(H), int32(-1), 0
+	for i := 0; i < nb; i++ {
+		a, b := max(int32(top[i]), 0), min(int32(bot[i]), H-1)
+		if a > b { // empty: a first row no row reaches
+			t0[i], ht[i] = 1<<20, 0
+			continue
+		}
+		t0[i], ht[i] = a, b-a
+		rTop, rBot = min(rTop, a), max(rBot, b)
+		cover += int(b - a + 1)
+	}
+	if rBot < rTop || 2*cover < int(rBot-rTop+1)*nb {
+		return false
+	}
+	for r := rTop; r <= rBot; r++ {
+		spanRow(px[int(r)*W+x0:int(r)*W+x0+nb], t0[:nb], ht[:nb], cc[:nb], r)
+	}
+	return true
+}
+
+// spanRow writes row r's pixels of the columns covering it. Out of line so
+// the tables are registers, not reloaded from the caller's frame.
+// TRLC-LINKS: REQ-SDS-021
+//
+//go:noinline
+func spanRow(row []uint16, t0, ht []int32, cc []uint16, r int32) {
+	t0, ht, cc = t0[:len(row)], ht[:len(row)], cc[:len(row)]
+	for i := range row {
+		if uint32(r-t0[i]) <= uint32(ht[i]) {
+			row[i] = cc[i]
 		}
 	}
 }
