@@ -21,7 +21,7 @@ func BenchmarkLaneName(b *testing.B) {
 func BenchmarkBusProbeDecode(b *testing.B) {
 	words := make([]uint16, 2*4096)
 	for i := range words {
-		words[i] = uint16(i*2654435761) ^ uint16(i>>3)
+		words[i] = uint16(uint32(i)*2654435761) ^ uint16(i>>3)
 	}
 	for b.Loop() {
 		var r BusProbeResult
