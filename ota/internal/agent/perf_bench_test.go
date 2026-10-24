@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
+	"net"
 	"os"
 	"path/filepath"
 	"testing"
@@ -75,4 +76,23 @@ func mustJSON(v any) json.RawMessage {
 		panic(err)
 	}
 	return b
+}
+
+// One connection per call, as otactl's TCP transport dials.
+// TRLC-LINKS: REQ-SDS-107
+func BenchmarkTCPCall(b *testing.B) {
+	a := benchAgent(b)
+	req := []byte(`{"cmd":"ping"}` + "\n")
+	buf := make([]byte, 4096)
+	for b.Loop() {
+		c, s := net.Pipe()
+		done := make(chan struct{})
+		go func() { a.handleConn(s); close(done) }()
+		c.Write(req)
+		if n, _ := c.Read(buf); n < 10 {
+			b.Fatal("short response")
+		}
+		c.Close()
+		<-done
+	}
 }
