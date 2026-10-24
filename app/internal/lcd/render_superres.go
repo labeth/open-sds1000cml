@@ -157,9 +157,7 @@ func drawSuperresTrace(sf Surface, p plotArea, hud HUD) {
 				yLo = prevY
 			}
 		}
-		for y := yHi; y <= yLo; y++ {
-			sf.SetPixel(x, y, colSR)
-		}
+		vline(sf, x, yHi, yLo, colSR)
 		prevY, havePrev = p.sy(float64((lo+hi)/2)), true
 	}
 }

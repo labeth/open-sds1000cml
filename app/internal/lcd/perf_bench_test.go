@@ -258,3 +258,20 @@ func BenchmarkDrawSoundPane(b *testing.B) {
 		drawSoundTrace(sf, p, s)
 	}
 }
+
+// TRLC-LINKS: REQ-SDS-021
+func BenchmarkDrawSuperresTrace(b *testing.B) {
+	h := goldenSuperresHUD()
+	sf := NewMemSurface()
+	for b.Loop() {
+		drawSuperresTrace(sf, fullPlot, h)
+	}
+}
+
+// TRLC-LINKS: REQ-SDS-021
+func BenchmarkSRResample(b *testing.B) {
+	h := goldenSuperresHUD()
+	for b.Loop() {
+		srResampleArray(h.SRMean, 4096)
+	}
+}
