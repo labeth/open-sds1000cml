@@ -176,7 +176,12 @@ func matchSequence(sp []decode.Span, p SerialParams) (bool, int) {
 		dataOnly = dataOnly && e.Kind == patternData
 	}
 	qualify := dataOnly && framedProtocol(p.Proto)
-	state := make([]int, len(elems)) // start index of each partial match, -1 none
+	var buf [16]int
+	state := buf[:0] // start index of each partial match, -1 none (on the stack up to 16)
+	if len(elems) > len(buf) {
+		state = make([]int, 0, len(elems))
+	}
+	state = state[:len(elems)]
 	reset := func() {
 		for k := range state {
 			state[k] = -1
@@ -225,7 +230,14 @@ func matchSequence(sp []decode.Span, p SerialParams) (bool, int) {
 				continue
 			}
 			reset()
-			selected = (p.Addr < 0 || s.Val == p.Addr) && (p.RW == 2 || i+1 < len(sp) && sp[i+1].Kind == "rw" && sp[i+1].Text == map[int]string{0: "W", 1: "R"}[p.RW])
+			rw := "" // the direction's text: W, R (none for another RW)
+			switch p.RW {
+			case 0:
+				rw = "W"
+			case 1:
+				rw = "R"
+			}
+			selected = (p.Addr < 0 || s.Val == p.Addr) && (p.RW == 2 || i+1 < len(sp) && sp[i+1].Kind == "rw" && sp[i+1].Text == rw)
 			continue
 		default:
 			continue

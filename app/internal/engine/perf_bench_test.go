@@ -548,3 +548,18 @@ func BenchmarkClockRate(b *testing.B) {
 		clockRate(codes, 2e-9, false)
 	}
 }
+
+// TRLC-LINKS: REQ-SDS-013
+func BenchmarkMatchSequence(b *testing.B) {
+	var sp []decode.Span
+	for t := 0; t < 100; t++ { // I2C transactions: start, address, direction, two bytes, stop
+		x := t * 100
+		sp = append(sp, decode.Span{I0: x, Kind: "start"}, decode.Span{I0: x + 1, Kind: "addr", Val: 0x50 + t%3},
+			decode.Span{I0: x + 9, Kind: "rw", Text: "W"}, decode.Span{I0: x + 10, Kind: "data", Val: t & 0xff},
+			decode.Span{I0: x + 20, Kind: "data", Val: 0x11}, decode.Span{I0: x + 30, Kind: "stop"})
+	}
+	p := SerialParams{Proto: serI2C, Addr: 0x52, RW: 0, Pattern: []PatternElem{{Kind: patternData, Value: 0x99, Mask: 0xff}, {Kind: patternData, Value: 0x11, Mask: 0xff}}}
+	for b.Loop() {
+		matchSequence(sp, p)
+	}
+}
