@@ -174,7 +174,7 @@ func (e *Engine) window(m sramcapture.Metadata, r *viewRead, scale [2]chScale, a
 	if p.bucket != 0 {
 		v.SampleS = sampleS * float64(p.bucket) * float64(m.SamplesPerWord) / 2
 		if cal := e.interleaveCalibration; cal != nil && m.Decimation <= 1 {
-			q1, q2 := make([]uint16, n), make([]uint16, n)
+			q1, q2 := e.viewQ8(n)
 			cal.debiasEnvelope(0, f.C1, q1, false)
 			cal.debiasEnvelope(1, f.C2, q2, false)
 		}
@@ -183,10 +183,22 @@ func (e *Engine) window(m sramcapture.Metadata, r *viewRead, scale [2]chScale, a
 		orderEnvelope(f.C1, nil)
 		orderEnvelope(f.C2, nil)
 	} else if cal := e.interleaveCalibration; cal != nil && m.FractionBits == 0 && n >= 2000 {
-		q1, q2 := make([]uint16, n), make([]uint16, n)
+		q1, q2 := e.viewQ8(n)
 		cal.apply(f.C1, f.C2, q1, q2, [2]float64{scale[0].vdiv, scale[1].vdiv}, sampleS)
 	}
 	return v
+}
+
+// viewQ8 is scratch for a view window's Q8.8 values (two channels of n),
+// which its calibration writes and the window does not keep: one buffer
+// for the engine goroutine's reads, not two allocations a window a frame.
+// TRLC-LINKS: REQ-SDS-010, REQ-SDS-021
+func (e *Engine) viewQ8(n int) (q1, q2 []uint16) {
+	if cap(e.viewQ) < 2*n {
+		e.viewQ = make([]uint16, 2*n)
+	}
+	q := e.viewQ[:2*n]
+	return q[:n:n], q[n:]
 }
 
 // envelopeValue maps a record word to the value index of an envelope frame

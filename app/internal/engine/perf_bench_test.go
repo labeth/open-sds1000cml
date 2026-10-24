@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"open-sds/app/internal/decode"
+	"open-sds/app/internal/sramcapture"
 )
 
 // The engine's per-capture work on the scope's single ARM core: these time
@@ -461,5 +462,26 @@ func BenchmarkDebiasEnvelope(b *testing.B) {
 		copy(sig, src)
 		c.debiasEnvelope(0, sig, q, false)
 		c.debiasEnvelope(1, sig, q, true)
+	}
+}
+
+// TRLC-LINKS: REQ-SDS-010, REQ-SDS-021
+func BenchmarkViewWindow(b *testing.B) {
+	e, _ := newTestEngine(&testing.T{}, newFakeBus())
+	cal := &InterleaveCalibration{}
+	for k := range cal.Offset[0] {
+		cal.Offset[0][k], cal.Offset[1][k] = 0.3*float64(k)-0.5, -0.2*float64(k)
+	}
+	e.interleaveCalibration = cal
+	m := sramcapture.Metadata{SampleRateHz: 500e6, SamplesPerWord: 2, Decimation: 1}
+	const n = 2048
+	src := discernSig(n)
+	f := &Frame{C1: make([]uint8, n), C2: make([]uint8, n), Valid: n}
+	r := &viewRead{p: viewPlan{bucket: 4, buckets: n / 2, length: 2 * n, n: n}, f: f}
+	r.w.n = n
+	for b.Loop() {
+		copy(f.C1, src)
+		copy(f.C2, src)
+		e.window(m, r, [2]chScale{{vdiv: 1}, {vdiv: 1}}, envelopeValue(0, 4))
 	}
 }

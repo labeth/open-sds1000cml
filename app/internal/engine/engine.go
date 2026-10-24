@@ -413,6 +413,7 @@ type Engine struct {
 	spectrumLease   atomic.Int64           // live frames for a spectrum until this time (LeaseSpectrumView)
 	searchLease     atomic.Int64           // whole decimated records for a bus search until this time (LeaseSearchView)
 	views           [viewSurfaces]viewSlot // view windows at full detail (LeaseViewWindow)
+	viewQ           []uint16               // a view window's Q8.8 scratch (viewQ8; engine goroutine)
 	adopt           *adoptedRecord         // a decoded stream's record for the stopped loop to show (guarded by mu)
 	decodedCfg      sramcapture.Config     // the running decoded capture's configuration (acquisition owner)
 	decodedLines    bool                   // the worker builds the stream transcript; no event pumping (owner)
