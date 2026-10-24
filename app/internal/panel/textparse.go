@@ -6,6 +6,7 @@ import (
 	"math"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 	"unicode"
 )
 
@@ -37,7 +38,8 @@ func parseNumber(text, unit string) (float64, error) {
 	if i := strings.IndexByte(s, ','); i >= 0 && !strings.Contains(s, ".") && strings.Count(s, ",") == 1 {
 		s = s[:i] + "." + s[i+1:]
 	}
-	if l := strings.ToLower(s); strings.HasPrefix(l, "0x") || strings.HasPrefix(l, "-0x") {
+	if hexPrefix(s) {
+		l := strings.ToLower(s)
 		neg := strings.HasPrefix(l, "-")
 		digits := strings.TrimPrefix(strings.TrimPrefix(l, "-"), "0x")
 		// hex digits only: ParseInt takes a sign of its own ("0x-999")
@@ -74,15 +76,27 @@ scan:
 		return v, nil
 	}
 	// an SI prefix, then nothing or the unit
-	r := []rune(rest)
-	if p, ok := siPrefix[r[0]]; ok {
-		u := strings.TrimSpace(string(r[1:]))
+	tail := rest
+	first, size := utf8.DecodeRuneInString(tail)
+	if !utf8.ValidString(tail) { // as a conversion to runes reads it
+		r := []rune(tail)
+		first, tail, size = r[0], string(r), utf8.RuneLen(r[0])
+	}
+	if p, ok := siPrefix[first]; ok {
+		u := strings.TrimSpace(tail[size:])
 		if u == "" || unitIs(u, unit) {
 			return v * p, nil
 		}
 		return 0, fmt.Errorf("unit %q does not fit (want %s)", u, unitName(unit))
 	}
 	return 0, fmt.Errorf("unit %q does not fit (want %s)", rest, unitName(unit))
+}
+
+// hexPrefix reports s opening with 0x or -0x, either case (a number in hex).
+// TRLC-LINKS: REQ-SDS-212
+func hexPrefix(s string) bool {
+	s = strings.TrimPrefix(s, "-")
+	return len(s) >= 2 && s[0] == '0' && (s[1] == 'x' || s[1] == 'X')
 }
 
 // ambiguousComma refuses a comma that reads two ways ("57,600": a decimal

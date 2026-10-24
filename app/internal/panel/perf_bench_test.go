@@ -349,3 +349,38 @@ func BenchmarkRowFKeys(b *testing.B) {
 		}
 	}
 }
+
+// TRLC-LINKS: REQ-SDS-212
+func BenchmarkParseNumber(b *testing.B) {
+	in := [][2]string{{"2.5MHz", "Hz"}, {"115200", ""}, {"10 mV", "V"}, {"-1.5e-3 V", "V"}, {"0x1F", ""}, {"2,5k", "Hz"}, {"40 ns", "s"}}
+	for b.Loop() {
+		for _, x := range in {
+			parseNumber(x[0], x[1])
+		}
+	}
+}
+
+// parseNumber's results and errors on odd input, as the rune-slice reading
+// gave them.
+// TRLC-LINKS: REQ-SDS-212
+func TestParseNumberOddInput(t *testing.T) {
+	for _, c := range []struct {
+		in, unit, want string
+	}{
+		{"5 \xffV", "V", `unit "\xffV" does not fit (want V)`},
+		{"5 k\xffV", "V", `unit "�V" does not fit (want V)`},
+		{"0XfF", "", "255"},
+		{"-0x10", "", "-16"},
+		{"2µs", "s", "2e-06"},
+		{"3 MHz", "Hz", "3e+06"},
+	} {
+		v, err := parseNumber(c.in, c.unit)
+		got := fmt.Sprint(v)
+		if err != nil {
+			got = err.Error()
+		}
+		if got != c.want {
+			t.Errorf("parseNumber(%q, %q) = %s, want %s", c.in, c.unit, got, c.want)
+		}
+	}
+}
