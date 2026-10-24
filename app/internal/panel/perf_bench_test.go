@@ -4,6 +4,8 @@ package panel
 import (
 	"testing"
 
+	"open-sds/app/internal/analog"
+	"open-sds/app/internal/engine"
 	"open-sds/app/internal/panel/wsview"
 )
 
@@ -58,5 +60,18 @@ func BenchmarkStepNs(b *testing.B) {
 			stepNs(v, 1, false)
 			stepNs(v, -1, true)
 		}
+	}
+}
+
+// TRLC-LINKS: REQ-SDS-215
+func BenchmarkCodesOf(b *testing.B) {
+	const n = 20000
+	f := &engine.Frame{C1: make([]uint8, n), C2: make([]uint8, n), Q1: make([]uint16, n), Valid: n}
+	for i := range f.C1 {
+		f.C1[i], f.Q1[i] = uint8(i), uint16(i*37)
+	}
+	for b.Loop() {
+		codesOf(f, 0, 0, n, analog.CplDC) // Q8.8
+		codesOf(f, 1, 0, n, analog.CplDC) // codes
 	}
 }

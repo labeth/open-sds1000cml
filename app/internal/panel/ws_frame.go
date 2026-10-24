@@ -267,12 +267,14 @@ func codesOf(f *engine.Frame, ch, lo, hi int, cpl int) []float64 {
 		q = f.Q2
 	}
 	out := make([]float64, hi-lo)
-	for i := lo; i < hi; i++ {
-		if cpl == analog.CplDC && len(q) >= valid {
-			out[i-lo] = float64(q[i]) / 256
-		} else {
-			out[i-lo] = float64(sig[i])
+	if cpl == analog.CplDC && len(q) >= valid {
+		for i, v := range q[lo:hi] {
+			out[i] = float64(v) / 256
 		}
+		return out
+	}
+	for i, v := range sig[lo:hi] {
+		out[i] = float64(v)
 	}
 	return out
 }
