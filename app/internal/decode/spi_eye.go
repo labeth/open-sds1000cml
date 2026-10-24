@@ -138,7 +138,7 @@ func MeasureSPIEye(clk, data []uint8, sampleS float64, cfg SPICfg) (SPIEye, bool
 	if cfg.CPOL == cfg.CPHA { // modes 0 and 3 sample on the rising edge
 		dir = 1
 	}
-	var edges []float64
+	edges := make([]float64, 0, len(CK.edges)/2+1)
 	for _, e := range CK.edges {
 		if e.dir == dir {
 			edges = append(edges, e.x)
@@ -162,11 +162,15 @@ func MeasureSPIEye(clk, data []uint8, sampleS float64, cfg SPICfg) (SPIEye, bool
 		}
 	}
 	period := sum / float64(n)
-	var phases, dataTimes []float64
+	phases, dataTimes := make([]float64, 0, len(DA.edges)), make([]float64, 0, len(DA.edges))
+	next := 0 // the first sampling edge at or after at: the data edges ascend
 	for _, e := range DA.edges {
 		at := e.x - cfg.DataLag // on the clock line's samples
 		dataTimes = append(dataTimes, at)
-		k := sort.SearchFloat64s(edges, at) - 1
+		for next < len(edges) && edges[next] < at {
+			next++
+		}
+		k := next - 1
 		if k < 0 || k+1 >= len(edges) || edges[k+1]-edges[k] > 1.25*period {
 			continue // outside clocking: idle, or a frame's gap
 		}

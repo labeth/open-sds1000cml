@@ -274,3 +274,15 @@ func BenchmarkSampleSPI(b *testing.B) {
 		SampleSPI(wide, c)
 	}
 }
+
+// TRLC-LINKS: REQ-SDS-229, REQ-SDS-230
+func BenchmarkMeasureSPIEye(b *testing.B) {
+	c1, c2 := lines(readCapture(b, "spi_sample_104mhz.bin.gz"))
+	cfg := SPICfg{MSB: true, Threshold: 128, HaveThr: true, DataLag: SPIDataLag(1, 2e-9)}
+	if _, ok := MeasureSPIEye(c2, c1, 2e-9, cfg); !ok {
+		b.Fatal("no eye")
+	}
+	for b.Loop() {
+		MeasureSPIEye(c2, c1, 2e-9, cfg)
+	}
+}
