@@ -35,6 +35,7 @@ func (o *wireOut) add(x0, x1 float64, text, kind string, val int, unit bool) {
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-253
 func fallsAndRises(S sliced) (falls, rises []float64) {
 	E := S.edges
+	falls, rises = make([]float64, 0, len(E)/2+1), make([]float64, 0, len(E)/2+1)
 	for k, e := range E {
 		if e.dir > 0 {
 			continue
@@ -70,7 +71,7 @@ func DecodeSWIM(codes []uint8, colTimeS float64, cfg LineCfg) Result {
 		return Result{Proto: "swim", Error: S.reason}
 	}
 	falls, rises := fallsAndRises(S)
-	var sp []float64
+	sp := make([]float64, 0, len(falls))
 	for k := 1; k < len(falls); k++ {
 		sp = append(sp, falls[k]-falls[k-1])
 	}
