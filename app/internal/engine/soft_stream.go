@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 	"slices"
+	"sync"
 	"time"
 
 	"open-sds/app/internal/bus"
@@ -139,12 +140,38 @@ var softProtoNames = map[int]string{serLIN: "lin", serDMX: "dmx512", serModbus: 
 	serEM4305: "em4305", serT55xx: "t55xx", serSWIM: "swim", serSDQ: "sdq", serPJDL: "pjdl", serDSI: "dsi", serQi: "qi",
 	serSDCard: "sdcard", serPDI: "pdi", serCJTAG: "cjtag", serMaple: "maple", serCaliper: "caliper", serIRMP: "irmp"}
 
+// softProtoName is softProtoNames[proto] from a table by id, built once
+// (the map is hashed on every stream view's frame otherwise).
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func softProtoName(proto int) (string, bool) {
+	t := softNameTable()
+	if proto < 0 || proto >= len(t) || t[proto] == "" {
+		return "", false
+	}
+	return t[proto], true
+}
+
+// softNameTable is softProtoNames indexed by protocol id.
+var softNameTable = sync.OnceValue(func() []string {
+	n := 0
+	for id := range softProtoNames {
+		n = max(n, id+1)
+	}
+	t := make([]string, n)
+	for id, name := range softProtoNames {
+		if id >= 0 {
+			t[id] = name
+		}
+	}
+	return t
+})
+
 // SoftStreamMode says how the scope streams proto at bit rate baud (the
 // decoder settings'): "gap-free" from the continuous stream, "captures" of
 // back-to-back records, "" when it streams through the FPGA's decoded events.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
 func SoftStreamMode(proto, baud int, overdrive bool) string {
-	name, ok := softProtoNames[proto]
+	name, ok := softProtoName(proto)
 	if !ok {
 		return ""
 	}
@@ -185,7 +212,7 @@ func softCaptureLog(feature float64) uint8 {
 // beginSoftStream starts a software-decoded stream of a symbol protocol.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
 func (e *Engine) beginSoftStream(ctx context.Context, p SerialParams, trig StreamTrigger, value int) (sramcapture.RecordIdentity, error) {
-	name := softProtoNames[p.Proto]
+	name, _ := softProtoName(p.Proto)
 	d, ok := serialDecoder(p.Proto)
 	if name == "" || !ok {
 		return sramcapture.RecordIdentity{}, fmt.Errorf("no software stream for protocol %d", p.Proto)

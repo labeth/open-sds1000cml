@@ -1003,3 +1003,11 @@ func BenchmarkFirstCrossing(b *testing.B) {
 		firstCrossingFrom(q, 128, 4, false, 29000)
 	}
 }
+
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func BenchmarkSoftStreamMode(b *testing.B) {
+	for b.Loop() {
+		SoftStreamMode(serDMX, 250000, false)
+		SoftStreamMode(serUART, 115200, false)
+	}
+}
