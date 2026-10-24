@@ -30,9 +30,12 @@ function drawNavTrace(cols, color) {
   if (!cols || !cols.length) return;
   const n = cols.length;
   navCtx.fillStyle = color; navCtx.globalAlpha = .75;
+  let next = Math.floor(0 / NW * n); // a column starts where the last ended: one floor a column
   for (let px = 0; px < NW; px++) {
     let lo = 256, hi = -1;
-    const a = Math.floor(px / NW * n), b = Math.max(a + 1, Math.floor((px + 1) / NW * n));
+    const a = next;
+    next = Math.floor((px + 1) / NW * n);
+    const b = Math.max(a + 1, next);
     for (let i = a; i < b && i < n; i++) { const v = cols[i]; if (v < 0) continue; if (v < lo) lo = v; if (v > hi) hi = v; }
     if (hi < 0) continue;
     const yt = navY(hi, 1), yb = navY(lo, 1);
