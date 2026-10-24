@@ -23,10 +23,31 @@ const PK_ERR = new Set(["frame-error", "parity-error", "crc-error", "nak", "erro
 // pkUnit: a typical unit (byte/word) length in samples — the median data span.
 // TRLC-LINKS: REQ-SDS-214
 function pkUnit(spans) {
-  const d = spans.filter((s) => s.kind === "data" && s.i1 > s.i0).map((s) => s.i1 - s.i0).sort((a, b) => a - b);
-  if (d.length) return d[d.length >> 1];
-  const all = spans.filter((s) => s.i1 > s.i0).map((s) => s.i1 - s.i0).sort((a, b) => a - b);
-  return all.length ? all[all.length >> 1] : 1;
+  const d = [];
+  for (const s of spans) if (s.kind === "data" && s.i1 > s.i0) d.push(s.i1 - s.i0);
+  if (d.length) return pkMiddle(d);
+  const all = [];
+  for (const s of spans) if (s.i1 > s.i0) all.push(s.i1 - s.i0);
+  return all.length ? pkMiddle(all) : 1;
+}
+
+// pkMiddle is the element sorting a would put at a.length >> 1, by
+// selection (Hoare) in place: no filtered copies and full sort a call.
+// TRLC-LINKS: REQ-SDS-214
+function pkMiddle(a) {
+  const k = a.length >> 1;
+  let lo = 0, hi = a.length - 1;
+  while (lo < hi) {
+    const p = a[(lo + hi) >> 1];
+    let i = lo, j = hi;
+    while (i <= j) {
+      while (a[i] < p) i++;
+      while (a[j] > p) j--;
+      if (i <= j) { const t = a[i]; a[i] = a[j]; a[j] = t; i++; j--; }
+    }
+    if (k <= j) hi = j; else if (k >= i) lo = i; else break;
+  }
+  return a[k];
 }
 
 // TRLC-LINKS: REQ-SDS-214
