@@ -350,10 +350,10 @@ function sndNiceStep(x) {
 // sndCycleMedian is the median of each of the cycles' figures.
 // TRLC-LINKS: REQ-SDS-272
 function sndCycleMedian(cs) {
-  // TRLC-LINKS: REQ-SDS-272
   const v = new Float64Array(cs.length);
   // the finite figures gathered into a typed array and sorted there (numeric,
   // no comparator call), not mapped, filtered and sorted a figure
+  // TRLC-LINKS: REQ-SDS-272
   const med = (k) => {
     let n = 0;
     for (const c of cs) { const x = c[k]; if (Number.isFinite(x)) v[n++] = x; }
