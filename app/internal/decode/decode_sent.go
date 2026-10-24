@@ -2,7 +2,6 @@
 package decode
 
 import (
-	"fmt"
 	"math"
 	"strings"
 )
@@ -31,7 +30,7 @@ const (
 )
 
 // TRLC-LINKS: REQ-SDS-018
-func sentHex1(v int) string { return fmt.Sprintf("%X", v&0xf) }
+func sentHex1(v int) string { i := v & 0xf; return "0123456789ABCDEF"[i : i+1] }
 
 // sentCRC4Table is the SAE J2716 CRC-4 nibble table (polynomial x^4+x^3+x^2+1).
 var sentCRC4Table = [16]int{0, 13, 7, 10, 14, 3, 9, 4, 1, 12, 6, 11, 15, 2, 8, 5}
@@ -197,7 +196,7 @@ func DecodeSENT(codes []uint8, colTimeS float64, cfg SENTCfg) Result {
 		// Decode up to `nib` nibble pulses. Collect the frame's nibbles so the
 		// trailing CRC nibble can be VERIFIED (J2716 CRC-4 over the data nibbles) —
 		// a bad CRC is flagged, not silently accepted.
-		var frameNibs []int
+		frameNibs := make([]int, 0, nib)
 		for nbIdx := 0; nbIdx < nib && k < np; nbIdx++ {
 			P := period[k]
 			if looksSync(P, curTick) { // a SYNC mid-frame => frame truncated; re-handle it

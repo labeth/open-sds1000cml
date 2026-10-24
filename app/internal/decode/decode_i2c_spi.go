@@ -67,7 +67,7 @@ func DecodeI2C(scl, sda []uint8, colTimeS float64, cfg I2CCfg) Result {
 	if risings < 2 {
 		return Result{Proto: "i2c", Error: "no SCL clock edges"}
 	}
-	var clEdges []edge
+	clEdges := make([]edge, 0, len(CL.edges))
 	for _, e := range CL.edges {
 		if e.i < n {
 			clEdges = append(clEdges, e)
@@ -174,7 +174,7 @@ func DecodeSPI(clk, data []uint8, colTimeS float64, cfg SPICfg) Result {
 	if DA.n < n {
 		n = DA.n
 	}
-	var eIn []edge
+	eIn := make([]edge, 0, len(CK.edges))
 	for _, e := range CK.edges {
 		if e.i < n {
 			eIn = append(eIn, e)
@@ -204,7 +204,7 @@ func DecodeSPI(clk, data []uint8, colTimeS float64, cfg SPICfg) Result {
 	if sampleRising {
 		dirWant = 1
 	}
-	var sgaps []float64
+	sgaps := make([]float64, 0, len(eIn)/2+1)
 	prevI := -1
 	for _, e := range eIn {
 		if e.dir != dirWant {
