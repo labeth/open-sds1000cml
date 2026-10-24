@@ -214,8 +214,15 @@ func (e *Engine) envReduce(f *Frame) {
 			if n == 0 {
 				continue
 			}
-			for i, v := range s {
-				c := i * envDisplayCols / n
+			// c = i·envDisplayCols/n, stepped: num is i·envDisplayCols and
+			// next the first num of column c+1 (no division a sample)
+			c, num, next := 0, 0, n
+			for _, v := range s {
+				for num >= next {
+					c++
+					next += n
+				}
+				num += envDisplayCols
 				seen[c] = true
 				if v < mn[c] {
 					mn[c] = v

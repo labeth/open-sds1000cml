@@ -293,3 +293,37 @@ func BenchmarkRollPush(b *testing.B) {
 		r.push(0, q1, q2, nil)
 	}
 }
+
+// TRLC-LINKS: REQ-SDS-012
+func BenchmarkEnvReduce(b *testing.B) {
+	e, _ := newTestEngine(&testing.T{}, newFakeBus())
+	f := &Frame{C1: make([]uint8, 3000), C2: make([]uint8, 3000), EnvMin: make([]uint8, envDisplayCols), EnvMax: make([]uint8, envDisplayCols),
+		EnvMin2: make([]uint8, envDisplayCols), EnvMax2: make([]uint8, envDisplayCols)}
+	for k := 0; k < envRingN; k++ {
+		for i := range f.C1 {
+			f.C1[i], f.C2[i] = uint8(i*7+k), uint8(i*3)
+		}
+		e.envPush(f, 0, 2900+k)
+	}
+	for b.Loop() {
+		e.envReduce(f)
+	}
+}
+
+// The stepped column is i·cols/n for every sample and length.
+// TRLC-LINKS: REQ-SDS-012
+func TestEnvColumnStep(t *testing.T) {
+	for n := 1; n < 5000; n += 7 {
+		c, num, next := 0, 0, n
+		for i := 0; i < n; i++ {
+			for num >= next {
+				c++
+				next += n
+			}
+			num += envDisplayCols
+			if c != i*envDisplayCols/n {
+				t.Fatalf("n %d i %d: column %d, want %d", n, i, c, i*envDisplayCols/n)
+			}
+		}
+	}
+}
