@@ -15,7 +15,7 @@ import (
 // Each frame start and unit is laid out as the decoder of the protocol
 // reads it, bit for bit in the block's bit source.
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-257
-func physSymbolSpec(p SerialParams, s *symSpec) bool {
+func physSymbolSpec(p *SerialParams, s *symSpec) bool {
 	if p.Baud <= 0 && p.Proto != serSDCard && p.Proto != serPDI && p.Proto != serCJTAG {
 		return false
 	}
@@ -636,7 +636,7 @@ var irmpFrames = map[int]irmpFrame{
 // and the address and command lie at their places in it; Samsung's command
 // inverse and NEC42's inverses are asked with a whole unit.
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-257
-func irmpSymbolSpec(p SerialParams, s *symSpec, set func(mode, lead int, longest float64, data uint8)) bool {
+func irmpSymbolSpec(p *SerialParams, s *symSpec, set func(mode, lead int, longest float64, data uint8)) bool {
 	f, ok := irmpFrames[p.Bits]
 	if !ok {
 		return false

@@ -523,3 +523,17 @@ func BenchmarkPlanPacketSymbol(b *testing.B) {
 		}
 	})
 }
+
+// TRLC-LINKS: REQ-SDS-013
+func BenchmarkPlanSymbolPhys(b *testing.B) {
+	ps := []SerialParams{
+		{Proto: serPWM, Baud: 1000, HaveThr: true, Threshold: 128},
+		{Proto: serDCF77, Baud: 1, HaveThr: true, Threshold: 128},
+		{Proto: serIRMP, Baud: 1000, Bits: 10, HaveThr: true, Threshold: 128},
+	}
+	for b.Loop() {
+		for i := range ps {
+			planHardwareSymbol(&ps[i])
+		}
+	}
+}

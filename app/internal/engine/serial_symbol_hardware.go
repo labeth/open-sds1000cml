@@ -581,7 +581,7 @@ func symbolSpec(p SerialParams) (symSpec, bool) {
 			return true
 		}
 	default:
-		if !physSymbolSpec(p, &s) {
+		if !physSymbolSpec(&p, &s) {
 			return s, false
 		}
 	}
