@@ -72,7 +72,7 @@ function ejEstimateUI(t) {
 // TRLC-LINKS: REQ-SDS-199
 function ejEstimateUIFromIntervals(d) {
   if (d.length < 8) return 0;
-  const s = [...d].sort((a, b) => a - b);
+  const s = Float64Array.from(d).sort(); // numeric without a comparator call
   let ui = s[Math.floor(s.length * 0.1)]; // near the shortest run
   if (!(ui > 1)) return 0;
   for (let pass = 0; pass < 3; pass++) {
@@ -165,7 +165,7 @@ function ejPushCapped(arr, v, cap) { if (arr.length < cap) arr.push(v); }
 // TRLC-LINKS: REQ-SDS-199
 function ejMedian(a) {
   if (!a.length) return 0;
-  const s = [...a].sort((x, y) => x - y);
+  const s = Float64Array.from(a).sort(); // numeric without a comparator call
   return s[s.length >> 1];
 }
 
@@ -178,7 +178,7 @@ function ejMedian(a) {
 // TRLC-LINKS: REQ-SDS-199
 function ejRjDj(tie) {
   if (tie.length < 200) return { rj: 0, dj: 0, ok: false };
-  const s = [...tie].sort((a, b) => a - b);
+  const s = Float64Array.from(tie).sort(); // numeric without a comparator call
   const med = s[s.length >> 1];
   const left = s.filter(v => v <= med), right = s.filter(v => v > med);
   const mL = ejMedian(left), mR = ejMedian(right);
