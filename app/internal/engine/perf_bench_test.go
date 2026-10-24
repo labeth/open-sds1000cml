@@ -1200,3 +1200,15 @@ func BenchmarkInterleaveApply(b *testing.B) {
 		}
 	}
 }
+
+// The capture loop rebuilds its config every status poll to see a change.
+// TRLC-LINKS: REQ-SDS-009
+func BenchmarkSramConfig(b *testing.B) {
+	e, _ := newTestEngine(&testing.T{}, newFakeBus())
+	cfg, _, _, _, _ := e.sramConfig()
+	for b.Loop() {
+		if next, _, _, _, _ := e.sramConfig(); next != cfg {
+			b.Fatal("changed")
+		}
+	}
+}
