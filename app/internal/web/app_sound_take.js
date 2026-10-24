@@ -36,14 +36,15 @@ function sndTakeFy(f, y0, h) { return y0 + h * (1 - Math.log(f / SND_TAKE_FMIN) 
 // TRLC-LINKS: REQ-SDS-275
 function sndTakeYf(y, y0, h) { return SND_TAKE_FMIN * Math.pow(SND_TAKE_FMAX / SND_TAKE_FMIN, 1 - (y - y0) / h); }
 
-// sndHeat is the spectrogram's colour of a level 0..1.
+// sndHeatAt writes the spectrogram's colour of a level 0..1, opaque, at
+// img[o]: in place, as it runs per pixel.
 // TRLC-LINKS: REQ-SDS-275
-function sndHeat(v) {
+function sndHeatAt(img, o, v) {
   v = Math.max(0, Math.min(1, v));
-  const r = Math.min(255, Math.max(0, 255 * (1.6 * v - 0.3)));
-  const g = Math.min(255, Math.max(0, 255 * (2 * v - 1)));
-  const b = Math.min(255, Math.max(0, 255 * (v < 0.4 ? 2.2 * v : 1.6 - 2 * v)));
-  return [r, g, b];
+  img[o] = Math.min(255, Math.max(0, 255 * (1.6 * v - 0.3)));
+  img[o + 1] = Math.min(255, Math.max(0, 255 * (2 * v - 1)));
+  img[o + 2] = Math.min(255, Math.max(0, 255 * (v < 0.4 ? 2.2 * v : 1.6 - 2 * v)));
+  img[o + 3] = 255;
 }
 
 // sndTakeAnalyse makes the window's spectrogram and pitch curve once the
@@ -72,9 +73,7 @@ function sndTakeAnalyse(cols) {
       const col = sndTk.spec.cols[c];
       let best = -Infinity;
       for (let k = k0; k <= k1 && k < col.length; k++) best = Math.max(best, col[k]);
-      const [cr, cg, cb] = sndHeat((best - floor) / (top - floor));
-      const o = 4 * (r * cols + c);
-      img[o] = cr; img[o + 1] = cg; img[o + 2] = cb; img[o + 3] = 255;
+      sndHeatAt(img, 4 * (r * cols + c), (best - floor) / (top - floor));
     }
   }
   sndTk.img = { rgba: img, w: cols, h: rows, top, floor };
