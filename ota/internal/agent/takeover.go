@@ -85,7 +85,6 @@ var shellish = map[string]bool{
 // TRLC-LINKS: REQ-SDS-027
 func (a *Agent) factoryCandidates() []fdinherit.Holder {
 	self := os.Getpid()
-	desc := fdinherit.DescendantsOfSelf()
 	ourExe, _ := os.Executable()
 	ourExe, _ = filepath.EvalSymlinks(ourExe)
 	// Our own apps run from the slot root (A, B, emergency): one a previous
@@ -97,7 +96,7 @@ func (a *Agent) factoryCandidates() []fdinherit.Holder {
 
 	var out []fdinherit.Holder
 	for _, h := range fdinherit.HoldersOf(a.cfg.GpmcDev) {
-		if h.PID == self || h.PID == 1 || desc[h.PID] {
+		if h.PID == self || h.PID == 1 || descendsFrom(h.PID, self) {
 			continue
 		}
 		base := filepath.Base(h.Exe)
@@ -114,6 +113,19 @@ func (a *Agent) factoryCandidates() []fdinherit.Holder {
 		out = append(out, h)
 	}
 	return out
+}
+
+// descendsFrom reports whether pid is a descendant of anc, up pid's parent
+// chain: a few status reads for a holder, where mapping every process's
+// children read the status of all of them.
+// TRLC-LINKS: REQ-SDS-027
+func descendsFrom(pid, anc int) bool {
+	for i := 0; i < 64 && pid > 1; i++ { // bounded against /proc races
+		if pid = fdinherit.PPid(pid); pid == anc {
+			return true
+		}
+	}
+	return false
 }
 
 // TRLC-LINKS: REQ-SDS-027
