@@ -253,32 +253,38 @@ function refreshAria() {
   }
 }
 
+// upd sets o[k] to v only when it differs (loosely: a number and the string
+// an input's min reads back are the same value): a DOM write is a mutation
+// the browser restyles for, and the status rewrote the same values a poll.
+// TRLC-LINKS: REQ-SDS-204
+function upd(o, k, v) { if (o[k] != v) o[k] = v; } // eslint-disable-line eqeqeq
+
 // TRLC-LINKS: REQ-SDS-204
 function applyStatus() {
   // The button shows the ACTION you can take: running → press to STOP, stopped →
   // press to RUN (green run / red stop). Redundant glyph + word.
-  $("run").textContent = st.running ? "STOP ■" : "RUN ▶";
+  upd($("run"), "textContent", st.running ? "STOP ■" : "RUN ▶");
   $("run").classList.toggle("is-stop", !!st.running);
   $("run").classList.toggle("is-run", !st.running);
-  $("stopped").style.display = st.running ? "none" : "block";
+  upd($("stopped").style, "display", st.running ? "none" : "block");
   setFromStatus($("mode"), st.norm ? 1 : 0);
   setFromStatus($("slope"), st.trig_rising ? 1 : 0);
   setFromStatus($("source"), st.trig_source === 1 ? 1 : 0);
   $("ets").classList.toggle("on", !!st.ets && st.band !== "sram");
-  $("ets").disabled = st.band === "sram";
-  $("ets").title = st.band === "sram" ? "Equivalent-time acquisition is unavailable with SRAM capture" : "Equivalent-time sampling (≤50 ns/div)";
-  $("decStream").disabled = st.band === "sram";
-  $("decStream").title = st.band === "sram" ? "Use Stream + trigger (Trigger on bytes pane) for continuous FPGA decoding and a retained capture" : "Stitch back-to-back captures into a continuous history";
+  upd($("ets"), "disabled", st.band === "sram");
+  upd($("ets"), "title", st.band === "sram" ? "Equivalent-time acquisition is unavailable with SRAM capture" : "Equivalent-time sampling (≤50 ns/div)");
+  upd($("decStream"), "disabled", st.band === "sram");
+  upd($("decStream"), "title", st.band === "sram" ? "Use Stream + trigger (Trigger on bytes pane) for continuous FPGA decoding and a retained capture" : "Stitch back-to-back captures into a continuous history");
   $("single").classList.toggle("on", !!st.single);
   setFromStatus($("rollStream"), st.roll_stream ? 1 : 0);
   if (document.activeElement !== $("tpos") && Number.isFinite(st.trig_pos_frac) && st.trig_pos_frac >= 0 && st.trig_pos_frac <= 1) {
     $("tpos").value = st.trig_pos_frac;
     $("tposv").textContent = Math.round(st.trig_pos_frac * 100) + " %";
   }
-  $("wedged").style.display = st.wedged ? "inline" : "none";
+  upd($("wedged").style, "display", st.wedged ? "inline" : "none");
   // Loading indicator (after a short grace so fast frames never flash it).
   const loading = !!st.busy && st.busy_ms >= 150;
-  $("loading").hidden = !loading;
+  upd($("loading"), "hidden", !loading);
   if (loading) $("loading").textContent = "LOADING" + (st.busy_pct >= 0 ? " " + Math.round(st.busy_pct) + "%" : "…");
   setFromStatus($("ttype"), st.trig_type || 0);
   updateTriggerQualifiers(st.trig_qual);
@@ -286,8 +292,8 @@ function applyStatus() {
   setFromStatus($("acq"), st.acq_mode || 0);
   updateAcqN();
   if (document.activeElement !== $("memdepth") && st.mem_depth) $("memdepth").value = st.mem_depth;
-  $("memdepth").disabled = st.band === "sram";
-  $("memdepth").title = st.band === "sram" ? "Full SRAM retained; RUN transfers a preview, STOP recalls the complete record" : "Memory depth";
+  upd($("memdepth"), "disabled", st.band === "sram");
+  upd($("memdepth"), "title", st.band === "sram" ? "Full SRAM retained; RUN transfers a preview, STOP recalls the complete record" : "Memory depth");
   if (document.activeElement !== $("holdoff")) $("holdoff").value = st.holdoff_s || 0;
   if (!lvlDragging && st.trig_code) { $("lvl").value = st.trig_volts; $("lvlv").textContent = eng(st.trig_volts, "V"); }
   if ($("tdiv").options.length === 0 && st.tdivs)
@@ -321,7 +327,7 @@ function applyStatus() {
   for (const ch of [1, 2]) {
     const vd = st["vdiv" + ch] || 1, p = probeOf(ch);
     const span = Math.min(vd <= 0.2 ? 1.6 : 40, 10 * vd) * p; // tier range, at most ±10 div
-    $("off" + ch).min = -span; $("off" + ch).max = span; $("off" + ch).step = vd * p / 25;
+    const o = $("off" + ch); upd(o, "min", -span); upd(o, "max", span); upd(o, "step", vd * p / 25);
   }
   {
     const src = (st.trig_source || 0) + 1, vd = st["vdiv" + src] || 1, p = trigProbe();
@@ -330,20 +336,20 @@ function applyStatus() {
     // offset-shifted min (-4.56 mV after Default setup) would leave 0 V off the grid (back at the centre the
     // level would read 4.39 mV)
     const step = vd * p / 25;
-    $("lvl").step = step;
-    $("lvl").min = Math.floor((-5 * vd * p - off) / step) * step; $("lvl").max = Math.ceil((5 * vd * p - off) / step) * step;
+    upd($("lvl"), "step", step);
+    upd($("lvl"), "min", Math.floor((-5 * vd * p - off) / step) * step); upd($("lvl"), "max", Math.ceil((5 * vd * p - off) / step) * step);
   }
   if (!offDragging) {
-    $("off1v").textContent = Number.isFinite(st.off1_v) ? eng(st.off1_v, "V") : "—";
-    $("off2v").textContent = Number.isFinite(st.off2_v) ? eng(st.off2_v, "V") : "—";
+    upd($("off1v"), "textContent", Number.isFinite(st.off1_v) ? eng(st.off1_v, "V") : "—");
+    upd($("off2v"), "textContent", Number.isFinite(st.off2_v) ? eng(st.off2_v, "V") : "—");
     if (Number.isFinite(st.off1_v)) $("off1").value = st.off1_v;
     if (Number.isFinite(st.off2_v)) $("off2").value = st.off2_v;
   }
   updateStatusLine();
   const state = trigState();
   const chip = $("trigChip");
-  chip.textContent = state;
-  chip.dataset.state = state;
+  upd(chip, "textContent", state);
+  upd(chip.dataset, "state", state);
   refreshAria();
   syncMirrors();
 }
