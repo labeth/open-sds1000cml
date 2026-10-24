@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"open-sds/app/internal/engine"
+	"open-sds/app/internal/sramcapture"
 )
 
 // benchServer serves a 5000-sample frame with its Q8.8 record.
@@ -188,5 +189,22 @@ func BenchmarkWriteSoundBin(b *testing.B) {
 	h := map[string]int{"n": 4096}
 	for b.Loop() {
 		writeSoundBin(httptest.NewRecorder(), h, blk, time.Second)
+	}
+}
+
+// A small window of the SRAM record (the diag page's reads).
+// TRLC-LINKS: REQ-SDS-166
+func BenchmarkSRAMRecordWindow(b *testing.B) {
+	h := SRAMHandler(&sramTestSource{m: sramcapture.Metadata{Ready: true, Frozen: true, Length: sramcapture.Words}})
+	for b.Loop() {
+		h.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest("GET", "/api/sram/record.bin?offset=524280&words=8", nil))
+	}
+}
+
+// TRLC-LINKS: REQ-SDS-165
+func BenchmarkHTTPDiagMap(b *testing.B) {
+	h := benchServer().Handler()
+	for b.Loop() {
+		h.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest("GET", "/api/diag/map", nil))
 	}
 }

@@ -2,12 +2,14 @@
 package web
 
 import (
+	"bytes"
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"strconv"
+	"sync"
 	"time"
 
 	"open-sds/app/internal/buildinfo"
@@ -94,12 +96,21 @@ func (s *Server) hDiagStatus(w http.ResponseWriter, r *http.Request) {
 // generated iface) so the page and scripts can address everything by name.
 // TRLC-LINKS: REQ-SDS-165
 func (s *Server) hDiagMap(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, map[string]any{
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(diagMapJSON())
+}
+
+// diagMapJSON is the map's reply as writeJSON encodes it, made once: the
+// tables are fixed for the build.
+var diagMapJSON = sync.OnceValue(func() []byte {
+	var b bytes.Buffer
+	json.NewEncoder(&b).Encode(map[string]any{
 		"name": iface.Name, "version": iface.Version, "build_id": fmt.Sprintf("0x%08x", iface.BuildID),
 		"registers": iface.Registers(), "diag": iface.DiagWindow(), "opcodes": iface.Opcodes(),
 		"bus_balls": diag.BusBalls, "single_balls": diag.SingleBalls,
 	})
-}
+	return b.Bytes()
+})
 
 // hDiagReg: GET ?name=RUN (or ?sel=0x24) reads; POST {"name":..,"val":..,"raw":bool} writes.
 // TRLC-LINKS: REQ-SDS-165

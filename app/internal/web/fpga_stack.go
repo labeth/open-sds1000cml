@@ -37,11 +37,13 @@ func (s *Server) frameTemplate(cfg engine.FPGAStackRequest, points int, toleranc
 			codes, fine = f.C2, f.Q2
 		}
 		sig = make([]float64, f.Valid)
-		for i := range sig {
-			if len(fine) >= f.Valid {
-				sig[i] = float64(fine[i]) / 256
-			} else {
-				sig[i] = float64(codes[i])
+		if len(fine) >= f.Valid { // the record's kind once, not a sample
+			for i, v := range fine[:len(sig)] {
+				sig[i] = float64(v) * (1.0 / 256) // exact: a power of two
+			}
+		} else {
+			for i, v := range codes[:len(sig)] {
+				sig[i] = float64(v)
 			}
 		}
 		sampleS, edgeX = f.SampleS, f.EdgeX

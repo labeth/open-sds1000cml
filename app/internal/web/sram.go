@@ -107,8 +107,9 @@ func SRAMHandler(source SRAMSource) http.Handler {
 			fail(w, 409, fmt.Errorf("no frozen record; capture or halt first"))
 			return
 		}
+		q := r.URL.Query() // parsed once for both values
 		parse := func(key string, fallback uint32) (uint32, error) {
-			s := r.URL.Query().Get(key)
+			s := q.Get(key)
 			if s == "" {
 				return fallback, nil
 			}
