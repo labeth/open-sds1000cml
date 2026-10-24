@@ -26,14 +26,14 @@ type gap struct{ x0, x1 float64 }
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-252
 func rfidGaps(S sliced, fc float64) ([]gap, bool) {
 	runs := levelRuns(S)
-	var lens []float64
+	lens := make([]float64, 0, len(runs))
 	for _, r := range runs {
 		if !r.open {
 			lens = append(lens, r.x1-r.x0)
 		}
 	}
 	carrier := quantile(lens, 0.5) < 0.75*fc
-	var out []gap
+	out := make([]gap, 0, len(runs)/2)
 	for _, r := range runs {
 		if r.open {
 			continue
