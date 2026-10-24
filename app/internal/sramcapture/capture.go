@@ -52,6 +52,11 @@ type Capture struct {
 	// be a round trip.
 	armRead  [len(armSels)]uint16
 	armReady bool
+	// While Arm runs, writes queue in pending and go to the bus in one batch
+	// before the next read (or when Arm returns), in order: each would
+	// otherwise be its own round trip through the bus worker.
+	queueWrites bool
+	pending     [][2]uint16
 	spanHook func(done, total int) // between recall bursts (SetSpanHook)
 	// envelopeOn: an envelope recall may have left the reducer enabled.
 	envelopeOn      bool
@@ -226,6 +231,9 @@ func (c *Capture) read(s uint16) (uint16, error) {
 			}
 		}
 	}
+	if err := c.flushWrites(); err != nil {
+		return 0, err
+	}
 	v, err := c.bus.Read(1, s)
 	if err == nil {
 		c.beats.Add(1)
@@ -254,15 +262,36 @@ type manyWriter interface {
 // bus worker in one round trip, not one each.
 // TRLC-LINKS: REQ-SDS-082
 func (c *Capture) writeMany(regs ...[2]uint16) error {
+	if c.queueWrites {
+		c.pending = append(c.pending, regs...)
+		return nil
+	}
+	return c.sendMany(regs)
+}
+
+// sendMany puts regs on the bus, in one call when it batches.
+// TRLC-LINKS: REQ-SDS-082
+func (c *Capture) sendMany(regs [][2]uint16) error {
 	if m, ok := c.bus.(manyWriter); ok {
 		return m.RawWriteMany(regs)
 	}
 	for _, r := range regs {
-		if err := c.write(r[0], r[1]); err != nil {
+		if err := c.bus.RawWrite(r[0], r[1]); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+// flushWrites sends the queued writes.
+// TRLC-LINKS: REQ-SDS-082
+func (c *Capture) flushWrites() error {
+	if len(c.pending) == 0 {
+		return nil
+	}
+	err := c.sendMany(c.pending)
+	c.pending = c.pending[:0]
+	return err
 }
 
 // manyReader is a bus that reads several registers in one call (a bus
@@ -274,6 +303,9 @@ type manyReader interface {
 // readMany reads the CS1 registers sels into dst in order.
 // TRLC-LINKS: REQ-SDS-082
 func (c *Capture) readMany(sels []uint16, dst []uint16) error {
+	if err := c.flushWrites(); err != nil {
+		return err
+	}
 	if m, ok := c.bus.(manyReader); ok {
 		if err := m.ReadMany(1, sels, dst); err != nil {
 			return err
@@ -292,7 +324,13 @@ func (c *Capture) readMany(sels []uint16, dst []uint16) error {
 }
 
 // TRLC-LINKS: REQ-SDS-082
-func (c *Capture) write(s, v uint16) error { return c.bus.RawWrite(s, v) }
+func (c *Capture) write(s, v uint16) error {
+	if c.queueWrites {
+		c.pending = append(c.pending, [2]uint16{s, v})
+		return nil
+	}
+	return c.bus.RawWrite(s, v)
+}
 
 // TRLC-LINKS: REQ-SDS-082
 func (c *Capture) read32(s uint16) (uint32, error) {
@@ -531,7 +569,7 @@ func (c *Capture) ready(ctx context.Context) error {
 }
 
 // TRLC-LINKS: REQ-SDS-032, REQ-SDS-040, REQ-SDS-082
-func (c *Capture) Arm(ctx context.Context, cfg Config) error {
+func (c *Capture) Arm(ctx context.Context, cfg Config) (err error) {
 	if err := cfg.Packet.validate(); err != nil {
 		return err
 	}
@@ -614,8 +652,13 @@ func (c *Capture) Arm(ctx context.Context, cfg Config) error {
 	if e := c.readMany(armSels[:], c.armRead[:]); e != nil {
 		return e
 	}
-	c.armReady = true
-	defer func() { c.armReady = false }()
+	c.armReady, c.queueWrites = true, true
+	defer func() {
+		c.armReady, c.queueWrites = false, false
+		if e := c.flushWrites(); e != nil && err == nil {
+			err = e
+		}
+	}()
 	s := c.armRead[0]
 	if s&4 == 0 || s&8 != 0 {
 		return fmt.Errorf("sramcapture: halt the current acquisition before rearming")
