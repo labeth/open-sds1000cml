@@ -83,10 +83,10 @@ function decodeFlexRay(codes, colTimeS, cfg) {
   if (cfg.bitrate > 0) {
     T = (1 / cfg.bitrate) / colTimeS;
   } else {
-    const gaps = [];
+    let gaps = [];
     for (let k = 1; k < S.edges.length; k++) { const g = S.edges[k].i - S.edges[k - 1].i; if (g >= 1) gaps.push(g); }
     if (gaps.length < 3) return fxFail("too few edges / cannot infer bitrate");
-    gaps.sort((a, b) => a - b);
+    gaps = Float64Array.from(gaps).sort(); // numeric without a comparator call
     let bp = gaps[Math.floor(gaps.length * 0.1)];
     let sum = 0, cnt = 0;
     for (const g of gaps) if (Math.abs(g - bp) <= 0.35 * bp) { sum += g; cnt++; }
