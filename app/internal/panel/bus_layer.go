@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"strings"
+	"sync"
 	"time"
 
 	"open-sds/app/internal/analysis"
@@ -22,14 +23,20 @@ import (
 
 // layerIndex is a layer's place in analysis.Layers (0: none, or unknown).
 // TRLC-LINKS: REQ-SDS-241
-func layerIndex(id string) int {
+func layerIndex(id string) int { return layerIndexes()[id] }
+
+// layerIndexes maps each layer's ID to its place, built once: the list is
+// fixed, and the Layer row looks up every layer each time its options are
+// read (a copy of the list a lookup).
+var layerIndexes = sync.OnceValue(func() map[string]int {
+	m := map[string]int{}
 	for i, l := range analysis.Layers() {
-		if l.ID == id {
-			return i
+		if _, dup := m[l.ID]; !dup { // the first of an ID, as the search found
+			m[l.ID] = i
 		}
 	}
-	return 0
-}
+	return m
+})
 
 // layerArgs are the layer's settings.
 // TRLC-LINKS: REQ-SDS-241
