@@ -4,6 +4,7 @@ package panel
 import (
 	"fmt"
 	"math"
+	"strconv"
 	"time"
 
 	"open-sds/app/internal/engine"
@@ -503,7 +504,7 @@ func (c *Controller) measPane(s *sv) *wsview.MeasPane {
 		now, mean, mn, mx, sd float64
 		cnt                   int
 	}
-	var rows []rowv
+	rows := make([]rowv, 0, len(s.meas))
 	for _, it := range s.meas {
 		r := rowv{it: it, now: math.NaN(), mean: math.NaN(), mn: math.NaN(), mx: math.NaN(), sd: math.NaN()}
 		if v, ok := a.statLast[it]; ok {
@@ -547,6 +548,7 @@ func (c *Controller) measPane(s *sv) *wsview.MeasPane {
 		}
 		p.Caption = fmt.Sprintf("statistics  N %d  over %.1f s", n, span)
 		p.Empty = len(rows) == 0
+		p.Stats = make([]wsview.StatRow, 0, min(len(rows), 8))
 		for i, r := range rows {
 			if i >= 8 {
 				p.More = fmt.Sprintf("+%d more: MEAS sheet", len(rows)-8)
@@ -556,9 +558,9 @@ func (c *Controller) measPane(s *sv) *wsview.MeasPane {
 			if !math.IsNaN(r.sd) {
 				sdev = fmtMeas(r.it.param, r.sd)
 			}
-			p.Stats = append(p.Stats, wsview.StatRow{Name: fmt.Sprintf("C%d %s", r.it.ch+1, measParams[r.it.param].short),
+			p.Stats = append(p.Stats, wsview.StatRow{Name: "C" + strconv.Itoa(r.it.ch+1) + " " + measParams[r.it.param].short,
 				Col: wsview.C1 + wsview.Col(r.it.ch), Now: fmtMeas(r.it.param, r.now), Mean: fmtMeas(r.it.param, r.mean),
-				Min: fmtMeas(r.it.param, r.mn), Max: fmtMeas(r.it.param, r.mx), Sdev: sdev, N: fmt.Sprint(r.cnt)})
+				Min: fmtMeas(r.it.param, r.mn), Max: fmtMeas(r.it.param, r.mx), Sdev: sdev, N: strconv.Itoa(r.cnt)})
 		}
 	}
 	p.Cursor = cursorLines(s, liveV, liveOK)
@@ -569,8 +571,14 @@ func (c *Controller) measPane(s *sv) *wsview.MeasPane {
 		}
 		p.MaskLine = wsview.Span{Text: fmt.Sprintf("MASK pass %d fail %d", s.st.MaskPass, s.st.MaskFail), Col: col}
 	}
-	next := []string{"Time", "Volts", "off"}[map[bool]int{false: 0, true: 1 + s.curType}[s.curOn]]
+	next := "Time"
+	if s.curOn {
+		next = []string{"Time", "Volts", "off"}[1+s.curType]
+	}
 	p.Tool = append([]wsview.Seg{{Key: "Adjust", Job: "cursor A"}, {Key: "push", Job: "cursors " + next}}, posTool(s)...)
-	p.Again = "F4 again: " + map[bool]string{true: "Statistics", false: "All values"}[u.measAll]
+	p.Again = "F4 again: All values"
+	if u.measAll {
+		p.Again = "F4 again: Statistics"
+	}
 	return p
 }
