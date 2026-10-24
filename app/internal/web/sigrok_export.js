@@ -144,6 +144,8 @@ function finishSeries(ch, n, dt, seq) {
   return { n: hi - lo, dt, rateHz: Math.max(1, Math.round(1 / dt)), ch, seq };
 }
 
+// SIGROK_LE: the page's typed arrays are little-endian, as the files are.
+const SIGROK_LE = new Uint8Array(new Uint16Array([1]).buffer)[0] === 1;
 const SIGROK_CHUNK_SAMPLES = 1 << 20; // 4 MiB of float32 — libsigrok's flush size
 
 // sigrokLogicBytes packs per-sample logic levels for all channels: one byte
@@ -207,9 +209,16 @@ function sigrokSR(series) {
   series.ch.forEach((c, i) => {
     for (let s = 0, chunk = 1; s < c.v.length; s += SIGROK_CHUNK_SAMPLES, chunk++) {
       const m = Math.min(SIGROK_CHUNK_SAMPLES, c.v.length - s);
-      const data = new Uint8Array(4 * m);
-      const dv = new DataView(data.buffer);
-      for (let j = 0; j < m; j++) dv.setFloat32(4 * j, c.v[s + j], true);
+      let data;
+      if (SIGROK_LE) { // the chunk converted whole: the same little-endian float32 bytes
+        const f = new Float32Array(m);
+        f.set(c.v.subarray(s, s + m));
+        data = new Uint8Array(f.buffer);
+      } else {
+        data = new Uint8Array(4 * m);
+        const dv = new DataView(data.buffer);
+        for (let j = 0; j < m; j++) dv.setFloat32(4 * j, c.v[s + j], true);
+      }
       entries.push({ name: "analog-1-" + (nL + i + 1) + "-" + chunk, data });
     }
   });
