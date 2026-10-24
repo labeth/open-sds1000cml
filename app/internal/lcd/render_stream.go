@@ -3,6 +3,7 @@ package lcd
 
 import (
 	"fmt"
+	"strconv"
 
 	"open-sds/app/internal/streamview"
 )
@@ -19,18 +20,34 @@ func streamFullScreen(hud HUD) bool {
 // TRLC-LINKS: REQ-SDS-018
 func streamStatus(v streamview.View) string {
 	if v.State == streamview.Starting && v.Note != "" { // no counts yet: why it takes seconds
-		return fmt.Sprintf("STREAM %s  %s  %s", v.Label, v.State, v.Note)
+		return "STREAM " + v.Label + "  " + v.State.String() + "  " + v.Note
 	}
-	s := fmt.Sprintf("STREAM %s  %s  %d units  %s/s  err %d  lost %d", v.Label, v.State, v.Units,
-		siScale(v.UnitsPerSecond, []siUnit{{1e6, "M"}, {1e3, "k"}, {1, ""}}), v.Errors, v.Lost)
+	b := make([]byte, 0, 96)
+	b = append(b, "STREAM "...)
+	b = append(b, v.Label...)
+	b = append(b, "  "...)
+	b = append(b, v.State.String()...)
+	b = append(b, "  "...)
+	b = strconv.AppendUint(b, v.Units, 10)
+	b = append(b, " units  "...)
+	b = appendSI(b, v.UnitsPerSecond, rateUnits)
+	b = append(b, "/s  err "...)
+	b = strconv.AppendUint(b, v.Errors, 10)
+	b = append(b, "  lost "...)
+	b = strconv.AppendUint(b, v.Lost, 10)
 	if v.Mode != "" {
-		s += "  " + v.Mode
+		b = append(b, "  "...)
+		b = append(b, v.Mode...)
 	}
 	if v.Err != "" {
-		s += "  " + v.Err
+		b = append(b, "  "...)
+		b = append(b, v.Err...)
 	}
-	return s
+	return string(b)
 }
+
+// rateUnits scale the stream's units per second.
+var rateUnits = []siUnit{{1e6, "M"}, {1e3, "k"}, {1, ""}}
 
 // drawStream fills the plot with the hexdump transcript: status, column
 // header, the page of lines, and on a stopped or scrolled-back stream where

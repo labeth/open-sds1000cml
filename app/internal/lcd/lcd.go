@@ -3,6 +3,7 @@ package lcd
 
 import (
 	"fmt"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -44,11 +45,13 @@ func Bringup(logf func(string, ...any)) error {
 func findModule(name string) string {
 	for _, dir := range []string{"/lib/modules", "/usr/bin/siglent/modules", "/usr/bin/siglent"} {
 		var found string
-		filepath.Walk(dir, func(p string, info os.FileInfo, err error) error {
+		// WalkDir: the names and types come from the directory reads, no
+		// stat per file.
+		filepath.WalkDir(dir, func(p string, d fs.DirEntry, err error) error {
 			if err != nil {
 				return nil
 			}
-			if info != nil && !info.IsDir() && info.Name() == name {
+			if d != nil && !d.IsDir() && d.Name() == name {
 				found = p
 				return filepath.SkipAll
 			}

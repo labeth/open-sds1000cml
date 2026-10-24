@@ -1,7 +1,11 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-LCD
 package lcd
 
-import "testing"
+import (
+	"testing"
+
+	"open-sds/app/internal/streamview"
+)
 
 // TRLC-LINKS: REQ-SDS-021
 func BenchmarkDrawText(b *testing.B) {
@@ -105,5 +109,20 @@ func BenchmarkDrawSaver(b *testing.B) {
 	for b.Loop() {
 		DrawSaver(sf, f, h, step)
 		step++
+	}
+}
+
+// TRLC-LINKS: REQ-SDS-021
+func BenchmarkFindModule(b *testing.B) {
+	for b.Loop() {
+		findModule("no-such-module.ko")
+	}
+}
+
+// TRLC-LINKS: REQ-SDS-018
+func BenchmarkStreamStatus(b *testing.B) {
+	v := streamview.View{Label: "UART 115200", State: streamview.Streaming, Units: 123456, UnitsPerSecond: 11520, Errors: 2, Lost: 1, Mode: "hex"}
+	for b.Loop() {
+		_ = streamStatus(v)
 	}
 }
