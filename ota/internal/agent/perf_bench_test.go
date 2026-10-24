@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"net"
+	"os/exec"
 	"os"
 	"path/filepath"
 	"testing"
@@ -184,5 +185,30 @@ func BenchmarkAgentSlot(b *testing.B) {
 	a := benchAgent(b)
 	for b.Loop() {
 		a.AgentSlot()
+	}
+}
+
+// The takeover's search for the vendor firmware among the GPMC holders,
+// here a child of ours holding the node.
+// TRLC-LINKS: REQ-SDS-027
+func BenchmarkFactoryCandidates(b *testing.B) {
+	dir := b.TempDir()
+	node := filepath.Join(dir, "Gpmc")
+	os.WriteFile(node, nil, 0o644)
+	b.Setenv("OTA_GPMC", node)
+	a := benchAgent(b)
+	a.cfg.GpmcDev = node
+	f, _ := os.Open(node)
+	defer f.Close()
+	child := exec.Command("sleep", "30")
+	child.ExtraFiles = []*os.File{f}
+	if err := child.Start(); err != nil {
+		b.Skip(err)
+	}
+	defer func() { child.Process.Kill(); child.Wait() }()
+	for b.Loop() {
+		if c := a.factoryCandidates(); len(c) != 0 {
+			b.Fatal(c)
+		}
 	}
 }
