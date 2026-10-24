@@ -219,8 +219,15 @@ function decodePJDL(codes, colTimeS, cfg) {
   if (mode < 1 || mode > 4) {
     let best = 0;
     for (let m = 1; m <= 4; m++) {
+      // pjdlIn's window worked out once a mode, not once a run.
+      const want = PJDL_MODES[m][1];
+      const lo = Math.min(want * 0.9, want - 1.5), hi = Math.max(want * 1.1, want + 1.5);
       let c = 0;
-      for (const r of runs) if (r.lvl === 1 && !r.open && pjdlIn(us(r.x1 - r.x0), PJDL_MODES[m][1])) c++;
+      for (const r of runs) {
+        if (r.lvl !== 1 || r.open) continue;
+        const u = us(r.x1 - r.x0);
+        if (u >= lo && u <= hi) c++;
+      }
       if (c > best) { best = c; mode = m; }
     }
     if (best === 0) return fail("pjdl", "no PJDL sync pads");
