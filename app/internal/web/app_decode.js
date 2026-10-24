@@ -39,7 +39,7 @@ function decodeFeatureSamples(r) {
   if (m.colsPerClock > 0) return m.colsPerClock / 2;
   if (m.tickSamples > 0) return 4 * m.tickSamples;
   if (m.spb > 0) { // the decoders beyond the first ten (decode.FeatureSamples)
-    if (["dali", "usbpd", "spdif", "irnec", "irrc5", "irrc6", "ps2", "swd", "mdio"].includes(r.proto)) return m.spb / 2;
+    if (DEC_HALF_SPB.has(r.proto)) return m.spb / 2;
     if (r.proto === "ws281x") return m.spb / 3;
     if (r.proto === "cec") return m.spb / 4;
     if (r.proto === "onewire") return 15 * m.spb;
@@ -48,15 +48,21 @@ function decodeFeatureSamples(r) {
     if (r.proto === "quad") return m.spb / 4;
     if (r.proto === "stepper" || r.proto === "pwm") return m.feature || 0;
     if (r.proto === "em4305" || r.proto === "t55xx") return m.inverted ? m.spb / 2 : 8 * m.spb;
-    if (["ook", "miller", "em4100", "dsi", "qi", "sdcard", "pdi", "cjtag", "maple", "caliper"].includes(r.proto)) return m.spb / 2;
+    if (DEC_HALF_SPB2.has(r.proto)) return m.spb / 2;
     if (r.proto === "dcf77") return m.spb / 10;
     if (r.proto === "swim") return m.spb / 11;
     if (r.proto === "sdq") return m.spb / 4;
     return m.spb;
   }
   if (!(m.samplesPerBit > 0)) return 0;
-  return ["manchester", "mil1553", "arinc429"].includes(r.proto) ? m.samplesPerBit / 2 : m.samplesPerBit;
+  return DEC_HALF_BIT.has(r.proto) ? m.samplesPerBit / 2 : m.samplesPerBit;
 }
+
+// The protocols decodeFeatureSamples halves, as sets made once (it runs on
+// every decoded envelope frame).
+const DEC_HALF_SPB = new Set(["dali", "usbpd", "spdif", "irnec", "irrc5", "irrc6", "ps2", "swd", "mdio"]);
+const DEC_HALF_SPB2 = new Set(["ook", "miller", "em4100", "dsi", "qi", "sdcard", "pdi", "cjtag", "maple", "caliper"]);
+const DEC_HALF_BIT = new Set(["manchester", "mil1553", "arinc429"]);
 // A live envelope holds a (min, max) pair per bucket, two points: a bus whose
 // shortest feature is not well over a bucket aliases there (a fast I2C clock
 // read as starts and stops, no bytes; a 115200 UART at 500 us/div's 3.6
