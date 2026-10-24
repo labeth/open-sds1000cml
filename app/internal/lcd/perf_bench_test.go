@@ -290,3 +290,18 @@ func BenchmarkDrawEnvelope(b *testing.B) {
 		drawEnvelope(sf, fullPlot, mn, mx, cols, colC2, 1)
 	}
 }
+
+// A live fast-signal frame: 7000 samples over the full plot, two channels,
+// each frame new (no column cache hit).
+// TRLC-LINKS: REQ-SDS-021
+func BenchmarkDrawDenseTrace(b *testing.B) {
+	sig := make([]uint8, 7000)
+	for i := range sig {
+		sig[i] = uint8(128 + 90*((i/9)%2*2-1) + i%7)
+	}
+	sf := NewMemSurface()
+	for b.Loop() {
+		drawDenseTrace(sf, fullPlot, traceID{0, 0, 0, false}, sig, nil, 0, len(sig), 0xffe0, 1)
+		drawDenseTrace(sf, fullPlot, traceID{0, 1, 0, false}, sig, nil, 0, len(sig), 0x07ff, 0.5)
+	}
+}
