@@ -56,14 +56,19 @@ function drawZones(g) {
     : frame.win_frac === 1 && st && (frame.win_cols || st.win_cols) === zm.mask.win);
   if (maskVisible) {
     const win = zm.mask.win, span = view.win.b - view.win.a || 1;
+    // the mask sample under each drawn column, once for both envelopes
+    const js = new Float64Array((CW + 1) >> 1);
+    for (let x = 0, k = 0; x < CW; x += 2, k++) {
+      const fr = view.win.a + (x / CW) * span;
+      const dt = mg ? (fr * (frame.cols - 1) - frame.edge_frac * frame.cols) * frame.col_span_s / frame.cols : 0;
+      js[k] = Math.round(mg ? dt / mg.sample_s + zm.mask.posFrac * win : fr * (win - 1));
+    }
     g.strokeStyle = "rgba(242,166,59,0.55)";
     for (const env of [zm.mask.lo, zm.mask.hi]) {
       g.beginPath();
       let started = false;
-      for (let x = 0; x < CW; x += 2) {
-        const fr = view.win.a + (x / CW) * span;
-        const dt = mg ? (fr * (frame.cols - 1) - frame.edge_frac * frame.cols) * frame.col_span_s / frame.cols : 0;
-        const j = Math.round(mg ? dt / mg.sample_s + zm.mask.posFrac * win : fr * (win - 1));
+      for (let x = 0, k = 0; x < CW; x += 2, k++) {
+        const j = js[k];
         if (j < 0 || j >= win) { started = false; continue; }
         const y = yFor(env[j], 1);
         if (!started) { g.moveTo(x, y); started = true; } else g.lineTo(x, y);
