@@ -402,8 +402,11 @@ func (c *Controller) messageTimebase(msg, featureS, tdiv float64) float64 {
 		return tdiv
 	}
 	window := 12.5 // the serial trigger's wider window
-	tds := slices.Clone(c.tdivs)
-	slices.Sort(tds)
+	tds := c.tdivs // the ladder, ascending as the engine lists it
+	if !slices.IsSorted(tds) {
+		tds = slices.Clone(tds)
+		slices.Sort(tds)
+	}
 	for _, t := range tds {
 		if t < tdiv*0.999 || msg*1.05 > after*t {
 			continue

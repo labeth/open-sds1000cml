@@ -676,3 +676,11 @@ func BenchmarkStreamStatus(b *testing.B) {
 		}
 	}
 }
+
+// TRLC-LINKS: REQ-SDS-223
+func BenchmarkMessageTimebase(b *testing.B) {
+	c, _, _ := newC(&testing.T{})
+	for b.Loop() {
+		c.messageTimebase(3e-3, 8e-6, 100e-6)
+	}
+}
