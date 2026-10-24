@@ -65,7 +65,7 @@ func (e *Engine) sleepBeating(d time.Duration) {
 func (e *Engine) runWord() uint16 {
 	mode := uint16(0)
 	k := e.band.Kind()
-	if e.normNow() && k != KindEnvelope && k != KindRoll {
+	if k != KindEnvelope && k != KindRoll && e.normNow() { // the mode's lock only where it counts
 		mode = 1
 	}
 	w := mode<<iface.RunModeShift | iface.RunRunMask

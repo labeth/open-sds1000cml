@@ -1131,3 +1131,19 @@ func BenchmarkTrigDispLevelAC(b *testing.B) {
 		e.trigDispLevel(0)
 	}
 }
+
+// TRLC-LINKS: REQ-SDS-010
+func BenchmarkRunWord(b *testing.B) {
+	e, _ := newTestEngine(&testing.T{}, newFakeBus())
+	bands := []Band{}
+	for _, t := range []float64{1e-6, 10e-3, 200e-3} {
+		band, _ := PlanTdiv(t)
+		bands = append(bands, band)
+	}
+	for b.Loop() {
+		for _, band := range bands {
+			e.band = band
+			e.runWord()
+		}
+	}
+}
