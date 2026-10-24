@@ -15,6 +15,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"syscall"
 )
 
 // Find returns the number of the inherited descriptor whose /proc/self/fd
@@ -48,29 +49,61 @@ type Holder struct {
 
 // HoldersOf scans /proc/*/fd for descriptors pointing at path.
 // TRLC-LINKS: REQ-SDS-085
-func HoldersOf(path string) []Holder {
-	procs, err := os.ReadDir("/proc")
+func HoldersOf(path string) []Holder { return HoldersOfEach(path)[0] }
+
+// HoldersOfEach is HoldersOf for several paths in one /proc scan: the scan
+// is a readlink per descriptor of every process, and a probe asks for three
+// device nodes.
+// TRLC-LINKS: REQ-SDS-085
+func HoldersOfEach(paths ...string) [][]Holder {
+	out := make([][]Holder, len(paths))
+	d, err := os.Open("/proc")
 	if err != nil {
-		return nil
+		return out
 	}
-	var out []Holder
+	procs, err := d.Readdirnames(-1)
+	d.Close()
+	if err != nil {
+		return out
+	}
+	var link [512]byte
 	for _, p := range procs {
-		pid, err := strconv.Atoi(p.Name())
+		pid, err := strconv.Atoi(p)
 		if err != nil {
 			continue
 		}
-		fdDir := filepath.Join("/proc", p.Name(), "fd")
-		fds, err := os.ReadDir(fdDir)
+		fdDir := "/proc/" + p + "/fd/"
+		fd, err := os.Open(fdDir)
 		if err != nil {
 			continue // vanished or not ours to read
 		}
+		fds, err := fd.Readdirnames(-1)
+		fd.Close()
+		if err != nil {
+			continue
+		}
+		var h *Holder
+		left := len(paths)
+		matched := make([]bool, len(paths))
 		for _, f := range fds {
-			target, err := os.Readlink(filepath.Join(fdDir, f.Name()))
-			if err != nil || target != path {
+			n, err := syscall.Readlink(fdDir+f, link[:])
+			if err != nil || n >= len(link) {
 				continue
 			}
-			out = append(out, Holder{PID: pid, Comm: Comm(pid), Exe: Exe(pid)})
-			break
+			for i, path := range paths {
+				if matched[i] || string(link[:n]) != path {
+					continue
+				}
+				if h == nil {
+					h = &Holder{PID: pid, Comm: Comm(pid), Exe: Exe(pid)}
+				}
+				out[i] = append(out[i], *h)
+				matched[i] = true
+				left--
+			}
+			if left == 0 {
+				break
+			}
 		}
 	}
 	return out

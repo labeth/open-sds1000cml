@@ -42,13 +42,12 @@ func (a *Agent) probe(readGpmc bool) ProbeReport {
 		Uname:       sysinfo.Uname(),
 		Sys:         sysinfo.Collect(a.cfg.OTADir),
 		InheritedFD: map[string]int{"gpmc": a.gpmcFD, "fpga_key": a.fpgaKeyFD},
-		GpmcHolders: fdinherit.HoldersOf(a.cfg.GpmcDev),
-		KeyHolders:  fdinherit.HoldersOf(a.cfg.FpgaKeyDev),
-		WdHolders:   fdinherit.HoldersOf(a.cfg.WatchdogDev),
 		FactoryCand: a.factoryCandidates(),
 		TakenOver:   a.st.get().TakenOver,
 		Cmds:        map[string]string{},
 	}
+	held := fdinherit.HoldersOfEach(a.cfg.GpmcDev, a.cfg.FpgaKeyDev, a.cfg.WatchdogDev)
+	r.GpmcHolders, r.KeyHolders, r.WdHolders = held[0], held[1], held[2]
 	// Read-only environment queries, surfaced through `otactl probe`. Each is
 	// bounded and best-effort; missing applets simply yield an error string.
 	// They run side by side: the report waits for the slowest, not the sum.
