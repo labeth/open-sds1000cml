@@ -229,25 +229,35 @@ func (u *uniRing) stats() (std, stdRaw, worst float64) {
 	if u.cnt < 2 {
 		return 0, 0, 0
 	}
-	colStd := func(ring [][]uint8, col int) float64 {
-		var s, s2 float64
+	// Each column's sum and sum of squares, a ring row at a time (the rows
+	// in order, not down a column), in integers: every float partial sum was
+	// an exact integer, so the figures are the same.
+	colStds := func(ring [][]uint8, out *[uniCols]float64) {
+		var s, s2 [uniCols]int
 		for k := 0; k < u.cnt; k++ {
-			v := float64(ring[k][col])
-			s += v
-			s2 += v * v
+			for c, b := range ring[k][:uniCols] {
+				v := int(b)
+				s[c] += v
+				s2[c] += v * v
+			}
 		}
-		m := s / float64(u.cnt)
-		v := s2/float64(u.cnt) - m*m
-		if v < 0 {
-			v = 0
+		for c := range out {
+			m := float64(s[c]) / float64(u.cnt)
+			v := float64(s2[c])/float64(u.cnt) - m*m
+			if v < 0 {
+				v = 0
+			}
+			out[c] = math.Sqrt(v)
 		}
-		return math.Sqrt(v)
 	}
+	var stdC, stdR [uniCols]float64
+	colStds(u.centred, &stdC)
+	colStds(u.raw, &stdR)
 	var sumC, sumR float64
 	for c := 0; c < uniCols; c++ {
-		sc := colStd(u.centred, c)
+		sc := stdC[c]
 		sumC += sc
-		sumR += colStd(u.raw, c)
+		sumR += stdR[c]
 		if sc > worst {
 			worst = sc
 		}

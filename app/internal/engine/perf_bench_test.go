@@ -2,6 +2,7 @@
 package engine
 
 import (
+	"math"
 	"testing"
 
 	"open-sds/app/internal/decode"
@@ -129,5 +130,76 @@ func BenchmarkPlan(b *testing.B) {
 				planByValue(name, p)
 			}
 		})
+	}
+}
+
+// TRLC-LINKS: REQ-SDS-001
+func BenchmarkOneFrame(b *testing.B) {
+	fb := newFakeBus()
+	e, _ := newTestEngine(&testing.T{}, fb)
+	e.bringUp()
+	for b.Loop() {
+		e.oneFrame(false)
+	}
+}
+
+// TRLC-LINKS: REQ-SDS-126
+func BenchmarkUniRingStats(b *testing.B) {
+	var u uniRing
+	u.reset()
+	disc := make([]uint8, 4096)
+	for k := 0; k < uniDepth; k++ {
+		for i := range disc {
+			disc[i] = uint8(128 + 60*((i/97)%2*2-1) + (i*k)%7)
+		}
+		u.push(disc, 4096, 2048)
+	}
+	for b.Loop() {
+		u.stats()
+	}
+}
+
+// uniRing.stats reads as the column-by-column float sums did, bit for bit.
+// TRLC-LINKS: REQ-SDS-126
+func TestUniRingStatsExact(t *testing.T) {
+	ref := func(u *uniRing) (std, stdRaw, worst float64) {
+		colStd := func(ring [][]uint8, col int) float64 {
+			var s, s2 float64
+			for k := 0; k < u.cnt; k++ {
+				v := float64(ring[k][col])
+				s += v
+				s2 += v * v
+			}
+			m := s / float64(u.cnt)
+			v := s2/float64(u.cnt) - m*m
+			if v < 0 {
+				v = 0
+			}
+			return math.Sqrt(v)
+		}
+		var sumC, sumR float64
+		for c := 0; c < uniCols; c++ {
+			sc := colStd(u.centred, c)
+			sumC += sc
+			sumR += colStd(u.raw, c)
+			if sc > worst {
+				worst = sc
+			}
+		}
+		return sumC / uniCols, sumR / uniCols, worst
+	}
+	var u uniRing
+	u.reset()
+	disc := make([]uint8, 3000)
+	for k := 0; k < uniDepth+3; k++ {
+		for i := range disc {
+			disc[i] = uint8(128 + 60*((i/97)%2*2-1) + (i*k*31)%17)
+		}
+		u.push(disc, 3000, float64(1400+k))
+		a1, b1, c1 := u.stats()
+		a2, b2, c2 := ref(&u)
+		if a1 != a2 || b1 != b2 || c1 != c2 {
+			t.Fatalf("after %d pushes: %v %v %v, want %v %v %v", k+1, a1, b1, c1, a2, b2, c2)
+		}
 	}
 }
