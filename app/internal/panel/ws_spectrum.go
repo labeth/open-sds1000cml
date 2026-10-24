@@ -371,7 +371,7 @@ func (c *Controller) specPane(s *sv) *wsview.SpecPane {
 	if u.specRefSet {
 		delta = "delta off"
 	}
-	p.Tool = append([]wsview.Seg{{Key: "Adjust", Job: "peak"}, {Key: "push", Job: delta}}, posTool(s)...)
+	p.Tool = toolLine(s, wsview.Seg{Key: "Adjust", Job: "peak"}, wsview.Seg{Key: "push", Job: delta})
 	return p
 }
 
@@ -440,7 +440,7 @@ func (c *Controller) bodePane(s *sv, p *wsview.SpecPane) {
 	if u.bodeRef >= 0 {
 		delta = "delta off"
 	}
-	p.Tool = append([]wsview.Seg{{Key: "Adjust", Job: "point"}, {Key: "push", Job: delta}}, posTool(s)...)
+	p.Tool = toolLine(s, wsview.Seg{Key: "Adjust", Job: "point"}, wsview.Seg{Key: "push", Job: delta})
 }
 
 // nextSpecView is SPECTRUM again: FFT, spectrogram, Bode, SOUND, FFT.

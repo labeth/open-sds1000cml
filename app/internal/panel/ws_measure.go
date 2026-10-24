@@ -575,7 +575,7 @@ func (c *Controller) measPane(s *sv) *wsview.MeasPane {
 	if s.curOn {
 		next = []string{"Time", "Volts", "off"}[1+s.curType]
 	}
-	p.Tool = append([]wsview.Seg{{Key: "Adjust", Job: "cursor A"}, {Key: "push", Job: "cursors " + next}}, posTool(s)...)
+	p.Tool = toolLine(s, wsview.Seg{Key: "Adjust", Job: "cursor A"}, wsview.Seg{Key: "push", Job: "cursors " + next})
 	p.Again = "F4 again: All values"
 	if u.measAll {
 		p.Again = "F4 again: Statistics"

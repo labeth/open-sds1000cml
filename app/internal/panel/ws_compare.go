@@ -785,7 +785,7 @@ func (c *Controller) cmpPane(s *sv) *wsview.CmpPane {
 		}
 		p.Rows[i] = r
 	}
-	p.Tool = append([]wsview.Seg{{Key: "Adjust", Job: "row"}, {Key: "push", Job: "row action"}}, posTool(s)...)
+	p.Tool = toolLine(s, wsview.Seg{Key: "Adjust", Job: "row"}, wsview.Seg{Key: "push", Job: "row action"})
 	p.Again = "F5 again: " + c.cmpAgainText(s)
 	return p
 }

@@ -290,19 +290,26 @@ func (c *Controller) posJobTurn(s *sv, dir, steps int) {
 // posTool is the tool line's Position and push segments: the job Position
 // does now and the one its push switches to (or Zero's centre).
 // TRLC-LINKS: REQ-SDS-213
-func posTool(s *sv) []wsview.Seg {
+func posTool(s *sv) []wsview.Seg { return toolLine(s) }
+
+// toolLine is a pane's tool line: head, then Position's segments, in one
+// slice with room for one more (a Zoom segment) — built every frame.
+// TRLC-LINKS: REQ-SDS-213
+func toolLine(s *sv, head ...wsview.Seg) []wsview.Seg {
 	trig := "trigger position"
 	if s.zoom > 1 {
 		trig = "zoom position"
 	}
-	j := posJob2(s)
-	switch {
-	case j == "":
-		return []wsview.Seg{{Key: "Position", Job: trig}, {Key: "push", Job: "centre"}}
-	case s.ui.posJob:
-		return []wsview.Seg{{Key: "Position", Job: j}, {Key: "push", Job: trig}}
+	pos, push := trig, "centre"
+	if j := posJob2(s); j != "" {
+		pos, push = trig, j
+		if s.ui.posJob {
+			pos, push = j, trig
+		}
 	}
-	return []wsview.Seg{{Key: "Position", Job: trig}, {Key: "push", Job: j}}
+	out := make([]wsview.Seg, len(head), len(head)+3)
+	copy(out, head)
+	return append(out, wsview.Seg{Key: "Position", Job: pos}, wsview.Seg{Key: "push", Job: push})
 }
 
 // trigPosTurn moves the trigger position (zoomed: the zoom window).

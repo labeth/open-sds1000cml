@@ -107,3 +107,23 @@ func BenchmarkSpecPane(b *testing.B) {
 		c.specPane(s)
 	}
 }
+
+// TRLC-LINKS: REQ-SDS-213
+func BenchmarkToolLine(b *testing.B) {
+	c, _, _ := newC(&testing.T{})
+	c.switchWS(wsview.Measure)
+	s := c.snap()
+	for b.Loop() {
+		_ = append(toolLine(s, wsview.Seg{Key: "Adjust", Job: "cursor A"}, wsview.Seg{Key: "push", Job: "cursors"}), wsview.Seg{Key: "Zoom", Job: "x"})
+	}
+}
+
+// TRLC-LINKS: REQ-SDS-213
+func BenchmarkToolLineRef(b *testing.B) {
+	c, _, _ := newC(&testing.T{})
+	c.switchWS(wsview.Measure)
+	s := c.snap()
+	for b.Loop() {
+		_ = append(append([]wsview.Seg{{Key: "Adjust", Job: "cursor A"}, {Key: "push", Job: "cursors"}}, posTool(s)...), wsview.Seg{Key: "Zoom", Job: "x"})
+	}
+}

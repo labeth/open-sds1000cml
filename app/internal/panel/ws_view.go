@@ -537,7 +537,7 @@ func (c *Controller) busPane(s *sv) *wsview.BusPane {
 		}
 		p.Right = "Utility: BUS sheet"
 		p.Off = true
-		p.Tool = append([]wsview.Seg{{Key: "Adjust push", Job: "try again"}}, append(posTool(s), wsview.Seg{Key: "S/DIV push", Job: "zoom"})...)
+		p.Tool = append(toolLine(s, wsview.Seg{Key: "Adjust push", Job: "try again"}), wsview.Seg{Key: "S/DIV push", Job: "zoom"})
 		return p
 	}
 	switch {
@@ -706,7 +706,7 @@ func (c *Controller) busPane(s *sv) *wsview.BusPane {
 	// the strip: the selected packet boxed (found by its message), matches ticked
 	p.Marks, p.MarksGen = marks, marksGen
 	p.SelNum = sel + 1
-	p.Tool = append(append([]wsview.Seg{{Key: "Adjust", Job: "packet"}, {Key: "push", Job: "pick bytes"}}, posTool(s)...), wsview.Seg{Key: "Zoom", Job: zoomJob})
+	p.Tool = append(toolLine(s, wsview.Seg{Key: "Adjust", Job: "packet"}, wsview.Seg{Key: "push", Job: "pick bytes"}), wsview.Seg{Key: "Zoom", Job: zoomJob})
 	return p
 }
 
@@ -736,7 +736,7 @@ func (c *Controller) streamPane(s *sv) *wsview.BusPane {
 			p.Msg[3] = wsview.Span{Text: "Check that the bus is connected and its channel is not on GND coupling.", Col: wsview.Dim}
 		}
 		p.Right = "Utility: BUS sheet"
-		p.Tool = append([]wsview.Seg{{Key: "Adjust push", Job: "detect the bus"}}, posTool(s)...)
+		p.Tool = toolLine(s, wsview.Seg{Key: "Adjust push", Job: "detect the bus"})
 		return p
 	case !s.hasStream || !serialProto(s.decProto):
 		p.Caption, p.CapCol = "STREAM: "+protoName(s.decProto), wsview.Dim
@@ -775,10 +775,14 @@ func (c *Controller) streamPane(s *sv) *wsview.BusPane {
 	}
 	p.Msg = append(p.Msg, wsview.Span{Text: again, Col: wsview.Dim},
 		wsview.Span{Text: "Adjust: what stops it (an error, the Stream value, by hand)", Col: wsview.Dim})
-	p.Tool = append([]wsview.Seg{{Key: "Adjust", Job: "stops " + map[int]string{0: "on error", 1: "on value", 2: "by hand"}[mod3(s.decTrig)]},
-		{Key: "push", Job: push}}, posTool(s)...)
+	p.Tool = toolLine(s, wsview.Seg{Key: "Adjust", Job: "stops " + [3]string{"on error", "on value", "by hand"}[mod3(s.decTrig)]},
+		wsview.Seg{Key: "push", Job: push})
 	if s.streamStopped {
-		p.Tool = append(p.Tool, wsview.Seg{Key: "Zoom", Job: map[bool]string{true: "wave", false: "list"}[s.streamList]})
+		zoom := "list"
+		if s.streamList {
+			zoom = "wave"
+		}
+		p.Tool = append(p.Tool, wsview.Seg{Key: "Zoom", Job: zoom})
 	}
 	return p
 }
@@ -828,7 +832,7 @@ func (c *Controller) eyePane(s *sv) *wsview.EyePane {
 	if zoomed {
 		zoomJob = "zoom off"
 	}
-	p.Tool = append(append([]wsview.Seg{{Key: "Adjust", Job: "threshold"}, {Key: "push", Job: "clear eye"}}, posTool(s)...), wsview.Seg{Key: "Zoom", Job: zoomJob})
+	p.Tool = append(toolLine(s, wsview.Seg{Key: "Adjust", Job: "threshold"}, wsview.Seg{Key: "push", Job: "clear eye"}), wsview.Seg{Key: "Zoom", Job: zoomJob})
 	if !ok {
 		p.Why = why
 		if p.Why == "" {
