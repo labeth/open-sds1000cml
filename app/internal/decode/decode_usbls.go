@@ -97,7 +97,7 @@ func DecodeUSBLS(dp []uint8, colTimeS float64, cfg USBLSCfg) Result {
 			if cand < 2.5 { // below the samples/bit floor: a spur cluster
 				continue
 			}
-			var kg []float64
+			kg := make([]float64, 0, len(gaps))
 			for _, g := range gaps {
 				if g <= 16*cand {
 					kg = append(kg, g)

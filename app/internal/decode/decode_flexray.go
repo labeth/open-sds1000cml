@@ -103,7 +103,7 @@ func DecodeFlexRay(codes []uint8, colTimeS float64, cfg FlexRayCfg) Result {
 	if cfg.Bitrate > 0 {
 		T = (1.0 / float64(cfg.Bitrate)) / colTimeS
 	} else {
-		var gaps []float64
+		gaps := make([]float64, 0, len(S.edges))
 		for k := 1; k < len(S.edges); k++ {
 			if g := float64(S.edges[k].i - S.edges[k-1].i); g >= 1 {
 				gaps = append(gaps, g)

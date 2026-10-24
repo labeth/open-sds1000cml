@@ -103,7 +103,7 @@ func DecodeARINC429(codes []uint8, colTimeS float64, cfg ARINC429Cfg) Result {
 	if cfg.Bitrate > 0 {
 		T = (1.0 / float64(cfg.Bitrate)) / colTimeS
 	} else {
-		var gaps []float64
+		gaps := make([]float64, 0, len(pulses)-1)
 		for k := 1; k < len(pulses); k++ {
 			if g := float64(pulses[k].i - pulses[k-1].i); g >= 1 {
 				gaps = append(gaps, g)

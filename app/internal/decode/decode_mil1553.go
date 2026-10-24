@@ -59,7 +59,7 @@ func DecodeMIL1553(codes []uint8, colTimeS float64, cfg MIL1553Cfg) Result {
 	if cfg.Bitrate > 0 {
 		T = (1.0 / float64(cfg.Bitrate)) / colTimeS
 	} else {
-		var gaps []float64
+		gaps := make([]float64, 0, len(S.edges))
 		for k := 1; k < len(S.edges); k++ {
 			// sub-sample crossings: at small T the integer index quantizes a T/2 gap
 			// of 2.5 down to 2, mis-scaling the inferred period below the truth.
