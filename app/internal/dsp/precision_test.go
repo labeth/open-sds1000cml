@@ -102,3 +102,57 @@ func TestPrecisionFilterCenteredPassband(t *testing.T) {
 		}
 	}
 }
+
+// TRLC-LINKS: REQ-SDS-099
+func BenchmarkPrecisionLimits(b *testing.B) {
+	for b.Loop() {
+		PrecisionLimits(16)
+	}
+}
+
+// conditionRef is ConditionQ8's first loop: the oracle and the baseline.
+// TRLC-LINKS: REQ-SDS-037
+func conditionRef(samples, scratch []uint16) {
+	copy(scratch[:len(samples)], samples)
+	for i := PrecisionGuard; i < len(samples)-PrecisionGuard; i++ {
+		window := (*[63]uint16)(scratch[i-31 : i+32])
+		v := (precisionWindow(window) + (1 << 21)) >> 22
+		samples[i] = uint16(min(max(v, 0), 65535))
+	}
+}
+
+// TRLC-LINKS: REQ-SDS-037
+func BenchmarkPrecisionRecordRef(b *testing.B) {
+	s := make([]uint16, 65536)
+	scratch := make([]uint16, len(s))
+	for b.Loop() {
+		conditionRef(s, scratch)
+	}
+}
+
+// TRLC-LINKS: REQ-SDS-037
+func BenchmarkPrecisionRecord(b *testing.B) {
+	s := make([]uint16, 65536)
+	scratch := make([]uint16, len(s))
+	for b.Loop() {
+		ConditionQ8(s, scratch)
+	}
+}
+
+// ConditionQ8 is the reference loop sample for sample.
+// TRLC-LINKS: REQ-SDS-037
+func TestConditionIsTheReference(t *testing.T) {
+	a := make([]uint16, 5000)
+	for i := range a {
+		a[i] = uint16(i*7919) ^ uint16(i*i)
+	}
+	b := append([]uint16(nil), a...)
+	scratch := make([]uint16, len(a))
+	ConditionQ8(a, scratch)
+	conditionRef(b, scratch)
+	for i := range a {
+		if a[i] != b[i] {
+			t.Fatalf("sample %d: %d, want %d", i, a[i], b[i])
+		}
+	}
+}

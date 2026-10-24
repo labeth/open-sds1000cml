@@ -25,9 +25,10 @@ func PrecisionLimits(reduction int) (gain, bandwidth float64) {
 	gain = 1 / math.Sqrt(h0*cc[0]+2*h1*cc[1]+2*h2*cc[2])
 	amplitude := func(f float64) float64 {
 		cic := math.Pow(math.Sin(math.Pi*f)/(r*math.Sin(math.Pi*f/r)), 3)
-		fir := 0.0
-		for i, c := range precisionTaps {
-			fir += float64(c) / (1 << 22) * math.Cos(2*math.Pi*f*float64(i-PrecisionGuard))
+		// The taps are symmetric about the centre: one cosine a pair.
+		fir := float64(precisionTaps[PrecisionGuard]) / (1 << 22)
+		for i := 0; i < PrecisionGuard; i++ {
+			fir += 2 * float64(precisionTaps[i]) / (1 << 22) * math.Cos(2*math.Pi*f*float64(i-PrecisionGuard))
 		}
 		return math.Abs(cic * fir)
 	}

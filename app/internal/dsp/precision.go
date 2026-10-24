@@ -16,17 +16,9 @@ func ConditionQ8(samples, scratch []uint16) {
 	if len(samples) < len(precisionTaps) {
 		return
 	}
-	copy(scratch[:len(samples)], samples)
-	for i := PrecisionGuard; i < len(samples)-PrecisionGuard; i++ {
-		window := (*[63]uint16)(scratch[i-31 : i+32])
-		sum := precisionWindow(window)
-		v := (sum + (1 << 21)) >> 22
-		if v < 0 {
-			v = 0
-		}
-		if v > 65535 {
-			v = 65535
-		}
-		samples[i] = uint16(v)
-	}
+	src := scratch[:len(samples)]
+	copy(src, samples)
+	// One call for the record's interior: a Go call a sample cost the scope
+	// an eighth of the filter's time.
+	precisionBlock(&src[0], &samples[PrecisionGuard], len(samples)-2*PrecisionGuard)
 }

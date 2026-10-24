@@ -167,3 +167,193 @@ TEXT ·precisionWindow(SB), NOSPLIT, $0-12
 	MOVW R4, ret_lo+4(FP)
 	MOVW R5, ret_hi+8(FP)
 	RET
+
+// precisionBlock filters n samples: dst[k] is the rounded, clamped window
+// sum centred on src[k+31], the very arithmetic of precisionWindow and
+// ConditionQ8, with the loop here so a sample costs no Go call. R10 (g)
+// and R11 (the linker's) are untouched.
+TEXT ·precisionBlock(SB), NOSPLIT, $0-12
+	MOVW src+0(FP), R3
+	MOVW dst+4(FP), R9
+	MOVW n+8(FP), R12
+block:
+	CMP $0, R12
+	BLE blockdone
+	MOVW R3, R0
+	ADD $124, R0, R1
+	MOVW $·precisionTaps(SB), R2
+	MOVHU 62(R0), R6
+	MOVW 124(R2), R8
+	MULL R6, R8, (R5, R4)
+	MOVHU.P 2(R0), R6
+	MOVHU.P -2(R1), R7
+	MOVW.P 4(R2), R8
+	ADD R7, R6, R6
+	MULAL R6, R8, (R5, R4)
+	MOVHU.P 2(R0), R6
+	MOVHU.P -2(R1), R7
+	MOVW.P 4(R2), R8
+	ADD R7, R6, R6
+	MULAL R6, R8, (R5, R4)
+	MOVHU.P 2(R0), R6
+	MOVHU.P -2(R1), R7
+	MOVW.P 4(R2), R8
+	ADD R7, R6, R6
+	MULAL R6, R8, (R5, R4)
+	MOVHU.P 2(R0), R6
+	MOVHU.P -2(R1), R7
+	MOVW.P 4(R2), R8
+	ADD R7, R6, R6
+	MULAL R6, R8, (R5, R4)
+	MOVHU.P 2(R0), R6
+	MOVHU.P -2(R1), R7
+	MOVW.P 4(R2), R8
+	ADD R7, R6, R6
+	MULAL R6, R8, (R5, R4)
+	MOVHU.P 2(R0), R6
+	MOVHU.P -2(R1), R7
+	MOVW.P 4(R2), R8
+	ADD R7, R6, R6
+	MULAL R6, R8, (R5, R4)
+	MOVHU.P 2(R0), R6
+	MOVHU.P -2(R1), R7
+	MOVW.P 4(R2), R8
+	ADD R7, R6, R6
+	MULAL R6, R8, (R5, R4)
+	MOVHU.P 2(R0), R6
+	MOVHU.P -2(R1), R7
+	MOVW.P 4(R2), R8
+	ADD R7, R6, R6
+	MULAL R6, R8, (R5, R4)
+	MOVHU.P 2(R0), R6
+	MOVHU.P -2(R1), R7
+	MOVW.P 4(R2), R8
+	ADD R7, R6, R6
+	MULAL R6, R8, (R5, R4)
+	MOVHU.P 2(R0), R6
+	MOVHU.P -2(R1), R7
+	MOVW.P 4(R2), R8
+	ADD R7, R6, R6
+	MULAL R6, R8, (R5, R4)
+	MOVHU.P 2(R0), R6
+	MOVHU.P -2(R1), R7
+	MOVW.P 4(R2), R8
+	ADD R7, R6, R6
+	MULAL R6, R8, (R5, R4)
+	MOVHU.P 2(R0), R6
+	MOVHU.P -2(R1), R7
+	MOVW.P 4(R2), R8
+	ADD R7, R6, R6
+	MULAL R6, R8, (R5, R4)
+	MOVHU.P 2(R0), R6
+	MOVHU.P -2(R1), R7
+	MOVW.P 4(R2), R8
+	ADD R7, R6, R6
+	MULAL R6, R8, (R5, R4)
+	MOVHU.P 2(R0), R6
+	MOVHU.P -2(R1), R7
+	MOVW.P 4(R2), R8
+	ADD R7, R6, R6
+	MULAL R6, R8, (R5, R4)
+	MOVHU.P 2(R0), R6
+	MOVHU.P -2(R1), R7
+	MOVW.P 4(R2), R8
+	ADD R7, R6, R6
+	MULAL R6, R8, (R5, R4)
+	MOVHU.P 2(R0), R6
+	MOVHU.P -2(R1), R7
+	MOVW.P 4(R2), R8
+	ADD R7, R6, R6
+	MULAL R6, R8, (R5, R4)
+	MOVHU.P 2(R0), R6
+	MOVHU.P -2(R1), R7
+	MOVW.P 4(R2), R8
+	ADD R7, R6, R6
+	MULAL R6, R8, (R5, R4)
+	MOVHU.P 2(R0), R6
+	MOVHU.P -2(R1), R7
+	MOVW.P 4(R2), R8
+	ADD R7, R6, R6
+	MULAL R6, R8, (R5, R4)
+	MOVHU.P 2(R0), R6
+	MOVHU.P -2(R1), R7
+	MOVW.P 4(R2), R8
+	ADD R7, R6, R6
+	MULAL R6, R8, (R5, R4)
+	MOVHU.P 2(R0), R6
+	MOVHU.P -2(R1), R7
+	MOVW.P 4(R2), R8
+	ADD R7, R6, R6
+	MULAL R6, R8, (R5, R4)
+	MOVHU.P 2(R0), R6
+	MOVHU.P -2(R1), R7
+	MOVW.P 4(R2), R8
+	ADD R7, R6, R6
+	MULAL R6, R8, (R5, R4)
+	MOVHU.P 2(R0), R6
+	MOVHU.P -2(R1), R7
+	MOVW.P 4(R2), R8
+	ADD R7, R6, R6
+	MULAL R6, R8, (R5, R4)
+	MOVHU.P 2(R0), R6
+	MOVHU.P -2(R1), R7
+	MOVW.P 4(R2), R8
+	ADD R7, R6, R6
+	MULAL R6, R8, (R5, R4)
+	MOVHU.P 2(R0), R6
+	MOVHU.P -2(R1), R7
+	MOVW.P 4(R2), R8
+	ADD R7, R6, R6
+	MULAL R6, R8, (R5, R4)
+	MOVHU.P 2(R0), R6
+	MOVHU.P -2(R1), R7
+	MOVW.P 4(R2), R8
+	ADD R7, R6, R6
+	MULAL R6, R8, (R5, R4)
+	MOVHU.P 2(R0), R6
+	MOVHU.P -2(R1), R7
+	MOVW.P 4(R2), R8
+	ADD R7, R6, R6
+	MULAL R6, R8, (R5, R4)
+	MOVHU.P 2(R0), R6
+	MOVHU.P -2(R1), R7
+	MOVW.P 4(R2), R8
+	ADD R7, R6, R6
+	MULAL R6, R8, (R5, R4)
+	MOVHU.P 2(R0), R6
+	MOVHU.P -2(R1), R7
+	MOVW.P 4(R2), R8
+	ADD R7, R6, R6
+	MULAL R6, R8, (R5, R4)
+	MOVHU.P 2(R0), R6
+	MOVHU.P -2(R1), R7
+	MOVW.P 4(R2), R8
+	ADD R7, R6, R6
+	MULAL R6, R8, (R5, R4)
+	MOVHU.P 2(R0), R6
+	MOVHU.P -2(R1), R7
+	MOVW.P 4(R2), R8
+	ADD R7, R6, R6
+	MULAL R6, R8, (R5, R4)
+	MOVHU.P 2(R0), R6
+	MOVHU.P -2(R1), R7
+	MOVW.P 4(R2), R8
+	ADD R7, R6, R6
+	MULAL R6, R8, (R5, R4)
+	// (sum + 1<<21) >> 22, which fits 32 bits, clamped to 0..65535.
+	ADD.S $0x200000, R4
+	ADC $0, R5
+	MOVW R4>>22, R6
+	ORR R5<<10, R6
+	CMP $0, R6
+	MOVW.LT $0, R6
+	MOVW $65535, R7
+	CMP R7, R6
+	MOVW.GT R7, R6
+	MOVH R6, (R9)
+	ADD $2, R9
+	ADD $2, R3
+	SUB $1, R12
+	B block
+blockdone:
+	RET
