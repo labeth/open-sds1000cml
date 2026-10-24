@@ -80,7 +80,7 @@ func (s *Server) hRefs(w http.ResponseWriter, r *http.Request) {
 		Slot string `json:"slot"`
 		Op   string `json:"op"`
 	}
-	if err := json.NewDecoder(io.LimitReader(r.Body, 4<<10)).Decode(&req); err != nil || (req.Slot != "A" && req.Slot != "B") {
+	if err := decodeSmall(r.Body, &req); err != nil || (req.Slot != "A" && req.Slot != "B") {
 		writeJSON(w, map[string]any{"ok": false, "error": "bad json: want {\"slot\":\"A\"|\"B\",\"op\":store|show|hide|clear}"})
 		return
 	}
@@ -140,8 +140,9 @@ func (s *Server) hPanelWait(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	seq, _ := strconv.ParseUint(r.URL.Query().Get("seq"), 10, 64)
-	ms, err := strconv.Atoi(r.URL.Query().Get("timeout_ms"))
+	q := r.URL.Query() // parsed once for both values
+	seq, _ := strconv.ParseUint(q.Get("seq"), 10, 64)
+	ms, err := strconv.Atoi(q.Get("timeout_ms"))
 	if err != nil || ms < 0 {
 		ms = 5000
 	}

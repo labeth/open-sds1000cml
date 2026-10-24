@@ -2,7 +2,6 @@
 package web
 
 import (
-	"encoding/json"
 	"io"
 	"net/http"
 )
@@ -62,7 +61,7 @@ func (s *Server) hSetup(w http.ResponseWriter, r *http.Request) {
 		Op   string `json:"op"`
 		Slot int    `json:"slot"`
 	}
-	if err := json.NewDecoder(io.LimitReader(r.Body, 1<<10)).Decode(&req); err != nil {
+	if err := decodeSmall(io.LimitReader(r.Body, 1<<10), &req); err != nil {
 		writeJSON(w, map[string]any{"ok": false, "err": "bad json"})
 		return
 	}

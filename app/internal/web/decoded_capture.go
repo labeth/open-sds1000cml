@@ -29,11 +29,12 @@ type decodedCaptureSource interface {
 
 // TRLC-LINKS: REQ-SDS-013
 func decodedIdentity(r *http.Request) (sramcapture.RecordIdentity, error) {
-	epoch, e := strconv.ParseUint(r.URL.Query().Get("epoch"), 10, 32)
+	q := r.URL.Query() // parsed once for both values
+	epoch, e := strconv.ParseUint(q.Get("epoch"), 10, 32)
 	if e != nil {
 		return sramcapture.RecordIdentity{}, fmt.Errorf("epoch is required")
 	}
-	record, e := strconv.ParseUint(r.URL.Query().Get("record"), 10, 32)
+	record, e := strconv.ParseUint(q.Get("record"), 10, 32)
 	if e != nil {
 		return sramcapture.RecordIdentity{}, fmt.Errorf("record is required")
 	}

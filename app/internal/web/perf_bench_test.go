@@ -4,9 +4,12 @@ package web
 import (
 	"bytes"
 	"encoding/json"
+	"io"
+	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"open-sds/app/internal/engine"
 )
@@ -101,5 +104,89 @@ func BenchmarkWindowFrame(b *testing.B) {
 	for b.Loop() {
 		window(sig, 5000, 5000, 2500, false, 800, 0.5)
 		window(sig, 5000, 1000, 2500, true, 800, 0.5)
+	}
+}
+
+// TRLC-LINKS: REQ-SDS-162
+func BenchmarkHTTPPanelWait(b *testing.B) {
+	rig := newRemoteRig(b)
+	defer rig.app.Close()
+	h := rig.gate.h
+	for b.Loop() {
+		h.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest("GET", "/api/panel/wait?seq=0&timeout_ms=0", nil))
+	}
+}
+
+// TRLC-LINKS: REQ-SDS-219
+func BenchmarkHTTPSetupPost(b *testing.B) {
+	h := benchServer().Handler()
+	for b.Loop() {
+		h.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest("POST", "/api/setup", strings.NewReader(`{"op":"save","slot":3}`)))
+	}
+}
+
+// TRLC-LINKS: REQ-SDS-013
+func BenchmarkDecodedIdentity(b *testing.B) {
+	r := httptest.NewRequest("GET", "/api/decoded/status?epoch=7&record=12345", nil)
+	for b.Loop() {
+		if _, err := decodedIdentity(r); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+// TRLC-LINKS: REQ-SDS-141
+func BenchmarkFrameTemplate(b *testing.B) {
+	s := benchServer()
+	var cfg engine.FPGAStackRequest
+	cfg.Stack.Level = 125
+	for b.Loop() {
+		s.frameTemplate(cfg, 64, 0)
+	}
+}
+
+// deadlineRW is a response writer that takes write deadlines, as the
+// server's does.
+type deadlineRW struct{ httptest.ResponseRecorder }
+
+// TRLC-LINKS: REQ-SDS-166
+func (d *deadlineRW) SetWriteDeadline(time.Time) error { return nil }
+
+// deadlineWriterRef is the writer as first written: a controller a chunk.
+type deadlineWriterRef struct{ http.ResponseWriter }
+
+// TRLC-LINKS: REQ-SDS-166
+func (w deadlineWriterRef) Write(p []byte) (int, error) {
+	_ = http.NewResponseController(w.ResponseWriter).SetWriteDeadline(time.Now().Add(1500 * time.Millisecond))
+	return w.ResponseWriter.Write(p)
+}
+
+// TRLC-LINKS: REQ-SDS-166
+func benchWriter(b *testing.B, mk func(http.ResponseWriter) io.Writer) {
+	rw := &deadlineRW{*httptest.NewRecorder()}
+	w := mk(rw)
+	p := make([]byte, 64)
+	for b.Loop() {
+		w.Write(p)
+		rw.Body.Reset()
+	}
+}
+
+// TRLC-LINKS: REQ-SDS-166
+func BenchmarkDeadlineWriter(b *testing.B) {
+	benchWriter(b, func(w http.ResponseWriter) io.Writer { return deadlineWriter{w} })
+}
+
+// TRLC-LINKS: REQ-SDS-166
+func BenchmarkDeadlineWriterRef(b *testing.B) {
+	benchWriter(b, func(w http.ResponseWriter) io.Writer { return deadlineWriterRef{w} })
+}
+
+// TRLC-LINKS: REQ-SDS-265
+func BenchmarkWriteSoundBin(b *testing.B) {
+	blk := engine.SoundBlock{N: 4096, Q1: make([]uint16, 4096), Q2: make([]uint16, 4096)}
+	h := map[string]int{"n": 4096}
+	for b.Loop() {
+		writeSoundBin(httptest.NewRecorder(), h, blk, time.Second)
 	}
 }

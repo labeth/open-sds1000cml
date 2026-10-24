@@ -218,9 +218,7 @@ func writeSoundBin(w http.ResponseWriter, h any, b engine.SoundBlock, deadline t
 	binary.LittleEndian.PutUint32(buf[4:8], uint32(len(hj)))
 	buf = append(buf, hj...)
 	for _, seg := range [][]uint16{b.Q1, b.Q2} {
-		for _, v := range seg {
-			buf = append(buf, byte(v), byte(v>>8))
-		}
+		buf = append(buf, leBytes(seg)...) // the words' little-endian bytes
 	}
 	w.Header().Set("Content-Type", "application/octet-stream")
 	w.Header().Set("Cache-Control", "no-store")
