@@ -449,3 +449,45 @@ func TestSoundVoltsSegments(t *testing.T) {
 		}
 	}
 }
+
+// TRLC-LINKS: REQ-SDS-275
+func BenchmarkTakePane(b *testing.B) {
+	c, _, _ := newC(&testing.T{})
+	ss := c.snd
+	blk := soundBlock(48000)
+	ss.mu.Lock()
+	ss.tv.tk = &engine.SoundTake{SoundBlock: blk, ID: 3, Why: "stop", HasTrig: true, Trig: blk.First + 12000}
+	ss.tv.tk.RateHz = 48000
+	ss.tv.from, ss.tv.span = 2000, 30000
+	ss.takePaneLocked(soundTakeWidth) // the columns, once
+	ss.mu.Unlock()
+	for b.Loop() {
+		ss.mu.Lock()
+		ss.takePaneLocked(soundTakeWidth)
+		ss.mu.Unlock()
+	}
+}
+
+// The take's title reads as its fmt form.
+// TRLC-LINKS: REQ-SDS-275
+func TestTakeTitle(t *testing.T) {
+	c, _, _ := newC(t)
+	ss := c.snd
+	blk := soundBlock(48000)
+	for _, why := range []string{"stop", "single", "normal", "other"} {
+		for _, from := range []float64{0, 2000, 30000} {
+			ss.mu.Lock()
+			ss.tv.tk = &engine.SoundTake{SoundBlock: blk, ID: 3, Why: why, HasTrig: true, Trig: blk.First + 12000}
+			ss.tv.tk.RateHz = 48000
+			ss.tv.from, ss.tv.span = from, 9000
+			p := ss.takePaneLocked(soundTakeWidth)
+			ss.mu.Unlock()
+			what := map[string]string{"stop": "STOP", "single": "SINGLE", "normal": "NORMAL"}[why]
+			start := (from - 12000) / 48000
+			want := fmt.Sprintf("%s take %.1f s  view %s at %+.3f s", what, 1.0, si(9000.0/48000, "s"), start)
+			if p.Title != want {
+				t.Errorf("title %q, want %q", p.Title, want)
+			}
+		}
+	}
+}

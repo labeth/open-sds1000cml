@@ -2,8 +2,8 @@
 package panel
 
 import (
-	"fmt"
 	"math"
+	"strconv"
 	"time"
 
 	"open-sds/app/internal/engine"
@@ -262,8 +262,26 @@ func (s *soundSvc) takePaneLocked(width int) *wsview.SoundTake {
 		out.TrigCh = tk.TrigCh
 	}
 	start := (float64(tk.First) + s.tv.from - t0) / fs
-	what := map[string]string{"stop": "STOP", "single": "SINGLE", "normal": "NORMAL"}[tk.Why]
-	out.Title = fmt.Sprintf("%s take %.1f s  view %s at %+.3f s", what, float64(tk.N)/fs, si(s.tv.span/fs, "s"), start)
+	what := ""
+	switch tk.Why {
+	case "stop":
+		what = "STOP"
+	case "single":
+		what = "SINGLE"
+	case "normal":
+		what = "NORMAL"
+	}
+	// "%s take %.1f s  view %s at %+.3f s", appended
+	b := make([]byte, 0, 64)
+	b = append(append(b, what...), " take "...)
+	b = strconv.AppendFloat(b, float64(tk.N)/fs, 'f', 1, 64)
+	b = append(append(append(b, " s  view "...), si(s.tv.span/fs, "s")...), " at "...)
+	if at := strconv.FormatFloat(start, 'f', 3, 64); at[0] != '-' && at[0] != '+' {
+		b = append(append(b, '+'), at...)
+	} else {
+		b = append(b, at...)
+	}
+	out.Title = string(append(b, " s"...))
 	out.Hint = "Position: scroll  push: trigger/all  S/DIV: zoom  RUN: live"
 	return out
 }

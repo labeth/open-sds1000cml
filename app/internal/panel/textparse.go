@@ -6,8 +6,8 @@ import (
 	"math"
 	"strconv"
 	"strings"
-	"unicode/utf8"
 	"unicode"
+	"unicode/utf8"
 )
 
 // Typed entry (the remote page and /api/sheets): numbers with SI prefixes and
