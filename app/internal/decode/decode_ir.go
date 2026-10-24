@@ -40,7 +40,7 @@ func irMarks(S sliced, colTimeS float64) ([]irMark, bool) {
 		}
 	}
 	active := 1 - idle
-	var marks []irMark
+	marks := make([]irMark, 0, len(runs)/2+1)
 	merge := irMergeUs * 1e-6 / colTimeS
 	for _, r := range runs {
 		if r.lvl != active || r.open {
@@ -67,7 +67,8 @@ func irDecode(proto string, codes []uint8, colTimeS float64, cfg IRCfg,
 		return Result{Proto: proto, Error: "no sample time"}
 	}
 	marks, high := irMarks(S, colTimeS)
-	out := &irOut{format: cfg.Format}
+	// about a span a mark (a bit, or a frame's leader)
+	out := &irOut{format: cfg.Format, spans: make([]Span, 0, len(marks)+2)}
 	read(marks, func(d float64) float64 { return d * colTimeS * 1e6 }, S.n, out)
 	if len(out.spans) == 0 {
 		return Result{Proto: proto, Error: "no " + irNames[proto] + " frame"}
