@@ -150,6 +150,33 @@ func (w *sramFrameWriter) Write(b []byte) (int, error) {
 	if w.n+samples > w.f.Valid {
 		return 0, fmt.Errorf("SRAM payload exceeds frame")
 	}
+	if !(w.m.FractionBits == 8 && w.m.SamplesPerWord == 1 || w.m.FractionBits != 8 && w.m.SamplesPerWord == 2) {
+		return w.writeWords(b) // a layout other than the capture's two
+	}
+	// the word format chosen once; the destinations sliced to the samples
+	n, f := w.n, w.f
+	c1, c2 := f.C1[n:n+samples], f.C2[n:n+samples]
+	if w.m.FractionBits == 8 {
+		q1, q2 := f.Q1[n:n+samples], f.Q2[n:n+samples]
+		for k := range c1 {
+			a, c := binary.LittleEndian.Uint16(b[4*k:]), binary.LittleEndian.Uint16(b[4*k+2:])
+			q1[k], q2[k] = a, c
+			c1[k], c2[k] = roundQ8(a), roundQ8(c)
+		}
+	} else {
+		for k := 0; k+1 < len(c1); k += 2 {
+			i := 2 * k
+			c1[k], c2[k] = b[i], b[i+1]
+			c1[k+1], c2[k+1] = b[i+2], b[i+3]
+		}
+	}
+	w.n += samples
+	return len(b), nil
+}
+
+// writeWords is Write word by word, for any samples-a-word count.
+// TRLC-LINKS: REQ-SDS-040
+func (w *sramFrameWriter) writeWords(b []byte) (int, error) {
 	for i := 0; i < len(b); i += 4 {
 		if w.m.FractionBits == 8 {
 			a, c := binary.LittleEndian.Uint16(b[i:]), binary.LittleEndian.Uint16(b[i+2:])

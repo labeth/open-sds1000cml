@@ -680,3 +680,26 @@ func BenchmarkQualifyPulse(b *testing.B) {
 		qualifyPulse(sig, 2, p, false)
 	}
 }
+
+// TRLC-LINKS: REQ-SDS-040
+func BenchmarkSRAMFrameWrite(b *testing.B) {
+	const words = 8192
+	payload := make([]byte, 4*words)
+	for i := range payload {
+		payload[i] = byte(i * 7)
+	}
+	for _, fb := range []uint8{0, 8} {
+		spw := uint8(2)
+		if fb == 8 {
+			spw = 1
+		}
+		n := words * int(spw)
+		f := &Frame{C1: make([]uint8, n), C2: make([]uint8, n), Q1: make([]uint16, n), Q2: make([]uint16, n), Valid: n}
+		b.Run(map[uint8]string{0: "codes", 8: "q8"}[fb], func(b *testing.B) {
+			for b.Loop() {
+				w := sramFrameWriter{f: f, m: sramcapture.Metadata{SamplesPerWord: spw, FractionBits: fb}}
+				w.Write(payload)
+			}
+		})
+	}
+}
