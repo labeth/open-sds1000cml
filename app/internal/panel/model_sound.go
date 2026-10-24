@@ -23,8 +23,9 @@ type soundRowInfo struct {
 // TRLC-LINKS: REQ-SDS-273
 func (s *soundSvc) rowInfo() soundRowInfo {
 	s.mu.Lock()
-	defer s.mu.Unlock()
-	return soundRowInfo{adsr: s.adsr, points: len(s.voct), drift: len(s.drift.Points)}
+	r := soundRowInfo{adsr: s.adsr, points: len(s.voct), drift: len(s.drift.Points)}
+	s.mu.Unlock()
+	return r
 }
 
 // sndEnum is an enum row over one SOUND setting.

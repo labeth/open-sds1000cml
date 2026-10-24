@@ -291,3 +291,11 @@ func BenchmarkTrigTypeRow(b *testing.B) {
 		r.get(s)
 	}
 }
+
+// TRLC-LINKS: REQ-SDS-273
+func BenchmarkSoundRowInfo(b *testing.B) {
+	c, _, _ := newC(&testing.T{})
+	for b.Loop() {
+		c.snd.rowInfo()
+	}
+}
