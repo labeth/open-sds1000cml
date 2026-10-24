@@ -18,6 +18,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -425,12 +426,13 @@ func printJSON(raw json.RawMessage) {
 
 // TRLC-LINKS: REQ-SDS-175
 func compact(b []byte) string {
-	var v any
-	if json.Unmarshal(b, &v) != nil {
+	// Whitespace out in one pass, the agent's key order kept: no decode
+	// into maps and encode again.
+	var out bytes.Buffer
+	if json.Compact(&out, b) != nil {
 		return string(b)
 	}
-	out, _ := json.Marshal(v)
-	return string(out)
+	return out.String()
 }
 
 // TRLC-LINKS: REQ-SDS-175
