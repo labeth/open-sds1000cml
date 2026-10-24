@@ -7,6 +7,7 @@ import (
 
 	"open-sds/ota/internal/buildinfo"
 	"open-sds/ota/internal/sysinfo"
+	"open-sds/ota/internal/watchdog"
 
 	"github.com/nats-io/nats.go"
 )
@@ -122,21 +123,36 @@ func (a *Agent) serveNATS(nc *nats.Conn) {
 	}
 }
 
+// heartbeatMsg is a heartbeat's fields, encoded from a struct rather than a
+// map: no sort of the keys and no boxing of each value every interval.
 // TRLC-LINKS: REQ-SDS-108
-func (a *Agent) heartbeat() map[string]any {
+type heartbeatMsg struct {
+	Device    string          `json:"device"`
+	Seq       int64           `json:"seq"`
+	TimeUnix  int64           `json:"time_unix"`
+	UptimeS   int64           `json:"uptime_s"`
+	TakenOver bool            `json:"taken_over"`
+	AgentSlot string          `json:"agent_slot"`
+	App       appState        `json:"app"`
+	Watchdog  watchdog.Status `json:"watchdog"`
+	IPs       []string        `json:"ips"`
+}
+
+// TRLC-LINKS: REQ-SDS-108
+func (a *Agent) heartbeat() heartbeatMsg {
 	st := a.st.get()
 	a.appMu.Lock()
 	app := a.app
 	a.appMu.Unlock()
-	return map[string]any{
-		"device":     a.cfg.DeviceID,
-		"seq":        a.hbSeq.Add(1),
-		"time_unix":  time.Now().Unix(),
-		"uptime_s":   int64(time.Since(a.started).Seconds()),
-		"taken_over": st.TakenOver,
-		"agent_slot": a.AgentSlot(),
-		"app":        app,
-		"watchdog":   a.wd.Status(),
-		"ips":        sysinfo.IPv4s(),
+	return heartbeatMsg{
+		Device:    a.cfg.DeviceID,
+		Seq:       a.hbSeq.Add(1),
+		TimeUnix:  time.Now().Unix(),
+		UptimeS:   int64(time.Since(a.started).Seconds()),
+		TakenOver: st.TakenOver,
+		AgentSlot: a.AgentSlot(),
+		App:       app,
+		Watchdog:  a.wd.Status(),
+		IPs:       sysinfo.IPv4s(),
 	}
 }
