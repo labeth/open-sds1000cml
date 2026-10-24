@@ -58,14 +58,17 @@ var (
 // TRLC-LINKS: REQ-SDS-021
 func DeviceURL() string {
 	urlMu.Lock()
-	defer urlMu.Unlock()
 	if !urlAt.IsZero() && time.Since(urlAt) < urlRefresh {
-		return urlVal
+		v := urlVal
+		urlMu.Unlock()
+		return v
 	}
 	urlAt = time.Now()
 	urlVal = ""
 	if addrs, err := interfaceAddrs(); err == nil {
 		urlVal = PickDeviceURL(addrs)
 	}
-	return urlVal
+	v := urlVal
+	urlMu.Unlock()
+	return v
 }

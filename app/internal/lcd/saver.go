@@ -2,8 +2,8 @@
 package lcd
 
 import (
-	"fmt"
 	"os"
+	"strconv"
 	"time"
 
 	"open-sds/app/internal/engine"
@@ -47,7 +47,7 @@ func bounce(t, span int) int {
 // its run state and time/div, and a running mask test's counts or the hint.
 // TRLC-LINKS: REQ-SDS-221
 func DrawSaver(sf *MemSurface, f *engine.Frame, hud HUD, step int) {
-	sf.Fill(0)
+	clear(sf.Pix) // black: a memclr, not the colour fill's row copies
 	x, y := SaverPos(step)
 	drawMiniScope(sf, f, hud, x, y, saverW, saverH)
 	state, col := "RUN", colOK
@@ -61,7 +61,7 @@ func DrawSaver(sf *MemSurface, f *engine.Frame, hud HUD, step int) {
 	DrawText(sf, x+TextWidth(state, 2)+12, y+saverH+8, fmtTdiv(hud.TdivS)+"/div", colInfo, 2)
 	line, lcol := "Any key wakes the screen", colDim
 	if hud.MaskMode > 0 {
-		line, lcol = fmt.Sprintf("MASK pass %d  FAIL %d", hud.MaskPass, hud.MaskFail), colInfo
+		line, lcol = "MASK pass "+strconv.FormatInt(hud.MaskPass, 10)+"  FAIL "+strconv.FormatInt(hud.MaskFail, 10), colInfo
 		if hud.MaskFail > 0 || hud.MaskStopped {
 			lcol = colWarn
 		}

@@ -77,3 +77,33 @@ func BenchmarkFmtLabels(b *testing.B) {
 		_ = fmtFreq(1234567)
 	}
 }
+
+// TRLC-LINKS: REQ-SDS-021
+func BenchmarkDrawLoading(b *testing.B) {
+	sf := NewMemSurface()
+	for b.Loop() {
+		DrawLoading(sf, "Shifting image", 1234567, 2000000)
+	}
+}
+
+// TRLC-LINKS: REQ-SDS-021
+func BenchmarkDeviceURL(b *testing.B) {
+	DeviceURL()
+	for b.Loop() {
+		DeviceURL()
+	}
+}
+
+// TRLC-LINKS: REQ-SDS-221
+func BenchmarkDrawSaver(b *testing.B) {
+	sf := NewMemSurface()
+	f := goldenYTFrame()
+	h := goldenYTHUD()
+	h.MaskMode = 1
+	h.MaskPass, h.MaskFail = 1234, 5
+	step := 0
+	for b.Loop() {
+		DrawSaver(sf, f, h, step)
+		step++
+	}
+}

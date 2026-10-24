@@ -1,7 +1,7 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-LCD
 package lcd
 
-import "fmt"
+import "strconv"
 
 // DrawLoading displays an explicit acquisition interruption. Transfer progress
 // is supplied by the loader; this never advances a simulated progress bar.
@@ -23,16 +23,10 @@ func DrawLoading(sf *MemSurface, stage string, sent, total int) {
 		if sent > total {
 			sent = total
 		}
-		for y := 270; y < 286; y++ {
-			for x := 140; x < 660; x++ {
-				c := uint16(0x3186)
-				if x-140 < 520*sent/total {
-					c = 0x07ff
-				}
-				sf.SetPixel(x, y, c)
-			}
-		}
-		label := fmt.Sprintf("%d%% transferred", 100*sent/total)
+		done := 520 * sent / total
+		sf.fillSpan(140, 270, 140+done, 286, 0x07ff)
+		sf.fillSpan(140+done, 270, 660, 286, 0x3186)
+		label := strconv.Itoa(100*sent/total) + "% transferred"
 		DrawText(sf, (W-TextWidth(label, 2))/2, 308, label, 0xffff, 2)
 	}
 	DrawText(sf, (W-TextWidth(footer, 2))/2, 390, footer, 0x94b2, 2)
