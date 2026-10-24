@@ -14,7 +14,7 @@ import (
 // could not find in one packet is never sent to hardware, and polarity or
 // threshold choices the decoder does not honour are not added.
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-018
-func serialThresholdOK(p SerialParams) bool {
+func serialThresholdOK(p *SerialParams) bool {
 	return p.HaveThr && !math.IsNaN(p.Threshold) && !math.IsInf(p.Threshold, 0) && p.Threshold >= 0 && p.Threshold <= 255 &&
 		p.ChA >= 0 && p.ChA <= 1 && p.Baud > 0
 }
@@ -27,7 +27,7 @@ func q8Ticks(baud int) uint32 { return uint32(math.Round(125e6 * 256 / float64(b
 // packet block. mask is the image's protocol mask; arinc holds slicer levels
 // taken from a recent record (arincLevels), zero when none is known yet.
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-018
-func planHardwarePacket(p SerialParams, mask uint16, arinc uint32) sramcapture.PacketTriggerConfig {
+func planHardwarePacket(p *SerialParams, mask uint16, arinc uint32) sramcapture.PacketTriggerConfig {
 	off := sramcapture.PacketTriggerConfig{}
 	if !serialThresholdOK(p) || p.Proto < 0 || p.Proto > 15 || mask&(1<<p.Proto) == 0 {
 		return off
@@ -100,7 +100,7 @@ func arincLevels(codes []uint8, p SerialParams) uint32 {
 // planHardwareManchester follows DecodeManchester: 1..16-bit words (8 by
 // default), either convention and bit order, up to four contiguous words.
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-018
-func planHardwareManchester(p SerialParams) sramcapture.ManchesterTriggerConfig {
+func planHardwareManchester(p *SerialParams) sramcapture.ManchesterTriggerConfig {
 	bits := p.Bits
 	if bits == 0 {
 		bits = 8
@@ -305,7 +305,7 @@ func (e *Engine) wantImage() string {
 		return imageFast
 	}
 	// (protocolImage plans SPI itself: its clock, not a baud.)
-	if name := protocolImage(p); name != "" && (name == imageFast || serialThresholdOK(p)) && e.hasImage(name) {
+	if name := protocolImage(p); name != "" && (name == imageFast || serialThresholdOK(&p)) && e.hasImage(name) {
 		return name
 	}
 	return ""
@@ -474,7 +474,7 @@ func (e *Engine) noteARINCLevels(f *Frame) {
 	// the bits, read in milliseconds where the full-rate record of 200us/div
 	// takes seconds (and a decimated envelope asked for none: the trigger
 	// waited for a record something else asked for).
-	if planned, _ := e.serialPlanParams(p); p.Proto != serARINC || !serialThresholdOK(planned) || f.Valid < 8 {
+	if planned, _ := e.serialPlanParams(p); p.Proto != serARINC || !serialThresholdOK(&planned) || f.Valid < 8 {
 		return
 	}
 	resolves := f.Decimation <= 1 || p.Baud > 0 && f.SampleS > 0 && f.SampleS*arincBitSamples <= 1/float64(p.Baud)

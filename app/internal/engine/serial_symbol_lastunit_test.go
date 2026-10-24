@@ -75,7 +75,7 @@ func TestSymbolTriggerMatchesLastUnit(t *testing.T) {
 				}
 				pat = append(pat, symData(units[last].Val&mask, mask))
 				p.Pattern = pat
-				if !planHardwareSymbol(p).Enabled {
+				if !planHardwareSymbol(&p).Enabled {
 					continue // past the block's window (a long frame on a protocol without a leader)
 				}
 				tried++

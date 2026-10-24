@@ -154,6 +154,7 @@ func (t *symTab) each(level bool, lo, hi float64, f func(int)) {
 	}
 }
 
+
 // lead sets the leader code of a window; data its data code.
 // TRLC-LINKS: REQ-SDS-013
 func (t *symTab) lead(level bool, lo, hi float64, code uint8) {
@@ -589,7 +590,7 @@ func symbolSpec(p SerialParams) (symSpec, bool) {
 // frame where every unit has the same bits. Error tokens and requests past
 // the 64-bit window are unplannable.
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-018
-func planHardwareSymbol(p SerialParams) sramcapture.SymbolTriggerConfig {
+func planHardwareSymbol(p *SerialParams) sramcapture.SymbolTriggerConfig {
 	off := sramcapture.SymbolTriggerConfig{}
 	if !symbolProtocol(p.Proto) || !serialThresholdOK(p) {
 		return off
@@ -597,11 +598,11 @@ func planHardwareSymbol(p SerialParams) sramcapture.SymbolTriggerConfig {
 	if symbolTwoLines(p.Proto) && p.ChB != 1-p.ChA {
 		return off
 	}
-	s, ok := symbolSpec(p)
+	s, ok := symbolSpec(*p)
 	if !ok {
 		return off
 	}
-	elems := patternOf(p)
+	elems := patternOf(*p)
 	if len(elems) == 0 {
 		elems = []PatternElem{{Kind: patternStart}}
 	}

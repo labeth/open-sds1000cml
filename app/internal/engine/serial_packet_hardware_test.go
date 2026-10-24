@@ -242,15 +242,15 @@ func TestPlanHardwarePacket(t *testing.T) {
 		{"auto-threshold", with(func(p *SerialParams) { p.Proto, p.Baud, p.HaveThr = serCAN, 500000, false }), all, 0, sramcapture.PacketTriggerConfig{}},
 		{"uart", with(func(p *SerialParams) { p.Proto, p.Baud = serUART, 115200 }), all, 0, sramcapture.PacketTriggerConfig{}},
 	} {
-		if got := planHardwarePacket(c.p, c.mask, c.arinc); got != c.want {
+		if got := planHardwarePacket(&c.p, c.mask, c.arinc); got != c.want {
 			t.Errorf("%s: got %+v want %+v", c.name, got, c.want)
 		}
 	}
-	m := planHardwareManchester(SerialParams{Proto: serManchester, Baud: 1000000, HaveThr: true, Threshold: 128, IEEE: true, MSB: true, Bits: 16, Bytes: []int{0xA55A, 0x0FF0}})
+	m := planHardwareManchester(&SerialParams{Proto: serManchester, Baud: 1000000, HaveThr: true, Threshold: 128, IEEE: true, MSB: true, Bits: 16, Bytes: []int{0xA55A, 0x0FF0}})
 	if m != (sramcapture.ManchesterTriggerConfig{Enabled: true, IEEE: true, MSB: true, Bits: 16, BitTicks: 125, Pattern: 0xA55A0FF0, Length: 2}) {
 		t.Fatalf("Manchester %+v", m)
 	}
-	if m := planHardwareManchester(SerialParams{Proto: serManchester, Baud: 1000000, HaveThr: true, Bytes: []int{256}}); m.Enabled {
+	if m := planHardwareManchester(&SerialParams{Proto: serManchester, Baud: 1000000, HaveThr: true, Bytes: []int{256}}); m.Enabled {
 		t.Fatal("a word wider than the default eight bits was accepted")
 	}
 }

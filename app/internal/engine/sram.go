@@ -421,7 +421,7 @@ func (e *Engine) planSerial(c *sramcapture.Config, serial SerialParams, fallback
 		// ADR-SYMBOL-TRIGGER: the whole request compiles into the symbol
 		// trigger (it has no sequence trigger: the units are its window's).
 		if e.hardwareSymbol {
-			c.Symbol = planHardwareSymbol(serial)
+			c.Symbol = planHardwareSymbol(&serial)
 		}
 		if !c.Symbol.Enabled {
 			c.Normal = fallbackNormal
@@ -453,10 +453,10 @@ func (e *Engine) planSerial(c *sramcapture.Config, serial SerialParams, fallback
 		}
 	}
 	if e.hardwarePacket != 0 {
-		c.Packet = planHardwarePacket(serial, e.hardwarePacket, e.arincAux.Load())
+		c.Packet = planHardwarePacket(&serial, e.hardwarePacket, e.arincAux.Load())
 	}
 	if e.hardwareManchester {
-		c.Manchester = planHardwareManchester(serial)
+		c.Manchester = planHardwareManchester(&serial)
 	}
 	if c.Packet.Enabled || c.Manchester.Enabled {
 		c.Normal = true

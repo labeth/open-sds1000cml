@@ -210,7 +210,7 @@ func (e *Engine) beginSoftStream(ctx context.Context, p SerialParams, trig Strea
 		// must be one it matches wherever it comes.
 		q := p
 		q.Bytes, q.Pattern = nil, []PatternElem{{Kind: patternData, Value: value & unitMask(p), Mask: unitMask(p)}}
-		if !planHardwareSymbol(q).Enabled {
+		if !planHardwareSymbol(&q).Enabled {
 			return sramcapture.RecordIdentity{}, fmt.Errorf("%s streams as captures, and the FPGA's symbol trigger matches %X only at a fixed place in a frame: stop it by hand", d.Name, value&unitMask(p))
 		}
 	}
@@ -707,7 +707,7 @@ func bitsLen(mask int) int {
 func (s *softStream) symbolPlans(pat []PatternElem) bool {
 	p := s.p
 	p.Bytes, p.Pattern = nil, pat
-	return planHardwareSymbol(p).Enabled
+	return planHardwareSymbol(&p).Enabled
 }
 
 // softRecordConfig is a record of words at decimation log on the symbol

@@ -109,7 +109,7 @@ func symCheck(b []int, width int, poly, init uint64, reflected bool) int {
 // TRLC-LINKS: REQ-SDS-013
 func symMatches(t *testing.T, p SerialParams, w *symWave) []int {
 	t.Helper()
-	c := planHardwareSymbol(p)
+	c := planHardwareSymbol(&p)
 	if !c.Enabled {
 		t.Fatalf("unplannable: %+v", p)
 	}

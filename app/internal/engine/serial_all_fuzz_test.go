@@ -85,7 +85,7 @@ func TestSymbolPlansWhatTheBlockTakes(t *testing.T) {
 		for baud := 100.0; baud < 1e8; baud *= 1.25 {
 			for _, bits := range []int{0, 3, 12, 21, 24, 26, 34, 38, 70} {
 				p := SerialParams{Proto: proto, ChA: 0, ChB: 1, Baud: int(baud), Bits: bits, HaveThr: true, Threshold: 128}
-				if c := planHardwareSymbol(p); c.Enabled && c.Validate() != nil {
+				if c := planHardwareSymbol(&p); c.Enabled && c.Validate() != nil {
 					t.Fatalf("proto %d at %d Bd, bits %d: planned %+v, which the block refuses: %v", proto, p.Baud, bits, c, c.Validate())
 				}
 			}
@@ -120,7 +120,7 @@ func FuzzSerialAllProtocols(f *testing.F) {
 		}
 		sampleS := fuzzSampleS[int(rate)%len(fuzzSampleS)]
 		t0 := time.Now()
-		c := planHardwareSymbol(p)
+		c := planHardwareSymbol(&p)
 		if c.Enabled {
 			if c.Channel > 1 || c.Mode > sramcapture.SymbolClocked || c.LeadLen > 4 || c.Prescale > 7 || c.UnitQ8 < 2048 || c.UnitQ8 >= 1<<28 ||
 				c.FrameUnits > 63 || c.Period > 63 || c.Phase0 > 63 || (c.Period != 0 && c.Phase0 >= c.Period) || c.K > 1023 {

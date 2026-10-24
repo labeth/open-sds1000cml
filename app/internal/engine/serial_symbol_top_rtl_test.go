@@ -126,7 +126,7 @@ func TestSymbolTopRTL(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			w := tc.wave()
-			c := planHardwareSymbol(tc.p)
+			c := planHardwareSymbol(&tc.p)
 			if !c.Enabled {
 				t.Fatal("unplannable")
 			}

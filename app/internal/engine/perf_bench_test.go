@@ -485,3 +485,41 @@ func BenchmarkViewWindow(b *testing.B) {
 		e.window(m, r, [2]chScale{{vdiv: 1}, {vdiv: 1}}, envelopeValue(0, 4))
 	}
 }
+
+//go:noinline
+func planPacketByValue(p SerialParams) bool { return planHardwarePacket(&p, 0xffff, 0).Enabled }
+
+//go:noinline
+func planPacketByPointer(p *SerialParams) bool { return planHardwarePacket(p, 0xffff, 0).Enabled }
+
+//go:noinline
+func planSymbolByValue(p SerialParams) bool { return planHardwareSymbol(&p).Enabled }
+
+//go:noinline
+func planSymbolByPointer(p *SerialParams) bool { return planHardwareSymbol(p).Enabled }
+
+// TRLC-LINKS: REQ-SDS-013
+func BenchmarkPlanPacketSymbol(b *testing.B) {
+	pk := SerialParams{Proto: serCAN, Baud: 500000, HaveThr: true, Threshold: 128, Bytes: []int{0x12, 0x34}}
+	sy := SerialParams{Proto: serLIN, Baud: 19200, HaveThr: true, Threshold: 128, Bytes: []int{0x55}}
+	b.Run("packet", func(b *testing.B) {
+		for b.Loop() {
+			planPacketByPointer(&pk)
+		}
+	})
+	b.Run("packetRef", func(b *testing.B) {
+		for b.Loop() {
+			planPacketByValue(pk)
+		}
+	})
+	b.Run("symbol", func(b *testing.B) {
+		for b.Loop() {
+			planSymbolByPointer(&sy)
+		}
+	})
+	b.Run("symbolRef", func(b *testing.B) {
+		for b.Loop() {
+			planSymbolByValue(sy)
+		}
+	})
+}
