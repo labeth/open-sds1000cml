@@ -15,7 +15,9 @@
 function decodeMIL1553(codes, colTimeS, cfg) {
   cfg = cfg || {};
   if (cfg.inverted) {
-    codes = Array.from(codes, x => x < 0 ? x : 255 - x);
+    const inv = new Float64Array(codes.length); // a loop, not Array.from's call a sample
+    for (let i = 0; i < codes.length; i++) { const x = codes[i]; inv[i] = x < 0 ? x : 255 - x; }
+    codes = inv;
     cfg = Object.assign({}, cfg);
     if (cfg.threshold != null) cfg.threshold = 255 - cfg.threshold;
   }
@@ -33,11 +35,11 @@ function decodeMIL1553(codes, colTimeS, cfg) {
   if (cfg.bitrate > 0) {
     T = (1 / cfg.bitrate) / colTimeS;
   } else {
-    const gaps = [];
+    const gl = [];
     // sub-sample crossings: at small T the integer index quantizes a T/2 gap low.
-    for (let k = 1; k < S.edges.length; k++) { const g = S.edges[k].x - S.edges[k - 1].x; if (g >= 1) gaps.push(g); }
-    if (gaps.length < 3) return fail("mil1553", "too few edges / cannot infer bitrate");
-    gaps.sort((a, b) => a - b);
+    for (let k = 1; k < S.edges.length; k++) { const g = S.edges[k].x - S.edges[k - 1].x; if (g >= 1) gl.push(g); }
+    if (gl.length < 3) return fail("mil1553", "too few edges / cannot infer bitrate");
+    const gaps = Float64Array.from(gl).sort(); // a typed sort is numeric, without a comparator call
     let base = gaps[Math.floor(gaps.length * 0.1)];
     let sum = 0, cnt = 0;
     for (const g of gaps) if (Math.abs(g - base) <= 0.5 * base) { sum += g; cnt++; } // ±0.5 window
