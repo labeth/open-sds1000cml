@@ -58,7 +58,10 @@ func (a *Agent) TCPAddr() string {
 func (a *Agent) handleConn(conn net.Conn) {
 	defer conn.Close()
 	// Large deadline: file-transfer chunks and long exec can take a while.
-	r := bufio.NewReaderSize(conn, 1<<20)
+	// otactl dials once per call, so the reader is sized for a request line
+	// in a few fills rather than a whole chunk: ReadBytes grows past it, and a
+	// 1 MiB buffer zeroed per connection cost more than the call itself.
+	r := bufio.NewReaderSize(conn, 64<<10)
 	for {
 		_ = conn.SetReadDeadline(time.Now().Add(120 * time.Second))
 		line, err := r.ReadBytes('\n')
