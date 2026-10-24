@@ -23,9 +23,14 @@ func planHardwareUART(p SerialParams, sample bool) sramcapture.UARTTriggerConfig
 	if bits == 0 {
 		bits = 8
 	}
-	parity := map[string]uint8{"": 0, "none": 0, "even": 1, "odd": 2}
-	par, ok := parity[p.Parity]
-	if !ok {
+	var par uint8
+	switch p.Parity {
+	case "", "none":
+	case "even":
+		par = 1
+	case "odd":
+		par = 2
+	default:
 		return sramcapture.UARTTriggerConfig{}
 	}
 	c := sramcapture.UARTTriggerConfig{Enabled: true, Channel: uint8(p.ChA), Inverted: p.Inverted, Length: uint8(len(p.Bytes))}

@@ -43,3 +43,14 @@ func BenchmarkMatchBytes(b *testing.B) {
 		matchBytes(sp, want)
 	}
 }
+
+// TRLC-LINKS: REQ-SDS-013, REQ-SDS-229
+func BenchmarkPlanHardwareUART(b *testing.B) {
+	p := SerialParams{Proto: serUART, Baud: 115200, Bits: 8, Parity: "none", HaveThr: true, Threshold: 128, Bytes: []int{0x55, 0xAA}}
+	q := p
+	q.Parity, q.Baud = "even", 1000000
+	for b.Loop() {
+		planHardwareUART(p, false)
+		planHardwareUART(q, true)
+	}
+}
