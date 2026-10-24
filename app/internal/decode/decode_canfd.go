@@ -282,7 +282,7 @@ func DecodeCANFD(codes []uint8, colTimeS float64, cfg CANFDCfg) Result {
 // evidence, and are excluded from refine and validation.
 // TRLC-LINKS: REQ-SDS-018
 func inferCANspb(S sliced) (float64, string) {
-	var gaps []float64
+	gaps := make([]float64, 0, len(S.edges))
 	for k := 1; k < len(S.edges); k++ {
 		if g := float64(S.edges[k].i - S.edges[k-1].i); g >= 2 {
 			gaps = append(gaps, g)
@@ -304,11 +304,12 @@ func inferCANspb(S sliced) (float64, string) {
 		i = j
 	}
 	best, bestFrac := 0.0, -1.0
+	kg := make([]float64, 0, len(gaps)) // one candidate's gaps, reused
 	for _, cand := range cands {
 		if cand < 2.5 { // below the samples/bit floor: a spur cluster
 			continue
 		}
-		var kg []float64
+		kg = kg[:0]
 		for _, g := range gaps {
 			if g <= 16*cand {
 				kg = append(kg, g)
