@@ -3,6 +3,8 @@ package agent
 
 import (
 	"crypto/rand"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/base64"
 	"encoding/json"
 	"net"
@@ -94,5 +96,29 @@ func BenchmarkTCPCall(b *testing.B) {
 		}
 		c.Close()
 		<-done
+	}
+}
+
+// An 8 MiB upload in otactl's 128 KiB chunks, committed.
+// TRLC-LINKS: REQ-SDS-106
+func BenchmarkUpload8M(b *testing.B) {
+	a := benchAgent(b)
+	data := make([]byte, 8<<20)
+	rand.Read(data)
+	sum := sha256.Sum256(data)
+	dest := filepath.Join(b.TempDir(), "u.bin")
+	for b.Loop() {
+		id, err := a.newUpload(dest, int64(len(data)), hex.EncodeToString(sum[:]), 0o644)
+		if err != nil {
+			b.Fatal(err)
+		}
+		for off := 0; off < len(data); off += 128 << 10 {
+			if _, err := a.writeUpload(id, int64(off), data[off:off+128<<10]); err != nil {
+				b.Fatal(err)
+			}
+		}
+		if _, _, err := a.commitUpload(id); err != nil {
+			b.Fatal(err)
+		}
 	}
 }
