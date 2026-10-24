@@ -226,3 +226,12 @@ func BenchmarkScorePhys(b *testing.B) {
 		}
 	}
 }
+
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-251
+func BenchmarkMorseOf(b *testing.B) {
+	for b.Loop() {
+		for _, c := range []byte("SOS CQ DE 73 ?") {
+			MorseOf(c)
+		}
+	}
+}

@@ -641,14 +641,15 @@ var morseCode = map[string]byte{".-": 'A', "-...": 'B', "-.-.": 'C', "-..": 'D',
 
 // MorseOf is a character's Morse code ("" for none).
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-251
-func MorseOf(c byte) string {
+func MorseOf(c byte) string { return morseOf[c] }
+
+// morseOf is morseCode turned round: each character's code (each has one).
+var morseOf = func() (t [256]string) {
 	for k, v := range morseCode {
-		if v == c {
-			return k
-		}
+		t[v] = k
 	}
-	return ""
-}
+	return t
+}()
 
 // DecodeMorse decodes Morse code on a keyed line (sigrok's morse): marks
 // shorter than two units are dots, longer ones dashes; a space under two
