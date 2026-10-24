@@ -337,8 +337,15 @@ func (e *Engine) oneFrame(norm bool) {
 	// wrongly froze every real small on-screen signal (edge_x found, ptp<40 →
 	// never locked). Native-fast keeps raw ptp only (record spans < 1 period).
 	sigPresent := p >= nativeEdgeMinPtp
-	if !nativeFast && !sigPresent {
-		sigPresent = signalPresent(disc, float64(e.tuneSigK.Load()))
+	nf := -1.0 // disc's noiseFloor, taken once for the presence test and the edge
+	noise := func() float64 {
+		if nf < 0 {
+			nf = noiseFloor(disc)
+		}
+		return nf
+	}
+	if !nativeFast && !sigPresent { // signalPresent, on the scan above
+		sigPresent = float64(p) >= float64(e.tuneSigK.Load())*noise()
 	}
 
 	// Qualifier dispatch (spec 05): PULSE/SLOPE/VIDEO REPLACE the EDGE
@@ -367,13 +374,13 @@ func (e *Engine) oneFrame(norm bool) {
 		// AUTO free-runs unlocked, NORM holds. The mid-level fallback survives
 		// only for an UNSET (boot) level, to keep the very first frames stable.
 		if td := e.trigDispLevel(int(e.trigSrc.Load())); td >= 0 {
-			edgeX = centerCross(disc, td, rising)
+			edgeX = centerCrossNF(disc, td, rising, -1, noise())
 			if sigPresent { // a real signal the level can sit outside of
 				margin := (hi - lo) / 16
 				lvlOffSig = td < lo-margin || td > hi+margin
 			}
 		} else {
-			edgeX = centerCross(disc, (lo+hi)/2, rising) // == midLevel(disc); reuse the canonical scan
+			edgeX = centerCrossNF(disc, (lo+hi)/2, rising, -1, noise()) // == midLevel(disc); reuse the canonical scan
 		}
 	}
 
