@@ -71,6 +71,7 @@
     calls: [],                            // this phone's calls whose changes may still show
     queued: new Map(),                    // row id -> the queued call that sends its latest value
     lastCall: -Infinity, notice: "",
+    modelGen: 0, snap: null,              // the model's changes counted, and History's snapshot of it (gen, ws)
     fns: [],
   };
   // TRLC-LINKS: REQ-SDS-220
@@ -108,6 +109,7 @@
     const x = Object.assign({}, r, { Text: text === undefined ? r.Text : text });
     if (value !== undefined) x.Value = value;
     S.model.rows.set(id, x);
+    S.modelGen++;
   }
 
   // ---- the long-poll -----------------------------------------------------------------------
@@ -217,6 +219,7 @@
       else if (mine && m.rows.has(id)) m.rows.set(id, Object.assign({}, m.rows.get(id), { Value: mine.Value, Text: mine.Text }));
     }
     S.model = m;
+    S.modelGen++;
   }
 
   // ---- History --------------------------------------------------------------------------------
@@ -279,11 +282,15 @@
   // nothing is booked: its rows are not known yet.
   // TRLC-LINKS: REQ-SDS-220
   function book() {
-    const snap = RC.snapshot(S.model, wsId());
+    // a status that changed only the lamps books against the same model: its
+    // snapshot is taken once, and one History already holds has no changes
+    const wsNow = wsId();
+    if (!S.snap || S.snap.gen !== S.modelGen || S.snap.ws !== wsNow) S.snap = { gen: S.modelGen, ws: wsNow, snap: RC.snapshot(S.model, wsNow) };
+    const snap = S.snap.snap;
     if (!S.base || !S.base.rows.size) { S.base = snap; return; }
     settle();
     if (S.calls.some((c) => !c.doneAt || c.autoset)) return;
-    const rows = RC.diff(S.base, snap);
+    const rows = S.base === snap ? [] : RC.diff(S.base, snap);
     const ws = S.base.ws && snap.ws && S.base.ws !== snap.ws ? { from: S.base.ws, to: snap.ws } : null;
     S.base = snap;
     if (rows.length || ws) {
