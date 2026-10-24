@@ -697,8 +697,10 @@ const FPGA_WINDOW = 32;
 // TRLC-LINKS: REQ-SDS-141
 function srFpgaLevel(sig) {
   if (!sig || sig.length < 8) return null;
-  let lo = 255, hi = 0;
-  for (const v of sig) { if (v < lo) lo = v; if (v > hi) hi = v; }
+  let lo = sig[0], hi = sig[0];
+  // indexed, and from the first sample a new low is never a new high: the
+  // whole live record is scanned
+  for (let i = 1; i < sig.length; i++) { const v = sig[i]; if (v < lo) lo = v; else if (v > hi) hi = v; }
   if (hi - lo < 16) return null;
   return { level: (lo + hi) >> 1, hysteresis: Math.max(2, (hi - lo) >> 3) };
 }
