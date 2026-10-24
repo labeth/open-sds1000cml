@@ -47,6 +47,8 @@ function decodeUSBLS(dp, colTimeS, cfg) {
     for (let k = 1; k < S.edges.length; k++) { const g = S.edges[k].i - S.edges[k - 1].i; if (g >= 1) gaps.push(g); }
     if (gaps.length < 3) return fail("usbls", "too few edges / cannot infer bitrate");
     gaps.sort((a, b) => a - b);
+    const pre = new Float64Array(gaps.length + 1); // prefix sums of the sorted gaps
+    for (let i = 0; i < gaps.length; i++) pre[i + 1] = pre[i] + gaps[i];
     const cands = [];
     for (let i = 0; i < gaps.length; ) {
       const seed = gaps[i];
@@ -58,20 +60,32 @@ function decodeUSBLS(dp, colTimeS, cfg) {
     let best = 0, bestFrac = -1;
     for (const cand of cands) {
       if (cand < 2.5) continue; // below the samples/bit floor: a spur cluster
-      const kg = gaps.filter((g) => g <= 16 * cand);
-      if (kg.length < 3) continue;
+      // The gaps kept (<= 16 candidate bits) are a prefix of the sorted
+      // list: found by bisection, not filtered into a copy per candidate.
+      let kn = 0;
+      for (let lo = 0, hi = gaps.length; lo < hi; ) {
+        const m = (lo + hi) >> 1;
+        if (gaps[m] <= 16 * cand) lo = kn = m + 1; else hi = m;
+      }
+      if (kn < 3) continue;
+      // The gaps within 35 % of ref are a contiguous run of the sorted list:
+      // its ends by bisection on that same test, its sum from the prefix
+      // sums (whole samples, so exact).
       let ref = cand;
       for (let pass = 0; pass < 2; pass++) {
-        let sum = 0, cnt = 0;
-        for (const g of kg) if (Math.abs(g - ref) <= 0.35 * ref) { sum += g; cnt++; }
-        if (cnt) ref = sum / cnt;
+        const tol = 0.35 * ref;
+        let lo = 0, hi = kn;
+        for (let a = 0, b = kn; a < b; ) { const m = (a + b) >> 1; const g = gaps[m]; if (g >= ref || Math.abs(g - ref) <= tol) b = m; else a = m + 1; lo = a; }
+        for (let a = lo, b = kn; a < b; ) { const m = (a + b) >> 1; const g = gaps[m]; if (g <= ref || Math.abs(g - ref) <= tol) a = m + 1; else b = m; hi = a; }
+        if (hi > lo) ref = (pre[hi] - pre[lo]) / (hi - lo);
       }
       let good = 0;
-      for (const g of kg) {
+      for (let i = 0; i < kn; i++) {
+        const g = gaps[i];
         const m = Math.round(g / ref);
         if (m >= 1 && Math.abs(g - m * ref) <= 0.35 * ref) good++;
       }
-      const frac = good / kg.length;
+      const frac = good / kn;
       // >= keeps the LARGER candidate on an exact tie (candidates ascend).
       if (frac >= 0.7 && frac >= bestFrac) { best = ref; bestFrac = frac; }
     }
