@@ -34,13 +34,10 @@ function sgPushRow(sg, mags, half, peak, nyq) {
   data.copyWithin(w * 4, 0, w * 4 * (h - 1)); // scroll down 1 row
   const floor = sg.floorDb < 0 ? sg.floorDb : -60; // NaN/>=0 → Inf/NaN paint
   const invFloor = 1 / (-floor);
-  // Column x's bins end where x+1's start: one floor a column.
-  let next = Math.floor(0 * half / w);
   for (let x = 0; x < w; x++) {
     // a pixel shows the largest of its bins: one sampled bin misses a narrow tone
-    const k0 = Math.min(half - 1, next);
-    next = Math.floor((x + 1) * half / w);
-    const k1 = Math.min(half - 1, next - 1);
+    const k0 = Math.min(half - 1, Math.floor(x * half / w));
+    const k1 = Math.min(half - 1, Math.floor((x + 1) * half / w) - 1);
     let m = mags[k0];
     for (let k = k0 + 1; k <= k1; k++) if (mags[k] > m) m = mags[k];
     const db = 20 * Math.log10(m / peak + 1e-12);

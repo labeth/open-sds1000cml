@@ -11,32 +11,28 @@
 function uartChars(S, spb, parity, stops, breakBits) {
   const out = [];
   const pc = parity !== "none" ? 1 : 0;
-  // logicAt inline: ten calls a character were most of a decode.
-  const codes = S.codes, thr = S.threshold, n = S.n;
-  // TRLC-LINKS: REQ-SDS-018
-  const lv = (x) => { const i = Math.round(x); return i < 0 || i >= n || codes[i] < 0 ? -1 : codes[i] >= thr ? 1 : 0; };
   let next = -Infinity;
   for (let k = 0; k < S.edges.length; k++) {
     const e = S.edges[k];
     if (e.dir >= 0 || e.x < next) continue;
     const x0 = e.x;
-    if (lv(x0 + 0.5 * spb) !== 0) continue;
+    if (logicAt(S, x0 + 0.5 * spb) !== 0) continue;
     let val = 0, off = false;
     for (let c = 0; c < 8; c++) {
-      const b = lv(x0 + (1.5 + c) * spb);
+      const b = logicAt(S, x0 + (1.5 + c) * spb);
       if (b < 0) { off = true; break; }
       val |= b << c;
     }
     if (off) break;
     let kind = "data";
     if (pc === 1) {
-      const pb = lv(x0 + 9.5 * spb);
+      const pb = logicAt(S, x0 + 9.5 * spb);
       if (pb < 0) break;
       let want = popcount(val) & 1;
       if (parity === "odd") want = 1 - want;
       if (pb !== want) kind = "parity-error";
     }
-    const sb = lv(x0 + (9.5 + pc) * spb);
+    const sb = logicAt(S, x0 + (9.5 + pc) * spb);
     if (sb < 0) break;
     const x1 = x0 + (9 + pc + stops) * spb;
     const ch = { x0, x1, val, kind, low: 0 };

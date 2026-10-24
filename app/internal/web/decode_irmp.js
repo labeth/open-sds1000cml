@@ -16,17 +16,12 @@ function irWithin(d, want, frac) { return d >= want * (1 - frac) && d <= want * 
 // irmpBits mirrors decode_irmp.go irmpBits.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-255
 function irmpBits(m, i, tm, max, us) {
-  // irWithin's bounds for the three timings worked out once, not a sample.
-  const mLo = tm[0] * (1 - 0.4), mHi = tm[0] * (1 + 0.4);
-  const zLo = tm[1] * (1 - 0.3), zHi = tm[1] * (1 + 0.3);
-  const oLo = tm[2] * (1 - 0.3), oHi = tm[2] * (1 + 0.3);
   const bits = [];
   for (; i + 1 < m.length && bits.length < max; i++) {
-    const mk = us(m[i].x1 - m[i].x0);
-    if (!(mk >= mLo && mk <= mHi)) break;
+    if (!irWithin(us(m[i].x1 - m[i].x0), tm[0], 0.4)) break;
     const sp = us(m[i + 1].x0 - m[i].x1);
-    if (sp >= zLo && sp <= zHi) bits.push(0);
-    else if (sp >= oLo && sp <= oHi) bits.push(1);
+    if (irWithin(sp, tm[1], 0.3)) bits.push(0);
+    else if (irWithin(sp, tm[2], 0.3)) bits.push(1);
     else return { bits, j: i };
   }
   return { bits, j: i };

@@ -11,7 +11,7 @@ function lineOpts(thr) { return thr != null ? { threshold: thr } : {}; }
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-250
 function medianOf(v) {
   if (!v.length) return 0;
-  const c = Float64Array.from(v).sort(); // numeric without a comparator call
+  const c = v.slice().sort((a, b) => a - b);
   return c[c.length >> 1];
 }
 
@@ -90,7 +90,7 @@ function decodeSteps(proto, a, b, colTimeS, cfg, quad) {
     if (quad) fwd = lb === 0;
     else {
       fwd = dirFlat === 1;
-      if (B.ok) { const bi = Math.round(e.x); fwd = bi >= 0 && bi < B.n && B.codes[bi] >= B.threshold; } // logicAt(B, e.x) === 1
+      if (B.ok) fwd = logicAt(B, e.x) === 1;
       count += fwd ? 1 : -1;
     }
     if (open) { spans.push(pspan(e.x, e.x, n, "", "sof", 0)); open = false; }

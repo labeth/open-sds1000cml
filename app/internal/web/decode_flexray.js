@@ -115,11 +115,6 @@ function decodeFlexRay(codes, colTimeS, cfg) {
     return found ? bestX - T : anchor;
   };
 
-  // logicAt inline: a call a bit was most of a decode.
-  const fcodes = S.codes, fthr = S.threshold, fn = S.n;
-  // TRLC-LINKS: REQ-SDS-018
-  const lv = (x) => { const i = Math.round(x); return i < 0 || i >= fn || fcodes[i] < 0 ? -1 : fcodes[i] >= fthr ? 1 : 0; };
-
   const spans = [], bytes = [], toks = [];
   let frames = 0, goodFrames = 0, consumedUntil = -1;
 
@@ -146,10 +141,10 @@ function decodeFlexRay(codes, colTimeS, cfg) {
       anchor = resync(anchor);
       // A valid BSS is HIGH then LOW. Anything else — FES (low,high), idle
       // (high,high), or running off the end — ends the frame.
-      if (lv(anchor + 0.5 * T) !== 1 || lv(anchor + 1.5 * T) !== 0) break;
+      if (logicAt(S, anchor + 0.5 * T) !== 1 || logicAt(S, anchor + 1.5 * T) !== 0) break;
       let val = 0, eof = false;
       for (let d = 0; d < 8; d++) {           // 8 data bits, MSB-first
-        const bit = lv(anchor + (2.5 + d) * T);
+        const bit = logicAt(S, anchor + (2.5 + d) * T);
         if (bit < 0) { eof = true; break; }
         val = (val << 1) | bit;
       }
