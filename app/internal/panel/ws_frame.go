@@ -86,7 +86,7 @@ type anaState struct {
 	// COMPARE
 	stabPrev []float64
 	stabRes  []bool
-	stabKey  string
+	stabKey  stabK
 	stabFed  frameKey // the frame tested last
 	refDiff  [2]refDiffResult
 }

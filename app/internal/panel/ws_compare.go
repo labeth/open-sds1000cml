@@ -122,12 +122,25 @@ func screenPoints(f *engine.Frame, s *sv, ch int) []float64 {
 	return out
 }
 
-// stabKey is what the repeat test depends on.
+// stabK is what the repeat test depends on, compared as a value (floats by
+// their bits): built each frame, it formats nothing.
+type stabK struct {
+	src, trigType, acq, zoom, serial int
+	vidx, cpl                        [2]int
+	offV, probe                      [2]uint64
+	tdiv, pos, zoomOff, holdoff      uint64
+	rising                           bool
+	trigCode                         uint16
+}
+
+// stabKey is the repeat test's dependencies now.
 // TRLC-LINKS: REQ-SDS-218
-func stabKey(s *sv) string {
-	src := s.st.TrigSource & 1
-	return fmt.Sprint(src, s.vidx, s.offV, s.probe, s.cpl, s.st.TdivS, s.st.TrigRising, s.st.TrigType, s.st.TrigCode,
-		s.st.TrigPosFrac, s.st.AcqMode, s.zoom, s.zoomOff, s.st.HoldoffS, s.st.SerialMode)
+func stabKey(s *sv) stabK {
+	b := math.Float64bits
+	return stabK{src: s.st.TrigSource & 1, trigType: s.st.TrigType, acq: s.st.AcqMode, zoom: s.zoom, serial: s.st.SerialMode,
+		vidx: s.vidx, cpl: s.cpl, offV: [2]uint64{b(s.offV[0]), b(s.offV[1])}, probe: [2]uint64{b(s.probe[0]), b(s.probe[1])},
+		tdiv: b(s.st.TdivS), pos: b(s.st.TrigPosFrac), zoomOff: b(s.zoomOff), holdoff: b(s.st.HoldoffS),
+		rising: s.st.TrigRising, trigCode: s.st.TrigCode}
 }
 
 // stabFrame tests the trigger source's capture against the previous one.

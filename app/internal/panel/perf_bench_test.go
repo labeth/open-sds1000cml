@@ -127,3 +127,12 @@ func BenchmarkToolLineRef(b *testing.B) {
 		_ = append(append([]wsview.Seg{{Key: "Adjust", Job: "cursor A"}, {Key: "push", Job: "cursors"}}, posTool(s)...), wsview.Seg{Key: "Zoom", Job: "x"})
 	}
 }
+
+// TRLC-LINKS: REQ-SDS-218
+func BenchmarkStabKey(b *testing.B) {
+	c, _, _ := newC(&testing.T{})
+	s := c.snap()
+	for b.Loop() {
+		_ = stabKey(s)
+	}
+}
