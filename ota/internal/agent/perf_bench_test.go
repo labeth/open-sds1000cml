@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"open-sds/ota/internal/config"
 )
@@ -210,5 +211,14 @@ func BenchmarkFactoryCandidates(b *testing.B) {
 		if c := a.factoryCandidates(); len(c) != 0 {
 			b.Fatal(c)
 		}
+	}
+}
+
+// The supervisor waits a second at a time while paused or not taken over.
+// TRLC-LINKS: REQ-SDS-117
+func BenchmarkIdleWait(b *testing.B) {
+	a := benchAgent(b)
+	for b.Loop() {
+		a.idleWait(time.Microsecond)
 	}
 }
