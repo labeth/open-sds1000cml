@@ -98,13 +98,17 @@ type MatchEditorView struct {
 // tokensOf renders a trigger's match as editor tokens.
 // TRLC-LINKS: REQ-SDS-013
 func tokensOf(p engine.SerialParams) []string {
-	var out []string
 	if len(p.Pattern) == 0 {
-		for _, b := range p.Bytes {
-			out = append(out, fmt.Sprintf("%02X", b&0xff))
+		if len(p.Bytes) == 0 {
+			return nil
+		}
+		out := make([]string, len(p.Bytes))
+		for i, b := range p.Bytes {
+			out[i] = hexTok[b&0xff]
 		}
 		return out
 	}
+	out := make([]string, 0, len(p.Pattern))
 	for _, e := range p.Pattern {
 		switch {
 		case e.Kind == 4:
@@ -118,15 +122,23 @@ func tokensOf(p engine.SerialParams) []string {
 		case e.Mask&0xff == 0:
 			out = append(out, "??")
 		case e.Mask&0xff == 0xf0:
-			out = append(out, fmt.Sprintf("%X?", e.Value>>4&0xf))
+			out = append(out, hexTok[e.Value>>4&0xf][1:]+"?")
 		case e.Mask&0xff == 0x0f:
-			out = append(out, fmt.Sprintf("?%X", e.Value&0xf))
+			out = append(out, "?"+hexTok[e.Value&0xf][1:])
 		default:
-			out = append(out, fmt.Sprintf("%02X", e.Value&0xff))
+			out = append(out, hexTok[e.Value&0xff])
 		}
 	}
 	return out
 }
+
+// hexTok is each byte as a match token: two upper-case hex digits.
+var hexTok = func() (t [256]string) {
+	for b := range t {
+		t[b] = fmt.Sprintf("%02X", b)
+	}
+	return t
+}()
 
 // midiStatus is the STS token: a unit with its top bit set, a MIDI status
 // byte (a message's start).

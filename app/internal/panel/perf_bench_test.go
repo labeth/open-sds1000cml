@@ -4,6 +4,7 @@ package panel
 import (
 	"fmt"
 	"math"
+	"strings"
 	"testing"
 
 	"open-sds/app/internal/analog"
@@ -489,5 +490,29 @@ func TestTakeTitle(t *testing.T) {
 				t.Errorf("title %q, want %q", p.Title, want)
 			}
 		}
+	}
+}
+
+// TRLC-LINKS: REQ-SDS-013
+func BenchmarkTokensOf(b *testing.B) {
+	bytes := engine.SerialParams{Bytes: []int{0x55, 0xAA, 0x01, 0x80, 0xFF, 0x10, 0x20, 0x30}}
+	pat := engine.SerialParams{Pattern: []engine.PatternElem{{Kind: 1}, {Kind: 2, Value: 0x5A, Mask: 0xff}, {Kind: 2, Value: 0xA0, Mask: 0xf0},
+		{Kind: 2, Value: 0x0C, Mask: 0x0f}, {Kind: 2, Mask: 0}, {Kind: 4}}}
+	for b.Loop() {
+		tokensOf(bytes)
+		tokensOf(pat)
+	}
+}
+
+// Match tokens read as their fmt forms.
+// TRLC-LINKS: REQ-SDS-013
+func TestTokensOfHex(t *testing.T) {
+	p := engine.SerialParams{Bytes: []int{0, 0x5, 0xAB, 0xFF, -1, 0x1FF}}
+	if got := strings.Join(tokensOf(p), " "); got != "00 05 AB FF FF FF" {
+		t.Errorf("bytes: %q", got)
+	}
+	p = engine.SerialParams{Pattern: []engine.PatternElem{{Kind: 2, Value: 0xA0, Mask: 0xf0}, {Kind: 2, Value: 0x0C, Mask: 0x0f}, {Kind: 2, Value: 0x3E, Mask: 0xff}}}
+	if got := strings.Join(tokensOf(p), " "); got != "A? ?C 3E" {
+		t.Errorf("pattern: %q", got)
 	}
 }
