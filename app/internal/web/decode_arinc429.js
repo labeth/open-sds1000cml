@@ -25,7 +25,7 @@ function decodeARINC429(codes, colTimeS, cfg) {
   if (n < 8) return fail("no/too-few samples");
 
   // --- tri-level slice: histogram -> NULL(mid), HI rail(gmax), LO rail(gmin).
-  const h = new Float64Array(256);
+  const h = new Uint32Array(256); // integer counts: no float add a sample
   for (let i = 0; i < n; i++) { const v = codes[i]; if (v >= 0 && v <= 255) h[v | 0]++; }
   const noiseFloor = Math.max(1, 0.001 * n);
   let gmin = 0; while (gmin < 255 && h[gmin] < noiseFloor) gmin++;
@@ -33,11 +33,14 @@ function decodeARINC429(codes, colTimeS, cfg) {
   if (gmax <= gmin) return fail("flat/no transitions");
   // NULL level = the centre of the densest band of codes (a NULL with ripple
   // spreads over a dozen codes; decode_arinc429.go ARINC429Levels).
+  // A sliding sum over [c-4, c+4] clipped to [gmin, gmax].
   let mid = gmin, best = -1;
+  let sum = 0;
+  for (let k = gmin; k <= Math.min(gmax, gmin + 4); k++) sum += h[k];
   for (let c = gmin; c <= gmax; c++) {
-    let sum = 0;
-    for (let k = Math.max(gmin, c - 4); k <= Math.min(gmax, c + 4); k++) sum += h[k];
     if (sum > best) { best = sum; mid = c; }
+    if (c + 5 <= gmax) sum += h[c + 5];
+    if (c - 4 >= gmin) sum -= h[c - 4];
   }
   let midf = mid;
   if (cfg.threshold != null) midf = cfg.threshold;
