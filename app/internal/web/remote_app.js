@@ -449,7 +449,10 @@
   // TRLC-LINKS: REQ-SDS-220
   function qbLabel(b, text, side) {
     const t = text === null ? "end" : RC.compact(text);
-    if (!b.firstChild || !b.firstChild.classList || !b.firstChild.classList.contains("qc")) {
+    // the chevron sits on the button's side: a clockwise button ends with it
+    // (looking at the first child there rebuilt and re-measured it each status)
+    const chev = side < 0 ? b.firstChild : b.lastChild;
+    if (!chev || !chev.classList || !chev.classList.contains("qc")) {
       b.textContent = "";
       const c = h("span", { class: "qc", "aria-hidden": "true", text: side < 0 ? LQ : RQ }), v = h("span", { class: "qv" });
       if (side < 0) b.append(c, v); else b.append(v, c);
