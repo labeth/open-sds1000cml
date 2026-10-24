@@ -331,3 +331,12 @@ func BenchmarkStreamBucketLog(b *testing.B) {
 		}
 	}
 }
+
+// TRLC-LINKS: REQ-SDS-013
+func BenchmarkSymbolIndex(b *testing.B) {
+	for b.Loop() {
+		for c := uint32(1); c < 1<<22; c = c*3 + 1 {
+			SymbolIndex(c&1 == 0, c)
+		}
+	}
+}

@@ -1,6 +1,8 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
 package decode
 
+import "math/bits"
+
 // The qualify image's symbol trigger (fpga/images/qualify/symbol_trigger.v),
 // modelled clock for clock on the 125 MHz receiver clock: runs of the run
 // line classified through a host table (leader and data codes), bits from
@@ -60,12 +62,7 @@ func SymbolIndex(level bool, count uint32) int {
 	}
 	e, sh := 0, 0
 	if count >= 64 {
-		top := 0
-		for b := 6; b < 21; b++ {
-			if count>>b&1 != 0 {
-				top = b
-			}
-		}
+		top := bits.Len32(count) - 1 // the leading one: bit 6 to 20
 		e, sh = top-5, top-6
 	}
 	idx := e<<6 | int(count>>sh&63)
