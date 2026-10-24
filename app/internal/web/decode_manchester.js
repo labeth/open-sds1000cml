@@ -26,14 +26,22 @@ function recoverManchester(S, s0, T, ieee, lastEdgeX) {
   //                                              stop there (real captures hold several frames whose
   //                                              gaps are non-integer T apart, so one phase cannot
   //                                              align them all — decode the first frame cleanly).
+  // logicAt inline (a call a quarter cell was most of a decode), and each
+  // cell's start rounded once: it is the previous cell's end plus one.
+  const codes = S.codes, thr = S.threshold, sn = S.n;
+  // TRLC-LINKS: REQ-SDS-018
+  const lv = (x) => { const i = Math.round(x); return i < 0 || i >= sn || codes[i] < 0 ? -1 : codes[i] >= thr ? 1 : 0; };
+  let next = Math.round(s0);
   for (let k = 0; k < maxCells; k++) {
     const centre = s0 + (k + 0.5) * T;
     if (centre > limit) break;
     // First and third quarter straddle the mid-cell transition.
-    const l1 = logicAt(S, s0 + (k + 0.25) * T);
-    const l2 = logicAt(S, s0 + (k + 0.75) * T);
+    const l1 = lv(s0 + (k + 0.25) * T);
+    const l2 = lv(s0 + (k + 0.75) * T);
     if (l1 < 0 || l2 < 0) break;               // ran off the captured region
-    let i0 = Math.round(s0 + k * T), i1 = Math.round(s0 + (k + 1) * T) - 1;
+    let i0 = next;
+    next = Math.round(s0 + (k + 1) * T);
+    let i1 = next - 1;
     if (i0 < 0) i0 = 0;
     if (i1 >= S.n) i1 = S.n - 1;
     if (i1 < i0) i1 = i0;
