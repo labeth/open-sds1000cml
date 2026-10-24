@@ -81,7 +81,7 @@ func (c *Controller) view(s *sv) wsview.View {
 		v.Notice = u.notice
 	} else if s.st.ADCFault != "" {
 		v.Notice = s.st.ADCFault // stays while converters do not convert
-	} else if n := c.snd.remoteNotice(time.Now()); n != "" {
+	} else if n := c.snd.remoteNotice(c.wallNow(s)); n != "" {
 		v.Notice = n // the LCD's captures wait while a page streams SOUND
 	}
 	if u.open {

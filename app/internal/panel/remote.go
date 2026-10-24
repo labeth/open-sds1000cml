@@ -342,8 +342,11 @@ func (c *Controller) displayAndView(s *sv) (Display, wsview.View) {
 		DecLSB: s.decLSB, DecParity: s.decParity, DecInverted: s.decInv, DecBits: s.decBits, DecLayer: s.decLayer, DecLayerAddr: s.decLayerAddr, DecLayerDir: s.decLayerDir, DecDelayNs: s.spiDelayNs(), DecFormat: s.decFormat, DecDetecting: s.ui.busDetecting, DecAuto: s.decAuto, DecNote: s.ui.busNote, CurOn: s.curOn, CurType: s.curType, CurSel: s.curSel, CurX: s.curX, CurY: s.curY,
 		CurT: s.curT, CurV: s.curV, CurVCh: s.curVCh,
 		AutosetBusy: busy, AutosetMsg: amsg}
+	if len(s.meas) > 0 {
+		d.MeasItems = make([]string, 0, len(s.meas))
+	}
 	for _, it := range s.meas {
-		d.MeasItems = append(d.MeasItems, string(rune('1'+it.ch))+":"+measParams[it.param].id)
+		d.MeasItems = append(d.MeasItems, measItemLabels[it.ch&1][it.param])
 	}
 	if s.remoteNotices && s.now.Before(s.ui.remoteUnt) {
 		d.Remote = s.ui.remote
@@ -1211,3 +1214,14 @@ func (c *Controller) afterInput() {
 	c.pushLEDs()
 	c.publish()
 }
+
+// measItemLabels names each readout as Display.MeasItems does ("1:pkpk"),
+// made once: the display state is read every LCD frame.
+var measItemLabels = func() (l [2][]string) {
+	for ch := range l {
+		for _, p := range measParams {
+			l[ch] = append(l[ch], string(rune('1'+ch))+":"+p.id)
+		}
+	}
+	return l
+}()

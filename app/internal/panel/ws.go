@@ -168,6 +168,16 @@ func (c *Controller) now() time.Time {
 	return time.Now()
 }
 
+// wallNow is the wall time for s's view: the snapshot's own time unless a
+// test clock drives it. A clock read is two system calls on the device.
+// TRLC-LINKS: REQ-SDS-211
+func (c *Controller) wallNow(s *sv) time.Time {
+	if c.clock != nil {
+		return time.Now()
+	}
+	return s.now
+}
+
 // toast shows a short notice over the plot for d (c.mu held).
 // TRLC-LINKS: REQ-SDS-211
 func (c *Controller) toastLocked(msg string, d time.Duration) {
