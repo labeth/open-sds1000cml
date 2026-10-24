@@ -282,7 +282,7 @@ func TestAutodetectARINCOnlyAtItsRates(t *testing.T) {
 
 // loadGzJSON reads a recorded two-channel capture (sample_s, c1, c2).
 // TRLC-LINKS: REQ-SDS-018
-func loadGzJSON(t *testing.T, path string) (c1, c2 []uint8, sampleS float64) {
+func loadGzJSON(t testing.TB, path string) (c1, c2 []uint8, sampleS float64) {
 	t.Helper()
 	f, err := os.Open(path)
 	if err != nil {

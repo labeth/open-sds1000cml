@@ -356,14 +356,24 @@ func Extent(codes []uint8) (lo, hi int, ok bool) {
 func rails(codes []uint8) (lowRail, highRail float64, reason string) {
 	// Counted in integers: on the device's VFP a float add per sample costs
 	// more than the rest of a decode.
-	var counts [256]int32
-	for _, v := range codes {
-		counts[v]++
+	// Four tables, summed after: a run of one code would otherwise make
+	// each increment wait for the previous one's store.
+	var counts [4][256]int32
+	i := 0
+	for ; i+4 <= len(codes); i += 4 {
+		q := codes[i : i+4 : i+4]
+		counts[0][q[0]]++
+		counts[1][q[1]]++
+		counts[2][q[2]]++
+		counts[3][q[3]]++
+	}
+	for _, v := range codes[i:] {
+		counts[0][v]++
 	}
 	valid := len(codes)
 	var h [256]float64
-	for c, k := range counts {
-		h[c] = float64(k)
+	for c := range h {
+		h[c] = float64(counts[0][c] + counts[1][c] + counts[2][c] + counts[3][c])
 	}
 	if valid < 8 {
 		return 0, 0, "no/too-few valid samples"
