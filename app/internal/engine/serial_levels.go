@@ -214,10 +214,12 @@ func clockRate(codes []uint8, sampleS float64, extremes bool) float64 {
 	if !ok || !(sampleS > 0) {
 		return 0
 	}
-	var rises []int
-	high := len(codes) > 0 && float64(codes[0]) >= thr
+	// a code is high at or above thr: at or above ⌈thr⌉, compared as integers
+	on := int(math.Ceil(thr))
+	rises := make([]int, 0, 64)
+	high := len(codes) > 0 && int(codes[0]) >= on
 	for i, c := range codes {
-		now := float64(c) >= thr
+		now := int(c) >= on
 		if now && !high {
 			rises = append(rises, i)
 		}

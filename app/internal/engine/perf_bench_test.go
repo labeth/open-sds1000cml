@@ -537,3 +537,14 @@ func BenchmarkPlanSymbolPhys(b *testing.B) {
 		}
 	}
 }
+
+// TRLC-LINKS: REQ-SDS-013, REQ-SDS-229
+func BenchmarkClockRate(b *testing.B) {
+	codes := make([]uint8, 20000)
+	for i := range codes {
+		codes[i] = uint8(60 + 140*((i/5)%2)) // a clock of ten samples
+	}
+	for b.Loop() {
+		clockRate(codes, 2e-9, false)
+	}
+}
