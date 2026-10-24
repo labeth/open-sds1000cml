@@ -1,7 +1,11 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-LCD
 package lcd
 
-import "open-sds/app/internal/panel/wsview"
+import (
+	"sync"
+
+	"open-sds/app/internal/panel/wsview"
+)
 
 // plotArea is the rectangle the waveform views draw in (REQ-SDS-211): the
 // full screen when no UI is laid out, else left of the right column (the
@@ -77,11 +81,36 @@ func (p plotArea) sy(v float64) int {
 // as sy maps 128+(code-128)*z: a trace looks its rows up instead of three
 // floating-point steps a point, which are slow on this ARM.
 // TRLC-LINKS: REQ-SDS-021
+//
+// The last few tables are kept: every trace of every frame asks for one, and
+// the plot and zoom rarely change.
 func (p plotArea) codeRows(z float64) (rows [256]int16) {
+	codeRowCache.Lock()
+	defer codeRowCache.Unlock()
+	for i := range codeRowCache.e {
+		if e := &codeRowCache.e[i]; e.ok && e.p == p && e.z == z {
+			return e.rows
+		}
+	}
 	for v := range rows {
 		rows[v] = int16(p.sy(128 + (float64(v)-128)*z))
 	}
+	e := &codeRowCache.e[codeRowCache.next]
+	codeRowCache.next = (codeRowCache.next + 1) % len(codeRowCache.e)
+	e.p, e.z, e.rows, e.ok = p, z, rows, true
 	return rows
+}
+
+// codeRowCache holds recent codeRows tables, oldest replaced first.
+var codeRowCache struct {
+	sync.Mutex
+	next int
+	e    [4]struct {
+		p    plotArea
+		z    float64
+		rows [256]int16
+		ok   bool
+	}
 }
 
 // gridY is the row of graticule line r (0..8, top to bottom).

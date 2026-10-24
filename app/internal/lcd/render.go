@@ -425,6 +425,13 @@ func fillSpans(sf Surface, top, bot []int16, cc []uint16) {
 		return
 	}
 	px := m.px()
+	// Spans arrive clipped to [0,H) by drawDenseTrace; clip again for any
+	// other caller so vlinePx may assume it.
+	vl := func(x, y0, y1 int, c uint16) {
+		if x < W {
+			vlinePx(px, x, max(y0, 0), min(y1, H-1), c)
+		}
+	}
 	var line [spanBlock]uint16 // a row of the block's colour
 	lineC, lined := uint16(0), false
 	for x0 := 0; x0 < len(top); x0 += spanBlock {
@@ -438,7 +445,7 @@ func fillSpans(sf Surface, top, bot []int16, cc []uint16) {
 		}
 		if cBot-cTop < 8 { // little in common: a column at a time
 			for x := x0; x < x1; x++ {
-				vline(m, x, int(top[x]), int(bot[x]), cc[x])
+				vl(x, int(top[x]), int(bot[x]), cc[x])
 			}
 			continue
 		}
@@ -452,11 +459,15 @@ func fillSpans(sf Surface, top, bot []int16, cc []uint16) {
 			copy(px[r*W+x0:r*W+x1], line[:x1-x0])
 		}
 		for x := x0; x < x1; x++ {
-			vline(m, x, int(top[x]), int(cTop)-1, c)
-			vline(m, x, int(cBot)+1, int(bot[x]), c)
+			vl(x, int(top[x]), int(cTop)-1, c)
+			vl(x, int(cBot)+1, int(bot[x]), c)
 		}
 	}
 }
+
+// truncInt is int(v): floorInt for v in [0, 2^31).
+// TRLC-LINKS: REQ-SDS-021
+func truncInt(v float64) int { return int(v) }
 
 // floorInt is int(math.Floor(v)) for the sample positions of a plot column:
 // math.Floor is a software routine on this ARM and these run per column per
@@ -532,11 +543,18 @@ func denseColumns(id traceID, sig []uint8, left float64, win, ncols int) *denseC
 	}
 	n := len(sig)
 	step := float64(win) / float64(ncols)
-	next := floorInt(left)
+	// From a non-negative left every position is non-negative, so the
+	// floor is the conversion's truncation: no range test a column (a float
+	// compare stalls this core's pipeline).
+	floor := floorInt
+	if left >= 0 && left+float64(ncols+1)*step < 1<<31 {
+		floor = truncInt
+	}
+	next := floor(left)
 	for x := 0; x < ncols; x++ {
 		// Column x ends where x+1 starts: one floor a column.
 		lo := next
-		next = floorInt(left + float64(x+1)*step)
+		next = floor(left + float64(x+1)*step)
 		hi := next - 1
 		lo, hi = min(max(lo, 0), n-1), min(max(hi, 0), n-1)
 		mn, mx := sig[lo], sig[lo]

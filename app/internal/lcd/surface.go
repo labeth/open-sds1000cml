@@ -75,16 +75,33 @@ func vline(sf Surface, x, y0, y1 int, c uint16) {
 	if y0 > y1 {
 		return
 	}
-	px := m.px()
-	for o := y0*W + x; y0 <= y1; y0, o = y0+1, o+W {
-		px[o] = c
+	vlinePx(m.px(), x, y0, y1, c)
+}
+
+// vlinePx is vline on pixels already clipped to the screen: x in [0,W),
+// 0 <= y0, y1 < H. Walking a slice of exactly the column's extent lets the
+// compiler drop the per-pixel bounds check.
+// TRLC-LINKS: REQ-SDS-021
+func vlinePx(px []uint16, x, y0, y1 int, c uint16) {
+	if y0 > y1 {
+		return
+	}
+	col := px[y0*W+x : y1*W+x+1]
+	for o := 0; o < len(col); o += W {
+		col[o] = c
 	}
 }
 
 // px is the surface's pixels as RGB565 words (little-endian, native on ARM
 // and amd64).
 // TRLC-LINKS: REQ-SDS-021
-func (m *MemSurface) px() []uint16 { return unsafe.Slice((*uint16)(unsafe.Pointer(&m.Pix[0])), W*H) }
+//
+// An array-pointer conversion, not unsafe.Slice: the latter's size check is a
+// runtime division on this ARM, and px is taken per drawn column.
+func (m *MemSurface) px() []uint16 {
+	_ = m.Pix[pageBytes-1]
+	return (*[W * H]uint16)(unsafe.Pointer(&m.Pix[0]))[:]
+}
 
 // fillSpan fills rows [y0,y1) of columns [x0,x1) of a MemSurface, clipped:
 // the sheets, panes and the F-key column fill most of the screen, which
