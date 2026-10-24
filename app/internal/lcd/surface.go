@@ -9,7 +9,6 @@ import (
 	"bytes"
 	"fmt"
 	"image"
-	"image/color"
 	"image/png"
 	"os"
 	"syscall"
@@ -133,17 +132,15 @@ func (m *MemSurface) At(x, y int) uint16 {
 // brightness thus glow and fade over ~8 frames.
 // TRLC-LINKS: REQ-SDS-021
 func (m *MemSurface) FadeToBlack() {
-	p := m.Pix
-	for i := 0; i+1 < len(p); i += 2 {
-		c := uint16(p[i]) | uint16(p[i+1])<<8
+	p := m.px()
+	for i, c := range p {
 		if c == 0 {
 			continue
 		}
 		r := ((c >> 11) & 0x1f) * 3 / 4
 		g := ((c >> 5) & 0x3f) * 3 / 4
 		b := (c & 0x1f) * 3 / 4
-		nc := r<<11 | g<<5 | b
-		p[i], p[i+1] = byte(nc), byte(nc>>8)
+		p[i] = r<<11 | g<<5 | b
 	}
 }
 
@@ -151,39 +148,36 @@ func (m *MemSurface) FadeToBlack() {
 // persistence trace layer composited over the fresh graticule.
 // TRLC-LINKS: REQ-SDS-021
 func (m *MemSurface) BlitBright(src *MemSurface) {
-	d, s := m.Pix, src.Pix
-	n := len(s)
-	if len(d) < n {
-		n = len(d)
-	}
-	for i := 0; i+1 < n; i += 2 {
-		c := uint16(s[i]) | uint16(s[i+1])<<8
+	d, s := m.px(), src.px()
+	for i, c := range s {
 		if c == 0 {
 			continue
 		}
 		if (c>>11)&0x1f+(c>>6)&0x1f+c&0x1f < 3 { // too dim → let the graticule show
 			continue
 		}
-		d[i], d[i+1] = s[i], s[i+1]
+		d[i] = c
 	}
 }
 
 // EncodePNG renders the surface (RGB565) to a PNG — the device-screen view for
-// the web /api/screen.png endpoint.
+// the web /api/screen.png endpoint. Pixels are expanded straight into the
+// image and compressed at BestSpeed: the default level cost ~10x the time
+// for a screen grab the browser decodes to the same pixels.
 // TRLC-LINKS: REQ-SDS-021
 func EncodePNG(m *MemSurface) []byte {
 	img := image.NewRGBA(image.Rect(0, 0, W, H))
-	for y := 0; y < H; y++ {
-		for x := 0; x < W; x++ {
-			c := m.At(x, y)
-			r := uint8((c>>11)&0x1f) << 3
-			g := uint8((c>>5)&0x3f) << 2
-			b := uint8(c&0x1f) << 3
-			img.SetRGBA(x, y, color.RGBA{r, g, b, 255})
-		}
+	d := img.Pix
+	for i, c := range m.px() {
+		o := i * 4
+		d[o] = uint8((c>>11)&0x1f) << 3
+		d[o+1] = uint8((c>>5)&0x3f) << 2
+		d[o+2] = uint8(c&0x1f) << 3
+		d[o+3] = 255
 	}
 	var buf bytes.Buffer
-	png.Encode(&buf, img)
+	enc := png.Encoder{CompressionLevel: png.BestSpeed}
+	enc.Encode(&buf, img)
 	return buf.Bytes()
 }
 

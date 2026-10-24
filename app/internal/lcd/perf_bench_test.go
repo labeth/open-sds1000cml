@@ -12,3 +12,45 @@ func BenchmarkDrawText(b *testing.B) {
 		DrawText(sf, 790, 470, "clip", 0xffff, 2) // off the edge: clipped
 	}
 }
+
+// benchPattern fills a surface like a persistence layer: mostly black, a
+// band of trace pixels at varying brightness.
+// TRLC-LINKS: REQ-SDS-021
+func benchPattern() *MemSurface {
+	m := NewMemSurface()
+	for y := 0; y < H; y++ {
+		for x := 0; x < W; x++ {
+			if (x*7+y*3)%11 < 3 {
+				m.SetPixel(x, y, uint16(x*131+y*17))
+			}
+		}
+	}
+	return m
+}
+
+// TRLC-LINKS: REQ-SDS-021
+func BenchmarkFadeToBlack(b *testing.B) {
+	m := benchPattern()
+	src := append([]byte(nil), m.Pix...)
+	for b.Loop() {
+		copy(m.Pix, src)
+		m.FadeToBlack()
+	}
+}
+
+// TRLC-LINKS: REQ-SDS-021
+func BenchmarkBlitBright(b *testing.B) {
+	src := benchPattern()
+	d := NewMemSurface()
+	for b.Loop() {
+		d.BlitBright(src)
+	}
+}
+
+// TRLC-LINKS: REQ-SDS-021
+func BenchmarkEncodePNG(b *testing.B) {
+	m := benchPattern()
+	for b.Loop() {
+		EncodePNG(m)
+	}
+}
