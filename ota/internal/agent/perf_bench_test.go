@@ -177,3 +177,12 @@ func BenchmarkHeartbeatJSON(b *testing.B) {
 		}
 	}
 }
+
+// Every ping, heartbeat and status names the agent's slot.
+// TRLC-LINKS: REQ-SDS-114
+func BenchmarkAgentSlot(b *testing.B) {
+	a := benchAgent(b)
+	for b.Loop() {
+		a.AgentSlot()
+	}
+}
