@@ -292,16 +292,17 @@ func (e *Engine) trigDispLevel(srcCh int) int {
 	// the markers) at the wrong height, so the trigger never lines up with the
 	// wave. Probe cancels: both trigVolts and offset are BNC-referred, matching
 	// the raw ADC codes.
-	offV := math.Float64frombits(e.trigOffV[srcCh&1].Load())
-	dc := int(math.Round(128 + (e.trigVolts(code, srcCh)+offV)*25/e.chVdivV(srcCh)))
 	// Software AC coupling shows the trace with its mean at centre and no
 	// offset, and the level is read on that trace; the fabric sees the raw
 	// codes, so the level sits that far above the channel's raw mean. Without
-	// it a 0 V level on an AC trace crossing 0 V never fires.
-	if e.chCoupling[srcCh&1].Load() == couplingAC {
-		if mean := math.Float64frombits(e.chMeanCode[srcCh&1].Load()); mean > 0 {
-			dc = int(math.Round(mean + e.trigVolts(code, srcCh)*25/e.chVdivV(srcCh)))
-		}
+	// it a 0 V level on an AC trace crossing 0 V never fires. (One of the two
+	// is computed, not both.)
+	var dc int
+	if mean := math.Float64frombits(e.chMeanCode[srcCh&1].Load()); e.chCoupling[srcCh&1].Load() == couplingAC && mean > 0 {
+		dc = int(math.Round(mean + e.trigVolts(code, srcCh)*25/e.chVdivV(srcCh)))
+	} else {
+		offV := math.Float64frombits(e.trigOffV[srcCh&1].Load())
+		dc = int(math.Round(128 + (e.trigVolts(code, srcCh)+offV)*25/e.chVdivV(srcCh)))
 	}
 	if dc < 0 {
 		dc = 0

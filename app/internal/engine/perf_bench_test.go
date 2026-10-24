@@ -1120,3 +1120,14 @@ func BenchmarkServiceCommands(b *testing.B) {
 		e.serviceCommands()
 	}
 }
+
+// TRLC-LINKS: REQ-SDS-011
+func BenchmarkTrigDispLevelAC(b *testing.B) {
+	e, _ := newTestEngine(&testing.T{}, newFakeBus())
+	e.SetTrigLevelCode(30000)
+	e.chCoupling[0].Store(couplingAC)
+	e.chMeanCode[0].Store(math.Float64bits(131.5))
+	for b.Loop() {
+		e.trigDispLevel(0)
+	}
+}
