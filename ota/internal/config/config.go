@@ -63,6 +63,17 @@ func env(key, def string) string {
 	return def
 }
 
+// envOr is env with a default that is only worked out when the variable is
+// unset: the device id default walks the network interfaces, the OTA dir
+// default resolves the executable.
+// TRLC-LINKS: REQ-SDS-088
+func envOr(key string, def func() string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return def()
+}
+
 // TRLC-LINKS: REQ-SDS-088
 func envDurSecs(key string, def time.Duration) time.Duration {
 	v := os.Getenv(key)
@@ -124,11 +135,11 @@ func defaultDeviceID() string {
 
 // TRLC-LINKS: REQ-SDS-088
 func Load() *Config {
-	otaDir := env("OTA_DIR", exeDir())
+	otaDir := envOr("OTA_DIR", exeDir)
 	usbRoot := filepath.Dir(otaDir) // OTA_DIR is <usb>/ota by convention
 	c := &Config{
 		NATSURL:    os.Getenv("OTA_NATS"),
-		DeviceID:   env("OTA_DEVICE_ID", defaultDeviceID()),
+		DeviceID:   envOr("OTA_DEVICE_ID", defaultDeviceID),
 		NKeyFile:   os.Getenv("OTA_NKEY"),
 		CredsFile:  os.Getenv("OTA_CREDS"),
 		CAFile:     os.Getenv("OTA_CA"),
