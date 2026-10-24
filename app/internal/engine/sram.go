@@ -464,22 +464,22 @@ func (e *Engine) planSerial(c *sramcapture.Config, serial SerialParams, fallback
 		c.TriggerLevel = uint8(math.Round(serial.Threshold))
 	}
 	if e.hardwareUSBLS {
-		c.USBLS = planHardwareUSBLS(serial)
+		c.USBLS = planHardwareUSBLS(&serial)
 	}
 	if e.hardwareMIL1553 {
-		c.MIL1553 = planHardwareMIL1553(serial)
+		c.MIL1553 = planHardwareMIL1553(&serial)
 	}
 	if e.hardwareSENT {
-		c.SENT = planHardwareSENT(serial)
+		c.SENT = planHardwareSENT(&serial)
 	}
 	if e.hardwareUART {
-		c.UART = planHardwareUART(serial, e.hardwareSampleUART)
+		c.UART = planHardwareUART(&serial, e.hardwareSampleUART)
 	}
 	if e.hardwareSPI {
-		c.SPI = planHardwareSPI(serial, e.hardwareSampleSPI)
+		c.SPI = planHardwareSPI(&serial, e.hardwareSampleSPI)
 	}
 	if e.hardwareI2C {
-		c.I2C = planHardwareI2C(serial, e.hardwareSampleI2C)
+		c.I2C = planHardwareI2C(&serial, e.hardwareSampleI2C)
 	}
 	if c.USBLS.Enabled {
 		c.Normal = true

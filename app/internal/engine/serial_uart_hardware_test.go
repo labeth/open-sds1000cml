@@ -29,17 +29,17 @@ func TestGeneralUARTReach(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-229
 func TestPlanHardwareSampleUART(t *testing.T) {
 	p := SerialParams{Proto: serUART, Baud: 50000000, Bits: 9, Parity: "odd", ChA: 1, Inverted: true, HaveThr: true, Threshold: 120, Bytes: []int{0x55, 0xaa}}
-	if planHardwareUART(p, false).Enabled {
+	if planHardwareUART(&p, false).Enabled {
 		t.Fatal("50 MBd 9O1 planned on the level receiver")
 	}
-	c := planHardwareUART(p, true)
+	c := planHardwareUART(&p, true)
 	want := sramcapture.UARTTriggerConfig{Enabled: true, Channel: 1, Inverted: true, Period16: 320, Bits: 9, Parity: 2, Resync: true, Pattern: 0x55aa, Length: 2}
 	if c != want {
 		t.Fatalf("plan %+v, want %+v", c, want)
 	}
 	q := p
 	q.Baud = 62642958 // as detection measured the bench's 62.5 MBd
-	if c := planHardwareUART(q, true); c.Period16 != 256 {
+	if c := planHardwareUART(&q, true); c.Period16 != 256 {
 		t.Fatalf("62.6 MBd: %+v", c)
 	}
 	for _, change := range []func(*SerialParams){
@@ -51,7 +51,7 @@ func TestPlanHardwareSampleUART(t *testing.T) {
 	} {
 		q := p
 		change(&q)
-		if planHardwareUART(q, true).Enabled {
+		if planHardwareUART(&q, true).Enabled {
 			t.Fatalf("planned %+v", q)
 		}
 	}

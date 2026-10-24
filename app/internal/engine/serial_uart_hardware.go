@@ -12,7 +12,7 @@ import (
 // data bits with no, even or odd parity, a bit of 16 ns (62.5 MBd) to about
 // a millisecond, every edge in a frame re-timing the bits after it.
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-229
-func planHardwareUART(p SerialParams, sample bool) sramcapture.UARTTriggerConfig {
+func planHardwareUART(p *SerialParams, sample bool) sramcapture.UARTTriggerConfig {
 	// Hardware must not silently substitute the edge-trigger level for the
 	// decoder's automatic threshold. Auto slicing remains a software request.
 	if !p.HaveThr || p.Proto != serUART || p.Baud <= 0 || len(p.Bytes) > 4 || p.ChA < 0 || p.ChA > 1 ||

@@ -9,7 +9,7 @@ import (
 // Each repository MIL sync-delimited packet contains one word. A multiword
 // pattern cannot match that packet contract and is not sent to this matcher.
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-018
-func planHardwareMIL1553(p SerialParams) sramcapture.MIL1553TriggerConfig {
+func planHardwareMIL1553(p *SerialParams) sramcapture.MIL1553TriggerConfig {
 	if p.Proto != serMIL1553 || !p.HaveThr || p.ChA < 0 || p.ChA > 1 || len(p.Bytes) > 1 || p.Baud <= 0 || math.IsNaN(p.Threshold) || math.IsInf(p.Threshold, 0) || p.Threshold < 0 || p.Threshold > 255 {
 		return sramcapture.MIL1553TriggerConfig{}
 	}

@@ -9,7 +9,7 @@ import (
 // TRLC-LINKS: REQ-SDS-013
 func TestHardwareI2CPlanning(t *testing.T) {
 	p := SerialParams{Proto: serI2C, ChA: 1, ChB: 0, HaveThr: true, Threshold: 103, Inverted: true, Addr: 0x24, RW: 0, Bytes: []int{0x55, 0xaa}}
-	c := planHardwareI2C(p, false)
+	c := planHardwareI2C(&p, false)
 	if !c.Enabled || c.ClockChannel != 1 || c.Address != 0x24 || c.Pattern != 0x55aa || c.Length != 2 || !c.Inverted {
 		t.Fatalf("bad plan: %+v", c)
 	}
@@ -20,7 +20,7 @@ func TestHardwareI2CPlanning(t *testing.T) {
 	} {
 		q := p
 		change(&q)
-		if planHardwareI2C(q, false).Enabled {
+		if planHardwareI2C(&q, false).Enabled {
 			t.Fatalf("unsupported plan: %+v", q)
 		}
 	}
@@ -45,7 +45,7 @@ func TestHardwareUARTUsesSelectedRawChannelHysteresis(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-013
 func TestHardwareUARTPlanning(t *testing.T) {
 	p := SerialParams{Proto: serUART, Baud: 115200, ChA: 1, Inverted: true, HaveThr: true, Threshold: 103, Bytes: []int{0x48, 0x69}}
-	c := planHardwareUART(p, false)
+	c := planHardwareUART(&p, false)
 	if !c.Enabled || c.BitTicks != 1085 || c.Pattern != 0x4869 || c.Length != 2 || c.Channel != 1 || !c.Inverted {
 		t.Fatalf("wrong hardware plan: %+v", c)
 	}
@@ -62,7 +62,7 @@ func TestHardwareUARTPlanning(t *testing.T) {
 	} {
 		q := p
 		change(&q)
-		if planHardwareUART(q, false).Enabled {
+		if planHardwareUART(&q, false).Enabled {
 			t.Fatalf("unsupported config did not fall back: %+v", q)
 		}
 	}

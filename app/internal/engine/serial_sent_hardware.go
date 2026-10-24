@@ -7,7 +7,7 @@ import (
 )
 
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-018
-func planHardwareSENT(p SerialParams) sramcapture.SENTTriggerConfig {
+func planHardwareSENT(p *SerialParams) sramcapture.SENTTriggerConfig {
 	if p.Proto != serSENT || !p.HaveThr || p.ChA < 0 || p.ChA > 1 || len(p.Bytes) > 4 || math.IsNaN(p.Threshold) || math.IsInf(p.Threshold, 0) || p.Threshold < 0 || p.Threshold > 255 || math.IsNaN(p.TickNs) || math.IsInf(p.TickNs, 0) {
 		return sramcapture.SENTTriggerConfig{}
 	}

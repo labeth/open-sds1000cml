@@ -227,15 +227,15 @@ func protocolImage(p SerialParams) string {
 	case serCAN, serARINC, serFlexRay, serMIL1553, serSENT:
 		return imagePacket
 	case serSPI:
-		if (p.Fine || !planHardwareSPI(p, false).Enabled) && planHardwareSPI(p, true).Enabled {
+		if (p.Fine || !planHardwareSPI(&p, false).Enabled) && planHardwareSPI(&p, true).Enabled {
 			return imageFast
 		}
 	case serUART:
-		if (p.Fine || !planHardwareUART(p, false).Enabled) && planHardwareUART(p, true).Enabled {
+		if (p.Fine || !planHardwareUART(&p, false).Enabled) && planHardwareUART(&p, true).Enabled {
 			return imageFast
 		}
 	case serI2C:
-		if (p.Fine || p.I2CClockHz > generalI2CReachHz) && planHardwareI2C(p, true).Enabled {
+		if (p.Fine || p.I2CClockHz > generalI2CReachHz) && planHardwareI2C(&p, true).Enabled {
 			return imageFast
 		}
 	}

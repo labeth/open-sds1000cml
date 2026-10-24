@@ -50,7 +50,84 @@ func BenchmarkPlanHardwareUART(b *testing.B) {
 	q := p
 	q.Parity, q.Baud = "even", 1000000
 	for b.Loop() {
-		planHardwareUART(p, false)
-		planHardwareUART(q, true)
+		planHardwareUART(&p, false)
+		planHardwareUART(&q, true)
+	}
+}
+
+// planParams are serial settings each hardware planner accepts.
+// TRLC-LINKS: REQ-SDS-013
+func planParams() map[string]SerialParams {
+	base := SerialParams{HaveThr: true, Threshold: 128, ChA: 0, ChB: 1, Bytes: []int{0x55, 0x0A}, Inverted: false}
+	m := map[string]SerialParams{}
+	p := base
+	p.Proto, p.SPIClockHz, p.MSB = serSPI, 10000000, true
+	m["spi"] = p
+	p = base
+	p.Proto, p.Addr, p.RW = serI2C, 0x50, 2
+	m["i2c"] = p
+	p = base
+	p.Proto, p.TickNs, p.Nibbles, p.Bytes = serSENT, 3000, 8, []int{5, 10}
+	m["sent"] = p
+	p = base
+	p.Proto, p.Baud, p.Bytes = serMIL1553, 1000000, []int{0x1234}
+	m["mil1553"] = p
+	p = base
+	p.Proto, p.Baud = serUSB, 1500000
+	m["usbls"] = p
+	return m
+}
+
+// planByValue calls each planner on a copy of p, as the planners took
+// their settings before (the reference).
+//
+//go:noinline
+func planByValue(name string, p SerialParams) bool {
+	switch name {
+	case "spi":
+		return planHardwareSPI(&p, true).Enabled
+	case "i2c":
+		return planHardwareI2C(&p, true).Enabled
+	case "sent":
+		return planHardwareSENT(&p).Enabled
+	case "mil1553":
+		return planHardwareMIL1553(&p).Enabled
+	}
+	return planHardwareUSBLS(&p).Enabled
+}
+
+// planByPointer calls each planner on p itself.
+//
+//go:noinline
+func planByPointer(name string, p *SerialParams) bool {
+	switch name {
+	case "spi":
+		return planHardwareSPI(p, true).Enabled
+	case "i2c":
+		return planHardwareI2C(p, true).Enabled
+	case "sent":
+		return planHardwareSENT(p).Enabled
+	case "mil1553":
+		return planHardwareMIL1553(p).Enabled
+	}
+	return planHardwareUSBLS(p).Enabled
+}
+
+// TRLC-LINKS: REQ-SDS-013
+func BenchmarkPlan(b *testing.B) {
+	for name, p := range planParams() {
+		b.Run(name, func(b *testing.B) {
+			if !planByPointer(name, &p) {
+				b.Fatal("not planned")
+			}
+			for b.Loop() {
+				planByPointer(name, &p)
+			}
+		})
+		b.Run(name+"Ref", func(b *testing.B) {
+			for b.Loop() {
+				planByValue(name, p)
+			}
+		})
 	}
 }
