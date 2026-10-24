@@ -34,3 +34,19 @@ func BenchmarkWrapText(b *testing.B) {
 		wrapText(s, 38)
 	}
 }
+
+// TRLC-LINKS: REQ-SDS-212
+func BenchmarkRowValues(b *testing.B) {
+	c, _, _ := newC(&testing.T{})
+	s := c.snap()
+	for b.Loop() {
+		for _, t := range sheetTabs {
+			for _, r := range t.rows {
+				r.valueText(s)
+				if r.kind == wsview.Number {
+					r.gauge(s)
+				}
+			}
+		}
+	}
+}

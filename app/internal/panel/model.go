@@ -128,10 +128,13 @@ func (r *row) valueText(s *sv) string {
 	}
 	switch r.kind {
 	case wsview.Enum:
-		if i := r.optIndex(s); i >= 0 {
-			return r.options(s)[i].t
+		cur := r.get(s)
+		for _, o := range r.options(s) { // optIndex, the options built once
+			if o.v == cur {
+				return o.t
+			}
 		}
-		return fmt.Sprint(r.get(s))
+		return fmt.Sprint(cur)
 	case wsview.Number:
 		if r.text != nil {
 			return r.text(s)
@@ -180,10 +183,10 @@ func (r *row) gauge(s *sv) float64 {
 	v := r.val(s)
 	if r.ladder != nil {
 		l := r.ladder(s)
-		best := 0
+		best, bestD := 0, 0.0 // bestD: the best step's distance, kept
 		for i := range l {
-			if math.Abs(math.Log(l[i]/v)) < math.Abs(math.Log(l[best]/v)) {
-				best = i
+			if d := math.Abs(math.Log(l[i] / v)); i == 0 || d < bestD {
+				best, bestD = i, d
 			}
 		}
 		if len(l) > 1 {
