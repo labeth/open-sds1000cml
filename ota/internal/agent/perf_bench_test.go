@@ -122,3 +122,14 @@ func BenchmarkUpload8M(b *testing.B) {
 		}
 	}
 }
+
+// The supervisor polls the health token every 500 ms for the app's life.
+// TRLC-LINKS: REQ-SDS-105
+func BenchmarkHealthPoll(b *testing.B) {
+	p := filepath.Join(b.TempDir(), "health")
+	os.WriteFile(p, []byte("frames 1234 fps 38\n"), 0o644)
+	h := &healthWatcher{path: p}
+	for b.Loop() {
+		h.poll()
+	}
+}
