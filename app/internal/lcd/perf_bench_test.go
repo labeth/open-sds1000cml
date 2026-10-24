@@ -230,3 +230,19 @@ func BenchmarkDrawMeasPanel(b *testing.B) {
 		drawMeasPanel(sf, fullPlot, f, h)
 	}
 }
+
+// TRLC-LINKS: REQ-SDS-021
+func BenchmarkMathCodes(b *testing.B) {
+	c1, c2 := make([]uint8, 20000), make([]uint8, 20000)
+	for i := range c1 {
+		c1[i], c2[i] = uint8(i*7), uint8(i*13+5)
+	}
+	h := goldenYTHUD()
+	h.OffC1V, h.OffC2V = 0.1, -0.05
+	for b.Loop() {
+		for mode := 1; mode <= 4; mode++ {
+			h.MathMode = mode
+			mathCodes(c1, c2, h)
+		}
+	}
+}

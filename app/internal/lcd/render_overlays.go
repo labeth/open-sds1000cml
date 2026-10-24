@@ -82,21 +82,37 @@ func mathCodes(c1, c2 []uint8, hud HUD) []uint8 {
 	if hud.Cpl2 != 0 {
 		off2 = 0
 	}
+	// Each input's volts per code, tabled once; the mode chosen outside the
+	// sample loop.
+	var va, vb [256]float64
+	for c := range va {
+		va[c] = (float64(c)-128)*v1 - off1
+		vb[c] = (float64(c)-128)*v2 - off2
+	}
 	m := make([]uint8, min(len(c1), len(c2)))
-	for i := range m {
-		a, b := (float64(c1[i])-128)*v1-off1, (float64(c2[i])-128)*v2-off2
-		var v float64
-		switch hud.MathMode {
-		case 1:
-			v = a + b
-		case 2:
-			v = a - b
-		case 3:
-			v = b - a
-		case 4:
-			v = a * b
+	c1, c2 = c1[:len(m)], c2[:len(m)]
+	put := func(i int, v float64) { m[i] = uint8(math.Round(max(0, min(255, 128+v/scale)))) } // builtins: NaN propagates as in math.Max
+	switch hud.MathMode {
+	case 1:
+		for i := range m {
+			put(i, va[c1[i]]+vb[c2[i]])
 		}
-		m[i] = uint8(math.Round(math.Max(0, math.Min(255, 128+v/scale))))
+	case 2:
+		for i := range m {
+			put(i, va[c1[i]]-vb[c2[i]])
+		}
+	case 3:
+		for i := range m {
+			put(i, vb[c2[i]]-va[c1[i]])
+		}
+	case 4:
+		for i := range m {
+			put(i, va[c1[i]]*vb[c2[i]])
+		}
+	default:
+		for i := range m {
+			put(i, 0)
+		}
 	}
 	return m
 }
