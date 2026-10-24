@@ -64,14 +64,18 @@ function busTokens() { return ($("stBytes").value || "").trim().split(/[\s,]+/).
 // TRLC-LINKS: REQ-SDS-214
 function busRenderTable() {
   const off = dcfg.proto === "off";
-  $("pkEmpty").hidden = !off;
-  $("pktable").hidden = off;
+  // this runs after every decode: the frame around the rows is written only
+  // when it changes
+  const empty = $("pkEmpty"), table = $("pktable");
+  if (empty.hidden !== !off) empty.hidden = !off;
+  if (table.hidden !== off) table.hidden = off;
   const r = dcfg.result;
   if (off) { $("pkNote").textContent = ""; busRenderedV = -1; $("pkBody").innerHTML = ""; return; }
   const toks = busTokens();
   const shown = busShownRows(busPk.rows, busLive);
   const layer = dcfg.layer && typeof LAYERS !== "undefined" ? (LAYERS.find((l) => l[0] === dcfg.layer) || [])[1] : "";
-  $("pkStrHead").textContent = layer || "String";
+  const strHead = $("pkStrHead");
+  if (strHead.textContent !== (layer || "String")) strHead.textContent = layer || "String";
   // TRLC-LINKS: REQ-SDS-214, REQ-SDS-241
   const cell = (p, str) => (layer ? `<td class="str${p.noteErr ? " bad" : ""}" title="${escHTML(p.note || "")}">${escHTML(p.note || "")}</td>` : `<td class="str" title="${escHTML(str)}">${escHTML(str)}</td>`);
   const sig = busPk.version + "|" + toks.join(" ") + "|" + layer + "|" + (r && !r.ok ? r.error : "") +
