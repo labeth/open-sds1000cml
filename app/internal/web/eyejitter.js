@@ -53,6 +53,7 @@ function ejNew(opts) {
     tieCap: opts.tieCap || 60000,
     tieDecim: 1,                        // current decimation of the tie buffer
     tieSeen: 0,
+    rdSeen: -1, rd: null,               // ejRjDj of the buffer at tieSeen (ejResult)
     // exact running aggregates — never capped, never frozen (review finding:
     // a first-N window froze rms/pp after ~1 min while the panel looked live)
     tieSum: 0, tieSum2: 0, tieMin: Infinity, tieMax: -Infinity, tieN: 0,
@@ -270,7 +271,10 @@ function ejResult(st) {
     const varc = Math.max(0, st.tieSum2 / st.tieN - mean * mean);
     out.tieRms = Math.sqrt(varc);
     out.tiePp = st.tieMax - st.tieMin;
-    const rd = ejRjDj(st.tie); // histogram-shape stats from the decimated buffer
+    // histogram-shape stats from the decimated buffer, sorted afresh only
+    // when it has changed: the page reads the result several times a frame
+    if (st.rdSeen !== st.tieSeen) { st.rd = ejRjDj(st.tie); st.rdSeen = st.tieSeen; }
+    const rd = st.rd;
     if (rd.ok) { out.rj = rd.rj; out.dj = rd.dj; } // undefined until measurable
     out.periodJRms = rmsOf(st.periodJ);
     out.c2cJRms = rmsOf(st.c2cJ);
