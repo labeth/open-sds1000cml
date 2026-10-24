@@ -201,9 +201,11 @@ func (c *workerClient) callSplit(op uint16, plane uint8, selector, value uint16,
 	binary.LittleEndian.PutUint32(request[20:24], epoch)
 	// The 3 s deadline is moved on only once less than 2 s of it is left:
 	// a hung worker still fails a call within 3 s, and a call does not pay
-	// for re-arming the poller's timer every time.
-	if now := time.Now(); now.After(c.deadline.Add(-2 * time.Second)) {
-		c.deadline = now.Add(3 * time.Second)
+	// for re-arming the poller's timer every time. The age is read on the
+	// monotonic clock alone: time.Now is two system calls on the device's
+	// kernel (no vDSO), time.Since one.
+	if c.deadline.IsZero() || time.Since(c.deadline) > -2*time.Second {
+		c.deadline = time.Now().Add(3 * time.Second)
 		_ = c.conn.SetDeadline(c.deadline)
 	}
 	n, err := c.conn.Write(request)
