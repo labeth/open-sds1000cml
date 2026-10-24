@@ -727,7 +727,11 @@ func moments16(sig []uint16, ref int, coarse *[256]int, lowSum *[256]uint32) (cm
 	cmin, cmax = int(sig[0]), int(sig[0])
 	for _, v := range sig {
 		iv := int(v)
-		cmin, cmax = min(cmin, iv), max(cmax, iv)
+		if iv < cmin { // branches: a new extreme is rare (minMax8)
+			cmin = iv
+		} else if iv > cmax {
+			cmax = iv
+		}
 		delta := iv - ref
 		sum += int64(delta)
 		ad := uint32(delta)
