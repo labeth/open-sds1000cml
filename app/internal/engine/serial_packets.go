@@ -20,7 +20,8 @@ func matchPackets(sp []decode.Span, want []int) (bool, int) {
 			}
 		}
 		if boundary {
-			if !bad {
+			// a packet of fewer spans than the pattern's bytes holds no match
+			if !bad && i-start >= len(want) {
 				if ok, anchor := matchBytes(sp[start:i], want); ok {
 					return true, anchor
 				}
