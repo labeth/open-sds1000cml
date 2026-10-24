@@ -48,9 +48,15 @@ function precisionPeriodicFit(y, dt, seedHz) {
     for(let i=0;i<n;i++) {
       const row=new Float64Array(m);row[0]=1;
       const phase=2*Math.PI*hz*(i-(n-1)/2)*dt;
-      for(let k=1;k<=harmonics;k++){row[2*k-1]=Math.sin(k*phase);row[2*k]=Math.cos(k*phase);}
+      // harmonics by angle addition from the fundamental: two trig calls a
+      // sample instead of two a harmonic
+      const s1=Math.sin(phase),c1=Math.cos(phase);
+      let sk=s1,ck=c1;
+      for(let k=1;k<=harmonics;k++){row[2*k-1]=sk;row[2*k]=ck;const sn=sk*c1+ck*s1;ck=ck*c1-sk*s1;sk=sn;}
       rows[i]=row;
-      for(let j=0;j<m;j++){a[j][m]+=row[j]*y[i];for(let k=0;k<=j;k++)a[j][k]+=row[j]*row[k];}
+      // the normal-equation row and this sample's term held in locals: m² terms a sample
+      const yi=y[i];
+      for(let j=0;j<m;j++){const aj=a[j],rj=row[j];aj[m]+=rj*yi;for(let k=0;k<=j;k++)aj[k]+=rj*row[k];}
     }
     for(let j=0;j<m;j++)for(let k=0;k<j;k++)a[k][j]=a[j][k];
     for(let j=0;j<m;j++) {
@@ -61,7 +67,8 @@ function precisionPeriodicFit(y, dt, seedHz) {
     }
     const c=new Float64Array(m);
     for(let j=m-1;j>=0;j--){let v=a[j][m];for(let k=j+1;k<m;k++)v-=a[j][k]*c[k];c[j]=v/a[j][j];}
-    const fitted=rows.map(row=>row.reduce((sum,v,j)=>sum+v*c[j],0));
+    const fitted=new Array(n);
+    for(let i=0;i<n;i++){const row=rows[i];let sum=0;for(let j=0;j<m;j++)sum+=row[j]*c[j];fitted[i]=sum;}
     const residual=Array.from(y,(v,i)=>v-fitted[i]);const sse=residual.reduce((sum,v)=>sum+v*v,0);
     return {hz,harmonics,amplitude:(Math.max(...fitted)-Math.min(...fitted))/2,offset:c[0],rms:Math.sqrt(sse/(n-m-1)),mse:sse/n,...(keep?{fitted,residual}:{})};
   }
