@@ -10,6 +10,7 @@ import (
 	"open-sds/app/internal/analog"
 	"open-sds/app/internal/decode"
 	"open-sds/app/internal/engine"
+	"open-sds/app/internal/panel/framecalc"
 	"open-sds/app/internal/panel/wsview"
 )
 
@@ -658,6 +659,20 @@ func TestCodeSwingThresholds(t *testing.T) {
 			if (v >= hiAt) != (2*v > mid2+2) || (v < loAt) != (2*v < mid2-2) {
 				t.Fatalf("mid2 %d v %d: thresholds %d %d", mid2, v, hiAt, loAt)
 			}
+		}
+	}
+}
+
+// TRLC-LINKS: REQ-SDS-018
+func BenchmarkStreamStatus(b *testing.B) {
+	c, _, _ := newC(&testing.T{})
+	c.SetDecodeStream(&fakeStream{})
+	c.mu.Lock()
+	c.decProto, c.decMode = framecalc.ProtoUART, decModeStream
+	c.mu.Unlock()
+	for b.Loop() {
+		if _, ok := c.StreamStatus(); !ok {
+			b.Fatal("no stream")
 		}
 	}
 }

@@ -599,12 +599,12 @@ func (c *Controller) scrollStreamList(lines int) {
 // outside stream mode.
 // TRLC-LINKS: REQ-SDS-018
 func (c *Controller) StreamStatus() (streamview.View, bool) {
-	if !c.streaming() {
+	c.mu.Lock() // streaming() and the stream, read under one lock
+	on, s := serialProto(c.decProto) && c.decMode == decModeStream && c.stream != nil, c.stream
+	c.mu.Unlock()
+	if !on {
 		return streamview.View{}, false
 	}
-	c.mu.Lock()
-	s := c.stream
-	c.mu.Unlock()
 	return s.Snapshot(), true
 }
 
