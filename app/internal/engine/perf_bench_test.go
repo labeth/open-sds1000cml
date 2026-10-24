@@ -438,3 +438,13 @@ func BenchmarkRefineTriggerEdge(b *testing.B) {
 		refineTriggerEdge(sig, nil, len(sig), 9630.4, 128, false)
 	}
 }
+
+// TRLC-LINKS: REQ-SDS-021
+func BenchmarkEdgeWindows(b *testing.B) {
+	f := &Frame{Edge: &EdgeWindow{C1: make([]uint8, 1024), C2: make([]uint8, 1024), SampleS: 2e-9},
+		EdgeOpp: &EdgeWindow{C1: make([]uint8, 1024), C2: make([]uint8, 1024), SampleS: 2e-9}}
+	for b.Loop() {
+		f.EdgeWindows(0)
+		f.EdgeWindows(1)
+	}
+}

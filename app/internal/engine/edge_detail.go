@@ -161,10 +161,13 @@ func (e *Engine) recallEdgeWindow(ctx context.Context, m sramcapture.Metadata, w
 // 65536-bin histogram (512 KB), on every LCD repaint - half the frame rate.
 // TRLC-LINKS: REQ-SDS-021
 func (f *Frame) EdgeWindows(ch int) []measure.EdgeWindow {
-	var out []measure.EdgeWindow
-	for _, w := range []*EdgeWindow{f.Edge, f.EdgeOpp} {
+	var out []measure.EdgeWindow // nil without windows
+	for _, w := range [2]*EdgeWindow{f.Edge, f.EdgeOpp} {
 		if w == nil {
 			continue
+		}
+		if out == nil {
+			out = make([]measure.EdgeWindow, 0, 2) // both, one allocation
 		}
 		sig := w.C1
 		if ch == 1 {
