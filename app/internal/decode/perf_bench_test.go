@@ -340,3 +340,19 @@ func BenchmarkSymbolIndex(b *testing.B) {
 		}
 	}
 }
+
+// The engine learns a serial channel's threshold and a qualifier's extent
+// from every frame: a 14000-sample record, a bus and a quiet line.
+// TRLC-LINKS: REQ-SDS-018
+func BenchmarkAutoThreshold(b *testing.B) {
+	bus, quiet := make([]uint8, 14000), make([]uint8, 14000)
+	for i := range bus {
+		bus[i] = uint8(70 + 120*((i/37)%2) + i%5)
+		quiet[i] = uint8(126 + i%5)
+	}
+	for b.Loop() {
+		AutoThreshold(bus)
+		AutoThreshold(quiet)
+		Extent(bus)
+	}
+}
