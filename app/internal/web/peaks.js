@@ -38,10 +38,8 @@ function spectrum(samples, nyq) {
   if (N < 16) return null;
   const re = new Float64Array(N), im = new Float64Array(N);
   let mean = 0; for (let i = 0; i < N; i++) mean += samples[i]; mean /= N;
-  for (let i = 0; i < N; i++) {
-    const win = 0.5 - 0.5 * Math.cos(2 * Math.PI * i / (N - 1)); // Hann
-    re[i] = (samples[i] - mean) * win;
-  }
+  const hann = hannWindow(N);
+  for (let i = 0; i < N; i++) re[i] = (samples[i] - mean) * hann[i];
   fftInPlace(re, im);
   const half = N / 2;
   const mags = new Float64Array(half);
@@ -49,6 +47,21 @@ function spectrum(samples, nyq) {
   for (let k = 0; k < half; k++) { mags[k] = Math.hypot(re[k], im[k]); if (mags[k] > peak) peak = mags[k]; }
   return { mags, half, nyq: nyq || 0, peak };
 }
+
+// hannWindow is the N-point Hann window spectrum applies, kept per size: a
+// cosine a sample, every frame, was most of a spectrum.
+// TRLC-LINKS: REQ-SDS-070
+function hannWindow(N) {
+  let w = HANN_WINDOWS.get(N);
+  if (!w) {
+    w = new Float64Array(N);
+    for (let i = 0; i < N; i++) w[i] = 0.5 - 0.5 * Math.cos(2 * Math.PI * i / (N - 1));
+    HANN_WINDOWS.set(N, w);
+  }
+  return w;
+}
+
+const HANN_WINDOWS = new Map();
 
 // fftReduce is the LCD's transform of a record (framecalc.Spectrum, held to it
 // by TestSpectrumJSParity): the largest power of two up to maxN points, each the
