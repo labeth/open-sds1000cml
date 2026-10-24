@@ -4,8 +4,6 @@ package panel
 import (
 	"encoding/json"
 	"fmt"
-	"hash"
-	"hash/fnv"
 	"math"
 	"strings"
 	"time"
@@ -408,58 +406,85 @@ func ptr(v float64) *float64 { return &v }
 // so the Seq follows a setting changed anywhere.
 // TRLC-LINKS: REQ-SDS-212
 func sheetSig(s *sv) uint64 {
-	h := fnv.New64a()
+	h := newSig()
 	for _, t := range sheetTabs {
 		for _, r := range t.rows {
-			h.Write([]byte(r.id))
-			putU64(h, uint64(b2ic(r.relevant(s))))
+			h.str(r.id)
+			h.u64(uint64(b2ic(r.relevant(s))))
 			if r.kind == wsview.Enum {
-				putU64(h, uint64(len(r.options(s))))
+				h.u64(uint64(len(r.options(s))))
 			}
-			hashValue(h, s, r)
+			hashValue(&h, s, r)
 		}
 	}
-	return h.Sum64()
+	return uint64(h)
 }
 
 // hashValue writes a row's value into h: its option, its number, the match
 // bytes or a setup slot's summary (an action has none; its live status is
 // not a setting).
 // TRLC-LINKS: REQ-SDS-211, REQ-SDS-220
-func hashValue(h hash.Hash64, s *sv, r *row) {
+func hashValue(h *sig64, s *sv, r *row) {
 	switch r.kind {
 	case wsview.Enum:
-		putU64(h, uint64(r.get(s)))
+		h.u64(uint64(r.get(s)))
 	case wsview.Number:
-		putU64(h, math.Float64bits(r.val(s)))
+		h.u64(math.Float64bits(r.val(s)))
 	case wsview.Bytes:
-		h.Write([]byte(matchText(s)))
+		h.str(matchText(s))
 	case wsview.Slot:
-		putU64(h, uint64(b2ic(s.slotUsed[r.slot])))
-		h.Write([]byte(s.slotSum[r.slot]))
+		h.u64(uint64(b2ic(s.slotUsed[r.slot])))
+		h.str(s.slotSum[r.slot])
 	}
 }
 
-// putU64 writes x into h, little-endian.
+// sig64 is a 64-bit FNV-1a hash (hash/fnv's New64a) kept in a word: no
+// interface call, and no conversion of a string to bytes, a write.
+type sig64 uint64
+
+// newSig is the FNV-1a offset basis.
 // TRLC-LINKS: REQ-SDS-211
-func putU64(h hash.Hash64, x uint64) {
-	var b [8]byte
-	for i := range b {
-		b[i] = byte(x >> (8 * i))
+func newSig() sig64 { return 14695981039346656037 }
+
+// str hashes s's bytes.
+// TRLC-LINKS: REQ-SDS-211
+func (h *sig64) str(s string) {
+	x := uint64(*h)
+	for i := 0; i < len(s); i++ {
+		x = (x ^ uint64(s[i])) * 1099511628211
 	}
-	h.Write(b[:])
+	*h = sig64(x)
+}
+
+// bytes hashes b.
+// TRLC-LINKS: REQ-SDS-211
+func (h *sig64) bytes(b []byte) {
+	x := uint64(*h)
+	for _, c := range b {
+		x = (x ^ uint64(c)) * 1099511628211
+	}
+	*h = sig64(x)
+}
+
+// u64 hashes x's eight bytes, little-endian.
+// TRLC-LINKS: REQ-SDS-211
+func (h *sig64) u64(v uint64) {
+	x := uint64(*h)
+	for i := 0; i < 8; i++ {
+		x = (x ^ (v >> (8 * i) & 0xff)) * 1099511628211
+	}
+	*h = sig64(x)
 }
 
 // rowKeys is every row's value as a key, in sheet order.
 // TRLC-LINKS: REQ-SDS-212, REQ-SDS-220
 func rowKeys(s *sv) []uint64 {
-	h := fnv.New64a()
 	keys := make([]uint64, 0, len(rowByID))
 	for _, t := range sheetTabs {
 		for _, r := range t.rows {
-			h.Reset()
-			hashValue(h, s, r)
-			keys = append(keys, h.Sum64())
+			h := newSig()
+			hashValue(&h, s, r)
+			keys = append(keys, uint64(h))
 		}
 	}
 	return keys
@@ -545,9 +570,9 @@ func (c *Controller) publish() {
 	s := c.snap()
 	st := c.status(s)
 	raw, _ := json.Marshal(st)
-	h := fnv.New64a()
-	h.Write(raw)
-	sig := h.Sum64()
+	h := newSig()
+	h.bytes(raw)
+	sig := uint64(h)
 	c.rmu.Lock()
 	if s.now.Sub(c.remote.sheetsActive) < sheetsWindow {
 		ss := sheetSig(s)
