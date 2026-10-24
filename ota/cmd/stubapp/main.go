@@ -85,6 +85,8 @@ func main() {
 	var healthy bool
 	var frames uint64
 
+	var tok []byte // reused each write
+	tmp := healthPath + ".tmp"
 	tick := time.NewTicker(400 * time.Millisecond)
 	defer tick.Stop()
 	for {
@@ -102,13 +104,22 @@ func main() {
 			}
 			// Re-write (touch) the health token on frame advance. Content
 			// changes each write so a same-second mtime still counts.
-			tok := fmt.Sprintf("frames=%d ts=%d\n", frames, time.Now().UnixNano())
-			tmp := healthPath + ".tmp"
-			if err := os.WriteFile(tmp, []byte(tok), 0o644); err == nil {
+			tok = healthToken(tok[:0], frames, time.Now().UnixNano())
+			if err := os.WriteFile(tmp, tok, 0o644); err == nil {
 				_ = os.Rename(tmp, healthPath)
 			}
 		}
 	}
+}
+
+// healthToken appends the health file's line, "frames=N ts=NS\n".
+// TRLC-LINKS: REQ-SDS-177
+func healthToken(b []byte, frames uint64, ns int64) []byte {
+	b = append(b, "frames="...)
+	b = strconv.AppendUint(b, frames, 10)
+	b = append(b, " ts="...)
+	b = strconv.AppendInt(b, ns, 10)
+	return append(b, '\n')
 }
 
 // TRLC-LINKS: REQ-SDS-177
