@@ -37,7 +37,13 @@ const LAYERS = [
 // ---- formatting (as the scope's layers format) ----
 
 // TRLC-LINKS: REQ-SDS-241
-function lyHx(v, n) { return v.toString(16).toUpperCase().padStart(n, "0"); }
+function lyHx(v, n) {
+  if (n === 2 && v >= 0 && v < 256 && v === (v | 0)) return LY_HEX2[v]; // the notes' common case, from a table
+  return v.toString(16).toUpperCase().padStart(n, "0");
+}
+
+// LY_HEX2 is every byte as two upper-case hex digits, made once.
+const LY_HEX2 = Array.from({ length: 256 }, (_, v) => v.toString(16).toUpperCase().padStart(2, "0"));
 
 // lyHexList writes bytes "12 34 56", at most max and " .." after.
 // TRLC-LINKS: REQ-SDS-241
