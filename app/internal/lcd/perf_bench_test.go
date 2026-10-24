@@ -67,3 +67,13 @@ func BenchmarkDrawTraceSparse(b *testing.B) {
 		drawTrace(sf, sig, 300, 500, true, 0x07ff, 0.5)
 	}
 }
+
+// TRLC-LINKS: REQ-SDS-021
+func BenchmarkFmtLabels(b *testing.B) {
+	for b.Loop() {
+		_ = vdivLabel(0.2, 10)
+		_ = vdivLabel(0.05, 1)
+		_ = fmtTdiv(-999.9e-9)
+		_ = fmtFreq(1234567)
+	}
+}

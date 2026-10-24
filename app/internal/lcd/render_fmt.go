@@ -2,7 +2,6 @@
 package lcd
 
 import (
-	"fmt"
 	"open-sds/app/internal/analog"
 	"strconv"
 )
@@ -18,18 +17,27 @@ func g3(x float64) string { return strconv.FormatFloat(x, 'g', 3, 64) }
 // ordered high→low; the sign is preserved.
 // TRLC-LINKS: REQ-SDS-021
 func siScale(v float64, units []siUnit) string {
-	neg := ""
+	var buf [24]byte
+	return string(appendSI(buf[:0], v, units))
+}
+
+// appendSI appends siScale's text to b: one allocation for the label, none
+// for the pieces.
+// TRLC-LINKS: REQ-SDS-021
+func appendSI(b []byte, v float64, units []siUnit) []byte {
 	a := v
 	if a < 0 {
-		neg, a = "-", -a
+		b, a = append(b, '-'), -a
 	}
-	for _, u := range units {
-		if a >= u.scale*0.9995 {
-			return neg + g3(a/u.scale) + u.suffix
+	u := units[len(units)-1]
+	for _, c := range units {
+		if a >= c.scale*0.9995 {
+			u = c
+			break
 		}
 	}
-	last := units[len(units)-1]
-	return neg + g3(a/last.scale) + last.suffix
+	b = strconv.AppendFloat(b, a/u.scale, 'g', 3, 64)
+	return append(b, u.suffix...)
 }
 
 // TRLC-LINKS: REQ-SDS-021
@@ -56,11 +64,14 @@ func vdivLabel(vdivV, probe float64) string {
 	if probe < 1 {
 		probe = 1
 	}
-	s := fmtVolt(vdivV * probe)
+	var buf [32]byte
+	b := appendSI(buf[:0], vdivV*probe, voltUnits)
 	if probe != 1 {
-		s += fmt.Sprintf(" %gx", probe)
+		b = append(b, ' ')
+		b = strconv.AppendFloat(b, probe, 'g', -1, 64)
+		b = append(b, 'x')
 	}
-	return s
+	return string(b)
 }
 
 // TRLC-LINKS: REQ-SDS-021
