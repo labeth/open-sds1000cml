@@ -174,9 +174,13 @@ function mirrorSync(r) {
   if (kind === "text") { if (m.textContent !== src.textContent) m.textContent = src.textContent; return; }
   if (kind === "seg") {
     if (m.value !== src.value) m.value = src.value;
+    // the source's buttons by value in one query (the first of a value, as a
+    // query per button found), each copy written only when it differs
+    const byVal = new Map();
+    for (const sb of src.querySelectorAll(":scope > button[data-value]")) if (!byVal.has(sb.dataset.value)) byVal.set(sb.dataset.value, sb);
     for (const b of m.querySelectorAll(":scope > button[data-value]")) {
-      const sb = src.querySelector(`:scope > button[data-value="${CSS.escape(b.dataset.value)}"]`);
-      if (sb) b.disabled = sb.disabled;
+      const sb = byVal.get(b.dataset.value);
+      if (sb && b.disabled !== sb.disabled) b.disabled = sb.disabled;
     }
   } else if (kind === "select") {
     if (m.options.length !== src.options.length || (src.options.length && m.options[0].value !== src.options[0].value)) {
@@ -184,19 +188,19 @@ function mirrorSync(r) {
       for (const o of src.options) { const c = document.createElement("option"); c.value = o.value; c.textContent = o.textContent; m.appendChild(c); }
     }
     if (document.activeElement !== m && m.value !== src.value) m.value = src.value;
-    m.disabled = src.disabled;
+    if (m.disabled !== src.disabled) m.disabled = src.disabled;
   } else if (kind.startsWith("input:")) {
-    if (kind === "input:checkbox") m.checked = src.checked;
+    if (kind === "input:checkbox") { if (m.checked !== src.checked) m.checked = src.checked; }
     else {
       for (const a of ["min", "max", "step"]) if (src[a] !== m[a]) m[a] = src[a];
       if (document.activeElement !== m && m.value !== src.value) m.value = src.value;
     }
-    m.disabled = src.disabled;
+    if (m.disabled !== src.disabled) m.disabled = src.disabled;
   } else {
     const on = src.classList.contains("on");
-    m.classList.toggle("on", on);
-    if (src.hasAttribute("aria-pressed")) m.setAttribute("aria-pressed", src.getAttribute("aria-pressed"));
-    m.disabled = src.disabled;
+    if (m.classList.contains("on") !== on) m.classList.toggle("on", on);
+    if (src.hasAttribute("aria-pressed")) { const ap = src.getAttribute("aria-pressed"); if (m.getAttribute("aria-pressed") !== ap) m.setAttribute("aria-pressed", ap); }
+    if (m.disabled !== src.disabled) m.disabled = src.disabled;
     // a copy labelled "On" is an on/off switch: it says which
     const t = r.label === "On" ? (on ? "On" : "Off") : r.label || src.textContent;
     if (m.textContent !== t) m.textContent = t;
