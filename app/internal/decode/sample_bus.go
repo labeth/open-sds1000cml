@@ -60,8 +60,10 @@ func SampleEdges(wide []uint64, c SampleLineConfig) []SampleLineEdge {
 	for k, w := range wide {
 		o := &out[k]
 		pos, rising := -1, false
+		lowAll, highAll := true, true // the clock's four samples all beyond the band
 		for j := 0; j < 4; j++ {
 			s := sampleOf(w, c.Ch, j)
+			lowAll, highAll = lowAll && s <= c.Low, highAll && s >= c.High
 			hitR, farR := s >= c.Level, s <= c.Low
 			hitF, farF := s < c.Level, s >= c.High
 			fireR, fireF := armR && hitR, armF && hitF
@@ -76,11 +78,6 @@ func SampleEdges(wide []uint64, c SampleLineConfig) []SampleLineEdge {
 		}
 		// a line beyond the band for a whole clock re-arms the other way: a
 		// runt pulse (past the level, short of the band) must not hold it
-		lowAll, highAll := true, true
-		for j := 0; j < 4; j++ {
-			s := sampleOf(w, c.Ch, j)
-			lowAll, highAll = lowAll && s <= c.Low, highAll && s >= c.High
-		}
 		okR, okF = okR || lowAll, okF || highAll
 		if pos >= 0 {
 			a := prev

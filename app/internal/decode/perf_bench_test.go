@@ -256,3 +256,12 @@ func BenchmarkCrossingsEnd(b *testing.B) {
 		crossingsEnd(c, 1<<30)
 	}
 }
+
+// TRLC-LINKS: REQ-SDS-229
+func BenchmarkSampleEdges(b *testing.B) {
+	wide := readCapture(b, "spi_sample_104mhz.bin.gz")
+	c := SampleLineConfig{Ch: 1, Rise: true, Fall: true, Level: 128, Low: 110, High: 146, OtherLevel: 128}
+	for b.Loop() {
+		SampleEdges(wide, c)
+	}
+}
