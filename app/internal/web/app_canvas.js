@@ -77,12 +77,16 @@ scope.addEventListener("pointermove", ev => {
     if (boxZoom.moved) scheduleRender();
     return;
   }
-  if (typeof zmPointerMove === "function" && zmPointerMove(ptToNorm(ev))) return;
+  // The pointer's plot position read once (a layout read), the cursor
+  // style written only when it changes (a style write restyles the page).
+  const pn = ptToNorm(ev);
+  if (typeof zmPointerMove === "function" && zmPointerMove(pn)) return;
   if (mk) { moveMarker(ev); return; }
   if (srGate.drag) { moveSrGate(ev); return; }
   if (cur.drag) { moveCursor(ev); return; }
-  const h = markerHit(ptToNorm(ev));    // hover affordance
-  scope.style.cursor = h ? "ns-resize" : (view.cursors ? "crosshair" : "default");
+  const h = markerHit(pn);    // hover affordance
+  const want = h ? "ns-resize" : (view.cursors ? "crosshair" : "default");
+  if (scope.style.cursor !== want) scope.style.cursor = want;
 });
 scope.addEventListener("pointerleave", () => {
   if (fftHover.on) { fftHover.on = false; if (view.mode === "FFT") redraw(); }
