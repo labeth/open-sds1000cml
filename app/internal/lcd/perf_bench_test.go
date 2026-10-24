@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"open-sds/app/internal/panel/framecalc"
+	"open-sds/app/internal/panel/wsview"
 	"open-sds/app/internal/streamview"
 )
 
@@ -244,5 +245,16 @@ func BenchmarkMathCodes(b *testing.B) {
 			h.MathMode = mode
 			mathCodes(c1, c2, h)
 		}
+	}
+}
+
+// TRLC-LINKS: REQ-SDS-273
+func BenchmarkDrawSoundPane(b *testing.B) {
+	s := goldenSoundPane("MODULATION", []wsview.Span{{Text: "TREMOLO (AM)", Col: wsview.Amber}, {Text: "depth 30.0%  5.4 dB", Col: wsview.Text}})
+	p := plotOf(wsview.Layout{MenuW: 30, PlotTop: 262})
+	sf := NewMemSurface()
+	for b.Loop() {
+		drawSoundPane(sf, p, s)
+		drawSoundTrace(sf, p, s)
 	}
 }

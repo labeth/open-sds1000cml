@@ -2,8 +2,8 @@
 package lcd
 
 import (
-	"fmt"
 	"math"
+	"strconv"
 
 	"open-sds/app/internal/panel/wsview"
 )
@@ -49,7 +49,7 @@ func drawSoundPane(sf Surface, p plotArea, s *wsview.SoundPane) {
 	drawMeters(sf, s, bottom)
 	vline(sf, sndReadX-6, 28, bottom, colGrid)
 	x := sndReadX
-	title := fmt.Sprintf("< %s >  %d/%d", s.Page, s.PageNum+1, s.Pages)
+	title := "< " + s.Page + " >  " + strconv.Itoa(s.PageNum+1) + "/" + strconv.Itoa(s.Pages)
 	DrawText(sf, x, 28, title, colTrig, 1)
 	room := (p.w - x - 4) / 6
 	for i, l := range s.Lines {
@@ -79,7 +79,7 @@ func drawTuner(sf Surface, s *wsview.SoundPane, bottom int) {
 	DrawText(sf, x0+2, 30, s.Note, noteCol, 5)
 	DrawText(sf, x0+124, 30, s.Hz, chanCol(s.Ch), 2)
 	if s.HasPitch {
-		DrawText(sf, x0+124, 48, fmt.Sprintf("%+.1f c", s.Cents), noteCol, 2)
+		DrawText(sf, x0+124, 48, centsText(s.Cents), noteCol, 2)
 	} else {
 		DrawText(sf, x0+124, 48, "-- c", colDim, 2)
 	}
@@ -166,13 +166,13 @@ func drawMeters(sf Surface, s *wsview.SoundPane, bottom int) {
 	for _, db := range []float64{0, -12, -24, -36, -48, -60} {
 		yy := yOf(db)
 		hline(sf, sx-3, sx+3, yy, colAxis)
-		DrawTextRight(sf, sx+28, yy-3, fmt.Sprintf("%.0f", db), colDim, 1)
+		DrawTextRight(sf, sx+28, yy-3, strconv.Itoa(int(db)), colDim, 1)
 	}
 	for ch := 0; ch < 2; ch++ {
 		m := s.Meter[ch]
 		bx := x0 + 30 + ch*72
 		lx := x0 + 4 + ch*126
-		DrawText(sf, lx, top, fmt.Sprintf("C%d", ch+1), chanCol(ch), 1)
+		DrawText(sf, lx, top, [2]string{"C1", "C2"}[ch], chanCol(ch), 1)
 		fillRect(sf, bx, top, 22, barH+1, colBoxBg)
 		if m.Clip {
 			fillRect(sf, lx-2, top+12, 21, 9, colStale)
@@ -194,7 +194,11 @@ func drawMeters(sf Surface, s *wsview.SoundPane, bottom int) {
 			if yy > bottom-8 {
 				break
 			}
-			DrawText(sf, x0+ch*86, yy, cutText(l, 14), map[bool]uint16{true: chanCol(ch), false: colInfo}[i == 0], 1)
+			lc := colInfo
+			if i == 0 {
+				lc = chanCol(ch)
+			}
+			DrawText(sf, x0+ch*86, yy, cutText(l, 14), lc, 1)
 		}
 	}
 }
@@ -234,14 +238,22 @@ func drawSoundTrace(sf Surface, p plotArea, s *wsview.SoundPane) {
 		if k < n-1 {
 			col = scaleCol(col, 0.18+0.3*float64(k)/float64(n))
 		}
+		// x = i*(w-1)/(len-1), stepped: a quotient and remainder carried
+		// from sample to sample instead of a division each.
 		px, py := -1, -1
-		for i, v := range tr {
-			x := i * (p.w - 1) / max(1, len(tr)-1)
+		num, den := p.w-1, max(1, len(tr)-1)
+		x, rem := 0, 0
+		for _, v := range tr {
 			y := yOf(v)
 			if px >= 0 {
 				drawLine(sf, px, py, x, y, col)
 			}
 			px, py = x, y
+			x += num / den
+			if rem += num % den; rem >= den {
+				rem -= den
+				x++
+			}
 		}
 	}
 	for i, l := range s.TraceTop {
@@ -307,6 +319,18 @@ func drawSoundTake(sf Surface, p plotArea, t *wsview.SoundTake) {
 	DrawText(sf, 6, by-11, hint, colDim, 1)
 }
 
+// centsText is the tuner's offset, signed always (fmt's "%+.1f c").
+// TRLC-LINKS: REQ-SDS-267, REQ-SDS-273
+func centsText(c float64) string {
+	b := make([]byte, 1, 16)
+	b[0] = '+'
+	b = strconv.AppendFloat(b, c, 'f', 1, 64)
+	if b[1] == '-' || b[1] == '+' {
+		b = b[1:]
+	}
+	return string(append(b, " c"...))
+}
+
 // si3 writes v to three significant digits.
 // TRLC-LINKS: REQ-SDS-273
-func si3(v float64) string { return fmt.Sprintf("%.3g", v) }
+func si3(v float64) string { return strconv.FormatFloat(v, 'g', 3, 64) }

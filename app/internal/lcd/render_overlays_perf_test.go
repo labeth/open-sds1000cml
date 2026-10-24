@@ -2,6 +2,7 @@
 package lcd
 
 import (
+	"fmt"
 	"math"
 	"testing"
 )
@@ -64,6 +65,19 @@ func TestMathCodesMatchesRef(t *testing.T) {
 			if string(got) != string(want) {
 				t.Fatalf("mode %d hud %+v: mathCodes differs from the reference", mode, h)
 			}
+		}
+	}
+}
+
+// The tuner's cents text reads as fmt's "%+.1f c"; si3 as "%.3g".
+// TRLC-LINKS: REQ-SDS-273
+func TestSoundTextMatchesFmt(t *testing.T) {
+	for _, c := range []float64{0, math.Copysign(0, -1), 3.14, -3.14, -0.04, 0.04, 49.96, -50, 1e-7, 123456, math.NaN(), math.Inf(1), math.Inf(-1)} {
+		if got, want := centsText(c), fmt.Sprintf("%+.1f c", c); got != want {
+			t.Errorf("centsText(%v) = %q, fmt %q", c, got, want)
+		}
+		if got, want := si3(c), fmt.Sprintf("%.3g", c); got != want {
+			t.Errorf("si3(%v) = %q, fmt %q", c, got, want)
 		}
 	}
 }
