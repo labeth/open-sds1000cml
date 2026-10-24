@@ -65,7 +65,8 @@ function decodeBinFrame(buf) {
     const chan = (ch) => {
       const out = new Float32Array(cols);
       if (head || tail) out.fill(-1);
-      for (let i=0;i<body;i++) out[head+i]=view.getUint16(2*(ch*body+i),true)/256;
+      // * 2^-8 is exactly / 256, without a divide a sample
+      for (let i = 0, o = 2 * ch * body; i < body; i++, o += 2) out[head + i] = view.getUint16(o, true) * 0.00390625;
       return out;
     };
     f.c1=chan(0); f.c2=chan(1); return f;
