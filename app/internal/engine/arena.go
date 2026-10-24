@@ -147,11 +147,12 @@ func (a *arena) Publish() {
 // TRLC-LINKS: REQ-SDS-007
 func (a *arena) Consume() (f *Frame, fresh bool) {
 	a.mu.Lock()
-	defer a.mu.Unlock()
-	if a.dirty {
+	fresh = a.dirty
+	if fresh {
 		a.read, a.ready = a.ready, a.read
 		a.dirty = false
-		return a.read, true
 	}
-	return a.read, false
+	f = a.read
+	a.mu.Unlock()
+	return f, fresh
 }
