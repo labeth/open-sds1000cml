@@ -66,14 +66,15 @@ func screenDivs(f *engine.Frame, s *sv, ch, cols int) []float64 {
 	// non-negative left the floor is the conversion's truncation (no float
 	// compare, which stalls this core's pipeline).
 	pos := func(x int) float64 { return left + float64(x)*float64(win)/float64(cols) }
-	floor := floorInt
-	if left >= 0 && pos(cols) < 1<<31 {
-		floor = func(v float64) int { return int(v) }
-	}
-	next := floor(pos(0))
+	trunc := left >= 0 && pos(cols) < 1<<31
+	next := floorInt(pos(0))
 	for x := range out {
 		start := next
-		next = floor(pos(x + 1))
+		if trunc {
+			next = int(pos(x + 1))
+		} else {
+			next = floorInt(pos(x + 1))
+		}
 		lo := clampInt(start, 0, valid-1)
 		hi := clampInt(next-1, lo, valid-1)
 		mn, mx := sig[lo], sig[lo]

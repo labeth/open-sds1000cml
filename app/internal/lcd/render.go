@@ -513,10 +513,6 @@ func spanRow(row []uint16, t0, ht []int32, cc []uint16, r int32) {
 	}
 }
 
-// truncInt is int(v): floorInt for v in [0, 2^31).
-// TRLC-LINKS: REQ-SDS-021
-func truncInt(v float64) int { return int(v) }
-
 // floorInt is int(math.Floor(v)) for the sample positions of a plot column:
 // math.Floor is a software routine on this ARM and these run per column per
 // frame. Out of int32 range, or NaN, it defers to math.Floor.
@@ -594,15 +590,16 @@ func denseColumns(id traceID, sig []uint8, left float64, win, ncols int) *denseC
 	// From a non-negative left every position is non-negative, so the
 	// floor is the conversion's truncation: no range test a column (a float
 	// compare stalls this core's pipeline).
-	floor := floorInt
-	if left >= 0 && left+float64(ncols+1)*step < 1<<31 {
-		floor = truncInt
-	}
-	next := floor(left)
+	trunc := left >= 0 && left+float64(ncols+1)*step < 1<<31
+	next := floorInt(left)
 	for x := 0; x < ncols; x++ {
 		// Column x ends where x+1 starts: one floor a column.
 		lo := next
-		next = floor(left + float64(x+1)*step)
+		if pos := left + float64(x+1)*step; trunc {
+			next = int(pos)
+		} else {
+			next = floorInt(pos)
+		}
 		hi := next - 1
 		lo, hi = min(max(lo, 0), n-1), min(max(hi, 0), n-1)
 		mn, mx := sig[lo], sig[lo]
