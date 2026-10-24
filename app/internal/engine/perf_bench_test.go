@@ -371,3 +371,57 @@ func TestNotePublishFPS(t *testing.T) {
 		t.Fatalf("FPS %v, want 64", fps)
 	}
 }
+
+// buildMaskRef is the column-by-column dilation BuildMaskFromEnvelope replaced.
+// TRLC-LINKS: REQ-SDS-014
+func buildMaskRef(lo, hi []uint8, winCols, tolCols, tolCodes int) (outLo, outHi []uint8) {
+	nLo, nHi := make([]uint8, winCols), make([]uint8, winCols)
+	for j := 0; j < winCols; j++ {
+		if lo[j] > hi[j] {
+			nLo[j], nHi[j] = 0, 255
+		} else {
+			nLo[j], nHi[j] = lo[j], hi[j]
+		}
+	}
+	outLo, outHi = make([]uint8, winCols), make([]uint8, winCols)
+	for j := 0; j < winCols; j++ {
+		mn, mx := 255, 0
+		for k := max(j-tolCols, 0); k <= min(j+tolCols, winCols-1); k++ {
+			mn, mx = min(mn, int(nLo[k])), max(mx, int(nHi[k]))
+		}
+		outLo[j], outHi[j] = uint8(max(mn-tolCodes, 0)), uint8(min(mx+tolCodes, 255))
+	}
+	return outLo, outHi
+}
+
+// The running dilation builds the mask the column-by-column one did.
+// TRLC-LINKS: REQ-SDS-014
+func TestBuildMaskDilation(t *testing.T) {
+	for _, w := range []int{1, 2, 7, 50, 333} {
+		lo, hi := make([]uint8, w), make([]uint8, w)
+		for j := range lo {
+			lo[j], hi[j] = uint8((j*7919)%200), uint8(50+(j*104729)%200)
+		}
+		for _, tol := range []int{0, 1, 2, 5, 13, 400} {
+			for _, codes := range []int{0, 8, 300} {
+				m := BuildMaskFromEnvelope(lo, hi, w, tol, codes, 0)
+				rl, rh := buildMaskRef(lo, hi, w, tol, codes)
+				if string(m.Lo) != string(rl) || string(m.Hi) != string(rh) {
+					t.Fatalf("w %d tol %d codes %d: dilation differs", w, tol, codes)
+				}
+			}
+		}
+	}
+}
+
+// TRLC-LINKS: REQ-SDS-014
+func BenchmarkBuildMask(b *testing.B) {
+	lo, hi := make([]uint8, 12000), make([]uint8, 12000)
+	for j := range lo {
+		lo[j], hi[j] = uint8(60+(j/97)%2*100), uint8(90+(j/97)%2*100)
+	}
+	for b.Loop() {
+		BuildMaskFromEnvelope(lo, hi, len(lo), 5, 8, 0)
+		BuildMaskFromEnvelope(lo, hi, len(lo), 20, 24, 0)
+	}
+}

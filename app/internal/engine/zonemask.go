@@ -491,26 +491,13 @@ func BuildMaskFromEnvelope(lo, hi []uint8, winCols, tolCols, tolCodes, ch int) *
 			nLo[j], nHi[j] = lo[j], hi[j]
 		}
 	}
-	lo, hi = nLo, nHi
+	// Each column's extremes over the ±tolCols columns about it: a running
+	// minimum and maximum, the same at any tolerance (van Herk/Gil-Werman).
+	wLo, wHi := slideExtreme(nLo, max(tolCols, 0), false), slideExtreme(nHi, max(tolCols, 0), true)
 	outLo := make([]uint8, winCols)
 	outHi := make([]uint8, winCols)
 	for j := 0; j < winCols; j++ {
-		mn, mx := 255, 0
-		a, b := j-tolCols, j+tolCols
-		if a < 0 {
-			a = 0
-		}
-		if b >= winCols {
-			b = winCols - 1
-		}
-		for k := a; k <= b; k++ {
-			if int(lo[k]) < mn {
-				mn = int(lo[k])
-			}
-			if int(hi[k]) > mx {
-				mx = int(hi[k])
-			}
-		}
+		mn, mx := int(wLo[j]), int(wHi[j])
 		mn -= tolCodes
 		mx += tolCodes
 		if mn < 0 {
@@ -523,6 +510,52 @@ func BuildMaskFromEnvelope(lo, hi []uint8, winCols, tolCols, tolCodes, ch int) *
 		outHi[j] = uint8(mx)
 	}
 	return &Mask{Lo: outLo, Hi: outHi, WinCols: winCols, Ch: ch}
+}
+
+// slideExtreme is each x[j]'s window x[j-r..j+r] (clipped to x) reduced to
+// its minimum, or its maximum (high, as 255 less the minimum of 255-x):
+// blocks of the window's width, a running minimum from each block's left and
+// from its right, and the two read at a window's ends - three steps a column
+// whatever r is (van Herk/Gil-Werman).
+// TRLC-LINKS: REQ-SDS-014
+func slideExtreme(x []uint8, r int, high bool) []uint8 {
+	n, w := len(x), 2*r+1
+	m := n + 2*r
+	p := make([]uint8, 3*m) // x padded r either side with 255 (adds nothing), then g and h
+	xp, g, h := p[:m], p[m:2*m], p[2*m:]
+	for i := range xp {
+		xp[i] = 255
+	}
+	flip := uint8(0)
+	if high {
+		flip = 255
+	}
+	for i, v := range x {
+		xp[r+i] = v ^ flip // 255-v for the maximum
+	}
+	for i, k := 0, 0; i < m; i++ { // k: i's place in its block (counted, not i%w)
+		g[i] = xp[i]
+		if k != 0 {
+			g[i] = min(g[i-1], g[i])
+		}
+		if k++; k == w {
+			k = 0
+		}
+	}
+	for i, k := m-1, (m-1)%w; i >= 0; i-- {
+		h[i] = xp[i]
+		if k != w-1 && i+1 < m {
+			h[i] = min(h[i+1], h[i])
+		}
+		if k--; k < 0 {
+			k = w - 1
+		}
+	}
+	out := make([]uint8, n)
+	for j := range out { // the window x[j-r..j+r] is xp[j .. j+2r]
+		out[j] = min(h[j], g[j+2*r]) ^ flip
+	}
+	return out
 }
 
 // frameIdent is the geometry of the latest published frame (guarded by e.mu),
