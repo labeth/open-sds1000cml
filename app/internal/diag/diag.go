@@ -110,7 +110,7 @@ func BusBallIndex(ball string) (int, bool) {
 func LaneName(idx int) string {
 	switch {
 	case idx >= 0 && idx < 80:
-		return fmt.Sprintf("lane%02d", idx)
+		return laneNames[idx]
 	case idx >= 0x50 && idx < 0x50+len(BusBalls):
 		return BusBalls[idx-0x50]
 	case idx >= 0x70 && idx < 0x70+len(SingleBalls):
@@ -130,6 +130,19 @@ func LaneName(idx int) string {
 	}
 	return ""
 }
+
+// laneNames are the 80 ADC lanes' names, made once: a quiet listen or a
+// census names every lane.
+var laneNames = func() (n [80]string) {
+	for i := range n {
+		n[i] = fmt.Sprintf("lane%02d", i)
+	}
+	return n
+}()
+
+// diagWindow is the DIAG window table, copied from iface once: a lookup
+// copied the whole table each time.
+var diagWindow = iface.DiagWindow()
 
 // laneIndices lists every valid LANE_IDX value in order.
 // TRLC-LINKS: REQ-SDS-144
@@ -166,14 +179,15 @@ func ResolveSel(name string) (uint16, iface.Register, error) {
 // TRLC-LINKS: REQ-SDS-143
 func ResolveDiagIdx(name string) (uint16, iface.DiagEntry, error) {
 	up := strings.ToUpper(name)
-	for _, e := range iface.DiagWindow() {
+	for k := range diagWindow {
+		e := &diagWindow[k]
 		if e.Name == up {
-			return e.Idx, e, nil
+			return e.Idx, *e, nil
 		}
-		if e.Count > 1 && strings.HasPrefix(up, e.Name+".") {
-			i, err := strconv.Atoi(strings.TrimPrefix(up, e.Name+"."))
+		if rest, ok := strings.CutPrefix(up, e.Name); e.Count > 1 && ok && strings.HasPrefix(rest, ".") {
+			i, err := strconv.Atoi(rest[1:])
 			if err == nil && i >= 0 && i < e.Count {
-				return e.Idx + uint16(i), e, nil
+				return e.Idx + uint16(i), *e, nil
 			}
 		}
 	}
@@ -185,9 +199,9 @@ func ResolveDiagIdx(name string) (uint16, iface.DiagEntry, error) {
 
 // TRLC-LINKS: REQ-SDS-143
 func diagEntryAt(idx uint16) iface.DiagEntry {
-	for _, e := range iface.DiagWindow() {
-		if idx >= e.Idx && int(idx) < int(e.Idx)+e.Count {
-			return e
+	for k := range diagWindow {
+		if e := &diagWindow[k]; idx >= e.Idx && int(idx) < int(e.Idx)+e.Count {
+			return *e
 		}
 	}
 	return iface.DiagEntry{}

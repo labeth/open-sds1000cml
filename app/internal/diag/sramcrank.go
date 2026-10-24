@@ -150,7 +150,7 @@ func (d *Diag) SramCrank(o CrankOptions) (*CrankResult, error) {
 	nword := uint16(o.NEdge) | uint16(o.Div)<<iface.DiagSrclkNDivShift
 
 	err := d.run.Exec(func(b bus.Bus) error {
-		add := func(name string, v uint16) { res.Preflight = append(res.Preflight, fmt.Sprintf("%s=%#04x", name, v)) }
+		add := func(name string, v uint16) { res.Preflight = append(res.Preflight, name+"="+hex04(v)) }
 		// --- pre-flight: these are gates, and every one is read back, not assumed.
 		dc, err := b.Read(bus.PlaneCS1, iface.SelDiagCtrl)
 		if err != nil {
@@ -338,4 +338,11 @@ func (d *Diag) SramCrank(o CrankOptions) (*CrankResult, error) {
 		res.Verdict = "NULL"
 	}
 	return res, nil
+}
+
+// hex04 is v as %#04x: 0x and four lower-case hex digits.
+// TRLC-LINKS: REQ-SDS-150
+func hex04(v uint16) string {
+	const digits = "0123456789abcdef"
+	return string([]byte{'0', 'x', digits[v>>12], digits[v>>8&15], digits[v>>4&15], digits[v&15]})
 }

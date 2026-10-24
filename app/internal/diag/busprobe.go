@@ -3,6 +3,7 @@ package diag
 
 import (
 	"fmt"
+	"math/bits"
 	"time"
 
 	"open-sds/app/internal/bus"
@@ -263,41 +264,51 @@ func (r *BusProbeResult) decode(words []uint16, o BusProbeOptions) {
 	if o.OeMask == 0 {
 		mask = 0x07ffffff
 	}
-	track := func(name string, bit func(int) uint8, isDriven bool) BallActivity {
+	// Every ball's highs and edges in one pass over the samples (a closure
+	// call a sample a ball took 27 passes).
+	nb := len(BusBalls)
+	high := make([]int, nb+5)  // the bus balls, the four singles, P6
+	edges := make([]int, nb+5) // the same order
+	word := func(i int) uint64 {
+		return uint64(busv[i]) | uint64(auxv[i]>>1&0xf)<<nb | uint64(auxv[i]&1)<<(nb+4)
+	}
+	var first, prev uint64
+	if n > 0 {
+		first = word(0)
+		prev = first
+	}
+	for i := 0; i < n; i++ {
+		v := word(i)
+		for c := v; c != 0; c &= c - 1 {
+			high[bits.TrailingZeros64(c)]++
+		}
+		for c := v ^ prev; c != 0; c &= c - 1 {
+			edges[bits.TrailingZeros64(c)]++
+		}
+		prev = v
+	}
+	track := func(name string, b int, isDriven bool) BallActivity {
 		a := BallActivity{Ball: name, Driven: isDriven}
 		if n == 0 {
 			return a
 		}
-		a.First = bit(0)
-		prev := a.First
-		for i := 0; i < n; i++ {
-			v := bit(i)
-			if v == 1 {
-				a.High++
-			}
-			if i > 0 && v != prev {
-				a.Edges++
-			}
-			prev = v
-		}
-		a.Last = prev
+		a.First, a.Last = uint8(first>>b&1), uint8(prev>>b&1)
+		a.High, a.Edges = high[b], edges[b]
 		a.Changed = a.Edges > 0
 		return a
 	}
 	for k, ball := range BusBalls {
-		k := k
 		drivenK := anyPhase && mask&(1<<uint(k)) != 0
-		a := track(ball, func(i int) uint8 { return uint8((busv[i] >> uint(k)) & 1) }, drivenK)
+		a := track(ball, k, drivenK)
 		r.Balls = append(r.Balls, a)
 		if a.Changed && !drivenK {
 			r.Moving = append(r.Moving, ball)
 		}
 	}
 	for k := 0; k < 4; k++ {
-		k := k
-		r.Singles = append(r.Singles, track(SingleBalls[k], func(i int) uint8 { return uint8((auxv[i] >> uint(1+k)) & 1) }, false))
+		r.Singles = append(r.Singles, track(SingleBalls[k], nb+k, false))
 	}
-	r.P6 = track("P6", func(i int) uint8 { return uint8(auxv[i] & 1) }, false)
+	r.P6 = track("P6", nb+4, false)
 	if o.Raw {
 		r.Bus = busv
 		r.Aux = auxv

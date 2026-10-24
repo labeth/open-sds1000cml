@@ -399,6 +399,9 @@ func fieldUnion(fs []iface.Field) uint16 {
 	return m
 }
 
+// registerTable is the register table, copied from iface once.
+var registerTable = iface.Registers()
+
 // SchemaCheck runs R2. Only v3 registers are written (random values masked
 // to their fields); the v2 program is saved and restored around the run.
 // TRLC-LINKS: REQ-SDS-147
@@ -427,11 +430,12 @@ func (d *Diag) SchemaCheck(o SchemaOptions) (*SchemaResult, error) {
 			res.OK = false
 		}
 		// Writable v3 registers, stubs included.
-		for _, r := range iface.Registers() {
+		for k := range registerTable {
+			r := &registerTable[k]
 			if r.Since < 3 || !r.Access.CanWrite() || r.Strobe {
 				continue
 			}
-			rc := RegCheck{Name: r.Name, Sel: r.Sel, Stub: r.Stub, LiveMask: liveMask(r), OK: true}
+			rc := RegCheck{Name: r.Name, Sel: r.Sel, Stub: r.Stub, LiveMask: liveMask(*r), OK: true}
 			union := fieldUnion(r.Fields)
 			orig, _ := b.Read(bus.PlaneCS1, r.Sel)
 			for i := 0; i < o.Writes; i++ {
@@ -460,7 +464,8 @@ func (d *Diag) SchemaCheck(o SchemaOptions) (*SchemaResult, error) {
 			res.Registers = append(res.Registers, rc)
 		}
 		// Read-only stubs read 0.
-		for _, r := range iface.Registers() {
+		for k := range registerTable {
+			r := &registerTable[k]
 			if !r.Stub || r.Access.CanWrite() {
 				continue
 			}
@@ -471,7 +476,8 @@ func (d *Diag) SchemaCheck(o SchemaOptions) (*SchemaResult, error) {
 			}
 		}
 		// DIAG stubs: a write is ignored, the entry reads 0.
-		for _, e := range iface.DiagWindow() {
+		for k := range diagWindow {
+			e := &diagWindow[k]
 			if !e.Stub {
 				continue
 			}

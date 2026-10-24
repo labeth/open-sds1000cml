@@ -443,6 +443,7 @@ func (d *Diag) QuietListen(o QuietOptions) (*QuietResult, error) {
 		res.Level = make([]int, n)
 		res.Tog = make([]int, n)
 		res.Names = make([]string, n)
+		res.Moved = make([]QuietLane, 0, n) // sized once, not grown lane by lane
 		for pos, idx := range idxs {
 			if err := winWrite(b, iface.DiagLaneIdx, uint16(idx)); err != nil {
 				return err
