@@ -1,7 +1,11 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
 package decode
 
-import "sort"
+import (
+	"cmp"
+	"slices"
+	"sort"
+)
 
 // StreamSpan is a decoded token of a continuous stream, its sample indices
 // counted from the stream's first sample.
@@ -254,7 +258,10 @@ func (d *StreamDecoder) run() []StreamFrame {
 		}
 	}
 	sp := d.spans
-	sort.SliceStable(sp, func(i, j int) bool { return sp[i].I0 < sp[j].I0 })
+	// Decoders report their spans in order nearly always: sort only when not.
+	if !slices.IsSortedFunc(sp, func(x, y Span) int { return cmp.Compare(x.I0, y.I0) }) {
+		sort.SliceStable(sp, func(i, j int) bool { return sp[i].I0 < sp[j].I0 })
+	}
 	// Group into frames: a start of frame, or a silence longer than Close,
 	// opens the next.
 	type group struct{ from, to, i0, i1 int }

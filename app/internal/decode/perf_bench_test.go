@@ -286,3 +286,39 @@ func BenchmarkMeasureSPIEye(b *testing.B) {
 		MeasureSPIEye(c2, c1, 2e-9, cfg)
 	}
 }
+
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func BenchmarkStreamDecoder(b *testing.B) {
+	msg := []int{0x48, 0x65, 0x6C, 0x6C, 0x6F, 0x0D, 0x0A}
+	var w []uint8
+	for i := 0; i < 20; i++ {
+		w = append(w, uartWave(msg, 40)...)
+	}
+	dec := func(a, _ []uint8) Result { return DecodeUART(a, 1e-6, UARTCfg{Baud: 25000, Bits: 8, Parity: "none"}) }
+	for b.Loop() {
+		d := NewStreamDecoder(dec, 400, 40000)
+		for i := 0; i < len(w); i += 2048 {
+			d.Push(w[i:min(i+2048, len(w))], nil)
+		}
+		d.Flush()
+	}
+}
+
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func BenchmarkStreamGroup(b *testing.B) {
+	var r Result
+	for i := 0; i < 400; i++ { // 40 frames of a start and nine bytes
+		x := i * 20
+		kind := "data"
+		if i%10 == 0 {
+			kind = "sof"
+		}
+		r.Spans = append(r.Spans, Span{x, x + 15, "41", kind, 0x41})
+	}
+	a := make([]uint8, 8000+2000)
+	dec := func([]uint8, []uint8) Result { return r }
+	for b.Loop() {
+		d := NewStreamDecoder(dec, 100, 1<<20)
+		d.Push(a, nil)
+	}
+}
