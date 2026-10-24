@@ -1165,3 +1165,15 @@ func BenchmarkLineBufRef(b *testing.B) {
 		lineSink = make([]byte, 64*1024)[:16] // a fresh buffer a poll, as before
 	}
 }
+
+// TRLC-LINKS: REQ-SDS-009
+func BenchmarkSnapshot(b *testing.B) {
+	e, clk := newTestEngine(&testing.T{}, newFakeBus())
+	for i := 0; i < 100; i++ {
+		e.notePublish(e.clk.Now())
+		clk.t = clk.t.Add(20 * time.Millisecond)
+	}
+	for b.Loop() {
+		e.Snapshot()
+	}
+}

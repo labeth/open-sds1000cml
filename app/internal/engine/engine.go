@@ -886,10 +886,11 @@ func (e *Engine) Snapshot() Stats {
 	}
 	e.bode.mu.Unlock()
 	// FPS = publishes within the trailing second.
-	now := e.clk.Now()
+	// now-t <= 1 s is t at or after now-1 s: one subtraction, not one a slot
+	cutoff := e.clk.Now().Add(-time.Second)
 	n := 0
 	for i := range e.pubTimes { // the ring in any order (unused slots are zero: long past)
-		if now.Sub(e.pubTimes[i]) <= time.Second {
+		if !e.pubTimes[i].Before(cutoff) {
 			n++
 		}
 	}
