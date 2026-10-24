@@ -110,17 +110,21 @@ function ejDrawEye(st2, res) {
   if (!ejEyeCv || ejEyeCv.w !== W || ejEyeCv.h !== H) ejEyeCv = { data: new Uint8Array(W * H * 4), w: W, h: H };
   const data = ejEyeCv.data;
   data.fill(0);
+  const eye = st2.eye;
   let mx = 0;
-  for (let i = 0; i < st2.eye.length; i++) if (st2.eye[i] > mx) mx = st2.eye[i];
-  // the LCD's shades at its thresholds: 1.5, 8 and 35 % of the densest cell
+  for (let i = 0; i < eye.length; i++) if (eye[i] > mx) mx = eye[i];
+  // the LCD's shades at its thresholds: 1.5, 8 and 35 % of the densest cell,
+  // as one packed RGBA word each, a cell written with one store
   const sh = ejShades(ej.ch), t1 = mx * 0.015, t2 = mx * 0.08, t3 = mx * 0.35;
+  const px = new Uint32Array(data.buffer, data.byteOffset, W * H);
+  const le = new Uint8Array(new Uint16Array([1]).buffer)[0] === 1;
+  const word = sh.map((c) => (le ? ((255 << 24) | (c[2] << 16) | (c[1] << 8) | c[0]) : ((c[0] << 24) | (c[1] << 16) | (c[2] << 8) | 255)) >>> 0);
   for (let y = 0; y < H; y++) {
+    const src = y * W, dst = (H - 1 - y) * W;
     for (let x = 0; x < W; x++) {
-      const d = st2.eye[y * W + x];
+      const d = eye[src + x];
       if (d <= 0) continue;
-      const o = ((H - 1 - y) * W + x) * 4;
-      const c = sh[d >= t3 ? 3 : d >= t2 ? 2 : d >= t1 ? 1 : 0];
-      data[o] = c[0]; data[o + 1] = c[1]; data[o + 2] = c[2]; data[o + 3] = 255;
+      px[dst + x] = word[d >= t3 ? 3 : d >= t2 ? 2 : d >= t1 ? 1 : 0];
     }
   }
   const cv = $("ejEye");
