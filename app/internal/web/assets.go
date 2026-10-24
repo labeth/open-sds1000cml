@@ -149,9 +149,15 @@ func compressible(name string) bool {
 func serveAsset(w http.ResponseWriter, r *http.Request, name string) bool {
 	body, ok := assetPages[name]
 	if !ok {
-		var err error
-		if body, err = assetFS.ReadFile(name); err != nil {
-			return false
+		// Read once: ReadFile copies the whole embedded file every request.
+		if b, ok := assetBodies.Load(name); ok {
+			body = b.([]byte)
+		} else {
+			var err error
+			if body, err = assetFS.ReadFile(name); err != nil {
+				return false
+			}
+			assetBodies.Store(name, body)
 		}
 	}
 	ct := assetTypes[path.Ext(name)]
@@ -181,6 +187,9 @@ func serveAsset(w http.ResponseWriter, r *http.Request, name string) bool {
 	http.ServeContent(w, r, name, time.Time{}, bytes.NewReader(body))
 	return true
 }
+
+// assetBodies holds the embedded files other than the pages, as read.
+var assetBodies sync.Map // name -> []byte
 
 // staticName reports whether p is a bare asset filename the root serves (no
 // path traversal; pages are served by their own routes).

@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"open-sds/app/internal/engine"
 	"time"
+	"unsafe"
 )
 
 // encodeBinFrame serializes a built reply to the binary wire format. It runs
@@ -75,24 +76,30 @@ func encodeBinFrame(rep frameReply) []byte {
 	buf[1] = flags
 	binary.LittleEndian.PutUint32(buf[4:8], uint32(len(hj)))
 	buf = append(buf, hj...)
+	// The payload written in place: the precision words as their
+	// little-endian bytes, the codes a byte each.
+	at := len(buf)
+	buf = buf[:at+payloadBytes]
 	if precision {
 		for _, seg := range [][]uint16{rep.Q1, rep.Q2} {
-			for _, v := range seg {
-				buf = append(buf, byte(v), byte(v>>8))
-			}
+			at += copy(buf[at:], leBytes(seg))
 		}
 	} else {
 		for _, seg := range segs {
-			for _, v := range seg[head : head+segLen] {
-				buf = append(buf, uint8(v))
+			out := buf[at : at+segLen]
+			for i, v := range seg[head : head+segLen] {
+				out[i] = uint8(v)
 			}
+			at += segLen
 		}
 	}
 	if view {
 		for _, seg := range [][]int16{rep.VC1, rep.VC2} {
-			for _, v := range seg {
-				buf = append(buf, uint8(v))
+			out := buf[at : at+len(seg)]
+			for i, v := range seg {
+				out[i] = uint8(v)
 			}
+			at += len(seg)
 		}
 	}
 	return buf
@@ -329,4 +336,13 @@ func (s *Server) rawBinMsg(since uint64) []byte {
 	binary.LittleEndian.PutUint32(buf[4:8], uint32(len(hj)))
 	buf = append(buf, hj...)
 	return append(buf, payload...)
+}
+
+// leBytes is the memory of w: its words little-endian on these CPUs.
+// TRLC-LINKS: REQ-SDS-163
+func leBytes(w []uint16) []byte {
+	if len(w) == 0 {
+		return nil
+	}
+	return unsafe.Slice((*byte)(unsafe.Pointer(&w[0])), 2*len(w))
 }

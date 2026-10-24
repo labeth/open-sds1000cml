@@ -71,9 +71,9 @@ func (s *Server) hStatus(w http.ResponseWriter, r *http.Request) {
 	st := s.sc.Snapshot()
 	rep := statusReply{
 		Stats:         st,
-		Tdivs:         engine.SupportedTdivs(),
-		FullRateTdivS: engine.FullRateTdiv(engine.SupportedTdivs()),
-		FullRateS:     engine.PlanSRAM(slices.Min(engine.SupportedTdivs())).SampleS,
+		Tdivs:         ladder.tdivs,
+		FullRateTdivS: ladder.fullRateTdiv,
+		FullRateS:     ladder.fullRateS,
 		TrigVolts:     engine.TrigLevelVolts(st.TrigCode),
 		TrigCodeMin:   engine.TrigCodeMin,
 		TrigCodeMax:   engine.TrigCodeMax,
@@ -182,3 +182,15 @@ type streamStatus struct {
 	TriggerLine    int     `json:"trigger_line"`
 	Mode           string  `json:"mode,omitempty"` // gap-free (FPGA or software decode) or captures with the share read
 }
+
+// ladder is the timebase ladder and what follows from it, worked out once:
+// the status poll asked the engine for three copies of it every time.
+var ladder = func() (l struct {
+	tdivs                   []float64
+	fullRateTdiv, fullRateS float64
+}) {
+	l.tdivs = engine.SupportedTdivs()
+	l.fullRateTdiv = engine.FullRateTdiv(l.tdivs)
+	l.fullRateS = engine.PlanSRAM(slices.Min(l.tdivs)).SampleS
+	return l
+}()

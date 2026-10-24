@@ -192,24 +192,30 @@ func window(sig []uint8, valid, winCols int, edgeX float64, interp bool, n int, 
 	// a record end renders identically to a mid-record one. It is byte-identical
 	// wherever the window already fits inside the record.
 	left := xc - float64(win)*posFrac
-	for x := 0; x < n; x++ {
+	at := func(x int) float64 { // column x's sample position, clamped
 		pos := left + float64(x)*float64(win)/float64(n)
 		if !(pos >= 0) { // NaN/-Inf -> first sample (belt-and-suspenders)
 			pos = 0
 		} else if pos > float64(valid-1) {
 			pos = float64(valid - 1)
 		}
-		if interp {
-			i := int(pos)
-			frac := pos - float64(i)
-			v := float64(sig[i])
-			if i+1 < valid {
-				v = v*(1-frac) + float64(sig[i+1])*frac
-			}
-			out[x] = int16(math.Round(v))
-		} else {
-			out[x] = int16(sig[int(pos)])
+		return pos
+	}
+	if !interp { // the interp test once, not a column
+		for x := range out {
+			out[x] = int16(sig[int(at(x))])
 		}
+		return out
+	}
+	for x := range out {
+		pos := at(x)
+		i := int(pos)
+		frac := pos - float64(i)
+		v := float64(sig[i])
+		if i+1 < valid {
+			v = v*(1-frac) + float64(sig[i+1])*frac
+		}
+		out[x] = int16(math.Round(v))
 	}
 	return out
 }

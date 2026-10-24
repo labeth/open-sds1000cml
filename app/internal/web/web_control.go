@@ -2,6 +2,7 @@
 package web
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -11,6 +12,7 @@ import (
 	"net/http"
 	"open-sds/app/internal/analog"
 	"open-sds/app/internal/engine"
+	"sync"
 	"time"
 )
 
@@ -300,7 +302,7 @@ func (s *Server) hSet(w http.ResponseWriter, r *http.Request) {
 	var req setReq
 	// 4 KB cap: a scalar-verb body is tens of bytes; an unbounded decoder
 	// would buffer an attacker-sized body on a 64 MB-class ARM.
-	if err := json.NewDecoder(io.LimitReader(r.Body, 4<<10)).Decode(&req); err != nil {
+	if err := decodeSmall(r.Body, &req); err != nil {
 		writeJSON(w, map[string]any{"ok": false, "err": "bad json"})
 		return
 	}
@@ -545,3 +547,24 @@ func (s *Server) endWebCapture(ctx context.Context) {
 		log.Printf("web: ending the web page's decoded capture: %v", err)
 	}
 }
+
+// decodeSmall decodes the first JSON value of a body of at most 4 KB, as
+// the stream decoder did, read whole into a pooled buffer: a body that is one
+// value (all of them, in practice) is unmarshalled without a decoder and its
+// buffers; one with more after it still decodes its first value.
+// TRLC-LINKS: REQ-SDS-162
+func decodeSmall(body io.Reader, v any) error {
+	buf := smallBodies.Get().(*[4 << 10]byte)
+	defer smallBodies.Put(buf)
+	n, err := io.ReadFull(body, buf[:])
+	if err != nil && err != io.ErrUnexpectedEOF && err != io.EOF {
+		return err
+	}
+	if json.Unmarshal(buf[:n], v) == nil {
+		return nil
+	}
+	return json.NewDecoder(bytes.NewReader(buf[:n])).Decode(v)
+}
+
+// smallBodies lends the 4 KB request buffers.
+var smallBodies = sync.Pool{New: func() any { return new([4 << 10]byte) }}

@@ -249,7 +249,9 @@ func (s *Server) Handler() http.Handler {
 func (s *Server) hClaim(w http.ResponseWriter, r *http.Request) {
 	e := s.epoch.Add(1)
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]uint64{"epoch": e})
+	// The encoder's text for the map, written directly.
+	w.Write(strconv.AppendUint([]byte(`{"epoch":`), e, 10))
+	w.Write([]byte("}\n"))
 }
 
 // hTune applies the live frame-rate and CPU tuning knobs and
