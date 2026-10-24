@@ -841,3 +841,64 @@ func BenchmarkPanelMatrix(b *testing.B) {
 		panelMatrix(f, &k)
 	}
 }
+
+// fundamentalHzRef is the float-compare reading fundamentalHz replaced.
+// TRLC-LINKS: REQ-SDS-066
+func fundamentalHzRef(sig []uint8, sampleS float64) float64 {
+	n := len(sig)
+	if n < 8 {
+		return 0
+	}
+	var sum float64
+	for _, v := range sig {
+		sum += float64(v)
+	}
+	mean := sum / float64(n)
+	const hyst = 2.0
+	firstX, lastX, crossings, armed := -1.0, -1.0, 0, false
+	for i := 1; i < n; i++ {
+		a, b := float64(sig[i-1]), float64(sig[i])
+		if !armed && b < mean-hyst {
+			armed = true
+		}
+		if armed && a < mean && b >= mean {
+			x := float64(i-1) + (mean-a)/(b-a)
+			if firstX < 0 {
+				firstX = x
+			}
+			lastX = x
+			crossings++
+			armed = false
+		}
+	}
+	if crossings < 2 || lastX <= firstX {
+		return 0
+	}
+	p := (lastX - firstX) / float64(crossings-1)
+	if p <= 1 {
+		return 0
+	}
+	return 1.0 / (p * sampleS)
+}
+
+// TRLC-LINKS: REQ-SDS-066
+func TestFundamentalHzSame(t *testing.T) {
+	for seed := 0; seed < 200; seed++ {
+		n := 50 + seed*37
+		sig := make([]uint8, n)
+		for i := range sig {
+			sig[i] = uint8(128 + 60*math.Sin(2*math.Pi*float64(i)*(0.01+float64(seed)/5000)) + float64((i*seed)%5))
+		}
+		if got, want := fundamentalHz(sig, 1e-6), fundamentalHzRef(sig, 1e-6); got != want {
+			t.Fatalf("seed %d: %v, want %v", seed, got, want)
+		}
+	}
+}
+
+// TRLC-LINKS: REQ-SDS-066
+func BenchmarkFundamentalHz(b *testing.B) {
+	sig := discernSig(20000)
+	for b.Loop() {
+		fundamentalHz(sig, 2e-9)
+	}
+}

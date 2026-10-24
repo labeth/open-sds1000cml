@@ -203,23 +203,26 @@ func fundamentalHz(sig []uint8, sampleS float64) float64 {
 	if n < 8 {
 		return 0
 	}
-	var sum float64
+	sum := 0 // an integer sum: the float one was exact, every step
 	for _, v := range sig {
-		sum += float64(v)
+		sum += int(v)
 	}
-	mean := sum / float64(n)
+	mean := float64(sum) / float64(n)
 	// rising crossings of the mean with a small hysteresis to reject noise
 	const hyst = 2.0
+	// codes are integers: v < m is v < ⌈m⌉, v >= m is v >= ⌈m⌉
+	armBelow, at := int(math.Ceil(mean-hyst)), int(math.Ceil(mean))
 	var firstX, lastX float64
 	crossings := 0
 	armed := false
 	firstX, lastX = -1, -1
 	for i := 1; i < n; i++ {
-		a, b := float64(sig[i-1]), float64(sig[i])
-		if !armed && b < mean-hyst {
+		ai, bi := int(sig[i-1]), int(sig[i])
+		if !armed && bi < armBelow {
 			armed = true
 		}
-		if armed && a < mean && b >= mean {
+		if armed && ai < at && bi >= at {
+			a, b := float64(ai), float64(bi)
 			// linear-interpolated crossing position
 			x := float64(i-1) + (mean-a)/(b-a)
 			if firstX < 0 {
