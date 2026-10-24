@@ -475,12 +475,19 @@ func idleLevel(s *sliced) int {
 // TRLC-LINKS: REQ-SDS-018
 func Autodetect(c1, c2 []uint8, colTimeS float64, format string) Result {
 	chans := [2][]uint8{c1, c2}
+	// The helpers below take the channels' figures by address: copies of
+	// them as arguments were merged by the compiler (go1.26) into the stack
+	// slot of clk while a pointer into clk was still to be read, and the SPI
+	// launch vote counted the clock against itself.
+	// Each channel is sliced once here (clk[k].s): the activity check and the
+	// line and pair checks below read that slicing.
+	clk := [2]clockInfo{clockScore(c1), clockScore(c2)}
 	var active []int
 	for k := 0; k < 2; k++ {
 		if chans[k] == nil {
 			continue
 		}
-		if s := sliceChannel(chans[k], 0, false); s.ok && len(s.edges) >= 2 {
+		if s := &clk[k].s; s.ok && len(s.edges) >= 2 {
 			active = append(active, k)
 		}
 	}
@@ -503,11 +510,6 @@ func Autodetect(c1, c2 []uint8, colTimeS float64, format string) Result {
 	}
 	line := func(k int) Roles { return Roles{ChA: k, ChB: 1 - k} }
 
-	// The helpers below take the channels' figures by address: copies of
-	// them as arguments were merged by the compiler (go1.26) into the stack
-	// slot of clk while a pointer into clk was still to be read, and the SPI
-	// launch vote counted the clock against itself.
-	clk := [2]clockInfo{clockScore(c1), clockScore(c2)}
 	u0, u1 := clk[0].uniFrac, clk[1].uniFrac
 	hi, lo := math.Max(u0, u1), math.Min(u0, u1)
 	clockedPair := len(active) >= 2 && hi > 0.72 && hi > lo+0.12
@@ -568,7 +570,7 @@ func Autodetect(c1, c2 []uint8, colTimeS float64, format string) Result {
 		consider(DecodeUSBLS(chans[k], colTimeS, USBLSCfg{}), chName(k), line(k))
 		consider(DecodeFlexRay(chans[k], colTimeS, FlexRayCfg{}), chName(k), line(k))
 		// LIN through S/PDIF, each by its own check (decode_autodetect_proto.go)
-		considerLines(chans[k], colTimeS, format, uartBaud[k], func(r Result) { consider(r, chName(k), line(k)) })
+		considerLines(chans[k], &clk[k].s, colTimeS, format, uartBaud[k], func(r Result) { consider(r, chName(k), line(k)) })
 	}
 	if len(active) >= 2 && !freeClock { // PS/2, SWD, MDIO, Wiegand: clock (D0) and data (D1) either way round
 		clockLine := -1 // a clocked pair's clock: PS/2, SWD and MDIO are clocked by it, not by its data
@@ -578,7 +580,7 @@ func Autodetect(c1, c2 []uint8, colTimeS float64, format string) Result {
 				clockLine = 1
 			}
 		}
-		considerPairs(c1, c2, colTimeS, format, clockLine, func(r Result, a int) {
+		considerPairs(c1, c2, [2]*sliced{&clk[0].s, &clk[1].s}, colTimeS, format, clockLine, func(r Result, a int) {
 			consider(r, "CLK "+chName(a)+" DATA "+chName(1-a), Roles{ChA: a, ChB: 1 - a})
 		})
 	}

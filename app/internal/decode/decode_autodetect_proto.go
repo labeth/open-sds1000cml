@@ -44,14 +44,14 @@ func near(v, want, frac float64) bool { return math.Abs(v-want) <= frac*want }
 
 // considerLines tries the single-line protocols beyond the first ten on
 // line k, those its timing allows. uartBaud is a UART decode's rate on the
-// line (0 none): MIDI is named only on a line at its 31250 Bd.
+// line (0 none): MIDI is named only on a line at its 31250 Bd. S is the
+// line's slicing at the automatic threshold.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-238
-func considerLines(codes []uint8, colTimeS float64, format string, uartBaud float64, consider func(Result)) {
-	S := sliceChannel(codes, 0, false)
+func considerLines(codes []uint8, S *sliced, colTimeS float64, format string, uartBaud float64, consider func(Result)) {
 	if !S.ok || len(S.edges) < 4 || !(colTimeS > 0) {
 		return
 	}
-	t := timingOf(S, colTimeS)
+	t := timingOf(*S, colTimeS)
 	ir := IRCfg{Format: format}
 	if t.maxLow >= 500 && t.minRun >= 30 {
 		consider(DecodeLIN(codes, colTimeS, LINCfg{Format: format}))
@@ -108,12 +108,13 @@ func considerLines(codes []uint8, colTimeS float64, format string, uartBaud floa
 // clockLine is the pair's clock when one line is clearly the clock (-1:
 // neither): the clocked buses are not read with its data line as their clock
 // (a 10 MHz SPI bus's data line clocking its clock read as MDIO frames).
+// sl are the lines' slicings at the automatic threshold.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-238
-func considerPairs(c1, c2 []uint8, colTimeS float64, format string, clockLine int, consider func(Result, int)) {
+func considerPairs(c1, c2 []uint8, sl [2]*sliced, colTimeS float64, format string, clockLine int, consider func(Result, int)) {
 	if c1 == nil || c2 == nil || !(colTimeS > 0) {
 		return
 	}
-	S := [2]sliced{sliceChannel(c1, 0, false), sliceChannel(c2, 0, false)}
+	S := [2]sliced{*sl[0], *sl[1]}
 	chans := [2][]uint8{c1, c2}
 	for a := 0; a < 2; a++ {
 		if !S[a].ok || !S[1-a].ok || len(S[a].edges) < 8 {
