@@ -56,8 +56,8 @@ func SerialDecoderList() []SerialDecoder {
 // TRLC-LINKS: REQ-SDS-013
 func serialDecoder(id int) (SerialDecoder, bool) {
 	serialDecoders.RLock()
-	defer serialDecoders.RUnlock()
 	d, ok := serialDecoders.byID[id]
+	serialDecoders.RUnlock()
 	return d, ok
 }
 
