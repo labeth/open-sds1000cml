@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 
@@ -179,7 +178,7 @@ func drawMeasPanel(sf Surface, p plotArea, f *engine.Frame, hud HUD) {
 		if hud.MeasItems != nil {
 			params = nil
 			for _, it := range hud.MeasItems {
-				if strings.HasPrefix(it, fmt.Sprintf("%d:", ch+1)) {
+				if len(it) >= 2 && it[0] == byte('1'+ch) && it[1] == ':' { // "<ch>:<param>"
 					params = append(params, it[2:])
 				}
 			}
@@ -200,7 +199,7 @@ func measBox(sf Surface, p plotArea, f *engine.Frame, hud HUD, ch, x int, params
 	if m == nil {
 		return false
 	}
-	var rows []measRow
+	rows := make([]measRow, 0, len(params))
 	for _, id := range params {
 		r, ok := measParamRow(m, id)
 		if !ok {

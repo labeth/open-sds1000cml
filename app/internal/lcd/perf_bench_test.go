@@ -218,3 +218,15 @@ func BenchmarkDrawSpectrum(b *testing.B) {
 		drawSpectrum(sf, fullPlot, mags, peak, colC1, 10e6, 1, len(mags)-1)
 	}
 }
+
+// TRLC-LINKS: REQ-SDS-217
+func BenchmarkDrawMeasPanel(b *testing.B) {
+	f := goldenYTFrame()
+	f.Seq = 7 // measured once, then cached: the panel's own cost
+	h := goldenYTHUD()
+	h.MeasItems = []string{"1:pkpk", "1:freq", "1:duty", "1:rise", "2:pkpk", "2:mean", "2:period", "2:ovsh"}
+	sf := NewMemSurface()
+	for b.Loop() {
+		drawMeasPanel(sf, fullPlot, f, h)
+	}
+}
