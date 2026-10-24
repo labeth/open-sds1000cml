@@ -4,6 +4,7 @@ package settings
 import (
 	"fmt"
 	"path/filepath"
+	"strconv"
 )
 
 // Slots is numbered setup memory (SCPI *SAV/*RCL): each slot is a settings
@@ -18,7 +19,13 @@ type Slots struct {
 
 // slotPath is a slot's file.
 // TRLC-LINKS: REQ-SDS-072, REQ-SDS-089
-func (s Slots) slotPath(n int) string { return filepath.Join(s.Dir, fmt.Sprintf("setup%02d.json", n)) }
+func (s Slots) slotPath(n int) string {
+	d := strconv.Itoa(n)
+	if n >= 0 && n < 10 {
+		d = "0" + d
+	}
+	return filepath.Join(s.Dir, "setup"+d+".json")
+}
 
 // SaveSetup stores the current setup in slot n.
 // TRLC-LINKS: REQ-SDS-072, REQ-SDS-089

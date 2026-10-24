@@ -500,6 +500,19 @@ func (f *FrontEnd) BWL(ch int) bool {
 	return f.bwl[ch&1]
 }
 
+// ChannelState is a channel's requested offset, coupling, probe factor and
+// bandwidth limit under one lock (a saved setup reads them all).
+// TRLC-LINKS: REQ-SDS-089
+func (f *FrontEnd) ChannelState(ch int) (offV float64, cpl int, probe float64, bwl bool) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	probe = f.probe[ch&1]
+	if probe < 1 {
+		probe = 1
+	}
+	return f.offReqV[ch&1], f.cpl[ch&1], probe, f.bwl[ch&1]
+}
+
 // SetVdiv applies a detent to a channel (0=C1, 1=C2). Gain takes effect on
 // the next frame; no readback or retry is needed. If a user offset is set,
 // its DAC code is re-derived against the new detent's calibrated zero and

@@ -32,6 +32,7 @@ type Saver struct {
 	last       Settings  // latest observed state
 	lastChange time.Time // when `last` last changed
 	saved      Settings  // what we believe is on disk
+	unsaved    bool      // last != saved: kept so a still poll compares once
 	fails      int       // consecutive save failures (log throttle)
 }
 
@@ -78,14 +79,15 @@ func (s *Saver) step() {
 		// Baseline: the state as of saver start IS the restored state, so
 		// nothing is dirty yet. (If the restore was partial — e.g. a ladder
 		// value the engine rejected — the next real change resyncs the file.)
-		s.last, s.saved, s.primed = cur, cur, true
+		s.last, s.saved, s.primed, s.unsaved = cur, cur, true, false
 		return
 	}
 	if cur != s.last {
 		s.last, s.lastChange = cur, now // still changing — restart the settle window
+		s.unsaved = cur != s.saved
 		return
 	}
-	if cur == s.saved || now.Sub(s.lastChange) < s.settle {
+	if !s.unsaved || now.Sub(s.lastChange) < s.settle {
 		return
 	}
 	s.persistLocked(cur)
@@ -104,6 +106,7 @@ func (s *Saver) Flush() {
 	}
 	s.persistLocked(cur)
 	s.last, s.primed = cur, true
+	s.unsaved = cur != s.saved
 }
 
 // persistLocked writes cur and updates the disk shadow. Failures retry on the
@@ -123,5 +126,6 @@ func (s *Saver) persistLocked(cur Settings) {
 	}
 	s.fails = 0
 	s.saved = cur
+	s.unsaved = s.last != cur
 	s.logf("settings: saved %s", s.path)
 }

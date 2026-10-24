@@ -327,6 +327,11 @@ func Save(path string, s Settings) error {
 		return err
 	}
 	b = append(b, '\n')
+	// A file that already holds this setup is left as it is: a write, an
+	// fsync and a rename on the stick cost milliseconds and wear it.
+	if old, err := os.ReadFile(path); err == nil && bytes.Equal(old, b) {
+		return nil
+	}
 	tmp := path + ".tmp"
 	f, err := os.OpenFile(tmp, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o644)
 	if err != nil {

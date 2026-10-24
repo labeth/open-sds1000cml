@@ -51,7 +51,7 @@ func (n *nullSPI) WriteGain(ch2, ch1 uint8) error { n.gains++; return nil }
 // (engine ← bus stub, front end ← SPI stub with the engine hooks, panel
 // controller on top), without running any goroutine.
 // TRLC-LINKS: REQ-SDS-072
-func rig(t *testing.T) (*engine.Engine, *analog.FrontEnd, *panel.Controller, *nullSPI) {
+func rig(t testing.TB) (*engine.Engine, *analog.FrontEnd, *panel.Controller, *nullSPI) {
 	t.Helper()
 	e := engine.New(engine.Config{Bus: nullBus{}, Logf: t.Logf})
 	spi := &nullSPI{}

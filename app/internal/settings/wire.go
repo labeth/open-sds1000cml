@@ -101,15 +101,25 @@ func Collect(eng Engine, fe Analog, pc Panel) Settings {
 	if fe != nil {
 		idx, emitted := fe.Snapshot()
 		s.VertSet = emitted
+		bwl, hasBWL := fe.(interface{ BWL(ch int) bool })
+		// One lock a channel where the front end reads them together.
+		all, hasAll := fe.(interface {
+			ChannelState(ch int) (offV float64, cpl int, probe float64, bwl bool)
+		})
 		for ch := 0; ch < 2; ch++ {
 			if idx[ch] >= 0 && idx[ch] < len(analog.Detents) {
 				s.Ch[ch].VdivV = analog.Detents[idx[ch]].VdivV
 			}
-			s.Ch[ch].OffsetV = fe.OffsetReqV(ch)
-			s.Ch[ch].Coupling = fe.Coupling(ch)
-			s.Ch[ch].Probe = fe.ProbeFactor(ch)
-			if b, ok := fe.(interface{ BWL(ch int) bool }); ok {
-				s.Ch[ch].BWL = b.BWL(ch)
+			c := &s.Ch[ch]
+			if hasAll {
+				c.OffsetV, c.Coupling, c.Probe, c.BWL = all.ChannelState(ch)
+				continue
+			}
+			c.OffsetV = fe.OffsetReqV(ch)
+			c.Coupling = fe.Coupling(ch)
+			c.Probe = fe.ProbeFactor(ch)
+			if hasBWL {
+				c.BWL = bwl.BWL(ch)
 			}
 		}
 	}
