@@ -62,8 +62,8 @@ func (e *Engine) etsReset() {
 func (e *Engine) etsFrame(norm bool) {
 	factor, nCols := etsPlan(e.band.TdivS)
 	if len(e.etsCnt) != nCols || len(e.etsCov) != factor {
-		e.etsSum1 = make([]float64, nCols)
-		e.etsSum2 = make([]float64, nCols)
+		e.etsSum1 = make([]int64, nCols)
+		e.etsSum2 = make([]int64, nCols)
 		e.etsCnt = make([]int32, nCols)
 		e.etsCov = make([]bool, factor)
 		e.etsAccFrames = 0
@@ -136,15 +136,7 @@ func (e *Engine) etsFrame(norm bool) {
 		if k1 > etsDrainCols-1 {
 			k1 = etsDrainCols - 1
 		}
-		for k := k0; k <= k1; k++ {
-			col := int(math.Round(((float64(k)-xref)*etsTs + Wns/2) / etColTime))
-			if col < 0 || col >= nCols {
-				continue
-			}
-			e.etsSum1[col] += float64(e.etsScratch1[k])
-			e.etsSum2[col] += float64(e.etsScratch2[k])
-			e.etsCnt[col]++
-		}
+		e.etsFold(xref, k0, k1, nCols, Wns, etColTime)
 		if covered() == factor {
 			break // full phase coverage — stop the frame early
 		}
@@ -224,14 +216,14 @@ func (e *Engine) etsFrame(norm bool) {
 // the ends extend the nearest filled column.
 // TRLC-LINKS: REQ-SDS-019
 func (e *Engine) etsRebuild(f *Frame, nCols int) {
-	render := func(sum []float64, out []uint8) {
+	render := func(sum []int64, out []uint8) {
 		lastFilled := -1
 		firstFilled := -1
 		for c := 0; c < nCols; c++ {
 			if e.etsCnt[c] == 0 {
 				continue
 			}
-			v := uint8(math.Round(sum[c] / float64(e.etsCnt[c])))
+			v := uint8(math.Round(float64(sum[c]) / float64(e.etsCnt[c])))
 			out[c] = v
 			if firstFilled < 0 {
 				firstFilled = c
@@ -258,6 +250,30 @@ func (e *Engine) etsRebuild(f *Frame, nCols int) {
 	}
 	render(e.etsSum1, f.C1)
 	render(e.etsSum2, f.C2)
+}
+
+// etsFold adds the sub-acquisition's samples k0..k1, placed relative to
+// the crossing xref, into their display columns. The sums are integers: a
+// float sum of 8-bit codes was every step an exact integer, so the columns'
+// means are the same without a float add a sample.
+// TRLC-LINKS: REQ-SDS-019
+func (e *Engine) etsFold(xref float64, k0, k1, nCols int, Wns, etColTime float64) {
+	// Only samples within half the screen (and a column) of xref land on a
+	// column: the rest are not divided for; a sample of margin either side,
+	// and the test below still decides.
+	if reach := (Wns/2 + etColTime) / etsTs; reach < float64(k1-k0) {
+		k0 = max(k0, int(math.Floor(xref-reach))-1)
+		k1 = min(k1, int(math.Ceil(xref+reach))+1)
+	}
+	for k := k0; k <= k1; k++ {
+		col := int(math.Round(((float64(k)-xref)*etsTs + Wns/2) / etColTime))
+		if col < 0 || col >= nCols {
+			continue
+		}
+		e.etsSum1[col] += int64(e.etsScratch1[k])
+		e.etsSum2[col] += int64(e.etsScratch2[k])
+		e.etsCnt[col]++
+	}
 }
 
 // etsDrain pops one sub-acquisition into the ETS scratch buffers, bounded by

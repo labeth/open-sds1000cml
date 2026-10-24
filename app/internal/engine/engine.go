@@ -572,7 +572,7 @@ type Engine struct {
 
 	// ETS state (spec 04 §3): persistent phase-interleave accumulator.
 	etsOn                    bool
-	etsSum1, etsSum2         []float64
+	etsSum1, etsSum2         []int64
 	etsCnt                   []int32
 	etsCov                   []bool
 	etsAccFrames             int

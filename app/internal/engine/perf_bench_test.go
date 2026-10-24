@@ -2,6 +2,7 @@
 package engine
 
 import (
+	"fmt"
 	"math"
 	"slices"
 	"testing"
@@ -762,6 +763,71 @@ func TestDecimReciprocal(t *testing.T) {
 	for x := 0.0; x < 1e7; x++ {
 		if math.Round(x*(1/baseTickNs)) != math.Round(x/baseTickNs) {
 			t.Fatalf("interval %v ns", x)
+		}
+	}
+}
+
+// etsBenchEngine has ETS scratch and sums for nCols columns.
+// TRLC-LINKS: REQ-SDS-019
+func etsBenchEngine(nCols int) *Engine {
+	e := &Engine{etsSum1: make([]int64, nCols), etsSum2: make([]int64, nCols), etsCnt: make([]int32, nCols)}
+	e.etsScratch1, e.etsScratch2 = discernSig(etsDrainCols), discernSig(etsDrainCols)
+	return e
+}
+
+// TRLC-LINKS: REQ-SDS-019
+func BenchmarkETSFold(b *testing.B) {
+	const nCols = 500
+	e := etsBenchEngine(nCols)
+	W := float64(nCols) * etsTs * 0.4
+	for b.Loop() {
+		e.etsFold(600.3, 100, 1100, nCols, W, W/nCols)
+	}
+}
+
+// TRLC-LINKS: REQ-SDS-019
+func BenchmarkETSFoldRef(b *testing.B) {
+	const nCols = 500
+	e := etsBenchEngine(nCols)
+	s1, s2 := make([]float64, nCols), make([]float64, nCols) // the float sums it replaced
+	W := float64(nCols) * etsTs * 0.4
+	etColTime := W / nCols
+	for b.Loop() {
+		xref := 600.3
+		for k := 100; k <= 1100; k++ {
+			col := int(math.Round(((float64(k)-xref)*etsTs + W/2) / etColTime))
+			if col < 0 || col >= nCols {
+				continue
+			}
+			s1[col] += float64(e.etsScratch1[k])
+			s2[col] += float64(e.etsScratch2[k])
+			e.etsCnt[col]++
+		}
+	}
+}
+
+// etsFold's narrowed range sums what the whole range did.
+// TRLC-LINKS: REQ-SDS-019
+func TestETSFoldRange(t *testing.T) {
+	for _, nCols := range []int{50, 500, 2000} {
+		for _, frac := range []float64{0.05, 0.4, 1, 3} {
+			for _, xref := range []float64{0.2, 600.3, 1500.9} {
+				W := float64(nCols) * etsTs * frac
+				e := etsBenchEngine(nCols)
+				e.etsFold(xref, 0, etsDrainCols-1, nCols, W, W/float64(nCols))
+				r := etsBenchEngine(nCols)
+				for k := 0; k <= etsDrainCols-1; k++ {
+					col := int(math.Round(((float64(k)-xref)*etsTs + W/2) / (W / float64(nCols))))
+					if col >= 0 && col < nCols {
+						r.etsSum1[col] += int64(r.etsScratch1[k])
+						r.etsSum2[col] += int64(r.etsScratch2[k])
+						r.etsCnt[col]++
+					}
+				}
+				if fmt.Sprint(e.etsSum1, e.etsSum2, e.etsCnt) != fmt.Sprint(r.etsSum1, r.etsSum2, r.etsCnt) {
+					t.Fatalf("nCols %d frac %v xref %v: sums differ", nCols, frac, xref)
+				}
+			}
 		}
 	}
 }
