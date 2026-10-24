@@ -19,3 +19,13 @@ func TestDefaultStageIsTheAgentsStaging(t *testing.T) {
 		t.Fatalf("default -stage %q, want the agent's staging %q", defaultStageDir, want)
 	}
 }
+
+// otactl watch prints each event and heartbeat compacted.
+// TRLC-LINKS: REQ-SDS-175
+func BenchmarkCompact(b *testing.B) {
+	msg := []byte(`{"app": {"running": true, "pid": 812, "slot": "B", "health": {"healthy_once": true, "since_change_ms": 400}},
+  "device": "sds1102", "seq": 123, "time_unix": 1700000000, "ips": ["eth0 192.168.1.209/24"], "watchdog": {"armed": true}}`)
+	for b.Loop() {
+		compact(msg)
+	}
+}
