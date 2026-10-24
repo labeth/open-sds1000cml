@@ -203,3 +203,51 @@ func TestUniRingStatsExact(t *testing.T) {
 		}
 	}
 }
+
+// discernSig is a capture's codes: a noisy square wave.
+// TRLC-LINKS: REQ-SDS-011
+func discernSig(n int) []uint8 {
+	sig := make([]uint8, n)
+	for i := range sig {
+		sig[i] = uint8(128 + 70*((i/301)%2*2-1) + (i*7919)%5 - 2)
+	}
+	return sig
+}
+
+// TRLC-LINKS: REQ-SDS-011
+func BenchmarkNoiseFloor(b *testing.B) {
+	sig := discernSig(20000)
+	for b.Loop() {
+		noiseFloor(sig)
+	}
+}
+
+// TRLC-LINKS: REQ-SDS-009, REQ-SDS-011
+func BenchmarkPtp(b *testing.B) {
+	sig := discernSig(20000)
+	for b.Loop() {
+		ptp(sig)
+	}
+}
+
+// TRLC-LINKS: REQ-SDS-011
+func BenchmarkNearerCrossHint(b *testing.B) {
+	sig := discernSig(20000)
+	for b.Loop() {
+		nearerCrossHint(sig, 128, 9000)
+	}
+}
+
+// TRLC-LINKS: REQ-SDS-001, REQ-SDS-011
+func BenchmarkOneFrameSmall(b *testing.B) {
+	fb := newFakeBus()
+	fb.wave = func(i int) (uint8, uint8) { // a small signal: its presence is judged against the noise
+		v := uint8(128 + 10*((i/128)%2*2-1) + i%3)
+		return v, v
+	}
+	e, _ := newTestEngine(&testing.T{}, fb)
+	e.bringUp()
+	for b.Loop() {
+		e.oneFrame(false)
+	}
+}

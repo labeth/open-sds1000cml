@@ -219,7 +219,8 @@ func centerCross(sig []uint8, lvl int, rising bool) float64 {
 // falling (centerCrossHint takes one direction), or -1.
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-011
 func nearerCrossHint(sig []uint8, lvl int, hint float64) float64 {
-	r, f := centerCrossHint(sig, lvl, true, hint), centerCrossHint(sig, lvl, false, hint)
+	nf := noiseFloor(sig) // once for both directions
+	r, f := centerCrossNF(sig, lvl, true, hint, nf), centerCrossNF(sig, lvl, false, hint, nf)
 	switch {
 	case r < 0:
 		return f
@@ -233,6 +234,12 @@ func nearerCrossHint(sig []uint8, lvl int, hint float64) float64 {
 
 // TRLC-LINKS: REQ-SDS-011
 func centerCrossHint(sig []uint8, lvl int, rising bool, hint float64) float64 {
+	return centerCrossNF(sig, lvl, rising, hint, noiseFloor(sig))
+}
+
+// centerCrossNF is centerCrossHint with sig's noiseFloor nf already taken.
+// TRLC-LINKS: REQ-SDS-011
+func centerCrossNF(sig []uint8, lvl int, rising bool, hint, nf float64) float64 {
 	n := len(sig)
 	if n < 2 {
 		return -1
@@ -257,7 +264,6 @@ func centerCrossHint(sig []uint8, lvl int, rising bool, hint float64) float64 {
 	//     falling crossing must reach lvl+h going BACKWARD, but a rising trace goes
 	//     LOW backward, so it cannot. Scale-free (h tracks the noise floor), so it
 	//     holds from steep native edges to shallow slow ramps.
-	nf := noiseFloor(sig)
 	h := int(hystK*nf + 0.5)
 	if h < hystMinCodes {
 		h = hystMinCodes
