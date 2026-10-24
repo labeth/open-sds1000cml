@@ -2,8 +2,8 @@
 package decode
 
 import (
-	"fmt"
 	"math"
+	"strconv"
 	"strings"
 )
 
@@ -48,7 +48,7 @@ func irWithin(d, want, frac float64) bool { return d >= want*(1-frac) && d <= wa
 // returns the bits and the index of the mark after the last bit's pulse.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-255
 func irmpBits(m []irMark, i int, tm irmpTiming, max int, us func(float64) float64) ([]int, int) {
-	var bits []int
+	bits := make([]int, 0, max)
 	for ; i+1 < len(m) && len(bits) < max; i++ {
 		if !irWithin(us(m[i].x1-m[i].x0), tm.pulse, 0.4) {
 			break
@@ -113,8 +113,8 @@ func DecodeIRMP(codes []uint8, colTimeS float64, cfg LineCfg) Result {
 			good = true
 		}
 		mid := (x0 + x1) / 2
-		o.add(x0, mid, fmt.Sprintf("%s%X", ka, addr), kind, addr, true)
-		o.add(mid, x1, fmt.Sprintf("%s%X", kc, cmd), kind, cmd, true)
+		o.add(x0, mid, labelHex(ka, addr), kind, addr, true)
+		o.add(mid, x1, labelHex(kc, cmd), kind, cmd, true)
 		if first == 0 {
 			first = proto
 			unit = irmpTimings[proto].pulse
@@ -226,4 +226,19 @@ func DecodeIRMP(codes []uint8, colTimeS float64, cfg LineCfg) Result {
 		res.Error = "no IR multi frame whose checks hold"
 	}
 	return res
+}
+
+// labelHex is a label and a value in upper-case hex (fmt's "%s%X").
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-255
+func labelHex(label string, v int) string {
+	b := make([]byte, 0, len(label)+8)
+	b = append(b, label...)
+	at := len(b)
+	b = strconv.AppendInt(b, int64(v), 16)
+	for i := at; i < len(b); i++ {
+		if c := b[i]; c >= 'a' && c <= 'f' {
+			b[i] = c - 'a' + 'A'
+		}
+	}
+	return string(b)
 }
