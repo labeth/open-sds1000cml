@@ -121,7 +121,7 @@ func (c *Controller) force() error {
 func (c *Controller) editPulse(fn func(), maxEdited bool) error {
 	st := c.eng.Snapshot()
 	c.mu.Lock()
-	c.adoptQual(st)
+	c.adoptQual(&st)
 	fn()
 	c.pulseLvl = clampF(c.pulseLvl, 0.05, 0.95)
 	c.pulseMin, c.pulseMax = orderNs(c.pulseMin, c.pulseMax, maxEdited)
@@ -136,7 +136,7 @@ func (c *Controller) editPulse(fn func(), maxEdited bool) error {
 func (c *Controller) editSlope(fn func(), hiEdited, maxEdited bool) error {
 	st := c.eng.Snapshot()
 	c.mu.Lock()
-	c.adoptQual(st)
+	c.adoptQual(&st)
 	fn()
 	c.slopeLo, c.slopeHi = clampF(c.slopeLo, 0.05, 0.95), clampF(c.slopeHi, 0.05, 0.95)
 	c.slopeLo, c.slopeHi = orderFrac(c.slopeLo, c.slopeHi, hiEdited)
@@ -152,7 +152,7 @@ func (c *Controller) editSlope(fn func(), hiEdited, maxEdited bool) error {
 func (c *Controller) editVideo(fn func()) error {
 	st := c.eng.Snapshot()
 	c.mu.Lock()
-	c.adoptQual(st)
+	c.adoptQual(&st)
 	fn()
 	c.videoLine = clampInt(c.videoLine, 0, 625)
 	std, ln, neg := c.videoStd, c.videoLine, c.videoNeg

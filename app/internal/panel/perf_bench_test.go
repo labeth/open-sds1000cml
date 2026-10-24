@@ -536,3 +536,24 @@ func BenchmarkSettingsView(b *testing.B) {
 		c.SettingsView()
 	}
 }
+
+// TRLC-LINKS: REQ-SDS-136
+func BenchmarkAdoptQual(b *testing.B) {
+	c, _, _ := newC(&testing.T{})
+	st := c.eng.Snapshot()
+	st.TrigQual.PulseLvl = 0.5
+	for b.Loop() {
+		c.adoptQual(&st)
+	}
+}
+
+// TRLC-LINKS: REQ-SDS-136
+func BenchmarkAdoptQualRef(b *testing.B) {
+	c, _, _ := newC(&testing.T{})
+	st := c.eng.Snapshot()
+	st.TrigQual.PulseLvl = 0.5
+	byValue := func(st engine.Stats) { c.adoptQual(&st) } // the struct passed by value, as before
+	for b.Loop() {
+		byValue(st)
+	}
+}

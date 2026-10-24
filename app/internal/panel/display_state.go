@@ -97,7 +97,7 @@ func (c *Controller) SetTraceOn(ch int, on bool) {
 // (c.mu held), so a step starts from the values in effect. A zero report
 // (an engine that does not publish them) keeps the shadows.
 // TRLC-LINKS: REQ-SDS-136
-func (c *Controller) adoptQual(st engine.Stats) {
+func (c *Controller) adoptQual(st *engine.Stats) {
 	q := st.TrigQual
 	if q.PulseLvl <= 0 {
 		return

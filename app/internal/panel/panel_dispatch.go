@@ -19,8 +19,9 @@ import (
 // TRLC-LINKS: REQ-SDS-135
 func (c *Controller) Run(stop <-chan struct{}) {
 	// Adopt the engine's restored setup; starting the panel must not overwrite it.
+	st := c.eng.Snapshot()
 	c.mu.Lock()
-	c.adoptQual(c.eng.Snapshot())
+	c.adoptQual(&st)
 	c.mu.Unlock()
 	c.looping.Store(true) // the remote's changes now run on this goroutine
 	go c.snd.run(stop)    // SOUND reads the audio stream while something needs it
