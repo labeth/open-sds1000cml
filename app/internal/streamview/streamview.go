@@ -384,6 +384,7 @@ func (c *Controller) Window(rows, top int) Page {
 	}
 	top = max(top, 0)
 	p := Page{Top: top, Total: total, TriggerLine: t.TriggerLine(), Header: t.Header()}
+	p.Lines = make([]string, 0, max(0, min(total, top+rows)-top))
 	for i := top; i < min(total, top+rows); i++ {
 		p.Lines = append(p.Lines, t.Format(i))
 	}
@@ -468,9 +469,23 @@ func (c *Controller) Lines(from, limit int) LinesPage {
 	t := c.t
 	p := LinesPage{State: c.view.State.String(), Base: t.Base(), Next: t.Next()}
 	from = min(max(from, t.Base()), p.Next)
-	for i := from; i < p.Next && len(p.Lines) < limit; i++ {
+	n := max(0, min(p.Next-from, limit))
+	// The lines' units share one slice: an allocation a page, not a line.
+	units := 0
+	for i := from; i < from+n; i++ {
+		units += int(t.At(i - t.Base()).N)
+	}
+	vals := make([]uint32, 0, units)
+	p.Lines = make([]LineData, 0, n)
+	for i := from; i < from+n; i++ {
 		l := t.At(i - t.Base())
-		p.Lines = append(p.Lines, LineData{Index: i, Sample: l.Sample, Units: append([]uint32(nil), l.Vals[:l.N]...),
+		var u []uint32 // nil for a line without units, as before (JSON null)
+		if l.N > 0 {
+			k := len(vals)
+			vals = append(vals, l.Vals[:l.N]...)
+			u = vals[k:len(vals):len(vals)]
+		}
+		p.Lines = append(p.Lines, LineData{Index: i, Sample: l.Sample, Units: u,
 			Errs: l.Errs, Naks: l.Naks, Note: l.Note})
 	}
 	if len(p.Lines) > 0 {

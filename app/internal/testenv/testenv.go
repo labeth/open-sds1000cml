@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sync"
 	"testing"
 )
 
@@ -24,7 +25,7 @@ func required() bool { return os.Getenv("CI_REQUIRE_BROWSER") == "1" }
 // TRLC-LINKS: REQ-SDS-179
 func NeedNode(t testing.TB) {
 	t.Helper()
-	if _, err := exec.LookPath("node"); err == nil {
+	if haveNode() {
 		return
 	}
 	if required() {
@@ -32,6 +33,12 @@ func NeedNode(t testing.TB) {
 	}
 	t.Skip("node not installed")
 }
+
+// haveNode is whether node is on PATH, looked up once for every test.
+var haveNode = sync.OnceValue(func() bool {
+	_, err := exec.LookPath("node")
+	return err == nil
+})
 
 // SkipBrowser records a browser-environment skip (Playwright/Chromium not
 // installed, or the browser failed to launch) — or fails the test under

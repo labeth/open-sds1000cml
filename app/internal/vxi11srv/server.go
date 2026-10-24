@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"slices"
 	"sync"
 	"time"
 )
@@ -120,11 +121,12 @@ func readRecord(r io.Reader) ([]byte, error) {
 		if len(msg)+n > maxRecord {
 			return nil, fmt.Errorf("vxi11: record too large (%d bytes)", len(msg)+n)
 		}
-		frag := make([]byte, n)
-		if _, err := io.ReadFull(r, frag); err != nil {
+		// Read straight onto the message's end: no fragment copied twice.
+		at := len(msg)
+		msg = slices.Grow(msg, n)[:at+n]
+		if _, err := io.ReadFull(r, msg[at:]); err != nil {
 			return nil, err
 		}
-		msg = append(msg, frag...)
 		if mark&0x80000000 != 0 {
 			return msg, nil
 		}
