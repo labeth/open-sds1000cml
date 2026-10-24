@@ -181,9 +181,9 @@ function srFeed(st, sig1, sig2, opts) {
   // reject the healthy tail; real junk (glitch/flatline) scores FAR lower.
   let thr = opts.minScore != null ? opts.minScore : 0.6;
   if (st.scores.length >= 10) {
-    const s = [...st.scores].sort((a, b) => a - b);
+    const s = Float64Array.from(st.scores).sort(); // typed sorts: numeric, no comparator call
     const med = s[s.length >> 1];
-    const mad = s.map(x => Math.abs(x - med)).sort((a, b) => a - b)[s.length >> 1];
+    const mad = s.map(x => Math.abs(x - med)).sort()[s.length >> 1];
     thr = Math.max(thr, med - Math.max(3 * 1.4826 * mad, 0.05));
   }
   if (al.score < thr) { st.rejected++; return "rejected:score"; }
@@ -336,7 +336,7 @@ function srResult(st, opts) {
     }
   }
   // TRLC-LINKS: REQ-SDS-019
-  const med = a => { if (!a.length) return 0; const s = [...a].sort((x, y) => x - y); return s[s.length >> 1]; };
+  const med = a => { if (!a.length) return 0; const s = Float64Array.from(a).sort(); return s[s.length >> 1]; }; // typed: numeric, no comparator call
   const sigmaSingle = med(sigSingles);
   // Median-based like sigmaSingle (×1.4826 = gaussian MAD→σ): an RMS here
   // would be dominated by the few EDGE bins, where the half-difference is
