@@ -3,6 +3,7 @@ package panel
 
 import (
 	"fmt"
+	"math"
 	"testing"
 
 	"open-sds/app/internal/analog"
@@ -381,6 +382,70 @@ func TestParseNumberOddInput(t *testing.T) {
 		}
 		if got != c.want {
 			t.Errorf("parseNumber(%q, %q) = %s, want %s", c.in, c.unit, got, c.want)
+		}
+	}
+}
+
+// soundBlock is a sound block of n samples with a scale change in it.
+// TRLC-LINKS: REQ-SDS-265
+func soundBlock(n int) engine.SoundBlock {
+	b := engine.SoundBlock{First: 1000, N: n, Q1: make([]uint16, n), Q2: make([]uint16, n),
+		Scales: []engine.SoundScale{{From: 0, VdivV: [2]float64{0.1, 0.2}, OffV: [2]float64{0.01, -0.02}},
+			{From: 1000 + uint64(n/3), VdivV: [2]float64{0.05, 0.2}, OffV: [2]float64{0, 0.5}},
+			{From: 1000 + uint64(n/3), VdivV: [2]float64{0.5, 2}}, // two from one sample: the last stands
+			{From: 1000 + uint64(2*n/3), VdivV: [2]float64{1, 1}}}}
+	for i := range b.Q1 {
+		b.Q1[i], b.Q2[i] = uint16(32768+i*97), uint16(i*13)
+	}
+	return b
+}
+
+// TRLC-LINKS: REQ-SDS-265
+func BenchmarkSoundVolts(b *testing.B) {
+	c, _, _ := newC(&testing.T{})
+	blk := soundBlock(12000)
+	var dst []float64
+	for b.Loop() {
+		dst = c.snd.volts(blk, 0, dst)
+	}
+}
+
+// volts per scale segment reads as volts per sample did.
+// TRLC-LINKS: REQ-SDS-265
+func TestSoundVoltsSegments(t *testing.T) {
+	c, _, _ := newC(t)
+	ref := func(b engine.SoundBlock, ch int) []float64 {
+		q := b.Q1
+		if ch == 1 {
+			q = b.Q2
+		}
+		var dst []float64
+		k, vpc, off := -1, 1/256.0*256, 0.0
+		for i, v := range q {
+			ord := b.First + uint64(i)
+			for k+1 < len(b.Scales) && (k < 0 || b.Scales[k+1].From <= ord) {
+				k++
+				vpc, off = b.Scales[k].SoundVolts(ch)
+			}
+			dst = append(dst, (float64(v)-32768)*vpc/256-off)
+		}
+		return dst
+	}
+	for _, n := range []int{0, 1, 2, 7, 300} {
+		for _, cut := range []int{0, 1, 2, 3, 4} {
+			b := soundBlock(n)
+			b.Scales = b.Scales[:cut]
+			for ch := 0; ch < 2; ch++ {
+				got, want := c.snd.volts(b, ch, nil), ref(b, ch)
+				if len(got) != len(want) {
+					t.Fatalf("n %d scales %d: %d volts, want %d", n, cut, len(got), len(want))
+				}
+				for i := range got {
+					if math.Float64bits(got[i]) != math.Float64bits(want[i]) {
+						t.Fatalf("n %d scales %d ch %d [%d]: %v, want %v", n, cut, ch, i, got[i], want[i])
+					}
+				}
+			}
 		}
 	}
 }

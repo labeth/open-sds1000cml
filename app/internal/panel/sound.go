@@ -526,14 +526,24 @@ func (s *soundSvc) volts(b engine.SoundBlock, ch int, dst []float64) []float64 {
 	}
 	// No scale yet reads codes about mid-scale as volts a code.
 	k, vpc, off := -1, 1/256.0*256, 0.0
-	for i, v := range q {
+	for i := 0; i < len(q); {
 		ord := b.First + uint64(i)
 		for k+1 < len(b.Scales) && (k < 0 || b.Scales[k+1].From <= ord) {
 			k++
 			vpc, off = b.Scales[k].SoundVolts(ch)
 			vpc, off = vpc*probe, off*probe
 		}
-		dst = append(dst, (float64(v)-32768)*vpc/256-off)
+		// the samples up to the next scale's first, at this one
+		end := len(q)
+		if k+1 < len(b.Scales) {
+			if d := b.Scales[k+1].From - b.First; d < uint64(len(q)) {
+				end = int(d)
+			}
+		}
+		for _, v := range q[i:end] {
+			dst = append(dst, (float64(v)-32768)*vpc/256-off)
+		}
+		i = end
 	}
 	return dst
 }
