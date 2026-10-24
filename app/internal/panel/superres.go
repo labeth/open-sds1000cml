@@ -459,6 +459,7 @@ func (c *Controller) srLoop(stop chan struct{}, st *superres.Stack, seedTdiv flo
 	reached := false // stop target hit (or geometry changed): stack is final, idle
 	tick := time.NewTicker(25 * time.Millisecond)
 	defer tick.Stop()
+	var buf1, buf2 []uint8 // the frame copies' storage, reused (srFrameCopy)
 	for {
 		select {
 		case <-stop:
@@ -514,11 +515,10 @@ func (c *Controller) srLoop(stop chan struct{}, st *superres.Stack, seedTdiv flo
 				return
 			}
 			seq, cols, edgeX, sampleS, tdiv = f.Seq, v, f.EdgeX, f.SampleS, f.TdivS
-			c1 = append([]uint8(nil), f.C1[:v]...)
+			c1, c2 = srFrameCopy(f, v, buf1, buf2)
+			buf1 = c1
 			if len(f.C2) >= v {
-				c2 = append([]uint8(nil), f.C2[:v]...)
-			} else {
-				c2 = c1
+				buf2 = c2
 			}
 		})
 		if envelope {
@@ -614,6 +614,19 @@ type SuperresView struct {
 	N              int // frame width (samples)
 	WinLo, WinHi   int // the selected span the review renders (= the frozen view)
 	Period         int // >0: the stack is one period; the review tiles it over the span
+}
+
+// srFrameCopy copies a frame's first v samples of both channels into b1
+// and b2, the loop's buffers from frame to frame (Feed reads them, keeps
+// none): a raw frame is half a million samples a channel, a fresh copy each
+// frame. A short C2 shares C1's copy.
+// TRLC-LINKS: REQ-SDS-140
+func srFrameCopy(f *engine.Frame, v int, b1, b2 []uint8) (c1, c2 []uint8) {
+	c1 = append(b1[:0], f.C1[:v]...)
+	if len(f.C2) < v {
+		return c1, c1
+	}
+	return c1, append(b2[:0], f.C2[:v]...)
 }
 
 // SuperresView returns the current super-res state for the LCD overlay/review.

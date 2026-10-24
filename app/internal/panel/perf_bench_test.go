@@ -752,3 +752,23 @@ func BenchmarkSetupSummary(b *testing.B) {
 		}
 	}
 }
+
+// TRLC-LINKS: REQ-SDS-140
+func BenchmarkSRFrameCopy(b *testing.B) {
+	const n = 500000
+	f := &engine.Frame{C1: make([]uint8, n), C2: make([]uint8, n), Valid: n}
+	var b1, b2 []uint8
+	for b.Loop() {
+		c1, c2 := srFrameCopy(f, n, b1, b2)
+		b1, b2 = c1, c2
+	}
+}
+
+// TRLC-LINKS: REQ-SDS-140
+func BenchmarkSRFrameCopyRef(b *testing.B) {
+	const n = 500000
+	f := &engine.Frame{C1: make([]uint8, n), C2: make([]uint8, n), Valid: n}
+	for b.Loop() {
+		srFrameCopy(f, n, nil, nil) // a fresh copy each frame, as before
+	}
+}
