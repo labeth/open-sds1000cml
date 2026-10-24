@@ -910,3 +910,42 @@ func BenchmarkQualName(b *testing.B) {
 		qualName(sramcapture.QualVideo)
 	}
 }
+
+// TRLC-LINKS: REQ-SDS-265
+func BenchmarkSoundRingRead(b *testing.B) {
+	r := newSoundRing(16)
+	raw := make([]byte, 4*40000)
+	for i := range raw {
+		raw[i] = byte(i)
+	}
+	now := time.Unix(0, 0)
+	r.pushWords(raw, SoundScale{}, false, now)
+	r.pushWords(raw, SoundScale{}, false, now) // past the end: the read wraps
+	var q1, q2 []uint16
+	for b.Loop() {
+		blk := r.read(r.next-30000, 30000, q1, q2, 61e3)
+		q1, q2 = blk.Q1, blk.Q2
+	}
+}
+
+// The ring reads back what was pushed, across its wrap.
+// TRLC-LINKS: REQ-SDS-265
+func TestSoundRingReadWraps(t *testing.T) {
+	r := newSoundRing(8)
+	for k := 0; k < 5; k++ {
+		raw := make([]byte, 4*97)
+		for i := 0; i < 97; i++ {
+			v := uint16(k*1000 + i)
+			raw[4*i], raw[4*i+1], raw[4*i+2], raw[4*i+3] = byte(v), byte(v>>8), byte(^v), byte(^v>>8)
+		}
+		r.pushWords(raw, SoundScale{}, false, time.Unix(0, 0))
+	}
+	blk := r.read(r.next-200, 200, nil, nil, 1)
+	for i := 0; i < blk.N; i++ {
+		o := blk.First + uint64(i)
+		want := uint16(int(o/97)*1000 + int(o%97))
+		if blk.Q1[i] != want || blk.Q2[i] != ^want {
+			t.Fatalf("sample %d: %d %d, want %d %d", o, blk.Q1[i], blk.Q2[i], want, ^want)
+		}
+	}
+}

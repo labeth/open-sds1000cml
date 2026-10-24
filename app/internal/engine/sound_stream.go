@@ -226,10 +226,12 @@ func (r *soundRing) read(from uint64, max int, q1, q2 []uint16, rate float64) So
 	n := int(min(uint64(max), r.next-from))
 	b.First, b.N = from, n
 	b.Q1, b.Q2 = grow16(q1, n), grow16(q2, n)
-	mask := uint64(len(r.q[0]) - 1)
-	for i := 0; i < n; i++ {
-		j := (from + uint64(i)) & mask
-		b.Q1[i], b.Q2[i] = r.q[0][j], r.q[1][j]
+	if n > 0 { // at most two stretches: to the ring's end, then from its start
+		at := int(from & uint64(len(r.q[0])-1))
+		k := copy(b.Q1, r.q[0][at:])
+		copy(b.Q1[k:], r.q[0])
+		copy(b.Q2, r.q[1][at:])
+		copy(b.Q2[k:], r.q[1])
 	}
 	end := from + uint64(n)
 	for i, s := range r.scales {
