@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"open-sds/app/internal/analog"
+	"open-sds/app/internal/decode"
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/panel/wsview"
 )
@@ -236,5 +237,24 @@ func BenchmarkSoundPane(b *testing.B) {
 	s := c.snap()
 	for b.Loop() {
 		c.soundPane(s)
+	}
+}
+
+// TRLC-LINKS: REQ-SDS-214, REQ-SDS-222
+func BenchmarkDecodesBus(b *testing.B) {
+	var bad decode.Result // a 115200 Bd line read at 460800 Bd: one unit in five an error
+	bad.OK = true
+	for i := 0; i < 2000; i++ {
+		kind := "data"
+		if i%5 == 0 {
+			kind = "frame-error"
+		}
+		bad.Spans = append(bad.Spans, decode.Span{I0: i, I1: i + 1, Text: "55", Kind: kind, Val: 0x55})
+		bad.Bytes = append(bad.Bytes, 0x55)
+	}
+	for b.Loop() {
+		if decodesBus(bad) {
+			b.Fatal("decodes")
+		}
 	}
 }

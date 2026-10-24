@@ -50,10 +50,12 @@ func decodesBus(res decode.Result) bool {
 	bad := 0
 	for _, sp := range res.Spans {
 		if strings.HasSuffix(sp.Kind, "error") {
-			bad++
+			if bad++; bad > 1 && 10*bad >= len(res.Bytes) {
+				return false // more errors only confirm it
+			}
 		}
 	}
-	return bad <= 1 || 10*bad < len(res.Bytes)
+	return true
 }
 
 // watchBus judges each new capture against the settings Auto filled in, and
