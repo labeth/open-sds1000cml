@@ -148,7 +148,7 @@ func resolveBitOrder(rbf []byte, want BitOrder, force bool) (rev bool, why strin
 	case derr == nil && want == BitOrderAuto:
 		return order.Reverse(), fmt.Sprintf("auto: %v ⇒ reverse=%v", order, order.Reverse()), nil
 	case derr == nil && (want == BitOrderReverse) == order.Reverse():
-		return order.Reverse(), fmt.Sprintf("explicit %v, agrees with the container (%v)", want, order), nil
+		return order.Reverse(), "explicit " + want.String() + ", agrees with the container (" + order.String() + ")", nil
 	case derr == nil && !force:
 		return false, "", fmt.Errorf("BitOrder=%v contradicts the container (%v); the wrong order clocks cleanly and leaves CONF_DONE low — leave BitOrder unset, or set Force", want, order)
 	case derr == nil:

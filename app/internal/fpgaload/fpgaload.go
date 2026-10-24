@@ -80,7 +80,8 @@ type Options struct {
 	// NConfigLow is the nCONFIG low hold (default 2 ms, tools/fpga_reload).
 	NConfigLow time.Duration
 	// StatusPoll / StatusPolls bound the nSTATUS wait after the release
-	// (defaults 10 ms × 21, the factory loader's bound).
+	// (defaults 250 us × 840: the factory loader's 210 ms bound, looked at
+	// often enough that a load does not wait 10 ms past the release).
 	StatusPoll  time.Duration
 	StatusPolls int
 	// Timeout / PollEvery bound the CONF_DONE poll (defaults 5 s / 1 ms).
@@ -109,10 +110,10 @@ func (o *Options) withDefaults() {
 		o.NConfigLow = 2 * time.Millisecond
 	}
 	if o.StatusPoll <= 0 {
-		o.StatusPoll = 10 * time.Millisecond
+		o.StatusPoll = 250 * time.Microsecond
 	}
 	if o.StatusPolls <= 0 {
-		o.StatusPolls = 21
+		o.StatusPolls = 840
 	}
 	if o.Timeout <= 0 {
 		o.Timeout = 5 * time.Second

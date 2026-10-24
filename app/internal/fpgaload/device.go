@@ -29,7 +29,9 @@ type ioctlPort struct{ fd int }
 // TRLC-LINKS: REQ-SDS-005
 func (p *ioctlPort) xfer(req uintptr, val uint16) (uint16, error) {
 	b := [6]byte{bus.PlaneCS3, 0, byte(bus.CS3ConfigPort), 0, byte(val), byte(val >> 8)}
-	if _, _, errno := syscall.Syscall(syscall.SYS_IOCTL, uintptr(p.fd), req, uintptr(unsafe.Pointer(&b[0]))); errno != 0 {
+	// One bounded register transaction, as the bus package's ioctls: a raw
+	// syscall skips the scheduler's bookkeeping, 5.9 M times a load here.
+	if _, _, errno := syscall.RawSyscall(syscall.SYS_IOCTL, uintptr(p.fd), req, uintptr(unsafe.Pointer(&b[0]))); errno != 0 {
 		return 0, errno
 	}
 	return uint16(b[4]) | uint16(b[5])<<8, nil
