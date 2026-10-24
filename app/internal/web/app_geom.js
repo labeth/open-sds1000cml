@@ -135,13 +135,18 @@ function markerHit(p) {
     if (Math.abs(p.y - ly) < 0.06) return { kind: "level", vpc: vpcT };
   }
   if (p.x < 0.13) {                                 // channel GROUND / offset arrows (left edge)
-    for (const [ch, en, vpc, offV, zoom] of [[1, view.c1, frame.vpc1, frame.off1_v, st.zoom1 || 1], [2, view.c2, frame.vpc2, frame.off2_v, st.zoom2 || 1]]) {
-      if (!en || !vpc) continue;
-      const gy = yFor(128 + (offV || 0) / vpc, zoom) / CH;
-      if (Math.abs(p.y - gy) < 0.06) return { kind: "off" + ch, vpc, zoom };
-    }
+    return offHit(p, 1, view.c1, frame.vpc1, frame.off1_v, st.zoom1 || 1) || offHit(p, 2, view.c2, frame.vpc2, frame.off2_v, st.zoom2 || 1);
   }
   return null;
+}
+
+// offHit is markerHit's test of one channel's ground arrow, the channels
+// tried in order without a table built a pointer move.
+// TRLC-LINKS: REQ-SDS-202
+function offHit(p, ch, en, vpc, offV, zoom) {
+  if (!en || !vpc) return null;
+  const gy = yFor(128 + (offV || 0) / vpc, zoom) / CH;
+  return Math.abs(p.y - gy) < 0.06 ? { kind: "off" + ch, vpc, zoom } : null;
 }
 
 // TRLC-LINKS: REQ-SDS-202
