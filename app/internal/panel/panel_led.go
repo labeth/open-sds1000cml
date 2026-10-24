@@ -2,8 +2,8 @@
 package panel
 
 import (
-	"fmt"
 	"math"
+	"strconv"
 	"time"
 
 	"open-sds/app/internal/panel/framecalc"
@@ -82,10 +82,48 @@ func (c *Controller) waitingForTrigger(s *sv) bool {
 // Save/Recall lamp).
 // TRLC-LINKS: REQ-SDS-136
 func setupPrint(s *sv) string {
-	return fmt.Sprint(s.st.TdivSet(), s.st.TrigSource, s.st.TrigRising, s.st.TrigCode, s.st.TrigType, s.st.Norm, s.st.HoldoffS,
-		s.st.TrigPosFrac, s.st.AcqMode, s.st.AvgCount, s.st.EresLen, s.vidx, s.offV, s.cpl, s.probe, s.bwl,
-		s.chDisp, s.showMeas, s.persist, s.viewMode, s.mathMode, s.decProto, s.decBaud, s.decChA, s.decChB,
-		s.decCPOL, s.decCPHA, s.decFormat, s.meas, s.fftSrc, s.ui.ws)
+	// Appended, not formatted: each value's shortest text, a space after it,
+	// so equal prints are equal settings.
+	b := make([]byte, 0, 256)
+	f := func(v float64) { b = append(strconv.AppendFloat(b, v, 'g', -1, 64), ' ') }
+	n := func(v int) { b = append(strconv.AppendInt(b, int64(v), 10), ' ') }
+	t := func(v bool) { b = append(strconv.AppendBool(b, v), ' ') }
+	f(s.st.TdivSet())
+	n(s.st.TrigSource)
+	t(s.st.TrigRising)
+	n(int(s.st.TrigCode))
+	n(s.st.TrigType)
+	t(s.st.Norm)
+	f(s.st.HoldoffS)
+	f(s.st.TrigPosFrac)
+	n(s.st.AcqMode)
+	n(s.st.AvgCount)
+	n(s.st.EresLen)
+	for ch := 0; ch < 2; ch++ {
+		n(s.vidx[ch])
+		f(s.offV[ch])
+		n(s.cpl[ch])
+		f(s.probe[ch])
+		t(s.bwl[ch])
+		t(s.chDisp[ch])
+	}
+	t(s.showMeas)
+	t(s.persist)
+	for _, v := range []int{s.viewMode, s.mathMode, s.decProto, s.decBaud, s.decChA, s.decChB} {
+		n(v)
+	}
+	t(s.decCPOL)
+	t(s.decCPHA)
+	n(s.decFormat)
+	b = append(b, '[')
+	for _, m := range s.meas {
+		n(m.ch)
+		n(m.param)
+	}
+	b = append(b, "] "...)
+	n(s.fftSrc)
+	n(int(s.ui.ws))
+	return string(b)
 }
 
 // SyncLEDs refreshes the lamps from the engine and the panel state and

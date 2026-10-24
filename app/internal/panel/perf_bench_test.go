@@ -136,3 +136,12 @@ func BenchmarkStabKey(b *testing.B) {
 		_ = stabKey(s)
 	}
 }
+
+// TRLC-LINKS: REQ-SDS-136
+func BenchmarkSetupPrint(b *testing.B) {
+	c, _, _ := newC(&testing.T{})
+	s := c.snap()
+	for b.Loop() {
+		setupPrint(s)
+	}
+}
