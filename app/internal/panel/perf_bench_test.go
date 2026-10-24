@@ -12,6 +12,7 @@ import (
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/panel/framecalc"
 	"open-sds/app/internal/panel/wsview"
+	"open-sds/app/internal/settings"
 )
 
 // Each workspace's view, built every LCD tick on the device's single core.
@@ -682,5 +683,72 @@ func BenchmarkMessageTimebase(b *testing.B) {
 	c, _, _ := newC(&testing.T{})
 	for b.Loop() {
 		c.messageTimebase(3e-3, 8e-6, 100e-6)
+	}
+}
+
+// setupSummaryRef is the fmt-built FILE row setupSummary must match.
+// TRLC-LINKS: REQ-SDS-136
+func setupSummaryRef(st settings.Settings) string {
+	var parts []string
+	if st.UI.Set {
+		parts = append(parts, wsview.Names[clampInt(st.UI.Workspace, 0, wsview.Count-1)])
+	}
+	parts = append(parts, si(st.TdivS, "s")+"/div")
+	edge := "^"
+	if !st.Trigger.Rising {
+		edge = "v"
+	}
+	tr := []string{"", "PLS ", "SLP ", "VID "}[clampInt(st.Trigger.Type, 0, 3)]
+	parts = append(parts, fmt.Sprintf("%sC%d%s %s", tr, st.Trigger.Source+1, edge, si(engine.TrigLevelVolts(uint16(clampInt(st.Trigger.LevelCode, 1, 65535))), "V")))
+	var ch []string
+	for i := 0; i < 2; i++ {
+		if !st.Display.Hidden[i] && st.Ch[i].VdivV > 0 {
+			ch = append(ch, fmt.Sprintf("C%d %s", i+1, si(st.Ch[i].VdivV*max(st.Ch[i].Probe, 1), "V")))
+		}
+	}
+	parts = append(parts, strings.Join(ch, " "))
+	if st.Decode.Proto != framecalc.ProtoOff {
+		parts = append(parts, strings.ToUpper(protoName(st.Decode.Proto)))
+	}
+	if st.ViewMode != viewYT {
+		parts = append(parts, strings.ToUpper(viewName(st.ViewMode)))
+	}
+	return strings.Join(parts, "  ")
+}
+
+// summarySetups are setups for the FILE row's text.
+// TRLC-LINKS: REQ-SDS-136
+func summarySetups() []settings.Settings {
+	var out []settings.Settings
+	for k := 0; k < 8; k++ {
+		var st settings.Settings
+		st.UI.Set, st.UI.Workspace = k%2 == 0, k%5
+		st.TdivS = []float64{1e-6, 500e-6, 2e-3, 1}[k%4]
+		st.Trigger.Rising, st.Trigger.Type, st.Trigger.Source, st.Trigger.LevelCode = k%3 != 0, k%4, k%2, 20000+k*1000
+		st.Display.Hidden = [2]bool{k == 3, k == 5 || k == 6}
+		st.Ch[0].VdivV, st.Ch[1].VdivV, st.Ch[0].Probe, st.Ch[1].Probe = 0.5, 0.02*float64(k), 10, 1
+		st.Decode.Proto = k % 3
+		st.ViewMode = k % 3
+		out = append(out, st)
+	}
+	return out
+}
+
+// TRLC-LINKS: REQ-SDS-136
+func TestSetupSummaryMatchesFmt(t *testing.T) {
+	for _, st := range summarySetups() {
+		if got, want := setupSummary(st), setupSummaryRef(st); got != want {
+			t.Errorf("setupSummary = %q, want %q", got, want)
+		}
+	}
+}
+
+// TRLC-LINKS: REQ-SDS-136
+func BenchmarkSetupSummary(b *testing.B) {
+	sts := summarySetups()
+	for b.Loop() {
+		for _, st := range sts {
+			setupSummary(st)
+		}
 	}
 }

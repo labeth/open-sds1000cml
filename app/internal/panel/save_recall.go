@@ -3,6 +3,7 @@ package panel
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -126,7 +127,7 @@ func (c *Controller) slotWorkspace(n int) int {
 // setupSummary is a slot's FILE row: "BUS  500us/div  C1^ 0V  C1 1V C2 1V  UART".
 // TRLC-LINKS: REQ-SDS-136
 func setupSummary(st settings.Settings) string {
-	var parts []string
+	parts := make([]string, 0, 6)
 	if st.UI.Set {
 		parts = append(parts, wsview.Names[clampInt(st.UI.Workspace, 0, wsview.Count-1)])
 	}
@@ -136,14 +137,17 @@ func setupSummary(st settings.Settings) string {
 		edge = "v"
 	}
 	tr := []string{"", "PLS ", "SLP ", "VID "}[clampInt(st.Trigger.Type, 0, 3)]
-	parts = append(parts, fmt.Sprintf("%sC%d%s %s", tr, st.Trigger.Source+1, edge, si(engine.TrigLevelVolts(uint16(clampInt(st.Trigger.LevelCode, 1, 65535))), "V")))
-	var ch []string
+	parts = append(parts, tr+"C"+strconv.Itoa(st.Trigger.Source+1)+edge+" "+si(engine.TrigLevelVolts(uint16(clampInt(st.Trigger.LevelCode, 1, 65535))), "V"))
+	ch := ""
 	for i := 0; i < 2; i++ {
 		if !st.Display.Hidden[i] && st.Ch[i].VdivV > 0 {
-			ch = append(ch, fmt.Sprintf("C%d %s", i+1, si(st.Ch[i].VdivV*max(st.Ch[i].Probe, 1), "V")))
+			if ch != "" {
+				ch += " "
+			}
+			ch += [2]string{"C1 ", "C2 "}[i] + si(st.Ch[i].VdivV*max(st.Ch[i].Probe, 1), "V")
 		}
 	}
-	parts = append(parts, strings.Join(ch, " "))
+	parts = append(parts, ch)
 	if st.Decode.Proto != framecalc.ProtoOff {
 		parts = append(parts, strings.ToUpper(protoName(st.Decode.Proto)))
 	}
