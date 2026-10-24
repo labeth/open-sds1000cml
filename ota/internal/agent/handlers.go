@@ -2,7 +2,6 @@
 package agent
 
 import (
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -172,17 +171,13 @@ func hPutBegin(a *Agent, args json.RawMessage) (any, error) {
 func hPutChunk(a *Agent, args json.RawMessage) (any, error) {
 	p, err := decodeArgs[struct {
 		ID     string `json:"id"`
-		Data   string `json:"data"` // base64
+		Data   []byte `json:"data"` // base64, decoded by encoding/json without a string copy
 		Offset int64  `json:"offset"`
 	}](args)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("put.chunk: %w", err)
 	}
-	raw, err := base64.StdEncoding.DecodeString(p.Data)
-	if err != nil {
-		return nil, fmt.Errorf("put.chunk: base64: %w", err)
-	}
-	n, err := a.writeUpload(p.ID, p.Offset, raw)
+	n, err := a.writeUpload(p.ID, p.Offset, p.Data)
 	return map[string]any{"written": n}, err
 }
 
@@ -225,7 +220,7 @@ func hGet(a *Agent, args json.RawMessage) (any, error) {
 	m, rerr := f.ReadAt(buf, p.Offset)
 	eof := rerr != nil
 	return map[string]any{
-		"data":   base64.StdEncoding.EncodeToString(buf[:m]),
+		"data":   buf[:m], // encoding/json writes []byte as standard base64
 		"offset": p.Offset,
 		"eof":    eof,
 		"size":   fi.Size(),
