@@ -713,3 +713,55 @@ func BenchmarkArenaConsume(b *testing.B) {
 		a.Consume()
 	}
 }
+
+// TRLC-LINKS: REQ-SDS-010
+func BenchmarkBandInterval(b *testing.B) {
+	var bs []Band
+	for _, t := range []float64{2e-9, 1e-6, 100e-6, 10e-3, 200e-3} {
+		band, _ := PlanTdiv(t)
+		bs = append(bs, band)
+	}
+	for b.Loop() {
+		for _, band := range bs {
+			band.CaptureIntervalNs()
+		}
+	}
+}
+
+// Every ladder row keeps its intervals and its kind.
+// TRLC-LINKS: REQ-SDS-010
+func TestBandIntervalsByKind(t *testing.T) {
+	for _, b := range bands {
+		want := 0.0
+		switch b.Kind() {
+		case KindEnvelope:
+			_, d := b.EnvPlan()
+			want = float64(d) * 10
+		case KindRoll:
+			want = rollDivisor * 10
+		default:
+			switch b.Class {
+			case 0x20:
+				want = 2
+			case 0x01:
+				want = 4
+			default:
+				want = float64(b.Divisor()) * 10
+			}
+		}
+		if got := b.nominalIntervalNs(); got != want {
+			t.Fatalf("%v: %v, want %v", b.TdivS, got, want)
+		}
+	}
+}
+
+// Decim by the tick's reciprocal is the quotient's rounding for every whole
+// interval the ladder can name.
+// TRLC-LINKS: REQ-SDS-010
+func TestDecimReciprocal(t *testing.T) {
+	for x := 0.0; x < 1e7; x++ {
+		if math.Round(x*(1/baseTickNs)) != math.Round(x/baseTickNs) {
+			t.Fatalf("interval %v ns", x)
+		}
+	}
+}

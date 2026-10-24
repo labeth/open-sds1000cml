@@ -218,12 +218,13 @@ func (b Band) EnvFillTarget() uint16 {
 // envelope phase-scatter divisor, the fixed roll divisor, or the ladder row.
 // TRLC-LINKS: REQ-SDS-010
 func (b Band) nominalIntervalNs() float64 {
-	switch b.Kind() {
-	case KindEnvelope:
+	// Kind's first two tests: native-fast or decimated read the class alike
+	switch {
+	case b.TdivS >= 100e-3: // KindRoll
+		return rollDivisor * 10
+	case b.TdivS >= 5e-3: // KindEnvelope
 		_, d := b.EnvPlan()
 		return float64(d) * 10
-	case KindRoll:
-		return rollDivisor * 10
 	}
 	switch b.Class {
 	case 0x20:
@@ -239,7 +240,9 @@ func (b Band) nominalIntervalNs() float64 {
 // base ticks, at least 1 (cap_tick once per DECIM encode samples).
 // TRLC-LINKS: REQ-SDS-010
 func (b Band) Decim() uint32 {
-	d := uint32(math.Round(b.nominalIntervalNs() / baseTickNs))
+	// The nominal interval is whole nanoseconds, so its fifth never ends in
+	// .5: the product rounds as the quotient does, without a divide.
+	d := uint32(math.Round(b.nominalIntervalNs() * (1 / baseTickNs)))
 	if d < 1 {
 		d = 1
 	}
