@@ -1177,3 +1177,26 @@ func BenchmarkSnapshot(b *testing.B) {
 		e.Snapshot()
 	}
 }
+
+// Every full-rate frame is offset-corrected: two 14000-sample channels.
+// TRLC-LINKS: REQ-SDS-016
+func BenchmarkInterleaveApply(b *testing.B) {
+	c := InterleaveCalibration{Vdiv: [2]float64{2, 2}, Offset: [2][5]float64{{3, -6, -7, 5, 5}, {-2, -1, 0, 1, 2}}}
+	n := 14000
+	a0, b0 := make([]uint8, n), make([]uint8, n)
+	for i := range a0 {
+		base := 100 + (i/5)%50
+		a0[i] = uint8(base + int(c.Offset[0][(i+2)%5]))
+		b0[i] = uint8(base + int(c.Offset[1][(i+2)%5]))
+	}
+	a0[77], b0[91] = 255, 0
+	x, y := make([]uint8, n), make([]uint8, n)
+	q1, q2 := make([]uint16, n), make([]uint16, n)
+	for b.Loop() {
+		copy(x, a0)
+		copy(y, b0)
+		if !c.apply(x, y, q1, q2, [2]float64{2, 2}, 2e-9) {
+			b.Fatal("rejected")
+		}
+	}
+}
