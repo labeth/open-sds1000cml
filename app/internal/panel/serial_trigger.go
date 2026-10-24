@@ -36,7 +36,7 @@ func (c *Controller) serialTrig() serialEngine {
 // trigTypeIndex is the TRIG tab's Type: the engine's type, or Serial while
 // the serial trigger is armed.
 // TRLC-LINKS: REQ-SDS-013
-func trigTypeIndex(st engine.Stats) int {
+func trigTypeIndex(st *engine.Stats) int {
 	if st.SerialMode != 0 {
 		return trigSerial
 	}

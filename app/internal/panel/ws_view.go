@@ -369,11 +369,11 @@ func tabStatus(c *Controller, s *sv, t *tab) []wsview.Span {
 				out = append(out, dim(what+" decided in the FPGA"))
 			}
 		}
-		hw(map[int]string{1: "Pulse width", 2: "Slope", 3: "Video line"}[trigTypeIndex(s.st)], s.st.TriggerBackend)
+		hw(map[int]string{1: "Pulse width", 2: "Slope", 3: "Video line"}[trigTypeIndex(&s.st)], s.st.TriggerBackend)
 		hw("Zones", s.st.ZoneBackend)
 		// Edge triggers with no edge at the level, dropped: the FPGA fires
 		// on the converters' noise at a small signal's rail
-		if trigTypeIndex(s.st) == 0 && s.st.NoiseTriggers > noiseTriggerWarn {
+		if trigTypeIndex(&s.st) == 0 && s.st.NoiseTriggers > noiseTriggerWarn {
 			out = append(out, wsview.Span{Text: fmt.Sprintf("%.0f%% of triggers dropped as noise: raise the gain or move the level", 100*s.st.NoiseTriggers), Col: wsview.Warn})
 		}
 	case "sys":

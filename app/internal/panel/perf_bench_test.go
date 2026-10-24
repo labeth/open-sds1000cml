@@ -278,3 +278,16 @@ func BenchmarkMinuteOpts(b *testing.B) {
 		minuteOpts(offMins)
 	}
 }
+
+// TRLC-LINKS: REQ-SDS-013
+func BenchmarkTrigTypeRow(b *testing.B) {
+	c, _, _ := newC(&testing.T{})
+	s := c.snap()
+	r := rowByID["trig.type"]
+	if r == nil {
+		b.Fatal("no trig.type row")
+	}
+	for b.Loop() {
+		r.get(s)
+	}
+}
