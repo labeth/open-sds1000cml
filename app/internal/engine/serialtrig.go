@@ -388,7 +388,8 @@ func matchI2C(sp []decode.Span, p SerialParams) (bool, int) {
 // TRLC-LINKS: REQ-SDS-013
 func matchBytes(sp []decode.Span, want []int) (bool, int) {
 	type db struct{ val, i0, i1, segment int }
-	var seq []db
+	var buf [32]db // a packet's bytes: on the stack up to 32
+	seq := buf[:0]
 	segment := 0
 	for _, s := range sp {
 		switch s.Kind {

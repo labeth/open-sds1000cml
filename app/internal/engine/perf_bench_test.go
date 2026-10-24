@@ -34,3 +34,12 @@ func BenchmarkMatchPackets(b *testing.B) {
 		matchPackets(sp, want)
 	}
 }
+
+// TRLC-LINKS: REQ-SDS-013
+func BenchmarkMatchBytes(b *testing.B) {
+	sp := packetSpans(1, 12)
+	want := []int{0x03, 0x04}
+	for b.Loop() {
+		matchBytes(sp, want)
+	}
+}
