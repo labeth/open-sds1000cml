@@ -17,8 +17,8 @@ import (
 // returns where it was (a setup memory leaves the screen saver out).
 // TRLC-LINKS: REQ-SDS-136, REQ-SDS-211, REQ-SDS-221
 func (c *Controller) SettingsView() settings.ViewState {
-	ser := c.serialSettings() // engine state: read before the panel lock
 	s := c.snap()
+	ser := serialSettingsOf(s) // the engine's serial trigger, as snap read it
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	ui := settings.UI{Set: true, Workspace: int(c.ui.ws), BusEye: c.ui.busEye, MeasAll: c.ui.measAll,
@@ -61,7 +61,7 @@ func (c *Controller) SettingsView() settings.ViewState {
 		UI:     ui,
 		Serial: ser,
 		Screen: settings.Screen{Set: true, SaverMin: c.saverMin, OffMin: c.offMin},
-		Sound:  soundSettingsOut(c.snd.Settings()),
+		Sound:  soundSettingsOut(s.snd),
 	}
 }
 
@@ -85,15 +85,15 @@ func soundSettingsIn(s settings.Sound) SoundSettings {
 		PreS: s.PreS, PostS: s.PostS, TrigGate: s.TrigGate}.clean()
 }
 
-// serialSettings is the serial trigger as the settings file keeps it.
+// serialSettingsOf is the serial trigger as the settings file keeps it, from
+// a snapshot (its engine stats and serial configuration).
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-089
-func (c *Controller) serialSettings() settings.Serial {
-	se := c.serialTrig()
-	if se == nil {
+func serialSettingsOf(s *sv) settings.Serial {
+	if !s.hasSerial {
 		return settings.Serial{}
 	}
-	p := se.SerialConfig()
-	return settings.Serial{Set: true, Armed: c.eng.Snapshot().SerialMode != 0,
+	p := s.serial
+	return settings.Serial{Set: true, Armed: s.st.SerialMode != 0,
 		Match: strings.Join(tokensOf(p), " "), Addr: p.Addr, RW: p.RW}
 }
 

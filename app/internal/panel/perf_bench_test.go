@@ -528,3 +528,11 @@ func BenchmarkScreenColumns(b *testing.B) {
 		screenColumns(sig, -50, 400, true)
 	}
 }
+
+// TRLC-LINKS: REQ-SDS-136
+func BenchmarkSettingsView(b *testing.B) {
+	c, _, _ := newC(&testing.T{})
+	for b.Loop() {
+		c.SettingsView()
+	}
+}
