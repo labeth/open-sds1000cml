@@ -9,7 +9,8 @@ import (
 	"encoding/binary"
 	"fmt"
 	"math/bits"
-	"strings"
+	"strconv"
+	"unicode/utf8"
 
 	"open-sds/app/internal/sramcapture"
 )
@@ -347,31 +348,74 @@ func (t *Transcript) Format(i int) string {
 		}
 		ms = (float64(l.Sample) - float64(t.trig)) * 2e-6
 	}
-	var hex, text strings.Builder
+	// Built in one buffer, without fmt: the stream view formats every line
+	// it shows each frame.
+	w := t.perLine*(t.hexDigits+1) - 1
+	buf := make([]byte, 0, 24+len(l.Note)+w+2+int(l.N))
+	buf = append(buf, g1, g2)
+	num := strconv.AppendFloat(make([]byte, 0, 24), ms, 'f', 4, 64)
+	if num[0] != '-' && num[0] != '+' {
+		num = append([]byte{'+'}, num...)
+	}
+	for pad := 11 - len(num); pad > 0; pad-- {
+		buf = append(buf, ' ')
+	}
+	buf = append(buf, num...)
+	buf = append(buf, ' ')
+	buf = append(buf, l.Note...)
+	for pad := 6 - utf8.RuneCountInString(l.Note); pad > 0; pad-- {
+		buf = append(buf, ' ')
+	}
+	buf = append(buf, ' ')
+	hexStart := len(buf)
 	for k := 0; k < int(l.N); k++ {
 		if k > 0 {
-			hex.WriteByte(' ')
+			buf = append(buf, ' ')
 		}
 		if l.Errs&(1<<k) != 0 {
-			hex.WriteString(strings.Repeat("!", t.hexDigits))
-			text.WriteByte('!')
+			for d := 0; d < t.hexDigits; d++ {
+				buf = append(buf, '!')
+			}
 			continue
 		}
-		fmt.Fprintf(&hex, "%0*X", t.hexDigits, l.Vals[k])
-		if l.Naks&(1<<k) != 0 {
-			text.WriteByte('~')
-		} else if b := l.Vals[k]; b >= 0x20 && b < 0x7f {
-			text.WriteByte(byte(b))
-		} else {
-			text.WriteByte('.')
+		buf = appendHex(buf, l.Vals[k], t.hexDigits)
+	}
+	for pad := w - (len(buf) - hexStart); pad > 0; pad-- {
+		buf = append(buf, ' ')
+	}
+	if t.ascii {
+		buf = append(buf, ' ', ' ')
+		for k := 0; k < int(l.N); k++ {
+			switch b := l.Vals[k]; {
+			case l.Errs&(1<<k) != 0:
+				buf = append(buf, '!')
+			case l.Naks&(1<<k) != 0:
+				buf = append(buf, '~')
+			case b >= 0x20 && b < 0x7f:
+				buf = append(buf, byte(b))
+			default:
+				buf = append(buf, '.')
+			}
 		}
 	}
-	w := t.perLine*(t.hexDigits+1) - 1
-	s := fmt.Sprintf("%c%c%+11.4f %-6s %-*s", g1, g2, ms, l.Note, w, hex.String())
-	if t.ascii {
-		s += "  " + text.String()
+	return string(buf)
+}
+
+// appendHex appends v in upper-case hex, zero-padded to digits (as %0*X).
+// TRLC-LINKS: REQ-SDS-018
+func appendHex(buf []byte, v uint32, digits int) []byte {
+	const hexDigits = "0123456789ABCDEF"
+	var tmp [8]byte
+	n := 0
+	for v != 0 || n == 0 {
+		tmp[7-n] = hexDigits[v&15]
+		v >>= 4
+		n++
 	}
-	return s
+	for ; digits > n; digits-- {
+		buf = append(buf, '0')
+	}
+	return append(buf, tmp[8-n:]...)
 }
 
 // usbPIDs names USB packet identifiers for the note column.
