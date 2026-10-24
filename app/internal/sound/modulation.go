@@ -112,7 +112,17 @@ func ModRate(x []float64, fs float64) (float64, int) {
 		return 0, 0
 	}
 	m := mean(x)
-	h := 0.1 * (percentile(x, 0.95) - percentile(x, 0.05)) / 2
+	// Both percentiles from one sorted copy (as percentile reads them).
+	s := append([]float64(nil), x...)
+	sort.Float64s(s)
+	q := func(p float64) float64 {
+		i := p * float64(len(s)-1)
+		lo := int(math.Floor(i))
+		hi := min(lo+1, len(s)-1)
+		f := i - float64(lo)
+		return s[lo]*(1-f) + s[hi]*f
+	}
+	h := 0.1 * (q(0.95) - q(0.05)) / 2
 	if !(h > 0) {
 		return 0, 0
 	}

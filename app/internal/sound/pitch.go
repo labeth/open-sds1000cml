@@ -57,7 +57,8 @@ func DetectPitch(x []float64, fs float64, o PitchOpts) Pitch {
 		for n/dec > yinMax {
 			dec *= 2
 		}
-		y, yfs = blockMeanN(x, dec), fs/float64(dec)
+		y, yfs = blockMeanN(getScratch(n/dec), x, dec), fs/float64(dec)
+		defer putScratch(y)
 		o.Fmax = math.Min(o.Fmax, yfs/4)
 		n = len(y)
 	}
@@ -68,8 +69,10 @@ func DetectPitch(x []float64, fs float64, o PitchOpts) Pitch {
 	}
 	w := n - tauMax
 	d := yinDifference(y, w, tauMax)
-	// Cumulative mean normalised difference.
-	cm := make([]float64, tauMax)
+	defer putScratch(d)
+	// Cumulative mean normalised difference, in the package's scratch.
+	cm := getScratch(tauMax)
+	defer putScratch(cm)
 	cm[0] = 1
 	run := 0.0
 	for t := 1; t < tauMax; t++ {
@@ -117,10 +120,11 @@ func DetectPitch(x []float64, fs float64, o PitchOpts) Pitch {
 // yinMax is the longest stretch YIN's difference runs on.
 const yinMax = 8192
 
-// blockMeanN averages x in blocks of k samples (a partial block dropped).
+// blockMeanN averages x in blocks of k samples into out (a partial block
+// dropped; out holds len(x)/k).
 // TRLC-LINKS: REQ-SDS-267
-func blockMeanN(x []float64, k int) []float64 {
-	out := make([]float64, len(x)/k)
+func blockMeanN(out, x []float64, k int) []float64 {
+	out = out[:len(x)/k]
 	for i := range out {
 		s := 0.0
 		for _, v := range x[i*k : i*k+k] {
@@ -174,7 +178,7 @@ func yinDifference(x []float64, w, tauMax int) []float64 {
 		v := x[i] - m
 		cum[i+1] = cum[i] + v*v
 	}
-	d := make([]float64, tauMax)
+	d := getScratch(tauMax) // the caller puts it back
 	e0 := cum[w]
 	for t := 0; t < tauMax; t++ {
 		r := pr[t] / float64(size)

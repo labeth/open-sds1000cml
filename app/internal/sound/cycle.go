@@ -56,10 +56,18 @@ type Cycle struct {
 // catmull interpolates x at fractional position t (Catmull-Rom).
 // TRLC-LINKS: REQ-SDS-272
 func catmull(x []float64, t float64) float64 {
-	i := int(math.Floor(t))
+	i := int(t) // the floor for t >= 0, without math.Floor
+	if t < 0 {
+		i = int(math.Floor(t))
+	}
 	f := t - float64(i)
-	at := func(k int) float64 { return x[max(0, min(len(x)-1, k))] }
-	p0, p1, p2, p3 := at(i-1), at(i), at(i+1), at(i+2)
+	var p0, p1, p2, p3 float64
+	if i >= 1 && i+2 < len(x) { // inside: no clamping
+		p0, p1, p2, p3 = x[i-1], x[i], x[i+1], x[i+2]
+	} else {
+		at := func(k int) float64 { return x[max(0, min(len(x)-1, k))] }
+		p0, p1, p2, p3 = at(i-1), at(i), at(i+1), at(i+2)
+	}
 	return p1 + 0.5*f*(p2-p0+f*(2*p0-5*p1+4*p2-p3+f*(3*(p1-p2)+p3-p0)))
 }
 

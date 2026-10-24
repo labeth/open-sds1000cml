@@ -94,8 +94,17 @@ func Delay(a, b []float64, fs, maxS float64) (float64, bool) {
 	}
 	a, b = a[len(a)-n:], b[len(b)-n:]
 	size := pow2(2 * n)
-	ar, ai := make([]float64, size), make([]float64, size)
-	br, bi := make([]float64, size), make([]float64, size)
+	// The package's scratch, cleared: four transforms of up to 128 k points
+	// allocated a megabyte or four a call.
+	ar, ai, br, bi := getScratch(size), getScratch(size), getScratch(size), getScratch(size)
+	defer putScratch(ar)
+	defer putScratch(ai)
+	defer putScratch(br)
+	defer putScratch(bi)
+	clear(ar)
+	clear(ai)
+	clear(br)
+	clear(bi)
 	ma, mb := mean(a), mean(b)
 	for i := 0; i < n; i++ {
 		w := hann(i, n)

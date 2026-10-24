@@ -34,7 +34,20 @@ func (t *Tuner) Add(p Pitch) float64 {
 	if len(t.recent) > k {
 		t.recent = t.recent[len(t.recent)-k:]
 	}
-	return median(t.recent)
+	// The median of at most nine readings, sorted on the stack: no copy on
+	// the heap a reading.
+	var s [9]float64
+	n := copy(s[:], t.recent)
+	for i := 1; i < n; i++ {
+		for j := i; j > 0 && s[j] < s[j-1]; j-- {
+			s[j], s[j-1] = s[j-1], s[j]
+		}
+	}
+	mid := 0.5 * float64(n-1)
+	lo := int(mid)
+	hi := min(lo+1, n-1)
+	f := mid - float64(lo)
+	return s[lo]*(1-f) + s[hi]*f
 }
 
 // VOctPoint is one tracking point: the CV and the pitch it gave.

@@ -3,6 +3,7 @@ package sound
 
 import (
 	"math"
+	"sort"
 	"strconv"
 )
 
@@ -114,7 +115,7 @@ func lineAt(sp Spectrum, f, tol float64) (hz, dbv float64, k int) {
 // TRLC-LINKS: REQ-SDS-270
 func localFloor(sp Spectrum, k int) float64 {
 	lo, hi := max(1, int(float64(k)*0.8)), min(len(sp.DBV)-1, int(float64(k)*1.25)+1)
-	var v []float64
+	v := make([]float64, 0, max(0, hi-lo+1))
 	for i := lo; i <= hi; i++ {
 		if absInt(i-k) > 3 {
 			v = append(v, sp.DBV[i])
@@ -123,7 +124,13 @@ func localFloor(sp Spectrum, k int) float64 {
 	if len(v) == 0 {
 		return math.Inf(-1)
 	}
-	return median(v)
+	// v is this call's own: sorted in place, the median as percentile reads it.
+	sort.Float64s(v)
+	mid := 0.5 * float64(len(v)-1)
+	a := int(mid)
+	b := min(a+1, len(v)-1)
+	f := mid - float64(a)
+	return v[a]*(1-f) + v[b]*f
 }
 
 // Harmonics reads H1..H10 of f0 (the tuner's pitch; 0 takes the strongest

@@ -24,7 +24,8 @@ func Envelope(x []float64, fs, tau, block float64) ([]float64, float64) {
 	}
 	out := make([]float64, 0, len(x)/b+1)
 	hold, top := 0.0, 0.0
-	for i, v := range x {
+	left := b // samples to the block's end: counted, not a division a sample
+	for _, v := range x {
 		a := math.Abs(v - m)
 		hold *= k
 		if a > hold {
@@ -33,9 +34,10 @@ func Envelope(x []float64, fs, tau, block float64) ([]float64, float64) {
 		if hold > top {
 			top = hold
 		}
-		if (i+1)%b == 0 {
+		if left--; left == 0 {
 			out = append(out, top)
 			top = 0
+			left = b
 		}
 	}
 	if len(x)%b != 0 {

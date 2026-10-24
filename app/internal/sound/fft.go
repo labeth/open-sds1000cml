@@ -5,6 +5,7 @@ import (
 	"math"
 	"math/bits"
 	"sync"
+	"sync/atomic"
 )
 
 // The transforms: radix-2, in place, with the twiddles from a table per size
@@ -33,14 +34,30 @@ func twiddle(n int) ([]float64, []float64) {
 
 var hannTables sync.Map // n -> []float64, hann(i, n) for i < n
 
-// hannTable is hann(i, n) for every i, kept per power-of-two n (nil for
-// another n): the tuner and the spectra window the same few sizes several
+// lastHann is the window of the last length that is not a power of two.
+var lastHann atomic.Pointer[[]float64]
+
+// hannTable is hann(i, n) for every i, kept per power-of-two n and for the
+// last other n: the tuner and the spectra window the same few sizes several
 // times a second, and a cosine a sample cost the instrument as much as
 // their transforms.
 // TRLC-LINKS: REQ-SDS-267, REQ-SDS-270
 func hannTable(n int) []float64 {
-	if n < 2 || n&(n-1) != 0 || n > 1<<20 {
+	if n < 2 || n > 1<<20 {
 		return nil
+	}
+	if n&(n-1) != 0 {
+		// Another length: the last one is kept (a window setting keeps its
+		// length while it stays), a cosine a sample spared.
+		if t := lastHann.Load(); t != nil && len(*t) == n {
+			return *t
+		}
+		w := make([]float64, n)
+		for i := range w {
+			w[i] = hann(i, n)
+		}
+		lastHann.Store(&w)
+		return w
 	}
 	if t, ok := hannTables.Load(n); ok {
 		return t.([]float64)
