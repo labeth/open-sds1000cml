@@ -255,11 +255,13 @@ func (l *PacketList) set(ps []Packet, keys []string, distinct int) {
 // and how many distinct messages they hold.
 // TRLC-LINKS: REQ-SDS-214
 func completeKeys(ps []Packet) ([]string, int) {
-	var keys []string
-	seen := make(map[string]struct{})
-	for _, p := range ps {
-		if p.Complete {
-			k := contentKey(p)
+	keys := make([]string, 0, len(ps))
+	seen := make(map[string]struct{}, len(ps))
+	var buf []byte // one buffer for every key: a string each, no buffer each
+	for i := range ps {
+		if ps[i].Complete {
+			buf = appendContentKey(buf[:0], &ps[i])
+			k := string(buf)
 			keys = append(keys, k)
 			seen[k] = struct{}{}
 		}
@@ -275,11 +277,17 @@ func samePackets(rows, ps []Packet, keys []string) bool {
 		return false
 	}
 	i := 0
-	for _, p := range ps {
+	var buf []byte
+	for k := range ps {
+		p := &ps[k]
 		if !p.Complete {
 			continue
 		}
-		if rows[i].I0 != p.I0 || rows[i].I1 != p.I1 || contentKey(rows[i]) != keys[i] {
+		if rows[i].I0 != p.I0 || rows[i].I1 != p.I1 {
+			return false
+		}
+		// compared as bytes: no string a row
+		if buf = appendContentKey(buf[:0], &rows[i]); string(buf) != keys[i] {
 			return false
 		}
 		i++

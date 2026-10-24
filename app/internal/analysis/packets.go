@@ -18,7 +18,6 @@ import "fmt"
 
 import (
 	"math"
-	"sort"
 	"strings"
 
 	"open-sds/app/internal/decode"
@@ -208,7 +207,7 @@ func (g *grouper) room(i int, d float64) bool { return float64(g.n-1-i) >= d }
 // before the decode synced), which also leaves the packets touching it cut.
 // TRLC-LINKS: REQ-SDS-214
 func (g *grouper) gaps(uart bool, spans []decode.Span) {
-	var ws []int
+	ws := make([]int, 0, len(spans))
 	for _, sp := range spans {
 		if isWord(sp.Kind) {
 			ws = append(ws, abs(sp.I1-sp.I0))
@@ -217,8 +216,8 @@ func (g *grouper) gaps(uart bool, spans []decode.Span) {
 	if len(ws) == 0 {
 		return
 	}
-	sort.Ints(ws)
-	med := float64(ws[len(ws)/2])
+	med := float64(selectInt(ws, len(ws)/2)) // the sorted middle, selected
+
 	bit := g.bit
 	if bit == 0 {
 		bit = med / 9 // a start bit and 8 data bits
@@ -582,4 +581,47 @@ func AddrText(proto string, p Packet) string {
 		return fmt.Sprintf("RT%d %s", p.Addr, map[bool]string{true: "T", false: "R"}[p.Read])
 	}
 	return fmt.Sprintf("%02X", p.Addr)
+}
+
+// selectInt is the value sorting a would put at index k, by quickselect (a
+// is reordered).
+// TRLC-LINKS: REQ-SDS-214
+func selectInt(a []int, k int) int {
+	lo, hi := 0, len(a)-1
+	for lo < hi {
+		mid := lo + (hi-lo)/2
+		if a[mid] < a[lo] {
+			a[mid], a[lo] = a[lo], a[mid]
+		}
+		if a[hi] < a[lo] {
+			a[hi], a[lo] = a[lo], a[hi]
+		}
+		if a[hi] < a[mid] {
+			a[hi], a[mid] = a[mid], a[hi]
+		}
+		p := a[mid]
+		i, j := lo, hi
+		for i <= j {
+			for a[i] < p {
+				i++
+			}
+			for a[j] > p {
+				j--
+			}
+			if i <= j {
+				a[i], a[j] = a[j], a[i]
+				i++
+				j--
+			}
+		}
+		switch {
+		case k <= j:
+			hi = j
+		case k >= i:
+			lo = i
+		default:
+			return a[k]
+		}
+	}
+	return a[k]
 }

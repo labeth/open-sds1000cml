@@ -70,7 +70,9 @@ func Peaks(db []float64, binHz float64, maxPeaks int) []Peak {
 	var ps []Peak
 	for k := 2; k < len(db)-2; k++ {
 		b := db[k]
-		if !(b > db[k-1] && b >= db[k+1] && b > db[k-2] && b >= db[k+2] && b > floor) {
+		// The floor first: most bins of a spectrum lie under it (the tests
+		// have no side effects, so their order changes nothing else).
+		if !(b > floor && b > db[k-1] && b >= db[k+1] && b > db[k-2] && b >= db[k+2]) {
 			continue
 		}
 		a, c := db[k-1], db[k+1]

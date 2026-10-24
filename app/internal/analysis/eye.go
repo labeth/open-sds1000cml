@@ -817,14 +817,16 @@ func (e *Eye) Result() EyeResult {
 	r.Open = e.Opening(1, th)
 	r.EyeHeight, r.EyeWidth = r.Open.Height(), r.Open.Width()
 	e.materialize()
+	gm := r.GridMax // kept in a register, not stored a cell
 	for row := 0; row < e.rows; row++ {
 		src := e.dense[row*e.tw : (row+1)*e.tw]
 		copy(e.grid[row*e.cols:], src)
 		copy(e.grid[row*e.cols+e.tw:], src)
 		for _, v := range src {
-			r.GridMax = max(r.GridMax, v)
+			gm = max(gm, v)
 		}
 	}
+	r.GridMax = gm
 	return r
 }
 

@@ -317,6 +317,53 @@ func median(a []float64) float64 {
 	return s[len(s)>>1]
 }
 
+// medianInPlace is median(a) for a slice the caller gives up: the element
+// a sort would put at len>>1, found by quickselect (a is reordered).
+// TRLC-LINKS: REQ-SDS-199
+func medianInPlace(a []float64) float64 {
+	if len(a) == 0 {
+		return 0
+	}
+	k := len(a) >> 1
+	lo, hi := 0, len(a)-1
+	for lo < hi {
+		mid := lo + (hi-lo)/2
+		if a[mid] < a[lo] {
+			a[mid], a[lo] = a[lo], a[mid]
+		}
+		if a[hi] < a[lo] {
+			a[hi], a[lo] = a[lo], a[hi]
+		}
+		if a[hi] < a[mid] {
+			a[hi], a[mid] = a[mid], a[hi]
+		}
+		p := a[mid]
+		i, j := lo, hi
+		for i <= j {
+			for a[i] < p {
+				i++
+			}
+			for a[j] > p {
+				j--
+			}
+			if i <= j {
+				a[i], a[j] = a[j], a[i]
+				i++
+				j--
+			}
+		}
+		switch {
+		case k <= j:
+			hi = j
+		case k >= i:
+			lo = i
+		default:
+			return a[k]
+		}
+	}
+	return a[k]
+}
+
 // RJDJ splits the aggregated TIE into random and deterministic jitter, dual-
 // Dirac-lite (ejRjDj). Splitting a unimodal Gaussian at its median always
 // yields side medians 0.674 sigma apart, so bimodality is tested first: the
@@ -332,18 +379,18 @@ func RJDJ(tie []float64) (rj, dj float64, ok bool) {
 	s := append([]float64(nil), tie...)
 	sort.Float64s(s)
 	med := s[len(s)>>1]
-	var left, right []float64
-	for _, v := range s {
-		if v <= med {
-			left = append(left, v)
-		}
+	// s is sorted: the two sides are its prefix up to the median's last copy
+	// and the rest, already in order, so their medians are read, not sorted
+	// again.
+	k := sort.Search(len(s), func(i int) bool { return s[i] > med })
+	left, right := s[:k], s[k:]
+	mL, mR := 0.0, 0.0
+	if len(left) > 0 {
+		mL = left[len(left)>>1]
 	}
-	for _, v := range s {
-		if v > med {
-			right = append(right, v)
-		}
+	if len(right) > 0 {
+		mR = right[len(right)>>1]
 	}
-	mL, mR := median(left), median(right)
 	sep := mR - mL
 	// central-band occupancy, centred on the midpoint of the two modes
 	mid := (mL + mR) / 2
@@ -354,10 +401,11 @@ func RJDJ(tie []float64) (rj, dj float64, ok bool) {
 			central++
 		}
 	}
+	// The deviations are this call's own: their medians selected in place.
 	if !(sep > 0) || float64(central)/float64(len(s)) > 0.08 {
-		return 1.4826 * median(absDev(s, med)), 0, true
+		return 1.4826 * medianInPlace(absDev(s, med)), 0, true
 	}
-	madL, madR := median(absDev(left, mL)), median(absDev(right, mR))
+	madL, madR := medianInPlace(absDev(left, mL)), medianInPlace(absDev(right, mR))
 	return 1.4826 * ((madL + madR) / 2), sep, true
 }
 
