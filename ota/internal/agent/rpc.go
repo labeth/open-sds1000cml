@@ -2,9 +2,11 @@
 package agent
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"runtime/debug"
+	"unicode/utf8"
 )
 
 // The RPC envelope shared by the NATS and TCP transports.
@@ -39,9 +41,11 @@ func (a *Agent) Dispatch(raw []byte) (resp Response) {
 		}
 	}()
 
-	var req Request
-	if err := json.Unmarshal(raw, &req); err != nil {
-		return Response{OK: false, Err: "bad request json: " + err.Error()}
+	req, ok := splitRequest(raw)
+	if !ok {
+		if err := json.Unmarshal(raw, &req); err != nil {
+			return Response{OK: false, Err: "bad request json: " + err.Error()}
+		}
 	}
 	h, ok := handlers[req.Cmd]
 	if !ok {
@@ -52,6 +56,45 @@ func (a *Agent) Dispatch(raw []byte) (resp Response) {
 		return Response{OK: false, Err: err.Error(), Data: data}
 	}
 	return Response{OK: true, Data: data}
+}
+
+// splitRequest takes a request in the form otactl marshals,
+// {"cmd":"<name>"} or {"cmd":"<name>","args":<json>}, without decoding the
+// args: a file chunk is otherwise scanned twice before its handler parses it
+// again. Anything else (escapes, other spacing or key order) reports !ok for
+// the full decode, and invalid args still fail as bad request json.
+// TRLC-LINKS: REQ-SDS-113
+func splitRequest(raw []byte) (Request, bool) {
+	const prefix, argsKey = `{"cmd":"`, `,"args":`
+	if !bytes.HasPrefix(raw, []byte(prefix)) {
+		return Request{}, false
+	}
+	rest := raw[len(prefix):]
+	end := bytes.IndexByte(rest, '"')
+	if end < 0 {
+		return Request{}, false
+	}
+	cmd := rest[:end]
+	for _, c := range cmd {
+		if c < 0x20 || c == '\\' {
+			return Request{}, false
+		}
+	}
+	if !utf8.Valid(cmd) {
+		return Request{}, false
+	}
+	rest = bytes.TrimRight(rest[end+1:], " \t\r\n")
+	if len(rest) == 1 && rest[0] == '}' {
+		return Request{Cmd: string(cmd)}, true
+	}
+	if !bytes.HasPrefix(rest, []byte(argsKey)) || rest[len(rest)-1] != '}' {
+		return Request{}, false
+	}
+	args := bytes.Trim(rest[len(argsKey):len(rest)-1], " \t\r\n")
+	if !json.Valid(args) {
+		return Request{}, false
+	}
+	return Request{Cmd: string(cmd), Args: args}, true
 }
 
 // TRLC-LINKS: REQ-SDS-113
