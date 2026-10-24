@@ -107,20 +107,7 @@ func (c *Controller) maskBuildRun(gen uint64, n, tolT, tolV, ch int, posFrac flo
 					lo[j] = 255
 				}
 			}
-			left := int(math.Round(f.EdgeX - float64(win)*posFrac))
-			for j := 0; j < win; j++ {
-				s := left + j
-				if s < 0 || s >= valid {
-					continue
-				}
-				v := sig[s]
-				if v < lo[j] {
-					lo[j] = v
-				}
-				if v > hi[j] {
-					hi[j] = v
-				}
-			}
+			foldEnvelope(lo, hi, sig[:valid], int(math.Round(f.EdgeX-float64(win)*posFrac)))
 			ok = true
 		})
 		if ok {
@@ -159,6 +146,26 @@ func (c *Controller) maskBuildRun(gen uint64, n, tolT, tolV, ch int, posFrac flo
 		return
 	}
 	c.maskSetMsg(fmt.Sprintf("MASK: ready (%d frames, C%d) - set Mode to Test", got, ch+1))
+}
+
+// foldEnvelope widens the column extremes lo, hi by a frame's samples sig
+// from left on (column j is sample left+j; those off the record stay as
+// they are): the columns on the record found once, not tested each.
+// TRLC-LINKS: REQ-SDS-139
+func foldEnvelope(lo, hi, sig []uint8, left int) {
+	j0, j1 := max(0, -left), min(len(lo), len(sig)-left)
+	if j0 >= j1 {
+		return
+	}
+	lo, hi, src := lo[j0:j1], hi[j0:j1], sig[left+j0:left+j1]
+	for j, v := range src { // stores only where a column widens: few once it settles
+		if v < lo[j] {
+			lo[j] = v
+		}
+		if v > hi[j] {
+			hi[j] = v
+		}
+	}
 }
 
 // maskNoLockWait is how long a build waits for its first locked frame.

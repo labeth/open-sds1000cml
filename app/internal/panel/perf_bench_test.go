@@ -567,3 +567,69 @@ func BenchmarkStepTrigLevel(b *testing.B) {
 		n = -n
 	}
 }
+
+// foldEnvelopeRef is the column-by-column fold foldEnvelope replaced.
+// TRLC-LINKS: REQ-SDS-139
+func foldEnvelopeRef(lo, hi, sig []uint8, left int) {
+	for j := 0; j < len(lo); j++ {
+		s := left + j
+		if s < 0 || s >= len(sig) {
+			continue
+		}
+		v := sig[s]
+		if v < lo[j] {
+			lo[j] = v
+		}
+		if v > hi[j] {
+			hi[j] = v
+		}
+	}
+}
+
+// foldEnvelope folds as the column-by-column loop did, the window off
+// either end of the record included.
+// TRLC-LINKS: REQ-SDS-139
+func TestFoldEnvelope(t *testing.T) {
+	sig := make([]uint8, 300)
+	for i := range sig {
+		sig[i] = uint8(i * 37)
+	}
+	for _, win := range []int{1, 50, 300, 400} {
+		for _, left := range []int{-500, -400, -30, 0, 7, 250, 299, 300, 900} {
+			lo, hi := make([]uint8, win), make([]uint8, win)
+			rlo, rhi := make([]uint8, win), make([]uint8, win)
+			for j := range lo {
+				lo[j], rlo[j], hi[j], rhi[j] = 200, 200, 20, 20
+			}
+			foldEnvelope(lo, hi, sig, left)
+			foldEnvelopeRef(rlo, rhi, sig, left)
+			if string(lo) != string(rlo) || string(hi) != string(rhi) {
+				t.Fatalf("win %d left %d: fold differs", win, left)
+			}
+		}
+	}
+}
+
+// TRLC-LINKS: REQ-SDS-139
+func BenchmarkFoldEnvelope(b *testing.B) {
+	sig := make([]uint8, 20000)
+	for i := range sig {
+		sig[i] = uint8(i * 37)
+	}
+	lo, hi := make([]uint8, 12000), make([]uint8, 12000)
+	for b.Loop() {
+		foldEnvelope(lo, hi, sig, 4000)
+	}
+}
+
+// TRLC-LINKS: REQ-SDS-139
+func BenchmarkFoldEnvelopeRef(b *testing.B) {
+	sig := make([]uint8, 20000)
+	for i := range sig {
+		sig[i] = uint8(i * 37)
+	}
+	lo, hi := make([]uint8, 12000), make([]uint8, 12000)
+	for b.Loop() {
+		foldEnvelopeRef(lo, hi, sig, 4000)
+	}
+}
