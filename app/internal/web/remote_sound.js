@@ -13,7 +13,8 @@
 (function () {
   const { h, button, toast } = window.RU;
   const c = sndClient(() => false, "phone");
-  const S = { el: null, tuner: sndTuner(false), hz: 0, timer: 0, settings: { a4: 440, ch: 0, ref: "dbu" }, built: false, pollAt: 0, running: true, single: false };
+  const S = { el: null, tuner: sndTuner(false), hz: 0, timer: 0, settings: { a4: 440, ch: 0, ref: "dbu" }, built: false, pollAt: 0, running: true, single: false,
+    held: { pitchKey: "", pitch: null, meterKey: ["", ""], meter: [null, null] } };
   const E = {};
 
   // TRLC-LINKS: REQ-SDS-274
@@ -109,6 +110,23 @@
     } catch (e) { /* the stream's status line says why */ }
   }
 
+  // TAKE_SEQ numbers each take object the tick has read.
+  const TAKE_SEQ = new WeakMap();
+  let takeSeq = 0;
+  // heldKey names the samples sndClientLatest(c, ch, n) gives now: the
+  // newest of the stream, or the take's around its focus. Stopped, paused or
+  // on a take they hold still between ticks, and the pitch and the meters
+  // (the tick's cost) are not worked out again.
+  // TRLC-LINKS: REQ-SDS-266, REQ-SDS-267
+  function heldKey(n, ch) {
+    let where = `l${c.next}:${c.validFrom}`;
+    if (c.takeOn && c.take) {
+      if (!TAKE_SEQ.has(c.take)) TAKE_SEQ.set(c.take, ++takeSeq);
+      where = `t${TAKE_SEQ.get(c.take)}:${c.take.n}:${c.focus}:${c.tview.from}:${c.tview.span}`;
+    }
+    return where + ":" + n + ":" + ch;
+  }
+
   // TRLC-LINKS: REQ-SDS-266, REQ-SDS-267, REQ-SDS-275
   function tick() {
     if (!S.el || S.el.hidden) return;
@@ -123,8 +141,13 @@
     E.take.textContent = c.mode === "live" ? "live" : c.mode === "stopped" ? (t && c.takeOn ? `stopped · take ${(t.n / t.rate).toFixed(1)} s · Listen loops it` : "stopped") :
       c.mode === "armed" ? "armed: waiting for the FPGA's edge" : c.mode === "triggered" ? "triggered" + (t && c.takeOn ? ` · take ${(t.n / t.rate).toFixed(1)} s` : "") : c.mode;
     if (c.next > 0 || c.takeOn) {
-      const n = sndTunerWindow(S.hz, fs), x = sndClientLatest(c, set.ch, n);
-      const p = x.length >= n / 2 ? sndPitch(x, fs) : { ok: false, hz: 0 };
+      const n = sndTunerWindow(S.hz, fs), pk = heldKey(n, set.ch);
+      let p = S.held.pitch;
+      if (S.held.pitchKey !== pk) {
+        const x = sndClientLatest(c, set.ch, n);
+        p = x.length >= n / 2 ? sndPitch(x, fs) : { ok: false, hz: 0 };
+        S.held.pitchKey = pk; S.held.pitch = p;
+      }
       S.hz = sndTunerAdd(S.tuner, p);
       c.audio.hz = S.hz;
       if (S.hz > 0) {
@@ -140,7 +163,9 @@
       }
       const ref = sndPreset(set.ref), unit = ref.id === "dbu" ? "dBu" : ref.id === "dbv" ? "dBV" : "dB";
       for (let ch = 0; ch < 2; ch++) {
-        const m = sndMeasure(sndClientLatest(c, ch, Math.round(c.takeOn ? Math.min(c.tview.span, 4 * fs) : 0.2 * fs))), mt = E.meters[ch];
+        const mn = Math.round(c.takeOn ? Math.min(c.tview.span, 4 * fs) : 0.2 * fs), mk = heldKey(mn, ch), mt = E.meters[ch];
+        if (S.held.meterKey[ch] !== mk) { S.held.meterKey[ch] = mk; S.held.meter[ch] = sndMeasure(sndClientLatest(c, ch, mn)); }
+        const m = S.held.meter[ch];
         const db = sndDB(m.rms, ref.vrms), pk = sndDB(m.peak / Math.SQRT2, ref.vrms);
         // TRLC-LINKS: REQ-SDS-266
         const frac = (v) => Math.max(0, Math.min(1, (v + 60) / 66));
