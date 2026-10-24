@@ -248,3 +248,11 @@ func BenchmarkSBUSFrames(b *testing.B) {
 		sbusFrames(r, 1e-6)
 	}
 }
+
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-214
+func BenchmarkCrossingsEnd(b *testing.B) {
+	c := benchCase(b, "dmx512").c1
+	for b.Loop() {
+		crossingsEnd(c, 1<<30)
+	}
+}

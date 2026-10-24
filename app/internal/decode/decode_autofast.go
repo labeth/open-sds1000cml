@@ -80,9 +80,23 @@ func crossingsEnd(c []uint8, budget int) int {
 	if len(c) < 64 {
 		return len(c)
 	}
+	// Four tables, summed after (as rails): a run of one code would
+	// otherwise make each increment wait for the previous one's store.
+	var h4 [4][256]int32
+	i := 0
+	for ; i+4 <= len(c); i += 4 {
+		q := c[i : i+4 : i+4]
+		h4[0][q[0]]++
+		h4[1][q[1]]++
+		h4[2][q[2]]++
+		h4[3][q[3]]++
+	}
+	for _, v := range c[i:] {
+		h4[0][v]++
+	}
 	var hist [256]int
-	for _, v := range c {
-		hist[v]++
+	for v := range hist {
+		hist[v] = int(h4[0][v] + h4[1][v] + h4[2][v] + h4[3][v])
 	}
 	pct := func(p float64) int {
 		need, acc := int(p*float64(len(c))), 0
@@ -105,11 +119,12 @@ func crossingsEnd(c []uint8, budget int) int {
 		}
 		return int(v) < mid-h
 	}
+	up, down := mid+h, mid-h // beyond these the line has changed side
 	for i, v := range c {
-		next := !high
-		if !side(v, next) {
-			continue
+		if high && int(v) >= down || !high && int(v) <= up {
+			continue // still on its side
 		}
+		next := !high
 		held := true
 		for k := 1; k <= 2 && i+k < len(c); k++ {
 			held = held && side(c[i+k], next)
