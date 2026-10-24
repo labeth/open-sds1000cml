@@ -33,13 +33,20 @@ func (e *Engine) flushLEDs() {
 // LED latch, the offset DACs, then the trigger words.
 // TRLC-LINKS: REQ-SDS-001
 func (e *Engine) serviceCommands() {
-	stage := time.Now()
+	// The stages are timed for a decoded session's service figures only:
+	// without one a frame reads no clock here.
+	var stage time.Time
+	if e.decodedSession != nil {
+		stage = time.Now()
+	}
 	e.serviceExec()
 	if e.decodedSession != nil {
 		e.decodedService.maxExec = max(e.decodedService.maxExec, time.Since(stage))
 	}
 	if e.sram != nil {
-		stage = time.Now()
+		if e.decodedSession != nil {
+			stage = time.Now()
+		}
 		e.serviceDecodedRequests()
 		if e.decodedSession != nil {
 			e.decodedService.maxRequests = max(e.decodedService.maxRequests, time.Since(stage))
@@ -48,7 +55,9 @@ func (e *Engine) serviceCommands() {
 		e.expireDecoded()
 	}
 
-	stage = time.Now()
+	if e.decodedSession != nil {
+		stage = time.Now()
+	}
 	e.mu.Lock()
 	trigDirty, code := e.trigDirty, e.trigCode
 	offDirty, offCode := e.offDirty, e.offCode

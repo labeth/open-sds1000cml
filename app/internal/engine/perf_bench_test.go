@@ -1112,3 +1112,11 @@ func TestBufferDecodedSame(t *testing.T) {
 		}
 	}
 }
+
+// TRLC-LINKS: REQ-SDS-001
+func BenchmarkServiceCommands(b *testing.B) {
+	e, _ := newTestEngine(&testing.T{}, newFakeBus())
+	for b.Loop() {
+		e.serviceCommands()
+	}
+}
