@@ -133,3 +133,15 @@ func BenchmarkHealthPoll(b *testing.B) {
 		h.poll()
 	}
 }
+
+// Takeover re-asserts TakenOver on every boot and request.
+// TRLC-LINKS: REQ-SDS-104
+func BenchmarkStateUpdateSame(b *testing.B) {
+	sf := loadState(filepath.Join(b.TempDir(), "state.json"))
+	sf.update(func(s *State) { s.TakenOver = true })
+	for b.Loop() {
+		if err := sf.update(func(s *State) { s.TakenOver = true }); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
