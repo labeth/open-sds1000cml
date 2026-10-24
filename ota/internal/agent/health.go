@@ -22,11 +22,18 @@ type healthWatcher struct {
 	path string
 
 	mu          sync.Mutex
-	lastSig     string
+	lastSig     healthSig
 	lastChange  time.Time // monotonic
 	healthyOnce bool
 	started     time.Time
 	lastContent []byte
+}
+
+// healthSig is the token's stat identity; seen marks that it was read once.
+// TRLC-LINKS: REQ-SDS-105
+type healthSig struct {
+	mod, size int64
+	seen      bool
 }
 
 // TRLC-LINKS: REQ-SDS-105
@@ -44,15 +51,16 @@ func (h *healthWatcher) poll() {
 	if err != nil {
 		return // not written yet (or removed)
 	}
-	sig := fi.ModTime().String() + "/" + itoa64(fi.Size())
+	sig := healthSig{fi.ModTime().UnixNano(), fi.Size(), true}
 	// mtime granularity can be coarse; include a content sample so a same-
 	// second rewrite still counts as a change.
-	content, _ := readPrefix(h.path, 256)
+	var buf [256]byte
+	content := readPrefixInto(h.path, buf[:])
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	if sig != h.lastSig || string(content) != string(h.lastContent) {
 		h.lastSig = sig
-		h.lastContent = content
+		h.lastContent = append(h.lastContent[:0], content...)
 		h.lastChange = time.Now()
 		h.healthyOnce = true
 	}
@@ -95,15 +103,14 @@ func (h *healthWatcher) verdict(grace, staleness time.Duration) (bool, string) {
 }
 
 // TRLC-LINKS: REQ-SDS-105
-func readPrefix(path string, n int) ([]byte, error) {
+func readPrefixInto(path string, buf []byte) []byte {
 	f, err := os.Open(path)
 	if err != nil {
-		return nil, err
+		return nil
 	}
-	defer f.Close()
-	buf := make([]byte, n)
 	m, _ := f.Read(buf)
-	return buf[:m], nil
+	f.Close()
+	return buf[:m]
 }
 
 // TRLC-LINKS: REQ-SDS-105

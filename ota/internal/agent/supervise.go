@@ -150,7 +150,7 @@ func (a *Agent) superviseAdopted(pid int) {
 	// and treating existing content as the baseline. First change marks it
 	// healthy; absence of change is judged against staleness from now.
 	h.poll()
-	h.healthyOnce = h.lastSig != ""
+	h.healthyOnce = h.lastSig.seen
 	h.lastChange = time.Now()
 	a.setAppState(func(s *appState) {
 		*s = appState{Running: true, Adopted: true, PID: pid, StartedAt: time.Now().Format(time.RFC3339)}
