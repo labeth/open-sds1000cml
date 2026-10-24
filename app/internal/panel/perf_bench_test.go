@@ -89,3 +89,21 @@ func BenchmarkTokMatch(b *testing.B) {
 		}
 	}
 }
+
+// TRLC-LINKS: REQ-SDS-216
+func BenchmarkSpecPane(b *testing.B) {
+	c, _, _ := newC(&testing.T{})
+	c.switchWS(wsview.Spectrum)
+	c.amu.Lock()
+	c.ana.specOK = true
+	c.ana.spec.BinHz, c.ana.spec.SpanHz, c.ana.spec.N, c.ana.spec.EffNyq = 1220.7, 2.5e6, 4096, 2.5e6
+	for i := 0; i < maxPeaks; i++ {
+		c.ana.peaks = append(c.ana.peaks, Peak{Freq: 1e3 * float64(2*i+1), DB: -6 - 9.5*float64(i), RelDB: -9.5 * float64(i), Bin: 2*i + 1, Harm: 2*i + 1})
+	}
+	c.ana.floorDBV = -92
+	c.amu.Unlock()
+	s := c.snap()
+	for b.Loop() {
+		c.specPane(s)
+	}
+}

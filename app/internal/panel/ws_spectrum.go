@@ -4,6 +4,7 @@ package panel
 import (
 	"fmt"
 	"math"
+	"strconv"
 	"time"
 
 	"open-sds/app/internal/engine"
@@ -280,7 +281,7 @@ func harmName(p Peak) string {
 	if p.Harm < 1 {
 		return ""
 	}
-	return fmt.Sprintf("H%d", p.Harm)
+	return "H" + strconv.Itoa(p.Harm)
 }
 
 // specPane builds the SPECTRUM pane.
@@ -325,12 +326,13 @@ func (c *Controller) specPane(s *sv) *wsview.SpecPane {
 		p.TimeLabel = fmt.Sprintf("TIME (ZOOM %dx; FFT: all)", s.zoom)
 	}
 	p.Head = [4]string{"FREQ", "LEVEL", "VS TOP", "HARM"}
+	p.Rows = make([]wsview.SpecRow, 0, len(peaks))
 	for i, q := range peaks {
 		rel := "0dB"
 		if q.RelDB != 0 {
-			rel = fmt.Sprintf("%.1fdB", q.RelDB)
+			rel = strconv.FormatFloat(q.RelDB, 'f', 1, 64) + "dB" // %.1f
 		}
-		p.Rows = append(p.Rows, wsview.SpecRow{Num: i + 1, Freq: si(q.Freq, "Hz"), Level: fmt.Sprintf("%.1fdBV", q.DB),
+		p.Rows = append(p.Rows, wsview.SpecRow{Num: i + 1, Freq: si(q.Freq, "Hz"), Level: strconv.FormatFloat(q.DB, 'f', 1, 64) + "dBV",
 			Rel: rel, Harm: harmName(q), Sel: i == row})
 	}
 	if ok && len(peaks) == 0 {
