@@ -323,3 +323,30 @@ func TestWorkerReadMany(t *testing.T) {
 		t.Fatal("a read into a short buffer succeeded")
 	}
 }
+
+// RawWriteMany through a worker makes every write in order, in batches past
+// a packet's room, and refuses the worker's FIFO control.
+// TRLC-LINKS: REQ-SDS-001, REQ-SDS-129
+func TestWorkerRawWriteMany(t *testing.T) {
+	d, f := workerFixture(t)
+	regs := make([][2]uint16, 30)
+	for i := range regs {
+		regs[i] = [2]uint16{uint16(80 + i%10), uint16(i)}
+	}
+	before := f.writes.Load()
+	if err := d.RawWriteMany(regs); err != nil {
+		t.Fatal(err)
+	}
+	if got := f.writes.Load() - before; got != 30 {
+		t.Fatalf("%d writes, want 30", got)
+	}
+	if err := d.RawWriteMany([][2]uint16{{57, 1}, {80, 1}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := d.RawWriteMany([][2]uint16{{81, 1}, {60, 1}}); err == nil {
+		t.Fatal("the worker's FIFO control was written for the parent")
+	}
+	if err := d.RawWriteMany([][2]uint16{{81, 1}, {200, 1}}); err == nil {
+		t.Fatal("a selector past the schema was written")
+	}
+}

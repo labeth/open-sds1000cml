@@ -66,11 +66,9 @@ func (c *Capture) configureSENT(revision uint16, p SENTTriggerConfig) error {
 		if p.PausePulse {
 			control |= 8
 		}
-		for _, r := range []struct{ sel, value uint16 }{{78, uint16(p.TickTicks)}, {79, uint16(p.TickTicks >> 16)}, {80, uint16(p.Pattern)}, {81, uint16(p.Pattern >> 16)}, {82, uint16(p.Nibbles)}} {
-			if err := c.write(r.sel, r.value); err != nil {
-				return err
-			}
-		}
+		// The registers, then the control, in one batch.
+		return c.writeMany([2]uint16{78, uint16(p.TickTicks)}, [2]uint16{79, uint16(p.TickTicks >> 16)}, [2]uint16{80, uint16(p.Pattern)},
+			[2]uint16{81, uint16(p.Pattern >> 16)}, [2]uint16{82, uint16(p.Nibbles)}, [2]uint16{77, control})
 	}
 	return c.write(77, control)
 }

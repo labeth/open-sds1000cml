@@ -296,6 +296,22 @@ func (w *acquisitionWorker) handle(request []byte) int {
 				binary.LittleEndian.PutUint16(data[i:], v)
 			}
 			n = len(params)
+		case workerWriteMany:
+			params := request[min(len(request), workerHeader):]
+			if count != 0 || len(params) < 4 || len(params)%4 != 0 || plane != PlaneCS1 {
+				err = fmt.Errorf("invalid register writes")
+				break
+			}
+			for i := 0; i < len(params) && err == nil; i += 4 {
+				s, v := binary.LittleEndian.Uint16(params[i:]), binary.LittleEndian.Uint16(params[i+2:])
+				if s > 127 || w.active && (s == 60 || s == 76) {
+					err = fmt.Errorf("invalid register write %d", s)
+					break
+				}
+				if err = w.bus.RawWrite(s, v); err == nil && s == 57 {
+					err = w.stream(v&1 != 0)
+				}
+			}
 		case workerWrite:
 			if count != 0 || !validPlane(plane) || sel > 127 || (plane == 3 && !Writable(plane, sel)) {
 				err = fmt.Errorf("invalid register write")
@@ -527,7 +543,7 @@ func (w *acquisitionWorker) serve(fd int) error {
 					return nil
 				}
 				op := binary.LittleEndian.Uint16(request[8:10])
-				withParams := int(n) > workerHeader && int(n) <= workerHeader+workerRecallParams && (op == workerRecall || op == workerReadMany)
+				withParams := int(n) > workerHeader && int(n) <= workerHeader+workerRecallParams && (op == workerRecall || op == workerReadMany || op == workerWriteMany)
 				if int(n) != workerHeader && !withParams || binary.LittleEndian.Uint32(request[:4]) != workerMagic || request[11] != 1 {
 					return fmt.Errorf("invalid worker request framing")
 				}

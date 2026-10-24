@@ -88,15 +88,12 @@ func (c *Capture) configureSPI(revision uint16, p SPITriggerConfig) error {
 		if p.MSB {
 			control |= 32
 		}
-		regs := []struct{ sel, value uint16 }{{65, uint16(p.GapTicks)}, {66, uint16(p.GapTicks >> 16)}, {67, uint16(p.Pattern)}, {68, uint16(p.Pattern >> 16)}}
+		// The registers, then the control, in one batch.
+		regs := [][2]uint16{{65, uint16(p.GapTicks)}, {66, uint16(p.GapTicks >> 16)}, {67, uint16(p.Pattern)}, {68, uint16(p.Pattern >> 16)}}
 		if capability == spiSamples {
-			regs = append(regs, struct{ sel, value uint16 }{regSampleDelay, uint16(uint8(p.Delay))})
+			regs = append(regs, [2]uint16{regSampleDelay, uint16(uint8(p.Delay))})
 		}
-		for _, r := range regs {
-			if err := c.write(r.sel, r.value); err != nil {
-				return err
-			}
-		}
+		return c.writeMany(append(regs, [2]uint16{64, control})...)
 	}
 	return c.write(64, control)
 }

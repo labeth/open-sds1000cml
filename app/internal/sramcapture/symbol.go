@@ -129,28 +129,18 @@ func (c *Capture) configureSymbol(revision uint16, p SymbolTriggerConfig) error 
 	}
 	if loaded&1 == 0 || !c.symbolTableOK || c.symbolTable != p.Table {
 		c.symbolTableOK = false
-		if err := c.write(98, 0); err != nil {
-			return err
-		}
-		if err := c.write(99, 0); err != nil {
-			return err
-		}
+		// The table load in one batch (the worker splits it into packets).
+		regs := make([][2]uint16, 0, len(p.Table)+3)
+		regs = append(regs, [2]uint16{98, 0}, [2]uint16{99, 0})
 		for _, v := range p.Table {
-			if err := c.write(100, uint16(v)); err != nil {
-				return err
-			}
+			regs = append(regs, [2]uint16{100, uint16(v)})
 		}
-		if err := c.write(98, 1); err != nil {
+		if err := c.writeMany(append(regs, [2]uint16{98, 1})...); err != nil {
 			return err
 		}
 		c.symbolTable, c.symbolTableOK = p.Table, true
 	}
-	for _, r := range SymbolRegisters(p) {
-		if err := c.write(r[0], r[1]); err != nil {
-			return err
-		}
-	}
-	return nil
+	return c.writeMany(SymbolRegisters(p)...)
 }
 
 // SymbolRegisters is the block's register writes for p after its table, the

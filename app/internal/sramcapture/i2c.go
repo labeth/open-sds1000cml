@@ -74,15 +74,12 @@ func (c *Capture) configureI2C(revision uint16, p I2CTriggerConfig) error {
 		if p.Address < 0 {
 			control |= 32
 		}
-		regs := []struct{ sel, value uint16 }{{54, uint16(p.Address) & 127}, {55, uint16(p.Pattern)}, {56, uint16(p.Pattern >> 16)}}
+		// The registers, then the control, in one batch.
+		regs := [][2]uint16{{54, uint16(p.Address) & 127}, {55, uint16(p.Pattern)}, {56, uint16(p.Pattern >> 16)}}
 		if capability == i2cSamples {
-			regs = append(regs, struct{ sel, value uint16 }{regSampleDelay, uint16(uint8(p.Delay))})
+			regs = append(regs, [2]uint16{regSampleDelay, uint16(uint8(p.Delay))})
 		}
-		for _, r := range regs {
-			if err := c.write(r.sel, r.value); err != nil {
-				return err
-			}
-		}
+		return c.writeMany(append(regs, [2]uint16{53, control})...)
 	}
 	return c.write(53, control)
 }

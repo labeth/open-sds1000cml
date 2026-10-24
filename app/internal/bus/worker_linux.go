@@ -43,6 +43,9 @@ const (
 	// workerReadMany: the registers whose selectors follow the header, 16
 	// bits each, of one plane, read in order in one round trip.
 	workerReadMany
+	// workerWriteMany: CS1 writes, a selector and a value of 16 bits each
+	// after the header, made in order in one round trip.
+	workerWriteMany
 )
 
 // workerRecallParams bounds a workerRecall request's parameters: the
@@ -318,6 +321,35 @@ func (d *Dev) ReadIsolatedStream(dst []byte) (first uint64, n int, owned bool, e
 		return 0, 0, true, err
 	}
 	return binary.LittleEndian.Uint64(head[:]), m - 8, true, nil
+}
+
+// RawWriteMany makes the CS1 writes regs (selector, value) in order, as
+// RawWrite each: with a bus worker a round trip for up to thirteen, not one
+// each (a decoder's trigger setup writes up to nine).
+// TRLC-LINKS: REQ-SDS-001, REQ-SDS-129
+func (d *Dev) RawWriteMany(regs [][2]uint16) error {
+	if d.remote == nil || len(regs) < 2 {
+		for _, r := range regs {
+			if err := d.RawWrite(r[0], r[1]); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	const per = workerRecallParams / 4
+	for len(regs) > 0 {
+		n := min(len(regs), per)
+		var params [workerRecallParams]byte
+		for i, r := range regs[:n] {
+			binary.LittleEndian.PutUint16(params[4*i:], r[0])
+			binary.LittleEndian.PutUint16(params[4*i+2:], r[1])
+		}
+		if _, err := d.remote.callWith(workerWriteMany, PlaneCS1, 0, 0, 0, params[:4*n], nil); err != nil {
+			return fmt.Errorf("bus: write cs1: %w", err)
+		}
+		regs = regs[n:]
+	}
+	return nil
 }
 
 // ReadMany reads the registers sels of plane into dst in order: with a bus

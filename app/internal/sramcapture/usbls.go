@@ -54,11 +54,9 @@ func (c *Capture) configureUSBLS(revision uint16, p USBLSTriggerConfig) error {
 		if p.Inverted {
 			control |= 4
 		}
-		for _, r := range []struct{ sel, value uint16 }{{98, uint16(p.BitTicksQ8)}, {99, uint16(p.BitTicksQ8 >> 16)}, {100, uint16(p.Pattern)}, {101, uint16(p.Pattern >> 16)}} {
-			if err := c.write(r.sel, r.value); err != nil {
-				return err
-			}
-		}
+		// The registers, then the control, in one batch.
+		return c.writeMany([2]uint16{98, uint16(p.BitTicksQ8)}, [2]uint16{99, uint16(p.BitTicksQ8 >> 16)}, [2]uint16{100, uint16(p.Pattern)},
+			[2]uint16{101, uint16(p.Pattern >> 16)}, [2]uint16{97, control})
 	}
 	return c.write(97, control)
 }

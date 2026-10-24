@@ -125,14 +125,10 @@ func (c *Capture) configureQualifier(revision uint16, p QualifierConfig) error {
 		if minZero {
 			control |= 0x80
 		}
-		for _, r := range []struct{ sel, value uint16 }{
-			{22, uint16(minM1)}, {24, uint16(p.MaxTicks)},
-			{26, uint16(p.LevelB)<<8 | uint16(p.LevelA)}, {27, p.Line}, {28, uint16(p.Prescale - 1)},
-		} {
-			if err := c.write(r.sel, r.value); err != nil {
-				return err
-			}
-		}
+		// The registers, then the control, in one batch.
+		return c.writeMany([2]uint16{22, uint16(minM1)}, [2]uint16{24, uint16(p.MaxTicks)},
+			[2]uint16{26, uint16(p.LevelB)<<8 | uint16(p.LevelA)}, [2]uint16{27, p.Line}, [2]uint16{28, uint16(p.Prescale - 1)},
+			[2]uint16{21, control})
 	}
 	return c.write(21, control)
 }
@@ -217,7 +213,7 @@ func (c *Capture) configureZones(revision uint16, z ZoneConfig) error {
 	var control uint16
 	if z.Enabled() {
 		starts, ends := []uint16{90, 91, 92, 69}, []uint16{70, 71, 72, 73}
-		regs := []struct{ sel, value uint16 }{{84, z.Wait}, {85, z.Bucket - 1}}
+		regs := [][2]uint16{{84, z.Wait}, {85, z.Bucket - 1}}
 		for i, w := range z.Zones {
 			if !w.Enabled {
 				continue
@@ -227,14 +223,10 @@ func (c *Capture) configureZones(revision uint16, z ZoneConfig) error {
 			if w.Avoid {
 				control |= 1 << (8 + i)
 			}
-			regs = append(regs, struct{ sel, value uint16 }{uint16(86 + i), uint16(w.Hi)<<8 | uint16(w.Lo)},
-				struct{ sel, value uint16 }{starts[i], uint16(w.Start) & 0x7ff}, struct{ sel, value uint16 }{ends[i], uint16(w.End) & 0x7ff})
+			regs = append(regs, [2]uint16{uint16(86 + i), uint16(w.Hi)<<8 | uint16(w.Lo)},
+				[2]uint16{starts[i], uint16(w.Start) & 0x7ff}, [2]uint16{ends[i], uint16(w.End) & 0x7ff})
 		}
-		for _, r := range regs {
-			if err := c.write(r.sel, r.value); err != nil {
-				return err
-			}
-		}
+		return c.writeMany(append(regs, [2]uint16{83, control})...) // one batch, the control last
 	}
 	return c.write(83, control)
 }

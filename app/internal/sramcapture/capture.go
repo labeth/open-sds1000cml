@@ -240,8 +240,30 @@ func (c *Capture) Beats() uint64 { return c.beats.Load() }
 
 // armSels are the registers Arm reads in one batch: the status, which it
 // checks once, then the revision and the stream, record identity, packet
-// and qualifier capabilities, which no write changes.
-var armSels = [...]uint16{1, 13, 63, 73, 110, qualCapability}
+// and qualifier capabilities, which no write changes, and the decoders'
+// capabilities (UART, I2C, SPI, SENT, USB, Manchester, packet, sequence):
+// each is written only by its own configure step, after it reads it.
+var armSels = [...]uint16{1, 13, 63, 73, 110, qualCapability, 48, 53, 64, 77, 97, 102, 109, 118}
+
+// manyWriter is a bus that makes several CS1 writes in one call.
+type manyWriter interface {
+	RawWriteMany(regs [][2]uint16) error
+}
+
+// writeMany makes the CS1 writes regs (selector, value) in order: through a
+// bus worker in one round trip, not one each.
+// TRLC-LINKS: REQ-SDS-082
+func (c *Capture) writeMany(regs ...[2]uint16) error {
+	if m, ok := c.bus.(manyWriter); ok {
+		return m.RawWriteMany(regs)
+	}
+	for _, r := range regs {
+		if err := c.write(r[0], r[1]); err != nil {
+			return err
+		}
+	}
+	return nil
+}
 
 // manyReader is a bus that reads several registers in one call (a bus
 // worker: one round trip for them all).

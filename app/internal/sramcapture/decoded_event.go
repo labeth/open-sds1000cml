@@ -52,7 +52,7 @@ func (e DecodedEvent) MarshalBinary() ([]byte, error) {
 }
 
 // TRLC-LINKS: REQ-SDS-013
-func (e DecodedEvent) validate() error {
+func (e *DecodedEvent) validate() error {
 	if e.Kind < EventStart || e.Kind > EventRetained || e.Protocol > 10 || e.Channels > 3 {
 		return fmt.Errorf("invalid decoded event header")
 	}

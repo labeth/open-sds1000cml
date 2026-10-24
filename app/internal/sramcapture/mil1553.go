@@ -56,11 +56,8 @@ func (c *Capture) configureMIL1553(revision uint16, p MIL1553TriggerConfig) erro
 		if p.MatchAny {
 			control |= 8
 		}
-		for _, r := range []struct{ sel, value uint16 }{{94, uint16(p.BitTicks)}, {95, uint16(p.BitTicks >> 16)}, {96, p.Pattern}} {
-			if err := c.write(r.sel, r.value); err != nil {
-				return err
-			}
-		}
+		// The registers, then the control, in one batch.
+		return c.writeMany([2]uint16{94, uint16(p.BitTicks)}, [2]uint16{95, uint16(p.BitTicks >> 16)}, [2]uint16{96, p.Pattern}, [2]uint16{93, control})
 	}
 	return c.write(93, control)
 }

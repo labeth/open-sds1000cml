@@ -113,15 +113,15 @@ func (c *Capture) configureSequence(p SequenceTriggerConfig) error {
 	if err := c.write(118, 0); err != nil || p.Length == 0 {
 		return err
 	}
+	// Every element's registers in one batch (the worker splits it into
+	// packets): six writes an element were a round trip each.
+	regs := make([][2]uint16, 0, 6*int(p.Length))
 	for k, e := range p.Elements[:p.Length] {
-		for _, r := range []struct{ sel, value uint16 }{
-			{119, uint16(k)}, {120, uint16(e.Value)}, {121, uint16(e.Value >> 16)},
-			{122, uint16(e.Mask)}, {123, uint16(e.Mask >> 16)}, {124, uint16(e.Kind)},
-		} {
-			if err := c.write(r.sel, r.value); err != nil {
-				return err
-			}
-		}
+		regs = append(regs, [2]uint16{119, uint16(k)}, [2]uint16{120, uint16(e.Value)}, [2]uint16{121, uint16(e.Value >> 16)},
+			[2]uint16{122, uint16(e.Mask)}, [2]uint16{123, uint16(e.Mask >> 16)}, [2]uint16{124, uint16(e.Kind)})
+	}
+	if err := c.writeMany(regs...); err != nil {
+		return err
 	}
 	control := uint16(p.Length)
 	if p.Qualify {

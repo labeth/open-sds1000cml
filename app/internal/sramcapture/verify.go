@@ -52,7 +52,15 @@ func (s *counterVerifier) Write(b []byte) (int, error) {
 	if len(b)%4 != 0 {
 		return 0, fmt.Errorf("sramcapture: unaligned startup counter")
 	}
-	for i := 0; i < len(b); i += 4 {
+	i := 0
+	// Two words at a time while both are right: one 64-bit compare.
+	for ; i+8 <= len(b); i += 8 {
+		if binary.LittleEndian.Uint64(b[i:]) != uint64(s.next)|uint64(s.next+1)<<32 {
+			break
+		}
+		s.next += 2
+	}
+	for ; i < len(b); i += 4 {
 		if got := binary.LittleEndian.Uint32(b[i:]); got != s.next {
 			return i, fmt.Errorf("sramcapture: startup counter word %d is %d", s.next, got)
 		}
