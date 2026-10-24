@@ -105,31 +105,36 @@ class SoundPlayerCore {
     this.ratio += (want - this.ratio) * 0.02;
     const step = this.srcRate / sampleRate * this.ratio;
     const fadeStep = 1 / (SW_FADE * sampleRate);
+    const release = 1 / (0.05 * sampleRate), quietRun = 0.2 * sampleRate;
+    // The player's state in locals for the block, written back after it.
+    const L = this.L, R = this.R, mask = this.size - 1, w = this.w, gapAt = this.gapAt, stereo = oR !== oL;
+    let r = this.r, fade = this.fade, gain = this.gain, quiet = this.quiet;
     let burst = false;
     for (let i = 0; i < n; i++) {
-      if (this.w - this.r < 2) { // ran dry: silence until refilled
-        for (let j = i; j < n; j++) { oL[j] = 0; if (oR !== oL) oR[j] = 0; }
+      if (w - r < 2) { // ran dry: silence until refilled
+        for (let j = i; j < n; j++) { oL[j] = 0; if (stereo) oR[j] = 0; }
         this.primed = false;
         this.under++;
         this.target = Math.min(SW_TARGET_MAX, this.target + SW_TARGET_STEP);
         this.calm = now;
         break;
       }
-      const ri = Math.floor(this.r), f = this.r - ri;
-      if (this.gapAt >= 0 && ri + 1 >= this.gapAt && ri < this.gapAt + 1) this.fade = 0;
-      const k0 = ri & (this.size - 1), k1 = (ri + 1) & (this.size - 1);
-      let l = this.L[k0] + (this.L[k1] - this.L[k0]) * f;
-      let rr = this.R[k0] + (this.R[k1] - this.R[k0]) * f;
-      if (this.fade < 1) { this.fade = Math.min(1, this.fade + fadeStep); l *= this.fade; rr *= this.fade; }
+      const ri = Math.floor(r), f = r - ri;
+      if (gapAt >= 0 && ri + 1 >= gapAt && ri < gapAt + 1) fade = 0;
+      const k0 = ri & mask, k1 = (ri + 1) & mask;
+      let l = L[k0] + (L[k1] - L[k0]) * f;
+      let rr = R[k0] + (R[k1] - R[k0]) * f;
+      if (fade < 1) { fade = Math.min(1, fade + fadeStep); l *= fade; rr *= fade; }
       // Peak limiter: instant attack, 50 ms release.
       const pk = Math.max(Math.abs(l), Math.abs(rr));
-      if (pk * this.gain > SW_LIMIT) this.gain = SW_LIMIT / pk;
-      else this.gain = Math.min(1, this.gain + (1 - this.gain) * (1 / (0.05 * sampleRate)));
-      l *= this.gain; rr *= this.gain;
-      oL[i] = l; if (oR !== oL) oR[i] = rr;
-      if (pk > 0.05) { if (this.quiet > 0.2 * sampleRate) burst = true; this.quiet = 0; } else this.quiet++;
-      this.r += step;
+      if (pk * gain > SW_LIMIT) gain = SW_LIMIT / pk;
+      else gain = Math.min(1, gain + (1 - gain) * release);
+      l *= gain; rr *= gain;
+      oL[i] = l; if (stereo) oR[i] = rr;
+      if (pk > 0.05) { if (quiet > quietRun) burst = true; quiet = 0; } else quiet++;
+      r += step;
     }
+    this.r = r; this.fade = fade; this.gain = gain; this.quiet = quiet;
     if (this.gapAt >= 0 && this.r > this.gapAt + 2) this.gapAt = -1;
     if (this.calm < 0) this.calm = now;
     if (now - this.calm > SW_CALM && this.target > this.base) {
