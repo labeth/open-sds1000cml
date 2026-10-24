@@ -489,19 +489,33 @@ func FFT(re, im []float64) {
 			im[i], im[j] = im[j], im[i]
 		}
 	}
+	// Each level's twiddles follow one recurrence from 1 at every block's
+	// start: made once a level, they are the very values each block made
+	// for itself, and the butterflies no longer wait on the recurrence.
+	twr, twi := make([]float64, n/2), make([]float64, n/2)
 	for l := 2; l <= n; l <<= 1 {
 		ang := -2 * math.Pi / float64(l)
 		wr, wi := math.Cos(ang), math.Sin(ang)
+		h := l / 2
+		cr, ci := 1.0, 0.0
+		for k := 0; k < h; k++ {
+			twr[k], twi[k] = cr, ci
+			cr, ci = cr*wr-ci*wi, cr*wi+ci*wr
+		}
+		wre, wim := twr[:h], twi[:h]
 		for i := 0; i < n; i += l {
-			cr, ci := 1.0, 0.0
-			for k := 0; k < l/2; k++ {
-				tr := re[i+k+l/2]*cr - im[i+k+l/2]*ci
-				ti := re[i+k+l/2]*ci + im[i+k+l/2]*cr
-				re[i+k+l/2] = re[i+k] - tr
-				im[i+k+l/2] = im[i+k] - ti
-				re[i+k] += tr
-				im[i+k] += ti
-				cr, ci = cr*wr-ci*wi, cr*wi+ci*wr
+			ar, ai := re[i:i+h], im[i:i+h]
+			br, bi := re[i+h:i+l], im[i+h:i+l]
+			br, bi, ai = br[:len(ar)], bi[:len(ar)], ai[:len(ar)]
+			wre, wim := wre[:len(ar)], wim[:len(ar)]
+			for k := range ar {
+				cr, ci := wre[k], wim[k]
+				tr := br[k]*cr - bi[k]*ci
+				ti := br[k]*ci + bi[k]*cr
+				br[k] = ar[k] - tr
+				bi[k] = ai[k] - ti
+				ar[k] += tr
+				ai[k] += ti
 			}
 		}
 	}
