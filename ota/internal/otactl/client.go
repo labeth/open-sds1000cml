@@ -3,7 +3,6 @@ package otactl
 
 import (
 	"crypto/sha256"
-	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -81,11 +80,7 @@ func (c *Client) PutFile(localPath, devicePath string, mode uint32, chunk int, p
 	for {
 		n, rerr := f.Read(buf)
 		if n > 0 {
-			_, err := c.Call("put.chunk", map[string]any{
-				"id":     begin.ID,
-				"offset": off,
-				"data":   base64.StdEncoding.EncodeToString(buf[:n]),
-			}, 60*time.Second)
+			_, err := c.Call("put.chunk", putChunkArgs{ID: begin.ID, Offset: off, Data: buf[:n]}, 60*time.Second)
 			if err != nil {
 				return "", err
 			}
@@ -117,6 +112,15 @@ func (c *Client) PutFile(localPath, devicePath string, mode uint32, chunk int, p
 	return commit.SHA256, nil
 }
 
+// putChunkArgs is put.chunk's argument object; encoding/json writes Data as
+// standard base64 straight into the request, without a base64 string first.
+// TRLC-LINKS: REQ-SDS-110
+type putChunkArgs struct {
+	ID     string `json:"id"`
+	Offset int64  `json:"offset"`
+	Data   []byte `json:"data"`
+}
+
 // GetFile pulls a device file to a local path via the get RPC.
 // TRLC-LINKS: REQ-SDS-110
 func (c *Client) GetFile(devicePath, localPath string, progress func(done, total int64)) error {
@@ -133,17 +137,14 @@ func (c *Client) GetFile(devicePath, localPath string, progress func(done, total
 			return err
 		}
 		var g struct {
-			Data string `json:"data"`
+			Data []byte `json:"data"` // standard base64, decoded by encoding/json
 			EOF  bool   `json:"eof"`
 			Size int64  `json:"size"`
 		}
 		if err := json.Unmarshal(raw, &g); err != nil {
 			return err
 		}
-		data, err := base64.StdEncoding.DecodeString(g.Data)
-		if err != nil {
-			return err
-		}
+		data := g.Data
 		if _, err := out.Write(data); err != nil {
 			return err
 		}
