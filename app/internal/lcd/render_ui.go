@@ -551,26 +551,39 @@ func drawEyePlot(sf Surface, p plotArea, hud HUD, e *wsview.EyePane) {
 	sh := eyeShades(e.Ch)
 	mx := float64(max(e.Max, 1))
 	t1, t2, t3 := mx*0.015, mx*0.08, mx*0.35
+	// The counts are whole: h >= t exactly when h >= ceil(t), so the cells
+	// compare as integers, not converted one by one.
+	i1, i2, i3 := uint64(math.Ceil(t1)), uint64(math.Ceil(t2)), uint64(math.Ceil(t3))
+	m, mem := sf.(*MemSurface)
 	for r := 0; r < e.Rows; r++ {
 		y := y1 + 2*r
 		if y+1 >= H-12 {
 			break
 		}
-		for c := 0; c < e.Cols; c++ {
-			h := float64(e.Grid[r*e.Cols+c])
-			if h == 0 {
+		for c, v := range e.Grid[r*e.Cols : (r+1)*e.Cols] {
+			if v == 0 {
 				continue
 			}
+			h := uint64(v)
 			col := sh[0]
 			switch {
-			case h >= t3:
+			case h >= i3:
 				col = sh[3]
-			case h >= t2:
+			case h >= i2:
 				col = sh[2]
-			case h >= t1:
+			case h >= i1:
 				col = sh[1]
 			}
-			fillRect(sf, x0+2*c, y, 2, 2, col)
+			x := x0 + 2*c
+			if mem && x >= 0 && x+1 < W && y >= 0 { // the 2x2 cell straight into the pixels
+				o := (y*W + x) * 2
+				lo, hi := byte(col), byte(col>>8)
+				m.Pix[o], m.Pix[o+1], m.Pix[o+2], m.Pix[o+3] = lo, hi, lo, hi
+				o += 2 * W
+				m.Pix[o], m.Pix[o+1], m.Pix[o+2], m.Pix[o+3] = lo, hi, lo, hi
+				continue
+			}
+			fillRect(sf, x, y, 2, 2, col)
 		}
 	}
 	if e.HasBox {

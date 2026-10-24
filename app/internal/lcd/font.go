@@ -73,16 +73,43 @@ func TextWidth(s string, scale int) int {
 // does not read as 9 ("Sp9m", "phase de9").
 // TRLC-LINKS: REQ-SDS-021
 func DrawText(sf Surface, x, y int, s string, c uint16, scale int) {
+	m, mem := sf.(*MemSurface)
+	lo, hi := byte(c), byte(c>>8)
 	for _, r := range s {
-		g, ok := glyphs[r]
+		var g [5]byte
+		ok := false
+		if r >= 0 && r < 128 {
+			g, ok = asciiGlyphs[r], asciiHave[r]
+		} else {
+			g, ok = glyphs[r]
+		}
 		if ok {
-			for col := 0; col < 5; col++ {
-				bits := g[col]
-				for row := 0; row < 8; row++ { // row 7: descenders (g j p q y)
-					if bits&(1<<uint(row)) != 0 {
+			if mem && x >= 0 && y >= 0 && x+5*scale <= W && y+8*scale <= H {
+				// The glyph's box is on the screen: its pixels written
+				// directly, as SetPixel would write them.
+				for col := 0; col < 5; col++ {
+					bits := g[col]
+					for row := 0; row < 8; row++ {
+						if bits&(1<<uint(row)) == 0 {
+							continue
+						}
 						for dy := 0; dy < scale; dy++ {
+							o := ((y+row*scale+dy)*W + x + col*scale) * 2
 							for dx := 0; dx < scale; dx++ {
-								sf.SetPixel(x+col*scale+dx, y+row*scale+dy, c)
+								m.Pix[o+2*dx], m.Pix[o+2*dx+1] = lo, hi
+							}
+						}
+					}
+				}
+			} else {
+				for col := 0; col < 5; col++ {
+					bits := g[col]
+					for row := 0; row < 8; row++ { // row 7: descenders (g j p q y)
+						if bits&(1<<uint(row)) != 0 {
+							for dy := 0; dy < scale; dy++ {
+								for dx := 0; dx < scale; dx++ {
+									sf.SetPixel(x+col*scale+dx, y+row*scale+dy, c)
+								}
 							}
 						}
 					}
@@ -92,6 +119,17 @@ func DrawText(sf Surface, x, y int, s string, c uint16, scale int) {
 		x += 6 * scale
 	}
 }
+
+// asciiGlyphs and asciiHave are the glyph table's ASCII part as arrays: a
+// lookup a character without the map.
+var asciiGlyphs, asciiHave = func() (g [128][5]byte, have [128]bool) {
+	for r, v := range glyphs {
+		if r >= 0 && r < 128 {
+			g[r], have[r] = v, true
+		}
+	}
+	return g, have
+}()
 
 // DrawTextRight right-aligns: draws ending at xr.
 // TRLC-LINKS: REQ-SDS-021
