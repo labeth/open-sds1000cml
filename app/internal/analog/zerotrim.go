@@ -20,6 +20,9 @@ type ZeroTrim struct {
 	VdivV   []float64 `json:"vdiv_v"`
 	C1V     []float64 `json:"c1_v"`
 	C2V     []float64 `json:"c2_v"`
+	// detent is each VdivV's detent, found when the trim is read (empty for
+	// a trim made in code).
+	detent []int
 }
 
 // zeroTrimDefault is this unit's open-input zero, measured with
@@ -51,21 +54,21 @@ func parseZeroTrim(raw []byte) (*ZeroTrim, error) {
 	if len(t.VdivV) != len(t.C1V) || len(t.VdivV) != len(t.C2V) {
 		return nil, fmt.Errorf("zero trim: %d detents, %d/%d channel values", len(t.VdivV), len(t.C1V), len(t.C2V))
 	}
+	t.detent = make([]int, len(t.VdivV))
 	for i, v := range t.VdivV {
-		if _, ok := PlanVdiv(v); !ok {
+		vd, ok := PlanVdiv(v)
+		if !ok {
 			return nil, fmt.Errorf("zero trim: %g V/div is not a detent", v)
 		}
+		t.detent[i] = vd
 		for _, z := range [2]float64{t.C1V[i], t.C2V[i]} {
-			if math.IsNaN(z) || math.Abs(z) > offsetTierRangeV(mustDetent(v)) {
+			if math.IsNaN(z) || math.Abs(z) > offsetTierRangeV(vd) {
 				return nil, fmt.Errorf("zero trim: %g V at %g V/div is out of range", z, v)
 			}
 		}
 	}
 	return &t, nil
 }
-
-// TRLC-LINKS: REQ-SDS-095
-func mustDetent(v float64) int { i, _ := PlanVdiv(v); return i }
 
 // SetZeroTrim installs a zero trim; detents it does not name keep the
 // calibration file's zero. Offsets already set are re-staged.
@@ -75,7 +78,12 @@ func (f *FrontEnd) SetZeroTrim(t *ZeroTrim) {
 	f.zeroTrimV = [2][numDetents]float64{}
 	if t != nil {
 		for i, v := range t.VdivV {
-			vd := mustDetent(v)
+			vd := 0
+			if len(t.detent) == len(t.VdivV) {
+				vd = t.detent[i] // read with the trim (LoadZeroTrim)
+			} else {
+				vd, _ = PlanVdiv(v)
+			}
 			f.zeroTrimV[0][vd], f.zeroTrimV[1][vd] = t.C1V[i], t.C2V[i]
 		}
 	}

@@ -78,9 +78,9 @@ func DefaultTrigCal(detent int) TrigCal {
 // TRLC-LINKS: REQ-SDS-098
 func (f *FrontEnd) TrigVolts(code uint16, srcCh int) float64 {
 	f.mu.Lock()
-	defer f.mu.Unlock()
-	c := f.calFor(srcCh)
-	return (c.Zero - float64(code)) / c.CPV * f.probe[srcCh&1]
+	c, probe := f.calFor(srcCh), f.probe[srcCh&1]
+	f.mu.Unlock()
+	return (c.Zero - float64(code)) / c.CPV * probe
 }
 
 // TrigCode converts probe-tip input volts to a trigger DAC code (unclamped —
@@ -88,9 +88,9 @@ func (f *FrontEnd) TrigVolts(code uint16, srcCh int) float64 {
 // TRLC-LINKS: REQ-SDS-098
 func (f *FrontEnd) TrigCode(volts float64, srcCh int) float64 {
 	f.mu.Lock()
-	defer f.mu.Unlock()
-	c := f.calFor(srcCh)
-	return c.Zero - c.CPV*volts/f.probe[srcCh&1]
+	c, probe := f.calFor(srcCh), f.probe[srcCh&1]
+	f.mu.Unlock()
+	return c.Zero - c.CPV*volts/probe
 }
 
 // TrigCalActive returns the source channel's active {Zero, CPV} (BNC-referred,

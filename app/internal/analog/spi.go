@@ -21,6 +21,7 @@ const (
 	spiWrBits     = 0x40016b03
 	spiWrMaxSpeed = 0x40046b04
 	spiMessage1   = 0x40206b00 // SPI_IOC_MESSAGE(1): one spi_ioc_transfer
+	spiMessage2   = 0x40406b00 // SPI_IOC_MESSAGE(2): two
 
 	spiSpeedHz = 300000
 	spiMode    = 3
@@ -59,8 +60,11 @@ type Dev struct {
 	gainFD  int // /dev/spidev1.1: mode 3, 8 bits/word, 300 kHz
 }
 
+// ioctlPtr is the SPI ioctl; a test counts the calls through it.
+var ioctlPtr = ioctlSys
+
 // TRLC-LINKS: REQ-SDS-015
-func ioctlPtr(fd int, req uintptr, p unsafe.Pointer) error {
+func ioctlSys(fd int, req uintptr, p unsafe.Pointer) error {
 	_, _, errno := syscall.Syscall(syscall.SYS_IOCTL, uintptr(fd), req, uintptr(p))
 	if errno != 0 {
 		return errno
@@ -142,11 +146,15 @@ func (d *Dev) WriteRelay(word uint32) error {
 
 // TRLC-LINKS: REQ-SDS-015
 func (d *Dev) WriteGain(ch2, ch1 uint8) error {
-	// Two separate CS-framed transfers, no address byte, CH2 then CH1.
-	b2 := []byte{ch2}
-	if err := d.message(d.gainFD, b2, 8); err != nil {
-		return err
+	// Two separate CS-framed transfers, no address byte, CH2 then CH1: one
+	// message of two transfers, chip select released between them
+	// (cs_change), one syscall where two took twice the time.
+	buf := [2]byte{ch2, ch1}
+	tr := [2]spiTransfer{
+		{txBuf: uint64(uintptr(unsafe.Pointer(&buf[0]))), len: 1, speedHz: spiSpeedHz, bitsPerWord: 8, csChange: 1},
+		{txBuf: uint64(uintptr(unsafe.Pointer(&buf[1]))), len: 1, speedHz: spiSpeedHz, bitsPerWord: 8},
 	}
-	b1 := []byte{ch1}
-	return d.message(d.gainFD, b1, 8)
+	err := ioctlPtr(d.gainFD, spiMessage2, unsafe.Pointer(&tr[0]))
+	runtime.KeepAlive(&buf)
+	return err
 }

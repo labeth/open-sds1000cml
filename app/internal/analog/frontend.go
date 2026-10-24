@@ -236,16 +236,7 @@ func CoupleDisplayBy(part, sig []uint8, mode int) []uint8 {
 		if len(sig) == 0 {
 			return part
 		}
-		var sum int
-		for _, v := range sig {
-			sum += int(v)
-		}
-		shift := 128 - int(math.Round(float64(sum)/float64(len(sig))))
-		out := make([]uint8, len(part))
-		for i, v := range part {
-			out[i] = uint8(min(max(int(v)+shift, 0), 255))
-		}
-		return out
+		return shifted(part, dcShift(sig))
 	case CplGND:
 		return CoupleDisplay(part, CplGND)
 	default:
@@ -261,20 +252,30 @@ func RemoveDC(sig []uint8) []uint8 {
 	if len(sig) == 0 {
 		return sig
 	}
+	return shifted(sig, dcShift(sig))
+}
+
+// dcShift is what moves sig's mean to mid-scale (code 128).
+// TRLC-LINKS: REQ-SDS-096
+func dcShift(sig []uint8) int {
 	var sum int
 	for _, v := range sig {
 		sum += int(v)
 	}
-	shift := 128 - int(math.Round(float64(sum)/float64(len(sig))))
+	return 128 - int(math.Round(float64(sum)/float64(len(sig))))
+}
+
+// shifted is a copy of sig moved by shift codes, clamped to [0,255]: through
+// a table of the 256 codes, a lookup a sample in place of a clamp.
+// TRLC-LINKS: REQ-SDS-096
+func shifted(sig []uint8, shift int) []uint8 {
+	var lut [256]uint8
+	for v := range lut {
+		lut[v] = uint8(min(max(v+shift, 0), 255))
+	}
 	out := make([]uint8, len(sig))
 	for i, v := range sig {
-		c := int(v) + shift
-		if c < 0 {
-			c = 0
-		} else if c > 255 {
-			c = 255
-		}
-		out[i] = uint8(c)
+		out[i] = lut[v]
 	}
 	return out
 }
