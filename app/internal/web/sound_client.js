@@ -297,12 +297,15 @@ function sndBq(b) { return { b, x1: 0, x2: 0, y1: 0, y2: 0 }; }
 
 // TRLC-LINKS: REQ-SDS-265
 function sndBqRun(f, x) {
-  const b = f.b;
+  // Coefficients and state in locals for the block, the state written back after.
+  const b = f.b, b0 = b[0], b1 = b[1], b2 = b[2], b3 = b[3], b4 = b[4];
+  let x1 = f.x1, x2 = f.x2, y1 = f.y1, y2 = f.y2;
   for (let i = 0; i < x.length; i++) {
-    const v = x[i], y = b[0] * v + b[1] * f.x1 + b[2] * f.x2 - b[3] * f.y1 - b[4] * f.y2;
-    f.x2 = f.x1; f.x1 = v; f.y2 = f.y1; f.y1 = y;
+    const v = x[i], y = b0 * v + b1 * x1 + b2 * x2 - b3 * y1 - b4 * y2;
+    x2 = x1; x1 = v; y2 = y1; y1 = y;
     x[i] = y;
   }
+  f.x1 = x1; f.x2 = x2; f.y1 = y1; f.y2 = y2;
 }
 
 // sndButter4 is a 4th-order Butterworth high- or low-pass at f as two
