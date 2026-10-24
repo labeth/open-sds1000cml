@@ -49,6 +49,9 @@ func goldenUIHUD(v wsview.View) HUD {
 func goldenRender(t *testing.T, name string, f *engine.Frame, h HUD) {
 	t.Helper()
 	sf := NewMemSurface()
+	// The LCD's back buffer holds the last frame: Render must paint every
+	// pixel, so it starts here on a colour no frame uses.
+	sf.Fill(0xf81f)
 	Render(sf, f, h, true)
 	goldenAssert(t, name, sf)
 }
