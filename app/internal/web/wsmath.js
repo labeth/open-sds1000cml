@@ -110,7 +110,7 @@ function repeats(prev, cur, tol, slack) {
 // TRLC-LINKS: REQ-SDS-014, REQ-SDS-218
 function maskDilate(lo, hi, tolT, tolV) {
   const win = lo.length;
-  lo = Array.from(lo); hi = Array.from(hi);
+  lo = Float64Array.from(lo); hi = Float64Array.from(hi); // typed working copies
   for (let j = 0; j < win; j++) if (lo[j] > hi[j]) { lo[j] = 0; hi[j] = 255; }
   const dLo = new Array(win), dHi = new Array(win);
   const qLo = new Int32Array(win), qHi = new Int32Array(win);
