@@ -1571,21 +1571,40 @@ func (c *Controller) smallActive() bool {
 // often it crosses the middle of that swing by more than a code either way.
 // TRLC-LINKS: REQ-SDS-137
 func codeSwing(codes []uint8) (swing, crossings int) {
+	// Four tables, summed after: a run of one code would otherwise make
+	// each increment wait for the previous one's store.
+	var h4 [4][256]int32
+	i := 0
+	for ; i+4 <= len(codes); i += 4 {
+		q := codes[i : i+4 : i+4]
+		h4[0][q[0]]++
+		h4[1][q[1]]++
+		h4[2][q[2]]++
+		h4[3][q[3]]++
+	}
+	for _, v := range codes[i:] {
+		h4[0][v]++
+	}
 	var h [256]int
-	for _, v := range codes {
-		h[v]++
+	for v := range h {
+		h[v] = int(h4[0][v] + h4[1][v] + h4[2][v] + h4[3][v])
 	}
 	lo, hi := codePercentile(&h, len(codes), 0.01), codePercentile(&h, len(codes), 0.99)
 	mid2 := lo + hi // twice the midpoint
+	// 2v > mid2+2 is v >= hiAt, 2v < mid2-2 is v < loAt (codes are >= 0)
+	hiAt, loAt := (mid2+2)/2+1, 0
+	if m := mid2 - 2; m > 0 {
+		loAt = (m + 1) / 2
+	}
 	state := -1
 	for _, v := range codes {
-		switch {
-		case 2*int(v) > mid2+2:
+		switch x := int(v); {
+		case x >= hiAt:
 			if state == 0 {
 				crossings++
 			}
 			state = 1
-		case 2*int(v) < mid2-2:
+		case x < loAt:
 			if state == 1 {
 				crossings++
 			}

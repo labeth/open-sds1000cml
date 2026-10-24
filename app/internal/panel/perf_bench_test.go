@@ -633,3 +633,31 @@ func BenchmarkFoldEnvelopeRef(b *testing.B) {
 		foldEnvelopeRef(lo, hi, sig, 4000)
 	}
 }
+
+// TRLC-LINKS: REQ-SDS-137
+func BenchmarkCodeSwing(b *testing.B) {
+	codes := make([]uint8, 20000+3)
+	for i := range codes {
+		codes[i] = uint8(128 + 60*((i/97)%2*2-1) + i%5)
+	}
+	for b.Loop() {
+		codeSwing(codes)
+	}
+}
+
+// codeSwing's thresholds on the codes read as the doubled compares did, at
+// every midpoint.
+// TRLC-LINKS: REQ-SDS-137
+func TestCodeSwingThresholds(t *testing.T) {
+	for mid2 := 0; mid2 <= 510; mid2++ {
+		hiAt, loAt := (mid2+2)/2+1, 0
+		if m := mid2 - 2; m > 0 {
+			loAt = (m + 1) / 2
+		}
+		for v := 0; v < 256; v++ {
+			if (v >= hiAt) != (2*v > mid2+2) || (v < loAt) != (2*v < mid2-2) {
+				t.Fatalf("mid2 %d v %d: thresholds %d %d", mid2, v, hiAt, loAt)
+			}
+		}
+	}
+}
