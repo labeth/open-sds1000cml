@@ -7,20 +7,32 @@
 const IR_MERGE_US = 150;
 const IR_NAMES = { irnec: "NEC", irsirc: "SIRC", irrc5: "RC-5", irrc6: "RC-6" };
 
-// irMarks finds the line's marks and whether they are its high level.
+// irMarks finds the line's marks and whether they are its high level, read
+// straight off the edges: the runs levelRuns would list (a run from each
+// edge to the next, the first from 0, the last open to n), without making
+// an object a run.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-234
 function irMarks(S, colTimeS) {
-  const runs = levelRuns(S);
+  const E = S.edges, n = S.n;
   let longest = -1, idle = 1;
-  for (const r of runs) { const d = r.x1 - r.x0; if (d > longest) { longest = d; idle = r.lvl; } }
+  if (!E.length) {
+    longest = n; idle = logicAt(S, 0);
+  } else {
+    longest = E[0].x; idle = E[0].dir > 0 ? 0 : 1;
+    for (let k = 0; k < E.length; k++) {
+      const d = (k + 1 < E.length ? E[k + 1].x : n) - E[k].x;
+      if (d > longest) { longest = d; idle = E[k].dir > 0 ? 1 : 0; }
+    }
+  }
   const active = 1 - idle;
   const marks = [];
   const merge = IR_MERGE_US * 1e-6 / colTimeS;
-  for (const r of runs) {
-    if (r.lvl !== active || r.open) continue;
-    const k = marks.length;
-    if (k > 0 && r.x0 - marks[k - 1].x1 < merge) { marks[k - 1].x1 = r.x1; continue; }
-    marks.push({ x0: r.x0, x1: r.x1 });
+  for (let k = 0; k + 1 < E.length; k++) { // the closed runs: edge k to edge k+1
+    if ((E[k].dir > 0 ? 1 : 0) !== active) continue;
+    const x0 = E[k].x, x1 = E[k + 1].x;
+    const j = marks.length;
+    if (j > 0 && x0 - marks[j - 1].x1 < merge) { marks[j - 1].x1 = x1; continue; }
+    marks.push({ x0, x1 });
   }
   return { marks, high: active === 1 };
 }
