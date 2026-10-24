@@ -79,8 +79,9 @@ function canReadRaw(r) {
   if (end < r.li0) end = r.li0;
   r.li1 = end;
   r.pos += r.spb;
-  const lvl = logicAt(r.S, center);
-  if (lvl < 0) return -1;
+  const S = r.S, ci = Math.round(center); // logicAt inline
+  if (ci < 0 || ci >= S.n || S.codes[ci] < 0) return -1;
+  const lvl = S.codes[ci] >= S.threshold ? 1 : 0;
   return r.dominantLow ? lvl : (1 - lvl);
 }
 
@@ -169,8 +170,10 @@ function canInferSPB(S) {
 // Returns { ok, spans, toks, bytes, endI }.
 // TRLC-LINKS: REQ-SDS-018
 function canOneFrame(S, dominantLow, sofStart, spb, dataSpb) {
+  // Every field from the start (ei too): a field added later changes the
+  // object's shape under the per-bit reads.
   const r = { S, dominantLow, pos: sofStart, spb, runVal: -1, runLen: 0,
-    stuffOn: true, record: true, stuffed: 0, stuffErr: false, bits: [], li0: -1, li1: -1 };
+    stuffOn: true, record: true, stuffed: 0, stuffErr: false, bits: [], li0: -1, li1: -1, ei: 0 };
   const fail = { ok: false };
   const spans = [], toks = [];
 
