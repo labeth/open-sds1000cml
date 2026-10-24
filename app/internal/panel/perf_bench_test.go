@@ -557,3 +557,13 @@ func BenchmarkAdoptQualRef(b *testing.B) {
 		byValue(st)
 	}
 }
+
+// TRLC-LINKS: REQ-SDS-212, REQ-SDS-213
+func BenchmarkStepTrigLevel(b *testing.B) {
+	c, _, _ := newC(&testing.T{})
+	n := 1
+	for b.Loop() {
+		c.stepTrigLevel(n)
+		n = -n
+	}
+}

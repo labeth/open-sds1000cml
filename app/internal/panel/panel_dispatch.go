@@ -222,15 +222,24 @@ func (c *Controller) button(code int) {
 // stale panel-local value (which would snap the setting on the first click).
 // TRLC-LINKS: REQ-SDS-135
 func (c *Controller) resync() {
+	var st engine.Stats
+	c.resyncInto(&st)
+}
+
+// resyncInto is resync, leaving the engine stats it read in st and
+// returning the front end's detents; ok false when it read nothing
+// (Autoset sweeping).
+// TRLC-LINKS: REQ-SDS-135
+func (c *Controller) resyncInto(st *engine.Stats) (idx [2]int, ok bool) {
 	// Autoset owns the shadows while it sweeps (it writes them under mu on its own
 	// goroutine). Skip here so the injected-knob path can't race it either.
 	c.mu.Lock()
 	busy := c.autosetBusy
 	c.mu.Unlock()
 	if busy {
-		return
+		return idx, false
 	}
-	st := c.eng.Snapshot()
+	*st = c.eng.Snapshot()
 	if st.TrigCode != 0 {
 		c.trigCode = st.TrigCode
 	}
@@ -244,9 +253,10 @@ func (c *Controller) resync() {
 		}
 	}
 	if c.fe != nil {
-		idx, _ := c.fe.Snapshot()
+		idx, _ = c.fe.Snapshot()
 		c.vIdx = idx
 	}
+	return idx, true
 }
 
 // TRLC-LINKS: REQ-SDS-135

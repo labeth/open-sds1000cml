@@ -35,8 +35,16 @@ func (c *Controller) setTrigLevelV(v float64) error {
 // stepTrigLevel moves the level n knob steps (positive raises it).
 // TRLC-LINKS: REQ-SDS-212, REQ-SDS-213
 func (c *Controller) stepTrigLevel(n int) error {
-	c.resync()
-	nc := clampInt(int(c.trigCode)-n*c.trigStepCodes(), engine.TrigCodeMin, engine.TrigCodeMax)
+	var st engine.Stats
+	idx, ok := c.resyncInto(&st)
+	step := int(panelTrigStepCodesPerVdiv)
+	switch {
+	case !ok: // nothing read: the step reads them itself
+		step = c.trigStepCodes()
+	case c.fe != nil: // trigStepCodes on what resync read
+		step = trigStepCodesAt(idx, st.TrigSource&1)
+	}
+	nc := clampInt(int(c.trigCode)-n*step, engine.TrigCodeMin, engine.TrigCodeMax)
 	c.mu.Lock()
 	c.trigCode = uint16(nc)
 	c.mu.Unlock()
