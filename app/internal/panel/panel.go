@@ -211,7 +211,7 @@ type Controller struct {
 	// the bursts' ends and starts weighed on the records since the SPI bus
 	// or its clock rate changed (spiEyeKey): the middle after the edge or
 	// before it
-	spiEyeKey   string
+	spiEyeKey   spiEyeK
 	spiEyeVotes decode.SPIEyeVotes
 	decFormat   int // 0=hex, 1=ascii, 2=both
 	// what Auto filled in, and whether the bus it found still decodes

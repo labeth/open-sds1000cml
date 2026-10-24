@@ -119,7 +119,7 @@ func (c *Controller) DefaultSetup() {
 	c.decParity, c.decInv, c.decBits = "", false, 0
 	c.decLayer, c.decLayerAddr, c.decLayerDir = "", -1, 0
 	c.decDelayNs, c.decDelayAuto, c.decFine, c.spiEye = 0, false, false, decode.SPIEye{}
-	c.spiEyeKey, c.spiEyeVotes = "", decode.SPIEyeVotes{}
+	c.spiEyeKey, c.spiEyeVotes = spiEyeK{}, decode.SPIEyeVotes{}
 	for i := range c.refs {
 		c.refs[i].show = false
 	}

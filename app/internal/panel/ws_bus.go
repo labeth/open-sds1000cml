@@ -444,7 +444,7 @@ func (c *Controller) fillIn(res decode.Result) bool {
 		// a new SPI bus samples its data at the middle of the eye measured on
 		// it, as AUTO in BUS does (forgetBus): a fixed delay kept from before,
 		// or Default setup's 0 ns, sat on a fast bus's data edges
-		c.decDelayAuto, c.spiEye, c.spiEyeKey, c.spiEyeVotes = true, decode.SPIEye{}, "", decode.SPIEyeVotes{}
+		c.decDelayAuto, c.spiEye, c.spiEyeKey, c.spiEyeVotes = true, decode.SPIEye{}, spiEyeK{}, decode.SPIEyeVotes{}
 	}
 	c.decProto = p
 	c.decGen++

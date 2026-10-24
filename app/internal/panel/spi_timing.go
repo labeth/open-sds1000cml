@@ -139,10 +139,7 @@ func (c *Controller) noteSPIEye(s *sv, f *engine.Frame) {
 	// the bursts' ends and starts of the records since the bus or the
 	// clock rate it is framed by changed decide whether the middle lies
 	// after the edge or before it (a record shows a few, or none)
-	key := fmt.Sprint(s.decChA, s.decChB, s.decCPOL, s.decCPHA)
-	if s.hasSerial {
-		key += fmt.Sprint(" ", s.serial.SPIClockHz)
-	}
+	key := spiEyeKeyOf(s)
 	c.mu.Lock()
 	if key != c.spiEyeKey {
 		c.spiEyeKey, c.spiEyeVotes = key, decode.SPIEyeVotes{}
@@ -220,4 +217,21 @@ func receiverRow() *row {
 		set:  func(c *Controller, v int) error { return c.setDecFine(v == 1) },
 		def:  func(c *Controller) error { return c.setDecFine(false) },
 	}
+}
+
+// spiEyeK is what the SPI eye's votes depend on: the bus's lines and mode,
+// and the clock rate a serial trigger frames it by. The zero key is none.
+type spiEyeK struct {
+	set, cpol, cpha, serial bool
+	chA, chB, clockHz       int
+}
+
+// spiEyeKeyOf is the eye votes' key now.
+// TRLC-LINKS: REQ-SDS-229, REQ-SDS-230
+func spiEyeKeyOf(s *sv) spiEyeK {
+	k := spiEyeK{set: true, cpol: s.decCPOL, cpha: s.decCPHA, serial: s.hasSerial, chA: s.decChA, chB: s.decChB}
+	if s.hasSerial {
+		k.clockHz = s.serial.SPIClockHz
+	}
+	return k
 }

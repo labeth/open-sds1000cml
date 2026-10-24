@@ -2,6 +2,7 @@
 package panel
 
 import (
+	"fmt"
 	"testing"
 
 	"open-sds/app/internal/analog"
@@ -143,5 +144,34 @@ func BenchmarkSetupPrint(b *testing.B) {
 	s := c.snap()
 	for b.Loop() {
 		setupPrint(s)
+	}
+}
+
+// TRLC-LINKS: REQ-SDS-229
+func BenchmarkSPIEyeKey(b *testing.B) {
+	c, _, _ := newC(&testing.T{})
+	s := c.snap()
+	s.hasSerial, s.serial.SPIClockHz = true, 10000000
+	k0 := spiEyeK{}
+	for b.Loop() {
+		if spiEyeKeyOf(s) == k0 {
+			b.Fatal("unset key")
+		}
+	}
+}
+
+// TRLC-LINKS: REQ-SDS-229
+func BenchmarkSPIEyeKeyRef(b *testing.B) {
+	c, _, _ := newC(&testing.T{})
+	s := c.snap()
+	s.hasSerial, s.serial.SPIClockHz = true, 10000000
+	for b.Loop() {
+		key := fmt.Sprint(s.decChA, s.decChB, s.decCPOL, s.decCPHA)
+		if s.hasSerial {
+			key += fmt.Sprint(" ", s.serial.SPIClockHz)
+		}
+		if key == "" {
+			b.Fatal("unset key")
+		}
 	}
 }
