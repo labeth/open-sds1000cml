@@ -113,20 +113,7 @@ func (c *InterleaveCalibration) apply(a, b []uint8, q1, q2 []uint16, scale [2]fl
 	var means [2][5]float64
 	var usable [2]bool
 	for ch, x := range [][]uint8{a, b} {
-		var count [5]int
-		var sums [5]uint32
-		// The phase is counted, not i%5: there is no divider on this ARM
-		// and this runs over every sample of every frame.
-		ph := 0
-		for _, v := range x {
-			if v != 0 && v != 255 {
-				sums[ph] += uint32(v)
-				count[ph]++
-			}
-			if ph++; ph == 5 {
-				ph = 0
-			}
-		}
+		sums, count := phaseSums(x)
 		usable[ch] = true
 		avg := 0.0
 		for i := 0; i < 5; i++ {
@@ -185,6 +172,9 @@ func (c *InterleaveCalibration) apply(a, b []uint8, q1, q2 []uint16, scale [2]fl
 						}
 						c.table[ch][mode][phase][v] = uint16(corrected)
 					}
+					// Clipped samples neither vote nor change.
+					c.table[ch][mode][phase][0] = 0
+					c.table[ch][mode][phase][255] = 255 << 8
 				}
 			}
 		}
@@ -199,25 +189,82 @@ func (c *InterleaveCalibration) apply(a, b []uint8, q1, q2 []uint16, scale [2]fl
 		if c.GainVdiv[ch] > 0 && scale[ch] == c.GainVdiv[ch] {
 			mode = 1
 		}
-		tbl := &c.table[ch][mode]
-		ph := rotation % 5
-		for i, v := range x {
-			if v == 0 || v == 255 {
-				q[i] = uint16(v) << 8
-			} else {
-				q[i] = tbl[ph][v]
-				x[i] = roundQ8(q[i])
-			}
-			if ph++; ph == 5 {
-				ph = 0
-			}
-		}
+		correctPhases(x, q[:len(x)], &c.table[ch][mode], rotation%5)
 		if c.TimingVdiv[ch] > 0 && scale[ch] == c.TimingVdiv[ch] && sampleS == 2e-9 {
 			correctAperture(q, x, c.TimingNs[ch], rotation)
 		}
 	}
 
 	return true
+}
+
+// phaseSums is each converter phase's sum and count of unclipped codes in
+// x (phase i holds samples i, i+5, …). Five samples a turn, a phase each, so
+// there is no phase counter (and no i%5: no divider on this ARM); a clipped
+// code is added and taken back, which is rare.
+// TRLC-LINKS: REQ-SDS-016
+//
+//go:noinline
+func phaseSums(x []uint8) (sums [5]uint32, count [5]int) {
+	var s0, s1, s2, s3, s4 uint32
+	var clip [5]int
+	turns := 0
+	for len(x) >= 5 {
+		a, b, c, d, e := uint32(x[0]), uint32(x[1]), uint32(x[2]), uint32(x[3]), uint32(x[4])
+		s0, s1, s2, s3, s4 = s0+a, s1+b, s2+c, s3+d, s4+e
+		if a-1 >= 254 || b-1 >= 254 || c-1 >= 254 || d-1 >= 254 || e-1 >= 254 {
+			for k, v := range ([5]uint32{a, b, c, d, e}) {
+				if v-1 >= 254 {
+					clip[k]++
+					sums[k] -= v
+				}
+			}
+		}
+		turns++
+		x = x[5:]
+	}
+	sums[0] += s0
+	sums[1] += s1
+	sums[2] += s2
+	sums[3] += s3
+	sums[4] += s4
+	for k := range count {
+		count[k] = turns - clip[k]
+	}
+	for k, v := range x {
+		if v != 0 && v != 255 {
+			sums[k] += uint32(v)
+			count[k]++
+		}
+	}
+	return sums, count
+}
+
+// correctPhases looks each code of x up in its phase's table (phase rot
+// first) into q, and rounds it back into x. Five samples a turn, a table each;
+// the tables map clipped codes to themselves.
+// TRLC-LINKS: REQ-SDS-016
+//
+//go:noinline
+func correctPhases(x []uint8, q []uint16, tbl *[5][256]uint16, rot int) {
+	var t [5]*[256]uint16
+	for k := range t {
+		t[k] = &tbl[rot]
+		if rot++; rot == 5 {
+			rot = 0
+		}
+	}
+	t0, t1, t2, t3, t4 := t[0], t[1], t[2], t[3], t[4]
+	for len(x) >= 5 && len(q) >= 5 {
+		a, b, c, d, e := t0[x[0]], t1[x[1]], t2[x[2]], t3[x[3]], t4[x[4]]
+		q[0], q[1], q[2], q[3], q[4] = a, b, c, d, e
+		x[0], x[1], x[2], x[3], x[4] = roundQ8(a), roundQ8(b), roundQ8(c), roundQ8(d), roundQ8(e)
+		x, q = x[5:], q[5:]
+	}
+	for k := range x {
+		q[k] = t[k][x[k]]
+		x[k] = roundQ8(q[k])
+	}
 }
 
 // supportsScale reports whether both channels sit at a measured scale. Offset
