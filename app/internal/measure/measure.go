@@ -223,13 +223,38 @@ func (r *Result) WithEnvelopeTiming(env []uint8, voltsPerCode, offV, sampleS flo
 	if c == nil {
 		return c
 	}
-	c.EnvAliased = envelopeAliased(env)
-	if n < 2*envMinBuckets || !(sampleS > 0) || envelopeNarrowPulse(env) {
+	if n == 0 {
 		return c
 	}
-	mids := make([]uint8, n)
+	// One pass for the swing and one for the buckets spanning its middle
+	// half (with their midpoints), shared by the aliasing, narrow-pulse and
+	// edge-count checks: each used to rescan the envelope for itself.
+	q := scanEnvelope(env)
+	var midBuf, classBuf [2048]uint8
+	mids, class := midBuf[:n:n], classBuf[:n:n]
+	if n > len(midBuf) {
+		mids, class = make([]uint8, n), make([]uint8, n)
+	}
+	spans := 0
 	for i := range mids {
-		mids[i] = uint8((int(env[2*i]) + int(env[2*i+1]) + 1) / 2)
+		a, b := int(env[2*i]), int(env[2*i+1])
+		lo, hi := min(a, b), max(a, b)
+		k := uint8(bucketBetween)
+		switch {
+		case lo <= q.q1 && hi >= q.q3:
+			k = bucketSpans
+			spans++
+		case hi <= q.q1:
+			k = bucketLow
+		case lo >= q.q3:
+			k = bucketHigh
+		}
+		class[i] = k
+		mids[i] = uint8((a + b + 1) / 2)
+	}
+	c.EnvAliased = q.resolvable() && 2*spans > n
+	if n < 2*envMinBuckets || !(sampleS > 0) || (q.resolvable() && narrowPulseIn(class)) {
+		return c
 	}
 	bucket := 2 * sampleS
 	t := Compute(mids, voltsPerCode, offV, bucket)
@@ -239,25 +264,31 @@ func (r *Result) WithEnvelopeTiming(env []uint8, voltsPerCode, offV, sampleS flo
 	// Midpoints of an unresolved signal alias into a slower false period.
 	// A resolved one has about two edge buckets (spanning the swing) per
 	// period; refuse when there are many more than the period implies.
-	lo, hi := env[0], env[0]
-	for _, v := range env {
-		lo, hi = min(lo, v), max(hi, v)
-	}
-	q1, q3 := int(lo)+(int(hi)-int(lo))/4, int(hi)-(int(hi)-int(lo))/4
-	edges := 0
-	for i := 0; i < n; i++ {
-		a, b := int(env[2*i]), int(env[2*i+1])
-		if min(a, b) <= q1 && max(a, b) >= q3 {
-			edges++
-		}
-	}
-	if float64(edges) > 1.5*2*float64(n)*bucket/t.Period+2 {
+	if float64(spans) > 1.5*2*float64(n)*bucket/t.Period+2 {
 		return c
 	}
 	c.Freq, c.Period, c.Duty, c.PosWidthS, c.NegWidthS = t.Freq, t.Period, t.Duty, t.PosWidthS, t.NegWidthS
 	c.HasTiming, c.EnvTiming = true, true
 	return c
 }
+
+// envSwing is an envelope's extremes and the bounds of the middle half of
+// its swing.
+// TRLC-LINKS: REQ-SDS-021
+type envSwing struct{ lo, hi, q1, q3 int }
+
+// TRLC-LINKS: REQ-SDS-021
+func scanEnvelope(env []uint8) envSwing {
+	lo, hi := env[0], env[0]
+	for _, v := range env {
+		lo, hi = min(lo, v), max(hi, v)
+	}
+	l, h := int(lo), int(hi)
+	return envSwing{l, h, l + (h-l)/4, h - (h-l)/4}
+}
+
+// TRLC-LINKS: REQ-SDS-021
+func (q envSwing) resolvable() bool { return q.hi-q.lo >= minAmplCodes }
 
 // envelopeNarrowPulse reports a pulse within two buckets: one or two buckets
 // that span the middle half of the swing between buckets wholly at the same
@@ -266,42 +297,60 @@ func (r *Result) WithEnvelopeTiming(env []uint8, voltsPerCode, offV, sampleS flo
 // 66.8 kHz): it is unknown instead.
 // TRLC-LINKS: REQ-SDS-021
 func envelopeNarrowPulse(env []uint8) bool {
+	if len(env)/2 < 3 {
+		return false
+	}
+	return scanEnvelope(env).narrowPulse(env)
+}
+
+// TRLC-LINKS: REQ-SDS-021
+func (q envSwing) narrowPulse(env []uint8) bool {
 	n := len(env) / 2
-	if n < 3 {
+	if n < 3 || !q.resolvable() {
 		return false
 	}
-	lo, hi := env[0], env[0]
-	for _, v := range env {
-		lo, hi = min(lo, v), max(hi, v)
-	}
-	if int(hi)-int(lo) < minAmplCodes {
-		return false
-	}
-	q1, q3 := int(lo)+(int(hi)-int(lo))/4, int(hi)-(int(hi)-int(lo))/4
-	level := func(i int) int { // -1 wholly low, 1 wholly high, 0 spanning or between
+	class := make([]uint8, n)
+	for i := range class {
 		a, b := int(env[2*i]), int(env[2*i+1])
+		lo, hi := min(a, b), max(a, b)
 		switch {
-		case max(a, b) <= q1:
-			return -1
-		case min(a, b) >= q3:
-			return 1
+		case lo <= q.q1 && hi >= q.q3:
+			class[i] = bucketSpans
+		case hi <= q.q1:
+			class[i] = bucketLow
+		case lo >= q.q3:
+			class[i] = bucketHigh
+		default:
+			class[i] = bucketBetween
 		}
-		return 0
 	}
-	spans := func(i int) bool {
-		a, b := int(env[2*i]), int(env[2*i+1])
-		return min(a, b) <= q1 && max(a, b) >= q3
-	}
+	return narrowPulseIn(class)
+}
+
+// Bucket classes against the middle half of the swing: spanning it, wholly
+// below or above it, or neither.
+const (
+	bucketBetween = iota
+	bucketSpans
+	bucketLow
+	bucketHigh
+)
+
+// narrowPulseIn is the narrow-pulse test on classified buckets: a run of one
+// or two spanning buckets between buckets wholly at the same level.
+// TRLC-LINKS: REQ-SDS-021
+func narrowPulseIn(class []uint8) bool {
+	n := len(class)
 	for i := 1; i+1 < n; i++ {
-		if !spans(i) || spans(i-1) {
+		if class[i] != bucketSpans || class[i-1] == bucketSpans {
 			continue
 		}
 		j := i // the run of spanning buckets from i
-		for j+1 < n && spans(j+1) && j-i < 2 {
+		for j+1 < n && class[j+1] == bucketSpans && j-i < 2 {
 			j++
 		}
 		if j-i < 2 && j+1 < n {
-			if l := level(i - 1); l != 0 && l == level(j+1) {
+			if l := class[i-1]; (l == bucketLow || l == bucketHigh) && l == class[j+1] {
 				return true
 			}
 		}
@@ -317,18 +366,14 @@ func envelopeAliased(env []uint8) bool {
 	if n == 0 {
 		return false
 	}
-	lo, hi := env[0], env[0]
-	for _, v := range env {
-		lo, hi = min(lo, v), max(hi, v)
-	}
-	if int(hi)-int(lo) < minAmplCodes {
+	q := scanEnvelope(env)
+	if !q.resolvable() {
 		return false
 	}
-	q1, q3 := int(lo)+(int(hi)-int(lo))/4, int(hi)-(int(hi)-int(lo))/4
 	spans := 0
 	for i := 0; i < n; i++ {
 		a, b := int(env[2*i]), int(env[2*i+1])
-		if min(a, b) <= q1 && max(a, b) >= q3 {
+		if min(a, b) <= q.q1 && max(a, b) >= q.q3 {
 			spans++
 		}
 	}
@@ -450,16 +495,7 @@ func compute[T ~uint8 | ~uint16](sig []T, voltsPerCode, offV, sampleS, scale flo
 		// multiply-accumulate and two compares. Four tables keep runs of
 		// equal codes from waiting on the previous increment's store.
 		var h [4][256]int32
-		i := 0
-		for ; i+4 <= n; i += 4 {
-			h[0][uint8(sig[i])]++
-			h[1][uint8(sig[i+1])]++
-			h[2][uint8(sig[i+2])]++
-			h[3][uint8(sig[i+3])]++
-		}
-		for ; i < n; i++ {
-			h[0][uint8(sig[i])]++
-		}
+		histogram4(&h, unsafe.Slice((*uint8)(unsafe.Pointer(&sig[0])), n))
 		cmin = -1
 		for c := range hist {
 			k := int(h[0][c] + h[1][c] + h[2][c] + h[3][c])
@@ -698,6 +734,28 @@ walk:
 		r.FallS = (t10 - t90) * sampleS
 	}
 	return r
+}
+
+// histogram4 counts s into four tables, alternating, so runs of equal codes
+// do not wait on the previous increment's store. Out of line on purpose: in
+// the caller's large frame every table address is reloaded from a literal
+// pool per sample, here the tables sit behind one register.
+// TRLC-LINKS: REQ-SDS-017
+//
+//go:noinline
+func histogram4(h *[4][256]int32, s []uint8) {
+	h0, h1, h2, h3 := &h[0], &h[1], &h[2], &h[3]
+	for len(s) >= 4 {
+		a, b, c, d := s[0], s[1], s[2], s[3] // loads first: their latency overlaps
+		h0[a]++
+		h1[b]++
+		h2[c]++
+		h3[d]++
+		s = s[4:]
+	}
+	for _, v := range s {
+		h0[v]++
+	}
 }
 
 // interp returns the fractional sample index where a segment [a,b] straddling
