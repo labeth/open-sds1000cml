@@ -3,6 +3,7 @@ package engine
 
 import (
 	"math"
+	"sort"
 
 	"open-sds/app/internal/decode"
 	"open-sds/app/internal/sramcapture"
@@ -132,28 +133,38 @@ func (t *symTab) count(s float64) float64 {
 // TRLC-LINKS: REQ-SDS-013
 func (t *symTab) each(level bool, lo, hi float64, f func(int)) {
 	clo, chi := t.count(lo), t.count(hi)
-	for i := 0; i < 1024; i++ {
-		e, m := i>>6, i&63
-		var mid float64
-		if e == 0 {
-			mid = float64(m)
-		} else {
-			first := float64(int(64+m) << (e - 1))
-			mid = first + (float64(int(1)<<(e-1))-1)/2
+	if math.IsNaN(clo) || math.IsNaN(chi) {
+		return // no middle lies in such a window
+	}
+	// The middles ascend with the index: the window is one run of them.
+	i0 := sort.Search(1024, func(i int) bool { return symMids[i] >= clo })
+	i1 := sort.Search(1024, func(i int) bool { return symMids[i] > chi })
+	for i := i0; i < i1; i++ {
+		idx := i
+		if level {
+			idx |= 1024
 		}
-		if e == 15 && m == 63 {
-			mid = decode.SymbolMaxCount // saturated runs
-		}
-		if mid >= clo && mid <= chi {
-			idx := i
-			if level {
-				idx |= 1024
-			}
-			f(idx)
-		}
+		f(idx)
 	}
 }
 
+// symMids is each table index's bucket middle in prescaled counts: an
+// exponent and a mantissa, the last bucket the saturated runs. They ascend.
+var symMids = func() (mids [1024]float64) {
+	for i := range mids {
+		e, m := i>>6, i&63
+		if e == 0 {
+			mids[i] = float64(m)
+		} else {
+			first := float64(int(64+m) << (e - 1))
+			mids[i] = first + (float64(int(1)<<(e-1))-1)/2
+		}
+		if e == 15 && m == 63 {
+			mids[i] = decode.SymbolMaxCount // saturated runs
+		}
+	}
+	return mids
+}()
 
 // lead sets the leader code of a window; data its data code.
 // TRLC-LINKS: REQ-SDS-013
