@@ -201,14 +201,31 @@ func (c *Controller) snap() *sv {
 	if c.fe != nil {
 		s.fe = true
 		s.vidx, _ = c.fe.Snapshot()
-		for ch := 0; ch < 2; ch++ {
-			s.probe[ch] = c.fe.ProbeFactor(ch)
-			s.cpl[ch] = c.fe.Coupling(ch)
-			s.offV[ch] = c.fe.OffsetReqV(ch)
-		}
-		if b, ok := c.fe.(interface{ BWL(ch int) bool }); ok {
-			s.hasBWL = true
-			s.bwl = [2]bool{b.BWL(0), b.BWL(1)}
+		b, hasBWL := c.fe.(interface{ BWL(ch int) bool })
+		if cs, ok := c.fe.(interface {
+			ChannelState(ch int) (offV float64, cpl int, probe float64, bwl bool)
+		}); ok {
+			// a channel's settings under one lock, not one a value
+			for ch := 0; ch < 2; ch++ {
+				off, cpl, p, bwl := cs.ChannelState(ch)
+				if !(p >= 1) { // as ProbeFactor
+					p = 1
+				}
+				s.probe[ch], s.cpl[ch], s.offV[ch] = p, cpl, off
+				if hasBWL {
+					s.hasBWL, s.bwl[ch] = true, bwl
+				}
+			}
+		} else {
+			for ch := 0; ch < 2; ch++ {
+				s.probe[ch] = c.fe.ProbeFactor(ch)
+				s.cpl[ch] = c.fe.Coupling(ch)
+				s.offV[ch] = c.fe.OffsetReqV(ch)
+			}
+			if hasBWL {
+				s.hasBWL = true
+				s.bwl = [2]bool{b.BWL(0), b.BWL(1)}
+			}
 		}
 		s.trigLo = c.fe.TrigVolts(engine.TrigCodeMax, src)
 		s.trigHi = c.fe.TrigVolts(engine.TrigCodeMin, src)

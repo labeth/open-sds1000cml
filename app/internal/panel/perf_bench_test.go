@@ -175,3 +175,50 @@ func BenchmarkSPIEyeKeyRef(b *testing.B) {
 		}
 	}
 }
+
+// stateFE is a front end that also reads a channel's settings under one
+// lock (analog.FrontEnd's ChannelState) and has bandwidth limits.
+type stateFE struct {
+	*fakeFE
+	bwl [2]bool
+}
+
+// TRLC-LINKS: REQ-SDS-135
+func (f *stateFE) BWL(ch int) bool { return f.bwl[ch&1] }
+
+// TRLC-LINKS: REQ-SDS-135
+func (f *stateFE) ChannelState(ch int) (offV float64, cpl int, probe float64, bwl bool) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.offReqV[ch], f.cpl[ch], f.probe[ch], f.bwl[ch&1]
+}
+
+// TRLC-LINKS: REQ-SDS-211
+func stateC(t *testing.T) (*Controller, *stateFE) {
+	fe := &stateFE{fakeFE: &fakeFE{idx: [2]int{8, 8}}, bwl: [2]bool{false, true}}
+	c := New(newEng(), fe, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
+	c.decode(idle(), true)
+	return c, fe
+}
+
+// A snapshot through ChannelState reads what the per-value calls read.
+// TRLC-LINKS: REQ-SDS-211
+func TestSnapChannelStateMatches(t *testing.T) {
+	c, fe := stateC(t)
+	fe.SetProbe(0, 10)
+	fe.SetProbe(1, 0.5) // below 1: reads 1
+	fe.SetCoupling(1, analog.CplAC)
+	fe.offReqV = [2]float64{0.25, -1.5}
+	s := c.snap()
+	if s.probe != [2]float64{10, 1} || s.cpl != [2]int{analog.CplDC, analog.CplAC} || s.offV != fe.offReqV || !s.hasBWL || s.bwl != fe.bwl {
+		t.Fatalf("snap read probe %v cpl %v offV %v bwl %v %v", s.probe, s.cpl, s.offV, s.hasBWL, s.bwl)
+	}
+}
+
+// TRLC-LINKS: REQ-SDS-211
+func BenchmarkSnapFE(b *testing.B) {
+	c, _ := stateC(&testing.T{})
+	for b.Loop() {
+		c.snap()
+	}
+}
