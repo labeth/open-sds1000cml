@@ -224,6 +224,30 @@ func drawLine(sf Surface, x0, y0, x1, y1 int, c uint16) {
 		sy = -1
 	}
 	err := dx - dy
+	if m, ok := sf.(*MemSurface); ok && uint(x0) < W && uint(x1) < W && uint(y0) < H && uint(y1) < H {
+		// On screen end to end: write the pixels without the interface call
+		// and per-pixel clip (a sparse trace is one segment per column).
+		px := m.px()
+		step := sy * W
+		o := y0*W + x0
+		for {
+			px[o] = c
+			if x0 == x1 && y0 == y1 {
+				return
+			}
+			e2 := 2 * err
+			if e2 > -dy {
+				err -= dy
+				x0 += sx
+				o += sx
+			}
+			if e2 < dx {
+				err += dx
+				y0 += sy
+				o += step
+			}
+		}
+	}
 	for {
 		sf.SetPixel(x0, y0, c)
 		if x0 == x1 && y0 == y1 {

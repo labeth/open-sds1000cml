@@ -54,3 +54,16 @@ func BenchmarkEncodePNG(b *testing.B) {
 		EncodePNG(m)
 	}
 }
+
+// TRLC-LINKS: REQ-SDS-021
+func BenchmarkDrawTraceSparse(b *testing.B) {
+	sig := make([]uint8, 1000)
+	for i := range sig {
+		sig[i] = uint8(128 + 90*((i/37)%2*2-1) + i%13)
+	}
+	sf := NewMemSurface()
+	for b.Loop() {
+		drawTrace(sf, sig, 400, 500, false, 0xffe0, 0.5)
+		drawTrace(sf, sig, 300, 500, true, 0x07ff, 0.5)
+	}
+}
