@@ -4,8 +4,8 @@ package panel
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"math"
+	"strconv"
 
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/sramcapture"
@@ -184,7 +184,12 @@ func (c *Controller) srFPGARun() {
 // (written for every record the session takes).
 // TRLC-LINKS: REQ-SDS-141
 func srRecordText(done, total int) string {
-	return "FPGA: record " + strconv.Itoa(done) + "/" + strconv.Itoa(total) + "..."
+	var b [48]byte
+	t := append(b[:0], "FPGA: record "...)
+	t = strconv.AppendInt(t, int64(done), 10)
+	t = append(t, '/')
+	t = strconv.AppendInt(t, int64(total), 10)
+	return string(append(t, "..."...))
 }
 
 // fpgaReviewSpan places an FPGA stack of n samples for review: one screen of
