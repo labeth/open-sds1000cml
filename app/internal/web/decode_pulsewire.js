@@ -9,10 +9,11 @@
 function levelRuns(S) {
   const E = S.edges;
   if (!E.length) return [{ lvl: logicAt(S, 0), x0: 0, x1: S.n, open: true }];
-  const out = [{ lvl: E[0].dir > 0 ? 0 : 1, x0: 0, x1: E[0].x, open: true }];
+  const out = new Array(E.length + 1); // sized once, not grown a run at a time
+  out[0] = { lvl: E[0].dir > 0 ? 0 : 1, x0: 0, x1: E[0].x, open: true };
   for (let k = 0; k < E.length; k++) {
     const last = k + 1 >= E.length;
-    out.push({ lvl: E[k].dir > 0 ? 1 : 0, x0: E[k].x, x1: last ? S.n : E[k + 1].x, open: last });
+    out[k + 1] = { lvl: E[k].dir > 0 ? 1 : 0, x0: E[k].x, x1: last ? S.n : E[k + 1].x, open: last };
   }
   return out;
 }
@@ -150,10 +151,10 @@ function decodeWS281x(codes, colTimeS, cfg) {
       lo = Math.min(lo, b.hi); hi = Math.max(hi, b.hi);
       if (b.per > 0) pers.push(b.per);
     }
-    pers.sort((a, b) => a - b);
-    const med = pers.length ? pers[pers.length >> 1] : 0;
-    let steady = pers.length > 0;
-    for (const p of pers) steady = steady && p >= 0.75 * med && p <= 1.25 * med;
+    const ps = Float64Array.from(pers).sort(); // numeric without a comparator call
+    const med = ps.length ? ps[ps.length >> 1] : 0;
+    let steady = ps.length > 0;
+    for (const p of ps) steady = steady && p >= 0.75 * med && p <= 1.25 * med;
     spans.push(pspan(frame[0].x0, frame[0].x0, n, "", "sof", 0));
     const nb = Math.floor(frame.length / 8);
     for (let b = 0; b < nb; b++) {
