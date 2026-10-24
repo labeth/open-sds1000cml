@@ -291,6 +291,8 @@ function updateTriggerQualifiers(q) {
   };
   for (const [id, value] of Object.entries(values)) {
     const el = $(id);
-    if (el && document.activeElement !== el && !(el._userAt && performance.now() - el._userAt < 1500) && Number.isFinite(value)) el.value = value;
+    // written only when it differs (loosely: the input reads back a string):
+    // every status carries the qualifiers
+    if (el && document.activeElement !== el && !(el._userAt && performance.now() - el._userAt < 1500) && Number.isFinite(value) && el.value != value) el.value = value; // eslint-disable-line eqeqeq
   }
 }
