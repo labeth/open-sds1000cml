@@ -153,3 +153,27 @@ func BenchmarkProbe(b *testing.B) {
 		a.probe(false)
 	}
 }
+
+// The logs RPC tails the agent log (8 KiB by default).
+// TRLC-LINKS: REQ-SDS-115
+func BenchmarkTailFile(b *testing.B) {
+	p := filepath.Join(b.TempDir(), "agent.log")
+	os.WriteFile(p, make([]byte, 256<<10), 0o644)
+	for b.Loop() {
+		if t, err := tailFile(p, 8192); err != nil || len(t) != 8192 {
+			b.Fatal(err)
+		}
+	}
+}
+
+// A heartbeat as it goes on the wire.
+// TRLC-LINKS: REQ-SDS-108
+func BenchmarkHeartbeatJSON(b *testing.B) {
+	a := benchAgent(b)
+	hb := a.heartbeat()
+	for b.Loop() {
+		if _, err := json.Marshal(hb); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
