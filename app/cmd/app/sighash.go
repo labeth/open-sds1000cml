@@ -5,6 +5,7 @@ import (
 	"hash/maphash"
 	"math"
 	"reflect"
+	"sync"
 )
 
 // sigHash is a 64-bit fingerprint of values walked by reflection: the
@@ -80,9 +81,9 @@ func (h *sigHash) add(v reflect.Value) {
 			h.add(v.Index(i))
 		}
 	case reflect.Struct:
-		t := v.Type()
+		skip := sigSkips(v.Type())
 		for i := 0; i < v.NumField(); i++ {
-			if t.Field(i).Tag.Get("sig") == "-" { // a generation field stands for it
+			if skip[i] { // a generation field stands for it
 				continue
 			}
 			h.add(v.Field(i))
@@ -110,6 +111,24 @@ func (h *sigHash) add(v reflect.Value) {
 		}
 		h.word(uint64(sum))
 	}
+}
+
+// sigSkipCache holds each struct type's sig:"-" fields: reading the tags
+// field by field, every tick, cost more than hashing the values.
+var sigSkipCache sync.Map // reflect.Type -> []bool
+
+// sigSkips reports which of t's fields the fingerprint leaves out.
+// TRLC-LINKS: REQ-SDS-168
+func sigSkips(t reflect.Type) []bool {
+	if s, ok := sigSkipCache.Load(t); ok {
+		return s.([]bool)
+	}
+	s := make([]bool, t.NumField())
+	for i := range s {
+		s[i] = t.Field(i).Tag.Get("sig") == "-"
+	}
+	sigSkipCache.Store(t, s)
+	return s
 }
 
 // addAny feeds x, tagged so that adjacent values do not run together.

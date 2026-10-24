@@ -330,7 +330,7 @@ type renderSig struct {
 	// banner, the notices, the trigger readout, decode parameters (a softkey
 	// that changes only a value, e.g. TRIGGER Type Pulse->Slope while
 	// stopped, must not leave the old value on screen).
-	extra string
+	extra uint64
 }
 
 // statusSlot is what the top bar's status slot shows (lcd.DrawStatusSlot).
@@ -382,12 +382,58 @@ func renderSigOf(f *engine.Frame, hud lcd.HUD, live bool) renderSig {
 		streamOn: hud.StreamOn, streamState: int(hud.Stream.State), streamList: hud.StreamList,
 		streamTop: hud.StreamPage.Top, streamTotal: hud.StreamPage.Total, streamTrig: hud.StreamPage.TriggerLine,
 		streamSlot: streamSlot(hud),
-		extra: fmt.Sprint(hud.AutosetBusy, hud.AutosetMsg, hud.Remote, hud.MeasItems, hud.FFTSrc,
-			hud.TrigSrc, hud.TrigRising, hud.TrigLvlV, hud.TrigPosFrac, hud.Waiting,
-			hud.TrigType, hud.TrigQual, hud.SerialArmed, hud.SerialMatch, hud.ZoneTrig,
-			hud.Zoom1, hud.Zoom2, hud.ChanExplicit, hud.DecBaud, hud.DecChA, hud.DecChB,
-			hud.DecCPOL, hud.DecCPHA, hud.DecFormat, hud.MaskMsg, hud.SRStatus, hud.Notice, hud.Match),
+		extra:      hudExtraSig(&hud),
 	}
+}
+
+// hudExtraSig fingerprints the rest of the HUD a held display shows,
+// value by value: printing them with fmt every tick allocated a string.
+// TRLC-LINKS: REQ-SDS-168
+func hudExtraSig(hud *lcd.HUD) uint64 {
+	h := sigOffset
+	flag := func(b bool) {
+		if b {
+			h.byte1(1)
+		} else {
+			h.byte1(0)
+		}
+	}
+	num := func(v int) { h.word(uint64(v)) }
+	flt := func(v float64) { h.word(math.Float64bits(v)) }
+	flag(hud.AutosetBusy)
+	h.str(hud.AutosetMsg)
+	h.str(hud.Remote)
+	num(len(hud.MeasItems))
+	for _, m := range hud.MeasItems {
+		h.str(m)
+	}
+	num(hud.FFTSrc)
+	num(hud.TrigSrc)
+	flag(hud.TrigRising)
+	flt(hud.TrigLvlV)
+	flt(hud.TrigPosFrac)
+	flag(hud.Waiting)
+	num(hud.TrigType)
+	q := hud.TrigQual // a copy: a field's address would move the whole HUD to the heap
+	h.add(reflect.ValueOf(&q).Elem())
+	flag(hud.SerialArmed)
+	h.str(hud.SerialMatch)
+	flag(hud.ZoneTrig)
+	num(hud.Zoom1)
+	num(hud.Zoom2)
+	flag(hud.ChanExplicit)
+	num(hud.DecBaud)
+	num(hud.DecChA)
+	num(hud.DecChB)
+	flag(hud.DecCPOL)
+	flag(hud.DecCPHA)
+	num(hud.DecFormat)
+	h.str(hud.MaskMsg)
+	h.str(hud.SRStatus)
+	h.str(hud.Notice)
+	m := hud.Match
+	h.add(reflect.ValueOf(&m).Elem())
+	return uint64(h)
 }
 
 // runLCD drives the device panel at the 50 ms display cadence (spec 07 §8 —

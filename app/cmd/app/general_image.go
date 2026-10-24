@@ -20,7 +20,18 @@ func loadGeneralImage(fd int) error {
 	if fb, err := lcd.OpenFB(); err == nil {
 		defer fb.Close()
 		surface := lcd.NewMemSurface()
-		show = func(stage string, sent, total int) { lcd.DrawLoading(surface, stage, sent, total); fb.Present(surface) }
+		shown := false
+		show = func(stage string, sent, total int) {
+			lcd.DrawLoading(surface, stage, sent, total)
+			if !shown || stage == "Firmware loading failed" {
+				fb.Present(surface)
+				shown = true
+				return
+			}
+			// Progress, inside the real-time shift: only the stage, bar and
+			// percentage rows change, a seventh of the screen to copy.
+			fb.PresentRows(surface, 215, 330)
+		}
 	} else {
 		logf("loading display unavailable: %v", err)
 	}

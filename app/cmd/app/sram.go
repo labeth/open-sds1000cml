@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -105,11 +106,22 @@ func sramHealthLoop(ctx context.Context, capture *sramcapture.Capture, path stri
 		if !qualified.Load() || beats == previous {
 			continue
 		}
-		token := []byte(fmt.Sprintf("mode=diag backend=sram beats=%d ts=%d\n", beats, time.Now().UnixNano()))
+		token := sramHealthToken(beats, time.Now().UnixNano())
 		if e := os.WriteFile(path+".tmp", token, 0o644); e == nil {
 			if e = os.Rename(path+".tmp", path); e == nil {
 				previous = beats
 			}
 		}
 	}
+}
+
+// sramHealthToken is the SRAM mode's health token, written without fmt.
+// TRLC-LINKS: REQ-SDS-169
+func sramHealthToken(beats uint64, ts int64) []byte {
+	b := make([]byte, 0, 64)
+	b = append(b, "mode=diag backend=sram beats="...)
+	b = strconv.AppendUint(b, beats, 10)
+	b = append(b, " ts="...)
+	b = strconv.AppendInt(b, ts, 10)
+	return append(b, '\n')
 }
