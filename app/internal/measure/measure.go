@@ -12,7 +12,7 @@ package measure
 
 import (
 	"math"
-	"slices"
+	"unsafe"
 )
 
 // Result is the full auto-measurement set: volts, seconds and Hz. HasTiming is
@@ -443,18 +443,65 @@ func compute[T ~uint8 | ~uint16](sig []T, voltsPerCode, offV, sampleS, scale flo
 	}
 	var hist [256]int // on the stack: no allocation a measurement
 	coarse := hist[:]
-	for _, v := range sig {
-		iv := int(v)
-		if iv < cmin {
-			cmin = iv
+	var lowSum *[256]uint32
+	if unsafe.Sizeof(sig[0]) == 1 {
+		// 8-bit codes: the histogram alone gives the extremes and both
+		// moments, so a sample costs one count instead of a 64-bit
+		// multiply-accumulate and two compares. Four tables keep runs of
+		// equal codes from waiting on the previous increment's store.
+		var h [4][256]int32
+		i := 0
+		for ; i+4 <= n; i += 4 {
+			h[0][uint8(sig[i])]++
+			h[1][uint8(sig[i+1])]++
+			h[2][uint8(sig[i+2])]++
+			h[3][uint8(sig[i+3])]++
 		}
-		if iv > cmax {
-			cmax = iv
+		for ; i < n; i++ {
+			h[0][uint8(sig[i])]++
 		}
-		delta := int64(iv - reference)
-		sum += delta
-		sum2 += delta * delta
-		coarse[min(iv>>shift, 255)]++
+		cmin = -1
+		for c := range hist {
+			k := int(h[0][c] + h[1][c] + h[2][c] + h[3][c])
+			if k == 0 {
+				continue
+			}
+			hist[c] = k
+			if cmin < 0 {
+				cmin = c
+			}
+			cmax = c
+			d := int64(c - reference)
+			sum += d * int64(k)
+			sum2 += d * d * int64(k)
+		}
+	} else {
+		// A 16-bit delta's square fits 32 bits: one multiply a sample, not
+		// this core's 64x64 sequence. Each code's low-byte sum gives the
+		// settled levels (below) without a second pass; it fits 32 bits up
+		// to 2^24 samples a code.
+		var sq uint64
+		lowSum = new([256]uint32)
+		for _, v := range sig {
+			iv := int(v)
+			if iv < cmin {
+				cmin = iv
+			}
+			if iv > cmax {
+				cmax = iv
+			}
+			delta := iv - reference
+			sum += int64(delta)
+			ad := uint32(delta)
+			if delta < 0 {
+				ad = uint32(-delta)
+			}
+			sq += uint64(ad * ad)
+			c := min(iv>>shift, 255)
+			coarse[c]++
+			lowSum[c] += uint32(iv & 0xff)
+		}
+		sum2 = int64(sq)
 	}
 	meanDelta := float64(sum) / float64(n)
 	mean := float64(reference) + meanDelta
@@ -487,14 +534,25 @@ func compute[T ~uint8 | ~uint16](sig []T, voltsPerCode, offV, sampleS, scale flo
 		// (~2.6e10) wraps it, so a single shot would measure top -6.35 V and
 		// base -4.82 V on a 0-3.3 V square.
 		var nTop, sumTop, nBase, sumBase int64
-		for _, v := range sig {
-			switch int(v) >> shift {
-			case topC:
-				nTop++
-				sumTop += int64(v)
-			case baseC:
-				nBase++
-				sumBase += int64(v)
+		if shift == 8 && n < 1<<24 {
+			if topC >= 0 {
+				nTop = int64(hist[topC])
+				sumTop = int64(topC)<<8*nTop + int64(lowSum[topC])
+			}
+			if baseC >= 0 {
+				nBase = int64(hist[baseC])
+				sumBase = int64(baseC)<<8*nBase + int64(lowSum[baseC])
+			}
+		} else {
+			for _, v := range sig {
+				switch int(v) >> shift {
+				case topC:
+					nTop++
+					sumTop += int64(v)
+				case baseC:
+					nBase++
+					sumBase += int64(v)
+				}
 			}
 		}
 		settled := func(code int, n, sum int64) int {
@@ -551,42 +609,66 @@ func compute[T ~uint8 | ~uint16](sig []T, voltsPerCode, offV, sampleS, scale flo
 	midCode := int(math.Ceil(mid50))
 	lowCode := int(math.Floor(mid50 - hyst))
 	highCode := int(math.Ceil(mid50 + hyst))
+	// The Schmitt walk scans for one condition at a time (integer compares
+	// only: a float compare stalls this core's pipeline every sample).
+	// lowCode < midCode <= highCode, so a rise starts below midCode and a
+	// fall at or above it.
 	state := 0
-	candidate := -1.0
 	if int(sig[0]) <= lowCode {
 		state = -1
 	}
 	if int(sig[0]) >= highCode {
 		state = 1
 	}
-	for i := 1; i < n; i++ {
-		a, b := int(sig[i-1]), int(sig[i])
-		if state == 0 {
-			if b <= lowCode {
-				state = -1
-			}
-			if b >= highCode {
-				state = 1
-			}
-			continue
+	i := 1
+	for ; state == 0 && i < n; i++ {
+		if b := int(sig[i]); b <= lowCode {
+			state = -1
+		} else if b >= highCode {
+			state = 1
 		}
+	}
+walk:
+	for i < n {
 		if state < 0 {
-			if a < midCode && b >= midCode {
-				candidate = interp(float64(a), float64(b), i, mid50)
+			for i < n && int(sig[i]) < midCode {
+				i++
 			}
-			if b >= highCode && candidate >= 0 {
-				riseIdx = append(riseIdx, candidate)
-				state = 1
-				candidate = -1
+			if i == n {
+				break
+			}
+			candidate := interp(float64(sig[i-1]), float64(sig[i]), i, mid50)
+			for ; i < n; i++ {
+				b := int(sig[i])
+				if b >= highCode {
+					riseIdx = append(riseIdx, candidate)
+					state = 1
+					i++
+					continue walk
+				}
+				if b < midCode {
+					continue walk
+				}
 			}
 		} else {
-			if a >= midCode && b < midCode {
-				candidate = interp(float64(a), float64(b), i, mid50)
+			for i < n && int(sig[i]) >= midCode {
+				i++
 			}
-			if b <= lowCode && candidate >= 0 {
-				fallIdx = append(fallIdx, candidate)
-				state = -1
-				candidate = -1
+			if i == n {
+				break
+			}
+			candidate := interp(float64(sig[i-1]), float64(sig[i]), i, mid50)
+			for ; i < n; i++ {
+				b := int(sig[i])
+				if b <= lowCode {
+					fallIdx = append(fallIdx, candidate)
+					state = -1
+					i++
+					continue walk
+				}
+				if b >= midCode {
+					continue walk
+				}
 			}
 		}
 	}
@@ -655,12 +737,12 @@ func modeInRange(hist []int, lo, hi int) int {
 // record read a 104 MHz clock as 75 MHz.
 // TRLC-LINKS: REQ-SDS-017
 func cyclePeriod(idx []float64) float64 {
-	sorted := make([]float64, 0, len(idx)-1)
+	var buf [256]float64
+	gaps := buf[:0]
 	for k := 1; k < len(idx); k++ {
-		sorted = append(sorted, idx[k]-idx[k-1])
+		gaps = append(gaps, idx[k]-idx[k-1])
 	}
-	slices.Sort(sorted)
-	med := sorted[len(sorted)/2]
+	med := nthFloat(gaps, len(gaps)/2)
 	sum, n := 0.0, 0
 	for k := 1; k < len(idx); k++ { // the gaps again, in their own order
 		if g := idx[k] - idx[k-1]; math.Abs(g-med) <= 0.25*med {
@@ -672,6 +754,39 @@ func cyclePeriod(idx []float64) float64 {
 		return med
 	}
 	return sum / float64(n)
+}
+
+// nthFloat returns the value sorting would put at x[k] (Hoare selection,
+// reordering x): the median of a record's gaps without sorting them.
+// TRLC-LINKS: REQ-SDS-017
+func nthFloat(x []float64, k int) float64 {
+	lo, hi := 0, len(x)-1
+	for lo < hi {
+		p := x[lo+(hi-lo)/2]
+		i, j := lo, hi
+		for i <= j {
+			for x[i] < p {
+				i++
+			}
+			for x[j] > p {
+				j--
+			}
+			if i <= j {
+				x[i], x[j] = x[j], x[i]
+				i++
+				j--
+			}
+		}
+		switch {
+		case k <= j:
+			hi = j
+		case k >= i:
+			lo = i
+		default:
+			return x[k]
+		}
+	}
+	return x[k]
 }
 
 // avgWidth returns the mean sample-count from each `from` crossing to the next
