@@ -58,11 +58,20 @@ func putFPGAField(words *[FPGAStackWords]uint16, offset, width int, value [2]uin
 
 // TRLC-LINKS: REQ-SDS-141
 func getFPGAField(words []uint16, offset, width int) (value [2]uint64) {
-	for bit := 0; bit < width; bit++ {
+	// A word's bits at a time, not one by one.
+	for bit := 0; bit < width; {
 		p := offset + bit
-		if words[p/16]&(uint16(1)<<uint(p%16)) != 0 {
-			value[bit/64] |= uint64(1) << uint(bit%64)
+		n := min(16-p%16, width-bit)
+		w := uint64(words[p/16]>>uint(p%16)) & (1<<uint(n) - 1)
+		if bit < 64 {
+			value[0] |= w << uint(bit)
+			if bit+n > 64 {
+				value[1] |= w >> uint(64-bit)
+			}
+		} else {
+			value[1] |= w << uint(bit-64)
 		}
+		bit += n
 	}
 	return value
 }

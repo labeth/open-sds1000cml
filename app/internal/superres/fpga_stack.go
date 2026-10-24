@@ -9,8 +9,22 @@ import (
 // fpgaQ converts an unsigned little-endian 128-bit limb pair scaled by 2^-shift.
 // TRLC-LINKS: REQ-SDS-141
 func fpgaQ(v [2]uint64, shift int) float64 {
-	return math.Ldexp(float64(v[0])+math.Ldexp(float64(v[1]), 64), -shift)
+	// Scaling by powers of two is exact: the products are Ldexp's values
+	// without its calls (two a moment field, five fields a bin).
+	scale := q24
+	if shift == 48 {
+		scale = q48
+	} else if shift != 24 {
+		return math.Ldexp(float64(v[0])+math.Ldexp(float64(v[1]), 64), -shift)
+	}
+	return (float64(v[0]) + float64(v[1])*0x1p64) * scale
 }
+
+// q24, q48 are 2^-24 and 2^-48, the moments' fixed-point scales.
+const (
+	q24 = 0x1p-24
+	q48 = 0x1p-48
+)
 
 // FPGAStack loads edge-locked FPGA moments (ADR-STACKING-IMAGE-SPLIT) into a
 // Stack so Result reports the same mean, split-stack noise and bits gained as

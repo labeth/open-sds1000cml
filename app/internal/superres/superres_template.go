@@ -45,10 +45,13 @@ func buildTemplate(ref []float32, n int, edgeX float64, valid int) *template {
 		}
 		mr[i] = float64(mx - mn)
 	}
+	// The 20th percentile and the peak, selected, not sorted.
 	sorted := append([]float64(nil), mr[lo0:hi0]...)
-	sortFloat(sorted)
-	floor := sorted[int(float64(len(sorted))*0.2)]
-	peak := sorted[len(sorted)-1]
+	peak := sorted[0]
+	for _, v := range sorted {
+		peak = max(peak, v)
+	}
+	floor := selectKth(sorted, int(float64(len(sorted))*0.2))
 	if peak-floor < 6 {
 		return nil
 	}

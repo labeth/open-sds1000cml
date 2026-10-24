@@ -231,6 +231,10 @@ func compFFT(re, im []float64, inverse bool) {
 			im[i], im[j] = im[j], im[i]
 		}
 	}
+	// Each level's twiddles follow one recurrence from 1 at every block's
+	// start: made once a level they are the very values each block made, and
+	// the butterflies no longer wait on the recurrence.
+	twr, twi := make([]float64, n/2), make([]float64, n/2)
 	for length := 2; length <= n; length <<= 1 {
 		sign := -2.0
 		if inverse {
@@ -239,27 +243,34 @@ func compFFT(re, im []float64, inverse bool) {
 		ang := sign * math.Pi / float64(length)
 		wr, wi := math.Cos(ang), math.Sin(ang)
 		half := length / 2
+		cr, ci := 1.0, 0.0
+		for k := 0; k < half; k++ {
+			twr[k], twi[k] = cr, ci
+			u1 := cr * wr
+			u2 := ci * wi
+			ncr := u1 - u2
+			u3 := cr * wi
+			u4 := ci * wr
+			ci = u3 + u4
+			cr = ncr
+		}
 		for i := 0; i < n; i += length {
-			cr, ci := 1.0, 0.0
-			for k := 0; k < half; k++ {
-				a, b := i+k, i+k+half
-				t1 := re[b] * cr
-				t2 := im[b] * ci
+			ar, ai := re[i:i+half], im[i:i+half]
+			br, bi := re[i+half:i+length], im[i+half:i+length]
+			ai, br, bi = ai[:len(ar)], br[:len(ar)], bi[:len(ar)]
+			cs, sn := twr[:len(ar)], twi[:len(ar)]
+			for k := range ar {
+				cr, ci := cs[k], sn[k]
+				t1 := br[k] * cr
+				t2 := bi[k] * ci
 				xr := t1 - t2
-				t3 := re[b] * ci
-				t4 := im[b] * cr
+				t3 := br[k] * ci
+				t4 := bi[k] * cr
 				xi := t3 + t4
-				re[b] = re[a] - xr
-				im[b] = im[a] - xi
-				re[a] += xr
-				im[a] += xi
-				u1 := cr * wr
-				u2 := ci * wi
-				ncr := u1 - u2
-				u3 := cr * wi
-				u4 := ci * wr
-				ci = u3 + u4
-				cr = ncr
+				br[k] = ar[k] - xr
+				bi[k] = ai[k] - xi
+				ar[k] += xr
+				ai[k] += xi
 			}
 		}
 	}
@@ -281,8 +292,13 @@ func compResample(src []float64, m, nDst int) []float64 {
 		t := float64(j) * ratio
 		i0 := int(math.Floor(t))
 		w := t - float64(i0)
-		a := src[i0%m]
-		b := src[(i0+1)%m]
+		// i0 is within [0, m): the wrap needs a compare, not two divisions.
+		i1 := i0 + 1
+		if i1 == m {
+			i1 = 0
+		}
+		a := src[i0]
+		b := src[i1]
 		p1 := a * (1 - w)
 		p2 := b * w
 		dst[j] = p1 + p2

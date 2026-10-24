@@ -17,7 +17,6 @@ package superres
 
 import (
 	"math"
-	"sort"
 )
 
 // jsRound mirrors JS Math.round (round half UP, toward +Inf): base/shift are
@@ -132,17 +131,51 @@ func median(a []float64) float64 {
 		return 0
 	}
 	s := append([]float64(nil), a...)
-	sortFloat(s)
-	return s[len(s)>>1]
+	return selectKth(s, len(s)>>1)
 }
 
+// selectKth is the value sorting a would put at index k, found by
+// quickselect in place (a is reordered): the element a sort gives, in linear
+// time where the sort of a fine grid's sigmas took most of a Result.
 // TRLC-LINKS: REQ-SDS-141
-func sortFloat(a []float64) {
-	// The library sort: the result's sigma takes medians over the whole fine
-	// grid (K x samples, ~176k at x32), where an insertion sort spends 27% of
-	// the device CPU and holds stacking to a frame every ~2 s. Equal floats are
-	// indistinguishable, so order matches JS.
-	sort.Float64s(a)
+func selectKth(a []float64, k int) float64 {
+	lo, hi := 0, len(a)-1
+	for lo < hi {
+		mid := lo + (hi-lo)/2
+		if a[mid] < a[lo] {
+			a[mid], a[lo] = a[lo], a[mid]
+		}
+		if a[hi] < a[lo] {
+			a[hi], a[lo] = a[lo], a[hi]
+		}
+		if a[hi] < a[mid] {
+			a[hi], a[mid] = a[mid], a[hi]
+		}
+		p := a[mid]
+		i, j := lo, hi
+		for i <= j {
+			for a[i] < p {
+				i++
+			}
+			for a[j] > p {
+				j--
+			}
+			if i <= j {
+				a[i], a[j] = a[j], a[i]
+				i++
+				j--
+			}
+		}
+		switch {
+		case k <= j:
+			hi = j
+		case k >= i:
+			lo = i
+		default:
+			return a[k]
+		}
+	}
+	return a[k]
 }
 
 // TRLC-LINKS: REQ-SDS-141

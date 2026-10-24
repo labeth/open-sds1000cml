@@ -2,7 +2,6 @@
 package superres
 
 import (
-	"math"
 	"strconv"
 )
 
@@ -16,10 +15,15 @@ func (st *Stack) drizzleHit(ch int, sig []float32, p float64, odd bool) {
 	K, G, n := st.K, st.Nbins, st.N
 	C := &st.C[ch]
 	invK := 1.0 / float64(K)
-	for b := 0; b < G; b++ {
+	sum, sum2, cnt := C.sum[:G], C.sum2[:G], C.cnt[:G]
+	sumA, cntA := C.sumA[:G], C.cntA[:G]
+	for b := range sum {
 		t := p + float64(b)*invK
-		i0 := int(math.Floor(t))
-		if i0 < 0 || i0+1 >= n {
+		if t < 0 { // before the frame (math.Floor's negative case)
+			continue
+		}
+		i0 := int(t) // the floor of t >= 0
+		if i0+1 >= n {
 			continue
 		}
 		w := t - float64(i0)
@@ -27,12 +31,12 @@ func (st *Stack) drizzleHit(ch int, sig []float32, p float64, odd bool) {
 		bb := float64(sig[i0+1]) * w
 		v := a + bb
 		p2 := v * v // materialize (no FMA fuse)
-		C.sum[b] += v
-		C.sum2[b] += p2
-		C.cnt[b]++
+		sum[b] += v
+		sum2[b] += p2
+		cnt[b]++
 		if odd {
-			C.sumA[b] += v
-			C.cntA[b]++
+			sumA[b] += v
+			cntA[b]++
 		}
 	}
 }
@@ -184,10 +188,15 @@ func (st *Stack) accumCh(ch int, sig []float32, shift float64) {
 	C := &st.C[ch]
 	odd := (st.Frames & 1) == 1
 	invK := 1.0 / float64(K)
-	for bi := 0; bi < nb; bi++ {
+	sum, sum2, cnt := C.sum[:nb], C.sum2[:nb], C.cnt[:nb]
+	sumA, cntA := C.sumA[:nb], C.cntA[:nb]
+	for bi := range sum {
 		t := float64(bi)*invK + shift
-		i0 := int(math.Floor(t))
-		if i0 < 0 || i0+1 >= n {
+		if t < 0 { // before the frame (math.Floor's negative case)
+			continue
+		}
+		i0 := int(t) // the floor of t >= 0
+		if i0+1 >= n {
 			continue
 		}
 		w := t - float64(i0)
@@ -195,12 +204,12 @@ func (st *Stack) accumCh(ch int, sig []float32, shift float64) {
 		bb := float64(sig[i0+1]) * w
 		v := a + bb
 		p := v * v
-		C.sum[bi] += v
-		C.sum2[bi] += p
-		C.cnt[bi]++
+		sum[bi] += v
+		sum2[bi] += p
+		cnt[bi]++
 		if odd {
-			C.sumA[bi] += v
-			C.cntA[bi]++
+			sumA[bi] += v
+			cntA[bi]++
 		}
 	}
 }

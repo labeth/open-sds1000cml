@@ -52,12 +52,17 @@ func BuildFPGATemplate(sig []float64, sampleS, edgeX float64, level float64, fal
 	}
 	start := int(math.Round(edgeX))
 	crossing := -1.0
+	at := func(i int) bool { // a crossing at i, recorded
+		if i >= 0 && i+1 < len(sig) && crosses(i) {
+			crossing = float64(i) + (level-sig[i])/(sig[i+1]-sig[i])
+			return true
+		}
+		return false
+	}
 	for d := 0; d < len(sig) && crossing < 0; d++ {
-		for _, i := range []int{start - d, start + d} {
-			if i >= 0 && i+1 < len(sig) && crosses(i) {
-				crossing = float64(i) + (level-sig[i])/(sig[i+1]-sig[i])
-				break
-			}
+		// Before the trigger, then after: two checks, no slice a step.
+		if !at(start - d) {
+			at(start + d)
 		}
 	}
 	if crossing < 0 {

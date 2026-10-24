@@ -355,11 +355,17 @@ func (st *Stack) gateFind(sig []uint8, base, R int) []hit {
 	}
 	M := hi - lo + 1
 	ncc := make([]float64, M)
+	// The window's sum runs along with it: whole codes, so the integer sum
+	// is exactly the float sum the mean took sample by sample.
+	run := 0
+	for i := 0; i < L; i++ {
+		run += int(sig[lo+i])
+	}
 	for loc := lo; loc <= hi; loc++ {
-		mean := 0.0
-		for i := 0; i < L; i++ {
-			mean += float64(sig[loc+i])
+		if loc > lo {
+			run += int(sig[loc+L-1]) - int(sig[loc-1])
 		}
+		mean := float64(run)
 		mean /= float64(L)
 		dot, ss := 0.0, 0.0
 		for i := 0; i < L; i++ {

@@ -58,7 +58,10 @@ func (st *Stack) Result(statsOnly bool, stride int) Result {
 	if s := int(math.Ceil(float64(span) / 4096)); s > statStride {
 		statStride = s
 	}
-	var sigSingles, halves, cnts []float64
+	steps := (statHi - statLo + statStride - 1) / statStride
+	sigSingles := make([]float64, 0, max(0, steps)) // sized once: no regrowth
+	halves := make([]float64, 0, max(0, steps))
+	cnts := make([]float64, 0, max(0, steps))
 	filled, scanned := 0, 0
 	for b := statLo; b < statHi; b += statStride {
 		c := A.cnt[b]
@@ -87,11 +90,10 @@ func (st *Stack) Result(statsOnly bool, stride int) Result {
 	sigmaSingle := median(sigSingles)
 	sigmaStack, sigmaMeasured := 0.0, true
 	if len(halves) >= 16 {
-		absh := make([]float64, len(halves))
-		for i, v := range halves {
-			absh[i] = math.Abs(v)
+		for i, v := range halves { // in place: halves is not read again
+			halves[i] = math.Abs(v)
 		}
-		sigmaStack = 1.4826 * median(absh)
+		sigmaStack = 1.4826 * median(halves)
 	}
 	sigmaStackTheory := 0.0
 	if sigmaSingle > 0 && len(cnts) > 0 {
