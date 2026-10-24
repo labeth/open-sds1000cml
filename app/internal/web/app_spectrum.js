@@ -82,9 +82,12 @@ function drawMiniTrace() {
       const n = src.length;
       g.beginPath();
       let pen = false;
+      // a column's first index is where the last one's floor landed: one floor a column
+      let next = Math.floor((h.a + (h.b - h.a) * 0 / W) * (n - 1));
       for (let x = 0; x < W; x++) {
-        const a = Math.max(0, Math.floor((h.a + (h.b - h.a) * x / W) * (n - 1)));
-        const b = Math.min(n - 1, Math.max(a, Math.floor((h.a + (h.b - h.a) * (x + 1) / W) * (n - 1))));
+        const a = Math.max(0, next);
+        next = Math.floor((h.a + (h.b - h.a) * (x + 1) / W) * (n - 1));
+        const b = Math.min(n - 1, Math.max(a, next));
         let lo = Infinity, hi = -Infinity;
         for (let i = a; i <= b; i++) { const v = src[i]; if (v < 0) continue; if (v < lo) lo = v; if (v > hi) hi = v; }
         if (hi < lo) { pen = false; continue; }
