@@ -8,7 +8,7 @@
 // nibble pulses (12..27 ticks => 0..15), optionally closed by a pause pulse.
 
 // TRLC-LINKS: REQ-SDS-018
-function sentHex1(v) { return (v & 0xf).toString(16).toUpperCase(); }
+function sentHex1(v) { return "0123456789ABCDEF"[v & 0xf]; } // a lookup, not toString + toUpperCase a nibble
 
 // sentCRC4Table is the SAE J2716 CRC-4 nibble table (polynomial x^4+x^3+x^2+1).
 const sentCRC4Table = [0, 13, 7, 10, 14, 3, 9, 4, 1, 12, 6, 11, 15, 2, 8, 5];
@@ -109,8 +109,9 @@ function decodeSENT(codes, colTimeS, cfg) {
       const val = Math.round(P / curTick) - 12;
       if (val < 0 || val > 15) {        // out-of-range pulse: a coding error
         const cv = val < 0 ? 0 : 15;
-        spans.push({ i0: fallI[k], i1: fallI[k + 1], text: "!" + sentHex1(cv), kind: "frame-error", val: cv });
-        toks.push("!" + sentHex1(cv));
+        const t = "!" + sentHex1(cv);
+        spans.push({ i0: fallI[k], i1: fallI[k + 1], text: t, kind: "frame-error", val: cv });
+        toks.push(t);
         frameNibs.push(cv);
         k++;
         continue;
@@ -126,8 +127,9 @@ function decodeSENT(codes, colTimeS, cfg) {
         toks.push(txt);
         bytes.push(val);
       } else {
-        spans.push({ i0: fallI[k], i1: fallI[k + 1], text: sentHex1(val), kind: "data", val });
-        toks.push(sentHex1(val));
+        const t = sentHex1(val);
+        spans.push({ i0: fallI[k], i1: fallI[k + 1], text: t, kind: "data", val });
+        toks.push(t);
         bytes.push(val);
       }
       k++;
