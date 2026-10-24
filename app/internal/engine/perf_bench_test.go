@@ -3,6 +3,7 @@ package engine
 
 import (
 	"math"
+	"slices"
 	"testing"
 	"time"
 
@@ -569,5 +570,103 @@ func BenchmarkSerialDecoder(b *testing.B) {
 	for b.Loop() {
 		serialDecoder(serUART)
 		serialDecoder(serI2C)
+	}
+}
+
+// TRLC-LINKS: REQ-SDS-231
+func BenchmarkRecordStuck(b *testing.B) {
+	c1, c2 := discernSig(100003), discernSig(100003)
+	for b.Loop() {
+		recordStuck(c1, c2)
+	}
+}
+
+// The stepped snapshot index is j·periods/m for every record length.
+// TRLC-LINKS: REQ-SDS-231
+func TestRecordStuckIndex(t *testing.T) {
+	for periods := 1; periods < 3000; periods += 7 {
+		m := min(periods, 512)
+		at, rem := 0, 0
+		step, frac := periods/m, periods%m
+		for j := 0; j < m; j++ {
+			if at != j*periods/m {
+				t.Fatalf("periods %d j %d: %d, want %d", periods, j, at, j*periods/m)
+			}
+			at += step
+			if rem += frac; rem >= m {
+				rem -= m
+				at++
+			}
+		}
+	}
+}
+
+// stuckCores by histogram names the cores the sorting version did.
+// TRLC-LINKS: REQ-SDS-231
+func TestStuckCoresSame(t *testing.T) {
+	ref := func(snaps [][10]uint8) uint16 {
+		n := len(snaps)
+		if n < adcSnaps/2 {
+			return 0
+		}
+		var stuck uint16
+		vals := make([]int, n)
+		for ch := 0; ch < 2; ch++ {
+			var held [5]bool
+			moving := false
+			for p := 0; p < 5; p++ {
+				for i, s := range snaps {
+					vals[i] = int(s[2*p+ch])
+				}
+				first, same := vals[0], true
+				for _, v := range vals {
+					same = same && v == first
+				}
+				held[p] = same
+				if same {
+					continue
+				}
+				slices.Sort(vals)
+				med, away := vals[n/2], 0
+				for _, v := range vals {
+					if v-med >= adcMoving || med-v >= adcMoving {
+						away++
+					}
+				}
+				if away >= n/8 {
+					moving = true
+				}
+			}
+			for p, h := range held {
+				if h && moving {
+					stuck |= 1 << (2*p + ch)
+				}
+			}
+		}
+		return stuck
+	}
+	for seed := 0; seed < 300; seed++ {
+		n := adcSnaps/2 + seed%400
+		snaps := make([][10]uint8, n)
+		for j := range snaps {
+			for k := 0; k < 10; k++ {
+				switch (seed + k) % 4 {
+				case 0: // held
+					snaps[j][k] = uint8(seed)
+				case 1: // moving widely
+					snaps[j][k] = uint8((j*7919 + k*31 + seed) % 256)
+				case 2: // a little noise
+					snaps[j][k] = uint8(128 + (j*seed+k)%3)
+				default: // mostly one code, sometimes away
+					snaps[j][k] = 100
+					if (j+seed)%7 == 0 {
+						snaps[j][k] = 200
+					}
+				}
+			}
+		}
+		if got, want := stuckCores(snaps), ref(snaps); got != want {
+			t.Fatalf("seed %d: %#x, want %#x", seed, got, want)
+		}
 	}
 }

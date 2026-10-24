@@ -4,7 +4,6 @@ package engine
 import (
 	"context"
 	"fmt"
-	"sort"
 	"strings"
 	"time"
 )
@@ -66,30 +65,33 @@ func stuckCores(snaps [][10]uint8) uint16 {
 		return 0
 	}
 	var stuck uint16
-	vals := make([]int, n)
 	for ch := 0; ch < 2; ch++ {
 		var held [5]bool
 		moving := false
 		for p := 0; p < 5; p++ {
-			for i, s := range snaps {
-				vals[i] = int(s[2*p+ch])
+			// the core's codes as a histogram: held is all of them one code,
+			// the median the code whose running count passes n/2 (what a sort
+			// put at n/2)
+			var hist [256]int
+			for _, s := range snaps {
+				hist[s[2*p+ch]]++
 			}
-			first, same := vals[0], true
-			for _, v := range vals {
-				if v != first {
-					same = false
-					break
-				}
-			}
+			same := hist[snaps[0][2*p+ch]] == n
 			held[p] = same
 			if same {
 				continue
 			}
-			sort.Ints(vals)
-			med, away := vals[n/2], 0
-			for _, v := range vals {
+			med, cum := 0, 0
+			for v, k := range hist {
+				if cum += k; cum > n/2 {
+					med = v
+					break
+				}
+			}
+			away := 0
+			for v, k := range hist {
 				if v-med >= adcMoving || med-v >= adcMoving {
-					away++
+					away += k
 				}
 			}
 			if away >= n/8 {
@@ -119,11 +121,19 @@ func recordStuck(c1, c2 []uint8) uint16 {
 		return 0
 	}
 	m := min(periods, 512)
-	snaps := make([][10]uint8, m)
+	var buf [512][10]uint8 // the snapshots, on the stack
+	snaps := buf[:m]
+	at, rem := 0, 0 // j·periods/m, stepped: a period index and its remainder
+	step, frac := periods/m, periods%m
 	for j := range snaps {
-		k := 5 * (j * periods / m)
+		k := 5 * at
 		for r := 0; r < 5; r++ {
 			snaps[j][2*r], snaps[j][2*r+1] = c1[k+r], c2[k+r]
+		}
+		at += step
+		if rem += frac; rem >= m {
+			rem -= m
+			at++
 		}
 	}
 	return stuckCores(snaps)
