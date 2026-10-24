@@ -348,7 +348,8 @@ function specFloor(ch) {
   if (!spec) return 0;
   if (spec._floor !== undefined) return spec._floor;
   const lo = Math.max(1, Math.floor(spec.half * 0.02)); // skip DC / near-DC
-  const tmp = Array.prototype.slice.call(spec.mags, lo, spec.half).sort((a, b) => a - b);
+  const m = spec.mags;
+  const tmp = Float64Array.from(m.subarray ? m.subarray(lo, spec.half) : m.slice(lo, spec.half)).sort(); // typed: numeric, no comparator call
   spec._floor = tmp.length ? tmp[tmp.length >> 1] : 0;
   return spec._floor;
 }
