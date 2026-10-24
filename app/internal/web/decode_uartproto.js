@@ -304,12 +304,21 @@ function decodeMIDI(codes, colTimeS, cfg) {
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-232
 function modbusCRC(b) {
   let c = 0xFFFF;
-  for (const v of b) {
-    c ^= v & 0xff;
-    for (let i = 0; i < 8; i++) c = (c & 1) ? (c >>> 1) ^ 0xA001 : c >>> 1;
-  }
+  for (const v of b) c = (c >>> 8) ^ MODBUS_CRC_TABLE[(c ^ v) & 0xff]; // a byte a step
   return c;
 }
+
+// MODBUS_CRC_TABLE is the reflected CRC-16 (0xA001) of each byte value: the
+// eight shift steps of a byte done once, at load.
+const MODBUS_CRC_TABLE = (() => {
+  const t = new Uint16Array(256);
+  for (let v = 0; v < 256; v++) {
+    let c = v;
+    for (let i = 0; i < 8; i++) c = (c & 1) ? (c >>> 1) ^ 0xA001 : c >>> 1;
+    t[v] = c;
+  }
+  return t;
+})();
 
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-232
 function modbusFrames(chars, spb) {
