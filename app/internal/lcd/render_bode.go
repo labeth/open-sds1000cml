@@ -4,6 +4,7 @@ package lcd
 import (
 	"fmt"
 	"math"
+	"strconv"
 )
 
 // drawBode renders the accumulated FRA / Bode curve: magnitude (dB, colC1) in
@@ -62,12 +63,8 @@ func drawBode(sf Surface, p plotArea, hud HUD) {
 			if m == 1 {
 				col = colAxis
 			}
-			for y := padT; y <= padT+magH; y++ {
-				sf.SetPixel(x, y, col)
-			}
-			for y := phY0; y <= phY0+phH; y++ {
-				sf.SetPixel(x, y, col)
-			}
+			vline(sf, x, padT, padT+magH, col)
+			vline(sf, x, phY0, phY0+phH, col)
 			if m == 1 {
 				lbl := fmtFreq(f)
 				if x-10+TextWidth(lbl, 1) > p.w-2 { // the last decade: inside the plot
@@ -88,9 +85,7 @@ func drawBode(sf Surface, p plotArea, hud HUD) {
 		if math.Abs(db) < 1e-6 {
 			col = colAxis
 		}
-		for x := plotL; x <= plotR; x++ {
-			sf.SetPixel(x, y, col)
-		}
+		hline(sf, plotL, plotR, y, col)
 		DrawTextRight(sf, plotL-4, y, g3(db), colDim, 1)
 	}
 	// phase horizontal gridlines + deg labels
@@ -101,27 +96,30 @@ func drawBode(sf Surface, p plotArea, hud HUD) {
 		if math.Abs(dg) < 1e-6 {
 			col = colAxis
 		}
-		for x := plotL; x <= plotR; x++ {
-			sf.SetPixel(x, y, col)
-		}
+		hline(sf, plotL, plotR, y, col)
 		DrawTextRight(sf, plotL-4, y, g3(dg), colDim, 1)
 	}
-	// traces
+	// traces: each point's position once (a logarithm per point)
+	pts := make([][3]int, n)
+	for i := range pts {
+		pts[i] = [3]int{xOf(hud.BodeFreq[i]), magYOf(hud.BodeGain[i]), phYOf(hud.BodePhase[i])}
+	}
 	for i := 1; i < n; i++ {
-		drawLine(sf, xOf(hud.BodeFreq[i-1]), magYOf(hud.BodeGain[i-1]), xOf(hud.BodeFreq[i]), magYOf(hud.BodeGain[i]), colC1)
-		drawLine(sf, xOf(hud.BodeFreq[i-1]), phYOf(hud.BodePhase[i-1]), xOf(hud.BodeFreq[i]), phYOf(hud.BodePhase[i]), colC2)
+		a, b := pts[i-1], pts[i]
+		drawLine(sf, a[0], a[1], b[0], b[1], colC1)
+		drawLine(sf, a[0], a[2], b[0], b[2], colC2)
 	}
 	// point dots
-	for i := 0; i < n; i++ {
-		fillRect(sf, xOf(hud.BodeFreq[i])-1, magYOf(hud.BodeGain[i])-1, 3, 3, colC1)
-		fillRect(sf, xOf(hud.BodeFreq[i])-1, phYOf(hud.BodePhase[i])-1, 3, 3, colC2)
+	for _, q := range pts {
+		fillRect(sf, q[0]-1, q[1]-1, 3, 3, colC1)
+		fillRect(sf, q[0]-1, q[2]-1, 3, 3, colC2)
 	}
 	if !hud.UI.Layout.HideViewCaptions {
 		DrawText(sf, plotL+2, padT-14, "dB", colC1, 1)
 	}
 	DrawText(sf, plotL+2, phY0-14, "phase deg", colC2, 1)
 	// In the plot gap, not the header row (it covered the trigger status).
-	DrawText(sf, plotL+2+TextWidth("phase deg  ", 1), phY0-14, fmt.Sprintf("%d pts", n), colDim, 1)
+	DrawText(sf, plotL+2+TextWidth("phase deg  ", 1), phY0-14, strconv.Itoa(n)+" pts", colDim, 1)
 	// SPECTRUM's marker on a sweep point, and its delta reference.
 	if m := hud.UI.Spec; m != nil && m.Bode {
 		if m.BodeRef >= 0 && m.BodeRef < n {
