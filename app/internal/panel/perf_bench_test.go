@@ -26,3 +26,11 @@ func BenchmarkWSView(b *testing.B) {
 		})
 	}
 }
+
+// TRLC-LINKS: REQ-SDS-212
+func BenchmarkWrapText(b *testing.B) {
+	s := "The chip or protocol the bus carries: the packet list, the strip and the web table name each transaction."
+	for b.Loop() {
+		wrapText(s, 38)
+	}
+}

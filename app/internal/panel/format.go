@@ -98,6 +98,9 @@ func cut(s string, n int) string {
 // wrapText breaks s into lines of at most n characters at spaces.
 // TRLC-LINKS: REQ-SDS-212
 func wrapText(s string, n int) []string {
+	if n > 0 && singleSpaced(s) {
+		return wrapSpaced(s, n)
+	}
 	var out []string
 	line := ""
 	for _, w := range strings.Fields(s) {
@@ -121,6 +124,61 @@ func wrapText(s string, n int) []string {
 	}
 	if line != "" {
 		out = append(out, line)
+	}
+	return out
+}
+
+// singleSpaced reports ASCII text whose words are parted by single spaces,
+// with none at either end: every line wrapText makes of it is a stretch of
+// it.
+// TRLC-LINKS: REQ-SDS-212
+func singleSpaced(s string) bool {
+	if s == "" || s[0] == ' ' || s[len(s)-1] == ' ' {
+		return false
+	}
+	for i := 0; i < len(s); i++ {
+		switch c := s[i]; {
+		case c >= 0x80, c == '\t', c == '\n', c == '\v', c == '\f', c == '\r':
+			return false
+		case c == ' ' && s[i-1] == ' ':
+			return false
+		}
+	}
+	return true
+}
+
+// wrapSpaced is wrapText on single-spaced text: its lines cut from s, not
+// built word by word.
+// TRLC-LINKS: REQ-SDS-212
+func wrapSpaced(s string, n int) []string {
+	out := make([]string, 0, len(s)/n+1)
+	a, b := 0, -1 // the line under way is s[a:b]; b < 0 none
+	for ws := 0; ws < len(s); {
+		we := ws
+		for we < len(s) && s[we] != ' ' {
+			we++
+		}
+		for we-ws > n {
+			if b >= 0 {
+				out = append(out, s[a:b])
+				b = -1
+			}
+			out = append(out, s[ws:ws+n])
+			ws += n
+		}
+		switch {
+		case b < 0:
+			a, b = ws, we
+		case b-a+1+we-ws <= n:
+			b = we
+		default:
+			out = append(out, s[a:b])
+			a, b = ws, we
+		}
+		ws = we + 1
+	}
+	if b >= 0 {
+		out = append(out, s[a:b])
 	}
 	return out
 }
