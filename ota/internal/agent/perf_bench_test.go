@@ -222,3 +222,16 @@ func BenchmarkIdleWait(b *testing.B) {
 		a.idleWait(time.Microsecond)
 	}
 }
+
+// A healthy app's supervisor tick past STABLE: the slot is confirmed already.
+// TRLC-LINKS: REQ-SDS-028
+func BenchmarkConfirmTick(b *testing.B) {
+	a := benchAgent(b)
+	a.store.Init()
+	a.store.SetActive("A")
+	a.store.SetConfirmed("A")
+	hs := healthStatus{HealthyOnce: true}
+	for b.Loop() {
+		a.confirmIfStable("A", false, hs, time.Hour)
+	}
+}
