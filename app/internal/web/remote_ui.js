@@ -77,6 +77,22 @@
       'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">' + (ICONS[name] || "") + "</svg>";
   }
 
+  // iconNode is icon's element: parsed once per icon and size, then cloned
+  // (screens rebuild their buttons whole).
+  const ICON_NODES = new Map();
+  // TRLC-LINKS: REQ-SDS-220
+  function iconNode(name, size) {
+    const k = name + "/" + (size || 22);
+    let n = ICON_NODES.get(k);
+    if (!n) {
+      const t = doc.createElement("template");
+      t.innerHTML = icon(name, size);
+      n = t.content.firstChild;
+      ICON_NODES.set(k, n);
+    }
+    return n.cloneNode(true);
+  }
+
   // ---- haptics --------------------------------------------------------------------------
 
   const VIBRATE = { tap: 8, detent: 4, long: 18, confirm: [10, 40, 10], warn: [30, 50, 30] };
@@ -155,7 +171,7 @@
   function button(o) {
     const b = h("button", { type: "button", class: "btn" + (o.cls ? " " + o.cls : "") + (o.sub !== undefined ? " col" : ""),
       "aria-label": o.aria || null, data: o.data || null });
-    if (o.icon) b.insertAdjacentHTML("beforeend", icon(o.icon, o.iconSize));
+    if (o.icon) b.appendChild(iconNode(o.icon, o.iconSize));
     if (o.label !== undefined) b.appendChild(h("span", { class: "lbl", text: o.label }));
     if (o.sub !== undefined) b.appendChild(h("span", { class: "sub", text: o.sub }));
     // TRLC-LINKS: REQ-SDS-220
