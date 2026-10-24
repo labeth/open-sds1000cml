@@ -351,9 +351,13 @@ function sndNiceStep(x) {
 // TRLC-LINKS: REQ-SDS-272
 function sndCycleMedian(cs) {
   // TRLC-LINKS: REQ-SDS-272
+  const v = new Float64Array(cs.length);
+  // the finite figures gathered into a typed array and sorted there (numeric,
+  // no comparator call), not mapped, filtered and sorted a figure
   const med = (k) => {
-    const v = cs.map((c) => c[k]).filter(Number.isFinite).sort((a, b) => a - b);
-    return v.length ? v[v.length >> 1] : NaN;
+    let n = 0;
+    for (const c of cs) { const x = c[k]; if (Number.isFinite(x)) v[n++] = x; }
+    return n ? v.subarray(0, n).sort()[n >> 1] : NaN;
   };
   return { periodS: med("periodS"), vpp: med("vpp"), dutyPct: med("dutyPct"), riseS: med("riseS"), fallS: med("fallS"), slewVus: med("slewVus"), n: cs.length };
 }
@@ -700,7 +704,7 @@ function sndSteady(key, obj) {
 function sndMedianOf(list) {
   const last = list[list.length - 1];
   if (typeof last === "number") {
-    const v = list.filter(Number.isFinite).sort((a, b) => a - b);
+    const v = Float64Array.from(list.filter(Number.isFinite)).sort(); // typed: numeric, no comparator call
     return v.length ? v[v.length >> 1] : last;
   }
   if (Array.isArray(last)) return last.map((x, i) => sndMedianOf(list.map((o) => (Array.isArray(o) ? o[i] : undefined)).filter((o) => o !== undefined)));
