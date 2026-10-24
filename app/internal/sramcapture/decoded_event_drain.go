@@ -18,15 +18,19 @@ import (
 func (c *Capture) DrainDecodedEvents(ctx context.Context, epoch uint32, dst io.Writer) (uint64, error) {
 	var delivered uint64
 	var sequence uint32
+	// A batch at a time where the fabric's FIFO gives batches: one locked
+	// sequence of reads drains up to 64 events, not one each.
+	var buf [64]DecodedEvent
+	var data [DecodedEventBytes]byte
 	for {
 		if err := ctx.Err(); err != nil {
 			return delivered, err
 		}
-		event, available, err := c.ReadDecodedEvent(epoch)
+		events, err := c.ReadDecodedEventsInto(epoch, buf[:])
 		if err != nil {
 			return delivered, err
 		}
-		if !available {
+		if len(events) == 0 {
 			timer := time.NewTimer(time.Millisecond)
 			select {
 			case <-ctx.Done():
@@ -36,21 +40,22 @@ func (c *Capture) DrainDecodedEvents(ctx context.Context, epoch uint32, dst io.W
 			}
 			continue
 		}
-		if event.Sequence != sequence {
-			return delivered, fmt.Errorf("sramcapture: decoded sequence gap: got %d expected %d", event.Sequence, sequence)
+		for _, event := range events {
+			if event.Sequence != sequence {
+				return delivered, fmt.Errorf("sramcapture: decoded sequence gap: got %d expected %d", event.Sequence, sequence)
+			}
+			if err := event.MarshalTo(data[:]); err != nil {
+				return delivered, err
+			}
+			n, err := dst.Write(data[:])
+			if err != nil {
+				return delivered, err
+			}
+			if n != len(data) {
+				return delivered, io.ErrShortWrite
+			}
+			delivered++
+			sequence++
 		}
-		data, err := event.MarshalBinary()
-		if err != nil {
-			return delivered, err
-		}
-		n, err := dst.Write(data)
-		if err != nil {
-			return delivered, err
-		}
-		if n != len(data) {
-			return delivered, io.ErrShortWrite
-		}
-		delivered++
-		sequence++
 	}
 }

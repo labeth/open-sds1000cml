@@ -178,3 +178,16 @@ func TestArmRoundTrips(t *testing.T) {
 		t.Fatalf("an Arm took %d round trips, want at most 13", a.trips)
 	}
 }
+
+// One event drained to a writer that ends the drain.
+// TRLC-LINKS: REQ-SDS-013
+func BenchmarkDrainDecodedEvent(b *testing.B) {
+	e := DecodedEvent{Epoch: 7, Kind: EventLoss, Count: 19, Sample: 100}
+	raw, _ := e.MarshalBinary()
+	for b.Loop() {
+		c := &Capture{bus: &eventBus{enabled: true, epoch: 7, data: raw, fail: -1}}
+		ctx, cancel := context.WithCancel(context.Background())
+		c.DrainDecodedEvents(ctx, 7, eventWriter(func(p []byte) (int, error) { cancel(); return len(p), nil }))
+		cancel()
+	}
+}

@@ -26,22 +26,22 @@ func (c *Capture) enableDecodedEvents(enabled bool) (uint32, error) {
 	if capability != 0x4501 {
 		return 0, fmt.Errorf("sramcapture: fabric lacks decoded event transport")
 	}
-	if err := c.write(57, 0); err != nil {
-		return 0, err
-	}
-	if err := c.write(60, 2); err != nil {
-		return 0, err
-	}
+	regs := [][2]uint16{{57, 0}, {60, 2}}
 	if enabled {
 		// Allocate the normal batch buffer before the producer starts.
 		if cap(c.decodedScratch) < 512*DecodedEventBytes {
 			c.decodedScratch = make([]byte, 512*DecodedEventBytes)
 		}
-		if err := c.write(57, 1); err != nil {
-			return 0, err
-		}
+		regs = append(regs, [2]uint16{57, 1})
 	}
-	return c.read32(61)
+	if err := c.writeMany(regs...); err != nil { // stop, reset, start: one batch
+		return 0, err
+	}
+	var e [2]uint16
+	if err := c.readMany([]uint16{61, 62}, e[:]); err != nil {
+		return 0, err
+	}
+	return uint32(e[0]) | uint32(e[1])<<16, nil
 }
 
 // ReadDecodedEvent returns one complete event or available=false without waiting.

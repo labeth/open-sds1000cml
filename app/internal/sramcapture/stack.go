@@ -334,15 +334,13 @@ func (c *Capture) stackUpload(ctx context.Context, bin, ch int, m superres.FPGAS
 	if err != nil {
 		return err
 	}
-	if err := c.write(selStackMailIndex, 0); err != nil {
-		return err
-	}
+	// The mailbox index, its words and the tile in one batch.
+	regs := make([][2]uint16, 0, len(words)+2)
+	regs = append(regs, [2]uint16{selStackMailIndex, 0})
 	for _, w := range words {
-		if err := c.write(selStackMail, w); err != nil {
-			return err
-		}
+		regs = append(regs, [2]uint16{selStackMail, w})
 	}
-	if err := c.write(selStackTile, uint16(bin<<1|ch)); err != nil {
+	if err := c.writeMany(append(regs, [2]uint16{selStackTile, uint16(bin<<1 | ch)})...); err != nil {
 		return err
 	}
 	return c.stackOp(ctx, stackOpTileWrite, time.Second)

@@ -101,12 +101,16 @@ func (c *Capture) recallEnvelope(ctx context.Context, m Metadata, offset, bucket
 	}
 	const prefix = 16
 	target := (m.Origin + m.Start + offset - prefix) & addressMask
-	position, err := c.read32(8)
-	if err != nil {
+	// The position's two words in one batch, as the writes below: this
+	// runs for every live frame.
+	var pw [2]uint16
+	if err := c.readMany([]uint16{8, 9}, pw[:]); err != nil {
 		return err
 	}
+	position := uint32(pw[0]) | uint32(pw[1])<<16
+	var err error
 	if skip := (target - position) & addressMask; skip != 0 {
-		if err = c.write32(8, skip); err != nil {
+		if err = c.writeMany([2]uint16{8, uint16(skip)}, [2]uint16{9, uint16(skip >> 16)}); err != nil {
 			return err
 		}
 		if err = c.command(ctx, 3); err != nil {
@@ -127,12 +131,9 @@ func (c *Capture) recallEnvelope(ctx context.Context, m Metadata, offset, bucket
 			c.envelopeOn = false
 		}
 	}()
-	for _, r := range []struct{ sel, value uint16 }{{43, uint16(bucket)}, {44, control}, {45, prefix}} {
-		if err := c.write(r.sel, r.value); err != nil {
-			return err
-		}
-	}
-	if err = c.write32(8, words+prefix); err != nil {
+	total := words + prefix
+	if err = c.writeMany([2]uint16{43, uint16(bucket)}, [2]uint16{44, control}, [2]uint16{45, prefix},
+		[2]uint16{8, uint16(total)}, [2]uint16{9, uint16(total >> 16)}); err != nil {
 		return err
 	}
 	if err = c.command(ctx, 2); err != nil {

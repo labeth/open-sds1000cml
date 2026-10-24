@@ -63,12 +63,7 @@ func (c *Capture) ConfigurePanel(p PanelConfig) error {
 	if half == 0 {
 		half = 1
 	}
-	for _, r := range []struct{ sel, value uint16 }{{32, half}, {33, p.Gap}, {31, cfg}} {
-		if err := c.write(r.sel, r.value); err != nil {
-			return err
-		}
-	}
-	return nil
+	return c.writeMany([2]uint16{32, half}, [2]uint16{33, p.Gap}, [2]uint16{31, cfg}) // one batch, the config last
 }
 
 // ReadPanel reads the last frame and the counters.

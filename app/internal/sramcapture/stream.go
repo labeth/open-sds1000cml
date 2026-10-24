@@ -31,15 +31,14 @@ func decodeStreamStatus(v uint16) StreamStatus {
 func (c *Capture) StreamStatus() (StreamStatus, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	rev, e := c.read(13)
-	if e != nil {
+	var v [2]uint16 // the revision and the status in one batch
+	if e := c.readMany([]uint16{13, 32}, v[:]); e != nil {
 		return StreamStatus{}, e
 	}
-	if rev != 11 {
+	if v[0] != 11 {
 		return StreamStatus{}, fmt.Errorf("sramcapture: stream requires experimental revision 11")
 	}
-	v, e := c.read(32)
-	return decodeStreamStatus(v), e
+	return decodeStreamStatus(v[1]), nil
 }
 
 // PrepareStream allocates and touches the host buffers before acquisition starts.

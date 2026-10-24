@@ -118,23 +118,12 @@ func (c *Capture) StreamMarks() (StreamMarkRead, error) {
 		var word uint32
 		ok := false
 		for try := 0; try < 3 && !ok; try++ {
-			a, err := c.read(regs[0])
-			if err != nil {
+			// count, word, count again in one batch (in this order)
+			var v [4]uint16
+			if err := c.readMany([]uint16{regs[0], regs[1], regs[2], regs[0]}, v[:]); err != nil {
 				return r, err
 			}
-			lo, err := c.read(regs[1])
-			if err != nil {
-				return r, err
-			}
-			hi, err := c.read(regs[2])
-			if err != nil {
-				return r, err
-			}
-			b, err := c.read(regs[0])
-			if err != nil {
-				return r, err
-			}
-			count, word, ok = b, uint32(lo)|uint32(hi)<<16, a == b
+			count, word, ok = v[3], uint32(v[1])|uint32(v[2])<<16, v[0] == v[3]
 		}
 		if !ok {
 			return r, fmt.Errorf("sramcapture: stream marks kept changing")

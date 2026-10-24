@@ -46,6 +46,8 @@ func (b *eventBus) Read(_ uint8, s uint16) (uint16, error) {
 		return uint16(b.epoch >> 16), nil
 	case 63:
 		return 0x4501, nil
+	case 74: // no event FIFO batches: the register reads zero, as an unknown one does
+		return 0, nil
 	}
 	return 0, fmt.Errorf("unexpected read %d", s)
 }
