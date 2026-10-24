@@ -66,6 +66,11 @@ type Agent struct {
 	started time.Time
 	hbSeq   atomic.Int64
 
+	// slot is AgentSlot's answer, worked out once: the running binary does
+	// not change, and an update writes the other slot.
+	slotOnce sync.Once
+	slot     string
+
 	// supervisor control
 	ctl     chan ctlMsg
 	stopped chan struct{}
@@ -210,14 +215,20 @@ func (a *Agent) pidPath(name string) string {
 // AgentSlot reports which A/B agent binary this process is (or "?" off-slot).
 // TRLC-LINKS: REQ-SDS-114
 func (a *Agent) AgentSlot() string {
+	a.slotOnce.Do(func() { a.slot = a.findSlot() })
+	return a.slot
+}
+
+// TRLC-LINKS: REQ-SDS-114
+func (a *Agent) findSlot() string {
 	exe, err := os.Executable()
 	if err != nil {
 		return "?"
 	}
 	exe, _ = filepath.EvalSymlinks(exe)
-	for slot, p := range map[string]string{"A": a.cfg.AgentA, "B": a.cfg.AgentB} {
-		if rp, err := filepath.EvalSymlinks(p); err == nil && rp == exe {
-			return slot
+	for _, s := range [...]struct{ slot, path string }{{"A", a.cfg.AgentA}, {"B", a.cfg.AgentB}} {
+		if rp, err := filepath.EvalSymlinks(s.path); err == nil && rp == exe {
+			return s.slot
 		}
 	}
 	return "?"
