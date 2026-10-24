@@ -143,13 +143,16 @@ function srMeasure(codes, vpc, offV, dtS) {
   if (n < 16) return null;
   let cmin = Infinity, cmax = -Infinity, sum = 0, sum2 = 0, cnt = 0;
   const hist = new Float64Array(256);
+  // A float32 code plus a half is exact in a double, so its floor is
+  // Math.round's answer (half up) without the call a sample.
+  const f32 = codes instanceof Float32Array;
   for (let i = a; i <= b; i++) {
     const v = codes[i];
     if (v < 0) continue;
     if (v < cmin) cmin = v;
     if (v > cmax) cmax = v;
     sum += v; sum2 += v * v; cnt++;
-    const h = Math.round(v);
+    const h = f32 ? Math.floor(v + 0.5) : Math.round(v);
     if (h >= 0 && h <= 255) hist[h]++;
   }
   if (!cnt) return null;
