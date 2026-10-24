@@ -168,6 +168,7 @@ async function dsRequest(url, options) {
   if (!response.ok) throw Error(await response.text());
   return response;
 }
+const DS_EVENT_NAMES = ["", "START", "DATA", "END", "ERROR", "LOSS", "TRIGGER", "RETAINED"];
 // TRLC-LINKS: REQ-SDS-206
 async function dsRead(id, controller) {
   try {
@@ -179,14 +180,16 @@ async function dsRead(id, controller) {
       // is always incomplete here; only an explicit session end is clean.
       if (done) throw Error("Decoded stream ended; transcript is incomplete.");
       const bytes = new Uint8Array(pending.length + value.length); bytes.set(pending); bytes.set(value, pending.length);
+      // every event is checked and counted; only the last 24 shown are formatted
+      const v = new DataView(bytes.buffer, bytes.byteOffset, bytes.length), whole = bytes.length - bytes.length % 32;
+      const shownFrom = Math.max(0, whole - 24 * 32);
       let offset = 0;
-      for (; offset + 32 <= bytes.length; offset += 32) {
-        const v = new DataView(bytes.buffer, offset, 32), kind = v.getUint8(1);
-        if (v.getUint8(0) !== 1 || v.getUint32(4, true) !== id.epoch || v.getUint32(8, true) !== sequence) throw Error("Decoded sequence gap; transcript is incomplete.");
+      for (; offset < whole; offset += 32) {
+        const kind = v.getUint8(offset + 1);
+        if (v.getUint8(offset) !== 1 || v.getUint32(offset + 4, true) !== id.epoch || v.getUint32(offset + 8, true) !== sequence) throw Error("Decoded sequence gap; transcript is incomplete.");
         sequence = (sequence + 1) >>> 0; ds.events++;
-        if (kind === 5) { const count = v.getUint32(28, true); ds.lost = count === 0 ? Infinity : ds.lost + count; }
-        const names = ["", "START", "DATA", "END", "ERROR", "LOSS", "TRIGGER", "RETAINED"];
-        ds.lines.push(`${names[kind] || "UNKNOWN"} ${v.getUint32(24, true).toString(16).toUpperCase()}${kind === 5 ? ` (${v.getUint32(28, true) || "unknown"} lost)` : ""}`);
+        if (kind === 5) { const count = v.getUint32(offset + 28, true); ds.lost = count === 0 ? Infinity : ds.lost + count; }
+        if (offset >= shownFrom) ds.lines.push(`${DS_EVENT_NAMES[kind] || "UNKNOWN"} ${v.getUint32(offset + 24, true).toString(16).toUpperCase()}${kind === 5 ? ` (${v.getUint32(offset + 28, true) || "unknown"} lost)` : ""}`);
       }
       pending = bytes.slice(offset); ds.lines = ds.lines.slice(-24);
       $("dsEvents").textContent = ds.lines.join("\n");
