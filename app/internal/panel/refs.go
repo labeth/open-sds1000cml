@@ -150,12 +150,19 @@ func (c *Controller) captureRefFrom(f *engine.Frame, slot int) {
 func screenColumns(sig []uint8, left float64, win int, interp bool) []uint8 {
 	n := len(sig)
 	out := make([]uint8, RefCols)
+	last := float64(n - 1)
+	if !interp { // nearest sample: the column's start, no blend
+		for x := range out {
+			pos := min(max(left+float64(x)*float64(win)/RefCols, 0), last)
+			out[x] = sig[int(pos)] // uint8(float64(c) + .5) is c
+		}
+		return out
+	}
 	for x := range out {
-		pos := left + float64(x)*float64(win)/RefCols
-		pos = min(max(pos, 0), float64(n-1))
+		pos := min(max(left+float64(x)*float64(win)/RefCols, 0), last)
 		i := int(pos)
 		v := float64(sig[i])
-		if interp && i+1 < n {
+		if i+1 < n {
 			frac := pos - float64(i)
 			v = v*(1-frac) + float64(sig[i+1])*frac
 		}

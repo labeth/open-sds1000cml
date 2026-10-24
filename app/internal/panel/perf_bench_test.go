@@ -516,3 +516,15 @@ func TestTokensOfHex(t *testing.T) {
 		t.Errorf("pattern: %q", got)
 	}
 }
+
+// TRLC-LINKS: REQ-SDS-138
+func BenchmarkScreenColumns(b *testing.B) {
+	sig := make([]uint8, 20000)
+	for i := range sig {
+		sig[i] = uint8(i * 7)
+	}
+	for b.Loop() {
+		screenColumns(sig, 100, 12000, false)
+		screenColumns(sig, -50, 400, true)
+	}
+}
