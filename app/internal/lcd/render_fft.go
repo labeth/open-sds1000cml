@@ -181,7 +181,11 @@ func drawSpectrum(sf Surface, p plotArea, mags []float64, peak float64, col uint
 	span := kHi - kLo
 	const floorDb = -80.0 // match the web FFT full-scale span
 	yFor := func(m float64) int {
-		db := 20 * math.Log10(m/peak+1e-12)
+		r := m/peak + 1e-12
+		if r < 0.99e-4 { // below -80.04 dB: the floor, without the logarithm
+			return p.bot
+		}
+		db := 20 * math.Log10(r)
 		if db < floorDb {
 			db = floorDb
 		}
@@ -192,9 +196,11 @@ func drawSpectrum(sf Surface, p plotArea, mags []float64, peak float64, col uint
 	// two sampled bins would otherwise be drawn tens of dB low or not at all
 	// (the web draws the same per-pixel maxima).
 	prevY := -1
+	next := kLo // column x's first bin; the next column's is one past its last
 	for x := 0; x < p.w; x++ {
-		k0 := kLo + x*span/(p.w-1)
-		k1 := kLo + (x+1)*span/(p.w-1) - 1
+		k0 := next
+		next = kLo + (x+1)*span/(p.w-1)
+		k1 := next - 1
 		y := yFor(binMax(mags, min(k0, kHi), min(k1, kHi)))
 		if prevY >= 0 {
 			drawLine(sf, x-1, prevY, x, y, col)

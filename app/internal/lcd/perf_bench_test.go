@@ -5,6 +5,7 @@ import (
 	"math"
 	"testing"
 
+	"open-sds/app/internal/panel/framecalc"
 	"open-sds/app/internal/streamview"
 )
 
@@ -202,4 +203,18 @@ func BenchmarkRenderCursorsMeasure(b *testing.B) {
 	h.CurX = [2]float64{0.3, 0.7}
 	h.ShowMeas = true
 	benchRender(b, goldenYTFrame(), h)
+}
+
+// TRLC-LINKS: REQ-SDS-070
+func BenchmarkDrawSpectrum(b *testing.B) {
+	const n = 4096
+	x := make([]float64, n)
+	for i := range x {
+		x[i] = math.Round(128 + 90*math.Sin(2*math.Pi*205*float64(i)/n) + 5*math.Sin(2*math.Pi*1500*float64(i)/n))
+	}
+	mags, peak, _ := framecalc.Mags(x)
+	sf := NewMemSurface()
+	for b.Loop() {
+		drawSpectrum(sf, fullPlot, mags, peak, colC1, 10e6, 1, len(mags)-1)
+	}
 }
