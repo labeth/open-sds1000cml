@@ -188,7 +188,7 @@ func decodeSteps(proto string, a, b []uint8, colTimeS float64, cfg ClockedCfg, q
 		} else {
 			fwd = dirFlat == 1
 			if B.ok {
-				fwd = logicAt(B, e.x) == 1
+				fwd = logicAt(&B, e.x) == 1
 			}
 			if fwd {
 				count++

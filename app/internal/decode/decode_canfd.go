@@ -119,7 +119,7 @@ func (r *canReader) readRaw() (int, bool) {
 	}
 	r.li1 = end
 	r.pos += r.spb
-	lvl := logicAt(r.S, center)
+	lvl := logicAt(&r.S, center)
 	if lvl < 0 {
 		return -1, false
 	}

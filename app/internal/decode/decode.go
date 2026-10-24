@@ -577,7 +577,7 @@ func codeFloor(t float64) int {
 }
 
 // TRLC-LINKS: REQ-SDS-018
-func logicAt(s sliced, x float64) int {
+func logicAt(s *sliced, x float64) int {
 	i := int(math.Round(x))
 	if i < 0 || i >= s.n {
 		return -1

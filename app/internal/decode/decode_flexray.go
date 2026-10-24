@@ -196,12 +196,12 @@ func DecodeFlexRay(codes []uint8, colTimeS float64, cfg FlexRayCfg) Result {
 			anchor = resync(anchor)
 			// A valid BSS is HIGH then LOW. Anything else — FES (low,high), idle
 			// (high,high), or running off the end — ends the frame.
-			if logicAt(S, anchor+0.5*T) != 1 || logicAt(S, anchor+1.5*T) != 0 {
+			if logicAt(&S, anchor+0.5*T) != 1 || logicAt(&S, anchor+1.5*T) != 0 {
 				break
 			}
 			val, eof := 0, false
 			for d := 0; d < 8; d++ { // 8 data bits, MSB-first
-				bit := logicAt(S, anchor+(2.5+float64(d))*T)
+				bit := logicAt(&S, anchor+(2.5+float64(d))*T)
 				if bit < 0 {
 					eof = true
 					break

@@ -353,7 +353,7 @@ func DecodeCJTAG(a, b []uint8, colTimeS float64, cfg ClockedCfg) Result {
 			o.add(r, r, "", "sof", 0, false)
 			o.add(r, r, "ESC6", "rw", 6, false)
 		}
-		tmsc := logicAt(M, r)
+		tmsc := logicAt(&M, r)
 		if mode == oac {
 			// the online activation code: twelve bits (36 when the eighth
 			// is 0: the extended form), then OScan1
@@ -379,7 +379,7 @@ func DecodeCJTAG(a, b []uint8, colTimeS float64, cfg ClockedCfg) Result {
 			continue
 		}
 		cyc = 0
-		tms := logicAt(M, rises[i-1])
+		tms := logicAt(&M, rises[i-1])
 		tdo := tmsc
 		if state == 4 || state == 11 {
 			if nb == 0 {

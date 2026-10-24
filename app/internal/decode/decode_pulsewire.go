@@ -27,7 +27,7 @@ type lrun struct {
 func levelRuns(S sliced) []lrun {
 	E := S.edges
 	if len(E) == 0 {
-		return []lrun{{lvl: logicAt(S, 0), x0: 0, x1: float64(S.n), open: true}}
+		return []lrun{{lvl: logicAt(&S, 0), x0: 0, x1: float64(S.n), open: true}}
 	}
 	first := 1
 	if E[0].dir > 0 {

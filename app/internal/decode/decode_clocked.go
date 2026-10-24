@@ -47,7 +47,7 @@ func clockedLines(a, b []uint8, cfg ClockedCfg) ([]clkEdge, float64, sliced, str
 	gaps := make([]float64, 0, len(C.edges)/2+1)
 	lastFall := -1.0
 	for _, e := range C.edges {
-		out = append(out, clkEdge{e.x, e.dir, logicAt(D, e.x)})
+		out = append(out, clkEdge{e.x, e.dir, logicAt(&D, e.x)})
 		if e.dir < 0 {
 			if lastFall >= 0 {
 				gaps = append(gaps, e.x-lastFall)

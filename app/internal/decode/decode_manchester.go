@@ -65,8 +65,8 @@ func recoverManchester(S sliced, s0, T float64, ieee bool, lastEdgeX float64) (c
 		}
 		// Sample the first and third quarter of the cell: they straddle the
 		// mid-cell transition, so their levels give its direction.
-		l1 := logicAt(S, s0+(float64(k)+0.25)*T)
-		l2 := logicAt(S, s0+(float64(k)+0.75)*T)
+		l1 := logicAt(&S, s0+(float64(k)+0.25)*T)
+		l2 := logicAt(&S, s0+(float64(k)+0.75)*T)
 		if l1 < 0 || l2 < 0 { // ran off the captured region
 			break
 		}

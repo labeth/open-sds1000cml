@@ -104,7 +104,7 @@ func DecodeI2C(scl, sda []uint8, colTimeS float64, cfg I2CCfg) Result {
 			continue
 		}
 		if pcl == 0 && cl == 1 && inTxn { // sample on SCL rising
-			bit := logicAt(DA, float64(i))
+			bit := logicAt(&DA, float64(i))
 			if bit < 0 {
 				continue
 			}
@@ -280,7 +280,7 @@ func DecodeSPI(clk, data []uint8, colTimeS float64, cfg SPICfg) Result {
 			if fine || cfg.DataDelay != 0 {
 				at = crossingAt(CK, i, rising) + cfg.DataLag + cfg.DataDelay
 			}
-			bit := logicAt(DA, at)
+			bit := logicAt(&DA, at)
 			if bit < 0 {
 				continue
 			}

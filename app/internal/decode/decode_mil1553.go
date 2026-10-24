@@ -132,7 +132,7 @@ func decodeMIL1553At(S sliced, T, colTimeS float64) (Result, int) {
 		syncMid := S.edges[k].x
 		syncStart := syncMid - 1.5*T
 		syncEnd := syncMid + 1.5*T
-		firstHalf := logicAt(S, syncMid-0.75*T) // level of the sync's first 1.5T hold
+		firstHalf := logicAt(&S, syncMid-0.75*T) // level of the sync's first 1.5T hold
 		if firstHalf < 0 {
 			continue // sync clipped by the record start
 		}

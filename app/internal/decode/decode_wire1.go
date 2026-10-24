@@ -409,7 +409,7 @@ func DecodePJDL(codes []uint8, colTimeS float64, cfg LineCfg) Result {
 		}
 		v := 0
 		for k := 0; k < 8; k++ {
-			if logicAt(S, e+dt*(1.5+float64(k))) == 1 {
+			if logicAt(&S, e+dt*(1.5+float64(k))) == 1 {
 				v |= 1 << k
 			}
 		}

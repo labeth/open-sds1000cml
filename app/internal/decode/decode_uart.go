@@ -209,12 +209,12 @@ func DecodeUART(codes []uint8, colTimeS float64, cfg UARTCfg) Result {
 	// frameAt reads the frame whose start bit begins at start: its span and
 	// where the next start edge may be; ok false when no start bit is there.
 	frameAt := func(start int) (sp Span, next int, ok bool) {
-		if logicAt(S, float64(start)+0.5*spb) != 1-idle { // confirm start bit
+		if logicAt(&S, float64(start)+0.5*spb) != 1-idle { // confirm start bit
 			return sp, 0, false
 		}
 		val, gap := 0, false
 		for c := 0; c < bits; c++ {
-			b := logicAt(S, float64(start)+(1.5+float64(c))*spb)
+			b := logicAt(&S, float64(start)+(1.5+float64(c))*spb)
 			if b < 0 {
 				gap = true
 				break
@@ -228,12 +228,12 @@ func DecodeUART(codes []uint8, colTimeS float64, cfg UARTCfg) Result {
 		kind, pfx, pc := "data", "", 0
 		if parity != "none" {
 			pc = 1
-			pb := logicAt(S, float64(start)+(1.5+float64(bits))*spb)
+			pb := logicAt(&S, float64(start)+(1.5+float64(bits))*spb)
 			if pb >= 0 && pb != parityOf(val) {
 				kind, pfx = "parity-error", "!"
 			}
 		}
-		sb := logicAt(S, float64(start)+(1.5+float64(bits)+float64(pc))*spb)
+		sb := logicAt(&S, float64(start)+(1.5+float64(bits)+float64(pc))*spb)
 		if sb < 0 { // stop bit ran off the record: an incomplete frame, not clean
 			return Span{start, i1, "gap", "gap", 0}, start + 1, true
 		}
@@ -249,7 +249,7 @@ func DecodeUART(codes []uint8, colTimeS float64, cfg UARTCfg) Result {
 	// scan reads the frames whose start edges lie in [from, to).
 	scan := func(spans []Span, from, to int) []Span {
 		for i := from; i < n-need-guard && i < to; i++ {
-			if logicAt(S, float64(i-1)) == idle && logicAt(S, float64(i)) == 1-idle { // start edge
+			if logicAt(&S, float64(i-1)) == idle && logicAt(&S, float64(i)) == 1-idle { // start edge
 				if sp, next, ok := frameAt(i); ok {
 					spans = append(spans, sp)
 					i = next - 1
@@ -363,7 +363,7 @@ func syncIn(spans []Span, S sliced, spb float64, frameBits int, confirm float64)
 	if run := int(math.Ceil(confirm * spb)); spans[0].I0 >= run {
 		idle := true
 		for j := spans[0].I0 - run; j < spans[0].I0 && idle; j++ {
-			idle = logicAt(S, float64(j)) == 1
+			idle = logicAt(&S, float64(j)) == 1
 		}
 		if idle {
 			return false // opened idle

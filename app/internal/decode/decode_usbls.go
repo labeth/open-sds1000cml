@@ -198,7 +198,7 @@ func DecodeUSBLS(dp []uint8, colTimeS float64, cfg USBLSCfg) Result {
 		if idleX > float64(n-1) {
 			idleX = float64(n - 1)
 		}
-		prev := logicAt(S, idleX)
+		prev := logicAt(&S, idleX)
 		if prev < 0 {
 			prev = 0
 		}
@@ -223,7 +223,7 @@ func DecodeUSBLS(dp []uint8, colTimeS float64, cfg USBLSCfg) Result {
 			if ei <= sg[1] && math.Abs(S.edges[ei].x-xs) <= 0.4*T {
 				ax, ak = S.edges[ei].x, k
 			}
-			lv := logicAt(S, ax+(float64(k-ak)+0.5)*T)
+			lv := logicAt(&S, ax+(float64(k-ak)+0.5)*T)
 			if lv < 0 { // ran off the captured region
 				break
 			}

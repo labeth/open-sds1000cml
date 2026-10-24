@@ -42,12 +42,12 @@ func uartChars(S sliced, spb float64, parity string, stops int, breakBits float6
 			continue
 		}
 		x0 := e.x
-		if logicAt(S, x0+0.5*spb) != 0 {
+		if logicAt(&S, x0+0.5*spb) != 0 {
 			continue // a glitch, no start bit
 		}
 		val, off := 0, false
 		for c := 0; c < 8; c++ {
-			b := logicAt(S, x0+(1.5+float64(c))*spb)
+			b := logicAt(&S, x0+(1.5+float64(c))*spb)
 			if b < 0 {
 				off = true
 				break
@@ -59,7 +59,7 @@ func uartChars(S sliced, spb float64, parity string, stops int, breakBits float6
 		}
 		kind := "data"
 		if pc == 1 {
-			pb := logicAt(S, x0+9.5*spb)
+			pb := logicAt(&S, x0+9.5*spb)
 			if pb < 0 {
 				break
 			}
@@ -71,7 +71,7 @@ func uartChars(S sliced, spb float64, parity string, stops int, breakBits float6
 				kind = "parity-error"
 			}
 		}
-		sb := logicAt(S, x0+(9.5+float64(pc))*spb)
+		sb := logicAt(&S, x0+(9.5+float64(pc))*spb)
 		if sb < 0 {
 			break
 		}
