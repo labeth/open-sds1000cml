@@ -378,21 +378,24 @@ function wsKey(id) {
   if (ws.cur === id) wsAgain(id); else setWs(id);
 }
 
+// WS_DOT_SHOWN is each tab's dot state as last written.
+const WS_DOT_SHOWN = {};
 // wsDots marks a workspace whose feature is active (decoding, a running mask
 // test, a shown reference…): a dot on its tab, red when the mask test fails.
 // TRLC-LINKS: REQ-SDS-219
 function wsDots() {
   // TRLC-LINKS: REQ-SDS-219
   const set = (id, on, bad, why) => {
+    // a tab is written only when its state changes: this runs every second
+    const key = (on ? "1" : "0") + (bad ? "1" : "0") + (on && why ? why : "");
+    if (WS_DOT_SHOWN[id] === key) return;
     const t = $("tab-" + id);
     if (!t) return;
-    // written only on a change: this runs every second
+    WS_DOT_SHOWN[id] = key;
     const dot = t.querySelector(".tdot");
-    if (dot.hidden !== !on) dot.hidden = !on;
-    if (dot.classList.contains("is-bad") !== !!bad) dot.classList.toggle("is-bad", !!bad);
+    dot.hidden = !on; dot.classList.toggle("is-bad", !!bad);
     const w = WSBY[id];
-    const title = w.blurb + " Again: " + w.again + "." + (on && why ? " Now: " + why + "." : "") + " Key: " + w.alt + ".";
-    if (t.title !== title) t.title = title;
+    t.title = w.blurb + " Again: " + w.again + "." + (on && why ? " Now: " + why + "." : "") + " Key: " + w.alt + ".";
   };
   const decoding = typeof dcfg !== "undefined" && dcfg.proto !== "off";
   const serial = typeof stArmed === "function" && stArmed();
