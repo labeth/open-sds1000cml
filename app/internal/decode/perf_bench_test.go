@@ -322,3 +322,12 @@ func BenchmarkStreamGroup(b *testing.B) {
 		d.Push(a, nil)
 	}
 }
+
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func BenchmarkStreamBucketLog(b *testing.B) {
+	for b.Loop() {
+		for _, f := range []float64{1e-9, 2e-6, 5e-6, 26e-6, 64e-6, 0.6e-3, 0.1, 1} {
+			StreamBucketLog(f)
+		}
+	}
+}

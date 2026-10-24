@@ -220,7 +220,7 @@ const StreamMaxLog = 20
 // the finest leaves fewer: the edges then move by a bucket within a feature.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
 func StreamBucketLog(feature float64) (log int, ok bool) {
-	bucket := func(l int) float64 { return float64(uint64(1)<<l) * 2e-9 }
+	bucket := func(l int) float64 { return streamBuckets[l] }
 	if feature < 3.5*bucket(streamCheapLog) {
 		for log = streamCheapLog - 1; log >= StreamGapFreeMinLog; log-- {
 			if feature >= 3.5*bucket(log) {
@@ -235,3 +235,12 @@ func StreamBucketLog(feature float64) (log int, ok bool) {
 	}
 	return log, true
 }
+
+// streamBuckets is each decimation's bucket in seconds: 2^log samples of
+// 2 ns.
+var streamBuckets = func() (t [StreamMaxLog + 1]float64) {
+	for l := range t {
+		t[l] = float64(uint64(1)<<l) * 2e-9
+	}
+	return t
+}()
