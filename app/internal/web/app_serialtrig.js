@@ -80,6 +80,10 @@ function stArmed() { return $("stArm") && $("stArm").classList.contains("on"); }
 // the scope (its rows, AUTO in BUS, a phone) are never replaced by the page's.
 let stScope = null;
 
+// stParsed is the match field's last parse: the status reads the params each
+// second.
+let stParsed = null;
+
 // build the SerialParams: the scope's (base), with the live decode config and
 // the match inputs; returns null if the match pattern has invalid hex.
 // TRLC-LINKS: REQ-SDS-206
@@ -90,7 +94,9 @@ function stParams(base = stScope) {
   const addr = stParseAddr($("stAddr").value);
   const bits = Math.max(1, Math.min(16, dcfg.bits || 8));
   const maxValue = P === 7 ? 65535 : P === 8 ? 0x7ffff : P === 5 ? 15 : P === 1 || P === 4 ? 2 ** bits - 1 : 255;
-  const parsed = stParsePattern($("stBytes").value, maxValue);
+  const text = $("stBytes").value;
+  if (!stParsed || stParsed.text !== text || stParsed.maxValue !== maxValue) stParsed = { text, maxValue, parsed: stParsePattern(text, maxValue) };
+  const parsed = stParsed.parsed;
   if (addr === null || parsed === null) return null;
   const bytes = parsed.bytes;
   // SPI and the clocked two-line buses take the clock and data roles
