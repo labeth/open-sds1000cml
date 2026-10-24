@@ -831,3 +831,13 @@ func TestETSFoldRange(t *testing.T) {
 		}
 	}
 }
+
+// TRLC-LINKS: REQ-SDS-022
+func BenchmarkPanelMatrix(b *testing.B) {
+	var k panelKnobs
+	f := sramcapture.PanelFrame{Words: [4]uint16{0xffff, 0xfffb, 0xffff, 0xffff}, Knobs: [4]uint16{0x0102, 0x0304, 0x0506, 0x0708}}
+	for b.Loop() {
+		f.Knobs[0]++
+		panelMatrix(f, &k)
+	}
+}

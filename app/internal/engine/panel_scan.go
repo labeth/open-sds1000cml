@@ -3,6 +3,7 @@ package engine
 
 import (
 	"fmt"
+	"math/bits"
 	"time"
 
 	"open-sds/app/internal/sramcapture"
@@ -143,11 +144,7 @@ func panelMatrix(f sramcapture.PanelFrame, k *panelKnobs) ([5]uint16, bool) {
 	down := 0
 	for row := 0; row < 8; row++ {
 		b := uint8(f.Words[row/2] >> (8 * uint(row%2)))
-		for pos := 2; pos < 8; pos++ {
-			if b&(1<<uint(pos)) == 0 {
-				down++
-			}
-		}
+		down += 6 - bits.OnesCount8(b&0xfc) // keys at positions 2..7 read low when down
 		if k.primed {
 			d := int(int8(uint8(f.Knobs[row/2]>>(8*uint(row%2))) - k.last[row]))
 			if d > panelMaxCountsRead || d < -panelMaxCountsRead {
