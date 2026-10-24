@@ -1147,3 +1147,21 @@ func BenchmarkRunWord(b *testing.B) {
 		}
 	}
 }
+
+var lineSink []byte
+
+// TRLC-LINKS: REQ-SDS-018
+func BenchmarkLineBuf(b *testing.B) {
+	for b.Loop() {
+		bp := lineBufs.Get().(*[]byte)
+		lineSink = (*bp)[:16]
+		lineBufs.Put(bp)
+	}
+}
+
+// TRLC-LINKS: REQ-SDS-018
+func BenchmarkLineBufRef(b *testing.B) {
+	for b.Loop() {
+		lineSink = make([]byte, 64*1024)[:16] // a fresh buffer a poll, as before
+	}
+}

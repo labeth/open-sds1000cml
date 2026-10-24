@@ -3,6 +3,7 @@ package engine
 
 import (
 	"context"
+	"sync"
 	"errors"
 	"fmt"
 	"time"
@@ -126,7 +127,8 @@ func (e *Engine) decodedStreamConfig(p SerialParams, trig StreamTrigger) (sramca
 // stream runs in event mode (no worker).
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-018
 func (e *Engine) ReadDecodedLines(ctx context.Context, id sramcapture.RecordIdentity, from int, flush bool) (decodedlines.Batch, bool, error) {
-	buf := make([]byte, 64*1024)
+	bp := lineBufs.Get().(*[]byte)
+	buf := *bp
 	var n int
 	var lines bool
 	_, err := e.decodedCall(ctx, func() (any, error) {
@@ -143,12 +145,21 @@ func (e *Engine) ReadDecodedLines(ctx context.Context, id sramcapture.RecordIden
 		n, _, rerr = e.sram.ReadDecodedLines(id.Epoch, from, flush, buf)
 		return nil, rerr
 	})
+	if err != nil && ctx.Err() != nil {
+		// gave up waiting: the job may still write into buf, which stays its own
+		return decodedlines.Batch{}, lines, err
+	}
+	defer lineBufs.Put(bp) // DecodeLines copies what it keeps
 	if err != nil || !lines {
 		return decodedlines.Batch{}, lines, err
 	}
 	b, err := decodedlines.DecodeLines(buf[:n])
 	return b, true, err
 }
+
+// lineBufs hold the transcript reads' 64 KB buffers for reuse: a stream's
+// list polls several times a second, a cleared allocation each.
+var lineBufs = sync.Pool{New: func() any { b := make([]byte, 64*1024); return &b }}
 
 // FreezeDecodedStream freezes a decoded capture's record - forcing the
 // trigger when none has fired - and halts acquisition, leaving the session
