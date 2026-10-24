@@ -787,3 +787,14 @@ func BenchmarkScreenDivs(b *testing.B) {
 		screenDivs(f, s, 1, stabCols)
 	}
 }
+
+// The LCD reads the display state and workspace view every frame, here with
+// four MEASURE readouts.
+// TRLC-LINKS: REQ-SDS-136
+func BenchmarkControllerSnapshot(b *testing.B) {
+	c, _, _ := newC(&testing.T{})
+	c.meas = []measItem{{0, 0}, {0, 1}, {1, 2}, {1, 3}}
+	for b.Loop() {
+		c.Snapshot()
+	}
+}
