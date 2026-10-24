@@ -61,6 +61,14 @@ func (fo *Fanout) Run(src Source, stop <-chan struct{}) {
 // the wake channel). The timer is created once, not per wake iteration.
 // TRLC-LINKS: REQ-SDS-020
 func (fo *Fanout) WaitNext(last uint64, timeout time.Duration) uint64 {
+	// A newer frame already there needs no timer.
+	fo.mu.RLock()
+	if fo.has && fo.latest.Seq != 0 && fo.latest.Seq != last {
+		seq := fo.latest.Seq
+		fo.mu.RUnlock()
+		return seq
+	}
+	fo.mu.RUnlock()
 	deadline := time.NewTimer(timeout)
 	defer deadline.Stop()
 	for {

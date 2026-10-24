@@ -679,9 +679,9 @@ func Registers() []Register { return append([]Register(nil), registers...) }
 // TRLC-LINKS: REQ-SDS-129
 func BySel(sel uint16) (Register, bool) {
 	sel = MaskSel(sel)
-	for _, r := range registers {
-		if r.Sel == sel {
-			return r, true
+	for i := range registers { // by index: a Register is copied only when found
+		if registers[i].Sel == sel {
+			return registers[i], true
 		}
 	}
 	return Register{}, false
@@ -690,9 +690,9 @@ func BySel(sel uint16) (Register, bool) {
 // ByName returns the register called name.
 // TRLC-LINKS: REQ-SDS-129
 func ByName(name string) (Register, bool) {
-	for _, r := range registers {
-		if r.Name == name {
-			return r, true
+	for i := range registers {
+		if registers[i].Name == name {
+			return registers[i], true
 		}
 	}
 	return Register{}, false

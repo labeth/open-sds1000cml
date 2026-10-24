@@ -83,17 +83,23 @@ func Parse(raw []byte) (*Table, error) {
 	// The self-checksummed tail sub-record is a separate mode-gated path —
 	// folding it in rejects otherwise-valid files.
 	word0 := binary.LittleEndian.Uint32(raw[0:4])
-	var sum uint32
-	for _, b := range raw[4:] {
-		sum += uint32(b)
-	}
-	if sum+word0 != 0 {
+	if sum := byteSum(raw[4:]); sum+word0 != 0 {
 		return nil, fmt.Errorf("cal: checksum mismatch (sum=%#x word0=%#x)", sum, word0)
 	}
 
+	// The first two steps of descramble (reverse, then NOT the back half)
+	// as the copy is made, one pass in place of three.
 	payload := make([]byte, payloadSize)
-	copy(payload, raw[4:])
-	descramble(payload)
+	src := raw[4:]
+	back := payloadSize - payloadSize/2
+	for i := range payload {
+		b := src[payloadSize-1-i]
+		if i >= back {
+			b = ^b
+		}
+		payload[i] = b
+	}
+	notTriangular(payload)
 
 	t := &Table{}
 	for ch := 0; ch < 2; ch++ {
@@ -156,11 +162,29 @@ func notTriangular(buf []byte) {
 // Checksum computes the word-0 value for a scrambled payload (tooling).
 // TRLC-LINKS: REQ-SDS-016
 func Checksum(payload []byte) uint32 {
-	var sum uint32
-	for _, b := range payload {
-		sum += uint32(b)
+	return -byteSum(payload)
+}
+
+// byteSum is the sum of b's bytes, eight at a time: the bytes of a word
+// summed into four 16-bit lanes, folded before a lane can overflow.
+// TRLC-LINKS: REQ-SDS-016
+func byteSum(b []byte) uint32 {
+	const lo = 0x00ff00ff00ff00ff
+	var sum uint64
+	for len(b) >= 8 {
+		var lanes uint64
+		n := min(len(b)/8, 128) // 128 words of at most 2*255 a lane fit 16 bits
+		for k := 0; k < n; k++ {
+			w := binary.LittleEndian.Uint64(b[8*k:])
+			lanes += w&lo + w>>8&lo
+		}
+		b = b[8*n:]
+		sum += lanes&0xffff + lanes>>16&0xffff + lanes>>32&0xffff + lanes>>48
 	}
-	return -sum
+	for _, v := range b {
+		sum += uint64(v)
+	}
+	return uint32(sum)
 }
 
 // Defaults is the compiled fallback table (firmware boot-default ladder).
