@@ -284,14 +284,14 @@ func DecodeWS281x(codes []uint8, colTimeS float64, cfg WS281xCfg) Result {
 	type wbit struct {
 		x0, hi, per float64 // rise, high length, period (0: the frame's last)
 	}
-	var frame []wbit
+	frame := make([]wbit, 0, 8*24) // a frame's bits, reused (24 LEDs' worth to start)
 	flush := func(latch lrun) {
 		if len(frame) == 0 {
 			return
 		}
 		// the long highs from the short: midway when the frame holds both
 		lo, hi := math.Inf(1), 0.0
-		var pers []float64
+		pers := make([]float64, 0, len(frame))
 		for _, b := range frame {
 			lo, hi = math.Min(lo, b.hi), math.Max(hi, b.hi)
 			if b.per > 0 {
@@ -343,7 +343,7 @@ func DecodeWS281x(codes []uint8, colTimeS float64, cfg WS281xCfg) Result {
 			good = true
 			periods = append(periods, med)
 		}
-		frame = nil
+		frame = frame[:0]
 	}
 	started := false // a frame may start: the record opened low for a latch's time
 	for k, r := range runs {
@@ -365,7 +365,7 @@ func DecodeWS281x(codes []uint8, colTimeS float64, cfg WS281xCfg) Result {
 			per = runs[k+2].x0 - r.x0
 		}
 		if r.us(colTimeS) > 10 { // no bit's high
-			frame, started = nil, false
+			frame, started = frame[:0], false
 			continue
 		}
 		frame = append(frame, wbit{r.x0, r.x1 - r.x0, per})
