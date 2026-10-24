@@ -279,10 +279,7 @@ type envSwing struct{ lo, hi, q1, q3 int }
 
 // TRLC-LINKS: REQ-SDS-021
 func scanEnvelope(env []uint8) envSwing {
-	lo, hi := env[0], env[0]
-	for _, v := range env {
-		lo, hi = min(lo, v), max(hi, v)
-	}
+	lo, hi := minMax8(env)
 	l, h := int(lo), int(hi)
 	return envSwing{l, h, l + (h-l)/4, h - (h-l)/4}
 }
@@ -399,16 +396,8 @@ func Clipped(sig []uint8) bool {
 	if n == 0 {
 		return false
 	}
-	mn, mx := 255, 0
-	for _, v := range sig {
-		iv := int(v)
-		if iv < mn {
-			mn = iv
-		}
-		if iv > mx {
-			mx = iv
-		}
-	}
+	lo8, hi8 := minMax8(sig)
+	mn, mx := int(lo8), int(hi8)
 	if mn > 6 && mx < 253 { // neither extreme is against a rail
 		return false
 	}
@@ -751,6 +740,22 @@ func moments16(sig []uint16, ref int, coarse *[256]int, lowSum *[256]uint32) (cm
 		lowSum[c] += uint32(iv & 0xff)
 	}
 	return cmin, cmax, sum, sq
+}
+
+// minMax8 is the extremes of a non-empty s. Branches, not min/max: a new
+// extreme is rare, so they are predicted, where each conditional move pair
+// costs every sample.
+// TRLC-LINKS: REQ-SDS-017
+func minMax8(s []uint8) (lo, hi uint8) {
+	lo, hi = s[0], s[0]
+	for _, v := range s {
+		if v < lo {
+			lo = v
+		} else if v > hi {
+			hi = v
+		}
+	}
+	return lo, hi
 }
 
 // histogram4 counts s into four tables, alternating, so runs of equal codes
