@@ -317,3 +317,16 @@ func BenchmarkSRRecordTextRef(b *testing.B) {
 		}
 	}
 }
+
+// TRLC-LINKS: REQ-SDS-216
+func BenchmarkMarkerStatus(b *testing.B) {
+	c, _, _ := newC(&testing.T{})
+	s := c.snap()
+	r := rowByID["view.marker"]
+	for b.Loop() {
+		for _, v := range []int{viewFFT, viewBode} {
+			s.viewMode = v
+			r.status(s)
+		}
+	}
+}

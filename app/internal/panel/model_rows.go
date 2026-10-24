@@ -818,10 +818,15 @@ func viewRows() []*row {
 			return []act{{id: "home", t: t, run: func(c *Controller) error { c.specLargest(); return nil }}}
 		},
 		status: func(s *sv) string {
-			if s.viewMode == viewBode {
-				return map[bool]string{true: "on a point", false: "follows the sweep"}[s.ui.bodeIdx >= 0]
+			switch {
+			case s.viewMode == viewBode && s.ui.bodeIdx >= 0:
+				return "on a point"
+			case s.viewMode == viewBode:
+				return "follows the sweep"
+			case s.ui.specFSet:
+				return "set by hand"
 			}
-			return map[bool]string{true: "set by hand", false: "on the largest peak"}[s.ui.specFSet]
+			return "on the largest peak"
 		},
 	}
 	return []*row{view, src, persist, bodeRef, bodeDut, bodeClear, marker}
