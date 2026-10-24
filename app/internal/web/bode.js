@@ -80,8 +80,11 @@ function bodeDraw(g, w, h, pts, colors) {
   // TRLC-LINKS: REQ-SDS-125
   const xOf = (f) => plotL + (Math.log10(f) - lf0) / span * plotW;
 
-  const [gLo, gHi] = bodeNiceRange(Array.from(pts.gain_db), -20, 20, 10);
-  const [pLo, pHi] = bodeNiceRange(Array.from(pts.phase_deg), -180, 180, 45);
+  const [gLo, gHi] = bodeNiceRange(pts.gain_db, -20, 20, 10); // read in place, not copied
+  const [pLo, pHi] = bodeNiceRange(pts.phase_deg, -180, 180, 45);
+  // Each point's column worked out once: the traces and their dots read it four times.
+  const xs = new Float64Array(n);
+  for (let i = 0; i < n; i++) xs[i] = xOf(pts.freq[i]);
   // TRLC-LINKS: REQ-SDS-125
   const magYOf = (db) => padT + (gHi - db) / (gHi - gLo || 1) * magH;
   // TRLC-LINKS: REQ-SDS-125
@@ -118,16 +121,16 @@ function bodeDraw(g, w, h, pts, colors) {
 
   // magnitude trace
   g.strokeStyle = cMag; g.lineWidth = 1.5; g.beginPath();
-  for (let i = 0; i < n; i++) { const x = xOf(pts.freq[i]), y = magYOf(pts.gain_db[i]); i ? g.lineTo(x, y) : g.moveTo(x, y); }
+  for (let i = 0; i < n; i++) { const x = xs[i], y = magYOf(pts.gain_db[i]); i ? g.lineTo(x, y) : g.moveTo(x, y); }
   g.stroke();
   g.fillStyle = cMag;
-  for (let i = 0; i < n; i++) { g.beginPath(); g.arc(xOf(pts.freq[i]), magYOf(pts.gain_db[i]), 1.6, 0, 7); g.fill(); }
+  for (let i = 0; i < n; i++) { g.beginPath(); g.arc(xs[i], magYOf(pts.gain_db[i]), 1.6, 0, 7); g.fill(); }
   // phase trace
   g.strokeStyle = cPh; g.beginPath();
-  for (let i = 0; i < n; i++) { const x = xOf(pts.freq[i]), y = phYOf(pts.phase_deg[i]); i ? g.lineTo(x, y) : g.moveTo(x, y); }
+  for (let i = 0; i < n; i++) { const x = xs[i], y = phYOf(pts.phase_deg[i]); i ? g.lineTo(x, y) : g.moveTo(x, y); }
   g.stroke();
   g.fillStyle = cPh;
-  for (let i = 0; i < n; i++) { g.beginPath(); g.arc(xOf(pts.freq[i]), phYOf(pts.phase_deg[i]), 1.6, 0, 7); g.fill(); }
+  for (let i = 0; i < n; i++) { g.beginPath(); g.arc(xs[i], phYOf(pts.phase_deg[i]), 1.6, 0, 7); g.fill(); }
 
   // panel labels
   g.textAlign = "left"; g.fillStyle = cMag; g.fillText("dB", plotL + 2, padT + 6);
