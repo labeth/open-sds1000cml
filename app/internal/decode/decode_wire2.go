@@ -25,8 +25,8 @@ func risingBits(a, b []uint8, cfg ClockedCfg) ([]cbit, float64, sliced, string) 
 	if why != "" {
 		return nil, 0, C, why
 	}
-	var out []cbit
-	var per []float64
+	out := make([]cbit, 0, len(E)/2+1)
+	per := make([]float64, 0, len(E)/2+1)
 	for _, e := range E {
 		if e.dir > 0 {
 			if k := len(out); k > 0 {
