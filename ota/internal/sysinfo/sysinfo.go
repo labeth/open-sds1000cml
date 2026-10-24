@@ -4,6 +4,7 @@
 package sysinfo
 
 import (
+	"bytes"
 	"net"
 	"os"
 	"strings"
@@ -23,10 +24,10 @@ type Info struct {
 
 // TRLC-LINKS: REQ-SDS-102
 func cstr(b []byte) string {
-	if i := strings.IndexByte(string(b[:]), 0); i >= 0 {
+	if i := bytes.IndexByte(b, 0); i >= 0 {
 		return string(b[:i])
 	}
-	return string(b[:])
+	return string(b)
 }
 
 // TRLC-LINKS: REQ-SDS-102
@@ -85,12 +86,14 @@ func mem() string {
 	if err != nil {
 		return ""
 	}
+	// Both lead /proc/meminfo; stop once they are found.
 	var total, free string
-	for _, l := range strings.Split(string(b), "\n") {
+	for rest := string(b); rest != "" && (total == "" || free == ""); {
+		var l string
+		l, rest, _ = strings.Cut(rest, "\n")
 		if v, ok := strings.CutPrefix(l, "MemTotal:"); ok {
 			total = strings.TrimSpace(v)
-		}
-		if v, ok := strings.CutPrefix(l, "MemFree:"); ok {
+		} else if v, ok := strings.CutPrefix(l, "MemFree:"); ok {
 			free = strings.TrimSpace(v)
 		}
 	}
