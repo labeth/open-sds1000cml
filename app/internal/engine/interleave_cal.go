@@ -213,7 +213,7 @@ func phaseSums(x []uint8) (sums [5]uint32, count [5]int) {
 		a, b, c, d, e := uint32(x[0]), uint32(x[1]), uint32(x[2]), uint32(x[3]), uint32(x[4])
 		s0, s1, s2, s3, s4 = s0+a, s1+b, s2+c, s3+d, s4+e
 		if a-1 >= 254 || b-1 >= 254 || c-1 >= 254 || d-1 >= 254 || e-1 >= 254 {
-			for k, v := range ([5]uint32{a, b, c, d, e}) {
+			for k, v := range [5]uint32{a, b, c, d, e} {
 				if v-1 >= 254 {
 					clip[k]++
 					sums[k] -= v
