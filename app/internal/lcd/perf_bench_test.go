@@ -305,3 +305,12 @@ func BenchmarkDrawDenseTrace(b *testing.B) {
 		drawDenseTrace(sf, fullPlot, traceID{0, 1, 0, false}, sig, nil, 0, len(sig), 0x07ff, 0.5)
 	}
 }
+
+// Render clears the back buffer every frame.
+// TRLC-LINKS: REQ-SDS-021
+func BenchmarkFillBlack(b *testing.B) {
+	m := NewMemSurface()
+	for b.Loop() {
+		m.Fill(0)
+	}
+}
