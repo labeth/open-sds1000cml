@@ -4,6 +4,7 @@ package panel
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"math"
 
 	"open-sds/app/internal/engine"
@@ -139,7 +140,7 @@ func (c *Controller) srFPGARun() {
 	req.Progress = func(done, total int) { // a session runs for seconds: show it moving
 		c.mu.Lock()
 		if generation == c.srFPGAGen && c.srFPGABusy {
-			c.srStatus = fmt.Sprintf("FPGA: record %d/%d...", done, total)
+			c.srStatus = srRecordText(done, total)
 		}
 		c.mu.Unlock()
 	}
@@ -177,6 +178,13 @@ func (c *Controller) srFPGARun() {
 			c.srStatus += fmt.Sprintf(" rej %d", res.Rejected)
 		}
 	}()
+}
+
+// srRecordText is a running FPGA session's status: the record it is on
+// (written for every record the session takes).
+// TRLC-LINKS: REQ-SDS-141
+func srRecordText(done, total int) string {
+	return "FPGA: record " + strconv.Itoa(done) + "/" + strconv.Itoa(total) + "..."
 }
 
 // fpgaReviewSpan places an FPGA stack of n samples for review: one screen of

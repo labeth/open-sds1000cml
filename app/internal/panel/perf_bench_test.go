@@ -299,3 +299,21 @@ func BenchmarkSoundRowInfo(b *testing.B) {
 		c.snd.rowInfo()
 	}
 }
+
+// TRLC-LINKS: REQ-SDS-141
+func BenchmarkSRRecordText(b *testing.B) {
+	for b.Loop() {
+		if srRecordText(123, 4096) != "FPGA: record 123/4096..." {
+			b.Fatal("text")
+		}
+	}
+}
+
+// TRLC-LINKS: REQ-SDS-141
+func BenchmarkSRRecordTextRef(b *testing.B) {
+	for b.Loop() {
+		if fmt.Sprintf("FPGA: record %d/%d...", 123, 4096) != "FPGA: record 123/4096..." {
+			b.Fatal("text")
+		}
+	}
+}
