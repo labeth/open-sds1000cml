@@ -52,34 +52,38 @@ func sbusFrames(r Result, colTimeS float64) int {
 		return 0
 	}
 	bit := sbusBitUs * 1e-6 / colTimeS // samples a bit
-	var bursts [][]Span
+	// A burst is kept as what the check reads of it: its first and last
+	// span, its length and whether all of it is data.
+	type burst struct {
+		first, last Span
+		n           int
+		data        bool
+	}
+	var bursts []burst
 	for _, s := range r.Spans {
 		if s.Kind == "gap" {
 			continue
 		}
 		if n := len(bursts); n > 0 {
-			last := bursts[n-1]
-			if float64(s.I0-last[len(last)-1].I0) <= 40*bit { // bytes 12 bits apart; frames over 100
-				bursts[n-1] = append(last, s)
+			b := &bursts[n-1]
+			if float64(s.I0-b.last.I0) <= 40*bit { // bytes 12 bits apart; frames over 100
+				b.last, b.n, b.data = s, b.n+1, b.data && s.Kind == "data"
 				continue
 			}
 		}
-		bursts = append(bursts, []Span{s})
+		bursts = append(bursts, burst{s, s, 1, s.Kind == "data"})
 	}
-	var starts []float64
+	starts := make([]float64, 0, len(bursts))
 	for k, b := range bursts {
 		cut := k == 0 || k == len(bursts)-1
-		good := len(b) == sbusFrameLen && b[0].Val == 0x0f && sbusEnd(b[len(b)-1].Val)
-		for _, s := range b {
-			good = good && s.Kind == "data"
-		}
+		good := b.n == sbusFrameLen && b.first.Val == 0x0f && sbusEnd(b.last.Val) && b.data
 		if !good {
-			if cut && len(b) < sbusFrameLen {
+			if cut && b.n < sbusFrameLen {
 				continue
 			}
 			return 0
 		}
-		starts = append(starts, float64(b[0].I0)*colTimeS)
+		starts = append(starts, float64(b.first.I0)*colTimeS)
 	}
 	for k := 1; k < len(starts); k++ {
 		dt := (starts[k] - starts[k-1]) * 1e3 // ms

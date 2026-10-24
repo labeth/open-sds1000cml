@@ -235,3 +235,16 @@ func BenchmarkMorseOf(b *testing.B) {
 		}
 	}
 }
+
+// TRLC-LINKS: REQ-SDS-244, REQ-SDS-247
+func BenchmarkSBUSFrames(b *testing.B) {
+	o := sbusOpts(7e-3, 1e6)
+	o.frames = 6
+	r := DecodeUART(sbusLine(o), 1e-6, UARTCfg{Baud: sbusBaud, Bits: 8, Parity: "even", Inverted: true})
+	if sbusFrames(r, 1e-6) < 2 {
+		b.Fatal("no S.BUS frames")
+	}
+	for b.Loop() {
+		sbusFrames(r, 1e-6)
+	}
+}
