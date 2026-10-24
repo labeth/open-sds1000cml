@@ -489,7 +489,8 @@ func compute[T ~uint8 | ~uint16](sig []T, voltsPerCode, offV, sampleS, scale flo
 	var hist [256]int // on the stack: no allocation a measurement
 	coarse := hist[:]
 	var lowSum *[256]uint32
-	if unsafe.Sizeof(sig[0]) == 1 {
+	switch {
+	case unsafe.Sizeof(sig[0]) == 1 && shift == 0:
 		// 8-bit codes: the histogram alone gives the extremes and both
 		// moments, so a sample costs one count instead of a 64-bit
 		// multiply-accumulate and two compares. Four tables keep runs of
@@ -511,33 +512,24 @@ func compute[T ~uint8 | ~uint16](sig []T, voltsPerCode, offV, sampleS, scale flo
 			sum += d * int64(k)
 			sum2 += d * d * int64(k)
 		}
-	} else {
+	case unsafe.Sizeof(sig[0]) == 2 && shift == 8:
 		// A 16-bit delta's square fits 32 bits: one multiply a sample, not
 		// this core's 64x64 sequence. Each code's low-byte sum gives the
 		// settled levels (below) without a second pass; it fits 32 bits up
 		// to 2^24 samples a code.
-		var sq uint64
 		lowSum = new([256]uint32)
+		var sq uint64
+		cmin, cmax, sum, sq = moments16(unsafe.Slice((*uint16)(unsafe.Pointer(&sig[0])), n), reference, &hist, lowSum)
+		sum2 = int64(sq)
+	default:
 		for _, v := range sig {
 			iv := int(v)
-			if iv < cmin {
-				cmin = iv
-			}
-			if iv > cmax {
-				cmax = iv
-			}
-			delta := iv - reference
-			sum += int64(delta)
-			ad := uint32(delta)
-			if delta < 0 {
-				ad = uint32(-delta)
-			}
-			sq += uint64(ad * ad)
-			c := min(iv>>shift, 255)
-			coarse[c]++
-			lowSum[c] += uint32(iv & 0xff)
+			cmin, cmax = min(cmin, iv), max(cmax, iv)
+			delta := int64(iv - reference)
+			sum += delta
+			sum2 += delta * delta
+			coarse[min(iv>>shift, 255)]++
 		}
-		sum2 = int64(sq)
 	}
 	meanDelta := float64(sum) / float64(n)
 	mean := float64(reference) + meanDelta
@@ -570,7 +562,7 @@ func compute[T ~uint8 | ~uint16](sig []T, voltsPerCode, offV, sampleS, scale flo
 		// (~2.6e10) wraps it, so a single shot would measure top -6.35 V and
 		// base -4.82 V on a 0-3.3 V square.
 		var nTop, sumTop, nBase, sumBase int64
-		if shift == 8 && n < 1<<24 {
+		if lowSum != nil && n < 1<<24 {
 			if topC >= 0 {
 				nTop = int64(hist[topC])
 				sumTop = int64(topC)<<8*nTop + int64(lowSum[topC])
@@ -736,6 +728,31 @@ walk:
 	return r
 }
 
+// moments16 is compute's pass over a Q8.8 record: the extremes, the sum and
+// sum of squares of the deltas from ref, and each whole code's count and
+// low-byte sum. Out of line for the same reason as histogram4.
+// TRLC-LINKS: REQ-SDS-017
+//
+//go:noinline
+func moments16(sig []uint16, ref int, coarse *[256]int, lowSum *[256]uint32) (cmin, cmax int, sum int64, sq uint64) {
+	cmin, cmax = int(sig[0]), int(sig[0])
+	for _, v := range sig {
+		iv := int(v)
+		cmin, cmax = min(cmin, iv), max(cmax, iv)
+		delta := iv - ref
+		sum += int64(delta)
+		ad := uint32(delta)
+		if delta < 0 {
+			ad = uint32(-delta)
+		}
+		sq += uint64(ad * ad)
+		c := uint8(iv >> 8)
+		coarse[c]++
+		lowSum[c] += uint32(iv & 0xff)
+	}
+	return cmin, cmax, sum, sq
+}
+
 // histogram4 counts s into four tables, alternating, so runs of equal codes
 // do not wait on the previous increment's store. Out of line on purpose: in
 // the caller's large frame every table address is reloaded from a literal
@@ -886,27 +903,39 @@ func firstEdge[T ~uint8 | ~uint16](sig []T, first, second float64, rising bool) 
 	n := len(sig)
 	firstUp, firstDown := int(math.Ceil(first)), int(math.Floor(first))
 	secondUp, secondDown := int(math.Ceil(second)), int(math.Floor(second))
+	// One loop a direction: the sample compares are then all a sample costs.
+	// An inner scan starts at j=i so an edge faster than one sample (both
+	// thresholds crossed in the same interval) still yields an
+	// interpolated, sub-sample rise/fall; it gives the candidate up when the
+	// edge reverses before reaching second.
+	if rising {
+		for i := 1; i < n; i++ {
+			if b := int(sig[i]); b < firstUp || int(sig[i-1]) >= firstUp {
+				continue
+			}
+			for j := i; j < n; j++ {
+				d := int(sig[j])
+				if d < firstUp {
+					break
+				}
+				if c := int(sig[j-1]); c < secondUp && d >= secondUp {
+					return interp(float64(sig[i-1]), float64(sig[i]), i, first), interp(float64(c), float64(d), j, second), true
+				}
+			}
+		}
+		return 0, 0, false
+	}
 	for i := 1; i < n; i++ {
-		a, b := int(sig[i-1]), int(sig[i])
-		crossedFirst := (rising && a < firstUp && b >= firstUp) || (!rising && a > firstDown && b <= firstDown)
-		if !crossedFirst {
+		if b := int(sig[i]); b > firstDown || int(sig[i-1]) <= firstDown {
 			continue
 		}
-		t1 := interp(float64(a), float64(b), i, first)
-		// Start at j=i so an edge faster than one sample (both thresholds crossed
-		// in the same interval) still yields an interpolated, sub-sample rise/fall.
 		for j := i; j < n; j++ {
-			c, d := int(sig[j-1]), int(sig[j])
-			// Abort this candidate if the edge reverses before reaching second.
-			if rising && d < firstUp {
+			d := int(sig[j])
+			if d > firstDown {
 				break
 			}
-			if !rising && d > firstDown {
-				break
-			}
-			crossedSecond := (rising && c < secondUp && d >= secondUp) || (!rising && c > secondDown && d <= secondDown)
-			if crossedSecond {
-				return t1, interp(float64(c), float64(d), j, second), true
+			if c := int(sig[j-1]); c > secondDown && d <= secondDown {
+				return interp(float64(sig[i-1]), float64(sig[i]), i, first), interp(float64(c), float64(d), j, second), true
 			}
 		}
 	}
