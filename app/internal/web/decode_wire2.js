@@ -81,7 +81,8 @@ function decodeSDCard(a, b, colTimeS, cfg) {
     }
     ckOK = ckOK && bits[n - 1] === 1;
     for (let k = 0; k < n / 8; k++) {
-      const v = bitsInt(bits.slice(8 * k, 8 * k + 8));
+      let v = 0; // bitsInt of the byte's bits, read in place rather than sliced out
+      for (let j = 8 * k; j < 8 * k + 8; j++) v = (v << 1) | bits[j];
       let txt = k === 0 ? name : hex2(v), kind = "data";
       if (k === n / 8 - 1 && !ckOK) { txt = "!" + txt; kind = "frame-error"; }
       o.add(t[8 * k].x, t[8 * k].x + 8 * per, txt, kind, v, true);
@@ -185,6 +186,10 @@ function decodeCJTAG(a, b, colTimeS, cfg) {
     while (mi < M.edges.length && M.edges[mi].x <= r) mi++;
     while (mi < M.edges.length && M.edges[mi].x <= fall) { esc[i + 1]++; mi++; }
   }
+  // logicAt(M, x) inline: a call a clock was most of a decode.
+  const mc = M.codes, mthr = M.threshold, mn = M.n;
+  // TRLC-LINKS: REQ-SDS-018, REQ-SDS-254
+  const lvM = (x) => { const i = Math.round(x); return i < 0 || i >= mn || mc[i] < 0 ? -1 : mc[i] >= mthr ? 1 : 0; };
   const FOUR = 0, OAC = 1, OSCAN = 2;
   let mode = FOUR, oacp = 0, oaclen = 12, cyc = 0, state = 1, tdi = 0, ti = 0, to = 0, nb = 0, x0 = 0, good = false;
   const per = [];
@@ -201,7 +206,7 @@ function decodeCJTAG(a, b, colTimeS, cfg) {
       o.add(r, r, "", "sof", 0, false);
       o.add(r, r, "ESC6", "rw", 6, false);
     }
-    const tmsc = logicAt(M, r);
+    const tmsc = lvM(r);
     if (mode === OAC) {
       oacp++;
       if (oacp === 8 && tmsc === 0) oaclen = 36;
@@ -212,7 +217,7 @@ function decodeCJTAG(a, b, colTimeS, cfg) {
     if (cyc === 0) { tdi = 1 - tmsc; cyc = 1; continue; }
     if (cyc === 1) { cyc = 2; continue; }
     cyc = 0;
-    const tms = logicAt(M, rises[i - 1]);
+    const tms = lvM(rises[i - 1]);
     const tdo = tmsc;
     if (state === 4 || state === 11) {
       if (nb === 0) x0 = rises[i - 2];
