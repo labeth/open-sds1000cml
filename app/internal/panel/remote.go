@@ -343,7 +343,7 @@ func (c *Controller) displayAndView(s *sv) (Display, wsview.View) {
 		CurT: s.curT, CurV: s.curV, CurVCh: s.curVCh,
 		AutosetBusy: busy, AutosetMsg: amsg}
 	for _, it := range s.meas {
-		d.MeasItems = append(d.MeasItems, fmt.Sprintf("%d:%s", it.ch+1, measParams[it.param].id))
+		d.MeasItems = append(d.MeasItems, string(rune('1'+it.ch))+":"+measParams[it.param].id)
 	}
 	if s.remoteNotices && s.now.Before(s.ui.remoteUnt) {
 		d.Remote = s.ui.remote
