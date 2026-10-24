@@ -286,12 +286,16 @@ func DefaultInterleaveCalibration() (*InterleaveCalibration, error) {
 // TRLC-LINKS: REQ-SDS-016, REQ-SDS-010
 func (c *InterleaveCalibration) debiasEnvelope(ch int, sig []uint8, q []uint16, fromQ bool) {
 	off := c.envelopeOffsets(ch)
-	for i := range sig {
-		x := int(sig[i]) << 8
-		if fromQ {
-			x = int(q[i])
+	q = q[:len(sig)]
+	if fromQ { // the source chosen once, not per sample
+		for i, x := range q {
+			q[i] = uint16(debiasQ(int(x), off[i&1]))
+			sig[i] = roundQ8(q[i])
 		}
-		q[i] = uint16(debiasQ(x, off[i&1]))
+		return
+	}
+	for i, v := range sig {
+		q[i] = uint16(debiasQ(int(v)<<8, off[i&1]))
 		sig[i] = roundQ8(q[i])
 	}
 }

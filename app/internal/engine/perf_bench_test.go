@@ -448,3 +448,18 @@ func BenchmarkEdgeWindows(b *testing.B) {
 		f.EdgeWindows(1)
 	}
 }
+
+// TRLC-LINKS: REQ-SDS-016, REQ-SDS-010
+func BenchmarkDebiasEnvelope(b *testing.B) {
+	var c InterleaveCalibration
+	for k := range c.Offset[0] {
+		c.Offset[0][k], c.Offset[1][k] = 0.3*float64(k)-0.5, -0.2*float64(k)
+	}
+	src := discernSig(20000)
+	sig, q := make([]uint8, len(src)), make([]uint16, len(src))
+	for b.Loop() {
+		copy(sig, src)
+		c.debiasEnvelope(0, sig, q, false)
+		c.debiasEnvelope(1, sig, q, true)
+	}
+}
