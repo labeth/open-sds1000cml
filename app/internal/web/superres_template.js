@@ -36,7 +36,7 @@ function srBuildTemplate(ref, n, edgeX, valid) {
     for (let j = a; j < b; j++) { const v = ref[j]; if (v < mn) mn = v; if (v > mx) mx = v; }
     mr[i] = mx - mn;
   }
-  const sorted = Array.from(mr.subarray(lo0, hi0)).sort((a, b) => a - b);
+  const sorted = mr.slice(lo0, hi0).sort(); // a typed copy sorts numerically, no comparator call
   const floor = sorted[Math.floor(sorted.length * 0.2)] || 0;
   const peak = sorted[sorted.length - 1] || 0;
   if (peak - floor < 6) return null; // no distinguishing variation
