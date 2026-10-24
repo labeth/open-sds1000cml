@@ -184,7 +184,7 @@ func (c *Controller) sheetKeys(s *sv) (string, []fkey) {
 // the match entry, or a slot's Save and Recall.
 // TRLC-LINKS: REQ-SDS-212
 func (c *Controller) rowKeys(s *sv, r *row) []fkey {
-	var out []fkey
+	out := make([]fkey, 0, 5) // the five F-keys
 	switch r.kind {
 	case wsview.Enum:
 		cur := r.get(s)
@@ -223,7 +223,10 @@ func (c *Controller) rowKeys(s *sv, r *row) []fkey {
 				used := s.slotUsed[r.slot]
 				switch a.id {
 				case "save":
-					k.value = map[bool]string{true: "overwrite", false: "store here"}[used]
+					k.value = "store here"
+					if used {
+						k.value = "overwrite"
+					}
 				case "recall":
 					k.value = "empty"
 					if used {

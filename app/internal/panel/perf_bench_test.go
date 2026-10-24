@@ -330,3 +330,22 @@ func BenchmarkMarkerStatus(b *testing.B) {
 		}
 	}
 }
+
+// TRLC-LINKS: REQ-SDS-212
+func BenchmarkRowFKeys(b *testing.B) {
+	c, _, _ := newC(&testing.T{})
+	s := c.snap()
+	rs := []*row{rowByID["trig.type"], rowByID["trig.mode"], rowByID["trig.edge"]}
+	for _, t := range sheetTabs {
+		for _, r := range t.rows {
+			if r.kind == wsview.Slot || r.kind == wsview.Number {
+				rs = append(rs, r)
+			}
+		}
+	}
+	for b.Loop() {
+		for _, r := range rs {
+			c.rowKeys(s, r)
+		}
+	}
+}
