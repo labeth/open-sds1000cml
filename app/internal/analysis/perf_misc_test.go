@@ -52,3 +52,14 @@ func TestStatsMinMaxSignedZero(t *testing.T) {
 		}
 	}
 }
+
+// The COMPARE repeat test as the panel runs it every frame: 400 screen
+// columns of each channel against the last.
+// TRLC-LINKS: REQ-SDS-218
+func BenchmarkRepeatsScreen(b *testing.B) {
+	x := squareDiv(400, 40, 0, 0.03, 1)
+	y := squareDiv(400, 40, 0.2, 0.03, 2)
+	for b.Loop() {
+		Repeats(x, y, 0.25, 2)
+	}
+}
