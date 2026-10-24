@@ -386,10 +386,13 @@ function wsDots() {
   const set = (id, on, bad, why) => {
     const t = $("tab-" + id);
     if (!t) return;
+    // written only on a change: this runs every second
     const dot = t.querySelector(".tdot");
-    dot.hidden = !on; dot.classList.toggle("is-bad", !!bad);
+    if (dot.hidden !== !on) dot.hidden = !on;
+    if (dot.classList.contains("is-bad") !== !!bad) dot.classList.toggle("is-bad", !!bad);
     const w = WSBY[id];
-    t.title = w.blurb + " Again: " + w.again + "." + (on && why ? " Now: " + why + "." : "") + " Key: " + w.alt + ".";
+    const title = w.blurb + " Again: " + w.again + "." + (on && why ? " Now: " + why + "." : "") + " Key: " + w.alt + ".";
+    if (t.title !== title) t.title = title;
   };
   const decoding = typeof dcfg !== "undefined" && dcfg.proto !== "off";
   const serial = typeof stArmed === "function" && stArmed();
