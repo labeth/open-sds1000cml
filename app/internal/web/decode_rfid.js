@@ -12,8 +12,15 @@ const EM4305_CMDS = ["CMD0", "LOGIN", "WRITE", "CMD3", "READ", "DISABLE", "PROTE
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-252
 function rfidGaps(S, fc) {
   const runs = levelRuns(S);
-  const lens = runs.filter((r) => !r.open).map((r) => r.x1 - r.x0);
-  const carrier = quantile(lens, 0.5) < 0.75 * fc;
+  // The closed runs' lengths straight into a typed array, sorted numerically
+  // there (quantile's 0.5 point), not filtered, mapped and copied.
+  let nl = 0;
+  for (const r of runs) if (!r.open) nl++;
+  const lens = new Float64Array(nl);
+  nl = 0;
+  for (const r of runs) if (!r.open) lens[nl++] = r.x1 - r.x0;
+  lens.sort();
+  const carrier = (nl ? lens[Math.trunc(0.5 * (nl - 1))] : 0) < 0.75 * fc;
   const out = [];
   for (const r of runs) {
     if (r.open) continue;
