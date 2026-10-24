@@ -85,6 +85,7 @@ func planParams() map[string]SerialParams {
 
 // planByValue calls each planner on a copy of p, as the planners took
 // their settings before (the reference).
+// TRLC-LINKS: REQ-SDS-013
 //
 //go:noinline
 func planByValue(name string, p SerialParams) bool {
@@ -102,6 +103,7 @@ func planByValue(name string, p SerialParams) bool {
 }
 
 // planByPointer calls each planner on p itself.
+// TRLC-LINKS: REQ-SDS-013
 //
 //go:noinline
 func planByPointer(name string, p *SerialParams) bool {
@@ -488,15 +490,23 @@ func BenchmarkViewWindow(b *testing.B) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-013
+//
 //go:noinline
 func planPacketByValue(p SerialParams) bool { return planHardwarePacket(&p, 0xffff, 0).Enabled }
 
+// TRLC-LINKS: REQ-SDS-013
+//
 //go:noinline
 func planPacketByPointer(p *SerialParams) bool { return planHardwarePacket(p, 0xffff, 0).Enabled }
 
+// TRLC-LINKS: REQ-SDS-013
+//
 //go:noinline
 func planSymbolByValue(p SerialParams) bool { return planHardwareSymbol(&p).Enabled }
 
+// TRLC-LINKS: REQ-SDS-013
+//
 //go:noinline
 func planSymbolByPointer(p *SerialParams) bool { return planHardwareSymbol(p).Enabled }
 
