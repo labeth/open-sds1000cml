@@ -16,17 +16,22 @@ function clockedLines(a, b, cfg) {
   if (!C.ok) return { why: C.reason };
   const D = sliceChannel(b, clockedOpts(cfg.thresholdB));
   if (!D.ok) return { why: D.reason };
-  const out = [], gaps = [];
+  // The data level at each clock edge read inline, into a sized array; the
+  // fall-to-fall periods sorted typed (numeric, no comparator call).
+  const CE = C.edges, dc = D.codes, dthr = D.threshold, dn = D.n;
+  const out = new Array(CE.length), fall = [];
   let lastFall = -1;
-  for (const e of C.edges) {
-    out.push({ x: e.x, dir: e.dir, d: logicAt(D, e.x) });
+  for (let k = 0; k < CE.length; k++) {
+    const e = CE[k];
+    const i = Math.round(e.x);
+    out[k] = { x: e.x, dir: e.dir, d: i < 0 || i >= dn || dc[i] < 0 ? -1 : dc[i] >= dthr ? 1 : 0 };
     if (e.dir < 0) {
-      if (lastFall >= 0) gaps.push(e.x - lastFall);
+      if (lastFall >= 0) fall.push(e.x - lastFall);
       lastFall = e.x;
     }
   }
-  if (gaps.length < 4) return { why: "too few clock edges" };
-  gaps.sort((p, q) => p - q);
+  if (fall.length < 4) return { why: "too few clock edges" };
+  const gaps = Float64Array.from(fall).sort();
   return { E: out, per: gaps[gaps.length >> 1], C, why: "" };
 }
 
