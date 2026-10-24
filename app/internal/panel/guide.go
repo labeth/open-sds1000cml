@@ -1,7 +1,11 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-PANEL
 package panel
 
-import "open-sds/app/internal/panel/wsview"
+import (
+	"sync"
+
+	"open-sds/app/internal/panel/wsview"
+)
 
 // The Help guide (the SYS tab, opened by the Help key on its Help row): the
 // workspace you are in, the sheets, or the knobs and lamps. Its F-keys are
@@ -123,5 +127,14 @@ func guidePage(s *sv) []wsview.Span {
 	case 2:
 		return guideKnobs
 	}
-	return append(append([]wsview.Span(nil), wsGuide[s.ui.ws]...), guideCommon...)
+	return wsGuidePages()[s.ui.ws]
 }
+
+// wsGuidePages are the workspaces' guide pages, each its own lines then the
+// common ones, joined once (the pages are shared, as guideSheets is).
+var wsGuidePages = sync.OnceValue(func() (p [wsview.Count][]wsview.Span) {
+	for ws := range p {
+		p[ws] = append(append(make([]wsview.Span, 0, len(wsGuide[ws])+len(guideCommon)), wsGuide[ws]...), guideCommon...)
+	}
+	return p
+})

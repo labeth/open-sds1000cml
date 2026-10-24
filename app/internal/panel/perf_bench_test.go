@@ -258,3 +258,15 @@ func BenchmarkDecodesBus(b *testing.B) {
 		}
 	}
 }
+
+// TRLC-LINKS: REQ-SDS-212
+func BenchmarkGuidePage(b *testing.B) {
+	c, _, _ := newC(&testing.T{})
+	s := c.snap()
+	for b.Loop() {
+		for ws := wsview.WS(0); ws < wsview.Count; ws++ {
+			s.ui.ws = ws
+			guidePage(s)
+		}
+	}
+}
