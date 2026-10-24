@@ -949,3 +949,57 @@ func TestSoundRingReadWraps(t *testing.T) {
 		}
 	}
 }
+
+// firstCrossingFromRef is the negating loop firstCrossingFrom replaced.
+// TRLC-LINKS: REQ-SDS-275
+func firstCrossingFromRef(q []uint16, level, hyst int, rising bool, start int) (int, bool) {
+	armed := false
+	for i, w := range q {
+		c, l := int(w>>8), level
+		if !rising {
+			c, l = -c, -l
+		}
+		switch {
+		case c <= l-hyst:
+			armed = true
+		case armed && c >= l:
+			if i >= start {
+				return i, true
+			}
+			armed = false
+		}
+	}
+	return 0, false
+}
+
+// TRLC-LINKS: REQ-SDS-275
+func TestFirstCrossingFromSame(t *testing.T) {
+	q := make([]uint16, 3000)
+	for i := range q {
+		q[i] = uint16(128+int(100*math.Sin(float64(i)/37))) << 8
+	}
+	for _, rising := range []bool{true, false} {
+		for _, level := range []int{0, 60, 128, 200, 255} {
+			for _, start := range []int{0, 500, 2999, 4000} {
+				for _, hyst := range []int{0, 4, 30} {
+					a, b := firstCrossingFrom(q, level, hyst, rising, start)
+					c, d := firstCrossingFromRef(q, level, hyst, rising, start)
+					if a != c || b != d {
+						t.Fatalf("rising %v level %d start %d hyst %d: %d %v, want %d %v", rising, level, start, hyst, a, b, c, d)
+					}
+				}
+			}
+		}
+	}
+}
+
+// TRLC-LINKS: REQ-SDS-275
+func BenchmarkFirstCrossing(b *testing.B) {
+	q := make([]uint16, 30000)
+	for i := range q {
+		q[i] = uint16(128+int(100*math.Sin(float64(i)/37))) << 8
+	}
+	for b.Loop() {
+		firstCrossingFrom(q, 128, 4, false, 29000)
+	}
+}

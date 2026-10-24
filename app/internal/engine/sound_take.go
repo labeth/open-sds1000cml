@@ -315,15 +315,27 @@ func (e *Engine) soundFirstCrossing(s *soundState, lo, hi uint64, cfg SoundMarkC
 // TRLC-LINKS: REQ-SDS-275
 func firstCrossingFrom(q []uint16, level, hyst int, rising bool, start int) (int, bool) {
 	armed := false
-	for i, w := range q {
-		c, l := int(w>>8), level
-		if !rising {
-			c, l = -c, -l
+	if !rising { // the rising test on negated codes: arm at or above level+hyst, fire at or below level
+		armAt, fireAt := level+hyst, level
+		for i, w := range q {
+			switch c := int(w >> 8); {
+			case c >= armAt:
+				armed = true
+			case armed && c <= fireAt:
+				if i >= start {
+					return i, true
+				}
+				armed = false
+			}
 		}
-		switch {
-		case c <= l-hyst:
+		return 0, false
+	}
+	armAt, fireAt := level-hyst, level
+	for i, w := range q {
+		switch c := int(w >> 8); {
+		case c <= armAt:
 			armed = true
-		case armed && c >= l:
+		case armed && c >= fireAt:
 			if i >= start {
 				return i, true
 			}
