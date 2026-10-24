@@ -139,10 +139,14 @@ func tailFile(path string, n int) ([]byte, error) {
 	if fi.Size() > int64(n) {
 		off = fi.Size() - int64(n)
 	}
-	if _, err := f.Seek(off, io.SeekStart); err != nil {
-		return nil, err
+	// One read into a buffer of the tail's size: io.ReadAll grows from 512
+	// bytes, copying the tail over and over.
+	buf := make([]byte, fi.Size()-off)
+	m, err := f.ReadAt(buf, off)
+	if err == io.EOF {
+		err = nil // the file shrank since the stat
 	}
-	return io.ReadAll(f)
+	return buf[:m], err
 }
 
 // copyExecFile copies src to dst (0755) atomically and returns dst's sha256.
