@@ -17,16 +17,32 @@ function fmtVdiv(v) { return v >= 1 ? v + " V" : Math.round(v * 1e3) + " mV"; }
 
 // TRLC-LINKS: REQ-SDS-125
 function hexA(hex, a) {
-  const h = hex.replace("#", "");
-  return `rgba(${parseInt(h.substr(0, 2), 16)},${parseInt(h.substr(2, 2), 16)},${parseInt(h.substr(4, 2), 16)},${a})`;
+  // kept per colour and alpha: the decode strip asks once a token a frame
+  let byA = HEXA_CACHE.get(hex);
+  if (!byA) { byA = new Map(); HEXA_CACHE.set(hex, byA); }
+  let c = byA.get(a);
+  if (c === undefined) {
+    const h = hex.replace("#", "");
+    c = `rgba(${parseInt(h.substr(0, 2), 16)},${parseInt(h.substr(2, 2), 16)},${parseInt(h.substr(4, 2), 16)},${a})`;
+    byA.set(a, c);
+  }
+  return c;
 }
+
+const HEXA_CACHE = new Map();
 
 // TRLC-LINKS: REQ-SDS-125
 function fitLabel(g, text, maxW) {
   if (maxW <= 6 * dpr) return "";
   if (g.measureText(text).width <= maxW) return text;
-  let t = text;
-  while (t.length > 1 && g.measureText(t).width > maxW) t = t.slice(0, -1);
+  // The longest prefix that fits, by bisection (a prefix is never narrower
+  // than a shorter one), not a measure a character dropped.
+  let lo = 1, hi = text.length - 1; // the full text does not fit
+  while (lo < hi) {
+    const mid = (lo + hi + 1) >> 1;
+    if (g.measureText(text.slice(0, mid)).width <= maxW) lo = mid; else hi = mid - 1;
+  }
+  const t = text.slice(0, Math.max(1, lo));
   return g.measureText(t).width <= maxW ? t : "";
 }
 
