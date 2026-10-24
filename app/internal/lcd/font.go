@@ -84,7 +84,19 @@ func DrawText(sf Surface, x, y int, s string, c uint16, scale int) {
 			g, ok = glyphs[r]
 		}
 		if ok {
-			if mem && x >= 0 && y >= 0 && x+5*scale <= W && y+8*scale <= H {
+			if mem && scale == 1 && x >= 0 && y >= 0 && x+5 <= W && y+8 <= H {
+				// Most of the HUD: one pixel a set bit, a column at a time.
+				px := m.px()
+				for col := 0; col < 5; col++ {
+					o := y*W + x + col
+					for bits := g[col]; bits != 0; bits >>= 1 {
+						if bits&1 != 0 {
+							px[o] = c
+						}
+						o += W
+					}
+				}
+			} else if mem && x >= 0 && y >= 0 && x+5*scale <= W && y+8*scale <= H {
 				// The glyph's box is on the screen: its pixels written
 				// directly, as SetPixel would write them.
 				for col := 0; col < 5; col++ {
