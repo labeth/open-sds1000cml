@@ -7,13 +7,13 @@ import "open-sds/app/internal/sramcapture"
 // envelope (ADR-IMAGE-REGROUP-DECIMATION).
 // TRLC-LINKS: REQ-SDS-010
 func (e *Engine) envelopeAllowed(cfg sramcapture.Config, tp trigParams) bool {
-	return e.envelopeBlock(cfg, tp) == ""
+	return e.envelopeBlock(&cfg, tp) == ""
 }
 
 // envelopeBlock names what keeps a live frame from the envelope readout, or
 // "" when it may use it (reported as the live_readout status).
 // TRLC-LINKS: REQ-SDS-010
-func (e *Engine) envelopeBlock(cfg sramcapture.Config, tp trigParams) string {
+func (e *Engine) envelopeBlock(cfg *sramcapture.Config, tp trigParams) string {
 	// Everything else reads a live frame as a time-ordered envelope of the
 	// full-depth capture (see orderEnvelope): live frames stay fast whatever
 	// is enabled, and the full record is read on STOP or SINGLE.

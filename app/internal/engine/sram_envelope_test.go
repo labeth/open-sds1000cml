@@ -69,7 +69,7 @@ func TestEnvelopeAllowed(t *testing.T) {
 	// The noise-reducing modes need true samples: decimated live captures.
 	for _, mode := range []int32{AcqAverage, AcqPrecision, AcqEres} {
 		e.acqMode.Store(mode)
-		if why := e.envelopeBlock(sramcapture.Config{}, edge); why == "" || !liveDecimates(why) {
+		if why := e.envelopeBlock(&sramcapture.Config{}, edge); why == "" || !liveDecimates(why) {
 			t.Fatalf("mode %d: block %q", mode, why)
 		}
 	}
@@ -128,7 +128,7 @@ func TestSpectrumLease(t *testing.T) {
 	e := &Engine{hardwareEnvelope: true, clk: Clock{Now: time.Now}}
 	edge := trigParams{typ: TrigEdge}
 	e.LeaseSpectrumView(3 * time.Second)
-	block := e.envelopeBlock(sramcapture.Config{}, edge)
+	block := e.envelopeBlock(&sramcapture.Config{}, edge)
 	if block != blockSpectrum {
 		t.Fatalf("block %q", block)
 	}
@@ -143,7 +143,7 @@ func TestSpectrumLease(t *testing.T) {
 		t.Fatal("the sample and raw leases changed")
 	}
 	e.LeaseSpectrumView(0)
-	if e.envelopeBlock(sramcapture.Config{}, edge) != "" {
+	if e.envelopeBlock(&sramcapture.Config{}, edge) != "" {
 		t.Fatal("an ended lease still blocks the envelope")
 	}
 }
@@ -162,15 +162,15 @@ func TestSearchLease(t *testing.T) {
 	}
 	e.LeaseSearchView(3 * time.Second)
 	e.LeaseSampleView(3 * time.Second)
-	if e.rollActive() || e.envelopeBlock(sramcapture.Config{}, e.tp) != blockSearch {
-		t.Fatalf("search lease: roll %v, block %q", e.rollActive(), e.envelopeBlock(sramcapture.Config{}, e.tp))
+	if e.rollActive() || e.envelopeBlock(&sramcapture.Config{}, e.tp) != blockSearch {
+		t.Fatalf("search lease: roll %v, block %q", e.rollActive(), e.envelopeBlock(&sramcapture.Config{}, e.tp))
 	}
 	_, p, _, _, _ := e.sramConfig()
 	if p.Screen < SearchLiveSamples/2 || p.Screen > SearchLiveSamples || p.Samples > 2*p.Screen {
 		t.Fatalf("search record: %d samples, screen %d", p.Samples, p.Screen)
 	}
 	e.LeaseSearchView(0)
-	if e.envelopeBlock(sramcapture.Config{}, e.tp) != blockSamples {
+	if e.envelopeBlock(&sramcapture.Config{}, e.tp) != blockSamples {
 		t.Fatal("the sample lease no longer blocks the envelope")
 	}
 	e.band.TdivS = 5e-3

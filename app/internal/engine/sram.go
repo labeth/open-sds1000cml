@@ -307,6 +307,15 @@ func qBuffer(q []uint16, n int) []uint16 {
 
 // TRLC-LINKS: REQ-SDS-010, REQ-SDS-011, REQ-SDS-036, REQ-SDS-040
 func (e *Engine) sramConfig() (sramcapture.Config, SRAMPlan, float64, bool, trigParams) {
+	var c sramcapture.Config
+	p, tdiv, norm, tp := e.sramConfigInto(&c)
+	return c, p, tdiv, norm, tp
+}
+
+// sramConfigInto is sramConfig filling c in place: the config is 2.7 KB, and
+// the capture loop builds one every status poll.
+// TRLC-LINKS: REQ-SDS-009
+func (e *Engine) sramConfigInto(c *sramcapture.Config) (SRAMPlan, float64, bool, trigParams) {
 	e.mu.Lock()
 	// The packet and line images record raw samples only (2.1 ms): a slower
 	// timebase drew that record stretched across a screen it called 500us/div
@@ -345,7 +354,7 @@ func (e *Engine) sramConfig() (sramcapture.Config, SRAMPlan, float64, bool, trig
 		// The packet image records raw samples only: the deepest raw record.
 		p = SRAMPlan{Samples: int(sramcapture.SamplesPerChannel), SampleS: 2e-9, Screen: int(sramcapture.SamplesPerChannel)}
 	}
-	build := func(p SRAMPlan) (sramcapture.Config, SRAMPlan) {
+	build := func(p SRAMPlan) SRAMPlan {
 		samples := p.Samples
 		perWord := 2 - boolInt(p.Log != 0)
 		words := uint32((samples + perWord - 1) / perWord)
@@ -367,7 +376,7 @@ func (e *Engine) sramConfig() (sramcapture.Config, SRAMPlan, float64, bool, trig
 		if pre >= words {
 			pre = words - 1
 		}
-		c := sramcapture.Config{Source: sramcapture.ADC, DecimationLog2: p.Log, PreWords: pre, PostWords: words - pre,
+		*c = sramcapture.Config{Source: sramcapture.ADC, DecimationLog2: p.Log, PreWords: pre, PostWords: words - pre,
 			Normal: tp.typ == TrigEdge && e.serialMode.Load() != SerialTrigger, Falling: !e.trigRising.Load(),
 			TriggerChannel: uint8(e.trigSrc.Load()), TriggerLevel: uint8(e.trigLevelWord())}
 		if (e.hardwareUART || e.hardwareI2C || e.hardwareSPI || e.hardwareSENT || e.hardwareMIL1553 || e.hardwareUSBLS || e.hardwareManchester || e.hardwarePacket != 0 || e.hardwareSymbol) && e.serialMode.Load() == SerialTrigger {
@@ -377,7 +386,7 @@ func (e *Engine) sramConfig() (sramcapture.Config, SRAMPlan, float64, bool, trig
 			e.spiQuietCheck(serial)
 			// The matcher slices at the learned level when the request names none.
 			if serial, why := e.serialPlanParams(serial); why != arincOneWord {
-				e.planSerial(&c, serial, tp.typ == TrigEdge && e.serialMode.Load() != SerialTrigger)
+				e.planSerial(c, serial, tp.typ == TrigEdge && e.serialMode.Load() != SerialTrigger)
 			}
 		}
 		if tp.typ != TrigEdge && e.serialMode.Load() != SerialTrigger {
@@ -402,10 +411,10 @@ func (e *Engine) sramConfig() (sramcapture.Config, SRAMPlan, float64, bool, trig
 				c.Normal = false
 			}
 		}
-		e.planHysteresis(&c, p.Log != 0)
-		return c, p
+		e.planHysteresis(c, p.Log != 0)
+		return p
 	}
-	c, p := build(p)
+	p = build(p)
 	// Live frames must stay fast. A mode the envelope readout cannot serve
 	// (averaging, ERES, precision) is captured decimated to a display-sized
 	// record instead of reading a deep raw screen per frame; SINGLE stays deep.
@@ -419,9 +428,9 @@ func (e *Engine) sramConfig() (sramcapture.Config, SRAMPlan, float64, bool, trig
 		if block == blockSearch || block == blockSamples {
 			live.Samples = min(live.Samples, max(int(leaseRecord*float64(live.Screen)), 8192))
 		}
-		c, p = build(live)
+		p = build(live)
 	}
-	return c, p, tdiv, norm, tp
+	return p, tdiv, norm, tp
 }
 
 // averageAlignEdge is the crossing an average aligns a capture on, near
@@ -834,13 +843,14 @@ acquisitionLoop:
 			// AUTO waits for enough prehistory plus a bounded event wait. SINGLE/NORM
 			// never fabricate a trigger. Long waits continue servicing controls.
 			autoWait := 100*time.Millisecond + time.Duration(float64(cfg.PreWords)*float64(2-boolInt(plan.Log != 0))*plan.SampleS*1e9)
+			var next sramcapture.Config
 			for !e.stopReq.Load() {
 				e.serviceCommands()
 				if e.decodedSession != nil || e.soft != nil {
 					continue acquisitionLoop
 				}
 				e.beatN.Add(1)
-				next, _, nextTdiv, nextNorm, nextTP := e.sramConfig()
+				_, nextTdiv, nextNorm, nextTP := e.sramConfigInto(&next)
 				if next != cfg || nextTdiv != tdiv || nextNorm != norm || nextTP != tp || len(e.sramJobs) != 0 {
 					aborted = true
 					break
@@ -936,7 +946,7 @@ acquisitionLoop:
 		readout := "full record"
 		rawForLease := false // a live raw window read only for the raw leases: abandoned when they end
 		if !fullRecall {
-			if why := e.envelopeBlock(cfg, tp); why != "" {
+			if why := e.envelopeBlock(&cfg, tp); why != "" {
 				readout = "raw window: " + why
 				rawForLease = why == blockRaw && !singleShot && !replay
 			} else {
