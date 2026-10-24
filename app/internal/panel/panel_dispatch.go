@@ -372,7 +372,13 @@ func (c *Controller) trigStepCodes() int {
 		return int(panelTrigStepCodesPerVdiv)
 	}
 	idx, _ := c.fe.Snapshot()
-	src := c.eng.Snapshot().TrigSource & 1
+	return trigStepCodesAt(idx, c.eng.Snapshot().TrigSource&1)
+}
+
+// trigStepCodesAt is trigStepCodes for the V/div detents idx and trigger
+// source src already read (snap holds both).
+// TRLC-LINKS: REQ-SDS-135
+func trigStepCodesAt(idx [2]int, src int) int {
 	return max(1, int(math.Round(panelTrigStepCodesPerVdiv*analog.Detents[idx[src]].VdivV)))
 }
 

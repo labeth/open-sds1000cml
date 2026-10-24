@@ -227,7 +227,11 @@ func (c *Controller) snap() *sv {
 			s.vidx[ch] = 8 // 1 V/div without a front end
 		}
 	}
-	s.trigStep = float64(c.trigStepCodes()) / 911 * s.probe[src]
+	step := int(panelTrigStepCodesPerVdiv) // trigStepCodes, on the detents and source read above
+	if c.fe != nil {
+		step = trigStepCodesAt(s.vidx, src)
+	}
+	s.trigStep = float64(step) / 911 * s.probe[src]
 	if c.inverter != nil {
 		s.hasInv, s.inv = true, c.inverter.Inverted()
 	}
