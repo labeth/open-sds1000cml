@@ -169,18 +169,20 @@ func scorePhys(r Result) float64 {
 		// seen, or the unit is not known (a record of dashes alone reads
 		// them as dots of a unit three times too long)
 		long := 0
-		var code string
+		dot, dash := false, false
 		for _, s := range r.Spans {
 			if s.Kind == "data" {
-				code += MorseOf(byte(s.Val))
-				if len(MorseOf(byte(s.Val))) > 1 {
+				code := MorseOf(byte(s.Val))
+				dot = dot || strings.Contains(code, ".")
+				dash = dash || strings.Contains(code, "-")
+				if len(code) > 1 {
 					long++
 				}
 			}
 		}
 		// and a word gap between two words: without one the record's
 		// longest run, the idle level, may be a dash (the line read inverted)
-		if data < 3 || frames < 2 || errs*4 > data || r.Cover < 0.9 || long == 0 || !strings.Contains(code, ".") || !strings.Contains(code, "-") {
+		if data < 3 || frames < 2 || errs*4 > data || r.Cover < 0.9 || long == 0 || !dot || !dash {
 			return -1e9
 		}
 		return float64(15 * min(data, 40))
@@ -330,7 +332,7 @@ func swimTransaction(r Result) bool {
 // pwmSteady reports a PWM decode's periods all within 5 % of their median.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-256
 func pwmSteady(r Result) bool {
-	var per []float64
+	per := make([]float64, 0, len(r.Spans))
 	for _, s := range r.Spans {
 		if s.Kind == "data" {
 			per = append(per, float64(s.I1-s.I0))

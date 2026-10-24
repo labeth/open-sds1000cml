@@ -211,3 +211,18 @@ func BenchmarkNthValue(b *testing.B) {
 		nthValue(v, len(v)/10)
 	}
 }
+
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-256
+func BenchmarkScorePhys(b *testing.B) {
+	var rs []Result
+	for _, c := range physDetectCases() {
+		if c.chA == 0 {
+			rs = append(rs, Autodetect(c.c1, c.c2, c.colT, "hex"))
+		}
+	}
+	for b.Loop() {
+		for _, r := range rs {
+			scorePhys(r)
+		}
+	}
+}
