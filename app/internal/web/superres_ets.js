@@ -136,7 +136,7 @@ function srEtsResult(st, opts) {
       if (ca >= 2 && cb >= 2) half.push(Math.abs((C.sumA[b] / ca) - (C.sum[b] - C.sumA[b]) / cb) / 2);
     }
     // TRLC-LINKS: REQ-SDS-019
-    const med = (arr) => { if (!arr.length) return 0; const s = [...arr].sort((x, y) => x - y); return s[s.length >> 1]; };
+    const med = (arr) => { if (!arr.length) return 0; const s = Float64Array.from(arr).sort(); return s[s.length >> 1]; }; // typed: numeric, no comparator call
     const sigmaSingle = med(sig), sigmaStack = 1.4826 * med(half);
     const bitsGained = sigmaSingle > 0 && sigmaStack > 0 ? Math.log2(sigmaSingle / sigmaStack) : 0;
     return { mean, fill: filled / nb, swing: hi - lo, sigmaSingle, sigmaStack, bitsGained, effBits: 8 + bitsGained };
