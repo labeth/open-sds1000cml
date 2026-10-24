@@ -280,3 +280,16 @@ func BenchmarkSramAverage(b *testing.B) {
 		a.push(f, 16)
 	}
 }
+
+// TRLC-LINKS: REQ-SDS-010
+func BenchmarkRollPush(b *testing.B) {
+	var r rollView
+	r.reset(rollPlan{screen: 2000, group: 1}, 0.1, [2]chScale{{vdiv: 0.5, off: 0.1}, {vdiv: 2}})
+	q1, q2 := make([]uint16, 200), make([]uint16, 200)
+	for i := range q1 {
+		q1[i], q2[i] = uint16(32768+i*37), uint16(30000+i*11)
+	}
+	for b.Loop() {
+		r.push(0, q1, q2, nil)
+	}
+}

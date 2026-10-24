@@ -273,8 +273,12 @@ func (r *rollView) push(gap int, q1, q2 []uint16, held []bool) {
 			}
 		}
 		src := len(q) - (add - hold)
+		vdiv, off := r.scale[ch].vdiv, r.scale[ch].off // volts, the scale read once
+		if !(vdiv > 0) {
+			vdiv = 1
+		}
 		for i, x := range q[src:] {
-			v[at+hold+i] = r.volts(ch, x)
+			v[at+hold+i] = float32((float64(x)/256-128)*vdiv/25 - off)
 		}
 		if r.filled == 0 { // the first chunk also fills the view's past
 			for i := 0; i < at; i++ {
@@ -311,7 +315,8 @@ func (r *rollView) render() {
 		}
 		k, b := 25/sc.vdiv, 128+sc.off*25/sc.vdiv
 		for i, x := range v {
-			code := math.Max(0, math.Min(65535, math.Round((float64(x)*k+b)*256)))
+			// builtin min/max: math.Max/Min's results (NaN, signed zero), inline
+			code := max(0, min(65535, math.Round((float64(x)*k+b)*256)))
 			q[i] = uint16(code)
 			c[i] = roundQ8(q[i])
 		}
