@@ -44,7 +44,9 @@ func (t *tcpTransport) Call(cmd string, args any, timeout time.Duration) (*rpcpr
 	if _, err := conn.Write(append(req, '\n')); err != nil {
 		return nil, err
 	}
-	r := bufio.NewReaderSize(conn, 1<<20)
+	// One reply line per connection: ReadBytes grows past the buffer for a
+	// file chunk, and a 1 MiB buffer per call cost more than the call.
+	r := bufio.NewReaderSize(conn, 64<<10)
 	line, err := r.ReadBytes('\n')
 	if err != nil && len(line) == 0 {
 		return nil, err
