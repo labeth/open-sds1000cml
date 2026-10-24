@@ -62,9 +62,20 @@ func screenDivs(f *engine.Frame, s *sv, ch, cols int) []float64 {
 	}
 	z := float64(max(analog.Detents[s.vidx[ch]].Zoom, 1))
 	out := make([]float64, cols)
+	// Column x ends where x+1 starts: one floor a column, and from a
+	// non-negative left the floor is the conversion's truncation (no float
+	// compare, which stalls this core's pipeline).
+	pos := func(x int) float64 { return left + float64(x)*float64(win)/float64(cols) }
+	floor := floorInt
+	if left >= 0 && pos(cols) < 1<<31 {
+		floor = func(v float64) int { return int(v) }
+	}
+	next := floor(pos(0))
 	for x := range out {
-		lo := clampInt(floorInt(left+float64(x)*float64(win)/float64(cols)), 0, valid-1)
-		hi := clampInt(floorInt(left+float64(x+1)*float64(win)/float64(cols))-1, lo, valid-1)
+		start := next
+		next = floor(pos(x + 1))
+		lo := clampInt(start, 0, valid-1)
+		hi := clampInt(next-1, lo, valid-1)
 		mn, mx := sig[lo], sig[lo]
 		for _, v := range sig[lo : hi+1] {
 			mn, mx = min(mn, v), max(mx, v)
