@@ -384,6 +384,9 @@ func (e *Engine) stitchFrame(norm bool) {
 // dozen publishes.
 // TRLC-LINKS: REQ-SDS-009
 func (e *Engine) notePublish(t time.Time) {
-	e.pubTimes[e.pubAt] = t
+	if e.pubEpoch.IsZero() {
+		e.pubEpoch = t.Add(-time.Hour)
+	}
+	e.pubTimes[e.pubAt] = int64(t.Sub(e.pubEpoch))
 	e.pubAt = (e.pubAt + 1) % len(e.pubTimes)
 }

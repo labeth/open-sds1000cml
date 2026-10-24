@@ -502,8 +502,9 @@ type Engine struct {
 	etsWant       bool // staged ETS opt-in; applied at the frame boundary
 	tp            trigParams
 	stats         Stats
-	pubTimes      [64]time.Time // recent publish timestamps for the FPS window (a ring: notePublish)
-	pubAt         int           // the ring's next slot
+	pubTimes      [64]int64 // recent publish times for the FPS window (a ring: notePublish), ns after pubEpoch
+	pubAt         int       // the ring's next slot
+	pubEpoch      time.Time // an hour before the first publish: unused slots (0) are long past
 
 	// sramJobs carries FPGA image-switching work (fpga_stack.go) to the owner.
 	sramJobs chan sramJob
@@ -887,10 +888,12 @@ func (e *Engine) Snapshot() Stats {
 	e.bode.mu.Unlock()
 	// FPS = publishes within the trailing second.
 	// now-t <= 1 s is t at or after now-1 s: one subtraction, not one a slot
-	cutoff := e.clk.Now().Add(-time.Second)
+	// Times are integers on one epoch: a time.Time comparison a slot was a
+	// fifth of a snapshot on the device.
+	cutoff := int64(e.clk.Now().Sub(e.pubEpoch) - time.Second)
 	n := 0
-	for i := range e.pubTimes { // the ring in any order (unused slots are zero: long past)
-		if !e.pubTimes[i].Before(cutoff) {
+	for _, t := range e.pubTimes { // the ring in any order (unused slots are zero: long past)
+		if t >= cutoff {
 			n++
 		}
 	}
