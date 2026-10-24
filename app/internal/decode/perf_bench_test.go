@@ -265,3 +265,12 @@ func BenchmarkSampleEdges(b *testing.B) {
 		SampleEdges(wide, c)
 	}
 }
+
+// TRLC-LINKS: REQ-SDS-229
+func BenchmarkSampleSPI(b *testing.B) {
+	wide := readCapture(b, "spi_sample_104mhz.bin.gz")
+	c := SampleSPIConfig{ClockCh: 1, Level: 128, Low: 110, High: 146, DataLevel: 128, GapClocks: SampleSPIGap(104e6), MSB: true}
+	for b.Loop() {
+		SampleSPI(wide, c)
+	}
+}

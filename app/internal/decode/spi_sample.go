@@ -79,18 +79,21 @@ func SampleSPI(wide []uint64, c SampleSPIConfig) ([]SampleSPIEvent, []SampleSPIE
 	// The edge stage (sample_edges.v): per receiver clock, at most one
 	// sampling edge and the data line at it.
 	out := SampleEdges(wide, SampleLineConfig{Ch: c.ClockCh, Rise: rising, Fall: !rising, Level: c.Level, Low: c.Low, High: c.High, OtherLevel: c.DataLevel, Delay: c.Delay})
-	strobe := make([]bool, n)
-	bit := make([]bool, n)
-	var edges []SampleSPIEdge
-	for k, o := range out {
-		if o.Found {
-			d := o.Other != c.Inverted
-			strobe[k], bit[k] = true, d
-			edges = append(edges, SampleSPIEdge{Clock: k, Time: 128*k + o.Time, Bit: d})
+	found := 0
+	for k := range out {
+		if out[k].Found {
+			found++
 		}
 	}
-	// The framing stage, SampleSPILatency clocks later: spi_trigger.v's.
+	edges := make([]SampleSPIEdge, 0, found)
+	for k, o := range out {
+		if o.Found {
+			edges = append(edges, SampleSPIEdge{Clock: k, Time: 128*k + o.Time, Bit: o.Other != c.Inverted})
+		}
+	}
+	// A clock's strobe and data bit are its extractor output's.
 	var events []SampleSPIEvent
+	// The framing stage, SampleSPILatency clocks later: spi_trigger.v's.
 	validConfig := c.GapClocks >= 2 && c.Length >= 0 && c.Length <= 4
 	primed, active, framed := false, false, false
 	idle, nbits, count := 0, 0, 0
@@ -106,7 +109,7 @@ func SampleSPI(wide []uint64, c SampleSPIConfig) ([]SampleSPIEvent, []SampleSPIE
 		if k < 0 {
 			continue
 		}
-		edge, data := primed && strobe[k], bit[k]
+		edge, data := primed && out[k].Found, out[k].Found && out[k].Other != c.Inverted
 		var received uint8
 		if c.MSB {
 			received = shift<<1 | b2u8(data)
