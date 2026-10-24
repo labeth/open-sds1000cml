@@ -75,12 +75,12 @@ function decodeManchester(codes, colTimeS, cfg) {
   if (cfg.bitrate > 0) {
     T = (1 / cfg.bitrate) / colTimeS;
   } else {
-    const gaps = [];
+    const gl = [];
     // sub-sample crossings: at small T the integer index quantizes a T/2 gap of
     // 2.5 down to 2, mis-scaling the inferred period below the truth.
-    for (let k = 1; k < S.edges.length; k++) { const g = S.edges[k].x - S.edges[k - 1].x; if (g >= 1) gaps.push(g); }
-    if (gaps.length < 3) return fail("manchester", "too few edges / cannot infer bitrate");
-    gaps.sort((a, b) => a - b);
+    for (let k = 1; k < S.edges.length; k++) { const g = S.edges[k].x - S.edges[k - 1].x; if (g >= 1) gl.push(g); }
+    if (gl.length < 3) return fail("manchester", "too few edges / cannot infer bitrate");
+    const gaps = Float64Array.from(gl).sort(); // a typed sort is numeric, without a comparator call
     let hp = gaps[Math.floor(gaps.length * 0.1)];
     let sum = 0, cnt = 0;
     // ±0.5 window (not ±0.35): absorb the {2,3} quantization spread at small T.
