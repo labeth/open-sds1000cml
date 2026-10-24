@@ -270,3 +270,11 @@ func BenchmarkGuidePage(b *testing.B) {
 		}
 	}
 }
+
+// TRLC-LINKS: REQ-SDS-221
+func BenchmarkMinuteOpts(b *testing.B) {
+	for b.Loop() {
+		minuteOpts(saverMins)
+		minuteOpts(offMins)
+	}
+}

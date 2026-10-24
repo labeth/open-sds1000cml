@@ -2,7 +2,7 @@
 package panel
 
 import (
-	"fmt"
+	"strconv"
 	"time"
 )
 
@@ -69,9 +69,9 @@ func minuteText(m int) string {
 	case m <= 0:
 		return "Off"
 	case m%60 == 0:
-		return fmt.Sprintf("%d h", m/60)
+		return strconv.Itoa(m/60) + " h"
 	}
-	return fmt.Sprintf("%d min", m)
+	return strconv.Itoa(m) + " min"
 }
 
 // oneOf is m when it is one of the choices, else def (a hand-edited or
