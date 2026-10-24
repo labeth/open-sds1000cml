@@ -441,7 +441,8 @@ func compute[T ~uint8 | ~uint16](sig []T, voltsPerCode, offV, sampleS, scale flo
 	if scale >= 256 {
 		shift = 8
 	}
-	coarse := make([]int, 256)
+	var hist [256]int // on the stack: no allocation a measurement
+	coarse := hist[:]
 	for _, v := range sig {
 		iv := int(v)
 		if iv < cmin {
@@ -469,32 +470,45 @@ func compute[T ~uint8 | ~uint16](sig []T, voltsPerCode, offV, sampleS, scale flo
 	// The modes are found on whole ADC codes: a Q8.8 histogram has 256 bins per
 	// code, far too sparse for a mode. The settled level is then the mean of the
 	// samples in the winning code.
-	settled := func(code int) int {
-		if shift == 0 {
-			return code
-		}
-		// int64: the device's int is 32 bits, and a 1 M-sample record's
-		// count × Q8.8 code (~2.6e10) wraps it, so a single shot would measure
-		// top -6.35 V and base -4.82 V on a 0-3.3 V square.
-		var n, sum int64
-		for _, v := range sig {
-			if int(v)>>shift == code {
-				n++
-				sum += int64(v)
-			}
-		}
-		if n == 0 {
-			return code<<shift + 1<<shift/2
-		}
-		return int((sum + n/2) / n)
-	}
 	mid := (cmin + cmax) / 2
 	topCode, baseCode := cmax, cmin
-	if c := modeInRange(coarse, mid>>shift+1, cmax>>shift); c >= 0 {
-		topCode = settled(c)
-	}
-	if c := modeInRange(coarse, cmin>>shift, mid>>shift); c >= 0 {
-		baseCode = settled(c)
+	topC := modeInRange(coarse, mid>>shift+1, cmax>>shift)
+	baseC := modeInRange(coarse, cmin>>shift, mid>>shift)
+	if shift == 0 {
+		if topC >= 0 {
+			topCode = topC
+		}
+		if baseC >= 0 {
+			baseCode = baseC
+		}
+	} else if topC >= 0 || baseC >= 0 {
+		// Both codes' means in one pass over the record. int64: the device's
+		// int is 32 bits, and a 1 M-sample record's count × Q8.8 code
+		// (~2.6e10) wraps it, so a single shot would measure top -6.35 V and
+		// base -4.82 V on a 0-3.3 V square.
+		var nTop, sumTop, nBase, sumBase int64
+		for _, v := range sig {
+			switch int(v) >> shift {
+			case topC:
+				nTop++
+				sumTop += int64(v)
+			case baseC:
+				nBase++
+				sumBase += int64(v)
+			}
+		}
+		settled := func(code int, n, sum int64) int {
+			if n == 0 {
+				return code<<shift + 1<<shift/2
+			}
+			return int((sum + n/2) / n)
+		}
+		if topC >= 0 {
+			topCode = settled(topC, nTop, sumTop)
+		}
+		if baseC >= 0 {
+			baseCode = settled(baseC, nBase, sumBase)
+		}
 	}
 
 	r := &Result{
@@ -527,8 +541,10 @@ func compute[T ~uint8 | ~uint16](sig []T, voltsPerCode, offV, sampleS, scale flo
 	hi90 := base + 0.90*(top-base)
 	mid50 := base + 0.50*(top-base)
 
-	// 50% crossings drive period/duty (interpolated for sub-sample accuracy).
-	var riseIdx, fallIdx []float64
+	// 50% crossings drive period/duty (interpolated for sub-sample accuracy),
+	// held on the stack up to 256 each.
+	var riseBuf, fallBuf [256]float64
+	riseIdx, fallIdx := riseBuf[:0], fallBuf[:0]
 	// Confirm a complete transition through a Schmitt band; small midpoint
 	// recrossings must not turn a single noisy edge into multiple periods.
 	hyst := math.Max(scale, .05*(top-base))
@@ -639,16 +655,15 @@ func modeInRange(hist []int, lo, hi int) int {
 // record read a 104 MHz clock as 75 MHz.
 // TRLC-LINKS: REQ-SDS-017
 func cyclePeriod(idx []float64) float64 {
-	gaps := make([]float64, 0, len(idx)-1)
+	sorted := make([]float64, 0, len(idx)-1)
 	for k := 1; k < len(idx); k++ {
-		gaps = append(gaps, idx[k]-idx[k-1])
+		sorted = append(sorted, idx[k]-idx[k-1])
 	}
-	sorted := append([]float64(nil), gaps...)
 	slices.Sort(sorted)
 	med := sorted[len(sorted)/2]
 	sum, n := 0.0, 0
-	for _, g := range gaps {
-		if math.Abs(g-med) <= 0.25*med {
+	for k := 1; k < len(idx); k++ { // the gaps again, in their own order
+		if g := idx[k] - idx[k-1]; math.Abs(g-med) <= 0.25*med {
 			sum += g
 			n++
 		}
