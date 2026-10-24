@@ -1,7 +1,13 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
 package decode
 
-import "math"
+import (
+	"math"
+	"sync"
+)
+
+// nthScratch holds nthValue's working copies.
+var nthScratch = sync.Pool{New: func() any { return new([]float64) }}
 
 // nthValue is the k-th smallest of v (0-based) in sort.Float64s order (NaNs
 // first) without sorting: a copy is partitioned until k is in place, linear
@@ -9,7 +15,11 @@ import "math"
 // them all for one quantile cost the bus search seconds on the scope.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-214
 func nthValue(v []float64, k int) float64 {
-	c := append([]float64(nil), v...)
+	// The copy is scratch: a pooled buffer, not an allocation the
+	// collector has to clear and sweep each call.
+	bp := nthScratch.Get().(*[]float64)
+	c := append((*bp)[:0], v...)
+	defer func() { *bp = c; nthScratch.Put(bp) }()
 	nan := 0
 	for i, x := range c {
 		if math.IsNaN(x) {

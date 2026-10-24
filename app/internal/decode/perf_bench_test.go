@@ -199,3 +199,15 @@ func BenchmarkSliceChannel(b *testing.B) {
 		sliceChannel(c, 0, false)
 	}
 }
+
+// TRLC-LINKS: REQ-SDS-018
+func BenchmarkNthValue(b *testing.B) {
+	v := make([]float64, 4000)
+	for i := range v {
+		v[i] = float64((i * 7919) % 1013)
+	}
+	for b.Loop() {
+		nthValue(v, len(v)/2)
+		nthValue(v, len(v)/10)
+	}
+}
