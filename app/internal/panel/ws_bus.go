@@ -203,26 +203,30 @@ func tokMatchAt(toks []string, p Packet, i int) bool {
 	if n == 0 || i+n > len(p.Bytes) {
 		return false
 	}
-	ok := func(t string, b byte, bad bool) bool {
-		if t == "ERR" {
-			return bad
-		}
-		if bad {
-			return false
-		}
-		if t == "STS" { // a MIDI status byte
-			return b >= 0x80
-		}
-		h := hex2(b)
-		return len(t) == 2 && (t[0] == '?' || t[0] == h[0]) && (t[1] == '?' || t[1] == h[1])
-	}
 	for j := 0; j < n; j++ {
 		bad := i+j < len(p.ByteErr) && p.ByteErr[i+j]
-		if !ok(toks[j], p.Bytes[i+j], bad) {
+		if !tokByte(toks[j], p.Bytes[i+j], bad) {
 			return false
 		}
 	}
 	return true
+}
+
+// tokByte reports whether one match token holds a byte (bad: decoded with
+// an error): ERR, STS (a MIDI status byte) or two hex digits, ? any.
+// TRLC-LINKS: REQ-SDS-214
+func tokByte(t string, b byte, bad bool) bool {
+	if t == "ERR" {
+		return bad
+	}
+	if bad {
+		return false
+	}
+	if t == "STS" {
+		return b >= 0x80
+	}
+	const d = "0123456789ABCDEF" // hex2's digits, without its string
+	return len(t) == 2 && (t[0] == '?' || t[0] == d[b>>4]) && (t[1] == '?' || t[1] == d[b&15])
 }
 
 // busRows are the listed packets: the complete ones, or the fragments when

@@ -75,3 +75,17 @@ func BenchmarkCodesOf(b *testing.B) {
 		codesOf(f, 1, 0, n, analog.CplDC) // codes
 	}
 }
+
+// TRLC-LINKS: REQ-SDS-214
+func BenchmarkTokMatch(b *testing.B) {
+	ps := make([]Packet, 64)
+	for i := range ps {
+		ps[i].Bytes = []byte{0x50, byte(i), 0x10, 0x20, byte(i * 7), 0x55, 0xAA, 0x0F}
+	}
+	toks := []string{"55", "A?"}
+	for b.Loop() {
+		for i := range ps {
+			tokMatch(toks, ps[i])
+		}
+	}
+}
