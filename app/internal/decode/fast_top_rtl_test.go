@@ -43,8 +43,17 @@ func runFastTop(t *testing.T, dir, image string, wide []uint64, regs [][2]uint32
 	if err := os.WriteFile(rp, []byte(rb.String()), 0o600); err != nil {
 		t.Fatal(err)
 	}
+	pre, post := "+pre=64", "+post=40000" // a run's own +pre and +post take their place
+	for _, a := range extra {
+		switch {
+		case strings.HasPrefix(a, "+pre="):
+			pre = a
+		case strings.HasPrefix(a, "+post="):
+			post = a
+		}
+	}
 	args := append([]string{image, "+input=" + words, fmt.Sprintf("+length=%d", 2*len(wide)), "+regs=" + rp, fmt.Sprintf("+nregs=%d", len(regs)),
-		"+pre=64", "+post=40000"}, extra...)
+		pre, post}, extra...)
 	out, err := exec.Command("vvp", args...).CombinedOutput()
 	if err != nil || !strings.Contains(string(out), "PASS fast top") {
 		t.Fatalf("simulate: %v\n%s", err, out)
@@ -155,6 +164,67 @@ func TestFastImageTopRTL(t *testing.T) {
 		}
 		checkTrigger(t, trigger, matches[0])
 	})
+}
+
+// The fast image decimating by picking samples (/16, /256) for a slow
+// timebase: its receivers read the raw samples, so a two-line bus (SPI at
+// 104 MHz, I2C at 3.4 MHz) triggers where it does at the full rate, and the
+// record, written a word in many, freezes on that trigger (a fire taken
+// only on a written word was lost there).
+// TRLC-LINKS: REQ-SDS-013, REQ-SDS-040, REQ-SDS-229
+func TestFastImageDecimatedTopRTL(t *testing.T) {
+	if testing.Short() {
+		t.Skip("full top-level simulation")
+	}
+	needIverilog(t)
+	dir := t.TempDir()
+	image := compileWordsTop(t, dir, "fast-pick", fastImageDefines+"`define PRECISION\n`define PICK_DECIM\n",
+		"sample_bus.v", "sample_edges.v", "spi_sample.v", "uart_sample.v", "i2c_sample.v", "pick_decim.v")
+	level := [2]uint32{7, 120 | 13<<8}
+	level2 := [2]uint32{59, 120}
+	for _, log := range []uint32{4, 8} {
+		decim := [2]uint32{18, log}
+		// a record's history before the trigger is taken: 2 words (512 raw
+		// words at /256), before the fixture's first match
+		args := []string{"+pick", "+pre=2", "+post=400"}
+		t.Run(fmt.Sprintf("spi-104MHz-/%d", 1<<log), func(t *testing.T) {
+			var p spiBus
+			for _, c := range synthCases() {
+				if c.rateHz == 104e6 && c.cpha && !c.cpol {
+					p = c
+				}
+			}
+			c := p.config()
+			c.Pattern, c.Length = 0xffa55a, 3
+			wide := p.words()
+			model, _ := SampleSPI(wide, c)
+			match := -1
+			for _, e := range model {
+				if e.Match && match < 0 {
+					match = e.Clock
+				}
+			}
+			control := uint32(1 | c.ClockCh<<1 | int(b2u8(c.Inverted))<<2 | int(b2u8(c.CPOL))<<3 | int(b2u8(c.CPHA))<<4 | int(b2u8(c.MSB))<<5 | c.Length<<6)
+			_, _, trigger := runFastTop(t, dir, image, wide, [][2]uint32{decim, level, level2, {58, uint32(c.Delay) & 0xff},
+				{65, uint32(c.GapClocks) & 0xffff}, {66, uint32(c.GapClocks) >> 16}, {67, c.Pattern & 0xffff}, {68, c.Pattern >> 16}, {64, control}}, args...)
+			if match < 0 || trigger < 2*match || trigger > 2*match+24 {
+				t.Fatalf("trigger at word %d, the model's match at word %d", trigger, 2*match)
+			}
+		})
+		t.Run(fmt.Sprintf("i2c-3.4MHz-/%d", 1<<log), func(t *testing.T) {
+			b := i2cCases()[6]
+			c := b.config()
+			c.Address, c.Direction, c.Pattern, c.Length = 0x50, 0, 0x0010, 2
+			wide := b.lines().words()
+			_, matches := SampleI2C(wide, c)
+			control := uint32(1 | c.ClockCh<<1 | int(b2u8(c.Inverted))<<2 | c.Direction<<3 | c.Length<<6)
+			_, _, trigger := runFastTop(t, dir, image, wide, [][2]uint32{decim, level, level2, {58, uint32(c.Delay) & 0xff}, {54, uint32(c.Address)},
+				{55, c.Pattern & 0xffff}, {56, c.Pattern >> 16}, {53, control}}, args...)
+			if len(matches) == 0 || trigger < 2*matches[0] || trigger > 2*matches[0]+24 {
+				t.Fatalf("trigger at word %d, the model's match at word %v", trigger, matches)
+			}
+		})
+	}
 }
 
 // compileWordsTop builds tb_top_fast (acquisition words on both channels)

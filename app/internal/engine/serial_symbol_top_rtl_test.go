@@ -35,21 +35,28 @@ func TestSymbolTopRTL(t *testing.T) {
 	}
 	dir := t.TempDir()
 	rtl := testenv.RTLDir(t)
-	defs := filepath.Join(dir, "defines.v")
-	if err := os.WriteFile(defs, []byte(qualifyImageDefines), 0o600); err != nil {
-		t.Fatal(err)
+	compile := func(name, defines string, extra ...string) string {
+		defs := filepath.Join(dir, name+"-defines.v")
+		if err := os.WriteFile(defs, []byte(defines), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		image := filepath.Join(dir, name+".vvp")
+		args := []string{"-g2012", "-s", "tb_top_qualify", "-o", image, "-I", rtl, defs}
+		for _, f := range append([]string{"top.v", "record.v", "transport.v", "adc_unpack.v", "sample_timeline.v", "decoded_event_queue.v",
+			"decoded_event_bridge.v", "decoded_event_reader.v", "decoded_event_transport.v", "decoded_event_port.v",
+			"gpmc_slave.v", "ddio_pair.v", "lane_in.v", "sim/ddr_model.v", "sim/tb_top_qualify.v", "event_sequence.v", "envelope_reduce.v", "panel_scan.v",
+			"qual_trigger.v", "zone_qual.v", "sum_edge_pair.v", "symbol_trigger.v"}, extra...) {
+			args = append(args, filepath.Join(rtl, f))
+		}
+		if out, err := exec.Command("iverilog", args...).CombinedOutput(); err != nil {
+			t.Fatalf("compile: %v\n%s", err, out)
+		}
+		return image
 	}
-	image := filepath.Join(dir, "qualify.vvp")
-	args := []string{"-g2012", "-s", "tb_top_qualify", "-o", image, "-I", rtl, defs}
-	for _, f := range []string{"top.v", "record.v", "transport.v", "adc_unpack.v", "sample_timeline.v", "decoded_event_queue.v",
-		"decoded_event_bridge.v", "decoded_event_reader.v", "decoded_event_transport.v", "decoded_event_port.v",
-		"gpmc_slave.v", "ddio_pair.v", "lane_in.v", "sim/ddr_model.v", "sim/tb_top_qualify.v", "event_sequence.v", "envelope_reduce.v", "panel_scan.v",
-		"qual_trigger.v", "zone_qual.v", "sum_edge_pair.v", "symbol_trigger.v"} {
-		args = append(args, filepath.Join(rtl, f))
-	}
-	if out, err := exec.Command("iverilog", args...).CombinedOutput(); err != nil {
-		t.Fatalf("compile: %v\n%s", err, out)
-	}
+	image := compile("qualify", qualifyImageDefines)
+	// decimated records (the box averages stand in for the vendor-FIFO
+	// precision path, as in TestQualifierDecimatedTopRTL)
+	decimImage := compile("qualify-decim", qualifyImageDefines+"`define PRECISION\n`define BOX_DECIM\n", "box_decim.v")
 	us := 1e-6
 	cases := []struct {
 		name string
@@ -123,8 +130,28 @@ func TestSymbolTopRTL(t *testing.T) {
 			return w
 		}},
 	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
+	// each bus on full-rate records, and the clocked two-wire bus (SWD) on
+	// records decimated /16 and /256 (2 words of history: 512 raw words at
+	// /256, before its first match), which take a trigger only with a word
+	// written - one clock in many
+	type run struct {
+		name, image string
+		log         int
+		pre         string
+		tc          int
+	}
+	var runs []run
+	for i, tc := range cases {
+		runs = append(runs, run{tc.name, image, 0, "+pre=64", i})
+		if tc.name == "SWD" {
+			for _, log := range []int{4, 8} {
+				runs = append(runs, run{fmt.Sprintf("SWD-decimated-%d", 1<<log), decimImage, log, "+pre=2", i})
+			}
+		}
+	}
+	for _, r := range runs {
+		tc := cases[r.tc]
+		t.Run(r.name, func(t *testing.T) {
 			w := tc.wave()
 			c := planHardwareSymbol(&tc.p)
 			if !c.Enabled {
@@ -147,11 +174,11 @@ func TestSymbolTopRTL(t *testing.T) {
 				word := c2<<24 | c1<<16 | c2<<8 | c1
 				fmt.Fprintf(&in, "%08x\n%08x\n", word, word)
 			}
-			words := filepath.Join(dir, tc.name+"-words.mem")
+			words := filepath.Join(dir, r.name+"-words.mem")
 			if err := os.WriteFile(words, []byte(in.String()), 0o600); err != nil {
 				t.Fatal(err)
 			}
-			regs := [][2]uint16{{7, 128 | 4<<8}, {59, 128}, {99, 0}}
+			regs := [][2]uint16{{7, 128 | 4<<8}, {59, 128}, {18, uint16(r.log)}, {99, 0}}
 			for _, v := range c.Table {
 				regs = append(regs, [2]uint16{100, uint16(v)})
 			}
@@ -161,23 +188,24 @@ func TestSymbolTopRTL(t *testing.T) {
 			for _, r := range regs {
 				fmt.Fprintf(&rb, "%x\n%x\n", r[0], r[1])
 			}
-			rp := filepath.Join(dir, tc.name+"-regs.mem")
+			rp := filepath.Join(dir, r.name+"-regs.mem")
 			if err := os.WriteFile(rp, []byte(rb.String()), 0o600); err != nil {
 				t.Fatal(err)
 			}
-			out, err := exec.Command("vvp", "-N", image, "+input="+words, fmt.Sprintf("+length=%d", 2*len(w.a)), "+regs="+rp, fmt.Sprintf("+nregs=%d", len(regs)),
-				"+pre=64", "+post=2000").CombinedOutput()
+			out, err := exec.Command("vvp", "-N", r.image, "+input="+words, fmt.Sprintf("+length=%d", 2*len(w.a)), "+regs="+rp, fmt.Sprintf("+nregs=%d", len(regs)),
+				r.pre, "+post=2000").CombinedOutput()
 			if err != nil || !strings.Contains(string(out), "PASS qualify top") {
 				t.Fatalf("simulate: %v\n%s", err, out)
 			}
 			var ms []int
-			trigger, count := -1, -1
+			trigger, recorded, count := -1, -1, -1
 			for _, line := range strings.Split(string(out), "\n") {
 				var n int
 				if _, err := fmt.Sscanf(line, "M %d", &n); err == nil {
 					ms = append(ms, n)
 				}
 				fmt.Sscanf(line, "T %d", &trigger)
+				fmt.Sscanf(line, "R %d", &recorded)
 				fmt.Sscanf(line, "C %d", &count)
 			}
 			// The model's matches are receiver clocks of the wave (two words
@@ -196,6 +224,10 @@ func TestSymbolTopRTL(t *testing.T) {
 			}
 			if d := trigger - ms[0]; d < 0 || d > 20 {
 				t.Fatalf("trigger at word %d, first match at %d", trigger, ms[0])
+			}
+			// the record takes it within a decimated word (2^(log-1) raw words)
+			if d := recorded - trigger; d < 0 || d > 20+1<<r.log {
+				t.Fatalf("record's trigger at word %d, the block fired at %d", recorded, trigger)
 			}
 			if count != len(ms) {
 				t.Fatalf("host count %d, matches %d", count, len(ms))

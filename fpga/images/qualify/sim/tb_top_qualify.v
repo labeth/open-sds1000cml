@@ -66,6 +66,10 @@ module tb_top_qualify;
  always @(posedge dut.halfclk)if(dut.sym_match)$display("M %0d",dut.frontend.n);
  reg fired=0;
  always @(posedge dut.core)if(dut.sym_fire && !fired)begin fired<=1;$display("T %0d",dut.frontend.n);end
+ // the record's trigger: the fire taken with a word written (one clock in
+ // many on a decimated record)
+ reg taken=0;
+ always @(posedge dut.core)if(dut.il_fire_stage && dut.step && dut.history_ready && !taken)begin taken<=1;$display("R %0d",dut.frontend.n);end
  integer cycles,nregs,pre,post;
  reg [31:0] regs[0:8191];reg [4095:0] regs_file;
  initial begin
