@@ -219,6 +219,21 @@ func TestLiveSRAMWindowFollowsTriggerPosition(t *testing.T) {
 	}
 }
 
+// Room before the screen (a serial trigger's) that the record cannot hold
+// beside the screen gives way: the screen's end stays in the window.
+// TRLC-LINKS: REQ-SDS-010
+func TestLiveSRAMWindowKeepsTheScreenOverThePreRoom(t *testing.T) {
+	m := sramcapture.Metadata{Length: 524288, TriggerIndex: 70000, SamplesPerWord: 1, FractionBits: 8}
+	screen := 400000
+	off, n := liveSRAMWindowPre(m, screen, 0.1, 300000)
+	if after := int(off + n - m.TriggerIndex); after < screen*9/10 {
+		t.Fatalf("window %d+%d: %d after the trigger, want the screen's %d", off, n, after, screen*9/10)
+	}
+	if before := int(m.TriggerIndex - off); before < screen/10 {
+		t.Fatalf("window %d+%d: %d before the trigger, want the screen's %d", off, n, before, screen/10)
+	}
+}
+
 // TRLC-LINKS: REQ-SDS-009
 func TestSRAMRejectsLegacyStitchedStream(t *testing.T) {
 	e := &Engine{sram: &sramcapture.Capture{}}

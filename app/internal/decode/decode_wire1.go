@@ -62,7 +62,9 @@ var swimNames = map[int]string{0: "SRST", 1: "ROTF", 2: "WOTF"}
 // the 24-bit address ("@", three bytes) and the bytes ("W" written, "R"
 // read). A frame not acknowledged or whose parity fails is flagged and does
 // not advance the transaction; one short of its bits is flagged too, but
-// marked cut ("?" gap) where an end of the record falls in it. A low of 7.3 to 35.6 us (128 SWIM clocks) is
+// marked cut ("?" gap) where an end of the record falls in it. Where a
+// command is due, a frame running on past a command's bits without a gap is
+// a byte of a transaction begun before the record (a trigger amid one). A low of 7.3 to 35.6 us (128 SWIM clocks) is
 // a synchronization frame ("SYNC"). Baud is the bit rate. OK needs an
 // acknowledged frame whose parity checks.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-253
@@ -106,7 +108,8 @@ func DecodeSWIM(codes []uint8, colTimeS float64, cfg LineCfg) Result {
 		}
 		defer func() { fr = nil }()
 		nb := 8
-		if state == 0 {
+		cmd := state == 0 && len(fr) <= 6 // a command, not a byte met amid a transaction
+		if cmd {
 			nb = 3
 		}
 		if len(fr) != nb+3 {
@@ -123,19 +126,19 @@ func DecodeSWIM(codes []uint8, colTimeS float64, cfg LineCfg) Result {
 			p ^= fr[i].v
 		}
 		ok := p == fr[nb+1].v && fr[nb+2].v == 1
-		if state == 0 {
+		if cmd {
 			o.add(fr[0].x0, fr[0].x0, "", "sof", 0, false)
 		}
 		txt := ""
-		switch state {
-		case 0:
+		switch {
+		case cmd:
 			txt = swimNames[v]
 			if txt == "" {
 				txt = fmt.Sprintf("CMD%d", v)
 			}
-		case 1:
+		case state == 1:
 			txt = "N" + hex2(v)
-		case 2, 3, 4:
+		case state >= 2 && state <= 4:
 			txt = "@" + hex2(v)
 		default:
 			txt = "W" + hex2(v)
@@ -150,7 +153,7 @@ func DecodeSWIM(codes []uint8, colTimeS float64, cfg LineCfg) Result {
 		good = true
 		o.add(fr[1].x0, fr[nb].x1, txt, "data", v, true)
 		switch {
-		case state == 0 && (v == 1 || v == 2):
+		case cmd && (v == 1 || v == 2):
 			state = 1
 		case state == 1:
 			state, left = 2, v
@@ -194,11 +197,8 @@ func DecodeSWIM(codes []uint8, colTimeS float64, cfg LineCfg) Result {
 			frame()
 		}
 		fr = append(fr, sbit{b, f, end})
-		nb := 8
-		if state == 0 {
-			nb = 3
-		}
-		if len(fr) == nb+3 {
+		next := k+1 < len(falls) && falls[k+1]-f <= 1.5*T // the frame runs on
+		if (state != 0 || len(fr) != 6 || !next) && (len(fr) == 11 || (state == 0 && len(fr) == 6)) {
 			frame()
 		}
 	}

@@ -272,6 +272,23 @@ func TestRecordHoldsTheMatchBeforeTheTrigger(t *testing.T) {
 	}
 }
 
+// The record keeps the screen after the trigger over the match's lead: a
+// T55xx frame start (a lead of three 3.6 ms units) at 2ms/div kept 15.8 of
+// the screen's 18 ms after the trigger.
+// TRLC-LINKS: REQ-SDS-013
+func TestRecordKeepsTheScreenAfterTheTrigger(t *testing.T) {
+	e := levelsEngine(SerialParams{Proto: serUART, ChA: 0, ChB: 1, Baud: 115200, Bits: 8, Parity: "none", Bytes: []int{0x48}})
+	e.band = Band{TdivS: 2e-3}
+	e.hardwareEnvelope = true // the deep record, read as an envelope
+	e.trigPosFrac.Store(math.Float64bits(0.1))
+	e.serLv.shiftS.Store(math.Float64bits(20e-3)) // a lead longer than the record holds beside the screen
+	c, plan, _, _, _ := e.sramConfig()
+	perWord := float64(2 - boolInt(plan.Log != 0))
+	if after := float64(c.PostWords) * perWord; after < 0.9*float64(plan.Screen) {
+		t.Fatalf("%v samples after the trigger, want the screen's %v (pre %d post %d)", after, 0.9*float64(plan.Screen), c.PreWords, c.PostWords)
+	}
+}
+
 // A bad word typed as the BUS table writes it (ERR for each of its bytes) is
 // one error unit of MIL-1553; the bytes of an ARINC 429 field with a
 // wildcard one data unit; two ARINC words are refused, said, not armed in

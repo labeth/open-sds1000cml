@@ -56,7 +56,8 @@ function decodeSWIM(codes, colTimeS, cfg) {
     if (!fr.length) return;
     const f = fr;
     fr = [];
-    const nb = state === 0 ? 3 : 8;
+    const cmd = state === 0 && f.length <= 6; // a command, not a byte met amid a transaction
+    const nb = cmd ? 3 : 8;
     if (f.length !== nb + 3) { // cut where an end of the record falls in it
       if (f[0].x0 <= 1.5 * T || f[f.length - 1].x1 + 1.5 * T >= S.n) o.add(f[0].x0, f[f.length - 1].x1, "?", "gap", 0, false);
       else o.add(f[0].x0, f[f.length - 1].x1, "!", "frame-error", 0, false);
@@ -65,16 +66,16 @@ function decodeSWIM(codes, colTimeS, cfg) {
     let v = 0, p = 0;
     for (let i = 1; i <= nb; i++) { v = (v << 1) | f[i].v; p ^= f[i].v; }
     const ok = p === f[nb + 1].v && f[nb + 2].v === 1;
-    if (state === 0) o.add(f[0].x0, f[0].x0, "", "sof", 0, false);
+    if (cmd) o.add(f[0].x0, f[0].x0, "", "sof", 0, false);
     let txt;
-    if (state === 0) txt = SWIM_NAMES[v] || "CMD" + v;
+    if (cmd) txt = SWIM_NAMES[v] || "CMD" + v;
     else if (state === 1) txt = "N" + hex2(v);
-    else if (state <= 4) txt = "@" + hex2(v);
+    else if (state >= 2 && state <= 4) txt = "@" + hex2(v);
     else txt = (f[0].v === 1 ? "R" : "W") + hex2(v);
     if (!ok) { o.add(f[1].x0, f[nb].x1, "!" + txt, "frame-error", v, true); return; }
     good = true;
     o.add(f[1].x0, f[nb].x1, txt, "data", v, true);
-    if (state === 0 && (v === 1 || v === 2)) state = 1;
+    if (cmd && (v === 1 || v === 2)) state = 1;
     else if (state === 1) { state = 2; left = v; }
     else if (state >= 2 && state < 5) state++;
     else if (state === 5) { left--; if (left <= 0) state = 0; }
@@ -98,8 +99,8 @@ function decodeSWIM(codes, colTimeS, cfg) {
     const b = low >= end - r ? 0 : 1;
     if (fr.length > 0 && f - fr[fr.length - 1].x0 > 1.5 * T) frame();
     fr.push({ v: b, x0: f, x1: end });
-    const nb = state === 0 ? 3 : 8;
-    if (fr.length === nb + 3) frame();
+    const next = k + 1 < falls.length && falls[k + 1] - f <= 1.5 * T; // the frame runs on
+    if ((state !== 0 || fr.length !== 6 || !next) && (fr.length === 11 || (state === 0 && fr.length === 6))) frame();
   }
   frame();
   if (!o.spans.length) return fail("swim", "no SWIM frame");

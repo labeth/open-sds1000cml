@@ -364,13 +364,21 @@ func (e *Engine) sramConfigInto(c *sramcapture.Config) (SRAMPlan, float64, bool,
 			// Software moves the trigger point back to the match's start, as
 			// far as it last did: the record holds that before the hardware
 			// trigger too (at 200 us/div the record is one screen, and the
-			// screen's left edge would go flat).
+			// screen's left edge would go flat). A record deeper than the
+			// screen keeps the screen after the trigger first (a T55xx frame
+			// start's lead of four 3.6 ms units at 2ms/div took the last 2 ms
+			// of the command off the screen; it begins 1.1 ms before).
 			s := math.Float64frombits(e.serLv.shiftS.Load())
 			if !(s > 0) {
 				s = e.matchLeadS(p.SampleS) // none placed yet
 			}
 			if s > 0 {
-				pre += min(uint32(s/p.SampleS)/uint32(perWord), words/2)
+				lead := min(uint32(s/p.SampleS)/uint32(perWord), words/2)
+				after := uint32(float64(p.Screen)*(1-math.Float64frombits(e.trigPosFrac.Load())))/uint32(perWord) + 64
+				if 4*p.Samples > 5*p.Screen {
+					lead = min(lead, words-min(words, pre+after))
+				}
+				pre += lead
 			}
 		}
 		if pre >= words {
@@ -1510,7 +1518,9 @@ func liveSRAMWindow(m sramcapture.Metadata, screen int, posFrac float64) (uint32
 }
 
 // liveSRAMWindowPre is liveSRAMWindow holding extraPre more samples before the
-// trigger.
+// trigger, as many as the record holds beyond the screen: the screen's end
+// stays (a T55xx command at 2ms/div lost its last 2 ms to a serial
+// trigger's room).
 // TRLC-LINKS: REQ-SDS-010
 func liveSRAMWindowPre(m sramcapture.Metadata, screen int, posFrac float64, extraPre int) (uint32, uint32) {
 	per := int(m.SamplesPerWord)
@@ -1519,7 +1529,11 @@ func liveSRAMWindowPre(m sramcapture.Metadata, screen int, posFrac float64, extr
 		samples = max(256, screen+128)
 	}
 	margin := samples - screen
-	samples += max(0, extraPre)
+	extraPre = max(0, extraPre)
+	if over := samples + extraPre - int(m.Length)*per; over > 0 {
+		extraPre = max(0, extraPre-over)
+	}
+	samples += extraPre
 	words := min(m.Length, uint32((samples+per-1)/per))
 	// The trigger sits at posFrac of the screen, so the window holds
 	// screen·posFrac samples before it plus half the margin. Centring the
@@ -1528,7 +1542,7 @@ func liveSRAMWindowPre(m sramcapture.Metadata, screen int, posFrac float64, extr
 	if !(posFrac >= 0 && posFrac <= 1) {
 		posFrac = .5
 	}
-	pre := uint32((float64(screen)*posFrac + float64(margin)/2 + float64(max(0, extraPre))) / float64(per))
+	pre := uint32((float64(screen)*posFrac + float64(margin)/2 + float64(extraPre)) / float64(per))
 	pre = min(pre, words)
 	offset := uint32(0)
 	if m.TriggerIndex > pre {
