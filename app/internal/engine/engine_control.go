@@ -446,6 +446,12 @@ func (e *Engine) paceHoldWithFloor(start time.Time, triggered bool, base time.Du
 	}
 }
 
+// SetDisplayPace sets the least time a live SRAM capture takes, from its
+// arming: the display shares the one core, and below its rate it asks the
+// captures to leave it the rest (0: none, back to back).
+// TRLC-LINKS: REQ-SDS-008, REQ-SDS-168
+func (e *Engine) SetDisplayPace(d time.Duration) { e.displayPaceNs.Store(int64(max(d, 0))) }
+
 // SetStreamMode toggles the stitched high-bandwidth streaming decode mode: the
 // FSM captures back-to-back deep records with a PURE TIMED wait (no trigger /
 // saturation poll — that wait was the recoverable overhead), publishing every

@@ -1486,6 +1486,9 @@ acquisitionLoop:
 			ms(armAt, armedAt), ms(armedAt, frozenAt), ms(frozenAt, recalledAt), ms(recalledAt, detailAt), ms(detailAt, conditionedAt), ms(conditionedAt, doneAt), lastPace)
 		e.mu.Unlock()
 		e.paceHoldWithFloor(doneAt, qualified && f.Trigd, 0)
+		if p := time.Duration(e.displayPaceNs.Load()); p > 0 {
+			e.paceHoldWithFloor(armAt, false, p) // the display's share (SetDisplayPace)
+		}
 		lastPace = ms(doneAt, e.clk.Now())
 	}
 }

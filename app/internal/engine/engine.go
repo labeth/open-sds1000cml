@@ -411,6 +411,7 @@ type Engine struct {
 	recallCancel    func()                 // abandons any record read in flight (SOUND starting; nil when none)
 	sampleLease     atomic.Int64           // evenly sampled live frames until this time (LeaseSampleView)
 	spectrumLease   atomic.Int64           // live frames for a spectrum until this time (LeaseSpectrumView)
+	displayPaceNs   atomic.Int64           // the least time a live SRAM capture takes, for the display (SetDisplayPace)
 	searchLease     atomic.Int64           // whole decimated records for a bus search until this time (LeaseSearchView)
 	views           [viewSurfaces]viewSlot // view windows at full detail (LeaseViewWindow)
 	viewQ           []uint16               // a view window's Q8.8 scratch (viewQ8; engine goroutine)

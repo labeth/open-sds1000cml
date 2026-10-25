@@ -105,6 +105,15 @@ func encodeBinFrame(rep frameReply) []byte {
 	return buf
 }
 
+// FrameClient reports whether a page asked for a frame within the last d:
+// a page showing the scope keeps /api/frame.bin's long-poll open (it waits
+// up to 1.5 s a poll), and one that closed, or hid, stops asking.
+// TRLC-LINKS: REQ-SDS-163, REQ-SDS-168
+func (s *Server) FrameClient(d time.Duration) bool {
+	at := s.frameAt.Load()
+	return at != 0 && time.Since(time.Unix(0, at)) < d
+}
+
 // hFrameBin is the long-poll binary frame endpoint: same reply as /api/frame
 // (built by the shared buildReply), encoded as a small JSON header + raw
 // uint8 payload — ~1 ms on the device versus 50-150 ms of reflective JSON
@@ -119,6 +128,7 @@ func (s *Server) hFrameBin(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusConflict) // 409 — a newer browser claimed the device
 		return
 	}
+	s.frameAt.Store(time.Now().UnixNano())
 	// A consumer that needs true samples renews a lease before waiting (a
 	// closed analyzer lets it expire): lease=raw for full-rate samples (eye,
 	// super-res), lease=spectrum for the frames a spectrum is taken of (FFT,

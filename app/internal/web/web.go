@@ -159,6 +159,10 @@ type Server struct {
 	epoch  atomic.Uint64
 	epoch0 uint64
 
+	// frameAt is when a page last asked for a frame (/api/frame.bin, unix
+	// ns): a page showing the scope keeps that long-poll open (FrameClient).
+	frameAt atomic.Int64
+
 	// Single-entry auto-measurement cache. measure.Compute over a deep record
 	// is the heaviest in-lock CPU besides serialization, and every /api/frame
 	// and /api/frame.bin request needs the same numbers for a given published

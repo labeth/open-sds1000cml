@@ -291,6 +291,10 @@ var lcdSpect = lcd.NewSpectrogram()
 // loop (started earlier) and the SCDP screenshot can read the workspace UI.
 var uiCtrl atomic.Pointer[panel.Controller]
 
+// webSrv is the web server, published after creation so the display loop
+// can tell whether a page shows the scope (lcdGov).
+var webSrv atomic.Pointer[web.Server]
+
 // streamCtrl is the scope-side decoded stream, published for the HUD.
 var streamCtrl atomic.Pointer[streamview.Controller]
 
@@ -470,9 +474,9 @@ func runLCD(e *engine.Engine, fe *analog.FrontEnd, fo *frames.Fanout) {
 	idle := false // the last tick drew nothing and saw no new frame
 	var busyDrawAt time.Time
 	var renderDue time.Time // when the next full picture may start
-	var govAt time.Time     // when lcdGovern last set lcdPeriod
-	lcdPeriod := lcdFramePeriod
-	var specHold time.Duration // how long the display keeps a spectrum (lcdGovern)
+	var govAt time.Time     // when gov last looked
+	gov := newLCDGov()
+	var pictures, govPictures uint64 // full pictures drawn, and as gov last counted
 	var cpu cpuMeter
 	wasBusy := false
 	for {
@@ -491,10 +495,17 @@ func runLCD(e *engine.Engine, fe *analog.FrontEnd, fo *frames.Fanout) {
 			// frames (polled: one long sleep overshoots on this kernel's
 			// timer)
 			now := time.Now()
-			if now.Sub(govAt) >= lcdGovEvery {
-				govAt = now
-				lcdPeriod, specHold = lcdGovern(lcdPeriod, specHold, e.Snapshot(), cpu.busy())
-				framecalc.SetSpectrumHold(specHold)
+			if dt := now.Sub(govAt); dt >= lcdGovEvery {
+				ws := webSrv.Load()
+				page := ws != nil && ws.FrameClient(lcdPageGone)
+				lcd := float64(pictures-govPictures) / dt.Seconds()
+				if govAt.IsZero() {
+					lcd = 0
+				}
+				govAt, govPictures = now, pictures
+				gov.step(e.Snapshot(), lcd, cpu.busy(), page)
+				framecalc.SetSpectrumHold(gov.hold)
+				e.SetDisplayPace(gov.pace)
 			}
 			if scr == panel.ScreenOn && now.Before(renderDue) {
 				continue
@@ -618,10 +629,11 @@ func runLCD(e *engine.Engine, fe *analog.FrontEnd, fo *frames.Fanout) {
 			// late by the poll or the engine's quiet window is not added to
 			// the next, and a long pause does not bring a burst
 			now := time.Now()
-			renderDue = renderDue.Add(lcdPeriod)
+			renderDue = renderDue.Add(gov.period)
 			if renderDue.Before(now) {
-				renderDue = now.Add(lcdPeriod / 2)
+				renderDue = now.Add(gov.period / 2)
 			}
+			pictures++
 			lcd.Render(back, f, hud, live, persistLayer)
 			present = true
 		})
@@ -672,45 +684,93 @@ const lcdFramePeriod = time.Second / 52
 
 // The display shares the one core with the engine: a picture (render and
 // copy, ~6 ms; in SPECTRUM two 8192-point spectra more, ~25) costs it
-// frames, measured 53 fps with the panel at 51 and 64 with it at 32.
-// lcdGovern keeps the engine at lcdEngineFPS or more where the display
-// holds it back, the core busy: below it the display's period grows, to
-// lcdSlowestPeriod, and then the display keeps each spectrum longer, to
-// lcdLongestHold (the spectrum view redrawn at its rate, its spectrum
-// refreshed less often); with room above it, or the core waiting (a record
-// that takes longer than a 60th of a second to come), they come back the
-// same way to the panel's rate and a new spectrum each picture.
+// frames, measured 53 fps with the panel at 51 and 64 with it at 32. Who
+// gets the core depends on who is looking (lcdGov.step).
 const (
 	lcdEngineFPS     = 61
 	lcdEngineRoom    = 64
-	lcdSlowestPeriod = time.Second / 15
-	lcdLongestHold   = 500 * time.Millisecond
+	lcdSlowestPeriod = time.Second / 20 // the panel looks live down to 20 pictures a second
+	lcdLongestHold   = lcdSlowestPeriod
+	lcdLongestPace   = time.Second / 20 // the engine runs at 20 frames a second or more
 	lcdCoreBusy      = 0.90
 	lcdCoreWaiting   = 0.85
 	lcdGovStep       = 2 * time.Millisecond
-	lcdHoldStep      = 25 * time.Millisecond
+	lcdHoldStep      = 10 * time.Millisecond
+	lcdPaceStep      = time.Millisecond
 	lcdGovEvery      = 250 * time.Millisecond
+	// lcdPageGone is how long after its last frame request a page counts
+	// as gone (it polls at least every 1.5 s while it shows the scope).
+	lcdPageGone = 3 * time.Second
 )
 
-// lcdGovern is the display period and spectrum hold after one look at the
-// engine and the core's busy fraction since the last.
+// lcdGov is the display's share of the core: its period, how long it keeps
+// a spectrum (framecalc.SetSpectrumHold) and the least time it asks an
+// engine capture to take (engine.SetDisplayPace).
+type lcdGov struct {
+	period, hold, pace time.Duration
+	lcd                float64 // pictures a second, smoothed
+}
+
+// newLCDGov is the governor at the panel's rate, the engine unpaced.
 // TRLC-LINKS: REQ-SDS-168
-func lcdGovern(p, hold time.Duration, st engine.Stats, busy float64) (time.Duration, time.Duration) {
-	switch {
-	case !st.Running:
-		return lcdFramePeriod, 0
-	case st.FPS < lcdEngineFPS && busy >= lcdCoreBusy:
-		if p < lcdSlowestPeriod {
-			return min(p+lcdGovStep, lcdSlowestPeriod), hold
-		}
-		return p, min(hold+lcdHoldStep, lcdLongestHold)
-	case st.FPS >= lcdEngineRoom || busy < lcdCoreWaiting:
-		if hold > 0 {
-			return p, max(hold-lcdHoldStep, 0)
-		}
-		return max(p-lcdGovStep, lcdFramePeriod), 0
+func newLCDGov() *lcdGov { return &lcdGov{period: lcdFramePeriod} }
+
+// step looks once at the engine, the pictures drawn a second since the
+// last look (lcd), the core's busy fraction and whether a web page shows
+// the scope.
+//
+// With no page the panel is the only view and gets the core: pictures at
+// the panel's rate, a new spectrum each. A picture needs a new frame, so
+// while the display falls behind the engine's frames on a busy core the
+// engine is paced (never under 20 frames a second) until it keeps up.
+//
+// With a page the engine's rate is what the page sees: while the engine is
+// under lcdEngineFPS on a busy core the display's period grows, then it
+// keeps each spectrum for later pictures; with room above lcdEngineRoom, or
+// the core waiting (a record that takes longer than a 60th of a second to
+// come), they come back. Never below 20 pictures a second, though: under
+// that the panel stops looking live, worth more than the engine's frames,
+// and a display still under it paces the engine.
+// TRLC-LINKS: REQ-SDS-168
+func (g *lcdGov) step(st engine.Stats, lcd, busy float64, page bool) {
+	g.lcd = (g.lcd + lcd) / 2
+	if !st.Running {
+		*g = lcdGov{period: lcdFramePeriod}
+		return
 	}
-	return p, hold
+	busyCore := busy >= lcdCoreBusy
+	if !page {
+		g.period, g.hold = lcdFramePeriod, 0
+		switch {
+		case busyCore && g.lcd < min(st.FPS, 52)-2:
+			g.pace = min(g.pace+lcdPaceStep, lcdLongestPace)
+		case g.lcd >= st.FPS-1 || busy < lcdCoreWaiting:
+			g.pace = max(g.pace-lcdPaceStep, 0)
+		}
+		return
+	}
+	switch {
+	case st.FPS < lcdEngineFPS && busyCore:
+		if g.period < lcdSlowestPeriod {
+			g.period = min(g.period+lcdGovStep, lcdSlowestPeriod)
+		} else {
+			g.hold = min(g.hold+lcdHoldStep, lcdLongestHold)
+		}
+	case st.FPS >= lcdEngineRoom || busy < lcdCoreWaiting:
+		if g.hold > 0 {
+			g.hold = max(g.hold-lcdHoldStep, 0)
+		} else {
+			g.period = max(g.period-lcdGovStep, lcdFramePeriod)
+		}
+	}
+	// paced only while the display falls behind the frames it is given: a
+	// paced engine's frames bound the display too
+	switch {
+	case g.lcd < 19.5 && g.lcd < st.FPS-2 && g.period >= lcdSlowestPeriod && busyCore:
+		g.pace = min(g.pace+lcdPaceStep, lcdLongestPace)
+	case g.lcd > 21 || g.lcd >= st.FPS-1:
+		g.pace = max(g.pace-lcdPaceStep, 0)
+	}
 }
 
 // cpuMeter reads the core's busy fraction from /proc/stat.
@@ -1254,6 +1314,7 @@ func main() {
 	// request. Slow-peer writes are bounded per-response inside the handler
 	// (SetWriteDeadline). Don't "harden" this without moving that contract.
 	ws := web.New(scopeSource{e, fo}, feIface, pc, screenPNG)
+	webSrv.Store(ws)
 	ws.SetInvertSource(scpiH.Inverted)         // display-level INVS: SCPI shadow → /api/status
 	ws.SetSetupMemory(webSetups{sharedSetups}) // the web top bar's Setups: the same slots as *SAV/*RCL
 	if !sramDefault {
