@@ -52,6 +52,7 @@ function decodeFeatureSamples(r) {
     if (r.proto === "dcf77") return m.spb / 10;
     if (r.proto === "swim") return m.spb / 11;
     if (r.proto === "sdq") return m.spb / 4;
+    if (r.proto === "pjdl") return m.spb / 2;
     return m.spb;
   }
   if (!(m.samplesPerBit > 0)) return 0;
