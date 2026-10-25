@@ -150,6 +150,9 @@ func rfidWrites(proto string, codes []uint8, colTimeS float64, cfg LineCfg) Resu
 	var bits []rbit
 	inCmd := false
 	last := 0.0 // the end of the last gap that counted
+	// a command opened within a command's end of the record's start may have
+	// begun before it: one that fails its checks is marked cut ("?" gap)
+	cut, fromSpan, fromTok := false, 0, 0
 	finish := func() {
 		if !inCmd {
 			return
@@ -164,6 +167,18 @@ func rfidWrites(proto string, codes []uint8, colTimeS float64, cfg LineCfg) Resu
 				frameBits = len(bits)
 			}
 		}
+		if !ok && cut {
+			for i := fromSpan; i < len(o.spans); i++ {
+				if o.spans[i].Kind == "frame-error" {
+					o.spans[i].Kind, o.spans[i].Text = "gap", "?"
+				}
+			}
+			for i := fromTok; i < len(o.toks); i++ {
+				if o.toks[i] == "!" {
+					o.toks[i] = "?"
+				}
+			}
+		}
 		good = good || ok
 		bits = nil
 	}
@@ -175,6 +190,7 @@ func rfidWrites(proto string, codes []uint8, colTimeS float64, cfg LineCfg) Resu
 		if !inCmd {
 			if glen > start*fc {
 				inCmd, last = true, g.x1
+				cut, fromSpan, fromTok = g.x0 < end*fc, len(o.spans), len(o.toks)
 				o.add(g.x0, g.x1, "", "sof", 0, false)
 			}
 			continue

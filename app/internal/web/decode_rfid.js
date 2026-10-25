@@ -138,6 +138,9 @@ function rfidWrites(proto, codes, colTimeS, cfg) {
   const start = em ? 40 : 20, wgap = em ? 12 : 20, end = em ? 300 : 64;
   const o = rfidOut(S.n);
   let good = false, frameBits = 0, bits = [], inCmd = false, last = 0;
+  // a command opened within a command's end of the record's start may have
+  // begun before it: one that fails its checks is marked cut ("?" gap)
+  let cut = false, fromSpan = 0, fromTok = 0;
   // TRLC-LINKS: REQ-SDS-018, REQ-SDS-252
   const finish = () => {
     if (!inCmd) return;
@@ -148,6 +151,10 @@ function rfidWrites(proto, codes, colTimeS, cfg) {
       ok = t55xxFields(o, bits);
       if (ok && frameBits === 0) frameBits = bits.length;
     }
+    if (!ok && cut) {
+      for (let i = fromSpan; i < o.spans.length; i++) if (o.spans[i].kind === "frame-error") { o.spans[i].kind = "gap"; o.spans[i].text = "?"; }
+      for (let i = fromTok; i < o.toks.length; i++) if (o.toks[i] === "!") o.toks[i] = "?";
+    }
     good = good || ok;
     bits = [];
   };
@@ -155,7 +162,11 @@ function rfidWrites(proto, codes, colTimeS, cfg) {
     if (inCmd && g.x0 - last > end * fc) finish();
     const glen = g.x1 - g.x0;
     if (!inCmd) {
-      if (glen > start * fc) { inCmd = true; last = g.x1; o.add(g.x0, g.x1, "", "sof", 0, false); }
+      if (glen > start * fc) {
+        inCmd = true; last = g.x1;
+        cut = g.x0 < end * fc; fromSpan = o.spans.length; fromTok = o.toks.length;
+        o.add(g.x0, g.x1, "", "sof", 0, false);
+      }
       continue;
     }
     if (glen <= wgap * fc) continue;
