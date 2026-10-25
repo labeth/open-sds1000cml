@@ -54,7 +54,11 @@ power-cycle, and the factory firmware is back.
 * **Fixes from four bug hunts**, among them: a long session no longer slows the stopped scope down
   (memory was held and the collector ran without pause); a BUS stream of a fast SPI bus no longer
   starves the app; streams that start faulted reload their FPGA image and run; the phone's
-  clockwise quick buttons were rebuilt and laid out again on every status update.
+  clockwise quick buttons were rebuilt and laid out again on every status update; AUTO in BUS
+  picks a timebase whose live view decodes the bus with its trigger armed (9600 Bd Modbus was
+  left at 5 ms/div, too coarse to decode); SPI sent as short transfers is named SPI, not I2C or
+  SWD; while a trigger the FPGA decides waits, the LCD and the web page say so, which trigger and
+  for how long, instead of "ACQUIRING".
 
 ## Install
 
