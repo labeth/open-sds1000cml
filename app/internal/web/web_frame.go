@@ -180,8 +180,8 @@ func window(sig []uint8, valid, winCols int, edgeX float64, interp bool, n int, 
 	// !(xc >= 0) also catches NaN and -Inf; +Inf is handled by the per-column
 	// upper clamp below. A non-finite index (int(NaN) = min-int) panicked the
 	// whole serve goroutine on one bad frame (frame-serve fuzz).
-	if !(xc >= 0) {
-		xc = float64(valid) / 2
+	if !(xc >= 0) { // no crossing: the screen centred on the record (lcd traceWindow)
+		xc = float64(valid)/2 + (posFrac-0.5)*float64(win)
 	}
 	// Anchor the crossing at posFrac of the window (0.5 = centre). Do NOT clamp
 	// `left` into the record: that would drag the anchor off posFrac whenever the

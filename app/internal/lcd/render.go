@@ -980,11 +980,13 @@ func traceWindow(f *engine.Frame, hud HUD, valid int) (win int, xc, posFrac floa
 	}
 	xc = f.EdgeX
 	if xc < 0 {
-		// Match web window(): an uncentred frame (EdgeX=-1) is always a
-		// flat/DC capture under the engine's publish policy — centre on
-		// the record middle. NEVER fabricate an edge from a marginal/noise
-		// crossing (that would jitter a flat line and diverge from web).
-		xc = float64(valid) / 2
+		// Match web window(): an uncentred frame (EdgeX=-1: flat, or forced
+		// in AUTO) centres the screen on the record, the trigger point at its
+		// position (at 10 % the record's middle as the trigger left the
+		// screen's last 40 % past the record of a sampled 10ms/div frame).
+		// NEVER fabricate an edge from a marginal/noise crossing (that would
+		// jitter a flat line and diverge from web).
+		xc = float64(valid)/2 + (hud.TrigPosFrac-0.5)*float64(win)
 	}
 	// Horizontal ZOOM: show win/zoom samples magnified across the screen,
 	// panned by ZoomOff across the record (centred, so posFrac=0.5).

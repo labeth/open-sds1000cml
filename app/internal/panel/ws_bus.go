@@ -1865,19 +1865,26 @@ const (
 	rawForBus      = "bus decode"
 )
 
-// busRawFrames trades the frame rate for the decode in BUS: a live envelope
-// too coarse for the bus (framecalc.Unresolved: a 115200 Bd UART at
-// 10ms/div) leases sampled frames for the bus's settings, renewed by each
-// frame while they stay, however long a sampled record takes to read
-// (seconds at slow timebases); a change of them ends the lease, so their
-// own envelope is tried first.
+// busRawFrames trades the frame rate for the decode in BUS: a live view too
+// coarse for the bus - an envelope (framecalc.Unresolved) or a roll view
+// with too few samples a bit (a 115200 Bd UART at 10ms/div) - leases
+// sampled frames for the bus's settings (no envelope, no roll), renewed by
+// each frame while they stay, however long a record takes to read (seconds
+// at slow timebases). A change of them ends the lease, so their own live
+// view is tried first; a sampled record too coarse as well ends it for
+// those settings, and the faster timebase is hinted.
 // TRLC-LINKS: REQ-SDS-214
 func (c *Controller) busRawFrames(a *anaState, s *sv, f *engine.Frame) {
 	key := busListKey(s)
+	live := f.PeakDetect || s.st.Roll // a view the engine reads coarser than its record
 	switch {
-	case f.PeakDetect && framecalc.Unresolved(a.res):
+	case a.rawNo == key:
+		a.rawKey = ""
+	case live && (framecalc.Unresolved(a.res) || tooFewSamples(a.res)):
 		a.rawKey = key
 		a.res.Error = decode.Names[a.res.Proto] + ": the live view is too coarse - reading sampled records (slower frames)"
+	case !live && a.rawKey == key && tooFewSamples(a.res):
+		a.rawKey, a.rawNo = "", key
 	case a.rawKey != key:
 		a.rawKey = ""
 	}
@@ -1887,6 +1894,12 @@ func (c *Controller) busRawFrames(a *anaState, s *sv, f *engine.Frame) {
 	}
 	c.busRawHeld.Store(true)
 	c.leaseRaw(rawForBus, 10*time.Second)
+}
+
+// tooFewSamples reports a decode refused for too few samples a bit.
+// TRLC-LINKS: REQ-SDS-214
+func tooFewSamples(res decode.Result) bool {
+	return !res.OK && strings.Contains(res.Error, "samples/bit; need")
 }
 
 // endBusRaw ends BUS's raw lease for the decode (busRawFrames): BUS left,

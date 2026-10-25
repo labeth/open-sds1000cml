@@ -54,6 +54,31 @@ func TestBusLeasesSampledFramesToDecode(t *testing.T) {
 	a.res = decode.Result{Proto: "uart", Error: "UART" + " not resolved at this timebase - S/DIV faster, or SINGLE"}
 	c.busRawFrames(a, s, env)
 	eng.take()
+	// a roll view with too few samples a bit leases them too; a sampled
+	// record as coarse ends the lease for those settings
+	s.st.Roll = true
+	s.st.TdivS = 10e-3
+	a.res = decode.Result{Proto: "uart", Error: "0.3 samples/bit; need >= 3"}
+	c.busRawFrames(a, s, raw)
+	if got := eng.take(); len(got) != 1 || got[0] != rawForBus+" 10s" {
+		t.Fatalf("coarse roll view: leases %v", got)
+	}
+	s.st.Roll = false
+	a.res = decode.Result{Proto: "uart", Error: "2.1 samples/bit; need >= 3"}
+	c.busRawFrames(a, s, raw)
+	if got := eng.take(); len(got) != 1 || got[0] != rawForBus+" 0s" {
+		t.Fatalf("sampled record too coarse: leases %v, want ended", got)
+	}
+	s.st.Roll = true
+	a.res = decode.Result{Proto: "uart", Error: "0.3 samples/bit; need >= 3"}
+	c.busRawFrames(a, s, raw)
+	if got := eng.take(); len(got) != 0 {
+		t.Fatalf("settings whose records were too coarse: leases %v, want none", got)
+	}
+	s.st.Roll, s.st.TdivS = false, 200e-6
+	a.res = decode.Result{Proto: "uart", Error: "UART" + " not resolved at this timebase - S/DIV faster, or SINGLE"}
+	c.busRawFrames(a, s, env)
+	eng.take()
 	c.switchWS(wsview.Measure)
 	c.View()
 	if got := eng.take(); len(got) != 1 || got[0] != rawForBus+" 0s" {
