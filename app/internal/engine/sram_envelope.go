@@ -60,11 +60,12 @@ const blockSamples = "samples requested"
 // about a tenth of a second.
 const SearchLiveSamples = 32768
 
-// leaseRecord is the record of a sample or search lease's capture in
-// screens (autoset, BUS's search: they read the screen only): a quarter
-// screen either side of it, not the live view's four screens - a capture
-// waits out its record's prehistory and the rest after the trigger, and
-// AUTO's fit at 5ms/div read 16 of them (a second more each at 20ms/div).
+// leaseRecord is the record of a sample, search or spectrum lease's capture
+// in screens (autoset, BUS's search, the spectrum: they read the screen
+// only): a quarter screen either side of it, not the live view's four
+// screens - a capture waits out its record's prehistory and the rest after
+// the trigger, and AUTO's fit at 5ms/div read 16 of them (a second more each
+// at 20ms/div); the spectrum at 10us/div ran 56 frames a second on four.
 const leaseRecord = 1.5
 
 // SpectrumRawSamples is the longest screen a spectrum lease reads at the full
