@@ -239,10 +239,13 @@ func (c *Controller) measureMsgs() busMsgs {
 // TRLC-LINKS: REQ-SDS-223
 func msgsOf(res decode.Result, sampleS float64, valid int) busMsgs {
 	var m busMsgs
+	if res.OK {
+		m.longest = decode.MessageMaxS(res) // whether or not a whole one fell on the record
+	}
 	ps := anaPackets(res, valid)
 	for i, p := range ps {
 		if p.Complete {
-			m.longest = max(m.longest, float64(p.I1-p.I0)*sampleS, decode.MessageMaxS(res))
+			m.longest = max(m.longest, float64(p.I1-p.I0)*sampleS)
 		}
 		if i > 0 {
 			if g := float64(p.I0-ps[i-1].I1) * sampleS; g > 0 && (m.idle == 0 || g < m.idle) {
@@ -431,15 +434,21 @@ func (c *Controller) messageTimebase(msg, featureS, tdiv float64) float64 {
 }
 
 // messageLooks is how many timebases up the ladder AUTO in BUS measures a
-// message the screen held none of whole (measureSlower).
-const messageLooks = 2
+// message the screen held none of whole (measureSlower), and messageRecords
+// the records it reads at each: a message falls across a record's end on one
+// and whole on the next.
+const (
+	messageLooks   = 2
+	messageRecords = 3
+)
 
 // measureSlower measures the bus's messages on slower timebases when the
 // screen held no whole one: an IR Denon pair of 90 ms on 10ms/div's 125 ms
 // screen was whole only where the trigger happened to fall, and AUTO left
 // the timebase on which its live view never read it. Up to messageLooks
 // steps up the ladder while a sampled record there still resolves the
-// bus's shortest feature (readableFeature samples); the timebase goes back
+// bus's shortest feature (readableFeature samples), up to messageRecords
+// new records at each; the timebase goes back
 // after, messageTimebase choosing the fastest that shows the message. m
 // when no step measures one.
 // TRLC-LINKS: REQ-SDS-223
@@ -462,22 +471,32 @@ func (c *Controller) measureSlower(m busMsgs, featureS float64) busMsgs {
 		looks++
 		c.setTdivNearest(t)
 		at := c.snap().st.TdivSet()
-		accept := func(f *engine.Frame, _ bool) bool { return f.TdivS == 0 || math.Abs(f.TdivS-at) <= 1e-3*at }
-		valid := 0 // the decoded frame's own, which its last message's cut is judged by
-		decodeAt := func() (decode.Result, float64, bool) {
-			f := c.frameCopy(searchable)
-			if f == nil || !accept(f, true) {
-				return decode.Result{}, 0, false
+		var seen uint64 // the newest record a look here read
+		for range messageRecords {
+			after := seen
+			accept := func(f *engine.Frame, _ bool) bool {
+				return (f.TdivS == 0 || math.Abs(f.TdivS-at) <= 1e-3*at) && (after == 0 || f.Seq > after)
 			}
-			res := framecalc.Decode(f, decodeParamsOf(c.snap()))
-			valid = framecalc.Valid(f)
-			return res, f.SampleS, res.OK && len(res.Bytes) > 0
-		}
-		// a screen of slow frames takes its own time to capture
-		l := c.detectWith(true, true, accept, decodeAt, decimatedWait+time.Duration(20*at*float64(time.Second)))
-		if l.found && l.sampleS > 0 {
-			if got := msgsOf(l.res, l.sampleS, valid); got.longest > 0 {
-				return got
+			valid := 0 // the decoded record's own, which its last message's cut is judged by
+			decodeAt := func() (decode.Result, float64, bool) {
+				f := c.frameCopy(searchable)
+				if f == nil || !accept(f, true) {
+					return decode.Result{}, 0, false
+				}
+				seen = max(seen, f.Seq)
+				res := framecalc.Decode(f, decodeParamsOf(c.snap()))
+				valid = framecalc.Valid(f)
+				return res, f.SampleS, res.OK && len(res.Bytes) > 0
+			}
+			// a screen of slow frames takes its own time to capture
+			l := c.detectWith(true, true, accept, decodeAt, decimatedWait+time.Duration(20*at*float64(time.Second)))
+			if l.found && l.sampleS > 0 {
+				if got := msgsOf(l.res, l.sampleS, valid); got.longest > 0 {
+					return got
+				}
+			}
+			if seen == after {
+				break // no new record came
 			}
 		}
 	}
