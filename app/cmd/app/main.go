@@ -366,7 +366,6 @@ func uiSig(v wsview.View) uint64 {
 	return uint64(h)
 }
 
-// TRLC-LINKS: REQ-SDS-168
 // waitSecond is the whole seconds a waiting trigger has waited (the
 // screen counts them), 0 when nothing waits.
 // TRLC-LINKS: REQ-SDS-168
@@ -377,6 +376,7 @@ func waitSecond(hud lcd.HUD) int {
 	return int(hud.WaitS)
 }
 
+// TRLC-LINKS: REQ-SDS-168
 func renderSigOf(f *engine.Frame, hud lcd.HUD, live bool) renderSig {
 	var seq uint64
 	if f != nil {
