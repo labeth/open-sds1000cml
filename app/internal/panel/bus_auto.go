@@ -393,8 +393,10 @@ func (c *Controller) idleTrigger(ch int, w float64) {
 
 // messageTimebase is the fastest timebase at least tdiv on which a message
 // of length msg fits after the trigger, while the live readout still
-// resolves the bus's shortest feature (framecalc.MinEnvelopeFeature points);
-// tdiv itself when none does.
+// resolves the bus's shortest feature (framecalc.MinEnvelopeFeature points)
+// or, past that, a sampled record does (readableFeature samples): BUS then
+// decodes its sampled records at a lower frame rate (busRawFrames; a sped-up
+// DCF77 minute at 20ms/div). tdiv itself when none does.
 // TRLC-LINKS: REQ-SDS-223
 func (c *Controller) messageTimebase(msg, featureS, tdiv float64) float64 {
 	after := (1 - busTrigPos) * 10
@@ -411,7 +413,8 @@ func (c *Controller) messageTimebase(msg, featureS, tdiv float64) float64 {
 		if t < tdiv*0.999 || msg*1.05 > after*t {
 			continue
 		}
-		if featureS > 0 && featureS/(window*t/liveEnvelopePoints) < framecalc.MinEnvelopeFeature {
+		if featureS > 0 && featureS/(window*t/liveEnvelopePoints) < framecalc.MinEnvelopeFeature &&
+			featureS/engine.PlanSRAM(t).SampleS < readableFeature {
 			break
 		}
 		return t

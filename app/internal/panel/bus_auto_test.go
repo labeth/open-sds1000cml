@@ -143,15 +143,19 @@ func TestUARTIdleWidth(t *testing.T) {
 }
 
 // A message longer than the screen after the trigger moves the timebase on
-// as long as the bus's bits stay resolved.
+// as long as the bus's bits stay resolved: by the live view, or by a sampled
+// record that BUS then decodes at a lower frame rate.
 // TRLC-LINKS: REQ-SDS-223
 func TestMessageTimebase(t *testing.T) {
 	c, _, _ := newC(t)
 	if td := c.messageTimebase(1e-3, 8.7e-6, 50e-6); td != 200e-6 {
 		t.Fatalf("a 1 ms message at 50us/div: %g", td)
 	}
-	if td := c.messageTimebase(1e-3, 0.1e-6, 50e-6); td != 50e-6 {
-		t.Fatalf("bits a slower timebase cannot resolve: %g", td)
+	if td := c.messageTimebase(1e-3, 0.1e-6, 50e-6); td != 200e-6 {
+		t.Fatalf("bits only a sampled record resolves: %g, want 200us/div", td)
+	}
+	if td := c.messageTimebase(1e-3, 2e-9, 50e-6); td != 50e-6 {
+		t.Fatalf("bits no slower timebase resolves: %g", td)
 	}
 }
 
