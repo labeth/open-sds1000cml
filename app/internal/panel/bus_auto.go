@@ -230,6 +230,13 @@ func (c *Controller) measureMsgs() busMsgs {
 			}
 		})
 	}
+	return msgsOf(res, sampleS, valid)
+}
+
+// msgsOf measures the messages of a decode of a record of valid samples
+// sampleS apart (measureMsgs).
+// TRLC-LINKS: REQ-SDS-223
+func msgsOf(res decode.Result, sampleS float64, valid int) busMsgs {
 	var m busMsgs
 	ps := anaPackets(res, valid)
 	for i, p := range ps {
@@ -422,12 +429,69 @@ func (c *Controller) messageTimebase(msg, featureS, tdiv float64) float64 {
 	return tdiv
 }
 
+// messageLooks is how many timebases up the ladder AUTO in BUS measures a
+// message the screen held none of whole (measureSlower).
+const messageLooks = 2
+
+// measureSlower measures the bus's messages on slower timebases when the
+// screen held no whole one: an IR Denon pair of 90 ms on 10ms/div's 125 ms
+// screen was whole only where the trigger happened to fall, and AUTO left
+// the timebase on which its live view never read it. Up to messageLooks
+// steps up the ladder while a sampled record there still resolves the
+// bus's shortest feature (readableFeature samples); the timebase goes back
+// after, messageTimebase choosing the fastest that shows the message. m
+// when no step measures one.
+// TRLC-LINKS: REQ-SDS-223
+func (c *Controller) measureSlower(m busMsgs, featureS float64) busMsgs {
+	if len(c.tdivs) == 0 || !(featureS > 0) {
+		return m
+	}
+	prev := c.snap().st.TdivSet()
+	defer c.setTdivNearest(prev)
+	tds := slices.Clone(c.tdivs)
+	slices.Sort(tds)
+	looks := 0
+	for _, t := range tds {
+		if t <= prev*1.001 {
+			continue
+		}
+		if looks == messageLooks || featureS/engine.PlanSRAM(t).SampleS < readableFeature {
+			break
+		}
+		looks++
+		c.setTdivNearest(t)
+		at := c.snap().st.TdivSet()
+		accept := func(f *engine.Frame, _ bool) bool { return f.TdivS == 0 || math.Abs(f.TdivS-at) <= 1e-3*at }
+		valid := 0 // the decoded frame's own, which its last message's cut is judged by
+		decodeAt := func() (decode.Result, float64, bool) {
+			f := c.frameCopy(searchable)
+			if f == nil || !accept(f, true) {
+				return decode.Result{}, 0, false
+			}
+			res := framecalc.Decode(f, decodeParamsOf(c.snap()))
+			valid = framecalc.Valid(f)
+			return res, f.SampleS, res.OK && len(res.Bytes) > 0
+		}
+		// a screen of slow frames takes its own time to capture
+		l := c.detectWith(true, true, accept, decodeAt, decimatedWait+time.Duration(20*at*float64(time.Second)))
+		if l.found && l.sampleS > 0 {
+			if got := msgsOf(l.res, l.sampleS, valid); got.longest > 0 {
+				return got
+			}
+		}
+	}
+	return m
+}
+
 // frameBus finishes AUTO in BUS and BUS entry's detection once the bus is
 // filled in: the frame-start trigger, and for AUTO the trigger near the left
 // and a timebase that shows a whole message. It returns what the notice adds.
 // TRLC-LINKS: REQ-SDS-223
 func (c *Controller) frameBus(featureS float64, auto bool) string {
 	m := c.measureMsgs()
+	if auto && m.longest == 0 {
+		m = c.measureSlower(m, featureS)
+	}
 	note := c.frameTrigger(m)
 	if auto {
 		_ = c.setTrigPos(busTrigPos)

@@ -291,3 +291,38 @@ func TestAutoInBusDropsTheOldMatch(t *testing.T) {
 		t.Fatalf("AUTO did not arm the frame start: %q", s.ui.busNote)
 	}
 }
+
+// A message the screen holds none of whole (cut by its end) is measured on
+// slower timebases, up to messageLooks steps while a sampled record still
+// resolves its bits, and the timebase goes back: AUTO then frames the
+// fastest that shows it whole (an IR Denon pair at 10ms/div decoded only
+// where the trigger happened to fall).
+// TRLC-LINKS: REQ-SDS-223
+func TestAutoMeasuresAMessageTheScreenCut(t *testing.T) {
+	c, eng, _ := newC(t)
+	c.detectSync = true
+	set(t, c, "bus.protocol", "UART")
+	set(t, c, "bus.baud", "9600")
+	// one 24-character message (27.5 ms) a second, from 1 ms into the screen
+	msg := []string{"0123456789abcdefghijklmn"}
+	c.SetFrameSource(func(fn func(*engine.Frame)) {
+		td := eng.Snapshot().TdivS
+		f := uartFrame(msg, 9600, 1, 10*td/4000, 4000)
+		f.TdivS = td
+		fn(f)
+	})
+	c.setTdivNearest(2e-3)
+	if m := c.measureMsgs(); m.longest != 0 {
+		t.Fatalf("2ms/div's 20 ms screen holds the 27.5 ms message whole: %g", m.longest)
+	}
+	m := c.measureSlower(busMsgs{}, 1.0/9600)
+	if !(m.longest > 27e-3 && m.longest < 28e-3) {
+		t.Fatalf("measured on a slower timebase: %g s, want 27.5 ms", m.longest)
+	}
+	if td := eng.Snapshot().TdivS; td != 2e-3 {
+		t.Fatalf("the timebase went back to 2ms/div: %g", td)
+	}
+	if td := c.messageTimebase(m.longest, 1.0/9600, 2e-3); td != 5e-3 {
+		t.Fatalf("framed at %g, want 5ms/div (45 ms after the trigger)", td)
+	}
+}
