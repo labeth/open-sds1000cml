@@ -220,9 +220,9 @@ automatically.
   threshold midway, the hardware trigger on the start of each frame (I2C's START, SPI's first word after
   its idle, CAN's SOF, a MIL-1553 command word, the first UART character after an idle gap, ...), the
   trigger near the left and whole messages on screen with every bit resolved. The trigger point sits on
-  the frame's own SYNC or SOF. The protocol images for Manchester, USB, SENT, CAN, FlexRay, MIL-1553 and
-  ARINC 429 record 2.1 ms at the full rate, so their triggers run at 200 us/div or faster, as do the
-  pulse width, slope and video triggers (they fire on full-rate captures only). AUTO names a bus
+  the frame's own SYNC or SOF. Every trigger, the protocol triggers, pulse width, slope and video
+  included, fires at every timebase: the FPGA decides it on the full-rate samples whatever the record's
+  decimation, and the BUS view decodes the record wherever its samples resolve the bus. AUTO names a bus
   from Default setup in about 4 to 9 s (5.2 s on average over 60 bench buses of all 52 protocols), and
   arms its trigger about 1 s later when the protocol's FPGA image has to load (an image switch takes
   about 1 s). A stream that waits for an image load says so.

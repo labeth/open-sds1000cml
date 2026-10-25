@@ -62,6 +62,14 @@ power-cycle, and the factory firmware is back.
   SWIM too (a whole Wiegand frame on screen, a T55xx command's end no longer cut by the trigger's
   room before it, a WS281x latch or SWIM transaction cut by the screen's edge read as cut, not as an
   error).
+* **Every trigger at every timebase.** The pulse width, slope and video triggers (and with them the
+  UART frame start that AUTO arms in BUS) fire on slow timebases too: the FPGA held their trigger for a
+  single clock, which a decimated record never took, and they were kept to 200 µs/div. The CAN,
+  FlexRay, ARINC 429, MIL-1553, SENT, Manchester, USB and fast-mode SPI, UART and I2C triggers, on
+  images that recorded raw samples only (2.1 ms), now run on records decimated by box averages, so
+  they too trigger at any timebase; MIL-1553, SENT and USB moved to an FPGA image of their own to make
+  room. AUTO's wait no longer forces a capture the hardware has triggered (at 10 ms/div and slower the
+  record outlasted the wait and every frame read forced).
 * **BUS trades frame rate for decoding.** Where the live view is too coarse for the bus (a slow
   timebase's envelope, or the roll view: a 115200 Bd UART at 10 ms/div), BUS reads records sampled
   just finely enough for the bus and decodes them, a record every 0.35 s at 10 ms/div and 1.5 s at
@@ -96,9 +104,9 @@ settings tab (the Help key), at the end of the web UI's status line and in `/api
 * **AC and GND coupling** are applied to the samples, not by the input relay: AC removes the mean of
   the trace, so a small signal on a large DC level is limited by the range that holds the DC.
 * **Vertical accuracy** has not been checked against a calibrated reference.
-* **Raw-only images:** the `fast`, packet and line images record raw samples only (2.1 ms at the full
-  rate, no precision decimation), so while one of them is loaded the timebase stays at 200 µs/div or
-  faster. Pulse width, slope and video triggers fire on full-rate captures only, with the same limit.
+* **Box decimation:** the packet, frame, line and fast images decimate by box averages, not the
+  precision filter (no room for it): their records alias what the filter would attenuate, and the
+  Precision acquisition mode is not offered while one of them is loaded.
 * **Serial triggers:** a value stop is refused, with the reason, where the trigger cannot match it (a
   value past the symbol trigger's 64-bit window, or among units of other lengths), and the symbol
   trigger has no error token, so the protocols on it stop on a value or by hand, not on an error.

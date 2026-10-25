@@ -435,19 +435,19 @@ gives its phase, the eye is the widest phase interval holding none; whether the 
 (data settling late) or before it (data a little early) is told from the bursts' ends, where a device that
 settles late launches once more after the last sampling edge. The row reads the delay and the margin left
 each side of it ("Auto -1.8 ns, margin +3.7 ns"); the software decoders read the data at the same delay.
-The packet, line and fast images (Manchester, USB, SENT, CAN,
-FlexRay, MIL-1553, ARINC 429, fast SPI, UART and I2C) record raw samples only, one SRAM of 2.1 ms: on them the timebase goes no slower than
-200us/div, whose screen that record fills ("200us/div at most on this trigger: its image records
-2.1ms", also when a trigger armed at a slower timebase brings the image in). A pulse width, slope or video
-trigger does the same on the qualify image: its qualifier fires on the full-rate record only, so those captures
-stay at the full rate (200us/div at most; Average, ERES and Precision average full-rate captures, slower to update). BUS entry's detection sets the same trigger. AUTO in the other workspaces is the autoset framed
+Every trigger fires at every timebase (ADR-TRIGGER-ANY-TIMEBASE): the packet, frame, line and fast images
+(CAN, FlexRay, ARINC 429; MIL-1553, SENT, USB; Manchester; fast SPI, UART and I2C) decimate by box averages
+while their receivers read the full-rate samples, and the qualify image's pulse width, slope and video
+qualifier fires on decimated records as on full-rate ones (Average, ERES and Precision on them run on
+decimated captures). An image that records raw samples only would hold the timebase at 200us/div ("200us/div
+at most on this trigger: its image records raw samples only, 2.1ms"); none ships. BUS entry's detection sets the same trigger. AUTO in the other workspaces is the autoset framed
 for the workspace's job (REQ-SDS-224). Either sweep first puts the trigger back to an edge and waits for the
 general image: measured on the qualifier or a protocol image, or while the image went back, the vertical fit
 went wrong. AUTO in BUS holds a loaded qualifier image instead (an edge triggers and captures there as on the
 general image, decimation too): a UART framed before keeps it through the fit and the detection and is framed
-on it again, about 5 s with no image load where the load to the general image and back took 12 s. The packet
-and line images record 2.1 ms raw, too little for the fit's slower steps, so a bus framed on one loads the
-general image for the fit and its own again (11 to 15 s on SENT, CAN and ARINC 429). A stream that needs
+on it again, about 5 s with no image load where the load to the general image and back took 12 s. A bus
+framed on the packet, frame or line image loads the general image for the fit and its own again (11 to 15 s
+on SENT, CAN and ARINC 429). A stream that needs
 another image (a UART's stream the general image's receiver, after AUTO left the qualifier image) starts
 with the note "loading the general FPGA image, about 1 s: the qualifier image has no UART receiver" on the
 LCD's stream line and the web page's.
