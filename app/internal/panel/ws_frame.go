@@ -43,7 +43,7 @@ type anaState struct {
 	live    []Packet // this frame's packets (complete and cut)
 	list    PacketList
 	listKey string
-	rawKey  string // the bus settings whose live envelope was too coarse: sampled frames leased (busRawFrames)
+	rawKey  string   // the bus settings whose live envelope was too coarse: sampled frames leased (busRawFrames)
 	hits    busHits  // the rows the match tokens hit, for the caption
 	marks   busMarks // the strip's marks of live
 	// BUS eye
