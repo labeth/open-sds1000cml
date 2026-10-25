@@ -25,7 +25,8 @@ type statusReply struct {
 	TrigCodeMin   uint16        `json:"trig_code_min"`
 	TrigCodeMax   uint16        `json:"trig_code_max"`
 	Stream        *streamStatus `json:"stream,omitempty"`     // the BUS sheet's Stream mode
-	Waiting       bool          `json:"waiting"`              // NORMAL, running, nothing published lately: WAIT, not the held frame's T'D
+	Waiting       bool          `json:"waiting"`              // a trigger the FPGA decides armed, running, nothing published lately: WAIT, not the held frame's T'D
+	WaitS         float64       `json:"wait_s,omitempty"`     // seconds it has waited
 	SoundHeld     string        `json:"sound_held,omitempty"` // a page holds the audio stream: the LCD's notice
 	Vdivs         []float64     `json:"vdivs,omitempty"`
 	Vdiv1         float64       `json:"vdiv1,omitempty"`
@@ -79,8 +80,14 @@ func (s *Server) hStatus(w http.ResponseWriter, r *http.Request) {
 		TrigCodeMax:   engine.TrigCodeMax,
 		Version:       buildinfo.String(),
 	}
-	if sp, ok := s.sc.(interface{ SincePublish() time.Duration }); ok && st.Norm && st.Running {
-		rep.Waiting = sp.SincePublish() > time.Duration(math.Max(1, 25*st.TdivS)*float64(time.Second))
+	// NORMAL, and in AUTO a serial match, zones or a qualifier: the FPGA
+	// fires on those only (the LCD names the trigger it waits for).
+	decided := st.Norm || st.SerialMode != 0 || st.ZoneMode != 0 || st.TrigType != 0
+	if sp, ok := s.sc.(interface{ SincePublish() time.Duration }); ok && decided && st.Running {
+		since := sp.SincePublish()
+		if rep.Waiting = since > time.Duration(math.Max(1, 25*st.TdivS)*float64(time.Second)); rep.Waiting {
+			rep.WaitS = math.Round(since.Seconds())
+		}
 	}
 	if sr, ok := s.panel.(superresReporter); ok {
 		rep.SRActive, rep.SRReview, rep.SRBits, rep.SRFrames, rep.SRRejected, rep.SRStatus = sr.SuperresStatus()

@@ -237,7 +237,7 @@ function trigState() {
   if (!st.running) return "STOP";
   if (st.single) return "SNGL";
   if (st.roll) return "ROLL"; // untriggered scrolling view at slow timebases
-  if (st.waiting) return "WAIT"; // the held frame's T'D is stale
+  if (st.waiting) return st.wait_s >= 2 ? "WAIT " + st.wait_s + " s" : "WAIT"; // the held frame's T'D is stale; the trigger has waited this long
   if (frame && frame.trigd) return "T'D";
   if (st.norm) return "WAIT";
   return "AUTO";

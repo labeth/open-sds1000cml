@@ -163,7 +163,7 @@ run(async (t) => {
 
   // --- trigger-state chip (mirrors the LCD state machine) --------------------
   const chip = await po.text("trigChip");
-  t.ok(["AUTO", "NORM", "SNGL", "WAIT", "T'D", "STOP"].includes(chip),
+  t.ok(["AUTO", "NORM", "SNGL", "WAIT", "T'D", "STOP"].includes(chip) || /^WAIT \d+ s$/.test(chip),
     `top bar shows a trigger-state chip mirroring the LCD (${chip})`);
   t.ok((await po.text("run")).includes("▶") || (await po.text("run")).includes("■"),
     "RUN/STOP button carries a redundant glyph (not colour-only)");
