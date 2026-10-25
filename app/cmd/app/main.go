@@ -503,7 +503,7 @@ func runLCD(e *engine.Engine, fe *analog.FrontEnd, fo *frames.Fanout) {
 					lcd = 0
 				}
 				govAt, govPictures = now, pictures
-				gov.step(e.Snapshot(), lcd, cpu.busy(), page)
+				gov.step(e.Snapshot(), lcd, cpu.busy(), page, scr == panel.ScreenOn && !wasBusy)
 				framecalc.SetSpectrumHold(gov.hold)
 				e.SetDisplayPace(gov.pace)
 			}
@@ -716,8 +716,10 @@ type lcdGov struct {
 func newLCDGov() *lcdGov { return &lcdGov{period: lcdFramePeriod} }
 
 // step looks once at the engine, the pictures drawn a second since the
-// last look (lcd), the core's busy fraction and whether a web page shows
-// the scope.
+// last look (lcd), the core's busy fraction, whether a web page shows the
+// scope and whether the display draws the engine's frames at all (the
+// screen on, not in its busy mode): asleep or busy it draws few or none on
+// purpose, and that is no reason to pace the engine.
 //
 // With no page the panel is the only view and gets the core: pictures at
 // the panel's rate, a new spectrum each. A picture needs a new frame, so
@@ -732,10 +734,14 @@ func newLCDGov() *lcdGov { return &lcdGov{period: lcdFramePeriod} }
 // that the panel stops looking live, worth more than the engine's frames,
 // and a display still under it paces the engine.
 // TRLC-LINKS: REQ-SDS-168
-func (g *lcdGov) step(st engine.Stats, lcd, busy float64, page bool) {
+func (g *lcdGov) step(st engine.Stats, lcd, busy float64, page, drawing bool) {
 	g.lcd = (g.lcd + lcd) / 2
 	if !st.Running {
 		*g = lcdGov{period: lcdFramePeriod}
+		return
+	}
+	if !drawing {
+		g.pace = 0
 		return
 	}
 	busyCore := busy >= lcdCoreBusy

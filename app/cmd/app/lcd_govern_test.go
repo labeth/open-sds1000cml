@@ -20,36 +20,43 @@ func TestLCDGovPage(t *testing.T) {
 	run := func(fps float64) engine.Stats { return engine.Stats{Running: true, FPS: fps} }
 	g := newLCDGov()
 	for i := 0; i < 200; i++ {
-		g.step(run(55), 25, 0.99, true)
+		g.step(run(55), 25, 0.99, true, true)
 	}
 	if g.period != lcdSlowestPeriod || g.hold != lcdLongestHold || g.pace != 0 {
 		t.Fatalf("slow engine, busy core, display at 25: %+v", *g)
 	}
 	for i := 0; i < 200; i++ {
-		g.step(run(55), 15, 0.99, true)
+		g.step(run(55), 15, 0.99, true, true)
 	}
 	if g.pace != lcdLongestPace {
 		t.Fatalf("display under 20: pace %v, want %v", g.pace, lcdLongestPace)
 	}
 	for i := 0; i < 200; i++ {
-		g.step(run(20), 19, 0.99, true)
+		g.step(run(20), 19, 0.99, true, true)
 	}
 	if g.pace != 0 {
 		t.Fatalf("display keeping up with a paced engine: pace %v, want 0", g.pace)
 	}
 	for i := 0; i < 200; i++ {
-		g.step(run(70), 40, 0.95, true)
+		g.step(run(70), 40, 0.95, true, true)
 	}
 	if g.period != lcdFramePeriod || g.hold != 0 || g.pace != 0 {
 		t.Fatalf("engine with room: %+v", *g)
 	}
 	for i := 0; i < 200; i++ {
-		g.step(run(31), 31, 0.70, true)
+		g.step(run(31), 31, 0.70, true, true)
 	}
 	if g.period != lcdFramePeriod || g.hold != 0 {
 		t.Fatalf("engine waiting on its records: %+v", *g)
 	}
-	g.step(engine.Stats{}, 0, 1, true)
+	for i := 0; i < 200; i++ {
+		g.step(run(55), 0, 0.99, true, true)
+	}
+	g.step(run(55), 0, 0.99, true, false)
+	if g.pace != 0 {
+		t.Fatalf("the screen asleep: pace %v, want 0", g.pace)
+	}
+	g.step(engine.Stats{}, 0, 1, true, true)
 	if *g != (lcdGov{period: lcdFramePeriod}) {
 		t.Fatalf("stopped: %+v", *g)
 	}
@@ -66,21 +73,27 @@ func TestLCDGovPage(t *testing.T) {
 func TestLCDGovNoPage(t *testing.T) {
 	run := func(fps float64) engine.Stats { return engine.Stats{Running: true, FPS: fps} }
 	g := &lcdGov{period: lcdSlowestPeriod, hold: lcdLongestHold}
-	g.step(run(50), 48, 0.99, false)
+	g.step(run(50), 48, 0.99, false, true)
 	if g.period != lcdFramePeriod || g.hold != 0 {
 		t.Fatalf("no page: %+v", *g)
 	}
 	for i := 0; i < 200; i++ {
-		g.step(run(40), 20, 0.99, false)
+		g.step(run(40), 20, 0.99, false, true)
 	}
 	if g.pace != lcdLongestPace {
 		t.Fatalf("display behind a busy engine: pace %v, want %v", g.pace, lcdLongestPace)
 	}
 	for i := 0; i < 200; i++ {
-		g.step(run(45), 45, 0.99, false)
+		g.step(run(45), 45, 0.99, false, true)
 	}
 	if g.pace != 0 {
 		t.Fatalf("display keeping up: pace %v, want 0", g.pace)
+	}
+	for i := 0; i < 200; i++ {
+		g.step(run(60), 0, 0.99, false, false)
+	}
+	if g.pace != 0 {
+		t.Fatalf("screen off or saver: pace %v, want 0 (it draws nothing on purpose)", g.pace)
 	}
 }
 
