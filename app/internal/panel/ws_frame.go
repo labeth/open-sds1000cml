@@ -48,6 +48,7 @@ type anaState struct {
 	rawFull string   // the bus settings whose decimated records were too coarse: the full rate
 	featKey string   // what featS was measured for (busFeatureKey)
 	featS   float64  // the bus's shortest feature in seconds, as its last decode measured it
+	featEnv float64  // the same in a live envelope (decode.EnvelopeFeatureSamples), seconds
 	hits    busHits  // the rows the match tokens hit, for the caption
 	marks   busMarks // the strip's marks of live
 	// BUS eye

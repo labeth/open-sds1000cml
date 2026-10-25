@@ -1882,7 +1882,7 @@ func (c *Controller) busRawFrames(a *anaState, s *sv, f *engine.Frame) {
 	key, bus := busListKey(s), busFeatureKey(s)
 	if a.res.OK && f.SampleS > 0 {
 		if fs := decode.FeatureSamples(a.res) * f.SampleS; fs > 0 {
-			a.featKey, a.featS = bus, fs
+			a.featKey, a.featS, a.featEnv = bus, fs, decode.EnvelopeFeatureSamples(a.res)*f.SampleS
 		}
 	}
 	live := f.PeakDetect || s.st.Roll // a view the engine reads coarser than its record
@@ -1957,11 +1957,12 @@ func (c *Controller) holdBusLease(sampleS float64) {
 
 // coarseFor reports a live frame that did not decode and whose points are
 // too far apart for the bus as its last decode measured it (under
-// readableFeature points in its shortest feature), whatever the decoder
-// said: a SENT frame at 2ms/div read "no SENT frame", not its resolution.
+// readableFeature points in its shortest feature as an envelope holds it,
+// featEnv), whatever the decoder said: a SENT frame at 2ms/div read "no
+// SENT frame", not its resolution.
 // TRLC-LINKS: REQ-SDS-214
 func coarseFor(a *anaState, bus string, f *engine.Frame) bool {
-	return !a.res.OK && a.featKey == bus && a.featS > 0 && f.SampleS > 0 && a.featS/f.SampleS < readableFeature
+	return !a.res.OK && a.featKey == bus && a.featEnv > 0 && f.SampleS > 0 && a.featEnv/f.SampleS < readableFeature
 }
 
 // tooFewSamples reports a decode refused for too few samples a bit.

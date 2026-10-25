@@ -65,9 +65,8 @@ type Result struct {
 // cycle, a stepper's STEP pulse and a PWM line's narrowest run (Feature),
 // half a bit of OOK, Miller, EM4100, DSI and Qi, half a clock of the
 // clocked buses and half a field clock of a reader's line, DCF77's 100 ms
-// pulse, a SWIM 1's low (a bit's 2 of 22 clocks), an SDQ 1's quarter bit,
-// half a PJDL data time (its pads and data times are checked to ten
-// percent: an envelope of two buckets a bit failed its CRCs). 0 when the result names none (decode.js decodeFeatureSamples).
+// pulse, a SWIM 1's low (a bit's 2 of 22 clocks), an SDQ 1's quarter bit.
+// 0 when the result names none (decode.js decodeFeatureSamples).
 // TRLC-LINKS: REQ-SDS-018
 func FeatureSamples(r Result) float64 {
 	if !r.OK || !(r.SPB > 0) {
@@ -106,8 +105,6 @@ func FeatureSamples(r Result) float64 {
 		return r.SPB / 11 // a 1's low: 2 of a bit's 22 SWIM clocks
 	case "sdq":
 		return r.SPB / 4
-	case "pjdl":
-		return r.SPB / 2
 	}
 	return r.SPB
 }
@@ -116,12 +113,18 @@ func FeatureSamples(r Result) float64 {
 // peak-detect envelope, in samples: FeatureSamples, but a Wiegand pulse
 // survives a bucket wider than itself (the bucket's extreme), so there it
 // is the bit interval, the pulses having to land in buckets of their own
-// (a 26-bit frame at 1 ms decodes from 5 points an interval)
+// (a 26-bit frame at 1 ms decodes from 5 points an interval), and half a
+// PJDL data time, its pads and data times checked to ten percent (an
+// envelope of two buckets a data time failed its CRCs on most frames; the
+// samples of a record read it at the data time's own)
 // (decode.js decodeEnvelopeFeatureSamples).
 // TRLC-LINKS: REQ-SDS-018
 func EnvelopeFeatureSamples(r Result) float64 {
-	if r.Proto == "wiegand" && r.OK {
+	switch {
+	case r.Proto == "wiegand" && r.OK:
 		return r.SPB
+	case r.Proto == "pjdl":
+		return FeatureSamples(r) / 2
 	}
 	return FeatureSamples(r)
 }

@@ -52,7 +52,6 @@ function decodeFeatureSamples(r) {
     if (r.proto === "dcf77") return m.spb / 10;
     if (r.proto === "swim") return m.spb / 11;
     if (r.proto === "sdq") return m.spb / 4;
-    if (r.proto === "pjdl") return m.spb / 2;
     return m.spb;
   }
   if (!(m.samplesPerBit > 0)) return 0;
@@ -61,10 +60,12 @@ function decodeFeatureSamples(r) {
 
 // decodeEnvelopeFeatureSamples is the shortest feature in a peak-detect
 // envelope (decode.EnvelopeFeatureSamples): a Wiegand pulse survives a
-// bucket wider than itself, so there it is the bit interval.
+// bucket wider than itself, so there it is the bit interval; PJDL's data
+// time is checked to ten percent, so there it is half of it.
 // TRLC-LINKS: REQ-SDS-207
 function decodeEnvelopeFeatureSamples(r) {
   if (r && r.ok && r.proto === "wiegand" && r.meta && r.meta.spb > 0) return r.meta.spb;
+  if (r && r.proto === "pjdl") return decodeFeatureSamples(r) / 2;
   return decodeFeatureSamples(r);
 }
 
