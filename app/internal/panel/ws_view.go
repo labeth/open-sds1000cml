@@ -557,6 +557,7 @@ func (c *Controller) busPane(s *sv) *wsview.BusPane {
 	}
 	if !res.OK {
 		p.Caption, p.CapCol, p.Error = res.Error, wsview.Stop, res.Error
+		p.Hint = decodeRateHint(res.Error, s.st.TdivS, s.st.SerialMode != 0, s.st.SerialMatches)
 	} else {
 		cutN := 0
 		for _, q := range live {
@@ -903,4 +904,38 @@ func (c *Controller) eyePane(s *sv) *wsview.EyePane {
 	p.SampleCol = eyeColOf(r, 1+u.eyeX)
 	p.ThreshRow = eyeRowOf(r, th)
 	return p
+}
+
+// decodeRateHint is what to do about a decode refused for too few samples a
+// bit ("2.0 samples/bit; need >= 3"): the slowest timebase that gives enough,
+// and, with the serial trigger armed and firing, that the trigger works: at
+// a slow timebase the live view holds a decimated envelope too coarse to
+// decode while the FPGA's trigger, on the full-rate samples, still fires.
+// "" for any other error.
+// TRLC-LINKS: REQ-SDS-214
+func decodeRateHint(err string, tdiv float64, serial bool, matches int64) string {
+	i := strings.Index(err, "samples/bit")
+	if i < 0 || !(tdiv > 0) {
+		return ""
+	}
+	var have, need float64
+	from := strings.LastIndex(strings.TrimRight(err[:i], " "), " ") + 1 // the figure before "samples/bit"
+	if _, e := fmt.Sscanf(err[from:], "%g samples/bit; need >= %g", &have, &need); e != nil || !(have > 0) || !(need > have) {
+		return ""
+	}
+	want := tdiv * have / need
+	best := 0.0
+	for _, t := range engine.SupportedTdivs() {
+		if t <= want*(1+1e-9) && t > best {
+			best = t
+		}
+	}
+	h := fmt.Sprintf("Too few samples a bit to decode at %s/div: %s/div or faster decodes it.", si(tdiv, "s"), si(best, "s"))
+	if best == 0 {
+		h = fmt.Sprintf("Too few samples a bit to decode at %s/div: use a faster time/div.", si(tdiv, "s"))
+	}
+	if serial && matches > 0 {
+		h += " The trigger fires (the FPGA reads every sample)."
+	}
+	return h
 }

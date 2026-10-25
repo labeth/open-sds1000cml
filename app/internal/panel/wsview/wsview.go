@@ -156,6 +156,7 @@ type BusPane struct {
 	Off    bool   // no bus decoded: Msg explains
 	Msg    []Span // the explanation lines (big first line)
 	Error  string // a decode error (shown in red)
+	Hint   string // what to do about it ("" the general advice)
 	Lines  []BusLine
 	Up, Dn bool // more lines above / below
 	// Marks are every packet of the record (thousands on a deep one): a

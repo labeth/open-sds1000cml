@@ -41,7 +41,8 @@ type HUD struct {
 	SerialArmed    bool
 	SerialMatch    string
 	ZoneTrig       bool
-	Waiting        bool            // NORMAL, running, nothing published lately
+	Waiting        bool            // a trigger the FPGA decides armed, running, nothing published lately
+	WaitS          float64         // seconds since the last frame came (running)
 	StreamOn       bool            // DECODE Auto in Stream mode
 	Stream         streamview.View // its state and counters
 	StreamList     bool            // the transcript fills the screen
@@ -369,12 +370,57 @@ func drawTraceHeld(sf Surface, p plotArea, id traceID, sig []uint8, held []bool,
 // filling its record.
 // TRLC-LINKS: REQ-SDS-021
 func drawAcquiring(sf Surface, p plotArea, hud HUD) {
-	msg := "ACQUIRING"
-	if hud.RecordS >= 1 {
-		msg += fmt.Sprintf("  %s record", fmtTdiv(hud.RecordS))
+	lines := acquiringLines(hud)
+	y := (p.top+p.bot)/2 - 8 - 7*(len(lines)-1)
+	DrawText(sf, (p.w-TextWidth(lines[0], 2))/2, y, lines[0], colDim, 2)
+	for i, l := range lines[1:] {
+		DrawText(sf, (p.w-TextWidth(l, 1))/2, y+24+14*i, l, colDim, 1)
 	}
-	DrawText(sf, (p.w-TextWidth(msg, 2))/2, (p.top+p.bot)/2-8, msg, colDim, 2)
 }
+
+// acquiringLines is what the screen says while no frame of the timebase
+// on screen has come: a record filling, or, with a trigger armed that the
+// FPGA decides and nothing come for a while, the trigger it waits for and
+// how long, and after a few seconds what to try. A capture of a slow
+// timebase takes its record's time; one that waits for a trigger takes as
+// long as the signal does to hold it, and a screen that only said
+// ACQUIRING did not tell the two apart.
+// TRLC-LINKS: REQ-SDS-021, REQ-SDS-206
+func acquiringLines(hud HUD) []string {
+	if !hud.Waiting {
+		msg := "ACQUIRING"
+		if hud.RecordS >= 1 {
+			msg += "  " + fmtTdiv(hud.RecordS) + " record"
+		}
+		return []string{msg}
+	}
+	what := fmt.Sprintf("C%d %s %s edge", hud.TrigSrc+1, map[bool]string{true: "rising", false: "falling"}[hud.TrigRising], fmtVolt(hud.TrigLvlV))
+	hint := "No edge crosses the level: set it inside the signal (Trig Menu) or press AUTO."
+	switch {
+	case hud.SerialArmed:
+		m := hud.SerialMatch
+		if m == "" {
+			m = "any unit"
+		}
+		what = "serial match " + m
+		hint = "No match in the signal at this timebase yet: press AUTO to find the bus again."
+	case hud.ZoneTrig:
+		what = "zones on C" + fmt.Sprint(hud.TrigSrc+1)
+		hint = "No edge passes every zone: check the zones (COMPARE) or the level."
+	case hud.TrigType != 0:
+		what = trigTag(hud)
+		hint = "Nothing in the signal meets the condition: check it in the Trig Menu."
+	}
+	lines := []string{"WAITING FOR TRIGGER", fmt.Sprintf("the FPGA's %s, %.0f s", what, hud.WaitS)}
+	if hud.WaitS >= waitHintS {
+		lines = append(lines, hint)
+	}
+	return lines
+}
+
+// waitHintS is how long a trigger waits before the screen suggests what to
+// try.
+const waitHintS = 5
 
 // drawDenseTrace draws a record with more samples than columns as each
 // column's min..max, joined to its neighbour. One point per column drops

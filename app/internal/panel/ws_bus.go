@@ -552,17 +552,20 @@ const readableFeature = 5.0
 // aliases (an I2C bus at 500us/div lists packets of no bytes). sampleS is the
 // decoded frame's sample interval. within, when above 0, steps to the slowest
 // timebase up to it that reads the bus even when the current one does (a bus
-// found on a short record shows more of itself there). It returns what the
-// notice adds ("" when the timebase stays).
+// found on a short record shows more of itself there). arming: a serial
+// trigger is armed next, so its window counts though none is armed yet (AUTO
+// arms the frame start after this: 9600 Bd Modbus passed at 5ms/div on 10
+// divisions and its live view, on 12.5, could not decode it). It returns
+// what the notice adds ("" when the timebase stays).
 // TRLC-LINKS: REQ-SDS-214
-func (c *Controller) readableTimebase(res decode.Result, sampleS, within float64) string {
+func (c *Controller) readableTimebase(res decode.Result, sampleS, within float64, arming bool) string {
 	feature := decode.FeatureSamples(res) * sampleS
 	if !(feature > 0) || len(c.tdivs) == 0 {
 		return ""
 	}
 	s := c.snap()
 	window := 10.0
-	if s.st.SerialMode != 0 {
+	if s.st.SerialMode != 0 || arming {
 		window = 12.5
 	}
 	points := func(tdiv float64) float64 { return feature / (window * tdiv / liveEnvelopePoints) }
@@ -1448,14 +1451,15 @@ func (c *Controller) offPanel(fn func()) {
 
 // readTimebase steps to the timebase that reads a bus findBus found live
 // (readableTimebase), and says where the timebase went: the step, or the
-// full-rate timebase the search kept.
+// full-rate timebase the search kept. arming: a serial trigger is armed next
+// (AUTO's frame start), and its wider window counts already.
 // TRLC-LINKS: REQ-SDS-214
-func (c *Controller) readTimebase(res decode.Result, sampleS, stepped float64) string {
+func (c *Controller) readTimebase(res decode.Result, sampleS, stepped float64, arming bool) string {
 	within := 0.0
 	if t := c.fullRateTdiv(); stepped > 0 && stepped < t {
 		within = t // found on the short full-rate record
 	}
-	if note := c.readableTimebase(res, sampleS, within); note != "" || stepped == 0 {
+	if note := c.readableTimebase(res, sampleS, within, arming); note != "" || stepped == 0 {
 		return note
 	}
 	return ", " + si(stepped, "s") + "/div to read it"
@@ -1571,7 +1575,7 @@ func (c *Controller) runDetect() {
 	tdivNote, none := "", ""
 	frame := c.takeBusFrame()
 	if locked {
-		tdivNote = c.readTimebase(res, sampleS, stepped)
+		tdivNote = c.readTimebase(res, sampleS, stepped, frame != 0)
 		if l := c.detectLayer(res, 0); l != "" { // a layer the packets prove
 			tdivNote += "; layer " + l
 		}

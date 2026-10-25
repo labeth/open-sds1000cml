@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"open-sds/app/internal/decode"
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/panel/framecalc"
 	"open-sds/app/internal/streamview"
@@ -764,5 +765,24 @@ func TestBusSearchSaysTheScopeWaits(t *testing.T) {
 	c.runDetect()
 	if n := c.View().Notice; !strings.Contains(n, "no bus found") {
 		t.Fatalf("not waiting: %q", n)
+	}
+}
+
+// AUTO arms a serial trigger after it picks the timebase, and the trigger's
+// live window is 12.5 divisions, not 10: the pick counts it. A 9600 Bd bit
+// (104 us) is 4.3 points of 5ms/div's 10-division readout and 3.4 of the
+// trigger's; the pick for AUTO steps to 2ms/div, one without a trigger to
+// come keeps 5ms/div.
+// TRLC-LINKS: REQ-SDS-214
+func TestReadableTimebaseCountsTheTriggerToCome(t *testing.T) {
+	const sampleS = 160e-9
+	res := decode.Result{OK: true, Proto: "modbus", SPB: 104.17e-6 / sampleS}
+	c, eng, _ := newC(t)
+	c.setTdivNearest(5e-3)
+	if note := c.readableTimebase(res, sampleS, 0, false); note != "" || eng.Snapshot().TdivS != 5e-3 {
+		t.Fatalf("no trigger to come: note %q tdiv %g, want 5ms/div kept", note, eng.Snapshot().TdivS)
+	}
+	if note := c.readableTimebase(res, sampleS, 0, true); !strings.Contains(note, "2ms/div to read it") || eng.Snapshot().TdivS != 2e-3 {
+		t.Fatalf("AUTO arming the frame start: note %q tdiv %g, want 2ms/div", note, eng.Snapshot().TdivS)
 	}
 }

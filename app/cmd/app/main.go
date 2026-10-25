@@ -149,16 +149,21 @@ func buildHUD(e *engine.Engine, fe *analog.FrontEnd) lcd.HUD {
 			hud.OffC2V = fe.OffsetVolts(1, st.OffC2)
 		}
 	}
-	// NORMAL waits for a trigger: past 1 s or 2.5 screen spans without a
-	// published frame, the held frame's TRIG'd state no longer describes now.
 	// Loading indicator, after a short grace so fast frames never flash it.
 	if st.Busy != "" && st.BusyMs >= 150 {
 		hud.Busy, hud.BusyPct, hud.BusyPhase = st.Busy, st.BusyPct, int(st.BusyMs/250)
 	}
 	hud.ViewPending = st.ViewPending
 	hud.Roll = st.Roll
-	if st.Norm && st.Running {
-		hud.Waiting = e.SincePublish() > time.Duration(math.Max(1, 25*st.TdivS)*float64(time.Second))
+	// A trigger the FPGA decides waits for the signal: NORMAL, and in AUTO a
+	// serial match, zones or a qualifier, which the FPGA fires on only. Past
+	// 1 s or 2.5 screen spans without a published frame the held frame's
+	// TRIG'd state no longer describes now, and the screen says what waits.
+	if st.Running {
+		since := e.SincePublish()
+		hud.WaitS = since.Seconds()
+		decided := st.Norm || hud.SerialArmed || hud.ZoneTrig || hud.TrigType != 0
+		hud.Waiting = decided && since > time.Duration(math.Max(1, 25*st.TdivS)*float64(time.Second))
 	}
 	srcVdiv, srcOff := hud.C1VdivV, hud.OffC1V
 	if st.TrigSource == 1 {
@@ -314,6 +319,7 @@ type renderSig struct {
 	streamState, streamTop, streamTotal, streamTrig int
 	streamSlot                                      int64
 	seq                                             uint64
+	waitS                                           int // a waiting trigger's seconds (the screen counts them)
 	view, math, dec, zoom                           int
 	curType, curSel                                 int
 	ui                                              uint64 // the workspace UI (uiSig)
@@ -361,6 +367,16 @@ func uiSig(v wsview.View) uint64 {
 }
 
 // TRLC-LINKS: REQ-SDS-168
+// waitSecond is the whole seconds a waiting trigger has waited (the
+// screen counts them), 0 when nothing waits.
+// TRLC-LINKS: REQ-SDS-168
+func waitSecond(hud lcd.HUD) int {
+	if !hud.Waiting {
+		return 0
+	}
+	return int(hud.WaitS)
+}
+
 func renderSigOf(f *engine.Frame, hud lcd.HUD, live bool) renderSig {
 	var seq uint64
 	if f != nil {
@@ -379,6 +395,7 @@ func renderSigOf(f *engine.Frame, hud lcd.HUD, live bool) renderSig {
 		showMeas: hud.ShowMeas, persist: hud.Persist,
 		running: hud.Running, single: hud.Single, norm: hud.Norm,
 		trigd: hud.Trigd, live: live, showC1: hud.ShowC1, showC2: hud.ShowC2,
+		waitS: waitSecond(hud),
 		curOn: hud.CurOn,
 		ref0:  hud.RefShow[0], ref1: hud.RefShow[1],
 		// Decoded stream: its state and the list's page repaint the display;

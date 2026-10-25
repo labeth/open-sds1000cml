@@ -319,7 +319,11 @@ func drawBusPane(sf Surface, p plotArea, b *wsview.BusPane) {
 	}
 	if b.Error != "" {
 		DrawText(sf, 16, 40, cutText(b.Error, (p.w-24)/6), colStale, 1)
-		DrawText(sf, 16, 54, "Use a faster time/div, or check the protocol on the BUS sheet (Utility).", colDim, 1)
+		hint := b.Hint
+		if hint == "" {
+			hint = "Use a faster time/div, or check the protocol on the BUS sheet (Utility)."
+		}
+		DrawText(sf, 16, 54, cutText(hint, (p.w-24)/6), colDim, 1)
 		return
 	}
 	DrawTextRight(sf, 24, 26, "#", colDim, 1)
