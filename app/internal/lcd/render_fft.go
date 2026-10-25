@@ -58,7 +58,7 @@ func drawFFT(sf Surface, p plotArea, f *engine.Frame, hud HUD) {
 		if !shown[ch] {
 			continue
 		}
-		sp, ok := framecalc.Spectrum(f, ch, hud.SampleS)
+		sp, ok := framecalc.SpectrumHeld(f, ch, hud.SampleS)
 		if !ok {
 			continue
 		}

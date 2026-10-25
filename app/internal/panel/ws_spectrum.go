@@ -36,13 +36,19 @@ func (c *Controller) specFrame(a *anaState, s *sv, f *engine.Frame) {
 		}
 	}
 	ch := s.fftSrc & 1
-	sp, ok := framecalc.Spectrum(f, ch, f.SampleS)
+	sp, ok := framecalc.SpectrumHeld(f, ch, f.SampleS)
+	// the display holding the spectrum it analysed: its levels and peaks stand
+	vpc := voltsPerCode(s, ch)
+	if ok && a.specOK && a.specCh == ch && len(sp.Mags) > 0 && len(a.spec.Mags) == len(sp.Mags) &&
+		&a.spec.Mags[0] == &sp.Mags[0] && a.specVPC == vpc {
+		return
+	}
 	a.specOK, a.specCh = ok, ch
 	if !ok || sp.BinHz <= 0 {
 		a.specOK = false
 		return
 	}
-	vpc := voltsPerCode(s, ch)
+	a.specVPC = vpc
 	db := make([]float64, len(sp.Mags))
 	for k, m := range sp.Mags {
 		// a sine of amplitude A codes reads A*N/4 through the Hann window

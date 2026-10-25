@@ -38,6 +38,7 @@ import (
 	"open-sds/app/internal/iface"
 	"open-sds/app/internal/lcd"
 	"open-sds/app/internal/panel"
+	"open-sds/app/internal/panel/framecalc"
 	"open-sds/app/internal/panel/wsview"
 	"open-sds/app/internal/scpi"
 	"open-sds/app/internal/settings"
@@ -471,6 +472,7 @@ func runLCD(e *engine.Engine, fe *analog.FrontEnd, fo *frames.Fanout) {
 	var renderDue time.Time // when the next full picture may start
 	var govAt time.Time     // when lcdGovern last set lcdPeriod
 	lcdPeriod := lcdFramePeriod
+	var specHold time.Duration // how long the display keeps a spectrum (lcdGovern)
 	var cpu cpuMeter
 	wasBusy := false
 	for {
@@ -488,10 +490,13 @@ func runLCD(e *engine.Engine, fe *analog.FrontEnd, fo *frames.Fanout) {
 			// frame rate allows (lcdGovern): a picture costs the engine
 			// frames (polled: one long sleep overshoots on this kernel's
 			// timer)
-			if now := time.Now(); scr == panel.ScreenOn && now.Before(renderDue) {
-				if now.Sub(govAt) >= lcdGovEvery {
-					govAt, lcdPeriod = now, lcdGovern(lcdPeriod, e.Snapshot(), cpu.busy())
-				}
+			now := time.Now()
+			if now.Sub(govAt) >= lcdGovEvery {
+				govAt = now
+				lcdPeriod, specHold = lcdGovern(lcdPeriod, specHold, e.Snapshot(), cpu.busy())
+				framecalc.SetSpectrumHold(specHold)
+			}
+			if scr == panel.ScreenOn && now.Before(renderDue) {
 				continue
 			}
 		}
@@ -666,35 +671,46 @@ const lcdIdleWait = 20 * time.Millisecond
 const lcdFramePeriod = time.Second / 52
 
 // The display shares the one core with the engine: a picture (render and
-// copy, ~6 ms; with SPECTRUM's analysis, ~25) costs it frames, measured 53
-// fps with the panel at 51 and 64 with it at 32. lcdGovern keeps the engine
-// at lcdEngineFPS or more where the display holds it back, the core busy:
-// below it the display's period grows, to lcdSlowestPeriod at most; with
-// room above it, or the core waiting (a record that takes longer than a
-// 60th of a second to come), the period shrinks back to the panel's.
+// copy, ~6 ms; in SPECTRUM two 8192-point spectra more, ~25) costs it
+// frames, measured 53 fps with the panel at 51 and 64 with it at 32.
+// lcdGovern keeps the engine at lcdEngineFPS or more where the display
+// holds it back, the core busy: below it the display's period grows, to
+// lcdSlowestPeriod, and then the display keeps each spectrum longer, to
+// lcdLongestHold (the spectrum view redrawn at its rate, its spectrum
+// refreshed less often); with room above it, or the core waiting (a record
+// that takes longer than a 60th of a second to come), they come back the
+// same way to the panel's rate and a new spectrum each picture.
 const (
 	lcdEngineFPS     = 61
 	lcdEngineRoom    = 64
 	lcdSlowestPeriod = time.Second / 15
+	lcdLongestHold   = 500 * time.Millisecond
 	lcdCoreBusy      = 0.90
 	lcdCoreWaiting   = 0.85
 	lcdGovStep       = 2 * time.Millisecond
+	lcdHoldStep      = 25 * time.Millisecond
 	lcdGovEvery      = 250 * time.Millisecond
 )
 
-// lcdGovern is the display period after one look at the engine and the
-// core's busy fraction since the last.
+// lcdGovern is the display period and spectrum hold after one look at the
+// engine and the core's busy fraction since the last.
 // TRLC-LINKS: REQ-SDS-168
-func lcdGovern(p time.Duration, st engine.Stats, busy float64) time.Duration {
+func lcdGovern(p, hold time.Duration, st engine.Stats, busy float64) (time.Duration, time.Duration) {
 	switch {
 	case !st.Running:
-		return lcdFramePeriod
+		return lcdFramePeriod, 0
 	case st.FPS < lcdEngineFPS && busy >= lcdCoreBusy:
-		return min(p+lcdGovStep, lcdSlowestPeriod)
+		if p < lcdSlowestPeriod {
+			return min(p+lcdGovStep, lcdSlowestPeriod), hold
+		}
+		return p, min(hold+lcdHoldStep, lcdLongestHold)
 	case st.FPS >= lcdEngineRoom || busy < lcdCoreWaiting:
-		return max(p-lcdGovStep, lcdFramePeriod)
+		if hold > 0 {
+			return p, max(hold-lcdHoldStep, 0)
+		}
+		return max(p-lcdGovStep, lcdFramePeriod), 0
 	}
-	return p
+	return p, hold
 }
 
 // cpuMeter reads the core's busy fraction from /proc/stat.

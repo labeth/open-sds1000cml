@@ -1345,7 +1345,7 @@ func drawThumbFFT(sf Surface, f *engine.Frame, hud HUD, ch, x0, y0, w, h int) {
 	if f == nil || f.IsEnv || len(f.C1) == 0 {
 		return
 	}
-	spec, ok := framecalc.Spectrum(f, ch, hud.SampleS)
+	spec, ok := framecalc.SpectrumHeld(f, ch, hud.SampleS)
 	if !ok {
 		return
 	}

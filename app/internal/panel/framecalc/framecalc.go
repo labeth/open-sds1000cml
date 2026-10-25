@@ -10,6 +10,8 @@ package framecalc
 import (
 	"math"
 	"sync"
+	"sync/atomic"
+	"time"
 
 	"open-sds/app/internal/decode"
 	"open-sds/app/internal/engine"
@@ -608,6 +610,7 @@ var specCache struct {
 		key  specKey
 		spec Spec
 		ok   bool
+		at   time.Time // when it was taken (a held spectrum's age; zero unheld)
 	}
 }
 
@@ -616,6 +619,31 @@ var specCache struct {
 // without per-sample data (an envelope) or too few samples.
 // TRLC-LINKS: REQ-SDS-070, REQ-SDS-216
 func Spectrum(f *engine.Frame, ch int, sampleS float64) (Spec, bool) {
+	return spectrum(f, ch, sampleS, 0)
+}
+
+// specHold is how long SpectrumHeld keeps a spectrum (ns); 0: none.
+var specHold atomic.Int64
+
+// SetSpectrumHold sets how long SpectrumHeld keeps a channel's spectrum
+// for the next frames of the same acquisition (0: a new one each frame).
+// TRLC-LINKS: REQ-SDS-070, REQ-SDS-216
+func SetSpectrumHold(d time.Duration) { specHold.Store(int64(max(d, 0))) }
+
+// SpectrumHeld is Spectrum for the display: while the spectrum hold lasts
+// it answers a later frame of the same acquisition (length, channel, rate)
+// with the spectrum it took, not a new one. Two 8192-point spectra a
+// picture cost the one core more than the capture loop's whole frame; the
+// display holds them when it is what keeps the loop under its rate.
+// TRLC-LINKS: REQ-SDS-070, REQ-SDS-216
+func SpectrumHeld(f *engine.Frame, ch int, sampleS float64) (Spec, bool) {
+	return spectrum(f, ch, sampleS, time.Duration(specHold.Load()))
+}
+
+// spectrum is Spectrum, a cached one of the same acquisition answering for
+// hold after it was taken.
+// TRLC-LINKS: REQ-SDS-070, REQ-SDS-216
+func spectrum(f *engine.Frame, ch int, sampleS float64, hold time.Duration) (Spec, bool) {
 	if f == nil || f.IsEnv || len(f.C1) == 0 {
 		return Spec{}, false
 	}
@@ -645,9 +673,18 @@ func Spectrum(f *engine.Frame, ch int, sampleS float64) (Spec, bool) {
 	if cacheable && s.ok && s.key == key {
 		return s.spec, true
 	}
+	var now time.Time
+	if hold > 0 {
+		now = time.Now()
+		k := s.key
+		k.id, k.seq, k.ident = key.id, key.seq, key.ident
+		if cacheable && s.ok && k == key && now.Sub(s.at) < hold {
+			return s.spec, true
+		}
+	}
 	stride := PairStride(f, valid/n)
 	sp := specOf(BlockMeans(Channel(f, ch, valid), n, stride), stride, sampleS, f.BandwidthHz)
-	s.key, s.spec, s.ok = key, sp, cacheable
+	s.key, s.spec, s.ok, s.at = key, sp, cacheable, now
 	return sp, true
 }
 

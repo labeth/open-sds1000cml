@@ -65,6 +65,7 @@ type anaState struct {
 	spec     framecalc.Spec
 	specDBV  []float64 // per bin, dBV (rms)
 	specCh   int
+	specVPC  float64 // the volts per code specDBV was read at
 	peaks    []Peak
 	thd      THD
 	floorDBV float64
