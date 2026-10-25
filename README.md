@@ -89,7 +89,7 @@ anything on the scope's screen.
 | **Channels** | 2, sampled together |
 | **Sample rate** | **500 MS/s per channel**, real time, on both channels at once (1 GS/s aggregate) |
 | **Record length** | **1,048,576 samples per channel** at full rate, captured on every acquisition; the full record is read on STOP or SINGLE |
-| **Live display** | **28–40 frames/s** from 1 µs/div to 1 ms/div, protocol decode included (about 12 at 5 ms/div) |
+| **Live display** | **45–53 frames/s** on the LCD from 10 ns/div to 100 µs/div, protocol decode included (36 at 1 ms/div, 13 at 5 ms/div; the panel refreshes at 52 Hz); with a web page open, 50–62 frames/s for the page at 1 µs/div and faster, the LCD at 20 |
 | **Precision mode** | 16-bit filtered samples, 524,288 per channel; decimation ×16 to ×1,048,576 for long records (137 s at 50 s/div) |
 | **Super-resolution** | up to a **×64 time grid** (31.25 ps); about **+4 bits** from FPGA stacking |
 | **Timebase** | 1 ns/div to 50 s/div |
@@ -148,6 +148,12 @@ anything on the scope's screen.
   silent.
 * **Responsive controls:** front-panel keys and lamps answer within tens of milliseconds, even
   during a long readout; a LOADING indicator (LCD and web) shows while a record is being read.
+* **The LCD and the acquisition share one core, by who is looking.** The panel refreshes at
+  52 Hz, so the LCD draws at most 52 pictures a second. With no web page open on the scope the LCD
+  is the only view and comes first: as many pictures as the core allows, a new spectrum in each,
+  the acquisition slowed (never under 20 frames a second) only while the LCD falls behind it. With
+  a web page showing the scope the acquisition comes first, for the page: the LCD gives way, but
+  never below 20 pictures a second.
 
 ## Faster FPGA readout
 
@@ -390,7 +396,7 @@ Nothing is written to the scope's own flash: the firmware runs from the stick, a
 kept on the stick.
 
 **Install** from a [release](https://github.com/labeth/open-sds1000cml/releases), no build needed
-(what is new and the known limitations: [release notes](docs/release-notes-1.0.md)):
+(what is new and the known limitations: [release notes](docs/release-notes-1.1.md)):
 
 1. Download `open-sds1000cml-<version>-usb.zip` (and `SHA256SUMS` to check it:
    `sha256sum -c SHA256SUMS --ignore-missing`).

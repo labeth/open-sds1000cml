@@ -36,16 +36,25 @@ power-cycle, and the factory firmware is back.
   FM index; harmonics and THD; input against output (gain, phase, transfer curve); a pitch-locked
   cycle view. STOP freezes a take of up to 15 s to scroll, zoom, measure with cursors and replay
   (also at half or quarter speed); SINGLE and NORMAL capture a take around a trigger the FPGA marks.
-* **Faster and lighter.** The live display runs 28 to 40 frames a second from 1 µs/div to 1 ms/div
-  (16 to 24 in 1.0). With the scope stopped, the app uses 13 to 43 % of the CPU across the
-  workspaces (41 to 92 % in 1.0); reading the full record on STOP or SINGLE takes 0.2 to 0.4 s (about
-  4 s in 1.0); an FPGA image switch takes about 1 s (the images ship compressed); AUTO frames a
-  signal in about 2 s, and the scope shows frames about 2 s after the app starts. During a
-  full-record read, an image switch and AUTO the LCD draws only their progress; streams keep their
-  full display.
-* **Fixes from two bug hunts**, among them: a long session no longer slows the stopped scope down
+* **Faster and lighter.** With no web page open, the LCD shows 45 to 53 frames a second from
+  10 ns/div to 100 µs/div and 36 at 1 ms/div (16 to 24 in 1.0); the panel refreshes at 52 Hz, and
+  the LCD never draws faster. With a web page open, the acquisition comes first, for the page:
+  50 to 62 frames a second at 1 µs/div and faster, the LCD at 20. Measurements, decoding, the
+  LCD's drawing, the web page and the phone remote do the same work in less time. With the scope
+  stopped, the app uses 13 to 43 % of the CPU across the workspaces (41 to 92 % in 1.0); reading
+  the full record on STOP or SINGLE takes 0.2 to 0.4 s (about 4 s in 1.0); an FPGA image switch
+  takes about 1 s (the images ship compressed); AUTO in BUS takes 4.5 s on average over 60 bench
+  buses, and the scope shows frames about 2 s after the app starts. During a full-record read, an
+  image switch and AUTO the LCD draws only their progress; streams keep their full display.
+* **The LCD and the acquisition share one core, by who is looking.** With no web page open the
+  LCD is the only view and comes first: as many pictures as the core allows, a new spectrum in
+  each, the acquisition slowed (never under 20 frames a second) only while the LCD falls behind
+  it. With a page showing the scope the acquisition comes first, for the page, and the LCD gives
+  way, never below 20 pictures a second.
+* **Fixes from four bug hunts**, among them: a long session no longer slows the stopped scope down
   (memory was held and the collector ran without pause); a BUS stream of a fast SPI bus no longer
-  starves the app; streams that start faulted reload their FPGA image and run.
+  starves the app; streams that start faulted reload their FPGA image and run; the phone's
+  clockwise quick buttons were rebuilt and laid out again on every status update.
 
 ## Install
 
@@ -93,6 +102,11 @@ settings tab (the Help key), at the end of the web UI's status line and in `/api
   one acquisition, and the last to act holds it: while a web or phone SOUND page holds it, the LCD
   says so and AUTO (or any other key) takes it back; the page then waits for its "Take the scope"
   button.
+* **SPECTRUM** takes two 8,192-point spectra for each LCD picture, about 20 pictures a second at
+  1 µs/div (17 with a web page open), and from 5 µs/div it reads 6,000 to 16,000 samples a
+  spectrum at about 2.5 µs a word: 10 frames a second at 100 µs/div.
+* **Software-decoded streams** (the protocols past the first ten that stream gap-free, such as
+  Modbus and 1-Wire) count the frame they start inside as one or more errors at the stream's start.
 * **Roll:** the default Chunked roll averages each chunk, so a signal much faster than a column
   (a 1 MHz square at 20 ms/div) shows as a flat line; Roll in Stream shows its full band.
 * **Converters:** about one FPGA load in a hundred leaves a converter not converting. The scope
