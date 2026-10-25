@@ -6,11 +6,13 @@
   },
   "packet": {
     "seed": 6,
-    "sha256": "280da2d455c71e4aeffa84b7abe48b04ddcc4de120d3687f75c003b970bfcd13"
+    "sha256": "43eaf36ee0c0dc393fbf11048ae6de430522bed35597bc4212478bb3cd11e5c0",
+    "inputs": "7b3cee443a30d257ace094a910285161f07ef5a88f8f1ae721fc78ba83788394"
   },
   "line": {
-    "seed": 7,
-    "sha256": "37cb39634c98a0fc96331946f1ec9b1ccdf438eafa5b9559c4cbd64b8ac7d7b2"
+    "seed": 5,
+    "sha256": "04474ec49c388ef93608525894ab7de3404e6eb9e43f7a5c2e746ba990b8469e",
+    "inputs": "2d020d94c89f5080816fc84e54884582af097051173b382655d15b0bf9191d12"
   },
   "stacking": {
     "seed": 11,
@@ -22,13 +24,18 @@
     "inputs": "ddbc03c15b791cf3995c27190c8dddf948e9236eb52279919bfc8ba484b54d86"
   },
   "qualify": {
-    "seed": 20,
-    "sha256": "5e299ef3ae384854c2685ee48a0f71683f4b2c857aabd5a0d94d437733b91e7c",
-    "inputs": "8641013b695b2a75fd63cabff24a5fb975c8e78467a41d1bc2bde5e47beb19ea"
+    "seed": 1,
+    "sha256": "aa9ecfbc4c00dd64a51531390c101f1ec0c556a93665654be9126f5be4c4edcd",
+    "inputs": "e96acb3b08825f2fb8f7448f6658a6662e58ee3a8c6cad33dd9c324f3e1775ff"
   },
   "fast": {
     "seed": 2,
     "sha256": "b3199bf24f0a75f4099de41a65a9f970c6f217410314f433488f2b4c57b4034a",
     "inputs": "2fa5bb7bd4d50515dcb46ceb957954731610ab9400a26d0e85244bd71ae48125"
+  },
+  "frame": {
+    "seed": 2,
+    "sha256": "55949707d670feca70cf5c49707ef64ceed7db452cc09eb0ad1ccfff97a10d1e",
+    "inputs": "6b5ef270c7df5eb9bb02add0d3c3851df7be54457f7af48c0e2bfdbee86aee1f"
   }
 }

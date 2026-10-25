@@ -2442,3 +2442,40 @@ decisions:
   - A stop on a decode error is refused for these buses; the gap-free record is the value's next occurrence, not
     the one the transcript ends on.
   - Captures miss what lies between records, for the fastest buses most of the signal time (the readout dominates).
+- id: ADR-TRIGGER-ANY-TIMEBASE
+  title: Every hardware trigger fires at any timebase whose record decodes
+  status: accepted
+  date: '2026-10-25'
+  context: 'The owner asked that every protocol trigger at any timebase where the record still holds enough to
+    decode it in software. Three limits stood in the way. The pulse, slope and video qualifier fired for one clock a
+    few clocks after the edge that closed its event, and the record takes a trigger only on a clock that writes a word:
+    every clock at the full rate, one clock in 16 to 2^20 decimated, so on a decimated record the qualifier never
+    fired (the engine kept qualifier triggers, and with them UART''s frame start in BUS, to the full-rate record of
+    2.1 ms, 200 us/div). The zone trigger''s fire had the same one-clock shape. The packet, line and fast images
+    recorded raw samples only (ADR-PROTOCOL-PACKET-IMAGE), 2.1 ms, so their protocols'' triggers stopped at 200
+    us/div. The precision filter costs about 2500 logic elements; the packet image has about 600 left, the line
+    image 1100, the fast one 1500.'
+  decision: 'The qualifier''s and the zones'' fires hold until the next arm once the record''s history is in, as the
+    symbol trigger''s and the protocol triggers'' do, so the record takes them on its next written word (at most a
+    decimated sample late; software places the trigger on the event''s crossing). The packet, line and fast images
+    decimate by box averages (common/box_decim.v): each channel''s 2^n samples summed and
+    written as the precision filter writes its words, unsigned Q8.8, register 30 reading 0x4258 so the host knows
+    the filter. Their protocol receivers keep reading the raw samples, so a trigger decided on the full-rate line
+    fires whatever the record''s decimation. The engine plans these images'' records as the general image''s,
+    without the CIC compensation (a box has no droop to undo) and without the Precision acquisition mode. With box
+    decimation the packet image (94 percent) and the line image (94 percent) missed timing on every seed, so
+    MIL-1553, SENT and USB move to an image of their own, frame; the packet image keeps ARINC 429, CAN and
+    FlexRay, the line image Manchester. The box runs nothing but
+    adders in its 250 MHz word loop (operands gated in the adders'' cells, every control a registered flag) and
+    reduces the envelope recall''s Q8.8 extremes to their integer bytes, so it adds about 330 logic elements.'
+  consequences:
+  - 'Pulse, slope and video triggers, AUTO''s UART frame start in BUS, and Average, ERES and Precision on them run on
+    decimated records at every timebase; the 200 us/div cap remains only for an image without decimation (none ships).'
+  - 'ARINC 429, CAN, FlexRay, MIL-1553, SENT, Manchester, USB and the fast image''s SPI, UART and I2C trigger at
+    slow timebases; the record decodes where its sample interval resolves the bus (the BUS view reads finer sampled
+    records where the live envelope does not).'
+  - 'A box average aliases what a CIC3 filter would attenuate; it is the decimation of the images with no room for
+    the filter, named "box average" on the frames.'
+  - 'Top-level simulations lock both: TestQualifierDecimatedTopRTL (a pulse qualifier at /1, /16, /32 and /256) and
+    TestPacketImageTopRTL''s can-error-decimated (CAN''s error trigger at /16 and /256), with tb_box_decim for the
+    averages.'

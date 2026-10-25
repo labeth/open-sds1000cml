@@ -1171,9 +1171,9 @@ func main() {
 		interleaveCal = c
 	}
 	e := engine.New(engine.Config{Bus: b, Logf: logf, SRAM: sramBackend, InterleaveCalibration: interleaveCal})
-	if images := (imageSwitcher{fd: gpmcFD}); sramDefault && len(fpgaload.General()) != 0 && (images.HasStack() || images.HasPacket() || images.HasLine() || images.HasStream() || images.HasQualify() || images.HasFast()) {
+	if images := (imageSwitcher{fd: gpmcFD}); sramDefault && len(fpgaload.General()) != 0 && (images.HasStack() || images.HasPacket() || images.HasLine() || images.HasFrame() || images.HasStream() || images.HasQualify() || images.HasFast()) {
 		e.SetImageSwitcher(images)
-		logf("FPGA images embedded: stacking %d, packet %d, line %d bytes", len(fpgaload.Stack()), len(fpgaload.Packet()), len(fpgaload.Line()))
+		logf("FPGA images embedded: stacking %d, packet %d, line %d, frame %d bytes", len(fpgaload.Stack()), len(fpgaload.Packet()), len(fpgaload.Line()), len(fpgaload.Frame()))
 	}
 	if !sramDefault {
 		go e.Run()

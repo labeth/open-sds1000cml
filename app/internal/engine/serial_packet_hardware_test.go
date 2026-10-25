@@ -13,31 +13,33 @@ import (
 
 // packetEngineBus adds the packet image's capability registers to the
 // stacking test bus (ADR-IMAGE-REGROUP-DECIMATION): revision 10; general has
-// UART, I2C and decimation, packet the packet block with MIL and SENT, line
-// Manchester and USB; packet and line are raw-only; all have sequence and envelope.
+// UART, I2C and decimation, packet the packet block, frame MIL, SENT and USB,
+// line Manchester; packet, frame, line and fast decimate by box averages
+// (ADR-TRIGGER-ANY-TIMEBASE); all have sequence and envelope.
 type packetEngineBus struct{ *stackEngineBus }
 
 // TRLC-LINKS: REQ-SDS-013
 func (b packetEngineBus) Read(p uint8, s uint16) (uint16, error) {
-	if b.image == "packet" || b.image == "line" || b.image == "general" || b.image == "qualify" || b.image == "fast" {
+	if b.image == "packet" || b.image == "line" || b.image == "frame" || b.image == "general" || b.image == "qualify" || b.image == "fast" {
 		packet, line, general, qualify, fast := b.image == "packet", b.image == "line", b.image == "general", b.image == "qualify", b.image == "fast"
+		frame := b.image == "frame"
 		switch s {
 		case 64:
 			return map[bool]uint16{true: 0x5301}[general] | map[bool]uint16{true: 0x5303}[fast], nil
 		case 43:
 			return 0x454e, nil
 		case 47:
-			return map[bool]uint16{true: 0x534f}[packet || line], nil
+			return map[bool]uint16{true: 0x534f}[packet || line || frame], nil
 		case 28:
 			return 0, nil
 		case 29:
 			return 8, nil
 		case 93:
-			return map[bool]uint16{true: 0x4d01}[packet], nil
+			return map[bool]uint16{true: 0x4d01}[frame], nil
 		case 97:
-			return map[bool]uint16{true: 0x5501}[line], nil
+			return map[bool]uint16{true: 0x5501}[frame], nil
 		case 77:
-			return map[bool]uint16{true: 0x5e01}[packet], nil
+			return map[bool]uint16{true: 0x5e01}[frame], nil
 		case 73:
 			return 0x5201, nil
 		case 48:
@@ -53,7 +55,7 @@ func (b packetEngineBus) Read(p uint8, s uint16) (uint16, error) {
 		case 102:
 			return map[bool]uint16{true: 0x4d01}[line], nil
 		case 30:
-			return map[bool]uint16{false: 0x4e44}[general || qualify], nil
+			return map[bool]uint16{true: 0x4258}[packet || line || frame || fast], nil
 		case 63:
 			return 0, nil
 		case 74:
@@ -93,6 +95,16 @@ func (f *packetImages) LoadLine() error {
 
 // TRLC-LINKS: REQ-SDS-013
 func (f *packetImages) HasLine() bool { return true }
+
+// TRLC-LINKS: REQ-SDS-013
+func (f *packetImages) LoadFrame() error {
+	f.loads = append(f.loads, "frame")
+	f.b.image = "frame"
+	return nil
+}
+
+// TRLC-LINKS: REQ-SDS-013
+func (f *packetImages) HasFrame() bool { return true }
 
 // TRLC-LINKS: REQ-SDS-035
 func (f *packetImages) LoadStream() error { return nil }
@@ -152,7 +164,8 @@ func newPacketTestEngine(t *testing.T) (*Engine, *stackEngineBus, *packetImages)
 }
 
 // The serial trigger's protocol chooses the image between acquisitions, and
-// the packet image's plan is raw-only with the shared packet block.
+// the packet image's plan decimates by box averages with the shared packet
+// block; MIL-1553 and SENT run on the frame image.
 // TRLC-LINKS: REQ-SDS-013
 func TestPacketImageFollowsSerialTrigger(t *testing.T) {
 	e, b, images := newPacketTestEngine(t)
@@ -161,13 +174,13 @@ func TestPacketImageFollowsSerialTrigger(t *testing.T) {
 	}
 	e.SetSerialParams(SerialParams{Proto: serCAN, Baud: 500000, HaveThr: true, Threshold: 120, Bytes: []int{0xAA, 0x0F}})
 	e.SetSerialMode(SerialTrigger)
-	if !e.serviceImage() || b.image != "packet" || e.protocolImage != imagePacket || e.hardwarePacket != 0x0540 || !e.rawOnly || e.hardwareManchester {
-		t.Fatalf("packet image: loads %v image %s protocol image %q mask %x raw %v", images.loads, b.image, e.protocolImage, e.hardwarePacket, e.rawOnly)
+	if !e.serviceImage() || b.image != "packet" || e.protocolImage != imagePacket || e.hardwarePacket != 0x0540 || e.rawOnly || !e.boxDecim || e.hardwareManchester || e.hardwareMIL1553 {
+		t.Fatalf("packet image: loads %v image %s protocol image %q mask %x raw %v box %v", images.loads, b.image, e.protocolImage, e.hardwarePacket, e.rawOnly, e.boxDecim)
 	}
 	cfg, plan, _, _, _ := e.sramConfig()
 	// The packet image is sequence-only: the decoder runs unfiltered and the
 	// pattern becomes a qualified sequence.
-	if plan.Log != 0 || !cfg.Normal || cfg.TriggerLevel != 120 || !e.sequenceOnly ||
+	if !cfg.Normal || cfg.TriggerLevel != 120 || !e.sequenceOnly ||
 		cfg.Packet != (sramcapture.PacketTriggerConfig{Enabled: true, Protocol: 6, Ticks: 64000, Aux: 64000}) ||
 		cfg.Sequence.Length != 2 || !cfg.Sequence.Qualify || cfg.Sequence.Elements[1] != (sramcapture.SequenceElement{Kind: 2, Value: 0x0F, Mask: 0xff}) {
 		t.Fatalf("plan %+v config %+v sequence %+v", plan, cfg.Packet, cfg.Sequence)
@@ -181,21 +194,26 @@ func TestPacketImageFollowsSerialTrigger(t *testing.T) {
 	// Without a threshold it waits on the general image until a capture has
 	// shown the line's levels (TestEveryBusPlansFromTheScope).
 	e.SetSerialParams(SerialParams{Proto: serCAN, Baud: 500000})
-	if !e.serviceImage() || b.image != "general" || e.protocolImage != "" || e.hardwarePacket != 0 || e.rawOnly || !e.hardwareUART || !e.hardwareEnvelope {
+	if !e.serviceImage() || b.image != "general" || e.protocolImage != "" || e.hardwarePacket != 0 || e.rawOnly || e.boxDecim || !e.hardwareUART || !e.hardwareEnvelope {
 		t.Fatalf("general image: loads %v image %s", images.loads, b.image)
 	}
-	// Manchester runs on the line image with USB.
+	// Manchester runs on the line image.
 	e.SetSerialParams(SerialParams{Proto: serManchester, Baud: 1000000, HaveThr: true, Threshold: 128, Bits: 16, IEEE: true})
-	if !e.serviceImage() || b.image != "line" || !e.hardwareManchester || !e.hardwareUSBLS || e.hardwareMIL1553 || e.hardwarePacket != 0 || !e.rawOnly {
+	if !e.serviceImage() || b.image != "line" || !e.hardwareManchester || e.hardwareUSBLS || e.hardwareMIL1553 || e.hardwarePacket != 0 || !e.boxDecim {
 		t.Fatalf("line image: loads %v image %s", images.loads, b.image)
-	}
-	e.SetSerialParams(SerialParams{Proto: serUSB, Baud: 1500000, HaveThr: true, Threshold: 128})
-	if e.serviceImage() || b.image != "line" {
-		t.Fatalf("USB left the line image: %v", images.loads)
 	}
 	e.SetSerialParams(SerialParams{Proto: serManchester, Baud: 1000000, HaveThr: true, Threshold: 128, Bits: 16, IEEE: true})
 	if cfg, _, _, _, _ := e.sramConfig(); !cfg.Manchester.Enabled || cfg.Packet.Enabled || hardwareSerialName(cfg) != "manchester" {
 		t.Fatalf("Manchester plan %+v", cfg.Manchester)
+	}
+	// MIL-1553, SENT and USB run on the frame image.
+	e.SetSerialParams(SerialParams{Proto: serMIL1553, Baud: 1000000, HaveThr: true, Threshold: 128})
+	if !e.serviceImage() || b.image != "frame" || e.protocolImage != imageFrame || !e.hardwareMIL1553 || !e.hardwareSENT || !e.hardwareUSBLS || e.hardwarePacket != 0 || !e.boxDecim {
+		t.Fatalf("frame image: loads %v image %s", images.loads, b.image)
+	}
+	e.SetSerialParams(SerialParams{Proto: serUSB, Baud: 1500000, HaveThr: true, Threshold: 128})
+	if e.serviceImage() || b.image != "frame" {
+		t.Fatalf("USB left the frame image: %v", images.loads)
 	}
 	// A failed packet load returns to the general image and is not retried.
 	images.failPacket = true
@@ -208,7 +226,7 @@ func TestPacketImageFollowsSerialTrigger(t *testing.T) {
 	}
 	e.SetSerialMode(SerialOff)
 	e.serviceImage()
-	if e.failedImage != "" || strings.Join(images.loads, ",") != "packet,general,line,packet,general" {
+	if e.failedImage != "" || strings.Join(images.loads, ",") != "packet,general,line,frame,packet,general" {
 		t.Fatalf("loads %v", images.loads)
 	}
 }
@@ -344,7 +362,7 @@ func TestFastImageTakesFastSPI(t *testing.T) {
 		t.Fatalf("1 MHz plan %+v", cfg.SPI)
 	}
 	e.SetSerialParams(SerialParams{Proto: serSPI, SPIClockHz: 104000000, ChA: 1, ChB: 0, MSB: true, HaveThr: true, Threshold: 128, Bytes: []int{0x4f}})
-	if !e.serviceImage() || b.image != "fast" || e.protocolImage != imageFast || !e.hardwareSampleSPI || !e.rawOnly {
+	if !e.serviceImage() || b.image != "fast" || e.protocolImage != imageFast || !e.hardwareSampleSPI || !e.boxDecim {
 		t.Fatalf("104 MHz: loads %v image %s", images.loads, b.image)
 	}
 	cfg, _, _, _, _ := e.sramConfig()

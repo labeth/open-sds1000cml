@@ -9,8 +9,10 @@
 // becomes the entry {max2,max1,min2,min1} (minima in the low word). `words`
 // counts the buffer words written. Settings are held by the host from before
 // the recall until it completes; start clears the state. bucket >= 1.
+// Q8_INT reduces Q8.8 words on their integer bytes (fractions read as zero):
+// the box-decimating images, which have no room for 16-bit extremes.
 // TRLC-LINKS: REQ-SDS-010, REQ-SDS-040
-module envelope_reduce #(parameter AW=11)(
+module envelope_reduce #(parameter AW=11,parameter Q8_INT=0)(
  input wire clk,start,q8,
  input wire [18:0] bucket,input wire [3:0] skip,
  input wire in_valid,input wire [63:0] in_data,
@@ -45,7 +47,10 @@ module envelope_reduce #(parameter AW=11)(
   if(accept)begin
    stage_first<=left==bucket;stage_last<=left==1;
    left<=left==1 ? bucket : left-1'b1;
-   if(q8)begin
+   if(q8 && Q8_INT)begin
+    c_min1<={lo8(w0[15:8],w1[15:8]),8'd0};c_max1<={hi8(w0[15:8],w1[15:8]),8'd0};
+    c_min2<={lo8(w0[31:24],w1[31:24]),8'd0};c_max2<={hi8(w0[31:24],w1[31:24]),8'd0};
+   end else if(q8)begin
     c_min1<=lo16(w0[15:0],w1[15:0]);c_max1<=hi16(w0[15:0],w1[15:0]);
     c_min2<=lo16(w0[31:16],w1[31:16]);c_max2<=hi16(w0[31:16],w1[31:16]);
    end else begin

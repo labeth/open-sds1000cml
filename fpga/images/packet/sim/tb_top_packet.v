@@ -74,17 +74,20 @@ module tb_top_packet;
   if(!$value$plusargs("control=%h",control) || !$value$plusargs("ticks=%d",ticks))$fatal(1,"missing configuration");
   aux=0;cycles=$value$plusargs("aux=%h",aux);pattern=0;cycles=$value$plusargs("pattern=%h",pattern);
   repeat(20)@(negedge clk);
-  check_reg(0,16'h5a52);check_reg(13,16'h000a);check_reg(30,16'h4e44);check_reg(28,0);check_reg(29,8);
+  check_reg(0,16'h5a52);check_reg(13,16'h000a);check_reg(28,0);check_reg(29,8);
+  // +box: the image decimates by box averages (box_decim.v); else raw samples only
+  if($test$plusargs("box"))check_reg(30,16'h4258);else check_reg(30,16'h4e44);
   // +manchester selects the Manchester image: no packet block, Manchester only.
-  // +manchester (the line image: Manchester, USB) and +serial (the general
+  // +manchester (the line image: Manchester) and +serial (the general
   // image's UART, I2C, SPI) select those images; the default is the packet
-  // image (ARINC 429, CAN, FlexRay, MIL-1553, SENT).
+  // image (ARINC 429, CAN, FlexRay).
   if($test$plusargs("manchester"))begin
-   check_reg(109,0);check_reg(110,0);check_reg(102,16'h4d01);check_reg(97,16'h5501);check_reg(93,0);check_reg(77,0);
+   check_reg(109,0);check_reg(110,0);check_reg(102,16'h4d01);check_reg(97,0);check_reg(93,0);check_reg(77,0);
   end else if($test$plusargs("serial"))begin
    check_reg(109,0);check_reg(102,0);check_reg(48,16'h5502);check_reg(53,16'h4901);check_reg(64,16'h5301);check_reg(93,0);check_reg(97,0);
   end else begin
-   check_reg(109,16'h5001);check_reg(110,16'h0540);check_reg(102,0);check_reg(93,16'h4d01);check_reg(77,16'h5e01);check_reg(97,0);
+   // MIL-1553 (93) and SENT (77) are the frame image's
+   check_reg(109,16'h5001);check_reg(110,16'h0540);check_reg(102,0);check_reg(93,0);check_reg(77,0);check_reg(97,0);
   end
   if(!$test$plusargs("serial"))begin check_reg(48,0);check_reg(53,0);check_reg(64,0);end
   check_reg(118,16'h5351);check_reg(119,32);

@@ -71,6 +71,34 @@ func TestPacketTriggerArmAndDisable(t *testing.T) {
 	}
 }
 
+// A packet image that decimates by box averages (register 30 0x4258) is no
+// raw-only image: it says so, and arms a decimated record with its trigger.
+// TRLC-LINKS: REQ-SDS-010, REQ-SDS-013
+func TestPacketImageBoxDecimation(t *testing.T) {
+	f := frozenBus()
+	f.revision = 10
+	c := client(t, f)
+	c.bus = packetBus{f, 0x5001, 0x0540, 0x4d01, 0x4258}
+	if box, err := c.BoxDecimation(); err != nil || !box {
+		t.Fatalf("box %v %v", box, err)
+	}
+	if raw, err := c.RawOnly(); err != nil || raw {
+		t.Fatalf("raw only %v %v", raw, err)
+	}
+	cfg := Config{Normal: true, PostWords: 16, DecimationLog2: 8, Packet: PacketTriggerConfig{Enabled: true, Protocol: PacketCAN, Channel: 1,
+		Ticks: 32000, Aux: 8000, Pattern: 0x0102030405060708, Length: 8}}
+	if err := c.Arm(context.Background(), cfg); err != nil {
+		t.Fatal(err)
+	}
+	if f.staged[18] != 8 {
+		t.Fatalf("decimation register %d, want 8", f.staged[18])
+	}
+	c.bus = packetImage(f)
+	if box, err := c.BoxDecimation(); err != nil || box {
+		t.Fatalf("raw-only image: box %v %v", box, err)
+	}
+}
+
 // TRLC-LINKS: REQ-SDS-013
 func TestPacketTriggerUnsupported(t *testing.T) {
 	f := frozenBus()

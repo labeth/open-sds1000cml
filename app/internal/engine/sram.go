@@ -317,17 +317,15 @@ func (e *Engine) sramConfig() (sramcapture.Config, SRAMPlan, float64, bool, trig
 // TRLC-LINKS: REQ-SDS-009
 func (e *Engine) sramConfigInto(c *sramcapture.Config) (SRAMPlan, float64, bool, trigParams) {
 	e.mu.Lock()
-	// The packet and line images record raw samples only (2.1 ms): a slower
-	// timebase drew that record stretched across a screen it called 500us/div
-	// (a SENT bus's frames read 2.4 times as long as they are). The timebase
-	// steps to the slowest whose screen the record holds whole.
+	// An image that records raw samples only (2.1 ms) shows no slower
+	// screen whole (a SENT bus's frames read 2.4 times as long as they are
+	// on a record stretched across 500us/div): the timebase steps to the
+	// slowest whose screen it holds. The shipping images all decimate (the
+	// packet, line and fast ones by box averages); the pulse, slope and
+	// video qualifier fires on decimated records too, its fire held until
+	// the record takes it.
 	e.stats.TdivMaxS = 0
-	// The FPGA's pulse, slope and video qualifier fires only on a full-rate
-	// record (on a decimated one it never fired: Auto ran free, Normal waited
-	// for ever): with it the capture stays at the full rate, as on a raw-only
-	// image.
-	qualRaw := e.hardwareQualifier && e.tp.typ != TrigEdge && e.serialMode.Load() != SerialTrigger
-	if e.rawOnly || qualRaw {
+	if e.rawOnly {
 		lim := rawScreenTdiv()
 		e.stats.TdivMaxS = lim
 		cur := e.band.TdivS
@@ -347,7 +345,7 @@ func (e *Engine) sramConfigInto(c *sramcapture.Config) (SRAMPlan, float64, bool,
 	norm, tp := e.norm, e.tp
 	e.mu.Unlock()
 	p := PlanSRAM(tdiv)
-	if e.acqMode.Load() == AcqPrecision && !e.rawOnly && !qualRaw {
+	if e.acqMode.Load() == AcqPrecision && !e.rawOnly && !e.boxDecim {
 		p = PlanPrecisionSRAM(tdiv, uint8(e.precisionLog.Load()))
 	}
 	if e.rawOnly && p.Log != 0 {
@@ -433,13 +431,22 @@ func (e *Engine) sramConfigInto(c *sramcapture.Config) (SRAMPlan, float64, bool,
 	acq := e.acqMode.Load()
 	filtered := acq == AcqAverage || acq == AcqPrecision || acq == AcqEres
 	budget := liveBudget(block, float64(p.Screen)*p.SampleS, math.Float64frombits(e.busSampleS.Load()))
-	if live, ok := liveSRAMPlan(p, budget); ok && (!e.singleArmed.Load() || filtered) && !e.rawOnly && !qualRaw && liveDecimatesPlan(block, p) {
+	if live, ok := liveSRAMPlan(p, budget); ok && (!e.singleArmed.Load() || filtered) && !e.rawOnly && liveDecimatesPlan(block, p) {
 		if block == blockSearch || block == blockSamples || block == blockSpectrum || block == blockBus {
 			live.Samples = min(live.Samples, max(int(leaseRecord*float64(live.Screen)), 8192))
 		}
 		p = build(live)
 	}
 	return p, tdiv, norm, tp
+}
+
+// autoForceDue reports AUTO's wait for a trigger over: running AUTO (or a
+// stopped scope's SINGLE served at once), waited past autoWait, and the
+// hardware not triggered - a triggered record only fills its post-trigger
+// part, which at slow timebases outlasts the wait (10ms/div: 135 ms).
+// TRLC-LINKS: REQ-SDS-010, REQ-SDS-011
+func autoForceDue(norm, running, triggered bool, waited, autoWait time.Duration) bool {
+	return (!norm || !running) && !triggered && waited >= autoWait
 }
 
 // averageAlignEdge is the crossing an average aligns a capture on, near
@@ -873,9 +880,12 @@ acquisitionLoop:
 					break
 				}
 				singleGen = gen
-				// AUTO forces after its wait; FORCE (ForceTrigger) forces once now,
-				// and that frame is shown even in NORMAL.
-				autoDue := (!norm || !e.running.Load()) && e.clk.Now().Sub(armAt) >= autoWait
+				// AUTO forces after its wait, unless the hardware triggered: the
+				// record then only fills its post-trigger part (at 10ms/div 135 ms,
+				// past the wait, and a frame-start trigger's records read forced);
+				// FORCE (ForceTrigger) forces once now, and that frame is shown
+				// even in NORMAL.
+				autoDue := autoForceDue(norm, e.running.Load(), m.Triggered, e.clk.Now().Sub(armAt), autoWait)
 				if cfg.Normal && !forced && !autoDue && e.forceReq.Swap(false) {
 					userForced, autoDue = true, true
 				}
@@ -1133,7 +1143,16 @@ acquisitionLoop:
 		} else {
 			e.contentGen++
 			f.Content = e.contentGen
-			if len(f.Q1) == f.Valid && len(f.Q2) == f.Valid && bucket == 0 {
+			if len(f.Q1) == f.Valid && len(f.Q2) == f.Valid && bucket == 0 && e.boxDecim && m.Decimation > 1 {
+				// Box averages: no CIC droop to compensate; a sinc's -3 dB
+				// at 0.443 of the output rate.
+				f.PassbandHz, f.BandwidthHz = .2/f.SampleS, .443/f.SampleS
+				f.Filter = "box average"
+				for i := 0; i < f.Valid; i++ {
+					f.C1[i] = roundQ8(f.Q1[i])
+					f.C2[i] = roundQ8(f.Q2[i])
+				}
+			} else if len(f.Q1) == f.Valid && len(f.Q2) == f.Valid && bucket == 0 {
 				scratch = qBuffer(scratch, f.Valid)
 				dsp.ConditionQ8(f.Q1, scratch)
 				dsp.ConditionQ8(f.Q2, scratch)

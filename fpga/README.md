@@ -1,18 +1,29 @@
 # FPGA images
 
-Seven images for the EP4CE10F17C8. The app embeds them and loads the one a
+Eight images for the EP4CE10F17C8. The app embeds them and loads the one a
 feature needs; `general` is the power-on image. Every trigger is decided in
 the FPGA; the app only places the trigger point on the event.
 
 | Image | Adds |
 |---|---|
 | `general` | UART, I²C and SPI triggers; precision decimation |
-| `packet` | ARINC 429, CAN, FlexRay, MIL-1553 and SENT triggers |
-| `line` | Manchester and USB low-speed triggers |
+| `packet` | ARINC 429, CAN and FlexRay triggers; box decimation |
+| `frame` | MIL-1553, SENT and USB low-speed triggers; box decimation |
+| `line` | Manchester trigger; box decimation |
 | `qualify` | pulse width, slope time and video line triggers, and the zone trigger (four zones around the edge); the symbol trigger for buses of timed pulses (LIN, DMX512, Modbus, 1-Wire, WS281x, DHT, CEC, J1850, IR, DALI, USB PD, S/PDIF, PS/2, SWD, MDIO, Wiegand); precision decimation |
 | `stacking` | FPGA super-resolution stacking engine |
 | `stream` | continuous capture for gap-free roll: decimated or peak-detect (bucket min/max) words, buffered in the SRAM ("drum") and streamed to the host through two ping-pong banks |
-| `fast` | SPI (to a 125 MHz clock), UART (to 62.5 MBd) and I²C (to high-speed mode) decoded and triggered on the samples; raw samples only, with the sequence trigger |
+| `fast` | SPI (to a 125 MHz clock), UART (to 62.5 MBd) and I²C (to high-speed mode) decoded and triggered on the samples, with the sequence trigger; box decimation |
+
+Every trigger fires at every timebase: the protocol receivers, the symbol
+trigger and the qualifier read the raw samples whatever the record's
+decimation, and each fire holds until the record takes it on a written word
+(decimated, one clock in many). The images with no room for the precision
+filter (about 2500 logic elements) decimate by box averages
+(`common/box_decim.v`, about 330 with the envelope's integer-byte
+extremes): each channel's 2^n samples summed and
+written as unsigned Q8.8, as the filter writes; register 30 reads 0x4258 on
+them (ADR-TRIGGER-ANY-TIMEBASE).
 
 The board around the FPGA (balls, clocks, ADCs, SRAM, GPMC bus, panel,
 configuration) is specified in

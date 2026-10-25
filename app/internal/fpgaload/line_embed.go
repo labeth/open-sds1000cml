@@ -9,7 +9,7 @@ import _ "embed"
 var lineRBF []byte
 
 // Line is the line-code protocol image (ADR-IMAGE-REGROUP-DECIMATION): the
-// SRAM capture ABI with Manchester, MIL-1553, USB and SENT triggers, the
-// sequence trigger and envelope recall, raw samples only.
+// SRAM capture ABI with the Manchester trigger, the sequence trigger,
+// envelope recall and box decimation (ADR-TRIGGER-ANY-TIMEBASE).
 // TRLC-LINKS: REQ-SDS-005, REQ-SDS-013
 func Line() []byte { return lineRBF }

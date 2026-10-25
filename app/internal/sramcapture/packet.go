@@ -178,6 +178,24 @@ func (c *Capture) configureManchester(p ManchesterTriggerConfig) error {
 	return c.write(102, control)
 }
 
+// BoxDecimation reports an image that decimates by box averages instead of
+// the precision filter (register 30 reads 0x4258): the packet, line and
+// fast images, which have no room for the filter.
+// TRLC-LINKS: REQ-SDS-010
+func (c *Capture) BoxDecimation() (bool, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	revision, err := c.read(13)
+	if err != nil || revision != 10 {
+		return false, err
+	}
+	v, err := c.read(30)
+	return v == boxDecimationMark, err
+}
+
+// boxDecimationMark is register 30 on an image decimating by box averages.
+const boxDecimationMark = 0x4258
+
 // RawOnly reports an image without precision decimation (register 30).
 // TRLC-LINKS: REQ-SDS-010
 func (c *Capture) RawOnly() (bool, error) {

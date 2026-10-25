@@ -166,9 +166,10 @@ func sentLine(frames [][]int, tick int) []uint8 {
 }
 
 // The scope's requests name no threshold for any bus: once a capture has
-// shown the line, a CAN match is planned on the packet image, SENT's with the
-// tick and the nibbles measured on its line, and a MIL-1553 word typed as two
-// bytes is one word: every bus, not UART, I2C and SPI only.
+// shown the line, a CAN match is planned on the packet image, SENT's on the
+// frame image with the tick and the nibbles measured on its line, and a
+// MIL-1553 word typed as two bytes is one word: every bus, not UART, I2C and
+// SPI only.
 // TRLC-LINKS: REQ-SDS-013
 func TestEveryBusPlansFromTheScope(t *testing.T) {
 	e, b, _ := newPacketTestEngine(t)
@@ -198,7 +199,10 @@ func TestEveryBusPlansFromTheScope(t *testing.T) {
 	frame := []int{0, 1, 2, 5, 10, 3, 4, 1}
 	line := sentLine([][]int{frame, frame, frame, frame}, 30) // 3 us ticks at 100 ns
 	e.learnSerialLevels(&Frame{C1: line, C2: line, Valid: len(line), SampleS: 1e-7}, [2]chScale{{1, 0}, {1, 0}})
-	// the packet image matches with the sequence trigger
+	// on the frame image (with MIL-1553), matching with the sequence trigger
+	if !e.serviceImage() || b.image != "frame" {
+		t.Fatalf("SENT with learned levels: image %s", b.image)
+	}
 	if cfg, _, _, _, _ := e.sramConfig(); !cfg.SENT.Enabled || cfg.SENT.TickTicks != 375 || cfg.SENT.Nibbles != 8 || cfg.Sequence.Length != 2 {
 		t.Fatalf("SENT plan %+v sequence %d (want 375 ticks of 8 ns, 8 nibbles, 2 units)", cfg.SENT, cfg.Sequence.Length)
 	}

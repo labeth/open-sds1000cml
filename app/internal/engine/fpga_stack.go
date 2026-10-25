@@ -25,6 +25,9 @@ type ImageSwitcher interface {
 	HasStack() bool
 	HasPacket() bool
 	HasLine() bool
+	// LoadFrame loads the MIL-1553 and SENT image (ADR-TRIGGER-ANY-TIMEBASE).
+	LoadFrame() error
+	HasFrame() bool
 	// LoadStream loads the continuous-capture image roll mode runs on
 	// (ADR-STREAM-IMAGE).
 	LoadStream() error

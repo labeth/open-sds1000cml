@@ -9,6 +9,7 @@ import _ "embed"
 var packetRBF []byte
 
 // Packet is the packet protocol image (ADR-PROTOCOL-PACKET-IMAGE): the SRAM
-// capture ABI with ARINC 429, CAN and FlexRay triggers and raw samples only.
+// capture ABI with ARINC 429, CAN and FlexRay triggers and box decimation
+// (ADR-TRIGGER-ANY-TIMEBASE).
 // TRLC-LINKS: REQ-SDS-005, REQ-SDS-013
 func Packet() []byte { return packetRBF }

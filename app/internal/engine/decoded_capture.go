@@ -220,9 +220,11 @@ func (e *Engine) beginDecodedCapture(ctx context.Context, cfg sramcapture.Config
 		// or with a data delay, a UART bit time in sixteenths of a
 		// nanosecond, I2C asking for it.
 		want := ""
-		if cfg.Packet.Enabled || cfg.MIL1553.Enabled || cfg.SENT.Enabled {
+		if cfg.Packet.Enabled {
 			want = imagePacket
-		} else if cfg.Manchester.Enabled || cfg.USBLS.Enabled {
+		} else if cfg.MIL1553.Enabled || cfg.SENT.Enabled || cfg.USBLS.Enabled {
+			want = imageFrame
+		} else if cfg.Manchester.Enabled {
 			want = imageLine
 		} else if (cfg.SPI.Enabled && (cfg.SPI.GapTicks < 9 || cfg.SPI.Delay != 0)) || (cfg.UART.Enabled && cfg.UART.Period16 != 0) || (cfg.I2C.Enabled && cfg.I2C.Samples) {
 			want = imageFast

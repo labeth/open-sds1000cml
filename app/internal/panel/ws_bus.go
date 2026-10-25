@@ -1885,16 +1885,26 @@ func (c *Controller) busRawFrames(a *anaState, s *sv, f *engine.Frame) {
 			a.featKey, a.featS = bus, fs
 		}
 	}
-	live := f.PeakDetect || s.st.Roll                 // a view the engine reads coarser than its record
-	decimated := a.featKey == bus && a.rawFull != key // the lease is of decimated records
+	live := f.PeakDetect || s.st.Roll // a view the engine reads coarser than its record
+	// Records sampled at a quarter of the feature, where the capture can
+	// decimate that finely (busFinestDecimated); else the full rate.
+	want := 0.0
+	if a.featKey == bus && a.rawFull != key && a.featS/busSamplesPerFeature >= busFinestDecimated {
+		want = a.featS / busSamplesPerFeature
+	}
+	// A sampled record judges the sampling it came with (one read under the
+	// lease before can still arrive): one decimated past the timebase's own
+	// record (the sampled lease's) too coarse asks for that record, the
+	// timebase's own record too coarse ends the lease for these settings.
+	own := uint32(1) << engine.PlanSRAM(s.st.TdivS).Log
 	switch {
 	case a.rawNo == key:
 		a.rawKey = ""
-	case live && (framecalc.Unresolved(a.res) || tooFewSamples(a.res)):
+	case live && (framecalc.Unresolved(a.res) || tooFewSamples(a.res) || coarseFor(a, bus, f)):
 		a.rawKey = key
 		a.res.Error = decode.Names[a.res.Proto] + ": the live view is too coarse - reading sampled records (slower frames)"
-	case !live && a.rawKey == key && tooFewSamples(a.res) && decimated:
-		a.rawFull, decimated = key, false // sampled too coarsely: the full rate
+	case !live && a.rawKey == key && tooFewSamples(a.res) && f.Decimation > own:
+		a.rawFull, want = key, 0 // sampled too coarsely: the full rate
 	case !live && a.rawKey == key && tooFewSamples(a.res):
 		a.rawKey, a.rawNo = "", key
 	case a.rawKey != key:
@@ -1904,12 +1914,12 @@ func (c *Controller) busRawFrames(a *anaState, s *sv, f *engine.Frame) {
 		c.endBusRaw()
 		return
 	}
-	want := 0.0
-	if decimated {
-		want = a.featS / busSamplesPerFeature
-	}
 	c.holdBusLease(want)
 }
+
+// busFinestDecimated is the finest decimated sample, in seconds (/16 of the
+// 2 ns full rate): finer wants take the full rate.
+const busFinestDecimated = 32e-9
 
 // busSamplesPerFeature is the samples a bus decode's sampled records take
 // over the bus's shortest feature at the least (the decimation steps by two:
@@ -1943,6 +1953,15 @@ func (c *Controller) holdBusLease(sampleS float64) {
 	}
 	c.busRawHeld.Store(true)
 	c.leaseRaw(rawForBus, 10*time.Second)
+}
+
+// coarseFor reports a live frame that did not decode and whose points are
+// too far apart for the bus as its last decode measured it (under
+// readableFeature points in its shortest feature), whatever the decoder
+// said: a SENT frame at 2ms/div read "no SENT frame", not its resolution.
+// TRLC-LINKS: REQ-SDS-214
+func coarseFor(a *anaState, bus string, f *engine.Frame) bool {
+	return !a.res.OK && a.featKey == bus && a.featS > 0 && f.SampleS > 0 && a.featS/f.SampleS < readableFeature
 }
 
 // tooFewSamples reports a decode refused for too few samples a bit.

@@ -159,7 +159,13 @@ module acq_sram_top(
  (* preserve, dont_merge *) reg precision_enable=0;
  always @(posedge core)precision_enable<=frontend_run && decim_active;
  // Precision captures the held host request in its own configuration domain.
+`ifdef BOX_DECIM
+ // No room for the precision filter: box averages (box_decim.v), on the
+ // core-domain copy of the decimation (no host-clock path into it).
+ box_decim precision(core,halfclk,mclk_in,precision_enable,decim_log,il_raw_word,il_raw_valid,precision_word,precision_valid,precision_fault);
+`else
  adc_precision #(.SHARED_TAIL(1)) precision(core,halfclk,mclk_in,precision_enable,decim_request,il_raw_word,il_raw_valid,precision_word,precision_valid,precision_fault);
+`endif
  wire [31:0] selected_word=!decim_data_active ? il_raw_word : precision_word;
  wire selected_valid=!decim_active ? il_raw_valid : precision_valid;
  wire [31:0] selected_trigger=!decim_trigger_active ? il_raw_word : {precision_word[31:24],precision_word[15:8],precision_word[31:24],precision_word[15:8]};
@@ -827,6 +833,21 @@ module acq_sram_top(
   if(sym_toggle_sync[2]!=sym_toggle_sync[1])sym_count<=sym_count+1'b1;
  end
 `endif
+`ifdef QUAL_TRIGGER
+ // The qualifier and the zones fire for one clock, a few after the edge
+ // that closes their event, and the record takes a trigger only with a word
+ // written (decimated, one clock in many: a pulse, slope or video trigger
+ // never fired on a decimated record). Their fires hold until the next arm,
+ // as the symbol trigger's.
+ reg qual_hold=0,zone_hold=0;
+ always @(posedge core)begin
+  if(!running || arm || !history_ready)begin qual_hold<=0;zone_hold<=0;end
+  else begin
+   if(qual_fire)qual_hold<=1;
+   if(zone_fire)zone_hold<=1;
+  end
+ end
+`endif
  always @(posedge core)if(config_idle)begin
   edge_auto<=!cfg[4];
   protocol_enable<=cfg[0] && cfg[4] && protocol_configured;
@@ -859,9 +880,9 @@ module acq_sram_top(
 `ifdef QUAL_TRIGGER
   // With zones on, only the candidates the zones pass fire.
 `ifdef SYMBOL_TRIGGER
-  il_fire_stage<=force_trigger || edge_auto || (zone_on ? zone_fire : (|(rise_ch & edge_rise_enable)) || (|(fall_ch & edge_fall_enable)) || qual_fire || sym_fire)
+  il_fire_stage<=force_trigger || edge_auto || (zone_on ? zone_hold : (|(rise_ch & edge_rise_enable)) || (|(fall_ch & edge_fall_enable)) || qual_hold || sym_fire)
 `else
-  il_fire_stage<=force_trigger || edge_auto || (zone_on ? zone_fire : (|(rise_ch & edge_rise_enable)) || (|(fall_ch & edge_fall_enable)) || qual_fire)
+  il_fire_stage<=force_trigger || edge_auto || (zone_on ? zone_hold : (|(rise_ch & edge_rise_enable)) || (|(fall_ch & edge_fall_enable)) || qual_hold)
 `endif
 `ifdef UART_TRIGGER
    || (protocol_enable && uart_fired)
@@ -1385,7 +1406,13 @@ module acq_sram_top(
   env_start_seen<=env_start_toggle;
  end
  wire env_write;wire [BUF_AW-2:0] env_addr;wire [63:0] env_data;wire [BUF_AW-1:0] env_words;
- envelope_reduce #(.AW(BUF_AW-1)) envelope(.clk(halfclk),.start(env_start_seen!=env_start_toggle),
+`ifdef BOX_DECIM
+ // box averages: extremes on the integer bytes (no room for 16-bit ones)
+ envelope_reduce #(.AW(BUF_AW-1),.Q8_INT(1)) envelope(
+`else
+ envelope_reduce #(.AW(BUF_AW-1)) envelope(
+`endif
+  .clk(halfclk),.start(env_start_seen!=env_start_toggle),
 `ifdef PRECISION
   .q8(env_q8),
 `else
@@ -1669,6 +1696,10 @@ module acq_sram_top(
 `endif
    28:rd={11'b0,decim_log};
    29:rd=decim_active ? 16'd16 : 16'd8;
+`ifdef BOX_DECIM
+   // the decimation is box averages, not the precision filter
+   30:rd=16'h4258;
+`endif
 `else
 `ifdef PROTOCOL_SET
    // ADR-PROTOCOL-PACKET-IMAGE: the revision-10 record contract with raw

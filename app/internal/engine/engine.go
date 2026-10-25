@@ -227,7 +227,8 @@ type Stats struct {
 	DecodedStreamMode string `json:"decoded_stream_mode,omitempty"`
 
 	// TdivMaxS is the slowest timebase the loaded image shows whole (0: any):
-	// the packet and line images record raw samples only, 2.1 ms.
+	// an image recording raw samples only holds 2.1 ms (the shipping images
+	// all decimate).
 	TdivMaxS float64 `json:"tdiv_max_s,omitempty"`
 
 	// Zone trigger + mask testing (docs/zonemask-plan.md)
@@ -356,6 +357,9 @@ type Engine struct {
 	hardwarePacket uint16
 	// rawOnly: the loaded image has no precision decimation.
 	rawOnly bool
+	// boxDecim: the loaded image decimates by box averages, not the
+	// precision filter (no Precision mode, no CIC compensation).
+	boxDecim bool
 	// protocolImage names the loaded protocol image ("" for general);
 	// failedImage stops reloading one after a failed load until the serial
 	// choice changes.

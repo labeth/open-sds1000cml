@@ -123,8 +123,79 @@ func TestBusLeasesRecordsSampledForTheBus(t *testing.T) {
 	}
 	s.st.Roll = false
 	a.res = decode.Result{Proto: "uart", Error: "2.1 samples/bit; need >= 3"}
-	c.busRawFrames(a, s, &engine.Frame{SampleS: 4e-6})
+	c.busRawFrames(a, s, &engine.Frame{SampleS: 4e-6, Decimation: 2048})
 	if got := eng.take(); len(got) != 2 || got[0] != "samples 0 0s" || got[1] != rawForBus+" 10s" {
 		t.Fatalf("decimated records too coarse: leases %v, want the full rate", got)
+	}
+	// a decimated record read under the lease before: the full rate stays
+	c.busRawFrames(a, s, &engine.Frame{SampleS: 4e-6, Decimation: 2048})
+	if got := eng.take(); len(got) != 1 || got[0] != rawForBus+" 10s" {
+		t.Fatalf("a late decimated record: leases %v, want the full rate kept", got)
+	}
+	// the timebase's own record (10ms/div: /128) too coarse ends it
+	c.busRawFrames(a, s, &engine.Frame{SampleS: 256e-9, Decimation: 128})
+	if got := eng.take(); len(got) != 1 || got[0] != rawForBus+" 0s" {
+		t.Fatalf("the timebase's record too coarse: leases %v, want ended", got)
+	}
+}
+
+// A bus whose feature wants samples finer than the finest decimation (a
+// 10 Mbit/s FlexRay's 100 ns bit) leases full-rate records at once.
+// TRLC-LINKS: REQ-SDS-214
+func TestBusLeasesTheFullRateForAFastBus(t *testing.T) {
+	eng := &namedLeaseEng{fakeEng: newEng()}
+	c := New(eng, &fakeFE{idx: [2]int{8, 8}}, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
+	c.decode(idle(), true)
+	c.mu.Lock()
+	c.decProto = framecalc.ProtoFlexRay
+	c.mu.Unlock()
+	c.switchWS(wsview.Bus)
+	eng.take()
+	s := c.snap()
+	s.st.Running = true
+	a := &anaState{}
+	a.res = decode.Result{Proto: "flexray", OK: true, SPB: 50}
+	c.busRawFrames(a, s, &engine.Frame{SampleS: 2e-9})
+	eng.take()
+	s.st.TdivS = 20e-6
+	a.res = decode.Result{Proto: "flexray", Error: "1.8 samples/bit; need >= 4"}
+	c.busRawFrames(a, s, &engine.Frame{SampleS: 61e-9, PeakDetect: true, Ordered: true})
+	if got := eng.take(); len(got) != 1 || got[0] != rawForBus+" 10s" {
+		t.Fatalf("FlexRay at 20us/div: leases %v, want full-rate records", got)
+	}
+}
+
+// A live frame that does not decode and whose points are too far apart for
+// the bus as its last decode measured it leases sampled records whatever the
+// decoder's error (SENT at 2ms/div: "no SENT frame").
+// TRLC-LINKS: REQ-SDS-214
+func TestBusLeasesWhereTheViewIsTooCoarseForTheBus(t *testing.T) {
+	eng := &namedLeaseEng{fakeEng: newEng()}
+	c := New(eng, &fakeFE{idx: [2]int{8, 8}}, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
+	c.decode(idle(), true)
+	c.mu.Lock()
+	c.decProto = framecalc.ProtoSENT
+	c.mu.Unlock()
+	c.switchWS(wsview.Bus)
+	eng.take()
+	s := c.snap()
+	s.st.Running = true
+	a := &anaState{}
+	// decoded at 200us/div: a 3 us tick, the feature four of them (12 us)
+	a.res = decode.Result{Proto: "sent", OK: true, SPB: 12}
+	c.busRawFrames(a, s, &engine.Frame{SampleS: 0.25e-6})
+	eng.take()
+	s.st.TdivS = 2e-3
+	a.res = decode.Result{Proto: "sent", Error: "no SENT frame"}
+	c.busRawFrames(a, s, &engine.Frame{SampleS: 12e-6, PeakDetect: true, Ordered: true})
+	if got := eng.take(); len(got) != 1 || got[0] != "samples 3e-06 10s" {
+		t.Fatalf("SENT at 2ms/div: leases %v, want records every 3 us", got)
+	}
+	// a fine view that does not decode is no resolution matter
+	s.st.TdivS = 100e-6
+	a.res = decode.Result{Proto: "sent", Error: "no SENT frame"}
+	c.busRawFrames(a, s, &engine.Frame{SampleS: 0.6e-6, PeakDetect: true, Ordered: true})
+	if got := eng.take(); len(got) != 0 && got[len(got)-1] != "samples 0 0s" {
+		t.Fatalf("a fine view: leases %v", got)
 	}
 }

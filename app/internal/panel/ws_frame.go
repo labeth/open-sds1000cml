@@ -247,7 +247,7 @@ func (c *Controller) noteTdivCap(s *sv) {
 	for c.tdivIdx > 0 && c.tdivs[c.tdivIdx] > most*(1+1e-6) {
 		c.tdivIdx--
 	}
-	c.toastLocked(fmt.Sprintf("%s/div at most on this trigger: it fires on full-rate records, %s long", si(c.tdivs[c.tdivIdx], "s"), si(max(s.st.RecordS, 10*most), "s")), 3*time.Second)
+	c.toastLocked(fmt.Sprintf("%s/div at most on this trigger: its image records raw samples only, %s", si(c.tdivs[c.tdivIdx], "s"), si(max(s.st.RecordS, 10*most), "s")), 3*time.Second)
 }
 
 // decodeParams are the panel's decode settings, as the LCD's strip takes

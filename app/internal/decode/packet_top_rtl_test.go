@@ -14,10 +14,13 @@ import (
 // The protocol images' decoder lists (ADR-PROTOCOL-PACKET-IMAGE).
 const (
 	protocolImageFoundation = "`define UART_TRIGGER\n`define PROTOCOL_SET\n`define INTERLEAVE\n`define BURST_RECALL\n`define HOST_READ_FIX\n`define BENCH_MHZ 250\n"
-	packetImageDefines      = "`define TRIG_ARINC\n`define TRIG_CAN\n`define TRIG_FLEXRAY\n`define TRIG_MIL\n`define TRIG_SENT\n`define SEQUENCE_ONLY\n" + protocolImageFoundation
-	manchesterImageDefines  = "`define TRIG_MAN\n`define TRIG_USB\n`define SEQUENCE_ONLY\n" + protocolImageFoundation
+	packetImageDefines      = "`define TRIG_ARINC\n`define TRIG_CAN\n`define TRIG_FLEXRAY\n`define SEQUENCE_ONLY\n" + protocolImageFoundation
+	frameImageDefines       = "`define TRIG_MIL\n`define TRIG_SENT\n`define TRIG_USB\n`define SEQUENCE_ONLY\n" + protocolImageFoundation
+	manchesterImageDefines  = "`define TRIG_MAN\n`define SEQUENCE_ONLY\n" + protocolImageFoundation
 	// The general image also decimates; the simulation omits the vendor-FIFO precision path.
 	generalImageDefines = "`define TRIG_UART\n`define TRIG_I2C\n`define TRIG_SPI\n" + protocolImageFoundation
+	// The packet, line and fast images decimate by box averages (box_decim.v).
+	boxDecimationDefines = "`define PRECISION\n`define BOX_DECIM\n"
 )
 
 // sequenceRegs writes a sequence trigger (ADR-PROTOCOL-SEQUENCE-TRIGGER) into
@@ -138,9 +141,12 @@ func TestPacketImageTopRTL(t *testing.T) {
 		}
 		return image
 	}
-	image := compile("packet", packetImageDefines, "arinc429_trigger.v", "can_trigger.v", "flexray_trigger.v", "mil1553_trigger.v", "sent_trigger.v")
-	manchesterImage := compile("line", manchesterImageDefines, "manchester_receive.v", "manchester_trigger.v", "usbls_trigger.v", "protocol_scratch.v")
+	image := compile("packet", packetImageDefines, "arinc429_trigger.v", "can_trigger.v", "flexray_trigger.v")
+	// the frame image (MIL-1553, SENT and USB) elaborates with box decimation
+	compile("frame", frameImageDefines+boxDecimationDefines, "mil1553_trigger.v", "sent_trigger.v", "usbls_trigger.v", "protocol_scratch.v", "box_decim.v")
+	manchesterImage := compile("line", manchesterImageDefines, "manchester_receive.v", "manchester_trigger.v", "protocol_scratch.v")
 	generalImage := compile("general", generalImageDefines, "uart_trigger.v", "i2c_trigger.v", "spi_trigger.v")
+	boxImage := compile("packet-box", packetImageDefines+boxDecimationDefines, "arinc429_trigger.v", "can_trigger.v", "flexray_trigger.v", "box_decim.v")
 	seqArgs := func(name string, elements []seqElem, qualify, endBad bool, extra ...[2]uint32) []string {
 		return strings.Fields(sequenceRegs(dir, name, elements, qualify, endBad, extra...))
 	}
@@ -222,6 +228,28 @@ func TestPacketImageTopRTL(t *testing.T) {
 		crcEnd := int64(20+len(good)+len(bad)-13) * 500
 		if r.trigger < crcEnd-1000 || r.trigger > crcEnd+2000 {
 			t.Fatalf("error trigger at %d, bad CRC ends at %d", r.trigger, crcEnd)
+		}
+	})
+	t.Run("can-error-decimated", func(t *testing.T) {
+		// The packet image decimating by box averages (/16, /256): the CAN
+		// receiver reads the raw samples, and its trigger fires on a record
+		// written a word in many, where the bad CRC ends.
+		in, _ := canStdFrame(0x123, 4, []int{0x55, 0xAA, 0x0F, 0xF0})
+		crc := canCRC15(in) ^ 0x10
+		bad, rv, rl := canStuffCore(append(append([]int{}, in...), canBitsMSB(crc, 15)...))
+		if rl == 5 {
+			bad = append(bad, 1-rv)
+		}
+		bad = append(bad, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1)
+		_, good := canStdFrame(0x100, 2, []int{0x11, 0x22})
+		wire := append(append(append(ones(200), good...), bad...), ones(10)...)
+		for _, log := range []uint32{4, 8} {
+			r := runPacketTop(t, dir, boxImage, bitsEntries(wire, 210, 40), 500, 1|6<<8, 32000, 32000, 0,
+				append([]string{"+box", "+pre=200"}, seqArgs(fmt.Sprintf("can-err-box%d", log), []seqElem{{4, 0, 0}}, false, false, [2]uint32{18, log})...)...)
+			crcEnd := int64(200+len(good)+len(bad)-13) * 500
+			if r.trigger < crcEnd-1000 || r.trigger > crcEnd+2000 {
+				t.Fatalf("/%d: error trigger at %d, bad CRC ends at %d", 1<<log, r.trigger, crcEnd)
+			}
 		}
 	})
 	t.Run("can-error-in-history", func(t *testing.T) {

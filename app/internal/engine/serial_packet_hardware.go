@@ -192,14 +192,20 @@ func (e *Engine) probeSerialHardware() {
 	if e.rawOnly, err = e.sram.RawOnly(); err != nil {
 		e.logf("decimation capability: %v", err)
 	}
+	if e.boxDecim, err = e.sram.BoxDecimation(); err != nil {
+		e.logf("box decimation capability: %v", err)
+	}
 }
 
 // Protocol images (ADR-PROTOCOL-PACKET-IMAGE); "" is the general image.
 const (
 	imagePacket = "packet"
-	// imageLine has the line-code decoders Manchester and USB; the packet
-	// image has ARINC 429, CAN, FlexRay, MIL-1553 and SENT.
+	// imageLine has the line-code decoder Manchester; the packet
+	// image has ARINC 429, CAN and FlexRay.
 	imageLine = "line"
+	// imageFrame has MIL-1553, SENT and USB, out of the packet and line
+	// images so each keeps room for box decimation (ADR-TRIGGER-ANY-TIMEBASE).
+	imageFrame = "frame"
 	// imageStream is the continuous-capture image roll mode runs on
 	// (ADR-STREAM-IMAGE).
 	imageStream = "stream"
@@ -222,10 +228,12 @@ func protocolImage(p SerialParams) string {
 		return imageQualify
 	}
 	switch p.Proto {
-	case serManchester, serUSB:
+	case serManchester:
 		return imageLine
-	case serCAN, serARINC, serFlexRay, serMIL1553, serSENT:
+	case serCAN, serARINC, serFlexRay:
 		return imagePacket
+	case serMIL1553, serSENT, serUSB:
+		return imageFrame
 	case serSPI:
 		if (p.Fine || !planHardwareSPI(&p, false).Enabled) && planHardwareSPI(&p, true).Enabled {
 			return imageFast
@@ -250,6 +258,8 @@ func (e *Engine) hasImage(name string) bool {
 		return e.images.HasPacket()
 	case imageLine:
 		return e.images.HasLine()
+	case imageFrame:
+		return e.images.HasFrame()
 	case imageStream:
 		return e.images.HasStream()
 	case imageQualify:
@@ -343,6 +353,8 @@ func (e *Engine) imageLoader(name string) func() error {
 		return e.images.LoadPacket
 	case imageLine:
 		return e.images.LoadLine
+	case imageFrame:
+		return e.images.LoadFrame
 	case imageStream:
 		return e.images.LoadStream
 	case imageQualify:
