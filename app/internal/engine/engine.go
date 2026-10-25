@@ -357,9 +357,10 @@ type Engine struct {
 	hardwarePacket uint16
 	// rawOnly: the loaded image has no precision decimation.
 	rawOnly bool
-	// boxDecim: the loaded image decimates by box averages, not the
-	// precision filter (no Precision mode, no CIC compensation).
-	boxDecim bool
+	// boxDecim: the loaded image decimates by box averages or, with
+	// pickDecim, by picking every 2^n-th sample - not the precision filter
+	// (no Precision mode, no CIC compensation).
+	boxDecim, pickDecim bool
 	// protocolImage names the loaded protocol image ("" for general);
 	// failedImage stops reloading one after a failed load until the serial
 	// choice changes.

@@ -26,7 +26,10 @@ if(args.some(a=>!['--prepare-only','--install'].includes(a) && !/^--image=\w+$/.
 // box: decimation by box averages (common/box_decim.v) where the precision
 // filter does not fit, so the record spans slow timebases' screens and the
 // image's protocol triggers, which read the raw samples, fire at any timebase.
-type Image={dir:string,files:string[],defines:string[],seed:number,trigger:boolean,precision:boolean,bare?:boolean,box?:boolean};
+// pick: decimation by picking every 2^n-th sample (common/pick_decim.v), for
+// the fast image, whose sample-domain UART's 125 MHz loop met timing on no
+// seed of 38 beside the box averages.
+type Image={dir:string,files:string[],defines:string[],seed:number,trigger:boolean,precision:boolean,bare?:boolean,box?:boolean,pick?:boolean};
 // Shared by every image (the stacking build used the same PLL text).
 const common=['record.v','transport.v','adc_unpack.v','interleave.v','panel_scan.v','pll.v','adc_pll.v',
  'gpmc_slave.v','ddio_pair.v','lane_in.v','lanemap_seed.vh'];
@@ -43,17 +46,17 @@ const images:Record<string,Image>={
  packet:{dir:'images/packet',files:['arinc429_trigger.v','can_trigger.v','flexray_trigger.v'],
   defines:['TRIG_ARINC','TRIG_CAN','TRIG_FLEXRAY','SEQUENCE_ONLY'],seed:6,trigger:true,precision:false,box:true},
  frame:{dir:'images/packet',files:['mil1553_trigger.v','sent_trigger.v','line/usbls_trigger.v','line/protocol_scratch.v'],
-  defines:['TRIG_MIL','TRIG_SENT','TRIG_USB','SEQUENCE_ONLY'],seed:9,trigger:true,precision:false,box:true},
+  defines:['TRIG_MIL','TRIG_SENT','TRIG_USB','SEQUENCE_ONLY'],seed:2,trigger:true,precision:false,box:true},
  // With box decimation the line image (94%) missed timing on every seed: USB
  // moved to the frame image (USB's and Manchester's scratch RAM goes with each).
  line:{dir:'images/line',files:['manchester_receive.v','manchester_trigger.v','protocol_scratch.v'],
-  defines:['TRIG_MAN','SEQUENCE_ONLY'],seed:7,trigger:true,precision:false,box:true},
+  defines:['TRIG_MAN','SEQUENCE_ONLY'],seed:5,trigger:true,precision:false,box:true},
  // ADR-SAMPLE-DOMAIN-SPI: SPI, UART and I2C decoded and triggered on the
  // samples (sample_bus.v: sample_edges.v, spi_sample.v, uart_sample.v,
  // i2c_sample.v); the general image has no room for them at 250 MHz. Raw
  // samples only, with the sequence trigger.
  fast:{dir:'images/fast',files:['sample_bus.v','sample_edges.v','spi_sample.v','uart_sample.v','i2c_sample.v'],
-  defines:['TRIG_UART','TRIG_I2C','TRIG_SPI','SAMPLE_BUS'],seed:2,trigger:true,precision:false,box:true},
+  defines:['TRIG_UART','TRIG_I2C','TRIG_SPI','SAMPLE_BUS'],seed:8,trigger:true,precision:false,pick:true},
  // ADR-STREAM-IMAGE: continuous capture for roll and loss-free streaming; no
  // protocol decoders, so the packetizer, banks and precision decimation fit.
  // STREAM_DRUM: the stream goes through the external SRAM as a FIFO, whose
@@ -64,7 +67,7 @@ const images:Record<string,Image>={
  // envelope recall (the general image has no room left for them).
  // ADR-SYMBOL-TRIGGER: and the serial buses of timed pulses (symbol_trigger.v),
  // whose frames take milliseconds and want the long decimated records.
- qualify:{dir:'images/qualify',files:['qual_trigger.v','zone_qual.v','sum_edge_pair.v','symbol_trigger.v','general/precision.v','general/precision_tail.v'],defines:['QUAL_TRIGGER','SYMBOL_TRIGGER'],seed:20,trigger:true,precision:true,bare:true},
+ qualify:{dir:'images/qualify',files:['qual_trigger.v','zone_qual.v','sum_edge_pair.v','symbol_trigger.v','general/precision.v','general/precision_tail.v'],defines:['QUAL_TRIGGER','SYMBOL_TRIGGER'],seed:1,trigger:true,precision:true,bare:true},
  stacking:{dir:'images/stacking',files:['stack_engine_port.v','stack_edge_accumulator.v','stack_edge_hits.v','stack_tiled_accumulator.v',
   'stack_tile_access.v','stack_tile_transfer.v','stack_state_tile.v','stack_resample_store.v','stack_resample.v','stack_positions.v',
   'stack_interpolate.v','stack_accumulate.v','stack_bin_writer.v','stack_record_cache.v'],defines:[],seed:11,trigger:false,precision:false},
@@ -94,9 +97,10 @@ function project(file:string,text:string){writeFileSync(join(out,file),text);inp
 
 // An image may name another image's file as dir/file (shared, not copied in the tree).
 const imageFile=(f:string)=>f.includes('/') ? basename(f) : f;
-const sources=[...(image.trigger ? trigger : []),...image.files.map(imageFile),...(image.box ? ['box_decim.v'] : [])];
+const decimator=image.box ? ['box_decim.v'] : image.pick ? ['pick_decim.v'] : [];
+const sources=[...(image.trigger ? trigger : []),...image.files.map(imageFile),...decimator];
 for(const f of common)copy(join(root,'common',f),f);
-if(image.box)copy(join(root,'common','box_decim.v'),'box_decim.v');
+for(const f of decimator)copy(join(root,'common',f),f);
 for(const f of image.trigger ? trigger : [])copy(join(root,'trigger',f),f);
 for(const f of image.files)copy(f.includes('/') ? join(root,'images',f) : join(root,image.dir,f),imageFile(f));
 
@@ -109,7 +113,7 @@ if(image.trigger){
   .filter(l=>!l.startsWith('set_global_assignment -name VERILOG_FILE ') || listed.has(l.slice('set_global_assignment -name VERILOG_FILE '.length)));
  for(const f of ['record.v','transport.v','adc_unpack.v','interleave.v','sample_timeline.v','event_sequence.v','envelope_reduce.v',
   'decoded_event_queue.v','decoded_event_bridge.v','decoded_event_reader.v','decoded_event_transport.v','decoded_event_port.v','panel_scan.v',
-  ...image.files.map(imageFile),...(image.box ? ['box_decim.v'] : [])])if(!qsf.includes(`set_global_assignment -name VERILOG_FILE ${f}`))qsf.push(`set_global_assignment -name VERILOG_FILE ${f}`);
+  ...image.files.map(imageFile),...decimator])if(!qsf.includes(`set_global_assignment -name VERILOG_FILE ${f}`))qsf.push(`set_global_assignment -name VERILOG_FILE ${f}`);
  qsf=qsf.map(l=>l.startsWith('set_global_assignment -name SEED ') ? `set_global_assignment -name SEED ${seed}` : l);
  qsf=qsf.map(l=>l==='set_global_assignment -name FITTER_EFFORT "STANDARD FIT"' ? 'set_global_assignment -name FITTER_EFFORT "AUTO FIT"' : l);
  // Placement and routing effort, but no extra physical synthesis, whose
@@ -137,7 +141,7 @@ if(image.trigger){
  project('bench.sdc',(image.precision ? sdc : sdc.split('\n').filter(l=>!/precision/i.test(l)).join('\n'))+streamSdc);
  // A bare image (stream) leaves out the protocol baseline (sequence trigger,
  // protocol scratch): it triggers on nothing and needs the room at 250 MHz.
- defines=[...(image.bare ? [] : ['UART_TRIGGER','PROTOCOL_SET']),...image.defines,'INTERLEAVE','BURST_RECALL',...(image.precision || image.box ? ['PRECISION'] : []),...(image.box ? ['BOX_DECIM'] : []),'HOST_READ_FIX'];
+ defines=[...(image.bare ? [] : ['UART_TRIGGER','PROTOCOL_SET']),...image.defines,'INTERLEAVE','BURST_RECALL',...(image.precision || image.box || image.pick ? ['PRECISION'] : []),...(image.box ? ['BOX_DECIM'] : []),...(image.pick ? ['PICK_DECIM'] : []),'HOST_READ_FIX'];
 }else{
  // Stacking: interleave and burst recall foundation plus the stacking port,
  // whose pop-on-read mailbox needs the qualified read strobe (HOST_READ_FIX).

@@ -196,6 +196,23 @@ func (c *Capture) BoxDecimation() (bool, error) {
 // boxDecimationMark is register 30 on an image decimating by box averages.
 const boxDecimationMark = 0x4258
 
+// PickDecimation reports an image that decimates by picking every 2^n-th
+// sample, unfiltered (register 30 reads 0x5053): the fast image.
+// TRLC-LINKS: REQ-SDS-010
+func (c *Capture) PickDecimation() (bool, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	revision, err := c.read(13)
+	if err != nil || revision != 10 {
+		return false, err
+	}
+	v, err := c.read(30)
+	return v == pickDecimationMark, err
+}
+
+// pickDecimationMark is register 30 on an image decimating by picking.
+const pickDecimationMark = 0x5053
+
 // RawOnly reports an image without precision decimation (register 30).
 // TRLC-LINKS: REQ-SDS-010
 func (c *Capture) RawOnly() (bool, error) {

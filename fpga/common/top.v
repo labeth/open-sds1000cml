@@ -163,6 +163,9 @@ module acq_sram_top(
  // No room for the precision filter: box averages (box_decim.v), on the
  // core-domain copy of the decimation (no host-clock path into it).
  box_decim precision(core,halfclk,mclk_in,precision_enable,decim_log,il_raw_word,il_raw_valid,precision_word,precision_valid,precision_fault);
+`elsif PICK_DECIM
+ // The fast image: every 2^n-th sample (pick_decim.v).
+ pick_decim precision(core,halfclk,mclk_in,precision_enable,decim_log,il_raw_word,il_raw_valid,precision_word,precision_valid,precision_fault);
 `else
  adc_precision #(.SHARED_TAIL(1)) precision(core,halfclk,mclk_in,precision_enable,decim_request,il_raw_word,il_raw_valid,precision_word,precision_valid,precision_fault);
 `endif
@@ -1409,6 +1412,9 @@ module acq_sram_top(
 `ifdef BOX_DECIM
  // box averages: extremes on the integer bytes (no room for 16-bit ones)
  envelope_reduce #(.AW(BUF_AW-1),.Q8_INT(1)) envelope(
+`elsif PICK_DECIM
+ // picked samples: integer bytes, the fraction 0
+ envelope_reduce #(.AW(BUF_AW-1),.Q8_INT(1)) envelope(
 `else
  envelope_reduce #(.AW(BUF_AW-1)) envelope(
 `endif
@@ -1699,6 +1705,9 @@ module acq_sram_top(
 `ifdef BOX_DECIM
    // the decimation is box averages, not the precision filter
    30:rd=16'h4258;
+`elsif PICK_DECIM
+   // the decimation picks every 2^n-th sample
+   30:rd=16'h5053;
 `endif
 `else
 `ifdef PROTOCOL_SET

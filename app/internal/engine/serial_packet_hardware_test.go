@@ -14,8 +14,8 @@ import (
 // packetEngineBus adds the packet image's capability registers to the
 // stacking test bus (ADR-IMAGE-REGROUP-DECIMATION): revision 10; general has
 // UART, I2C and decimation, packet the packet block, frame MIL, SENT and USB,
-// line Manchester; packet, frame, line and fast decimate by box averages
-// (ADR-TRIGGER-ANY-TIMEBASE); all have sequence and envelope.
+// line Manchester; packet, frame and line decimate by box averages, fast
+// by picking (ADR-TRIGGER-ANY-TIMEBASE); all have sequence and envelope.
 type packetEngineBus struct{ *stackEngineBus }
 
 // TRLC-LINKS: REQ-SDS-013
@@ -55,7 +55,7 @@ func (b packetEngineBus) Read(p uint8, s uint16) (uint16, error) {
 		case 102:
 			return map[bool]uint16{true: 0x4d01}[line], nil
 		case 30:
-			return map[bool]uint16{true: 0x4258}[packet || line || frame || fast], nil
+			return map[bool]uint16{true: 0x4258}[packet || line || frame] | map[bool]uint16{true: 0x5053}[fast], nil
 		case 63:
 			return 0, nil
 		case 74:
@@ -362,7 +362,7 @@ func TestFastImageTakesFastSPI(t *testing.T) {
 		t.Fatalf("1 MHz plan %+v", cfg.SPI)
 	}
 	e.SetSerialParams(SerialParams{Proto: serSPI, SPIClockHz: 104000000, ChA: 1, ChB: 0, MSB: true, HaveThr: true, Threshold: 128, Bytes: []int{0x4f}})
-	if !e.serviceImage() || b.image != "fast" || e.protocolImage != imageFast || !e.hardwareSampleSPI || !e.boxDecim {
+	if !e.serviceImage() || b.image != "fast" || e.protocolImage != imageFast || !e.hardwareSampleSPI || !e.boxDecim || !e.pickDecim {
 		t.Fatalf("104 MHz: loads %v image %s", images.loads, b.image)
 	}
 	cfg, _, _, _, _ := e.sramConfig()

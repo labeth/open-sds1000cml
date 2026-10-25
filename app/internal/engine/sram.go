@@ -1145,9 +1145,13 @@ acquisitionLoop:
 			f.Content = e.contentGen
 			if len(f.Q1) == f.Valid && len(f.Q2) == f.Valid && bucket == 0 && e.boxDecim && m.Decimation > 1 {
 				// Box averages: no CIC droop to compensate; a sinc's -3 dB
-				// at 0.443 of the output rate.
+				// at 0.443 of the output rate. Picked samples: no filter.
 				f.PassbandHz, f.BandwidthHz = .2/f.SampleS, .443/f.SampleS
 				f.Filter = "box average"
+				if e.pickDecim {
+					f.PassbandHz, f.BandwidthHz = .5/f.SampleS, .5/f.SampleS
+					f.Filter = "every 2^n-th sample"
+				}
 				for i := 0; i < f.Valid; i++ {
 					f.C1[i] = roundQ8(f.Q1[i])
 					f.C2[i] = roundQ8(f.Q2[i])
