@@ -432,8 +432,9 @@ func (e *Engine) sramConfigInto(c *sramcapture.Config) (SRAMPlan, float64, bool,
 	// took minutes, and a raw deep record is noisier than the preview).
 	acq := e.acqMode.Load()
 	filtered := acq == AcqAverage || acq == AcqPrecision || acq == AcqEres
-	if live, ok := liveSRAMPlan(p, liveBudget(block)); ok && (!e.singleArmed.Load() || filtered) && !e.rawOnly && !qualRaw && liveDecimatesPlan(block, p) {
-		if block == blockSearch || block == blockSamples || block == blockSpectrum {
+	budget := liveBudget(block, float64(p.Screen)*p.SampleS, math.Float64frombits(e.busSampleS.Load()))
+	if live, ok := liveSRAMPlan(p, budget); ok && (!e.singleArmed.Load() || filtered) && !e.rawOnly && !qualRaw && liveDecimatesPlan(block, p) {
+		if block == blockSearch || block == blockSamples || block == blockSpectrum || block == blockBus {
 			live.Samples = min(live.Samples, max(int(leaseRecord*float64(live.Screen)), 8192))
 		}
 		p = build(live)

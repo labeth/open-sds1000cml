@@ -288,12 +288,14 @@ func (c *Controller) setTdivIdx(i int) error {
 	}
 	i = clampInt(i, 0, len(c.tdivs)-1)
 	// A packet or line image (a CAN, SENT, Manchester ... trigger) records
-	// 2.1 ms: no slower screen shows its record whole.
+	// 2.1 ms, and the pulse qualifier (UART's frame start) fires on full-rate
+	// records only, as long: no slower screen shows its record whole, and the
+	// trigger set up stays.
 	if st := c.eng.Snapshot(); st.TdivMaxS > 0 && c.tdivs[i] > st.TdivMaxS*(1+1e-6) {
 		for i > 0 && c.tdivs[i] > st.TdivMaxS*(1+1e-6) {
 			i--
 		}
-		c.toast(fmt.Sprintf("%s/div at most on this trigger: its image records %s", si(c.tdivs[i], "s"), si(max(st.RecordS, 10*c.tdivs[i]), "s")), 2500*time.Millisecond)
+		c.toast(fmt.Sprintf("%s/div at most on this trigger: it fires on full-rate records, %s long", si(c.tdivs[i], "s"), si(max(st.RecordS, 10*c.tdivs[i]), "s")), 2500*time.Millisecond)
 	}
 	c.mu.Lock()
 	c.tdivIdx = i

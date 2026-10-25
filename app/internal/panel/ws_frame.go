@@ -44,7 +44,10 @@ type anaState struct {
 	list    PacketList
 	listKey string
 	rawKey  string   // the bus settings whose live view was too coarse: sampled frames leased (busRawFrames)
-	rawNo   string   // the bus settings whose sampled records were too coarse as well
+	rawNo   string   // the bus settings whose full-rate records were too coarse as well
+	rawFull string   // the bus settings whose decimated records were too coarse: the full rate
+	featKey string   // what featS was measured for (busFeatureKey)
+	featS   float64  // the bus's shortest feature in seconds, as its last decode measured it
 	hits    busHits  // the rows the match tokens hit, for the caption
 	marks   busMarks // the strip's marks of live
 	// BUS eye
@@ -244,7 +247,7 @@ func (c *Controller) noteTdivCap(s *sv) {
 	for c.tdivIdx > 0 && c.tdivs[c.tdivIdx] > most*(1+1e-6) {
 		c.tdivIdx--
 	}
-	c.toastLocked(fmt.Sprintf("%s/div at most on this trigger: its image records %s", si(c.tdivs[c.tdivIdx], "s"), si(max(s.st.RecordS, 10*most), "s")), 3*time.Second)
+	c.toastLocked(fmt.Sprintf("%s/div at most on this trigger: it fires on full-rate records, %s long", si(c.tdivs[c.tdivIdx], "s"), si(max(s.st.RecordS, 10*most), "s")), 3*time.Second)
 }
 
 // decodeParams are the panel's decode settings, as the LCD's strip takes

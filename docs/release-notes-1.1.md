@@ -63,8 +63,9 @@ power-cycle, and the factory firmware is back.
   room before it, a WS281x latch or SWIM transaction cut by the screen's edge read as cut, not as an
   error).
 * **BUS trades frame rate for decoding.** Where the live view is too coarse for the bus (a slow
-  timebase's envelope, or the roll view: a 115200 Bd UART at 10 ms/div), BUS reads sampled records
-  and decodes them, a record every 1.4 s at 10 ms/div and 2 s at 50 ms/div.
+  timebase's envelope, or the roll view: a 115200 Bd UART at 10 ms/div), BUS reads records sampled
+  just finely enough for the bus and decodes them, a record every 0.35 s at 10 ms/div and 1.5 s at
+  50 ms/div.
 
 ## Install
 

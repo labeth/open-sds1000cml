@@ -43,7 +43,7 @@ func TestLiveSRAMPlanBoundsTheScreen(t *testing.T) {
 func TestLiveSRAMPlanKeepsTheDisplayBandwidth(t *testing.T) {
 	for _, tdiv := range []float64{20e-6, 50e-6, 200e-6, 500e-6, 2e-3, 10e-3} {
 		p := PlanSRAM(tdiv)
-		live, ok := liveSRAMPlan(p, liveBudget("averaging"))
+		live, ok := liveSRAMPlan(p, liveBudget("averaging", 0, 0))
 		if !ok {
 			continue
 		}
@@ -51,24 +51,47 @@ func TestLiveSRAMPlanKeepsTheDisplayBandwidth(t *testing.T) {
 		if bw < 1.3*pixNyq {
 			t.Errorf("%g s/div: /%d keeps %.0f Hz, under 1.3 x the pixel Nyquist %.0f Hz", tdiv, 1<<live.Log, bw, pixNyq)
 		}
-		spec, ok := liveSRAMPlan(p, liveBudget(blockSpectrum))
+		spec, ok := liveSRAMPlan(p, liveBudget(blockSpectrum, 0, 0))
 		if ok && (spec.Screen > spectrumLiveSamples || spec.Screen <= spectrumLiveSamples/2 && spec.Log > 4) {
 			t.Errorf("%g s/div: the spectrum's record holds %d samples at /%d", tdiv, spec.Screen, 1<<spec.Log)
 		}
 	}
-	if live, _ := liveSRAMPlan(PlanSRAM(500e-6), liveBudget("averaging")); live.Log != 9 {
+	if live, _ := liveSRAMPlan(PlanSRAM(500e-6), liveBudget("averaging", 0, 0)); live.Log != 9 {
 		t.Errorf("500us/div: /%d, want /512", 1<<live.Log)
 	}
-	if spec, _ := liveSRAMPlan(PlanSRAM(500e-6), liveBudget(blockSpectrum)); spec.Log != 8 {
+	if spec, _ := liveSRAMPlan(PlanSRAM(500e-6), liveBudget(blockSpectrum, 0, 0)); spec.Log != 8 {
 		t.Errorf("500us/div spectrum: /%d, want /256", 1<<spec.Log)
 	}
-	if spec, ok := liveSRAMPlan(PlanSRAM(200e-6), liveBudget(blockSpectrum)); !ok || spec.Log != 6 || spec.Screen != 15625 {
+	if spec, ok := liveSRAMPlan(PlanSRAM(200e-6), liveBudget(blockSpectrum, 0, 0)); !ok || spec.Log != 6 || spec.Screen != 15625 {
 		t.Errorf("200us/div spectrum: /%d, %d samples; want /64, 15625 (an 8192-point FFT one for one)", 1<<spec.Log, spec.Screen)
 	}
 	if p := PlanSRAM(5e-6); liveDecimatesPlan(blockSpectrum, p) {
 		t.Error("5us/div spectrum decimated: 25000 samples stay at the full rate")
-	} else if _, ok := liveSRAMPlan(p, liveBudget(blockSpectrum)); ok {
+	} else if _, ok := liveSRAMPlan(p, liveBudget(blockSpectrum, 0, 0)); ok {
 		t.Error("5us/div spectrum: the full-rate screen planned decimated")
+	}
+}
+
+// A bus decode's lease reads records sampled just finely enough: a 115200 Bd
+// UART at 10ms/div (a bit 8.7 us, wanted every 1.1 us) reads a quarter of
+// the full record's 390,000 words a screen; a fast bus keeps the full rate.
+// TRLC-LINKS: REQ-SDS-010, REQ-SDS-214
+func TestBusLeaseSamplesFinelyEnough(t *testing.T) {
+	e, _ := newTestEngine(t, newFakeBus())
+	e.hardwareEnvelope = true
+	b, _ := PlanTdiv(10e-3)
+	e.band = b
+	_, full, _, _, _ := e.sramConfig()
+	e.LeaseBusSamples(8.7e-6/8, 5*time.Second)
+	if e.rollActive() {
+		t.Fatal("the bus lease rolls")
+	}
+	if _, p, _, _, _ := e.sramConfig(); p.SampleS > 8.7e-6/8 || 3*p.Screen > full.Screen {
+		t.Fatalf("10ms/div bus lease: a sample every %g s, %d samples a screen (full rate %d)", p.SampleS, p.Screen, full.Screen)
+	}
+	e.LeaseBusSamples(1e-9, 5*time.Second)
+	if _, p, _, _, _ := e.sramConfig(); p.Log > 7 {
+		t.Fatalf("a 1 ns feature decimated /%d", 1<<p.Log)
 	}
 }
 

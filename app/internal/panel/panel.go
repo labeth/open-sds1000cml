@@ -294,12 +294,13 @@ type Controller struct {
 	curPend *[2][2]float64
 	// the record's length in screens of the last frame analysed (a zoomed
 	// screen's pan is a fraction of the record): float64 bits
-	curRecords atomic.Uint64
-	eyeLeased  atomic.Bool // the eye holds a raw lease (leaseEyeRaw, endEyeRaw)
-	busRawHeld atomic.Bool // BUS holds a raw lease to decode (busRawFrames, endBusRaw)
-	inject     chan func()
-	looping    atomic.Bool // Run is serving inject (else a remote change runs inline)
-	inlineMu   sync.Mutex  // orders inline remote changes without the loop
+	curRecords  atomic.Uint64
+	eyeLeased   atomic.Bool // the eye holds a raw lease (leaseEyeRaw, endEyeRaw)
+	busRawHeld  atomic.Bool // BUS holds a raw lease to decode (busRawFrames, endBusRaw)
+	busSampHeld atomic.Bool // BUS holds a lease of finely sampled records to decode (holdBusLease)
+	inject      chan func()
+	looping     atomic.Bool // Run is serving inject (else a remote change runs inline)
+	inlineMu    sync.Mutex  // orders inline remote changes without the loop
 
 	// frameFn reads the latest published frame (fo.WithFrame) for autoset; nil
 	// until SetFrameSource is called (AUTO then falls back to plain AUTO/run).

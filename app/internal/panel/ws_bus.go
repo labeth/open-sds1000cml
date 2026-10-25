@@ -1867,22 +1867,34 @@ const (
 
 // busRawFrames trades the frame rate for the decode in BUS: a live view too
 // coarse for the bus - an envelope (framecalc.Unresolved) or a roll view
-// with too few samples a bit (a 115200 Bd UART at 10ms/div) - leases
-// sampled frames for the bus's settings (no envelope, no roll), renewed by
-// each frame while they stay, however long a record takes to read (seconds
-// at slow timebases). A change of them ends the lease, so their own live
-// view is tried first; a sampled record too coarse as well ends it for
-// those settings, and the faster timebase is hinted.
+// with too few samples a bit (a 115200 Bd UART at 10ms/div) - leases records
+// sampled finely enough for the bus's settings (no envelope, no roll),
+// renewed by each frame while they stay. Records sampled at a quarter to an
+// eighth of the bus's shortest feature, as its last decode measured it,
+// keep the frames as fast as they can be (the UART at 10ms/div: a quarter
+// of the full rate's words); the full rate where that is unknown or too
+// coarse. A change of the
+// settings ends the lease, so their own live view is tried first; a
+// full-rate record too coarse as well ends it for those settings, and the
+// faster timebase is hinted.
 // TRLC-LINKS: REQ-SDS-214
 func (c *Controller) busRawFrames(a *anaState, s *sv, f *engine.Frame) {
-	key := busListKey(s)
-	live := f.PeakDetect || s.st.Roll // a view the engine reads coarser than its record
+	key, bus := busListKey(s), busFeatureKey(s)
+	if a.res.OK && f.SampleS > 0 {
+		if fs := decode.FeatureSamples(a.res) * f.SampleS; fs > 0 {
+			a.featKey, a.featS = bus, fs
+		}
+	}
+	live := f.PeakDetect || s.st.Roll                 // a view the engine reads coarser than its record
+	decimated := a.featKey == bus && a.rawFull != key // the lease is of decimated records
 	switch {
 	case a.rawNo == key:
 		a.rawKey = ""
 	case live && (framecalc.Unresolved(a.res) || tooFewSamples(a.res)):
 		a.rawKey = key
 		a.res.Error = decode.Names[a.res.Proto] + ": the live view is too coarse - reading sampled records (slower frames)"
+	case !live && a.rawKey == key && tooFewSamples(a.res) && decimated:
+		a.rawFull, decimated = key, false // sampled too coarsely: the full rate
 	case !live && a.rawKey == key && tooFewSamples(a.res):
 		a.rawKey, a.rawNo = "", key
 	case a.rawKey != key:
@@ -1891,6 +1903,43 @@ func (c *Controller) busRawFrames(a *anaState, s *sv, f *engine.Frame) {
 	if a.rawKey == "" || !s.st.Running {
 		c.endBusRaw()
 		return
+	}
+	want := 0.0
+	if decimated {
+		want = a.featS / busSamplesPerFeature
+	}
+	c.holdBusLease(want)
+}
+
+// busSamplesPerFeature is the samples a bus decode's sampled records take
+// over the bus's shortest feature at the least (the decimation steps by two:
+// up to twice as many): its decoders want three a bit, and the decimation
+// filters the edges.
+const busSamplesPerFeature = 4
+
+// busFeatureKey is what a bus's measured feature belongs to: the protocol,
+// its rate and lines.
+// TRLC-LINKS: REQ-SDS-214
+func busFeatureKey(s *sv) string {
+	return fmt.Sprint(s.decProto, s.decBaud, s.decChA, s.decChB, s.decCPOL, s.decCPHA)
+}
+
+// holdBusLease renews BUS's lease for its decode: records sampled every
+// sampleS at the coarsest (engine LeaseBusSamples), or full-rate ones
+// (sampleS 0, LeaseRawFor), ending the other.
+// TRLC-LINKS: REQ-SDS-214
+func (c *Controller) holdBusLease(sampleS float64) {
+	e, ok := c.eng.(interface{ LeaseBusSamples(float64, time.Duration) })
+	if sampleS > 0 && ok {
+		if c.busRawHeld.Swap(false) {
+			c.leaseRaw(rawForBus, 0)
+		}
+		c.busSampHeld.Store(true)
+		e.LeaseBusSamples(sampleS, 10*time.Second)
+		return
+	}
+	if ok && c.busSampHeld.Swap(false) {
+		e.LeaseBusSamples(0, 0)
 	}
 	c.busRawHeld.Store(true)
 	c.leaseRaw(rawForBus, 10*time.Second)
@@ -1902,12 +1951,17 @@ func tooFewSamples(res decode.Result) bool {
 	return !res.OK && strings.Contains(res.Error, "samples/bit; need")
 }
 
-// endBusRaw ends BUS's raw lease for the decode (busRawFrames): BUS left,
+// endBusRaw ends BUS's leases for the decode (busRawFrames): BUS left,
 // decode off, or the bus's settings changed.
 // TRLC-LINKS: REQ-SDS-214
 func (c *Controller) endBusRaw() {
 	if c.busRawHeld.Swap(false) {
 		c.leaseRaw(rawForBus, 0)
+	}
+	if c.busSampHeld.Swap(false) {
+		if e, ok := c.eng.(interface{ LeaseBusSamples(float64, time.Duration) }); ok {
+			e.LeaseBusSamples(0, 0)
+		}
 	}
 }
 

@@ -1,7 +1,11 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
 package engine
 
-import "open-sds/app/internal/sramcapture"
+import (
+	"math"
+
+	"open-sds/app/internal/sramcapture"
+)
 
 // envelopeAllowed reports whether a live frame may be read as a display
 // envelope (ADR-IMAGE-REGROUP-DECIMATION).
@@ -34,6 +38,8 @@ func (e *Engine) envelopeBlock(cfg *sramcapture.Config, tp trigParams) string {
 		return blockSpectrum
 	case e.leased(&e.searchLease):
 		return blockSearch
+	case e.leased(&e.busLease):
+		return blockBus
 	case e.leased(&e.sampleLease):
 		return blockSamples
 	case !e.hardwareEnvelope:
@@ -53,6 +59,9 @@ const blockSearch = "search requested"
 
 // blockSamples is the envelope block of a sample lease (LeaseSampleView).
 const blockSamples = "samples requested"
+
+// blockBus is the envelope block of a bus decode's lease (LeaseBusSamples).
+const blockBus = "bus samples requested"
 
 // SearchLiveSamples bounds a bus search's decimated screen: four times the
 // live view's, so a screen of 20ms/div still samples every 8 us (a Wiegand
@@ -94,16 +103,30 @@ const spectrumLiveSamples = 16384
 
 // liveBudget is the live screen's bound in record words: a spectrum's is
 // spectrumLiveSamples (a raw screen of up to SpectrumRawSamples, two a word,
-// stays at the full rate), every other liveScreenSamples.
+// stays at the full rate), a bus decode's a sample each busS over the
+// screen's spanS at least (busLiveBudget), every other liveScreenSamples.
 // TRLC-LINKS: REQ-SDS-010, REQ-SDS-070
-func liveBudget(block string) int {
+func liveBudget(block string, spanS, busS float64) int {
 	switch block {
+	case blockBus:
+		return busLiveBudget(spanS, busS)
 	case blockSpectrum:
 		return spectrumLiveSamples
 	case blockSearch:
 		return SearchLiveSamples
 	}
 	return liveScreenSamples
+}
+
+// busLiveBudget is a bus decode's live screen in record words: a sample each
+// sampleS over spanS (twice that, as the decimation steps by two), at least
+// liveScreenSamples and at most the record.
+// TRLC-LINKS: REQ-SDS-010, REQ-SDS-214
+func busLiveBudget(spanS, sampleS float64) int {
+	if !(spanS > 0) || !(sampleS > 0) {
+		return int(sramcapture.Words)
+	}
+	return int(min(float64(sramcapture.Words), max(float64(liveScreenSamples), math.Ceil(2*spanS/sampleS))))
 }
 
 // liveDecimates reports whether a live frame blocked from the envelope is

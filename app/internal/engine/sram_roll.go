@@ -101,6 +101,8 @@ func (e *Engine) rollActive() bool {
 		return false // a raw consumer wants triggered full-rate records
 	case e.leased(&e.searchLease):
 		return false // a bus search wants whole records
+	case e.leased(&e.busLease):
+		return false // a bus decode wants whole records sampled finely enough
 	case e.soundWanted():
 		return false // the audio stream takes the fabric
 	}

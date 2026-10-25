@@ -213,9 +213,9 @@ automatically.
   decimated capture first, so UART, I2C, SPI, SENT and ARINC 429 are named in under a second and a half;
   buses that need the full sample rate (Manchester, MIL-1553, CAN, USB, FlexRay) take a few seconds.
 * **Decode before frame rate in BUS:** where the live view is too coarse for the bus (an envelope
-  at a slow timebase, or the roll view: a 115200 Bd UART at 10 ms/div), BUS reads sampled records
-  instead and decodes them, at a record every second or two; the timebase or the bus changing tries
-  the fast live view again first.
+  at a slow timebase, or the roll view: a 115200 Bd UART at 10 ms/div), BUS reads records sampled
+  just finely enough for the bus instead and decodes them (a record every 0.35 s at 10 ms/div); the
+  timebase or the bus changing tries the fast live view again first.
 * **AUTO in BUS** scans for the bus anew and frames it for reading: the vertical fitted with the
   threshold midway, the hardware trigger on the start of each frame (I2C's START, SPI's first word after
   its idle, CAN's SOF, a MIL-1553 command word, the first UART character after an idle gap, ...), the

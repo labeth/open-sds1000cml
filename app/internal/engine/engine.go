@@ -413,6 +413,8 @@ type Engine struct {
 	spectrumLease   atomic.Int64           // live frames for a spectrum until this time (LeaseSpectrumView)
 	displayPaceNs   atomic.Int64           // the least time a live SRAM capture takes, for the display (SetDisplayPace)
 	searchLease     atomic.Int64           // whole decimated records for a bus search until this time (LeaseSearchView)
+	busLease        atomic.Int64           // records sampled every busSampleS for a bus decode until this time (LeaseBusSamples)
+	busSampleS      atomic.Uint64          // the bus lease's coarsest sample interval (float64 bits)
 	views           [viewSurfaces]viewSlot // view windows at full detail (LeaseViewWindow)
 	viewQ           []uint16               // a view window's Q8.8 scratch (viewQ8; engine goroutine)
 	adopt           *adoptedRecord         // a decoded stream's record for the stopped loop to show (guarded by mu)
@@ -1136,6 +1138,21 @@ func (e *Engine) LeaseSampleView(d time.Duration) { e.lease(&e.sampleLease, d) }
 // held samples that cut an IR remote's 67 ms frame or a CEC message apart.
 // TRLC-LINKS: REQ-SDS-010, REQ-SDS-214
 func (e *Engine) LeaseSearchView(d time.Duration) { e.lease(&e.searchLease, d) }
+
+// LeaseBusSamples asks for live frames a bus decode reads where the envelope
+// or roll is too coarse for it, for d from now: records sampled every
+// sampleS at the coarsest (decimated, filtered by the capture's decimation;
+// the full rate where that is coarser), of leaseRecord screens, and no roll.
+// The fewer words read the faster the frames: a 115200 Bd UART at 10ms/div
+// read 390,000 words a frame at the full record's rate. d <= 0 ends it.
+// TRLC-LINKS: REQ-SDS-010, REQ-SDS-214
+func (e *Engine) LeaseBusSamples(sampleS float64, d time.Duration) {
+	if !(sampleS > 0) {
+		d = 0
+	}
+	e.busSampleS.Store(math.Float64bits(sampleS))
+	e.lease(&e.busLease, d)
+}
 
 // LeaseSpectrumView asks for live frames a spectrum can be taken of, for d
 // from now (the FFT and the spectrogram, on the LCD and the web alike): the
