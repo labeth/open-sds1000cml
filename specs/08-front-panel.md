@@ -437,7 +437,7 @@ settles late launches once more after the last sampling edge. The row reads the 
 each side of it ("Auto -1.8 ns, margin +3.7 ns"); the software decoders read the data at the same delay.
 Every trigger fires at every timebase (ADR-TRIGGER-ANY-TIMEBASE): the packet, frame, line and fast images
 (CAN, FlexRay, ARINC 429; MIL-1553, SENT, USB; Manchester; fast SPI, UART and I2C) decimate by box averages
-while their receivers read the full-rate samples, and the qualify image's pulse width, slope and video
+(the fast image by picking every 2^n-th sample) while their receivers read the full-rate samples, and the qualify image's pulse width, slope and video
 qualifier fires on decimated records as on full-rate ones (Average, ERES and Precision on them run on
 decimated captures). An image that records raw samples only would hold the timebase at 200us/div ("200us/div
 at most on this trigger: its image records raw samples only, 2.1ms"); none ships. BUS entry's detection sets the same trigger. AUTO in the other workspaces is the autoset framed

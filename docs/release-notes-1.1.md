@@ -66,8 +66,8 @@ power-cycle, and the factory firmware is back.
   UART frame start that AUTO arms in BUS) fire on slow timebases too: the FPGA held their trigger for a
   single clock, which a decimated record never took, and they were kept to 200 µs/div. The CAN,
   FlexRay, ARINC 429, MIL-1553, SENT, Manchester, USB and fast-mode SPI, UART and I2C triggers, on
-  images that recorded raw samples only (2.1 ms), now run on records decimated by box averages, so
-  they too trigger at any timebase; MIL-1553, SENT and USB moved to an FPGA image of their own to make
+  images that recorded raw samples only (2.1 ms), now run on decimated records (box averages; the
+  fast image picks samples), so they too trigger at any timebase; MIL-1553, SENT and USB moved to an FPGA image of their own to make
   room. AUTO's wait no longer forces a capture the hardware has triggered (at 10 ms/div and slower the
   record outlasted the wait and every frame read forced).
 * **BUS trades frame rate for decoding.** Where the live view is too coarse for the bus (a slow
@@ -104,9 +104,10 @@ settings tab (the Help key), at the end of the web UI's status line and in `/api
 * **AC and GND coupling** are applied to the samples, not by the input relay: AC removes the mean of
   the trace, so a small signal on a large DC level is limited by the range that holds the DC.
 * **Vertical accuracy** has not been checked against a calibrated reference.
-* **Box decimation:** the packet, frame, line and fast images decimate by box averages, not the
-  precision filter (no room for it): their records alias what the filter would attenuate, and the
-  Precision acquisition mode is not offered while one of them is loaded.
+* **Box and picked decimation:** the packet, frame and line images decimate by box averages and the
+  fast image by picking every 2^n-th sample, not with the precision filter (no room for it): their
+  records alias what the filter would attenuate, and the Precision acquisition mode is not offered
+  while one of them is loaded.
 * **Serial triggers:** a value stop is refused, with the reason, where the trigger cannot match it (a
   value past the symbol trigger's 64-bit window, or among units of other lengths), and the symbol
   trigger has no error token, so the protocols on it stop on a value or by hand, not on an error.

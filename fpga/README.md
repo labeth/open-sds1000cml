@@ -13,7 +13,7 @@ the FPGA; the app only places the trigger point on the event.
 | `qualify` | pulse width, slope time and video line triggers, and the zone trigger (four zones around the edge); the symbol trigger for buses of timed pulses (LIN, DMX512, Modbus, 1-Wire, WS281x, DHT, CEC, J1850, IR, DALI, USB PD, S/PDIF, PS/2, SWD, MDIO, Wiegand); precision decimation |
 | `stacking` | FPGA super-resolution stacking engine |
 | `stream` | continuous capture for gap-free roll: decimated or peak-detect (bucket min/max) words, buffered in the SRAM ("drum") and streamed to the host through two ping-pong banks |
-| `fast` | SPI (to a 125 MHz clock), UART (to 62.5 MBd) and I²C (to high-speed mode) decoded and triggered on the samples, with the sequence trigger; box decimation |
+| `fast` | SPI (to a 125 MHz clock), UART (to 62.5 MBd) and I²C (to high-speed mode) decoded and triggered on the samples, with the sequence trigger; decimation by picking |
 
 Every trigger fires at every timebase: the protocol receivers, the symbol
 trigger and the qualifier read the raw samples whatever the record's
@@ -23,7 +23,9 @@ filter (about 2500 logic elements) decimate by box averages
 (`common/box_decim.v`, about 330 with the envelope's integer-byte
 extremes): each channel's 2^n samples summed and
 written as unsigned Q8.8, as the filter writes; register 30 reads 0x4258 on
-them (ADR-TRIGGER-ANY-TIMEBASE).
+them (ADR-TRIGGER-ANY-TIMEBASE). The fast image, whose sample-domain UART
+met timing beside the box on no seed, picks every 2^n-th sample instead
+(`common/pick_decim.v`, register 30 0x5053).
 
 The board around the FPGA (balls, clocks, ADCs, SRAM, GPMC bus, panel,
 configuration) is specified in

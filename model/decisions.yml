@@ -2458,7 +2458,7 @@ decisions:
   decision: 'The qualifier''s and the zones'' fires hold until the next arm once the record''s history is in, as the
     symbol trigger''s and the protocol triggers'' do, so the record takes them on its next written word (at most a
     decimated sample late; software places the trigger on the event''s crossing). The packet, line and fast images
-    decimate by box averages (common/box_decim.v): each channel''s 2^n samples summed and
+    decimate by box averages (common/box_decim.v; the fast image by picking, below): each channel''s 2^n samples summed and
     written as the precision filter writes its words, unsigned Q8.8, register 30 reading 0x4258 so the host knows
     the filter. Their protocol receivers keep reading the raw samples, so a trigger decided on the full-rate line
     fires whatever the record''s decimation. The engine plans these images'' records as the general image''s,
@@ -2467,7 +2467,10 @@ decisions:
     MIL-1553, SENT and USB move to an image of their own, frame; the packet image keeps ARINC 429, CAN and
     FlexRay, the line image Manchester. The box runs nothing but
     adders in its 250 MHz word loop (operands gated in the adders'' cells, every control a registered flag) and
-    reduces the envelope recall''s Q8.8 extremes to their integer bytes, so it adds about 330 logic elements.'
+    reduces the envelope recall''s Q8.8 extremes to their integer bytes, so it adds about 330 logic elements. The
+    fast image''s sample-domain UART (a 27-bit bit-time sum in one 125 MHz loop) met timing beside the box on no seed
+    of 38, so the fast image picks every 2^n-th sample instead (common/pick_decim.v, register 30 reading 0x5053),
+    unfiltered: its slow uses (UART formats past 8N1, high-speed I2C, Fine) want a record that decodes.'
   consequences:
   - 'Pulse, slope and video triggers, AUTO''s UART frame start in BUS, and Average, ERES and Precision on them run on
     decimated records at every timebase; the 200 us/div cap remains only for an image without decimation (none ships).'
