@@ -17,3 +17,25 @@ func TestLabelHexMatchesFmt(t *testing.T) {
 		}
 	}
 }
+
+// A Denon pair's length moves with its bits: the longest (every bit a 1)
+// still lies within MessageMaxS, which only the pair protocol names.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-255
+func TestDenonMessageMax(t *testing.T) {
+	const sr = 200000
+	w := irOracleLine(sr, func(l irLine) {
+		irDenon(l, 0x1F, 0x3FF)
+		l.space(100e-3)
+	})
+	r := DecodeIRMP(w.codes(), 1.0/sr, LineCfg{})
+	if r.FrameBits != IRDenon {
+		t.Fatalf("decoded %d: %s", r.FrameBits, r.Error)
+	}
+	lo, hi := r.Spans[0].I0, r.Spans[len(r.Spans)-1].I1
+	if got, bound := float64(hi-lo)/sr, MessageMaxS(r); !(bound > got) || got < 80e-3 {
+		t.Fatalf("pair of %g s, bound %g s", got, bound)
+	}
+	if MessageMaxS(Result{Proto: "irmp", FrameBits: IRSamsung32}) != 0 || MessageMaxS(Result{Proto: "uart"}) != 0 {
+		t.Fatal("a bound for a protocol that does not fix its length")
+	}
+}

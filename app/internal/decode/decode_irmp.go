@@ -38,6 +38,25 @@ var irmpTimings = map[int]irmpTiming{IRSamsung32: {550, 550, 1650}, IRSamsung: {
 	IRNEC16: {560, 560, 1690}, IRNEC42: {560, 560, 1690}, IRKaseikyo: {423, 423, 1269}, IRMatsushita: {872, 872, 2616},
 	IRDenon: {310, 745, 1780}}
 
+// irDenonRepeatUS is the longest a Denon frame's inverted repeat waits after
+// it (us), from the frame's last mark to the repeat's first.
+const irDenonRepeatUS = 70000
+
+// MessageMaxS is the longest a message of the decoded bus can take, in
+// seconds, where its protocol bounds it and the bits it carries move the
+// length a lot; 0 otherwise. An IR Denon pair: two frames of 15 bits, each
+// up to a pulse and a 1's pause, and the repeat's wait before the second
+// (about 133 ms: AUTO framed on the pair it saw, and a longer one lost its
+// repeat to the screen's end).
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-255
+func MessageMaxS(r Result) float64 {
+	if r.Proto == "irmp" && r.FrameBits == IRDenon {
+		tm := irmpTimings[IRDenon]
+		return (2*15*(tm.pulse+tm.one) + irDenonRepeatUS) * 1e-6
+	}
+	return 0
+}
+
 // irWithin reports d within frac of want.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-255
 func irWithin(d, want, frac float64) bool { return d >= want*(1-frac) && d <= want*(1+frac) }
@@ -200,7 +219,7 @@ func DecodeIRMP(codes []uint8, colTimeS float64, cfg LineCfg) Result {
 			// Denon: 15 bits, most significant first, then again inverted
 			tm := irmpTimings[IRDenon]
 			b, j := irmpBits(m, i, tm, 15, us)
-			if len(b) != 15 || j+1 >= len(m) || us(m[j+1].x0-m[j].x1) > 70000 {
+			if len(b) != 15 || j+1 >= len(m) || us(m[j+1].x0-m[j].x1) > irDenonRepeatUS {
 				continue
 			}
 			b2, k := irmpBits(m, j+1, tm, 15, us)

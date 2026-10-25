@@ -202,7 +202,8 @@ func (c *Controller) takeBusFrame() int {
 }
 
 // busMsgs is what a decode of the bus shows of its messages: the longest
-// complete one, the shortest idle between two, and for UART the longest time
+// complete one (at least the longest its protocol allows where that is
+// known, decode.MessageMaxS), the shortest idle between two, and for UART the longest time
 // the line stays high inside one (the stop bit, the idle between its
 // characters and a character's high bits), all in seconds (0: not seen).
 type busMsgs struct {
@@ -241,7 +242,7 @@ func msgsOf(res decode.Result, sampleS float64, valid int) busMsgs {
 	ps := anaPackets(res, valid)
 	for i, p := range ps {
 		if p.Complete {
-			m.longest = max(m.longest, float64(p.I1-p.I0)*sampleS)
+			m.longest = max(m.longest, float64(p.I1-p.I0)*sampleS, decode.MessageMaxS(res))
 		}
 		if i > 0 {
 			if g := float64(p.I0-ps[i-1].I1) * sampleS; g > 0 && (m.idle == 0 || g < m.idle) {
