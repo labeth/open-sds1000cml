@@ -53,6 +53,10 @@ type sweepJob struct {
 	steps   int
 	done    bool
 	err     error
+	// phase and setting are the sweeper's as the last step left them: a
+	// step runs on the bus owner's goroutine, and the sweeper is not read
+	// while one is in flight.
+	phase, setting string
 }
 
 // TRLC-LINKS: REQ-SDS-146
@@ -66,7 +70,7 @@ func (j *sweepJob) finished() bool {
 func (j *sweepJob) progress() *SweepProgress {
 	j.mu.Lock()
 	defer j.mu.Unlock()
-	p := &SweepProgress{Running: !j.done, Steps: j.steps, Phase: j.sw.Phase(), Setting: j.sw.Setting(),
+	p := &SweepProgress{Running: !j.done, Steps: j.steps, Phase: j.phase, Setting: j.setting,
 		Elapsed: time.Since(j.started).Seconds(), Finished: j.done}
 	if j.err != nil {
 		p.Err = j.err.Error()
@@ -202,6 +206,7 @@ func (d *Diag) GpmcSweep(o bus.SweepOptions) (*SweepProgress, error) {
 	}
 	j := &sweepJob{sw: bus.NewSweeper(tc.port, o, d.logf), started: time.Now()}
 	j.sw.Sleep = d.sleep
+	j.phase, j.setting = j.sw.Phase(), j.sw.Setting()
 	tc.job = j
 	d.mu.Unlock()
 	go d.runSweep(tc, j)
@@ -225,6 +230,7 @@ func (d *Diag) runSweep(tc *timingCtl, j *sweepJob) {
 		}, j.sw.StepTimeout()+2*time.Second)
 		j.mu.Lock()
 		j.steps++
+		j.phase, j.setting = j.sw.Phase(), j.sw.Setting()
 		if err != nil {
 			j.err, j.done = err, true
 		} else if done {

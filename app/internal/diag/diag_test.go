@@ -808,22 +808,31 @@ func TestSchemaCheck(t *testing.T) {
 }
 
 // fakeTimingPort is a CS1 timing port with a floor below which the fake
-// fabric duplicates every 32nd pop (the burst-boundary signature).
+// fabric duplicates every 32nd pop (the burst-boundary signature). Its
+// registers are read and written whole, as the controller's are (the status
+// reads them while a sweep step writes them).
 // TRLC-LINKS: REQ-SDS-146
 type fakeTimingPort struct {
 	f         *fakeFabric
+	mu        sync.Mutex
 	cur       bus.CS1Timing
 	minAccess uint32
 	applies   int
 }
 
 // TRLC-LINKS: REQ-SDS-146
-func (p *fakeTimingPort) Read() (bus.CS1Timing, error) { return p.cur, nil }
+func (p *fakeTimingPort) Read() (bus.CS1Timing, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return p.cur, nil
+}
 
 // TRLC-LINKS: REQ-SDS-146
 func (p *fakeTimingPort) set(t bus.CS1Timing) {
+	p.mu.Lock()
 	p.cur = t
 	p.applies++
+	p.mu.Unlock()
 	p.f.mu.Lock()
 	p.f.corrupt = t.RdAccess() < p.minAccess
 	p.f.mu.Unlock()
