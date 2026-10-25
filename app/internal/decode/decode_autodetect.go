@@ -4,6 +4,7 @@ package decode
 import (
 	"fmt"
 	"math"
+	"slices"
 	"sort"
 )
 
@@ -116,6 +117,13 @@ func scoreResult(r Result) float64 {
 		// clock rests high (a 104 MHz SPI flash's decimated record read as
 		// "I2C": one transfer among 200 bare START STOP pairs).
 		if bare := starts - addrs; bare > 4 && bare > addrs {
+			return -1e9
+		}
+		// After a NAK an I2C master stops or starts again: a transfer that
+		// runs on past NAKs is another bus's bytes read nine bits at a time
+		// (SPI mode 3, whose data changes while the clock rests high between
+		// transfers, read as one START and a run of ACK and NAK at random).
+		if n := i2cDataPastNak(r); n >= 2 && n*4 > datas {
 			return -1e9
 		}
 		return float64(addrs*100 + acks*30 + datas*20 + starts*5)
@@ -593,6 +601,9 @@ func Autodetect(c1, c2 []uint8, colTimeS float64, format string) Result {
 			if r.OK && i2cConditionsOnEdges(r, &clk[ord[0]].s, colTimeS) {
 				continue
 			}
+			if byteClocked(&clk[ord[0]].s) { // whole bytes a burst: SPI, not 9 clocks a byte
+				continue
+			}
 			consider(r, "SCL "+chName(ord[0])+" SDA "+chName(ord[1]), Roles{ChA: ord[0], ChB: ord[1]})
 		}
 		if clockedPair {
@@ -667,6 +678,93 @@ func pulseBytes(b []int) bool {
 		}
 	}
 	return len(b) > 0
+}
+
+// byteClocked reports a clock line whose bursts each hold whole bytes: two or
+// more bursts between idle gaps, every one a multiple of 8 pulses and none
+// what an I2C transfer clocks (9 a byte, plus a rise for its STOP and its
+// repeated STARTs). That is SPI clocking
+// bytes out; I2C and SWD read on it only by chance (SPI mode 3, its data
+// changing while the clock rests high between transfers, read as I2C STARTs;
+// short transfers as SWD requests with an OK). A burst the record cuts at
+// either end is left out. A single long burst says nothing (a debug probe's
+// SWD runs its clock on).
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-238
+func byteClocked(s *sliced) bool {
+	var rise []int
+	for _, e := range s.edges {
+		if e.dir > 0 {
+			rise = append(rise, e.i)
+		}
+	}
+	if len(rise) < 17 {
+		return false
+	}
+	gaps := make([]int, len(rise)-1)
+	for i := range gaps {
+		gaps[i] = rise[i+1] - rise[i]
+	}
+	med := quickMedianInts(gaps)
+	if med <= 0 {
+		return false
+	}
+	var bursts []int
+	n := 1
+	for _, g := range gaps {
+		if g > 4*med {
+			bursts = append(bursts, n)
+			n = 1
+			continue
+		}
+		n++
+	}
+	bursts = append(bursts, n)
+	if rise[0] < 4*med { // the record began inside the first burst
+		bursts = bursts[1:]
+	}
+	if len(bursts) > 0 && s.n-rise[len(rise)-1] < 4*med { // and ended inside the last
+		bursts = bursts[:len(bursts)-1]
+	}
+	if len(bursts) < 2 {
+		return false
+	}
+	for _, b := range bursts {
+		// I2C clocks 9 a byte, plus a rise for its STOP and one for a
+		// repeated START: a burst 0 to 3 past a multiple of 9 may be I2C
+		if b%8 != 0 || b%9 <= 3 {
+			return false
+		}
+	}
+	return true
+}
+
+// quickMedianInts is the median of v (reordering a copy).
+// TRLC-LINKS: REQ-SDS-018
+func quickMedianInts(v []int) int {
+	c := slices.Clone(v)
+	slices.Sort(c)
+	return c[len(c)/2]
+}
+
+// i2cDataPastNak counts the data bytes an I2C decode reads after a NAK in
+// the same transfer, where an I2C master sends STOP or a repeated START.
+// TRLC-LINKS: REQ-SDS-018
+func i2cDataPastNak(r Result) int {
+	n, nak := 0, false
+	for _, s := range r.Spans {
+		switch s.Kind {
+		case "nak":
+			nak = true
+		case "data":
+			if nak {
+				n++
+			}
+			nak = false
+		case "start", "stop", "addr":
+			nak = false
+		}
+	}
+	return n
 }
 
 // i2cEscape reports an I2C decode holding five STARTs and STOPs in a row

@@ -140,8 +140,8 @@ func TestAutodetectSPIDataOnClockEdgesIsNotI2C(t *testing.T) {
 		c1[i], c2[i] = uint8(f.C1[i]), uint8(f.C2[i])
 	}
 	i2c := DecodeI2C(c1, c2, f.SampleS, I2CCfg{Format: "hex"})
-	if scoreResult(i2c) <= 0 {
-		t.Fatalf("the capture no longer reads as I2C at all (score %.0f): the test proves nothing", scoreResult(i2c))
+	if !i2c.OK || i2cCountKind(i2c, "addr") == 0 {
+		t.Fatalf("the capture no longer reads as addressed I2C transfers at all: the test proves nothing")
 	}
 	if !i2cConditionsOnEdges(i2c, new(sliceChannel(c1, 0, false)), f.SampleS) {
 		t.Error("its STARTs and STOPs are not on SCL's edges")

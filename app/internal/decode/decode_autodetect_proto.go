@@ -127,7 +127,9 @@ func considerPairs(c1, c2 []uint8, sl [2]*sliced, colTimeS float64, format strin
 			if ta.minRun >= 20 && ta.minRun <= 120 {
 				consider(DecodePS2(x, y, colTimeS, cfg), a)
 			}
-			consider(DecodeSWD(x, y, colTimeS, cfg), a)
+			if !byteClocked(sl[a]) { // whole bytes a burst: SPI's
+				consider(DecodeSWD(x, y, colTimeS, cfg), a)
+			}
 			consider(DecodeMDIO(x, y, colTimeS, cfg), a)
 		}
 		if ta.maxHigh >= 200 {
