@@ -109,6 +109,20 @@ func FeatureSamples(r Result) float64 {
 	return r.SPB
 }
 
+// EnvelopeFeatureSamples is the shortest feature a decode's bus holds in a
+// peak-detect envelope, in samples: FeatureSamples, but a Wiegand pulse
+// survives a bucket wider than itself (the bucket's extreme), so there it
+// is the bit interval, the pulses having to land in buckets of their own
+// (a 26-bit frame at 1 ms decodes from 5 points an interval)
+// (decode.js decodeEnvelopeFeatureSamples).
+// TRLC-LINKS: REQ-SDS-018
+func EnvelopeFeatureSamples(r Result) float64 {
+	if r.Proto == "wiegand" && r.OK {
+		return r.SPB
+	}
+	return FeatureSamples(r)
+}
+
 // ShortestRun is the fewest samples between two edges of a two-level
 // signal (sliced as the decoders slice it), 0 when it holds under three.
 // TRLC-LINKS: REQ-SDS-018

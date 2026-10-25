@@ -58,6 +58,15 @@ function decodeFeatureSamples(r) {
   return DEC_HALF_BIT.has(r.proto) ? m.samplesPerBit / 2 : m.samplesPerBit;
 }
 
+// decodeEnvelopeFeatureSamples is the shortest feature in a peak-detect
+// envelope (decode.EnvelopeFeatureSamples): a Wiegand pulse survives a
+// bucket wider than itself, so there it is the bit interval.
+// TRLC-LINKS: REQ-SDS-207
+function decodeEnvelopeFeatureSamples(r) {
+  if (r && r.ok && r.proto === "wiegand" && r.meta && r.meta.spb > 0) return r.meta.spb;
+  return decodeFeatureSamples(r);
+}
+
 // The protocols decodeFeatureSamples halves, as sets made once (it runs on
 // every decoded envelope frame).
 const DEC_HALF_SPB = new Set(["dali", "usbpd", "spdif", "irnec", "irrc5", "irrc6", "ps2", "swd", "mdio"]);
@@ -171,7 +180,7 @@ function computeDecode() {
     r = decodeFlexRay(decCodes(dcfg.line), colTimeS, Object.assign(cfg, { bitrate: dcfg.baud > 0 ? dcfg.baud : 0, haveThr: !dcfg.auto }));
   else r = decodeMore(dcfg.proto, colTimeS, cfg);
   if (r && r.ok && frame.peak_detect && frame.ordered) {
-    const fs = decodeFeatureSamples(r);
+    const fs = decodeEnvelopeFeatureSamples(r);
     if (fs > 0 && fs < DECODE_MIN_ENVELOPE_FEATURE)
       r = { ok: false, proto: r.proto, error: (DECODE_NAMES[r.proto] || r.proto) + " not resolved at this timebase - faster time/div, or SINGLE", spans: [], text: "", bytes: [], meta: {} };
   }

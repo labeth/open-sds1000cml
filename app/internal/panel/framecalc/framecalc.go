@@ -9,6 +9,7 @@ package framecalc
 
 import (
 	"math"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -266,7 +267,7 @@ func Decode(f *engine.Frame, p DecodeParams) decode.Result {
 		res = decodeMore(p, ch, f.SampleS)
 	}
 	if f.PeakDetect && f.Ordered && !EnvelopeResolves(res) {
-		res = decode.Result{Proto: res.Proto, Error: decode.Names[res.Proto] + " not resolved at this timebase - S/DIV faster, or SINGLE"}
+		res = decode.Result{Proto: res.Proto, Error: decode.Names[res.Proto] + unresolvedNote}
 	}
 	if cacheable {
 		decodeCache.e[decodeCache.next] = decodeEntry{key: key, res: res, ok: true}
@@ -405,8 +406,19 @@ const MinEnvelopeFeature = 4.0
 // not decoded from it.
 // TRLC-LINKS: REQ-SDS-214
 func EnvelopeResolves(res decode.Result) bool {
-	fs := decode.FeatureSamples(res)
+	fs := decode.EnvelopeFeatureSamples(res)
 	return fs == 0 || fs >= MinEnvelopeFeature
+}
+
+// unresolvedNote ends the error of a decode refused on a live envelope that
+// does not resolve the bus (EnvelopeResolves, Unresolved).
+const unresolvedNote = " not resolved at this timebase - S/DIV faster, or SINGLE"
+
+// Unresolved reports a decode refused because the live envelope does not
+// resolve the bus: sampled frames would decode it.
+// TRLC-LINKS: REQ-SDS-214
+func Unresolved(res decode.Result) bool {
+	return !res.OK && strings.HasSuffix(res.Error, unresolvedNote)
 }
 
 // ---- spectrum ----

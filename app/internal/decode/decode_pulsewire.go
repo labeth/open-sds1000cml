@@ -263,8 +263,15 @@ type WS281xCfg struct {
 // rest (800 or 400 kbit/s), a 1 the long high of the two the frame holds
 // (one length only: high over half the period), bytes most significant bit
 // first in wire order (G, R, B of each LED). A low of 50 us or more
-// latches the frame ("rw" RST); each frame opens with a zero-width "sof".
+// latches the frame ("rw" RST), as does one of wsEdgeLatchUs running off
+// either end of the record (a live window shorter than a frame and both its
+// latches: 10us/div held 44 us of each); each frame opens with a zero-width
+// "sof".
 // OK needs a frame of whole LEDs at a steady bit rate.
+// wsEdgeLatchUs is the low, in microseconds, that latches a WS281x frame
+// at the record's ends: eight bits of the slow 400 kbit/s rate.
+const wsEdgeLatchUs = 20
+
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-233
 func DecodeWS281x(codes []uint8, colTimeS float64, cfg WS281xCfg) Result {
 	S := sliceChannel(codes, cfg.Threshold, cfg.HaveThr)
@@ -285,6 +292,10 @@ func DecodeWS281x(codes []uint8, colTimeS float64, cfg WS281xCfg) Result {
 		x0, hi, per float64 // rise, high length, period (0: the frame's last)
 	}
 	frame := make([]wbit, 0, 8*24) // a frame's bits, reused (24 LEDs' worth to start)
+	latched := func(r lrun) bool { // a low that latches: whole, or at a record end
+		us := r.us(colTimeS)
+		return us >= 50 || (r.open && us >= wsEdgeLatchUs)
+	}
 	flush := func(latch lrun) {
 		if len(frame) == 0 {
 			return
@@ -339,7 +350,7 @@ func DecodeWS281x(codes []uint8, colTimeS float64, cfg WS281xCfg) Result {
 			spans = append(spans, pspan(latch.x0, latch.x1, n, "RST", "rw", 0))
 			toks = append(toks, "RST")
 		}
-		if steady && nb >= 3 && nb%3 == 0 && len(frame)%8 == 0 && !latch.open {
+		if steady && nb >= 3 && nb%3 == 0 && len(frame)%8 == 0 && latched(latch) {
 			good = true
 			periods = append(periods, med)
 		}
@@ -348,7 +359,7 @@ func DecodeWS281x(codes []uint8, colTimeS float64, cfg WS281xCfg) Result {
 	started := false // a frame may start: the record opened low for a latch's time
 	for k, r := range runs {
 		if r.lvl == 0 {
-			if r.us(colTimeS) >= 50 {
+			if latched(r) {
 				if len(frame) > 0 {
 					frame[len(frame)-1].per = 0
 					flush(r)

@@ -131,6 +131,10 @@ function decodeOneWire(codes, colTimeS, cfg) {
   return res;
 }
 
+// WS_EDGE_LATCH_US is the low that latches a WS281x frame at the record's
+// ends (decode_pulsewire.go wsEdgeLatchUs).
+const WS_EDGE_LATCH_US = 20;
+
 // decodeWS281x mirrors decode_pulsewire.go DecodeWS281x.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-233
 function decodeWS281x(codes, colTimeS, cfg) {
@@ -142,6 +146,9 @@ function decodeWS281x(codes, colTimeS, cfg) {
   const spans = [], toks = [], units = [], periods = [];
   let good = false;
   let frame = [];
+  // a low that latches: whole, or at a record end
+  // TRLC-LINKS: REQ-SDS-018, REQ-SDS-233
+  const latched = (r) => runUs(r, colTimeS) >= 50 || (r.open && runUs(r, colTimeS) >= WS_EDGE_LATCH_US);
   // TRLC-LINKS: REQ-SDS-018, REQ-SDS-233
   const flush = (latch) => {
     if (!frame.length) return;
@@ -176,14 +183,14 @@ function decodeWS281x(codes, colTimeS, cfg) {
       toks.push("?");
     }
     if (!latch.open || latch.x1 > latch.x0) { spans.push(pspan(latch.x0, latch.x1, n, "RST", "rw", 0)); toks.push("RST"); }
-    if (steady && nb >= 3 && nb % 3 === 0 && frame.length % 8 === 0 && !latch.open) { good = true; periods.push(med); }
+    if (steady && nb >= 3 && nb % 3 === 0 && frame.length % 8 === 0 && latched(latch)) { good = true; periods.push(med); }
     frame = [];
   };
   let started = false;
   for (let k = 0; k < runs.length; k++) {
     const r = runs[k];
     if (r.lvl === 0) {
-      if (runUs(r, colTimeS) >= 50) {
+      if (latched(r)) {
         if (frame.length) { frame[frame.length - 1].per = 0; flush(r); }
         started = !r.open || r.x0 === 0;
       }

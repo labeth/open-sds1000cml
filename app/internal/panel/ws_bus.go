@@ -59,10 +59,12 @@ func busListKey(s *sv) string {
 // TRLC-LINKS: REQ-SDS-214
 func (c *Controller) busFrame(a *anaState, s *sv, f *engine.Frame) {
 	if s.decProto == framecalc.ProtoOff {
-		a.res, a.resOK, a.live = decode.Result{}, false, nil
+		a.res, a.resOK, a.live, a.rawKey = decode.Result{}, false, nil, ""
+		c.endBusRaw()
 		return
 	}
 	a.res = framecalc.Decode(f, decodeParamsOf(s))
+	c.busRawFrames(a, s, f)
 	a.resOK = a.res.OK
 	c.noteSPIEye(s, f)
 	if !a.resOK {
@@ -559,7 +561,7 @@ const readableFeature = 5.0
 // what the notice adds ("" when the timebase stays).
 // TRLC-LINKS: REQ-SDS-214
 func (c *Controller) readableTimebase(res decode.Result, sampleS, within float64, arming bool) string {
-	feature := decode.FeatureSamples(res) * sampleS
+	feature := decode.EnvelopeFeatureSamples(res) * sampleS
 	if !(feature > 0) || len(c.tdivs) == 0 {
 		return ""
 	}
@@ -1580,7 +1582,7 @@ func (c *Controller) runDetect() {
 			tdivNote += "; layer " + l
 		}
 		if frame != 0 {
-			tdivNote += "; " + c.frameBus(decode.FeatureSamples(res)*sampleS, frame == busFrameAuto)
+			tdivNote += "; " + c.frameBus(decode.EnvelopeFeatureSamples(res)*sampleS, frame == busFrameAuto)
 		}
 	} else if small := c.smallSwing(); small != "" {
 		none = c.noBusNote(small)
@@ -1860,7 +1862,41 @@ const (
 	rawForEye      = "eye"
 	rawForSearch   = "bus search"
 	rawForSuperres = "super-res"
+	rawForBus      = "bus decode"
 )
+
+// busRawFrames trades the frame rate for the decode in BUS: a live envelope
+// too coarse for the bus (framecalc.Unresolved: a 115200 Bd UART at
+// 10ms/div) leases sampled frames for the bus's settings, renewed by each
+// frame while they stay, however long a sampled record takes to read
+// (seconds at slow timebases); a change of them ends the lease, so their
+// own envelope is tried first.
+// TRLC-LINKS: REQ-SDS-214
+func (c *Controller) busRawFrames(a *anaState, s *sv, f *engine.Frame) {
+	key := busListKey(s)
+	switch {
+	case f.PeakDetect && framecalc.Unresolved(a.res):
+		a.rawKey = key
+		a.res.Error = decode.Names[a.res.Proto] + ": the live view is too coarse - reading sampled records (slower frames)"
+	case a.rawKey != key:
+		a.rawKey = ""
+	}
+	if a.rawKey == "" || !s.st.Running {
+		c.endBusRaw()
+		return
+	}
+	c.busRawHeld.Store(true)
+	c.leaseRaw(rawForBus, 10*time.Second)
+}
+
+// endBusRaw ends BUS's raw lease for the decode (busRawFrames): BUS left,
+// decode off, or the bus's settings changed.
+// TRLC-LINKS: REQ-SDS-214
+func (c *Controller) endBusRaw() {
+	if c.busRawHeld.Swap(false) {
+		c.leaseRaw(rawForBus, 0)
+	}
+}
 
 // leaseRaw asks the engine for full-rate raw live frames for d from now as
 // holder, or ends holder's lease (d <= 0): ending the last abandons a raw

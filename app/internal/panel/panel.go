@@ -296,6 +296,7 @@ type Controller struct {
 	// screen's pan is a fraction of the record): float64 bits
 	curRecords atomic.Uint64
 	eyeLeased  atomic.Bool // the eye holds a raw lease (leaseEyeRaw, endEyeRaw)
+	busRawHeld atomic.Bool // BUS holds a raw lease to decode (busRawFrames, endBusRaw)
 	inject     chan func()
 	looping    atomic.Bool // Run is serving inject (else a remote change runs inline)
 	inlineMu   sync.Mutex  // orders inline remote changes without the loop

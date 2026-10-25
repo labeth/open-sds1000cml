@@ -74,6 +74,9 @@ func (c *Controller) view(s *sv) wsview.View {
 	if !(u.ws == wsview.Bus && u.busEye) {
 		c.endEyeRaw() // the eye left: nothing waits for its raw record
 	}
+	if u.ws != wsview.Bus {
+		c.endBusRaw() // BUS left: its decode wants no sampled records
+	}
 	v := wsview.View{WS: u.ws}
 	inSound := u.ws == wsview.Spectrum && s.viewMode == viewSound
 	c.snd.setLCD(!u.open && inSound, inSound)

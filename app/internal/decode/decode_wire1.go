@@ -61,7 +61,8 @@ var swimNames = map[int]string{0: "SRST", 1: "ROTF", 2: "WOTF"}
 // opens a transaction ("sof"): SRST, ROTF and WOTF, the byte count ("N"),
 // the 24-bit address ("@", three bytes) and the bytes ("W" written, "R"
 // read). A frame not acknowledged or whose parity fails is flagged and does
-// not advance the transaction. A low of 7.3 to 35.6 us (128 SWIM clocks) is
+// not advance the transaction; one short of its bits is flagged too, but
+// marked cut ("?" gap) where an end of the record falls in it. A low of 7.3 to 35.6 us (128 SWIM clocks) is
 // a synchronization frame ("SYNC"). Baud is the bit rate. OK needs an
 // acknowledged frame whose parity checks.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-253
@@ -109,7 +110,11 @@ func DecodeSWIM(codes []uint8, colTimeS float64, cfg LineCfg) Result {
 			nb = 3
 		}
 		if len(fr) != nb+3 {
-			o.add(fr[0].x0, fr[len(fr)-1].x1, "!", "frame-error", 0, false)
+			if fr[0].x0 <= 1.5*T || fr[len(fr)-1].x1+1.5*T >= float64(S.n) {
+				o.add(fr[0].x0, fr[len(fr)-1].x1, "?", "gap", 0, false)
+			} else {
+				o.add(fr[0].x0, fr[len(fr)-1].x1, "!", "frame-error", 0, false)
+			}
 			return
 		}
 		v, p := 0, 0

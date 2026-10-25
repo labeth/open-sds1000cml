@@ -59,6 +59,27 @@ func TestDecodeWS281xRoundTrip(t *testing.T) {
 	}
 }
 
+// A frame whose latches run off both ends of the record (a live window
+// shorter than a frame and two whole latches) decodes once each end holds
+// wsEdgeLatchUs of low; shorter ends do not prove a latch.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-233
+func TestDecodeWS281xLatchesAtTheEnds(t *testing.T) {
+	sr := 50e6
+	b := []int{0x10, 0x80, 0xFF, 0x00, 0x5A, 0x0F}
+	for _, edge := range []float64{44e-6, 21e-6, 12e-6} {
+		w := newTimeline(sr)
+		w.add(0, edge)
+		wsFrame(w, 800e3, b)
+		codes := w.codes()
+		codes = codes[:len(codes)-int((80e-6-edge)*sr)] // edge seconds of the latch
+		r := DecodeWS281x(codes, 1/sr, WS281xCfg{})
+		ok := edge >= wsEdgeLatchUs*1e-6
+		if r.OK != ok || (ok && !reflect.DeepEqual(r.Bytes, b)) {
+			t.Fatalf("ends of %v s: ok=%v want %v, %X (%s) %q", edge, r.OK, ok, r.Bytes, r.Error, r.Text)
+		}
+	}
+}
+
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-233
 func TestDecodeDHTRoundTrip(t *testing.T) {
 	sr := 2e6

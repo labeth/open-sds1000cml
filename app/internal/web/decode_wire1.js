@@ -57,7 +57,11 @@ function decodeSWIM(codes, colTimeS, cfg) {
     const f = fr;
     fr = [];
     const nb = state === 0 ? 3 : 8;
-    if (f.length !== nb + 3) { o.add(f[0].x0, f[f.length - 1].x1, "!", "frame-error", 0, false); return; }
+    if (f.length !== nb + 3) { // cut where an end of the record falls in it
+      if (f[0].x0 <= 1.5 * T || f[f.length - 1].x1 + 1.5 * T >= S.n) o.add(f[0].x0, f[f.length - 1].x1, "?", "gap", 0, false);
+      else o.add(f[0].x0, f[f.length - 1].x1, "!", "frame-error", 0, false);
+      return;
+    }
     let v = 0, p = 0;
     for (let i = 1; i <= nb; i++) { v = (v << 1) | f[i].v; p ^= f[i].v; }
     const ok = p === f[nb + 1].v && f[nb + 2].v === 1;
