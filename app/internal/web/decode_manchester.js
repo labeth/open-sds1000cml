@@ -59,7 +59,7 @@ function decodeManchester(codes, colTimeS, cfg) {
   cfg = cfg || {};
   const bits = cfg.bits || 8;
   if (bits < 1 || bits > 16) return fail("manchester", "data bits out of range (1..16)");
-  const minSPB = 4;
+  const minSPB = 3;
   const S = sliceChannel(codes, cfg);
   if (!S.ok) return fail("manchester", S.reason);
   if (S.edges.length < 2) return fail("manchester", "too few edges");

@@ -85,7 +85,10 @@ func flexFrameCRC24(frameBytes []int) int {
 // for step so the web overlay and the on-device LCD agree byte-for-byte.
 // TRLC-LINKS: REQ-SDS-018
 func DecodeFlexRay(codes []uint8, colTimeS float64, cfg FlexRayCfg) Result {
-	const minSPB = 4.0
+	// three samples a bit at the least: box-averaged records of 3.1 decode
+	// every message (TestLineCodesDecodeAtThreeSamplesABit), so a slow
+	// timebase's own record still reads the bus
+	const minSPB = 3.0
 	const tssMinLowBits = 4.0 // "~5 bit-times of LOW" — accept a little short for jitter
 	S := sliceChannel(codes, cfg.Threshold, cfg.HaveThr)
 	if !S.ok {

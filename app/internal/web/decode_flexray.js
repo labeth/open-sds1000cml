@@ -70,7 +70,7 @@ function flexFrameCRC24(frameBytes) {
 // TRLC-LINKS: REQ-SDS-018
 function decodeFlexRay(codes, colTimeS, cfg) {
   cfg = cfg || {};
-  const minSPB = 4;
+  const minSPB = 3;
   const tssMinLowBits = 4; // "~5 bit-times of LOW" — accept a little short for jitter
   const S = sliceChannel(codes, { threshold: cfg.haveThr ? cfg.threshold : undefined });
   if (!S.ok) return fxFail(S.reason);

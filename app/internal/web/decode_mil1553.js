@@ -21,7 +21,7 @@ function decodeMIL1553(codes, colTimeS, cfg) {
     cfg = Object.assign({}, cfg);
     if (cfg.threshold != null) cfg.threshold = 255 - cfg.threshold;
   }
-  const minSPB = 4;
+  const minSPB = 3;
   const S = sliceChannel(codes, cfg);
   if (!S.ok) return fail("mil1553", S.reason);
   if (S.edges.length < 2) return fail("mil1553", "too few edges");

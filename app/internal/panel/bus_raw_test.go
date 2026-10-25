@@ -158,7 +158,7 @@ func TestBusLeasesTheFullRateForAFastBus(t *testing.T) {
 	c.busRawFrames(a, s, &engine.Frame{SampleS: 2e-9})
 	eng.take()
 	s.st.TdivS = 20e-6
-	a.res = decode.Result{Proto: "flexray", Error: "1.8 samples/bit; need >= 4"}
+	a.res = decode.Result{Proto: "flexray", Error: "1.8 samples/bit; need >= 3"}
 	c.busRawFrames(a, s, &engine.Frame{SampleS: 61e-9, PeakDetect: true, Ordered: true})
 	if got := eng.take(); len(got) != 1 || got[0] != rawForBus+" 10s" {
 		t.Fatalf("FlexRay at 20us/div: leases %v, want full-rate records", got)

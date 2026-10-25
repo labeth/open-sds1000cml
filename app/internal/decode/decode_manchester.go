@@ -116,7 +116,10 @@ func DecodeManchester(codes []uint8, colTimeS float64, cfg ManchesterCfg) Result
 	if bits < 1 || bits > 16 { // bound the shift/mask math
 		return Result{Proto: "manchester", Error: "data bits out of range (1..16)"}
 	}
-	const minSPB = 4.0
+	// three samples a bit at the least: box-averaged records of 3.1 decode
+	// every message (TestLineCodesDecodeAtThreeSamplesABit), so a slow
+	// timebase's own record still reads the bus
+	const minSPB = 3.0
 	S := sliceChannel(codes, cfg.Threshold, cfg.HaveThr)
 	if !S.ok {
 		return Result{Proto: "manchester", Error: S.reason}
