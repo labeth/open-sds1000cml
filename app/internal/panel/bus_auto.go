@@ -497,7 +497,11 @@ func (c *Controller) frameBus(featureS float64, auto bool) string {
 	if auto {
 		_ = c.setTrigPos(busTrigPos)
 		td := c.eng.Snapshot().TdivSet()
-		if t := c.messageTimebase(m.longest, featureS, td); math.Abs(t-td) > 1e-3*td {
+		t := c.messageTimebase(m.longest, featureS, td)
+		// where AUTO's framing came from, in the log
+		c.logf("panel: bus auto: longest message %s, feature %s: %s/div framed at %s/div", si(m.longest, "s"), si(featureS, "s"),
+			si(td, "s"), si(t, "s"))
+		if math.Abs(t-td) > 1e-3*td {
 			c.setTdivNearest(t)
 			note += ", " + si(t, "s") + "/div for a whole message"
 		}
