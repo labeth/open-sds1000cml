@@ -917,6 +917,7 @@ acquisitionLoop:
 		// record (reading the whole record first kept the screen empty for
 		// seconds at every timebase).
 		singleShot := !replay && e.singleArmed.Load() && singleGen == e.singleGen.Load()
+		pre := 0 // samples the live window holds before the screen's
 		if !fullRecall {
 			// A software-qualified trigger needs room to find its event away
 			// from the hardware edge and still fill the screen around it. The
@@ -925,7 +926,7 @@ acquisitionLoop:
 			// that much more before the trigger (twice the screen would halve
 			// the live envelope's resolution, and a fast bus no longer
 			// decodes).
-			screen, pre := plan.Screen, 0
+			screen := plan.Screen
 			switch {
 			case softQualify:
 				screen *= 2
@@ -950,7 +951,7 @@ acquisitionLoop:
 				readout = "raw window: " + why
 				rawForLease = why == blockRaw && !singleShot && !replay
 			} else {
-				bucket, recallOffset, recallWords = envelopeWindow(recallOffset, recallWords, envBuckets, m.Length)
+				bucket, recallOffset, recallWords = envelopeWindow(recallOffset, recallWords, envBuckets, m.Length, uint32(pre/max(1, int(m.SamplesPerWord))))
 				readout = "raw window: short"
 				if bucket != 0 {
 					readout = "envelope"

@@ -45,7 +45,7 @@ func TestViewCoversTheZoom(t *testing.T) {
 	for _, trig := range []uint32{262144, 40000, 500000} {
 		m := sramcapture.Metadata{Length: sramcapture.Words, SamplesPerWord: 2, TriggerIndex: trig, SampleRateHz: 500e6}
 		start := min(max(int(trig)-screen/4, 0), int(m.Length)-screen/2) // the screen's words, within the record
-		bucket, offset, words := envelopeWindow(uint32(start), screen/2, sramcapture.EnvelopeBuckets, m.Length)
+		bucket, offset, words := envelopeWindow(uint32(start), screen/2, sramcapture.EnvelopeBuckets, m.Length, 0)
 		half := float64(bucket) * float64(m.SamplesPerWord) / 2
 		valid := 2 * int(sramcapture.EnvelopeBuckets)
 		winCols := min(valid, int(screen/half+0.5))
@@ -158,7 +158,7 @@ func TestViewsReadWithTheScreen(t *testing.T) {
 	e.clk.Now = func() time.Time { return now }
 	m := sramcapture.Metadata{Length: sramcapture.Words, SamplesPerWord: 2, TriggerIndex: 262144, SampleRateHz: 500e6}
 	const screen = 1000000
-	bucket, offset, words := envelopeWindow(262144-screen/4, screen/2, sramcapture.EnvelopeBuckets, m.Length)
+	bucket, offset, words := envelopeWindow(262144-screen/4, screen/2, sramcapture.EnvelopeBuckets, m.Length, 0)
 	f := &Frame{EdgeX: float64(m.TriggerIndex-offset) * 2 / float64(bucket)}
 	plan := func() (viewReads, []sramcapture.RecordRead) {
 		v := e.planViews(f, m, screen, offset, words, bucket, sramcapture.EnvelopeBuckets)

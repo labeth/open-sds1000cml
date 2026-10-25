@@ -109,7 +109,7 @@ func planView(m sramcapture.Metadata, from, to float64, buckets uint32) (viewPla
 		return viewPlan{}, false
 	}
 	p := viewPlan{buckets: buckets}
-	p.bucket, p.start, p.length = envelopeWindow(uint32(from), uint32(to-from), buckets, m.Length)
+	p.bucket, p.start, p.length = envelopeWindow(uint32(from), uint32(to-from), buckets, m.Length, 0)
 	p.n = int(p.length) * int(m.SamplesPerWord)
 	if p.bucket != 0 {
 		p.n = 2 * int(buckets)

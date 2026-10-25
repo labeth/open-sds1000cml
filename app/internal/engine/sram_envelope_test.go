@@ -20,26 +20,48 @@ func TestEnvelopeWindow(t *testing.T) {
 		return s <= offset && s+n >= offset+words && s+n <= total && n == b*2048
 	}
 	// A small window is recalled as is.
-	if b, s, n := envelopeWindow(100, 2047, 2048, total); b != 0 || s != 100 || n != 2047 {
+	if b, s, n := envelopeWindow(100, 2047, 2048, total, 0); b != 0 || s != 100 || n != 2047 {
 		t.Fatalf("small window: %d %d %d", b, s, n)
 	}
-	if b, s, n := envelopeWindow(0, 3*1024+7, 2048, total); b != 0 || n != 3*1024+7 || s != 0 {
+	if b, s, n := envelopeWindow(0, 3*1024+7, 2048, total, 0); b != 0 || n != 3*1024+7 || s != 0 {
 		t.Fatalf("short window: %d %d %d", b, s, n)
 	}
 	// A whole raw record, short of the warm-up words: the largest even bucket
 	// that fits, centred.
-	if b, s, n := envelopeWindow(0, total, 2048, total); b != 254 || n != 254*2048 || s != 8+(total-16-n)/2 {
+	if b, s, n := envelopeWindow(0, total, 2048, total, 0); b != 254 || n != 254*2048 || s != 8+(total-16-n)/2 {
 		t.Fatalf("full record: %d %d %d", b, s, n)
 	}
 	// 2us/div: a 10000-sample screen plus margin, 5256 raw words, mid-record.
-	if b, s, n := envelopeWindow(200000, 5256, 2048, total); b != 4 || !covers(b, s, n, 200000, 5256) {
+	if b, s, n := envelopeWindow(200000, 5256, 2048, total, 0); b != 4 || !covers(b, s, n, 200000, 5256) {
 		t.Fatalf("2us/div window: %d %d %d", b, s, n)
 	}
 	// Uneven windows: covered, within the record at its start too.
 	for _, w := range [][2]uint32{{1000, 250511}, {0, 9*2048 + 7}, {total - 20000, 19999}} {
-		if b, s, n := envelopeWindow(w[0], w[1], 2048, total); b == 0 || b%2 != 0 || !covers(b, s, n, w[0], w[1]) {
+		if b, s, n := envelopeWindow(w[0], w[1], 2048, total, 0); b == 0 || b%2 != 0 || !covers(b, s, n, w[0], w[1]) {
 			t.Fatalf("window %v: %d %d %d", w, b, s, n)
 		}
+	}
+}
+
+// A window over one SRAM narrows by its front first (a serial trigger's room
+// before the screen), so the screen's end stays: a T55xx command at 2ms/div
+// lost its last millisecond when the window narrowed about its centre.
+// TRLC-LINKS: REQ-SDS-010
+func TestEnvelopeWindowKeepsTheScreen(t *testing.T) {
+	const total = 2 * sramcapture.Words
+	limit := uint32(sramcapture.Words - 16)
+	screen, front := limit*3/5, limit*3/5
+	offset := uint32(1000)
+	b, s, n := envelopeWindow(offset, front+screen, 2048, total, front)
+	if b == 0 || s+n < offset+front+screen {
+		t.Fatalf("screen cut: window %d+%d ends before the screen's end %d", s, n, offset+front+screen)
+	}
+	if s < offset+front+screen-limit {
+		t.Fatalf("window %d+%d over one SRAM", s, n)
+	}
+	// with no front the narrowing stays centred
+	if _, s0, n0 := envelopeWindow(offset, front+screen, 2048, total, 0); s0+n0/2 != offset+(front+screen)/2 {
+		t.Fatalf("centred window %d+%d: centre %d, want %d", s0, n0, s0+n0/2, offset+(front+screen)/2)
 	}
 }
 
