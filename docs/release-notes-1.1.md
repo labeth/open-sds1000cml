@@ -58,7 +58,13 @@ power-cycle, and the factory firmware is back.
   picks a timebase whose live view decodes the bus with its trigger armed (9600 Bd Modbus was
   left at 5 ms/div, too coarse to decode); SPI sent as short transfers is named SPI, not I2C or
   SWD; while a trigger the FPGA decides waits, the LCD and the web page say so, which trigger and
-  for how long, instead of "ACQUIRING".
+  for how long, instead of "ACQUIRING"; after AUTO the BUS view decodes WS281x, Wiegand, T55xx and
+  SWIM too (a whole Wiegand frame on screen, a T55xx command's end no longer cut by the trigger's
+  room before it, a WS281x latch or SWIM transaction cut by the screen's edge read as cut, not as an
+  error).
+* **BUS trades frame rate for decoding.** Where the live view is too coarse for the bus (a slow
+  timebase's envelope, or the roll view: a 115200 Bd UART at 10 ms/div), BUS reads sampled records
+  and decodes them, a record every 1.4 s at 10 ms/div and 2 s at 50 ms/div.
 
 ## Install
 
