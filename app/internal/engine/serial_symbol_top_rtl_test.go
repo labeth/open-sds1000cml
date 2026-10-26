@@ -270,9 +270,13 @@ func runSymbolTop(t *testing.T, dir, image, name string, p SerialParams, w *symW
 const (
 	symLeadMax   = 1000000
 	symTailAfter = 20000
+	// symLeadMin pads a short lead (MDIO's first frame 32 us in) to 0.4 ms:
+	// a record decimated /256 is still arming there
+	symLeadMin = 50000
 )
 
-// trimSymWave is w with its idle lead cut to symLeadMax clocks and its end to
+// trimSymWave is w with its idle lead cut to symLeadMax clocks (or padded to
+// symLeadMin) and its end to
 // symTailAfter after the model's first match for p (a Wiegand reader's 248 ms
 // wave over the bench's words); nil when the model finds no match on it.
 // TRLC-LINKS: REQ-SDS-013
@@ -284,6 +288,13 @@ func trimSymWave(t *testing.T, p SerialParams, w *symWave) *symWave {
 	}
 	from := max(0, lead-symLeadMax)
 	out := &symWave{a: w.a[from:], b: w.b[from:]}
+	if pad := symLeadMin - lead; pad > 0 { // the lead's own level, longer
+		a, b := make([]bool, pad, pad+len(out.a)), make([]bool, pad, pad+len(out.b))
+		for i := range a {
+			a[i], b[i] = w.a[0], w.b[0]
+		}
+		out.a, out.b = append(a, out.a...), append(b, out.b...)
+	}
 	m := symMatches(t, p, out)
 	if len(m) == 0 {
 		return nil
