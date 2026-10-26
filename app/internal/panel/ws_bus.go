@@ -1914,6 +1914,14 @@ func (c *Controller) busRawFrames(a *anaState, s *sv, f *engine.Frame) {
 	// record (the sampled lease's) too coarse asks for that record, the
 	// timebase's own record too coarse ends the lease for these settings.
 	own := uint32(1) << engine.PlanSRAM(s.st.TdivS).Log
+	before := [3]string{a.rawKey, a.rawFull, a.rawNo}
+	defer func() {
+		// BUS's lease decisions in the log, as they change
+		if now := [3]string{a.rawKey, a.rawFull, a.rawNo}; now != before {
+			c.logf("panel: bus lease: sampled %v full-rate %v refused %v (frame %s a sample, decimation %d, live %v: %s)",
+				a.rawKey == key, a.rawFull == key, a.rawNo == key, si(f.SampleS, "s"), f.Decimation, live, a.res.Error)
+		}
+	}()
 	switch {
 	case a.rawNo == key:
 		a.rawKey = ""
