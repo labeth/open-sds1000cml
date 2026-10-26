@@ -1889,15 +1889,16 @@ const (
 func (c *Controller) busRawFrames(a *anaState, s *sv, f *engine.Frame) {
 	key, bus := busListKey(s), busFeatureKey(s)
 	// The bus's feature as a decode measures it on a frame that resolves it
-	// (readableFeature samples, as an envelope holds the feature on one): a
-	// coarse envelope's decode of a 10 MHz SPI bus held 'OK' an alias
-	// microseconds long, and BUS sampled its records 2 us apart.
+	// (readableFeature samples, as an envelope holds the feature on one), the
+	// shortest measured for these settings: an alias is slower than the bus,
+	// never faster - a coarse envelope's decode of a 10 MHz SPI bus held 'OK'
+	// a feature microseconds long, and BUS sampled its records 4 us apart.
 	resolved := decode.FeatureSamples(a.res)
 	if f.PeakDetect {
 		resolved = decode.EnvelopeFeatureSamples(a.res) // a Wiegand pulse: its bit interval
 	}
 	if a.res.OK && f.SampleS > 0 && resolved >= readableFeature {
-		if fs := decode.FeatureSamples(a.res) * f.SampleS; fs > 0 {
+		if fs := decode.FeatureSamples(a.res) * f.SampleS; fs > 0 && (a.featKey != bus || fs < a.featS) {
 			a.featKey, a.featS, a.featEnv = bus, fs, decode.EnvelopeFeatureSamples(a.res)*f.SampleS
 		}
 	}
