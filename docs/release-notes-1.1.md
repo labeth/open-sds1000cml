@@ -68,7 +68,9 @@ power-cycle, and the factory firmware is back.
   FlexRay, ARINC 429, MIL-1553, SENT, Manchester, USB and fast-mode SPI, UART and I2C triggers, on
   images that recorded raw samples only (2.1 ms), now run on decimated records (box averages; the
   fast image picks samples), so they too trigger at any timebase; MIL-1553, SENT and USB moved to an FPGA image of their own to make
-  room. AUTO's wait no longer forces a capture the hardware has triggered (at 10 ms/div and slower the
+  room. BUS decodes as far as the record holds the bus: FlexRay to 1 ms/div, MIL-1553 and Manchester to
+  10 ms/div (their decoders read three samples a bit), and WS281x and SWIM to 10 ms/div (the qualify
+  image's BUS records pick samples instead of the precision filter, whose band flattened their bits). AUTO's wait no longer forces a capture the hardware has triggered (at 10 ms/div and slower the
   record outlasted the wait and every frame read forced).
 * **BUS trades frame rate for decoding.** Where the live view is too coarse for the bus (a slow
   timebase's envelope, or the roll view: a 115200 Bd UART at 10 ms/div), BUS reads records sampled
@@ -107,7 +109,10 @@ settings tab (the Help key), at the end of the web UI's status line and in `/api
 * **Box and picked decimation:** the packet, frame and line images decimate by box averages and the
   fast image by picking every 2^n-th sample, not with the precision filter (no room for it): their
   records alias what the filter would attenuate, and the Precision acquisition mode is not offered
-  while one of them is loaded.
+  while one of them is loaded. The qualify image's BUS records pick samples too, while a serial
+  trigger is armed. Past these timebases a bus's shortest feature spans under three of the record's
+  samples and BUS asks for a faster timebase: S/PDIF past 1 ms/div, USB full speed past 200 µs/div,
+  USB low speed past 5 ms/div, WS281x and SWIM past 10 ms/div.
 * **Serial triggers:** a value stop is refused, with the reason, where the trigger cannot match it (a
   value past the symbol trigger's 64-bit window, or among units of other lengths), and the symbol
   trigger has no error token, so the protocols on it stop on a value or by hand, not on an error.

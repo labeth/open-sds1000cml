@@ -10,7 +10,7 @@ the FPGA; the app only places the trigger point on the event.
 | `packet` | ARINC 429, CAN and FlexRay triggers; box decimation |
 | `frame` | MIL-1553, SENT and USB low-speed triggers; box decimation |
 | `line` | Manchester trigger; box decimation |
-| `qualify` | pulse width, slope time and video line triggers, and the zone trigger (four zones around the edge); the symbol trigger for buses of timed pulses (LIN, DMX512, Modbus, 1-Wire, WS281x, DHT, CEC, J1850, IR, DALI, USB PD, S/PDIF, PS/2, SWD, MDIO, Wiegand); precision decimation |
+| `qualify` | pulse width, slope time and video line triggers, and the zone trigger (four zones around the edge); the symbol trigger for buses of timed pulses (LIN, DMX512, Modbus, 1-Wire, WS281x, DHT, CEC, J1850, IR, DALI, USB PD, S/PDIF, PS/2, SWD, MDIO, Wiegand); precision decimation, or picking on asking |
 | `stacking` | FPGA super-resolution stacking engine |
 | `stream` | continuous capture for gap-free roll: decimated or peak-detect (bucket min/max) words, buffered in the SRAM ("drum") and streamed to the host through two ping-pong banks |
 | `fast` | SPI (to a 125 MHz clock), UART (to 62.5 MBd) and I²C (to high-speed mode) decoded and triggered on the samples, with the sequence trigger; decimation by picking |
@@ -25,7 +25,11 @@ extremes): each channel's 2^n samples summed and
 written as unsigned Q8.8, as the filter writes; register 30 reads 0x4258 on
 them (ADR-TRIGGER-ANY-TIMEBASE). The fast image, whose sample-domain UART
 met timing beside the box on no seed, picks every 2^n-th sample instead
-(`common/pick_decim.v`, register 30 0x5053).
+(`common/pick_decim.v`, register 30 0x5053). The qualify image keeps the
+precision filter and, asked by register 18 bit 5, records picked samples
+instead (register 30 0x5041): the BUS view's sampled records ask for them
+while a serial trigger reads the raw samples, as the filter's band (a quarter
+of the output rate) flattens a fast bus's bits (WS281x at 10 ms/div).
 
 The board around the FPGA (balls, clocks, ADCs, SRAM, GPMC bus, panel,
 configuration) is specified in

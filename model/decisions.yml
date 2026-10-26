@@ -2470,7 +2470,13 @@ decisions:
     reduces the envelope recall''s Q8.8 extremes to their integer bytes, so it adds about 330 logic elements. The
     fast image''s sample-domain UART (a 27-bit bit-time sum in one 125 MHz loop) met timing beside the box on no seed
     of 38, so the fast image picks every 2^n-th sample instead (common/pick_decim.v, register 30 reading 0x5053),
-    unfiltered: its slow uses (UART formats past 8N1, high-speed I2C, Fine) want a record that decodes.'
+    unfiltered: its slow uses (UART formats past 8N1, high-speed I2C, Fine) want a record that decodes. The qualify
+    image keeps the precision filter, whose band (a quarter of the output rate) flattened WS281x''s bits at 10ms/div
+    to the line''s mean though every 2^n-th sample still decodes them: asked by register 18 bit 5 (register 30
+    reading 0x5041) its record takes picked samples instead, the decimated triggers reading the filter''s words either
+    way (the mux on the record''s path only, for timing). BUS''s sampled records ask for picks while a serial trigger
+    reads the raw samples. FlexRay, MIL-1553 and Manchester decode from three samples a bit (box-averaged records of
+    3.1 decode every message, 2.5 none).'
   consequences:
   - 'Pulse, slope and video triggers, AUTO''s UART frame start in BUS, and Average, ERES and Precision on them run on
     decimated records at every timebase; the 200 us/div cap remains only for an image without decimation (none ships).'
@@ -2479,6 +2485,9 @@ decisions:
     records where the live envelope does not).'
   - 'A box average aliases what a CIC3 filter would attenuate; it is the decimation of the images with no room for
     the filter, named "box average" on the frames.'
+  - 'BUS decodes to where the record stops holding the bus (TestBusDecodeEndsWhereTheRecordCannotHoldIt): S/PDIF to
+    1ms/div, USB full speed to 200us/div, USB low speed to 5ms/div, WS281x, SWIM, MIL-1553 and Manchester to
+    10ms/div, FlexRay to 1ms/div.'
   - 'Top-level simulations lock both: TestQualifierDecimatedTopRTL (a pulse qualifier at /1, /16, /32 and /256) and
     TestPacketImageTopRTL''s can-error-decimated (CAN''s error trigger at /16 and /256), with tb_box_decim for the
     averages.'
