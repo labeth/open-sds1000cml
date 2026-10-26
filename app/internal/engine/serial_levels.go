@@ -81,14 +81,14 @@ func (e *Engine) learnSerialLevels(f *Frame, sc [2]chScale) {
 	line = line[:min(f.Valid, len(line))]
 	switch {
 	case p.Proto == serSPI && p.SPIClockHz <= 0:
-		if hz := clockRate(line, f.SampleS, f.PeakDetect); hz > 0 {
+		if hz := clockRate(line, f.SampleS, f.PeakDetect); hz > 0 && resolvesClock(math.Float64frombits(e.serLv.spiHz.Load()), f) {
 			e.serLv.spiHz.Store(math.Float64bits(hz))
 		}
 		if e.serLv.spiProbe.Swap(false) && e.clk.Now != nil {
 			e.serLv.spiQuiet.Store(e.clk.Now().UnixNano())
 		}
 	case p.Proto == serI2C && p.I2CClockHz <= 0:
-		if hz := clockRate(line, f.SampleS, f.PeakDetect); hz > 0 {
+		if hz := clockRate(line, f.SampleS, f.PeakDetect); hz > 0 && resolvesClock(math.Float64frombits(e.serLv.sclHz.Load()), f) {
 			e.serLv.sclHz.Store(math.Float64bits(hz))
 		}
 	case p.Proto == serUART && p.Baud <= 0:
@@ -288,6 +288,22 @@ func (e *Engine) spiQuietCheck(p SerialParams) {
 		e.serLv.spiProbe.Store(true)
 	}
 }
+
+// resolvesClock reports a frame whose clock measurement may replace a clock
+// of hz (learned before; 0: none): the converters' own samples, whose edges
+// are the bus's (a bus that slowed is measured anew), or a decimated record
+// that would resolve hz (minClockSamples samples a period). On a decimated,
+// filtered record a 10 MHz SPI clock measured as its alias, far slower: the
+// gap planned for that split nothing, and no capture triggered again (the
+// quiet check measuring again on the same records).
+// TRLC-LINKS: REQ-SDS-013, REQ-SDS-229
+func resolvesClock(hz float64, f *Frame) bool {
+	return !(hz > 0) || f.Decimation <= 1 || (f.SampleS > 0 && 1/(hz*f.SampleS) >= minClockSamples)
+}
+
+// minClockSamples is the samples a clock period spans on a frame that
+// measures it.
+const minClockSamples = 4
 
 // serialPlanParams is p as the hardware matcher takes it: without a threshold
 // of its own, the learned decoder threshold of its first line at the current

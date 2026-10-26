@@ -405,3 +405,19 @@ func TestTwoLineBusPlansEachLineLevel(t *testing.T) {
 		t.Fatalf("explicit threshold: %+v (%q)", p, why)
 	}
 }
+
+// A decimated record's clock replaces a learned SPI clock only where it
+// would resolve it: a 10 MHz clock filtered to its alias on 32 ns samples
+// keeps the 10 MHz; the full rate's samples measure a bus that slowed.
+// TRLC-LINKS: REQ-SDS-013, REQ-SDS-229
+func TestDecimatedAliasKeepsTheLearnedClock(t *testing.T) {
+	if resolvesClock(10e6, &Frame{SampleS: 32e-9, Decimation: 16}) {
+		t.Fatal("3.1 samples a 10 MHz period replaced it")
+	}
+	if !resolvesClock(10e6, &Frame{SampleS: 2e-9, Decimation: 1}) || !resolvesClock(1e6, &Frame{SampleS: 32e-9, Decimation: 16}) {
+		t.Fatal("a frame that resolves the clock kept the old")
+	}
+	if !resolvesClock(0, &Frame{SampleS: 1e-6, Decimation: 512}) {
+		t.Fatal("no clock learned: the first measurement refused")
+	}
+}

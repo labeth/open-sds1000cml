@@ -75,7 +75,8 @@ module tb_top_fast;
   repeat(20)@(negedge clk);
   // +pick: the image decimates by picking samples (pick_decim.v); else raw samples only
   check_reg(0,16'h5a52);check_reg(13,16'h000a);
-  if($test$plusargs("pick"))check_reg(30,16'h5053);else check_reg(30,16'h4e44);
+  // +precision: the general image's precision filter (no mark in register 30)
+  if($test$plusargs("pick"))check_reg(30,16'h5053);else if(!$test$plusargs("precision"))check_reg(30,16'h4e44);
   // +general: the general image's level receivers on the same words
   if($test$plusargs("general"))begin check_reg(48,16'h5502);check_reg(53,16'h4901);check_reg(64,16'h5301);end
   else begin check_reg(48,16'h5503);check_reg(53,16'h4902);check_reg(64,16'h5303);end
