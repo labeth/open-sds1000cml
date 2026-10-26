@@ -1888,7 +1888,11 @@ const (
 // TRLC-LINKS: REQ-SDS-214
 func (c *Controller) busRawFrames(a *anaState, s *sv, f *engine.Frame) {
 	key, bus := busListKey(s), busFeatureKey(s)
-	if a.res.OK && f.SampleS > 0 {
+	// The bus's feature as a decode measures it on a frame that resolves it
+	// (readableFeature samples): a coarse envelope's decode of a 10 MHz SPI
+	// bus held 'OK' an alias microseconds long, and BUS sampled its records
+	// 2 us apart.
+	if a.res.OK && f.SampleS > 0 && decode.FeatureSamples(a.res) >= readableFeature {
 		if fs := decode.FeatureSamples(a.res) * f.SampleS; fs > 0 {
 			a.featKey, a.featS, a.featEnv = bus, fs, decode.EnvelopeFeatureSamples(a.res)*f.SampleS
 		}
