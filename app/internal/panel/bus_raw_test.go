@@ -36,7 +36,8 @@ func TestBusLeasesSampledFramesToDecode(t *testing.T) {
 		t.Fatal("the envelope's refusal not recognised")
 	}
 	c.busRawFrames(a, s, env)
-	if got := eng.take(); len(got) != 1 || got[0] != rawForBus+" 10s" {
+	// the timebase (500us/div) records 32 ns at the finest: that record, as samples
+	if got := eng.take(); len(got) != 1 || got[0] != "samples 3.2e-08 10s" {
 		t.Fatalf("coarse envelope: leases %v", got)
 	}
 	if !strings.Contains(a.res.Error, "sampled records") {
@@ -44,12 +45,12 @@ func TestBusLeasesSampledFramesToDecode(t *testing.T) {
 	}
 	a.res = decode.Result{Proto: "uart", OK: true}
 	c.busRawFrames(a, s, raw)
-	if got := eng.take(); len(got) != 1 || got[0] != rawForBus+" 10s" {
+	if got := eng.take(); len(got) != 1 || got[0] != "samples 3.2e-08 10s" {
 		t.Fatalf("sampled frame decoded: leases %v, want renewed", got)
 	}
 	s.st.TdivS *= 2 // the timebase changed: its envelope is tried first
 	c.busRawFrames(a, s, raw)
-	if got := eng.take(); len(got) != 1 || got[0] != rawForBus+" 0s" {
+	if got := eng.take(); len(got) != 1 || got[0] != "samples 0 0s" {
 		t.Fatalf("settings changed: leases %v, want ended", got)
 	}
 	s.st.TdivS /= 2
@@ -62,13 +63,13 @@ func TestBusLeasesSampledFramesToDecode(t *testing.T) {
 	s.st.TdivS = 10e-3
 	a.res = decode.Result{Proto: "uart", Error: "0.3 samples/bit; need >= 3"}
 	c.busRawFrames(a, s, raw)
-	if got := eng.take(); len(got) != 1 || got[0] != rawForBus+" 10s" {
+	if got := eng.take(); len(got) != 1 || got[0] != "samples 2.56e-07 10s" {
 		t.Fatalf("coarse roll view: leases %v", got)
 	}
 	s.st.Roll = false
 	a.res = decode.Result{Proto: "uart", Error: "2.1 samples/bit; need >= 3"}
 	c.busRawFrames(a, s, raw)
-	if got := eng.take(); len(got) != 1 || got[0] != rawForBus+" 0s" {
+	if got := eng.take(); len(got) != 1 || got[0] != "samples 0 0s" {
 		t.Fatalf("sampled record too coarse: leases %v, want ended", got)
 	}
 	s.st.Roll = true
@@ -124,17 +125,19 @@ func TestBusLeasesRecordsSampledForTheBus(t *testing.T) {
 	s.st.Roll = false
 	a.res = decode.Result{Proto: "uart", Error: "2.1 samples/bit; need >= 3"}
 	c.busRawFrames(a, s, &engine.Frame{SampleS: 4e-6, Decimation: 2048})
-	if got := eng.take(); len(got) != 2 || got[0] != "samples 0 0s" || got[1] != rawForBus+" 10s" {
-		t.Fatalf("decimated records too coarse: leases %v, want the full rate", got)
+	// the full rate is 10ms/div's own record (256 ns), as samples: a raw
+	// lease read it whole and bucketed
+	if got := eng.take(); len(got) != 1 || got[0] != "samples 2.56e-07 10s" {
+		t.Fatalf("decimated records too coarse: leases %v, want the timebase's own record", got)
 	}
-	// a decimated record read under the lease before: the full rate stays
+	// a decimated record read under the lease before: the own record stays
 	c.busRawFrames(a, s, &engine.Frame{SampleS: 4e-6, Decimation: 2048})
-	if got := eng.take(); len(got) != 1 || got[0] != rawForBus+" 10s" {
-		t.Fatalf("a late decimated record: leases %v, want the full rate kept", got)
+	if got := eng.take(); len(got) != 1 || got[0] != "samples 2.56e-07 10s" {
+		t.Fatalf("a late decimated record: leases %v, want the own record kept", got)
 	}
 	// the timebase's own record (10ms/div: /128) too coarse ends it
 	c.busRawFrames(a, s, &engine.Frame{SampleS: 256e-9, Decimation: 128})
-	if got := eng.take(); len(got) != 1 || got[0] != rawForBus+" 0s" {
+	if got := eng.take(); len(got) != 1 || got[0] != "samples 0 0s" {
 		t.Fatalf("the timebase's record too coarse: leases %v, want ended", got)
 	}
 }

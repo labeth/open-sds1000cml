@@ -1918,8 +1918,8 @@ func (c *Controller) busRawFrames(a *anaState, s *sv, f *engine.Frame) {
 	defer func() {
 		// BUS's lease decisions in the log, as they change
 		if now := [3]string{a.rawKey, a.rawFull, a.rawNo}; now != before {
-			c.logf("panel: bus lease: sampled %v full-rate %v refused %v (frame %s a sample, decimation %d, live %v: %s)",
-				a.rawKey == key, a.rawFull == key, a.rawNo == key, si(f.SampleS, "s"), f.Decimation, live, a.res.Error)
+			c.logf("panel: bus lease: sampled %v full-rate %v refused %v (frame %s a sample, decimation %d, live %v: %s) key %q was %q",
+				a.rawKey == key, a.rawFull == key, a.rawNo == key, si(f.SampleS, "s"), f.Decimation, live, a.res.Error, key, before[0])
 		}
 	}()
 	switch {
@@ -1938,6 +1938,13 @@ func (c *Controller) busRawFrames(a *anaState, s *sv, f *engine.Frame) {
 	if a.rawKey == "" || !s.st.Running {
 		c.endBusRaw()
 		return
+	}
+	// The full rate where the timebase cannot record it is its own record,
+	// asked for as sampled records: a raw lease read it whole and bucketed
+	// (a 10 MHz SPI bus at 1ms/div: an envelope of 388k words every 17 s,
+	// never judged), sampled records come as samples and are.
+	if p := engine.PlanSRAM(s.st.TdivS); want == 0 && p.Log != 0 {
+		want = p.SampleS
 	}
 	c.holdBusLease(want)
 }
