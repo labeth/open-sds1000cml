@@ -55,13 +55,15 @@ func (b packetEngineBus) Read(p uint8, s uint16) (uint16, error) {
 		case 102:
 			return map[bool]uint16{true: 0x4d01}[line], nil
 		case 30:
-			return map[bool]uint16{true: 0x4258}[packet || line || frame] | map[bool]uint16{true: 0x5053}[fast], nil
+			return map[bool]uint16{true: 0x4258}[packet || line || frame] | map[bool]uint16{true: 0x5053}[fast] | map[bool]uint16{true: 0x5041}[qualify], nil
 		case 63:
 			return 0, nil
 		case 74:
 			return map[bool]uint16{true: 0x5154}[qualify], nil
 		case 75:
 			return map[bool]uint16{true: 0x000f}[qualify], nil
+		case 76:
+			return map[bool]uint16{true: 0x5359}[qualify], nil
 		case 118:
 			return map[bool]uint16{false: 0x5351}[qualify], nil
 		}
@@ -376,5 +378,32 @@ func TestFastImageTakesFastSPI(t *testing.T) {
 	e.SetSerialParams(SerialParams{Proto: serSPI, SPIClockHz: 1000000, ChA: 1, ChB: 0, MSB: true, HaveThr: true, Threshold: 128})
 	if !e.serviceImage() || b.image != "general" || strings.Join(images.loads, ",") != "fast,general" {
 		t.Fatalf("back to 1 MHz: loads %v", images.loads)
+	}
+}
+
+// The qualify image picks samples on asking, and BUS's sampled records ask
+// for them while a serial trigger reads the raw samples (a WS281x frame
+// start at 10ms/div): not without the lease, nor with the serial trigger off.
+// TRLC-LINKS: REQ-SDS-010, REQ-SDS-214
+func TestBusRecordsPickSamplesOnTheQualifyImage(t *testing.T) {
+	e, b, _ := newPacketTestEngine(t)
+	e.hardwareEnvelope = true
+	e.SetSerialParams(SerialParams{Proto: serWS281x, Baud: 800000, HaveThr: true, Threshold: 128, Pattern: []PatternElem{{Kind: patternStart}}})
+	e.SetSerialMode(SerialTrigger)
+	if !e.serviceImage() || b.image != "qualify" || !e.pickAlt || e.boxDecim || e.pickDecim {
+		t.Fatalf("qualify image %s: pick on asking %v box %v pick %v", b.image, e.pickAlt, e.boxDecim, e.pickDecim)
+	}
+	band, _ := PlanTdiv(10e-3)
+	e.band = band
+	if cfg, _, _, _, _ := e.sramConfig(); cfg.Pick {
+		t.Fatal("picked without BUS's lease")
+	}
+	e.LeaseBusSamples(104e-9, 5*time.Second)
+	if cfg, _, _, _, _ := e.sramConfig(); !cfg.Pick || cfg.DecimationLog2 == 0 || hardwareSerialName(cfg) == "" {
+		t.Fatalf("BUS's lease: pick %v decimation %d trigger %q", cfg.Pick, cfg.DecimationLog2, hardwareSerialName(cfg))
+	}
+	e.SetSerialMode(SerialOff)
+	if cfg, _, _, _, _ := e.sramConfig(); cfg.Pick {
+		t.Fatal("picked with no serial trigger: a decimated edge reads the filter's words")
 	}
 }

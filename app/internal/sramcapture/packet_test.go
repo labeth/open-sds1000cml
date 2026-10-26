@@ -250,3 +250,37 @@ func TestSequenceTriggerArm(t *testing.T) {
 		t.Fatal("sequence register written on an image without the block")
 	}
 }
+
+// The qualify image picks samples on asking (register 30 0x5041): it says so,
+// and a decimated record asked to pick sets register 18's bit 5 beside the
+// decimation; unasked, or at the full rate, the bit stays clear.
+// TRLC-LINKS: REQ-SDS-010
+func TestPickOnAsking(t *testing.T) {
+	f := frozenBus()
+	f.revision = 10
+	c := client(t, f)
+	c.bus = packetBus{f, 0, 0, 0, 0x5041}
+	if pick, err := c.PickOnAsking(); err != nil || !pick {
+		t.Fatalf("pick on asking %v %v", pick, err)
+	}
+	if box, err := c.BoxDecimation(); err != nil || box {
+		t.Fatalf("box %v %v", box, err)
+	}
+	for _, tc := range []struct {
+		log  uint8
+		pick bool
+		want uint16
+	}{{8, true, 8 | 1<<5}, {8, false, 8}, {0, true, 0}} {
+		f.flags = 4 | 16 | 32 | 64
+		if err := c.Arm(context.Background(), Config{Normal: true, PostWords: 16, DecimationLog2: tc.log, Pick: tc.pick}); err != nil {
+			t.Fatal(err)
+		}
+		if f.staged[18] != tc.want {
+			t.Fatalf("log %d pick %v: register 18 = %x, want %x", tc.log, tc.pick, f.staged[18], tc.want)
+		}
+	}
+	c.bus = packetBus{f, 0, 0, 0, 0x5053}
+	if pick, err := c.PickOnAsking(); err != nil || pick {
+		t.Fatalf("the fast image picks always, not on asking: %v %v", pick, err)
+	}
+}

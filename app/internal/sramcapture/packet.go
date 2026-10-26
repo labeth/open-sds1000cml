@@ -213,6 +213,24 @@ func (c *Capture) PickDecimation() (bool, error) {
 // pickDecimationMark is register 30 on an image decimating by picking.
 const pickDecimationMark = 0x5053
 
+// PickOnAsking reports an image that decimates by the precision filter and,
+// asked to (Config.Pick), by picking every 2^n-th sample (register 30 reads
+// 0x5041): the qualify image.
+// TRLC-LINKS: REQ-SDS-010
+func (c *Capture) PickOnAsking() (bool, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	revision, err := c.read(13)
+	if err != nil || revision != 10 {
+		return false, err
+	}
+	v, err := c.read(30)
+	return v == pickOnAskingMark, err
+}
+
+// pickOnAskingMark is register 30 on an image that picks samples on asking.
+const pickOnAskingMark = 0x5041
+
 // RawOnly reports an image without precision decimation (register 30).
 // TRLC-LINKS: REQ-SDS-010
 func (c *Capture) RawOnly() (bool, error) {

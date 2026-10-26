@@ -145,6 +145,12 @@ module acq_sram_top(
   ;
 `ifdef PRECISION
  reg [4:0] decim_request=0;
+`ifdef PICK_ALT
+ // register 18 bit 5: the record picks samples instead of filtering (below)
+ reg decim_pick_request=0;
+ (* preserve, dont_merge *) reg decim_pick=0,decim_pick_data=0;
+ always @(posedge core)if(config_idle)begin decim_pick<=decim_pick_request;decim_pick_data<=decim_pick_request;end
+`endif
  (* preserve, dont_merge *) reg [4:0] decim_log=0;
  (* preserve, dont_merge *) reg decim_active=0;
  (* preserve, dont_merge *) reg decim_data_active=0,decim_trigger_active=0;
@@ -166,11 +172,28 @@ module acq_sram_top(
 `elsif PICK_DECIM
  // The fast image: every 2^n-th sample (pick_decim.v).
  pick_decim precision(core,halfclk,mclk_in,precision_enable,decim_log,il_raw_word,il_raw_valid,precision_word,precision_valid,precision_fault);
+`elsif PICK_ALT
+ // The qualify image: the record takes the precision filter's words, or
+ // (register 18 bit 5, which BUS's sampled records ask for while a serial
+ // trigger reads the raw samples) every 2^n-th sample (pick_decim.v). The
+ // filter's band, a quarter of the output rate, flattens a fast bus's bits
+ // the samples still hold (WS281x at 10ms/div). The decimated triggers read
+ // the filter's words either way (no mux on their paths: timing).
+ wire [31:0] pick_word;wire pick_valid,pick_fault;
+ (* preserve, dont_merge *) reg pick_enable=0;
+ always @(posedge core)pick_enable<=frontend_run && decim_active && decim_pick;
+ adc_precision #(.SHARED_TAIL(1)) precision(core,halfclk,mclk_in,precision_enable,decim_request,il_raw_word,il_raw_valid,precision_word,precision_valid,precision_fault);
+ pick_decim pick(core,halfclk,mclk_in,pick_enable,decim_log,il_raw_word,il_raw_valid,pick_word,pick_valid,pick_fault);
 `else
  adc_precision #(.SHARED_TAIL(1)) precision(core,halfclk,mclk_in,precision_enable,decim_request,il_raw_word,il_raw_valid,precision_word,precision_valid,precision_fault);
 `endif
+`ifdef PICK_ALT
+ wire [31:0] selected_word=!decim_data_active ? il_raw_word : decim_pick_data ? pick_word : precision_word;
+ wire selected_valid=!decim_active ? il_raw_valid : decim_pick ? pick_valid : precision_valid;
+`else
  wire [31:0] selected_word=!decim_data_active ? il_raw_word : precision_word;
  wire selected_valid=!decim_active ? il_raw_valid : precision_valid;
+`endif
  wire [31:0] selected_trigger=!decim_trigger_active ? il_raw_word : {precision_word[31:24],precision_word[15:8],precision_word[31:24],precision_word[15:8]};
 `ifdef QUAL_TRIGGER
  // The qualifier's and the zones' own selections of the same word (their
@@ -1075,7 +1098,12 @@ module acq_sram_top(
   15:encode_enable<=wd[9:0];
 `endif
 `ifdef PRECISION
-  18:decim_request<=wd[4:0];
+  18:begin
+   decim_request<=wd[4:0];
+`ifdef PICK_ALT
+   decim_pick_request<=wd[5];
+`endif
+  end
 `endif
 `ifdef STREAM_CAPTURE
   19:stream_cfg<=wd[4:0];
@@ -1708,6 +1736,9 @@ module acq_sram_top(
 `elsif PICK_DECIM
    // the decimation picks every 2^n-th sample
    30:rd=16'h5053;
+`elsif PICK_ALT
+   // the precision filter, or every 2^n-th sample on asking (register 18 bit 5)
+   30:rd=16'h5041;
 `endif
 `else
 `ifdef PROTOCOL_SET

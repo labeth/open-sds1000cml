@@ -29,7 +29,9 @@ if(args.some(a=>!['--prepare-only','--install'].includes(a) && !/^--image=\w+$/.
 // pick: decimation by picking every 2^n-th sample (common/pick_decim.v), for
 // the fast image, whose sample-domain UART's 125 MHz loop met timing on no
 // seed of 38 beside the box averages.
-type Image={dir:string,files:string[],defines:string[],seed:number,trigger:boolean,precision:boolean,bare?:boolean,box?:boolean,pick?:boolean};
+// pickAlt: the precision filter, and picking every 2^n-th sample on asking
+// (register 18 bit 5), for BUS's sampled records on the qualify image.
+type Image={dir:string,files:string[],defines:string[],seed:number,trigger:boolean,precision:boolean,bare?:boolean,box?:boolean,pick?:boolean,pickAlt?:boolean};
 // Shared by every image (the stacking build used the same PLL text).
 const common=['record.v','transport.v','adc_unpack.v','interleave.v','panel_scan.v','pll.v','adc_pll.v',
  'gpmc_slave.v','ddio_pair.v','lane_in.v','lanemap_seed.vh'];
@@ -67,7 +69,7 @@ const images:Record<string,Image>={
  // envelope recall (the general image has no room left for them).
  // ADR-SYMBOL-TRIGGER: and the serial buses of timed pulses (symbol_trigger.v),
  // whose frames take milliseconds and want the long decimated records.
- qualify:{dir:'images/qualify',files:['qual_trigger.v','zone_qual.v','sum_edge_pair.v','symbol_trigger.v','general/precision.v','general/precision_tail.v'],defines:['QUAL_TRIGGER','SYMBOL_TRIGGER'],seed:1,trigger:true,precision:true,bare:true},
+ qualify:{dir:'images/qualify',files:['qual_trigger.v','zone_qual.v','sum_edge_pair.v','symbol_trigger.v','general/precision.v','general/precision_tail.v'],defines:['QUAL_TRIGGER','SYMBOL_TRIGGER'],seed:1,trigger:true,precision:true,bare:true,pickAlt:true},
  stacking:{dir:'images/stacking',files:['stack_engine_port.v','stack_edge_accumulator.v','stack_edge_hits.v','stack_tiled_accumulator.v',
   'stack_tile_access.v','stack_tile_transfer.v','stack_state_tile.v','stack_resample_store.v','stack_resample.v','stack_positions.v',
   'stack_interpolate.v','stack_accumulate.v','stack_bin_writer.v','stack_record_cache.v'],defines:[],seed:11,trigger:false,precision:false},
@@ -97,7 +99,7 @@ function project(file:string,text:string){writeFileSync(join(out,file),text);inp
 
 // An image may name another image's file as dir/file (shared, not copied in the tree).
 const imageFile=(f:string)=>f.includes('/') ? basename(f) : f;
-const decimator=image.box ? ['box_decim.v'] : image.pick ? ['pick_decim.v'] : [];
+const decimator=image.box ? ['box_decim.v'] : image.pick || image.pickAlt ? ['pick_decim.v'] : [];
 const sources=[...(image.trigger ? trigger : []),...image.files.map(imageFile),...decimator];
 for(const f of common)copy(join(root,'common',f),f);
 for(const f of decimator)copy(join(root,'common',f),f);
@@ -141,7 +143,7 @@ if(image.trigger){
  project('bench.sdc',(image.precision ? sdc : sdc.split('\n').filter(l=>!/precision/i.test(l)).join('\n'))+streamSdc);
  // A bare image (stream) leaves out the protocol baseline (sequence trigger,
  // protocol scratch): it triggers on nothing and needs the room at 250 MHz.
- defines=[...(image.bare ? [] : ['UART_TRIGGER','PROTOCOL_SET']),...image.defines,'INTERLEAVE','BURST_RECALL',...(image.precision || image.box || image.pick ? ['PRECISION'] : []),...(image.box ? ['BOX_DECIM'] : []),...(image.pick ? ['PICK_DECIM'] : []),'HOST_READ_FIX'];
+ defines=[...(image.bare ? [] : ['UART_TRIGGER','PROTOCOL_SET']),...image.defines,'INTERLEAVE','BURST_RECALL',...(image.precision || image.box || image.pick ? ['PRECISION'] : []),...(image.box ? ['BOX_DECIM'] : []),...(image.pick ? ['PICK_DECIM'] : []),...(image.pickAlt ? ['PICK_ALT'] : []),'HOST_READ_FIX'];
 }else{
  // Stacking: interleave and burst recall foundation plus the stacking port,
  // whose pop-on-read mailbox needs the qualified read strobe (HOST_READ_FIX).

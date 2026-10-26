@@ -69,6 +69,10 @@ module tb_top_qualify;
  // the record's trigger: the fire taken with a word written (one clock in
  // many on a decimated record)
  reg taken=0;
+ // +words: the decimated words the record takes
+`ifdef PRECISION
+ always @(posedge dut.core)if(dut.decim_active && dut.selected_valid && $test$plusargs("words"))$display("P %0d %08h",dut.frontend.n,dut.selected_word);
+`endif
  always @(posedge dut.core)if(dut.il_fire_stage && dut.step && dut.history_ready && !taken)begin taken<=1;$display("R %0d",dut.frontend.n);end
  integer cycles,nregs,pre,post;
  reg [31:0] regs[0:8191];reg [4095:0] regs_file;
@@ -77,6 +81,8 @@ module tb_top_qualify;
   repeat(20)@(negedge clk);
   check_reg(0,16'h5a52);check_reg(74,16'h5154);check_reg(76,16'h5359);check_reg(98,0);
   check_reg(48,0);check_reg(118,0);check_reg(93,0);check_reg(97,0);check_reg(102,0);
+  // +pickalt: the precision filter, or picked samples on asking
+  if($test$plusargs("pickalt"))check_reg(30,16'h5041);
   // +regs lists the "register value" writes: the levels, the table, the block.
   if(!$value$plusargs("regs=%s",regs_file) || !$value$plusargs("nregs=%d",nregs))$fatal(1,"missing registers");
   $readmemh(regs_file,regs,0,2*nregs-1);

@@ -437,6 +437,11 @@ func (e *Engine) sramConfigInto(c *sramcapture.Config) (SRAMPlan, float64, bool,
 		}
 		p = build(live)
 	}
+	// BUS's sampled records pick samples where the image can, while a serial
+	// trigger reads the raw samples (a decimated edge, pulse or zone trigger
+	// reads the filter's words): the decode reads edges, which the precision
+	// filter's band smooths away
+	c.Pick = e.pickAlt && block == blockBus && c.DecimationLog2 != 0 && hardwareSerialName(*c) != ""
 	return p, tdiv, norm, tp
 }
 
@@ -1143,12 +1148,12 @@ acquisitionLoop:
 		} else {
 			e.contentGen++
 			f.Content = e.contentGen
-			if len(f.Q1) == f.Valid && len(f.Q2) == f.Valid && bucket == 0 && e.boxDecim && m.Decimation > 1 {
+			if len(f.Q1) == f.Valid && len(f.Q2) == f.Valid && bucket == 0 && (e.boxDecim || cfg.Pick) && m.Decimation > 1 {
 				// Box averages: no CIC droop to compensate; a sinc's -3 dB
 				// at 0.443 of the output rate. Picked samples: no filter.
 				f.PassbandHz, f.BandwidthHz = .2/f.SampleS, .443/f.SampleS
 				f.Filter = "box average"
-				if e.pickDecim {
+				if e.pickDecim || cfg.Pick {
 					f.PassbandHz, f.BandwidthHz = .5/f.SampleS, .5/f.SampleS
 					f.Filter = "every 2^n-th sample"
 				}

@@ -84,29 +84,32 @@ const (
 // zero based. Cross-core analog timing is not implied by this API.
 // TRLC-LINKS: REQ-SDS-032, REQ-SDS-040
 type Config struct {
-	Qualifier         QualifierConfig         `json:"qualifier"`
-	Zones             ZoneConfig              `json:"zones"`
-	Symbol            SymbolTriggerConfig     `json:"symbol"`
-	Sequence          SequenceTriggerConfig   `json:"sequence"`
-	Packet            PacketTriggerConfig     `json:"packet"`
-	Manchester        ManchesterTriggerConfig `json:"manchester"`
-	USBLS             USBLSTriggerConfig      `json:"usbls"`
-	MIL1553           MIL1553TriggerConfig    `json:"mil1553"`
-	SENT              SENTTriggerConfig       `json:"sent"`
-	DecodedEvents     bool                    `json:"decoded_events"`
-	SPI               SPITriggerConfig        `json:"spi"`
-	I2C               I2CTriggerConfig        `json:"i2c"`
-	UART              UARTTriggerConfig       `json:"uart"`
-	Source            Source                  `json:"source"`
-	DecimationLog2    uint8                   `json:"decimation_log2"`
-	Pair              uint8                   `json:"pair"`
-	PreWords          uint32                  `json:"pre_words"`
-	PostWords         uint32                  `json:"post_words"`
-	Normal            bool                    `json:"normal"`
-	Falling           bool                    `json:"falling"`
-	TriggerChannel    uint8                   `json:"trigger_channel"`
-	TriggerLevel      uint8                   `json:"trigger_level"`
-	TriggerHysteresis uint8                   `json:"trigger_hysteresis,omitempty"`
+	Qualifier      QualifierConfig         `json:"qualifier"`
+	Zones          ZoneConfig              `json:"zones"`
+	Symbol         SymbolTriggerConfig     `json:"symbol"`
+	Sequence       SequenceTriggerConfig   `json:"sequence"`
+	Packet         PacketTriggerConfig     `json:"packet"`
+	Manchester     ManchesterTriggerConfig `json:"manchester"`
+	USBLS          USBLSTriggerConfig      `json:"usbls"`
+	MIL1553        MIL1553TriggerConfig    `json:"mil1553"`
+	SENT           SENTTriggerConfig       `json:"sent"`
+	DecodedEvents  bool                    `json:"decoded_events"`
+	SPI            SPITriggerConfig        `json:"spi"`
+	I2C            I2CTriggerConfig        `json:"i2c"`
+	UART           UARTTriggerConfig       `json:"uart"`
+	Source         Source                  `json:"source"`
+	DecimationLog2 uint8                   `json:"decimation_log2"`
+	// Pick decimates by picking every 2^n-th sample instead of the precision
+	// filter, on an image that does so on asking (PickOnAsking).
+	Pick              bool   `json:"pick,omitempty"`
+	Pair              uint8  `json:"pair"`
+	PreWords          uint32 `json:"pre_words"`
+	PostWords         uint32 `json:"post_words"`
+	Normal            bool   `json:"normal"`
+	Falling           bool   `json:"falling"`
+	TriggerChannel    uint8  `json:"trigger_channel"`
+	TriggerLevel      uint8  `json:"trigger_level"`
+	TriggerHysteresis uint8  `json:"trigger_hysteresis,omitempty"`
 	// SecondLevel slices a two-line receiver's second line (SPI's data,
 	// I2C's SDA; register 59, its band TriggerHysteresis), so the channels
 	// may sit at different offsets and V/div; 0 is TriggerLevel.
@@ -778,7 +781,11 @@ func (c *Capture) Arm(ctx context.Context, cfg Config) (err error) {
 		return fmt.Errorf("sramcapture: fabric lacks hardware UART trigger")
 	}
 	if revision >= 9 {
-		if e = c.write(18, uint16(cfg.DecimationLog2)); e != nil {
+		reg := uint16(cfg.DecimationLog2)
+		if cfg.Pick && cfg.DecimationLog2 != 0 {
+			reg |= 1 << 5 // register 18 bit 5: picked samples
+		}
+		if e = c.write(18, reg); e != nil {
 			return e
 		}
 	}

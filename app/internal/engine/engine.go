@@ -361,6 +361,10 @@ type Engine struct {
 	// pickDecim, by picking every 2^n-th sample - not the precision filter
 	// (no Precision mode, no CIC compensation).
 	boxDecim, pickDecim bool
+	// pickAlt: the loaded image picks every 2^n-th sample on asking, which
+	// BUS's sampled records ask for (the precision filter's band, a quarter
+	// of the output rate, flattened WS281x's bits at 10ms/div)
+	pickAlt bool
 	// protocolImage names the loaded protocol image ("" for general);
 	// failedImage stops reloading one after a failed load until the serial
 	// choice changes.

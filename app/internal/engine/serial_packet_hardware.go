@@ -199,6 +199,9 @@ func (e *Engine) probeSerialHardware() {
 		e.logf("pick decimation capability: %v", err)
 	}
 	e.boxDecim = e.boxDecim || e.pickDecim
+	if e.pickAlt, err = e.sram.PickOnAsking(); err != nil {
+		e.logf("pick-on-asking capability: %v", err)
+	}
 }
 
 // Protocol images (ADR-PROTOCOL-PACKET-IMAGE); "" is the general image.
