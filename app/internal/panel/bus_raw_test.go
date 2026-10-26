@@ -241,3 +241,17 @@ func TestBusKeyHoldsThroughAutoDelay(t *testing.T) {
 		t.Fatal("a delay set by hand kept the key")
 	}
 }
+
+// A decode refused for its record's sampling, in either wording: the line
+// codes' and the clocked buses'.
+// TRLC-LINKS: REQ-SDS-214
+func TestTooFewSamplesBothWordings(t *testing.T) {
+	for _, e := range []string{"1.9 samples/bit; need >= 3", "4.0 cols/clock; too few samples/bit"} {
+		if !tooFewSamples(decode.Result{Error: e}) {
+			t.Fatalf("%q not read as too few samples", e)
+		}
+	}
+	if tooFewSamples(decode.Result{Error: "no SPI frame"}) {
+		t.Fatal("a missing frame read as too few samples")
+	}
+}

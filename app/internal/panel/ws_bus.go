@@ -1980,10 +1980,13 @@ func coarseFor(a *anaState, bus string, f *engine.Frame) bool {
 // 5.6 points a 600 us unit, decoded 5 frames in 8; PJON at 1ms/div).
 const coarseFeature = 2 * readableFeature
 
-// tooFewSamples reports a decode refused for too few samples a bit.
+// tooFewSamples reports a decode refused for too few samples a bit: the
+// line codes' "n samples/bit; need >= m", the clocked buses' (I2C, SPI) "n
+// cols/clock; too few samples/bit" - unrecognised, a 10 MHz SPI bus at
+// 1ms/div read records too coarse for it on and on.
 // TRLC-LINKS: REQ-SDS-214
 func tooFewSamples(res decode.Result) bool {
-	return !res.OK && strings.Contains(res.Error, "samples/bit; need")
+	return !res.OK && (strings.Contains(res.Error, "samples/bit; need") || strings.Contains(res.Error, "too few samples/bit"))
 }
 
 // endBusRaw ends BUS's leases for the decode (busRawFrames): BUS left,
