@@ -112,7 +112,8 @@ settings tab (the Help key), at the end of the web UI's status line and in `/api
   while one of them is loaded. The qualify image's BUS records pick samples too, while a serial
   trigger is armed. Past these timebases a bus's shortest feature spans under three of the record's
   samples and BUS asks for a faster timebase: S/PDIF past 1 ms/div, USB full speed past 200 µs/div,
-  USB low speed past 5 ms/div, WS281x and SWIM past 10 ms/div.
+  USB low speed past 5 ms/div, WS281x and SWIM past 10 ms/div; a clocked bus where its clock gets
+  under three samples (a 10 MHz SPI bus past 200 µs/div, 400 kHz I2C past 20 ms/div).
 * **Serial triggers:** a value stop is refused, with the reason, where the trigger cannot match it (a
   value past the symbol trigger's 64-bit window, or among units of other lengths), and the symbol
   trigger has no error token, so the protocols on it stop on a value or by hand, not on an error.
