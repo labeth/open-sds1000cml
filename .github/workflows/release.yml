@@ -37,9 +37,11 @@ jobs:
       - name: Install iverilog
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends iverilog
 
+      # The images' top-level simulations (*TopRTL) run minutes each: past go
+      # test's ten-minute package limit (CI runs them in their own lane).
       - name: Test + vet (both modules) — a red build must not ship
         run: |
-          (cd app && go vet ./... && go test ./...)
+          (cd app && go vet ./... && go test -timeout 45m ./...)
           (cd ota && go vet ./... && go test ./...)
 
       - name: Build the USB image zip (agent + app + emergency, ARMv7)
