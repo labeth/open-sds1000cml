@@ -87,7 +87,8 @@ func DecodePS2(clk, data []uint8, colTimeS float64, cfg ClockedCfg) Result {
 	var units []int
 	good := false
 	explained := 0
-	free := false // the last frame just ended: the next may follow at once
+	firstF, lastF := -1, -1 // the first frame's first fall, the last frame's last
+	free := false           // the last frame just ended: the next may follow at once
 	for i := 0; i < len(F); i++ {
 		quiet := (i == 0 && F[0].x >= 1.4*per) || (i > 0 && F[i].x-F[i-1].x >= 1.4*per)
 		if F[i].d != 0 || !(quiet || free) || i+10 >= len(F) {
@@ -140,14 +141,23 @@ func DecodePS2(clk, data []uint8, colTimeS float64, cfg ClockedCfg) Result {
 			toks = append(toks, "ACK")
 			last++
 		}
+		if firstF < 0 {
+			firstF = i
+		}
+		lastF = last
 		i = last
 		free = true
 	}
 	if len(spans) == 0 {
 		return Result{Proto: "ps2", Error: "no PS/2 frame"}
 	}
+	// The record's ends cut a frame as often as not: the falls before the
+	// first frame and after the last, up to a frame's each, are its rest,
+	// not clocks PS/2 leaves unexplained (a keyboard's two frames, the first
+	// cut by the record's start, fell to half and the pair read as SPI).
+	cut := min(firstF, 12) + min(len(F)-1-lastF, 12)
 	res := Result{OK: good, Proto: "ps2", Spans: spans, Text: strings.Join(toks, " "), Bytes: units,
-		Thr: C.threshold, SPB: per, Cover: float64(explained) / float64(len(F))}
+		Thr: C.threshold, SPB: per, Cover: min(1, float64(explained)/float64(max(1, len(F)-cut)))}
 	if colTimeS > 0 {
 		res.Baud = int(1/(per*colTimeS) + 0.5)
 	}
@@ -398,6 +408,18 @@ func swdUnexplained(cy []swdCycle) int {
 	return n
 }
 
+// mdioCut is the rises a record cuts off MDIO frames at its ends: before the
+// first frame's preamble and after the last frame, up to a preamble and a
+// frame each (a PHY's frame cut by the record's start fell to 0.61 of the
+// clock explained and the pair read as SPI).
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-236
+func mdioCut(firstR, lastR, n int) int {
+	if firstR < 0 {
+		return 0
+	}
+	return min(firstR, 64) + min(n-1-lastR, 64)
+}
+
 // DecodeMDIO decodes MDIO management frames (IEEE 802.3 clause 22 and 45):
 // the data line read at the clock's rises, a preamble of 16 or more ones,
 // the start (01 clause 22, 00 clause 45), the opcode, the 5-bit PHY (port)
@@ -424,6 +446,7 @@ func DecodeMDIO(mdc, mdio []uint8, colTimeS float64, cfg ClockedCfg) Result {
 	var units []int
 	good := false
 	ones, explained := 0, 0
+	firstR, lastR := -1, -1 // the first frame's preamble's first rise, the last frame's last
 	for i := 0; i < len(R); i++ {
 		if R[i].d == 1 {
 			ones++
@@ -477,6 +500,10 @@ func DecodeMDIO(mdc, mdio []uint8, colTimeS float64, cfg ClockedCfg) Result {
 		toks = append(toks, dtxt)
 		units = append(units, data)
 		explained += 32
+		if firstR < 0 {
+			firstR = i - pre
+		}
+		lastR = i + 31
 		i += 31
 	}
 	explained += ones // the idle after the last frame
@@ -484,7 +511,7 @@ func DecodeMDIO(mdc, mdio []uint8, colTimeS float64, cfg ClockedCfg) Result {
 		return Result{Proto: "mdio", Error: "no MDIO frame"}
 	}
 	res := Result{OK: good, Proto: "mdio", Spans: spans, Text: strings.Join(toks, " "), Bytes: units,
-		Thr: C.threshold, SPB: per, Cover: min(1, float64(explained)/float64(max(1, len(R))))}
+		Thr: C.threshold, SPB: per, Cover: min(1, float64(explained)/float64(max(1, len(R)-mdioCut(firstR, lastR, len(R)))))}
 	if colTimeS > 0 {
 		res.Baud = int(1/(per*colTimeS) + 0.5)
 	}

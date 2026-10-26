@@ -326,3 +326,22 @@ func TestAutoMeasuresAMessageTheScreenCut(t *testing.T) {
 		t.Fatalf("framed at %g, want 5ms/div (45 ms after the trigger)", td)
 	}
 }
+
+// AUTO in BUS reads the bus from its own captures: Average (ERES, Precision)
+// set before goes back to Normal, and the bus is found.
+// TRLC-LINKS: REQ-SDS-223
+func TestAutoInBusSetsNormalAcquisition(t *testing.T) {
+	c, eng, _ := newEnvRig(t)
+	eng.leased.Store(true)
+	eng.SetAcqMode(engine.AcqAverage)
+	c.mu.Lock()
+	c.ui.ws = wsview.Bus
+	c.mu.Unlock()
+	press(t, c, "auto")
+	if m := eng.Snapshot().AcqMode; m != engine.AcqNormal {
+		t.Fatalf("acquisition mode %d after AUTO in BUS, want Normal", m)
+	}
+	if s := c.snap(); s.decProto != framecalc.ProtoUART {
+		t.Fatalf("protocol %d after AUTO in BUS", s.decProto)
+	}
+}

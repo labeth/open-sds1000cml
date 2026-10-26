@@ -78,6 +78,38 @@ func sentDistinctFrames(spans []Span) int {
 	return len(seen)
 }
 
+// sentOnLine is r refused where its one frame (of distinct valid ones) is a
+// chance among the line's other edges: a sensor sends its frames back to
+// back, and they span the line from its first edge to its last; frames
+// spanning under half of it, one of them valid, are CRC-4's one in sixteen
+// (a Maple bus's line, cut at both ends, read as SENT).
+// TRLC-LINKS: REQ-SDS-018
+func sentOnLine(r Result, s *sliced) Result {
+	if !r.OK || sentDistinctFrames(r.Spans) >= 2 || len(s.edges) < 2 {
+		return r
+	}
+	// every frame the decode read counts, its CRC checking or not (a bus
+	// alternating bad and good CRCs): from its SYNC to its last span
+	active := s.edges[len(s.edges)-1].i - s.edges[0].i
+	covered, start, end := 0, -1, -1
+	for _, sp := range r.Spans {
+		if sp.Kind == "sync" {
+			if start >= 0 {
+				covered += end - start
+			}
+			start = sp.I0
+		}
+		end = max(end, sp.I1)
+	}
+	if start >= 0 {
+		covered += end - start
+	}
+	if active > 0 && covered*2 < active {
+		r.OK, r.Error = false, "one SENT frame among the line's other edges"
+	}
+	return r
+}
+
 // TRLC-LINKS: REQ-SDS-018
 func scoreResult(r Result) float64 {
 	if !r.OK {
@@ -355,13 +387,15 @@ func periodUniformity(edges []edge) (float64, float64) {
 	return float64(uni) / float64(len(gaps)), p
 }
 
-// pulseClock reports a clock of short pulses: its same-way edges even, one
-// phase under a third of the other (the half-period gaps then alternate,
+// pulseClock reports a clock of short pulses: its same-way edges even (seven
+// in ten: a bit-banged one holds a gap after each byte and stalls now and
+// then), one
+// phase under a quarter of its period (the half-period gaps then alternate,
 // half of them the short one). A bit-banged SCLK is one; a data line's
 // rises fall on its bits and are not even, I2C's SCL is near half duty.
 // TRLC-LINKS: REQ-SDS-018
 func (c *clockInfo) pulseClock() bool {
-	return c.ok && c.periodFrac > 0.85 && c.period > 0 && c.hp*4 < c.period && c.uniFrac > 0.35 && c.uniFrac < 0.65
+	return c.ok && c.periodFrac > 0.7 && c.period > 0 && c.hp*4 < c.period && c.uniFrac > 0.35 && c.uniFrac < 0.65
 }
 
 // clockLike is how clock-like a channel is: the evenness of its edges, or of
@@ -632,7 +666,7 @@ func Autodetect(c1, c2 []uint8, colTimeS float64, format string) Result {
 	// word parity, PID complement, strict framing), so their scoring gates make
 	// false claims on foreign signals cosmically unlikely — try every channel.
 	for _, k := range active {
-		consider(DecodeSENT(chans[k], colTimeS, SENTCfg{}), chName(k), line(k))
+		consider(sentOnLine(DecodeSENT(chans[k], colTimeS, SENTCfg{}), &clk[k].s), chName(k), line(k))
 		consider(DecodeCANFD(chans[k], colTimeS, CANFDCfg{DominantLow: true}), chName(k), line(k))
 		consider(DecodeMIL1553(chans[k], colTimeS, MIL1553Cfg{}), chName(k), line(k))
 		consider(DecodeARINC429(chans[k], colTimeS, ARINC429Cfg{}), chName(k), line(k))

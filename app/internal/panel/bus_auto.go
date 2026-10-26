@@ -105,6 +105,13 @@ func (c *Controller) runBusAuto(stop chan struct{}) {
 	c.autoClearMatch(entry)
 	entryTdiv := entry.tdiv
 	c.forgetBus()
+	// A bus is read from its own captures: an average of captures that do
+	// not repeat, ERES's and Precision's filtering smooth its edges away (the
+	// sweep saw "CH1 swings only 0.4 div" and no bus was found)
+	switch c.eng.Snapshot().AcqMode {
+	case engine.AcqAverage, engine.AcqEres, engine.AcqPrecision:
+		_ = c.setAcqMode(engine.AcqNormal)
+	}
 	if _, ok := c.autosetSweep(stop, goalBus); !ok {
 		c.cancelledAuto(stop, entry)
 		c.noSignalBus(stop)

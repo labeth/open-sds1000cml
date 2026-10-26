@@ -243,7 +243,12 @@ func scorePhys(r Result) float64 {
 		return float64(good*400 + n*3)
 	case "pdi":
 		// instructions in a row, a record's misframed characters (one that
-		// opens inside an instruction) few beside the good ones
+		// opens inside an instruction) few beside the good ones; those
+		// before the first instruction that checks are where the record
+		// opened (cut 6% in, 8 of them until the decode framed the bus)
+		if e := pdiErrorsFromFirstGood(r.Spans); e >= 0 {
+			errs = e
+		}
 		if frames < 3 || n < 6 || errs*4 > n {
 			return -1e9
 		}
@@ -270,8 +275,13 @@ func scorePhys(r Result) float64 {
 				good++
 			}
 		}
-		if good < 2 {
+		// one frame a record holds as often as two (a caliper sends one in
+		// 30 ms, the rest cut): it stands weakly, two or more as evidence
+		if good == 0 {
 			return -1e9
+		}
+		if good == 1 {
+			return 60
 		}
 		return float64(good * 150)
 	case "irmp":
@@ -397,4 +407,27 @@ func pwmTwoLevel(duty []int, tol float64) bool {
 		}
 	}
 	return true
+}
+
+// pdiErrorsFromFirstGood counts the flagged characters from the first
+// instruction whose next span checks on; -1 when none does.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-254
+func pdiErrorsFromFirstGood(spans []Span) int {
+	from := -1
+	for i, s := range spans {
+		if s.Kind == "sof" && i+1 < len(spans) && spans[i+1].Kind == "data" {
+			from = i
+			break
+		}
+	}
+	if from < 0 {
+		return -1
+	}
+	errs := 0
+	for _, s := range spans[from:] {
+		if s.Kind == "frame-error" || s.Kind == "parity-error" {
+			errs++
+		}
+	}
+	return errs
 }

@@ -267,6 +267,18 @@ func scoreProto(r Result) float64 {
 		if r.Cover < 0.8 || r.Baud > 60e6 {
 			return -1e9
 		}
+		// one transfer and no line reset is evidence random bits give: an SPI
+		// stream of bytes back to back holds a request, an OK and a data
+		// parity now and then, and outscored the SPI reading of every byte
+		resets := 0
+		for _, s := range r.Spans {
+			if s.Kind == "rw" && s.Text == "LINERESET" {
+				resets++
+			}
+		}
+		if frames < 2 && resets == 0 {
+			return float64(frames*40 + n*2 - errs*80)
+		}
 		return float64(frames*300 + n*4 - errs*80)
 	case "mdio":
 		if r.Cover < 0.8 {
