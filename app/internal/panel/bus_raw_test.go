@@ -258,3 +258,23 @@ func TestTooFewSamplesBothWordings(t *testing.T) {
 		t.Fatal("a missing frame read as too few samples")
 	}
 }
+
+// A clocked bus whose decode reports a clock over twice as slow as the one
+// measured for its settings read an alias (a 10 MHz SPI bus on 32 ns
+// samples): refused as too coarse; at the measured clock, or on a bus that
+// is not clocked, the decode stands.
+// TRLC-LINKS: REQ-SDS-214
+func TestAliasedClockIsRefused(t *testing.T) {
+	f := &engine.Frame{SampleS: 32e-9}
+	a := &anaState{featKey: "spi", featS: 50e-9, res: decode.Result{Proto: "spi", OK: true, SPB: 9}} // a 288 ns clock half
+	if !aliasedClock(a, "spi", f) {
+		t.Fatal("a clock 5.8 times slower than measured stood")
+	}
+	if a.res.SPB = 3; aliasedClock(a, "spi", f) {
+		t.Fatal("a decode at the measured clock (a 48 ns half) refused")
+	}
+	a.res = decode.Result{Proto: "pwm", OK: true, Feature: 40}
+	if aliasedClock(a, "spi", f) {
+		t.Fatal("a PWM line's run, which follows its duty, refused")
+	}
+}

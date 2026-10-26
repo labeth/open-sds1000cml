@@ -1902,6 +1902,14 @@ func (c *Controller) busRawFrames(a *anaState, s *sv, f *engine.Frame) {
 			a.featKey, a.featS, a.featEnv = bus, fs, decode.EnvelopeFeatureSamples(a.res)*f.SampleS
 		}
 	}
+	// A clocked bus decoded at a clock over twice as slow as its measured one
+	// read an alias: a 10 MHz SPI bus's record at 1ms/div (32 ns, a
+	// clock of 3.1 samples, filtered) "decoded" at a slower clock. Refused as
+	// the decoder refuses a record too coarse, so the lease and the hint
+	// follow as for one.
+	if aliasedClock(a, bus, f) {
+		a.res = decode.Result{Proto: a.res.Proto, Error: fmt.Sprintf("%.1f cols/clock; too few samples/bit", 2*a.featS/f.SampleS)}
+	}
 	live := f.PeakDetect || s.st.Roll // a view the engine reads coarser than its record
 	// Records sampled at a quarter of the feature, where the capture can
 	// decimate that finely (busFinestDecimated); else the full rate.
@@ -1947,6 +1955,15 @@ func (c *Controller) busRawFrames(a *anaState, s *sv, f *engine.Frame) {
 		want = p.SampleS
 	}
 	c.holdBusLease(want)
+}
+
+// aliasedClock reports a clocked bus's decode (I2C, SPI: their decoders
+// take the clock from the record) whose clock is over twice as slow as the
+// shortest this bus's settings measured: the record aliases it.
+// TRLC-LINKS: REQ-SDS-214
+func aliasedClock(a *anaState, bus string, f *engine.Frame) bool {
+	return a.res.OK && (a.res.Proto == "spi" || a.res.Proto == "i2c") && a.featKey == bus && a.featS > 0 && f.SampleS > 0 &&
+		decode.FeatureSamples(a.res)*f.SampleS > 2*a.featS
 }
 
 // busFinestDecimated is the finest decimated sample, in seconds (/16 of the
