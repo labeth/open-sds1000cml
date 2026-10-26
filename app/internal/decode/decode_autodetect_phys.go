@@ -65,14 +65,18 @@ func considerPhysLines(codes []uint8, colTimeS float64, format string, t lineTim
 
 // considerPhysPairs tries the two-line protocols beyond the first thirty
 // with line x as the clock (A, STEP, TCKC, SDCKA) and y the data.
+// byteBursts is x clocking whole bytes a burst (byteClocked): SPI's, never
+// PDI's, whose clock runs on through its 12-bit characters.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-256
-func considerPhysPairs(x, y []uint8, colTimeS float64, format string, tx lineTiming, consider func(Result)) {
+func considerPhysPairs(x, y []uint8, colTimeS float64, format string, tx lineTiming, byteBursts bool, consider func(Result)) {
 	cfg := ClockedCfg{Format: format}
 	consider(DecodeQuadrature(x, y, colTimeS, cfg))
 	consider(DecodeStepper(x, y, colTimeS, cfg))
 	if tx.edges >= 96 {
 		consider(DecodeSDCard(x, y, colTimeS, cfg))
-		consider(DecodePDI(x, y, colTimeS, cfg))
+		if !byteBursts {
+			consider(DecodePDI(x, y, colTimeS, cfg))
+		}
 		consider(DecodeCJTAG(x, y, colTimeS, cfg))
 	}
 	consider(DecodeMaple(x, y, colTimeS, cfg))
@@ -226,7 +230,9 @@ func scorePhys(r Result) float64 {
 		}
 		return float64(data*60 - errs*40)
 	case "sdq":
-		if frames == 0 || n < 2 || inner > 0 {
+		// bytes all ones (or zeros) are a pulse train, not a device's reply:
+		// an RFID reader's carrier read "SDQ FF FF FF ..."
+		if frames == 0 || n < 2 || inner > 0 || pulseBytes(r.Bytes) {
 			return -1e9
 		}
 		return float64(50 + 5*min(n, 20))
@@ -249,7 +255,9 @@ func scorePhys(r Result) float64 {
 		if e := pdiErrorsFromFirstGood(r.Spans); e >= 0 {
 			errs = e
 		}
-		if frames < 3 || n < 6 || errs*4 > n {
+		// two instructions do where every character from the first checks
+		// (a record cut through the first ones: STCS and LDCS gone)
+		if frames < 2 || (frames == 2 && errs > 0) || n < 6 || errs*4 > n {
 			return -1e9
 		}
 		return float64(frames*40 + n*20) // characters with parity and two stops: more than SPI reads of them

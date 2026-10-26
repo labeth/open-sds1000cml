@@ -82,14 +82,14 @@ func considerLines(codes []uint8, S *sliced, colTimeS float64, format string, ua
 		consider(DecodeJ1850(codes, colTimeS, J1850Cfg{Format: format}))
 	}
 	if t.maxRun >= 8000 && t.minRun >= 250 {
-		consider(DecodeIRNEC(codes, colTimeS, ir))
+		consider(loneFrameOnLine(DecodeIRNEC(codes, colTimeS, ir), S))
 	}
 	if t.maxRun >= 2000 && t.minRun >= 300 {
-		consider(DecodeIRSIRC(codes, colTimeS, ir))
-		consider(DecodeIRRC5(codes, colTimeS, ir))
+		consider(loneFrameOnLine(DecodeIRSIRC(codes, colTimeS, ir), S))
+		consider(loneFrameOnLine(DecodeIRRC5(codes, colTimeS, ir), S))
 	}
 	if t.maxRun >= 2000 && t.minRun >= 250 {
-		consider(DecodeIRRC6(codes, colTimeS, ir))
+		consider(loneFrameOnLine(DecodeIRRC6(codes, colTimeS, ir), S))
 	}
 	if t.maxRun >= 1500 && t.minRun >= 300 && t.minRun <= 520 {
 		consider(DecodeDALI(codes, colTimeS, DALICfg{Format: format}))
@@ -123,11 +123,12 @@ func considerPairs(c1, c2 []uint8, sl [2]*sliced, colTimeS float64, format strin
 		ta := timingOf(S[a], colTimeS)
 		cfg := ClockedCfg{Format: format}
 		x, y := chans[a], chans[1-a]
+		byteBursts := byteClocked(sl[a])
 		if clockLine < 0 || clockLine == a {
 			if ta.minRun >= 20 && ta.minRun <= 120 {
 				consider(DecodePS2(x, y, colTimeS, cfg), a)
 			}
-			if !byteClocked(sl[a]) { // whole bytes a burst: SPI's
+			if !byteBursts { // whole bytes a burst: SPI's
 				consider(DecodeSWD(x, y, colTimeS, cfg), a)
 			}
 			consider(DecodeMDIO(x, y, colTimeS, cfg), a)
@@ -135,7 +136,7 @@ func considerPairs(c1, c2 []uint8, sl [2]*sliced, colTimeS float64, format strin
 		if ta.maxHigh >= 200 {
 			consider(DecodeWiegand(x, y, colTimeS, cfg), a)
 		}
-		considerPhysPairs(x, y, colTimeS, format, ta, func(r Result) { consider(r, a) })
+		considerPhysPairs(x, y, colTimeS, format, ta, byteBursts, func(r Result) { consider(r, a) })
 	}
 }
 
@@ -282,6 +283,17 @@ func scoreProto(r Result) float64 {
 		return float64(frames*300 + n*4 - errs*80)
 	case "mdio":
 		if r.Cover < 0.8 {
+			return -1e9
+		}
+		// a clause 45 frame to device 0 (reserved, IEEE 802.3 45.2) is no
+		// PHY's: an SWD line idling high reads as a preamble, its requests
+		// as "ADDR 00.00"
+		for i, s := range r.Spans {
+			if s.Kind == "sof" && i+1 < len(r.Spans) && r.Spans[i+1].Val>>12&3 == 0 && r.Spans[i+1].Val&0x1f == 0 {
+				frames--
+			}
+		}
+		if frames <= 0 {
 			return -1e9
 		}
 		return float64(frames*300 - errs*100)

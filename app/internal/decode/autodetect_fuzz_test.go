@@ -38,6 +38,49 @@ type fuzzCase struct {
 // 1553 word is Manchester.
 var autoAlike = map[string][]string{
 	"lin": {"uart"}, "dmx512": {"uart"}, "midi": {"uart"}, "modbus": {"uart"}, "mil1553": {"manchester"},
+	"ook": {"manchester"}, "em4100": {"manchester"}, // an Oregon sensor's and a tag's bits are Manchester
+}
+
+// clockedOwn are the clocked two-line buses' own decoders: where a cut
+// leaves none of the bus's frames whole, SPI's reading of the clocked bits
+// is the record's best (fuzzOne).
+var clockedOwn = map[string]func(a, b []uint8, ct float64, cfg ClockedCfg) Result{
+	"ps2": DecodePS2, "swd": DecodeSWD, "mdio": DecodeMDIO, "pdi": DecodePDI, "sdcard": DecodeSDCard,
+	"maple": DecodeMaple, "cjtag": DecodeCJTAG, "caliper": DecodeCaliper,
+}
+
+// ownFrames reports a capture on which the bus's own decoder reads frames
+// the detection would keep (a score above none), either line its first.
+// TRLC-LINKS: REQ-SDS-018
+func ownFrames(c detectCase) bool {
+	d := clockedOwn[c.proto]
+	if d == nil {
+		return true
+	}
+	for _, ord := range [][2][]uint8{{c.c1, c.c2}, {c.c2, c.c1}} {
+		if scoreResult(d(ord[0], ord[1], c.colT, ClockedCfg{Format: "hex"})) > 0 {
+			return true
+		}
+	}
+	return false
+}
+
+// cleanNamesIt reports a mutation whose cut and decimation alone (no noise,
+// edge, swing, offset or distractor) leave the bus named: where they do not,
+// the cut left a fragment another bus reads as well (a T55xx command cut to
+// six clean characters of 4800 Bd), no detection's fault.
+// TRLC-LINKS: REQ-SDS-018
+func cleanNamesIt(c detectCase, m fuzzMutation) bool {
+	clean := fuzzMutation{edge: 1, swing: 1, cutHead: m.cutHead, cutTail: m.cutTail, decim: m.decim}
+	n := len(c.c1)
+	h, tl := int(clean.cutHead*float64(n)), int(clean.cutTail*float64(n))
+	if h+tl > n*7/10 {
+		tl = n*7/10 - h
+	}
+	rng := rand.New(rand.NewSource(0))
+	a, b := shapeChannel(rng, c.c1[h:n-tl], clean), shapeChannel(rng, c.c2[h:n-tl], clean)
+	r, _ := AutodetectFast(a, b, c.colT*float64(max(1, m.decim)), "hex")
+	return r.OK && r.Proto == c.proto
 }
 
 // TRLC-LINKS: REQ-SDS-018
@@ -190,6 +233,18 @@ func fuzzCorpus(t testing.TB) []fuzzCase {
 		a, b := l.a.codes(), l.b.codes()
 		cs = append(cs, fuzzCase{detectCase: detectCase{fmt.Sprintf("I2C %g", hz), a, b, 1 / sr, "i2c", 0}})
 		cs = append(cs, fuzzCase{detectCase: detectCase{fmt.Sprintf("I2C %g swapped", hz), b, a, 1 / sr, "i2c", 1}})
+	}
+	// a capture whose bus a clean cut of 5% at either end hides (two frames,
+	// the first or the last of them cut) is at the edge of what names it
+	for i := range cs {
+		c := &cs[i]
+		n := len(c.c1)
+		for _, cut := range [][2]int{{n / 20, n}, {0, n - n/20}, {n / 20, n - n/20}} {
+			r, _ := AutodetectFast(c.c1[cut[0]:cut[1]], c.c2[cut[0]:cut[1]], c.colT, "hex")
+			if !r.OK || r.Proto != c.proto {
+				c.fragile = true
+			}
+		}
 	}
 	return cs
 }
@@ -393,7 +448,7 @@ func fuzzOne(corpus []fuzzCase, seed int64) (fuzzFinding, bool) {
 	// shortest feature, as the scope's search keeps it (panel decimatedStands)
 	stands := m.decim <= 1 || FeatureSamples(r) >= 6
 	switch {
-	case named && stands && r.Proto != c.proto && !alikeName(c.proto, r.Proto):
+	case named && stands && r.Proto != c.proto && !alikeName(c.proto, r.Proto) && cleanNamesIt(c.detectCase, m):
 		rule := "named another bus (heavy)"
 		if m.mild || m.moderate {
 			rule = "named another bus"

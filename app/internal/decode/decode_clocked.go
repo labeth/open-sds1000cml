@@ -3,6 +3,7 @@ package decode
 
 import (
 	"fmt"
+	"math"
 	"sort"
 	"strings"
 )
@@ -189,6 +190,7 @@ func DecodeSWD(clk, dio []uint8, colTimeS float64, cfg ClockedCfg) Result {
 	if why != "" {
 		return Result{Proto: "swd", Error: why}
 	}
+	D := sliceChannel(dio, cfg.ThresholdB, cfg.HaveThrB)
 	// cycles: a fall and the rise after it
 	var cy []swdCycle
 	for k := 0; k+1 < len(E); k++ {
@@ -261,6 +263,9 @@ func DecodeSWD(clk, dio []uint8, colTimeS float64, cfg ClockedCfg) Result {
 		ack := tb(c+9) | tb(c+10)<<1 | tb(c+11)<<2
 		if !parOK || (ack != 1 && ack != 2 && ack != 4) {
 			continue // not a request a target answered
+		}
+		if swdRequestRaces(D, cy[c:c+8], per) {
+			continue // its bits read where they change: no host's
 		}
 		rw := map[int]string{0: "W", 1: "R"}[rnw]
 		ap := map[int]string{0: "DP", 1: "AP"}[apdp]
@@ -395,6 +400,30 @@ func swdSteady(cy []swdCycle, per float64) bool {
 // swdTransferCycles is the longest SWD transfer: an 8-bit request, the
 // turnaround, a 3-bit acknowledge, a turnaround, 32 data bits and parity.
 const swdTransferCycles = 46
+
+// swdRequestRaces reports a request whose SWDIO changes within an eighth of
+// a period of a rise it is read at (cy its eight cycles, per the period). A
+// host moves SWDIO at the fall, half a period from the rise; data that moves
+// at the rise is a bus launching it there (SPI with its clock at 80% duty),
+// read now as one bit and now as the other, and its "requests" come and go
+// with a millivolt of noise.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-236
+func swdRequestRaces(D sliced, cy []swdCycle, per float64) bool {
+	if !D.ok || len(cy) == 0 || !(per > 0) {
+		return false
+	}
+	lo, hi := cy[0].xf, cy[len(cy)-1].xr+per/8
+	j := sort.Search(len(D.edges), func(k int) bool { return D.edges[k].x >= lo })
+	for ; j < len(D.edges) && D.edges[j].x <= hi; j++ {
+		x := D.edges[j].x
+		for _, y := range cy {
+			if math.Abs(x-y.xr) < per/8 {
+				return true
+			}
+		}
+	}
+	return false
+}
 
 // swdUnexplained counts a transfer's cycles not counted as idle already.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-236

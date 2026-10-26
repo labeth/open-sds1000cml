@@ -110,6 +110,33 @@ func sentOnLine(r Result, s *sliced) Result {
 	return r
 }
 
+// loneFrameOnLine is r refused where it read one frame ("sof") and that
+// frame spans under half of the line from its first edge to its last: a
+// remote repeats its frames and a sensor sends them back to back, so one
+// frame among a line's other edges is the protocol's chance match (an
+// Oregon sensor's bursts, cut, read as one RC-5 frame).
+// TRLC-LINKS: REQ-SDS-018
+func loneFrameOnLine(r Result, s *sliced) Result {
+	if !r.OK || len(s.edges) < 2 {
+		return r
+	}
+	frames, from, to := 0, -1, -1
+	for _, sp := range r.Spans {
+		if sp.Kind == "sof" {
+			frames++
+			if from < 0 {
+				from = sp.I0
+			}
+		}
+		to = max(to, sp.I1)
+	}
+	active := s.edges[len(s.edges)-1].i - s.edges[0].i
+	if frames == 1 && from >= 0 && active > 0 && (to-from)*2 < active {
+		r.OK, r.Error = false, "one "+r.Proto+" frame among the line's other edges"
+	}
+	return r
+}
+
 // TRLC-LINKS: REQ-SDS-018
 func scoreResult(r Result) float64 {
 	if !r.OK {
@@ -180,13 +207,20 @@ func scoreResult(r Result) float64 {
 		if len(r.Bytes) < 8 && !std {
 			return -1e9
 		}
-		// Bytes of all zeros and all ones at a rate no UART uses are a pulse
-		// train read as one: a 1-Wire bus's slots at 500us/div, "UART 141887
-		// Bd" of 29 such bytes, outscored its reset and ROM command.
-		if !std && pulseBytes(r.Bytes) {
+		// Bytes of all zeros and all ones are a pulse train read as one, at
+		// any rate: a 1-Wire bus's slots at 500us/div, "UART 141887 Bd" of 29
+		// such bytes, outscored its reset and ROM command; a Wiegand reader's
+		// pulses read "UART 19200 8N1", FF a byte
+		if pulseBytes(r.Bytes) {
 			return -1e9
 		}
 		c := kinds("frame-error", "parity-error")
+		// A UART at a rate none uses frames clean (an ESP8266's 74880 Bd boot
+		// log does): misframed bytes there are another line's (an IR remote's
+		// pulses read "UART 1777 Bd", one byte in twelve misframed)
+		if !std && c[0] > 0 {
+			return -1e9
+		}
 		// Over a fifth of the bytes misframed is another protocol read as UART,
 		// at an odd rate (an undersampled SENT: "UART 45701 Bd") or a standard
 		// one (part of a CAN frame: "UART 500000 8N1", 3 bytes, 1 misframed).
