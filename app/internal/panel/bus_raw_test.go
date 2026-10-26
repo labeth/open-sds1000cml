@@ -199,3 +199,26 @@ func TestBusLeasesWhereTheViewIsTooCoarseForTheBus(t *testing.T) {
 		t.Fatalf("a fine view: leases %v", got)
 	}
 }
+
+// A live envelope whose decode fails reads sampled records while the bus's
+// shortest feature spans under coarseFeature of its points (Sony SIRC at
+// 20ms/div: 5.6 points a unit), not when it decodes, not past that, and not
+// for a bus never decoded at these settings.
+// TRLC-LINKS: REQ-SDS-214
+func TestCoarseEnvelopeFailureReadsSampledRecords(t *testing.T) {
+	f := &engine.Frame{SampleS: 107e-6}
+	a := &anaState{featKey: "sirc", featEnv: 600e-6, res: decode.Result{Proto: "irsirc", Error: "no complete SIRC frame"}}
+	if !coarseFor(a, "sirc", f) {
+		t.Fatal("5.6 points a unit, failing: the live view")
+	}
+	if a.res.OK = true; coarseFor(a, "sirc", f) {
+		t.Fatal("a decode that holds took sampled records")
+	}
+	a.res.OK = false
+	if coarseFor(a, "other", f) {
+		t.Fatal("a bus never decoded at these settings took sampled records")
+	}
+	if a.featEnv = 1.2e-3; coarseFor(a, "sirc", f) {
+		t.Fatal("11 points a unit: the decoder's own failure, not the view's")
+	}
+}

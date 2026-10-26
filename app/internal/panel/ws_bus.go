@@ -1957,13 +1957,20 @@ func (c *Controller) holdBusLease(sampleS float64) {
 
 // coarseFor reports a live frame that did not decode and whose points are
 // too far apart for the bus as its last decode measured it (under
-// readableFeature points in its shortest feature as an envelope holds it,
+// coarseFeature points in its shortest feature as an envelope holds it,
 // featEnv), whatever the decoder said: a SENT frame at 2ms/div read "no
 // SENT frame", not its resolution.
 // TRLC-LINKS: REQ-SDS-214
 func coarseFor(a *anaState, bus string, f *engine.Frame) bool {
-	return !a.res.OK && a.featKey == bus && a.featEnv > 0 && f.SampleS > 0 && a.featEnv/f.SampleS < readableFeature
+	return !a.res.OK && a.featKey == bus && a.featEnv > 0 && f.SampleS > 0 && a.featEnv/f.SampleS < coarseFeature
 }
+
+// coarseFeature is the points of a live envelope in the bus's shortest
+// feature under which a decode that fails reads sampled records instead:
+// twice readableFeature, as the decoders that check their pulses' widths
+// fail on a bucket's misplaced edges well over it (Sony SIRC at 20ms/div,
+// 5.6 points a 600 us unit, decoded 5 frames in 8; PJON at 1ms/div).
+const coarseFeature = 2 * readableFeature
 
 // tooFewSamples reports a decode refused for too few samples a bit.
 // TRLC-LINKS: REQ-SDS-214
