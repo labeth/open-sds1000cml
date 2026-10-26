@@ -36,8 +36,9 @@ jobs:
 
       # The web browser E2E self-skips when Playwright is absent, so the offline
       # suite (engine, front end, LCD, panel, measure, SCPI, web guardrails) runs.
+      # The images' top-level simulations (*TopRTL) run in the rtl-sim lane.
       - name: test
-        run: go test ./...
+        run: go test -skip 'TopRTL' ./...
 
   # Second lane: node + Playwright Chromium installed, so the browser e2e,
   # node JS, and Go<->JS parity suites actually RUN. CI_REQUIRE_BROWSER=1 turns
@@ -165,6 +166,15 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends iverilog
       - name: RTL testbenches
         run: fpga/sim.sh
+      # The images' top levels driven by the app's models (decimated records,
+      # every protocol trigger): minutes of simulation each.
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: app/go.mod
+          cache: false
+      - name: Top-level simulations
+        working-directory: app
+        run: go test -timeout 30m -run 'TopRTL' ./internal/engine/ ./internal/decode/
 
   # The engineering model (model/) must validate without errors: requirements,
   # catalog, and every function's TRLC-LINKS across the tree. engdoc exits
