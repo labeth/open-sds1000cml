@@ -222,3 +222,22 @@ func TestCoarseEnvelopeFailureReadsSampledRecords(t *testing.T) {
 		t.Fatal("11 points a unit: the decoder's own failure, not the view's")
 	}
 }
+
+// The packet list and BUS's leases belong to SPI's data delay as set: Auto's,
+// re-measured on every full-rate record, keeps the key; a delay set by hand
+// is the key's own.
+// TRLC-LINKS: REQ-SDS-214, REQ-SDS-230
+func TestBusKeyHoldsThroughAutoDelay(t *testing.T) {
+	s := &sv{decProto: framecalc.ProtoSPI, decDelayAuto: true}
+	s.spiEye = decode.SPIEye{PeriodS: 100e-9, DelayS: 12.4e-9}
+	k := busListKey(s)
+	s.spiEye.DelayS = 12.9e-9
+	if busListKey(s) != k {
+		t.Fatal("a re-measured Auto delay changed the key")
+	}
+	s.decDelayAuto, s.decDelayNs = false, 5
+	k = busListKey(s)
+	if s.decDelayNs = 7; busListKey(s) == k {
+		t.Fatal("a delay set by hand kept the key")
+	}
+}

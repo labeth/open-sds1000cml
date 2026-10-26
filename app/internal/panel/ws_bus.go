@@ -49,9 +49,17 @@ func eyeRows() int { return (480 - wsDefs[wsview.Bus].plotTop - 12) / 2 }
 func busDecoding(s *sv) bool { return s.decProto != framecalc.ProtoOff }
 
 // busListKey is what the packet list belongs to: a change starts it over.
+// SPI's data delay counts as set: Auto's, re-measured on every full-rate
+// record, moved by a fraction of a nanosecond and started the list over and
+// ended BUS's full-rate lease mid-read (a 10 MHz bus at 10us/div decoded
+// only the frames that happened to be full-rate).
 // TRLC-LINKS: REQ-SDS-214
 func busListKey(s *sv) string {
-	return fmt.Sprint(s.decProto, s.decBaud, s.decChA, s.decChB, s.decCPOL, s.decCPHA, s.decLSB, s.st.TdivS, s.spiDelayNs(),
+	delay := any(s.decDelayNs)
+	if s.decDelayAuto {
+		delay = "auto"
+	}
+	return fmt.Sprint(s.decProto, s.decBaud, s.decChA, s.decChB, s.decCPOL, s.decCPHA, s.decLSB, s.st.TdivS, delay,
 		s.decLayer, s.decLayerAddr, s.decLayerDir, s.decParity, s.decInv)
 }
 
