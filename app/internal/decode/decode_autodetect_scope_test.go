@@ -53,6 +53,10 @@ var scopeCaptures = []scopeCapture{
 	{"scope_caliper_search_5ms.json.gz", "caliper", 0},
 	// a SWIM transaction from its address on (the window opens inside it)
 	{"scope_swim_raw_50us.json.gz", "swim", 0},
+	// a Nokia 3310 display's PCD8544 driven bit-banged at 1 MHz (clock C2: 125
+	// ns low pulses, the data set well before each; the record opens 3
+	// clocks into a byte): read as an 8 MBd UART, then as SWD
+	{"scope_pcd8544_bitbang_50us.json.gz", "spi", 1},
 }
 
 // TestScopeRFIDStandsDecimated: a reader's commands found on the envelope

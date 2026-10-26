@@ -279,9 +279,14 @@ func scoreResult(r Result) float64 {
 type clockInfo struct {
 	ok      bool
 	uniFrac float64
-	edges   int
-	hp      float64 // dominant half-period in samples
-	s       sliced
+	// periodFrac is the fraction of same-way edge gaps (rise to rise, fall to
+	// fall) at the dominant period, period that period in samples: a clock
+	// of any duty, where uniFrac halves with short pulses (a bit-banged 1 MHz
+	// SCLK, 125 ns low, read 0.50)
+	periodFrac, period float64
+	edges              int
+	hp                 float64 // dominant half-period in samples
+	s                  sliced
 }
 
 // clockScore measures how clock-like a channel is, robust to idle gaps: the
@@ -311,7 +316,62 @@ func clockScore(codes []uint8) clockInfo {
 			uni++
 		}
 	}
-	return clockInfo{ok: true, uniFrac: float64(uni) / float64(len(gaps)), edges: len(s.edges), hp: hp, s: s}
+	pf, period := periodUniformity(s.edges)
+	return clockInfo{ok: true, uniFrac: float64(uni) / float64(len(gaps)), periodFrac: pf, period: period, edges: len(s.edges), hp: hp, s: s}
+}
+
+// periodUniformity is the fraction of same-way edge gaps (rise to rise, fall
+// to fall) within 15% of their dominant one (a low percentile, as clockScore
+// takes it: robust to the idle between bytes), and that gap.
+// TRLC-LINKS: REQ-SDS-018
+func periodUniformity(edges []edge) (float64, float64) {
+	var gaps []int
+	last := [2]int{-1, -1}
+	for _, e := range edges {
+		d := 0
+		if e.dir > 0 {
+			d = 1
+		}
+		if last[d] >= 0 {
+			gaps = append(gaps, e.i-last[d])
+		}
+		last[d] = e.i
+	}
+	if len(gaps) < 4 {
+		return 0, 0
+	}
+	sorted := append([]int(nil), gaps...)
+	sort.Ints(sorted)
+	p := float64(sorted[len(sorted)*20/100])
+	if p <= 0 {
+		return 0, 0
+	}
+	tol, uni := math.Max(0.15*p, 2.5), 0
+	for _, g := range gaps {
+		if math.Abs(float64(g)-p) <= tol {
+			uni++
+		}
+	}
+	return float64(uni) / float64(len(gaps)), p
+}
+
+// pulseClock reports a clock of short pulses: its same-way edges even, one
+// phase under a third of the other (the half-period gaps then alternate,
+// half of them the short one). A bit-banged SCLK is one; a data line's
+// rises fall on its bits and are not even, I2C's SCL is near half duty.
+// TRLC-LINKS: REQ-SDS-018
+func (c *clockInfo) pulseClock() bool {
+	return c.ok && c.periodFrac > 0.85 && c.period > 0 && c.hp*4 < c.period && c.uniFrac > 0.35 && c.uniFrac < 0.65
+}
+
+// clockLike is how clock-like a channel is: the evenness of its edges, or of
+// its same-way edges for a clock of short pulses (pulseClock).
+// TRLC-LINKS: REQ-SDS-018
+func (c *clockInfo) clockLike() float64 {
+	if c.pulseClock() {
+		return c.periodFrac
+	}
+	return c.uniFrac
 }
 
 // midPhaseData is the share of the data line's edges that sit away from every
@@ -518,7 +578,7 @@ func Autodetect(c1, c2 []uint8, colTimeS float64, format string) Result {
 	}
 	line := func(k int) Roles { return Roles{ChA: k, ChB: 1 - k} }
 
-	u0, u1 := clk[0].uniFrac, clk[1].uniFrac
+	u0, u1 := clk[0].clockLike(), clk[1].clockLike()
 	hi, lo := math.Max(u0, u1), math.Min(u0, u1)
 	clockedPair := len(active) >= 2 && hi > 0.72 && hi > lo+0.12
 	// A clock beside a line it does not clock is no clocked bus: a UART next to
@@ -540,7 +600,8 @@ func Autodetect(c1, c2 []uint8, colTimeS float64, format string) Result {
 	// Manchester. Real Manchester data mixes T/2 and T gaps.
 	isClocky := func(k int) bool {
 		c := clk[k]
-		return (c.uniFrac > 0.78 && c.edges >= 40) || (c.uniFrac >= 0.95 && c.edges >= 10)
+		u := c.clockLike()
+		return (u > 0.78 && c.edges >= 40) || (u >= 0.95 && c.edges >= 10)
 	}
 
 	// UART — async single-wire. Skip on a clocked pair (that's SPI) or a lone clock
@@ -612,8 +673,12 @@ func Autodetect(c1, c2 []uint8, colTimeS float64, format string) Result {
 				ci = 1
 			}
 			di := 1 - ci
-			if midPhaseData(&clk[ci], &clk[di].s) > 0.5 {
-				return best // data moves between clock edges: I2C-like, never SPI
+			// data moving between the clock's edges is I2C-like, never SPI -
+			// but for a clock of short pulses: bit-banged SPI sets its data
+			// well before each one (a PCD8544 display at 1 MHz), and I2C's SCL
+			// is near half duty
+			if midPhaseData(&clk[ci], &clk[di].s) > 0.5 && !clk[ci].pulseClock() {
+				return best
 			}
 			cpol := idleLevel(&clk[ci].s)
 			// Data launched on the falling edge is sampled on the rising one
@@ -683,7 +748,8 @@ func pulseBytes(b []int) bool {
 // byteClocked reports a clock line whose bursts each hold whole bytes: two or
 // more bursts between idle gaps, every one a multiple of 8 pulses and none
 // what an I2C transfer clocks (9 a byte, plus a rise for its STOP and its
-// repeated STARTs). That is SPI clocking
+// repeated STARTs; a set of bursts that all may be I2C's says nothing).
+// That is SPI clocking
 // bytes out; I2C and SWD read on it only by chance (SPI mode 3, its data
 // changing while the clock rests high between transfers, read as I2C STARTs;
 // short transfers as SWD requests with an OK). A burst the record cuts at
@@ -725,17 +791,31 @@ func byteClocked(s *sliced) bool {
 	if len(bursts) > 0 && s.n-rise[len(rise)-1] < 4*med { // and ended inside the last
 		bursts = bursts[:len(bursts)-1]
 	}
+	// a first or last burst that is no whole bytes is one the record cut,
+	// though the record began or ended in a gap between its bytes (a
+	// bit-banged display's 3 clocks of a byte, the gap before them longer
+	// than the split): left out where whole bursts remain beside it
+	if len(bursts) >= 3 && bursts[0]%8 != 0 {
+		bursts = bursts[1:]
+	}
+	if len(bursts) >= 3 && bursts[len(bursts)-1]%8 != 0 {
+		bursts = bursts[:len(bursts)-1]
+	}
 	if len(bursts) < 2 {
 		return false
 	}
+	// I2C clocks 9 a byte, plus a rise for its STOP and one for a repeated
+	// START: a burst 0 to 3 past a multiple of 9 may be I2C. Whole bytes in
+	// every burst are SPI unless every one of them may be I2C (48 clocks, six
+	// SPI bytes, is five I2C bytes and a STOP and a START).
+	notI2C := false
 	for _, b := range bursts {
-		// I2C clocks 9 a byte, plus a rise for its STOP and one for a
-		// repeated START: a burst 0 to 3 past a multiple of 9 may be I2C
-		if b%8 != 0 || b%9 <= 3 {
+		if b%8 != 0 {
 			return false
 		}
+		notI2C = notI2C || b%9 > 3
 	}
-	return true
+	return notI2C
 }
 
 // quickMedianInts is the median of v (reordering a copy).
