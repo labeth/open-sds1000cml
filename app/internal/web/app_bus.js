@@ -42,6 +42,7 @@ function busOnDecode() {
   if (dcfg.layer && typeof layerApply === "function") busLive = layerApply(dcfg.layer, r.proto, busLive, { addr: dcfg.layerAddr, dir: dcfg.layerDir });
   busPk.update(busLive);
   busRenderTable();
+  if (typeof visOnDecode === "function") visOnDecode();
 }
 
 // busShownRows is what the packet table lists: the complete packets kept, or,
@@ -184,10 +185,14 @@ function busSetView(v, byScope) {
   ws.busView = v;
   $("busView").value = v;
   for (const el of document.querySelectorAll("#p-packets .bview")) el.hidden = el.dataset.view !== v;
-  $("pkTitle").textContent = { packets: "Packets", log: "Decode log", eye: "Eye diagram", stream: "Stream" }[v];
+  $("pkTitle").textContent = { packets: "Packets", log: "Decode log", eye: "Eye diagram", stream: "Stream", visual: "Visual" }[v];
   if (v === "eye") busEyeOn(); else busEyeOff();
   busRoom(v === "eye");
   if (v === "packets") { busRenderedV = -1; busRenderTable(); }
+  if (v === "visual" && typeof visDraw === "function") {
+    if (!vis.s || vis.proto !== dcfg.proto) visReset();
+    visSide(true); setTimeout(() => visDraw(true), 30);
+  }
   if (!byScope && v === "stream") busAskStream(true);
   if (!byScope && was === "stream" && v !== "stream") busAskStream(false);
   busScopeStream();
@@ -293,7 +298,8 @@ async function busScopeStream() {
   if (busStreamAsk && (on === busStreamAsk.on || Date.now() > busStreamAsk.until)) busStreamAsk = null;
   if (!busStreamAsk && on !== busScopeWas) {
     busScopeWas = on;
-    if (on && ws.busView !== "stream") busSetView("stream", true);
+    // the Visual view follows the scope's stream itself: it stays
+    if (on && ws.busView !== "stream" && ws.busView !== "visual") busSetView("stream", true);
     else if (!on && ws.busView === "stream") busSetView("packets", true);
   }
   const d = st && st.panel && st.panel.Display;

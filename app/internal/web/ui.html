@@ -215,7 +215,7 @@
 
 <section class="pane" id="p-packets" data-title="Packets">
   <div class="ph"><span class="pt" id="pkTitle">Packets</span><span class="ps" id="decodeCount"></span><span class="pa">
-    <span class="seg xs" id="busView" aria-label="BUS view" aria-keyshortcuts="Alt+2" data-value="packets"><button data-value="packets">Packets</button><button data-value="log">Log</button><button data-value="eye">Eye</button><button data-value="stream">Stream</button></span>
+    <span class="seg xs" id="busView" aria-label="BUS view" aria-keyshortcuts="Alt+2" data-value="packets"><button data-value="packets">Packets</button><button data-value="log">Log</button><button data-value="eye">Eye</button><button data-value="stream">Stream</button><button data-value="visual">Visual</button></span>
   </span></div>
   <div class="pb">
     <div class="bview" data-view="packets">
@@ -239,6 +239,13 @@
       <div id="captureCard">
         <div class="r"><span class="sub">Captured <span id="captureCount"></span></span><button type="button" id="capLive" class="xs ok" hidden>● live</button><button type="button" id="capCopy" class="xs">Copy</button><button type="button" id="capClear" class="xs">Clear</button></div>
         <div id="captureList" class="scroll-list"></div>
+      </div>
+    </div>
+    <div class="bview visview" data-view="visual" hidden>
+      <div class="r"><span id="visTitle" class="pt">Visual</span></div>
+      <div class="visgrid">
+        <canvas id="visCv" class="viscv" aria-label="the bus drawn as what it carries"></canvas>
+        <div id="visSide" class="visside"></div>
       </div>
     </div>
     <div class="bview eyeview" data-view="eye" hidden>
@@ -656,6 +663,9 @@
 <script src="sound.js"></script>
 <script src="sound_worklet.js"></script>
 <script src="sound_client.js"></script>
+<script src="visual.js"></script>
+<script src="audio_decode.js"></script>
+<script src="midi_synth.js"></script>
 <!-- The client, in load order: shared state first, then the UI primitives and
      pure helpers, then the orchestration/transport core, then one file per
      feature (its functions AND its event wiring together), then the
@@ -681,6 +691,7 @@
 <script src="app_precision.js"></script>
 <script src="app_ws.js"></script>         <!-- workspaces: layout, switching, keys, help -->
 <script src="app_bus.js"></script>        <!-- BUS: auto-decode, packets, eye view -->
+<script src="app_visual.js"></script>     <!-- BUS Visual: the bus drawn, MIDI sound, digital audio -->
 <script src="app_spectrum.js"></script>   <!-- SPECTRUM: peaks, THD, readout, time trace -->
 <script src="app_measure.js"></script>    <!-- MEASURE: statistics, values, cursors -->
 <script src="app_compare.js"></script>    <!-- COMPARE: references, difference, master -->

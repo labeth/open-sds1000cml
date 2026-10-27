@@ -226,6 +226,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/stream/lines", s.hStreamLines)
 	mux.HandleFunc("GET /api/stream/lines.bin", s.hStreamLinesBin)
 	mux.HandleFunc("GET /api/stream/window", s.hStreamWindow)
+	mux.HandleFunc("GET /api/record.bin", s.hRecord)
 	mux.HandleFunc("/api/zones", s.hZones)
 	mux.HandleFunc("/api/serial", s.hSerial)
 	mux.HandleFunc("GET /api/serial/protocols", func(w http.ResponseWriter, r *http.Request) { writeJSON(w, engine.SerialDecoderList()) })

@@ -4699,3 +4699,55 @@ requirements:
     take_scope streams again; AUTO ends the lease before its sweep, which reads only real captures; a headless page
     and phone show "paused - the scope is in use" with Take the scope, which streams again; the other tabs never
     lease.
+- id: REQ-SDS-278
+  title: The bus drawn as what it carries
+  text: The instrument shall show a decoded bus in the web page's BUS Visual view as what its data means, namely a
+    MIDI keyboard with a piano roll, a DMX512 universe's levels, a PS/2 keyboard's keys and typed text or a mouse's
+    moves and buttons, an LED strip's colours, an IR remote's buttons, a PWM line's duty with a servo's angle, an
+    encoder's or stepper's position and speed, a caliper's reading, the DCF77 time, a UART's terminal, the USB PD
+    offers, request and contract, Wiegand cards, CAN signals from a DBC file and a protocol layer's values, from
+    each capture's decode, or gap-free from the scope's stream for the byte-wise buses.
+  status: draft
+  category: functional
+  appliesTo:
+  - FU-WEB-VISUAL
+  - FU-WEB-APP-VISUAL
+  - FU-WEB-APP-BUS
+  verificationMethods:
+  - test
+  verificationCriteria: visual.test.cjs reads MIDI and DMX512 waveforms, the scope's PS/2, IR NEC, Wiegand, caliper
+    and USB PD captures, PWM, a servo, a keyboard, a mouse, an LED strip, DCF77, a stepper, a terminal, CAN with a
+    DBC file and a layer's notes into the state the view draws, each figure as sent; on the scope the Visual view
+    of each bench bus shows its data.
+- id: REQ-SDS-279
+  title: Hear the MIDI bus
+  text: The instrument shall play a decoded MIDI bus's notes in the web page, with each channel's program choosing
+    the voice, channel 10 drums, volume, expression, sustain and pitch bend acting, the notes spaced as on the bus,
+    a volume and an all-notes-off, and a note whose note-off a gap lost ending by itself.
+  status: draft
+  category: functional
+  appliesTo:
+  - FU-WEB-VISUAL
+  - FU-WEB-APP-VISUAL
+  verificationMethods:
+  - test
+  verificationCriteria: visual.test.cjs's MIDI stream yields the synth's events in order (two notes on, one off,
+    a controller, a program, a drum, a bend) and notes held past the limit end; the browser test plays them.
+- id: REQ-SDS-280
+  title: Digital audio off the bus
+  text: The instrument shall serve a whole sampled record of both channels at a sample interval a page asks for and
+    decode digital audio from it in the web page, namely S/PDIF, I2S or left-justified audio read off its word
+    select and data with the bit clock recovered, or PDM from a microphone's clock and data, reporting each
+    channel's rate, level, peak, clipping, DC and the bits its words use, drawing the waveforms and playing the
+    audio looped.
+  status: draft
+  category: functional
+  appliesTo:
+  - FU-APP-WEB
+  - FU-WEB-VISUAL
+  - FU-WEB-APP-VISUAL
+  verificationMethods:
+  - test
+  verificationCriteria: /api/record.bin serves a record sampled as finely as asked after the envelope frames, and a
+    timeout that says why where none comes; visual.test.cjs reads I2S, S/PDIF and PDM carrying a sine back with the
+    rate, the level and the samples as sent; on the scope a bench audio bus decodes from a captured record.
