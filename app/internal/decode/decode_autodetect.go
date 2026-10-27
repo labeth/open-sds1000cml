@@ -4,6 +4,7 @@ package decode
 import (
 	"fmt"
 	"math"
+	"math/bits"
 	"slices"
 	"sort"
 )
@@ -211,7 +212,7 @@ func scoreResult(r Result) float64 {
 		// any rate: a 1-Wire bus's slots at 500us/div, "UART 141887 Bd" of 29
 		// such bytes, outscored its reset and ROM command; a Wiegand reader's
 		// pulses read "UART 19200 8N1", FF a byte
-		if pulseBytes(r.Bytes) {
+		if pulseBytes(r.Bytes) || clockOrPulseBytes(r.Bytes) {
 			return -1e9
 		}
 		c := kinds("frame-error", "parity-error")
@@ -685,6 +686,20 @@ func Autodetect(c1, c2 []uint8, colTimeS float64, format string) Result {
 				consider(ru, chName(k), line(k))
 			}
 		}
+	} else {
+		// A clock that keeps step with a UART (a square at its bit rate)
+		// locks the pair: the data line is still a UART where it frames
+		// clean at a rate UARTs use, eight bytes and more, every stop bit
+		// checked - which an SPI bus's data does by chance one time in 256
+		k := 0
+		if u1 < u0 {
+			k = 1
+		}
+		if ru := DecodeUART(chans[k], colTimeS, UARTCfg{Bits: 8, Parity: "none", Format: format}); ru.OK && len(ru.Bytes) >= 8 &&
+			nearStandardBaud(float64(ru.Baud), 0.03) && ru.count("frame-error")[0] == 0 {
+			uartBaud[k] = float64(ru.Baud)
+			consider(ru, chName(k), line(k))
+		}
 	}
 	// Manchester — heuristic like UART, and a bare square wave IS valid
 	// constant-bit Manchester, so apply the same clock suppression: never claim
@@ -707,7 +722,14 @@ func Autodetect(c1, c2 []uint8, colTimeS float64, format string) Result {
 		consider(DecodeUSBLS(chans[k], colTimeS, USBLSCfg{}), chName(k), line(k))
 		consider(DecodeFlexRay(chans[k], colTimeS, FlexRayCfg{}), chName(k), line(k))
 		// LIN through S/PDIF, each by its own check (decode_autodetect_proto.go)
-		considerLines(chans[k], &clk[k].s, colTimeS, format, uartBaud[k], func(r Result) { consider(r, chName(k), line(k)) })
+		considerLines(chans[k], &clk[k].s, colTimeS, format, uartBaud[k], func(r Result) {
+			// the line that clocks the other is a clock, its duty moved
+			// by noise and slow edges: no PWM
+			if r.Proto == "pwm" && locked && clk[k].clockLike() > clk[1-k].clockLike() {
+				return
+			}
+			consider(r, chName(k), line(k))
+		})
 	}
 	if len(active) >= 2 && !freeClock { // PS/2, SWD, MDIO, Wiegand: clock (D0) and data (D1) either way round
 		clockLine := -1 // a clocked pair's clock: PS/2, SWD and MDIO are clocked by it, not by its data
@@ -718,6 +740,14 @@ func Autodetect(c1, c2 []uint8, colTimeS float64, format string) Result {
 			}
 		}
 		considerPairs(c1, c2, [2]*sliced{&clk[0].s, &clk[1].s}, colTimeS, format, clockLine, func(r Result, a int) {
+			// MDIO moves at MDC's rise, the station's bits and the PHY's
+			// alike: a line that keeps that place no better than now and
+			// then (an IR code beside a square) carries no MDIO frame
+			if r.Proto == "mdio" {
+				if share, n := phaseLock(&clk[a], &clk[1-a].s); n >= 12 && share < 0.8 {
+					return
+				}
+			}
 			consider(r, "CLK "+chName(a)+" DATA "+chName(1-a), Roles{ChA: a, ChB: 1 - a})
 		})
 	}
@@ -859,6 +889,57 @@ func i2cAckedTransfers(r Result) int {
 		return 0
 	}
 	return n
+}
+
+// clockOrPulseBytes reports a UART reading of eight bytes or more that is a
+// clock or a pulse train: seven in ten 55 (a square at half the rate, a
+// cJTAG probe's TCKC under noise), or eight in ten holding one 0 bit at
+// most (a line of short low pulses, a Wiegand reader's, each read as a
+// start bit and a byte of ones).
+// TRLC-LINKS: REQ-SDS-018
+func clockOrPulseBytes(b []int) bool {
+	if len(b) < 8 {
+		return false
+	}
+	sq, pulse := 0, 0
+	for _, v := range b {
+		v &= 0xff
+		if v == 0x55 {
+			sq++
+		}
+		if bits.OnesCount8(uint8(v)) >= 7 {
+			pulse++
+		}
+	}
+	return sq*10 >= len(b)*7 || pulse*10 >= len(b)*8
+}
+
+// periodicBits reports bytes whose bits, LSB first in order, repeat with a
+// period of eight bits or fewer through nine tenths of them: a square wave
+// read as a line code (Miller's "92 24 49" over and over), no data.
+// TRLC-LINKS: REQ-SDS-018
+func periodicBits(b []int) bool {
+	var bs []int
+	for _, v := range b {
+		for k := 0; k < 8; k++ {
+			bs = append(bs, v>>k&1)
+		}
+	}
+	if len(bs) < 48 {
+		return false
+	}
+	for p := 1; p <= 8; p++ {
+		same := 0
+		for i := p; i < len(bs); i++ {
+			if bs[i] == bs[i-p] {
+				same++
+			}
+		}
+		if same*10 >= (len(bs)-p)*9 {
+			return true
+		}
+	}
+	return false
 }
 
 // pulseBytes reports bytes that are each all zeros or all ones.

@@ -145,9 +145,9 @@ func considerPairs(c1, c2 []uint8, sl [2]*sliced, colTimeS float64, format strin
 	}
 }
 
-// swdStands reports an SWD reading that holds: one with two transfers or
-// a line reset does; a lone transfer's request and acknowledge must read
-// the same with SWDIO (d, its slicing) cut at 40% and at 60% of its swing.
+// swdStands reports an SWD reading that holds: one with four transfers or
+// a line reset does; fewer must read the same requests and acknowledges
+// with SWDIO (d, its slicing) cut at 40% and at 60% of its swing.
 // A target drives them rail to rail, and only a data bit the record caught
 // changing may read either way; another bus's bits that hold a request, an
 // OK and both parities by chance shift into some other request (or none)
@@ -166,12 +166,17 @@ func swdStands(r Result, clk, dio []uint8, colTimeS float64, cfg ClockedCfg, d *
 			resets++
 		}
 	}
-	if frames >= 2 || resets > 0 {
+	if frames >= 4 || resets > 0 {
 		return true
 	}
-	head := func(x Result) string { // the request and its acknowledge
-		f := strings.Fields(x.Text)
-		return strings.Join(f[:min(2, len(f))], " ")
+	head := func(x Result) string { // the requests and their acknowledges
+		var f []string
+		for _, s := range x.Spans {
+			if s.Kind == "data" && (s.Text == "OK" || s.Text == "WAIT" || s.Text == "FAULT" || strings.HasPrefix(s.Text, "R") || strings.HasPrefix(s.Text, "W")) {
+				f = append(f, s.Text)
+			}
+		}
+		return strings.Join(f, " ")
 	}
 	for _, f := range []float64{0.4, 0.6} {
 		c := cfg
@@ -246,6 +251,11 @@ func scoreProto(r Result) float64 {
 		}
 		return float64(good*200 + n*10 - errs*80)
 	case "ws281x":
+		// at an LED chain's rate: 800 kHz, or 400 kHz for a WS2811's slow
+		// mode (a 125 kHz RFID carrier beside a square read as its bits)
+		if r.Baud < 250e3 || r.Baud > 1.2e6 {
+			return -1e9
+		}
 		return float64(frames*100 + n*20)
 	case "dht":
 		good := data / 5

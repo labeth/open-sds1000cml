@@ -112,7 +112,11 @@ func scorePhys(r Result) float64 {
 				turns++
 			}
 		}
-		if n < 8 || ups == 0 || ups == n || turns*4 > n || !(r.Feature > 0) || r.Feature > 0.35*r.SPB || r.Cover > 0.25 {
+		// STEP pulses a sample wide or more (a narrower one is noise's
+		// sliver of a clock's high), and a step rate a driver takes: an A4988 steps at up to 500 kHz, a
+		// DRV8825 at 250 kHz; a train of 1 MHz and more is a bus's clock
+		// (SWD's, MDIO's at 2.5 MHz) its noise and slow edges cut short
+		if n < 8 || ups == 0 || ups == n || turns*4 > n || !(r.Feature >= 1) || r.Feature > 0.35*r.SPB || r.Cover > 0.25 || r.Baud > 800e3 {
 			return -1e9
 		}
 		return float64(25 * min(n, 40))
@@ -164,7 +168,7 @@ func scorePhys(r Result) float64 {
 	case "miller":
 		// modified Miller's pauses, or a classic line's bit-and-a-half
 		// spacings (Manchester and NRZ have none)
-		if frames < 2 || inner > 0 || (!r.Inverted && r.Cover < 0.15) {
+		if frames < 2 || inner > 0 || (!r.Inverted && r.Cover < 0.15) || periodicBits(r.Bytes) {
 			return -1e9
 		}
 		return float64(frames*100 + n*4)
@@ -270,7 +274,9 @@ func scorePhys(r Result) float64 {
 		}
 		// an escape and the activation code after it stand alone: a short
 		// record of a slow probe holds the escape and no whole scan
-		if !strings.Contains(r.Text, "ESC6") || r.Cover < 0.8 {
+		// and a probe's clock: under 100 Hz it is a line of seconds
+		// (DCF77's pulses) whose neighbour's noise read as an escape
+		if !strings.Contains(r.Text, "ESC6") || r.Cover < 0.8 || (r.Baud > 0 && r.Baud < 100) {
 			return -1e9
 		}
 		// an escape (six data edges within one clock high) is no I2C
