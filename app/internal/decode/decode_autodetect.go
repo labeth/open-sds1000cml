@@ -722,8 +722,10 @@ func Autodetect(c1, c2 []uint8, colTimeS float64, format string) Result {
 		})
 	}
 	if len(active) >= 2 && !freeClock {
+		var i2cRead [2]Result                          // each line read as SCL
 		for _, ord := range [][2]int{{0, 1}, {1, 0}} { // I2C: scoring resolves SCL/SDA order
 			r := DecodeI2C(chans[ord[0]], chans[ord[1]], colTimeS, I2CCfg{Format: format})
+			i2cRead[ord[0]] = r
 			if r.SPB > 0 && r.SPB*colTimeS < i2cMinClockS {
 				continue
 			}
@@ -733,10 +735,16 @@ func Autodetect(c1, c2 []uint8, colTimeS float64, format string) Result {
 			if byteClocked(&clk[ord[0]].s) { // whole bytes a burst: SPI, not 9 clocks a byte
 				continue
 			}
-			// SCL is a clock, stretched now and then: a line whose edges
-			// keep no half period (an RC-5 code beside a random line read
-			// as SCL and SDA) clocks no I2C
-			if clk[ord[0]].clockLike() < 0.35 {
+			// SCL is a clock near half duty, stretched now and then: a line
+			// whose edges keep no half period (an RC-5 code beside a random
+			// line read as SCL and SDA) or a clock of short pulses (DCF77's)
+			// clocks no I2C
+			if clk[ord[0]].clockLike() < 0.35 || clk[ord[0]].pulseClock() {
+				continue
+			}
+			// and SDA moves at one delay into SCL low: a line that keeps no
+			// place in its cycle (DCF77's pulses beside a square) is no SDA
+			if share, n := phaseLock(&clk[ord[0]], &clk[ord[1]].s); n >= 12 && share < 0.6 {
 				continue
 			}
 			consider(r, "SCL "+chName(ord[0])+" SDA "+chName(ord[1]), Roles{ChA: ord[0], ChB: ord[1]})
@@ -752,6 +760,12 @@ func Autodetect(c1, c2 []uint8, colTimeS float64, format string) Result {
 			// well before each one (a PCD8544 display at 1 MHz), and I2C's SCL
 			// is near half duty
 			if midPhaseData(&clk[ci], &clk[di].s) > 0.5 && !clk[ci].pulseClock() {
+				return best
+			}
+			// addressed I2C transfers that a device acknowledged, each ended
+			// by a STOP: an I2C bus that noise kept from its own checks (an
+			// ACK read as a NAK), never SPI - which reads bytes off any pair
+			if i2cAckedTransfers(i2cRead[ci]) >= 2 {
 				return best
 			}
 			cpol := idleLevel(&clk[ci].s)
@@ -806,6 +820,45 @@ func nearStandardBaud(baud, tol float64) bool {
 		}
 	}
 	return false
+}
+
+// i2cAckedTransfers counts an I2C reading's whole transfers: an address a
+// device acknowledged, a byte or more after it, a NAK on the last byte at
+// most (a master reading ends so), and a STOP. None where STARTs with no
+// address after them outnumber the addresses (data edges while a clock
+// rests high, as scoreResult reads them).
+// TRLC-LINKS: REQ-SDS-018
+func i2cAckedTransfers(r Result) int {
+	n, addrs, starts := 0, 0, 0
+	open, datas, nak := false, 0, false
+	for k, s := range r.Spans {
+		switch s.Kind {
+		case "addr":
+			addrs++
+			open, datas, nak = k+2 < len(r.Spans) && r.Spans[k+2].Kind == "ack", 0, false
+		case "data":
+			if nak { // a byte after a NAK: no master's
+				open = false
+			}
+			datas++
+		case "nak":
+			if datas > 0 {
+				nak = true
+			}
+		case "start":
+			starts++
+			open = false
+		case "stop":
+			if open && datas > 0 {
+				n++
+			}
+			open = false
+		}
+	}
+	if bare := starts - addrs; bare > 4 && bare > addrs {
+		return 0
+	}
+	return n
 }
 
 // pulseBytes reports bytes that are each all zeros or all ones.

@@ -428,6 +428,21 @@ func TestJSDecoderParity(t *testing.T) {
 			}
 		}
 	}
+	// I2C on noisy lines, its spikes filtered (i2cDeglitch), either way round
+	{
+		rng := rand.New(rand.NewSource(11))
+		for _, hz := range []float64{100e3, 400e3} {
+			sr := 50 * hz
+			l := fuzzI2C(rng, hz, sr, 6)
+			c := detectCase{"i2c", l.a.codes(), l.b.codes(), 1 / sr, "i2c", 0}
+			for it := 0; it < 8*parityMult(); it++ {
+				mc, _ := fuzzMutate(rng, c)
+				for _, o := range [][2][]uint8{{mc.c1, mc.c2}, {mc.c2, mc.c1}} {
+					add2("i2c", o[0], o[1], mc.colT, jsCfg{}, DecodeI2C(o[0], o[1], mc.colT, I2CCfg{}))
+				}
+			}
+		}
+	}
 
 	dir := t.TempDir()
 	jf := filepath.Join(dir, "vecs.json")

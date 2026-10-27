@@ -37,6 +37,51 @@ type SPICfg struct {
 	DataDelay float64
 }
 
+// i2cGlitch is the longest run an I2C line holds as a spike: an eighth of
+// SCL's middle rise-to-rise gap (edges its edges), in samples. A bit holds
+// SDA a whole clock and SCL near half of one; the bus's devices filter out
+// spikes (50 ns in Fast-mode) that a noisy line otherwise reads as a START
+// and a STOP while SCL is high.
+// TRLC-LINKS: REQ-SDS-018
+func i2cGlitch(edges []edge) int {
+	var gaps []int
+	last := -1
+	for _, e := range edges {
+		if e.dir > 0 {
+			if last >= 0 {
+				gaps = append(gaps, e.i-last)
+			}
+			last = e.i
+		}
+	}
+	if len(gaps) == 0 {
+		return 0
+	}
+	sort.Ints(gaps)
+	return gaps[len(gaps)/2] / 8
+}
+
+// i2cDeglitch gives a line's runs shorter than g samples, between two runs
+// of the other level, the level before them.
+// TRLC-LINKS: REQ-SDS-018
+func i2cDeglitch(level []int8, g int) {
+	if g < 2 {
+		return
+	}
+	for i := 0; i < len(level); {
+		j := i
+		for j < len(level) && level[j] == level[i] {
+			j++
+		}
+		if i > 0 && j < len(level) && j-i < g && level[i-1] >= 0 && level[j] >= 0 && level[i] >= 0 {
+			for k := i; k < j; k++ {
+				level[k] = level[i-1]
+			}
+		}
+		i = j
+	}
+}
+
 // DecodeI2C decodes I2C given SCL + SDA codes (decode.js decodeI2C).
 // TRLC-LINKS: REQ-SDS-018
 func DecodeI2C(scl, sda []uint8, colTimeS float64, cfg I2CCfg) Result {
@@ -84,6 +129,9 @@ func DecodeI2C(scl, sda []uint8, colTimeS float64, cfg I2CCfg) Result {
 	inTxn, expectAddr := false, false
 	bitCount, val, bitStart := 0, 0, 0
 	clLevel, daLevel := CL.levels(), DA.levels()
+	g := i2cGlitch(clEdges)
+	i2cDeglitch(clLevel, g)
+	i2cDeglitch(daLevel, g)
 	for i := 0; i < n; i++ {
 		l, d := int(clLevel[i]), int(daLevel[i])
 		pcl, pda := cl, da

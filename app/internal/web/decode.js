@@ -493,6 +493,40 @@ function uartAnchorChain(S, cfg, spb, dataBits, guard, idle, frameAt) {
   return chain;
 }
 
+// i2cGlitch: the longest run an I2C line holds as a spike, an eighth of
+// SCL's middle rise-to-rise gap (decode_i2c_spi.go i2cGlitch).
+// TRLC-LINKS: REQ-SDS-018
+function i2cGlitch(edges) {
+  const gaps = [];
+  let last = -1;
+  for (const e of edges) {
+    if (e.dir > 0) {
+      if (last >= 0) gaps.push(e.i - last);
+      last = e.i;
+    }
+  }
+  if (gaps.length === 0) return 0;
+  const sorted = Int32Array.from(gaps).sort();
+  return Math.floor(sorted[sorted.length >> 1] / 8);
+}
+
+// i2cDeglitch: a line's runs shorter than g samples, between two runs of
+// the other level, take the level before them (decode_i2c_spi.go
+// i2cDeglitch).
+// TRLC-LINKS: REQ-SDS-018
+function i2cDeglitch(level, g) {
+  if (g < 2) return level;
+  for (let i = 0; i < level.length;) {
+    let j = i;
+    while (j < level.length && level[j] === level[i]) j++;
+    if (i > 0 && j < level.length && j - i < g && level[i - 1] >= 0 && level[j] >= 0 && level[i] >= 0) {
+      for (let k = i; k < j; k++) level[k] = level[i - 1];
+    }
+    i = j;
+  }
+  return level;
+}
+
 // TRLC-LINKS: REQ-SDS-018
 function decodeI2C(scl, sda, colTimeS, cfg) {
   cfg = cfg || {};
@@ -512,10 +546,13 @@ function decodeI2C(scl, sda, colTimeS, cfg) {
   const colsPerClock = minEdgeGap(CL.edges.filter(e => e.i < n), d => d > 0);
   if (colsPerClock < 3) return fail("i2c", colsPerClock.toFixed(1) + " cols/clock; too few samples/bit", { colsPerClock });
 
+  const g = i2cGlitch(CL.edges.filter(e => e.i < n));
+  const clLevel = i2cDeglitch(Int8Array.from(CL.level), g);
+  const daLevel = i2cDeglitch(Int8Array.from(DA.level), g);
   const spans = [], bytes = [], toks = [];
   let cl = -1, da = -1, inTxn = false, expectAddr = false, bitCount = 0, val = 0, bitStart = 0;
   for (let i = 0; i < n; i++) {
-    const l = CL.level[i], d = DA.level[i];
+    const l = clLevel[i], d = daLevel[i];
     if (l < 0 || d < 0) { cl = -1; da = -1; continue; }
     const pcl = cl, pda = da; cl = l; da = d;
     if (pcl < 0 || pda < 0) continue;
