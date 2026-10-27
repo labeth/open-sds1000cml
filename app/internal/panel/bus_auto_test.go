@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"open-sds/app/internal/analog"
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/panel/framecalc"
 	"open-sds/app/internal/panel/wsview"
@@ -327,13 +328,18 @@ func TestAutoMeasuresAMessageTheScreenCut(t *testing.T) {
 	}
 }
 
-// AUTO in BUS reads the bus from its own captures: Average (ERES, Precision)
-// set before goes back to Normal, and the bus is found.
+// AUTO in BUS reads the bus from its own captures, at DC: Average (ERES,
+// Precision) set before goes back to Normal, AC coupling to DC, and the bus
+// is found.
 // TRLC-LINKS: REQ-SDS-223
 func TestAutoInBusSetsNormalAcquisition(t *testing.T) {
 	c, eng, _ := newEnvRig(t)
 	eng.leased.Store(true)
 	eng.SetAcqMode(engine.AcqAverage)
+	if c.fe == nil {
+		t.Fatal("no front end")
+	}
+	_ = c.fe.SetCoupling(1, analog.CplAC)
 	c.mu.Lock()
 	c.ui.ws = wsview.Bus
 	c.mu.Unlock()
@@ -343,5 +349,8 @@ func TestAutoInBusSetsNormalAcquisition(t *testing.T) {
 	}
 	if s := c.snap(); s.decProto != framecalc.ProtoUART {
 		t.Fatalf("protocol %d after AUTO in BUS", s.decProto)
+	}
+	if c.fe.Coupling(1) != analog.CplDC {
+		t.Fatalf("C2 coupling %d after AUTO in BUS, want DC", c.fe.Coupling(1))
 	}
 }

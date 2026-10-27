@@ -33,6 +33,10 @@ func TestNoBusNamesASmallSwing(t *testing.T) {
 	if n := c.View().Notice; !strings.Contains(n, "CH1 swings only 0.4 div") || !strings.Contains(n, "AUTO") {
 		t.Fatalf("a small swing: notice %q", n)
 	}
+	// after AUTO in BUS, which fitted the vertical, not AUTO again
+	if n := c.smallSwing(true); !strings.Contains(n, "CH1 swings only 0.4 div") || strings.Contains(n, "AUTO") || !strings.Contains(n, "probe factor") {
+		t.Fatalf("a small swing after AUTO: notice %q", n)
+	}
 
 	c, eng, _ = newC(t)
 	c.SetFrameSource(func(fn func(*engine.Frame)) {

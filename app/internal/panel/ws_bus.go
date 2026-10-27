@@ -1460,9 +1460,12 @@ const (
 // smallSwing names a channel whose signal swings too little at its V/div for
 // the detection to slice it (a 3.3 V bus through a 10x probe set as 1x, as
 // Default setup leaves it): "" when none does. The search found no bus, but
-// "check the connection" would send the owner the wrong way.
+// "check the connection" would send the owner the wrong way. After AUTO in
+// BUS (auto), which fitted the vertical already, the advice is the probe
+// factor or V/DIV: "AUTO brings it up" sent the owner back to the key just
+// pressed (a 10x probe set as 1x).
 // TRLC-LINKS: REQ-SDS-214
-func (c *Controller) smallSwing() string {
+func (c *Controller) smallSwing(auto bool) string {
 	if c.frameFn == nil {
 		return ""
 	}
@@ -1482,7 +1485,11 @@ func (c *Controller) smallSwing() string {
 			}
 			lo, hi := codePercentile(&h, n, 0.02), codePercentile(&h, n, 0.98)
 			if sw := hi - lo; sw >= smallSwingSeen && sw < smallSwingCodes {
-				note = fmt.Sprintf("no bus found: CH%d swings only %.1f div - AUTO (or V/DIV) brings it up", ch+1, float64(sw)/25)
+				fix := "AUTO (or V/DIV) brings it up"
+				if auto {
+					fix = "check its probe factor (1x, 10x) or V/DIV"
+				}
+				note = fmt.Sprintf("no bus found: CH%d swings only %.1f div - %s", ch+1, float64(sw)/25, fix)
 				return
 			}
 		}
@@ -1650,7 +1657,7 @@ func (c *Controller) runDetect() {
 		if frame != 0 {
 			tdivNote += "; " + c.frameBus(decode.EnvelopeFeatureSamples(res)*sampleS, frame == busFrameAuto)
 		}
-	} else if small := c.smallSwing(); small != "" {
+	} else if small := c.smallSwing(frame == busFrameAuto); small != "" {
 		none = c.noBusNote(small)
 	} else if prev == framecalc.ProtoOff {
 		none = c.noBusNote("no bus found on CH1 or CH2 - decode stays off")

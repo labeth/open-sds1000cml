@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"open-sds/app/internal/analog"
 	"open-sds/app/internal/decode"
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/panel/framecalc"
@@ -111,6 +112,17 @@ func (c *Controller) runBusAuto(stop chan struct{}) {
 	switch c.eng.Snapshot().AcqMode {
 	case engine.AcqAverage, engine.AcqEres, engine.AcqPrecision:
 		_ = c.setAcqMode(engine.AcqNormal)
+	}
+	// and at DC: AC coupling moves a line's level with its duty, off the
+	// rails the slicer finds (a 10 MHz SPI clock's bursts, AC-coupled behind
+	// a 10x probe set as 1x, sliced at 0.7 div and lost one AUTO in three),
+	// and GND shows no line at all
+	if c.fe != nil {
+		for ch := 0; ch < 2; ch++ {
+			if c.fe.Coupling(ch) != analog.CplDC {
+				_ = c.setCoupling(ch, analog.CplDC)
+			}
+		}
 	}
 	if _, ok := c.autosetSweep(stop, goalBus); !ok {
 		c.cancelledAuto(stop, entry)
