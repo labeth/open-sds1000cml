@@ -274,7 +274,9 @@ func scoreResult(r Result) float64 {
 		// "SENT, 1 of 17 frames". A quarter of the
 		// complete frames must check: half rejected a real bus alternating
 		// bad and good CRCs (bad, good, bad on screen).
-		if c[0] == 0 || c[0]*4 < c[3]-1 {
+		// and more good nibbles than bad: a random line's edges read as
+		// SYNCs and nibbles, two CRCs checking by chance, misread the most
+		if c[0] == 0 || c[0]*4 < c[3]-1 || c[2] > c[1] {
 			return -1e9
 		}
 		// The evidence is the distinct valid frames: a repeated message's frames
@@ -641,13 +643,13 @@ func Autodetect(c1, c2 []uint8, colTimeS float64, format string) Result {
 	bestScore := 0.0
 	chName := func(k int) string { return [2]string{"C1", "C2"}[k&1] }
 	spiBytes := 0 // the most bytes an SPI reading of the pair took
-	// One SWD transfer and no line reset beside SPI's reading of eight
+	// One whole SWD transfer and no line reset beside SPI's reading of eight
 	// bytes or more of the same pair is either: a transfer is five bytes'
 	// clocks, and an SPI stream holds one, every parity checking, one time
 	// in a few hundred places. Neither is named; a longer record shows more
 	// transfers or a line reset.
 	settle := func() Result {
-		if best.Proto == "swd" && spiBytes >= 8 && swdTransfers(best) < 2 && !strings.Contains(best.Text, "LINERESET") {
+		if best.Proto == "swd" && spiBytes >= 8 && swdWholeReads(best) < 2 && !strings.Contains(best.Text, "LINERESET") {
 			return Result{Proto: "off", Error: "one SWD transfer or SPI bytes: show more of the signal"}
 		}
 		return best
@@ -764,6 +766,11 @@ func Autodetect(c1, c2 []uint8, colTimeS float64, format string) Result {
 					return
 				}
 			}
+			// PDI_CLK runs on from the programmer, one period throughout:
+			// a line of random edges or a line code's two widths clocks none
+			if r.Proto == "pdi" && clk[a].clockLike() < 0.7 {
+				return
+			}
 			consider(r, "CLK "+chName(a)+" DATA "+chName(1-a), Roles{ChA: a, ChB: 1 - a})
 		})
 	}
@@ -868,12 +875,14 @@ func nearStandardBaud(baud, tol float64) bool {
 	return false
 }
 
-// swdTransfers counts an SWD reading's transfers (its requests).
+// swdWholeReads counts an SWD reading's whole transfers: a data word whose
+// parity checks (a transfer the record cuts, or one a WAIT or FAULT ends,
+// carries none).
 // TRLC-LINKS: REQ-SDS-018
-func swdTransfers(r Result) int {
+func swdWholeReads(r Result) int {
 	n := 0
 	for _, s := range r.Spans {
-		if s.Kind == "sof" {
+		if s.Kind == "data" && len(s.Text) == 8 {
 			n++
 		}
 	}
