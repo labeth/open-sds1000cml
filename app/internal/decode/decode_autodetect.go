@@ -7,6 +7,7 @@ import (
 	"math/bits"
 	"slices"
 	"sort"
+	"strings"
 )
 
 // scoreResult ranks competing protocol/role hypotheses. The discriminators are
@@ -639,7 +640,22 @@ func Autodetect(c1, c2 []uint8, colTimeS float64, format string) Result {
 	// Manchester and an undecodable SENT as "MANCH 51 kb/s".
 	bestScore := 0.0
 	chName := func(k int) string { return [2]string{"C1", "C2"}[k&1] }
+	spiBytes := 0 // the most bytes an SPI reading of the pair took
+	// One SWD transfer and no line reset beside SPI's reading of eight
+	// bytes or more of the same pair is either: a transfer is five bytes'
+	// clocks, and an SPI stream holds one, every parity checking, one time
+	// in a few hundred places. Neither is named; a longer record shows more
+	// transfers or a line reset.
+	settle := func() Result {
+		if best.Proto == "swd" && spiBytes >= 8 && swdTransfers(best) < 2 && !strings.Contains(best.Text, "LINERESET") {
+			return Result{Proto: "off", Error: "one SWD transfer or SPI bytes: show more of the signal"}
+		}
+		return best
+	}
 	consider := func(r Result, src string, roles Roles) {
+		if r.Proto == "spi" && r.OK {
+			spiBytes = max(spiBytes, len(r.Bytes))
+		}
 		if sc := scoreResult(r); sc > bestScore {
 			bestScore, best = sc, r
 			best.Src, best.Roles = src, roles
@@ -790,13 +806,13 @@ func Autodetect(c1, c2 []uint8, colTimeS float64, format string) Result {
 			// well before each one (a PCD8544 display at 1 MHz), and I2C's SCL
 			// is near half duty
 			if midPhaseData(&clk[ci], &clk[di].s) > 0.5 && !clk[ci].pulseClock() {
-				return best
+				return settle()
 			}
 			// addressed I2C transfers that a device acknowledged, each ended
 			// by a STOP: an I2C bus that noise kept from its own checks (an
 			// ACK read as a NAK), never SPI - which reads bytes off any pair
 			if i2cAckedTransfers(i2cRead[ci]) >= 2 {
-				return best
+				return settle()
 			}
 			cpol := idleLevel(&clk[ci].s)
 			// Data launched on the falling edge is sampled on the rising one
@@ -825,7 +841,7 @@ func Autodetect(c1, c2 []uint8, colTimeS float64, format string) Result {
 			}
 		}
 	}
-	return best
+	return settle()
 }
 
 // StandardBaud reports whether baud is a rate UARTs use (within 3 %).
@@ -850,6 +866,18 @@ func nearStandardBaud(baud, tol float64) bool {
 		}
 	}
 	return false
+}
+
+// swdTransfers counts an SWD reading's transfers (its requests).
+// TRLC-LINKS: REQ-SDS-018
+func swdTransfers(r Result) int {
+	n := 0
+	for _, s := range r.Spans {
+		if s.Kind == "sof" {
+			n++
+		}
+	}
+	return n
 }
 
 // i2cAckedTransfers counts an I2C reading's whole transfers: an address a
