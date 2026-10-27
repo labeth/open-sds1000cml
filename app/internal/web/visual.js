@@ -16,7 +16,7 @@ const VIS_PROTOS = {
   midi: "MIDI keyboard", dmx512: "DMX512 levels", ps2: "PS/2 keyboard and mouse", ws281x: "LED strip",
   irnec: "IR remote", irsirc: "IR remote", irrc5: "IR remote", irrc6: "IR remote", irmp: "IR remote",
   pwm: "PWM duty", quad: "Encoder position", stepper: "Stepper position", caliper: "Caliper reading",
-  dcf77: "DCF77 clock", uart: "Terminal", lin: "Terminal", usbpd: "USB PD contract", wiegand: "Wiegand cards",
+  dcf77: "DCF77 clock", uart: "Terminal", lin: "LIN frames", usbpd: "USB PD contract", wiegand: "Wiegand cards",
   can: "CAN signals", canfd: "CAN signals", spdif: "Digital audio",
 };
 
@@ -38,8 +38,9 @@ function visNew(proto) {
     case "pwm": return Object.assign(s, { duty: NaN, freq: NaN, periodS: NaN, hist: [], min: NaN, max: NaN });
     case "quad": case "stepper": return Object.assign(s, { pos: 0, fwd: true, speed: 0, hist: [] });
     case "caliper": return Object.assign(s, { text: "", value: NaN, unit: "", hist: [] });
-    case "dcf77": return Object.assign(s, { fields: {}, time: "", bad: false });
-    case "uart": case "lin": return Object.assign(s, { text: "", esc: "", cr: false });
+    case "dcf77": return Object.assign(s, { fields: {}, time: "", bad: false, secS: 0 });
+    case "uart": return Object.assign(s, { text: "", esc: "", cr: false });
+    case "lin": return Object.assign(s, { frames: new Map(), errs: 0 });
     case "usbpd": return Object.assign(s, { caps: [], request: null, contract: "", msgs: [] });
     case "wiegand": return Object.assign(s, { lastCard: null, cards: new Map() });
     case "can": case "canfd": return Object.assign(s, { dbc: null, sigs: new Map(), frames: new Map() });
@@ -65,8 +66,9 @@ function visIngest(s, r, t0, dt) {
     case "pwm": pwmSpans(s, spans, r, dt, tOf); break;
     case "quad": case "stepper": stepSpans(s, spans, tOf); break;
     case "caliper": caliperSpans(s, spans, tOf); break;
-    case "dcf77": dcfSpans(s, spans); break;
-    case "uart": case "lin": for (const sp of spans) if (sp.kind === "data") termByte(s, sp.val); break;
+    case "dcf77": dcfSpans(s, spans); if (r.meta && r.meta.baud > 0) s.secS = 1 / r.meta.baud; break;
+    case "uart": for (const sp of spans) if (sp.kind === "data") termByte(s, sp.val); break;
+    case "lin": linSpans(s, spans, tOf); break;
     case "usbpd": pdSpans(s, spans, tOf); break;
     case "wiegand": wiegandSpans(s, spans, tOf); break;
     case "can": case "canfd": canSpans(s, spans, tOf); break;
@@ -84,7 +86,7 @@ function visIngestUnits(s, units, t) {
     case "midi": for (const u of units) midiByte(s, u & 0xff, t); break;
     case "dmx512": dmxPacket(s, units, t); break;
     case "ps2": for (const u of units) ps2Byte(s, u & 0xff, false, t); break;
-    case "uart": case "lin": for (const u of units) termByte(s, u & 0xff); break;
+    case "uart": for (const u of units) termByte(s, u & 0xff); break;
     default: return;
   }
   s.updates++;
@@ -446,22 +448,27 @@ function wsColours(bytes, order) {
 // (spans "A.." and "C.."), a repeat code counting on the last button.
 // TRLC-LINKS: REQ-SDS-278
 function irSpans(s, spans, tOf) {
+  // a frame's address and command come in either order (Sony's command first):
+  // the button counts once both are in, or with its command alone at the next
+  // frame or the record's end (a protocol without an address)
+  // TRLC-LINKS: REQ-SDS-278
+  const flush = () => { if (s.cur && s.cur.cmd >= 0) irButton(s, s.cur); s.cur = null; };
   for (const sp of spans) {
     if (sp.kind === "sof") {
+      flush();
       if (sp.text === "REP") { if (s.lastBtn) { s.lastBtn.repeats++; s.lastBtn.t = tOf(sp.i0); } continue; }
       s.cur = { name: sp.text || s.proto, addr: -1, cmd: -1, t: tOf(sp.i0) };
       continue;
     }
+    if (sp.kind === "frame-error") { s.cur = null; continue; }
     if (sp.kind !== "data" || !s.cur) continue;
     const m = /^([AC])([0-9A-F]+)$/.exec(sp.text);
     if (!m) continue;
     if (m[1] === "A") s.cur.addr = sp.val;
-    else {
-      s.cur.cmd = sp.val;
-      irButton(s, s.cur);
-      s.cur = null;
-    }
+    else s.cur.cmd = sp.val;
+    if (s.cur.addr >= 0 && s.cur.cmd >= 0) { irButton(s, s.cur); s.cur = null; }
   }
+  flush();
 }
 
 // irButton counts a button pressed: the newest, and the table of all seen.
@@ -774,6 +781,31 @@ function canSpans(s, spans, tOf) {
   done();
 }
 
+// linSpans takes a frame's LIN frames: each identifier's newest response, its
+// count, and the frames whose checksum or identifier parity failed.
+// TRLC-LINKS: REQ-SDS-278
+function linSpans(s, spans, tOf) {
+  let cur = null;
+  // TRLC-LINKS: REQ-SDS-278
+  const done = () => {
+    if (cur && cur.id >= 0 && cur.ck) {
+      if (cur.bad) s.errs++;
+      else s.frames.set(cur.id, { bytes: cur.bytes, t: cur.t, count: ((s.frames.get(cur.id) || {}).count || 0) + 1 });
+    }
+    cur = null;
+  };
+  for (const sp of spans) {
+    if (sp.kind === "sof") { done(); cur = { id: -1, bytes: [], bad: false, ck: false, t: tOf(sp.i0) }; continue; }
+    if (!cur || sp.kind === "rw") continue;
+    const t = (sp.text || "").replace(/^!/, ""); // a failed field is marked "!"
+    if (t.startsWith("ID")) { cur.id = parseInt(t.slice(2), 16); if (sp.kind !== "data") cur.bad = true; }
+    else if (t.startsWith("CK")) { cur.ck = true; if (sp.kind !== "data") cur.bad = true; done(); }
+    else if (sp.kind === "data") cur.bytes.push(sp.val);
+    else cur.bad = true;
+  }
+  done();
+}
+
 // ---- a protocol layer's values ----------------------------------------------------
 
 // layerNotes takes packets' layer notes ("LM75 48 read Temperature 25.5 C"):
@@ -795,5 +827,5 @@ function layerNotes(s, packets, t) {
 }
 
 if (typeof module !== "undefined" && module.exports)
-  module.exports = { VIS_PROTOS, visNew, visIngest, visIngestUnits, midiNoteName, midiByte, midiExpire, dmxRate, wsColours,
+  module.exports = { linSpans, VIS_PROTOS, visNew, visIngest, visIngestUnits, midiNoteName, midiByte, midiExpire, dmxRate, wsColours,
     pwmServo, dbcParse, dbcRaw, pdPDO, pdRDO, layerNotes, PS2_LAYOUT, PS2_KEYS };

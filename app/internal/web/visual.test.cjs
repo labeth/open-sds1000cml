@@ -111,6 +111,30 @@ function uartWave(packets, baud, dt, stop, breakS) {
   assert.equal(s.buttons.size, 1);
 }
 
+// ---- LIN: each identifier's newest response; a failed checksum counts apart
+{
+  // TRLC-LINKS: REQ-SDS-278
+  const sp = (kind, text, val) => ({ i0: 0, i1: 1, kind, text, val });
+  const s = c.visNew("lin");
+  c.visIngest(s, { ok: true, spans: [sp("sof", "BRK", 0), sp("rw", "SYNC", 0x55), sp("data", "ID02", 0xc2), sp("data", "12", 0x12), sp("data", "34", 0x34), sp("data", "CKCB", 0xcb),
+    sp("sof", "BRK", 0), sp("rw", "SYNC", 0x55), sp("data", "ID00", 0x80), sp("data", "AB", 0xab), sp("frame-error", "!CK12", 0x12),
+    sp("sof", "BRK", 0), sp("rw", "SYNC", 0x55), sp("data", "ID02", 0xc2), sp("data", "56", 0x56), sp("data", "CK77", 0x77)] }, 0, 1e-6);
+  assert.equal(s.frames.size, 1, "one identifier with a good frame");
+  deq(s.frames.get(2).bytes, [0x56]); assert.equal(s.frames.get(2).count, 2);
+  assert.equal(s.errs, 1, "the bad checksum counted");
+}
+
+// ---- Sony sends the command before the address: the button has both
+{
+  // TRLC-LINKS: REQ-SDS-278
+  const sp = (kind, text, val) => ({ i0: 0, i1: 1, kind, text, val });
+  const s = c.visNew("irsirc");
+  c.visIngest(s, { ok: true, spans: [sp("sof", "SIRC"), sp("data", "C15", 0x15), sp("data", "A01", 1), sp("sof", "SIRC"), sp("data", "C12", 0x12), sp("data", "A01", 1),
+    sp("sof", "SIRC"), sp("frame-error", "!2bits")] }, 0, 1e-6);
+  assert.equal(s.buttons.size, 2, "two buttons");
+  assert.equal(s.lastBtn.addr, 1); assert.equal(s.lastBtn.cmd, 0x12, "A01 C12, the address after the command");
+}
+
 // ---- Wiegand and the caliper from the scope; USB PD's offer
 {
   let k = capture("scope_wiegand_samples_5ms.json.gz");

@@ -21,7 +21,7 @@ const vis = {
 
 // VIS_STREAMED are the protocols the scope's stream carries byte for byte
 // that the view reads gap-free (visual.js visIngestUnits).
-const VIS_STREAMED = ["midi", "dmx512", "ps2", "uart", "lin"];
+const VIS_STREAMED = ["midi", "dmx512", "ps2", "uart"];
 
 // visShown reports the Visual view on screen.
 // TRLC-LINKS: REQ-SDS-278
@@ -155,14 +155,46 @@ function visDrawProto(g, W, H) {
     case "pwm": return visDrawPWM(g, W, H, s);
     case "quad": case "stepper": return visDrawDial(g, W, H, s);
     case "caliper": return visBig(g, W, H, s.text || "--", s.hist.length ? "min " + Math.min(...s.hist.map((p) => p.v)) + "  max " + Math.max(...s.hist.map((p) => p.v)) + " " + s.unit : "", s.hist);
-    case "dcf77": return visBig(g, W, H, s.time || "waiting for a minute", s.bad ? "a parity failed: the time is not sure" : s.time ? "DCF77 time and date" : "a whole minute takes 60 s");
+    case "dcf77": return visBig(g, W, H, s.time || "waiting for a minute", s.bad ? "a parity failed: the time is not sure" : s.time ? "DCF77 time and date" : visDcfHint(s));
     case "usbpd": return visDrawPD(g, W, H, s);
     case "wiegand": return visBig(g, W, H, s.lastCard ? "card " + s.lastCard.card : "no card yet",
       s.lastCard ? s.lastCard.bits + "-bit · facility " + s.lastCard.fac + " · read " + s.lastCard.count + "x" : "present a card to the reader");
     case "can": case "canfd": return visDrawCAN(g, W, H, s);
-    case "uart": case "lin": return visBig(g, W, H, "", "the terminal is beside");
+    case "uart": return visBig(g, W, H, "", "the terminal is beside");
+    case "lin": return visDrawFrames(g, W, H, s, "the identifiers' newest responses; checksum failures count beside");
   }
   return visBig(g, W, H, VIS_PROTOS[s.proto] ? "" : "no picture for this bus", "Packets and Log list it; a protocol layer's values show here");
+}
+
+// visDcfHint says what the time needs: a whole minute (60 of the bus's
+// seconds) in one record, the timebase that holds it.
+// TRLC-LINKS: REQ-SDS-278
+function visDcfHint(s) {
+  if (!(s.secS > 0)) return "a whole minute (60 of its seconds) must fit the record";
+  const need = (60.5 * s.secS) / 14, td = (st && st.tdiv_s) || 0;
+  return "a whole minute takes " + fmtTdiv(60 * s.secS) + (td >= need ? "" : ": set " + fmtTdiv(need) + "/div or slower to hold it");
+}
+
+// visDrawFrames draws the identifiers seen as tiles, each with its newest
+// bytes and count, brighter the newer: a bus's traffic at a glance.
+// TRLC-LINKS: REQ-SDS-278
+function visDrawFrames(g, W, H, s, hint) {
+  const all = [...s.frames.entries()].sort((a, b) => a[0] - b[0]);
+  if (!all.length) return visBig(g, W, H, "no frame yet", hint);
+  const cols = Math.max(1, Math.min(4, Math.floor(W / (220 * dpr)))), rows = Math.ceil(Math.min(all.length, 48) / cols);
+  const tw = W / cols, th = Math.min(46 * dpr, (H - 18 * dpr) / rows), now = performance.now() / 1000;
+  all.slice(0, cols * rows).forEach(([id, f], k) => {
+    const x = (k % cols) * tw, y = Math.floor(k / cols) * th, age = Math.max(0, now - f.t);
+    g.globalAlpha = Math.max(0.25, 1 - age / 5);
+    g.fillStyle = "#1f2a36"; g.fillRect(x + 2 * dpr, y + 2 * dpr, tw - 4 * dpr, th - 4 * dpr);
+    g.fillStyle = "#4fc3f7"; g.font = Math.round(12 * dpr) + "px monospace"; g.textAlign = "left"; g.textBaseline = "top";
+    g.fillText(id.toString(16).toUpperCase().padStart(2, "0") + "  ×" + f.count, x + 8 * dpr, y + 6 * dpr);
+    g.fillStyle = "#e6edf3"; g.font = Math.round(11 * dpr) + "px monospace";
+    g.fillText(f.bytes.map(visHex2).join(" ").slice(0, Math.floor(tw / (7 * dpr))), x + 8 * dpr, y + 22 * dpr);
+  });
+  g.globalAlpha = 1;
+  g.fillStyle = "#8b98a5"; g.font = Math.round(11 * dpr) + "px monospace"; g.textAlign = "center"; g.textBaseline = "bottom";
+  g.fillText(hint, W / 2, H - 2 * dpr);
 }
 
 // visBig writes a large reading and a line under it, with a history graph.
@@ -366,7 +398,7 @@ function visDrawPD(g, W, H, s) {
 // four), each in its own band.
 // TRLC-LINKS: REQ-SDS-278
 function visDrawCAN(g, W, H, s) {
-  if (!s.dbc) return visBig(g, W, H, "load a DBC file", "its messages' signals graph here; without one the ids list beside");
+  if (!s.dbc) return visDrawFrames(g, W, H, s, "load a DBC file to graph its messages' signals");
   const all = [...s.sigs.values()], pick = all.filter((e) => vis.canPick.has(e.msg + "." + e.name));
   const show = (pick.length ? pick : all).slice(0, 4);
   if (!show.length) return visBig(g, W, H, "no frame of the DBC file yet", "the ids seen list beside");
@@ -410,7 +442,7 @@ function visSide(rebuild) {
   const html = a.on ? visAudioFigures() : dcfg.layer ? visLayerTable() : visFigures(p);
   if (fig._html !== html) { fig._html = html; fig.innerHTML = html; }
   const term = $("visTerm");
-  if (term && (p === "uart" || p === "lin") && term.textContent !== vis.s.text) { term.textContent = vis.s.text; term.scrollTop = term.scrollHeight; }
+  if (term && p === "uart" && term.textContent !== vis.s.text) { term.textContent = vis.s.text; term.scrollTop = term.scrollHeight; }
   $("visTitle").textContent = a.on ? "Digital audio" : dcfg.layer ? "Layer values" : VIS_PROTOS[p] || "Visual";
   const st = $("visStreamNote");
   if (st) st.textContent = vis.stream.on ? "gap-free: following the scope's stream" + (vis.stream.rate > 0 ? "" : " (timing settles in 2 s)") : VIS_STREAMED.includes(p) ? "from each capture (gaps between them)" : "";
@@ -435,7 +467,7 @@ function visControls(p) {
   if (p === "ps2") h += '<div class="r"><label class="hl"><span class="lbl">device</span><select id="visPs2" aria-label="PS/2 device"><option value="">by its bytes</option><option value="kbd">keyboard</option><option value="mouse">mouse</option></select></label></div>';
   if (p === "can" || p === "canfd") h += '<div class="r"><label class="hl"><span class="lbl">DBC</span><input type="file" id="visDbc" accept=".dbc,text/plain" aria-label="DBC file"></label><span class="sub">' + escHTML(vis.dbcName) + "</span></div>";
   if (p === "quad" || p === "stepper") h += '<div class="r"><button type="button" id="visZero" class="xs">Zero</button></div>';
-  if (p === "uart" || p === "lin") h += '<div class="r"><button type="button" id="visClear" class="xs">Clear</button></div><pre id="visTerm" class="transcript visterm" aria-label="terminal"></pre>';
+  if (p === "uart") h += '<div class="r"><button type="button" id="visClear" class="xs">Clear</button></div><pre id="visTerm" class="transcript visterm" aria-label="terminal"></pre>';
   h += '<div class="r"><button type="button" id="visAudio" class="xs" title="Capture a whole record and decode S/PDIF, I2S or PDM audio from it">Digital audio...</button></div>';
   return h + '<div id="visFig"></div>';
 }
@@ -515,6 +547,9 @@ function visFigures(p) {
     case "usbpd": return tab([["contract", s.contract || (s.request ? (s.request.rejected ? "rejected" : "asked: " + s.request.text) : "-")], ...s.caps.map((c, i) => [(i + 1) + " " + c.type, c.text])]) +
       '<div class="sub">messages</div><div class="vislog">' + s.msgs.slice(-12).reverse().map((m) => escHTML(m.sop + " " + m.name)).join("<br>") + "</div>";
     case "wiegand": return tab([["bits", "facility", "card", "read"], ...[...s.cards.values()].sort((a, b) => b.t - a.t).slice(0, 20).map((c) => [c.bits, c.fac, c.card, c.count + "x " + ago(c.t)])]);
+    case "lin":
+      return tab([["id", "bytes", "count"], ...[...s.frames.entries()].sort((a, b) => a[0] - b[0]).slice(0, 40).map(([id, f]) => [visHex2(id), f.bytes.map(visHex2).join(" "), f.count])]) +
+        (s.errs ? '<div class="sub">' + s.errs + " frames failed their checksum or identifier parity</div>" : "");
     case "can": case "canfd":
       if (s.dbc && s.sigs.size) return tab([["", "signal", "value"], ...[...s.sigs.entries()].sort().map(([k, e]) => [`<input type="checkbox" data-sig="${escHTML(k)}"${vis.canPick.has(k) ? " checked" : ""} aria-label="graph ${escHTML(k)}">`, escHTML(k), visNum(e.v) + " " + escHTML(e.unit)])]);
       return tab([["id", "bytes", "count"], ...[...s.frames.entries()].sort((a, b) => a[0] - b[0]).slice(0, 40).map(([id, f]) => [id.toString(16).toUpperCase() + ((s.dbc && s.dbc.get(id)) ? " " + escHTML(s.dbc.get(id).name) : ""), f.bytes.map(visHex2).join(" "), f.count])]);
