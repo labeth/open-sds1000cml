@@ -25,20 +25,43 @@ run(async (t) => {
     t.ok(st.held.includes(64) && !st.held.includes(60), "E4 held, C4 released: " + JSON.stringify(st.held));
     t.ok(st.title === "MIDI keyboard", "the view names what it draws: " + st.title);
     t.ok(/held/.test(st.fig) && /E4/.test(st.fig) && /messages/.test(st.fig), "the figures list the notes held and the messages: " + st.fig.slice(0, 120));
-    // the canvas drew: a key lit in E4's channel colour somewhere on the keyboard
-    const lit = await ev(() => {
+    // the canvas drew: the notes fall in channel 1's colour onto the keys,
+    // and E4's key lights in it when its note lands (the fall's seconds on)
+    // TRLC-LINKS: REQ-SDS-278
+    const px = (rows) => ev((rows) => {
       visDraw(true); // read in the task that drew (the drawing buffer is not kept)
       const cv = document.getElementById("visCv"), gl = cv.getContext("webgl2") || cv.getContext("webgl");
       if (!gl) return -1;
-      const w = cv.width, h = cv.height, px = new Uint8Array(w * 4);
+      const w = cv.width, h = cv.height, line = new Uint8Array(w * 4);
       let n = 0;
-      for (const yf of [0.12, 0.05]) { // rows near the bottom (GL's origin): the keys
-        gl.readPixels(0, Math.floor(h * yf), w, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
-        for (let i = 0; i < w; i++) if (px[4 * i] === 0x4f && px[4 * i + 1] === 0xc3 && px[4 * i + 2] === 0xf7) n++;
+      for (const yf of rows) { // fractions of the height from the bottom (GL's origin)
+        gl.readPixels(0, Math.floor(h * yf), w, 1, gl.RGBA, gl.UNSIGNED_BYTE, line);
+        for (let i = 0; i < w; i++) if (Math.abs(line[4 * i] - 0x4f) < 3 && Math.abs(line[4 * i + 1] - 0xc3) < 3 && Math.abs(line[4 * i + 2] - 0xf7) < 3) n++;
+      }
+      return n;
+    }, rows);
+    t.ok((await ev(() => vis.midiLead)) === 3, "the notes fall for 3 s by default");
+    t.ok(await ev(() => vis.autoStream), "MIDI asks the scope for its gap-free stream");
+    // this scope has no stream to follow: back to its captures for the rest
+    if (await ev(() => vis.stream.on || busScopeStreaming())) {
+      await page.click("#visGapless");
+      await t.until(async () => await ev(() => !busScopeStreaming() && !vis.stream.on), "Gap-free off goes back to the captures", 6000);
+    }
+    await t.until(async () => (await px([0.05, 0.12])) > 0, "E4's key lights in channel 1's colour when its note lands", 9000);
+    // TRLC-LINKS: REQ-SDS-278
+    const above = () => ev(() => {
+      visDraw(true);
+      const cv = document.getElementById("visCv"), gl = cv.getContext("webgl2") || cv.getContext("webgl");
+      const w = cv.width, h = cv.height, all = new Uint8Array(w * h * 4);
+      gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, all);
+      let n = 0;
+      for (let y = Math.floor(h * 0.4); y < h; y++) for (let x = 0; x < w; x++) { // the upper 60 %: above the keys
+        const i = 4 * (y * w + x);
+        if (Math.abs(all[i] - 0x4f) < 30 && Math.abs(all[i + 1] - 0xc3) < 30 && Math.abs(all[i + 2] - 0xf7) < 30) n++;
       }
       return n;
     });
-    t.ok(lit > 0, "a key is lit on the drawn keyboard (" + lit + " pixels in channel 1's colour)");
+    await t.until(async () => (await above()) > 0, "the notes fall above the keys in their channel's colour", 6000);
     await page.click("#visSound");
     await t.until(async () => await ev(() => vis.sound && vis.sy && vis.sy.played > 0), "Sound plays the notes", 6000);
     const sy = await ev(() => ({ state: vis.sy.ctx.state, played: vis.sy.played }));

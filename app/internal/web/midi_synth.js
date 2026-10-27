@@ -18,7 +18,7 @@ const SYNTH_LATENCY = 0.12;
 // TRLC-LINKS: REQ-SDS-279
 function synthNew() {
   return { ctx: null, out: null, voices: new Map(), order: [], vol: new Float32Array(16).fill(100 / 127), expr: new Float32Array(16).fill(1),
-    sustain: new Uint8Array(16), held: new Set(), prog: new Uint8Array(16), bend: new Float32Array(16), offset: NaN, gain: 0.5, played: 0, noise: null };
+    sustain: new Uint8Array(16), held: new Set(), prog: new Uint8Array(16), bend: new Float32Array(16), offset: NaN, lead: 0, gain: 0.5, played: 0, noise: null };
 }
 
 // synthStart makes (or resumes) the audio graph: master gain into a limiter
@@ -60,12 +60,15 @@ function synthPanic(sy) {
   sy.voices.clear(); sy.order = []; sy.held.clear();
 }
 
-// synthWhen maps an event's bus time to the audio clock: the first event
-// sets the offset a latency ahead; one that falls behind (a pause, a gap)
-// sets it again; one far ahead (the clocks drift) too.
+// synthWhen maps an event's bus time to the audio clock. With a lead (the
+// seconds a picture's note falls before it lands) the event sounds exactly
+// that long after its time on the page's clock, as the picture shows it.
+// Without, the first event sets the offset a latency ahead; one that falls
+// behind (a pause, a gap) sets it again; one far ahead (the clocks drift) too.
 // TRLC-LINKS: REQ-SDS-279
 function synthWhen(sy, t) {
   const now = sy.ctx.currentTime;
+  if (sy.lead > 0) return Math.max(now + 0.005, now + t + sy.lead - performance.now() / 1000);
   if (!Number.isFinite(sy.offset)) sy.offset = now + SYNTH_LATENCY - t;
   let at = t + sy.offset;
   if (at < now || at > now + 1.5) { sy.offset = now + SYNTH_LATENCY - t; at = now + SYNTH_LATENCY; }

@@ -98,6 +98,15 @@ function visIngestUnits(s, units, t) {
 // MIDI_NOTE_NAMES name the twelve notes of an octave.
 const MIDI_NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
 
+// MIDI_FAMILIES name General MIDI's sixteen families of eight programs.
+const MIDI_FAMILIES = ["Piano", "Chromatic perc", "Organ", "Guitar", "Bass", "Strings", "Ensemble", "Brass",
+  "Reed", "Pipe", "Synth lead", "Synth pad", "Synth FX", "Ethnic", "Percussive", "Sound FX"];
+
+// midiInstrument names a channel's instrument: its program's family, drums
+// on channel 10.
+// TRLC-LINKS: REQ-SDS-278
+function midiInstrument(ch, prog) { return ch === 9 ? "Drums" : MIDI_FAMILIES[(prog >> 3) & 15]; }
+
 // midiNoteName names a MIDI note number ("C4" is 60).
 // TRLC-LINKS: REQ-SDS-278
 function midiNoteName(n) { return MIDI_NOTE_NAMES[n % 12] + (Math.floor(n / 12) - 1); }
@@ -828,5 +837,5 @@ function layerNotes(s, packets, t) {
 }
 
 if (typeof module !== "undefined" && module.exports)
-  module.exports = { linSpans, VIS_PROTOS, visNew, visIngest, visIngestUnits, midiNoteName, midiByte, midiExpire, dmxRate, wsColours,
+  module.exports = { linSpans, midiInstrument, VIS_PROTOS, visNew, visIngest, visIngestUnits, midiNoteName, midiByte, midiExpire, dmxRate, wsColours,
     pwmServo, dbcParse, dbcRaw, pdPDO, pdRDO, layerNotes, PS2_LAYOUT, PS2_KEYS };

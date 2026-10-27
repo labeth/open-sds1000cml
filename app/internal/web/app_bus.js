@@ -187,14 +187,18 @@ function busSetView(v, byScope) {
   for (const el of document.querySelectorAll("#p-packets .bview")) el.hidden = el.dataset.view !== v;
   $("pkTitle").textContent = { packets: "Packets", log: "Decode log", eye: "Eye diagram", stream: "Stream", visual: "Visual" }[v];
   if (v === "eye") busEyeOn(); else busEyeOff();
-  busRoom(v === "eye");
+  busRoom(v === "eye" || v === "visual");
   if (v === "packets") { busRenderedV = -1; busRenderTable(); }
   if (v === "visual" && typeof visDraw === "function") {
     if (!vis.s || vis.proto !== dcfg.proto) visReset();
+    // MIDI is music: follow the scope's gap-free stream (once; the button turns it off)
+    if (dcfg.proto === "midi" && !vis.autoStream && !busScopeStreaming()) { vis.autoStream = true; visAskStream(true); }
     visSide(true); setTimeout(() => visDraw(true), 30);
   }
   if (!byScope && v === "stream") busAskStream(true);
-  if (!byScope && was === "stream" && v !== "stream") busAskStream(false);
+  // the Visual view follows the stream of a bus it reads byte for byte: it keeps it
+  const keep = v === "visual" && typeof VIS_STREAMED !== "undefined" && VIS_STREAMED.includes(dcfg.proto);
+  if (!byScope && was === "stream" && v !== "stream" && !keep) busAskStream(false);
   busScopeStream();
 }
 
@@ -217,13 +221,13 @@ function busScopeStreaming() {
 // TRLC-LINKS: REQ-SDS-214, REQ-SDS-215
 $("busView").onchange = () => { if (ws.cur !== "bus") setWs("bus"); busSetView($("busView").value); };
 
-// busRoom gives the eye room: the lower pane grows to at least half the column
-// while the eye is shown and returns to its size after.
-// TRLC-LINKS: REQ-SDS-215
-function busRoom(eye) {
+// busRoom gives the eye and the Visual view room: the lower pane grows to at
+// least half the column while one is shown and returns to its size after.
+// TRLC-LINKS: REQ-SDS-215, REQ-SDS-278
+function busRoom(room) {
   const n = paneNode($("p-packets"));
   if (!n || !n.parent) return;
-  if (eye) {
+  if (room) {
     const col = n.parent.el.getBoundingClientRect().height;
     if (n.sizeBeforeEye === undefined) n.sizeBeforeEye = n.size;
     n.size = Math.max(n.size, Math.round(col * 0.55));

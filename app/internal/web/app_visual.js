@@ -16,7 +16,7 @@ const vis = {
   stream: { next: -1, busy: false, s0: NaN, t0: NaN, rate: 0, on: false },
   wsOrder: "GRB", ps2Kind: "", dbcText: "", dbcName: "", canPick: new Set(),
   audio: { on: false, kind: "auto", res: null, busy: false, live: false, play: null, gain: 0.6, prevTdiv: 0, sampleS: 0, msg: "" },
-  drawT: 0,
+  drawT: 0, midiLead: 3, autoStream: false,
 };
 
 // VIS_STREAMED are the protocols the scope's stream carries byte for byte
@@ -65,7 +65,7 @@ function visOnDecode() {
 function visSound() {
   if (!vis.s || !vis.s.out) return;
   midiExpire(vis.s, performance.now() / 1000);
-  if (vis.sound && vis.sy) synthEvents(vis.sy, vis.s.out);
+  if (vis.sound && vis.sy) { vis.sy.lead = vis.s.proto === "midi" ? vis.midiLead : 0; synthEvents(vis.sy, vis.s.out); }
   else vis.s.out.length = 0;
 }
 
@@ -236,43 +236,101 @@ function visSpark(g, x, y, w, h, hist, col) {
 // TRLC-LINKS: REQ-SDS-278
 function visNum(v) { return Math.abs(v) >= 1000 || Number.isInteger(v) ? String(Math.round(v * 100) / 100) : v.toPrecision(4); }
 
-// visDrawMIDI draws the piano roll of the last ten seconds over an 88-key
-// keyboard, each channel a colour, the keys held lit by their velocity.
+// visDrawMIDI draws an 88-key piano with the notes falling onto it: each
+// note a bar in its channel's colour, as long as it is held, landing on its
+// key as it sounds (the key then pressed in that colour), and a legend of the
+// channels heard with their instruments.
 // TRLC-LINKS: REQ-SDS-278
 function visDrawMIDI(g, W, H, s) {
-  const lo = 21, hi = 108, kbH = Math.min(H * 0.3, 110 * dpr), rollH = H - kbH - 4 * dpr, now = performance.now() / 1000, span = 10;
+  const lo = 21, hi = 108, now = performance.now() / 1000, lead = vis.midiLead;
   const whites = [];
   for (let n = lo; n <= hi; n++) if (![1, 3, 6, 8, 10].includes(n % 12)) whites.push(n);
   const ww = W / whites.length;
+  // a white key is about five and a half times as long as it is wide, the
+  // keyboard never more than a third of the picture
+  const kbH = Math.max(36 * dpr, Math.min(H / 3, ww * 5.5)), felt = 3 * dpr, legH = 20 * dpr;
+  const keyTop = H - kbH, hitY = keyTop - felt, rollH = hitY - legH;
   // TRLC-LINKS: REQ-SDS-278
   const keyX = (n) => {
     const bl = [1, 3, 6, 8, 10].includes(n % 12);
     const wi = whites.indexOf(bl ? n - 1 : n);
-    return bl ? { x: (wi + 1) * ww - ww * 0.3, w: ww * 0.6, black: true } : { x: wi * ww, w: ww, black: false };
+    return bl ? { x: (wi + 1) * ww - ww * 0.31, w: ww * 0.62, black: true } : { x: wi * ww, w: ww, black: false };
   };
-  g.fillStyle = "#0b1016"; g.fillRect(0, 0, W, rollH);
-  for (let k = 0; k < whites.length; k++) if (whites[k] % 12 === 0) { g.fillStyle = "#16202a"; g.fillRect(k * ww, 0, dpr, rollH); }
-  for (const n of s.roll) {
-    const t1 = Number.isFinite(n.t1) ? n.t1 : now;
-    if (t1 < now - span || n.note < lo || n.note > hi) continue;
-    const k = keyX(n.note), y0 = rollH * (1 - (Math.min(t1, now) - (now - span)) / span), y1 = rollH * (1 - (Math.max(n.t0, now - span) - (now - span)) / span);
-    g.globalAlpha = 0.35 + 0.65 * n.vel / 127; g.fillStyle = VIS_CH_COLOURS[n.ch];
-    g.fillRect(k.x + dpr, y0, Math.max(dpr, k.w - 2 * dpr), Math.max(2 * dpr, y1 - y0));
+  // a note falls from the top as it arrives and lands on its key lead
+  // seconds later, when it sounds (the sound waits as long)
+  // TRLC-LINKS: REQ-SDS-278
+  const yOf = (t) => hitY - ((t - (now - lead)) / lead) * rollH;
+  g.fillStyle = "#070a0f"; g.fillRect(0, 0, W, hitY);
+  for (let k = 0; k < whites.length; k++) {
+    const m = whites[k] % 12;
+    if (m === 0 || m === 5) { g.fillStyle = m === 0 ? "#18222e" : "#10171f"; g.fillRect(Math.round(k * ww), legH, Math.max(1, dpr), rollH); }
+  }
+  const lit = new Map(), chans = new Set();
+  // white keys' notes first, black keys' over them, as on the keyboard
+  for (const pass of [false, true]) {
+    for (const n of s.roll) {
+      if (n.note < lo || n.note > hi) continue;
+      const k = keyX(n.note);
+      if (k.black !== pass) continue;
+      chans.add(n.ch);
+      const t1 = Number.isFinite(n.t1) ? n.t1 : now;
+      if (t1 < now - lead) continue; // played and gone into the key
+      if (n.t0 <= now - lead) lit.set(n.note, n);
+      const yb = Math.min(hitY, yOf(n.t0)), yt = Math.max(legH, yOf(t1));
+      if (yb - yt < 1) continue;
+      const pad = k.black ? ww * 0.04 : ww * 0.1, x = k.x + pad, w = Math.max(2 * dpr, k.w - 2 * pad), h = Math.max(3 * dpr, yb - yt);
+      const c = VIS_CH_COLOURS[n.ch];
+      g.globalAlpha = 0.6 + 0.4 * n.vel / 127; g.fillStyle = c; g.fillRect(x, yb - h, w, h);
+      g.globalAlpha = 0.45; g.fillStyle = "#ffffff"; g.fillRect(x, yb - h, w, Math.min(h, 2 * dpr)); // a lit edge leading
+      g.globalAlpha = 0.35; g.fillStyle = "#000000"; g.fillRect(x + w - Math.max(1, dpr), yb - h, Math.max(1, dpr), h); // a shaded side
+    }
   }
   g.globalAlpha = 1;
-  const held = new Map();
-  for (const n of s.held.values()) held.set(n.note, n);
-  const ky = rollH + 4 * dpr;
-  for (const n of whites) {
-    const k = keyX(n), h = held.get(n);
-    g.fillStyle = h ? VIS_CH_COLOURS[h.ch] : "#e8e8e8"; g.fillRect(k.x + 0.5 * dpr, ky, k.w - dpr, kbH);
-    if (n % 12 === 0) { g.fillStyle = "#555"; g.font = Math.round(9 * dpr) + "px monospace"; g.textAlign = "center"; g.textBaseline = "bottom"; g.fillText("C" + (n / 12 - 1), k.x + k.w / 2, ky + kbH - 2 * dpr); }
+  // the glow where a sounding note meets its key
+  for (const [note, n] of lit) {
+    const k = keyX(note), c = VIS_CH_COLOURS[n.ch];
+    g.fillStyle = c;
+    g.globalAlpha = 0.18; g.fillRect(k.x - ww * 0.2, hitY - 22 * dpr, k.w + ww * 0.4, 22 * dpr);
+    g.globalAlpha = 0.35; g.fillRect(k.x, hitY - 9 * dpr, k.w, 9 * dpr);
   }
+  g.globalAlpha = 1;
+  g.fillStyle = "#7a1c22"; g.fillRect(0, hitY, W, felt); // the felt under the fallboard
+  // the white keys: a face, a gap between, a lip at the front; pressed they take the note's colour
+  g.fillStyle = "#2a2a2a"; g.fillRect(0, keyTop, W, kbH);
+  const gap = Math.max(1, Math.round(0.6 * dpr));
+  for (const n of whites) {
+    const k = keyX(n), h = lit.get(n);
+    g.fillStyle = h ? VIS_CH_COLOURS[h.ch] : "#f3f1ea"; g.fillRect(k.x + gap, keyTop, k.w - 2 * gap, kbH - 2 * dpr);
+    if (!h) { g.fillStyle = "#d4d1c6"; g.fillRect(k.x + gap, keyTop + kbH - 6 * dpr, k.w - 2 * gap, 4 * dpr); }
+    else { g.globalAlpha = 0.25; g.fillStyle = "#000000"; g.fillRect(k.x + gap, keyTop, k.w - 2 * gap, 4 * dpr); g.globalAlpha = 1; }
+    if (n % 12 === 0 && ww >= 9 * dpr) {
+      g.fillStyle = h ? "#10161c" : "#8a8676"; g.font = Math.round(Math.min(10 * dpr, ww * 0.55)) + "px monospace"; g.textAlign = "center"; g.textBaseline = "bottom";
+      g.fillText("C" + (n / 12 - 1), k.x + k.w / 2, keyTop + kbH - 8 * dpr);
+    }
+  }
+  g.globalAlpha = 0.35; g.fillStyle = "#000000"; g.fillRect(0, keyTop, W, 3 * dpr); g.globalAlpha = 1; // the fallboard's shadow
+  // the black keys: a body, a lighter top face, a front bevel
+  const bh = kbH * 0.62;
   for (let n = lo; n <= hi; n++) {
     const k = keyX(n);
     if (!k.black) continue;
-    const h = held.get(n);
-    g.fillStyle = h ? VIS_CH_COLOURS[h.ch] : "#111"; g.fillRect(k.x, ky, k.w, kbH * 0.62);
+    const h = lit.get(n);
+    g.fillStyle = "#0c0c0f"; g.fillRect(k.x, keyTop, k.w, bh);
+    g.fillStyle = h ? VIS_CH_COLOURS[h.ch] : "#2b2b33"; g.fillRect(k.x + k.w * 0.12, keyTop, k.w * 0.76, bh - 5 * dpr);
+    if (!h) { g.fillStyle = "#44444e"; g.fillRect(k.x + k.w * 0.12, keyTop + bh - 9 * dpr, k.w * 0.76, 3 * dpr); }
+  }
+  // the legend: each channel heard, its colour and its instrument
+  g.font = Math.round(11 * dpr) + "px monospace"; g.textBaseline = "middle"; g.textAlign = "left";
+  let lx = 8 * dpr;
+  for (const ch of [...chans].sort((a, b) => a - b)) {
+    const label = (ch + 1) + " " + midiInstrument(ch, s.prog[ch]);
+    g.fillStyle = VIS_CH_COLOURS[ch]; g.fillRect(lx, legH / 2 - 5 * dpr, 10 * dpr, 10 * dpr);
+    g.fillStyle = "#c9d1d9"; g.fillText(label, lx + 14 * dpr, legH / 2);
+    lx += 14 * dpr + (label.length + 2) * 6.6 * dpr;
+  }
+  if (!s.roll.length) {
+    g.fillStyle = "#8b98a5"; g.textAlign = "center";
+    g.fillText("notes fall onto the keys as they play: Sound plays them as they land", W / 2, legH + rollH / 2);
   }
 }
 
@@ -464,7 +522,9 @@ function visControls(p) {
       '<button type="button" id="visAPlay" class="xs tog' + (a.play ? " on" : "") + '">Play (loop)</button><label class="row-tight"><span class="lbl">vol</span><input type="range" id="visAGain" min="0" max="1" step="0.05" value="' + a.gain + '" aria-label="audio volume"></label>' +
       '<button type="button" id="visAOff" class="xs">Back to the bus</button></div><div id="visAMsg" class="sub"></div><div id="visFig"></div>';
   }
-  if (p === "midi") h += '<div class="r"><button type="button" id="visSound" class="xs tog' + (vis.sound ? " on" : "") + '">Sound</button><label class="row-tight"><span class="lbl">vol</span><input type="range" id="visVol" min="0" max="1" step="0.05" value="' + (vis.sy ? vis.sy.gain : 0.5) + '" aria-label="MIDI volume"></label><button type="button" id="visPanic" class="xs">All notes off</button></div>';
+  if (p === "midi") h += '<div class="r"><button type="button" id="visSound" class="xs tog' + (vis.sound ? " on" : "") + '">Sound</button><label class="row-tight"><span class="lbl">vol</span><input type="range" id="visVol" min="0" max="1" step="0.05" value="' + (vis.sy ? vis.sy.gain : 0.5) + '" aria-label="MIDI volume"></label><button type="button" id="visPanic" class="xs">All notes off</button></div>' +
+    '<div class="r"><label class="row-tight"><span class="lbl">fall</span><select id="visLead" aria-label="the seconds a note falls before it lands and sounds">' +
+    [1.5, 3, 5, 8].map((v) => `<option value="${v}"${v === vis.midiLead ? " selected" : ""}>${v} s</option>`).join("") + "</select></label></div>";
   if (VIS_STREAMED.includes(p)) h += '<div class="r"><button type="button" id="visGapless" class="xs tog' + (vis.stream.on ? " on" : "") + '" title="The scope streams the bus in hardware: every byte, no gaps between captures">Gap-free (scope streams)</button></div>';
   if (p === "ws281x") h += '<div class="r"><label class="hl"><span class="lbl">order</span><select id="visOrder" aria-label="LED byte order">' + ["GRB", "RGB", "BRG", "GRBW", "RGBW"].map((o) => `<option${o === vis.wsOrder ? " selected" : ""}>${o}</option>`).join("") + "</select></label></div>";
   if (p === "ps2") h += '<div class="r"><label class="hl"><span class="lbl">device</span><select id="visPs2" aria-label="PS/2 device"><option value="">by its bytes</option><option value="kbd">keyboard</option><option value="mouse">mouse</option></select></label></div>';
@@ -490,6 +550,7 @@ function visWire(p) {
     if (!vis.sound) toast("MIDI sound off");
   });
   on("visVol", "oninput", () => { if (!vis.sy) vis.sy = synthNew(); synthVolume(vis.sy, +$("visVol").value); });
+  on("visLead", "onchange", () => { vis.midiLead = +$("visLead").value; if (vis.sy) { vis.sy.lead = vis.midiLead; vis.sy.offset = NaN; } visDraw(true); });
   on("visPanic", "onclick", () => { if (vis.sy) synthPanic(vis.sy); if (vis.s && vis.s.held) { vis.s.held.clear(); } });
   on("visGapless", "onclick", () => { visAskStream(!vis.stream.on); $("visGapless").classList.toggle("on", !vis.stream.on); });
   on("visOrder", "onchange", () => { vis.wsOrder = $("visOrder").value; visDraw(true); });
@@ -742,4 +803,22 @@ function visDrawAudio(g, W, H) {
 // ---- wiring --------------------------------------------------------------------------------
 
 // The view redraws while shown (the piano roll scrolls with no new frame).
-setInterval(() => { if (visShown()) { if (vis.s && vis.s.held) visSound(); visDraw(); } }, 100);
+setInterval(() => { if (visShown()) { if (vis.s && vis.s.held) visSound(); if (!vis.anim) visDraw(); } }, 100);
+
+// visAnimate redraws the falling notes each display frame while MIDI is shown
+// (they move every frame; the other pictures change only with the data).
+// TRLC-LINKS: REQ-SDS-278
+function visAnimate() {
+  vis.anim = visShown() && vis.s && vis.s.proto === "midi" && !vis.audio.on && !dcfg.layer;
+  if (vis.anim) visDraw(true);
+  requestAnimationFrame(visAnimate);
+
+// The Full screen button puts the picture and its panel on the whole screen.
+// TRLC-LINKS: REQ-SDS-278
+if ($("visFull")) $("visFull").onclick = () => {
+  const el = $("visGrid");
+  if (document.fullscreenElement) document.exitFullscreen();
+  else if (el && el.requestFullscreen) el.requestFullscreen().catch(() => {});
+};
+}
+requestAnimationFrame(visAnimate);
