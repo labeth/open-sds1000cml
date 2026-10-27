@@ -167,12 +167,15 @@ function visDrawProto(g, W, H) {
 }
 
 // visDcfHint says what the time needs: a whole minute (60 of the bus's
-// seconds) in one record, the timebase that holds it.
+// seconds) after the record's trigger, so two minutes in the record, and the
+// timebase step that holds them.
 // TRLC-LINKS: REQ-SDS-278
 function visDcfHint(s) {
-  if (!(s.secS > 0)) return "a whole minute (60 of its seconds) must fit the record";
-  const need = (60.5 * s.secS) / 14, td = (st && st.tdiv_s) || 0;
-  return "a whole minute takes " + fmtTdiv(60 * s.secS) + (td >= need ? "" : ": set " + fmtTdiv(need) + "/div or slower to hold it");
+  const sec = s.secS > 0 ? s.secS : dcfg.baud > 0 ? 1 / dcfg.baud : 0;
+  if (!(sec > 0)) return "a whole minute (60 of its seconds) must fit the record";
+  const need = (120 * sec) / 14, td = (st && st.tdiv_s) || 0;
+  const step = ((st && st.tdivs) || []).filter((t) => t >= need * 0.999).sort((a, b) => a - b)[0] || need;
+  return "a minute takes " + fmtTdiv(60 * sec) + (td >= need * 0.999 ? "" : ": " + fmtTdiv(step) + "/div holds one");
 }
 
 // visDrawFrames draws the identifiers seen as tiles, each with its newest

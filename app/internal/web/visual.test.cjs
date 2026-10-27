@@ -122,6 +122,10 @@ function uartWave(packets, baud, dt, stop, breakS) {
   assert.equal(s.frames.size, 1, "one identifier with a good frame");
   deq(s.frames.get(2).bytes, [0x56]); assert.equal(s.frames.get(2).count, 2);
   assert.equal(s.errs, 1, "the bad checksum counted");
+  c.visIngest(s, { ok: true, spans: [sp("sof", "BRK", 0), sp("rw", "SYNC", 0x55), sp("data", "ID02", 0xc2), sp("data", "56", 0x56), sp("data", "CK77", 0x77),
+    sp("sof", "BRK", 0), sp("rw", "SYNC", 0x55), sp("data", "ID00", 0x80), sp("frame-error", "!CK12", 0x12)] }, 0, 1e-6);
+  assert.equal(s.errs, 1, "the record's last frame, cut by its end, is no failure");
+  assert.equal(s.frames.get(2).count, 3);
 }
 
 // ---- Sony sends the command before the address: the button has both

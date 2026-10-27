@@ -782,14 +782,15 @@ function canSpans(s, spans, tOf) {
 }
 
 // linSpans takes a frame's LIN frames: each identifier's newest response, its
-// count, and the frames whose checksum or identifier parity failed.
+// count, and the frames whose checksum or identifier parity failed (not the
+// record's last: the record's end can cut its response short).
 // TRLC-LINKS: REQ-SDS-278
 function linSpans(s, spans, tOf) {
   let cur = null;
   // TRLC-LINKS: REQ-SDS-278
-  const done = () => {
+  const done = (last) => {
     if (cur && cur.id >= 0 && cur.ck) {
-      if (cur.bad) s.errs++;
+      if (cur.bad) { if (!last) s.errs++; }
       else s.frames.set(cur.id, { bytes: cur.bytes, t: cur.t, count: ((s.frames.get(cur.id) || {}).count || 0) + 1 });
     }
     cur = null;
@@ -799,11 +800,11 @@ function linSpans(s, spans, tOf) {
     if (!cur || sp.kind === "rw") continue;
     const t = (sp.text || "").replace(/^!/, ""); // a failed field is marked "!"
     if (t.startsWith("ID")) { cur.id = parseInt(t.slice(2), 16); if (sp.kind !== "data") cur.bad = true; }
-    else if (t.startsWith("CK")) { cur.ck = true; if (sp.kind !== "data") cur.bad = true; done(); }
+    else if (t.startsWith("CK")) { cur.ck = true; if (sp.kind !== "data") cur.bad = true; }
     else if (sp.kind === "data") cur.bytes.push(sp.val);
     else cur.bad = true;
   }
-  done();
+  done(true);
 }
 
 // ---- a protocol layer's values ----------------------------------------------------
