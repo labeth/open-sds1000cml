@@ -771,6 +771,32 @@ func Autodetect(c1, c2 []uint8, colTimeS float64, format string) Result {
 			if r.Proto == "pdi" && clk[a].clockLike() < 0.7 {
 				return
 			}
+			// near half duty, its data moving at one place in the cycle:
+			// an SPI clock's short pulses, or a square beside a carrier,
+			// clocks no PDI
+			if r.Proto == "pdi" {
+				if share, n := phaseLock(&clk[a], &clk[1-a].s); clk[a].pulseClock() || (n >= 12 && share < 0.6) {
+					return
+				}
+			}
+			// a driver's STEP pulses are one width, its timer's, however
+			// the rate ramps: a line code's highs of several widths (a
+			// Miller line read as STEP) are no steps
+			if r.Proto == "stepper" {
+				if st := runStats(clk[a].s); st.highs >= 4 && st.highUniform < 0.7 {
+					return
+				}
+			}
+			// D0 and D1 idle and pulse briefly (some 50 us a bit of a
+			// millisecond or two): lines whose runs are alike either way
+			// (a random line, I2C's SCL and SDA) carry no Wiegand bits
+			if r.Proto == "wiegand" {
+				for _, k := range []int{a, 1 - a} {
+					if st := runStats(clk[k].s); st.lows >= 3 && st.highs >= 3 && 4*min(st.medLow, st.medHigh) > max(st.medLow, st.medHigh) {
+						return
+					}
+				}
+			}
 			consider(r, "CLK "+chName(a)+" DATA "+chName(1-a), Roles{ChA: a, ChB: 1 - a})
 		})
 	}
@@ -819,6 +845,10 @@ func Autodetect(c1, c2 []uint8, colTimeS float64, format string) Result {
 			// by a STOP: an I2C bus that noise kept from its own checks (an
 			// ACK read as a NAK), never SPI - which reads bytes off any pair
 			if i2cAckedTransfers(i2cRead[ci]) >= 2 {
+				// SPI's bytes still weigh against a lone SWD transfer
+				if r := DecodeSPI(chans[ci], chans[di], colTimeS, SPICfg{MSB: true, Format: format}); r.OK {
+					spiBytes = max(spiBytes, len(r.Bytes))
+				}
 				return settle()
 			}
 			cpol := idleLevel(&clk[ci].s)
@@ -873,6 +903,46 @@ func nearStandardBaud(baud, tol float64) bool {
 		}
 	}
 	return false
+}
+
+// lineRuns is a sliced line's closed runs: how many lows and highs, their
+// middle lengths in samples, and the share of the highs within a quarter
+// of their middle one.
+type lineRuns struct {
+	lows, highs     int
+	medLow, medHigh float64
+	highUniform     float64
+}
+
+// runStats measures a sliced line's closed runs (lineRuns).
+// TRLC-LINKS: REQ-SDS-018
+func runStats(S sliced) lineRuns {
+	var lo, hi []float64
+	for _, r := range levelRuns(S) {
+		if r.open {
+			continue
+		}
+		if r.lvl == 0 {
+			lo = append(lo, r.x1-r.x0)
+		} else {
+			hi = append(hi, r.x1-r.x0)
+		}
+	}
+	st := lineRuns{lows: len(lo), highs: len(hi)}
+	if len(lo) > 0 {
+		st.medLow = nthValue(append([]float64(nil), lo...), len(lo)/2)
+	}
+	if len(hi) > 0 {
+		st.medHigh = nthValue(append([]float64(nil), hi...), len(hi)/2)
+		in := 0
+		for _, h := range hi {
+			if math.Abs(h-st.medHigh) <= 0.25*st.medHigh {
+				in++
+			}
+		}
+		st.highUniform = float64(in) / float64(len(hi))
+	}
+	return st
 }
 
 // swdWholeReads counts an SWD reading's whole transfers: a data word whose

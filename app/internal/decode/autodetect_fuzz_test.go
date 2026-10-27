@@ -168,13 +168,20 @@ func fuzzI2C(rng *rand.Rand, hz, sr float64, transfers int) twoLine {
 	l := newTwoLine(sr)
 	T := 1 / hz
 	l.add(1, 1, 20*T)
+	// SDA moves a quarter period into SCL low, never with SCL's fall: a
+	// device holds it past the fall (300 ns at least) so that no data
+	// change reads as a START or a STOP
+	sda := byte(0)
 	bitOut := func(b byte) {
-		l.add(0, b, T/2)
+		l.add(0, sda, T/4)
+		l.add(0, b, T/4)
 		l.add(1, b, T/2)
+		sda = b
 	}
 	for k := 0; k < transfers; k++ {
 		l.add(1, 0, T/2) // START
 		l.add(0, 0, T/2)
+		sda = 0
 		addr := 0x08 + rng.Intn(0x70)
 		frame := []int{addr<<1 | rng.Intn(2)}
 		for n := 1 + rng.Intn(4); n > 0; n-- {

@@ -279,6 +279,12 @@ func scorePhys(r Result) float64 {
 		if !strings.Contains(r.Text, "ESC6") || r.Cover < 0.8 || (r.Baud > 0 && r.Baud < 100) {
 			return -1e9
 		}
+		// a probe follows its escape with the activation and scans: escapes
+		// outnumbering the scans, over and over, are two squares' edges (an
+		// RFID carrier beside a clock)
+		if esc := strings.Count(r.Text, "ESC"); esc >= 4 && scans < esc {
+			return -1e9
+		}
 		// an escape (six data edges within one clock high) is no I2C
 		// transaction nor any other bus: its STOPs and STARTs read as one
 		return float64(1000 + scans*300)
