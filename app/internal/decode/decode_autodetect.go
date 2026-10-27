@@ -733,6 +733,12 @@ func Autodetect(c1, c2 []uint8, colTimeS float64, format string) Result {
 			if byteClocked(&clk[ord[0]].s) { // whole bytes a burst: SPI, not 9 clocks a byte
 				continue
 			}
+			// SCL is a clock, stretched now and then: a line whose edges
+			// keep no half period (an RC-5 code beside a random line read
+			// as SCL and SDA) clocks no I2C
+			if clk[ord[0]].clockLike() < 0.35 {
+				continue
+			}
 			consider(r, "SCL "+chName(ord[0])+" SDA "+chName(ord[1]), Roles{ChA: ord[0], ChB: ord[1]})
 		}
 		if clockedPair {

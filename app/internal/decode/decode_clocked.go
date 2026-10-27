@@ -360,23 +360,45 @@ func DecodeSWD(clk, dio []uint8, colTimeS float64, cfg ClockedCfg) Result {
 
 // swdTargetAtRise reports whether more of the requests on a clock
 // (start 1, stop 0, park 1, parity checking) read an OK acknowledge at the
-// rises than at the falls.
+// rises than at the falls; where as many do, whether more of the reads'
+// data words check their parity at the rises. An acknowledge's three bits
+// read alike at either edge more often than not; a target that moves SWDIO
+// at the fall has its data read there now and then a bit early or late.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-236
 func swdTargetAtRise(cy []swdCycle) bool {
 	fall, rise := 0, 0
+	pf, pr := 0, 0 // read data words whose parity checks at the falls, the rises
 	for c := 0; c+12 <= len(cy); c++ {
 		r := func(k int) int { return cy[c+k].dr }
 		if r(0) != 1 || r(6) != 0 || r(7) != 1 || (r(1)+r(2)+r(3)+r(4))%2 != r(5) {
 			continue
 		}
-		if cy[c+9].df == 1 && cy[c+10].df == 0 && cy[c+11].df == 0 {
+		okF := cy[c+9].df == 1 && cy[c+10].df == 0 && cy[c+11].df == 0
+		okR := r(9) == 1 && r(10) == 0 && r(11) == 0
+		if okF {
 			fall++
 		}
-		if r(9) == 1 && r(10) == 0 && r(11) == 0 {
+		if okR {
 			rise++
 		}
+		if r(2) == 1 && c+45 <= len(cy) { // a read: data on cycles c+12 .. c+44
+			nf, nr := 0, 0
+			for k := c + 12; k < c+45; k++ {
+				nf += cy[k].df
+				nr += cy[k].dr
+			}
+			if okF && nf%2 == 0 {
+				pf++
+			}
+			if okR && nr%2 == 0 {
+				pr++
+			}
+		}
 	}
-	return rise > fall
+	if rise != fall {
+		return rise > fall
+	}
+	return pr > pf
 }
 
 // swdSteady reports a clock whose cycles while it runs (gaps under four

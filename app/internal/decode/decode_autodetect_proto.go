@@ -1,7 +1,10 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
 package decode
 
-import "math"
+import (
+	"math"
+	"strings"
+)
 
 // Detection of the protocols beyond the first ten. Each one proves itself
 // by its own check (a CRC, a checksum, parities, a fixed timing no other bus
@@ -129,7 +132,9 @@ func considerPairs(c1, c2 []uint8, sl [2]*sliced, colTimeS float64, format strin
 				consider(DecodePS2(x, y, colTimeS, cfg), a)
 			}
 			if !byteBursts { // whole bytes a burst: SPI's
-				consider(DecodeSWD(x, y, colTimeS, cfg), a)
+				if r := DecodeSWD(x, y, colTimeS, cfg); swdStands(r, x, y, colTimeS, cfg, sl[1-a]) {
+					consider(r, a)
+				}
 			}
 			consider(DecodeMDIO(x, y, colTimeS, cfg), a)
 		}
@@ -138,6 +143,44 @@ func considerPairs(c1, c2 []uint8, sl [2]*sliced, colTimeS float64, format strin
 		}
 		considerPhysPairs(x, y, colTimeS, format, ta, byteBursts, func(r Result) { consider(r, a) })
 	}
+}
+
+// swdStands reports an SWD reading that holds: one with two transfers or
+// a line reset does; a lone transfer's request and acknowledge must read
+// the same with SWDIO (d, its slicing) cut at 40% and at 60% of its swing.
+// A target drives them rail to rail, and only a data bit the record caught
+// changing may read either way; another bus's bits that hold a request, an
+// OK and both parities by chance shift into some other request (or none)
+// when the cut moves.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-236
+func swdStands(r Result, clk, dio []uint8, colTimeS float64, cfg ClockedCfg, d *sliced) bool {
+	if !r.OK || !d.ok {
+		return r.OK
+	}
+	frames, resets := 0, 0
+	for _, s := range r.Spans {
+		switch {
+		case s.Kind == "sof":
+			frames++
+		case s.Kind == "rw" && s.Text == "LINERESET":
+			resets++
+		}
+	}
+	if frames >= 2 || resets > 0 {
+		return true
+	}
+	head := func(x Result) string { // the request and its acknowledge
+		f := strings.Fields(x.Text)
+		return strings.Join(f[:min(2, len(f))], " ")
+	}
+	for _, f := range []float64{0.4, 0.6} {
+		c := cfg
+		c.ThresholdB, c.HaveThrB = d.lowRail+f*(d.highRail-d.lowRail), true
+		if head(DecodeSWD(clk, dio, colTimeS, c)) != head(r) {
+			return false
+		}
+	}
+	return true
 }
 
 // count tallies a decode's spans of each kind.

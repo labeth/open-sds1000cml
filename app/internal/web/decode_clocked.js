@@ -32,7 +32,7 @@ function clockedLines(a, b, cfg) {
   }
   if (fall.length < 4) return { why: "too few clock edges" };
   const gaps = Float64Array.from(fall).sort();
-  return { E: out, per: gaps[gaps.length >> 1], C, why: "" };
+  return { E: out, per: gaps[gaps.length >> 1], C, D, why: "" };
 }
 
 // decodePS2 mirrors decode_clocked.go DecodePS2.
@@ -77,11 +77,14 @@ function decodePS2(clk, data, colTimeS, cfg) {
 
 // swdTargetAtRise: whether more requests on the clock (start 1, stop 0,
 // park 1, parity checking) read an OK acknowledge at the rises than at the
-// falls (decode.go swdTargetAtRise).
+// falls; where as many do, whether more reads' data words check their
+// parity at the rises (decode_clocked.go swdTargetAtRise).
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-236
 function swdTargetAtRise(cy) {
   let fall = 0;
   let rise = 0;
+  let pf = 0;
+  let pr = 0;
   for (let c = 0; c + 12 <= cy.length; c++) {
     const r0 = cy[c].dr;
     const r1 = cy[c + 1].dr;
@@ -90,10 +93,43 @@ function swdTargetAtRise(cy) {
     const r4 = cy[c + 4].dr;
     const r5 = cy[c + 5].dr;
     if (r0 !== 1 || cy[c + 6].dr !== 0 || cy[c + 7].dr !== 1 || (r1 + r2 + r3 + r4) % 2 !== r5) continue;
-    if (cy[c + 9].df === 1 && cy[c + 10].df === 0 && cy[c + 11].df === 0) fall++;
-    if (cy[c + 9].dr === 1 && cy[c + 10].dr === 0 && cy[c + 11].dr === 0) rise++;
+    const okF = cy[c + 9].df === 1 && cy[c + 10].df === 0 && cy[c + 11].df === 0;
+    const okR = cy[c + 9].dr === 1 && cy[c + 10].dr === 0 && cy[c + 11].dr === 0;
+    if (okF) fall++;
+    if (okR) rise++;
+    if (r2 === 1 && c + 45 <= cy.length) {
+      let nf = 0;
+      let nr = 0;
+      for (let k = c + 12; k < c + 45; k++) {
+        nf += cy[k].df;
+        nr += cy[k].dr;
+      }
+      if (okF && nf % 2 === 0) pf++;
+      if (okR && nr % 2 === 0) pr++;
+    }
   }
-  return rise > fall;
+  if (rise !== fall) return rise > fall;
+  return pr > pf;
+}
+
+// swdRequestRaces: a request whose SWDIO changes within an eighth of a
+// period of a rise it is read at (decode_clocked.go swdRequestRaces).
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-236
+function swdRequestRaces(D, cy, c, per) {
+  if (!D || !D.ok || !(per > 0)) return false;
+  const lo = cy[c].xf;
+  const hi = cy[c + 7].xr + per / 8;
+  const ed = D.edges;
+  let a = 0;
+  let b = ed.length;
+  while (a < b) {
+    const m = (a + b) >> 1;
+    if (ed[m].x >= lo) b = m; else a = m + 1;
+  }
+  for (let j = a; j < ed.length && ed[j].x <= hi; j++) {
+    for (let k = c; k < c + 8; k++) if (Math.abs(ed[j].x - cy[k].xr) < per / 8) return true;
+  }
+  return false;
 }
 
 // decodeSWD mirrors decode_clocked.go DecodeSWD.
@@ -102,7 +138,7 @@ function decodeSWD(clk, dio, colTimeS, cfg) {
   cfg = cfg || {};
   const L = clockedLines(clk, dio, cfg);
   if (L.why) return fail("swd", L.why);
-  const { E, per, C } = L;
+  const { E, per, C, D } = L;
   const cy = [];
   for (let k = 0; k + 1 < E.length; k++)
     if (E[k].dir < 0 && E[k + 1].dir > 0) cy.push({ xf: E[k].x, xr: E[k + 1].x, df: E[k].d, dr: E[k + 1].d });
@@ -147,6 +183,7 @@ function decodeSWD(clk, dio, colTimeS, cfg) {
     const parOK = (apdp + rnw + a2 + a3) % 2 === par;
     const ack = tb(c + 9) | (tb(c + 10) << 1) | (tb(c + 11) << 2);
     if (!parOK || (ack !== 1 && ack !== 2 && ack !== 4)) continue;
+    if (swdRequestRaces(D, cy, c, per)) continue; // its bits read where they change: no host's
     spans.push(pspan(cy[c].xr, cy[c].xr, n, "", "sof", 0));
     const txt = (rnw ? "R" : "W") + (apdp ? "AP" : "DP") + ((a2 | (a3 << 1)) << 2).toString(16).toUpperCase();
     spans.push(pspan(cy[c].xf, cy[c + 7].xr + per / 2, n, txt, "data", req));

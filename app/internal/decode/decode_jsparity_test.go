@@ -403,6 +403,31 @@ func TestJSDecoderParity(t *testing.T) {
 	protoParityVectors(add, add2, corrupt)
 	// The sigrok protocols beyond the first thirty (proto_parity2_test.go).
 	physParityVectors(add, add2, corrupt)
+	// SWD read off the scope's captures, whose target moves SWDIO at the
+	// fall (read at the rise where the data checks there), and off SPI
+	// streams launching their data at the rise or the fall (requests whose
+	// bits race), each reshaped as AUTO's fuzzing does
+	{
+		rng := rand.New(rand.NewSource(7))
+		var cs []detectCase
+		for _, f := range []string{"scope_swd_raw_50us.json.gz", "scope_swd_samples_500us.json.gz", "scope_swd_cut_20us.json.gz"} {
+			c1, c2, ct := loadGzJSON(t, filepath.Join("testdata", f))
+			cs = append(cs, detectCase{f, c1, c2, ct, "swd", 0})
+		}
+		for _, sh := range []spiShape{{hz: 2e6, duty: 0.8, jitter: 1, byteGap: 1, cpha: true}, {hz: 5e6, duty: 0.5, byteGap: 2}} {
+			sr := 40 * sh.hz
+			l := fuzzSPI(rng, sh, sr, 24)
+			cs = append(cs, detectCase{"spi", l.a.codes(), l.b.codes(), 1 / sr, "spi", 0})
+		}
+		for _, c := range cs {
+			for it := 0; it < 6*parityMult(); it++ {
+				mc, _ := fuzzMutate(rng, c)
+				for _, o := range [][2][]uint8{{mc.c1, mc.c2}, {mc.c2, mc.c1}} {
+					add2("swd", o[0], o[1], mc.colT, jsCfg{}, DecodeSWD(o[0], o[1], mc.colT, ClockedCfg{}))
+				}
+			}
+		}
+	}
 
 	dir := t.TempDir()
 	jf := filepath.Join(dir, "vecs.json")
