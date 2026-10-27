@@ -42,11 +42,11 @@ run(async (t) => {
     }, rows);
     t.ok((await ev(() => vis.midiLead)) === 3, "the notes fall for 3 s by default");
     t.ok(await ev(() => vis.autoStream), "MIDI asks the scope for its gap-free stream");
-    // this scope has no stream to follow: back to its captures for the rest
-    if (await ev(() => vis.stream.on || busScopeStreaming())) {
-      await page.click("#visGapless");
-      await t.until(async () => await ev(() => !busScopeStreaming() && !vis.stream.on), "Gap-free off goes back to the captures", 6000);
-    }
+    // the scope goes on its stream; this one has nothing in it: back to its captures for the rest
+    await t.until(async () => await ev(() => busScopeStreaming()), "the scope streams the bus", 8000);
+    await t.until(async () => await ev(() => vis.stream.on), "the view follows the stream", 3000);
+    await page.click("#visGapless");
+    await t.until(async () => await ev(() => !busScopeStreaming() && !vis.stream.on), "Gap-free off goes back to the captures", 8000);
     await t.until(async () => (await px([0.05, 0.12])) > 0, "E4's key lights in channel 1's colour when its note lands", 9000);
     // TRLC-LINKS: REQ-SDS-278
     const above = () => ev(() => {
@@ -66,8 +66,9 @@ run(async (t) => {
     await t.until(async () => await ev(() => vis.sound && vis.sy && vis.sy.played > 0), "Sound plays the notes", 6000);
     const sy = await ev(() => ({ state: vis.sy.ctx.state, played: vis.sy.played }));
     t.ok(sy.state === "running", "the page's audio runs: " + JSON.stringify(sy));
-    await page.click("#visPanic");
-    t.ok(await ev(() => vis.sy.voices.size === 0), "All notes off silences every voice");
+    // read in the click's own task: the next notes keep coming (and are scheduled to land) after it
+    t.ok(await ev(() => { const had = vis.sy.voices.size; document.getElementById("visPanic").click(); return had > 0 && vis.sy.voices.size === 0; }),
+      "All notes off silences every voice, those waiting to land too");
   } else {
     await page.click('#busView button[data-value="visual"]');
     await t.until(async () => await ev(() => !!document.getElementById("visAudio")), "the Visual view offers Digital audio", 4000);
