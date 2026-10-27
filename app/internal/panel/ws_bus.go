@@ -1090,8 +1090,12 @@ func fewUART(res decode.Result) bool {
 // the buses whose frames last tens of milliseconds (IR remotes, HDMI-CEC,
 // DALI, Wiegand, a DHT reading, LIN and Modbus frames) show whole frames
 // there, in the decimated record of a search (LeaseSearchView) whose samples
-// still resolve their bits: every 2 us at 5ms/div, every 8 us at 20ms/div.
-var slowTdivs = []float64{5e-3, 20e-3}
+// still resolve their bits: every 2 us at 5ms/div, every 8 us at 20ms/div,
+// every 20 us at 50ms/div - whose 500 ms hold a message of over 100 ms
+// whole wherever the trigger fell in it (an IR Denon pair of 133 ms, its
+// second frame triggered on in every 20ms/div record of a search, the
+// captures' cadence locked to the pair's).
+var slowTdivs = []float64{5e-3, 20e-3, 50e-3}
 
 // findSlowBus is findBus's last look: the decimated record at each of
 // slowTdivs, read as a search reads (LeaseSearchView: a deeper screen than
@@ -1189,12 +1193,12 @@ func heldFor(proto string) []string {
 }
 
 // slowLooks is how many records findSlowBus reads at the i-th of slowTdivs:
-// two at the slowest, where a bus that sends a frame now and then (an IR
-// remote's 67 ms frame among repeat codes, a card read) can fall across
+// two at the slower ones, where a bus that sends a frame now and then (an
+// IR remote's 67 ms frame among repeat codes, a card read) can fall across
 // the record's end on one record and whole in the next.
 // TRLC-LINKS: REQ-SDS-214
 func slowLooks(i int) int {
-	if i == len(slowTdivs)-1 {
+	if i > 0 {
 		return 2
 	}
 	return 1

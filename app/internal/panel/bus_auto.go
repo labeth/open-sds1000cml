@@ -130,6 +130,11 @@ func (c *Controller) runBusAuto(stop chan struct{}) {
 	// from the slowest timebase that does not roll (slower buses are looked
 	// for after, findSlowBus).
 	c.setTdivNearest(min(max(entryTdiv, busSearchTdiv), busSearchMaxTdiv))
+	// The trigger near the left, where AUTO leaves it: a frame starts at the
+	// trigger, and the slow look's screen holds it whole only after it (an
+	// IR Denon pair's 133 ms at 20ms/div, the trigger left at 57% of the
+	// screen, was found one AUTO in six)
+	_ = c.setTrigPos(busTrigPos)
 	c.mu.Lock()
 	c.autosetMsg = "AUTO: finding the bus..."
 	c.ui.busDetecting = true
