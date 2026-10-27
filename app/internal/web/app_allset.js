@@ -80,7 +80,7 @@ const ALL_GROUPS = [
 // decode transcript and SOUND's Take the scope (shown only while paused).
 const ALL_EXCLUDE = new Set(["decodeText", "tab-scope", "tab-bus", "tab-spectrum", "tab-measure", "tab-compare", "tab-sound", "allBtn", "allClose", "allFilter", "helpClose",
   "exportBtn", "setupsBtn", "quickMore", "pkDetect", "streamDetect", "tdivDn", "tdivUp", "vdiv1Dn", "vdiv1Up", "vdiv2Dn", "vdiv2Up", "mYT", "mXY", "mFFT", "mSPG", "mBODE",
-  "sndTakeScope"]);
+  "sndTakeScope", "visFull"]);
 
 let allBuilt = false, allW = 380;
 let allIndex = null;
