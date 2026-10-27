@@ -632,9 +632,13 @@ func (c *Controller) detectOn(auto AutoSource) (decode.Result, float64, bool, lo
 	// flight from a faster one before: AUTO's search at 500us/div read its
 	// sweep's 5us/div frame (54 us, one SWD transfer cut) and named SPI, one
 	// search in ten.
+	// Nor one of a far slower timebase still on screen: its envelope's
+	// buckets, ten times coarser, bound no edges (AUTO's search at 5ms/div
+	// weighed an I2C bus's "SPI" reading against the entry's 50ms/div
+	// envelope and kept it, one search in three).
 	set := c.snap().st.TdivSet()
 	all := func(f *engine.Frame, _ bool) bool {
-		return set <= 0 || !(f.SampleS > 0) || float64(f.Valid)*f.SampleS >= 5*set
+		return set <= 0 || !(f.SampleS > 0) || float64(f.Valid)*f.SampleS >= 5*set && (f.TdivS == 0 || f.TdivS <= slowerFrame*set)
 	}
 	dec := c.detectWith(true, false, all, auto, decimatedWait)
 	res, sampleS, found := dec.res, dec.sampleS, dec.found
@@ -658,6 +662,11 @@ func (c *Controller) detectOn(auto AutoSource) (decode.Result, float64, bool, lo
 	l := c.detectWith(false, false, raw, auto, detectWait)
 	return l.res, l.sampleS, l.found, dec
 }
+
+// slowerFrame is how much slower than the timebase set a frame's own may be
+// for a look at the timebase to read it: the ladder's next step is 2.5 times
+// slower at most, a screen left from a timebase a decade slower is not.
+const slowerFrame = 4.0
 
 // decimatedWait bounds the wait for a decimated record: a scope waiting for
 // a trigger captures none.
@@ -880,7 +889,8 @@ func busLines(res decode.Result) []int {
 }
 
 // weighEnvelope is whether a find on a decimated record stands once a line of
-// its bus holds runs under its shortest feature (shortRuns): weighed
+// its bus holds runs under its shortest feature (shortRuns), or its clock
+// is the record's (clockFromRecord): weighed
 // against the live envelope (envHides), read now when the look holds none.
 // A find no envelope could be read for does not stand: the search goes on
 // at the full rate (the 104 MHz flash read as I2C, with no envelope after
@@ -890,11 +900,20 @@ func busLines(res decode.Result) []int {
 // read as Manchester.
 // TRLC-LINKS: REQ-SDS-214
 func (c *Controller) weighEnvelope(l *look, accept func(*engine.Frame, bool) bool) bool {
-	if !stands(*l) || !shortRuns(*l) || checkedFind(l.res) {
+	short := shortRuns(*l)
+	if !stands(*l) || checkedFind(l.res) || (!short && !clockFromRecord(l.res)) {
 		return stands(*l)
 	}
 	if !l.envSeen {
 		l.envRun, l.envBusy, l.envSeen = c.envelopeRuns(true, accept, c.now().Add(envWait))
+	}
+	// A bus taking its clock from the record (clockFromRecord) is weighed
+	// where an envelope was read, with no short run in the record too: a
+	// faster clock averaged reads as slow edges (a 400 kHz I2C bus at
+	// 5ms/div read as SPI of a 223 us half clock); and stands as it did where
+	// none was.
+	if !short {
+		return stands(*l)
 	}
 	return l.envSeen && stands(*l)
 }
@@ -989,7 +1008,13 @@ func (c *Controller) findBus(auto AutoSource, wanted func() bool) (decode.Result
 	// "UART 500000 8N1", USB at 2us/div as "UART 1500000 8N1", a FlexRay frame
 	// failing its CRC as "UART 10002156 8N1"): the search looks on, and names
 	// it only when it finds nothing else.
-	scant := found && scantFind(res)
+	// SPI or I2C on a record decimated below the full rate is looked for at
+	// the full rate too: they take their clock from the record, and a faster
+	// one averaged reads as slow edges no envelope always shows (a 400 kHz
+	// I2C bus at 5ms/div read as SPI of a 223 us half clock, one AUTO in
+	// three). The full rate's find replaces it; with none there it stands.
+	full := c.fullRateS()
+	scant := found && (scantFind(res) || clockFromRecord(res) && full > 0 && sampleS > 1.25*full)
 	// a record resolving its edges is weighed against the live envelope (slowFirst)
 	if !found && dec.resolved && !dec.envSeen {
 		dec.envRun, dec.envBusy, dec.envSeen = c.envelopeRuns(true, func(*engine.Frame, bool) bool { return true }, c.now().Add(envWait))
