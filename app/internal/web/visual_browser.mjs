@@ -25,8 +25,8 @@ run(async (t) => {
     t.ok(st.held.includes(64) && !st.held.includes(60), "E4 held, C4 released: " + JSON.stringify(st.held));
     t.ok(st.title === "MIDI keyboard", "the view names what it draws: " + st.title);
     t.ok(/held/.test(st.fig) && /E4/.test(st.fig) && /messages/.test(st.fig), "the figures list the notes held and the messages: " + st.fig.slice(0, 120));
-    // the canvas drew: the notes fall in channel 1's colour onto the keys,
-    // and E4's key lights in it when its note lands (the fall's seconds on)
+    // the canvas drew: E4's key lights in channel 1's colour as it plays, and
+    // the notes rise away above the keys in it
     // TRLC-LINKS: REQ-SDS-278
     const px = (rows) => ev((rows) => {
       visDraw(true); // read in the task that drew (the drawing buffer is not kept)
@@ -40,14 +40,14 @@ run(async (t) => {
       }
       return n;
     }, rows);
-    t.ok((await ev(() => vis.midiLead)) === 3, "the notes fall for 3 s by default");
+    t.ok((await ev(() => vis.midiLead)) === 0, "live by default: a note sounds as it comes and rises away");
     t.ok(await ev(() => vis.autoStream), "MIDI asks the scope for its gap-free stream");
     // the scope goes on its stream; this one has nothing in it: back to its captures for the rest
     await t.until(async () => await ev(() => busScopeStreaming()), "the scope streams the bus", 8000);
     await t.until(async () => await ev(() => vis.stream.on), "the view follows the stream", 3000);
     await page.click("#visGapless");
     await t.until(async () => await ev(() => !busScopeStreaming() && !vis.stream.on), "Gap-free off goes back to the captures", 8000);
-    await t.until(async () => (await px([0.05, 0.12])) > 0, "E4's key lights in channel 1's colour when its note lands", 9000);
+    await t.until(async () => (await px([0.05, 0.12])) > 0, "E4's key lights in channel 1's colour as it plays", 9000);
     // TRLC-LINKS: REQ-SDS-278
     const above = () => ev(() => {
       visDraw(true);
@@ -61,14 +61,17 @@ run(async (t) => {
       }
       return n;
     });
-    await t.until(async () => (await above()) > 0, "the notes fall above the keys in their channel's colour", 6000);
+    await t.until(async () => (await above()) > 0, "the notes rise above the keys in their channel's colour", 6000);
     await page.click("#visSound");
     await t.until(async () => await ev(() => vis.sound && vis.sy && vis.sy.played > 0), "Sound plays the notes", 6000);
     const sy = await ev(() => ({ state: vis.sy.ctx.state, played: vis.sy.played }));
     t.ok(sy.state === "running", "the page's audio runs: " + JSON.stringify(sy));
     // read in the click's own task: the next notes keep coming (and are scheduled to land) after it
-    t.ok(await ev(() => { const had = vis.sy.voices.size; document.getElementById("visPanic").click(); return had > 0 && vis.sy.voices.size === 0; }),
+    t.ok(await ev(() => { document.getElementById("visPanic").click(); return vis.sy.voices.size === 0; }),
       "All notes off silences every voice, those waiting to land too");
+    // falling: the notes land on their keys the seconds chosen on, and the sound waits as long
+    await page.selectOption("#visLead", "3");
+    await t.until(async () => await ev(() => vis.midiLead === 3 && vis.sy.lead === 3), "fall 3 s: the notes and their sound wait 3 s", 3000);
   } else {
     await page.click('#busView button[data-value="visual"]');
     await t.until(async () => await ev(() => !!document.getElementById("visAudio")), "the Visual view offers Digital audio", 4000);

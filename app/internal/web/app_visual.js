@@ -16,7 +16,7 @@ const vis = {
   stream: { next: -1, busy: false, s0: NaN, t0: NaN, rate: 0, on: false },
   wsOrder: "GRB", ps2Kind: "", dbcText: "", dbcName: "", canPick: new Set(),
   audio: { on: false, kind: "auto", res: null, busy: false, live: false, play: null, gain: 0.6, prevTdiv: 0, sampleS: 0, msg: "" },
-  drawT: 0, midiLead: 3, autoStream: false,
+  drawT: 0, midiLead: 0, autoStream: false,
 };
 
 // VIS_STREAMED are the protocols the scope's stream carries byte for byte
@@ -236,10 +236,15 @@ function visSpark(g, x, y, w, h, hist, col) {
 // TRLC-LINKS: REQ-SDS-278
 function visNum(v) { return Math.abs(v) >= 1000 || Number.isInteger(v) ? String(Math.round(v * 100) / 100) : v.toPrecision(4); }
 
-// visDrawMIDI draws an 88-key piano with the notes falling onto it: each
-// note a bar in its channel's colour, as long as it is held, landing on its
-// key as it sounds (the key then pressed in that colour), and a legend of the
-// channels heard with their instruments.
+// VIS_MIDI_RISE is the seconds a played note takes to rise off the picture.
+const VIS_MIDI_RISE = 4;
+
+// visDrawMIDI draws an 88-key piano and its notes, each a bar in its
+// channel's colour as long as it is held, and a legend of the channels heard
+// with their instruments. Live (no lead) a note sounds and presses its key as
+// it comes, its bar growing up from the key while held, then rising away and
+// fading; with a lead it falls from the top and lands on its key lead seconds
+// later, when it sounds (the sound waits as long).
 // TRLC-LINKS: REQ-SDS-278
 function visDrawMIDI(g, W, H, s) {
   const lo = 21, hi = 108, now = performance.now() / 1000, lead = vis.midiLead;
@@ -256,10 +261,11 @@ function visDrawMIDI(g, W, H, s) {
     const wi = whites.indexOf(bl ? n - 1 : n);
     return bl ? { x: (wi + 1) * ww - ww * 0.31, w: ww * 0.62, black: true } : { x: wi * ww, w: ww, black: false };
   };
-  // a note falls from the top as it arrives and lands on its key lead
-  // seconds later, when it sounds (the sound waits as long)
+  const rise = !(lead > 0), span = rise ? VIS_MIDI_RISE : lead;
+  // a time's height: live, now at the keys and the past above; falling, now
+  // at the top and lead seconds ago at the keys
   // TRLC-LINKS: REQ-SDS-278
-  const yOf = (t) => hitY - ((t - (now - lead)) / lead) * rollH;
+  const yOf = (t) => rise ? hitY - ((now - t) / span) * rollH : hitY - ((t - (now - lead)) / lead) * rollH;
   g.fillStyle = "#070a0f"; g.fillRect(0, 0, W, hitY);
   for (let k = 0; k < whites.length; k++) {
     const m = whites[k] % 12;
@@ -273,16 +279,23 @@ function visDrawMIDI(g, W, H, s) {
       const k = keyX(n.note);
       if (k.black !== pass) continue;
       chans.add(n.ch);
-      const t1 = Number.isFinite(n.t1) ? n.t1 : now;
-      if (t1 < now - lead) continue; // played and gone into the key
-      if (n.t0 <= now - lead) lit.set(n.note, n);
-      const yb = Math.min(hitY, yOf(n.t0)), yt = Math.max(legH, yOf(t1));
-      if (yb - yt < 1) continue;
+      const held = !Number.isFinite(n.t1), t1 = held ? now : n.t1;
+      if (t1 < now - span) continue; // gone: risen off the top, or into its key
+      let yb, yt, fade = 1;
+      if (rise) {
+        if (held || n.t1 > now) lit.set(n.note, n);
+        yb = Math.min(hitY, yOf(t1)); yt = Math.max(legH, yOf(n.t0));
+        fade = 1 - Math.max(0, now - t1) / span; // fading as it goes
+      } else {
+        if (n.t0 <= now - lead) lit.set(n.note, n);
+        yb = Math.min(hitY, yOf(n.t0)); yt = Math.max(legH, yOf(t1));
+      }
+      if (yb - yt < 1 && !(rise && held)) continue;
       const pad = k.black ? ww * 0.04 : ww * 0.1, x = k.x + pad, w = Math.max(2 * dpr, k.w - 2 * pad), h = Math.max(3 * dpr, yb - yt);
       const c = VIS_CH_COLOURS[n.ch];
-      g.globalAlpha = 0.6 + 0.4 * n.vel / 127; g.fillStyle = c; g.fillRect(x, yb - h, w, h);
-      g.globalAlpha = 0.45; g.fillStyle = "#ffffff"; g.fillRect(x, yb - h, w, Math.min(h, 2 * dpr)); // a lit edge leading
-      g.globalAlpha = 0.35; g.fillStyle = "#000000"; g.fillRect(x + w - Math.max(1, dpr), yb - h, Math.max(1, dpr), h); // a shaded side
+      g.globalAlpha = (0.6 + 0.4 * n.vel / 127) * fade; g.fillStyle = c; g.fillRect(x, yb - h, w, h);
+      g.globalAlpha = 0.45 * fade; g.fillStyle = "#ffffff"; g.fillRect(x, rise ? yb - h : yb - Math.min(h, 2 * dpr), w, Math.min(h, 2 * dpr)); // a lit edge leading
+      g.globalAlpha = 0.35 * fade; g.fillStyle = "#000000"; g.fillRect(x + w - Math.max(1, dpr), yb - h, Math.max(1, dpr), h); // a shaded side
     }
   }
   g.globalAlpha = 1;
@@ -330,7 +343,7 @@ function visDrawMIDI(g, W, H, s) {
   }
   if (!s.roll.length) {
     g.fillStyle = "#8b98a5"; g.textAlign = "center";
-    g.fillText("notes fall onto the keys as they play: Sound plays them as they land", W / 2, legH + rollH / 2);
+    g.fillText(rise ? "a note presses its key as it plays, then rises away: Sound plays it" : "notes fall onto the keys: Sound plays them as they land", W / 2, legH + rollH / 2);
   }
 }
 
@@ -523,8 +536,8 @@ function visControls(p) {
       '<button type="button" id="visAOff" class="xs">Back to the bus</button></div><div id="visAMsg" class="sub"></div><div id="visFig"></div>';
   }
   if (p === "midi") h += '<div class="r"><button type="button" id="visSound" class="xs tog' + (vis.sound ? " on" : "") + '">Sound</button><label class="row-tight"><span class="lbl">vol</span><input type="range" id="visVol" min="0" max="1" step="0.05" value="' + (vis.sy ? vis.sy.gain : 0.5) + '" aria-label="MIDI volume"></label><button type="button" id="visPanic" class="xs">All notes off</button></div>' +
-    '<div class="r"><label class="row-tight"><span class="lbl">fall</span><select id="visLead" aria-label="the seconds a note falls before it lands and sounds">' +
-    [1.5, 3, 5, 8].map((v) => `<option value="${v}"${v === vis.midiLead ? " selected" : ""}>${v} s</option>`).join("") + "</select></label></div>";
+    '<div class="r"><label class="row-tight"><span class="lbl">notes</span><select id="visLead" aria-label="live: a note sounds as it comes and rises away; fall: it falls onto its key for the seconds chosen and sounds as it lands">' +
+    [0, 1.5, 3, 5, 8].map((v) => `<option value="${v}"${v === vis.midiLead ? " selected" : ""}>${v ? "fall " + v + " s" : "live, rise away"}</option>`).join("") + "</select></label></div>";
   if (VIS_STREAMED.includes(p)) h += '<div class="r"><button type="button" id="visGapless" class="xs tog' + (vis.stream.on ? " on" : "") + '" title="The scope streams the bus in hardware: every byte, no gaps between captures">Gap-free (scope streams)</button></div>';
   if (p === "ws281x") h += '<div class="r"><label class="hl"><span class="lbl">order</span><select id="visOrder" aria-label="LED byte order">' + ["GRB", "RGB", "BRG", "GRBW", "RGBW"].map((o) => `<option${o === vis.wsOrder ? " selected" : ""}>${o}</option>`).join("") + "</select></label></div>";
   if (p === "ps2") h += '<div class="r"><label class="hl"><span class="lbl">device</span><select id="visPs2" aria-label="PS/2 device"><option value="">by its bytes</option><option value="kbd">keyboard</option><option value="mouse">mouse</option></select></label></div>';
