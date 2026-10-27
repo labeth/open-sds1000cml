@@ -15,6 +15,11 @@ type I2CCfg struct {
 	Format    string
 	Threshold float64
 	HaveThr   bool
+	// Deglitch drops spikes on either line (i2cDeglitch), as the bus's
+	// devices filter them. Off, a spike while SCL is high reads as a START
+	// and a STOP, by the spec's letter and as sigrok reads it; AUTO sets it
+	// to judge a noisy bus by what its devices see.
+	Deglitch bool
 }
 
 // TRLC-LINKS: REQ-SDS-018
@@ -129,9 +134,11 @@ func DecodeI2C(scl, sda []uint8, colTimeS float64, cfg I2CCfg) Result {
 	inTxn, expectAddr := false, false
 	bitCount, val, bitStart := 0, 0, 0
 	clLevel, daLevel := CL.levels(), DA.levels()
-	g := i2cGlitch(clEdges)
-	i2cDeglitch(clLevel, g)
-	i2cDeglitch(daLevel, g)
+	if cfg.Deglitch {
+		g := i2cGlitch(clEdges)
+		i2cDeglitch(clLevel, g)
+		i2cDeglitch(daLevel, g)
+	}
 	for i := 0; i < n; i++ {
 		l, d := int(clLevel[i]), int(daLevel[i])
 		pcl, pda := cl, da

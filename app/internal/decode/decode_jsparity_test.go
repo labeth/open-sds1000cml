@@ -428,7 +428,7 @@ func TestJSDecoderParity(t *testing.T) {
 			}
 		}
 	}
-	// I2C on noisy lines, its spikes filtered (i2cDeglitch), either way round
+	// I2C on noisy lines, either way round: spikes read by the spec's letter
 	{
 		rng := rand.New(rand.NewSource(11))
 		for _, hz := range []float64{100e3, 400e3} {

@@ -724,7 +724,7 @@ func Autodetect(c1, c2 []uint8, colTimeS float64, format string) Result {
 	if len(active) >= 2 && !freeClock {
 		var i2cRead [2]Result                          // each line read as SCL
 		for _, ord := range [][2]int{{0, 1}, {1, 0}} { // I2C: scoring resolves SCL/SDA order
-			r := DecodeI2C(chans[ord[0]], chans[ord[1]], colTimeS, I2CCfg{Format: format})
+			r := DecodeI2C(chans[ord[0]], chans[ord[1]], colTimeS, I2CCfg{Format: format, Deglitch: true})
 			i2cRead[ord[0]] = r
 			if r.SPB > 0 && r.SPB*colTimeS < i2cMinClockS {
 				continue
