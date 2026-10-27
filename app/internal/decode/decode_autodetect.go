@@ -187,6 +187,12 @@ func scoreResult(r Result) float64 {
 		if n := i2cDataPastNak(r); n >= 2 && n*4 > datas {
 			return -1e9
 		}
+		// An address no target acknowledged ends the transfer: a byte sent
+		// after it is another bus read nine bits at a time (an MDIO frame
+		// cut to one turnaround, "START 1E W NAK 4A STOP")
+		if i2cDataPastAddrNak(r) {
+			return -1e9
+		}
 		return float64(addrs*100 + acks*30 + datas*20 + starts*5)
 	case "uart":
 		// One byte is no UART: its stop bit checks on half of random lines - a
@@ -742,8 +748,9 @@ func Autodetect(c1, c2 []uint8, colTimeS float64, format string) Result {
 		// LIN through S/PDIF, each by its own check (decode_autodetect_proto.go)
 		considerLines(chans[k], &clk[k].s, colTimeS, format, uartBaud[k], func(r Result) {
 			// the line that clocks the other is a clock, its duty moved
-			// by noise and slow edges: no PWM
-			if r.Proto == "pwm" && locked && clk[k].clockLike() > clk[1-k].clockLike() {
+			// by noise and slow edges: no PWM, and its bursts no Miller
+			// line code (an MDIO bus's MDC, cut to a frame)
+			if (r.Proto == "pwm" || r.Proto == "miller") && locked && clk[k].clockLike() > clk[1-k].clockLike() {
 				return
 			}
 			consider(r, chName(k), line(k))
@@ -1160,6 +1167,32 @@ func i2cDataPastNak(r Result) int {
 		}
 	}
 	return n
+}
+
+// i2cDataPastAddrNak reports an I2C decode reading a data byte after an
+// address a NAK answered, in the same transfer.
+// TRLC-LINKS: REQ-SDS-018
+func i2cDataPastAddrNak(r Result) bool {
+	addr, nak := false, false
+	for _, s := range r.Spans {
+		switch s.Kind {
+		case "addr":
+			addr, nak = true, false
+		case "rw":
+		case "nak":
+			nak = addr
+			addr = false
+		case "ack":
+			addr = false
+		case "data":
+			if nak {
+				return true
+			}
+		case "start", "stop":
+			addr, nak = false, false
+		}
+	}
+	return false
 }
 
 // i2cEscape reports an I2C decode holding five STARTs and STOPs in a row

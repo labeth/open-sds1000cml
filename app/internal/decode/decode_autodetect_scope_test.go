@@ -57,6 +57,10 @@ var scopeCaptures = []scopeCapture{
 	// ns low pulses, the data set well before each; the record opens 3
 	// clocks into a byte): read as an 8 MBd UART, then as SWD
 	{"scope_pcd8544_bitbang_50us.json.gz", "spi", 1},
+	// the bench's MDIO bus (MDC C1 at 2.5 MHz): cut to part of a frame, its
+	// MDC read as Miller and a turnaround as "I2C START 1E W NAK 4A STOP"
+	{"scope_mdio_samples_20us.json.gz", "mdio", 0},
+	{"scope_mdio_samples_10us.json.gz", "mdio", 0},
 }
 
 // TestScopeRFIDStandsDecimated: a reader's commands found on the envelope
