@@ -848,6 +848,27 @@ func shortRuns(l look) bool {
 	return false
 }
 
+// clockFromRecord reports a bus whose decoder takes its clock from the
+// record (SPI, I2C): a decimated record of a faster bus reads as one at a
+// clock the record aliases.
+// TRLC-LINKS: REQ-SDS-214
+func clockFromRecord(res decode.Result) bool {
+	return res.Proto == "spi" || res.Proto == "i2c"
+}
+
+// slowAlias reports a slow look's find (res, on a record sampled every
+// sampleS) that is the alias of a faster find whose shortest feature was
+// priorFeat seconds (0: none): a clocked bus (clockFromRecord) over
+// aliasRatio times coarser.
+// TRLC-LINKS: REQ-SDS-214
+func slowAlias(res decode.Result, sampleS, priorFeat float64) bool {
+	return priorFeat > 0 && clockFromRecord(res) && decode.FeatureSamples(res)*sampleS > aliasRatio*priorFeat
+}
+
+// aliasRatio is how much coarser than a faster find's shortest feature a
+// slow look's clocked find may be before it is taken for that find's alias.
+const aliasRatio = 4.0
+
 // busLines are the channels a found bus uses: its line, and SDA or data.
 // TRLC-LINKS: REQ-SDS-214
 func busLines(res decode.Result) []int {
@@ -981,7 +1002,7 @@ func (c *Controller) findBus(auto AutoSource, wanted func() bool) (decode.Result
 	// bursts, averaged away in the record).
 	slowFirst := !found && dec.resolved && dec.envRun == [2]float64{} && !c.waitingForTrigger(c.snap())
 	if slowFirst {
-		if r, s, ok, stepped, _ := c.findSlowBus(auto, wanted, ""); ok {
+		if r, s, ok, stepped, _ := c.findSlowBus(auto, wanted, "", 0); ok {
 			return r, s, true, stepped
 		}
 	}
@@ -992,7 +1013,7 @@ func (c *Controller) findBus(auto AutoSource, wanted func() bool) (decode.Result
 	// 19200 Bd LIN bus read 5 s of them before the slow look named it).
 	slowDone := false
 	if found && fewUART(res) && !scant && !c.waitingForTrigger(c.snap()) {
-		r, s, ok, stepped, again := c.findSlowBus(auto, wanted, res.Proto)
+		r, s, ok, stepped, again := c.findSlowBus(auto, wanted, res.Proto, decode.FeatureSamples(res)*sampleS)
 		if ok {
 			return r, s, true, stepped
 		}
@@ -1021,11 +1042,11 @@ func (c *Controller) findBus(auto AutoSource, wanted func() bool) (decode.Result
 	// frame the full-rate record cut: the slow look names it when it finds
 	// another bus there, and keeps the first find otherwise.
 	if (!found && !slowFirst || weakFind(res)) && !slowDone && !c.waitingForTrigger(c.snap()) {
-		prior := ""
+		prior, priorFeat := "", 0.0
 		if found {
-			prior = res.Proto
+			prior, priorFeat = res.Proto, decode.FeatureSamples(res)*sampleS
 		}
-		if r, s, ok, stepped, _ := c.findSlowBus(auto, wanted, prior); ok {
+		if r, s, ok, stepped, _ := c.findSlowBus(auto, wanted, prior, priorFeat); ok {
 			return r, s, true, stepped
 		}
 	}
@@ -1076,10 +1097,15 @@ var slowTdivs = []float64{5e-3, 20e-3}
 // slowTdivs, read as a search reads (LeaseSearchView: a deeper screen than
 // the look on screen had, and whole records where the live view rolled).
 // prior is the protocol of a weak find made faster ("" for none): found
-// again here it does not count, and the look ends (again). The timebase a bus is found at stays while wanted; with none
+// again here it does not count, and the look ends (again). priorFeat is
+// that find's shortest feature in seconds (0 none): a bus taking its clock
+// from the record (clockFromRecord) found here with a feature over
+// aliasRatio times coarser is the record's alias of those faster edges (a
+// 400 kHz I2C bus, found at the full rate, read at 20ms/div as "SPI" of a
+// 223 us half clock). The timebase a bus is found at stays while wanted; with none
 // found the timebase goes back.
 // TRLC-LINKS: REQ-SDS-214
-func (c *Controller) findSlowBus(auto AutoSource, wanted func() bool, prior string) (r decode.Result, sampleS float64, found bool, stepped float64, again bool) {
+func (c *Controller) findSlowBus(auto AutoSource, wanted func() bool, prior string, priorFeat float64) (r decode.Result, sampleS float64, found bool, stepped float64, again bool) {
 	prev := c.snap().st.TdivSet()
 	e, searching := c.eng.(interface{ LeaseSearchView(time.Duration) })
 	if searching {
@@ -1125,6 +1151,9 @@ func (c *Controller) findSlowBus(auto AutoSource, wanted func() bool, prior stri
 			if l.found && decimatedStands(l.res) && l.res.Proto == prior {
 				c.setTdivNearest(prev)
 				return decode.Result{}, 0, false, 0, true // the bus found faster, again
+			}
+			if l.found && slowAlias(l.res, l.sampleS, priorFeat) {
+				continue // the faster find's edges, aliased
 			}
 			if l.found && decimatedStands(l.res) {
 				if held != nil && !slices.Contains(heldFor(held.res.Proto), l.res.Proto) {

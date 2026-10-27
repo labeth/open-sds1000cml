@@ -427,3 +427,27 @@ func TestBusSearchLooksPastAFewDenseSPIBytes(t *testing.T) {
 		t.Fatalf("found %s (notice %q), want SWD", protoName(proto), note)
 	}
 }
+
+// The bench's 400 kHz I2C bus, found at the full rate (a 1.24 us half
+// clock), read on the slow look's 20ms/div record as "SPI" of a 223 us half
+// clock, one AUTO in two: a clocked find that much coarser than the faster
+// one is its alias, and the faster find stands. A UART or a find with no
+// faster one before it is no alias.
+// TRLC-LINKS: REQ-SDS-214
+func TestASlowClockedFindCoarserThanAFasterOneIsItsAlias(t *testing.T) {
+	spi := decode.Result{OK: true, Proto: "spi", SPB: 54, Bytes: []int{1, 2, 3}}
+	sampleS := 8.192e-6 // 20ms/div's search record
+	if !slowAlias(spi, sampleS, 1.24e-6) {
+		t.Error("the slow SPI reading of a 400 kHz I2C bus stood")
+	}
+	if slowAlias(spi, sampleS, 0) {
+		t.Error("a slow SPI find with no faster find before it was taken for an alias")
+	}
+	if slowAlias(spi, sampleS, 100e-6) {
+		t.Error("a slow SPI find near the faster find's feature was taken for an alias")
+	}
+	uart := decode.Result{OK: true, Proto: "uart", SPB: 54, Baud: 2400, Bytes: []int{1, 2, 3}}
+	if slowAlias(uart, sampleS, 1.24e-6) {
+		t.Error("a UART was taken for a clocked bus's alias")
+	}
+}
