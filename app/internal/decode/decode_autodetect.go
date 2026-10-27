@@ -193,6 +193,12 @@ func scoreResult(r Result) float64 {
 		if i2cDataPastAddrNak(r) {
 			return -1e9
 		}
+		// A controller reading NAKs the last byte it takes, before the STOP:
+		// a transfer or two read on to an ACK and a STOP are another bus's
+		// bits (an MDIO frame cut to "START 01 R ACK 79 ACK STOP")
+		if addrs <= 2 && i2cReadEndsAcked(r) {
+			return -1e9
+		}
 		return float64(addrs*100 + acks*30 + datas*20 + starts*5)
 	case "uart":
 		// One byte is no UART: its stop bit checks on half of random lines - a
@@ -1190,6 +1196,33 @@ func i2cDataPastAddrNak(r Result) bool {
 			}
 		case "start", "stop":
 			addr, nak = false, false
+		}
+	}
+	return false
+}
+
+// i2cReadEndsAcked reports an I2C decode with a read transfer whose last
+// byte before its STOP was acknowledged.
+// TRLC-LINKS: REQ-SDS-018
+func i2cReadEndsAcked(r Result) bool {
+	read, last := false, ""
+	for _, s := range r.Spans {
+		switch s.Kind {
+		case "rw":
+			read, last = s.Text == "R", ""
+		case "data":
+			last = "data"
+		case "ack", "nak":
+			if last == "data" {
+				last = "data-" + s.Kind
+			}
+		case "stop":
+			if read && last == "data-ack" {
+				return true
+			}
+			read, last = false, ""
+		case "start":
+			read, last = false, ""
 		}
 	}
 	return false

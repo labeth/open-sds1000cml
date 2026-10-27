@@ -185,3 +185,15 @@ func TestScopePartialFramesNotStolen(t *testing.T) {
 		}
 	}
 }
+
+// The bench's MDIO bus on a full-rate record at 10us/div (2 ns samples) that
+// holds no whole frame: AUTO's search read it as "I2C START 01 R ACK 79 ACK
+// STOP", one search in a hundred, where a controller reading NAKs the last
+// byte it takes. It is no I2C.
+// TRLC-LINKS: REQ-SDS-018
+func TestAutodetectCutMDIOIsNoI2C(t *testing.T) {
+	c1, c2, s := loadGzJSON(t, "testdata/scope_mdio_cut_10us_full.json.gz")
+	if r, _ := AutodetectFast(c1, c2, s, "hex"); r.Proto == "i2c" {
+		t.Fatalf("a cut MDIO record named I2C: %s %q", r.Src, r.Text)
+	}
+}

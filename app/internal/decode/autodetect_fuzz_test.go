@@ -162,7 +162,8 @@ func fuzzSPI(rng *rand.Rand, s spiShape, sr float64, bytes int) twoLine {
 }
 
 // fuzzI2C is an I2C bus at hz: transfers to addr of a few bytes, each
-// acknowledged, with START and STOP, as a twoLine (a SCL, b SDA).
+// acknowledged but a read's last (the controller NAKs it), with START and
+// STOP, as a twoLine (a SCL, b SDA).
 // TRLC-LINKS: REQ-SDS-018
 func fuzzI2C(rng *rand.Rand, hz, sr float64, transfers int) twoLine {
 	l := newTwoLine(sr)
@@ -187,11 +188,16 @@ func fuzzI2C(rng *rand.Rand, hz, sr float64, transfers int) twoLine {
 		for n := 1 + rng.Intn(4); n > 0; n-- {
 			frame = append(frame, rng.Intn(256))
 		}
-		for _, v := range frame {
+		read := frame[0]&1 == 1
+		for k, v := range frame {
 			for i := 7; i >= 0; i-- {
 				bitOut(byte(v >> i & 1))
 			}
-			bitOut(0) // ACK
+			if read && k > 0 && k == len(frame)-1 {
+				bitOut(1) // a read's last byte: the controller's NAK
+			} else {
+				bitOut(0) // ACK
+			}
 		}
 		l.add(0, 0, T/2) // STOP
 		l.add(1, 0, T/2)
