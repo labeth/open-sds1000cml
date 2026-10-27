@@ -153,9 +153,11 @@ func ShortestRun(codes []uint8) int {
 // the line changes about once a bucket there, and EnvelopeRun is the mean
 // spacing that allows, 4/3 of a bucket (8/3*sampleS), in seconds. A
 // decimated record's samples average a line faster than that into a level
-// (a 104 MHz SPI clock in 256 ns samples reads as a slow pulse). 0 when the
-// envelope shows no such stretch: a line quiet, slow or seldom busy (an
-// ARINC 429 word's 5 us half bits swing in single 1 us buckets). busy is
+// (a 104 MHz SPI clock in 256 ns samples reads as a slow pulse). Where the
+// line is busy seldom, two stretches of three such buckets or more bound
+// its edges at two buckets (4*sampleS). 0 when the envelope shows neither:
+// a line quiet or slow (an ARINC 429 word's 5 us half bits swing in single
+// 1 us buckets). busy is
 // the share of the buckets that swing across the line.
 // TRLC-LINKS: REQ-SDS-214
 func EnvelopeRun(codes []uint8, sampleS float64) (run, busy float64) {
@@ -164,6 +166,9 @@ func EnvelopeRun(codes []uint8, sampleS float64) (run, busy float64) {
 		minFull    = 16   // full-swing buckets the envelope must hold
 		envStretch = 4    // buckets in a row that make a stretch
 		minShare   = 0.75 // of the full-swing buckets, the share in stretches
+		// burstStretch is the full-swing buckets in a row that bound a line's
+		// edges where it is busy only seldom
+		burstStretch = 3
 	)
 	// The line's extremes, not its rails' means: an ARINC 429 leg's null level
 	// between them, full of fast noise, is no swing across the line.
@@ -189,7 +194,7 @@ func EnvelopeRun(codes []uint8, sampleS float64) (run, busy float64) {
 		return 0, 0
 	}
 	n := len(codes) / 2
-	nFull, inStretch, row := 0, 0, 0
+	nFull, inStretch, row, bursts := 0, 0, 0, 0
 	for k := 0; k <= n; k++ {
 		full := false
 		if k < n {
@@ -204,10 +209,20 @@ func EnvelopeRun(codes []uint8, sampleS float64) (run, busy float64) {
 		if row >= envStretch {
 			inStretch += row
 		}
+		if row >= burstStretch {
+			bursts++
+		}
 		row = 0
 	}
 	busy = float64(nFull) / float64(n)
 	if nFull < minFull || float64(inStretch) < minShare*float64(nFull) {
+		// Short bursts, seldom: three buckets in a row that swing across the
+		// line hold three edges, two buckets apart at most somewhere - and
+		// twice over, so a glitch is not taken for them (an MDIO bus's
+		// frames at 500us/div, its 2.5 MHz MDC a few buckets a burst).
+		if bursts >= 2 {
+			return 4 * sampleS, busy
+		}
 		return 0, busy
 	}
 	return 8.0 / 3 * sampleS, busy

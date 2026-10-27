@@ -388,12 +388,13 @@ func TestBusSearchSkipsAFrameInFlight(t *testing.T) {
 // reads as "SPI, 14 bytes", its frames whole only on the window's 500 us
 // record. A few SPI bytes on the dense record do not end the search: the
 // window's record names the SWD bus. (SWD's cover now leaves out the
-// transfers the record's ends cut, so the dense record names SWD itself.)
+// transfers the record's ends cut, so the dense record names SWD itself, or
+// nothing where it holds one whole transfer beside SPI's bytes.)
 // TRLC-LINKS: REQ-SDS-214, REQ-SDS-223
 func TestBusSearchLooksPastAFewDenseSPIBytes(t *testing.T) {
 	fx := loadFlash104(t)
 	swd := loadSearchRecords(t, "testdata/swd_search.json.gz")
-	if res := framecalc.Detect(swd.frame("full10us", 10e-6), "hex"); res.Proto != "swd" && (res.Proto != "spi" || !fewDenseSPI(res)) {
+	if res := framecalc.Detect(swd.frame("full10us", 10e-6), "hex"); res.Proto != "swd" && res.Proto != "off" && (res.Proto != "spi" || !fewDenseSPI(res)) {
 		t.Fatalf("the dense record reads as %q, %d bytes", res.Proto, len(res.Bytes))
 	}
 	quiet := make([]uint8, 4000)
