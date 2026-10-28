@@ -250,7 +250,11 @@
   .visgrid:fullscreen { background: var(--bg); padding: 8px; }
   .visterm { min-height: 120px; max-height: 360px; }
   .vislog { font: 11px/1.35 monospace; color: var(--dim, #8b98a5); max-height: 220px; overflow: auto; }
-  @media (max-width: 720px) { .visgrid { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(220px, 1fr) auto; } }
+  /* narrow: the picture a fixed height, the panel under it, the view as tall as both (the pane scrolls) */
+  @media (max-width: 720px) {
+    .bview.visview { height: auto; overflow: visible; }
+    .visgrid { flex: none; grid-template-columns: minmax(0, 1fr); grid-template-rows: 260px auto; }
+  }
   .eyegrid { flex: 1 1 auto; min-height: 120px; display: grid; grid-template-columns: minmax(0, 1fr) 280px; grid-template-rows: minmax(0, 1fr) 74px; gap: 6px; }
   .eyegrid #ejEye { grid-row: 1 / span 2; grid-column: 1; }
   .eyegrid .ejtw { grid-row: 1; grid-column: 2; overflow: auto; min-height: 0; }
