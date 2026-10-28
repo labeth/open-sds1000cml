@@ -138,6 +138,7 @@ function visDraw(force) {
   vis.drawT = now;
   const cv = $("visCv");
   if (!cv || !vis.s) return;
+  vis.drawnUpdates = vis.s.updates;
   const rc = cv.getBoundingClientRect();
   const W = Math.max(50, Math.round(rc.width * dpr)), H = Math.max(50, Math.round(rc.height * dpr));
   if (cv.width !== W || cv.height !== H) { cv.width = W; cv.height = H; }
@@ -219,22 +220,42 @@ function visWire(p) {
 // ---- the redraws --------------------------------------------------------------------------
 
 // The view redraws while shown (a MIDI note held sounds on with no new frame).
-setInterval(() => { if (visShown()) { if (vis.s && vis.s.held) visSound(); if (!vis.anim) visDraw(); } }, 100);
+// The view redraws while shown: at once when its bus's state took data, else
+// twice a second (what changes with time alone: an outline fading, an age).
+// A MIDI note held sounds on with no new frame.
+setInterval(() => {
+  if (!visShown()) return;
+  if (vis.s && vis.s.held) visSound();
+  if (!vis.anim && vis.s && (vis.s.updates !== vis.drawnUpdates || performance.now() - vis.drawT > 500)) visDraw();
+}, 100);
 
 // visAnimate redraws the piano's notes each display frame while MIDI follows
 // the stream (they move every frame; a capture's picture and the other
 // buses' change only with the data).
 // TRLC-LINKS: REQ-SDS-278
 function visAnimate(ts) {
-  vis.anim = visShown() && vis.s && vis.s.proto === "midi" && !vis.s.cap && !vis.audio.on && !dcfg.layer; // a capture's picture stands
+  vis.anim = visShown() && vis.s && vis.s.proto === "midi" && !vis.s.cap && !vis.audio.on && !dcfg.layer && visMoving(); // a capture's picture stands
   // at most VIS_ANIM_FPS pictures a second: the notes move smoothly at it, and a
   // 120 Hz display would draw four times as often for nothing seen
   if (vis.anim && !(ts - (vis.animT || 0) < 1000 / VIS_ANIM_FPS - 2)) { vis.animT = ts; visDraw(true); }
   requestAnimationFrame(visAnimate);
 }
 
+// visMoving reports the piano's notes moving: one held, or one played within
+// the seconds a note takes to rise away (or fall, with the delay behind):
+// a quiet bus's picture stands still and is not drawn each frame.
+// TRLC-LINKS: REQ-SDS-278
+function visMoving() {
+  const s = vis.s;
+  if (s.held && s.held.size) return true;
+  const last = s.roll && s.roll.length ? s.roll[s.roll.length - 1] : null;
+  if (!last) return false;
+  const end = Number.isFinite(last.t1) ? last.t1 : performance.now() / 1000;
+  return performance.now() / 1000 - end < VIS_MIDI_RISE + vis.midiLead + visLag() + 0.5;
+}
+
 // VIS_ANIM_FPS is the most pictures a second the piano's notes are drawn at.
-const VIS_ANIM_FPS = 30;
+const VIS_ANIM_FPS = 24;
 requestAnimationFrame(visAnimate);
 
 // A page whose Visual view follows the scope's stream takes it off as it
