@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"math/bits"
 	"strconv"
+	"strings"
 	"unicode/utf8"
 
 	"open-sds/app/internal/sramcapture"
@@ -102,6 +103,24 @@ const HistorySamples = 524288
 var startNotes = []string{"", "LDR", "REP", "SIRC", "RC5", "RC6", "RST", "START", "SOF", "BRK", "B", "SOP", "SOP'",
 	"SOP\"", "SOP'D", "SOP\"D", "HRST", "CRST", "MATSUSH", "KASEIKYO", "SAMSUNG", "DENON", "SAMSG32", "JVC", "NEC16", "NEC42"}
 
+// canNote names a CAN frame's identity (the end event's value): its
+// identifier in hex, X before an extended one, " FD" after an FD frame's,
+// " RTR" after a remote frame's.
+// TRLC-LINKS: REQ-SDS-018
+func canNote(v uint32) string {
+	n := strconv.FormatUint(uint64(v&0x1fffffff), 16)
+	if v&(1<<29) != 0 {
+		n = "X" + n
+	}
+	if v&(1<<30) != 0 {
+		n += " FD"
+	}
+	if v&(1<<31) != 0 {
+		n += " RTR"
+	}
+	return strings.ToUpper(n)
+}
+
 // StartNoteCode is the EventStart Value naming a start of frame text (0 for
 // none, or one the transcript does not name).
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
@@ -180,6 +199,15 @@ func (t *Transcript) Add(events []sramcapture.DecodedEvent) {
 			}
 			t.slot(e.Sample, e.Value, false)
 		case sramcapture.EventEnd:
+			// CAN: the frame's end carries its identity {remote, FD, extended,
+			// identifier[28:0]} (can_trigger.v); its line is noted with it, as
+			// USB's packet with its PID
+			if t.proto == 6 && t.cur.Note == "" {
+				t.cur.Note = canNote(e.Value)
+				if t.cur.N == 0 {
+					t.cur.Sample = e.Sample
+				}
+			}
 			t.Flush()
 		case sramcapture.EventError:
 			if t.proto <= 10 || t.proto == 13 {

@@ -171,6 +171,10 @@ visKind(["can", "canfd"], {
   title: "CAN signals", make: () => ({ dbc: null, sigs: new Map(), frames: new Map(), capN: 0 }),
   // TRLC-LINKS: REQ-SDS-278
   spans: (s, spans, tOf) => { s.capN++; canSpans(s, spans, tOf); },
+  // the scope's stream: its end notes a frame's line with its identity (the FPGA's decode)
+  // TRLC-LINKS: REQ-SDS-278
+  units: (s, units, t, note) => { s.capN = -1; canUnits(s, units, t, note); },
+  streamed: ["can"], noteAtEnd: true,
 });
 visKind(["spdif"], {
   // TRLC-LINKS: REQ-SDS-278
@@ -238,14 +242,17 @@ const VIS_LINE_UNITS = 16;
 // visStreamLine adds one stream line (t its first unit's time) to the frame
 // it belongs to (S.frame, gathered across reads): a line with a note starts
 // one; an unnoted line right after a full one goes on with it; else it is a
-// frame of its own. The frame before goes to out once the next starts. A
+// frame of its own (noteAtEnd: a bus noting a frame at its end, its last line
+// noted, goes on too). The frame before goes to out once the next starts. A
 // byte stream's (bytewise: its frames do not matter) lines go to out at once.
 // TRLC-LINKS: REQ-SDS-278
-function visStreamLine(S, l, t, out, bytewise) {
+function visStreamLine(S, l, t, out, bytewise, noteAtEnd) {
   const f = S.frame, units = l.v || [];
   if (bytewise) { out.push({ units, note: l.n || "", t }); return; } // a byte stream: each line at once
-  if (f && !l.n && f.full && l.i === f.lastI + 1) {
+  // a bus whose note comes at a frame's end (CAN's identity): a noted line may go on with a full one
+  if (f && (!l.n || noteAtEnd) && f.full && l.i === f.lastI + 1) {
     for (const u of units) f.units.push(u);
+    if (l.n) f.note = l.n;
   } else {
     visStreamFlush(S, true, out);
     S.frame = { units: units.slice(), note: l.n || "", t, lastI: l.i, full: false };
@@ -1046,22 +1053,7 @@ function canSpans(s, spans, tOf) {
   let cur = null;
   // TRLC-LINKS: REQ-SDS-278
   const done = () => {
-    if (!cur || cur.bad || cur.id < 0) { cur = null; return; }
-    visFrameSeen(s, cur.id, cur.bytes, cur.t);
-    const msg = s.dbc && s.dbc.get(cur.id);
-    if (msg) {
-      const muxSig = msg.signals.find((g) => g.mux === "M");
-      const muxVal = muxSig ? dbcRaw(muxSig, cur.bytes) : -1;
-      for (const g of msg.signals) {
-        if (g.mux.startsWith("m") && +g.mux.slice(1) !== muxVal) continue;
-        const v = dbcRaw(g, cur.bytes) * g.factor + g.offset, key = msg.name + "." + g.name;
-        const e = s.sigs.get(key) || { msg: msg.name, name: g.name, unit: g.unit, hist: [] };
-        e.v = v; e.t = cur.t;
-        e.hist.push({ t: cur.t, v });
-        if (e.hist.length > 400) e.hist.shift();
-        visKeep(s.sigs, key, e);
-      }
-    }
+    if (cur && !cur.bad && cur.id >= 0) canFrame(s, cur.id, cur.bytes, cur.t);
     cur = null;
   };
   for (const sp of spans) {
@@ -1072,6 +1064,36 @@ function canSpans(s, spans, tOf) {
     else if (sp.kind === "frame-error" || sp.kind === "crc-error" || sp.kind === "parity-error") cur.bad = true;
   }
   done();
+}
+
+// canFrame takes one CAN frame: its identifier's newest bytes, count and
+// period, and (a DBC file loaded) its message's signals.
+// TRLC-LINKS: REQ-SDS-278
+function canFrame(s, id, bytes, t) {
+  visFrameSeen(s, id, bytes, t);
+  const msg = s.dbc && s.dbc.get(id);
+  if (!msg) return;
+  const muxSig = msg.signals.find((g) => g.mux === "M");
+  const muxVal = muxSig ? dbcRaw(muxSig, bytes) : -1;
+  for (const g of msg.signals) {
+    if (g.mux.startsWith("m") && +g.mux.slice(1) !== muxVal) continue;
+    const v = dbcRaw(g, bytes) * g.factor + g.offset, key = msg.name + "." + g.name;
+    const e = s.sigs.get(key) || { msg: msg.name, name: g.name, unit: g.unit, hist: [] };
+    e.v = v; e.t = t;
+    e.hist.push({ t, v });
+    if (e.hist.length > 400) e.hist.shift();
+    visKeep(s.sigs, key, e);
+  }
+}
+
+// canUnits takes a frame of the stream: its bytes, its identity in the
+// note its end gave the line (hex, X before an extended one, " FD" after an
+// FD frame's, " RTR" a remote frame's: no bytes).
+// TRLC-LINKS: REQ-SDS-278
+function canUnits(s, units, t, note) {
+  const m = /^(X?)([0-9A-F]+)( FD)?( RTR)?$/.exec(note || "");
+  if (!m) return;
+  canFrame(s, parseInt(m[2], 16), m[4] ? [] : units.slice(), t);
 }
 
 // linSpans takes a frame's LIN frames: each identifier's newest response, its

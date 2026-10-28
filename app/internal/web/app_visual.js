@@ -106,8 +106,8 @@ async function visStreamTick() {
     const lag = now - (S.base + lastS / VIS_ORD_HZ);
     S.lag = Math.min(3, Math.max(lag + 0.08, (S.lag || 0) - 0.0005));
     const frames = [];
-    const bytewise = !!(VIS_KINDS[vis.proto] && VIS_KINDS[vis.proto].bytewise);
-    for (const l of lines) visStreamLine(S, l, S.base + l.s / VIS_ORD_HZ, frames, bytewise);
+    const K = VIS_KINDS[vis.proto] || {};
+    for (const l of lines) visStreamLine(S, l, S.base + l.s / VIS_ORD_HZ, frames, !!K.bytewise, !!K.noteAtEnd);
     visStreamFlush(S, false, frames);
     for (const f of frames) visIngestUnits(vis.s, f.units, f.t, f.note);
     S.next = p.next;

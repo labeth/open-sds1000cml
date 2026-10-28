@@ -144,3 +144,34 @@ func TestRateIsSignalTime(t *testing.T) {
 		t.Fatalf("line-mode rate %.0f/s ok=%v, want %.0f/s", r, ok, want)
 	}
 }
+
+// TestCANLinesNoteTheIdentity: a CAN frame's end carries its identity, and
+// its line is noted with it: a standard frame's identifier, an extended
+// one's X-prefixed, an FD frame's " FD", a remote frame's " RTR".
+// TRLC-LINKS: REQ-SDS-018
+func TestCANLinesNoteTheIdentity(t *testing.T) {
+	tr := New(6, 100)
+	frame := func(at uint64, id uint32, data ...uint32) []sramcapture.DecodedEvent {
+		ev := []sramcapture.DecodedEvent{{Kind: sramcapture.EventStart, Sample: at}}
+		for k, d := range data {
+			ev = append(ev, sramcapture.DecodedEvent{Kind: sramcapture.EventData, Sample: at + uint64(k+1)*100, Value: d})
+		}
+		return append(ev, sramcapture.DecodedEvent{Kind: sramcapture.EventEnd, Sample: at + 1000, Value: id})
+	}
+	ev := frame(HistorySamples+1000, 0x123, 0x55, 0xaa)
+	ev = append(ev, frame(HistorySamples+5000, 1<<31|1<<29|0x1abcdef0)...)
+	ev = append(ev, frame(HistorySamples+9000, 1<<30|0x7ff, 1, 2, 3)...)
+	tr.Add(ev)
+	if tr.Next() != 3 {
+		t.Fatalf("%d lines, want 3", tr.Next())
+	}
+	if l := tr.At(0); l.Note != "123" || l.N != 2 || l.Vals[0] != 0x55 {
+		t.Fatalf("standard frame: note %q, %d units", l.Note, l.N)
+	}
+	if l := tr.At(1); l.Note != "X1ABCDEF0 RTR" || l.N != 0 {
+		t.Fatalf("extended remote frame: note %q, %d units", l.Note, l.N)
+	}
+	if l := tr.At(2); l.Note != "7FF FD" || l.N != 3 {
+		t.Fatalf("FD frame: note %q", l.Note)
+	}
+}

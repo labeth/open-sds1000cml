@@ -411,8 +411,8 @@ function uartWave(packets, baud, dt, stop, breakS) {
 {
   // TRLC-LINKS: REQ-SDS-278
   const feed = (proto, lines) => {
-    const s = c.visNew(proto), S = {}, out = [], bw = !!c.__.VIS_KINDS[proto].bytewise;
-    lines.forEach((l, i) => c.visStreamLine(S, { i, n: l[0], v: l[1] }, i * 0.01, out, bw));
+    const K = c.__.VIS_KINDS[proto], s = c.visNew(proto), S = {}, out = [];
+    lines.forEach((l, i) => c.visStreamLine(S, { i, n: l[0], v: l[1] }, i * 0.01, out, !!K.bytewise, !!K.noteAtEnd));
     c.visStreamFlush(S, true, out);
     for (const f of out) c.visIngestUnits(s, f.units, f.t, f.note);
     return s;
@@ -444,6 +444,13 @@ function uartWave(packets, baud, dt, stop, breakS) {
   assert.ok(s.pos === 4 * 20 - 4 * 30 && s.gapless && !s.fwd, "quadrature: 20 cycles on, 30 back: -40 counts, every one");
   s = feed("stepper", [["", Array(14).fill(1)], ["", [...Array(15).fill(0), 1]]]);
   assert.equal(s.pos, 14 - 15 + 1, "a stepper's steps one by one");
+  // CAN: the identity noted at a frame's end; a long FD frame's last line noted
+  const fd = Array.from({ length: 20 }, (_, k) => k);
+  s = feed("can", [["123", [0x55, 0xaa]], ["X1ABCDEF0 RTR", []], ["", fd.slice(0, 16)], ["7FF FD", fd.slice(16)], ["123", [0x56, 0xab]]]);
+  deq(s.frames.get(0x123).bytes, [0x56, 0xab]); assert.equal(s.frames.get(0x123).count, 2);
+  assert.ok(s.frames.has(0x1abcdef0) && s.frames.get(0x1abcdef0).bytes.length === 0, "an extended remote frame: no bytes");
+  deq(s.frames.get(0x7ff).bytes, fd, "an FD frame over two lines, its identity on the last");
+  assert.ok(c.visStreamed("can") && !c.visStreamed("canfd"), "CAN streams (the FPGA's decode)");
   // a byte stream's lines go in at once (MIDI's lines are all full)
   s = feed("midi", [["", [0x90, 60, 100, 0x80, 60, 0, 0x90, 64, 90, 0x90, 67, 90, 0x90, 72, 90, 0x80]], ["", [64, 0]]]);
   assert.equal(s.msgs, 6, "every message, the last across two lines");
