@@ -4751,3 +4751,46 @@ requirements:
   verificationCriteria: /api/record.bin serves a record sampled as finely as asked after the envelope frames, and a
     timeout that says why where none comes; visual.test.cjs reads I2S, S/PDIF and PDM carrying a sine back with the
     rate, the level and the samples as sent; on the scope a bench audio bus decodes from a captured record.
+- id: REQ-SDS-281
+  title: The bus drawn on the scope's screen
+  text: The instrument shall offer on its own screen, as the BUS workspace's fourth view, the newest capture's decode
+    drawn as what it carries, namely a MIDI keyboard with the capture's pushes and releases above their keys, a DMX512
+    universe's levels, an LED strip's colours, a PS/2 keyboard's key presses and releases, a reading for an IR
+    remote, a caliper, a Wiegand reader, a PWM line, a DCF77 clock and an encoder or stepper, LIN's and CAN's frames
+    by identifier, and a UART's text.
+  status: draft
+  category: functional
+  appliesTo:
+  - FU-APP-LCD
+  - FU-APP-PANEL
+  verificationMethods:
+  - test
+  verificationCriteria: F2 in BUS goes Packets, Eye diagram, Stream, Visual and back; each bus's picture draws from its
+    decode's spans and says what it shows (render_visual_test.go); on the scope a bench bus is drawn.
+- id: REQ-SDS-282
+  title: A MIDI bus recorded to a file
+  text: The instrument shall record a MIDI bus's channel messages with their times in the web page and save them as
+    a Standard MIDI File.
+  status: draft
+  category: functional
+  appliesTo:
+  - FU-WEB-VISUAL
+  - FU-WEB-APP-VISUAL
+  verificationMethods:
+  - test
+  verificationCriteria: a recording read back from the file has each message at its time; the page's Save .mid
+    downloads a MIDI file; on the scope a streamed song records every note.
+- id: REQ-SDS-283
+  title: Digital audio's spectrum and distortion
+  text: The instrument shall draw a digital audio capture's spectrum in the web page and state each channel's tone,
+    total harmonic distortion, SINAD and effective bits where the record parts the tone from its harmonics.
+  status: draft
+  category: functional
+  appliesTo:
+  - FU-WEB-VISUAL
+  - FU-WEB-APP-VISUAL
+  verificationMethods:
+  - test
+  verificationCriteria: a 16-bit 1 kHz sine reads 1 kHz at its level with distortion under -80 dB and about 15 bits,
+    one with a harmonic 40 dB under it a THD of -40 dB, a record too short says so; on the scope a bench I2S sine
+    reads its frequency and level.

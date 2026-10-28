@@ -73,9 +73,9 @@ func (c *Controller) nextView() {
 		c.ui.views[ws] = c.viewMode
 		name, again = viewName(c.viewMode), viewName(map[bool]int{true: viewXY, false: viewYT}[c.viewMode == viewYT])
 	case wsview.Bus:
-		// Packets -> Eye diagram -> Stream -> Packets
-		eye, stream := !c.ui.busEye && !c.ui.busStream, c.ui.busEye
-		c.ui.busEye, c.ui.busStream = eye, stream
+		// Packets -> Eye diagram -> Stream -> Visual -> Packets
+		eye, stream, visual := !c.ui.busEye && !c.ui.busStream && !c.ui.busVisual, c.ui.busEye, c.ui.busStream
+		c.ui.busEye, c.ui.busStream, c.ui.busVisual = eye, stream, visual
 		if eye || stream {
 			c.closePickLocked()
 		}
@@ -112,14 +112,16 @@ func (c *Controller) nextView() {
 	}
 }
 
-// busViewName names BUS's view: Packets, Eye diagram or Stream.
-// TRLC-LINKS: REQ-SDS-211, REQ-SDS-228
+// busViewName names BUS's view: Packets, Eye diagram, Stream or Visual.
+// TRLC-LINKS: REQ-SDS-211, REQ-SDS-228, REQ-SDS-281
 func busViewName(u *uiState) string {
 	switch {
 	case u.busStream:
 		return "Stream"
 	case u.busEye:
 		return "Eye diagram"
+	case u.busVisual:
+		return "Visual"
 	}
 	return "Packets"
 }
@@ -129,9 +131,11 @@ func busViewName(u *uiState) string {
 func busViewNext(u *uiState) string {
 	switch {
 	case u.busStream:
-		return "Packets"
+		return "Visual"
 	case u.busEye:
 		return "Stream"
+	case u.busVisual:
+		return "Packets"
 	}
 	return "Eye diagram"
 }

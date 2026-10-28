@@ -52,8 +52,8 @@ func TestLeavingTheEyeEndsItsRawLease(t *testing.T) {
 		do   func()
 	}{{"F2 again", c.nextView}, {"F4 MEASURE", func() { c.switchWS(wsview.Measure) }}} {
 		c.switchWS(wsview.Bus)
-		if !c.snap().ui.busEye {
-			c.nextView() // the eye
+		for k := 0; k < 4 && !c.snap().ui.busEye; k++ {
+			c.nextView() // round BUS's views to the eye
 		}
 		eng.take()
 		c.leaseEyeRaw() // a capture folded

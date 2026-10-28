@@ -498,13 +498,13 @@ const VIS_VIEWS = {
       on("visLead", "onchange", () => { vis.midiLead = +$("visLead").value; if (vis.sy) { vis.sy.lead = vis.midiLead; vis.sy.offset = NaN; } visDraw(true); });
       on("visPanic", "onclick", () => { if (vis.sy) synthPanic(vis.sy); if (vis.s && vis.s.held) vis.s.held.clear(); });
       // Record starts a recording (or ends it, kept to save); Save .mid downloads it
-      // TRLC-LINKS: REQ-SDS-278
+      // TRLC-LINKS: REQ-SDS-282
       on("visRec", "onclick", () => {
         if (vis.s.rec) { vis.recDone = { rec: vis.s.rec, gaps: vis.s.recGaps, full: vis.s.recFull }; vis.s.rec = null; }
         else { vis.s.rec = []; vis.s.recGaps = false; vis.s.recFull = false; vis.recDone = null; }
         visSide(true);
       });
-      // TRLC-LINKS: REQ-SDS-278
+      // TRLC-LINKS: REQ-SDS-282
       on("visRecSave", "onclick", () => {
         const r = vis.s.rec ? { rec: vis.s.rec } : vis.recDone;
         if (!r || !r.rec.length) { toast("nothing recorded yet"); return; }

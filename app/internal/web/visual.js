@@ -314,10 +314,10 @@ const MIDI_PPQ = 480, MIDI_TEMPO = 500000;
 // midiSMF writes a recording (messages {t seconds, b bytes}) as a Standard
 // MIDI File, format 0: one track, the tempo, each message at its time from
 // the first, its end.
-// TRLC-LINKS: REQ-SDS-278
+// TRLC-LINKS: REQ-SDS-282
 function midiSMF(rec) {
   const ev = rec.slice().sort((a, b) => a.t - b.t), trk = [];
-  // TRLC-LINKS: REQ-SDS-278
+  // TRLC-LINKS: REQ-SDS-282
   const vlq = (n) => { const out = [n & 0x7f]; n = Math.floor(n / 128); while (n > 0) { out.unshift((n & 0x7f) | 0x80); n = Math.floor(n / 128); } return out; };
   trk.push(0, 0xff, 0x51, 0x03, (MIDI_TEMPO >> 16) & 0xff, (MIDI_TEMPO >> 8) & 0xff, MIDI_TEMPO & 0xff);
   const t0 = ev.length ? ev[0].t : 0, perS = MIDI_PPQ * 1e6 / MIDI_TEMPO;
@@ -328,7 +328,7 @@ function midiSMF(rec) {
     last = tick;
   }
   trk.push(0, 0xff, 0x2f, 0x00);
-  // TRLC-LINKS: REQ-SDS-278
+  // TRLC-LINKS: REQ-SDS-282
   const be32 = (n) => [(n >>> 24) & 0xff, (n >>> 16) & 0xff, (n >>> 8) & 0xff, n & 0xff];
   return Uint8Array.from([0x4d, 0x54, 0x68, 0x64, ...be32(6), 0, 0, 0, 1, (MIDI_PPQ >> 8) & 0xff, MIDI_PPQ & 0xff,
     0x4d, 0x54, 0x72, 0x6b, ...be32(trk.length), ...trk]);

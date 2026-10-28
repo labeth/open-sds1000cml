@@ -55,7 +55,7 @@ type wsDef struct {
 // wsDefs are the five workspaces (REQ-SDS-211).
 var wsDefs = [wsview.Count]wsDef{
 	{tabs: []string{"trig", "ch1", "ch2", "time", "acq"}, plotTop: 0, view: viewYT, cycle: "Y-T / X-Y"},
-	{tabs: []string{"bus", "trig", "time"}, plotTop: 136, view: viewYT, cycle: "Packets / Eye diagram / Stream"},
+	{tabs: []string{"bus", "trig", "time"}, plotTop: 136, view: viewYT, cycle: "Packets / Eye diagram / Stream / Visual"},
 	{tabs: []string{"view", "snd", "acq", "time"}, plotTop: 150, view: viewFFT, cycle: "FFT / Spectrogram / Bode / Sound"},
 	{tabs: []string{"meas", "curs", "acq"}, plotTop: 142, view: viewYT, cycle: "statistics / all values"},
 	{tabs: []string{"cmp", "ch1", "ch2"}, plotTop: 104, view: viewYT, cycle: "stack a master"},
@@ -87,6 +87,8 @@ type uiState struct {
 	// busStream: BUS shows the decoded stream, its third view (else, with
 	// busEye false, the packets)
 	busStream bool
+	// busVisual: BUS shows the bus drawn as what it carries, its fourth view
+	busVisual bool
 	measAll   bool // MEASURE shows all values (else statistics)
 
 	open  bool              // a settings sheet is open

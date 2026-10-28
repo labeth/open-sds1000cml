@@ -194,7 +194,7 @@ function audioStats(x, raw, bits) {
 }
 
 // audioFFT is an in-place radix-2 FFT of re/im (their length a power of two).
-// TRLC-LINKS: REQ-SDS-280
+// TRLC-LINKS: REQ-SDS-283
 function audioFFT(re, im) {
   const n = re.length;
   for (let i = 1, j = 0; i < n; i++) {
@@ -228,7 +228,7 @@ const SPEC_SINAD_MAX = 200;
 // sine 0 dBFS); its tone (the strongest bin past DC, its frequency
 // interpolated) and the tone's distortion (THD: harmonics 2 to 5 against
 // it), its SINAD (it against all else past DC) and the bits that make (ENOB).
-// TRLC-LINKS: REQ-SDS-280
+// TRLC-LINKS: REQ-SDS-283
 function audioSpectrum(x, fs) {
   let n = 1;
   while (n * 2 <= x.length && n < 65536) n *= 2;
@@ -248,7 +248,7 @@ function audioSpectrum(x, fs) {
   const bin = fs / n, guard = 4; // the window spreads a tone over four bins each side: the tone's power is the bins about it
   let pk = guard + 1;
   for (let k = guard + 1; k < half; k++) if (pw[k] > pw[pk]) pk = k;
-  // TRLC-LINKS: REQ-SDS-280
+  // TRLC-LINKS: REQ-SDS-283
   const around = (k0) => { let s = 0; for (let k = Math.max(1, k0 - guard); k <= Math.min(half - 1, k0 + guard); k++) s += pw[k]; return s; };
   const a0 = db[pk - 1], a1 = db[pk], a2 = db[pk + 1] !== undefined ? db[pk + 1] : a1;
   const off = a0 - 2 * a1 + a2 !== 0 ? 0.5 * (a0 - a2) / (a0 - 2 * a1 + a2) : 0;

@@ -109,11 +109,16 @@ type View struct {
 	Scope    *ScopePane
 	Bus      *BusPane
 	Eye      *EyePane
+	Visual   *VisualPane
 	Spec     *SpecPane
 	Meas     *MeasPane
 	Cmp      *CmpPane
 	Sound    *SoundPane
 }
+
+// VisualPane is BUS's Visual view: the frame's decode drawn as what the bus
+// carries (the LCD draws it from the frame).
+type VisualPane struct{}
 
 // ScopePane is SCOPE's chrome: its name in the top bar and the Adjust tag.
 type ScopePane struct {

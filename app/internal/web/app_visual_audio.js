@@ -217,14 +217,14 @@ function visDrawAudio(g, W, H) {
 
 // visDrawSpectrum draws each channel's spectrum (dBFS over a logarithmic
 // frequency, 20 Hz to half the rate), the left above the right, its tone marked.
-// TRLC-LINKS: REQ-SDS-280
+// TRLC-LINKS: REQ-SDS-283
 function visDrawSpectrum(g, W, H, r) {
   const bh = H / 2, fLo = 20, fHi = r.fs / 2, dbLo = -140, padL = 34 * dpr;
-  // TRLC-LINKS: REQ-SDS-280
+  // TRLC-LINKS: REQ-SDS-283
   const xOf = (f) => padL + (Math.log10(Math.max(fLo, f) / fLo) / Math.log10(fHi / fLo)) * (W - padL - 4 * dpr);
   r.spec.forEach((s, c) => {
     const y0 = c * bh, h = bh - 14 * dpr;
-    // TRLC-LINKS: REQ-SDS-280
+    // TRLC-LINKS: REQ-SDS-283
     const yOf = (db) => y0 + 4 * dpr + (Math.min(0, Math.max(dbLo, db)) / dbLo) * (h - 4 * dpr);
     g.fillStyle = "#0b1016"; g.fillRect(0, y0 + dpr, W, bh - 2 * dpr);
     g.font = Math.round(9 * dpr) + "px monospace"; g.textAlign = "right"; g.textBaseline = "middle";

@@ -224,7 +224,7 @@ func checkUIInvariants(c *Controller) []string {
 	}
 	if !menu {
 		panes := 0
-		for _, p := range []bool{v.Scope != nil, v.Bus != nil, v.Eye != nil, v.Spec != nil, v.Meas != nil, v.Cmp != nil, v.Sound != nil} {
+		for _, p := range []bool{v.Scope != nil, v.Bus != nil, v.Eye != nil, v.Visual != nil, v.Spec != nil, v.Meas != nil, v.Cmp != nil, v.Sound != nil} {
 			if p {
 				panes++
 			}

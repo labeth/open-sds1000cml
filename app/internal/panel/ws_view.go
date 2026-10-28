@@ -118,6 +118,9 @@ func (c *Controller) view(s *sv) wsview.View {
 			v.Eye = c.eyePane(s)
 		case u.busStream:
 			v.Bus = c.streamPane(s)
+		case u.busVisual: // no packet list above it: the picture takes the screen
+			v.Layout.HideTraces, v.Layout.PlotTop = true, 0
+			v.Visual = &wsview.VisualPane{}
 		default:
 			v.Bus = c.busPane(s)
 		}
@@ -721,7 +724,7 @@ func (c *Controller) busPane(s *sv) *wsview.BusPane {
 func (c *Controller) streamPane(s *sv) *wsview.BusPane {
 	u := &s.ui
 	p := &wsview.BusPane{Off: true}
-	p.Title, p.Again = "BUS", "F2 again: Packets"
+	p.Title, p.Again = "BUS", "F2 again: "+busViewNext(u)
 	stops := streamStopText(s.decTrig, s.decValue)
 	switch {
 	case u.busDetecting:

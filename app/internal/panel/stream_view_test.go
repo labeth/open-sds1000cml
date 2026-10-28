@@ -124,7 +124,7 @@ func TestBusStreamViewStartsAndEndsTheStream(t *testing.T) {
 	}
 	press(t, c, "f2") // the Stream view: the stream starts with the sheet's stop
 	st := mustState(t, c, "BUS", "workspace")
-	if n, _ := rs.counts(); n != 1 || st.View != "Stream" || st.AgainNext != "Packets" {
+	if n, _ := rs.counts(); n != 1 || st.View != "Stream" || st.AgainNext != "Visual" {
 		t.Fatalf("Stream view: %d starts, view %s next %s", n, st.View, st.AgainNext)
 	}
 	if s := rs.last(); s.trig != engine.StreamOnValue || s.value != 0x48 || !strings.HasPrefix(s.label, "UART 460") {
@@ -134,7 +134,7 @@ func TestBusStreamViewStartsAndEndsTheStream(t *testing.T) {
 		t.Fatalf("Stream row %q in the Stream view", got)
 	}
 	v := c.View()
-	if v.Bus == nil || !strings.HasPrefix(v.Bus.Caption, "STREAM  UART") || v.Bus.Again != "F2 again: Packets" || v.Bus.Msg[0].Text != "STREAMING" {
+	if v.Bus == nil || !strings.HasPrefix(v.Bus.Caption, "STREAM  UART") || v.Bus.Again != "F2 again: Visual" || v.Bus.Msg[0].Text != "STREAMING" {
 		t.Fatalf("Stream pane %+v", v.Bus)
 	}
 	if tl := toolText(c); !strings.Contains(tl, "Adjust:stops on value push:stop Position:trigger position push:transcript") {
@@ -159,12 +159,19 @@ func TestBusStreamViewStartsAndEndsTheStream(t *testing.T) {
 	if tl := toolText(c); !strings.Contains(tl, "Position:transcript push:trigger position") {
 		t.Fatalf("Position push: %q", tl)
 	}
-	// F2 again: the packets, the stream ended and the scope running
+	// F2 again: the Visual view, the stream ended and the scope running; again: the packets
 	r.eng.SetRunning(false) // as a stopped stream leaves the engine
 	press(t, c, "f2")
 	_, stops := rs.counts()
-	if st := mustState(t, c, "BUS", "workspace"); st.View != "Packets" || rs.Active() || stops < 3 || !r.eng.Snapshot().Running {
-		t.Fatalf("back to Packets: view %s active %v stops %d running %v", st.View, rs.Active(), stops, r.eng.Snapshot().Running)
+	if st := mustState(t, c, "BUS", "workspace"); st.View != "Visual" || rs.Active() || stops < 3 || !r.eng.Snapshot().Running {
+		t.Fatalf("on to Visual: view %s active %v stops %d running %v", st.View, rs.Active(), stops, r.eng.Snapshot().Running)
+	}
+	if v := c.View(); v.Visual == nil || !v.Layout.HideTraces {
+		t.Fatalf("the Visual view's pane: %+v", v.Visual)
+	}
+	press(t, c, "f2")
+	if st := mustState(t, c, "BUS", "workspace"); st.View != "Packets" {
+		t.Fatalf("back to Packets: view %s", st.View)
 	}
 	if got := rowText(c, "bus.stream"); got != "Off" {
 		t.Fatalf("Stream row %q on the packets", got)

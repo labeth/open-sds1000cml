@@ -38,6 +38,8 @@ func drawUI(sf Surface, f *engine.Frame, hud HUD, p plotArea) {
 		case ui.Eye != nil:
 			drawEyePlot(sf, p, hud, ui.Eye)
 			drawEyePane(sf, p, f, hud, ui.Eye)
+		case ui.Visual != nil:
+			drawVisualPane(sf, p, f, hud)
 		case ui.Spec != nil:
 			drawSpecPane(sf, p, f, hud, ui.Spec)
 		case ui.Meas != nil:
