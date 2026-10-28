@@ -97,6 +97,10 @@ run(async (t) => {
   t.ok(await mode() === "BODE" && await po.isVisible("bodeArm") && !(await po.isVisible("spgArm")), "SPECTRUM again: Bode, with its tools");
   await key("Alt+3");
   t.ok(await mode() === "FFT", "SPECTRUM again: back to the FFT");
+  await key("Alt+2");
+  const busViews = [];
+  for (let i = 0; i < 4; i++) { await key("Alt+2"); busViews.push(await po.value("busView")); }
+  t.ok(busViews.join(" ") === "eye stream visual packets", "BUS again: eye diagram, stream, visual, back to the packets, as F2 on the scope: " + busViews.join(" "));
   await key("Alt+4");
   t.ok(await po.isVisible("statsTable") && !(await po.isVisible("valuesTable")), "MEASURE opens on the statistics");
   await key("Alt+4");
@@ -175,7 +179,7 @@ run(async (t) => {
   t.ok(await po.hasClass("help", "show"), "? opens the help sheet");
   const help = await po.text("helpBody") + " " + await po.text("helpKeys") + " " + await po.text("helpMouse");
   t.ok(["Alt+1", "Alt+2", "Alt+3", "Alt+4", "Alt+5", "SCOPE", "BUS", "SPECTRUM", "MEASURE", "COMPARE", "Ctrl+,"].every((s) => help.includes(s)), "help lists the five workspaces, their keys and Ctrl+,");
-  t.ok(/Again: FFT → spectrogram → Bode/.test(help), "help says what each workspace's key does again");
+  t.ok(/Again: FFT → spectrogram → Bode/.test(help) && /Again: packets → eye diagram → stream → visual/.test(help), "help says what each workspace's key does again");
   await page.keyboard.press("Tab");
   t.ok(await page.evaluate(() => document.activeElement.id) === "helpClose", "Tab stays in the help sheet");
   await page.keyboard.press("Escape");

@@ -13,7 +13,7 @@ const WSDEF = [
     again: "Y-T ⇄ X-Y" },
   { id: "bus", name: "BUS", alt: "Alt+2", view: "YT",
     blurb: "Decode a bus (entering it with decoding off auto-detects the bus), read its packets and trigger on bytes.",
-    again: "packets → eye diagram → stream" },
+    again: "packets → eye diagram → stream → visual" },
   { id: "spectrum", name: "SPECTRUM", alt: "Alt+3", view: "FFT",
     blurb: "A large FFT with a peak table, harmonics and THD beside a small time trace.",
     again: "FFT → spectrogram → Bode" },
@@ -366,7 +366,7 @@ function anaTools(v) {
 // TRLC-LINKS: REQ-SDS-219
 function wsAgain(id) {
   if (id === "scope") setWsView(WSV.scope === "XY" ? "YT" : "XY");
-  else if (id === "bus") busSetView({ packets: "eye", eye: "stream", stream: "packets" }[ws.busView] || "eye");
+  else if (id === "bus") busSetView({ packets: "eye", eye: "stream", stream: "visual", visual: "packets" }[ws.busView] || "eye");
   else if (id === "spectrum") setWsView({ FFT: "SPG", SPG: "BODE", BODE: "FFT" }[WSV.spectrum] || "FFT");
   else if (id === "measure") measSetView(ws.measView === "stats" ? "values" : "stats");
   else if (id === "compare") stackMaster();
