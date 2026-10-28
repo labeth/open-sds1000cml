@@ -415,8 +415,11 @@ async function checkInvariants(op, act, iter) {
   }
   // I2 frames flow (when they should). NORM is exempt: a NORM engine with no
   // qualifying trigger legitimately holds frames indefinitely (the UI shows
-  // WAIT) — only AUTO promises a continuously updating display.
-  if (st && st.running && !st.norm && !act.hold) {
+  // WAIT) — only AUTO promises a continuously updating display. So is a record
+  // longer than the 5 s watched, not rolling (a slow timebase with a trigger
+  // that does not roll: a frame a record).
+  const longRecord = st && st.record_s > 4 && !st.roll && !st.roll_stream;
+  if (st && st.running && !st.norm && !act.hold && !longRecord) {
     const frozen = await op.page.evaluate(() => typeof frozen !== "undefined" && frozen);
     if (!frozen) {
       const s0 = await op.page.evaluate(() => (typeof frame !== "undefined" && frame ? frame.seq : -1));
