@@ -355,6 +355,7 @@
   }
   @media (max-width: 900px) {
     #top { overflow-x: auto; }
+    #top > * { flex-shrink: 0; } /* the bar scrolls; its items never shrink into each other */
     .brand { display: none; }
     #wsbody { overflow-y: auto; }
     .ws > .split.row { flex-direction: column; }
@@ -362,4 +363,13 @@
     .ws > .split.row > * { flex: 0 0 auto !important; min-width: 0 !important; }
     .ws > .split.row > .split.col:first-child { min-height: 520px; }
     #allcol { position: fixed; right: 0; top: 44px; bottom: 62px; width: min(380px, 100vw) !important; z-index: 20; }
+  }
+  /* a phone: the workspaces a row of their own (scrolling), the buttons a row under them */
+  @media (max-width: 600px) {
+    #top { flex: 0 0 auto; flex-wrap: wrap; overflow-x: visible; row-gap: 2px; padding: 2px 6px; }
+    #top > .grow { display: none; }
+    #wstabs { flex: 1 0 100%; height: 38px; overflow-x: auto; scrollbar-width: none; }
+    button.wstab { padding: 0 8px; }
+    #top > button.sm, #top > .tlink, #trigChip { height: 28px; }
+    #allcol { top: auto; height: 62vh; } /* the bar is as tall as its rows: the pane sits at the bottom */
   }

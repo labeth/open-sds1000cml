@@ -246,6 +246,21 @@ func drawDecode(sf Surface, p plotArea, f *engine.Frame, hud HUD, win int, xc, p
 	// A bus layer's notes caption the packets in the byte row instead of
 	// their bytes (the bars stay): one transaction read as a whole.
 	captions := hud.UI.Bus != nil && layerNotes(hud.UI.Bus.Marks)
+	// A span enclosing others (a caliper's reading over its bytes, Wiegand's
+	// length over its facility and card) is written in the label row above
+	// them, its parts in the byte row: both read.
+	encl := enclosingSpans(res.Spans)
+	sumEnd := headEnd
+	for i, s := range res.Spans {
+		if !encl[i] || s.Text == "" {
+			continue
+		}
+		x0 := sx(float64(s.I0))
+		if tx := max(x0+1, sumEnd); x0 < p.w && tx+len(s.Text)*6 <= p.w && tx < sx(float64(s.I1)) {
+			DrawText(sf, tx, yLbl, s.Text, decodeColor(s.Kind), 1)
+			sumEnd = tx + len(s.Text)*6 + 6
+		}
+	}
 	for i, s := range res.Spans {
 		x0, x1 := sx(float64(s.I0)), sx(float64(s.I1))
 		if x1 < 0 || x0 >= p.w {
@@ -268,6 +283,9 @@ func drawDecode(sf Surface, p plotArea, f *engine.Frame, hud HUD, win int, xc, p
 		nextX0 := p.w
 		if i+1 < len(res.Spans) {
 			nextX0 = sx(float64(res.Spans[i+1].I0))
+		}
+		if encl[i] {
+			continue // its label went in the label row; its bar is drawn
 		}
 		gap := 0
 		if len(s.Text) > 1 || lastLen > 1 {
@@ -464,6 +482,27 @@ func drawMaskHUD(sf Surface, hud HUD) {
 		y = t + 14
 	}
 	DrawTextRight(sf, min(664, plotOf(hud.UI.Layout).w-4), y, line, col, 1)
+}
+
+// enclosingSpans marks the spans that enclose a labelled other (longer,
+// covering it): a reading or a length over the fields it sums up. Spans come
+// in time order with an enclosing one among its parts' neighbours, so the 64
+// each side are looked at.
+// TRLC-LINKS: REQ-SDS-021
+func enclosingSpans(sp []decode.Span) []bool {
+	out := make([]bool, len(sp))
+	for i, a := range sp {
+		if a.Text == "" || a.Kind == "start" || a.Kind == "stop" || a.Kind == "sof" {
+			continue // a frame's start marker is not a field it sums up
+		}
+		for k := max(0, i-64); k < len(sp) && k <= i+64; k++ {
+			b := sp[k]
+			if k != i && b.Kind != "start" && b.Kind != "stop" && b.I0 <= a.I0 && b.I1 >= a.I1 && b.I1-b.I0 > a.I1-a.I0 {
+				out[k] = true
+			}
+		}
+	}
+	return out
 }
 
 // decodeFrame decodes the frame's protocol through the shared per-frame

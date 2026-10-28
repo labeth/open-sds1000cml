@@ -304,7 +304,7 @@ function decRows(r) {
   const mark = (s) => s.kind === "start" || s.kind === "stop";
   for (let i = 0; i < n; i++) {
     const a = sp[i];
-    if (mark(a) || !a.text) continue; // a span without a label (a frame's start) needs no row of its own
+    if (mark(a) || !a.text || a.kind === "sof") continue; // a frame's start, labelled or not, is not a part summed up
     for (let k = Math.max(0, i - 64); k < n && k <= i + 64; k++) {
       const b = sp[k];
       if (k === i || mark(b) || !(b.i1 >= a.i1 && b.i0 <= a.i0 && b.i1 - b.i0 > a.i1 - a.i0)) continue;
