@@ -11,6 +11,10 @@
 // the node tests.
 "use strict";
 
+// VIS_GAP marks in a transcript (typed text, a terminal) where one capture's
+// text ends and the next's begins: what came between them was not read.
+const VIS_GAP = " \u22ef ";
+
 // visHex2 writes a byte as two upper-case hex digits.
 // TRLC-LINKS: REQ-SDS-278
 function visHex2(v) { return (v & 0xff).toString(16).toUpperCase().padStart(2, "0"); }
@@ -19,8 +23,11 @@ function visHex2(v) { return (v & 0xff).toString(16).toUpperCase().padStart(2, "
 // protocol name (aliases share one entry), its title, its empty state
 // (make), how a frame's decode goes in (spans: the spans in time order, tOf
 // a sample index's seconds, r the whole decode, dt a sample's seconds) and,
-// for a bus the scope's stream carries byte for byte, how a stream line's
-// units go in (units: read gap-free). A new bus is an entry here, its
+// for a bus the scope streams gap-free, how one of the stream's frames goes in
+// (units(s, units, t, note): its units, its first one's time, its start's
+// note such as "LDR"; streamed: the aliases that stream, when not all). The
+// stream keeps a frame's units and its start, not the decode's texts, so a
+// bus whose picture needs those is read from captures. A new bus is an entry here, its
 // picture and figures in VIS_VIEWS (app_visual_draw.js) and its tests in
 // visual.test.cjs, which also checks every entry has a picture that draws.
 const VIS_KINDS = {};
@@ -35,7 +42,7 @@ function visKind(names, def) {
 
 visKind(["midi"], {
   // TRLC-LINKS: REQ-SDS-278
-  title: "MIDI keyboard", make: () => midiNew(),
+  title: "MIDI keyboard", make: () => midiNew(), bytewise: true,
   // a capture: its own pushes and releases kept, and its span from its start
   // (tOf(0)) to its end (its last byte here; the view sets the record's end)
   // TRLC-LINKS: REQ-SDS-278
@@ -54,15 +61,22 @@ visKind(["dmx512"], {
   // TRLC-LINKS: REQ-SDS-278
   spans: (s, spans, tOf) => dmxSpans(s, spans, tOf),
   // TRLC-LINKS: REQ-SDS-278
-  units: (s, units, t) => dmxPacket(s, units, t, true),
+  units: (s, units, t) => dmxPacket(s, units, t, true), // a whole packet: its start code, its slots
 });
 visKind(["ps2"], {
   // TRLC-LINKS: REQ-SDS-278
-  title: "PS/2 keyboard and mouse", make: () => ps2New(),
+  title: "PS/2 keyboard and mouse", make: () => ps2New(), bytewise: true,
+  // a capture: its own presses and releases (a key held across its gaps is
+  // not known), a mouse's moves from the capture's start; its text after a gap mark
   // TRLC-LINKS: REQ-SDS-278
-  spans: (s, spans, tOf) => { for (const sp of spans) if (sp.kind === "data") ps2Byte(s, sp.val, sp.text.startsWith("H"), tOf(sp.i0)); },
+  spans: (s, spans, tOf) => {
+    s.cap = []; s.x = 0; s.y = 0; s.trail = [];
+    if (s.typed && !s.typed.endsWith(VIS_GAP)) s.typed += VIS_GAP;
+    for (const sp of spans) if (sp.kind === "data") ps2Byte(s, sp.val, sp.text.startsWith("H"), tOf(sp.i0));
+  },
+  // the stream, gap-free: every key's press and release, every move
   // TRLC-LINKS: REQ-SDS-278
-  units: (s, units, t) => { for (const u of units) ps2Byte(s, u & 0xff, false, t); },
+  units: (s, units, t) => { s.cap = null; for (const u of units) ps2Byte(s, u & 0xff, false, t); },
 });
 visKind(["ws281x"], {
   // TRLC-LINKS: REQ-SDS-278
@@ -75,6 +89,9 @@ visKind(["irnec", "irsirc", "irrc5", "irrc6", "irmp"], {
   title: "IR remote", make: () => ({ lastBtn: null, buttons: new Map(), cur: null }),
   // TRLC-LINKS: REQ-SDS-278
   spans: (s, spans, tOf) => irSpans(s, spans, tOf),
+  // TRLC-LINKS: REQ-SDS-278
+  units: (s, units, t, note) => irUnits(s, units, t, note),
+  streamed: ["irnec", "irsirc", "irrc5"],
 });
 visKind(["pwm"], {
   // TRLC-LINKS: REQ-SDS-278
@@ -84,21 +101,27 @@ visKind(["pwm"], {
 });
 visKind(["quad"], {
   // TRLC-LINKS: REQ-SDS-278
-  title: "Encoder position", make: () => ({ pos: 0, fwd: true, speed: 0, hist: [], lastCount: 0 }),
+  title: "Encoder position", make: () => ({ pos: 0, fwd: true, speed: 0, hist: [], lastCount: 0, gapless: false }),
   // TRLC-LINKS: REQ-SDS-278
   spans: (s, spans, tOf) => stepSpans(s, spans, tOf),
+  // TRLC-LINKS: REQ-SDS-278
+  units: (s, units, t) => stepUnits(s, units, t, 4), // a cycle of the two lines: four counts
 });
 visKind(["stepper"], {
   // TRLC-LINKS: REQ-SDS-278
-  title: "Stepper position", make: () => ({ pos: 0, fwd: true, speed: 0, hist: [], lastCount: 0 }),
+  title: "Stepper position", make: () => ({ pos: 0, fwd: true, speed: 0, hist: [], lastCount: 0, gapless: false }),
   // TRLC-LINKS: REQ-SDS-278
   spans: (s, spans, tOf) => stepSpans(s, spans, tOf),
+  // TRLC-LINKS: REQ-SDS-278
+  units: (s, units, t) => stepUnits(s, units, t, 1),
 });
 visKind(["caliper"], {
   // TRLC-LINKS: REQ-SDS-278
   title: "Caliper reading", make: () => ({ text: "", value: NaN, unit: "", hist: [] }),
   // TRLC-LINKS: REQ-SDS-278
   spans: (s, spans, tOf) => caliperSpans(s, spans, tOf),
+  // TRLC-LINKS: REQ-SDS-278
+  units: (s, units, t) => { if (units.length >= 3) caliperReading(s, units[0] | (units[1] << 8), units[2], t); },
 });
 visKind(["dcf77"], {
   // TRLC-LINKS: REQ-SDS-278
@@ -108,17 +131,24 @@ visKind(["dcf77"], {
 });
 visKind(["uart"], {
   // TRLC-LINKS: REQ-SDS-278
-  title: "Terminal", make: () => ({ text: "", esc: "", cr: false }),
+  title: "Terminal", make: () => ({ text: "", esc: "", cr: false }), bytewise: true,
+  // a capture's text after a gap mark (what came between captures was not read)
   // TRLC-LINKS: REQ-SDS-278
-  spans: (s, spans) => { for (const sp of spans) if (sp.kind === "data") termByte(s, sp.val); },
+  spans: (s, spans) => {
+    if (s.text && !s.text.endsWith(VIS_GAP) && spans.some((sp) => sp.kind === "data")) { s.text += VIS_GAP; s.esc = ""; }
+    for (const sp of spans) if (sp.kind === "data") termByte(s, sp.val);
+  },
   // TRLC-LINKS: REQ-SDS-278
   units: (s, units) => { for (const u of units) termByte(s, u & 0xff); },
 });
 visKind(["lin"], {
   // TRLC-LINKS: REQ-SDS-278
-  title: "LIN frames", make: () => ({ frames: new Map(), errs: 0 }),
+  title: "LIN frames", make: () => ({ frames: new Map(), errs: 0, capN: 0 }),
   // TRLC-LINKS: REQ-SDS-278
-  spans: (s, spans, tOf) => linSpans(s, spans, tOf),
+  // TRLC-LINKS: REQ-SDS-278
+  spans: (s, spans, tOf) => { s.capN = (s.capN | 0) + 1; linSpans(s, spans, tOf); },
+  // TRLC-LINKS: REQ-SDS-278
+  units: (s, units, t) => { s.capN = -1; linUnits(s, units, t); },
 });
 visKind(["usbpd"], {
   // TRLC-LINKS: REQ-SDS-278
@@ -131,12 +161,15 @@ visKind(["wiegand"], {
   title: "Wiegand cards", make: () => ({ lastCard: null, cards: new Map() }),
   // TRLC-LINKS: REQ-SDS-278
   spans: (s, spans, tOf) => wiegandSpans(s, spans, tOf),
+  // the stream carries the facility and the card, not the frame's length (the newest capture's kept)
+  // TRLC-LINKS: REQ-SDS-278
+  units: (s, units, t) => { if (units.length >= 2) wiegandCard(s, { bits: s.lastCard ? s.lastCard.bits : 0, fac: units[0], card: units[1], t }); },
 });
 visKind(["can", "canfd"], {
   // TRLC-LINKS: REQ-SDS-278
-  title: "CAN signals", make: () => ({ dbc: null, sigs: new Map(), frames: new Map() }),
+  title: "CAN signals", make: () => ({ dbc: null, sigs: new Map(), frames: new Map(), capN: 0 }),
   // TRLC-LINKS: REQ-SDS-278
-  spans: (s, spans, tOf) => canSpans(s, spans, tOf),
+  spans: (s, spans, tOf) => { s.capN++; canSpans(s, spans, tOf); },
 });
 visKind(["spdif"], {
   // TRLC-LINKS: REQ-SDS-278
@@ -150,7 +183,7 @@ const VIS_PROTOS = Object.fromEntries(Object.entries(VIS_KINDS).map(([n, k]) => 
 
 // visStreamed reports a bus the view reads gap-free from the scope's stream.
 // TRLC-LINKS: REQ-SDS-278
-function visStreamed(proto) { const k = VIS_KINDS[proto]; return !!(k && k.units); }
+function visStreamed(proto) { const k = VIS_KINDS[proto]; return !!(k && k.units && (!k.streamed || k.streamed.includes(proto))); }
 
 // VIS_KEEP is the most entries a table of what a bus sent keeps (its ids,
 // buttons, cards, a layer's rows): the newest, a noisy bus's garbage not
@@ -186,15 +219,48 @@ function visIngest(s, r, t0, dt) {
   s.last = tOf(r.spans[r.spans.length - 1].i1);
 }
 
-// visIngestUnits takes one line of the scope's stream (its units, the first
-// at t seconds) into a bus read gap-free.
+// visIngestUnits takes one frame of the scope's stream (its units, the first
+// at t seconds, its start's note) into a bus read gap-free.
 // TRLC-LINKS: REQ-SDS-278
-function visIngestUnits(s, units, t) {
+function visIngestUnits(s, units, t, note) {
   const k = VIS_KINDS[s.proto];
-  if (!k || !k.units || !units || !units.length) return;
-  k.units(s, units, t);
+  if (!k || !visStreamed(s.proto) || !units || (!units.length && !note)) return;
+  k.units(s, units || [], t, note || "");
   s.updates++;
   s.last = t;
+}
+
+// VIS_LINE_UNITS is the most units a stream line holds: a longer frame goes on
+// in the lines after it, unnoted.
+const VIS_LINE_UNITS = 16;
+
+// visStreamLine adds one stream line (t its first unit's time) to the frame
+// it belongs to (S.frame, gathered across reads): a line with a note starts
+// one; an unnoted line right after a full one goes on with it; else it is a
+// frame of its own. The frame before goes to out once the next starts. A
+// byte stream's (bytewise: its frames do not matter) lines go to out at once.
+// TRLC-LINKS: REQ-SDS-278
+function visStreamLine(S, l, t, out, bytewise) {
+  const f = S.frame, units = l.v || [];
+  if (bytewise) { out.push({ units, note: l.n || "", t }); return; } // a byte stream: each line at once
+  if (f && !l.n && f.full && l.i === f.lastI + 1) {
+    for (const u of units) f.units.push(u);
+  } else {
+    visStreamFlush(S, true, out);
+    S.frame = { units: units.slice(), note: l.n || "", t, lastI: l.i, full: false };
+  }
+  S.frame.lastI = l.i;
+  S.frame.full = units.length >= VIS_LINE_UNITS;
+}
+
+// visStreamFlush gives out the frame being gathered: always (all), or once
+// it is surely whole (its last line not full: a full one may go on).
+// TRLC-LINKS: REQ-SDS-278
+function visStreamFlush(S, all, out) {
+  const f = S.frame;
+  if (!f || (!all && f.full)) return;
+  S.frame = null;
+  out.push(f);
 }
 
 // ---- MIDI ----------------------------------------------------------------------
@@ -419,7 +485,7 @@ function dmxRate(s) {
 function ps2New() {
   return {
     kind: "", forced: false, kbdVotes: 0, mouseVotes: 0, lastHost: -1, idNext: false, wheel: false,
-    ext: false, brk: false, skip: 0, keys: new Set(), typed: "", lastKey: "", shift: false, caps: false,
+    ext: false, brk: false, skip: 0, keys: new Set(), typed: "", lastKey: "", shift: false, caps: false, cap: null,
     pkt: [], x: 0, y: 0, btn: 0, trail: [], wheelPos: 0,
   };
 }
@@ -476,6 +542,7 @@ function ps2Key(s, b, t) {
 // TRLC-LINKS: REQ-SDS-278
 function ps2Press(s, code, down, t) {
   const k = PS2_KEYS.get(code);
+  if (s.cap && s.cap.length < 512) s.cap.push({ code, down, t });
   if (!down) {
     s.keys.delete(code);
     if (code === "12" || code === "59") s.shift = false;
@@ -610,6 +677,20 @@ function irSpans(s, spans, tOf) {
   flush();
 }
 
+// irUnits takes a frame of the stream: NEC's (LDR: address, its inverse,
+// command, its inverse; an address not followed by its inverse is NEC's
+// extended 16-bit one; REP: the button held), Sony's (SIRC: command, then
+// address) or RC-5's (address, command).
+// TRLC-LINKS: REQ-SDS-278
+function irUnits(s, u, t, note) {
+  if (note === "REP") { if (s.lastBtn) { s.lastBtn.repeats++; s.lastBtn.t = t; } return; }
+  let addr = -1, cmd = -1;
+  if (note === "LDR" && u.length >= 3) { addr = u[1] === (~u[0] & 0xff) ? u[0] : u[0] | (u[1] << 8); cmd = u[2]; }
+  else if (note === "SIRC" && u.length >= 2) { cmd = u[0]; addr = u[1]; }
+  else if (note === "RC5" && u.length >= 2) { addr = u[0]; cmd = u[1]; }
+  if (cmd >= 0) irButton(s, { name: note, addr, cmd, t });
+}
+
 // irButton counts a button pressed: the newest, and the table of all seen.
 // TRLC-LINKS: REQ-SDS-278
 function irButton(s, f) {
@@ -673,6 +754,20 @@ function stepSpans(s, spans, tOf) {
   if (s.hist.length > 300) s.hist.shift();
 }
 
+// stepUnits takes a frame of the stream's steps (each unit one: 1 forward, 0
+// back; per counts a step): every step counted, so the position is the shaft's.
+// TRLC-LINKS: REQ-SDS-278
+function stepUnits(s, units, t, per) {
+  let d = 0;
+  for (const u of units) d += u ? per : -per;
+  s.pos += d; s.lastCount = d; s.fwd = units[units.length - 1] ? true : false; s.gapless = true;
+  // the speed: the steps over the time since the frame before (frames come back to back)
+  if (s.lastStepT > 0 && t > s.lastStepT) s.speed = d / (t - s.lastStepT);
+  s.lastStepT = t;
+  s.hist.push({ t, v: s.pos });
+  if (s.hist.length > 300) s.hist.shift();
+}
+
 // ---- caliper, DCF77, terminal ----------------------------------------------------
 
 // caliperSpans takes a frame's readings ("12.34mm", "0.4860in").
@@ -682,10 +777,26 @@ function caliperSpans(s, spans, tOf) {
     if (sp.kind !== "rw") continue;
     const m = /^(-?[\d.]+)\s*(mm|in)$/.exec(sp.text);
     if (!m) continue;
-    s.text = sp.text; s.value = parseFloat(m[1]); s.unit = m[2];
-    s.hist.push({ t: tOf(sp.i0), v: s.value });
-    if (s.hist.length > 300) s.hist.shift();
+    caliperShow(s, parseFloat(m[1]), m[2], tOf(sp.i0));
   }
+}
+
+// caliperReading reads a frame's count and flags as the decoder does: a
+// hundredth of a millimetre a count (an inch flag: half a thousandth), the
+// sign flag negative.
+// TRLC-LINKS: REQ-SDS-278
+function caliperReading(s, num, flags, t) {
+  const v = ((flags >> 4) & 1) === 1 && num !== 0 ? -num : num;
+  if (((flags >> 7) & 1) === 1) caliperShow(s, v / 2000, "in", t);
+  else caliperShow(s, v / 100, "mm", t);
+}
+
+// caliperShow takes one reading: its text, value, unit and history.
+// TRLC-LINKS: REQ-SDS-278
+function caliperShow(s, v, unit, t) {
+  s.text = String(v) + unit; s.value = v; s.unit = unit;
+  s.hist.push({ t, v });
+  if (s.hist.length > 300) s.hist.shift();
 }
 
 // DCF77_DOW names the weekdays, Monday 1.
@@ -828,14 +939,21 @@ function wiegandSpans(s, spans, tOf) {
     if (sp.kind === "data" && sp.text.startsWith("F")) cur.fac = sp.val;
     if (sp.kind === "data" && sp.text.startsWith("C")) {
       cur.card = sp.val;
-      const key = cur.bits + "/" + cur.fac + "/" + cur.card;
-      const c = s.cards.get(key) || Object.assign({ count: 0 }, cur);
-      c.count++; c.t = cur.t;
-      visKeep(s.cards, key, c);
-      s.lastCard = c;
+      wiegandCard(s, cur);
       cur = null;
     }
   }
+}
+
+// wiegandCard counts a card read (by its facility and number; its length the
+// newest read's, 0 not known).
+// TRLC-LINKS: REQ-SDS-278
+function wiegandCard(s, f) {
+  const key = f.fac + "/" + f.card, c = s.cards.get(key) || { fac: f.fac, card: f.card, bits: 0, count: 0, t: 0 };
+  c.count++; c.t = f.t;
+  if (f.bits) c.bits = f.bits;
+  visKeep(s.cards, key, c);
+  s.lastCard = c;
 }
 
 // ---- CAN with a DBC file -----------------------------------------------------------
@@ -894,7 +1012,7 @@ function canSpans(s, spans, tOf) {
   // TRLC-LINKS: REQ-SDS-278
   const done = () => {
     if (!cur || cur.bad || cur.id < 0) { cur = null; return; }
-    visKeep(s.frames, cur.id, { bytes: cur.bytes, t: cur.t, count: ((s.frames.get(cur.id) || {}).count || 0) + 1 });
+    visFrameSeen(s, cur.id, cur.bytes, cur.t);
     const msg = s.dbc && s.dbc.get(cur.id);
     if (msg) {
       const muxSig = msg.signals.find((g) => g.mux === "M");
@@ -931,7 +1049,7 @@ function linSpans(s, spans, tOf) {
   const done = (last) => {
     if (cur && cur.id >= 0 && cur.ck) {
       if (cur.bad) { if (!last) s.errs++; }
-      else visKeep(s.frames, cur.id, { bytes: cur.bytes, t: cur.t, count: ((s.frames.get(cur.id) || {}).count || 0) + 1 });
+      else visFrameSeen(s, cur.id, cur.bytes, cur.t);
     }
     cur = null;
   };
@@ -945,6 +1063,34 @@ function linSpans(s, spans, tOf) {
     else cur.bad = true;
   }
   done(true);
+}
+
+// linUnits takes a frame of the stream: its protected identifier, its
+// response and its checksum (enhanced, or classic for the diagnostic frames
+// and LIN 1.x), the identifier's parity and the checksum checked.
+// TRLC-LINKS: REQ-SDS-278
+function linUnits(s, units, t) {
+  if (units.length < 2) return;
+  const pid = units[0], id = pid & 0x3f, data = units.slice(1, -1), ck = units[units.length - 1];
+  const ok = linPIDParity(id) === pid && (linChecksum(pid, data, true) === ck || linChecksum(pid, data, false) === ck);
+  if (!ok) { s.errs++; return; }
+  visFrameSeen(s, id, data, t);
+}
+
+// visFrameSeen takes an identifier's frame (LIN, CAN): its newest bytes, its
+// count, and its period, timed between two of its frames one right after the
+// other (in one capture: s.capN numbers them; the stream: -1, gap-free) as
+// the median of its last eight.
+// TRLC-LINKS: REQ-SDS-278
+function visFrameSeen(s, id, bytes, t) {
+  const old = s.frames.get(id), capN = s.capN === undefined ? -1 : s.capN;
+  const f = { bytes, t, count: (old ? old.count : 0) + 1, capN, ivs: old ? old.ivs : [], period: old ? old.period : NaN };
+  if (old && old.capN === capN && t > old.t) {
+    f.ivs.push(t - old.t);
+    if (f.ivs.length > 8) f.ivs.shift();
+    f.period = Float64Array.from(f.ivs).sort()[f.ivs.length >> 1];
+  }
+  visKeep(s.frames, id, f);
 }
 
 // ---- a protocol layer's values ----------------------------------------------------
@@ -968,5 +1114,5 @@ function layerNotes(s, packets, t) {
 }
 
 if (typeof module !== "undefined" && module.exports)
-  module.exports = { visKeep, VIS_KEEP, linSpans, midiInstrument, VIS_PROTOS, VIS_KINDS, visStreamed, visNew, visIngest, visIngestUnits, midiNoteName, midiByte, midiExpire, dmxRate, wsColours,
+  module.exports = { visStreamLine, visStreamFlush, VIS_GAP, visKeep, VIS_KEEP, linSpans, midiInstrument, VIS_PROTOS, VIS_KINDS, visStreamed, visNew, visIngest, visIngestUnits, midiNoteName, midiByte, midiExpire, dmxRate, wsColours,
     pwmServo, dbcParse, dbcRaw, pdPDO, pdRDO, layerNotes, PS2_LAYOUT, PS2_KEYS };

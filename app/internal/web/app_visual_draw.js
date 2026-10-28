@@ -38,7 +38,7 @@ function visDrawFrames(g, W, H, s, hint) {
     g.globalAlpha = Math.max(0.25, 1 - age / 5);
     g.fillStyle = "#1f2a36"; g.fillRect(x + 2 * dpr, y + 2 * dpr, tw - 4 * dpr, th - 4 * dpr);
     g.fillStyle = "#4fc3f7"; g.font = Math.round(12 * dpr) + "px monospace"; g.textAlign = "left"; g.textBaseline = "top";
-    g.fillText(id.toString(16).toUpperCase().padStart(2, "0") + "  ×" + f.count, x + 8 * dpr, y + 6 * dpr);
+    g.fillText(id.toString(16).toUpperCase().padStart(2, "0") + "  ×" + f.count + (Number.isFinite(f.period) ? "  every " + eng(f.period, "s", 3) : ""), x + 8 * dpr, y + 6 * dpr);
     g.fillStyle = "#e6edf3"; g.font = Math.round(11 * dpr) + "px monospace";
     g.fillText(f.bytes.map(visHex2).join(" ").slice(0, Math.floor(tw / (7 * dpr))), x + 8 * dpr, y + 22 * dpr);
   });
@@ -179,7 +179,8 @@ function visDrawLegend(g, P, s, chans) {
 function visDrawMIDI(g, W, H, s) {
   if (s.cap) return visDrawMIDICapture(g, W, H, s);
   const P = visPianoGeom(W, H), { lo, hi, ww, legH, hitY, rollH, keyX } = P;
-  const now = performance.now() / 1000, lead = vis.midiLead;
+  // the picture's now: the stream's delay behind, as the sound is (visLag)
+  const now = performance.now() / 1000 - visLag(), lead = vis.midiLead;
   const rise = !(lead > 0), span = rise ? VIS_MIDI_RISE : lead;
   // a time's height: live, now at the keys and the past above; falling, now
   // at the top and lead seconds ago at the keys
@@ -291,13 +292,23 @@ function visDrawDMX(g, W, H, s) {
 // TRLC-LINKS: REQ-SDS-278
 function visDrawKeyboard(g, W, H, s) {
   const u = Math.min(W / 23.2, H / 6.6), ox = (W - 23 * u) / 2, oy = (H - 6.5 * u) / 2;
+  // from captures: the newest one's own presses (lit, those still down at its
+  // end) and releases (ringed); a key held across the gaps is not known
+  const down = new Set(), touched = new Set();
+  if (s.cap) for (const e of s.cap) { touched.add(e.code); if (e.down) down.add(e.code); else down.delete(e.code); }
+  const held = s.cap ? down : s.keys;
   g.textAlign = "center"; g.textBaseline = "middle";
   for (const k of PS2_LAYOUT) {
-    const on = s.keys.has(k.code), x = ox + k.x * u, y = oy + k.y * u;
+    const on = held.has(k.code), x = ox + k.x * u, y = oy + k.y * u;
     g.fillStyle = on ? "#4fc3f7" : "#1b2430"; g.fillRect(x + 1.5 * dpr, y + 1.5 * dpr, k.w * u - 3 * dpr, u - 3 * dpr);
+    if (!on && touched.has(k.code)) { g.strokeStyle = "#4fc3f7"; g.lineWidth = 2 * dpr; g.strokeRect(x + 2.5 * dpr, y + 2.5 * dpr, k.w * u - 5 * dpr, u - 5 * dpr); }
     g.fillStyle = on ? "#05080c" : "#c9d3dc";
     g.font = Math.round(Math.min(u * 0.32, (k.w * u) / Math.max(2, k.label.length) * 1.4)) + "px monospace";
     g.fillText(k.label, x + k.w * u / 2, y + u / 2);
+  }
+  if (s.cap) {
+    g.fillStyle = "#8b98a5"; g.font = Math.round(11 * dpr) + "px monospace"; g.textBaseline = "bottom";
+    g.fillText("this capture: pressed and still down lit, released ringed · Gap-free shows every key", W / 2, H - 2 * dpr);
   }
 }
 
@@ -322,7 +333,7 @@ function visDrawMouse(g, W, H, s) {
     g.fillStyle = "#c9d3dc"; g.font = Math.round(12 * dpr) + "px monospace"; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText(n, bx + i * bw * 1.1 - bw * 1.1, by + bh / 2);
   });
   g.fillStyle = "#8b98a5"; g.textAlign = "center";
-  g.fillText("x " + s.x + "  y " + s.y + (s.wheel ? "  wheel " + s.wheelPos : ""), bx - bw * 0.5, by + bh + 20 * dpr);
+  g.fillText((s.cap ? "this capture's moves: " : "") + "x " + s.x + "  y " + s.y + (s.wheel ? "  wheel " + s.wheelPos : ""), bx - bw * 0.5, by + bh + 20 * dpr);
 }
 
 // visDrawLEDs draws the strip's LEDs in their colours, as many a row as fit.
@@ -374,7 +385,7 @@ function visDrawDial(g, W, H, s) {
   g.fillText(String(s.pos), W * 0.72, H * 0.35);
   g.font = Math.round(12 * dpr) + "px monospace"; g.fillStyle = "#8b98a5";
   g.fillText((s.fwd ? "forward" : "reverse") + " · " + Math.abs(s.speed).toFixed(0) + " steps/s", W * 0.72, H * 0.5);
-  g.fillText("counted in the captures (not between them)", W * 0.72, H * 0.5 + 16 * dpr);
+  g.fillText(s.gapless ? "gap-free: every step counted" : "counted in the captures (not between them)", W * 0.72, H * 0.5 + 16 * dpr);
   if (s.hist.length > 1) visSpark(g, W * 0.52, H * 0.6, W * 0.45, H * 0.3, s.hist, "#81c784");
 }
 
@@ -522,7 +533,7 @@ const VIS_VIEWS = {
   irnec: {
     draw: visDrawIR,
     // TRLC-LINKS: REQ-SDS-278
-    figures: (s) => visTab([["address", "command", "pressed", "last"], ...[...s.buttons.values()].sort((a, b) => b.t - a.t).slice(0, 20).map((b) => ["A " + visHexN(b.addr), "C " + visHexN(b.cmd), b.count + "x", visAgo(b.t)])]),
+    figures: (s) => visTab([["address", "command", "received", "last"], ...[...s.buttons.values()].sort((a, b) => b.t - a.t).slice(0, 20).map((b) => ["A " + visHexN(b.addr), "C " + visHexN(b.cmd), b.count + "x", visAgo(b.t)])]),
   },
   pwm: {
     draw: visDrawPWM,
@@ -560,7 +571,7 @@ const VIS_VIEWS = {
     // TRLC-LINKS: REQ-SDS-278
     draw: (g, W, H, s) => visDrawFrames(g, W, H, s, "the identifiers' newest responses; checksum failures count beside"),
     // TRLC-LINKS: REQ-SDS-278
-    figures: (s) => visTab([["id", "bytes", "count"], ...[...s.frames.entries()].sort((a, b) => a[0] - b[0]).slice(0, 40).map(([id, f]) => [visHex2(id), f.bytes.map(visHex2).join(" "), f.count])]) +
+    figures: (s) => visTab([["id", "bytes", "period", "count"], ...[...s.frames.entries()].sort((a, b) => a[0] - b[0]).slice(0, 40).map(([id, f]) => [visHex2(id), f.bytes.map(visHex2).join(" "), visPeriod(f), f.count])]) +
       (s.errs ? '<div class="sub">' + s.errs + " frames failed their checksum or identifier parity</div>" : ""),
   },
   usbpd: {
@@ -572,16 +583,16 @@ const VIS_VIEWS = {
   wiegand: {
     // TRLC-LINKS: REQ-SDS-278
     draw: (g, W, H, s) => visBig(g, W, H, s.lastCard ? "card " + s.lastCard.card : "no card yet",
-      s.lastCard ? s.lastCard.bits + "-bit · facility " + s.lastCard.fac + " · read " + s.lastCard.count + "x" : "present a card to the reader"),
+      s.lastCard ? (s.lastCard.bits || "?") + "-bit · facility " + s.lastCard.fac + " · read " + s.lastCard.count + "x" : "present a card to the reader"),
     // TRLC-LINKS: REQ-SDS-278
-    figures: (s) => visTab([["bits", "facility", "card", "read"], ...[...s.cards.values()].sort((a, b) => b.t - a.t).slice(0, 20).map((c) => [c.bits, c.fac, c.card, c.count + "x " + visAgo(c.t)])]),
+    figures: (s) => visTab([["bits", "facility", "card", "read"], ...[...s.cards.values()].sort((a, b) => b.t - a.t).slice(0, 20).map((c) => [c.bits || "?", c.fac, c.card, c.count + "x " + visAgo(c.t)])]),
   },
   can: {
     draw: visDrawCAN,
     // TRLC-LINKS: REQ-SDS-278
     figures: (s) => {
       if (s.dbc && s.sigs.size) return visTab([["", "signal", "value"], ...[...s.sigs.entries()].sort().map(([k, e]) => [`<input type="checkbox" data-sig="${escHTML(k)}"${vis.canPick.has(k) ? " checked" : ""} aria-label="graph ${escHTML(k)}">`, escHTML(k), visNum(e.v) + " " + escHTML(e.unit)])]);
-      return visTab([["id", "bytes", "count"], ...[...s.frames.entries()].sort((a, b) => a[0] - b[0]).slice(0, 40).map(([id, f]) => [visHexN(id) + ((s.dbc && s.dbc.get(id)) ? " " + escHTML(s.dbc.get(id).name) : ""), f.bytes.map(visHex2).join(" "), f.count])]);
+      return visTab([["id", "bytes", "period", "count"], ...[...s.frames.entries()].sort((a, b) => a[0] - b[0]).slice(0, 40).map(([id, f]) => [visHexN(id) + ((s.dbc && s.dbc.get(id)) ? " " + escHTML(s.dbc.get(id).name) : ""), f.bytes.map(visHex2).join(" "), visPeriod(f), f.count])]);
     },
     // TRLC-LINKS: REQ-SDS-278
     controls: () => '<div class="r"><label class="hl"><span class="lbl">DBC</span><input type="file" id="visDbc" accept=".dbc,text/plain" aria-label="DBC file"></label><span class="sub">' + escHTML(vis.dbcName) + "</span></div>",
@@ -618,15 +629,21 @@ function visHexN(v) { return v >= 0 ? v.toString(16).toUpperCase() : "-"; }
 function visDrawIR(g, W, H, s) {
   const b = s.lastBtn;
   if (!b) return visBig(g, W, H, "no button yet", "press a button on the remote");
-  visBig(g, W, H, "A " + visHexN(b.addr) + "  C " + visHexN(b.cmd), b.name + (b.repeats ? " · held, " + b.repeats + " repeats" : "") + " · pressed " + b.count + "x");
+  visBig(g, W, H, "A " + visHexN(b.addr) + "  C " + visHexN(b.cmd), b.name + (b.repeats ? " · held, " + b.repeats + " repeats" : "") + " · received " + b.count + "x");
 }
 
 // visDialFigures are an encoder's or a stepper's figures.
 // TRLC-LINKS: REQ-SDS-278
 function visDialFigures(s) {
+  if (s.gapless) return visTab([["position", s.pos], ["direction", s.fwd ? "forward" : "reverse"], ["speed", Math.abs(s.speed).toFixed(1) + " steps/s"]]) +
+    '<div class="sub">Gap-free: every step counted.</div>';
   return visTab([["counted", s.pos], ["last capture", (s.lastCount > 0 ? "+" : "") + s.lastCount], ["direction", s.fwd ? "forward" : "reverse"], ["speed", Math.abs(s.speed).toFixed(1) + " steps/s"]]) +
-    '<div class="sub">The count adds up what each capture saw; steps between captures are not seen.</div>';
+    '<div class="sub">The count adds up what each capture saw; steps between captures are not seen (Gap-free counts every one).</div>';
 }
+
+// visPeriod writes an identifier's period (its frames one right after the other), "-" not yet timed.
+// TRLC-LINKS: REQ-SDS-278
+function visPeriod(f) { return Number.isFinite(f.period) ? eng(f.period, "s", 3) : "-"; }
 
 // visZeroControl is Zero, setting an encoder's or a stepper's count to 0.
 // TRLC-LINKS: REQ-SDS-278

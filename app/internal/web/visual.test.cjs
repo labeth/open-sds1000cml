@@ -13,7 +13,7 @@ const files = ["decode.js", "decode_manchester.js", "decode_sent.js", "decode_ca
   "decode_rfcodes.js", "decode_rfid.js", "decode_wire1.js", "decode_wire2.js", "decode_irmp.js", "visual.js", "audio_decode.js"];
 const c = { console, performance };
 vm.createContext(c);
-vm.runInContext(files.map((f) => fs.readFileSync(f, "utf8")).join("\n;\n") + "\n;globalThis.__ = { VIS_PROTOS, VIS_KINDS, VIS_KEEP, PS2_KEYS, PS2_LAYOUT };", c);
+vm.runInContext(files.map((f) => fs.readFileSync(f, "utf8")).join("\n;\n") + "\n;globalThis.__ = { VIS_PROTOS, VIS_KINDS, VIS_KEEP, VIS_GAP, PS2_KEYS, PS2_LAYOUT };", c);
 // every state the tests make, kept to draw at the end (a picture of real data)
 const made = [];
 {
@@ -406,6 +406,67 @@ function uartWave(packets, baud, dt, stop, breakS) {
   assert.equal(s.cap, null, "read gap-free: no capture's events");
 }
 
+// ---- gap-free: the scope's stream lines (as the bench's buses streamed them)
+// gathered into frames and read by each bus that streams
+{
+  // TRLC-LINKS: REQ-SDS-278
+  const feed = (proto, lines) => {
+    const s = c.visNew(proto), S = {}, out = [], bw = !!c.__.VIS_KINDS[proto].bytewise;
+    lines.forEach((l, i) => c.visStreamLine(S, { i, n: l[0], v: l[1] }, i * 0.01, out, bw));
+    c.visStreamFlush(S, true, out);
+    for (const f of out) c.visIngestUnits(s, f.units, f.t, f.note);
+    return s;
+  };
+  // DMX: a packet goes on past a line's sixteen units, unnoted
+  const slots = Array.from({ length: 21 }, (_, k) => 2 + 7 * k);
+  let s = feed("dmx512", [["BRK", [0, ...slots.slice(0, 15)]], ["", slots.slice(15)], ["BRK", [0, ...slots.slice(0, 15)]], ["", slots.slice(15)]]);
+  assert.equal(s.slots, 21, "a packet across two lines is one: 21 slots");
+  assert.equal(s.sc, 0); assert.equal(s.levels[20], slots[20], "its last slot's level");
+  // LIN: identifier, response, checksum
+  s = feed("lin", [["BRK", [0xc1, 0x12, 0x34, 0xab, 0x4c]], ["BRK", [0x80, 0x12, 0x34, 0xab, 0x8d]], ["BRK", [0x42, 0x12, 0x34, 0xab, 0xcb]], ["BRK", [0xc1, 0x12, 0x34, 0xab, 0x4c]], ["BRK", [0x42, 0x12, 0x34, 0xab, 0x00]]]);
+  deq([...s.frames.keys()].sort(), [0, 1, 2], "identifiers 0, 1, 2");
+  deq(s.frames.get(1).bytes, [0x12, 0x34, 0xab]); assert.equal(s.errs, 1, "a bad checksum counted");
+  assert.ok(Math.abs(s.frames.get(1).period - 0.03) < 1e-9, "identifier 1 every 30 ms (gap-free)");
+  // IR: NEC with its repeats, Sony's command first, RC-5's address first
+  s = feed("irnec", [["LDR", [0x00, 0xff, 0x16, 0xe9]], ["REP", []], ["REP", []], ["LDR", [0x04, 0xfb, 0x16, 0xe9]]]);
+  assert.equal(s.lastBtn.addr, 4); assert.equal(s.lastBtn.cmd, 0x16); assert.equal(s.buttons.get("0/22").repeats, 2, "two repeats of A0 C16");
+  s = feed("irsirc", [["SIRC", [0x15, 0x01]]]);
+  assert.ok(s.lastBtn.addr === 1 && s.lastBtn.cmd === 0x15, "Sony: command, then address");
+  s = feed("irrc5", [["RC5", [0x05, 0x10]]]);
+  assert.ok(s.lastBtn.addr === 5 && s.lastBtn.cmd === 0x10, "RC-5: address, then command");
+  assert.ok(!c.visStreamed("irrc6") && c.visStreamed("irnec"), "only the IR buses whose stream is read stream");
+  // Wiegand, the caliper, steps
+  s = feed("wiegand", [["", [0x2a, 0x1234]], ["", [0x2a, 0x4321]], ["", [0x2a, 0x1234]]]);
+  assert.ok(s.lastCard.fac === 42 && s.lastCard.card === 0x1234 && s.cards.get("42/4660").count === 2, "cards 4660 twice, 17185 once");
+  s = feed("caliper", [["", [0xd4, 0x04, 0x00]]]);
+  assert.equal(s.text, "12.36mm");
+  s = feed("quad", [["", Array(16).fill(1)], ["", Array(4).fill(1)], ["", Array(16).fill(0)], ["", Array(14).fill(0)]]);
+  assert.ok(s.pos === 4 * 20 - 4 * 30 && s.gapless && !s.fwd, "quadrature: 20 cycles on, 30 back: -40 counts, every one");
+  s = feed("stepper", [["", Array(14).fill(1)], ["", [...Array(15).fill(0), 1]]]);
+  assert.equal(s.pos, 14 - 15 + 1, "a stepper's steps one by one");
+  // a byte stream's lines go in at once (MIDI's lines are all full)
+  s = feed("midi", [["", [0x90, 60, 100, 0x80, 60, 0, 0x90, 64, 90, 0x90, 67, 90, 0x90, 72, 90, 0x80]], ["", [64, 0]]]);
+  assert.equal(s.msgs, 6, "every message, the last across two lines");
+}
+
+// ---- from captures: PS/2's keys are the capture's own; a terminal's and the
+// typed text's captures parted by a gap mark
+{
+  const s = c.visNew("ps2");
+  // TRLC-LINKS: REQ-SDS-278
+  const d = (val) => ({ i0: 0, i1: 1, kind: "data", text: "", val });
+  c.visIngest(s, { ok: true, spans: [d(0x1c)] }, 0, 1e-3); // A pressed (its release in the gap)
+  c.visIngest(s, { ok: true, spans: [d(0x32), d(0xf0), d(0x32)] }, 1, 1e-3); // B pressed and released
+  deq(s.cap.map((e) => [e.code, e.down]), [["32", true], ["32", false]], "the capture's own presses and releases");
+  assert.ok(s.typed.includes(c.__.VIS_GAP), "the typed text parted where a capture's gap was: " + JSON.stringify(s.typed));
+  const u = c.visNew("uart");
+  c.visIngest(u, { ok: true, spans: [d(0x48), d(0x69)] }, 0, 1e-3);
+  c.visIngest(u, { ok: true, spans: [d(0x21)] }, 1, 1e-3);
+  assert.equal(u.text, "Hi" + c.__.VIS_GAP + "!", "the terminal's captures parted");
+  c.visIngestUnits(u, [0x3f], 2, "");
+  assert.equal(u.text, "Hi" + c.__.VIS_GAP + "!?", "the stream, gap-free: no mark");
+}
+
 // ---- the synth's voices: random notes, retriggers and controllers keep each
 // voice once in its order, never more than SYNTH_VOICES
 {
@@ -462,7 +523,8 @@ function uartWave(packets, baud, dt, stop, breakS) {
     function escHTML(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;"); }
     function fmtTdiv(s) { return s + " s"; }
     function $() { return null; }
-    function toast() {}`, c);
+    function toast() {}
+    function visLag() { return 0; }`, c);
   vm.runInContext(fs.readFileSync("app_visual_draw.js", "utf8") + "\n;globalThis.__views = { VIS_VIEWS, VIS_KINDS, visView, visDrawLayer, visLayerTable };", c);
   const bad = [];
   // TRLC-LINKS: REQ-SDS-278

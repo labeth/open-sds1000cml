@@ -191,8 +191,9 @@ function busSetView(v, byScope) {
   if (v === "packets") { busRenderedV = -1; busRenderTable(); }
   if (v === "visual" && typeof visDraw === "function") {
     if (!vis.s || vis.proto !== dcfg.proto) visReset();
-    // MIDI is music: follow the scope's gap-free stream, unless Gap-free was turned off here
-    if (dcfg.proto === "midi" && vis.gapless !== false && !busScopeStreaming()) { vis.autoStream = true; visAskStream(true); }
+    // a bus the scope streams gap-free is followed whole (every note, key, step,
+    // frame), unless Gap-free was turned off here
+    if (visStreamed(dcfg.proto) && vis.gapless !== false && !busScopeStreaming()) { vis.autoStream = true; visAskStream(true); }
     visSide(true); setTimeout(() => visDraw(true), 30);
   }
   if (!byScope && v === "stream") busAskStream(true);

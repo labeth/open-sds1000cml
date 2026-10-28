@@ -10,7 +10,7 @@
 
 const vis = {
   proto: "", s: null, layer: null, seq: -1, sy: null, sound: false,
-  stream: { next: -1, busy: false, s0: NaN, t0: NaN, rate: 0, on: false },
+  stream: { next: -1, busy: false, base: NaN, lastS: 0, rate: 0, on: false, frame: null },
   wsOrder: "GRB", ps2Kind: "", dbcText: "", dbcName: "", canPick: new Set(),
   audio: { on: false, kind: "auto", res: null, busy: false, live: false, play: null, gain: 0.6, prevTdiv: 0, sampleS: 0, msg: "" },
   drawT: 0, midiLead: 0, autoStream: false, gapless: null, // gapless: Gap-free as last set here (null: never)
@@ -30,7 +30,7 @@ function visReset() {
   if (vis.s.proto === "ps2" && vis.ps2Kind) { vis.s.kind = vis.ps2Kind; vis.s.forced = true; }
   vis.layer = visNew("layer");
   vis.seq = -1;
-  vis.stream.next = -1;
+  vis.stream.next = -1; vis.stream.frame = null;
   if (vis.sy) synthPanic(vis.sy);
   visSide(true);
 }
@@ -61,16 +61,26 @@ function visOnDecode() {
 function visSound() {
   if (!vis.s || !vis.s.out) return;
   midiExpire(vis.s, performance.now() / 1000);
-  if (vis.sound && vis.sy) { vis.sy.lead = vis.s.proto === "midi" ? vis.midiLead : 0; synthEvents(vis.sy, vis.s.out); }
+  if (vis.sound && vis.sy) { vis.sy.lead = vis.s.proto === "midi" ? vis.midiLead + visLag() : 0; synthEvents(vis.sy, vis.s.out); }
   else vis.s.out.length = 0;
 }
 
+// visLag is how far behind the picture and the sound go: the stream's delay
+// while following it (its lines come in late batches), else none.
+// TRLC-LINKS: REQ-SDS-278, REQ-SDS-279
+function visLag() { return vis.stream.on && vis.stream.lag > 0 ? vis.stream.lag : 0; }
+
 // ---- the scope's stream, gap-free -------------------------------------------------
 
+// VIS_ORD_HZ is the rate the stream's sample ordinals count at: the
+// converters' 2 ns samples.
+const VIS_ORD_HZ = 500e6;
+
 // visStreamTick follows the scope's stream while it runs and the view shows a
-// byte-wise protocol: new lines from the last one read (from the newest at
-// the start), each stamped by its first unit's sample ordinal at the rate the
-// ordinals advance (measured over the seconds read), its units into the state.
+// bus it streams: new lines from the last one read (from the newest at the
+// start), gathered into frames, each stamped by its first unit's sample
+// ordinal (VIS_ORD_HZ, on the page's clock from the first line read: a
+// stream started again, or the two clocks seconds apart, anchors it again).
 // TRLC-LINKS: REQ-SDS-278
 async function visStreamTick() {
   const S = vis.stream;
@@ -84,13 +94,20 @@ async function visStreamTick() {
     if (S.next < 0) { S.next = p.next; return; } // the newest from here on
     const lines = p.lines || [];
     if (!lines.length) { S.next = p.next; return; }
-    const lastS = lines[lines.length - 1].s;
-    if (!Number.isFinite(S.s0)) { S.s0 = lastS; S.t0 = now; }
-    else if (now - S.t0 > 2 && lastS > S.s0) S.rate = (lastS - S.s0) / (now - S.t0);
-    for (const l of lines) {
-      const t = S.rate > 0 ? now - (lastS - l.s) / S.rate : now;
-      visIngestUnits(vis.s, l.v, t);
-    }
+    const lastS = lines[lines.length - 1].s, lastT = S.base + lastS / VIS_ORD_HZ;
+    if (!Number.isFinite(S.base) || lastS < S.lastS || lastT < now - 5) S.base = now - lastS / VIS_ORD_HZ;
+    else if (lastT > now) S.base -= lastT - now; // no line comes before its time: the anchor finds the least delay
+    S.lastS = lastS; S.rate = VIS_ORD_HZ;
+    // the stream's delay (the scope hands its lines over in batches): the most
+    // of late with a margin, falling slowly (half a millisecond a read: 0.4 %,
+    // a tempo nobody hears change); the picture and the sound go that far behind
+    const lag = now - (S.base + lastS / VIS_ORD_HZ);
+    S.lag = Math.min(3, Math.max(lag + 0.08, (S.lag || 0) - 0.0005));
+    const frames = [];
+    const bytewise = !!(VIS_KINDS[vis.proto] && VIS_KINDS[vis.proto].bytewise);
+    for (const l of lines) visStreamLine(S, l, S.base + l.s / VIS_ORD_HZ, frames, bytewise);
+    visStreamFlush(S, false, frames);
+    for (const f of frames) visIngestUnits(vis.s, f.units, f.t, f.note);
     S.next = p.next;
     visSound();
     if (visShown()) visDraw();
@@ -105,7 +122,7 @@ function visAskStream(on) {
   if (typeof busStreamAsk !== "undefined") busStreamAsk = { on, until: Date.now() + 5000 };
   if (typeof busScopeWas !== "undefined") busScopeWas = on;
   sheetSet("bus.stream", on ? 1 : 0);
-  vis.stream.next = -1; vis.stream.s0 = NaN; vis.stream.rate = 0;
+  vis.stream.next = -1; vis.stream.base = NaN; vis.stream.lastS = 0; vis.stream.rate = 0; vis.stream.frame = null; vis.stream.lag = 0;
 }
 
 // ---- drawing --------------------------------------------------------------------------
@@ -164,7 +181,7 @@ function visSide(rebuild) {
   const gb = $("visGapless");
   if (gb && !(busStreamAsk && Date.now() < busStreamAsk.until)) gb.classList.toggle("on", busScopeStreaming()); // as the scope is, once no ask is pending
   const note = $("visStreamNote");
-  if (note) note.textContent = vis.stream.on ? "gap-free: following the scope's stream" + (vis.stream.rate > 0 ? "" : " (timing settles in 2 s)") : visStreamed(p) ? "from each capture (gaps between them)" : "";
+  if (note) note.textContent = vis.stream.on ? "gap-free: following the scope's stream" : visStreamed(p) ? "from each capture (gaps between them)" : "";
 }
 
 // visControls are the side panel's controls for a bus: the stream's note,
@@ -212,6 +229,23 @@ function visAnimate() {
   requestAnimationFrame(visAnimate);
 }
 requestAnimationFrame(visAnimate);
+
+// A page whose Visual view follows the scope's stream takes it off as it
+// goes (closed, reloaded; whichever of the two events comes, once): the
+// scope's own screen would stay on the stream, stopped, with nobody reading it.
+// TRLC-LINKS: REQ-SDS-278
+function visStreamOffOnLeave() {
+  if (vis.leaving || !vis.stream.on || typeof ws === "undefined" || ws.busView !== "visual") return;
+  vis.leaving = true;
+  const body = JSON.stringify({ row: "bus.stream", value: 0 });
+  try {
+    // a beacon outlives the page; a keep-alive fetch where there is none
+    if (!(navigator.sendBeacon && navigator.sendBeacon("/api/sheets/set", new Blob([body], { type: "application/json" }))))
+      fetch("/api/sheets/set", { method: "POST", keepalive: true, headers: { "Content-Type": "application/json" }, body });
+  } catch (e) { /* the page is going */ }
+}
+addEventListener("pagehide", visStreamOffOnLeave);
+addEventListener("beforeunload", visStreamOffOnLeave);
 
 // The Full screen button puts the picture and its panel on the whole screen.
 // TRLC-LINKS: REQ-SDS-278
