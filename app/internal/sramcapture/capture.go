@@ -571,8 +571,10 @@ func (c *Capture) ready(ctx context.Context) error {
 	return c.wait(ctx, 4)
 }
 
+// Check refuses a configuration the fabric cannot run, before any register
+// is touched: a caller can ask before it halts what runs now.
 // TRLC-LINKS: REQ-SDS-032, REQ-SDS-040, REQ-SDS-082
-func (c *Capture) Arm(ctx context.Context, cfg Config) (err error) {
+func (cfg Config) Check() error {
 	if err := cfg.Packet.validate(); err != nil {
 		return err
 	}
@@ -646,6 +648,14 @@ func (c *Capture) Arm(ctx context.Context, cfg Config) (err error) {
 	}
 	if (cfg.DecimationLog2 != 0 && (cfg.DecimationLog2 < 4 || cfg.DecimationLog2 > 20)) || cfg.Source > Counter || cfg.Pair > 4 || cfg.TriggerChannel > 1 || cfg.PostWords == 0 || uint64(cfg.PreWords)+uint64(cfg.PostWords) > uint64(Words) {
 		return fmt.Errorf("sramcapture: invalid source, channel, or record geometry")
+	}
+	return nil
+}
+
+// TRLC-LINKS: REQ-SDS-032, REQ-SDS-040, REQ-SDS-082
+func (c *Capture) Arm(ctx context.Context, cfg Config) (err error) {
+	if err := cfg.Check(); err != nil {
+		return err
 	}
 	if e := ctx.Err(); e != nil {
 		return e

@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"open-sds/app/internal/sramcapture"
+	"strings"
 	"testing"
 	"time"
 )
@@ -341,5 +342,30 @@ func TestWebDecodedCaptureLeavesTheScopesStream(t *testing.T) {
 	}
 	if err := (&Engine{}).decodedTaken(true); err != nil {
 		t.Errorf("no session: %v", err)
+	}
+}
+
+// A decoded capture whose configuration the fabric refuses is refused
+// before anything is halted: the session running keeps running.
+// TRLC-LINKS: REQ-SDS-013
+func TestRefusedDecodedCaptureLeavesTheSession(t *testing.T) {
+	e := webSessionEngine(t, true, time.Second)
+	before := e.decodedSession
+	got := make(chan error, 1)
+	go func() {
+		_, err := e.BeginDecodedCapture(context.Background(), sramcapture.Config{})
+		got <- err
+	}()
+	var err error
+	for done := false; !done; {
+		e.serviceDecodedRequests()
+		select {
+		case err = <-got:
+			done = true
+		case <-time.After(time.Millisecond):
+		}
+	}
+	if err == nil || !strings.Contains(err.Error(), "requires a configured hardware decoder") || e.decodedSession != before {
+		t.Fatalf("refused start: err %v, session kept %v", err, e.decodedSession == before)
 	}
 }

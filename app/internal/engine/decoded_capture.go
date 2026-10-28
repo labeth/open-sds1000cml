@@ -218,6 +218,18 @@ func (e *Engine) beginDecodedCapture(ctx context.Context, cfg sramcapture.Config
 		if err := e.decodedTaken(web); err != nil {
 			return nil, err
 		}
+		if cfg.Packet.Enabled && cfg.Packet.Protocol == sramcapture.PacketARINC && cfg.Packet.Aux == 0 {
+			if cfg.Packet.Aux = e.arincAux.Load(); cfg.Packet.Aux == 0 {
+				return nil, fmt.Errorf("ARINC 429 levels are not known yet: show the signal with ARINC decoding and a manual threshold first")
+			}
+		}
+		// a configuration the fabric refuses is refused before the image
+		// load and the halt: what streams now keeps streaming
+		check := cfg
+		check.DecodedEvents = true
+		if err := check.Check(); err != nil {
+			return nil, err
+		}
 		if cfg.Symbol.Enabled {
 			return nil, fmt.Errorf("the image that triggers this protocol cannot stream its decoded events")
 		}
@@ -242,11 +254,6 @@ func (e *Engine) beginDecodedCapture(ctx context.Context, cfg sramcapture.Config
 				return nil, err
 			}
 			e.loadImage(want)
-		}
-		if cfg.Packet.Enabled && cfg.Packet.Protocol == sramcapture.PacketARINC && cfg.Packet.Aux == 0 {
-			if cfg.Packet.Aux = e.arincAux.Load(); cfg.Packet.Aux == 0 {
-				return nil, fmt.Errorf("ARINC 429 levels are not known yet: show the signal with ARINC decoding and a manual threshold first")
-			}
 		}
 		supported, err := e.sram.SupportsDecodedCapture()
 		if err != nil {
