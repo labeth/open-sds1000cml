@@ -650,6 +650,9 @@ func runLCD(e *engine.Engine, fe *analog.FrontEnd, fo *frames.Fanout) {
 			if renderDue.Before(now) {
 				renderDue = now.Add(gov.period / 2)
 			}
+			if hud.StreamOn && hud.StreamList && renderDue.Before(now.Add(lcdStreamPeriod)) {
+				renderDue = now.Add(lcdStreamPeriod) // the transcript's text: a few pictures a second read it
+			}
 			pictures++
 			lcd.Render(back, f, hud, live, persistLayer)
 			present = true
@@ -851,6 +854,11 @@ func cpuTimes(b []byte) (total, idle uint64, ok bool) {
 // lcdBusyEvery is the busy mode's drawing period: the work shown going on
 // a few times a second, the core left to the work.
 const lcdBusyEvery = 250 * time.Millisecond
+
+// lcdStreamPeriod is the least time between pictures while the decoded
+// stream's transcript fills the screen: its lines scroll at text speed, and
+// the full rate (52 a second) cost the core a tenth for nothing seen.
+const lcdStreamPeriod = time.Second / 10
 
 // The display's busy modes (lcdBusyMode).
 const (

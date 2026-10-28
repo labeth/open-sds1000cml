@@ -58,3 +58,25 @@ func TestVisualPictures(t *testing.T) {
 		}
 	}
 }
+
+// TestVisualPicturesNeverBreak: random spans of every kind, any size of
+// picture, a record with no samples: each picture draws without a panic and
+// inside its rectangle.
+// TRLC-LINKS: REQ-SDS-281
+func TestVisualPicturesNeverBreak(t *testing.T) {
+	protos := []string{"midi", "dmx512", "ws281x", "ps2", "irnec", "caliper", "wiegand", "pwm", "dcf77", "quad", "stepper", "lin", "canfd", "uart", "spi"}
+	kinds := []string{"data", "data", "data", "sof", "rw", "id", "frame-error"}
+	texts := []string{"", "A04", "C16", "F42", "C4660", "12.34mm", "26b", "50.0%", "MIN12", "HR3", "DAY9", "MON1", "YR26", "F12", "R-3", "ID02", "CK12", "!CK12", "RST", "H12"}
+	seed := uint32(5)
+	rnd := func(n int) int { seed = seed*1664525 + 1013904223; return int(seed>>8) % n }
+	for it := 0; it < 3000; it++ {
+		var spans []decode.Span
+		for k, n := 0, rnd(400); k < n; k++ {
+			spans = append(spans, decode.Span{Kind: kinds[rnd(len(kinds))], Text: texts[rnd(len(texts))], I0: rnd(5000), I1: rnd(5000), Val: rnd(1 << 20)})
+		}
+		sf := NewMemSurface()
+		a := visArea{x0: 0, y0: 14 + rnd(200), w: 1 + rnd(770), h: 1 + rnd(450), n: rnd(3) * rnd(10000), dt: float64(rnd(3)) * 1e-6}
+		a.h = min(a.h, H-a.y0)
+		visDrawBus(sf, a, decode.Result{OK: true, Proto: protos[rnd(len(protos))], Spans: spans})
+	}
+}

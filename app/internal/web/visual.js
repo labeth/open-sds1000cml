@@ -298,7 +298,7 @@ function midiNew() {
     run: 0, need: 0, data: [], sysex: null, sysexN: 0,
     held: new Map(), roll: [], log: [], out: [],
     cap: null, capT0: 0, capT1: 0, // the newest capture's pushes and releases, and its span (null: read gap-free)
-    rec: null, recFull: false, recGaps: false, // a recording's messages (null: not recording)
+    rec: null, recFull: false, recGaps: false, // a recording (midiRecNew; null: not recording)
     prog: new Uint8Array(16), cc: Array.from({ length: 16 }, () => new Uint8Array(128)), bend: new Float32Array(16),
     clocks: 0, msgs: 0, errs: 0,
   };
@@ -311,12 +311,20 @@ const MIDI_REC_MAX = 200000;
 // note at 120 a minute (500000 us a quarter), so a tick is 1/960 s.
 const MIDI_PPQ = 480, MIDI_TEMPO = 500000;
 
-// midiSMF writes a recording (messages {t seconds, b bytes}) as a Standard
-// MIDI File, format 0: one track, the tempo, each message at its time from
-// the first, its end.
+// midiRecNew is an empty recording: each message's time (seconds) and its
+// bytes packed in one number (status, two data bytes, their count): a
+// sixteenth of the memory of an object a message, for an hour of playing.
+// TRLC-LINKS: REQ-SDS-282
+function midiRecNew() { return { t: [], m: [] }; }
+
+// midiSMF writes a recording (midiRecNew) as a Standard MIDI File, format 0:
+// one track, the tempo, each message at its time from the first, its end.
 // TRLC-LINKS: REQ-SDS-282
 function midiSMF(rec) {
-  const ev = rec.slice().sort((a, b) => a.t - b.t), trk = [];
+  const order = rec.t.map((_, i) => i).sort((a, b) => rec.t[a] - rec.t[b] || a - b), trk = [];
+  // TRLC-LINKS: REQ-SDS-282
+  const bytes = (p) => [p & 0xff, (p >> 8) & 0xff, (p >> 16) & 0xff].slice(0, 1 + ((p >> 24) & 3));
+  const ev = order.map((i) => ({ t: rec.t[i], b: bytes(rec.m[i]) }));
   // TRLC-LINKS: REQ-SDS-282
   const vlq = (n) => { const out = [n & 0x7f]; n = Math.floor(n / 128); while (n > 0) { out.unshift((n & 0x7f) | 0x80); n = Math.floor(n / 128); } return out; };
   trk.push(0, 0xff, 0x51, 0x03, (MIDI_TEMPO >> 16) & 0xff, (MIDI_TEMPO >> 8) & 0xff, MIDI_TEMPO & 0xff);
@@ -404,8 +412,8 @@ function midiLog(m, t, text) {
 // TRLC-LINKS: REQ-SDS-278, REQ-SDS-279
 function midiMsg(m, st, d, t) {
   m.msgs++;
-  if (m.rec && st < 0xF0) { // recording: every channel message, as it came
-    if (m.rec.length < MIDI_REC_MAX) m.rec.push({ t, b: [st, ...d] }); else m.recFull = true;
+  if (m.rec && st < 0xF0) { // recording: every channel message, as it came (packed: its time, its bytes)
+    if (m.rec.t.length < MIDI_REC_MAX) { m.rec.t.push(t); m.rec.m.push(st | ((d[0] | 0) << 8) | ((d[1] | 0) << 16) | (d.length << 24)); } else m.recFull = true;
   }
   const ch = st & 0xf, kind = st >> 4;
   // a capture's own pushes and releases (a release whose push came before the capture too)
@@ -1171,5 +1179,5 @@ function layerNotes(s, packets, t) {
 }
 
 if (typeof module !== "undefined" && module.exports)
-  module.exports = { midiSMF, visStreamLine, visStreamFlush, VIS_GAP, visKeep, VIS_KEEP, linSpans, midiInstrument, VIS_PROTOS, VIS_KINDS, visStreamed, visNew, visIngest, visIngestUnits, midiNoteName, midiByte, midiExpire, dmxRate, wsColours,
+  module.exports = { midiSMF, midiRecNew, visStreamLine, visStreamFlush, VIS_GAP, visKeep, VIS_KEEP, linSpans, midiInstrument, VIS_PROTOS, VIS_KINDS, visStreamed, visNew, visIngest, visIngestUnits, midiNoteName, midiByte, midiExpire, dmxRate, wsColours,
     pwmServo, dbcParse, dbcRaw, pdPDO, pdRDO, layerNotes, PS2_LAYOUT, PS2_KEYS };

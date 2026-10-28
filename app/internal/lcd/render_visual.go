@@ -182,6 +182,9 @@ func visDrawMIDI(sf Surface, a visArea, spans []decode.Span) string {
 	}
 	// the time scale: the capture's end at the keys, its start at the top
 	span, top := float64(a.n)*a.dt, a.y0+8
+	if !(span > 0) {
+		span = 1 // a record without samples or their interval: no time scale to read
+	}
 	hgt := keyTop - 8 - top
 	for k := 0; k <= 4; k++ {
 		y := keyTop - 8 - k*hgt/4
@@ -321,13 +324,18 @@ func visDrawLEDs(sf Surface, a visArea, spans []decode.Span) string {
 	leds := len(frame) / 3
 	per := min(leds, max(8, a.w/40))
 	d := min(a.w/per, a.h/((leds+per-1)/per))
+	if d < 8 { // a long strip: as many as fit at the least size, the rest said
+		d = 8
+		per = max(1, a.w/d)
+		leds = min(leds, per*max(1, a.h/d))
+	}
 	for i := 0; i < leds; i++ {
 		g, r, b := frame[3*i], frame[3*i+1], frame[3*i+2]
 		x, y := (i%per)*d, a.y0+(i/per)*d
 		fillRect(sf, x+3, y+3, d-6, d-6, rgb(uint8(r), uint8(g), uint8(b)))
 		strokeRect(sf, x+2, y+2, d-4, d-4, colGrid)
 	}
-	return fmt.Sprintf("%d LEDs (GRB)", leds)
+	return fmt.Sprintf("%d LEDs (GRB)", len(frame)/3)
 }
 
 // visDrawPS2 lists the capture's key presses and releases (the scan codes,

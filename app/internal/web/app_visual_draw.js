@@ -471,8 +471,8 @@ const VIS_VIEWS = {
       const held = [...s.held.values()].map((n) => midiNoteName(n.note) + "<sub>" + (n.ch + 1) + "</sub>").join(" ");
       // from captures: the newest one's pushes and releases (what was held across their gaps is not known)
       const cap = s.cap ? [["this capture", s.cap.filter((e) => e.on).length + " pushed (filled) · " + s.cap.filter((e) => !e.on).length + " released (hollow)"]] : [];
-      const recRow = s.rec ? [["recording", s.rec.length + " messages" + (s.recGaps ? " (from captures: what fell between them is missing)" : "") + (s.recFull ? " · full" : "")]]
-        : vis.recDone ? [["recorded", vis.recDone.rec.length + " messages" + (vis.recDone.gaps ? " (with the captures' gaps)" : "") + " · Save .mid"]] : [];
+      const recRow = s.rec ? [["recording", s.rec.t.length + " messages" + (s.recGaps ? " (from captures: what fell between them is missing)" : "") + (s.recFull ? " · full" : "")]]
+        : vis.recDone ? [["recorded", vis.recDone.rec.t.length + " messages" + (vis.recDone.gaps ? " (with the captures' gaps)" : "") + " · Save .mid"]] : [];
       return visTab([...recRow, ...(s.cap ? cap : [["held", held || "-"]]), ["messages", s.msgs + (s.errs ? " · " + s.errs + " errors" : "")], ["clock", s.clocks ? s.clocks + " ticks" : "-"],
         ["programs", [...s.prog].map((v, i) => s.roll.some((n) => n.ch === i) ? (i + 1) + ":" + (v + 1) : "").filter(Boolean).join(" ") || "-"]]) +
         visLog("newest messages", s.log.slice(-14).reverse().map((l) => l.text));
@@ -501,13 +501,13 @@ const VIS_VIEWS = {
       // TRLC-LINKS: REQ-SDS-282
       on("visRec", "onclick", () => {
         if (vis.s.rec) { vis.recDone = { rec: vis.s.rec, gaps: vis.s.recGaps, full: vis.s.recFull }; vis.s.rec = null; }
-        else { vis.s.rec = []; vis.s.recGaps = false; vis.s.recFull = false; vis.recDone = null; }
+        else { vis.s.rec = midiRecNew(); vis.s.recGaps = false; vis.s.recFull = false; vis.recDone = null; }
         visSide(true);
       });
       // TRLC-LINKS: REQ-SDS-282
       on("visRecSave", "onclick", () => {
         const r = vis.s.rec ? { rec: vis.s.rec } : vis.recDone;
-        if (!r || !r.rec.length) { toast("nothing recorded yet"); return; }
+        if (!r || !r.rec.t.length) { toast("nothing recorded yet"); return; }
         const url = URL.createObjectURL(new Blob([midiSMF(r.rec)], { type: "audio/midi" }));
         const a = document.createElement("a"), d = new Date();
         const stamp = [d.getFullYear(), d.getMonth() + 1, d.getDate()].map((n) => String(n).padStart(2, "0")).join("") + "-" +

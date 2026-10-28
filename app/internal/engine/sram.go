@@ -641,6 +641,11 @@ const (
 	sampleSPIFastBand = 6
 )
 
+// decodedIdlePause is the wait between the owner loop's passes while a
+// decoded stream's worker builds its lines: a reader's request waits at most
+// this long.
+const decodedIdlePause = time.Millisecond
+
 // runSRAM exclusively owns the revisioned SRAM backend. It never writes a
 // legacy CS1 selector. Fast capture is explicitly freeze/read/rearm; a frozen
 // window's software protocol match is not advertised as a gapless trigger.
@@ -760,6 +765,11 @@ acquisitionLoop:
 					e.decodedError = err
 				}
 				e.decodedService.maxPause = max(e.decodedService.maxPause, time.Since(stage))
+			} else if e.decodedLines {
+				// the worker keeps the events and builds the lines: this loop only
+				// answers the reader's requests, so it waits a little between
+				// passes (a pass with nothing to do spun a whole core)
+				e.clk.Sleep(decodedIdlePause)
 			}
 			continue
 		}

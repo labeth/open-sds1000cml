@@ -269,6 +269,10 @@ func (t *Transcript) Flush() {
 	t.cur = Line{}
 }
 
+// Pending reports a line begun and not yet ended (its units, or its note).
+// TRLC-LINKS: REQ-SDS-018
+func (t *Transcript) Pending() bool { return t.cur.N > 0 || t.cur.Note != "" }
+
 // TRLC-LINKS: REQ-SDS-018
 func (t *Transcript) push(l Line) {
 	t.lineUnits += int(l.N) - bits.OnesCount16(l.Errs)

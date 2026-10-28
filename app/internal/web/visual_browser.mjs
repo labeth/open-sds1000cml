@@ -83,7 +83,7 @@ run(async (t) => {
       "All notes off silences every voice, those waiting to land too");
     // Record, then Save .mid: a Standard MIDI File of the messages read
     await page.click("#visRec");
-    await t.until(async () => (await ev(() => vis.s.rec && vis.s.rec.length)) >= 3, "Record keeps the messages as they come", 6000);
+    await t.until(async () => (await ev(() => vis.s.rec && vis.s.rec.t.length)) >= 3, "Record keeps the messages as they come", 6000);
     await page.click("#visRec");
     const [dl] = await Promise.all([page.waitForEvent("download", { timeout: 6000 }), page.click("#visRecSave")]);
     const fs = await import("node:fs");

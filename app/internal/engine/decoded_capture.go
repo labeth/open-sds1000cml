@@ -27,6 +27,11 @@ const decodedBufferLimit = 131072 // 5 MiB; finite client-backpressure allowance
 // still run once a minute.
 const decodedAbandonAfter = 2 * time.Minute
 
+// decodedOrphanAfter is how long the scope's own decoded stream (the panel's,
+// read without pause while it runs) may go unread before it is taken as
+// left open by a reader that failed.
+const decodedOrphanAfter = 10 * time.Second
+
 // Fixed storage keeps service-gap diagnostics out of the allocator while the
 // FIFO is live. Report only after disabling the producer.
 type decodedServiceStats struct {
@@ -478,15 +483,35 @@ func (e *Engine) EndWebDecodedCapture(ctx context.Context) (bool, error) {
 // decodedAbandonAfter, on the acquisition owner (serviceCommands).
 // TRLC-LINKS: REQ-SDS-013
 func (e *Engine) expireDecoded() {
-	if e.decodedSession == nil || !e.decodedWeb || time.Since(e.decodedContact) < decodedAbandonAfter {
+	if e.decodedSession == nil {
 		return
 	}
-	e.logf("engine: no client on the web page's decoded capture for %s - ended", decodedAbandonAfter)
+	idle := time.Since(e.decodedContact)
+	if e.decodedWeb {
+		if idle < decodedAbandonAfter {
+			return
+		}
+		e.logf("engine: no client on the web page's decoded capture for %s - ended", decodedAbandonAfter)
+		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer cancel()
+		if err := e.endDecoded(ctx, true); err != nil {
+			e.logf("engine: ending the abandoned decoded capture: %v", err)
+		}
+		return
+	}
+	// The scope's own stream: its reader reads all the time it runs, so one
+	// silent past decodedOrphanAfter is gone (a reader failed and left the
+	// session open): end it and capture again, the fabric no longer held.
+	if idle < decodedOrphanAfter {
+		return
+	}
+	e.logf("engine: the scope's decoded stream has had no reader for %s - ended, capturing again", decodedOrphanAfter)
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 	if err := e.endDecoded(ctx, true); err != nil {
-		e.logf("engine: ending the abandoned decoded capture: %v", err)
+		e.logf("engine: ending the orphaned decoded capture: %v", err)
 	}
+	e.SetRunning(true)
 }
 
 // endDecoded tears the open session down on the acquisition owner; force

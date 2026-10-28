@@ -262,8 +262,9 @@ func webSessionEngine(t *testing.T, web bool, contact time.Duration) *Engine {
 
 // A web page's decoded capture no client touches for decodedAbandonAfter ends
 // by itself, stopped for RUN, so a page closed mid-session does not keep the
-// acquisition waiting. A recent client keeps it, and the scope's own stream is
-// its keys' to stop.
+// acquisition waiting. A recent client keeps it. The scope's own stream, read
+// without pause while it runs, stays while read and ends unread past
+// decodedOrphanAfter (a reader that failed left it open), capturing again.
 // TRLC-LINKS: REQ-SDS-013
 func TestAbandonedWebDecodedCaptureEnds(t *testing.T) {
 	e := webSessionEngine(t, true, decodedAbandonAfter+time.Second)
@@ -274,12 +275,17 @@ func TestAbandonedWebDecodedCaptureEnds(t *testing.T) {
 	for _, c := range []struct {
 		web     bool
 		contact time.Duration
-	}{{true, 5 * time.Second}, {false, decodedAbandonAfter + time.Minute}} {
+	}{{true, 5 * time.Second}, {false, decodedOrphanAfter - 5*time.Second}} {
 		e := webSessionEngine(t, c.web, c.contact)
 		e.expireDecoded()
 		if e.decodedSession == nil {
 			t.Fatalf("web %v, client %s ago: ended", c.web, c.contact)
 		}
+	}
+	e = webSessionEngine(t, false, decodedOrphanAfter+time.Second)
+	e.expireDecoded()
+	if e.decodedSession != nil || !e.running.Load() {
+		t.Fatalf("the scope's stream unread past %s: session kept %v, running %v", decodedOrphanAfter, e.decodedSession != nil, e.running.Load())
 	}
 }
 

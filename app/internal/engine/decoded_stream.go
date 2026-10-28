@@ -138,6 +138,7 @@ func (e *Engine) ReadDecodedLines(ctx context.Context, id sramcapture.RecordIden
 		if err := e.decodedIdentity(id); err != nil {
 			return nil, err
 		}
+		e.decodedContact = time.Now() // a reader follows the session
 		if lines = e.decodedLines; !lines {
 			return nil, nil
 		}

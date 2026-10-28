@@ -40,6 +40,7 @@ type acquisitionWorker struct {
 	// lines, when set, receives the drained events instead of the ring: the
 	// decoded-stream transcript built here (ADR-STREAM-LINES-IN-WORKER).
 	lines      *decodedlines.Transcript
+	linesAt    time.Time                // when the transcript last took events
 	linesStore *decodedlines.Transcript // reused across streams
 	// Stream-bank pump (ADR-STREAM-IMAGE): drained words wait in sring.
 	sOn                bool
@@ -168,6 +169,11 @@ var errWorkerQueueOverflow = fmt.Errorf("isolated decoded queue overflow; transc
 
 // pump runs independently of GUI requests. The bounded ring can absorb client
 // scheduling gaps, but exhaustion is explicit and never masquerades as lossless.
+// lineIdleFlush is how long the bus may go quiet before the worker ends the
+// transcript's half-full line: a burst's last units reach the reader then,
+// not when a later burst fills the line.
+const lineIdleFlush = 30 * time.Millisecond
+
 // TRLC-LINKS: REQ-SDS-013
 func (w *acquisitionWorker) pump() {
 	if !w.active {
@@ -183,7 +189,15 @@ func (w *acquisitionWorker) pump() {
 		return
 	}
 	if w.lines != nil {
-		w.lines.Add(events)
+		now := time.Now()
+		if len(events) > 0 {
+			w.lines.Add(events)
+			w.linesAt = now
+		} else if w.lines.Pending() && now.Sub(w.linesAt) >= lineIdleFlush {
+			// the bus went quiet with a line half full (a byte stream fills
+			// sixteen slowly): end it, so a reader sees the burst now
+			w.lines.Flush()
+		}
 		return
 	}
 	for _, event := range events {

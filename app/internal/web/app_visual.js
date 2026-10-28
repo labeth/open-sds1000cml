@@ -225,11 +225,16 @@ setInterval(() => { if (visShown()) { if (vis.s && vis.s.held) visSound(); if (!
 // the stream (they move every frame; a capture's picture and the other
 // buses' change only with the data).
 // TRLC-LINKS: REQ-SDS-278
-function visAnimate() {
+function visAnimate(ts) {
   vis.anim = visShown() && vis.s && vis.s.proto === "midi" && !vis.s.cap && !vis.audio.on && !dcfg.layer; // a capture's picture stands
-  if (vis.anim) visDraw(true);
+  // at most VIS_ANIM_FPS pictures a second: the notes move smoothly at it, and a
+  // 120 Hz display would draw four times as often for nothing seen
+  if (vis.anim && !(ts - (vis.animT || 0) < 1000 / VIS_ANIM_FPS - 2)) { vis.animT = ts; visDraw(true); }
   requestAnimationFrame(visAnimate);
 }
+
+// VIS_ANIM_FPS is the most pictures a second the piano's notes are drawn at.
+const VIS_ANIM_FPS = 30;
 requestAnimationFrame(visAnimate);
 
 // A page whose Visual view follows the scope's stream takes it off as it

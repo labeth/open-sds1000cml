@@ -477,11 +477,11 @@ function uartWave(packets, baud, dt, stop, breakS) {
 // ---- a MIDI recording as a Standard MIDI File: read back, its messages at their times
 {
   const s = c.visNew("midi");
-  s.rec = [];
+  s.rec = c.midiRecNew();
   // TRLC-LINKS: REQ-SDS-278
   const play = (t, bytes) => { for (const b of bytes) c.midiByte(s, b, t); };
   play(10.0, [0xc0, 5]); play(10.0, [0x90, 60, 100]); play(10.5, [64, 90]); play(11.0, [0x80, 60, 0]); play(12.25, [0xfe]); play(12.5, [0x80, 64, 0]);
-  assert.equal(s.rec.length, 5, "the channel messages recorded (the running-status one too), not active sensing");
+  assert.equal(s.rec.t.length, 5, "the channel messages recorded (the running-status one too), not active sensing");
   const f = c.midiSMF(s.rec);
   // TRLC-LINKS: REQ-SDS-278
   const u32 = (i) => (f[i] << 24 | f[i + 1] << 16 | f[i + 2] << 8 | f[i + 3]) >>> 0;
