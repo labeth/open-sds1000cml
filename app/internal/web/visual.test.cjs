@@ -640,4 +640,28 @@ function uartWave(packets, baud, dt, stop, breakS) {
   assert.deepEqual(bad, [], "every picture draws with finite coordinates");
 }
 
+// The stream's anchor follows the least delivery delay of late: two hours of
+// reads with the scope's clock 100 ppm slow or fast and the lines handed over
+// in batches 30-250 ms late keep the delay it shows near the real one (the
+// least of them taken as none), and no line is shown before it came by more
+// than the half-minute's drift.
+{
+  let seed = 7;
+  // TRLC-LINKS: REQ-SDS-278
+  const rnd = () => ((seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648);
+  for (const ppm of [-100, 100]) {
+    const A = {}, hz = 500e6;
+    let worst = 0, early = 0;
+    for (let now = 0; now < 7200; now += 0.12) {
+      const delay = 0.03 + 0.22 * rnd();
+      const ord = (now - delay) * hz * (1 + ppm * 1e-6); // what the scope had counted when it handed the line over
+      const base = c.visAnchor(A, now, ord, hz);
+      const shown = now - (base + ord / hz); // the delay the page puts the line at
+      if (now > 60) { worst = Math.max(worst, shown); early = Math.min(early, shown); }
+    }
+    assert.ok(worst < 0.3, `clock ${ppm} ppm: the shown delay grew to ${worst.toFixed(3)} s`);
+    assert.ok(early > -0.005, `clock ${ppm} ppm: a line ${(-early * 1000).toFixed(1)} ms before its time`);
+  }
+}
+
 console.log("visual ok");

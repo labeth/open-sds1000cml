@@ -10,7 +10,7 @@
 
 const vis = {
   proto: "", s: null, layer: null, seq: -1, sy: null, sound: false,
-  stream: { next: -1, busy: false, base: NaN, lastS: 0, rate: 0, on: false, frame: null },
+  stream: { next: -1, busy: false, base: NaN, anchor: {}, lastS: 0, rate: 0, on: false, frame: null },
   wsOrder: "GRB", ps2Kind: "", dbcText: "", dbcName: "", canPick: new Set(),
   audio: { on: false, kind: "auto", res: null, busy: false, live: false, play: null, gain: 0.6, prevTdiv: 0, sampleS: 0, msg: "", view: "wave" },
   drawT: 0, midiLead: 0, autoStream: false, gapless: null, // gapless: Gap-free as last set here (null: never)
@@ -97,8 +97,8 @@ async function visStreamTick() {
     const lines = p.lines || [];
     if (!lines.length) { S.next = p.next; return; }
     const lastS = lines[lines.length - 1].s, lastT = S.base + lastS / VIS_ORD_HZ;
-    if (!Number.isFinite(S.base) || lastS < S.lastS || lastT < now - 5) S.base = now - lastS / VIS_ORD_HZ;
-    else if (lastT > now) S.base -= lastT - now; // no line comes before its time: the anchor finds the least delay
+    if (!Number.isFinite(S.base) || lastS < S.lastS || lastT < now - 5) S.anchor = {}; // a new stream, or the clocks seconds apart
+    S.base = visAnchor(S.anchor, now, lastS, VIS_ORD_HZ); // no line comes before its time: the least delay of late
     S.lastS = lastS; S.rate = VIS_ORD_HZ;
     // the stream's delay (the scope hands its lines over in batches): the most
     // of late with a margin, falling slowly (half a millisecond a read: 0.4 %,
@@ -124,7 +124,7 @@ function visAskStream(on) {
   if (typeof busStreamAsk !== "undefined") busStreamAsk = { on, until: Date.now() + 5000 };
   if (typeof busScopeWas !== "undefined") busScopeWas = on;
   pageStream(on);
-  vis.stream.next = -1; vis.stream.base = NaN; vis.stream.lastS = 0; vis.stream.rate = 0; vis.stream.frame = null; vis.stream.lag = 0;
+  vis.stream.next = -1; vis.stream.base = NaN; vis.stream.anchor = {}; vis.stream.lastS = 0; vis.stream.rate = 0; vis.stream.frame = null; vis.stream.lag = 0;
 }
 
 // ---- drawing --------------------------------------------------------------------------

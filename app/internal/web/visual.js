@@ -235,6 +235,29 @@ function visIngestUnits(s, units, t, note) {
   s.last = t;
 }
 
+// VIS_ANCHOR_S is how far back the stream's anchor looks for its least
+// delay: long enough to hold a quick hand-over among the batches, short
+// enough that the two clocks drifting apart (tens of ppm: a millisecond in
+// half a minute) never builds up.
+const VIS_ANCHOR_S = 30;
+
+// visAnchor is the page time of the stream's ordinal 0 (A: its state, {} to
+// start again): each read at page time now of the newest ordinal ord at hz
+// gives now - ord/hz, its delivery delay in it; the least of the last
+// VIS_ANCHOR_S seconds, kept per second, is the anchor.
+// TRLC-LINKS: REQ-SDS-278
+function visAnchor(A, now, ord, hz) {
+  const off = now - ord / hz, sec = Math.floor(now);
+  if (!A.b) A.b = [];
+  const last = A.b[A.b.length - 1];
+  if (last && last.sec === sec) last.min = Math.min(last.min, off);
+  else A.b.push({ sec, min: off });
+  while (A.b.length && A.b[0].sec <= sec - VIS_ANCHOR_S) A.b.shift();
+  let m = Infinity;
+  for (const x of A.b) m = Math.min(m, x.min);
+  return m;
+}
+
 // VIS_LINE_UNITS is the most units a stream line holds: a longer frame goes on
 // in the lines after it, unnoted.
 const VIS_LINE_UNITS = 16;
@@ -1179,5 +1202,5 @@ function layerNotes(s, packets, t) {
 }
 
 if (typeof module !== "undefined" && module.exports)
-  module.exports = { midiSMF, midiRecNew, visStreamLine, visStreamFlush, VIS_GAP, visKeep, VIS_KEEP, linSpans, midiInstrument, VIS_PROTOS, VIS_KINDS, visStreamed, visNew, visIngest, visIngestUnits, midiNoteName, midiByte, midiExpire, dmxRate, wsColours,
+  module.exports = { midiSMF, midiRecNew, visAnchor, VIS_ANCHOR_S, visStreamLine, visStreamFlush, VIS_GAP, visKeep, VIS_KEEP, linSpans, midiInstrument, VIS_PROTOS, VIS_KINDS, visStreamed, visNew, visIngest, visIngestUnits, midiNoteName, midiByte, midiExpire, dmxRate, wsColours,
     pwmServo, dbcParse, dbcRaw, pdPDO, pdRDO, layerNotes, PS2_LAYOUT, PS2_KEYS };
