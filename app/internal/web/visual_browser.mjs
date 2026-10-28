@@ -81,6 +81,14 @@ run(async (t) => {
     // read in the click's own task: the next notes keep coming (and are scheduled to land) after it
     t.ok(await ev(() => { document.getElementById("visPanic").click(); return vis.sy.voices.size === 0; }),
       "All notes off silences every voice, those waiting to land too");
+    // Record, then Save .mid: a Standard MIDI File of the messages read
+    await page.click("#visRec");
+    await t.until(async () => (await ev(() => vis.s.rec && vis.s.rec.length)) >= 3, "Record keeps the messages as they come", 6000);
+    await page.click("#visRec");
+    const [dl] = await Promise.all([page.waitForEvent("download", { timeout: 6000 }), page.click("#visRecSave")]);
+    const fs = await import("node:fs");
+    const file = fs.readFileSync(await dl.path());
+    t.ok(/\.mid$/.test(dl.suggestedFilename()) && file.slice(0, 4).toString() === "MThd" && file.length > 30, "Save .mid downloads a MIDI file: " + dl.suggestedFilename() + ", " + file.length + " bytes");
     // falling: the notes land on their keys the seconds chosen on, and the sound waits as long
     await page.selectOption("#visLead", "3");
     await t.until(async () => await ev(() => vis.midiLead === 3 && vis.sy.lead === 3), "fall 3 s: the notes and their sound wait 3 s", 3000);
@@ -97,6 +105,10 @@ run(async (t) => {
     t.ok(Math.abs(a.l + 6.02) < 0.3 && Math.abs(a.r + 12.04) < 0.3, `the left at -6 dBFS (${a.l.toFixed(2)}), the right at -12 (${a.r.toFixed(2)})`);
     t.ok(/dBFS/.test(a.fig) && /48/.test(a.fig), "the figures show the level and the rate");
     t.ok(/I2S/.test(a.msg), "the status names the source: " + a.msg);
+    // the spectrum: the 1 kHz tone, its distortion and the bits that make
+    await page.selectOption("#visAView", "spec");
+    const sp = await ev(() => { visDraw(true); const s = vis.audio.res.spec[0]; return { hz: s.toneHz, thd: s.thdDb, enob: s.enob, fig: document.getElementById("visFig").textContent }; });
+    t.ok(Math.abs(sp.hz - 1000) < 30 && /THD/.test(sp.fig) && /ENOB/.test(sp.fig), "the spectrum finds the 1 kHz tone, its THD and ENOB: " + JSON.stringify(sp).slice(0, 160));
     await page.click("#visAPlay");
     await t.until(async () => await ev(() => !!vis.audio.play), "Play loops the audio", 3000);
     await page.click("#visAOff");

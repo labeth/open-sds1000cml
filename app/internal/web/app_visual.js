@@ -12,8 +12,10 @@ const vis = {
   proto: "", s: null, layer: null, seq: -1, sy: null, sound: false,
   stream: { next: -1, busy: false, base: NaN, lastS: 0, rate: 0, on: false, frame: null },
   wsOrder: "GRB", ps2Kind: "", dbcText: "", dbcName: "", canPick: new Set(),
-  audio: { on: false, kind: "auto", res: null, busy: false, live: false, play: null, gain: 0.6, prevTdiv: 0, sampleS: 0, msg: "" },
+  audio: { on: false, kind: "auto", res: null, busy: false, live: false, play: null, gain: 0.6, prevTdiv: 0, sampleS: 0, msg: "", view: "wave" },
   drawT: 0, midiLead: 0, autoStream: false, gapless: null, // gapless: Gap-free as last set here (null: never)
+  recDone: null, // a MIDI recording ended, kept to save
+
 };
 
 // visShown reports the Visual view on screen.

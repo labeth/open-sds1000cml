@@ -467,6 +467,78 @@ function uartWave(packets, baud, dt, stop, breakS) {
   assert.equal(u.text, "Hi" + c.__.VIS_GAP + "!?", "the stream, gap-free: no mark");
 }
 
+// ---- a MIDI recording as a Standard MIDI File: read back, its messages at their times
+{
+  const s = c.visNew("midi");
+  s.rec = [];
+  // TRLC-LINKS: REQ-SDS-278
+  const play = (t, bytes) => { for (const b of bytes) c.midiByte(s, b, t); };
+  play(10.0, [0xc0, 5]); play(10.0, [0x90, 60, 100]); play(10.5, [64, 90]); play(11.0, [0x80, 60, 0]); play(12.25, [0xfe]); play(12.5, [0x80, 64, 0]);
+  assert.equal(s.rec.length, 5, "the channel messages recorded (the running-status one too), not active sensing");
+  const f = c.midiSMF(s.rec);
+  // TRLC-LINKS: REQ-SDS-278
+  const u32 = (i) => (f[i] << 24 | f[i + 1] << 16 | f[i + 2] << 8 | f[i + 3]) >>> 0;
+  assert.equal(String.fromCharCode(...f.slice(0, 4)), "MThd"); assert.equal(u32(4), 6);
+  assert.ok(f[9] === 0 && f[11] === 1 && (f[12] << 8 | f[13]) === 480, "format 0, one track, 480 a quarter");
+  assert.equal(String.fromCharCode(...f.slice(14, 18)), "MTrk");
+  const end = 22 + u32(18);
+  assert.equal(end, f.length, "the track's length is its bytes");
+  let i = 22, tick = 0;
+  const got = [];
+  while (i < end) {
+    let d = 0;
+    do { d = d * 128 + (f[i] & 0x7f); } while (f[i++] & 0x80);
+    tick += d;
+    if (f[i] === 0xff) { const type = f[i + 1], len = f[i + 2]; got.push(["meta", type, tick]); i += 3 + len; continue; }
+    const st = f[i], n = (st & 0xf0) === 0xc0 || (st & 0xf0) === 0xd0 ? 1 : 2;
+    got.push([tick, ...f.slice(i, i + 1 + n)]); i += 1 + n;
+  }
+  deq(got, [["meta", 0x51, 0], [0, 0xc0, 5], [0, 0x90, 60, 100], [480, 0x90, 64, 90], [960, 0x80, 60, 0], [2400, 0x80, 64, 0], ["meta", 0x2f, 2400]],
+    "the tempo, then each message at its time (960 ticks a second), then the end");
+}
+
+// ---- I2S read at four samples a bit (the capture's plan): the same words
+{
+  const fs = 48000, slot = 16, bitS = 1 / (fs * 2 * slot), dt = bitS / 4, frames = 120, ws = [], sd = [], bits = [];
+  for (let k = 0; k < frames; k++) for (let ch = 0; ch < 2; ch++) {
+    const w = Math.round((ch ? 0.25 : 0.5) * Math.sin(2 * Math.PI * 1000 * k / fs) * 32767) & 0xffff;
+    for (let b = 0; b < slot; b++) bits.push({ ws: ch, d: (w >> (15 - b)) & 1 });
+  }
+  for (let i = 0; i < Math.floor(bits.length * bitS / dt); i++) {
+    const j = Math.floor(i * dt / bitS);
+    ws.push(bits[j].ws ? 230 : 25); sd.push(j >= 1 && bits[j - 1].d ? 230 : 25);
+  }
+  const a = c.audioFromI2S(ws, sd, dt, {});
+  assert.ok(a.ok && a.slot === 16 && Math.abs(a.fs - fs) < 100, "I2S at four samples a bit: " + (a.error || a.slot + " " + a.fs));
+  const st = c.audioStats(a.ch[0], a.raw[0], a.bits);
+  assert.ok(Math.abs(st.peakDb + 6.02) < 0.1, "its left at -6 dBFS: " + st.peakDb);
+}
+
+// ---- a short record's spectrum says so: no distortion figure from bins too wide
+{
+  const x = Float32Array.from({ length: 128 }, (_, i) => 0.5 * Math.sin(2 * Math.PI * 2010 * i / 48000));
+  const a = c.audioSpectrum(x, 48000);
+  assert.ok(a.ok && Number.isNaN(a.thdDb) && /too short/.test(a.why), "128 points at 48 kHz (375 Hz a bin): no THD, said why: " + a.why);
+}
+
+// ---- the audio's spectrum: a tone's frequency and level, its distortion and noise
+{
+  const fs = 48000, n = 8192;
+  // TRLC-LINKS: REQ-SDS-280
+  const tone = (h3) => Float32Array.from({ length: n }, (_, i) => {
+    const v = 0.5 * Math.sin(2 * Math.PI * 1000 * i / fs) + h3 * Math.sin(2 * Math.PI * 3000 * i / fs);
+    return Math.round(v * 32767) / 32768; // 16 bits
+  });
+  let a = c.audioSpectrum(tone(0), fs);
+  assert.ok(a.ok && Math.abs(a.toneHz - 1000) < 2, "the tone at 1 kHz: " + a.toneHz);
+  assert.ok(Math.abs(a.toneDb + 6.02) < 0.2, "at -6 dBFS: " + a.toneDb);
+  assert.ok(a.thdDb < -80, "a clean tone's distortion: " + a.thdDb.toFixed(1) + " dB");
+  assert.ok(a.enob > 13.5 && a.enob < 16.5, "16 bits at -6 dBFS: about 15 bits make: " + a.enob.toFixed(2));
+  a = c.audioSpectrum(tone(0.005), fs); // a third harmonic 40 dB under the tone
+  assert.ok(Math.abs(a.thdDb + 40) < 0.5, "THD -40 dB: " + a.thdDb.toFixed(2));
+  assert.ok(Math.abs(a.sinadDb - 40) < 0.5, "SINAD 40 dB (the harmonic is the rest): " + a.sinadDb.toFixed(2));
+}
+
 // ---- the synth's voices: random notes, retriggers and controllers keep each
 // voice once in its order, never more than SYNTH_VOICES
 {

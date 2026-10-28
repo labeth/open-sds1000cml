@@ -471,12 +471,16 @@ const VIS_VIEWS = {
       const held = [...s.held.values()].map((n) => midiNoteName(n.note) + "<sub>" + (n.ch + 1) + "</sub>").join(" ");
       // from captures: the newest one's pushes and releases (what was held across their gaps is not known)
       const cap = s.cap ? [["this capture", s.cap.filter((e) => e.on).length + " pushed (filled) · " + s.cap.filter((e) => !e.on).length + " released (hollow)"]] : [];
-      return visTab([...(s.cap ? cap : [["held", held || "-"]]), ["messages", s.msgs + (s.errs ? " · " + s.errs + " errors" : "")], ["clock", s.clocks ? s.clocks + " ticks" : "-"],
+      const recRow = s.rec ? [["recording", s.rec.length + " messages" + (s.recGaps ? " (from captures: what fell between them is missing)" : "") + (s.recFull ? " · full" : "")]]
+        : vis.recDone ? [["recorded", vis.recDone.rec.length + " messages" + (vis.recDone.gaps ? " (with the captures' gaps)" : "") + " · Save .mid"]] : [];
+      return visTab([...recRow, ...(s.cap ? cap : [["held", held || "-"]]), ["messages", s.msgs + (s.errs ? " · " + s.errs + " errors" : "")], ["clock", s.clocks ? s.clocks + " ticks" : "-"],
         ["programs", [...s.prog].map((v, i) => s.roll.some((n) => n.ch === i) ? (i + 1) + ":" + (v + 1) : "").filter(Boolean).join(" ") || "-"]]) +
         visLog("newest messages", s.log.slice(-14).reverse().map((l) => l.text));
     },
     // TRLC-LINKS: REQ-SDS-279
     controls: () => '<div class="r"><button type="button" id="visSound" class="xs tog' + (vis.sound ? " on" : "") + '">Sound</button><label class="row-tight"><span class="lbl">vol</span><input type="range" id="visVol" min="0" max="1" step="0.05" value="' + (vis.sy ? vis.sy.gain : 0.5) + '" aria-label="MIDI volume"></label><button type="button" id="visPanic" class="xs">All notes off</button></div>' +
+      '<div class="r"><button type="button" id="visRec" class="xs tog' + (vis.s && vis.s.rec ? " on" : "") + '" title="Record every MIDI message with its time (gap-free: all of them)">Record</button>' +
+      '<button type="button" id="visRecSave" class="xs"' + (vis.recDone || (vis.s && vis.s.rec) ? "" : " disabled") + ' title="Save the recording as a Standard MIDI File">Save .mid</button></div>' +
       '<div class="r"><label class="row-tight"><span class="lbl">notes</span><select id="visLead" aria-label="live: a note sounds as it comes and rises away; fall: it falls onto its key for the seconds chosen and sounds as it lands">' +
       [0, 1.5, 3, 5, 8].map((v) => `<option value="${v}"${v === vis.midiLead ? " selected" : ""}>${v ? "fall " + v + " s" : "live, rise away"}</option>`).join("") + "</select></label></div>",
     // TRLC-LINKS: REQ-SDS-279
@@ -493,6 +497,25 @@ const VIS_VIEWS = {
       on("visVol", "oninput", () => { if (!vis.sy) vis.sy = synthNew(); synthVolume(vis.sy, +$("visVol").value); });
       on("visLead", "onchange", () => { vis.midiLead = +$("visLead").value; if (vis.sy) { vis.sy.lead = vis.midiLead; vis.sy.offset = NaN; } visDraw(true); });
       on("visPanic", "onclick", () => { if (vis.sy) synthPanic(vis.sy); if (vis.s && vis.s.held) vis.s.held.clear(); });
+      // Record starts a recording (or ends it, kept to save); Save .mid downloads it
+      // TRLC-LINKS: REQ-SDS-278
+      on("visRec", "onclick", () => {
+        if (vis.s.rec) { vis.recDone = { rec: vis.s.rec, gaps: vis.s.recGaps, full: vis.s.recFull }; vis.s.rec = null; }
+        else { vis.s.rec = []; vis.s.recGaps = false; vis.s.recFull = false; vis.recDone = null; }
+        visSide(true);
+      });
+      // TRLC-LINKS: REQ-SDS-278
+      on("visRecSave", "onclick", () => {
+        const r = vis.s.rec ? { rec: vis.s.rec } : vis.recDone;
+        if (!r || !r.rec.length) { toast("nothing recorded yet"); return; }
+        const url = URL.createObjectURL(new Blob([midiSMF(r.rec)], { type: "audio/midi" }));
+        const a = document.createElement("a"), d = new Date();
+        const stamp = [d.getFullYear(), d.getMonth() + 1, d.getDate()].map((n) => String(n).padStart(2, "0")).join("") + "-" +
+          [d.getHours(), d.getMinutes(), d.getSeconds()].map((n) => String(n).padStart(2, "0")).join("");
+        a.href = url; a.download = "midi-" + stamp + ".mid";
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 5000);
+      });
     },
   },
   dmx512: {

@@ -193,5 +193,80 @@ function audioStats(x, raw, bits) {
   return { rmsDb: db(Math.sqrt(s2 / n)), peakDb: db(pk), clip, dc: sum / n, bitsUsed: used };
 }
 
+// audioFFT is an in-place radix-2 FFT of re/im (their length a power of two).
+// TRLC-LINKS: REQ-SDS-280
+function audioFFT(re, im) {
+  const n = re.length;
+  for (let i = 1, j = 0; i < n; i++) {
+    let bit = n >> 1;
+    for (; j & bit; bit >>= 1) j ^= bit;
+    j ^= bit;
+    if (i < j) { let t = re[i]; re[i] = re[j]; re[j] = t; t = im[i]; im[i] = im[j]; im[j] = t; }
+  }
+  for (let len = 2; len <= n; len <<= 1) {
+    const a = -2 * Math.PI / len, wr = Math.cos(a), wi = Math.sin(a);
+    for (let i = 0; i < n; i += len) {
+      let cr = 1, ci = 0;
+      for (let k = 0; k < len / 2; k++) {
+        const ur = re[i + k], ui = im[i + k], j = i + k + len / 2;
+        const vr = re[j] * cr - im[j] * ci, vi = re[j] * ci + im[j] * cr;
+        re[i + k] = ur + vr; im[i + k] = ui + vi; re[j] = ur - vr; im[j] = ui - vi;
+        const nr = cr * wr - ci * wi; ci = cr * wi + ci * wr; cr = nr;
+      }
+    }
+  }
+}
+
+// SPEC_SINAD_MAX is the most SINAD (and THD's floor) a spectrum states: past
+// it is the arithmetic's, not the signal's (a 32-bit word is 194 dB).
+const SPEC_SINAD_MAX = 200;
+
+// audioSpectrum analyses a channel (samples in -1..1 at fs): the largest
+// power of two of its samples, windowed (four-term Blackman-Harris: its
+// sidelobes 92 dB down, so a tone off a bin's centre does not leak into the
+// noise measured), as dBFS a bin (a full-scale
+// sine 0 dBFS); its tone (the strongest bin past DC, its frequency
+// interpolated) and the tone's distortion (THD: harmonics 2 to 5 against
+// it), its SINAD (it against all else past DC) and the bits that make (ENOB).
+// TRLC-LINKS: REQ-SDS-280
+function audioSpectrum(x, fs) {
+  let n = 1;
+  while (n * 2 <= x.length && n < 65536) n *= 2;
+  if (n < 64) return { ok: false, error: "too few samples for a spectrum" };
+  const re = new Float64Array(n), im = new Float64Array(n);
+  let wsum = 0;
+  for (let i = 0; i < n; i++) {
+    const p = 2 * Math.PI * i / n, w = 0.35875 - 0.48829 * Math.cos(p) + 0.14128 * Math.cos(2 * p) - 0.01168 * Math.cos(3 * p);
+    re[i] = x[i] * w; wsum += w;
+  }
+  audioFFT(re, im);
+  const half = n / 2, pw = new Float64Array(half), db = new Float32Array(half);
+  for (let k = 0; k < half; k++) {
+    const a = 2 * Math.hypot(re[k], im[k]) / wsum; // a sine's amplitude
+    pw[k] = a * a / 2; db[k] = a > 0 ? 20 * Math.log10(a) : -200;
+  }
+  const bin = fs / n, guard = 4; // the window spreads a tone over four bins each side: the tone's power is the bins about it
+  let pk = guard + 1;
+  for (let k = guard + 1; k < half; k++) if (pw[k] > pw[pk]) pk = k;
+  // TRLC-LINKS: REQ-SDS-280
+  const around = (k0) => { let s = 0; for (let k = Math.max(1, k0 - guard); k <= Math.min(half - 1, k0 + guard); k++) s += pw[k]; return s; };
+  const a0 = db[pk - 1], a1 = db[pk], a2 = db[pk + 1] !== undefined ? db[pk + 1] : a1;
+  const off = a0 - 2 * a1 + a2 !== 0 ? 0.5 * (a0 - a2) / (a0 - 2 * a1 + a2) : 0;
+  const f0 = (pk + off) * bin, tone = around(pk);
+  // the distortion only where a harmonic's bins lie clear of the tone's (a
+  // short record's wide bins hold the tone and its harmonics together)
+  let harm = 0, harmN = 0;
+  if (pk > 2 * guard + 1) for (let h = 2; h <= 5; h++) { const k = Math.round(h * (pk + off)); if (k + guard < half) { harm += around(k); harmN++; } }
+  // the noise and distortion: the bins past DC (its guard) and past the
+  // tone's, summed as they are; none when the tone is near DC or too few are left
+  let rest = 0, noiseBins = 0;
+  for (let k = guard + 1; k < half; k++) if (Math.abs(k - pk) > guard) { rest += pw[k]; noiseBins++; }
+  const sinad = noiseBins >= 32 && pk > 2 * guard ? Math.min(SPEC_SINAD_MAX, 10 * Math.log10(tone / Math.max(rest, tone * 1e-20))) : NaN;
+  // the bins' sum is a tone's power times the window's noise bandwidth (2.0044 bins)
+  return { ok: true, n, bin, db, toneHz: f0, toneDb: 10 * Math.log10(Math.max(tone, 1e-30) * 2 / 2.0044),
+    thdDb: harmN ? (harm > 0 ? 10 * Math.log10(harm / tone) : -SPEC_SINAD_MAX) : NaN, sinadDb: sinad, enob: (sinad - 1.76) / 6.02,
+    why: harmN ? "" : "the record is too short to part the tone from its harmonics (" + Math.round(bin) + " Hz a bin)" };
+}
+
 if (typeof module !== "undefined" && module.exports)
-  module.exports = { audioFromSPDIF, audioFromI2S, audioFromPDM, pdmCIC, audioStats, PDM_DECIM };
+  module.exports = { audioFromSPDIF, audioFromI2S, audioFromPDM, pdmCIC, audioStats, audioSpectrum, audioFFT, PDM_DECIM };
