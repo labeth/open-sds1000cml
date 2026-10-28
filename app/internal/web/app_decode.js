@@ -290,6 +290,32 @@ function updateDecodeResults() {
   $("decodeCount").textContent = r.bytes.length + " bytes" + (r.meta && r.meta.noCS ? " · no CS" : "");
 }
 
+// decRows gives each span its row in the strip, once a decode: 0 the whole
+// band; where spans enclose others (a caliper's reading over its bytes,
+// Wiegand's length over its facility and card) 1 the top half for the
+// enclosing one and 2 the bottom half for its parts, so both labels show. An
+// enclosing span comes among its parts' neighbours (a decoder adds it before
+// or after them): the 64 spans each side are looked at.
+// TRLC-LINKS: REQ-SDS-207
+function decRows(r) {
+  if (r._rows && r._rows.length === r.spans.length) return r._rows;
+  const sp = r.spans, n = sp.length, out = new Uint8Array(n);
+  // TRLC-LINKS: REQ-SDS-207
+  const mark = (s) => s.kind === "start" || s.kind === "stop";
+  for (let i = 0; i < n; i++) {
+    const a = sp[i];
+    if (mark(a) || !a.text) continue; // a span without a label (a frame's start) needs no row of its own
+    for (let k = Math.max(0, i - 64); k < n && k <= i + 64; k++) {
+      const b = sp[k];
+      if (k === i || mark(b) || !(b.i1 >= a.i1 && b.i0 <= a.i0 && b.i1 - b.i0 > a.i1 - a.i0)) continue;
+      out[k] = 1; // b encloses a
+      if (out[i] !== 1) out[i] = 2;
+    }
+  }
+  r._rows = out;
+  return out;
+}
+
 // Decode band (YT-only) in the lane under the plot (plotH: the plot ends
 // above it). Uses the windowed xForCol so labels track the trace at any zoom;
 // spans off-window are culled.
@@ -299,10 +325,12 @@ function drawDecode(g) {
   const r = dcfg.result;
   if (!r || !r.ok || !r.spans.length || !frame.c1) return;
   const PH = plotH(), n = frame.c1.length, bandH = 20 * dpr, bandY = PH + 4 * dpr;
-  const spans = r.spans, cy = bandY + bandH / 2;
+  const spans = r.spans, rows = decRows(r), two = rows.some((v) => v > 0);
   g.save();
   g.fillStyle = "#05080c"; g.fillRect(0, PH, CW, CH - PH);
-  g.textBaseline = "middle"; g.font = "bold " + (11 * dpr) + "px system-ui";
+  g.textBaseline = "middle";
+  // TRLC-LINKS: REQ-SDS-207
+  const font = (row) => "bold " + ((row ? 9 : 11) * dpr) + "px system-ui";
   for (let i = 0; i < spans.length; i++) {
     const s = spans[i];
     let x0 = xForCol(s.i0, n), x1 = xForCol(s.i1, n);
@@ -314,16 +342,22 @@ function drawDecode(g) {
       continue;
     }
     x1 = Math.max(x1, x0 + 2 * dpr); const w = x1 - x0;
-    g.fillStyle = hexA(col, 0.2); g.fillRect(x0, bandY, w, bandH);
-    g.strokeStyle = col; g.lineWidth = dpr; g.strokeRect(x0 + .5, bandY + .5, w - dpr, bandH - dpr);
+    // its row: the whole band, or (spans enclosing others here) the top half
+    // for the enclosing one, the bottom half for its parts
+    const row = rows[i], by = row === 1 ? PH + 2 * dpr : row === 2 ? PH + 15 * dpr : bandY, bh = row ? 12 * dpr : bandH;
+    g.fillStyle = hexA(col, 0.2); g.fillRect(x0, by, w, bh);
+    g.strokeStyle = col; g.lineWidth = dpr; g.strokeRect(x0 + .5, by + .5, w - dpr, bh - dpr);
     // Label: center it when it fits inside the box; when the box is too narrow
-    // (zoomed out) let it spill RIGHT into the idle/gap up to the next token, so
-    // a byte never loses its value just because its box shrank.
-    g.fillStyle = col;
+    // (zoomed out) let it spill RIGHT into the idle/gap up to the next token of
+    // its row, so a byte never loses its value just because its box shrank.
+    g.fillStyle = col; g.font = font(row);
+    const cy = by + bh / 2;
     if (g.measureText(s.text).width <= w - 6 * dpr) {
       g.textAlign = "center"; g.fillText(s.text, (x0 + x1) / 2, cy);
     } else {
-      const nextX0 = i + 1 < spans.length ? xForCol(spans[i + 1].i0, n) : CW;
+      let k = i + 1;
+      while (two && k < spans.length && k <= i + 64 && rows[k] !== row && rows[k] !== 0) k++;
+      const nextX0 = k < spans.length ? xForCol(spans[k].i0, n) : CW;
       const label = fitLabel(g, s.text, Math.min(nextX0, CW) - x0 - 4 * dpr);
       if (label) { g.textAlign = "left"; g.fillText(label, x0 + 3 * dpr, cy); }
     }

@@ -422,6 +422,21 @@ function uartWave(packets, baud, dt, stop, breakS) {
   assert.equal(sy.voices.size + sy.order.length, 0, "All notes off leaves none");
 }
 
+// ---- the decode strip's rows (app_decode.js decRows): a span enclosing others
+// on the top row, its labelled parts on the bottom, the rest the whole band
+{
+  const src = fs.readFileSync("app_decode.js", "utf8").match(/\n(\/\/ TRLC-LINKS: REQ-SDS-207\nfunction decRows[\s\S]*?\n}\n)/)[1];
+  const rc = {};
+  vm.createContext(rc);
+  vm.runInContext(src + ";globalThis.__r = decRows;", rc);
+  // TRLC-LINKS: REQ-SDS-207
+  const sp = (kind, text, i0, i1) => ({ kind, text, i0, i1 });
+  const caliper = [sp("sof", "", 0, 5), sp("data", "D4", 0, 90), sp("data", "04", 100, 180), sp("data", "00", 190, 270), sp("rw", "12.34mm", 0, 270), sp("data", "AA", 400, 480)];
+  deq(Array.from(rc.__r({ spans: caliper })), [0, 2, 2, 2, 1, 0], "the reading on top, its bytes under it, the start and a byte apart the whole band");
+  const wiegand = [sp("sof", "", 0, 2), sp("rw", "26b", 0, 500), sp("data", "F42", 20, 200), sp("data", "C4660", 220, 480)];
+  deq(Array.from(rc.__r({ spans: wiegand })), [0, 1, 2, 2], "Wiegand's length on top, its facility and card both shown under it");
+}
+
 // ---- every bus has a view, and every view draws ----------------------------------------
 // app_visual_draw.js in the same realm with the page's few globals it reads; a
 // 2D context that takes any call and fails one with a coordinate not finite

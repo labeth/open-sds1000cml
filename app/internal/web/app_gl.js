@@ -21,13 +21,26 @@ const GL_GLYPH_W = 8, GL_GLYPH_H = 14, GL_FIRST = 32, GL_LAST = 126;
 // The few non-ASCII glyphs the readouts use (µs, ranges, Δ, degrees…), after ASCII.
 const GL_EXTRA = "µ–—Δ°±×·≤≥▸◂◆…√";
 let glAtlas = null; // { canvas-derived pixels, texW, texH, cols }
+let glAtlasBig = null; // the same glyphs at GL_BIG times, for large text
 
+// GL_SLOT0 is the first glyph's slot: slot 0 is the solid white block, slot 1
+// blank, so text scaled off its 14 px never samples the block into a space
+// (a bar where a space is).
+const GL_SLOT0 = 2;
+
+// GL_BIG is the big atlas's scale: text taller than twice a glyph (large
+// readouts) is drawn from glyphs rasterised this much larger, not magnified.
+const GL_BIG = 4;
+
+// glBuildAtlas bakes the glyphs once at scale (1, or GL_BIG for big text).
 // TRLC-LINKS: REQ-SDS-071
-function glBuildAtlas() {
-  if (glAtlas) return glAtlas;
+function glBuildAtlas(scale) {
+  scale = scale || 1;
+  if (scale === 1 && glAtlas) return glAtlas;
+  if (scale !== 1 && glAtlasBig) return glAtlasBig;
   const nAscii = GL_LAST - GL_FIRST + 1, n = nAscii + GL_EXTRA.length;
-  const cols = 16, rows = Math.ceil((n + 1) / cols); // +1 slot for the white texel
-  const cw = GL_GLYPH_W, ch = GL_GLYPH_H;
+  const cols = 16, rows = Math.ceil((n + GL_SLOT0) / cols); // the white block and a blank before the glyphs
+  const cw = GL_GLYPH_W * scale, ch = GL_GLYPH_H * scale;
   const texW = cols * cw, texH = rows * ch;
   const oc = document.createElement("canvas");
   oc.width = texW; oc.height = texH;
@@ -35,27 +48,28 @@ function glBuildAtlas() {
   g.clearRect(0, 0, texW, texH);
   // slot 0 = a solid white block (solids/lines sample its centre)
   g.fillStyle = "#fff"; g.fillRect(0, 0, cw, ch);
-  g.font = (ch - 3) + "px monospace";
+  g.font = (ch - 3 * scale) + "px monospace";
   g.textBaseline = "middle"; g.textAlign = "center";
   g.fillStyle = "#fff";
   for (let i = 0; i < n; i++) {
-    const s = i + 1; // glyph slots start after the white block
+    const s = i + GL_SLOT0; // glyph slots start after the white block and a blank
     const cx = (s % cols) * cw, cy = Math.floor(s / cols) * ch;
-    g.fillText(i < nAscii ? String.fromCharCode(GL_FIRST + i) : GL_EXTRA[i - nAscii], cx + cw / 2, cy + ch / 2 + 0.5);
+    g.fillText(i < nAscii ? String.fromCharCode(GL_FIRST + i) : GL_EXTRA[i - nAscii], cx + cw / 2, cy + ch / 2 + 0.5 * scale);
   }
   const px = g.getImageData(0, 0, texW, texH).data; // RGBA; solids/text use the alpha
   // white-texel UV (centre of slot 0)
   const whiteU = (cw * 0.5) / texW, whiteV = (ch * 0.5) / texH;
-  glAtlas = { px, texW, texH, cols, cw, ch, whiteU, whiteV, first: GL_FIRST, nAscii };
-  return glAtlas;
+  const a = { px, texW, texH, cols, cw, ch, whiteU, whiteV, first: GL_FIRST, nAscii };
+  if (scale === 1) glAtlas = a; else glAtlasBig = a;
+  return a;
 }
 
 // glSlot is a character's atlas slot ('?' for one the atlas lacks).
 // TRLC-LINKS: REQ-SDS-071
 function glSlot(atlas, cc) {
-  if (cc >= atlas.first && cc <= GL_LAST) return cc - atlas.first + 1;
+  if (cc >= atlas.first && cc <= GL_LAST) return cc - atlas.first + GL_SLOT0;
   const k = GL_EXTRA.indexOf(String.fromCharCode(cc));
-  return k >= 0 ? atlas.nAscii + 1 + k : 63 - atlas.first + 1;
+  return k >= 0 ? atlas.nAscii + GL_SLOT0 + k : 63 - atlas.first + GL_SLOT0;
 }
 
 // ---- a renderer bound to one canvas -----------------------------------------
@@ -79,7 +93,7 @@ function glRenderer(canvas) {
     // mode 1 (images):      colour = texture RGB × vertex, alpha = both.
     "void main(){ vec4 t=texture2D(uTex,vUV); vec3 rgb=vCol.rgb*mix(vec3(1.0),t.rgb,vMode); gl_FragColor=vec4(rgb, vCol.a*t.a); }";
 
-  const atlas = glBuildAtlas();
+  const atlas = glBuildAtlas(), atlasBig = glBuildAtlas(GL_BIG);
   const FLOATS = 9;                 // x,y,u,v,r,g,b,a,mode
   let verts = new Float32Array(1 << 16);
   let vN = 0;                       // float count
@@ -88,7 +102,7 @@ function glRenderer(canvas) {
   // GL resources — held in closure vars so they can be REBUILT after a context
   // loss (initGL re-runs on webglcontextrestored). Everything downstream reads
   // the current values, so a rebuild is transparent to the draw methods.
-  let prog, aPos, aUV, aCol, aMode, uRes, buf, atlasTex, curTex, blitTex;
+  let prog, aPos, aUV, aCol, aMode, uRes, buf, atlasTex, atlasBigTex, curTex, blitTex;
   let persistFB = null, persistTex = null, persistW = 0, persistH = 0; // afterglow FBO
 
   // TRLC-LINKS: REQ-SDS-071
@@ -101,13 +115,19 @@ function glRenderer(canvas) {
     aMode = gl.getAttribLocation(prog, "aMode");
     uRes = gl.getUniformLocation(prog, "uRes");
     buf = gl.createBuffer();
-    atlasTex = gl.createTexture();
-    gl.bindTexture(gl.TEXTURE_2D, atlasTex);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, atlas.texW, atlas.texH, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(atlas.px));
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    // TRLC-LINKS: REQ-SDS-071
+    const upload = (a) => {
+      const t = gl.createTexture();
+      gl.bindTexture(gl.TEXTURE_2D, t);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, a.texW, a.texH, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(a.px));
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      return t;
+    };
+    atlasBigTex = upload(atlasBig);
+    atlasTex = upload(atlas);
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
     curTex = atlasTex;
@@ -277,16 +297,19 @@ function glRenderer(canvas) {
   // Returns the drawn width (device px).
   // TRLC-LINKS: REQ-SDS-071
   R.text = function (str, x, y, col, px, align) {
-    useTex(atlasTex);
+    // large text from the big atlas (magnified small glyphs blur, and their
+    // neighbours bleed in at the cells' edges: it samples half a texel in)
+    const big = (px || 12) > 2 * atlas.ch, A = big ? atlasBig : atlas, inset = big ? 0.5 : 0;
+    useTex(big ? atlasBigTex : atlasTex);
     str = String(str);
-    const sc = (px || 12) / atlas.ch, gw = atlas.cw * sc, gh = atlas.ch * sc;
+    const sc = (px || 12) / A.ch, gw = A.cw * sc, gh = A.ch * sc;
     const total = str.length * gw;
     let ox = x; if (align === "c") ox = x - total / 2; else if (align === "r") ox = x - total;
-    const c = glCol(col), tw = atlas.texW, th = atlas.texH;
+    const c = glCol(col), tw = A.texW, th = A.texH;
     for (let i = 0; i < str.length; i++) {
-      const slot = glSlot(atlas, str.charCodeAt(i));
-      const sx = (slot % atlas.cols) * atlas.cw, sy = Math.floor(slot / atlas.cols) * atlas.ch;
-      const u0 = sx / tw, v0 = sy / th, u1 = (sx + atlas.cw) / tw, v1 = (sy + atlas.ch) / th;
+      const slot = glSlot(A, str.charCodeAt(i));
+      const sx = (slot % A.cols) * A.cw, sy = Math.floor(slot / A.cols) * A.ch;
+      const u0 = (sx + inset) / tw, v0 = (sy + inset) / th, u1 = (sx + A.cw - inset) / tw, v1 = (sy + A.ch - inset) / th;
       const gx = ox + i * gw;
       quad(gx, y, gx + gw, y, gx + gw, y + gh, gx, y + gh, u0, v0, u1, v0, u1, v1, u0, v1, c);
     }
