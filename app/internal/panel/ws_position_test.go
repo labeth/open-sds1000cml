@@ -189,3 +189,44 @@ func TestPickerAdjustPushTriggers(t *testing.T) {
 		t.Fatalf("sheet picker Menu: %s %q", st.Mode, c.View().Notice)
 	}
 }
+
+// BUS's Visual view draws the bus and has no packet list: Adjust neither
+// moves a hidden selection nor opens the byte picker, Position has no
+// "next match", and back on Packets both work again.
+// TRLC-LINKS: REQ-SDS-213, REQ-SDS-281
+func TestVisualHasNoPacketKnobs(t *testing.T) {
+	r := newViewRig(t)
+	c := r.c
+	uart := func() { r.show(uartFrame([]string{"Hi!\r\n", "OK\r\n"}, 460800, 100e-6, 100e-9, 20000)) }
+	uart()
+	press(t, c, "f2")
+	uart()
+	press(t, c, "f2", "f2", "f2")
+	if st := mustState(t, c, "BUS", "workspace"); st.View != "Visual" {
+		t.Fatalf("view %s, want Visual", st.View)
+	}
+	c.amu.Lock()
+	sel := c.ana.list.Selected()
+	c.amu.Unlock()
+	turn(c, "adjust", 1)
+	c.amu.Lock()
+	moved := c.ana.list.Selected() != sel
+	c.amu.Unlock()
+	if moved || !strings.Contains(c.View().Notice, "no packet to pick") {
+		t.Fatalf("Adjust in Visual: selection moved %v, notice %q", moved, c.View().Notice)
+	}
+	press(t, c, "adjustpush")
+	if st := c.PanelStatus(); st.Mode != "workspace" || st.View != "Visual" {
+		t.Fatalf("Adjust push in Visual: mode %s view %s", st.Mode, st.View)
+	}
+	press(t, c, "horizpospush")
+	if tl := toolText(c); strings.Contains(tl, "next match") || c.ui.posJob {
+		t.Fatalf("Position in Visual: %q (second job %v)", tl, c.ui.posJob)
+	}
+	press(t, c, "f2")
+	uart()
+	press(t, c, "adjustpush")
+	if st := c.PanelStatus(); st.View != "Packets" || st.Mode != "picker" {
+		t.Fatalf("back on Packets: view %s mode %s", st.View, st.Mode)
+	}
+}

@@ -26,6 +26,8 @@ package panel
 import (
 	"fmt"
 	"math/rand"
+	"os"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -91,8 +93,8 @@ func fuzzAlphabet() []fuzzAction {
 			for i := 0; i < 2 && (r.c.ui.open || r.c.ui.wpick); i++ {
 				r.c.button(btnMenuOnOff)
 			}
-			for i := 0; i < 3 && (r.c.ui.ws != wsview.Bus || r.c.ui.busEye || r.c.ui.busStream); i++ {
-				r.c.button(btnF2) // BUS, then on to its packets
+			for i := 0; i < 4 && !busPackets(&r.c.ui); i++ {
+				r.c.button(btnF2) // BUS, then round its views to the packets
 			}
 			r.show(uartFrame([]string{"Hello\r\n", "OK\r\n"}, 460800, 80e-6, 100e-9, 8000))
 			r.c.button(btnAdjustPsh)
@@ -243,8 +245,23 @@ func checkUIInvariants(c *Controller) []string {
 // TRLC-LINKS: REQ-SDS-136, REQ-SDS-211, REQ-SDS-212
 func TestUIFuzz(t *testing.T) {
 	alphabet := fuzzAlphabet()
-	const steps = 2500
-	for _, seed := range []int64{1, 1337, 20260710} {
+	// Fixed seeds so every CI run replays the identical campaign;
+	// UI_FUZZ_STEPS and UI_FUZZ_SEEDS (comma separated) override them for
+	// longer local hunts.
+	steps := 2500
+	if v, err := strconv.Atoi(os.Getenv("UI_FUZZ_STEPS")); err == nil && v > 0 {
+		steps = v
+	}
+	seeds := []int64{1, 1337, 20260710}
+	if v := os.Getenv("UI_FUZZ_SEEDS"); v != "" {
+		seeds = seeds[:0]
+		for _, f := range strings.Split(v, ",") {
+			if n, err := strconv.ParseInt(strings.TrimSpace(f), 10, 64); err == nil {
+				seeds = append(seeds, n)
+			}
+		}
+	}
+	for _, seed := range seeds {
 		t.Run(fmt.Sprintf("seed%d", seed), func(t *testing.T) {
 			r := newViewRig(t)
 			c := r.c

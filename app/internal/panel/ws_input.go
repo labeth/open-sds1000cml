@@ -126,6 +126,17 @@ func busViewName(u *uiState) string {
 	return "Packets"
 }
 
+// busPackets: BUS shows its packet list, the view the byte picker, the
+// packet selection and the zoom onto a packet act on.
+// TRLC-LINKS: REQ-SDS-211, REQ-SDS-281
+func busPackets(u *uiState) bool {
+	return u.ws == wsview.Bus && !u.busEye && !u.busStream && !u.busVisual
+}
+
+// visualAdjustToast: Visual draws the bus and has no packet to pick, so
+// Adjust says where the packets are.
+const visualAdjustToast = "Visual: no packet to pick here - BUS again for Packets"
+
 // busViewNext names the view BUS's key again shows.
 // TRLC-LINKS: REQ-SDS-211, REQ-SDS-228
 func busViewNext(u *uiState) string {
@@ -199,7 +210,7 @@ func (c *Controller) helpKey() {
 // TRLC-LINKS: REQ-SDS-213
 func (c *Controller) adjustTurn(dir, steps int) {
 	c.mu.Lock()
-	wpick, open, ws, eye, stream := c.ui.wpick, c.ui.open, c.ui.ws, c.ui.busEye, c.ui.busStream
+	wpick, open, ws, eye, stream, visual := c.ui.wpick, c.ui.open, c.ui.ws, c.ui.busEye, c.ui.busStream, c.ui.busVisual
 	c.mu.Unlock()
 	switch {
 	case wpick:
@@ -210,6 +221,8 @@ func (c *Controller) adjustTurn(dir, steps int) {
 		c.eyeThresholdTurn(dir * steps)
 	case ws == wsview.Bus && stream:
 		c.streamStopsTurn(dir)
+	case ws == wsview.Bus && visual:
+		c.toast(visualAdjustToast, 1500*time.Millisecond)
 	case ws == wsview.Bus:
 		c.busAdjust(dir)
 	case ws == wsview.Spectrum:
@@ -255,6 +268,7 @@ func posJob2(s *sv) string {
 			if streamOn(s) {
 				return "transcript"
 			}
+		case s.ui.busVisual: // the picture has no match to step to
 		case busDecoding(s):
 			return "next match"
 		}
@@ -281,6 +295,7 @@ func (c *Controller) posJobTurn(s *sv, dir, steps int) {
 			c.mu.Unlock()
 		case s.ui.busStream:
 			c.scrollStreamList(dir * steps)
+		case s.ui.busVisual:
 		default:
 			c.busNextMatch(dir)
 		}
@@ -345,7 +360,7 @@ func (c *Controller) trigPos() float64 {
 // TRLC-LINKS: REQ-SDS-213
 func (c *Controller) adjustPush() {
 	c.mu.Lock()
-	wpick, open, ws, eye, stream := c.ui.wpick, c.ui.open, c.ui.ws, c.ui.busEye, c.ui.busStream
+	wpick, open, ws, eye, stream, visual := c.ui.wpick, c.ui.open, c.ui.ws, c.ui.busEye, c.ui.busStream, c.ui.busVisual
 	c.mu.Unlock()
 	switch {
 	case wpick:
@@ -359,7 +374,9 @@ func (c *Controller) adjustPush() {
 	case ws == wsview.Bus:
 		s := c.snap()
 		dec := busDecoding(s)
-		if dec {
+		if dec && visual {
+			c.toast(visualAdjustToast, 1500*time.Millisecond)
+		} else if dec {
 			c.openPickWS()
 		} else {
 			c.autoDecodeBus()
@@ -419,7 +436,7 @@ func (c *Controller) posJobToggle(s *sv) {
 		c.toast("Position: "+j+"  (push: back to the "+trig+")", 1400*time.Millisecond)
 		return
 	}
-	if s.ui.ws == wsview.Bus && !s.ui.busEye && !s.ui.busStream {
+	if busPackets(&s.ui) {
 		c.busToTrigger(s)
 	}
 	c.toast("Position: "+trig+"  (push: "+j+")", 1400*time.Millisecond)
@@ -460,7 +477,7 @@ func (c *Controller) tdivPush() {
 		c.toggleStreamList() // a stopped stream: its transcript or its record's waveform
 		return
 	}
-	if !s.ui.open && !s.ui.wpick && s.ui.ws == wsview.Bus && !s.ui.busEye && !s.ui.busStream {
+	if !s.ui.open && !s.ui.wpick && busPackets(&s.ui) {
 		dec := busDecoding(s)
 		if dec {
 			c.busZoom()

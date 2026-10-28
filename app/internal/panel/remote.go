@@ -872,7 +872,7 @@ func (c *Controller) adjustOpensMenu() bool {
 	switch {
 	case s.ui.ws == wsview.Scope:
 		return true
-	case s.ui.ws == wsview.Bus && !s.ui.busEye && !s.ui.busStream:
+	case busPackets(&s.ui):
 		return busDecoding(s)
 	}
 	return false
