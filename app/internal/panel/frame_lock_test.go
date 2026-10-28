@@ -25,20 +25,27 @@ func TestBusSearchHoldsTheFrameOnlyToCopyIt(t *testing.T) {
 			f.C2[i] = uint8(rng.Intn(256))
 		}
 	}
+	// Each call lends a fresh snapshot and wipes it once the callback
+	// returns, as the next capture overwrites the fan-out's: work done on
+	// the snapshot itself rather than a copy finds nothing. The time bound
+	// is far above a copy and far below a search.
 	var held time.Duration
 	c.SetFrameSource(func(fn func(*engine.Frame)) {
+		g := *f
+		g.C1, g.C2 = append([]uint8(nil), f.C1...), append([]uint8(nil), f.C2...)
 		t0 := time.Now()
-		fn(f)
+		fn(&g)
 		held += time.Since(t0)
+		clear(g.C1)
+		clear(g.C2)
 	})
 	check := func(name string, run func() bool) {
 		held = 0
-		t0 := time.Now()
 		if !run() {
-			t.Fatalf("%s found nothing on the frame", name)
+			t.Fatalf("%s found nothing on the frame: it read the snapshot after letting it go", name)
 		}
-		if total := time.Since(t0); held > total/4 || held > 50*time.Millisecond {
-			t.Errorf("%s: the frame was held %v of the %v the work took", name, held, total)
+		if held > 50*time.Millisecond {
+			t.Errorf("%s: the frame was held %v", name, held)
 		}
 	}
 	check("search", func() bool { _, _, ok := c.detectOnScreen(); return ok })
