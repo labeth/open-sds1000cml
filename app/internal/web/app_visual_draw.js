@@ -86,38 +86,106 @@ function visNum(v) { return Math.abs(v) >= 1000 || Number.isInteger(v) ? String(
 // VIS_MIDI_RISE is the seconds a played note takes to rise off the picture.
 const VIS_MIDI_RISE = 4;
 
-// visDrawMIDI draws an 88-key piano and its notes, each a bar in its
-// channel's colour as long as it is held, and a legend of the channels heard
-// with their instruments. Live (no lead) a note sounds and presses its key as
-// it comes, its bar growing up from the key while held, then rising away and
-// fading; with a lead it falls from the top and lands on its key lead seconds
-// later, when it sounds (the sound waits as long).
+// visPianoGeom is the piano's layout in a W x H picture: the 88 keys' white
+// ones, a key's x and width (keyX), the keyboard's top, the felt line notes
+// land on (hitY) and the space above it (from legH, rollH high).
 // TRLC-LINKS: REQ-SDS-278
-function visDrawMIDI(g, W, H, s) {
-  const lo = 21, hi = 108, now = performance.now() / 1000, lead = vis.midiLead;
-  const whites = [];
+function visPianoGeom(W, H) {
+  const lo = 21, hi = 108, whites = [];
   for (let n = lo; n <= hi; n++) if (![1, 3, 6, 8, 10].includes(n % 12)) whites.push(n);
   const ww = W / whites.length;
   // a white key is about five and a half times as long as it is wide, the
   // keyboard never more than a third of the picture
   const kbH = Math.max(36 * dpr, Math.min(H / 3, ww * 5.5)), felt = 3 * dpr, legH = 20 * dpr;
-  const keyTop = H - kbH, hitY = keyTop - felt, rollH = hitY - legH;
+  const keyTop = H - kbH, hitY = keyTop - felt;
   // TRLC-LINKS: REQ-SDS-278
   const keyX = (n) => {
     const bl = [1, 3, 6, 8, 10].includes(n % 12);
     const wi = whites.indexOf(bl ? n - 1 : n);
     return bl ? { x: (wi + 1) * ww - ww * 0.31, w: ww * 0.62, black: true } : { x: wi * ww, w: ww, black: false };
   };
+  return { lo, hi, whites, ww, kbH, felt, legH, keyTop, hitY, rollH: hitY - legH, keyX };
+}
+
+// visDrawPianoBack draws the space above the keys and its octave lanes.
+// TRLC-LINKS: REQ-SDS-278
+function visDrawPianoBack(g, W, P) {
+  g.fillStyle = "#070a0f"; g.fillRect(0, 0, W, P.hitY);
+  for (let k = 0; k < P.whites.length; k++) {
+    const m = P.whites[k] % 12;
+    if (m === 0 || m === 5) { g.fillStyle = m === 0 ? "#18222e" : "#10171f"; g.fillRect(Math.round(k * P.ww), P.legH, Math.max(1, dpr), P.rollH); }
+  }
+}
+
+// visDrawPianoKeys draws the felt and the keys over the picture, the lit ones
+// (note -> {ch}) pressed in their channel's colour with a glow above them.
+// TRLC-LINKS: REQ-SDS-278
+function visDrawPianoKeys(g, W, P, lit) {
+  const { ww, kbH, felt, keyTop, hitY, keyX } = P;
+  for (const [note, n] of lit) {
+    const k = keyX(note);
+    g.fillStyle = VIS_CH_COLOURS[n.ch];
+    g.globalAlpha = 0.18; g.fillRect(k.x - ww * 0.2, hitY - 22 * dpr, k.w + ww * 0.4, 22 * dpr);
+    g.globalAlpha = 0.35; g.fillRect(k.x, hitY - 9 * dpr, k.w, 9 * dpr);
+  }
+  g.globalAlpha = 1;
+  g.fillStyle = "#7a1c22"; g.fillRect(0, hitY, W, felt); // the felt under the fallboard
+  // the white keys: a face, a gap between, a lip at the front; pressed they take the note's colour
+  g.fillStyle = "#2a2a2a"; g.fillRect(0, keyTop, W, kbH);
+  const gap = Math.max(1, Math.round(0.6 * dpr));
+  for (const n of P.whites) {
+    const k = keyX(n), h = lit.get(n);
+    g.fillStyle = h ? VIS_CH_COLOURS[h.ch] : "#f3f1ea"; g.fillRect(k.x + gap, keyTop, k.w - 2 * gap, kbH - 2 * dpr);
+    if (!h) { g.fillStyle = "#d4d1c6"; g.fillRect(k.x + gap, keyTop + kbH - 6 * dpr, k.w - 2 * gap, 4 * dpr); }
+    else { g.globalAlpha = 0.25; g.fillStyle = "#000000"; g.fillRect(k.x + gap, keyTop, k.w - 2 * gap, 4 * dpr); g.globalAlpha = 1; }
+    if (n % 12 === 0 && ww >= 9 * dpr) {
+      g.fillStyle = h ? "#10161c" : "#8a8676"; g.font = Math.round(Math.min(10 * dpr, ww * 0.55)) + "px monospace"; g.textAlign = "center"; g.textBaseline = "bottom";
+      g.fillText("C" + (n / 12 - 1), k.x + k.w / 2, keyTop + kbH - 8 * dpr);
+    }
+  }
+  g.globalAlpha = 0.35; g.fillStyle = "#000000"; g.fillRect(0, keyTop, W, 3 * dpr); g.globalAlpha = 1; // the fallboard's shadow
+  // the black keys: a body, a lighter top face, a front bevel
+  const bh = kbH * 0.62;
+  for (let n = P.lo; n <= P.hi; n++) {
+    const k = keyX(n);
+    if (!k.black) continue;
+    const h = lit.get(n);
+    g.fillStyle = "#0c0c0f"; g.fillRect(k.x, keyTop, k.w, bh);
+    g.fillStyle = h ? VIS_CH_COLOURS[h.ch] : "#2b2b33"; g.fillRect(k.x + k.w * 0.12, keyTop, k.w * 0.76, bh - 5 * dpr);
+    if (!h) { g.fillStyle = "#44444e"; g.fillRect(k.x + k.w * 0.12, keyTop + bh - 9 * dpr, k.w * 0.76, 3 * dpr); }
+  }
+}
+
+// visDrawLegend writes the channels in chans, each its colour and instrument.
+// TRLC-LINKS: REQ-SDS-278
+function visDrawLegend(g, P, s, chans) {
+  g.font = Math.round(11 * dpr) + "px monospace"; g.textBaseline = "middle"; g.textAlign = "left";
+  let lx = 8 * dpr;
+  for (const ch of [...chans].sort((a, b) => a - b)) {
+    const label = (ch + 1) + " " + midiInstrument(ch, s.prog[ch]);
+    g.fillStyle = VIS_CH_COLOURS[ch]; g.fillRect(lx, P.legH / 2 - 5 * dpr, 10 * dpr, 10 * dpr);
+    g.fillStyle = "#c9d1d9"; g.fillText(label, lx + 14 * dpr, P.legH / 2);
+    lx += 14 * dpr + (label.length + 2) * 6.6 * dpr;
+  }
+}
+
+// visDrawMIDI draws the MIDI bus on an 88-key piano, each channel its colour,
+// with a legend of the channels and their instruments. Following the stream
+// (gap-free: every note's whole length seen) the notes are bars as long as
+// they are held, live rising from their keys and fading (with a lead,
+// falling onto them); from captures, whose gaps hide notes' ends, the
+// newest capture is drawn on its own (visDrawMIDICapture).
+// TRLC-LINKS: REQ-SDS-278
+function visDrawMIDI(g, W, H, s) {
+  if (s.cap) return visDrawMIDICapture(g, W, H, s);
+  const P = visPianoGeom(W, H), { lo, hi, ww, legH, hitY, rollH, keyX } = P;
+  const now = performance.now() / 1000, lead = vis.midiLead;
   const rise = !(lead > 0), span = rise ? VIS_MIDI_RISE : lead;
   // a time's height: live, now at the keys and the past above; falling, now
   // at the top and lead seconds ago at the keys
   // TRLC-LINKS: REQ-SDS-278
   const yOf = (t) => rise ? hitY - ((now - t) / span) * rollH : hitY - ((t - (now - lead)) / lead) * rollH;
-  g.fillStyle = "#070a0f"; g.fillRect(0, 0, W, hitY);
-  for (let k = 0; k < whites.length; k++) {
-    const m = whites[k] % 12;
-    if (m === 0 || m === 5) { g.fillStyle = m === 0 ? "#18222e" : "#10171f"; g.fillRect(Math.round(k * ww), legH, Math.max(1, dpr), rollH); }
-  }
+  visDrawPianoBack(g, W, P);
   const lit = new Map(), chans = new Set();
   // white keys' notes first, black keys' over them, as on the keyboard
   for (const pass of [false, true]) {
@@ -146,52 +214,61 @@ function visDrawMIDI(g, W, H, s) {
     }
   }
   g.globalAlpha = 1;
-  // the glow where a sounding note meets its key
-  for (const [note, n] of lit) {
-    const k = keyX(note), c = VIS_CH_COLOURS[n.ch];
-    g.fillStyle = c;
-    g.globalAlpha = 0.18; g.fillRect(k.x - ww * 0.2, hitY - 22 * dpr, k.w + ww * 0.4, 22 * dpr);
-    g.globalAlpha = 0.35; g.fillRect(k.x, hitY - 9 * dpr, k.w, 9 * dpr);
-  }
-  g.globalAlpha = 1;
-  g.fillStyle = "#7a1c22"; g.fillRect(0, hitY, W, felt); // the felt under the fallboard
-  // the white keys: a face, a gap between, a lip at the front; pressed they take the note's colour
-  g.fillStyle = "#2a2a2a"; g.fillRect(0, keyTop, W, kbH);
-  const gap = Math.max(1, Math.round(0.6 * dpr));
-  for (const n of whites) {
-    const k = keyX(n), h = lit.get(n);
-    g.fillStyle = h ? VIS_CH_COLOURS[h.ch] : "#f3f1ea"; g.fillRect(k.x + gap, keyTop, k.w - 2 * gap, kbH - 2 * dpr);
-    if (!h) { g.fillStyle = "#d4d1c6"; g.fillRect(k.x + gap, keyTop + kbH - 6 * dpr, k.w - 2 * gap, 4 * dpr); }
-    else { g.globalAlpha = 0.25; g.fillStyle = "#000000"; g.fillRect(k.x + gap, keyTop, k.w - 2 * gap, 4 * dpr); g.globalAlpha = 1; }
-    if (n % 12 === 0 && ww >= 9 * dpr) {
-      g.fillStyle = h ? "#10161c" : "#8a8676"; g.font = Math.round(Math.min(10 * dpr, ww * 0.55)) + "px monospace"; g.textAlign = "center"; g.textBaseline = "bottom";
-      g.fillText("C" + (n / 12 - 1), k.x + k.w / 2, keyTop + kbH - 8 * dpr);
-    }
-  }
-  g.globalAlpha = 0.35; g.fillStyle = "#000000"; g.fillRect(0, keyTop, W, 3 * dpr); g.globalAlpha = 1; // the fallboard's shadow
-  // the black keys: a body, a lighter top face, a front bevel
-  const bh = kbH * 0.62;
-  for (let n = lo; n <= hi; n++) {
-    const k = keyX(n);
-    if (!k.black) continue;
-    const h = lit.get(n);
-    g.fillStyle = "#0c0c0f"; g.fillRect(k.x, keyTop, k.w, bh);
-    g.fillStyle = h ? VIS_CH_COLOURS[h.ch] : "#2b2b33"; g.fillRect(k.x + k.w * 0.12, keyTop, k.w * 0.76, bh - 5 * dpr);
-    if (!h) { g.fillStyle = "#44444e"; g.fillRect(k.x + k.w * 0.12, keyTop + bh - 9 * dpr, k.w * 0.76, 3 * dpr); }
-  }
-  // the legend: each channel heard, its colour and its instrument
-  g.font = Math.round(11 * dpr) + "px monospace"; g.textBaseline = "middle"; g.textAlign = "left";
-  let lx = 8 * dpr;
-  for (const ch of [...chans].sort((a, b) => a - b)) {
-    const label = (ch + 1) + " " + midiInstrument(ch, s.prog[ch]);
-    g.fillStyle = VIS_CH_COLOURS[ch]; g.fillRect(lx, legH / 2 - 5 * dpr, 10 * dpr, 10 * dpr);
-    g.fillStyle = "#c9d1d9"; g.fillText(label, lx + 14 * dpr, legH / 2);
-    lx += 14 * dpr + (label.length + 2) * 6.6 * dpr;
-  }
+  visDrawPianoKeys(g, W, P, lit);
+  visDrawLegend(g, P, s, chans);
   if (!s.roll.length) {
     g.fillStyle = "#8b98a5"; g.textAlign = "center";
     g.fillText(rise ? "a note presses its key as it plays, then rises away: Sound plays it" : "notes fall onto the keys: Sound plays them as they land", W / 2, legH + rollH / 2);
   }
+}
+
+// visDrawMIDICapture draws the newest capture alone, redrawn with each one:
+// its pushes (a filled mark pointing at the key) and releases (a hollow one)
+// above their keys, each as high as it is long before the capture's end (its
+// time scale at the left), the keys pushed and not released in it pressed.
+// A capture's gaps hide what was held across them, so no note is drawn on.
+// TRLC-LINKS: REQ-SDS-278
+function visDrawMIDICapture(g, W, H, s) {
+  const P = visPianoGeom(W, H), { lo, hi, ww, legH, hitY, rollH, keyX } = P;
+  const span = Math.max(1e-6, s.capT1 - s.capT0), top = legH + 10 * dpr, h = hitY - 6 * dpr - top;
+  // TRLC-LINKS: REQ-SDS-278
+  const yOf = (t) => hitY - 6 * dpr - ((s.capT1 - t) / span) * h;
+  visDrawPianoBack(g, W, P);
+  // the time scale: the capture's end at the keys, its start at the top
+  g.font = Math.round(10 * dpr) + "px monospace"; g.textAlign = "left"; g.textBaseline = "middle";
+  for (let k = 0; k <= 4; k++) {
+    const age = span * k / 4, y = hitY - 6 * dpr - (k / 4) * h;
+    g.fillStyle = "#1c2631"; g.fillRect(0, Math.round(y), W, Math.max(1, dpr));
+    g.fillStyle = "#6b7884"; g.fillText(k ? eng(age, "s", 2) + " before" : "the capture's end", 4 * dpr, y - 6 * dpr);
+  }
+  const lit = new Map(), chans = new Set(), cap = s.cap;
+  for (const e of cap) {
+    chans.add(e.ch);
+    if (e.on) lit.set(e.note, e); else lit.delete(e.note);
+  }
+  const sz = Math.max(4 * dpr, Math.min(ww * 0.45, 8 * dpr)), label = cap.length <= 48 && ww >= 6 * dpr;
+  for (const e of cap) {
+    if (e.note < lo || e.note > hi) continue;
+    const k = keyX(e.note), cx = k.x + k.w / 2, y = yOf(e.t), c = VIS_CH_COLOURS[e.ch];
+    g.globalAlpha = 0.25; g.fillStyle = c; g.fillRect(cx - Math.max(1, dpr) / 2, y, Math.max(1, dpr), hitY - y); // its lane down to the key
+    g.globalAlpha = 1;
+    g.beginPath();
+    if (e.on) { // a push: filled, pointing down at the key
+      g.moveTo(cx - sz, y - sz); g.lineTo(cx + sz, y - sz); g.lineTo(cx, y + sz * 0.6); g.closePath();
+      g.fillStyle = c; g.fill();
+    } else { // a release: hollow, pointing up from it
+      g.moveTo(cx - sz, y + sz); g.lineTo(cx + sz, y + sz); g.lineTo(cx, y - sz * 0.6); g.closePath();
+      g.strokeStyle = c; g.lineWidth = 1.5 * dpr; g.stroke();
+    }
+    if (label) {
+      g.fillStyle = "#c9d1d9"; g.font = Math.round(9 * dpr) + "px monospace"; g.textAlign = "left"; g.textBaseline = "middle";
+      g.fillText(midiNoteName(e.note), cx + sz + 2 * dpr, y);
+    }
+  }
+  visDrawPianoKeys(g, W, P, lit);
+  visDrawLegend(g, P, s, chans);
+  g.fillStyle = "#8b98a5"; g.font = Math.round(11 * dpr) + "px monospace"; g.textAlign = "center"; g.textBaseline = "middle";
+  if (!cap.length) g.fillText("this capture holds no push or release", W / 2, legH + rollH / 2);
 }
 
 // visDrawDMX draws the universe's 512 levels as bars, 32 a row, a bar just
@@ -381,7 +458,9 @@ const VIS_VIEWS = {
     // TRLC-LINKS: REQ-SDS-278
     figures: (s) => {
       const held = [...s.held.values()].map((n) => midiNoteName(n.note) + "<sub>" + (n.ch + 1) + "</sub>").join(" ");
-      return visTab([["held", held || "-"], ["messages", s.msgs + (s.errs ? " · " + s.errs + " errors" : "")], ["clock", s.clocks ? s.clocks + " ticks" : "-"],
+      // from captures: the newest one's pushes and releases (what was held across their gaps is not known)
+      const cap = s.cap ? [["this capture", s.cap.filter((e) => e.on).length + " pushed (filled) · " + s.cap.filter((e) => !e.on).length + " released (hollow)"]] : [];
+      return visTab([...(s.cap ? cap : [["held", held || "-"]]), ["messages", s.msgs + (s.errs ? " · " + s.errs + " errors" : "")], ["clock", s.clocks ? s.clocks + " ticks" : "-"],
         ["programs", [...s.prog].map((v, i) => s.roll.some((n) => n.ch === i) ? (i + 1) + ":" + (v + 1) : "").filter(Boolean).join(" ") || "-"]]) +
         visLog("newest messages", s.log.slice(-14).reverse().map((l) => l.text));
     },

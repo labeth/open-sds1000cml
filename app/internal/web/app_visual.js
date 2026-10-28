@@ -47,7 +47,10 @@ function visOnDecode() {
   if (!r || !r.ok || !frame.c1) return;
   const following = vis.stream.on && visStreamed(vis.proto);
   const n = frame.c1.length, dt = frameDtS(frame, n), now = performance.now() / 1000;
-  if (!following) visIngest(vis.s, r, now - n * dt, dt);
+  if (!following) {
+    visIngest(vis.s, r, now - n * dt, dt);
+    if (vis.s.cap) vis.s.capT1 = now; // a capture's end: the record's last sample
+  }
   if (dcfg.layer && typeof busLive !== "undefined") layerNotes(vis.layer, busLive, now);
   visSound();
   if (visShown()) visDraw();
@@ -158,6 +161,8 @@ function visSide(rebuild) {
   if (fig._html !== html) { fig._html = html; fig.innerHTML = html; }
   if (!a.on && v && v.update) v.update(vis.s);
   $("visTitle").textContent = a.on ? "Digital audio" : dcfg.layer ? "Layer values" : VIS_PROTOS[p] || "Visual";
+  const gb = $("visGapless");
+  if (gb && !(busStreamAsk && Date.now() < busStreamAsk.until)) gb.classList.toggle("on", busScopeStreaming()); // as the scope is, once no ask is pending
   const note = $("visStreamNote");
   if (note) note.textContent = vis.stream.on ? "gap-free: following the scope's stream" + (vis.stream.rate > 0 ? "" : " (timing settles in 2 s)") : visStreamed(p) ? "from each capture (gaps between them)" : "";
 }
@@ -181,7 +186,9 @@ function visControls(p) {
 function visWire(p) {
   // TRLC-LINKS: REQ-SDS-278
   const on = (id, ev, fn) => { const el = $(id); if (el) el[ev] = fn; };
-  on("visGapless", "onclick", () => { vis.gapless = !vis.stream.on; visAskStream(vis.gapless); $("visGapless").classList.toggle("on", vis.gapless); });
+  // the scope's own state says which way: the view's follows it a tick later
+  // TRLC-LINKS: REQ-SDS-278
+  on("visGapless", "onclick", () => { vis.gapless = !busScopeStreaming(); visAskStream(vis.gapless); $("visGapless").classList.toggle("on", vis.gapless); });
   // the audio is read from a captured record: a streaming scope captures none, so its stream ends
   // TRLC-LINKS: REQ-SDS-278, REQ-SDS-280
   on("visAudio", "onclick", () => { if (busScopeStreaming()) visAskStream(false); vis.audio.on = true; visSide(true); visDraw(true); });
@@ -195,11 +202,12 @@ function visWire(p) {
 // The view redraws while shown (a MIDI note held sounds on with no new frame).
 setInterval(() => { if (visShown()) { if (vis.s && vis.s.held) visSound(); if (!vis.anim) visDraw(); } }, 100);
 
-// visAnimate redraws the piano's notes each display frame while MIDI is shown
-// (they move every frame; the other pictures change only with the data).
+// visAnimate redraws the piano's notes each display frame while MIDI follows
+// the stream (they move every frame; a capture's picture and the other
+// buses' change only with the data).
 // TRLC-LINKS: REQ-SDS-278
 function visAnimate() {
-  vis.anim = visShown() && vis.s && vis.s.proto === "midi" && !vis.audio.on && !dcfg.layer;
+  vis.anim = visShown() && vis.s && vis.s.proto === "midi" && !vis.s.cap && !vis.audio.on && !dcfg.layer; // a capture's picture stands
   if (vis.anim) visDraw(true);
   requestAnimationFrame(visAnimate);
 }

@@ -36,10 +36,16 @@ function visKind(names, def) {
 visKind(["midi"], {
   // TRLC-LINKS: REQ-SDS-278
   title: "MIDI keyboard", make: () => midiNew(),
+  // a capture: its own pushes and releases kept, and its span from its start
+  // (tOf(0)) to its end (its last byte here; the view sets the record's end)
   // TRLC-LINKS: REQ-SDS-278
-  spans: (s, spans, tOf) => { for (const sp of spans) if (sp.kind === "data" || sp.kind === "frame-error") midiByte(s, sp.kind === "data" ? sp.val : -1, tOf(sp.i0)); },
+  spans: (s, spans, tOf) => {
+    s.cap = []; s.capT0 = tOf(0); s.capT1 = tOf(spans[spans.length - 1].i1);
+    for (const sp of spans) if (sp.kind === "data" || sp.kind === "frame-error") midiByte(s, sp.kind === "data" ? sp.val : -1, tOf(sp.i0));
+  },
+  // the stream, gap-free: every note's whole length is seen
   // TRLC-LINKS: REQ-SDS-278
-  units: (s, units, t) => { for (const u of units) midiByte(s, u & 0xff, t); },
+  units: (s, units, t) => { s.cap = null; for (const u of units) midiByte(s, u & 0xff, t); },
 });
 visKind(["dmx512"], {
   title: "DMX512 levels",
@@ -217,10 +223,14 @@ function midiNew() {
   return {
     run: 0, need: 0, data: [], sysex: null, sysexN: 0,
     held: new Map(), roll: [], log: [], out: [],
+    cap: null, capT0: 0, capT1: 0, // the newest capture's pushes and releases, and its span (null: read gap-free)
     prog: new Uint8Array(16), cc: Array.from({ length: 16 }, () => new Uint8Array(128)), bend: new Float32Array(16),
     clocks: 0, msgs: 0, errs: 0,
   };
 }
+
+// MIDI_CAP is the most pushes and releases kept from one capture.
+const MIDI_CAP = 512;
 
 // MIDI_OUT is the most events kept for the synth (it takes them each frame;
 // one not playing keeps the newest).
@@ -290,6 +300,8 @@ function midiLog(m, t, text) {
 function midiMsg(m, st, d, t) {
   m.msgs++;
   const ch = st & 0xf, kind = st >> 4;
+  // a capture's own pushes and releases (a release whose push came before the capture too)
+  if (m.cap && (kind === 0x8 || kind === 0x9) && m.cap.length < MIDI_CAP) m.cap.push({ on: kind === 0x9 && d[1] > 0, ch, note: d[0], vel: d[1], t });
   if (kind === 0x9 && d[1] > 0) {
     midiNoteOff(m, ch, d[0], t);
     const n = { ch, note: d[0], vel: d[1], t0: t, t1: NaN };

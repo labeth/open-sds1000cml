@@ -24,7 +24,7 @@ run(async (t) => {
       fig: document.getElementById("visFig").textContent }));
     t.ok(st.held.includes(64) && !st.held.includes(60), "E4 held, C4 released: " + JSON.stringify(st.held));
     t.ok(st.title === "MIDI keyboard", "the view names what it draws: " + st.title);
-    t.ok(/held/.test(st.fig) && /E4/.test(st.fig) && /messages/.test(st.fig), "the figures list the notes held and the messages: " + st.fig.slice(0, 120));
+    t.ok(/this capture/.test(st.fig) && /\d+ pushed/.test(st.fig) && /\d+ released/.test(st.fig) && /messages/.test(st.fig), "from captures, the figures count the capture's pushes and releases and the messages: " + st.fig.slice(0, 120));
     // the canvas drew: E4's key lights in channel 1's colour as it plays, and
     // the notes rise away above the keys in it
     // TRLC-LINKS: REQ-SDS-278

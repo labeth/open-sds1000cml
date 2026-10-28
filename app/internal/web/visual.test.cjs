@@ -391,6 +391,21 @@ function uartWave(packets, baud, dt, stop, breakS) {
   assert.ok(s.frames.has(4999) && !s.frames.has(0), "the newest kept, the oldest gone");
 }
 
+// ---- MIDI from captures: each capture's own pushes and releases, its span;
+// the stream, gap-free, keeps none (every note's length is seen)
+{
+  const s = c.visNew("midi");
+  // TRLC-LINKS: REQ-SDS-278
+  const d = (i0, val) => ({ i0, i1: i0 + 1, kind: "data", text: "", val });
+  c.visIngest(s, { ok: true, spans: [d(10, 0x90), d(11, 60), d(12, 100), d(20, 0x80), d(21, 64), d(22, 0)] }, 5, 1e-3);
+  deq(s.cap.map((e) => [e.on, e.note]), [[true, 60], [false, 64]], "a push of C4, a release of E4 (pushed before the capture)");
+  assert.ok(Math.abs(s.capT0 - 5) < 1e-9 && s.capT1 > s.cap[1].t, "the capture's span holds its events");
+  c.visIngest(s, { ok: true, spans: [d(5, 0x80), d(6, 60), d(7, 0)] }, 9, 1e-3);
+  deq(s.cap.map((e) => [e.on, e.note]), [[false, 60]], "the next capture's own: the one before is gone");
+  c.visIngestUnits(s, [0x90, 62, 90], 12);
+  assert.equal(s.cap, null, "read gap-free: no capture's events");
+}
+
 // ---- the synth's voices: random notes, retriggers and controllers keep each
 // voice once in its order, never more than SYNTH_VOICES
 {
