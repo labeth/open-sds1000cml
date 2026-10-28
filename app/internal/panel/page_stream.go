@@ -30,6 +30,7 @@ func (c *Controller) PageStream(on bool) SetResult {
 		c.mu.Lock()
 		had := c.ui.ws == wsview.Bus && c.ui.busStream
 		claim := pageClaim{on: true, read: c.now(), ws: c.ui.ws, busVisual: c.ui.busVisual}
+		held := c.page
 		c.mu.Unlock()
 		v := 0
 		if on {
@@ -46,6 +47,9 @@ func (c *Controller) PageStream(on bool) SetResult {
 			c.page.read = c.now()
 		}
 		c.mu.Unlock()
+		if res.OK && !on && held.on {
+			c.pageViewBack(held)
+		}
 		return res
 	})
 }
@@ -78,14 +82,24 @@ func (c *Controller) checkPageStream() {
 	}
 	c.logf("panel: the web page's stream unread for %s - ended", pageStreamAbandon)
 	c.showBusView(false)
+	c.pageViewBack(p)
+	c.toast("The web page that asked for the stream is gone: stream ended", 2500*time.Millisecond)
+	c.afterInput()
+}
+
+// pageViewBack puts the scope back on the view it showed before the page's
+// stream (the stream ended).
+// TRLC-LINKS: REQ-SDS-228
+func (c *Controller) pageViewBack(p pageClaim) {
 	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.ui.ws != wsview.Bus || c.ui.busStream || c.ui.busEye {
+		return // the scope moved on meanwhile
+	}
 	c.ui.busVisual = p.busVisual
 	if p.ws != wsview.Bus {
 		c.ui.views[c.ui.ws] = c.viewMode
 		c.ui.ws, c.ui.posJob = p.ws, false
 		c.viewMode = c.ui.views[p.ws]
 	}
-	c.mu.Unlock()
-	c.toast("The web page that asked for the stream is gone: stream ended", 2500*time.Millisecond)
-	c.afterInput()
 }

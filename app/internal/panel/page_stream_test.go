@@ -37,6 +37,12 @@ func TestPageStreamEndsWhenThePageIsGone(t *testing.T) {
 		t.Fatalf("a gone page's stream: active %v view %s notice %q", rs.Active(), st.View, c.View().Notice)
 	}
 
+	// the page ends its stream: the scope back on Visual too
+	c.PageStream(true)
+	if res := c.PageStream(false); !res.OK || rs.Active() || mustState(t, c, "BUS", "workspace").View != "Visual" {
+		t.Fatalf("the page ending its stream: %+v active %v view %s", res, rs.Active(), mustState(t, c, "BUS", "workspace").View)
+	}
+
 	// a key on the scope: the stream is the scope's
 	c.PageStream(true)
 	c.noteInput(true)
