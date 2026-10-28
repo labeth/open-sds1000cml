@@ -210,7 +210,10 @@ func (c *Controller) ApplySettingsView(v settings.ViewState) {
 		for i := range c.ui.views {
 			c.ui.views[i] = modViews(u.Views[i])
 		}
-		c.ui.ws, c.ui.busEye, c.ui.measAll = ws, u.BusEye, u.MeasAll
+		c.ui.ws, c.ui.busEye, c.ui.measAll = ws, u.BusEye && !c.ui.busStream, u.MeasAll // a stream under way keeps its view
+		if c.ui.busEye {
+			c.ui.busVisual = false // BUS shows one view
+		}
 		c.viewMode = c.ui.views[ws]
 		if c.apiDepth == 0 { // a remote's recall leaves the LCD's menus as they are
 			c.closeSheetLocked()

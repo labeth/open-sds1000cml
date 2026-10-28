@@ -96,6 +96,13 @@ func fuzzAlphabet() []fuzzAction {
 			for i := 0; i < 4 && !busPackets(&r.c.ui); i++ {
 				r.c.button(btnF2) // BUS, then round its views to the packets
 			}
+			if s := r.c.snap(); s.decProto != framecalc.ProtoUART || s.decBaud != 460800 || s.decChA != 0 {
+				// the walk may have left another bus decoding: the frame below is UART
+				_ = r.c.setDecProto(framecalc.ProtoUART)
+				r.c.mu.Lock()
+				r.c.decBaud, r.c.decChA = 460800, 0
+				r.c.mu.Unlock()
+			}
 			r.show(uartFrame([]string{"Hello\r\n", "OK\r\n"}, 460800, 80e-6, 100e-9, 8000))
 			r.c.button(btnAdjustPsh)
 		}})
@@ -153,6 +160,9 @@ func checkUIInvariants(c *Controller) []string {
 	}
 	if u.sub != subNone && !u.open {
 		fail("sub-mode %d with no sheet", u.sub)
+	}
+	if n := btoi(u.busEye) + btoi(u.busStream) + btoi(u.busVisual); n > 1 {
+		fail("BUS on %d views at once (eye %v stream %v visual %v)", n, u.busEye, u.busStream, u.busVisual)
 	}
 	if u.wpick && (u.open || u.ws != wsview.Bus) {
 		fail("BUS picker open=%v ws=%d", u.open, u.ws)
@@ -340,4 +350,13 @@ func TestDecodeChannelComplementarityAcrossProtoSwitch(t *testing.T) {
 	if d, _ := c.Snapshot(); d.DecProto != framecalc.ProtoSPI || d.DecChA == d.DecChB {
 		t.Fatalf("SPI entered with CLK/DATA sharing a channel: proto=%d A=%d B=%d", d.DecProto, d.DecChA, d.DecChB)
 	}
+}
+
+// btoi counts a flag.
+// TRLC-LINKS: REQ-SDS-211
+func btoi(b bool) int {
+	if b {
+		return 1
+	}
+	return 0
 }

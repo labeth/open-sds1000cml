@@ -230,3 +230,25 @@ func TestVisualHasNoPacketKnobs(t *testing.T) {
 		t.Fatalf("back on Packets: view %s mode %s", st.View, st.Mode)
 	}
 }
+
+// A stream asked for from the web page or the phone while the LCD shows
+// Visual puts BUS on Stream alone, and its end on Packets: BUS shows one
+// view.
+// TRLC-LINKS: REQ-SDS-228, REQ-SDS-281
+func TestStreamFromVisualShowsOneView(t *testing.T) {
+	r := newViewRig(t)
+	c := r.c
+	r.show(uartFrame([]string{"Hi!\r\n"}, 460800, 100e-6, 100e-9, 20000))
+	press(t, c, "f2", "f2", "f2", "f2")
+	if st := mustState(t, c, "BUS", "workspace"); st.View != "Visual" {
+		t.Fatalf("view %s, want Visual", st.View)
+	}
+	c.showBusView(true)
+	if st := mustState(t, c, "BUS", "workspace"); st.View != "Stream" || c.ui.busVisual {
+		t.Fatalf("stream asked for: view %s, Visual still set %v", st.View, c.ui.busVisual)
+	}
+	c.showBusView(false)
+	if st := mustState(t, c, "BUS", "workspace"); st.View != "Packets" {
+		t.Fatalf("stream ended: view %s", st.View)
+	}
+}

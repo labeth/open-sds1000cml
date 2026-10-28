@@ -323,7 +323,7 @@ func (c *Controller) showBusView(stream bool) {
 		c.ui.posJob = false
 	}
 	if stream {
-		c.ui.busEye = false
+		c.ui.busEye, c.ui.busVisual = false, false // BUS shows one view
 		c.closePickLocked()
 	}
 	c.ui.busStream = stream
