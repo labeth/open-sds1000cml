@@ -197,7 +197,7 @@ function busSetView(v, byScope) {
   }
   if (!byScope && v === "stream") busAskStream(true);
   // the Visual view follows the stream of a bus it reads byte for byte: it keeps it
-  const keep = v === "visual" && typeof VIS_STREAMED !== "undefined" && VIS_STREAMED.includes(dcfg.proto);
+  const keep = v === "visual" && typeof visStreamed === "function" && visStreamed(dcfg.proto);
   if (!byScope && was === "stream" && v !== "stream" && !keep) busAskStream(false);
   busScopeStream();
 }

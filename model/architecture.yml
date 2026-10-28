@@ -840,7 +840,7 @@ architecture:
   - id: FU-WEB-VISUAL
     name: Web bus visual and audio core
     group: FG-WEB
-    prose: 'visual.js (what a decoded bus means, as state: MIDI notes and their roll, DMX levels, a PS/2 keyboard or
+    prose: 'visual.js (VIS_KINDS: for each bus the view draws, what its decode means, as state: MIDI notes and their roll, DMX levels, a PS/2 keyboard or
       mouse, LED colours, IR buttons, PWM and servo, encoder and stepper position, caliper, DCF77, a terminal, the USB
       PD contract, Wiegand cards, CAN signals from a DBC file, a layer''s values) and audio_decode.js (S/PDIF, I2S off
       its word select and data, PDM, to PCM with its figures). Pure; the node tests run them.'
@@ -849,9 +849,11 @@ architecture:
   - id: FU-WEB-APP-VISUAL
     name: Web App BUS Visual view
     group: FG-WEB
-    prose: 'app_visual.js - BUS''s Visual view: the decoded bus drawn as what it carries, each capture''s decode or the
-      scope''s gap-free stream, the side panel''s figures and controls, digital audio from a whole record
-      (/api/record.bin) measured and played; midi_synth.js - the MIDI bus played in the browser.'
+    prose: 'BUS''s Visual view: app_visual.js its core (each capture''s decode or the scope''s gap-free stream into the
+      bus''s state, the picture and side panel run by the bus''s view, the redraws); app_visual_draw.js each bus''s
+      view (VIS_VIEWS: its picture, figures and controls, one for each bus of VIS_KINDS); app_visual_audio.js
+      digital audio from a whole record (/api/record.bin) measured, drawn and played; midi_synth.js the MIDI bus
+      played in the browser.'
     tags:
     - source-backed
   - id: FU-WEB-SOUND

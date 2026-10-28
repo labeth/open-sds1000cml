@@ -14,6 +14,13 @@ const files = ["decode.js", "decode_manchester.js", "decode_sent.js", "decode_ca
 const c = { console, performance };
 vm.createContext(c);
 vm.runInContext(files.map((f) => fs.readFileSync(f, "utf8")).join("\n;\n") + "\n;globalThis.__ = { VIS_PROTOS, PS2_KEYS, PS2_LAYOUT };", c);
+// every state the tests make, kept to draw at the end (a picture of real data)
+const made = [];
+{
+  const orig = c.visNew;
+  // TRLC-LINKS: REQ-SDS-278
+  c.visNew = (p) => { const st = orig(p); made.push(st); return st; };
+}
 
 // deq compares by value across the vm's realm (its arrays are not this one's).
 // TRLC-LINKS: REQ-SDS-278
@@ -319,6 +326,53 @@ function uartWave(packets, baud, dt, stop, breakS) {
   assert.ok(Math.abs(a.fs - 48000) < 400, "48 kHz: " + a.fs);
   const st = c.audioStats(a.ch[0], null, 0);
   assert.ok(Math.abs(st.peakDb - 20 * Math.log10(0.5)) < 1.5, "the sine's level comes through: " + st.peakDb);
+}
+
+// ---- every bus has a view, and every view draws ----------------------------------------
+// app_visual_draw.js in the same realm with the page's few globals it reads; a
+// 2D context that takes any call and fails one with a coordinate not finite
+{
+  vm.runInContext(`var dpr = 1, st = null, dcfg = { baud: 0 };
+    var vis = { wsOrder: "GRB", midiLead: 0, canPick: new Set(), sound: false, sy: null, ps2Kind: "", dbcName: "", layer: { notes: new Map() } };
+    function eng(x, u) { return Number.isFinite(x) ? x + " " + u : "- " + u; }
+    function escHTML(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;"); }
+    function fmtTdiv(s) { return s + " s"; }
+    function $() { return null; }
+    function toast() {}`, c);
+  vm.runInContext(fs.readFileSync("app_visual_draw.js", "utf8") + "\n;globalThis.__views = { VIS_VIEWS, VIS_KINDS, visView, visDrawLayer, visLayerTable };", c);
+  const bad = [];
+  // TRLC-LINKS: REQ-SDS-278
+  const ctx = (who) => new Proxy({}, {
+    // TRLC-LINKS: REQ-SDS-278
+    get: (o, k) => (k in o ? o[k] : (...args) => {
+      for (const v of args) if (typeof v === "number" && !Number.isFinite(v)) { bad.push(who + ": " + String(k) + "(" + args.join(", ") + ")"); break; }
+      return { width: 10 };
+    }),
+    // TRLC-LINKS: REQ-SDS-278
+    set: (o, k, v) => { o[k] = v; return true; },
+  });
+  const V = c.__views;
+  for (const [name, k] of Object.entries(c.__views.VIS_KINDS)) {
+    const v = V.visView(name);
+    assert.ok(v && typeof v.draw === "function" && typeof v.figures === "function", name + " has a view: a picture and figures");
+    assert.ok(k.title && typeof k.make === "function" && typeof k.spans === "function", name + " has a title, a state and its decode's way in");
+  }
+  for (const key of Object.keys(V.VIS_VIEWS)) assert.ok(V.VIS_KINDS[key] && V.VIS_KINDS[key].key === key, "the view " + key + " is a bus's of VIS_KINDS");
+  // each bus's empty state, then every state the tests above filled
+  const states = Object.keys(V.VIS_KINDS).map((p) => c.visNew(p)).concat(made);
+  for (const s of states) {
+    const v = V.visView(s.proto);
+    if (!v) continue;
+    for (const [W, H] of [[800, 400], [320, 180], [60, 60]]) {
+      c.vis.midiLead = 0; v.draw(ctx(s.proto + " " + W + "x" + H), W, H, s);
+      if (s.proto === "midi") { c.vis.midiLead = 3; v.draw(ctx("midi falling " + W + "x" + H), W, H, s); c.vis.midiLead = 0; }
+    }
+    assert.equal(typeof v.figures(s), "string", s.proto + "'s figures");
+    if (v.controls) assert.equal(typeof v.controls(s), "string", s.proto + "'s controls");
+  }
+  V.visDrawLayer(ctx("layer"), 400, 200);
+  assert.equal(typeof V.visLayerTable(), "string");
+  assert.deepEqual(bad, [], "every picture draws with finite coordinates");
 }
 
 console.log("visual ok");

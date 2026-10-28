@@ -11,84 +11,169 @@
 // the node tests.
 "use strict";
 
-// VIS_PROTOS are the protocols the Visual view draws, and how.
-const VIS_PROTOS = {
-  midi: "MIDI keyboard", dmx512: "DMX512 levels", ps2: "PS/2 keyboard and mouse", ws281x: "LED strip",
-  irnec: "IR remote", irsirc: "IR remote", irrc5: "IR remote", irrc6: "IR remote", irmp: "IR remote",
-  pwm: "PWM duty", quad: "Encoder position", stepper: "Stepper position", caliper: "Caliper reading",
-  dcf77: "DCF77 clock", uart: "Terminal", lin: "LIN frames", usbpd: "USB PD contract", wiegand: "Wiegand cards",
-  can: "CAN signals", canfd: "CAN signals", spdif: "Digital audio",
-};
-
 // visHex2 writes a byte as two upper-case hex digits.
 // TRLC-LINKS: REQ-SDS-278
 function visHex2(v) { return (v & 0xff).toString(16).toUpperCase().padStart(2, "0"); }
 
-// visNew is a protocol's empty state: what the view draws, before any data.
+// VIS_KINDS are the buses the Visual view draws: for each, by its decoder's
+// protocol name (aliases share one entry), its title, its empty state
+// (make), how a frame's decode goes in (spans: the spans in time order, tOf
+// a sample index's seconds, r the whole decode, dt a sample's seconds) and,
+// for a bus the scope's stream carries byte for byte, how a stream line's
+// units go in (units: read gap-free). A new bus is an entry here, its
+// picture and figures in VIS_VIEWS (app_visual_draw.js) and its tests in
+// visual.test.cjs, which also checks every entry has a picture that draws.
+const VIS_KINDS = {};
+
+// visKind enters a bus in VIS_KINDS under its name and its aliases; key is
+// the name, the one VIS_VIEWS knows it by.
+// TRLC-LINKS: REQ-SDS-278
+function visKind(names, def) {
+  def.key = names[0];
+  for (const n of names) VIS_KINDS[n] = def;
+}
+
+visKind(["midi"], {
+  // TRLC-LINKS: REQ-SDS-278
+  title: "MIDI keyboard", make: () => midiNew(),
+  // TRLC-LINKS: REQ-SDS-278
+  spans: (s, spans, tOf) => { for (const sp of spans) if (sp.kind === "data" || sp.kind === "frame-error") midiByte(s, sp.kind === "data" ? sp.val : -1, tOf(sp.i0)); },
+  // TRLC-LINKS: REQ-SDS-278
+  units: (s, units, t) => { for (const u of units) midiByte(s, u & 0xff, t); },
+});
+visKind(["dmx512"], {
+  title: "DMX512 levels",
+  // TRLC-LINKS: REQ-SDS-278
+  make: () => ({ levels: new Uint8Array(512), changed: new Float64Array(512), slots: 0, sc: -1, frames: 0, times: [] }),
+  // TRLC-LINKS: REQ-SDS-278
+  spans: (s, spans, tOf) => dmxSpans(s, spans, tOf),
+  // TRLC-LINKS: REQ-SDS-278
+  units: (s, units, t) => dmxPacket(s, units, t),
+});
+visKind(["ps2"], {
+  // TRLC-LINKS: REQ-SDS-278
+  title: "PS/2 keyboard and mouse", make: () => ps2New(),
+  // TRLC-LINKS: REQ-SDS-278
+  spans: (s, spans, tOf) => { for (const sp of spans) if (sp.kind === "data") ps2Byte(s, sp.val, sp.text.startsWith("H"), tOf(sp.i0)); },
+  // TRLC-LINKS: REQ-SDS-278
+  units: (s, units, t) => { for (const u of units) ps2Byte(s, u & 0xff, false, t); },
+});
+visKind(["ws281x"], {
+  // TRLC-LINKS: REQ-SDS-278
+  title: "LED strip", make: () => ({ leds: [], cur: null, order: "GRB", frames: 0 }),
+  // TRLC-LINKS: REQ-SDS-278
+  spans: (s, spans) => wsSpans(s, spans),
+});
+visKind(["irnec", "irsirc", "irrc5", "irrc6", "irmp"], {
+  // TRLC-LINKS: REQ-SDS-278
+  title: "IR remote", make: () => ({ lastBtn: null, buttons: new Map(), cur: null }),
+  // TRLC-LINKS: REQ-SDS-278
+  spans: (s, spans, tOf) => irSpans(s, spans, tOf),
+});
+visKind(["pwm"], {
+  // TRLC-LINKS: REQ-SDS-278
+  title: "PWM duty", make: () => ({ duty: NaN, freq: NaN, periodS: NaN, hist: [], min: NaN, max: NaN }),
+  // TRLC-LINKS: REQ-SDS-278
+  spans: (s, spans, tOf, r, dt) => pwmSpans(s, spans, r, dt, tOf),
+});
+visKind(["quad"], {
+  // TRLC-LINKS: REQ-SDS-278
+  title: "Encoder position", make: () => ({ pos: 0, fwd: true, speed: 0, hist: [] }),
+  // TRLC-LINKS: REQ-SDS-278
+  spans: (s, spans, tOf) => stepSpans(s, spans, tOf),
+});
+visKind(["stepper"], {
+  // TRLC-LINKS: REQ-SDS-278
+  title: "Stepper position", make: () => ({ pos: 0, fwd: true, speed: 0, hist: [] }),
+  // TRLC-LINKS: REQ-SDS-278
+  spans: (s, spans, tOf) => stepSpans(s, spans, tOf),
+});
+visKind(["caliper"], {
+  // TRLC-LINKS: REQ-SDS-278
+  title: "Caliper reading", make: () => ({ text: "", value: NaN, unit: "", hist: [] }),
+  // TRLC-LINKS: REQ-SDS-278
+  spans: (s, spans, tOf) => caliperSpans(s, spans, tOf),
+});
+visKind(["dcf77"], {
+  // TRLC-LINKS: REQ-SDS-278
+  title: "DCF77 clock", make: () => ({ fields: {}, time: "", bad: false, secS: 0 }),
+  // TRLC-LINKS: REQ-SDS-278
+  spans: (s, spans, tOf, r) => { dcfSpans(s, spans); if (r.meta && r.meta.baud > 0) s.secS = 1 / r.meta.baud; },
+});
+visKind(["uart"], {
+  // TRLC-LINKS: REQ-SDS-278
+  title: "Terminal", make: () => ({ text: "", esc: "", cr: false }),
+  // TRLC-LINKS: REQ-SDS-278
+  spans: (s, spans) => { for (const sp of spans) if (sp.kind === "data") termByte(s, sp.val); },
+  // TRLC-LINKS: REQ-SDS-278
+  units: (s, units) => { for (const u of units) termByte(s, u & 0xff); },
+});
+visKind(["lin"], {
+  // TRLC-LINKS: REQ-SDS-278
+  title: "LIN frames", make: () => ({ frames: new Map(), errs: 0 }),
+  // TRLC-LINKS: REQ-SDS-278
+  spans: (s, spans, tOf) => linSpans(s, spans, tOf),
+});
+visKind(["usbpd"], {
+  // TRLC-LINKS: REQ-SDS-278
+  title: "USB PD contract", make: () => ({ caps: [], request: null, contract: "", msgs: [] }),
+  // TRLC-LINKS: REQ-SDS-278
+  spans: (s, spans, tOf) => pdSpans(s, spans, tOf),
+});
+visKind(["wiegand"], {
+  // TRLC-LINKS: REQ-SDS-278
+  title: "Wiegand cards", make: () => ({ lastCard: null, cards: new Map() }),
+  // TRLC-LINKS: REQ-SDS-278
+  spans: (s, spans, tOf) => wiegandSpans(s, spans, tOf),
+});
+visKind(["can", "canfd"], {
+  // TRLC-LINKS: REQ-SDS-278
+  title: "CAN signals", make: () => ({ dbc: null, sigs: new Map(), frames: new Map() }),
+  // TRLC-LINKS: REQ-SDS-278
+  spans: (s, spans, tOf) => canSpans(s, spans, tOf),
+});
+visKind(["spdif"], {
+  // TRLC-LINKS: REQ-SDS-278
+  title: "S/PDIF audio", make: () => ({}),
+  // TRLC-LINKS: REQ-SDS-278
+  spans: () => {}, // its audio is read from a whole record (Digital audio)
+});
+
+// VIS_PROTOS name the view's title for each protocol it draws.
+const VIS_PROTOS = Object.fromEntries(Object.entries(VIS_KINDS).map(([n, k]) => [n, k.title]));
+
+// visStreamed reports a bus the view reads gap-free from the scope's stream.
+// TRLC-LINKS: REQ-SDS-278
+function visStreamed(proto) { const k = VIS_KINDS[proto]; return !!(k && k.units); }
+
+// visNew is a protocol's empty state: what the view draws, before any data;
+// a bus the view has no picture of keeps a protocol layer's values.
 // TRLC-LINKS: REQ-SDS-278
 function visNew(proto) {
-  const s = { proto, updates: 0, last: 0 };
-  switch (proto) {
-    case "midi": return Object.assign(s, midiNew());
-    case "dmx512": return Object.assign(s, { levels: new Uint8Array(512), changed: new Float64Array(512), slots: 0, sc: -1, frames: 0, times: [] });
-    case "ps2": return Object.assign(s, ps2New());
-    case "ws281x": return Object.assign(s, { leds: [], cur: null, order: "GRB", frames: 0 });
-    case "irnec": case "irsirc": case "irrc5": case "irrc6": case "irmp":
-      return Object.assign(s, { lastBtn: null, buttons: new Map(), cur: null });
-    case "pwm": return Object.assign(s, { duty: NaN, freq: NaN, periodS: NaN, hist: [], min: NaN, max: NaN });
-    case "quad": case "stepper": return Object.assign(s, { pos: 0, fwd: true, speed: 0, hist: [] });
-    case "caliper": return Object.assign(s, { text: "", value: NaN, unit: "", hist: [] });
-    case "dcf77": return Object.assign(s, { fields: {}, time: "", bad: false, secS: 0 });
-    case "uart": return Object.assign(s, { text: "", esc: "", cr: false });
-    case "lin": return Object.assign(s, { frames: new Map(), errs: 0 });
-    case "usbpd": return Object.assign(s, { caps: [], request: null, contract: "", msgs: [] });
-    case "wiegand": return Object.assign(s, { lastCard: null, cards: new Map() });
-    case "can": case "canfd": return Object.assign(s, { dbc: null, sigs: new Map(), frames: new Map() });
-    case "spdif": return s;
-  }
-  return Object.assign(s, { notes: new Map() }); // a protocol layer's values
+  const k = VIS_KINDS[proto];
+  return Object.assign({ proto, updates: 0, last: 0 }, k ? k.make() : { notes: new Map() });
 }
 
 // visIngest takes a frame's decode r into s: t0 the seconds the record began
 // at, dt a sample's seconds. The spans are the decode's, in time order.
 // TRLC-LINKS: REQ-SDS-278
 function visIngest(s, r, t0, dt) {
-  if (!r || !r.spans || !r.spans.length) return;
+  const k = VIS_KINDS[s.proto];
+  if (!k || !r || !r.spans || !r.spans.length) return;
   // TRLC-LINKS: REQ-SDS-278
   const tOf = (i) => t0 + i * (dt > 0 ? dt : 0);
-  const spans = r.spans;
-  switch (s.proto) {
-    case "midi": for (const sp of spans) if (sp.kind === "data" || sp.kind === "frame-error") midiByte(s, sp.kind === "data" ? sp.val : -1, tOf(sp.i0)); break;
-    case "dmx512": dmxSpans(s, spans, tOf); break;
-    case "ps2": for (const sp of spans) if (sp.kind === "data") ps2Byte(s, sp.val, sp.text.startsWith("H"), tOf(sp.i0)); break;
-    case "ws281x": wsSpans(s, spans); break;
-    case "irnec": case "irsirc": case "irrc5": case "irrc6": case "irmp": irSpans(s, spans, tOf); break;
-    case "pwm": pwmSpans(s, spans, r, dt, tOf); break;
-    case "quad": case "stepper": stepSpans(s, spans, tOf); break;
-    case "caliper": caliperSpans(s, spans, tOf); break;
-    case "dcf77": dcfSpans(s, spans); if (r.meta && r.meta.baud > 0) s.secS = 1 / r.meta.baud; break;
-    case "uart": for (const sp of spans) if (sp.kind === "data") termByte(s, sp.val); break;
-    case "lin": linSpans(s, spans, tOf); break;
-    case "usbpd": pdSpans(s, spans, tOf); break;
-    case "wiegand": wiegandSpans(s, spans, tOf); break;
-    case "can": case "canfd": canSpans(s, spans, tOf); break;
-  }
+  k.spans(s, r.spans, tOf, r, dt);
   s.updates++;
-  s.last = tOf(spans[spans.length - 1].i1);
+  s.last = tOf(r.spans[r.spans.length - 1].i1);
 }
 
 // visIngestUnits takes one line of the scope's stream (its units, the first
-// at t seconds): the byte-wise protocols, read gap-free.
+// at t seconds) into a bus read gap-free.
 // TRLC-LINKS: REQ-SDS-278
 function visIngestUnits(s, units, t) {
-  if (!units || !units.length) return;
-  switch (s.proto) {
-    case "midi": for (const u of units) midiByte(s, u & 0xff, t); break;
-    case "dmx512": dmxPacket(s, units, t); break;
-    case "ps2": for (const u of units) ps2Byte(s, u & 0xff, false, t); break;
-    case "uart": for (const u of units) termByte(s, u & 0xff); break;
-    default: return;
-  }
+  const k = VIS_KINDS[s.proto];
+  if (!k || !k.units || !units || !units.length) return;
+  k.units(s, units, t);
   s.updates++;
   s.last = t;
 }
@@ -837,5 +922,5 @@ function layerNotes(s, packets, t) {
 }
 
 if (typeof module !== "undefined" && module.exports)
-  module.exports = { linSpans, midiInstrument, VIS_PROTOS, visNew, visIngest, visIngestUnits, midiNoteName, midiByte, midiExpire, dmxRate, wsColours,
+  module.exports = { linSpans, midiInstrument, VIS_PROTOS, VIS_KINDS, visStreamed, visNew, visIngest, visIngestUnits, midiNoteName, midiByte, midiExpire, dmxRate, wsColours,
     pwmServo, dbcParse, dbcRaw, pdPDO, pdRDO, layerNotes, PS2_LAYOUT, PS2_KEYS };
