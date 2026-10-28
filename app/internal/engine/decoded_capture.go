@@ -215,6 +215,9 @@ func (e *Engine) beginDecodedCapture(ctx context.Context, cfg sramcapture.Config
 		if e.soft != nil {
 			return nil, fmt.Errorf("a decoded stream is already running")
 		}
+		if err := e.decodedTaken(web); err != nil {
+			return nil, err
+		}
 		if cfg.Symbol.Enabled {
 			return nil, fmt.Errorf("the image that triggers this protocol cannot stream its decoded events")
 		}
@@ -303,6 +306,20 @@ func (e *Engine) beginDecodedCapture(ctx context.Context, cfg sramcapture.Config
 		return sramcapture.RecordIdentity{}, err
 	}
 	return value.(sramcapture.RecordIdentity), nil
+}
+
+// decodedTaken refuses a web page's decoded capture while the scope's own
+// stream runs and is read: starting would take the fabric from under its
+// reader ("identity no longer active") and leave the scope with a stream
+// nobody follows. A web session, or the scope's stream gone unread (its
+// reader failed), gives way; the scope's own stream always ends its old
+// session first.
+// TRLC-LINKS: REQ-SDS-013
+func (e *Engine) decodedTaken(web bool) error {
+	if !web || e.decodedSession == nil || e.decodedWeb || time.Since(e.decodedContact) >= decodedOrphanAfter {
+		return nil
+	}
+	return fmt.Errorf("the scope is streaming this bus (BUS Stream): end it there first")
 }
 
 // TRLC-LINKS: REQ-SDS-013

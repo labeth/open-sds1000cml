@@ -317,3 +317,29 @@ func TestScopeKeysEndAWebDecodedCapture(t *testing.T) {
 		}
 	}
 }
+
+// A web page's decoded capture is refused while the scope's own stream runs
+// and is read (it would take the fabric from under the scope's reader); a
+// web session, or the scope's stream gone unread, gives way, and the scope's
+// own start is never refused here.
+// TRLC-LINKS: REQ-SDS-013
+func TestWebDecodedCaptureLeavesTheScopesStream(t *testing.T) {
+	for _, c := range []struct {
+		sessionWeb bool
+		contact    time.Duration
+		web, taken bool
+	}{
+		{false, time.Second, true, true},
+		{false, decodedOrphanAfter + time.Second, true, false},
+		{true, time.Second, true, false},
+		{false, time.Second, false, false},
+	} {
+		e := webSessionEngine(t, c.sessionWeb, c.contact)
+		if err := e.decodedTaken(c.web); (err != nil) != c.taken {
+			t.Errorf("session web %v read %s ago, start web %v: %v, want taken %v", c.sessionWeb, c.contact, c.web, err, c.taken)
+		}
+	}
+	if err := (&Engine{}).decodedTaken(true); err != nil {
+		t.Errorf("no session: %v", err)
+	}
+}
