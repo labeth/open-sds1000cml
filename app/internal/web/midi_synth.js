@@ -101,7 +101,7 @@ function synthCC(sy, ch, cc, val, at) {
     sy.sustain[ch] = val >= 64 ? 1 : 0;
     if (!sy.sustain[ch]) for (const k of [...sy.held]) if (Math.floor(k / 128) === ch) { sy.held.delete(k); synthNoteOff(sy, ch, k % 128, at); }
   } else if (cc === 120 || cc === 123) {
-    for (const [k, v] of [...sy.voices]) if (Math.floor(k / 128) === ch) { synthRelease(sy, v, at, 0.03); sy.voices.delete(k); }
+    for (const [k, v] of [...sy.voices]) if (Math.floor(k / 128) === ch) { synthRelease(sy, v, at, 0.03); synthForget(sy, k); }
   }
 }
 
@@ -130,7 +130,7 @@ const SYNTH_FAMILIES = [
 // TRLC-LINKS: REQ-SDS-279
 function synthNoteOn(sy, ch, note, vel, at) {
   const key = ch * 128 + note, old = sy.voices.get(key);
-  if (old) { synthRelease(sy, old, at, 0.01); sy.voices.delete(key); }
+  if (old) { synthRelease(sy, old, at, 0.01); synthForget(sy, key); }
   sy.held.delete(key);
   while (sy.voices.size >= SYNTH_VOICES && sy.order.length) {
     const k = sy.order.shift(), v = sy.voices.get(k);
@@ -194,6 +194,13 @@ function synthNoteOff(sy, ch, note, at) {
   if (!v) return;
   if (sy.sustain[ch]) { sy.held.add(key); return; }
   synthRelease(sy, v, at, v.rel);
+  synthForget(sy, key);
+}
+
+// synthForget drops a voice ended from the voices and their order (a key is
+// in the order once, as long as its voice sounds).
+// TRLC-LINKS: REQ-SDS-279
+function synthForget(sy, key) {
   sy.voices.delete(key);
   const i = sy.order.indexOf(key);
   if (i >= 0) sy.order.splice(i, 1);

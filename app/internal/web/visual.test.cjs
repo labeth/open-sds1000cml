@@ -13,7 +13,7 @@ const files = ["decode.js", "decode_manchester.js", "decode_sent.js", "decode_ca
   "decode_rfcodes.js", "decode_rfid.js", "decode_wire1.js", "decode_wire2.js", "decode_irmp.js", "visual.js", "audio_decode.js"];
 const c = { console, performance };
 vm.createContext(c);
-vm.runInContext(files.map((f) => fs.readFileSync(f, "utf8")).join("\n;\n") + "\n;globalThis.__ = { VIS_PROTOS, PS2_KEYS, PS2_LAYOUT };", c);
+vm.runInContext(files.map((f) => fs.readFileSync(f, "utf8")).join("\n;\n") + "\n;globalThis.__ = { VIS_PROTOS, VIS_KINDS, VIS_KEEP, PS2_KEYS, PS2_LAYOUT };", c);
 // every state the tests make, kept to draw at the end (a picture of real data)
 const made = [];
 {
@@ -81,6 +81,12 @@ function uartWave(packets, baud, dt, stop, breakS) {
   assert.equal(s.slots, 4);
   assert.equal(s.frames, 2);
   assert.equal(s.sc, 0, "start code 0: levels");
+  // the rate is the bus's: packets 4.3 ms apart within a capture, captures 80 ms apart
+  const q = c.visNew("dmx512");
+  // TRLC-LINKS: REQ-SDS-278
+  const pk = (i0) => [{ i0, i1: i0, kind: "sof", text: "BRK", val: 0 }, { i0, i1: i0, kind: "data", text: "SC00", val: 0 }, { i0, i1: i0, kind: "data", text: "7", val: 7 }];
+  for (let cap = 0; cap < 6; cap++) c.visIngest(q, { ok: true, spans: [...pk(0), ...pk(4300), ...pk(8600)] }, cap * 0.08, 1e-6);
+  assert.ok(Math.abs(c.dmxRate(q) - 1 / 0.0043) < 1, "233 packets/s, not the capture rate: " + c.dmxRate(q));
 }
 
 // ---- PS/2: the scope's keyboard capture, a typed word, a mouse
@@ -105,6 +111,19 @@ function uartWave(packets, baud, dt, stop, breakS) {
   assert.equal(m.btn, 0, "the left button released in the last packet");
   assert.equal(m.trail.length, 3);
   assert.ok(c.__.PS2_LAYOUT.length > 100 && c.__.PS2_KEYS.get("29").label === "Space", "the layout's keys");
+}
+
+// ---- PS/2: the device chosen stays chosen, whatever its bytes vote
+{
+  const s = c.visNew("ps2");
+  s.kind = "mouse"; s.forced = true;
+  for (const b of [0x1c, 0xf0, 0x1c, 0x1c, 0xf0, 0x1c, 0xe0, 0x74, 0xe0, 0xf0, 0x74]) c.ps2Byte(s, b, false, 0);
+  assert.equal(s.kind, "mouse", "forced: a mouse");
+  const u = c.visNew("ps2");
+  for (const b of [0x08, 0x05, 0x02, 0x08, 0x03, 0x01]) c.ps2Byte(u, b, false, 0);
+  for (const b of [0x1c, 0xf0, 0x1c, 0x1c, 0xf0, 0x1c, 0x1c, 0xf0, 0x1c, 0x1c, 0xf0, 0x1c]) c.ps2Byte(u, b, false, 1);
+  assert.equal(u.kind, "kbd");
+  assert.ok(u.trail.length === 0 && u.x === 0, "a keyboard known: the mouse parse of its bytes before is gone");
 }
 
 // ---- IR NEC from the scope: the address and command, then a repeat
@@ -259,6 +278,10 @@ function uartWave(packets, baud, dt, stop, breakS) {
   assert.ok(best < 1e-6, "the left samples are the sine's");
   const r = c.audioStats(a.ch[1], a.raw[1], a.bits);
   assert.ok(Math.abs(r.peakDb - 20 * Math.log10(0.25)) < 0.3, "the right channel's peak at -12 dBFS: " + r.peakDb);
+  // digital silence: the data line held low is silence at the word select's rate, not "not I2S"
+  const q = c.audioFromI2S(ws, ws.map(() => 25), dt, {});
+  assert.ok(q.ok, "silence decodes: " + q.error);
+  assert.ok(Math.abs(q.fs - fs) < 50 && q.still && q.ch[0].every((v) => v === 0), "silence at 48 kHz, said so: " + q.still);
   assert.equal(st.clip, 0);
 }
 
@@ -326,6 +349,77 @@ function uartWave(packets, baud, dt, stop, breakS) {
   assert.ok(Math.abs(a.fs - 48000) < 400, "48 kHz: " + a.fs);
   const st = c.audioStats(a.ch[0], null, 0);
   assert.ok(Math.abs(st.peakDb - 20 * Math.log10(0.5)) < 1.5, "the sine's level comes through: " + st.peakDb);
+}
+
+// ---- every bus's state, fed random spans and stream bytes, never throws and
+// keeps its lists, tables and text bounded (a noisy bus runs for hours)
+{
+  const KINDS = ["data", "data", "data", "sof", "rw", "id", "frame-error", "parity-error", "crc-error"];
+  const TEXTS = ["", "H12", "A04", "C16", "REP", "LDR", "ID02", "CK12", "!CK12", "26b", "F42", "C4660", "12.34mm", "R-5", "F7", "MIN12", "HR3", "DAY9", "SrcCap", "Request", "BRK", "SC00", "RST", "M", "W", "B", "50.0%"];
+  let seed = 11;
+  // TRLC-LINKS: REQ-SDS-278
+  const rnd = (n) => { seed = (seed * 1103515245 + 12345) % 2147483648; return seed % n; };
+  // TRLC-LINKS: REQ-SDS-278
+  const size = (v, path, out, depth) => {
+    if (depth > 4 || v === null || typeof v !== "object") { if (typeof v === "string") out.push([path, v.length, 25000]); return; }
+    if (v instanceof Map || v instanceof Set) { out.push([path, v.size, 2048]); for (const x of v.values()) size(x, path + "[]", out, depth + 1); return; }
+    if (ArrayBuffer.isView(v)) return;
+    if (Array.isArray(v)) { out.push([path, v.length, 4096]); for (const x of v.slice(0, 50)) size(x, path + "[]", out, depth + 1); return; }
+    for (const k of Object.keys(v)) size(v[k], path + "." + k, out, depth + 1);
+  };
+  for (const proto of Object.keys(c.__.VIS_KINDS)) {
+    const s = c.visNew(proto);
+    for (let f = 0; f < 3000; f++) {
+      const spans = [];
+      for (let k = 0, n = 1 + rnd(30); k < n; k++)
+        spans.push({ i0: k * 10, i1: k * 10 + 9, kind: KINDS[rnd(KINDS.length)], text: rnd(3) ? TEXTS[rnd(TEXTS.length)] : String(rnd(1e6)), val: rnd(4) ? rnd(256) : rnd(1 << 29) });
+      c.visIngest(s, { ok: true, spans, meta: { baud: rnd(3) ? 0 : 1 + rnd(1e6), spb: 1 + rnd(100) } }, f * 0.01, 1e-6);
+      if (rnd(3) === 0) c.visIngestUnits(s, Array.from({ length: 1 + rnd(40) }, () => rnd(256)), f * 0.01 + 0.005);
+    }
+    const out = [];
+    size(s, proto, out, 0);
+    for (const [path, n, max] of out) assert.ok(n <= max, path + " grew to " + n + " (bounded to " + max + ")");
+  }
+}
+
+// ---- a table of what a bus sent keeps its newest VIS_KEEP: 5000 CAN ids
+{
+  const s = c.visNew("can"), spans = [];
+  for (let id = 0; id < 5000; id++) spans.push({ i0: id, i1: id, kind: "sof", text: "SOF", val: 0 }, { i0: id, i1: id, kind: "id", text: "", val: id }, { i0: id, i1: id, kind: "data", text: "", val: id & 255 });
+  c.visIngest(s, { ok: true, spans }, 0, 1e-6);
+  assert.equal(s.frames.size, c.__.VIS_KEEP, "the CAN ids kept are bounded");
+  assert.ok(s.frames.has(4999) && !s.frames.has(0), "the newest kept, the oldest gone");
+}
+
+// ---- the synth's voices: random notes, retriggers and controllers keep each
+// voice once in its order, never more than SYNTH_VOICES
+{
+  const sc = { console, performance, Math };
+  vm.createContext(sc);
+  vm.runInContext(fs.readFileSync("midi_synth.js", "utf8") + "\n;globalThis.__s = { synthNew, synthNoteOn, synthNoteOff, synthCC, synthPanic, SYNTH_VOICES };", sc);
+  // TRLC-LINKS: REQ-SDS-279
+  const nop = () => {};
+  // TRLC-LINKS: REQ-SDS-279
+  const param = () => ({ value: 0, setValueAtTime: nop, linearRampToValueAtTime: nop, setTargetAtTime: nop, exponentialRampToValueAtTime: nop, cancelScheduledValues: nop });
+  // TRLC-LINKS: REQ-SDS-279
+  const node = () => ({ gain: param(), frequency: param(), detune: param(), connect: nop, start: nop, stop: nop, type: "" });
+  const S = sc.__s, sy = S.synthNew();
+  sy.ctx = { currentTime: 0, createGain: node, createOscillator: node, createBiquadFilter: node, createBufferSource: node };
+  sy.out = node();
+  let seed = 7;
+  // TRLC-LINKS: REQ-SDS-279
+  const rnd = (n) => { seed = (seed * 1103515245 + 12345) % 2147483648; return seed % n; };
+  for (let i = 0; i < 20000; i++) {
+    const ch = rnd(3), note = 40 + rnd(24), r = rnd(10);
+    if (r < 5) S.synthNoteOn(sy, ch, note, 80, i * 0.01);
+    else if (r < 9) S.synthNoteOff(sy, ch, note, i * 0.01);
+    else S.synthCC(sy, ch, [64, 64, 123][rnd(3)], rnd(128), i * 0.01);
+    if (sy.order.length !== new Set(sy.order).size) assert.fail("a key twice in the order at step " + i);
+    for (const k of sy.order) if (!sy.voices.has(k)) assert.fail("the order holds a voice ended at step " + i);
+    if (sy.voices.size > S.SYNTH_VOICES) assert.fail("more voices than SYNTH_VOICES at step " + i);
+  }
+  S.synthPanic(sy);
+  assert.equal(sy.voices.size + sy.order.length, 0, "All notes off leaves none");
 }
 
 // ---- every bus has a view, and every view draws ----------------------------------------

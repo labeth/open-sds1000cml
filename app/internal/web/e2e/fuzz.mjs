@@ -188,6 +188,32 @@ const ACTIONS = [
   { name: "bus-view", w: 2, run: async (op) => "busView=" + (await selRandom(op, "busView")) },
   // TRLC-LINKS: REQ-SDS-180
   { name: "meas-view", w: 1, run: async (op) => "measView=" + (await selRandom(op, "measView")) },
+  // BUS's Visual view: one of its side panel's controls (Sound, notes, Gap-free,
+  // Digital audio, Capture, Back to the bus, ...) or Full screen. Gap-free and a
+  // capture legitimately hold the frames (the scope streams, or steps its timebase).
+  {
+    // TRLC-LINKS: REQ-SDS-180, REQ-SDS-278
+    name: "visual-control", w: 2, hold: true, run: async (op) => {
+      await op.page.click("#tab-bus", { timeout: 6000 });
+      const vb = await op.page.$('#busView > button[data-value="visual"]');
+      if (vb && (await vb.isVisible())) await vb.click({ timeout: 6000 });
+      const el = await anyVisible(op, "#visSide button, #visSide select, #visFull");
+      if (!el) return "no Visual control";
+      const id = await el.evaluate((e) => e.id || e.textContent);
+      if (await el.evaluate((e) => e.tagName === "SELECT")) {
+        const v = await el.evaluate((e, r) => { const o = [...e.options]; return o[Math.floor(r * o.length)].value; }, rng());
+        await el.selectOption(v);
+        return "visual " + id + "=" + v;
+      }
+      await el.click({ timeout: 6000 });
+      if (id === "visFull") { // full screen comes a moment after the click; leave it (Esc does for a person)
+        await op.page.waitForFunction(() => !!document.fullscreenElement, null, { timeout: 3000 }).catch(() => {});
+        await op.page.evaluate(() => document.fullscreenElement && document.exitFullscreen());
+        await op.page.waitForFunction(() => !document.fullscreenElement, null, { timeout: 3000 });
+      }
+      return "visual " + id;
+    },
+  },
   // panes: collapse/expand a pane, maximize one and restore (the trace canvas
   // follows every size change)
   {

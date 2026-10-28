@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"net/http/httptest"
 	"os/exec"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -88,13 +89,13 @@ func TestRecordServesAWholeSampledRecord(t *testing.T) {
 	if sc.leasedAt() != 2e-8 {
 		t.Fatalf("leased %g, want 2e-8", sc.leasedAt())
 	}
-	// no record that fine within the wait: a timeout naming why
+	// no record that fine within the wait: a conflict naming why
 	sc2 := &recordScope{fakeScope: &fakeScope{}, never: true}
 	sc2.init()
 	rec = httptest.NewRecorder()
 	New(sc2, nil, nil, nil).Handler().ServeHTTP(rec, httptest.NewRequest("GET", "/api/record.bin?sample_s=2e-8&wait_ms=300", nil))
-	if rec.Code != 504 {
-		t.Fatalf("no record: code %d", rec.Code)
+	if rec.Code != 409 || !strings.Contains(rec.Body.String(), "err") {
+		t.Fatalf("no record: code %d %s", rec.Code, rec.Body.String())
 	}
 	rec = httptest.NewRecorder()
 	New(sc2, nil, nil, nil).Handler().ServeHTTP(rec, httptest.NewRequest("GET", "/api/record.bin?sample_s=0", nil))

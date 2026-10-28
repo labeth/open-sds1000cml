@@ -44,11 +44,11 @@ visKind(["midi"], {
 visKind(["dmx512"], {
   title: "DMX512 levels",
   // TRLC-LINKS: REQ-SDS-278
-  make: () => ({ levels: new Uint8Array(512), changed: new Float64Array(512), slots: 0, sc: -1, frames: 0, times: [] }),
+  make: () => ({ levels: new Uint8Array(512), changed: new Float64Array(512), slots: 0, sc: -1, frames: 0, times: [], lastT: -Infinity }),
   // TRLC-LINKS: REQ-SDS-278
   spans: (s, spans, tOf) => dmxSpans(s, spans, tOf),
   // TRLC-LINKS: REQ-SDS-278
-  units: (s, units, t) => dmxPacket(s, units, t),
+  units: (s, units, t) => dmxPacket(s, units, t, true),
 });
 visKind(["ps2"], {
   // TRLC-LINKS: REQ-SDS-278
@@ -78,13 +78,13 @@ visKind(["pwm"], {
 });
 visKind(["quad"], {
   // TRLC-LINKS: REQ-SDS-278
-  title: "Encoder position", make: () => ({ pos: 0, fwd: true, speed: 0, hist: [] }),
+  title: "Encoder position", make: () => ({ pos: 0, fwd: true, speed: 0, hist: [], lastCount: 0 }),
   // TRLC-LINKS: REQ-SDS-278
   spans: (s, spans, tOf) => stepSpans(s, spans, tOf),
 });
 visKind(["stepper"], {
   // TRLC-LINKS: REQ-SDS-278
-  title: "Stepper position", make: () => ({ pos: 0, fwd: true, speed: 0, hist: [] }),
+  title: "Stepper position", make: () => ({ pos: 0, fwd: true, speed: 0, hist: [], lastCount: 0 }),
   // TRLC-LINKS: REQ-SDS-278
   spans: (s, spans, tOf) => stepSpans(s, spans, tOf),
 });
@@ -146,6 +146,19 @@ const VIS_PROTOS = Object.fromEntries(Object.entries(VIS_KINDS).map(([n, k]) => 
 // TRLC-LINKS: REQ-SDS-278
 function visStreamed(proto) { const k = VIS_KINDS[proto]; return !!(k && k.units); }
 
+// VIS_KEEP is the most entries a table of what a bus sent keeps (its ids,
+// buttons, cards, a layer's rows): the newest, a noisy bus's garbage not
+// growing it for ever.
+const VIS_KEEP = 512;
+
+// visKeep sets a table's entry as its newest, the oldest dropped past VIS_KEEP.
+// TRLC-LINKS: REQ-SDS-278
+function visKeep(m, key, v) {
+  m.delete(key);
+  m.set(key, v);
+  if (m.size > VIS_KEEP) m.delete(m.keys().next().value);
+}
+
 // visNew is a protocol's empty state: what the view draws, before any data;
 // a bus the view has no picture of keeps a protocol layer's values.
 // TRLC-LINKS: REQ-SDS-278
@@ -202,11 +215,22 @@ function midiNoteName(n) { return MIDI_NOTE_NAMES[n % 12] + (Math.floor(n / 12) 
 // TRLC-LINKS: REQ-SDS-278, REQ-SDS-279
 function midiNew() {
   return {
-    run: 0, need: 0, data: [], sysex: null,
+    run: 0, need: 0, data: [], sysex: null, sysexN: 0,
     held: new Map(), roll: [], log: [], out: [],
     prog: new Uint8Array(16), cc: Array.from({ length: 16 }, () => new Uint8Array(128)), bend: new Float32Array(16),
     clocks: 0, msgs: 0, errs: 0,
   };
+}
+
+// MIDI_OUT is the most events kept for the synth (it takes them each frame;
+// one not playing keeps the newest).
+const MIDI_OUT = 2048;
+
+// midiOut queues an event for the synth, the oldest dropped past MIDI_OUT.
+// TRLC-LINKS: REQ-SDS-279
+function midiOut(m, e) {
+  m.out.push(e);
+  if (m.out.length > MIDI_OUT) m.out.splice(0, m.out.length - MIDI_OUT);
 }
 
 // MIDI_ROLL is how many notes the piano roll keeps; MIDI_LOG how many messages.
@@ -238,13 +262,13 @@ function midiByte(m, b, t) {
     return;
   }
   if (b >= 0x80) {
-    if (m.sysex && b === 0xF7) { midiLog(m, t, "SYSEX " + m.sysex.length + " bytes: " + m.sysex.slice(0, 12).map(visHex2).join(" ") + (m.sysex.length > 12 ? " .." : "")); m.sysex = null; m.run = 0; return; }
-    m.sysex = b === 0xF0 ? [] : null;
+    if (m.sysex && b === 0xF7) { midiLog(m, t, "SYSEX " + m.sysexN + " bytes: " + m.sysex.slice(0, 12).map(visHex2).join(" ") + (m.sysexN > 12 ? " .." : "")); m.sysex = null; m.run = 0; return; }
+    m.sysex = b === 0xF0 ? [] : null; m.sysexN = 0;
     m.run = b; m.need = midiLen(b); m.data = [];
     if (m.need === 0 && b >= 0xF0) { midiMsg(m, b, [], t); m.run = 0; }
     return;
   }
-  if (m.sysex) { if (m.sysex.length < 4096) m.sysex.push(b); return; }
+  if (m.sysex) { m.sysexN++; if (m.sysex.length < 64) m.sysex.push(b); return; } // its first bytes kept, all counted
   if (!m.run || m.need <= 0) { m.errs++; return; } // data with no status before it
   m.data.push(b);
   if (m.data.length < m.need) return;
@@ -272,21 +296,21 @@ function midiMsg(m, st, d, t) {
     m.held.set(ch * 128 + d[0], n);
     m.roll.push(n);
     if (m.roll.length > MIDI_ROLL) m.roll.splice(0, m.roll.length - MIDI_ROLL);
-    m.out.push({ type: "on", ch, note: d[0], vel: d[1], t });
+    midiOut(m, { type: "on", ch, note: d[0], vel: d[1], t });
     return;
   }
   if (kind === 0x8 || kind === 0x9) { midiNoteOff(m, ch, d[0], t); return; }
   if (kind === 0xB) {
     m.cc[ch][d[0]] = d[1];
-    m.out.push({ type: "cc", ch, cc: d[0], val: d[1], t });
+    midiOut(m, { type: "cc", ch, cc: d[0], val: d[1], t });
     midiLog(m, t, "CC" + (ch + 1) + " " + d[0] + " = " + d[1] + (MIDI_CC_NAMES[d[0]] ? " (" + MIDI_CC_NAMES[d[0]] + ")" : ""));
     if (d[0] === 120 || d[0] === 123) midiAllOff(m, t, ch);
     return;
   }
-  if (kind === 0xC) { m.prog[ch] = d[0]; m.out.push({ type: "pc", ch, prog: d[0], t }); midiLog(m, t, "PROGRAM" + (ch + 1) + " " + (d[0] + 1)); return; }
+  if (kind === 0xC) { m.prog[ch] = d[0]; midiOut(m, { type: "pc", ch, prog: d[0], t }); midiLog(m, t, "PROGRAM" + (ch + 1) + " " + (d[0] + 1)); return; }
   if (kind === 0xE) {
     m.bend[ch] = ((d[0] | (d[1] << 7)) - 8192) / 8192;
-    m.out.push({ type: "bend", ch, val: m.bend[ch], t });
+    midiOut(m, { type: "bend", ch, val: m.bend[ch], t });
     return;
   }
   if (kind === 0xA) { midiLog(m, t, "AFTERTOUCH" + (ch + 1) + " " + midiNoteName(d[0]) + " " + d[1]); return; }
@@ -307,7 +331,7 @@ function midiNoteOff(m, ch, note, t) {
   if (!n) return;
   n.t1 = t;
   m.held.delete(k);
-  m.out.push({ type: "off", ch, note, t });
+  midiOut(m, { type: "off", ch, note, t });
 }
 
 // midiAllOff ends every note held (on one channel, or all).
@@ -332,9 +356,10 @@ function midiExpire(m, t) {
 // the slots in order (a slot read wrong keeps its last level).
 // TRLC-LINKS: REQ-SDS-278
 function dmxSpans(s, spans, tOf) {
-  let slot = -1, t = 0, vals = null;
+  let slot = -1, t = 0, vals = null, run = false;
+  // a frame's first packet follows a gap (the capture's); the next ones it holds follow it at once
   // TRLC-LINKS: REQ-SDS-278
-  const done = () => { if (vals) dmxPacket(s, vals, t); vals = null; };
+  const done = () => { if (vals) { dmxPacket(s, vals, t, run); run = true; } vals = null; };
   for (const sp of spans) {
     if (sp.kind === "sof") { done(); slot = 0; vals = []; t = tOf(sp.i0); continue; }
     if (slot < 0 || (sp.kind !== "data" && sp.kind !== "frame-error")) continue;
@@ -344,15 +369,17 @@ function dmxSpans(s, spans, tOf) {
   done();
 }
 
-// dmxPacket takes one packet: its start code and slots (-1: read wrong).
-// Only a start code of 0 carries levels; another (RDM, text) is counted.
+// dmxPacket takes one packet: its start code and slots (-1: read wrong),
+// at t; next: it came right after the one before (the same capture, or the
+// stream), so their interval is the bus's. Only a start code of 0 carries
+// levels; another (RDM, text) is counted.
 // TRLC-LINKS: REQ-SDS-278
-function dmxPacket(s, vals, t) {
+function dmxPacket(s, vals, t, next) {
   if (!vals.length) return;
   s.sc = vals[0];
   s.frames++;
-  s.times.push(t);
-  if (s.times.length > 50) s.times.shift();
+  if (next && t > s.lastT) { s.times.push(t - s.lastT); if (s.times.length > 50) s.times.shift(); }
+  s.lastT = t;
   if (vals[0] !== 0) return;
   for (let i = 1; i < vals.length && i <= 512; i++) {
     const v = vals[i];
@@ -362,13 +389,13 @@ function dmxPacket(s, vals, t) {
   s.slots = Math.max(s.slots, Math.min(512, vals.length - 1));
 }
 
-// dmxRate is the packets a second the stamps show (0: too few).
+// dmxRate is the bus's packets a second: one over the median interval of
+// packets that came one right after the other (0: none yet).
 // TRLC-LINKS: REQ-SDS-278
 function dmxRate(s) {
-  const n = s.times.length;
-  if (n < 3) return 0;
-  const span = s.times[n - 1] - s.times[0];
-  return span > 0 ? (n - 1) / span : 0;
+  if (!s.times.length) return 0;
+  const m = Float64Array.from(s.times).sort()[s.times.length >> 1];
+  return m > 0 ? 1 / m : 0;
 }
 
 // ---- PS/2 ------------------------------------------------------------------------
@@ -379,7 +406,7 @@ function dmxRate(s) {
 // TRLC-LINKS: REQ-SDS-278
 function ps2New() {
   return {
-    kind: "", kbdVotes: 0, mouseVotes: 0, lastHost: -1, idNext: false, wheel: false,
+    kind: "", forced: false, kbdVotes: 0, mouseVotes: 0, lastHost: -1, idNext: false, wheel: false,
     ext: false, brk: false, skip: 0, keys: new Set(), typed: "", lastKey: "", shift: false, caps: false,
     pkt: [], x: 0, y: 0, btn: 0, trail: [], wheelPos: 0,
   };
@@ -410,7 +437,13 @@ function ps2Byte(s, b, host, t) {
   if (b === 0xF0 || b === 0xE0) s.kbdVotes++;
   if (s.kind !== "kbd") ps2Mouse(s, b, t);
   if (s.kind !== "mouse") ps2Key(s, b, t);
-  s.kind = s.kbdVotes >= s.mouseVotes + 3 ? "kbd" : s.mouseVotes >= s.kbdVotes + 3 ? "mouse" : s.kind;
+  const was = s.kind;
+  if (!s.forced) s.kind = s.kbdVotes >= s.mouseVotes + 3 ? "kbd" : s.mouseVotes >= s.kbdVotes + 3 ? "mouse" : s.kind;
+  // known now: what the other parse made of the bytes before is not the device's
+  if (s.kind !== was) {
+    if (s.kind === "kbd") Object.assign(s, { pkt: [], x: 0, y: 0, btn: 0, trail: [], wheelPos: 0 });
+    else Object.assign(s, { keys: new Set(), typed: "", lastKey: "", shift: false, caps: false, ext: false, brk: false, skip: 0 });
+  }
 }
 
 // ps2Key reads a scan code (set 2): E0 an extended key's prefix, F0 a
@@ -571,7 +604,7 @@ function irButton(s, f) {
   const key = f.addr + "/" + f.cmd;
   const b = s.buttons.get(key) || { addr: f.addr, cmd: f.cmd, count: 0, t: 0, repeats: 0, name: f.name };
   b.count++; b.t = f.t; b.repeats = 0;
-  s.buttons.set(key, b);
+  visKeep(s.buttons, key, b);
   s.lastBtn = b;
 }
 
@@ -621,7 +654,8 @@ function stepSpans(s, spans, tOf) {
     end = tOf(sp.i0);
   }
   if (!n) return;
-  s.pos += last;
+  s.pos += last; // the steps the captures saw: those between captures are not
+  s.lastCount = last;
   s.speed = n > 1 && end > first ? (s.fwd ? 1 : -1) * (n - 1) / (end - first) : 0;
   s.hist.push({ t: end, v: s.pos });
   if (s.hist.length > 300) s.hist.shift();
@@ -785,7 +819,7 @@ function wiegandSpans(s, spans, tOf) {
       const key = cur.bits + "/" + cur.fac + "/" + cur.card;
       const c = s.cards.get(key) || Object.assign({ count: 0 }, cur);
       c.count++; c.t = cur.t;
-      s.cards.set(key, c);
+      visKeep(s.cards, key, c);
       s.lastCard = c;
       cur = null;
     }
@@ -848,7 +882,7 @@ function canSpans(s, spans, tOf) {
   // TRLC-LINKS: REQ-SDS-278
   const done = () => {
     if (!cur || cur.bad || cur.id < 0) { cur = null; return; }
-    s.frames.set(cur.id, { bytes: cur.bytes, t: cur.t, count: ((s.frames.get(cur.id) || {}).count || 0) + 1 });
+    visKeep(s.frames, cur.id, { bytes: cur.bytes, t: cur.t, count: ((s.frames.get(cur.id) || {}).count || 0) + 1 });
     const msg = s.dbc && s.dbc.get(cur.id);
     if (msg) {
       const muxSig = msg.signals.find((g) => g.mux === "M");
@@ -860,7 +894,7 @@ function canSpans(s, spans, tOf) {
         e.v = v; e.t = cur.t;
         e.hist.push({ t: cur.t, v });
         if (e.hist.length > 400) e.hist.shift();
-        s.sigs.set(key, e);
+        visKeep(s.sigs, key, e);
       }
     }
     cur = null;
@@ -885,7 +919,7 @@ function linSpans(s, spans, tOf) {
   const done = (last) => {
     if (cur && cur.id >= 0 && cur.ck) {
       if (cur.bad) { if (!last) s.errs++; }
-      else s.frames.set(cur.id, { bytes: cur.bytes, t: cur.t, count: ((s.frames.get(cur.id) || {}).count || 0) + 1 });
+      else visKeep(s.frames, cur.id, { bytes: cur.bytes, t: cur.t, count: ((s.frames.get(cur.id) || {}).count || 0) + 1 });
     }
     cur = null;
   };
@@ -916,11 +950,11 @@ function layerNotes(s, packets, t) {
     e.note = p.note; e.t = t; e.count++; e.err = !!p.noteErr;
     e.v = nums.length ? nums[nums.length - 1] : NaN;
     if (Number.isFinite(e.v)) { e.hist.push({ t, v: e.v }); if (e.hist.length > 300) e.hist.shift(); }
-    s.notes.set(key, e);
+    visKeep(s.notes, key, e);
   }
   if (s.notes.size > 200) s.notes.delete(s.notes.keys().next().value);
 }
 
 if (typeof module !== "undefined" && module.exports)
-  module.exports = { linSpans, midiInstrument, VIS_PROTOS, VIS_KINDS, visStreamed, visNew, visIngest, visIngestUnits, midiNoteName, midiByte, midiExpire, dmxRate, wsColours,
+  module.exports = { visKeep, VIS_KEEP, linSpans, midiInstrument, VIS_PROTOS, VIS_KINDS, visStreamed, visNew, visIngest, visIngestUnits, midiNoteName, midiByte, midiExpire, dmxRate, wsColours,
     pwmServo, dbcParse, dbcRaw, pdPDO, pdRDO, layerNotes, PS2_LAYOUT, PS2_KEYS };

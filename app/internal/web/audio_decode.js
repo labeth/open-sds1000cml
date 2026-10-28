@@ -55,9 +55,16 @@ function audioFromSPDIF(r) {
 // TRLC-LINKS: REQ-SDS-280
 function audioFromI2S(ws, sd, dt, opts) {
   opts = opts || {};
-  const W = sliceChannel(ws, {}), D = sliceChannel(sd, {});
+  const W = sliceChannel(ws, {});
   if (!W.ok) return { ok: false, error: "word select: " + W.reason };
-  if (!D.ok) return { ok: false, error: "data: " + D.reason };
+  // the data at the word select's levels; one holding still (digital
+  // silence) read as its level against the word select's threshold
+  let D = sliceChannel(sd, {});
+  if (!D.ok) D = sliceChannel(sd, { threshold: W.threshold });
+  if (!D.ok) {
+    if (!sd || sd.length !== ws.length) return { ok: false, error: "data: " + D.reason };
+    D = { ok: true, n: sd.length, codes: sd, threshold: W.threshold, edges: [] };
+  }
   const E = W.edges;
   if (E.length < 8) return { ok: false, error: "too few word-select edges" };
   const half = [];
@@ -80,10 +87,16 @@ function audioFromI2S(ws, sd, dt, opts) {
     }
     return n ? hit / n : -1;
   };
-  const slots = [16, 24, 32].map((s) => ({ s, q: score(s) }));
-  const best = Math.max(...slots.map((x) => x.q));
-  if (!(best > 0.6)) return { ok: false, error: "the data does not keep to a bit grid of the word select (is it I2S?)" };
-  const slot = slots.filter((x) => x.q >= best - 0.03).sort((a, b) => a.s - b.s)[0].s;
+  // the slot width from the data's edges; data with too few edges to tell
+  // (silence, a constant) takes the width asked, else 32
+  const still = D.edges.length < 8;
+  let slot = opts.slot > 0 ? opts.slot : 32, best = NaN;
+  if (!still) {
+    const slots = [16, 24, 32].map((s) => ({ s, q: score(s) }));
+    best = Math.max(...slots.map((x) => x.q));
+    if (!(best > 0.6)) return { ok: false, error: "the data does not keep to a bit grid of the word select (is it I2S?)" };
+    slot = slots.filter((x) => x.q >= best - 0.03).sort((a, b) => a.s - b.s)[0].s;
+  }
   const bit = P / (2 * slot), delay = opts.lj ? 0 : 1;
   const bits = opts.bits > 0 ? Math.min(opts.bits, slot) : slot;
   const ch = [[], []], raw = [[], []];
@@ -103,7 +116,8 @@ function audioFromI2S(ws, sd, dt, opts) {
   const n = Math.min(ch[0].length, ch[1].length);
   if (n < 8) return { ok: false, error: "too few I2S frames" };
   return { ok: true, kind: opts.lj ? "Left-justified" : "I2S", fs: 1 / (P * dt), bits, slot,
-    ch: [Float32Array.from(ch[0].slice(0, n)), Float32Array.from(ch[1].slice(0, n))], raw: [raw[0].slice(0, n), raw[1].slice(0, n)], errs: 0, gridFit: best };
+    ch: [Float32Array.from(ch[0].slice(0, n)), Float32Array.from(ch[1].slice(0, n))], raw: [raw[0].slice(0, n), raw[1].slice(0, n)], errs: 0, gridFit: best,
+    still: still ? "the data line holds still: digital silence (its slot width cannot be told)" : "" };
 }
 
 // PDM_DECIM is PDM's decimation to PCM: 64, a 3.072 MHz clock to 48 kHz.

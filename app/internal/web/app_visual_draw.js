@@ -297,6 +297,7 @@ function visDrawDial(g, W, H, s) {
   g.fillText(String(s.pos), W * 0.72, H * 0.35);
   g.font = Math.round(12 * dpr) + "px monospace"; g.fillStyle = "#8b98a5";
   g.fillText((s.fwd ? "forward" : "reverse") + " · " + Math.abs(s.speed).toFixed(0) + " steps/s", W * 0.72, H * 0.5);
+  g.fillText("counted in the captures (not between them)", W * 0.72, H * 0.5 + 16 * dpr);
   if (s.hist.length > 1) visSpark(g, W * 0.52, H * 0.6, W * 0.45, H * 0.3, s.hist, "#81c784");
 }
 
@@ -424,7 +425,9 @@ const VIS_VIEWS = {
     controls: () => '<div class="r"><label class="hl"><span class="lbl">device</span><select id="visPs2" aria-label="PS/2 device"><option value="">by its bytes</option><option value="kbd">keyboard</option><option value="mouse">mouse</option></select></label></div>',
     // TRLC-LINKS: REQ-SDS-278
     wire: (s, on) => {
-      on("visPs2", "onchange", () => { vis.ps2Kind = $("visPs2").value; vis.s.kind = vis.ps2Kind; visDraw(true); });
+      // the device chosen, or (by its bytes) the one its bytes vote for from here
+      // TRLC-LINKS: REQ-SDS-278
+      on("visPs2", "onchange", () => { vis.ps2Kind = $("visPs2").value; vis.s.kind = vis.ps2Kind; vis.s.forced = !!vis.ps2Kind; visDraw(true); });
       if ($("visPs2")) $("visPs2").value = vis.ps2Kind;
     },
   },
@@ -541,7 +544,10 @@ function visDrawIR(g, W, H, s) {
 
 // visDialFigures are an encoder's or a stepper's figures.
 // TRLC-LINKS: REQ-SDS-278
-function visDialFigures(s) { return visTab([["position", s.pos], ["direction", s.fwd ? "forward" : "reverse"], ["speed", Math.abs(s.speed).toFixed(1) + " steps/s"]]); }
+function visDialFigures(s) {
+  return visTab([["counted", s.pos], ["last capture", (s.lastCount > 0 ? "+" : "") + s.lastCount], ["direction", s.fwd ? "forward" : "reverse"], ["speed", Math.abs(s.speed).toFixed(1) + " steps/s"]]) +
+    '<div class="sub">The count adds up what each capture saw; steps between captures are not seen.</div>';
+}
 
 // visZeroControl is Zero, setting an encoder's or a stepper's count to 0.
 // TRLC-LINKS: REQ-SDS-278

@@ -191,14 +191,16 @@ function busSetView(v, byScope) {
   if (v === "packets") { busRenderedV = -1; busRenderTable(); }
   if (v === "visual" && typeof visDraw === "function") {
     if (!vis.s || vis.proto !== dcfg.proto) visReset();
-    // MIDI is music: follow the scope's gap-free stream (once; the button turns it off)
-    if (dcfg.proto === "midi" && !vis.autoStream && !busScopeStreaming()) { vis.autoStream = true; visAskStream(true); }
+    // MIDI is music: follow the scope's gap-free stream, unless Gap-free was turned off here
+    if (dcfg.proto === "midi" && vis.gapless !== false && !busScopeStreaming()) { vis.autoStream = true; visAskStream(true); }
     visSide(true); setTimeout(() => visDraw(true), 30);
   }
   if (!byScope && v === "stream") busAskStream(true);
-  // the Visual view follows the stream of a bus it reads byte for byte: it keeps it
-  const keep = v === "visual" && typeof visStreamed === "function" && visStreamed(dcfg.proto);
-  if (!byScope && was === "stream" && v !== "stream" && !keep) busAskStream(false);
+  // the Stream view and the Visual view of a bus it reads byte for byte follow
+  // the scope's stream: going between them keeps it, leaving them ends it
+  // TRLC-LINKS: REQ-SDS-228, REQ-SDS-278
+  const follows = (x) => x === "stream" || (x === "visual" && typeof visStreamed === "function" && visStreamed(dcfg.proto));
+  if (!byScope && follows(was) && !follows(v) && (was === "stream" || busScopeStreaming())) busAskStream(false);
   busScopeStream();
 }
 

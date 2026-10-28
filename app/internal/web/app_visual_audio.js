@@ -83,7 +83,7 @@ async function visAudioCapture() {
     if (!(a.sampleS > 0) || Math.abs(better - a.sampleS) > 0.2 * a.sampleS) a.sampleS = better;
     res.stats = res.ch.map((x, i) => audioStats(x, res.raw && res.raw[i], res.bits));
     res.durS = res.ch[0].length / res.fs;
-    visAudioMsg(res.kind + " · " + eng(res.fs, "Hz", 4) + " · " + eng(res.durS, "s", 3) + " of audio from a record of " + rec.n + " samples");
+    visAudioMsg(res.kind + " · " + eng(res.fs, "Hz", 4) + " · " + eng(res.durS, "s", 3) + " of audio from a record of " + rec.n + " samples" + (res.still ? " · " + res.still : ""));
     if (a.play) visAudioPlay(true);
     visDraw(true);
   } finally {

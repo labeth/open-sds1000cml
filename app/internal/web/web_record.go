@@ -91,9 +91,14 @@ func (s *Server) hRecord(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if !got {
+		// the scope's state, not the server, keeps the record from coming: a conflict, said why
+		why := "no record sampled that finely came in time: a waiting or streaming scope captures none, and the memory bounds the record (a slower timebase at this rate does not fit)"
+		if !s.sc.Snapshot().Running {
+			why = "the scope is stopped: it captures no record (Run it)"
+		}
 		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusGatewayTimeout)
-		_ = json.NewEncoder(w).Encode(recordReply{Err: "no record sampled that finely came in time: a stopped or waiting scope captures none, and the memory bounds the record (a slower timebase at this rate does not fit)"})
+		w.WriteHeader(http.StatusConflict)
+		_ = json.NewEncoder(w).Encode(recordReply{Err: why})
 		return
 	}
 	off, vpc := s.vertScales()

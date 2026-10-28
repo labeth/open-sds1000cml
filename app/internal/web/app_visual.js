@@ -13,7 +13,7 @@ const vis = {
   stream: { next: -1, busy: false, s0: NaN, t0: NaN, rate: 0, on: false },
   wsOrder: "GRB", ps2Kind: "", dbcText: "", dbcName: "", canPick: new Set(),
   audio: { on: false, kind: "auto", res: null, busy: false, live: false, play: null, gain: 0.6, prevTdiv: 0, sampleS: 0, msg: "" },
-  drawT: 0, midiLead: 0, autoStream: false,
+  drawT: 0, midiLead: 0, autoStream: false, gapless: null, // gapless: Gap-free as last set here (null: never)
 };
 
 // visShown reports the Visual view on screen.
@@ -27,7 +27,7 @@ function visReset() {
   vis.proto = dcfg.proto;
   vis.s = visNew(dcfg.proto === "usb" ? "usbls" : dcfg.proto);
   if (vis.s.proto === "can" && vis.dbcText) vis.s.dbc = dbcParse(vis.dbcText);
-  if (vis.s.proto === "ps2" && vis.ps2Kind) vis.s.kind = vis.ps2Kind;
+  if (vis.s.proto === "ps2" && vis.ps2Kind) { vis.s.kind = vis.ps2Kind; vis.s.forced = true; }
   vis.layer = visNew("layer");
   vis.seq = -1;
   vis.stream.next = -1;
@@ -181,8 +181,10 @@ function visControls(p) {
 function visWire(p) {
   // TRLC-LINKS: REQ-SDS-278
   const on = (id, ev, fn) => { const el = $(id); if (el) el[ev] = fn; };
-  on("visGapless", "onclick", () => { visAskStream(!vis.stream.on); $("visGapless").classList.toggle("on", !vis.stream.on); });
-  on("visAudio", "onclick", () => { vis.audio.on = true; visSide(true); visDraw(true); });
+  on("visGapless", "onclick", () => { vis.gapless = !vis.stream.on; visAskStream(vis.gapless); $("visGapless").classList.toggle("on", vis.gapless); });
+  // the audio is read from a captured record: a streaming scope captures none, so its stream ends
+  // TRLC-LINKS: REQ-SDS-278, REQ-SDS-280
+  on("visAudio", "onclick", () => { if (busScopeStreaming()) visAskStream(false); vis.audio.on = true; visSide(true); visDraw(true); });
   const v = visView(p);
   if (v && v.wire && !vis.audio.on) v.wire(vis.s, on);
   if (vis.audio.on) visAudioWire(on);

@@ -45,6 +45,18 @@ run(async (t) => {
     // the scope goes on its stream; this one has nothing in it: back to its captures for the rest
     await t.until(async () => await ev(() => busScopeStreaming()), "the scope streams the bus", 8000);
     await t.until(async () => await ev(() => vis.stream.on), "the view follows the stream", 3000);
+    // Packets does not follow the stream: leaving Visual for it ends the stream; Visual again starts it
+    await page.click('#busView button[data-value="packets"]');
+    await t.until(async () => await ev(() => !busScopeStreaming()), "leaving Visual for Packets ends the scope's stream", 8000);
+    await page.click('#busView button[data-value="visual"]');
+    await t.until(async () => await ev(() => busScopeStreaming()), "back in Visual, MIDI streams again", 8000);
+    // Digital audio reads a captured record: opening it ends the stream; Back to the bus
+    await page.click("#visAudio");
+    await t.until(async () => await ev(() => !busScopeStreaming()), "Digital audio ends the scope's stream (a streaming scope captures no record)", 8000);
+    await page.click("#visAOff");
+    await page.click('#busView button[data-value="packets"]');
+    await page.click('#busView button[data-value="visual"]');
+    await t.until(async () => await ev(() => busScopeStreaming()), "Visual again: MIDI streams", 8000);
     await page.click("#visGapless");
     await t.until(async () => await ev(() => !busScopeStreaming() && !vis.stream.on), "Gap-free off goes back to the captures", 8000);
     await t.until(async () => (await px([0.05, 0.12])) > 0, "E4's key lights in channel 1's colour as it plays", 9000);
