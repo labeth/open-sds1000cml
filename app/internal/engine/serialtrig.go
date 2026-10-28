@@ -15,6 +15,7 @@ package engine
 import (
 	"math"
 	"sync"
+	"time"
 
 	"open-sds/app/internal/decode"
 )
@@ -183,24 +184,40 @@ func (e *Engine) SetSerialMode(m int) {
 }
 
 // autoGateLiveness is AUTO's rule for a capture the armed serial or zone gate
-// rejected, in the SRAM loop (engine_loop.go applies the same rule inline):
-// hold it, but let one liveness frame through every serialFallback or
-// zoneFallback holds. With no gate armed every capture publishes. Engine
-// goroutine only.
+// rejected, in the SRAM loop (engine_loop.go applies the same rule): hold
+// it, but let a liveness frame through (autoLivenessDue). With no gate armed
+// every capture publishes. Engine goroutine only.
 // TRLC-LINKS: REQ-SDS-013
 func (e *Engine) autoGateLiveness() bool {
 	switch {
 	case e.serialMode.Load() == SerialTrigger:
-		if e.serialHeld++; e.serialHeld < serialFallback {
-			return false
-		}
-		e.serialHeld = 0
+		return e.autoLivenessDue(&e.serialHeld, serialFallback)
 	case e.zoneMode.Load() == ZoneTrigger:
-		if e.zoneHeld++; e.zoneHeld < zoneFallback {
+		return e.autoLivenessDue(&e.zoneHeld, zoneFallback)
+	}
+	return true
+}
+
+// autoLiveMax is the longest AUTO holds the frames a gate rejects: a slow
+// timebase's captures come seconds apart, so counting fallback holds alone
+// kept the screen still for minutes.
+const autoLiveMax = time.Second
+
+// autoLivenessDue counts one capture a gate held in AUTO (held its counter)
+// and reports a liveness frame due: every fallback holds, or autoLiveMax
+// after the last frame published (none yet: at once). Engine goroutine only.
+// TRLC-LINKS: REQ-SDS-013
+func (e *Engine) autoLivenessDue(held *int, fallback int) bool {
+	*held++
+	if *held < fallback {
+		e.mu.Lock()
+		last := e.lastPublish
+		e.mu.Unlock()
+		if !last.IsZero() && e.clk.Now().Sub(last) < autoLiveMax {
 			return false
 		}
-		e.zoneHeld = 0
 	}
+	*held = 0
 	return true
 }
 

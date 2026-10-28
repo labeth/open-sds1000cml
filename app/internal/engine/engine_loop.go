@@ -517,11 +517,8 @@ func (e *Engine) oneFrame(norm bool) {
 					f.Trigd = true
 				}
 			} else {
-				e.serialHeld++
-				if norm || e.serialHeld < serialFallback {
-					publish = false
-				} else {
-					e.serialHeld = 0 // AUTO liveness: display it, but do not observe it
+				if norm || !e.autoLivenessDue(&e.serialHeld, serialFallback) {
+					publish = false // (an AUTO liveness frame is displayed, but not observed)
 				}
 			}
 		}
@@ -540,11 +537,8 @@ func (e *Engine) oneFrame(norm bool) {
 		if qualified {
 			e.zoneHeld = 0
 		} else {
-			e.zoneHeld++
-			if norm || e.zoneHeld < zoneFallback {
-				publish = false
-			} else {
-				e.zoneHeld = 0 // AUTO liveness: let one un(qualified) frame through
+			if norm || !e.autoLivenessDue(&e.zoneHeld, zoneFallback) {
+				publish = false // (AUTO lets a liveness frame through)
 			}
 		}
 	}

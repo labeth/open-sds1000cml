@@ -435,6 +435,10 @@ func TestAutoGateLiveness(t *testing.T) {
 		}, zoneFallback},
 	} {
 		gate.arm(true)
+		// a frame just published: the holds count to the fallback
+		e.mu.Lock()
+		e.lastPublish = e.clk.Now()
+		e.mu.Unlock()
 		for round := 0; round < 2; round++ {
 			for i := 1; i < gate.fallback; i++ {
 				if e.autoGateLiveness() {
@@ -444,6 +448,13 @@ func TestAutoGateLiveness(t *testing.T) {
 			if !e.autoGateLiveness() {
 				t.Fatalf("%s: no liveness frame after %d holds", gate.name, gate.fallback)
 			}
+		}
+		// a slow timebase: captures seconds apart; a second after the last frame one is due, whatever the count
+		e.mu.Lock()
+		e.lastPublish = e.clk.Now().Add(-2 * autoLiveMax)
+		e.mu.Unlock()
+		if !e.autoGateLiveness() {
+			t.Fatalf("%s: no liveness frame %v after the last one", gate.name, 2*autoLiveMax)
 		}
 		gate.arm(false)
 	}
