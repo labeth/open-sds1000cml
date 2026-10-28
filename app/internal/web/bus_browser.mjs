@@ -6,7 +6,7 @@
 // columns (hex, then a left-aligned string) and holds still while they repeat;
 // a click (or Enter) freezes the display and zooms onto the packet; the strip's
 // format is a setting (hex by default); BUS again shows the eye of the decoded
-// line with its figures, and again goes back. SKIP/exit 0 without a browser.
+// line with its figures, then the Stream and Visual views, and again goes back. SKIP/exit 0 without a browser.
 import { openScope, run } from "./scope_po.mjs";
 
 run(async (t) => {
@@ -114,6 +114,8 @@ run(async (t) => {
   await page.keyboard.press("Alt+2");
   t.ok(!(await po.hasClass("ejArm", "on")) && await po.isVisible("streamStops") && await po.text("pkTitle") === "Stream",
     "BUS again: the Stream view, the eye stops");
+  await page.keyboard.press("Alt+2");
+  t.ok(await po.value("busView") === "visual", "BUS again: the Visual view");
   await page.keyboard.press("Alt+2");
   t.ok(await po.isVisible("pktable"), "BUS again: back to the packets");
   // the page's Stream view is the scope's: choosing it puts the scope on its
