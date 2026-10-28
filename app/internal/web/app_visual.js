@@ -123,7 +123,7 @@ setInterval(visStreamTick, 120);
 function visAskStream(on) {
   if (typeof busStreamAsk !== "undefined") busStreamAsk = { on, until: Date.now() + 5000 };
   if (typeof busScopeWas !== "undefined") busScopeWas = on;
-  sheetSet("bus.stream", on ? 1 : 0);
+  pageStream(on);
   vis.stream.next = -1; vis.stream.base = NaN; vis.stream.lastS = 0; vis.stream.rate = 0; vis.stream.frame = null; vis.stream.lag = 0;
 }
 

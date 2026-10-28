@@ -612,6 +612,7 @@ func (c *Controller) StreamStatus() (streamview.View, bool) {
 // for /api/stream/lines; ok is false without a stream.
 // TRLC-LINKS: REQ-SDS-018
 func (c *Controller) StreamLines(from, limit int) (streamview.LinesPage, bool) {
+	c.noteStreamRead()
 	c.mu.Lock()
 	s := c.stream
 	c.mu.Unlock()
@@ -626,6 +627,7 @@ func (c *Controller) StreamLines(from, limit int) (streamview.LinesPage, bool) {
 // stream.
 // TRLC-LINKS: REQ-SDS-018
 func (c *Controller) StreamWindow(rows int) (streamview.Page, bool) {
+	c.noteStreamRead()
 	c.mu.Lock()
 	s, ok := c.stream.(interface {
 		Window(rows, top int) streamview.Page
@@ -641,6 +643,7 @@ func (c *Controller) StreamWindow(rows int) (streamview.Page, bool) {
 // (decodedlines batch format); ok is false without a stream.
 // TRLC-LINKS: REQ-SDS-018
 func (c *Controller) StreamLinesBinary(from int, dst []byte) (int, bool) {
+	c.noteStreamRead()
 	c.mu.Lock()
 	s := c.stream
 	c.mu.Unlock()

@@ -212,7 +212,7 @@ function busSetView(v, byScope) {
 function busAskStream(on) {
   busStreamAsk = { on, until: Date.now() + 5000 };
   busScopeWas = on;
-  sheetSet("bus.stream", on ? 1 : 0);
+  pageStream(on);
 }
 
 // busScopeStreaming reports the scope's BUS on its Stream view.

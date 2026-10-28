@@ -623,6 +623,30 @@ async function sheetSet(row, value) {
   } catch (e) { return null; }
 }
 
+// pageStream asks the scope for its stream for this page, which then reads
+// it (on), or ends it: the scope ends a stream its page stopped reading.
+// TRLC-LINKS: REQ-SDS-228, REQ-SDS-278
+async function pageStream(on) {
+  try {
+    const r = await (await fetch("/api/stream/page", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ on }) })).json();
+    pageStreamHeld = on && !!(r && r.ok);
+    if (r && r.ok === false && r.error) toast(r.error, "warn");
+    kickStatus();
+    return r;
+  } catch (e) { return null; }
+}
+
+// pageStreamHeld: this page asked for the scope's stream. Hidden, the page
+// reads no lines, so it tells the scope it is still there now and then (a
+// closed tab or a sleeping phone says nothing, and the scope ends the stream).
+let pageStreamHeld = false;
+let pageStreamPing = 0;
+setInterval(() => {
+  if (!pageStreamHeld || !document.hidden || Date.now() - pageStreamPing < 20000) return;
+  pageStreamPing = Date.now();
+  fetch("/api/stream/lines?from=0&max=1").catch(() => {});
+}, 5000);
+
 // sheetsFollow keeps the page's controls that are the scope's own sheet rows
 // showing the scope's values, whoever set them (the scope's keys, the phone,
 // SCPI): when the scope's sheet changes (its SheetsSeq) the rows are fetched

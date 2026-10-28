@@ -183,6 +183,32 @@ func (s *Server) hSheetsSet(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, pr.SheetSet(req.Row, req.Value, req.Text))
 }
 
+// hStreamPage starts ({"on":true}) or ends the scope's stream for this page,
+// which then reads it: the scope ends a stream its page stopped reading.
+// TRLC-LINKS: REQ-SDS-228, REQ-SDS-278
+func (s *Server) hStreamPage(w http.ResponseWriter, r *http.Request) {
+	pr, ok := s.remote(w)
+	if !ok {
+		return
+	}
+	var req struct {
+		On bool `json:"on"`
+	}
+	if err := json.NewDecoder(io.LimitReader(r.Body, 1<<10)).Decode(&req); err != nil {
+		writeJSON(w, panel.SetResult{Error: "bad json: want {\"on\":bool}"})
+		return
+	}
+	if ps, ok := pr.(interface{ PageStream(on bool) panel.SetResult }); ok {
+		writeJSON(w, ps.PageStream(req.On))
+		return
+	}
+	v := 0.0 // as a sheet set's JSON number
+	if req.On {
+		v = 1
+	}
+	writeJSON(w, pr.SheetSet("bus.stream", v, ""))
+}
+
 // hSheetsAction runs an action row: {"row":"file.setup3","action":"save"}
 // (the action may be left out on a row with one).
 // TRLC-LINKS: REQ-SDS-162

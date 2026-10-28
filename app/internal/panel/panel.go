@@ -254,8 +254,9 @@ type Controller struct {
 	rmu    sync.Mutex
 	remote remoteState
 
-	apiDepth       int    // a remote action is running: it leaves the LCD's menus alone
-	ledWord        uint16 // the latched lamp word
+	apiDepth       int       // a remote action is running: it leaves the LCD's menus alone
+	page           pageClaim // a stream the web page asked for (page_stream.go), guarded by mu
+	ledWord        uint16    // the latched lamp word
 	ledSet         bool
 	lastSetup      int               // the slot last saved or recalled (Save/Recall lamp)
 	lastSetupPrint string            // the settings then (a store without setupCurrent)

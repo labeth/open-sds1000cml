@@ -222,6 +222,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/panel/wait", s.hPanelWait)
 	mux.HandleFunc("GET /api/sheets", s.hSheets)
 	mux.HandleFunc("POST /api/sheets/set", s.hSheetsSet)
+	mux.HandleFunc("POST /api/stream/page", s.hStreamPage)
 	mux.HandleFunc("POST /api/sheets/action", s.hSheetsAction)
 	mux.HandleFunc("GET /api/stream/lines", s.hStreamLines)
 	mux.HandleFunc("GET /api/stream/lines.bin", s.hStreamLinesBin)

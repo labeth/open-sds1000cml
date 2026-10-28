@@ -210,3 +210,33 @@ func TestPanelTypedEntry(t *testing.T) {
 		t.Fatalf("button: %v writes %d", out, p.writes)
 	}
 }
+
+// pagePanel is a panel that holds a stream for the page.
+type pagePanel struct {
+	*panelFixture
+	asked []bool
+}
+
+// TRLC-LINKS: REQ-SDS-228
+func (p *pagePanel) PageStream(on bool) panel.SetResult {
+	p.asked = append(p.asked, on)
+	return panel.SetResult{OK: true, Row: "bus.stream"}
+}
+
+// /api/stream/page asks the panel for the page's stream (PageStream), or,
+// on a panel without it, sets the BUS sheet's Stream row.
+// TRLC-LINKS: REQ-SDS-228, REQ-SDS-278
+func TestStreamPageEndpoint(t *testing.T) {
+	pp := &pagePanel{panelFixture: &panelFixture{}}
+	s := New(&fakeScope{}, nil, pp, nil)
+	_, out := httpCall(t, s, "POST", "/api/stream/page", map[string]any{"on": true})
+	httpCall(t, s, "POST", "/api/stream/page", map[string]any{"on": false})
+	if out["ok"] != true || len(pp.asked) != 2 || !pp.asked[0] || pp.asked[1] {
+		t.Fatalf("page stream: %v asked %v", out, pp.asked)
+	}
+	p := &panelFixture{}
+	httpCall(t, New(&fakeScope{}, nil, p, nil), "POST", "/api/stream/page", map[string]any{"on": true})
+	if p.setRow != "bus.stream" || p.setValue != 1.0 {
+		t.Fatalf("fallback: row %q value %v", p.setRow, p.setValue)
+	}
+}

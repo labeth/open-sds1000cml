@@ -91,6 +91,7 @@ func (c *Controller) Run(stop <-chan struct{}) {
 			// Lamps follow engine-side changes (a SINGLE self-stopping, web/SCPI
 			// run toggles) within a tick, whatever the LCD render costs.
 			c.SyncLEDs()
+			c.checkPageStream()
 			if m, ok := c.eng.ReadMatrix(); ok {
 				// Fallback mode (no SIGIO) decodes knobs on the tick too —
 				// the deliberate exception that accepts mid-detent reads. A

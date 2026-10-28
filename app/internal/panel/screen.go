@@ -125,6 +125,7 @@ func (c *Controller) noteInput(scope bool) bool {
 	if !scope {
 		return false
 	}
+	c.page = pageClaim{} // someone at the scope: the stream is theirs now
 	if asleep {
 		c.wakeUntil = now.Add(wakeGrace)
 		return true
