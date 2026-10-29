@@ -279,6 +279,9 @@ async function busDetect(onEntry) {
 // TRLC-LINKS: REQ-SDS-214
 $("pkDetect").onclick = () => busDetect(false);
 
+// busResume is the BUS view to show again, its stream asked for, when the
+// page comes back to BUS ("" none).
+let busResume = "";
 WS_HOOKS.push({
   // TRLC-LINKS: REQ-SDS-214
   enter(id) {
@@ -288,10 +291,24 @@ WS_HOOKS.push({
     if (dcfg.proto === "off" && !(st && st.stream)) busDetect(true);
     if (ws.busView === "eye") busEyeOn();
     busRenderedV = -1; busRenderTable();
+    // back on BUS: the view that followed the scope's stream asks for it again
+    if (busResume) { const v = busResume; busResume = ""; busSetView(v); }
   },
-  // TRLC-LINKS: REQ-SDS-214
-  leave(prev) { if (prev === "bus") busEyeOff(); },
+  // TRLC-LINKS: REQ-SDS-214, REQ-SDS-228
+  leave(prev) {
+    if (prev !== "bus") return;
+    busEyeOff();
+    // a stream this page asked for is given back while it shows another
+    // workspace: the scope captures for it again (kept, SCOPE stood still)
+    if ((ws.busView === "stream" || ws.busView === "visual") && pageStreamHeld) {
+      busResume = ws.busView;
+      busStreamAsk = { on: false, until: Date.now() + 5000 };
+      busScopeWas = false;
+      pageStreamRelease();
+    }
+  },
 });
+
 
 // ---- the scope's own stream ----------------------------------------------------------
 // While the scope streams its bus in hardware (its BUS Stream view, entered on

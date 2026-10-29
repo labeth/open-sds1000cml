@@ -50,6 +50,11 @@ run(async (t) => {
     await t.until(async () => await ev(() => !busScopeStreaming()), "leaving Visual for Packets ends the scope's stream", 8000);
     await page.click('#busView button[data-value="visual"]');
     await t.until(async () => await ev(() => busScopeStreaming()), "back in Visual, MIDI streams again", 8000);
+    // another workspace on the page gives the stream back (its SCOPE would stand still); BUS again asks for it
+    await page.click("#tab-scope");
+    await t.until(async () => await ev(() => !busScopeStreaming()), "the page's SCOPE tab gives the scope's stream back", 8000);
+    await page.click("#tab-bus");
+    await t.until(async () => await ev(() => busScopeStreaming() && ws.busView === "visual"), "back on BUS, Visual streams again", 8000);
     // Digital audio reads a captured record: opening it ends the stream; Back to the bus
     await page.click("#visAudio");
     await t.until(async () => await ev(() => !busScopeStreaming()), "Digital audio ends the scope's stream (a streaming scope captures no record)", 8000);

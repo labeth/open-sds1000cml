@@ -647,6 +647,20 @@ setInterval(() => {
   fetch("/api/stream/lines?from=0&max=1").catch(() => {});
 }, 5000);
 
+// pageStreamRelease gives back a stream this page holds while it shows
+// another workspace (the scope captures again for it); one the scope took
+// over stays.
+// TRLC-LINKS: REQ-SDS-228, REQ-SDS-278
+async function pageStreamRelease() {
+  if (!pageStreamHeld) return false;
+  pageStreamHeld = false;
+  try {
+    await fetch("/api/stream/page", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ on: false, leave: true }) });
+  } catch (e) { /* the scope's own abandon check ends it */ }
+  kickStatus();
+  return true;
+}
+
 // pageStreamLeave tells the scope the page is going (closed, reloaded;
 // whichever of the two events comes, once): a stream it still holds ends and
 // the scope goes back to its view; one taken over on the scope stays.
