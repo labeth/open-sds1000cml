@@ -47,6 +47,10 @@ func (c *Controller) SetDecodeStream(s Stream) {
 	c.mu.Unlock()
 }
 
+// streamDecodeWait is how long a stream's start reads the frames that come for
+// one its bus decodes in, after the frame on screen and a search found none.
+const streamDecodeWait = 1500 * time.Millisecond
+
 // startStream streams the bus the decoder settings name, as they stand (typed
 // in, or filled in by Auto): no detection runs. What the hardware decoder
 // needs beyond them (the threshold, an SPI clock rate, SENT's tick) is read
@@ -95,6 +99,16 @@ func (c *Controller) startStream() {
 			all := func(*engine.Frame, bool) bool { return true }
 			l := c.detectWith(true, false, all, c.decodeOnScreen, decimatedWait)
 			res, sampleS, ok = l.res, l.sampleS, l.found
+		}
+		// the frame on screen may hold none of a sparse bus's frames (AUTO's
+		// liveness frame between an SD card's commands): the next ones, a
+		// moment longer, before the stream is refused
+		for end := time.Now().Add(streamDecodeWait); !ok && time.Now().Before(end) && c.streaming() && current(); {
+			seq := c.frameSeq()
+			for next := time.Now().Add(400 * time.Millisecond); c.frameSeq() == seq && time.Now().Before(next); {
+				time.Sleep(20 * time.Millisecond)
+			}
+			res, sampleS, ok = c.decodeOnScreen()
 		}
 		sv := c.snap()
 		name := busName(sv.decProto, sv.decBaud, sv.decChA, sv.decChB, sv.decCPOL, sv.decCPHA)

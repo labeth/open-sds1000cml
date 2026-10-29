@@ -5,6 +5,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/streamview"
@@ -263,4 +264,28 @@ func TestStreamRowShowsTheStreamView(t *testing.T) {
 	if st := mustState(t, c, "BUS", "workspace"); st.View != "Eye diagram" {
 		t.Fatalf("Stream Off on the eye: %s", st.View)
 	}
+}
+
+// A stream started while the frame on screen holds none of the bus (a
+// sparse bus between its frames) reads the frames that come next before it
+// is refused: the bus decoded a moment later starts it.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-228
+func TestStreamStartWaitsForAFrameOfTheBus(t *testing.T) {
+	r, rs, uart := streamRig(t)
+	c := r.c
+	press(t, c, "f2")
+	uart() // the bus decoded
+	r.show(smallFrame())
+	go func() {
+		time.Sleep(300 * time.Millisecond)
+		uart()
+	}()
+	press(t, c, "f2", "f2") // the Stream view: starts the stream
+	for end := time.Now().Add(3 * time.Second); time.Now().Before(end); time.Sleep(20 * time.Millisecond) {
+		if n, _ := rs.counts(); n == 1 {
+			return
+		}
+	}
+	n, _ := rs.counts()
+	t.Fatalf("the bus decoded 300 ms after the start: %d starts, view %s", n, mustState(t, c, "BUS", "workspace").View)
 }
