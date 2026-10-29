@@ -159,6 +159,10 @@ type Server struct {
 	epoch  atomic.Uint64
 	epoch0 uint64
 
+	// recordBusy is a /api/record.bin under way: one at a time, as each holds
+	// a whole record (two 500k-sample channels) on a 128 MB device.
+	recordBusy atomic.Bool
+
 	// frameAt is when a page last asked for a frame (/api/frame.bin, unix
 	// ns): a page showing the scope keeps that long-poll open (FrameClient).
 	frameAt atomic.Int64

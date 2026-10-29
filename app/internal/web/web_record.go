@@ -39,6 +39,7 @@ const recordMin = 1024
 // memory's half million a channel). It leases the engine's bus samples
 // (LeaseBusSamples) while it waits. The reply is a little-endian uint32
 // header length, the JSON header (recordReply) and the codes, C1's then C2's.
+// One record is taken at a time; another request meanwhile is answered 503.
 // TRLC-LINKS: REQ-SDS-280
 func (s *Server) hRecord(w http.ResponseWriter, r *http.Request) {
 	want, err := strconv.ParseFloat(r.URL.Query().Get("sample_s"), 64)
@@ -46,6 +47,14 @@ func (s *Server) hRecord(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "sample_s: the sample interval wanted, in seconds (2e-9 or more)", http.StatusBadRequest)
 		return
 	}
+	if !s.recordBusy.CompareAndSwap(false, true) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Retry-After", "1")
+		w.WriteHeader(http.StatusServiceUnavailable)
+		_ = json.NewEncoder(w).Encode(recordReply{Err: "another record is being taken: one at a time"})
+		return
+	}
+	defer s.recordBusy.Store(false)
 	wait := 4 * time.Second
 	if ms, err := strconv.Atoi(r.URL.Query().Get("wait_ms")); err == nil && ms > 0 {
 		wait = min(time.Duration(ms)*time.Millisecond, recordWaitMax)
