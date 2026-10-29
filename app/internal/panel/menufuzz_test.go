@@ -84,6 +84,12 @@ func fuzzAlphabet() []fuzzAction {
 				r.c.button(btnF1)
 			}
 		}},
+		// the web page's stream: asked for, ended, left, read, unread for long
+		fuzzAction{"page:stream", func(r *viewRig) { r.c.PageStream(true) }},
+		fuzzAction{"page:off", func(r *viewRig) { r.c.PageStream(false) }},
+		fuzzAction{"page:leave", func(r *viewRig) { r.c.PageLeave() }},
+		fuzzAction{"page:read", func(r *viewRig) { r.c.StreamLines(0, 1) }},
+		fuzzAction{"page:gone", func(r *viewRig) { r.clk.advance(pageStreamAbandon) }},
 		fuzzAction{"nav:sheet-picker", func(r *viewRig) {
 			if reachRow(r.c, "bus.match") {
 				r.c.button(btnF2)
@@ -160,6 +166,9 @@ func checkUIInvariants(c *Controller) []string {
 	}
 	if u.sub != subNone && !u.open {
 		fail("sub-mode %d with no sheet", u.sub)
+	}
+	if c.page.on && !(u.ws == wsview.Bus && u.busStream) {
+		fail("the page holds a stream with BUS not streaming (ws %d stream %v)", u.ws, u.busStream)
 	}
 	if n := btoi(u.busEye) + btoi(u.busStream) + btoi(u.busVisual); n > 1 {
 		fail("BUS on %d views at once (eye %v stream %v visual %v)", n, u.busEye, u.busStream, u.busVisual)
@@ -274,6 +283,7 @@ func TestUIFuzz(t *testing.T) {
 	for _, seed := range seeds {
 		t.Run(fmt.Sprintf("seed%d", seed), func(t *testing.T) {
 			r := newViewRig(t)
+			r.c.SetDecodeStream(&viewStream{}) // BUS Stream streams, the page can ask for it
 			c := r.c
 			eng := r.eng
 			r.show(uartFrame([]string{"Hello\r\n"}, 460800, 80e-6, 100e-9, 8000))
@@ -302,6 +312,7 @@ func TestUIFuzz(t *testing.T) {
 					}
 				}()
 				r.clk.advance(100e6)
+				c.checkPageStream() // the panel loop's tick
 				if bad := checkUIInvariants(c); len(bad) > 0 {
 					t.Logf("%s", dump())
 					t.Fatalf("seed %d step %d (%s) violated:\n  %s", seed, i, a.name, strings.Join(bad, "\n  "))
