@@ -86,3 +86,29 @@ func TestPageLeaveEndsOnlyItsStream(t *testing.T) {
 		t.Fatalf("leaving a stream the scope took: %+v active %v", res, rs.Active())
 	}
 }
+
+// A key pressed on the scope itself - through the key matrix's decode, the
+// path a real press takes - makes a stream the page held the scope's: the
+// page's leave then keeps it.
+// TRLC-LINKS: REQ-SDS-228, REQ-SDS-278
+func TestPhysicalKeyTakesThePagesStream(t *testing.T) {
+	r, rs, uart := streamRig(t)
+	c := r.c
+	press(t, c, "f2")
+	uart()
+	c.decode(idle(), true) // the matrix at rest
+	c.PageStream(true)
+	if !c.page.on || !rs.Active() {
+		t.Fatalf("the page's stream: held %v active %v", c.page.on, rs.Active())
+	}
+	m := idle()
+	m[3] &^= 1 << 11 // Help pressed on the front panel
+	c.decode(m, true)
+	c.decode(idle(), true) // and released
+	if c.page.on {
+		t.Fatal("a front-panel key left the stream the page's")
+	}
+	if res := c.PageLeave(); !res.OK || !rs.Active() {
+		t.Fatalf("the page leaving a stream the scope took: %+v active %v", res, rs.Active())
+	}
+}
