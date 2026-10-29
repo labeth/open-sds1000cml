@@ -914,12 +914,13 @@ acquisitionLoop:
 						break
 					}
 				}
-				gen := e.singleGen.Load() // before Status: a press seen here precedes the freeze
-				m, err = e.sram.Status()
+				gen := e.singleGen.Load() // before the poll: a press seen here precedes the freeze
+				m, err = e.sram.Poll()
 				if err != nil || m.DataFault {
 					break
 				}
 				if m.Frozen && m.Ready {
+					m, err = e.sram.Status() // the record's length and positions
 					break
 				}
 				singleGen = gen

@@ -356,6 +356,28 @@ func (c *Capture) write32(s uint16, v uint32) error {
 // TRLC-LINKS: REQ-SDS-040, REQ-SDS-083
 func (c *Capture) Status() (Metadata, error) { c.mu.Lock(); defer c.mu.Unlock(); return c.status() }
 
+// Poll is what a capture waiting for its event needs of the status, in one
+// read: ready, frozen, triggered, running and locked, and the data fault.
+// Status, three reads through a bus worker, gives the rest once it is frozen.
+// TRLC-LINKS: REQ-SDS-040, REQ-SDS-083
+func (c *Capture) Poll() (m Metadata, err error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	var r [3]uint16
+	if err = c.readMany([]uint16{1, 13, 19}, r[:]); err != nil {
+		return m, err
+	}
+	s := r[0]
+	m.Ready, m.Locked, m.Running = s&4 != 0, s&64 != 0, s&8 != 0
+	m.Frozen, m.Triggered, m.Prefetched = s&16 != 0, s&32 != 0, s&1024 != 0
+	m.Revision = r[1]
+	if m.Revision >= 6 {
+		m.DataFault = r[2]&1 != 0
+		m.Locked = m.Locked && r[2]&2 != 0
+	}
+	return m, nil
+}
+
 // TRLC-LINKS: REQ-SDS-013
 func (c *Capture) SupportsUART() (bool, error) {
 	c.mu.Lock()
