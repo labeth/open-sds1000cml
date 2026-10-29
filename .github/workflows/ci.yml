@@ -164,6 +164,10 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install iverilog
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends iverilog
+      # build.ts prepares each image's top level for the undeclared-net check
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
       - name: RTL testbenches
         run: fpga/sim.sh
       # The images' top levels driven by the app's models (decimated records,
