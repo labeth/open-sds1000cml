@@ -15,7 +15,6 @@ for (const proto of ['manchester', 'spi']) {
     // TRLC-LINKS: REQ-SDS-207
     $: () => el,
     // TRLC-LINKS: REQ-SDS-207
-    renewDecodeLease() {},
     // TRLC-LINKS: REQ-SDS-207
     updateDecodeResults() {},
     // TRLC-LINKS: REQ-SDS-207

@@ -9,26 +9,6 @@ function decCodes(role) {
   return c;
 }
 
-// renewDecodeLease keeps the engine sending samples, not peak-detect pairs,
-// while this browser decodes (the lease lapses a few seconds after it stops).
-// At 100 us/div a peak-detect bucket is wider than an SPI clock, and the SPI
-// decode reads no clock there.
-// TRLC-LINKS: REQ-SDS-207
-let decodeLeaseT = 0;
-// TRLC-LINKS: REQ-SDS-207
-function renewDecodeLease() {
-  const now = performance.now();
-  if (now - decodeLeaseT < 1000) return;
-  decodeLeaseT = now;
-  send("decodeview", 3);
-}
-
-// A held trigger or image switch can outlast a frame-driven lease. Keep the
-// request alive while the visible browser is decoding, even without new frames.
-setInterval(() => {
-  if (dcfg.proto !== "off" && !document.hidden && !superseded) renewDecodeLease();
-}, 1000);
-
 // decodeFeatureSamples is the shortest feature of a decode's bus in samples
 // (decode.FeatureSamples): a bit of an NRZ line, half a clock (I2C, SPI),
 // half a bit of a line code (Manchester, MIL-1553, ARINC 429), SENT's
@@ -149,7 +129,6 @@ function decKey() { return [dcfg.proto, dcfg.line, dcfg.scl, dcfg.sda, dcfg.clk,
 // TRLC-LINKS: REQ-SDS-207
 function computeDecode() {
   dcfg.result = null;
-  if (dcfg.proto !== "off") renewDecodeLease();
   if (dcfg.proto === "off" || !frame || frame.is_env || (frame.peak_detect && !frame.ordered) || !frame.c1) { updateDecodeResults(); return; }
   const colTimeS = frameDtS(frame, frame.c1.length); // dt_s-aware: true baud on the 1-200 ns/div nominal bands
   const cfg = { inverted: !!dcfg.inverted, threshold: dcfg.auto ? null : +$("decThr").value, guard: 4, fmt: dcfg.fmt };
