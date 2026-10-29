@@ -39,7 +39,8 @@ const recordMin = 1024
 // memory's half million a channel). It leases the engine's bus samples
 // (LeaseBusSamples) while it waits. The reply is a little-endian uint32
 // header length, the JSON header (recordReply) and the codes, C1's then C2's.
-// One record is taken at a time; another request meanwhile is answered 503.
+// One record is taken at a time. A record refused (another under way, none
+// in time, none this acquisition can serve) is a 409 naming why.
 // TRLC-LINKS: REQ-SDS-280
 func (s *Server) hRecord(w http.ResponseWriter, r *http.Request) {
 	want, err := strconv.ParseFloat(r.URL.Query().Get("sample_s"), 64)
@@ -48,10 +49,8 @@ func (s *Server) hRecord(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !s.recordBusy.CompareAndSwap(false, true) {
-		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Retry-After", "1")
-		w.WriteHeader(http.StatusServiceUnavailable)
-		_ = json.NewEncoder(w).Encode(recordReply{Err: "another record is being taken: one at a time"})
+		recordRefused(w, "another record is being taken: one at a time")
 		return
 	}
 	defer s.recordBusy.Store(false)
@@ -61,7 +60,7 @@ func (s *Server) hRecord(w http.ResponseWriter, r *http.Request) {
 	}
 	lease, ok := s.sc.(interface{ LeaseBusSamples(float64, time.Duration) })
 	if !ok {
-		http.Error(w, "this acquisition cannot serve sampled records", http.StatusNotImplemented)
+		recordRefused(w, recordNever)
 		return
 	}
 	var start uint64
@@ -105,9 +104,7 @@ func (s *Server) hRecord(w http.ResponseWriter, r *http.Request) {
 		if !s.sc.Snapshot().Running {
 			why = "the scope is stopped: it captures no record (Run it)"
 		}
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusConflict)
-		_ = json.NewEncoder(w).Encode(recordReply{Err: why})
+		recordRefused(w, why)
 		return
 	}
 	off, vpc := s.vertScales()
@@ -121,4 +118,16 @@ func (s *Server) hRecord(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/octet-stream")
 	w.Header().Set("Cache-Control", "no-store")
 	_, _ = w.Write(out)
+}
+
+// recordNever is the refusal no retry changes: this acquisition serves no
+// sampled records (the page's Live audio stops on it).
+const recordNever = "this acquisition cannot serve sampled records"
+
+// recordRefused answers a record refused for the scope's state: 409 and why.
+// TRLC-LINKS: REQ-SDS-280
+func recordRefused(w http.ResponseWriter, why string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusConflict)
+	_ = json.NewEncoder(w).Encode(recordReply{Err: why})
 }

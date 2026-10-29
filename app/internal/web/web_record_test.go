@@ -110,7 +110,7 @@ func TestRecordServesAWholeSampledRecord(t *testing.T) {
 	}
 	rec = httptest.NewRecorder()
 	s2.Handler().ServeHTTP(rec, httptest.NewRequest("GET", "/api/record.bin?sample_s=2e-8&wait_ms=100", nil))
-	if rec.Code != 503 || !strings.Contains(rec.Body.String(), "one at a time") {
+	if rec.Code != 409 || !strings.Contains(rec.Body.String(), "one at a time") {
 		t.Fatalf("a second record meanwhile: code %d %s", rec.Code, rec.Body.String())
 	}
 	if c := <-first; c != 409 || s2.recordBusy.Load() {

@@ -66,6 +66,7 @@ async function visAudioCapture() {
   const a = vis.audio;
   if (a.busy) return;
   a.busy = true;
+  let wait = 50; // Live's next capture: at once, or later after a refusal
   const kind = visAudioKind();
   try {
     const want = a.sampleS > 0 ? a.sampleS : visAudioPlan(kind, null);
@@ -80,10 +81,15 @@ async function visAudioCapture() {
     }
     visAudioMsg("capturing " + eng(want, "s", 3) + " a sample" + (td ? " at " + eng(td, "s", 3) + "/div" : "") + "...");
     const rec = await visFetchRecord(want);
-    if (!rec.ok) { visAudioMsg(rec.error); return; }
+    if (!rec.ok) {
+      visAudioMsg(rec.error);
+      if (rec.never && a.live) { a.live = false; if ($("visALive")) $("visALive").classList.remove("on"); }
+      wait = VIS_AUDIO_RETRY_MS;
+      return;
+    }
     const res = visAudioDecode(kind, rec);
     a.res = res;
-    if (!res.ok) { visAudioMsg(res.error); return; }
+    if (!res.ok) { visAudioMsg(res.error); wait = VIS_AUDIO_RETRY_MS; return; }
     const better = visAudioPlan(kind, res);
     if (!(a.sampleS > 0) || Math.abs(better - a.sampleS) > 0.2 * a.sampleS) a.sampleS = better;
     res.stats = res.ch.map((x, i) => audioStats(x, res.raw && res.raw[i], res.bits));
@@ -94,9 +100,14 @@ async function visAudioCapture() {
     visDraw(true);
   } finally {
     a.busy = false;
-    if (a.live && a.on) setTimeout(visAudioCapture, 50);
+    if (a.live && a.on) setTimeout(visAudioCapture, wait);
   }
 }
+
+// VIS_AUDIO_RETRY_MS is how long Live waits after a capture refused or not
+// decoded before it tries again: at once it asked the scope twenty times a
+// second for a record it could not give.
+const VIS_AUDIO_RETRY_MS = 2000;
 
 // visFetchRecord fetches a whole sampled record (/api/record.bin) as codes.
 // TRLC-LINKS: REQ-SDS-280
@@ -105,7 +116,7 @@ async function visFetchRecord(sampleS) {
     const r = await fetch("/api/record.bin?sample_s=" + sampleS + "&wait_ms=6000");
     if (!r.ok) {
       const j = await r.json().catch(() => ({}));
-      return { ok: false, error: j.err || "no record (" + r.status + ")" };
+      return { ok: false, error: j.err || "no record (" + r.status + ")", never: j.err === "this acquisition cannot serve sampled records" };
     }
     const b = new Uint8Array(await r.arrayBuffer());
     const hl = b[0] | (b[1] << 8) | (b[2] << 16) | (b[3] << 24);
