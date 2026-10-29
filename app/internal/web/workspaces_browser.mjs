@@ -162,6 +162,7 @@ run(async (t) => {
   await t.until(async () => Math.abs((await canvas()).h - m0.h) <= 2, "expanding it gives the canvas its height back", 2000);
   await page.dblclick("#p-meas-scope > .ph .pt");
   await t.until(async () => (await canvas()).w > m0.w * 1.2, "double-clicking the scope pane's title maximizes it (wider canvas)", 2000);
+  // TRLC-LINKS: REQ-SDS-219
   const inert = () => page.evaluate(() => [!!document.querySelector("#p-stats").closest("[inert]"), !!document.querySelector("#p-meas-scope").closest("[inert]")]);
   t.ok(JSON.stringify(await inert()) === "[true,false]", "the panes under the maximized one are inert (no focus, no clicks), it is not: " + JSON.stringify(await inert()));
   await key("Escape");
