@@ -26,4 +26,12 @@ func TestAcquiringLines(t *testing.T) {
 	if len(l) != 3 || !strings.Contains(l[1], "C2 rising") || !strings.Contains(l[2], "level") {
 		t.Fatalf("edge, 9 s: %q", l)
 	}
+	// at a decimating timebase the edge trigger compares averaged samples: said
+	l = acquiringLines(HUD{Waiting: true, TrigRising: true, TrigLvlV: 1.5, WaitS: 9, SampleS: 1.25e-6})
+	if len(l) != 4 || !strings.Contains(l[3], "averaged over") {
+		t.Fatalf("edge at 50 ms/div, 9 s: %q", l)
+	}
+	if l = acquiringLines(HUD{Waiting: true, SerialArmed: true, WaitS: 9, SampleS: 1.25e-6}); len(l) != 3 {
+		t.Fatalf("a serial match reads the raw samples: %q", l)
+	}
 }
