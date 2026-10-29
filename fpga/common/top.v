@@ -194,15 +194,29 @@ module acq_sram_top(
  wire [31:0] selected_word=!decim_data_active ? il_raw_word : precision_word;
  wire selected_valid=!decim_active ? il_raw_valid : precision_valid;
 `endif
+`ifdef STREAM_CAPTURE
+ // The stream's crossing marks (SOUND) are the streamed words' own.
  wire [31:0] selected_trigger=!decim_trigger_active ? il_raw_word : {precision_word[31:24],precision_word[15:8],precision_word[31:24],precision_word[15:8]};
+ wire trigger_compare_valid=selected_valid;
+`else
+ // ADR-TRIGGER-ANY-TIMEBASE: the edge trigger compares the raw samples at
+ // every timebase, as the protocol receivers do: on the decimation filter's
+ // words a signal faster than one output sample was averaged away and never
+ // crossed the level (a 1 MHz square at 50 ms/div). Its fire holds until the
+ // record writes a word (edge_hold).
+ wire [31:0] selected_trigger=il_raw_word;
+ wire trigger_compare_valid=il_raw_valid;
+`endif
 `ifdef QUAL_TRIGGER
- // The qualifier's and the zones' own selections of the same word (their
- // fanout off the edge trigger's net: timing).
- (* preserve, dont_merge *) reg decim_qual=0,decim_zone=0;
- always @(posedge core)if(config_idle)begin decim_qual<=decim_request!=0;decim_zone<=decim_request!=0;end
- wire [31:0] qual_trigger_word=!decim_qual ? il_raw_word : {precision_word[31:24],precision_word[15:8],precision_word[31:24],precision_word[15:8]};
+ // The qualifier reads the raw samples too (its widths count clocks, its
+ // slope sums one sample of each interleaved converter); the zones read the
+ // record's words (their buckets span the screen) and take the raw edges as
+ // candidates.
+ (* preserve, dont_merge *) reg decim_zone=0;
+ always @(posedge core)if(config_idle)decim_zone<=decim_request!=0;
+ wire [31:0] qual_trigger_word=il_raw_word;
  wire [31:0] zone_trigger_word=!decim_zone ? il_raw_word : {precision_word[31:24],precision_word[15:8],precision_word[31:24],precision_word[15:8]};
- wire qual_trigger_valid=!decim_qual ? il_raw_valid : precision_valid;
+ wire qual_trigger_valid=il_raw_valid;
  wire zone_trigger_valid=!decim_zone ? il_raw_valid : precision_valid;
 `endif
  // Faults invalidate the whole record. One extra detection clock does not
@@ -215,7 +229,7 @@ module acq_sram_top(
   ;
 `else
  wire [31:0] selected_word=il_raw_word,selected_trigger=il_raw_word;
- wire selected_valid=il_raw_valid,stream_fault=il_fault;
+ wire selected_valid=il_raw_valid,stream_fault=il_fault,trigger_compare_valid=il_raw_valid;
  wire [31:0] qual_trigger_word=il_raw_word,zone_trigger_word=il_raw_word;
  wire qual_trigger_valid=il_raw_valid,zone_trigger_valid=il_raw_valid;
 `endif
@@ -874,6 +888,25 @@ module acq_sram_top(
   end
  end
 `endif
+ wire edge_now=(|(rise_ch & edge_rise_enable)) || (|(fall_ch & edge_fall_enable));
+`ifdef PRECISION
+ // The edge's fire holds until the next arm, as the qualifier's: decimated,
+ // the record writes one clock in many and takes a trigger only on a word.
+ reg edge_hold=0;
+ always @(posedge core)begin
+`ifdef UART_TRIGGER
+  if(!running || arm || !history_ready)edge_hold<=0;
+`elsif SYMBOL_TRIGGER
+  if(!running || arm || !history_ready)edge_hold<=0;
+`else
+  if(!running || arm)edge_hold<=0;
+`endif
+  else if(edge_now)edge_hold<=1;
+ end
+ wire edge_fire=edge_now || edge_hold;
+`else
+ wire edge_fire=edge_now; // an image without decimation writes every clock
+`endif
  always @(posedge core)if(config_idle)begin
   edge_auto<=!cfg[4];
   protocol_enable<=cfg[0] && cfg[4] && protocol_configured;
@@ -887,7 +920,7 @@ module acq_sram_top(
 `endif
  end
  genvar tc;generate for(tc=0;tc<2;tc=tc+1)begin:trigger_compare
-  sram_edge_pair #(.PIPELINED(1)) edges(.clk(core),.enable(frontend_run),.valid(frontend_run && selected_valid),
+  sram_edge_pair #(.PIPELINED(1)) edges(.clk(core),.enable(frontend_run),.valid(frontend_run && trigger_compare_valid),
    .first(selected_trigger[8*tc+:8]),.second(selected_trigger[16+8*tc+:8]),
    .level(level_l),.low_level(level_low_l),.high_level(level_high_l),
    .rise(rise_ch[tc]),.fall(fall_ch[tc]));
@@ -906,16 +939,16 @@ module acq_sram_top(
 `ifdef QUAL_TRIGGER
   // With zones on, only the candidates the zones pass fire.
 `ifdef SYMBOL_TRIGGER
-  il_fire_stage<=force_trigger || edge_auto || (zone_on ? zone_hold : (|(rise_ch & edge_rise_enable)) || (|(fall_ch & edge_fall_enable)) || qual_hold || sym_fire)
+  il_fire_stage<=force_trigger || edge_auto || (zone_on ? zone_hold : edge_fire || qual_hold || sym_fire)
 `else
-  il_fire_stage<=force_trigger || edge_auto || (zone_on ? zone_hold : (|(rise_ch & edge_rise_enable)) || (|(fall_ch & edge_fall_enable)) || qual_hold)
+  il_fire_stage<=force_trigger || edge_auto || (zone_on ? zone_hold : edge_fire || qual_hold)
 `endif
 `ifdef UART_TRIGGER
    || (protocol_enable && uart_fired)
 `endif
    ;
 `else
-  il_fire_stage<=force_trigger || edge_auto || (|(rise_ch & edge_rise_enable)) || (|(fall_ch & edge_fall_enable))
+  il_fire_stage<=force_trigger || edge_auto || edge_fire
 `ifdef UART_TRIGGER
    || (protocol_enable && uart_fired)
 `endif

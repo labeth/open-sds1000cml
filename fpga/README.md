@@ -15,10 +15,12 @@ the FPGA; the app only places the trigger point on the event.
 | `stream` | continuous capture for gap-free roll: decimated or peak-detect (bucket min/max) words, buffered in the SRAM ("drum") and streamed to the host through two ping-pong banks |
 | `fast` | SPI (to a 125 MHz clock), UART (to 62.5 MBd) and I²C (to high-speed mode) decoded and triggered on the samples, with the sequence trigger; decimation by picking |
 
-Every trigger fires at every timebase: the protocol receivers, the symbol
-trigger and the qualifier read the raw samples whatever the record's
-decimation, and each fire holds until the record takes it on a written word
-(decimated, one clock in many). The images with no room for the precision
+Every trigger fires at every timebase: the edge trigger, the protocol
+receivers, the symbol trigger and the qualifier read the raw samples whatever
+the record's decimation, and each fire holds until the record takes it on a
+written word (decimated, one clock in many). The zones judge the record's own
+words (their buckets span the screen) around the raw edges. The stream image's
+crossing marks are the streamed words'. The images with no room for the precision
 filter (about 2500 logic elements) decimate by box averages
 (`common/box_decim.v`, about 330 with the envelope's integer-byte
 extremes): each channel's 2^n samples summed and

@@ -40,7 +40,7 @@ const trigger=['sample_timeline.v','event_sequence.v','envelope_reduce.v','decod
  'decoded_event_reader.v','decoded_event_transport.v','decoded_event_port.v'];
 const images:Record<string,Image>={
  general:{dir:'images/general',files:['uart_trigger.v','i2c_trigger.v','spi_trigger.v','precision.v','precision_tail.v'],
-  defines:['TRIG_UART','TRIG_I2C','TRIG_SPI'],seed:8,trigger:true,precision:true},
+  defines:['TRIG_UART','TRIG_I2C','TRIG_SPI'],seed:1,trigger:true,precision:true},
  // Line held Manchester, MIL-1553, USB and SENT at 94% and missed timing on
  // four seeds; MIL-1553 and SENT moved to the packet image, and with box
  // decimation (94%, timing missed on every seed) on to their own, frame, with
@@ -63,13 +63,13 @@ const images:Record<string,Image>={
  // protocol decoders, so the packetizer, banks and precision decimation fit.
  // STREAM_DRUM: the stream goes through the external SRAM as a FIFO, whose
  // 512K words are the drain's slack (stream_drum.v).
- stream:{dir:'images/stream',files:['stream_packetizer.v','stream_banks.v','stream_peak.v','stream_drum.v','stream_marks.v','general/precision.v','general/precision_tail.v'],defines:['STREAM_CAPTURE','STREAM_DRUM'],seed:32,trigger:true,precision:true,bare:true},
+ stream:{dir:'images/stream',files:['stream_packetizer.v','stream_banks.v','stream_peak.v','stream_drum.v','stream_marks.v','general/precision.v','general/precision_tail.v'],defines:['STREAM_CAPTURE','STREAM_DRUM'],seed:2,trigger:true,precision:true,bare:true},
  // ADR-HARDWARE-QUALIFIERS: pulse, slope, video and zone triggers decided
  // in the FPGA, on the bare acquisition base with precision decimation and
  // envelope recall (the general image has no room left for them).
  // ADR-SYMBOL-TRIGGER: and the serial buses of timed pulses (symbol_trigger.v),
  // whose frames take milliseconds and want the long decimated records.
- qualify:{dir:'images/qualify',files:['qual_trigger.v','zone_qual.v','sum_edge_pair.v','symbol_trigger.v','general/precision.v','general/precision_tail.v'],defines:['QUAL_TRIGGER','SYMBOL_TRIGGER'],seed:1,trigger:true,precision:true,bare:true,pickAlt:true},
+ qualify:{dir:'images/qualify',files:['qual_trigger.v','zone_qual.v','sum_edge_pair.v','symbol_trigger.v','general/precision.v','general/precision_tail.v'],defines:['QUAL_TRIGGER','SYMBOL_TRIGGER'],seed:7,trigger:true,precision:true,bare:true,pickAlt:true},
  stacking:{dir:'images/stacking',files:['stack_engine_port.v','stack_edge_accumulator.v','stack_edge_hits.v','stack_tiled_accumulator.v',
   'stack_tile_access.v','stack_tile_transfer.v','stack_state_tile.v','stack_resample_store.v','stack_resample.v','stack_positions.v',
   'stack_interpolate.v','stack_accumulate.v','stack_bin_writer.v','stack_record_cache.v'],defines:[],seed:11,trigger:false,precision:false},

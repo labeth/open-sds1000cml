@@ -438,9 +438,9 @@ func (e *Engine) sramConfigInto(c *sramcapture.Config) (SRAMPlan, float64, bool,
 		p = build(live)
 	}
 	// BUS's sampled records pick samples where the image can, while a serial
-	// trigger reads the raw samples (a decimated edge, pulse or zone trigger
-	// reads the filter's words): the decode reads edges, which the precision
-	// filter's band smooths away
+	// trigger reads the raw samples (as the edge and the qualifier do; the
+	// zones judge the filter's words): the decode reads edges, which the
+	// precision filter's band smooths away
 	c.Pick = e.pickAlt && block == blockBus && c.DecimationLog2 != 0 && hardwareSerialName(*c) != ""
 	return p, tdiv, norm, tp
 }

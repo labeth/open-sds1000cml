@@ -2491,3 +2491,24 @@ decisions:
   - 'Top-level simulations lock both: TestQualifierDecimatedTopRTL (a pulse qualifier at /1, /16, /32 and /256) and
     TestPacketImageTopRTL''s can-error-decimated (CAN''s error trigger at /16 and /256), with tb_box_decim for the
     averages.'
+- id: ADR-EDGE-TRIGGER-RAW
+  title: The edge trigger and the qualifier compare the raw samples at every timebase
+  status: accepted
+  date: '2026-10-29'
+  context: 'On a decimated record the edge comparators and the pulse, slope and video qualifier read the decimation
+    filter''s words (the precision filter, or the box averages). A signal faster than one output sample is averaged
+    to its mean there and never crosses the level: a 1 MHz square at 50 ms/div (about 1.25 us a sample) waited in
+    NORMAL and SINGLE for ever, while a scope''s trigger is expected to see the converters'' samples whatever the
+    timebase. The protocol receivers and the symbol trigger already read the raw samples (ADR-TRIGGER-ANY-TIMEBASE).'
+  decision: 'Outside the stream image the edge comparators read the raw samples (il_raw_word) at every timebase and
+    their fire holds until the next arm once the record''s history is in (edge_hold), so the record takes it on its
+    next written word, at most a decimated sample late (software places the trigger on the crossing). The qualifier
+    reads the raw samples too: its widths count clocks and its slope sums one sample of each interleaved converter.
+    The zones keep judging the record''s own words, whose buckets span the screen, around the raw edges. The stream
+    image''s crossing marks stay the streamed words'' (SOUND).'
+  consequences:
+  - 'An edge, pulse or slope trigger on a signal much faster than the record''s sample interval fires at slow
+    timebases; the record still shows the filter''s view of it (its mean), and the trigger point lies on the record''s
+    word after the raw edge.'
+  - 'TestEdgeDecimatedTopRTL locks it: a 62.5 MHz burst whose averages sit under the level triggers at /1, /16, /32
+    and /256 (on the filter''s words, never).'

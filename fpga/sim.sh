@@ -30,5 +30,28 @@ for tb in "$FPGA"/common/sim/tb_*.v "$FPGA"/trigger/sim/tb_*.v "$FPGA"/images/*/
     echo "[FAIL] $n"; grep -E '^FAIL|FATAL|ERROR' "$OUT/$n.log" | head -5; fail=1
   fi
 done
+# Each image's top level declares every net it uses: an undeclared one is an
+# implicit wire, undriven, which synthesis takes as a constant, dropping the
+# logic it feeds with only a warning (an edge trigger that never fired).
+if node --experimental-strip-types -e 0 2>/dev/null; then
+  for img in general packet frame line qualify stacking stream fast; do
+    d="$(SDS_FPGA_BUILD_LOCKED=1 node --experimental-strip-types "$FPGA/build.ts" --image="$img" --prepare-only 2>/dev/null | sed -n 's/^Prepared //p')"
+    ran=$((ran+1))
+    if [ ! -d "$d" ]; then echo "[FAIL] $img top level (prepare)"; fail=1; continue; fi
+    top="$(grep -m1 -oE '^module +[A-Za-z_0-9]+' "$d/bench.v" | awk '{print $2}')"
+    # iverilog also names a net used above its declaration; only one declared
+    # nowhere in the image's preprocessed source is undriven
+    names="$(cd "$d" && iverilog -g2012 -Wimplicit -o /dev/null -s "$top" bench.v $(ls *.v | grep -v '^bench.v$') 2>&1 | sed -n "s/.*implicit definition of wire '\([A-Za-z_0-9]*\)'.*/\1/p" | sort -u)"
+    (cd "$d" && iverilog -g2012 -E -o pre.v bench.v 2>/dev/null)
+    w=""
+    for n in $names; do
+      grep -qE "\b(wire|reg|input|output|inout|integer|genvar)\b[^;]*\b$n\b" "$d/pre.v" || w="$w $n"
+    done
+    if [ -n "$w" ]; then echo "[FAIL] $img top level: undeclared net(s)$w"; fail=1; else echo "[PASS] $img top level declares its nets"; fi
+    rm -rf "$d"
+  done
+else
+  echo "[SKIP] the images' top levels: node with --experimental-strip-types is needed for build.ts"
+fi
 echo "$ran run, $skipped left to app Go tests"
 exit $fail
