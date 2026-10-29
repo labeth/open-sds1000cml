@@ -414,18 +414,9 @@ func acquiringLines(hud HUD) []string {
 	lines := []string{"WAITING FOR TRIGGER", fmt.Sprintf("the FPGA's %s, %.0f s", what, hud.WaitS)}
 	if hud.WaitS >= waitHintS {
 		lines = append(lines, hint)
-		// at a decimating timebase the edge, pulse and zone triggers compare
-		// the filter's samples: a signal faster than one is averaged away
-		if !hud.SerialArmed && hud.SampleS > averagedTriggerS {
-			lines = append(lines, "Here the trigger sees the signal averaged over "+fmtTdiv(hud.SampleS)+": a faster signal needs a faster time/div.")
-		}
 	}
 	return lines
 }
-
-// averagedTriggerS is the sample interval past which a waiting trigger's
-// hint says the trigger sees an average: the converters' own 2 ns is not one.
-const averagedTriggerS = 10e-9
 
 // waitHintS is how long a trigger waits before the screen suggests what to
 // try.
