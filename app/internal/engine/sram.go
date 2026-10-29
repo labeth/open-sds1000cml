@@ -454,6 +454,24 @@ func autoForceDue(norm, running, triggered bool, waited, autoWait time.Duration)
 	return (!norm || !running) && !triggered && waited >= autoWait
 }
 
+// statusPollWait is the wait between the status polls of a capture waiting
+// for its event, waited since its arm: 1 ms while a fast record and its
+// trigger are still due, longer for one that goes on waiting (a slow or
+// NORMAL trigger, a serial match). Each poll is a bus read on the worker;
+// a capture past 10 ms is seen at most 2 ms later.
+// TRLC-LINKS: REQ-SDS-010, REQ-SDS-011
+func statusPollWait(waited time.Duration) time.Duration {
+	if waited < 10*time.Millisecond {
+		return time.Millisecond
+	}
+	return 2 * time.Millisecond
+}
+
+// settingsPollEvery is how often a capture waiting for its event looks for
+// changed settings (a fresh capture with them): building and comparing the
+// whole configuration on every status poll was a third of the wait's work.
+const settingsPollEvery = 4 * time.Millisecond
+
 // averageAlignEdge is the crossing an average aligns a capture on, near
 // hint (the FPGA's trigger point in local). A serial match's edge and a
 // pulse, slope or video qualifier's closing edge go either way (a UART start
@@ -875,16 +893,26 @@ acquisitionLoop:
 			// never fabricate a trigger. Long waits continue servicing controls.
 			autoWait := 100*time.Millisecond + time.Duration(float64(cfg.PreWords)*float64(2-boolInt(plan.Log != 0))*plan.SampleS*1e9)
 			var next sramcapture.Config
+			var settingsAt time.Time
 			for !e.stopReq.Load() {
 				e.serviceCommands()
 				if e.decodedSession != nil || e.soft != nil {
 					continue acquisitionLoop
 				}
 				e.beatN.Add(1)
-				_, nextTdiv, nextNorm, nextTP := e.sramConfigInto(&next)
-				if next != cfg || nextTdiv != tdiv || nextNorm != norm || nextTP != tp || len(e.sramJobs) != 0 {
+				if len(e.sramJobs) != 0 {
 					aborted = true
 					break
+				}
+				// the settings changed: a fresh capture with them (looked at
+				// every few polls - a change waits a few milliseconds)
+				if now := e.clk.Now(); now.Sub(settingsAt) >= settingsPollEvery {
+					settingsAt = now
+					_, nextTdiv, nextNorm, nextTP := e.sramConfigInto(&next)
+					if next != cfg || nextTdiv != tdiv || nextNorm != norm || nextTP != tp {
+						aborted = true
+						break
+					}
 				}
 				gen := e.singleGen.Load() // before Status: a press seen here precedes the freeze
 				m, err = e.sram.Status()
@@ -913,7 +941,7 @@ acquisitionLoop:
 						break
 					}
 				}
-				e.clk.Sleep(time.Millisecond)
+				e.clk.Sleep(statusPollWait(e.clk.Now().Sub(armedAt)))
 			}
 			if aborted || e.stopReq.Load() || err != nil || m.DataFault {
 				ctx, cancel = context.WithTimeout(context.Background(), time.Second)
