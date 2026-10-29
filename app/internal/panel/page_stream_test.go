@@ -66,3 +66,23 @@ func TestPageStreamEndsWhenThePageIsGone(t *testing.T) {
 		t.Fatal("a claim outlived the stream")
 	}
 }
+
+// The page's leave beacon ends a stream it still holds, the scope back on
+// its view; a stream a key on the scope took over stays.
+// TRLC-LINKS: REQ-SDS-228, REQ-SDS-278
+func TestPageLeaveEndsOnlyItsStream(t *testing.T) {
+	r, rs, uart := streamRig(t)
+	c := r.c
+	press(t, c, "f2")
+	uart()
+	press(t, c, "f2", "f2", "f2")
+	c.PageStream(true)
+	if res := c.PageLeave(); !res.OK || rs.Active() || mustState(t, c, "BUS", "workspace").View != "Visual" {
+		t.Fatalf("leaving with its stream: %+v active %v view %s", res, rs.Active(), mustState(t, c, "BUS", "workspace").View)
+	}
+	c.PageStream(true)
+	c.noteInput(true) // taken over at the scope
+	if res := c.PageLeave(); !res.OK || !rs.Active() {
+		t.Fatalf("leaving a stream the scope took: %+v active %v", res, rs.Active())
+	}
+}

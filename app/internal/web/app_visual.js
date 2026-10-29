@@ -258,22 +258,6 @@ function visMoving() {
 const VIS_ANIM_FPS = 24;
 requestAnimationFrame(visAnimate);
 
-// A page whose Visual view follows the scope's stream takes it off as it
-// goes (closed, reloaded; whichever of the two events comes, once): the
-// scope's own screen would stay on the stream, stopped, with nobody reading it.
-// TRLC-LINKS: REQ-SDS-278
-function visStreamOffOnLeave() {
-  if (vis.leaving || !vis.stream.on || typeof ws === "undefined" || ws.busView !== "visual") return;
-  vis.leaving = true;
-  const body = JSON.stringify({ row: "bus.stream", value: 0 });
-  try {
-    // a beacon outlives the page; a keep-alive fetch where there is none
-    if (!(navigator.sendBeacon && navigator.sendBeacon("/api/sheets/set", new Blob([body], { type: "application/json" }))))
-      fetch("/api/sheets/set", { method: "POST", keepalive: true, headers: { "Content-Type": "application/json" }, body });
-  } catch (e) { /* the page is going */ }
-}
-addEventListener("pagehide", visStreamOffOnLeave);
-addEventListener("beforeunload", visStreamOffOnLeave);
 
 // The Full screen button puts the picture and its panel on the whole screen.
 // TRLC-LINKS: REQ-SDS-278

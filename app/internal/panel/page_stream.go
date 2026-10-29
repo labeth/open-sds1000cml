@@ -54,6 +54,20 @@ func (c *Controller) PageStream(on bool) SetResult {
 	})
 }
 
+// PageLeave is the web page going (its leave beacon): a stream it still
+// holds ends and the scope goes back to the view it showed; one the scope
+// took over (a key pressed on it) stays.
+// TRLC-LINKS: REQ-SDS-228, REQ-SDS-278
+func (c *Controller) PageLeave() SetResult {
+	c.mu.Lock()
+	held := c.page.on
+	c.mu.Unlock()
+	if !held {
+		return SetResult{OK: true, Row: "bus.stream"}
+	}
+	return c.PageStream(false)
+}
+
 // noteStreamRead is the web page reading the stream: it is still there.
 // TRLC-LINKS: REQ-SDS-228
 func (c *Controller) noteStreamRead() {

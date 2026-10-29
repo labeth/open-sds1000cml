@@ -647,6 +647,23 @@ setInterval(() => {
   fetch("/api/stream/lines?from=0&max=1").catch(() => {});
 }, 5000);
 
+// pageStreamLeave tells the scope the page is going (closed, reloaded;
+// whichever of the two events comes, once): a stream it still holds ends and
+// the scope goes back to its view; one taken over on the scope stays.
+// TRLC-LINKS: REQ-SDS-228, REQ-SDS-278
+function pageStreamLeave() {
+  if (!pageStreamHeld) return;
+  pageStreamHeld = false;
+  const body = JSON.stringify({ on: false, leave: true });
+  try {
+    // a beacon outlives the page; a keep-alive fetch where there is none
+    if (!(navigator.sendBeacon && navigator.sendBeacon("/api/stream/page", new Blob([body], { type: "application/json" }))))
+      fetch("/api/stream/page", { method: "POST", keepalive: true, headers: { "Content-Type": "application/json" }, body });
+  } catch (e) { /* the page is going */ }
+}
+addEventListener("pagehide", pageStreamLeave);
+addEventListener("beforeunload", pageStreamLeave);
+
 // sheetsFollow keeps the page's controls that are the scope's own sheet rows
 // showing the scope's values, whoever set them (the scope's keys, the phone,
 // SCPI): when the scope's sheet changes (its SheetsSeq) the rows are fetched

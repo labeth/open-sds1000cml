@@ -185,6 +185,7 @@ func (s *Server) hSheetsSet(w http.ResponseWriter, r *http.Request) {
 
 // hStreamPage starts ({"on":true}) or ends the scope's stream for this page,
 // which then reads it: the scope ends a stream its page stopped reading.
+// {"leave":true} is the page going: only a stream it still holds ends.
 // TRLC-LINKS: REQ-SDS-228, REQ-SDS-278
 func (s *Server) hStreamPage(w http.ResponseWriter, r *http.Request) {
 	pr, ok := s.remote(w)
@@ -192,10 +193,15 @@ func (s *Server) hStreamPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req struct {
-		On bool `json:"on"`
+		On    bool `json:"on"`
+		Leave bool `json:"leave"` // the page going: only a stream it still holds ends
 	}
 	if err := json.NewDecoder(io.LimitReader(r.Body, 1<<10)).Decode(&req); err != nil {
 		writeJSON(w, panel.SetResult{Error: "bad json: want {\"on\":bool}"})
+		return
+	}
+	if pl, ok := pr.(interface{ PageLeave() panel.SetResult }); ok && req.Leave {
+		writeJSON(w, pl.PageLeave())
 		return
 	}
 	if ps, ok := pr.(interface{ PageStream(on bool) panel.SetResult }); ok {
