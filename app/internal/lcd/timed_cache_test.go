@@ -2,6 +2,7 @@
 package lcd
 
 import (
+	"strings"
 	"testing"
 
 	"open-sds/app/internal/measure"
@@ -43,5 +44,19 @@ func TestXYTablesMatchTheArithmetic(t *testing.T) {
 		if int(rows[c]) != p.sy(float64(c)) {
 			t.Fatalf("code %d: row %d, sy %d", c, rows[c], p.sy(float64(c)))
 		}
+	}
+}
+
+// A decode error of a frame that failed its check says so, not "a faster
+// time/div".
+// TRLC-LINKS: REQ-SDS-214
+func TestBusErrorHint(t *testing.T) {
+	for _, e := range []string{"no DHT reading whose checksum checks", "no CRC-valid SENT frame", "no J1850 frame whose CRC checks"} {
+		if h := busErrorHint(e); strings.Contains(h, "faster time/div") {
+			t.Errorf("%q: %q", e, h)
+		}
+	}
+	if h := busErrorHint("UART not resolved at this timebase"); !strings.Contains(h, "faster time/div") {
+		t.Errorf("a timebase error: %q", h)
 	}
 }

@@ -3,6 +3,7 @@ package lcd
 
 import (
 	"math"
+	"strings"
 
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/panel/framecalc"
@@ -323,7 +324,7 @@ func drawBusPane(sf Surface, p plotArea, b *wsview.BusPane) {
 		DrawText(sf, 16, 40, cutText(b.Error, (p.w-24)/6), colStale, 1)
 		hint := b.Hint
 		if hint == "" {
-			hint = "Use a faster time/div, or check the protocol on the BUS sheet (Utility)."
+			hint = busErrorHint(b.Error)
 		}
 		DrawText(sf, 16, 54, cutText(hint, (p.w-24)/6), colDim, 1)
 		return
@@ -1407,4 +1408,15 @@ func drawThumbBode(sf Surface, hud HUD, x0, y0, w, h int) {
 		pb := y0 + 1 + int(math.Min(math.Max(-hud.BodePhase[i]/180, 0), 1)*float64(h-3))
 		drawLine(sf, xOf(i-1), pa, xOf(i), pb, colC2)
 	}
+}
+
+// busErrorHint is the advice under a decode error the pane names none for: a
+// frame that came whole and failed its checksum or CRC is a corrupt bus or
+// wrong settings, not a timebase too slow to read it.
+// TRLC-LINKS: REQ-SDS-214
+func busErrorHint(err string) string {
+	if strings.Contains(err, "checksum") || strings.Contains(err, "CRC") {
+		return "Its frames come but fail their check: a corrupt line, or the BUS sheet's settings (Utility)."
+	}
+	return "Use a faster time/div, or check the protocol on the BUS sheet (Utility)."
 }
