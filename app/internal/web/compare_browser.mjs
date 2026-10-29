@@ -72,7 +72,7 @@ run(async (t) => {
   await t.until(async () => posts.some((p) => /"action":"cancel"/.test(p)), "Esc cancels the scope's stack", 6000);
   await t.until(async () => /cancelled/i.test(await po.text("masterStat")) && await po.text("masterBtn") === "Stack master", "…and says so", 6000);
   // the scope refuses: its words
-  actionReply = { ok: false, error: "No master: C1 differs between captures (1/3 repeat) - set a stable trigger first" };
+  actionReply = { ok: false, error: "No master: C1 differs between captures (1/3 repeat) - set a stable trigger, or quieten its noise and glitches" };
   await po.click("masterBtn");
   await t.until(async () => /Master refused: No master: C1 differs between captures/.test(await po.text("masterStat")), "a refusal is said in the scope's words", 6000);
   t.ok(/Master refused/.test(await po.text("toast")), "…with a notice");

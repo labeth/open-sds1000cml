@@ -47,7 +47,7 @@ func TestMasterRefusedWhileTheSourceDoesNotRepeat(t *testing.T) {
 		t.Fatalf("again: %q", c.View().Cmp.Again)
 	}
 	press(t, c, "f5")
-	if c.stack != nil || r.eng.Snapshot().AcqMode != 0 || !strings.Contains(c.View().Notice, "set a stable trigger first") {
+	if c.stack != nil || r.eng.Snapshot().AcqMode != 0 || !strings.Contains(c.View().Notice, "set a stable trigger, or quieten its noise") {
 		t.Fatalf("stacked on noise: stack %v acq %d notice %q", c.stack != nil, r.eng.Snapshot().AcqMode, c.View().Notice)
 	}
 }

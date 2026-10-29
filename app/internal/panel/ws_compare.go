@@ -289,7 +289,7 @@ func (c *Controller) stackStart() error {
 	nOK, n, stable, known := stabVerdict(&c.ana)
 	c.amu.Unlock()
 	if known && !stable {
-		err := fmt.Errorf("No master: C%d differs between captures (%d/%d repeat) - set a stable trigger first", src+1, nOK, n)
+		err := fmt.Errorf("No master: C%d differs between captures by over 0.25 div (%d/%d repeat) - set a stable trigger, or quieten its noise and glitches", src+1, nOK, n)
 		c.toast(err.Error(), 2800*time.Millisecond)
 		return err
 	}
@@ -717,7 +717,7 @@ func (c *Controller) repeatCaption(s *sv) (string, wsview.Col) {
 	case stable:
 		cap += fmt.Sprintf(" repeats (%d/%d captures fit the last one)", nOK, n)
 	default:
-		cap, capCol = cap+fmt.Sprintf(" does not repeat (%d/%d): a master would smear", nOK, n), wsview.Warn
+		cap, capCol = cap+fmt.Sprintf(" does not repeat within 0.25 div (%d/%d): trigger, noise or glitches", nOK, n), wsview.Warn
 	}
 	return cap, capCol
 }
