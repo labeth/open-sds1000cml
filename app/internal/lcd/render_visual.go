@@ -474,9 +474,22 @@ func visDrawFrames(sf Surface, a visArea, spans []decode.Span, lin bool) string 
 		for j, b := range f.bytes {
 			hex[j] = fmt.Sprintf("%02X", b)
 		}
-		DrawText(sf, 12, y, fmt.Sprintf("%03X", k), colSR, 1)
-		DrawText(sf, 60, y, strings.Join(hex, " "), colInfo, 1)
-		DrawTextRight(sf, a.w-12, y, fmt.Sprintf("x%d", f.n), colDim, 1)
+		count := fmt.Sprintf("x%d", f.n)
+		// the bytes that fit before the count (CAN FD carries 64), the rest counted
+		room := (a.x0 + a.w - 12 - len(count)*6 - 6 - (a.x0 + 60)) / 6
+		text := strings.Join(hex, " ")
+		if len(text) > room {
+			fit := max(0, (room-5)/3)
+			text = strings.Join(hex[:min(fit, len(hex))], " ")
+			if more := fmt.Sprintf("+%d", len(hex)-fit); len(text)+1+len(more) <= room {
+				text = strings.TrimSpace(text + " " + more)
+			} else {
+				text = ""
+			}
+		}
+		DrawText(sf, a.x0+12, y, fmt.Sprintf("%03X", k), colSR, 1)
+		DrawText(sf, a.x0+60, y, text, colInfo, 1)
+		DrawTextRight(sf, a.x0+a.w-12, y, count, colDim, 1)
 	}
 	return fmt.Sprintf("this capture: %d identifier%s", len(order), map[bool]string{true: "", false: "s"}[len(order) == 1])
 }
