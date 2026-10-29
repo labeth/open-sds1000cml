@@ -514,3 +514,30 @@ func TestAutodetectFuzzCampaign(t *testing.T) {
 		t.Errorf("%d findings", len(findings))
 	}
 }
+
+// TestAutodetectLineBesideDistractor: a one-line bus beside a square or a
+// random telegraph line, through the front end's moderate mutations, reads as no I2C
+// (SDA never moving through an address) and no MDIO (no station's clock):
+// with the distractor as the clock both once named one (DCF77 beside a
+// square read as general-call writes of zeros; Modbus beside a telegraph as
+// one MDIO frame on the UART's idle ones).
+// TRLC-LINKS: REQ-SDS-018
+func TestAutodetectLineBesideDistractor(t *testing.T) {
+	tried := 0
+	for _, c := range protoDetectCases() {
+		if c.proto != "dcf77" && c.proto != "modbus" {
+			continue
+		}
+		for seed := int64(0); seed < 1500; seed++ {
+			mc, m := fuzzMutate(rand.New(rand.NewSource(seed)), c)
+			if (m.distractor != "square" && m.distractor != "telegraph") || !(m.mild || m.moderate) {
+				continue // a heavy mutation may hide the bus (the campaign's rule)
+			}
+			tried++
+			if r, _ := AutodetectFast(mc.c1, mc.c2, mc.colT, "hex"); r.OK && (r.Proto == "i2c" || r.Proto == "mdio") {
+				t.Errorf("%s beside a %s (mutation seed %d, %+v): named %s (%s)", c.name, m.distractor, seed, m, r.Proto, r.Src)
+			}
+		}
+	}
+	t.Logf("%d captures beside a distractor", tried)
+}

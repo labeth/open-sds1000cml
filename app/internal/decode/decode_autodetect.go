@@ -778,6 +778,12 @@ func Autodetect(c1, c2 []uint8, colTimeS float64, format string) Result {
 				if share, n := phaseLock(&clk[a], &clk[1-a].s); n >= 12 && share < 0.8 {
 					return
 				}
+				// MDC is the station's clock, one period while it runs: a
+				// line of random edges (a telegraph beside a UART's idle
+				// ones, its preamble) clocks no MDIO frame
+				if clk[a].clockLike() < 0.25 {
+					return
+				}
 			}
 			// PDI_CLK runs on from the programmer, one period throughout:
 			// a line of random edges or a line code's two widths clocks none
@@ -837,6 +843,12 @@ func Autodetect(c1, c2 []uint8, colTimeS float64, format string) Result {
 			// and SDA moves at one delay into SCL low: a line that keeps no
 			// place in its cycle (DCF77's pulses beside a square) is no SDA
 			if share, n := phaseLock(&clk[ord[0]], &clk[ord[1]].s); n >= 12 && share < 0.6 {
+				continue
+			}
+			// a master addresses a device: SDA held through every address
+			// (all 0x00, all 0x7F - DCF77's long low beside a square) is a
+			// line that never moved while SCL clocked it
+			if r.OK && !i2cAddressesMove(r) {
 				continue
 			}
 			consider(r, "SCL "+chName(ord[0])+" SDA "+chName(ord[1]), Roles{ChA: ord[0], ChB: ord[1]})
@@ -970,6 +982,23 @@ func swdWholeReads(r Result) int {
 		}
 	}
 	return n
+}
+
+// i2cAddressesMove reports a read whose addresses are not all SDA held
+// through them (0x00 low, 0x7F high), or that has none.
+// TRLC-LINKS: REQ-SDS-018
+func i2cAddressesMove(r Result) bool {
+	seen := false
+	for _, s := range r.Spans {
+		if s.Kind != "addr" {
+			continue
+		}
+		if s.Val != 0 && s.Val != 0x7f {
+			return true
+		}
+		seen = true
+	}
+	return !seen
 }
 
 // i2cAckedTransfers counts an I2C reading's whole transfers: an address a
