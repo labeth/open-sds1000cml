@@ -120,7 +120,7 @@ func (c *Controller) view(s *sv) wsview.View {
 			v.Bus = c.streamPane(s)
 		case u.busVisual: // no packet list above it: the picture takes the screen
 			v.Layout.HideTraces, v.Layout.PlotTop = true, 0
-			v.Visual = &wsview.VisualPane{}
+			v.Visual = visualPane(s)
 		default:
 			v.Bus = c.busPane(s)
 		}
@@ -944,4 +944,17 @@ func decodeRateHint(err string, tdiv float64, serial bool, matches int64) string
 		h += " The trigger fires (the FPGA reads every sample)."
 	}
 	return h
+}
+
+// visualPane is BUS's Visual view: the picture, its tool line (Adjust only
+// finds a bus: there is no packet to pick) and the view BUS again shows.
+// TRLC-LINKS: REQ-SDS-213, REQ-SDS-281
+func visualPane(s *sv) *wsview.VisualPane {
+	p := &wsview.VisualPane{}
+	p.Title, p.Again = "BUS", "F2 again: "+busViewNext(&s.ui)
+	p.Tool = posTool(s)
+	if !busDecoding(s) {
+		p.Tool = toolLine(s, wsview.Seg{Key: "Adjust push", Job: "detect the bus"})
+	}
+	return p
 }

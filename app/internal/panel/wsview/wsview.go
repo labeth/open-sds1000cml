@@ -118,7 +118,9 @@ type View struct {
 
 // VisualPane is BUS's Visual view: the frame's decode drawn as what the bus
 // carries (the LCD draws it from the frame).
-type VisualPane struct{}
+type VisualPane struct {
+	Pane // its tool line and "F2 again" (the LCD draws the picture alone)
+}
 
 // ScopePane is SCOPE's chrome: its name in the top bar and the Adjust tag.
 type ScopePane struct {

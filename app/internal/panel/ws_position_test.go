@@ -2,6 +2,7 @@
 package panel
 
 import (
+	"fmt"
 	"math"
 	"reflect"
 	"strings"
@@ -204,6 +205,10 @@ func TestVisualHasNoPacketKnobs(t *testing.T) {
 	press(t, c, "f2", "f2", "f2")
 	if st := mustState(t, c, "BUS", "workspace"); st.View != "Visual" {
 		t.Fatalf("view %s, want Visual", st.View)
+	}
+	// what the tool line says the knobs do here: Position's jobs, no sheet row
+	if st := c.PanelStatus(); st.Again != "F2 again: Packets" || strings.Contains(fmt.Sprint(st.Tool), "sheet") {
+		t.Fatalf("Visual's tool line %v, again %q", st.Tool, st.Again)
 	}
 	c.amu.Lock()
 	sel := c.ana.list.Selected()

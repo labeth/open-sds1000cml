@@ -310,6 +310,8 @@ func paneTool(c *Controller, s *sv, v wsview.View) ([]ToolSeg, string) {
 		p = &v.Meas.Pane
 	case v.Cmp != nil:
 		p = &v.Cmp.Pane
+	case v.Visual != nil:
+		p = &v.Visual.Pane
 	}
 	if p != nil {
 		var out []ToolSeg
