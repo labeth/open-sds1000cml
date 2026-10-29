@@ -61,6 +61,30 @@ func measFor(ch int, sig []uint8, q []uint16, guard int, seq, content uint64, vp
 	return m
 }
 
+// timedSlots hold each channel's envelope timing with the measurement it was
+// taken on: while measFor answers with the same measurement (the same frame,
+// or the readouts' refresh not yet due) the timing is that one's too. Taken
+// again for every readout of every picture it was a tenth of the core.
+var timedSlots [2]struct {
+	base, timed  *measure.Result
+	vpc, off, ss float64
+}
+
+// timedFor is take(base), or the one taken on the same base and scale.
+// TRLC-LINKS: REQ-SDS-021
+func timedFor(ch int, base *measure.Result, cache bool, vpc, off, ss float64, take func(*measure.Result) *measure.Result) *measure.Result {
+	if !cache || base == nil || ch < 0 || ch > 1 {
+		return take(base)
+	}
+	measMu.Lock()
+	defer measMu.Unlock()
+	t := &timedSlots[ch]
+	if t.base != base || t.vpc != vpc || t.off != off || t.ss != ss {
+		t.base, t.timed, t.vpc, t.off, t.ss = base, take(base), vpc, off, ss
+	}
+	return t.timed
+}
+
 // chanMeasure is one channel's calibrated measurement of the frame, as the
 // readouts show it (the probe-scaled V/div, the software coupling, the
 // display invert); nil without the channel.
@@ -95,7 +119,9 @@ func chanMeasure(f *engine.Frame, hud HUD, ch int) *measure.Result {
 	}
 	m := measFor(ch, sig, q, f.FilterGuard, f.Seq, f.Content, vpc, off*probe, hud.SampleS, probe, cpl)
 	if f.PeakDetect {
-		m = m.WithEnvelopeTiming(sig, vpc, off*probe, hud.SampleS).WithEdgeDetail(vpc, off*probe, f.EdgeWindows(ch)...)
+		m = timedFor(ch, m, f.Seq != 0, vpc, off*probe, hud.SampleS, func(m *measure.Result) *measure.Result {
+			return m.WithEnvelopeTiming(sig, vpc, off*probe, hud.SampleS).WithEdgeDetail(vpc, off*probe, f.EdgeWindows(ch)...)
+		})
 	}
 	// After the timing: the invert swaps rise and fall and complements the
 	// duty, which the envelope's timing would otherwise put back.

@@ -30,10 +30,16 @@ func drawXY(sf Surface, p plotArea, f *engine.Frame, hud HUD) {
 	if valid > 4000 {
 		step = valid / 4000
 	}
+	// a code's column and row from a table: two floating-point steps a
+	// point were most of an X-Y picture on this ARM
+	rows := p.codeRows(1)
+	var cols [256]int16
+	for c := range cols {
+		cols[c] = int16(float64(c) * float64(p.w-1) / 255.0)
+	}
 	px, py := -1, -1
 	for i := 0; i < valid; i += step {
-		x := int(float64(c1[i]) * float64(p.w-1) / 255.0)
-		y := p.sy(float64(c2[i]))
+		x, y := int(cols[c1[i]]), int(rows[c2[i]])
 		if px >= 0 {
 			drawLine(sf, px, py, x, y, colMath)
 		}
