@@ -228,7 +228,8 @@ const ACTIONS = [
   {
     // TRLC-LINKS: REQ-SDS-180
     name: "pane-maximize", w: 2, run: async (op) => {
-      const t = await anyVisible(op, ".ws:not([hidden]) .pane > .ph > .pt");
+      // a title a user can reach: not one under a maximized pane
+      const t = await anyVisible(op, ".ws:not([hidden]) .pane:not([inert] .pane):not([inert]) > .ph > .pt");
       if (!t) return "no pane title";
       await t.dblclick({ timeout: 6000 });
       if (rng() < 0.6) { await op.page.waitForTimeout(300); await key(op, "Escape"); return "maximize + restore"; }

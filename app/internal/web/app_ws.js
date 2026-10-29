@@ -256,11 +256,22 @@ function toggleMax(n) {
   if (cur) {
     cur.el.classList.remove("is-max");
     ws.maxed[n.ws] = null;
-    if (cur === n) return;
+    if (cur === n) { maxInert(n.ws); return; }
   }
   if (n.collapsed) toggleCollapse(n, false);
   n.el.classList.add("is-max");
   ws.maxed[n.ws] = n;
+  maxInert(n.ws);
+}
+
+// maxInert makes the panes a maximized one lies over inert (no focus, no
+// clicks: Tab went on through controls nobody could see), and lets them be
+// again once it is restored.
+// TRLC-LINKS: REQ-SDS-219
+function maxInert(id) {
+  const m = ws.maxed[id], root = $("ws-" + id);
+  if (!root) return;
+  for (const s of root.querySelectorAll(".slot")) s.inert = !!m && s !== m.el && !s.contains(m.el) && !m.el.contains(s);
 }
 
 // Every pane header gets a caret (collapse), a double-click (maximize) and a
