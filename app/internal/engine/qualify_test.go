@@ -535,3 +535,25 @@ func TestQualifierLimitsOrdered(t *testing.T) {
 		t.Fatalf("unset T max moved: %g..%g", e.tp.slopeTMinNs, e.tp.slopeTMaxNs)
 	}
 }
+
+// A decimated record keeps the FPGA's raw-sample trigger where its averages
+// hide the crossing (an edge faster than one record sample: a 1 MHz square at
+// 50 ms/div reads as its mean): the band past the converters' spread keeps
+// noise from firing it. A full-rate record is judged by its own crossing.
+// TRLC-LINKS: REQ-SDS-011, REQ-SDS-016
+func TestDecimatedRecordKeepsTheRawTrigger(t *testing.T) {
+	mean := make([]uint8, 200)
+	for i := range mean {
+		mean[i] = 125
+	}
+	e := &Engine{}
+	for _, c := range []struct {
+		dec  uint32
+		want bool
+	}{{256, true}, {16, true}, {1, false}} {
+		f := &Frame{Valid: 200, EdgeX: 98, Decimation: c.dec}
+		if got := e.placeEdgeTrigger(f, mean, nil, 130, true); got != c.want || f.EdgeX != 98 {
+			t.Errorf("decimation %d: kept %v (want %v), at %g", c.dec, got, c.want, f.EdgeX)
+		}
+	}
+}

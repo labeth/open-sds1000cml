@@ -3,7 +3,7 @@
 // TRLC-LINKS: REQ-SDS-039, REQ-SDS-042
 module tb;
  reg clk=0;always #2 clk=~clk;
- reg enable=0,valid=0;reg [7:0] first=0,second=0,level=128,low_level=124,high_level=132;
+ reg enable=0,valid=0,sustain=0;reg [7:0] first=0,second=0,level=128,low_level=124,high_level=132;
  wire rise,fall;sram_edge_pair dut(.*);
  task pair(input [7:0] a,b,input r,f);
  begin
@@ -44,8 +44,8 @@ module tb_edge_pipeline;
  reg enable=0,valid=0,valid_d=0;reg [7:0] first=0,second=0,first_d=0,second_d=0;
  reg [7:0] level=128,low_level=124,high_level=132;
  wire rise,fall,ref_rise,ref_fall;
- sram_edge_pair #(.PIPELINED(1)) dut(.clk(clk),.enable(enable),.valid(valid),.first(first),.second(second),.level(level),.low_level(low_level),.high_level(high_level),.rise(rise),.fall(fall));
- sram_edge_pair reference_pair(.clk(clk),.enable(enable),.valid(valid_d),.first(first_d),.second(second_d),.level(level),.low_level(low_level),.high_level(high_level),.rise(ref_rise),.fall(ref_fall));
+ sram_edge_pair #(.PIPELINED(1)) dut(.clk(clk),.enable(enable),.valid(valid),.first(first),.second(second),.level(level),.low_level(low_level),.high_level(high_level),.sustain(1'b0),.rise(rise),.fall(fall));
+ sram_edge_pair reference_pair(.clk(clk),.enable(enable),.valid(valid_d),.first(first_d),.second(second_d),.level(level),.low_level(low_level),.high_level(high_level),.sustain(1'b0),.rise(ref_rise),.fall(ref_fall));
  always @(posedge clk)begin first_d<=first;second_d<=second;valid_d<=enable && valid;end
  integer a,b,epoch,i,checked=0;reg [6:0] pieces;reg [31:0] rng=32'h12345678;
  always @(negedge clk)begin

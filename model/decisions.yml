@@ -2505,10 +2505,17 @@ decisions:
     next written word, at most a decimated sample late (software places the trigger on the crossing). The qualifier
     reads the raw samples too: its widths count clocks and its slope sums one sample of each interleaved converter.
     The zones keep judging the record''s own words, whose buckets span the screen, around the raw edges. The stream
-    image''s crossing marks stay the streamed words'' (SOUND).'
+    image''s crossing marks stay the streamed words'' (SOUND). On a decimated record a crossing counts once five
+    consecutive samples, one from each interleaved converter, sit at or past the level (sram_edge_pair sustain): no
+    record holds the samples for software to confirm the trigger, and the converters'' offsets (about 11 codes) put
+    one or two converters'' samples past a level just beyond a flat top or bottom; a sample back across cancels the
+    run and leaves the edge armed. Full-rate records keep the one-sample crossing, which software confirms.'
   consequences:
   - 'An edge, pulse or slope trigger on a signal much faster than the record''s sample interval fires at slow
     timebases; the record still shows the filter''s view of it (its mean), and the trigger point lies on the record''s
     word after the raw edge.'
-  - 'TestEdgeDecimatedTopRTL locks it: a 62.5 MHz burst whose averages sit under the level triggers at /1, /16, /32
-    and /256 (on the filter''s words, never).'
+  - 'At decimating timebases an edge must stay past the level for 10 ns (five samples) to trigger: a square up to
+    about 50 MHz, a pulse of 10 ns or more; a narrower glitch triggers only at full-rate timebases.'
+  - 'TestEdgeDecimatedTopRTL locks it: a 31.25 MHz burst whose averages sit under the level triggers at /1, /16, /32
+    and /256 (on the filter''s words, never), and a flat line whose converters spread past the level triggers only
+    at /1, where software confirms; tb_edge_sustain checks the run against a sample-by-sample model.'

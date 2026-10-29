@@ -105,6 +105,16 @@ func confirmTriggerEdge(sig []uint8, q []uint16, valid int, edgeX, level float64
 // TRLC-LINKS: REQ-SDS-011
 func (e *Engine) placeEdgeTrigger(f *Frame, disc []uint8, q []uint16, level float64, rising bool) bool {
 	confirmed := confirmTriggerEdge(disc, q, f.Valid, f.EdgeX, level, rising, f.PeakDetect)
+	if !confirmed && f.Decimation > 1 {
+		// the comparators read the raw samples, with a re-arm band past the
+		// converters' spread (planHysteresis), and decimated a crossing holds
+		// for a sample of every converter (ADR-EDGE-TRIGGER-RAW): no
+		// converter's offset fires them. A decimated record whose averages hide the crossing (an
+		// edge faster than one of its samples, a glitch) keeps the FPGA's
+		// index: it has no crossing to place the trigger on.
+		e.noteNoiseTrigger(false)
+		return true
+	}
 	e.noteNoiseTrigger(!confirmed)
 	if confirmed && !f.PeakDetect {
 		f.EdgeX = refineTriggerEdge(disc, q, f.Valid, f.EdgeX, level, rising)

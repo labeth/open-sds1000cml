@@ -611,7 +611,7 @@ func secondLevel(p SerialParams) uint8 {
 // planHysteresis sets the fabric trigger's re-arm band from the converter
 // offsets of the trigger channel (and the second line of I2C/SPI).
 // TRLC-LINKS: REQ-SDS-011
-func (e *Engine) planHysteresis(c *sramcapture.Config, decimated bool) {
+func (e *Engine) planHysteresis(c *sramcapture.Config, _ bool) {
 	// The fabric sees raw interleaved codes, before display calibration. Its
 	// re-arm band must span the measured converter offsets plus quantization
 	// noise, otherwise a calibrated-looking falling trace can trigger rising.
@@ -620,9 +620,12 @@ func (e *Engine) planHysteresis(c *sramcapture.Config, decimated bool) {
 	// scale leaves a 4-code band elsewhere, and a level within the cores'
 	// spread of the baseline fires on raw noise (2 V/div at 0.4 V and 5 V/div
 	// at 1.6 V trigger with no edge in the frame).
+	// The edge trigger and the qualifier read the raw codes at every timebase
+	// (ADR-EDGE-TRIGGER-RAW), decimated records too: the band spans the
+	// cores' offsets there as well.
 	c.TriggerHysteresis = 4
 	cal := e.interleaveCalibration
-	if cal == nil || (decimated && hardwareSerialName(*c) == "") {
+	if cal == nil {
 		return
 	}
 	spread := func(ch int) float64 {

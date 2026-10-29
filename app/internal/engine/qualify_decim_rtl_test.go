@@ -119,11 +119,14 @@ func TestQualifierDecimatedTopRTL(t *testing.T) {
 }
 
 // The edge trigger on decimated records (/16, /32, /256: box averages) of a
-// signal faster than one decimated sample: a line low for 40 us, then a
-// 62.5 MHz square for 4 us. The averages of the burst sit at mid-scale,
+// signal faster than one decimated sample: a line low for 20 us, a flat
+// line under the level for 20 us whose five converters spread past it, then
+// a 31.25 MHz square for 4 us. The averages of the burst sit at mid-scale,
 // under the level; the comparators read the raw samples, so each record
 // triggers at a burst's start (ADR-TRIGGER-ANY-TIMEBASE): on the filter's
 // words no decimated record ever triggered (a 1 MHz square at 50 ms/div).
+// The spread never triggers: decimated, a crossing must hold for a sample
+// of every converter (ADR-EDGE-TRIGGER-RAW).
 // TRLC-LINKS: REQ-SDS-010, REQ-SDS-011
 func TestEdgeDecimatedTopRTL(t *testing.T) {
 	if testing.Short() {
@@ -153,14 +156,18 @@ func TestEdgeDecimatedTopRTL(t *testing.T) {
 	}
 	const sampleS = 2e-9
 	var line []uint32
-	var starts []int // each burst's start, in words
+	var starts, spreads []int // each burst's and each spread's start, in words
 	for b := 0; b < 4; b++ {
-		for i := 0; i < int(40e-6/sampleS); i++ {
+		for i := 0; i < int(20e-6/sampleS); i++ {
 			line = append(line, 50)
+		}
+		spreads = append(spreads, len(line)/2)
+		for i := 0; i < int(20e-6/sampleS); i++ {
+			line = append(line, uint32(152+i%5*4)) // 152..168 about the level 160
 		}
 		starts = append(starts, len(line)/2)
 		for i := 0; i < int(4e-6/sampleS); i++ {
-			line = append(line, map[bool]uint32{true: 200, false: 50}[i/4%2 == 0])
+			line = append(line, map[bool]uint32{true: 200, false: 50}[i/8%2 == 0])
 		}
 	}
 	var in strings.Builder
@@ -191,8 +198,14 @@ func TestEdgeDecimatedTopRTL(t *testing.T) {
 		for _, l := range strings.Split(string(out), "\n") {
 			fmt.Sscanf(l, "T %d", &trigger)
 		}
+		// full rate the comparators take the spread's first crossing (the
+		// engine confirms a full-rate trigger on its record and drops it)
+		want := starts
+		if log == 0 {
+			want = spreads
+		}
 		near := false
-		for _, s := range starts {
+		for _, s := range want {
 			if d := trigger - s; d >= 0 && d <= 16+3*(1<<log)/2 {
 				near = true
 			}

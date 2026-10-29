@@ -18,7 +18,10 @@ the FPGA; the app only places the trigger point on the event.
 Every trigger fires at every timebase: the edge trigger, the protocol
 receivers, the symbol trigger and the qualifier read the raw samples whatever
 the record's decimation, and each fire holds until the record takes it on a
-written word (decimated, one clock in many). The zones judge the record's own
+written word (decimated, one clock in many). Decimated, an edge counts once
+five consecutive samples (one from each interleaved converter) sit past the
+level, so the converters' offsets past a level just beyond a flat line fire
+nothing; full rate, software confirms the edge on the record. The zones judge the record's own
 words (their buckets span the screen) around the raw edges. The stream image's
 crossing marks are the streamed words'. The images with no room for the precision
 filter (about 2500 logic elements) decimate by box averages

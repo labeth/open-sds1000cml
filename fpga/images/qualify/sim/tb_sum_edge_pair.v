@@ -10,7 +10,7 @@ module tb;
  reg enable=0,valid=0;reg [7:0] first=128,second=128,level=128,low=120,high=136;
  wire r_ref,f_ref,r_sum,f_sum;
  sram_edge_pair #(.PIPELINED(1)) reference(.clk(clk),.enable(enable),.valid(valid),.first(first),.second(second),
-  .level(level),.low_level(low),.high_level(high),.rise(r_ref),.fall(f_ref));
+  .level(level),.low_level(low),.high_level(high),.sustain(1'b0),.rise(r_ref),.fall(f_ref));
  sum_edge_pair #(.W(8)) dut(.clk(clk),.enable(enable),.valid(valid),.first(first),.second(second),
   .level(level),.low_level(low),.high_level(high),.rise(r_sum),.fall(f_sum));
  reg r_d=0,f_d=0;integer edges=0,n,seed=7;integer x=128;

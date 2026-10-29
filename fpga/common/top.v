@@ -197,7 +197,7 @@ module acq_sram_top(
 `ifdef STREAM_CAPTURE
  // The stream's crossing marks (SOUND) are the streamed words' own.
  wire [31:0] selected_trigger=!decim_trigger_active ? il_raw_word : {precision_word[31:24],precision_word[15:8],precision_word[31:24],precision_word[15:8]};
- wire trigger_compare_valid=selected_valid;
+ wire trigger_compare_valid=selected_valid,trigger_sustain=1'b0;
 `else
  // ADR-TRIGGER-ANY-TIMEBASE: the edge trigger compares the raw samples at
  // every timebase, as the protocol receivers do: on the decimation filter's
@@ -206,6 +206,9 @@ module acq_sram_top(
  // record writes a word (edge_hold).
  wire [31:0] selected_trigger=il_raw_word;
  wire trigger_compare_valid=il_raw_valid;
+ // decimated, a crossing must hold for a sample of every converter (no
+ // record to check it on): sram_edge_pair's sustain
+ wire trigger_sustain=decim_trigger_active;
 `endif
 `ifdef QUAL_TRIGGER
  // The qualifier reads the raw samples too (its widths count clocks, its
@@ -229,7 +232,7 @@ module acq_sram_top(
   ;
 `else
  wire [31:0] selected_word=il_raw_word,selected_trigger=il_raw_word;
- wire selected_valid=il_raw_valid,stream_fault=il_fault,trigger_compare_valid=il_raw_valid;
+ wire selected_valid=il_raw_valid,stream_fault=il_fault,trigger_compare_valid=il_raw_valid,trigger_sustain=1'b0;
  wire [31:0] qual_trigger_word=il_raw_word,zone_trigger_word=il_raw_word;
  wire qual_trigger_valid=il_raw_valid,zone_trigger_valid=il_raw_valid;
 `endif
@@ -920,7 +923,7 @@ module acq_sram_top(
 `endif
  end
  genvar tc;generate for(tc=0;tc<2;tc=tc+1)begin:trigger_compare
-  sram_edge_pair #(.PIPELINED(1)) edges(.clk(core),.enable(frontend_run),.valid(frontend_run && trigger_compare_valid),
+  sram_edge_pair #(.PIPELINED(1)) edges(.clk(core),.enable(frontend_run),.valid(frontend_run && trigger_compare_valid),.sustain(trigger_sustain),
    .first(selected_trigger[8*tc+:8]),.second(selected_trigger[16+8*tc+:8]),
    .level(level_l),.low_level(level_low_l),.high_level(level_high_l),
    .rise(rise_ch[tc]),.fall(fall_ch[tc]));
@@ -1823,8 +1826,14 @@ endmodule
 // Direct mode compares then updates edge state. Pipelined mode absorbs the
 // caller's input register into partial comparisons, preserving system latency.
 // TRLC-LINKS: REQ-SDS-039, REQ-SDS-042
-module sram_edge_pair #(parameter PIPELINED=0)(input clk,enable,valid,input [7:0] first,second,level,low_level,high_level,
+module sram_edge_pair #(parameter PIPELINED=0,parameter RUN=5)(input clk,enable,valid,input [7:0] first,second,level,low_level,high_level,
+ input sustain,
  output reg rise=0,fall=0);
+ // sustain (a decimated record: no record to check a trigger on in software):
+ // a crossing counts once RUN consecutive samples sit past the level, one
+ // from each interleaved converter, so one converter's offset past a level
+ // just beyond a flat top or bottom fires nothing; a sample back across
+ // cancels the run and leaves the edge armed.
  // Local copies keep configuration fanout off the 250 MHz sample comparison.
  (* preserve, dont_merge *) reg [7:0] local_level=128,local_low=124,local_high=132;
  // TRLC-LINKS: REQ-SDS-039, REQ-SDS-042
@@ -1863,12 +1872,34 @@ module sram_edge_pair #(parameter PIPELINED=0)(input clk,enable,valid,input [7:0
   first_far_low<=comparisons[4];first_far_high<=comparisons[5];
   second_far_low<=comparisons[6];second_far_high<=comparisons[7];
   rise<=0;fall<=0;
-  if(valid_d)begin
+  if(valid_d && !sustain_l)begin
    rise<=(rising_armed && !first_low) || (rise_after_first && !second_low);
    fall<=(falling_armed && !first_high) || (fall_after_first && !second_high);
    rising_armed<=(rise_after_first || second_far_low) && second_low;
    falling_armed<=(fall_after_first || second_far_high) && second_high;
   end
-  if(!enable)begin valid_d<=0;rising_armed<=0;falling_armed<=0;rise<=0;fall<=0;end
+  if(valid_d && sustain_l)begin
+   rise<=up_fire;fall<=dn_fire;
+   up_armed<=(second_far_low && second_low) || (!up_fire && (up_armed || (first_far_low && first_low)));
+   dn_armed<=(second_far_high && second_high) || (!dn_fire && (dn_armed || (first_far_high && first_high)));
+   up_streak<=streak_next(up_streak,first_low,second_low);
+   dn_streak<=streak_next(dn_streak,first_high,second_high);
+  end
+  if(!enable)begin valid_d<=0;rising_armed<=0;falling_armed<=0;rise<=0;fall<=0;up_armed<=0;dn_armed<=0;up_streak<=0;dn_streak<=0;end
  end
+ // The sustained runs: the streak counts the samples at or past the level
+ // since the last one short of it (saturating past RUN, so it reaches RUN
+ // once a run); armed from the far band to a fire, which a streak reaching
+ // RUN makes. Within a run nothing arms (only a sample short of the level arms).
+ reg sustain_l=0;
+ always @(posedge clk)sustain_l<=sustain;
+ reg up_armed=0,dn_armed=0;reg [2:0] up_streak=0,dn_streak=0;
+ // TRLC-LINKS: REQ-SDS-039, REQ-SDS-042
+ function [2:0] streak_next(input [2:0] streak,input short_first,short_second);
+  if(short_second)streak_next=0;
+  else if(short_first)streak_next=1;
+  else streak_next=streak>=3'd5 ? 3'd7 : streak+3'd2;
+ endfunction
+ wire up_fire=up_armed && !first_low && (up_streak==RUN-1 || (!second_low && up_streak==RUN-2));
+ wire dn_fire=dn_armed && !first_high && (dn_streak==RUN-1 || (!second_high && dn_streak==RUN-2));
 endmodule

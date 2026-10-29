@@ -165,7 +165,7 @@ func TestSRAMTriggerHysteresisCoversSelectedConverterSpread(t *testing.T) {
 		scale     float64
 		precision bool
 		want      uint8
-	}{{0, 2, false, 14}, {1, 2, false, 6}, {0, 1, false, 14}, {0, 5, false, 14}, {0, 2, true, 4}} { // the cores' spread holds at every V/div
+	}{{0, 2, false, 14}, {1, 2, false, 6}, {0, 1, false, 14}, {0, 5, false, 14}, {0, 2, true, 14}} { // the cores' spread holds at every V/div, and decimated: the comparator reads the raw codes
 		e.trigSrc.Store(int32(tc.channel))
 		e.chVdivBits[tc.channel].Store(math.Float64bits(tc.scale))
 		e.acqMode.Store(0)
