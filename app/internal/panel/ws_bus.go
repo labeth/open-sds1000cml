@@ -1179,9 +1179,12 @@ func (c *Controller) findSlowBus(auto AutoSource, wanted func() bool, prior stri
 			}
 			// a screen of slow frames takes its own time to capture
 			l := c.detectWith(true, true, accept, auto, decimatedWait+time.Duration(20*at*float64(time.Second)))
-			if l.found && decimatedStands(l.res) && l.res.Proto == prior {
+			// the bus found faster, again - but for a find that may be a slower
+			// burst's middle, held below while the slower looks see (an
+			// Oregon burst read as Manchester at 5 ms/div, and again here)
+			if l.found && decimatedStands(l.res) && l.res.Proto == prior && len(heldFor(prior)) == 0 {
 				c.setTdivNearest(prev)
-				return decode.Result{}, 0, false, 0, true // the bus found faster, again
+				return decode.Result{}, 0, false, 0, true
 			}
 			if l.found && slowAlias(l.res, l.sampleS, priorFeat) {
 				continue // the faster find's edges, aliased

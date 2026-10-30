@@ -14,7 +14,8 @@ import (
 // a burst. A slower look whose record cuts the burst too reads the same
 // Manchester line: the search looks on (the next record, the slowest
 // timebase) and names the Oregon burst a whole record holds, where it used
-// to give the held Manchester find back at once.
+// to give the held Manchester find back at once - or, the Manchester line
+// found faster already, to take the first look's reading for it again.
 // TRLC-LINKS: REQ-SDS-214
 func TestSlowSearchLooksOnPastTheHeldFindAgain(t *testing.T) {
 	c, eng, _ := newC(t)
@@ -50,8 +51,11 @@ func TestSlowSearchLooksOnPastTheHeldFindAgain(t *testing.T) {
 		}
 		return r, s, ok
 	}
-	r, _, found, _, _ := c.findSlowBus(auto, func() bool { return true }, "", 0)
-	if !found || r.Proto != "ook" {
-		t.Fatalf("found %v %q, want the Oregon burst (ook)", found, r.Proto)
+	for _, prior := range []string{"", "manchester"} { // a search's first look, or one found faster
+		looks20 = 0
+		r, _, found, _, again := c.findSlowBus(auto, func() bool { return true }, prior, 0)
+		if !found || r.Proto != "ook" {
+			t.Fatalf("prior %q: found %v %q (again %v), want the Oregon burst (ook)", prior, found, r.Proto, again)
+		}
 	}
 }
