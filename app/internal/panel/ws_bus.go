@@ -1144,7 +1144,9 @@ func (c *Controller) findSlowBus(auto AutoSource, wanted func() bool, prior stri
 	// a Manchester line found faster may be a slower burst's middle (an
 	// Oregon sensor's 100 ms message at 5 ms/div reads as Manchester or
 	// RC-5), and a PWM line a DCF77 code's seconds without its minute
-	// marker: held while the slowest look sees whether it is one
+	// marker: held while the slowest look sees whether it is one (a slower
+	// record reading the held find again, the burst cut there too, is
+	// looked past)
 	var held *look
 	heldAt := 0.0
 	keep := func(l look, at float64) (decode.Result, float64, bool, float64, bool) {
@@ -1185,6 +1187,9 @@ func (c *Controller) findSlowBus(auto AutoSource, wanted func() bool, prior stri
 				continue // the faster find's edges, aliased
 			}
 			if l.found && decimatedStands(l.res) {
+				if held != nil && l.res.Proto == held.res.Proto {
+					continue // the held find again, this record cutting the burst too: look on
+				}
 				if held != nil && !slices.Contains(heldFor(held.res.Proto), l.res.Proto) {
 					return keep(*held, heldAt)
 				}

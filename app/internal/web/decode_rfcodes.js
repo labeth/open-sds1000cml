@@ -218,14 +218,18 @@ function decodeOOK(codes, colTimeS, cfg) {
     const nib = [];
     for (let j = 0; j + 4 <= data.length; j += 4) nib.push(data[j] | (data[j + 1] << 1) | (data[j + 2] << 2) | (data[j + 3] << 3));
     const ck = oregonChecksum(nib, v);
+    // the record's end cuts the burst: it runs to the record's last run
+    // (open, the line still within a bit when the record stopped) - no
+    // checksum to judge
+    const ends = e === runs.length || (e === runs.length - 1 && runs[e].x1 - runs[e].x0 < 8 * hpg);
     for (let j = 0; j < nib.length; j++) {
       let txt = nib[j].toString(16).toUpperCase(), kind = "data";
-      if (ck < 0 && j === nib.length - 1) { txt = "!" + txt; kind = "frame-error"; }
+      if (ck < 0 && !ends && j === nib.length - 1) { txt = "!" + txt; kind = "frame-error"; }
       spans.push(pspan(dx[4 * j], dx[4 * j + 3] + bitLen, n, txt, kind, nib[j]));
       toks.push(txt); units.push(nib[j]);
     }
     if (ck >= 0) good = true;
-    else if (e === runs.length) cut = true;
+    else if (ends) cut = true;
     k = e - 1;
   }
   if (!spans.length) return fail("ook", "no Oregon burst");

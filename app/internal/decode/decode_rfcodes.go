@@ -377,9 +377,13 @@ func DecodeOOK(codes []uint8, colTimeS float64, cfg LineCfg) Result {
 			nib = append(nib, data[j]|data[j+1]<<1|data[j+2]<<2|data[j+3]<<3)
 		}
 		ck := oregonChecksum(nib, v)
+		// the record's end cuts the burst: it runs to the record's last run
+		// (open, the line still within a bit when the record stopped) - no
+		// checksum to judge
+		ends := e == len(runs) || (e == len(runs)-1 && runs[e].x1-runs[e].x0 < 8*hpg)
 		for j, x := range nib {
 			txt, kind := fmt.Sprintf("%X", x), "data"
-			if ck < 0 && j == len(nib)-1 {
+			if ck < 0 && !ends && j == len(nib)-1 {
 				txt, kind = "!"+txt, "frame-error"
 			}
 			spans = append(spans, pspan(dx[4*j], dx[4*j+3]+bitLen, n, txt, kind, x))
@@ -388,7 +392,7 @@ func DecodeOOK(codes []uint8, colTimeS float64, cfg LineCfg) Result {
 		}
 		if ck >= 0 {
 			good = true
-		} else if e == len(runs) {
+		} else if ends {
 			cut = true
 		}
 		k = e - 1 // the idle after the burst opens the next
