@@ -460,9 +460,11 @@ func (c *Controller) messageTimebase(msg, featureS, tdiv float64) float64 {
 // messageLooks is how many timebases up the ladder AUTO in BUS measures a
 // message the screen held none of whole (measureSlower), and messageRecords
 // the records it reads at each: a message falls across a record's end on one
-// and whole on the next.
+// and whole on the next. Three steps: a message just under a step's screen
+// after the trigger (the bench DCF77's 174 ms minute at 20ms/div, 180 ms
+// past the trigger) is cut there as often as not, whole one step up.
 const (
-	messageLooks   = 2
+	messageLooks   = 3
 	messageRecords = 3
 )
 
@@ -482,6 +484,13 @@ func (c *Controller) measureSlower(m busMsgs, featureS float64) busMsgs {
 	}
 	prev := c.snap().st.TdivSet()
 	defer c.setTdivNearest(prev)
+	// the search's records, whole and resolving the bus (findSlowBus): the
+	// BUS view's sampled ones are a screen's budget (a sample every 261 us
+	// at 5ms/div, under the bench DCF77's 300 us pulse)
+	if e, ok := c.eng.(interface{ LeaseSearchView(time.Duration) }); ok {
+		e.LeaseSearchView(10 * time.Second)
+		defer e.LeaseSearchView(0)
+	}
 	tds := slices.Clone(c.tdivs)
 	slices.Sort(tds)
 	looks := 0
@@ -498,8 +507,13 @@ func (c *Controller) measureSlower(m busMsgs, featureS float64) busMsgs {
 		var seen uint64 // the newest record a look here read
 		for range messageRecords {
 			after := seen
+			// a record of the timebase that resolves the bus, not the live
+			// envelope or a screen's sampled record shown first (a DCF77
+			// pulse read off them is nothing, and the look gave up in 50 ms,
+			// one search in five)
 			accept := func(f *engine.Frame, _ bool) bool {
-				return (f.TdivS == 0 || math.Abs(f.TdivS-at) <= 1e-3*at) && (after == 0 || f.Seq > after)
+				return (f.TdivS == 0 || math.Abs(f.TdivS-at) <= 1e-3*at) && (after == 0 || f.Seq > after) &&
+					!f.IsEnv && f.SampleS > 0 && featureS/f.SampleS >= readableFeature
 			}
 			valid := 0 // the decoded record's own, which its last message's cut is judged by
 			decodeAt := func() (decode.Result, float64, bool) {
