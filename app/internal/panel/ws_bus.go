@@ -858,11 +858,16 @@ func shortRuns(l look) bool {
 }
 
 // clockFromRecord reports a bus whose decoder takes its clock from the
-// record (SPI, I2C): a decimated record of a faster bus reads as one at a
-// clock the record aliases.
+// record (SPI, I2C, and the debug and management pairs cJTAG, SWD and MDIO):
+// a decimated record of a faster bus reads as one at a clock the record
+// aliases (a 10 MHz SPI bus at 500us/div read as cJTAG one AUTO in twenty).
 // TRLC-LINKS: REQ-SDS-214
 func clockFromRecord(res decode.Result) bool {
-	return res.Proto == "spi" || res.Proto == "i2c"
+	switch res.Proto {
+	case "spi", "i2c", "cjtag", "swd", "mdio":
+		return true
+	}
+	return false
 }
 
 // slowAlias reports a slow look's find (res, on a record sampled every

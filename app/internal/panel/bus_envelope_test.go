@@ -451,3 +451,31 @@ func TestASlowClockedFindCoarserThanAFasterOneIsItsAlias(t *testing.T) {
 		t.Error("a UART was taken for a clocked bus's alias")
 	}
 }
+
+// The debug and management pairs take their clock from the record like SPI
+// and I2C: the bench's 10 MHz SPI bus read on Default setup's 500us/div
+// decimated record as cJTAG stood unweighed one AUTO in twenty. A cJTAG,
+// SWD or MDIO find is weighed against the envelope, which shows the clock
+// line changing far faster than its clock, and its slow look's alias is one.
+// TRLC-LINKS: REQ-SDS-214
+func TestTheClockedPairsTakeTheirClockFromTheRecord(t *testing.T) {
+	for _, p := range []string{"cjtag", "swd", "mdio", "spi", "i2c"} {
+		r := decode.Result{OK: true, Proto: p, SPB: 40, Bytes: []int{1, 2, 3}, Roles: decode.Roles{ChA: 1, ChB: 0}}
+		if !clockFromRecord(r) {
+			t.Errorf("%s: not weighed as a bus clocked from the record", p)
+		}
+		if !slowAlias(r, 8.192e-6, 100e-9) {
+			t.Errorf("%s: a slow reading far coarser than a faster find stood", p)
+		}
+	}
+	cj := look{found: true, res: decode.Result{OK: true, Proto: "cjtag", SPB: 40, Bytes: []int{1, 2, 3}, Roles: decode.Roles{ChA: 1, ChB: 0}},
+		sampleS: 1.024e-6, envRun: [2]float64{0.2e-6, 0.2e-6}, envSeen: true}
+	if stands(cj) {
+		t.Error("a cJTAG read off a 10 MHz bus's decimated record stood against its envelope")
+	}
+	for _, p := range []string{"uart", "manchester", "ps2"} {
+		if clockFromRecord(decode.Result{OK: true, Proto: p}) {
+			t.Errorf("%s: taken for a bus clocked from the record", p)
+		}
+	}
+}
