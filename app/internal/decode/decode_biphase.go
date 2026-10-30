@@ -25,7 +25,8 @@ type DALICfg struct {
 // line at its active level in the first half and idle in the second (the
 // bus idles high), a frame a start bit (1, "sof" START), then 8 (backward,
 // an answer "R5A"), 16 (forward: address "A01" and opcode "D90") or 24
-// bits most significant first, then idle. The idle level is the level of
+// bits most significant first, then idle (before the frame, and past half a
+// bit after it within the record). The idle level is the level of
 // the line's longest run. OK needs a whole frame.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-235
 func DecodeDALI(codes []uint8, colTimeS float64, cfg DALICfg) Result {
@@ -73,7 +74,11 @@ func DecodeDALI(codes []uint8, colTimeS float64, cfg DALICfg) Result {
 		spans = append(spans, pspan(xs[0], xs[0]+2*hx, n, "START", "sof", 0))
 		toks = append(toks, "START")
 		nb := len(bits) - 1
-		if !ok || bits[0] != 1 || (nb != 8 && nb != 16 && nb != 24) {
+		// and quiet after it past where a next bit would move the line (half
+		// a bit): a frame the record's end cuts reads as many bits as fit
+		// (an Oregon burst's middle, cut at 16, read as a DALI frame)
+		cut := us(float64(n)-(xs[len(xs)-1]+hx)) < 500
+		if !ok || cut || bits[0] != 1 || (nb != 8 && nb != 16 && nb != 24) {
 			spans = append(spans, pspan(xs[0], xs[len(xs)-1]+hx, n, fmt.Sprintf("!%dbits", nb), "frame-error", 0))
 			toks = append(toks, fmt.Sprintf("!%dbits", nb))
 			continue

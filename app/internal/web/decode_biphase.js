@@ -34,7 +34,11 @@ function decodeDALI(codes, colTimeS, cfg) {
     spans.push(pspan(xs[0], xs[0] + 2 * hx, n, "START", "sof", 0));
     toks.push("START");
     const nb = bits.length - 1;
-    if (!ok || bits[0] !== 1 || (nb !== 8 && nb !== 16 && nb !== 24)) {
+    // and quiet after it past where a next bit would move the line (half a
+    // bit): a frame the record's end cuts reads as many bits as fit (an
+    // Oregon burst's middle, cut at 16, read as a DALI frame)
+    const cut = us(n - (xs[xs.length - 1] + hx)) < 500;
+    if (!ok || cut || bits[0] !== 1 || (nb !== 8 && nb !== 16 && nb !== 24)) {
       spans.push(pspan(xs[0], xs[xs.length - 1] + hx, n, "!" + nb + "bits", "frame-error", 0));
       toks.push("!" + nb + "bits");
       continue;
