@@ -104,13 +104,19 @@ async function key(op, k) {
   await op.page.keyboard.press(k);
   return "key " + k;
 }
-// a random visible element matching `sel`, or null
+// a random visible element matching `sel` a person can reach (none under a
+// maximized pane, whose slots are inert), or null
 // TRLC-LINKS: REQ-SDS-180
 async function anyVisible(op, sel) {
   const all = await op.page.$$(sel);
   const vis = [];
-  for (const e of all) if (await e.isVisible()) vis.push(e);
+  for (const e of all) if ((await e.isVisible()) && (await reachable(e))) vis.push(e);
   return vis.length ? vis[Math.floor(rng() * vis.length)] : null;
+}
+// reachable: not inside an inert subtree (a maximized pane lies over it)
+// TRLC-LINKS: REQ-SDS-180
+async function reachable(el) {
+  return el.evaluate((e) => !e.closest("[inert]"));
 }
 const WS_IDS = ["scope", "bus", "spectrum", "measure", "compare"];
 
@@ -196,7 +202,7 @@ const ACTIONS = [
     name: "visual-control", w: 2, hold: true, run: async (op) => {
       await op.page.click("#tab-bus", { timeout: 6000 });
       const vb = await op.page.$('#busView > button[data-value="visual"]');
-      if (vb && (await vb.isVisible())) await vb.click({ timeout: 6000 });
+      if (vb && (await vb.isVisible()) && (await reachable(vb))) await vb.click({ timeout: 6000 });
       const el = await anyVisible(op, "#visSide button, #visSide select, #visFull");
       if (!el) return "no Visual control";
       const id = await el.evaluate((e) => e.id || e.textContent);
