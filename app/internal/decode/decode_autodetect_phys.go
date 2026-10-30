@@ -21,7 +21,9 @@ import (
 func considerPhysLines(codes []uint8, colTimeS float64, format string, t lineTiming, consider func(Result)) {
 	lc := LineCfg{Format: format}
 	if t.edges >= 12 {
-		consider(DecodePWM(codes, colTimeS, lc))
+		if r := DecodePWM(codes, colTimeS, lc); pwmFillsRecord(r, len(codes)) {
+			consider(r)
+		}
 	}
 	if t.edges >= 50 && t.minRun >= 50 {
 		consider(DecodeRCEncode(codes, colTimeS, lc))
@@ -357,6 +359,27 @@ func swimTransaction(r Result) bool {
 		}
 	}
 	return false
+}
+
+// pwmFillsRecord reports a PWM reading whose periods run through the record
+// of n samples, two of its periods at most before the first and after the
+// last: a PWM output runs on. A burst of steady edges between idle stretches
+// (a MIDI message's bits, three bytes in a 2 ms record) is another bus's.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-256
+func pwmFillsRecord(r Result, n int) bool {
+	first, last := -1, -1
+	for _, s := range r.Spans {
+		if s.Kind == "data" {
+			if first < 0 {
+				first = s.I0
+			}
+			last = s.I1
+		}
+	}
+	if !r.OK || first < 0 || !(r.SPB > 0) {
+		return r.OK
+	}
+	return float64(first) <= 2*r.SPB+1 && float64(n-last) <= 2*r.SPB+1
 }
 
 // pwmSteady reports a PWM decode's periods all within 5 % of their median.

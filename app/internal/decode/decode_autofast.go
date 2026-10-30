@@ -14,8 +14,10 @@ func AutodetectFast(c1, c2 []uint8, colTimeS float64, format string) (Result, fl
 		res, st := autodetectStrided(compact(c1, keep), compact(c2, keep), colTimeS, format)
 		// The cut keeps a pulse-width bus's edges but not its long levels (a
 		// 1-Wire reset's 480 us low): what it does not name is looked for on
-		// the whole record.
-		if res.OK && res.Proto != "" && res.Proto != "off" {
+		// the whole record. Nor PWM: an output runs on, with no idle to cut,
+		// so PWM read off the cut record is a burst's steady edges (a MIDI
+		// message's bits), judged on the whole record (pwmFillsRecord).
+		if res.OK && res.Proto != "" && res.Proto != "off" && res.Proto != "pwm" {
 			k := int(st/colTimeS + 0.5)
 			back := func(i int) int { return uncompact(i*k, keep) / k }
 			for j := range res.Spans {
