@@ -4,6 +4,7 @@ package agent
 import (
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -481,5 +482,36 @@ sleep 30`)
 	}
 	if !strings.Contains(st.LastExit, "health token stale") {
 		t.Errorf("LastExit = %q, want the staleness reason", st.LastExit)
+	}
+}
+
+// TestConfirmRetriesAfterAFailedWrite: a confirm write that fails (the stick
+// flipped read-only) is not taken as done: the confirmed pointer stays where
+// it was, and the next tick once the stick takes writes again confirms.
+// TRLC-LINKS: REQ-SDS-028
+func TestConfirmRetriesAfterAFailedWrite(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("root writes through a read-only directory")
+	}
+	a := testAgent(t)
+	a.store.Init()
+	_ = a.store.SetActive(slots.SlotB)
+	_ = a.store.SetConfirmed(slots.SlotA)
+	root := filepath.Dir(a.store.SlotDir(slots.SlotA))
+	if err := os.Chmod(root, 0o555); err != nil {
+		t.Fatal(err)
+	}
+	defer os.Chmod(root, 0o755)
+	hs := healthStatus{HealthyOnce: true}
+	a.confirmIfStable(slots.SlotB, false, hs, time.Hour)
+	if got := a.store.Confirmed(); got != slots.SlotA || a.confirmedRun == slots.SlotB {
+		t.Fatalf("a failed write taken as done: confirmed %s, run %q", got, a.confirmedRun)
+	}
+	if err := os.Chmod(root, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	a.confirmIfStable(slots.SlotB, false, hs, time.Hour)
+	if got := a.store.Confirmed(); got != slots.SlotB || a.confirmedRun != slots.SlotB {
+		t.Fatalf("not confirmed once writable: confirmed %s, run %q", got, a.confirmedRun)
 	}
 }

@@ -76,11 +76,12 @@ type Agent struct {
 	stopped chan struct{}
 
 	// live app state (guarded)
-	appMu        sync.Mutex
-	app          appState
-	paused       bool
-	useEmergency bool   // recovery ladder forced the emergency binary
-	confirmedRun string // the slot this run found confirmed (supervisor only)
+	appMu         sync.Mutex
+	app           appState
+	paused        bool
+	useEmergency  bool   // recovery ladder forced the emergency binary
+	confirmedRun  string // the slot this run found confirmed (supervisor only)
+	confirmFailed string // the slot whose confirm write last failed, reported once (supervisor only)
 
 	// upload staging sessions
 	upMu sync.Mutex
