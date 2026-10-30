@@ -2516,6 +2516,11 @@ decisions:
     word after the raw edge.'
   - 'At decimating timebases an edge must stay past the level for 10 ns (five samples) to trigger: a square up to
     about 50 MHz, a pulse of 10 ns or more; a narrower glitch triggers only at full-rate timebases.'
+  - 'The re-arm band spans the converters'' offsets (some 14 codes, about half a division) at every timebase: on raw
+    samples a swing smaller than their spread cannot be told from it (a 4-code band let a level on a small signal''s
+    rail re-arm and fire on the offsets alone). Such a signal triggers at no timebase, as at full rate before, and
+    the scope says its trigger does not repeat; the filter''s words, which average the offsets out, triggered it at
+    slow timebases and missed every edge faster than an output sample.'
   - 'TestEdgeDecimatedTopRTL locks it: a 31.25 MHz burst whose averages sit under the level triggers at /1, /16, /32
     and /256 (on the filter''s words, never), and a flat line whose converters spread past the level triggers only
     at /1, where software confirms; tb_edge_sustain checks the run against a sample-by-sample model.'
