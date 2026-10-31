@@ -202,7 +202,7 @@ module tb_stream_ring;
  localparam CN=4,CBITS=3;            // ring words of 2^CN samples, bit periods of 2^CBITS raw words
  reg c_act=0,c_on=0;reg [31:0] c_t=0,c_edge=0;reg [31:0] c_word=0;
  wire c_bv;wire [31:0] c_bw;
- stream_bits cbits(.clk(core),.enable(c_on),.log_words(5'd3),.low1(8'd124),.high1(8'd132),.low2(8'd124),.high2(8'd132),
+ stream_bits cbits(.clk(core),.enable(c_on),.period(16'd8),.low1(8'd124),.high1(8'd132),.low2(8'd124),.high2(8'd132),
   .in_valid(c_act),.in_word(c_word),.out_valid(c_bv),.out_word(c_bw));
  reg c_write=0;reg [31:0] c_ring[0:4095];integer c_n=0;
  wire [31:0] c_last;

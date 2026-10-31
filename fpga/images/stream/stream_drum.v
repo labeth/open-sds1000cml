@@ -117,7 +117,7 @@ module stream_drum #(parameter AW=19,WF_AW=12,DESC_AW=8,BANK_AW=10,
  wire [31:0] f_word=fp[0] ? wq[fp[1]][63:32] : wq[fp[1]][31:0];
  reg in_full=0;
  // Read words, paired for hclk: a 4-entry register FIFO.
- reg [63:0] rq[0:3];reg [2:0] rq_wp=0,rq_rp_c=0;reg [31:0] r_low=0,rd_q=0;reg r_half=0,r_over=0,rv_q=0;
+ reg [63:0] rq[0:3];reg [2:0] rq_wp=0,rq_rp_c=0;reg [31:0] r_low=0,rd_q=0;reg r_half=0,r_over=0,rv_q=0,rd_own=0;
  reg [3:0] iq_rp_c=0;
  reg [2:0] rq_rp=0;                  // hclk
  reg done_t=0;                       // toggles on each transport done
@@ -147,8 +147,13 @@ module stream_drum #(parameter AW=19,WF_AW=12,DESC_AW=8,BANK_AW=10,
   wstop<=act_c && h_wend && wq_wp_c==fp[3:1] && !fp[0] && !w_ok;
   if(!act_c)begin fp<=0;w_ok<=0;end
   // Read words: pair consecutive words (every read is an even count).
-  // (registered first: read_valid has a wide fanout).
-  rv_q<=rvalid;rd_q<=rdata;
+  // (registered first: read_valid has a wide fanout). Only the drum's own
+  // reads: the transport is the record's whenever the drum is not commanding
+  // it (ring mode, or before and after a stream), and its read words are not
+  // the drum's to take (they would fill the read-pair FIFO, which then
+  // reports an overrun).
+  if(!act_c || t_done)rd_own<=0;else if(cmd && cmd_read && !cmd_discard)rd_own<=1;
+  rv_q<=rvalid && rd_own;rd_q<=rdata;
   if(rv_q && r_half)rq[rq_wp[1:0]]<={rd_q,r_low};
   if(rv_q && !r_half)r_low<=rd_q;
   if(!act_c || cmd)begin r_half<=0;if(!act_c)begin rq_wp<=0;r_over<=0;end end
