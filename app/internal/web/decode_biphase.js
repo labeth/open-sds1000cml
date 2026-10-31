@@ -194,10 +194,13 @@ function decodeUSBPD(codes, colTimeS, cfg) {
 // spdifHalf mirrors decode_biphase.go spdifHalf.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-235
 function spdifHalf(S) {
-  const gaps = [];
-  for (let k = 1; k < S.edges.length; k++) gaps.push(S.edges[k].x - S.edges[k - 1].x);
-  if (gaps.length < 64) return 0;
-  gaps.sort((a, b) => a - b);
+  const E = S.edges;
+  if (E.length - 1 < 64) return 0;
+  // typed and sorted numerically, no comparator call: a stream's window holds
+  // hundreds of thousands of cells
+  const gaps = new Float64Array(E.length - 1);
+  for (let k = 1; k < E.length; k++) gaps[k - 1] = E[k].x - E[k - 1].x;
+  gaps.sort();
   const g0 = gaps[Math.floor(gaps.length / 20)];
   let sum = 0, cnt = 0;
   for (const g of gaps) if (g >= 0.7 * g0 && g <= 1.35 * g0) { sum += g; cnt++; }

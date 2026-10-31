@@ -229,6 +229,7 @@
     </div>
     <div class="bview" data-view="stream" hidden>
       <div class="r"><label class="hl"><span class="lbl">stops</span><select id="streamStops" aria-label="what stops the stream"><option value="0">on a decode error</option><option value="1">on the Stream value</option><option value="2">by hand (RUN/STOP)</option></select></label><span id="streamHint" class="sub grow">The scope streams the bus in hardware while this view is shown; another view ends it.</span></div>
+      <div class="r"><label class="hl" title="The scope sends the digital stream's words and this browser decodes them: dense buses stream gap-free. The scope decodes again a few seconds after this page stops asking."><input type="checkbox" id="streamWebDec"> <span class="lbl">decode in this browser</span></label><span id="streamWebDecStat" class="sub grow"></span></div>
       <div id="streamEmpty" class="empty" hidden><span>No bus is decoded: the stream starts once the scope has one.</span><button type="button" id="streamDetect" class="sm">Auto-detect the bus</button></div>
       <div id="scopeStream" hidden><div id="scopeStreamHead" class="sub"></div><pre id="scopeStreamText" class="transcript" aria-label="the scope's stream"></pre></div>
     </div>
@@ -691,6 +692,7 @@
 <script src="app_precision.js"></script>
 <script src="app_ws.js"></script>         <!-- workspaces: layout, switching, keys, help -->
 <script src="app_bus.js"></script>        <!-- BUS: auto-decode, packets, eye view -->
+<script src="app_webdec.js"></script>     <!-- BUS Stream: decode the digital stream in this browser -->
 <script src="app_visual.js"></script>     <!-- BUS Visual: the core (state, stream, side panel) -->
 <script src="app_visual_draw.js"></script> <!-- BUS Visual: each bus's picture, figures, controls -->
 <script src="app_visual_audio.js"></script> <!-- BUS Visual: digital audio from a whole record -->
