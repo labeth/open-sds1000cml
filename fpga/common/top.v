@@ -62,6 +62,10 @@
 `ifdef SYMBOL_TRIGGER
 `define LINE_LEVELS
 `endif
+// The digital stream slices CH2 at the second line's level.
+`ifdef STREAM_BITS
+`define LINE_LEVELS
+`endif
 // ADR-PROTOCOL-SEQUENCE-TRIGGER: every raw-only protocol image has the matcher.
 `ifdef PROTOCOL_SET
 `define SEQUENCE_TRIGGER
@@ -114,7 +118,7 @@ module acq_sram_top(
  localparam BUF_WORDS=(1<<BUF_AW);
  wire core,sample_clk,locked;
 `ifdef STREAM_CAPTURE
- reg [4:0] stream_cfg=0,stream_mode=0; // [0] stream, [1] continuous (no trigger), [2] peak-detect words, [3]/[4] rising/falling edge marks
+ reg [4:0] stream_cfg=0,stream_mode=0; // [0] stream, [1] continuous (no trigger), [2] peak-detect (STREAM_BITS: digital) words, [3]/[4] rising/falling edge marks
  reg [1:0] stream_rise_enable=0,stream_fall_enable=0;reg stream_auto=0;
  reg streaming_fault=0;
 `ifdef STREAM_DRUM
@@ -1381,8 +1385,19 @@ module acq_sram_top(
  // decimator's output word does samples: equal stream rates.
  (* preserve *) reg [4:0] peak_log=0;
  always @(posedge core)peak_log<=decim_log-1'b1; // static while running: registered
+`ifdef STREAM_BITS
+ // Digital words in the peak words' place, at their rate: sixteen periods
+ // of 2^(decim_log-5) raw words per word; CH1 sliced at the trigger level,
+ // CH2 at the second line's (stream_bits.v). The two do not fit together at
+ // 250 MHz.
+ (* preserve *) reg [4:0] bits_log=0;
+ always @(posedge core)bits_log<=decim_log-5'd5;
+ stream_bits peak(.clk(core),.enable(peak_on),.log_words(bits_log),.low1(level_low_l),.high1(level_high_l),.low2(level2_low_l),.high2(level2_high_l),
+  .in_valid(il_raw_valid),.in_word(il_raw_word),.out_valid(peak_valid),.out_word(peak_word));
+`else
  stream_peak peak(.clk(core),.enable(peak_on),.log_words(peak_log),.in_valid(il_raw_valid),.in_word(il_raw_word),
   .out_valid(peak_valid),.out_word(peak_word));
+`endif
 `ifdef STREAM_DRUM
  // The drum's input: the bucket extremes (peak) or the decimated words, or a
  // counter ramp with the counter source (bench checks); not the record's path.

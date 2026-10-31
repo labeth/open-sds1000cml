@@ -63,7 +63,7 @@ const images:Record<string,Image>={
  // protocol decoders, so the packetizer, banks and precision decimation fit.
  // STREAM_DRUM: the stream goes through the external SRAM as a FIFO, whose
  // 512K words are the drain's slack (stream_drum.v).
- stream:{dir:'images/stream',files:['stream_packetizer.v','stream_banks.v','stream_peak.v','stream_drum.v','stream_marks.v','general/precision.v','general/precision_tail.v'],defines:['STREAM_CAPTURE','STREAM_DRUM'],seed:2,trigger:true,precision:true,bare:true},
+ stream:{dir:'images/stream',files:['stream_packetizer.v','stream_banks.v','stream_bits.v','stream_drum.v','stream_marks.v','general/precision.v','general/precision_tail.v'],defines:['STREAM_CAPTURE','STREAM_DRUM','STREAM_BITS'],seed:2,trigger:true,precision:true,bare:true},
  // ADR-HARDWARE-QUALIFIERS: pulse, slope, video and zone triggers decided
  // in the FPGA, on the bare acquisition base with precision decimation and
  // envelope recall (the general image has no room left for them).
@@ -138,8 +138,11 @@ if(image.trigger){
   // registers held two clocks (its design), so those paths get two clocks.
   // The bucket size changes only while acquisition is idle.
   'set_false_path -from [get_registers {*peak_log[*] *peak|size_r[*]}] -to [get_registers {*peak|size_r[*] *peak|init[*]}]',
+  'set_false_path -from [get_registers {*bits_log[*]}] -to [get_registers {*peak|size_r[*] *peak|init[*]}]',
+  // stream_bits in its place (STREAM_BITS) counts every clock: no multicycle.
+  ...(image.defines.includes('STREAM_BITS') ? [] : [
   'set_multicycle_path -setup -end 2 -from [get_registers {*peak|pmin?[*] *peak|pmax?[*] *peak|min?[*] *peak|max?[*] *peak|left[*] *peak|first}] -to [get_registers {*peak|min?[*] *peak|max?[*] *peak|left[*] *peak|first}]',
-  'set_multicycle_path -hold -end 1 -from [get_registers {*peak|pmin?[*] *peak|pmax?[*] *peak|min?[*] *peak|max?[*] *peak|left[*] *peak|first}] -to [get_registers {*peak|min?[*] *peak|max?[*] *peak|left[*] *peak|first}]'].join('\n') : '';
+  'set_multicycle_path -hold -end 1 -from [get_registers {*peak|pmin?[*] *peak|pmax?[*] *peak|min?[*] *peak|max?[*] *peak|left[*] *peak|first}] -to [get_registers {*peak|min?[*] *peak|max?[*] *peak|left[*] *peak|first}]'])].join('\n') : '';
  project('bench.sdc',(image.precision ? sdc : sdc.split('\n').filter(l=>!/precision/i.test(l)).join('\n'))+streamSdc);
  // A bare image (stream) leaves out the protocol baseline (sequence trigger,
  // protocol scratch): it triggers on nothing and needs the room at 250 MHz.
