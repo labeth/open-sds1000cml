@@ -132,6 +132,7 @@ func (w *acquisitionWorker) streamPump() {
 	}
 	w.sLastPump = now
 	from := w.sExpected
+	banks := 0
 	defer func() {
 		// The input rate, from the words this look drained over the time
 		// since the last (a running average: one look sees 0, 1 or 2 banks).
@@ -139,6 +140,13 @@ func (w *acquisitionWorker) streamPump() {
 			r := float64(w.sExpected-from) / since.Seconds()
 			w.sRate += (r - w.sRate) / 8
 			w.sEvery = pumpEvery(w.sRate, w.sBank)
+		}
+		if banks >= 2 {
+			// Both banks were full: the drum holds a backlog and refills the
+			// banks once a ring lap, so a look a fill time away takes two
+			// banks a lap and falls behind a stream near the drum's rate.
+			// The next look comes as soon as a bank can be ready again.
+			w.sEvery = streamPumpFastest
 		}
 	}()
 	// The banks' DMA sleeps through its transfers: the app decodes the
@@ -165,6 +173,7 @@ func (w *acquisitionWorker) streamPump() {
 		w.sMaxDrain = max(w.sMaxDrain, time.Since(t0))
 		w.sExpected = block.FirstWord + uint64(block.Words)
 		w.sBank = max(w.sBank, int(block.Words))
+		banks++
 	}
 }
 
