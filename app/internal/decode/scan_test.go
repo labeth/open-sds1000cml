@@ -91,3 +91,32 @@ func TestHeldBeyondRuns(t *testing.T) {
 		}
 	}
 }
+
+// BenchmarkScanIdle is a run scan over a quiet line's noisy level.
+// TRLC-LINKS: REQ-SDS-018
+func BenchmarkScanIdle(b *testing.B) {
+	rng := rand.New(rand.NewSource(1))
+	codes := make([]uint8, 1<<16)
+	for i := range codes {
+		codes[i] = uint8(200 + rng.Intn(5) - 2)
+	}
+	b.SetBytes(int64(len(codes)))
+	for range b.N {
+		scanAtMost(codes, 0, 113)
+	}
+}
+
+// BenchmarkHistogramIdle is rails' histogram over the same line.
+// TRLC-LINKS: REQ-SDS-018
+func BenchmarkHistogramIdle(b *testing.B) {
+	rng := rand.New(rand.NewSource(1))
+	codes := make([]uint8, 1<<16)
+	for i := range codes {
+		codes[i] = uint8(200 + rng.Intn(5) - 2)
+	}
+	b.SetBytes(int64(len(codes)))
+	var h [4][256]int32
+	for range b.N {
+		histogram4(&h, codes)
+	}
+}

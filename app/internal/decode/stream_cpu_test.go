@@ -29,7 +29,6 @@ import (
 // streamCPUExtra are buses the FPGA decodes today, modelled as if the live
 // stream carried them.
 var streamCPUExtra = []streamCase{
-	// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
 	{name: "uart", baud: 115200, lines: 1, gen: func(l twoLine, i int, rng *rand.Rand) {
 		for k := 0; k < 1+i%4; k++ {
 			tlUART(l.a, (i*37+k*91+rng.Intn(256))&0xff, 115200, "none", 1)
@@ -39,7 +38,6 @@ var streamCPUExtra = []streamCase{
 	}, dec: func(a, b []uint8, s float64) Result {
 		return DecodeUART(a, s, UARTCfg{Baud: 115200, Bits: 8, Parity: "none", Threshold: 128, HaveThr: true})
 	}},
-	// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
 	{name: "i2c", baud: 400000, lines: 2, gen: func(l twoLine, i int, rng *rand.Rand) {
 		q := 1 / (4 * 400000.0)
 		bit := func(v byte) { l.add(0, v, q); l.add(1, v, 2*q); l.add(0, v, q) }
@@ -61,7 +59,6 @@ var streamCPUExtra = []streamCase{
 	}, dec: func(a, b []uint8, s float64) Result {
 		return DecodeI2C(a, b, s, I2CCfg{Threshold: 128, HaveThr: true})
 	}},
-	// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
 	{name: "spi", baud: 1000000, lines: 2, idle: idleOf(0, 0), gen: func(l twoLine, i int, rng *rand.Rand) {
 		h := 0.5 / 1e6
 		for k := 0; k < 1+i%3; k++ {
@@ -76,7 +73,6 @@ var streamCPUExtra = []streamCase{
 	}, dec: func(a, b []uint8, s float64) Result {
 		return DecodeSPI(a, b, s, SPICfg{MSB: true, Threshold: 128, HaveThr: true})
 	}},
-	// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
 	{name: "can", baud: 500000, lines: 1, gen: func(l twoLine, i int, rng *rand.Rand) {
 		n := 1 + i%8
 		data := make([]int, n)
@@ -92,7 +88,6 @@ var streamCPUExtra = []streamCase{
 	}, dec: func(a, b []uint8, s float64) Result {
 		return DecodeCANFD(a, s, CANFDCfg{NominalBaud: 500000, DominantLow: true, Threshold: 128, HaveThr: true})
 	}},
-	// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
 	{name: "manchester", baud: 100000, lines: 1, gen: func(l twoLine, i int, rng *rand.Rand) {
 		h := 0.5 / 100000
 		for _, b := range mBits([]int{0xAA, i & 0xff, rng.Intn(256), 0x5C}, true, 8) {

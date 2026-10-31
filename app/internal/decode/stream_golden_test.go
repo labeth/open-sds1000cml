@@ -78,9 +78,9 @@ func streamGoldenSecs(tc streamCPUCase) float64 {
 	return max(3, min(40, 200*tc.longest))
 }
 
-// streamGolden is the stream decode's digest per protocol and traffic,
-// made by the decoders before their loops ran on the edges and runs: the
-// faster slicing and decoders must hand out the very same frames.
+// streamGolden is the stream decode's digest per protocol and traffic: a
+// faster slicing or decoder loop must hand out the very same frames. A
+// decoder change that means to change its frames regenerates it.
 var streamGolden = map[string]string{
 	"caliper/dense":         "158:fde9ca9985c4c40b1e9fb1fc",
 	"caliper/bursty":        "28:20a86fc770e2e717e2bc9a8e",
