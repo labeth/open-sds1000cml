@@ -251,3 +251,67 @@ func TestStreamLargeBanksUseAdvertisedCapacity(t *testing.T) {
 		t.Fatal(b.releases)
 	}
 }
+
+// TRLC-LINKS: REQ-SDS-035
+type streamBytePopFake struct{ *streamFake }
+
+// TRLC-LINKS: REQ-SDS-035
+func (s *streamBytePopFake) PopBytesChecked(port uint16, dst []byte) error {
+	for i := 0; i < len(dst); i += 2 {
+		v, e := s.Read(1, port)
+		if e != nil {
+			return e
+		}
+		dst[i], dst[i+1] = byte(v), byte(v>>8)
+	}
+	return nil
+}
+
+// TRLC-LINKS: REQ-SDS-035
+type ringReserver struct {
+	ring              []byte
+	head, count, held int
+}
+
+// TRLC-LINKS: REQ-SDS-035
+func (r *ringReserver) Write([]byte) (int, error) { return 0, errors.New("reserver written") }
+
+// TRLC-LINKS: REQ-SDS-035
+func (r *ringReserver) Reserve(n int) (a, b []byte, err error) {
+	at := (r.head + r.count) % len(r.ring)
+	a = r.ring[at:min(len(r.ring), at+n)]
+	r.held = n
+	return a, r.ring[:n-len(a)], nil
+}
+
+// TRLC-LINKS: REQ-SDS-035
+func (r *ringReserver) Commit(n int) { r.count += n }
+
+// A reserving sink takes the bank in place, across its wrap, and only a
+// drain that passed every check commits it.
+// TRLC-LINKS: REQ-SDS-035
+func TestStreamDrainIntoReserverWraps(t *testing.T) {
+	b := streamBus()
+	c, e := New(&streamBytePopFake{b})
+	if e != nil {
+		t.Fatal(e)
+	}
+	for i := 0; i < 2048; i++ {
+		b.buffer[2048+i] = uint32(i)
+	}
+	r := &ringReserver{ring: make([]byte, 10000), head: 5000}
+	if _, e = c.DrainStream(context.Background(), 0, r); e != nil {
+		t.Fatal(e)
+	}
+	if r.count != 8192 || len(b.releases) != 1 {
+		t.Fatalf("count %d releases %d", r.count, len(b.releases))
+	}
+	got := append(append([]byte{}, r.ring[5000:]...), r.ring[:3192]...)
+	checkWords(t, got, 0, 2048)
+	b.badPointer = true
+	b.flags |= 2
+	b.first[0] = 2048
+	if _, e = c.DrainStream(context.Background(), 2048, r); e == nil || r.count != 8192 {
+		t.Fatalf("a failed drain committed: %v %d", e, r.count)
+	}
+}
