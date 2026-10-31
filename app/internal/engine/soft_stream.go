@@ -91,21 +91,29 @@ type softStream struct {
 	bSeen    bool
 
 	// Gap-free stream session.
-	log       uint8
-	bits      bool // the digital stream's words (ADR-STREAM-BITS), not peak words
-	streaming bool
-	isolated  bool
-	inPlace   bool // the words are read in the shared ring (streamPeeker)
-	release   int  // ring bytes read in place, given back at the next peek
-	deadline  *bus.DecodedDeadline
-	expected  uint64
-	raw       []byte
-	pendA     []uint8
-	pendB     []uint8
-	pushN     int
-	last      [2]uint16
-	haveLast  bool
-	losses    int
+	log  uint8
+	bits bool // the digital stream's words (ADR-STREAM-BITS), not peak words
+	// The digital stream's quiet line: past keepWords words of it (Close
+	// and the decoder's lead) the words are left out and the decoder skips
+	// them, so a quiet bus costs no decoding; leadWords of it come back
+	// before the next edge.
+	idleWords, skipped   int
+	keepWords, leadWords int
+	lvl                  [2]uint16 // each line's last word: 0 or 0xFFFF when quiet
+	haveLvl              bool
+	streaming            bool
+	isolated             bool
+	inPlace              bool // the words are read in the shared ring (streamPeeker)
+	release              int  // ring bytes read in place, given back at the next peek
+	deadline             *bus.DecodedDeadline
+	expected             uint64
+	raw                  []byte
+	pendA                []uint8
+	pendB                []uint8
+	pushN                int
+	last                 [2]uint16
+	haveLast             bool
+	losses               int
 
 	// Captures mode.
 	capCfg    sramcapture.Config
@@ -308,7 +316,10 @@ func (e *Engine) beginSoftStream(ctx context.Context, p SerialParams, trig Strea
 			// over), but at least once a second: a DCF77 minute's Close is 32 s.
 			s.pushN = min(int(math.Max(0.2, math.Min(1, 2*quiet))/s.sampleS), softPushMax)
 			s.dec = decode.NewStreamDecoder(s.decodeFunc(), int(quiet/s.sampleS), int((longest+quiet)/s.sampleS))
-			s.dec.SetLead(int(decode.StreamLead(name, float64(p.Baud)) / s.sampleS))
+			lead := int(decode.StreamLead(name, float64(p.Baud)) / s.sampleS)
+			s.dec.SetLead(lead)
+			s.leadWords = lead/16 + 2
+			s.keepWords = int(quiet/s.sampleS)/16 + s.leadWords + 2
 			// The stream starts on the loop's next step (softDrain), after
 			// the loop has ended a roll stream that may hold the banks.
 		} else {
@@ -482,9 +493,9 @@ func (e *Engine) softDrain(s *softStream) {
 			if n == 0 {
 				break
 			}
-			s.feed(a, e.interleaveCalibration)
+			e.softFeed(s, a)
 			if len(b) > 0 {
-				s.feed(b, e.interleaveCalibration)
+				e.softFeed(s, b)
 			}
 			s.release, fed = n, true
 			s.expected += uint64(n / 4)
@@ -522,7 +533,7 @@ func (e *Engine) softDrain(s *softStream) {
 		s.expected = block.FirstWord + uint64(block.Words)
 	}
 	if len(raw) > 0 {
-		s.feed(raw, e.interleaveCalibration)
+		e.softFeed(s, raw)
 	}
 	s.raw = raw[:0]
 	if len(s.pendA) >= s.pushN {
@@ -555,6 +566,7 @@ func (e *Engine) softLoss(s *softStream, err error) {
 	e.softPush(s) // what arrived before the loss
 	s.dec.Skip(0)
 	s.haveLast = false
+	s.idleWords, s.skipped, s.haveLvl = 0, 0, false
 	s.addEvent(sramcapture.DecodedEvent{Kind: sramcapture.EventLoss, Sample: s.ord(s.dec.Next()), Count: 1})
 	e.softStreamStop(s)
 }
@@ -563,14 +575,82 @@ func (e *Engine) softLoss(s *softStream, err error) {
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
 func (s *softStream) ord(i uint64) uint64 { return uint64(s.ordBase + float64(i)*s.ordStep) }
 
-// feed queues the stream's words as samples: digital words or peak words.
+// softFeed queues the stream's words as samples: digital words or peak
+// words.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
-func (s *softStream) feed(raw []byte, cal *InterleaveCalibration) {
+func (e *Engine) softFeed(s *softStream, raw []byte) {
 	if s.bits {
-		s.feedBits(raw)
+		e.feedBitsQuiet(s, raw)
 	} else {
-		s.feedPeak(raw, cal)
+		s.feedPeak(raw, e.interleaveCalibration)
 	}
+}
+
+// feedBitsQuiet queues digital words, leaving out a quiet line's words past
+// keepWords: by then every frame before them is whole (Close) and the
+// decoder holds its lead, so the decoder skips them; when the line moves
+// again the queued samples are decoded, the stream skips the words left out
+// but the last leadWords, which come back as the constant line they were.
+// Only words equal to the line's level are left out, so the frames and
+// their sample indices are the ones every word gives.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func (e *Engine) feedBitsQuiet(s *softStream, raw []byte) {
+	ch := s.p.ChA & 1
+	two := clockedTwoLine(s.p.Proto)
+	n := len(raw) / 4
+	from := 0 // the first word not yet queued or left out
+	for i := 0; i < n; i++ {
+		w := raw[4*i : 4*i+4 : 4*i+4]
+		a := uint16(w[2*ch]) | uint16(w[2*ch+1])<<8
+		b := uint16(w[2-2*ch]) | uint16(w[3-2*ch])<<8
+		if !two {
+			b = 0
+		}
+		quiet := s.haveLvl && a == s.lvl[0] && b == s.lvl[1] && (a == 0 || a == 0xFFFF) && (b == 0 || b == 0xFFFF)
+		switch {
+		case quiet:
+			if s.idleWords++; s.idleWords > s.keepWords {
+				s.feedBits(raw[4*from : 4*i])
+				from = i + 1
+				s.skipped++
+			}
+		case s.skipped > 0:
+			s.feedBits(raw[4*from : 4*i])
+			from = i
+			e.softPush(s)
+			if s.phase != softStreaming {
+				return
+			}
+			lead := min(s.skipped, s.leadWords)
+			s.dec.Skip(16 * (s.skipped - lead))
+			s.pendA = appendLevel(s.pendA, s.lvl[0], 16*lead)
+			if two {
+				s.pendB = appendLevel(s.pendB, s.lvl[1], 16*lead)
+			}
+			s.skipped, s.idleWords = 0, 0
+		default:
+			s.idleWords = 0
+		}
+		s.lvl = [2]uint16{a, b}
+		s.haveLvl = true
+	}
+	s.feedBits(raw[4*from:])
+}
+
+// appendLevel appends n samples of a quiet line's level (its word, 0 or
+// 0xFFFF) to dst.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func appendLevel(dst []uint8, word uint16, n int) []uint8 {
+	v := uint8(0)
+	if word != 0 {
+		v = 255
+	}
+	at := len(dst)
+	dst = slices.Grow(dst, n)[:at+n]
+	for i := range dst[at:] {
+		dst[at+i] = v
+	}
+	return dst
 }
 
 // feedPeak turns peak words ({max2,max1,min2,min1}) into two samples per

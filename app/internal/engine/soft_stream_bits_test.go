@@ -129,3 +129,85 @@ func TestSoftStreamBitsToEvents(t *testing.T) {
 		}
 	})
 }
+
+// Leaving out a quiet line's digital words changes nothing decoded: the
+// same frames at the same sample ordinals as every word gives, LIN with
+// quiet stretches longer than Close and shorter, in pieces of any size;
+// and the words left out are most of a quiet bus.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func TestSoftStreamBitsQuietSkipped(t *testing.T) {
+	withBitsImage(t, func() {
+		const baud = 250000
+		name := softProtoNames[serLIN]
+		log, _, _ := softGapFreePlan(name, baud, false)
+		_, longest, quiet, _ := decode.StreamTiming(name, float64(baud))
+		period := decode.StreamBitsPeriod(log)
+		var levels []bool
+		sr := 13 / period
+		for i := 0; i < 12; i++ {
+			id := 0x10 + i
+			bit := func(k int) int { return id >> k & 1 }
+			pid := id | (bit(0)^bit(1)^bit(2)^bit(4))<<6 | (1^bit(1)^bit(3)^bit(4)^bit(5))<<7
+			sum := pid
+			for _, v := range []int{i, 0x80 + i} {
+				if sum += v; sum > 0xff {
+					sum -= 0xff
+				}
+			}
+			l := linLevels(sr, baud, [][]int{{pid, i, 0x80 + i, ^sum & 0xff}})
+			if i%3 == 1 {
+				l = l[:len(l)*2/3] // a quiet stretch shorter than Close
+			}
+			levels = append(levels, l...)
+		}
+		raw := bitsWords(levels, 13)
+		var decodedN [2]int
+		run := func(skip bool) ([]sramcapture.DecodedEvent, *softStream) {
+			k := 0
+			if skip {
+				k = 1
+			}
+			d, _ := serialDecoder(serLIN)
+			s := &softStream{p: SerialParams{Proto: serLIN, Baud: baud, Threshold: 128, HaveThr: true}, proto: name, decoder: d,
+				mask: 0xff, gapFree: true, quiet: quiet, log: uint8(log), bits: true, trig: StreamManual,
+				id: sramcapture.RecordIdentity{Epoch: softEpochBase | 1}}
+			s.sampleS, s.ordStep = period, float64(uint64(1)<<(log-4))
+			f := s.decodeFunc()
+			s.dec = decode.NewStreamDecoder(func(a, b []uint8) decode.Result { decodedN[k] += len(a); return f(a, b) }, int(quiet/s.sampleS), int((longest+quiet)/s.sampleS))
+			lead := int(decode.StreamLead(name, baud) / s.sampleS)
+			s.dec.SetLead(lead)
+			s.leadWords = lead/16 + 2
+			s.keepWords = int(quiet/s.sampleS)/16 + s.leadWords + 2
+			e := &Engine{}
+			for at := 0; at < len(raw); {
+				n := min(len(raw)-at, 4*(1+(at*7919)%3000))
+				if skip {
+					e.feedBitsQuiet(s, raw[at:at+n])
+				} else {
+					s.feedBits(raw[at : at+n])
+				}
+				at += n
+				e.softPush(s)
+			}
+			s.emit(s.dec.Flush(), s.ord)
+			return s.events, s
+		}
+		all, _ := run(false)
+		got, s := run(true)
+		if len(all) == 0 || len(got) != len(all) {
+			t.Fatalf("%d events with quiet words left out, %d with all", len(got), len(all))
+		}
+		for i := range all {
+			if got[i] != all[i] {
+				t.Fatalf("event %d: %+v, want %+v", i, got[i], all[i])
+			}
+		}
+		if s.skipped != 0 && s.idleWords == 0 {
+			t.Fatalf("skip state %d/%d", s.skipped, s.idleWords)
+		}
+		if decodedN[1]*4 > decodedN[0] {
+			t.Fatalf("decoded %d samples with quiet words left out, %d with all", decodedN[1], decodedN[0])
+		}
+		t.Logf("%d words, %d events; samples decoded %d of %d", len(raw)/4, len(all), decodedN[1], decodedN[0])
+	})
+}
