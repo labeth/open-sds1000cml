@@ -46,6 +46,10 @@ const (
 	// workerWriteMany: CS1 writes, a selector and a value of 16 bits each
 	// after the header, made in order in one round trip.
 	workerWriteMany
+	// workerStreamPeek: the epoch field gives back that many stream bytes
+	// the app read in place; the reply says where the ready words are in
+	// the shared ring (stream_ring_linux.go).
+	workerStreamPeek
 )
 
 // workerRecallParams bounds a workerRecall request's parameters: the
@@ -69,6 +73,7 @@ type workerClient struct {
 	closeOnce sync.Once
 	closeErr  error
 	response  [workerHeader + workerPayload]byte
+	shared    []byte // the stream ring, read-only, when the worker has it
 }
 
 // StartWorker transfers GPMC ownership before the engine starts. Dup refers to
@@ -104,6 +109,18 @@ func (d *Dev) StartWorker(executable string, logf func(string, ...any)) error {
 	}
 	cmd := exec.Command(executable, "--acquisition-worker")
 	cmd.ExtraFiles = []*os.File{inherited, child}
+	var shared []byte
+	if ring, err := createSharedRing(); err != nil {
+		logf("bus: no shared stream ring (%v); stream words go through the socket", err)
+	} else {
+		defer ring.Close()
+		if shared, err = mapSharedRing(ring); err != nil {
+			logf("bus: shared stream ring map: %v; stream words go through the socket", err)
+			shared = nil
+		} else {
+			cmd.ExtraFiles = append(cmd.ExtraFiles, ring)
+		}
+	}
 	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
 	cmd.SysProcAttr = &syscall.SysProcAttr{Pdeathsig: syscall.SIGKILL}
 	runtime.LockOSThread()
@@ -112,7 +129,7 @@ func (d *Dev) StartWorker(executable string, logf func(string, ...any)) error {
 		conn.Close()
 		return err
 	}
-	c := &workerClient{conn: conn, cmd: cmd, done: make(chan error, 1)}
+	c := &workerClient{conn: conn, cmd: cmd, done: make(chan error, 1), shared: shared}
 	go func() { c.done <- cmd.Wait() }()
 	var ready [1]byte
 	n, err := c.call(workerHello, 0, 0, 0, 0, ready[:])

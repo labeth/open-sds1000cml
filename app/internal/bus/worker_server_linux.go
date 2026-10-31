@@ -51,6 +51,8 @@ type acquisitionWorker struct {
 	sring              []byte
 	sLastPump          time.Time     // diagnostics for a lost stream:
 	sMaxGap, sMaxDrain time.Duration // longest pump-to-pump gap and bank drain
+	sShared            bool          // sring is the ring shared with the app
+	logf               func(string, ...any)
 }
 
 // workerStreamBytes bounds the stream ring: two million words, two seconds
@@ -77,6 +79,12 @@ func (r streamRingWriter) Write(b []byte) (int, error) {
 	return len(b), nil
 }
 
+// streamPumpEvery is how often the stream pump looks for published banks
+// when nothing else wakes the worker. Each look costs register reads and two
+// clock reads (no vDSO on this kernel): at the 500 us FIFO service rate the
+// looks alone took a tenth of the core.
+const streamPumpEvery = 2 * time.Millisecond
+
 // streamPump drains every published stream bank, in ordinal order.
 // TRLC-LINKS: REQ-SDS-035
 func (w *acquisitionWorker) streamPump() {
@@ -84,6 +92,11 @@ func (w *acquisitionWorker) streamPump() {
 		return
 	}
 	now := time.Now()
+	if !w.sLastPump.IsZero() && now.Sub(w.sLastPump) < streamPumpEvery {
+		// Every app request wakes the loop: the banks are not looked at
+		// more often than this for it (the drum holds about a second).
+		return
+	}
 	if !w.sLastPump.IsZero() {
 		w.sMaxGap = max(w.sMaxGap, now.Sub(w.sLastPump))
 	}
@@ -120,7 +133,16 @@ func (w *acquisitionWorker) streamPumpOn(on bool) error {
 	w.sOn, w.sExpected, w.sHead, w.sCount, w.sFirst, w.sFault = on, 0, 0, 0, 0, nil
 	w.sLastPump, w.sMaxGap, w.sMaxDrain = time.Time{}, 0, 0
 	if on && w.sring == nil {
-		w.sring = make([]byte, workerStreamBytes)
+		if d, ok := w.bus.(*Dev); ok && workerHasSharedRing() {
+			if ring, err := d.PinSharedRing(sharedRingFD, workerStreamBytes); err == nil {
+				w.sring, w.sShared = ring, true
+			} else {
+				w.logf("acquisition worker: shared stream ring: %v", err)
+			}
+		}
+		if w.sring == nil {
+			w.sring = make([]byte, workerStreamBytes)
+		}
 	}
 	if on && w.deadline == nil {
 		if d, ok := w.bus.(*Dev); ok {
@@ -158,7 +180,7 @@ func RunAcquisitionWorker(gpmcFD, socketFD int, logf func(string, ...any)) error
 	if err != nil {
 		return err
 	}
-	w := &acquisitionWorker{bus: d, capture: c, ring: make([]byte, workerQueueEvents*sramcapture.DecodedEventBytes),
+	w := &acquisitionWorker{bus: d, capture: c, logf: logf, ring: make([]byte, workerQueueEvents*sramcapture.DecodedEventBytes),
 		linesStore: decodedlines.New(0, workerLineCapacity)}
 	return w.serve(socketFD)
 }
@@ -466,6 +488,8 @@ func (w *acquisitionWorker) handle(request []byte) int {
 			w.sCount -= amount
 			w.sFirst += uint64(amount / 4)
 			n = 8 + amount
+		case workerStreamPeek:
+			n, err = w.streamPeek(epoch, data)
 		default:
 			err = fmt.Errorf("unknown worker operation")
 		}
@@ -586,7 +610,14 @@ func (w *acquisitionWorker) serve(fd int) error {
 		if pending != 0 {
 			poll.Events = 4
 		}
-		timeout := syscall.NsecToTimespec(int64(workerPollWait(busy)))
+		wait := workerPollWait(busy)
+		if w.sOn && !w.active {
+			// Only the stream banks to serve: a 2^9 stream publishes a bank
+			// about every 1.5 ms and the drum behind them holds about a
+			// second, so the loop need not wake every 500 us for them.
+			wait = max(wait, streamPumpEvery)
+		}
+		timeout := syscall.NsecToTimespec(int64(wait))
 		_, _, errno := syscall.RawSyscall6(syscall.SYS_PPOLL, uintptr(unsafe.Pointer(&poll)), 1, uintptr(unsafe.Pointer(&timeout)), 0, 0, 0)
 		if errno != 0 && errno != syscall.EINTR {
 			return errno

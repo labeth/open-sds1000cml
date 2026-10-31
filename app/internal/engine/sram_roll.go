@@ -693,6 +693,12 @@ type streamPumper interface {
 	ReadIsolatedStream([]byte) (uint64, int, bool, error)
 }
 
+// streamPeeker reads the worker's stream words in place in the ring it
+// shares with the app (bus.Dev.PeekIsolatedStream).
+type streamPeeker interface {
+	PeekIsolatedStream(release int) (first uint64, a, b []byte, err error)
+}
+
 // peakSamples turns peak-detect stream words ({max2,max1,min2,min1}) into
 // time-ordered view samples, two per bucket: converter offsets are removed as
 // for an envelope recall, and each pair is ordered to continue from the view's

@@ -95,6 +95,8 @@ type softStream struct {
 	bits      bool // the digital stream's words (ADR-STREAM-BITS), not peak words
 	streaming bool
 	isolated  bool
+	inPlace   bool // the words are read in the shared ring (streamPeeker)
+	release   int  // ring bytes read in place, given back at the next peek
 	deadline  *bus.DecodedDeadline
 	expected  uint64
 	raw       []byte
@@ -384,6 +386,8 @@ func (e *Engine) softStreamStart(s *softStream) error {
 			return err
 		}
 		s.isolated = owned
+		_, s.inPlace = e.b.(streamPeeker)
+		s.release = 0
 	}
 	if dev, ok := e.b.(*bus.Dev); ok && !s.isolated && s.deadline == nil {
 		if d, err := dev.StartDecodedDeadline(); err == nil {
@@ -456,7 +460,36 @@ func (e *Engine) softDrain(s *softStream) {
 	}
 	raw := s.raw[:0]
 	w := byteSink{dst: &raw}
+	fed := false
 	for end := e.clk.Now().Add(100 * time.Millisecond); e.clk.Now().Before(end) && !e.stopReq.Load(); {
+		if s.isolated && s.inPlace {
+			// The words are decoded where the worker's DMA put them; they go
+			// back to the worker at the next peek.
+			first, a, b, err := e.b.(streamPeeker).PeekIsolatedStream(s.release)
+			s.release = 0
+			if err == bus.ErrNoSharedRing {
+				s.inPlace = false
+				continue
+			}
+			n := len(a) + len(b)
+			if err == nil && n > 0 && first != s.expected {
+				err = fmt.Errorf("stream ordinal %d, want %d", first, s.expected)
+			}
+			if err != nil {
+				e.softLoss(s, err)
+				break
+			}
+			if n == 0 {
+				break
+			}
+			s.feedPeak(a, e.interleaveCalibration)
+			if len(b) > 0 {
+				s.feedPeak(b, e.interleaveCalibration)
+			}
+			s.release, fed = n, true
+			s.expected += uint64(n / 4)
+			continue
+		}
 		if s.isolated {
 			// The worker's words land at the end of raw, with no copy between.
 			at := len(raw)
@@ -496,7 +529,7 @@ func (e *Engine) softDrain(s *softStream) {
 	s.raw = raw[:0]
 	if len(s.pendA) >= s.pushN {
 		e.softPush(s)
-	} else if len(raw) == 0 {
+	} else if len(raw) == 0 && !fed {
 		if s.deadline != nil {
 			_ = s.deadline.Pause()
 		} else {

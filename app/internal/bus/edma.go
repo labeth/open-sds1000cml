@@ -114,6 +114,14 @@ type edmaDrainer struct {
 	yield     bool
 	nsPerWord float64
 	transfers int
+	// slack is how much earlier than the transfer's end a yield sleep asks
+	// to wake: learned from the polls left after each sleep, so a prompt
+	// wake (the real-time worker) does not poll most of the slack away.
+	slack time.Duration
+	// pinned are buffers the DMA writes into in place (the worker's stream
+	// ring): a drain whose destination lies inside one needs no bounce
+	// buffer and no copy.
+	pinned []*dmaBuf
 }
 
 // yieldLearn: one transfer in this many is polled whole to learn its time.
@@ -122,6 +130,14 @@ const yieldLearn = 32
 // yieldOvershoot is how much longer than asked the device sleeps (about
 // 110 us): a sleep through a transfer asks that much less.
 const yieldOvershoot = 120 * time.Microsecond
+
+// slackStep, slackMin and slackPolls tune the learned wake slack: a poll
+// of the completion register is about half a microsecond.
+const (
+	slackStep  = 4 * time.Microsecond
+	slackMin   = 8 * time.Microsecond
+	slackPolls = 24
+)
 
 // yieldMin is the shortest transfer slept through.
 const yieldMin = 80 * time.Microsecond
@@ -233,6 +249,57 @@ func (p *pagemapPager) alloc(nbytes int) (*dmaBuf, error) {
 	return &dmaBuf{buf: buf, phys: phys, release: func() { syscall.Munmap(buf) }}, nil
 }
 
+// mapShared maps nbytes of the file fd shared, pins it and resolves its
+// pages (the stream ring the worker's DMA fills and the app reads in place).
+// TRLC-LINKS: REQ-SDS-035
+func (p *pagemapPager) mapShared(fd, nbytes int) (*dmaBuf, error) {
+	if nbytes <= 0 || nbytes%pageSize != 0 {
+		return nil, fmt.Errorf("edma: shared size %d", nbytes)
+	}
+	buf, err := syscall.Mmap(fd, 0, nbytes, syscall.PROT_READ|syscall.PROT_WRITE, syscall.MAP_SHARED)
+	if err != nil {
+		return nil, fmt.Errorf("edma shared mmap: %w", err)
+	}
+	if err := syscall.Mlock(buf); err != nil {
+		syscall.Munmap(buf)
+		return nil, fmt.Errorf("edma shared mlock: %w", err)
+	}
+	phys := make([]uint32, nbytes/pageSize)
+	for pg := range phys {
+		phys[pg] = physOf(p.pm, unsafe.Pointer(&buf[pg*pageSize]))
+		if phys[pg] == 0 {
+			syscall.Munmap(buf)
+			return nil, fmt.Errorf("edma pagemap resolve failed (need root)")
+		}
+	}
+	return &dmaBuf{buf: buf, phys: phys, release: func() { syscall.Munmap(buf) }}, nil
+}
+
+// PinSharedRing maps nbytes of fd for in-place DMA: a pop whose destination
+// lies inside the returned buffer is transferred there directly. No line of
+// it may be dirty in the cache while the DMA writes (an eviction would
+// overwrite the transfer): the kernel's zero fill is invalidated here, and
+// the CPU only ever reads the buffer afterwards.
+// TRLC-LINKS: REQ-SDS-035
+func (d *Dev) PinSharedRing(fd, nbytes int) ([]byte, error) {
+	if d.edma == nil || d.edma.inv == nil {
+		return nil, fmt.Errorf("bus: in-place DMA needs the EDMA drain and /dev/dcinv")
+	}
+	pg, ok := d.edma.pg.(*pagemapPager)
+	if !ok {
+		return nil, fmt.Errorf("bus: no page mapper")
+	}
+	b, err := pg.mapShared(fd, nbytes)
+	if err != nil {
+		return nil, err
+	}
+	d.edma.inv(b.buf)
+	d.edma.pinned = append(d.edma.pinned, b)
+	prev := d.edma.closeFn
+	d.edma.closeFn = func() { b.release(); prev() }
+	return b.buf, nil
+}
+
 // physOf resolves a pinned page's physical address via /proc/self/pagemap.
 // TRLC-LINKS: REQ-SDS-081
 func physOf(pm *os.File, p unsafe.Pointer) uint32 {
@@ -278,7 +345,7 @@ func (e *edmaDrainer) runParam(src, dst, bcnt uint32) bool {
 	e.cc.W(offShadow0+offEESR+hi, cb) // enable the event
 	e.cc.W(offShadow0+offESR+hi, cb)  // trigger
 	var t0 time.Time
-	learn := false
+	learn, slept := false, false
 	if e.yield {
 		e.transfers++
 		learn = e.nsPerWord == 0 || e.transfers%yieldLearn == 0
@@ -288,11 +355,25 @@ func (e *edmaDrainer) runParam(src, dst, bcnt uint32) bool {
 			// The shortest sleep outlasts a page's transfer (about 100 us):
 			// the bank is late by the difference, which the fabric's FIFO
 			// holds, and the core is the app's meanwhile.
-			sleepThread(max(d-yieldOvershoot, time.Microsecond))
+			if e.slack == 0 {
+				e.slack = yieldOvershoot
+			}
+			sleepThread(max(d-e.slack, time.Microsecond))
+			slept = true
 		}
 	}
 	for i := 0; i < e.pollMax; i++ {
 		if e.cc.R(offShadow0+offIPR+hi)&cb != 0 {
+			if slept {
+				// Done at the first look: the sleep may have overslept;
+				// many looks: it woke too early. Aim for a few.
+				switch {
+				case i == 0:
+					e.slack = min(e.slack+slackStep, yieldOvershoot)
+				case i > slackPolls:
+					e.slack = max(e.slack-slackStep, slackMin)
+				}
+			}
 			e.cc.W(offShadow0+offICR+hi, cb)
 			if learn && bcnt > 0 {
 				e.nsPerWord = float64(time.Since(t0)) / float64(bcnt)
@@ -372,10 +453,52 @@ func leWords(dst []uint16, src []byte) {
 	copy(unsafe.Slice((*byte)(unsafe.Pointer(&dst[0])), 2*len(dst)), src)
 }
 
+// pinnedAt returns the pinned buffer dst lies inside and dst's offset in it.
+// TRLC-LINKS: REQ-SDS-035
+func (e *edmaDrainer) pinnedAt(dst []byte) (*dmaBuf, int) {
+	if len(dst) == 0 {
+		return nil, 0
+	}
+	p := uintptr(unsafe.Pointer(&dst[0]))
+	for _, b := range e.pinned {
+		base := uintptr(unsafe.Pointer(&b.buf[0]))
+		if p >= base && p+uintptr(len(dst)) <= base+uintptr(len(b.buf)) {
+			return b, int(p - base)
+		}
+	}
+	return nil, 0
+}
+
+// drainPinned drains len(dst)/2 words from src straight into dst, which lies
+// at off in the pinned buffer b: one transfer per physical page piece, then
+// the cache lines of dst invalidated so the CPU reads what the DMA wrote.
+// TRLC-LINKS: REQ-SDS-035
+func (e *edmaDrainer) drainPinned(src uint32, b *dmaBuf, off int, dst []byte) bool {
+	end := off + len(dst)
+	for at := off; at < end; {
+		page := at / pageSize
+		piece := min(end, (page+1)*pageSize) - at
+		if piece%2 != 0 || !e.runParam(src, b.phys[page]+uint32(at%pageSize), uint32(piece/2)) {
+			return false
+		}
+		at += piece
+	}
+	e.inv(dst)
+	return true
+}
+
 // TRLC-LINKS: REQ-SDS-081
 func (e *edmaDrainer) drainBytes(src uint32, dst []byte) bool {
 	n := len(dst) / 2
-	if len(dst)%2 != 0 || n <= 0 || n > e.maxWords {
+	if len(dst)%2 != 0 || n <= 0 {
+		return false
+	}
+	if e.inv != nil {
+		if pb, off := e.pinnedAt(dst); pb != nil {
+			return e.drainPinned(src, pb, off, dst)
+		}
+	}
+	if n > e.maxWords {
 		return false
 	}
 	b := e.persistent

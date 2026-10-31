@@ -87,6 +87,17 @@ type StreamBlock struct {
 	Bank      uint8  `json:"bank"`
 }
 
+// StreamReserver is a DrainStream sink the bank's words are popped straight
+// into: Reserve hands out room for n bytes (two pieces where the room wraps),
+// Commit makes the reserved bytes the sink's after every check passed; a
+// drain that fails commits nothing. The worker's DMA-mapped ring is one: the
+// bank lands where its reader takes it, with no copy in between.
+// TRLC-LINKS: REQ-SDS-035
+type StreamReserver interface {
+	Reserve(n int) (a, b []byte, err error)
+	Commit(n int)
+}
+
 // DrainStream copies an immutable bank, checks sequence, then releases it.
 // It never rearms or changes timing/mode. A failed read retains bank ownership;
 // callers must discard any partial sink write before retrying. A release-write
@@ -171,7 +182,23 @@ func (c *Capture) DrainStream(ctx context.Context, expected uint64, dst io.Write
 	bytes := c.streamBytes[:block.Words*4]
 	halves := c.streamHalves[:block.Words*2]
 	bytePop, direct := c.bus.(interface{ PopBytesChecked(uint16, []byte) error })
-	if direct {
+	reserver, reserved := dst.(StreamReserver)
+	reserved = reserved && direct
+	if reserved {
+		// The pop port's pointer runs on across the two pieces of a wrap.
+		ra, rb, e := reserver.Reserve(len(bytes))
+		if e != nil {
+			return block, e
+		}
+		if e = bytePop.PopBytesChecked(25, ra); e != nil {
+			return block, e
+		}
+		if len(rb) > 0 {
+			if e = bytePop.PopBytesChecked(25, rb); e != nil {
+				return block, e
+			}
+		}
+	} else if direct {
 		if e = bytePop.PopBytesChecked(25, bytes); e != nil {
 			return block, e
 		}
@@ -212,12 +239,16 @@ func (c *Capture) DrainStream(ctx context.Context, expected uint64, dst io.Write
 			binary.LittleEndian.PutUint16(bytes[2*i:], v)
 		}
 	}
-	n, e := dst.Write(bytes)
-	if e != nil {
-		return block, e
-	}
-	if n != len(bytes) {
-		return block, io.ErrShortWrite
+	if reserved {
+		reserver.Commit(len(bytes))
+	} else {
+		n, e := dst.Write(bytes)
+		if e != nil {
+			return block, e
+		}
+		if n != len(bytes) {
+			return block, io.ErrShortWrite
+		}
 	}
 	e = c.write(20, uint16(block.Bank)|uint16((s.Tokens>>block.Bank)&1)<<1)
 	return block, e

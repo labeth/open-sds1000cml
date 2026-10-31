@@ -118,8 +118,9 @@ func (f *fakeCC) W(off, v uint32) {
 			src, dst := f.regs[pb+4], f.regs[pb+0xC]
 			bcnt := f.regs[pb+8] >> 16
 			f.transfers = append(f.transfers, struct{ src, dst, bcnt uint32 }{src, dst, bcnt})
-			pg, ok := f.pages[dst]
+			pg, ok := f.pages[dst&^(pageSize-1)]
 			if ok {
+				pg = pg[dst&(pageSize-1):]
 				for i := uint32(0); i < bcnt; i++ {
 					w := f.srcWord
 					f.srcWord++
@@ -388,5 +389,41 @@ func TestPopBytesPreservesPagesAndReusedCoherentBuffer(t *testing.T) {
 		if d.PopBytesChecked(c.s, make([]byte, c.n)) == nil {
 			t.Fatal("invalid byte pop accepted")
 		}
+	}
+}
+
+// A pop into a pinned buffer (the shared stream ring) lands in place: one
+// transfer per page piece from an offset inside a page, the destination
+// invalidated, no bounce buffer.
+// TRLC-LINKS: REQ-SDS-035
+func TestPopBytesIntoPinnedBufferInPlace(t *testing.T) {
+	e, cc, pg := newFakeDrainer(4096)
+	ring, _ := pg.alloc(3 * pageSize)
+	e.pinned = append(e.pinned, ring)
+	var invalidated []byte
+	e.inv = func(b []byte) { invalidated = b }
+	d := &Dev{edma: e}
+	dst := ring.buf[1000 : 1000+8192] // more than maxWords: no bounce buffer needed
+	if err := d.PopBytesChecked(25, dst); err != nil {
+		t.Fatal(err)
+	}
+	for i := 0; i < 4096; i++ {
+		if uint16(dst[2*i])|uint16(dst[2*i+1])<<8 != uint16(i) {
+			t.Fatalf("word %d", i)
+		}
+	}
+	if len(cc.transfers) != 3 || pg.allocs != 1 || &invalidated[0] != &dst[0] || len(invalidated) != len(dst) {
+		t.Fatalf("transfers %d allocs %d invalidated %d", len(cc.transfers), pg.allocs, len(invalidated))
+	}
+	want := []struct{ dst, bcnt uint32 }{{ring.phys[0] + 1000, (pageSize - 1000) / 2}, {ring.phys[1], pageSize / 2}, {ring.phys[2], 1000 / 2}}
+	for i, x := range cc.transfers {
+		if x.dst != want[i].dst || x.bcnt != want[i].bcnt {
+			t.Fatalf("transfer %d: %+v, want %+v", i, x, want[i])
+		}
+	}
+	// Outside the pinned buffer the bounce buffer serves as before.
+	e.persistent, _ = pg.alloc(8192)
+	if err := d.PopBytesChecked(25, make([]byte, 64)); err != nil {
+		t.Fatal(err)
 	}
 }
