@@ -478,7 +478,7 @@ func DecodeMaple(a, b []uint8, colTimeS float64, cfg ClockedCfg) Result {
 	}
 	o := &wireOut{n: A.n}
 	good := false
-	var bitT []float64
+	var bitT runningMedian
 	for k := 0; k < len(evs); k++ {
 		// a start: SDCKA falls with SDCKB high, then SDCKB falls four
 		// times (six: with a CRC) before SDCKA rises
@@ -547,7 +547,7 @@ func DecodeMaple(a, b []uint8, colTimeS float64, cfg ClockedCfg) Result {
 			}
 			if cb == 4 {
 				bytes, bx = append(bytes, v), append(bx, x0)
-				bitT = append(bitT, (evs[j-1].x-x0)/7)
+				bitT.add((evs[j-1].x - x0) / 7)
 				byteDone = true
 				j--
 			}
@@ -557,7 +557,7 @@ func DecodeMaple(a, b []uint8, colTimeS float64, cfg ClockedCfg) Result {
 			want = 4*(bytes[0]+1) + 1
 		}
 		ck := 0
-		T := medianOf(bitT)
+		T := bitT.value()
 		for i, x := range bytes {
 			txt, kind := hex2(x), "data"
 			switch {
@@ -582,7 +582,7 @@ func DecodeMaple(a, b []uint8, colTimeS float64, cfg ClockedCfg) Result {
 	if len(o.spans) == 0 {
 		return Result{Proto: "maple", Error: "no Maple frame"}
 	}
-	T := medianOf(bitT)
+	T := bitT.value()
 	res := Result{OK: good, Proto: "maple", Spans: o.spans, Text: strings.Join(o.toks, " "), Bytes: o.units,
 		Thr: A.threshold, SPB: T}
 	if colTimeS > 0 && T > 0 {

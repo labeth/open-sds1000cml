@@ -2,6 +2,7 @@
 package decode
 
 import (
+	"container/heap"
 	"math"
 	"sync"
 )
@@ -69,4 +70,61 @@ func nthValue(v []float64, k int) float64 {
 		}
 	}
 	return c[k]
+}
+
+// runningMedian is medianOf of a list that grows a value at a time, each in
+// O(log n): a decoder that reads its period from all the frames so far, at
+// every frame, sorted them all again each time, and a busy window of
+// thousands of frames cost it more than everything else. The smaller half
+// is a max-heap, the larger a min-heap whose least is the median (the
+// upper middle of an even count, as medianOf).
+type runningMedian struct{ lo, hi floatHeap }
+
+// add puts x in the list.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-254
+func (m *runningMedian) add(x float64) {
+	if len(m.lo.v) > 0 && x < -m.lo.v[0] {
+		heap.Push(&m.lo, -x)
+	} else {
+		heap.Push(&m.hi, x)
+	}
+	n := len(m.lo.v) + len(m.hi.v)
+	for len(m.lo.v) < n/2 {
+		heap.Push(&m.lo, -heap.Pop(&m.hi).(float64))
+	}
+	for len(m.lo.v) > n/2 {
+		heap.Push(&m.hi, -heap.Pop(&m.lo).(float64))
+	}
+}
+
+// value is medianOf of the values added, 0 for none.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-254
+func (m *runningMedian) value() float64 {
+	if len(m.hi.v) == 0 {
+		return 0
+	}
+	return m.hi.v[0]
+}
+
+// floatHeap is a min-heap of float64 (container/heap); the max-heap holds
+// the values negated.
+type floatHeap struct{ v []float64 }
+
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-254
+func (h *floatHeap) Len() int { return len(h.v) }
+
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-254
+func (h *floatHeap) Less(i, j int) bool { return h.v[i] < h.v[j] }
+
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-254
+func (h *floatHeap) Swap(i, j int) { h.v[i], h.v[j] = h.v[j], h.v[i] }
+
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-254
+func (h *floatHeap) Push(x any) { h.v = append(h.v, x.(float64)) }
+
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-254
+func (h *floatHeap) Pop() any {
+	x := h.v[len(h.v)-1]
+	h.v = h.v[:len(h.v)-1]
+	return x
 }

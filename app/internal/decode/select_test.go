@@ -42,3 +42,24 @@ func TestNthValueIsTheSortedValue(t *testing.T) {
 		}
 	}
 }
+
+// runningMedian gives medianOf of every prefix of a list, ties and all.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-254
+func TestRunningMedianIsMedianOf(t *testing.T) {
+	rng := rand.New(rand.NewSource(7))
+	for trial := 0; trial < 200; trial++ {
+		var m runningMedian
+		var v []float64
+		if m.value() != 0 {
+			t.Fatal("empty median not 0")
+		}
+		for i := 0; i < 1+rng.Intn(300); i++ {
+			x := float64(rng.Intn(20)) + rng.Float64()*float64(trial%2)
+			v = append(v, x)
+			m.add(x)
+			if got, want := m.value(), medianOf(v); got != want {
+				t.Fatalf("trial %d after %d: %v, want %v", trial, len(v), got, want)
+			}
+		}
+	}
+}
