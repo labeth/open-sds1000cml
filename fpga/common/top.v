@@ -118,7 +118,14 @@ module acq_sram_top(
  localparam BUF_WORDS=(1<<BUF_AW);
  wire core,sample_clk,locked;
 `ifdef STREAM_CAPTURE
+`ifdef STREAM_RING
+ // [5] ring (ADR-STREAM-RING): the record runs in the SRAM as a ring while
+ // the stream goes on chip; register 21 then holds the stream's own decimation.
+ reg [5:0] stream_cfg=0,stream_mode=0; // [0] stream, [1] continuous (no trigger), [2] peak-detect (STREAM_BITS: digital) words, [3]/[4] rising/falling edge marks, [5] ring
+ reg [4:0] stream_log_host=0;
+`else
  reg [4:0] stream_cfg=0,stream_mode=0; // [0] stream, [1] continuous (no trigger), [2] peak-detect (STREAM_BITS: digital) words, [3]/[4] rising/falling edge marks
+`endif
  reg [1:0] stream_rise_enable=0,stream_fall_enable=0;reg stream_auto=0;
  reg streaming_fault=0;
 `ifdef STREAM_DRUM
@@ -1146,7 +1153,12 @@ module acq_sram_top(
   end
 `endif
 `ifdef STREAM_CAPTURE
+`ifdef STREAM_RING
+  19:stream_cfg<=wd[5:0];
+  21:stream_log_host<=wd[4:0];
+`else
   19:stream_cfg<=wd[4:0];
+`endif
 `endif
   16:buffer_index<=wd[BUF_AW-1:0];
  endcase
@@ -1198,6 +1210,9 @@ module acq_sram_top(
  reg [4:0] prime_left=0;
 `endif
  reg [18:0] origin=0;
+`ifdef STREAM_RING
+ reg [1:0] origin_step=2;
+`endif
  wire running,record_done,triggered,config_error;
  wire [18:0] write_addr,record_start;
  wire [19:0] record_length,trigger_index,filled;
@@ -1305,7 +1320,20 @@ module acq_sram_top(
  // While the drum runs it alone commands the SRAM (no host recalls in stream mode).
  // The transport's command mux selects on its own copy of drum_active (fanout).
  (* preserve *) reg drum_sel=0;
+`ifdef STREAM_RING
+ // ADR-STREAM-RING: in ring mode the drum stays on chip and the record ring
+ // keeps the SRAM. The dispatch reads the mode decodes registered (timing at
+ // 250 MHz): the mode settles while idle, and a stop that meets the ring's
+ // own end on the same clock only leaves the stream for the next stop.
+ always @(posedge core)drum_sel<=drum_active && !stream_mode[5];
+ reg drum_only=0,ring_on=0,ring_running=0;
+ always @(posedge core)begin
+  drum_only<=stream_mode[0] && !stream_mode[5];ring_on<=stream_mode[0] && stream_mode[5];
+  ring_running<=stream_mode[5] && running;
+ end
+`else
  always @(posedge core)drum_sel<=drum_active;
+`endif
  wire transport_command=drum_sel ? drum_cmd : command,transport_command_read=drum_sel ? drum_cmd_read : command_read;
  wire transport_command_discard=drum_sel ? drum_cmd_discard : command_discard;
  wire transport_command_continue=drum_sel ? drum_cmd_continue : command_continue;
@@ -1391,7 +1419,15 @@ module acq_sram_top(
  // CH2 at the second line's (stream_bits.v). The two do not fit together at
  // 250 MHz.
  (* preserve *) reg [4:0] bits_log=0;
+`ifdef STREAM_RING
+ // In ring mode the record's decimation is the ring's, finer than the
+ // stream's: the stream's own comes from register 21 (latched while idle).
+ reg [4:0] stream_log=0;
+ always @(posedge core)if(config_idle)stream_log<=stream_mode[5] ? stream_log_host : decim_log;
+ always @(posedge core)bits_log<=stream_log-5'd5;
+`else
  always @(posedge core)bits_log<=decim_log-5'd5;
+`endif
  stream_bits peak(.clk(core),.enable(peak_on),.log_words(bits_log),.low1(level_low_l),.high1(level_high_l),.low2(level2_low_l),.high2(level2_high_l),
   .in_valid(il_raw_valid),.in_word(il_raw_word),.out_valid(peak_valid),.out_word(peak_word));
 `else
@@ -1421,6 +1457,11 @@ module acq_sram_top(
  end
  wire drum_bank_ready,drum_bank_next_free;
  stream_drum #(.AW(19),.WF_AW(12),.DESC_AW(9),.BANK_AW(BUF_AW-2)) drum(.clk(core),.active(drum_active),
+`ifdef STREAM_RING
+  .onchip(stream_mode[5]),
+`else
+  .onchip(1'b0),
+`endif
   .in_valid(drum_in_valid),.in_data(drum_in_data),
   .cmd(drum_cmd),.cmd_read(drum_cmd_read),.cmd_discard(drum_cmd_discard),.cmd_continue(drum_cmd_continue),.cmd_count(drum_cmd_count),
   .t_ready(ready),.t_write_ready(write_ready),.t_done(transport_done),.wdata(drum_wdata),.wvalid(drum_wvalid),.wstop(drum_wstop),
@@ -1435,6 +1476,11 @@ module acq_sram_top(
  wire [31:0] mark_rise_word,mark_fall_word;wire [15:0] mark_rise_count,mark_fall_count;
  stream_marks marks(.clk(core),.active(drum_active),.word(drum_in_valid),.rise(mark_rise),.fall(mark_fall),
   .rise_word(mark_rise_word),.fall_word(mark_fall_word),.rise_count(mark_rise_count),.fall_count(mark_fall_count));
+`ifdef STREAM_RING
+ // ADR-STREAM-RING: the ring's newest word on the stream's raw-word clock.
+ wire [31:0] ring_last;
+ ring_stamp ring_time(.clk(core),.active(drum_active),.raw_valid(frontend_run && il_raw_valid),.write(step && running && !halt),.last(ring_last));
+`endif
 `else
  // Isolate the live-stream tap from SRAM arm/priming decode fanout. Stop and
  // data validity take the same extra clock, retaining the last accepted word.
@@ -1612,7 +1658,14 @@ module acq_sram_top(
   `ifdef PRECISION
   // Board-qualified sparse-clock origin: counter-referenced write addressing
   // differs by one word from the continuous-clock path (origin probe).
+`ifdef STREAM_RING
+  // The step is registered (decim_active is static while armed): only the
+  // counter's add stays on the arm path.
+  origin_step<=decim_active ? 2'd3 : 2'd2;
+  if(arm)origin<=position+origin_step;
+`else
   if(arm)origin<=position+(decim_active ? 2'd3 : 2'd2);
+`endif
 `else
   if(arm)origin<=position+2'd2;
 `endif
@@ -1648,8 +1701,16 @@ module acq_sram_top(
     1:if(dispatch_arm_ok) begin
 `ifdef STREAM_DRUM
      // Stream mode: the drum takes the SRAM and the front end runs for it.
+`ifdef STREAM_RING
+     // Ring mode arms the record as well: it runs as a ring beside the
+     // on-chip stream until its trigger or the host's stop.
+     if(drum_only)begin drum_active<=1;frontend_run<=1;frontend_count<=1;end
+     else begin
+     if(ring_on)drum_active<=1;
+`else
      if(stream_mode[0])begin drum_active<=1;frontend_run<=1;frontend_count<=1;end
      else begin
+`endif
 `endif
      force_trigger<=0;priming<=1;
      command<=1;command_read<=0;command_discard<=0;command_continue<=0;prefetch_valid<=0;
@@ -1663,7 +1724,13 @@ module acq_sram_top(
     end else command_error<=1;
     4:force_trigger<=1;
 `ifdef STREAM_DRUM
+`ifdef STREAM_RING
+    // In ring mode a stop first freezes a running ring; the stream runs on
+    // until the next stop.
+    5:begin halt<=1;if(drum_active && !ring_running)begin drum_active<=0;frontend_run<=0;frontend_count<=0;end end
+`else
     5:begin halt<=1;if(drum_active)begin drum_active<=0;frontend_run<=0;frontend_count<=0;end end
+`endif
 `else
     5:halt<=1;
 `endif
@@ -1811,6 +1878,10 @@ module acq_sram_top(
 `ifdef STREAM_DRUM
    54:rd=16'h4d01;55:rd=mark_rise_count;56:rd=mark_rise_word[15:0];57:rd=mark_rise_word[31:16];
    58:rd=mark_fall_count;59:rd=mark_fall_word[15:0];60:rd=mark_fall_word[31:16];
+`ifdef STREAM_RING
+   61:rd=16'h5247; // ADR-STREAM-RING: ring mode (register 19 bit 5, 21 the stream's decimation); 62/63 the ring's newest word in raw words
+   62:rd=ring_last[15:0];63:rd=ring_last[31:16];
+`endif
 `endif
 `endif
 `else

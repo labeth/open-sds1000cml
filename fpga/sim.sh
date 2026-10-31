@@ -34,7 +34,7 @@ done
 # implicit wire, undriven, which synthesis takes as a constant, dropping the
 # logic it feeds with only a warning (an edge trigger that never fired).
 if node --experimental-strip-types -e 0 2>/dev/null; then
-  for img in general packet frame line qualify stacking stream fast; do
+  for img in general packet frame line qualify stacking stream bits fast; do
     d="$(SDS_FPGA_BUILD_LOCKED=1 node --experimental-strip-types "$FPGA/build.ts" --image="$img" --prepare-only 2>/dev/null | sed -n 's/^Prepared //p')"
     ran=$((ran+1))
     if [ ! -d "$d" ]; then echo "[FAIL] $img top level (prepare)"; fail=1; continue; fi

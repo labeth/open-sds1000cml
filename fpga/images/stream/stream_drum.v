@@ -53,6 +53,11 @@
 // chunks fill one bank each and carry the seal. A word that finds the input
 // FIFO full raises fault (sticky): loss is never silent. All of this runs
 // only while active; inactive, the transport is free.
+//
+// With onchip set (ADR-STREAM-RING) the record keeps the SRAM as its ring
+// and the drum never commands the transport: only the direct path runs, so
+// the stream's slack is the FIFO and the host's two banks, and a FIFO that
+// would spill raises fault instead.
 // TRLC-LINKS: REQ-SDS-035
 module stream_drum #(parameter AW=19,WF_AW=12,DESC_AW=8,BANK_AW=10,
  parameter RD_SKEW=1,                // read words arrive this many pulses late (board: 1)
@@ -62,6 +67,7 @@ module stream_drum #(parameter AW=19,WF_AW=12,DESC_AW=8,BANK_AW=10,
  parameter TRIP_AT=3584,             // FIFO words, with those due on the way, that send the counter to the write head
  parameter AGE_CYCLES=2097152)(      // oldest buffered pair: 16.8 ms of hclk
  input clk,active,
+ input onchip,                       // static while active: the direct path only, no transport
  input in_valid,input [31:0] in_data,
  // sram_transport (CONTINUOUS_ONLY), clk
  output reg cmd=0,output reg cmd_read=0,output reg cmd_discard=0,output reg cmd_continue=0,
@@ -212,6 +218,7 @@ module stream_drum #(parameter AW=19,WF_AW=12,DESC_AW=8,BANK_AW=10,
  reg [AW-1:0] p2_dist_w=0,p2_dist_r=0;reg [PW:0] p2_lvl=0;reg p2_room=0,p2_due=0,p2_min=0,p2_tail=0,p2_spill=0,p2_empty=0;
  reg p3_go=0,p3_keep=0,w_more=0;reg [1:0] p3_kind=0;reg [AW-1:0] p3_seek=0;
  reg [2:0] settle=0;
+ (* preserve *) reg oc=0;
  // Packets in the current bank (published when full, or sealed), and
  // whether the head burst fits in it and, when free, the next.
  reg [BANK_AW-1:0] bfill=0;reg p1_partial=0,p2_partial=0,p3_seal=0;
@@ -251,6 +258,7 @@ module stream_drum #(parameter AW=19,WF_AW=12,DESC_AW=8,BANK_AW=10,
   p3_go<=1;p3_kind<=K_SEEK;p3_seek<=seek_r;p3_keep<=0;p3_seal<=p2_partial;
   if(p2_empty)begin
    if(bank_ready && p2_due)p3_kind<=K_DIRECT;
+   else if(oc)p3_go<=0;
    else if(!at_w)p3_seek<=seek_w;
    else if(!bank_ready && p2_spill && p2_room)p3_kind<=K_WRITE;
    else p3_go<=0;
@@ -266,7 +274,7 @@ module stream_drum #(parameter AW=19,WF_AW=12,DESC_AW=8,BANK_AW=10,
   end else p3_seal<=0;               // on to the next burst
  end
  always @(posedge hclk)begin
-  act<=active;
+  act<=active;oc<=onchip;
   dsc_push<=0;packet_valid<=0;packet_seal<=0;packet_single<=0;
   // Input words, from clk, paired into the FIFO.
   wf_push<=0;
@@ -289,7 +297,9 @@ module stream_drum #(parameter AW=19,WF_AW=12,DESC_AW=8,BANK_AW=10,
   burst_span<={burst_p,1'b0}+5'd16+GAP;
   age_pre<=age_pre+1'b1;age_tick<=&age_pre;age_clr<=0;
   if(wf_level==0 || age_clr)age<=0;else if(age_tick && !age[15])age<=age+1'b1;
-  if(st==S_IDLE && ready_q && !done_new)begin if(settle!=7)settle<=settle+1'b1;end else settle<=0;
+  // On chip the transport is the record's: its readiness and its dones are
+  // not the drum's to wait for.
+  if(st==S_IDLE && (ready_q && !done_new || oc))begin if(settle!=7)settle<=settle+1'b1;end else settle<=0;
   // Pairs read from the ring, from clk (the read's odd extra word never
   // completes a pair).
   if(st==S_READ && rq_rp!=rq_wp_h)begin

@@ -59,7 +59,7 @@ module tb_stream_drum #(parameter REAL=0,FAST=0,MID=0,SWORDS=0,SPERIOD=256,HOST_
  stream_drum #(.AW(AW),.WF_AW(WF_AW),.DESC_AW(DESC_AW),.BANK_AW(BANK_AW),
   .WRITE_AT(BIG ? 512 : 48),.WRITE_URGENT(BIG ? 3072 : 160),.TRIP_AT(BIG ? 3584 : 224),
   .AGE_CYCLES(BIG ? 2097152 : 3000),.SEG(REAL ? 8192 : MID || FAST ? 1024 : 256)) dut(
-  .clk(core),.active(active),.in_valid(in_valid),.in_data(in_data),
+  .clk(core),.active(active),.onchip(1'b0),.in_valid(in_valid),.in_data(in_data),
   .cmd(cmd),.cmd_read(cmd_read),.cmd_discard(cmd_discard),.cmd_continue(cmd_continue),.cmd_count(cmd_count),
   .t_ready(t_ready),.t_write_ready(t_write_ready),.t_done(t_done),.wdata(wdata),.wvalid(wvalid),.wstop(wstop),
   .rdata(rdata),.rvalid(rvalid),.position(position),.fault(fault),
