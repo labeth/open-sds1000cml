@@ -669,6 +669,13 @@ func (w *acquisitionWorker) serve(fd int) error {
 			// about every 1.5 ms and the drum behind them holds about a
 			// second, so the loop need not wake every 500 us for them.
 			wait = max(wait, w.pumpWait())
+			if w.sEvery == streamPumpFastest {
+				// A backlog: the drum refills a bank as soon as one is free,
+				// so the next look comes at once, not after a wait as long
+				// as the drain took (the loop's own pacing halved the
+				// drain's rate and the drum's FIFO filled at 2^8).
+				wait = streamPumpFastest
+			}
 		}
 		timeout := syscall.NsecToTimespec(int64(wait))
 		_, _, errno := syscall.RawSyscall6(syscall.SYS_PPOLL, uintptr(unsafe.Pointer(&poll)), 1, uintptr(unsafe.Pointer(&timeout)), 0, 0, 0)
