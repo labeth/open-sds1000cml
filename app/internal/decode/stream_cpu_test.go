@@ -12,6 +12,10 @@ package decode
 // and on the scope, cross-compiled (GOOS=linux GOARCH=arm GOARM=7 go test -c):
 //
 //	SDS_STREAM_CPU=1 ./decode-stream-cpu-arm.test -test.run TestStreamCPU -test.v
+//
+// SDS_STREAM_CPU_ONLY=uart,dmx512 picks protocols and SDS_STREAM_CPU_SECS
+// the stream's length (0.5 s; the fastest buses' streams take some hundred
+// MB at that).
 
 import (
 	"encoding/binary"
@@ -20,6 +24,7 @@ import (
 	"math/rand"
 	"os"
 	"runtime"
+	"strconv"
 	"strings"
 	"syscall"
 	"testing"
@@ -311,13 +316,21 @@ func TestStreamCPU(t *testing.T) {
 	}
 	p("%s/%s; %s, decoded samples a pushed one\n", runtime.GOOS, runtime.GOARCH, unit)
 	p("%-11s %8s %9s | %9s %7s | %9s %7s | %7s | %5s %7s\n", "protocol", "bucket", "samples/s", "dense ms", "redo", "bursty ms", "redo", "idle ms", "frames", "slice%")
-	for _, name := range streamCPUNames {
+	names := streamCPUNames
+	if only := os.Getenv("SDS_STREAM_CPU_ONLY"); only != "" {
+		names = strings.Split(only, ",")
+	}
+	secs := 0.5
+	if v, err := strconv.ParseFloat(os.Getenv("SDS_STREAM_CPU_SECS"), 64); err == nil && v > 0 {
+		secs = v
+	}
+	for _, name := range names {
 		tc := streamCPUCaseOf(t, name)
 		var row [2][2]float64
 		var frames int
 		var slicePct float64
 		for k, bursty := range []bool{false, true} {
-			a, b, ss := streamCPULines(tc, 7, 0.5, bursty)
+			a, b, ss := streamCPULines(tc, 7, secs, bursty)
 			secs := float64(len(a)) * ss
 			decoded := 0
 			dec := func(x, y []uint8) Result { decoded += len(x); return tc.c.dec(x, y, ss) }
@@ -338,7 +351,7 @@ func TestStreamCPU(t *testing.T) {
 				slicePct = 100 * sl * redo / ns
 			}
 		}
-		ia, ib, iss := streamCPUIdle(tc, 0.25)
+		ia, ib, iss := streamCPUIdle(tc, secs/2)
 		idleDec := func(x, y []uint8) Result { return tc.c.dec(x, y, iss) }
 		idleMS := cpuOf(func() { streamCPURun(tc, ia, ib, iss, idleDec) }) / (float64(len(ia)) * iss) / 1e6
 		p("%-11s %6.3gus %9.3g | %9.2f %7.2f | %9.2f %7.2f | %7.2f | %5d %6.0f%%\n", name, tc.bucket*1e6, 2/tc.bucket,
