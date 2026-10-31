@@ -253,13 +253,17 @@ func StreamBitsPeriod(log int) float64 { return float64(uint64(1)<<(log-4)) * 2e
 
 // StreamBitsLog is the digital stream's decimation for a feature of feature
 // seconds: the coarsest from StreamGapFreeMinLog that keeps six periods in
-// the feature (fewer samples cost the decoder less), or failing that three
-// and a half. ok is false when even the finest leaves fewer: the edges then
-// move by a period within a feature.
+// the feature (fewer samples cost the decoder less) at no more than
+// streamBitsBusy samples a second, or failing that three and a half (the
+// decoders read every bus from three a feature). ok is false when even the
+// finest leaves fewer: the edges then move by a period within a feature.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
 func StreamBitsLog(feature float64) (log int, ok bool) {
 	for _, keep := range []float64{6, 3.5} {
 		if feature < keep*StreamBitsPeriod(StreamGapFreeMinLog) {
+			continue
+		}
+		if keep == 6 && feature/6 < 1/streamBitsBusy {
 			continue
 		}
 		log = StreamGapFreeMinLog
@@ -270,6 +274,11 @@ func StreamBitsLog(feature float64) (log int, ok bool) {
 	}
 	return 0, false
 }
+
+// streamBitsBusy is the most samples a second a line the six-period plan
+// takes: the peak stream's at 2^9, which the device decodes beside its
+// display.
+const streamBitsBusy = 500e6 / (1 << (StreamGapFreeMinLog - 1))
 
 // StreamBitsLine reports whether proto's line suits the digital stream: a
 // carrier (an IR remote's 38 kHz, an RFID tag's 125 kHz field) sliced at a

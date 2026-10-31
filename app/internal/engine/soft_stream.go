@@ -482,6 +482,11 @@ func (e *Engine) softDrain(s *softStream) {
 				s.inPlace = false
 				continue
 			}
+			// A piece at a time: a reader behind by the ring's 8 MB would
+			// otherwise unpack all of it at once (sixteen samples a digital
+			// word a line).
+			a = a[:min(len(a), softReadBytes)]
+			b = b[:min(len(b), softReadBytes-len(a))]
 			n := len(a) + len(b)
 			if err == nil && n > 0 && first != s.expected {
 				err = fmt.Errorf("stream ordinal %d, want %d", first, s.expected)
@@ -499,6 +504,12 @@ func (e *Engine) softDrain(s *softStream) {
 			}
 			s.release, fed = n, true
 			s.expected += uint64(n / 4)
+			if len(s.pendA) >= s.pushN {
+				e.softPush(s)
+				if s.phase != softStreaming {
+					break
+				}
+			}
 			continue
 		}
 		if s.isolated {
@@ -518,6 +529,17 @@ func (e *Engine) softDrain(s *softStream) {
 				break
 			}
 			s.expected += uint64(n / 4)
+			if s.bits {
+				// Fed as read: a digital word is sixteen samples a line.
+				e.softFeed(s, raw)
+				raw = raw[:0]
+				if len(s.pendA) >= s.pushN {
+					e.softPush(s)
+					if s.phase != softStreaming {
+						break
+					}
+				}
+			}
 			continue
 		}
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)

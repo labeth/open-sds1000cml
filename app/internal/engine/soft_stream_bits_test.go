@@ -57,10 +57,10 @@ func TestSoftStreamModesWithBits(t *testing.T) {
 			log         int
 		}{
 			{serWS281x, 800000, "gap-free", true, 9}, {serUSBPD, 300000, "gap-free", true, 11},
-			{serSWD, 1000000, "gap-free", true, 9}, {serMDIO, 1000000, "gap-free", true, 9},
-			{serMiller, 106007, "gap-free", true, 11}, {serMaple, 1333333, "gap-free", true, 9},
+			{serSWD, 1000000, "gap-free", true, 10}, {serMDIO, 1000000, "gap-free", true, 10},
+			{serMiller, 106007, "gap-free", true, 12}, {serMaple, 1333333, "gap-free", true, 9},
 			{serDMX, 250000, "gap-free", true, 12}, {serLIN, 19200, "gap-free", true, 16},
-			{serModbus, 460800, "gap-free", true, 11}, {serSPDIF, 3072000, "captures", false, 0},
+			{serModbus, 460800, "gap-free", true, 12}, {serSPDIF, 3072000, "captures", false, 0},
 			{serIRNEC, 889, "gap-free", false, 0}, {serEM4100, 1953, "gap-free", false, 0},
 		} {
 			name, _ := softProtoName(c.proto)
