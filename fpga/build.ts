@@ -63,7 +63,7 @@ const images:Record<string,Image>={
  // protocol decoders, so the packetizer, banks and precision decimation fit.
  // STREAM_DRUM: the stream goes through the external SRAM as a FIFO, whose
  // 512K words are the drain's slack (stream_drum.v).
- stream:{dir:'images/stream',files:['stream_packetizer.v','stream_banks.v','stream_peak.v','stream_drum.v','stream_marks.v','general/precision.v','general/precision_tail.v'],defines:['STREAM_CAPTURE','STREAM_DRUM'],seed:9,trigger:true,precision:true,bare:true},
+ stream:{dir:'images/stream',files:['stream_packetizer.v','stream_banks.v','stream_peak.v','stream_drum.v','stream_marks.v','general/precision.v','general/precision_tail.v'],defines:['STREAM_CAPTURE','STREAM_DRUM'],seed:5,trigger:true,precision:true,bare:true},
  // ADR-STREAM-BITS: the stream image with digital words (each line sliced at
  // its level, sixteen periods a word) in the peak words' place, for the
  // decoded stream; the two do not fit together at 250 MHz.
