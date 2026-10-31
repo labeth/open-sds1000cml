@@ -110,6 +110,10 @@ module tb_top_bits_ring;
   end
  end endtask
  integer i,k,errors=0,ch,bad=0;
+ // The stream holds its words until the FIFO and banks are full (the bench
+ // drains none): a fault before that is a loss the slack should have taken.
+ integer fault_words=-1;
+ always @(posedge dut.core)if(dut.drum_active && dut.drum_fault && fault_words<0)fault_words=words;
  // The ring's writes hold the transport: it never goes idle while the ring
  // runs (a word offered then would be lost).
  integer idle_clocks=0,first_idle=0;
@@ -145,6 +149,7 @@ module tb_top_bits_ring;
   host_command(5);write_bus(19,0);
   $display("ring: length %0d start %0d trigger %0d origin %0d stamp %0d; %0d edges",length,start,tindex,origin,last,nedges);
   if(dut.drum_active)begin $display("FAIL: the second stop left the stream running");errors=errors+1;end
+  if(fault_words>=0 && fault_words<4096)begin $display("FAIL: the on-chip stream faulted after %0d words",fault_words);errors=errors+1;end
   if(idle_clocks)begin $display("FAIL: the transport was idle %0d clocks while the ring ran, first at raw word %0d",idle_clocks,first_idle);errors=errors+1;end
   recall(origin,start,length);
   // Every word read holds the ramp at the ring's pace (2^RING_LOG samples a
