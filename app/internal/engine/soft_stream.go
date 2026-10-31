@@ -148,6 +148,7 @@ type softStream struct {
 	ringErr  error
 	ringWhy  string // why a value stop has no ring
 	sessBase uint64
+	sessAt   time.Time // when this stream session started
 
 	// The record shown at the stop.
 	recCfg  sramcapture.Config
@@ -479,7 +480,7 @@ func (e *Engine) softStreamStart(s *softStream) error {
 	} else if err := e.sram.StartStream(ctx, cfg, true, true); err != nil {
 		return err
 	}
-	s.sessBase = s.dec.Next() + uint64(len(s.pendA))
+	s.sessBase, s.sessAt = s.dec.Next()+uint64(len(s.pendA)), e.clk.Now()
 	s.streaming, s.expected, s.haveLast = true, 0, false
 	if p, ok := e.b.(streamPumper); ok {
 		owned, err := p.SetIsolatedStreamPump(true)

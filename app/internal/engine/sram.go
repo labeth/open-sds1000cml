@@ -1036,7 +1036,7 @@ acquisitionLoop:
 		c1, c2 := f.C1, f.C2
 		*f = Frame{C1: c1, C2: c2, Valid: int(recallWords) * int(m.SamplesPerWord), WinCols: plan.Screen, SampleS: 1 / m.SampleRateHz, TdivS: tdiv, DisplayedS: math.Min(tdiv, float64(plan.Samples)*plan.SampleS/10),
 			EdgeX: float64(m.TriggerIndex-recallOffset) * float64(m.SamplesPerWord), TrigPos: int(m.TriggerIndex-recallOffset) * int(m.SamplesPerWord),
-			Trigd: m.Triggered && cfg.Normal && !forced, Coherent: true, HaltOK: true, Norm: norm, Interp: plan.Screen < 800, Decimation: m.Decimation, TriggerKind: "hardware-edge"}
+			Trigd: m.Triggered && (cfg.Normal || m.HostTrigger) && !forced, Coherent: true, HaltOK: true, Norm: norm, Interp: plan.Screen < 800, Decimation: m.Decimation, TriggerKind: "hardware-edge"}
 		f.CaptureDepth = int(m.Length) * int(m.SamplesPerWord)
 		if !f.Trigd {
 			f.TriggerKind = "forced"
@@ -1357,7 +1357,7 @@ acquisitionLoop:
 		// Place a plain edge trigger at its exact level crossing: the FPGA
 		// index is word-granular. Envelope frames hold bucket extremes, not
 		// samples in time order.
-		if tp.typ == TrigEdge && e.serialMode.Load() != SerialTrigger && f.Trigd {
+		if tp.typ == TrigEdge && e.serialMode.Load() != SerialTrigger && f.Trigd && !m.HostTrigger {
 			if lvl := e.trigDispLevel(int(cfg.TriggerChannel)); lvl >= 0 {
 				q := f.Q1
 				if cfg.TriggerChannel == 1 {
@@ -1377,7 +1377,12 @@ acquisitionLoop:
 			}
 		}
 		e.noteARINCLevels(f)
-		if name := hardwareSerialName(cfg); e.serialMode.Load() == SerialTrigger && name != "" {
+		if m.HostTrigger {
+			// A history ring stopped on a decoded stream's frame (ADR-STREAM-RING):
+			// for streaming data software is the trigger, and the trigger word is
+			// the frame's start, placed through the ring's time stamp.
+			f.TriggerKind = "stream"
+		} else if name := hardwareSerialName(cfg); e.serialMode.Load() == SerialTrigger && name != "" {
 			// The FPGA's matcher decided; software only moves the trigger
 			// point from where the match ended to where it began.
 			qualified = f.Trigd

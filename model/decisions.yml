@@ -1734,6 +1734,15 @@ decisions:
   - Faster buses' streams keep the SRAM drum (their words outrun the on-chip slack); the stream image has no ring.
   - A ring frozen on the host's trigger reports its end as the fabric's trigger index; its metadata marks the
     host's (HostTrigger) and the recall's check of the frozen record does not compare it.
+  - The record shown is triggered (kind "stream") at the trigger word whatever the serial trigger setting, as the
+    ring's configuration has no FPGA trigger, and a record read as untriggered was placed by the screen, not the
+    frame. A ring that has not lapped must span the time since the stream's start, less at most 4 ms of arm lag
+    (its words at 2^(n-1) raw words against the stamp); one that does not falls back to the symbol trigger's
+    record. The freeze logs the ring's geometry, pointer and stamp, the frame's ordinal and the words received.
+  - tb_top_bits_ring (driven by the engine's TestStreamRingTopRTL) runs the bits image's top level over GPMC as
+    sramcapture does - start, the two stops, the record read back span by span - and checks every word read holds
+    the input at the ring's pace, the transport never idles while the ring runs, and the app's mapping of each
+    digital edge names the ring word made within two words of it.
   - tb_stream_ring checks the on-chip drum (every word, a stall within the slack, a fault beyond it, the record's
     transport traffic ignored), the ring with the stamp (host stop, FPGA trigger, gaps, wraps) and the digital
     stream's ordinals against the stamp's.

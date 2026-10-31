@@ -174,3 +174,32 @@ func TestSoftRingStopState(t *testing.T) {
 		t.Fatalf("adopted %+v", a)
 	}
 }
+
+// A ring that has not lapped spans the time since the stream's start, less
+// its arm lag: the numbers of the bits image's top-level bench pass (2^8:
+// 10226 words, stamp 1310200; 2^9: 5846 words, stamp 1500126); a ring with
+// half or twice the words for its time, or a stamp that wrapped past it, is
+// refused and the record falls back; a lapped ring is not checked.
+// TRLC-LINKS: REQ-SDS-035, REQ-SDS-240
+func TestSoftRingPace(t *testing.T) {
+	for _, c := range []struct {
+		n      int
+		length uint32
+		last   uint32
+		ok     bool
+	}{
+		{8, 10226, 1310200, true}, {9, 5846, 1500126, true},
+		{9, 177972, 177972 * 256 * 2, false}, {9, 177972, 177972 * 128, false},
+		{9, 177972, 177972*256 + 3000, true}, {9, sramcapture.Words, 7, true},
+	} {
+		err := softRingPace(sramcapture.Metadata{Length: c.length}, c.n, c.last)
+		if (err == nil) != c.ok {
+			t.Errorf("2^%d, %d words, stamp %d: %v", c.n, c.length, c.last, err)
+		}
+	}
+	s := &softStream{ring: true, ringLog: 9, ordStep: 16, ringCfg: sramcapture.Config{DecimationLog2: 9}}
+	s.softRingDone(sramcapture.Metadata{Ready: true, Frozen: true, Length: 177972}, 177972*256*2, nil)
+	if s.phase != softRecord || s.recOK {
+		t.Fatalf("a ring off its pace was shown: phase %d", s.phase)
+	}
+}

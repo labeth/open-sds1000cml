@@ -39,6 +39,10 @@ const (
 	softRingMarginS = 150e-3
 	// softRingMinLog is the finest ring: the stream image's decimation floor.
 	softRingMinLog = 8
+	// softRingArmLagMax is the most raw words the ring's first word may
+	// follow the stream's start (the record's priming, the decimator's first
+	// word): 4 ms.
+	softRingArmLagMax = 1 << 20
 	// softRingStampLag is the raw words the stamp's latch runs ahead of the
 	// precision decimator's output on top of its filter delay (register
 	// stages and the 100 MHz crossing): a few tens of nanoseconds, under a
@@ -108,11 +112,31 @@ func softRingWord(m sramcapture.Metadata, n int, last uint32, ord uint64) (uint3
 	return m.Length - 1 - uint32(k), true
 }
 
+// softRingPace checks a frozen ring that has not yet lapped against its
+// stamp: its words, at 2^(n-1) raw words each, must span the time since the
+// stream's start less at most the ring's arm lag; a ring that took more or
+// fewer words than its time is not placed by the stamp. A lapped ring has
+// no start to check against.
+// TRLC-LINKS: REQ-SDS-035, REQ-SDS-240
+func softRingPace(m sramcapture.Metadata, n int, last uint32) error {
+	if m.Length >= sramcapture.Words {
+		return nil
+	}
+	span := uint32(uint64(m.Length) << (n - 1))
+	if lag := last - span; lag > softRingArmLagMax {
+		return fmt.Errorf("the ring's %d words span %d raw words, the stream's start was %d ago", m.Length, span, last)
+	}
+	return nil
+}
+
 // softRingRecord is the record a frozen ring shows for the stream's stop
 // frame: the ring with its trigger on the frame's start; an error when the
-// ring no longer holds the frame.
+// ring no longer holds the frame or does not keep the stream's time.
 // TRLC-LINKS: REQ-SDS-035, REQ-SDS-240
 func (s *softStream) softRingRecord(m sramcapture.Metadata, last uint32) (sramcapture.Metadata, error) {
+	if err := softRingPace(m, int(s.ringLog), last); err != nil {
+		return m, err
+	}
 	// The stop frame's ordinal on this stream session's clock: the decoder's
 	// indices run on across a lost stream, the FPGA's stamp starts afresh.
 	at := s.stopFirst - uint64(float64(s.sessBase)*s.ordStep)
@@ -129,17 +153,18 @@ func (s *softStream) softRingRecord(m sramcapture.Metadata, last uint32) (sramca
 // the symbol trigger's record of the value coming again is armed.
 // TRLC-LINKS: REQ-SDS-035, REQ-SDS-240
 func (e *Engine) softRingStop(s *softStream) {
-	if s.isolated {
-		// The worker's pump owns the stream's drain: hand it back first.
-		if _, err := e.b.(streamPumper).SetIsolatedStreamPump(false); err != nil {
-			e.busErr(err)
-		}
-		s.isolated = false
-	}
+	// The ring first, while the worker still drains the stream: a stream
+	// left undrained overflows the drum's FIFO within 50 ms, and its fault
+	// stops the acquisition.
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	m, last, err := e.sram.FreezeRing(ctx)
 	cancel()
 	e.softStreamStop(s)
+	// What places the record: the ring's geometry and pointer, its stamp,
+	// the frame's ordinal on the session's clock and what the host received.
+	e.logf("engine: history ring frozen: words=%d start=%d origin=%d position=%d (%d past the origin) stamp=%d (%.1f ms) frame=%d session=%d words received=%d after %v",
+		m.Length, m.Start, m.Origin, m.Position, (m.Position-m.Origin)&(sramcapture.Words-1), last, float64(last)*4e-6,
+		s.stopFirst, uint64(float64(s.sessBase)*s.ordStep), s.expected, e.clk.Now().Sub(s.sessAt).Round(time.Millisecond))
 	s.softRingDone(m, last, err)
 	if s.recOK {
 		e.logf("engine: %s stream stopped on %X: history ring of %d words, trigger word %d", s.decoder.Name, s.value, s.recMeta.Length, s.recMeta.TriggerIndex)
