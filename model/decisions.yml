@@ -1689,6 +1689,12 @@ decisions:
     were short in tb_stream_drum MID (4608 take the same block RAMs). Model, at decimation 256 with 17 ms pump
     gaps, single 50/100/200/250 ms stalls absorbed and drained 0.3/0.7/1.3/1.7 s after the stall; 280 ms fills
     the ring. The block RAMs' odd depths cost about 200 logic elements of address decode and output muxes.
+  - The lap (2.1 ms, the SRAM's 250 MHz word rate) and the block RAM set the ceiling - a backlog drains only if
+    the FIFO and the two banks together hold about two laps of input, 9.7k words here, so about 2.1M words/s (8.4
+    MB/s, about three quarters of the GPMC). Above it the drum still runs the direct path and spills on a host
+    pause, but the backlog cannot drain and the FIFO overflows into the sticky fault; the model puts the longest
+    host pause it rides out at about 2.3 ms at 2.2M words/s, 1.9 ms at 2.5M and 1.25 ms at 2.8M (the first look
+    within about 2.8, 2.4 and 2.2 ms of the start).
 - id: ADR-STREAM-BITS
   title: The decoded stream streams each line sliced, sixteen periods a word
   status: accepted
