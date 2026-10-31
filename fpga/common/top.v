@@ -1429,10 +1429,10 @@ module acq_sram_top(
   end
  end
  wire drum_bank_ready,drum_bank_next_free;
- // The FIFO holds a lap of input at decimation 256 (4.1k words) and a little
- // more: 2176 pairs (4352 words).
- stream_drum #(.AW(19),.WF_AW(13),.WF_PAIRS(2176),.DESC_AW(9),.BANK_AW(BUF_AW-2),.BANK_P(STREAM_BANK_P),
-  .WRITE_URGENT(3264),.TRIP_AT(3840)) drum(.clk(core),.active(drum_active),
+ // The FIFO holds a lap of input at decimation 256 (4.1k words) with room to
+ // spare: 2304 pairs (4608 words), the 18 block RAMs the two banks leave.
+ stream_drum #(.AW(19),.WF_AW(13),.WF_PAIRS(2304),.DESC_AW(9),.BANK_AW(BUF_AW-2),.BANK_P(STREAM_BANK_P),
+  .WRITE_URGENT(3584),.TRIP_AT(4096)) drum(.clk(core),.active(drum_active),
   .in_valid(drum_in_valid),.in_data(drum_in_data),
   .cmd(drum_cmd),.cmd_read(drum_cmd_read),.cmd_discard(drum_cmd_discard),.cmd_continue(drum_cmd_continue),.cmd_count(drum_cmd_count),
   .t_ready(ready),.t_write_ready(write_ready),.t_done(transport_done),.wdata(drum_wdata),.wvalid(drum_wvalid),.wstop(drum_wstop),
