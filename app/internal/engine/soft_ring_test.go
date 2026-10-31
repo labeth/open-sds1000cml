@@ -213,7 +213,10 @@ func TestSoftRingStartFallsBackOnce(t *testing.T) {
 	d, _ := serialDecoder(serDMX)
 	s := &softStream{ring: true, ringLog: 9, log: 12, decoder: d}
 	rings, plains := 0, 0
-	refuse := func(sramcapture.Config) error { rings++; return errors.New("sramcapture: this image has no history ring") }
+	refuse := func(sramcapture.Config) error {
+		rings++
+		return errors.New("sramcapture: this image has no history ring")
+	}
 	plain := func(c sramcapture.Config) error {
 		plains++
 		if c.DecimationLog2 != 12 {
