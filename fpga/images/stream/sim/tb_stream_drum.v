@@ -153,7 +153,10 @@ module tb_stream_drum #(parameter REAL=0,FAST=0,AW=REAL ? 19 : 12,BANK_AW=REAL ?
    session;drain_ns=90;stream(6000,24,0);settle_check(20000,"phase 5a GPMC, steady");
    session;drain_ns=70;stream(8000,24,1500);stream(8000,24,1500);settle_check(60000,"phase 5b GPMC, stalls");
    session;drain_ns=60;stream(8000,22,1500);stream(8000,22,1500);settle_check(60000,"phase 5c 1.4M, stalls");
-   session;drain_ns=55;stream(8000,21,1200);stream(8000,21,1200);settle_check(60000,"phase 5d 1.5M, stalls");
+   // A backlog of most of the ring (writes take two clocks a word, a larger
+   // share of a short lap than on the board, so the scaled rates stop short
+   // of the board's).
+   session;drain_ns=60;stream(12000,28,2500);settle_check(60000,"phase 5d 1.1M, deep");
    if(errors==0)$display("PASS tb_stream_drum FAST");else $display("FAIL tb_stream_drum FAST: %0d errors",errors);
    $finish;
   end
