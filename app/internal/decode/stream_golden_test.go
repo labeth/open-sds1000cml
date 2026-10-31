@@ -14,7 +14,7 @@ import (
 )
 
 // streamDigest is a stream's frames hashed whole: every frame's and span's
-// sample indices, text, kind and value.
+// sample indices, text, kind and value, alike on the PC and the scope.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
 func streamDigest(frames []StreamFrame) string {
 	h := sha256.New()
@@ -30,7 +30,7 @@ func streamDigest(frames []StreamFrame) string {
 		for _, s := range f.Spans {
 			put(s.I0)
 			put(s.I1)
-			put(uint64(int64(s.Val)))
+			put(uint64(uint32(s.Val))) // the value's low 32 bits: an int is 32 bits on the scope
 			h.Write([]byte(s.Kind))
 			h.Write([]byte{0})
 			h.Write([]byte(s.Text))
