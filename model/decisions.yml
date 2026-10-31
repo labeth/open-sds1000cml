@@ -1705,6 +1705,38 @@ decisions:
     directly (no samples unpacked or sliced) and the decoder takes them, the same frames to the span; the device's
     CPU fell further on the bench (DMX 58 to 51 %, SDQ 67 to 50 %, Miller 99 to 84 %). A decoder's own work is
     then about 2 us an edge on the device, so the dense buses past the budget still fall behind and stay captures.
+- id: ADR-STREAM-RING
+  title: A gap-free decoded stream's stop on a value shows the analog history ring
+  status: accepted
+  date: '2026-10-31'
+  context: A gap-free stream decoded in software stopped on a value showed the qualify image's symbol trigger's
+    record of the value coming again (an image load, and a wait of up to 10 s for a repeat), as the stream images
+    have no symbol trigger and the FPGA decided every trigger. The SRAM's counter is the only pointer and moves
+    forward only, so it cannot be the drum's stall buffer and a continuously written record at once without a
+    ring word waiting a lap (2.1 ms) on chip; the 4096-word FIFO holds that only for rings too coarse to show.
+    The owner decided that for streaming data software can be the trigger; captures stay the FPGA's.
+  decision: The bits image carries ring mode (register 19 bit 5, register 21 the stream's own decimation). The
+    drum runs only its direct path (the FIFO straight into a free bank, no transport), so the stream's slack is the
+    FIFO and the host's banks, and the same arm runs the record in the SRAM as a ring of precision words at the
+    ring's decimation, untriggered. ring_stamp latches each ring write's raw-word time (4 ns) from the stream's start,
+    the origin the digital words count from; registers 62/63 hold the frozen ring's newest, 61 reads 0x5247. When
+    the decoder reads the stop value the host stops the ring (opcode 5; a second ends the stream) and shows it with
+    its trigger on the stop frame's start - the ring word whose centre (the stamp less the CIC3 stages' delay,
+    1.5(2^n-1) samples) lies nearest the frame's ordinal on the session's clock. A stream plans a ring only when
+    its words leave 30 ms of pump gap in 6144 words of slack (stream decimation 2^12 or coarser), and at the finest
+    ring decimation (2^8 or coarser) holding the bank seal, the time between decodes, Close, 50 ms of decode, the
+    longest frame and 150 ms more, with three ring words in the shortest feature; else, and when the ring no longer
+    holds the frame, the symbol trigger's record is armed as before.
+  consequences:
+  - On the plans of the stream's buses the ring is 0.54 to 2.1 s of 1 to 4 us words (DMX512 and 1-Wire 2^9, LIN
+    and J1850 2^10, Modbus and CEC 2^11); PDI (2 us features) and the 2^11 streams (SDQ) keep the symbol trigger.
+  - The record shown is the frame and its history as they were, not a later repeat, with no image load.
+  - Faster buses' streams keep the SRAM drum (their words outrun the on-chip slack); the stream image has no ring.
+  - A ring frozen on the host's trigger reports its end as the fabric's trigger index; its metadata marks the
+    host's (HostTrigger) and the recall's check of the frozen record does not compare it.
+  - tb_stream_ring checks the on-chip drum (every word, a stall within the slack, a fault beyond it, the record's
+    transport traffic ignored), the ring with the stamp (host stop, FPGA trigger, gaps, wraps) and the digital
+    stream's ordinals against the stamp's.
 - id: ADR-PANEL-SERIAL-SCAN
   title: Scan the front panel from the owned images over the factory's serial shift chain
   status: accepted
