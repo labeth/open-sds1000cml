@@ -1641,13 +1641,27 @@ decisions:
     transport, write offers at most every other clock (the transport pulses only for taken words). The board's
     read words arrive one pulse late (READ_DELAY 1), so fresh reads start 17 words early with one extra pulse,
     and reads never continue (a continued read would lose its first word). The front end is drained while the
-    drum runs (its consume followed write_ready before, and the interleaver overflowed).
+    drum runs (its consume followed write_ready before, and the interleaver overflowed). The ring is only the
+    overflow - while it holds no backlog, the FIFO's words go straight into a free host bank (no lap) and the counter
+    waits at the write head; when the host holds both banks and the FIFO passes 3072 words it spills into the ring,
+    and every word then goes through the ring until it is empty (order kept). With a backlog the counter waits at
+    the read head filling freed banks, and leaves for the write head only when the FIFO plus what a 1.95M words/s
+    stream brings on the way reaches 3584 words; a trip writes a full burst and then one tail burst. Ring bursts
+    fill the host's banks back to back (a burst is read when it fits in the current bank and, if free, the next); a
+    partly filled bank is sealed only before the counter leaves the read head, so the host holds two full banks
+    (3.2 ms at the GPMC) through a 2.1 ms trip.
   consequences:
-  - Bench, counter source, every word checked - loss-free at decimation 512 (978k words/s, 3.9 MB/s)
+  - Without a backlog the stream runs as fast as the host drains (the GPMC, about 1.27M words/s, 5.1 MB/s); with
+    one, a lap carries at most two banks (about 1.9M words/s), so a backlog drains at about the host's rate less
+    the input. The host protocol is unchanged (stream_banks' packet_ready now feeds the drum). tb_stream_drum FAST
+    (board proportions) and REAL (board sizes, 1.27M and 1.6M words/s with 5 ms host stalls) check every word;
+    the old drum, reading a bank a lap (about 975k words/s), lets the backlog grow at those rates.
+  - Bench, counter source, every word checked (before the direct path) - loss-free at decimation 512 (978k words/s, 3.9 MB/s)
     and 1024; at 1024 a single 900 ms host stall is absorbed and a 1.2 s stall faults (the ring holds about 1.07
     s); 300 ms stalls each second are absorbed.
-  - Reading back what was just written costs a lap (2.1 ms), so the FIFO must hold a lap of input; decimation 256
-    (4.2k words a lap, 7.8 MB/s) exceeds the FIFO and the GPMC bus (about 5.1 MB/s at the shipped timing).
+  - Reading back what was just written costs a lap (2.1 ms), so with a backlog the FIFO must hold a lap of input;
+    decimation 256 (4.2k words a lap, 7.8 MB/s) exceeds the FIFO and the GPMC bus (about 5.1 MB/s at the shipped
+    timing).
     Writing in place during seeks was tried and dropped; its holes become dead crossing time.
   - Recovery after a stall needs host drain headroom above the input rate (about 1.2 MB/s at 512, 3.1 MB/s at 1024).
   - tb_stream_drum models the late write (P+2), unreliable burst starts and the one-pulse read skew.
