@@ -129,8 +129,9 @@ type softStream struct {
 	// the same: soft_client.go).
 	closeN, maxN, leadN int
 	// subframes: the decoder's "rw" spans open frames too (decode
-	// StreamDecoder.SetSubframes); the scope's stream sets none, and a page
-	// decoding for it must not either.
+	// StreamDecoder.SetSubframes): S/PDIF's frames run without a pause and
+	// only every 192nd opens with a start, so its M and W subframes are
+	// frames of their own; a page decoding for the scope does the same.
 	subframes bool
 	// Client decode (soft_client.go): a web page decodes the words.
 	client      bool
@@ -386,7 +387,7 @@ func (e *Engine) beginSoftStream(ctx context.Context, p SerialParams, trig Strea
 		}
 	}
 	s := &softStream{p: p, proto: name, decoder: d, trig: trig, value: value & unitMask(p), mask: unitMask(p),
-		gapFree: gapFree, quiet: quiet, bits: bits, byHand: onError, ring: bits && trig == StreamOnValue}
+		gapFree: gapFree, quiet: quiet, bits: bits, byHand: onError, ring: bits && trig == StreamOnValue, subframes: name == "spdif"}
 	if bits {
 		s.overBudget = float64(softLines(p.Proto))/decode.StreamBitsPeriod(plan.period) > softBitsBudget
 	}
