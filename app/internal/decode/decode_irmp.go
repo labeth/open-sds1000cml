@@ -120,7 +120,7 @@ func DecodeIRMP(codes []uint8, colTimeS float64, cfg LineCfg) Result {
 	}
 	m, high := irMarks(S, colTimeS)
 	us := func(d float64) float64 { return d * colTimeS * 1e6 }
-	o := &wireOut{n: S.n}
+	o := newWireOut(S.n, S.sc)
 	good, first, unit := false, 0, 0.0
 	lastJVC := -1.0 // where the last JVC frame ended, for its repeats
 	frame := func(proto int, x0, x1 float64, addr, cmd int, ok bool, name string) {

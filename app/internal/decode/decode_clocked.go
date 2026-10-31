@@ -26,6 +26,7 @@ type clkEdge struct {
 	x   float64
 	dir int
 	d   int
+	i   int // the edge's sample (edge.i)
 }
 
 // clockedLines slices both lines and lists the clock's edges with the data
@@ -33,23 +34,74 @@ type clkEdge struct {
 // in samples.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-236
 func clockedLines(a, b lineIn, cfg ClockedCfg) ([]clkEdge, float64, sliced, string) {
+	E, per, C, _, why := clockedLinesD(a, b, cfg)
+	return E, per, C, why
+}
+
+// clockedLinesD is clockedLines with the data line sliced as well.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-236
+func clockedLinesD(a, b lineIn, cfg ClockedCfg) ([]clkEdge, float64, sliced, sliced, string) {
 	if b.none() {
-		return nil, 0, sliced{}, "needs both lines (clock and data)"
+		return nil, 0, sliced{}, sliced{}, "needs both lines (clock and data)"
 	}
 	C := a.slice(cfg.Threshold, cfg.HaveThr)
 	if !C.ok {
-		return nil, 0, C, C.reason
+		return nil, 0, C, sliced{}, C.reason
 	}
 	D := b.slice(cfg.ThresholdB, cfg.HaveThrB)
 	if !D.ok {
-		return nil, 0, C, D.reason
+		return nil, 0, C, D, D.reason
 	}
-	out := make([]clkEdge, 0, len(C.edges))
-	gaps := make([]float64, 0, len(C.edges)/2+1)
+	sc := a.scratch()
+	out := scratchSlice[clkEdge](sc, len(C.edges))
+	gaps := scratchSlice[float64](sc, len(C.edges)/2+1)
 	lastFall := -1.0
 	lv := levelCursor{s: &D}
+	if fallUp, riseUp, ok := C.roundUps(); ok {
+		// A clock sliced from its edges: each edge's sample is its own (no
+		// rounding of its crossing), and the gaps between falls lie within
+		// a hair of their samples (nthNear).
+		gi := scratchSlice[int](sc, len(C.edges)/2+1)
+		last := -1
+		out = out[:len(C.edges)]
+		// The data line's level at each edge's sample, its edges walked
+		// along (the samples only grow: a rise's is its own, a fall's the
+		// one before).
+		dE, dn, dk := D.edges, D.n, 0
+		walk := D.codes == nil
+		for k := range C.edges {
+			e := &C.edges[k]
+			up := riseUp
+			if e.dir < 0 {
+				up = fallUp
+			}
+			at, d := e.i-1+up, -1
+			switch {
+			case !walk:
+				d = lv.atSample(at)
+			case at >= 0 && at < dn:
+				for dk < len(dE) && dE[dk].i <= at {
+					dk++
+				}
+				d = int(D.first) ^ dk&1
+			}
+			o := &out[k] // set field by field: no struct copied in
+			o.x, o.dir, o.d, o.i = e.x, e.dir, d, e.i
+			if e.dir < 0 {
+				if last >= 0 {
+					gaps = append(gaps, e.x-lastFall)
+					gi = append(gi, e.i-last)
+				}
+				lastFall, last = e.x, e.i
+			}
+		}
+		if len(gaps) < 4 {
+			return nil, 0, C, D, "too few clock edges"
+		}
+		return out, nthNear(gaps, gi, len(gaps)/2, nearBufOf(sc)), C, D, ""
+	}
 	for _, e := range C.edges {
-		out = append(out, clkEdge{e.x, e.dir, lv.at(e.x)})
+		out = append(out, clkEdge{e.x, e.dir, lv.at(e.x), e.i})
 		if e.dir < 0 {
 			if lastFall >= 0 {
 				gaps = append(gaps, e.x-lastFall)
@@ -58,9 +110,9 @@ func clockedLines(a, b lineIn, cfg ClockedCfg) ([]clkEdge, float64, sliced, stri
 		}
 	}
 	if len(gaps) < 4 {
-		return nil, 0, C, "too few clock edges"
+		return nil, 0, C, D, "too few clock edges"
 	}
-	return out, nthValue(gaps, len(gaps)/2), C, ""
+	return out, nthValue(gaps, len(gaps)/2), C, D, ""
 }
 
 // DecodePS2 decodes PS/2 keyboard and mouse traffic: the data line read
@@ -186,6 +238,7 @@ func decodePS2(clk, data lineIn, colTimeS float64, cfg ClockedCfg) Result {
 type swdCycle struct {
 	xf, xr float64
 	df, dr int
+	fi, ri int // the fall's sample and the rise's
 }
 
 // DecodeSWD decodes ARM Serial Wire Debug: the host's request read at the
@@ -211,16 +264,17 @@ func DecodeSWDEdges(clk, dio *EdgeLine, colTimeS float64, cfg ClockedCfg) Result
 // decodeSWD is DecodeSWD over samples or edges.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-236
 func decodeSWD(clk, dio lineIn, colTimeS float64, cfg ClockedCfg) Result {
-	E, per, C, why := clockedLines(clk, dio, cfg)
+	E, per, C, D, why := clockedLinesD(clk, dio, cfg)
 	if why != "" {
 		return Result{Proto: "swd", Error: why}
 	}
-	D := dio.slice(cfg.ThresholdB, cfg.HaveThrB)
 	// cycles: a fall and the rise after it
-	cy := make([]swdCycle, 0, len(E)/2+1)
+	cy := scratchSlice[swdCycle](clk.scratch(), len(E)/2+1)
 	for k := 0; k+1 < len(E); k++ {
-		if E[k].dir < 0 && E[k+1].dir > 0 {
-			cy = append(cy, swdCycle{E[k].x, E[k+1].x, E[k].d, E[k+1].d})
+		if f, r := &E[k], &E[k+1]; f.dir < 0 && r.dir > 0 {
+			cy = cy[:len(cy)+1]
+			y := &cy[len(cy)-1] // set field by field: no struct copied in
+			y.xf, y.xr, y.df, y.dr, y.fi, y.ri = f.x, r.x, f.d, r.d, f.i, r.i
 		}
 	}
 	// The target's bits are read at the falls (it drives them from a rise);
@@ -234,10 +288,7 @@ func decodeSWD(clk, dio lineIn, colTimeS float64, cfg ClockedCfg) Result {
 		}
 		return cy[k].df
 	}
-	n := C.n
-	var spans []Span
-	var toks []string
-	var units []int
+	o := newWireOut(C.n, C.sc)
 	good := false
 	// line resets: fifty or more rises with SWDIO high, ended by a low one
 	var resets [][2]int
@@ -255,8 +306,7 @@ func decodeSWD(clk, dio lineIn, colTimeS float64, cfg ClockedCfg) Result {
 	ri := 0
 	flushResets := func(upTo int) {
 		for ; ri < len(resets) && resets[ri][1] <= upTo; ri++ {
-			spans = append(spans, pspan(cy[resets[ri][0]].xr, cy[resets[ri][1]].xr, n, "LINERESET", "rw", 0))
-			toks = append(toks, "LINERESET")
+			o.add(cy[resets[ri][0]].xr, cy[resets[ri][1]].xr, "LINERESET", "rw", 0, false)
 		}
 	}
 	// cycles explained: the transfers', the resets' and idle ones (low)
@@ -264,11 +314,14 @@ func decodeSWD(clk, dio lineIn, colTimeS float64, cfg ClockedCfg) Result {
 	for _, rs := range resets {
 		explained += rs[1] - rs[0]
 	}
-	for _, y := range cy {
-		if y.dr == 0 && y.df == 0 {
+	for c := range cy {
+		if cy[c].dr == 0 && cy[c].df == 0 {
 			explained++
 		}
 	}
+	dj := 0                   // swdRequestRaces' place in D's edges
+	_, _, byI := C.roundUps() // both lines sliced from their edges: each edge within a sample of its own
+	byI = byI && D.codes == nil
 	next := -1                  // where the transfer just read lets the next request start
 	firstC, lastC := len(cy), 0 // the first transfer's or reset's cycle, and the cycle after the last
 	for _, rs := range resets {
@@ -289,20 +342,12 @@ func decodeSWD(clk, dio lineIn, colTimeS float64, cfg ClockedCfg) Result {
 		if !parOK || (ack != 1 && ack != 2 && ack != 4) {
 			continue // not a request a target answered
 		}
-		if swdRequestRaces(D, cy[c:c+8], per) {
+		if swdRequestRaces(&D, cy[c:c+8], per, &dj, byI) {
 			continue // its bits read where they change: no host's
 		}
-		rw := map[int]string{0: "W", 1: "R"}[rnw]
-		ap := map[int]string{0: "DP", 1: "AP"}[apdp]
-		spans = append(spans, pspan(cy[c].xr, cy[c].xr, n, "", "sof", 0))
-		txt := fmt.Sprintf("%s%s%X", rw, ap, (a2|a3<<1)<<2)
-		spans = append(spans, pspan(cy[c].xf, cy[c+7].xr+per/2, n, txt, "data", req))
-		toks = append(toks, txt)
-		units = append(units, req)
-		ackTxt := map[int]string{1: "OK", 2: "WAIT", 4: "FAULT"}[ack]
-		spans = append(spans, pspan(cy[c+9].xf, cy[c+11].xr+per/2, n, ackTxt, "data", ack))
-		toks = append(toks, ackTxt)
-		units = append(units, ack)
+		o.add(cy[c].xr, cy[c].xr, "", "sof", 0, false)
+		o.add(cy[c].xf, cy[c+7].xr+per/2, swdRequestText[rnw][apdp][a2|a3<<1], "data", req, true)
+		o.add(cy[c+9].xf, cy[c+11].xr+per/2, swdAckText(ack), "data", ack, true)
 		firstC = min(firstC, c)
 		if ack != 1 {
 			explained += swdUnexplained(cy[c : c+12])
@@ -331,22 +376,20 @@ func decodeSWD(clk, dio lineIn, colTimeS float64, cfg ClockedCfg) Result {
 		if rnw == 0 {
 			p = cy[first+32].dr
 		}
-		dtxt, kind := fmt.Sprintf("%08X", uint32(v)), "data"
+		dtxt, kind := hexText("", uint64(uint32(v)), 8), "data"
 		if cnt%2 != p {
-			dtxt, kind = "!"+dtxt, "parity-error"
+			dtxt, kind = hexText("!", uint64(uint32(v)), 8), "parity-error"
 		} else {
 			good = true
 		}
-		spans = append(spans, pspan(cy[first].xf, cy[first+31].xr+per/2, n, dtxt, kind, v))
-		toks = append(toks, dtxt)
-		units = append(units, v)
+		o.add(cy[first].xf, cy[first+31].xr+per/2, dtxt, kind, v, true)
 		explained += swdUnexplained(cy[c : first+33])
 		c = first + 32 // a read's turnaround ends with its parity cycle's rise
 		next = c + 1
 		lastC = max(lastC, next)
 	}
 	flushResets(len(cy))
-	if len(spans) == 0 {
+	if len(o.spans) == 0 {
 		return Result{Proto: "swd", Error: "no SWD request"}
 	}
 	// The record's ends cut a transfer as often as not: the busy cycles
@@ -371,8 +414,9 @@ func decodeSWD(clk, dio lineIn, colTimeS float64, cfg ClockedCfg) Result {
 	// data an SPI bus clocks holds request-like bits now and then; SWD's
 	// transfers, idle and resets explain most of its clock, which runs at
 	// one rate while it runs
-	good = good && cover >= 0.5 && swdSteady(cy, per)
-	res := Result{OK: good, Proto: "swd", Spans: spans, Text: strings.Join(toks, " "), Bytes: units,
+	_, _, near := C.roundUps()
+	good = good && cover >= 0.5 && swdSteady(cy, per, near)
+	res := Result{OK: good, Proto: "swd", Spans: o.spans, Text: strings.Join(o.toks, " "), Bytes: o.units,
 		Thr: C.threshold, SPB: per, Cover: cover}
 	if colTimeS > 0 {
 		res.Baud = int(1/(per*colTimeS) + 0.5)
@@ -381,6 +425,32 @@ func decodeSWD(clk, dio lineIn, colTimeS float64, cfg ClockedCfg) Result {
 		res.Error = "no SWD transfer acknowledged OK whose parity checks"
 	}
 	return res
+}
+
+// swdRequestText names a request by RnW, APnDP and A[3:2]: "RDP0", "WAP4".
+var swdRequestText = func() (t [2][2][4]string) {
+	for rnw, rw := range []string{"W", "R"} {
+		for apdp, ap := range []string{"DP", "AP"} {
+			for a := range 4 {
+				t[rnw][apdp][a] = rw + ap + hexText("", uint64(a<<2), 0)
+			}
+		}
+	}
+	return t
+}()
+
+// swdAckText names an acknowledge ("" none of the three).
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-236
+func swdAckText(ack int) string {
+	switch ack {
+	case 1:
+		return "OK"
+	case 2:
+		return "WAIT"
+	case 4:
+		return "FAULT"
+	}
+	return ""
 }
 
 // swdTargetAtRise reports whether more of the requests on a clock
@@ -394,19 +464,19 @@ func swdTargetAtRise(cy []swdCycle) bool {
 	fall, rise := 0, 0
 	pf, pr := 0, 0 // read data words whose parity checks at the falls, the rises
 	for c := 0; c+12 <= len(cy); c++ {
-		r := func(k int) int { return cy[c+k].dr }
-		if r(0) != 1 || r(6) != 0 || r(7) != 1 || (r(1)+r(2)+r(3)+r(4))%2 != r(5) {
+		w := cy[c : c+12 : c+12] // the request's cycles
+		if w[0].dr != 1 || w[6].dr != 0 || w[7].dr != 1 || (w[1].dr+w[2].dr+w[3].dr+w[4].dr)%2 != w[5].dr {
 			continue
 		}
-		okF := cy[c+9].df == 1 && cy[c+10].df == 0 && cy[c+11].df == 0
-		okR := r(9) == 1 && r(10) == 0 && r(11) == 0
+		okF := w[9].df == 1 && w[10].df == 0 && w[11].df == 0
+		okR := w[9].dr == 1 && w[10].dr == 0 && w[11].dr == 0
 		if okF {
 			fall++
 		}
 		if okR {
 			rise++
 		}
-		if r(2) == 1 && c+45 <= len(cy) { // a read: data on cycles c+12 .. c+44
+		if w[2].dr == 1 && c+45 <= len(cy) { // a read: data on cycles c+12 .. c+44
 			nf, nr := 0, 0
 			for k := c + 12; k < c+45; k++ {
 				nf += cy[k].df
@@ -427,21 +497,56 @@ func swdTargetAtRise(cy []swdCycle) bool {
 }
 
 // swdSteady reports a clock whose cycles while it runs (gaps under four
-// periods) are mostly a period long.
+// periods) are mostly a period long. near: the falls are a digital line's
+// edges (slice), each gap within a hair of its samples, compared as those
+// where they lie clear of a bound.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-236
-func swdSteady(cy []swdCycle, per float64) bool {
+func swdSteady(cy []swdCycle, per float64, near bool) bool {
 	run, even := 0, 0
+	gap, lo, hi := 4*per, 0.75*per, 1.25*per
+	gapB, loB, hiB := nearBoundOf(gap), nearBoundOf(lo), nearBoundOf(hi)
 	for k := 1; k < len(cy); k++ {
+		if gi := cy[k].fi - cy[k-1].fi; near && (gi >= gapB.hi || gi <= gapB.lo) {
+			if gi >= gapB.hi {
+				continue // over four periods
+			}
+			run++
+			switch {
+			case gi >= loB.hi && gi <= hiB.lo:
+				even++ // within the period's quarter
+			case gi <= loB.lo || gi >= hiB.hi:
+				// outside it
+			default:
+				if g := cy[k].xf - cy[k-1].xf; g >= lo && g <= hi {
+					even++
+				}
+			}
+			continue
+		}
 		g := cy[k].xf - cy[k-1].xf
-		if g > 4*per {
+		if g > gap {
 			continue
 		}
 		run++
-		if g >= 0.75*per && g <= 1.25*per {
+		if g >= lo && g <= hi {
 			even++
 		}
 	}
 	return run > 0 && float64(even) >= 0.8*float64(run)
+}
+
+// nearBound is where integers lie clear of a bound t for values within a
+// hair (a millionth) of them: an integer up to lo lies below t, one from hi
+// above it; between the two the value itself decides.
+type nearBound struct{ lo, hi int }
+
+// nearBoundOf is t's nearBound (none for a t out of the integers' range).
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-236
+func nearBoundOf(t float64) nearBound {
+	if !(math.Abs(t) < 1<<30) {
+		return nearBound{math.MinInt, math.MaxInt}
+	}
+	return nearBound{int(math.Ceil(t-1e-6)) - 1, int(math.Floor(t+1e-6)) + 1}
 }
 
 // swdTransferCycles is the longest SWD transfer: an 8-bit request, the
@@ -453,18 +558,37 @@ const swdTransferCycles = 46
 // host moves SWDIO at the fall, half a period from the rise; data that moves
 // at the rise is a bus launching it there (SPI with its clock at 80% duty),
 // read now as one bit and now as the other, and its "requests" come and go
-// with a millivolt of noise.
+// with a millivolt of noise. at keeps its place in D's edges from request
+// to request; byI: both lines' edges lie within a sample of their own,
+// and an edge and a rise samples apart lie that much apart less one.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-236
-func swdRequestRaces(D sliced, cy []swdCycle, per float64) bool {
+func swdRequestRaces(D *sliced, cy []swdCycle, per float64, at *int, byI bool) bool {
 	if !D.ok || len(cy) == 0 || !(per > 0) {
 		return false
 	}
-	lo, hi := cy[0].xf, cy[len(cy)-1].xr+per/8
-	j := sort.Search(len(D.edges), func(k int) bool { return D.edges[k].x >= lo })
+	near := per / 8
+	lo, hi := cy[0].xf, cy[len(cy)-1].xr+near
+	// the first of D's edges at or past lo: on from the last request's
+	// (requests come in order), or searched for when it lies before
+	j := *at
+	if j > len(D.edges) || (j > 0 && D.edges[j-1].x >= lo) {
+		j = sort.Search(len(D.edges), func(k int) bool { return D.edges[k].x >= lo })
+	}
+	for j < len(D.edges) && D.edges[j].x < lo {
+		j++
+	}
+	*at = j
+	far := math.MaxInt // samples apart that put an edge and a rise over near apart
+	if byI && near < 1<<30 {
+		far = int(math.Ceil(near)) + 2
+	}
 	for ; j < len(D.edges) && D.edges[j].x <= hi; j++ {
-		x := D.edges[j].x
-		for _, y := range cy {
-			if math.Abs(x-y.xr) < per/8 {
+		x, i := D.edges[j].x, D.edges[j].i
+		for c := range cy {
+			if di := i - cy[c].ri; di >= far || -di >= far {
+				continue
+			}
+			if math.Abs(x-cy[c].xr) < near {
 				return true
 			}
 		}
@@ -476,8 +600,8 @@ func swdRequestRaces(D sliced, cy []swdCycle, per float64) bool {
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-236
 func swdUnexplained(cy []swdCycle) int {
 	n := 0
-	for _, y := range cy {
-		if y.dr != 0 || y.df != 0 {
+	for c := range cy {
+		if cy[c].dr != 0 || cy[c].df != 0 {
 			n++
 		}
 	}
@@ -522,16 +646,20 @@ func decodeMDIO(mdc, mdio lineIn, colTimeS float64, cfg ClockedCfg) Result {
 	if why != "" {
 		return Result{Proto: "mdio", Error: why}
 	}
-	var R []clkEdge
-	for _, e := range E {
-		if e.dir > 0 {
-			R = append(R, e)
+	// the rises: where each lies and the data there
+	type rise struct {
+		x float64
+		d int
+	}
+	R := scratchSlice[rise](mdc.scratch(), len(E)/2+1)
+	for k := range E {
+		if e := &E[k]; e.dir > 0 {
+			R = R[:len(R)+1]
+			r := &R[len(R)-1] // set field by field: no struct copied in
+			r.x, r.d = e.x, e.d
 		}
 	}
-	n := C.n
-	var spans []Span
-	var toks []string
-	var units []int
+	o := newWireOut(C.n, C.sc)
 	good := false
 	ones, explained := 0, 0
 	firstR, lastR := -1, -1 // the first frame's preamble's first rise, the last frame's last
@@ -563,30 +691,20 @@ func decodeMDIO(mdc, mdio lineIn, colTimeS float64, cfg ClockedCfg) Result {
 		op, phy, reg := bits(2, 2), bits(4, 5), bits(9, 5)
 		ta := bits(14, 2)
 		data := bits(16, 16)
-		var name string
-		if st == 1 {
-			name = map[int]string{1: "WR", 2: "RD"}[op]
-		} else {
-			name = map[int]string{0: "ADDR", 1: "WR45", 2: "RDI45", 3: "RD45"}[op]
-		}
+		name := mdioOpName(st, op)
 		if name == "" {
 			continue
 		}
 		head := st<<12 | op<<10 | phy<<5 | reg
-		spans = append(spans, pspan(R[i].x, R[i].x, n, "", "sof", 0))
-		htxt := fmt.Sprintf("%s %02X.%02X", name, phy, reg)
-		spans = append(spans, pspan(R[i].x, R[i+14].x, n, htxt, "data", head))
-		toks = append(toks, htxt)
-		units = append(units, head)
-		dtxt, kind := fmt.Sprintf("%04X", data), "data"
+		o.add(R[i].x, R[i].x, "", "sof", 0, false)
+		o.add(R[i].x, R[i+14].x, name+" "+hex2(phy)+"."+hex2(reg), "data", head, true)
+		dtxt, kind := hexText("", uint64(data), 4), "data"
 		if ta&1 != 0 {
-			dtxt, kind = "!"+dtxt, "frame-error"
+			dtxt, kind = hexText("!", uint64(data), 4), "frame-error"
 		} else {
 			good = true
 		}
-		spans = append(spans, pspan(R[i+16].x, R[i+31].x+per, n, dtxt, kind, data))
-		toks = append(toks, dtxt)
-		units = append(units, data)
+		o.add(R[i+16].x, R[i+31].x+per, dtxt, kind, data, true)
 		explained += 32
 		if firstR < 0 {
 			firstR = i - pre
@@ -595,10 +713,10 @@ func decodeMDIO(mdc, mdio lineIn, colTimeS float64, cfg ClockedCfg) Result {
 		i += 31
 	}
 	explained += ones // the idle after the last frame
-	if len(spans) == 0 {
+	if len(o.spans) == 0 {
 		return Result{Proto: "mdio", Error: "no MDIO frame"}
 	}
-	res := Result{OK: good, Proto: "mdio", Spans: spans, Text: strings.Join(toks, " "), Bytes: units,
+	res := Result{OK: good, Proto: "mdio", Spans: o.spans, Text: strings.Join(o.toks, " "), Bytes: o.units,
 		Thr: C.threshold, SPB: per, Cover: min(1, float64(explained)/float64(max(1, len(R)-mdioCut(firstR, lastR, len(R)))))}
 	if colTimeS > 0 {
 		res.Baud = int(1/(per*colTimeS) + 0.5)
@@ -607,6 +725,32 @@ func decodeMDIO(mdc, mdio lineIn, colTimeS float64, cfg ClockedCfg) Result {
 		res.Error = "no MDIO frame a PHY answered"
 	}
 	return res
+}
+
+// mdioOpName names an MDIO frame's opcode op after its start st (01
+// clause 22, 00 clause 45); "" a frame no opcode names.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-236
+func mdioOpName(st, op int) string {
+	if st == 1 {
+		switch op {
+		case 1:
+			return "WR"
+		case 2:
+			return "RD"
+		}
+		return ""
+	}
+	switch op {
+	case 0:
+		return "ADDR"
+	case 1:
+		return "WR45"
+	case 2:
+		return "RDI45"
+	case 3:
+		return "RD45"
+	}
+	return ""
 }
 
 // DecodeWiegand decodes Wiegand card readers: a low pulse on D0 (a, the

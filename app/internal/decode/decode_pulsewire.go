@@ -4,7 +4,6 @@ package decode
 import (
 	"fmt"
 	"math"
-	"sort"
 	"strings"
 )
 
@@ -33,20 +32,34 @@ func levelRuns(S sliced) []lrun {
 	if E[0].dir > 0 {
 		first = 0
 	}
-	out := make([]lrun, 0, len(E)+1)
-	out = append(out, lrun{lvl: first, x0: 0, x1: E[0].x, open: true})
-	for k := 0; k < len(E); k++ {
-		lv := 0
+	out := scratchSlice[lrun](S.sc, len(E)+1)[:len(E)+1]
+	out[0] = lrun{lvl: first, x0: 0, x1: E[0].x, open: true}
+	for k := range E {
+		r := &out[k+1] // set field by field: no struct copied in
+		r.lvl, r.x0, r.x1, r.open = 0, E[k].x, float64(S.n), true
 		if E[k].dir > 0 {
-			lv = 1
+			r.lvl = 1
 		}
-		x1, open := float64(S.n), true
 		if k+1 < len(E) {
-			x1, open = E[k+1].x, false
+			r.x1, r.open = E[k+1].x, false
 		}
-		out = append(out, lrun{lvl: lv, x0: E[k].x, x1: x1, open: open})
 	}
 	return out
+}
+
+// runBound is where a run's sample count, within a sample of its length,
+// puts it clear of a length in microseconds (lrun.us): a count up to under
+// lasts less, one from over longer; between the two the length decides.
+type runBound struct{ under, over int }
+
+// runBoundOf is the runBound of us at colTimeS seconds a sample.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-233
+func runBoundOf(us, colTimeS float64) runBound {
+	d := us / (colTimeS * 1e6) // the samples us lasts
+	if !(d > 0 && d < 1<<30) {
+		return runBound{math.MinInt, math.MaxInt}
+	}
+	return runBound{int(math.Floor(d*(1-1e-6))) - 2, int(math.Ceil(d*(1+1e-6))) + 2}
 }
 
 // us is a run's length in microseconds.
@@ -306,87 +319,139 @@ func decodeWS281x(codes lineIn, colTimeS float64, cfg WS281xCfg) Result {
 		return Result{Proto: "ws281x", Error: "no sample time"}
 	}
 	runs := levelRuns(S)
-	n := S.n
-	var spans []Span
-	var toks []string
-	var units []int
+	o := newWireOut(S.n, S.sc)
 	good := false
 	var periods []float64
 	type wbit struct {
 		x0, hi, per float64 // rise, high length, period (0: the frame's last)
+		ip          int     // the period's samples
 	}
 	frame := make([]wbit, 0, 8*24) // a frame's bits, reused (24 LEDs' worth to start)
-	latched := func(r lrun) bool { // a low that latches: whole, or at a record end
+	var pers []float64             // a frame's periods, reused
+	var iper []int                 // and their samples (nthNear)
+	// Edges sliced from a digital line: run k lies between edges k-1 and k
+	// (levelRuns), each within a sample of its own, so a run's length lies
+	// within a sample of its samples and a period (rise to rise) within a
+	// hair of them; lengths clear of a bound are told by the samples.
+	near := S.codes == nil
+	E := S.edges
+	runSamples := func(k int) int {
+		i0, i1 := 0, S.n
+		if k > 0 {
+			i0 = E[k-1].i
+		}
+		if k < len(E) {
+			i1 = E[k].i
+		}
+		return i1 - i0
+	}
+	b50, bEdge, b10 := runBoundOf(50, colTimeS), runBoundOf(wsEdgeLatchUs, colTimeS), runBoundOf(10, colTimeS)
+	wsNear := nearBufOf(S.sc)
+	latched := func(k int) bool { // a low that latches: whole, or at a record end
+		r := &runs[k]
+		if near {
+			ni := runSamples(k)
+			switch {
+			case ni >= b50.over:
+				return true
+			case ni <= b50.under && (!r.open || ni <= bEdge.under):
+				return false
+			case ni <= b50.under && ni >= bEdge.over:
+				return true // open, and past the edge's latch
+			}
+		}
 		us := r.us(colTimeS)
 		return us >= 50 || (r.open && us >= wsEdgeLatchUs)
 	}
-	flush := func(latch lrun) {
+	flush := func(lk int) {
+		latch := &runs[lk]
 		if len(frame) == 0 {
 			return
 		}
 		// the long highs from the short: midway when the frame holds both
+		// (a high is a positive length: math.Min and Max are the compares)
 		lo, hi := math.Inf(1), 0.0
-		pers := make([]float64, 0, len(frame))
-		for _, b := range frame {
-			lo, hi = math.Min(lo, b.hi), math.Max(hi, b.hi)
+		pers, iper = pers[:0], iper[:0]
+		for i := range frame {
+			b := &frame[i]
+			if b.hi < lo {
+				lo = b.hi
+			}
+			if b.hi > hi {
+				hi = b.hi
+			}
 			if b.per > 0 {
 				pers = append(pers, b.per)
+				iper = append(iper, b.ip)
 			}
 		}
-		sort.Float64s(pers)
 		med := 0.0
-		if len(pers) > 0 {
-			med = pers[len(pers)/2]
+		switch {
+		case len(pers) > 0 && near:
+			med = nthNear(pers, iper, len(pers)/2, wsNear) // the sorted periods' middle
+		case len(pers) > 0:
+			med = nthValue(pers, len(pers)/2)
 		}
 		steady := len(pers) > 0
-		for _, p := range pers {
-			steady = steady && p >= 0.75*med && p <= 1.25*med
+		pLo, pHi := 0.75*med, 1.25*med
+		loB, hiB := nearBoundOf(pLo), nearBoundOf(pHi)
+		for j, p := range pers {
+			if near {
+				if ip := iper[j]; ip >= loB.hi && ip <= hiB.lo {
+					continue // within
+				} else if ip <= loB.lo || ip >= hiB.hi {
+					steady = false // outside
+					break
+				}
+			}
+			if !(p >= pLo && p <= pHi) {
+				steady = false
+				break
+			}
 		}
-		spans = append(spans, pspan(frame[0].x0, frame[0].x0, n, "", "sof", 0))
+		o.add(frame[0].x0, frame[0].x0, "", "sof", 0, false)
 		nb := len(frame) / 8
+		both, mid := hi > 1.5*lo, (lo+hi)/2
 		for b := 0; b < nb; b++ {
 			v := 0
 			for i := 0; i < 8; i++ {
-				f := frame[8*b+i]
-				per := f.per
-				if per == 0 {
-					per = med
-				}
-				one := f.hi > 0.5*per
-				if hi > 1.5*lo {
-					one = f.hi > (lo+hi)/2
+				f := &frame[8*b+i]
+				var one bool
+				if both {
+					one = f.hi > mid
+				} else {
+					per := f.per
+					if per == 0 {
+						per = med
+					}
+					one = f.hi > 0.5*per
 				}
 				if one {
 					v |= 1 << (7 - i)
 				}
 			}
-			end := frame[8*b+7].x0 + med
-			txt := FmtByte(v, cfg.Format)
-			spans = append(spans, pspan(frame[8*b].x0, end, n, txt, "data", v))
-			toks = append(toks, txt)
-			units = append(units, v)
+			o.add(frame[8*b].x0, frame[8*b+7].x0+med, FmtByte(v, cfg.Format), "data", v, true)
 		}
 		if rest := len(frame) % 8; rest != 0 {
-			spans = append(spans, pspan(frame[8*nb].x0, frame[len(frame)-1].x0+med, n, "?", "gap", 0))
-			toks = append(toks, "?")
+			o.add(frame[8*nb].x0, frame[len(frame)-1].x0+med, "?", "gap", 0, false)
 		}
 		if !latch.open || latch.x1 > latch.x0 {
-			spans = append(spans, pspan(latch.x0, latch.x1, n, "RST", "rw", 0))
-			toks = append(toks, "RST")
+			o.add(latch.x0, latch.x1, "RST", "rw", 0, false)
 		}
-		if steady && nb >= 3 && nb%3 == 0 && len(frame)%8 == 0 && latched(latch) {
+		if steady && nb >= 3 && nb%3 == 0 && len(frame)%8 == 0 && latched(lk) {
 			good = true
 			periods = append(periods, med)
 		}
 		frame = frame[:0]
 	}
 	started := false // a frame may start: the record opened low for a latch's time
-	for k, r := range runs {
+	for k := range runs {
+		r := &runs[k]
 		if r.lvl == 0 {
-			if latched(r) {
+			if latched(k) {
 				if len(frame) > 0 {
 					frame[len(frame)-1].per = 0
-					flush(r)
+					flush(k)
 				}
 				started = !r.open || r.x0 == 0
 			}
@@ -395,21 +460,32 @@ func decodeWS281x(codes lineIn, colTimeS float64, cfg WS281xCfg) Result {
 		if !started || r.open || k+1 >= len(runs) {
 			continue
 		}
-		per := 0.0
+		per, ip := 0.0, 0
 		if k+2 < len(runs) {
 			per = runs[k+2].x0 - r.x0
+			if near {
+				ip = runSamples(k) + runSamples(k+1) // rise to rise
+			}
 		}
-		if r.us(colTimeS) > 10 { // no bit's high
+		long := false // no bit's high: over 10 us
+		if ni := runSamples(k); near && ni >= b10.over {
+			long = true
+		} else if !near || ni > b10.under {
+			long = r.us(colTimeS) > 10
+		}
+		if long {
 			frame, started = frame[:0], false
 			continue
 		}
-		frame = append(frame, wbit{r.x0, r.x1 - r.x0, per})
+		frame = frame[:len(frame)+1]
+		b := &frame[len(frame)-1] // set field by field: no struct copied in
+		b.x0, b.hi, b.per, b.ip = r.x0, r.x1-r.x0, per, ip
 	}
 	frame = nil
-	if len(spans) == 0 {
+	if len(o.spans) == 0 {
 		return Result{Proto: "ws281x", Error: "no WS281x frame"}
 	}
-	res := Result{OK: good, Proto: "ws281x", Spans: spans, Text: strings.Join(toks, " "), Bytes: units, Thr: S.threshold}
+	res := Result{OK: good, Proto: "ws281x", Spans: o.spans, Text: strings.Join(o.toks, " "), Bytes: o.units, Thr: S.threshold}
 	if len(periods) > 0 {
 		res.SPB = periods[0]
 		res.Baud = snapRate(int(math.Round(1/(periods[0]*colTimeS))), 400e3, 800e3)

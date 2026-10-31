@@ -649,9 +649,18 @@ func (e *Engine) softLoss(s *softStream, err error) {
 	e.softStreamStop(s)
 }
 
-// ord is stream sample i's 2 ns ordinal.
+// ord is stream sample i's 2 ns ordinal. The gap-free stream's step is a
+// power of two from the zeroth sample, and the ordinal then the sample
+// shifted, the very value the float operations give: on the device
+// converting a 64-bit integer to a float and back is a library call each.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
-func (s *softStream) ord(i uint64) uint64 { return uint64(s.ordBase + float64(i)*s.ordStep) }
+func (s *softStream) ord(i uint64) uint64 {
+	if b := math.Float64bits(s.ordStep); math.Float64bits(s.ordBase) == 0 && b&(1<<52-1) == 0 &&
+		b>>52 >= 1023 && b>>52 <= 1023+10 && i < 1<<52 {
+		return i << (b>>52 - 1023) // a step of 2^0 to 2^10
+	}
+	return uint64(s.ordBase + float64(i)*s.ordStep)
+}
 
 // softFeed queues the stream's words as samples: digital words or peak
 // words.

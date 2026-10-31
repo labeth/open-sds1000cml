@@ -186,37 +186,45 @@ type bmcBit struct {
 // It returns the bursts.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-235
 func bmcBits(S sliced, bit float64) [][]bmcBit {
+	// The bursts share one array, each capped at its own end: no burst
+	// grows once it ends.
+	E := S.edges
+	all := scratchSlice[bmcBit](S.sc, len(E))
 	var out [][]bmcBit
-	var cur []bmcBit
+	from := 0 // the current burst's first bit in all
+	end := func() {
+		out = append(out, all[from:len(all):len(all)])
+		from = len(all)
+	}
 	half := false
 	hx := 0.0
-	E := S.edges
+	long, full := 1.5*bit, 0.75*bit
 	for k := 1; k < len(E); k++ {
 		g := E[k].x - E[k-1].x
 		switch {
-		case g > 1.5*bit:
-			if len(cur) > 0 {
-				out = append(out, cur)
+		case g > long:
+			if len(all) > from {
+				end()
 			}
-			cur, half = nil, false
-		case g > 0.75*bit:
+			half = false
+		case g > full:
 			if half { // a lone half bit: coding error, the burst ends
-				out = append(out, cur)
-				cur, half = nil, false
+				end()
+				half = false
 				continue
 			}
-			cur = append(cur, bmcBit{0, E[k-1].x})
+			all = append(all, bmcBit{0, E[k-1].x})
 		default:
 			if half {
-				cur = append(cur, bmcBit{1, hx})
+				all = append(all, bmcBit{1, hx})
 				half = false
 			} else {
 				half, hx = true, E[k-1].x
 			}
 		}
 	}
-	if len(cur) > 0 {
-		out = append(out, cur)
+	if len(all) > from {
+		end()
 	}
 	return out
 }
@@ -257,21 +265,26 @@ func decodeUSBPD(codes lineIn, colTimeS float64, cfg USBPDCfg) Result {
 		return Result{Proto: "usbpd", Error: fmt.Sprintf("%.1f samples/bit; need >= 4", bit)}
 	}
 	n := S.n
-	var spans []Span
-	var toks []string
-	var units []int
+	o := newWireOut(n, S.sc)
 	good := false
+	var syms []int // the symbol starting at each bit of a burst, reused
+	var vals []int // a message's bytes and their starts, reused
+	var xs []float64
 	for _, burst := range bmcBits(S, bit) {
 		if len(burst) < 60 {
 			continue
 		}
-		sym := func(i int) int {
-			v := 0
-			for k := 0; k < 5; k++ {
-				v |= burst[i+k].v << k
+		// each bit's five-bit symbol, rolled a bit at a time: the search
+		// for the ordered set reads each one up to 28 times
+		syms = syms[:0]
+		w := 0
+		for i, b := range burst {
+			w = w>>1 | b.v<<4
+			if i >= 4 {
+				syms = append(syms, pd4b5b[w])
 			}
-			return pd4b5b[v]
 		}
+		sym := func(i int) int { return syms[i] }
 		at, name := -1, ""
 		for i := 0; i+20 <= len(burst) && at < 0; i++ {
 			for _, os := range pdOrderedSets {
@@ -296,14 +309,12 @@ func decodeUSBPD(codes lineIn, colTimeS float64, cfg USBPDCfg) Result {
 			}
 			return burst[len(burst)-1].x0 + bit
 		}
-		spans = append(spans, pspan(burst[at].x0, end(at+20), n, name, "sof", 0))
-		toks = append(toks, name)
+		o.add(burst[at].x0, end(at+20), name, "sof", 0, false)
 		if name == "HRST" || name == "CRST" {
 			continue
 		}
 		idx := at + 20
-		var vals []int
-		var xs []float64
+		vals, xs = vals[:0], xs[:0]
 		bad := false
 		readByte := func() bool {
 			if idx+10 > len(burst) {
@@ -320,8 +331,7 @@ func decodeUSBPD(codes lineIn, colTimeS float64, cfg USBPDCfg) Result {
 			return true
 		}
 		if !readByte() || !readByte() {
-			spans = append(spans, pspan(end(idx), end(idx), n, "!", "frame-error", 0))
-			toks = append(toks, "!")
+			o.add(end(idx), end(idx), "!", "frame-error", 0, false)
 			continue
 		}
 		head := vals[0] | vals[1]<<8
@@ -349,25 +359,21 @@ func decodeUSBPD(codes lineIn, colTimeS float64, cfg USBPDCfg) Result {
 			if ok && !bad && k >= len(vals)-4 && !crcOK {
 				txt, kind = "!"+txt, "frame-error"
 			}
-			spans = append(spans, pspan(xs[k], end(at+20+10*(k+1)), n, txt, kind, v))
-			toks = append(toks, txt)
-			units = append(units, v)
+			o.add(xs[k], end(at+20+10*(k+1)), txt, kind, v, true)
 		}
 		if !ok || bad {
-			spans = append(spans, pspan(end(idx), end(idx), n, "!", "frame-error", 0))
-			toks = append(toks, "!")
+			o.add(end(idx), end(idx), "!", "frame-error", 0, false)
 			continue
 		}
 		if idx+5 <= len(burst) && sym(idx) == 22 {
-			spans = append(spans, pspan(burst[idx].x0, end(idx+5), n, "EOP", "rw", 0))
-			toks = append(toks, "EOP")
+			o.add(burst[idx].x0, end(idx+5), "EOP", "rw", 0, false)
 		}
 		good = good || crcOK
 	}
-	if len(spans) == 0 {
+	if len(o.spans) == 0 {
 		return Result{Proto: "usbpd", Error: "no USB PD start of packet"}
 	}
-	res := Result{OK: good, Proto: "usbpd", Spans: spans, Text: strings.Join(toks, " "), Bytes: units,
+	res := Result{OK: good, Proto: "usbpd", Spans: o.spans, Text: strings.Join(o.toks, " "), Bytes: o.units,
 		Thr: S.threshold, SPB: bit, Baud: baud}
 	if !good {
 		res.Error = "no USB PD message whose CRC checks"

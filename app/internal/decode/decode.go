@@ -269,6 +269,36 @@ var hexBytes = func() (t [256]string) {
 // TRLC-LINKS: REQ-SDS-018
 func hex2(b int) string { return hexBytes[b&0xff] }
 
+// prefixedHex are the 256 two-digit hex texts after p ("!" + hex2(b)),
+// made once for the texts a decoder names many bytes with.
+// TRLC-LINKS: REQ-SDS-018
+func prefixedHex(p string) (t [256]string) {
+	for b := range t {
+		t[b] = p + hex2(b)
+	}
+	return t
+}
+
+// hexBang, hexSC and hexBangSC are prefixedHex's "!", "SC" and "!SC".
+var hexBang, hexSC, hexBangSC = prefixedHex("!"), prefixedHex("SC"), prefixedHex("!SC")
+
+// hexText is pre followed by fmt.Sprintf("%0*X", digits, v): v's upper-case
+// hex digits, at least digits of them (and one), made in one allocation without fmt's
+// work, which costs a stream decode on the device more than its decoding.
+// TRLC-LINKS: REQ-SDS-018
+func hexText(pre string, v uint64, digits int) string {
+	var buf [40]byte
+	i := len(buf)
+	for n := 0; n < max(digits, 1) || v != 0; n++ {
+		i--
+		buf[i] = "0123456789ABCDEF"[v&15]
+		v >>= 4
+	}
+	i -= len(pre)
+	copy(buf[i:], pre)
+	return string(buf[i:])
+}
+
 // TRLC-LINKS: REQ-SDS-018
 func popcount(v int) int {
 	// UNSIGNED shift: an arithmetic >> on a negative int shifts in sign bits
@@ -288,23 +318,37 @@ func popcount(v int) int {
 func FmtByte(v int, format string) string {
 	switch format {
 	case "dec":
-		return fmt.Sprint(v & 0xff)
+		return byteTexts[0][v&0xff]
 	case "bin":
-		return fmt.Sprintf("%08b", v&0xff)
+		return byteTexts[1][v&0xff]
 	case "ascii":
 		if v >= 32 && v < 127 {
-			return string(rune(v))
+			return byteTexts[2][v]
 		}
 		return "."
 	case "both": // hex + printable char (LCD font is ASCII, so use ' not the web's ·)
 		if v >= 32 && v < 127 {
-			return hex2(v) + "'" + string(rune(v))
+			return byteTexts[3][v]
 		}
 		return hex2(v)
 	default:
 		return hex2(v)
 	}
 }
+
+// byteTexts are FmtByte's texts of the 256 bytes, made once: "dec", "bin",
+// "ascii" and "both" (the last two for the printable bytes).
+var byteTexts = func() (t [4][256]string) {
+	for v := range 256 {
+		t[0][v] = fmt.Sprint(v)
+		t[1][v] = fmt.Sprintf("%08b", v)
+		if v >= 32 && v < 127 {
+			t[2][v] = string(rune(v))
+			t[3][v] = hex2(v) + "'" + string(rune(v))
+		}
+	}
+	return t
+}()
 
 // TRLC-LINKS: REQ-SDS-018
 type edge struct {
@@ -325,6 +369,7 @@ type sliced struct {
 	thHi, thLo float64
 	first      int8 // the level of sample 0
 	edges      []edge
+	sc         *scratch // the line's scratch (EdgeLine.sc): its decode's working arrays
 }
 
 // levels is the level of every sample (the edges set it): built only for
