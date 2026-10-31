@@ -536,6 +536,9 @@ type Engine struct {
 	decodedWeb                bool        // the session is a web page's (BeginDecodedCapture), not the scope's stream
 	decodedContact            time.Time   // a client's last call on the session (status, events, record)
 	soft                      *softStream // a software-decoded stream (soft_stream.go)
+	// ctap is the client decode's ring and the page's frames (soft_client.go),
+	// shared by the owner and the web's requests under its own lock.
+	ctap clientTap
 	// snd is the audio stream (sound_stream.go), made on first use by a web
 	// request or the panel and read by the acquisition owner: published
 	// atomically.

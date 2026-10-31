@@ -52,9 +52,11 @@ function decodeSteps(proto, a, b, colTimeS, cfg, quad) {
   if (!B.ok && quad) return fail(proto, B.reason);
   let dirFlat = 0;
   if (!B.ok) {
+    // a digital line's edges (webdec.js) are read as its samples
+    const bs = b.isEdgeLine ? b.samples() : b;
     let sum = 0;
-    for (let i = 0; i < b.length; i++) sum += b[i];
-    if (b.length > 0 && sum / b.length >= A.threshold) dirFlat = 1;
+    for (let i = 0; i < bs.length; i++) sum += bs[i];
+    if (bs.length > 0 && sum / bs.length >= A.threshold) dirFlat = 1;
   }
   const T = stepPeriod(A);
   if (!(T > 0)) return fail(proto, "too few steps");

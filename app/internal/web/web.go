@@ -231,6 +231,8 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/stream/lines", s.hStreamLines)
 	mux.HandleFunc("GET /api/stream/lines.bin", s.hStreamLinesBin)
 	mux.HandleFunc("GET /api/stream/window", s.hStreamWindow)
+	mux.HandleFunc("GET /api/stream/words.bin", s.hStreamWords)
+	mux.HandleFunc("POST /api/stream/frames.bin", s.hStreamFrames)
 	mux.HandleFunc("GET /api/record.bin", s.hRecord)
 	mux.HandleFunc("/api/zones", s.hZones)
 	mux.HandleFunc("/api/serial", s.hSerial)

@@ -121,6 +121,15 @@ type softStream struct {
 	edges          bool
 	pendEA, pendEB decode.EdgeLine
 
+	// The stream decoder's sizes in samples, as made (a page decodes with
+	// the same: soft_client.go).
+	closeN, maxN, leadN int
+	// Client decode (soft_client.go): a web page decodes the words.
+	client       bool
+	clientBreak  bool // words were lost since the last chunk the page was handed
+	overBudget   bool // the plan carries more than the scope decodes: only a page keeps up
+	clientFrames []decode.StreamFrame
+
 	// Captures mode.
 	capCfg    sramcapture.Config
 	armed     bool
@@ -221,12 +230,19 @@ func softLines(proto int) int {
 // at a coarser decimation; ok false when it needs the captures.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
 func softGapFreePlan(name string, baud int, overdrive bool, lines int) (log int, bits, ok bool) {
+	return softGapFreePlanBudget(name, baud, overdrive, lines, softBitsBudget)
+}
+
+// softGapFreePlanBudget is softGapFreePlan for a decode that keeps up with
+// budget samples a second (a web page's: soft_client.go).
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func softGapFreePlanBudget(name string, baud int, overdrive bool, lines int, budget float64) (log int, bits, ok bool) {
 	if bitsImage.Load() && decode.StreamBitsLine(name) {
 		if feature, _, _, known := decode.StreamTiming(name, float64(baud)); known {
 			if name == "onewire" && overdrive {
 				feature /= 10
 			}
-			if log, ok := decode.StreamBitsLog(feature); ok && float64(lines)/decode.StreamBitsPeriod(log) <= softBitsBudget {
+			if log, ok := decode.StreamBitsLog(feature); ok && float64(lines)/decode.StreamBitsPeriod(log) <= budget {
 				return log, true, true
 			}
 		}
@@ -285,7 +301,7 @@ func (e *Engine) beginSoftStream(ctx context.Context, p SerialParams, trig Strea
 	if name == "onewire" && p.Overdrive {
 		feature, longest, quiet = feature/10, longest/10, quiet/10
 	}
-	log, bits, gapFree := softGapFreePlan(name, p.Baud, p.Overdrive, softLines(p.Proto))
+	log, bits, gapFree := softGapFreePlanBudget(name, p.Baud, p.Overdrive, softLines(p.Proto), e.softBudget())
 	if !gapFree && trig == StreamOnValue {
 		// Captures stop on a record the symbol trigger fired on; the value
 		// must be one it matches wherever it comes.
@@ -297,6 +313,9 @@ func (e *Engine) beginSoftStream(ctx context.Context, p SerialParams, trig Strea
 	}
 	s := &softStream{p: p, proto: name, decoder: d, trig: trig, value: value & unitMask(p), mask: unitMask(p),
 		gapFree: gapFree, quiet: quiet, log: uint8(log), bits: bits, byHand: onError}
+	if bits {
+		s.overBudget = float64(softLines(p.Proto))/decode.StreamBitsPeriod(log) > softBitsBudget
+	}
 	v, err := e.decodedCall(ctx, func() (any, error) {
 		e.decodedStarting = time.Time{}
 		if e.decodedSession != nil || e.soft != nil {
@@ -339,7 +358,7 @@ func (e *Engine) beginSoftStream(ctx context.Context, p SerialParams, trig Strea
 			s.pushN = min(int(math.Max(0.2, math.Min(1, 2*quiet))/s.sampleS), softPushMax)
 			s.newDecoder(int(quiet/s.sampleS), int((longest+quiet)/s.sampleS))
 			lead := int(decode.StreamLead(name, float64(p.Baud)) / s.sampleS)
-			s.dec.SetLead(lead)
+			s.setLead(lead)
 			s.leadWords = lead/16 + 2
 			s.keepWords = int(quiet/s.sampleS)/16 + s.leadWords + 2
 			// The stream starts on the loop's next step (softDrain), after
@@ -379,12 +398,20 @@ func (s *softStream) decodeFunc() func(a, b []uint8) decode.Result {
 // lines through their edges, over the samples otherwise.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
 func (s *softStream) newDecoder(closeN, maxN int) {
+	s.closeN, s.maxN = closeN, maxN
 	s.edges = s.bits && s.decoder.Edges != nil
 	if s.edges {
 		s.dec = decode.NewEdgeStreamDecoder(s.edgeDecodeFunc(), closeN, maxN)
 	} else {
 		s.dec = decode.NewStreamDecoder(s.decodeFunc(), closeN, maxN)
 	}
+}
+
+// setLead keeps n samples before a frame's start in the decoder's window.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func (s *softStream) setLead(n int) {
+	s.leadN = n
+	s.dec.SetLead(n)
 }
 
 // edgeDecodeFunc is decodeFunc over the digital stream's edges.
@@ -413,6 +440,8 @@ func (s *softStream) pending() int {
 func (s *softStream) modeText(elapsed time.Duration) string {
 	t := ""
 	switch {
+	case s.gapFree && s.bits && s.client:
+		t = fmt.Sprintf("gap-free, browser decode of the %.3g us digital stream", s.sampleS*1e6)
 	case s.gapFree && s.bits:
 		t = fmt.Sprintf("gap-free, software decode of the %.3g us digital stream", s.sampleS*1e6)
 	case s.gapFree:
@@ -525,6 +554,9 @@ func (e *Engine) softDrain(s *softStream) {
 			return
 		}
 	}
+	if e.softClientMode(s) {
+		return
+	}
 	raw := s.raw[:0]
 	w := byteSink{dst: &raw}
 	fed := false
@@ -554,9 +586,15 @@ func (e *Engine) softDrain(s *softStream) {
 			if n == 0 {
 				break
 			}
-			e.softFeed(s, a)
-			if len(b) > 0 {
-				e.softFeed(s, b)
+			if s.client {
+				// One push check for both pieces, as the scope's own decode.
+				e.softClientWords(s, a, len(b) == 0)
+				e.softClientWords(s, b, true)
+			} else {
+				e.softFeed(s, a)
+				if len(b) > 0 {
+					e.softFeed(s, b)
+				}
 			}
 			s.release, fed = n, true
 			s.expected += uint64(n / 4)
@@ -587,7 +625,7 @@ func (e *Engine) softDrain(s *softStream) {
 			s.expected += uint64(n / 4)
 			if s.bits {
 				// Fed as read: a digital word is sixteen samples a line.
-				e.softFeed(s, raw)
+				e.softIn(s, raw)
 				raw = raw[:0]
 				if s.pending() >= s.pushN {
 					e.softPush(s)
@@ -611,7 +649,7 @@ func (e *Engine) softDrain(s *softStream) {
 		s.expected = block.FirstWord + uint64(block.Words)
 	}
 	if len(raw) > 0 {
-		e.softFeed(s, raw)
+		e.softIn(s, raw)
 	}
 	s.raw = raw[:0]
 	if s.pending() >= s.pushN {
@@ -646,12 +684,24 @@ func (e *Engine) softLoss(s *softStream, err error) {
 	s.haveLast = false
 	s.idleWords, s.skipped, s.haveLvl = 0, 0, false
 	s.addEvent(sramcapture.DecodedEvent{Kind: sramcapture.EventLoss, Sample: s.ord(s.dec.Next()), Count: 1})
+	s.clientBreak = true
 	e.softStreamStop(s)
 }
 
 // ord is stream sample i's 2 ns ordinal.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
 func (s *softStream) ord(i uint64) uint64 { return uint64(s.ordBase + float64(i)*s.ordStep) }
+
+// softIn takes the stream's words: to the page that decodes them, or to
+// the scope's decoder.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func (e *Engine) softIn(s *softStream, raw []byte) {
+	if s.client {
+		e.softClientWords(s, raw, true)
+		return
+	}
+	e.softFeed(s, raw)
+}
 
 // softFeed queues the stream's words as samples: digital words or peak
 // words.
@@ -1393,6 +1443,13 @@ func (e *Engine) softFreeze(ctx context.Context, id sramcapture.RecordIdentity) 
 	s := e.soft
 	if s.gapFree && s.phase == softStreaming {
 		e.softPush(s)
+		if s.client {
+			e.softClientFrames(s)
+		}
+	}
+	if s.client {
+		s.client = false
+		e.ctap.end("the stream stopped")
 	}
 	e.softStreamStop(s)
 	if s.phase != softDone || !s.recOK {
@@ -1420,6 +1477,10 @@ func (e *Engine) softEnd(ctx context.Context, id sramcapture.RecordIdentity) err
 	}
 	s := e.soft
 	e.softStreamStop(s)
+	if s.client {
+		s.client = false
+		e.ctap.end("the stream ended")
+	}
 	err := e.sram.Halt(ctx)
 	e.soft = nil
 	e.logf("engine: software stream ended: %s, %d losses", s.modeText(e.clk.Now().Sub(s.start)), s.losses)
