@@ -228,6 +228,7 @@ module stream_drum #(parameter AW=19,WF_AW=12,DESC_AW=8,BANK_AW=10,
  // read). Without it a lap reads only the whole bursts that fit, which with
  // a trip's bursts (a bank, then the rest) is as much as a lap brings.
  reg [AW:0] hoff=0;
+ reg [AW-1:0] h_addr=0;reg [AW:0] h_rem=0; // the head burst's unread part, registered (timing)
  // Input pairs over the counter's last lap (from one wrap of the position
  // to the next), not counting clocks the drum chose to wait: a trip is all
  // moving, seeks' and bursts' overheads included. Saturating, and full until
@@ -243,12 +244,13 @@ module stream_drum #(parameter AW=19,WF_AW=12,DESC_AW=8,BANK_AW=10,
   wq_rp_h<=wq_rp;rq_wp_h<=rq_wp;iq_wp_h<=iq_wp;
   dsc_full<=dsc_n[DESC_AW];          // a sized difference: (1<<DESC_AW) would widen it
   p1_w_target<=whead-2'd2;
-  p1_base<=dsc_q_addr+hoff-5'd16-RD_SKEW;
+  h_addr<=dsc_q_addr+hoff[AW-1:0];h_rem<=dsc_q_len-hoff;
+  p1_base<=h_addr-5'd16-RD_SKEW;
   p1_free<=RING-used;p1_need<={wf_level,1'b0}+7'd64;p1_lvl<=wf_level;
   p1_due<=wf_level>=WRITE_AT/2 || wf_level!=0 && age>=AGE_CYCLES/256;p1_min<=wf_level>=WRITE_AT/2;p1_tail<=wf_level>=WRITE_AT/16;
   p1_spill<=wf_level>=WRITE_URGENT/2;p1_empty<=dsc_empty;
   p1_room<=bfill!=0 || bank_ready ? (CHUNK/2)-bfill+(bank_next_free ? CHUNK/2 : 1'b0) : 1'b0; // nothing while the current bank is the host's
-  p1_len<=(dsc_q_len-hoff)>>1;p1_fits<=p1_len<=p1_room;p1_part<=p1_room>=PART_MIN;p1_partial<=bfill!=0;p2_partial<=p1_partial;
+  p1_len<=h_rem>>1;p1_fits<=p1_len<=p1_room;p1_part<=p1_room>=PART_MIN;p1_partial<=bfill!=0;p2_partial<=p1_partial;
   p2_dist_w<=p1_w_target-pos_q;p2_dist_r<=p1_base-pos_q;p2_lvl<=p1_lvl;
   p2_room<=!dsc_full && p1_free>p1_need;p2_due<=p1_due;p2_min<=p1_min;p2_tail<=p1_tail;p2_spill<=p1_spill;p2_empty<=p1_empty;
   // The decision. Empty ring: a due FIFO goes straight to a free bank; the
@@ -337,8 +339,8 @@ module stream_drum #(parameter AW=19,WF_AW=12,DESC_AW=8,BANK_AW=10,
      default:begin                   // K_READ: from 16 (+skew) words early, over the burst's junk
       // The rest of the head burst, or the free bank room of it.
       if(p1_fits)begin
-       rd_len<=dsc_q_len-hoff+5'd16+GAP;dsc_rd<=dsc_rd+1'b1;hoff<=0;
-       h_count<=dsc_q_len-hoff+5'd16+RD_SKEW;pairs_left<=(dsc_q_len-hoff+5'd16)>>1;
+       rd_len<=h_rem+5'd16+GAP;dsc_rd<=dsc_rd+1'b1;hoff<=0;
+       h_count<=h_rem+5'd16+RD_SKEW;pairs_left<=(h_rem+5'd16)>>1;
       end else begin
        rd_len<={p1_room,1'b0};hoff<=hoff+{p1_room,1'b0};
        h_count<={p1_room,1'b0}+5'd16+RD_SKEW;pairs_left<=p1_room+4'd8;
