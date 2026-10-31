@@ -597,43 +597,26 @@ func (s *softStream) feedPeak(raw []byte, cal *InterleaveCalibration) {
 			off = cal.envelopeOffsets(ch)
 		}
 		// Each extreme is a byte: its debiased Q8.8 value and that value
-		// rounded come from tables, not from per-word arithmetic.
-		var q [2][256]int32
-		var r [2][256]uint8
+		// rounded come from a table, not from per-word arithmetic; one entry
+		// holds both (the value shifted up a byte, the rounded code in the
+		// low byte), so the loop loads one table a line's extreme.
+		var t [2][256]int32
 		for k := range 2 {
 			for b := range 256 {
 				x := b << 8
 				if cal != nil {
 					x = debiasQ(x, off[k])
 				}
-				q[k][b], r[k][b] = int32(x), roundQ8(uint16(x))
+				t[k][b] = int32(x)<<8 | int32(roundQ8(uint16(x)))
 			}
 		}
 		at := len(*dst)
 		out := slices.Grow(*dst, 2*n)[:at+2*n]
 		prev := int32(s.last[ch])
 		if !s.haveLast && n > 0 {
-			prev = (q[0][raw[ch]] + q[1][raw[2+ch]]) / 2
+			prev = (t[0][raw[ch]]>>8 + t[1][raw[2+ch]]>>8) / 2
 		}
-		o := out[at:]
-		for i := 0; i < n; i++ {
-			bl, bh := raw[4*i+ch], raw[4*i+2+ch]
-			lo, hi := q[0][bl], q[1][bh]
-			dl, dh := lo-prev, hi-prev
-			if dl < 0 {
-				dl = -dl
-			}
-			if dh < 0 {
-				dh = -dh
-			}
-			if dh < dl { // the pair continues from the sample before it
-				o[2*i], o[2*i+1] = r[1][bh], r[0][bl]
-				prev = lo
-			} else {
-				o[2*i], o[2*i+1] = r[0][bl], r[1][bh]
-				prev = hi
-			}
-		}
+		prev = peakPairs(out[at:], raw, ch, prev, &t)
 		s.last[ch] = uint16(prev)
 		*dst = out
 		if k == 1 {
@@ -678,15 +661,50 @@ func (s *softStream) feedBits(raw []byte) {
 	s.haveLast = s.haveLast || len(raw) >= 4
 }
 
+// peakPairs writes each peak word's two samples of line ch (raw's words,
+// o two samples a word) ordered to continue from the sample before (prev's
+// Q8.8 value, returned for the last), t the lines' tables (Q8.8 value << 8 |
+// code). Out of line, so its few values stay in registers on the device; and
+// branch-free: which extreme lies nearer the sample before is the converter
+// noise's coin on a level, and a mispredicted branch a word cost more than
+// the rest of the word.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240, REQ-SDS-010
+//
+//go:noinline
+func peakPairs(o []uint8, raw []byte, ch int, prev int32, t *[2][256]int32) int32 {
+	t0, t1 := &t[0], &t[1]
+	c := ch & 1
+	n := min(len(raw)/4, len(o)/2)
+	for i := 0; i < n; i++ {
+		w := raw[4*i : 4*i+4 : 4*i+4]
+		el, eh := t0[w[c]], t1[w[2+c]]
+		dl, dh := el>>8-prev, eh>>8-prev
+		sl, sh := dl>>31, dh>>31
+		// m is all ones when the high extreme lies nearer (|dh| < |dl|): the
+		// pair then runs high, low.
+		m := ((dh ^ sh) - sh - (dl ^ sl) + sl) >> 31
+		first, second := eh&m|el&^m, el&m|eh&^m
+		p := o[2*i : 2*i+2 : 2*i+2]
+		p[0], p[1] = uint8(first), uint8(second)
+		prev = second >> 8
+	}
+	return prev
+}
+
 // learnB follows line B's extremes for its slicing level.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
 func (s *softStream) learnB(b []uint8) {
-	for _, v := range b {
-		if !s.bSeen {
-			s.bLo, s.bHi, s.bSeen = v, v, true
-		}
-		s.bLo, s.bHi = min(s.bLo, v), max(s.bHi, v)
+	if len(b) == 0 {
+		return
 	}
+	if !s.bSeen {
+		s.bLo, s.bHi, s.bSeen = b[0], b[0], true
+	}
+	lo, hi := s.bLo, s.bHi
+	for _, v := range b {
+		lo, hi = min(lo, v), max(hi, v)
+	}
+	s.bLo, s.bHi = lo, hi
 }
 
 // softPush decodes the queued samples and queues the frames they complete;

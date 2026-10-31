@@ -43,13 +43,18 @@ type StreamDecoder struct {
 	maxN       int
 	a, b       []uint8
 	base, done uint64
-	// Sorted span scratch, reused.
-	spans []Span
+	// Sorted span and frame group scratch, reused.
+	spans  []Span
+	groups []streamGroup
 	// Subframes: S/PDIF's frames run without a pause and only every 192nd
 	// opens with a "sof" (B); its M and W subframes open frames too.
 	subframes bool
 	leadN     int
 }
+
+// streamGroup is a frame's spans in the sorted scratch (from, to) and its
+// sample extent in the window (i0, i1).
+type streamGroup struct{ from, to, i0, i1 int }
 
 // SetLead keeps n samples of line before a frame's start in the window
 // (StreamLead).
@@ -264,24 +269,29 @@ func (d *StreamDecoder) run() []StreamFrame {
 	}
 	// Group into frames: a start of frame, or a silence longer than Close,
 	// opens the next.
-	type group struct{ from, to, i0, i1 int }
-	var groups []group
+	groups := d.groups[:0]
 	for k, s := range sp {
 		if len(groups) == 0 || d.isFrameStart(s) || s.I0-groups[len(groups)-1].i1 > d.closeN {
-			groups = append(groups, group{from: k, to: k + 1, i0: s.I0, i1: s.I1})
+			groups = append(groups, streamGroup{from: k, to: k + 1, i0: s.I0, i1: s.I1})
 			continue
 		}
 		g := &groups[len(groups)-1]
 		g.to, g.i1 = k+1, max(g.i1, s.I1)
 	}
+	d.groups = groups
 	var out []StreamFrame
+	// The frames' spans share one array, each frame's capped at its own end.
+	var all []StreamSpan
 	cut, last := 0, -1 // last: the end of the last frame handed out
-	take := func(g group) {
-		f := StreamFrame{I0: d.base + uint64(g.i0), I1: d.base + uint64(g.i1), Spans: make([]StreamSpan, 0, g.to-g.from)}
-		for _, s := range sp[g.from:g.to] {
-			f.Spans = append(f.Spans, StreamSpan{I0: d.base + uint64(s.I0), I1: d.base + uint64(s.I1), Text: s.Text, Kind: s.Kind, Val: s.Val})
+	take := func(g streamGroup) {
+		if all == nil {
+			all = make([]StreamSpan, 0, len(sp)-g.from)
 		}
-		out = append(out, f)
+		at := len(all)
+		for _, s := range sp[g.from:g.to] {
+			all = append(all, StreamSpan{I0: d.base + uint64(s.I0), I1: d.base + uint64(s.I1), Text: s.Text, Kind: s.Kind, Val: s.Val})
+		}
+		out = append(out, StreamFrame{I0: d.base + uint64(g.i0), I1: d.base + uint64(g.i1), Spans: all[at:len(all):len(all)]})
 		last = g.i1
 	}
 	k := 0
@@ -304,7 +314,7 @@ func (d *StreamDecoder) run() []StreamFrame {
 			j++
 		}
 		if j > g.from {
-			take(group{from: g.from, to: j, i0: g.i0, i1: sp[j-1].I1})
+			take(streamGroup{from: g.from, to: j, i0: g.i0, i1: sp[j-1].I1})
 			groups[k].from = j
 			if j < g.to {
 				groups[k].i0 = sp[j].I0

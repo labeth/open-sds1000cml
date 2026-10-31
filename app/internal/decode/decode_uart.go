@@ -247,13 +247,36 @@ func DecodeUART(codes []uint8, colTimeS float64, cfg UARTCfg) Result {
 			int(math.Round(float64(start)+float64(bits+1+pc)*spb)) + 1, true
 	}
 	// scan reads the frames whose start edges lie in [from, to).
+	// A sample is high when its code reaches the threshold (logicAt at a
+	// whole index): an integer compare, found a word at a time on the idle
+	// line, not two float roundings per sample.
+	on := codeCeil(S.threshold)
 	scan := func(spans []Span, from, to int) []Span {
-		for i := from; i < n-need-guard && i < to; i++ {
-			if logicAt(&S, float64(i-1)) == idle && logicAt(&S, float64(i)) == 1-idle { // start edge
-				if sp, next, ok := frameAt(i); ok {
-					spans = append(spans, sp)
-					i = next - 1
+		end := min(n-need-guard, to)
+		for i := from; i < end; i++ {
+			if i < 1 {
+				continue // logicAt(-1) is no level
+			}
+			// The next low sample after a high one is the next start edge.
+			lo := scanAtMost(codes[:end], i, on-1)
+			if lo >= end {
+				break
+			}
+			if lo == i && int(codes[i-1]) < on {
+				// Low already: the line must rise before it can start.
+				hi := scanAtLeast(codes[:end], i, on)
+				if hi >= end {
+					break
 				}
+				lo = scanAtMost(codes[:end], hi, on-1)
+				if lo >= end {
+					break
+				}
+			}
+			i = lo
+			if sp, next, ok := frameAt(i); ok {
+				spans = append(spans, sp)
+				i = next - 1
 			}
 		}
 		return spans
