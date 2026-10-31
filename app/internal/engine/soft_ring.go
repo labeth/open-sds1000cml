@@ -63,7 +63,13 @@ func softRingSpan(n int) float64 { return float64(sramcapture.Words) * float64(u
 // ring words in the protocol's shortest feature.
 // TRLC-LINKS: REQ-SDS-035, REQ-SDS-240
 func softRingPlan(streamLog int, feature, longest, quiet, pushS float64) (n int, why string, ok bool) {
-	rate := 500e6 / float64(uint64(1)<<streamLog)
+	return softRingPlanRate(500e6/float64(uint64(1)<<streamLog), feature, longest, quiet, pushS)
+}
+
+// softRingPlanRate is softRingPlan for a stream of rate words a second (a
+// paced stream's rate is no power of two).
+// TRLC-LINKS: REQ-SDS-035, REQ-SDS-240
+func softRingPlanRate(rate, feature, longest, quiet, pushS float64) (n int, why string, ok bool) {
 	if softRingSlackWords/rate < softRingStallS {
 		return 0, fmt.Sprintf("the stream's %.0fk words/s outrun the on-chip slack (%.0f ms)", rate/1e3, 1e3*softRingSlackWords/rate), false
 	}

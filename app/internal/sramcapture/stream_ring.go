@@ -40,7 +40,7 @@ func (c *Capture) StreamRingSupported() bool {
 // the ring's; nothing triggers it). Every word reaches DrainStream from
 // ordinal 0 as with StartStream; FreezeRing stops the ring.
 // TRLC-LINKS: REQ-SDS-035, REQ-SDS-240
-func (c *Capture) StartStreamRing(ctx context.Context, cfg Config, streamLog uint8) error {
+func (c *Capture) StartStreamRing(ctx context.Context, cfg Config, streamLog uint8, pace StreamPace) error {
 	if cfg.DecimationLog2 < 8 || cfg.DecimationLog2 > 20 {
 		return fmt.Errorf("sramcapture: ring decimation %d, need 8..20", cfg.DecimationLog2)
 	}
@@ -60,6 +60,11 @@ func (c *Capture) StartStreamRing(ctx context.Context, cfg Config, streamLog uin
 	}
 	if err == nil {
 		err = c.prepareStreamBuffers()
+	}
+	if err == nil {
+		// Latched by the fabric while idle, as the mode: a stream before it
+		// may have left a pace.
+		err = c.setStreamPace(pace)
 	}
 	if err == nil {
 		// Both latched by the fabric while idle, so before the arm.

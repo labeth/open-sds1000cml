@@ -19,15 +19,15 @@ func softRingPlanFor(proto, baud int) (streamLog, ringLog int, why string, ok bo
 	name, _ := softProtoName(proto)
 	defer bitsImage.Store(bitsImage.Load())
 	bitsImage.Store(true)
-	log, bits, gapFree := softGapFreePlan(name, baud, false, softLines(proto))
-	if !gapFree || !bits {
-		return log, 0, "not on the digital stream", false
+	plan, gapFree := softGapFreePlan(name, baud, false, softLines(proto))
+	if !gapFree || !plan.bits {
+		return plan.log, 0, "not on the digital stream", false
 	}
 	feature, longest, quiet, _ := decode.StreamTiming(name, float64(baud))
-	sampleS := decode.StreamBitsPeriod(log)
+	sampleS := decode.StreamBitsPeriod(plan.period)
 	pushN := min(int(math.Max(0.2, math.Min(1, 2*quiet))/sampleS), softPushMax)
-	n, why, ok := softRingPlan(log, feature, longest, quiet, float64(pushN)*sampleS+0.1)
-	return log, n, why, ok
+	n, why, ok := softRingPlanRate(plan.wordRate(), feature, longest, quiet, float64(pushN)*sampleS+0.1)
+	return plan.log, n, why, ok
 }
 
 // The ring plan: a stream faster than the on-chip slack rides out (30 ms of

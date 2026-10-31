@@ -196,15 +196,16 @@ type clientCase struct {
 func clientTestStream(t *testing.T, proto int, p SerialParams, pushN int) *softStream {
 	t.Helper()
 	name, _ := softProtoName(proto)
-	log, bits, ok := softGapFreePlan(name, p.Baud, false, softLines(proto))
-	if !ok || !bits {
-		log = decode.StreamGapFreeMinLog
+	plan, ok := softGapFreePlan(name, p.Baud, false, softLines(proto))
+	if !ok || !plan.bits {
+		// a bus too fast for the plan's budget: the stream at the finest period
+		plan = softPlan{log: softBitsLog(decode.StreamBitsMinPeriod), period: decode.StreamBitsMinPeriod, bits: true}
 	}
 	_, longest, quiet, _ := decode.StreamTiming(name, float64(p.Baud))
 	d, _ := serialDecoder(proto)
-	s := &softStream{p: p, proto: name, decoder: d, mask: unitMask(p), gapFree: true, quiet: quiet, log: uint8(log), bits: true,
+	s := &softStream{p: p, proto: name, decoder: d, mask: unitMask(p), gapFree: true, quiet: quiet, bits: true,
 		trig: StreamManual, id: sramcapture.RecordIdentity{Epoch: softEpochBase | 7}}
-	s.sampleS, s.ordStep = decode.StreamBitsPeriod(log), float64(uint64(1)<<(log-4))
+	s.setTiming(plan)
 	s.newDecoder(int(quiet/s.sampleS), int((longest+quiet)/s.sampleS))
 	lead := int(decode.StreamLead(name, float64(p.Baud)) / s.sampleS)
 	s.setLead(lead)
@@ -274,24 +275,24 @@ func TestClientDecodeMatchesScope(t *testing.T) {
 					p.ThresholdB, p.HaveThrB = 160, true
 				}
 				feature, _, _, _ := decode.StreamTiming(name, 0)
-				log, ok := decode.StreamBitsLog(feature)
+				period, ok := decode.StreamBitsPlan(feature, softBitsBudget/float64(softLines(proto)))
 				if !ok {
-					log = decode.StreamGapFreeMinLog
+					period = decode.StreamBitsMinPeriod
 				}
-				run := max(2, int(feature/decode.StreamBitsPeriod(log)))
+				run := max(2, int(feature/decode.StreamBitsPeriod(period)))
 				la := burstLevels(rng, 1<<18, 1, run)
 				lb := burstLevels(rng, 1<<18, byte(k&1), run)
 				cases = append(cases, clientCase{fmt.Sprintf("%s-%v", name, thr), proto, p, linesWords(la, lb)})
 			}
 		}
 		const baud = 19200
-		log, _, _ := softGapFreePlan("lin", baud, false, 1)
+		plan, _ := softGapFreePlan("lin", baud, false, 1)
 		var frames [][]int
 		for i := 0; i < 30; i++ {
 			frames = append(frames, []int{0x80 | i, i, 0x55, 0})
 		}
 		cases = append(cases, clientCase{"lin-frames", serLIN, SerialParams{Proto: serLIN, Baud: baud, Threshold: 90, HaveThr: true},
-			bitsWords(linLevels(13/decode.StreamBitsPeriod(log), baud, frames), 13)})
+			bitsWords(linLevels(13/decode.StreamBitsPeriod(plan.period), baud, frames), 13)})
 
 		dir := t.TempDir()
 		type nodeCase struct {
@@ -406,10 +407,10 @@ func TestClientDecodeMatchesScope(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
 func TestClientDecodeHandover(t *testing.T) {
 	withBitsImage(t, func() {
-		if _, bits, _ := softGapFreePlanBudget("ws281x", 0, false, 1, softBitsBudget); bits {
+		if plan, _ := softGapFreePlanBudget("ws281x", 0, false, 1, softBitsBudget); plan.bits {
 			t.Fatalf("WS281x streams digital words within the scope's budget")
 		}
-		if _, bits, ok := softGapFreePlanBudget("ws281x", 0, false, 1, clientBitsBudget); !bits || !ok {
+		if plan, ok := softGapFreePlanBudget("ws281x", 0, false, 1, clientBitsBudget); !plan.bits || !ok {
 			t.Fatalf("WS281x does not stream gap-free when a page decodes")
 		}
 		e := &Engine{logf: t.Logf}

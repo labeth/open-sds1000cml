@@ -2,10 +2,12 @@
 `timescale 1ns/1ps
 // ADR-STREAM-IMAGE: digital (thresholded) stream. Each channel's raw samples
 // pass a Schmitt comparator (high at or above high, low at or below low,
-// held between); one bit per period of 2^log_words raw words, sixteen periods
-// per word: {CH2 bits 15..0, CH1 bits 15..0}, bit 0 the earliest period. At
-// the peak stream's word rate this is sixteen times its time resolution, for
-// a decoder that needs only a line's logic level.
+// held between); one bit per period of any whole number of raw words (from
+// 2), sixteen periods per word: {CH2 bits 15..0, CH1 bits 15..0}, bit 0 the
+// earliest period. At the peak stream's word rate this is sixteen times its
+// time resolution, for a decoder that needs only a line's logic level; any
+// period, not only powers of two, lets the word rate run up to what the
+// host bus drains rather than step past it.
 //
 // A period's bit is the last bit XOR "some sample in the period differed from
 // the last bit": a real edge reads as the new level from the period it falls
@@ -16,11 +18,11 @@
 //
 // Timing at 250 MHz: word, compares, the comparator state and the period's
 // difference each take a registered stage; the period counter ends on its
-// sign bit. A period is at least 8 raw words (log_words >= 3), so packing
-// runs a clock behind the period's bit.
+// sign bit. A period is at least 2 raw words, so a period's bit comes at
+// most every other clock and packing runs a clock behind it.
 // TRLC-LINKS: REQ-SDS-035, REQ-SDS-010
 module stream_bits(
- input clk,enable,input [4:0] log_words, // raw words per period = 2^log_words, 3..15
+ input clk,enable,input [15:0] period, // raw words per period, 2..32768
  input [7:0] low1,high1,low2,high2,
  input in_valid,input [31:0] in_word,
  output reg out_valid=0,output reg [31:0] out_word=0
@@ -44,7 +46,7 @@ module stream_bits(
  always @(posedge clk)begin
   l1<=low1;h1<=high1;l2<=low2;h2<=high2;
   // Period size changes only while acquisition is idle: pipeline it.
-  size_r<=16'd1<<log_words;init<=size_r-16'd2;
+  size_r<=period;init<=size_r-16'd2;
   v1<=enable && in_valid;w1<=in_word;e1<=enable && in_valid && left[15];
   if(!enable)left<=init;
   else if(in_valid)left<=left[15] ? init : left-1'b1;

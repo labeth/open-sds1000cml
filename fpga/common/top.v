@@ -136,12 +136,22 @@ module acq_sram_top(
  reg [4:0] stream_cfg=0,stream_mode=0; // [0] stream, [1] continuous (no trigger), [2] peak-detect (STREAM_BITS: digital) words, [3]/[4] rising/falling edge marks
 `endif
  reg [1:0] stream_rise_enable=0,stream_fall_enable=0;reg stream_auto=0;
+ // ADR-STREAM-IMAGE: the stream's word pace (write 29 and 30, read back 66
+ // and 67, 65 says the image takes it): a digital period or a peak bucket in
+ // raw words, any whole number, so a stream's word rate runs up to what the
+ // host bus drains instead of stepping past it in powers of two; 0 keeps the
+ // decimation's power of two. Latched while idle, as stream_cfg.
+ reg [19:0] stream_rate_host=0;(* preserve *) reg [19:0] stream_rate=0;
  reg streaming_fault=0;
 `ifdef STREAM_DRUM
  // ADR-STREAM-IMAGE: the stream runs through the SRAM as a FIFO (stream_drum.v).
  reg drum_active=0;
  // ADR-SOUND: the edge marks' directions on the trigger channel (stream_marks.v).
  reg [1:0] mark_rise_enable=0,mark_fall_enable=0;
+ // The counter ramp's pace (write 46, read back 68): a word every that many
+ // core clocks (2 or more), so a bench run finds the bus's ceiling with every
+ // word checked at any rate; 0 paces it by the decimator's words.
+ reg [15:0] ramp_clocks_host=0,ramp_clocks=0;
  wire drum_cmd,drum_cmd_read,drum_cmd_discard,drum_cmd_continue,drum_wvalid,drum_wstop,drum_fault;wire [3:0] drum_status;
  wire [19:0] drum_cmd_count;wire [31:0] drum_wdata;
 `endif
@@ -1168,6 +1178,10 @@ module acq_sram_top(
 `else
   19:stream_cfg<=wd[4:0];
 `endif
+  29:stream_rate_host[15:0]<=wd;30:stream_rate_host[19:16]<=wd[3:0];
+`ifdef STREAM_DRUM
+  46:ramp_clocks_host<=wd;
+`endif
 `endif
   16:buffer_index<=wd[BUF_AW-1:0];
  endcase
@@ -1418,29 +1432,31 @@ module acq_sram_top(
  wire peak_valid;wire [31:0] peak_word;
  (* preserve *) reg peak_on=0;
  always @(posedge core)peak_on<=stream_mode[2] && stream_mode[0] && frontend_run;
- // A bucket spans as many raw words (two samples each) as the precision
- // decimator's output word does samples: equal stream rates.
- (* preserve *) reg [4:0] peak_log=0;
- always @(posedge core)peak_log<=decim_log-1'b1; // static while running: registered
+ // A bucket of the stream's pace in raw words (whole pairs), or with no
+ // pace as many raw words (two samples each) as the precision decimator's
+ // output word does samples: equal stream rates. Static while running:
+ // registered.
+ (* preserve *) reg [18:0] peak_pairs=0;
+ always @(posedge core)peak_pairs<=stream_rate!=0 ? stream_rate[19:1] : 19'd1<<(decim_log-5'd2);
 `ifdef STREAM_BITS
- // Digital words in the peak words' place, at their rate: sixteen periods
- // of 2^(decim_log-5) raw words per word; CH1 sliced at the trigger level,
- // CH2 at the second line's (stream_bits.v). The two do not fit together at
- // 250 MHz.
- (* preserve *) reg [4:0] bits_log=0;
+ // Digital words in the peak words' place: sixteen periods of the stream's
+ // pace in raw words per word, or with no pace of 2^(log-5) (the peak words'
+ // rate); CH1 sliced at the trigger level, CH2 at the second line's
+ // (stream_bits.v). The two do not fit together at 250 MHz.
 `ifdef STREAM_RING
  // In ring mode the record's decimation is the ring's, finer than the
  // stream's: the stream's own comes from register 21 (latched while idle).
  reg [4:0] stream_log=0;
  always @(posedge core)if(config_idle)stream_log<=stream_mode[5] ? stream_log_host : decim_log;
- always @(posedge core)bits_log<=stream_log-5'd5;
 `else
- always @(posedge core)bits_log<=decim_log-5'd5;
+ wire [4:0] stream_log=decim_log;
 `endif
- stream_bits peak(.clk(core),.enable(peak_on),.log_words(bits_log),.low1(level_low_l),.high1(level_high_l),.low2(level2_low_l),.high2(level2_high_l),
+ (* preserve *) reg [15:0] bits_period=0;
+ always @(posedge core)bits_period<=stream_rate!=0 ? stream_rate[15:0] : 16'd1<<(stream_log-5'd5);
+ stream_bits peak(.clk(core),.enable(peak_on),.period(bits_period),.low1(level_low_l),.high1(level_high_l),.low2(level2_low_l),.high2(level2_high_l),
   .in_valid(il_raw_valid),.in_word(il_raw_word),.out_valid(peak_valid),.out_word(peak_word));
 `else
- stream_peak peak(.clk(core),.enable(peak_on),.log_words(peak_log),.in_valid(il_raw_valid),.in_word(il_raw_word),
+ stream_peak peak(.clk(core),.enable(peak_on),.pairs(peak_pairs),.in_valid(il_raw_valid),.in_word(il_raw_word),
   .out_valid(peak_valid),.out_word(peak_word));
 `endif
 `ifdef STREAM_DRUM
@@ -1449,14 +1465,25 @@ module acq_sram_top(
  // One register stage first (timing at 250 MHz): the ramp steps on a register.
  (* preserve *) reg drum_in_valid=0;(* preserve *) reg [31:0] drum_in_data=0;reg [31:0] drum_ramp=0;reg drum_ramp_c=0;
  reg drum_s_valid=0,drum_p_valid=0,drum_peak=0,drum_il=0;reg [31:0] drum_s_word=0,drum_p_word=0;
+ // The paced ramp's tick: a down-counter preloaded with clocks-2 ends each
+ // word on its sign bit (registered: timing at 250 MHz).
+ reg [15:0] ramp_init=0,ramp_left=0;reg ramp_tick=0,drum_paced=0;
  always @(posedge core)begin
-  drum_s_valid<=source_valid && frontend_run;drum_s_word<=il_word;
+  ramp_init<=ramp_clocks-16'd2;drum_paced<=ramp_clocks!=0 && !cfg[0];
+  ramp_tick<=0;
+  if(!drum_active)ramp_left<=ramp_init;
+  else if(ramp_left[15])begin ramp_left<=ramp_init;ramp_tick<=1;end
+  else ramp_left<=ramp_left-1'b1;
+ end
+ always @(posedge core)begin
+  drum_s_valid<=drum_paced ? ramp_tick : source_valid && frontend_run;drum_s_word<=il_word;
   drum_p_valid<=peak_valid;drum_p_word<=peak_word;
   drum_peak<=stream_mode[2];drum_il<=cfg[0];
   drum_in_valid<=drum_active && (drum_peak ? drum_p_valid : drum_s_valid);
   drum_in_data<=drum_peak ? drum_p_word : drum_il ? drum_s_word : drum_ramp;
   // The ramp in two 16-bit halves: the high half steps a clock after the low
-  // half wraps (a stream is decimated by 2^8 or more: words are clocks apart).
+  // half wraps (a stream is decimated by 2^8 or more, a paced ramp's words
+  // are 2 clocks or more apart: words are clocks apart).
   drum_ramp_c<=0;
   if(!drum_active)begin drum_ramp<=0;end
   else begin
@@ -1625,7 +1652,7 @@ module acq_sram_top(
    level2_l<=level2;level2_low_l<=host_level2_low;level2_high_l<=host_level2_high;
 `endif
 `ifdef STREAM_CAPTURE
-   stream_mode<=stream_cfg;
+   stream_mode<=stream_cfg;stream_rate<=stream_rate_host;
    stream_auto<=!stream_cfg[1] && !config_word[4];
    stream_rise_enable[0]<=!stream_cfg[1] && config_word[0] && config_word[4] && !config_word[5] && !config_word[6];
    stream_rise_enable[1]<=!stream_cfg[1] && config_word[0] && config_word[4] && !config_word[5] && config_word[6];
@@ -1634,6 +1661,7 @@ module acq_sram_top(
 `ifdef STREAM_DRUM
    mark_rise_enable<=stream_cfg[3] ? (config_word[6] ? 2'b10 : 2'b01) : 2'b00;
    mark_fall_enable<=stream_cfg[4] ? (config_word[6] ? 2'b10 : 2'b01) : 2'b00;
+   ramp_clocks<=ramp_clocks_host;
 `endif
 `endif
   end
@@ -1893,8 +1921,11 @@ module acq_sram_top(
    32:rd={2'b0,drum_status_cpu,host_bank_overrun,stream_enabled_cpu[2],stream_finished_cpu[2],(host_bank_overrun || packet_fault_cpu[2]),stream_single,stream_token,stream_available};
    33:rd=stream_count0;34:rd=stream_count1;
    35:rd=stream_first0[15:0];36:rd=stream_first0[31:16];37:rd=stream_first0[47:32];38:rd=stream_first0[63:48];
+   // ADR-STREAM-IMAGE: the stream's pace register (29/30) as written.
+   65:rd=16'h5241;66:rd=stream_rate_host[15:0];67:rd={12'b0,stream_rate_host[19:16]};
    39:rd=stream_first1[15:0];40:rd=stream_first1[31:16];41:rd=stream_first1[47:32];42:rd=stream_first1[63:48];
 `ifdef STREAM_DRUM
+   68:rd=ramp_clocks_host;
    54:rd=16'h4d01;55:rd=mark_rise_count;56:rd=mark_rise_word[15:0];57:rd=mark_rise_word[31:16];
    58:rd=mark_fall_count;59:rd=mark_fall_word[15:0];60:rd=mark_fall_word[31:16];
 `ifdef STREAM_RING

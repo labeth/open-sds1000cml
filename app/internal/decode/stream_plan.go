@@ -1,6 +1,8 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
 package decode
 
+import "math"
+
 // StreamTiming is what a continuous stream of proto (a Result.Proto name)
 // at bit rate baud (the decoder settings' rate: a UART's baud, a clocked
 // bus's clock, a pulse code's bit) needs: feature, the shortest stretch of
@@ -245,40 +247,59 @@ var streamBuckets = func() (t [StreamMaxLog + 1]float64) {
 	return t
 }()
 
-// StreamBitsPeriod is the digital stream's period at decimation log
-// (ADR-STREAM-BITS): a word holds sixteen periods a line in the time of one
-// peak word's bucket, so a period is 2^(log-4) samples of 2 ns.
-// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
-func StreamBitsPeriod(log int) float64 { return float64(uint64(1)<<(log-4)) * 2e-9 }
+// StreamRawWord is a raw word's time in seconds: two samples of 2 ns, a
+// 250 MHz clock's. A stream's pace (the digital period, the peak bucket) is
+// any whole number of them (ADR-STREAM-IMAGE).
+const StreamRawWord = 4e-9
 
-// StreamBitsLog is the digital stream's decimation for a feature of feature
-// seconds: the coarsest from StreamGapFreeMinLog that keeps six periods in
-// the feature (fewer samples cost the decoder less) at no more than
-// streamBitsBusy samples a second, or failing that three and a half (the
-// decoders read every bus from three a feature). ok is false when even the
+// StreamBusWords is the most words a second a stream may ask of the host
+// bus: under what the bus drains the stream banks at (about 2.8 to 3.0 M
+// 32-bit words a second), so a stream's rate, not a power of two, is what
+// the bus allows.
+const StreamBusWords = 2.5e6
+
+// StreamBitsMaxPeriod is the digital stream's coarsest period in raw words:
+// a word of sixteen spans the coarsest decimation's bucket (2^StreamMaxLog
+// samples).
+const StreamBitsMaxPeriod = 1 << (StreamMaxLog - 5)
+
+// StreamBitsMinPeriod is the digital stream's finest period in raw words:
+// sixteen periods a word at no more than StreamBusWords words a second.
+var StreamBitsMinPeriod = int(math.Ceil(1 / (16 * StreamRawWord * StreamBusWords)))
+
+// StreamBitsPeriod is the time of a digital period of period raw words
+// (ADR-STREAM-BITS): one sample a period a line.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func StreamBitsPeriod(period int) float64 { return float64(period) * StreamRawWord }
+
+// StreamBitsWordRate is the digital stream's words a second at a period of
+// period raw words: sixteen periods a word.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func StreamBitsWordRate(period int) float64 { return 1 / (16 * StreamBitsPeriod(period)) }
+
+// StreamBitsPlan is the digital stream's period in raw words for a feature
+// of feature seconds, rate the most periods a second a line may take (the
+// CPU's share a line; 0 no limit but the bus): six periods in the feature
+// (fewer samples cost the decoder less, and more resolve nothing more), or
+// where that is past rate or the bus the finest period they allow, as long
+// as it keeps three and a half (the decoders read every bus from three a
+// feature). Any whole period, so the plan takes what the CPU and the bus
+// allow instead of the power of two under it. ok is false when even the
 // finest leaves fewer: the edges then move by a period within a feature.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
-func StreamBitsLog(feature float64) (log int, ok bool) {
-	for _, keep := range []float64{6, 3.5} {
-		if feature < keep*StreamBitsPeriod(StreamGapFreeMinLog) {
-			continue
-		}
-		if keep == 6 && feature/6 < 1/streamBitsBusy {
-			continue
-		}
-		log = StreamGapFreeMinLog
-		for log < StreamMaxLog && keep*StreamBitsPeriod(log+1) <= feature {
-			log++
-		}
-		return log, true
+func StreamBitsPlan(feature, rate float64) (period int, ok bool) {
+	const tol = 1 + 1e-9 // a feature a whole number of periods keeps them
+	fine := StreamBitsMinPeriod
+	if rate > 0 {
+		fine = max(fine, int(math.Ceil(1/(rate*StreamRawWord)/tol)))
 	}
-	return 0, false
+	six := int(math.Min(feature*tol/(6*StreamRawWord), StreamBitsMaxPeriod))
+	period = max(fine, six)
+	if period > StreamBitsMaxPeriod || 3.5*StreamBitsPeriod(period) > feature*tol {
+		return 0, false
+	}
+	return period, true
 }
-
-// streamBitsBusy is the most samples a second a line the six-period plan
-// takes: the peak stream's at 2^9, which the device decodes beside its
-// display.
-const streamBitsBusy = 500e6 / (1 << (StreamGapFreeMinLog - 1))
 
 // StreamBitsLine reports whether proto's line suits the digital stream: a
 // carrier (an IR remote's 38 kHz, an RFID tag's 125 kHz field) sliced at a

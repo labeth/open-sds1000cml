@@ -46,8 +46,10 @@ func withBitsImage(t *testing.T, f func()) {
 }
 
 // With the digital stream image the buses past the peak stream's reach
-// stream gap-free, the slower ones at a coarser decimation than the peak
-// stream's; carrier lines (IR, RFID) keep the peak words.
+// stream gap-free, the slower ones at a coarser period, any whole number of
+// raw words: six periods a feature, or the finest the budget allows (a
+// clocked bus's two lines share it) where that keeps three and a half;
+// carrier lines (IR, RFID) keep the peak words.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
 func TestSoftStreamModesWithBits(t *testing.T) {
 	withBitsImage(t, func() {
@@ -55,20 +57,29 @@ func TestSoftStreamModesWithBits(t *testing.T) {
 			proto, baud int
 			mode        string
 			bits        bool
-			log         int
+			period      int // raw words
 		}{
-			{serWS281x, 800000, "captures", false, 0}, {serUSBPD, 300000, "gap-free", true, 11},
+			// 1.67 us: six periods of 69 raw words, 3.6 M samples a second
+			{serWS281x, 800000, "captures", false, 0}, {serUSBPD, 300000, "gap-free", true, 69},
 			{serSWD, 1000000, "captures", false, 0}, {serMDIO, 1000000, "captures", false, 0},
-			{serMDIO, 250000, "gap-free", true, 12}, {serPDI, 250000, "gap-free", true, 12},
-			{serMiller, 106007, "gap-free", true, 12}, {serMaple, 1333333, "captures", false, 0},
-			{serDMX, 250000, "gap-free", true, 12}, {serLIN, 19200, "gap-free", true, 16},
-			{serModbus, 460800, "gap-free", true, 12}, {serSPDIF, 3072000, "captures", false, 0},
+			// 2 us on two lines: 2 M samples a second a line, 4 periods
+			{serMDIO, 250000, "gap-free", true, 125}, {serPDI, 250000, "gap-free", true, 125},
+			{serMiller, 106007, "gap-free", true, 98}, {serMaple, 1333333, "captures", false, 0},
+			{serDMX, 250000, "gap-free", true, 166}, {serLIN, 19200, "gap-free", true, 2170},
+			{serModbus, 460800, "gap-free", true, 90}, {serSPDIF, 3072000, "captures", false, 0},
 			{serIRNEC, 889, "gap-free", false, 0}, {serEM4100, 1953, "gap-free", false, 0},
 		} {
 			name, _ := softProtoName(c.proto)
-			log, bits, _ := softGapFreePlan(name, c.baud, false, softLines(c.proto))
-			if got := SoftStreamMode(c.proto, c.baud, false); got != c.mode || bits != c.bits || (c.bits && log != c.log) {
-				t.Errorf("%s at %d: %q bits %v 2^%d, want %q bits %v 2^%d", name, c.baud, got, bits, log, c.mode, c.bits, c.log)
+			plan, _ := softGapFreePlan(name, c.baud, false, softLines(c.proto))
+			if got := SoftStreamMode(c.proto, c.baud, false); got != c.mode || plan.bits != c.bits || (c.bits && plan.period != c.period) {
+				t.Errorf("%s at %d: %q bits %v period %d, want %q bits %v period %d", name, c.baud, got, plan.bits, plan.period, c.mode, c.bits, c.period)
+			}
+			if c.bits {
+				feature, _, _, _ := decode.StreamTiming(name, float64(c.baud))
+				perLine := 1 / decode.StreamBitsPeriod(plan.period)
+				if n := feature / decode.StreamBitsPeriod(plan.period); n < 3.5 || float64(softLines(c.proto))*perLine > softBitsBudget || plan.wordRate() > decode.StreamBusWords {
+					t.Errorf("%s at %d: %.2f periods a feature, %.3g samples a second a line, %.3g words a second", name, c.baud, n, perLine, plan.wordRate())
+				}
 			}
 		}
 	})
@@ -81,12 +92,12 @@ func TestSoftStreamBitsToEvents(t *testing.T) {
 	withBitsImage(t, func() {
 		for _, baud := range []int{19200, 250000, 1000000} {
 			name := softProtoNames[serLIN]
-			log, bits, ok := softGapFreePlan(name, baud, false, 1)
-			if !ok || !bits {
+			plan, ok := softGapFreePlan(name, baud, false, 1)
+			if !ok || !plan.bits {
 				t.Fatalf("LIN at %d: not a digital gap-free stream", baud)
 			}
 			_, longest, quiet, _ := decode.StreamTiming(name, float64(baud))
-			period := decode.StreamBitsPeriod(log)
+			period := decode.StreamBitsPeriod(plan.period)
 			frames := [][]int{}
 			for i := 0; i < 20; i++ {
 				id := 0x10 + i%40
@@ -104,9 +115,9 @@ func TestSoftStreamBitsToEvents(t *testing.T) {
 			raw := bitsWords(linLevels(13/period, float64(baud), frames), 13)
 			d, _ := serialDecoder(serLIN)
 			s := &softStream{p: SerialParams{Proto: serLIN, Baud: baud, Threshold: 128, HaveThr: true}, proto: name, decoder: d,
-				mask: 0xff, gapFree: true, quiet: quiet, log: uint8(log), bits: true, trig: StreamManual,
+				mask: 0xff, gapFree: true, quiet: quiet, bits: true, trig: StreamManual,
 				id: sramcapture.RecordIdentity{Epoch: softEpochBase | 1}}
-			s.sampleS, s.ordStep = period, float64(uint64(1)<<(log-4))
+			s.setTiming(plan)
 			s.dec = decode.NewStreamDecoder(s.decodeFunc(), int(quiet/s.sampleS), int((longest+quiet)/s.sampleS))
 			for at := 0; at < len(raw); {
 				n := min(len(raw)-at, 4*(1+(at*7919)%3000))
@@ -120,7 +131,7 @@ func TestSoftStreamBitsToEvents(t *testing.T) {
 			tr.Add(s.events)
 			tr.Flush()
 			if tr.Count() != len(frames) {
-				t.Fatalf("LIN at %d (2^%d, %.3g us): %d lines, want %d", baud, log, period*1e6, tr.Count(), len(frames))
+				t.Fatalf("LIN at %d (%d raw words, %.3g us): %d lines, want %d", baud, plan.period, period*1e6, tr.Count(), len(frames))
 			}
 			for i := 0; i < tr.Count(); i++ {
 				l := tr.At(i)
@@ -141,9 +152,9 @@ func TestSoftStreamBitsQuietSkipped(t *testing.T) {
 	withBitsImage(t, func() {
 		const baud = 250000
 		name := softProtoNames[serLIN]
-		log, _, _ := softGapFreePlan(name, baud, false, 1)
+		plan, _ := softGapFreePlan(name, baud, false, 1)
 		_, longest, quiet, _ := decode.StreamTiming(name, float64(baud))
-		period := decode.StreamBitsPeriod(log)
+		period := decode.StreamBitsPeriod(plan.period)
 		var levels []bool
 		sr := 13 / period
 		for i := 0; i < 12; i++ {
@@ -171,9 +182,9 @@ func TestSoftStreamBitsQuietSkipped(t *testing.T) {
 			}
 			d, _ := serialDecoder(serLIN)
 			s := &softStream{p: SerialParams{Proto: serLIN, Baud: baud, Threshold: 128, HaveThr: true}, proto: name, decoder: d,
-				mask: 0xff, gapFree: true, quiet: quiet, log: uint8(log), bits: true, trig: StreamManual,
+				mask: 0xff, gapFree: true, quiet: quiet, bits: true, trig: StreamManual,
 				id: sramcapture.RecordIdentity{Epoch: softEpochBase | 1}}
-			s.sampleS, s.ordStep = period, float64(uint64(1)<<(log-4))
+			s.setTiming(plan)
 			f := s.decodeFunc()
 			s.dec = decode.NewStreamDecoder(func(a, b []uint8) decode.Result { decodedN[k] += len(a); return f(a, b) }, int(quiet/s.sampleS), int((longest+quiet)/s.sampleS))
 			lead := int(decode.StreamLead(name, baud) / s.sampleS)

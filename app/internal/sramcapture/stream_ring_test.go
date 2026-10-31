@@ -41,7 +41,7 @@ func TestStreamRingStartFreezeStop(t *testing.T) {
 		t.Fatal("froze a ring that was never started")
 	}
 	cfg := Config{Source: ADC, DecimationLog2: 9, PreWords: Words - 17, PostWords: 17}
-	if err := c.StartStreamRing(context.Background(), cfg, 13); err != nil {
+	if err := c.StartStreamRing(context.Background(), cfg, 13, StreamPace{}); err != nil {
 		t.Fatal(err)
 	}
 	if f.staged[21] != 13 || f.staged[19] != 1|2|4|32 || f.staged[18] != 9 {
@@ -67,14 +67,14 @@ func TestStreamRingStartFreezeStop(t *testing.T) {
 	if err := c.StopStream(context.Background()); err != nil || !slices.Equal(f.commands, []uint16{5}) {
 		t.Fatalf("plain stop %v %v", f.commands, err)
 	}
-	if err := c.StartStreamRing(context.Background(), cfg, 7); err == nil {
+	if err := c.StartStreamRing(context.Background(), cfg, 7, StreamPace{}); err == nil {
 		t.Fatal("a stream decimation the digital words cannot take started")
 	}
 	f.regs[61] = 0
 	if c.StreamRingSupported() {
 		t.Fatal("an image without the ring reads as having it")
 	}
-	if err := c.StartStreamRing(context.Background(), cfg, 13); err == nil {
+	if err := c.StartStreamRing(context.Background(), cfg, 13, StreamPace{}); err == nil {
 		t.Fatal("an image without the ring started one")
 	}
 }

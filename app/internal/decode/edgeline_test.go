@@ -237,12 +237,13 @@ func TestEdgeLineBuilds(t *testing.T) {
 }
 
 // edgeStreamPeriod is the sample time the edge stream tests decode a case
-// at: the digital stream's for its feature, or for a bus finer than that
-// stream resolves, three and a half samples a feature.
+// at: the digital stream's for its feature at the device's budget of 4 M
+// samples a second, or for a bus finer than that stream resolves, three and
+// a half samples a feature.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
 func edgeStreamPeriod(tc streamCPUCase) float64 {
-	if log, ok := StreamBitsLog(tc.feature); ok {
-		return StreamBitsPeriod(log)
+	if period, ok := StreamBitsPlan(tc.feature, 4e6); ok {
+		return StreamBitsPeriod(period)
 	}
 	return tc.feature / 3.5
 }
