@@ -2,7 +2,6 @@
 package decode
 
 import (
-	"fmt"
 	"math"
 	"strconv"
 	"strings"
@@ -25,8 +24,30 @@ func risingBits(a, b lineIn, cfg ClockedCfg) ([]cbit, float64, sliced, string) {
 	if why != "" {
 		return nil, 0, C, why
 	}
-	out := make([]cbit, 0, len(E)/2+1)
-	per := make([]float64, 0, len(E)/2+1)
+	out := scratchSlice[cbit](a.scratch(), len(E)/2+1)
+	per := scratchSlice[float64](a.scratch(), len(E)/2+1)
+	if _, _, ok := C.roundUps(); ok {
+		// a clock sliced from its edges: its periods lie within a hair of
+		// their samples (nthNear), E the clock's edges in order
+		iper := scratchSlice[int](a.scratch(), len(E)/2+1)
+		last := -1
+		for k := range E {
+			if e := &E[k]; e.dir > 0 {
+				if n := len(out); n > 0 {
+					per = append(per, e.x-out[n-1].x)
+					iper = append(iper, e.i-last)
+				}
+				out = out[:len(out)+1]
+				b := &out[len(out)-1] // set field by field: no struct copied in
+				b.v, b.x = e.d, e.x
+				last = e.i
+			}
+		}
+		if len(per) == 0 {
+			return out, 0, C, ""
+		}
+		return out, nthNear(per, iper, len(per)/2, nearBufOf(a.scratch())), C, ""
+	}
 	for _, e := range E {
 		if e.dir > 0 {
 			if k := len(out); k > 0 {
@@ -80,7 +101,8 @@ func decodeSDCard(a, b lineIn, colTimeS float64, cfg ClockedCfg) Result {
 	if why != "" {
 		return Result{Proto: "sdcard", Error: why}
 	}
-	o := &wireOut{n: C.n}
+	o := newWireOut(C.n, C.sc)
+	var tokBits [136]int // a token's bits
 	good := false
 	lastCmd, acmd, nextACMD := -1, false, false
 	for i := 0; i < len(B); i++ {
@@ -96,9 +118,9 @@ func decodeSDCard(a, b lineIn, colTimeS float64, cfg ClockedCfg) Result {
 			break
 		}
 		t := B[i : i+n]
-		bits := make([]int, n)
-		for k, x := range t {
-			bits[k] = x.v
+		bits := tokBits[:n] // every one set below
+		for k := range t {
+			bits[k] = t[k].v
 		}
 		o.add(t[0].x, t[0].x, "", "sof", 0, false)
 		idx := 0
@@ -202,7 +224,7 @@ func decodePDI(a, b lineIn, colTimeS float64, cfg ClockedCfg) Result {
 	if why != "" {
 		return Result{Proto: "pdi", Error: why}
 	}
-	o := &wireOut{n: C.n}
+	o := newWireOut(C.n, C.sc)
 	good := false
 	var groups []int // the operand groups (bytes each) still to come
 	var cur []int    // the bytes of the group being read
@@ -339,16 +361,19 @@ func decodeCJTAG(a, b lineIn, colTimeS float64, cfg ClockedCfg) Result {
 	if !M.ok {
 		return Result{Proto: "cjtag", Error: M.reason}
 	}
-	o := &wireOut{n: K.n}
-	var rises []float64
+	o := newWireOut(K.n, K.sc)
+	rises := scratchSlice[float64](K.sc, len(K.edges)/2+1)
+	irises := scratchSlice[int](K.sc, len(K.edges)/2+1) // their samples
 	for _, e := range K.edges {
 		if e.dir > 0 {
 			rises = append(rises, e.x)
+			irises = append(irises, e.i)
 		}
 	}
 	// TMSC's edges while TCKC is high, counted per high phase: the phase
 	// after rise i ends at the fall after it
-	esc := make([]int, len(rises)+1)
+	esc := scratchSlice[int](K.sc, len(rises)+1)[:len(rises)+1]
+	clear(esc)
 	ke, mi := 0, 0
 	for i, r := range rises {
 		for ke < len(K.edges) && K.edges[ke].x <= r {
@@ -374,10 +399,13 @@ func decodeCJTAG(a, b lineIn, colTimeS float64, cfg ClockedCfg) Result {
 	var ti, to, nb int
 	var x0 float64
 	good := false
-	var per []float64
+	per := scratchSlice[float64](K.sc, len(rises))
+	iper := scratchSlice[int](K.sc, len(rises))
+	lv := levelCursor{s: &M} // logicAt on TMSC, walking its edges
 	for i, r := range rises {
 		if i > 0 {
 			per = append(per, r-rises[i-1])
+			iper = append(iper, irises[i]-irises[i-1])
 		}
 		switch e := esc[i]; {
 		case e >= 8:
@@ -389,7 +417,7 @@ func decodeCJTAG(a, b lineIn, colTimeS float64, cfg ClockedCfg) Result {
 			o.add(r, r, "", "sof", 0, false)
 			o.add(r, r, "ESC6", "rw", 6, false)
 		}
-		tmsc := logicAt(&M, r)
+		tmsc := lv.at(r)
 		if mode == oac {
 			// the online activation code: twelve bits (36 when the eighth
 			// is 0: the extended form), then OScan1
@@ -415,7 +443,7 @@ func decodeCJTAG(a, b lineIn, colTimeS float64, cfg ClockedCfg) Result {
 			continue
 		}
 		cyc = 0
-		tms := logicAt(&M, rises[i-1])
+		tms := lv.at(rises[i-1])
 		tdo := tmsc
 		if state == 4 || state == 11 {
 			if nb == 0 {
@@ -433,9 +461,9 @@ func decodeCJTAG(a, b lineIn, colTimeS float64, cfg ClockedCfg) Result {
 			if state == 15 {
 				reg = "IR"
 			}
-			txt := fmt.Sprintf("%s%X", reg, ti)
+			txt := hexText(reg, uint64(ti), 0) // fmt's "%s%X"
 			o.add(x0, r, txt, "data", ti, true)
-			o.add(x0, r, fmt.Sprintf("TDO%X", to), "rw", to, false)
+			o.add(x0, r, hexText("TDO", uint64(to), 0), "rw", to, false)
 			good = good || nb > 0
 			ti, to, nb = 0, 0, 0
 		}
@@ -443,7 +471,12 @@ func decodeCJTAG(a, b lineIn, colTimeS float64, cfg ClockedCfg) Result {
 	if len(o.spans) == 0 {
 		return Result{Proto: "cjtag", Error: "no cJTAG escape"}
 	}
-	T := medianOf(per)
+	var T float64
+	if _, _, ok := K.roundUps(); ok && len(per) > 0 {
+		T = nthNear(per, iper, len(per)/2, nearBufOf(K.sc)) // edges sliced from a digital line
+	} else {
+		T = medianOf(per)
+	}
 	regular := 0 // TCKC's periods within a fifth of their median
 	for _, p := range per {
 		if p >= 0.8*T && p <= 1.2*T {
@@ -466,6 +499,20 @@ func decodeCJTAG(a, b lineIn, colTimeS float64, cfg ClockedCfg) Result {
 
 // mapleNames prefix a Maple frame's header bytes.
 var mapleNames = []string{"L", "S", "D", "C"}
+
+// mapleHex are the texts of a Maple frame's named bytes: the header's four
+// (mapleNames), the checksum ("K") and a checksum that fails ("!K"), each
+// with its two hex digits, made once rather than for every byte decoded.
+var mapleHex = func() (t [6][256]string) {
+	for b := range 256 {
+		for i, p := range mapleNames {
+			t[i][b] = p + hex2(b)
+		}
+		t[4][b] = "K" + hex2(b)
+		t[5][b] = "!K" + hex2(b)
+	}
+	return t
+}()
 
 // DecodeMaple decodes SEGA's Maple bus (sigrok's maple_bus) on SDCKA (line
 // a) and SDCKB: a start pattern (SDCKA low while SDCKB pulses four times,
@@ -504,29 +551,46 @@ func decodeMaple(a, b lineIn, colTimeS float64, cfg ClockedCfg) Result {
 	// both lines' edges in time order, with both lines' levels after each
 	type ev struct {
 		x      float64
-		line   int // 0 SDCKA, 1 SDCKB
+		line   int8 // 0 SDCKA, 1 SDCKB
 		fall   bool
-		la, lb int
+		la, lb int8
 	}
-	evs := make([]ev, 0, len(A.edges)+len(Bs.edges))
-	la, lb := int(A.first), int(Bs.first)
+	evs := scratchSlice[ev](a.scratch(), len(A.edges)+len(Bs.edges))
+	la, lb := int8(A.first), int8(Bs.first)
 	ia, ib := 0, 0
-	for ia < len(A.edges) || ib < len(Bs.edges) {
-		if ib >= len(Bs.edges) || (ia < len(A.edges) && A.edges[ia].x <= Bs.edges[ib].x) {
-			e := A.edges[ia]
-			ia++
-			la = (e.dir + 1) / 2
-			evs = append(evs, ev{e.x, 0, e.dir < 0, la, lb})
-		} else {
-			e := Bs.edges[ib]
-			ib++
-			lb = (e.dir + 1) / 2
-			evs = append(evs, ev{e.x, 1, e.dir < 0, la, lb})
+	// Edges sliced from digital lines lie at x = i-1+frac with frac within
+	// (0, 1): two edges at different samples i compare as their samples do.
+	byI := A.codes == nil && Bs.codes == nil
+	evs = evs[:len(A.edges)+len(Bs.edges)]
+	for m := range evs {
+		takeA := ib >= len(Bs.edges)
+		if !takeA && ia < len(A.edges) {
+			ea, eb := &A.edges[ia], &Bs.edges[ib]
+			if byI && ea.i != eb.i {
+				takeA = ea.i < eb.i
+			} else {
+				takeA = ea.x <= eb.x
+			}
 		}
+		v := &evs[m] // set field by field: no struct copied in
+		if takeA {
+			e := &A.edges[ia]
+			ia++
+			la = int8((e.dir + 1) / 2)
+			v.x, v.line, v.fall = e.x, 0, e.dir < 0
+		} else {
+			e := &Bs.edges[ib]
+			ib++
+			lb = int8((e.dir + 1) / 2)
+			v.x, v.line, v.fall = e.x, 1, e.dir < 0
+		}
+		v.la, v.lb = la, lb
 	}
-	o := &wireOut{n: A.n}
+	o := newWireOut(A.n, A.sc)
 	good := false
 	var bitT runningMedian
+	var bytes []int // a frame's bytes and their starts, reused frame to frame
+	var bx []float64
 	for k := 0; k < len(evs); k++ {
 		// a start: SDCKA falls with SDCKB high, then SDCKB falls four
 		// times (six: with a CRC) before SDCKA rises
@@ -543,8 +607,7 @@ func decodeMaple(a, b lineIn, colTimeS float64, cfg ClockedCfg) Result {
 			continue
 		}
 		o.add(evs[k].x, evs[j].x, "", "sof", 0, false)
-		var bytes []int
-		var bx []float64
+		bytes, bx = bytes[:0], bx[:0]
 		ended := false
 		var endX0, endX1 float64
 		// the bytes: at SDCKA's falls SDCKB is the bit, at SDCKB's SDCKA
@@ -554,7 +617,7 @@ func decodeMaple(a, b lineIn, colTimeS float64, cfg ClockedCfg) Result {
 			initial := true
 			x0 := 0.0
 			for j++; j < len(evs) && cb < 4; j++ {
-				e := evs[j]
+				e := &evs[j]
 				if !e.fall {
 					continue
 				}
@@ -563,7 +626,7 @@ func decodeMaple(a, b lineIn, colTimeS float64, cfg ClockedCfg) Result {
 						if ca == 0 {
 							x0 = e.x
 						}
-						v = v<<1 | e.lb
+						v = v<<1 | int(e.lb)
 						ca++
 						continue
 					}
@@ -583,7 +646,7 @@ func decodeMaple(a, b lineIn, colTimeS float64, cfg ClockedCfg) Result {
 					break
 				}
 				if ca == cb+1 {
-					v = v<<1 | e.la
+					v = v<<1 | int(e.la)
 					cb++
 					continue
 				}
@@ -610,11 +673,11 @@ func decodeMaple(a, b lineIn, colTimeS float64, cfg ClockedCfg) Result {
 			txt, kind := hex2(x), "data"
 			switch {
 			case i < 4:
-				txt = mapleNames[i] + txt
+				txt = mapleHex[i][x&0xff]
 			case i == len(bytes)-1:
-				txt = "K" + txt
+				txt = mapleHex[4][x&0xff]
 				if x != ck || len(bytes) != want || !ended {
-					txt, kind = "!"+txt, "frame-error"
+					txt, kind = mapleHex[5][x&0xff], "frame-error"
 				} else {
 					good = true
 				}
@@ -670,7 +733,7 @@ func decodeCaliper(a, b lineIn, colTimeS float64, cfg ClockedCfg) Result {
 		return Result{Proto: "caliper", Error: "no sample time"}
 	}
 	quiet := 10e-3 / colTimeS
-	o := &wireOut{n: C.n}
+	o := newWireOut(C.n, C.sc)
 	good := false
 	for i := 0; i+24 <= len(B); {
 		if i > 0 && B[i].x-B[i-1].x < quiet {

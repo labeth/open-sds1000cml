@@ -4,6 +4,7 @@ package decode
 import (
 	"fmt"
 	"math"
+	"slices"
 	"strings"
 )
 
@@ -11,22 +12,60 @@ import (
 // TI SDQ, PJON's PJDL link, DSI lighting and the Qi charger's
 // communication. Mirrored step for step by decode_wire1.js.
 
-// wireOut collects a decode's spans, transcript and units.
+// wireOut collects a decode's spans, transcript and units: in the arrays
+// of the line's scratch when it has one (a stream's window), kept there as
+// they grow.
 type wireOut struct {
 	n     int
 	spans []Span
 	toks  []string
 	units []int
+	sc    *scratch
+	slot  int // the scratch's slot of spans; toks and units the two after
+}
+
+// newWireOut is a wireOut for a decode of n samples, its arrays from sc
+// (nil: none).
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-253
+func newWireOut(n int, sc *scratch) *wireOut {
+	o := &wireOut{n: n, sc: sc}
+	if sc != nil {
+		o.slot = sc.next
+		o.spans = scratchSlice[Span](sc, 64)
+		o.toks = scratchSlice[string](sc, 64)
+		o.units = scratchSlice[int](sc, 64)
+	}
+	return o
+}
+
+// newWireOutSized is newWireOut with room for spans, toks and units of
+// each, made at once where there is no scratch.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-253
+func newWireOutSized(n int, sc *scratch, spans, toks, units int) *wireOut {
+	if sc != nil {
+		o := &wireOut{n: n, sc: sc, slot: sc.next}
+		o.spans = scratchSlice[Span](sc, spans)
+		o.toks = scratchSlice[string](sc, toks)
+		o.units = scratchSlice[int](sc, units)
+		return o
+	}
+	return &wireOut{n: n, spans: make([]Span, 0, spans), toks: make([]string, 0, toks), units: make([]int, 0, units)}
 }
 
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-253
 func (o *wireOut) add(x0, x1 float64, text, kind string, val int, unit bool) {
-	o.spans = append(o.spans, pspan(x0, x1, o.n, text, kind, val))
+	// pspan's span, set field by field in place: no struct copied in
+	if len(o.spans) == cap(o.spans) {
+		o.spans = scratchGrow(o.sc, o.slot, o.spans)
+	}
+	o.spans = o.spans[:len(o.spans)+1]
+	s := &o.spans[len(o.spans)-1]
+	s.I0, s.I1, s.Text, s.Kind, s.Val = ui(x0, o.n), ui(x1, o.n), text, kind, val
 	if text != "" {
-		o.toks = append(o.toks, text)
+		o.toks = scratchAppend(o.sc, o.slot+1, o.toks, text)
 	}
 	if unit {
-		o.units = append(o.units, val)
+		o.units = scratchAppend(o.sc, o.slot+2, o.units, val)
 	}
 }
 
@@ -35,7 +74,7 @@ func (o *wireOut) add(x0, x1 float64, text, kind string, val int, unit bool) {
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-253
 func fallsAndRises(S sliced) (falls, rises []float64) {
 	E := S.edges
-	falls, rises = make([]float64, 0, len(E)/2+1), make([]float64, 0, len(E)/2+1)
+	falls, rises = scratchSlice[float64](S.sc, len(E)/2+1), scratchSlice[float64](S.sc, len(E)/2+1)
 	for k, e := range E {
 		if e.dir > 0 {
 			continue
@@ -51,6 +90,22 @@ func fallsAndRises(S sliced) (falls, rises []float64) {
 
 // swimNames name the SWIM commands.
 var swimNames = map[int]string{0: "SRST", 1: "ROTF", 2: "WOTF"}
+
+// swimText are a SWIM frame's texts, made once: [0] as decoded, [1] with
+// the "!" of a frame that fails; by kind (a command, the count "N", an
+// address byte "@", a byte written "W" or read "R") and value.
+var swimText = func() (t [2][5][256]string) {
+	for v := range 256 {
+		cmd := swimNames[v]
+		if cmd == "" {
+			cmd = fmt.Sprintf("CMD%d", v)
+		}
+		for k, txt := range []string{cmd, "N" + hex2(v), "@" + hex2(v), "W" + hex2(v), "R" + hex2(v)} {
+			t[0][k][v], t[1][k][v] = txt, "!"+txt
+		}
+	}
+	return t
+}()
 
 // DecodeSWIM decodes the STM8 SWIM line (sigrok's swim): a bit is a low
 // pulse and a high, a 0 low for most of it and a 1 low for a little; the
@@ -86,46 +141,54 @@ func decodeSWIM(codes lineIn, colTimeS float64, cfg LineCfg) Result {
 		return Result{Proto: "swim", Error: S.reason}
 	}
 	falls, rises := fallsAndRises(S)
-	sp := make([]float64, 0, len(falls))
-	for k := 1; k < len(falls); k++ {
-		sp = append(sp, falls[k]-falls[k-1])
-	}
-	if len(sp) < 4 {
+	if len(falls) < 5 {
 		return Result{Proto: "swim", Error: "too few bits"}
 	}
-	lo := quantile(sp, 0)
-	sum, cnt := 0.0, 0
-	for _, v := range sp {
-		if v <= 1.3*lo {
-			sum += v
-			cnt++
-		}
-	}
-	T := sum / float64(cnt)
+	var T float64
 	if cfg.Baud > 0 && colTimeS > 0 {
 		T = 1 / (float64(cfg.Baud) * colTimeS)
+	} else {
+		// the mean of the fall-to-fall spacings within 1.3 of the least
+		sp := scratchSlice[float64](S.sc, len(falls))
+		for k := 1; k < len(falls); k++ {
+			sp = append(sp, falls[k]-falls[k-1])
+		}
+		lo := quantile(sp, 0)
+		sum, cnt := 0.0, 0
+		for _, v := range sp {
+			if v <= 1.3*lo {
+				sum += v
+				cnt++
+			}
+		}
+		T = sum / float64(cnt)
 	}
-	o := &wireOut{n: S.n}
+	T15 := 1.5 * T
+	o := newWireOut(S.n, S.sc)
 	state := 0 // 0 a command, 1 the count, 2..4 the address, 5 the bytes
 	left := 0
 	good := false
 	type sbit struct {
 		v      int
 		x0, x1 float64
+		i0     int // the fall's sample
 	}
-	var fr []sbit
+	var fr []sbit // a frame's bits, reused frame to frame
+	var frameBits func()
 	frame := func() {
-		if len(fr) == 0 {
-			return
+		if len(fr) > 0 {
+			frameBits()
+			fr = fr[:0]
 		}
-		defer func() { fr = nil }()
+	}
+	frameBits = func() {
 		nb := 8
 		cmd := state == 0 && len(fr) <= 6 // a command, not a byte met amid a transaction
 		if cmd {
 			nb = 3
 		}
 		if len(fr) != nb+3 {
-			if fr[0].x0 <= 1.5*T || fr[len(fr)-1].x1+1.5*T >= float64(S.n) {
+			if fr[0].x0 <= T15 || fr[len(fr)-1].x1+T15 >= float64(S.n) {
 				o.add(fr[0].x0, fr[len(fr)-1].x1, "?", "gap", 0, false)
 			} else {
 				o.add(fr[0].x0, fr[len(fr)-1].x1, "!", "frame-error", 0, false)
@@ -141,27 +204,26 @@ func decodeSWIM(codes lineIn, colTimeS float64, cfg LineCfg) Result {
 		if cmd {
 			o.add(fr[0].x0, fr[0].x0, "", "sof", 0, false)
 		}
-		txt := ""
+		// the text, and with a "!" for a frame that fails (swimText)
+		t := 0
 		switch {
 		case cmd:
-			txt = swimNames[v]
-			if txt == "" {
-				txt = fmt.Sprintf("CMD%d", v)
-			}
+			t = 0
 		case state == 1:
-			txt = "N" + hex2(v)
+			t = 1
 		case state >= 2 && state <= 4:
-			txt = "@" + hex2(v)
+			t = 2
 		default:
-			txt = "W" + hex2(v)
+			t = 3
 			if fr[0].v == 1 {
-				txt = "R" + hex2(v)
+				t = 4
 			}
 		}
 		if !ok {
-			o.add(fr[1].x0, fr[nb].x1, "!"+txt, "frame-error", v, true)
+			o.add(fr[1].x0, fr[nb].x1, swimText[1][t][v], "frame-error", v, true)
 			return
 		}
+		txt := swimText[0][t][v]
 		good = true
 		o.add(fr[1].x0, fr[nb].x1, txt, "data", v, true)
 		switch {
@@ -177,39 +239,111 @@ func decodeSWIM(codes lineIn, colTimeS float64, cfg LineCfg) Result {
 			}
 		}
 	}
+	// Edges sliced from a digital line: each lies within a sample of its
+	// own, a gap between two falls within a hair of their samples and a low
+	// within a sample of them; those clear of 1.5 bits are told by the
+	// samples (nearBound, runBound).
+	near := S.codes == nil
+	var fi, ri []int // each fall's sample and the rise's after it (-1 none)
+	if near {
+		fi, ri = scratchSlice[int](S.sc, len(falls)), scratchSlice[int](S.sc, len(falls))
+		for k, e := range S.edges {
+			if e.dir < 0 {
+				fi = append(fi, e.i)
+				if k+1 < len(S.edges) {
+					ri = append(ri, S.edges[k+1].i)
+				} else {
+					ri = append(ri, -1)
+				}
+			}
+		}
+	}
+	gapB := nearBoundOf(T15)
+	lowB := runBound{math.MinInt, math.MaxInt} // a sample either way of gapB
+	if gapB.lo != math.MinInt {
+		lowB = runBound{gapB.lo - 1, gapB.hi + 1}
+	}
 	for k, f := range falls {
 		r := rises[k]
 		if r < 0 {
 			break
 		}
 		low := r - f
-		if colTimeS > 0 {
+		long := false // over 1.5 bits
+		if li := 0; near {
+			li = ri[k] - fi[k]
+			switch {
+			case li >= lowB.over:
+				long = true
+			case li > lowB.under:
+				long = low > T15
+			}
+		} else {
+			long = low > T15
+		}
+		// the next fall a bit on: the frame runs on
+		next := false
+		if k+1 < len(falls) {
+			if gi := 0; near {
+				gi = fi[k+1] - fi[k]
+				switch {
+				case gi <= gapB.lo:
+					next = true
+				case gi < gapB.hi:
+					next = falls[k+1]-f <= T15
+				}
+			} else {
+				next = falls[k+1]-f <= T15
+			}
+		}
+		if long {
 			// a synchronization frame: 128 SWIM clocks (64 of 8.8 MHz to
 			// 128 of 3.6 MHz); it resets the transaction
-			if us := low * colTimeS * 1e6; us >= 64/8.8 && us <= 128/3.6 && low > 1.5*T {
+			if us := low * colTimeS * 1e6; colTimeS > 0 && us >= 64/8.8 && us <= 128/3.6 {
 				frame()
 				o.add(f, r, "SYNC", "rw", 0, false)
 				state = 0
 				continue
 			}
-		}
-		if low > 1.5*T {
 			frame()
 			continue
 		}
-		end := f + T // a frame's last bit: a bit time
-		if k+1 < len(falls) && falls[k+1]-f <= 1.5*T {
+		end := 0.0 // a frame's last bit: a bit time
+		if next {
 			end = falls[k+1]
+		} else {
+			end = f + T
 		}
 		b := 1
 		if low >= end-r {
 			b = 0
 		}
-		if len(fr) > 0 && f-fr[len(fr)-1].x0 > 1.5*T {
-			frame()
+		if len(fr) > 0 {
+			// a bit more than 1.5 bits after the last: a frame of its own
+			after := false
+			if last := &fr[len(fr)-1]; near {
+				switch gi := fi[k] - last.i0; {
+				case gi >= gapB.hi:
+					after = true
+				case gi > gapB.lo:
+					after = f-last.x0 > T15
+				}
+			} else {
+				after = f-last.x0 > T15
+			}
+			if after {
+				frame()
+			}
 		}
-		fr = append(fr, sbit{b, f, end})
-		next := k+1 < len(falls) && falls[k+1]-f <= 1.5*T // the frame runs on
+		if len(fr) == cap(fr) {
+			fr = slices.Grow(fr, 1)
+		}
+		fr = fr[:len(fr)+1]
+		sb := &fr[len(fr)-1] // set field by field: no struct copied in
+		sb.v, sb.x0, sb.x1, sb.i0 = b, f, end, 0
+		if near {
+			sb.i0 = fi[k]
+		}
 		if (state != 0 || len(fr) != 6 || !next) && (len(fr) == 11 || (state == 0 && len(fr) == 6)) {
 			frame()
 		}
@@ -261,7 +395,7 @@ func decodeSDQ(codes lineIn, colTimeS float64, cfg LineCfg) Result {
 	}
 	T := 1 / (baud * colTimeS)
 	falls, rises := fallsAndRises(S)
-	o := &wireOut{n: S.n}
+	o := newWireOut(S.n, S.sc)
 	v, nb := 0, 0
 	x0, prev := 0.0, -1.0
 	bytesAfter, good := -1, false
@@ -389,7 +523,7 @@ func decodePJDL(codes lineIn, colTimeS float64, cfg LineCfg) Result {
 	}
 	data, pad := pjdlModes[mode][0], pjdlModes[mode][1]
 	dt := data / us(1) // samples
-	o := &wireOut{n: S.n}
+	o := newWireOut(S.n, S.sc)
 	good := false
 	var frame []int
 	var fx []float64
@@ -568,7 +702,7 @@ func decodeDSI(codes lineIn, colTimeS float64, cfg LineCfg) Result {
 	us := func(d float64) float64 { return d * colTimeS * 1e6 }
 	const half = 833.33
 	hx := half / us(1)
-	o := &wireOut{n: n}
+	o := newWireOut(n, nil)
 	good := false
 	for i := 0; i < len(marks); i++ {
 		if (i > 0 && us(marks[i].x0-marks[i-1].x1) < 3200) || (i == 0 && us(marks[0].x0) < 1700) {
@@ -661,7 +795,7 @@ func decodeQi(codes lineIn, colTimeS float64, cfg LineCfg) Result {
 		return Result{Proto: "qi", Error: "no sample time"}
 	}
 	bit := 500e-6 / colTimeS
-	o := &wireOut{n: S.n}
+	o := newWireOut(S.n, S.sc)
 	good := false
 	for _, burst := range bmcBits(S, bit) {
 		ones := 0

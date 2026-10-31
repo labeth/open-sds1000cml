@@ -5,6 +5,7 @@ import (
 	"math"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 // Motion signals read as protocols: a quadrature (Gray code) encoder's A and
@@ -248,6 +249,21 @@ func decodeSteps(proto string, a, b lineIn, colTimeS float64, cfg ClockedCfg, qu
 	return res
 }
 
+// pwmDutyText is a duty cycle's text, d10 in tenths of a percent: "12.5%".
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-250
+func pwmDutyText(d10 int) string {
+	return strconv.Itoa(d10/10) + "." + strconv.Itoa(d10%10) + "%"
+}
+
+// pwmDutyTexts are pwmDutyText's texts from 0 to 100 %, made once.
+var pwmDutyTexts = sync.OnceValue(func() []string {
+	t := make([]string, 1001)
+	for d := range t {
+		t[d] = pwmDutyText(d)
+	}
+	return t
+})
+
 // DecodePWM decodes a PWM line (sigrok's pwm): each period from a rising edge
 // to the next ("sof" at its start) is a unit, its duty cycle as a byte
 // (the high time over the period times 256, at most 255) and in tenths of a
@@ -274,11 +290,11 @@ func decodePWM(codes lineIn, colTimeS float64, cfg LineCfg) Result {
 	n := S.n
 	E := S.edges
 	periods := len(E)/2 + 1 // a period from each rising edge
-	spans := make([]Span, 0, 2*periods)
-	toks := make([]string, 0, periods)
-	units := make([]int, 0, periods)
-	pers := make([]float64, 0, periods)
-	narrow := math.Inf(1) // the narrowest high or low
+	o := newWireOutSized(n, S.sc, 2*periods, periods, periods)
+	pers := scratchSlice[float64](S.sc, periods)
+	iper := scratchSlice[int](S.sc, periods) // the periods in samples (nthNear)
+	narrow := math.Inf(1)                    // the narrowest high or low
+	duty := pwmDutyTexts()
 	for k := 0; k < len(E); k++ {
 		if E[k].dir < 0 || k+2 >= len(E) {
 			continue
@@ -288,17 +304,35 @@ func decodePWM(codes lineIn, colTimeS float64, cfg LineCfg) Result {
 		ratio := (f - r0) / per
 		v := min(255, int(ratio*256))
 		d10 := int(math.Floor(ratio*1000 + 0.5))
-		txt := strconv.Itoa(d10/10) + "." + strconv.Itoa(d10%10) + "%"
-		spans = append(spans, pspan(r0, r0, n, "", "sof", 0), pspan(r0, r1, n, txt, "data", v))
-		toks = append(toks, txt)
-		units = append(units, v)
+		var txt string
+		if d10 >= 0 && d10 < len(duty) {
+			txt = duty[d10]
+		} else {
+			txt = pwmDutyText(d10)
+		}
+		o.add(r0, r0, "", "sof", 0, false)
+		o.add(r0, r1, txt, "data", v, true)
 		pers = append(pers, per)
-		narrow = math.Min(narrow, math.Min(f-r0, r1-f))
+		iper = append(iper, E[k+2].i-E[k].i)
+		// a high and a low are positive lengths: math.Min is the compares
+		if h := f - r0; h < narrow {
+			narrow = h
+		}
+		if l := r1 - f; l < narrow {
+			narrow = l
+		}
 	}
-	if len(units) < 2 {
+	if len(o.units) < 2 {
 		return Result{Proto: "pwm", Error: "too few periods"}
 	}
-	T := medianOf(pers)
-	return Result{OK: true, Proto: "pwm", Spans: spans, Text: strings.Join(toks, " "), Bytes: units,
+	var T float64
+	if S.codes == nil {
+		// edges sliced from a digital line: a period lies within a hair of
+		// its samples
+		T = nthNear(pers, iper, len(pers)/2, nearBufOf(S.sc))
+	} else {
+		T = medianOf(pers)
+	}
+	return Result{OK: true, Proto: "pwm", Spans: o.spans, Text: strings.Join(o.toks, " "), Bytes: o.units,
 		Thr: S.threshold, SPB: T, Baud: int(math.Round(1 / (T * colTimeS))), Feature: narrow}
 }

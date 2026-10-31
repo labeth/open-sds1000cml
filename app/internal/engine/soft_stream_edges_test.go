@@ -2,6 +2,7 @@
 package engine
 
 import (
+	"math"
 	"math/rand"
 	"reflect"
 	"testing"
@@ -154,4 +155,24 @@ func TestSoftStreamEdgesMatchSamples(t *testing.T) {
 			t.Fatalf("LIN: %d events over edges, %d over samples", len(got), len(want))
 		}
 	})
+}
+
+// ord is the float ordinal at every step and sample: a power of two from
+// zero shifted, any other step or base computed.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func TestSoftStreamOrd(t *testing.T) {
+	rng := rand.New(rand.NewSource(9))
+	for it := 0; it < 200000; it++ {
+		s := &softStream{ordStep: math.Ldexp(1, rng.Intn(16)-3)}
+		switch rng.Intn(4) {
+		case 0:
+			s.ordStep *= 1 + rng.Float64()
+		case 1:
+			s.ordBase = float64(rng.Int63n(1 << 40))
+		}
+		i := uint64(rng.Int63()) >> uint(rng.Intn(64))
+		if got, want := s.ord(i), uint64(s.ordBase+float64(i)*s.ordStep); got != want {
+			t.Fatalf("step %v base %v sample %d: %d, want %d", s.ordStep, s.ordBase, i, got, want)
+		}
+	}
 }

@@ -30,7 +30,8 @@ type uchar struct {
 // lasts breakBits or more is a break (breakBits 0: none).
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-232
 func uartChars(S sliced, spb float64, parity string, stops int, breakBits float64) []uchar {
-	out := make([]uchar, 0, len(S.edges)/4+1) // a character takes two edges or more
+	out := scratchSlice[uchar](S.sc, len(S.edges)/4+1) // a character takes two edges or more
+	lv := levelCursor{s: &S}                           // logicAt, walking the edges forward
 	pc := 0
 	if parity != "none" {
 		pc = 1
@@ -42,12 +43,12 @@ func uartChars(S sliced, spb float64, parity string, stops int, breakBits float6
 			continue
 		}
 		x0 := e.x
-		if logicAt(&S, x0+0.5*spb) != 0 {
+		if lv.at(x0+0.5*spb) != 0 {
 			continue // a glitch, no start bit
 		}
 		val, off := 0, false
 		for c := 0; c < 8; c++ {
-			b := logicAt(&S, x0+(1.5+float64(c))*spb)
+			b := lv.at(x0 + (1.5+float64(c))*spb)
 			if b < 0 {
 				off = true
 				break
@@ -59,7 +60,7 @@ func uartChars(S sliced, spb float64, parity string, stops int, breakBits float6
 		}
 		kind := "data"
 		if pc == 1 {
-			pb := logicAt(&S, x0+9.5*spb)
+			pb := lv.at(x0 + 9.5*spb)
 			if pb < 0 {
 				break
 			}
@@ -71,7 +72,7 @@ func uartChars(S sliced, spb float64, parity string, stops int, breakBits float6
 				kind = "parity-error"
 			}
 		}
-		sb := logicAt(&S, x0+(9.5+float64(pc))*spb)
+		sb := lv.at(x0 + (9.5+float64(pc))*spb)
 		if sb < 0 {
 			break
 		}
@@ -397,12 +398,16 @@ func decodeDMX512(codes lineIn, colTimeS float64, cfg DMXCfg) Result {
 		for k+1 < len(chars) && chars[k+1].kind != "break" && chars[k+1].x0-last <= 44*spb && slot <= 512 {
 			k++
 			c := chars[k]
-			txt := FmtByte(c.val, cfg.Format)
-			if slot == 0 {
-				txt = "SC" + hex2(c.val)
-			}
-			if c.kind != "data" {
-				txt, clean = "!"+txt, false
+			var txt string
+			switch {
+			case slot == 0 && c.kind != "data":
+				txt, clean = hexBangSC[c.val&0xff], false
+			case slot == 0:
+				txt = hexSC[c.val&0xff]
+			case c.kind != "data":
+				txt, clean = "!"+FmtByte(c.val, cfg.Format), false
+			default:
+				txt = FmtByte(c.val, cfg.Format)
 			}
 			spans = append(spans, Span{ui(c.x0, n), ui(c.x1, n), txt, c.kind, c.val})
 			toks = append(toks, txt)

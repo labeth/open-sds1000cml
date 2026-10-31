@@ -2,7 +2,6 @@
 package decode
 
 import (
-	"cmp"
 	"slices"
 	"sort"
 )
@@ -55,6 +54,18 @@ type StreamDecoder struct {
 	edges  bool
 	edec   func(a, b *EdgeLine) Result
 	ea, eb EdgeLine
+	sc     scratch // the window's decodes' working arrays
+}
+
+// spansSorted reports spans in order of their starts.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func spansSorted(sp []Span) bool {
+	for k := 1; k < len(sp); k++ {
+		if sp[k].I0 < sp[k-1].I0 {
+			return false
+		}
+	}
+	return true
 }
 
 // streamGroup is a frame's spans in the sorted scratch (from, to) and its
@@ -211,6 +222,7 @@ func NewStreamDecoder(decode func(a, b []uint8) Result, closeN, maxN int) *Strea
 func NewEdgeStreamDecoder(decode func(a, b *EdgeLine) Result, closeN, maxN int) *StreamDecoder {
 	d := NewStreamDecoder(nil, closeN, maxN)
 	d.edges, d.edec = true, decode
+	d.ea.sc, d.eb.sc = &d.sc, &d.sc
 	return d
 }
 
@@ -285,6 +297,7 @@ func (d *StreamDecoder) run() []StreamFrame {
 		if d.eb.N == n {
 			bl = &d.eb
 		}
+		d.sc.reset()
 		r = d.edec(&d.ea, bl)
 	} else {
 		var bl []uint8
@@ -297,17 +310,18 @@ func (d *StreamDecoder) run() []StreamFrame {
 	// The spans of a decode that is not OK count too: a window holding only
 	// a frame that fails its check (a DHT checksum) or an NEC repeat is not
 	// OK, and those frames belong in the stream with their errors.
-	for _, s := range r.Spans {
-		if s.I1 < s.I0 {
-			s.I1 = s.I0
-		}
+	for k := range r.Spans {
+		s := &r.Spans[k]
 		if s.I0 >= 0 && s.I0 < n && d.base+uint64(s.I0) >= d.done {
-			d.spans = append(d.spans, s)
+			d.spans = append(d.spans, *s)
+			if t := &d.spans[len(d.spans)-1]; t.I1 < t.I0 {
+				t.I1 = t.I0
+			}
 		}
 	}
 	sp := d.spans
 	// Decoders report their spans in order nearly always: sort only when not.
-	if !slices.IsSortedFunc(sp, func(x, y Span) int { return cmp.Compare(x.I0, y.I0) }) {
+	if !spansSorted(sp) {
 		sort.SliceStable(sp, func(i, j int) bool { return sp[i].I0 < sp[j].I0 })
 	}
 	// Group into frames: a start of frame, or a silence longer than Close,
@@ -331,8 +345,10 @@ func (d *StreamDecoder) run() []StreamFrame {
 			all = make([]StreamSpan, 0, len(sp)-g.from)
 		}
 		at := len(all)
-		for _, s := range sp[g.from:g.to] {
-			all = append(all, StreamSpan{I0: d.base + uint64(s.I0), I1: d.base + uint64(s.I1), Text: s.Text, Kind: s.Kind, Val: s.Val})
+		all = slices.Grow(all, g.to-g.from)[:at+g.to-g.from]
+		for k := g.from; k < g.to; k++ {
+			s, t := &sp[k], &all[at+k-g.from] // set field by field: no struct copied in
+			t.I0, t.I1, t.Text, t.Kind, t.Val = d.base+uint64(s.I0), d.base+uint64(s.I1), s.Text, s.Kind, s.Val
 		}
 		out = append(out, StreamFrame{I0: d.base + uint64(g.i0), I1: d.base + uint64(g.i1), Spans: all[at:len(all):len(all)]})
 		last = g.i1
