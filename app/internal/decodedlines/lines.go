@@ -133,6 +133,18 @@ func StartNoteCode(text string) uint32 {
 	return 0
 }
 
+// StartNoteCodeBytes is StartNoteCode of a text as bytes (a web page's
+// posted frames), without making a string of it.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func StartNoteCodeBytes(text []byte) uint32 {
+	for i, s := range startNotes {
+		if i > 0 && s == string(text) {
+			return uint32(i)
+		}
+	}
+	return 0
+}
+
 // Proto is the transcript's protocol.
 // TRLC-LINKS: REQ-SDS-018
 func (t *Transcript) Proto() int { return t.proto }

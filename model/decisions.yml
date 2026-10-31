@@ -1774,24 +1774,27 @@ decisions:
     already runs (decode_*.js). A PC or phone showing the web UI has many times the device's CPU.
   decision: A page that asks for /api/stream/words.bin holds a client-decode lease (3 s past its last request).
     While it holds it, a digital stream's plan may use every period the stream image has, and the engine hands the
-    page the words instead of decoding them - copied into a 4 MiB ring with a quiet line's repeated words coded as
-    runs, each chunk with its first sample's index, a mark for words lost before it and whether the scope would have
-    pushed after it. A web worker (webdec_worker.js) runs the engine's quiet-line skipping and pushes, the stream
-    decoder over edges and the JS decoders reading the lines through their edges (webdec.js), and posts the frames
-    (/api/stream/frames.bin), which the engine queues as its own, so the transcript, LCD, web and phone views and a
+    page the words instead of decoding them - coded into a 6 MiB ring with a quiet line's repeated words as runs,
+    each chunk with its first sample's index, a mark for words lost before it and whether the scope would have
+    pushed after it - and a reply is written to the page straight from the ring, its chunks pinned meanwhile (the
+    owner drops its newest words rather than overwrite them, a quarter of the ring at most). A web worker
+    (webdec_worker.js) runs the engine's quiet-line skipping and pushes, the stream decoder over edges and the JS decoders reading the lines through their edges (webdec.js), and posts the frames
+    (/api/stream/frames.bin), which the engine reads into a queue without a pointer (a frame's times, its start's
+    code and the spans the transcript keeps) and emits as its own, so the transcript, LCD, web and phone views and a
     stop on a value work as when the scope decodes. A page that falls behind by the ring posts a loss where it
     resumes; a page that stops asking hands the decode back with a loss mark.
   consequences:
   - The page's frames are the scope's to the event (engine/soft_client_test.go, every protocol of the stream, and
     decode/webdec_jsparity_test.go, every edge protocol's frames to the span).
-  - The scope's own cost becomes coding and serving the words (about 5 ns a word on the PC for the coding, the
-    serving's copy and TCP) instead of decoding them; a quiet bus costs a few bytes a chunk.
+  - The scope's own cost becomes coding and serving the words (a few ns a word on the PC for the coding, then
+    TCP) and queueing the page's frames (no allocation) instead of decoding them; a quiet bus costs a few bytes a
+    chunk.
   - The LCD shows the page's transcript while it decodes; without a page the scope decodes as before. A stream
     whose plan only the lease allowed (past the scope's budget) ends, saying why, when its page goes away (decoded
     on the scope it would fall a ring behind again and again); started again it streams as captures.
-  - The densest buses need the page to decode a few million edges a second; the JS decoders allocate an object an
-    edge and run several times slower than the Go ones, so the densest traffic of Maple and S/PDIF is not gap-free
-    in a browser yet.
+  - The densest buses need the page to decode a few million edges a second; the page's slicing reuses its edge
+    objects from one window to the next and gives the crossings as a typed array, and the Maple, SWD and S/PDIF
+    decoders read typed columns, so a desktop browser decodes their densest traffic faster than it comes.
 - id: ADR-PANEL-SERIAL-SCAN
   title: Scan the front panel from the owned images over the factory's serial shift chain
   status: accepted

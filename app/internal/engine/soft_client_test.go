@@ -2,6 +2,7 @@
 package engine
 
 import (
+	"bytes"
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
@@ -110,38 +111,73 @@ func TestClientTapRing(t *testing.T) {
 		}
 		sent = append(sent, w)
 	}
-	cw, enc := tp.read(0, 1<<30, 0, nil)
+	// the whole ring, a reply at a time (each at most ClientReplyMax)
+	cw, release := tp.read(0, 1<<30, 0, nil)
 	if cw.Dropped == 0 || len(cw.Chunks) == 0 || cw.Chunks[0].Seq != cw.Dropped {
 		t.Fatalf("a page behind by the ring: dropped %d, first chunk %+v", cw.Dropped, cw.Chunks[0].Seq)
 	}
-	total := 0
-	for k, c := range cw.Chunks {
-		total += len(c.Enc)
-		if got, want := rleWords(t, c.Enc), sent[c.Seq]; !reflect.DeepEqual(got, want) {
-			t.Fatalf("chunk %d (seq %d) differs", k, c.Seq)
+	release()
+	total, seq, prev := 0, cw.Chunks[0].Seq, ClientChunk{}
+	for seq < tp.nextSeq {
+		cw, release = tp.read(seq, 1<<30, 0, nil)
+		size := 0
+		for k, c := range cw.Chunks {
+			size += len(c.Enc)
+			if got, want := rleWords(t, c.Enc), sent[c.Seq]; !reflect.DeepEqual(got, want) {
+				t.Fatalf("chunk %d (seq %d) differs", k, c.Seq)
+			}
+			if prev.Words > 0 && c.Index != prev.Index+uint64(16*prev.Words) {
+				t.Fatalf("chunk %d index %d", k, c.Index)
+			}
+			prev = c
 		}
-		if k > 0 && c.Index != cw.Chunks[k-1].Index+uint64(16*cw.Chunks[k-1].Words) {
-			t.Fatalf("chunk %d index %d", k, c.Index)
+		if size > ClientReplyMax && len(cw.Chunks) > 1 {
+			t.Fatalf("a reply of %d bytes", size)
 		}
+		total += size
+		seq = cw.Next
+		release()
 	}
-	if total > clientTapBytes || total < clientTapBytes/2 || len(enc) != total {
+	if total > clientTapBytes || total < clientTapBytes/2 {
 		t.Fatalf("the ring holds %d bytes", total)
 	}
-	if cw.Next != 400 {
-		t.Fatalf("next %d", cw.Next)
+	if seq != 400 {
+		t.Fatalf("next %d", seq)
 	}
+	cw, release = tp.read(0, 1<<30, 0, nil)
+	// while the read writes from the ring, the owner keeps out of its words:
+	// it drops the newest instead, and the next chunk marks them lost
+	first := append([]byte(nil), cw.Chunks[0].Enc...)
+	for k := 0; k < 200; k++ {
+		raw := make([]byte, 4*16384)
+		tp.append(raw, index, false, true)
+		index += 16 * 16384
+	}
+	if !bytes.Equal(first, cw.Chunks[0].Enc) || tp.dropped == 0 {
+		t.Fatalf("the owner wrote over a pinned read (%d dropped)", tp.dropped)
+	}
+	release()
+	if len(tp.pins) != 0 {
+		t.Fatalf("pins %v", tp.pins)
+	}
+	tp.append(make([]byte, 64), index+999, false, true)
+	if c := tp.chunks[len(tp.chunks)-1]; !c.Break {
+		t.Fatalf("the words after a gap are not marked")
+	}
+	index += 999 + 256
+	seq = tp.nextSeq
 	// a read with nothing new waits, and wakes for the next chunk
 	go func() {
 		time.Sleep(50 * time.Millisecond)
 		tp.append(make([]byte, 64), index, false, true)
 	}()
 	t0 := time.Now()
-	cw, _ = tp.read(400, 1<<20, 2*time.Second, nil)
+	cw, _ = tp.read(seq, 1<<20, 2*time.Second, nil)
 	if len(cw.Chunks) != 1 || time.Since(t0) > time.Second {
 		t.Fatalf("waited %v for %d chunks", time.Since(t0), len(cw.Chunks))
 	}
 	// frames of another session are refused
-	if err := tp.post(8, 0, nil); err == nil {
+	if err := tp.post(clientFramesBody(8, 0, nil)); err == nil {
 		t.Fatalf("frames of another session taken")
 	}
 }
@@ -297,7 +333,12 @@ func TestClientDecodeMatchesScope(t *testing.T) {
 				from = to
 				if k%7 == 6 || k == len(cuts)-1 {
 					for {
-						cw, enc := ec.ctap.read(seq, 1+rng.Intn(20000), 0, nil)
+						cw, release := ec.ctap.read(seq, 1+rng.Intn(20000), 0, nil)
+						var enc []byte
+						for _, c := range cw.Chunks {
+							enc = append(enc, c.Enc...)
+						}
+						release()
 						if cw.Dropped != 0 {
 							t.Fatalf("%s: the ring dropped %d chunks", c.name, cw.Dropped)
 						}
@@ -331,12 +372,13 @@ func TestClientDecodeMatchesScope(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			session, through, frames, err := ParseClientFrames(body)
-			if err != nil {
+			through := binary.LittleEndian.Uint64(body[8:])
+			s, ec := streams[nc.Name], engines[nc.Name]
+			// in pieces, as the page posts them, and one posted twice
+			if err := ec.PostClientFrames(body); err != nil {
 				t.Fatalf("%s: %v", nc.Name, err)
 			}
-			s, ec := streams[nc.Name], engines[nc.Name]
-			if err := ec.PostClientFrames(session, through, frames); err != nil {
+			if err := ec.PostClientFrames(body); err != nil {
 				t.Fatalf("%s: %v", nc.Name, err)
 			}
 			ec.softClientFrames(s)
@@ -394,7 +436,8 @@ func TestClientDecodeHandover(t *testing.T) {
 		}
 		at := s.dec.Next()
 		e.softIn(s, quiet)
-		cw, _ := e.ReadClientWords(0, 1<<20, 0, nil)
+		cw, release := e.ReadClientWords(0, 1<<20, 0, nil)
+		release()
 		if !cw.Info.Active || cw.Info.Proto != "lin" || len(cw.Chunks) != 1 || cw.Chunks[0].Index != at || cw.Chunks[0].Words != 4096 {
 			t.Fatalf("the page's read: %+v", cw)
 		}
@@ -407,7 +450,7 @@ func TestClientDecodeHandover(t *testing.T) {
 			{I0: at + 30, I1: at + 40, Spans: []decode.StreamSpan{{I0: at + 31, Kind: "loss"}}},
 			{I0: at + 50, I1: at + 60, Spans: []decode.StreamSpan{{I0: at + 50, Kind: "sof", Text: "BRK"}, {I0: at + 52, Kind: "data", Val: 0x55}}},
 		}
-		if err := e.PostClientFrames(s.id.Epoch, at+16*4096, f); err != nil {
+		if err := e.PostClientFrames(clientFramesBody(s.id.Epoch, at+16*4096, f)); err != nil {
 			t.Fatal(err)
 		}
 		if !e.softClientMode(s) || s.phase != softRecord {
@@ -439,7 +482,7 @@ func TestClientDecodeHandover(t *testing.T) {
 		if s2.client || len(s2.events) != 1 || s2.events[0].Kind != sramcapture.EventLoss {
 			t.Fatalf("the scope does not take the decode back: client %v, events %+v", s2.client, s2.events)
 		}
-		if err := e.PostClientFrames(s2.id.Epoch, 0, nil); err == nil {
+		if err := e.PostClientFrames(clientFramesBody(s2.id.Epoch, 0, nil)); err == nil {
 			t.Fatalf("frames taken after the page lost the decode")
 		}
 		// a plan only a page keeps up with ends when the page goes away
@@ -492,8 +535,9 @@ func BenchmarkClientTapAppend(b *testing.B) {
 	}
 }
 
-// BenchmarkClientTapRead is the cost of a page's read (the web request's
-// copy out of the ring), a megabyte a reply.
+// BenchmarkClientTapRead is the cost of a page's read: the chunks of a
+// two-megabyte reply found and pinned in the ring, and released (the reply
+// is written from the ring).
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
 func BenchmarkClientTapRead(b *testing.B) {
 	raw := clientBenchWords(false)
@@ -502,14 +546,47 @@ func BenchmarkClientTapRead(b *testing.B) {
 	for k := 0; k < 48; k++ {
 		tp.append(raw, uint64(k*len(raw)*4), false, true)
 	}
-	dst := make([]byte, 0, 2<<20)
-	b.SetBytes(1 << 20)
+	dst := make([]ClientChunk, 0, 64)
+	b.ReportAllocs()
 	for b.Loop() {
-		cw, d := tp.read(tp.chunks[0].Seq, 1<<20, 0, dst[:0])
+		cw, release := tp.read(tp.chunks[0].Seq, 2<<20, 0, dst)
 		if len(cw.Chunks) == 0 {
 			b.Fatal("no chunks")
 		}
-		dst = d
+		release()
+	}
+}
+
+// BenchmarkClientFrames is the scope's cost of a page's frames: a post of
+// 1000 Maple-like frames (a start, eight data bytes) read into the queue,
+// taken by the owner and emitted as the transcript's events; ns/op / 1000
+// is a frame's.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func BenchmarkClientFrames(b *testing.B) {
+	var frames []decode.StreamFrame
+	for i := range 1000 {
+		at := uint64(1000 * (i + 1))
+		f := decode.StreamFrame{I0: at, I1: at + 900, Spans: []decode.StreamSpan{{I0: at, Kind: "sof", Text: "SOF"}}}
+		for k := range 8 {
+			f.Spans = append(f.Spans, decode.StreamSpan{I0: at + 100*uint64(k), Kind: "data", Val: k})
+		}
+		frames = append(frames, f)
+	}
+	e := &Engine{logf: func(string, ...any) {}}
+	s := &softStream{mask: 0xff, ordStep: 1, id: sramcapture.RecordIdentity{Epoch: 5}}
+	e.ctap.begin(ClientStreamInfo{Session: 5, Active: true}, 0)
+	body := clientFramesBody(5, 1<<30, frames)
+	b.ReportAllocs()
+	for b.Loop() {
+		// a fresh page each time (posted frames are taken once)
+		e.ctap.mu.Lock()
+		e.ctap.havePosted = false
+		e.ctap.mu.Unlock()
+		if err := e.PostClientFrames(body); err != nil {
+			b.Fatal(err)
+		}
+		e.softClientFrames(s)
+		s.events, s.evHead = s.events[:0], 0
 	}
 }
 
@@ -533,4 +610,37 @@ func BenchmarkSoftFeedEdges(b *testing.B) {
 			s.events, s.evHead = s.events[:0], 0
 		}
 	})
+}
+
+// clientFramesBody is frames as a page posts them (webdec.js
+// webdecFramesBody): every span, the first one's text when it opens the
+// frame, a "loss" span as a frame's only one.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func clientFramesBody(session uint32, through uint64, frames []decode.StreamFrame) []byte {
+	b := append([]byte(nil), "SDF1"...)
+	b = binary.LittleEndian.AppendUint32(b, session)
+	b = binary.LittleEndian.AppendUint64(b, through)
+	b = binary.LittleEndian.AppendUint32(b, uint32(len(frames)))
+	kinds := map[string]byte{"data": 0, "frame-error": 1, "parity-error": 2, "gap": 3, "sof": 4, "loss": 6}
+	for _, f := range frames {
+		b = binary.LittleEndian.AppendUint64(b, f.I0)
+		b = binary.LittleEndian.AppendUint64(b, f.I1)
+		text := ""
+		if len(f.Spans) > 0 && f.Spans[0].Kind == "sof" {
+			text = f.Spans[0].Text
+		}
+		b = binary.LittleEndian.AppendUint16(b, uint16(len(f.Spans)))
+		b = append(b, byte(len(text)), 0)
+		b = append(b, text...)
+		for _, sp := range f.Spans {
+			k, ok := kinds[sp.Kind]
+			if !ok {
+				k = 5
+			}
+			b = binary.LittleEndian.AppendUint64(b, sp.I0)
+			b = binary.LittleEndian.AppendUint32(b, uint32(int32(sp.Val)))
+			b = append(b, k)
+		}
+	}
+	return b
 }

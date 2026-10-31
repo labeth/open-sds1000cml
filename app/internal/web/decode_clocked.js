@@ -75,6 +75,62 @@ function decodePS2(clk, data, colTimeS, cfg) {
   return res;
 }
 
+// clockedCols is clockedLines with the clock's edges as typed columns: X
+// their times, DIR their directions and DD the data read at each.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-236
+function clockedCols(a, b, cfg) {
+  if (!b) return { why: "needs both lines (clock and data)" };
+  const C = sliceChannel(a, clockedOpts(cfg.threshold));
+  if (!C.ok) return { why: C.reason };
+  const D = sliceChannel(b, clockedOpts(cfg.thresholdB));
+  if (!D.ok) return { why: D.reason };
+  const CE = C.edges, dc = D.codes, dthr = D.threshold, dn = D.n;
+  const m = CE.length;
+  const X = new Float64Array(m);
+  const DIR = new Int8Array(m);
+  const DD = new Int8Array(m);
+  const fall = new Float64Array(m);
+  let nf = 0;
+  let lastFall = -1;
+  for (let k = 0; k < m; k++) {
+    const e = CE[k];
+    const i = Math.round(e.x);
+    X[k] = e.x;
+    DIR[k] = e.dir;
+    DD[k] = i < 0 || i >= dn || dc[i] < 0 ? -1 : dc[i] >= dthr ? 1 : 0;
+    if (e.dir < 0) {
+      if (lastFall >= 0) fall[nf++] = e.x - lastFall;
+      lastFall = e.x;
+    }
+  }
+  if (nf < 4) return { why: "too few clock edges" };
+  const gaps = fall.subarray(0, nf).sort();
+  return { X, DIR, DD, per: gaps[gaps.length >> 1], C, D, why: "" };
+}
+
+// swdCycles are the clock's cycles (a fall, then the rise after it): their
+// times xf, xr and the data read at each, df, dr; n of them.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-236
+function swdCycles(L) {
+  const { X, DIR, DD } = L;
+  const m = X.length;
+  const xf = new Float64Array(m);
+  const xr = new Float64Array(m);
+  const df = new Int8Array(m);
+  const dr = new Int8Array(m);
+  let n = 0;
+  for (let k = 0; k + 1 < m; k++) {
+    if (DIR[k] < 0 && DIR[k + 1] > 0) {
+      xf[n] = X[k];
+      xr[n] = X[k + 1];
+      df[n] = DD[k];
+      dr[n] = DD[k + 1];
+      n++;
+    }
+  }
+  return { n, xf, xr, df, dr };
+}
+
 // swdTargetAtRise: whether more requests on the clock (start 1, stop 0,
 // park 1, parity checking) read an OK acknowledge at the rises than at the
 // falls; where as many do, whether more reads' data words check their
@@ -85,24 +141,24 @@ function swdTargetAtRise(cy) {
   let rise = 0;
   let pf = 0;
   let pr = 0;
-  for (let c = 0; c + 12 <= cy.length; c++) {
-    const r0 = cy[c].dr;
-    const r1 = cy[c + 1].dr;
-    const r2 = cy[c + 2].dr;
-    const r3 = cy[c + 3].dr;
-    const r4 = cy[c + 4].dr;
-    const r5 = cy[c + 5].dr;
-    if (r0 !== 1 || cy[c + 6].dr !== 0 || cy[c + 7].dr !== 1 || (r1 + r2 + r3 + r4) % 2 !== r5) continue;
-    const okF = cy[c + 9].df === 1 && cy[c + 10].df === 0 && cy[c + 11].df === 0;
-    const okR = cy[c + 9].dr === 1 && cy[c + 10].dr === 0 && cy[c + 11].dr === 0;
+  for (let c = 0; c + 12 <= cy.n; c++) {
+    const r0 = cy.dr[c];
+    const r1 = cy.dr[c + 1];
+    const r2 = cy.dr[c + 2];
+    const r3 = cy.dr[c + 3];
+    const r4 = cy.dr[c + 4];
+    const r5 = cy.dr[c + 5];
+    if (r0 !== 1 || cy.dr[c + 6] !== 0 || cy.dr[c + 7] !== 1 || (r1 + r2 + r3 + r4) % 2 !== r5) continue;
+    const okF = cy.df[c + 9] === 1 && cy.df[c + 10] === 0 && cy.df[c + 11] === 0;
+    const okR = cy.dr[c + 9] === 1 && cy.dr[c + 10] === 0 && cy.dr[c + 11] === 0;
     if (okF) fall++;
     if (okR) rise++;
-    if (r2 === 1 && c + 45 <= cy.length) {
+    if (r2 === 1 && c + 45 <= cy.n) {
       let nf = 0;
       let nr = 0;
       for (let k = c + 12; k < c + 45; k++) {
-        nf += cy[k].df;
-        nr += cy[k].dr;
+        nf += cy.df[k];
+        nr += cy.dr[k];
       }
       if (okF && nf % 2 === 0) pf++;
       if (okR && nr % 2 === 0) pr++;
@@ -117,8 +173,8 @@ function swdTargetAtRise(cy) {
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-236
 function swdRequestRaces(D, cy, c, per) {
   if (!D || !D.ok || !(per > 0)) return false;
-  const lo = cy[c].xf;
-  const hi = cy[c + 7].xr + per / 8;
+  const lo = cy.xf[c];
+  const hi = cy.xr[c + 7] + per / 8;
   const ed = D.edges;
   let a = 0;
   let b = ed.length;
@@ -127,7 +183,7 @@ function swdRequestRaces(D, cy, c, per) {
     if (ed[m].x >= lo) b = m; else a = m + 1;
   }
   for (let j = a; j < ed.length && ed[j].x <= hi; j++) {
-    for (let k = c; k < c + 8; k++) if (Math.abs(ed[j].x - cy[k].xr) < per / 8) return true;
+    for (let k = c; k < c + 8; k++) if (Math.abs(ed[j].x - cy.xr[k]) < per / 8) return true;
   }
   return false;
 }
@@ -136,89 +192,89 @@ function swdRequestRaces(D, cy, c, per) {
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-236
 function decodeSWD(clk, dio, colTimeS, cfg) {
   cfg = cfg || {};
-  const L = clockedLines(clk, dio, cfg);
+  const L = clockedCols(clk, dio, cfg);
   if (L.why) return fail("swd", L.why);
-  const { E, per, C, D } = L;
-  const cy = [];
-  for (let k = 0; k + 1 < E.length; k++)
-    if (E[k].dir < 0 && E[k + 1].dir > 0) cy.push({ xf: E[k].x, xr: E[k + 1].x, df: E[k].d, dr: E[k + 1].d });
+  const { per, C, D } = L;
+  // the clock's cycles (a fall, then a rise) as typed columns: their times
+  // and the data read at each (an object a cycle was most of a decode)
+  const cy = swdCycles(L);
   // the target's bits at the falls, or at the rises when that reads more OK
   // acknowledges (decode.go swdTargetAtRise)
   const atRise = swdTargetAtRise(cy);
   // TRLC-LINKS: REQ-SDS-018, REQ-SDS-236
-  const tb = (k) => (atRise ? cy[k].dr : cy[k].df);
+  const tb = (k) => (atRise ? cy.dr[k] : cy.df[k]);
   const n = C.n, spans = [], toks = [], units = [];
   let good = false;
   const resets = [];
   let ones = 0;
-  for (let c = 0; c < cy.length; c++) {
-    if (cy[c].dr === 1) { ones++; continue; }
+  for (let c = 0; c < cy.n; c++) {
+    if (cy.dr[c] === 1) { ones++; continue; }
     if (ones >= 50) resets.push([c - ones, c]);
     ones = 0;
   }
   let explained = 0;
   for (const rs of resets) explained += rs[1] - rs[0];
-  for (const y of cy) if (y.dr === 0 && y.df === 0) explained++;
+  for (let k = 0; k < cy.n; k++) if (cy.dr[k] === 0 && cy.df[k] === 0) explained++;
   // TRLC-LINKS: REQ-SDS-018, REQ-SDS-236
-  const unexplained = (from, to) => { let n2 = 0; for (let k = from; k < to; k++) if (cy[k].dr !== 0 || cy[k].df !== 0) n2++; return n2; };
+  const unexplained = (from, to) => { let n2 = 0; for (let k = from; k < to; k++) if (cy.dr[k] !== 0 || cy.df[k] !== 0) n2++; return n2; };
   let ri = 0;
   // TRLC-LINKS: REQ-SDS-018, REQ-SDS-236
   const flushResets = (upTo) => {
     for (; ri < resets.length && resets[ri][1] <= upTo; ri++) {
-      spans.push(pspan(cy[resets[ri][0]].xr, cy[resets[ri][1]].xr, n, "LINERESET", "rw", 0));
+      spans.push(pspan(cy.xr[resets[ri][0]], cy.xr[resets[ri][1]], n, "LINERESET", "rw", 0));
       toks.push("LINERESET");
     }
   };
   let next = -1;
-  let firstC = cy.length;
+  let firstC = cy.n;
   let lastC = 0;
   for (const rs of resets) { firstC = Math.min(firstC, rs[0]); lastC = Math.max(lastC, rs[1]); }
-  for (let c = 0; c + 12 <= cy.length; c++) {
+  for (let c = 0; c + 12 <= cy.n; c++) {
     flushResets(c);
     // TRLC-LINKS: REQ-SDS-018, REQ-SDS-236
-    const r = (k) => cy[c + k].dr;
-    if (r(0) !== 1 || r(6) !== 0 || r(7) !== 1 || (c > 0 && cy[c - 1].dr !== 0 && c !== next)) continue;
+    const r = (k) => cy.dr[c + k];
+    if (r(0) !== 1 || r(6) !== 0 || r(7) !== 1 || (c > 0 && cy.dr[c - 1] !== 0 && c !== next)) continue;
     const apdp = r(1), rnw = r(2), a2 = r(3), a3 = r(4), par = r(5);
     const req = 1 | (apdp << 1) | (rnw << 2) | (a2 << 3) | (a3 << 4) | (par << 5) | (1 << 7);
     const parOK = (apdp + rnw + a2 + a3) % 2 === par;
     const ack = tb(c + 9) | (tb(c + 10) << 1) | (tb(c + 11) << 2);
     if (!parOK || (ack !== 1 && ack !== 2 && ack !== 4)) continue;
     if (swdRequestRaces(D, cy, c, per)) continue; // its bits read where they change: no host's
-    spans.push(pspan(cy[c].xr, cy[c].xr, n, "", "sof", 0));
+    spans.push(pspan(cy.xr[c], cy.xr[c], n, "", "sof", 0));
     const txt = (rnw ? "R" : "W") + (apdp ? "AP" : "DP") + ((a2 | (a3 << 1)) << 2).toString(16).toUpperCase();
-    spans.push(pspan(cy[c].xf, cy[c + 7].xr + per / 2, n, txt, "data", req));
+    spans.push(pspan(cy.xf[c], cy.xr[c + 7] + per / 2, n, txt, "data", req));
     toks.push(txt); units.push(req);
     const ackTxt = { 1: "OK", 2: "WAIT", 4: "FAULT" }[ack];
-    spans.push(pspan(cy[c + 9].xf, cy[c + 11].xr + per / 2, n, ackTxt, "data", ack));
+    spans.push(pspan(cy.xf[c + 9], cy.xr[c + 11] + per / 2, n, ackTxt, "data", ack));
     toks.push(ackTxt); units.push(ack);
     firstC = Math.min(firstC, c);
     if (ack !== 1) { explained += unexplained(c, c + 12); c += 11; next = c + 1; lastC = Math.max(lastC, next); continue; }
     const first = rnw === 0 ? c + 13 : c + 12;
-    if (first + 33 > cy.length) break;
+    if (first + 33 > cy.n) break;
     let v = 0, cnt = 0;
     for (let k = 0; k < 32; k++) {
-      const b = rnw === 0 ? cy[first + k].dr : tb(first + k);
+      const b = rnw === 0 ? cy.dr[first + k] : tb(first + k);
       v = (v | (b << k)) >>> 0;
       cnt += b;
     }
-    const p = rnw === 0 ? cy[first + 32].dr : tb(first + 32);
+    const p = rnw === 0 ? cy.dr[first + 32] : tb(first + 32);
     let dtxt = v.toString(16).toUpperCase().padStart(8, "0"), kind = "data";
     if (cnt % 2 !== p) { dtxt = "!" + dtxt; kind = "parity-error"; } else good = true;
-    spans.push(pspan(cy[first].xf, cy[first + 31].xr + per / 2, n, dtxt, kind, v));
+    spans.push(pspan(cy.xf[first], cy.xr[first + 31] + per / 2, n, dtxt, kind, v));
     toks.push(dtxt); units.push(v);
     explained += unexplained(c, first + 33);
     c = first + 32;
     next = c + 1;
     lastC = Math.max(lastC, next);
   }
-  flushResets(cy.length);
+  flushResets(cy.n);
   // the record's ends cut a transfer: the busy cycles before the first and
   // after the last, up to a transfer's 46 each, are its rest (decode_clocked.go)
-  const edges = firstC < cy.length ? Math.min(unexplained(0, firstC), 46) + Math.min(unexplained(Math.min(lastC, cy.length), cy.length), 46) : 0;
-  const cover = Math.min(1, explained / Math.max(1, cy.length - edges));
+  const edges = firstC < cy.n ? Math.min(unexplained(0, firstC), 46) + Math.min(unexplained(Math.min(lastC, cy.n), cy.n), 46) : 0;
+  const cover = Math.min(1, explained / Math.max(1, cy.n - edges));
   let run = 0, even = 0;
-  for (let k = 1; k < cy.length; k++) {
-    const g = cy[k].xf - cy[k - 1].xf;
+  for (let k = 1; k < cy.n; k++) {
+    const g = cy.xf[k] - cy.xf[k - 1];
     if (g > 4 * per) continue;
     run++;
     if (g >= 0.75 * per && g <= 1.25 * per) even++;

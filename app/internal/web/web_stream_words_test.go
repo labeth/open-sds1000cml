@@ -16,7 +16,6 @@ import (
 	"testing"
 	"time"
 
-	"open-sds/app/internal/decode"
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/testenv"
 )
@@ -26,16 +25,17 @@ import (
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
 type wordsScope struct {
 	*fakeScope
-	mu      sync.Mutex
-	asked   []uint64
-	waits   []time.Duration
-	posted  []decode.StreamFrame
-	session uint32
-	through uint64
+	mu       sync.Mutex
+	asked    []uint64
+	waits    []time.Duration
+	posted   []byte
+	session  uint32
+	through  uint64
+	released int
 }
 
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
-func (s *wordsScope) ReadClientWords(seq uint64, max int, wait time.Duration, dst []byte) (engine.ClientWords, []byte) {
+func (s *wordsScope) ReadClientWords(seq uint64, max int, wait time.Duration, dst []engine.ClientChunk) (engine.ClientWords, func()) {
 	s.mu.Lock()
 	s.asked = append(s.asked, seq)
 	s.waits = append(s.waits, wait)
@@ -45,21 +45,36 @@ func (s *wordsScope) ReadClientWords(seq uint64, max int, wait time.Duration, ds
 		Params: engine.SerialParams{Proto: 11, Baud: 19200, Threshold: 90, HaveThr: true}}
 	quiet := []byte{3, 0, 0, 0x80, 0xFF, 0xFF, 0, 0} // a run of three quiet words
 	busy := []byte{2, 0, 0, 0, 0x0F, 0xF0, 0, 0, 0xFF, 0x00, 0, 0}
-	at := len(dst)
-	dst = append(dst, quiet...)
-	dst = append(dst, busy...)
-	return engine.ClientWords{Info: info, Next: seq + 2, Dropped: 1, Lag: 4096, Chunks: []engine.ClientChunk{
-		{Seq: seq, Index: 160, Words: 3, Check: true, Enc: dst[at : at+len(quiet)]},
-		{Seq: seq + 1, Index: 1600, Words: 2, Break: true, Check: true, Enc: dst[at+len(quiet):]},
-	}}, dst
+	dst = append(dst[:0], engine.ClientChunk{Seq: seq, Index: 160, Words: 3, Check: true, Enc: quiet},
+		engine.ClientChunk{Seq: seq + 1, Index: 1600, Words: 2, Break: true, Check: true, Enc: busy})
+	return engine.ClientWords{Info: info, Next: seq + 2, Dropped: 1, Lag: 4096, Chunks: dst}, func() {
+		s.mu.Lock()
+		s.released++
+		s.mu.Unlock()
+	}
 }
 
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
-func (s *wordsScope) PostClientFrames(session uint32, through uint64, frames []decode.StreamFrame) error {
+func (s *wordsScope) PostClientFrames(b []byte) error {
+	// the frames' layout walked as the engine reads them (engine's tests
+	// hold what it makes of them)
+	if len(b) < 20 || string(b[:4]) != "SDF1" {
+		return engine.ErrClientFramesBody
+	}
+	at := 20
+	for range binary.LittleEndian.Uint32(b[16:]) {
+		if at+20 > len(b) {
+			return engine.ErrClientFramesBody
+		}
+		at += 20 + int(b[at+18]) + 13*int(binary.LittleEndian.Uint16(b[at+16:]))
+	}
+	if at != len(b) {
+		return engine.ErrClientFramesBody
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.session, s.through = session, through
-	s.posted = append(s.posted, frames...)
+	s.session, s.through = binary.LittleEndian.Uint32(b[4:]), binary.LittleEndian.Uint64(b[8:])
+	s.posted = append(s.posted[:0], b...)
 	return nil
 }
 
@@ -151,15 +166,15 @@ func TestStreamWordsEndpoints(t *testing.T) {
 	fb = append(fb, 1, 0, 0, 0)
 	put(200, 0, 0)
 	fb = append(fb, 6)
-	sc.posted = nil
 	pr, err := http.Post(srv.URL+"/api/stream/frames.bin", "application/octet-stream", bytes.NewReader(fb))
 	if err != nil || pr.StatusCode != http.StatusNoContent {
 		t.Fatalf("frames post: %v %v", err, pr.Status)
 	}
-	f := sc.posted
-	if sc.session != 5 || sc.through != 900 || len(f) != 2 || f[0].Spans[0].Text != "BRK" || f[0].Spans[1].Val != 0x55 || f[0].Spans[1].Kind != "data" ||
-		f[1].Spans[0].Kind != "loss" || f[1].I0 != 200 {
-		t.Fatalf("frames %+v", f)
+	if sc.session != 5 || sc.through != 900 || !bytes.Equal(sc.posted, fb) {
+		t.Fatalf("posted %d %d %x", sc.session, sc.through, sc.posted)
+	}
+	if sc.released != len(sc.asked) {
+		t.Fatalf("%d reads, %d released", len(sc.asked), sc.released)
 	}
 	for _, bad := range [][]byte{nil, []byte("SDF1"), fb[:len(fb)-3], append([]byte("XXXX"), fb[4:]...)} {
 		pr, err := http.Post(srv.URL+"/api/stream/frames.bin", "application/octet-stream", bytes.NewReader(bad))
@@ -183,18 +198,18 @@ type benchWords struct {
 }
 
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
-func (s *benchWords) ReadClientWords(seq uint64, max int, wait time.Duration, dst []byte) (engine.ClientWords, []byte) {
+func (s *benchWords) ReadClientWords(seq uint64, max int, wait time.Duration, dst []engine.ClientChunk) (engine.ClientWords, func()) {
 	cw := engine.ClientWords{Info: engine.ClientStreamInfo{Session: 1, Proto: "swd", Lines: 2, Mask: 0xFFFFFFFF, Active: true}, Next: seq + 16}
-	for k := 0; k < 16; k++ {
-		at := len(dst)
-		dst = append(dst, s.enc[k<<16:(k+1)<<16]...)
-		cw.Chunks = append(cw.Chunks, engine.ClientChunk{Seq: seq + uint64(k), Index: uint64(k) << 18, Words: 16383, Enc: dst[at:]})
+	n := min(max>>16, len(s.enc)>>16)
+	for k := 0; k < n; k++ {
+		dst = append(dst, engine.ClientChunk{Seq: seq + uint64(k), Index: uint64(k) << 18, Words: 16383, Enc: s.enc[k<<16 : (k+1)<<16]})
 	}
-	return cw, dst
+	cw.Chunks = dst
+	return cw, func() {}
 }
 
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
-func (s *benchWords) PostClientFrames(uint32, uint64, []decode.StreamFrame) error { return nil }
+func (s *benchWords) PostClientFrames([]byte) error { return nil }
 
 // BenchmarkStreamWordsHTTP is the scope's cost of serving a page the
 // densest digital stream: a megabyte reply (a quarter second at 2^9, two
@@ -214,5 +229,33 @@ func BenchmarkStreamWordsHTTP(b *testing.B) {
 		}
 		io.Copy(io.Discard, r.Body)
 		r.Body.Close()
+	}
+}
+
+// discardRW is a response writer that drops the body: the handler's own cost.
+type discardRW struct{ h http.Header }
+
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func (d *discardRW) Header() http.Header { return d.h }
+
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func (d *discardRW) Write(b []byte) (int, error) { return len(b), nil }
+
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func (d *discardRW) WriteHeader(int) {}
+
+// BenchmarkStreamWordsHandler is the handler's own cost of a megabyte reply,
+// the socket's left out: the scope's per-request overhead (the header, the
+// chunk heads, the routing).
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func BenchmarkStreamWordsHandler(b *testing.B) {
+	sc := &benchWords{fakeScope: &fakeScope{}, enc: make([]byte, 1<<20)}
+	h := New(sc, nil, nil, nil).Handler()
+	req := httptest.NewRequest("GET", "/api/stream/words.bin?from=0&max=1048576", nil)
+	w := &discardRW{h: http.Header{}}
+	b.ReportAllocs()
+	for b.Loop() {
+		clear(w.h)
+		h.ServeHTTP(w, req)
 	}
 }

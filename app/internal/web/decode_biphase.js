@@ -194,17 +194,69 @@ function decodeUSBPD(codes, colTimeS, cfg) {
 // spdifHalf mirrors decode_biphase.go spdifHalf.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-235
 function spdifHalf(S) {
-  const E = S.edges;
-  if (E.length - 1 < 64) return 0;
-  // typed and sorted numerically, no comparator call: a stream's window holds
-  // hundreds of thousands of cells
-  const gaps = new Float64Array(E.length - 1);
-  for (let k = 1; k < E.length; k++) gaps[k - 1] = E[k].x - E[k - 1].x;
-  gaps.sort();
-  const g0 = gaps[Math.floor(gaps.length / 20)];
-  let sum = 0, cnt = 0;
-  for (const g of gaps) if (g >= 0.7 * g0 && g <= 1.35 * g0) { sum += g; cnt++; }
-  return cnt ? sum / cnt : 0;
+  const X = spdifCrossings(S);
+  const n = X.length - 1;
+  if (n < 64) return 0;
+  // The gaps sorted, counted by value: a window holds hundreds of thousands
+  // of cells but few distinct gaps (a cell's half, whole or one and a half,
+  // a rounding apart), so the values are sorted, not the gaps; g0 and the sum
+  // come out of the counts in the sorted order, add for add. The values are
+  // counted in a hash table on their bits; past its size (no S/PDIF) the
+  // gaps are sorted as they are.
+  const SIZE = 1024;
+  const vals = new Float64Array(SIZE);
+  const cnts = new Int32Array(SIZE);
+  const one = new Float64Array(1);
+  const oneBits = new Uint32Array(one.buffer);
+  let nv = 0, many = false;
+  for (let k = 1; k <= n; k++) {
+    const g = X[k] - X[k - 1];
+    one[0] = g;
+    let h = (Math.imul(oneBits[0] ^ oneBits[1], 0x9E3779B1) >>> 22) & (SIZE - 1);
+    while (cnts[h] !== 0 && vals[h] !== g) h = (h + 1) & (SIZE - 1);
+    if (cnts[h] === 0) {
+      if (++nv > SIZE / 2) { many = true; break; }
+      vals[h] = g;
+    }
+    cnts[h]++;
+  }
+  let gs, cs;
+  if (many) {
+    gs = new Float64Array(n);
+    for (let k = 1; k <= n; k++) gs[k - 1] = X[k] - X[k - 1];
+    gs.sort();
+    cs = null;
+  } else {
+    const ord = [];
+    for (let i = 0; i < SIZE; i++) if (cnts[i] !== 0) ord.push(i);
+    ord.sort((a, b) => vals[a] - vals[b]);
+    gs = Float64Array.from(ord, (i) => vals[i]);
+    cs = Int32Array.from(ord, (i) => cnts[i]);
+  }
+  const at = Math.floor(n / 20);
+  let g0 = 0;
+  for (let i = 0, seen = 0; i < gs.length; i++) {
+    seen += cs ? cs[i] : 1;
+    if (seen > at) { g0 = gs[i]; break; }
+  }
+  let sum = 0, c = 0;
+  for (let i = 0; i < gs.length; i++) {
+    const g = gs[i];
+    if (!(g >= 0.7 * g0 && g <= 1.35 * g0)) continue;
+    for (let m = cs ? cs[i] : 1; m > 0; m--) { sum += g; c++; }
+  }
+  return c ? sum / c : 0;
+}
+
+// spdifCrossings is a sliced line's crossings as one typed array: the
+// digital stream's slicing gives them (webdec.js S.ex), else they are read
+// off its edges.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-235
+function spdifCrossings(S) {
+  if (S.ex) return S.ex;
+  const X = new Float64Array(S.edges.length);
+  for (let k = 0; k < X.length; k++) X[k] = S.edges[k].x;
+  return S.ex = X;
 }
 
 // decodeSPDIF mirrors decode_biphase.go DecodeSPDIF.
@@ -215,10 +267,10 @@ function decodeSPDIF(codes, colTimeS, cfg) {
   if (!S.ok) return fail("spdif", S.reason);
   const h = spdifHalf(S);
   if (!(h >= 2)) return fail("spdif", "no biphase-mark cells (half cell under 2 samples)");
-  const E = S.edges, n = S.n;
-  const k = new Array(E.length).fill(0);
+  const E = S.edges, n = S.n, X = spdifCrossings(S);
+  const k = new Int8Array(E.length);
   for (let i = 1; i < E.length; i++) {
-    const q = Math.round((E[i].x - E[i - 1].x) / h);
+    const q = Math.round((X[i] - X[i - 1]) / h);
     if (q >= 1 && q <= 3) k[i] = q;
   }
   const spans = [], toks = [], units = [];
@@ -231,22 +283,21 @@ function decodeSPDIF(codes, colTimeS, cfg) {
     else if (k[i + 1] === 2 && k[i + 2] === 1 && k[i + 3] === 2) name = "W";
     else continue;
     let j = i + 4;
-    const bits = [];
-    while (bits.length < 28 && j < E.length) {
-      if (k[j] === 2) { bits.push(0); j++; }
-      else if (k[j] === 1 && j + 1 < E.length && k[j + 1] === 1) { bits.push(1); j += 2; }
+    // the subframe's bits as they come: the value's 24 and the ones of all 28
+    let nb = 0, v = 0, ones = 0;
+    while (nb < 28 && j < E.length) {
+      if (k[j] === 2) { nb++; j++; }
+      else if (k[j] === 1 && j + 1 < E.length && k[j + 1] === 1) { if (nb < 24) v |= 1 << nb; ones++; nb++; j += 2; }
       else break;
     }
     const x0 = E[i - 1].x;
     spans.push(pspan(x0, E[i + 3].x, n, name, name === "B" ? "sof" : "rw", 0));
     toks.push(name);
-    if (bits.length < 28) {
+    if (nb < 28) {
       if (j < E.length) { spans.push(pspan(E[i + 3].x, E[i + 3].x, n, "!", "frame-error", 0)); toks.push("!"); }
       i = j - 1;
       continue;
     }
-    let v = 0, ones = 0;
-    for (let b = 0; b < 28; b++) { if (b < 24) v |= bits[b] << b; ones += bits[b]; }
     let txt = v.toString(16).toUpperCase().padStart(6, "0"), kd = "data";
     if (ones % 2 !== 0) { txt = "!" + txt; kd = "parity-error"; } else goodN++;
     spans.push(pspan(E[i + 3].x, E[j - 1].x + 2 * h, n, txt, kd, v));

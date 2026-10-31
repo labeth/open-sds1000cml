@@ -10,7 +10,7 @@ import (
 	"time"
 	"unsafe"
 
-	"open-sds/app/internal/decode"
+	"open-sds/app/internal/decodedlines"
 	"open-sds/app/internal/sramcapture"
 )
 
@@ -31,9 +31,15 @@ import (
 // decode back to the scope after it.
 const clientLease = 3 * time.Second
 
-// clientTapBytes is the ring of coded words the page reads: a second of the
-// densest digital stream (2^9, two busy lines), minutes of a quiet one.
-const clientTapBytes = 4 << 20
+// clientTapBytes is the ring of coded words the page reads: a second and a
+// half of the densest digital stream (2^9, two busy lines), minutes of a
+// quiet one.
+const clientTapBytes = 6 << 20
+
+// ClientReplyMax bounds a page's read: a read is written to the page
+// straight from the ring and the owner keeps out of it meanwhile, so a read
+// holds at most a quarter of the ring.
+const ClientReplyMax = clientTapBytes / 4
 
 // clientTapChunks bounds the chunks the ring holds (a quiet line's chunk
 // is a few bytes).
@@ -96,6 +102,25 @@ type ClientWords struct {
 	Lag     uint64 // stream samples the scope holds that the page has not posted frames for
 }
 
+// clientFrame is a page's frame as the scope queues it, without a pointer
+// (thousands a second, and a pointer each would be the garbage collector's
+// work on the device): its spans spans[from:to] (data and errors only, the
+// ones the transcript keeps), its start of frame's StartNoteCode, or a loss.
+type clientFrame struct {
+	I0, I1   uint64
+	from, to int32
+	start    uint32
+	loss     bool
+}
+
+// clientSpan is a frame's span the transcript keeps: its first sample, value
+// and kind (0 data, 1 frame error, 2 parity error, 3 gap).
+type clientSpan struct {
+	I0   uint64
+	Val  int32
+	Kind uint8
+}
+
 // clientTap is the ring and the page's frames, shared by the acquisition
 // owner (who writes the words and takes the frames) and the web's requests.
 type clientTap struct {
@@ -106,8 +131,14 @@ type clientTap struct {
 	chunks  []ClientChunk // oldest first; Enc slices buf
 	nextSeq uint64
 	notify  chan struct{}
+	// pins are the chunk ranges being written to a page straight from buf:
+	// the owner does not overwrite them (it drops its newest words instead,
+	// which the page then reads as lost).
+	pins    [][2]uint64
+	dropped int // chunks the owner dropped for a pin
 	// The page's frames, in the scope's decoder index, for the owner.
-	inbox      []decode.StreamFrame
+	frames     []clientFrame
+	spans      []clientSpan
 	inboxSess  uint32
 	decoded    uint64 // the stream index the page decoded through
 	lastI0     uint64 // the start of the last frame posted
@@ -160,7 +191,7 @@ func (t *clientTap) begin(info ClientStreamInfo, index uint64) {
 	}
 	t.info = info
 	t.chunks = t.chunks[:0]
-	t.inbox, t.inboxSess = t.inbox[:0], info.Session
+	t.frames, t.spans, t.inboxSess = t.frames[:0], t.spans[:0], info.Session
 	t.decoded, t.written = index, index
 	t.havePosted = false
 	t.wake()
@@ -173,7 +204,7 @@ func (t *clientTap) end(why string) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	t.info.Active, t.info.Why = false, why
-	t.inbox, t.inboxSess = t.inbox[:0], 0
+	t.frames, t.spans, t.inboxSess = t.frames[:0], t.spans[:0], 0
 	t.wake()
 }
 
@@ -210,12 +241,22 @@ func (t *clientTap) append(raw []byte, index uint64, brk, check bool) {
 		if at+need > len(t.buf) {
 			// the tail is given up: the chunks there are the oldest
 			for len(t.chunks) > 0 && t.chunks[0].off >= at {
+				if t.pinned(t.chunks[0].Seq) {
+					t.dropped++
+					return
+				}
 				t.chunks = t.chunks[1:]
 			}
 			at = 0
 		}
 	}
 	for len(t.chunks) > 0 && (len(t.chunks) >= clientTapChunks || t.overlaps(at, need)) {
+		if t.pinned(t.chunks[0].Seq) {
+			// A page's read of the oldest words is under way: these words
+			// go instead (the next chunk marks the loss).
+			t.dropped++
+			return
+		}
 		t.chunks = t.chunks[1:]
 	}
 	enc := appendWordsRLE(t.buf[at:at:at+need], raw, t.info.Mask)
@@ -235,11 +276,11 @@ func (t *clientTap) overlaps(at, n int) bool {
 	return c.off < at+n && at < c.off+len(c.Enc)
 }
 
-// read copies the chunks from seq on, up to about max bytes, into dst's
-// chunks (their Enc appended to one buffer); it waits up to wait for one
-// when none is there.
+// read hands out the chunks from seq on, up to about max bytes, their Enc
+// in place in the ring and pinned there until release is called; it waits
+// up to wait for one when none is there.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
-func (t *clientTap) read(seq uint64, max int, wait time.Duration, dst []byte) (ClientWords, []byte) {
+func (t *clientTap) read(seq uint64, max int, wait time.Duration, dst []ClientChunk) (out ClientWords, release func()) {
 	deadline := time.Now().Add(wait)
 	t.mu.Lock()
 	for !t.ready(seq) {
@@ -256,12 +297,13 @@ func (t *clientTap) read(seq uint64, max int, wait time.Duration, dst []byte) (C
 		t.mu.Lock()
 	}
 	defer t.mu.Unlock()
-	out := ClientWords{Info: t.info, Next: seq}
+	out = ClientWords{Info: t.info, Next: seq, Chunks: dst[:0]}
 	if t.written > t.decoded {
 		out.Lag = t.written - t.decoded
 	}
+	release = func() {}
 	if !t.info.Active {
-		return out, dst
+		return out, release
 	}
 	k := 0
 	if len(t.chunks) > 0 {
@@ -274,16 +316,45 @@ func (t *clientTap) read(seq uint64, max int, wait time.Duration, dst []byte) (C
 		}
 		k = int(seq - oldest)
 	}
-	for ; k < len(t.chunks) && (len(out.Chunks) == 0 || len(dst)+len(t.chunks[k].Enc) <= max); k++ {
+	size := 0
+	max = min(max, ClientReplyMax)
+	for ; k < len(t.chunks) && (len(out.Chunks) == 0 || size+len(t.chunks[k].Enc) <= max); k++ {
 		c := t.chunks[k]
-		at := len(dst)
-		dst = append(dst, c.Enc...)
-		c.Enc = dst[at:len(dst):len(dst)]
+		size += len(c.Enc)
 		out.Chunks = append(out.Chunks, c)
 		seq = c.Seq + 1
 	}
 	out.Next = seq
-	return out, dst
+	if len(out.Chunks) > 0 {
+		pin := [2]uint64{out.Chunks[0].Seq, seq - 1}
+		t.pins = append(t.pins, pin)
+		release = func() { t.unpin(pin) }
+	}
+	return out, release
+}
+
+// pinned reports a chunk a page's read is writing from the ring.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func (t *clientTap) pinned(seq uint64) bool {
+	for _, p := range t.pins {
+		if seq >= p[0] && seq <= p[1] {
+			return true
+		}
+	}
+	return false
+}
+
+// unpin ends a read's pin.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func (t *clientTap) unpin(pin [2]uint64) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	for i, p := range t.pins {
+		if p == pin {
+			t.pins = append(t.pins[:i], t.pins[i+1:]...)
+			return
+		}
+	}
 }
 
 // ready reports chunks for a read from seq: the ring holds seq or later,
@@ -296,53 +367,110 @@ func (t *clientTap) ready(seq uint64) bool {
 	return t.chunks[len(t.chunks)-1].Seq >= seq || seq < t.chunks[0].Seq || seq > t.nextSeq
 }
 
-// post queues a page's frames for the owner, refused for another session.
+// post queues a page's frames (a /api/stream/frames.bin body,
+// webdec.js webdecFramesBody) for the owner, read straight into the queue:
+// "SDF1", the session, the stream index the page decoded through (two
+// words, low first) and the frames' count, then each frame - its first and
+// last sample (two words each), its spans' count (16 bits), its start
+// text's length (8 bits, then a byte) and text - and its spans: the first
+// sample (two words), the value (32 bits) and the kind (8 bits,
+// clientSpanKinds). All little-endian. A body that does not read whole
+// leaves the queue as it was; one of another session is refused.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
-func (t *clientTap) post(session uint32, through uint64, frames []decode.StreamFrame) error {
+func (t *clientTap) post(b []byte) error {
+	if len(b) < 20 || [4]byte(b[:4]) != clientFramesMagic {
+		return errNotFrames
+	}
+	session := binary.LittleEndian.Uint32(b[4:])
+	through := binary.LittleEndian.Uint64(b[8:])
+	n := int(binary.LittleEndian.Uint32(b[16:]))
+	if n > len(b)/20 {
+		return errNotFrames
+	}
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	if !t.info.Active || session != t.inboxSess {
-		return fmt.Errorf("no client decode for session %d", session)
+		return errNoClientSession
 	}
-	if len(t.inbox)+len(frames) > clientInboxMax {
-		return fmt.Errorf("client frames queue full")
+	nf, ns, lastI0, have := len(t.frames), len(t.spans), t.lastI0, t.havePosted
+	undo := func(err error) error {
+		t.frames, t.spans, t.lastI0, t.havePosted = t.frames[:nf], t.spans[:ns], lastI0, have
+		return err
 	}
-	for _, f := range frames {
-		if t.havePosted && f.I0 <= t.lastI0 {
-			continue // posted before (the page sent it again)
+	at := 20
+	for range n {
+		if at+20 > len(b) {
+			return undo(errShortFrames)
 		}
-		t.inbox = append(t.inbox, f)
+		f := clientFrame{I0: binary.LittleEndian.Uint64(b[at:]), I1: binary.LittleEndian.Uint64(b[at+8:])}
+		cnt, tl := int(binary.LittleEndian.Uint16(b[at+16:])), int(b[at+18])
+		at += 20
+		if at+tl+13*cnt > len(b) {
+			return undo(errShortFrames)
+		}
+		if f.I1 < f.I0 {
+			return undo(errNotFrames)
+		}
+		text := b[at : at+tl]
+		at += tl
+		f.from = int32(len(t.spans))
+		for k := range cnt {
+			kind := b[at+12]
+			if int(kind) >= len(clientSpanKinds) {
+				return undo(errNotFrames)
+			}
+			switch {
+			case kind <= 3:
+				t.spans = append(t.spans, clientSpan{I0: binary.LittleEndian.Uint64(b[at:]), Val: int32(binary.LittleEndian.Uint32(b[at+8:])), Kind: kind})
+			case k == 0 && kind == 4:
+				f.start = decodedlines.StartNoteCodeBytes(text)
+			case k == 0 && kind == 6:
+				f.loss = true
+			}
+			at += 13
+		}
+		f.to = int32(len(t.spans))
+		if t.havePosted && f.I0 <= t.lastI0 {
+			t.spans = t.spans[:f.from] // posted before (the page sent it again)
+			continue
+		}
+		if len(t.frames) >= clientInboxMax {
+			return undo(errClientQueueFull)
+		}
+		t.frames = append(t.frames, f)
 		t.lastI0, t.havePosted = f.I0, true
 	}
 	t.decoded = max(t.decoded, through)
 	return nil
 }
 
-// take hands the owner the page's queued frames.
+// take hands the owner the page's queued frames, swapping its emptied
+// queue in for them: no copy, nothing made.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
-func (t *clientTap) take(dst []decode.StreamFrame) []decode.StreamFrame {
+func (t *clientTap) take(frames []clientFrame, spans []clientSpan) ([]clientFrame, []clientSpan) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	dst = append(dst[:0], t.inbox...)
-	clear(t.inbox)
-	t.inbox = t.inbox[:0]
-	return dst
+	f, sp := t.frames, t.spans
+	t.frames, t.spans = frames[:0], spans[:0]
+	return f, sp
 }
 
 // ReadClientWords is a page's read of the client-decode ring (it holds the
-// lease): the chunks from seq, about max bytes, waiting up to wait.
+// lease): the chunks from seq, about max bytes, waiting up to wait. Their
+// Enc lie in the ring, pinned until release is called (after they are
+// written to the page).
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
-func (e *Engine) ReadClientWords(seq uint64, max int, wait time.Duration, dst []byte) (ClientWords, []byte) {
+func (e *Engine) ReadClientWords(seq uint64, max int, wait time.Duration, dst []ClientChunk) (ClientWords, func()) {
 	e.LeaseClientDecode()
 	return e.ctap.read(seq, max, wait, dst)
 }
 
-// PostClientFrames queues a page's decoded frames (their indices the
-// stream's samples, through the index it decoded up to).
+// PostClientFrames queues a page's decoded frames, its
+// /api/stream/frames.bin body (clientTap.post); b is not kept.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
-func (e *Engine) PostClientFrames(session uint32, through uint64, frames []decode.StreamFrame) error {
+func (e *Engine) PostClientFrames(b []byte) error {
 	e.LeaseClientDecode()
-	return e.ctap.post(session, through, frames)
+	return e.ctap.post(b)
 }
 
 // softBudget is the samples a second the digital stream's plan may carry:
@@ -418,16 +546,15 @@ func (e *Engine) softClientMode(s *softStream) bool {
 // transcript ends there and the record is armed.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
 func (e *Engine) softClientFrames(s *softStream) bool {
-	s.clientFrames = e.ctap.take(s.clientFrames)
-	for k := range s.clientFrames {
-		f := s.clientFrames[k : k+1]
-		if len(f[0].Spans) == 1 && f[0].Spans[0].Kind == "loss" {
+	s.cliFrames, s.cliSpans = e.ctap.take(s.cliFrames, s.cliSpans)
+	for _, f := range s.cliFrames {
+		if f.loss {
 			// The page lost words (it fell behind by the ring).
 			s.losses++
-			s.addEvent(sramcapture.DecodedEvent{Kind: sramcapture.EventLoss, Sample: s.ord(f[0].I0), Count: 1})
+			s.addEvent(sramcapture.DecodedEvent{Kind: sramcapture.EventLoss, Sample: s.ord(f.I0), Count: 1})
 			continue
 		}
-		if s.emit(f, s.ord) {
+		if s.emitClient(f, s.cliSpans[f.from:f.to]) {
 			e.softStreamStop(s)
 			s.phase = softRecord
 			e.ctap.end("stopped on the value")
@@ -435,6 +562,41 @@ func (e *Engine) softClientFrames(s *softStream) bool {
 		}
 	}
 	return false
+}
+
+// emitClient is emit of one of the page's frames (its start of frame's
+// code and the spans the transcript keeps), event for event.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func (s *softStream) emitClient(f clientFrame, spans []clientSpan) bool {
+	s.addEvent(sramcapture.DecodedEvent{Kind: sramcapture.EventStart, Sample: s.ord(f.I0), Value: f.start})
+	hit, unit := false, 0
+	for _, sp := range spans {
+		if sp.Kind != 0 {
+			s.addEvent(sramcapture.DecodedEvent{Kind: sramcapture.EventError, Sample: s.ord(sp.I0)})
+			continue
+		}
+		v := int(sp.Val) & s.mask
+		s.addEvent(sramcapture.DecodedEvent{Kind: sramcapture.EventData, Sample: s.ord(sp.I0), Value: uint32(v), Valid: true})
+		if !hit && s.trig == StreamOnValue && v == s.value {
+			s.valueRead = true
+			if !s.noStop {
+				hit, s.stopUnit = true, unit
+			}
+		}
+		unit++
+	}
+	s.addEvent(sramcapture.DecodedEvent{Kind: sramcapture.EventEnd, Sample: s.ord(f.I1)})
+	if !hit {
+		return false
+	}
+	// The frame's line starts at its named start or, unnamed, at its first
+	// unit (emit).
+	s.stopFirst, s.stopLast = s.ord(f.I0), s.ord(f.I1)
+	if f.start == 0 && len(spans) > 0 {
+		s.stopFirst = s.ord(spans[0].I0)
+	}
+	s.addEvent(sramcapture.DecodedEvent{Kind: sramcapture.EventTrigger, Sample: s.ord(f.I0)})
+	return true
 }
 
 // softClientWords hands the page raw's words: the scope's decoder moves on
@@ -603,68 +765,13 @@ var clientFramesMagic = [4]byte{'S', 'D', 'F', '1'}
 // span, which decides its line; a loss as a frame's only span.
 var clientSpanKinds = []string{"data", "frame-error", "parity-error", "gap", "sof", "other", "loss"}
 
-// errShortFrames is a page's frames cut short.
-var errShortFrames = errors.New("short client frames")
+// ErrClientFramesBody refuses a body that is not a page's frames.
+var ErrClientFramesBody = errors.New("not a client frames body")
 
-// ParseClientFrames reads a page's frames: "SDF1", the session, the stream
-// index it decoded through (two words, low first) and the frames' count,
-// then each frame - its first and last sample (two words each), its spans'
-// count (16 bits), its start text's length (8 bits, then a byte) and text -
-// and its spans: the first sample (two words), the value (32 bits) and the
-// kind (8 bits, clientSpanKinds). All little-endian.
-// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
-func ParseClientFrames(b []byte) (session uint32, through uint64, frames []decode.StreamFrame, err error) {
-	if len(b) < 20 || [4]byte(b[:4]) != clientFramesMagic {
-		return 0, 0, nil, fmt.Errorf("not a client frames body")
-	}
-	at := 4
-	u32 := func() uint32 {
-		v := binary.LittleEndian.Uint32(b[at:])
-		at += 4
-		return v
-	}
-	u64 := func() uint64 {
-		lo := u32()
-		return uint64(lo) | uint64(u32())<<32
-	}
-	session, through = u32(), u64()
-	n := int(u32())
-	if n > len(b)/20 {
-		return 0, 0, nil, fmt.Errorf("%d frames in %d bytes", n, len(b))
-	}
-	frames = make([]decode.StreamFrame, 0, n)
-	var spans []decode.StreamSpan
-	for range n {
-		if at+20 > len(b) {
-			return 0, 0, nil, errShortFrames
-		}
-		f := decode.StreamFrame{I0: u64(), I1: u64()}
-		ns, tl := int(binary.LittleEndian.Uint16(b[at:])), int(b[at+2])
-		at += 4
-		if at+tl+13*ns > len(b) {
-			return 0, 0, nil, errShortFrames
-		}
-		if f.I1 < f.I0 {
-			return 0, 0, nil, fmt.Errorf("a frame ending before it starts")
-		}
-		text := string(b[at : at+tl])
-		at += tl
-		from := len(spans)
-		for k := range ns {
-			sp := decode.StreamSpan{I0: u64(), Val: int(int32(u32()))}
-			kind := int(b[at])
-			at++
-			if kind >= len(clientSpanKinds) {
-				return 0, 0, nil, fmt.Errorf("span kind %d", kind)
-			}
-			sp.Kind, sp.I1 = clientSpanKinds[kind], sp.I0
-			if k == 0 && sp.Kind == "sof" {
-				sp.Text = text
-			}
-			spans = append(spans, sp)
-		}
-		f.Spans = spans[from:len(spans):len(spans)]
-		frames = append(frames, f)
-	}
-	return session, through, frames, nil
-}
+// The refusals of a page's frames.
+var (
+	errShortFrames     = fmt.Errorf("%w: cut short", ErrClientFramesBody)
+	errNotFrames       = ErrClientFramesBody
+	errNoClientSession = errors.New("no client decode for this session")
+	errClientQueueFull = errors.New("client frames queue full")
+)

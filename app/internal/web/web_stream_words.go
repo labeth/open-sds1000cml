@@ -4,13 +4,14 @@ package web
 import (
 	"encoding/binary"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
+	"slices"
 	"strconv"
 	"sync"
 	"time"
 
-	"open-sds/app/internal/decode"
 	"open-sds/app/internal/engine"
 )
 
@@ -21,8 +22,8 @@ import (
 
 // clientDecoder is the engine's client decode (engine/soft_client.go).
 type clientDecoder interface {
-	ReadClientWords(seq uint64, max int, wait time.Duration, dst []byte) (engine.ClientWords, []byte)
-	PostClientFrames(session uint32, through uint64, frames []decode.StreamFrame) error
+	ReadClientWords(seq uint64, max int, wait time.Duration, dst []engine.ClientChunk) (engine.ClientWords, func())
+	PostClientFrames(body []byte) error
 }
 
 // wordsBinMagic opens a /api/stream/words.bin reply.
@@ -38,16 +39,27 @@ type wordsBinHeader struct {
 	ServerMS int64  `json:"serverMS"`
 }
 
-// wordsBufs are reply buffers, reused: a page at the densest stream reads
-// about 4 MB a second.
-var wordsBufs = sync.Pool{New: func() any { b := make([]byte, 0, 256<<10); return &b }}
+// wordsBufs are a reply's chunk list and head, and a post's body, reused:
+// a page at the densest stream asks a few times a second and posts as often.
+var wordsBufs = sync.Pool{New: func() any { return &wordsBuf{} }}
+
+// wordsBuf is one request's reused memory.
+type wordsBuf struct {
+	chunks []engine.ClientChunk
+	head   []byte
+}
+
+// framesBufs are posts' bodies, reused.
+var framesBufs = sync.Pool{New: func() any { b := make([]byte, 0, 64<<10); return &b }}
 
 // hStreamWords serves the digital stream's words to a page that decodes
 // them: ?from=seq (the reply's next), ?max bytes, ?wait ms to park for words.
 // Asking holds the client decode (the engine's lease); a reply with active
 // false says the scope decodes, and why. The body after the header is the
 // chunks' heads (engine.AppendClientChunkHeads), then their words as the
-// engine codes them (appendWordsRLE).
+// engine codes them (appendWordsRLE), written straight from the engine's
+// ring (pinned until written): no copy of the words on the scope but the
+// socket's.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
 func (s *Server) hStreamWords(w http.ResponseWriter, r *http.Request) {
 	src, ok := s.sc.(clientDecoder)
@@ -59,16 +71,17 @@ func (s *Server) hStreamWords(w http.ResponseWriter, r *http.Request) {
 	from, _ := strconv.ParseUint(q.Get("from"), 10, 64)
 	maxB := 1 << 20
 	if v, err := strconv.Atoi(q.Get("max")); err == nil && v > 0 {
-		maxB = min(v, 4<<20)
+		maxB = min(v, engine.ClientReplyMax)
 	}
 	wait := 0
 	if v, err := strconv.Atoi(q.Get("wait")); err == nil && v > 0 {
 		wait = min(v, 1500)
 	}
-	bp := wordsBufs.Get().(*[]byte)
-	defer wordsBufs.Put(bp)
-	cw, enc := src.ReadClientWords(from, maxB, time.Duration(wait)*time.Millisecond, (*bp)[:0])
-	*bp = enc[:0]
+	wb := wordsBufs.Get().(*wordsBuf)
+	defer wordsBufs.Put(wb)
+	cw, release := src.ReadClientWords(from, maxB, time.Duration(wait)*time.Millisecond, wb.chunks[:0])
+	defer release()
+	wb.chunks = cw.Chunks
 	h := wordsBinHeader{ClientStreamInfo: cw.Info, Next: cw.Next, Dropped: cw.Dropped, Chunks: len(cw.Chunks), Lag: cw.Lag,
 		ServerMS: time.Now().UnixMilli()}
 	hj, err := json.Marshal(h)
@@ -80,25 +93,34 @@ func (s *Server) hStreamWords(w http.ResponseWriter, r *http.Request) {
 	for len(hj)%4 != 0 {
 		hj = append(hj, ' ')
 	}
-	head := make([]byte, 8, 8+len(hj)+engine.ClientChunkHead*len(cw.Chunks))
-	copy(head, wordsBinMagic[:])
-	binary.LittleEndian.PutUint32(head[4:], uint32(len(hj)))
+	head := append(wb.head[:0], wordsBinMagic[:]...)
+	head = binary.LittleEndian.AppendUint32(head, uint32(len(hj)))
 	head = append(head, hj...)
+	head = engine.AppendClientChunkHeads(head, cw.Chunks)
+	wb.head = head
+	size := len(head)
+	for _, c := range cw.Chunks {
+		size += len(c.Enc)
+	}
 	w.Header().Set("Content-Type", "application/octet-stream")
 	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("Content-Length", strconv.Itoa(size))
 	_ = http.NewResponseController(w).SetWriteDeadline(time.Now().Add(5 * time.Second))
-	head = engine.AppendClientChunkHeads(head, cw.Chunks)
-	// The chunks' headers first, then their words in one piece (as read).
-	w.Header().Set("Content-Length", strconv.Itoa(len(head)+len(enc)))
-	if _, err := w.Write(head); err == nil {
-		_, _ = w.Write(enc)
+	if _, err := w.Write(head); err != nil {
+		return
+	}
+	for _, c := range cw.Chunks {
+		if _, err := w.Write(c.Enc); err != nil {
+			return
+		}
 	}
 }
 
 // framesBinMax bounds a /api/stream/frames.bin request.
 const framesBinMax = 4 << 20
 
-// hStreamFrames takes a page's decoded frames (engine.ParseClientFrames).
+// hStreamFrames takes a page's decoded frames (engine PostClientFrames),
+// read into a reused buffer: the engine queues them without keeping it.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
 func (s *Server) hStreamFrames(w http.ResponseWriter, r *http.Request) {
 	src, ok := s.sc.(clientDecoder)
@@ -106,19 +128,43 @@ func (s *Server) hStreamFrames(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "no client decode", http.StatusNotFound)
 		return
 	}
-	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, framesBinMax))
+	bp := framesBufs.Get().(*[]byte)
+	defer framesBufs.Put(bp)
+	body, err := readBody(http.MaxBytesReader(w, r.Body, framesBinMax), (*bp)[:0], r.ContentLength)
+	*bp = body[:0]
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusRequestEntityTooLarge)
 		return
 	}
-	session, through, frames, err := engine.ParseClientFrames(body)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	if err := src.PostClientFrames(session, through, frames); err != nil {
-		http.Error(w, err.Error(), http.StatusConflict)
+	if err := src.PostClientFrames(body); err != nil {
+		code := http.StatusConflict
+		if errors.Is(err, engine.ErrClientFramesBody) {
+			code = http.StatusBadRequest
+		}
+		http.Error(w, err.Error(), code)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// readBody reads r to its end into dst (grown once to n when the length is
+// known).
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func readBody(r io.Reader, dst []byte, n int64) ([]byte, error) {
+	if n > 0 && n <= framesBinMax {
+		dst = slices.Grow(dst, int(n)+1)
+	}
+	for {
+		if len(dst) == cap(dst) {
+			dst = slices.Grow(dst, 64<<10)
+		}
+		k, err := r.Read(dst[len(dst):cap(dst)])
+		dst = dst[:len(dst)+k]
+		if err == io.EOF {
+			return dst, nil
+		}
+		if err != nil {
+			return dst, err
+		}
+	}
 }

@@ -256,48 +256,57 @@ function decodeMaple(a, b, colTimeS, cfg) {
   if (!A.ok) return fail("maple", A.reason);
   const Bs = sliceChannel(b, clockedOpts(cfg.thresholdB));
   if (!Bs.ok) return fail("maple", Bs.reason);
-  const evs = [];
+  // Both lines' edges merged in time, as typed columns (an object an edge
+  // was most of a stream's decode): the time, the line (0 SDCKA, 1 SDCKB),
+  // a fall, and both lines' levels after it.
+  const EA = A.edges, EB = Bs.edges;
+  const N = EA.length + EB.length;
+  const evX = new Float64Array(N);
+  const evL = new Uint8Array(N);
+  const evF = new Uint8Array(N);
+  const evA = new Uint8Array(N);
+  const evB = new Uint8Array(N);
   let la = A.level[0], lb = Bs.level[0], ia = 0, ib = 0;
-  while (ia < A.edges.length || ib < Bs.edges.length) {
-    if (ib >= Bs.edges.length || (ia < A.edges.length && A.edges[ia].x <= Bs.edges[ib].x)) {
-      const e = A.edges[ia++];
+  for (let m = 0; m < N; m++) {
+    if (ib >= EB.length || (ia < EA.length && EA[ia].x <= EB[ib].x)) {
+      const e = EA[ia++];
       la = (e.dir + 1) / 2;
-      evs.push({ x: e.x, line: 0, fall: e.dir < 0, la, lb });
+      evX[m] = e.x; evL[m] = 0; evF[m] = e.dir < 0 ? 1 : 0;
     } else {
-      const e = Bs.edges[ib++];
+      const e = EB[ib++];
       lb = (e.dir + 1) / 2;
-      evs.push({ x: e.x, line: 1, fall: e.dir < 0, la, lb });
+      evX[m] = e.x; evL[m] = 1; evF[m] = e.dir < 0 ? 1 : 0;
     }
+    evA[m] = la; evB[m] = lb;
   }
   const o = wireOut(A.n);
   let good = false;
   const bitT = [];
-  for (let k = 0; k < evs.length; k++) {
-    if (!(evs[k].line === 0 && evs[k].fall && evs[k].lb === 1)) continue;
+  for (let k = 0; k < N; k++) {
+    if (!(evL[k] === 0 && evF[k] && evB[k] === 1)) continue;
     let cnt = 0, j = k + 1;
-    for (; j < evs.length && !(evs[j].line === 0 && !evs[j].fall); j++) if (evs[j].line === 1 && evs[j].fall) cnt++;
-    if (j >= evs.length || evs[j].lb !== 1 || (cnt !== 4 && cnt !== 6)) continue;
-    o.add(evs[k].x, evs[j].x, "", "sof", 0, false);
+    for (; j < N && !(evL[j] === 0 && !evF[j]); j++) if (evL[j] === 1 && evF[j]) cnt++;
+    if (j >= N || evB[j] !== 1 || (cnt !== 4 && cnt !== 6)) continue;
+    o.add(evX[k], evX[j], "", "sof", 0, false);
     const bytes = [], bx = [];
     let ended = false, endX0 = 0, endX1 = 0;
     for (let byteDone = true; byteDone;) {
       byteDone = false;
       let ca = 0, cb = 0, v = 0, initial = true, x0 = 0;
-      for (j++; j < evs.length && cb < 4; j++) {
-        const e = evs[j];
-        if (!e.fall) continue;
-        if (e.line === 0) {
+      for (j++; j < N && cb < 4; j++) {
+        if (!evF[j]) continue;
+        if (evL[j] === 0) {
           if (ca === cb) {
-            if (ca === 0) x0 = e.x;
-            v = (v << 1) | e.lb;
+            if (ca === 0) x0 = evX[j];
+            v = (v << 1) | evB[j];
             ca++;
             continue;
           }
-          if (ca === 1 && cb === 0 && v === 0 && e.lb === 0) {
-            for (let q = j + 1; q < evs.length; q++) {
-              if (evs[q].fall) break;
-              if (evs[q].la === 1 && evs[q].lb === 1) {
-                ended = true; endX0 = e.x; endX1 = evs[q].x;
+          if (ca === 1 && cb === 0 && v === 0 && evB[j] === 0) {
+            for (let q = j + 1; q < N; q++) {
+              if (evF[q]) break;
+              if (evA[q] === 1 && evB[q] === 1) {
+                ended = true; endX0 = evX[j]; endX1 = evX[q];
                 j = q;
                 break;
               }
@@ -305,13 +314,13 @@ function decodeMaple(a, b, colTimeS, cfg) {
           }
           break;
         }
-        if (ca === cb + 1) { v = (v << 1) | e.la; cb++; continue; }
-        if (ca === 0 && cb === 0 && e.la === 1 && initial) { initial = false; continue; }
+        if (ca === cb + 1) { v = (v << 1) | evA[j]; cb++; continue; }
+        if (ca === 0 && cb === 0 && evA[j] === 1 && initial) { initial = false; continue; }
         break;
       }
       if (cb === 4) {
         bytes.push(v); bx.push(x0);
-        bitT.push((evs[j - 1].x - x0) / 7);
+        bitT.push((evX[j - 1] - x0) / 7);
         byteDone = true;
         j--;
       }

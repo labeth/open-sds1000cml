@@ -182,6 +182,34 @@ WebDecLine.prototype.runs = function () {
   return { ones, held };
 };
 
+// webdecGen counts the window decodes (WebDecStream.run): a line's edge
+// objects are reused from one decode to the next, never twice in one.
+let webdecGen = 0;
+
+// edgeObjects is an array of len edge objects for sliceEdges to fill: the
+// line's own from the decode before (a window's decode makes hundreds of
+// thousands, and their collection was a quarter of the page's work), or new
+// ones when the line is sliced again in the same decode.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+WebDecLine.prototype.edgeObjects = function () {
+  const n = this.len;
+  if (this.edgeGen === webdecGen) {
+    const fresh = new Array(n);
+    for (let k = 0; k < n; k++) fresh[k] = { i: 0, dir: 0, x: 0.5 };
+    return fresh;
+  }
+  this.edgeGen = webdecGen;
+  let pool = this.edgePool;
+  if (!pool) pool = this.edgePool = [];
+  while (pool.length < n) pool.push({ i: 0, dir: 0, x: 0.5 });
+  // the array the decoder sees: exactly n long, its objects the pool's
+  let arr = this.edgeArr;
+  if (!arr || arr.length !== n) {
+    arr = this.edgeArr = pool.slice(0, n);
+  }
+  return arr;
+};
+
 // webdecCodeCeil is decode.go codeCeil: the least code at or above t (256 none).
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
 function webdecCodeCeil(t) {
@@ -224,14 +252,26 @@ WebDecLine.prototype.sliceEdges = function (opts, sampled) {
   if (reason || on < 1 || on > 255 || webdecCodeCeil(thHi) > 255 || webdecCodeFloor(thLo) < 0) return sampled(this.samples(), opts);
   const rise = (threshold - 0) / (255 - 0);
   const fall = (threshold - 255) / (0 - 255);
-  const edges = new Array(this.len);
+  const fresh = this.edgeGen === webdecGen;
+  const edges = this.edgeObjects();
+  // the crossings also as one typed array (S.ex), for the decoders that
+  // read only them: no object to visit an edge
+  let ex = this.exPool;
+  if (fresh || !ex || ex.length < this.len) ex = new Float64Array(Math.max(this.len, fresh ? 0 : 2 * this.len));
+  if (!fresh) this.exPool = ex;
+  ex = ex.subarray(0, this.len);
   let d = this.first ? -1 : 1;
   for (let k = 0; k < this.len; k++) {
     const j = this.at[k];
-    edges[k] = { i: j, dir: d, x: j - 1 + (d > 0 ? rise : fall) };
+    const e = edges[k];
+    const x = j - 1 + (d > 0 ? rise : fall);
+    e.i = j;
+    e.dir = d;
+    e.x = x;
+    ex[k] = x;
     d = -d;
   }
-  const S = { ok: true, reason: null, n, lowRail: 0, highRail: 255, amp: 255, threshold, thHi, thLo, edges, first: this.first, eline: this };
+  const S = { ok: true, reason: null, n, lowRail: 0, highRail: 255, amp: 255, threshold, thHi, thLo, edges, ex, first: this.first, eline: this };
   const line = this;
   let codes = null;
   let level = null;
@@ -345,6 +385,7 @@ WebDecStream.prototype.isFrameStart = function (s) {
 WebDecStream.prototype.run = function () {
   const n = this.held();
   if (n === 0) return [];
+  webdecGen++;
   const r = this.edec(this.ea, this.eb.n === n ? this.eb : null);
   const sp = [];
   for (const s of r.spans || []) {

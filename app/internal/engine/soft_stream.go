@@ -127,10 +127,11 @@ type softStream struct {
 	// the same: soft_client.go).
 	closeN, maxN, leadN int
 	// Client decode (soft_client.go): a web page decodes the words.
-	client       bool
-	clientBreak  bool // words were lost since the last chunk the page was handed
-	overBudget   bool // the plan carries more than the scope decodes: only a page keeps up
-	clientFrames []decode.StreamFrame
+	client      bool
+	clientBreak bool          // words were lost since the last chunk the page was handed
+	overBudget  bool          // the plan carries more than the scope decodes: only a page keeps up
+	cliFrames   []clientFrame // the page's frames taken from the ring (soft_client.go)
+	cliSpans    []clientSpan
 
 	// Captures mode.
 	capCfg    sramcapture.Config
