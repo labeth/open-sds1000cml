@@ -12,7 +12,7 @@ importScripts("decode.js", "decode_sent.js", "decode_canfd.js", "decode_arinc429
   "webdec.js");
 webdecInstall(self);
 
-const wd = { on: false, base: "", sess: null, seq: 0, stat: null, statAt: 0, postAt: 0, gen: 0 };
+const wd = { on: false, base: "", sess: null, seq: 0, stat: null, statAt: 0, postAt: 0, gen: 0, posting: false, refused: false };
 
 // wdSleep waits ms.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
@@ -60,30 +60,40 @@ async function wdPost(force) {
   return true;
 }
 
-// wdLoop reads, decodes and posts until stopped.
+// wdFetchWords asks for the words from wd.seq on: the reply's buffer, or an
+// object saying why there is none.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+async function wdFetchWords() {
+  try {
+    const r = await fetch(wd.base + "/api/stream/words.bin?from=" + wd.seq + "&max=" + (2 << 20) + "&wait=1000", { cache: "no-store" });
+    if (!r.ok) return { why: "the scope has no client decode (" + r.status + ")", sleep: 2000 };
+    return { buf: await r.arrayBuffer() };
+  } catch (e) {
+    // Wi-Fi dropped or the scope restarted: the scope takes the decode
+    // back after its lease; a loss shows where words went missing.
+    return { why: "no connection to the scope", sleep: 500 };
+  }
+}
+
+// wdLoop reads, decodes and posts until stopped. The next read goes out as
+// soon as a reply's header says where it starts, and a post is not waited
+// for: the reads, the decoding and the posts overlap, so the words come as
+// fast as the scope and the network serve them, not a round trip a reply.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
 async function wdLoop(gen) {
+  let next = null;
   while (wd.on && gen === wd.gen) {
-    let buf;
-    try {
-      const r = await fetch(wd.base + "/api/stream/words.bin?from=" + wd.seq + "&max=" + (1 << 20) + "&wait=1000", { cache: "no-store" });
-      if (!r.ok) {
-        wdStatus(false, "the scope has no client decode (" + r.status + ")");
-        await wdSleep(2000);
-        continue;
-      }
-      buf = await r.arrayBuffer();
-    } catch (e) {
-      // Wi-Fi dropped or the scope restarted: the scope takes the decode
-      // back after its lease; a loss shows where words went missing.
-      wdStatus(false, "no connection to the scope");
-      await wdSleep(500);
+    const got = await (next || wdFetchWords());
+    next = null;
+    if (!got.buf) {
+      wdStatus(false, got.why);
+      await wdSleep(got.sleep);
       continue;
     }
     const t0 = performance.now();
     let rep;
     try {
-      rep = webdecParse(buf);
+      rep = webdecParse(got.buf);
     } catch (e) {
       wdStatus(false, "bad reply: " + e.message);
       await wdSleep(1000);
@@ -91,13 +101,17 @@ async function wdLoop(gen) {
     }
     const hdr = rep.hdr;
     if (!hdr.active) {
+      while (wd.posting) await wdSleep(5);
       if (wd.sess) await wdPost(true);
       wd.sess = null;
       wd.seq = hdr.next;
       wdStatus(false, hdr.why || "the scope streams no digital bus");
       continue;
     }
+    wd.seq = hdr.next;
+    next = wdFetchWords(); // the next read overlaps this reply's decoding
     if (!wd.sess || wd.sess.info.session !== hdr.session) {
+      while (wd.posting) await wdSleep(5);
       try {
         wd.sess = new WebDecSession(hdr, self);
       } catch (e) {
@@ -113,10 +127,20 @@ async function wdLoop(gen) {
       wd.stat.words += c.words;
       wd.stat.bytes += c.bytes;
     }
-    wd.seq = hdr.next;
     wd.stat.lagS = hdr.lag * hdr.periodS;
     wd.stat.busyMs += performance.now() - t0;
-    if (!(await wdPost(false))) {
+    // One post in flight at a time (the session holds the frames meanwhile
+    // and the next post takes them all); a refused one (the scope took the
+    // decode back, or the stream ended) ends the session.
+    if (!wd.posting) {
+      wd.posting = true;
+      wdPost(false).then((ok) => {
+        wd.posting = false;
+        if (ok === false) wd.refused = true;
+      });
+    }
+    if (wd.refused) {
+      wd.refused = false;
       wd.sess = null;
       continue;
     }
