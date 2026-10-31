@@ -1645,8 +1645,8 @@ decisions:
     overflow - while it holds no backlog, the FIFO's words go straight into a free host bank (no lap) and the counter
     waits at the write head; when the host holds both banks and the FIFO passes 3072 words it spills into the ring,
     and every word then goes through the ring until it is empty (order kept). With a backlog the counter waits at
-    the read head filling freed banks, and leaves for the write head only when the FIFO plus what a 1.95M words/s
-    stream brings on the way reaches 3584 words; a trip writes a full burst and then one tail burst. Ring bursts
+    the read head filling freed banks, and leaves for the write head only when the FIFO plus what the stream brings
+    on the way (at the input measured over the counter's last lap of movement) reaches 3584 words; a trip writes a full burst and then one tail burst. Ring bursts
     fill the host's banks back to back (a burst is read when it fits in the current bank and, if free, the next); a
     partly filled bank is sealed only before the counter leaves the read head, so the host holds two full banks
     (3.2 ms at the GPMC) through a 2.1 ms trip.
@@ -1668,6 +1668,14 @@ decisions:
   - On the instrument the direct path carries decimation 512 loss-free (counter source, every word checked). The
     host drains the banks at about 11 MB/s; decimation 256 (1.95M words/s) still faults, as the host takes banks
     every 2 ms and a backlog's lap carries two.
+  - The first trip rule projected the way to the write head at the fastest stream (1.95M words/s). On the instrument
+    a single 300 ms stall at decimation 512 faulted 1.5 s into recovery (250 ms recovered; the old drum absorbed
+    400 ms); with a deep backlog the way is most of a lap, so the counter left the read head almost at once and,
+    with the worker's pump taking banks in passes (up to eight banks, then 2 ms asleep), read fewer banks a lap
+    than the stream brought. Projecting at the measured input keeps the counter at the read head as long as the
+    FIFO allows. tb_stream_drum MID (the board's FIFO and banks, an eighth of its ring and descriptors, rates eight
+    times) with that pump, recovery from 57% and 84% of the ring at the 512 rate takes half as long and the backlog
+    no longer grows after the stall; descriptors were never short (bursts of at least 76 words, 45 of 64 at 84%).
 - id: ADR-STREAM-BITS
   title: The decoded stream streams each line sliced, sixteen periods a word
   status: accepted
