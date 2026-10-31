@@ -218,7 +218,7 @@ module stream_drum #(parameter AW=19,WF_AW=12,DESC_AW=8,BANK_AW=10,
  reg [AW-1:0] p2_dist_w=0,p2_dist_r=0;reg [PW:0] p2_lvl=0;reg p2_room=0,p2_due=0,p2_min=0,p2_tail=0,p2_spill=0,p2_empty=0;
  reg p3_go=0,p3_keep=0,w_more=0;reg [1:0] p3_kind=0;reg [AW-1:0] p3_seek=0;
  reg [2:0] settle=0;
- (* preserve *) reg oc=0;
+ reg oc=0; // constant 0 in the stream image: its logic folds away there
  // Packets in the current bank (published when full, or sealed), and
  // whether the head burst fits in it and, when free, the next.
  reg [BANK_AW-1:0] bfill=0;reg p1_partial=0,p2_partial=0,p3_seal=0;
