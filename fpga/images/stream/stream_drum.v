@@ -230,7 +230,7 @@ module stream_drum #(parameter AW=19,WF_AW=12,DESC_AW=8,BANK_AW=10,
   p1_free<=RING-used;p1_need<={wf_level,1'b0}+7'd64;p1_lvl<=wf_level;
   p1_due<=wf_level>=WRITE_AT/2 || wf_level!=0 && age>=AGE_CYCLES/256;p1_min<=wf_level>=WRITE_AT/2;p1_tail<=wf_level>=WRITE_AT/16;
   p1_spill<=wf_level>=WRITE_URGENT/2;p1_empty<=dsc_empty;
-  p1_room<=(bfill!=0 || bank_ready ? (CHUNK/2)-bfill : 1'b0)+(bank_next_free ? CHUNK/2 : 1'b0);
+  p1_room<=bfill!=0 || bank_ready ? (CHUNK/2)-bfill+(bank_next_free ? CHUNK/2 : 1'b0) : 1'b0; // nothing while the current bank is the host's
   p1_len<=dsc_q_len>>1;p1_fits<=p1_len<=p1_room;p1_partial<=bfill!=0;p2_partial<=p1_partial;
   p2_dist_w<=p1_w_target-pos_q;p2_dist_r<=p1_base-pos_q;p2_lvl<=p1_lvl;
   p2_room<=!dsc_full && p1_free>p1_need;p2_due<=p1_due;p2_min<=p1_min;p2_tail<=p1_tail;p2_spill<=p1_spill;p2_empty<=p1_empty;

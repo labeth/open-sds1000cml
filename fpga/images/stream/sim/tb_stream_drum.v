@@ -14,8 +14,16 @@
 // FAST=1 two banks are the FIFO and seeks are a quarter lap, so command
 // overheads weigh about as on the board; it runs only the fast phases.
 // REAL=1 runs them with the board's sizes and rates.
+//
+// SWORDS (with REAL, or MID) is one host stall of that many words at one word
+// per SPERIOD clocks, the host draining at HOST_NS a word before it and at
+// AFTER_NS after it (POST more words): the ring must hold the stall. MID=1 has the board's FIFO and
+// banks with an eighth of its ring and descriptors (the same words a
+// descriptor), so with rates eight times the board's a lap brings the same
+// words as on the board.
 // TRLC-LINKS: REQ-SDS-035
-module tb_stream_drum #(parameter REAL=0,FAST=0,AW=REAL ? 19 : 12,BANK_AW=REAL ? 10 : FAST ? 6 : 4,WF_AW=REAL ? 12 : 8,DESC_AW=REAL ? 9 : 7);
+module tb_stream_drum #(parameter REAL=0,FAST=0,MID=0,SWORDS=0,SPERIOD=256,HOST_NS=787,AFTER_NS=0,POST=20000,
+ BIG=REAL || MID,AW=REAL ? 19 : MID ? 16 : 12,BANK_AW=BIG ? 10 : FAST ? 6 : 4,WF_AW=BIG ? 12 : 8,DESC_AW=REAL ? 9 : MID ? 6 : 7);
  localparam N=1<<AW,BANK=1<<BANK_AW;
  reg core=0,hclk=0,host=0;
  always #2 core=!core;      // 250 MHz
@@ -49,8 +57,8 @@ module tb_stream_drum #(parameter REAL=0,FAST=0,AW=REAL ? 19 : 12,BANK_AW=REAL ?
  end
  wire pvalid,psingle,pseal,bank_ready,bank_next_free;wire [63:0] pdata;
  stream_drum #(.AW(AW),.WF_AW(WF_AW),.DESC_AW(DESC_AW),.BANK_AW(BANK_AW),
-  .WRITE_AT(REAL ? 512 : 48),.WRITE_URGENT(REAL ? 3072 : 160),.TRIP_AT(REAL ? 3584 : 224),.LAP_SHIFT(REAL ? 7 : 4),
-  .AGE_CYCLES(REAL ? 2097152 : 3000),.SEG(REAL ? 8192 : FAST ? 1024 : 256)) dut(
+  .WRITE_AT(BIG ? 512 : 48),.WRITE_URGENT(BIG ? 3072 : 160),.TRIP_AT(BIG ? 3584 : 224),.LAP_SHIFT(REAL ? 7 : 4),
+  .AGE_CYCLES(BIG ? 2097152 : 3000),.SEG(REAL ? 8192 : MID || FAST ? 1024 : 256)) dut(
   .clk(core),.active(active),.in_valid(in_valid),.in_data(in_data),
   .cmd(cmd),.cmd_read(cmd_read),.cmd_discard(cmd_discard),.cmd_continue(cmd_continue),.cmd_count(cmd_count),
   .t_ready(t_ready),.t_write_ready(t_write_ready),.t_done(t_done),.wdata(wdata),.wvalid(wvalid),.wstop(wstop),
@@ -100,8 +108,16 @@ module tb_stream_drum #(parameter REAL=0,FAST=0,AW=REAL ? 19 : 12,BANK_AW=REAL ?
  always @(posedge hclk)begin
   if(dut.used>peak)peak=dut.used;
   if(dut.used!=0 && !had)spill_t=$realtime;
-  if(dut.used==0 && had)begin clear_t=$realtime;if(REAL)$display("  backlog %0.3f-%0.3f ms, ring peak %0d words",spill_t/1e6,clear_t/1e6,peak);end
+  if(dut.used==0 && had)begin clear_t=$realtime;if(BIG)$display("  backlog %0.3f-%0.3f ms, ring peak %0d words",spill_t/1e6,clear_t/1e6,peak);end
   had<=dut.used!=0;
+ end
+ // Ring bursts written, the shortest, and the drum's state at a fault.
+ integer bursts=0,short=1<<30;reg faulted=0;
+ always @(posedge hclk)begin
+  if(dut.dsc_push)begin bursts=bursts+1;if(dut.dsc_push_len<short)short=dut.dsc_push_len;end
+  if(fault && !faulted)$display("fault at %0.3f ms: ring %0d words, %0d bursts (shortest %0d words), %0d descriptors (full %b), FIFO %0d pairs",
+   $realtime/1e6,dut.used,bursts,short,dut.dsc_n,dut.dsc_full,dut.wf_level);
+  faulted<=fault;
  end
  task settle_check(input integer clocks,input [8*24-1:0] name);
   begin
@@ -136,6 +152,16 @@ module tb_stream_drum #(parameter REAL=0,FAST=0,AW=REAL ? 19 : 12,BANK_AW=REAL ?
  endtask
  initial begin
   repeat(20)@(posedge core);active<=1;
+  if(SWORDS!=0)begin
+   drain_ns=HOST_NS;stream(4000,SPERIOD,0);
+   stream(SWORDS,SPERIOD,SWORDS);       // the host takes nothing throughout
+   $display("stall of %0d words ends at %0.3f ms: ring %0d words, %0d bursts (shortest %0d words), %0d descriptors, FIFO %0d pairs, fault %b",
+    SWORDS,$realtime/1e6,dut.used,bursts,short,dut.dsc_n,dut.wf_level,fault);
+   draining=1;drain_ns=AFTER_NS;stream(POST,SPERIOD,0);
+   settle_check(BIG ? 5000000 : 100000,"stall");
+   if(errors==0)$display("PASS tb_stream_drum stall");else $display("FAIL tb_stream_drum stall: %0d errors",errors);
+   $finish;
+  end
   if(REAL)begin
    // The board's sizes: the GPMC ceiling (one word per 197 clocks) with the
    // host draining at 1.6M words/s and a 5 ms stall, then 1.6M words/s
@@ -195,5 +221,5 @@ module tb_stream_drum #(parameter REAL=0,FAST=0,AW=REAL ? 19 : 12,BANK_AW=REAL ?
   if(errors==0)$display("PASS tb_stream_drum");else $display("FAIL tb_stream_drum: %0d errors",errors);
   $finish;
  end
- initial begin #(REAL ? 300000000 : 50000000) $display("FAIL: timeout (drained %0d of %0d)",expected,sent);$finish;end
+ initial begin #(SWORDS!=0 ? 64'd4000000000 : REAL ? 300000000 : 50000000) $display("FAIL: timeout (drained %0d of %0d)",expected,sent);$finish;end
 endmodule
