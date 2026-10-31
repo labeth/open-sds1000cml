@@ -1,7 +1,8 @@
 // ENGMODEL-OWNER-UNIT: FU-RTL-ACQ-SRAM-TOP
 `timescale 1ns/1ps
-// ADR-STREAM-IMAGE: two ping-pong banks of 2^BANK_AW 64-bit packets in the
-// host buffer RAM (bank b at entries b*2^BANK_AW...). The producer fills one
+// ADR-STREAM-IMAGE: two ping-pong banks of BANK_P 64-bit packets (2^BANK_AW
+// unless the image sizes its buffer otherwise) in the host buffer RAM (bank b
+// at entries b*BANK_P...). The producer fills one
 // bank while the host drains the other; a bank is published when full or on a
 // seal, with the stream ordinal of its first 32-bit word, its packet count and
 // whether its last packet holds a single word.
@@ -23,7 +24,7 @@
 // 2^12, where a bank fills in exactly the seal period). The packetizer seals
 // only while packet_ready holds.
 // TRLC-LINKS: REQ-SDS-035
-module stream_banks #(parameter BANK_AW=10)(
+module stream_banks #(parameter BANK_AW=10,BANK_P=1<<BANK_AW)(
  input reset,producer_clk,host_clk,
  input packet_valid,input [63:0] packet_data,input packet_single,input seal,
  output packet_ready,
@@ -48,7 +49,7 @@ module stream_banks #(parameter BANK_AW=10)(
  assign packet_ready=pub[!cur]==rel_s2[!cur];
  assign cur_ready=cur_free && fill==0;
  wire [BANK_AW:0] next_fill=fill+1'b1;
- wire full=next_fill[BANK_AW];
+ wire full=next_fill==BANK_P;
  task publish(input [BANK_AW:0] count,input [63:0] first,input single);
   begin
    if(cur)begin first_m1<=first;count_m1<=count;end else begin first_m0<=first;count_m0<=count;end
@@ -64,7 +65,7 @@ module stream_banks #(parameter BANK_AW=10)(
   end else if(packet_valid)begin
    if(fill==0 && !cur_free)overrun<=1; // both banks owned by the host: drop, and say so
    else begin
-    mem_write<=1;mem_address<={cur,fill[BANK_AW-1:0]};mem_data<=packet_data;
+    mem_write<=1;mem_address<=cur ? BANK_P+fill : fill;mem_data<=packet_data;
     words<=words+(packet_single ? 64'd1 : 64'd2);
     if(fill==0)first_cur<=words;
     single_cur<=packet_single;

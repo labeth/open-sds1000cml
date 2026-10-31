@@ -106,7 +106,12 @@ module acq_sram_top(
 `endif
   16'h0000;
 `endif
-`ifdef STREAM_BUFFER_AW
+`ifdef STREAM_DRUM
+ // ADR-STREAM-DRUM: two banks of 2560 words (1280 packets), more than a
+ // ring lap brings at decimation 256, so a backlog drains while that stream
+ // runs; the host reads the size from register 26.
+ localparam BUF_AW=13;
+`elsif STREAM_BUFFER_AW
  localparam BUF_AW=`STREAM_BUFFER_AW;
 `else
 `ifdef BURST_RECALL
@@ -115,7 +120,11 @@ module acq_sram_top(
  localparam BUF_AW=9;
 `endif
 `endif
- localparam BUF_WORDS=(1<<BUF_AW);
+`ifdef STREAM_DRUM
+ localparam BUF_WORDS=5120,STREAM_BANK_P=1280;
+`else
+ localparam BUF_WORDS=(1<<BUF_AW),STREAM_BANK_P=1<<(BUF_AW-2);
+`endif
  wire core,sample_clk,locked;
 `ifdef STREAM_CAPTURE
  reg [4:0] stream_cfg=0,stream_mode=0; // [0] stream, [1] continuous (no trigger), [2] peak-detect (STREAM_BITS: digital) words, [3]/[4] rising/falling edge marks
@@ -1034,7 +1043,7 @@ module acq_sram_top(
  reg [BUF_AW:0] burst_index=0;
  always @(posedge clk)begin
   if(wc && ws==17)burst_index<=wd[BUF_AW:0];
-  else if(rp && rs==25)burst_index<=burst_index+1'b1;
+  else if(rp && rs==25)burst_index<=burst_index==2*BUF_WORDS-1 ? 1'b0 : burst_index+1'b1; // wraps with the buffer (the host checks it)
  end
 `endif
  // Front-panel serial scan (ADR-PANEL-SERIAL-SCAN): write 31 config, 32 F2
@@ -1420,7 +1429,10 @@ module acq_sram_top(
   end
  end
  wire drum_bank_ready,drum_bank_next_free;
- stream_drum #(.AW(19),.WF_AW(12),.DESC_AW(9),.BANK_AW(BUF_AW-2)) drum(.clk(core),.active(drum_active),
+ // The FIFO holds a lap of input at decimation 256 (4.1k words) with room
+ // to spare: 2304 pairs, all the block RAM the two banks leave.
+ stream_drum #(.AW(19),.WF_AW(13),.WF_PAIRS(2304),.DESC_AW(9),.BANK_AW(BUF_AW-2),.BANK_P(STREAM_BANK_P),
+  .WRITE_URGENT(3584),.TRIP_AT(4096)) drum(.clk(core),.active(drum_active),
   .in_valid(drum_in_valid),.in_data(drum_in_data),
   .cmd(drum_cmd),.cmd_read(drum_cmd_read),.cmd_discard(drum_cmd_discard),.cmd_continue(drum_cmd_continue),.cmd_count(drum_cmd_count),
   .t_ready(ready),.t_write_ready(write_ready),.t_done(transport_done),.wdata(drum_wdata),.wvalid(drum_wvalid),.wstop(drum_wstop),
@@ -1452,7 +1464,7 @@ module acq_sram_top(
   .stop(stream_tap_stop),.seal_ok(stream_seal_ok),.fault(packetizer_fault),.finished(stream_finished),
   .packet_valid(stream_packet_valid),.packet_data(stream_packet_data),.packet_single(stream_packet_single),.packet_seal(stream_packet_seal));
 `endif
- stream_banks #(.BANK_AW(BUF_AW-2)) stream_queue(.reset(stream_reset),.producer_clk(halfclk),.host_clk(clk),
+ stream_banks #(.BANK_AW(BUF_AW-2),.BANK_P(STREAM_BANK_P)) stream_queue(.reset(stream_reset),.producer_clk(halfclk),.host_clk(clk),
   .packet_valid(stream_packet_valid),.packet_data(stream_packet_data),.packet_single(stream_packet_single),.seal(stream_packet_seal),
 `ifdef STREAM_DRUM
   .packet_ready(drum_bank_next_free),.cur_ready(drum_bank_ready),

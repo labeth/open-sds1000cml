@@ -63,7 +63,9 @@ func (c *Capture) prepareStreamBuffers() error {
 	if err != nil {
 		return err
 	}
-	if words != 4096 && words != 8192 {
+	// Two banks of words/2 each: 5120 is the drum images' (banks of 2560
+	// words, more than a ring lap brings at decimation 256).
+	if words != 4096 && words != 5120 && words != 8192 {
 		return fmt.Errorf("sramcapture: unknown stream buffer %d", words)
 	}
 	c.streamWords = words

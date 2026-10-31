@@ -22,9 +22,9 @@
 // descriptor), so with rates eight times the board's a lap brings the same
 // words as on the board.
 // TRLC-LINKS: REQ-SDS-035
-module tb_stream_drum #(parameter REAL=0,FAST=0,MID=0,SWORDS=0,SPERIOD=256,HOST_NS=787,AFTER_NS=0,POST=20000,TICK_NS=0,
- BIG=REAL || MID,AW=REAL ? 19 : MID ? 16 : 12,BANK_AW=BIG ? 10 : FAST ? 6 : 4,WF_AW=BIG ? 12 : 8,DESC_AW=REAL ? 9 : MID ? 6 : 7);
- localparam N=1<<AW,BANK=1<<BANK_AW;
+module tb_stream_drum #(parameter REAL=0,FAST=0,MID=0,SWORDS=0,SPERIOD=256,HOST_NS=787,AFTER_NS=0,POST=20000,TICK_NS=0,ADAPT=0,LOOK_MIN=400000,FIRST_NS=0,GAP_NS=17000000,GAP_EVERY_NS=0,
+ BIG=REAL || MID,AW=REAL ? 19 : MID ? 16 : 12,BANK_AW=BIG ? 11 : FAST ? 6 : 4,WF_AW=BIG ? 13 : 8,DESC_AW=REAL ? 9 : MID ? 6 : 7);
+ localparam N=1<<AW,BANK=BIG ? 1280 : 1<<BANK_AW,WF_PAIRS=BIG ? 2304 : 1<<(WF_AW-1);
  reg core=0,hclk=0,host=0;
  always #2 core=!core;      // 250 MHz
  always #4 hclk=!hclk;      // 125 MHz, same phase as the PLL derives it
@@ -56,8 +56,8 @@ module tb_stream_drum #(parameter REAL=0,FAST=0,MID=0,SWORDS=0,SPERIOD=256,HOST_
   address<=address+1'b1;
  end
  wire pvalid,psingle,pseal,bank_ready,bank_next_free;wire [63:0] pdata;
- stream_drum #(.AW(AW),.WF_AW(WF_AW),.DESC_AW(DESC_AW),.BANK_AW(BANK_AW),
-  .WRITE_AT(BIG ? 512 : 48),.WRITE_URGENT(BIG ? 3072 : 160),.TRIP_AT(BIG ? 3584 : 224),
+ stream_drum #(.AW(AW),.WF_AW(WF_AW),.WF_PAIRS(WF_PAIRS),.DESC_AW(DESC_AW),.BANK_AW(BANK_AW),.BANK_P(BANK),
+  .WRITE_AT(BIG ? 512 : 48),.WRITE_URGENT(BIG ? 3584 : 160),.TRIP_AT(BIG ? 4096 : 224),
   .AGE_CYCLES(BIG ? 2097152 : 3000),.SEG(REAL ? 8192 : MID || FAST ? 1024 : 256)) dut(
   .clk(core),.active(active),.in_valid(in_valid),.in_data(in_data),
   .cmd(cmd),.cmd_read(cmd_read),.cmd_discard(cmd_discard),.cmd_continue(cmd_continue),.cmd_count(cmd_count),
@@ -67,7 +67,7 @@ module tb_stream_drum #(parameter REAL=0,FAST=0,MID=0,SWORDS=0,SPERIOD=256,HOST_
  wire mw,overrun,host_overrun;wire [BANK_AW:0] ma;wire [63:0] md;
  reg rel=0,rel_bank=0,rel_token=0;
  wire [1:0] ready,token,single;wire [63:0] first0,first1;wire [BANK_AW:0] count0,count1;
- stream_banks #(.BANK_AW(BANK_AW)) bk(.reset(!active),.producer_clk(hclk),.host_clk(host),.packet_valid(pvalid),.packet_data(pdata),
+ stream_banks #(.BANK_AW(BANK_AW),.BANK_P(BANK)) bk(.reset(!active),.producer_clk(hclk),.host_clk(host),.packet_valid(pvalid),.packet_data(pdata),
   .packet_single(psingle),.seal(pseal),.packet_ready(bank_next_free),.cur_ready(bank_ready),.mem_write(mw),.mem_address(ma),.mem_data(md),.overrun(overrun),
   .host_overrun(host_overrun),.host_release(rel),.release_bank(rel_bank),.release_token(rel_token),.host_ready(ready),
   .host_token(token),.first_word0(first0),.first_word1(first1),.packets0(count0),.packets1(count1),.last_single(single));
@@ -96,12 +96,18 @@ module tb_stream_drum #(parameter REAL=0,FAST=0,MID=0,SWORDS=0,SPERIOD=256,HOST_
  endtask
  // With TICK_NS the host is the worker's stream pump: a pass drains up to
  // eight published banks in order (drain_ns a word, releasing each) and ends
- // at the first look that finds none; the worker then sleeps TICK_NS.
- reg got=0;integer pass_n=0;
+ // at the first look that finds none; the worker then sleeps TICK_NS, or
+ // with ADAPT 0.9 of a bank's fill time within LOOK_MIN..TICK_NS. Its first
+ // look is FIRST_NS in, and every GAP_EVERY_NS one sleep lasts GAP_NS.
+ reg got=0;integer pass_n=0;realtime next_gap=GAP_EVERY_NS,look=0;
  always begin
   if(TICK_NS==0)begin @(posedge host);if(draining && active)drain_one;end
   else begin
-   #(TICK_NS);
+   look=ADAPT ? 0.9*BANK*2*SPERIOD*4.0 : TICK_NS;
+   if(look>TICK_NS)look=TICK_NS;if(look<LOOK_MIN)look=LOOK_MIN;
+   if($realtime<FIRST_NS)look=FIRST_NS-$realtime;
+   if(GAP_EVERY_NS!=0 && $realtime>=next_gap)begin look=GAP_NS;next_gap=next_gap+GAP_EVERY_NS;end
+   #(look);
    got=1;pass_n=0;while(got && pass_n<8 && draining && active)begin @(posedge host);drain_one;pass_n=pass_n+1;end
   end
  end
