@@ -493,7 +493,7 @@ func (s *softStream) softClientInfo() ClientStreamInfo {
 	}
 	return ClientStreamInfo{Session: s.id.Epoch, Proto: s.proto, Params: s.p, PeriodS: s.sampleS, Log: int(s.log), Lines: lines,
 		CloseN: s.closeN, MaxN: s.maxN, LeadN: s.leadN, PushN: s.pushN, PushMax: softPushMax,
-		KeepWords: s.keepWords, LeadWords: s.leadWords, Subframes: s.proto == "spdif", Mask: mask, Active: true}
+		KeepWords: s.keepWords, LeadWords: s.leadWords, Subframes: s.subframes, Mask: mask, Active: true}
 }
 
 // softClientMode hands the stream's decode to the page that holds the lease

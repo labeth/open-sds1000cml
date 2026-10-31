@@ -177,35 +177,45 @@ func TestWebDecStreamParity(t *testing.T) {
 			continue
 		}
 		tc := streamCPUCaseOf(t, name)
-		ss := edgeStreamPeriod(tc)
-		secs := min(max(streamGoldenSecs(tc), 40*tc.longest), budget*ss)
-		if v, err := strconv.ParseFloat(os.Getenv("SDS_WEBDEC_SECS"), 64); err == nil && v > 0 {
-			secs = v // a bench's length (with SDS_WEBDEC_BENCH)
-		}
-		for k, bursty := range []bool{false, true} {
-			seed := int64(len(name))*37 + int64(k)
-			la, lb := streamBitsLines(tc, seed, secs, ss, bursty)
-			raw := levelWords(la, lb)
-			frames, pieces := webdecGoRun(tc, raw, ss, seed, edgeStreamDecs[name])
-			if len(frames) == 0 && secs >= 3*(tc.longest+tc.quiet) {
-				t.Errorf("%s bursty %v: no frames", name, bursty)
+		// the plan's period (0), and periods of any whole number of raw
+		// words a stream may take: the finest, odd ones, a coarse one
+		for _, period := range []int{0, StreamBitsMinPeriod, 13, 90} {
+			ss := edgeStreamPeriod(tc)
+			if period > 0 {
+				if StreamBitsPeriod(period) == ss || StreamBitsPeriod(period) > tc.feature || 3*(tc.longest+tc.quiet) > budget*StreamBitsPeriod(period) {
+					continue // the plan's again, a period longer than the feature, or frames longer than a run
+				}
+				ss = StreamBitsPeriod(period)
 			}
-			id := fmt.Sprintf("%s-%v", name, bursty)
-			wf := filepath.Join(dir, id+".words")
-			if err := os.WriteFile(wf, raw, 0o644); err != nil {
-				t.Fatal(err)
+			secs := min(max(streamGoldenSecs(tc), 40*tc.longest), budget*ss)
+			if v, err := strconv.ParseFloat(os.Getenv("SDS_WEBDEC_SECS"), 64); err == nil && v > 0 {
+				secs = v // a bench's length (with SDS_WEBDEC_BENCH)
 			}
-			cfg := map[string]any{"threshold": 128}
-			if tc.c.lines == 2 {
-				cfg["thresholdB"] = 128
+			for k, bursty := range []bool{false, true} {
+				seed := int64(len(name))*37 + int64(k)
+				la, lb := streamBitsLines(tc, seed, secs, ss, bursty)
+				raw := levelWords(la, lb)
+				frames, pieces := webdecGoRun(tc, raw, ss, seed, edgeStreamDecs[name])
+				if len(frames) == 0 && secs >= 3*(tc.longest+tc.quiet) && period == 0 {
+					t.Errorf("%s bursty %v: no frames", name, bursty)
+				}
+				id := fmt.Sprintf("%s-%v-p%d", name, bursty, period)
+				wf := filepath.Join(dir, id+".words")
+				if err := os.WriteFile(wf, raw, 0o644); err != nil {
+					t.Fatal(err)
+				}
+				cfg := map[string]any{"threshold": 128}
+				if tc.c.lines == 2 {
+					cfg["thresholdB"] = 128
+				}
+				for k, v := range js.cfg {
+					cfg[k] = v
+				}
+				cases = append(cases, webdecCase{Name: id, Fn: js.fn, Two: tc.c.lines == 2, Cfg: cfg, SS: ss,
+					CloseN: int(tc.quiet / ss), MaxN: int((tc.longest + tc.quiet) / ss), LeadN: int(tc.lead / ss), Subframes: name == "spdif",
+					Words: wf, Pieces: pieces, Out: filepath.Join(dir, id+".json")})
+				want[id] = frames
 			}
-			for k, v := range js.cfg {
-				cfg[k] = v
-			}
-			cases = append(cases, webdecCase{Name: id, Fn: js.fn, Two: tc.c.lines == 2, Cfg: cfg, SS: ss,
-				CloseN: int(tc.quiet / ss), MaxN: int((tc.longest + tc.quiet) / ss), LeadN: int(tc.lead / ss), Subframes: name == "spdif",
-				Words: wf, Pieces: pieces, Out: filepath.Join(dir, id+".json")})
-			want[id] = frames
 		}
 	}
 	cj := filepath.Join(dir, "cases.json")
