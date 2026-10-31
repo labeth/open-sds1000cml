@@ -108,7 +108,19 @@ type owBit struct {
 // a byte after it.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-233
 func DecodeOneWire(codes []uint8, colTimeS float64, cfg OneWireCfg) Result {
-	S := sliceChannel(codes, cfg.Threshold, cfg.HaveThr)
+	return decodeOneWire(samplesIn(codes), colTimeS, cfg)
+}
+
+// DecodeOneWireEdges is DecodeOneWire over digital lines' edges (EdgeLine).
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-233
+func DecodeOneWireEdges(codes *EdgeLine, colTimeS float64, cfg OneWireCfg) Result {
+	return decodeOneWire(edgesIn(codes), colTimeS, cfg)
+}
+
+// decodeOneWire is DecodeOneWire over samples or edges.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-233
+func decodeOneWire(codes lineIn, colTimeS float64, cfg OneWireCfg) Result {
+	S := codes.slice(cfg.Threshold, cfg.HaveThr)
 	if !S.ok {
 		return Result{Proto: "onewire", Error: S.reason}
 	}
@@ -274,7 +286,19 @@ const wsEdgeLatchUs = 20
 
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-233
 func DecodeWS281x(codes []uint8, colTimeS float64, cfg WS281xCfg) Result {
-	S := sliceChannel(codes, cfg.Threshold, cfg.HaveThr)
+	return decodeWS281x(samplesIn(codes), colTimeS, cfg)
+}
+
+// DecodeWS281xEdges is DecodeWS281x over digital lines' edges (EdgeLine).
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-233
+func DecodeWS281xEdges(codes *EdgeLine, colTimeS float64, cfg WS281xCfg) Result {
+	return decodeWS281x(edgesIn(codes), colTimeS, cfg)
+}
+
+// decodeWS281x is DecodeWS281x over samples or edges.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-233
+func decodeWS281x(codes lineIn, colTimeS float64, cfg WS281xCfg) Result {
+	S := codes.slice(cfg.Threshold, cfg.HaveThr)
 	if !S.ok {
 		return Result{Proto: "ws281x", Error: S.reason}
 	}
@@ -412,7 +436,19 @@ type DHTCfg struct {
 // checksum checks.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-233
 func DecodeDHT(codes []uint8, colTimeS float64, cfg DHTCfg) Result {
-	S := sliceChannel(codes, cfg.Threshold, cfg.HaveThr)
+	return decodeDHT(samplesIn(codes), colTimeS, cfg)
+}
+
+// DecodeDHTEdges is DecodeDHT over digital lines' edges (EdgeLine).
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-233
+func DecodeDHTEdges(codes *EdgeLine, colTimeS float64, cfg DHTCfg) Result {
+	return decodeDHT(edgesIn(codes), colTimeS, cfg)
+}
+
+// decodeDHT is DecodeDHT over samples or edges.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-233
+func decodeDHT(codes lineIn, colTimeS float64, cfg DHTCfg) Result {
+	S := codes.slice(cfg.Threshold, cfg.HaveThr)
 	if !S.ok {
 		return Result{Proto: "dht", Error: S.reason}
 	}
@@ -512,7 +548,19 @@ type CECCfg struct {
 // OK needs a message whose bits all keep their timing.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-233
 func DecodeCEC(codes []uint8, colTimeS float64, cfg CECCfg) Result {
-	S := sliceChannel(codes, cfg.Threshold, cfg.HaveThr)
+	return decodeCEC(samplesIn(codes), colTimeS, cfg)
+}
+
+// DecodeCECEdges is DecodeCEC over digital lines' edges (EdgeLine).
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-233
+func DecodeCECEdges(codes *EdgeLine, colTimeS float64, cfg CECCfg) Result {
+	return decodeCEC(edgesIn(codes), colTimeS, cfg)
+}
+
+// decodeCEC is DecodeCEC over samples or edges.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-233
+func decodeCEC(codes lineIn, colTimeS float64, cfg CECCfg) Result {
+	S := codes.slice(cfg.Threshold, cfg.HaveThr)
 	if !S.ok {
 		return Result{Proto: "cec", Error: S.reason}
 	}
@@ -664,7 +712,19 @@ func j1850CRC(b []int) int {
 // bytes) is read on into the same frame. OK needs a frame whose CRC checks.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-233
 func DecodeJ1850(codes []uint8, colTimeS float64, cfg J1850Cfg) Result {
-	S := sliceChannel(codes, cfg.Threshold, cfg.HaveThr)
+	return decodeJ1850(samplesIn(codes), colTimeS, cfg)
+}
+
+// DecodeJ1850Edges is DecodeJ1850 over digital lines' edges (EdgeLine).
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-233
+func DecodeJ1850Edges(codes *EdgeLine, colTimeS float64, cfg J1850Cfg) Result {
+	return decodeJ1850(edgesIn(codes), colTimeS, cfg)
+}
+
+// decodeJ1850 is DecodeJ1850 over samples or edges.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-233
+func decodeJ1850(codes lineIn, colTimeS float64, cfg J1850Cfg) Result {
+	S := codes.slice(cfg.Threshold, cfg.HaveThr)
 	if !S.ok {
 		return Result{Proto: "j1850", Error: S.reason}
 	}

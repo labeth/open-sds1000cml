@@ -69,7 +69,19 @@ var swimNames = map[int]string{0: "SRST", 1: "ROTF", 2: "WOTF"}
 // acknowledged frame whose parity checks.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-253
 func DecodeSWIM(codes []uint8, colTimeS float64, cfg LineCfg) Result {
-	S := sliceChannel(codes, cfg.Threshold, cfg.HaveThr)
+	return decodeSWIM(samplesIn(codes), colTimeS, cfg)
+}
+
+// DecodeSWIMEdges is DecodeSWIM over digital lines' edges (EdgeLine).
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-253
+func DecodeSWIMEdges(codes *EdgeLine, colTimeS float64, cfg LineCfg) Result {
+	return decodeSWIM(edgesIn(codes), colTimeS, cfg)
+}
+
+// decodeSWIM is DecodeSWIM over samples or edges.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-253
+func decodeSWIM(codes lineIn, colTimeS float64, cfg LineCfg) Result {
+	S := codes.slice(cfg.Threshold, cfg.HaveThr)
 	if !S.ok {
 		return Result{Proto: "swim", Error: S.reason}
 	}
@@ -224,7 +236,19 @@ func DecodeSWIM(codes []uint8, colTimeS float64, cfg LineCfg) Result {
 // drops the byte. OK needs two bytes after a break.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-253
 func DecodeSDQ(codes []uint8, colTimeS float64, cfg LineCfg) Result {
-	S := sliceChannel(codes, cfg.Threshold, cfg.HaveThr)
+	return decodeSDQ(samplesIn(codes), colTimeS, cfg)
+}
+
+// DecodeSDQEdges is DecodeSDQ over digital lines' edges (EdgeLine).
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-253
+func DecodeSDQEdges(codes *EdgeLine, colTimeS float64, cfg LineCfg) Result {
+	return decodeSDQ(edgesIn(codes), colTimeS, cfg)
+}
+
+// decodeSDQ is DecodeSDQ over samples or edges.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-253
+func decodeSDQ(codes lineIn, colTimeS float64, cfg LineCfg) Result {
+	S := codes.slice(cfg.Threshold, cfg.HaveThr)
 	if !S.ok {
 		return Result{Proto: "sdq", Error: S.reason}
 	}
@@ -324,7 +348,19 @@ func crc8PJON(b []int) int {
 // whose pads the line holds. OK needs a frame whose header CRC checks.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-253
 func DecodePJDL(codes []uint8, colTimeS float64, cfg LineCfg) Result {
-	S := sliceChannel(codes, cfg.Threshold, cfg.HaveThr)
+	return decodePJDL(samplesIn(codes), colTimeS, cfg)
+}
+
+// DecodePJDLEdges is DecodePJDL over digital lines' edges (EdgeLine).
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-253
+func DecodePJDLEdges(codes *EdgeLine, colTimeS float64, cfg LineCfg) Result {
+	return decodePJDL(edgesIn(codes), colTimeS, cfg)
+}
+
+// decodePJDL is DecodePJDL over samples or edges.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-253
+func decodePJDL(codes lineIn, colTimeS float64, cfg LineCfg) Result {
+	S := codes.slice(cfg.Threshold, cfg.HaveThr)
 	if !S.ok {
 		return Result{Proto: "pjdl", Error: S.reason}
 	}
@@ -508,7 +544,19 @@ func pjonFields(o *wireOut, b []int, fx []float64, dt float64) bool {
 // significant first, the dimming level (a unit). OK needs a whole frame.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-253
 func DecodeDSI(codes []uint8, colTimeS float64, cfg LineCfg) Result {
-	S := sliceChannel(codes, cfg.Threshold, cfg.HaveThr)
+	return decodeDSI(samplesIn(codes), colTimeS, cfg)
+}
+
+// DecodeDSIEdges is DecodeDSI over digital lines' edges (EdgeLine).
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-253
+func DecodeDSIEdges(codes *EdgeLine, colTimeS float64, cfg LineCfg) Result {
+	return decodeDSI(edgesIn(codes), colTimeS, cfg)
+}
+
+// decodeDSI is DecodeDSI over samples or edges.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-253
+func decodeDSI(codes lineIn, colTimeS float64, cfg LineCfg) Result {
+	S := codes.slice(cfg.Threshold, cfg.HaveThr)
 	if !S.ok {
 		return Result{Proto: "dsi", Error: S.reason}
 	}
@@ -593,7 +641,19 @@ func qiLen(h int) int {
 // checksum checks.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-253
 func DecodeQi(codes []uint8, colTimeS float64, cfg LineCfg) Result {
-	S := sliceChannel(codes, cfg.Threshold, cfg.HaveThr)
+	return decodeQi(samplesIn(codes), colTimeS, cfg)
+}
+
+// DecodeQiEdges is DecodeQi over digital lines' edges (EdgeLine).
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-253
+func DecodeQiEdges(codes *EdgeLine, colTimeS float64, cfg LineCfg) Result {
+	return decodeQi(edgesIn(codes), colTimeS, cfg)
+}
+
+// decodeQi is DecodeQi over samples or edges.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-253
+func decodeQi(codes lineIn, colTimeS float64, cfg LineCfg) Result {
+	S := codes.slice(cfg.Threshold, cfg.HaveThr)
 	if !S.ok {
 		return Result{Proto: "qi", Error: S.reason}
 	}

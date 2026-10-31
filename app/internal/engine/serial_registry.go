@@ -17,6 +17,11 @@ type SerialDecoder struct {
 	Name   string                                                            `json:"name"`
 	Decode func(a, b []uint8, sampleS float64, p SerialParams) decode.Result `json:"-"`
 	Match  func([]decode.Span, SerialParams) (bool, int)                     `json:"-"`
+	// Edges is Decode over digital lines' edges (decode.EdgeLine), for a
+	// decoder that reads its lines only through their edges: the digital
+	// stream decodes it in time that follows the bus's edges. Nil for the
+	// decoders that read samples.
+	Edges func(a, b *decode.EdgeLine, sampleS float64, p SerialParams) decode.Result `json:"-"`
 }
 
 var serialDecoders = struct {
@@ -101,31 +106,55 @@ func init() {
 		}, Match: byteMatch},
 		{ID: serLIN, Name: "LIN", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
 			return decode.DecodeLIN(a, sampleS, decode.LINCfg{Baud: p.Baud, Threshold: p.Threshold, HaveThr: p.HaveThr})
-		}, Match: byteMatch},
+		}, Match: byteMatch,
+			Edges: func(a, b *decode.EdgeLine, sampleS float64, p SerialParams) decode.Result {
+				return decode.DecodeLINEdges(a, sampleS, decode.LINCfg{Baud: p.Baud, Threshold: p.Threshold, HaveThr: p.HaveThr})
+			}},
 		{ID: serDMX, Name: "DMX512", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
 			return decode.DecodeDMX512(a, sampleS, decode.DMXCfg{Baud: p.Baud, Threshold: p.Threshold, HaveThr: p.HaveThr})
-		}, Match: byteMatch},
+		}, Match: byteMatch,
+			Edges: func(a, b *decode.EdgeLine, sampleS float64, p SerialParams) decode.Result {
+				return decode.DecodeDMX512Edges(a, sampleS, decode.DMXCfg{Baud: p.Baud, Threshold: p.Threshold, HaveThr: p.HaveThr})
+			}},
 		{ID: serMIDI, Name: "MIDI", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
 			return decode.DecodeMIDI(a, sampleS, decode.MIDICfg{Baud: p.Baud, Threshold: p.Threshold, HaveThr: p.HaveThr})
 		}, Match: byteMatch},
 		{ID: serModbus, Name: "Modbus RTU", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
 			return decode.DecodeModbus(a, sampleS, decode.ModbusCfg{Baud: p.Baud, Parity: p.Parity, Threshold: p.Threshold, HaveThr: p.HaveThr})
-		}, Match: byteMatch},
+		}, Match: byteMatch,
+			Edges: func(a, b *decode.EdgeLine, sampleS float64, p SerialParams) decode.Result {
+				return decode.DecodeModbusEdges(a, sampleS, decode.ModbusCfg{Baud: p.Baud, Parity: p.Parity, Threshold: p.Threshold, HaveThr: p.HaveThr})
+			}},
 		{ID: serOneWire, Name: "1-Wire", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
 			return decode.DecodeOneWire(a, sampleS, decode.OneWireCfg{Overdrive: p.Overdrive, Threshold: p.Threshold, HaveThr: p.HaveThr})
-		}, Match: byteMatch},
+		}, Match: byteMatch,
+			Edges: func(a, b *decode.EdgeLine, sampleS float64, p SerialParams) decode.Result {
+				return decode.DecodeOneWireEdges(a, sampleS, decode.OneWireCfg{Overdrive: p.Overdrive, Threshold: p.Threshold, HaveThr: p.HaveThr})
+			}},
 		{ID: serWS281x, Name: "WS281x", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
 			return decode.DecodeWS281x(a, sampleS, decode.WS281xCfg{Threshold: p.Threshold, HaveThr: p.HaveThr})
-		}, Match: byteMatch},
+		}, Match: byteMatch,
+			Edges: func(a, b *decode.EdgeLine, sampleS float64, p SerialParams) decode.Result {
+				return decode.DecodeWS281xEdges(a, sampleS, decode.WS281xCfg{Threshold: p.Threshold, HaveThr: p.HaveThr})
+			}},
 		{ID: serDHT, Name: "DHT", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
 			return decode.DecodeDHT(a, sampleS, decode.DHTCfg{Threshold: p.Threshold, HaveThr: p.HaveThr})
-		}, Match: byteMatch},
+		}, Match: byteMatch,
+			Edges: func(a, b *decode.EdgeLine, sampleS float64, p SerialParams) decode.Result {
+				return decode.DecodeDHTEdges(a, sampleS, decode.DHTCfg{Threshold: p.Threshold, HaveThr: p.HaveThr})
+			}},
 		{ID: serCEC, Name: "HDMI-CEC", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
 			return decode.DecodeCEC(a, sampleS, decode.CECCfg{Threshold: p.Threshold, HaveThr: p.HaveThr})
-		}, Match: byteMatch},
+		}, Match: byteMatch,
+			Edges: func(a, b *decode.EdgeLine, sampleS float64, p SerialParams) decode.Result {
+				return decode.DecodeCECEdges(a, sampleS, decode.CECCfg{Threshold: p.Threshold, HaveThr: p.HaveThr})
+			}},
 		{ID: serJ1850, Name: "J1850 VPW", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
 			return decode.DecodeJ1850(a, sampleS, decode.J1850Cfg{Threshold: p.Threshold, HaveThr: p.HaveThr})
-		}, Match: byteMatch},
+		}, Match: byteMatch,
+			Edges: func(a, b *decode.EdgeLine, sampleS float64, p SerialParams) decode.Result {
+				return decode.DecodeJ1850Edges(a, sampleS, decode.J1850Cfg{Threshold: p.Threshold, HaveThr: p.HaveThr})
+			}},
 		{ID: serIRNEC, Name: "IR NEC", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
 			return decode.DecodeIRNEC(a, sampleS, decode.IRCfg{Threshold: p.Threshold, HaveThr: p.HaveThr})
 		}, Match: byteMatch},
@@ -140,49 +169,94 @@ func init() {
 		}, Match: byteMatch},
 		{ID: serDALI, Name: "DALI", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
 			return decode.DecodeDALI(a, sampleS, decode.DALICfg{Threshold: p.Threshold, HaveThr: p.HaveThr})
-		}, Match: byteMatch},
+		}, Match: byteMatch,
+			Edges: func(a, b *decode.EdgeLine, sampleS float64, p SerialParams) decode.Result {
+				return decode.DecodeDALIEdges(a, sampleS, decode.DALICfg{Threshold: p.Threshold, HaveThr: p.HaveThr})
+			}},
 		{ID: serUSBPD, Name: "USB PD", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
 			return decode.DecodeUSBPD(a, sampleS, decode.USBPDCfg{Baud: p.Baud, Threshold: p.Threshold, HaveThr: p.HaveThr})
-		}, Match: byteMatch},
+		}, Match: byteMatch,
+			Edges: func(a, b *decode.EdgeLine, sampleS float64, p SerialParams) decode.Result {
+				return decode.DecodeUSBPDEdges(a, sampleS, decode.USBPDCfg{Baud: p.Baud, Threshold: p.Threshold, HaveThr: p.HaveThr})
+			}},
 		{ID: serSPDIF, Name: "S/PDIF", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
 			return decode.DecodeSPDIF(a, sampleS, decode.SPDIFCfg{Threshold: p.Threshold, HaveThr: p.HaveThr})
-		}, Match: byteMatch},
+		}, Match: byteMatch,
+			Edges: func(a, b *decode.EdgeLine, sampleS float64, p SerialParams) decode.Result {
+				return decode.DecodeSPDIFEdges(a, sampleS, decode.SPDIFCfg{Threshold: p.Threshold, HaveThr: p.HaveThr})
+			}},
 		{ID: serPS2, Name: "PS/2", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
 			return decode.DecodePS2(a, b, sampleS, clockedCfg(p))
-		}, Match: byteMatch},
+		}, Match: byteMatch,
+			Edges: func(a, b *decode.EdgeLine, sampleS float64, p SerialParams) decode.Result {
+				return decode.DecodePS2Edges(a, b, sampleS, clockedCfg(p))
+			}},
 		{ID: serSWD, Name: "SWD", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
 			return decode.DecodeSWD(a, b, sampleS, clockedCfg(p))
-		}, Match: byteMatch},
+		}, Match: byteMatch,
+			Edges: func(a, b *decode.EdgeLine, sampleS float64, p SerialParams) decode.Result {
+				return decode.DecodeSWDEdges(a, b, sampleS, clockedCfg(p))
+			}},
 		{ID: serMDIO, Name: "MDIO", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
 			return decode.DecodeMDIO(a, b, sampleS, clockedCfg(p))
-		}, Match: byteMatch},
+		}, Match: byteMatch,
+			Edges: func(a, b *decode.EdgeLine, sampleS float64, p SerialParams) decode.Result {
+				return decode.DecodeMDIOEdges(a, b, sampleS, clockedCfg(p))
+			}},
 		{ID: serWiegand, Name: "Wiegand", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
 			return decode.DecodeWiegand(a, b, sampleS, clockedCfg(p))
-		}, Match: byteMatch},
+		}, Match: byteMatch,
+			Edges: func(a, b *decode.EdgeLine, sampleS float64, p SerialParams) decode.Result {
+				return decode.DecodeWiegandEdges(a, b, sampleS, clockedCfg(p))
+			}},
 		{ID: serQuad, Name: "Quadrature", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
 			return decode.DecodeQuadrature(a, b, sampleS, clockedCfg(p))
-		}, Match: byteMatch},
+		}, Match: byteMatch,
+			Edges: func(a, b *decode.EdgeLine, sampleS float64, p SerialParams) decode.Result {
+				return decode.DecodeQuadratureEdges(a, b, sampleS, clockedCfg(p))
+			}},
 		{ID: serStepper, Name: "Stepper", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
 			return decode.DecodeStepper(a, b, sampleS, clockedCfg(p))
-		}, Match: byteMatch},
+		}, Match: byteMatch,
+			Edges: func(a, b *decode.EdgeLine, sampleS float64, p SerialParams) decode.Result {
+				return decode.DecodeStepperEdges(a, b, sampleS, clockedCfg(p))
+			}},
 		{ID: serPWM, Name: "PWM", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
 			return decode.DecodePWM(a, sampleS, lineCfg(p, false))
-		}, Match: byteMatch},
+		}, Match: byteMatch,
+			Edges: func(a, b *decode.EdgeLine, sampleS float64, p SerialParams) decode.Result {
+				return decode.DecodePWMEdges(a, sampleS, lineCfg(p, false))
+			}},
 		{ID: serRCEncode, Name: "RC encode", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
 			return decode.DecodeRCEncode(a, sampleS, lineCfg(p, false))
-		}, Match: byteMatch},
+		}, Match: byteMatch,
+			Edges: func(a, b *decode.EdgeLine, sampleS float64, p SerialParams) decode.Result {
+				return decode.DecodeRCEncodeEdges(a, sampleS, lineCfg(p, false))
+			}},
 		{ID: serOOK, Name: "OOK", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
 			return decode.DecodeOOK(a, sampleS, lineCfg(p, false))
-		}, Match: byteMatch},
+		}, Match: byteMatch,
+			Edges: func(a, b *decode.EdgeLine, sampleS float64, p SerialParams) decode.Result {
+				return decode.DecodeOOKEdges(a, sampleS, lineCfg(p, false))
+			}},
 		{ID: serMiller, Name: "Miller", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
 			return decode.DecodeMiller(a, sampleS, lineCfg(p, true))
-		}, Match: byteMatch},
+		}, Match: byteMatch,
+			Edges: func(a, b *decode.EdgeLine, sampleS float64, p SerialParams) decode.Result {
+				return decode.DecodeMillerEdges(a, sampleS, lineCfg(p, true))
+			}},
 		{ID: serMorse, Name: "Morse", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
 			return decode.DecodeMorse(a, sampleS, lineCfg(p, false))
-		}, Match: byteMatch},
+		}, Match: byteMatch,
+			Edges: func(a, b *decode.EdgeLine, sampleS float64, p SerialParams) decode.Result {
+				return decode.DecodeMorseEdges(a, sampleS, lineCfg(p, false))
+			}},
 		{ID: serDCF77, Name: "DCF77", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
 			return decode.DecodeDCF77(a, sampleS, lineCfg(p, true))
-		}, Match: byteMatch},
+		}, Match: byteMatch,
+			Edges: func(a, b *decode.EdgeLine, sampleS float64, p SerialParams) decode.Result {
+				return decode.DecodeDCF77Edges(a, sampleS, lineCfg(p, true))
+			}},
 		{ID: serEM4100, Name: "EM4100", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
 			return decode.DecodeEM4100(a, sampleS, lineCfg(p, true))
 		}, Match: byteMatch},
@@ -194,34 +268,64 @@ func init() {
 		}, Match: byteMatch},
 		{ID: serSWIM, Name: "SWIM", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
 			return decode.DecodeSWIM(a, sampleS, lineCfg(p, false))
-		}, Match: byteMatch},
+		}, Match: byteMatch,
+			Edges: func(a, b *decode.EdgeLine, sampleS float64, p SerialParams) decode.Result {
+				return decode.DecodeSWIMEdges(a, sampleS, lineCfg(p, false))
+			}},
 		{ID: serSDQ, Name: "SDQ", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
 			return decode.DecodeSDQ(a, sampleS, lineCfg(p, true))
-		}, Match: byteMatch},
+		}, Match: byteMatch,
+			Edges: func(a, b *decode.EdgeLine, sampleS float64, p SerialParams) decode.Result {
+				return decode.DecodeSDQEdges(a, sampleS, lineCfg(p, true))
+			}},
 		{ID: serPJDL, Name: "PJON", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
 			return decode.DecodePJDL(a, sampleS, lineCfg(p, false))
-		}, Match: byteMatch},
+		}, Match: byteMatch,
+			Edges: func(a, b *decode.EdgeLine, sampleS float64, p SerialParams) decode.Result {
+				return decode.DecodePJDLEdges(a, sampleS, lineCfg(p, false))
+			}},
 		{ID: serDSI, Name: "DSI", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
 			return decode.DecodeDSI(a, sampleS, lineCfg(p, false))
-		}, Match: byteMatch},
+		}, Match: byteMatch,
+			Edges: func(a, b *decode.EdgeLine, sampleS float64, p SerialParams) decode.Result {
+				return decode.DecodeDSIEdges(a, sampleS, lineCfg(p, false))
+			}},
 		{ID: serQi, Name: "Qi", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
 			return decode.DecodeQi(a, sampleS, lineCfg(p, false))
-		}, Match: byteMatch},
+		}, Match: byteMatch,
+			Edges: func(a, b *decode.EdgeLine, sampleS float64, p SerialParams) decode.Result {
+				return decode.DecodeQiEdges(a, sampleS, lineCfg(p, false))
+			}},
 		{ID: serSDCard, Name: "SD card", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
 			return decode.DecodeSDCard(a, b, sampleS, clockedCfg(p))
-		}, Match: byteMatch},
+		}, Match: byteMatch,
+			Edges: func(a, b *decode.EdgeLine, sampleS float64, p SerialParams) decode.Result {
+				return decode.DecodeSDCardEdges(a, b, sampleS, clockedCfg(p))
+			}},
 		{ID: serPDI, Name: "PDI", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
 			return decode.DecodePDI(a, b, sampleS, clockedCfg(p))
-		}, Match: byteMatch},
+		}, Match: byteMatch,
+			Edges: func(a, b *decode.EdgeLine, sampleS float64, p SerialParams) decode.Result {
+				return decode.DecodePDIEdges(a, b, sampleS, clockedCfg(p))
+			}},
 		{ID: serCJTAG, Name: "cJTAG", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
 			return decode.DecodeCJTAG(a, b, sampleS, clockedCfg(p))
-		}, Match: byteMatch},
+		}, Match: byteMatch,
+			Edges: func(a, b *decode.EdgeLine, sampleS float64, p SerialParams) decode.Result {
+				return decode.DecodeCJTAGEdges(a, b, sampleS, clockedCfg(p))
+			}},
 		{ID: serMaple, Name: "Maple", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
 			return decode.DecodeMaple(a, b, sampleS, clockedCfg(p))
-		}, Match: byteMatch},
+		}, Match: byteMatch,
+			Edges: func(a, b *decode.EdgeLine, sampleS float64, p SerialParams) decode.Result {
+				return decode.DecodeMapleEdges(a, b, sampleS, clockedCfg(p))
+			}},
 		{ID: serCaliper, Name: "Caliper", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
 			return decode.DecodeCaliper(a, b, sampleS, clockedCfg(p))
-		}, Match: byteMatch},
+		}, Match: byteMatch,
+			Edges: func(a, b *decode.EdgeLine, sampleS float64, p SerialParams) decode.Result {
+				return decode.DecodeCaliperEdges(a, b, sampleS, clockedCfg(p))
+			}},
 		{ID: serIRMP, Name: "IR multi", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
 			return decode.DecodeIRMP(a, sampleS, lineCfg(p, false))
 		}, Match: byteMatch},

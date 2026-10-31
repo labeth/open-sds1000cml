@@ -30,7 +30,19 @@ type DALICfg struct {
 // the line's longest run. OK needs a whole frame.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-235
 func DecodeDALI(codes []uint8, colTimeS float64, cfg DALICfg) Result {
-	S := sliceChannel(codes, cfg.Threshold, cfg.HaveThr)
+	return decodeDALI(samplesIn(codes), colTimeS, cfg)
+}
+
+// DecodeDALIEdges is DecodeDALI over digital lines' edges (EdgeLine).
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-235
+func DecodeDALIEdges(codes *EdgeLine, colTimeS float64, cfg DALICfg) Result {
+	return decodeDALI(edgesIn(codes), colTimeS, cfg)
+}
+
+// decodeDALI is DecodeDALI over samples or edges.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-235
+func decodeDALI(codes lineIn, colTimeS float64, cfg DALICfg) Result {
+	S := codes.slice(cfg.Threshold, cfg.HaveThr)
 	if !S.ok {
 		return Result{Proto: "dali", Error: S.reason}
 	}
@@ -217,7 +229,19 @@ func bmcBits(S sliced, bit float64) [][]bmcBit {
 // check), then EOP. OK needs a message whose CRC checks.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-235
 func DecodeUSBPD(codes []uint8, colTimeS float64, cfg USBPDCfg) Result {
-	S := sliceChannel(codes, cfg.Threshold, cfg.HaveThr)
+	return decodeUSBPD(samplesIn(codes), colTimeS, cfg)
+}
+
+// DecodeUSBPDEdges is DecodeUSBPD over digital lines' edges (EdgeLine).
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-235
+func DecodeUSBPDEdges(codes *EdgeLine, colTimeS float64, cfg USBPDCfg) Result {
+	return decodeUSBPD(edgesIn(codes), colTimeS, cfg)
+}
+
+// decodeUSBPD is DecodeUSBPD over samples or edges.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-235
+func decodeUSBPD(codes lineIn, colTimeS float64, cfg USBPDCfg) Result {
+	S := codes.slice(cfg.Threshold, cfg.HaveThr)
 	if !S.ok {
 		return Result{Proto: "usbpd", Error: S.reason}
 	}
@@ -395,7 +419,19 @@ func spdifHalf(S sliced) float64 {
 // flagged). OK needs two subframes whose parity checks.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-235
 func DecodeSPDIF(codes []uint8, colTimeS float64, cfg SPDIFCfg) Result {
-	S := sliceChannel(codes, cfg.Threshold, cfg.HaveThr)
+	return decodeSPDIF(samplesIn(codes), colTimeS, cfg)
+}
+
+// DecodeSPDIFEdges is DecodeSPDIF over digital lines' edges (EdgeLine).
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-235
+func DecodeSPDIFEdges(codes *EdgeLine, colTimeS float64, cfg SPDIFCfg) Result {
+	return decodeSPDIF(edgesIn(codes), colTimeS, cfg)
+}
+
+// decodeSPDIF is DecodeSPDIF over samples or edges.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-235
+func decodeSPDIF(codes lineIn, colTimeS float64, cfg SPDIFCfg) Result {
+	S := codes.slice(cfg.Threshold, cfg.HaveThr)
 	if !S.ok {
 		return Result{Proto: "spdif", Error: S.reason}
 	}

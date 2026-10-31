@@ -218,7 +218,19 @@ func snapSPB(spb, colTimeS float64, rates []float64, tol float64) float64 {
 // identifier read right and whose checksum checks (or no response).
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-232
 func DecodeLIN(codes []uint8, colTimeS float64, cfg LINCfg) Result {
-	S := sliceChannel(codes, cfg.Threshold, cfg.HaveThr)
+	return decodeLIN(samplesIn(codes), colTimeS, cfg)
+}
+
+// DecodeLINEdges is DecodeLIN over digital lines' edges (EdgeLine).
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-232
+func DecodeLINEdges(codes *EdgeLine, colTimeS float64, cfg LINCfg) Result {
+	return decodeLIN(edgesIn(codes), colTimeS, cfg)
+}
+
+// decodeLIN is DecodeLIN over samples or edges.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-232
+func decodeLIN(codes lineIn, colTimeS float64, cfg LINCfg) Result {
+	S := codes.slice(cfg.Threshold, cfg.HaveThr)
 	if !S.ok {
 		return Result{Proto: "lin", Error: S.reason}
 	}
@@ -332,7 +344,19 @@ const dmxBreakBits = 22.0
 // packet with a start code and a slot after it, all framed.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-232
 func DecodeDMX512(codes []uint8, colTimeS float64, cfg DMXCfg) Result {
-	S := sliceChannel(codes, cfg.Threshold, cfg.HaveThr)
+	return decodeDMX512(samplesIn(codes), colTimeS, cfg)
+}
+
+// DecodeDMX512Edges is DecodeDMX512 over digital lines' edges (EdgeLine).
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-232
+func DecodeDMX512Edges(codes *EdgeLine, colTimeS float64, cfg DMXCfg) Result {
+	return decodeDMX512(edgesIn(codes), colTimeS, cfg)
+}
+
+// decodeDMX512 is DecodeDMX512 over samples or edges.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-232
+func decodeDMX512(codes lineIn, colTimeS float64, cfg DMXCfg) Result {
+	S := codes.slice(cfg.Threshold, cfg.HaveThr)
 	if !S.ok {
 		return Result{Proto: "dmx512", Error: S.reason}
 	}
@@ -620,7 +644,19 @@ func modbusGood(frames [][]uchar) (good, bad int) {
 // with a "sof". OK needs a CRC-valid frame.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-232
 func DecodeModbus(codes []uint8, colTimeS float64, cfg ModbusCfg) Result {
-	S := sliceChannel(codes, cfg.Threshold, cfg.HaveThr)
+	return decodeModbus(samplesIn(codes), colTimeS, cfg)
+}
+
+// DecodeModbusEdges is DecodeModbus over digital lines' edges (EdgeLine).
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-232
+func DecodeModbusEdges(codes *EdgeLine, colTimeS float64, cfg ModbusCfg) Result {
+	return decodeModbus(edgesIn(codes), colTimeS, cfg)
+}
+
+// decodeModbus is DecodeModbus over samples or edges.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-232
+func decodeModbus(codes lineIn, colTimeS float64, cfg ModbusCfg) Result {
+	S := codes.slice(cfg.Threshold, cfg.HaveThr)
 	if !S.ok {
 		return Result{Proto: "modbus", Error: S.reason}
 	}

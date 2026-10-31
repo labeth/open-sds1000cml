@@ -20,7 +20,7 @@ type cbit struct {
 }
 
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-254
-func risingBits(a, b []uint8, cfg ClockedCfg) ([]cbit, float64, sliced, string) {
+func risingBits(a, b lineIn, cfg ClockedCfg) ([]cbit, float64, sliced, string) {
 	E, _, C, why := clockedLines(a, b, cfg)
 	if why != "" {
 		return nil, 0, C, why
@@ -64,6 +64,18 @@ func crc7(bits []int) int {
 // a token whose CRC checks.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-254
 func DecodeSDCard(a, b []uint8, colTimeS float64, cfg ClockedCfg) Result {
+	return decodeSDCard(samplesIn(a), samplesIn(b), colTimeS, cfg)
+}
+
+// DecodeSDCardEdges is DecodeSDCard over digital lines' edges (EdgeLine).
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-254
+func DecodeSDCardEdges(a, b *EdgeLine, colTimeS float64, cfg ClockedCfg) Result {
+	return decodeSDCard(edgesIn(a), edgesIn(b), colTimeS, cfg)
+}
+
+// decodeSDCard is DecodeSDCard over samples or edges.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-254
+func decodeSDCard(a, b lineIn, colTimeS float64, cfg ClockedCfg) Result {
 	B, per, C, why := risingBits(a, b, cfg)
 	if why != "" {
 		return Result{Proto: "sdcard", Error: why}
@@ -174,6 +186,18 @@ var pdiOps = []string{"LDS", "LD", "STS", "ST", "LDCS", "REPEAT", "STCS", "KEY"}
 // clock rate. OK needs an instruction whose characters check.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-254
 func DecodePDI(a, b []uint8, colTimeS float64, cfg ClockedCfg) Result {
+	return decodePDI(samplesIn(a), samplesIn(b), colTimeS, cfg)
+}
+
+// DecodePDIEdges is DecodePDI over digital lines' edges (EdgeLine).
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-254
+func DecodePDIEdges(a, b *EdgeLine, colTimeS float64, cfg ClockedCfg) Result {
+	return decodePDI(edgesIn(a), edgesIn(b), colTimeS, cfg)
+}
+
+// decodePDI is DecodePDI over samples or edges.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-254
+func decodePDI(a, b lineIn, colTimeS float64, cfg ClockedCfg) Result {
 	B, per, C, why := risingBits(a, b, cfg)
 	if why != "" {
 		return Result{Proto: "pdi", Error: why}
@@ -292,14 +316,26 @@ func jtagNext(s, tms int) int {
 // slow probe holds no scan).
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-254
 func DecodeCJTAG(a, b []uint8, colTimeS float64, cfg ClockedCfg) Result {
-	if b == nil {
+	return decodeCJTAG(samplesIn(a), samplesIn(b), colTimeS, cfg)
+}
+
+// DecodeCJTAGEdges is DecodeCJTAG over digital lines' edges (EdgeLine).
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-254
+func DecodeCJTAGEdges(a, b *EdgeLine, colTimeS float64, cfg ClockedCfg) Result {
+	return decodeCJTAG(edgesIn(a), edgesIn(b), colTimeS, cfg)
+}
+
+// decodeCJTAG is DecodeCJTAG over samples or edges.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-254
+func decodeCJTAG(a, b lineIn, colTimeS float64, cfg ClockedCfg) Result {
+	if b.none() {
 		return Result{Proto: "cjtag", Error: "needs both lines (TCKC and TMSC)"}
 	}
-	K := sliceChannel(a, cfg.Threshold, cfg.HaveThr)
+	K := a.slice(cfg.Threshold, cfg.HaveThr)
 	if !K.ok {
 		return Result{Proto: "cjtag", Error: K.reason}
 	}
-	M := sliceChannel(b, cfg.ThresholdB, cfg.HaveThrB)
+	M := b.slice(cfg.ThresholdB, cfg.HaveThrB)
 	if !M.ok {
 		return Result{Proto: "cjtag", Error: M.reason}
 	}
@@ -442,14 +478,26 @@ var mapleNames = []string{"L", "S", "D", "C"}
 // whose checksum checks.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-254
 func DecodeMaple(a, b []uint8, colTimeS float64, cfg ClockedCfg) Result {
-	if b == nil {
+	return decodeMaple(samplesIn(a), samplesIn(b), colTimeS, cfg)
+}
+
+// DecodeMapleEdges is DecodeMaple over digital lines' edges (EdgeLine).
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-254
+func DecodeMapleEdges(a, b *EdgeLine, colTimeS float64, cfg ClockedCfg) Result {
+	return decodeMaple(edgesIn(a), edgesIn(b), colTimeS, cfg)
+}
+
+// decodeMaple is DecodeMaple over samples or edges.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-254
+func decodeMaple(a, b lineIn, colTimeS float64, cfg ClockedCfg) Result {
+	if b.none() {
 		return Result{Proto: "maple", Error: "needs both lines (SDCKA and SDCKB)"}
 	}
-	A := sliceChannel(a, cfg.Threshold, cfg.HaveThr)
+	A := a.slice(cfg.Threshold, cfg.HaveThr)
 	if !A.ok {
 		return Result{Proto: "maple", Error: A.reason}
 	}
-	Bs := sliceChannel(b, cfg.ThresholdB, cfg.HaveThrB)
+	Bs := b.slice(cfg.ThresholdB, cfg.HaveThrB)
 	if !Bs.ok {
 		return Result{Proto: "maple", Error: Bs.reason}
 	}
@@ -460,7 +508,7 @@ func DecodeMaple(a, b []uint8, colTimeS float64, cfg ClockedCfg) Result {
 		fall   bool
 		la, lb int
 	}
-	var evs []ev
+	evs := make([]ev, 0, len(A.edges)+len(Bs.edges))
 	la, lb := int(A.first), int(Bs.first)
 	ia, ib := 0, 0
 	for ia < len(A.edges) || ib < len(Bs.edges) {
@@ -602,6 +650,18 @@ func DecodeMaple(a, b []uint8, colTimeS float64, cfg ClockedCfg) Result {
 // thousandths of an inch ("rw", e.g. "-12.34mm"). OK needs a frame.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-254
 func DecodeCaliper(a, b []uint8, colTimeS float64, cfg ClockedCfg) Result {
+	return decodeCaliper(samplesIn(a), samplesIn(b), colTimeS, cfg)
+}
+
+// DecodeCaliperEdges is DecodeCaliper over digital lines' edges (EdgeLine).
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-254
+func DecodeCaliperEdges(a, b *EdgeLine, colTimeS float64, cfg ClockedCfg) Result {
+	return decodeCaliper(edgesIn(a), edgesIn(b), colTimeS, cfg)
+}
+
+// decodeCaliper is DecodeCaliper over samples or edges.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-254
+func decodeCaliper(a, b lineIn, colTimeS float64, cfg ClockedCfg) Result {
 	B, per, C, why := risingBits(a, b, cfg)
 	if why != "" {
 		return Result{Proto: "caliper", Error: why}

@@ -7,6 +7,7 @@ package decode
 import (
 	"fmt"
 	"math"
+	"sort"
 	"strconv"
 )
 
@@ -627,6 +628,12 @@ func logicAt(s *sliced, x float64) int {
 	i := int(math.Round(x))
 	if i < 0 || i >= s.n {
 		return -1
+	}
+	if s.codes == nil {
+		// A digital line's edges (EdgeLine.slice): every sample at or past
+		// an edge holds its level.
+		k := sort.Search(len(s.edges), func(k int) bool { return s.edges[k].i > i })
+		return int(s.first) ^ k&1
 	}
 	if float64(s.codes[i]) >= s.threshold {
 		return 1
