@@ -1751,26 +1751,9 @@ decisions:
   - tb_stream_ring checks the on-chip drum (every word, a stall within the slack, a fault beyond it, the record's
     transport traffic ignored), the ring with the stamp (host stop, FPGA trigger, gaps, wraps) and the digital
     stream's ordinals against the stamp's.
-  - The bits image with the ring builds at seed 2 in 8,487 logic elements (8,397 without), +0.143 ns; seeds 1, 3, 4
-    and 6 miss by 0.02 to 0.34 ns on paths outside it (the precision filter's integrators, the interleaver, the
-    record's origin). The stream image ties the on-chip flag off and builds at its seed 4.
-- id: ADR-PANEL-SERIAL-SCAN
-  title: Scan the front panel from the owned images over the factory's serial shift chain
-  status: accepted
-  date: '2026-09-27'
-  context: Physical keys and knobs never worked on the owned images; ReadMatrix was a stub and the images held F1, F2
-    and J2 high as if they were straps. The key interrupt (IRQ 275, gpio3_19) stayed high while knobs were turned. The
-    decoded factory netlist shows the Cyclone answers every CS1 read, including the key registers 0x64 to 0x69, and that
-    only J1 carries panel data into them. F2 follows a toggle that flips at a prescaler terminal count (a free clock of
-    about 300 kHz), J2 is the top bit of a 7-bit counter of F2 edges (a frame level changing every 64 clocks), and F1
-    comes from the receiver block.
-  decision: Every acquisition image carries a panel scan block. J2 loads the panel's parallel-load shift chain, F2
-    clocks 64 bits out and J1 is sampled before each rising edge; a low pulse on F1 per changed frame raises the ARM key
-    interrupt. The block counts each knob's quadrature steps. Registers are write 31 config, 32 F2 half period, 33 gap,
-    34 read index; read 31 identity 0x5041, 44 the indexed word (frame, knob counts, counters, pins). The settled scan
-    is the power-on default and the app re-applies it after every image load. ReadMatrix rebuilds the factory's five
-    words from a scan read, one knob per read in the decoder's priority order, so the panel decoder is unchanged.
-  consequences:
+  - The bits image with the ring (and the drum's measured trip rule) builds at seed 5 in 8,538 logic elements,
+    +0.026 ns; seeds 2, 3 and 4 miss by 0.04 to 0.41 ns on the precision filter's first integrators, outside it.
+    The stream image ties the on-chip flag off and builds at its seed 4.
   - 'Validated on the instrument. Keys read active low, one bit each; each row''s positions 1 and 2 are
     a knob''s raw quadrature phases. Shift byte n is factory row n+1, and RUN/STOP, AUTO and SINGLE land on the
     decoder''s codes. 684 key interrupts arrived during a 45 s press test, and the user confirmed buttons and knobs
