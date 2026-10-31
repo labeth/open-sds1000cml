@@ -1737,6 +1737,9 @@ decisions:
   - tb_stream_ring checks the on-chip drum (every word, a stall within the slack, a fault beyond it, the record's
     transport traffic ignored), the ring with the stamp (host stop, FPGA trigger, gaps, wraps) and the digital
     stream's ordinals against the stamp's.
+  - The bits image with the ring builds at seed 2 in 8,487 logic elements (8,397 without), +0.143 ns; seeds 1, 3, 4
+    and 6 miss by 0.02 to 0.34 ns on paths outside it (the precision filter's integrators, the interleaver, the
+    record's origin). The stream image ties the on-chip flag off and builds at its seed 4.
 - id: ADR-PANEL-SERIAL-SCAN
   title: Scan the front panel from the owned images over the factory's serial shift chain
   status: accepted
