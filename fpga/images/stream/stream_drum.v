@@ -218,7 +218,8 @@ module stream_drum #(parameter AW=19,WF_AW=12,DESC_AW=8,BANK_AW=10,
  // The FIFO pairs a stream at the LAP_SHIFT rate brings while the counter
  // goes the distance to the write head.
  wire [AW:0] trip_lvl=p2_lvl+(p2_dist_w>>(LAP_SHIFT+1));
- wire at_w=p2_dist_w==0,at_r=p2_dist_r==0;
+ // Registered (a clock later than the rest of p2: the inputs are settled).
+ reg at_w=0,at_r=0,w_first=0,trip=0;
  wire [AW-1:0] seek_w=p2_dist_w>SEG ? SEG : p2_dist_w,seek_r=p2_dist_r>SEG ? SEG : p2_dist_r;
  always @(posedge hclk)begin
   done_q<=done_t;ready_q<=t_ready;pos_q<=position;
@@ -239,6 +240,7 @@ module stream_drum #(parameter AW=19,WF_AW=12,DESC_AW=8,BANK_AW=10,
   // there until a trip is due; the write head, when it comes first, takes
   // the FIFO (a burst of at least WRITE_AT words, and then what came
   // meanwhile, so a trip leaves little for the next lap).
+  at_w<=p2_dist_w==0;at_r<=p2_dist_r==0;w_first<=p2_dist_w<p2_dist_r;trip<=p2_min && trip_lvl>=TRIP_AT/2;
   p3_go<=1;p3_kind<=K_SEEK;p3_seek<=seek_r;p3_keep<=0;p3_seal<=p2_partial;
   if(p2_empty)begin
    if(bank_ready && p2_due)p3_kind<=K_DIRECT;
@@ -247,9 +249,9 @@ module stream_drum #(parameter AW=19,WF_AW=12,DESC_AW=8,BANK_AW=10,
    else p3_go<=0;
   end else if(at_r)begin
    if(can_read)begin p3_kind<=K_READ;p3_seal<=0;end
-   else if(p2_min && trip_lvl>=TRIP_AT/2)p3_seek<=seek_w;
+   else if(trip)p3_seek<=seek_w;
    else begin p3_go<=0;p3_seal<=0;end
-  end else if(p2_dist_w<p2_dist_r)begin
+  end else if(w_first)begin
    p3_keep<=1;
    if(!at_w)p3_seek<=seek_w;
    else if((p2_min || w_more && p2_tail) && p2_room)p3_kind<=K_WRITE;

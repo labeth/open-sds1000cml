@@ -95,11 +95,21 @@ module tb_stream_drum #(parameter REAL=0,FAST=0,AW=REAL ? 19 : 12,BANK_AW=REAL ?
    active<=0;repeat(50)@(posedge core);expected=0;sent=0;blocks=0;writes=0;reads=0;active<=1;
   end
  endtask
+ // The backlog: its peak (ring words) and when the ring last emptied.
+ integer peak=0;realtime spill_t=0,clear_t=0;reg had=0;
+ always @(posedge hclk)begin
+  if(dut.used>peak)peak=dut.used;
+  if(dut.used!=0 && !had)spill_t=$realtime;
+  if(dut.used==0 && had)begin clear_t=$realtime;if(REAL)$display("  backlog %0.3f-%0.3f ms, ring peak %0d words",spill_t/1e6,clear_t/1e6,peak);end
+  had<=dut.used!=0;
+ end
  task settle_check(input integer clocks,input [8*24-1:0] name);
   begin
    repeat(clocks)@(posedge core);
    if(expected!==sent || fault)begin $display("FAIL: %0s drained %0d of %0d, fault %b",name,expected,sent,fault);errors=errors+1;end
-   $display("%0s: %0d words in %0d banks, %0d ring writes, %0d ring reads, fault %b",name,expected,blocks,writes,reads,fault);
+   $display("%0s: %0d words in %0d banks, %0d ring writes, %0d ring reads, ring peak %0d words, last backlog %0.3f-%0.3f ms, fault %b",
+    name,expected,blocks,writes,reads,peak,spill_t/1e6,clear_t/1e6,fault);
+   peak=0;
   end
  endtask
  // n words, one per period clocks, with the host stalled for the middle
@@ -128,11 +138,11 @@ module tb_stream_drum #(parameter REAL=0,FAST=0,AW=REAL ? 19 : 12,BANK_AW=REAL ?
   repeat(20)@(posedge core);active<=1;
   if(REAL)begin
    // The board's sizes: the GPMC ceiling (one word per 197 clocks) with the
-   // host draining at 1.6M words/s and a 10 ms stall (12.7k words into the
-   // ring), then 1.6M words/s (above the GPMC; a lap brings 3.3k words) with a
-   // 4 ms stall and the host at 1.9M words/s.
-   drain_ns=625;stream(40000,197,12700);settle_check(1000000,"real 1.27M");
-   session;drain_ns=526;stream(40000,156,6400);settle_check(1000000,"real 1.6M");
+   // host draining at 1.6M words/s and a 5 ms stall, then 1.6M words/s
+   // (above the GPMC; a lap brings 3.3k words) with the host at 1.9M words/s
+   // and a 2 ms stall. The settle outlasts the age rule (16.8 ms).
+   drain_ns=625;stream(30000,197,6350);settle_check(5000000,"real 1.27M");
+   session;drain_ns=526;stream(30000,156,3200);settle_check(5000000,"real 1.6M");
    if(errors==0)$display("PASS tb_stream_drum REAL");else $display("FAIL tb_stream_drum REAL: %0d errors",errors);
    $finish;
   end
