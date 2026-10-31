@@ -1676,6 +1676,19 @@ decisions:
     FIFO allows. tb_stream_drum MID (the board's FIFO and banks, an eighth of its ring and descriptors, rates eight
     times) with that pump, recovery from 57% and 84% of the ring at the 512 rate takes half as long and the backlog
     no longer grows after the stall; descriptors were never short (bursts of at least 76 words, 45 of 64 at 84%).
+  - Decimation 256 (1.95M words/s) brings 4.1k words a lap, the whole 4096-word FIFO and the whole pair of 2048-word
+    banks; the first spill overflowed the FIFO on the way back to the read head, and a backlog could not drain (a
+    lap reads at most two banks). The drum images now give the stream two banks of 2560 words (a 5120-word host
+    buffer, register 26; the host takes 4096, 5120 or 8192) and a 4608-word FIFO (2304 pairs), all 46 block RAMs;
+    a trip that finds the head burst larger than the free bank room first reads what fits (the rest a lap later),
+    else a lap read only the whole bursts that fit, as much as a lap brings; and a bank goes the direct way at 512
+    words only while the host keeps the other free (small banks filled both before the host's first look and
+    spilled at once). A behavioural model of the drum and the worker's pump (calibrated against the instrument,
+    decimation 512 300/450 ms and 1024 900 ms absorbed, 256 faulting within milliseconds) found the banks decide
+    it - a bigger FIFO with 2048-word banks never drains a backlog, 2304-word banks fall short, and 4352 FIFO words
+    were short in tb_stream_drum MID (4608 take the same block RAMs). Model, at decimation 256 with 17 ms pump
+    gaps, single 50/100/200/250 ms stalls absorbed and drained 0.3/0.7/1.3/1.7 s after the stall; 280 ms fills
+    the ring. The block RAMs' odd depths cost about 200 logic elements of address decode and output muxes.
 - id: ADR-STREAM-BITS
   title: The decoded stream streams each line sliced, sixteen periods a word
   status: accepted
