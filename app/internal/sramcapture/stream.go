@@ -285,6 +285,7 @@ func (c *Capture) StartStream(ctx context.Context, cfg Config, continuous, peak 
 		}
 		// Latched by the fabric while idle, so before the arm.
 		err = c.write(19, mode)
+		c.ringStream = false
 	}
 	c.mu.Unlock()
 	if err != nil {
@@ -302,9 +303,17 @@ func (c *Capture) StartStream(ctx context.Context, cfg Config, continuous, peak 
 // yet drained are discarded.
 // TRLC-LINKS: REQ-SDS-035
 func (c *Capture) StopStream(ctx context.Context) error {
+	c.mu.Lock()
+	ring := c.ringStream
+	c.mu.Unlock()
 	err := c.Halt(ctx)
+	if ring && err == nil {
+		// The first stop froze a running ring; this one ends the stream.
+		err = c.Halt(ctx)
+	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	c.ringStream = false
 	if werr := c.write(19, 0); err == nil {
 		err = werr
 	}

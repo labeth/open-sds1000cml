@@ -66,6 +66,9 @@ type Capture struct {
 	symbolTable   [SymbolTableSize]uint8
 	symbolTableOK bool
 	beats         atomic.Uint64
+	// ringStream: a stream started with its record as a ring (StartStreamRing),
+	// which a stop first freezes; StopStream then ends the stream too.
+	ringStream bool
 }
 
 // TRLC-LINKS: REQ-SDS-032, REQ-SDS-040
@@ -194,6 +197,10 @@ type Metadata struct {
 	SamplesPerWord    uint8   `json:"samples_per_word"`
 	Interleaved       bool    `json:"interleaved"`
 	DataFault         bool    `json:"data_fault"`
+	// HostTrigger: TriggerIndex is the host's - a history ring frozen on a
+	// stream's software trigger (ADR-STREAM-RING), placed on the stream's
+	// frame through the ring's time stamp; the fabric reports a stopped ring.
+	HostTrigger bool `json:"host_trigger,omitempty"`
 }
 
 // TRLC-LINKS: REQ-SDS-032
@@ -1061,7 +1068,7 @@ func (c *Capture) sameFrozen(m Metadata) (Metadata, error) {
 		if err != nil {
 			return now, err
 		}
-		if now.Length != m.Length || now.Start != m.Start || now.Origin != m.Origin || now.TriggerIndex != m.TriggerIndex || now.Revision != m.Revision || now.Decimation != m.Decimation {
+		if now.Length != m.Length || now.Start != m.Start || now.Origin != m.Origin || (now.TriggerIndex != m.TriggerIndex && !m.HostTrigger) || now.Revision != m.Revision || now.Decimation != m.Decimation {
 			return now, fmt.Errorf("sramcapture: retained record changed")
 		}
 		return now, nil

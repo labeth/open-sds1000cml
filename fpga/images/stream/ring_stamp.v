@@ -13,23 +13,26 @@
 // the decimator's fixed delay). The count wraps after 17.2 s; the host
 // unwraps it against its own stream time.
 //
-// Timing at 250 MHz: raw words may come every clock, so the high half steps
-// on a registered "low half is all ones" flag rather than the low half's
-// carry, and the latch reads both halves of the same count.
+// Timing at 250 MHz: raw words may come every clock, so only the low byte
+// counts every word; the high 24 bits step on a registered "low byte is all
+// ones" flag, to a sum computed every clock ahead of need (a carry comes at
+// most every 256 clocks, so the sum has settled by then), and the latch
+// reads both parts of the same count.
 // TRLC-LINKS: REQ-SDS-035
 module ring_stamp(
  input clk,active,raw_valid,write,
  output reg [31:0] last=0
 );
  (* preserve, dont_merge *) reg run=0;
- reg [15:0] lo=0,hi=0;reg lo_ones=0,v=0,w=0;
+ reg [7:0] lo=0;reg [23:0] hi=0,hi_next=1;reg lo_ones=0,v=0,w=0;
  always @(posedge clk)begin
   run<=active;
   v<=run && raw_valid;w<=write;
+  hi_next<=hi+1'b1;
   if(!run)begin lo<=0;hi<=0;lo_ones<=0;end
   else if(v)begin
-   lo<=lo+1'b1;lo_ones<=lo==16'hfffe;
-   if(lo_ones)hi<=hi+1'b1;
+   lo<=lo+1'b1;lo_ones<=lo==8'hfe;
+   if(lo_ones)hi<=hi_next;
   end
   if(w)last<={hi,lo};
  end

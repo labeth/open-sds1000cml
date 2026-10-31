@@ -73,6 +73,7 @@ func (c *Capture) StartStreamMarked(ctx context.Context, cfg Config, m StreamMar
 	}
 	if err == nil {
 		err = c.write(19, 1|2|m.bits()) // stream, continuous, the marks
+		c.ringStream = false
 	}
 	c.mu.Unlock()
 	if err != nil {

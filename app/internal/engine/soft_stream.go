@@ -24,9 +24,11 @@ import (
 //     (decode.StreamDecoder), where its finest lossless bucket (2^9 samples,
 //     1.024 us) keeps three and a half buckets in the protocol's shortest
 //     feature. The stream image has no symbol trigger, so a stop on a value
-//     ends the transcript at the frame software read it in, and the record
-//     shown is the FPGA's: the qualify image's symbol trigger armed on the
-//     value, the next time it comes.
+//     ends the transcript at the frame software read it in. The record shown
+//     is the bits image's history ring stopped there (soft_ring.go,
+//     ADR-STREAM-RING: for a decoded stream software may be the trigger)
+//     when the stream's plan allows one; else the FPGA's: the qualify
+//     image's symbol trigger armed on the value, the next time it comes.
 //   - Captures: the faster buses are decoded from back-to-back full-rate
 //     (or lightly decimated) records on the qualify image, each armed with
 //     the symbol trigger - the frame start, or the stop value - and forced
@@ -136,6 +138,16 @@ type softStream struct {
 	missed    int    // records in a row whose decode read the value the FPGA did not fire on
 	stopFirst uint64 // the stop frame's first and last sample ordinals
 	stopLast  uint64
+
+	// The history ring (soft_ring.go): the stream runs on chip beside the
+	// ring; sessBase is the decoder's index of this stream session's first
+	// sample, where the ring's stamp counts from.
+	ring     bool
+	ringLog  uint8
+	ringCfg  sramcapture.Config
+	ringErr  error
+	ringWhy  string // why a value stop has no ring
+	sessBase uint64
 
 	// The record shown at the stop.
 	recCfg  sramcapture.Config
@@ -296,7 +308,7 @@ func (e *Engine) beginSoftStream(ctx context.Context, p SerialParams, trig Strea
 		}
 	}
 	s := &softStream{p: p, proto: name, decoder: d, trig: trig, value: value & unitMask(p), mask: unitMask(p),
-		gapFree: gapFree, quiet: quiet, log: uint8(log), bits: bits, byHand: onError}
+		gapFree: gapFree, quiet: quiet, log: uint8(log), bits: bits, byHand: onError, ring: bits && trig == StreamOnValue}
 	v, err := e.decodedCall(ctx, func() (any, error) {
 		e.decodedStarting = time.Time{}
 		if e.decodedSession != nil || e.soft != nil {
@@ -321,6 +333,9 @@ func (e *Engine) beginSoftStream(ctx context.Context, p SerialParams, trig Strea
 				return nil, fmt.Errorf("the %s FPGA image did not load", want)
 			}
 		}
+		if s.ring && !e.sram.StreamRingSupported() {
+			s.ring, s.ringWhy = false, "the bits image has no history ring"
+		}
 		e.SetRunning(false) // streaming is not RUN
 		e.softEpoch++
 		s.id = sramcapture.RecordIdentity{Epoch: softEpochBase | e.softEpoch&0x3fffffff, Record: 1}
@@ -337,6 +352,11 @@ func (e *Engine) beginSoftStream(ctx context.Context, p SerialParams, trig Strea
 			// reads the open window again, so short pushes cost it over and
 			// over), but at least once a second: a DCF77 minute's Close is 32 s.
 			s.pushN = min(int(math.Max(0.2, math.Min(1, 2*quiet))/s.sampleS), softPushMax)
+			if s.ring {
+				// A drain step runs up to 100 ms before it decodes.
+				n, why, ok := softRingPlan(log, feature, longest, quiet, float64(s.pushN)*s.sampleS+0.1)
+				s.ring, s.ringLog, s.ringWhy = ok, uint8(n), why
+			}
 			s.newDecoder(int(quiet/s.sampleS), int((longest+quiet)/s.sampleS))
 			lead := int(decode.StreamLead(name, float64(p.Baud)) / s.sampleS)
 			s.dec.SetLead(lead)
@@ -353,6 +373,9 @@ func (e *Engine) beginSoftStream(ctx context.Context, p SerialParams, trig Strea
 		e.stats.DecodedStreamMode = mode
 		e.mu.Unlock()
 		e.logf("engine: %s stream: %s", d.Name, mode)
+		if bits && trig == StreamOnValue && !s.ring {
+			e.logf("engine: %s stream: no history ring (%s): the stop's record is the symbol trigger's", d.Name, s.ringWhy)
+		}
 		return s.id, nil
 	})
 	if err != nil {
@@ -425,6 +448,9 @@ func (s *softStream) modeText(elapsed time.Duration) string {
 	if s.byHand {
 		t += "; stops by hand (the FPGA matches no decode error here)"
 	}
+	if s.ring {
+		t += fmt.Sprintf("; the stop shows the %.2g s analog history", softRingSpan(int(s.ringLog)))
+	}
 	return t
 }
 
@@ -442,9 +468,18 @@ func (e *Engine) softStreamStart(s *softStream) error {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
-	if err := e.sram.StartStream(ctx, cfg, true, true); err != nil {
+	if s.ring {
+		// The record runs as the history ring at its own decimation; the
+		// stream keeps the plan's (soft_ring.go).
+		cfg.DecimationLog2 = s.ringLog
+		if err := e.sram.StartStreamRing(ctx, cfg, s.log); err != nil {
+			return err
+		}
+		s.ringCfg = cfg
+	} else if err := e.sram.StartStream(ctx, cfg, true, true); err != nil {
 		return err
 	}
+	s.sessBase = s.dec.Next() + uint64(len(s.pendA))
 	s.streaming, s.expected, s.haveLast = true, 0, false
 	if p, ok := e.b.(streamPumper); ok {
 		owned, err := p.SetIsolatedStreamPump(true)
@@ -528,7 +563,8 @@ func (e *Engine) softDrain(s *softStream) {
 	raw := s.raw[:0]
 	w := byteSink{dst: &raw}
 	fed := false
-	for end := e.clk.Now().Add(100 * time.Millisecond); e.clk.Now().Before(end) && !e.stopReq.Load(); {
+	// A stop read in a feed ends the stream there: no drain after it.
+	for end := e.clk.Now().Add(100 * time.Millisecond); e.clk.Now().Before(end) && !e.stopReq.Load() && s.phase == softStreaming; {
 		if s.isolated && s.inPlace {
 			// The words are decoded where the worker's DMA put them; they go
 			// back to the worker at the next peek.
@@ -915,6 +951,9 @@ func (s *softStream) learnBWords(raw []byte, ch int) {
 // on the stop value the transcript ends there and the record is armed.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
 func (e *Engine) softPush(s *softStream) {
+	if s.phase != softStreaming {
+		return // the transcript ended on the stop frame
+	}
 	if s.edges {
 		e.softPushEdges(s)
 		return
@@ -937,8 +976,7 @@ func (e *Engine) softPush(s *softStream) {
 		frames := s.dec.Push(a[:n], bn)
 		a = a[n:]
 		if s.emit(frames, s.ord) {
-			e.softStreamStop(s)
-			s.phase = softRecord
+			e.softStopOnValue(s)
 			return
 		}
 	}
@@ -961,11 +999,23 @@ func (e *Engine) softPushEdges(s *softStream) {
 		frames := s.dec.PushEdges(&s.pendEA, b, at, to)
 		at = to
 		if s.emit(frames, s.ord) {
-			e.softStreamStop(s)
-			s.phase = softRecord
+			e.softStopOnValue(s)
 			return
 		}
 	}
+}
+
+// softStopOnValue ends the stream on the frame holding the stop value: the
+// history ring stopped there, or the symbol trigger's record of the value
+// coming again.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func (e *Engine) softStopOnValue(s *softStream) {
+	if s.ring && s.streaming {
+		e.softRingStop(s)
+		return
+	}
+	e.softStreamStop(s)
+	s.phase = softRecord
 }
 
 // softPushMax bounds the samples a line one decode takes: a decode's working
