@@ -436,23 +436,21 @@ func rails(codes []uint8) (lowRail, highRail float64, reason string) {
 // runs of three or more: a pulse holds its level, a noise spike does not.
 // TRLC-LINKS: REQ-SDS-018
 func heldBeyond(codes []uint8, thr float64) float64 {
+	// Run by run, each found a word at a time (a quiet line is one long run,
+	// and a float compare a sample is what a decode of it cost the device).
+	on := codeCeil(thr) // v >= thr exactly when v >= on
 	var held [2]int
-	run, side := 0, -1
-	for _, v := range codes {
-		s := 0
-		if float64(v) >= thr {
-			s = 1
-		}
-		if s == side {
-			run++
+	for i := 0; i < len(codes); {
+		s, j := 0, 0
+		if int(codes[i]) >= on {
+			s, j = 1, scanAtMost(codes, i+1, on-1)
 		} else {
-			run, side = 1, s
+			j = scanAtLeast(codes, i+1, on)
 		}
-		if run == 3 {
-			held[s] += 3
-		} else if run > 3 {
-			held[s]++
+		if j-i >= 3 {
+			held[s] += j - i
 		}
+		i = j
 	}
 	return float64(min(held[0], held[1]))
 }
@@ -471,8 +469,9 @@ func railsAround(codes []uint8, thr float64, reason string) (lowRail, highRail f
 		return 0, 0, reason
 	}
 	var ls, lw, hs, hw int
+	on := codeCeil(thr)
 	for _, v := range codes {
-		if float64(v) >= thr {
+		if int(v) >= on {
 			hs++
 			hw += int(v)
 		} else {
@@ -573,15 +572,11 @@ func sliceChannel(codes []uint8, thr float64, haveThr bool) sliced {
 	}
 	first := int8(cur)
 	for i := 0; i < n; {
-		j := i
+		var j int
 		if cur == 0 {
-			for j < n && int(codes[j]) < hiAt {
-				j++
-			}
+			j = scanAtLeast(codes, i, hiAt)
 		} else {
-			for j < n && int(codes[j]) > loAt {
-				j++
-			}
+			j = scanAtMost(codes, i, loAt)
 		}
 		if j >= n {
 			break

@@ -14,6 +14,7 @@ package decode
 //	SDS_STREAM_CPU=1 ./decode-stream-cpu-arm.test -test.run TestStreamCPU -test.v
 
 import (
+	"encoding/binary"
 	"fmt"
 	"math"
 	"math/rand"
@@ -22,6 +23,7 @@ import (
 	"strings"
 	"syscall"
 	"testing"
+	"unsafe"
 )
 
 // streamCPUExtra are buses the FPGA decodes today, modelled as if the live
@@ -186,6 +188,26 @@ func streamCPULines(tc streamCPUCase, seed int64, secs float64, bursty bool) (a,
 	return a[:n], b[:n], tc.bucket / 2
 }
 
+// streamCPUIdle is secs of the case's idle line as the peak stream's
+// samples: what a quiet bus costs.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func streamCPUIdle(tc streamCPUCase, secs float64) (a, b []uint8, ss float64) {
+	const m = 8
+	rng := rand.New(rand.NewSource(1))
+	fine := newTwoLine(m / tc.bucket)
+	idle := [2]byte{1, 1}
+	if tc.c.name == "j1850" || tc.c.name == "irnec-carrier" {
+		idle[0] = 0
+	}
+	if tc.c.idle != nil {
+		idle = *tc.c.idle
+	}
+	fine.add(idle[0], idle[1], secs)
+	a, b = peakStream(fine.a.codes(), m, rng), peakStream(fine.b.codes(), m, rng)
+	n := min(len(a), len(b))
+	return a[:n], b[:n], tc.bucket / 2
+}
+
 // streamCPURun pushes the samples through a stream decoder in the engine's
 // pushes and returns the frames.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
@@ -206,26 +228,74 @@ func streamCPURun(tc streamCPUCase, a, b []uint8, ss float64, dec func(a, b []ui
 	return append(out, d.Flush()...)
 }
 
-// threadCPU is this thread's user+system CPU time in ns.
+// threadCPU is the process's user+system CPU time in ns.
 // TRLC-LINKS: REQ-SDS-018
 func threadCPU() int64 {
 	var r syscall.Rusage
-	_ = syscall.Getrusage(1 /* RUSAGE_THREAD */, &r)
+	_ = syscall.Getrusage(syscall.RUSAGE_SELF, &r) // the collector's threads too
 	return r.Utime.Nano() + r.Stime.Nano()
 }
 
-// cpuOf is fn's CPU time a call (ns), fn run until 400 ms of CPU.
+// cpuOf is fn's CPU time a call (ns): the least of seven rounds of at least
+// 80 ms each, so other work on the machine inflates no round it spares.
+// With SDS_STREAM_CPU_CYCLES=1 it is the calling thread's user cycles a
+// call instead (perf counters: a loaded PC's time swings by a third), with
+// =insn its instructions.
 // TRLC-LINKS: REQ-SDS-018
 func cpuOf(fn func()) float64 {
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
 	fn()
-	t0, n := threadCPU(), 0
-	for threadCPU()-t0 < 400e6 || n < 3 {
-		fn()
-		n++
+	if os.Getenv("SDS_STREAM_CPU_CYCLES") != "" {
+		if c, ok := cyclesOf(fn); ok {
+			return c
+		}
 	}
-	return float64(threadCPU()-t0) / float64(n)
+	best := math.Inf(1)
+	for range 7 {
+		runtime.GC()
+		t0, n := threadCPU(), 0
+		for threadCPU()-t0 < 80e6 || n < 2 {
+			fn()
+			n++
+		}
+		best = min(best, float64(threadCPU()-t0)/float64(n))
+	}
+	return best
+}
+
+// cyclesOf is fn's user-mode cycles on this thread a call, the least of
+// five rounds; ok false without a perf counter.
+// TRLC-LINKS: REQ-SDS-018
+func cyclesOf(fn func()) (float64, bool) {
+	var attr [128]byte
+	binary.LittleEndian.PutUint32(attr[0:], 0)               // PERF_TYPE_HARDWARE
+	binary.LittleEndian.PutUint32(attr[4:], 128)             // size
+	binary.LittleEndian.PutUint64(attr[8:], 0)               // PERF_COUNT_HW_CPU_CYCLES
+	binary.LittleEndian.PutUint64(attr[40:], 1<<0|1<<5|1<<6) // disabled, exclude_kernel, exclude_hv
+	fd, _, errno := syscall.Syscall6(syscall.SYS_PERF_EVENT_OPEN, uintptr(unsafe.Pointer(&attr[0])), 0, ^uintptr(0), ^uintptr(0), 0, 0)
+	if errno != 0 {
+		return 0, false
+	}
+	defer syscall.Close(int(fd))
+	read := func() uint64 {
+		var b [8]byte
+		_, _ = syscall.Read(int(fd), b[:])
+		return binary.LittleEndian.Uint64(b[:])
+	}
+	const enable, disable = 0x2400, 0x2401 // PERF_EVENT_IOC_ENABLE, _DISABLE
+	_, _, _ = syscall.Syscall(syscall.SYS_IOCTL, fd, enable, 0)
+	best := math.Inf(1)
+	for range 5 {
+		runtime.GC()
+		c0, n := read(), 0
+		for t0 := threadCPU(); threadCPU()-t0 < 60e6 || n < 2; n++ {
+			fn()
+		}
+		best = min(best, float64(read()-c0)/float64(n))
+	}
+	_, _, _ = syscall.Syscall(syscall.SYS_IOCTL, fd, disable, 0)
+	return best, true
 }
 
 // TestStreamCPU reports each protocol's decode CPU a second of stream, and
@@ -237,8 +307,15 @@ func TestStreamCPU(t *testing.T) {
 	}
 	var sb strings.Builder
 	p := func(f string, a ...any) { fmt.Fprintf(&sb, f, a...) }
-	p("%s/%s; CPU ms a second of stream (%% of one core), decoded samples a pushed one\n", runtime.GOOS, runtime.GOARCH)
-	p("%-11s %8s %9s | %9s %7s | %9s %7s | %5s %7s\n", "protocol", "bucket", "samples/s", "dense ms", "redo", "bursty ms", "redo", "frames", "slice%")
+	unit := "CPU ms a second of stream (% of one core)"
+	if os.Getenv("SDS_STREAM_CPU_CYCLES") != "" {
+		unit = "user Mcycles a second of stream"
+		if os.Getenv("SDS_STREAM_CPU_CYCLES") == "insn" {
+			unit = "user M instructions a second of stream"
+		}
+	}
+	p("%s/%s; %s, decoded samples a pushed one\n", runtime.GOOS, runtime.GOARCH, unit)
+	p("%-11s %8s %9s | %9s %7s | %9s %7s | %7s | %5s %7s\n", "protocol", "bucket", "samples/s", "dense ms", "redo", "bursty ms", "redo", "idle ms", "frames", "slice%")
 	for _, name := range streamCPUNames {
 		tc := streamCPUCaseOf(t, name)
 		var row [2][2]float64
@@ -266,14 +343,25 @@ func TestStreamCPU(t *testing.T) {
 				slicePct = 100 * sl * redo / ns
 			}
 		}
-		p("%-11s %6.3gus %9.3g | %9.2f %7.2f | %9.2f %7.2f | %5d %6.0f%%\n", name, tc.bucket*1e6, 2/tc.bucket,
-			row[0][0], row[0][1], row[1][0], row[1][1], frames, slicePct)
+		ia, ib, iss := streamCPUIdle(tc, 0.25)
+		idleDec := func(x, y []uint8) Result { return tc.c.dec(x, y, iss) }
+		idleMS := cpuOf(func() { streamCPURun(tc, ia, ib, iss, idleDec) }) / (float64(len(ia)) * iss) / 1e6
+		p("%-11s %6.3gus %9.3g | %9.2f %7.2f | %9.2f %7.2f | %7.2f | %5d %6.0f%%\n", name, tc.bucket*1e6, 2/tc.bucket,
+			row[0][0], row[0][1], row[1][0], row[1][1], idleMS, frames, slicePct)
 	}
 	t.Log("\n" + sb.String())
 	if path := os.Getenv("SDS_STREAM_CPU_OUT"); path != "" {
 		_ = os.WriteFile(path, []byte(sb.String()), 0o644)
 	}
 }
+
+// streamCPUData is a benchmark's stream, made once.
+type streamCPUData struct {
+	a, b []uint8
+	ss   float64
+}
+
+var streamCPUBench = map[string]streamCPUData{}
 
 // BenchmarkStreamCPU is TestStreamCPU's dense streams for a profile
 // (SDS_STREAM_BURSTY=1: the bursty ones).
@@ -282,7 +370,13 @@ func BenchmarkStreamCPU(b *testing.B) {
 	for _, name := range streamCPUNames {
 		b.Run(name, func(b *testing.B) {
 			tc := streamCPUCaseOf(b, name)
-			a, l2, ss := streamCPULines(tc, 7, 0.5, os.Getenv("SDS_STREAM_BURSTY") != "")
+			key := fmt.Sprint(name, os.Getenv("SDS_STREAM_BURSTY"))
+			if _, ok := streamCPUBench[key]; !ok {
+				a, l2, ss := streamCPULines(tc, 7, 0.5, os.Getenv("SDS_STREAM_BURSTY") != "")
+				streamCPUBench[key] = streamCPUData{a, l2, ss}
+			}
+			in := streamCPUBench[key]
+			a, l2, ss := in.a, in.b, in.ss
 			dec := func(x, y []uint8) Result { return tc.c.dec(x, y, ss) }
 			b.ResetTimer()
 			for range b.N {

@@ -133,35 +133,24 @@ func DecodeI2C(scl, sda []uint8, colTimeS float64, cfg I2CCfg) Result {
 	cl, da := -1, -1
 	inTxn, expectAddr := false, false
 	bitCount, val, bitStart := 0, 0, 0
-	clLevel, daLevel := CL.levels(), DA.levels()
-	if cfg.Deglitch {
-		g := i2cGlitch(clEdges)
-		i2cDeglitch(clLevel, g)
-		i2cDeglitch(daLevel, g)
-	}
-	for i := 0; i < n; i++ {
-		l, d := int(clLevel[i]), int(daLevel[i])
-		pcl, pda := cl, da
-		cl, da = l, d
-		if pcl < 0 || pda < 0 {
-			continue
-		}
+	// step reads sample i, where the lines go from levels pcl, pda to cl, da.
+	step := func(i, pcl, pda int) {
 		if cl == 1 && pda == 1 && da == 0 { // START
 			spans = append(spans, Span{i, i, "S", "start", 0})
 			toks = append(toks, "START")
 			inTxn, expectAddr, bitCount, val = true, true, 0, 0
-			continue
+			return
 		}
 		if cl == 1 && pda == 0 && da == 1 { // STOP
 			spans = append(spans, Span{i, i, "P", "stop", 0})
 			toks = append(toks, "STOP")
 			inTxn, bitCount = false, 0
-			continue
+			return
 		}
 		if pcl == 0 && cl == 1 && inTxn { // sample on SCL rising
 			bit := logicAt(&DA, float64(i))
 			if bit < 0 {
-				continue
+				return
 			}
 			if bitCount < 8 {
 				if bitCount == 0 {
@@ -199,6 +188,45 @@ func DecodeI2C(scl, sda []uint8, colTimeS float64, cfg I2CCfg) Result {
 				}
 				bitCount, val = 0, 0
 			}
+		}
+	}
+	if cfg.Deglitch {
+		clLevel, daLevel := CL.levels(), DA.levels()
+		g := i2cGlitch(clEdges)
+		i2cDeglitch(clLevel, g)
+		i2cDeglitch(daLevel, g)
+		for i := 0; i < n; i++ {
+			pcl, pda := cl, da
+			cl, da = int(clLevel[i]), int(daLevel[i])
+			if pcl >= 0 && pda >= 0 {
+				step(i, pcl, pda)
+			}
+		}
+	} else if n > 0 {
+		// The levels change only at the lines' edges, and a sample where
+		// neither does is no START, STOP or clock: the edges of both lines,
+		// merged in time, are every sample the decode reads.
+		cl, da = int(CL.first), int(DA.first)
+		ce, de := CL.edges, DA.edges
+		for {
+			i := n
+			if len(ce) > 0 {
+				i = min(i, ce[0].i)
+			}
+			if len(de) > 0 {
+				i = min(i, de[0].i)
+			}
+			if i >= n {
+				break
+			}
+			pcl, pda := cl, da
+			if len(ce) > 0 && ce[0].i == i {
+				cl, ce = (ce[0].dir+1)/2, ce[1:]
+			}
+			if len(de) > 0 && de[0].i == i {
+				da, de = (de[0].dir+1)/2, de[1:]
+			}
+			step(i, pcl, pda)
 		}
 	}
 	if inTxn {
@@ -317,48 +345,56 @@ func DecodeSPI(clk, data []uint8, colTimeS float64, cfg SPICfg) Result {
 	if fine {
 		armedRise, armedFall = armedCrossings(CK, n)
 	}
-	ckLevel := CK.levels()
-	for i := 0; i < n; i++ {
-		l := int(ckLevel[i])
-		pck := ck
-		ck = l
-		if pck < 0 {
-			continue
+	// clock reads a sampling edge at sample i.
+	clock := func(i int, rising bool) {
+		at := float64(i)
+		if fine || cfg.DataDelay != 0 {
+			at = crossingAt(CK, i, rising) + cfg.DataLag + cfg.DataDelay
 		}
-		rising := pck == 0 && ck == 1
-		falling := pck == 1 && ck == 0
-		if fine {
-			rising, falling = armedRise[i], armedFall[i]
+		bit := logicAt(&DA, at)
+		if bit < 0 {
+			return
 		}
-		if (sampleRising && rising) || (!sampleRising && falling) {
-			at := float64(i)
-			if fine || cfg.DataDelay != 0 {
-				at = crossingAt(CK, i, rising) + cfg.DataLag + cfg.DataDelay
-			}
-			bit := logicAt(&DA, at)
-			if bit < 0 {
+		mSum += math.Min(1, math.Abs(float64(DA.codes[int(math.Round(at))])-DA.threshold)/halfAmp)
+		mN++
+		if lastSample >= 0 && float64(i-lastSample) > gapReset && bitCount > 0 {
+			bitCount, val = 0, 0 // idle gap → new frame
+		}
+		lastSample = i
+		if bitCount == 0 {
+			bitStart, val = i, 0
+		}
+		if cfg.MSB {
+			val = (val << 1) | bit
+		} else {
+			val |= bit << bitCount
+		}
+		bitCount++
+		if bitCount == 8 {
+			spans = append(spans, Span{bitStart, i, FmtByte(val, cfg.Format), "data", val & 0xff})
+			toks = append(toks, FmtByte(val, cfg.Format))
+			bytes = append(bytes, val&0xff)
+			bitCount, val = 0, 0
+		}
+	}
+	if fine {
+		ckLevel := CK.levels()
+		for i := 0; i < n; i++ {
+			pck := ck
+			ck = int(ckLevel[i])
+			if pck < 0 {
 				continue
 			}
-			mSum += math.Min(1, math.Abs(float64(DA.codes[int(math.Round(at))])-DA.threshold)/halfAmp)
-			mN++
-			if lastSample >= 0 && float64(i-lastSample) > gapReset && bitCount > 0 {
-				bitCount, val = 0, 0 // idle gap → new frame
+			if rising, falling := armedRise[i], armedFall[i]; (sampleRising && rising) || (!sampleRising && falling) {
+				clock(i, rising)
 			}
-			lastSample = i
-			if bitCount == 0 {
-				bitStart, val = i, 0
-			}
-			if cfg.MSB {
-				val = (val << 1) | bit
-			} else {
-				val |= bit << bitCount
-			}
-			bitCount++
-			if bitCount == 8 {
-				spans = append(spans, Span{bitStart, i, FmtByte(val, cfg.Format), "data", val & 0xff})
-				toks = append(toks, FmtByte(val, cfg.Format))
-				bytes = append(bytes, val&0xff)
-				bitCount, val = 0, 0
+		}
+	} else {
+		// The clock's level changes only at its edges, each a rising or
+		// falling one: they are the samples the decode reads.
+		for _, e := range eIn {
+			if rising := e.dir > 0; rising == sampleRising {
+				clock(e.i, rising)
 			}
 		}
 	}

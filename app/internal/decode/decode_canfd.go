@@ -394,6 +394,11 @@ func canIdleBefore(S sliced, k int, spb float64) bool {
 func decodeCANOneFrame(S sliced, cfg CANFDCfg, sofStart, spb, dataSpb float64) canFrame {
 	r := &canReader{S: S, dominantLow: cfg.DominantLow, pos: sofStart, spb: spb,
 		runVal: -1, runLen: 0, stuffOn: true, record: true}
+	// The resync walks the edges from the first one at a sample a bit before
+	// the start of frame: an edge lies at or before its sample, so none
+	// before that one is near enough to snap to. From the record's first
+	// edge, each of a busy record's frames walked all the frames before it.
+	r.ei = sort.Search(len(S.edges), func(k int) bool { return float64(S.edges[k].i) >= sofStart-spb })
 	var fr canFrame
 	var spans []Span
 	var toks []string
