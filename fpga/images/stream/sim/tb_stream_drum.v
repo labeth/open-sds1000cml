@@ -140,9 +140,9 @@ module tb_stream_drum #(parameter REAL=0,FAST=0,AW=REAL ? 19 : 12,BANK_AW=REAL ?
    // The board's sizes: the GPMC ceiling (one word per 197 clocks) with the
    // host draining at 1.6M words/s and a 5 ms stall, then 1.6M words/s
    // (above the GPMC; a lap brings 3.3k words) with the host at 1.9M words/s
-   // and a 2 ms stall. The settle outlasts the age rule (16.8 ms).
+   // and a 5 ms stall. The settle outlasts the age rule (16.8 ms).
    drain_ns=625;stream(30000,197,6350);settle_check(5000000,"real 1.27M");
-   session;drain_ns=526;stream(30000,156,3200);settle_check(5000000,"real 1.6M");
+   session;drain_ns=526;stream(30000,156,8000);settle_check(5000000,"real 1.6M");
    if(errors==0)$display("PASS tb_stream_drum REAL");else $display("FAIL tb_stream_drum REAL: %0d errors",errors);
    $finish;
   end
