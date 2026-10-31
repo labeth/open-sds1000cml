@@ -306,7 +306,7 @@ func (e *Engine) beginSoftStream(ctx context.Context, p SerialParams, trig Strea
 			// Decode a fifth of a second at a time, or twice Close (each decode
 			// reads the open window again, so short pushes cost it over and
 			// over), but at least once a second: a DCF77 minute's Close is 32 s.
-			s.pushN = int(math.Max(0.2, math.Min(1, 2*quiet)) / s.sampleS)
+			s.pushN = min(int(math.Max(0.2, math.Min(1, 2*quiet))/s.sampleS), softPushMax)
 			s.dec = decode.NewStreamDecoder(s.decodeFunc(), int(quiet/s.sampleS), int((longest+quiet)/s.sampleS))
 			s.dec.SetLead(int(decode.StreamLead(name, float64(p.Baud)) / s.sampleS))
 			// The stream starts on the loop's next step (softDrain), after
@@ -718,13 +718,29 @@ func (e *Engine) softPush(s *softStream) {
 	if len(s.pendB) == len(s.pendA) {
 		b = s.pendB
 	}
-	frames := s.dec.Push(s.pendA, b)
+	a := s.pendA
 	s.pendA, s.pendB = s.pendA[:0], s.pendB[:0]
-	if s.emit(frames, s.ord) {
-		e.softStreamStop(s)
-		s.phase = softRecord
+	for len(a) > 0 {
+		n := min(len(a), softPushMax)
+		var bn []uint8
+		if b != nil {
+			bn, b = b[:n], b[n:]
+		}
+		frames := s.dec.Push(a[:n], bn)
+		a = a[n:]
+		if s.emit(frames, s.ord) {
+			e.softStreamStop(s)
+			s.phase = softRecord
+			return
+		}
 	}
 }
+
+// softPushMax bounds the samples a line one decode takes: a decode's working
+// memory (each line's sliced levels and edges) grows with its window, and a
+// fifth of a second of the digital stream at 64 ns is three million samples
+// a line, more than the device's 128 MB holds through one decode.
+const softPushMax = 1 << 18
 
 // emit queues frames as decoded events (ord maps their sample indices) up
 // to the frame holding the stop value; it reports that frame.
