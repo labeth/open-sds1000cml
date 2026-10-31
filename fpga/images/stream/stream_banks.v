@@ -1,7 +1,8 @@
 // ENGMODEL-OWNER-UNIT: FU-RTL-ACQ-SRAM-TOP
 `timescale 1ns/1ps
-// ADR-STREAM-IMAGE: two ping-pong banks of 2^BANK_AW 64-bit packets in the
-// host buffer RAM (bank b at entries b*2^BANK_AW...). The producer fills one
+// ADR-STREAM-IMAGE: two ping-pong banks of BANK_P 64-bit packets (2^BANK_AW
+// unless the image sizes its buffer otherwise) in the host buffer RAM (bank b
+// at entries b*BANK_P...). The producer fills one
 // bank while the host drains the other; a bank is published when full or on a
 // seal, with the stream ordinal of its first 32-bit word, its packet count and
 // whether its last packet holds a single word.
@@ -23,7 +24,7 @@
 // 2^12, where a bank fills in exactly the seal period). The packetizer seals
 // only while packet_ready holds.
 // TRLC-LINKS: REQ-SDS-035
-module stream_banks #(parameter BANK_AW=10)(
+module stream_banks #(parameter BANK_AW=10,BANK_P=1<<BANK_AW)(
  input reset,producer_clk,host_clk,
  input packet_valid,input [63:0] packet_data,input packet_single,input seal,
  output packet_ready,
@@ -42,14 +43,16 @@ module stream_banks #(parameter BANK_AW=10)(
  reg [1:0] pub=0;
  reg [1:0] rel=0; // host side
  (* async_reg="true" *) reg [1:0] rel_s0=0,rel_s1=0,rel_s2=0;
- reg cur=0;reg [BANK_AW:0] fill=0;reg [63:0] words=0,first_cur=0;reg single_cur=0;
- reg [63:0] first_m0=0,first_m1=0;reg [BANK_AW:0] count_m0=0,count_m1=0;reg [1:0] single_m=0;
+ // Ordinals in 48 bits (4.5 years of words at 1.95M words/s), read as 64.
+ localparam OW=48;
+ reg cur=0;reg [BANK_AW:0] fill=0;reg [OW-1:0] words=0,first_cur=0;reg single_cur=0;
+ reg [OW-1:0] first_m0=0,first_m1=0;reg [BANK_AW:0] count_m0=0,count_m1=0;reg [1:0] single_m=0;
  wire cur_free=pub[cur]==rel_s2[cur];
  assign packet_ready=pub[!cur]==rel_s2[!cur];
  assign cur_ready=cur_free && fill==0;
  wire [BANK_AW:0] next_fill=fill+1'b1;
- wire full=next_fill[BANK_AW];
- task publish(input [BANK_AW:0] count,input [63:0] first,input single);
+ wire full=next_fill==BANK_P;
+ task publish(input [BANK_AW:0] count,input [OW-1:0] first,input single);
   begin
    if(cur)begin first_m1<=first;count_m1<=count;end else begin first_m0<=first;count_m0<=count;end
    single_m[cur]<=single;pub[cur]<=!pub[cur];cur<=!cur;fill<=0;
@@ -64,8 +67,8 @@ module stream_banks #(parameter BANK_AW=10)(
   end else if(packet_valid)begin
    if(fill==0 && !cur_free)overrun<=1; // both banks owned by the host: drop, and say so
    else begin
-    mem_write<=1;mem_address<={cur,fill[BANK_AW-1:0]};mem_data<=packet_data;
-    words<=words+(packet_single ? 64'd1 : 64'd2);
+    mem_write<=1;mem_address<=cur ? BANK_P+fill : fill;mem_data<=packet_data;
+    words<=words+(packet_single ? 2'd1 : 2'd2);
     if(fill==0)first_cur<=words;
     single_cur<=packet_single;
     if(full || seal)publish(next_fill,fill==0 ? words : first_cur,packet_single);
@@ -86,7 +89,7 @@ module stream_banks #(parameter BANK_AW=10)(
   if(hreset_s[2])rel<=0;
   else if(host_release && host_ready[release_bank] && release_token==host_token[release_bank])rel[release_bank]<=!rel[release_bank];
  end
- assign first_word0=first_m0,first_word1=first_m1;
+ assign first_word0={{64-OW{1'b0}},first_m0},first_word1={{64-OW{1'b0}},first_m1};
  assign packets0=count_m0,packets1=count_m1;
  assign last_single=single_m;
 endmodule

@@ -1676,6 +1676,34 @@ decisions:
     FIFO allows. tb_stream_drum MID (the board's FIFO and banks, an eighth of its ring and descriptors, rates eight
     times) with that pump, recovery from 57% and 84% of the ring at the 512 rate takes half as long and the backlog
     no longer grows after the stall; descriptors were never short (bursts of at least 76 words, 45 of 64 at 84%).
+  - Decimation 256 (1.95M words/s) brings 4.1k words a lap, the whole 4096-word FIFO and the whole pair of 2048-word
+    banks; the first spill overflowed the FIFO on the way back to the read head, and a backlog could not drain (a
+    lap reads at most two banks). The drum images now give the stream two banks of 2560 words (a 5120-word host
+    buffer, register 26; the host takes 4096, 5120 or 8192) and a 4608-word FIFO (2304 pairs), all 46 block RAMs;
+    a trip that finds the head burst larger than the free bank room first reads what fits (the rest a lap later),
+    else a lap read only the whole bursts that fit, as much as a lap brings; and a bank goes the direct way at 512
+    words only while the host keeps the other free (small banks filled both before the host's first look and
+    spilled at once). A behavioural model of the drum and the worker's pump (calibrated against the instrument,
+    decimation 512 300/450 ms and 1024 900 ms absorbed, 256 faulting within milliseconds) found the banks decide
+    it - a bigger FIFO with 2048-word banks never drains a backlog, 2304-word banks fall short, and 4352 FIFO words
+    were short in tb_stream_drum MID (4608 take the same block RAMs). Model, at decimation 256 with 17 ms pump
+    gaps, single 50/100/200/250 ms stalls absorbed and drained 0.3/0.7/1.3/1.7 s after the stall; 280 ms fills
+    the ring. The block RAMs' odd depths cost about 200 logic elements of address decode and output muxes.
+  - The lap (2.1 ms, the SRAM's 250 MHz word rate) and the block RAM set the ceiling - a backlog drains only if
+    the FIFO and the two banks together hold about two laps of input, 9.7k words here, so about 2.1M words/s (8.4
+    MB/s, about three quarters of the GPMC). Above it the drum still runs the direct path and spills on a host
+    pause, but the backlog cannot drain and the FIFO overflows into the sticky fault; the model puts the longest
+    host pause it rides out at about 2.3 ms at 2.2M words/s, 1.9 ms at 2.5M and 1.25 ms at 2.8M (the first look
+    within about 2.8, 2.4 and 2.2 ms of the start).
+  - On the instrument decimation 256 still overran within seconds (512 and 1024 held, stalls included). The host
+    drains a 2560-word bank in 840 us (3.0M words/s) and its pump sleeps about 0.9 of a bank's fill time after a
+    pass; with a backlog the drum fills the banks once a lap, so each pass ends after two banks and the host took
+    about 1.86M words/s, below the stream, and the backlog grew to the ring's end. Nothing in the drum can wait
+    longer at the read head (a lap brings the FIFO's worth). Register 32 now carries the fault's sources (bit 9
+    bank overrun, 10 input overrun, 11 read-pair overrun, 12 FIFO full) and bit 13, a ring backlog; a pump that
+    looks again after 0.4 ms while bit 13 is set takes the full stream in the model (5-9 ms pump gaps every 300
+    ms; single 50/100/200 ms stalls drain in 0.34/0.67/1.3 s at decimation 256, a 450 ms stall at 512 in 0.56
+    s).
 - id: ADR-STREAM-BITS
   title: The decoded stream streams each line sliced, sixteen periods a word
   status: accepted

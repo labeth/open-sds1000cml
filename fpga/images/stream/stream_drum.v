@@ -60,11 +60,14 @@
 // would spill raises fault instead.
 // TRLC-LINKS: REQ-SDS-035
 module stream_drum #(parameter AW=19,WF_AW=12,DESC_AW=8,BANK_AW=10,
+ parameter WF_PAIRS=1<<(WF_AW-1),    // FIFO depth in pairs (any size the block RAM allows)
+ parameter BANK_P=1<<BANK_AW,        // packets in a host bank (stream_banks.BANK_P)
  parameter RD_SKEW=1,                // read words arrive this many pulses late (board: 1)
  parameter SEG=8192,                 // longest seek between decisions (33 us)
  parameter WRITE_AT=512,             // FIFO words that ask for a bank, or a burst at the write head
  parameter WRITE_URGENT=3072,        // FIFO words that spill into the empty ring while the host holds both banks
  parameter TRIP_AT=3584,             // FIFO words, with those due on the way, that send the counter to the write head
+ parameter PART_MIN=64,              // free bank pairs worth a partial read before a trip
  parameter AGE_CYCLES=2097152)(      // oldest buffered pair: 16.8 ms of hclk
  input clk,active,
  input onchip,                       // static while active: the direct path only, no transport
@@ -77,6 +80,7 @@ module stream_drum #(parameter AW=19,WF_AW=12,DESC_AW=8,BANK_AW=10,
  input [31:0] rdata,input rvalid,
  input [AW-1:0] position,
  output reg fault=0,
+ output [3:0] status,                // sticky: input overrun, read-pair overrun, FIFO full (the fault's sources); and a ring backlog
  // hclk: control, and stream_banks
  input hclk,
  input bank_ready,                   // stream_banks.cur_ready: the bank to fill is free and empty
@@ -84,7 +88,7 @@ module stream_drum #(parameter AW=19,WF_AW=12,DESC_AW=8,BANK_AW=10,
  output reg packet_valid=0,output reg [63:0] packet_data=0,output reg packet_single=0,output reg packet_seal=0
 );
  localparam [AW:0] RING=1<<AW;
- localparam CHUNK=2<<BANK_AW;        // words in a bank
+ localparam CHUNK=2*BANK_P;          // words in a bank
  localparam PW=WF_AW-1;              // FIFO address width, in pairs
 
  // =================== clk: the transport's side ===================
@@ -161,16 +165,18 @@ module stream_drum #(parameter AW=19,WF_AW=12,DESC_AW=8,BANK_AW=10,
  reg done_q=0,done_seen=0,ready_q=0;reg [AW-1:0] pos_q=0;
  reg [2:0] wq_rp_h=0,rq_wp_h=0;reg [3:0] iq_wp_h=0; // clk's pointers, registered here first
  // Input FIFO, in pairs, read show-ahead (wf_q is the head pair).
- reg [63:0] wf[0:(1<<PW)-1];
- reg [PW:0] wf_wr=0,wf_rd=0,wf_level=0;
+ // Indices wrap at WF_PAIRS; the level counts pairs in, less pairs out.
+ reg [63:0] wf[0:WF_PAIRS-1];
+ reg [PW-1:0] wf_wr=0,wf_rd=0;reg [PW:0] wf_level=0;reg wf_in_q=0,wf_pop_q=0;
  reg [31:0] in_lo=0;reg in_have=0;
  reg wf_push=0;reg [63:0] wf_in=0;
  reg [63:0] wf_q=0;
  wire wf_pop;
- wire [PW:0] wf_rd_next=wf_rd+wf_pop;
+ wire rd_wrap=wf_rd==WF_PAIRS-1;
+ wire [PW-1:0] wf_rd_next=!wf_pop ? wf_rd : rd_wrap ? 1'b0 : wf_rd+1'b1;
  always @(posedge hclk)begin
-  if(wf_push)wf[wf_wr[PW-1:0]]<=wf_in;
-  wf_q<=wf[wf_rd_next[PW-1:0]];
+  if(wf_push)wf[wf_wr]<=wf_in;
+  wf_q<=wf[wf_rd_next];
  end
  reg [15:0] age=0;reg [7:0] age_pre=0;reg age_tick=0,age_clr=0; // age in 256-clock ticks
  // Descriptors.
@@ -199,8 +205,6 @@ module stream_drum #(parameter AW=19,WF_AW=12,DESC_AW=8,BANK_AW=10,
  // between decisions, so a bank freed meanwhile is used at once.
  localparam GAP=4;
  reg [AW-1:0] whead=0;               // where the next burst's junk words go
- reg [AW:0] used=0;                  // ring words holding unread bursts (with junk and gap)
- reg [AW:0] rd_len=0;
  // Control.
  localparam S_IDLE=0,S_SEEK=1,S_DIRECT=2,S_ISS=3,S_WRITE=4,S_WDONE=5,S_READ=6,S_RDONE=7;
  localparam K_SEEK=0,K_WRITE=1,K_READ=2,K_DIRECT=3;
@@ -222,8 +226,17 @@ module stream_drum #(parameter AW=19,WF_AW=12,DESC_AW=8,BANK_AW=10,
  // Packets in the current bank (published when full, or sealed), and
  // whether the head burst fits in it and, when free, the next.
  reg [BANK_AW-1:0] bfill=0;reg p1_partial=0,p2_partial=0,p3_seal=0;
- reg [BANK_AW+1:0] p1_room=0;reg [AW-1:0] p1_len=0;reg p1_fits=0;
+ reg [BANK_AW+1:0] p1_room=0;reg [AW-1:0] p1_len=0;reg p1_fits=0,p1_part=0;
  wire can_read=!dsc_empty && p1_fits;
+ reg backlog=0;
+ assign status={backlog,h_fault,r_over,in_over};
+ // Words of the head burst already read: a trip that finds the head burst
+ // larger than the free bank room reads what fits first, and the rest is read
+ // a lap later by its own fresh read (from 16 words early, over words already
+ // read). Without it a lap reads only the whole bursts that fit, which with
+ // a trip's bursts (a bank, then the rest) is as much as a lap brings.
+ reg [AW:0] hoff=0;
+ reg [AW-1:0] h_addr=0;reg [AW:0] h_rem=0; // the head burst's unread part, registered (timing)
  // Input pairs over the counter's last lap (from one wrap of the position
  // to the next), not counting clocks the drum chose to wait: a trip is all
  // moving, seeks' and bursts' overheads included. Saturating, and full until
@@ -235,16 +248,22 @@ module stream_drum #(parameter AW=19,WF_AW=12,DESC_AW=8,BANK_AW=10,
  reg at_w=0,at_r=0,w_first=0,trip=0;
  wire [AW-1:0] seek_w=p2_dist_w>SEG ? SEG : p2_dist_w,seek_r=p2_dist_r>SEG ? SEG : p2_dist_r;
  always @(posedge hclk)begin
-  done_q<=done_t;ready_q<=t_ready;pos_q<=position;
+  done_q<=done_t;ready_q<=t_ready;pos_q<=position;backlog<=!dsc_empty;
   wq_rp_h<=wq_rp;rq_wp_h<=rq_wp;iq_wp_h<=iq_wp;
   dsc_full<=dsc_n[DESC_AW];          // a sized difference: (1<<DESC_AW) would widen it
   p1_w_target<=whead-2'd2;
-  p1_base<=dsc_q_addr-5'd16-RD_SKEW;
-  p1_free<=RING-used;p1_need<={wf_level,1'b0}+7'd64;p1_lvl<=wf_level;
-  p1_due<=wf_level>=WRITE_AT/2 || wf_level!=0 && age>=AGE_CYCLES/256;p1_min<=wf_level>=WRITE_AT/2;p1_tail<=wf_level>=WRITE_AT/16;
+  h_addr<=dsc_q_addr+hoff[AW-1:0];h_rem<=dsc_q_len-hoff;
+  p1_base<=h_addr-5'd16-RD_SKEW;
+  // Free ring: from the write head on to the head burst's junk (all of it
+  // while the ring is empty).
+  p1_free<=dsc_empty ? RING : {1'b0,dsc_q_addr-5'd16-whead};p1_need<={wf_level,1'b0}+7'd64;p1_lvl<=wf_level;
+  // A bank goes the direct way at WRITE_AT words while the host keeps the
+  // other free; once it holds both, only a full bank (or an aged FIFO): small
+  // banks would fill both before the host's first look and spill at once.
+  p1_due<=wf_level>=WRITE_AT/2 && bank_next_free || wf_level>=CHUNK/2 || wf_level!=0 && age>=AGE_CYCLES/256;p1_min<=wf_level>=WRITE_AT/2;p1_tail<=wf_level>=WRITE_AT/16;
   p1_spill<=wf_level>=WRITE_URGENT/2;p1_empty<=dsc_empty;
   p1_room<=bfill!=0 || bank_ready ? (CHUNK/2)-bfill+(bank_next_free ? CHUNK/2 : 1'b0) : 1'b0; // nothing while the current bank is the host's
-  p1_len<=dsc_q_len>>1;p1_fits<=p1_len<=p1_room;p1_partial<=bfill!=0;p2_partial<=p1_partial;
+  p1_len<=h_rem>>1;p1_fits<=p1_len<=p1_room;p1_part<=p1_room>=PART_MIN;p1_partial<=bfill!=0;p2_partial<=p1_partial;
   p2_dist_w<=p1_w_target-pos_q;p2_dist_r<=p1_base-pos_q;p2_lvl<=p1_lvl;
   p2_room<=!dsc_full && p1_free>p1_need;p2_due<=p1_due;p2_min<=p1_min;p2_tail<=p1_tail;p2_spill<=p1_spill;p2_empty<=p1_empty;
   // The decision. Empty ring: a due FIFO goes straight to a free bank; the
@@ -264,6 +283,7 @@ module stream_drum #(parameter AW=19,WF_AW=12,DESC_AW=8,BANK_AW=10,
    else p3_go<=0;
   end else if(at_r)begin
    if(can_read)begin p3_kind<=K_READ;p3_seal<=0;end
+   else if(trip && !dsc_empty && p1_part)begin p3_kind<=K_READ;p3_seal<=0;end // what fits, then the trip
    else if(trip)p3_seek<=seek_w;
    else begin p3_go<=0;p3_seal<=0;end
   end else if(w_first)begin
@@ -285,15 +305,17 @@ module stream_drum #(parameter AW=19,WF_AW=12,DESC_AW=8,BANK_AW=10,
   end
   // wf_level runs a clock behind: "full" keeps two pairs spare.
   if(wf_push)begin
-   if(wf_level>=(1<<PW)-2)h_fault<=1; // full: a pair is lost, and the host is told
-   else wf_wr<=wf_wr+1'b1;
+   if(wf_level>=WF_PAIRS-2)h_fault<=1; // full: a pair is lost, and the host is told
+   else wf_wr<=wf_wr==WF_PAIRS-1 ? 1'b0 : wf_wr+1'b1;
   end
   wf_rd<=wf_rd_next;
   lap_msb<=pos_q[AW-1];
   if(lap_msb && !pos_q[AW-1])begin lap_in<=lap_n;lap_n<=0;end
   else if(wf_push && !(st==S_IDLE && settle==7 && !p3_go) && !(&lap_n))lap_n<=lap_n+1'b1;
   if(!act)begin lap_n<=0;lap_in<={PW+1{1'b1}};end
-  wf_level<=wf_wr-wf_rd;
+  // A clock behind the pointers, as before: in and out are registered.
+  wf_in_q<=wf_push && wf_level<WF_PAIRS-2;wf_pop_q<=wf_pop;
+  wf_level<=wf_level+wf_in_q-wf_pop_q;
   burst_span<={burst_p,1'b0}+5'd16+GAP;
   age_pre<=age_pre+1'b1;age_tick<=&age_pre;age_clr<=0;
   if(wf_level==0 || age_clr)age<=0;else if(age_tick && !age[15])age<=age+1'b1;
@@ -305,12 +327,12 @@ module stream_drum #(parameter AW=19,WF_AW=12,DESC_AW=8,BANK_AW=10,
   if(st==S_READ && rq_rp!=rq_wp_h)begin
    rq_rp<=rq_rp+1'b1;pairs_left<=pairs_left-1'b1;
    if(drop_p!=0)drop_p<=drop_p-1'b1;
-   else begin packet_valid<=1;packet_data<=rq[rq_rp[1:0]];bfill<=bfill+1'b1;end
+   else begin packet_valid<=1;packet_data<=rq[rq_rp[1:0]];bfill<=bfill==BANK_P-1 ? 1'b0 : bfill+1'b1;end
   end
   if(!act)begin
-   st<=S_IDLE;h_wend<=0;h_fault<=0;w_more<=0;bfill<=0;wf_wr<=0;wf_rd<=0;in_have<=0;iq_rp<=0;wq_wp<=0;rq_rp<=0;
+   st<=S_IDLE;h_wend<=0;h_fault<=0;w_more<=0;bfill<=0;hoff<=0;wf_wr<=0;wf_rd<=0;wf_level<=0;wf_in_q<=0;wf_pop_q<=0;in_have<=0;iq_rp<=0;wq_wp<=0;rq_rp<=0;
    dsc_wr<=0;dsc_rd<=0;done_seen<=done_q;
-   whead<=pos_q+2'd2;used<=0;      // the counter starts at the write head
+   whead<=pos_q+2'd2;              // the counter starts at the write head
   end else case(st)
    S_IDLE:if(settle==7 && p3_seal)begin
     packet_seal<=1;bfill<=0;settle<=0; // publish the partial bank, then decide again
@@ -333,8 +355,15 @@ module stream_drum #(parameter AW=19,WF_AW=12,DESC_AW=8,BANK_AW=10,
       push_left<=wf_level>CHUNK/2 ? CHUNK/2 : wf_level;
      end
      default:begin                   // K_READ: from 16 (+skew) words early, over the burst's junk
-      rd_len<=dsc_q_len+5'd16+GAP;dsc_rd<=dsc_rd+1'b1;
-      h_count<=dsc_q_len+5'd16+RD_SKEW;pairs_left<=(dsc_q_len+5'd16)>>1;drop_p<=8;st<=S_READ;
+      // The rest of the head burst, or the free bank room of it.
+      if(p1_fits)begin
+       dsc_rd<=dsc_rd+1'b1;hoff<=0;
+       h_count<=h_rem+5'd16+RD_SKEW;pairs_left<=(h_rem+5'd16)>>1;
+      end else begin
+       hoff<=hoff+{p1_room,1'b0};
+       h_count<={p1_room,1'b0}+5'd16+RD_SKEW;pairs_left<=p1_room+4'd8;
+      end
+      drop_p<=8;st<=S_READ;
      end
     endcase
    end
@@ -347,7 +376,7 @@ module stream_drum #(parameter AW=19,WF_AW=12,DESC_AW=8,BANK_AW=10,
     if(junk_left==0 && push_left==0)begin
      h_wend<=1;st<=S_WDONE;w_more<=burst_p>=WRITE_AT/2; // one tail burst after a full one
      dsc_push<=1;dsc_push_addr<=whead+5'd16;dsc_push_len<={burst_p,1'b0};
-     whead<=whead+burst_span[AW-1:0];used<=used+burst_span;age_clr<=1;
+     whead<=whead+burst_span[AW-1:0];age_clr<=1;
     end
    end
    S_DIRECT:begin
@@ -356,7 +385,7 @@ module stream_drum #(parameter AW=19,WF_AW=12,DESC_AW=8,BANK_AW=10,
    end
    S_WDONE:if(done_new)begin done_seen<=done_q;h_wend<=0;st<=S_IDLE;end
    S_READ:if(pairs_left==0)st<=S_RDONE;
-   S_RDONE:if(done_new)begin done_seen<=done_q;used<=used-rd_len;st<=S_IDLE;end
+   S_RDONE:if(done_new)begin done_seen<=done_q;st<=S_IDLE;end
   endcase
   if(dsc_push)dsc_wr<=dsc_wr+1'b1; // the RAM block writes at the old index this same clock
  end
