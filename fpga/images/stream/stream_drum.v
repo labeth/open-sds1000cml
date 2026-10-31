@@ -74,6 +74,7 @@ module stream_drum #(parameter AW=19,WF_AW=12,DESC_AW=8,BANK_AW=10,
  input [31:0] rdata,input rvalid,
  input [AW-1:0] position,
  output reg fault=0,
+ output [3:0] status,                // sticky: input overrun, read-pair overrun, FIFO full (the fault's sources); and a ring backlog
  // hclk: control, and stream_banks
  input hclk,
  input bank_ready,                   // stream_banks.cur_ready: the bank to fill is free and empty
@@ -222,6 +223,8 @@ module stream_drum #(parameter AW=19,WF_AW=12,DESC_AW=8,BANK_AW=10,
  reg [BANK_AW-1:0] bfill=0;reg p1_partial=0,p2_partial=0,p3_seal=0;
  reg [BANK_AW+1:0] p1_room=0;reg [AW-1:0] p1_len=0;reg p1_fits=0,p1_part=0;
  wire can_read=!dsc_empty && p1_fits;
+ reg backlog=0;
+ assign status={backlog,h_fault,r_over,in_over};
  // Words of the head burst already read: a trip that finds the head burst
  // larger than the free bank room reads what fits first, and the rest is read
  // a lap later by its own fresh read (from 16 words early, over words already
@@ -240,7 +243,7 @@ module stream_drum #(parameter AW=19,WF_AW=12,DESC_AW=8,BANK_AW=10,
  reg at_w=0,at_r=0,w_first=0,trip=0;
  wire [AW-1:0] seek_w=p2_dist_w>SEG ? SEG : p2_dist_w,seek_r=p2_dist_r>SEG ? SEG : p2_dist_r;
  always @(posedge hclk)begin
-  done_q<=done_t;ready_q<=t_ready;pos_q<=position;
+  done_q<=done_t;ready_q<=t_ready;pos_q<=position;backlog<=!dsc_empty;
   wq_rp_h<=wq_rp;rq_wp_h<=rq_wp;iq_wp_h<=iq_wp;
   dsc_full<=dsc_n[DESC_AW];          // a sized difference: (1<<DESC_AW) would widen it
   p1_w_target<=whead-2'd2;

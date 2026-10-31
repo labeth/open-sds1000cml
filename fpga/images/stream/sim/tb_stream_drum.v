@@ -22,7 +22,7 @@
 // descriptor), so with rates eight times the board's a lap brings the same
 // words as on the board.
 // TRLC-LINKS: REQ-SDS-035
-module tb_stream_drum #(parameter REAL=0,FAST=0,MID=0,SWORDS=0,SPERIOD=256,HOST_NS=787,AFTER_NS=0,POST=20000,TICK_NS=0,ADAPT=0,LOOK_MIN=400000,FIRST_NS=0,GAP_NS=17000000,GAP_EVERY_NS=0,
+module tb_stream_drum #(parameter REAL=0,FAST=0,MID=0,SWORDS=0,SPERIOD=256,HOST_NS=787,AFTER_NS=0,POST=20000,TICK_NS=0,ADAPT=0,LOOK_MIN=400000,FIRST_NS=0,GAP_NS=17000000,GAP_EVERY_NS=0,BUSY_LOOK=0,
  BIG=REAL || MID,AW=REAL ? 19 : MID ? 16 : 12,BANK_AW=BIG ? 11 : FAST ? 6 : 4,WF_AW=BIG ? 13 : 8,DESC_AW=REAL ? 9 : MID ? 6 : 7);
  localparam N=1<<AW,BANK=BIG ? 1280 : 1<<BANK_AW,WF_PAIRS=BIG ? 2304 : 1<<(WF_AW-1);
  reg core=0,hclk=0,host=0;
@@ -106,6 +106,7 @@ module tb_stream_drum #(parameter REAL=0,FAST=0,MID=0,SWORDS=0,SPERIOD=256,HOST_
    look=ADAPT ? 0.9*BANK*2*SPERIOD*4.0 : TICK_NS;
    if(look>TICK_NS)look=TICK_NS;if(look<LOOK_MIN)look=LOOK_MIN;
    if($realtime<FIRST_NS)look=FIRST_NS-$realtime;
+   if(BUSY_LOOK && pass_n>=3)look=LOOK_MIN; // a pass that took two banks (and a look that found none): look again soon
    if(GAP_EVERY_NS!=0 && $realtime>=next_gap)begin look=GAP_NS;next_gap=next_gap+GAP_EVERY_NS;end
    #(look);
    got=1;pass_n=0;while(got && pass_n<8 && draining && active)begin @(posedge host);drain_one;pass_n=pass_n+1;end

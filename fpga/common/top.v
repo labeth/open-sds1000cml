@@ -135,7 +135,7 @@ module acq_sram_top(
  reg drum_active=0;
  // ADR-SOUND: the edge marks' directions on the trigger channel (stream_marks.v).
  reg [1:0] mark_rise_enable=0,mark_fall_enable=0;
- wire drum_cmd,drum_cmd_read,drum_cmd_discard,drum_cmd_continue,drum_wvalid,drum_wstop,drum_fault;
+ wire drum_cmd,drum_cmd_read,drum_cmd_discard,drum_cmd_continue,drum_wvalid,drum_wstop,drum_fault;wire [3:0] drum_status;
  wire [19:0] drum_cmd_count;wire [31:0] drum_wdata;
 `endif
 `endif
@@ -1436,7 +1436,7 @@ module acq_sram_top(
   .in_valid(drum_in_valid),.in_data(drum_in_data),
   .cmd(drum_cmd),.cmd_read(drum_cmd_read),.cmd_discard(drum_cmd_discard),.cmd_continue(drum_cmd_continue),.cmd_count(drum_cmd_count),
   .t_ready(ready),.t_write_ready(write_ready),.t_done(transport_done),.wdata(drum_wdata),.wvalid(drum_wvalid),.wstop(drum_wstop),
-  .rdata(read_data),.rvalid(read_valid),.position(position),.fault(drum_fault),
+  .rdata(read_data),.rvalid(read_valid),.position(position),.fault(drum_fault),.status(drum_status),
   .hclk(halfclk),.bank_ready(drum_bank_ready),.bank_next_free(drum_bank_next_free),.packet_valid(stream_packet_valid),.packet_data(stream_packet_data),
   .packet_single(stream_packet_single),.packet_seal(stream_packet_seal));
  assign packetizer_fault=drum_fault,stream_finished=!drum_active,stream_seal_ok=1'b1;
@@ -1475,6 +1475,13 @@ module acq_sram_top(
   .host_ready(stream_available),.host_token(stream_token),.first_word0(stream_first0),.first_word1(stream_first1),
   .packets0(stream_count0),.packets1(stream_count1),.last_single(stream_single));
  (* async_reg = "true" *) reg [2:0] bank_fault_s=0,packet_fault_cpu=0,stream_finished_cpu=0,stream_enabled_cpu=0;
+`ifdef STREAM_DRUM
+ // The fault's sources and the ring backlog for the host (register 32 bits 10..13).
+ (* async_reg = "true" *) reg [3:0] drum_status_s0=0,drum_status_s1=0,drum_status_cpu=0;
+ always @(posedge clk)begin drum_status_s0<=drum_status;drum_status_s1<=drum_status_s0;drum_status_cpu<=drum_status_s1;end
+`else
+ wire [3:0] drum_status_cpu=4'd0;
+`endif
  always @(posedge core)if(stream_reset)bank_fault_s<=0;else bank_fault_s<={bank_fault_s[1:0],bank_overrun};
  always @(posedge clk)begin
   packet_fault_cpu<={packet_fault_cpu[1:0],packetizer_fault};
@@ -1816,7 +1823,7 @@ module acq_sram_top(
    26:rd=BUF_WORDS;
    27:rd=burst_index;
 `ifdef STREAM_CAPTURE
-   32:rd={7'b0,stream_enabled_cpu[2],stream_finished_cpu[2],(host_bank_overrun || packet_fault_cpu[2]),stream_single,stream_token,stream_available};
+   32:rd={2'b0,drum_status_cpu,host_bank_overrun,stream_enabled_cpu[2],stream_finished_cpu[2],(host_bank_overrun || packet_fault_cpu[2]),stream_single,stream_token,stream_available};
    33:rd=stream_count0;34:rd=stream_count1;
    35:rd=stream_first0[15:0];36:rd=stream_first0[31:16];37:rd=stream_first0[47:32];38:rd=stream_first0[63:48];
    39:rd=stream_first1[15:0];40:rd=stream_first1[31:16];41:rd=stream_first1[47:32];42:rd=stream_first1[63:48];

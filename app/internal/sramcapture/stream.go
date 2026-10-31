@@ -20,11 +20,19 @@ type StreamStatus struct {
 	Fault      bool  `json:"fault"`
 	Finished   bool  `json:"finished"`
 	Enabled    bool  `json:"enabled"`
+	// The drum images say which fault fired and whether the SRAM ring holds a
+	// backlog (the pump should then look again soon).
+	BankOverrun  bool `json:"bank_overrun,omitempty"`
+	InputOverrun bool `json:"input_overrun,omitempty"`
+	ReadOverrun  bool `json:"read_overrun,omitempty"`
+	FIFOFull     bool `json:"fifo_full,omitempty"`
+	Backlog      bool `json:"backlog,omitempty"`
 }
 
 // TRLC-LINKS: REQ-SDS-035
 func decodeStreamStatus(v uint16) StreamStatus {
-	return StreamStatus{uint8(v & 3), uint8((v >> 2) & 3), uint8((v >> 4) & 3), v&64 != 0, v&128 != 0, v&256 != 0}
+	return StreamStatus{uint8(v & 3), uint8((v >> 2) & 3), uint8((v >> 4) & 3), v&64 != 0, v&128 != 0, v&256 != 0,
+		v&512 != 0, v&1024 != 0, v&2048 != 0, v&4096 != 0, v&8192 != 0}
 }
 
 // TRLC-LINKS: REQ-SDS-035
