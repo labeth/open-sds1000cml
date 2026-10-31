@@ -56,15 +56,16 @@ func TestSoftStreamModesWithBits(t *testing.T) {
 			bits        bool
 			log         int
 		}{
-			{serWS281x, 800000, "gap-free", true, 9}, {serUSBPD, 300000, "gap-free", true, 11},
-			{serSWD, 1000000, "gap-free", true, 10}, {serMDIO, 1000000, "gap-free", true, 10},
-			{serMiller, 106007, "gap-free", true, 12}, {serMaple, 1333333, "gap-free", true, 9},
+			{serWS281x, 800000, "captures", false, 0}, {serUSBPD, 300000, "gap-free", true, 11},
+			{serSWD, 1000000, "captures", false, 0}, {serMDIO, 1000000, "captures", false, 0},
+			{serMDIO, 250000, "gap-free", true, 12}, {serPDI, 250000, "gap-free", true, 12},
+			{serMiller, 106007, "gap-free", true, 12}, {serMaple, 1333333, "captures", false, 0},
 			{serDMX, 250000, "gap-free", true, 12}, {serLIN, 19200, "gap-free", true, 16},
 			{serModbus, 460800, "gap-free", true, 12}, {serSPDIF, 3072000, "captures", false, 0},
 			{serIRNEC, 889, "gap-free", false, 0}, {serEM4100, 1953, "gap-free", false, 0},
 		} {
 			name, _ := softProtoName(c.proto)
-			log, bits, _ := softGapFreePlan(name, c.baud, false)
+			log, bits, _ := softGapFreePlan(name, c.baud, false, softLines(c.proto))
 			if got := SoftStreamMode(c.proto, c.baud, false); got != c.mode || bits != c.bits || (c.bits && log != c.log) {
 				t.Errorf("%s at %d: %q bits %v 2^%d, want %q bits %v 2^%d", name, c.baud, got, bits, log, c.mode, c.bits, c.log)
 			}
@@ -72,14 +73,14 @@ func TestSoftStreamModesWithBits(t *testing.T) {
 	})
 }
 
-// A gap-free stream of digital words decodes LIN from 19.2 kBd to 2 MBd,
+// A gap-free stream of digital words decodes LIN from 19.2 kBd to 1 MBd,
 // arriving in pieces of any size, the same frames the line carried.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
 func TestSoftStreamBitsToEvents(t *testing.T) {
 	withBitsImage(t, func() {
-		for _, baud := range []int{19200, 250000, 1000000, 2000000} {
+		for _, baud := range []int{19200, 250000, 1000000} {
 			name := softProtoNames[serLIN]
-			log, bits, ok := softGapFreePlan(name, baud, false)
+			log, bits, ok := softGapFreePlan(name, baud, false, 1)
 			if !ok || !bits {
 				t.Fatalf("LIN at %d: not a digital gap-free stream", baud)
 			}
@@ -139,7 +140,7 @@ func TestSoftStreamBitsQuietSkipped(t *testing.T) {
 	withBitsImage(t, func() {
 		const baud = 250000
 		name := softProtoNames[serLIN]
-		log, _, _ := softGapFreePlan(name, baud, false)
+		log, _, _ := softGapFreePlan(name, baud, false, 1)
 		_, longest, quiet, _ := decode.StreamTiming(name, float64(baud))
 		period := decode.StreamBitsPeriod(log)
 		var levels []bool

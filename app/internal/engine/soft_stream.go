@@ -186,10 +186,26 @@ func SoftStreamMode(proto, baud int, overdrive bool) string {
 	if !ok {
 		return ""
 	}
-	if _, _, ok := softGapFreePlan(name, baud, overdrive); ok {
+	if _, _, ok := softGapFreePlan(name, baud, overdrive, softLines(proto)); ok {
 		return "gap-free"
 	}
 	return "captures"
+}
+
+// softBitsBudget is the most samples a second (all lines) the device
+// decodes from the digital stream beside its display: two lines at 1.95 M
+// (PDI, cJTAG) kept up with busy buses on the bench, one or two at 7.8 M
+// (WS281x, SWD, MDIO) fell a ring behind in about two seconds. A faster plan
+// streams as captures.
+const softBitsBudget = 4e6
+
+// softLines is the lines a protocol's stream decodes: a clocked bus's two.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func softLines(proto int) int {
+	if clockedTwoLine(proto) {
+		return 2
+	}
+	return 1
 }
 
 // softGapFreePlan is the gap-free stream's decimation for a protocol and
@@ -198,13 +214,13 @@ func SoftStreamMode(proto, baud int, overdrive bool) string {
 // bucket (ADR-STREAM-BITS), so faster buses stream gap-free and slower ones
 // at a coarser decimation; ok false when it needs the captures.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
-func softGapFreePlan(name string, baud int, overdrive bool) (log int, bits, ok bool) {
+func softGapFreePlan(name string, baud int, overdrive bool, lines int) (log int, bits, ok bool) {
 	if bitsImage.Load() && decode.StreamBitsLine(name) {
 		if feature, _, _, known := decode.StreamTiming(name, float64(baud)); known {
 			if name == "onewire" && overdrive {
 				feature /= 10
 			}
-			if log, ok := decode.StreamBitsLog(feature); ok {
+			if log, ok := decode.StreamBitsLog(feature); ok && float64(lines)/decode.StreamBitsPeriod(log) <= softBitsBudget {
 				return log, true, true
 			}
 		}
@@ -263,7 +279,7 @@ func (e *Engine) beginSoftStream(ctx context.Context, p SerialParams, trig Strea
 	if name == "onewire" && p.Overdrive {
 		feature, longest, quiet = feature/10, longest/10, quiet/10
 	}
-	log, bits, gapFree := softGapFreePlan(name, p.Baud, p.Overdrive)
+	log, bits, gapFree := softGapFreePlan(name, p.Baud, p.Overdrive, softLines(p.Proto))
 	if !gapFree && trig == StreamOnValue {
 		// Captures stop on a record the symbol trigger fired on; the value
 		// must be one it matches wherever it comes.
