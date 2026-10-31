@@ -47,7 +47,7 @@ module tb_stream_drum #(parameter REAL=0,FAST=0,AW=REAL ? 19 : 12,BANK_AW=REAL ?
   since_turn=since_turn+1;
   address<=address+1'b1;
  end
- wire pvalid,psingle,pseal,bank_ready;wire [63:0] pdata;
+ wire pvalid,psingle,pseal,bank_ready,bank_next_free;wire [63:0] pdata;
  stream_drum #(.AW(AW),.WF_AW(WF_AW),.DESC_AW(DESC_AW),.BANK_AW(BANK_AW),
   .WRITE_AT(REAL ? 512 : 48),.WRITE_URGENT(REAL ? 3072 : 160),.TRIP_AT(REAL ? 3584 : 224),.LAP_SHIFT(REAL ? 7 : 4),
   .AGE_CYCLES(REAL ? 2097152 : 3000),.SEG(REAL ? 8192 : FAST ? 1024 : 256)) dut(
@@ -55,12 +55,12 @@ module tb_stream_drum #(parameter REAL=0,FAST=0,AW=REAL ? 19 : 12,BANK_AW=REAL ?
   .cmd(cmd),.cmd_read(cmd_read),.cmd_discard(cmd_discard),.cmd_continue(cmd_continue),.cmd_count(cmd_count),
   .t_ready(t_ready),.t_write_ready(t_write_ready),.t_done(t_done),.wdata(wdata),.wvalid(wvalid),.wstop(wstop),
   .rdata(rdata),.rvalid(rvalid),.position(position),.fault(fault),
-  .hclk(hclk),.bank_ready(bank_ready),.packet_valid(pvalid),.packet_data(pdata),.packet_single(psingle),.packet_seal(pseal));
+  .hclk(hclk),.bank_ready(bank_ready),.bank_next_free(bank_next_free),.packet_valid(pvalid),.packet_data(pdata),.packet_single(psingle),.packet_seal(pseal));
  wire mw,overrun,host_overrun;wire [BANK_AW:0] ma;wire [63:0] md;
  reg rel=0,rel_bank=0,rel_token=0;
  wire [1:0] ready,token,single;wire [63:0] first0,first1;wire [BANK_AW:0] count0,count1;
  stream_banks #(.BANK_AW(BANK_AW)) bk(.reset(!active),.producer_clk(hclk),.host_clk(host),.packet_valid(pvalid),.packet_data(pdata),
-  .packet_single(psingle),.seal(pseal),.packet_ready(),.cur_ready(bank_ready),.mem_write(mw),.mem_address(ma),.mem_data(md),.overrun(overrun),
+  .packet_single(psingle),.seal(pseal),.packet_ready(bank_next_free),.cur_ready(bank_ready),.mem_write(mw),.mem_address(ma),.mem_data(md),.overrun(overrun),
   .host_overrun(host_overrun),.host_release(rel),.release_bank(rel_bank),.release_token(rel_token),.host_ready(ready),
   .host_token(token),.first_word0(first0),.first_word1(first1),.packets0(count0),.packets1(count1),.last_single(single));
  reg [63:0] bmem[0:2*BANK-1];

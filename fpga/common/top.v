@@ -1404,13 +1404,13 @@ module acq_sram_top(
    if(drum_ramp_c)drum_ramp[31:16]<=drum_ramp[31:16]+1'b1;
   end
  end
- wire drum_bank_ready;
+ wire drum_bank_ready,drum_bank_next_free;
  stream_drum #(.AW(19),.WF_AW(12),.DESC_AW(9),.BANK_AW(BUF_AW-2)) drum(.clk(core),.active(drum_active),
   .in_valid(drum_in_valid),.in_data(drum_in_data),
   .cmd(drum_cmd),.cmd_read(drum_cmd_read),.cmd_discard(drum_cmd_discard),.cmd_continue(drum_cmd_continue),.cmd_count(drum_cmd_count),
   .t_ready(ready),.t_write_ready(write_ready),.t_done(transport_done),.wdata(drum_wdata),.wvalid(drum_wvalid),.wstop(drum_wstop),
   .rdata(read_data),.rvalid(read_valid),.position(position),.fault(drum_fault),
-  .hclk(halfclk),.bank_ready(drum_bank_ready),.packet_valid(stream_packet_valid),.packet_data(stream_packet_data),
+  .hclk(halfclk),.bank_ready(drum_bank_ready),.bank_next_free(drum_bank_next_free),.packet_valid(stream_packet_valid),.packet_data(stream_packet_data),
   .packet_single(stream_packet_single),.packet_seal(stream_packet_seal));
  assign packetizer_fault=drum_fault,stream_finished=!drum_active,stream_seal_ok=1'b1;
  // ADR-SOUND: the trigger comparator's crossings on the streamed words, as
@@ -1440,7 +1440,7 @@ module acq_sram_top(
  stream_banks #(.BANK_AW(BUF_AW-2)) stream_queue(.reset(stream_reset),.producer_clk(halfclk),.host_clk(clk),
   .packet_valid(stream_packet_valid),.packet_data(stream_packet_data),.packet_single(stream_packet_single),.seal(stream_packet_seal),
 `ifdef STREAM_DRUM
-  .packet_ready(),.cur_ready(drum_bank_ready),
+  .packet_ready(drum_bank_next_free),.cur_ready(drum_bank_ready),
 `else
   .packet_ready(stream_seal_ok),.cur_ready(),
 `endif.mem_write(stream_write),.mem_address(stream_address),.mem_data(stream_data),
