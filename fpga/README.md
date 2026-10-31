@@ -57,6 +57,15 @@ reported as a fault. Reading back what was just written costs one lap of
 the counter (2.1 ms), so the FIFO must hold a lap of input: ×256 (4.2k words
 a lap, 7.8 MB/s) is beyond both the FIFO and the GPMC bus (about 5.1 MB/s).
 
+A stream need not step in powers of two: the peak bucket and the digital
+period take a pace of any whole number of raw words (4 ns; register 29 the
+low 16 bits, 30 the high 4, latched while idle; register 65 reads 0x5241 and
+66/67 the pace back; 0 keeps the decimation's power of two), so a stream's
+word rate runs up to what the host bus drains. The counter source's ramp
+takes its own pace, a word every N core clocks (register 46, read back at
+68; 0 paces it by the decimator), to measure the bus's ceiling with every
+word checked.
+
 While the drum streams, the trigger's edge comparator keeps running on the
 decimated words: `images/stream/stream_marks.v` counts the stream's words and
 latches the count on each rising or falling crossing of the trigger level on

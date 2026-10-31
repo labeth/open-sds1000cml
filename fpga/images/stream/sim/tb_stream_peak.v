@@ -1,13 +1,14 @@
 // ENGMODEL-OWNER-UNIT: FU-RTL-ACQ-SRAM-TOP
 `timescale 1ns/1ps
-// Self-checking: stream_peak against a reference reduction, for bucket sizes
-// 2, 4 and 8 words, with gaps in the input and one-sample spikes.
+// Self-checking: stream_peak against a reference reduction, for buckets of
+// 1 to 45 pairs (2 to 90 words), powers of two and not, with gaps in the
+// input and one-sample spikes.
 // TRLC-LINKS: REQ-SDS-035
 module tb_stream_peak;
  reg clk=0;always #2 clk=!clk;
- reg enable=0,in_valid=0;reg [4:0] log_words=0;reg [31:0] in_word=0;
+ reg enable=0,in_valid=0;reg [18:0] pairs=0;reg [31:0] in_word=0;
  wire out_valid;wire [31:0] out_word;
- stream_peak dut(.clk(clk),.enable(enable),.log_words(log_words),.in_valid(in_valid),.in_word(in_word),.out_valid(out_valid),.out_word(out_word));
+ stream_peak dut(.clk(clk),.enable(enable),.pairs(pairs),.in_valid(in_valid),.in_word(in_word),.out_valid(out_valid),.out_word(out_word));
  integer errors=0,outs=0,expect_n=0;
  reg [31:0] expect_q[0:4095];
  always @(posedge clk)if(out_valid)begin
@@ -15,11 +16,11 @@ module tb_stream_peak;
   else if(out_word!==expect_q[outs])begin $display("FAIL: bucket %0d got %h want %h",outs,out_word,expect_q[outs]);errors=errors+1;end
   outs=outs+1;
  end
- task run(input integer lw,input integer buckets);
+ task run(input integer np,input integer buckets);
   integer b,k,size;reg [7:0] mn1,mx1,mn2,mx2,s;reg [31:0] w;
   begin
-   size=1<<lw;
-   @(posedge clk);enable<=0;log_words<=lw;repeat(4)@(posedge clk);enable<=1;repeat(2)@(posedge clk);
+   size=2*np;
+   @(posedge clk);enable<=0;pairs<=np;repeat(4)@(posedge clk);enable<=1;repeat(2)@(posedge clk);
    for(b=0;b<buckets;b=b+1)begin
     mn1=255;mx1=0;mn2=255;mx2=0;
     for(k=0;k<size;k=k+1)begin
@@ -39,7 +40,7 @@ module tb_stream_peak;
   end
  endtask
  initial begin
-  run(1,40);run(2,40);run(3,60);
+  run(1,40);run(2,40);run(4,60);run(3,40);run(5,40);run(7,30);run(45,20);
   if(outs!=expect_n)begin $display("FAIL: %0d outputs, want %0d",outs,expect_n);errors=errors+1;end
   if(errors==0)$display("PASS tb_stream_peak (%0d buckets)",outs);else $display("FAIL tb_stream_peak: %0d errors",errors);
   $finish;

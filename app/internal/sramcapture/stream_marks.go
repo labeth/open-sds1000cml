@@ -72,6 +72,9 @@ func (c *Capture) StartStreamMarked(ctx context.Context, cfg Config, m StreamMar
 		err = c.prepareStreamBuffers()
 	}
 	if err == nil {
+		err = c.setStreamPace(StreamPace{}) // the decimation's words, whatever an earlier stream paced
+	}
+	if err == nil {
 		err = c.write(19, 1|2|m.bits()) // stream, continuous, the marks
 	}
 	c.mu.Unlock()

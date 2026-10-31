@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"math/bits"
 	"slices"
 	"sync"
 	"time"
@@ -91,8 +92,9 @@ type softStream struct {
 	bSeen    bool
 
 	// Gap-free stream session.
-	log  uint8
-	bits bool // the digital stream's words (ADR-STREAM-BITS), not peak words
+	log    uint8
+	period int  // the digital stream's period in raw words
+	bits   bool // the digital stream's words (ADR-STREAM-BITS), not peak words
 	// The digital stream's quiet line: past keepWords words of it (Close
 	// and the decoder's lead) the words are left out and the decoder skips
 	// them, so a quiet bus costs no decoding; leadWords of it come back
@@ -192,7 +194,7 @@ func SoftStreamMode(proto, baud int, overdrive bool) string {
 	if !ok {
 		return ""
 	}
-	if _, _, ok := softGapFreePlan(name, baud, overdrive, softLines(proto)); ok {
+	if _, ok := softGapFreePlan(name, baud, overdrive, softLines(proto)); ok {
 		return "gap-free"
 	}
 	return "captures"
@@ -214,25 +216,78 @@ func softLines(proto int) int {
 	return 1
 }
 
-// softGapFreePlan is the gap-free stream's decimation for a protocol and
-// whether it streams digital words: with the digital stream image, a line
-// without a carrier is sliced in the FPGA at a sixteenth of a peak word's
-// bucket (ADR-STREAM-BITS), so faster buses stream gap-free and slower ones
-// at a coarser decimation; ok false when it needs the captures.
+// softPlan is a gap-free stream's plan: the peak stream's decimation (a
+// bucket of 2^log samples), or the digital stream's period in raw words.
+type softPlan struct {
+	log    int // the arm's decimation: the peak words' bucket, or about the digital words' span
+	period int // the digital stream's period in raw words (bits)
+	bits   bool
+}
+
+// softGapFreePlan is the gap-free stream's plan for a protocol: with the
+// digital stream image, a line without a carrier is sliced in the FPGA
+// (ADR-STREAM-BITS) at any period the CPU budget and the bus allow
+// (decode.StreamBitsPlan), so faster buses stream gap-free and slower ones
+// at a coarser period; else the peak stream's decimation. ok false when it
+// needs the captures.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
-func softGapFreePlan(name string, baud int, overdrive bool, lines int) (log int, bits, ok bool) {
+func softGapFreePlan(name string, baud int, overdrive bool, lines int) (softPlan, bool) {
 	if bitsImage.Load() && decode.StreamBitsLine(name) {
 		if feature, _, _, known := decode.StreamTiming(name, float64(baud)); known {
 			if name == "onewire" && overdrive {
 				feature /= 10
 			}
-			if log, ok := decode.StreamBitsLog(feature); ok && float64(lines)/decode.StreamBitsPeriod(log) <= softBitsBudget {
-				return log, true, true
+			if period, ok := decode.StreamBitsPlan(feature, softBitsBudget/float64(lines)); ok {
+				return softPlan{log: softBitsLog(period), period: period, bits: true}, true
 			}
 		}
 	}
-	log, ok = softGapFreeLog(name, baud, overdrive)
-	return log, false, ok
+	log, ok := softGapFreeLog(name, baud, overdrive)
+	return softPlan{log: log}, ok
+}
+
+// softBitsLog is the decimation armed with a digital period of period raw
+// words: the power of two nearest above a word's span (sixteen periods of
+// two samples a raw word), within the stream's 8..20. The fabric streams
+// the period; the decimation only has to be one a stream takes.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func softBitsLog(period int) int {
+	return min(max(bits.Len(uint(32*period-1)), 8), decode.StreamMaxLog)
+}
+
+// wordRate is the words a second the plan's stream asks of the bus.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240, REQ-SDS-035
+func (p softPlan) wordRate() float64 {
+	if p.bits {
+		return decode.StreamBitsWordRate(p.period)
+	}
+	return 500e6 / float64(uint64(1)<<p.log)
+}
+
+// pace is the plan's stream pace for sramcapture: the digital period; the
+// peak stream keeps its decimation's bucket.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240, REQ-SDS-035
+func (p softPlan) pace() sramcapture.StreamPace {
+	if p.bits {
+		return sramcapture.StreamPace{Words: uint32(p.period)}
+	}
+	return sramcapture.StreamPace{}
+}
+
+// setTiming sets the gap-free stream's sample time and 2 ns ordinal step
+// for plan p: a peak word's bucket gives two samples a line, so a sample
+// is half a bucket; a digital period one sample. Both steps are whole
+// ordinals, so a sample's ordinal is exact at any period.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func (s *softStream) setTiming(p softPlan) {
+	s.log, s.period = uint8(p.log), p.period
+	if p.bits {
+		s.sampleS = decode.StreamBitsPeriod(p.period)
+		s.ordStep = float64(2 * p.period)
+		return
+	}
+	s.sampleS = float64(uint64(1)<<p.log) * 2e-9 / 2
+	s.ordStep = float64(uint64(1) << (p.log - 1))
 }
 
 // softGapFreeLog is the gap-free stream's decimation for a protocol, ok
@@ -285,7 +340,8 @@ func (e *Engine) beginSoftStream(ctx context.Context, p SerialParams, trig Strea
 	if name == "onewire" && p.Overdrive {
 		feature, longest, quiet = feature/10, longest/10, quiet/10
 	}
-	log, bits, gapFree := softGapFreePlan(name, p.Baud, p.Overdrive, softLines(p.Proto))
+	plan, gapFree := softGapFreePlan(name, p.Baud, p.Overdrive, softLines(p.Proto))
+	bits := plan.bits
 	if !gapFree && trig == StreamOnValue {
 		// Captures stop on a record the symbol trigger fired on; the value
 		// must be one it matches wherever it comes.
@@ -296,7 +352,7 @@ func (e *Engine) beginSoftStream(ctx context.Context, p SerialParams, trig Strea
 		}
 	}
 	s := &softStream{p: p, proto: name, decoder: d, trig: trig, value: value & unitMask(p), mask: unitMask(p),
-		gapFree: gapFree, quiet: quiet, log: uint8(log), bits: bits, byHand: onError}
+		gapFree: gapFree, quiet: quiet, bits: bits, byHand: onError}
 	v, err := e.decodedCall(ctx, func() (any, error) {
 		e.decodedStarting = time.Time{}
 		if e.decodedSession != nil || e.soft != nil {
@@ -326,13 +382,7 @@ func (e *Engine) beginSoftStream(ctx context.Context, p SerialParams, trig Strea
 		s.id = sramcapture.RecordIdentity{Epoch: softEpochBase | e.softEpoch&0x3fffffff, Record: 1}
 		s.start = e.clk.Now()
 		if gapFree {
-			bucket := float64(uint64(1)<<log) * 2e-9
-			s.sampleS = bucket / 2
-			s.ordStep = float64(uint64(1) << (log - 1))
-			if bits {
-				s.sampleS = decode.StreamBitsPeriod(log)
-				s.ordStep = float64(uint64(1) << (log - 4))
-			}
+			s.setTiming(plan)
 			// Decode a fifth of a second at a time, or twice Close (each decode
 			// reads the open window again, so short pushes cost it over and
 			// over), but at least once a second: a DCF77 minute's Close is 32 s.
@@ -438,6 +488,10 @@ func (e *Engine) softStreamStart(s *softStream) error {
 	if err := e.freshStreamImage(image); err != nil {
 		return err
 	}
+	plan := softPlan{log: int(s.log), period: s.period, bits: s.bits}
+	if r := plan.wordRate(); r > decode.StreamBusWords {
+		return fmt.Errorf("a stream of %.3g M words a second is past the bus's %.3g M", r/1e6, decode.StreamBusWords/1e6)
+	}
 	ch := uint8(s.p.ChA & 1)
 	cfg := sramcapture.Config{Source: sramcapture.ADC, DecimationLog2: s.log, PreWords: sramcapture.Words - 17, PostWords: 17,
 		TriggerChannel: ch, TriggerLevel: uint8(math.Round(s.p.Threshold))}
@@ -446,7 +500,7 @@ func (e *Engine) softStreamStart(s *softStream) error {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
-	if err := e.sram.StartStream(ctx, cfg, true, true); err != nil {
+	if err := e.sram.StartStream(ctx, cfg, true, true, plan.pace()); err != nil {
 		return err
 	}
 	s.streaming, s.expected, s.haveLast = true, 0, false

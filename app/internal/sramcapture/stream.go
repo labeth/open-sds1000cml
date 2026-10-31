@@ -254,16 +254,66 @@ func (c *Capture) DrainStream(ctx context.Context, expected uint64, dst io.Write
 	return block, e
 }
 
+// StreamPace sets a stream's word rate to any whole number of raw words (4
+// ns, two samples each) instead of the decimation's power of two, so a
+// stream runs as close to what the host bus drains as its plan wants
+// (ADR-STREAM-IMAGE). Words is the peak stream's bucket (even: whole pairs,
+// 2 to 2^19) or the digital stream's period (2 to 32768, sixteen periods a
+// word); 0 keeps 2^DecimationLog2 samples a word. RampClocks paces the
+// counter source's ramp at a word every that many 250 MHz clocks (2 or
+// more; 0 at the decimator's words), for measuring the bus's ceiling with
+// every word checked.
+type StreamPace struct {
+	Words      uint32
+	RampClocks uint16
+}
+
+// streamPaceCapability is register 65's word in an image that takes the
+// pace (registers 29 and 30, 46 the ramp's), "RA".
+const streamPaceCapability = 0x5241
+
+// setStreamPace writes p and, for a pace other than the decimation's, reads
+// it back with the image's capability: an image without the pace would
+// stream at the power of two and every sample's time would be wrong. The
+// caller holds c.mu.
+// TRLC-LINKS: REQ-SDS-035
+func (c *Capture) setStreamPace(p StreamPace) error {
+	if p.Words == 1 || p.Words > 1<<19 {
+		return fmt.Errorf("sramcapture: stream pace %d raw words, need 2..%d", p.Words, 1<<19)
+	}
+	if p.RampClocks == 1 {
+		return fmt.Errorf("sramcapture: ramp pace %d clocks, need 2 or more", p.RampClocks)
+	}
+	if err := c.writeMany([2]uint16{29, uint16(p.Words)}, [2]uint16{30, uint16(p.Words >> 16)}, [2]uint16{46, p.RampClocks}); err != nil {
+		return err
+	}
+	if p == (StreamPace{}) {
+		return nil
+	}
+	var v [4]uint16
+	if err := c.readMany([]uint16{65, 66, 67, 68}, v[:]); err != nil {
+		return err
+	}
+	if v[0] != streamPaceCapability {
+		return fmt.Errorf("sramcapture: this FPGA image streams at powers of two only")
+	}
+	if uint32(v[1])|uint32(v[2]&15)<<16 != p.Words || v[3] != p.RampClocks {
+		return fmt.Errorf("sramcapture: stream pace read back %d words, %d clocks", uint32(v[1])|uint32(v[2]&15)<<16, v[3])
+	}
+	return nil
+}
+
 // StartStream enables the stream banks and arms cfg: every word the record
 // writes is also published to the host through DrainStream, starting at
 // ordinal 0. continuous never triggers, so the stream runs until StopStream;
 // otherwise the record's own trigger and post-trigger end it. peak streams
 // each bucket's extremes (the envelope recall's raw word format) in place of
-// the record's averaged words, one word per 2^DecimationLog2 samples. The fabric
-// streams decimated records only (DecimationLog2 8 or more: at most about
-// 2 M words a second, what the host drain sustains).
+// the record's averaged words (the digital stream image: its digital words),
+// one word per 2^DecimationLog2 samples or at pace. The fabric streams
+// decimated records only (DecimationLog2 8 or more); a pace's word rate is
+// the caller's to keep within what the host drain sustains.
 // TRLC-LINKS: REQ-SDS-035
-func (c *Capture) StartStream(ctx context.Context, cfg Config, continuous, peak bool) error {
+func (c *Capture) StartStream(ctx context.Context, cfg Config, continuous, peak bool, pace StreamPace) error {
 	if cfg.DecimationLog2 < 8 || cfg.DecimationLog2 > 20 {
 		return fmt.Errorf("sramcapture: stream decimation %d, need 8..20", cfg.DecimationLog2)
 	}
@@ -274,6 +324,10 @@ func (c *Capture) StartStream(ctx context.Context, cfg Config, continuous, peak 
 	}
 	if err == nil {
 		err = c.prepareStreamBuffers()
+	}
+	if err == nil {
+		// Latched by the fabric while idle, as the mode.
+		err = c.setStreamPace(pace)
 	}
 	if err == nil {
 		mode := uint16(1)

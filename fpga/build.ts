@@ -140,9 +140,11 @@ if(image.trigger){
   'set_false_path -from [get_registers {*stream_pack*mem*}] -to [get_registers {*stream_pack*low[*] *stream_pack*packet_data[*]}]',
   // stream_peak's bucket stage updates at most every other clock from pair
   // registers held two clocks (its design), so those paths get two clocks.
-  // The bucket size changes only while acquisition is idle.
-  'set_false_path -from [get_registers {*peak_log[*] *peak|size_r[*]}] -to [get_registers {*peak|size_r[*] *peak|init[*]}]',
-  'set_false_path -from [get_registers {*bits_log[*]}] -to [get_registers {*peak|size_r[*] *peak|init[*]}]',
+  // The bucket or period size and the ramp's pace change only while
+  // acquisition is idle (latched from the host's pace while idle).
+  'set_false_path -from [get_registers {*stream_rate[*] *decim_log[*]}] -to [get_registers {*peak_pairs[*] *bits_period[*]}]',
+  'set_false_path -from [get_registers {*peak_pairs[*] *bits_period[*] *peak|size_r[*]}] -to [get_registers {*peak|size_r[*] *peak|init[*]}]',
+  'set_false_path -from [get_registers {*ramp_clocks[*]}] -to [get_registers {*ramp_init[*] *drum_paced}]',
   // stream_bits in its place (STREAM_BITS) counts every clock: no multicycle.
   ...(image.defines.includes('STREAM_BITS') ? [] : [
   'set_multicycle_path -setup -end 2 -from [get_registers {*peak|pmin?[*] *peak|pmax?[*] *peak|min?[*] *peak|max?[*] *peak|left[*] *peak|first}] -to [get_registers {*peak|min?[*] *peak|max?[*] *peak|left[*] *peak|first}]',

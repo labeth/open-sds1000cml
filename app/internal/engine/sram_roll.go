@@ -555,7 +555,7 @@ func (e *Engine) rollStreamStep(r *rollView) {
 		cfg := sramcapture.Config{Source: sramcapture.ADC, DecimationLog2: p.log, PreWords: sramcapture.Words - 17, PostWords: 17,
 			TriggerChannel: uint8(e.trigSrc.Load()), TriggerLevel: uint8(e.trigLevelWord())}
 		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-		err := e.sram.StartStream(ctx, cfg, true, true)
+		err := e.sram.StartStream(ctx, cfg, true, true, sramcapture.StreamPace{})
 		cancel()
 		if err != nil {
 			e.busErr(err)

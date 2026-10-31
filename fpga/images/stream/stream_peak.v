@@ -2,7 +2,7 @@
 `timescale 1ns/1ps
 // ADR-STREAM-IMAGE: peak-detect stream. Reduces the raw interleaved ADC words
 // (CH1[n],CH2[n],CH1[n+1],CH2[n+1]; one per 250 MHz clock) to one word per
-// bucket of 2^log_words raw words, {max2,max1,min2,min1} -- the envelope
+// bucket of any whole number of raw word pairs, {max2,max1,min2,min1} -- the envelope
 // recall's raw format, so the host de-biases and orders it the same way. A
 // stream of extremes keeps narrow pulses and fast edges that the precision
 // decimator's averaging removes, as a scope's peak-detect roll does.
@@ -10,11 +10,12 @@
 // Timing at 250 MHz: words are first reduced in pairs, so the bucket
 // accumulators (and the bucket counter) update at most every other clock from
 // pair registers that hold for two clocks; build.ts gives those paths two
-// clocks (multicycle). Buckets are whole pairs: log_words >= 1 (a stream's
-// decimation is at least 2^8, so log_words >= 7).
+// clocks (multicycle). Buckets are whole pairs, any number of them (not only
+// powers of two), so the word rate runs up to what the host bus drains
+// rather than stepping past it.
 // TRLC-LINKS: REQ-SDS-035, REQ-SDS-010
 module stream_peak(
- input clk,enable,input [4:0] log_words, // raw words per bucket = 2^log_words, 1..19
+ input clk,enable,input [18:0] pairs, // raw word pairs per bucket, 1..2^18
  input in_valid,input [31:0] in_word,
  output reg out_valid=0,output reg [31:0] out_word=0
 );
@@ -37,7 +38,7 @@ module stream_peak(
  wire [19:0] dec=left-1'b1;
  always @(posedge clk)begin
   // Bucket size changes only while acquisition is idle: pipeline it.
-  size_r<=20'd1<<(log_words-1'b1);init<=size_r-20'd2;
+  size_r<={1'b0,pairs};init<=size_r-20'd2;
   v1<=enable && in_valid;w1<=in_word;
   v2<=v1;
   cmin1<=lo8(w1[7:0],w1[23:16]);cmax1<=hi8(w1[7:0],w1[23:16]);

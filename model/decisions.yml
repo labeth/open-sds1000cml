@@ -1595,10 +1595,19 @@ decisions:
     peak-detect reducer (stream_peak, bucket min and max in the envelope's raw format) and two host banks
     (stream_banks) published with the stream ordinal of their first word. Host release names the bank and its
     publication token; a lost word raises a sticky fault, never a silent gap. Register 13 reports revision 11.
-    Decimation is 2^8 or more.
+    Decimation is 2^8 or more. The peak and digital streams take a pace (write 29 and 30, latched while idle; read
+    65 0x5241 and the pace back at 66 and 67) - the bucket or the digital period in raw words (4 ns), any whole
+    number (a bucket whole pairs), so a stream's word rate runs up to what the host bus drains (about 2.8 to 3.0M
+    words a second) instead of stepping from 1.95M past it to 3.9M in powers of two; 0 keeps the decimation's power
+    of two (roll, SOUND). The precision decimator stays powers of two. The counter source's ramp takes a pace of its
+    own (write 46, read 68), a word every that many core clocks, so the bus's ceiling is measured with every word
+    checked at any rate.
   consequences:
   - The host validates ordinals and tokens (REQ-SDS-035); DrainStream and the worker pump both drain it.
   - Image switching to and from it is a stopped acquisition transition.
+  - A plan's stream never asks more of the bus than decode.StreamBusWords (2.5M words a second, under the drain's
+    measured ceiling); a pace other than the decimation's is read back with the image's capability, so an image
+    without the pace never streams at a power of two the host would time wrongly.
 - id: ADR-SOUND
   title: SOUND runs on the gap-free audio-rate stream, its triggers the FPGA's edge marks
   status: accepted
@@ -1687,9 +1696,11 @@ decisions:
     250 MHz) - each channel's raw samples sliced at its level with the trigger's band (CH1 at the trigger level,
     CH2 at the second line's), a period's bit the level before it flipped when any sample in it differs (a pulse
     shorter than a period still shows), sixteen periods of 2^(log-4) samples a line a word, so a word spans a
-    peak word's bucket. The decoded stream runs on it for a line without a carrier, at the coarsest decimation
-    that keeps six periods in the protocol's shortest feature within 1.95M samples a second a line, else three and
-    a half; a plan above 4M samples a second (all lines) streams as captures. A quiet line's words past Close and
+    peak word's bucket. The decoded stream runs on it for a line without a carrier, at a period of any whole number
+    of raw words (the image's pace, ADR-STREAM-IMAGE) - six periods in the protocol's shortest feature where the
+    CPU budget (4M samples a second, all lines) allows, else the finest period the budget and the bus allow as long
+    as three and a half fit; a bus that leaves fewer streams as captures. Powers of two made a plan take up to
+    twice the samples six periods need, or fall to the next coarser at fewer than six. A quiet line's words past Close and
     the decoder's lead are left out and the decoder skips them; the lead comes back as the constant line it was,
     so the frames and their sample ordinals are the ones every word gives. Each decode takes at most 2^18 samples
     a line, and the reader takes the shared ring 64 KiB at a time.
@@ -1701,6 +1712,8 @@ decisions:
   - Dense buses past the budget (Maple, MDIO and SWD at 1 MHz, WS281x, SWIM) fell a ring behind in about two
     seconds when decoded sample by sample; they stay captures until their decoders read edges.
   - Roll and SOUND stay on the stream image; switching between the two is an image load, as before.
+  - The finest period the bus carries is 7 raw words (2.23M words a second); the CPU budget binds long before it,
+    so the bus is the limit only for a decoder cheap enough to spend more.
   - Where a decoder reads only its lines' edges (33 of the stream's protocols), the digital words become edges
     directly (no samples unpacked or sliced) and the decoder takes them, the same frames to the span; the device's
     CPU fell further on the bench (DMX 58 to 51 %, SDQ 67 to 50 %, Miller 99 to 84 %). A decoder's own work is
