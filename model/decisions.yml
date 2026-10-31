@@ -1739,6 +1739,11 @@ decisions:
     frame. A ring that has not lapped must span the time since the stream's start, less at most 4 ms of arm lag
     (its words at 2^(n-1) raw words against the stamp); one that does not falls back to the symbol trigger's
     record. The freeze logs the ring's geometry, pointer and stamp, the frame's ordinal and the words received.
+  - The on-chip stream's slack is the FIFO alone (the direct path publishes a bank from 512 words, so both banks
+    may already be the host's), 33 ms at 2^12; the worker's pump runs before a ring stream starts so the first
+    words never wait for its set-up. A ring that does not start (an image without it) leaves the stream to run as
+    it would without one and the stop to the symbol trigger's record, once; a ring stream that loses words goes on
+    without the ring, on the SRAM drum's second of slack.
   - tb_top_bits_ring (driven by the engine's TestStreamRingTopRTL) runs the bits image's top level over GPMC as
     sramcapture does - start, the two stops, the record read back span by span - and checks every word read holds
     the input at the ring's pace, the transport never idles while the ring runs, and the app's mapping of each
