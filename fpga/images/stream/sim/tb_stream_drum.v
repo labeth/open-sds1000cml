@@ -122,18 +122,19 @@ module tb_stream_drum #(parameter REAL=0,FAST=0,MID=0,SWORDS=0,SPERIOD=256,HOST_
  endtask
  // The backlog: its peak (ring words) and when the ring last emptied.
  integer peak=0;realtime spill_t=0,clear_t=0;reg had=0;
+ wire [AW:0] ring_used=N-dut.p1_free; // the ring's words between the write head and the head burst
  always @(posedge hclk)begin
-  if(dut.used>peak)peak=dut.used;
-  if(dut.used!=0 && !had)spill_t=$realtime;
-  if(dut.used==0 && had)begin clear_t=$realtime;if(BIG)$display("  backlog %0.3f-%0.3f ms, ring peak %0d words",spill_t/1e6,clear_t/1e6,peak);end
-  had<=dut.used!=0;
+  if(ring_used>peak)peak=ring_used;
+  if(ring_used!=0 && !had)spill_t=$realtime;
+  if(ring_used==0 && had)begin clear_t=$realtime;if(BIG)$display("  backlog %0.3f-%0.3f ms, ring peak %0d words",spill_t/1e6,clear_t/1e6,peak);end
+  had<=ring_used!=0;
  end
  // Ring bursts written, the shortest, and the drum's state at a fault.
  integer bursts=0,short=1<<30;reg faulted=0;
  always @(posedge hclk)begin
   if(dut.dsc_push)begin bursts=bursts+1;if(dut.dsc_push_len<short)short=dut.dsc_push_len;end
   if(fault && !faulted)$display("fault at %0.3f ms: ring %0d words, %0d bursts (shortest %0d words), %0d descriptors (full %b), FIFO %0d pairs",
-   $realtime/1e6,dut.used,bursts,short,dut.dsc_n,dut.dsc_full,dut.wf_level);
+   $realtime/1e6,ring_used,bursts,short,dut.dsc_n,dut.dsc_full,dut.wf_level);
   faulted<=fault;
  end
  task settle_check(input integer clocks,input [8*24-1:0] name);
@@ -173,7 +174,7 @@ module tb_stream_drum #(parameter REAL=0,FAST=0,MID=0,SWORDS=0,SPERIOD=256,HOST_
    drain_ns=HOST_NS;stream(4000,SPERIOD,0);
    stream(SWORDS,SPERIOD,SWORDS);       // the host takes nothing throughout
    $display("stall of %0d words ends at %0.3f ms: ring %0d words, %0d bursts (shortest %0d words), %0d descriptors, FIFO %0d pairs, fault %b",
-    SWORDS,$realtime/1e6,dut.used,bursts,short,dut.dsc_n,dut.wf_level,fault);
+    SWORDS,$realtime/1e6,ring_used,bursts,short,dut.dsc_n,dut.wf_level,fault);
    draining=1;drain_ns=AFTER_NS;stream(POST,SPERIOD,0);
    settle_check(BIG ? 5000000 : 100000,"stall");
    if(errors==0)$display("PASS tb_stream_drum stall");else $display("FAIL tb_stream_drum stall: %0d errors",errors);
