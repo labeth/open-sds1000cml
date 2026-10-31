@@ -1665,6 +1665,34 @@ decisions:
     Writing in place during seeks was tried and dropped; its holes become dead crossing time.
   - Recovery after a stall needs host drain headroom above the input rate (about 1.2 MB/s at 512, 3.1 MB/s at 1024).
   - tb_stream_drum models the late write (P+2), unreliable burst starts and the one-pulse read skew.
+  - On the instrument the direct path carries decimation 512 loss-free (counter source, every word checked). The
+    host drains the banks at about 11 MB/s; decimation 256 (1.95M words/s) still faults, as the host takes banks
+    every 2 ms and a backlog's lap carries two.
+- id: ADR-STREAM-BITS
+  title: The decoded stream streams each line sliced, sixteen periods a word
+  status: accepted
+  date: '2026-10-31'
+  context: A software-decoded stream read peak words, a bucket's two extremes a line, so at the finest gap-free
+    decimation (2^9) a line came as 1.95M samples a second and a protocol needed a feature of about 3.6 us
+    (roughly 280 kBd). The decoders read only a line's level; the words' width went on amplitude they slice away.
+  decision: A second stream image (bits) carries stream_bits in stream_peak's place (the two do not fit together at
+    250 MHz) - each channel's raw samples sliced at its level with the trigger's band (CH1 at the trigger level,
+    CH2 at the second line's), a period's bit the level before it flipped when any sample in it differs (a pulse
+    shorter than a period still shows), sixteen periods of 2^(log-4) samples a line a word, so a word spans a
+    peak word's bucket. The decoded stream runs on it for a line without a carrier, at the coarsest decimation
+    that keeps six periods in the protocol's shortest feature within 1.95M samples a second a line, else three and
+    a half; a plan above 4M samples a second (all lines) streams as captures. A quiet line's words past Close and
+    the decoder's lead are left out and the decoder skips them; the lead comes back as the constant line it was,
+    so the frames and their sample ordinals are the ones every word gives. Each decode takes at most 2^18 samples
+    a line, and the reader takes the shared ring 64 KiB at a time.
+  consequences:
+  - On the bench every bus the peak stream took decodes the same, at less CPU (DMX 88 to 58 %, 1-Wire 76 to 42 %);
+    PDI, USB-PD, PWM, SDQ, Miller and cJTAG stream gap-free instead of as captures (10 to 31 times the units a
+    second), none lost.
+  - Carrier lines (IR remotes, RFID tags) keep the peak words; a period finer than the carrier reads the carrier.
+  - Dense buses past the budget (Maple, MDIO and SWD at 1 MHz, WS281x, SWIM) fell a ring behind in about two
+    seconds when decoded sample by sample; they stay captures until their decoders read edges.
+  - Roll and SOUND stay on the stream image; switching between the two is an image load, as before.
 - id: ADR-PANEL-SERIAL-SCAN
   title: Scan the front panel from the owned images over the factory's serial shift chain
   status: accepted

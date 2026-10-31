@@ -36,6 +36,7 @@ func bitsWords(levels []bool, m int) []byte {
 }
 
 // withBitsImage runs f as a build with the digital stream image.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
 func withBitsImage(t *testing.T, f func()) {
 	t.Helper()
 	was := bitsImage.Load()
