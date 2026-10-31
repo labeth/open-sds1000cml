@@ -128,6 +128,10 @@ type softStream struct {
 	// The stream decoder's sizes in samples, as made (a page decodes with
 	// the same: soft_client.go).
 	closeN, maxN, leadN int
+	// subframes: the decoder's "rw" spans open frames too (decode
+	// StreamDecoder.SetSubframes); the scope's stream sets none, and a page
+	// decoding for it must not either.
+	subframes bool
 	// Client decode (soft_client.go): a web page decodes the words.
 	client      bool
 	clientBreak bool          // words were lost since the last chunk the page was handed
@@ -480,6 +484,7 @@ func (s *softStream) newDecoder(closeN, maxN int) {
 	} else {
 		s.dec = decode.NewStreamDecoder(s.decodeFunc(), closeN, maxN)
 	}
+	s.dec.SetSubframes(s.subframes)
 }
 
 // setLead keeps n samples before a frame's start in the decoder's window.
