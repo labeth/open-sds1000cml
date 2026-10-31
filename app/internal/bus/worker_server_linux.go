@@ -52,6 +52,9 @@ type acquisitionWorker struct {
 	sLastPump          time.Time     // diagnostics for a lost stream:
 	sMaxGap, sMaxDrain time.Duration // longest pump-to-pump gap and bank drain
 	sShared            bool          // sring is the ring shared with the app
+	sRate              float64       // input words a second, as the pump has drained them
+	sEvery             time.Duration // the pump's look interval at that rate (0: streamPumpEvery)
+	sBank              int           // words in a drained bank
 	logf               func(string, ...any)
 }
 
@@ -85,6 +88,32 @@ func (r streamRingWriter) Write(b []byte) (int, error) {
 // looks alone took a tenth of the core.
 const streamPumpEvery = 2 * time.Millisecond
 
+// streamPumpFastest bounds the look interval from below at the fastest
+// streams: a bank of the 2^8 stream fills in about a millisecond, and the
+// host holds only two.
+const streamPumpFastest = 400 * time.Microsecond
+
+// pumpWait is the pump's current look interval.
+// TRLC-LINKS: REQ-SDS-035
+func (w *acquisitionWorker) pumpWait() time.Duration {
+	if w.sEvery == 0 {
+		return streamPumpEvery
+	}
+	return w.sEvery
+}
+
+// pumpEvery is the look interval: nine tenths of a bank's fill time at the
+// measured input rate, between streamPumpFastest and streamPumpEvery, so a
+// slow stream is looked at rarely and a fast one before its two banks fill.
+// TRLC-LINKS: REQ-SDS-035
+func pumpEvery(rate float64, bankWords int) time.Duration {
+	if rate <= 0 || bankWords <= 0 {
+		return streamPumpEvery
+	}
+	d := time.Duration(0.9 * float64(bankWords) / rate * float64(time.Second))
+	return min(max(d, streamPumpFastest), streamPumpEvery)
+}
+
 // streamPump drains every published stream bank, in ordinal order.
 // TRLC-LINKS: REQ-SDS-035
 func (w *acquisitionWorker) streamPump() {
@@ -92,15 +121,34 @@ func (w *acquisitionWorker) streamPump() {
 		return
 	}
 	now := time.Now()
-	if !w.sLastPump.IsZero() && now.Sub(w.sLastPump) < streamPumpEvery {
+	if !w.sLastPump.IsZero() && now.Sub(w.sLastPump) < w.pumpWait() {
 		// Every app request wakes the loop: the banks are not looked at
 		// more often than this for it (the drum holds about a second).
 		return
 	}
+	since := now.Sub(w.sLastPump)
 	if !w.sLastPump.IsZero() {
-		w.sMaxGap = max(w.sMaxGap, now.Sub(w.sLastPump))
+		w.sMaxGap = max(w.sMaxGap, since)
 	}
 	w.sLastPump = now
+	from := w.sExpected
+	banks := 0
+	defer func() {
+		// The input rate, from the words this look drained over the time
+		// since the last (a running average: one look sees 0, 1 or 2 banks).
+		if since > 0 && since < time.Second {
+			r := float64(w.sExpected-from) / since.Seconds()
+			w.sRate += (r - w.sRate) / 8
+			w.sEvery = pumpEvery(w.sRate, w.sBank)
+		}
+		if banks >= 2 {
+			// Both banks were full: the drum holds a backlog and refills the
+			// banks once a ring lap, so a look a fill time away takes two
+			// banks a lap and falls behind a stream near the drum's rate.
+			// The next look comes as soon as a bank can be ready again.
+			w.sEvery = streamPumpFastest
+		}
+	}()
 	// The banks' DMA sleeps through its transfers: the app decodes the
 	// stream meanwhile (the worker runs at real-time priority).
 	if d, ok := w.bus.(*Dev); ok && d.SetStreamYield(true) {
@@ -126,6 +174,8 @@ func (w *acquisitionWorker) streamPump() {
 		}
 		w.sMaxDrain = max(w.sMaxDrain, time.Since(t0))
 		w.sExpected = block.FirstWord + uint64(block.Words)
+		w.sBank = max(w.sBank, int(block.Words))
+		banks++
 	}
 }
 
@@ -134,6 +184,7 @@ func (w *acquisitionWorker) streamPump() {
 func (w *acquisitionWorker) streamPumpOn(on bool) error {
 	w.sOn, w.sExpected, w.sHead, w.sCount, w.sFirst, w.sFault = on, 0, 0, 0, 0, nil
 	w.sLastPump, w.sMaxGap, w.sMaxDrain = time.Time{}, 0, 0
+	w.sRate, w.sEvery, w.sBank = 0, 0, 0
 	if on && w.sring == nil {
 		if d, ok := w.bus.(*Dev); ok && workerHasSharedRing() {
 			if ring, err := d.PinSharedRing(sharedRingFD, workerStreamBytes); err == nil {
@@ -617,7 +668,7 @@ func (w *acquisitionWorker) serve(fd int) error {
 			// Only the stream banks to serve: a 2^9 stream publishes a bank
 			// about every 1.5 ms and the drum behind them holds about a
 			// second, so the loop need not wake every 500 us for them.
-			wait = max(wait, streamPumpEvery)
+			wait = max(wait, w.pumpWait())
 		}
 		timeout := syscall.NsecToTimespec(int64(wait))
 		_, _, errno := syscall.RawSyscall6(syscall.SYS_PPOLL, uintptr(unsafe.Pointer(&poll)), 1, uintptr(unsafe.Pointer(&timeout)), 0, 0, 0)
