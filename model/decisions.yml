@@ -1764,6 +1764,33 @@ decisions:
     and are not yet confirmed knob by knob.
   - All four acquisition images carry the block (general seed 1, packet seed 6, line-code seed 7,
     stacking seed 11; see ADR-SAMPLE-POLARITY).
+- id: ADR-PANEL-SERIAL-SCAN
+  title: Scan the front panel from the owned images over the factory's serial shift chain
+  status: accepted
+  date: '2026-09-27'
+  context: Physical keys and knobs never worked on the owned images; ReadMatrix was a stub and the images held F1, F2
+    and J2 high as if they were straps. The key interrupt (IRQ 275, gpio3_19) stayed high while knobs were turned. The
+    decoded factory netlist shows the Cyclone answers every CS1 read, including the key registers 0x64 to 0x69, and that
+    only J1 carries panel data into them. F2 follows a toggle that flips at a prescaler terminal count (a free clock of
+    about 300 kHz), J2 is the top bit of a 7-bit counter of F2 edges (a frame level changing every 64 clocks), and F1
+    comes from the receiver block.
+  decision: Every acquisition image carries a panel scan block. J2 loads the panel's parallel-load shift chain, F2
+    clocks 64 bits out and J1 is sampled before each rising edge; a low pulse on F1 per changed frame raises the ARM key
+    interrupt. The block counts each knob's quadrature steps. Registers are write 31 config, 32 F2 half period, 33 gap,
+    34 read index; read 31 identity 0x5041, 44 the indexed word (frame, knob counts, counters, pins). The settled scan
+    is the power-on default and the app re-applies it after every image load. ReadMatrix rebuilds the factory's five
+    words from a scan read, one knob per read in the decoder's priority order, so the panel decoder is unchanged.
+  consequences:
+  - 'Validated on the instrument. Keys read active low, one bit each; each row''s positions 1 and 2 are
+    a knob''s raw quadrature phases. Shift byte n is factory row n+1, and RUN/STOP, AUTO and SINGLE land on the
+    decoder''s codes. 684 key interrupts arrived during a 45 s press test, and the user confirmed buttons and knobs
+    work. The general image with the scan is seed 5, 9927 logic elements, +0.091 ns.'
+  - Rejected on the bench, J2 as the clock with F2 as the load, every polarity, with and without a J1 pull-up; J1 read
+    constant low.
+  - Knob transitions per detent (1) and direction (counting up is clockwise) are set in app/internal/engine/panel_scan.go
+    and are not yet confirmed knob by knob.
+  - All four acquisition images carry the block (general seed 1, packet seed 6, line-code seed 7,
+    stacking seed 11; see ADR-SAMPLE-POLARITY).
 - id: ADR-SAMPLE-POLARITY
   title: Invert the converter codes in the FPGA so rising volts read as rising codes
   status: accepted
