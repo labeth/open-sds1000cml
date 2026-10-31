@@ -158,9 +158,9 @@ module stream_drum #(parameter AW=19,WF_AW=12,DESC_AW=8,BANK_AW=10,
  reg done_q=0,done_seen=0,ready_q=0;reg [AW-1:0] pos_q=0;
  reg [2:0] wq_rp_h=0,rq_wp_h=0;reg [3:0] iq_wp_h=0; // clk's pointers, registered here first
  // Input FIFO, in pairs, read show-ahead (wf_q is the head pair).
- // Indices wrap at WF_PAIRS; a lap bit each tells a full FIFO from an empty one.
+ // Indices wrap at WF_PAIRS; the level counts pairs in, less pairs out.
  reg [63:0] wf[0:WF_PAIRS-1];
- reg [PW-1:0] wf_wr=0,wf_rd=0;reg wf_wl=0,wf_rl=0;reg [PW:0] wf_level=0;
+ reg [PW-1:0] wf_wr=0,wf_rd=0;reg [PW:0] wf_level=0;reg wf_in_q=0,wf_pop_q=0;
  reg [31:0] in_lo=0;reg in_have=0;
  reg wf_push=0;reg [63:0] wf_in=0;
  reg [63:0] wf_q=0;
@@ -247,7 +247,10 @@ module stream_drum #(parameter AW=19,WF_AW=12,DESC_AW=8,BANK_AW=10,
   h_addr<=dsc_q_addr+hoff[AW-1:0];h_rem<=dsc_q_len-hoff;
   p1_base<=h_addr-5'd16-RD_SKEW;
   p1_free<=RING-used;p1_need<={wf_level,1'b0}+7'd64;p1_lvl<=wf_level;
-  p1_due<=wf_level>=WRITE_AT/2 || wf_level!=0 && age>=AGE_CYCLES/256;p1_min<=wf_level>=WRITE_AT/2;p1_tail<=wf_level>=WRITE_AT/16;
+  // A bank goes the direct way at WRITE_AT words while the host keeps the
+  // other free; once it holds both, only a full bank (or an aged FIFO): small
+  // banks would fill both before the host's first look and spill at once.
+  p1_due<=wf_level>=WRITE_AT/2 && bank_next_free || wf_level>=CHUNK/2 || wf_level!=0 && age>=AGE_CYCLES/256;p1_min<=wf_level>=WRITE_AT/2;p1_tail<=wf_level>=WRITE_AT/16;
   p1_spill<=wf_level>=WRITE_URGENT/2;p1_empty<=dsc_empty;
   p1_room<=bfill!=0 || bank_ready ? (CHUNK/2)-bfill+(bank_next_free ? CHUNK/2 : 1'b0) : 1'b0; // nothing while the current bank is the host's
   p1_len<=h_rem>>1;p1_fits<=p1_len<=p1_room;p1_part<=p1_room>=PART_MIN;p1_partial<=bfill!=0;p2_partial<=p1_partial;
@@ -292,14 +295,16 @@ module stream_drum #(parameter AW=19,WF_AW=12,DESC_AW=8,BANK_AW=10,
   // wf_level runs a clock behind: "full" keeps two pairs spare.
   if(wf_push)begin
    if(wf_level>=WF_PAIRS-2)h_fault<=1; // full: a pair is lost, and the host is told
-   else begin wf_wr<=wf_wr==WF_PAIRS-1 ? 1'b0 : wf_wr+1'b1;if(wf_wr==WF_PAIRS-1)wf_wl<=!wf_wl;end
+   else wf_wr<=wf_wr==WF_PAIRS-1 ? 1'b0 : wf_wr+1'b1;
   end
-  wf_rd<=wf_rd_next;if(wf_pop && rd_wrap)wf_rl<=!wf_rl;
+  wf_rd<=wf_rd_next;
   lap_msb<=pos_q[AW-1];
   if(lap_msb && !pos_q[AW-1])begin lap_in<=lap_n;lap_n<=0;end
   else if(wf_push && !(st==S_IDLE && settle==7 && !p3_go) && !(&lap_n))lap_n<=lap_n+1'b1;
   if(!act)begin lap_n<=0;lap_in<={PW+1{1'b1}};end
-  wf_level<=wf_wl==wf_rl ? wf_wr-wf_rd : WF_PAIRS+wf_wr-wf_rd;
+  // A clock behind the pointers, as before: in and out are registered.
+  wf_in_q<=wf_push && wf_level<WF_PAIRS-2;wf_pop_q<=wf_pop;
+  wf_level<=wf_level+wf_in_q-wf_pop_q;
   burst_span<={burst_p,1'b0}+5'd16+GAP;
   age_pre<=age_pre+1'b1;age_tick<=&age_pre;age_clr<=0;
   if(wf_level==0 || age_clr)age<=0;else if(age_tick && !age[15])age<=age+1'b1;
@@ -312,7 +317,7 @@ module stream_drum #(parameter AW=19,WF_AW=12,DESC_AW=8,BANK_AW=10,
    else begin packet_valid<=1;packet_data<=rq[rq_rp[1:0]];bfill<=bfill==BANK_P-1 ? 1'b0 : bfill+1'b1;end
   end
   if(!act)begin
-   st<=S_IDLE;h_wend<=0;h_fault<=0;w_more<=0;bfill<=0;hoff<=0;wf_wr<=0;wf_rd<=0;wf_wl<=0;wf_rl<=0;in_have<=0;iq_rp<=0;wq_wp<=0;rq_rp<=0;
+   st<=S_IDLE;h_wend<=0;h_fault<=0;w_more<=0;bfill<=0;hoff<=0;wf_wr<=0;wf_rd<=0;wf_level<=0;wf_in_q<=0;wf_pop_q<=0;in_have<=0;iq_rp<=0;wq_wp<=0;rq_rp<=0;
    dsc_wr<=0;dsc_rd<=0;done_seen<=done_q;
    whead<=pos_q+2'd2;used<=0;      // the counter starts at the write head
   end else case(st)
