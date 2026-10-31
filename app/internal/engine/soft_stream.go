@@ -482,9 +482,9 @@ func (e *Engine) softDrain(s *softStream) {
 			if n == 0 {
 				break
 			}
-			s.feedPeak(a, e.interleaveCalibration)
+			s.feed(a, e.interleaveCalibration)
 			if len(b) > 0 {
-				s.feedPeak(b, e.interleaveCalibration)
+				s.feed(b, e.interleaveCalibration)
 			}
 			s.release, fed = n, true
 			s.expected += uint64(n / 4)
@@ -521,10 +521,8 @@ func (e *Engine) softDrain(s *softStream) {
 		}
 		s.expected = block.FirstWord + uint64(block.Words)
 	}
-	if len(raw) > 0 && s.bits {
-		s.feedBits(raw)
-	} else if len(raw) > 0 {
-		s.feedPeak(raw, e.interleaveCalibration)
+	if len(raw) > 0 {
+		s.feed(raw, e.interleaveCalibration)
 	}
 	s.raw = raw[:0]
 	if len(s.pendA) >= s.pushN {
@@ -564,6 +562,16 @@ func (e *Engine) softLoss(s *softStream, err error) {
 // ord is stream sample i's 2 ns ordinal.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
 func (s *softStream) ord(i uint64) uint64 { return uint64(s.ordBase + float64(i)*s.ordStep) }
+
+// feed queues the stream's words as samples: digital words or peak words.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func (s *softStream) feed(raw []byte, cal *InterleaveCalibration) {
+	if s.bits {
+		s.feedBits(raw)
+	} else {
+		s.feedPeak(raw, cal)
+	}
+}
 
 // feedPeak turns peak words ({max2,max1,min2,min1}) into two samples per
 // bucket per line - the converter offsets removed as for the envelope, each
