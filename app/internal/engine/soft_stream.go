@@ -115,6 +115,12 @@ type softStream struct {
 	haveLast             bool
 	losses               int
 
+	// The digital stream's lines queued and decoded as their edges
+	// (decode.EdgeLine), for a decoder with an edge entry: its decode
+	// costs what the bus's edges do, not its samples.
+	edges          bool
+	pendEA, pendEB decode.EdgeLine
+
 	// Captures mode.
 	capCfg    sramcapture.Config
 	armed     bool
@@ -331,7 +337,7 @@ func (e *Engine) beginSoftStream(ctx context.Context, p SerialParams, trig Strea
 			// reads the open window again, so short pushes cost it over and
 			// over), but at least once a second: a DCF77 minute's Close is 32 s.
 			s.pushN = min(int(math.Max(0.2, math.Min(1, 2*quiet))/s.sampleS), softPushMax)
-			s.dec = decode.NewStreamDecoder(s.decodeFunc(), int(quiet/s.sampleS), int((longest+quiet)/s.sampleS))
+			s.newDecoder(int(quiet/s.sampleS), int((longest+quiet)/s.sampleS))
 			lead := int(decode.StreamLead(name, float64(p.Baud)) / s.sampleS)
 			s.dec.SetLead(lead)
 			s.leadWords = lead/16 + 2
@@ -366,6 +372,40 @@ func (s *softStream) decodeFunc() func(a, b []uint8) decode.Result {
 		}
 		return s.decoder.Decode(a, b, s.sampleS, p)
 	}
+}
+
+// newDecoder makes the gap-free stream's decoder (Close and Max in
+// samples): over the edges for a digital stream whose decoder reads its
+// lines through their edges, over the samples otherwise.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func (s *softStream) newDecoder(closeN, maxN int) {
+	s.edges = s.bits && s.decoder.Edges != nil
+	if s.edges {
+		s.dec = decode.NewEdgeStreamDecoder(s.edgeDecodeFunc(), closeN, maxN)
+	} else {
+		s.dec = decode.NewStreamDecoder(s.decodeFunc(), closeN, maxN)
+	}
+}
+
+// edgeDecodeFunc is decodeFunc over the digital stream's edges.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func (s *softStream) edgeDecodeFunc() func(a, b *decode.EdgeLine) decode.Result {
+	return func(a, b *decode.EdgeLine) decode.Result {
+		p := s.p
+		if !p.HaveThrB && s.bSeen && int(s.bHi)-int(s.bLo) >= 24 {
+			p.ThresholdB, p.HaveThrB = (float64(s.bLo)+float64(s.bHi))/2, true
+		}
+		return s.decoder.Edges(a, b, s.sampleS, p)
+	}
+}
+
+// pending is the samples a line queued for the decoder.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func (s *softStream) pending() int {
+	if s.edges {
+		return s.pendEA.N
+	}
+	return len(s.pendA)
 }
 
 // modeText is the stream's mode for the displays.
@@ -520,7 +560,7 @@ func (e *Engine) softDrain(s *softStream) {
 			}
 			s.release, fed = n, true
 			s.expected += uint64(n / 4)
-			if len(s.pendA) >= s.pushN {
+			if s.pending() >= s.pushN {
 				e.softPush(s)
 				if s.phase != softStreaming {
 					break
@@ -549,7 +589,7 @@ func (e *Engine) softDrain(s *softStream) {
 				// Fed as read: a digital word is sixteen samples a line.
 				e.softFeed(s, raw)
 				raw = raw[:0]
-				if len(s.pendA) >= s.pushN {
+				if s.pending() >= s.pushN {
 					e.softPush(s)
 					if s.phase != softStreaming {
 						break
@@ -574,7 +614,7 @@ func (e *Engine) softDrain(s *softStream) {
 		e.softFeed(s, raw)
 	}
 	s.raw = raw[:0]
-	if len(s.pendA) >= s.pushN {
+	if s.pending() >= s.pushN {
 		e.softPush(s)
 	} else if len(raw) == 0 && !fed {
 		if s.deadline != nil {
@@ -661,10 +701,7 @@ func (e *Engine) feedBitsQuiet(s *softStream, raw []byte) {
 			}
 			lead := min(s.skipped, s.leadWords)
 			s.dec.Skip(16 * (s.skipped - lead))
-			s.pendA = appendLevel(s.pendA, s.lvl[0], 16*lead)
-			if two {
-				s.pendB = appendLevel(s.pendB, s.lvl[1], 16*lead)
-			}
+			s.queueLevel(16*lead, two)
 			s.skipped, s.idleWords = 0, 0
 		default:
 			s.idleWords = 0
@@ -673,6 +710,23 @@ func (e *Engine) feedBitsQuiet(s *softStream, raw []byte) {
 		s.haveLvl = true
 	}
 	s.feedBits(raw[4*from:])
+}
+
+// queueLevel queues n samples of each line's quiet level (s.lvl), line B
+// when two.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func (s *softStream) queueLevel(n int, two bool) {
+	if s.edges {
+		s.pendEA.AppendLevel(uint8(s.lvl[0]&1), n)
+		if two {
+			s.pendEB.AppendLevel(uint8(s.lvl[1]&1), n)
+		}
+		return
+	}
+	s.pendA = appendLevel(s.pendA, s.lvl[0], n)
+	if two {
+		s.pendB = appendLevel(s.pendB, s.lvl[1], n)
+	}
 }
 
 // appendLevel appends n samples of a quiet line's level (its word, 0 or
@@ -770,6 +824,15 @@ func (e *Engine) planBitsLevels(s *softStream, cfg *sramcapture.Config) {
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
 func (s *softStream) feedBits(raw []byte) {
 	ch := s.p.ChA & 1
+	if s.edges {
+		s.pendEA.AppendWords(raw, ch)
+		if clockedTwoLine(s.p.Proto) {
+			s.pendEB.AppendWords(raw, 1-ch)
+			s.learnBWords(raw, 1-ch)
+		}
+		s.haveLast = s.haveLast || len(raw) >= 4
+		return
+	}
 	s.pendA = unpackBits(s.pendA, raw, ch)
 	if clockedTwoLine(s.p.Proto) {
 		at := len(s.pendB)
@@ -825,10 +888,37 @@ func (s *softStream) learnB(b []uint8) {
 	s.bLo, s.bHi = lo, hi
 }
 
+// learnBWords is learnB over digital words' line ch: its samples are 0
+// where a word's bit is clear and 255 where set.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func (s *softStream) learnBWords(raw []byte, ch int) {
+	o := 2 * (ch & 1)
+	if len(raw) < 4 {
+		return
+	}
+	if !s.bSeen {
+		v := 255 * (raw[o] & 1)
+		s.bLo, s.bHi, s.bSeen = v, v, true
+	}
+	for i := 0; i+4 <= len(raw) && (s.bLo != 0 || s.bHi != 255); i += 4 {
+		w := uint16(raw[i+o]) | uint16(raw[i+o+1])<<8
+		if w != 0xffff {
+			s.bLo = 0
+		}
+		if w != 0 {
+			s.bHi = 255
+		}
+	}
+}
+
 // softPush decodes the queued samples and queues the frames they complete;
 // on the stop value the transcript ends there and the record is armed.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
 func (e *Engine) softPush(s *softStream) {
+	if s.edges {
+		e.softPushEdges(s)
+		return
+	}
 	if len(s.pendA) == 0 {
 		return
 	}
@@ -846,6 +936,30 @@ func (e *Engine) softPush(s *softStream) {
 		}
 		frames := s.dec.Push(a[:n], bn)
 		a = a[n:]
+		if s.emit(frames, s.ord) {
+			e.softStreamStop(s)
+			s.phase = softRecord
+			return
+		}
+	}
+}
+
+// softPushEdges is softPush of the queued edges, in the same pieces.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func (e *Engine) softPushEdges(s *softStream) {
+	n := s.pendEA.N
+	if n == 0 {
+		return
+	}
+	var b *decode.EdgeLine
+	if s.pendEB.N == n {
+		b = &s.pendEB
+	}
+	defer func() { s.pendEA.Reset(); s.pendEB.Reset() }()
+	for at := 0; at < n; {
+		to := min(n, at+softPushMax)
+		frames := s.dec.PushEdges(&s.pendEA, b, at, to)
+		at = to
 		if s.emit(frames, s.ord) {
 			e.softStreamStop(s)
 			s.phase = softRecord

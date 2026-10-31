@@ -101,7 +101,19 @@ func rcBit(h, l float64) int {
 // FrameBits 12 or 24. OK needs a whole frame.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-251
 func DecodeRCEncode(codes []uint8, colTimeS float64, cfg LineCfg) Result {
-	S := sliceChannel(codes, cfg.Threshold, cfg.HaveThr)
+	return decodeRCEncode(samplesIn(codes), colTimeS, cfg)
+}
+
+// DecodeRCEncodeEdges is DecodeRCEncode over digital lines' edges (EdgeLine).
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-251
+func DecodeRCEncodeEdges(codes *EdgeLine, colTimeS float64, cfg LineCfg) Result {
+	return decodeRCEncode(edgesIn(codes), colTimeS, cfg)
+}
+
+// decodeRCEncode is DecodeRCEncode over samples or edges.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-251
+func decodeRCEncode(codes lineIn, colTimeS float64, cfg LineCfg) Result {
+	S := codes.slice(cfg.Threshold, cfg.HaveThr)
 	if !S.ok {
 		return Result{Proto: "rcencode", Error: S.reason}
 	}
@@ -269,7 +281,19 @@ func shortestRunCluster(runs []lrun) float64 {
 // a burst whose checksum checks.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-251
 func DecodeOOK(codes []uint8, colTimeS float64, cfg LineCfg) Result {
-	S := sliceChannel(codes, cfg.Threshold, cfg.HaveThr)
+	return decodeOOK(samplesIn(codes), colTimeS, cfg)
+}
+
+// DecodeOOKEdges is DecodeOOK over digital lines' edges (EdgeLine).
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-251
+func DecodeOOKEdges(codes *EdgeLine, colTimeS float64, cfg LineCfg) Result {
+	return decodeOOK(edgesIn(codes), colTimeS, cfg)
+}
+
+// decodeOOK is DecodeOOK over samples or edges.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-251
+func decodeOOK(codes lineIn, colTimeS float64, cfg LineCfg) Result {
+	S := codes.slice(cfg.Threshold, cfg.HaveThr)
 	if !S.ok {
 		return Result{Proto: "ook", Error: S.reason}
 	}
@@ -448,7 +472,19 @@ func oregonChecksum(nib []int, ver int) int {
 // coding error.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-251
 func DecodeMiller(codes []uint8, colTimeS float64, cfg LineCfg) Result {
-	S := sliceChannel(codes, cfg.Threshold, cfg.HaveThr)
+	return decodeMiller(samplesIn(codes), colTimeS, cfg)
+}
+
+// DecodeMillerEdges is DecodeMiller over digital lines' edges (EdgeLine).
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-251
+func DecodeMillerEdges(codes *EdgeLine, colTimeS float64, cfg LineCfg) Result {
+	return decodeMiller(edgesIn(codes), colTimeS, cfg)
+}
+
+// decodeMiller is DecodeMiller over samples or edges.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-251
+func decodeMiller(codes lineIn, colTimeS float64, cfg LineCfg) Result {
+	S := codes.slice(cfg.Threshold, cfg.HaveThr)
 	if !S.ok {
 		return Result{Proto: "miller", Error: S.reason}
 	}
@@ -665,7 +701,19 @@ var morseOf = func() (t [256]string) {
 // units). OK needs two letters.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-251
 func DecodeMorse(codes []uint8, colTimeS float64, cfg LineCfg) Result {
-	S := sliceChannel(codes, cfg.Threshold, cfg.HaveThr)
+	return decodeMorse(samplesIn(codes), colTimeS, cfg)
+}
+
+// DecodeMorseEdges is DecodeMorse over digital lines' edges (EdgeLine).
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-251
+func DecodeMorseEdges(codes *EdgeLine, colTimeS float64, cfg LineCfg) Result {
+	return decodeMorse(edgesIn(codes), colTimeS, cfg)
+}
+
+// decodeMorse is DecodeMorse over samples or edges.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-251
+func decodeMorse(codes lineIn, colTimeS float64, cfg LineCfg) Result {
+	S := codes.slice(cfg.Threshold, cfg.HaveThr)
 	if !S.ok {
 		return Result{Proto: "morse", Error: S.reason}
 	}
@@ -781,7 +829,19 @@ func dcf77Second(m []mark, colTimeS float64) float64 {
 // broadcast's 1 s near it. OK needs a field whose parity checks.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-251
 func DecodeDCF77(codes []uint8, colTimeS float64, cfg LineCfg) Result {
-	S := sliceChannel(codes, cfg.Threshold, cfg.HaveThr)
+	return decodeDCF77(samplesIn(codes), colTimeS, cfg)
+}
+
+// DecodeDCF77Edges is DecodeDCF77 over digital lines' edges (EdgeLine).
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-251
+func DecodeDCF77Edges(codes *EdgeLine, colTimeS float64, cfg LineCfg) Result {
+	return decodeDCF77(edgesIn(codes), colTimeS, cfg)
+}
+
+// decodeDCF77 is DecodeDCF77 over samples or edges.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-251
+func decodeDCF77(codes lineIn, colTimeS float64, cfg LineCfg) Result {
+	S := codes.slice(cfg.Threshold, cfg.HaveThr)
 	if !S.ok {
 		return Result{Proto: "dcf77", Error: S.reason}
 	}

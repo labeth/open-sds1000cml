@@ -50,6 +50,11 @@ type StreamDecoder struct {
 	// opens with a "sof" (B); its M and W subframes open frames too.
 	subframes bool
 	leadN     int
+	// An edge stream (NewEdgeStreamDecoder): its window is the lines'
+	// edges, decoded by edec, with the same windows and frames.
+	edges  bool
+	edec   func(a, b *EdgeLine) Result
+	ea, eb EdgeLine
 }
 
 // streamGroup is a frame's spans in the sorted scratch (from, to) and its
@@ -198,14 +203,41 @@ func NewStreamDecoder(decode func(a, b []uint8) Result, closeN, maxN int) *Strea
 	return &StreamDecoder{decode: decode, closeN: closeN, maxN: max(maxN, 4*closeN)}
 }
 
+// NewEdgeStreamDecoder is NewStreamDecoder over digital lines' edges
+// (EdgeLine): decode takes the window's lines (b nil for a one-line bus)
+// and the stream is pushed with PushEdges. Its frames are the ones the
+// samples' decoder hands out from the same lines.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func NewEdgeStreamDecoder(decode func(a, b *EdgeLine) Result, closeN, maxN int) *StreamDecoder {
+	d := NewStreamDecoder(nil, closeN, maxN)
+	d.edges, d.edec = true, decode
+	return d
+}
+
 // Held is the samples the window holds, and Next the stream index of the
 // sample the next Push starts at.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
-func (d *StreamDecoder) Held() int { return len(d.a) }
+func (d *StreamDecoder) Held() int {
+	if d.edges {
+		return d.ea.N
+	}
+	return len(d.a)
+}
 
 // Next is the stream index of the next sample pushed.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
-func (d *StreamDecoder) Next() uint64 { return d.base + uint64(len(d.a)) }
+func (d *StreamDecoder) Next() uint64 { return d.base + uint64(d.Held()) }
+
+// PushEdges appends samples from..to-1 of an edge stream's lines (b nil,
+// or as long as a) and returns the frames they complete, oldest first.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func (d *StreamDecoder) PushEdges(a, b *EdgeLine, from, to int) []StreamFrame {
+	d.ea.AppendRange(a, from, to)
+	if b != nil {
+		d.eb.AppendRange(b, from, to)
+	}
+	return d.run()
+}
 
 // Push appends the next samples (b nil, or as long as a) and returns the
 // frames they complete, oldest first.
@@ -233,23 +265,34 @@ func (d *StreamDecoder) Flush() []StreamFrame {
 // them.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
 func (d *StreamDecoder) Skip(n int) {
-	d.base += uint64(len(d.a) + n)
+	d.base += uint64(d.Held() + n)
 	d.done = max(d.done, d.base)
 	d.a, d.b = d.a[:0], d.b[:0]
+	d.ea.Reset()
+	d.eb.Reset()
 }
 
 // run decodes the window and hands out its whole frames.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
 func (d *StreamDecoder) run() []StreamFrame {
-	n := len(d.a)
+	n := d.Held()
 	if n == 0 {
 		return nil
 	}
-	var bl []uint8
-	if len(d.b) == n {
-		bl = d.b
+	var r Result
+	if d.edges {
+		var bl *EdgeLine
+		if d.eb.N == n {
+			bl = &d.eb
+		}
+		r = d.edec(&d.ea, bl)
+	} else {
+		var bl []uint8
+		if len(d.b) == n {
+			bl = d.b
+		}
+		r = d.decode(d.a, bl)
 	}
-	r := d.decode(d.a, bl)
 	d.spans = d.spans[:0]
 	// The spans of a decode that is not OK count too: a window holding only
 	// a frame that fails its check (a DHT checksum) or an NEC repeat is not
@@ -353,9 +396,16 @@ func (d *StreamDecoder) run() []StreamFrame {
 	}
 	if cut > 0 {
 		cut = min(cut, n)
-		d.a = d.a[:copy(d.a, d.a[cut:])]
-		if len(d.b) == n {
-			d.b = d.b[:copy(d.b, d.b[cut:])]
+		if d.edges {
+			d.ea.Drop(cut)
+			if d.eb.N == n {
+				d.eb.Drop(cut)
+			}
+		} else {
+			d.a = d.a[:copy(d.a, d.a[cut:])]
+			if len(d.b) == n {
+				d.b = d.b[:copy(d.b, d.b[cut:])]
+			}
 		}
 		d.base += uint64(cut)
 	}

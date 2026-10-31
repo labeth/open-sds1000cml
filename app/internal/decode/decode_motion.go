@@ -61,6 +61,18 @@ func stepPeriod(A sliced) float64 {
 // cycles a second, SPB a cycle in samples. OK needs two cycles.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-250
 func DecodeQuadrature(a, b []uint8, colTimeS float64, cfg ClockedCfg) Result {
+	return decodeQuadrature(samplesIn(a), samplesIn(b), colTimeS, cfg)
+}
+
+// DecodeQuadratureEdges is DecodeQuadrature over digital lines' edges (EdgeLine).
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-250
+func DecodeQuadratureEdges(a, b *EdgeLine, colTimeS float64, cfg ClockedCfg) Result {
+	return decodeQuadrature(edgesIn(a), edgesIn(b), colTimeS, cfg)
+}
+
+// decodeQuadrature is DecodeQuadrature over samples or edges.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-250
+func decodeQuadrature(a, b lineIn, colTimeS float64, cfg ClockedCfg) Result {
 	return decodeSteps("quad", a, b, colTimeS, cfg, true)
 }
 
@@ -72,20 +84,32 @@ func DecodeQuadrature(a, b []uint8, colTimeS float64, cfg ClockedCfg) Result {
 // Cover DIR's edges a step. OK needs two steps.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-250
 func DecodeStepper(a, b []uint8, colTimeS float64, cfg ClockedCfg) Result {
+	return decodeStepper(samplesIn(a), samplesIn(b), colTimeS, cfg)
+}
+
+// DecodeStepperEdges is DecodeStepper over digital lines' edges (EdgeLine).
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-250
+func DecodeStepperEdges(a, b *EdgeLine, colTimeS float64, cfg ClockedCfg) Result {
+	return decodeStepper(edgesIn(a), edgesIn(b), colTimeS, cfg)
+}
+
+// decodeStepper is DecodeStepper over samples or edges.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-250
+func decodeStepper(a, b lineIn, colTimeS float64, cfg ClockedCfg) Result {
 	return decodeSteps("stepper", a, b, colTimeS, cfg, false)
 }
 
 // decodeSteps is DecodeQuadrature (quad) and DecodeStepper.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-250
-func decodeSteps(proto string, a, b []uint8, colTimeS float64, cfg ClockedCfg, quad bool) Result {
-	if b == nil {
+func decodeSteps(proto string, a, b lineIn, colTimeS float64, cfg ClockedCfg, quad bool) Result {
+	if b.none() {
 		return Result{Proto: proto, Error: "needs both lines"}
 	}
-	A := sliceChannel(a, cfg.Threshold, cfg.HaveThr)
+	A := a.slice(cfg.Threshold, cfg.HaveThr)
 	if !A.ok {
 		return Result{Proto: proto, Error: A.reason}
 	}
-	B := sliceChannel(b, cfg.ThresholdB, cfg.HaveThrB)
+	B := b.slice(cfg.ThresholdB, cfg.HaveThrB)
 	if !B.ok && quad {
 		return Result{Proto: proto, Error: B.reason}
 	}
@@ -93,11 +117,8 @@ func decodeSteps(proto string, a, b []uint8, colTimeS float64, cfg ClockedCfg, q
 	// same probe scale): a motion one way only.
 	dirFlat := 0
 	if !B.ok {
-		sum := 0
-		for _, v := range b {
-			sum += int(v)
-		}
-		if len(b) > 0 && float64(sum)/float64(len(b)) >= A.threshold {
+		sum := b.sum()
+		if b.samples() > 0 && float64(sum)/float64(b.samples()) >= A.threshold {
 			dirFlat = 1
 		}
 	}
@@ -234,7 +255,19 @@ func decodeSteps(proto string, a, b []uint8, colTimeS float64, cfg ClockedCfg, q
 // periods.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-250
 func DecodePWM(codes []uint8, colTimeS float64, cfg LineCfg) Result {
-	S := sliceChannel(codes, cfg.Threshold, cfg.HaveThr)
+	return decodePWM(samplesIn(codes), colTimeS, cfg)
+}
+
+// DecodePWMEdges is DecodePWM over digital lines' edges (EdgeLine).
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-250
+func DecodePWMEdges(codes *EdgeLine, colTimeS float64, cfg LineCfg) Result {
+	return decodePWM(edgesIn(codes), colTimeS, cfg)
+}
+
+// decodePWM is DecodePWM over samples or edges.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-250
+func decodePWM(codes lineIn, colTimeS float64, cfg LineCfg) Result {
+	S := codes.slice(cfg.Threshold, cfg.HaveThr)
 	if !S.ok {
 		return Result{Proto: "pwm", Error: S.reason}
 	}

@@ -1701,6 +1701,10 @@ decisions:
   - Dense buses past the budget (Maple, MDIO and SWD at 1 MHz, WS281x, SWIM) fell a ring behind in about two
     seconds when decoded sample by sample; they stay captures until their decoders read edges.
   - Roll and SOUND stay on the stream image; switching between the two is an image load, as before.
+  - Where a decoder reads only its lines' edges (33 of the stream's protocols), the digital words become edges
+    directly (no samples unpacked or sliced) and the decoder takes them, the same frames to the span; the device's
+    CPU fell further on the bench (DMX 58 to 51 %, SDQ 67 to 50 %, Miller 99 to 84 %). A decoder's own work is
+    then about 2 us an edge on the device, so the dense buses past the budget still fall behind and stay captures.
 - id: ADR-PANEL-SERIAL-SCAN
   title: Scan the front panel from the owned images over the factory's serial shift chain
   status: accepted
