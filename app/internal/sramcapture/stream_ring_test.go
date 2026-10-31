@@ -3,6 +3,7 @@ package sramcapture
 
 import (
 	"context"
+	"io"
 	"slices"
 	"testing"
 )
@@ -111,5 +112,20 @@ func TestHostTriggerRecordStaysTheFrozenOne(t *testing.T) {
 	c.mu.Unlock()
 	if err == nil {
 		t.Fatal("a changed record passed")
+	}
+}
+
+// A drain while no stream is enabled says so by its own error: a pump
+// started ahead of its stream waits on it rather than counting a loss.
+// TRLC-LINKS: REQ-SDS-035
+func TestStreamDrainBeforeTheStreamStarts(t *testing.T) {
+	f := streamBus()
+	f.flags &^= 256
+	c, err := New(f)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := c.DrainStream(context.Background(), 0, io.Discard); err != ErrStreamDisabled {
+		t.Fatalf("disabled stream: %v", err)
 	}
 }

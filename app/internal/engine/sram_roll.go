@@ -547,7 +547,7 @@ func (e *Engine) rollStreamStep(r *rollView) {
 	}
 	r.feGen = e.feGen.Load()
 	if !r.streaming {
-		if err := e.freshStreamImage(); err != nil {
+		if err := e.freshStreamImage(imageStream); err != nil {
 			e.busErr(err)
 			e.sleepBeating(100 * time.Millisecond)
 			return
@@ -801,11 +801,14 @@ func (e *Engine) noteStreamLoss(expected uint64) {
 	}
 }
 
-// freshStreamImage loads the stream image again when a stream faulted at
-// its first word (noteStreamLoss), before the next stream starts.
+// freshStreamImage loads a stream's image (the stream image, or the digital
+// stream image a decoded stream of digital words runs on) again when a
+// stream faulted at its first word (noteStreamLoss), before the next stream
+// starts. The image must be the stream's own: the stream image's peak words
+// read as digital words decode as noise, with no error.
 // TRLC-LINKS: REQ-SDS-035
-func (e *Engine) freshStreamImage() error {
-	if !e.streamReload || e.images == nil || !e.images.HasStream() {
+func (e *Engine) freshStreamImage(image string) error {
+	if !e.streamReload || e.images == nil || !e.hasImage(image) {
 		return nil
 	}
 	e.streamReload = false
@@ -815,9 +818,9 @@ func (e *Engine) freshStreamImage() error {
 	if err != nil {
 		return err
 	}
-	e.loadImage(imageStream)
-	if e.protocolImage != imageStream {
-		return fmt.Errorf("the stream image did not load")
+	e.loadImage(image)
+	if e.protocolImage != image {
+		return fmt.Errorf("the %s image did not load", image)
 	}
 	return nil
 }

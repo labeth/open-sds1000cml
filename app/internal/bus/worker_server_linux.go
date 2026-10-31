@@ -113,7 +113,9 @@ func (w *acquisitionWorker) streamPump() {
 	for i := 0; i < 8; i++ {
 		t0 := time.Now()
 		block, err := w.capture.DrainStream(ctx, w.sExpected, streamRingWriter{w})
-		if err == sramcapture.ErrNoStreamBlock {
+		// A pump started ahead of its stream waits for it to be enabled; once
+		// words came, a disabled stream is a loss like any other.
+		if err == sramcapture.ErrNoStreamBlock || err == sramcapture.ErrStreamDisabled && w.sExpected == 0 {
 			return
 		}
 		if err != nil {

@@ -21,9 +21,10 @@ import (
 
 const (
 	// softRingSlackWords is the stream's slack without the SRAM: the
-	// drum's 4096-word FIFO and the free one of the two 2048-word banks
-	// (the other may be the one partly filled when the host stops taking).
-	softRingSlackWords = 6144
+	// drum's 4096-word FIFO. The direct path publishes a bank from 512
+	// words, so the host's banks, both held when it stops taking, add
+	// nothing to count on.
+	softRingSlackWords = 4096
 	// softRingStallS is the longest pump gap the on-chip stream must ride
 	// out: the worker's longest gaps on the instrument were 4 to 27 ms.
 	softRingStallS = 30e-3
@@ -185,4 +186,25 @@ func (s *softStream) softRingDone(m sramcapture.Metadata, last uint32, err error
 		return
 	}
 	s.recCfg, s.recMeta, s.recOK, s.phase = s.ringCfg, m, true, softDone
+}
+
+// startFabric starts the stream's fabric: the history ring at its own
+// decimation beside the stream (ring, when planned) or the stream alone
+// (plain). A ring that does not start - an image without it, or any other
+// refusal - leaves the stream to run as it would without one, and its stop
+// to the symbol trigger's record: once, never tried again.
+// TRLC-LINKS: REQ-SDS-035, REQ-SDS-240
+func (s *softStream) startFabric(cfg sramcapture.Config, ring, plain func(sramcapture.Config) error, logf func(string, ...any)) error {
+	if s.ring {
+		c := cfg
+		c.DecimationLog2 = s.ringLog
+		err := ring(c)
+		if err == nil {
+			s.ringCfg = c
+			return nil
+		}
+		s.ring, s.ringWhy = false, err.Error()
+		logf("engine: %s stream: the history ring did not start (%v): the stop's record is the symbol trigger's", s.decoder.Name, err)
+	}
+	return plain(cfg)
 }

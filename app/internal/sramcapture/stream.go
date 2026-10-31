@@ -12,6 +12,10 @@ import (
 // ErrNoStreamBlock is not EOF; observe Finished and drain remaining banks.
 var ErrNoStreamBlock = errors.New("sramcapture: no stream block ready")
 
+// ErrStreamDisabled is a drain while no stream is enabled: before a stream
+// starts it is not yet a loss (a pump started ahead of its stream).
+var ErrStreamDisabled = errors.New("sramcapture: streaming is disabled")
+
 // TRLC-LINKS: REQ-SDS-035
 type StreamStatus struct {
 	Ready      uint8 `json:"ready"`
@@ -127,7 +131,7 @@ func (c *Capture) DrainStream(ctx context.Context, expected uint64, dst io.Write
 		return block, fmt.Errorf("sramcapture: stream overrun or packetizer fault")
 	}
 	if !s.Enabled {
-		return block, fmt.Errorf("sramcapture: streaming is disabled")
+		return block, ErrStreamDisabled
 	}
 	if s.Ready == 0 {
 		return block, ErrNoStreamBlock

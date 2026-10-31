@@ -203,3 +203,43 @@ func TestSoftRingPace(t *testing.T) {
 		t.Fatalf("a ring off its pace was shown: phase %d", s.phase)
 	}
 }
+
+// A ring that does not start (the stream image, which has none, or any
+// refusal) leaves the stream to start alone, once: the ring is not tried
+// again, and the stop goes to the symbol trigger's record. A ring stream
+// that loses words goes on without the ring (the SRAM drum's slack).
+// TRLC-LINKS: REQ-SDS-035, REQ-SDS-240
+func TestSoftRingStartFallsBackOnce(t *testing.T) {
+	d, _ := serialDecoder(serDMX)
+	s := &softStream{ring: true, ringLog: 9, log: 12, decoder: d}
+	rings, plains := 0, 0
+	refuse := func(sramcapture.Config) error { rings++; return errors.New("sramcapture: this image has no history ring") }
+	plain := func(c sramcapture.Config) error {
+		plains++
+		if c.DecimationLog2 != 12 {
+			t.Fatalf("the plain stream at 2^%d", c.DecimationLog2)
+		}
+		return nil
+	}
+	for i := 0; i < 3; i++ {
+		if err := s.startFabric(sramcapture.Config{DecimationLog2: 12}, refuse, plain, t.Logf); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if rings != 1 || plains != 3 || s.ring || s.ringWhy == "" {
+		t.Fatalf("ring tried %d times, plain %d, ring %v (%q)", rings, plains, s.ring, s.ringWhy)
+	}
+	s = &softStream{ring: true, ringLog: 9, log: 12, decoder: d}
+	var got sramcapture.Config
+	if err := s.startFabric(sramcapture.Config{DecimationLog2: 12}, func(c sramcapture.Config) error { got = c; return nil }, plain, t.Logf); err != nil ||
+		!s.ring || got.DecimationLog2 != 9 || s.ringCfg.DecimationLog2 != 9 {
+		t.Fatalf("ring start: %v ring %v cfg 2^%d", err, s.ring, got.DecimationLog2)
+	}
+	e, _ := newTestEngine(t, newFakeBus())
+	s.dec = decode.NewStreamDecoder(s.decodeFunc(), 100, 1000)
+	s.id = sramcapture.RecordIdentity{Epoch: softEpochBase | 1}
+	e.softLoss(s, errors.New("stream overrun"))
+	if s.ring || s.ringWhy == "" {
+		t.Fatalf("a ring stream that lost words kept the ring")
+	}
+}

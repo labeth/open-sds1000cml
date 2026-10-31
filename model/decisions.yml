@@ -1723,7 +1723,7 @@ decisions:
     the decoder reads the stop value the host stops the ring (opcode 5; a second ends the stream) and shows it with
     its trigger on the stop frame's start - the ring word whose centre (the stamp less the CIC3 stages' delay,
     1.5(2^n-1) samples) lies nearest the frame's ordinal on the session's clock. A stream plans a ring only when
-    its words leave 30 ms of pump gap in 6144 words of slack (stream decimation 2^12 or coarser), and at the finest
+    its words leave 30 ms of pump gap in the FIFO's 4096 words (stream decimation 2^12 or coarser), and at the finest
     ring decimation (2^8 or coarser) holding the bank seal, the time between decodes, Close, 50 ms of decode, the
     longest frame and 150 ms more, with three ring words in the shortest feature; else, and when the ring no longer
     holds the frame, the symbol trigger's record is armed as before.

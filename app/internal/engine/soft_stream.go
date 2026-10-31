@@ -458,7 +458,11 @@ func (s *softStream) modeText(elapsed time.Duration) string {
 // softStreamStart starts the stream image's continuous peak stream.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240, REQ-SDS-035
 func (e *Engine) softStreamStart(s *softStream) error {
-	if err := e.freshStreamImage(); err != nil {
+	image := imageStream
+	if s.bits {
+		image = imageBits
+	}
+	if err := e.freshStreamImage(image); err != nil {
 		return err
 	}
 	ch := uint8(s.p.ChA & 1)
@@ -469,28 +473,46 @@ func (e *Engine) softStreamStart(s *softStream) error {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
+	pump := func() error {
+		if p, ok := e.b.(streamPumper); ok {
+			owned, err := p.SetIsolatedStreamPump(true)
+			if err != nil {
+				return err
+			}
+			s.isolated = owned
+			_, s.inPlace = e.b.(streamPeeker)
+			s.release = 0
+		}
+		return nil
+	}
 	if s.ring {
-		// The record runs as the history ring at its own decimation; the
-		// stream keeps the plan's (soft_ring.go).
-		cfg.DecimationLog2 = s.ringLog
-		if err := e.sram.StartStreamRing(ctx, cfg, s.log); err != nil {
+		// The on-chip stream's slack is 33 ms at the most a ring plan
+		// streams: the worker's pump is running before the stream starts (it
+		// waits for it), so the first words do not wait for its set-up.
+		if err := pump(); err != nil {
 			return err
 		}
-		s.ringCfg = cfg
-	} else if err := e.sram.StartStream(ctx, cfg, true, true); err != nil {
+	}
+	err := s.startFabric(cfg, func(c sramcapture.Config) error { return e.sram.StartStreamRing(ctx, c, s.log) },
+		func(c sramcapture.Config) error { return e.sram.StartStream(ctx, c, true, true) }, e.logf)
+	if err != nil {
+		if s.isolated {
+			_, _ = e.b.(streamPumper).SetIsolatedStreamPump(false)
+			s.isolated = false
+		}
 		return err
 	}
-	s.sessBase, s.sessAt = s.dec.Next()+uint64(len(s.pendA)), e.clk.Now()
+	pending := len(s.pendA)
+	if s.edges {
+		pending = s.pendEA.N
+	}
+	s.sessBase, s.sessAt = s.dec.Next()+uint64(pending), e.clk.Now()
 	s.streaming, s.expected, s.haveLast = true, 0, false
-	if p, ok := e.b.(streamPumper); ok {
-		owned, err := p.SetIsolatedStreamPump(true)
-		if err != nil {
+	if !s.isolated {
+		if err := pump(); err != nil {
 			e.softStreamStop(s)
 			return err
 		}
-		s.isolated = owned
-		_, s.inPlace = e.b.(streamPeeker)
-		s.release = 0
 	}
 	if dev, ok := e.b.(*bus.Dev); ok && !s.isolated && s.deadline == nil {
 		if d, err := dev.StartDecodedDeadline(); err == nil {
@@ -684,6 +706,12 @@ func (e *Engine) softLoss(s *softStream, err error) {
 	s.idleWords, s.skipped, s.haveLvl = 0, 0, false
 	s.addEvent(sramcapture.DecodedEvent{Kind: sramcapture.EventLoss, Sample: s.ord(s.dec.Next()), Count: 1})
 	e.softStreamStop(s)
+	if s.ring {
+		// The on-chip stream has 50 ms of slack, the SRAM drum's a second:
+		// a stream that lost words with the ring goes on without it.
+		s.ring, s.ringWhy = false, "the on-chip stream lost words"
+		e.logf("engine: %s stream: %s; on without the history ring", s.decoder.Name, s.ringWhy)
+	}
 }
 
 // ord is stream sample i's 2 ns ordinal.
