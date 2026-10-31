@@ -29,15 +29,41 @@ func TestStreamFaultAtStartReloadsTheImage(t *testing.T) {
 	si := streamImages{images}
 	e.images = si
 	e.noteStreamLoss(123456)
-	if err := e.freshStreamImage(); err != nil || slices.Contains(images.loads, "stream") {
+	if err := e.freshStreamImage(imageStream); err != nil || slices.Contains(images.loads, "stream") {
 		t.Fatalf("a loss mid-stream reloaded: %v %v", err, images.loads)
 	}
 	e.noteStreamLoss(0)
-	if err := e.freshStreamImage(); err != nil || !slices.Contains(images.loads, "stream") || e.protocolImage != imageStream {
+	if err := e.freshStreamImage(imageStream); err != nil || !slices.Contains(images.loads, "stream") || e.protocolImage != imageStream {
 		t.Fatalf("a fault at the first word: %v loads %v image %q", err, images.loads, e.protocolImage)
 	}
 	n := len(images.loads)
-	if err := e.freshStreamImage(); err != nil || len(images.loads) != n {
+	if err := e.freshStreamImage(imageStream); err != nil || len(images.loads) != n {
 		t.Fatalf("reloaded twice: %v", images.loads)
+	}
+}
+
+// bitsImages is streamImages with the digital stream image.
+type bitsImages struct{ streamImages }
+
+// TRLC-LINKS: REQ-SDS-035
+func (f bitsImages) HasBits() bool { return true }
+
+// TRLC-LINKS: REQ-SDS-035
+func (f bitsImages) LoadBits() error {
+	f.loads = append(f.loads, "bits")
+	f.b.image = "bits"
+	return nil
+}
+
+// A decoded stream of digital words that faulted at its first word reloads
+// the digital stream image, not the stream image: the stream image's peak
+// words decode as digital words to noise.
+// TRLC-LINKS: REQ-SDS-035
+func TestStreamFaultReloadsTheStreamsOwnImage(t *testing.T) {
+	e, _, images := newPacketTestEngine(t)
+	e.images = bitsImages{streamImages{images}}
+	e.noteStreamLoss(0)
+	if err := e.freshStreamImage(imageBits); err != nil || !slices.Equal(images.loads, []string{"bits"}) || e.protocolImage != imageBits {
+		t.Fatalf("digital stream fault: %v loads %v image %q", err, images.loads, e.protocolImage)
 	}
 }

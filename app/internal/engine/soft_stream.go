@@ -431,7 +431,11 @@ func (s *softStream) modeText(elapsed time.Duration) string {
 // softStreamStart starts the stream image's continuous peak stream.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240, REQ-SDS-035
 func (e *Engine) softStreamStart(s *softStream) error {
-	if err := e.freshStreamImage(); err != nil {
+	image := imageStream
+	if s.bits {
+		image = imageBits
+	}
+	if err := e.freshStreamImage(image); err != nil {
 		return err
 	}
 	ch := uint8(s.p.ChA & 1)
