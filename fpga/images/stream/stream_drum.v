@@ -18,10 +18,13 @@
 // ring, and from then on every word goes through the ring until it is empty
 // again (order is kept: the FIFO only ever holds words newer than the ring's).
 // With a backlog the counter waits at the read head, filling each bank the
-// host frees, and leaves for the write head only when the FIFO, plus what a
-// stream at the LAP_SHIFT rate brings on the way there, reaches TRIP_AT: the
-// trip (write head and back to the read head) is a lap, and the host drains
-// its two banks meanwhile.
+// host frees, and leaves for the write head only when the FIFO, plus what the
+// stream brings on the way there (at the input over the counter's last lap),
+// reaches TRIP_AT: the trip (write head and back to the read head) is a lap,
+// and the host drains its two banks meanwhile. Waiting as long as the FIFO
+// allows matters most with a deep backlog, where the way to the write head is
+// most of a lap: leaving early there reads fewer banks a lap than the stream
+// brings (the host's pump takes banks in passes), and the backlog grows.
 //
 // Burst rules from spec 12 §5.2: a write burst begins with 16 discarded words
 // (so each burst is laid down as 16 junk words then its data, and a
@@ -57,7 +60,6 @@ module stream_drum #(parameter AW=19,WF_AW=12,DESC_AW=8,BANK_AW=10,
  parameter WRITE_AT=512,             // FIFO words that ask for a bank, or a burst at the write head
  parameter WRITE_URGENT=3072,        // FIFO words that spill into the empty ring while the host holds both banks
  parameter TRIP_AT=3584,             // FIFO words, with those due on the way, that send the counter to the write head
- parameter LAP_SHIFT=7,              // a word per 2^LAP_SHIFT pulses: the fastest stream a backlog carries (1.95M words/s)
  parameter AGE_CYCLES=2097152)(      // oldest buffered pair: 16.8 ms of hclk
  input clk,active,
  input in_valid,input [31:0] in_data,
@@ -215,9 +217,13 @@ module stream_drum #(parameter AW=19,WF_AW=12,DESC_AW=8,BANK_AW=10,
  reg [BANK_AW-1:0] bfill=0;reg p1_partial=0,p2_partial=0,p3_seal=0;
  reg [BANK_AW+1:0] p1_room=0;reg [AW-1:0] p1_len=0;reg p1_fits=0;
  wire can_read=!dsc_empty && p1_fits;
- // The FIFO pairs a stream at the LAP_SHIFT rate brings while the counter
- // goes the distance to the write head.
- wire [AW:0] trip_lvl=p2_lvl+(p2_dist_w>>(LAP_SHIFT+1));
+ // Input pairs over the counter's last lap (from one wrap of the position
+ // to the next), not counting clocks the drum chose to wait: a trip is all
+ // moving, seeks' and bursts' overheads included. Saturating, and full until
+ // a lap is measured. proj is what they bring while the counter goes the
+ // distance to the write head.
+ reg [PW:0] lap_n=0,lap_in=0;reg [PW+8:0] proj=0;reg lap_msb=0;
+ wire [AW:0] trip_lvl=p2_lvl+proj[PW+8:8];
  // Registered (a clock later than the rest of p2: the inputs are settled).
  reg at_w=0,at_r=0,w_first=0,trip=0;
  wire [AW-1:0] seek_w=p2_dist_w>SEG ? SEG : p2_dist_w,seek_r=p2_dist_r>SEG ? SEG : p2_dist_r;
@@ -240,6 +246,7 @@ module stream_drum #(parameter AW=19,WF_AW=12,DESC_AW=8,BANK_AW=10,
   // there until a trip is due; the write head, when it comes first, takes
   // the FIFO (a burst of at least WRITE_AT words, and then what came
   // meanwhile, so a trip leaves little for the next lap).
+  proj<=lap_in*p2_dist_w[AW-1:AW-8];
   at_w<=p2_dist_w==0;at_r<=p2_dist_r==0;w_first<=p2_dist_w<p2_dist_r;trip<=p2_min && trip_lvl>=TRIP_AT/2;
   p3_go<=1;p3_kind<=K_SEEK;p3_seek<=seek_r;p3_keep<=0;p3_seal<=p2_partial;
   if(p2_empty)begin
@@ -274,6 +281,10 @@ module stream_drum #(parameter AW=19,WF_AW=12,DESC_AW=8,BANK_AW=10,
    else wf_wr<=wf_wr+1'b1;
   end
   wf_rd<=wf_rd_next;
+  lap_msb<=pos_q[AW-1];
+  if(lap_msb && !pos_q[AW-1])begin lap_in<=lap_n;lap_n<=0;end
+  else if(wf_push && !(st==S_IDLE && settle==7 && !p3_go) && !(&lap_n))lap_n<=lap_n+1'b1;
+  if(!act)begin lap_n<=0;lap_in<={PW+1{1'b1}};end
   wf_level<=wf_wr-wf_rd;
   burst_span<={burst_p,1'b0}+5'd16+GAP;
   age_pre<=age_pre+1'b1;age_tick<=&age_pre;age_clr<=0;

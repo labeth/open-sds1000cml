@@ -22,7 +22,7 @@
 // descriptor), so with rates eight times the board's a lap brings the same
 // words as on the board.
 // TRLC-LINKS: REQ-SDS-035
-module tb_stream_drum #(parameter REAL=0,FAST=0,MID=0,SWORDS=0,SPERIOD=256,HOST_NS=787,AFTER_NS=0,POST=20000,
+module tb_stream_drum #(parameter REAL=0,FAST=0,MID=0,SWORDS=0,SPERIOD=256,HOST_NS=787,AFTER_NS=0,POST=20000,TICK_NS=0,
  BIG=REAL || MID,AW=REAL ? 19 : MID ? 16 : 12,BANK_AW=BIG ? 10 : FAST ? 6 : 4,WF_AW=BIG ? 12 : 8,DESC_AW=REAL ? 9 : MID ? 6 : 7);
  localparam N=1<<AW,BANK=1<<BANK_AW;
  reg core=0,hclk=0,host=0;
@@ -57,7 +57,7 @@ module tb_stream_drum #(parameter REAL=0,FAST=0,MID=0,SWORDS=0,SPERIOD=256,HOST_
  end
  wire pvalid,psingle,pseal,bank_ready,bank_next_free;wire [63:0] pdata;
  stream_drum #(.AW(AW),.WF_AW(WF_AW),.DESC_AW(DESC_AW),.BANK_AW(BANK_AW),
-  .WRITE_AT(BIG ? 512 : 48),.WRITE_URGENT(BIG ? 3072 : 160),.TRIP_AT(BIG ? 3584 : 224),.LAP_SHIFT(REAL ? 7 : 4),
+  .WRITE_AT(BIG ? 512 : 48),.WRITE_URGENT(BIG ? 3072 : 160),.TRIP_AT(BIG ? 3584 : 224),
   .AGE_CYCLES(BIG ? 2097152 : 3000),.SEG(REAL ? 8192 : MID || FAST ? 1024 : 256)) dut(
   .clk(core),.active(active),.in_valid(in_valid),.in_data(in_data),
   .cmd(cmd),.cmd_read(cmd_read),.cmd_discard(cmd_discard),.cmd_continue(cmd_continue),.cmd_count(cmd_count),
@@ -75,7 +75,7 @@ module tb_stream_drum #(parameter REAL=0,FAST=0,MID=0,SWORDS=0,SPERIOD=256,HOST_
  always @(posedge hclk)if(mw)bmem[ma]<=md;
  integer errors=0;reg [63:0] expected=0;reg draining=1;integer blocks=0;real drain_ns=0;
  task drain_one;
-  integer b,i,n;reg [63:0] first;reg [BANK_AW:0] cnt;reg sg,tk;reg [31:0] w;reg got;
+  integer b,i,n;reg [63:0] first;reg [BANK_AW:0] cnt;reg sg,tk;reg [31:0] w;
   begin
    got=0;
    for(b=0;b<2 && !got;b=b+1)if(ready[b])begin
@@ -94,7 +94,17 @@ module tb_stream_drum #(parameter REAL=0,FAST=0,MID=0,SWORDS=0,SPERIOD=256,HOST_
    end
   end
  endtask
- always begin @(posedge host);if(draining && active)drain_one;end
+ // With TICK_NS the host is the worker's stream pump: a pass drains up to
+ // eight published banks in order (drain_ns a word, releasing each) and ends
+ // at the first look that finds none; the worker then sleeps TICK_NS.
+ reg got=0;integer pass_n=0;
+ always begin
+  if(TICK_NS==0)begin @(posedge host);if(draining && active)drain_one;end
+  else begin
+   #(TICK_NS);
+   got=1;pass_n=0;while(got && pass_n<8 && draining && active)begin @(posedge host);drain_one;pass_n=pass_n+1;end
+  end
+ end
  integer sent=0,commands=0,writes=0,reads=0;
  always @(posedge core)if(cmd)begin commands=commands+1;if(!cmd_read)writes=writes+1;else if(!cmd_discard)reads=reads+1;end
  // A fresh session: counters and the drum restart.
