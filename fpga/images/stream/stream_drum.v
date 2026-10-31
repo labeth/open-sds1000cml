@@ -159,7 +159,10 @@ module stream_drum #(parameter AW=19,WF_AW=12,DESC_AW=8,BANK_AW=10,
   if(!act_c || cmd)begin r_half<=0;if(!act_c)begin rq_wp<=0;r_over<=0;end end
   else if(rv_q)begin
    r_half<=!r_half;
-   if(r_half)begin rq_wp<=rq_wp+1'b1;if(rq_wp-rq_rp_c>=3'd3)r_over<=1;end
+   // hclk takes a pair each clock; rq_rp_c lags its pointer by a clock, so
+   // the difference reads one more than the pairs held: only a full FIFO
+   // (four pairs held, one more arriving) is an overrun.
+   if(r_half)begin rq_wp<=rq_wp+1'b1;if(rq_wp-rq_rp_c>=3'd4)r_over<=1;end
   end
   if(t_done)done_t<=!done_t;
   fault<=in_over || r_over || h_fault;

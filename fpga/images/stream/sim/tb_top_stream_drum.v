@@ -21,7 +21,7 @@ module adc_interleave(input refclk,memclk,packclk,enable,input [79:0] lane,input
 endmodule
 // TRLC-LINKS: REQ-SDS-035
 module tb_top_stream_drum;
- localparam MODE=`ifdef MODE_P `MODE_P `else 3 `endif ,RING_LOG=`ifdef RING_LOG_P `RING_LOG_P `else 8 `endif ,RAMP_CLOCKS=`ifdef RAMP_CLOCKS_P `RAMP_CLOCKS_P `else 125 `endif ,LOG=`ifdef LOG_P `LOG_P `else 9 `endif ,WORDS=`ifdef WORDS_P `WORDS_P `else 30000 `endif ;
+ localparam STOP_ST=`ifdef STOP_ST_P `STOP_ST_P `else 0 `endif ,MODE=`ifdef MODE_P `MODE_P `else 3 `endif ,RING_LOG=`ifdef RING_LOG_P `RING_LOG_P `else 8 `endif ,RAMP_CLOCKS=`ifdef RAMP_CLOCKS_P `RAMP_CLOCKS_P `else 125 `endif ,LOG=`ifdef LOG_P `LOG_P `else 9 `endif ,WORDS=`ifdef WORDS_P `WORDS_P `else 30000 `endif ;
  reg clk=0,mclk_in=0;always #6.25 clk=~clk;always #5 mclk_in=~mclk_in;
  reg ncs=1,noe=1,nwe=1;reg [6:0] selector=0;reg drive=0;reg [15:0] bus_value=0;
  wire [15:0] gpmc_d;assign gpmc_d=drive ? bus_value : 16'hzzzz;
@@ -80,11 +80,10 @@ module tb_top_stream_drum;
    end
   end
  endtask
- initial begin
-  repeat(20)@(negedge clk);
-  read_bus(26);bufwords=value;
-  // setStreamPace, mode (stream, continuous), then Arm: decimation, pre/post,
-  // config (counter source), level.
+ // sramcapture.StartStream: pace, mode (stream, continuous), then Arm:
+ // decimation, pre/post, config (counter source), level.
+ task start;
+ begin
   write_bus(29,0);write_bus(30,0);write_bus(46,RAMP_CLOCKS);
   // Ring mode (bit 5, the bits image): the stream's decimation in register
   // 21, the ring's in 18, as sramcapture.StartStreamRing does.
@@ -93,6 +92,36 @@ module tb_top_stream_drum;
   write_bus(2,16'hffef);write_bus(3,16'h7);write_bus(4,17);write_bus(5,0);
   write_bus(6,16'h0000);write_bus(7,16'h0480);
   host_command(1);
+ end endtask
+ // sramcapture.StopStream: halt, wait for the transport, mode 0.
+ task stop;
+ integer cycles;
+ begin
+  host_command(5);cycles=0;read_bus(1);
+  while(!value[2])begin read_bus(1);cycles=cycles+1;if(cycles>2000)begin $display("FAIL: the halt never saw the transport ready");errors=errors+1;$finish;end end
+  write_bus(19,0);
+ end endtask
+ initial begin
+  repeat(20)@(negedge clk);
+  read_bus(26);bufwords=value;
+  start;
+  if(STOP_ST!=0)begin
+   // A first run the host stalls into a backlog, stopped while the drum's
+   // state is STOP_ST (1 seek, 4 write, 6 read): the next run starts clean.
+   while(expected<WORDS/4 && errors==0)drain;
+   wait(dut.drum.backlog);
+   begin:hunt
+    integer k;
+    forever begin
+     for(k=0;k<20000;k=k+1)begin @(posedge dut.halfclk);if(dut.drum.st==STOP_ST)disable hunt;end
+     drain;
+    end
+   end
+   stop;
+   $display("first run stopped in state %0d after %0d words",STOP_ST,expected);
+   repeat(20000)@(negedge clk);
+   expected=0;banks=0;start;
+  end
   while(expected<WORDS && errors==0)drain;
   $display("drained %0d words in %0d banks (buffer %0d words), status %h",expected,banks,bufwords,status);
   if(errors==0)$display("PASS tb_top_stream_drum");else $display("FAIL tb_top_stream_drum: %0d errors",errors);
