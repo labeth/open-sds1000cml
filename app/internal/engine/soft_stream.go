@@ -92,6 +92,7 @@ type softStream struct {
 
 	// Gap-free stream session.
 	log       uint8
+	bits      bool // the digital stream's words (ADR-STREAM-BITS), not peak words
 	streaming bool
 	isolated  bool
 	deadline  *bus.DecodedDeadline
@@ -175,10 +176,31 @@ func SoftStreamMode(proto, baud int, overdrive bool) string {
 	if !ok {
 		return ""
 	}
-	if _, ok := softGapFreeLog(name, baud, overdrive); ok {
+	if _, _, ok := softGapFreePlan(name, baud, overdrive); ok {
 		return "gap-free"
 	}
 	return "captures"
+}
+
+// softGapFreePlan is the gap-free stream's decimation for a protocol and
+// whether it streams digital words: with the digital stream image, a line
+// without a carrier is sliced in the FPGA at a sixteenth of a peak word's
+// bucket (ADR-STREAM-BITS), so faster buses stream gap-free and slower ones
+// at a coarser decimation; ok false when it needs the captures.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func softGapFreePlan(name string, baud int, overdrive bool) (log int, bits, ok bool) {
+	if bitsImage.Load() && decode.StreamBitsLine(name) {
+		if feature, _, _, known := decode.StreamTiming(name, float64(baud)); known {
+			if name == "onewire" && overdrive {
+				feature /= 10
+			}
+			if log, ok := decode.StreamBitsLog(feature); ok {
+				return log, true, true
+			}
+		}
+	}
+	log, ok = softGapFreeLog(name, baud, overdrive)
+	return log, false, ok
 }
 
 // softGapFreeLog is the gap-free stream's decimation for a protocol, ok
@@ -231,7 +253,7 @@ func (e *Engine) beginSoftStream(ctx context.Context, p SerialParams, trig Strea
 	if name == "onewire" && p.Overdrive {
 		feature, longest, quiet = feature/10, longest/10, quiet/10
 	}
-	log, gapFree := softGapFreeLog(name, p.Baud, p.Overdrive)
+	log, bits, gapFree := softGapFreePlan(name, p.Baud, p.Overdrive)
 	if !gapFree && trig == StreamOnValue {
 		// Captures stop on a record the symbol trigger fired on; the value
 		// must be one it matches wherever it comes.
@@ -242,14 +264,16 @@ func (e *Engine) beginSoftStream(ctx context.Context, p SerialParams, trig Strea
 		}
 	}
 	s := &softStream{p: p, proto: name, decoder: d, trig: trig, value: value & unitMask(p), mask: unitMask(p),
-		gapFree: gapFree, quiet: quiet, log: uint8(log), byHand: onError}
+		gapFree: gapFree, quiet: quiet, log: uint8(log), bits: bits, byHand: onError}
 	v, err := e.decodedCall(ctx, func() (any, error) {
 		e.decodedStarting = time.Time{}
 		if e.decodedSession != nil || e.soft != nil {
 			return nil, fmt.Errorf("a decoded stream is already running")
 		}
 		want := imageQualify
-		if gapFree {
+		if bits {
+			want = imageBits
+		} else if gapFree {
 			want = imageStream
 		}
 		if e.images == nil || !e.hasImage(want) {
@@ -273,6 +297,10 @@ func (e *Engine) beginSoftStream(ctx context.Context, p SerialParams, trig Strea
 			bucket := float64(uint64(1)<<log) * 2e-9
 			s.sampleS = bucket / 2
 			s.ordStep = float64(uint64(1) << (log - 1))
+			if bits {
+				s.sampleS = decode.StreamBitsPeriod(log)
+				s.ordStep = float64(uint64(1) << (log - 4))
+			}
 			// Decode a fifth of a second at a time, or twice Close (each decode
 			// reads the open window again, so short pushes cost it over and
 			// over), but at least once a second: a DCF77 minute's Close is 32 s.
@@ -316,6 +344,8 @@ func (s *softStream) decodeFunc() func(a, b []uint8) decode.Result {
 func (s *softStream) modeText(elapsed time.Duration) string {
 	t := ""
 	switch {
+	case s.gapFree && s.bits:
+		t = fmt.Sprintf("gap-free, software decode of the %.3g us digital stream", s.sampleS*1e6)
 	case s.gapFree:
 		t = fmt.Sprintf("gap-free, software decode of the %.3g us stream", s.sampleS*2e6)
 	case elapsed <= 0:
@@ -338,6 +368,9 @@ func (e *Engine) softStreamStart(s *softStream) error {
 	ch := uint8(s.p.ChA & 1)
 	cfg := sramcapture.Config{Source: sramcapture.ADC, DecimationLog2: s.log, PreWords: sramcapture.Words - 17, PostWords: 17,
 		TriggerChannel: ch, TriggerLevel: uint8(math.Round(s.p.Threshold))}
+	if s.bits {
+		e.planBitsLevels(s, &cfg)
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 	if err := e.sram.StartStream(ctx, cfg, true, true); err != nil {
@@ -455,7 +488,9 @@ func (e *Engine) softDrain(s *softStream) {
 		}
 		s.expected = block.FirstWord + uint64(block.Words)
 	}
-	if len(raw) > 0 {
+	if len(raw) > 0 && s.bits {
+		s.feedBits(raw)
+	} else if len(raw) > 0 {
 		s.feedPeak(raw, e.interleaveCalibration)
 	}
 	s.raw = raw[:0]
@@ -565,6 +600,41 @@ func (s *softStream) feedPeak(raw []byte, cal *InterleaveCalibration) {
 		}
 	}
 	s.haveLast = s.haveLast || n > 0
+}
+
+// planBitsLevels sets the digital stream's slicing (ADR-STREAM-BITS): CH1
+// at the trigger level, CH2 at the second line's, each line at its own
+// threshold, the band spanning both channels' converter offsets (the slicer
+// reads the raw interleaved codes, as the edge trigger does).
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func (e *Engine) planBitsLevels(s *softStream, cfg *sramcapture.Config) {
+	a, b := uint8(math.Round(min(max(s.p.Threshold, 0), 255))), secondLevel(s.p)
+	cfg.TriggerLevel, cfg.SecondLevel, cfg.SliceLines = a, b, true
+	if s.p.ChA&1 == 1 {
+		cfg.TriggerLevel, cfg.SecondLevel = b, a
+	}
+	band := uint8(0)
+	for ch := range uint8(2) {
+		c := *cfg
+		c.TriggerChannel = ch
+		e.planHysteresis(&c, false)
+		band = max(band, c.TriggerHysteresis)
+	}
+	cfg.TriggerHysteresis = band
+}
+
+// feedBits queues the digital stream's words as samples, 0 or 255, line A
+// from its channel and a clocked bus's line B from the other.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func (s *softStream) feedBits(raw []byte) {
+	ch := s.p.ChA & 1
+	s.pendA = unpackBits(s.pendA, raw, ch)
+	if clockedTwoLine(s.p.Proto) {
+		at := len(s.pendB)
+		s.pendB = unpackBits(s.pendB, raw, 1-ch)
+		s.learnB(s.pendB[at:])
+	}
+	s.haveLast = s.haveLast || len(raw) >= 4
 }
 
 // learnB follows line B's extremes for its slicing level.

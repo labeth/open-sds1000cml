@@ -1,7 +1,7 @@
 // ENGMODEL-OWNER-UNIT: FU-FPGA-BUILD
 // Builds one FPGA image for the EP4CE10F17C8 with headless Quartus 21.1 Lite:
 //
-//   node --experimental-strip-types fpga/build.ts --image=general|packet|frame|line|qualify|stacking|stream|fast [--seed=N] [--prepare-only] [--install]
+//   node --experimental-strip-types fpga/build.ts --image=general|packet|frame|line|qualify|stacking|stream|bits|fast [--seed=N] [--prepare-only] [--install]
 //
 // Every image is common/ (the acquisition top, SRAM record and transport, ADC
 // interleave, panel scan, clocks and GPMC) plus its own decoders or engine:
@@ -21,7 +21,7 @@ const args=process.argv.slice(2);
 const flag=(f:string)=>args.includes(f);
 const value=(k:string)=>args.find(a=>a.startsWith(k+'='))?.slice(k.length+1);
 if(args.some(a=>!['--prepare-only','--install'].includes(a) && !/^--image=\w+$/.test(a) && !/^--seed=\d+$/.test(a)))
- throw Error('usage: build.ts --image=general|packet|frame|line|qualify|stacking|stream|fast [--seed=N] [--prepare-only] [--install]');
+ throw Error('usage: build.ts --image=general|packet|frame|line|qualify|stacking|stream|bits|fast [--seed=N] [--prepare-only] [--install]');
 
 // box: decimation by box averages (common/box_decim.v) where the precision
 // filter does not fit, so the record spans slow timebases' screens and the
@@ -63,7 +63,11 @@ const images:Record<string,Image>={
  // protocol decoders, so the packetizer, banks and precision decimation fit.
  // STREAM_DRUM: the stream goes through the external SRAM as a FIFO, whose
  // 512K words are the drain's slack (stream_drum.v).
- stream:{dir:'images/stream',files:['stream_packetizer.v','stream_banks.v','stream_bits.v','stream_drum.v','stream_marks.v','general/precision.v','general/precision_tail.v'],defines:['STREAM_CAPTURE','STREAM_DRUM','STREAM_BITS'],seed:2,trigger:true,precision:true,bare:true},
+ stream:{dir:'images/stream',files:['stream_packetizer.v','stream_banks.v','stream_peak.v','stream_drum.v','stream_marks.v','general/precision.v','general/precision_tail.v'],defines:['STREAM_CAPTURE','STREAM_DRUM'],seed:4,trigger:true,precision:true,bare:true},
+ // ADR-STREAM-BITS: the stream image with digital words (each line sliced at
+ // its level, sixteen periods a word) in the peak words' place, for the
+ // decoded stream; the two do not fit together at 250 MHz.
+ bits:{dir:'images/stream',files:['stream_packetizer.v','stream_banks.v','stream_bits.v','stream_drum.v','stream_marks.v','general/precision.v','general/precision_tail.v'],defines:['STREAM_CAPTURE','STREAM_DRUM','STREAM_BITS'],seed:4,trigger:true,precision:true,bare:true},
  // ADR-HARDWARE-QUALIFIERS: pulse, slope, video and zone triggers decided
  // in the FPGA, on the bare acquisition base with precision decimation and
  // envelope recall (the general image has no room left for them).
@@ -126,7 +130,7 @@ if(image.trigger){
  // ADR-STREAM-IMAGE: the stream crosses 250 -> 125 MHz through a gray-coded
  // FIFO; only first synchronizer stages are cut, and its storage, stable for
  // clocks before the read pointer reaches it, is excused from the 4 ns path.
- const streamSdc=name==='stream' ? ['',
+ const streamSdc=image.defines.includes('STREAM_DRUM') ? ['',
   'set_false_path -to [get_registers {*stream_pack*reset_s[0] *stream_pack*wgray_s0[*] *stream_pack*rgray_s0[*] *stream_pack*stop_s[0] *stream_pack*fault_s[0]}]',
   'set_false_path -to [get_registers {*stream_queue*preset_s[0] *stream_queue*rel_s0[*] *stream_queue*pub_s0[*] *stream_queue*hreset_s[0] *stream_queue*overrun_s[0]}]',
   // stream_drum's register FIFOs between clk and hclk: an entry is written a

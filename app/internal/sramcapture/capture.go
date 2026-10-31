@@ -114,6 +114,9 @@ type Config struct {
 	// I2C's SDA; register 59, its band TriggerHysteresis), so the channels
 	// may sit at different offsets and V/div; 0 is TriggerLevel.
 	SecondLevel uint8 `json:"second_level,omitempty"`
+	// SliceLines: the digital stream slices CH1 at TriggerLevel and CH2 at
+	// SecondLevel (ADR-STREAM-BITS), so SecondLevel is written as it is.
+	SliceLines bool `json:"slice_lines,omitempty"`
 }
 
 // UARTTriggerConfig describes the optional hardware matcher: the 125 MHz,
@@ -846,9 +849,9 @@ func (c *Capture) Arm(ctx context.Context, cfg Config) (err error) {
 	if e = c.write(7, uint16(cfg.TriggerLevel)|uint16(cfg.TriggerHysteresis)<<8); e != nil {
 		return e
 	}
-	if cfg.SPI.Enabled || cfg.I2C.Enabled || (cfg.Symbol.Enabled && cfg.Symbol.TwoLines) {
+	if cfg.SPI.Enabled || cfg.I2C.Enabled || (cfg.Symbol.Enabled && cfg.Symbol.TwoLines) || cfg.SliceLines {
 		second := cfg.SecondLevel
-		if second == 0 {
+		if second == 0 && !cfg.SliceLines {
 			second = cfg.TriggerLevel
 		}
 		if e = c.write(regSecondLevel, uint16(second)); e != nil {

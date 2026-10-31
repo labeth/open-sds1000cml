@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"math/bits"
+	"sync/atomic"
 	"time"
 
 	"open-sds/app/internal/sramcapture"
@@ -90,7 +91,23 @@ type sramJob struct {
 
 // SetImageSwitcher enables FPGA stacking. Call before Run.
 // TRLC-LINKS: REQ-SDS-141
-func (e *Engine) SetImageSwitcher(s ImageSwitcher) { e.images = s }
+func (e *Engine) SetImageSwitcher(s ImageSwitcher) {
+	e.images = s
+	b, ok := s.(BitsImages)
+	bitsImage.Store(ok && b.HasBits())
+}
+
+// BitsImages is an ImageSwitcher with the digital stream image
+// (ADR-STREAM-BITS), which the decoded stream runs on when it has it.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-035
+type BitsImages interface {
+	LoadBits() error
+	HasBits() bool
+}
+
+// bitsImage reports the build's digital stream image to SoftStreamMode,
+// which plans without an engine (the panel's decode menu asks it).
+var bitsImage atomic.Bool
 
 // TRLC-LINKS: REQ-SDS-141
 func (e *Engine) sramCall(ctx context.Context, run func(context.Context) (any, error)) (any, error) {

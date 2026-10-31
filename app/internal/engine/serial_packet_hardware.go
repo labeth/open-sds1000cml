@@ -216,6 +216,9 @@ const (
 	// imageStream is the continuous-capture image roll mode runs on
 	// (ADR-STREAM-IMAGE).
 	imageStream = "stream"
+	// imageBits is the stream image with digital words, the decoded
+	// stream's lines sliced in the FPGA (ADR-STREAM-BITS).
+	imageBits = "bits"
 	// imageFast has SPI, UART and I2C on the samples: SPI to a 125 MHz
 	// clock, UART to 62.5 MBd, I2C's high-speed mode (ADR-SAMPLE-DOMAIN-SPI).
 	imageFast = "fast"
@@ -269,6 +272,9 @@ func (e *Engine) hasImage(name string) bool {
 		return e.images.HasFrame()
 	case imageStream:
 		return e.images.HasStream()
+	case imageBits:
+		b, ok := e.images.(BitsImages)
+		return ok && b.HasBits()
 	case imageQualify:
 		return e.images.HasQualify()
 	case imageFast:
@@ -364,6 +370,10 @@ func (e *Engine) imageLoader(name string) func() error {
 		return e.images.LoadFrame
 	case imageStream:
 		return e.images.LoadStream
+	case imageBits:
+		if b, ok := e.images.(BitsImages); ok {
+			return b.LoadBits
+		}
 	case imageQualify:
 		return e.images.LoadQualify
 	case imageFast:
@@ -518,7 +528,7 @@ func (e *Engine) noteARINCLevels(f *Frame) {
 // load).
 // TRLC-LINKS: REQ-SDS-011, REQ-SDS-014
 func (e *Engine) noteBackendsLoading(image string) {
-	shown := map[string]string{imageQualify: "qualifier", imagePacket: "packet", imageLine: "line", imageStream: "stream", "": "general"}[image]
+	shown := map[string]string{imageQualify: "qualifier", imagePacket: "packet", imageLine: "line", imageStream: "stream", imageBits: "digital stream", "": "general"}[image]
 	why := "none: loading the " + shown + " FPGA image"
 	zones := e.zonesOn()
 	serial := e.serialMode.Load() == SerialTrigger

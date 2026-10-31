@@ -38,6 +38,10 @@ FRAME_EMBED := internal/fpgaload/frame.rbf
 # until it ships in fpga/bitstreams.
 STREAM_RBF ?= $(wildcard ../fpga/bitstreams/stream.rbf)
 STREAM_EMBED := internal/fpgaload/stream.rbf
+# Digital stream image (ADR-STREAM-BITS): the decoded stream's sliced lines.
+# Optional until it ships in fpga/bitstreams.
+BITS_RBF ?= $(wildcard ../fpga/bitstreams/bits.rbf)
+BITS_EMBED := internal/fpgaload/bits.rbf
 # Qualifier image (ADR-HARDWARE-QUALIFIERS): pulse, slope and video triggers
 # decided in the FPGA. Optional until it ships in fpga/bitstreams.
 QUALIFY_RBF ?= $(wildcard ../fpga/bitstreams/qualify.rbf)
@@ -90,6 +94,10 @@ app-release:
 	  $(call rbfsize,$(STREAM_RBF)) || { echo "app-release: $(STREAM_RBF) is not an EP4CE10 .rbf"; exit 1; }; \
 	  cp "$(STREAM_RBF)" $(STREAM_EMBED); \
 	else rm -f $(STREAM_EMBED); fi
+	@if [ -n "$(BITS_RBF)" ]; then \
+	  $(call rbfsize,$(BITS_RBF)) || { echo "app-release: $(BITS_RBF) is not an EP4CE10 .rbf"; exit 1; }; \
+	  cp "$(BITS_RBF)" $(BITS_EMBED); \
+	else rm -f $(BITS_EMBED); fi
 	@if [ -n "$(QUALIFY_RBF)" ]; then \
 	  $(call rbfsize,$(QUALIFY_RBF)) || { echo "app-release: $(QUALIFY_RBF) is not an EP4CE10 .rbf"; exit 1; }; \
 	  cp "$(QUALIFY_RBF)" $(QUALIFY_EMBED); \
@@ -99,8 +107,8 @@ app-release:
 	  cp "$(FAST_RBF)" $(FAST_EMBED); \
 	else rm -f $(FAST_EMBED); fi
 	CGO_ENABLED=0 GOOS=linux GOARCH=arm GOARM=7 \
-	  go build -trimpath -tags "withgeneralbitstream$(if $(STACK_RBF), withstackbitstream)$(if $(PACKET_RBF), withpacketbitstream)$(if $(LINE_RBF), withlinebitstream)$(if $(FRAME_RBF), withframebitstream)$(if $(STREAM_RBF), withstreambitstream)$(if $(QUALIFY_RBF), withqualifybitstream)$(if $(FAST_RBF), withfastbitstream)" -ldflags "$(LDFLAGS)" -o $(DIST)/app-arm ./cmd/app
-	@echo "app-release: $(DIST)/app-arm embeds $(RBF) ($$(sha256sum "$(RBF)" | cut -c1-16)…)$(if $(STACK_RBF), stacking image $(STACK_RBF))$(if $(PACKET_RBF), packet image $(PACKET_RBF))$(if $(LINE_RBF), line image $(LINE_RBF))$(if $(FRAME_RBF), frame image $(FRAME_RBF))$(if $(STREAM_RBF), stream image $(STREAM_RBF))$(if $(QUALIFY_RBF), qualifier image $(QUALIFY_RBF))$(if $(FAST_RBF), fast image $(FAST_RBF))"
+	  go build -trimpath -tags "withgeneralbitstream$(if $(STACK_RBF), withstackbitstream)$(if $(PACKET_RBF), withpacketbitstream)$(if $(LINE_RBF), withlinebitstream)$(if $(FRAME_RBF), withframebitstream)$(if $(STREAM_RBF), withstreambitstream)$(if $(BITS_RBF), withbitsbitstream)$(if $(QUALIFY_RBF), withqualifybitstream)$(if $(FAST_RBF), withfastbitstream)" -ldflags "$(LDFLAGS)" -o $(DIST)/app-arm ./cmd/app
+	@echo "app-release: $(DIST)/app-arm embeds $(RBF) ($$(sha256sum "$(RBF)" | cut -c1-16)…)$(if $(STACK_RBF), stacking image $(STACK_RBF))$(if $(PACKET_RBF), packet image $(PACKET_RBF))$(if $(LINE_RBF), line image $(LINE_RBF))$(if $(FRAME_RBF), frame image $(FRAME_RBF))$(if $(STREAM_RBF), stream image $(STREAM_RBF))$(if $(BITS_RBF), digital stream image $(BITS_RBF))$(if $(QUALIFY_RBF), qualifier image $(QUALIFY_RBF))$(if $(FAST_RBF), fast image $(FAST_RBF))"
 
 test:
 	go test -timeout 30m ./...

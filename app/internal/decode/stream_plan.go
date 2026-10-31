@@ -244,3 +244,42 @@ var streamBuckets = func() (t [StreamMaxLog + 1]float64) {
 	}
 	return t
 }()
+
+// StreamBitsPeriod is the digital stream's period at decimation log
+// (ADR-STREAM-BITS): a word holds sixteen periods a line in the time of one
+// peak word's bucket, so a period is 2^(log-4) samples of 2 ns.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func StreamBitsPeriod(log int) float64 { return float64(uint64(1)<<(log-4)) * 2e-9 }
+
+// StreamBitsLog is the digital stream's decimation for a feature of feature
+// seconds: the coarsest from StreamGapFreeMinLog that keeps six periods in
+// the feature (fewer samples cost the decoder less), or failing that three
+// and a half. ok is false when even the finest leaves fewer: the edges then
+// move by a period within a feature.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func StreamBitsLog(feature float64) (log int, ok bool) {
+	for _, keep := range []float64{6, 3.5} {
+		if feature < keep*StreamBitsPeriod(StreamGapFreeMinLog) {
+			continue
+		}
+		log = StreamGapFreeMinLog
+		for log < StreamMaxLog && keep*StreamBitsPeriod(log+1) <= feature {
+			log++
+		}
+		return log, true
+	}
+	return 0, false
+}
+
+// StreamBitsLine reports whether proto's line suits the digital stream: a
+// carrier (an IR remote's 38 kHz, an RFID tag's 125 kHz field) sliced at a
+// period finer than its cycle reads as the carrier itself, not the runs the
+// decoders merge from a bucket's two extremes.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func StreamBitsLine(proto string) bool {
+	switch proto {
+	case "irnec", "irsirc", "irrc5", "irrc6", "irmp", "em4100", "em4305", "t55xx":
+		return false
+	}
+	return true
+}
