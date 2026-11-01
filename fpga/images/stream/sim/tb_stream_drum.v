@@ -7,7 +7,7 @@
 // sramcapture.DrainStream does and stalls for several laps: the ring must
 // carry every word. A stall beyond the ring must raise fault.
 //
-// Rates are scaled by the lap: AW=12 makes a lap 4096 clocks, and with the
+// Rates are scaled by the lap: RAW=12 makes a lap at most 4096 clocks, and with the
 // 256-word FIFO one word per 31 clocks brings half the FIFO a lap, as 978k
 // words/s does on the board (2^19 pulses, 4096 words); one per 24 clocks is
 // the GPMC ceiling (1.27M words/s). The host drains at drain_ns a word. With
@@ -23,7 +23,7 @@
 // words as on the board.
 // TRLC-LINKS: REQ-SDS-035
 module tb_stream_drum #(parameter REAL=0,FAST=0,MID=0,SWORDS=0,SPERIOD=256,HOST_NS=787,AFTER_NS=0,POST=20000,TICK_NS=0,ADAPT=0,LOOK_MIN=400000,FIRST_NS=0,GAP_NS=17000000,GAP_EVERY_NS=0,BUSY_LOOK=0,
- BIG=REAL || MID,AW=REAL ? 19 : MID ? 16 : 12,BANK_AW=BIG ? 11 : FAST ? 6 : 4,WF_AW=BIG ? 13 : 8,DESC_AW=REAL ? 9 : MID ? 6 : 7);
+ BIG=REAL || MID,RAW=REAL ? 19 : MID ? 16 : 12,AW=RAW+1,BANK_AW=BIG ? 11 : FAST ? 6 : 4,WF_AW=BIG ? 13 : 8,DESC_AW=REAL ? 9 : MID ? 6 : 7);
  localparam N=1<<AW,BANK=BIG ? 1280 : 1<<BANK_AW,WF_PAIRS=BIG ? 2304 : 1<<(WF_AW-1);
  reg core=0,hclk=0,host=0;
  always #2 core=!core;      // 250 MHz
@@ -33,8 +33,8 @@ module tb_stream_drum #(parameter REAL=0,FAST=0,MID=0,SWORDS=0,SPERIOD=256,HOST_
  reg active=0,in_valid=0;reg [31:0] in_data=0;
  wire cmd,cmd_read,cmd_discard,cmd_continue,t_ready,t_write_ready,t_done,wvalid,wstop,rvalid,fault;
  wire [AW:0] cmd_count;wire [31:0] wdata,rdata;wire [AW-1:0] position;
- wire k1,k2,g1;wire [31:0] dq;
- sram_transport #(.AW(AW),.CONTINUOUS_ONLY(1),.READ_DELAY(1)) tr(.clk(core),.sample_clk(sample_clk),.reset(1'b0),.locked(1'b1),
+ wire k1,k2,g1,rewind;wire [31:0] dq;
+ sram_transport #(.AW(AW),.CONTINUOUS_ONLY(1),.READ_DELAY(1)) tr(.clk(core),.sample_clk(sample_clk),.reset(1'b0),.locked(1'b1),.rewind(rewind),
   .command(cmd),.command_read(cmd_read),.command_discard(cmd_discard),.command_continue(cmd_continue),.command_count(cmd_count),
   .ready(t_ready),.write_data(wdata),.write_valid(wvalid),.write_stop(wstop),.write_ready(t_write_ready),
   .read_data(rdata),.read_valid(rvalid),.done(t_done),.position(position),.dq(dq),.k1(k1),.k2(k2),.g1(g1));
@@ -46,6 +46,8 @@ module tb_stream_drum #(parameter REAL=0,FAST=0,MID=0,SWORDS=0,SPERIOD=256,HOST_
  reg [31:0] dq_late=0;
  always @(posedge core)dq_late<=stage2;
  assign dq=k1 && g1 ? dq_late : 32'bz;
+ // The enable low clears the counter (spec 12 section 5.1).
+ always @(negedge g1)address<=0;
  always @(posedge k2)if(g1)begin
   if(k1!=last_dir)begin last_dir<=k1;since_turn=0;end
   // Late write, as the board measures it (spec 12 §5.2): with back-to-back
@@ -58,9 +60,9 @@ module tb_stream_drum #(parameter REAL=0,FAST=0,MID=0,SWORDS=0,SPERIOD=256,HOST_
  wire pvalid,psingle,pseal,bank_ready,bank_next_free;wire [63:0] pdata;
  stream_drum #(.AW(AW),.WF_AW(WF_AW),.WF_PAIRS(WF_PAIRS),.DESC_AW(DESC_AW),.BANK_AW(BANK_AW),.BANK_P(BANK),
   .WRITE_AT(BIG ? 512 : 48),.WRITE_URGENT(BIG ? 3584 : 160),.TRIP_AT(BIG ? 4096 : 224),
-  .AGE_CYCLES(BIG ? 2097152 : 3000),.SEG(REAL ? 8192 : MID || FAST ? 1024 : 256)) dut(
+  .AGE_CYCLES(BIG ? 2097152 : 3000),.RAW(RAW),.PROJ_SH(BIG ? 7 : 3),.SEG(REAL ? 8192 : MID || FAST ? 1024 : 256)) dut(
   .clk(core),.active(active),.onchip(1'b0),.in_valid(in_valid),.in_data(in_data),
-  .cmd(cmd),.cmd_read(cmd_read),.cmd_discard(cmd_discard),.cmd_continue(cmd_continue),.cmd_count(cmd_count),
+  .cmd(cmd),.cmd_read(cmd_read),.cmd_discard(cmd_discard),.cmd_continue(cmd_continue),.cmd_count(cmd_count),.rewind(rewind),
   .t_ready(t_ready),.t_write_ready(t_write_ready),.t_done(t_done),.wdata(wdata),.wvalid(wvalid),.wstop(wstop),
   .rdata(rdata),.rvalid(rvalid),.position(position),.fault(fault),
   .hclk(hclk),.bank_ready(bank_ready),.bank_next_free(bank_next_free),.packet_valid(pvalid),.packet_data(pdata),.packet_single(psingle),.packet_seal(pseal));
@@ -122,7 +124,7 @@ module tb_stream_drum #(parameter REAL=0,FAST=0,MID=0,SWORDS=0,SPERIOD=256,HOST_
  endtask
  // The backlog: its peak (ring words) and when the ring last emptied.
  integer peak=0;realtime spill_t=0,clear_t=0;reg had=0;
- wire [AW:0] ring_used=N-dut.p1_free; // the ring's words between the write head and the head burst
+ wire [AW:0] ring_used=(1<<RAW)-dut.p1_free; // the ring's words between the write head and the head burst
  always @(posedge hclk)begin
   if(ring_used>peak)peak=ring_used;
   if(ring_used!=0 && !had)spill_t=$realtime;

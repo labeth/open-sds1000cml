@@ -32,6 +32,7 @@ module tb_top_stream_drum;
  // with the board's late data.
  reg [31:0] mem[0:524287];reg [18:0] address=0;reg [31:0] s1=0,s2=0;
  assign dq=k1&&g1?s2:32'bz;
+ always @(negedge g1)address<=0; // the enable low clears the counter
  always @(posedge k2) if(g1)begin
   if(!k1)mem[address+2'd2]<=dq;else begin s1<=mem[address];s2<=#4.5 s1;end
   address<=address+1'b1;

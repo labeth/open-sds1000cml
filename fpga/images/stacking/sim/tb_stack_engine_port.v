@@ -19,7 +19,7 @@ module tb_stack_engine_port #(parameter BINS=16);
  .transport_ready(transport_ready),.transport_done(transport_done),.transport_read_valid(read_valid),.transport_read_data(read_data),.position(position),
  .command(command),.command_read(command_read),.command_discard(command_discard),.command_continue(command_continue),.command_count(command_count));
  wire [31:0] dq;wire k1,k2,g1;
- sram_transport #(.CONTINUOUS_ONLY(1)) transport(.clk(clk),.sample_clk(sample_clk),.reset(1'b0),.locked(1'b1),
+ sram_transport #(.CONTINUOUS_ONLY(1)) transport(.clk(clk),.sample_clk(sample_clk),.reset(1'b0),.locked(1'b1),.rewind(1'b0),
  .command(command),.command_read(command_read),.command_discard(command_discard),.command_continue(command_continue),.command_count(command_count),
  .ready(transport_ready),.write_data(32'd0),.write_valid(1'b0),.write_stop(1'b1),.read_data(read_data),.read_valid(read_valid),
  .done(transport_done),.position(position),.dq(dq),.k1(k1),.k2(k2),.g1(g1));

@@ -32,7 +32,7 @@ module tb_stack_record_cache #(parameter AW=8,CACHE_AW=3,FULL_ONLY=0,COMMAND_DEL
  wire [AW:0] command_count=COMMAND_DELAY ? count_q : cache_count;
  wire t_read=COMMAND_DELAY ? read_q : command_read,t_discard=COMMAND_DELAY ? discard_q : command_discard,t_continue=COMMAND_DELAY ? continue_q : command_continue;
  wire [31:0] dq;wire k1,k2,g1;
- sram_transport #(.AW(AW),.CONTINUOUS_ONLY(1)) transport(.clk(clk),.sample_clk(sample_clk),.reset(1'b0),.locked(1'b1),
+ sram_transport #(.AW(AW),.CONTINUOUS_ONLY(1)) transport(.clk(clk),.sample_clk(sample_clk),.reset(1'b0),.locked(1'b1),.rewind(1'b0),
  .command(command),.command_read(t_read),.command_discard(t_discard),.command_continue(t_continue),.command_count(command_count),
  .ready(transport_ready),.write_data(32'd0),.write_valid(1'b0),.write_stop(1'b1),.read_data(transport_read_data),.read_valid(transport_read_valid),
  .done(transport_done),.position(position),.dq(dq),.k1(k1),.k2(k2),.g1(g1));

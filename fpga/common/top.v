@@ -1372,7 +1372,12 @@ module acq_sram_top(
  wire [31:0] transport_write_data=write_data;wire transport_write_valid=write_valid,transport_write_stop=write_stop;
 `endif
 `endif
- sram_transport #(.CONTINUOUS_ONLY(1),.READ_DELAY(SRAM_READ_DELAY)) transport(.clk(core),.sample_clk(sample_clk),.reset(1'b0),.locked(locked),
+`ifdef STREAM_DRUM
+ wire drum_rewind;
+`else
+ wire drum_rewind=1'b0;
+`endif
+ sram_transport #(.CONTINUOUS_ONLY(1),.READ_DELAY(SRAM_READ_DELAY)) transport(.clk(core),.sample_clk(sample_clk),.reset(1'b0),.locked(locked),.rewind(drum_rewind),
   .command(transport_command),.command_read(transport_command_read),.command_discard(transport_command_discard),.command_continue(transport_command_continue),.command_count(transport_command_count),
   .ready(ready),.write_data(transport_write_data),.write_valid(transport_write_valid),.write_stop(transport_write_stop),.write_ready(write_ready),
   .read_data(read_data),.read_valid(read_valid),.done(transport_done),.position(position),.dq(dq),.k1(k1),.k2(k2),.g1(g1));
@@ -1495,14 +1500,14 @@ module acq_sram_top(
  // The FIFO holds a lap of input at decimation 256 (4.1k words) with room to
  // spare: 2304 pairs (4608 words), the 18 block RAMs the two banks leave.
  stream_drum #(.AW(19),.WF_AW(13),.WF_PAIRS(2304),.DESC_AW(9),.BANK_AW(BUF_AW-2),.BANK_P(STREAM_BANK_P),
-  .WRITE_URGENT(3584),.TRIP_AT(4096)) drum(.clk(core),.active(drum_active),
+  .WRITE_URGENT(3584),.TRIP_AT(4096),.RAW(18)) drum(.clk(core),.active(drum_active),
 `ifdef STREAM_RING
   .onchip(stream_mode[5]),
 `else
   .onchip(1'b0),
 `endif
   .in_valid(drum_in_valid),.in_data(drum_in_data),
-  .cmd(drum_cmd),.cmd_read(drum_cmd_read),.cmd_discard(drum_cmd_discard),.cmd_continue(drum_cmd_continue),.cmd_count(drum_cmd_count),
+  .cmd(drum_cmd),.cmd_read(drum_cmd_read),.cmd_discard(drum_cmd_discard),.cmd_continue(drum_cmd_continue),.cmd_count(drum_cmd_count),.rewind(drum_rewind),
   .t_ready(ready),.t_write_ready(write_ready),.t_done(transport_done),.wdata(drum_wdata),.wvalid(drum_wvalid),.wstop(drum_wstop),
   .rdata(read_data),.rvalid(read_valid),.position(position),.fault(drum_fault),.status(drum_status),
   .hclk(halfclk),.bank_ready(drum_bank_ready),.bank_next_free(drum_bank_next_free),.packet_valid(stream_packet_valid),.packet_data(stream_packet_data),

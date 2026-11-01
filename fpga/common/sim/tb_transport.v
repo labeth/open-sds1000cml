@@ -5,7 +5,7 @@ module tb;
  localparam AW=19,N=1<<AW;
  reg clk=0;always #5 clk=~clk;
  wire sample_clk;assign #1 sample_clk=clk;
- reg reset=1,locked=1,command=0,command_read=0,command_discard=0,command_continue=0,write_valid=0,write_stop=0;
+ reg reset=1,locked=1,rewind=0,command=0,command_read=0,command_discard=0,command_continue=0,write_valid=0,write_stop=0;
  reg [AW:0] command_count=0;
  reg [31:0] write_data=0;
  wire ready,write_ready,read_valid,done,k1,k2,g1;

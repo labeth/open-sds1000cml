@@ -7,9 +7,11 @@
 // (spec 12 §5). So the ring is served like a drum: the pointer sweeps forward
 // and, as it passes the write head, the words gathered in an on-chip FIFO are
 // written; as it passes the read head, a chunk is read into the host's next
-// stream bank. Between the two it seeks with discard pulses (a whole lap is
-// 2^19 pulses, 2.1 ms at 250 MHz). The SRAM's 512K words are the stream's
-// slack, so a host that stalls for hundreds of milliseconds loses nothing.
+// stream bank. Between the two it seeks with discard pulses; to reach a head
+// behind it, the counter is rewound to 0 (the SRAM's enable held low clears
+// it, spec 12 section 5.1) and seeks from there, so the ring need not be the
+// whole SRAM: it is [RING_BASE, 2^RAW), 2^18 words on the board, a lap of
+// 1.05 ms, and the slack of about 100 ms at 2.4M words/s.
 //
 // The ring is only the overflow: while it holds nothing, the FIFO's words go
 // straight into the host's free bank (no lap, so the stream runs as fast as
@@ -18,13 +20,14 @@
 // ring, and from then on every word goes through the ring until it is empty
 // again (order is kept: the FIFO only ever holds words newer than the ring's).
 // With a backlog the counter waits at the read head, filling each bank the
-// host frees, and leaves for the write head only when the FIFO, plus what the
-// stream brings on the way there (at the input over the counter's last lap),
-// reaches TRIP_AT: the trip (write head and back to the read head) is a lap,
-// and the host drains its two banks meanwhile. Waiting as long as the FIFO
-// allows matters most with a deep backlog, where the way to the write head is
-// most of a lap: leaving early there reads fewer banks a lap than the stream
-// brings (the host's pump takes banks in passes), and the backlog grows.
+// host frees. It leaves for the write head when the host holds both banks and
+// the FIFO has a burst's worth (the host then has 1.7 ms of words to drain at
+// the bus's rate, more than the way round the ring), or when the FIFO, plus
+// what the fastest stream brings on the way, reaches TRIP_AT. So the host
+// always has words to drain, and a backlog drains at the bus's rate less the
+// stream's. The counter keeps to the head it set out for until it gets there:
+// the other head, a rewind away, can look nearer on the way, and going back
+// and forth reached neither.
 //
 // Burst rules from spec 12 §5.2: a write burst begins with 16 discarded words
 // (so each burst is laid down as 16 junk words then its data, and a
@@ -68,12 +71,15 @@ module stream_drum #(parameter AW=19,WF_AW=12,DESC_AW=8,BANK_AW=10,
  parameter WRITE_URGENT=3072,        // FIFO words that spill into the empty ring while the host holds both banks
  parameter TRIP_AT=3584,             // FIFO words, with those due on the way, that send the counter to the write head
  parameter PART_MIN=64,              // free bank pairs worth a partial read before a trip
- parameter AGE_CYCLES=2097152)(      // oldest buffered pair: 16.8 ms of hclk
+ parameter AGE_CYCLES=2097152,      // oldest buffered pair: 16.8 ms of hclk
+ parameter RAW=AW-1,                 // the ring's words: [RING_BASE, 2^RAW) of the SRAM
+ parameter PROJ_SH=7)(               // the way's pulses per input pair at the fastest stream (2^7: 3.9M words/s)
  input clk,active,
  input onchip,                       // static while active: the direct path only, no transport
  input in_valid,input [31:0] in_data,
  // sram_transport (CONTINUOUS_ONLY), clk
  output reg cmd=0,output reg cmd_read=0,output reg cmd_discard=0,output reg cmd_continue=0,
+ output reg rewind=0,                // holds the SRAM's enable (G1) low: its counter goes back to 0
  output reg [AW:0] cmd_count=0,
  input t_ready,t_write_ready,t_done,
  output [31:0] wdata,output wvalid,output reg wstop=0,
@@ -87,7 +93,13 @@ module stream_drum #(parameter AW=19,WF_AW=12,DESC_AW=8,BANK_AW=10,
  input bank_next_free,               // stream_banks.packet_ready: the other bank is free
  output reg packet_valid=0,output reg [63:0] packet_data=0,output reg packet_single=0,output reg packet_seal=0
 );
- localparam [AW:0] RING=1<<AW;
+ localparam [AW:0] RING=1<<RAW;
+ // The ring starts past the counter's 0 (a write is offered two words
+ // before its address), and a burst starts only where its largest span
+ // fits below the ring's end.
+ localparam [AW-1:0] RING_BASE=2;
+ localparam [AW-1:0] LAST_START=RING-(CHUNK_W+16+GAP);
+ localparam CHUNK_W=2*(1<<BANK_AW);  // BANK_P's bound: no burst is larger
  localparam CHUNK=2*BANK_P;          // words in a bank
  localparam PW=WF_AW-1;              // FIFO address width, in pairs
 
@@ -100,6 +112,7 @@ module stream_drum #(parameter AW=19,WF_AW=12,DESC_AW=8,BANK_AW=10,
  // Commands: hclk toggles h_cmd_t with the fields set; the pulse follows
  // three clocks on (top registers the count a clock before it is used).
  reg h_cmd_t=0,h_read=0,h_discard=0,h_continue=0;reg [AW:0] h_count=0; // hclk
+ reg h_rew=0;                        // hclk: the enable held low
  reg cmd_t_q=0,cmd_seen=0,cmd_go=0;
  // Write pairs from hclk: a 2-entry register FIFO (a small fetch mux at
  // 250 MHz; a gap in a write burst costs only time).
@@ -134,6 +147,10 @@ module stream_drum #(parameter AW=19,WF_AW=12,DESC_AW=8,BANK_AW=10,
   // Commands.
   cmd_t_q<=h_cmd_t;cmd_seen<=cmd_t_q;cmd_go<=act_c && cmd_t_q!=cmd_seen;cmd<=cmd_go;
   cmd_read<=h_read;cmd_discard<=h_discard;cmd_continue<=h_continue;cmd_count<=h_count;
+  // The enable low clears the SRAM's counter and the transport's position
+  // (spec 12 section 5.1); discard pulses are issued meanwhile, so a counter
+  // that clears on a pulse is cleared too.
+  rewind<=act_c && h_rew;
   // Write words: offered while one is held (w_ok is for the next clock).
   // hclk's pointers, registered here first (crossing paths stay short).
   wq_wp_c<=wq_wp;iq_rp_c<=iq_rp;rq_rp_c<=rq_rp;
@@ -206,17 +223,16 @@ module stream_drum #(parameter AW=19,WF_AW=12,DESC_AW=8,BANK_AW=10,
  // gap keeps the next burst's read start ahead of where a read leaves the
  // counter, so reading burst after burst needs only a short seek.
  //
- // Reading back what was just written takes a lap (2.1 ms): with a backlog
- // the FIFO holds a lap of input (plus less than WRITE_AT left from the last
- // trip), so the ring carries streams up to about 1.6M words/s; the direct
- // path, without a backlog, has no lap at all. Seeks go at most SEG pulses
- // between decisions, so a bank freed meanwhile is used at once.
+ // Seeks go at most SEG pulses between decisions, so a bank freed meanwhile
+ // is used at once.
  localparam GAP=4;
  reg [AW-1:0] whead=0;               // where the next burst's junk words go
+ reg [AW-1:0] whead_nx=0;reg whead_wrap=0; // after the burst being written, and whether that is past the last start
+ reg [AW-1:0] p1_hj=0;
  // Control.
- localparam S_IDLE=0,S_SEEK=1,S_DIRECT=2,S_ISS=3,S_WRITE=4,S_WDONE=5,S_READ=6,S_RDONE=7;
- localparam K_SEEK=0,K_WRITE=1,K_READ=2,K_DIRECT=3;
- reg [2:0] st=S_IDLE;reg [1:0] d_kind=0;reg [AW-1:0] seek_cnt=0;
+ localparam S_IDLE=0,S_SEEK=1,S_DIRECT=2,S_ISS=3,S_WRITE=4,S_WDONE=5,S_READ=6,S_RDONE=7,S_REW=8,S_REWW=9;
+ localparam K_SEEK=0,K_WRITE=1,K_READ=2,K_DIRECT=3,K_REWIND=4;
+ reg [3:0] st=S_IDLE;reg [2:0] d_kind=0;reg [AW-1:0] seek_cnt=0;reg [4:0] rew_wait=0;
  reg [PW:0] burst_p=0,push_left=0;reg [3:0] junk_left=0; // write burst, in pairs
  reg [AW:0] burst_span=0;            // its ring words: junk, data and gap (S_WRITE runs clocks)
  reg [AW-1:0] pairs_left=0;reg [3:0] drop_p=0;           // read, in pairs
@@ -228,7 +244,7 @@ module stream_drum #(parameter AW=19,WF_AW=12,DESC_AW=8,BANK_AW=10,
  reg [AW-1:0] p1_w_target=0,p1_base=0;reg [AW:0] p1_free=0,p1_need=0;reg [PW:0] p1_lvl=0;
  reg p1_due=0,p1_min=0,p1_tail=0,p1_spill=0,p1_empty=0;
  reg [AW-1:0] p2_dist_w=0,p2_dist_r=0;reg [PW:0] p2_lvl=0;reg p2_room=0,p2_due=0,p2_min=0,p2_tail=0,p2_spill=0,p2_empty=0;
- reg p3_go=0,p3_keep=0,w_more=0;reg [1:0] p3_kind=0;reg [AW-1:0] p3_seek=0;
+ reg p3_go=0,p3_keep=0,w_more=0,p3_head=0,p3_rhead=0;reg [2:0] p3_kind=0;reg [AW-1:0] p3_seek=0;
  reg [2:0] settle=0;
  reg oc=0; // constant 0 in the stream image: its logic folds away there
  // Packets in the current bank (published when full, or sealed), and
@@ -245,16 +261,26 @@ module stream_drum #(parameter AW=19,WF_AW=12,DESC_AW=8,BANK_AW=10,
  // a trip's bursts (a bank, then the rest) is as much as a lap brings.
  reg [AW:0] hoff=0;
  reg [AW-1:0] h_addr=0;reg [AW:0] h_rem=0; // the head burst's unread part, registered (timing)
- // Input pairs over the counter's last lap (from one wrap of the position
- // to the next), not counting clocks the drum chose to wait: a trip is all
- // moving, seeks' and bursts' overheads included. Saturating, and full until
- // a lap is measured. proj is what they bring while the counter goes the
- // distance to the write head.
- reg [PW:0] lap_n=0,lap_in=0;reg [PW+8:0] proj=0;reg lap_msb=0;
- wire [AW:0] trip_lvl=p2_lvl+proj[PW+8:8];
+ // proj is what the stream brings while the counter goes the way to the
+ // write head, at the fastest stream the bus carries: a pair every
+ // 2^PROJ_SH pulses (a slower stream only trips a little early).
+ reg [AW-1:0] proj=0;
+ wire [AW:0] trip_lvl=p2_lvl+proj;
  // Registered (a clock later than the rest of p2: the inputs are settled).
  reg at_w=0,at_r=0,w_first=0,trip=0;
  wire [AW-1:0] seek_w=p2_dist_w>SEG ? SEG : p2_dist_w,seek_r=p2_dist_r>SEG ? SEG : p2_dist_r;
+ // A head behind the counter is reached by a rewind and a seek from 0, not
+ // by a lap of the whole SRAM: its way is then its address (the p1 targets
+ // hold still while the decision settles).
+ reg p2_bw=0,p2_br=0;
+ wire behind_w=p2_bw,behind_r=p2_br;
+ wire [AW-1:0] way_w=behind_w ? p1_w_target : p2_dist_w,way_r=behind_r ? p1_base : p2_dist_r;
+ // The way the counter goes is kept until it arrives: a head behind it is a
+ // rewind away, and that way can look shorter than going on (the counter
+ // went back and forth between the heads and reached neither).
+ reg go_wh=0,go_rh=0;                 // on the way to the write head, the read head
+ reg w_on=0;                          // the write head ahead of the counter and before the read head
+ wire [2:0] go_w=behind_w ? K_REWIND : K_SEEK,go_r=behind_r ? K_REWIND : K_SEEK;
  always @(posedge hclk)begin
   done_q<=done_t;ready_q<=t_ready;pos_q<=position;backlog<=!dsc_empty;
   wq_rp_h<=wq_rp;rq_wp_h<=rq_wp;iq_wp_h<=iq_wp;
@@ -264,7 +290,13 @@ module stream_drum #(parameter AW=19,WF_AW=12,DESC_AW=8,BANK_AW=10,
   p1_base<=h_addr-5'd16-RD_SKEW;
   // Free ring: from the write head on to the head burst's junk (all of it
   // while the ring is empty).
-  p1_free<=dsc_empty ? RING : {1'b0,dsc_q_addr-5'd16-whead};p1_need<={wf_level,1'b0}+7'd64;p1_lvl<=wf_level;
+  // Its data runs from the head burst's junk to the write head; when that
+  // wraps (the head ahead of the write head) the free room is between
+  // them, else it is the rest of the ring (a burst always fits there).
+  p1_hj<=dsc_q_addr-5'd16;
+  p1_free<=dsc_empty || p1_hj<whead ? RING : {1'b0,p1_hj-whead};
+  whead_nx<=whead+burst_span[AW-1:0];
+  whead_wrap<=whead_nx>LAST_START;p1_need<={wf_level,1'b0}+7'd64;p1_lvl<=wf_level;
   // A bank goes the direct way at WRITE_AT words while the host keeps the
   // other free; once it holds both, only a full bank (or an aged FIFO): small
   // banks would fill both before the host's first look and spill at once.
@@ -273,6 +305,7 @@ module stream_drum #(parameter AW=19,WF_AW=12,DESC_AW=8,BANK_AW=10,
   p1_room<=bfill!=0 || bank_ready ? (CHUNK/2)-bfill+(bank_next_free ? CHUNK/2 : 1'b0) : 1'b0; // nothing while the current bank is the host's
   p1_len<=h_rem>>1;p1_fits<=p1_len<=p1_room;p1_part<=p1_room>=PART_MIN;p1_partial<=bfill!=0;p2_partial<=p1_partial;
   p2_dist_w<=p1_w_target-pos_q;p2_dist_r<=p1_base-pos_q;p2_lvl<=p1_lvl;
+  p2_bw<=p1_w_target<pos_q;p2_br<=p1_base<pos_q;
   p2_room<=!dsc_full && p1_free>p1_need;p2_due<=p1_due;p2_min<=p1_min;p2_tail<=p1_tail;p2_spill<=p1_spill;p2_empty<=p1_empty;
   // The decision. Empty ring: a due FIFO goes straight to a free bank; the
   // counter waits at the write head and spills there when the host holds
@@ -280,25 +313,28 @@ module stream_drum #(parameter AW=19,WF_AW=12,DESC_AW=8,BANK_AW=10,
   // there until a trip is due; the write head, when it comes first, takes
   // the FIFO (a burst of at least WRITE_AT words, and then what came
   // meanwhile, so a trip leaves little for the next lap).
-  proj<=lap_in*p2_dist_w[AW-1:AW-8];
-  at_w<=p2_dist_w==0;at_r<=p2_dist_r==0;w_first<=p2_dist_w<p2_dist_r;trip<=p2_min && trip_lvl>=TRIP_AT/2;
-  p3_go<=1;p3_kind<=K_SEEK;p3_seek<=seek_r;p3_keep<=0;p3_seal<=p2_partial;
+  w_on<=!behind_w && way_w<way_r;proj<=way_w>>PROJ_SH;
+  at_w<=p2_dist_w==0;at_r<=p2_dist_r==0;w_first<=way_w<way_r;trip<=p2_min && trip_lvl>=TRIP_AT/2;
+  p3_go<=1;p3_kind<=go_r;p3_seek<=seek_r;p3_head<=0;p3_rhead<=0;p3_keep<=0;p3_seal<=p2_partial;
   if(p2_empty)begin
    if(bank_ready && p2_due)p3_kind<=K_DIRECT;
    else if(oc)p3_go<=0;
-   else if(!at_w)p3_seek<=seek_w;
+   else if(!at_w)begin p3_kind<=go_w;p3_seek<=seek_w;end
    else if(!bank_ready && p2_spill && p2_room)p3_kind<=K_WRITE;
    else p3_go<=0;
   end else if(at_r)begin
    if(can_read)begin p3_kind<=K_READ;p3_seal<=0;end
    else if(trip && !dsc_empty && p1_part)begin p3_kind<=K_READ;p3_seal<=0;end // what fits, then the trip
-   else if(trip)p3_seek<=seek_w;
+   // No bank room: the FIFO's burst goes to the write head now, while the
+   // host drains its two banks (1.7 ms at the bus's rate, longer than a
+   // trip of the ring), rather than when the FIFO must.
+   else if(trip || !p1_part && p2_min)begin p3_kind<=go_w;p3_seek<=seek_w;p3_head<=1;end
    else begin p3_go<=0;p3_seal<=0;end
-  end else if(w_first)begin
+  end else if(go_wh || (go_rh ? w_on : w_first))begin
    p3_keep<=1;
-   if(!at_w)p3_seek<=seek_w;
+   if(!at_w)begin p3_kind<=go_w;p3_seek<=seek_w;end
    else if((p2_min || w_more && p2_tail) && p2_room)p3_kind<=K_WRITE;
-   else p3_keep<=0;
+   else begin p3_keep<=0;p3_rhead<=1;end // nothing to write: on to the read head
   end else p3_seal<=0;               // on to the next burst
  end
  always @(posedge hclk)begin
@@ -317,10 +353,6 @@ module stream_drum #(parameter AW=19,WF_AW=12,DESC_AW=8,BANK_AW=10,
    else wf_wr<=wf_wr==WF_PAIRS-1 ? 1'b0 : wf_wr+1'b1;
   end
   wf_rd<=wf_rd_next;
-  lap_msb<=pos_q[AW-1];
-  if(lap_msb && !pos_q[AW-1])begin lap_in<=lap_n;lap_n<=0;end
-  else if(wf_push && !(st==S_IDLE && settle==7 && !p3_go) && !(&lap_n))lap_n<=lap_n+1'b1;
-  if(!act)begin lap_n<=0;lap_in<={PW+1{1'b1}};end
   // A clock behind the pointers, as before: in and out are registered.
   wf_in_q<=wf_push && wf_level<WF_PAIRS-2;wf_pop_q<=wf_pop;
   wf_level<=wf_level+wf_in_q-wf_pop_q;
@@ -340,19 +372,29 @@ module stream_drum #(parameter AW=19,WF_AW=12,DESC_AW=8,BANK_AW=10,
   if(!act)begin
    st<=S_IDLE;h_wend<=0;h_fault<=0;w_more<=0;bfill<=0;hoff<=0;wf_wr<=0;wf_rd<=0;wf_level<=0;wf_in_q<=0;wf_pop_q<=0;in_have<=0;iq_rp<=0;wq_wp<=0;rq_rp<=0;
    dsc_wr<=0;dsc_rd<=0;done_seen<=done_q;
-   whead<=pos_q+2'd2;              // the counter starts at the write head
+   // The counter starts at the write head when that is in the ring.
+   go_wh<=0;go_rh<=0;
+   whead<=pos_q+2'd2>=RING_BASE && pos_q+2'd2<=LAST_START ? pos_q+2'd2 : RING_BASE;h_rew<=0;
   end else case(st)
    S_IDLE:if(settle==7 && p3_seal)begin
     packet_seal<=1;bfill<=0;settle<=0; // publish the partial bank, then decide again
    end else if(settle==7 && p3_go)begin
     d_kind<=p3_kind;seek_cnt<=p3_seek;st<=S_ISS;
+    if(p3_head)go_wh<=1;else if(at_w || p3_kind==K_READ)go_wh<=0; // arrived (or reading again)
+    if(p3_rhead)go_rh<=1;else if(at_r || p3_head || p3_kind==K_READ || p3_kind==K_WRITE)go_rh<=0;
     if(!p3_keep)w_more<=0;
    end
    S_SEEK:if(done_new)begin done_seen<=done_q;st<=S_IDLE;end // and decide again
+   S_REW:if(done_new)begin done_seen<=done_q;h_rew<=0;rew_wait<=0;st<=S_REWW;end
+   S_REWW:begin                      // the enable back up before the next pulse
+    rew_wait<=rew_wait+1'b1;
+    if(rew_wait==3)st<=S_IDLE;     // the transport waits 15 clocks before its next pulse
+   end
    S_ISS:begin                       // load the command and toggle it to clk
     h_cmd_t<=!h_cmd_t;h_continue<=0;h_read<=1;h_discard<=0;
     case(d_kind)
      K_SEEK:begin h_discard<=1;h_count<=seek_cnt;st<=S_SEEK;end
+     K_REWIND:begin h_discard<=1;h_count<=4;h_rew<=1;st<=S_REW;end
      K_WRITE:begin
       // At most a bank's worth: a burst is read back by one read.
       h_read<=0;h_count<=0;st<=S_WRITE;
@@ -384,7 +426,7 @@ module stream_drum #(parameter AW=19,WF_AW=12,DESC_AW=8,BANK_AW=10,
     if(junk_left==0 && push_left==0)begin
      h_wend<=1;st<=S_WDONE;w_more<=burst_p>=WRITE_AT/2; // one tail burst after a full one
      dsc_push<=1;dsc_push_addr<=whead+5'd16;dsc_push_len<={burst_p,1'b0};
-     whead<=whead+burst_span[AW-1:0];age_clr<=1;
+     whead<=whead_wrap ? RING_BASE : whead_nx;age_clr<=1;
     end
    end
    S_DIRECT:begin

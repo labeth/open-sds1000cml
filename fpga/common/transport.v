@@ -6,14 +6,16 @@
 // extra K2 pulse to flush the SRAM's two-stage synchronous output. A continued
 // read consumes the prefetched word first and needs no extra pulse. Discard
 // commands move the counter without publishing data or adding a flush. position
-// counts EVERY enabled K2 pulse, including that flush, modulo 2^AW.
+// counts EVERY enabled K2 pulse, including that flush, modulo 2^AW. rewind
+// holds the SRAM's enable (G1) low, which clears its counter (spec 12
+// section 5.1), and position with it; pulses meanwhile leave both at 0.
 //
 // clk=100 MHz, sample_clk=clk shifted +4 ns is the initial integration target.
 // The 250 MHz benchmark is separate: this controller requires its own timing
 // audit and board test before increasing frequency.
 // TRLC-LINKS: REQ-SDS-044
 module sram_transport #(parameter AW=19,CONTINUOUS_ONLY=0,READ_DELAY=0)(
- input wire clk,sample_clk,reset,locked,
+ input wire clk,sample_clk,reset,locked,rewind,
  input wire command,command_read,command_discard,command_continue,
  input wire [AW:0] command_count,
  output wire ready,
@@ -55,7 +57,7 @@ module sram_transport #(parameter AW=19,CONTINUOUS_ONLY=0,READ_DELAY=0)(
  assign ready=state[IDLE] && locked && !reset;
  assign write_ready=state[WRITE] && !stop_requested && !reset;
  assign k1=reading;
- assign g1=locked && !reset;
+ assign g1=locked && !reset && !rewind;
  assign dq=(!reading && !state[IDLE]) ? drive_data : 32'bz;
  // Both DDR inputs latch on the positive clock edge. Data is registered on
  // that same edge and is stable for half a period before K2 rises.
@@ -80,7 +82,7 @@ module sram_transport #(parameter AW=19,CONTINUOUS_ONLY=0,READ_DELAY=0)(
   end else begin
    count_idle<=(state[IDLE] && !command) || (state[VALIDATE] && !legal_command) || (state[HOLD] && wait_last) || (state[DRAIN] && drain_last);
    count_read<=(state[SETUP] && wait_last && reading) || (state[READ] && !remaining_last);
-   if(pulse)position<=position+1'b1;
+   if(rewind)position<=0;else if(pulse)position<=position+1'b1;
    state[IDLE]<=(state[IDLE] && !command) || (state[VALIDATE] && !legal_command) || (state[HOLD] && wait_last) || (state[DRAIN] && drain_last);
    state[VALIDATE]<=state[IDLE] && command;
    state[SETUP]<=(state[VALIDATE] && legal_command) || (state[SETUP] && !wait_last);
