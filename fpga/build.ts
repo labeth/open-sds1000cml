@@ -63,13 +63,13 @@ const images:Record<string,Image>={
  // protocol decoders, so the packetizer, banks and precision decimation fit.
  // STREAM_DRUM: the stream goes through the external SRAM as a FIFO, whose
  // 512K words are the drain's slack (stream_drum.v).
- stream:{dir:'images/stream',files:['stream_packetizer.v','stream_banks.v','stream_peak.v','stream_drum.v','stream_marks.v','general/precision.v','general/precision_tail.v'],defines:['STREAM_CAPTURE','STREAM_DRUM'],seed:5,trigger:true,precision:true,bare:true},
+ stream:{dir:'images/stream',files:['stream_packetizer.v','stream_banks.v','stream_peak.v','stream_drum.v','stream_marks.v','general/precision.v','general/precision_tail.v'],defines:['STREAM_CAPTURE','STREAM_DRUM'],seed:51,trigger:true,precision:true,bare:true},
  // ADR-STREAM-BITS: the stream image with digital words (each line sliced at
  // its level, sixteen periods a word) in the peak words' place, for the
  // decoded stream; the two do not fit together at 250 MHz.
  // ADR-STREAM-RING: and the record as an analog history ring beside the
  // digital stream, which then runs on chip (ring_stamp.v).
- bits:{dir:'images/stream',files:['stream_packetizer.v','stream_banks.v','stream_bits.v','stream_drum.v','stream_marks.v','ring_stamp.v','general/precision.v','general/precision_tail.v'],defines:['STREAM_CAPTURE','STREAM_DRUM','STREAM_BITS','STREAM_RING'],seed:21,trigger:true,precision:true,bare:true},
+ bits:{dir:'images/stream',files:['stream_packetizer.v','stream_banks.v','stream_bits.v','stream_drum.v','stream_marks.v','ring_stamp.v','general/precision.v','general/precision_tail.v'],defines:['STREAM_CAPTURE','STREAM_DRUM','STREAM_BITS','STREAM_RING'],seed:33,trigger:true,precision:true,bare:true},
  // ADR-HARDWARE-QUALIFIERS: pulse, slope, video and zone triggers decided
  // in the FPGA, on the bare acquisition base with precision decimation and
  // envelope recall (the general image has no room left for them).
