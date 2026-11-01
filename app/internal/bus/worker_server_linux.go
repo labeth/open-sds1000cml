@@ -216,16 +216,7 @@ func (w *acquisitionWorker) streamPumpOn(on bool) error {
 	w.sRate, w.sEvery, w.sBank = 0, 0, 0
 	w.sBacklog, w.sSpin = false, time.Time{}
 	if on && w.sring == nil {
-		if d, ok := w.bus.(*Dev); ok && workerHasSharedRing() {
-			if ring, err := d.PinSharedRing(sharedRingFD, workerStreamBytes); err == nil {
-				w.sring, w.sShared = ring, true
-			} else {
-				w.logf("acquisition worker: shared stream ring: %v", err)
-			}
-		}
-		if w.sring == nil {
-			w.sring = make([]byte, workerStreamBytes)
-		}
+		w.pinStreamRing()
 	}
 	if on && w.deadline == nil {
 		if d, ok := w.bus.(*Dev); ok {
@@ -266,7 +257,26 @@ func RunAcquisitionWorker(gpmcFD, socketFD int, logf func(string, ...any)) error
 	}
 	w := &acquisitionWorker{bus: d, capture: c, logf: logf, ring: make([]byte, workerQueueEvents*sramcapture.DecodedEventBytes),
 		linesStore: decodedlines.New(0, workerLineCapacity)}
+	// The stream ring is pinned before any stream: pinning took about 0.19 s,
+	// and a stream started meanwhile filled the drum's ring at 2.6M words/s.
+	w.pinStreamRing()
 	return w.serve(socketFD)
+}
+
+// pinStreamRing maps the ring the app shares for in-place DMA, or makes a
+// private one.
+// TRLC-LINKS: REQ-SDS-035
+func (w *acquisitionWorker) pinStreamRing() {
+	if d, ok := w.bus.(*Dev); ok && workerHasSharedRing() {
+		if ring, err := d.PinSharedRing(sharedRingFD, workerStreamBytes); err == nil {
+			w.sring, w.sShared = ring, true
+		} else {
+			w.logf("acquisition worker: shared stream ring: %v", err)
+		}
+	}
+	if w.sring == nil {
+		w.sring = make([]byte, workerStreamBytes)
+	}
 }
 
 // errWorkerQueueOverflow is the event queue's overflow: an explicit end of a
