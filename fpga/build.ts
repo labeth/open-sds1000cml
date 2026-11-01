@@ -46,13 +46,13 @@ const images:Record<string,Image>={
  // decimation (94%, timing missed on every seed) on to their own, frame, with
  // USB.
  packet:{dir:'images/packet',files:['arinc429_trigger.v','can_trigger.v','flexray_trigger.v'],
-  defines:['TRIG_ARINC','TRIG_CAN','TRIG_FLEXRAY','SEQUENCE_ONLY'],seed:3,trigger:true,precision:false,box:true},
+  defines:['TRIG_ARINC','TRIG_CAN','TRIG_FLEXRAY','SEQUENCE_ONLY'],seed:7,trigger:true,precision:false,box:true},
  frame:{dir:'images/packet',files:['mil1553_trigger.v','sent_trigger.v','line/usbls_trigger.v','line/protocol_scratch.v'],
-  defines:['TRIG_MIL','TRIG_SENT','TRIG_USB','SEQUENCE_ONLY'],seed:1,trigger:true,precision:false,box:true},
+  defines:['TRIG_MIL','TRIG_SENT','TRIG_USB','SEQUENCE_ONLY'],seed:5,trigger:true,precision:false,box:true},
  // With box decimation the line image (94%) missed timing on every seed: USB
  // moved to the frame image (USB's and Manchester's scratch RAM goes with each).
  line:{dir:'images/line',files:['manchester_receive.v','manchester_trigger.v','protocol_scratch.v'],
-  defines:['TRIG_MAN','SEQUENCE_ONLY'],seed:1,trigger:true,precision:false,box:true},
+  defines:['TRIG_MAN','SEQUENCE_ONLY'],seed:3,trigger:true,precision:false,box:true},
  // ADR-SAMPLE-DOMAIN-SPI: SPI, UART and I2C decoded and triggered on the
  // samples (sample_bus.v: sample_edges.v, spi_sample.v, uart_sample.v,
  // i2c_sample.v); the general image has no room for them at 250 MHz. Raw
@@ -63,22 +63,22 @@ const images:Record<string,Image>={
  // protocol decoders, so the packetizer, banks and precision decimation fit.
  // STREAM_DRUM: the stream goes through the external SRAM as a FIFO, whose
  // 512K words are the drain's slack (stream_drum.v).
- stream:{dir:'images/stream',files:['stream_packetizer.v','stream_banks.v','stream_peak.v','stream_drum.v','stream_marks.v','general/precision.v','general/precision_tail.v'],defines:['STREAM_CAPTURE','STREAM_DRUM'],seed:51,trigger:true,precision:true,bare:true},
+ stream:{dir:'images/stream',files:['stream_packetizer.v','stream_banks.v','stream_peak.v','stream_drum.v','stream_marks.v','general/precision.v','general/precision_tail.v'],defines:['STREAM_CAPTURE','STREAM_DRUM'],seed:66,trigger:true,precision:true,bare:true},
  // ADR-STREAM-BITS: the stream image with digital words (each line sliced at
  // its level, sixteen periods a word) in the peak words' place, for the
  // decoded stream; the two do not fit together at 250 MHz.
  // ADR-STREAM-RING: and the record as an analog history ring beside the
  // digital stream, which then runs on chip (ring_stamp.v).
- bits:{dir:'images/stream',files:['stream_packetizer.v','stream_banks.v','stream_bits.v','stream_drum.v','stream_marks.v','ring_stamp.v','general/precision.v','general/precision_tail.v'],defines:['STREAM_CAPTURE','STREAM_DRUM','STREAM_BITS','STREAM_RING'],seed:33,trigger:true,precision:true,bare:true},
+ bits:{dir:'images/stream',files:['stream_packetizer.v','stream_banks.v','stream_bits.v','stream_drum.v','stream_marks.v','ring_stamp.v','general/precision.v','general/precision_tail.v'],defines:['STREAM_CAPTURE','STREAM_DRUM','STREAM_BITS','STREAM_RING'],seed:43,trigger:true,precision:true,bare:true},
  // ADR-HARDWARE-QUALIFIERS: pulse, slope, video and zone triggers decided
  // in the FPGA, on the bare acquisition base with precision decimation and
  // envelope recall (the general image has no room left for them).
  // ADR-SYMBOL-TRIGGER: and the serial buses of timed pulses (symbol_trigger.v),
  // whose frames take milliseconds and want the long decimated records.
- qualify:{dir:'images/qualify',files:['qual_trigger.v','zone_qual.v','sum_edge_pair.v','symbol_trigger.v','general/precision.v','general/precision_tail.v'],defines:['QUAL_TRIGGER','SYMBOL_TRIGGER'],seed:3,trigger:true,precision:true,bare:true,pickAlt:true},
+ qualify:{dir:'images/qualify',files:['qual_trigger.v','zone_qual.v','sum_edge_pair.v','symbol_trigger.v','general/precision.v','general/precision_tail.v'],defines:['QUAL_TRIGGER','SYMBOL_TRIGGER'],seed:52,trigger:true,precision:true,bare:true,pickAlt:true},
  stacking:{dir:'images/stacking',files:['stack_engine_port.v','stack_edge_accumulator.v','stack_edge_hits.v','stack_tiled_accumulator.v',
   'stack_tile_access.v','stack_tile_transfer.v','stack_state_tile.v','stack_resample_store.v','stack_resample.v','stack_positions.v',
-  'stack_interpolate.v','stack_accumulate.v','stack_bin_writer.v','stack_record_cache.v'],defines:[],seed:3,trigger:false,precision:false},
+  'stack_interpolate.v','stack_accumulate.v','stack_bin_writer.v','stack_record_cache.v'],defines:[],seed:63,trigger:false,precision:false},
 };
 const name=value('--image') ?? 'general';
 const image=images[name];if(!image)throw Error('unknown image '+name);

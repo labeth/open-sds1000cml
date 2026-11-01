@@ -2187,6 +2187,34 @@ decisions:
   - A detection runs on a strided copy (AutodetectFast, ten samples on the shortest pulse), 0.9 s instead of
     14 s a frame on the ARM. The owner's pump reads up to eight IPC payloads an iteration, the stream consumer
     copies up to 32768 events a call, and the display repaints the transcript at 4 Hz.
+- id: ADR-BUS-RATE-READS
+  title: Every image's data reaches the host at the bus's rate
+  status: accepted
+  date: '2026-11-01'
+  context: The bus worker drains a stream bank by DMA at about 3M words a second (11.5 MB/s, the GPMC at the
+    bootloader's timing). A record recalled whole - a STOP or SINGLE record, record.bin, the history ring - went
+    through the app's own bus calls, a worker round trip a register and a burst, at 1.75 MB/s on every capture
+    image; the worker's own recall then ran at 7.3 MB/s, as each 4096-word burst slept 100 us twice for its
+    fill and seek (waking milliseconds late on this kernel), made two deadlines (two clock reads each, about 10 us
+    without a vDSO) and copied the burst three times. The stacking image downloaded each bin's moments in five
+    round trips (3.5 s for five records' 512 bins). The bare images (stream, bits, qualify) gave no record identity,
+    so their records could not be read in the worker at all.
+  decision: The worker reads a window larger than a packet into the shared stream ring (workerRecallShared;
+    refused while a stream pumps, when the app reads through the packets) and the bursts land in place - a sink that
+    hands out its room (sramcapture.RecallRoom) takes each burst's DMA where it belongs, and the pinned ring needs
+    no bounce buffer. A status wait reads without sleeping for 3 ms before it sleeps; a recall's bursts share one
+    deadline. Every image gives the record identity (registers 69 to 73; epoch 0 where there are no decoded events).
+    A stacking tile's moments download in one worker round trip (workerStackDownload), the stack operations' waits
+    spinning as the recall's.
+  consequences:
+  - On the instrument the worker reads a 512K-word record in 190 ms (11 MB/s) against 182 ms for its DMA alone;
+    the counter check, whole record recalled and every word compared in the app, runs at 8.6 to 8.8 MB/s on the
+    general, packet, line, frame and fast images (1.75 before).
+  - The stacking download of five records' 512 bins takes 0.16 s (3.5 s before); the scans (about 130 ms a 32-bin
+    tile) are the fabric's own work, its record cache seeking the forward-only SRAM counter per hit, and stay the
+    stack's time.
+  - The decoded event FIFO was already drained in checked DMA batches by the worker (ADR-STREAM-LINES-IN-WORKER),
+    and the streams reach the bus's rate through the drum (ADR-STREAM-DRUM).
 - id: ADR-STREAM-LINES-IN-WORKER
   title: Build the decoded-stream transcript in the isolated worker, not the GUI process
   status: accepted
