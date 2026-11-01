@@ -134,3 +134,27 @@ func TestRecallReadsOfOneRoundTripOnAWorker(t *testing.T) {
 	}
 	checkWords(t, view.Bytes(), f.base+500, 5)
 }
+
+// A read past the record never reaches the worker (its answer is sized from
+// the read before the worker could refuse it): it is refused here.
+// TRLC-LINKS: REQ-SDS-033
+func TestRecallReadsOfPastTheRecordIsNotSentToTheWorker(t *testing.T) {
+	f := identityBus()
+	b := &isolatedBus{fakeBus: f, owned: true}
+	c := client(t, f)
+	c.bus = b
+	m, err := c.Status()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, r := range []RecordRead{{Offset: 0, Count: m.Length + 1}, {Offset: m.Length - 2, Bucket: 4, Count: 2}, {Offset: 0, Count: 0xffffffff}} {
+		var dst bytes.Buffer
+		r.Dst = &dst
+		if err := c.RecallReadsOf(context.Background(), m, r); err == nil {
+			t.Fatalf("read %d+%dx%d of a %d-word record served", r.Offset, r.Count, r.Bucket, m.Length)
+		}
+		if b.calls != 0 {
+			t.Fatalf("read %d+%dx%d sent to the worker", r.Offset, r.Count, r.Bucket)
+		}
+	}
+}

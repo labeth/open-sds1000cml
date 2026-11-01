@@ -1161,6 +1161,11 @@ func (c *Capture) recallIsolated(m Metadata, reads []RecordRead) (bool, error) {
 	size := 0
 	var windows [3 * RecordReadsMax]uint32
 	for i, rd := range reads {
+		// A read past the record is the local path's to refuse (recallRead),
+		// before its size is allocated here.
+		if uint64(rd.Offset)+uint64(rd.Count)*uint64(max(rd.Bucket, 1)) > uint64(m.Length) || m.Length > Words {
+			return false, nil
+		}
 		size += rd.size(m)
 		windows[3*i], windows[3*i+1], windows[3*i+2] = rd.Offset, rd.Bucket, rd.Count
 	}
