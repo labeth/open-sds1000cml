@@ -50,6 +50,14 @@ const (
 	// the app read in place; the reply says where the ready words are in
 	// the shared ring (stream_ring_linux.go).
 	workerStreamPeek
+	// workerRecallShared: workerRecall's reads, written to the shared ring
+	// (its first selector<<16|value bytes) instead of the reply, which
+	// gives back the bytes written: a record larger than a packet in one
+	// round trip, at the bus's rate. Refused while a stream is pumping.
+	workerRecallShared
+	// workerStackDownload: the first value moments of the stacking tile
+	// (sramcapture.Capture.StackDownloadWords) in one round trip.
+	workerStackDownload
 )
 
 // workerRecallParams bounds a workerRecall request's parameters: the
@@ -261,8 +269,11 @@ func (c *workerClient) callSplit(op uint16, plane uint8, selector, value uint16,
 // exceed a worker packet.
 // TRLC-LINKS: REQ-SDS-001, REQ-SDS-033
 func (d *Dev) RecallIsolated(epoch, record uint32, windows []uint32, dst []byte) (bool, error) {
-	if d.remote == nil || len(dst) == 0 || len(dst) > workerPayload || len(windows) == 0 || len(windows)%3 != 0 || 4+4*len(windows) > workerRecallParams {
+	if d.remote == nil || len(dst) == 0 || len(windows) == 0 || len(windows)%3 != 0 || 4+4*len(windows) > workerRecallParams {
 		return false, nil
+	}
+	if len(dst) > workerPayload {
+		return d.recallShared(epoch, record, windows, dst)
 	}
 	var params [workerRecallParams]byte
 	binary.LittleEndian.PutUint32(params[:], record)
@@ -272,6 +283,55 @@ func (d *Dev) RecallIsolated(epoch, record uint32, windows []uint32, dst []byte)
 	n, err := d.remote.callWith(workerRecall, 0, 0, 0, epoch, params[:4+4*len(windows)], dst)
 	if err == nil && n != len(dst) {
 		err = fmt.Errorf("bus: short worker recall: %d of %d bytes", n, len(dst))
+	}
+	return true, err
+}
+
+// recallShared has the worker make reads larger than a packet into the
+// shared ring and copies them out: one round trip, not one a burst (the
+// app's own recall through the worker read a record at 1.75 MB/s). owned
+// is false without the shared ring or with reads larger than it.
+// TRLC-LINKS: REQ-SDS-033, REQ-SDS-013
+func (d *Dev) recallShared(epoch, record uint32, windows []uint32, dst []byte) (bool, error) {
+	if d.remote.shared == nil || len(dst) > len(d.remote.shared) {
+		return false, nil
+	}
+	var params [workerRecallParams]byte
+	binary.LittleEndian.PutUint32(params[:], record)
+	for i, v := range windows {
+		binary.LittleEndian.PutUint32(params[4+4*i:], v)
+	}
+	var got [4]byte
+	size := uint32(len(dst))
+	n, err := d.remote.callWith(workerRecallShared, 0, uint16(size>>16), uint16(size), epoch, params[:4+4*len(windows)], got[:])
+	if err != nil {
+		return true, err
+	}
+	if n != len(got) {
+		return true, fmt.Errorf("bus: short shared recall reply")
+	}
+	switch binary.LittleEndian.Uint32(got[:]) {
+	case 0:
+		return false, nil // the ring is the stream's now
+	case size:
+	default:
+		return true, fmt.Errorf("bus: short shared recall")
+	}
+	copy(dst, d.remote.shared[:len(dst)])
+	return true, nil
+}
+
+// StackDownloadIsolated has the worker read the tile's first n moments
+// (sramcapture.Capture.StackDownloadWords) into dst; owned is false without
+// a worker.
+// TRLC-LINKS: REQ-SDS-141, REQ-SDS-013
+func (d *Dev) StackDownloadIsolated(n int, dst []byte) (bool, error) {
+	if d.remote == nil || n <= 0 || n > 0xffff || len(dst) > workerPayload {
+		return false, nil
+	}
+	got, err := d.remote.call(workerStackDownload, 0, 0, uint16(n), 0, dst)
+	if err == nil && got != len(dst) {
+		err = fmt.Errorf("bus: short worker stack download")
 	}
 	return true, err
 }

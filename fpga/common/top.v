@@ -740,6 +740,22 @@ module acq_sram_top(
  wire protocol_fire=(arinc_cfg_l[0] || can_cfg_l[0] || flex_cfg_l[0] || man_cfg_l[0] || uart_cfg_l[0] || i2c_cfg_l[0] || spi_cfg_l[0] || sent_cfg_l[0] || mil_cfg_l[0] || usb_cfg_l[0]) ? uart_fired : (cfg[5]?fall_ch[cfg[6]]:rise_ch[cfg[6]]);
 `else
  wire protocol_fire=cfg[5]?fall_ch[cfg[6]]:rise_ch[cfg[6]];
+ // The record's identity without the decoded events (epoch 0): a host reads
+ // a record in one round trip of its bus worker only while it can name it.
+ reg [31:0] retained_id=0;wire [31:0] retained_epoch=32'd0;
+ reg [2:0] retained_carry=0;
+ (* preserve, dont_merge *) reg retained_arm=0;
+ always @(posedge core)retained_arm<=locked && arm;
+ always @(posedge core)begin
+  if(!locked)begin retained_id<=0;retained_carry<=0;end
+  else if(retained_arm)begin
+   retained_id[7:0]<=retained_id[7:0]+1'b1;
+   retained_id[15:8]<=retained_id[15:8]+retained_carry[0];
+   retained_id[23:16]<=retained_id[23:16]+retained_carry[1];
+   retained_id[31:24]<=retained_id[31:24]+retained_carry[2];
+   retained_carry<={retained_id[23:0]==24'hfffffe,retained_id[15:0]==16'hfffe,retained_id[7:0]==8'hfe};
+  end
+ end
 `endif
  wire il_crossing=!cfg[4] || force_trigger || protocol_fire;
  // Decode stable configuration before the hot edge-to-trigger path.
@@ -1800,16 +1816,16 @@ module acq_sram_top(
  always @* begin
   rd=0;
   case(rs)
-`ifdef UART_TRIGGER
    69:rd=retained_id[15:0];70:rd=retained_id[31:16];
    71:rd=retained_epoch[15:0];72:rd=retained_epoch[31:16];
+   73:rd=16'h5201; // Stable retained record identity, epoch captured at arm
+`ifdef UART_TRIGGER
    83:rd=16'h5401; // Raw ADC sample timeline, frozen identity and last-word ordinal
    84:rd={15'd0,timeline_valid};
    85:rd=timeline_last_word[15:0];86:rd=timeline_last_word[31:16];
    87:rd=timeline_last_word[47:32];88:rd=timeline_last_word[63:48];
    89:rd=timeline_id[15:0];90:rd=timeline_id[31:16];
    91:rd=timeline_epoch[15:0];92:rd=timeline_epoch[31:16];
-   73:rd=16'h5201; // Stable retained record identity, epoch captured at arm
 `ifdef SAMPLE_BUS
    48:rd=16'h5503; // UART on the samples: 5-9 bits, parity, bit time 1/16 ns, resync
 `elsif TRIG_UART

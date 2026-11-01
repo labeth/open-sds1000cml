@@ -545,6 +545,16 @@ func (c *Capture) sampleTimeline(m *Metadata) error {
 
 // TRLC-LINKS: REQ-SDS-082
 func (c *Capture) command(ctx context.Context, op uint16) error {
+	ctx, cancel := context.WithTimeout(ctx, time.Second)
+	defer cancel()
+	return c.commandIn(ctx, op)
+}
+
+// commandIn is command within the caller's deadline: a recall's bursts
+// share one, as a deadline is two clock reads (no vDSO on this kernel,
+// about 10 us) and a burst gives two commands.
+// TRLC-LINKS: REQ-SDS-082
+func (c *Capture) commandIn(ctx context.Context, op uint16) error {
 	if e := ctx.Err(); e != nil {
 		return e
 	}
@@ -556,8 +566,6 @@ func (c *Capture) command(ctx context.Context, op uint16) error {
 	if e = c.write(1, op); e != nil {
 		return e
 	}
-	ctx, cancel := context.WithTimeout(ctx, time.Second)
-	defer cancel()
 	for {
 		if e = ctx.Err(); e != nil {
 			return fmt.Errorf("sramcapture: command %d: %w", op, e)
@@ -575,9 +583,20 @@ func (c *Capture) command(ctx context.Context, op uint16) error {
 	}
 }
 
+// waitSpin is how long wait reads the status without sleeping between
+// reads: a recall burst's fill is done within about 20 us and a seek round
+// the SRAM within 2.1 ms, and a 100 us sleep on this kernel woke
+// milliseconds late - a record's recall ran at half the bus's rate. A read
+// is about a microsecond; the clock is read every waitClockEvery reads.
+const (
+	waitSpin       = 3 * time.Millisecond
+	waitClockEvery = 64
+)
+
 // TRLC-LINKS: REQ-SDS-082
 func (c *Capture) wait(ctx context.Context, mask uint16) error {
-	for {
+	var spinUntil time.Time
+	for i := 0; ; i++ {
 		if e := ctx.Err(); e != nil {
 			return e
 		}
@@ -587,6 +606,15 @@ func (c *Capture) wait(ctx context.Context, mask uint16) error {
 		}
 		if s&mask == mask {
 			return nil
+		}
+		if i%waitClockEvery != waitClockEvery-1 {
+			continue
+		}
+		if spinUntil.IsZero() {
+			spinUntil = time.Now().Add(waitSpin)
+		}
+		if time.Now().Before(spinUntil) {
+			continue
 		}
 		timer := time.NewTimer(100 * time.Microsecond)
 		select {
@@ -1177,7 +1205,27 @@ func (c *Capture) recallChecked(ctx context.Context, offset, count uint32, dst i
 	if expected != nil && (!m.HasRecordIdentity || m.RecordID != expected.Record || m.EventEpoch != expected.Epoch) {
 		return 0, fmt.Errorf("sramcapture: retained record identity changed")
 	}
+	// A bus worker reads the whole window in one round trip (a raw read is
+	// the forward read on a revision 10 fabric, as this one): through the
+	// app, a record took a round trip a burst and read at 1.75 MB/s.
+	if forward == (m.Revision == 10) && count != 0 && uint64(offset)+uint64(count) <= uint64(m.Length) {
+		if owned, err := c.recallIsolated(m, []RecordRead{{Offset: offset, Count: count, Dst: dst}}); owned {
+			if err != nil {
+				return 0, err
+			}
+			return int64(count) * 4, nil
+		}
+	}
 	return c.recallFrozen(ctx, m, offset, count, dst, forward)
+}
+
+// RecallRoom is a recall sink the words are read straight into: Room hands
+// out its next n bytes (nil: too few), Fill makes them the sink's after the
+// recall succeeded.
+// TRLC-LINKS: REQ-SDS-033
+type RecallRoom interface {
+	Room(n int) []byte
+	Fill(n int)
 }
 
 // recallPositionSels are the read pointer (low, high) and the status a recall
@@ -1235,7 +1283,21 @@ func (c *Capture) recallFrozen(ctx context.Context, m Metadata, offset, count ui
 	if forward && m.Revision != 10 {
 		return 0, fmt.Errorf("sramcapture: forward recall requires revision 10")
 	}
-	if forward {
+	// The bursts' commands share this deadline (commandIn), within the
+	// caller's (a command alone has 1 s, a full record through the app's
+	// own bus calls about 1.2 s).
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	// A sink that hands out its room takes the bursts' words in place,
+	// each where it belongs (the bursts of a forward recall come out of
+	// order): no copy, and from the DMA none either where the room is
+	// mapped for it (the worker's shared ring).
+	bytePop, isBytes := c.bus.(interface{ PopBytesChecked(uint16, []byte) error })
+	var room []byte
+	if r, ok := dst.(RecallRoom); ok && isBytes && m.Revision >= 8 {
+		room = r.Room(int(count * 4))
+	}
+	if forward && room == nil {
 		if cap(c.recallScratch) < int(count*4) {
 			c.recallScratch = make([]byte, count*4)
 		}
@@ -1275,10 +1337,10 @@ func (c *Capture) recallFrozen(ctx context.Context, m Metadata, offset, count ui
 				if e = c.write32(8, skip); e != nil {
 					return written, e
 				}
-				if e = c.command(ctx, 3); e != nil {
+				if e = c.commandIn(ctx, 3); e != nil {
 					return written, e
 				}
-				if e = c.ready(ctx); e != nil {
+				if e = c.wait(ctx, 4); e != nil {
 					return written, e
 				}
 			}
@@ -1286,10 +1348,10 @@ func (c *Capture) recallFrozen(ctx context.Context, m Metadata, offset, count ui
 		if e = c.write32(8, n+prefix); e != nil {
 			return written, e
 		}
-		if e = c.command(ctx, op); e != nil {
+		if e = c.commandIn(ctx, op); e != nil {
 			return written, e
 		}
-		if e = c.ready(ctx); e != nil {
+		if e = c.wait(ctx, 4); e != nil {
 			return written, e
 		}
 		got, e := c.read(12)
@@ -1316,7 +1378,17 @@ func (c *Capture) recallFrozen(ctx context.Context, m Metadata, offset, count ui
 			if e = c.flushWrites(); e != nil {
 				return written, e
 			}
-			if pop, ok := c.bus.(interface{ PopWordsChecked(uint16, []uint16) error }); ok {
+			// The bytes straight from the DMA (the halves little-endian, as
+			// data holds them), else the halves.
+			if room != nil {
+				if e = bytePop.PopBytesChecked(25, room[span.offset*4:(span.offset+n)*4]); e != nil {
+					return written, e
+				}
+			} else if isBytes {
+				if e = bytePop.PopBytesChecked(25, data[:n*4]); e != nil {
+					return written, e
+				}
+			} else if pop, ok := c.bus.(interface{ PopWordsChecked(uint16, []uint16) error }); ok {
 				if e = pop.PopWordsChecked(25, halves[:n*2]); e != nil {
 					return written, e
 				}
@@ -1336,8 +1408,10 @@ func (c *Capture) recallFrozen(ctx context.Context, m Metadata, offset, count ui
 			if uint32(index) != ((n+prefix)*2)%(physicalBufferWords*2) {
 				return written, fmt.Errorf("sramcapture: burst pointer %d after %d words", index, n)
 			}
-			for i := uint32(0); i < n*2; i++ {
-				binary.LittleEndian.PutUint16(data[2*i:], halves[i])
+			if !isBytes {
+				for i := uint32(0); i < n*2; i++ {
+					binary.LittleEndian.PutUint16(data[2*i:], halves[i])
+				}
 			}
 		} else {
 			for i := uint32(0); i < n; i++ {
@@ -1351,6 +1425,9 @@ func (c *Capture) recallFrozen(ctx context.Context, m Metadata, offset, count ui
 				binary.LittleEndian.PutUint32(data[4*i:], v)
 			}
 		}
+		if room != nil {
+			continue
+		}
 		if forward {
 			copy(c.recallScratch[span.offset*4:], data[:4*n])
 			continue
@@ -1363,6 +1440,10 @@ func (c *Capture) recallFrozen(ctx context.Context, m Metadata, offset, count ui
 		if nn != int(4*n) {
 			return written, io.ErrShortWrite
 		}
+	}
+	if room != nil {
+		dst.(RecallRoom).Fill(len(room))
+		return int64(len(room)), nil
 	}
 	if forward && count != 0 {
 		nn, e := dst.Write(c.recallScratch)

@@ -3,6 +3,7 @@ package sramcapture
 
 import (
 	"context"
+	"encoding/binary"
 	"fmt"
 	"time"
 
@@ -138,12 +139,24 @@ func (cfg StackConfig) validate(tile int, pow2 bool) error {
 // stackOp issues one port operation and waits for its acknowledgement.
 // TRLC-LINKS: REQ-SDS-141
 func (c *Capture) stackOp(ctx context.Context, op uint16, timeout time.Duration) error {
+	ctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+	return c.stackOpIn(ctx, op)
+}
+
+// stackOpIn is stackOp within the caller's deadline (a deadline is two
+// clock reads, about 10 us each on this kernel: a tile's moments share one).
+// TRLC-LINKS: REQ-SDS-141
+func (c *Capture) stackOpIn(ctx context.Context, op uint16) error {
 	if err := c.write(selStackOp, op); err != nil {
 		return err
 	}
-	ctx, cancel := context.WithTimeout(ctx, timeout)
-	defer cancel()
-	for {
+	// A tile read or write is done within microseconds, a scan takes
+	// milliseconds: the status is read without sleeping for waitSpin (a
+	// 200 us sleep woke late on this kernel, and a tile's 64 reads each
+	// waited it out), then every 200 us.
+	var spinUntil time.Time
+	for i := 0; ; i++ {
 		s, err := c.read(selStackOp)
 		if err != nil {
 			return err
@@ -157,7 +170,15 @@ func (c *Capture) stackOp(ctx context.Context, op uint16, timeout time.Duration)
 		if err := ctx.Err(); err != nil {
 			return fmt.Errorf("sramcapture: stack operation %d: %w", op, err)
 		}
-		// Each poll is a bus round trip; a scan takes milliseconds.
+		if i%waitClockEvery != waitClockEvery-1 {
+			continue
+		}
+		if spinUntil.IsZero() {
+			spinUntil = time.Now().Add(waitSpin)
+		}
+		if time.Now().Before(spinUntil) {
+			continue
+		}
 		time.Sleep(200 * time.Microsecond)
 	}
 }
@@ -377,6 +398,53 @@ func (c *Capture) stackDownload(ctx context.Context, bin, ch int) (superres.FPGA
 	return superres.DecodeFPGAMoments(words[:])
 }
 
+// isolatedStack is a bus whose worker downloads a tile's moments itself.
+type isolatedStack interface {
+	StackDownloadIsolated(n int, dst []byte) (owned bool, err error)
+}
+
+// StackDownloadWords reads the first n moments of the tile (bin-major, two
+// channels a bin) into dst, superres.FPGAStackWords little-endian words
+// each, unchecked: a bus worker's half of StackDownload.
+// TRLC-LINKS: REQ-SDS-141
+func (c *Capture) StackDownloadWords(ctx context.Context, n int, dst []byte) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if len(dst) != n*superres.FPGAStackWords*2 {
+		return fmt.Errorf("sramcapture: stack download buffer")
+	}
+	pop, ok := c.bus.(interface{ PopBytesChecked(uint16, []byte) error })
+	ctx, cancel := context.WithTimeout(ctx, time.Second)
+	defer cancel()
+	for i := range n {
+		if err := c.write(selStackTile, uint16(i)); err != nil {
+			return err
+		}
+		if err := c.stackOpIn(ctx, stackOpTileRead); err != nil {
+			return err
+		}
+		if err := c.write(selStackMailIndex, 0); err != nil {
+			return err
+		}
+		at := dst[i*superres.FPGAStackWords*2 : (i+1)*superres.FPGAStackWords*2]
+		if ok {
+			if err := pop.PopBytesChecked(selStackMail, at); err != nil {
+				return err
+			}
+			continue
+		}
+		for k := range superres.FPGAStackWords {
+			w, err := c.read(selStackMail)
+			if err != nil {
+				return err
+			}
+			binary.LittleEndian.PutUint16(at[2*k:], w)
+		}
+	}
+	c.beats.Add(uint64(n * superres.FPGAStackWords))
+	return nil
+}
+
 // Session steps save and restore tile moments so every tile can scan the same
 // frozen record before the next acquisition. Use the same initial hit count
 // for every tile of a record to preserve odd/even membership.
@@ -557,7 +625,28 @@ func (c *Capture) StackDownload(ctx context.Context, dst []superres.FPGAStackMom
 	if len(dst)%2 != 0 {
 		return fmt.Errorf("sramcapture: stack download needs whole bins")
 	}
+	// A bus worker reads the tile's moments in one round trip; a moment
+	// that reads back inconsistent is read again here, as below.
+	var raw []byte
+	if r, ok := c.bus.(isolatedStack); ok && len(dst) != 0 {
+		raw = make([]byte, len(dst)*superres.FPGAStackWords*2)
+		if owned, err := r.StackDownloadIsolated(len(dst), raw); !owned {
+			raw = nil
+		} else if err != nil {
+			return err
+		}
+	}
 	for i := range dst {
+		if raw != nil {
+			var words [superres.FPGAStackWords]uint16
+			for k := range words {
+				words[k] = binary.LittleEndian.Uint16(raw[(i*superres.FPGAStackWords+k)*2:])
+			}
+			if m, err := superres.DecodeFPGAMoments(words[:]); err == nil && m.CountOdd <= m.Count {
+				dst[i] = m
+				continue
+			}
+		}
 		// A moment whose odd subset exceeds its total cannot come from the
 		// accumulator: re-read it once, then report the transfer fault.
 		var m superres.FPGAStackMoments

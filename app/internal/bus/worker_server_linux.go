@@ -546,6 +546,37 @@ func (w *acquisitionWorker) handle(request []byte) int {
 			if err == nil && n != count {
 				err = fmt.Errorf("recall produced %d of %d bytes", n, count)
 			}
+		case workerRecallShared:
+			params := request[min(len(request), workerHeader):]
+			size := int(sel)<<16 | int(value)
+			if count != 4 || len(params) < 16 || (len(params)-4)%12 != 0 || size == 0 {
+				err = fmt.Errorf("invalid shared recall request")
+				break
+			}
+			n = 4
+			if w.sOn || !w.sShared || size > len(w.sring) {
+				binary.LittleEndian.PutUint32(data, 0) // the app reads through the packets
+				break
+			}
+			out := sliceWriter{b: w.sring[:size]}
+			var reads [sramcapture.RecordReadsMax]sramcapture.RecordRead
+			k := (len(params) - 4) / 12
+			for i := range k {
+				at := params[4+12*i:]
+				reads[i] = sramcapture.RecordRead{Offset: binary.LittleEndian.Uint32(at), Bucket: binary.LittleEndian.Uint32(at[4:]), Count: binary.LittleEndian.Uint32(at[8:]), Dst: &out}
+			}
+			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+			err = w.capture.RecallRecord(ctx, sramcapture.RecordIdentity{Epoch: epoch, Record: binary.LittleEndian.Uint32(params)}, reads[:k])
+			cancel()
+			if err == nil && out.n != size {
+				err = fmt.Errorf("shared recall produced %d of %d bytes", out.n, size)
+			}
+			binary.LittleEndian.PutUint32(data, uint32(out.n))
+		case workerStackDownload:
+			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+			err = w.capture.StackDownloadWords(ctx, int(value), data[:count])
+			cancel()
+			n = count
 		case workerPanel:
 			if count != 22 {
 				err = fmt.Errorf("invalid panel request")
@@ -602,6 +633,20 @@ type sliceWriter struct {
 	b []byte
 	n int
 }
+
+// Room hands out the writer's next n bytes for a recall to read into in
+// place (sramcapture.RecallRoom).
+// TRLC-LINKS: REQ-SDS-033
+func (w *sliceWriter) Room(n int) []byte {
+	if n > len(w.b)-w.n {
+		return nil
+	}
+	return w.b[w.n : w.n+n]
+}
+
+// Fill makes the n bytes Room handed out the writer's.
+// TRLC-LINKS: REQ-SDS-033
+func (w *sliceWriter) Fill(n int) { w.n += n }
 
 // TRLC-LINKS: REQ-SDS-001
 func (w *sliceWriter) Write(p []byte) (int, error) {
@@ -675,7 +720,7 @@ func (w *acquisitionWorker) serve(fd int) error {
 					return nil
 				}
 				op := binary.LittleEndian.Uint16(request[8:10])
-				withParams := int(n) > workerHeader && int(n) <= workerHeader+workerRecallParams && (op == workerRecall || op == workerReadMany || op == workerWriteMany)
+				withParams := int(n) > workerHeader && int(n) <= workerHeader+workerRecallParams && (op == workerRecall || op == workerRecallShared || op == workerReadMany || op == workerWriteMany)
 				if int(n) != workerHeader && !withParams || binary.LittleEndian.Uint32(request[:4]) != workerMagic || request[11] != 1 {
 					return fmt.Errorf("invalid worker request framing")
 				}
