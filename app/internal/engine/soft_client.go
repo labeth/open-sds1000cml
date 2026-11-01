@@ -543,7 +543,7 @@ func (e *Engine) softClientMode(s *softStream) bool {
 }
 
 // softClientFrames queues the page's frames; on the stop value the
-// transcript ends there and the record is armed.
+// transcript ends there and the stop is the scope's own (softStopOnValue).
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
 func (e *Engine) softClientFrames(s *softStream) bool {
 	s.cliFrames, s.cliSpans = e.ctap.take(s.cliFrames, s.cliSpans)
@@ -555,8 +555,9 @@ func (e *Engine) softClientFrames(s *softStream) bool {
 			continue
 		}
 		if s.emitClient(f, s.cliSpans[f.from:f.to]) {
-			e.softStreamStop(s)
-			s.phase = softRecord
+			// As when the scope decodes: the history ring frozen around the
+			// frame, or the symbol trigger's record.
+			e.softStopOnValue(s)
 			e.ctap.end("stopped on the value")
 			return true
 		}
