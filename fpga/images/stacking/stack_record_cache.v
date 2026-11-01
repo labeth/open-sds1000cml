@@ -34,7 +34,7 @@ module stack_record_cache #(parameter AW=19,CACHE_AW=8,READ_WARM=16)(
  input wire [AW-1:0] record_start,read_bias,input wire [AW:0] record_words,
  input wire request_valid,output wire request_ready,input wire [31:0] sample_index,input wire adjacent,
  input wire stream_start,stream_stop,input wire [AW-2:0] stream_entry,
- output reg entry_valid=0,output wire [63:0] entry_data,output wire stream_error,
+ output reg entry_valid=0,output reg [63:0] entry_data=0,output wire stream_error,
  output wire response_valid,input wire response_ready,output wire response_error,
  output reg [7:0] ch0_left=0,ch0_right=0,ch1_left=0,ch1_right=0,
  output wire busy,output reg fault=0,
@@ -113,7 +113,9 @@ module stack_record_cache #(parameter AW=19,CACHE_AW=8,READ_WARM=16)(
   fetched<=memory[word_offset[CACHE_AW:1]];
  end
  wire [31:0] fetched_word=word_offset[0] ? fetched[63:32]:fetched[31:0];
- assign entry_data=fetched;
+ // The entry leaves through a register after the RAM's (timing): valid a
+ // clock behind the issue, the data with it.
+ reg issued=0;
  assign stream_error=fault || error_l;
  // Stream: the page after the one being read, and whether the other bank
  // already holds it (or is being filled with it).
@@ -128,7 +130,7 @@ module stack_record_cache #(parameter AW=19,CACHE_AW=8,READ_WARM=16)(
  always @(posedge clk)begin
   grant_q<=transport_owned;idle_q<=transport_ready;pair_seen<=pair_toggle_s;key_q<=key_matches;
   if(reset || slow_rst)begin
-   state<=IDLE;fault<=0;cache_valid<=0;error_l<=0;read_phase<=0;request_toggle<=0;refill_open<=0;streaming<=0;entry_valid<=0;
+   state<=IDLE;fault<=0;cache_valid<=0;error_l<=0;read_phase<=0;request_toggle<=0;refill_open<=0;streaming<=0;entry_valid<=0;issued<=0;
   end else begin
    case(state)
     IDLE:if(streaming)begin
@@ -179,10 +181,10 @@ module stack_record_cache #(parameter AW=19,CACHE_AW=8,READ_WARM=16)(
     // An entry a clock while the page is held; the next page is filled into
     // the other bank meanwhile. fetched follows word_offset a clock later.
     STREAM:begin
-     entry_valid<=0;
+     issued<=0;
      if(error_l)begin fault<=1;state<=ERROR_WAIT;end
      else if(!streaming || stream_end)state<=IDLE;
-     else if(hit)begin entry_valid<=1;word_offset<=word_offset+2'd2;end
+     else if(hit)begin issued<=1;word_offset<=word_offset+2'd2;end
      else if(!refill_open)state<=PREP;
      if(streaming && !refill_open && hit && next_in_record && !next_held)begin
       refill_bank<=!bank;refill_page<=next_page;cache_valid[!bank]<=0;
@@ -202,8 +204,10 @@ module stack_record_cache #(parameter AW=19,CACHE_AW=8,READ_WARM=16)(
     if(done_error_s)begin fault<=1;error_l<=1;cache_valid<=0;end
     else if(!fault && !error_l && permission)begin cache_valid[refill_bank]<=1;if(refill_bank)tag1<=refill_page;else tag0<=refill_page;end
    end
-   if(stream_start)begin streaming<=1;entry_valid<=0;if(state==STREAM)begin word_offset<={stream_entry,1'b0};end end
-   if(stream_stop)begin streaming<=0;entry_valid<=0;end
+   entry_valid<=issued && state==STREAM;entry_data<=fetched;
+   if(state!=STREAM)issued<=0;
+   if(stream_start)begin streaming<=1;entry_valid<=0;issued<=0;if(state==STREAM)begin word_offset<={stream_entry,1'b0};end end
+   if(stream_stop)begin streaming<=0;entry_valid<=0;issued<=0;end
    // A live record/ownership change invalidates even a held response. The
    // combinational response_error also covers the simultaneous consume edge.
    if(state!=IDLE && state!=VALIDATE && state!=CHECK && !error_l && !permission)begin
