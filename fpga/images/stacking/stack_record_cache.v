@@ -202,7 +202,11 @@ module stack_record_cache #(parameter AW=19,CACHE_AW=8,READ_WARM=16)(
      else if(!streaming || stream_end)state<=IDLE;
      else if(hit)begin issued<=1;word_offset<=word_offset+2'd2;end
      else if(!refill_open && cur_ok)state<=PREP;
-     if(streaming && !refill_open && hit && cur_ok && next_in_record && !next_held)begin
+     // The next page is filled only from the page's second half on: the
+     // other bank keeps the page before meanwhile, where a hit's window
+     // (the samples before its crossing) reads, and the accumulator's
+     // reads after a crossing would otherwise cost the SRAM a lap each.
+     if(streaming && !refill_open && hit && cur_ok && word_offset[CACHE_AW-1] && next_in_record && !next_held)begin
       refill_bank<=!bank;refill_page<=nxt_page_q;cache_valid[!bank]<=0;
       refill_address<=nxt_addr_q;
       refill_length<=nxt_left>PAGE_WORDS ? PAGE_LENGTH:nxt_left[CACHE_AW:0];
