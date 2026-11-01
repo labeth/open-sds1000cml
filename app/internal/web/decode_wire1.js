@@ -189,6 +189,12 @@ function pjonFields(o, b, fx, dt) {
     head = 5;
     if (b.length >= 5) length = (b[2] << 8) | b[3];
   }
+  if (b.length < head) {
+    // Cut before its header's CRC (a 16-bit length's header is five bytes):
+    // a frame too short to check, as one under four bytes.
+    for (let i = 0; i < b.length; i++) put(i, hex2(b[i]), i === b.length - 1);
+    return false;
+  }
   const metaOK = crc8PJON(b.slice(0, head - 1)) === b[head - 1];
   const crc32 = (cfgB & 0x20) !== 0;
   const endLen = crc32 ? 4 : 1;
