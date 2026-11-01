@@ -379,11 +379,12 @@
   }
 
   // quoteText turns typed text into the device's quoted form: quotes and
-  // stray backslashes escaped, the \r \n \t \0 \xNN escapes kept.
+  // stray backslashes escaped, the \r \n \t \0 \xNN escapes kept. One
+  // pass: a kept escape's quote (\") is not escaped a second time.
   // TRLC-LINKS: REQ-SDS-220
   function quoteText(t) {
     if (!t) return "";
-    return '"' + t.replace(/\\(?![rnt0\\"'x])/g, "\\\\").replace(/"/g, '\\"') + '"';
+    return '"' + t.replace(/\\[rnt0\\"'x]|\\|"/g, (m) => (m.length === 2 ? m : "\\" + m)) + '"';
   }
 
   // hexKey edits the hex keypad's text: digits group in pairs ("55 AA"), ??

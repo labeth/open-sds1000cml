@@ -286,6 +286,7 @@ test("hexKey groups pairs, takes ?? as one byte, Del takes it back whole", () =>
   assert.equal(RC.hexKey("55", "clear"), "");
   assert.equal(RC.quoteText('Say "Hi"\\r\\n'), '"Say \\"Hi\\"\\r\\n"', "quotes escaped, escapes kept");
   assert.equal(RC.quoteText("a\\b"), '"a\\\\b"', "a stray backslash is escaped");
+  assert.equal(RC.quoteText('a\\"b'), '"a\\"b"', "a typed escaped quote stays one quote");
   assert.deepEqual(RC.parseMatch(RC.quoteText("Hi\\x0D")).tokens, ["48", "69", "0D"]);
 });
 

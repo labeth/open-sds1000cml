@@ -94,7 +94,7 @@ let mirrorRaf = 0;
 // TRLC-LINKS: REQ-SDS-219
 function mirrorOf(src, opts) {
   opts = opts || {};
-  if (typeof src === "string") src = $(src);
+  if (typeof src === "string") src = document.getElementById(src);
   if (!src) return document.createElement("span");
   let m;
   const kind = src.classList.contains("seg") ? "seg" : src.tagName === "SELECT" ? "select" : src.tagName === "INPUT" ? "input:" + (src.type || "text") :

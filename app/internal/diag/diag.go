@@ -985,8 +985,8 @@ func (d *Diag) VendorSequence(dwell time.Duration) (*VendorResult, error) {
 // E2Options tunes the ownership experiment.
 // TRLC-LINKS: REQ-SDS-145
 type E2Options struct {
-	Blocks         int  `json:"blocks"`           // alternating blocks per condition (default 3, min 3)
-	Repeats        int  `json:"repeats"`          // drive/read repeats per ball per block (default 4)
+	Blocks         int  `json:"blocks"`           // alternating blocks per condition (default 3, min 3, max 64)
+	Repeats        int  `json:"repeats"`          // drive/read repeats per ball per block (default 4, max 64)
 	IncludeADCHold bool `json:"include_adc_hold"` // release L4/T2/T7 from the ADC recipe for the run
 }
 
@@ -1033,12 +1033,13 @@ type tally struct {
 // rates are reported per ball per condition with the per-block spread.
 // TRLC-LINKS: REQ-SDS-145
 func (d *Diag) E2(o E2Options) (*E2Result, error) {
-	if o.Blocks < 3 {
-		o.Blocks = 3
-	}
+	// A request's counts are bounded: each block holds tallies per ball, and
+	// each repeat drives the bus.
+	o.Blocks = min(max(o.Blocks, 3), 64)
 	if o.Repeats <= 0 {
 		o.Repeats = 4
 	}
+	o.Repeats = min(o.Repeats, 64)
 	res := &E2Result{Options: o}
 	tal := map[uint8]map[string]*tally{0: {}, 1: {}}
 	for _, ball := range BusBalls {

@@ -388,7 +388,7 @@ func (s *Server) hDiagCapture(w http.ResponseWriter, r *http.Request) {
 	} else {
 		q := r.URL.Query()
 		o.Words, _ = strconv.Atoi(q.Get("words"))
-		d, _ := strconv.Atoi(q.Get("decim"))
+		d, _ := strconv.ParseUint(q.Get("decim"), 0, 32) // a negative or too large value is 0, not wrapped
 		o.Decim = uint32(d)
 		o.Samples = q.Get("samples") == "1"
 		u16 := func(k string) uint16 { v, _ := strconv.ParseUint(q.Get(k), 0, 16); return uint16(v) }

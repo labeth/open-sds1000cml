@@ -876,7 +876,7 @@ func (h *Handler) setWFSU(arg string) []byte {
 			}
 			h.wfFP = v
 		case "SN":
-			if v < 0 {
+			if v < 0 || v > math.MaxInt32 {
 				return errTok(errOutOfRange)
 			}
 			h.wfSN = v
