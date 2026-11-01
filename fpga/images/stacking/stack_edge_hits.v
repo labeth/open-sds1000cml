@@ -22,7 +22,7 @@ module stack_edge_hits(
  output wire request_valid,input wire request_ready,output wire [31:0] request_index,
  input wire response_valid,response_error,output wire response_ready,
  input wire [7:0] ch0_left,ch0_right,ch1_left,ch1_right,
- output reg stream_start=0,stream_stop=0,output reg [17:0] stream_entry=0,
+ output reg stream_start=0,stream_stop=0,output wire [17:0] stream_entry,
  input wire entry_valid,input wire [63:0] entry_data,input wire stream_error,
  output wire candidate_valid,input wire candidate_ready,candidate_reject,
  output wire [31:0] candidate_crossing,
@@ -54,14 +54,16 @@ module stack_edge_hits(
  // the scan restarts the stream at the next transition. skip drops the
  // samples before a restart's first within its entry.
  reg [1:0] skip=0;reg [W-1:0] base=0;
- reg A_v=0;reg [1:0] A_skip=0;reg [W-1:0] A_base=0;
+ reg A_v=0;reg [1:0] A_skip=0;
+ // The entry a (re)start begins at: index holds still while the stream runs.
+ assign stream_entry=index[W-1:2];
  reg [7:0] A_s0=0,A_s1=0,A_s2=0,A_s3=0;
  reg [3:0] A_low=0,A_below=0,A_lim=0,A_last=0; // at or above the level: !A_below
  reg P_have=0,P_low=0,P_below=0;reg [7:0] P_s=0;
- // The crossing's transition in its entry: a crossing holds stage A and the
- // previous sample, so FOUND reads the crossing's samples from them.
- reg [1:0] f_k=0;
- wire hold=A_v && c_found;
+ // The entry stage B ran, kept as it was (loaded every entry, off the
+ // chain's path): FOUND takes the crossing's samples from these. Its base
+ // is base less one entry, or two when stage A took one as it was found.
+ reg [1:0] f_k=0;reg f_two=0;reg [7:0] f_p=0,f_s0=0,f_s1=0,f_s2=0,f_s3=0;
  wire [7:0] e0=sample_k(entry_data,channel_l,falling_l,0),e1=sample_k(entry_data,channel_l,falling_l,1),
   e2=sample_k(entry_data,channel_l,falling_l,2),e3=sample_k(entry_data,channel_l,falling_l,3);
  // A transition's right sample is at most last_index+1: the entry's room
@@ -123,15 +125,15 @@ module stack_edge_hits(
     else state<=peeking ? REQUEST : SSTART;
    // (Re)start the stream at the entry holding the transition's left sample.
    SSTART:begin
-    stream_entry<=index[W-1:2];stream_start<=1;base<={index[W-1:2],2'b00};skip<=index[1:0];
+    stream_start<=1;base<={index[W-1:2],2'b00};skip<=index[1:0];
     P_have<=0;A_v<=0;state<=STREAM;
    end
    STREAM:if(stream_error)begin stream_stop<=1;invalid<=1;done<=1;busy<=0;state<=IDLE;end
     else begin
      // Stage A: the entry's samples and their comparisons.
-     if(!hold)A_v<=entry_valid;
-     if(entry_valid && !hold)begin
-      A_s0<=e0;A_s1<=e1;A_s2<=e2;A_s3<=e3;A_skip<=skip;A_base<=base;skip<=0;base<=base+3'd4;
+     A_v<=entry_valid;
+     if(entry_valid)begin
+      A_s0<=e0;A_s1<=e1;A_s2<=e2;A_s3<=e3;A_skip<=skip;skip<=0;base<=base+3'd4;
       A_low<={e3<=low_band,e2<=low_band,e1<=low_band,e0<=low_band};
       A_below<={e3<threshold,e2<threshold,e1<threshold,e0<threshold};
       A_lim<=room==7 ? 4'b0000 : room==4 ? 4'b1111 : room==3 ? 4'b1111 : room==2 ? 4'b0111 : room==1 ? 4'b0011 : 4'b0001;
@@ -141,8 +143,8 @@ module stack_edge_hits(
      if(A_v)begin
       // The entry's last sample is the next one's previous (a found or ended
       // scan restarts without it).
-      f_k<=c_k;
-      if(!hold)begin P_have<=1;P_s<=A_s3;P_low<=A_low[3];P_below<=A_below[3];end
+      P_have<=1;P_s<=A_s3;P_low<=A_low[3];P_below<=A_below[3];
+      f_k<=c_k;f_two<=entry_valid;f_p<=P_s;f_s0<=A_s0;f_s1<=A_s1;f_s2<=A_s2;f_s3<=A_s3;
       if(c_found)begin
        stream_stop<=1;armed<=0;state<=FOUND;
       end else begin
@@ -155,9 +157,9 @@ module stack_edge_hits(
    // The crossing's samples (the one before the entry for its
    // first transition), then the Q24 fraction, PLACE and CHECK.
    FOUND:begin
-    index<=A_base+f_k-1'b1;crossings<=crossings+1'b1;A_v<=0;
-    a<=f_k==0 ? P_s : f_k==1 ? A_s0 : f_k==2 ? A_s1 : A_s2;
-    b<=f_k==0 ? A_s0 : f_k==1 ? A_s1 : f_k==2 ? A_s2 : A_s3;
+    index<=base-(f_two ? 4'd9 : 4'd5)+f_k;crossings<=crossings+1'b1;A_v<=0;
+    a<=f_k==0 ? f_p : f_k==1 ? f_s0 : f_k==2 ? f_s1 : f_s2;
+    b<=f_k==0 ? f_s0 : f_k==1 ? f_s1 : f_k==2 ? f_s2 : f_s3;
     state<=FOUND2;
    end
    FOUND2:begin divisor<=b-a;remainder<={1'b0,threshold-a};quotient<=0;step<=0;state<=DIVIDE;end

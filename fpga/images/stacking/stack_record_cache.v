@@ -120,12 +120,28 @@ module stack_record_cache #(parameter AW=19,CACHE_AW=8,READ_WARM=16)(
  // Stream: the page after the one being read, and whether the other bank
  // already holds it (or is being filled with it).
  wire [AW-CACHE_AW-1:0] next_page=page+1'b1;
- wire [AW:0] next_base={1'b0,next_page,{CACHE_AW{1'b0}}};
- wire next_in_record=next_base<held_words && next_page!=0;
- wire next_held=(cache_valid[!bank] || refill_open && refill_bank==!bank) && (bank ? tag0:tag1)==next_page
-  || refill_open && refill_bank==!bank && refill_page==next_page;
- wire stream_end={1'b0,word_offset}>=held_words;
- wire [AW:0] next_left=held_words-next_base;
+ reg [AW-CACHE_AW-1:0] nxt_page_q=0;   // next_page a clock later (with the refill values below)
+ wire next_held=(cache_valid[!bank] || refill_open && refill_bank==!bank) && (bank ? tag0:tag1)==nxt_page_q
+  || refill_open && refill_bank==!bank && refill_page==nxt_page_q;
+ // The refill of the page read (PREP) and of the next (STREAM's prefetch),
+ // computed a clock ahead from the page (timing): its address, its words
+ // left in the record (a borrow on top: past it). They follow word_offset
+ // a clock later; cur_ok says they are this page's.
+ reg [AW-1:0] held_origin=0;         // record_start+read_bias, latched with them
+ reg [AW-CACHE_AW-1:0] cur_page_q=0;reg [AW-1:0] cur_addr_q=0,nxt_addr_q=0;
+ reg [AW+1:0] cur_diff_q=0,nxt_diff_q=0;
+ always @(posedge clk)begin
+  cur_page_q<=page;nxt_page_q<=next_page;
+  cur_addr_q<=held_origin+page_base[AW-1:0];
+  nxt_addr_q<=held_origin+{next_page,{CACHE_AW{1'b0}}};
+  cur_diff_q<={1'b0,held_words}-{1'b0,page_base};
+  nxt_diff_q<={1'b0,held_words}-{2'b0,next_page,{CACHE_AW{1'b0}}};
+ end
+ wire cur_ok=cur_page_q==page;
+ wire [AW:0] cur_left=cur_diff_q[AW:0],nxt_left=nxt_diff_q[AW:0];
+ wire next_in_record=!nxt_diff_q[AW+1] && nxt_left!=0 && nxt_page_q!=0;
+ // Past the record: the page read starts at or after its end.
+ wire stream_end=cur_ok && (cur_diff_q[AW+1] || cur_diff_q==0);
 
  always @(posedge clk)begin
   grant_q<=transport_owned;idle_q<=transport_ready;pair_seen<=pair_toggle_s;key_q<=key_matches;
@@ -134,13 +150,13 @@ module stack_record_cache #(parameter AW=19,CACHE_AW=8,READ_WARM=16)(
   end else begin
    case(state)
     IDLE:if(streaming)begin
-     held_epoch<=epoch;held_record<=record_id;held_start<=record_start;held_bias<=read_bias;held_words<=record_words;
+     held_epoch<=epoch;held_record<=record_id;held_start<=record_start;held_bias<=read_bias;held_origin<=record_start+read_bias;held_words<=record_words;
      if(!key_matches)cache_valid<=0;
      key_q<=1;error_l<=!frozen || !raw8 || record_words==0 || record_words>DEPTH;
      word_offset<={stream_entry,1'b0};req_mode<=0;state<=STREAM;
     end else if(request_valid && request_ready)begin
      req_mode<=1;
-     held_epoch<=epoch;held_record<=record_id;held_start<=record_start;held_bias<=read_bias;held_words<=record_words;
+     held_epoch<=epoch;held_record<=record_id;held_start<=record_start;held_bias<=read_bias;held_origin<=record_start+read_bias;held_words<=record_words;
      if(!key_matches)cache_valid<=0;
      word_offset<=sample_index[AW:1];odd<=sample_index[0];pair<=adjacent;second<=0;
      held_index<=sample_index;held_adjacent<=adjacent;key_q<=1;
@@ -171,10 +187,10 @@ module stack_record_cache #(parameter AW=19,CACHE_AW=8,READ_WARM=16)(
       end
      end
     end
-    PREP:if(!refill_open)begin
+    PREP:if(!refill_open && cur_ok)begin
      refill_bank<=bank;refill_page<=page;cache_valid[bank]<=0;
-     refill_address<=held_start+held_bias+page_base[AW-1:0];
-     refill_length<=page_left>PAGE_WORDS ? PAGE_LENGTH:page_left[CACHE_AW:0];
+     refill_address<=cur_addr_q;
+     refill_length<=cur_left>PAGE_WORDS ? PAGE_LENGTH:cur_left[CACHE_AW:0];
      request_toggle<=!request_toggle;refill_open<=1;state<=WAIT;
     end
     WAIT:if(!refill_open)state<=error_l ? ERROR_WAIT : req_mode ? LOOKUP : streaming ? STREAM : IDLE;
@@ -185,11 +201,11 @@ module stack_record_cache #(parameter AW=19,CACHE_AW=8,READ_WARM=16)(
      if(error_l)begin fault<=1;state<=ERROR_WAIT;end
      else if(!streaming || stream_end)state<=IDLE;
      else if(hit)begin issued<=1;word_offset<=word_offset+2'd2;end
-     else if(!refill_open)state<=PREP;
-     if(streaming && !refill_open && hit && next_in_record && !next_held)begin
-      refill_bank<=!bank;refill_page<=next_page;cache_valid[!bank]<=0;
-      refill_address<=held_start+held_bias+next_base[AW-1:0];
-      refill_length<=next_left>PAGE_WORDS ? PAGE_LENGTH:next_left[CACHE_AW:0];
+     else if(!refill_open && cur_ok)state<=PREP;
+     if(streaming && !refill_open && hit && cur_ok && next_in_record && !next_held)begin
+      refill_bank<=!bank;refill_page<=nxt_page_q;cache_valid[!bank]<=0;
+      refill_address<=nxt_addr_q;
+      refill_length<=nxt_left>PAGE_WORDS ? PAGE_LENGTH:nxt_left[CACHE_AW:0];
       request_toggle<=!request_toggle;refill_open<=1;
      end
     end
