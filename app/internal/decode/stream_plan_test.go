@@ -13,7 +13,7 @@ import (
 // coarser than the coarsest decimation's.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
 func TestStreamBitsPlan(t *testing.T) {
-	if StreamBitsMinPeriod != 12 || StreamBitsWordRate(StreamBitsMinPeriod) > StreamBusWords || StreamBitsWordRate(StreamBitsMinPeriod-1) <= StreamBusWords {
+	if StreamBitsMinPeriod != 10 || StreamBitsWordRate(StreamBitsMinPeriod) > StreamBusWords || StreamBitsWordRate(StreamBitsMinPeriod-1) <= StreamBusWords {
 		t.Fatalf("finest period %d raw words: %.4g words a second", StreamBitsMinPeriod, StreamBitsWordRate(StreamBitsMinPeriod))
 	}
 	for _, c := range []struct {
@@ -26,7 +26,8 @@ func TestStreamBitsPlan(t *testing.T) {
 		{2e-6, 2e6, 125, true},        // a clocked bus at 250 kHz: the budget's 2 M, four periods
 		{1.6e-6, 2e6, 0, false},       // three and a half do not fit the budget
 		{0.5e-6, 0, 20, true},         // the bus alone: six periods of 83 ns
-		{0.17e-6, 0, 12, true},        // the bus's finest, 3.54 periods
+		{0.17e-6, 0, 10, true},        // the bus's finest, 4.25 periods
+		{0.14e-6, 0, 10, true},        // the bus's finest, 3.5 periods
 		{0.09e-6, 0, 0, false},        // finer than the bus carries
 		{24e-9 * 1000, 0, 1000, true}, // a whole number of periods keeps them
 		{1, 4e6, StreamBitsMaxPeriod, true},

@@ -55,7 +55,11 @@ type acquisitionWorker struct {
 	sRate              float64       // input words a second, as the pump has drained them
 	sEvery             time.Duration // the pump's look interval at that rate (0: streamPumpEvery)
 	sBank              int           // words in a drained bank
-	logf               func(string, ...any)
+	// sBacklog: the drum held a backlog at the last look; sSpin is when
+	// the worker began looking without pause for it (zero: not spinning).
+	sBacklog bool
+	sSpin    time.Time
+	logf     func(string, ...any)
 }
 
 // workerStreamBytes bounds the stream ring: two million words, two seconds
@@ -150,10 +154,13 @@ func (w *acquisitionWorker) streamPump() {
 		}
 	}()
 	// The banks' DMA sleeps through its transfers: the app decodes the
-	// stream meanwhile (the worker runs at real-time priority).
-	if d, ok := w.bus.(*Dev); ok && d.SetStreamYield(true) {
+	// stream meanwhile (the worker runs at real-time priority). Not while
+	// the drum holds a backlog: this kernel does not preempt a system call,
+	// and a sleep wakes up to milliseconds late behind the app's.
+	if d, ok := w.bus.(*Dev); ok && !w.spinning() && d.SetStreamYield(true) {
 		defer d.SetStreamYield(false)
 	}
+	defer func() { w.sBacklog = w.capture.StreamBacklog() }()
 	// No deadline: a bank's drain never waits (the DMA's own poll bounds
 	// it), and a timer a pass cost a tenth of the worker at the fastest
 	// stream.
@@ -179,12 +186,35 @@ func (w *acquisitionWorker) streamPump() {
 	}
 }
 
+// streamSpinFor bounds how long the pump looks without pause while the
+// drum holds a backlog: a gap of 30 ms at 2^8 is caught up in about a
+// tenth of a second; a stream the drum cannot keep up with falls back to
+// paced looks, so the app is not starved until the drum fills.
+const streamSpinFor = 500 * time.Millisecond
+
+// spinning reports whether the pump looks for banks without pause: the
+// drum holds a backlog and refills the banks once a ring lap (2.1 ms), so
+// a look that comes late halves the rate the backlog drains at, and a
+// look after a sleep came late.
+// TRLC-LINKS: REQ-SDS-035
+func (w *acquisitionWorker) spinning() bool {
+	if !w.sBacklog {
+		w.sSpin = time.Time{}
+		return false
+	}
+	if w.sSpin.IsZero() {
+		w.sSpin = time.Now()
+	}
+	return time.Since(w.sSpin) < streamSpinFor
+}
+
 // streamPumpOn starts or stops the stream pump and its FIFO service.
 // TRLC-LINKS: REQ-SDS-035
 func (w *acquisitionWorker) streamPumpOn(on bool) error {
 	w.sOn, w.sExpected, w.sHead, w.sCount, w.sFirst, w.sFault = on, 0, 0, 0, 0, nil
 	w.sLastPump, w.sMaxGap, w.sMaxDrain = time.Time{}, 0, 0
 	w.sRate, w.sEvery, w.sBank = 0, 0, 0
+	w.sBacklog, w.sSpin = false, time.Time{}
 	if on && w.sring == nil {
 		if d, ok := w.bus.(*Dev); ok && workerHasSharedRing() {
 			if ring, err := d.PinSharedRing(sharedRingFD, workerStreamBytes); err == nil {
@@ -203,6 +233,7 @@ func (w *acquisitionWorker) streamPumpOn(on bool) error {
 			if w.deadline, err = d.StartDecodedDeadline(); err != nil {
 				return err
 			}
+			w.deadline.RaiseProcess()
 		}
 	}
 	if !on && !w.active && w.deadline != nil {
@@ -665,11 +696,17 @@ func (w *acquisitionWorker) serve(fd int) error {
 		}
 		wait := workerPollWait(busy)
 		if w.sOn && !w.active {
-			// Only the stream banks to serve: a 2^9 stream publishes a bank
-			// about every 1.5 ms and the drum behind them holds about a
-			// second, so the loop need not wake every 500 us for them.
-			wait = max(wait, w.pumpWait())
-			if w.sEvery == streamPumpFastest {
+			// Only the stream banks to serve: the look comes a bank's fill
+			// time on (a slow stream is not looked at every 500 us), and
+			// not after a wait as long as the drain took: the drum's FIFO
+			// and the host's two banks hold under 5 ms of a 2 M words a
+			// second stream, a stream that spills into the ring is read
+			// back about a burst a lap, no faster than it comes, and the
+			// drain itself is bus time the stream's rate bounds.
+			wait = w.pumpWait()
+			if w.spinning() {
+				wait = 0
+			} else if w.sEvery == streamPumpFastest {
 				// A backlog: the drum refills a bank as soon as one is free,
 				// so the next look comes at once, not after a wait as long
 				// as the drain took (the loop's own pacing halved the

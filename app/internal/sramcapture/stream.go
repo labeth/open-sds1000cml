@@ -112,6 +112,16 @@ type StreamReserver interface {
 	Commit(n int)
 }
 
+// StreamBacklog reports whether the drum held a backlog at the last
+// DrainStream: it then refills the host's banks only as its ring comes
+// round, and a reader must be at each refill to catch up.
+// TRLC-LINKS: REQ-SDS-035
+func (c *Capture) StreamBacklog() bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.streamBacklog
+}
+
 // DrainStream copies an immutable bank, checks sequence, then releases it.
 // It never rearms or changes timing/mode. A failed read retains bank ownership;
 // callers must discard any partial sink write before retrying. A release-write
@@ -137,6 +147,7 @@ func (c *Capture) DrainStream(ctx context.Context, expected uint64, dst io.Write
 		return block, e
 	}
 	s := decodeStreamStatus(raw)
+	c.streamBacklog = s.Backlog
 	if s.Fault {
 		return block, fmt.Errorf("sramcapture: stream overrun or packetizer fault")
 	}

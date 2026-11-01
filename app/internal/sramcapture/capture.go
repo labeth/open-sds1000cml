@@ -45,8 +45,10 @@ type Capture struct {
 	streamHalves   []uint16
 	streamWords    uint16
 	streamBytes    []byte
-	mu             sync.Mutex
-	bus            Bus
+	// streamBacklog is the drum's Backlog flag at the last DrainStream.
+	streamBacklog bool
+	mu            sync.Mutex
+	bus           Bus
 	// armRead holds the registers Arm reads in one batch (armSels); while
 	// it runs, the constant ones answer its parts' reads, which would each
 	// be a round trip.

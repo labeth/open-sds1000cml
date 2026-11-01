@@ -3,7 +3,9 @@ package bus
 
 import (
 	"fmt"
+	"os"
 	"runtime"
+	"strconv"
 	"syscall"
 	"unsafe"
 )
@@ -14,6 +16,9 @@ type DecodedDeadline struct {
 	policy   uintptr
 	priority int32
 	procs    int
+	// raised are the process's other threads RaiseProcess put at the same
+	// real-time priority (restored on Close).
+	raised []int
 }
 
 // StartDecodedDeadline reserves prompt FIFO service on the single-core ARM
@@ -74,10 +79,44 @@ func (s *DecodedDeadline) Pause() error {
 	}
 }
 
+// RaiseProcess puts every other thread of this process at the deadline's
+// real-time priority: Go preempts a goroutine that runs ten milliseconds
+// without a scheduling point, and a locked thread gets its goroutine back
+// only through another of the runtime's threads. At normal priority that
+// thread waited behind the app for 17 to 32 ms, and the stream drum's
+// banks went unread meanwhile. Only the acquisition worker, which allocates
+// nothing while streaming, calls it.
+// TRLC-LINKS: REQ-SDS-013, REQ-SDS-001
+func (s *DecodedDeadline) RaiseProcess() {
+	if s == nil {
+		return
+	}
+	tasks, err := os.ReadDir("/proc/self/task")
+	if err != nil {
+		return
+	}
+	self := syscall.Gettid()
+	priority := int32(1)
+	const fifoResetOnFork = 1 | 0x40000000
+	for _, t := range tasks {
+		tid, err := strconv.Atoi(t.Name())
+		if err != nil || tid == self {
+			continue
+		}
+		if _, _, e := syscall.RawSyscall(syscall.SYS_SCHED_SETSCHEDULER, uintptr(tid), fifoResetOnFork, uintptr(unsafe.Pointer(&priority))); e == 0 {
+			s.raised = append(s.raised, tid)
+		}
+	}
+}
+
 // Close restores the original policy before releasing this thread to Go. A
 // restoration failure leaves it locked so it cannot run an unrelated goroutine.
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-001
 func (s *DecodedDeadline) Close() error {
+	for _, tid := range s.raised {
+		_, _, _ = syscall.RawSyscall(syscall.SYS_SCHED_SETSCHEDULER, uintptr(tid), s.policy, uintptr(unsafe.Pointer(&s.priority)))
+	}
+	s.raised = nil
 	_, _, err := syscall.RawSyscall(syscall.SYS_SCHED_SETSCHEDULER, 0, s.policy, uintptr(unsafe.Pointer(&s.priority)))
 	if err != 0 {
 		return fmt.Errorf("restore decoded scheduling: %w", err)

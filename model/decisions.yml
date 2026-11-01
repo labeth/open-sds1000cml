@@ -1605,8 +1605,8 @@ decisions:
   consequences:
   - The host validates ordinals and tokens (REQ-SDS-035); DrainStream and the worker pump both drain it.
   - Image switching to and from it is a stopped acquisition transition.
-  - A plan's stream never asks more of the bus than decode.StreamBusWords (2.5M words a second, under the drain's
-    measured ceiling); a pace other than the decimation's is read back with the image's capability, so an image
+  - A plan's stream never asks more of the bus than decode.StreamBusWords (1.57M words a second, what the drum
+    sustains through the host's pauses, ADR-STREAM-DRUM); a pace other than the decimation's is read back with the image's capability, so an image
     without the pace never streams at a power of two the host would time wrongly.
 - id: ADR-SOUND
   title: SOUND runs on the gap-free audio-rate stream, its triggers the FPGA's edge marks
@@ -1713,6 +1713,19 @@ decisions:
     looks again after 0.4 ms while bit 13 is set takes the full stream in the model (5-9 ms pump gaps every 300
     ms; single 50/100/200 ms stalls drain in 0.34/0.67/1.3 s at decimation 256, a 450 ms stall at 512 in 0.56
     s).
+  - On the instrument, with the paced counter source, the ring's backlog drains only below about 1.7M words/s -
+    its bursts are a lap's gathering, the banks they fill are sealed part full, and the read head's wait is
+    short at these rates (the input due on the way nearly fills the FIFO), so a lap gives back about what it
+    took in. Above it only a host that never looks late by more than the FIFO and the banks hold (under 5 ms at
+    2M words/s) keeps the stream on the direct path. Polling the DMA did, 2.0M words/s loss-free for 20 s with
+    the words counted, but not with each one checked, and a look still came 5 to 7 ms late. The worker's late
+    looks were the kernel's (it does not preempt a system call, so a sleep wakes behind the app's) and Go's (a
+    goroutine running 10 ms is preempted, and a locked thread gets it back through another runtime thread, at
+    normal priority 17 to 32 ms late), so every worker thread now runs at the stream's real-time priority, and a
+    backlog is looked at without pause (for at most half a second). Every word checked, period 10 of the
+    digital stream (1.5625M words/s) ran loss-free for 30 s three times with the DMA sleeping through its
+    transfers (the worker at 20% of the core, polling 50%), and period 9 (1.736M) faulted within 3 s either
+    way, so decode.StreamBusWords admits period 10.
 - id: ADR-STREAM-BITS
   title: The decoded stream streams each line sliced, sixteen periods a word
   status: accepted
