@@ -252,11 +252,15 @@ var streamBuckets = func() (t [StreamMaxLog + 1]float64) {
 // any whole number of them (ADR-STREAM-IMAGE).
 const StreamRawWord = 4e-9
 
-// StreamBusWords is the most words a second a stream may ask of the host
-// bus: under what the bus drains the stream banks at (about 2.8 to 3.0 M
-// 32-bit words a second), so a stream's rate, not a power of two, is what
-// the bus allows.
-const StreamBusWords = 2.5e6
+// StreamBusWords is the most words a second a stream may ask of the host:
+// the bus drains a bank at about 3 M words a second, but the drain is not
+// continuous - the worker's pauses (up to about 30 ms on the device, below
+// the app: its thread is real-time and its requests take under 1 ms) leave a
+// backlog the drum must take back from the SRAM a lap (2.1 ms) at a time.
+// On the instrument, every word checked, 1.4 M words a second ran loss-free
+// for 20 s and 1.6 M filled the drum's FIFO within seconds, so a stream's
+// rate stays at or under 1.4 M, the rate the whole path sustains.
+const StreamBusWords = 1.4e6
 
 // StreamBitsMaxPeriod is the digital stream's coarsest period in raw words:
 // a word of sixteen spans the coarsest decimation's bucket (2^StreamMaxLog
