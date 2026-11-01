@@ -635,6 +635,14 @@ func pjonFields(o *wireOut, b []int, fx []float64, dt float64) bool {
 			length = b[2]<<8 | b[3]
 		}
 	}
+	if len(b) < head {
+		// Cut before its header's CRC (a 16-bit length's header is five
+		// bytes): a frame too short to check, as one under four bytes.
+		for i := range b {
+			put(i, hex2(b[i]), i == len(b)-1)
+		}
+		return false
+	}
 	metaOK := crc8PJON(b[:head-1]) == b[head-1]
 	crc32 := cfgB&0x20 != 0
 	endLen := 1
