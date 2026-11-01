@@ -227,8 +227,9 @@ module stream_drum #(parameter AW=19,WF_AW=12,DESC_AW=8,BANK_AW=10,
  // is used at once.
  localparam GAP=4;
  reg [AW-1:0] whead=0;               // where the next burst's junk words go
- reg [AW-1:0] whead_nx=0;reg whead_wrap=0; // after the burst being written, and whether that is past the last start
- reg [AW-1:0] p1_hj=0;
+ // The head burst's junk less the write head; its borrow says the head is
+ // behind the write head (the ring's data does not wrap).
+ wire [AW:0] hj_w={1'b0,dsc_q_addr-5'd16}-{1'b0,whead};
  // Control.
  localparam S_IDLE=0,S_SEEK=1,S_DIRECT=2,S_ISS=3,S_WRITE=4,S_WDONE=5,S_READ=6,S_RDONE=7,S_REW=8,S_REWW=9;
  localparam K_SEEK=0,K_WRITE=1,K_READ=2,K_DIRECT=3,K_REWIND=4;
@@ -243,7 +244,8 @@ module stream_drum #(parameter AW=19,WF_AW=12,DESC_AW=8,BANK_AW=10,
  // operations, so the drum decides after a few settled idle clocks.
  reg [AW-1:0] p1_w_target=0,p1_base=0;reg [AW:0] p1_free=0,p1_need=0;reg [PW:0] p1_lvl=0;
  reg p1_due=0,p1_min=0,p1_tail=0,p1_spill=0,p1_empty=0;
- reg [AW-1:0] p2_dist_w=0,p2_dist_r=0;reg [PW:0] p2_lvl=0;reg p2_room=0,p2_due=0,p2_min=0,p2_tail=0,p2_spill=0,p2_empty=0;
+ reg [AW:0] p2_dist_w=0,p2_dist_r=0; // the borrow (the head behind the counter) on top
+ reg [PW:0] p2_lvl=0;reg p2_room=0,p2_due=0,p2_min=0,p2_tail=0,p2_spill=0,p2_empty=0;
  reg p3_go=0,p3_keep=0,w_more=0,p3_head=0,p3_rhead=0;reg [2:0] p3_kind=0;reg [AW-1:0] p3_seek=0;
  reg [2:0] settle=0;
  reg oc=0; // constant 0 in the stream image: its logic folds away there
@@ -268,13 +270,12 @@ module stream_drum #(parameter AW=19,WF_AW=12,DESC_AW=8,BANK_AW=10,
  wire [AW:0] trip_lvl=p2_lvl+proj;
  // Registered (a clock later than the rest of p2: the inputs are settled).
  reg at_w=0,at_r=0,w_first=0,trip=0;
- wire [AW-1:0] seek_w=p2_dist_w>SEG ? SEG : p2_dist_w,seek_r=p2_dist_r>SEG ? SEG : p2_dist_r;
+ wire [AW-1:0] seek_w=p2_dist_w[AW-1:0]>SEG ? SEG : p2_dist_w[AW-1:0],seek_r=p2_dist_r[AW-1:0]>SEG ? SEG : p2_dist_r[AW-1:0];
  // A head behind the counter is reached by a rewind and a seek from 0, not
  // by a lap of the whole SRAM: its way is then its address (the p1 targets
  // hold still while the decision settles).
- reg p2_bw=0,p2_br=0;
- wire behind_w=p2_bw,behind_r=p2_br;
- wire [AW-1:0] way_w=behind_w ? p1_w_target : p2_dist_w,way_r=behind_r ? p1_base : p2_dist_r;
+ wire behind_w=p2_dist_w[AW],behind_r=p2_dist_r[AW];
+ wire [AW-1:0] way_w=behind_w ? p1_w_target : p2_dist_w[AW-1:0],way_r=behind_r ? p1_base : p2_dist_r[AW-1:0];
  // The way the counter goes is kept until it arrives: a head behind it is a
  // rewind away, and that way can look shorter than going on (the counter
  // went back and forth between the heads and reached neither).
@@ -293,10 +294,7 @@ module stream_drum #(parameter AW=19,WF_AW=12,DESC_AW=8,BANK_AW=10,
   // Its data runs from the head burst's junk to the write head; when that
   // wraps (the head ahead of the write head) the free room is between
   // them, else it is the rest of the ring (a burst always fits there).
-  p1_hj<=dsc_q_addr-5'd16;
-  p1_free<=dsc_empty || p1_hj<whead ? RING : {1'b0,p1_hj-whead};
-  whead_nx<=whead+burst_span[AW-1:0];
-  whead_wrap<=whead_nx>LAST_START;p1_need<={wf_level,1'b0}+7'd64;p1_lvl<=wf_level;
+  p1_free<=dsc_empty || hj_w[AW] ? RING : {1'b0,hj_w[AW-1:0]};p1_need<={wf_level,1'b0}+7'd64;p1_lvl<=wf_level;
   // A bank goes the direct way at WRITE_AT words while the host keeps the
   // other free; once it holds both, only a full bank (or an aged FIFO): small
   // banks would fill both before the host's first look and spill at once.
@@ -304,8 +302,7 @@ module stream_drum #(parameter AW=19,WF_AW=12,DESC_AW=8,BANK_AW=10,
   p1_spill<=wf_level>=WRITE_URGENT/2;p1_empty<=dsc_empty;
   p1_room<=bfill!=0 || bank_ready ? (CHUNK/2)-bfill+(bank_next_free ? CHUNK/2 : 1'b0) : 1'b0; // nothing while the current bank is the host's
   p1_len<=h_rem>>1;p1_fits<=p1_len<=p1_room;p1_part<=p1_room>=PART_MIN;p1_partial<=bfill!=0;p2_partial<=p1_partial;
-  p2_dist_w<=p1_w_target-pos_q;p2_dist_r<=p1_base-pos_q;p2_lvl<=p1_lvl;
-  p2_bw<=p1_w_target<pos_q;p2_br<=p1_base<pos_q;
+  p2_dist_w<={1'b0,p1_w_target}-{1'b0,pos_q};p2_dist_r<={1'b0,p1_base}-{1'b0,pos_q};p2_lvl<=p1_lvl;
   p2_room<=!dsc_full && p1_free>p1_need;p2_due<=p1_due;p2_min<=p1_min;p2_tail<=p1_tail;p2_spill<=p1_spill;p2_empty<=p1_empty;
   // The decision. Empty ring: a due FIFO goes straight to a free bank; the
   // counter waits at the write head and spills there when the host holds
@@ -314,7 +311,7 @@ module stream_drum #(parameter AW=19,WF_AW=12,DESC_AW=8,BANK_AW=10,
   // the FIFO (a burst of at least WRITE_AT words, and then what came
   // meanwhile, so a trip leaves little for the next lap).
   w_on<=!behind_w && way_w<way_r;proj<=way_w>>PROJ_SH;
-  at_w<=p2_dist_w==0;at_r<=p2_dist_r==0;w_first<=way_w<way_r;trip<=p2_min && trip_lvl>=TRIP_AT/2;
+  at_w<=p2_dist_w[AW-1:0]==0;at_r<=p2_dist_r[AW-1:0]==0;w_first<=way_w<way_r;trip<=p2_min && trip_lvl>=TRIP_AT/2;
   p3_go<=1;p3_kind<=go_r;p3_seek<=seek_r;p3_head<=0;p3_rhead<=0;p3_keep<=0;p3_seal<=p2_partial;
   if(p2_empty)begin
    if(bank_ready && p2_due)p3_kind<=K_DIRECT;
@@ -426,7 +423,7 @@ module stream_drum #(parameter AW=19,WF_AW=12,DESC_AW=8,BANK_AW=10,
     if(junk_left==0 && push_left==0)begin
      h_wend<=1;st<=S_WDONE;w_more<=burst_p>=WRITE_AT/2; // one tail burst after a full one
      dsc_push<=1;dsc_push_addr<=whead+5'd16;dsc_push_len<={burst_p,1'b0};
-     whead<=whead_wrap ? RING_BASE : whead_nx;age_clr<=1;
+     whead<=whead+burst_span[AW-1:0];age_clr<=1;
     end
    end
    S_DIRECT:begin
@@ -438,5 +435,9 @@ module stream_drum #(parameter AW=19,WF_AW=12,DESC_AW=8,BANK_AW=10,
    S_RDONE:if(done_new)begin done_seen<=done_q;st<=S_IDLE;end
   endcase
   if(dsc_push)dsc_wr<=dsc_wr+1'b1; // the RAM block writes at the old index this same clock
+  // A write head past the last start (where the largest burst still fits
+  // below the ring's end) goes back to the ring's start, while the burst's
+  // write ends (no decision is taken meanwhile).
+  if(act && st==S_WDONE && whead>LAST_START)whead<=RING_BASE;
  end
 endmodule
