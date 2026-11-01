@@ -95,7 +95,7 @@ func liveSRAMPlan(p SRAMPlan, budget int) (SRAMPlan, bool) {
 	}
 	span := float64(p.Screen) * p.SampleS
 	if p.Log < 4 {
-		p.Log, p.SampleS = 4, 32e-9 // the fabric's first decimated rate
+		p.Log, p.SampleS = 4, finestDecimatedS
 	}
 	for p.Log < 20 && span/p.SampleS > float64(budget) {
 		p.Log++

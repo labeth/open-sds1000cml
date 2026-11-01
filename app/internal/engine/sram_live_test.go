@@ -95,6 +95,23 @@ func TestBusLeaseSamplesFinelyEnough(t *testing.T) {
 	}
 }
 
+// A bus lease finer than the first decimated sample (32 ns) is served at the
+// full rate where the raw screen fits the record: /api/record.bin asking 10 ns
+// at 100us/div got 64 ns records and refused, while 4 ns was served.
+// TRLC-LINKS: REQ-SDS-010, REQ-SDS-214, REQ-SDS-280
+func TestBusLeaseFinerThanTheDecimationTakesTheFullRate(t *testing.T) {
+	e, _ := newTestEngine(t, newFakeBus())
+	e.hardwareEnvelope = true
+	for _, c := range []struct{ tdiv, want float64 }{{100e-6, 10e-9}, {100e-6, 20e-9}, {50e-6, 10e-9}, {20e-6, 20e-9}, {200e-6, 30e-9}} {
+		b, _ := PlanTdiv(c.tdiv)
+		e.band = b
+		e.LeaseBusSamples(c.want, 5*time.Second)
+		if _, p, _, _, _ := e.sramConfig(); p.SampleS > c.want {
+			t.Errorf("%g s/div, a sample wanted every %g s: planned every %g s (/%d)", c.tdiv, c.want, p.SampleS, 1<<p.Log)
+		}
+	}
+}
+
 // A stopped record's recall and its conditioning come back byte-identical.
 // TRLC-LINKS: REQ-SDS-033
 func TestHeldRecallRoundTrip(t *testing.T) {

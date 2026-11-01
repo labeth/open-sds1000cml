@@ -120,14 +120,21 @@ func liveBudget(block string, spanS, busS float64) int {
 
 // busLiveBudget is a bus decode's live screen in record words: a sample each
 // sampleS over spanS (twice that, as the decimation steps by two), at least
-// liveScreenSamples and at most the record.
+// liveScreenSamples and at most the record. A sample finer than the fabric's
+// first decimated one (finestDecimatedS) is the full rate's: the decimation
+// steps from 2 ns to 32 ns, so a budget under the raw screen planned 32 ns
+// for a 10 ns want and no record came that fine.
 // TRLC-LINKS: REQ-SDS-010, REQ-SDS-214
 func busLiveBudget(spanS, sampleS float64) int {
-	if !(spanS > 0) || !(sampleS > 0) {
+	if !(spanS > 0) || !(sampleS > 0) || sampleS < finestDecimatedS {
 		return int(sramcapture.Words)
 	}
 	return int(min(float64(sramcapture.Words), max(float64(liveScreenSamples), math.Ceil(2*spanS/sampleS))))
 }
+
+// finestDecimatedS is the fabric's first decimated sample interval (/16 of
+// the 2 ns full rate).
+const finestDecimatedS = 32e-9
 
 // liveDecimates reports whether a live frame blocked from the envelope is
 // captured decimated instead (liveSRAMPlan): the noise-reducing modes, whose
