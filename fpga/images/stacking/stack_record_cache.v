@@ -141,10 +141,18 @@ module stack_record_cache #(parameter AW=19,CACHE_AW=8,READ_WARM=16)(
  wire [AW:0] cur_left=cur_diff_q[AW:0],nxt_left=nxt_diff_q[AW:0];
  wire next_in_record=!nxt_diff_q[AW+1] && nxt_left!=0 && nxt_page_q!=0;
  // Past the record: the page read starts at or after its end.
- wire stream_end=cur_ok && (cur_diff_q[AW+1] || cur_diff_q==0);
+ // STREAM's hit from tag compares registered a clock ahead (timing: the
+ // compare is off word_offset's own loop). stale_q marks the clock after
+ // word_offset left its page or a tag was written, when they lag; with it
+ // clear, cur_ok holds too.
+ reg eq0_q=0,eq1_q=0,stale_q=1;
+ always @(posedge clk)begin eq0_q<=tag0==page;eq1_q<=tag1==page;end
+ wire stream_hit=!stale_q && cache_valid[bank] && (bank ? eq1_q:eq0_q);
+ wire [AW-1:0] stream_next=word_offset+2'd2;
+ wire stream_past=!stale_q && (cur_diff_q[AW+1] || cur_diff_q==0);
 
  always @(posedge clk)begin
-  grant_q<=transport_owned;idle_q<=transport_ready;pair_seen<=pair_toggle_s;key_q<=key_matches;
+  grant_q<=transport_owned;idle_q<=transport_ready;pair_seen<=pair_toggle_s;key_q<=key_matches;stale_q<=0;
   if(reset || slow_rst)begin
    state<=IDLE;fault<=0;cache_valid<=0;error_l<=0;read_phase<=0;request_toggle<=0;refill_open<=0;streaming<=0;entry_valid<=0;issued<=0;
   end else begin
@@ -153,12 +161,12 @@ module stack_record_cache #(parameter AW=19,CACHE_AW=8,READ_WARM=16)(
      held_epoch<=epoch;held_record<=record_id;held_start<=record_start;held_bias<=read_bias;held_origin<=record_start+read_bias;held_words<=record_words;
      if(!key_matches)cache_valid<=0;
      key_q<=1;error_l<=!frozen || !raw8 || record_words==0 || record_words>DEPTH;
-     word_offset<={stream_entry,1'b0};req_mode<=0;state<=STREAM;
+     word_offset<={stream_entry,1'b0};stale_q<=1;req_mode<=0;state<=STREAM;
     end else if(request_valid && request_ready)begin
      req_mode<=1;
      held_epoch<=epoch;held_record<=record_id;held_start<=record_start;held_bias<=read_bias;held_origin<=record_start+read_bias;held_words<=record_words;
      if(!key_matches)cache_valid<=0;
-     word_offset<=sample_index[AW:1];odd<=sample_index[0];pair<=adjacent;second<=0;
+     word_offset<=sample_index[AW:1];stale_q<=1;odd<=sample_index[0];pair<=adjacent;second<=0;
      held_index<=sample_index;held_adjacent<=adjacent;key_q<=1;
      ch0_left<=0;ch0_right<=0;ch1_left<=0;ch1_right<=0;
      state<=VALIDATE;
@@ -180,7 +188,7 @@ module stack_record_cache #(parameter AW=19,CACHE_AW=8,READ_WARM=16)(
      if(second)begin ch0_right<=fetched_word[7:0];ch1_right<=fetched_word[15:8];state<=RESPONSE;end
      else begin
       ch0_left<=odd ? fetched_word[23:16]:fetched_word[7:0];ch1_left<=odd ? fetched_word[31:24]:fetched_word[15:8];
-      if(pair && odd)begin word_offset<=word_offset+1'b1;second<=1;state<=LOOKUP;end
+      if(pair && odd)begin word_offset<=word_offset+1'b1;stale_q<=1;second<=1;state<=LOOKUP;end
       else begin
        if(pair)begin ch0_right<=fetched_word[23:16];ch1_right<=fetched_word[31:24];end
        state<=RESPONSE;
@@ -199,14 +207,14 @@ module stack_record_cache #(parameter AW=19,CACHE_AW=8,READ_WARM=16)(
     STREAM:begin
      issued<=0;
      if(error_l)begin fault<=1;state<=ERROR_WAIT;end
-     else if(!streaming || stream_end)state<=IDLE;
-     else if(hit)begin issued<=1;word_offset<=word_offset+2'd2;end
-     else if(!refill_open && cur_ok)state<=PREP;
+     else if(!streaming || stream_past)state<=IDLE;
+     else if(stream_hit)begin issued<=1;word_offset<=word_offset+2'd2;if(stream_next[AW-1:CACHE_AW]!=page)stale_q<=1;end
+     else if(!refill_open && !stale_q)state<=PREP;
      // The next page is filled only from the page's second half on: the
      // other bank keeps the page before meanwhile, where a hit's window
      // (the samples before its crossing) reads, and the accumulator's
      // reads after a crossing would otherwise cost the SRAM a lap each.
-     if(streaming && !refill_open && hit && cur_ok && word_offset[CACHE_AW-1] && next_in_record && !next_held)begin
+     if(streaming && !refill_open && stream_hit && word_offset[CACHE_AW-1] && next_in_record && !next_held)begin
       refill_bank<=!bank;refill_page<=nxt_page_q;cache_valid[!bank]<=0;
       refill_address<=nxt_addr_q;
       refill_length<=nxt_left>PAGE_WORDS ? PAGE_LENGTH:nxt_left[CACHE_AW:0];
@@ -222,11 +230,11 @@ module stack_record_cache #(parameter AW=19,CACHE_AW=8,READ_WARM=16)(
    if(refill_open && !refill_pending)begin
     refill_open<=0;
     if(done_error_s)begin fault<=1;error_l<=1;cache_valid<=0;end
-    else if(!fault && !error_l && permission)begin cache_valid[refill_bank]<=1;if(refill_bank)tag1<=refill_page;else tag0<=refill_page;end
+    else if(!fault && !error_l && permission)begin cache_valid[refill_bank]<=1;stale_q<=1;if(refill_bank)tag1<=refill_page;else tag0<=refill_page;end
    end
    entry_valid<=issued && state==STREAM;entry_data<=fetched;
    if(state!=STREAM)issued<=0;
-   if(stream_start)begin streaming<=1;entry_valid<=0;issued<=0;if(state==STREAM)begin word_offset<={stream_entry,1'b0};end end
+   if(stream_start)begin streaming<=1;entry_valid<=0;issued<=0;if(state==STREAM)begin word_offset<={stream_entry,1'b0};stale_q<=1;end end
    if(stream_stop)begin streaming<=0;entry_valid<=0;issued<=0;end
    // A live record/ownership change invalidates even a held response. The
    // combinational response_error also covers the simultaneous consume edge.
