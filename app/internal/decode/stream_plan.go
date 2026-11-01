@@ -252,21 +252,16 @@ var streamBuckets = func() (t [StreamMaxLog + 1]float64) {
 // any whole number of them (ADR-STREAM-IMAGE).
 const StreamRawWord = 4e-9
 
-// StreamBusWords is the most words a second a stream may ask of the host.
-// The bus drains a bank at about 3 M words a second, but a stream reaches
-// the host the bus's way (the drum's FIFO straight into the host's banks)
-// only while the worker never looks late by more than the FIFO and the two
-// banks hold (under 5 ms at 2 M); on the device a look now and then comes
-// 20 to 30 ms late (this kernel does not preempt a system call), and the
-// stream spills into the SRAM ring. The ring gives it back at most about a
-// write burst a lap (the counter's lap is 2.1 ms, a burst is the FIFO's
-// gathering, and the banks it fills are sealed half full), about 1.7 M words
-// a second: a stream above that never drains its backlog. On the
-// instrument, every word checked, the digital stream's period 10 (1.5625 M
-// words a second) ran loss-free for 30 s three times over through 30 ms
-// stalls, and period 9 (1.736 M) filled the drum's FIFO within 3 s: the
-// budget admits period 10 and no finer.
-const StreamBusWords = 1.57e6
+// StreamBusWords is the most words a second a stream may ask of the host:
+// what the bus carries with the host's pauses. The bus drains a bank at
+// about 3M words a second; a worker that looks late (now and then 20 to 30
+// ms on the device) leaves the stream in the drum's SRAM ring, which the
+// drum rewinds to reach (ADR-STREAM-DRUM), so a backlog drains at the bus's
+// rate less the stream's. On the instrument, every word checked, the
+// digital stream's period 6 (2.6M words a second) ran loss-free for 30 s
+// twice through 30 ms pauses; 2.9M ran loss-free with the words counted,
+// and at 3M the host's reading is the limit.
+const StreamBusWords = 2.61e6
 
 // StreamBitsMaxPeriod is the digital stream's coarsest period in raw words:
 // a word of sixteen spans the coarsest decimation's bucket (2^StreamMaxLog

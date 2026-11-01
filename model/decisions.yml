@@ -1605,8 +1605,8 @@ decisions:
   consequences:
   - The host validates ordinals and tokens (REQ-SDS-035); DrainStream and the worker pump both drain it.
   - Image switching to and from it is a stopped acquisition transition.
-  - A plan's stream never asks more of the bus than decode.StreamBusWords (1.57M words a second, what the drum
-    sustains through the host's pauses, ADR-STREAM-DRUM); a pace other than the decimation's is read back with the image's capability, so an image
+  - A plan's stream never asks more of the bus than decode.StreamBusWords (2.61M words a second, what the bus
+    carries through the host's pauses, ADR-STREAM-DRUM); a pace other than the decimation's is read back with the image's capability, so an image
     without the pace never streams at a power of two the host would time wrongly.
 - id: ADR-SOUND
   title: SOUND runs on the gap-free audio-rate stream, its triggers the FPGA's edge marks
@@ -1726,6 +1726,21 @@ decisions:
     digital stream (1.5625M words/s) ran loss-free for 30 s three times with the DMA sleeping through its
     transfers (the worker at 20% of the core, polling 50%), and period 9 (1.736M) faulted within 3 s either
     way, so decode.StreamBusWords admits period 10.
+  - The SRAM's enable held low clears its counter (spec 12 section 5.1), so the drum rewinds instead of riding a
+    lap of the whole SRAM - the transport's rewind holds the enable low (with four discard pulses, so a counter
+    that clears on a pulse is cleared too) and its position with it. The ring is [2, 2^18), a lap of 1.05 ms
+    and about 100 ms of slack at 2.4M words/s; a head behind the counter is a rewind and a seek from 0 away; a
+    burst starts only where the largest fits below the ring's end. With a backlog the counter leaves the read
+    head as soon as the host holds both banks and the FIFO has a burst (the host then has 1.7 ms of words at the
+    bus's rate, more than a way round the ring), and the trip projects the fastest stream (a pair every 128
+    pulses) instead of a measured rate; the counter keeps to the head it set out for, as a head a rewind away
+    can look nearer on the way and going back and forth reached neither (a hang tb_stream_drum found once the
+    write head wrapped at board size). tb_stream_drum at board sizes - 2.4M words/s with a 20 ms host stall and
+    2.8M with 10 ms drain every word, the backlog at the bus's rate less the stream's (0.55M words/s at 2.4M).
+    On the instrument, the paced counter on the digital stream image, every word checked - 2.0, 2.23, 2.4 and
+    2.6M words/s loss-free for 20 to 30 s through 20 to 30 ms worker pauses; 2.9M loss-free with the words
+    counted; at 3M the host's reading is the limit (the bus drains a bank at about 3M). Hence StreamBusWords
+    2.61M (the digital stream's period 6).
 - id: ADR-STREAM-BITS
   title: The decoded stream streams each line sliced, sixteen periods a word
   status: accepted
