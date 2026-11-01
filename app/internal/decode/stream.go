@@ -49,6 +49,11 @@ type StreamDecoder struct {
 	// opens with a "sof" (B); its M and W subframes open frames too.
 	subframes bool
 	leadN     int
+	// atStart: the first frame from stream index startAt on is handed
+	// out only when it opens with a start of frame and Close samples of
+	// the stream lie before it (CutStart).
+	atStart bool
+	startAt uint64
 	// An edge stream (NewEdgeStreamDecoder): its window is the lines'
 	// edges, decoded by edec, with the same windows and frames.
 	edges  bool
@@ -76,6 +81,30 @@ type streamGroup struct{ from, to, i0, i1 int }
 // (StreamLead).
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-260
 func (d *StreamDecoder) SetLead(n int) { d.leadN = max(n, 0) }
+
+// CutStart has the decoder drop its first frame from stream index at on
+// unless that frame is whole for sure: it opens with a start of frame and
+// starts Close samples or more after at. A gap-free stream starts (or
+// starts again after a gap) wherever the line is - inside a frame as often
+// as not - and the rest of a cut frame decodes as a frame of its own: a
+// Modbus request's tail read as an errored frame, a 1-Wire transaction's
+// last bits without their reset (StreamRecord drops a record's alike).
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func (d *StreamDecoder) CutStart(at uint64) {
+	d.atStart, d.startAt = true, at
+}
+
+// keepFirst judges the first frame after CutStart's index: it is kept when
+// it opens with a start of frame (sp its first span) Close samples or more
+// after the index; either way the next frames are kept.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func (d *StreamDecoder) keepFirst(i0 int, sp Span) bool {
+	if !d.atStart || d.base+uint64(i0) < d.startAt {
+		return true
+	}
+	d.atStart = false
+	return d.isFrameStart(sp) && d.base+uint64(i0) >= d.startAt+uint64(d.closeN)
+}
 
 // StreamRecord decodes one record of a stream of records (a, b its lines'
 // samples, b nil for one line): the frames it holds whole. A frame its end
@@ -341,6 +370,10 @@ func (d *StreamDecoder) run() []StreamFrame {
 	var all []StreamSpan
 	cut, last := 0, -1 // last: the end of the last frame handed out
 	take := func(g streamGroup) {
+		if !d.keepFirst(g.i0, sp[g.from]) {
+			last = g.i1 // handed out as dropped: the window moves past it
+			return
+		}
 		if all == nil {
 			all = make([]StreamSpan, 0, len(sp)-g.from)
 		}

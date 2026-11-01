@@ -464,3 +464,85 @@ func TestStreamDecoderGapFree(t *testing.T) {
 		})
 	}
 }
+
+// A gap-free stream starts wherever the line is: one started inside a frame
+// (CutStart at its first sample) hands out no frame the whole signal does
+// not hold - the cut frame's rest, read as a frame of its own, was a
+// Modbus request's tail as an errored frame - and loses no frame after the
+// first.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+func TestStreamDecoderStartedInsideAFrame(t *testing.T) {
+	for _, c := range append(streamCases, moreStreamCases...) {
+		t.Run(c.name, func(t *testing.T) {
+			rng := rand.New(rand.NewSource(int64(len(c.name)) + 7))
+			name := strings.TrimSuffix(c.name, "-carrier")
+			feature, longest, quiet, ok := StreamTiming(name, c.baud)
+			if !ok {
+				t.Fatalf("no stream timing for %s", name)
+			}
+			log, ok := StreamBucketLog(feature)
+			if !ok {
+				return // streamed as records: StreamRecord drops a cut frame
+			}
+			fine := newTwoLine(8 / (float64(uint64(1)<<log) * 2e-9))
+			idle := [2]byte{1, 1}
+			if name == "j1850" || c.name == "irnec-carrier" {
+				idle[0] = 0
+			}
+			if c.idle != nil {
+				idle = *c.idle
+			}
+			fine.add(idle[0], idle[1], quiet+2e-3)
+			frames := 12
+			if c.frames > 0 {
+				frames = min(frames, c.frames)
+			}
+			for i := 0; i < frames; i++ {
+				c.gen(fine, i, rng)
+			}
+			fine.add(idle[0], idle[1], 2*quiet+longest)
+			sampleS := 1 / fine.a.sr
+			a, b := fine.a.codes(), fine.b.codes()
+			closeN := int(quiet / sampleS)
+			dec := func(a, b []uint8) Result { return c.dec(a, b, sampleS) }
+			whole := NewStreamDecoder(dec, closeN, 1<<30)
+			truth := append(whole.Push(a, b), whole.Flush()...)
+			if len(truth) < 3 {
+				t.Fatalf("the whole signal decodes %d frames", len(truth))
+			}
+			for _, part := range []float64{0.3, 0.6} {
+				cut := int(truth[0].I0) + int(part*float64(truth[0].I1-truth[0].I0))
+				d := NewStreamDecoder(dec, closeN, int((longest+quiet)/sampleS))
+				d.SetLead(int(StreamLead(name, c.baud) / sampleS))
+				d.CutStart(0)
+				var got []StreamFrame
+				for at := cut; at < len(a); {
+					n := min(len(a)-at, 3000+rng.Intn(20000))
+					var bl []uint8
+					if c.lines == 2 {
+						bl = b[at : at+n]
+					}
+					got = append(got, d.Push(a[at:at+n], bl)...)
+					at += n
+				}
+				got = append(got, d.Flush()...)
+				want := map[string]bool{}
+				after := 0
+				for _, f := range truth {
+					if int(f.I0) > cut {
+						want[fmt.Sprint(int(f.I0)-cut, frameKey(f))] = true
+						after++
+					}
+				}
+				for _, f := range got {
+					if !want[fmt.Sprint(int(f.I0), frameKey(f))] {
+						t.Errorf("started %.0f%% into the first frame: frame at %d %q is no frame of the whole signal", 100*part, f.I0, frameKey(f))
+					}
+				}
+				if len(got) < after-1 {
+					t.Errorf("started %.0f%% into the first frame: %d frames of the %d after the start", 100*part, len(got), after)
+				}
+			}
+		})
+	}
+}

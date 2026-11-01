@@ -309,6 +309,7 @@ func TestClientDecodeMatchesScope(t *testing.T) {
 			cuts, checks := clientPieces(len(c.raw)/4, int64(ci))
 			// the scope decodes
 			ref := clientTestStream(t, c.proto, c.p, pushN)
+			ref.dec.CutStart(0) // as a session starts (softStreamStart), the page's alike
 			e := &Engine{}
 			from := 0
 			for k, to := range cuts {

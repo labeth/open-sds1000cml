@@ -341,6 +341,8 @@ function WebDecStream(edec, closeN, maxN) {
   this.subframes = false;
   this.base = 0;
   this.done = 0;
+  this.atStart = false;
+  this.startAt = 0;
   this.ea = new WebDecLine();
   this.eb = new WebDecLine();
 }
@@ -373,6 +375,22 @@ WebDecStream.prototype.skip = function (n) {
   this.done = Math.max(this.done, this.base);
   this.ea.reset();
   this.eb.reset();
+};
+
+// cutStart drops the first frame from stream index at on unless it opens
+// with a start of frame Close samples or more after at (StreamDecoder.CutStart).
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+WebDecStream.prototype.cutStart = function (at) {
+  this.atStart = true;
+  this.startAt = at;
+};
+
+// keepFirst judges the first frame after cutStart's index (StreamDecoder.keepFirst).
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
+WebDecStream.prototype.keepFirst = function (i0, s) {
+  if (!this.atStart || this.base + i0 < this.startAt) return true;
+  this.atStart = false;
+  return this.isFrameStart(s) && this.base + i0 >= this.startAt + this.closeN;
 };
 
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
@@ -412,6 +430,10 @@ WebDecStream.prototype.run = function () {
   let last = -1;
   // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
   const take = (g) => {
+    if (!this.keepFirst(g.i0, sp[g.from])) {
+      last = g.i1;
+      return;
+    }
     const spans = [];
     for (let k = g.from; k < g.to; k++) {
       const s = sp[k];
@@ -702,6 +724,7 @@ WebDecSession.prototype.loss = function (index, report) {
   this.haveLvl = false;
   if (report) this.losses.push(index);
   if (index > this.dec.next()) this.dec.skip(index - this.dec.next());
+  this.dec.cutStart(this.dec.next());
 };
 
 // feedChunk takes one chunk of a words.bin reply: its words coded as runs
@@ -713,6 +736,7 @@ WebDecSession.prototype.feedChunk = function (c) {
     this.started = true;
     this.dec.base = c.index;
     this.dec.done = c.index;
+    this.dec.cutStart(c.index);
   } else if (c.brk || c.index !== this.position()) {
     if (c.index < this.position() && !c.brk) return; // a chunk read before
     this.loss(c.index, !c.brk);

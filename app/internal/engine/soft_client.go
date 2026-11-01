@@ -520,8 +520,10 @@ func (e *Engine) softClientMode(s *softStream) bool {
 		e.softClientFrames(s)
 		s.client = false
 		e.ctap.end("the page stopped asking")
-		// The words the page took but did not post frames for are lost.
+		// The words the page took but did not post frames for are lost,
+		// and the scope's decoding takes up the line where it is.
 		s.dec.Skip(0)
+		s.dec.CutStart(s.dec.Next())
 		s.addEvent(sramcapture.DecodedEvent{Kind: sramcapture.EventLoss, Sample: s.ord(s.dec.Next()), Count: 1})
 		if s.overBudget {
 			// A plan only a page keeps up with: decoded here it would fall a

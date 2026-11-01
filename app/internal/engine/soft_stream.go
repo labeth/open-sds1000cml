@@ -598,6 +598,9 @@ func (e *Engine) softStreamStart(s *softStream) error {
 	}
 	s.sessBase, s.sessAt = s.dec.Next()+uint64(pending), e.clk.Now()
 	s.streaming, s.expected, s.haveLast = true, 0, false
+	// The session's first words come from wherever the line is: a frame
+	// they cut is no frame of the transcript.
+	s.dec.CutStart(s.sessBase)
 	if !s.isolated {
 		if err := pump(); err != nil {
 			e.softStreamStop(s)
