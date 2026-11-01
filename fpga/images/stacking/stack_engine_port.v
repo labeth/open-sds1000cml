@@ -140,6 +140,7 @@ module stack_engine_port #(parameter BINS=32,POW2_FACTOR=1)(
  end
  wire request_valid,request_ready,response_valid,response_error,response_ready,cache_busy,cache_fault;
  wire [31:0] sample_index;wire [7:0] ch0_left,ch0_right,ch1_left,ch1_right;
+ wire stream_start,stream_stop,entry_valid,stream_error;wire [17:0] stream_entry;wire [63:0] entry_data;
  stack_edge_accumulator #(.BINS(BINS),.POW2_FACTOR(POW2_FACTOR)) engine(.clk(engine_clk),.reset(reset_engine),.start(start),.peek(peek),
  .start_ready(start_ready),.busy(engine_busy),.done(engine_done),.invalid(engine_invalid),
  .first_index(first_index),.record_samples({11'd0,record_words_l,1'b0}),.pre_samples(pre),.min_separation(separation),
@@ -152,6 +153,8 @@ module stack_engine_port #(parameter BINS=32,POW2_FACTOR=1)(
  .request_valid(request_valid),.request_ready(request_ready),.request_index(sample_index),
  .response_valid(response_valid),.response_error(response_error),.response_ready(response_ready),
  .ch0_left(ch0_left),.ch0_right(ch0_right),.ch1_left(ch1_left),.ch1_right(ch1_right),
+ .stream_start(stream_start),.stream_stop(stream_stop),.stream_entry(stream_entry),
+ .entry_valid(entry_valid),.entry_data(entry_data),.stream_error(stream_error),
  .command_valid(command_valid),.command_ready(command_ready),.command_write(command_write),
  .command_bin({17'd0,tile[15:1]}),.command_channel(tile[0]),
  .upload_valid(upload_valid),.upload_ready(upload_ready),.upload_data(upload_data),
@@ -162,6 +165,8 @@ module stack_engine_port #(parameter BINS=32,POW2_FACTOR=1)(
  .owned(owned_sync[1]),.frozen(frozen_sync[1]),.raw8(1'b1),.transport_owned(transport_owned),
  .epoch(32'd0),.record_id(record_id_l),.record_start(record_start_l),.read_bias(19'd0),.record_words(record_words_l),
  .request_valid(request_valid),.request_ready(request_ready),.sample_index(sample_index),.adjacent(1'b1),
+ .stream_start(stream_start),.stream_stop(stream_stop),.stream_entry(stream_entry),
+ .entry_valid(entry_valid),.entry_data(entry_data),.stream_error(stream_error),
  .response_valid(response_valid),.response_ready(response_ready),.response_error(response_error),
  .ch0_left(ch0_left),.ch0_right(ch0_right),.ch1_left(ch1_left),.ch1_right(ch1_right),.busy(cache_busy),.fault(cache_fault),
  .transport_ready(transport_ready),.transport_done(transport_done),.transport_read_valid(transport_read_valid),

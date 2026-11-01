@@ -20,8 +20,22 @@ module tb_stack_edge_accumulator #(parameter BINS=16);
  reg command_valid=0,command_write=0,command_channel=0;reg [31:0] command_bin=0;
  wire command_ready,upload_ready,download_valid,completion_valid,completion_error;
  reg upload_valid=0,download_ready=0,completion_ready=0;reg [15:0] upload_data=0;wire [15:0] download_data;
+ wire stream_start,stream_stop;wire [17:0] stream_entry;
+ reg entry_valid=0,stream_error=0;reg [63:0] entry_data=0;
  stack_edge_accumulator #(.BINS(BINS)) dut(.*);
  reg [15:0] wave[0:65535];
+ // The cache's stream: an entry (four samples) a clock from stream_entry on,
+ // with stalls, until stopped or past the record; never with a request open.
+ reg s_on=0;integer s_e=0;
+ always @(posedge clk)begin
+  entry_valid<=0;
+  if(reset || stream_stop)s_on<=0;
+  else if(stream_start)begin s_on<=1;s_e<=stream_entry;end
+  else if(s_on && tick%7!=3 && 4*s_e<record_samples)begin
+   entry_valid<=1;entry_data<={wave[4*s_e+3],wave[4*s_e+2],wave[4*s_e+1],wave[4*s_e]};s_e<=s_e+1;
+  end
+  if(s_on && request_valid)$fatal(1,"a request while the stream is open");
+ end
  integer tick=0,pending=0,delay=0,address=0;
  wire request_ready=!pending && !response_valid && tick%5!=0;
  always @(posedge clk)begin

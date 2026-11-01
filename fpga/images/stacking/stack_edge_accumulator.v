@@ -28,6 +28,8 @@ module stack_edge_accumulator #(parameter BINS=32,POW2_FACTOR=0)(
  output wire request_valid,input wire request_ready,output wire [31:0] request_index,
  input wire response_valid,response_error,output wire response_ready,
  input wire [7:0] ch0_left,ch0_right,ch1_left,ch1_right,
+ output wire stream_start,stream_stop,output wire [17:0] stream_entry,
+ input wire entry_valid,input wire [63:0] entry_data,input wire stream_error,
  input wire command_valid,output wire command_ready,input wire command_write,
  input wire [31:0] command_bin,input wire command_channel,
  input wire upload_valid,output wire upload_ready,input wire [15:0] upload_data,
@@ -124,6 +126,8 @@ module stack_edge_accumulator #(parameter BINS=32,POW2_FACTOR=0)(
  .request_valid(scan_request),.request_ready(request_ready && !store_phase && !qualify_phase),.request_index(scan_index),
  .response_valid(response_valid && !store_phase && !qualify_phase),.response_error(response_error),.response_ready(scan_response_ready),
  .ch0_left(ch0_left),.ch0_right(ch0_right),.ch1_left(ch1_left),.ch1_right(ch1_right),
+ .stream_start(stream_start),.stream_stop(stream_stop),.stream_entry(stream_entry),
+ .entry_valid(entry_valid),.entry_data(entry_data),.stream_error(stream_error),
  .candidate_valid(scan_candidate),.candidate_ready(committed),.candidate_reject(state==Q_REJECT),.candidate_crossing(crossing),
  .candidate_position(hit_position),.candidate_delta(hit_delta),.crossings(crossings),.peek_data(peek_data),
  .busy(scan_busy),.done(scan_done),.invalid(scan_invalid));

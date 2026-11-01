@@ -20,12 +20,21 @@
 // first. Commands may pass through up to SETTLE-1 caller register stages.
 // Reset invalidates the retained-record epoch, not just the cache.
 // CACHE_AW is 1..11, less than AW, with page size + READ_WARM <= SRAM depth.
+//
+// Stream: a caller scanning the record in order takes it an entry (two words,
+// four samples a channel) a clock from stream_entry on, while the page reader
+// fills the next page into the other bank (sequential pages chain: no seek, no
+// warm-up), so a scan runs at about the SRAM's own rate, not a request's
+// round trip a sample. stream_start (re)starts it; stream_stop ends it, and an
+// entry in flight is dropped. The request port is not served meanwhile.
 // TRLC-LINKS: REQ-SDS-141, REQ-SDS-043, REQ-SDS-044
 module stack_record_cache #(parameter AW=19,CACHE_AW=8,READ_WARM=16)(
  input wire clk,transport_clk,reset,owned,frozen,raw8,transport_owned,
  input wire [31:0] epoch,record_id,
  input wire [AW-1:0] record_start,read_bias,input wire [AW:0] record_words,
  input wire request_valid,output wire request_ready,input wire [31:0] sample_index,input wire adjacent,
+ input wire stream_start,stream_stop,input wire [AW-2:0] stream_entry,
+ output reg entry_valid=0,output wire [63:0] entry_data,output wire stream_error,
  output wire response_valid,input wire response_ready,output wire response_error,
  output reg [7:0] ch0_left=0,ch0_right=0,ch1_left=0,ch1_right=0,
  output wire busy,output reg fault=0,
@@ -49,7 +58,7 @@ module stack_record_cache #(parameter AW=19,CACHE_AW=8,READ_WARM=16)(
  wire slow_rst=slow_reset[1],fast_rst=fast_reset[1];
 
  // ---- 125 MHz controller ----
- localparam IDLE=0,CHECK=1,LOOKUP=2,READ=3,CAPTURE=4,PREP=5,WAIT=6,RESPONSE=7,ERROR_WAIT=8,VALIDATE=9;
+ localparam IDLE=0,CHECK=1,LOOKUP=2,READ=3,CAPTURE=4,PREP=5,WAIT=6,RESPONSE=7,ERROR_WAIT=8,VALIDATE=9,STREAM=10;
  reg [3:0] state=IDLE;
  reg [31:0] held_epoch=0,held_record=0;
  reg [AW-1:0] held_start=0,held_bias=0,word_offset=0;
@@ -73,6 +82,9 @@ module stack_record_cache #(parameter AW=19,CACHE_AW=8,READ_WARM=16)(
  wire [AW:0] page_left=held_words-page_base;
  // Refill request: stable from the toggle until the matching completion.
  reg request_toggle=0,refill_bank=0;
+ reg refill_open=0;                  // a refill issued and not yet completed
+ reg streaming=0;                    // STREAM serves the caller's scan
+ reg req_mode=0;                     // the work in hand is a request's (else the stream's)
  reg [AW-CACHE_AW-1:0] refill_page=0;
  reg [AW-1:0] refill_address=0;
  reg [CACHE_AW:0] refill_length=0;
@@ -84,7 +96,7 @@ module stack_record_cache #(parameter AW=19,CACHE_AW=8,READ_WARM=16)(
  reg done_toggle_s=0,done_error_s=0,pair_toggle_s=0;
  wire refill_pending=request_toggle!=done_toggle_s;
  wire bridge_quiet=!refill_pending && idle_q;
- assign request_ready=state==IDLE && owned && idle_q && grant_q && !fault && !reset && !slow_rst;
+ assign request_ready=state==IDLE && !streaming && owned && idle_q && grant_q && !fault && !reset && !slow_rst;
  assign response_valid=state==RESPONSE && !reset && !slow_rst;
  assign response_error=error_l || fault || !permission;
  assign busy=state!=IDLE && !reset;
@@ -101,14 +113,31 @@ module stack_record_cache #(parameter AW=19,CACHE_AW=8,READ_WARM=16)(
   fetched<=memory[word_offset[CACHE_AW:1]];
  end
  wire [31:0] fetched_word=word_offset[0] ? fetched[63:32]:fetched[31:0];
+ assign entry_data=fetched;
+ assign stream_error=fault || error_l;
+ // Stream: the page after the one being read, and whether the other bank
+ // already holds it (or is being filled with it).
+ wire [AW-CACHE_AW-1:0] next_page=page+1'b1;
+ wire [AW:0] next_base={1'b0,next_page,{CACHE_AW{1'b0}}};
+ wire next_in_record=next_base<held_words && next_page!=0;
+ wire next_held=(cache_valid[!bank] || refill_open && refill_bank==!bank) && (bank ? tag0:tag1)==next_page
+  || refill_open && refill_bank==!bank && refill_page==next_page;
+ wire stream_end={1'b0,word_offset}>=held_words;
+ wire [AW:0] next_left=held_words-next_base;
 
  always @(posedge clk)begin
   grant_q<=transport_owned;idle_q<=transport_ready;pair_seen<=pair_toggle_s;key_q<=key_matches;
   if(reset || slow_rst)begin
-   state<=IDLE;fault<=0;cache_valid<=0;error_l<=0;read_phase<=0;request_toggle<=0;
+   state<=IDLE;fault<=0;cache_valid<=0;error_l<=0;read_phase<=0;request_toggle<=0;refill_open<=0;streaming<=0;entry_valid<=0;
   end else begin
    case(state)
-    IDLE:if(request_valid && request_ready)begin
+    IDLE:if(streaming)begin
+     held_epoch<=epoch;held_record<=record_id;held_start<=record_start;held_bias<=read_bias;held_words<=record_words;
+     if(!key_matches)cache_valid<=0;
+     key_q<=1;error_l<=!frozen || !raw8 || record_words==0 || record_words>DEPTH;
+     word_offset<={stream_entry,1'b0};req_mode<=0;state<=STREAM;
+    end else if(request_valid && request_ready)begin
+     req_mode<=1;
      held_epoch<=epoch;held_record<=record_id;held_start<=record_start;held_bias<=read_bias;held_words<=record_words;
      if(!key_matches)cache_valid<=0;
      word_offset<=sample_index[AW:1];odd<=sample_index[0];pair<=adjacent;second<=0;
@@ -140,23 +169,41 @@ module stack_record_cache #(parameter AW=19,CACHE_AW=8,READ_WARM=16)(
       end
      end
     end
-    PREP:begin
+    PREP:if(!refill_open)begin
      refill_bank<=bank;refill_page<=page;cache_valid[bank]<=0;
      refill_address<=held_start+held_bias+page_base[AW-1:0];
      refill_length<=page_left>PAGE_WORDS ? PAGE_LENGTH:page_left[CACHE_AW:0];
-     request_toggle<=!request_toggle;state<=WAIT;
+     request_toggle<=!request_toggle;refill_open<=1;state<=WAIT;
     end
-    WAIT:if(!refill_pending)begin
-     if(done_error_s)begin fault<=1;error_l<=1;cache_valid<=0;state<=ERROR_WAIT;end
-     else begin
-      cache_valid[refill_bank]<=1;if(refill_bank)tag1<=refill_page;else tag0<=refill_page;
-      state<=LOOKUP;
+    WAIT:if(!refill_open)state<=error_l ? ERROR_WAIT : req_mode ? LOOKUP : streaming ? STREAM : IDLE;
+    // An entry a clock while the page is held; the next page is filled into
+    // the other bank meanwhile. fetched follows word_offset a clock later.
+    STREAM:begin
+     entry_valid<=0;
+     if(error_l)begin fault<=1;state<=ERROR_WAIT;end
+     else if(!streaming || stream_end)state<=IDLE;
+     else if(hit)begin entry_valid<=1;word_offset<=word_offset+2'd2;end
+     else if(!refill_open)state<=PREP;
+     if(streaming && !refill_open && hit && next_in_record && !next_held)begin
+      refill_bank<=!bank;refill_page<=next_page;cache_valid[!bank]<=0;
+      refill_address<=held_start+held_bias+next_base[AW-1:0];
+      refill_length<=next_left>PAGE_WORDS ? PAGE_LENGTH:next_left[CACHE_AW:0];
+      request_toggle<=!request_toggle;refill_open<=1;
      end
     end
     RESPONSE:if(response_ready)state<=IDLE;
-    ERROR_WAIT:if(bridge_quiet)state<=RESPONSE;
+    // A stream's fault has no response to give: the cache stays poisoned.
+    ERROR_WAIT:if(bridge_quiet)state<=req_mode ? RESPONSE : IDLE;
     default:begin fault<=1;error_l<=1;cache_valid<=0;state<=ERROR_WAIT;end
    endcase
+   // A refill completes in whichever state: the bank holds its page from now.
+   if(refill_open && !refill_pending)begin
+    refill_open<=0;
+    if(done_error_s)begin fault<=1;error_l<=1;cache_valid<=0;end
+    else if(!fault && !error_l && permission)begin cache_valid[refill_bank]<=1;if(refill_bank)tag1<=refill_page;else tag0<=refill_page;end
+   end
+   if(stream_start)begin streaming<=1;entry_valid<=0;if(state==STREAM)begin word_offset<={stream_entry,1'b0};end end
+   if(stream_stop)begin streaming<=0;entry_valid<=0;end
    // A live record/ownership change invalidates even a held response. The
    // combinational response_error also covers the simultaneous consume edge.
    if(state!=IDLE && state!=VALIDATE && state!=CHECK && !error_l && !permission)begin

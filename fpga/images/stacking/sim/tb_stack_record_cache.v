@@ -12,6 +12,7 @@ module tb_stack_record_cache #(parameter AW=8,CACHE_AW=3,FULL_ONLY=0,COMMAND_DEL
  reg [31:0] epoch=7,record_id=9;reg [AW-1:0] record_start=N-11,read_bias=0;
  reg [AW:0] record_words=N;
  reg request_valid=0,adjacent=0,response_ready=0;reg [31:0] sample_index=0;
+ reg stream_start=0,stream_stop=0;reg [AW-2:0] stream_entry=0;wire entry_valid,stream_error;wire [63:0] entry_data;
  wire request_ready,response_valid,response_error,busy,fault;
  wire [7:0] ch0_left,ch0_right,ch1_left,ch1_right;
  wire transport_ready,transport_done,transport_read_valid,cache_command,command_read,command_discard,command_continue;
@@ -21,6 +22,7 @@ module tb_stack_record_cache #(parameter AW=8,CACHE_AW=3,FULL_ONLY=0,COMMAND_DEL
  .clk(memory_clk),.transport_clk(clk),.transport_owned(transport_owned),.reset(reset),.owned(owned),.frozen(frozen),.raw8(raw8),.epoch(epoch),.record_id(record_id),
  .record_start(record_start),.read_bias(read_bias),.record_words(record_words),
  .request_valid(request_valid),.request_ready(request_ready),.sample_index(sample_index),.adjacent(adjacent),
+ .stream_start(stream_start),.stream_stop(stream_stop),.stream_entry(stream_entry),.entry_valid(entry_valid),.entry_data(entry_data),.stream_error(stream_error),
  .response_valid(response_valid),.response_ready(response_ready),.response_error(response_error),
  .ch0_left(ch0_left),.ch0_right(ch0_right),.ch1_left(ch1_left),.ch1_right(ch1_right),.busy(busy),.fault(fault),
  .transport_ready(transport_ready),.transport_done(transport_done || early_done),.transport_read_valid(transport_read_valid),
@@ -81,6 +83,28 @@ module tb_stack_record_cache #(parameter AW=8,CACHE_AW=3,FULL_ONLY=0,COMMAND_DEL
  endtask
  task run(input integer idx,input integer pair_request,input integer bad);
  begin launch(idx,pair_request);finish(idx,pair_request,bad);end
+ endtask
+ // Stream from entry e0 to e0+n (or the record's end): every entry is the
+ // record's two words in order; returns the entries seen in got.
+ function [31:0] word_at(input integer w);word_at=pattern((physical_origin+record_start+read_bias+w)%N);endfunction
+ integer got,want_e;
+ task stream(input integer e0,input integer n);
+ begin
+  while(!request_ready && !dut.streaming && dut.state!=0)@(negedge memory_clk);
+  stream_entry=e0;stream_start=1;@(negedge memory_clk);stream_start=0;
+  got=0;want_e=e0;cycles=0;
+  while(got<n && 2*want_e<record_words)begin
+   @(posedge memory_clk);#0.1;
+   if(entry_valid)begin
+    if(entry_data[31:0]!==word_at(2*want_e))$fatal(1,"stream entry %0d low word %h expected %h",want_e,entry_data[31:0],word_at(2*want_e));
+    if(2*want_e+1<record_words && entry_data[63:32]!==word_at(2*want_e+1))$fatal(1,"stream entry %0d high word",want_e);
+    got=got+1;want_e=want_e+1;cycles=0;
+   end else begin cycles=cycles+1;if(cycles>4*N+2000)$fatal(1,"stream stalled at entry %0d state=%0d",want_e,dut.state);end
+   if(stream_error)$fatal(1,"stream error");
+  end
+  @(negedge memory_clk);stream_stop=1;@(negedge memory_clk);stream_stop=0;
+  repeat(4)@(negedge memory_clk);while(dut.refill_open || dut.state!=0)@(negedge memory_clk);
+ end
  endtask
  task new_epoch;
  begin
@@ -174,6 +198,14 @@ module tb_stack_record_cache #(parameter AW=8,CACHE_AW=3,FULL_ONLY=0,COMMAND_DEL
    launch(0,1);while(dut.fstate!=dut.F_READING)@(negedge clk);
    if(dut.cache_valid!=0 || response_valid)$fatal(1,"cache published before refill completion");
    finish(0,1,0);
+   // Stream: the record's entries in order from mid-record to its end, the
+   // pages refilled ahead and chained (one seek); a stop mid-way and an
+   // earlier restart; then the request port serves again.
+   new_epoch();before_seeks=seeks;stream(3,N);
+   if(want_e!=(N+1)/2)$fatal(1,"stream ended at entry %0d",want_e);
+   if(seeks-before_seeks>1)$fatal(1,"stream sought %0d times",seeks-before_seeks);
+   stream(PAGE+1,5);stream(1,2*PAGE);run(5,1,0);
+   record_words=2*PAGE+3;stream(0,N);if(want_e!=PAGE+2)$fatal(1,"short record stream ended at %0d",want_e);record_words=N;
    // A coordinated reset during a burst clears tags and in-flight response.
    new_epoch();launch(0,1);while(dut.fstate!=dut.F_READING || !transport_read_valid)@(negedge clk);new_epoch();
    if(response_valid || fault || dut.cache_valid!=0)$fatal(1,"reset exposed old response");run(0,1,0);
