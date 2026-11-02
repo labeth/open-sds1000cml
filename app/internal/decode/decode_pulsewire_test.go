@@ -125,3 +125,28 @@ func TestDecodeJ1850RoundTrip(t *testing.T) {
 		t.Fatalf("CRC of the OBD request 68 6A F1 01 00 is %02X, want 17", got)
 	}
 }
+
+// A strip longer than the frame buffer's first size (eight LEDs) decodes
+// whole, from samples and from a digital line's edges.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-233
+func TestDecodeWS281xLongStrip(t *testing.T) {
+	sr := 50e6
+	w := newTimeline(sr)
+	w.add(0, 60e-6)
+	var b []int
+	for i := 0; i < 3*60; i++ { // sixty LEDs
+		b = append(b, (i*37)&0xFF)
+	}
+	wsFrame(w, 800e3, b)
+	codes := w.codes()
+	if r := DecodeWS281x(codes, 1/sr, WS281xCfg{}); !r.OK || !reflect.DeepEqual(r.Bytes, b) {
+		t.Fatalf("samples: ok=%v %d bytes (%s)", r.OK, len(r.Bytes), r.Error)
+	}
+	lv := make([]byte, len(codes))
+	for i, c := range codes {
+		lv[i] = c >> 7
+	}
+	if r := DecodeWS281xEdges(edgeLineOf(lv), 1/sr, WS281xCfg{}); !r.OK || !reflect.DeepEqual(r.Bytes, b) {
+		t.Fatalf("edges: ok=%v %d bytes (%s)", r.OK, len(r.Bytes), r.Error)
+	}
+}

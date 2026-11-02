@@ -4,6 +4,7 @@ package decode
 import (
 	"fmt"
 	"math"
+	"slices"
 	"strings"
 )
 
@@ -476,6 +477,9 @@ func decodeWS281x(codes lineIn, colTimeS float64, cfg WS281xCfg) Result {
 		if long {
 			frame, started = frame[:0], false
 			continue
+		}
+		if len(frame) == cap(frame) {
+			frame = slices.Grow(frame, 1) // a strip longer than the first size
 		}
 		frame = frame[:len(frame)+1]
 		b := &frame[len(frame)-1] // set field by field: no struct copied in
