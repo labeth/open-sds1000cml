@@ -253,3 +253,63 @@ func TestSplitQ8(t *testing.T) {
 		}
 	}
 }
+
+// MinMax8 is the extremes at every length and alignment.
+// TRLC-LINKS: REQ-SDS-017
+func TestMinMax8(t *testing.T) {
+	rng := rand.New(rand.NewSource(88))
+	buf := make([]uint8, 3000)
+	for k := 0; k < 2000; k++ {
+		for i := range buf {
+			buf[i] = uint8(100 + rng.Intn(20))
+		}
+		off, n := rng.Intn(64), rng.Intn(2900)
+		s := buf[off : off+n]
+		if n > 0 && k%3 == 0 {
+			s[rng.Intn(n)] = uint8(rng.Intn(256))
+			s[rng.Intn(n)] = uint8(rng.Intn(256))
+		}
+		var lo, hi uint8
+		if n > 0 {
+			lo, hi = s[0], s[0]
+			for _, v := range s {
+				lo, hi = min(lo, v), max(hi, v)
+			}
+		}
+		if glo, ghi := MinMax8(s); glo != lo || ghi != hi {
+			t.Fatalf("case %d (off %d n %d): %d %d, want %d %d", k, off, n, glo, ghi, lo, hi)
+		}
+	}
+}
+
+// TRLC-LINKS: REQ-SDS-017
+func BenchmarkMinMax8(b *testing.B) {
+	s := make([]uint8, 65536)
+	for i := range s {
+		s[i] = uint8(i * 37)
+	}
+	for b.Loop() {
+		MinMax8(s)
+	}
+}
+
+// TRLC-LINKS: REQ-SDS-017
+func BenchmarkMinMax8Loop(b *testing.B) {
+	s := make([]uint8, 65536)
+	for i := range s {
+		s[i] = uint8(i * 37)
+	}
+	for b.Loop() {
+		lo, hi := s[0], s[0]
+		for _, v := range s {
+			if v < lo {
+				lo = v
+			} else if v > hi {
+				hi = v
+			}
+		}
+		sinkLo, sinkHi = lo, hi
+	}
+}
+
+var sinkLo, sinkHi uint8

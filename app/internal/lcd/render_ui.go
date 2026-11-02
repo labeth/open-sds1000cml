@@ -5,6 +5,7 @@ import (
 	"math"
 	"strings"
 
+	"open-sds/app/internal/dsp"
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/panel/framecalc"
 	"open-sds/app/internal/panel/wsview"
@@ -875,10 +876,7 @@ func drawMiniScope(sf Surface, f *engine.Frame, hud HUD, x0, y0, w, h int) {
 			for x := 0; x < w; x++ {
 				lo := clampI(int(left+float64(x)*float64(win)/float64(w)), 0, valid-1)
 				hi := clampI(int(left+float64(x+1)*float64(win)/float64(w))-1, lo, valid-1)
-				mn, mx := sig[lo], sig[lo]
-				for _, v := range sig[lo : hi+1] {
-					mn, mx = min(mn, v), max(mx, v)
-				}
+				mn, mx := dsp.MinMax8(sig[lo : hi+1])
 				yt, yb := yOf(mx), yOf(mn)
 				if prev >= 0 {
 					yt, yb = min(yt, prev), max(yb, prev)

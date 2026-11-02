@@ -1,7 +1,11 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
 package engine
 
-import "math"
+import (
+	"math"
+
+	"open-sds/app/internal/dsp"
+)
 
 // Software edge discrimination and centring (spec 03 §7, spec 05 §3).
 // There are no hardware slope/type registers: the comparator only places the
@@ -14,15 +18,8 @@ func ptp(sig []uint8) (lo, hi, p int) {
 	if len(sig) == 0 {
 		return 0, 0, 0
 	}
-	lo, hi = int(sig[0]), int(sig[0])
-	for _, v := range sig {
-		if int(v) < lo {
-			lo = int(v)
-		}
-		if int(v) > hi {
-			hi = int(v)
-		}
-	}
+	l, h := dsp.MinMax8(sig)
+	lo, hi = int(l), int(h)
 	return lo, hi, hi - lo
 }
 

@@ -13,6 +13,8 @@ package measure
 import (
 	"math"
 	"unsafe"
+
+	"open-sds/app/internal/dsp"
 )
 
 // Result is the full auto-measurement set: volts, seconds and Hz. HasTiming is
@@ -748,20 +750,11 @@ func moments16(sig []uint16, ref int, coarse *[256]int, lowSum *[256]uint32) (cm
 	return cmin, cmax, sum, sq
 }
 
-// minMax8 is the extremes of a non-empty s. Branches, not min/max: a new
-// extreme is rare, so they are predicted, where each conditional move pair
-// costs every sample.
+// minMax8 is the extremes of a non-empty s (dsp.MinMax8: a long run in
+// blocks on the vector unit, the rest by predicted branches).
 // TRLC-LINKS: REQ-SDS-017
 func minMax8(s []uint8) (lo, hi uint8) {
-	lo, hi = s[0], s[0]
-	for _, v := range s {
-		if v < lo {
-			lo = v
-		} else if v > hi {
-			hi = v
-		}
-	}
-	return lo, hi
+	return dsp.MinMax8(s)
 }
 
 // histogram4 counts s into four tables, alternating, so runs of equal codes

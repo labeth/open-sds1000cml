@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"open-sds/app/internal/analog"
+	"open-sds/app/internal/dsp"
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/panel/framecalc"
 	"open-sds/app/internal/panel/wsview"
@@ -77,10 +78,7 @@ func screenDivs(f *engine.Frame, s *sv, ch, cols int) []float64 {
 		}
 		lo := clampInt(start, 0, valid-1)
 		hi := clampInt(next-1, lo, valid-1)
-		mn, mx := sig[lo], sig[lo]
-		for _, v := range sig[lo : hi+1] {
-			mn, mx = min(mn, v), max(mx, v)
-		}
+		mn, mx := dsp.MinMax8(sig[lo : hi+1])
 		out[x] = (float64(mn)+float64(mx))/2 - 128
 		out[x] = out[x] * z / 25
 	}
