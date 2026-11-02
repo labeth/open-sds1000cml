@@ -7,6 +7,7 @@
 package vxi11srv
 
 import (
+	"bytes"
 	"context"
 	"encoding/binary"
 	"fmt"
@@ -333,7 +334,7 @@ func (cn *conn) dispatch(proc uint32, x *xdr) []byte {
 		}
 		cn.lineBuf = append(cn.lineBuf, data...)
 		for {
-			i := indexByte(cn.lineBuf, '\n')
+			i := bytes.IndexByte(cn.lineBuf, '\n')
 			if i < 0 {
 				break
 			}
@@ -418,16 +419,6 @@ func (cn *conn) owns(lid uint32) bool {
 	cn.srv.mu.Lock()
 	defer cn.srv.mu.Unlock()
 	return cn.srv.linkOwner == cn && cn.lid == lid && lid != 0
-}
-
-// TRLC-LINKS: REQ-SDS-024
-func indexByte(b []byte, c byte) int {
-	for i, v := range b {
-		if v == c {
-			return i
-		}
-	}
-	return -1
 }
 
 // ---- portmap registration (spec 11 §1.2) ----
