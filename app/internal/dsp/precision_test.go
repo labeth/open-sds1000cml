@@ -156,3 +156,25 @@ func TestConditionIsTheReference(t *testing.T) {
 		}
 	}
 }
+
+// Every interior length is the reference's, whatever is left after whole
+// groups of samples (the block filters several at a time).
+// TRLC-LINKS: REQ-SDS-037
+func TestConditionEveryLengthIsTheReference(t *testing.T) {
+	rng := rand.New(rand.NewSource(37))
+	for n := len(precisionTaps); n < len(precisionTaps)+12; n++ {
+		a := make([]uint16, n)
+		for i := range a {
+			a[i] = uint16(rng.Uint32())
+		}
+		b := append([]uint16(nil), a...)
+		scratch := make([]uint16, n)
+		ConditionQ8(a, scratch)
+		conditionRef(b, scratch)
+		for i := range a {
+			if a[i] != b[i] {
+				t.Fatalf("length %d sample %d: %d, want %d", n, i, a[i], b[i])
+			}
+		}
+	}
+}
