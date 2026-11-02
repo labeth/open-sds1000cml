@@ -40,6 +40,45 @@ jobs:
       - name: test
         run: go test -skip 'TopRTL' ./...
 
+  # golangci-lint with the repository's .golangci.yml (the linters, their
+  # thresholds and each exception's reason live there).
+  lint:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        module: [app, ota]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: ${{ matrix.module }}/go.mod
+          cache: false
+      - uses: golangci/golangci-lint-action@v8
+        with:
+          version: v2.15.0
+          working-directory: ${{ matrix.module }}
+
+  # Known vulnerabilities the code can reach, in the standard library of the
+  # go.mod toolchain and in the modules it requires.
+  vulncheck:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        module: [app, ota]
+    defaults:
+      run:
+        working-directory: ${{ matrix.module }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: ${{ matrix.module }}/go.mod
+          cache: false
+      - name: govulncheck
+        run: go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
+
   # Second lane: node + Playwright Chromium installed, so the browser e2e,
   # node JS, and Go<->JS parity suites actually RUN. CI_REQUIRE_BROWSER=1 turns
   # their environment self-skips into hard failures (internal/testenv), so this
