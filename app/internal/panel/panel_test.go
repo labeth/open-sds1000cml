@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-PANEL
+
 package panel
 
 import (
@@ -98,7 +99,7 @@ func (f *fakeEng) set(fn func(st *engine.Stats)) {
 }
 
 // TRLC-LINKS: REQ-SDS-135
-func (f *fakeEng) AcqLog(n int) ([]engine.AcqSample, float64) { return f.acqLog, 0 }
+func (f *fakeEng) AcqLog(int) ([]engine.AcqSample, float64) { return f.acqLog, 0 }
 
 // TRLC-LINKS: REQ-SDS-135
 func (f *fakeEng) SetOffsetDAC(ch int, code uint16) {
@@ -438,10 +439,10 @@ func (f *fakeFE) OffsetReqV(ch int) float64 {
 }
 
 // TRLC-LINKS: REQ-SDS-135
-func (f *fakeFE) OffsetVolts(ch int, code uint16) float64 { return (10223 - float64(code)) / 100 }
+func (f *fakeFE) OffsetVolts(_ int, code uint16) float64 { return (10223 - float64(code)) / 100 }
 
 // TRLC-LINKS: REQ-SDS-135
-func (f *fakeFE) OffsetK(ch int) float64 { return 100 }
+func (f *fakeFE) OffsetK(int) float64 { return 100 }
 
 // TRLC-LINKS: REQ-SDS-135
 func (f *fakeFE) SetCoupling(ch, mode int) error {
@@ -478,13 +479,13 @@ func (f *fakeFE) ProbeFactor(ch int) float64 {
 }
 
 // TRLC-LINKS: REQ-SDS-135
-func (f *fakeFE) TrigCode(volts float64, srcCh int) float64 { return 31437 - 911*volts }
+func (f *fakeFE) TrigCode(volts float64, _ int) float64 { return 31437 - 911*volts }
 
 // TRLC-LINKS: REQ-SDS-135
-func (f *fakeFE) TrigVolts(code uint16, srcCh int) float64 { return (31437 - float64(code)) / 911 }
+func (f *fakeFE) TrigVolts(code uint16, _ int) float64 { return (31437 - float64(code)) / 911 }
 
 // TRLC-LINKS: REQ-SDS-135
-func (f *fakeFE) SetTrigCalDetent(ch, detent int, c analog.TrigCal) {}
+func (f *fakeFE) SetTrigCalDetent(_, _ int, _ analog.TrigCal) {}
 
 // bwlFE is a front end with the 20 MHz bandwidth limit relays.
 type bwlFE struct{ *fakeFE }

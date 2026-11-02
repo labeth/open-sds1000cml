@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-PANEL
+
 package panel
 
 import (
@@ -7,6 +8,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"testing/synctest"
 	"time"
 )
 
@@ -33,7 +35,7 @@ type viewStream struct {
 }
 
 // TRLC-LINKS: REQ-SDS-228
-func (s *viewStream) Start(p engine.SerialParams, trig engine.StreamTrigger, value int, label string) error {
+func (s *viewStream) Start(_ engine.SerialParams, trig engine.StreamTrigger, value int, label string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.starts = append(s.starts, viewStart{trig, value, label})
@@ -66,7 +68,7 @@ func (s *viewStream) Snapshot() streamview.View {
 }
 
 // TRLC-LINKS: REQ-SDS-228
-func (s *viewStream) Refuse(reason string) {
+func (s *viewStream) Refuse(string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.state = streamview.Failed
@@ -97,6 +99,7 @@ func (s *viewStream) last() viewStart {
 // streamRig is a view rig with a recording stream and a UART on screen.
 // TRLC-LINKS: REQ-SDS-228
 func streamRig(t *testing.T) (*viewRig, *viewStream, func()) {
+	t.Helper()
 	r := newViewRig(t)
 	rs := &viewStream{}
 	r.c.SetDecodeStream(rs)
@@ -270,21 +273,23 @@ func TestStreamRowShowsTheStreamView(t *testing.T) {
 // is refused: the bus decoded a moment later starts it.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-228
 func TestStreamStartWaitsForAFrameOfTheBus(t *testing.T) {
-	r, rs, uart := streamRig(t)
-	c := r.c
-	press(t, c, "f2")
-	uart() // the bus decoded
-	r.show(smallFrame())
-	go func() {
-		time.Sleep(300 * time.Millisecond)
-		uart()
-	}()
-	press(t, c, "f2", "f2") // the Stream view: starts the stream
-	for end := time.Now().Add(3 * time.Second); time.Now().Before(end); time.Sleep(20 * time.Millisecond) {
-		if n, _ := rs.counts(); n == 1 {
-			return
+	synctest.Test(t, func(t *testing.T) {
+		r, rs, uart := streamRig(t)
+		c := r.c
+		press(t, c, "f2")
+		uart() // the bus decoded
+		r.show(smallFrame())
+		go func() {
+			time.Sleep(300 * time.Millisecond)
+			uart()
+		}()
+		press(t, c, "f2", "f2") // the Stream view: starts the stream
+		for end := time.Now().Add(3 * time.Second); time.Now().Before(end); time.Sleep(20 * time.Millisecond) {
+			if n, _ := rs.counts(); n == 1 {
+				return
+			}
 		}
-	}
-	n, _ := rs.counts()
-	t.Fatalf("the bus decoded 300 ms after the start: %d starts, view %s", n, mustState(t, c, "BUS", "workspace").View)
+		n, _ := rs.counts()
+		t.Fatalf("the bus decoded 300 ms after the start: %d starts, view %s", n, mustState(t, c, "BUS", "workspace").View)
+	})
 }

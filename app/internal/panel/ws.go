@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-PANEL
+
 package panel
 
 import (
@@ -53,10 +54,10 @@ type wsDef struct {
 
 // wsDefs are the five workspaces (REQ-SDS-211).
 var wsDefs = [wsview.Count]wsDef{
-	{tabs: []string{"trig", "ch1", "ch2", "time", "acq"}, plotTop: 0, view: viewYT, cycle: "Y-T / X-Y"},
-	{tabs: []string{"bus", "trig", "time"}, plotTop: 136, view: viewYT, cycle: "Packets / Eye diagram / Stream / Visual"},
-	{tabs: []string{"view", "snd", "acq", "time"}, plotTop: 150, view: viewFFT, cycle: "FFT / Spectrogram / Bode / Sound"},
-	{tabs: []string{"meas", "curs", "acq"}, plotTop: 142, view: viewYT, cycle: "statistics / all values"},
+	{tabs: []string{tabIDTrig, "ch1", "ch2", tabIDTime, "acq"}, plotTop: 0, view: viewYT, cycle: "Y-T / X-Y"},
+	{tabs: []string{"bus", tabIDTrig, tabIDTime}, plotTop: 136, view: viewYT, cycle: "Packets / Eye diagram / Stream / Visual"},
+	{tabs: []string{"view", "snd", "acq", tabIDTime}, plotTop: 150, view: viewFFT, cycle: "FFT / Spectrogram / Bode / Sound"},
+	{tabs: []string{tabIDMeas, "curs", "acq"}, plotTop: 142, view: viewYT, cycle: "statistics / all values"},
 	{tabs: []string{"cmp", "ch1", "ch2"}, plotTop: 104, view: viewYT, cycle: "stack a master"},
 }
 
@@ -212,38 +213,13 @@ func (c *Controller) snap() *sv {
 	if c.fe != nil {
 		s.fe = true
 		s.vidx, _ = c.fe.Snapshot()
-		b, hasBWL := c.fe.(interface{ BWL(ch int) bool })
-		if cs, ok := c.fe.(interface {
-			ChannelState(ch int) (offV float64, cpl int, probe float64, bwl bool)
-		}); ok {
-			// a channel's settings under one lock, not one a value
-			for ch := range 2 {
-				off, cpl, p, bwl := cs.ChannelState(ch)
-				if !(p >= 1) { // as ProbeFactor
-					p = 1
-				}
-				s.probe[ch], s.cpl[ch], s.offV[ch] = p, cpl, off
-				if hasBWL {
-					s.hasBWL, s.bwl[ch] = true, bwl
-				}
-			}
-		} else {
-			for ch := range 2 {
-				s.probe[ch] = c.fe.ProbeFactor(ch)
-				s.cpl[ch] = c.fe.Coupling(ch)
-				s.offV[ch] = c.fe.OffsetReqV(ch)
-			}
-			if hasBWL {
-				s.hasBWL = true
-				s.bwl = [2]bool{b.BWL(0), b.BWL(1)}
-			}
-		}
+		c.snapChannels(s)
 		s.trigLo = c.fe.TrigVolts(engine.TrigCodeMax, src)
 		s.trigHi = c.fe.TrigVolts(engine.TrigCodeMin, src)
 		if s.st.TrigCode != 0 {
 			s.trigV = c.fe.TrigVolts(s.st.TrigCode, src)
 		} else {
-			s.trigV = c.fe.TrigVolts(uint16(clampInt(int(c.fe.TrigCode(0, src)+0.5), engine.TrigCodeMin, engine.TrigCodeMax)), src)
+			s.trigV = c.fe.TrigVolts(uint16(clampInt(int(c.fe.TrigCode(0, src)+0.5), engine.TrigCodeMin, engine.TrigCodeMax)), src) //nolint:gosec // G115: clamped to the trigger code range
 		}
 	} else {
 		s.probe = [2]float64{1, 1}
@@ -326,4 +302,36 @@ func (c *Controller) snap() *sv {
 		s.streamMode = stream.Snapshot().Mode
 	}
 	return s
+}
+
+// snapChannels reads the front end's channel settings into s (snap): probe,
+// coupling, offset and bandwidth limit.
+// TRLC-LINKS: REQ-SDS-211, REQ-SDS-212
+func (c *Controller) snapChannels(s *sv) {
+	b, hasBWL := c.fe.(interface{ BWL(ch int) bool })
+	if cs, ok := c.fe.(interface {
+		ChannelState(ch int) (offV float64, cpl int, probe float64, bwl bool)
+	}); ok {
+		// a channel's settings under one lock, not one a value
+		for ch := range 2 {
+			off, cpl, p, bwl := cs.ChannelState(ch)
+			if !(p >= 1) { // as ProbeFactor
+				p = 1
+			}
+			s.probe[ch], s.cpl[ch], s.offV[ch] = p, cpl, off
+			if hasBWL {
+				s.hasBWL, s.bwl[ch] = true, bwl
+			}
+		}
+	} else {
+		for ch := range 2 {
+			s.probe[ch] = c.fe.ProbeFactor(ch)
+			s.cpl[ch] = c.fe.Coupling(ch)
+			s.offV[ch] = c.fe.OffsetReqV(ch)
+		}
+		if hasBWL {
+			s.hasBWL = true
+			s.bwl = [2]bool{b.BWL(0), b.BWL(1)}
+		}
+	}
 }

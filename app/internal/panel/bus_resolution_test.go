@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-PANEL
+
 package panel
 
 import (
@@ -12,6 +13,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"testing/synctest"
 	"time"
 )
 
@@ -696,26 +698,28 @@ func (s *slowStream) Active() bool {
 // Stream On with none running.
 // TRLC-LINKS: REQ-SDS-018
 func TestStreamOnOffOnRuns(t *testing.T) {
-	c, eng, _ := newC(t)
-	uart := uartFrame([]string{"Hi U\x55\xaa"}, 115200, 300e-6, 20e-9, 200000)
-	c.SetFrameSource(func(fn func(*engine.Frame)) { fn(uart) })
-	st := &slowStream{begin: func() { eng.SetRunning(false) }}
-	c.SetDecodeStream(st)
-	set(t, c, "bus.protocol", "UART")
-	for _, on := range []string{"On", "Off", "On"} {
-		set(t, c, "bus.stream", on)
-		time.Sleep(20 * time.Millisecond)
-	}
-	for i := 0; !st.Active() || st.isStarting(); i++ {
-		if i == 200 {
-			t.Fatalf("Stream %s with no stream running (started %d)", rowText(c, "bus.stream"), st.started)
+	synctest.Test(t, func(t *testing.T) {
+		c, eng, _ := newC(t)
+		uart := uartFrame([]string{"Hi U\x55\xaa"}, 115200, 300e-6, 20e-9, 200000)
+		c.SetFrameSource(func(fn func(*engine.Frame)) { fn(uart) })
+		st := &slowStream{begin: func() { eng.SetRunning(false) }}
+		c.SetDecodeStream(st)
+		set(t, c, "bus.protocol", "UART")
+		for _, on := range []string{"On", "Off", "On"} {
+			set(t, c, "bus.stream", on)
+			time.Sleep(20 * time.Millisecond)
 		}
-		time.Sleep(10 * time.Millisecond)
-	}
-	time.Sleep(150 * time.Millisecond) // the Off's wait for its stream's end is over
-	if !c.streaming() || !st.Active() || eng.Snapshot().Running {
-		t.Fatalf("streaming %v, stream running %v, RUN %v: the Off's RUN came after the new stream began", c.streaming(), st.Active(), eng.Snapshot().Running)
-	}
+		for i := 0; !st.Active() || st.isStarting(); i++ {
+			if i == 200 {
+				t.Fatalf("Stream %s with no stream running (started %d)", rowText(c, "bus.stream"), st.started)
+			}
+			time.Sleep(10 * time.Millisecond)
+		}
+		time.Sleep(150 * time.Millisecond) // the Off's wait for its stream's end is over
+		if !c.streaming() || !st.Active() || eng.Snapshot().Running {
+			t.Fatalf("streaming %v, stream running %v, RUN %v: the Off's RUN came after the new stream began", c.streaming(), st.Active(), eng.Snapshot().Running)
+		}
+	})
 }
 
 // TRLC-LINKS: REQ-SDS-018

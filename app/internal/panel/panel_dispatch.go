@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-PANEL
+
 package panel
 
 import (
@@ -101,6 +102,7 @@ func (c *Controller) Run(stop <-chan struct{}) {
 	}
 }
 
+// armSIGIO makes the key device fd signal this process (SIGIO) when it has input.
 // TRLC-LINKS: REQ-SDS-135
 func armSIGIO(fd int) error {
 	if _, _, errno := syscall.Syscall(syscall.SYS_FCNTL, uintptr(fd), syscall.F_SETOWN, uintptr(syscall.Getpid())); errno != 0 {
@@ -138,6 +140,7 @@ func (c *Controller) decode(m [5]uint16, knobsOn bool) {
 	c.prev = m
 }
 
+// button handles a front-panel key press.
 // TRLC-LINKS: REQ-SDS-135
 func (c *Controller) button(code int) {
 	// While an autoset sweep runs, ignore everything except AUTO (which cancels)
@@ -164,7 +167,7 @@ func (c *Controller) button(code int) {
 		}
 		// Toggle RUN/STOP from the engine's state, not the shadow: a single that
 		// self-stopped moments ago may not be synced into the shadow yet.
-		c.setRun(map[bool]int{true: 1, false: 0}[c.eng.Snapshot().Running])
+		_ = c.setRun(b2ic(c.eng.Snapshot().Running)) // cannot fail
 	case btnSingle:
 		c.single1() // Normal + one triggered capture, then stop
 	case btnAuto:
@@ -174,19 +177,19 @@ func (c *Controller) button(code int) {
 	case btnSet50:
 		c.setTrigMid()
 	case btnForce:
-		c.force()
+		_ = c.force() // cannot fail
 	case btnPrint:
 		c.printScreen()
 	case btnCh1VdivPush, btnCh2VdivPush:
-		c.variablePush(map[bool]int{true: 1, false: 0}[code == btnCh2VdivPush])
+		c.variablePush(b2ic(code == btnCh2VdivPush))
 	case btnCh1PosPush, btnCh2PosPush:
-		ch := map[bool]int{true: 1, false: 0}[code == btnCh2PosPush]
+		ch := b2ic(code == btnCh2PosPush)
 		if c.fe != nil {
-			c.setOffsetTip(ch, 0) // Zero: the trace back to 0 V
+			_ = c.setOffsetTip(ch, 0) // Zero: the trace back to 0 V
 			c.toast(fmt.Sprintf("CH%d offset 0 V", ch+1), 900*time.Millisecond)
 		}
 	case btnTrigLvlPush:
-		c.zeroTrigLevel() // Zero: the trigger level to 0 V
+		_ = c.zeroTrigLevel() // Zero: the trigger level to 0 V
 		c.toast("Trigger level 0 V", 900*time.Millisecond)
 	case btnTdivPush:
 		c.tdivPush()
@@ -199,7 +202,7 @@ func (c *Controller) button(code int) {
 	case btnHelp:
 		c.helpKey()
 	case btnCh1, btnCh2:
-		c.chanKey(map[bool]int{true: 1, false: 0}[code == btnCh2])
+		c.chanKey(b2ic(code == btnCh2))
 	default:
 		for i, sk := range softkeys {
 			if code == sk {
@@ -247,7 +250,7 @@ func (c *Controller) resyncInto(st *engine.Stats) (idx [2]int, ok bool) {
 	c.running, c.norm, c.single = st.Running, st.Norm, st.Single // guarded — pushLEDs reads these
 	c.mu.Unlock()
 	for i, t := range c.tdivs { // the timebase asked for: one waiting for the next capture counts
-		if ts := st.TdivSet(); ts > 0 && absf(t-ts) <= t*1e-6 {
+		if ts := st.TdivSet(); ts > 0 && math.Abs(t-ts) <= t*1e-6 {
 			c.tdivIdx = i
 			break
 		}
@@ -257,14 +260,6 @@ func (c *Controller) resyncInto(st *engine.Stats) (idx [2]int, ok bool) {
 		c.vIdx = idx
 	}
 	return idx, true
-}
-
-// TRLC-LINKS: REQ-SDS-135
-func absf(x float64) float64 {
-	if x < 0 {
-		return -x
-	}
-	return x
 }
 
 // knob services AT MOST ONE knob per event, walking the fixed priority order
@@ -308,6 +303,7 @@ func (c *Controller) knob(m [5]uint16) {
 	}
 }
 
+// dispatch turns knob name dir (+1 clockwise) by steps detents.
 // TRLC-LINKS: REQ-SDS-135
 func (c *Controller) dispatch(name string, dir, steps int) {
 	c.mu.Lock()
@@ -358,7 +354,7 @@ func (c *Controller) dispatch(name string, dir, steps int) {
 		// 40 codes was 22 div at 2 mV/div.
 		nc := int(c.trigCode) - dir*c.trigStepCodes()*steps
 		nc = clampInt(nc, engine.TrigCodeMin, engine.TrigCodeMax)
-		c.trigCode = uint16(nc)
+		c.trigCode = uint16(nc) //nolint:gosec // G115: clamped to the trigger code range just above
 		c.eng.SetTrigLevelCode(c.trigCode)
 	case "adjust":
 		// The workspace's tool, the sheet's row, or the picker's byte.

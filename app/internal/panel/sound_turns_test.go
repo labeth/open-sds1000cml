@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-PANEL
+
 package panel
 
 import (
@@ -57,7 +58,7 @@ func TestSoundTunerAndMetersTakeTurns(t *testing.T) {
 func TestSoundModulationOnceAWindow(t *testing.T) {
 	se := newSoundEng([2]func(float64) float64{
 		func(t float64) float64 { return 2 * math.Sin(2*math.Pi*440*t) * (1 + 0.2*math.Sin(2*math.Pi*5*t)) },
-		func(t float64) float64 { return 0 },
+		func(float64) float64 { return 0 },
 	}, 14)
 	e := &countEng{soundEng: se, reads: map[int]int{}}
 	c := New(e, &fakeFE{idx: [2]int{8, 8}}, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
@@ -81,7 +82,7 @@ func TestSoundModulationOnceAWindow(t *testing.T) {
 func TestSoundViewStatusTool(t *testing.T) {
 	se := newSoundEng([2]func(float64) float64{
 		func(t float64) float64 { return math.Sin(2 * math.Pi * 440 * t) },
-		func(t float64) float64 { return 0 },
+		func(float64) float64 { return 0 },
 	}, 1)
 	c := New(se, &fakeFE{idx: [2]int{8, 8}}, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
 	c.decode(idle(), true)
@@ -106,7 +107,7 @@ func TestSoundModulationNeedsASwing(t *testing.T) {
 		vib := func(t float64) float64 {
 			return amp * math.Sin(2*math.Pi*440*t+20.0/1200*math.Ln2*440/6*-math.Cos(2*math.Pi*6*t))
 		}
-		se := newSoundEng([2]func(float64) float64{vib, func(t float64) float64 { return 0 }}, 14)
+		se := newSoundEng([2]func(float64) float64{vib, func(float64) float64 { return 0 }}, 14)
 		c := New(se, &fakeFE{idx: [2]int{8, 8}}, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
 		c.snd.setLCD(true, true)
 		c.SetSoundSettings(SoundSettings{A4: 440, Page: soundPageMod, Cycles: 2, Gate: -1})

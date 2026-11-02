@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-PANEL
+
 package panel
 
 import (
@@ -231,7 +232,7 @@ func (c *Controller) RefAction(slot int, op string) SetResult {
 	}
 	n := string(rune('a' + slot))
 	switch op {
-	case "store", "clear":
+	case "store", actClear:
 		return c.SheetAction("cmp.store_"+n, op)
 	case "show", "hide":
 		return c.SheetSet("cmp.show_"+n, b2ic(op == "show"), "")

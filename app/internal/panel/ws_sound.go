@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-PANEL
+
 package panel
 
 import (
@@ -27,7 +28,7 @@ const soundPlotTop = 262
 
 // soundPane builds the SOUND view.
 // TRLC-LINKS: REQ-SDS-273
-func (c *Controller) soundPane(s *sv) *wsview.SoundPane {
+func (c *Controller) soundPane() *wsview.SoundPane {
 	ss := c.snd
 	ss.mu.Lock()
 	defer ss.mu.Unlock()
@@ -56,10 +57,10 @@ func (c *Controller) soundPane(s *sv) *wsview.SoundPane {
 		}
 	}
 	p.Tool = []wsview.Seg{
-		{Key: "Adjust", Job: "readout"},
-		{Key: "push", Job: soundPushJob(set.Page)},
-		{Key: "Position", Job: "cycles"},
-		{Key: "push", Job: "C1/C2"},
+		{Key: ctlAdjust, Job: "readout"},
+		{Key: ctlPush, Job: soundPushJob(set.Page)},
+		{Key: ctlPosition, Job: "cycles"},
+		{Key: ctlPush, Job: "C1/C2"},
 	}
 	trigFrom := "TRIG"
 	if set.TrigGate {
@@ -109,7 +110,7 @@ func (c *Controller) soundPane(s *sv) *wsview.SoundPane {
 	// The meters.
 	ref := sound.PresetByID(set.Ref)
 	p.RefName = "0 dB = " + ref.Name
-	for ch := 0; ch < 2; ch++ {
+	for ch := range 2 {
 		l := ss.levels[ch]
 		m := &p.Meter[ch]
 		if !l.OK {
@@ -206,6 +207,83 @@ func secText(v float64) string {
 	return si(v, "s")
 }
 
+// soundModLines are the modulation page's lines (ss.mu held): an LFO read
+// directly, or a tone's tremolo, vibrato, wow and flutter and audio-rate FM.
+// TRLC-LINKS: REQ-SDS-269
+func soundModLines(ss *soundSvc) []wsview.Span {
+	t := func(s string) wsview.Span { return wsview.Span{Text: s, Col: wsview.Text} }
+	d := func(s string) wsview.Span { return wsview.Span{Text: s, Col: wsview.Dim} }
+	a := func(s string) wsview.Span { return wsview.Span{Text: s, Col: wsview.Amber} }
+	var out []wsview.Span
+	m := ss.mod
+	switch {
+	case ss.hz <= 0 && ss.lfo.OK:
+		l := ss.lfo
+		out = append(out, a("LFO (no pitch: read directly)"), t("rate "+fmt.Sprintf("%.3g Hz", l.RateHz)+"  "+l.Shape),
+			t("Vpp "+si(l.Vpp, "V")+"  mean "+sgnSI(l.Mean, "V")), t(fmt.Sprintf("rise %.0f%% of a cycle", l.RisePct)))
+	case !m.OK && m.Why != "":
+		out = append(out, d(m.Why))
+	case !m.OK:
+		out = append(out, d("waiting for a tone"))
+		if ss.lfo.Why != "" && ss.hz <= 0 {
+			out = append(out, d("LFO: "+ss.lfo.Why))
+		}
+	default:
+		out = append(out, a("TREMOLO (AM)"))
+		if m.HasAM {
+			out = append(out, t(fmt.Sprintf("depth %.1f%%  %.1f dB", m.AMPct, m.AMDB)), t(fmt.Sprintf("rate %.3g Hz  %s", m.AMRate, m.AMShape)))
+		} else {
+			out = append(out, d(fmt.Sprintf("none (%.1f%%)", m.AMPct)))
+		}
+		out = append(out, a("VIBRATO (FM)"))
+		if m.HasFM {
+			out = append(out, t(fmt.Sprintf("+-%.1f cents  +-%.3g Hz", m.FMCents, m.FMHz)), t(fmt.Sprintf("rate %.3g Hz  %s", m.FMRate, m.FMShape)))
+		} else {
+			out = append(out, d(fmt.Sprintf("none (+-%.1f cents)", m.FMCents)))
+		}
+		out = append(out, t(fmt.Sprintf("W&F %.3f%% wtd  wow %.3f%%", m.WFPct, m.WowPct)), t(fmt.Sprintf("flutter %.3f%%", m.FlutterPct)))
+		if sb := ss.sb; sb.OK && sb.Lines >= 3 && sb.Fit > 0.8 && sb.Beta > 0.2 {
+			out = append(out, a("AUDIO-RATE FM"), t(fmt.Sprintf("C:M %s  index %.2f", sb.Ratio, sb.Beta)), d(fmt.Sprintf("fm %s  fit %.2f", si(sb.Fm, "Hz"), sb.Fit)))
+		}
+	}
+	return out
+}
+
+// soundHarmLines are the harmonics page's lines (ss.mu held).
+// TRLC-LINKS: REQ-SDS-270
+func soundHarmLines(ss *soundSvc) []wsview.Span {
+	t := func(s string) wsview.Span { return wsview.Span{Text: s, Col: wsview.Text} }
+	d := func(s string) wsview.Span { return wsview.Span{Text: s, Col: wsview.Dim} }
+	var out []wsview.Span
+	h := ss.harm
+	if !h.OK {
+		return append(out, d("waiting for a tone"))
+	}
+	out = append(out, t("H1 "+si(h.F0, "Hz")+fmt.Sprintf("  %.1f dBV", h.H[0].DBV)))
+	for i := 1; i < 10; i += 2 {
+		var lb strings.Builder
+		for k := i; k < i+2 && k < 10; k++ {
+			x := h.H[k]
+			v := "  -- "
+			if x.Found {
+				v = fmt.Sprintf("%6.1f", x.RelDB)
+			} else if x.DBV > math.Inf(-1) {
+				v = "   ---"
+			}
+			fmt.Fprintf(&lb, "H%-2d%s  ", k+1, v)
+		}
+		out = append(out, t(lb.String()))
+	}
+	out = append(out, t("THD "+pctText(h.THDPct)))
+	if !math.IsNaN(h.EvenOdd) {
+		out = append(out, t(fmt.Sprintf("even/odd %.1f dB", h.EvenOdd)), d(h.Character))
+	}
+	if h.Hum.Found {
+		out = append(out, t(fmt.Sprintf("hum %g Hz %.1f dBV", h.Hum.MainHz, h.Hum.DBV)))
+	}
+	return out
+}
+
 // soundPageLines are the readout column's lines (ss.mu held).
 // TRLC-LINKS: REQ-SDS-269, REQ-SDS-268, REQ-SDS-271, REQ-SDS-270, REQ-SDS-267
 func soundPageLines(ss *soundSvc, set SoundSettings) []wsview.Span {
@@ -215,37 +293,7 @@ func soundPageLines(ss *soundSvc, set SoundSettings) []wsview.Span {
 	var out []wsview.Span
 	switch set.Page {
 	case soundPageMod:
-		m := ss.mod
-		switch {
-		case ss.hz <= 0 && ss.lfo.OK:
-			l := ss.lfo
-			out = append(out, a("LFO (no pitch: read directly)"), t("rate "+fmt.Sprintf("%.3g Hz", l.RateHz)+"  "+l.Shape),
-				t("Vpp "+si(l.Vpp, "V")+"  mean "+sgnSI(l.Mean, "V")), t(fmt.Sprintf("rise %.0f%% of a cycle", l.RisePct)))
-		case !m.OK && m.Why != "":
-			out = append(out, d(m.Why))
-		case !m.OK:
-			out = append(out, d("waiting for a tone"))
-			if ss.lfo.Why != "" && ss.hz <= 0 {
-				out = append(out, d("LFO: "+ss.lfo.Why))
-			}
-		default:
-			out = append(out, a("TREMOLO (AM)"))
-			if m.HasAM {
-				out = append(out, t(fmt.Sprintf("depth %.1f%%  %.1f dB", m.AMPct, m.AMDB)), t(fmt.Sprintf("rate %.3g Hz  %s", m.AMRate, m.AMShape)))
-			} else {
-				out = append(out, d(fmt.Sprintf("none (%.1f%%)", m.AMPct)))
-			}
-			out = append(out, a("VIBRATO (FM)"))
-			if m.HasFM {
-				out = append(out, t(fmt.Sprintf("+-%.1f cents  +-%.3g Hz", m.FMCents, m.FMHz)), t(fmt.Sprintf("rate %.3g Hz  %s", m.FMRate, m.FMShape)))
-			} else {
-				out = append(out, d(fmt.Sprintf("none (+-%.1f cents)", m.FMCents)))
-			}
-			out = append(out, t(fmt.Sprintf("W&F %.3f%% wtd  wow %.3f%%", m.WFPct, m.WowPct)), t(fmt.Sprintf("flutter %.3f%%", m.FlutterPct)))
-			if sb := ss.sb; sb.OK && sb.Lines >= 3 && sb.Fit > 0.8 && sb.Beta > 0.2 {
-				out = append(out, a("AUDIO-RATE FM"), t(fmt.Sprintf("C:M %s  index %.2f", sb.Ratio, sb.Beta)), d(fmt.Sprintf("fm %s  fit %.2f", si(sb.Fm, "Hz"), sb.Fit)))
-			}
-		}
+		out = soundModLines(ss)
 	case soundPageADSR:
 		gate := "the signal's level"
 		if set.Gate >= 0 {
@@ -292,35 +340,7 @@ func soundPageLines(ss *soundSvc, set SoundSettings) []wsview.Span {
 		}
 		out = append(out, t("THD in "+pctText(r.THDA)+" out "+pctText(r.THDB)), t("added "+pctText(r.AddedPct)))
 	case soundPageHarm:
-		h := ss.harm
-		if !h.OK {
-			out = append(out, d("waiting for a tone"))
-			break
-		}
-		out = append(out, t("H1 "+si(h.F0, "Hz")+fmt.Sprintf("  %.1f dBV", h.H[0].DBV)))
-		for i := 1; i < 10; i += 2 {
-			l := ""
-			var lSb295 strings.Builder
-			for k := i; k < i+2 && k < 10; k++ {
-				x := h.H[k]
-				v := "  -- "
-				if x.Found {
-					v = fmt.Sprintf("%6.1f", x.RelDB)
-				} else if x.DBV > math.Inf(-1) {
-					v = "   ---"
-				}
-				lSb295.WriteString(fmt.Sprintf("H%-2d%s  ", k+1, v))
-			}
-			l += lSb295.String()
-			out = append(out, t(l))
-		}
-		out = append(out, t("THD "+pctText(h.THDPct)))
-		if !math.IsNaN(h.EvenOdd) {
-			out = append(out, t(fmt.Sprintf("even/odd %.1f dB", h.EvenOdd)), d(h.Character))
-		}
-		if h.Hum.Found {
-			out = append(out, t(fmt.Sprintf("hum %g Hz %.1f dBV", h.Hum.MainHz, h.Hum.DBV)))
-		}
+		out = soundHarmLines(ss)
 	case soundPageVOct:
 		f := sound.FitVOct(ss.voct, set.A4)
 		out = append(out, d(fmt.Sprintf("CV C%d %s   VCO C%d", 2-set.Ch, sgnSI(ss.cv, "V"), set.Ch+1)))
@@ -365,7 +385,7 @@ func (c *Controller) soundPush() {
 		busy := c.snd.adsr == adsrArmed || c.snd.adsr == adsrCapturing
 		c.snd.mu.Unlock()
 		c.snd.arm(!busy)
-		msg = map[bool]string{true: "Envelope: cancelled", false: "Envelope: armed (the FPGA's edge starts it)"}[busy]
+		msg = choose(busy, "Envelope: cancelled", "Envelope: armed (the FPGA's edge starts it)")
 	case soundPageAB:
 		set = c.snd.update(func(s *SoundSettings) { s.ABIn = 1 - s.ABIn })
 		msg = fmt.Sprintf("A/B: in C%d, out C%d", set.ABIn+1, 2-set.ABIn)
@@ -468,7 +488,7 @@ func (c *Controller) soundAutoFit(stop chan struct{}) {
 	e.LeaseSound(3 * time.Second)
 	var done [2]bool
 	active, state := false, ""
-	for try := 0; try < 8 && !(done[0] && done[1]); try++ {
+	for try := 0; try < 8 && (!done[0] || !done[1]); try++ {
 		select {
 		case <-stop:
 			return
@@ -482,7 +502,7 @@ func (c *Controller) soundAutoFit(stop chan struct{}) {
 		active = true
 		b := e.SoundLatest(int(0.3*info.RateHz), nil, nil)
 		idx, _ := c.fe.Snapshot()
-		for ch := 0; ch < 2; ch++ {
+		for ch := range 2 {
 			if done[ch] {
 				continue
 			}
@@ -511,7 +531,7 @@ func (c *Controller) soundAutoFit(stop chan struct{}) {
 	switch {
 	case !active:
 		c.toast("AUTO: no audio stream: "+state, autoNoticeFor)
-	case !(done[0] && done[1]):
+	case !done[0] || !done[1]:
 		c.toast("AUTO: the level kept moving; fitted to the last reading", autoNoticeFor)
 	default:
 		c.toast("AUTO: both channels fitted to the stream", autoNoticeFor)

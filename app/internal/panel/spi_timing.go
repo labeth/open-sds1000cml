@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-PANEL
+
 package panel
 
 import (
@@ -183,9 +184,9 @@ func spiTimingRows(isSPI func(*sv) bool) []*row {
 		if s.spiEye.PeriodS > 0 {
 			return "Auto (" + si(1/s.spiEye.PeriodS, "Hz") + ")"
 		}
-		return "Auto"
+		return labelAuto
 	}
-	clk.presets = func(*sv) []preset { return []preset{{t: "Auto", v: 0}} }
+	clk.presets = func(*sv) []preset { return []preset{{t: labelAuto, v: 0}} }
 	clk.def = func(c *Controller) error { return c.setSPIClock(0) }
 	delay := numRow("bus.spi_delay", "Data delay", "s", func(s *sv) float64 { return s.spiDelayNs() * 1e-9 },
 		constLim(spiDelayMinNs*1e-9, spiDelayMaxNs*1e-9), constStep(0.25e-9), func(c *Controller, v float64) error { return c.setSPIDelay(v * 1e9) }, siFmt("s"))
@@ -194,7 +195,7 @@ func spiTimingRows(isSPI func(*sv) bool) []*row {
 	delay.rel, delay.why = isSPI, "Protocol = SPI"
 	delay.text = spiDelayText
 	delay.presets = func(*sv) []preset {
-		return []preset{{t: "Auto", run: (*Controller).setSPIDelayAuto}, {t: "At edge", v: 0}}
+		return []preset{{t: labelAuto, run: (*Controller).setSPIDelayAuto}, {t: "At edge", v: 0}}
 	}
 	delay.def = func(c *Controller) error { return c.setSPIDelay(0) }
 	return []*row{clk, delay}
@@ -213,7 +214,7 @@ func receiverRow() *row {
 			return s.hasSerial && (s.decProto == framecalc.ProtoUART || s.decProto == framecalc.ProtoI2C || s.decProto == framecalc.ProtoSPI)
 		},
 		why:  "Protocol = UART, I2C or SPI",
-		opts: staticOpts([]opt{{0, "Auto"}, {1, "Samples"}}),
+		opts: staticOpts([]opt{{0, labelAuto}, {1, "Samples"}}),
 		get:  func(s *sv) int { return b2ic(s.decFine) },
 		set:  func(c *Controller, v int) error { return c.setDecFine(v == 1) },
 		def:  func(c *Controller) error { return c.setDecFine(false) },

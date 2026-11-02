@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-PANEL
+
 package panel
 
 import (
@@ -70,7 +71,7 @@ func (c *Controller) View() wsview.View { return c.view(c.snap()) }
 // TRLC-LINKS: REQ-SDS-211, REQ-SDS-212
 func (c *Controller) view(s *sv) wsview.View {
 	u := &s.ui
-	if !(u.ws == wsview.Bus && u.busEye) {
+	if u.ws != wsview.Bus || !u.busEye {
 		c.endEyeRaw() // the eye left: nothing waits for its raw record
 	}
 	if u.ws != wsview.Bus {
@@ -127,7 +128,7 @@ func (c *Controller) view(s *sv) wsview.View {
 		v.Layout.HideViewCaptions, v.Layout.HideBottom = true, true
 		if s.viewMode == viewSound {
 			v.Layout.PlotTop, v.Layout.HideMeas = soundPlotTop, true
-			v.Sound = c.soundPane(s)
+			v.Sound = c.soundPane()
 			break
 		}
 		v.Spec = c.specPane(s)
@@ -195,8 +196,7 @@ func (c *Controller) sheetView(s *sv) *wsview.Sheet {
 		sh.Guide = guidePage(s)
 	}
 	sh.Side = c.sideView(s, curRow(u))
-	switch {
-	case u.sub == subPick:
+	if u.sub == subPick {
 		sh.Sub = &wsview.Sub{
 			Title: fmt.Sprintf("PICK FROM SCREEN  (%d bytes decoded)", len(u.pick.toks)), Toks: u.pick.toks, Cur: u.pick.start,
 			Lines: []wsview.Span{
@@ -251,6 +251,7 @@ func (c *Controller) rowView(s *sv, r *row, focus, edit bool, allVals [2][]float
 	case wsview.Bytes:
 		rv.Value = matchText(s)
 		rv.Armed = s.st.SerialMode != 0
+	case wsview.Header: // a header has no value
 	}
 	return rv
 }
@@ -347,14 +348,37 @@ func sheetHint(s *sv, t *tab) wsview.Span {
 // the TRIG tab warns.
 const noiseTriggerWarn = 0.25
 
+// cursorDelta is the cursors' readout under the CURS tab: dt and 1/dt for
+// time cursors, each shown channel's dV for volts cursors.
+// TRLC-LINKS: REQ-SDS-212
+func cursorDelta(s *sv) string {
+	if s.curType == 0 {
+		ta, tb := cursorTimes(s)
+		dt := tb - ta
+		line := "dt " + si(math.Abs(dt), "s")
+		if dt != 0 {
+			line += "  1/dt " + si(1/math.Abs(dt), "Hz")
+		}
+		return line
+	}
+	var parts []string
+	for ch := range 2 {
+		if s.chDisp[ch] {
+			va, vb := cursorVolts(s, ch)
+			parts = append(parts, fmt.Sprintf("dV%d %s", ch+1, si(math.Abs(vb-va), "V")))
+		}
+	}
+	return strings.Join(parts, "  ")
+}
+
 // tabStatus is the live status under a tab's rows.
 // TRLC-LINKS: REQ-SDS-212
 func tabStatus(c *Controller, s *sv, t *tab) []wsview.Span {
 	dim := func(x string) wsview.Span { return wsview.Span{Text: x, Col: wsview.Dim} }
 	var out []wsview.Span
 	switch t.id {
-	case "trig":
-		st := "Trig'd"
+	case tabIDTrig:
+		var st string
 		switch {
 		case !s.st.Running:
 			st = "Stop"
@@ -363,7 +387,7 @@ func tabStatus(c *Controller, s *sv, t *tab) []wsview.Span {
 		case s.st.Norm:
 			st = "Normal (waits for a trigger)"
 		default:
-			st = "Auto"
+			st = labelAuto
 		}
 		out = append(out, dim("Status: "+st))
 		if s.st.SerialMode != 0 {
@@ -394,24 +418,7 @@ func tabStatus(c *Controller, s *sv, t *tab) []wsview.Span {
 		out = append(out, dim("open-sds1000cml "+buildinfo.Version+"  ("+buildinfo.Commit+")"))
 	case "curs":
 		if s.curOn {
-			if s.curType == 0 {
-				ta, tb := cursorTimes(s)
-				dt := tb - ta
-				line := "dt " + si(abs64(dt), "s")
-				if dt != 0 {
-					line += "  1/dt " + si(1/abs64(dt), "Hz")
-				}
-				out = append(out, wsview.Span{Text: line, Col: wsview.Amber})
-			} else {
-				var parts []string
-				for ch := range 2 {
-					if s.chDisp[ch] {
-						va, vb := cursorVolts(s, ch)
-						parts = append(parts, fmt.Sprintf("dV%d %s", ch+1, si(abs64(vb-va), "V")))
-					}
-				}
-				out = append(out, wsview.Span{Text: strings.Join(parts, "  "), Col: wsview.Amber})
-			}
+			out = append(out, wsview.Span{Text: cursorDelta(s), Col: wsview.Amber})
 		} else {
 			out = append(out, dim("Cursors off: pick Time or Volts above (MEASURE: Adjust push)"))
 		}
@@ -419,14 +426,15 @@ func tabStatus(c *Controller, s *sv, t *tab) []wsview.Span {
 		c.amu.Lock()
 		res, ok := c.ana.res, c.ana.resOK
 		c.amu.Unlock()
-		if s.decProto == framecalc.ProtoOff {
+		switch {
+		case s.decProto == framecalc.ProtoOff:
 			out = append(out, dim("Decode off. The BUS workspace (F2) detects the bus and decodes it."))
-		} else if ok {
+		case ok:
 			out = append(out, dim(fmt.Sprintf("%s: %d units decoded on screen", busName(s.decProto, s.decBaud, s.decChA, s.decChB, s.decCPOL, s.decCPHA), len(res.Bytes))))
 			if res.Text != "" {
 				out = append(out, wsview.Span{Text: cut("Screen: "+res.Text, 76), Col: wsview.Text})
 			}
-		} else if res.Error != "" {
+		case res.Error != "":
 			out = append(out, wsview.Span{Text: cut(res.Error, 76), Col: wsview.Stop})
 		}
 	case "acq":
@@ -448,14 +456,14 @@ func tabStatus(c *Controller, s *sv, t *tab) []wsview.Span {
 			out = append(out, dim(s.maskMsg))
 		}
 		out = append(out, dim("COMPARE (F5) shows each reference against the live trace."))
-	case "meas":
+	case tabIDMeas:
 		if s.showMeas {
 			out = append(out, dim(fmt.Sprintf("%d of at most %d readouts on screen", len(s.meas), maxMeasItems)))
 		} else {
 			out = append(out, dim("Readouts hidden (Readouts = On shows them)"))
 		}
 		out = append(out, dim("MEASURE (F4) keeps statistics of the chosen items."))
-	case "time":
+	case tabIDTime:
 		w := 10 * s.st.TdivS
 		line := "Screen " + si(w, "s") + " wide"
 		if s.zoom > 1 {
@@ -492,7 +500,7 @@ func pickerView(s *sv) *wsview.Picker {
 			{Text: "Turn Adjust or Position: the first byte.  Push Adjust (or F1): trigger on it; F2-F4: on 2-4 bytes.", Col: wsview.Text},
 			{Text: "F5 or Menu On/Off: back, the trigger as it was.", Col: wsview.Dim},
 		},
-		Now: "Now: " + matchText(s) + map[bool]string{true: "  (serial trigger on)", false: ""}[s.st.SerialMode != 0],
+		Now: "Now: " + matchText(s) + choose(s.st.SerialMode != 0, "  (serial trigger on)", ""),
 	}
 }
 
@@ -535,28 +543,7 @@ func (c *Controller) busPane(s *sv) *wsview.BusPane {
 	marks, marksGen := a.packetMarks(live, liveSel, toks)
 	c.amu.Unlock()
 	if !dec {
-		failed := u.busFailed
-		switch {
-		case u.busDetecting:
-			p.Caption, p.CapCol = "AUTO: detecting the bus on CH1 and CH2...", wsview.Amber
-			p.Msg = []wsview.Span{{Text: "DETECTING...", Col: wsview.Text}}
-		default:
-			p.Caption, p.CapCol = map[bool]string{true: "no bus found - decode is off", false: "decode is off"}[failed], wsview.Dim
-			p.Msg = []wsview.Span{
-				{Text: map[bool]string{true: "NO BUS FOUND", false: "DECODE IS OFF"}[failed], Col: wsview.Text},
-				{Text: "Push Adjust: try again - auto-detects UART, I2C, SPI and more on CH1/CH2 and decodes it", Col: wsview.Amber},
-				{Text: "Utility or Menu On/Off: set the protocol, baud and lines by hand on the BUS sheet", Col: wsview.Dim},
-			}
-			if failed {
-				if u.busNote != "" { // what the search did: AUTO, BUS entry or Adjust
-					p.Caption = "AUTO: " + u.busNote
-				}
-				p.Msg = append(p.Msg, wsview.Span{Text: "Check that the bus is connected and its channel is not on GND coupling.", Col: wsview.Dim})
-			}
-		}
-		p.Right = "Utility: BUS sheet"
-		p.Off = true
-		p.Tool = append(toolLine(s, wsview.Seg{Key: "Adjust push", Job: "try again"}), wsview.Seg{Key: "S/DIV push", Job: "zoom"})
+		busOffPane(s, p)
 		return p
 	}
 	switch {
@@ -578,19 +565,7 @@ func (c *Controller) busPane(s *sv) *wsview.BusPane {
 		p.Caption, p.CapCol, p.Error = res.Error, wsview.Stop, res.Error
 		p.Hint = decodeRateHint(res.Error, s.st.TdivS, s.st.SerialMode != 0, s.st.SerialMatches)
 	} else {
-		cutN := 0
-		for _, q := range live {
-			if !q.Complete {
-				cutN++
-			}
-		}
-		cap := fmt.Sprintf("%s  -  %d %s", name, len(rows), plural(len(rows), "packet"))
-		if partial {
-			cap += " cut by the record edges"
-		} else if cutN > 0 {
-			cap += fmt.Sprintf(", %d cut at the edges", cutN)
-		}
-		p.Caption, p.CapCol = cap, wsview.Text
+		p.Caption, p.CapCol = packetCaption(name, rows, live, partial), wsview.Text
 	}
 	if u.busDetecting { // Auto again, on the bus decoded meanwhile
 		p.Caption, p.CapCol = "AUTO: detecting the bus on CH1 and CH2...", wsview.Amber
@@ -605,34 +580,30 @@ func (c *Controller) busPane(s *sv) *wsview.BusPane {
 	}
 	// the lines: 16 bytes each, at most 3 per packet; with a layer, its note
 	// on one line a packet and the selected packet's bytes on at most two
-	type line struct {
-		pi, from, to int
-		more, note   bool
-	}
 	layered := s.decLayer != ""
 	if l, ok := analysis.LayerByID(s.decLayer); ok && layered {
 		p.Layer = l.Name
 	}
 	// A row's lines, built only for the rows on screen: a deep record holds
 	// thousands of packets.
-	rowLines := func(i int, dst []line) []line {
+	rowLines := func(i int, dst []busListLine) []busListLine {
 		q := &rows[i]
 		n := len(q.Bytes)
 		k := min(3, max(1, (n+15)/16))
 		if layered {
-			dst = append(dst, line{pi: i, note: true})
+			dst = append(dst, busListLine{pi: i, note: true})
 			if i != sel || n == 0 {
 				return dst
 			}
 			k = min(2, k)
 		}
-		for part := 0; part < k; part++ {
+		for part := range k {
 			more := part == k-1 && n > k*16
 			to := min(n, part*16+16)
 			if more {
 				to = part*16 + 15
 			}
-			dst = append(dst, line{pi: i, from: part * 16, to: to, more: more})
+			dst = append(dst, busListLine{pi: i, from: part * 16, to: to, more: more})
 		}
 		return dst
 	}
@@ -660,7 +631,7 @@ func (c *Controller) busPane(s *sv) *wsview.BusPane {
 	}
 	top := clampInt(selLine-2, 0, max(0, nLines-8))
 	// The rows from the one holding line top.
-	var lines []line
+	var lines []busListLine
 	first, at := 0, 0
 	for first < len(rows) {
 		k := rowCount(first)
@@ -675,59 +646,119 @@ func (c *Controller) busPane(s *sv) *wsview.BusPane {
 	}
 	lines = lines[min(len(lines), top-at):]
 	for r := 0; r < 8 && r < len(lines); r++ {
-		ln := lines[r]
-		q := rows[ln.pi]
-		bl := wsview.BusLine{Sel: ln.pi == sel, More: ln.more, Fault: q.Err}
-		if ln.to > ln.from {
-			bl.Hex, bl.Err = make([]string, 0, ln.to-ln.from), make([]bool, 0, ln.to-ln.from)
-		}
-		if ln.note {
-			bl.Note, bl.NoteErr = q.Note, q.NoteErr
-			if bl.Note == "" {
-				bl.Note = fmt.Sprintf("(%d %s)", len(q.Bytes), plural(len(q.Bytes), "byte"))
-			}
-		}
-		if ln.from == 0 && (ln.note || !layered) {
-			bl.Num, bl.Bytes = ln.pi+1, len(q.Bytes)
-			if q.HasAddr { // as the web's list writes it
-				bl.Addr = analysis.AddrText(res.Proto, q)
-			}
-			if len(toks) > 0 && tokMatch(toks, q) {
-				bl.Match = cut(strings.Join(toks, " "), 24)
-			} else if !q.Complete {
-				bl.Cut = "cut at the record edge"
-			}
-		}
-		if ln.note {
-			p.Lines = append(p.Lines, bl)
-			continue
-		}
-		var str []byte
-		for k := ln.from; k < ln.to; k++ {
-			bad := k < len(q.ByteErr) && q.ByteErr[k]
-			b := q.Bytes[k]
-			if bad {
-				bl.Hex = append(bl.Hex, "ER")
-				str = append(str, '.')
-			} else {
-				bl.Hex = append(bl.Hex, hex2(b))
-				if b >= 32 && b < 127 {
-					str = append(str, b)
-				} else {
-					str = append(str, '.')
-				}
-			}
-			bl.Err = append(bl.Err, bad)
-		}
-		bl.Str = string(str)
-		p.Lines = append(p.Lines, bl)
+		p.Lines = append(p.Lines, busLineOf(lines[r], rows[lines[r].pi], sel, layered, toks, res.Proto))
 	}
 	p.Up, p.Dn = top > 0, top+8 < nLines
 	// the strip: the selected packet boxed (found by its message), matches ticked
 	p.Marks, p.MarksGen = marks, marksGen
 	p.SelNum = sel + 1
-	p.Tool = append(toolLine(s, wsview.Seg{Key: "Adjust", Job: "packet"}, wsview.Seg{Key: "push", Job: "pick bytes"}), wsview.Seg{Key: "Zoom", Job: zoomJob})
+	p.Tool = append(toolLine(s, wsview.Seg{Key: ctlAdjust, Job: "packet"}, wsview.Seg{Key: ctlPush, Job: "pick bytes"}), wsview.Seg{Key: "Zoom", Job: zoomJob})
 	return p
+}
+
+// busOffPane fills the BUS pane while nothing decodes: detecting, or decode
+// off and how to start it.
+// TRLC-LINKS: REQ-SDS-214
+func busOffPane(s *sv, p *wsview.BusPane) {
+	u := &s.ui
+	failed := u.busFailed
+	switch {
+	case u.busDetecting:
+		p.Caption, p.CapCol = "AUTO: detecting the bus on CH1 and CH2...", wsview.Amber
+		p.Msg = []wsview.Span{{Text: "DETECTING...", Col: wsview.Text}}
+	default:
+		p.Caption, p.CapCol = choose(failed, "no bus found - decode is off", "decode is off"), wsview.Dim
+		p.Msg = []wsview.Span{
+			{Text: choose(failed, "NO BUS FOUND", "DECODE IS OFF"), Col: wsview.Text},
+			{Text: "Push Adjust: try again - auto-detects UART, I2C, SPI and more on CH1/CH2 and decodes it", Col: wsview.Amber},
+			{Text: "Utility or Menu On/Off: set the protocol, baud and lines by hand on the BUS sheet", Col: wsview.Dim},
+		}
+		if failed {
+			if u.busNote != "" { // what the search did: AUTO, BUS entry or Adjust
+				p.Caption = "AUTO: " + u.busNote
+			}
+			p.Msg = append(p.Msg, wsview.Span{Text: "Check that the bus is connected and its channel is not on GND coupling.", Col: wsview.Dim})
+		}
+	}
+	p.Right = "Utility: BUS sheet"
+	p.Off = true
+	p.Tool = append(toolLine(s, wsview.Seg{Key: "Adjust push", Job: "try again"}), wsview.Seg{Key: "S/DIV push", Job: "zoom"})
+}
+
+// packetCaption is the BUS caption over the packet list: the bus's name,
+// the packets and those the record's edges cut.
+// TRLC-LINKS: REQ-SDS-214
+func packetCaption(name string, rows, live []Packet, partial bool) string {
+	cutN := 0
+	for _, q := range live {
+		if !q.Complete {
+			cutN++
+		}
+	}
+	caption := fmt.Sprintf("%s  -  %d %s", name, len(rows), plural(len(rows), "packet"))
+	if partial {
+		caption += " cut by the record edges"
+	} else if cutN > 0 {
+		caption += fmt.Sprintf(", %d cut at the edges", cutN)
+	}
+	return caption
+}
+
+// busListLine is one line of the BUS packet list: packet pi's bytes from..to
+// (16 a line, at most 3 a packet), more when the packet runs on, or with a
+// layer its note.
+type busListLine struct {
+	pi, from, to int
+	more, note   bool
+}
+
+// busLineOf is list line ln of packet q (sel the selected packet, layered
+// with a layer, toks the match, proto the decoder's name).
+// TRLC-LINKS: REQ-SDS-214
+func busLineOf(ln busListLine, q Packet, sel int, layered bool, toks []string, proto string) wsview.BusLine {
+	bl := wsview.BusLine{Sel: ln.pi == sel, More: ln.more, Fault: q.Err}
+	if ln.to > ln.from {
+		bl.Hex, bl.Err = make([]string, 0, ln.to-ln.from), make([]bool, 0, ln.to-ln.from)
+	}
+	if ln.note {
+		bl.Note, bl.NoteErr = q.Note, q.NoteErr
+		if bl.Note == "" {
+			bl.Note = fmt.Sprintf("(%d %s)", len(q.Bytes), plural(len(q.Bytes), "byte"))
+		}
+	}
+	if ln.from == 0 && (ln.note || !layered) {
+		bl.Num, bl.Bytes = ln.pi+1, len(q.Bytes)
+		if q.HasAddr { // as the web's list writes it
+			bl.Addr = analysis.AddrText(proto, q)
+		}
+		if len(toks) > 0 && tokMatch(toks, q) {
+			bl.Match = cut(strings.Join(toks, " "), 24)
+		} else if !q.Complete {
+			bl.Cut = "cut at the record edge"
+		}
+	}
+	if ln.note {
+		return bl
+	}
+	var str []byte
+	for k := ln.from; k < ln.to; k++ {
+		bad := k < len(q.ByteErr) && q.ByteErr[k]
+		b := q.Bytes[k]
+		if bad {
+			bl.Hex = append(bl.Hex, "ER")
+			str = append(str, '.')
+		} else {
+			bl.Hex = append(bl.Hex, hex2(b))
+			if b >= 32 && b < 127 {
+				str = append(str, b)
+			} else {
+				str = append(str, '.')
+			}
+		}
+		bl.Err = append(bl.Err, bad)
+	}
+	bl.Str = string(str)
+	return bl
 }
 
 // streamPane builds BUS's Stream view: the stream's state, what stops it
@@ -751,7 +782,7 @@ func (c *Controller) streamPane(s *sv) *wsview.BusPane {
 	case !busDecoding(s):
 		p.Caption, p.CapCol = "STREAM: no bus decoded", wsview.Dim
 		p.Msg = []wsview.Span{
-			{Text: map[bool]string{true: "NO BUS FOUND", false: "NO BUS DECODED"}[u.busFailed], Col: wsview.Text},
+			{Text: choose(u.busFailed, "NO BUS FOUND", "NO BUS DECODED"), Col: wsview.Text},
 			{Text: "Push Adjust: detect the bus on CH1/CH2 - the stream then starts on it", Col: wsview.Amber},
 			{Text: "Utility or Menu On/Off: set the protocol, baud and lines by hand on the BUS sheet", Col: wsview.Dim},
 			{Text: "A stream decodes the bus into a transcript (Stream mode on the BUS sheet says how)", Col: wsview.Dim},
@@ -786,6 +817,7 @@ func (c *Controller) streamPane(s *sv) *wsview.BusPane {
 		head, col = "STOPPED", wsview.Amber
 	case streamview.Failed:
 		head, col = "NOT STREAMING", wsview.Stop
+	case streamview.Idle, streamview.Starting: // STARTING (above)
 	}
 	if s.streamStopped {
 		push, again = "stream again", "Run/Stop or push Adjust: stream again"
@@ -803,8 +835,8 @@ func (c *Controller) streamPane(s *sv) *wsview.BusPane {
 	}
 	p.Msg = append(p.Msg, wsview.Span{Text: again, Col: wsview.Dim},
 		wsview.Span{Text: "Adjust: what stops it (an error, the Stream value, by hand)", Col: wsview.Dim})
-	p.Tool = toolLine(s, wsview.Seg{Key: "Adjust", Job: "stops " + [3]string{"on error", "on value", "by hand"}[mod3(s.decTrig)]},
-		wsview.Seg{Key: "push", Job: push})
+	p.Tool = toolLine(s, wsview.Seg{Key: ctlAdjust, Job: "stops " + [3]string{"on error", "on value", "by hand"}[mod3(s.decTrig)]},
+		wsview.Seg{Key: ctlPush, Job: push})
 	if s.streamStopped {
 		zoom := "list"
 		if s.streamList {
@@ -860,7 +892,7 @@ func (c *Controller) eyePane(s *sv) *wsview.EyePane {
 	if zoomed {
 		zoomJob = "zoom off"
 	}
-	p.Tool = append(toolLine(s, wsview.Seg{Key: "Adjust", Job: "threshold"}, wsview.Seg{Key: "push", Job: "clear eye"}), wsview.Seg{Key: "Zoom", Job: zoomJob})
+	p.Tool = append(toolLine(s, wsview.Seg{Key: ctlAdjust, Job: "threshold"}, wsview.Seg{Key: ctlPush, Job: "clear eye"}), wsview.Seg{Key: "Zoom", Job: zoomJob})
 	if !ok {
 		p.Why = why
 		if p.Why == "" {

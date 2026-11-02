@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-PANEL
+
 package panel
 
 import (
@@ -10,6 +11,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"testing/synctest"
 	"time"
 )
 
@@ -546,34 +548,36 @@ func TestTimebaseAskedForLeadsUntilApplied(t *testing.T) {
 // press cancels it and puts back what it changed: none are named.
 // TRLC-LINKS: REQ-SDS-137, REQ-SDS-220
 func TestAutosetSaysWhatItChanged(t *testing.T) {
-	sq := square(1e6, 0, 3.3)
-	c := newSimBench(t, func(tt, _ float64, _ int) float64 { return sq(tt) }).c
-	wait := func() {
-		for end := time.Now().Add(30 * time.Second); c.AutosetBusy() && time.Now().Before(end); {
-			time.Sleep(10 * time.Millisecond)
+	synctest.Test(t, func(t *testing.T) {
+		sq := square(1e6, 0, 3.3)
+		c := newSimBench(t, func(tt, _ float64, _ int) float64 { return sq(tt) }).c
+		wait := func() {
+			for end := time.Now().Add(30 * time.Second); c.AutosetBusy() && time.Now().Before(end); {
+				time.Sleep(10 * time.Millisecond)
+			}
 		}
-	}
-	c.SheetSet("trig.mode", nil, "Normal")
-	res := c.SheetAction("sys.autoset", "")
-	if !res.OK || res.Autoset == 0 || !c.AutosetBusy() {
-		t.Fatalf("autoset: %+v busy %v", res, c.AutosetBusy())
-	}
-	wait()
-	st := c.PanelStatus()
-	if c.AutosetBusy() || st.AutosetDone != res.Autoset || !slices.Contains(st.AutosetChanged, "trig.mode") || !slices.Contains(st.AutosetChanged, "time.tdiv") {
-		t.Fatalf("after the sweep: done %d (started %d), changed %v", st.AutosetDone, res.Autoset, st.AutosetChanged)
-	}
-	c.SheetSet("trig.mode", nil, "Normal")
-	res = c.SheetAction("sys.autoset", "")
-	time.Sleep(300 * time.Millisecond)
-	if again := c.SheetAction("sys.autoset", ""); !again.OK || again.Autoset != 0 {
-		t.Fatalf("the second press cancels: %+v", again)
-	}
-	wait()
-	st = c.PanelStatus()
-	if c.AutosetBusy() || st.AutosetDone != res.Autoset || len(st.AutosetChanged) != 0 || rowText(c, "trig.mode") != "Normal" {
-		t.Fatalf("after the cancel: done %d (started %d), changed %v, mode %s", st.AutosetDone, res.Autoset, st.AutosetChanged, rowText(c, "trig.mode"))
-	}
+		c.SheetSet("trig.mode", nil, "Normal")
+		res := c.SheetAction("sys.autoset", "")
+		if !res.OK || res.Autoset == 0 || !c.AutosetBusy() {
+			t.Fatalf("autoset: %+v busy %v", res, c.AutosetBusy())
+		}
+		wait()
+		st := c.PanelStatus()
+		if c.AutosetBusy() || st.AutosetDone != res.Autoset || !slices.Contains(st.AutosetChanged, "trig.mode") || !slices.Contains(st.AutosetChanged, "time.tdiv") {
+			t.Fatalf("after the sweep: done %d (started %d), changed %v", st.AutosetDone, res.Autoset, st.AutosetChanged)
+		}
+		c.SheetSet("trig.mode", nil, "Normal")
+		res = c.SheetAction("sys.autoset", "")
+		time.Sleep(300 * time.Millisecond)
+		if again := c.SheetAction("sys.autoset", ""); !again.OK || again.Autoset != 0 {
+			t.Fatalf("the second press cancels: %+v", again)
+		}
+		wait()
+		st = c.PanelStatus()
+		if c.AutosetBusy() || st.AutosetDone != res.Autoset || len(st.AutosetChanged) != 0 || rowText(c, "trig.mode") != "Normal" {
+			t.Fatalf("after the cancel: done %d (started %d), changed %v, mode %s", st.AutosetDone, res.Autoset, st.AutosetChanged, rowText(c, "trig.mode"))
+		}
+	})
 }
 
 // waitLoop waits for Run to serve injected events.
@@ -700,7 +704,11 @@ func TestRemoteSetLeavesTheLCDAlone(t *testing.T) {
 func TestRemoteActions(t *testing.T) {
 	c, _, _ := newC(t)
 	var forced int
-	c.eng = &forceEng{fakeEng: c.eng.(*fakeEng), n: &forced}
+	fe, ok := c.eng.(*fakeEng)
+	if !ok {
+		t.Fatalf("engine %T, want *fakeEng", c.eng)
+	}
+	c.eng = &forceEng{fakeEng: fe, n: &forced}
 	press(t, c, "trigmenu")
 	goRow(t, c, "trig.mode")
 	if res := c.SheetAction("trig.force", ""); !res.OK || forced != 1 {
@@ -750,5 +758,24 @@ func TestTypedValueUnderTheLowestIsRefused(t *testing.T) {
 		if res := c.SheetSet(id, nil, "10ns"); !res.OK || rowText(c, id) != "10ns" {
 			t.Fatalf("%s 10ns: %+v, row %q", id, res, rowText(c, id))
 		}
+	}
+}
+
+// A remote's knob turn of a huge step count raises the trigger level as far
+// as it goes: the steps times the codes a step overflowed, and the level
+// went to the other end.
+// TRLC-LINKS: REQ-SDS-162, REQ-SDS-220
+func TestRemoteKnobHugeStepsKeepTheirDirection(t *testing.T) {
+	c, _, _ := newC(t)
+	step := c.trigStepCodes()
+	steps := 2 * (math.MaxInt / step) // step*steps wraps to a small negative
+	if res := c.RemoteKnob("triglevel", 1, steps, true); !res.OK {
+		t.Fatalf("knob: %+v", res)
+	}
+	c.mu.Lock()
+	code := c.trigCode
+	c.mu.Unlock()
+	if code != engine.TrigCodeMin { // clockwise raises the level: the lowest code
+		t.Fatalf("trigger code %d after a huge clockwise turn, want %d", code, engine.TrigCodeMin)
 	}
 }

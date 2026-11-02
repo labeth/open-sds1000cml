@@ -1,8 +1,10 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-PANEL
+
 package panel
 
 import (
 	"fmt"
+	"math"
 	"open-sds/app/internal/panel/wsview"
 	"strings"
 	"time"
@@ -17,15 +19,15 @@ import (
 // keyTabs are the dedicated keys that open a tab.
 var keyTabs = map[string]int{
 	"trigmenu": tabTrig, "ch1": tabCh1, "ch2": tabCh2, "horizmenu": tabTime, "acquire": tabAcq,
-	"display": tabView, "measure": tabMeas, "cursors": tabCurs, "math": tabCmp, "ref": tabCmp,
+	"display": tabView, "measure": tabMeas, "cursors": tabCurs, keyMath: tabCmp, "ref": tabCmp,
 	"utility": tabBus, "saverecall": tabFile, "help": tabSys,
 }
 
 // keyRows are the keys that open their tab on a fixed row.
-var keyRows = map[string]string{"math": "cmp.math", "ref": "cmp.store_a", "help": "sys.help"}
+var keyRows = map[string]string{keyMath: "cmp.math", "ref": "cmp.store_a", "help": "sys.help"}
 
 // keyNames are the printed names of the keys, for the hint line.
-var keyNames = map[string]string{"math": "Math", "ref": "Ref", "help": "Help"}
+var keyNames = map[string]string{keyMath: "Math", "ref": "Ref", "help": "Help"}
 
 // tabOrder is a workspace's sheet tab order: its own tabs, then the rest.
 // TRLC-LINKS: REQ-SDS-212
@@ -167,7 +169,7 @@ func (c *Controller) sheetKeys(s *sv) (string, []fkey) {
 	u := &s.ui
 	switch u.sub {
 	case subMatch:
-		return "MATCH EDITOR", c.matchKeys(s)
+		return "MATCH EDITOR", c.matchKeys()
 	case subPick:
 		return "PICK BYTES", c.pickKeys(s)
 	}
@@ -199,12 +201,11 @@ func (c *Controller) rowKeys(s *sv, r *row) []fkey {
 				if len(out) >= 5 {
 					break
 				}
-				p := p
 				k := fkey{label: p.t, row: true}
 				if p.run != nil {
 					k.run = func() error { return p.run(c) }
 				} else {
-					k.sel = abs64(v-p.v) <= 1e-12+1e-9*abs64(p.v)
+					k.sel = math.Abs(v-p.v) <= 1e-12+1e-9*math.Abs(p.v)
 					k.run = func() error { return r.setNumber(c, c.snap(), p.v) }
 				}
 				out = append(out, k)
@@ -215,7 +216,6 @@ func (c *Controller) rowKeys(s *sv, r *row) []fkey {
 			if len(out) >= 5 {
 				break
 			}
-			a := a
 			k := fkey{label: a.t, dim: a.dim, run: func() error { return a.run(c) }}
 			if r.kind == wsview.Slot {
 				used := s.slotUsed[r.slot]
@@ -245,17 +245,9 @@ func (c *Controller) rowKeys(s *sv, r *row) []fkey {
 		if s.decLayer != "" { // the selected packet's transaction, as its layer names it
 			out = append(out, fkey{label: "From layer", value: "selected packet", run: c.matchFromLayer})
 		}
+	case wsview.Header: // no keys
 	}
 	return out
-}
-
-// abs64 is |x|.
-// TRLC-LINKS: REQ-SDS-212
-func abs64(x float64) float64 {
-	if x < 0 {
-		return -x
-	}
-	return x
 }
 
 // sheetPressF is F1..F5 with a sheet open: the choice beside the key.
@@ -357,7 +349,7 @@ func (c *Controller) sheetValueTurn(dir, steps int) {
 	s := c.snap()
 	r := curRow(&s.ui)
 	var err error
-	switch r.kind {
+	switch r.kind { //nolint:exhaustive // default: every other row runs from its F-keys
 	case wsview.Enum:
 		o := r.options(s)
 		i := r.optIndex(s)
@@ -399,7 +391,7 @@ func (c *Controller) sheetAdjustPush() {
 	}
 	s := c.snap()
 	r := curRow(&s.ui)
-	switch r.kind {
+	switch r.kind { //nolint:exhaustive // default: a value row toggles editing
 	case wsview.Action, wsview.Slot:
 		c.toast("Nothing to edit: run it with the F-key beside its name", 1500*time.Millisecond)
 	case wsview.Bytes:

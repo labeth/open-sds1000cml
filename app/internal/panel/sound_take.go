@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-PANEL
+
 package panel
 
 import (
@@ -97,16 +98,16 @@ func (s *soundSvc) takeLatest(n, ch int) ([]float64, engine.SoundBlock, bool) {
 	b := min(tk.N, a+n)
 	blk := engine.SoundBlock{
 		First: tk.First + uint64(a), N: b - a, Q1: tk.Q1[a:b], Q2: tk.Q2[a:b], RateHz: tk.RateHz,
-		Scales: tk.Scales, Next: tk.First + uint64(tk.N),
+		Scales: tk.Scales, Next: tk.First + uint64(tk.N), //nolint:gosec // G115: N is a sample count, never negative
 	}
 	for _, g := range tk.Gaps {
-		if g > blk.First && g < blk.First+uint64(blk.N) {
+		if g > blk.First && g < blk.First+uint64(blk.N) { //nolint:gosec // G115: N is a slice length
 			blk.Gaps = append(blk.Gaps, g)
 		}
 	}
 	s.x = s.volts(blk, ch, s.x)
 	if k := len(blk.Gaps); k > 0 {
-		cut := int(blk.Gaps[k-1] - blk.First)
+		cut := int(blk.Gaps[k-1] - blk.First) //nolint:gosec // G115: a gap kept lies inside the block (its samples)
 		return s.x[cut:], blk, true
 	}
 	return s.x, blk, true
@@ -295,7 +296,7 @@ func (s *soundSvc) takePaneLocked(width int) *wsview.SoundTake {
 func (s *soundSvc) takeColumns(tk *engine.SoundTake, width int) soundTakeCols {
 	a := int(s.tv.from)
 	b := min(tk.N, int(math.Ceil(s.tv.from+s.tv.span)))
-	blk := engine.SoundBlock{First: tk.First + uint64(a), N: b - a, Q1: tk.Q1[a:b], Q2: tk.Q2[a:b], RateHz: tk.RateHz, Scales: tk.Scales}
+	blk := engine.SoundBlock{First: tk.First + uint64(a), N: b - a, Q1: tk.Q1[a:b], Q2: tk.Q2[a:b], RateHz: tk.RateHz, Scales: tk.Scales} //nolint:gosec // G115: a is a non-negative view start
 	var out soundTakeCols
 	for ch := range 2 {
 		x := s.volts(blk, ch, nil)

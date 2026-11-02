@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-PANEL
+
 package panel
 
 import (
@@ -51,7 +52,7 @@ func nameCode(name string) (int, bool) {
 		return btnMeasure, true
 	case "cursors", "cursor":
 		return btnCursors, true
-	case "math":
+	case keyMath:
 		return btnMath, true
 	case "ref":
 		return btnRef, true

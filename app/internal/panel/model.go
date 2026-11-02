@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-PANEL
+
 package panel
 
 import (
@@ -146,6 +147,7 @@ func (r *row) valueText(s *sv) string {
 		if r.status != nil {
 			return r.status(s)
 		}
+	case wsview.Header: // a header has no value
 	}
 	return ""
 }
@@ -280,7 +282,7 @@ func (r *row) parseEnum(s *sv, text string) (int, error) {
 		}
 	}
 	if err := ambiguousComma(t); err != nil { // "57,600" baud: say why, as a number row does
-		return 0, fmt.Errorf("%s: %v", r.label, err)
+		return 0, fmt.Errorf("%s: %w", r.label, err)
 	}
 	var names []string
 	for _, o := range r.options(s) {

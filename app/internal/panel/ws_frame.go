@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-PANEL
+
 package panel
 
 import (
@@ -10,7 +11,7 @@ import (
 	"open-sds/app/internal/measure"
 	"open-sds/app/internal/panel/framecalc"
 	"open-sds/app/internal/panel/wsview"
-	"sort"
+	"slices"
 	"time"
 )
 
@@ -102,7 +103,7 @@ type anaState struct {
 type refDiffResult struct {
 	ok            bool
 	why           string
-	max, rms, pct float64 // volts, volts, percent within 0.5 div
+	max, rms, pct float64 // max and rms in volts; pct is the percent within 0.5 div
 }
 
 // stabN is how many captures the repeat verdict looks back over.
@@ -147,7 +148,7 @@ type needKey struct {
 func (c *Controller) need() needKey {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	k := needKey{ws: c.ui.ws, measTab: c.ui.open && sheetTabs[c.ui.tab].id == "meas", eye: c.ui.busEye}
+	k := needKey{ws: c.ui.ws, measTab: c.ui.open && sheetTabs[c.ui.tab].id == tabIDMeas, eye: c.ui.busEye}
 	for i, r := range c.refs {
 		k.refs[i] = RefTag{Has: r.has, Show: r.has && r.show, Gen: r.gen}
 	}
@@ -198,6 +199,7 @@ func (c *Controller) OnFrame(f *engine.Frame) {
 		c.measFrame(a, s, f)
 	case wsview.Compare:
 		c.refDiffFrame(a, s, f)
+	case wsview.Scope: // nothing beyond the trace
 	}
 	// An armed SPI trigger reads its data at the delay measured on the eye:
 	// on Auto with none measured yet (after a restart, or a new bus) it read
@@ -212,9 +214,9 @@ func (c *Controller) OnFrame(f *engine.Frame) {
 	if measTabOpen(s) && s.ui.ws != wsview.Measure && !f.IsEnv {
 		measVals(a, s, f, s.chDisp) // the MEAS tab's live values
 	}
-	if a.specLease && !(s.ui.ws == wsview.Spectrum && (s.viewMode == viewFFT || s.viewMode == viewSpectrogram)) {
+	if a.specLease && (s.ui.ws != wsview.Spectrum || s.viewMode != viewFFT && s.viewMode != viewSpectrogram) {
 		a.specLease = false
-		if e, ok := c.eng.(interface{ LeaseSpectrumView(time.Duration) }); ok {
+		if e, ok := c.eng.(spectrumViewLeaser); ok {
 			e.LeaseSpectrumView(0)
 		}
 	}
@@ -434,7 +436,7 @@ func median(xs []float64) float64 {
 	s := append([]float64(nil), xs...)
 	for _, v := range s {
 		if v != v { // NaN: sorting's order (NaN first) decides
-			sort.Float64s(s)
+			slices.Sort(s)
 			return s[len(s)/2]
 		}
 	}

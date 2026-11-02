@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-PANEL
+
 package panel
 
 import (
@@ -79,7 +80,7 @@ func soundRows() []*row {
 	}
 	a4.def = func(c *Controller) error { return a4.setN(c, 440) }
 	rng := sndEnum("snd.range", "Range", "The tuner's search: auto 25 Hz-5 kHz, bass 20-600 Hz, high 200 Hz-12 kHz.",
-		[]opt{{0, "Auto"}, {1, "Bass"}, {2, "High"}},
+		[]opt{{0, labelAuto}, {1, "Bass"}, {2, "High"}},
 		func(s SoundSettings) int { return map[string]int{"": 0, "bass": 1, "high": 2}[s.Range] },
 		func(s *SoundSettings, v int) { s.Range = []string{"", "bass", "high"}[clampInt(v, 0, 2)] })
 	slow := sndEnum("snd.slow", "Smoothing", "Fast follows the pitch (three readings); slow holds it steadier (nine).",
@@ -123,7 +124,7 @@ func soundRows() []*row {
 		status: func(s *sv) string { return s.sndRow.adsr },
 	}
 	auto := sndEnum("snd.voct_auto", "V/oct points", "By hand (push Adjust on the V/oct page) or taken by themselves once the CV and the pitch hold still.",
-		[]opt{{0, "By hand"}, {1, "Auto"}}, func(s SoundSettings) int { return b2ic(s.VOctAuto) }, func(s *SoundSettings, v int) { s.VOctAuto = v == 1 })
+		[]opt{{0, "By hand"}, {1, labelAuto}}, func(s SoundSettings) int { return b2ic(s.VOctAuto) }, func(s *SoundSettings, v int) { s.VOctAuto = v == 1 })
 	auto.hdr = "V/OCT AND DRIFT"
 	voct := &row{
 		id: "snd.voct", label: "V/oct table", kind: wsview.Action,
@@ -132,7 +133,7 @@ func soundRows() []*row {
 			return []act{
 				{id: "take", t: "Take", run: func(c *Controller) error { return c.snd.action("voct_capture") }},
 				{id: "undo", t: "Undo", run: func(c *Controller) error { return c.snd.action("voct_undo") }},
-				{id: "clear", t: "Clear", run: func(c *Controller) error { return c.snd.action("voct_clear") }},
+				{id: actClear, t: labelClear, run: func(c *Controller) error { return c.snd.action("voct_clear") }},
 			}
 		},
 		status: func(s *sv) string { return fmt.Sprintf("%d %s", s.sndRow.points, plural(s.sndRow.points, "point")) },
@@ -143,7 +144,7 @@ func soundRows() []*row {
 		id: "snd.drift_clear", label: "Drift points", kind: wsview.Action,
 		help: "Start the drift log over.",
 		acts: func(*sv) []act {
-			return []act{{id: "clear", t: "Clear", run: func(c *Controller) error { return c.snd.action("drift_clear") }}}
+			return []act{{id: actClear, t: labelClear, run: func(c *Controller) error { return c.snd.action("drift_clear") }}}
 		},
 		status: func(s *sv) string { return fmt.Sprintf("%d s", s.sndRow.drift) },
 	}

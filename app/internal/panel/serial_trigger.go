@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-PANEL
+
 package panel
 
 import (
@@ -84,7 +85,7 @@ func (c *Controller) serialBus(p engine.SerialParams) engine.SerialParams {
 		p.Proto = c.decProto - 1 // the engine's numbering is the panel's less one
 	}
 	p.ChA, p.ChB = c.decChA, c.decChB
-	p.Baud, p.Bits, p.Parity = c.decBaud, 8, "none"
+	p.Baud, p.Bits, p.Parity = c.decBaud, 8, parityNone
 	p.CPOL, p.CPHA, p.MSB, p.IEEE = c.decCPOL, c.decCPHA, !c.decLSB || c.decProto != framecalc.ProtoSPI, true
 	p.HaveThr, p.TickNs, p.Nibbles, p.DataBaud = false, 0, 0, 0
 	p.Fine, p.SPIDelayNs = c.decFine, 0
@@ -93,7 +94,7 @@ func (c *Controller) serialBus(p engine.SerialParams) engine.SerialParams {
 	case framecalc.ProtoModbus: // the framing the frames' CRCs showed, RTU's even parity before
 		p.Parity = c.decParity
 		if p.Parity == "" {
-			p.Parity = "even"
+			p.Parity = parityEven
 		}
 	case framecalc.ProtoIRNEC, framecalc.ProtoIRSIRC, framecalc.ProtoIRRC5, framecalc.ProtoIRRC6, framecalc.ProtoDALI,
 		framecalc.ProtoIRMP, framecalc.ProtoDSI:

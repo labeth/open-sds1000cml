@@ -1,10 +1,11 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-PANEL
+
 // Package framecalc holds the per-frame calculations that both the LCD
 // renderer and the panel's workspace tools need: the protocol decode of a
 // published frame and its magnitude spectrum. Each is cached by frame
 // content, so the decode strip and the BUS packet list, or the FFT plot and
 // the SPECTRUM peak table, share one computation per frame instead of
 // repeating it per redraw (the ARM renders about 20 times a second).
-// ENGMODEL-OWNER-UNIT: FU-APP-PANEL
 package framecalc
 
 import (
@@ -166,6 +167,7 @@ func Params(proto, baud, chA, chB int, cpol, cpha, lsb bool, format int, spiDela
 	return p
 }
 
+// decodeKey identifies a frame and the decode settings a cached decode was made for.
 type decodeKey struct {
 	id, seq bool
 	ident   uint64
@@ -611,6 +613,7 @@ func magsTables(n int) *magsTable {
 	return t
 }
 
+// specKey identifies a frame and the spectrum settings a cached spectrum was made for.
 type specKey struct {
 	id, seq bool
 	ident   uint64

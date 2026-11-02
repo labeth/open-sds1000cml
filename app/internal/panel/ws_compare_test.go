@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-PANEL
+
 package panel
 
 import (
@@ -163,21 +164,21 @@ func TestMasterRefusedInAverage(t *testing.T) {
 func TestRepeatCaptionOutsideCompare(t *testing.T) {
 	r := newViewRig(t)
 	c := r.c
-	if cap, _ := c.RepeatCaption(); !strings.Contains(cap, "checking that it repeats") {
-		t.Fatalf("before captures: %q", cap)
+	if caption, _ := c.RepeatCaption(); !strings.Contains(caption, "checking that it repeats") {
+		t.Fatalf("before captures: %q", caption)
 	}
 	step := stabSpaced(c)
 	for range 8 {
 		step()
 		r.show(toneFrame(""))
 	}
-	cap, warn := c.RepeatCaption()
-	if warn || !strings.HasPrefix(cap, "trigger source C1 repeats (") {
-		t.Fatalf("from SCOPE after 8 repeating captures: %q warn %v", cap, warn)
+	caption, warn := c.RepeatCaption()
+	if warn || !strings.HasPrefix(caption, "trigger source C1 repeats (") {
+		t.Fatalf("from SCOPE after 8 repeating captures: %q warn %v", caption, warn)
 	}
 	press(t, c, "f5")
-	if v := c.View().Cmp; v == nil || v.Caption != cap {
-		t.Fatalf("COMPARE's caption %+v, want %q", v, cap)
+	if v := c.View().Cmp; v == nil || v.Caption != caption {
+		t.Fatalf("COMPARE's caption %+v, want %q", v, caption)
 	}
 }
 

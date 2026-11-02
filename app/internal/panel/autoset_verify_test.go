@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-PANEL
+
 package panel
 
 import (
@@ -19,7 +20,7 @@ type fireEng struct {
 func (f *fireEng) SetTrigLevelCode(c uint16) uint16 { f.level = c; return c }
 
 // TRLC-LINKS: REQ-SDS-137
-func (f *fireEng) AcqLog(n int) ([]engine.AcqSample, float64) {
+func (f *fireEng) AcqLog(int) ([]engine.AcqSample, float64) {
 	fired := f.level >= f.fireLo && f.level <= f.fireHi
 	return []engine.AcqSample{{SawTrig: fired}, {SawTrig: fired}, {SawTrig: fired}}, 0
 }

@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-PANEL
+
 package panel
 
 import (
@@ -94,7 +95,7 @@ type soundEngine interface {
 	LeaseSound(time.Duration)
 	SoundInfo() engine.SoundInfo
 	SoundLatest(n int, q1, q2 []uint16) engine.SoundBlock
-	SoundRead(from uint64, max int, q1, q2 []uint16) engine.SoundBlock
+	SoundRead(from uint64, maxN int, q1, q2 []uint16) engine.SoundBlock
 	SetSoundMarks(engine.SoundMarkConfig)
 	SoundMarksSince(from uint64) []engine.SoundMark
 }
@@ -306,13 +307,13 @@ func (s *soundSvc) setLCD(on, ws bool) {
 // setting left on would keep the scope from capturing in every workspace
 // (s.mu held).
 // TRLC-LINKS: REQ-SDS-273, REQ-SDS-276, REQ-SDS-277
-func (s *soundSvc) needed(now time.Time) (any, readouts bool) {
+func (s *soundSvc) needed(now time.Time) (anyNeeded, readouts bool) {
 	remote := s.remoteOKLocked()
 	shown := s.lcdWS || now.Before(s.pageUntil)
 	readouts = s.lcd || remote && now.Before(s.apiUntil)
-	any = readouts || remote && (now.Before(s.marksUntil) || s.adsr == adsrArmed || s.adsr == adsrCapturing) ||
+	anyNeeded = readouts || remote && (now.Before(s.marksUntil) || s.adsr == adsrArmed || s.adsr == adsrCapturing) ||
 		remote && shown && (s.set.VOctAuto || s.set.Drift)
-	return any, readouts
+	return anyNeeded, readouts
 }
 
 // remoteOKLocked reports whether a page may hold the stream: the LCD has not
@@ -537,7 +538,7 @@ func (s *soundSvc) volts(b engine.SoundBlock, ch int, dst []float64) []float64 {
 		end := len(q)
 		if k+1 < len(b.Scales) {
 			if d := b.Scales[k+1].From - b.First; d < uint64(len(q)) {
-				end = int(d)
+				end = int(d) //nolint:gosec // G115: d < len(q)
 			}
 		}
 		// vpc/256 is exact (a power of two), so the product rounds as
@@ -565,7 +566,7 @@ func (s *soundSvc) latest(e soundEngine, n, ch int) ([]float64, engine.SoundBloc
 	s.x = s.volts(b, ch, s.x)
 	// After a gap only what follows it is one signal.
 	if k := len(b.Gaps); k > 0 {
-		cut := int(b.Gaps[k-1] - b.First)
+		cut := int(b.Gaps[k-1] - b.First) //nolint:gosec // G115: a gap lies inside the block (its samples)
 		return s.x[cut:], b
 	}
 	return s.x, b
@@ -815,7 +816,7 @@ func (s *soundSvc) manageMarks(e soundEngine, set SoundSettings, now time.Time) 
 		}
 		s.mu.Unlock()
 		if moved {
-			e.SetSoundMarks(engine.SoundMarkConfig{Ch: set.Ch, Level: uint8(code), Hyst: hyst, Rising: true})
+			e.SetSoundMarks(engine.SoundMarkConfig{Ch: set.Ch, Level: uint8(code), Hyst: hyst, Rising: true}) //nolint:gosec // G115: code is a codeOf, 2..253
 		}
 	}
 }
@@ -884,7 +885,7 @@ func (s *soundSvc) readCycle(e soundEngine, set SoundSettings) {
 		}
 		lvV = (float64(lvl)-128)*vpc*probe - off*probe
 	}
-	at, ok := sound.PlaceMark(x, int(mark.At-b.First), lvV, true)
+	at, ok := sound.PlaceMark(x, int(mark.At-b.First), lvV, true) //nolint:gosec // G115: a mark of this block, within its samples
 	if !ok {
 		s.mu.Lock()
 		s.cycleAt, s.cycleWhy = mark.At, "the marked edge has no crossing beside it"
@@ -1177,12 +1178,12 @@ const driftReportMax = 1000
 // reduceDrift is every k-th point of the drift log, at most max of them,
 // and always its newest.
 // TRLC-LINKS: REQ-SDS-267
-func reduceDrift(pts []sound.DriftPoint, max int) []sound.DriftPoint {
-	k := (len(pts) + max - 1) / max
+func reduceDrift(pts []sound.DriftPoint, maxPts int) []sound.DriftPoint {
+	k := (len(pts) + maxPts - 1) / maxPts
 	if k <= 1 {
 		return append([]sound.DriftPoint(nil), pts...)
 	}
-	out := make([]sound.DriftPoint, 0, max+1)
+	out := make([]sound.DriftPoint, 0, maxPts+1)
 	for i := 0; i < len(pts); i += k {
 		out = append(out, pts[i])
 	}

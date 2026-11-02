@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-PANEL
+
 package panel
 
 import (
@@ -123,7 +124,7 @@ func TestRemoteCoreParity(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	cmd := exec.Command(node, filepath.Join("testdata", "remoteparity.cjs"), vf, filepath.Join("..", "web"))
+	cmd := exec.CommandContext(t.Context(), node, filepath.Join("testdata", "remoteparity.cjs"), vf, filepath.Join("..", "web"))
 	cmd.Stderr = os.Stderr
 	raw, err := cmd.Output()
 	if err != nil {

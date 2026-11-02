@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-PANEL
+
 package panel
 
 import (
@@ -221,6 +222,7 @@ func (c *Controller) clearMaskAction() error {
 	return nil
 }
 
+// maskSetMsg sets the mask build's status line.
 // TRLC-LINKS: REQ-SDS-139
 func (c *Controller) maskSetMsg(s string) {
 	c.mu.Lock()

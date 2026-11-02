@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-PANEL
+
 package panel
 
 import (
@@ -34,7 +35,7 @@ func (c *Controller) DefaultSetup() {
 	if e, ok := c.eng.(interface{ SetPrecisionRate(float64) float64 }); ok {
 		e.SetPrecisionRate(powerOnPrecisionRateHz)
 	}
-	if e, ok := c.eng.(interface{ SetRollStream(bool) }); ok {
+	if e, ok := c.eng.(rollStreamer); ok {
 		e.SetRollStream(false)
 	}
 	c.eng.SetHoldoff(0)
@@ -68,22 +69,8 @@ func (c *Controller) DefaultSetup() {
 		}
 	}
 	if c.fe != nil {
-		oneV := analog.BootDetent // 1 V/div
 		for ch := range 2 {
-			c.vIdx[ch] = oneV
-			if err := c.fe.SetVdiv(ch, oneV); err != nil {
-				c.logf("panel: default setup V/div: %v", err)
-			}
-			if err := c.fe.SetCoupling(ch, analog.CplDC); err != nil {
-				c.logf("panel: default setup coupling: %v", err)
-			}
-			c.fe.SetProbe(ch, 1)
-			c.fe.SetOffset(ch, 0)
-			if b, ok := c.fe.(interface{ SetBWL(int, bool) error }); ok { // full bandwidth (it stayed limited)
-				if err := b.SetBWL(ch, false); err != nil {
-					c.logf("panel: default setup BW limit: %v", err)
-				}
-			}
+			c.defaultChannel(ch)
 		}
 		// the level at 0 V (here, not under the invert below: that runs only with
 		// an inverter wired)
@@ -150,4 +137,26 @@ func (c *Controller) resetQualifiers() {
 	c.eng.SetPulseParams(0.5, powerOnLimitNs[0], powerOnLimitNs[1], 0)
 	c.eng.SetSlopeParams(0.2, 0.8, powerOnLimitNs[0], powerOnLimitNs[1], 0)
 	c.eng.SetVideoParams(0, 0, true)
+}
+
+// defaultChannel is Default setup's front end for channel ch: 1 V/div, DC,
+// a 1x probe, no offset and full bandwidth.
+// TRLC-LINKS: REQ-SDS-136
+func (c *Controller) defaultChannel(ch int) {
+	c.vIdx[ch] = analog.BootDetent // 1 V/div
+	if err := c.fe.SetVdiv(ch, analog.BootDetent); err != nil {
+		c.logf("panel: default setup V/div: %v", err)
+	}
+	if err := c.fe.SetCoupling(ch, analog.CplDC); err != nil {
+		c.logf("panel: default setup coupling: %v", err)
+	}
+	c.fe.SetProbe(ch, 1)
+	c.fe.SetOffset(ch, 0)
+	b, ok := c.fe.(bwLimiter)
+	if !ok {
+		return
+	}
+	if err := b.SetBWL(ch, false); err != nil { // full bandwidth (it stayed limited)
+		c.logf("panel: default setup BW limit: %v", err)
+	}
 }

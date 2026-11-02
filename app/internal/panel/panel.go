@@ -1,10 +1,11 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-PANEL
+
 // Package panel is the front-panel controller (spec 08): SIGIO-driven key
 // matrix + hardware-quadrature knobs + LED latch. The panel worker NEVER
 // touches the GPMC bus — all matrix reads and LED/offset/level writes go
 // through the engine's command surface and are applied by the bus owner at
 // the frame boundary. The analog V/div front end (SPI) is off-bus and is
 // driven directly.
-// ENGMODEL-OWNER-UNIT: FU-APP-PANEL
 package panel
 
 import (
@@ -68,6 +69,18 @@ type Analog interface {
 	TrigVolts(code uint16, srcCh int) float64
 	SetTrigCalDetent(ch, detent int, c analog.TrigCal)
 }
+
+// The engine's and the front end's optional capabilities: one that has the
+// method does it, any other leaves the request (a test fake, an engine
+// without the view).
+type (
+	spectrumViewLeaser interface{ LeaseSpectrumView(time.Duration) }
+	searchViewLeaser   interface{ LeaseSearchView(time.Duration) }
+	sampleViewLeaser   interface{ LeaseSampleView(time.Duration) }
+	busSampleLeaser    interface{ LeaseBusSamples(float64, time.Duration) }
+	rollStreamer       interface{ SetRollStream(bool) }
+	bwLimiter          interface{ SetBWL(ch int, on bool) error }
+)
 
 // LED shadow-word bits — spec 02 §7.5 "LED shadow-word bit map". This is the
 // corroborated PCB wiring; the boot firmware's internal LED-index order does NOT
@@ -152,6 +165,9 @@ func accel(raw uint16) int {
 	}
 }
 
+// Controller is the front-panel worker: the keys, knobs and LEDs, the
+// workspace UI and its settings, driving the engine and the analog front
+// end through their interfaces.
 // TRLC-LINKS: REQ-SDS-135
 type Controller struct {
 	eng   Engine

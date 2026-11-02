@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-PANEL
+
 package panel
 
 import (
@@ -182,25 +183,7 @@ func (c *Controller) ApplySettingsView(v settings.ViewState) {
 	c.chDisp = [2]bool{!v.Display.Hidden[0], !v.Display.Hidden[1]}
 	var inv *[2]bool
 	if ds := v.Display; ds.Set {
-		c.curOn, c.curType = ds.CurMode == 1 || ds.CurMode == 2, max(0, min(ds.CurMode-1, 1))
-		// the cursors' signal times and levels; an older file's screen
-		// places are anchored at the scales restored
-		if ds.CurAt && finiteAll(ds.CurT[0], ds.CurT[1], ds.CurV[0], ds.CurV[1]) {
-			c.curT, c.curV, c.curVCh, c.curPend = ds.CurT, ds.CurV, ds.CurVCh&1, nil
-		} else {
-			p := [2][2]float64{}
-			for k := range 2 {
-				p[0][k], p[1][k] = clampF(ds.CurX[k], 0, 1), clampF(ds.CurY[k], 0, 1)
-			}
-			c.curPend, c.curVCh = &p, 0
-		}
-		c.curSel = ds.CurSel & 1
-		c.zoom, c.zoomOff = 1, 0
-		for _, z := range []int{2, 5, 10, 20, 50} {
-			if ds.Zoom == z {
-				c.zoom, c.zoomOff = z, clampF(ds.ZoomOff, -0.5, 0.5) // the pan's own range (setZoomOff)
-			}
-		}
+		c.applyDisplayLocked(ds)
 		inv = &ds.Invert
 	}
 	inverter := c.inverter
@@ -213,7 +196,7 @@ func (c *Controller) ApplySettingsView(v settings.ViewState) {
 	if l, ok := analysis.LayerByID(d.Layer); ok && l.Bus == framecalc.ResultName(d.Proto) {
 		c.decLayer = d.Layer
 	}
-	if d.Parity == "even" || d.Parity == "odd" || d.Parity == "none" {
+	if d.Parity == parityEven || d.Parity == parityOdd || d.Parity == parityNone {
 		c.decParity = d.Parity
 	}
 	c.decDelayNs, c.decDelayAuto, c.decFine = clampF(d.DelayNs, spiDelayMinNs, spiDelayMaxNs), d.DelayAuto, d.Fine
@@ -222,66 +205,7 @@ func (c *Controller) ApplySettingsView(v settings.ViewState) {
 	c.decTrig = mod3(d.StreamTrig)
 	c.decValue = clampInt(d.StreamValue, 0, streamValueMax)
 	if u := v.UI; u.Set {
-		ws := wsview.WS(clampInt(u.Workspace, 0, wsview.Count-1))
-		for i := range c.ui.views {
-			c.ui.views[i] = modViews(u.Views[i])
-		}
-		c.ui.ws, c.ui.measAll = ws, u.MeasAll
-		if !c.ui.busStream { // a stream under way keeps its view
-			// BUS shows one view; the Stream view starts its stream again
-			// once the bus is known (syncStreamView below, or detection's end)
-			c.ui.busStream = u.BusStream
-			c.ui.busEye = u.BusEye && !c.ui.busStream
-			c.ui.busVisual = u.BusVisual && !c.ui.busStream && !c.ui.busEye
-			restream = c.ui.busStream
-		}
-		c.viewMode = c.ui.views[ws]
-		if c.apiDepth == 0 { // a remote's recall leaves the LCD's menus as they are
-			c.closeSheetLocked()
-			c.closePickLocked()
-		}
-		c.meas = nil
-		for _, m := range u.Meas {
-			if m <= 0 {
-				continue
-			}
-			ch, p := (m-1)/32, (m-1)%32
-			if ch <= 1 && p < len(measParams) {
-				c.meas = append(c.meas, measItem{ch: ch, param: p})
-			}
-		}
-		c.fftSrc = u.FFTSource & 1
-		c.stackN = 64
-		for _, n := range stackDepths {
-			if n == u.MasterDepth {
-				c.stackN = n
-			}
-		}
-		c.remoteNotices = u.RemoteNotices
-		for _, n := range []int{16, 32, 64, 128} { // the rows' own values; an older file keeps them
-			if u.MaskFrames == n {
-				c.maskN = n
-			}
-		}
-		if u.MaskTol > 0 {
-			c.maskTol = clampInt(u.MaskTol-1, 0, len(maskTols)-1)
-		}
-		if u.SrCh > 0 {
-			c.srCh = (u.SrCh - 1) & 1
-		}
-		for _, k := range []int{8, 16, 32, 64} {
-			if u.SrGrid == k {
-				c.srK = k
-			}
-		}
-		if u.SrStop > 0 {
-			c.srStopMode = clampInt(u.SrStop-1, 0, srStopFPGAMatch)
-			lo, hi := srTargetLimits(c.srStopMode)
-			c.srStopVal = []float64{4, 500, 60, 20, 20}[c.srStopMode]
-			if u.SrTarget >= lo && u.SrTarget <= hi {
-				c.srStopVal = u.SrTarget
-			}
-		}
+		restream = c.applyUILocked(u)
 	}
 	if v.Sound.Set {
 		snd := soundSettingsIn(v.Sound)
@@ -325,4 +249,96 @@ func finiteAll(v ...float64) bool {
 		}
 	}
 	return true
+}
+
+// applyDisplayLocked restores the cursors and the zoom of a saved display
+// (ApplySettingsView, under c.mu).
+// TRLC-LINKS: REQ-SDS-136, REQ-SDS-211
+func (c *Controller) applyDisplayLocked(ds settings.Display) {
+	c.curOn, c.curType = ds.CurMode == 1 || ds.CurMode == 2, max(0, min(ds.CurMode-1, 1))
+	// the cursors' signal times and levels; an older file's screen
+	// places are anchored at the scales restored
+	if ds.CurAt && finiteAll(ds.CurT[0], ds.CurT[1], ds.CurV[0], ds.CurV[1]) {
+		c.curT, c.curV, c.curVCh, c.curPend = ds.CurT, ds.CurV, ds.CurVCh&1, nil
+	} else {
+		p := [2][2]float64{}
+		for k := range 2 {
+			p[0][k], p[1][k] = clampF(ds.CurX[k], 0, 1), clampF(ds.CurY[k], 0, 1)
+		}
+		c.curPend, c.curVCh = &p, 0
+	}
+	c.curSel = ds.CurSel & 1
+	c.zoom, c.zoomOff = 1, 0
+	for _, z := range []int{2, 5, 10, 20, 50} {
+		if ds.Zoom == z {
+			c.zoom, c.zoomOff = z, clampF(ds.ZoomOff, -0.5, 0.5) // the pan's own range (setZoomOff)
+		}
+	}
+}
+
+// applyUILocked restores a saved workspace UI (ApplySettingsView, under
+// c.mu). It reports a Stream view to start again.
+// TRLC-LINKS: REQ-SDS-136, REQ-SDS-211, REQ-SDS-222
+func (c *Controller) applyUILocked(u settings.UI) (restream bool) {
+	ws := wsview.WS(clampInt(u.Workspace, 0, wsview.Count-1))
+	for i := range c.ui.views {
+		c.ui.views[i] = modViews(u.Views[i])
+	}
+	c.ui.ws, c.ui.measAll = ws, u.MeasAll
+	if !c.ui.busStream { // a stream under way keeps its view
+		// BUS shows one view; the Stream view starts its stream again
+		// once the bus is known (syncStreamView below, or detection's end)
+		c.ui.busStream = u.BusStream
+		c.ui.busEye = u.BusEye && !c.ui.busStream
+		c.ui.busVisual = u.BusVisual && !c.ui.busStream && !c.ui.busEye
+		restream = c.ui.busStream
+	}
+	c.viewMode = c.ui.views[ws]
+	if c.apiDepth == 0 { // a remote's recall leaves the LCD's menus as they are
+		c.closeSheetLocked()
+		c.closePickLocked()
+	}
+	c.meas = nil
+	for _, m := range u.Meas {
+		if m <= 0 {
+			continue
+		}
+		ch, p := (m-1)/32, (m-1)%32
+		if ch <= 1 && p < len(measParams) {
+			c.meas = append(c.meas, measItem{ch: ch, param: p})
+		}
+	}
+	c.fftSrc = u.FFTSource & 1
+	c.stackN = 64
+	for _, n := range stackDepths {
+		if n == u.MasterDepth {
+			c.stackN = n
+		}
+	}
+	c.remoteNotices = u.RemoteNotices
+	for _, n := range []int{16, 32, 64, 128} { // the rows' own values; an older file keeps them
+		if u.MaskFrames == n {
+			c.maskN = n
+		}
+	}
+	if u.MaskTol > 0 {
+		c.maskTol = clampInt(u.MaskTol-1, 0, len(maskTols)-1)
+	}
+	if u.SrCh > 0 {
+		c.srCh = (u.SrCh - 1) & 1
+	}
+	for _, k := range []int{8, 16, 32, 64} {
+		if u.SrGrid == k {
+			c.srK = k
+		}
+	}
+	if u.SrStop > 0 {
+		c.srStopMode = clampInt(u.SrStop-1, 0, srStopFPGAMatch)
+		lo, hi := srTargetLimits(c.srStopMode)
+		c.srStopVal = []float64{4, 500, 60, 20, 20}[c.srStopMode]
+		if u.SrTarget >= lo && u.SrTarget <= hi {
+			c.srStopVal = u.SrTarget
+		}
+	}
+	return restream
 }

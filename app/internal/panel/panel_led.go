@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-PANEL
+
 package panel
 
 import (
@@ -167,6 +168,7 @@ func (c *Controller) pushLEDs() {
 	}
 }
 
+// clampInt is v limited to lo..hi.
 // TRLC-LINKS: REQ-SDS-135
 func clampInt(v, lo, hi int) int {
 	if v < lo {

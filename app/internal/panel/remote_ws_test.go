@@ -1,9 +1,11 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-PANEL
+
 package panel
 
 import (
 	"strings"
 	"testing"
+	"testing/synctest"
 	"time"
 )
 
@@ -193,26 +195,28 @@ func TestRemoteWaitsForAutoset(t *testing.T) {
 // The remote's workspace keys run on the panel loop like its other changes.
 // TRLC-LINKS: REQ-SDS-220
 func TestRemoteWorkspaceOnThePanelLoop(t *testing.T) {
-	c, _, _ := newC(t)
-	stop := make(chan struct{})
-	defer close(stop)
-	go c.Run(stop)
-	waitLoop(t, c)
-	if !c.InjectButton("trigmenu") {
-		t.Fatal("Trig Menu rejected")
-	}
-	for i := 0; i < 100 && c.PanelStatus().Mode != "sheet"; i++ {
-		time.Sleep(5 * time.Millisecond)
-	}
-	if res := c.RemoteWorkspace("measure"); !res.OK {
-		t.Fatalf("on the loop: %+v", res)
-	}
-	if res := c.RemoteAgain(""); !res.OK || res.Text != "All values" {
-		t.Fatalf("again on the loop: %+v", res)
-	}
-	if st := c.PanelStatus(); st.Workspace != "MEASURE" || st.Mode != "sheet" || st.Sheet.Tab != "trig" {
-		t.Fatalf("after: %s %s %+v", st.Workspace, st.Mode, st.Sheet)
-	}
+	synctest.Test(t, func(t *testing.T) {
+		c, _, _ := newC(t)
+		stop := make(chan struct{})
+		defer close(stop)
+		go c.Run(stop)
+		waitLoop(t, c)
+		if !c.InjectButton("trigmenu") {
+			t.Fatal("Trig Menu rejected")
+		}
+		for i := 0; i < 100 && c.PanelStatus().Mode != "sheet"; i++ {
+			time.Sleep(5 * time.Millisecond)
+		}
+		if res := c.RemoteWorkspace("measure"); !res.OK {
+			t.Fatalf("on the loop: %+v", res)
+		}
+		if res := c.RemoteAgain(""); !res.OK || res.Text != "All values" {
+			t.Fatalf("again on the loop: %+v", res)
+		}
+		if st := c.PanelStatus(); st.Workspace != "MEASURE" || st.Mode != "sheet" || st.Sheet.Tab != "trig" {
+			t.Fatalf("after: %s %s %+v", st.Workspace, st.Mode, st.Sheet)
+		}
+	})
 }
 
 // A number row's presets: listed in the model, run by label through the

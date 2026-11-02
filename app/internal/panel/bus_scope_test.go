@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-PANEL
+
 package panel
 
 import (
@@ -18,7 +19,7 @@ func loadScopeCapture(t *testing.T, name string) (c1, c2 []uint8, sampleS float6
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }() // read only: nothing to flush
 	z, err := gzip.NewReader(f)
 	if err != nil {
 		t.Fatal(err)

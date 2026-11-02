@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-PANEL
+
 package panel
 
 import (
@@ -10,14 +11,18 @@ import (
 // workspace you are in, the sheets, or the knobs and lamps. Its F-keys are
 // these pages, so Help then F1 never runs an action.
 
+// gl is one line of the Help guide.
 type gl = wsview.Span
 
+// gT is a guide heading line (amber).
 // TRLC-LINKS: REQ-SDS-212
 func gT(t string) gl { return gl{Text: t, Col: wsview.Amber} }
 
+// gN is a guide text line.
 // TRLC-LINKS: REQ-SDS-212
 func gN(t string) gl { return gl{Text: t, Col: wsview.Text} }
 
+// gD is a dim guide line (a note).
 // TRLC-LINKS: REQ-SDS-212
 func gD(t string) gl { return gl{Text: t, Col: wsview.Dim} }
 

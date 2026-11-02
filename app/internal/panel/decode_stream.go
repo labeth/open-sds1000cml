@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-PANEL
+
 package panel
 
 import (
@@ -84,7 +85,9 @@ func (c *Controller) startStream() {
 				HoldDecodedImage(context.Context) error
 			}); ok {
 				ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-				h.HoldDecodedImage(ctx)
+				if err := h.HoldDecodedImage(ctx); err != nil {
+					c.logf("panel: stream: hold the decoded image: %v", err)
+				}
 				cancel()
 			}
 			stopWait(s)

@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-PANEL
+
 package panel
 
 import (
@@ -276,7 +277,7 @@ func msgsOf(res decode.Result, sampleS float64, valid int) busMsgs {
 			}
 		}
 	}
-	if res.Proto == "uart" && res.Baud > 0 {
+	if res.Proto == protoUART && res.Baud > 0 {
 		bit := 1 / float64(res.Baud)
 		gap := 0.0 // the longest idle between two characters of one message
 		pi, prevEnd, prevPkt := 0, -1, -1
@@ -317,21 +318,21 @@ func uartIdle(m busMsgs) float64 {
 // unit after it.
 // TRLC-LINKS: REQ-SDS-223
 func sofPattern(proto int) (bytes []int, pattern []engine.PatternElem, name string, ok bool) {
-	any := engine.PatternElem{Kind: 2}
+	anyUnit := engine.PatternElem{Kind: 2}
 	switch proto {
 	case framecalc.ProtoI2C:
 		return nil, nil, "I2C START (address byte)", true
 	case framecalc.ProtoARINC429:
-		return nil, []engine.PatternElem{any}, "ARINC word", true
+		return nil, []engine.PatternElem{anyUnit}, "ARINC word", true
 	case framecalc.ProtoMIL1553:
 		return nil, []engine.PatternElem{{Kind: 2, Value: engine.MILCommand, Mask: engine.MILCommand}}, "1553 command word", true
 	case framecalc.ProtoSPI, framecalc.ProtoManchester, framecalc.ProtoSENT, framecalc.ProtoCAN, framecalc.ProtoUSB, framecalc.ProtoFlexRay:
-		return nil, []engine.PatternElem{{Kind: 1}, any}, protoName(proto) + " frame start", true
+		return nil, []engine.PatternElem{{Kind: 1}, anyUnit}, protoName(proto) + " frame start", true
 	case framecalc.ProtoMIDI: // a status byte opens a message: the UART receiver's unit match
 		return nil, []engine.PatternElem{midiStatus}, "MIDI status byte", true
 	}
 	if proto > framecalc.ProtoFlexRay && proto < framecalc.NumProtos { // a break, a reset, a leader: the frame start
-		return nil, []engine.PatternElem{{Kind: 1}, any}, protoName(proto) + " frame start", true
+		return nil, []engine.PatternElem{{Kind: 1}, anyUnit}, protoName(proto) + " frame start", true
 	}
 	return nil, nil, "", false
 }
@@ -362,25 +363,9 @@ func defaultMatch(p engine.SerialParams) bool {
 // TRLC-LINKS: REQ-SDS-223, REQ-SDS-013
 func (c *Controller) frameTrigger(m busMsgs) string {
 	s := c.snap()
-	se := c.serialTrig()
-	if se != nil {
-		p := se.SerialConfig()
-		if s.decProto == framecalc.ProtoUART && s.decLayer == "sbus" && (defaultMatch(p) || sbusStart(p)) {
-			p.Bytes, p.Pattern = []int{sbusHeader}, nil
-			c.armSerialWith(p)
-			return "TRIG: S.BUS frame start (0F)"
-		}
-		if !defaultMatch(p) {
-			c.armSerialWith(p)
-			return "TRIG: your match " + strings.Join(tokensOf(p), " ")
-		}
-		if bytes, pattern, name, ok := sofPattern(s.decProto); ok {
-			p.Bytes, p.Pattern = bytes, pattern
-			if s.decProto == framecalc.ProtoI2C {
-				p.Addr, p.RW = -1, 2
-			}
-			c.armSerialWith(p)
-			return "TRIG: " + name
+	if se := c.serialTrig(); se != nil {
+		if msg, ok := c.serialFrameTrigger(s, se.SerialConfig()); ok {
+			return msg
 		}
 	}
 	if s.decProto == framecalc.ProtoUART {
@@ -391,6 +376,32 @@ func (c *Controller) frameTrigger(m busMsgs) string {
 		return "TRIG: edge (no idle between UART messages to start on)"
 	}
 	return "TRIG: edge (no frame-start trigger for " + protoName(s.decProto) + ")"
+}
+
+// serialFrameTrigger is frameTrigger's serial trigger, from the match p set:
+// S.BUS's frame header, the user's own match, or the bus's frame-start
+// match. It returns false for a bus with no frame-start matcher.
+// TRLC-LINKS: REQ-SDS-223, REQ-SDS-013
+func (c *Controller) serialFrameTrigger(s *sv, p engine.SerialParams) (string, bool) {
+	if s.decProto == framecalc.ProtoUART && s.decLayer == "sbus" && (defaultMatch(p) || sbusStart(p)) {
+		p.Bytes, p.Pattern = []int{sbusHeader}, nil
+		c.armSerialWith(p)
+		return "TRIG: S.BUS frame start (0F)", true
+	}
+	if !defaultMatch(p) {
+		c.armSerialWith(p)
+		return "TRIG: your match " + strings.Join(tokensOf(p), " "), true
+	}
+	bytes, pattern, name, ok := sofPattern(s.decProto)
+	if !ok {
+		return "", false
+	}
+	p.Bytes, p.Pattern = bytes, pattern
+	if s.decProto == framecalc.ProtoI2C {
+		p.Addr, p.RW = -1, 2
+	}
+	c.armSerialWith(p)
+	return "TRIG: " + name, true
 }
 
 // armSerialWith arms the serial trigger on the decoded bus with p's match
@@ -486,7 +497,7 @@ func (c *Controller) measureSlower(m busMsgs, featureS float64) busMsgs {
 	// the search's records, whole and resolving the bus (findSlowBus): the
 	// BUS view's sampled ones are a screen's budget (a sample every 261 us
 	// at 5ms/div, under the bench DCF77's 300 us pulse)
-	if e, ok := c.eng.(interface{ LeaseSearchView(time.Duration) }); ok {
+	if e, ok := c.eng.(searchViewLeaser); ok {
 		e.LeaseSearchView(10 * time.Second)
 		defer e.LeaseSearchView(0)
 	}
@@ -607,7 +618,7 @@ func (c *Controller) endAutoset(stop chan struct{}) {
 	c.mu.Unlock()
 	// The sweep's sample lease ends with it: held on, the live view stayed
 	// the filtered decimated capture (2.34 MHz at 5us/div) for 3 s after.
-	if e, ok := c.eng.(interface{ LeaseSampleView(time.Duration) }); ok {
+	if e, ok := c.eng.(sampleViewLeaser); ok {
 		e.LeaseSampleView(0)
 	}
 	c.syncStreamView() // BUS's Stream view streams again, the bus as AUTO left it

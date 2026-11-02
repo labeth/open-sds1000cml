@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-PANEL
+
 package panel
 
 // Seeded fuzz of the workspace and sheet state machine: random button
@@ -68,7 +69,6 @@ func fuzzAlphabet() []fuzzAction {
 	// Knob turns dominate real use: weight the two tool knobs and S/DIV.
 	for _, n := range []string{"adjust", "horizpos", "tdiv"} {
 		for _, d := range []int{1, -1, 1, -1} {
-			n, d := n, d
 			acts = append(acts, fuzzAction{fmt.Sprintf("knob:%s%+d", n, d), func(r *viewRig) { r.c.resync(); r.c.dispatch(n, d, 1) }})
 		}
 	}
@@ -167,7 +167,7 @@ func checkUIInvariants(c *Controller) []string {
 	if u.sub != subNone && !u.open {
 		fail("sub-mode %d with no sheet", u.sub)
 	}
-	if c.page.on && !(u.ws == wsview.Bus && u.busStream) {
+	if c.page.on && (u.ws != wsview.Bus || !u.busStream) {
 		fail("the page holds a stream with BUS not streaming (ws %d stream %v)", u.ws, u.busStream)
 	}
 	if n := btoi(u.busEye) + btoi(u.busStream) + btoi(u.busVisual); n > 1 {
@@ -295,7 +295,7 @@ func TestUIFuzz(t *testing.T) {
 				return fmt.Sprintf("reproducing sequence (%d steps):\n%s", len(actions), strings.Join(actions, " "))
 			}
 			sf := lcd.NewMemSurface()
-			for i := 0; i < steps; i++ {
+			for i := range steps {
 				a := alphabet[rng.Intn(len(alphabet))]
 				actions = append(actions, a.name)
 				func() {

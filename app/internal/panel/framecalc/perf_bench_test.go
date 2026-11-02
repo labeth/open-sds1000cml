@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-PANEL
+
 package framecalc
 
 import (
@@ -27,7 +28,7 @@ func fftRef(re, im []float64) {
 		wr, wi := math.Cos(ang), math.Sin(ang)
 		for i := 0; i < n; i += l {
 			cr, ci := 1.0, 0.0
-			for k := 0; k < l/2; k++ {
+			for k := range l / 2 {
 				tr := re[i+k+l/2]*cr - im[i+k+l/2]*ci
 				ti := re[i+k+l/2]*ci + im[i+k+l/2]*cr
 				re[i+k+l/2] = re[i+k] - tr
@@ -74,6 +75,7 @@ func BenchmarkMags8192(b *testing.B) {
 
 // TRLC-LINKS: REQ-SDS-070
 func benchFFT(b *testing.B, fft func(re, im []float64)) {
+	b.Helper()
 	r := rand.New(rand.NewSource(1))
 	re0, im0 := make([]float64, 4096), make([]float64, 4096)
 	for i := range re0 {
