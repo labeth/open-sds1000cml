@@ -183,6 +183,21 @@ func BenchmarkSpectrogramPush(b *testing.B) {
 	}
 }
 
+// The waterfall in a plot narrower than the screen (beside the rail): its
+// columns are scaled.
+// TRLC-LINKS: REQ-SDS-068
+func BenchmarkSpectrogramPaneBlit(b *testing.B) {
+	sg := NewSpectrogram()
+	for r := 0; r < 40; r++ {
+		sg.Push(sgSine(4096, 10e6+1e5*float64(r), 2e-9), 0, 0.5/2e-9)
+	}
+	m := NewMemSurface()
+	p := plotArea{w: W - 70, y0: 40, h: H - 40, top: 48, bot: H - 8}
+	for b.Loop() {
+		drawSpectrogramMark(m, p, sg, true, nil)
+	}
+}
+
 // TRLC-LINKS: REQ-SDS-068
 func BenchmarkRenderSpectrogram(b *testing.B) {
 	sg := NewSpectrogram()

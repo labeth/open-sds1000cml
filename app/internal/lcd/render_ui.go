@@ -1287,7 +1287,7 @@ func drawThumb(sf Surface, f *engine.Frame, hud HUD, sh *wsview.Sheet) {
 		tag = "SPGM CH" + itoa(sh.FFTCh+1)
 		if sg := hud.Spect; sg != nil && sg.rows > 0 {
 			for y := 1; y < h-1; y++ {
-				sy := sgY0 + (y-1)*sgRows/(h-2)
+				sy := sg.imgRow((y - 1) * sgRows / (h - 2))
 				for x := 1; x < w-1; x++ {
 					sf.SetPixel(x0+x, y0+y, sg.img.At(sgX0+(x-1)*sgCols/(w-2), sy))
 				}

@@ -32,6 +32,7 @@ const (
 // TRLC-LINKS: REQ-SDS-068
 type Spectrogram struct {
 	img     *MemSurface
+	top     int     // the image row (from sgY0) the newest row is on (imgRow)
 	effNyq  float64 // Hz at the right edge of the heatmap
 	rows    int     // rows painted so far (for the "warming up" hint)
 	floorDB float64 // colour-map floor (dB below the row peak)
@@ -124,22 +125,32 @@ func (sg *Spectrogram) pushMags(mags []float64, peak float64) {
 	}
 }
 
-// scroll moves the heatmap down n rows (one copy of the region, the oldest
-// rows dropping off the bottom).
+// scroll moves the heatmap down n rows, the oldest dropping off the bottom:
+// the image's rows are a ring (imgRow), so the newest rows take the oldest
+// ones' place and nothing moves. Copying the whole heatmap down a push read
+// and wrote 600 KB of memory the core cannot cache.
 // TRLC-LINKS: REQ-SDS-068
 func (sg *Spectrogram) scroll(n int) {
 	n = min(n, sgRows)
-	rowBytes := W * 2
-	for y := sgY1 - 1; y >= sgY0+n; y-- {
-		copy(sg.img.Pix[y*rowBytes+sgX0*2:y*rowBytes+sgX1*2],
-			sg.img.Pix[(y-n)*rowBytes+sgX0*2:(y-n)*rowBytes+sgX1*2])
-	}
+	sg.top = (sg.top - n + sgRows) % sgRows
 }
 
-// paintRow paints the half spectrum mags (peak its largest) on image row y:
-// column x is a frequency bin, dB a colour.
+// imgRow is the image row that holds waterfall row r (0 the newest, at the
+// top of the heatmap, to sgRows-1 the oldest).
+// TRLC-LINKS: REQ-SDS-068
+func (sg *Spectrogram) imgRow(r int) int {
+	r += sg.top
+	if r >= sgRows {
+		r -= sgRows
+	}
+	return sgY0 + r
+}
+
+// paintRow paints the half spectrum mags (peak its largest) on heatmap row
+// y (sgY0 the newest): column x is a frequency bin, dB a colour.
 // TRLC-LINKS: REQ-SDS-068
 func (sg *Spectrogram) paintRow(y int, mags []float64, peak float64) {
+	y = sg.imgRow(y - sgY0)
 	half := len(mags)
 	floor := sg.floorDB
 	if !(floor < 0) { // NaN or >=0 would make invFloor Inf/NaN → poison the paint
@@ -149,7 +160,7 @@ func (sg *Spectrogram) paintRow(y int, mags []float64, peak float64) {
 	for x := 0; x < sgCols; x++ {
 		k0 := x * half / sgCols
 		k1 := min((x+1)*half/sgCols-1, half-1) // a pixel shows the largest of its bins
-		db := 20 * math.Log10(binMax(mags, k0, k1)/peak+1e-12)
+		db := 20 * framecalc.Log10(binMax(mags, k0, k1)/peak+1e-12)
 		t := 1 + db*invFloor // db=0 → 1, db=floorDB → 0
 		sg.img.SetPixel(sgX0+x, y, heat(t))
 	}
@@ -165,7 +176,7 @@ func (sg *Spectrogram) Clear() {
 	for i := range sg.img.Pix {
 		sg.img.Pix[i] = 0
 	}
-	sg.rows = 0
+	sg.rows, sg.top = 0, 0
 }
 
 // drawSpectrogram blits the waterfall image and draws the frequency axis + a dB
@@ -203,20 +214,23 @@ func drawSpectrogramMark(sf Surface, p plotArea, sg *Spectrogram, hideCaptions b
 				xmap[x] = sgX0 + x*sgCols/cols
 			}
 		}
+		var line [W]uint16
 		for y := 0; y < rows; y++ {
-			srow := src[(sgY0+y*sgRows/rows)*W:]
+			srow := src[sg.imgRow(y*sgRows/rows)*W:]
 			drow := dst[(y0+y)*W+x0 : (y0+y)*W+x0+cols]
 			if xmap == nil {
 				copy(drow, srow[sgX0:sgX0+cols])
 				continue
 			}
-			for x, sx := range xmap {
-				drow[x] = srow[sx]
-			}
+			// The row is put together in a buffer the cache holds and copied
+			// out in one: a pixel at a time into the frame missed the cache
+			// on every store.
+			scaleRow(line[:cols], srow, xmap)
+			copy(drow, line[:cols])
 		}
 	} else {
 		for y := 0; y < rows; y++ {
-			sy := sgY0 + y*sgRows/rows
+			sy := sg.imgRow(y * sgRows / rows)
 			for x := 0; x < cols; x++ {
 				sf.SetPixel(x0+x, y0+y, sg.img.At(sgX0+x*sgCols/cols, sy))
 			}
@@ -261,4 +275,12 @@ func drawSpectrogramMark(sf Surface, p plotArea, sg *Spectrogram, hideCaptions b
 	}
 	DrawText(sf, x1-64, ky, "dB", colDim, 1)
 	DrawText(sf, x0+2, ky, fmt.Sprintf("spgm %.0fdB floor", sg.floorDB), colDim, 1)
+}
+
+// scaleRow fills out with the pixels of src the columns xmap name.
+// TRLC-LINKS: REQ-SDS-068
+func scaleRow(out, src []uint16, xmap []int) {
+	for x, sx := range xmap[:len(out)] {
+		out[x] = src[sx]
+	}
 }

@@ -58,7 +58,7 @@ func TestSpectrogramPeakColumn(t *testing.T) {
 	best, bestLum := 0, -1
 	lum := func(c uint16) int { return int((c>>11)&0x1f)*2 + int((c>>5)&0x3f) + int(c&0x1f) }
 	for x := 0; x < sgCols; x++ {
-		l := lum(sg.img.At(sgX0+x, sgY0))
+		l := lum(sg.img.At(sgX0+x, sg.imgRow(0)))
 		if l > bestLum {
 			bestLum, best = l, x
 		}
@@ -81,7 +81,7 @@ func TestSpectrogramTracksSteppedFrequency(t *testing.T) {
 		best, bestLum := 0, -1
 		lum := func(c uint16) int { return int((c>>11)&0x1f)*2 + int((c>>5)&0x3f) + int(c&0x1f) }
 		for x := 0; x < sgCols; x++ {
-			l := lum(sg.img.At(sgX0+x, sgY0+row))
+			l := lum(sg.img.At(sgX0+x, sg.imgRow(row)))
 			if l > bestLum {
 				bestLum, best = l, x
 			}
@@ -129,7 +129,7 @@ func TestSpectrogramRowsPerStretch(t *testing.T) {
 	hz := func(row int) float64 {
 		best, bestLum := 0, -1
 		for x := 0; x < sgCols; x++ {
-			if l := lum(sg.img.At(sgX0+x, sgY0+row)); l > bestLum {
+			if l := lum(sg.img.At(sgX0+x, sg.imgRow(row))); l > bestLum {
 				bestLum, best = l, x
 			}
 		}
@@ -266,7 +266,7 @@ func TestSpectrumColumnsShowNarrowTones(t *testing.T) {
 		for x+1 < sgCols && (x+1)*half/sgCols <= k { // the pixel whose bins hold k
 			x++
 		}
-		if l := lum(sg.img.At(sgX0+x, sgY0)); l != white {
+		if l := lum(sg.img.At(sgX0+x, sg.imgRow(0))); l != white {
 			t.Fatalf("waterfall pixel %d holding the tone at bin %d is not the peak colour (lum %d, want %d)", x, k, l, white)
 		}
 	}
