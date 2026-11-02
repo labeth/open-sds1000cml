@@ -23,6 +23,7 @@ type ownerJob struct {
 	done      chan ownerReply
 }
 
+// ownerReply is an owner job's result.
 type ownerReply struct {
 	value any
 	err   error

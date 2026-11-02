@@ -142,6 +142,7 @@ type sramFrameWriter struct {
 	n int
 }
 
+// Write splits a recalled payload of whole words into the frame's samples.
 // TRLC-LINKS: REQ-SDS-040
 func (w *sramFrameWriter) Write(b []byte) (int, error) {
 	if len(b)%4 != 0 {

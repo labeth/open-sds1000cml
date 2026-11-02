@@ -829,6 +829,7 @@ func (e *Engine) softReadStep(s *softStream, raw []byte) (out []byte, more bool)
 // byteSink appends what DrainStream writes.
 type byteSink struct{ dst *[]byte }
 
+// Write appends b; it never fails.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
 func (w byteSink) Write(b []byte) (int, error) {
 	*w.dst = append(*w.dst, b...)

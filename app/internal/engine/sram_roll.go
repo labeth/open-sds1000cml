@@ -348,6 +348,7 @@ type rollWriter struct {
 	raw    []byte
 }
 
+// Write collects a payload of whole words.
 // TRLC-LINKS: REQ-SDS-010
 func (w *rollWriter) Write(b []byte) (int, error) {
 	if len(b)%4 != 0 {
