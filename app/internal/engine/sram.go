@@ -157,12 +157,7 @@ func (w *sramFrameWriter) Write(b []byte) (int, error) {
 	n, f := w.n, w.f
 	c1, c2 := f.C1[n:n+samples], f.C2[n:n+samples]
 	if w.m.FractionBits == 8 {
-		q1, q2 := f.Q1[n:n+samples], f.Q2[n:n+samples]
-		for k := range c1 {
-			a, c := binary.LittleEndian.Uint16(b[4*k:]), binary.LittleEndian.Uint16(b[4*k+2:])
-			q1[k], q2[k] = a, c
-			c1[k], c2[k] = roundQ8(a), roundQ8(c)
-		}
+		dsp.SplitQ8(f.Q1[n:n+samples], f.Q2[n:n+samples], c1, c2, b)
 	} else {
 		for k := 0; k+1 < len(c1); k += 2 {
 			i := 2 * k
@@ -1199,10 +1194,8 @@ acquisitionLoop:
 					f.PassbandHz, f.BandwidthHz = .5/f.SampleS, .5/f.SampleS
 					f.Filter = "every 2^n-th sample"
 				}
-				for i := 0; i < f.Valid; i++ {
-					f.C1[i] = roundQ8(f.Q1[i])
-					f.C2[i] = roundQ8(f.Q2[i])
-				}
+				dsp.RoundQ8(f.C1[:f.Valid], f.Q1[:f.Valid])
+				dsp.RoundQ8(f.C2[:f.Valid], f.Q2[:f.Valid])
 			} else if len(f.Q1) == f.Valid && len(f.Q2) == f.Valid && bucket == 0 {
 				scratch = qBuffer(scratch, f.Valid)
 				dsp.ConditionQ8(f.Q1, scratch)
@@ -1216,18 +1209,14 @@ acquisitionLoop:
 				f.PassbandHz = .075 / f.SampleS
 				f.BandwidthHz = responseBW / f.SampleS
 				f.Filter = "CIC3 + compensated FIR"
-				for i := 0; i < f.Valid; i++ {
-					f.C1[i] = roundQ8(f.Q1[i])
-					f.C2[i] = roundQ8(f.Q2[i])
-				}
+				dsp.RoundQ8(f.C1[:f.Valid], f.Q1[:f.Valid])
+				dsp.RoundQ8(f.C2[:f.Valid], f.Q2[:f.Valid])
 			}
 			if bucket != 0 {
 				// Extremes of whole buckets: no per-core calibration or FIR applies.
 				if len(f.Q1) == f.Valid && len(f.Q2) == f.Valid {
-					for i := 0; i < f.Valid; i++ {
-						f.C1[i] = roundQ8(f.Q1[i])
-						f.C2[i] = roundQ8(f.Q2[i])
-					}
+					dsp.RoundQ8(f.C1[:f.Valid], f.Q1[:f.Valid])
+					dsp.RoundQ8(f.C2[:f.Valid], f.Q2[:f.Valid])
 				}
 				f.Filter = fmt.Sprintf("peak-detect display readout, %d words per bucket; full record in SRAM", bucket)
 				f.PeakDetect = true
@@ -1267,9 +1256,8 @@ acquisitionLoop:
 					scratch = qBuffer(scratch, f.Valid)
 					eresQ8(f.Q1, scratch, length)
 					eresQ8(f.Q2, scratch, length)
-					for i := 0; i < f.Valid; i++ {
-						f.C1[i], f.C2[i] = roundQ8(f.Q1[i]), roundQ8(f.Q2[i])
-					}
+					dsp.RoundQ8(f.C1[:f.Valid], f.Q1[:f.Valid])
+					dsp.RoundQ8(f.C2[:f.Valid], f.Q2[:f.Valid])
 					f.Filter += fmt.Sprintf("; ERES %d-point boxcar", length)
 					f.FilterGuard += length / 2
 					bw := .443 / (float64(length) * f.SampleS)

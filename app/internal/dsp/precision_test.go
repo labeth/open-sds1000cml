@@ -178,3 +178,78 @@ func TestConditionEveryLengthIsTheReference(t *testing.T) {
 		}
 	}
 }
+
+// RoundQ8 is (v + 128) >> 8 at most 255 for every sample, at every length.
+// TRLC-LINKS: REQ-SDS-037
+func TestRoundQ8(t *testing.T) {
+	src := make([]uint16, 70000)
+	for i := range src {
+		src[i] = uint16(i)
+	}
+	src[69999], src[69998] = 65535, 65407
+	for _, n := range []int{0, 1, 15, 16, 17, 33, 70000} {
+		dst := make([]uint8, n+1)
+		dst[n] = 7
+		RoundQ8(dst[:n], src[:n])
+		for i := 0; i < n; i++ {
+			if want := uint8(min((uint32(src[i])+128)>>8, 255)); dst[i] != want {
+				t.Fatalf("n %d sample %d (%d): %d, want %d", n, i, src[i], dst[i], want)
+			}
+		}
+		if dst[n] != 7 {
+			t.Fatalf("n %d wrote past the end", n)
+		}
+	}
+}
+
+// TRLC-LINKS: REQ-SDS-037
+func BenchmarkRoundQ8(b *testing.B) {
+	src := make([]uint16, 65536)
+	dst := make([]uint8, len(src))
+	for i := range src {
+		src[i] = uint16(i * 7)
+	}
+	for b.Loop() {
+		RoundQ8(dst, src)
+	}
+}
+
+// TRLC-LINKS: REQ-SDS-037
+func BenchmarkRoundQ8Loop(b *testing.B) {
+	src := make([]uint16, 65536)
+	dst := make([]uint8, len(src))
+	for i := range src {
+		src[i] = uint16(i * 7)
+	}
+	for b.Loop() {
+		for i, v := range src {
+			dst[i] = uint8(min((uint32(v)+128)>>8, 255))
+		}
+	}
+}
+
+// SplitQ8 parts the pairs and rounds them at every length.
+// TRLC-LINKS: REQ-SDS-037
+func TestSplitQ8(t *testing.T) {
+	rng := rand.New(rand.NewSource(8))
+	for _, n := range []int{1, 7, 8, 9, 16, 23, 4099} {
+		b := make([]byte, 4*n)
+		for i := range b {
+			b[i] = byte(rng.Uint32())
+		}
+		q1, q2 := make([]uint16, n+1), make([]uint16, n+1)
+		c1, c2 := make([]uint8, n+1), make([]uint8, n+1)
+		q1[n], q2[n], c1[n], c2[n] = 9, 9, 9, 9
+		SplitQ8(q1[:n], q2[:n], c1[:n], c2[:n], b)
+		for k := 0; k < n; k++ {
+			x, y := uint16(b[4*k])|uint16(b[4*k+1])<<8, uint16(b[4*k+2])|uint16(b[4*k+3])<<8
+			cx, cy := uint8(min((uint32(x)+128)>>8, 255)), uint8(min((uint32(y)+128)>>8, 255))
+			if q1[k] != x || q2[k] != y || c1[k] != cx || c2[k] != cy {
+				t.Fatalf("n %d pair %d: %d %d %d %d, want %d %d %d %d", n, k, q1[k], q2[k], c1[k], c2[k], x, y, cx, cy)
+			}
+		}
+		if q1[n] != 9 || q2[n] != 9 || c1[n] != 9 || c2[n] != 9 {
+			t.Fatalf("n %d wrote past the end", n)
+		}
+	}
+}
