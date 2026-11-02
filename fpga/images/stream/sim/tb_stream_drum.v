@@ -21,8 +21,13 @@
 // banks with an eighth of its ring and descriptors (the same words a
 // descriptor), so with rates eight times the board's a lap brings the same
 // words as on the board.
+//
+// SHORT (with REAL) is that many 7-13 ms host stalls a few ms apart; with
+// TICK_NS the host is the worker's pump, and FIRST_NS its late first look
+// at a stream's start (the host holds both banks when the first backlog
+// begins).
 // TRLC-LINKS: REQ-SDS-035
-module tb_stream_drum #(parameter REAL=0,FAST=0,MID=0,SWORDS=0,SPERIOD=256,HOST_NS=787,AFTER_NS=0,POST=20000,TICK_NS=0,ADAPT=0,LOOK_MIN=400000,FIRST_NS=0,GAP_NS=17000000,GAP_EVERY_NS=0,BUSY_LOOK=0,
+module tb_stream_drum #(parameter REAL=0,FAST=0,MID=0,SWORDS=0,SPERIOD=256,HOST_NS=787,AFTER_NS=0,POST=20000,TICK_NS=0,ADAPT=0,LOOK_MIN=400000,FIRST_NS=0,GAP_NS=17000000,GAP_EVERY_NS=0,BUSY_LOOK=0,SHORT=0,
  BIG=REAL || MID,RAW=REAL ? 19 : MID ? 16 : 12,AW=RAW+1,BANK_AW=BIG ? 11 : FAST ? 6 : 4,WF_AW=BIG ? 13 : 8,DESC_AW=REAL ? 9 : MID ? 6 : 7);
  localparam N=1<<AW,BANK=BIG ? 1280 : 1<<BANK_AW,WF_PAIRS=BIG ? 2304 : 1<<(WF_AW-1);
  reg core=0,hclk=0,host=0;
@@ -132,7 +137,8 @@ module tb_stream_drum #(parameter REAL=0,FAST=0,MID=0,SWORDS=0,SPERIOD=256,HOST_
   had<=ring_used!=0;
  end
  // Ring bursts written, the shortest, and the drum's state at a fault.
- integer bursts=0,short=1<<30;reg faulted=0;
+ integer bursts=0,short=1<<30,sk=0,maxf=0;reg faulted=0;
+ always @(posedge hclk)if(dut.wf_level>maxf)maxf=dut.wf_level;
  always @(posedge hclk)begin
   if(dut.dsc_push)begin bursts=bursts+1;if(dut.dsc_push_len<short)short=dut.dsc_push_len;end
   if(fault && !faulted)$display("fault at %0.3f ms: ring %0d words, %0d bursts (shortest %0d words), %0d descriptors (full %b), FIFO %0d pairs",
@@ -172,6 +178,24 @@ module tb_stream_drum #(parameter REAL=0,FAST=0,MID=0,SWORDS=0,SPERIOD=256,HOST_
  endtask
  initial begin
   repeat(20)@(posedge core);active<=1;
+  if(SHORT!=0)begin
+   // SHORT host stalls of 7-13 ms a few ms apart, the host draining at
+   // HOST_NS a word between them (with TICK_NS, the worker's pump; with
+   // FIRST_NS, a first look late as at a stream's start): a backlog starts
+   // and drains over and over, each from another phase of the drum. POST
+   // more words follow at the stream's rate; then the input stops and the
+   // backlog drains.
+   drain_ns=HOST_NS;
+   for(sk=0;sk<SHORT;sk=sk+1)begin
+    stream(2*(18000+(sk*7919)%16000),SPERIOD,18000+(sk*7919)%16000);
+    stream(3000+(sk*3571)%9000,SPERIOD,0);
+    $display("stall %0d at %0.3f ms: FIFO peak %0d words, fault %b",sk,$realtime/1e6,maxf*2,fault);
+   end
+   draining=1;drain_ns=AFTER_NS;stream(POST,SPERIOD,0);
+   settle_check(BIG ? 75000000 : 100000,"short stalls");
+   if(errors==0)$display("PASS tb_stream_drum short stalls");else $display("FAIL tb_stream_drum short stalls: %0d errors",errors);
+   $finish;
+  end
   if(SWORDS!=0)begin
    drain_ns=HOST_NS;stream(4000,SPERIOD,0);
    stream(SWORDS,SPERIOD,SWORDS);       // the host takes nothing throughout
@@ -241,5 +265,5 @@ module tb_stream_drum #(parameter REAL=0,FAST=0,MID=0,SWORDS=0,SPERIOD=256,HOST_
   if(errors==0)$display("PASS tb_stream_drum");else $display("FAIL tb_stream_drum: %0d errors",errors);
   $finish;
  end
- initial begin #(SWORDS!=0 ? 64'd4000000000 : REAL ? 300000000 : 50000000) $display("FAIL: timeout (drained %0d of %0d)",expected,sent);$finish;end
+ initial begin #(SWORDS!=0 || SHORT!=0 ? 64'd4000000000 : REAL ? 300000000 : 50000000) $display("FAIL: timeout (drained %0d of %0d)",expected,sent);$finish;end
 endmodule
