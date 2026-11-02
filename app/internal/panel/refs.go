@@ -106,7 +106,7 @@ func (c *Controller) captureRefFrom(f *engine.Frame, slot int) {
 	if c.fe != nil {
 		idx, _ := c.fe.Snapshot()
 		for ch, code := range [2]uint16{st.OffC1, st.OffC2} {
-			r.vdiv[ch] = analog.AnalogVdiv(idx[ch])
+			r.vdiv[ch] = analog.Vdiv(idx[ch])
 			r.probe[ch] = max(c.fe.ProbeFactor(ch), 1)
 			cpl[ch] = c.fe.Coupling(ch)
 			if code != 0 && cpl[ch] != analog.CplAC { // as the HUD's offset
@@ -201,7 +201,7 @@ func (c *Controller) RefsExport() [2]RefExport {
 			if s := r.setup; s.has {
 				e.Setup = &RefSetup{TdivS: s.tdiv, PosFrac: s.posFrac, TrigSrc: s.trigSrc, Rising: s.rising}
 				for ch := range e.Setup.Vdiv {
-					e.Setup.Vdiv[ch] = analog.AnalogVdiv(s.vidx[ch]) * e.Probe[ch]
+					e.Setup.Vdiv[ch] = analog.Vdiv(s.vidx[ch]) * e.Probe[ch]
 				}
 			}
 			out[i] = e

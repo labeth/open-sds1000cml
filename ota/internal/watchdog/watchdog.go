@@ -21,10 +21,10 @@ import (
 
 const wdiocKeepalive = 0x80045705 // WDIOC_KEEPALIVE (spec 01 §4.1)
 
-// Watchdog is the agent's hold on the watchdog device: unarmed from New,
+// Device is the agent's hold on the watchdog device: unarmed from New,
 // armed and petted from Acquire, disarmed by Disarm.
 // TRLC-LINKS: REQ-SDS-026, REQ-SDS-086
-type Watchdog struct {
+type Device struct {
 	dev string
 
 	mu      sync.Mutex
@@ -36,15 +36,15 @@ type Watchdog struct {
 
 // New returns an unarmed watchdog for the device node dev.
 // TRLC-LINKS: REQ-SDS-086
-func New(dev string) *Watchdog {
-	return &Watchdog{dev: dev, fd: -1}
+func New(dev string) *Device {
+	return &Device{dev: dev, fd: -1}
 }
 
 // Acquire opens the device with O_RDWR, retrying until timeout (the factory
 // app's inherited fd needs a moment to drain after the kill), pets once so
 // the countdown is fresh, and starts the pet loop.
 // TRLC-LINKS: REQ-SDS-086
-func (w *Watchdog) Acquire(timeout, petEvery time.Duration) error {
+func (w *Device) Acquire(timeout, petEvery time.Duration) error {
 	w.mu.Lock()
 	if w.fd >= 0 {
 		w.mu.Unlock()
@@ -81,7 +81,7 @@ func (w *Watchdog) Acquire(timeout, petEvery time.Duration) error {
 }
 
 // TRLC-LINKS: REQ-SDS-026, REQ-SDS-086
-func (w *Watchdog) loop(every time.Duration) {
+func (w *Device) loop(every time.Duration) {
 	t := time.NewTicker(every)
 	defer t.Stop()
 	for {
@@ -100,7 +100,7 @@ func (w *Watchdog) loop(every time.Duration) {
 // pet issues both keepalives: the write is the primary, the ioctl is
 // belt-and-suspenders across driver variants (spec 01 §4.1).
 // TRLC-LINKS: REQ-SDS-026, REQ-SDS-086
-func (w *Watchdog) pet() {
+func (w *Device) pet() {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	if w.fd < 0 {
@@ -120,7 +120,7 @@ func (w *Watchdog) pet() {
 // of resetting (no-op if never acquired). Used only on a clean agent stop —
 // the respawned agent re-acquires and re-arms.
 // TRLC-LINKS: REQ-SDS-086
-func (w *Watchdog) Disarm() {
+func (w *Device) Disarm() {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	if w.fd < 0 {
@@ -143,7 +143,7 @@ type Status struct {
 // Status reports whether the watchdog is armed, its last pet and the last
 // pet's failure.
 // TRLC-LINKS: REQ-SDS-086
-func (w *Watchdog) Status() Status {
+func (w *Device) Status() Status {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	s := Status{Armed: w.fd >= 0, LastPet: w.lastPet}

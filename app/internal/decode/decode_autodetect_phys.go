@@ -22,47 +22,47 @@ import (
 func considerPhysLines(codes []uint8, colTimeS float64, format string, t lineTiming, consider func(Result)) {
 	lc := LineCfg{Format: format}
 	if t.edges >= 12 {
-		if r := DecodePWM(codes, colTimeS, lc); pwmFillsRecord(r, len(codes)) {
+		if r := PWM(codes, colTimeS, lc); pwmFillsRecord(r, len(codes)) {
 			consider(r)
 		}
 	}
 	if t.edges >= 50 && t.minRun >= 50 {
-		consider(DecodeRCEncode(codes, colTimeS, lc))
+		consider(RCEncode(codes, colTimeS, lc))
 	}
 	if t.edges >= 40 && t.minRun >= 50 && t.minRun <= 2000 {
-		consider(DecodeOOK(codes, colTimeS, lc))
-		consider(DecodeEM4100(codes, colTimeS, lc))
+		consider(OOK(codes, colTimeS, lc))
+		consider(EM4100(codes, colTimeS, lc))
 	}
 	if t.edges >= 16 && t.minRun <= 100 {
-		consider(DecodeMiller(codes, colTimeS, lc))
+		consider(Miller(codes, colTimeS, lc))
 	}
 	if t.edges >= 6 && t.minRun >= 1000 {
-		consider(DecodeMorse(codes, colTimeS, lc))
+		consider(Morse(codes, colTimeS, lc))
 	}
 	if t.edges >= 10 && t.minRun >= 200 {
-		consider(DecodeDCF77(codes, colTimeS, lc))
+		consider(DCF77(codes, colTimeS, lc))
 	}
 	if t.edges >= 20 && t.maxRun >= 100 && t.minRun <= 300 {
-		consider(DecodeEM4305(codes, colTimeS, lc))
-		consider(DecodeT55xx(codes, colTimeS, lc))
+		consider(EM4305(codes, colTimeS, lc))
+		consider(T55xx(codes, colTimeS, lc))
 	}
 	if t.edges >= 20 && t.minRun <= 3 {
-		consider(DecodeSWIM(codes, colTimeS, lc))
+		consider(SWIM(codes, colTimeS, lc))
 	}
 	if t.edges >= 20 && t.minRun <= 6 && t.maxLow >= 12 {
-		consider(DecodeSDQ(codes, colTimeS, lc))
+		consider(SDQ(codes, colTimeS, lc))
 	}
 	if t.edges >= 20 && t.minRun >= 15 && t.minRun <= 70 {
-		consider(DecodePJDL(codes, colTimeS, lc))
+		consider(PJDL(codes, colTimeS, lc))
 	}
 	if t.edges >= 18 && t.minRun >= 600 && t.minRun <= 1000 && t.maxRun >= 3000 {
-		consider(DecodeDSI(codes, colTimeS, lc))
+		consider(DSI(codes, colTimeS, lc))
 	}
 	if t.edges >= 30 && t.minRun >= 150 && t.minRun <= 350 {
-		consider(DecodeQi(codes, colTimeS, lc))
+		consider(Qi(codes, colTimeS, lc))
 	}
 	if t.edges >= 20 && t.minRun >= 150 && t.maxRun >= 3000 {
-		consider(DecodeIRMP(codes, colTimeS, lc))
+		consider(IRMP(codes, colTimeS, lc))
 	}
 }
 
@@ -73,18 +73,18 @@ func considerPhysLines(codes []uint8, colTimeS float64, format string, t lineTim
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-256
 func considerPhysPairs(x, y []uint8, colTimeS float64, format string, tx lineTiming, byteBursts bool, consider func(Result)) {
 	cfg := ClockedCfg{Format: format}
-	consider(DecodeQuadrature(x, y, colTimeS, cfg))
-	consider(DecodeStepper(x, y, colTimeS, cfg))
+	consider(Quadrature(x, y, colTimeS, cfg))
+	consider(Stepper(x, y, colTimeS, cfg))
 	if tx.edges >= 96 {
-		consider(DecodeSDCard(x, y, colTimeS, cfg))
+		consider(SDCard(x, y, colTimeS, cfg))
 		if !byteBursts {
-			consider(DecodePDI(x, y, colTimeS, cfg))
+			consider(PDI(x, y, colTimeS, cfg))
 		}
-		consider(DecodeCJTAG(x, y, colTimeS, cfg))
+		consider(CJTAG(x, y, colTimeS, cfg))
 	}
-	consider(DecodeMaple(x, y, colTimeS, cfg))
+	consider(Maple(x, y, colTimeS, cfg))
 	if tx.edges >= 48 && tx.maxRun >= 10000 {
-		consider(DecodeCaliper(x, y, colTimeS, cfg))
+		consider(Caliper(x, y, colTimeS, cfg))
 	}
 }
 

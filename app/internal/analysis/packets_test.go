@@ -143,7 +143,7 @@ func TestPacketsUART(t *testing.T) {
 	cfg := decode.UARTCfg{Baud: 115200}
 	msgs := [][]byte{[]byte("Hello"), []byte("World!"), {0x55, 0xAA, 0x0D, 0x0A}}
 	w := uartMsgs(msgs, spb, 40, 30, 40)
-	checkPackets(t, "three messages", decode.DecodeUART(w, ct, cfg), len(w),
+	checkPackets(t, "three messages", decode.UART(w, ct, cfg), len(w),
 		"48 65 6C 6C 6F", "57 6F 72 6C 64 21", "55 AA 0D 0A")
 
 	// gaps of up to 12 bits between bytes stay in the packet (1.5 bytes is 15)
@@ -156,12 +156,12 @@ func TestPacketsUART(t *testing.T) {
 	w2 = line(w2, lvHi, 20*spb)
 	w2 = uartFrame(w2, 'E', spb, 1, "", false)
 	w2 = line(w2, lvHi, 40*spb)
-	checkPackets(t, "inter-byte gaps", decode.DecodeUART(w2, ct, cfg), len(w2), "41 42 43 44", "45")
+	checkPackets(t, "inter-byte gaps", decode.UART(w2, ct, cfg), len(w2), "41 42 43 44", "45")
 
 	// the record opens in the first message, half a bit before its third
 	// byte, and ends in the last, inside its second byte: both are cut
 	cut := w[40*spb+20*spb-8 : len(w)-40*spb-25*spb]
-	ps := checkPackets(t, "cut at both edges", decode.DecodeUART(cut, ct, cfg), len(cut),
+	ps := checkPackets(t, "cut at both edges", decode.UART(cut, ct, cfg), len(cut),
 		"~6C 6C 6F", "57 6F 72 6C 64 21", "~55")
 	if ps[1].I0 <= ps[0].I1 || ps[2].I0 <= ps[1].I1 {
 		t.Errorf("packets overlap: %+v", ps)
@@ -180,7 +180,7 @@ func TestPacketsUART(t *testing.T) {
 	w3 = line(w3, lvHi, spb)
 	w3 = uartFrame(w3, 'e', spb, 1, "", false)
 	w3 = line(w3, lvHi, 40*spb)
-	checkPackets(t, "break and framing error", decode.DecodeUART(w3, ct, cfg), len(w3), "61 62", "63 64* 65")
+	checkPackets(t, "break and framing error", decode.UART(w3, ct, cfg), len(w3), "61 62", "63 64* 65")
 
 	var w4 []uint8
 	w4 = line(w4, lvHi, 40*spb)
@@ -188,7 +188,7 @@ func TestPacketsUART(t *testing.T) {
 		w4 = uartFrame(w4, b, spb, 1, "even", i == 1)
 	}
 	w4 = line(w4, lvHi, 40*spb)
-	checkPackets(t, "parity error", decode.DecodeUART(w4, ct, decode.UARTCfg{Baud: 115200, Parity: "even"}),
+	checkPackets(t, "parity error", decode.UART(w4, ct, decode.UARTCfg{Baud: 115200, Parity: "even"}),
 		len(w4), "10 20* 30")
 }
 
@@ -280,7 +280,7 @@ func TestPacketsI2C(t *testing.T) {
 	b.byte(0x24<<1, true)
 	b.byte(0x77, true)
 	b.seg(lvLo, lvHi, 40)
-	r := decode.DecodeI2C(b.scl, b.sda, 1e-6, decode.I2CCfg{})
+	r := decode.I2C(b.scl, b.sda, 1e-6, decode.I2CCfg{})
 	checkPackets(t, "transactions", r, len(b.scl),
 		"@24W:55 AA", "@50W:10", "@50R:01 02", "@33W: !NAK", "@24W:01 02*", "~@24W:77 !no STOP")
 }
@@ -317,10 +317,10 @@ func TestPacketsSPI(t *testing.T) {
 	const h = 10
 	clk, data := spiBus([][]byte{{0x9F}, {0x01, 0x02, 0x03, 0x04}, {0xDE, 0xAD, 0xBE, 0xEF}}, h, 60, 60)
 	cfg := decode.SPICfg{MSB: true}
-	checkPackets(t, "bursts", decode.DecodeSPI(clk, data, 1e-7, cfg), len(clk), "9F", "01 02 03 04", "DE AD BE EF")
+	checkPackets(t, "bursts", decode.SPI(clk, data, 1e-7, cfg), len(clk), "9F", "01 02 03 04", "DE AD BE EF")
 	// open in the second burst, end in the third
 	a, b := 60*h+16*h+60*h+16*h, len(clk)-60*h-20*h
-	checkPackets(t, "cut", decode.DecodeSPI(clk[a:b], data[a:b], 1e-7, cfg), b-a, "~02 03 04", "~DE AD")
+	checkPackets(t, "cut", decode.SPI(clk[a:b], data[a:b], 1e-7, cfg), b-a, "~02 03 04", "~DE AD")
 }
 
 // canCRC15 is the CAN CRC-15 (polynomial 0x4599).
@@ -409,7 +409,7 @@ func TestPacketsCAN(t *testing.T) {
 	for i, v := range f.C1 {
 		c1[i] = uint8(v)
 	}
-	r := decode.DecodeCANFD(c1, f.SampleS, decode.CANFDCfg{DominantLow: true})
+	r := decode.CANFD(c1, f.SampleS, decode.CANFDCfg{DominantLow: true})
 	found := false
 	for _, p := range Packets(r, len(c1)) {
 		if p.Complete && p.HasAddr && p.Addr == 0x123 && fmt.Sprintf("% X", p.Bytes) == "55 AA 0F F0" && p.Err == "" {
@@ -434,7 +434,7 @@ func TestPacketsCAN(t *testing.T) {
 	for _, b := range wire {
 		w = line(w, level(b), spb) // recessive high
 	}
-	r = decode.DecodeCANFD(w, 1e-7, decode.CANFDCfg{DominantLow: true})
+	r = decode.CANFD(w, 1e-7, decode.CANFDCfg{DominantLow: true})
 	checkPackets(t, "frames", r, len(w), "@123W:55 AA 0F F0", "@7FFR:", "@A5W:01 !NAK", "~@321W:C0 FF EE")
 }
 
@@ -466,10 +466,10 @@ func TestPacketsManchester(t *testing.T) {
 	w := manchesterFrames([][]byte{{0xAA, 0x12, 0x34}, {0xAA, 0xC3, 0x5A, 0x01}, {0xAA, 0x77}}, spb, 12)
 	ct := 1.0 / (float64(spb) * 100000)
 	cfg := decode.ManchesterCfg{IEEE: true, MSB: true}
-	checkPackets(t, "frames", decode.DecodeManchester(w, ct, cfg), len(w), "AA 12 34", "AA C3 5A 01", "AA 77")
+	checkPackets(t, "frames", decode.Manchester(w, ct, cfg), len(w), "AA 12 34", "AA C3 5A 01", "AA 77")
 	// a bit of idle after the last frame is too little to know it ended
 	cut := w[:len(w)-5*spb]
-	checkPackets(t, "cut", decode.DecodeManchester(cut, ct, cfg), len(cut), "AA 12 34", "AA C3 5A 01", "~AA 77")
+	checkPackets(t, "cut", decode.Manchester(cut, ct, cfg), len(cut), "AA 12 34", "AA C3 5A 01", "~AA 77")
 }
 
 // sentTable is the SAE J2716 CRC-4 table.
@@ -515,7 +515,7 @@ func TestPacketsSENT(t *testing.T) {
 	bad := append([]int(nil), f2...)
 	bad[7] ^= 0x3
 	w := sentLine([][]int{f1, f2, bad}, 6)
-	r := decode.DecodeSENT(w, 1e-6, decode.SENTCfg{Nibbles: 8})
+	r := decode.SENT(w, 1e-6, decode.SENTCfg{Nibbles: 8})
 	checkPackets(t, "frames", r, len(w),
 		fmt.Sprintf("01 0A 05 0F 00 0C 03 %02X", f1[7]),
 		fmt.Sprintf("00 01 02 03 04 05 06 %02X", f2[7]),
@@ -575,7 +575,7 @@ func BenchmarkPackets(b *testing.B) {
 		msgs = append(msgs, fmt.Appendf(nil, "message %d: status OK\r\n", i))
 	}
 	w := uartMsgs(msgs, 8, 40, 30, 40)
-	r := decode.DecodeUART(w, 1/(8*115200.0), decode.UARTCfg{Baud: 115200})
+	r := decode.UART(w, 1/(8*115200.0), decode.UARTCfg{Baud: 115200})
 	b.ReportAllocs()
 	for b.Loop() {
 		Packets(r, len(w))

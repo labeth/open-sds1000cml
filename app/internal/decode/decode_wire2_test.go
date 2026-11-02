@@ -26,7 +26,7 @@ func TestDecodeSDCardRecordCutInsideAToken(t *testing.T) {
 	for cut := range 48 {
 		l := newTwoLine(sr)
 		clockBits(l, bits[cut:], per)
-		r := DecodeSDCard(l.a.codes(), l.b.codes(), 1/sr, ClockedCfg{})
+		r := SDCard(l.a.codes(), l.b.codes(), 1/sr, ClockedCfg{})
 		if !r.OK || strings.Count(r.Text, "CMD13") < 4 || strings.Count(r.Text, "!") > 1 {
 			t.Fatalf("cut %d bits in: ok=%v (%s) %q", cut, r.OK, r.Error, r.Text)
 		}

@@ -80,7 +80,7 @@ func TestTCPTransportCall(t *testing.T) {
 	addr, _ := startAgentLineServer(t)
 	tr := NewTCP(addr)
 	defer tr.Close()
-	c := &Client{T: tr}
+	c := &Client{Transport: tr}
 
 	raw, err := c.Call("ping", nil, 5*time.Second)
 	if err != nil {
@@ -103,7 +103,7 @@ func TestTCPTransportCall(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-109
 func TestTCPTransportDeviceError(t *testing.T) {
 	addr, _ := startAgentLineServer(t)
-	c := &Client{T: NewTCP(addr)}
+	c := &Client{Transport: NewTCP(addr)}
 	_, err := c.Call("no.such.command", nil, 5*time.Second)
 	if err == nil {
 		t.Fatal("unknown command must surface as an error")
@@ -116,7 +116,7 @@ func TestTCPTransportDeviceError(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-109
 func TestTCPTransportDialFailure(t *testing.T) {
 	// A port nothing listens on: the dial error must be reported, not hang.
-	c := &Client{T: NewTCP("127.0.0.1:1")}
+	c := &Client{Transport: NewTCP("127.0.0.1:1")}
 	_, err := c.Call("ping", nil, 2*time.Second)
 	if err == nil {
 		t.Fatal("dial to a closed port must fail")
@@ -129,7 +129,7 @@ func TestTCPTransportDialFailure(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-110
 func TestPutFileGetFileRoundTrip(t *testing.T) {
 	addr, _ := startAgentLineServer(t)
-	c := &Client{T: NewTCP(addr)}
+	c := &Client{Transport: NewTCP(addr)}
 
 	// > 2 chunks at the 100 KiB test chunk size, non-compressible.
 	payload := make([]byte, 300*1024+37)
@@ -182,7 +182,7 @@ func TestPutFileGetFileRoundTrip(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-110
 func TestPutFileMissingLocal(t *testing.T) {
 	addr, _ := startAgentLineServer(t)
-	c := &Client{T: NewTCP(addr)}
+	c := &Client{Transport: NewTCP(addr)}
 	if _, err := c.PutFile(filepath.Join(t.TempDir(), "nope"), "/x", 0, 0, nil); err == nil {
 		t.Fatal("PutFile of a missing local file must fail")
 	}

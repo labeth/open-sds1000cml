@@ -79,7 +79,7 @@ func TestDecodeMIL1553RoundTrip(t *testing.T) {
 	w := mil1553Wave(words, cmd, par, spb)
 
 	// explicit bitrate
-	r := DecodeMIL1553(w, colTimeS, MIL1553Cfg{Bitrate: bitrate})
+	r := MIL1553(w, colTimeS, MIL1553Cfg{Bitrate: bitrate})
 	if !r.OK {
 		t.Fatalf("explicit-bitrate decode failed: %s", r.Error)
 	}
@@ -91,7 +91,7 @@ func TestDecodeMIL1553RoundTrip(t *testing.T) {
 	}
 
 	// auto bitrate (infer T from the edge statistics)
-	ra := DecodeMIL1553(w, colTimeS, MIL1553Cfg{})
+	ra := MIL1553(w, colTimeS, MIL1553Cfg{})
 	if !ra.OK {
 		t.Fatalf("auto-bitrate decode failed: %s", ra.Error)
 	}
@@ -141,7 +141,7 @@ func TestDecodeMIL1553ParityError(t *testing.T) {
 	par[1] ^= 1 // corrupt the parity of the middle (data) word
 	w := mil1553Wave(words, cmd, par, spb)
 
-	r := DecodeMIL1553(w, colTimeS, MIL1553Cfg{Bitrate: 1_000_000})
+	r := MIL1553(w, colTimeS, MIL1553Cfg{Bitrate: 1_000_000})
 	if !r.OK {
 		t.Fatalf("decode failed: %s", r.Error)
 	}
@@ -206,7 +206,7 @@ func TestDecodeMIL1553NoPanic(t *testing.T) {
 						t.Fatalf("panic on cfg %+v: %v", cfg, p)
 					}
 				}()
-				r := DecodeMIL1553(in, ct, cfg)
+				r := MIL1553(in, ct, cfg)
 				if !r.OK && r.Error == "" { // contract: OK or an Error string, never both empty
 					t.Fatalf("degenerate input returned neither OK nor Error")
 				}

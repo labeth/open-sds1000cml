@@ -10,7 +10,7 @@ import (
 )
 
 // mBits expands bytes into a bit stream, MSB- or LSB-first, `bits` per byte —
-// the same order DecodeManchester packs cells back into bytes.
+// the same order Manchester packs cells back into bytes.
 // TRLC-LINKS: REQ-SDS-018
 func mBits(bytes []int, msb bool, bits int) []int {
 	var out []int
@@ -77,7 +77,7 @@ func TestDecodeManchesterRoundTrip(t *testing.T) {
 	w := manchesterWave(mBits(want, true, 8), true /*IEEE*/, spb)
 
 	// explicit bitrate
-	r := DecodeManchester(w, colTimeS, ManchesterCfg{Bitrate: bitrate, IEEE: true, MSB: true})
+	r := Manchester(w, colTimeS, ManchesterCfg{Bitrate: bitrate, IEEE: true, MSB: true})
 	if !r.OK {
 		t.Fatalf("explicit-bitrate decode failed: %s", r.Error)
 	}
@@ -89,7 +89,7 @@ func TestDecodeManchesterRoundTrip(t *testing.T) {
 	}
 
 	// auto bitrate (infer T from the edge statistics)
-	ra := DecodeManchester(w, colTimeS, ManchesterCfg{IEEE: true, MSB: true})
+	ra := Manchester(w, colTimeS, ManchesterCfg{IEEE: true, MSB: true})
 	if !ra.OK {
 		t.Fatalf("auto-bitrate decode failed: %s", ra.Error)
 	}
@@ -127,7 +127,7 @@ func TestDecodeManchesterThomas(t *testing.T) {
 	bitrate := int(1.0 / (float64(spb) * colTimeS))
 	w := manchesterWave(mBits(want, true, 8), false /*Thomas*/, spb)
 
-	r := DecodeManchester(w, colTimeS, ManchesterCfg{Bitrate: bitrate, IEEE: false, MSB: true})
+	r := Manchester(w, colTimeS, ManchesterCfg{Bitrate: bitrate, IEEE: false, MSB: true})
 	if !r.OK {
 		t.Fatalf("Thomas decode failed: %s", r.Error)
 	}
@@ -137,7 +137,7 @@ func TestDecodeManchesterThomas(t *testing.T) {
 
 	// Decoding the SAME wave under the IEEE mapping must invert every bit
 	// (the recovered bytes are the ones-complement of the Thomas bytes).
-	ri := DecodeManchester(w, colTimeS, ManchesterCfg{Bitrate: bitrate, IEEE: true, MSB: true})
+	ri := Manchester(w, colTimeS, ManchesterCfg{Bitrate: bitrate, IEEE: true, MSB: true})
 	if !ri.OK || len(ri.Bytes) != len(want) {
 		t.Fatalf("IEEE-on-Thomas decode failed: %s", ri.Error)
 	}
@@ -156,7 +156,7 @@ func TestDecodeManchesterLSB(t *testing.T) {
 	colTimeS := 1e-6
 	bitrate := int(1.0 / (float64(spb) * colTimeS))
 	w := manchesterWave(mBits(want, false, 8), true, spb)
-	r := DecodeManchester(w, colTimeS, ManchesterCfg{Bitrate: bitrate, IEEE: true, MSB: false})
+	r := Manchester(w, colTimeS, ManchesterCfg{Bitrate: bitrate, IEEE: true, MSB: false})
 	if !r.OK {
 		t.Fatalf("LSB decode failed: %s", r.Error)
 	}
@@ -216,7 +216,7 @@ func TestDecodeManchesterNoPanic(t *testing.T) {
 						t.Fatalf("panic on cfg %+v: %v", cfg, p)
 					}
 				}()
-				r := DecodeManchester(in, ct, cfg)
+				r := Manchester(in, ct, cfg)
 				// Contract: either OK, or an Error string — never both empty.
 				if !r.OK && r.Error == "" {
 					t.Fatalf("degenerate input returned neither OK nor Error")
@@ -232,14 +232,14 @@ func TestDecodeManchesterCompleteBoundaryFrames(t *testing.T) {
 	w := manchesterWave(mBits([]int{0x1234, 0x5678}, true, 16), true, spb)
 	cfg := ManchesterCfg{Bitrate: 25000, IEEE: true, MSB: true, Bits: 16}
 	whole := append(append([]uint8{}, w...), w...)
-	r := DecodeManchester(whole, 1e-6, cfg)
+	r := Manchester(whole, 1e-6, cfg)
 	if fmt.Sprint(r.Bytes) != "[4660 22136 4660 22136]" {
 		t.Fatalf("complete boundary frames discarded: %+v", r)
 	}
 	partial := append([]uint8{}, w[(6+4)*spb:]...)
 	partial = append(partial, w...)
 	partial = append(partial, w[:(6+28)*spb]...)
-	r = DecodeManchester(partial, 1e-6, cfg)
+	r = Manchester(partial, 1e-6, cfg)
 	if fmt.Sprint(r.Bytes) != "[4660 22136]" {
 		t.Fatalf("truncated boundary frames accepted: %+v", r)
 	}

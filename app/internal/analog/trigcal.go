@@ -14,7 +14,7 @@ package analog
 // both the ×1 and ×25 attenuator tiers) the codes-per-DISPLAY-volt slope is
 // CONSTANT (911 ± ~10) and the 0 V code is constant (31437 ± ~15). See
 // docs/trigcal-notes.md. So the cal is a single GLOBAL {Zero, CPV}, NOT a
-// per-detent table — the earlier "codes/div ~1056, slope ∝ 1/AnalogVdiv" theory
+// per-detent table — the earlier "codes/div ~1056, slope ∝ 1/Vdiv" theory
 // was a measurement artifact (rounded sine peaks + offset-DAC contamination in
 // the old offset-slope method). The per-(channel, detent) storage below is kept
 // as future-proof override infrastructure but is unused: every detent resolves

@@ -210,7 +210,7 @@ func snapSPB(spb, colTimeS float64, rates []float64, tol float64) float64 {
 	return spb
 }
 
-// DecodeLIN decodes LIN frames: a break, the 0x55 sync field, the protected
+// LIN decodes LIN frames: a break, the 0x55 sync field, the protected
 // identifier (its two parity bits checked) and the response bytes up to the
 // next break or two characters of idle, the last of them the checksum,
 // which checks as enhanced (identifier included; not for the diagnostic IDs
@@ -219,17 +219,17 @@ func snapSPB(spb, colTimeS float64, rates []float64, tol float64) float64 {
 // or checksum is that unit's error span. OK needs a frame whose sync and
 // identifier read right and whose checksum checks (or no response).
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-232
-func DecodeLIN(codes []uint8, colTimeS float64, cfg LINCfg) Result {
+func LIN(codes []uint8, colTimeS float64, cfg LINCfg) Result {
 	return decodeLIN(samplesIn(codes), colTimeS, cfg)
 }
 
-// DecodeLINEdges is DecodeLIN over digital lines' edges (EdgeLine).
+// LINEdges is LIN over digital lines' edges (EdgeLine).
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-232
-func DecodeLINEdges(codes *EdgeLine, colTimeS float64, cfg LINCfg) Result {
+func LINEdges(codes *EdgeLine, colTimeS float64, cfg LINCfg) Result {
 	return decodeLIN(edgesIn(codes), colTimeS, cfg)
 }
 
-// decodeLIN is DecodeLIN over samples or edges.
+// decodeLIN is LIN over samples or edges.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-232
 func decodeLIN(codes lineIn, colTimeS float64, cfg LINCfg) Result {
 	S := codes.slice(cfg.Threshold, cfg.HaveThr)
@@ -342,22 +342,22 @@ type DMXCfg struct {
 // dmxBreakBits is DMX512's shortest break, 88 us at 250 kbit/s.
 const dmxBreakBits = 22.0
 
-// DecodeDMX512 decodes DMX512 packets: a break of 88 us or more, the mark
+// DMX512 decodes DMX512 packets: a break of 88 us or more, the mark
 // after break, the start code (slot 0, "SC00") and the slots, 8N2 at
 // 250 kbit/s. Spans: "sof" BRK, "rw" MAB, then a unit per slot. OK needs a
 // packet with a start code and a slot after it, all framed.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-232
-func DecodeDMX512(codes []uint8, colTimeS float64, cfg DMXCfg) Result {
+func DMX512(codes []uint8, colTimeS float64, cfg DMXCfg) Result {
 	return decodeDMX512(samplesIn(codes), colTimeS, cfg)
 }
 
-// DecodeDMX512Edges is DecodeDMX512 over digital lines' edges (EdgeLine).
+// DMX512Edges is DMX512 over digital lines' edges (EdgeLine).
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-232
-func DecodeDMX512Edges(codes *EdgeLine, colTimeS float64, cfg DMXCfg) Result {
+func DMX512Edges(codes *EdgeLine, colTimeS float64, cfg DMXCfg) Result {
 	return decodeDMX512(edgesIn(codes), colTimeS, cfg)
 }
 
-// decodeDMX512 is DecodeDMX512 over samples or edges.
+// decodeDMX512 is DMX512 over samples or edges.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-232
 func decodeDMX512(codes lineIn, colTimeS float64, cfg DMXCfg) Result {
 	S := codes.slice(cfg.Threshold, cfg.HaveThr)
@@ -485,13 +485,13 @@ func midiName(st int) string {
 	return "F" + fmt.Sprintf("%X", st&0xf)
 }
 
-// DecodeMIDI decodes MIDI messages (31250 Bd 8N1): each status byte opens
+// MIDI decodes MIDI messages (31250 Bd 8N1): each status byte opens
 // a message ("sof", then the status unit named "ON1", "CC10", "SYX"...),
 // data bytes follow (running status: a channel message's data repeat with no
 // status), real-time bytes may come between. A data byte with no message to
 // belong to is an error. OK needs a complete message.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-232
-func DecodeMIDI(codes []uint8, colTimeS float64, cfg MIDICfg) Result {
+func MIDI(codes []uint8, colTimeS float64, cfg MIDICfg) Result {
 	S := sliceChannel(codes, cfg.Threshold, cfg.HaveThr)
 	if !S.ok {
 		return Result{Proto: protoMIDI, Error: S.reason}
@@ -652,22 +652,22 @@ func modbusGood(frames [][]uchar) (good, bad int) {
 	return good, bad
 }
 
-// DecodeModbus decodes Modbus RTU frames: the address ("A01"), the function
+// Modbus decodes Modbus RTU frames: the address ("A01"), the function
 // ("F03", an exception response "F83!"), the data bytes and the CRC (two
 // bytes, low first; "!" on both when it does not check). Each frame opens
 // with a "sof". OK needs a CRC-valid frame.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-232
-func DecodeModbus(codes []uint8, colTimeS float64, cfg ModbusCfg) Result {
+func Modbus(codes []uint8, colTimeS float64, cfg ModbusCfg) Result {
 	return decodeModbus(samplesIn(codes), colTimeS, cfg)
 }
 
-// DecodeModbusEdges is DecodeModbus over digital lines' edges (EdgeLine).
+// ModbusEdges is Modbus over digital lines' edges (EdgeLine).
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-232
-func DecodeModbusEdges(codes *EdgeLine, colTimeS float64, cfg ModbusCfg) Result {
+func ModbusEdges(codes *EdgeLine, colTimeS float64, cfg ModbusCfg) Result {
 	return decodeModbus(edgesIn(codes), colTimeS, cfg)
 }
 
-// decodeModbus is DecodeModbus over samples or edges.
+// decodeModbus is Modbus over samples or edges.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-232
 func decodeModbus(codes lineIn, colTimeS float64, cfg ModbusCfg) Result {
 	S := codes.slice(cfg.Threshold, cfg.HaveThr)

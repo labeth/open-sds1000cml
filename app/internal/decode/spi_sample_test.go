@@ -509,7 +509,7 @@ func TestDecodeSPIFine(t *testing.T) {
 		if p.clockCh == 0 {
 			clk, data, lag = c1, c2, -lag
 		}
-		r := DecodeSPI(clk, data, 2e-9, SPICfg{CPOL: p.cpol, CPHA: p.cpha, MSB: p.msb, Threshold: 120, HaveThr: true, DataLag: lag})
+		r := SPI(clk, data, 2e-9, SPICfg{CPOL: p.cpol, CPHA: p.cpha, MSB: p.msb, Threshold: 120, HaveThr: true, DataLag: lag})
 		var want []int
 		for _, f := range p.frames {
 			for _, b := range f {
@@ -521,7 +521,7 @@ func TestDecodeSPIFine(t *testing.T) {
 		}
 	}
 	c1, c2 := lines(readCapture(t, "spi_sample_104mhz.bin.gz"))
-	r := DecodeSPI(c2, c1, 2e-9, SPICfg{MSB: true, Threshold: 128, HaveThr: true, DataLag: 0.72})
+	r := SPI(c2, c1, 2e-9, SPICfg{MSB: true, Threshold: 128, HaveThr: true, DataLag: 0.72})
 	text := string(intsToBytes(r.Bytes))
 	if !r.OK || strings.Count(text, "SPI FLASH 104MHZ OPEN-SDS 0123") < 6 {
 		t.Fatalf("recorded bursts: %v %s %q", r.OK, r.Error, text)

@@ -114,7 +114,7 @@ type owBit struct {
 	v      int
 }
 
-// DecodeOneWire decodes 1-Wire: reset pulses (low 480 us, overdrive 48 us)
+// OneWire decodes 1-Wire: reset pulses (low 480 us, overdrive 48 us)
 // open a transaction ("sof" RST, then "ack" PRES or "nak" NOPRES for the
 // presence pulse), each time slot is a bit (low under 15 us, overdrive 2 us,
 // a 1), eight make a byte least significant first. The byte after a reset
@@ -124,17 +124,17 @@ type owBit struct {
 // directions make the ROM bytes. OK needs a reset with a presence pulse and
 // a byte after it.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-233
-func DecodeOneWire(codes []uint8, colTimeS float64, cfg OneWireCfg) Result {
+func OneWire(codes []uint8, colTimeS float64, cfg OneWireCfg) Result {
 	return decodeOneWire(samplesIn(codes), colTimeS, cfg)
 }
 
-// DecodeOneWireEdges is DecodeOneWire over digital lines' edges (EdgeLine).
+// OneWireEdges is OneWire over digital lines' edges (EdgeLine).
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-233
-func DecodeOneWireEdges(codes *EdgeLine, colTimeS float64, cfg OneWireCfg) Result {
+func OneWireEdges(codes *EdgeLine, colTimeS float64, cfg OneWireCfg) Result {
 	return decodeOneWire(edgesIn(codes), colTimeS, cfg)
 }
 
-// decodeOneWire is DecodeOneWire over samples or edges.
+// decodeOneWire is OneWire over samples or edges.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-233
 func decodeOneWire(codes lineIn, colTimeS float64, cfg OneWireCfg) Result {
 	S := codes.slice(cfg.Threshold, cfg.HaveThr)
@@ -294,7 +294,7 @@ type WS281xCfg struct {
 // at the record's ends: eight bits of the slow 400 kbit/s rate.
 const wsEdgeLatchUs = 20
 
-// DecodeWS281x decodes WS281x LED strips: each bit a high pulse and its low
+// WS281x decodes WS281x LED strips: each bit a high pulse and its low
 // rest (800 or 400 kbit/s), a 1 the long high of the two the frame holds
 // (one length only: high over half the period), bytes most significant bit
 // first in wire order (G, R, B of each LED). A low of 50 us or more
@@ -304,17 +304,17 @@ const wsEdgeLatchUs = 20
 // "sof".
 // OK needs a frame of whole LEDs at a steady bit rate.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-233
-func DecodeWS281x(codes []uint8, colTimeS float64, cfg WS281xCfg) Result {
+func WS281x(codes []uint8, colTimeS float64, cfg WS281xCfg) Result {
 	return decodeWS281x(samplesIn(codes), colTimeS, cfg)
 }
 
-// DecodeWS281xEdges is DecodeWS281x over digital lines' edges (EdgeLine).
+// WS281xEdges is WS281x over digital lines' edges (EdgeLine).
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-233
-func DecodeWS281xEdges(codes *EdgeLine, colTimeS float64, cfg WS281xCfg) Result {
+func WS281xEdges(codes *EdgeLine, colTimeS float64, cfg WS281xCfg) Result {
 	return decodeWS281x(edgesIn(codes), colTimeS, cfg)
 }
 
-// decodeWS281x is DecodeWS281x over samples or edges.
+// decodeWS281x is WS281x over samples or edges.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-233
 func decodeWS281x(codes lineIn, colTimeS float64, cfg WS281xCfg) Result { //nolint:gocyclo,funlen // a protocol state machine kept step for step with its decode_*.js twin (parity tests)
 	S := codes.slice(cfg.Threshold, cfg.HaveThr)
@@ -512,7 +512,7 @@ type DHTCfg struct {
 	Format    string
 }
 
-// DecodeDHT decodes the DHT11/DHT22/AM230x sensors' single-wire reading: the
+// DHT decodes the DHT11/DHT22/AM230x sensors' single-wire reading: the
 // host's start low (0.5 ms or more, "sof" START), the sensor's 80 us low
 // and 80 us high response ("ack" RESP), then 40 bits, each a 50 us low and a
 // high of 26-28 us (a 0) or 70 us (a 1), most significant first: humidity
@@ -520,17 +520,17 @@ type DHTCfg struct {
 // the four (flagged when it does not check). OK needs a reading whose
 // checksum checks.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-233
-func DecodeDHT(codes []uint8, colTimeS float64, cfg DHTCfg) Result {
+func DHT(codes []uint8, colTimeS float64, cfg DHTCfg) Result {
 	return decodeDHT(samplesIn(codes), colTimeS, cfg)
 }
 
-// DecodeDHTEdges is DecodeDHT over digital lines' edges (EdgeLine).
+// DHTEdges is DHT over digital lines' edges (EdgeLine).
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-233
-func DecodeDHTEdges(codes *EdgeLine, colTimeS float64, cfg DHTCfg) Result {
+func DHTEdges(codes *EdgeLine, colTimeS float64, cfg DHTCfg) Result {
 	return decodeDHT(edgesIn(codes), colTimeS, cfg)
 }
 
-// decodeDHT is DecodeDHT over samples or edges.
+// decodeDHT is DHT over samples or edges.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-233
 func decodeDHT(codes lineIn, colTimeS float64, cfg DHTCfg) Result {
 	S := codes.slice(cfg.Threshold, cfg.HaveThr)
@@ -625,7 +625,7 @@ type CECCfg struct {
 	Format    string
 }
 
-// DecodeCEC decodes HDMI-CEC: a start bit (low 3.7 ms in a 4.5 ms period,
+// CEC decodes HDMI-CEC: a start bit (low 3.7 ms in a 4.5 ms period,
 // "sof" START), then blocks of ten bits each in a 2.4 ms period, a 1 a
 // 0.6 ms low and a 0 a 1.5 ms low: eight data bits most significant first,
 // the end-of-message bit and the acknowledge bit. The first block is the
@@ -634,17 +634,17 @@ type CECCfg struct {
 // holding the bit low ("ack" A, else "nak" N); a broadcast one the other way.
 // OK needs a message whose bits all keep their timing.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-233
-func DecodeCEC(codes []uint8, colTimeS float64, cfg CECCfg) Result {
+func CEC(codes []uint8, colTimeS float64, cfg CECCfg) Result {
 	return decodeCEC(samplesIn(codes), colTimeS, cfg)
 }
 
-// DecodeCECEdges is DecodeCEC over digital lines' edges (EdgeLine).
+// CECEdges is CEC over digital lines' edges (EdgeLine).
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-233
-func DecodeCECEdges(codes *EdgeLine, colTimeS float64, cfg CECCfg) Result {
+func CECEdges(codes *EdgeLine, colTimeS float64, cfg CECCfg) Result {
 	return decodeCEC(edgesIn(codes), colTimeS, cfg)
 }
 
-// decodeCEC is DecodeCEC over samples or edges.
+// decodeCEC is CEC over samples or edges.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-233
 func decodeCEC(codes lineIn, colTimeS float64, cfg CECCfg) Result {
 	S := codes.slice(cfg.Threshold, cfg.HaveThr)
@@ -791,7 +791,7 @@ func j1850CRC(b []int) int {
 	return c ^ 0xff
 }
 
-// DecodeJ1850 decodes SAE J1850 VPW (10.4 kbit/s): the line idles low
+// J1850 decodes SAE J1850 VPW (10.4 kbit/s): the line idles low
 // (passive), a frame opens with a 200 us high (active) start of frame
 // ("sof" SOF), then each bit is one run, its value by level and length (a
 // short 64 us active or long 128 us passive run a 1, a long active or short
@@ -800,17 +800,17 @@ func j1850CRC(b []int) int {
 // check). An in-frame response after the EOD (a normalization bit, then
 // bytes) is read on into the same frame. OK needs a frame whose CRC checks.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-233
-func DecodeJ1850(codes []uint8, colTimeS float64, cfg J1850Cfg) Result {
+func J1850(codes []uint8, colTimeS float64, cfg J1850Cfg) Result {
 	return decodeJ1850(samplesIn(codes), colTimeS, cfg)
 }
 
-// DecodeJ1850Edges is DecodeJ1850 over digital lines' edges (EdgeLine).
+// J1850Edges is J1850 over digital lines' edges (EdgeLine).
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-233
-func DecodeJ1850Edges(codes *EdgeLine, colTimeS float64, cfg J1850Cfg) Result {
+func J1850Edges(codes *EdgeLine, colTimeS float64, cfg J1850Cfg) Result {
 	return decodeJ1850(edgesIn(codes), colTimeS, cfg)
 }
 
-// decodeJ1850 is DecodeJ1850 over samples or edges.
+// decodeJ1850 is J1850 over samples or edges.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-233
 func decodeJ1850(codes lineIn, colTimeS float64, cfg J1850Cfg) Result {
 	S := codes.slice(cfg.Threshold, cfg.HaveThr)

@@ -110,7 +110,7 @@ var swimText = func() (t [2][5][256]string) {
 	return t
 }()
 
-// DecodeSWIM decodes the STM8 SWIM line (sigrok's swim): a bit is a low
+// SWIM decodes the STM8 SWIM line (sigrok's swim): a bit is a low
 // pulse and a high, a 0 low for most of it and a 1 low for a little; the
 // bit time is the shortest falling-to-falling spacing's cluster. A frame is
 // its bits a bit apart: the start bit (0 from the host, 1 from the
@@ -126,17 +126,17 @@ var swimText = func() (t [2][5][256]string) {
 // a synchronization frame ("SYNC"). Baud is the bit rate. OK needs an
 // acknowledged frame whose parity checks.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-253
-func DecodeSWIM(codes []uint8, colTimeS float64, cfg LineCfg) Result {
+func SWIM(codes []uint8, colTimeS float64, cfg LineCfg) Result {
 	return decodeSWIM(samplesIn(codes), colTimeS, cfg)
 }
 
-// DecodeSWIMEdges is DecodeSWIM over digital lines' edges (EdgeLine).
+// SWIMEdges is SWIM over digital lines' edges (EdgeLine).
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-253
-func DecodeSWIMEdges(codes *EdgeLine, colTimeS float64, cfg LineCfg) Result {
+func SWIMEdges(codes *EdgeLine, colTimeS float64, cfg LineCfg) Result {
 	return decodeSWIM(edgesIn(codes), colTimeS, cfg)
 }
 
-// decodeSWIM is DecodeSWIM over samples or edges.
+// decodeSWIM is SWIM over samples or edges.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-253
 func decodeSWIM(codes lineIn, colTimeS float64, cfg LineCfg) Result { //nolint:gocyclo,funlen // a protocol state machine kept step for step with its decode_*.js twin (parity tests)
 	S := codes.slice(cfg.Threshold, cfg.HaveThr)
@@ -368,23 +368,23 @@ func decodeSWIM(codes lineIn, colTimeS float64, cfg LineCfg) Result { //nolint:g
 	return res
 }
 
-// DecodeSDQ decodes TI's SDQ line (sigrok's sdq): each bit a low pulse at
+// SDQ decodes TI's SDQ line (sigrok's sdq): each bit a low pulse at
 // the bit time (Baud, 98425 bit/s unless given), under half a bit a 1,
 // longer a 0, over 1.2 bits a break ("sof"); eight bits a byte, least
 // significant first. A bit closer than 0.7 bits to the last is flagged and
 // drops the byte. OK needs two bytes after a break.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-253
-func DecodeSDQ(codes []uint8, colTimeS float64, cfg LineCfg) Result {
+func SDQ(codes []uint8, colTimeS float64, cfg LineCfg) Result {
 	return decodeSDQ(samplesIn(codes), colTimeS, cfg)
 }
 
-// DecodeSDQEdges is DecodeSDQ over digital lines' edges (EdgeLine).
+// SDQEdges is SDQ over digital lines' edges (EdgeLine).
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-253
-func DecodeSDQEdges(codes *EdgeLine, colTimeS float64, cfg LineCfg) Result {
+func SDQEdges(codes *EdgeLine, colTimeS float64, cfg LineCfg) Result {
 	return decodeSDQ(edgesIn(codes), colTimeS, cfg)
 }
 
-// decodeSDQ is DecodeSDQ over samples or edges.
+// decodeSDQ is SDQ over samples or edges.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-253
 func decodeSDQ(codes lineIn, colTimeS float64, cfg LineCfg) Result {
 	S := codes.slice(cfg.Threshold, cfg.HaveThr)
@@ -479,7 +479,7 @@ func crc8PJON(b []int) int {
 	return c
 }
 
-// DecodePJDL decodes PJON over PJDL (sigrok's pjdl and pjon): each byte a
+// PJDL decodes PJON over PJDL (sigrok's pjdl and pjon): each byte a
 // sync pad (high for the pad time, then a data time low) and eight data
 // bits of the mode's data time, least significant first; three sync pads
 // in a row open a frame ("sof"). A frame's bytes are PJON's: receiver ID,
@@ -488,17 +488,17 @@ func crc8PJON(b []int) int {
 // failed CRC flags its byte. Variant picks the mode (1..4), else the one
 // whose pads the line holds. OK needs a frame whose header CRC checks.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-253
-func DecodePJDL(codes []uint8, colTimeS float64, cfg LineCfg) Result {
+func PJDL(codes []uint8, colTimeS float64, cfg LineCfg) Result {
 	return decodePJDL(samplesIn(codes), colTimeS, cfg)
 }
 
-// DecodePJDLEdges is DecodePJDL over digital lines' edges (EdgeLine).
+// PJDLEdges is PJDL over digital lines' edges (EdgeLine).
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-253
-func DecodePJDLEdges(codes *EdgeLine, colTimeS float64, cfg LineCfg) Result {
+func PJDLEdges(codes *EdgeLine, colTimeS float64, cfg LineCfg) Result {
 	return decodePJDL(edgesIn(codes), colTimeS, cfg)
 }
 
-// decodePJDL is DecodePJDL over samples or edges.
+// decodePJDL is PJDL over samples or edges.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-253
 func decodePJDL(codes lineIn, colTimeS float64, cfg LineCfg) Result {
 	S := codes.slice(cfg.Threshold, cfg.HaveThr)
@@ -688,23 +688,23 @@ func pjonFields(o *wireOut, b []int, fx []float64, dt float64) bool {
 	return metaOK
 }
 
-// DecodeDSI decodes DSI (Digital Serial Interface) lighting frames (sigrok's
+// DSI decodes DSI (Digital Serial Interface) lighting frames (sigrok's
 // dsi): Manchester bits of 1/600 s after an idle of two bits or more, a 1
 // with its first half at the marks' level (the level the idle is not): a
 // start bit 0, whose first half is the idle's, and eight data bits, most
 // significant first, the dimming level (a unit). OK needs a whole frame.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-253
-func DecodeDSI(codes []uint8, colTimeS float64, cfg LineCfg) Result {
+func DSI(codes []uint8, colTimeS float64, cfg LineCfg) Result {
 	return decodeDSI(samplesIn(codes), colTimeS, cfg)
 }
 
-// DecodeDSIEdges is DecodeDSI over digital lines' edges (EdgeLine).
+// DSIEdges is DSI over digital lines' edges (EdgeLine).
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-253
-func DecodeDSIEdges(codes *EdgeLine, colTimeS float64, cfg LineCfg) Result {
+func DSIEdges(codes *EdgeLine, colTimeS float64, cfg LineCfg) Result {
 	return decodeDSI(edgesIn(codes), colTimeS, cfg)
 }
 
-// decodeDSI is DecodeDSI over samples or edges.
+// decodeDSI is DSI over samples or edges.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-253
 func decodeDSI(codes lineIn, colTimeS float64, cfg LineCfg) Result {
 	S := codes.slice(cfg.Threshold, cfg.HaveThr)
@@ -784,7 +784,7 @@ func qiLen(h int) int {
 	return 20 + (h-224)/4
 }
 
-// DecodeQi decodes a Qi receiver's packets on the demodulated line (sigrok's
+// Qi decodes a Qi receiver's packets on the demodulated line (sigrok's
 // qi): biphase-mark bits of 2 kbit/s (a 1 has a transition at its middle);
 // after a preamble of four 1s or more, bytes of a start 0, eight data bits
 // least significant first, odd parity and a stop 1: a header, its message
@@ -793,17 +793,17 @@ func qiLen(h int) int {
 // checksum that does not check, are flagged. OK needs a packet whose
 // checksum checks.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-253
-func DecodeQi(codes []uint8, colTimeS float64, cfg LineCfg) Result {
+func Qi(codes []uint8, colTimeS float64, cfg LineCfg) Result {
 	return decodeQi(samplesIn(codes), colTimeS, cfg)
 }
 
-// DecodeQiEdges is DecodeQi over digital lines' edges (EdgeLine).
+// QiEdges is Qi over digital lines' edges (EdgeLine).
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-253
-func DecodeQiEdges(codes *EdgeLine, colTimeS float64, cfg LineCfg) Result {
+func QiEdges(codes *EdgeLine, colTimeS float64, cfg LineCfg) Result {
 	return decodeQi(edgesIn(codes), colTimeS, cfg)
 }
 
-// decodeQi is DecodeQi over samples or edges.
+// decodeQi is Qi over samples or edges.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-253
 func decodeQi(codes lineIn, colTimeS float64, cfg LineCfg) Result {
 	S := codes.slice(cfg.Threshold, cfg.HaveThr)

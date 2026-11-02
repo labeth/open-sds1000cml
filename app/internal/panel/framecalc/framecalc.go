@@ -243,31 +243,31 @@ func Decode(f *engine.Frame, p DecodeParams) decode.Result {
 		if f.HasMatchEnd && f.EdgeX >= 0 && f.SampleS > 0 { // the hardware matcher's character fixes the framing
 			cfg.Anchor, cfg.HasAnchor = f.EdgeX+f.MatchEndS/f.SampleS, true
 		}
-		res = decode.DecodeUART(ch(p.ChA), f.SampleS, cfg)
+		res = decode.UART(ch(p.ChA), f.SampleS, cfg)
 	case ProtoI2C:
-		res = decode.DecodeI2C(ch(p.ChA), ch(p.ChB), f.SampleS, decode.I2CCfg{Format: p.Format})
+		res = decode.I2C(ch(p.ChA), ch(p.ChB), f.SampleS, decode.I2CCfg{Format: p.Format})
 	case ProtoSPI:
 		cfg := decode.SPICfg{CPOL: p.CPOL, CPHA: p.CPHA, MSB: !p.LSB, Format: p.Format, DataLag: decode.SPIDataLag(p.ChA, f.SampleS)}
 		if f.SampleS > 0 {
 			cfg.DataDelay = p.DataDelayS / f.SampleS
 		}
-		res = decode.DecodeSPI(ch(p.ChA), ch(p.ChB), f.SampleS, cfg)
+		res = decode.SPI(ch(p.ChA), ch(p.ChB), f.SampleS, cfg)
 	case ProtoManchester:
 		// MSB first, as Auto found it and the web decodes it (LSB first reads
 		// 12 34 as 48 2C).
-		res = decode.DecodeManchester(ch(p.ChA), f.SampleS, decode.ManchesterCfg{Bitrate: p.Baud, IEEE: true, MSB: true, Format: p.Format})
+		res = decode.Manchester(ch(p.ChA), f.SampleS, decode.ManchesterCfg{Bitrate: p.Baud, IEEE: true, MSB: true, Format: p.Format})
 	case ProtoSENT:
-		res = decode.DecodeSENT(ch(p.ChA), f.SampleS, decode.SENTCfg{})
+		res = decode.SENT(ch(p.ChA), f.SampleS, decode.SENTCfg{})
 	case ProtoCAN:
-		res = decode.DecodeCANFD(ch(p.ChA), f.SampleS, decode.CANFDCfg{NominalBaud: p.Baud, DominantLow: true})
+		res = decode.CANFD(ch(p.ChA), f.SampleS, decode.CANFDCfg{NominalBaud: p.Baud, DominantLow: true})
 	case ProtoMIL1553:
-		res = decode.DecodeMIL1553(ch(p.ChA), f.SampleS, decode.MIL1553Cfg{Bitrate: p.Baud})
+		res = decode.MIL1553(ch(p.ChA), f.SampleS, decode.MIL1553Cfg{Bitrate: p.Baud})
 	case ProtoARINC429:
-		res = decode.DecodeARINC429(ch(p.ChA), f.SampleS, decode.ARINC429Cfg{Bitrate: p.Baud})
+		res = decode.ARINC429(ch(p.ChA), f.SampleS, decode.ARINC429Cfg{Bitrate: p.Baud})
 	case ProtoUSB:
-		res = decode.DecodeUSBLS(ch(p.ChA), f.SampleS, decode.USBLSCfg{Bitrate: p.Baud})
+		res = decode.USBLS(ch(p.ChA), f.SampleS, decode.USBLSCfg{Bitrate: p.Baud})
 	case ProtoFlexRay:
-		res = decode.DecodeFlexRay(ch(p.ChA), f.SampleS, decode.FlexRayCfg{Bitrate: p.Baud})
+		res = decode.FlexRay(ch(p.ChA), f.SampleS, decode.FlexRayCfg{Bitrate: p.Baud})
 	default:
 		res = decodeMore(p, ch, f.SampleS)
 	}
@@ -290,45 +290,45 @@ func decodeMore(p DecodeParams, ch func(int) []uint8, sampleS float64) decode.Re
 	two := decode.ClockedCfg{Format: p.Format}
 	switch p.Proto {
 	case ProtoLIN:
-		return decode.DecodeLIN(a, sampleS, decode.LINCfg{Baud: p.Baud, Format: p.Format})
+		return decode.LIN(a, sampleS, decode.LINCfg{Baud: p.Baud, Format: p.Format})
 	case ProtoDMX:
-		return decode.DecodeDMX512(a, sampleS, decode.DMXCfg{Format: p.Format})
+		return decode.DMX512(a, sampleS, decode.DMXCfg{Format: p.Format})
 	case ProtoMIDI:
-		return decode.DecodeMIDI(a, sampleS, decode.MIDICfg{Format: p.Format})
+		return decode.MIDI(a, sampleS, decode.MIDICfg{Format: p.Format})
 	case ProtoModbus:
-		return decode.DecodeModbus(a, sampleS, decode.ModbusCfg{Baud: p.Baud, Parity: p.Parity, Format: p.Format})
+		return decode.Modbus(a, sampleS, decode.ModbusCfg{Baud: p.Baud, Parity: p.Parity, Format: p.Format})
 	case ProtoOneWire:
-		return decode.DecodeOneWire(a, sampleS, decode.OneWireCfg{Overdrive: p.Baud >= 100000, Format: p.Format})
+		return decode.OneWire(a, sampleS, decode.OneWireCfg{Overdrive: p.Baud >= 100000, Format: p.Format})
 	case ProtoWS281x:
-		return decode.DecodeWS281x(a, sampleS, decode.WS281xCfg{Format: p.Format})
+		return decode.WS281x(a, sampleS, decode.WS281xCfg{Format: p.Format})
 	case ProtoDHT:
-		return decode.DecodeDHT(a, sampleS, decode.DHTCfg{Format: p.Format})
+		return decode.DHT(a, sampleS, decode.DHTCfg{Format: p.Format})
 	case ProtoCEC:
-		return decode.DecodeCEC(a, sampleS, decode.CECCfg{Format: p.Format})
+		return decode.CEC(a, sampleS, decode.CECCfg{Format: p.Format})
 	case ProtoJ1850:
-		return decode.DecodeJ1850(a, sampleS, decode.J1850Cfg{Format: p.Format})
+		return decode.J1850(a, sampleS, decode.J1850Cfg{Format: p.Format})
 	case ProtoIRNEC:
-		return decode.DecodeIRNEC(a, sampleS, ir)
+		return decode.IRNEC(a, sampleS, ir)
 	case ProtoIRSIRC:
-		return decode.DecodeIRSIRC(a, sampleS, ir)
+		return decode.IRSIRC(a, sampleS, ir)
 	case ProtoIRRC5:
-		return decode.DecodeIRRC5(a, sampleS, ir)
+		return decode.IRRC5(a, sampleS, ir)
 	case ProtoIRRC6:
-		return decode.DecodeIRRC6(a, sampleS, ir)
+		return decode.IRRC6(a, sampleS, ir)
 	case ProtoDALI:
-		return decode.DecodeDALI(a, sampleS, decode.DALICfg{Format: p.Format})
+		return decode.DALI(a, sampleS, decode.DALICfg{Format: p.Format})
 	case ProtoUSBPD:
-		return decode.DecodeUSBPD(a, sampleS, decode.USBPDCfg{Format: p.Format})
+		return decode.USBPD(a, sampleS, decode.USBPDCfg{Format: p.Format})
 	case ProtoSPDIF:
-		return decode.DecodeSPDIF(a, sampleS, decode.SPDIFCfg{Format: p.Format})
+		return decode.SPDIF(a, sampleS, decode.SPDIFCfg{Format: p.Format})
 	case ProtoPS2:
-		return decode.DecodePS2(a, ch(p.ChB), sampleS, two)
+		return decode.PS2(a, ch(p.ChB), sampleS, two)
 	case ProtoSWD:
-		return decode.DecodeSWD(a, ch(p.ChB), sampleS, two)
+		return decode.SWD(a, ch(p.ChB), sampleS, two)
 	case ProtoMDIO:
-		return decode.DecodeMDIO(a, ch(p.ChB), sampleS, two)
+		return decode.MDIO(a, ch(p.ChB), sampleS, two)
 	case ProtoWiegand:
-		return decode.DecodeWiegand(a, ch(p.ChB), sampleS, two)
+		return decode.Wiegand(a, ch(p.ChB), sampleS, two)
 	}
 	return decodePhys(p, a, ch(p.ChB), sampleS)
 }
@@ -343,26 +343,26 @@ func decodePhys(p DecodeParams, a, b []uint8, sampleS float64) decode.Result {
 	lc := decode.LineCfg{Format: p.Format}
 	switch p.Proto {
 	case ProtoQuad:
-		return decode.DecodeQuadrature(a, b, sampleS, two)
+		return decode.Quadrature(a, b, sampleS, two)
 	case ProtoStepper:
-		return decode.DecodeStepper(a, b, sampleS, two)
+		return decode.Stepper(a, b, sampleS, two)
 	case ProtoSDCard:
-		return decode.DecodeSDCard(a, b, sampleS, two)
+		return decode.SDCard(a, b, sampleS, two)
 	case ProtoPDI:
-		return decode.DecodePDI(a, b, sampleS, two)
+		return decode.PDI(a, b, sampleS, two)
 	case ProtoCJTAG:
-		return decode.DecodeCJTAG(a, b, sampleS, two)
+		return decode.CJTAG(a, b, sampleS, two)
 	case ProtoMaple:
-		return decode.DecodeMaple(a, b, sampleS, two)
+		return decode.Maple(a, b, sampleS, two)
 	case ProtoCaliper:
-		return decode.DecodeCaliper(a, b, sampleS, two)
+		return decode.Caliper(a, b, sampleS, two)
 	}
 	line := map[int]func([]uint8, float64, decode.LineCfg) decode.Result{
-		ProtoPWM: decode.DecodePWM, ProtoRCEncode: decode.DecodeRCEncode, ProtoOOK: decode.DecodeOOK,
-		ProtoMiller: decode.DecodeMiller, ProtoMorse: decode.DecodeMorse, ProtoDCF77: decode.DecodeDCF77,
-		ProtoEM4100: decode.DecodeEM4100, ProtoEM4305: decode.DecodeEM4305, ProtoT55xx: decode.DecodeT55xx,
-		ProtoSWIM: decode.DecodeSWIM, ProtoSDQ: decode.DecodeSDQ, ProtoPJDL: decode.DecodePJDL, ProtoDSI: decode.DecodeDSI,
-		ProtoQi: decode.DecodeQi, ProtoIRMP: decode.DecodeIRMP,
+		ProtoPWM: decode.PWM, ProtoRCEncode: decode.RCEncode, ProtoOOK: decode.OOK,
+		ProtoMiller: decode.Miller, ProtoMorse: decode.Morse, ProtoDCF77: decode.DCF77,
+		ProtoEM4100: decode.EM4100, ProtoEM4305: decode.EM4305, ProtoT55xx: decode.T55xx,
+		ProtoSWIM: decode.SWIM, ProtoSDQ: decode.SDQ, ProtoPJDL: decode.PJDL, ProtoDSI: decode.DSI,
+		ProtoQi: decode.Qi, ProtoIRMP: decode.IRMP,
 	}[p.Proto]
 	if line == nil {
 		return decode.Result{}

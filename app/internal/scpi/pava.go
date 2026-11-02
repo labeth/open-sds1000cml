@@ -85,7 +85,7 @@ func (h *Handler) pava(ch int, arg string) []byte {
 	vdiv := 1.0
 	if h.fe != nil {
 		idx, _ := h.fe.Snapshot()
-		vdiv = analog.AnalogVdiv(idx[ch&1]) // codes are on the analog range
+		vdiv = analog.Vdiv(idx[ch&1]) // codes are on the analog range
 	}
 	st := h.sc.Snapshot()
 	offCode := st.OffC1

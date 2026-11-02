@@ -18,7 +18,7 @@ func TestT55xxCommandCutByTheRecord(t *testing.T) {
 	t55xxCommand(f, t55xxBits(2, -1, 1, 0xDEADBEEF, 5))
 	t55xxCommand(f, t55xxBits(2, -1, 0, 0x00148040, 1))
 	codes := w.codes()[int((500+30+20*49)*rfidFC*sr):] // open twenty bits into the first
-	r := DecodeT55xx(codes, 1.0/sr, LineCfg{})
+	r := T55xx(codes, 1.0/sr, LineCfg{})
 	if !r.OK || r.FrameBits != 38 {
 		t.Fatalf("%q (%s)", r.Text, r.Error)
 	}

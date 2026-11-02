@@ -67,7 +67,7 @@ func flexFrameCRC24(frameBytes []int) int {
 	return crc & 0xFFFFFF
 }
 
-// DecodeFlexRay decodes a FlexRay byte stream on one channel's codes. The bus is
+// FlexRay decodes a FlexRay byte stream on one channel's codes. The bus is
 // shown here as a single logic line (the BP/BM pair collapsed to two levels):
 // idle sits HIGH. A frame is framed like a stretched async word:
 //
@@ -84,7 +84,7 @@ func flexFrameCRC24(frameBytes []int) int {
 // over" (FES = low,high, or idle = high,high). Mirrors decode_flexray.js step
 // for step so the web overlay and the on-device LCD agree byte-for-byte.
 // TRLC-LINKS: REQ-SDS-018
-func DecodeFlexRay(codes []uint8, colTimeS float64, cfg FlexRayCfg) Result { //nolint:gocyclo // a protocol state machine kept step for step with its decode_*.js twin (parity tests)
+func FlexRay(codes []uint8, colTimeS float64, cfg FlexRayCfg) Result { //nolint:gocyclo,funlen // a protocol state machine kept step for step with its decode_*.js twin (parity tests)
 	// three samples a bit at the least: box-averaged records of 3.1 decode
 	// every message (TestLineCodesDecodeAtThreeSamplesABit), so a slow
 	// timebase's own record still reads the bus

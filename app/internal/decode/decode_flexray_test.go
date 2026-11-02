@@ -75,7 +75,7 @@ func TestDecodeFlexRayRoundTrip(t *testing.T) {
 	w := flexrayWave([][]int{want}, spb, 8)
 
 	// explicit bitrate
-	r := DecodeFlexRay(w, colTimeS, FlexRayCfg{Bitrate: bitrate})
+	r := FlexRay(w, colTimeS, FlexRayCfg{Bitrate: bitrate})
 	if !r.OK {
 		t.Fatalf("explicit-bitrate decode failed: %s", r.Error)
 	}
@@ -87,7 +87,7 @@ func TestDecodeFlexRayRoundTrip(t *testing.T) {
 	}
 
 	// auto bitrate (infer T from the edge statistics)
-	ra := DecodeFlexRay(w, colTimeS, FlexRayCfg{})
+	ra := FlexRay(w, colTimeS, FlexRayCfg{})
 	if !ra.OK {
 		t.Fatalf("auto-bitrate decode failed: %s", ra.Error)
 	}
@@ -134,7 +134,7 @@ func TestDecodeFlexRayMultiFrame(t *testing.T) {
 	colTimeS := 1e-8
 	w := flexrayWave([][]int{f1, f2}, spb, 6)
 
-	r := DecodeFlexRay(w, colTimeS, FlexRayCfg{Bitrate: int(1.0 / (float64(spb) * colTimeS))})
+	r := FlexRay(w, colTimeS, FlexRayCfg{Bitrate: int(1.0 / (float64(spb) * colTimeS))})
 	if !r.OK {
 		t.Fatalf("multi-frame decode failed: %s", r.Error)
 	}
@@ -172,7 +172,7 @@ func TestDecodeFlexRayPartialAtStart(t *testing.T) {
 	chop := spb*8 + spb*3
 	trunc := full[chop:]
 
-	r := DecodeFlexRay(trunc, colTimeS, FlexRayCfg{Bitrate: int(1.0 / (float64(spb) * colTimeS))})
+	r := FlexRay(trunc, colTimeS, FlexRayCfg{Bitrate: int(1.0 / (float64(spb) * colTimeS))})
 	if !r.OK {
 		t.Fatalf("decode failed: %s", r.Error)
 	}
@@ -231,7 +231,7 @@ func TestDecodeFlexRayNoPanic(t *testing.T) {
 						t.Fatalf("panic on cfg %+v: %v", cfg, p)
 					}
 				}()
-				r := DecodeFlexRay(in, ct, cfg)
+				r := FlexRay(in, ct, cfg)
 				if !r.OK && r.Error == "" {
 					t.Fatalf("degenerate input returned neither OK nor Error")
 				}

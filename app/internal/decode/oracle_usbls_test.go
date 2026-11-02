@@ -346,7 +346,7 @@ func TestOracleUSBLS(t *testing.T) {
 
 	decodeRepo := func(t *testing.T, dm []byte, c USBLSCfg) Result {
 		t.Helper()
-		r := DecodeUSBLS(bitsToCodes(dm), 1.0/float64(sr), c)
+		r := USBLS(bitsToCodes(dm), 1.0/float64(sr), c)
 		if !r.OK {
 			t.Fatalf("repo decode failed: %s", r.Error)
 		}
@@ -571,7 +571,7 @@ func TestOracleUSBLS(t *testing.T) {
 		if len(oraclePIDs) != 2 {
 			t.Fatalf("sigrok resolved %d packets at 4-bit gap, want 2", len(oraclePIDs))
 		}
-		r := DecodeUSBLS(bitsToCodes(dm), 1.0/float64(sr), cfg)
+		r := USBLS(bitsToCodes(dm), 1.0/float64(sr), cfg)
 		repoPkts := 0
 		if r.OK {
 			repoPkts = countSpans(r, "start")
@@ -831,11 +831,11 @@ func TestOracleUSBLS(t *testing.T) {
 		if len(oraclePIDs) != 1 || oraclePIDs[0] != "SETUP" {
 			t.Fatalf("sigrok PIDs %v, want [SETUP]", oraclePIDs)
 		}
-		rAuto := DecodeUSBLS(bitsToCodes(dm), 1.0/float64(sr), USBLSCfg{}) // Bitrate 0: infer
+		rAuto := USBLS(bitsToCodes(dm), 1.0/float64(sr), USBLSCfg{}) // Bitrate 0: infer
 		if !rAuto.OK {
 			t.Fatalf("repo AUTO decode failed on a keep-alive capture: %s", rAuto.Error)
 		}
-		rPin := DecodeUSBLS(bitsToCodes(dm), 1.0/float64(sr), cfg)
+		rPin := USBLS(bitsToCodes(dm), 1.0/float64(sr), cfg)
 		if !rPin.OK {
 			t.Fatalf("repo pinned decode failed: %s", rPin.Error)
 		}
@@ -858,7 +858,7 @@ func TestOracleUSBLS(t *testing.T) {
 			usblsPacketBits(0x2, nil),
 		}
 		dp, dm := oracleUSBLSWave(fsr, pkts, 40)
-		r := DecodeUSBLS(bitsToCodes(dm), 1.0/float64(fsr), cfg)
+		r := USBLS(bitsToCodes(dm), 1.0/float64(fsr), cfg)
 		if !r.OK {
 			t.Fatalf("repo decode failed: %s", r.Error)
 		}

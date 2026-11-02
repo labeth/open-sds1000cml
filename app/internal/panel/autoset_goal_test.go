@@ -72,7 +72,7 @@ func (b *simBench) capture(sig func(t, tdiv float64, ch int) float64) *engine.Fr
 	f := &engine.Frame{Valid: n, SampleS: dt, TdivS: st.TdivS, Seq: b.seq, EdgeX: -1}
 	b.mu.Unlock()
 	for ch, offCode := range [2]uint16{st.OffC1, st.OffC2} {
-		vpc := analog.AnalogVdiv(idx[ch]) / 25
+		vpc := analog.Vdiv(idx[ch]) / 25
 		offV := b.fe.OffsetVolts(ch, offCode)
 		codes := make([]uint8, n)
 		for i := range codes {

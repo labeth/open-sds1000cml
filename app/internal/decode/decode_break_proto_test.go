@@ -16,38 +16,38 @@ var protoDecoders = []struct {
 	dec  func(a, b []uint8, ct float64, rng *rand.Rand) Result
 }{
 	{"lin", func(a, _ []uint8, ct float64, rng *rand.Rand) Result {
-		return DecodeLIN(a, ct, LINCfg{Baud: []int{0, -5, 1, 19200, 1 << 30}[rng.Intn(5)]})
+		return LIN(a, ct, LINCfg{Baud: []int{0, -5, 1, 19200, 1 << 30}[rng.Intn(5)]})
 	}},
 	{"dmx512", func(a, _ []uint8, ct float64, rng *rand.Rand) Result {
-		return DecodeDMX512(a, ct, DMXCfg{Baud: []int{0, -1, 250000, 1 << 30}[rng.Intn(4)]})
+		return DMX512(a, ct, DMXCfg{Baud: []int{0, -1, 250000, 1 << 30}[rng.Intn(4)]})
 	}},
 	{"midi", func(a, _ []uint8, ct float64, rng *rand.Rand) Result {
-		return DecodeMIDI(a, ct, MIDICfg{Baud: []int{0, 31250, 7}[rng.Intn(3)]})
+		return MIDI(a, ct, MIDICfg{Baud: []int{0, 31250, 7}[rng.Intn(3)]})
 	}},
 	{"modbus", func(a, _ []uint8, ct float64, rng *rand.Rand) Result {
-		return DecodeModbus(a, ct, ModbusCfg{Baud: []int{0, 9600, 3}[rng.Intn(3)], Parity: []string{"", "even", "odd", "none", "x"}[rng.Intn(5)]})
+		return Modbus(a, ct, ModbusCfg{Baud: []int{0, 9600, 3}[rng.Intn(3)], Parity: []string{"", "even", "odd", "none", "x"}[rng.Intn(5)]})
 	}},
 	{"onewire", func(a, _ []uint8, ct float64, rng *rand.Rand) Result {
-		return DecodeOneWire(a, ct, OneWireCfg{Overdrive: rng.Intn(2) == 0})
+		return OneWire(a, ct, OneWireCfg{Overdrive: rng.Intn(2) == 0})
 	}},
-	{"ws281x", func(a, _ []uint8, ct float64, _ *rand.Rand) Result { return DecodeWS281x(a, ct, WS281xCfg{}) }},
-	{"dht", func(a, _ []uint8, ct float64, _ *rand.Rand) Result { return DecodeDHT(a, ct, DHTCfg{}) }},
-	{"cec", func(a, _ []uint8, ct float64, _ *rand.Rand) Result { return DecodeCEC(a, ct, CECCfg{}) }},
-	{"j1850", func(a, _ []uint8, ct float64, _ *rand.Rand) Result { return DecodeJ1850(a, ct, J1850Cfg{}) }},
-	{"irnec", func(a, _ []uint8, ct float64, _ *rand.Rand) Result { return DecodeIRNEC(a, ct, IRCfg{}) }},
-	{"irsirc", func(a, _ []uint8, ct float64, _ *rand.Rand) Result { return DecodeIRSIRC(a, ct, IRCfg{}) }},
-	{"irrc5", func(a, _ []uint8, ct float64, _ *rand.Rand) Result { return DecodeIRRC5(a, ct, IRCfg{}) }},
-	{"irrc6", func(a, _ []uint8, ct float64, _ *rand.Rand) Result { return DecodeIRRC6(a, ct, IRCfg{}) }},
-	{"dali", func(a, _ []uint8, ct float64, _ *rand.Rand) Result { return DecodeDALI(a, ct, DALICfg{}) }},
+	{"ws281x", func(a, _ []uint8, ct float64, _ *rand.Rand) Result { return WS281x(a, ct, WS281xCfg{}) }},
+	{"dht", func(a, _ []uint8, ct float64, _ *rand.Rand) Result { return DHT(a, ct, DHTCfg{}) }},
+	{"cec", func(a, _ []uint8, ct float64, _ *rand.Rand) Result { return CEC(a, ct, CECCfg{}) }},
+	{"j1850", func(a, _ []uint8, ct float64, _ *rand.Rand) Result { return J1850(a, ct, J1850Cfg{}) }},
+	{"irnec", func(a, _ []uint8, ct float64, _ *rand.Rand) Result { return IRNEC(a, ct, IRCfg{}) }},
+	{"irsirc", func(a, _ []uint8, ct float64, _ *rand.Rand) Result { return IRSIRC(a, ct, IRCfg{}) }},
+	{"irrc5", func(a, _ []uint8, ct float64, _ *rand.Rand) Result { return IRRC5(a, ct, IRCfg{}) }},
+	{"irrc6", func(a, _ []uint8, ct float64, _ *rand.Rand) Result { return IRRC6(a, ct, IRCfg{}) }},
+	{"dali", func(a, _ []uint8, ct float64, _ *rand.Rand) Result { return DALI(a, ct, DALICfg{}) }},
 	{"usbpd", func(a, _ []uint8, ct float64, rng *rand.Rand) Result {
-		return DecodeUSBPD(a, ct, USBPDCfg{Baud: []int{0, 300000, -1, 1 << 30}[rng.Intn(4)]})
+		return USBPD(a, ct, USBPDCfg{Baud: []int{0, 300000, -1, 1 << 30}[rng.Intn(4)]})
 	}},
-	{"spdif", func(a, _ []uint8, ct float64, _ *rand.Rand) Result { return DecodeSPDIF(a, ct, SPDIFCfg{}) }},
-	{"ps2", func(a, b []uint8, ct float64, _ *rand.Rand) Result { return DecodePS2(a, b, ct, ClockedCfg{}) }},
-	{"swd", func(a, b []uint8, ct float64, _ *rand.Rand) Result { return DecodeSWD(a, b, ct, ClockedCfg{}) }},
-	{"mdio", func(a, b []uint8, ct float64, _ *rand.Rand) Result { return DecodeMDIO(a, b, ct, ClockedCfg{}) }},
+	{"spdif", func(a, _ []uint8, ct float64, _ *rand.Rand) Result { return SPDIF(a, ct, SPDIFCfg{}) }},
+	{"ps2", func(a, b []uint8, ct float64, _ *rand.Rand) Result { return PS2(a, b, ct, ClockedCfg{}) }},
+	{"swd", func(a, b []uint8, ct float64, _ *rand.Rand) Result { return SWD(a, b, ct, ClockedCfg{}) }},
+	{"mdio", func(a, b []uint8, ct float64, _ *rand.Rand) Result { return MDIO(a, b, ct, ClockedCfg{}) }},
 	{"wiegand", func(a, b []uint8, ct float64, rng *rand.Rand) Result {
-		return DecodeWiegand(a, b, ct, ClockedCfg{Threshold: rng.Float64() * 300, HaveThr: rng.Intn(3) == 0})
+		return Wiegand(a, b, ct, ClockedCfg{Threshold: rng.Float64() * 300, HaveThr: rng.Intn(3) == 0})
 	}},
 }
 
@@ -177,7 +177,7 @@ func TestBreakProtoChecksFlagged(t *testing.T) {
 		tlUART(w, 0xA5, 19200, "none", 1)
 		tlUART(w, 0x00, 19200, "none", 1) // a wrong checksum
 		w.idle(40 * bit)
-		cases = append(cases, tc{"LIN checksum", DecodeLIN(w.codes(), 1e-6, LINCfg{})})
+		cases = append(cases, tc{"LIN checksum", LIN(w.codes(), 1e-6, LINCfg{})})
 	}
 	{
 		w := newTimeline(2e6)
@@ -186,19 +186,19 @@ func TestBreakProtoChecksFlagged(t *testing.T) {
 			tlUART(w, v, 19200, "even", 1)
 		}
 		w.idle(3e-3)
-		cases = append(cases, tc{"Modbus CRC", DecodeModbus(w.codes(), 5e-7, ModbusCfg{})})
+		cases = append(cases, tc{"Modbus CRC", Modbus(w.codes(), 5e-7, ModbusCfg{})})
 	}
 	{
 		w := newTimeline(1e6)
 		w.idle(1e-3)
 		dhtReading(w, 1000, [4]int{1, 2, 3, 4}, 0x99)
-		cases = append(cases, tc{"DHT checksum", DecodeDHT(w.codes(), 1e-6, DHTCfg{})})
+		cases = append(cases, tc{"DHT checksum", DHT(w.codes(), 1e-6, DHTCfg{})})
 	}
 	{
 		w := newTimeline(1e6)
 		w.add(0, 500e-6)
 		j1850Frame(w, []int{0x68, 0x6A, 0xF1}, true)
-		cases = append(cases, tc{"J1850 CRC", DecodeJ1850(w.codes(), 1e-6, J1850Cfg{})})
+		cases = append(cases, tc{"J1850 CRC", J1850(w.codes(), 1e-6, J1850Cfg{})})
 	}
 	{
 		w := newTimeline(100e3)
@@ -218,13 +218,13 @@ func TestBreakProtoChecksFlagged(t *testing.T) {
 		}
 		l.mark(562.5e-6)
 		l.space(40e-3)
-		cases = append(cases, tc{"NEC inverse", DecodeIRNEC(w.codes(), 1e-5, IRCfg{})})
+		cases = append(cases, tc{"NEC inverse", IRNEC(w.codes(), 1e-5, IRCfg{})})
 	}
 	{
 		w := newTimeline(25e6)
 		w.add(0, 20e-6)
 		pdMessage(w, pdSOP, 0x1042, []uint32{0x12345678}, true)
-		cases = append(cases, tc{"USB PD CRC-32", DecodeUSBPD(w.codes(), 4e-8, USBPDCfg{})})
+		cases = append(cases, tc{"USB PD CRC-32", USBPD(w.codes(), 4e-8, USBPDCfg{})})
 	}
 	{
 		l := newTwoLine(200e3)
@@ -232,7 +232,7 @@ func TestBreakProtoChecksFlagged(t *testing.T) {
 		bad := []byte(wiegandBits(26, 12, 4660))
 		bad[0] ^= 1
 		wiegandFrame(l, string(bad), 1e-3)
-		cases = append(cases, tc{"Wiegand parity", DecodeWiegand(l.a.codes(), l.b.codes(), 5e-6, ClockedCfg{})})
+		cases = append(cases, tc{"Wiegand parity", Wiegand(l.a.codes(), l.b.codes(), 5e-6, ClockedCfg{})})
 	}
 	for _, c := range cases {
 		if c.r.OK || !strings.Contains(c.r.Text, "!") {

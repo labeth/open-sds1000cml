@@ -58,51 +58,51 @@ func considerLines(codes []uint8, sl *sliced, colTimeS float64, format string, u
 	t := timingOf(*sl, colTimeS)
 	ir := IRCfg{Format: format}
 	if t.maxLow >= 500 && t.minRun >= 30 {
-		consider(DecodeLIN(codes, colTimeS, LINCfg{Format: format}))
+		consider(LIN(codes, colTimeS, LINCfg{Format: format}))
 	}
 	if t.maxLow >= 80 && t.minRun >= 3 && t.minRun <= 4.8 {
-		consider(DecodeDMX512(codes, colTimeS, DMXCfg{Format: format}))
+		consider(DMX512(codes, colTimeS, DMXCfg{Format: format}))
 	}
 	considerSBUS(codes, colTimeS, t, format, consider)
 	if near(uartBaud, 31250, 0.03) {
-		consider(DecodeMIDI(codes, colTimeS, MIDICfg{Format: format}))
+		consider(MIDI(codes, colTimeS, MIDICfg{Format: format}))
 	}
 	if t.minRun >= 0.9 && t.edges >= 40 {
-		consider(DecodeModbus(codes, colTimeS, ModbusCfg{Format: format}))
+		consider(Modbus(codes, colTimeS, ModbusCfg{Format: format}))
 	}
 	if t.maxLow >= 40 && t.minRun <= 20 {
-		consider(DecodeOneWire(codes, colTimeS, OneWireCfg{Format: format}))
+		consider(OneWire(codes, colTimeS, OneWireCfg{Format: format}))
 	}
 	if t.maxLow >= 40 && t.minRun <= 1.5 && t.minRun >= 0.1 {
-		consider(DecodeWS281x(codes, colTimeS, WS281xCfg{Format: format}))
+		consider(WS281x(codes, colTimeS, WS281xCfg{Format: format}))
 	}
 	if t.maxLow >= 500 && t.minRun >= 15 {
-		consider(DecodeDHT(codes, colTimeS, DHTCfg{Format: format}))
+		consider(DHT(codes, colTimeS, DHTCfg{Format: format}))
 	}
 	if t.maxLow >= 3400 {
-		consider(DecodeCEC(codes, colTimeS, CECCfg{Format: format}))
+		consider(CEC(codes, colTimeS, CECCfg{Format: format}))
 	}
 	if t.maxHigh >= 160 && t.minRun >= 30 {
-		consider(DecodeJ1850(codes, colTimeS, J1850Cfg{Format: format}))
+		consider(J1850(codes, colTimeS, J1850Cfg{Format: format}))
 	}
 	if t.maxRun >= 8000 && t.minRun >= 250 {
-		consider(loneFrameOnLine(DecodeIRNEC(codes, colTimeS, ir), sl))
+		consider(loneFrameOnLine(IRNEC(codes, colTimeS, ir), sl))
 	}
 	if t.maxRun >= 2000 && t.minRun >= 300 {
-		consider(loneFrameOnLine(DecodeIRSIRC(codes, colTimeS, ir), sl))
-		consider(loneFrameOnLine(DecodeIRRC5(codes, colTimeS, ir), sl))
+		consider(loneFrameOnLine(IRSIRC(codes, colTimeS, ir), sl))
+		consider(loneFrameOnLine(IRRC5(codes, colTimeS, ir), sl))
 	}
 	if t.maxRun >= 2000 && t.minRun >= 250 {
-		consider(loneFrameOnLine(DecodeIRRC6(codes, colTimeS, ir), sl))
+		consider(loneFrameOnLine(IRRC6(codes, colTimeS, ir), sl))
 	}
 	if t.maxRun >= 1500 && t.minRun >= 300 && t.minRun <= 520 {
-		consider(DecodeDALI(codes, colTimeS, DALICfg{Format: format}))
+		consider(DALI(codes, colTimeS, DALICfg{Format: format}))
 	}
 	if t.minRun >= 1.2 && t.minRun <= 2.2 {
-		consider(DecodeUSBPD(codes, colTimeS, USBPDCfg{Format: format}))
+		consider(USBPD(codes, colTimeS, USBPDCfg{Format: format}))
 	}
 	if t.minRun <= 0.3 && t.edges >= 64 {
-		consider(DecodeSPDIF(codes, colTimeS, SPDIFCfg{Format: format}))
+		consider(SPDIF(codes, colTimeS, SPDIFCfg{Format: format}))
 	}
 	considerPhysLines(codes, colTimeS, format, t, consider)
 }
@@ -130,17 +130,17 @@ func considerPairs(c1, c2 []uint8, sl [2]*sliced, colTimeS float64, format strin
 		byteBursts := byteClocked(sl[a])
 		if clockLine < 0 || clockLine == a {
 			if ta.minRun >= 20 && ta.minRun <= 120 {
-				consider(DecodePS2(x, y, colTimeS, cfg), a)
+				consider(PS2(x, y, colTimeS, cfg), a)
 			}
 			if !byteBursts { // whole bytes a burst: SPI's
-				if r := DecodeSWD(x, y, colTimeS, cfg); swdStands(r, x, y, colTimeS, cfg, sl[1-a]) {
+				if r := SWD(x, y, colTimeS, cfg); swdStands(r, x, y, colTimeS, cfg, sl[1-a]) {
 					consider(r, a)
 				}
 			}
-			consider(DecodeMDIO(x, y, colTimeS, cfg), a)
+			consider(MDIO(x, y, colTimeS, cfg), a)
 		}
 		if ta.maxHigh >= 200 {
-			consider(DecodeWiegand(x, y, colTimeS, cfg), a)
+			consider(Wiegand(x, y, colTimeS, cfg), a)
 		}
 		considerPhysPairs(x, y, colTimeS, format, ta, byteBursts, func(r Result) { consider(r, a) })
 	}
@@ -182,7 +182,7 @@ func swdStands(r Result, clk, dio []uint8, colTimeS float64, cfg ClockedCfg, d *
 	for _, f := range []float64{0.4, 0.6} {
 		c := cfg
 		c.ThresholdB, c.HaveThrB = d.lowRail+f*(d.highRail-d.lowRail), true
-		if head(DecodeSWD(clk, dio, colTimeS, c)) != head(r) {
+		if head(SWD(clk, dio, colTimeS, c)) != head(r) {
 			return false
 		}
 	}

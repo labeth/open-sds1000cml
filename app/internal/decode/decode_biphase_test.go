@@ -17,7 +17,7 @@ func TestDecodeDALIRoundTrip(t *testing.T) {
 	daliFrame(w, 8, 0x5A, 10e-3)
 	daliFrame(w, 16, 0xFF05, 10e-3)
 	daliFrame(w, 24, 0x123456, 10e-3)
-	r := DecodeDALI(w.codes(), 1/sr, DALICfg{})
+	r := DALI(w.codes(), 1/sr, DALICfg{})
 	if !r.OK || r.Text != "START A01 D90 START R5A START AFF D05 START A12 34 56" || r.Inverted {
 		t.Fatalf("ok=%v inverted=%v %q", r.OK, r.Inverted, r.Text)
 	}
@@ -33,7 +33,7 @@ func TestDecodeUSBPDRoundTrip(t *testing.T) {
 	pdMessage(w, pdSOP, 0x0041, nil, false)
 	pdMessage(w, pdSOPPrime, 0x1042, []uint32{0x12345678}, true)
 	pdMessage(w, pdHardReset, 0, nil, false)
-	r := DecodeUSBPD(w.codes(), 1/sr, USBPDCfg{})
+	r := USBPD(w.codes(), 1/sr, USBPDCfg{})
 	if !r.OK {
 		t.Fatal(r.Error)
 	}
@@ -57,7 +57,7 @@ func TestDecodeSPDIFRoundTrip(t *testing.T) {
 			want = append(want, a, b)
 		}
 		spdifStream(w, fs, 190, s)
-		r := DecodeSPDIF(w.codes(), 1/sr, SPDIFCfg{})
+		r := SPDIF(w.codes(), 1/sr, SPDIFCfg{})
 		// the last subframe's last cell has no edge closing it in the record
 		if !r.OK || !reflect.DeepEqual(r.Bytes, want[:len(want)-1]) || !strings.Contains(r.Text, " B 0026AE") {
 			t.Fatalf("fs %v: ok=%v %X\n want %X\n %q", fs, r.OK, r.Bytes, want[:len(want)-1], r.Text)

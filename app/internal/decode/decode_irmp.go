@@ -100,7 +100,7 @@ func lsbOf(b []int, at, n int) int {
 	return v
 }
 
-// DecodeIRMP decodes the IR multi protocols on a receiver's output or an
+// IRMP decodes the IR multi protocols on a receiver's output or an
 // emitter's drive: a frame's leader names its protocol (NEC's 9 ms and 4.5
 // ms: 16 bits JVC, 8 bits, a sync and 8 NEC16, 42 bits NEC42, 32 bits NEC
 // itself, left to the NEC decoder; 4.5 ms and 4.5 ms: 32 bits Samsung32, 16
@@ -115,7 +115,7 @@ func lsbOf(b []int, at, n int) int {
 // (FrameBits) is the first frame's protocol, IRMP's number. OK needs a
 // frame whose checks hold.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-255
-func DecodeIRMP(codes []uint8, colTimeS float64, cfg LineCfg) Result { //nolint:gocyclo // a protocol state machine kept step for step with its decode_*.js twin (parity tests)
+func IRMP(codes []uint8, colTimeS float64, cfg LineCfg) Result { //nolint:gocyclo // a protocol state machine kept step for step with its decode_*.js twin (parity tests)
 	S := sliceChannel(codes, cfg.Threshold, cfg.HaveThr)
 	if !S.ok {
 		return Result{Proto: protoIRMP, Error: S.reason}

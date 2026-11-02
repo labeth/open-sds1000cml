@@ -9,7 +9,7 @@ import (
 )
 
 // ---------------------------------------------------------------------------
-// Red-team harness for DecodeI2C (app/internal/decode/decode_i2c_spi.go).
+// Red-team harness for I2C (app/internal/decode/decode_i2c_spi.go).
 //
 // I2C carries no CRC/checksum, so its integrity signal is FRAMING: a confident
 // valid transaction is START ... addr/data ... STOP with no frame-error span.
@@ -185,7 +185,7 @@ func TestBreakI2c(t *testing.T) {
 			scl, sda = bkI2CBuild(txns, h, lead, interGap, trail)
 		}
 
-		r := DecodeI2C(scl, sda, 2e-7, I2CCfg{})
+		r := I2C(scl, sda, 2e-7, I2CCfg{})
 		if !r.OK {
 			t.Errorf("[FN it=%d h=%d] valid frame did not decode: %s", it, h, r.Error)
 			fnBad++
@@ -266,7 +266,7 @@ func TestBreakI2c(t *testing.T) {
 			return out
 		}
 		scl, sda := remap(scl0), remap(sda0)
-		r := DecodeI2C(scl, sda, 2e-7, I2CCfg{})
+		r := I2C(scl, sda, 2e-7, I2CCfg{})
 		if !r.OK {
 			t.Errorf("[FN2 it=%d lo=%d hi=%d] noisy re-railed frame failed: %s", it, newLo, newHi, r.Error)
 			fnBad++
@@ -302,7 +302,7 @@ func TestBreakI2c(t *testing.T) {
 		for i := range flat {
 			flat[i] = lvl
 		}
-		r := DecodeI2C(flat, flat, 2e-7, I2CCfg{})
+		r := I2C(flat, flat, 2e-7, I2CCfg{})
 		if len(r.Bytes) != 0 {
 			t.Errorf("[FP flat it=%d lvl=%d] flat DC decoded %d bytes: %v", it, lvl, len(r.Bytes), r.Bytes)
 		}
@@ -333,7 +333,7 @@ func TestBreakI2c(t *testing.T) {
 				b[i] = uint8(i % 2 * 255)
 			}
 		}
-		r := DecodeI2C(a, b, 2e-7, I2CCfg{})
+		r := I2C(a, b, 2e-7, I2CCfg{})
 		if i2cConfident(r) {
 			t.Errorf("[FP shape it=%d kind=%d] degenerate shape read as confident txn; toks=%q", it, it%3, r.Text)
 		}
@@ -363,7 +363,7 @@ func TestBreakI2c(t *testing.T) {
 			seg(hi, d, h) // SCL high; SDA constant -> no START/STOP
 		}
 		seg(lo, lo, h*3)
-		r := DecodeI2C(scl, sda, 2e-7, I2CCfg{})
+		r := I2C(scl, sda, 2e-7, I2CCfg{})
 		if len(r.Bytes) != 0 {
 			t.Errorf("[FP no-start it=%d] clock/data with no START decoded %d bytes: %v", it, len(r.Bytes), r.Bytes)
 		}
@@ -394,7 +394,7 @@ func TestBreakI2c(t *testing.T) {
 			txns := []bkTxn{{addr7: addr, rw: rng.Intn(2), data: data, naks: make([]bool, 1+nd), stop: false}}
 			scl, sda = bkI2CBuild(txns, h, 2*h, 0, 2*h)
 		}
-		r := DecodeI2C(scl, sda, 2e-7, I2CCfg{})
+		r := I2C(scl, sda, 2e-7, I2CCfg{})
 		if i2cConfident(r) {
 			t.Errorf("[FP trunc it=%d] truncated frame read as confident txn; toks=%q", it, r.Text)
 			truncMissed++
@@ -425,7 +425,7 @@ func TestBreakI2c(t *testing.T) {
 		for i := range s {
 			s[i] = uint8(40 + (i%2)*170)
 		}
-		r := DecodeI2C(s, s, 2e-7, I2CCfg{})
+		r := I2C(s, s, 2e-7, I2CCfg{})
 		if r.OK && len(r.Bytes) > 0 {
 			t.Errorf("[EDGE n=%d] tiny record produced bytes %v", n, r.Bytes)
 		}
@@ -438,15 +438,15 @@ func TestBreakI2c(t *testing.T) {
 		for i := range a {
 			a[i] = uint8(40 + (i%2)*170)
 		}
-		_ = DecodeI2C(a, b, 2e-7, I2CCfg{}) // must not panic
-		_ = DecodeI2C(b, a, 2e-7, I2CCfg{})
+		_ = I2C(a, b, 2e-7, I2CCfg{}) // must not panic
+		_ = I2C(b, a, 2e-7, I2CCfg{})
 	}
 
 	// Minimum legal bit rate (h=2 -> colsPerClock=4) and a large h.
 	for _, h := range []int{2, 3, 200} {
 		txns := []bkTxn{{addr7: 0x24, rw: 0, data: []int{0x55, 0xAA}, naks: make([]bool, 3), stop: true}}
 		scl, sda := bkI2CBuild(txns, h, 3*h, 0, 3*h)
-		r := DecodeI2C(scl, sda, 2e-7, I2CCfg{})
+		r := I2C(scl, sda, 2e-7, I2CCfg{})
 		if !r.OK {
 			t.Errorf("[EDGE h=%d] min/max rate frame failed: %s", h, r.Error)
 			continue
@@ -480,12 +480,12 @@ func TestBreakI2c(t *testing.T) {
 		}
 		// amp = 24 (> 20): should decode exactly.
 		s, d := rerail(118, 142)
-		if r := DecodeI2C(s, d, 2e-7, I2CCfg{}); !eqInts(r.Bytes, []int{0x39, 0xC6}) {
+		if r := I2C(s, d, 2e-7, I2CCfg{}); !eqInts(r.Bytes, []int{0x39, 0xC6}) {
 			t.Errorf("[EDGE amp24] bytes %v, want [57 198]; err=%q toks=%q", r.Bytes, r.Error, r.Text)
 		}
 		// amp = 14 (< 20): must be rejected, not silently decoded.
 		s, d = rerail(121, 135)
-		if r := DecodeI2C(s, d, 2e-7, I2CCfg{}); r.OK && len(r.Bytes) > 0 {
+		if r := I2C(s, d, 2e-7, I2CCfg{}); r.OK && len(r.Bytes) > 0 {
 			t.Errorf("[EDGE amp14] sub-minAmp decoded bytes %v (err=%q)", r.Bytes, r.Error)
 		}
 	}
@@ -494,7 +494,7 @@ func TestBreakI2c(t *testing.T) {
 	{
 		txns := []bkTxn{{addr7: 0x10, rw: 0, data: []int{0x01}, naks: make([]bool, 2), stop: true}}
 		scl, sda := bkI2CBuild(txns, 1, 4, 0, 4)
-		r := DecodeI2C(scl, sda, 2e-7, I2CCfg{})
+		r := I2C(scl, sda, 2e-7, I2CCfg{})
 		if r.OK && len(r.Bytes) > 0 {
 			t.Errorf("[EDGE h=1] sub-3-cols/clock still decoded bytes %v", r.Bytes)
 		}
@@ -504,7 +504,7 @@ func TestBreakI2c(t *testing.T) {
 	{
 		one := []bkTxn{{addr7: 0x3C, rw: 1, data: []int{0x00, 0xFF, 0x00, 0xFF}, naks: make([]bool, 5), stop: true}}
 		scl, sda := bkI2CBuild(one, 12, 24, 0, 24)
-		if r := DecodeI2C(scl, sda, 2e-7, I2CCfg{}); !eqInts(r.Bytes, []int{0x00, 0xFF, 0x00, 0xFF}) {
+		if r := I2C(scl, sda, 2e-7, I2CCfg{}); !eqInts(r.Bytes, []int{0x00, 0xFF, 0x00, 0xFF}) {
 			t.Errorf("[EDGE one-frame] bytes %v, want [0 255 0 255]; toks=%q", r.Bytes, r.Text)
 		}
 
@@ -518,7 +518,7 @@ func TestBreakI2c(t *testing.T) {
 			{addr7: 0x7F, rw: 1, data: ffs, naks: make([]bool, 7), stop: true},
 		}
 		scl, sda = bkI2CBuild(b2b, 10, 20, 0 /*no gap*/, 20)
-		r := DecodeI2C(scl, sda, 2e-7, I2CCfg{})
+		r := I2C(scl, sda, 2e-7, I2CCfg{})
 		wantBB := append(append([]int{}, zeros...), ffs...)
 		if !eqInts(r.Bytes, wantBB) {
 			t.Errorf("[EDGE b2b] bytes %v, want %v; toks=%q", r.Bytes, wantBB, r.Text)
@@ -539,7 +539,7 @@ func TestBreakI2c(t *testing.T) {
 		}
 		txns := []bkTxn{{addr7: 0x55, rw: 0, data: long, naks: make([]bool, 1+len(long)), stop: true}}
 		scl, sda := bkI2CBuild(txns, 6, 12, 0, 12)
-		r := DecodeI2C(scl, sda, 2e-7, I2CCfg{})
+		r := I2C(scl, sda, 2e-7, I2CCfg{})
 		if !eqInts(r.Bytes, long) {
 			t.Errorf("[EDGE long] %d bytes decoded (want %d) mismatch", len(r.Bytes), len(long))
 		}
@@ -551,10 +551,10 @@ func TestBreakI2c(t *testing.T) {
 		txns := []bkTxn{{addr7: 0x24, rw: 0, data: []int{0x5A}, naks: make([]bool, 2), stop: true}}
 		scl, sda := bkI2CBuild(txns, 10, 20, 0, 20)
 		for _, ct := range []float64{0, -1, 1e300, math.Inf(1), math.Inf(-1), math.NaN()} {
-			_ = DecodeI2C(scl, sda, ct, I2CCfg{})
+			_ = I2C(scl, sda, ct, I2CCfg{})
 		}
 		for _, thr := range []float64{-1e9, 0, 125, 1e9, math.NaN()} {
-			_ = DecodeI2C(scl, sda, 2e-7, I2CCfg{Threshold: thr, HaveThr: true})
+			_ = I2C(scl, sda, 2e-7, I2CCfg{Threshold: thr, HaveThr: true})
 		}
 	}
 
@@ -568,7 +568,7 @@ func TestBreakI2c(t *testing.T) {
 			a[i] = uint8(rng.Intn(256))
 			b[i] = uint8(rng.Intn(256))
 		}
-		_ = DecodeI2C(a, b, 2e-7, I2CCfg{Format: []string{"", "hex", "dec", "bin", "ascii", "both"}[rng.Intn(6)]})
+		_ = I2C(a, b, 2e-7, I2CCfg{Format: []string{"", "hex", "dec", "bin", "ascii", "both"}[rng.Intn(6)]})
 	}
 
 	if !t.Failed() {

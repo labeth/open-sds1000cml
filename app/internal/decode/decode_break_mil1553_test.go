@@ -10,7 +10,7 @@ import (
 )
 
 // ============================================================================
-// Red-team regression suite for DecodeMIL1553 (see decode_mil1553.go).
+// Red-team regression suite for MIL1553 (see decode_mil1553.go).
 //
 // It reuses the WAVEFORM SYNTHESIZER (mil1553Wave / mil1553OddParity) already
 // defined in decode_mil1553_test.go. MIL-STD-1553B has a fixed wire convention
@@ -119,7 +119,7 @@ func TestBreakMil1553(t *testing.T) {
 		w := mbPad(mil1553Wave(words, cmd, par, spb), rng.Intn(6*spb), rng.Intn(6*spb))
 
 		// EXPLICIT bit rate — must recover the exact word stream, no frame-error.
-		r := DecodeMIL1553(w, ct, MIL1553Cfg{Bitrate: br})
+		r := MIL1553(w, ct, MIL1553Cfg{Bitrate: br})
 		if !r.OK {
 			t.Errorf("FALSE-NEGATIVE it=%d spb=%d br=%d words=%v: explicit decode failed: %s",
 				it, spb, br, words, r.Error)
@@ -138,7 +138,7 @@ func TestBreakMil1553(t *testing.T) {
 		}
 
 		// AUTO bit rate — soft: a miss is logged; a WRONG value is a hard bug.
-		ra := DecodeMIL1553(w, ct, MIL1553Cfg{})
+		ra := MIL1553(w, ct, MIL1553Cfg{})
 		if !ra.OK {
 			autoMiss++
 		} else if !mbIntEq(ra.Bytes, words) {
@@ -160,10 +160,10 @@ func TestBreakMil1553(t *testing.T) {
 		cmd := []bool{true, false}
 		par := []int{mil1553OddParity(0xAAAA), mil1553OddParity(0xAAAA)}
 		w := mil1553Wave(words, cmd, par, spb)
-		if re := DecodeMIL1553(w, ct, MIL1553Cfg{Bitrate: 1_000_000}); !re.OK || !mbIntEq(re.Bytes, words) {
+		if re := MIL1553(w, ct, MIL1553Cfg{Bitrate: 1_000_000}); !re.OK || !mbIntEq(re.Bytes, words) {
 			t.Errorf("sanity: explicit should decode 0xAAAA stream, got ok=%v bytes=%v", re.OK, re.Bytes)
 		}
-		ra := DecodeMIL1553(w, ct, MIL1553Cfg{})
+		ra := MIL1553(w, ct, MIL1553Cfg{})
 		if !ra.OK || !mbIntEq(ra.Bytes, words) {
 			// KNOWN BUG: auto bit-period inference doubles T on alternating data.
 			t.Errorf("FALSE-NEGATIVE (auto inference): valid 0xAAAA stream missed: ok=%v spb=%.1f err=%q bytes=%v (want %v)",
@@ -177,10 +177,10 @@ func TestBreakMil1553(t *testing.T) {
 		ct := 1.0 / (float64(spb) * 1e6)
 		wd := 0x1234
 		w := mil1553Wave([]int{wd}, []bool{true}, []int{mil1553OddParity(wd)}, spb)
-		if re := DecodeMIL1553(w, ct, MIL1553Cfg{Bitrate: 1_000_000}); !re.OK || !mbIntEq(re.Bytes, []int{wd}) {
+		if re := MIL1553(w, ct, MIL1553Cfg{Bitrate: 1_000_000}); !re.OK || !mbIntEq(re.Bytes, []int{wd}) {
 			t.Errorf("sanity: explicit should decode spb=5 frame, got ok=%v bytes=%v", re.OK, re.Bytes)
 		}
-		ra := DecodeMIL1553(w, ct, MIL1553Cfg{})
+		ra := MIL1553(w, ct, MIL1553Cfg{})
 		if !ra.OK || !mbIntEq(ra.Bytes, []int{wd}) {
 			// KNOWN BUG: auto inference fails at the coarse spb=5 quantisation.
 			t.Errorf("FALSE-NEGATIVE (auto inference): valid spb=5 frame missed: ok=%v spb=%.1f err=%q bytes=%v (want [%d])",
@@ -198,7 +198,7 @@ func TestBreakMil1553(t *testing.T) {
 	assertNotConfident := func(name string, w []uint8) {
 		fpCount++
 		for _, cfg := range []MIL1553Cfg{{Bitrate: 1_000_000}, {}} {
-			r := DecodeMIL1553(w, ctFP, cfg)
+			r := MIL1553(w, ctFP, cfg)
 			if mbConfident(r) {
 				mode := "explicit"
 				if cfg.Bitrate == 0 {
@@ -266,7 +266,7 @@ func TestBreakMil1553(t *testing.T) {
 		cmd := g.Intn(2) == 0
 		ct := 1.0 / (float64(spb) * 1e6)
 		w := mil1553Wave([]int{wd}, []bool{cmd}, []int{mil1553OddParity(wd) ^ 1}, spb) // flipped parity
-		r := DecodeMIL1553(w, ct, MIL1553Cfg{Bitrate: 1_000_000})
+		r := MIL1553(w, ct, MIL1553Cfg{Bitrate: 1_000_000})
 		if r.OK && mbFrameErrs(r) == 0 {
 			t.Errorf("FALSE-POSITIVE: corrupted parity for word %04X (spb=%d) was ACCEPTED with no frame-error", wd, spb)
 		}
@@ -310,7 +310,7 @@ func TestBreakMil1553(t *testing.T) {
 				t.Errorf("PANIC in edge case %q (n=%d ct=%g br=%d): %v", name, len(w), ct, cfg.Bitrate, p)
 			}
 		}()
-		r := DecodeMIL1553(w, ct, cfg)
+		r := MIL1553(w, ct, cfg)
 		if !r.OK && r.Error == "" {
 			t.Errorf("edge %q: neither OK nor Error set", name)
 		}

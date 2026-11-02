@@ -37,7 +37,7 @@ func loadSPIRunt(t *testing.T) (c1, c2 []uint8) {
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-229
 func TestDecodeSPIKeepsAShortClockHalf(t *testing.T) {
 	c1, c2 := loadSPIRunt(t)
-	r := DecodeSPI(c2, c1, 2e-9, SPICfg{MSB: true, DataLag: SPIDataLag(1, 2e-9), DataDelay: 3.7})
+	r := SPI(c2, c1, 2e-9, SPICfg{MSB: true, DataLag: SPIDataLag(1, 2e-9), DataDelay: 3.7})
 	if !r.OK {
 		t.Fatal(r.Error)
 	}

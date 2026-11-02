@@ -69,7 +69,7 @@ func TestARINC429TriggerRTL(t *testing.T) {
 	}
 	check := func(t *testing.T, wave []uint8, period int, pattern, mask uint32, base uint64, events []arincRTLEvent) {
 		t.Helper()
-		ref := DecodeARINC429(wave, 1/float64(period), ARINC429Cfg{Bitrate: 1, Threshold: 128, HaveThr: true})
+		ref := ARINC429(wave, 1/float64(period), ARINC429Cfg{Bitrate: 1, Threshold: 128, HaveThr: true})
 		if len(events) != len(ref.Bytes)/4*3 {
 			t.Fatalf("events=%d oracle words=%d (%s)", len(events), len(ref.Bytes)/4, ref.Text)
 		}

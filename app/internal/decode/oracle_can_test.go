@@ -172,7 +172,7 @@ func TestOracleCAN(t *testing.T) {
 	}
 	decode := func(t *testing.T, bits []byte, baud int) Result {
 		t.Helper()
-		res := DecodeCANFD(bitsToCodes(bits), 1.0/sr, CANFDCfg{NominalBaud: baud, DominantLow: true})
+		res := CANFD(bitsToCodes(bits), 1.0/sr, CANFDCfg{NominalBaud: baud, DominantLow: true})
 		if !res.OK {
 			t.Fatalf("repo decode failed: %s", res.Error)
 		}

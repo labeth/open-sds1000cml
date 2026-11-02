@@ -28,7 +28,7 @@ func TestOracleQuadrature(t *testing.T) {
 	moves = append(moves, 1, -1, 1, 1)
 	quadMoves(l, moves, 100e-6, 1e-3)
 	quadMoves(l, []int{-1, -1, -1}, 60e-6, 500e-6)
-	r := DecodeQuadrature(l.a.codes(), l.b.codes(), 1.0/sr, ClockedCfg{})
+	r := Quadrature(l.a.codes(), l.b.codes(), 1.0/sr, ClockedCfg{})
 	if !r.OK {
 		t.Fatal(r.Error)
 	}
@@ -67,7 +67,7 @@ func TestOracleStepper(t *testing.T) {
 	dirs := []byte{1, 1, 1, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 1}
 	stepperMoves(l, dirs, 200e-6, 2e-3)
 	stepperMoves(l, []byte{1, 1, 1, 1}, 100e-6, 1e-3)
-	r := DecodeStepper(l.a.codes(), l.b.codes(), 1.0/sr, ClockedCfg{})
+	r := Stepper(l.a.codes(), l.b.codes(), 1.0/sr, ClockedCfg{})
 	if !r.OK {
 		t.Fatal(r.Error)
 	}
@@ -95,7 +95,7 @@ func TestOraclePWM(t *testing.T) {
 	w.add(0, 30e-6)
 	pwmWave(w, 100e-6, []float64{0.25, 0.5, 0.75, 0.1, 0.9, 0.333, 0.5, 0.05, 0.95, 0.5})
 	pwmWave(w, 37e-6, []float64{0.2, 0.4, 0.6, 0.8})
-	r := DecodePWM(w.codes(), 1.0/sr, LineCfg{})
+	r := PWM(w.codes(), 1.0/sr, LineCfg{})
 	if !r.OK {
 		t.Fatal(r.Error)
 	}

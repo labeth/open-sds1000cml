@@ -100,25 +100,25 @@ func FuzzDecodedPackets(f *testing.F) {
 		var r decode.Result
 		switch proto % 10 {
 		case 0:
-			r = decode.DecodeUART(w, 1e-6, decode.UARTCfg{})
+			r = decode.UART(w, 1e-6, decode.UARTCfg{})
 		case 1:
-			r = decode.DecodeSPI(w[:half], w[half:2*half], 1e-6, decode.SPICfg{MSB: true})
+			r = decode.SPI(w[:half], w[half:2*half], 1e-6, decode.SPICfg{MSB: true})
 		case 2:
-			r = decode.DecodeI2C(w[:half], w[half:2*half], 1e-6, decode.I2CCfg{})
+			r = decode.I2C(w[:half], w[half:2*half], 1e-6, decode.I2CCfg{})
 		case 3:
-			r = decode.DecodeCANFD(w, 1e-6, decode.CANFDCfg{DominantLow: true})
+			r = decode.CANFD(w, 1e-6, decode.CANFDCfg{DominantLow: true})
 		case 4:
-			r = decode.DecodeManchester(w, 1e-6, decode.ManchesterCfg{IEEE: true, MSB: true})
+			r = decode.Manchester(w, 1e-6, decode.ManchesterCfg{IEEE: true, MSB: true})
 		case 5:
-			r = decode.DecodeFlexRay(w, 1e-8, decode.FlexRayCfg{})
+			r = decode.FlexRay(w, 1e-8, decode.FlexRayCfg{})
 		case 6:
-			r = decode.DecodeUSBLS(w, 1e-7, decode.USBLSCfg{})
+			r = decode.USBLS(w, 1e-7, decode.USBLSCfg{})
 		case 7:
-			r = decode.DecodeMIL1553(w, 1e-7, decode.MIL1553Cfg{})
+			r = decode.MIL1553(w, 1e-7, decode.MIL1553Cfg{})
 		case 8:
-			r = decode.DecodeARINC429(w, 1e-6, decode.ARINC429Cfg{})
+			r = decode.ARINC429(w, 1e-6, decode.ARINC429Cfg{})
 		default:
-			r = decode.DecodeSENT(w, 1e-6, decode.SENTCfg{})
+			r = decode.SENT(w, 1e-6, decode.SENTCfg{})
 		}
 		checkPacketInvariants(t, Packets(r, len(w)), len(w))
 	})

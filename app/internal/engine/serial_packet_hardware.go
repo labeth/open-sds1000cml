@@ -97,7 +97,7 @@ func arincLevels(codes []uint8, p SerialParams) uint32 {
 	return uint32(eh)<<24 | uint32(el)<<16 | uint32(h)<<8 | uint32(l)
 }
 
-// planHardwareManchester follows DecodeManchester: 1..16-bit words (8 by
+// planHardwareManchester follows Manchester: 1..16-bit words (8 by
 // default), either convention and bit order, up to four contiguous words.
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-018
 func planHardwareManchester(p *SerialParams) sramcapture.ManchesterTriggerConfig {

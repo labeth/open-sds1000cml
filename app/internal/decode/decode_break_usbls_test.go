@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-// decode_break_usbls_test.go — adversarial red-team suite for DecodeUSBLS.
+// decode_break_usbls_test.go — adversarial red-team suite for USBLS.
 //
 // It reuses the round-trip synthesizer (usbWave / usbPkt in decode_usbls_test.go)
 // and adds a low-level bit synthesizer (brkWave) that lets us control the exact
@@ -18,7 +18,7 @@ import (
 // THREE attack classes (>=50 iterations each) plus edge/no-panic coverage, and a
 // gated block that pins two real findings:
 //
-//	FINDING 1 (false-negative / false-positive): DecodeUSBLS splits packets only
+//	FINDING 1 (false-negative / false-positive): USBLS splits packets only
 //	on an inter-packet idle wider than splitK=10 bit-times. Real USB LS/FS
 //	captures place consecutive packets ~2 bit-times apart, so two well-formed,
 //	adjacent packets MERGE into one segment: the decoder returns OK=true with a
@@ -26,7 +26,7 @@ import (
 //	lost). It neither recovers both frames nor reports an error — it fabricates
 //	bytes and calls them valid.
 //
-//	FINDING 2 (false-positive): DecodeUSBLS performs NO USB CRC5/CRC16 check. A
+//	FINDING 2 (false-positive): USBLS performs NO USB CRC5/CRC16 check. A
 //	frame whose CRC field is corrupted is emitted byte-for-byte as data with
 //	OK=true and no error flagged. The only integrity checks are the SYNC pattern
 //	and the PID ones-complement (which ARE enforced — a corrupted PID is flagged
@@ -167,7 +167,7 @@ func TestBreakUsbls(t *testing.T) {
 				if mode == "auto" {
 					cfg = USBLSCfg{}
 				}
-				r := DecodeUSBLS(w, colTimeS, cfg)
+				r := USBLS(w, colTimeS, cfg)
 				if !r.OK {
 					t.Errorf("FALSE NEGATIVE [%s] iter=%d spb=%d pids=%v: ok=false err=%q",
 						mode, iter, spb, pidsList(pkts), r.Error)
@@ -263,7 +263,7 @@ func TestBreakUsbls(t *testing.T) {
 			}
 			for _, ct := range cts {
 				for _, br := range []int{0, 1500000} {
-					r := DecodeUSBLS(s, ct, USBLSCfg{Bitrate: br})
+					r := USBLS(s, ct, USBLSCfg{Bitrate: br})
 					if r.OK {
 						fp++
 						t.Errorf("FALSE POSITIVE iter=%d kind=%d ct=%g br=%d: garbage decoded ok=true bytes=%v",
@@ -283,7 +283,7 @@ func TestBreakUsbls(t *testing.T) {
 		// (a) Corrupted SYNC: flip SYNC bit 3 (0 -> 1). The frame must be dropped.
 		badSync := append([]int{}, brkFrame(0xD, []int{0x11, 0x22})...)
 		badSync[3] = 1
-		rs := DecodeUSBLS(brkWave([][]int{badSync}, spb, 20, 40, 40), colTimeS, USBLSCfg{})
+		rs := USBLS(brkWave([][]int{badSync}, spb, 20, 40, 40), colTimeS, USBLSCfg{})
 		if rs.OK {
 			t.Errorf("FALSE POSITIVE: frame with a corrupted SYNC decoded ok=true bytes=%v", rs.Bytes)
 		}
@@ -292,7 +292,7 @@ func TestBreakUsbls(t *testing.T) {
 		full := usbWave([]usbPkt{{pid: 0xD, data: []int{0x12, 0x34, 0x56}}}, spb)
 		// lead idle (20 bits) + SYNC(8) lands the PID around bit 28..35 -> ~ (20+12)*spb.
 		cut := (20 + 12) * spb // mid-PID
-		rt := DecodeUSBLS(full[:cut], colTimeS, USBLSCfg{})
+		rt := USBLS(full[:cut], colTimeS, USBLSCfg{})
 		if rt.OK {
 			t.Errorf("FALSE POSITIVE: mid-PID truncation decoded ok=true bytes=%v", rt.Bytes)
 		}
@@ -304,7 +304,7 @@ func TestBreakUsbls(t *testing.T) {
 		badPIDbits := append([]int{}, brkSync()...)
 		badPIDbits = append(badPIDbits, brkBits(good^0x10, 8)...) // flip a complement bit
 		badPIDbits = append(badPIDbits, brkBits(0x11, 8)...)
-		rp := DecodeUSBLS(brkWave([][]int{badPIDbits}, spb, 20, 40, 40), colTimeS, USBLSCfg{})
+		rp := USBLS(brkWave([][]int{badPIDbits}, spb, 20, 40, 40), colTimeS, USBLSCfg{})
 		flagged := false
 		for _, sp := range rp.Spans {
 			if sp.Kind == "frame-error" {
@@ -337,7 +337,7 @@ func TestBreakUsbls(t *testing.T) {
 			colTimeS := 1.0 / (float64(spb) * 1.5e6)
 			w := brkWave([][]int{brkFrame(0x3, []int{0x5A})}, spb, 10, 40, 40)
 			noPanic(fmt.Sprintf("spb=%d", spb), func() {
-				r := DecodeUSBLS(w, colTimeS, USBLSCfg{})
+				r := USBLS(w, colTimeS, USBLSCfg{})
 				if !r.OK || !brkEqInts(r.Bytes, []int{0x5A}) {
 					t.Errorf("edge spb=%d: ok=%v bytes=%v err=%q", spb, r.OK, r.Bytes, r.Error)
 				}
@@ -348,7 +348,7 @@ func TestBreakUsbls(t *testing.T) {
 		{
 			spb := 20
 			colTimeS := 1.0 / (float64(spb) * 1.5e6)
-			r := DecodeUSBLS(usbWave([]usbPkt{{pid: 0x2}}, spb), colTimeS, USBLSCfg{})
+			r := USBLS(usbWave([]usbPkt{{pid: 0x2}}, spb), colTimeS, USBLSCfg{})
 			if !r.OK || len(r.Bytes) != 0 {
 				t.Errorf("edge single ACK: ok=%v bytes=%v", r.OK, r.Bytes)
 			}
@@ -359,7 +359,7 @@ func TestBreakUsbls(t *testing.T) {
 			spb := 20
 			colTimeS := 1.0 / (float64(spb) * 1.5e6)
 			bl := [][]int{brkFrame(0xD, []int{0x11}), brkFrame(0x3, []int{0x22, 0x33}), brkFrame(0x2, nil)}
-			r := DecodeUSBLS(brkWave(bl, spb, 20, 12, 40), colTimeS, USBLSCfg{})
+			r := USBLS(brkWave(bl, spb, 20, 12, 40), colTimeS, USBLSCfg{})
 			syncs := 0
 			for _, sp := range r.Spans {
 				if sp.Kind == "start" {
@@ -375,7 +375,7 @@ func TestBreakUsbls(t *testing.T) {
 		for _, d := range [][]int{{0x00, 0x00, 0x00}, {0xFF, 0xFF, 0xFF}} {
 			spb := 16
 			colTimeS := 1.0 / (float64(spb) * 1.5e6)
-			r := DecodeUSBLS(brkWave([][]int{brkFrame(0x3, d)}, spb, 12, 40, 40), colTimeS, USBLSCfg{})
+			r := USBLS(brkWave([][]int{brkFrame(0x3, d)}, spb, 12, 40, 40), colTimeS, USBLSCfg{})
 			if !r.OK || !brkEqInts(r.Bytes, d) {
 				t.Errorf("edge payload %v: ok=%v bytes=%v", d, r.OK, r.Bytes)
 			}
@@ -392,7 +392,7 @@ func TestBreakUsbls(t *testing.T) {
 				bl = append(bl, brkFrame(0x3, d))
 				want = append(want, d...)
 			}
-			r := DecodeUSBLS(brkWave(bl, spb, 20, 20, 40), colTimeS, USBLSCfg{})
+			r := USBLS(brkWave(bl, spb, 20, 20, 40), colTimeS, USBLSCfg{})
 			if !r.OK || !brkEqInts(r.Bytes, want) {
 				t.Errorf("edge long record: ok=%v len(bytes)=%d want=%d", r.OK, len(r.Bytes), len(want))
 			}
@@ -408,7 +408,7 @@ func TestBreakUsbls(t *testing.T) {
 			for _, ct := range cts {
 				for _, br := range brs {
 					noPanic(fmt.Sprintf("len=%d ct=%g br=%d", len(in), ct, br), func() {
-						r := DecodeUSBLS(in, ct, USBLSCfg{Bitrate: br})
+						r := USBLS(in, ct, USBLSCfg{Bitrate: br})
 						if !r.OK && r.Error == "" {
 							t.Errorf("edge hostile: neither OK nor Error (len=%d ct=%g br=%d)", len(in), ct, br)
 						}
@@ -429,7 +429,7 @@ func TestBreakUsbls(t *testing.T) {
 		// gap). p1 = SETUP + [0x11]; p2 = ACK (no data). Correct output: two SYNC
 		// spans and payload [0x11].
 		bl := [][]int{brkFrame(0xD, []int{0x11}), brkFrame(0x2, nil)}
-		r := DecodeUSBLS(brkWave(bl, spb, 20, 2, 40), colTimeS, USBLSCfg{})
+		r := USBLS(brkWave(bl, spb, 20, 2, 40), colTimeS, USBLSCfg{})
 		syncs := 0
 		for _, sp := range r.Spans {
 			if sp.Kind == "start" {
@@ -456,7 +456,7 @@ func TestBreakUsbls(t *testing.T) {
 		base = append(base, brkBits(0x55, 8)...)
 		bad := append(append([]int{}, base...), brkBits(0x12^0xFF, 8)...) // corrupted CRC lo
 		bad = append(bad, brkBits(0x34, 8)...)
-		r := DecodeUSBLS(brkWave([][]int{bad}, spb, 20, 40, 40), colTimeS, USBLSCfg{})
+		r := USBLS(brkWave([][]int{bad}, spb, 20, 40, 40), colTimeS, USBLSCfg{})
 		errFlagged := false
 		for _, sp := range r.Spans {
 			if sp.Kind == "frame-error" || sp.Kind == "parity-error" {

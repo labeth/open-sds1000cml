@@ -36,7 +36,7 @@ func TestOracleSWIM(t *testing.T) {
 	swimFrame(w, 0, 8, 0x60, T, 1, false, gap)
 	swimFrame(w, 0, 8, 0xA5, T, 1, false, gap)
 	swimFrame(w, 0, 3, 0, T, 1, false, gap)
-	r := DecodeSWIM(w.codes(), 1.0/sr, LineCfg{})
+	r := SWIM(w.codes(), 1.0/sr, LineCfg{})
 	if !r.OK {
 		t.Fatal(r.Error)
 	}
@@ -108,7 +108,7 @@ func TestOracleSDQ(t *testing.T) {
 		sdqByte(w, v, T)
 	}
 	w.add(1, 50e-6)
-	r := DecodeSDQ(w.codes(), 1.0/sr, LineCfg{})
+	r := SDQ(w.codes(), 1.0/sr, LineCfg{})
 	if !r.OK {
 		t.Fatal(r.Error)
 	}
@@ -150,7 +150,7 @@ func TestOraclePJDL(t *testing.T) {
 	for _, f := range frames {
 		pjdlFrame(w, 1, f, 1e-3)
 	}
-	r := DecodePJDL(w.codes(), 1.0/sr, LineCfg{})
+	r := PJDL(w.codes(), 1.0/sr, LineCfg{})
 	if !r.OK || r.FrameBits != 1 {
 		t.Fatal(r.FrameBits, r.Error)
 	}
@@ -198,7 +198,7 @@ func TestOracleDSI(t *testing.T) {
 	for _, v := range vals {
 		dsiFrame(w, v, 12e-3)
 	}
-	r := DecodeDSI(w.codes(), 1.0/sr, LineCfg{})
+	r := DSI(w.codes(), 1.0/sr, LineCfg{})
 	if !r.OK {
 		t.Fatal(r.Error)
 	}
@@ -229,7 +229,7 @@ func TestOracleQi(t *testing.T) {
 	for i, p := range pkts {
 		qiPacket(w, p, i == 2, 8e-3)
 	}
-	r := DecodeQi(w.codes(), 1.0/sr, LineCfg{})
+	r := Qi(w.codes(), 1.0/sr, LineCfg{})
 	if !r.OK {
 		t.Fatal(r.Error)
 	}

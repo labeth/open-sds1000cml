@@ -115,14 +115,14 @@ func (o *irOut) add(x0, x1 float64, n int, text, kind string, val int, unit bool
 	}
 }
 
-// DecodeIRNEC decodes NEC remotes: a 9 ms mark and 4.5 ms space leader
+// IRNEC decodes NEC remotes: a 9 ms mark and 4.5 ms space leader
 // ("sof" LDR), then 32 bits, each a 560 us mark and a 560 us (0) or 1690 us
 // (1) space, least significant first: address, its inverse (or the high
 // byte of a 16-bit address), command and its inverse (flagged when it is
 // not one), and a stop mark. A 9 ms mark with a 2.25 ms space is a repeat
 // ("sof" REP). OK needs a frame whose command checks.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-234
-func DecodeIRNEC(codes []uint8, colTimeS float64, cfg IRCfg) Result {
+func IRNEC(codes []uint8, colTimeS float64, cfg IRCfg) Result {
 	return irDecode(protoIRNEC, codes, colTimeS, cfg, func(m []irMark, us func(float64) float64, n int, o *irOut) {
 		o.unitUs = 1125
 		for i := 0; i+1 < len(m); i++ {
@@ -194,14 +194,14 @@ func DecodeIRNEC(codes []uint8, colTimeS float64, cfg IRCfg) Result {
 	})
 }
 
-// DecodeIRSIRC decodes Sony SIRC remotes: a 2.4 ms mark ("sof" SIRC), then
+// IRSIRC decodes Sony SIRC remotes: a 2.4 ms mark ("sof" SIRC), then
 // bits each a 600 us space and a 1200 us (1) or 600 us (0) mark, least
 // significant first, ended by a longer space: 12, 15 or 20 bits, the 7-bit
 // command ("C15"), the address (5 bits, or 8 for 15) and for 20 bits an
 // 8-bit extension ("E1A"). Another length is an error. OK needs a frame
 // of a valid length.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-234
-func DecodeIRSIRC(codes []uint8, colTimeS float64, cfg IRCfg) Result {
+func IRSIRC(codes []uint8, colTimeS float64, cfg IRCfg) Result {
 	return irDecode(protoIRSIRC, codes, colTimeS, cfg, func(m []irMark, us func(float64) float64, n int, o *irOut) {
 		o.unitUs = 600
 		for i := 0; i < len(m); i++ {
@@ -299,14 +299,14 @@ func irHalves(m []irMark, from int, unit float64, maxUnits int, us func(float64)
 	return lv, xs
 }
 
-// DecodeIRRC5 decodes Philips RC-5 remotes: Manchester bits of 1.778 ms (a
+// IRRC5 decodes Philips RC-5 remotes: Manchester bits of 1.778 ms (a
 // 1 a space then a mark), fourteen most significant first: two start bits,
 // the toggle ("rw" T0/T1), a 5-bit address and a 6-bit command (with the
 // second start bit inverted as the command's seventh bit, RC-5X). Each
 // frame opens after an idle of 5 ms or more ("sof" RC5). OK needs a whole
 // frame.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-234
-func DecodeIRRC5(codes []uint8, colTimeS float64, cfg IRCfg) Result {
+func IRRC5(codes []uint8, colTimeS float64, cfg IRCfg) Result {
 	return irDecode(protoIRRC5, codes, colTimeS, cfg, func(m []irMark, us func(float64) float64, n int, o *irOut) {
 		const half = 889.0
 		o.unitUs = 2 * half
@@ -358,14 +358,14 @@ func DecodeIRRC5(codes []uint8, colTimeS float64, cfg IRCfg) Result {
 	})
 }
 
-// DecodeIRRC6 decodes Philips RC-6 remotes (t = 444 us): a 6t mark and 2t
+// IRRC6 decodes Philips RC-6 remotes (t = 444 us): a 6t mark and 2t
 // space leader ("sof" RC6), a start bit, three mode bits ("rw" M0..M7) and
 // the double-length trailer bit (the toggle, "rw" T0/T1), then the payload
 // in Manchester bits of 2t (a 1 a mark then a space), most significant
 // first: mode 0's 8-bit address and command; other modes' payload bytes.
 // OK needs a frame with a whole payload.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-234
-func DecodeIRRC6(codes []uint8, colTimeS float64, cfg IRCfg) Result {
+func IRRC6(codes []uint8, colTimeS float64, cfg IRCfg) Result {
 	return irDecode(protoIRRC6, codes, colTimeS, cfg, func(m []irMark, us func(float64) float64, n int, o *irOut) {
 		const t = 444.0
 		o.unitUs = 2 * t

@@ -27,7 +27,7 @@ func TestOraclePS2(t *testing.T) {
 		l.add(0, 1, 40e-6)
 		l.add(1, 1, 300e-6)
 	}
-	r := DecodePS2(l.a.codes(), l.b.codes(), 1.0/sr, ClockedCfg{})
+	r := PS2(l.a.codes(), l.b.codes(), 1.0/sr, ClockedCfg{})
 	if !r.OK {
 		t.Fatal(r.Error)
 	}
@@ -68,7 +68,7 @@ func TestOracleSWD(t *testing.T) {
 	s.transfer(true, true, 0xC, 1, 0xDEADBEEF, false, 2)
 	s.transfer(false, true, 0xC, 1, 0x12345678, true, 2)
 	s.host(0, 0)
-	r := DecodeSWD(s.t.a.codes(), s.t.b.codes(), 1.0/sr, ClockedCfg{})
+	r := SWD(s.t.a.codes(), s.t.b.codes(), 1.0/sr, ClockedCfg{})
 	if !r.OK {
 		t.Fatal(r.Error)
 	}
@@ -115,7 +115,7 @@ func TestOracleMDIO(t *testing.T) {
 	mdioFrame(l, 400e-9, 32, 0, 0, 0x02, 0x01, 0x0007, 0)
 	mdioFrame(l, 400e-9, 32, 0, 3, 0x02, 0x01, 0xBEEF, 0)
 	mdioFrame(l, 400e-9, 40, 1, 2, 0x05, 0x02, 0x1234, 0)
-	r := DecodeMDIO(l.a.codes(), l.b.codes(), 1.0/sr, ClockedCfg{})
+	r := MDIO(l.a.codes(), l.b.codes(), 1.0/sr, ClockedCfg{})
 	if !r.OK {
 		t.Fatal(r.Error)
 	}
@@ -152,7 +152,7 @@ func TestOracleWiegand(t *testing.T) {
 	for _, f := range frames {
 		wiegandFrame(l, f, 2e-3)
 	}
-	r := DecodeWiegand(l.a.codes(), l.b.codes(), 1.0/sr, ClockedCfg{})
+	r := Wiegand(l.a.codes(), l.b.codes(), 1.0/sr, ClockedCfg{})
 	if !r.OK {
 		t.Fatal(r.Error)
 	}

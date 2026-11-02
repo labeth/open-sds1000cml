@@ -20,7 +20,7 @@ func TestDALIFrameCutByTheRecordIsNoFrame(t *testing.T) {
 		w := newTimeline(sr)
 		w.idle(2e-3)
 		daliFrame(w, 16, 0xA501, tc.idle)
-		r := DecodeDALI(w.codes(), 1/sr, DALICfg{Format: "hex"})
+		r := DALI(w.codes(), 1/sr, DALICfg{Format: "hex"})
 		if r.OK != tc.want {
 			t.Errorf("idle %g s after the frame: OK %v (%q %q), want %v", tc.idle, r.OK, r.Text, r.Error, tc.want)
 		}

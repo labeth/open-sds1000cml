@@ -57,7 +57,7 @@ func TestTruthSENT(t *testing.T) {
 			// nibbles only (Melexis MLX90324 p.29, Microchip §3.0) — a
 			// decoder that folded status into the CRC would reject this.
 			nibs := append(append([]int{0x3}, v.data...), v.crc)
-			r := DecodeSENT(sentWave([][]int{nibs}, tick, 0, 0), 1e-6, SENTCfg{Nibbles: 8})
+			r := SENT(sentWave([][]int{nibs}, tick, 0, 0), 1e-6, SENTCfg{Nibbles: 8})
 			if !r.OK {
 				t.Fatalf("decode failed on a published-CRC frame: %s", r.Error)
 			}
@@ -76,7 +76,7 @@ func TestTruthSENT(t *testing.T) {
 			// only the recommended variant (a legacy value validating too
 			// would mean the augmentation step was silently dropped).
 			bad := append(append([]int{0x3}, v.data...), v.legacyCRC)
-			rb := DecodeSENT(sentWave([][]int{bad}, tick, 0, 0), 1e-6, SENTCfg{Nibbles: 8})
+			rb := SENT(sentWave([][]int{bad}, tick, 0, 0), 1e-6, SENTCfg{Nibbles: 8})
 			if rb.OK || countSpans(rb, "frame-error") != 1 {
 				t.Fatalf("legacy-CRC frame not rejected: ok=%v errors=%d", rb.OK, countSpans(rb, "frame-error"))
 			}
@@ -90,7 +90,7 @@ func TestTruthSENT(t *testing.T) {
 		// CRC and the 12+value tick encoding against vendor tooling.
 		nibs := []int{0x0, 0xF, 0x5, 0xA, 0x2, 0x8, 0x0, 0x9}
 		w := sentWave([][]int{nibs}, tick, 90, 0)
-		r := DecodeSENT(w, 1e-6, SENTCfg{Nibbles: 8, PausePulse: true})
+		r := SENT(w, 1e-6, SENTCfg{Nibbles: 8, PausePulse: true})
 		if !r.OK {
 			t.Fatalf("decode failed: %s", r.Error)
 		}
@@ -115,7 +115,7 @@ func TestTruthSENT(t *testing.T) {
 		}
 		for _, p := range prefixes {
 			nibs := append(append([]int{0x1}, p.data...), p.crc)
-			r := DecodeSENT(sentWave([][]int{nibs}, tick, 0, 0), 1e-6, SENTCfg{Nibbles: len(nibs)})
+			r := SENT(sentWave([][]int{nibs}, tick, 0, 0), 1e-6, SENTCfg{Nibbles: len(nibs)})
 			if !r.OK || countSpans(r, "frame-error") != 0 {
 				t.Fatalf("prefix %X (crc %X): ok=%v errors=%d err=%s", p.data, p.crc, r.OK, countSpans(r, "frame-error"), r.Error)
 			}
@@ -137,7 +137,7 @@ func TestTruthMIL1553(t *testing.T) {
 	cmd := []bool{true, true, true} // status words share the command sync (¶4.3.3.5.2.1)
 
 	w := mil1553Wave(words, cmd, parity, spb)
-	r := DecodeMIL1553(w, colTimeS, MIL1553Cfg{Bitrate: 1_000_000})
+	r := MIL1553(w, colTimeS, MIL1553Cfg{Bitrate: 1_000_000})
 	if !r.OK {
 		t.Fatalf("decode failed on published words: %s", r.Error)
 	}
@@ -159,14 +159,14 @@ func TestTruthMIL1553(t *testing.T) {
 
 	// One flipped parity bit -> exactly one flagged word, the others clean.
 	bad := []int{0, 1, 1} // word 1's parity now EVEN-summed: must flag
-	rb := DecodeMIL1553(mil1553Wave(words, cmd, bad, spb), colTimeS, MIL1553Cfg{Bitrate: 1_000_000})
+	rb := MIL1553(mil1553Wave(words, cmd, bad, spb), colTimeS, MIL1553Cfg{Bitrate: 1_000_000})
 	if n := countSpans(rb, "frame-error"); n != 1 {
 		t.Fatalf("flipped parity: %d frame-errors, want exactly 1", n)
 	}
 
 	// A data word carries the INVERSE sync (¶4.3.3.5.1.1): re-encode 0x0890
 	// as a data word and require a dsync span.
-	rd := DecodeMIL1553(mil1553Wave([]int{0x0890}, []bool{false}, []int{0}, spb), colTimeS, MIL1553Cfg{Bitrate: 1_000_000})
+	rd := MIL1553(mil1553Wave([]int{0x0890}, []bool{false}, []int{0}, spb), colTimeS, MIL1553Cfg{Bitrate: 1_000_000})
 	if !rd.OK || len(rd.Spans) == 0 || rd.Spans[0].Text != "dsync" {
 		t.Fatalf("data-sync word: ok=%v first span %+v, want dsync", rd.OK, rd.Spans)
 	}
@@ -191,7 +191,7 @@ func TestTruthARINC429(t *testing.T) {
 		arincIdle(&w, spb*6)
 		arincAppendWord(&w, wire(word), spb)
 		arincIdle(&w, spb*6)
-		return DecodeARINC429(w, colTimeS, ARINC429Cfg{Bitrate: 100000})
+		return ARINC429(w, colTimeS, ARINC429Cfg{Bitrate: 100000})
 	}
 	field := func(r Result, kind string) string {
 		for _, sp := range r.Spans {
@@ -271,11 +271,11 @@ func TestTruthManchester(t *testing.T) {
 	// convention, and MIL-STD-1553's ¶4.3.3.2 mapping) the SAME waveform
 	// reads as the bitwise complement, 0x3A.
 	w := manchesterWave(mBits([]int{0xC5}, true, 8), true, spb)
-	r := DecodeManchester(w, colTimeS, ManchesterCfg{Bitrate: bitrate, IEEE: true, MSB: true})
+	r := Manchester(w, colTimeS, ManchesterCfg{Bitrate: bitrate, IEEE: true, MSB: true})
 	if !r.OK || len(r.Bytes) != 1 || r.Bytes[0] != 0xC5 {
 		t.Fatalf("IEEE decode: ok=%v bytes=%X, want [C5]", r.OK, r.Bytes)
 	}
-	rt := DecodeManchester(w, colTimeS, ManchesterCfg{Bitrate: bitrate, IEEE: false, MSB: true})
+	rt := Manchester(w, colTimeS, ManchesterCfg{Bitrate: bitrate, IEEE: false, MSB: true})
 	if !rt.OK || len(rt.Bytes) != 1 || rt.Bytes[0] != 0x3A {
 		t.Fatalf("Thomas decode of the IEEE wave: ok=%v bytes=%X, want [3A]", rt.OK, rt.Bytes)
 	}

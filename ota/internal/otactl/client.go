@@ -17,14 +17,14 @@ import (
 // transfer, app/agent OTA) that are multi-step over the raw RPC.
 // TRLC-LINKS: REQ-SDS-109, REQ-SDS-110
 type Client struct {
-	T Transport
+	Transport Transport
 }
 
 // Call runs one RPC and turns a device-side failure into an error, keeping
 // any data the device sent with it.
 // TRLC-LINKS: REQ-SDS-109
 func (c *Client) Call(cmd string, args any, timeout time.Duration) (json.RawMessage, error) {
-	resp, err := c.T.Call(cmd, args, timeout)
+	resp, err := c.Transport.Call(cmd, args, timeout)
 	if err != nil {
 		return nil, err
 	}

@@ -195,14 +195,14 @@ func TestPlanVdiv(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-015
 func TestZoomAndAnalogVdiv(t *testing.T) {
 	// 2 mV and 5 mV run the 10 mV analog range with display zoom.
-	if AnalogVdiv(0) != 0.010 || Detents[0].Zoom != 5 {
-		t.Fatalf("2mV: analog=%v zoom=%d", AnalogVdiv(0), Detents[0].Zoom)
+	if Vdiv(0) != 0.010 || Detents[0].Zoom != 5 {
+		t.Fatalf("2mV: analog=%v zoom=%d", Vdiv(0), Detents[0].Zoom)
 	}
-	if AnalogVdiv(1) != 0.010 || Detents[1].Zoom != 2 {
-		t.Fatalf("5mV: analog=%v zoom=%d", AnalogVdiv(1), Detents[1].Zoom)
+	if Vdiv(1) != 0.010 || Detents[1].Zoom != 2 {
+		t.Fatalf("5mV: analog=%v zoom=%d", Vdiv(1), Detents[1].Zoom)
 	}
-	if AnalogVdiv(8) != 1.0 {
-		t.Fatalf("1V: analog=%v", AnalogVdiv(8))
+	if Vdiv(8) != 1.0 {
+		t.Fatalf("1V: analog=%v", Vdiv(8))
 	}
 }
 

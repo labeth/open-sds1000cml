@@ -190,7 +190,7 @@ func (h *Handler) crva(ch int, arg string) []byte {
 	if h.fe != nil {
 		idx, _ := h.fe.Snapshot()
 		i := idx[ch&1]
-		vdiv = analog.AnalogVdiv(i)
+		vdiv = analog.Vdiv(i)
 		if i >= 0 && i < len(analog.Detents) {
 			dispVdiv = analog.Detents[i].VdivV
 		}

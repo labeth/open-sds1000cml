@@ -196,7 +196,7 @@ func (e *Engine) checkIdentity() error {
 	if err != nil {
 		return err
 	}
-	fab, err := rd(iface.SelFabricId)
+	fab, err := rd(iface.SelFabricID)
 	if err != nil {
 		return err
 	}

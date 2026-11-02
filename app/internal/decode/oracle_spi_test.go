@@ -106,7 +106,7 @@ func TestOracleSPI(t *testing.T) {
 		// sit on byte boundaries so both framing contracts agree (see header).
 		payload := []int{0x00, 0xFF, 0xA5, 0x5A, 0x0F, 0xF0, 0x81, 0x7E}
 		clk, mosi := oracleSPIBits(sr, rate, false, false, true, spiOWords(2, payload...))
-		r := DecodeSPI(bitsToCodes(clk), bitsToCodes(mosi), 1.0/sr, SPICfg{MSB: true})
+		r := SPI(bitsToCodes(clk), bitsToCodes(mosi), 1.0/sr, SPICfg{MSB: true})
 		if !r.OK {
 			t.Fatalf("repo decode failed: %s", r.Error)
 		}
@@ -126,7 +126,7 @@ func TestOracleSPI(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			payload := []int{0xA5, 0x3C, 0x80, 0x01, 0xFF, 0x00, 0x69}
 			clk, mosi := oracleSPIBits(sr, rate, m.cpol, m.cpha, true, spiOWords(0, payload...))
-			r := DecodeSPI(bitsToCodes(clk), bitsToCodes(mosi), 1.0/sr,
+			r := SPI(bitsToCodes(clk), bitsToCodes(mosi), 1.0/sr,
 				SPICfg{CPOL: m.cpol, CPHA: m.cpha, MSB: true})
 			if !r.OK {
 				t.Fatalf("repo decode failed: %s", r.Error)
@@ -143,7 +143,7 @@ func TestOracleSPI(t *testing.T) {
 		// cancel out; mode 0.
 		payload := []int{0x01, 0x80, 0xA5, 0x13, 0xFE}
 		clk, mosi := oracleSPIBits(sr, rate, false, false, false, spiOWords(2, payload...))
-		r := DecodeSPI(bitsToCodes(clk), bitsToCodes(mosi), 1.0/sr, SPICfg{MSB: false})
+		r := SPI(bitsToCodes(clk), bitsToCodes(mosi), 1.0/sr, SPICfg{MSB: false})
 		if !r.OK {
 			t.Fatalf("repo decode failed: %s", r.Error)
 		}
@@ -157,7 +157,7 @@ func TestOracleSPI(t *testing.T) {
 		// sigrok's edge-driven decode on the identical jittery wave.
 		payload := []int{0x13, 0x37, 0xC0, 0xDE, 0xA5}
 		clk, mosi := oracleSPIBits(sr, 72_900, false, false, true, spiOWords(2, payload...))
-		r := DecodeSPI(bitsToCodes(clk), bitsToCodes(mosi), 1.0/sr, SPICfg{MSB: true})
+		r := SPI(bitsToCodes(clk), bitsToCodes(mosi), 1.0/sr, SPICfg{MSB: true})
 		if !r.OK {
 			t.Fatalf("repo decode failed: %s", r.Error)
 		}
@@ -179,7 +179,7 @@ func TestOracleSPI(t *testing.T) {
 			{v: 0x55},
 		}
 		clk, mosi := oracleSPIBits(sr, rate, false, false, true, words)
-		r := DecodeSPI(bitsToCodes(clk), bitsToCodes(mosi), 1.0/sr, SPICfg{MSB: true})
+		r := SPI(bitsToCodes(clk), bitsToCodes(mosi), 1.0/sr, SPICfg{MSB: true})
 		if !r.OK {
 			t.Fatalf("repo decode failed: %s", r.Error)
 		}
@@ -198,7 +198,7 @@ func TestOracleSPI(t *testing.T) {
 		// any spurious gap-reset in the repo would drop or shift bytes.
 		payload := []int{0xDE, 0xAD, 0xBE, 0xEF, 0x55, 0xAA, 0x00, 0xFF}
 		clk, mosi := oracleSPIBits(sr, rate, false, false, true, spiOWords(0, payload...))
-		r := DecodeSPI(bitsToCodes(clk), bitsToCodes(mosi), 1.0/sr, SPICfg{MSB: true})
+		r := SPI(bitsToCodes(clk), bitsToCodes(mosi), 1.0/sr, SPICfg{MSB: true})
 		if !r.OK {
 			t.Fatalf("repo decode failed: %s", r.Error)
 		}
@@ -210,7 +210,7 @@ func TestOracleSPI(t *testing.T) {
 
 	// Near-threshold byte-boundary gaps: the repo's word reset fires when the
 	// sampling-edge gap exceeds 1.5x the CLUSTERED clock period (gapReset in
-	// DecodeSPI). Every existing case sits far from that boundary — gap 0 is a
+	// SPI). Every existing case sits far from that boundary — gap 0 is a
 	// 1.0x sampling-edge spacing, gap 2 is 3.0x, gap 40 is 41x — so these two
 	// straddle it. On byte boundaries a reset is a framing no-op (bitCount is
 	// already 0) and sigrok's clock counting reaches the same boundaries, so
@@ -238,7 +238,7 @@ func TestOracleSPI(t *testing.T) {
 			// mid-byte reset) shifts them into different byte values.
 			payload := []int{0xB2, 0x80, 0x01, 0x6D, 0xC3, 0x2E}
 			clk, mosi := oracleSPIBits(sr, rate, false, false, true, spiOWords(c.gapBits, payload...))
-			r := DecodeSPI(bitsToCodes(clk), bitsToCodes(mosi), 1.0/sr, SPICfg{MSB: true})
+			r := SPI(bitsToCodes(clk), bitsToCodes(mosi), 1.0/sr, SPICfg{MSB: true})
 			if !r.OK {
 				t.Fatalf("repo decode failed: %s", r.Error)
 			}
@@ -282,7 +282,7 @@ func TestOracleSPI(t *testing.T) {
 		// 1.25x-mutated decoder).
 		words := []spiOWord{{v: 0xA0, bits: 4, gapBits: 0.4}, {v: 0x50, bits: 4}, {v: 0x3C}} // bits:4 = TOP nibble of v
 		clk, mosi := oracleSPIBits(sr, rate, false, false, true, words)
-		r := DecodeSPI(bitsToCodes(clk), bitsToCodes(mosi), 1.0/sr, SPICfg{MSB: true})
+		r := SPI(bitsToCodes(clk), bitsToCodes(mosi), 1.0/sr, SPICfg{MSB: true})
 		if !r.OK {
 			t.Fatalf("repo decode failed: %s", r.Error)
 		}
@@ -301,7 +301,7 @@ func TestOracleSPI(t *testing.T) {
 		// future drift in either contract is caught.
 		words := []spiOWord{{v: 0xF0, bits: 4, gapBits: 40}, {v: 0xA5}, {v: 0x3C}}
 		clk, mosi := oracleSPIBits(sr, rate, false, false, true, words)
-		r := DecodeSPI(bitsToCodes(clk), bitsToCodes(mosi), 1.0/sr, SPICfg{MSB: true})
+		r := SPI(bitsToCodes(clk), bitsToCodes(mosi), 1.0/sr, SPICfg{MSB: true})
 		if !r.OK {
 			t.Fatalf("repo decode failed: %s", r.Error)
 		}

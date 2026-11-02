@@ -250,7 +250,7 @@ func TestOracleFlexRay(t *testing.T) {
 	}
 	decode := func(t *testing.T, bits []byte) Result {
 		t.Helper()
-		r := DecodeFlexRay(bitsToCodes(bits), colTime, FlexRayCfg{Bitrate: br})
+		r := FlexRay(bitsToCodes(bits), colTime, FlexRayCfg{Bitrate: br})
 		if r.Error != "" && !r.OK {
 			t.Logf("repo decode error: %s", r.Error)
 		}
@@ -631,7 +631,7 @@ func TestOracleFlexRay(t *testing.T) {
 			t.Helper()
 			return sigrokDecode(t, srF, []string{"CH"}, [][]byte{bits}, pdSpec, "flexray="+class)
 		}
-		r := DecodeFlexRay(bitsToCodes(bits), 1.0/float64(srF), FlexRayCfg{Bitrate: br})
+		r := FlexRay(bitsToCodes(bits), 1.0/float64(srF), FlexRayCfg{Bitrate: br})
 		if !r.OK {
 			t.Fatalf("repo decode failed: %s", r.Error)
 		}
@@ -703,7 +703,7 @@ func TestOracleFlexRay(t *testing.T) {
 		// vectors existed (resync corrections were all zero-magnitude, and a
 		// collapsed 18.0 estimate still decoded short frames). The inferred
 		// period must be the true 18.3, not a rounded 18.0 (~10.28 Mbit).
-		ra := DecodeFlexRay(bitsToCodes(bits), 1.0/float64(srF), FlexRayCfg{})
+		ra := FlexRay(bitsToCodes(bits), 1.0/float64(srF), FlexRayCfg{})
 		if !ra.OK {
 			t.Fatalf("repo AUTO decode failed: %s", ra.Error)
 		}

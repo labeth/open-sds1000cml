@@ -95,7 +95,7 @@ func TestDecodeUSBLSRoundTrip(t *testing.T) {
 	wantBytes := []int{0x12, 0x00, 0x48, 0x69, 0xFF, 0x0F, 0x7E} // payload after each PID
 
 	// explicit bitrate
-	r := DecodeUSBLS(w, colTimeS, USBLSCfg{Bitrate: bitrate})
+	r := USBLS(w, colTimeS, USBLSCfg{Bitrate: bitrate})
 	if !r.OK {
 		t.Fatalf("explicit-bitrate decode failed: %s", r.Error)
 	}
@@ -107,7 +107,7 @@ func TestDecodeUSBLSRoundTrip(t *testing.T) {
 	}
 
 	// auto bitrate (infer T from the edge statistics)
-	ra := DecodeUSBLS(w, colTimeS, USBLSCfg{})
+	ra := USBLS(w, colTimeS, USBLSCfg{})
 	if !ra.OK {
 		t.Fatalf("auto-bitrate decode failed: %s", ra.Error)
 	}
@@ -196,7 +196,7 @@ func TestDecodeUSBLSNoPanic(t *testing.T) {
 						t.Fatalf("panic on cfg %+v: %v", cfg, p)
 					}
 				}()
-				r := DecodeUSBLS(in, ct, cfg)
+				r := USBLS(in, ct, cfg)
 				if !r.OK && r.Error == "" {
 					t.Fatalf("degenerate input returned neither OK nor Error")
 				}
@@ -232,7 +232,7 @@ func TestUSBObservedStuffViolationIsFrameError(t *testing.T) {
 	}
 	push(0, 2)
 	push(1, 40)
-	r := DecodeUSBLS(w, 1.0/(1500000*spb), USBLSCfg{Bitrate: 1500000})
+	r := USBLS(w, 1.0/(1500000*spb), USBLSCfg{Bitrate: 1500000})
 	if !r.OK {
 		t.Fatalf("packet header lost: %s", r.Error)
 	}

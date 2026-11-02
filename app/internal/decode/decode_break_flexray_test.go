@@ -187,7 +187,7 @@ func brFlexFixCRC(fb []int) []int {
 	return fb
 }
 
-// brFlexSafe runs DecodeFlexRay under a recover so a panic is reported as a
+// brFlexSafe runs FlexRay under a recover so a panic is reported as a
 // finding instead of crashing the whole suite.
 // TRLC-LINKS: REQ-SDS-018
 func brFlexSafe(t *testing.T, tag string, codes []uint8, ct float64, cfg FlexRayCfg) (r Result, panicked bool) {
@@ -198,7 +198,7 @@ func brFlexSafe(t *testing.T, tag string, codes []uint8, ct float64, cfg FlexRay
 			t.Errorf("PANIC [%s]: %v (n=%d ct=%g cfg=%+v)", tag, p, len(codes), ct, cfg)
 		}
 	}()
-	r = DecodeFlexRay(codes, ct, cfg)
+	r = FlexRay(codes, ct, cfg)
 	return r, panicked
 }
 
@@ -576,7 +576,7 @@ func TestBreakFlexray(t *testing.T) {
 	// ------------------------------------------------------------------
 	// INTEGRITY — the one confirmed FALSE-POSITIVE gap.
 	//
-	// DecodeFlexRay does NO CRC/parity validation: Result.OK reflects only the
+	// FlexRay does NO CRC/parity validation: Result.OK reflects only the
 	// TSS/BSS *framing*. A frame with a genuinely correct 11-bit header CRC that
 	// is then corrupted in exactly one CRC-field bit is still returned OK, with
 	// the corrupted header silently decoded. The red-team brief requires a
@@ -629,7 +629,7 @@ func TestBreakFlexray(t *testing.T) {
 			}
 		}
 		if accepted > 0 {
-			msg := fmt.Sprintf("FALSE-POSITIVE (integrity): DecodeFlexRay accepted %d/%d frames whose header CRC bit was deliberately corrupted (OK=true, no CRC/parity check). A corrupted CRC must be flagged.", accepted, trials)
+			msg := fmt.Sprintf("FALSE-POSITIVE (integrity): FlexRay accepted %d/%d frames whose header CRC bit was deliberately corrupted (OK=true, no CRC/parity check). A corrupted CRC must be flagged.", accepted, trials)
 			if reportCRCGap {
 				t.Errorf("%s", msg)
 			} else {

@@ -9,7 +9,7 @@ import (
 )
 
 // ----------------------------------------------------------------------------
-// Red-team harness for DecodeUART. Three attack classes, each >= 50 seeded
+// Red-team harness for UART. Three attack classes, each >= 50 seeded
 // iterations:
 //   1. FALSE NEGATIVES — fully valid frames that must round-trip exactly.
 //   2. FALSE POSITIVES — noise / DC / ramp / corrupted framing must not be
@@ -166,7 +166,7 @@ func TestBreakUartRingyEdges(t *testing.T) {
 		}
 		seq := buBuildSeq(want, bits, parity, 6+rng.Intn(10), bits+16, 1+rng.Intn(3))
 		w := buInjectRing(buRasterize(seq, spb, rng.Intn(int(spb))), rng, 3)
-		r := DecodeUART(w, ct, UARTCfg{Bits: bits, Parity: parity}) // AUTO baud
+		r := UART(w, ct, UARTCfg{Bits: bits, Parity: parity}) // AUTO baud
 		if !r.OK {
 			t.Errorf("ringy it=%d (spb=%.2f par=%s): auto-baud refused a clean ringing frame: %s",
 				it, spb, parity, r.Error)
@@ -188,7 +188,7 @@ func TestBreakUartRingyEdges(t *testing.T) {
 		want := []int{0x48, 0x69, 0x21, 0xF0}
 		spb := 16.0
 		w := buInjectRing(buRasterize(buBuildSeq(want, 8, "none", 8, 24, 1), spb, 3), rng, 3)
-		r := DecodeUART(w, ct, UARTCfg{Baud: int(1.0 / (spb * ct))})
+		r := UART(w, ct, UARTCfg{Baud: int(1.0 / (spb * ct))})
 		if !r.OK || !buEq(r.Bytes, want) {
 			t.Errorf("ringy explicit baud: ok=%v got=%v want=%v err=%s", r.OK, r.Bytes, want, r.Error)
 		}
@@ -210,7 +210,7 @@ func TestBreakUartRingyEdges(t *testing.T) {
 			}
 			lv = 250 - lv // 210 <-> 40
 		}
-		r := DecodeUART(w, ct, UARTCfg{})
+		r := UART(w, ct, UARTCfg{})
 		if r.OK || len(r.Bytes) != 0 {
 			t.Errorf("ambiguous 11/17 pulses: got ok=%v bytes=%v — must refuse", r.OK, r.Bytes)
 		}
@@ -259,7 +259,7 @@ func TestBreakUart(t *testing.T) {
 		if !auto {
 			cfg.Baud = baud
 		}
-		r := DecodeUART(w, ct, cfg)
+		r := UART(w, ct, cfg)
 		if !r.OK {
 			t.Errorf("FALSE-NEGATIVE: valid %s frame not decoded (bits=%d baud=%d spb=%.3f auto=%v): %s",
 				parity, bits, baud, spb, auto, r.Error)
@@ -291,7 +291,7 @@ func TestBreakUart(t *testing.T) {
 				w[i] = lvl
 			}
 			for _, cfg := range []UARTCfg{{}, {Baud: 100000}} {
-				r := DecodeUART(w, ct, cfg)
+				r := UART(w, ct, cfg)
 				if len(r.Bytes) != 0 {
 					t.Errorf("FALSE-POSITIVE: flat/DC level=%d decoded %d bytes %v", lvl, len(r.Bytes), r.Bytes)
 				}
@@ -303,7 +303,7 @@ func TestBreakUart(t *testing.T) {
 				w[i] = uint8(i * 255 / (n - 1))
 			}
 			for _, cfg := range []UARTCfg{{}, {Baud: 50000}} {
-				r := DecodeUART(w, ct, cfg)
+				r := UART(w, ct, cfg)
 				if len(r.Bytes) != 0 {
 					t.Errorf("FALSE-POSITIVE: ramp decoded %d bytes %v", len(r.Bytes), r.Bytes)
 				}
@@ -314,7 +314,7 @@ func TestBreakUart(t *testing.T) {
 			for i := range w {
 				w[i] = uint8((i % 2) * 255)
 			}
-			r := DecodeUART(w, ct, UARTCfg{}) // auto: gaps of 1 are dropped
+			r := UART(w, ct, UARTCfg{}) // auto: gaps of 1 are dropped
 			if len(r.Bytes) != 0 {
 				t.Errorf("FALSE-POSITIVE: Nyquist toggle auto-decoded %d bytes %v", len(r.Bytes), r.Bytes)
 			}
@@ -326,7 +326,7 @@ func TestBreakUart(t *testing.T) {
 			seq := buBuildSeq([]int{val}, bits, "none", 6, bits+16, 0)
 			seq[6+1+bits] = 0 // stop -> low
 			w := buRasterize(seq, spb, rng.Intn(3))
-			r := DecodeUART(w, ct, UARTCfg{Baud: baud, Bits: bits})
+			r := UART(w, ct, UARTCfg{Baud: baud, Bits: bits})
 			fe, _, _ := buCountKinds(r.Spans)
 			if len(r.Bytes) > 0 && fe == 0 {
 				t.Errorf("FALSE-POSITIVE: corrupted stop bit accepted as clean data (val=%02X baud=%d) spans=%v", val, baud, r.Spans)
@@ -340,7 +340,7 @@ func TestBreakUart(t *testing.T) {
 			seq := buBuildSeq([]int{val}, bits, parity, 6, bits+16, 0)
 			seq[6+1+bits] ^= 1 // flip the parity bit
 			w := buRasterize(seq, spb, rng.Intn(3))
-			r := DecodeUART(w, ct, UARTCfg{Baud: baud, Bits: bits, Parity: parity})
+			r := UART(w, ct, UARTCfg{Baud: baud, Bits: bits, Parity: parity})
 			_, pe, _ := buCountKinds(r.Spans)
 			if len(r.Bytes) > 0 && pe == 0 {
 				t.Errorf("FALSE-POSITIVE: corrupted %s parity accepted (val=%02X baud=%d) spans=%v", parity, val, baud, r.Spans)
@@ -355,7 +355,7 @@ func TestBreakUart(t *testing.T) {
 			fb := rng.Intn(bits)
 			seq[6+1+fb] ^= 1 // flip one data bit -> parity must now mismatch
 			w := buRasterize(seq, spb, rng.Intn(3))
-			r := DecodeUART(w, ct, UARTCfg{Baud: baud, Bits: bits, Parity: parity})
+			r := UART(w, ct, UARTCfg{Baud: baud, Bits: bits, Parity: parity})
 			_, pe, _ := buCountKinds(r.Spans)
 			if len(r.Bytes) > 0 && pe == 0 {
 				t.Errorf("FALSE-POSITIVE: single-bit data error not caught by %s parity (val=%02X baud=%d) spans=%v", parity, val, baud, r.Spans)
@@ -394,7 +394,7 @@ func TestBreakUart(t *testing.T) {
 					continue
 				}
 				trunc := full[:len(full)-cut]
-				r := DecodeUART(trunc, ct, UARTCfg{Baud: baud, Bits: bits, Parity: parity})
+				r := UART(trunc, ct, UARTCfg{Baud: baud, Bits: bits, Parity: parity})
 				fe, pe, _ := buCountKinds(r.Spans)
 				if len(r.Bytes) > 0 && fe == 0 && pe == 0 {
 					bugHits++
@@ -430,7 +430,7 @@ func TestBreakUart(t *testing.T) {
 		want := []int{0x41, 0x55, 0xF0}
 		seq := buBuildSeq(want, 8, "none", 6, 24, 1)
 		w := buRasterize(seq, spb, 0)
-		r := DecodeUART(w, ct, UARTCfg{Baud: baud})
+		r := UART(w, ct, UARTCfg{Baud: baud})
 		if !r.OK || !buEq(r.Bytes, want) {
 			t.Errorf("EDGE: boundary spb=%.3f baud=%d failed ok=%v got=%v err=%s", spb, baud, r.OK, r.Bytes, r.Error)
 		}
@@ -440,7 +440,7 @@ func TestBreakUart(t *testing.T) {
 	{
 		seq := buBuildSeq([]int{0x3C}, 8, "none", 6, 20, 0)
 		w := buRasterize(seq, 10, 0)
-		r := DecodeUART(w, ct, UARTCfg{Baud: 100000})
+		r := UART(w, ct, UARTCfg{Baud: 100000})
 		if !r.OK || !buEq(r.Bytes, []int{0x3C}) {
 			t.Errorf("EDGE: single frame ok=%v got=%v err=%s", r.OK, r.Bytes, r.Error)
 		}
@@ -454,7 +454,7 @@ func TestBreakUart(t *testing.T) {
 		}
 		seq := buBuildSeq(want, 8, "none", 6, 20, 0) // gap=0
 		w := buRasterize(seq, 8.681, 2)              // fractional spb, resync each start
-		r := DecodeUART(w, ct, UARTCfg{Baud: 115200})
+		r := UART(w, ct, UARTCfg{Baud: 115200})
 		if !r.OK || !buEq(r.Bytes, want) {
 			t.Errorf("EDGE: back-to-back 40 bytes ok=%v got %d bytes (want %d)", r.OK, len(r.Bytes), len(want))
 		}
@@ -466,7 +466,7 @@ func TestBreakUart(t *testing.T) {
 		want := []int{fill, fill, fill, fill}
 		seq := buBuildSeq(want, 8, "none", 6, 24, 1)
 		w := buRasterize(seq, 12, 0)
-		r := DecodeUART(w, ct, UARTCfg{Baud: int(math.Round(1.0 / (12 * ct)))})
+		r := UART(w, ct, UARTCfg{Baud: int(math.Round(1.0 / (12 * ct)))})
 		if !r.OK || !buEq(r.Bytes, want) {
 			t.Errorf("EDGE: all-0x%02X payload ok=%v got=%v err=%s", fill, r.OK, r.Bytes, r.Error)
 		}
@@ -480,7 +480,7 @@ func TestBreakUart(t *testing.T) {
 		}
 		seq := buBuildSeq(want, bits, "none", 6, bits+20, 1)
 		w := buRasterize(seq, 12, 0)
-		r := DecodeUART(w, ct, UARTCfg{Baud: int(math.Round(1.0 / (12 * ct))), Bits: bits})
+		r := UART(w, ct, UARTCfg{Baud: int(math.Round(1.0 / (12 * ct))), Bits: bits})
 		if !r.OK || !buEq(r.Bytes, want) {
 			t.Errorf("EDGE: bits=%d ok=%v want=%v got=%v err=%s", bits, r.OK, want, r.Bytes, r.Error)
 		}
@@ -489,13 +489,13 @@ func TestBreakUart(t *testing.T) {
 	// Shortest and longest records.
 	{
 		short := buRasterize(buBuildSeq([]int{0x5A}, 8, "none", 4, 4, 0), 4, 0)
-		noPanic("short-record", func() { DecodeUART(short, ct, UARTCfg{Baud: 250000}) })
+		noPanic("short-record", func() { UART(short, ct, UARTCfg{Baud: 250000}) })
 		long := make([]int, 400)
 		for i := range long {
 			long[i] = rng.Intn(256)
 		}
 		lw := buRasterize(buBuildSeq(long, 8, "none", 6, 24, 0), 10, 0)
-		r := DecodeUART(lw, ct, UARTCfg{Baud: 100000})
+		r := UART(lw, ct, UARTCfg{Baud: 100000})
 		if !r.OK || !buEq(r.Bytes, long) {
 			t.Errorf("EDGE: long 400-byte record ok=%v got %d bytes", r.OK, len(r.Bytes))
 		}
@@ -508,35 +508,35 @@ func TestBreakUart(t *testing.T) {
 			w[i] = uint8(rng.Intn(256))
 		}
 		noPanic("tiny-auto", func() {
-			r := DecodeUART(w, ct, UARTCfg{})
+			r := UART(w, ct, UARTCfg{})
 			if len(r.Bytes) != 0 {
 				t.Errorf("EDGE: %d-sample input decoded %d bytes", n, len(r.Bytes))
 			}
 		})
-		noPanic("tiny-explicit", func() { DecodeUART(w, ct, UARTCfg{Baud: 100000}) })
+		noPanic("tiny-explicit", func() { UART(w, ct, UARTCfg{Baud: 100000}) })
 	}
 
 	// Huge / negative / zero colTimeS and baud, out-of-range bits: no panic.
 	base := buRasterize(buBuildSeq([]int{0x55, 0xAA, 0x0F}, 8, "none", 6, 24, 0), 10, 0)
 	for _, cts := range []float64{0, -1e-6, 1e-30, 1e30} {
-		noPanic("ct-explicit", func() { DecodeUART(base, cts, UARTCfg{Baud: 100000}) })
-		noPanic("ct-auto", func() { DecodeUART(base, cts, UARTCfg{}) })
+		noPanic("ct-explicit", func() { UART(base, cts, UARTCfg{Baud: 100000}) })
+		noPanic("ct-auto", func() { UART(base, cts, UARTCfg{}) })
 	}
 	for _, b := range []int{0, -9600, 1, 115200, 1 << 30} {
-		noPanic("baud", func() { DecodeUART(base, ct, UARTCfg{Baud: b}) })
+		noPanic("baud", func() { UART(base, ct, UARTCfg{Baud: b}) })
 	}
 	// Bits==0 is the "unset -> default 8" sentinel (decode_uart.go), so it must
 	// decode base as an 8-bit stream; genuinely out-of-range widths (<1 after the
 	// default, or >16) must be rejected and never produce bytes.
 	{
-		r0 := DecodeUART(base, ct, UARTCfg{Bits: 0})
+		r0 := UART(base, ct, UARTCfg{Bits: 0})
 		if !r0.OK || !buEq(r0.Bytes, []int{0x55, 0xAA, 0x0F}) {
 			t.Errorf("EDGE: bits=0 (default 8) failed ok=%v got=%v err=%s", r0.OK, r0.Bytes, r0.Error)
 		}
 	}
 	for _, bits := range []int{-1, 17, 64, 1 << 20} {
 		noPanic("bits", func() {
-			r := DecodeUART(base, ct, UARTCfg{Bits: bits})
+			r := UART(base, ct, UARTCfg{Bits: bits})
 			// bits outside 1..16 must be rejected, never decoded.
 			if r.OK && len(r.Bytes) > 0 {
 				t.Errorf("EDGE: out-of-range bits=%d produced bytes %v", bits, r.Bytes)
@@ -544,6 +544,6 @@ func TestBreakUart(t *testing.T) {
 		})
 	}
 	for _, p := range []string{"none", "even", "odd", "x", ""} {
-		noPanic("parity", func() { DecodeUART(base, ct, UARTCfg{Parity: p}) })
+		noPanic("parity", func() { UART(base, ct, UARTCfg{Parity: p}) })
 	}
 }

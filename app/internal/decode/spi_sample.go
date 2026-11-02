@@ -70,7 +70,7 @@ func SampleSPIGap(rateHz float64) int {
 // measured with the two probes on one node (their paths included).
 const ChannelPhase16 = 23
 
-// SPIDataLag is DecodeSPI's DataLag for a clock on clockCh (0 C1, 1 C2) in
+// SPIDataLag is SPI's DataLag for a clock on clockCh (0 C1, 1 C2) in
 // samples of sampleS: the data line's samples sit that far before the clock
 // line's.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-229

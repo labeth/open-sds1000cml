@@ -37,15 +37,15 @@ func TestLineCodesDecodeAtThreeSamplesABit(t *testing.T) {
 			frames, all = append(frames, b), append(all, b...)
 		}
 		fw := flexrayWave(frames, 50, 8) // 100 ns bits at 2 ns
-		if r := DecodeFlexRay(boxDown(fw, 16, rng), 32e-9, FlexRayCfg{}); !r.OK || fmt.Sprint(r.Bytes) != fmt.Sprint(all) {
+		if r := FlexRay(boxDown(fw, 16, rng), 32e-9, FlexRayCfg{}); !r.OK || fmt.Sprint(r.Bytes) != fmt.Sprint(all) {
 			t.Fatalf("seed %d: FlexRay at 3.1 samples a bit: %v %q", seed, r.Bytes, r.Error)
 		}
-		if r := DecodeFlexRay(boxDown(fw, 20, rng), 40e-9, FlexRayCfg{Bitrate: 10000000}); r.OK {
+		if r := FlexRay(boxDown(fw, 20, rng), 40e-9, FlexRayCfg{Bitrate: 10000000}); r.OK {
 			t.Fatalf("seed %d: FlexRay at 2.5 samples a bit decoded", seed)
 		}
 		words := []int{rng.Intn(65536), rng.Intn(65536), rng.Intn(65536)}
 		mw := mil1553Wave(words, []bool{true, false, false}, []int{mil1553OddParity(words[0]), mil1553OddParity(words[1]), mil1553OddParity(words[2])}, 500)
-		r := DecodeMIL1553(boxDown(mw, 160, rng), 320e-9, MIL1553Cfg{Bitrate: 1000000})
+		r := MIL1553(boxDown(mw, 160, rng), 320e-9, MIL1553Cfg{Bitrate: 1000000})
 		var got []int
 		for _, s := range r.Spans {
 			if s.Kind == "data" {
@@ -57,7 +57,7 @@ func TestLineCodesDecodeAtThreeSamplesABit(t *testing.T) {
 		}
 		bytes := []int{rng.Intn(256), rng.Intn(256), rng.Intn(256), rng.Intn(256)}
 		cfg := ManchesterCfg{Bitrate: 1000000, IEEE: true, MSB: true, Bits: 8}
-		if r := DecodeManchester(boxDown(manchesterWave(mBits(bytes, true, 8), true, 500), 160, rng), 320e-9, cfg); !r.OK || fmt.Sprint(r.Bytes) != fmt.Sprint(bytes) {
+		if r := Manchester(boxDown(manchesterWave(mBits(bytes, true, 8), true, 500), 160, rng), 320e-9, cfg); !r.OK || fmt.Sprint(r.Bytes) != fmt.Sprint(bytes) {
 			t.Fatalf("seed %d: Manchester at 3.1 samples a bit: %v want %v %q", seed, r.Bytes, bytes, r.Error)
 		}
 	}

@@ -722,7 +722,7 @@ func Autodetect(c1, c2 []uint8, colTimeS float64, format string) Result { //noli
 	if !locked { //nolint:nestif // Autodetect's stages run in order on its shared state and closures
 		for _, k := range active {
 			if !isClocky(k) {
-				ru := DecodeUART(chans[k], colTimeS, UARTCfg{Bits: 8, Parity: parityNone, Format: format})
+				ru := UART(chans[k], colTimeS, UARTCfg{Bits: 8, Parity: parityNone, Format: format})
 				if ru.OK {
 					uartBaud[k] = float64(ru.Baud)
 				}
@@ -738,7 +738,7 @@ func Autodetect(c1, c2 []uint8, colTimeS float64, format string) Result { //noli
 		if u1 < u0 {
 			k = 1
 		}
-		if ru := DecodeUART(chans[k], colTimeS, UARTCfg{Bits: 8, Parity: parityNone, Format: format}); ru.OK && len(ru.Bytes) >= 8 &&
+		if ru := UART(chans[k], colTimeS, UARTCfg{Bits: 8, Parity: parityNone, Format: format}); ru.OK && len(ru.Bytes) >= 8 &&
 			nearStandardBaud(float64(ru.Baud), 0.03) && ru.count(kindFrameError)[0] == 0 {
 			uartBaud[k] = float64(ru.Baud)
 			consider(ru, chName(k), line(k))
@@ -750,7 +750,7 @@ func Autodetect(c1, c2 []uint8, colTimeS float64, format string) Result { //noli
 	if !locked {
 		for _, k := range active {
 			if !isClocky(k) {
-				consider(DecodeManchester(chans[k], colTimeS, ManchesterCfg{IEEE: true, MSB: true, Format: format}), chName(k), line(k))
+				consider(Manchester(chans[k], colTimeS, ManchesterCfg{IEEE: true, MSB: true, Format: format}), chName(k), line(k))
 			}
 		}
 	}
@@ -758,12 +758,12 @@ func Autodetect(c1, c2 []uint8, colTimeS float64, format string) Result { //noli
 	// word parity, PID complement, strict framing), so their scoring gates make
 	// false claims on foreign signals cosmically unlikely — try every channel.
 	for _, k := range active {
-		consider(sentOnLine(DecodeSENT(chans[k], colTimeS, SENTCfg{}), &clk[k].s), chName(k), line(k))
-		consider(DecodeCANFD(chans[k], colTimeS, CANFDCfg{DominantLow: true}), chName(k), line(k))
-		consider(DecodeMIL1553(chans[k], colTimeS, MIL1553Cfg{}), chName(k), line(k))
-		consider(DecodeARINC429(chans[k], colTimeS, ARINC429Cfg{}), chName(k), line(k))
-		consider(DecodeUSBLS(chans[k], colTimeS, USBLSCfg{}), chName(k), line(k))
-		consider(DecodeFlexRay(chans[k], colTimeS, FlexRayCfg{}), chName(k), line(k))
+		consider(sentOnLine(SENT(chans[k], colTimeS, SENTCfg{}), &clk[k].s), chName(k), line(k))
+		consider(CANFD(chans[k], colTimeS, CANFDCfg{DominantLow: true}), chName(k), line(k))
+		consider(MIL1553(chans[k], colTimeS, MIL1553Cfg{}), chName(k), line(k))
+		consider(ARINC429(chans[k], colTimeS, ARINC429Cfg{}), chName(k), line(k))
+		consider(USBLS(chans[k], colTimeS, USBLSCfg{}), chName(k), line(k))
+		consider(FlexRay(chans[k], colTimeS, FlexRayCfg{}), chName(k), line(k))
 		// LIN through S/PDIF, each by its own check (decode_autodetect_proto.go)
 		considerLines(chans[k], &clk[k].s, colTimeS, format, uartBaud[k], func(r Result) {
 			// the line that clocks the other is a clock, its duty moved
@@ -836,7 +836,7 @@ func Autodetect(c1, c2 []uint8, colTimeS float64, format string) Result { //noli
 	if len(active) >= 2 && !freeClock { //nolint:nestif // Autodetect's stages run in order on its shared state and closures
 		var i2cRead [2]Result                          // each line read as SCL
 		for _, ord := range [][2]int{{0, 1}, {1, 0}} { // I2C: scoring resolves SCL/SDA order
-			r := DecodeI2C(chans[ord[0]], chans[ord[1]], colTimeS, I2CCfg{Format: format, Deglitch: true})
+			r := I2C(chans[ord[0]], chans[ord[1]], colTimeS, I2CCfg{Format: format, Deglitch: true})
 			i2cRead[ord[0]] = r
 			if r.SPB > 0 && r.SPB*colTimeS < i2cMinClockS {
 				continue
@@ -885,7 +885,7 @@ func Autodetect(c1, c2 []uint8, colTimeS float64, format string) Result { //noli
 			// ACK read as a NAK), never SPI - which reads bytes off any pair
 			if i2cAckedTransfers(i2cRead[ci]) >= 2 {
 				// SPI's bytes still weigh against a lone SWD transfer
-				if r := DecodeSPI(chans[ci], chans[di], colTimeS, SPICfg{MSB: true, Format: format}); r.OK {
+				if r := SPI(chans[ci], chans[di], colTimeS, SPICfg{MSB: true, Format: format}); r.OK {
 					spiBytes = max(spiBytes, len(r.Bytes))
 				}
 				return settle()
@@ -909,7 +909,7 @@ func Autodetect(c1, c2 []uint8, colTimeS float64, format string) Result { //noli
 					if cpha {
 						mode |= 1
 					}
-					consider(DecodeSPI(chans[ci], chans[di], colTimeS,
+					consider(SPI(chans[ci], chans[di], colTimeS,
 						SPICfg{CPOL: cpol == 1, CPHA: cpha, MSB: msb, Format: format}),
 						fmt.Sprintf("CLK %s DATA %s mode %d %s", chName(ci), chName(di), mode, order),
 						Roles{ChA: ci, ChB: di, CPOL: cpol == 1, CPHA: cpha, MSB: msb})

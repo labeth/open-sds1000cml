@@ -64,14 +64,14 @@ func sentClampNib(v int) int {
 	return v
 }
 
-// DecodeSENT decodes a SENT (SAE J2716) signal from one channel's sampled codes.
+// SENT decodes a SENT (SAE J2716) signal from one channel's sampled codes.
 // It slices to logic, treats every falling edge as a pulse-period boundary, finds
 // the 56-tick SYNC (or uses cfg.TickNs), then reads each following pulse as a
 // nibble value = round(width/tick) - 12. Emits a "sync" span, one "data" span per
 // nibble, a "crc" span for the last nibble of the frame, and (when cfg.PausePulse)
 // a "pause" span for the trailing pause pulse. Robust to jitter and hostile input.
 // TRLC-LINKS: REQ-SDS-018
-func DecodeSENT(codes []uint8, colTimeS float64, cfg SENTCfg) Result { //nolint:gocyclo // a protocol state machine kept step for step with its decode_*.js twin (parity tests)
+func SENT(codes []uint8, colTimeS float64, cfg SENTCfg) Result { //nolint:gocyclo // a protocol state machine kept step for step with its decode_*.js twin (parity tests)
 	nib := cfg.Nibbles
 	if nib <= 0 {
 		nib = 8 // status + 6 data + CRC (the typical fast-channel frame)

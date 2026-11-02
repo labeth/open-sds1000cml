@@ -10,7 +10,7 @@ import (
 	"testing"
 )
 
-// decode_break_canfd_test.go — adversarial red-team suite for DecodeCANFD.
+// decode_break_canfd_test.go — adversarial red-team suite for CANFD.
 //
 // It reuses the waveform synthesizer already in decode_canfd_test.go
 // (canStdFrame / canExtFrame / canFDStdFrame / canRender / canBitsMSB /
@@ -170,7 +170,7 @@ func safeDecodeCAN(t *testing.T, tag string, codes []uint8, ct float64, cfg CANF
 			t.Errorf("PANIC [%s]: %v (n=%d ct=%g cfg=%+v)", tag, rec, len(codes), ct, cfg)
 		}
 	}()
-	return DecodeCANFD(codes, ct, cfg)
+	return CANFD(codes, ct, cfg)
 }
 
 // exactBaudCfg returns a cfg+ct pair that makes the decoder's samples/bit equal
@@ -675,7 +675,7 @@ func TestCANRecordOpeningInsideAFrame(t *testing.T) {
 	ct, cfg := exactBaudCfg(spb, true)
 	good := map[string]bool{"55 AA 0F F0": true, "11 22": true, "": false}
 	for cut := 0; cut < len(wire)*spb/2; cut += 3 {
-		r := DecodeCANFD(full[cut:], ct, cfg)
+		r := CANFD(full[cut:], ct, cfg)
 		if !r.OK {
 			continue
 		}
@@ -712,7 +712,7 @@ func TestCANBitRateSnapsToStandard(t *testing.T) {
 	for _, c := range []struct{ wire, want float64 }{{506000, 500000}, {494000, 500000}, {126500, 125000}, {300000, 300000}} {
 		const spb = 8
 		codes := canRender(w, spb, true, 12, 12)
-		r := DecodeCANFD(codes, 1/(spb*c.wire), CANFDCfg{DominantLow: true})
+		r := CANFD(codes, 1/(spb*c.wire), CANFDCfg{DominantLow: true})
 		if !r.OK || fmtInts(r.Bytes) != fmtInts(data) {
 			t.Fatalf("%.0f bit/s: ok=%v bytes=%v err=%q", c.wire, r.OK, r.Bytes, r.Error)
 		}

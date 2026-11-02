@@ -22,7 +22,7 @@ type MIL1553Cfg struct {
 	HaveThr   bool
 }
 
-// DecodeMIL1553 decodes MIL-STD-1553B on one channel's codes. 1553 is a
+// MIL1553 decodes MIL-STD-1553B on one channel's codes. 1553 is a
 // 1 Mbit/s bi-phase (Manchester II) bus; the DATA bits reuse recoverManchester
 // from decode_manchester.go. A 20-bit-time WORD = a 3-bit-time SYNC + 16 data
 // bits (MSB first) + 1 odd-parity bit. The SYNC is a Manchester CODING
@@ -33,7 +33,7 @@ type MIL1553Cfg struct {
 //
 // Kept algorithm-faithful to decode_mil1553.js so LCD and web agree byte-for-byte.
 // TRLC-LINKS: REQ-SDS-018
-func DecodeMIL1553(codes []uint8, colTimeS float64, cfg MIL1553Cfg) Result {
+func MIL1553(codes []uint8, colTimeS float64, cfg MIL1553Cfg) Result {
 	if cfg.Inverted {
 		codes = invertLogic(codes)
 		if cfg.HaveThr {

@@ -28,7 +28,7 @@ func TestUARTSyncInIsNotAnError(t *testing.T) {
 		bit(1)
 	}
 	for _, cut := range []int{13, 37, 61, 88} {
-		r := DecodeUART(line[cut:], 1.0/(115200*spb), UARTCfg{Baud: 115200, Format: "hex", Threshold: 120, HaveThr: true})
+		r := UART(line[cut:], 1.0/(115200*spb), UARTCfg{Baud: 115200, Format: "hex", Threshold: 120, HaveThr: true})
 		if !r.OK || strings.Contains(r.Text, "!") {
 			t.Fatalf("cut %d: %q", cut, r.Text)
 		}
@@ -37,7 +37,7 @@ func TestUARTSyncInIsNotAnError(t *testing.T) {
 		}
 	}
 	// A line that never frames keeps its errors.
-	r := DecodeUART(line, 1.0/(57600*spb), UARTCfg{Baud: 115200, Format: "hex", Threshold: 120, HaveThr: true})
+	r := UART(line, 1.0/(57600*spb), UARTCfg{Baud: 115200, Format: "hex", Threshold: 120, HaveThr: true})
 	if !strings.Contains(r.Text, "!") {
 		t.Fatalf("wrong baud decoded clean: %q", r.Text)
 	}
@@ -69,7 +69,7 @@ func TestUARTSyncInKeepsBreakAfterIdleStart(t *testing.T) {
 	emit(0x42)
 	emit(0x43)
 	level(1, 8)
-	r := DecodeUART(line, 1.0/(115200*spb), UARTCfg{Baud: 115200, Format: "hex", Threshold: 120, HaveThr: true})
+	r := UART(line, 1.0/(115200*spb), UARTCfg{Baud: 115200, Format: "hex", Threshold: 120, HaveThr: true})
 	if r.Text != "41 !00 42 43" {
 		t.Fatalf("break stream: %q, want 41 !00 42 43", r.Text)
 	}
@@ -113,7 +113,7 @@ func TestUARTSyncInBenchLine(t *testing.T) {
 	bad := 0
 	for cut := range period {
 		rec := line[cut : cut+2*period]
-		r := DecodeUART(rec, ct, UARTCfg{Baud: 115200, Format: "hex", Threshold: 120, HaveThr: true})
+		r := UART(rec, ct, UARTCfg{Baud: 115200, Format: "hex", Threshold: 120, HaveThr: true})
 		if !r.OK || strings.Contains(r.Text, "!") || len(r.Bytes) < len(msg) {
 			bad++
 			if bad <= 5 {
@@ -152,7 +152,7 @@ func TestUARTSyncInKeepsAParityErrorAfterIdle(t *testing.T) {
 		fs := frames(0x11, 0x22, 0x33, 0x44, 0x55, 0x66)
 		fs[bad].flipParity = true
 		bits := oracleUARTBits(sr, baud, 8, "even", fs)
-		r := DecodeUART(bitsToCodes(bits), 1.0/sr, UARTCfg{Baud: baud, Parity: "even"})
+		r := UART(bitsToCodes(bits), 1.0/sr, UARTCfg{Baud: baud, Parity: "even"})
 		want := []string{"!11 22 33 44 55 66", "11 !22 33 44 55 66"}[bad]
 		if r.Text != want {
 			t.Fatalf("parity error on frame %d: %q, want %q", bad, r.Text, want)

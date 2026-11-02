@@ -41,7 +41,7 @@ func TestOracleLIN(t *testing.T) {
 	w.idle(40 * bit)
 	linFrame(w, 19200, 13, 0x01, []int{0x01}, false)
 
-	r := DecodeLIN(w.codes(), 1.0/sr, LINCfg{})
+	r := LIN(w.codes(), 1.0/sr, LINCfg{})
 	if !r.OK {
 		t.Fatal(r.Error)
 	}
@@ -121,7 +121,7 @@ func TestOracleDMX512(t *testing.T) {
 		dmxPacketGap(w, 120, 12, 8, p*0x55, slots)
 		want = append(append(want, p*0x55), slots...)
 	}
-	r := DecodeDMX512(w.codes(), 1.0/sr, DMXCfg{})
+	r := DMX512(w.codes(), 1.0/sr, DMXCfg{})
 	if !r.OK || strings.Contains(r.Text, "!") {
 		t.Fatalf("repo: ok=%v %s", r.OK, r.Error)
 	}
@@ -151,7 +151,7 @@ func TestOracleMIDI(t *testing.T) {
 		tlUART(w, b, 31250, "none", 1)
 	}
 	w.idle(2e-3)
-	r := DecodeMIDI(w.codes(), 1.0/sr, MIDICfg{})
+	r := MIDI(w.codes(), 1.0/sr, MIDICfg{})
 	if !r.OK || strings.Contains(r.Text, "!") {
 		t.Fatalf("repo: %q %s", r.Text, r.Error)
 	}
@@ -217,7 +217,7 @@ func TestOracleModbus(t *testing.T) {
 			tlUART(w, v, 19200, tc.parity, tc.stops)
 		}
 		w.idle(3e-3)
-		r := DecodeModbus(w.codes(), 1.0/sr, ModbusCfg{})
+		r := Modbus(w.codes(), 1.0/sr, ModbusCfg{})
 		if !r.OK || r.Parity != tc.parity {
 			t.Fatalf("%s: ok=%v parity %q %s", tc.parity, r.OK, r.Parity, r.Error)
 		}

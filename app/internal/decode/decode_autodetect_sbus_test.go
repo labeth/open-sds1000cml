@@ -205,7 +205,7 @@ func TestSBUSFramesCountsWholeFrames(t *testing.T) {
 	o := sbusOpts(7e-3, 1e6)
 	o.frames, o.cutS = 5, 2.5e-3
 	c := sbusLine(o)
-	r := DecodeUART(c, 1e-6, UARTCfg{Baud: sbusBaud, Bits: 8, Parity: "even", Inverted: true})
+	r := UART(c, 1e-6, UARTCfg{Baud: sbusBaud, Bits: 8, Parity: "even", Inverted: true})
 	if n := sbusFrames(r, 1e-6); n != 4 {
 		t.Errorf("4 whole frames after a cut one: counted %d", n)
 	}

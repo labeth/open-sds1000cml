@@ -39,7 +39,7 @@ func TestRefSavesTheScreenWindow(t *testing.T) {
 	if edge != RefCols/4 {
 		t.Fatalf("edge at column %d, want %d", edge, RefCols/4)
 	}
-	if r.Vdiv[0] != analog.AnalogVdiv(fe.idx[0]) {
+	if r.Vdiv[0] != analog.Vdiv(fe.idx[0]) {
 		t.Fatalf("saved V/div %v", r.Vdiv[0])
 	}
 }
@@ -121,8 +121,8 @@ func TestRefsExportForTheWeb(t *testing.T) {
 	if !a.Has || e[1].Has || a.Cols != RefCols || len(a.C1) != RefCols || a.C1[0] != 128 || a.C2[0] != 60 {
 		t.Fatalf("export %+v / %+v", a.Has, e[1].Has)
 	}
-	v := analog.AnalogVdiv(fe.idx[0])
-	if a.Vdiv[0] != 10*v || a.Vdiv[1] != analog.AnalogVdiv(fe.idx[1]) || a.TdivS != 100e-6 || a.PosFrac != .25 {
+	v := analog.Vdiv(fe.idx[0])
+	if a.Vdiv[0] != 10*v || a.Vdiv[1] != analog.Vdiv(fe.idx[1]) || a.TdivS != 100e-6 || a.PosFrac != .25 {
 		t.Fatalf("tip V/div %v (want %v), tdiv %v, trigger at %v", a.Vdiv, 10*v, a.TdivS, a.PosFrac)
 	}
 }
@@ -148,7 +148,7 @@ func TestWebRefActionsAreTheScopes(t *testing.T) {
 	}
 	b := c.RefsExport()[1]
 	if b.Gen != tags[1].Gen || b.At == 0 || b.Probe != [2]float64{1, 10} || b.Setup == nil || b.Setup.TdivS != 100e-6 ||
-		b.Setup.Vdiv[1] != 10*analog.AnalogVdiv(fe.idx[1]) {
+		b.Setup.Vdiv[1] != 10*analog.Vdiv(fe.idx[1]) {
 		t.Fatalf("export of B: gen %d at %d probe %v setup %+v", b.Gen, b.At, b.Probe, b.Setup)
 	}
 	if got := rowText(c, "cmp.store_b"); got != "holds C1 and C2 at 100us/div" {

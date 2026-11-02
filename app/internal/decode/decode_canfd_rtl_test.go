@@ -170,7 +170,7 @@ func canContains(data, want []int) bool {
 	return false
 }
 
-// Compare the CAN / CAN FD trigger RTL with DecodeCANFD on the same line.
+// Compare the CAN / CAN FD trigger RTL with CANFD on the same line.
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-018
 func TestCANTriggerRTL(t *testing.T) {
 	for _, tool := range []string{"iverilog", "vvp"} {
@@ -228,7 +228,7 @@ func TestCANTriggerRTL(t *testing.T) {
 	}
 	check := func(t *testing.T, codes []uint8, nominal, data int, pattern []int, args ...string) []canRTLEvent {
 		t.Helper()
-		ref := DecodeCANFD(codes, canRTLTicks, CANFDCfg{NominalBaud: nominal, DataBaud: data, DominantLow: true, Threshold: 128, HaveThr: true})
+		ref := CANFD(codes, canRTLTicks, CANFDCfg{NominalBaud: nominal, DataBaud: data, DominantLow: true, Threshold: 128, HaveThr: true})
 		if !ref.OK {
 			t.Fatalf("reference: %s", ref.Error)
 		}
@@ -298,7 +298,7 @@ func TestCANTriggerRTL(t *testing.T) {
 		for i := range codes {
 			codes[i] = 250 - codes[i]
 		}
-		ref := DecodeCANFD(codes, canRTLTicks, CANFDCfg{NominalBaud: 1000000, DominantLow: false, Threshold: 128, HaveThr: true})
+		ref := CANFD(codes, canRTLTicks, CANFDCfg{NominalBaud: 1000000, DominantLow: false, Threshold: 128, HaveThr: true})
 		events := run(t, codes, 1000000, 1000000, []int{0xAA}, "+inverted=1")
 		want := 0
 		for _, f := range canReference(ref) {
@@ -374,7 +374,7 @@ func TestCANTriggerRTL(t *testing.T) {
 			glitch[i] = 40
 		}
 		events := run(t, append(glitch, codes...), 1000000, 1000000, nil)
-		ref := canReference(DecodeCANFD(codes, canRTLTicks, CANFDCfg{NominalBaud: 1000000, DominantLow: true, Threshold: 128, HaveThr: true}))
+		ref := canReference(CANFD(codes, canRTLTicks, CANFDCfg{NominalBaud: 1000000, DominantLow: true, Threshold: 128, HaveThr: true}))
 		want := 0
 		for _, f := range ref {
 			want += len(f.data) + 2

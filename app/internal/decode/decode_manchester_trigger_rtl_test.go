@@ -87,7 +87,7 @@ func TestManchesterTriggerRTL(t *testing.T) {
 						}
 						cfg := ManchesterCfg{Bitrate: 1000000 / period, IEEE: ieee, MSB: msb, Bits: width, Threshold: 125, HaveThr: true}
 						// Choose sample duration so the configured rate gives exactly period ticks.
-						result := DecodeManchester(wave, 1/(float64(cfg.Bitrate)*float64(period)), cfg)
+						result := Manchester(wave, 1/(float64(cfg.Bitrate)*float64(period)), cfg)
 						if !result.OK {
 							t.Fatal(result.Error)
 						}

@@ -54,7 +54,7 @@ func stepPeriod(sa sliced) float64 {
 	return medianOf(per)
 }
 
-// DecodeQuadrature decodes a quadrature encoder (sigrok's graycode on two
+// Quadrature decodes a quadrature encoder (sigrok's graycode on two
 // lines): the Gray code phase of A (bit 0) and B (bit 1) counts up when A
 // leads B and down when B leads, one count an edge; a phase jump of two (both
 // lines at once) counts nothing and is flagged ("!"). Each rising edge of A
@@ -62,46 +62,46 @@ func stepPeriod(sa sliced) float64 {
 // unit after A rested two cycles or more opens a motion ("sof"). Baud is the
 // cycles a second, SPB a cycle in samples. OK needs two cycles.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-250
-func DecodeQuadrature(a, b []uint8, colTimeS float64, cfg ClockedCfg) Result {
+func Quadrature(a, b []uint8, colTimeS float64, cfg ClockedCfg) Result {
 	return decodeQuadrature(samplesIn(a), samplesIn(b), colTimeS, cfg)
 }
 
-// DecodeQuadratureEdges is DecodeQuadrature over digital lines' edges (EdgeLine).
+// QuadratureEdges is Quadrature over digital lines' edges (EdgeLine).
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-250
-func DecodeQuadratureEdges(a, b *EdgeLine, colTimeS float64, cfg ClockedCfg) Result {
+func QuadratureEdges(a, b *EdgeLine, colTimeS float64, cfg ClockedCfg) Result {
 	return decodeQuadrature(edgesIn(a), edgesIn(b), colTimeS, cfg)
 }
 
-// decodeQuadrature is DecodeQuadrature over samples or edges.
+// decodeQuadrature is Quadrature over samples or edges.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-250
 func decodeQuadrature(a, b lineIn, colTimeS float64, cfg ClockedCfg) Result {
 	return decodeSteps(protoQuad, a, b, colTimeS, cfg, true)
 }
 
-// DecodeStepper decodes a stepper driver's STEP (line a) and DIR (line b)
+// Stepper decodes a stepper driver's STEP (line a) and DIR (line b)
 // lines (sigrok's stepper_motor): each rising edge of STEP is a step, up
 // (1, "F") with DIR high and down ("R") with it low, and the position after
 // it; a step after STEP rested two step periods or more opens a motion
 // ("sof"). Baud is the steps a second, Feature the shortest STEP pulse,
 // Cover DIR's edges a step. OK needs two steps.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-250
-func DecodeStepper(a, b []uint8, colTimeS float64, cfg ClockedCfg) Result {
+func Stepper(a, b []uint8, colTimeS float64, cfg ClockedCfg) Result {
 	return decodeStepper(samplesIn(a), samplesIn(b), colTimeS, cfg)
 }
 
-// DecodeStepperEdges is DecodeStepper over digital lines' edges (EdgeLine).
+// StepperEdges is Stepper over digital lines' edges (EdgeLine).
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-250
-func DecodeStepperEdges(a, b *EdgeLine, colTimeS float64, cfg ClockedCfg) Result {
+func StepperEdges(a, b *EdgeLine, colTimeS float64, cfg ClockedCfg) Result {
 	return decodeStepper(edgesIn(a), edgesIn(b), colTimeS, cfg)
 }
 
-// decodeStepper is DecodeStepper over samples or edges.
+// decodeStepper is Stepper over samples or edges.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-250
 func decodeStepper(a, b lineIn, colTimeS float64, cfg ClockedCfg) Result {
 	return decodeSteps(protoStepper, a, b, colTimeS, cfg, false)
 }
 
-// decodeSteps is DecodeQuadrature (quad) and DecodeStepper.
+// decodeSteps is Quadrature (quad) and Stepper.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-250
 func decodeSteps(proto string, a, b lineIn, colTimeS float64, cfg ClockedCfg, quad bool) Result { //nolint:gocyclo // a protocol state machine kept step for step with its decode_*.js twin (parity tests)
 	if b.none() {
@@ -267,23 +267,23 @@ var pwmDutyTexts = sync.OnceValue(func() []string {
 	return t
 })
 
-// DecodePWM decodes a PWM line (sigrok's pwm): each period from a rising edge
+// PWM decodes a PWM line (sigrok's pwm): each period from a rising edge
 // to the next ("sof" at its start) is a unit, its duty cycle as a byte
 // (the high time over the period times 256, at most 255) and in tenths of a
 // percent. Baud is the frequency, SPB the period in samples. OK needs two
 // periods.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-250
-func DecodePWM(codes []uint8, colTimeS float64, cfg LineCfg) Result {
+func PWM(codes []uint8, colTimeS float64, cfg LineCfg) Result {
 	return decodePWM(samplesIn(codes), colTimeS, cfg)
 }
 
-// DecodePWMEdges is DecodePWM over digital lines' edges (EdgeLine).
+// PWMEdges is PWM over digital lines' edges (EdgeLine).
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-250
-func DecodePWMEdges(codes *EdgeLine, colTimeS float64, cfg LineCfg) Result {
+func PWMEdges(codes *EdgeLine, colTimeS float64, cfg LineCfg) Result {
 	return decodePWM(edgesIn(codes), colTimeS, cfg)
 }
 
-// decodePWM is DecodePWM over samples or edges.
+// decodePWM is PWM over samples or edges.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-250
 func decodePWM(codes lineIn, colTimeS float64, cfg LineCfg) Result {
 	S := codes.slice(cfg.Threshold, cfg.HaveThr)

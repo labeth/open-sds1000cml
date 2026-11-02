@@ -189,10 +189,10 @@ type canFrame struct {
 	crcOK bool // a classic frame whose CRC checks, without a stuffing violation
 }
 
-// DecodeCANFD decodes classic CAN (fully) and CAN-FD base frames (best-effort:
+// CANFD decodes classic CAN (fully) and CAN-FD base frames (best-effort:
 // ID + control + DLC + data with dynamic destuffing) on one sliced logic line.
 // TRLC-LINKS: REQ-SDS-018
-func DecodeCANFD(codes []uint8, colTimeS float64, cfg CANFDCfg) Result {
+func CANFD(codes []uint8, colTimeS float64, cfg CANFDCfg) Result {
 	S := sliceChannel(codes, cfg.Threshold, cfg.HaveThr)
 	if !S.ok {
 		return Result{Proto: protoCANFD, Error: S.reason}

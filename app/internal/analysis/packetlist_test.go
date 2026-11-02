@@ -25,7 +25,7 @@ func captures(t *testing.T, msgs [][]byte, repeat, n, count int) [][]Packet {
 	var out [][]Packet
 	for c := range count {
 		off := (c * 7919 * spb) % (len(w) - n)
-		r := decode.DecodeUART(w[off:off+n], ct, decode.UARTCfg{Baud: 115200})
+		r := decode.UART(w[off:off+n], ct, decode.UARTCfg{Baud: 115200})
 		out = append(out, Packets(r, n))
 	}
 	return out

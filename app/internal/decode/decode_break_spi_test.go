@@ -9,7 +9,7 @@ import (
 )
 
 // ---------------------------------------------------------------------------
-// Red-team suite for DecodeSPI (app/internal/decode/decode_i2c_spi.go).
+// Red-team suite for SPI (app/internal/decode/decode_i2c_spi.go).
 //
 // SPI here has NO chip-select and NO CRC/parity: it is a "checksum-less" shape.
 // The decoder slices CLK+DATA, requires >=2 CLK edges, samples DATA on the
@@ -106,7 +106,7 @@ func safeDecodeSPI(t *testing.T, tag string, clk, data []uint8, ct float64, cfg 
 			t.Errorf("PANIC in %s: %v", tag, e)
 		}
 	}()
-	return DecodeSPI(clk, data, ct, cfg)
+	return SPI(clk, data, ct, cfg)
 }
 
 // TRLC-LINKS: REQ-SDS-018
@@ -294,7 +294,7 @@ func TestBreakSpi(t *testing.T) {
 		_ = safeDecodeSPI(t, "edge nil", nil, nil, 2e-7, SPICfg{MSB: true})
 		_ = safeDecodeSPI(t, "edge one-nil", nil, []uint8{40, 210, 40}, 2e-7, SPICfg{MSB: true})
 
-		// Pathological colTimeS values (unused by DecodeSPI, but must not panic).
+		// Pathological colTimeS values (unused by SPI, but must not panic).
 		{
 			clk, data, want := spiSynth([][]int{{0x3C, 0xA5}}, 8, true, true, 40, 0, 40)
 			for _, ct := range []float64{0, -1e-6, 1e30, -1e30} {

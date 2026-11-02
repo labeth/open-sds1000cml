@@ -43,7 +43,7 @@ func TestOracleIRMP(t *testing.T) {
 		irSamsung32(l, 0xE0E0, 0x40BF)
 		gap()
 	})
-	r := DecodeIRMP(w.codes(), 1.0/sr, LineCfg{})
+	r := IRMP(w.codes(), 1.0/sr, LineCfg{})
 	if !r.OK || r.FrameBits != IRSamsung32 {
 		t.Fatal(r.FrameBits, r.Error)
 	}

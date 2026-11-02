@@ -131,7 +131,7 @@ func (f *fakeBus) Read(plane uint8, sel uint16) (uint16, error) {
 		if f.identityOK {
 			return iface.VersionMagic, nil
 		}
-	case iface.SelFabricId:
+	case iface.SelFabricID:
 		if f.identityOK {
 			return iface.FabricID, nil
 		}

@@ -105,10 +105,10 @@ func recoverManchester(sl sliced, s0, T float64, ieee bool, lastEdgeX float64) (
 	return cells, good, viol
 }
 
-// DecodeManchester decodes Manchester-encoded data on one channel's codes.
+// Manchester decodes Manchester-encoded data on one channel's codes.
 // Mirrors decode_manchester.js step for step so LCD and web agree byte-for-byte.
 // TRLC-LINKS: REQ-SDS-018
-func DecodeManchester(codes []uint8, colTimeS float64, cfg ManchesterCfg) Result {
+func Manchester(codes []uint8, colTimeS float64, cfg ManchesterCfg) Result {
 	bits := cfg.Bits
 	if bits == 0 {
 		bits = 8

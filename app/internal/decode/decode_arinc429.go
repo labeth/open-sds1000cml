@@ -22,7 +22,7 @@ type ARINC429Cfg struct {
 	HaveThr   bool
 }
 
-// DecodeARINC429 decodes ARINC 429 on one channel that shows the BIPOLAR
+// ARINC429 decodes ARINC 429 on one channel that shows the BIPOLAR
 // return-to-zero signal. The line has three levels: HI(+), NULL(0), LO(-). A
 // logic 1 is a HI pulse for the first half of the bit cell then a return to
 // NULL; a logic 0 is a LO pulse then NULL. So every bit cell carries exactly one
@@ -44,7 +44,7 @@ type ARINC429Cfg struct {
 // a word truncated by the capture start/end (a partial with < 32 pulses) is
 // dropped, since a free-running scope starts at a random phase.
 // TRLC-LINKS: REQ-SDS-018
-func DecodeARINC429(codes []uint8, colTimeS float64, cfg ARINC429Cfg) Result {
+func ARINC429(codes []uint8, colTimeS float64, cfg ARINC429Cfg) Result {
 	const proto = protoARINC429
 	const minSPB = 4.0
 	n := len(codes)

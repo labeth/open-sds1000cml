@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-// TestBreakArinc429 red-teams DecodeARINC429 across three attack classes. It
+// TestBreakArinc429 red-teams ARINC429 across three attack classes. It
 // reuses the synthesizer helpers from decode_arinc429_test.go (arincMakeWord,
 // arincExpect, arincAppendWord, arincIdle) to build bipolar RZ pulse trains
 // (NULL=128, HI=210, LO=40) at a chosen samples-per-bit (spb) and colTimeS.
@@ -122,7 +122,7 @@ func TestBreakArinc429(t *testing.T) {
 			case 2:
 				cfg = ARINC429Cfg{Bitrate: bitrate, Threshold: 128, HaveThr: true} // explicit NULL
 			}
-			r := DecodeARINC429(w, colTimeS, cfg)
+			r := ARINC429(w, colTimeS, cfg)
 			if !r.OK {
 				t.Errorf("FN it=%d spb=%d br=%d nWords=%d mode=%d: valid frame FAILED: %s",
 					it, spb, bitrate, nWords, it%3, r.Error)
@@ -170,7 +170,7 @@ func TestBreakArinc429(t *testing.T) {
 			arincIdle(&w, 4*spb)
 			arincAppendWord(&w, bits, spb)
 			arincIdle(&w, 4*spb)
-			r := DecodeARINC429(w, colTimeS, ARINC429Cfg{Bitrate: bitrate})
+			r := ARINC429(w, colTimeS, ARINC429Cfg{Bitrate: bitrate})
 			if r.OK && frameErrs(r) == 0 {
 				t.Errorf("FP(corrupt) it=%d flip-bit=%d: corrupted word ACCEPTED with intact parity (no frame-error): text=%q", it, flip, r.Text)
 			}
@@ -191,7 +191,7 @@ func TestBreakArinc429(t *testing.T) {
 			keep := 1 + rngB.Intn(31) // keep only the first <32 bit cells
 			cut := min(leadN+keep*spb, len(w))
 			w = w[:cut]
-			r := DecodeARINC429(w, colTimeS, ARINC429Cfg{Bitrate: bitrate})
+			r := ARINC429(w, colTimeS, ARINC429Cfg{Bitrate: bitrate})
 			if confidentValid(r) {
 				t.Errorf("FP(truncate) it=%d keep=%d: partial word decoded as valid: text=%q bytes=%v", it, keep, r.Text, r.Bytes)
 			}
@@ -229,7 +229,7 @@ func TestBreakArinc429(t *testing.T) {
 					}
 				}
 			}
-			r := DecodeARINC429(s, 1e-7, ARINC429Cfg{Bitrate: 100000})
+			r := ARINC429(s, 1e-7, ARINC429Cfg{Bitrate: 100000})
 			if confidentValid(r) {
 				t.Errorf("FP(nonsignal) it=%d %s: decoded as valid ARINC word: text=%q", it, shapeNames[kind], r.Text)
 			}
@@ -250,7 +250,7 @@ func TestBreakArinc429(t *testing.T) {
 				s[i] = uint8(rngD.Intn(256))
 			}
 			// Fixed T = (1/100000)/1e-6 = 10 samples/bit.
-			r := DecodeARINC429(s, 1e-6, ARINC429Cfg{Bitrate: 100000})
+			r := ARINC429(s, 1e-6, ARINC429Cfg{Bitrate: 100000})
 			if confidentValid(r) {
 				confident++
 				if firstRepro == "" {
@@ -282,7 +282,7 @@ func TestBreakArinc429(t *testing.T) {
 			if useAuto {
 				cfg = ARINC429Cfg{}
 			}
-			return DecodeARINC429(w, colTimeS, cfg), [3]string{l, d, sTxt}
+			return ARINC429(w, colTimeS, cfg), [3]string{l, d, sTxt}
 		}
 		checkOne := func(name string, r Result, want [3]string) {
 			if !r.OK {
@@ -322,7 +322,7 @@ func TestBreakArinc429(t *testing.T) {
 			arincAppendWord(&w, arincMakeWord(0o312, 1, 0x11111, 3), spb)
 			arincAppendWord(&w, arincMakeWord(0o107, 2, 0x22222, 1), spb) // no gap
 			arincIdle(&w, 5*spb)
-			r := DecodeARINC429(w, colTimeS, ARINC429Cfg{Bitrate: bitrate})
+			r := ARINC429(w, colTimeS, ARINC429Cfg{Bitrate: bitrate})
 			if r.OK && len(r.Bytes)%4 != 0 {
 				t.Errorf("edge back-to-back: bytes len %d not a multiple of 4", len(r.Bytes))
 			}
@@ -350,7 +350,7 @@ func TestBreakArinc429(t *testing.T) {
 								t.Errorf("edge PANIC n=%d ct=%g br=%d: %v", len(in), ct, br, p)
 							}
 						}()
-						r := DecodeARINC429(in, ct, ARINC429Cfg{Bitrate: br})
+						r := ARINC429(in, ct, ARINC429Cfg{Bitrate: br})
 						if !r.OK && r.Error == "" {
 							t.Errorf("edge n=%d ct=%g br=%d: returned neither OK nor Error", len(in), ct, br)
 						}

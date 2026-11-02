@@ -59,7 +59,7 @@ func TestDecodeSENTRoundTrip(t *testing.T) {
 	nibs := []int{0x1, 0xA, 0x5, 0xF, 0x0, 0xC, 0x3, 0}
 	nibs[7] = sentCRC4(nibs[1:7]) // real J2716 CRC-4 over the 6 data nibbles
 	w := sentWave([][]int{nibs}, 6, 0, 0)
-	r := DecodeSENT(w, 1e-6, SENTCfg{Nibbles: 8})
+	r := SENT(w, 1e-6, SENTCfg{Nibbles: 8})
 	if !r.OK {
 		t.Fatalf("SENT decode failed: %s", r.Error)
 	}
@@ -83,7 +83,7 @@ func TestDecodeSENTTickOverride(t *testing.T) {
 	w := sentWave([][]int{nibs}, tick, 0, 0)
 	// TickNs so that tickNs*1e-9/colTimeS == tick samples exactly.
 	tickNs := float64(tick) * colTimeS * 1e9
-	r := DecodeSENT(w, colTimeS, SENTCfg{TickNs: tickNs, Nibbles: 8})
+	r := SENT(w, colTimeS, SENTCfg{TickNs: tickNs, Nibbles: 8})
 	if !r.OK {
 		t.Fatalf("SENT (tick override) decode failed: %s", r.Error)
 	}
@@ -99,7 +99,7 @@ func TestDecodeSENTJitter(t *testing.T) {
 	nibs[7] = sentCRC4(nibs[1:7])
 	tick := 12
 	w := sentWave([][]int{nibs}, tick, 0, tick/4)
-	r := DecodeSENT(w, 1e-6, SENTCfg{Nibbles: 8})
+	r := SENT(w, 1e-6, SENTCfg{Nibbles: 8})
 	if !r.OK {
 		t.Fatalf("SENT (jitter) decode failed: %s", r.Error)
 	}
@@ -116,7 +116,7 @@ func TestDecodeSENTMultiFramePause(t *testing.T) {
 	fb[7] = sentCRC4(fb[1:7])
 	// A 100-tick pause pulse trails each frame; the flag makes the decoder skip it.
 	w := sentWave([][]int{fa, fb}, 6, 100, 0)
-	r := DecodeSENT(w, 1e-6, SENTCfg{Nibbles: 8, PausePulse: true})
+	r := SENT(w, 1e-6, SENTCfg{Nibbles: 8, PausePulse: true})
 	if !r.OK {
 		t.Fatalf("SENT (multi-frame/pause) decode failed: %s", r.Error)
 	}
@@ -142,12 +142,12 @@ func TestDecodeSENTMultiFramePause(t *testing.T) {
 func TestDecodeSENTNoPanic(_ *testing.T) {
 	// Empty, flat, and pseudo-random inputs (with degenerate configs) must never
 	// panic and must never loop unbounded.
-	_ = DecodeSENT(nil, 1e-6, SENTCfg{})
+	_ = SENT(nil, 1e-6, SENTCfg{})
 	flat := make([]uint8, 500)
 	for i := range flat {
 		flat[i] = 128
 	}
-	_ = DecodeSENT(flat, 1e-6, SENTCfg{})
+	_ = SENT(flat, 1e-6, SENTCfg{})
 
 	garbage := make([]uint8, 2000)
 	x := uint32(12345)
@@ -155,11 +155,11 @@ func TestDecodeSENTNoPanic(_ *testing.T) {
 		x = x*1664525 + 1013904223
 		garbage[i] = uint8(x >> 24)
 	}
-	_ = DecodeSENT(garbage, 1e-6, SENTCfg{Nibbles: 8, PausePulse: true})
-	_ = DecodeSENT(garbage, 0, SENTCfg{TickNs: 1000})        // colTimeS 0 => derive
-	_ = DecodeSENT(garbage, 1e-9, SENTCfg{TickNs: 1e12})     // absurd tick override
-	_ = DecodeSENT(garbage, 1e-6, SENTCfg{Nibbles: -5})      // clamps to default
-	_ = DecodeSENT(garbage, 1e-6, SENTCfg{Nibbles: 1 << 20}) // clamps to 64
+	_ = SENT(garbage, 1e-6, SENTCfg{Nibbles: 8, PausePulse: true})
+	_ = SENT(garbage, 0, SENTCfg{TickNs: 1000})        // colTimeS 0 => derive
+	_ = SENT(garbage, 1e-9, SENTCfg{TickNs: 1e12})     // absurd tick override
+	_ = SENT(garbage, 1e-6, SENTCfg{Nibbles: -5})      // clamps to default
+	_ = SENT(garbage, 1e-6, SENTCfg{Nibbles: 1 << 20}) // clamps to 64
 }
 
 // TRLC-LINKS: REQ-SDS-018
@@ -170,7 +170,7 @@ func TestDecodeSENTInvertedCRCFixture(t *testing.T) {
 	for i := range w {
 		w[i] = 255 - w[i]
 	}
-	r := DecodeSENT(w, 1e-6, SENTCfg{Inverted: true, TickNs: 8000, Nibbles: 8, HaveThr: true, Threshold: 128})
+	r := SENT(w, 1e-6, SENTCfg{Inverted: true, TickNs: 8000, Nibbles: 8, HaveThr: true, Threshold: 128})
 	goodCRC, badCRC := 0, 0
 	for _, s := range r.Spans {
 		if s.Kind == "crc" {

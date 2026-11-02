@@ -51,10 +51,10 @@ func PlanVdiv(v float64) (int, bool) {
 	return 0, false
 }
 
-// AnalogVdiv is the electrical volts/div of a detent (the 10 mV range for
-// the zoomed detents): volts per sample code = AnalogVdiv/50 (spec 06 §7.1).
+// Vdiv is the electrical volts/div of a detent (the 10 mV range for
+// the zoomed detents): volts per sample code = Vdiv/50 (spec 06 §7.1).
 // TRLC-LINKS: REQ-SDS-015
-func AnalogVdiv(idx int) float64 {
+func Vdiv(idx int) float64 {
 	d := Detents[idx]
 	return d.VdivV * float64(d.Zoom)
 }
@@ -323,8 +323,8 @@ func (f *FrontEnd) OnVdiv(fn func(ch int, vdivV, zero, cpv float64)) {
 		f.mu.Unlock()
 		z0, c0 := f.TrigCalActive(0)
 		z1, c1 := f.TrigCalActive(1)
-		fn(0, AnalogVdiv(i0), z0, c0) // codes are on the analog range (zoomed detents included)
-		fn(1, AnalogVdiv(i1), z1, c1)
+		fn(0, Vdiv(i0), z0, c0) // codes are on the analog range (zoomed detents included)
+		fn(1, Vdiv(i1), z1, c1)
 	}
 }
 
@@ -532,7 +532,7 @@ func (f *FrontEnd) SetVdiv(ch, idx int) error {
 	}
 	if f.onVdiv != nil {
 		z, c := f.TrigCalActive(ch)
-		f.onVdiv(ch, AnalogVdiv(idx), z, c) // codes are on the analog range: keep the engine's trigger map current
+		f.onVdiv(ch, Vdiv(idx), z, c) // codes are on the analog range: keep the engine's trigger map current
 	}
 	// Re-stage even when no offset was ever set: each detent has its own
 	// zero, and the sensitive tier's slope is 48× the attenuated one, so the

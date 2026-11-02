@@ -257,7 +257,7 @@ func TestOracleI2C(t *testing.T) {
 	}
 	decode := func(t *testing.T, scl, sda []byte) Result {
 		t.Helper()
-		res := DecodeI2C(bitsToCodes(scl), bitsToCodes(sda), 1.0/sr, I2CCfg{})
+		res := I2C(bitsToCodes(scl), bitsToCodes(sda), 1.0/sr, I2CCfg{})
 		if !res.OK {
 			t.Fatalf("repo decode failed: %s", res.Error)
 		}

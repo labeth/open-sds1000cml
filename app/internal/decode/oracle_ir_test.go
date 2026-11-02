@@ -34,7 +34,7 @@ func TestOracleIRNEC(t *testing.T) {
 		necFrame(l, 0x00, -1, 0x45)
 		necFrame(l, 0xA5, -1, 0xFF)
 	})
-	r := DecodeIRNEC(w.codes(), 1.0/sr, IRCfg{})
+	r := IRNEC(w.codes(), 1.0/sr, IRCfg{})
 	if !r.OK {
 		t.Fatal(r.Error)
 	}
@@ -76,7 +76,7 @@ func TestOracleIRSIRC(t *testing.T) {
 		sircFrame(l, 20, 0x7F, 0x1A, 0xC3)
 		sircFrame(l, 12, 0x00, 0x1F, 0)
 	})
-	r := DecodeIRSIRC(w.codes(), 1.0/sr, IRCfg{})
+	r := IRSIRC(w.codes(), 1.0/sr, IRCfg{})
 	if !r.OK {
 		t.Fatal(r.Error)
 	}
@@ -117,7 +117,7 @@ func TestOracleIRRC5(t *testing.T) {
 				rc5Frame(l, 1, 0x05, 0x50)
 			}
 		})
-		r := DecodeIRRC5(w.codes(), 1.0/sr, IRCfg{})
+		r := IRRC5(w.codes(), 1.0/sr, IRCfg{})
 		if !r.OK {
 			t.Fatal(r.Error)
 		}
@@ -164,7 +164,7 @@ func TestOracleIRRC6(t *testing.T) {
 		rc6Frame(l, 0, 0, []int{0x5A, 0xC3})
 		rc6Frame(l, 6, 1, []int{0x12, 0x34, 0x56})
 	})
-	r := DecodeIRRC6(w.codes(), 1.0/sr, IRCfg{})
+	r := IRRC6(w.codes(), 1.0/sr, IRCfg{})
 	if !r.OK {
 		t.Fatal(r.Error)
 	}

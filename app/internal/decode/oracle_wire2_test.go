@@ -42,7 +42,7 @@ func TestOracleSDCard(t *testing.T) {
 	add(sdToken(true, 17, 0x00001000, true))
 	add(sdIdle(10))
 	clockBits(l, bits, per)
-	r := DecodeSDCard(l.a.codes(), l.b.codes(), 1.0/sr, ClockedCfg{})
+	r := SDCard(l.a.codes(), l.b.codes(), 1.0/sr, ClockedCfg{})
 	if !r.OK {
 		t.Fatal(r.Error)
 	}
@@ -107,7 +107,7 @@ func TestOraclePDI(t *testing.T) {
 	chars(0x80, 0x02)
 	idle(8)
 	clockBits(l, bits, per)
-	r := DecodePDI(l.a.codes(), l.b.codes(), 1.0/sr, ClockedCfg{})
+	r := PDI(l.a.codes(), l.b.codes(), 1.0/sr, ClockedCfg{})
 	if !r.OK {
 		t.Fatal(r.Error)
 	}
@@ -186,7 +186,7 @@ func TestOracleCJTAG(t *testing.T) {
 	for range 6 {
 		c.tck(0, 0, 0, false)
 	}
-	r := DecodeCJTAG(c.l.a.codes(), c.l.b.codes(), 1.0/sr, ClockedCfg{})
+	r := CJTAG(c.l.a.codes(), c.l.b.codes(), 1.0/sr, ClockedCfg{})
 	if !r.OK {
 		t.Fatal(r.Error)
 	}
@@ -223,7 +223,7 @@ func TestOracleMaple(t *testing.T) {
 			m.set(1, 1)
 		}
 	}
-	r := DecodeMaple(m.l.a.codes(), m.l.b.codes(), 1.0/sr, ClockedCfg{})
+	r := Maple(m.l.a.codes(), m.l.b.codes(), 1.0/sr, ClockedCfg{})
 	if !r.OK {
 		t.Fatal(r.Error)
 	}
@@ -264,7 +264,7 @@ func TestOracleCaliper(t *testing.T) {
 	caliperFrame(l, 1234, true, false, 80e-6, 30e-3)
 	caliperFrame(l, 2001, false, true, 80e-6, 30e-3)
 	caliperFrame(l, 0, false, false, 80e-6, 30e-3)
-	r := DecodeCaliper(l.a.codes(), l.b.codes(), 1.0/sr, ClockedCfg{})
+	r := Caliper(l.a.codes(), l.b.codes(), 1.0/sr, ClockedCfg{})
 	if !r.OK {
 		t.Fatal(r.Error)
 	}

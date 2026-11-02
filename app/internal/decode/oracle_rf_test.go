@@ -41,7 +41,7 @@ func TestOracleRCEncode(t *testing.T) {
 	for _, f := range frames {
 		rcFrame2262(w, f, a)
 	}
-	r := DecodeRCEncode(w.codes(), 1.0/sr, LineCfg{})
+	r := RCEncode(w.codes(), 1.0/sr, LineCfg{})
 	if !r.OK || r.FrameBits != 12 {
 		t.Fatalf("%v %q", r.FrameBits, r.Error)
 	}
@@ -70,7 +70,7 @@ func TestOracleRCEncode(t *testing.T) {
 	for _, v := range []int{0x5A3C81, 0x000FFF, 0xA5A5A5} {
 		rcFrame1527(w, v, a)
 	}
-	r = DecodeRCEncode(w.codes(), 1.0/sr, LineCfg{Variant: 24})
+	r = RCEncode(w.codes(), 1.0/sr, LineCfg{Variant: 24})
 	if !r.OK || r.FrameBits != 24 {
 		t.Fatalf("1527: %v %q", r.FrameBits, r.Error)
 	}
@@ -105,7 +105,7 @@ func TestOracleOOKOregon(t *testing.T) {
 	oregonBurst(w, 3, []int{0xF, 0x8, 0x2, 0x4, 0x1, 0x3, 0xA, 0x0, 0x5, 0x3, 0x2, 0x0, 0x4, 0x5, 0x0}, hp, false, 40e-3)
 	// protocol 2.1: THGR228N (1A2D)
 	oregonBurst(w, 21, []int{0x1, 0xA, 0x2, 0xD, 0x2, 0x7, 0x1, 0x8, 0x2, 0x6, 0x1, 0x0, 0x4, 0x6}, hp/2, true, 40e-3)
-	r := DecodeOOK(w.codes(), 1.0/sr, LineCfg{})
+	r := OOK(w.codes(), 1.0/sr, LineCfg{})
 	if !r.OK {
 		t.Fatal(r.Error)
 	}
@@ -161,7 +161,7 @@ func TestOracleMiller(t *testing.T) {
 		for _, m := range msgs {
 			millerMessage(w, m, T, mode.pause, 60e-6)
 		}
-		r := DecodeMiller(w.codes(), 1.0/sr, LineCfg{})
+		r := Miller(w.codes(), 1.0/sr, LineCfg{})
 		if !r.OK {
 			t.Fatal(mode.edge, r.Error)
 		}
@@ -213,7 +213,7 @@ func TestOracleMorse(t *testing.T) {
 	w := newTimeline(sr)
 	w.add(0, 0.5)
 	morseText(w, "SOS CQ DE SM5 TEST 73 ABC.", 0.1, 12)
-	r := DecodeMorse(w.codes(), 1.0/sr, LineCfg{})
+	r := Morse(w.codes(), 1.0/sr, LineCfg{})
 	if !r.OK {
 		t.Fatal(r.Error)
 	}
@@ -242,7 +242,7 @@ func TestOracleDCF77(t *testing.T) {
 	dcf77Minute(w, 0x37, 0x12, 0x18, 0x7, 0x10, 0x26, false)
 	dcf77Minute(w, 0x38, 0x12, 0x18, 0x7, 0x10, 0x26, true)
 	dcf77Minute(w, 0x59, 0x23, 0x31, 0x5, 0x12, 0x99, false)
-	r := DecodeDCF77(w.codes(), 1.0/sr, LineCfg{})
+	r := DCF77(w.codes(), 1.0/sr, LineCfg{})
 	if !r.OK {
 		t.Fatal(r.Error)
 	}

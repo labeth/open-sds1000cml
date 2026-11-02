@@ -34,14 +34,14 @@ func protoParityVectors(add parityAdd, add2 parityAdd2, corrupt func([]uint8) []
 		linFrame(w, 19200, 13, 0x20, nil, false)
 		lin := w.codes()
 		bases = append(bases,
-			base{"lin", 1 / sr, cfg{}, lin, func(c []uint8) Result { return DecodeLIN(c, 1/sr, LINCfg{}) }},
-			base{"lin", 1 / sr, cfg{"baud": 19200}, lin, func(c []uint8) Result { return DecodeLIN(c, 1/sr, LINCfg{Baud: 19200}) }})
+			base{"lin", 1 / sr, cfg{}, lin, func(c []uint8) Result { return LIN(c, 1/sr, LINCfg{}) }},
+			base{"lin", 1 / sr, cfg{"baud": 19200}, lin, func(c []uint8) Result { return LIN(c, 1/sr, LINCfg{Baud: 19200}) }})
 		wd := newTimeline(10e6)
 		wd.idle(40e-6)
 		dmxPacket(wd, 100, 12, 0, []int{1, 2, 3, 0xFF, 0x80, 0x7F})
 		dmxPacket(wd, 92, 8, 0x17, []int{9})
 		dmx := wd.codes()
-		bases = append(bases, base{"dmx512", 1e-7, cfg{}, dmx, func(c []uint8) Result { return DecodeDMX512(c, 1e-7, DMXCfg{}) }})
+		bases = append(bases, base{"dmx512", 1e-7, cfg{}, dmx, func(c []uint8) Result { return DMX512(c, 1e-7, DMXCfg{}) }})
 		wm := newTimeline(sr)
 		wm.idle(100e-6)
 		for _, b := range []int{0x90, 0x3C, 0x64, 0x3E, 0x64, 0xFE, 0xB0, 0x07, 0x7F, 0x12, 0xF0, 0x7E, 0x00, 0xF7, 0xF2, 0x10} {
@@ -49,7 +49,7 @@ func protoParityVectors(add parityAdd, add2 parityAdd2, corrupt func([]uint8) []
 		}
 		wm.idle(500e-6)
 		midi := wm.codes()
-		bases = append(bases, base{"midi", 1e-6, cfg{}, midi, func(c []uint8) Result { return DecodeMIDI(c, 1e-6, MIDICfg{}) }})
+		bases = append(bases, base{"midi", 1e-6, cfg{}, midi, func(c []uint8) Result { return MIDI(c, 1e-6, MIDICfg{}) }})
 		for _, par := range []string{"even", "none", "odd"} {
 			stops := 1
 			if par == "none" {
@@ -60,7 +60,7 @@ func protoParityVectors(add parityAdd, add2 parityAdd2, corrupt func([]uint8) []
 			modbusFrame(wb, 19200, par, stops, []int{0x01, 0x03, 0x00, 0x6B, 0x00, 0x03})
 			modbusFrame(wb, 19200, par, stops, []int{0x11, 0x83, 0x02})
 			mb := wb.codes()
-			bases = append(bases, base{"modbus", 5e-7, cfg{}, mb, func(c []uint8) Result { return DecodeModbus(c, 5e-7, ModbusCfg{}) }})
+			bases = append(bases, base{"modbus", 5e-7, cfg{}, mb, func(c []uint8) Result { return Modbus(c, 5e-7, ModbusCfg{}) }})
 		}
 	}
 
@@ -87,14 +87,14 @@ func protoParityVectors(add parityAdd, add2 parityAdd2, corrupt func([]uint8) []
 		owByte(w, 0xBE, true)
 		w.idle(100e-6)
 		ow := w.codes()
-		bases = append(bases, base{"onewire", 2.5e-7, cfg{}, ow, func(c []uint8) Result { return DecodeOneWire(c, 2.5e-7, OneWireCfg{}) }})
+		bases = append(bases, base{"onewire", 2.5e-7, cfg{}, ow, func(c []uint8) Result { return OneWire(c, 2.5e-7, OneWireCfg{}) }})
 		for _, rate := range []float64{800e3, 400e3} {
 			ww := newTimeline(50e6)
 			ww.add(0, 60e-6)
 			wsFrame(ww, rate, []int{0xFF, 0x00, 0x80, 0x12, 0x34, 0x56})
 			wsFrame(ww, rate, []int{0x01, 0x02, 0x03, 0x04})
 			ws := ww.codes()
-			bases = append(bases, base{"ws281x", 2e-8, cfg{}, ws, func(c []uint8) Result { return DecodeWS281x(c, 2e-8, WS281xCfg{}) }})
+			bases = append(bases, base{"ws281x", 2e-8, cfg{}, ws, func(c []uint8) Result { return WS281x(c, 2e-8, WS281xCfg{}) }})
 		}
 		wd := newTimeline(2e6)
 		wd.idle(1e-3)
@@ -102,21 +102,21 @@ func protoParityVectors(add parityAdd, add2 parityAdd2, corrupt func([]uint8) []
 		wd.idle(1e-3)
 		dhtReading(wd, 18000, [4]int{0x2D, 0x00, 0x17, 0x00}, 0x11)
 		dht := wd.codes()
-		bases = append(bases, base{"dht", 5e-7, cfg{}, dht, func(c []uint8) Result { return DecodeDHT(c, 5e-7, DHTCfg{}) }})
+		bases = append(bases, base{"dht", 5e-7, cfg{}, dht, func(c []uint8) Result { return DHT(c, 5e-7, DHTCfg{}) }})
 		wc := newTimeline(200e3)
 		wc.idle(5e-3)
 		cecMessage(wc, []int{0x40, 0x04}, []int{0, 0})
 		cecMessage(wc, []int{0x4F, 0x82, 0x10, 0x00}, []int{1, 1, 0, 1})
 		cecMessage(wc, []int{0x01}, []int{1})
 		cec := wc.codes()
-		bases = append(bases, base{"cec", 5e-6, cfg{}, cec, func(c []uint8) Result { return DecodeCEC(c, 5e-6, CECCfg{}) }})
+		bases = append(bases, base{"cec", 5e-6, cfg{}, cec, func(c []uint8) Result { return CEC(c, 5e-6, CECCfg{}) }})
 		wj := newTimeline(1e6)
 		wj.add(0, 500e-6)
 		j1850Frame(wj, []int{0x68, 0x6A, 0xF1, 0x01, 0x00}, false)
 		j1850Frame(wj, []int{0x48, 0x6B, 0x10, 0x41, 0x00, 0xBE}, false)
 		j1850Frame(wj, []int{0x68, 0x6A, 0xF1}, true)
 		j18 := wj.codes()
-		bases = append(bases, base{"j1850", 1e-6, cfg{}, j18, func(c []uint8) Result { return DecodeJ1850(c, 1e-6, J1850Cfg{}) }})
+		bases = append(bases, base{"j1850", 1e-6, cfg{}, j18, func(c []uint8) Result { return J1850(c, 1e-6, J1850Cfg{}) }})
 	}
 
 	// ---- infrared remotes, each as a receiver's output and a modulated drive
@@ -141,10 +141,10 @@ func protoParityVectors(add parityAdd, add2 parityAdd2, corrupt func([]uint8) []
 		rc5 := gen(func(l irLine) { rc5Frame(l, 0, 0, 0x0C); rc5Frame(l, 1, 0x1F, 0x3F); rc5Frame(l, 0, 5, 0x50) })
 		rc6 := gen(func(l irLine) { rc6Frame(l, 0, 0, []int{0, 0x0C}); rc6Frame(l, 6, 1, []int{0x80, 0x0F, 4, 0x31}) })
 		bases = append(bases,
-			base{"irnec", 1 / sr, cfg{}, nec, func(c []uint8) Result { return DecodeIRNEC(c, 1/sr, IRCfg{}) }},
-			base{"irsirc", 1 / sr, cfg{}, sirc, func(c []uint8) Result { return DecodeIRSIRC(c, 1/sr, IRCfg{}) }},
-			base{"irrc5", 1 / sr, cfg{}, rc5, func(c []uint8) Result { return DecodeIRRC5(c, 1/sr, IRCfg{}) }},
-			base{"irrc6", 1 / sr, cfg{}, rc6, func(c []uint8) Result { return DecodeIRRC6(c, 1/sr, IRCfg{}) }})
+			base{"irnec", 1 / sr, cfg{}, nec, func(c []uint8) Result { return IRNEC(c, 1/sr, IRCfg{}) }},
+			base{"irsirc", 1 / sr, cfg{}, sirc, func(c []uint8) Result { return IRSIRC(c, 1/sr, IRCfg{}) }},
+			base{"irrc5", 1 / sr, cfg{}, rc5, func(c []uint8) Result { return IRRC5(c, 1/sr, IRCfg{}) }},
+			base{"irrc6", 1 / sr, cfg{}, rc6, func(c []uint8) Result { return IRRC6(c, 1/sr, IRCfg{}) }})
 	}
 
 	// ---- biphase
@@ -155,7 +155,7 @@ func protoParityVectors(add parityAdd, add2 parityAdd2, corrupt func([]uint8) []
 		daliFrame(wd, 8, 0x5A, 10e-3)
 		daliFrame(wd, 24, 0x123456, 10e-3)
 		dali := wd.codes()
-		bases = append(bases, base{"dali", 5e-6, cfg{}, dali, func(c []uint8) Result { return DecodeDALI(c, 5e-6, DALICfg{}) }})
+		bases = append(bases, base{"dali", 5e-6, cfg{}, dali, func(c []uint8) Result { return DALI(c, 5e-6, DALICfg{}) }})
 		wp := newTimeline(25e6)
 		wp.add(0, 20e-6)
 		pdMessage(wp, pdSOP, 0x1161, []uint32{0x0801912C}, false)
@@ -163,7 +163,7 @@ func protoParityVectors(add parityAdd, add2 parityAdd2, corrupt func([]uint8) []
 		pdMessage(wp, pdSOPPrime, 0x1042, []uint32{0x12345678}, true)
 		pdMessage(wp, pdHardReset, 0, nil, false)
 		pd := wp.codes()
-		bases = append(bases, base{"usbpd", 4e-8, cfg{}, pd, func(c []uint8) Result { return DecodeUSBPD(c, 4e-8, USBPDCfg{}) }})
+		bases = append(bases, base{"usbpd", 4e-8, cfg{}, pd, func(c []uint8) Result { return USBPD(c, 4e-8, USBPDCfg{}) }})
 		ws := newTimeline(250e6)
 		ws.add(0, 50e-9)
 		var smp [][2]int
@@ -172,7 +172,7 @@ func protoParityVectors(add parityAdd, add2 parityAdd2, corrupt func([]uint8) []
 		}
 		spdifStream(ws, 48e3, 190, smp)
 		sp := ws.codes()
-		bases = append(bases, base{"spdif", 4e-9, cfg{}, sp, func(c []uint8) Result { return DecodeSPDIF(c, 4e-9, SPDIFCfg{}) }})
+		bases = append(bases, base{"spdif", 4e-9, cfg{}, sp, func(c []uint8) Result { return SPDIF(c, 4e-9, SPDIFCfg{}) }})
 	}
 
 	// ---- USB full speed (tokens' CRC5, data CRC16)
@@ -184,7 +184,7 @@ func protoParityVectors(add parityAdd, add2 parityAdd2, corrupt func([]uint8) []
 			usblsPacketBits(0xB, usblsDataBits([]int{0xFF, 0x00}, 0x1)),
 		}, 12)
 		fs := bitsToCodes(dp)
-		bases = append(bases, base{"usbls", 1 / 120e6, cfg{}, fs, func(c []uint8) Result { return DecodeUSBLS(c, 1/120e6, USBLSCfg{}) }})
+		bases = append(bases, base{"usbls", 1 / 120e6, cfg{}, fs, func(c []uint8) Result { return USBLS(c, 1/120e6, USBLSCfg{}) }})
 	}
 
 	// ---- clocked two-line: clean, and each line corrupted in turn
@@ -202,7 +202,7 @@ func protoParityVectors(add parityAdd, add2 parityAdd2, corrupt func([]uint8) []
 		ps2Frame(lp, 0xF0, false, false, 80e-6, 100e-6)
 		ps2Frame(lp, 0xED, true, false, 80e-6, 500e-6)
 		ps2Frame(lp, 0x33, false, true, 80e-6, 500e-6)
-		b2 = append(b2, base2{"ps2", 1e-6, lp.a.codes(), lp.b.codes(), func(a, b []uint8) Result { return DecodePS2(a, b, 1e-6, ClockedCfg{}) }})
+		b2 = append(b2, base2{"ps2", 1e-6, lp.a.codes(), lp.b.codes(), func(a, b []uint8) Result { return PS2(a, b, 1e-6, ClockedCfg{}) }})
 		s := &swdLine{t: newTwoLine(20e6), per: 1e-6}
 		s.host(0, 0)
 		s.lineReset()
@@ -210,19 +210,19 @@ func protoParityVectors(add parityAdd, add2 parityAdd2, corrupt func([]uint8) []
 		s.transfer(false, false, 8, 1, 0x000000F0, false, 0)
 		s.transfer(true, true, 0xC, 2, 0, false, 2)
 		s.transfer(true, true, 0xC, 1, 0xDEADBEEF, true, 2)
-		b2 = append(b2, base2{"swd", 5e-8, s.t.a.codes(), s.t.b.codes(), func(a, b []uint8) Result { return DecodeSWD(a, b, 5e-8, ClockedCfg{}) }})
+		b2 = append(b2, base2{"swd", 5e-8, s.t.a.codes(), s.t.b.codes(), func(a, b []uint8) Result { return SWD(a, b, 5e-8, ClockedCfg{}) }})
 		lm := newTwoLine(25e6)
 		lm.add(1, 1, 2e-6)
 		mdioFrame(lm, 400e-9, 32, 1, 2, 0x01, 0x02, 0x796D, 0)
 		mdioFrame(lm, 400e-9, 20, 0, 3, 0x02, 0x01, 0xBEEF, 0)
 		mdioFrame(lm, 400e-9, 32, 1, 2, 0x05, 0x02, 0xFFFF, 1)
-		b2 = append(b2, base2{"mdio", 4e-8, lm.a.codes(), lm.b.codes(), func(a, b []uint8) Result { return DecodeMDIO(a, b, 4e-8, ClockedCfg{}) }})
+		b2 = append(b2, base2{"mdio", 4e-8, lm.a.codes(), lm.b.codes(), func(a, b []uint8) Result { return MDIO(a, b, 4e-8, ClockedCfg{}) }})
 		lw := newTwoLine(100e3)
 		lw.add(1, 1, 10e-3)
 		wiegandFrame(lw, wiegandBits(26, 12, 4660), 2e-3)
 		wiegandFrame(lw, wiegandBits(34, 1000, 65535), 1e-3)
 		wiegandFrame(lw, "1010110011", 2e-3)
-		b2 = append(b2, base2{"wiegand", 1e-5, lw.a.codes(), lw.b.codes(), func(a, b []uint8) Result { return DecodeWiegand(a, b, 1e-5, ClockedCfg{}) }})
+		b2 = append(b2, base2{"wiegand", 1e-5, lw.a.codes(), lw.b.codes(), func(a, b []uint8) Result { return Wiegand(a, b, 1e-5, ClockedCfg{}) }})
 		// A frame's few pulses in a long idle, at stated thresholds: the
 		// lines hold under a thousandth of the window at their pulse level.
 		ls := newTwoLine(100e3)
@@ -230,8 +230,8 @@ func protoParityVectors(add parityAdd, add2 parityAdd2, corrupt func([]uint8) []
 		wiegandFrame(ls, wiegandBits(26, 255, 65534), 2e-3)
 		ls.add(1, 1, 2)
 		thr := ClockedCfg{Threshold: 128, HaveThr: true, ThresholdB: 128, HaveThrB: true}
-		add2("wiegand", ls.a.codes(), ls.b.codes(), 1e-5, cfg{"threshold": 128, "thresholdB": 128}, DecodeWiegand(ls.a.codes(), ls.b.codes(), 1e-5, thr))
-		add2("wiegand", ls.a.codes(), ls.b.codes(), 1e-5, cfg{}, DecodeWiegand(ls.a.codes(), ls.b.codes(), 1e-5, ClockedCfg{}))
+		add2("wiegand", ls.a.codes(), ls.b.codes(), 1e-5, cfg{"threshold": 128, "thresholdB": 128}, Wiegand(ls.a.codes(), ls.b.codes(), 1e-5, thr))
+		add2("wiegand", ls.a.codes(), ls.b.codes(), 1e-5, cfg{}, Wiegand(ls.a.codes(), ls.b.codes(), 1e-5, ClockedCfg{}))
 		for _, b := range b2 {
 			add2(b.proto, b.c1, b.c2, b.colT, cfg{}, b.dec(b.c1, b.c2))
 			for it := range 12 * parityMult() {

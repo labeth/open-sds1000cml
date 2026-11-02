@@ -110,7 +110,7 @@ func TestAutodetectRingingIsNotI2C(t *testing.T) {
 	for i := range f.C1 {
 		c1[i], c2[i] = uint8(f.C1[i]), uint8(f.C2[i])
 	}
-	if r := DecodeI2C(c1, c2, f.SampleS, I2CCfg{Format: "hex"}); scoreResult(r) <= 0 {
+	if r := I2C(c1, c2, f.SampleS, I2CCfg{Format: "hex"}); scoreResult(r) <= 0 {
 		t.Fatalf("the capture no longer reads as I2C at all (score %.0f): the test proves nothing", scoreResult(r))
 	}
 	if r, _ := AutodetectFast(c1, c2, f.SampleS, "hex"); r.Proto == "i2c" {
@@ -140,7 +140,7 @@ func TestAutodetectSPIDataOnClockEdgesIsNotI2C(t *testing.T) {
 	for i := range f.C1 {
 		c1[i], c2[i] = uint8(f.C1[i]), uint8(f.C2[i])
 	}
-	i2c := DecodeI2C(c1, c2, f.SampleS, I2CCfg{Format: "hex"})
+	i2c := I2C(c1, c2, f.SampleS, I2CCfg{Format: "hex"})
 	if !i2c.OK || i2cCountKind(i2c, "addr") == 0 {
 		t.Fatalf("the capture no longer reads as addressed I2C transfers at all: the test proves nothing")
 	}
@@ -152,7 +152,7 @@ func TestAutodetectSPIDataOnClockEdgesIsNotI2C(t *testing.T) {
 	}
 	// a real I2C bus: its STARTs and STOPs in the middle of SCL high
 	scl, sda := i2cWave(0x24, 0, []int{0x55, 0xAA}, 20)
-	if r := DecodeI2C(scl, sda, 2e-7, I2CCfg{Format: "hex"}); !r.OK || i2cConditionsOnEdges(r, new(sliceChannel(scl, 0, false)), 2e-7) {
+	if r := I2C(scl, sda, 2e-7, I2CCfg{Format: "hex"}); !r.OK || i2cConditionsOnEdges(r, new(sliceChannel(scl, 0, false)), 2e-7) {
 		t.Errorf("a clean I2C transaction: ok %v, conditions on SCL's edges %v", r.OK, i2cConditionsOnEdges(r, new(sliceChannel(scl, 0, false)), 2e-7))
 	}
 }

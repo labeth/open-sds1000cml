@@ -1046,7 +1046,7 @@ func (c *Controller) nudgeCentre(ch int, swing *measure.Result, g autoGoal) bool
 		return false
 	}
 	snap, _ := c.fe.Snapshot()
-	vdiv := analog.AnalogVdiv(snap[ch]) // raw-code divisions are on the analog range
+	vdiv := analog.Vdiv(snap[ch]) // raw-code divisions are on the analog range
 	c.fe.SetOffset(ch, c.fe.OffsetReqV(ch)-errDiv*vdiv)
 	return true
 }
@@ -1073,7 +1073,7 @@ func (c *Controller) recentreClipped(stop chan struct{}, ch int, g autoGoal) (fi
 		return false, true
 	}
 	snap, _ := c.fe.Snapshot()
-	c.fe.SetOffset(ch, c.fe.OffsetReqV(ch)-errDiv*analog.AnalogVdiv(snap[ch]))
+	c.fe.SetOffset(ch, c.fe.OffsetReqV(ch)-errDiv*analog.Vdiv(snap[ch]))
 	if !c.waitFrame(stop) {
 		return false, false
 	}
@@ -1321,7 +1321,7 @@ func (c *Controller) measureChans() ([2]*measure.Result, bool) {
 				probe = c.fe.ProbeFactor(ch)
 				offV = c.fe.OffsetVolts(ch, off[ch]) // calibrated per-detent zero, not the fixed fallback
 			}
-			vdiv := analog.AnalogVdiv(idx) // volts per code on the analog range
+			vdiv := analog.Vdiv(idx) // volts per code on the analog range
 			q := f.Q1
 			if ch == 1 {
 				q = f.Q2
@@ -1447,7 +1447,7 @@ func (c *Controller) centreErrOver(ch int, swing *measure.Result) (errDiv float6
 		return errDiv, true
 	}
 	snap, _ := c.fe.Snapshot()
-	volts := float64(span) * analog.AnalogVdiv(snap[ch]) / 25 * c.fe.ProbeFactor(ch)
+	volts := float64(span) * analog.Vdiv(snap[ch]) / 25 * c.fe.ProbeFactor(ch)
 	return errDiv, volts >= 0.7*swing.Vpp
 }
 

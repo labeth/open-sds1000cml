@@ -23,74 +23,74 @@ var line128 = LineCfg{Threshold: 128, HaveThr: true}
 // sample decoder's settings (streamCases, moreStreamCases, captureCases).
 var edgeStreamDecs = map[string]func(a, b *EdgeLine, s float64) Result{
 	"lin": func(a, _ *EdgeLine, s float64) Result {
-		return DecodeLINEdges(a, s, LINCfg{Baud: 19200, Threshold: 128, HaveThr: true})
+		return LINEdges(a, s, LINCfg{Baud: 19200, Threshold: 128, HaveThr: true})
 	},
 	"dmx512": func(a, _ *EdgeLine, s float64) Result {
-		return DecodeDMX512Edges(a, s, DMXCfg{Baud: 250000, Threshold: 128, HaveThr: true})
+		return DMX512Edges(a, s, DMXCfg{Baud: 250000, Threshold: 128, HaveThr: true})
 	},
 	"modbus": func(a, _ *EdgeLine, s float64) Result {
-		return DecodeModbusEdges(a, s, ModbusCfg{Baud: 19200, Parity: "even", Threshold: 128, HaveThr: true})
+		return ModbusEdges(a, s, ModbusCfg{Baud: 19200, Parity: "even", Threshold: 128, HaveThr: true})
 	},
 	"onewire": func(a, _ *EdgeLine, s float64) Result {
-		return DecodeOneWireEdges(a, s, OneWireCfg{Threshold: 128, HaveThr: true})
+		return OneWireEdges(a, s, OneWireCfg{Threshold: 128, HaveThr: true})
 	},
 	"dht": func(a, _ *EdgeLine, s float64) Result {
-		return DecodeDHTEdges(a, s, DHTCfg{Threshold: 128, HaveThr: true})
+		return DHTEdges(a, s, DHTCfg{Threshold: 128, HaveThr: true})
 	},
 	"cec": func(a, _ *EdgeLine, s float64) Result {
-		return DecodeCECEdges(a, s, CECCfg{Threshold: 128, HaveThr: true})
+		return CECEdges(a, s, CECCfg{Threshold: 128, HaveThr: true})
 	},
 	"j1850": func(a, _ *EdgeLine, s float64) Result {
-		return DecodeJ1850Edges(a, s, J1850Cfg{Threshold: 128, HaveThr: true})
+		return J1850Edges(a, s, J1850Cfg{Threshold: 128, HaveThr: true})
 	},
 	"dali": func(a, _ *EdgeLine, s float64) Result {
-		return DecodeDALIEdges(a, s, DALICfg{Threshold: 128, HaveThr: true})
+		return DALIEdges(a, s, DALICfg{Threshold: 128, HaveThr: true})
 	},
-	"ps2": func(a, b *EdgeLine, s float64) Result { return DecodePS2Edges(a, b, s, clocked128) },
+	"ps2": func(a, b *EdgeLine, s float64) Result { return PS2Edges(a, b, s, clocked128) },
 	"wiegand": func(a, b *EdgeLine, s float64) Result {
-		return DecodeWiegandEdges(a, b, s, clocked128)
+		return WiegandEdges(a, b, s, clocked128)
 	},
 	"usbpd": func(a, _ *EdgeLine, s float64) Result {
-		return DecodeUSBPDEdges(a, s, USBPDCfg{Baud: 300000, Threshold: 128, HaveThr: true})
+		return USBPDEdges(a, s, USBPDCfg{Baud: 300000, Threshold: 128, HaveThr: true})
 	},
 	"ws281x": func(a, _ *EdgeLine, s float64) Result {
-		return DecodeWS281xEdges(a, s, WS281xCfg{Threshold: 128, HaveThr: true})
+		return WS281xEdges(a, s, WS281xCfg{Threshold: 128, HaveThr: true})
 	},
-	"swd":  func(a, b *EdgeLine, s float64) Result { return DecodeSWDEdges(a, b, s, clocked128) },
-	"mdio": func(a, b *EdgeLine, s float64) Result { return DecodeMDIOEdges(a, b, s, clocked128) },
+	"swd":  func(a, b *EdgeLine, s float64) Result { return SWDEdges(a, b, s, clocked128) },
+	"mdio": func(a, b *EdgeLine, s float64) Result { return MDIOEdges(a, b, s, clocked128) },
 	"spdif": func(a, _ *EdgeLine, s float64) Result {
-		return DecodeSPDIFEdges(a, s, SPDIFCfg{Threshold: 128, HaveThr: true})
+		return SPDIFEdges(a, s, SPDIFCfg{Threshold: 128, HaveThr: true})
 	},
-	"quad":    func(a, b *EdgeLine, s float64) Result { return DecodeQuadratureEdges(a, b, s, clocked128) },
-	"stepper": func(a, b *EdgeLine, s float64) Result { return DecodeStepperEdges(a, b, s, clocked128) },
+	"quad":    func(a, b *EdgeLine, s float64) Result { return QuadratureEdges(a, b, s, clocked128) },
+	"stepper": func(a, b *EdgeLine, s float64) Result { return StepperEdges(a, b, s, clocked128) },
 	"rcencode": func(a, _ *EdgeLine, s float64) Result {
-		return DecodeRCEncodeEdges(a, s, LineCfg{Threshold: 128, HaveThr: true, Variant: 12})
+		return RCEncodeEdges(a, s, LineCfg{Threshold: 128, HaveThr: true, Variant: 12})
 	},
-	"ook":   func(a, _ *EdgeLine, s float64) Result { return DecodeOOKEdges(a, s, line128) },
-	"morse": func(a, _ *EdgeLine, s float64) Result { return DecodeMorseEdges(a, s, line128) },
+	"ook":   func(a, _ *EdgeLine, s float64) Result { return OOKEdges(a, s, line128) },
+	"morse": func(a, _ *EdgeLine, s float64) Result { return MorseEdges(a, s, line128) },
 	"dcf77": func(a, _ *EdgeLine, s float64) Result {
-		return DecodeDCF77Edges(a, s, LineCfg{Threshold: 128, HaveThr: true, Baud: 1})
+		return DCF77Edges(a, s, LineCfg{Threshold: 128, HaveThr: true, Baud: 1})
 	},
 	"pjdl": func(a, _ *EdgeLine, s float64) Result {
-		return DecodePJDLEdges(a, s, LineCfg{Threshold: 128, HaveThr: true, Variant: 1})
+		return PJDLEdges(a, s, LineCfg{Threshold: 128, HaveThr: true, Variant: 1})
 	},
-	"dsi":     func(a, _ *EdgeLine, s float64) Result { return DecodeDSIEdges(a, s, line128) },
-	"qi":      func(a, _ *EdgeLine, s float64) Result { return DecodeQiEdges(a, s, line128) },
-	"caliper": func(a, b *EdgeLine, s float64) Result { return DecodeCaliperEdges(a, b, s, clocked128) },
-	"pwm":     func(a, _ *EdgeLine, s float64) Result { return DecodePWMEdges(a, s, line128) },
+	"dsi":     func(a, _ *EdgeLine, s float64) Result { return DSIEdges(a, s, line128) },
+	"qi":      func(a, _ *EdgeLine, s float64) Result { return QiEdges(a, s, line128) },
+	"caliper": func(a, b *EdgeLine, s float64) Result { return CaliperEdges(a, b, s, clocked128) },
+	"pwm":     func(a, _ *EdgeLine, s float64) Result { return PWMEdges(a, s, line128) },
 	"miller": func(a, _ *EdgeLine, s float64) Result {
-		return DecodeMillerEdges(a, s, LineCfg{Threshold: 128, HaveThr: true, Baud: 106000})
+		return MillerEdges(a, s, LineCfg{Threshold: 128, HaveThr: true, Baud: 106000})
 	},
 	"swim": func(a, _ *EdgeLine, s float64) Result {
-		return DecodeSWIMEdges(a, s, LineCfg{Threshold: 128, HaveThr: true, Baud: 363636})
+		return SWIMEdges(a, s, LineCfg{Threshold: 128, HaveThr: true, Baud: 363636})
 	},
 	"sdq": func(a, _ *EdgeLine, s float64) Result {
-		return DecodeSDQEdges(a, s, LineCfg{Threshold: 128, HaveThr: true, Baud: 98425})
+		return SDQEdges(a, s, LineCfg{Threshold: 128, HaveThr: true, Baud: 98425})
 	},
-	"sdcard": func(a, b *EdgeLine, s float64) Result { return DecodeSDCardEdges(a, b, s, clocked128) },
-	"cjtag":  func(a, b *EdgeLine, s float64) Result { return DecodeCJTAGEdges(a, b, s, clocked128) },
-	"maple":  func(a, b *EdgeLine, s float64) Result { return DecodeMapleEdges(a, b, s, clocked128) },
-	"pdi":    func(a, b *EdgeLine, s float64) Result { return DecodePDIEdges(a, b, s, clocked128) },
+	"sdcard": func(a, b *EdgeLine, s float64) Result { return SDCardEdges(a, b, s, clocked128) },
+	"cjtag":  func(a, b *EdgeLine, s float64) Result { return CJTAGEdges(a, b, s, clocked128) },
+	"maple":  func(a, b *EdgeLine, s float64) Result { return MapleEdges(a, b, s, clocked128) },
+	"pdi":    func(a, b *EdgeLine, s float64) Result { return PDIEdges(a, b, s, clocked128) },
 }
 
 // edgeLineOf is a line of 0/1 levels as an EdgeLine, built a sample at a

@@ -11,7 +11,7 @@ import (
 
 // --- red-team helpers -------------------------------------------------------
 //
-// This file adversarially attacks DecodeSENT. It reuses sentWave (the WAVEFORM
+// This file adversarially attacks SENT. It reuses sentWave (the WAVEFORM
 // SYNTHESIZER from decode_sent_test.go) to build valid SENT pulse trains, and
 // adds a self-consistent SAE J2716 CRC-4 so "valid" frames carry a correct CRC
 // nibble. The decoder itself never computes this CRC — that fact is the core
@@ -115,7 +115,7 @@ func TestBreakSent(t *testing.T) {
 			cfg.TickNs = float64(tick) * ct * 1e9
 		}
 
-		r := DecodeSENT(w, ct, cfg)
+		r := SENT(w, ct, cfg)
 		desc := fmt.Sprintf("it=%d tick=%d nib=%d frames=%d pause=%v jit=%d override=%v",
 			it, tick, nib, nFrames, usePause, jit, cfg.TickNs > 0)
 		if !r.OK {
@@ -139,7 +139,7 @@ func TestBreakSent(t *testing.T) {
 		for i := range flat {
 			flat[i] = lvl
 		}
-		r := DecodeSENT(flat, 1e-6, SENTCfg{Nibbles: 8})
+		r := SENT(flat, 1e-6, SENTCfg{Nibbles: 8})
 		if r.OK {
 			t.Errorf("FALSE-POSITIVE: flat/DC level %d decoded ok=true (bytes=%d)", lvl, len(r.Bytes))
 		}
@@ -150,7 +150,7 @@ func TestBreakSent(t *testing.T) {
 	for i := range ramp {
 		ramp[i] = uint8((i * 255) / 511)
 	}
-	if r := DecodeSENT(ramp, 1e-6, SENTCfg{Nibbles: 8}); r.OK {
+	if r := SENT(ramp, 1e-6, SENTCfg{Nibbles: 8}); r.OK {
 		t.Errorf("FALSE-POSITIVE: monotonic ramp decoded ok=true (bytes=%d)", len(r.Bytes))
 	}
 
@@ -164,7 +164,7 @@ func TestBreakSent(t *testing.T) {
 			nyq[i] = 210
 		}
 	}
-	if r := DecodeSENT(nyq, 1e-6, SENTCfg{Nibbles: 8}); len(r.Bytes) != 0 {
+	if r := SENT(nyq, 1e-6, SENTCfg{Nibbles: 8}); len(r.Bytes) != 0 {
 		t.Errorf("FALSE-POSITIVE: Nyquist toggle produced %d data nibbles %v", len(r.Bytes), r.Bytes)
 	}
 	for _, T := range []int{8, 10, 16, 24, 40, 56, 80, 120} {
@@ -176,7 +176,7 @@ func TestBreakSent(t *testing.T) {
 				sq[i] = 40
 			}
 		}
-		if r := DecodeSENT(sq, 1e-6, SENTCfg{Nibbles: 8}); len(r.Bytes) != 0 {
+		if r := SENT(sq, 1e-6, SENTCfg{Nibbles: 8}); len(r.Bytes) != 0 {
 			t.Errorf("FALSE-POSITIVE: fixed square wave T=%d produced %d data nibbles", T, len(r.Bytes))
 		}
 	}
@@ -190,7 +190,7 @@ func TestBreakSent(t *testing.T) {
 		corrupt := append([]int{}, good...)
 		corrupt[3] = 23 // 35-tick pulse => out of nibble range
 		w := sentWave([][]int{corrupt}, 8, 0, 0)
-		r := DecodeSENT(w, 1e-6, SENTCfg{Nibbles: 8})
+		r := SENT(w, 1e-6, SENTCfg{Nibbles: 8})
 		_, _, _, nFerr, _ := sentSpanCounts(r)
 		if nFerr == 0 {
 			t.Errorf("MISSED coding violation: illegal 35-tick pulse not flagged as frame-error (spans=%+v)", r.Spans)
@@ -207,7 +207,7 @@ func TestBreakSent(t *testing.T) {
 		for i := range g {
 			g[i] = uint8(fp.Intn(256))
 		}
-		r := DecodeSENT(g, 1e-6, SENTCfg{Nibbles: 8})
+		r := SENT(g, 1e-6, SENTCfg{Nibbles: 8})
 		if r.OK && len(r.Bytes) >= 8 {
 			noiseFrameHits++
 		}
@@ -231,7 +231,7 @@ func TestBreakSent(t *testing.T) {
 		base := buildFrame(fp, nib)
 		trueCRC := base[nib-1]
 		// sanity: the un-corrupted frame decodes cleanly
-		if r := DecodeSENT(sentWave([][]int{base}, 8, 0, 0), 1e-6, SENTCfg{Nibbles: nib}); !r.OK {
+		if r := SENT(sentWave([][]int{base}, 8, 0, 0), 1e-6, SENTCfg{Nibbles: nib}); !r.OK {
 			t.Errorf("setup: correct-CRC frame unexpectedly rejected: %s", r.Error)
 		}
 		for c := range 16 {
@@ -241,7 +241,7 @@ func TestBreakSent(t *testing.T) {
 			bad := append([]int{}, base...)
 			bad[nib-1] = c // corrupt ONLY the CRC nibble to a wrong (but in-range) value
 			w := sentWave([][]int{bad}, 8, 0, 0)
-			r := DecodeSENT(w, 1e-6, SENTCfg{Nibbles: nib})
+			r := SENT(w, 1e-6, SENTCfg{Nibbles: nib})
 			_, _, _, nFerr, _ := sentSpanCounts(r)
 			flagged := !r.OK || r.Error != "" || nFerr > 0
 			totalCorrupt++
@@ -266,7 +266,7 @@ func TestBreakSent(t *testing.T) {
 		full := buildFrame(fp, 8)
 		w := sentWave([][]int{full}, 8, 0, 0)
 		half := w[:len(w)*3/5] // cut mid-frame
-		r := DecodeSENT(half, 1e-6, SENTCfg{Nibbles: 8})
+		r := SENT(half, 1e-6, SENTCfg{Nibbles: 8})
 		if r.OK && len(r.Bytes) >= 8 {
 			t.Errorf("FALSE-POSITIVE: truncated frame yielded a FULL %d-nibble payload %v", len(r.Bytes), r.Bytes)
 		}
@@ -281,7 +281,7 @@ func TestBreakSent(t *testing.T) {
 	for _, tick := range []int{1, 2, 120, 200} {
 		nibs := buildFrame(fp, 8)
 		w := sentWave([][]int{nibs}, tick, 0, 0)
-		r := DecodeSENT(w, 1e-6, SENTCfg{Nibbles: 8})
+		r := SENT(w, 1e-6, SENTCfg{Nibbles: 8})
 		if !r.OK {
 			t.Errorf("EDGE: tick=%d single frame rejected: %s", tick, r.Error)
 			continue
@@ -294,7 +294,7 @@ func TestBreakSent(t *testing.T) {
 	// Exactly one frame.
 	{
 		nibs := buildFrame(fp, 8)
-		r := DecodeSENT(sentWave([][]int{nibs}, 8, 0, 0), 1e-6, SENTCfg{Nibbles: 8})
+		r := SENT(sentWave([][]int{nibs}, 8, 0, 0), 1e-6, SENTCfg{Nibbles: 8})
 		if !r.OK || fmt.Sprintf("%v", r.Bytes) != fmt.Sprintf("%v", nibs) {
 			t.Errorf("EDGE: single frame failed ok=%v bytes=%v want %v", r.OK, r.Bytes, nibs)
 		}
@@ -306,7 +306,7 @@ func TestBreakSent(t *testing.T) {
 		fb := buildFrame(fp, 8)
 		fc := buildFrame(fp, 8)
 		w := sentWave([][]int{fa, fb, fc}, 7, 0, 0)
-		r := DecodeSENT(w, 1e-6, SENTCfg{Nibbles: 8})
+		r := SENT(w, 1e-6, SENTCfg{Nibbles: 8})
 		want := append(append(append([]int{}, fa...), fb...), fc...)
 		if !r.OK || fmt.Sprintf("%v", r.Bytes) != fmt.Sprintf("%v", want) {
 			t.Errorf("EDGE: back-to-back frames failed ok=%v\n got=%v\nwant=%v", r.OK, r.Bytes, want)
@@ -320,7 +320,7 @@ func TestBreakSent(t *testing.T) {
 			nibs[i] = v
 		}
 		nibs[7] = sentCRC4(nibs[1:7]) // valid CRC so this is a legitimate frame
-		r := DecodeSENT(sentWave([][]int{nibs}, 10, 0, 0), 1e-6, SENTCfg{Nibbles: 8})
+		r := SENT(sentWave([][]int{nibs}, 10, 0, 0), 1e-6, SENTCfg{Nibbles: 8})
 		if !r.OK || fmt.Sprintf("%v", r.Bytes) != fmt.Sprintf("%v", nibs) {
 			t.Errorf("EDGE: all-0x%X payload failed ok=%v bytes=%v", v, r.OK, r.Bytes)
 		}
@@ -330,7 +330,7 @@ func TestBreakSent(t *testing.T) {
 	{
 		mini := []int{0x5, sentCRC4(nil)} // status + CRC over no data (a valid 2-nibble frame)
 		short := sentWave([][]int{mini}, 4, 0, 0)
-		if r := DecodeSENT(short, 1e-6, SENTCfg{Nibbles: 2}); !r.OK || len(r.Bytes) != 2 || r.Bytes[0] != 5 {
+		if r := SENT(short, 1e-6, SENTCfg{Nibbles: 2}); !r.OK || len(r.Bytes) != 2 || r.Bytes[0] != 5 {
 			t.Errorf("EDGE: shortest record failed ok=%v bytes=%v", r.OK, r.Bytes)
 		}
 		var longFrames [][]int
@@ -338,7 +338,7 @@ func TestBreakSent(t *testing.T) {
 			longFrames = append(longFrames, buildFrame(fp, 12))
 		}
 		longW := sentWave(longFrames, 20, 0, 0)
-		if r := DecodeSENT(longW, 1e-6, SENTCfg{Nibbles: 12}); !r.OK {
+		if r := SENT(longW, 1e-6, SENTCfg{Nibbles: 12}); !r.OK {
 			t.Errorf("EDGE: very long record (%d samples) rejected: %s", len(longW), r.Error)
 		}
 	}
@@ -349,7 +349,7 @@ func TestBreakSent(t *testing.T) {
 		for i := range b {
 			b[i] = 210
 		}
-		if r := DecodeSENT(b, 1e-6, SENTCfg{Nibbles: 8}); r.OK {
+		if r := SENT(b, 1e-6, SENTCfg{Nibbles: 8}); r.OK {
 			t.Errorf("EDGE: %d-sample record decoded ok=true", n)
 		}
 	}
@@ -384,7 +384,7 @@ func TestBreakSent(t *testing.T) {
 					t.Errorf("PANIC on degenerate config %q: %v", d.name, p)
 				}
 			}()
-			_ = DecodeSENT(d.w, d.ct, d.cfg)
+			_ = SENT(d.w, d.ct, d.cfg)
 		}()
 	}
 }

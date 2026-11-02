@@ -44,7 +44,7 @@ func TestWiegandFromEnvelope(t *testing.T) {
 			return o
 		}
 		bucket := int(interval * 1e6 / 2.5)
-		r := DecodeWiegand(peakEnvelope(code(l.a.bits), bucket), peakEnvelope(code(l.b.bits), bucket), float64(bucket)*1e-6/2, ClockedCfg{Format: "hex"})
+		r := Wiegand(peakEnvelope(code(l.a.bits), bucket), peakEnvelope(code(l.b.bits), bucket), float64(bucket)*1e-6/2, ClockedCfg{Format: "hex"})
 		if !r.OK || r.Text != "26b F12 C4660" {
 			t.Fatalf("interval %v: %q %q", interval, r.Text, r.Error)
 		}

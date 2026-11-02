@@ -97,7 +97,7 @@ func evenOK(b []rbit, at, n int) bool {
 // em4305Cmds name the EM4305 commands.
 var em4305Cmds = []string{"CMD0", "LOGIN", "WRITE", "CMD3", "READ", "DISABLE", "PROTECT", "CMD7"}
 
-// DecodeEM4305 decodes a reader's commands to an EM4205/EM4305 tag (sigrok's
+// EM4305 decodes a reader's commands to an EM4205/EM4305 tag (sigrok's
 // em4305): a first field stop of 40 field clocks or more ("sof") opens
 // them; then the field's on-times between gaps (of 12 field clocks or
 // more) are bits: 15 to 27 field clocks a 0, longer ones a 1 each 32 field
@@ -110,11 +110,11 @@ var em4305Cmds = []string{"CMD0", "LOGIN", "WRITE", "CMD3", "READ", "DISABLE", "
 // field's frequency (125 kHz unless given). OK needs a command whose checks
 // hold.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-252
-func DecodeEM4305(codes []uint8, colTimeS float64, cfg LineCfg) Result {
+func EM4305(codes []uint8, colTimeS float64, cfg LineCfg) Result {
 	return rfidWrites(protoEM4305, codes, colTimeS, cfg)
 }
 
-// DecodeT55xx decodes a reader's commands to a T55xx tag (sigrok's t55xx): a
+// T55xx decodes a reader's commands to a T55xx tag (sigrok's t55xx): a
 // start gap of 20 field clocks or more ("sof") opens them; then the field's
 // on-times between gaps (of 20 field clocks or more) are bits, 16 to 31
 // field clocks a 0 and 48 to 63 a 1; 64 field clocks of field end the
@@ -124,11 +124,11 @@ func DecodeEM4305(codes []uint8, colTimeS float64, cfg LineCfg) Result {
 // hex), the lock bit ("LK") and the block ("BL"). FrameBits is the bits. Baud
 // is the field's frequency. OK needs a whole command.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-252
-func DecodeT55xx(codes []uint8, colTimeS float64, cfg LineCfg) Result {
+func T55xx(codes []uint8, colTimeS float64, cfg LineCfg) Result {
 	return rfidWrites(protoT55xx, codes, colTimeS, cfg)
 }
 
-// rfidWrites is DecodeEM4305 and DecodeT55xx.
+// rfidWrites is EM4305 and T55xx.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-252
 func rfidWrites(proto string, codes []uint8, colTimeS float64, cfg LineCfg) Result {
 	S := sliceChannel(codes, cfg.Threshold, cfg.HaveThr)
@@ -370,7 +370,7 @@ func manchesterStream(runs []lrun, hp float64) []rbit {
 	return bits
 }
 
-// DecodeEM4100 decodes an EM4100 tag's 64-bit frames on a demodulated line
+// EM4100 decodes an EM4100 tag's 64-bit frames on a demodulated line
 // (sigrok's em4100): Manchester bits (a 1 falls at its middle) of two
 // shortest runs; nine 1s after a 0 or an idle open a frame ("sof"), then ten rows of
 // four bits and their even parity, four column parities and a stop 0. The
@@ -379,7 +379,7 @@ func manchesterStream(runs []lrun, hp float64) []rbit {
 // bit is flagged after them. Baud is the bit rate. OK needs a frame whose
 // checks hold.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-252
-func DecodeEM4100(codes []uint8, colTimeS float64, cfg LineCfg) Result {
+func EM4100(codes []uint8, colTimeS float64, cfg LineCfg) Result {
 	S := sliceChannel(codes, cfg.Threshold, cfg.HaveThr)
 	if !S.ok {
 		return Result{Proto: protoEM4100, Error: S.reason}

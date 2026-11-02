@@ -35,7 +35,7 @@ var streamCases = []streamCase{
 		l.a.idle(rng.Float64() * 3e-3)
 		oneLine(l)
 	}, dec: func(a, _ []uint8, s float64) Result {
-		return DecodeLIN(a, s, LINCfg{Baud: 19200, Threshold: 128, HaveThr: true})
+		return LIN(a, s, LINCfg{Baud: 19200, Threshold: 128, HaveThr: true})
 	}},
 	// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
 	{name: "dmx512", baud: 250000, lines: 1, gen: func(l twoLine, i int, rng *rand.Rand) {
@@ -43,7 +43,7 @@ var streamCases = []streamCase{
 		l.a.idle(rng.Float64() * 1e-3)
 		oneLine(l)
 	}, dec: func(a, _ []uint8, s float64) Result {
-		return DecodeDMX512(a, s, DMXCfg{Baud: 250000, Threshold: 128, HaveThr: true})
+		return DMX512(a, s, DMXCfg{Baud: 250000, Threshold: 128, HaveThr: true})
 	}},
 	// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
 	{name: "modbus", baud: 19200, lines: 1, gen: func(l twoLine, i int, rng *rand.Rand) {
@@ -51,7 +51,7 @@ var streamCases = []streamCase{
 		l.a.idle(2e-3 + rng.Float64()*5e-3)
 		oneLine(l)
 	}, dec: func(a, _ []uint8, s float64) Result {
-		return DecodeModbus(a, s, ModbusCfg{Baud: 19200, Parity: "even", Threshold: 128, HaveThr: true})
+		return Modbus(a, s, ModbusCfg{Baud: 19200, Parity: "even", Threshold: 128, HaveThr: true})
 	}},
 	// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
 	{name: "onewire", baud: 16300, lines: 1, gen: func(l twoLine, i int, rng *rand.Rand) {
@@ -61,7 +61,7 @@ var streamCases = []streamCase{
 		l.a.idle(300e-6 + rng.Float64()*2e-3)
 		oneLine(l)
 	}, dec: func(a, _ []uint8, s float64) Result {
-		return DecodeOneWire(a, s, OneWireCfg{Threshold: 128, HaveThr: true})
+		return OneWire(a, s, OneWireCfg{Threshold: 128, HaveThr: true})
 	}},
 	// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
 	{name: "dht", baud: 20000, lines: 1, gen: func(l twoLine, i int, rng *rand.Rand) {
@@ -73,7 +73,7 @@ var streamCases = []streamCase{
 		l.a.idle(rng.Float64() * 5e-3)
 		oneLine(l)
 	}, dec: func(a, _ []uint8, s float64) Result {
-		return DecodeDHT(a, s, DHTCfg{Threshold: 128, HaveThr: true})
+		return DHT(a, s, DHTCfg{Threshold: 128, HaveThr: true})
 	}},
 	// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
 	{name: "cec", baud: 417, lines: 1, gen: func(l twoLine, i int, rng *rand.Rand) {
@@ -81,7 +81,7 @@ var streamCases = []streamCase{
 		l.a.idle(rng.Float64() * 20e-3)
 		oneLine(l)
 	}, dec: func(a, _ []uint8, s float64) Result {
-		return DecodeCEC(a, s, CECCfg{Threshold: 128, HaveThr: true})
+		return CEC(a, s, CECCfg{Threshold: 128, HaveThr: true})
 	}},
 	// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
 	{name: "j1850", baud: 10400, lines: 1, gen: func(l twoLine, i int, rng *rand.Rand) {
@@ -89,7 +89,7 @@ var streamCases = []streamCase{
 		l.a.add(0, rng.Float64()*2e-3)
 		l.b.add(0, l.a.t-l.b.t)
 	}, dec: func(a, _ []uint8, s float64) Result {
-		return DecodeJ1850(a, s, J1850Cfg{Threshold: 128, HaveThr: true})
+		return J1850(a, s, J1850Cfg{Threshold: 128, HaveThr: true})
 	}},
 	// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
 	{name: "irnec", baud: 889, lines: 1, gen: func(l twoLine, i int, rng *rand.Rand) {
@@ -102,7 +102,7 @@ var streamCases = []streamCase{
 		ir.space(40e-3 + rng.Float64()*20e-3)
 		oneLine(l)
 	}, dec: func(a, _ []uint8, s float64) Result {
-		return DecodeIRNEC(a, s, IRCfg{Threshold: 128, HaveThr: true})
+		return IRNEC(a, s, IRCfg{Threshold: 128, HaveThr: true})
 	}},
 	// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
 	{name: "irnec-carrier", baud: 889, lines: 1, gen: func(l twoLine, i int, rng *rand.Rand) {
@@ -111,7 +111,7 @@ var streamCases = []streamCase{
 		ir.space(40e-3 + rng.Float64()*20e-3)
 		l.b.add(0, l.a.t-l.b.t)
 	}, dec: func(a, _ []uint8, s float64) Result {
-		return DecodeIRNEC(a, s, IRCfg{Threshold: 128, HaveThr: true})
+		return IRNEC(a, s, IRCfg{Threshold: 128, HaveThr: true})
 	}},
 	// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
 	{name: "irsirc", baud: 1667, lines: 1, gen: func(l twoLine, i int, rng *rand.Rand) {
@@ -120,7 +120,7 @@ var streamCases = []streamCase{
 		ir.space(20e-3 + rng.Float64()*20e-3)
 		oneLine(l)
 	}, dec: func(a, _ []uint8, s float64) Result {
-		return DecodeIRSIRC(a, s, IRCfg{Threshold: 128, HaveThr: true})
+		return IRSIRC(a, s, IRCfg{Threshold: 128, HaveThr: true})
 	}},
 	// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
 	{name: "irrc5", baud: 562, lines: 1, gen: func(l twoLine, i int, rng *rand.Rand) {
@@ -129,7 +129,7 @@ var streamCases = []streamCase{
 		ir.space(30e-3 + rng.Float64()*20e-3)
 		oneLine(l)
 	}, dec: func(a, _ []uint8, s float64) Result {
-		return DecodeIRRC5(a, s, IRCfg{Threshold: 128, HaveThr: true})
+		return IRRC5(a, s, IRCfg{Threshold: 128, HaveThr: true})
 	}},
 	// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
 	{name: "irrc6", baud: 1126, lines: 1, gen: func(l twoLine, i int, rng *rand.Rand) {
@@ -138,27 +138,27 @@ var streamCases = []streamCase{
 		ir.space(30e-3 + rng.Float64()*20e-3)
 		oneLine(l)
 	}, dec: func(a, _ []uint8, s float64) Result {
-		return DecodeIRRC6(a, s, IRCfg{Threshold: 128, HaveThr: true})
+		return IRRC6(a, s, IRCfg{Threshold: 128, HaveThr: true})
 	}},
 	// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
 	{name: "dali", baud: 1200, lines: 1, gen: func(l twoLine, i int, rng *rand.Rand) {
 		daliFrame(l.a, []int{16, 8, 24}[i%3], int(uint32(i)*2654435761&0xffffff)>>uint(8*(2-i%3)), 10e-3+rng.Float64()*10e-3)
 		oneLine(l)
 	}, dec: func(a, _ []uint8, s float64) Result {
-		return DecodeDALI(a, s, DALICfg{Threshold: 128, HaveThr: true})
+		return DALI(a, s, DALICfg{Threshold: 128, HaveThr: true})
 	}},
 	// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
 	{name: "ps2", baud: 12500, lines: 2, gen: func(l twoLine, i int, rng *rand.Rand) {
 		ps2Frame(l, i&0xff, false, i%11 == 5, 80e-6, 200e-6+rng.Float64()*1e-3)
 	}, dec: func(a, b []uint8, s float64) Result {
-		return DecodePS2(a, b, s, ClockedCfg{Threshold: 128, HaveThr: true, ThresholdB: 128, HaveThrB: true})
+		return PS2(a, b, s, ClockedCfg{Threshold: 128, HaveThr: true, ThresholdB: 128, HaveThrB: true})
 	}},
 	// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
 	{name: "wiegand", baud: 500, lines: 2, gen: func(l twoLine, i int, rng *rand.Rand) {
 		wiegandFrame(l, wiegandBits([]int{26, 34}[i%2], i&0xff, rng.Intn(65536)), 2e-3)
 		l.add(1, 1, rng.Float64()*20e-3)
 	}, dec: func(a, b []uint8, s float64) Result {
-		return DecodeWiegand(a, b, s, ClockedCfg{Threshold: 128, HaveThr: true, ThresholdB: 128, HaveThrB: true})
+		return Wiegand(a, b, s, ClockedCfg{Threshold: 128, HaveThr: true, ThresholdB: 128, HaveThrB: true})
 	}},
 	// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
 	{name: "midi", baud: 31250, lines: 1, gen: func(l twoLine, i int, rng *rand.Rand) {
@@ -168,7 +168,7 @@ var streamCases = []streamCase{
 		l.a.idle(1e-3 + rng.Float64()*3e-3)
 		oneLine(l)
 	}, dec: func(a, _ []uint8, s float64) Result {
-		return DecodeMIDI(a, s, MIDICfg{Baud: 31250, Threshold: 128, HaveThr: true})
+		return MIDI(a, s, MIDICfg{Baud: 31250, Threshold: 128, HaveThr: true})
 	}},
 }
 
@@ -181,7 +181,7 @@ var captureCases = []streamCase{
 		l.a.add(l.a.bits[len(l.a.bits)-1], rng.Float64()*200e-6)
 		l.b.add(0, l.a.t-l.b.t)
 	}, dec: func(a, _ []uint8, s float64) Result {
-		return DecodeUSBPD(a, s, USBPDCfg{Baud: 300000, Threshold: 128, HaveThr: true})
+		return USBPD(a, s, USBPDCfg{Baud: 300000, Threshold: 128, HaveThr: true})
 	}},
 	// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
 	{name: "ws281x", baud: 800000, lines: 1, gen: func(l twoLine, i int, rng *rand.Rand) {
@@ -189,28 +189,28 @@ var captureCases = []streamCase{
 		l.a.add(0, rng.Float64()*100e-6)
 		l.b.add(0, l.a.t-l.b.t)
 	}, dec: func(a, _ []uint8, s float64) Result {
-		return DecodeWS281x(a, s, WS281xCfg{Threshold: 128, HaveThr: true})
+		return WS281x(a, s, WS281xCfg{Threshold: 128, HaveThr: true})
 	}},
 	// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
 	{name: "swd", baud: 1000000, lines: 2, gen: func(l twoLine, i int, rng *rand.Rand) {
 		s := &swdLine{t: l, per: 1e-6}
 		s.transfer(i%2 == 0, true, 4*(i%4), 1, uint32(i)*0x01020304, i%9 == 4, 2+rng.Intn(8))
 	}, dec: func(a, b []uint8, s float64) Result {
-		return DecodeSWD(a, b, s, ClockedCfg{Threshold: 128, HaveThr: true, ThresholdB: 128, HaveThrB: true})
+		return SWD(a, b, s, ClockedCfg{Threshold: 128, HaveThr: true, ThresholdB: 128, HaveThrB: true})
 	}},
 	// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
 	{name: "mdio", baud: 1000000, lines: 2, gen: func(l twoLine, i int, rng *rand.Rand) {
 		mdioFrame(l, 1e-6, 32, 1, 1+i%2, i&31, (i/3)&31, (i*0x1357)&0xffff, 0)
 		l.add(1, 1, rng.Float64()*20e-6)
 	}, dec: func(a, b []uint8, s float64) Result {
-		return DecodeMDIO(a, b, s, ClockedCfg{Threshold: 128, HaveThr: true, ThresholdB: 128, HaveThrB: true})
+		return MDIO(a, b, s, ClockedCfg{Threshold: 128, HaveThr: true, ThresholdB: 128, HaveThrB: true})
 	}},
 	// TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
 	{name: "spdif", baud: 3072000, lines: 1, gen: func(l twoLine, i int, _ *rand.Rand) {
 		spdifStream(l.a, 48e3, i, [][2]int{{(i * 0x1357) & 0xffffff, 0xFFFFF0 - i}})
 		l.b.add(0, l.a.t-l.b.t)
 	}, dec: func(a, _ []uint8, s float64) Result {
-		return DecodeSPDIF(a, s, SPDIFCfg{Threshold: 128, HaveThr: true})
+		return SPDIF(a, s, SPDIFCfg{Threshold: 128, HaveThr: true})
 	}},
 }
 

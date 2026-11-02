@@ -232,7 +232,7 @@ func (c *Controller) refDiffFrame(a *anaState, s *sv, f *engine.Frame) {
 				d.why = "no trace"
 				break
 			}
-			vdivLive := analog.AnalogVdiv(s.vidx[src])
+			vdivLive := analog.Vdiv(s.vidx[src])
 			offLive := s.offV[src]
 			// compared at the probe tip, each through its own probe (as the
 			// web's difference): the reference's tip volts at the live probe

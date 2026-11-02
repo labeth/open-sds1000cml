@@ -197,7 +197,7 @@ func TestDecodeCANFDStandardRoundTrip(t *testing.T) {
 	codes := canRender(wire, spb, true, 8, 8)
 
 	// explicit baud
-	r := DecodeCANFD(codes, colTimeS, CANFDCfg{NominalBaud: baud, DominantLow: true})
+	r := CANFD(codes, colTimeS, CANFDCfg{NominalBaud: baud, DominantLow: true})
 	if !r.OK {
 		t.Fatalf("decode failed: %s", r.Error)
 	}
@@ -229,7 +229,7 @@ func TestDecodeCANFDStandardRoundTrip(t *testing.T) {
 	}
 
 	// auto baud (infer samples/bit from the edge gaps)
-	ra := DecodeCANFD(codes, colTimeS, CANFDCfg{DominantLow: true})
+	ra := CANFD(codes, colTimeS, CANFDCfg{DominantLow: true})
 	if !ra.OK {
 		t.Fatalf("auto-baud decode failed: %s", ra.Error)
 	}
@@ -261,7 +261,7 @@ func TestDecodeCANFDExtendedRoundTrip(t *testing.T) {
 	baud := int(1.0 / (float64(spb) * colTimeS))
 	codes := canRender(wire, spb, true, 8, 8)
 
-	r := DecodeCANFD(codes, colTimeS, CANFDCfg{NominalBaud: baud, DominantLow: true})
+	r := CANFD(codes, colTimeS, CANFDCfg{NominalBaud: baud, DominantLow: true})
 	if !r.OK {
 		t.Fatalf("extended decode failed: %s", r.Error)
 	}
@@ -287,7 +287,7 @@ func TestDecodeCANFDInvertedPolarity(t *testing.T) {
 	baud := int(1.0 / (float64(spb) * colTimeS))
 	codes := canRender(wire, spb, false /*dominant high*/, 8, 8)
 
-	r := DecodeCANFD(codes, colTimeS, CANFDCfg{NominalBaud: baud, DominantLow: false})
+	r := CANFD(codes, colTimeS, CANFDCfg{NominalBaud: baud, DominantLow: false})
 	if !r.OK {
 		t.Fatalf("inverted-polarity decode failed: %s", r.Error)
 	}
@@ -310,7 +310,7 @@ func TestDecodeCANFDFDBestEffort(t *testing.T) {
 	baud := int(1.0 / (float64(spb) * colTimeS))
 	codes := canRender(wire, spb, true, 8, 8)
 
-	r := DecodeCANFD(codes, colTimeS, CANFDCfg{NominalBaud: baud, DominantLow: true})
+	r := CANFD(codes, colTimeS, CANFDCfg{NominalBaud: baud, DominantLow: true})
 	if !r.OK {
 		t.Fatalf("FD decode failed: %s", r.Error)
 	}
@@ -373,7 +373,7 @@ func TestDecodeCANFDNoPanic(t *testing.T) {
 					t.Fatalf("iter %d panicked: %v", i, rec)
 				}
 			}()
-			DecodeCANFD(codes, ct, cfg)
+			CANFD(codes, ct, cfg)
 		}()
 		if d := time.Since(t0); d > 2*time.Second {
 			t.Fatalf("iter %d took %v — decoder DoS on hostile input", i, d)
@@ -381,7 +381,7 @@ func TestDecodeCANFDNoPanic(t *testing.T) {
 	}
 	// Explicitly exercise the empty/degenerate inputs too.
 	for _, c := range [][]uint8{nil, {}, {128}, {0, 255}, make([]uint8, 3)} {
-		DecodeCANFD(c, 1e-6, CANFDCfg{NominalBaud: 25000, DominantLow: true})
+		CANFD(c, 1e-6, CANFDCfg{NominalBaud: 25000, DominantLow: true})
 	}
 }
 
@@ -406,7 +406,7 @@ func TestCANEnvelopeCaptureResync(t *testing.T) {
 	for i, v := range f.C1 {
 		c1[i] = uint8(v)
 	}
-	r := DecodeCANFD(c1, f.SampleS, CANFDCfg{DominantLow: true})
+	r := CANFD(c1, f.SampleS, CANFDCfg{DominantLow: true})
 	if !strings.Contains(r.Text, "ID:123 DLC:4 55 AA 0F F0 CRC:5EE1 ACK") {
 		t.Fatalf("decode %q", r.Text)
 	}

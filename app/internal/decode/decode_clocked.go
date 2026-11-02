@@ -116,7 +116,7 @@ func clockedLinesD(a, b lineIn, cfg ClockedCfg) ([]clkEdge, float64, sliced, sli
 	return out, nthValue(gaps, len(gaps)/2), C, D, ""
 }
 
-// DecodePS2 decodes PS/2 keyboard and mouse traffic: the data line read
+// PS2 decodes PS/2 keyboard and mouse traffic: the data line read
 // at each clock fall, eleven bits a frame (start 0, eight data bits least
 // significant first, odd parity, stop 1). A device's frame ends there; a
 // host's request carries a twelfth clock, the device's acknowledge (data
@@ -125,17 +125,17 @@ func clockedLinesD(a, b lineIn, cfg ClockedCfg) ([]clkEdge, float64, sliced, sli
 // after the last frame). Parity and stop errors flag the byte. OK needs a
 // frame that checks.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-236
-func DecodePS2(clk, data []uint8, colTimeS float64, cfg ClockedCfg) Result {
+func PS2(clk, data []uint8, colTimeS float64, cfg ClockedCfg) Result {
 	return decodePS2(samplesIn(clk), samplesIn(data), colTimeS, cfg)
 }
 
-// DecodePS2Edges is DecodePS2 over digital lines' edges (EdgeLine).
+// PS2Edges is PS2 over digital lines' edges (EdgeLine).
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-236
-func DecodePS2Edges(clk, data *EdgeLine, colTimeS float64, cfg ClockedCfg) Result {
+func PS2Edges(clk, data *EdgeLine, colTimeS float64, cfg ClockedCfg) Result {
 	return decodePS2(edgesIn(clk), edgesIn(data), colTimeS, cfg)
 }
 
-// decodePS2 is DecodePS2 over samples or edges.
+// decodePS2 is PS2 over samples or edges.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-236
 func decodePS2(clk, data lineIn, colTimeS float64, cfg ClockedCfg) Result {
 	E, per, C, why := clockedLines(clk, data, cfg)
@@ -244,7 +244,7 @@ type swdCycle struct {
 	fi, ri int // the fall's sample and the rise's
 }
 
-// DecodeSWD decodes ARM Serial Wire Debug: the host's request read at the
+// SWD decodes ARM Serial Wire Debug: the host's request read at the
 // clock's rises (start 1, APnDP, RnW, A[3:2], even parity, stop 0, park 1;
 // a unit "RDP0", "WAP4"), a turnaround, the target's three-bit acknowledge
 // read at the falls (a unit: OK, WAIT, FAULT), then 32 data bits least
@@ -254,17 +254,17 @@ type swdCycle struct {
 // SWDIO high are a line reset ("rw" LINERESET). OK needs a transfer
 // acknowledged OK whose parities check.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-236
-func DecodeSWD(clk, dio []uint8, colTimeS float64, cfg ClockedCfg) Result {
+func SWD(clk, dio []uint8, colTimeS float64, cfg ClockedCfg) Result {
 	return decodeSWD(samplesIn(clk), samplesIn(dio), colTimeS, cfg)
 }
 
-// DecodeSWDEdges is DecodeSWD over digital lines' edges (EdgeLine).
+// SWDEdges is SWD over digital lines' edges (EdgeLine).
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-236
-func DecodeSWDEdges(clk, dio *EdgeLine, colTimeS float64, cfg ClockedCfg) Result {
+func SWDEdges(clk, dio *EdgeLine, colTimeS float64, cfg ClockedCfg) Result {
 	return decodeSWD(edgesIn(clk), edgesIn(dio), colTimeS, cfg)
 }
 
-// decodeSWD is DecodeSWD over samples or edges.
+// decodeSWD is SWD over samples or edges.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-236
 func decodeSWD(clk, dio lineIn, colTimeS float64, cfg ClockedCfg) Result { //nolint:gocyclo // a protocol state machine kept step for step with its decode_*.js twin (parity tests)
 	E, per, C, D, why := clockedLinesD(clk, dio, cfg)
@@ -625,7 +625,7 @@ func mdioCut(firstR, lastR, n int) int {
 	return min(firstR, 64) + min(n-1-lastR, 64)
 }
 
-// DecodeMDIO decodes MDIO management frames (IEEE 802.3 clause 22 and 45):
+// MDIO decodes MDIO management frames (IEEE 802.3 clause 22 and 45):
 // the data line read at the clock's rises, a preamble of 16 or more ones,
 // the start (01 clause 22, 00 clause 45), the opcode, the 5-bit PHY (port)
 // and register (device) addresses, the turnaround and 16 data bits most
@@ -634,17 +634,17 @@ func mdioCut(firstR, lastR, n int) int {
 // second bit is not driven low (no PHY answered) flags the data. OK needs a
 // frame whose turnaround is good.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-236
-func DecodeMDIO(mdc, mdio []uint8, colTimeS float64, cfg ClockedCfg) Result {
+func MDIO(mdc, mdio []uint8, colTimeS float64, cfg ClockedCfg) Result {
 	return decodeMDIO(samplesIn(mdc), samplesIn(mdio), colTimeS, cfg)
 }
 
-// DecodeMDIOEdges is DecodeMDIO over digital lines' edges (EdgeLine).
+// MDIOEdges is MDIO over digital lines' edges (EdgeLine).
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-236
-func DecodeMDIOEdges(mdc, mdio *EdgeLine, colTimeS float64, cfg ClockedCfg) Result {
+func MDIOEdges(mdc, mdio *EdgeLine, colTimeS float64, cfg ClockedCfg) Result {
 	return decodeMDIO(edgesIn(mdc), edgesIn(mdio), colTimeS, cfg)
 }
 
-// decodeMDIO is DecodeMDIO over samples or edges.
+// decodeMDIO is MDIO over samples or edges.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-236
 func decodeMDIO(mdc, mdio lineIn, colTimeS float64, cfg ClockedCfg) Result {
 	E, per, C, why := clockedLines(mdc, mdio, cfg)
@@ -760,7 +760,7 @@ func mdioOpName(st, op int) string {
 	return ""
 }
 
-// DecodeWiegand decodes Wiegand card readers: a low pulse on D0 (a, the
+// Wiegand decodes Wiegand card readers: a low pulse on D0 (a, the
 // first line) is a 0 bit, on D1 (b) a 1; a frame ends where the lines rest
 // longer than three bit intervals (and 3 ms). A 26-bit frame holds even
 // parity, an 8-bit facility code, a 16-bit card number and odd parity, a
@@ -769,17 +769,17 @@ func mdioOpName(st, op int) string {
 // lengths are their bits in bytes, most significant first. OK needs a 26-
 // or 34-bit frame whose parities check.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-236
-func DecodeWiegand(d0, d1 []uint8, colTimeS float64, cfg ClockedCfg) Result {
+func Wiegand(d0, d1 []uint8, colTimeS float64, cfg ClockedCfg) Result {
 	return decodeWiegand(samplesIn(d0), samplesIn(d1), colTimeS, cfg)
 }
 
-// DecodeWiegandEdges is DecodeWiegand over digital lines' edges (EdgeLine).
+// WiegandEdges is Wiegand over digital lines' edges (EdgeLine).
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-236
-func DecodeWiegandEdges(d0, d1 *EdgeLine, colTimeS float64, cfg ClockedCfg) Result {
+func WiegandEdges(d0, d1 *EdgeLine, colTimeS float64, cfg ClockedCfg) Result {
 	return decodeWiegand(edgesIn(d0), edgesIn(d1), colTimeS, cfg)
 }
 
-// decodeWiegand is DecodeWiegand over samples or edges.
+// decodeWiegand is Wiegand over samples or edges.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-236
 func decodeWiegand(d0, d1 lineIn, colTimeS float64, cfg ClockedCfg) Result {
 	if d1.none() {

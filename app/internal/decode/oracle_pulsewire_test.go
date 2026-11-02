@@ -59,7 +59,7 @@ func TestOracleOneWire(t *testing.T) {
 	owReset(w, false, false)
 	w.idle(300e-6)
 
-	r := DecodeOneWire(w.codes(), 1.0/sr, OneWireCfg{})
+	r := OneWire(w.codes(), 1.0/sr, OneWireCfg{})
 	if !r.OK {
 		t.Fatal(r.Error)
 	}
@@ -123,7 +123,7 @@ func TestOracleWS281x(t *testing.T) {
 	leds := []int{0xFF, 0x00, 0x80, 0x12, 0x34, 0x56, 0x00, 0x00, 0x00, 0xA5, 0x5A, 0x01}
 	wsFrame(w, 800e3, leds)
 	wsFrame(w, 800e3, leds[:6])
-	r := DecodeWS281x(w.codes(), 1.0/sr, WS281xCfg{})
+	r := WS281x(w.codes(), 1.0/sr, WS281xCfg{})
 	if !r.OK {
 		t.Fatal(r.Error)
 	}
@@ -152,7 +152,7 @@ func TestOracleDHT(t *testing.T) {
 	dhtReading(w, 18000, [4]int{0x2D, 0x00, 0x17, 0x00}, 0x11)
 	w.idle(2e-3)
 	dhtReading(w, 1000, [4]int{0x01, 0x90, 0x80, 0x65}, -1)
-	r := DecodeDHT(w.codes(), 1.0/sr, DHTCfg{})
+	r := DHT(w.codes(), 1.0/sr, DHTCfg{})
 	if !r.OK {
 		t.Fatal(r.Error)
 	}
@@ -187,7 +187,7 @@ func TestOracleCEC(t *testing.T) {
 	cecMessage(w, []int{0x4F, 0x82, 0x10, 0x00}, []int{1, 1, 1, 1})
 	cecMessage(w, []int{0x10, 0x8F}, []int{0, 0})
 	cecMessage(w, []int{0x01}, []int{1})
-	r := DecodeCEC(w.codes(), 1.0/sr, CECCfg{})
+	r := CEC(w.codes(), 1.0/sr, CECCfg{})
 	if !r.OK {
 		t.Fatal(r.Error)
 	}
@@ -226,7 +226,7 @@ func TestOracleJ1850(t *testing.T) {
 	for _, f := range frames {
 		j1850Frame(w, f, false)
 	}
-	r := DecodeJ1850(w.codes(), 1.0/sr, J1850Cfg{})
+	r := J1850(w.codes(), 1.0/sr, J1850Cfg{})
 	if !r.OK || strings.Contains(r.Text, "!") {
 		t.Fatalf("repo: %q %s", r.Text, r.Error)
 	}

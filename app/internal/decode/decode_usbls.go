@@ -31,7 +31,7 @@ var usbPIDName = map[int]string{
 	0xC: "PRE", 0x8: "SPLIT", 0x4: "PING",
 }
 
-// DecodeUSBLS decodes USB low/full-speed packets on one channel's codes — the
+// USBLS decodes USB low/full-speed packets on one channel's codes — the
 // D+ single-ended line, where the J/K bus states appear as the two logic
 // levels. Mirrors decode_usbls.js step for step so LCD and web agree byte-for-
 // byte.
@@ -42,7 +42,7 @@ var usbPIDName = map[int]string{
 // optional data/CRC + EOP (~2 bit-times of SE0, which on the single D+ line
 // reads as an extended idle that, with the inter-packet idle, bounds the packet).
 // TRLC-LINKS: REQ-SDS-018
-func DecodeUSBLS(dp []uint8, colTimeS float64, cfg USBLSCfg) Result { //nolint:gocyclo // a protocol state machine kept step for step with its decode_*.js twin (parity tests)
+func USBLS(dp []uint8, colTimeS float64, cfg USBLSCfg) Result { //nolint:gocyclo,funlen // a protocol state machine kept step for step with its decode_*.js twin (parity tests)
 	const minSPB = 4.0  // samples per bit floor
 	const eopCells = 2  // EOP ~ 2 bit-times of SE0 trailing every packet
 	const splitK = 10.0 // inter-packet idle: a gap wider than this many bit periods
@@ -289,7 +289,7 @@ func DecodeUSBLS(dp []uint8, colTimeS float64, cfg USBLSCfg) Result { //nolint:g
 }
 
 // usblsBitPeriod infers a USB low/full-speed line's bit period, in samples,
-// from its edges (DecodeUSBLS tells how), or why it cannot.
+// from its edges (USBLS tells how), or why it cannot.
 // TRLC-LINKS: REQ-SDS-018
 func usblsBitPeriod(edges []edge) (float64, string) {
 	var gaps []float64

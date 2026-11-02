@@ -25,7 +25,7 @@ func TestWideWordFormatting(t *testing.T) {
 		}
 	}
 	w := manchesterWave(mBits([]int{0x1234, 0x5678}, true, 16), true, 40)
-	r := DecodeManchester(w, 1e-6, ManchesterCfg{Bitrate: 25000, IEEE: true, MSB: true, Bits: 16})
+	r := Manchester(w, 1e-6, ManchesterCfg{Bitrate: 25000, IEEE: true, MSB: true, Bits: 16})
 	if !r.OK || !strings.Contains(r.Text, "1234 5678") {
 		t.Fatalf("wide transcript: %+v", r)
 	}

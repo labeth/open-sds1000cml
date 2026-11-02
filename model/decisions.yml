@@ -195,7 +195,7 @@ decisions:
     the trigger decision coincides with a payload edge, particularly for long idle-symmetry ties.
     A receiver handoff finishes the old hypothesis before starting the next, compensating its one-clock
     delay in the quarter-cell sampler. Differential simulation compares qualified output, whole-frame
-    matches and timestamps with DecodeManchester in 48 cases, including one-bit and sixteen-bit words,
+    matches and timestamps with Manchester in 48 cases, including one-bit and sixteen-bit words,
     both conventions and bit orders, inversion, constant-data ambiguity, minimum inter-frame gaps,
     late coding violations and 32-bit sample-counter wrap. The earlier 160 receiver cases still pass.
     Direct buffer tests cover both tie choices, four-word and any-data predicates, cross-frame rejection,
@@ -828,7 +828,7 @@ decisions:
     frontend budgets even if frame storage is shared. This candidate has not been synthesized and may need subdivision.
   - ARINC now has an isolated explicit-rate RTL candidate in arinc429_trigger.v. It accepts chronological ADC
     codes with host-provided HI/LO entry and exit thresholds, including direct polarity transitions. Accepted ticks
-    drive nearest-cell assignment and the same complete-word and pulse-density gates as DecodeARINC429. It waits
+    drive nearest-cell assignment and the same complete-word and pulse-density gates as ARINC429. It waits
     for a pulse-start gap greater than 2.5 bit periods before publishing START, full 32-bit DATA or parity ERROR,
     then END; only a complete odd-parity word satisfying the masked predicate can trigger. DATA timestamps the
     first pulse and END the final in-window pulse, so publication latency is not mistaken for the signal position.

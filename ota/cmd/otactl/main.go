@@ -146,7 +146,7 @@ func (c *cli) dispatch(cmd string, rest []string) error {
 		return err
 	}
 	defer tr.Close()
-	dc := &otactl.Client{T: tr}
+	dc := &otactl.Client{Transport: tr}
 	if fn, ok := deviceCommands[cmd]; ok {
 		return fn(c, dc, rest)
 	}

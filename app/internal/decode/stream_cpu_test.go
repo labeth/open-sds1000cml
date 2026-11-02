@@ -42,7 +42,7 @@ var streamCPUExtra = []streamCase{
 		l.a.idle((20 + rng.Float64()*40) / 115200)
 		oneLine(l)
 	}, dec: func(a, _ []uint8, s float64) Result {
-		return DecodeUART(a, s, UARTCfg{Baud: 115200, Bits: 8, Parity: "none", Threshold: 128, HaveThr: true})
+		return UART(a, s, UARTCfg{Baud: 115200, Bits: 8, Parity: "none", Threshold: 128, HaveThr: true})
 	}},
 	{name: "i2c", baud: 400000, lines: 2, gen: func(l twoLine, i int, rng *rand.Rand) {
 		q := 1 / (4 * 400000.0)
@@ -63,7 +63,7 @@ var streamCPUExtra = []streamCase{
 		l.add(1, 0, q)
 		l.add(1, 1, (15+rng.Float64()*30)/400000)
 	}, dec: func(a, b []uint8, s float64) Result {
-		return DecodeI2C(a, b, s, I2CCfg{Threshold: 128, HaveThr: true})
+		return I2C(a, b, s, I2CCfg{Threshold: 128, HaveThr: true})
 	}},
 	{name: "spi", baud: 1000000, lines: 2, idle: idleOf(0, 0), gen: func(l twoLine, i int, rng *rand.Rand) {
 		h := 0.5 / 1e6
@@ -77,7 +77,7 @@ var streamCPUExtra = []streamCase{
 		}
 		l.add(0, 0, (20+rng.Float64()*30)*1e-6)
 	}, dec: func(a, b []uint8, s float64) Result {
-		return DecodeSPI(a, b, s, SPICfg{MSB: true, Threshold: 128, HaveThr: true})
+		return SPI(a, b, s, SPICfg{MSB: true, Threshold: 128, HaveThr: true})
 	}},
 	{name: "can", baud: 500000, lines: 1, gen: func(l twoLine, i int, rng *rand.Rand) {
 		n := 1 + i%8
@@ -92,7 +92,7 @@ var streamCPUExtra = []streamCase{
 		l.a.idle((14 + rng.Float64()*40) / 500000)
 		oneLine(l)
 	}, dec: func(a, _ []uint8, s float64) Result {
-		return DecodeCANFD(a, s, CANFDCfg{NominalBaud: 500000, DominantLow: true, Threshold: 128, HaveThr: true})
+		return CANFD(a, s, CANFDCfg{NominalBaud: 500000, DominantLow: true, Threshold: 128, HaveThr: true})
 	}},
 	{name: "manchester", baud: 100000, lines: 1, gen: func(l twoLine, i int, rng *rand.Rand) {
 		h := 0.5 / 100000
@@ -103,7 +103,7 @@ var streamCPUExtra = []streamCase{
 		l.a.idle((12 + rng.Float64()*30) / 100000)
 		oneLine(l)
 	}, dec: func(a, _ []uint8, s float64) Result {
-		return DecodeManchester(a, s, ManchesterCfg{Bitrate: 100000, IEEE: true, MSB: true, Bits: 8, Threshold: 128, HaveThr: true})
+		return Manchester(a, s, ManchesterCfg{Bitrate: 100000, IEEE: true, MSB: true, Bits: 8, Threshold: 128, HaveThr: true})
 	}},
 }
 

@@ -45,7 +45,7 @@ func TestDecodeUARTRoundTrip(t *testing.T) {
 	baud := int(1.0 / (float64(spb) * colTimeS))
 
 	// explicit baud
-	r := DecodeUART(w, colTimeS, UARTCfg{Baud: baud})
+	r := UART(w, colTimeS, UARTCfg{Baud: baud})
 	if !r.OK {
 		t.Fatalf("explicit-baud decode failed: %s", r.Error)
 	}
@@ -54,7 +54,7 @@ func TestDecodeUARTRoundTrip(t *testing.T) {
 	}
 
 	// auto baud
-	ra := DecodeUART(w, colTimeS, UARTCfg{})
+	ra := UART(w, colTimeS, UARTCfg{})
 	if !ra.OK {
 		t.Fatalf("auto-baud decode failed: %s", ra.Error)
 	}
@@ -98,7 +98,7 @@ func spiWave(bytes []int, h int) (clk, data []uint8) {
 func TestDecodeSPIRoundTrip(t *testing.T) {
 	want := []int{0x48, 0x69, 0x20, 0x55, 0xAA, 0x0F, 0xF0, 0x0A}
 	clk, data := spiWave(want, 20)
-	r := DecodeSPI(clk, data, 2e-7, SPICfg{CPOL: false, CPHA: false, MSB: true})
+	r := SPI(clk, data, 2e-7, SPICfg{CPOL: false, CPHA: false, MSB: true})
 	if !r.OK {
 		t.Fatalf("SPI decode failed: %s", r.Error)
 	}
@@ -146,7 +146,7 @@ func i2cWave(addr7, rw int, data []int, h int) (scl, sda []uint8) {
 // TRLC-LINKS: REQ-SDS-018
 func TestDecodeI2CRoundTrip(t *testing.T) {
 	scl, sda := i2cWave(0x24, 0 /*W*/, []int{0x55, 0xAA}, 20)
-	r := DecodeI2C(scl, sda, 2e-7, I2CCfg{})
+	r := I2C(scl, sda, 2e-7, I2CCfg{})
 	if !r.OK {
 		t.Fatalf("I2C decode failed: %s", r.Error)
 	}
@@ -308,7 +308,7 @@ func TestDecodeUARTFrameError(t *testing.T) {
 	}
 	push(0, spb) // BAD stop (should be high)
 	push(1, spb*8)
-	r := DecodeUART(w, 1e-6, UARTCfg{Baud: int(1.0 / (float64(spb) * 1e-6))})
+	r := UART(w, 1e-6, UARTCfg{Baud: int(1.0 / (float64(spb) * 1e-6))})
 	if !r.OK || len(r.Spans) == 0 {
 		t.Fatalf("decode failed: %s", r.Error)
 	}

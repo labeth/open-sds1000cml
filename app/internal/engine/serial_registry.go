@@ -95,105 +95,105 @@ func init() {
 func serialDecoderTable() []SerialDecoder {
 	return []SerialDecoder{
 		{ID: serUART, Name: "UART", Decode: func(a, _ []uint8, sampleS float64, p SerialParams) decode.Result {
-			return decode.DecodeUART(a, sampleS, decode.UARTCfg{Inverted: p.Inverted, Baud: p.Baud, Bits: p.Bits, Parity: p.Parity, Threshold: p.Threshold, HaveThr: p.HaveThr})
+			return decode.UART(a, sampleS, decode.UARTCfg{Inverted: p.Inverted, Baud: p.Baud, Bits: p.Bits, Parity: p.Parity, Threshold: p.Threshold, HaveThr: p.HaveThr})
 		}},
 		{ID: serI2C, Name: "I²C", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
-			return decode.DecodeI2C(a, b, sampleS, decode.I2CCfg{Inverted: p.Inverted, Threshold: p.Threshold, HaveThr: p.HaveThr})
+			return decode.I2C(a, b, sampleS, decode.I2CCfg{Inverted: p.Inverted, Threshold: p.Threshold, HaveThr: p.HaveThr})
 		}, Match: matchI2C},
 		{ID: serSPI, Name: "SPI", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
 			cfg := decode.SPICfg{Inverted: p.Inverted, CPOL: p.CPOL, CPHA: p.CPHA, MSB: p.MSB, Threshold: p.Threshold, HaveThr: p.HaveThr, DataLag: decode.SPIDataLag(p.ChA, sampleS)}
 			if sampleS > 0 {
 				cfg.DataDelay = SPIDelayFPGA(p.SPIDelayNs, p.ChA) * 1e-9 / sampleS // as the FPGA's receiver reads it
 			}
-			return decode.DecodeSPI(a, b, sampleS, cfg)
+			return decode.SPI(a, b, sampleS, cfg)
 		}},
 		lineDecoder(serManchester, "Manchester", func(p SerialParams) decode.ManchesterCfg {
 			return decode.ManchesterCfg{Bitrate: p.Baud, IEEE: p.IEEE, MSB: p.MSB, Bits: p.Bits, Threshold: p.Threshold, HaveThr: p.HaveThr}
-		}, decode.DecodeManchester, nil),
+		}, decode.Manchester, nil),
 		lineDecoder(serSENT, "SENT", func(p SerialParams) decode.SENTCfg {
 			return decode.SENTCfg{Inverted: p.Inverted, TickNs: p.TickNs, Nibbles: p.Nibbles, Threshold: p.Threshold, HaveThr: p.HaveThr}
-		}, decode.DecodeSENT, nil),
+		}, decode.SENT, nil),
 		lineDecoder(serCAN, "CAN FD", func(p SerialParams) decode.CANFDCfg {
 			return decode.CANFDCfg{NominalBaud: p.Baud, DataBaud: p.DataBaud, DominantLow: true, Threshold: p.Threshold, HaveThr: p.HaveThr}
-		}, decode.DecodeCANFD, nil),
+		}, decode.CANFD, nil),
 		lineDecoder(serMIL1553, "MIL-STD-1553", func(p SerialParams) decode.MIL1553Cfg {
 			return decode.MIL1553Cfg{Inverted: p.Inverted, Bitrate: p.Baud, Threshold: p.Threshold, HaveThr: p.HaveThr}
-		}, decode.DecodeMIL1553, nil),
+		}, decode.MIL1553, nil),
 		lineDecoder(serARINC, "ARINC 429", func(p SerialParams) decode.ARINC429Cfg {
 			return decode.ARINC429Cfg{Bitrate: p.Baud, Threshold: p.Threshold, HaveThr: p.HaveThr}
-		}, decode.DecodeARINC429, nil),
+		}, decode.ARINC429, nil),
 		lineDecoder(serUSB, "USB LS", func(p SerialParams) decode.USBLSCfg {
 			return decode.USBLSCfg{Bitrate: p.Baud, Threshold: p.Threshold, HaveThr: p.HaveThr}
-		}, decode.DecodeUSBLS, nil),
+		}, decode.USBLS, nil),
 		lineDecoder(serFlexRay, "FlexRay", func(p SerialParams) decode.FlexRayCfg {
 			return decode.FlexRayCfg{Bitrate: p.Baud, Threshold: p.Threshold, HaveThr: p.HaveThr}
-		}, decode.DecodeFlexRay, nil),
+		}, decode.FlexRay, nil),
 		lineDecoder(serLIN, "LIN", func(p SerialParams) decode.LINCfg {
 			return decode.LINCfg{Baud: p.Baud, Threshold: p.Threshold, HaveThr: p.HaveThr}
-		}, decode.DecodeLIN, decode.DecodeLINEdges),
+		}, decode.LIN, decode.LINEdges),
 		lineDecoder(serDMX, "DMX512", func(p SerialParams) decode.DMXCfg {
 			return decode.DMXCfg{Baud: p.Baud, Threshold: p.Threshold, HaveThr: p.HaveThr}
-		}, decode.DecodeDMX512, decode.DecodeDMX512Edges),
+		}, decode.DMX512, decode.DMX512Edges),
 		lineDecoder(serMIDI, "MIDI", func(p SerialParams) decode.MIDICfg {
 			return decode.MIDICfg{Baud: p.Baud, Threshold: p.Threshold, HaveThr: p.HaveThr}
-		}, decode.DecodeMIDI, nil),
+		}, decode.MIDI, nil),
 		lineDecoder(serModbus, "Modbus RTU", func(p SerialParams) decode.ModbusCfg {
 			return decode.ModbusCfg{Baud: p.Baud, Parity: p.Parity, Threshold: p.Threshold, HaveThr: p.HaveThr}
-		}, decode.DecodeModbus, decode.DecodeModbusEdges),
+		}, decode.Modbus, decode.ModbusEdges),
 		lineDecoder(serOneWire, "1-Wire", func(p SerialParams) decode.OneWireCfg {
 			return decode.OneWireCfg{Overdrive: p.Overdrive, Threshold: p.Threshold, HaveThr: p.HaveThr}
-		}, decode.DecodeOneWire, decode.DecodeOneWireEdges),
+		}, decode.OneWire, decode.OneWireEdges),
 		lineDecoder(serWS281x, "WS281x", func(p SerialParams) decode.WS281xCfg {
 			return decode.WS281xCfg{Threshold: p.Threshold, HaveThr: p.HaveThr}
-		}, decode.DecodeWS281x, decode.DecodeWS281xEdges),
+		}, decode.WS281x, decode.WS281xEdges),
 		lineDecoder(serDHT, "DHT", func(p SerialParams) decode.DHTCfg {
 			return decode.DHTCfg{Threshold: p.Threshold, HaveThr: p.HaveThr}
-		}, decode.DecodeDHT, decode.DecodeDHTEdges),
+		}, decode.DHT, decode.DHTEdges),
 		lineDecoder(serCEC, "HDMI-CEC", func(p SerialParams) decode.CECCfg {
 			return decode.CECCfg{Threshold: p.Threshold, HaveThr: p.HaveThr}
-		}, decode.DecodeCEC, decode.DecodeCECEdges),
+		}, decode.CEC, decode.CECEdges),
 		lineDecoder(serJ1850, "J1850 VPW", func(p SerialParams) decode.J1850Cfg {
 			return decode.J1850Cfg{Threshold: p.Threshold, HaveThr: p.HaveThr}
-		}, decode.DecodeJ1850, decode.DecodeJ1850Edges),
-		lineDecoder(serIRNEC, "IR NEC", irCfg, decode.DecodeIRNEC, nil),
-		lineDecoder(serIRSIRC, "IR Sony", irCfg, decode.DecodeIRSIRC, nil),
-		lineDecoder(serIRRC5, "IR RC-5", irCfg, decode.DecodeIRRC5, nil),
-		lineDecoder(serIRRC6, "IR RC-6", irCfg, decode.DecodeIRRC6, nil),
+		}, decode.J1850, decode.J1850Edges),
+		lineDecoder(serIRNEC, "IR NEC", irCfg, decode.IRNEC, nil),
+		lineDecoder(serIRSIRC, "IR Sony", irCfg, decode.IRSIRC, nil),
+		lineDecoder(serIRRC5, "IR RC-5", irCfg, decode.IRRC5, nil),
+		lineDecoder(serIRRC6, "IR RC-6", irCfg, decode.IRRC6, nil),
 		lineDecoder(serDALI, "DALI", func(p SerialParams) decode.DALICfg {
 			return decode.DALICfg{Threshold: p.Threshold, HaveThr: p.HaveThr}
-		}, decode.DecodeDALI, decode.DecodeDALIEdges),
+		}, decode.DALI, decode.DALIEdges),
 		lineDecoder(serUSBPD, "USB PD", func(p SerialParams) decode.USBPDCfg {
 			return decode.USBPDCfg{Baud: p.Baud, Threshold: p.Threshold, HaveThr: p.HaveThr}
-		}, decode.DecodeUSBPD, decode.DecodeUSBPDEdges),
+		}, decode.USBPD, decode.USBPDEdges),
 		lineDecoder(serSPDIF, "S/PDIF", func(p SerialParams) decode.SPDIFCfg {
 			return decode.SPDIFCfg{Threshold: p.Threshold, HaveThr: p.HaveThr}
-		}, decode.DecodeSPDIF, decode.DecodeSPDIFEdges),
-		clockedDecoder(serPS2, "PS/2", decode.DecodePS2, decode.DecodePS2Edges),
-		clockedDecoder(serSWD, "SWD", decode.DecodeSWD, decode.DecodeSWDEdges),
-		clockedDecoder(serMDIO, "MDIO", decode.DecodeMDIO, decode.DecodeMDIOEdges),
-		clockedDecoder(serWiegand, "Wiegand", decode.DecodeWiegand, decode.DecodeWiegandEdges),
-		clockedDecoder(serQuad, "Quadrature", decode.DecodeQuadrature, decode.DecodeQuadratureEdges),
-		clockedDecoder(serStepper, "Stepper", decode.DecodeStepper, decode.DecodeStepperEdges),
-		lineDecoder(serPWM, "PWM", lineCfgFixed, decode.DecodePWM, decode.DecodePWMEdges),
-		lineDecoder(serRCEncode, "RC encode", lineCfgFixed, decode.DecodeRCEncode, decode.DecodeRCEncodeEdges),
-		lineDecoder(serOOK, "OOK", lineCfgFixed, decode.DecodeOOK, decode.DecodeOOKEdges),
-		lineDecoder(serMiller, "Miller", lineCfgRate, decode.DecodeMiller, decode.DecodeMillerEdges),
-		lineDecoder(serMorse, "Morse", lineCfgFixed, decode.DecodeMorse, decode.DecodeMorseEdges),
-		lineDecoder(serDCF77, "DCF77", lineCfgRate, decode.DecodeDCF77, decode.DecodeDCF77Edges),
-		lineDecoder(serEM4100, "EM4100", lineCfgRate, decode.DecodeEM4100, nil),
-		lineDecoder(serEM4305, "EM4305", lineCfgRate, decode.DecodeEM4305, nil),
-		lineDecoder(serT55xx, "T55xx", lineCfgRate, decode.DecodeT55xx, nil),
-		lineDecoder(serSWIM, "SWIM", lineCfgFixed, decode.DecodeSWIM, decode.DecodeSWIMEdges),
-		lineDecoder(serSDQ, "SDQ", lineCfgRate, decode.DecodeSDQ, decode.DecodeSDQEdges),
-		lineDecoder(serPJDL, "PJON", lineCfgFixed, decode.DecodePJDL, decode.DecodePJDLEdges),
-		lineDecoder(serDSI, "DSI", lineCfgFixed, decode.DecodeDSI, decode.DecodeDSIEdges),
-		lineDecoder(serQi, "Qi", lineCfgFixed, decode.DecodeQi, decode.DecodeQiEdges),
-		clockedDecoder(serSDCard, "SD card", decode.DecodeSDCard, decode.DecodeSDCardEdges),
-		clockedDecoder(serPDI, "PDI", decode.DecodePDI, decode.DecodePDIEdges),
-		clockedDecoder(serCJTAG, "cJTAG", decode.DecodeCJTAG, decode.DecodeCJTAGEdges),
-		clockedDecoder(serMaple, "Maple", decode.DecodeMaple, decode.DecodeMapleEdges),
-		clockedDecoder(serCaliper, "Caliper", decode.DecodeCaliper, decode.DecodeCaliperEdges),
-		lineDecoder(serIRMP, "IR multi", lineCfgFixed, decode.DecodeIRMP, nil),
+		}, decode.SPDIF, decode.SPDIFEdges),
+		clockedDecoder(serPS2, "PS/2", decode.PS2, decode.PS2Edges),
+		clockedDecoder(serSWD, "SWD", decode.SWD, decode.SWDEdges),
+		clockedDecoder(serMDIO, "MDIO", decode.MDIO, decode.MDIOEdges),
+		clockedDecoder(serWiegand, "Wiegand", decode.Wiegand, decode.WiegandEdges),
+		clockedDecoder(serQuad, "Quadrature", decode.Quadrature, decode.QuadratureEdges),
+		clockedDecoder(serStepper, "Stepper", decode.Stepper, decode.StepperEdges),
+		lineDecoder(serPWM, "PWM", lineCfgFixed, decode.PWM, decode.PWMEdges),
+		lineDecoder(serRCEncode, "RC encode", lineCfgFixed, decode.RCEncode, decode.RCEncodeEdges),
+		lineDecoder(serOOK, "OOK", lineCfgFixed, decode.OOK, decode.OOKEdges),
+		lineDecoder(serMiller, "Miller", lineCfgRate, decode.Miller, decode.MillerEdges),
+		lineDecoder(serMorse, "Morse", lineCfgFixed, decode.Morse, decode.MorseEdges),
+		lineDecoder(serDCF77, "DCF77", lineCfgRate, decode.DCF77, decode.DCF77Edges),
+		lineDecoder(serEM4100, "EM4100", lineCfgRate, decode.EM4100, nil),
+		lineDecoder(serEM4305, "EM4305", lineCfgRate, decode.EM4305, nil),
+		lineDecoder(serT55xx, "T55xx", lineCfgRate, decode.T55xx, nil),
+		lineDecoder(serSWIM, "SWIM", lineCfgFixed, decode.SWIM, decode.SWIMEdges),
+		lineDecoder(serSDQ, "SDQ", lineCfgRate, decode.SDQ, decode.SDQEdges),
+		lineDecoder(serPJDL, "PJON", lineCfgFixed, decode.PJDL, decode.PJDLEdges),
+		lineDecoder(serDSI, "DSI", lineCfgFixed, decode.DSI, decode.DSIEdges),
+		lineDecoder(serQi, "Qi", lineCfgFixed, decode.Qi, decode.QiEdges),
+		clockedDecoder(serSDCard, "SD card", decode.SDCard, decode.SDCardEdges),
+		clockedDecoder(serPDI, "PDI", decode.PDI, decode.PDIEdges),
+		clockedDecoder(serCJTAG, "cJTAG", decode.CJTAG, decode.CJTAGEdges),
+		clockedDecoder(serMaple, "Maple", decode.Maple, decode.MapleEdges),
+		clockedDecoder(serCaliper, "Caliper", decode.Caliper, decode.CaliperEdges),
+		lineDecoder(serIRMP, "IR multi", lineCfgFixed, decode.IRMP, nil),
 	}
 }
 

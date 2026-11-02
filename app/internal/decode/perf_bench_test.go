@@ -45,49 +45,49 @@ func BenchmarkDec(b *testing.B) {
 		})
 	}
 	lc, cc := LineCfg{Format: "hex"}, ClockedCfg{Format: "hex"}
-	line("pwm", func(c []uint8, ct float64) Result { return DecodePWM(c, ct, lc) })
-	line("rcencode", func(c []uint8, ct float64) Result { return DecodeRCEncode(c, ct, lc) })
-	line("ook", func(c []uint8, ct float64) Result { return DecodeOOK(c, ct, lc) })
-	line("miller", func(c []uint8, ct float64) Result { return DecodeMiller(c, ct, lc) })
-	line("morse", func(c []uint8, ct float64) Result { return DecodeMorse(c, ct, lc) })
-	line("dcf77", func(c []uint8, ct float64) Result { return DecodeDCF77(c, ct, lc) })
-	line("em4100", func(c []uint8, ct float64) Result { return DecodeEM4100(c, ct, lc) })
-	line("em4305", func(c []uint8, ct float64) Result { return DecodeEM4305(c, ct, lc) })
-	line("t55xx", func(c []uint8, ct float64) Result { return DecodeT55xx(c, ct, lc) })
-	line("swim", func(c []uint8, ct float64) Result { return DecodeSWIM(c, ct, lc) })
-	line("sdq", func(c []uint8, ct float64) Result { return DecodeSDQ(c, ct, lc) })
-	line("pjdl", func(c []uint8, ct float64) Result { return DecodePJDL(c, ct, lc) })
-	line("dsi", func(c []uint8, ct float64) Result { return DecodeDSI(c, ct, lc) })
-	line("qi", func(c []uint8, ct float64) Result { return DecodeQi(c, ct, lc) })
-	line("irmp", func(c []uint8, ct float64) Result { return DecodeIRMP(c, ct, lc) })
-	pair("quad", func(x, y []uint8, ct float64) Result { return DecodeQuadrature(x, y, ct, cc) })
-	pair("stepper", func(x, y []uint8, ct float64) Result { return DecodeStepper(x, y, ct, cc) })
-	pair("sdcard", func(x, y []uint8, ct float64) Result { return DecodeSDCard(x, y, ct, cc) })
-	pair("pdi", func(x, y []uint8, ct float64) Result { return DecodePDI(x, y, ct, cc) })
-	pair("cjtag", func(x, y []uint8, ct float64) Result { return DecodeCJTAG(x, y, ct, cc) })
-	pair("maple", func(x, y []uint8, ct float64) Result { return DecodeMaple(x, y, ct, cc) })
-	pair("caliper", func(x, y []uint8, ct float64) Result { return DecodeCaliper(x, y, ct, cc) })
-	line("lin", func(c []uint8, ct float64) Result { return DecodeLIN(c, ct, LINCfg{Format: "hex"}) })
-	line("dmx512", func(c []uint8, ct float64) Result { return DecodeDMX512(c, ct, DMXCfg{Format: "hex"}) })
-	line("midi", func(c []uint8, ct float64) Result { return DecodeMIDI(c, ct, MIDICfg{Format: "hex"}) })
-	line("modbus", func(c []uint8, ct float64) Result { return DecodeModbus(c, ct, ModbusCfg{Format: "hex"}) })
-	line("onewire", func(c []uint8, ct float64) Result { return DecodeOneWire(c, ct, OneWireCfg{Format: "hex"}) })
-	line("ws281x", func(c []uint8, ct float64) Result { return DecodeWS281x(c, ct, WS281xCfg{Format: "hex"}) })
-	line("dht", func(c []uint8, ct float64) Result { return DecodeDHT(c, ct, DHTCfg{Format: "hex"}) })
-	line("cec", func(c []uint8, ct float64) Result { return DecodeCEC(c, ct, CECCfg{Format: "hex"}) })
-	line("j1850", func(c []uint8, ct float64) Result { return DecodeJ1850(c, ct, J1850Cfg{Format: "hex"}) })
+	line("pwm", func(c []uint8, ct float64) Result { return PWM(c, ct, lc) })
+	line("rcencode", func(c []uint8, ct float64) Result { return RCEncode(c, ct, lc) })
+	line("ook", func(c []uint8, ct float64) Result { return OOK(c, ct, lc) })
+	line("miller", func(c []uint8, ct float64) Result { return Miller(c, ct, lc) })
+	line("morse", func(c []uint8, ct float64) Result { return Morse(c, ct, lc) })
+	line("dcf77", func(c []uint8, ct float64) Result { return DCF77(c, ct, lc) })
+	line("em4100", func(c []uint8, ct float64) Result { return EM4100(c, ct, lc) })
+	line("em4305", func(c []uint8, ct float64) Result { return EM4305(c, ct, lc) })
+	line("t55xx", func(c []uint8, ct float64) Result { return T55xx(c, ct, lc) })
+	line("swim", func(c []uint8, ct float64) Result { return SWIM(c, ct, lc) })
+	line("sdq", func(c []uint8, ct float64) Result { return SDQ(c, ct, lc) })
+	line("pjdl", func(c []uint8, ct float64) Result { return PJDL(c, ct, lc) })
+	line("dsi", func(c []uint8, ct float64) Result { return DSI(c, ct, lc) })
+	line("qi", func(c []uint8, ct float64) Result { return Qi(c, ct, lc) })
+	line("irmp", func(c []uint8, ct float64) Result { return IRMP(c, ct, lc) })
+	pair("quad", func(x, y []uint8, ct float64) Result { return Quadrature(x, y, ct, cc) })
+	pair("stepper", func(x, y []uint8, ct float64) Result { return Stepper(x, y, ct, cc) })
+	pair("sdcard", func(x, y []uint8, ct float64) Result { return SDCard(x, y, ct, cc) })
+	pair("pdi", func(x, y []uint8, ct float64) Result { return PDI(x, y, ct, cc) })
+	pair("cjtag", func(x, y []uint8, ct float64) Result { return CJTAG(x, y, ct, cc) })
+	pair("maple", func(x, y []uint8, ct float64) Result { return Maple(x, y, ct, cc) })
+	pair("caliper", func(x, y []uint8, ct float64) Result { return Caliper(x, y, ct, cc) })
+	line("lin", func(c []uint8, ct float64) Result { return LIN(c, ct, LINCfg{Format: "hex"}) })
+	line("dmx512", func(c []uint8, ct float64) Result { return DMX512(c, ct, DMXCfg{Format: "hex"}) })
+	line("midi", func(c []uint8, ct float64) Result { return MIDI(c, ct, MIDICfg{Format: "hex"}) })
+	line("modbus", func(c []uint8, ct float64) Result { return Modbus(c, ct, ModbusCfg{Format: "hex"}) })
+	line("onewire", func(c []uint8, ct float64) Result { return OneWire(c, ct, OneWireCfg{Format: "hex"}) })
+	line("ws281x", func(c []uint8, ct float64) Result { return WS281x(c, ct, WS281xCfg{Format: "hex"}) })
+	line("dht", func(c []uint8, ct float64) Result { return DHT(c, ct, DHTCfg{Format: "hex"}) })
+	line("cec", func(c []uint8, ct float64) Result { return CEC(c, ct, CECCfg{Format: "hex"}) })
+	line("j1850", func(c []uint8, ct float64) Result { return J1850(c, ct, J1850Cfg{Format: "hex"}) })
 	ir := IRCfg{Format: "hex"}
-	line("irnec", func(c []uint8, ct float64) Result { return DecodeIRNEC(c, ct, ir) })
-	line("irsirc", func(c []uint8, ct float64) Result { return DecodeIRSIRC(c, ct, ir) })
-	line("irrc5", func(c []uint8, ct float64) Result { return DecodeIRRC5(c, ct, ir) })
-	line("irrc6", func(c []uint8, ct float64) Result { return DecodeIRRC6(c, ct, ir) })
-	line("dali", func(c []uint8, ct float64) Result { return DecodeDALI(c, ct, DALICfg{Format: "hex"}) })
-	line("usbpd", func(c []uint8, ct float64) Result { return DecodeUSBPD(c, ct, USBPDCfg{Format: "hex"}) })
-	line("spdif", func(c []uint8, ct float64) Result { return DecodeSPDIF(c, ct, SPDIFCfg{Format: "hex"}) })
-	pair("ps2", func(x, y []uint8, ct float64) Result { return DecodePS2(x, y, ct, cc) })
-	pair("swd", func(x, y []uint8, ct float64) Result { return DecodeSWD(x, y, ct, cc) })
-	pair("mdio", func(x, y []uint8, ct float64) Result { return DecodeMDIO(x, y, ct, cc) })
-	pair("wiegand", func(x, y []uint8, ct float64) Result { return DecodeWiegand(x, y, ct, cc) })
+	line("irnec", func(c []uint8, ct float64) Result { return IRNEC(c, ct, ir) })
+	line("irsirc", func(c []uint8, ct float64) Result { return IRSIRC(c, ct, ir) })
+	line("irrc5", func(c []uint8, ct float64) Result { return IRRC5(c, ct, ir) })
+	line("irrc6", func(c []uint8, ct float64) Result { return IRRC6(c, ct, ir) })
+	line("dali", func(c []uint8, ct float64) Result { return DALI(c, ct, DALICfg{Format: "hex"}) })
+	line("usbpd", func(c []uint8, ct float64) Result { return USBPD(c, ct, USBPDCfg{Format: "hex"}) })
+	line("spdif", func(c []uint8, ct float64) Result { return SPDIF(c, ct, SPDIFCfg{Format: "hex"}) })
+	pair("ps2", func(x, y []uint8, ct float64) Result { return PS2(x, y, ct, cc) })
+	pair("swd", func(x, y []uint8, ct float64) Result { return SWD(x, y, ct, cc) })
+	pair("mdio", func(x, y []uint8, ct float64) Result { return MDIO(x, y, ct, cc) })
+	pair("wiegand", func(x, y []uint8, ct float64) Result { return Wiegand(x, y, ct, cc) })
 
 	gen := func(name string, codes []uint8, dec func([]uint8) Result) {
 		b.Run(name, func(b *testing.B) {
@@ -98,25 +98,25 @@ func BenchmarkDec(b *testing.B) {
 	}
 	msg := []int{0x48, 0x65, 0x6C, 0x6C, 0x6F, 0x2C, 0x20, 0x77, 0x6F, 0x72, 0x6C, 0x64, 0x21, 0x0D, 0x0A, 0x55}
 	gen("uart", uartWave(msg, 40), func(c []uint8) Result {
-		return DecodeUART(c, 1e-6, UARTCfg{Bits: 8, Parity: "none", Format: "hex"})
+		return UART(c, 1e-6, UARTCfg{Bits: 8, Parity: "none", Format: "hex"})
 	})
 	{
 		w, ct := bkBuild(msg, true, true, 8, 20, 100000, 40, 40)
 		gen("manchester", w, func(c []uint8) Result {
-			return DecodeManchester(c, ct, ManchesterCfg{IEEE: true, MSB: true, Format: "hex"})
+			return Manchester(c, ct, ManchesterCfg{IEEE: true, MSB: true, Format: "hex"})
 		})
 	}
 	{
 		nibs := []int{0x1, 0xA, 0x5, 0xF, 0x0, 0xC, 0x3, 0}
 		nibs[7] = sentCRC4(nibs[1:7])
 		gen("sent", sentWave([][]int{nibs, nibs, nibs, nibs}, 6, 0, 0), func(c []uint8) Result {
-			return DecodeSENT(c, 1e-6, SENTCfg{})
+			return SENT(c, 1e-6, SENTCfg{})
 		})
 	}
 	{
 		_, wire := canStdFrame(0x123, 8, []int{1, 2, 3, 4, 5, 6, 7, 8})
 		gen("canfd", canRender(append(append([]int{}, wire...), wire...), 40, true, 80, 80), func(c []uint8) Result {
-			return DecodeCANFD(c, 1e-6, CANFDCfg{DominantLow: true})
+			return CANFD(c, 1e-6, CANFDCfg{DominantLow: true})
 		})
 	}
 	{
@@ -127,7 +127,7 @@ func BenchmarkDec(b *testing.B) {
 			par[i] = mil1553OddParity(wd)
 		}
 		gen("mil1553", mil1553Wave(words, cmd, par, 40), func(c []uint8) Result {
-			return DecodeMIL1553(c, 1/(40*1e6), MIL1553Cfg{})
+			return MIL1553(c, 1/(40*1e6), MIL1553Cfg{})
 		})
 	}
 	{
@@ -138,31 +138,31 @@ func BenchmarkDec(b *testing.B) {
 		}
 		arincIdle(&w, 40*6)
 		gen("arinc429", w, func(c []uint8) Result {
-			return DecodeARINC429(c, 1/(40*100e3), ARINC429Cfg{})
+			return ARINC429(c, 1/(40*100e3), ARINC429Cfg{})
 		})
 	}
 	{
 		pk := []usbPkt{{pid: 0xD, data: []int{0x12, 0x00}}, {pid: 0x3, data: []int{0x48, 0x69, 0xFF, 0x0F, 0x7E}}, {pid: 0x2}}
 		gen("usbls", usbWave(append(append([]usbPkt{}, pk...), pk...), 40), func(c []uint8) Result {
-			return DecodeUSBLS(c, 1.0/(40*1.5e6), USBLSCfg{})
+			return USBLS(c, 1.0/(40*1.5e6), USBLSCfg{})
 		})
 	}
 	{
 		f := brFlexFixCRC([]int{0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC, 0xDE, 0xF0})
 		gen("flexray", flexrayWave([][]int{f, f, f}, 20, 8), func(c []uint8) Result {
-			return DecodeFlexRay(c, 5e-9, FlexRayCfg{})
+			return FlexRay(c, 5e-9, FlexRayCfg{})
 		})
 	}
 	b.Run("spi", func(b *testing.B) {
 		clk, data := spiWave(msg, 20)
 		for b.Loop() {
-			DecodeSPI(clk, data, 2e-7, SPICfg{MSB: true, Format: "hex"})
+			SPI(clk, data, 2e-7, SPICfg{MSB: true, Format: "hex"})
 		}
 	})
 	b.Run("i2c", func(b *testing.B) {
 		scl, sda := i2cWave(0x50, 0, msg, 20)
 		for b.Loop() {
-			DecodeI2C(scl, sda, 2e-7, I2CCfg{Format: "hex"})
+			I2C(scl, sda, 2e-7, I2CCfg{Format: "hex"})
 		}
 	})
 }
@@ -243,7 +243,7 @@ func BenchmarkMorseOf(b *testing.B) {
 func BenchmarkSBUSFrames(b *testing.B) {
 	o := sbusOpts(7e-3, 1e6)
 	o.frames = 6
-	r := DecodeUART(sbusLine(o), 1e-6, UARTCfg{Baud: sbusBaud, Bits: 8, Parity: "even", Inverted: true})
+	r := UART(sbusLine(o), 1e-6, UARTCfg{Baud: sbusBaud, Bits: 8, Parity: "even", Inverted: true})
 	if sbusFrames(r, 1e-6) < 2 {
 		b.Fatal("no S.BUS frames")
 	}
@@ -297,7 +297,7 @@ func BenchmarkStreamDecoder(b *testing.B) {
 	for range 20 {
 		w = append(w, uartWave(msg, 40)...)
 	}
-	dec := func(a, _ []uint8) Result { return DecodeUART(a, 1e-6, UARTCfg{Baud: 25000, Bits: 8, Parity: "none"}) }
+	dec := func(a, _ []uint8) Result { return UART(a, 1e-6, UARTCfg{Baud: 25000, Bits: 8, Parity: "none"}) }
 	for b.Loop() {
 		d := NewStreamDecoder(dec, 400, 40000)
 		for i := 0; i < len(w); i += 2048 {

@@ -255,7 +255,7 @@ func TestAutosetKeepsABurstsSwing(t *testing.T) {
 	c.runAutoset(make(chan struct{}))
 	vidx, _ := fe.Snapshot()
 	got := fe.offReqV
-	want := detentFor(160*analog.AnalogVdiv(nearestDetent(2.0))/25, goalScope.fill) // the burst read at the sweep's 2 V/div
+	want := detentFor(160*analog.Vdiv(nearestDetent(2.0))/25, goalScope.fill) // the burst read at the sweep's 2 V/div
 	// the midpoint the burst reads at that scale: the offset centres it (an
 	// idle-only capture's midpoint, its rail, must not re-centre it)
 	for ch := range 2 {
@@ -295,7 +295,7 @@ func TestAutosetFindsALogicSignalThroughA10xProbe(t *testing.T) {
 						tip = 3.3
 					}
 					// centred on the screen: the fake engine keeps no offset
-					code := 128 + (tip-1.65)/pr.physical/analog.AnalogVdiv(idx[ch])*25 + float64(i%3) - 1
+					code := 128 + (tip-1.65)/pr.physical/analog.Vdiv(idx[ch])*25 + float64(i%3) - 1
 					codes[ch] = append(codes[ch], uint8(math.Max(0, math.Min(255, math.Round(code)))))
 				}
 			}
@@ -340,7 +340,7 @@ func TestAutosetLooksAgainForASparseBus(t *testing.T) {
 				if i%100 >= 50 {
 					tip = 3.3
 				}
-				codes = append(codes, uint8(math.Round(128+(tip-1.65)/10/analog.AnalogVdiv(idx[0])*25)))
+				codes = append(codes, uint8(math.Round(128+(tip-1.65)/10/analog.Vdiv(idx[0])*25)))
 			}
 			fn(&engine.Frame{C1: codes, C2: codes, Valid: len(codes), SampleS: 1e-4})
 			return

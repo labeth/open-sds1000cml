@@ -50,7 +50,7 @@ func TestUARTAnchorFramesBackToBackTraffic(t *testing.T) {
 		rec := w[30*spb+cut : aaStart+5*10*spb]         // opens inside 20 or 55, ends inside 0A..
 		for _, into := range []float64{9.2, 9.5, 9.9} { // the match's point within the stop bit
 			anchor := float64(aaStart-(30*spb+cut)) + into*spb
-			r := DecodeUART(rec, 1/(115200.0*spb), UARTCfg{Baud: 115200, Anchor: anchor, HasAnchor: true})
+			r := UART(rec, 1/(115200.0*spb), UARTCfg{Baud: 115200, Anchor: anchor, HasAnchor: true})
 			got := strings.Fields(r.Text)
 			want := []string{"55", "AA", "0F", "F0"} // 20 is cut by the record's start
 			if cut >= 3*10*spb {
@@ -65,7 +65,7 @@ func TestUARTAnchorFramesBackToBackTraffic(t *testing.T) {
 	// without the anchor such a record misreads (the case the anchor is for)
 	misread := 0
 	for cut := 2 * 10 * spb; cut < 4*10*spb; cut += spb {
-		r := DecodeUART(w[30*spb+cut:aaStart+5*10*spb], 1/(115200.0*spb), UARTCfg{Baud: 115200})
+		r := UART(w[30*spb+cut:aaStart+5*10*spb], 1/(115200.0*spb), UARTCfg{Baud: 115200})
 		if !strings.Contains(r.Text, "AA 0F F0") || strings.Contains(r.Text, "!") {
 			misread++
 		}
@@ -74,8 +74,8 @@ func TestUARTAnchorFramesBackToBackTraffic(t *testing.T) {
 		t.Fatalf("without the anchor every cut read in sync: the test no longer shows the case")
 	}
 	// an anchor where no clean frame is leaves the decode as it was
-	plain := DecodeUART(w, 1/(115200.0*spb), UARTCfg{Baud: 115200})
-	off := DecodeUART(w, 1/(115200.0*spb), UARTCfg{Baud: 115200, Anchor: 5, HasAnchor: true})
+	plain := UART(w, 1/(115200.0*spb), UARTCfg{Baud: 115200})
+	off := UART(w, 1/(115200.0*spb), UARTCfg{Baud: 115200, Anchor: 5, HasAnchor: true})
 	if plain.Text != off.Text {
 		t.Fatalf("an anchor on idle changed the decode: %q vs %q", off.Text, plain.Text)
 	}

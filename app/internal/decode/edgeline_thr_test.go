@@ -21,168 +21,168 @@ type (
 var edgeThrDecs = map[string]func(thr, thrB float64) (edgeDec, sampleDec){
 	"caliper": func(thr, thrB float64) (edgeDec, sampleDec) {
 		cfg := ClockedCfg{Threshold: thr, HaveThr: true, ThresholdB: thrB, HaveThrB: true}
-		return func(a, b *EdgeLine, s float64) Result { return DecodeCaliperEdges(a, b, s, cfg) },
-			func(a, b []uint8, s float64) Result { return DecodeCaliper(a, b, s, cfg) }
+		return func(a, b *EdgeLine, s float64) Result { return CaliperEdges(a, b, s, cfg) },
+			func(a, b []uint8, s float64) Result { return Caliper(a, b, s, cfg) }
 	},
 	"cec": func(thr, _ float64) (edgeDec, sampleDec) {
 		cfg := CECCfg{Threshold: thr, HaveThr: true}
-		return func(a, _ *EdgeLine, s float64) Result { return DecodeCECEdges(a, s, cfg) },
-			func(a, _ []uint8, s float64) Result { return DecodeCEC(a, s, cfg) }
+		return func(a, _ *EdgeLine, s float64) Result { return CECEdges(a, s, cfg) },
+			func(a, _ []uint8, s float64) Result { return CEC(a, s, cfg) }
 	},
 	"cjtag": func(thr, thrB float64) (edgeDec, sampleDec) {
 		cfg := ClockedCfg{Threshold: thr, HaveThr: true, ThresholdB: thrB, HaveThrB: true}
-		return func(a, b *EdgeLine, s float64) Result { return DecodeCJTAGEdges(a, b, s, cfg) },
-			func(a, b []uint8, s float64) Result { return DecodeCJTAG(a, b, s, cfg) }
+		return func(a, b *EdgeLine, s float64) Result { return CJTAGEdges(a, b, s, cfg) },
+			func(a, b []uint8, s float64) Result { return CJTAG(a, b, s, cfg) }
 	},
 	"dali": func(thr, _ float64) (edgeDec, sampleDec) {
 		cfg := DALICfg{Threshold: thr, HaveThr: true}
-		return func(a, _ *EdgeLine, s float64) Result { return DecodeDALIEdges(a, s, cfg) },
-			func(a, _ []uint8, s float64) Result { return DecodeDALI(a, s, cfg) }
+		return func(a, _ *EdgeLine, s float64) Result { return DALIEdges(a, s, cfg) },
+			func(a, _ []uint8, s float64) Result { return DALI(a, s, cfg) }
 	},
 	"dcf77": func(thr, _ float64) (edgeDec, sampleDec) {
 		cfg := LineCfg{Threshold: thr, HaveThr: true, Baud: 1}
-		return func(a, _ *EdgeLine, s float64) Result { return DecodeDCF77Edges(a, s, cfg) },
-			func(a, _ []uint8, s float64) Result { return DecodeDCF77(a, s, cfg) }
+		return func(a, _ *EdgeLine, s float64) Result { return DCF77Edges(a, s, cfg) },
+			func(a, _ []uint8, s float64) Result { return DCF77(a, s, cfg) }
 	},
 	"dht": func(thr, _ float64) (edgeDec, sampleDec) {
 		cfg := DHTCfg{Threshold: thr, HaveThr: true}
-		return func(a, _ *EdgeLine, s float64) Result { return DecodeDHTEdges(a, s, cfg) },
-			func(a, _ []uint8, s float64) Result { return DecodeDHT(a, s, cfg) }
+		return func(a, _ *EdgeLine, s float64) Result { return DHTEdges(a, s, cfg) },
+			func(a, _ []uint8, s float64) Result { return DHT(a, s, cfg) }
 	},
 	"dmx512": func(thr, _ float64) (edgeDec, sampleDec) {
 		cfg := DMXCfg{Baud: 250000, Threshold: thr, HaveThr: true}
-		return func(a, _ *EdgeLine, s float64) Result { return DecodeDMX512Edges(a, s, cfg) },
-			func(a, _ []uint8, s float64) Result { return DecodeDMX512(a, s, cfg) }
+		return func(a, _ *EdgeLine, s float64) Result { return DMX512Edges(a, s, cfg) },
+			func(a, _ []uint8, s float64) Result { return DMX512(a, s, cfg) }
 	},
 	"dsi": func(thr, _ float64) (edgeDec, sampleDec) {
 		cfg := LineCfg{Threshold: thr, HaveThr: true}
-		return func(a, _ *EdgeLine, s float64) Result { return DecodeDSIEdges(a, s, cfg) },
-			func(a, _ []uint8, s float64) Result { return DecodeDSI(a, s, cfg) }
+		return func(a, _ *EdgeLine, s float64) Result { return DSIEdges(a, s, cfg) },
+			func(a, _ []uint8, s float64) Result { return DSI(a, s, cfg) }
 	},
 	"j1850": func(thr, _ float64) (edgeDec, sampleDec) {
 		cfg := J1850Cfg{Threshold: thr, HaveThr: true}
-		return func(a, _ *EdgeLine, s float64) Result { return DecodeJ1850Edges(a, s, cfg) },
-			func(a, _ []uint8, s float64) Result { return DecodeJ1850(a, s, cfg) }
+		return func(a, _ *EdgeLine, s float64) Result { return J1850Edges(a, s, cfg) },
+			func(a, _ []uint8, s float64) Result { return J1850(a, s, cfg) }
 	},
 	"lin": func(thr, _ float64) (edgeDec, sampleDec) {
 		cfg := LINCfg{Baud: 19200, Threshold: thr, HaveThr: true}
-		return func(a, _ *EdgeLine, s float64) Result { return DecodeLINEdges(a, s, cfg) },
-			func(a, _ []uint8, s float64) Result { return DecodeLIN(a, s, cfg) }
+		return func(a, _ *EdgeLine, s float64) Result { return LINEdges(a, s, cfg) },
+			func(a, _ []uint8, s float64) Result { return LIN(a, s, cfg) }
 	},
 	"maple": func(thr, thrB float64) (edgeDec, sampleDec) {
 		cfg := ClockedCfg{Threshold: thr, HaveThr: true, ThresholdB: thrB, HaveThrB: true}
-		return func(a, b *EdgeLine, s float64) Result { return DecodeMapleEdges(a, b, s, cfg) },
-			func(a, b []uint8, s float64) Result { return DecodeMaple(a, b, s, cfg) }
+		return func(a, b *EdgeLine, s float64) Result { return MapleEdges(a, b, s, cfg) },
+			func(a, b []uint8, s float64) Result { return Maple(a, b, s, cfg) }
 	},
 	"mdio": func(thr, thrB float64) (edgeDec, sampleDec) {
 		cfg := ClockedCfg{Threshold: thr, HaveThr: true, ThresholdB: thrB, HaveThrB: true}
-		return func(a, b *EdgeLine, s float64) Result { return DecodeMDIOEdges(a, b, s, cfg) },
-			func(a, b []uint8, s float64) Result { return DecodeMDIO(a, b, s, cfg) }
+		return func(a, b *EdgeLine, s float64) Result { return MDIOEdges(a, b, s, cfg) },
+			func(a, b []uint8, s float64) Result { return MDIO(a, b, s, cfg) }
 	},
 	"miller": func(thr, _ float64) (edgeDec, sampleDec) {
 		cfg := LineCfg{Threshold: thr, HaveThr: true, Baud: 106000}
-		return func(a, _ *EdgeLine, s float64) Result { return DecodeMillerEdges(a, s, cfg) },
-			func(a, _ []uint8, s float64) Result { return DecodeMiller(a, s, cfg) }
+		return func(a, _ *EdgeLine, s float64) Result { return MillerEdges(a, s, cfg) },
+			func(a, _ []uint8, s float64) Result { return Miller(a, s, cfg) }
 	},
 	"modbus": func(thr, _ float64) (edgeDec, sampleDec) {
 		cfg := ModbusCfg{Baud: 19200, Parity: "even", Threshold: thr, HaveThr: true}
-		return func(a, _ *EdgeLine, s float64) Result { return DecodeModbusEdges(a, s, cfg) },
-			func(a, _ []uint8, s float64) Result { return DecodeModbus(a, s, cfg) }
+		return func(a, _ *EdgeLine, s float64) Result { return ModbusEdges(a, s, cfg) },
+			func(a, _ []uint8, s float64) Result { return Modbus(a, s, cfg) }
 	},
 	"morse": func(thr, _ float64) (edgeDec, sampleDec) {
 		cfg := LineCfg{Threshold: thr, HaveThr: true}
-		return func(a, _ *EdgeLine, s float64) Result { return DecodeMorseEdges(a, s, cfg) },
-			func(a, _ []uint8, s float64) Result { return DecodeMorse(a, s, cfg) }
+		return func(a, _ *EdgeLine, s float64) Result { return MorseEdges(a, s, cfg) },
+			func(a, _ []uint8, s float64) Result { return Morse(a, s, cfg) }
 	},
 	"onewire": func(thr, _ float64) (edgeDec, sampleDec) {
 		cfg := OneWireCfg{Threshold: thr, HaveThr: true}
-		return func(a, _ *EdgeLine, s float64) Result { return DecodeOneWireEdges(a, s, cfg) },
-			func(a, _ []uint8, s float64) Result { return DecodeOneWire(a, s, cfg) }
+		return func(a, _ *EdgeLine, s float64) Result { return OneWireEdges(a, s, cfg) },
+			func(a, _ []uint8, s float64) Result { return OneWire(a, s, cfg) }
 	},
 	"ook": func(thr, _ float64) (edgeDec, sampleDec) {
 		cfg := LineCfg{Threshold: thr, HaveThr: true}
-		return func(a, _ *EdgeLine, s float64) Result { return DecodeOOKEdges(a, s, cfg) },
-			func(a, _ []uint8, s float64) Result { return DecodeOOK(a, s, cfg) }
+		return func(a, _ *EdgeLine, s float64) Result { return OOKEdges(a, s, cfg) },
+			func(a, _ []uint8, s float64) Result { return OOK(a, s, cfg) }
 	},
 	"pdi": func(thr, thrB float64) (edgeDec, sampleDec) {
 		cfg := ClockedCfg{Threshold: thr, HaveThr: true, ThresholdB: thrB, HaveThrB: true}
-		return func(a, b *EdgeLine, s float64) Result { return DecodePDIEdges(a, b, s, cfg) },
-			func(a, b []uint8, s float64) Result { return DecodePDI(a, b, s, cfg) }
+		return func(a, b *EdgeLine, s float64) Result { return PDIEdges(a, b, s, cfg) },
+			func(a, b []uint8, s float64) Result { return PDI(a, b, s, cfg) }
 	},
 	"pjdl": func(thr, _ float64) (edgeDec, sampleDec) {
 		cfg := LineCfg{Threshold: thr, HaveThr: true, Variant: 1}
-		return func(a, _ *EdgeLine, s float64) Result { return DecodePJDLEdges(a, s, cfg) },
-			func(a, _ []uint8, s float64) Result { return DecodePJDL(a, s, cfg) }
+		return func(a, _ *EdgeLine, s float64) Result { return PJDLEdges(a, s, cfg) },
+			func(a, _ []uint8, s float64) Result { return PJDL(a, s, cfg) }
 	},
 	"ps2": func(thr, thrB float64) (edgeDec, sampleDec) {
 		cfg := ClockedCfg{Threshold: thr, HaveThr: true, ThresholdB: thrB, HaveThrB: true}
-		return func(a, b *EdgeLine, s float64) Result { return DecodePS2Edges(a, b, s, cfg) },
-			func(a, b []uint8, s float64) Result { return DecodePS2(a, b, s, cfg) }
+		return func(a, b *EdgeLine, s float64) Result { return PS2Edges(a, b, s, cfg) },
+			func(a, b []uint8, s float64) Result { return PS2(a, b, s, cfg) }
 	},
 	"pwm": func(thr, _ float64) (edgeDec, sampleDec) {
 		cfg := LineCfg{Threshold: thr, HaveThr: true}
-		return func(a, _ *EdgeLine, s float64) Result { return DecodePWMEdges(a, s, cfg) },
-			func(a, _ []uint8, s float64) Result { return DecodePWM(a, s, cfg) }
+		return func(a, _ *EdgeLine, s float64) Result { return PWMEdges(a, s, cfg) },
+			func(a, _ []uint8, s float64) Result { return PWM(a, s, cfg) }
 	},
 	"qi": func(thr, _ float64) (edgeDec, sampleDec) {
 		cfg := LineCfg{Threshold: thr, HaveThr: true}
-		return func(a, _ *EdgeLine, s float64) Result { return DecodeQiEdges(a, s, cfg) },
-			func(a, _ []uint8, s float64) Result { return DecodeQi(a, s, cfg) }
+		return func(a, _ *EdgeLine, s float64) Result { return QiEdges(a, s, cfg) },
+			func(a, _ []uint8, s float64) Result { return Qi(a, s, cfg) }
 	},
 	"quad": func(thr, thrB float64) (edgeDec, sampleDec) {
 		cfg := ClockedCfg{Threshold: thr, HaveThr: true, ThresholdB: thrB, HaveThrB: true}
-		return func(a, b *EdgeLine, s float64) Result { return DecodeQuadratureEdges(a, b, s, cfg) },
-			func(a, b []uint8, s float64) Result { return DecodeQuadrature(a, b, s, cfg) }
+		return func(a, b *EdgeLine, s float64) Result { return QuadratureEdges(a, b, s, cfg) },
+			func(a, b []uint8, s float64) Result { return Quadrature(a, b, s, cfg) }
 	},
 	"rcencode": func(thr, _ float64) (edgeDec, sampleDec) {
 		cfg := LineCfg{Threshold: thr, HaveThr: true, Variant: 12}
-		return func(a, _ *EdgeLine, s float64) Result { return DecodeRCEncodeEdges(a, s, cfg) },
-			func(a, _ []uint8, s float64) Result { return DecodeRCEncode(a, s, cfg) }
+		return func(a, _ *EdgeLine, s float64) Result { return RCEncodeEdges(a, s, cfg) },
+			func(a, _ []uint8, s float64) Result { return RCEncode(a, s, cfg) }
 	},
 	"sdcard": func(thr, thrB float64) (edgeDec, sampleDec) {
 		cfg := ClockedCfg{Threshold: thr, HaveThr: true, ThresholdB: thrB, HaveThrB: true}
-		return func(a, b *EdgeLine, s float64) Result { return DecodeSDCardEdges(a, b, s, cfg) },
-			func(a, b []uint8, s float64) Result { return DecodeSDCard(a, b, s, cfg) }
+		return func(a, b *EdgeLine, s float64) Result { return SDCardEdges(a, b, s, cfg) },
+			func(a, b []uint8, s float64) Result { return SDCard(a, b, s, cfg) }
 	},
 	"sdq": func(thr, _ float64) (edgeDec, sampleDec) {
 		cfg := LineCfg{Threshold: thr, HaveThr: true, Baud: 98425}
-		return func(a, _ *EdgeLine, s float64) Result { return DecodeSDQEdges(a, s, cfg) },
-			func(a, _ []uint8, s float64) Result { return DecodeSDQ(a, s, cfg) }
+		return func(a, _ *EdgeLine, s float64) Result { return SDQEdges(a, s, cfg) },
+			func(a, _ []uint8, s float64) Result { return SDQ(a, s, cfg) }
 	},
 	"spdif": func(thr, _ float64) (edgeDec, sampleDec) {
 		cfg := SPDIFCfg{Threshold: thr, HaveThr: true}
-		return func(a, _ *EdgeLine, s float64) Result { return DecodeSPDIFEdges(a, s, cfg) },
-			func(a, _ []uint8, s float64) Result { return DecodeSPDIF(a, s, cfg) }
+		return func(a, _ *EdgeLine, s float64) Result { return SPDIFEdges(a, s, cfg) },
+			func(a, _ []uint8, s float64) Result { return SPDIF(a, s, cfg) }
 	},
 	"stepper": func(thr, thrB float64) (edgeDec, sampleDec) {
 		cfg := ClockedCfg{Threshold: thr, HaveThr: true, ThresholdB: thrB, HaveThrB: true}
-		return func(a, b *EdgeLine, s float64) Result { return DecodeStepperEdges(a, b, s, cfg) },
-			func(a, b []uint8, s float64) Result { return DecodeStepper(a, b, s, cfg) }
+		return func(a, b *EdgeLine, s float64) Result { return StepperEdges(a, b, s, cfg) },
+			func(a, b []uint8, s float64) Result { return Stepper(a, b, s, cfg) }
 	},
 	"swd": func(thr, thrB float64) (edgeDec, sampleDec) {
 		cfg := ClockedCfg{Threshold: thr, HaveThr: true, ThresholdB: thrB, HaveThrB: true}
-		return func(a, b *EdgeLine, s float64) Result { return DecodeSWDEdges(a, b, s, cfg) },
-			func(a, b []uint8, s float64) Result { return DecodeSWD(a, b, s, cfg) }
+		return func(a, b *EdgeLine, s float64) Result { return SWDEdges(a, b, s, cfg) },
+			func(a, b []uint8, s float64) Result { return SWD(a, b, s, cfg) }
 	},
 	"swim": func(thr, _ float64) (edgeDec, sampleDec) {
 		cfg := LineCfg{Threshold: thr, HaveThr: true, Baud: 363636}
-		return func(a, _ *EdgeLine, s float64) Result { return DecodeSWIMEdges(a, s, cfg) },
-			func(a, _ []uint8, s float64) Result { return DecodeSWIM(a, s, cfg) }
+		return func(a, _ *EdgeLine, s float64) Result { return SWIMEdges(a, s, cfg) },
+			func(a, _ []uint8, s float64) Result { return SWIM(a, s, cfg) }
 	},
 	"usbpd": func(thr, _ float64) (edgeDec, sampleDec) {
 		cfg := USBPDCfg{Baud: 300000, Threshold: thr, HaveThr: true}
-		return func(a, _ *EdgeLine, s float64) Result { return DecodeUSBPDEdges(a, s, cfg) },
-			func(a, _ []uint8, s float64) Result { return DecodeUSBPD(a, s, cfg) }
+		return func(a, _ *EdgeLine, s float64) Result { return USBPDEdges(a, s, cfg) },
+			func(a, _ []uint8, s float64) Result { return USBPD(a, s, cfg) }
 	},
 	"wiegand": func(thr, thrB float64) (edgeDec, sampleDec) {
 		cfg := ClockedCfg{Threshold: thr, HaveThr: true, ThresholdB: thrB, HaveThrB: true}
-		return func(a, b *EdgeLine, s float64) Result { return DecodeWiegandEdges(a, b, s, cfg) },
-			func(a, b []uint8, s float64) Result { return DecodeWiegand(a, b, s, cfg) }
+		return func(a, b *EdgeLine, s float64) Result { return WiegandEdges(a, b, s, cfg) },
+			func(a, b []uint8, s float64) Result { return Wiegand(a, b, s, cfg) }
 	},
 	"ws281x": func(thr, _ float64) (edgeDec, sampleDec) {
 		cfg := WS281xCfg{Threshold: thr, HaveThr: true}
-		return func(a, _ *EdgeLine, s float64) Result { return DecodeWS281xEdges(a, s, cfg) },
-			func(a, _ []uint8, s float64) Result { return DecodeWS281x(a, s, cfg) }
+		return func(a, _ *EdgeLine, s float64) Result { return WS281xEdges(a, s, cfg) },
+			func(a, _ []uint8, s float64) Result { return WS281x(a, s, cfg) }
 	},
 }
 

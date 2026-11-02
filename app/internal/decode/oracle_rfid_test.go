@@ -24,7 +24,7 @@ func TestOracleEM4100(t *testing.T) {
 		em4100Frame(w, tg, hp, i == 1)
 	}
 	w.add(0, 2*hp)
-	r := DecodeEM4100(w.codes(), 1.0/sr, LineCfg{})
+	r := EM4100(w.codes(), 1.0/sr, LineCfg{})
 	if !r.OK {
 		t.Fatal(r.Error)
 	}
@@ -86,7 +86,7 @@ func TestOracleEM4305(t *testing.T) {
 	em4305Command(f, em4305Bits(1, -1, [4]int{0x12, 0x34, 0x56, 0x78}, false))
 	em4305Command(f, em4305Bits(2, 5, [4]int{0xDE, 0xAD, 0xBE, 0xEF}, false))
 	em4305Command(f, em4305Bits(2, 9, [4]int{0x00, 0xFF, 0x81, 0x7E}, true))
-	r := DecodeEM4305(w.codes(), 1.0/sr, LineCfg{})
+	r := EM4305(w.codes(), 1.0/sr, LineCfg{})
 	if !r.OK {
 		t.Fatal(r.Error)
 	}
@@ -124,7 +124,7 @@ func TestOracleT55xx(t *testing.T) {
 	t55xxCommand(f, t55xxBits(2, 0x51243648, 0, 0x00148040, 0))
 	t55xxCommand(f, t55xxBits(2, -1, 1, 0xDEADBEEF, 5))
 	t55xxCommand(f, []int{0, 0})
-	r := DecodeT55xx(w.codes(), 1.0/sr, LineCfg{})
+	r := T55xx(w.codes(), 1.0/sr, LineCfg{})
 	if !r.OK || r.FrameBits != 70 {
 		t.Fatal(r.FrameBits, r.Error)
 	}

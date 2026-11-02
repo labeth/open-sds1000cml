@@ -15,47 +15,47 @@ var physDecoders = []struct {
 	name string
 	dec  func(a, b []uint8, ct float64, rng *rand.Rand) Result
 }{
-	{"quad", func(a, b []uint8, ct float64, _ *rand.Rand) Result { return DecodeQuadrature(a, b, ct, ClockedCfg{}) }},
-	{"stepper", func(a, b []uint8, ct float64, _ *rand.Rand) Result { return DecodeStepper(a, b, ct, ClockedCfg{}) }},
-	{"pwm", func(a, _ []uint8, ct float64, _ *rand.Rand) Result { return DecodePWM(a, ct, LineCfg{}) }},
+	{"quad", func(a, b []uint8, ct float64, _ *rand.Rand) Result { return Quadrature(a, b, ct, ClockedCfg{}) }},
+	{"stepper", func(a, b []uint8, ct float64, _ *rand.Rand) Result { return Stepper(a, b, ct, ClockedCfg{}) }},
+	{"pwm", func(a, _ []uint8, ct float64, _ *rand.Rand) Result { return PWM(a, ct, LineCfg{}) }},
 	{"rcencode", func(a, _ []uint8, ct float64, rng *rand.Rand) Result {
-		return DecodeRCEncode(a, ct, LineCfg{Variant: []int{0, 12, 24, -3}[rng.Intn(4)]})
+		return RCEncode(a, ct, LineCfg{Variant: []int{0, 12, 24, -3}[rng.Intn(4)]})
 	}},
-	{"ook", func(a, _ []uint8, ct float64, _ *rand.Rand) Result { return DecodeOOK(a, ct, LineCfg{}) }},
+	{"ook", func(a, _ []uint8, ct float64, _ *rand.Rand) Result { return OOK(a, ct, LineCfg{}) }},
 	{"miller", func(a, _ []uint8, ct float64, rng *rand.Rand) Result {
-		return DecodeMiller(a, ct, LineCfg{Baud: []int{0, 106000, -1, 1 << 30}[rng.Intn(4)]})
+		return Miller(a, ct, LineCfg{Baud: []int{0, 106000, -1, 1 << 30}[rng.Intn(4)]})
 	}},
 	{"morse", func(a, _ []uint8, ct float64, rng *rand.Rand) Result {
-		return DecodeMorse(a, ct, LineCfg{Baud: []int{0, 10, -1, 1 << 30}[rng.Intn(4)]})
+		return Morse(a, ct, LineCfg{Baud: []int{0, 10, -1, 1 << 30}[rng.Intn(4)]})
 	}},
-	{"dcf77", func(a, _ []uint8, ct float64, _ *rand.Rand) Result { return DecodeDCF77(a, ct, LineCfg{}) }},
+	{"dcf77", func(a, _ []uint8, ct float64, _ *rand.Rand) Result { return DCF77(a, ct, LineCfg{}) }},
 	{"em4100", func(a, _ []uint8, ct float64, rng *rand.Rand) Result {
-		return DecodeEM4100(a, ct, LineCfg{Baud: []int{0, 1953, -5, 1 << 30}[rng.Intn(4)]})
+		return EM4100(a, ct, LineCfg{Baud: []int{0, 1953, -5, 1 << 30}[rng.Intn(4)]})
 	}},
 	{"em4305", func(a, _ []uint8, ct float64, rng *rand.Rand) Result {
-		return DecodeEM4305(a, ct, LineCfg{Baud: []int{0, 125000, -1, 1 << 30}[rng.Intn(4)]})
+		return EM4305(a, ct, LineCfg{Baud: []int{0, 125000, -1, 1 << 30}[rng.Intn(4)]})
 	}},
 	{"t55xx", func(a, _ []uint8, ct float64, rng *rand.Rand) Result {
-		return DecodeT55xx(a, ct, LineCfg{Baud: []int{0, 125000, 1}[rng.Intn(3)]})
+		return T55xx(a, ct, LineCfg{Baud: []int{0, 125000, 1}[rng.Intn(3)]})
 	}},
 	{"swim", func(a, _ []uint8, ct float64, rng *rand.Rand) Result {
-		return DecodeSWIM(a, ct, LineCfg{Baud: []int{0, 181818, -1, 1 << 30}[rng.Intn(4)]})
+		return SWIM(a, ct, LineCfg{Baud: []int{0, 181818, -1, 1 << 30}[rng.Intn(4)]})
 	}},
 	{"sdq", func(a, _ []uint8, ct float64, rng *rand.Rand) Result {
-		return DecodeSDQ(a, ct, LineCfg{Baud: []int{0, 98425, 1, 1 << 30}[rng.Intn(4)]})
+		return SDQ(a, ct, LineCfg{Baud: []int{0, 98425, 1, 1 << 30}[rng.Intn(4)]})
 	}},
 	{"pjdl", func(a, _ []uint8, ct float64, rng *rand.Rand) Result {
-		return DecodePJDL(a, ct, LineCfg{Variant: []int{0, 1, 4, 9}[rng.Intn(4)]})
+		return PJDL(a, ct, LineCfg{Variant: []int{0, 1, 4, 9}[rng.Intn(4)]})
 	}},
-	{"dsi", func(a, _ []uint8, ct float64, _ *rand.Rand) Result { return DecodeDSI(a, ct, LineCfg{}) }},
-	{"qi", func(a, _ []uint8, ct float64, _ *rand.Rand) Result { return DecodeQi(a, ct, LineCfg{}) }},
-	{"irmp", func(a, _ []uint8, ct float64, _ *rand.Rand) Result { return DecodeIRMP(a, ct, LineCfg{}) }},
-	{"sdcard", func(a, b []uint8, ct float64, _ *rand.Rand) Result { return DecodeSDCard(a, b, ct, ClockedCfg{}) }},
-	{"pdi", func(a, b []uint8, ct float64, _ *rand.Rand) Result { return DecodePDI(a, b, ct, ClockedCfg{}) }},
-	{"cjtag", func(a, b []uint8, ct float64, _ *rand.Rand) Result { return DecodeCJTAG(a, b, ct, ClockedCfg{}) }},
-	{"maple", func(a, b []uint8, ct float64, _ *rand.Rand) Result { return DecodeMaple(a, b, ct, ClockedCfg{}) }},
+	{"dsi", func(a, _ []uint8, ct float64, _ *rand.Rand) Result { return DSI(a, ct, LineCfg{}) }},
+	{"qi", func(a, _ []uint8, ct float64, _ *rand.Rand) Result { return Qi(a, ct, LineCfg{}) }},
+	{"irmp", func(a, _ []uint8, ct float64, _ *rand.Rand) Result { return IRMP(a, ct, LineCfg{}) }},
+	{"sdcard", func(a, b []uint8, ct float64, _ *rand.Rand) Result { return SDCard(a, b, ct, ClockedCfg{}) }},
+	{"pdi", func(a, b []uint8, ct float64, _ *rand.Rand) Result { return PDI(a, b, ct, ClockedCfg{}) }},
+	{"cjtag", func(a, b []uint8, ct float64, _ *rand.Rand) Result { return CJTAG(a, b, ct, ClockedCfg{}) }},
+	{"maple", func(a, b []uint8, ct float64, _ *rand.Rand) Result { return Maple(a, b, ct, ClockedCfg{}) }},
 	{"caliper", func(a, b []uint8, ct float64, rng *rand.Rand) Result {
-		return DecodeCaliper(a, b, ct, ClockedCfg{Threshold: rng.Float64() * 300, HaveThr: rng.Intn(3) == 0})
+		return Caliper(a, b, ct, ClockedCfg{Threshold: rng.Float64() * 300, HaveThr: rng.Intn(3) == 0})
 	}},
 }
 
@@ -208,21 +208,21 @@ func TestBreakPhysChecksFlagged(t *testing.T) {
 		w := newTimeline(100e3)
 		w.add(0, 20e-3)
 		oregonBurst(w, 3, []int{0x1, 0xD, 0x2, 0x0, 0x1, 0x3, 0xA, 0x0, 0x5, 0x3}, 1/2048.0, true, 40e-3)
-		cases = append(cases, tc{"Oregon checksum", DecodeOOK(w.codes(), 1e-5, LineCfg{})})
+		cases = append(cases, tc{"Oregon checksum", OOK(w.codes(), 1e-5, LineCfg{})})
 	}
 	{
 		w := newTimeline(500e3)
 		w.add(1, 768e-6)
 		em4100Frame(w, [5]int{1, 2, 3, 4, 5}, 256e-6, true)
 		w.add(0, 1e-3)
-		cases = append(cases, tc{"EM4100 row parity", DecodeEM4100(w.codes(), 2e-6, LineCfg{})})
+		cases = append(cases, tc{"EM4100 row parity", EM4100(w.codes(), 2e-6, LineCfg{})})
 	}
 	{
 		w := newTimeline(4e6)
 		f := rfidField{w, true}
 		f.on(500 * rfidFC)
 		em4305Command(f, em4305Bits(2, 5, [4]int{0xDE, 0xAD, 0xBE, 0xEF}, true))
-		cases = append(cases, tc{"EM4305 parity", DecodeEM4305(w.codes(), 2.5e-7, LineCfg{})})
+		cases = append(cases, tc{"EM4305 parity", EM4305(w.codes(), 2.5e-7, LineCfg{})})
 	}
 	{
 		l := newTwoLine(4e6)
@@ -231,13 +231,13 @@ func TestBreakPhysChecksFlagged(t *testing.T) {
 			bits = append(bits, b...)
 		}
 		clockBits(l, bits, 4e-6)
-		cases = append(cases, tc{"SD CRC-7", DecodeSDCard(l.a.codes(), l.b.codes(), 2.5e-7, ClockedCfg{})})
+		cases = append(cases, tc{"SD CRC-7", SDCard(l.a.codes(), l.b.codes(), 2.5e-7, ClockedCfg{})})
 	}
 	{
 		w := newTimeline(2e6)
 		w.add(0, 500e-6)
 		pjdlFrame(w, 1, pjonPacket(0x05, 0x00, []int{0x48, 0x69}, true), 1e-3)
-		r := DecodePJDL(w.codes(), 5e-7, LineCfg{})
+		r := PJDL(w.codes(), 5e-7, LineCfg{})
 		r.OK = false // the header checks: only the frame's end CRC fails
 		cases = append(cases, tc{"PJON CRC", r})
 	}
@@ -245,21 +245,21 @@ func TestBreakPhysChecksFlagged(t *testing.T) {
 		w := newTimeline(200e3)
 		w.add(0, 5e-3)
 		qiPacket(w, []int{0x02, 0x01}, true, 8e-3)
-		cases = append(cases, tc{"Qi checksum", DecodeQi(w.codes(), 5e-6, LineCfg{})})
+		cases = append(cases, tc{"Qi checksum", Qi(w.codes(), 5e-6, LineCfg{})})
 	}
 	{
 		m := &mapleLine{l: newTwoLine(20e6), st: 250e-9}
 		m.set(1, 1)
 		m.frame(mapleBytes(0x01, 0x20, 0x09, []int{0xFF, 0x00, 0xA5, 0x5A}, true))
 		m.set(1, 1)
-		cases = append(cases, tc{"Maple checksum", DecodeMaple(m.l.a.codes(), m.l.b.codes(), 5e-8, ClockedCfg{})})
+		cases = append(cases, tc{"Maple checksum", Maple(m.l.a.codes(), m.l.b.codes(), 5e-8, ClockedCfg{})})
 	}
 	{
 		w := newTimeline(1000)
 		w.add(0, 1.3)
 		dcf77Minute(w, 0, 0, 1, 1, 1, 0, false)
 		dcf77Minute(w, 0x37, 0x12, 0x18, 0x7, 0x10, 0x26, true)
-		r := DecodeDCF77(w.codes(), 1e-3, LineCfg{})
+		r := DCF77(w.codes(), 1e-3, LineCfg{})
 		r.OK = false // the hour and date check: the minute's parity is broken
 		cases = append(cases, tc{"DCF77 parity", r})
 	}
@@ -268,14 +268,14 @@ func TestBreakPhysChecksFlagged(t *testing.T) {
 		w := newTimeline(20e6)
 		w.add(1, 20e-6)
 		swimFrame(w, 0, 3, 1, T, 1, true, 3*T)
-		cases = append(cases, tc{"SWIM parity", DecodeSWIM(w.codes(), 5e-8, LineCfg{})})
+		cases = append(cases, tc{"SWIM parity", SWIM(w.codes(), 5e-8, LineCfg{})})
 	}
 	ir := func(name string, f func(l irLine)) {
 		w := newTimeline(100e3)
 		l := irLine{w: w}
 		l.space(20e-3)
 		f(l)
-		cases = append(cases, tc{name, DecodeIRMP(w.codes(), 1e-5, LineCfg{})})
+		cases = append(cases, tc{name, IRMP(w.codes(), 1e-5, LineCfg{})})
 	}
 	ir("Samsung inverse", func(l irLine) {
 		l.mark(4.5e-3)

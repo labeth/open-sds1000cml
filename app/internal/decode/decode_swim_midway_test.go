@@ -21,7 +21,7 @@ func TestDecodeSWIMMidway(t *testing.T) {
 	codes := w.codes()
 	codes = codes[int(4.5*T*sr):]          // open within the first byte
 	codes = codes[:len(codes)-int(5*T*sr)] // and end within the count
-	r := DecodeSWIM(codes, 1/sr, LineCfg{})
+	r := SWIM(codes, 1/sr, LineCfg{})
 	if want := "? W50 W0A R5A ROTF ?"; !r.OK || r.Text != want {
 		t.Fatalf("%q (%s), want %q", r.Text, r.Error, want)
 	}

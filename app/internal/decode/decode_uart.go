@@ -132,9 +132,9 @@ func inferUARTspb(sl sliced) (float64, string) {
 	return 0, "baud ambiguous — set it explicitly"
 }
 
-// DecodeUART decodes 8N1-style UART on one channel's codes (decode.js decodeUART).
+// UART decodes 8N1-style UART on one channel's codes (decode.js decodeUART).
 // TRLC-LINKS: REQ-SDS-018
-func DecodeUART(codes []uint8, colTimeS float64, cfg UARTCfg) Result {
+func UART(codes []uint8, colTimeS float64, cfg UARTCfg) Result {
 	if cfg.Inverted {
 		logical := make([]uint8, len(codes))
 		for i, code := range codes {

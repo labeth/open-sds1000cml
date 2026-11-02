@@ -41,7 +41,7 @@ func TestSPIEyeFindsLateData(t *testing.T) {
 					want = append(want, int(b))
 				}
 			}
-			r := DecodeSPI(clk, data, 2e-9, SPICfg{MSB: true, Threshold: 120, HaveThr: true, DataLag: lag, DataDelay: eye.DelayS / 2e-9})
+			r := SPI(clk, data, 2e-9, SPICfg{MSB: true, Threshold: 120, HaveThr: true, DataLag: lag, DataDelay: eye.DelayS / 2e-9})
 			if !r.OK || !reflect.DeepEqual(r.Bytes, want) {
 				t.Fatalf("late %.0f ns C%d: software decode at the eye: % x", late*1e9, clockCh+1, r.Bytes)
 			}
@@ -149,7 +149,7 @@ func TestSPIEyeFlashStartsOnly(t *testing.T) {
 			}
 		}
 		cfg.DataDelay = all.DelayS / 2e-9
-		res := DecodeSPI(r.C2, r.C1, 2e-9, cfg)
+		res := SPI(r.C2, r.C1, 2e-9, cfg)
 		if want := []int{0x0B, 0x00, 0x10, 0x00, 0xFF, 0x53, 0x50, 0x49}; !res.OK || !slices.Contains(starts(res.Bytes, want), true) {
 			t.Fatalf("record %d at %+.2f ns: % x", i, all.DelayS*1e9, res.Bytes)
 		}
@@ -188,7 +188,7 @@ func TestSPIEyeEarlyAcrossRecords(t *testing.T) {
 		t.Fatalf("eye %+v, votes %+v", eye, v)
 	}
 	cfg.DataDelay = eye.DelayS / 2e-9
-	if r := DecodeSPI(c2, c1, 2e-9, cfg); !r.OK || strings.Count(string(intsToBytes(r.Bytes)), "SPI FLASH 104MHZ OPEN-SDS 0123") < 6 {
+	if r := SPI(c2, c1, 2e-9, cfg); !r.OK || strings.Count(string(intsToBytes(r.Bytes)), "SPI FLASH 104MHZ OPEN-SDS 0123") < 6 {
 		t.Fatalf("at %+.2f ns: %q", eye.DelayS*1e9, intsToBytes(r.Bytes))
 	}
 }

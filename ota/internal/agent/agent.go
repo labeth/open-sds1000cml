@@ -56,7 +56,7 @@ type Agent struct {
 	cfg   *config.Config
 	st    *stateFile
 	store *slots.Store
-	wd    *watchdog.Watchdog
+	wd    *watchdog.Device
 	log   *log.Logger
 
 	// Inherited boot descriptors (raw ints; never closed, never wrapped

@@ -29,7 +29,7 @@ func TestBusRatesSnapToStandard(t *testing.T) {
 	par := []int{mil1553OddParity(words[0]), mil1553OddParity(words[1])}
 	const spb = 40
 	w := mil1553Wave(words, []bool{true, false}, par, spb)
-	r := DecodeMIL1553(w, 1/(spb*1.008e6), MIL1553Cfg{}) // edges read 0.8 % fast
+	r := MIL1553(w, 1/(spb*1.008e6), MIL1553Cfg{}) // edges read 0.8 % fast
 	if !r.OK || r.Baud != 1000000 {
 		t.Fatalf("MIL-1553 read %d bit/s (ok %v %s), want 1000000", r.Baud, r.OK, r.Error)
 	}

@@ -237,7 +237,7 @@ func orcSPIWaves(sr, rate float64, txns []orcSPITxn, gap float64) (clk, mosi, mi
 // TRLC-LINKS: REQ-SDS-241
 func orcSPILayer(t *testing.T, sr float64, clk, data []byte, layer string) []Packet {
 	t.Helper()
-	r := decode.DecodeSPI(orcCodes(clk), orcCodes(data), 1/sr, decode.SPICfg{MSB: true})
+	r := decode.SPI(orcCodes(clk), orcCodes(data), 1/sr, decode.SPICfg{MSB: true})
 	if !r.OK {
 		t.Fatalf("SPI decode: %s", r.Error)
 	}
@@ -328,7 +328,7 @@ func orcI2CLayer(t *testing.T, sr float64, scl, sda []byte, layer string) []Pack
 // TRLC-LINKS: REQ-SDS-241
 func decodeI2COrFail(t *testing.T, sr float64, scl, sda []byte) decode.Result {
 	t.Helper()
-	r := decode.DecodeI2C(orcCodes(scl), orcCodes(sda), 1/sr, decode.I2CCfg{})
+	r := decode.I2C(orcCodes(scl), orcCodes(sda), 1/sr, decode.I2CCfg{})
 	if !r.OK {
 		t.Fatalf("I2C decode: %s", r.Error)
 	}
@@ -385,7 +385,7 @@ func orcUARTWave(sr, baud float64, parity string, stops int, inverted bool, burs
 // TRLC-LINKS: REQ-SDS-241
 func orcUARTLayer(t *testing.T, sr float64, line []byte, baud int, parity string, inverted bool, layer string) []Packet {
 	t.Helper()
-	r := decode.DecodeUART(orcCodes(line), 1/sr, decode.UARTCfg{Baud: baud, Parity: parity, Inverted: inverted})
+	r := decode.UART(orcCodes(line), 1/sr, decode.UARTCfg{Baud: baud, Parity: parity, Inverted: inverted})
 	if !r.OK {
 		t.Fatalf("UART decode: %s", r.Error)
 	}
@@ -437,7 +437,7 @@ func orcOWWave(sr float64, txns [][]byte) []byte {
 // TRLC-LINKS: REQ-SDS-241
 func orcOWLayer(t *testing.T, sr float64, line []byte, layer string) []Packet {
 	t.Helper()
-	r := decode.DecodeOneWire(orcCodes(line), 1/sr, decode.OneWireCfg{})
+	r := decode.OneWire(orcCodes(line), 1/sr, decode.OneWireCfg{})
 	if !r.OK {
 		t.Fatalf("1-Wire decode: %s", r.Error)
 	}
@@ -496,7 +496,7 @@ func orcMDIOWaves(sr, per float64, fs []orcMDIOFrame) (mdc, mdio []byte) {
 // TRLC-LINKS: REQ-SDS-241
 func decodeMDIO(t *testing.T, sr float64, mdc, mdio []byte) decode.Result {
 	t.Helper()
-	r := decode.DecodeMDIO(orcCodes(mdc), orcCodes(mdio), 1/sr, decode.ClockedCfg{})
+	r := decode.MDIO(orcCodes(mdc), orcCodes(mdio), 1/sr, decode.ClockedCfg{})
 	if !r.OK {
 		t.Fatalf("MDIO decode: %s", r.Error)
 	}
@@ -596,7 +596,7 @@ func orcUSBData(d []byte) []int {
 // TRLC-LINKS: REQ-SDS-241
 func orcUSBLayer(t *testing.T, sr float64, dp []byte, layer string) []Packet {
 	t.Helper()
-	r := decode.DecodeUSBLS(orcCodes(dp), 1/sr, decode.USBLSCfg{})
+	r := decode.USBLS(orcCodes(dp), 1/sr, decode.USBLSCfg{})
 	if !r.OK {
 		t.Fatalf("USB decode: %s", r.Error)
 	}

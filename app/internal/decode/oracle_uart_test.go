@@ -85,7 +85,7 @@ func TestOracleUART(t *testing.T) {
 		payload := []int{0x48, 0x69, 0x00, 0xFF, 0x55, 0xAA, 0x0F, 0xF0, 0x21}
 		baud := 62500 // spb 16
 		bits := oracleUARTBits(sr, float64(baud), 8, "none", frames(payload...))
-		r := DecodeUART(bitsToCodes(bits), 1.0/sr, UARTCfg{Baud: baud})
+		r := UART(bitsToCodes(bits), 1.0/sr, UARTCfg{Baud: baud})
 		if !r.OK {
 			t.Fatalf("repo decode failed: %s", r.Error)
 		}
@@ -100,7 +100,7 @@ func TestOracleUART(t *testing.T) {
 		baud := 62500
 		fs := frames(payload...) // gapBits 0: stop bit runs straight into the next start
 		bits := oracleUARTBits(sr, float64(baud), 8, "none", fs)
-		r := DecodeUART(bitsToCodes(bits), 1.0/sr, UARTCfg{Baud: baud})
+		r := UART(bitsToCodes(bits), 1.0/sr, UARTCfg{Baud: baud})
 		if !r.OK {
 			t.Fatalf("repo decode failed: %s", r.Error)
 		}
@@ -112,7 +112,7 @@ func TestOracleUART(t *testing.T) {
 		payload := []int{0x13, 0x37, 0xC0, 0xDE}
 		baud := 72900 // 13.717 samples/bit at 1 MHz
 		bits := oracleUARTBits(sr, float64(baud), 8, "none", frames(payload...))
-		r := DecodeUART(bitsToCodes(bits), 1.0/sr, UARTCfg{Baud: baud})
+		r := UART(bitsToCodes(bits), 1.0/sr, UARTCfg{Baud: baud})
 		if !r.OK {
 			t.Fatalf("repo decode failed: %s", r.Error)
 		}
@@ -124,7 +124,7 @@ func TestOracleUART(t *testing.T) {
 		payload := []int{0x41, 0x42, 0x43, 0x55, 0x00, 0xFF}
 		baud := 38462 // spb 26
 		bits := oracleUARTBits(sr, float64(baud), 8, "none", frames(payload...))
-		r := DecodeUART(bitsToCodes(bits), 1.0/sr, UARTCfg{}) // Baud 0: infer
+		r := UART(bitsToCodes(bits), 1.0/sr, UARTCfg{}) // Baud 0: infer
 		if !r.OK {
 			t.Fatalf("repo auto-baud decode failed: %s", r.Error)
 		}
@@ -137,7 +137,7 @@ func TestOracleUART(t *testing.T) {
 			payload := []int{0x00, 0x01, 0xFE, 0xFF, 0x69}
 			baud := 62500
 			bits := oracleUARTBits(sr, float64(baud), 8, parity, frames(payload...))
-			r := DecodeUART(bitsToCodes(bits), 1.0/sr, UARTCfg{Baud: baud, Parity: parity})
+			r := UART(bitsToCodes(bits), 1.0/sr, UARTCfg{Baud: baud, Parity: parity})
 			if !r.OK {
 				t.Fatalf("repo decode failed: %s", r.Error)
 			}
@@ -158,7 +158,7 @@ func TestOracleUART(t *testing.T) {
 		fs := frames(0x11, 0x22, 0x33)
 		fs[1].flipParity = true
 		bits := oracleUARTBits(sr, float64(baud), 8, "even", fs)
-		r := DecodeUART(bitsToCodes(bits), 1.0/sr, UARTCfg{Baud: baud, Parity: "even"})
+		r := UART(bitsToCodes(bits), 1.0/sr, UARTCfg{Baud: baud, Parity: "even"})
 		repoErrs := countSpans(r, "parity-error")
 		oracleErrs := run(bits, baud, ":parity=even", "rx-parity-err")
 		if repoErrs != 1 || len(oracleErrs) != 1 {
@@ -185,7 +185,7 @@ func TestOracleUART(t *testing.T) {
 		fs := frames(0x44, 0x55, 0x66)
 		fs[1].badStop = true
 		bits := oracleUARTBits(sr, float64(baud), 8, "none", fs)
-		r := DecodeUART(bitsToCodes(bits), 1.0/sr, UARTCfg{Baud: baud})
+		r := UART(bitsToCodes(bits), 1.0/sr, UARTCfg{Baud: baud})
 		repoErrs := countSpans(r, "frame-error")
 		oracleWarns := run(bits, baud, "", "rx-warnings")
 		if repoErrs < 1 || len(oracleWarns) < 1 {
@@ -209,7 +209,7 @@ func TestOracleUART(t *testing.T) {
 		payload := []int{0x00, 0x7F, 0x41, 0x2A}
 		baud := 62500
 		bits := oracleUARTBits(sr, float64(baud), 7, "none", frames(payload...))
-		r := DecodeUART(bitsToCodes(bits), 1.0/sr, UARTCfg{Baud: baud, Bits: 7})
+		r := UART(bitsToCodes(bits), 1.0/sr, UARTCfg{Baud: baud, Bits: 7})
 		if !r.OK {
 			t.Fatalf("repo decode failed: %s", r.Error)
 		}
@@ -225,7 +225,7 @@ func TestOracleUART(t *testing.T) {
 		payload := []int{0x000, 0x1FF, 0x155, 0x0AA, 0x123}
 		baud := 62500
 		bits := oracleUARTBits(sr, float64(baud), 9, "none", frames(payload...))
-		r := DecodeUART(bitsToCodes(bits), 1.0/sr, UARTCfg{Baud: baud, Bits: 9})
+		r := UART(bitsToCodes(bits), 1.0/sr, UARTCfg{Baud: baud, Bits: 9})
 		if !r.OK {
 			t.Fatalf("repo decode failed: %s", r.Error)
 		}
@@ -267,7 +267,7 @@ func TestOracleUART(t *testing.T) {
 		w.add(1, 8*bt) // trail idle
 		bits := w.bits
 
-		r := DecodeUART(bitsToCodes(bits), 1.0/sr, UARTCfg{Baud: baud})
+		r := UART(bitsToCodes(bits), 1.0/sr, UARTCfg{Baud: baud})
 		if !r.OK {
 			t.Fatalf("repo decode failed: %s", r.Error)
 		}
@@ -356,7 +356,7 @@ func TestOracleUART(t *testing.T) {
 		if tct < 20 {
 			t.Fatalf("only %d transitions glitched; vector too weak", tct)
 		}
-		r := DecodeUART(bitsToCodes(glitched), 1.0/sr, UARTCfg{}) // Baud 0: infer from glitched edges
+		r := UART(bitsToCodes(glitched), 1.0/sr, UARTCfg{}) // Baud 0: infer from glitched edges
 		if !r.OK {
 			t.Fatalf("repo auto-baud decode failed on ringy edges: %s", r.Error)
 		}

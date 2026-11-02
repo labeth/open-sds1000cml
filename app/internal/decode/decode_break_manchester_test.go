@@ -10,7 +10,7 @@ import (
 )
 
 // ---------------------------------------------------------------------------
-// Red-team regression suite for DecodeManchester. Reuses manchesterWave / mBits
+// Red-team regression suite for Manchester. Reuses manchesterWave / mBits
 // from decode_manchester_test.go (same package). Three attack classes, each with
 // >= 50 iterations under a seeded RNG for determinism.
 //
@@ -51,7 +51,7 @@ func bkHasKind(r Result, kind string) bool {
 }
 
 // bkAltWord returns the value whose expanded bit stream is [1,0,1,0,...] (length
-// `bits`), packed the SAME way DecodeManchester packs cells back into a word. Used
+// `bits`), packed the SAME way Manchester packs cells back into a word. Used
 // as a transition-rich preamble so phase lock is unambiguous.
 // TRLC-LINKS: REQ-SDS-018
 func bkAltWord(bits int, msb bool) int {
@@ -125,7 +125,7 @@ func TestBreakManchester(t *testing.T) {
 			}
 			pre, post := rng.Intn(3*spb), rng.Intn(3*spb)
 			w, ct := bkBuild(want, ieee, msb, bits, spb, bitrate, pre, post)
-			r := DecodeManchester(w, ct, ManchesterCfg{Bitrate: bitrate, IEEE: ieee, MSB: msb, Bits: bits})
+			r := Manchester(w, ct, ManchesterCfg{Bitrate: bitrate, IEEE: ieee, MSB: msb, Bits: bits})
 			if !r.OK {
 				fails++
 				if fails <= 8 {
@@ -167,7 +167,7 @@ func TestBreakManchester(t *testing.T) {
 				want = append(want, rng.Intn(256))
 			}
 			w, ct := bkBuild(want, ieee, msb, bits, spb, bitrate, rng.Intn(spb), rng.Intn(spb))
-			r := DecodeManchester(w, ct, ManchesterCfg{IEEE: ieee, MSB: msb, Bits: bits})
+			r := Manchester(w, ct, ManchesterCfg{IEEE: ieee, MSB: msb, Bits: bits})
 			if !r.OK || !bkEqual(r.Bytes, want) {
 				fails++
 				if fails <= 8 {
@@ -186,8 +186,8 @@ func TestBreakManchester(t *testing.T) {
 		want := []int{0xAA, 0xB3, 0x2C, 0x47, 0x99}
 		spb, bitrate := 5, 100000
 		w, ct := bkBuild(want, true, true, 8, spb, bitrate, 0, 0)
-		re := DecodeManchester(w, ct, ManchesterCfg{Bitrate: bitrate, IEEE: true, MSB: true})
-		ra := DecodeManchester(w, ct, ManchesterCfg{IEEE: true, MSB: true})
+		re := Manchester(w, ct, ManchesterCfg{Bitrate: bitrate, IEEE: true, MSB: true})
+		ra := Manchester(w, ct, ManchesterCfg{IEEE: true, MSB: true})
 		if !re.OK || !bkEqual(re.Bytes, want) {
 			t.Errorf("sanity: explicit spb=5 should decode; ok=%v got=%v err=%q", re.OK, re.Bytes, re.Error)
 		}
@@ -215,8 +215,8 @@ func TestBreakManchester(t *testing.T) {
 			}
 			br := 100000
 			ct := 1.0 / (40.0 * float64(br))
-			r := DecodeManchester(s, ct, ManchesterCfg{Bitrate: br, IEEE: true, MSB: true})
-			ra := DecodeManchester(s, ct, ManchesterCfg{IEEE: true, MSB: true})
+			r := Manchester(s, ct, ManchesterCfg{Bitrate: br, IEEE: true, MSB: true})
+			ra := Manchester(s, ct, ManchesterCfg{IEEE: true, MSB: true})
 			if r.OK || len(r.Bytes) > 0 {
 				t.Errorf("FP: flat level=%d n=%d decoded as valid: bytes=%v", lvl, n, r.Bytes)
 			}
@@ -236,7 +236,7 @@ func TestBreakManchester(t *testing.T) {
 		for i := range ramp {
 			ramp[i] = uint8(i * 255 / 3000)
 		}
-		if r := DecodeManchester(ramp, ct, ManchesterCfg{Bitrate: br, IEEE: true, MSB: true}); r.OK {
+		if r := Manchester(ramp, ct, ManchesterCfg{Bitrate: br, IEEE: true, MSB: true}); r.OK {
 			t.Errorf("FP: slow ramp decoded as valid: bytes=%v", r.Bytes)
 		}
 		// Nyquist toggle (alternating every sample) => T~2 < minSPB
@@ -244,7 +244,7 @@ func TestBreakManchester(t *testing.T) {
 		for i := range nyq {
 			nyq[i] = uint8((i % 2) * 255)
 		}
-		if r := DecodeManchester(nyq, ct, ManchesterCfg{IEEE: true, MSB: true}); r.OK {
+		if r := Manchester(nyq, ct, ManchesterCfg{IEEE: true, MSB: true}); r.OK {
 			t.Errorf("FP: Nyquist toggle decoded as valid: bytes=%v spb=%.2f", r.Bytes, r.SPB)
 		}
 		// Plain square wave period 2T. This is genuinely an ambiguous Manchester
@@ -259,7 +259,7 @@ func TestBreakManchester(t *testing.T) {
 					sq[i] = 40
 				}
 			}
-			r := DecodeManchester(sq, ct, ManchesterCfg{Bitrate: br, IEEE: true, MSB: true})
+			r := Manchester(sq, ct, ManchesterCfg{Bitrate: br, IEEE: true, MSB: true})
 			if r.OK {
 				allEq := true
 				for _, b := range r.Bytes {
@@ -286,7 +286,7 @@ func TestBreakManchester(t *testing.T) {
 				s[i] = uint8(rng.Intn(256))
 			}
 			br := []int{0, 100000}[rng.Intn(2)]
-			r := DecodeManchester(s, 1e-6, ManchesterCfg{Bitrate: br, IEEE: rng.Intn(2) == 0, MSB: rng.Intn(2) == 0})
+			r := Manchester(s, 1e-6, ManchesterCfg{Bitrate: br, IEEE: rng.Intn(2) == 0, MSB: rng.Intn(2) == 0})
 			if !r.OK && r.Error == "" {
 				t.Errorf("noise: neither OK nor Error (n=%d)", n)
 			}
@@ -313,7 +313,7 @@ func TestBreakManchester(t *testing.T) {
 				want = append(want, rng.Intn(256))
 			}
 			clean := manchesterWave(mBits(want, true, 8), true, spb)
-			rc := DecodeManchester(clean, ct, ManchesterCfg{Bitrate: bitrate, IEEE: true, MSB: true})
+			rc := Manchester(clean, ct, ManchesterCfg{Bitrate: bitrate, IEEE: true, MSB: true})
 			if !rc.OK || !bkEqual(rc.Bytes, want) {
 				t.Fatalf("clean control failed: ok=%v got=%v want=%v", rc.OK, rc.Bytes, want)
 			}
@@ -329,7 +329,7 @@ func TestBreakManchester(t *testing.T) {
 			for j := start; j < start+spb && j < len(w); j++ {
 				w[j] = lvl
 			}
-			r := DecodeManchester(w, ct, ManchesterCfg{Bitrate: bitrate, IEEE: true, MSB: true})
+			r := Manchester(w, ct, ManchesterCfg{Bitrate: bitrate, IEEE: true, MSB: true})
 
 			// Hard invariant: a corrupted frame must never decode byte-identical to
 			// the clean frame with no error flag (that would be full silent accept).
@@ -376,7 +376,7 @@ func TestBreakManchester(t *testing.T) {
 			// cut somewhere inside the data region (drop the trailing idle + some cells)
 			cut := min(6*spb+(1+rng.Intn(5))*spb+rng.Intn(spb), len(clean))
 			w := append([]uint8{}, clean[:cut]...)
-			r := DecodeManchester(w, ct, ManchesterCfg{Bitrate: bitrate, IEEE: true, MSB: true})
+			r := Manchester(w, ct, ManchesterCfg{Bitrate: bitrate, IEEE: true, MSB: true})
 			if r.OK {
 				if len(r.Bytes) > len(want) {
 					t.Errorf("FP: truncated frame produced MORE bytes than the full frame: got=%v want<=%v", r.Bytes, want)
@@ -420,7 +420,7 @@ func TestBreakManchester(t *testing.T) {
 		for _, c := range cases {
 			bitrate := 100000
 			w, ct := bkBuild(c.want, c.ieee, true, 8, c.spb, bitrate, 0, 0)
-			r := DecodeManchester(w, ct, ManchesterCfg{Bitrate: bitrate, IEEE: c.ieee, MSB: true})
+			r := Manchester(w, ct, ManchesterCfg{Bitrate: bitrate, IEEE: c.ieee, MSB: true})
 			if !r.OK || !bkEqual(r.Bytes, c.want) {
 				t.Errorf("edge %q: ok=%v got=%v want=%v err=%q", c.name, r.OK, r.Bytes, c.want, r.Error)
 			}
@@ -430,7 +430,7 @@ func TestBreakManchester(t *testing.T) {
 			want := []int{0xAA, 0x11, 0x22, 0xAA, 0x33, 0x44, 0x55, 0x66}
 			bitrate := 100000
 			w, ct := bkBuild(want, true, true, 8, 40, bitrate, 0, 0)
-			r := DecodeManchester(w, ct, ManchesterCfg{Bitrate: bitrate, IEEE: true, MSB: true})
+			r := Manchester(w, ct, ManchesterCfg{Bitrate: bitrate, IEEE: true, MSB: true})
 			if !r.OK || !bkEqual(r.Bytes, want) {
 				t.Errorf("edge back-to-back: ok=%v got=%v want=%v", r.OK, r.Bytes, want)
 			}
@@ -442,7 +442,7 @@ func TestBreakManchester(t *testing.T) {
 			f1 := manchesterWave(mBits([]int{0xAA, 0x11, 0x22}, true, 8), true, spb)
 			f2 := manchesterWave(mBits([]int{0xAA, 0x33, 0x44}, true, 8), true, spb)
 			w := append(append(append([]uint8{}, f1...), bkPad(5*spb)...), f2...)
-			r := DecodeManchester(w, ct, ManchesterCfg{Bitrate: bitrate, IEEE: true, MSB: true})
+			r := Manchester(w, ct, ManchesterCfg{Bitrate: bitrate, IEEE: true, MSB: true})
 			want := []int{0xAA, 0x11, 0x22, 0xAA, 0x33, 0x44}
 			if !r.OK || !bkEqual(r.Bytes, want) {
 				t.Errorf("edge two-frames-gap: ok=%v got=%v want=%v", r.OK, r.Bytes, want)
@@ -464,7 +464,7 @@ func TestBreakManchester(t *testing.T) {
 			{false, []int{0xFF, 0xFF, 0xFF}}, // Thomas: same failure, opposite bit
 		} {
 			w := manchesterWave(mBits(c.want, true, 8), c.ieee, spb)
-			r := DecodeManchester(w, ct, ManchesterCfg{Bitrate: bitrate, IEEE: c.ieee, MSB: true})
+			r := Manchester(w, ct, ManchesterCfg{Bitrate: bitrate, IEEE: c.ieee, MSB: true})
 			if !r.OK || !bkEqual(r.Bytes, c.want) {
 				inv := []int{}
 				for _, b := range c.want {
@@ -480,7 +480,7 @@ func TestBreakManchester(t *testing.T) {
 			{false, []int{0x00, 0x00, 0x00}},
 		} {
 			w := manchesterWave(mBits(c.want, true, 8), c.ieee, spb)
-			r := DecodeManchester(w, ct, ManchesterCfg{Bitrate: bitrate, IEEE: c.ieee, MSB: true})
+			r := Manchester(w, ct, ManchesterCfg{Bitrate: bitrate, IEEE: c.ieee, MSB: true})
 			if !r.OK || !bkEqual(r.Bytes, c.want) {
 				t.Errorf("control constant ieee=%v want=%v got=%v ok=%v (expected exact)", c.ieee, c.want, r.Bytes, r.OK)
 			}
@@ -523,7 +523,7 @@ func TestBreakManchester(t *testing.T) {
 							t.Fatalf("PANIC on cfg=%+v ct=%g len=%d: %v", cfg, ct, len(in), p)
 						}
 					}()
-					r := DecodeManchester(in, ct, cfg)
+					r := Manchester(in, ct, cfg)
 					if !r.OK && r.Error == "" {
 						t.Errorf("contract: neither OK nor Error (len=%d ct=%g cfg=%+v)", len(in), ct, cfg)
 					}
@@ -544,7 +544,7 @@ func TestBreakManchester(t *testing.T) {
 			want = append(want, (i*37+5)&0xff)
 		}
 		w, _ := bkBuild(want, true, true, 8, spb, bitrate, 0, 0)
-		r := DecodeManchester(w, ct, ManchesterCfg{Bitrate: bitrate, IEEE: true, MSB: true})
+		r := Manchester(w, ct, ManchesterCfg{Bitrate: bitrate, IEEE: true, MSB: true})
 		if !r.OK || !bkEqual(r.Bytes, want) {
 			t.Errorf("long record: ok=%v n=%d (want %d) err=%q", r.OK, len(r.Bytes), len(want), r.Error)
 		}
@@ -562,7 +562,7 @@ func TestBreakManchester(t *testing.T) {
 		// 0xAA preamble and 0x55 are alternating (T gaps) — both clusters present.
 		want := []int{0xAA, 0x4D, 0x31, 0x55, 0xC3}
 		w := manchesterWave(mBits(want, true, 8), true, spb)
-		rc := DecodeManchester(w, ct, ManchesterCfg{IEEE: true, MSB: true})
+		rc := Manchester(w, ct, ManchesterCfg{IEEE: true, MSB: true})
 		if !rc.OK || !bkEqual(rc.Bytes, want) {
 			t.Fatalf("clean control failed: ok=%v got=%v want=%v", rc.OK, rc.Bytes, want)
 		}
@@ -586,7 +586,7 @@ func TestBreakManchester(t *testing.T) {
 					w2[j] = lvl
 				}
 			}
-			r := DecodeManchester(w2, ct, ManchesterCfg{IEEE: true, MSB: true})
+			r := Manchester(w2, ct, ManchesterCfg{IEEE: true, MSB: true})
 			if r.OK && r.SPB > 0 && r.SPB < float64(spb)*0.75 { // decoded at ~half the true period
 				fp++
 			}

@@ -110,7 +110,7 @@ func TestDecodeARINC429RoundTrip(t *testing.T) {
 	arincIdle(&w, spb*6)
 
 	// explicit bitrate
-	r := DecodeARINC429(w, colTimeS, ARINC429Cfg{Bitrate: bitrate})
+	r := ARINC429(w, colTimeS, ARINC429Cfg{Bitrate: bitrate})
 	if !r.OK {
 		t.Fatalf("explicit-bitrate decode failed: %s", r.Error)
 	}
@@ -154,7 +154,7 @@ func TestDecodeARINC429RoundTrip(t *testing.T) {
 	}
 
 	// auto bitrate: infer T from the pulse spacing.
-	ra := DecodeARINC429(w, colTimeS, ARINC429Cfg{})
+	ra := ARINC429(w, colTimeS, ARINC429Cfg{})
 	if !ra.OK {
 		t.Fatalf("auto-bitrate decode failed: %s", ra.Error)
 	}
@@ -182,7 +182,7 @@ func TestDecodeARINC429ParityError(t *testing.T) {
 	arincAppendWord(&w, bits, spb)
 	arincIdle(&w, spb*6)
 
-	r := DecodeARINC429(w, colTimeS, ARINC429Cfg{Bitrate: bitrate})
+	r := ARINC429(w, colTimeS, ARINC429Cfg{Bitrate: bitrate})
 	if !r.OK {
 		t.Fatalf("decode failed: %s", r.Error)
 	}
@@ -243,7 +243,7 @@ func TestDecodeARINC429NoPanic(t *testing.T) {
 						t.Fatalf("panic on cfg %+v: %v", cfg, p)
 					}
 				}()
-				r := DecodeARINC429(in, ct, cfg)
+				r := ARINC429(in, ct, cfg)
 				if !r.OK && r.Error == "" {
 					t.Fatalf("degenerate input returned neither OK nor Error")
 				}

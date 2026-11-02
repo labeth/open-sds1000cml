@@ -26,7 +26,7 @@ func physParityVectors(add parityAdd, add2 parityAdd2, corrupt func([]uint8) []u
 		w.add(0, 30e-6)
 		pwmWave(w, 100e-6, []float64{0.25, 0.5, 0.75, 0.1, 0.9, 0.333, 0.05})
 		pwmWave(w, 37e-6, []float64{0.2, 0.4, 0.6})
-		line("pwm", 2e6, cfg{}, w, DecodePWM, LineCfg{})
+		line("pwm", 2e6, cfg{}, w, PWM, LineCfg{})
 	}
 	// ---- radio and timing line codes
 	{
@@ -35,13 +35,13 @@ func physParityVectors(add parityAdd, add2 parityAdd2, corrupt func([]uint8) []u
 		w.add(0, 40*a)
 		rcFrame2262(w, []int{0, 1, 2, 0, 0, 1, 1, 2, 0, 1, 0, 0}, a)
 		rcFrame2262(w, []int{2, 2, 2, 2, 2, 2, 0, 0, 0, 1, 1, 1}, a)
-		line("rcencode", 200e3, cfg{}, w, DecodeRCEncode, LineCfg{})
+		line("rcencode", 200e3, cfg{}, w, RCEncode, LineCfg{})
 		w = newTimeline(200e3)
 		w.add(0, 40*a)
 		rcFrame1527(w, 0x5A3C81, a)
 		rcFrame1527(w, 0xA5A5A5, a)
-		line("rcencode", 200e3, cfg{"variant": 24}, w, DecodeRCEncode, LineCfg{Variant: 24})
-		line("rcencode", 200e3, cfg{}, w, DecodeRCEncode, LineCfg{})
+		line("rcencode", 200e3, cfg{"variant": 24}, w, RCEncode, LineCfg{Variant: 24})
+		line("rcencode", 200e3, cfg{}, w, RCEncode, LineCfg{})
 
 		const hp = 1 / 2048.0
 		w = newTimeline(100e3)
@@ -49,7 +49,7 @@ func physParityVectors(add parityAdd, add2 parityAdd2, corrupt func([]uint8) []u
 		oregonBurst(w, 3, []int{0xF, 0x8, 0x2, 0x4, 0x1, 0x3, 0xA, 0x0, 0x5, 0x3, 0x2, 0x0, 0x4, 0x5, 0x0}, hp, false, 40e-3)
 		oregonBurst(w, 21, []int{0x1, 0xA, 0x2, 0xD, 0x2, 0x7, 0x1, 0x8, 0x2, 0x6, 0x1, 0x0, 0x4, 0x6}, hp/2, true, 40e-3)
 		oregonBurst(w, 3, []int{0x1, 0xD, 0x2, 0x0, 0x1, 0x3, 0xA, 0x0, 0x5, 0x3}, hp, true, 40e-3) // a wrong checksum
-		line("ook", 100e3, cfg{}, w, DecodeOOK, LineCfg{})
+		line("ook", 100e3, cfg{}, w, OOK, LineCfg{})
 
 		T := 1.0 / 106000
 		for _, pause := range []float64{2e-6, 0} {
@@ -57,31 +57,31 @@ func physParityVectors(add parityAdd, add2 parityAdd2, corrupt func([]uint8) []u
 			w.add(1, 40e-6)
 			millerMessage(w, []int{1, 0, 1, 1, 0, 0, 1, 0, 0, 0, 1, 1, 1, 0, 1, 0}, T, pause, 60e-6)
 			millerMessage(w, []int{0, 0, 0, 0, 1, 1, 1, 1, 0, 1}, T, pause, 60e-6)
-			line("miller", 4e6, cfg{}, w, DecodeMiller, LineCfg{})
+			line("miller", 4e6, cfg{}, w, Miller, LineCfg{})
 		}
 
 		w = newTimeline(2000)
 		w.add(0, 0.5)
 		morseText(w, "SOS CQ DE SM5 73", 0.1, 12)
-		line("morse", 2000, cfg{}, w, DecodeMorse, LineCfg{})
+		line("morse", 2000, cfg{}, w, Morse, LineCfg{})
 
 		w = newTimeline(1000)
 		w.add(0, 1.3)
 		dcf77Minute(w, 0, 0, 1, 1, 1, 0, false)
 		dcf77Minute(w, 0x37, 0x12, 0x18, 0x7, 0x10, 0x26, true)
-		line("dcf77", 1000, cfg{}, w, DecodeDCF77, LineCfg{})
+		line("dcf77", 1000, cfg{}, w, DCF77, LineCfg{})
 
 		// a test source's code at 5 ms a second: the second read off it
 		w = newTimeline(100e3)
 		w.add(0, 7e-3)
 		dcf77MinuteAt(w, 5e-3, 0x59, 0x23, 0x31, 0x5, 0x12, 0x99, false)
 		dcf77MinuteAt(w, 5e-3, 0x00, 0x00, 0x01, 0x6, 0x01, 0x00, false)
-		line("dcf77", 100e3, cfg{}, w, DecodeDCF77, LineCfg{})
+		line("dcf77", 100e3, cfg{}, w, DCF77, LineCfg{})
 
 		w = newTimeline(20e3)
 		w.add(0, 30e-3)
 		morseText(w, "CQ TEST 5NN", 2e-3, 10)
-		line("morse", 20e3, cfg{}, w, DecodeMorse, LineCfg{})
+		line("morse", 20e3, cfg{}, w, Morse, LineCfg{})
 	}
 	// ---- 125 kHz RFID
 	{
@@ -89,20 +89,20 @@ func physParityVectors(add parityAdd, add2 parityAdd2, corrupt func([]uint8) []u
 		w.add(1, 768e-6)
 		em4100Frame(w, [5]int{0x01, 0x23, 0x45, 0x67, 0x89}, 256e-6, false)
 		em4100Frame(w, [5]int{0x0A, 0xFF, 0x00, 0x5C, 0xE1}, 256e-6, true)
-		line("em4100", 500e3, cfg{}, w, DecodeEM4100, LineCfg{})
+		line("em4100", 500e3, cfg{}, w, EM4100, LineCfg{})
 		for _, carrier := range []bool{true, false} {
 			w = newTimeline(1e6)
 			f := rfidField{w, carrier}
 			f.on(500 * rfidFC)
 			em4305Command(f, em4305Bits(1, -1, [4]int{0x12, 0x34, 0x56, 0x78}, false))
 			em4305Command(f, em4305Bits(2, 5, [4]int{0xDE, 0xAD, 0xBE, 0xEF}, true))
-			line("em4305", 1e6, cfg{}, w, DecodeEM4305, LineCfg{})
+			line("em4305", 1e6, cfg{}, w, EM4305, LineCfg{})
 			w = newTimeline(1e6)
 			f = rfidField{w, carrier}
 			f.on(500 * rfidFC)
 			t55xxCommand(f, t55xxBits(2, 0x51243648, 0, 0x00148040, 0))
 			t55xxCommand(f, t55xxBits(2, -1, 1, 0xDEADBEEF, 5))
-			line("t55xx", 1e6, cfg{}, w, DecodeT55xx, LineCfg{})
+			line("t55xx", 1e6, cfg{}, w, T55xx, LineCfg{})
 		}
 	}
 	// ---- single-wire buses
@@ -117,7 +117,7 @@ func physParityVectors(add parityAdd, add2 parityAdd2, corrupt func([]uint8) []u
 		swimFrame(w, 0, 8, 0x7F, T, 1, true, 3*T)
 		swimFrame(w, 0, 8, 0x60, T, 1, false, 3*T)
 		swimFrame(w, 1, 8, 0x5A, T, 0, false, 3*T)
-		line("swim", 20e6, cfg{}, w, DecodeSWIM, LineCfg{})
+		line("swim", 20e6, cfg{}, w, SWIM, LineCfg{})
 
 		Tq := 1 / 98425.0
 		w = newTimeline(10e6)
@@ -127,26 +127,26 @@ func physParityVectors(add parityAdd, add2 parityAdd2, corrupt func([]uint8) []u
 			sdqByte(w, v, Tq)
 		}
 		w.add(1, 50e-6)
-		line("sdq", 10e6, cfg{}, w, DecodeSDQ, LineCfg{})
+		line("sdq", 10e6, cfg{}, w, SDQ, LineCfg{})
 
 		w = newTimeline(2e6)
 		w.add(0, 500e-6)
 		pjdlFrame(w, 1, pjonPacket(0x2A, 0x02, []int{0x11, 0x22, 0x33}, false), 1e-3)
 		pjdlFrame(w, 1, pjonPacket(0x05, 0x00, []int{0x48, 0x69}, true), 1e-3)
-		line("pjdl", 2e6, cfg{}, w, DecodePJDL, LineCfg{})
+		line("pjdl", 2e6, cfg{}, w, PJDL, LineCfg{})
 
 		w = newTimeline(100e3)
 		w.add(0, 10e-3)
 		for _, v := range []int{0x00, 0xFF, 0x80, 0x55} {
 			dsiFrame(w, v, 12e-3)
 		}
-		line("dsi", 100e3, cfg{}, w, DecodeDSI, LineCfg{})
+		line("dsi", 100e3, cfg{}, w, DSI, LineCfg{})
 
 		w = newTimeline(200e3)
 		w.add(0, 5e-3)
 		qiPacket(w, []int{0x01, 0x80}, false, 8e-3)
 		qiPacket(w, []int{0x02, 0x01}, true, 8e-3)
-		line("qi", 200e3, cfg{}, w, DecodeQi, LineCfg{})
+		line("qi", 200e3, cfg{}, w, Qi, LineCfg{})
 	}
 	// ---- IR multi
 	{
@@ -165,7 +165,7 @@ func physParityVectors(add parityAdd, add2 parityAdd2, corrupt func([]uint8) []u
 			irMatsushita(l, 0x123, 0x456)
 			irSamsung37(l, 0x0707, 0x5, 0x9A)
 		})
-		line("irmp", sr, cfg{}, w, DecodeIRMP, LineCfg{})
+		line("irmp", sr, cfg{}, w, IRMP, LineCfg{})
 	}
 
 	for _, b := range bases {
@@ -192,11 +192,11 @@ func physParityVectors(add parityAdd, add2 parityAdd2, corrupt func([]uint8) []u
 		l.add(0, 0, 500e-6)
 		quadMoves(l, []int{1, 1, 1, 1, 1, -1, -1, 1, -1}, 100e-6, 1e-3)
 		quadMoves(l, []int{-1, -1, -1}, 60e-6, 500e-6)
-		two("quad", 1e6, l, DecodeQuadrature)
+		two("quad", 1e6, l, Quadrature)
 		l = newTwoLine(1e6)
 		l.add(0, 1, 300e-6)
 		stepperMoves(l, []byte{1, 1, 1, 0, 0, 1, 0}, 200e-6, 2e-3)
-		two("stepper", 1e6, l, DecodeStepper)
+		two("stepper", 1e6, l, Stepper)
 
 		l = newTwoLine(4e6)
 		var bits []int
@@ -209,7 +209,7 @@ func physParityVectors(add parityAdd, add2 parityAdd2, corrupt func([]uint8) []u
 			bits = append(bits, t...)
 		}
 		clockBits(l, bits, 4e-6)
-		two("sdcard", 4e6, l, DecodeSDCard)
+		two("sdcard", 4e6, l, SDCard)
 
 		l = newTwoLine(2e6)
 		bits = []int{1, 1, 1, 1, 1, 1, 1, 1}
@@ -219,7 +219,7 @@ func physParityVectors(add parityAdd, add2 parityAdd2, corrupt func([]uint8) []u
 		bits = append(bits, pdiChar(0x6B, true)...)
 		bits = append(bits, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1)
 		clockBits(l, bits, 4e-6)
-		two("pdi", 2e6, l, DecodePDI)
+		two("pdi", 2e6, l, PDI)
 
 		c := &cjtagLine{l: newTwoLine(2e6), per: 4e-6}
 		for range 4 {
@@ -234,20 +234,20 @@ func physParityVectors(add parityAdd, add2 parityAdd2, corrupt func([]uint8) []u
 		c.scan(false, 16, 0x1234, 0xBEEF)
 		c.escape(8)
 		c.rise(0)
-		two("cjtag", 2e6, c.l, DecodeCJTAG)
+		two("cjtag", 2e6, c.l, CJTAG)
 
 		m := &mapleLine{l: newTwoLine(20e6), st: 250e-9}
 		m.set(1, 1)
 		m.frame(mapleBytes(0x20, 0x00, 0x01, nil, false))
 		m.frame(mapleBytes(0x00, 0x20, 0x05, []int{0x00, 0x00, 0x00, 0x01}, true))
 		m.set(1, 1)
-		two("maple", 20e6, m.l, DecodeMaple)
+		two("maple", 20e6, m.l, Maple)
 
 		l = newTwoLine(1e6)
 		l.add(0, 0, 20e-3)
 		caliperFrame(l, 1234, false, false, 80e-6, 30e-3)
 		caliperFrame(l, 2001, true, true, 80e-6, 30e-3)
-		two("caliper", 1e6, l, DecodeCaliper)
+		two("caliper", 1e6, l, Caliper)
 	}
 	for _, b := range b2 {
 		add2(b.proto, b.c1, b.c2, b.colT, cfg{}, b.dec(b.c1, b.c2))

@@ -357,7 +357,7 @@ func startFrontEnd(e *engine.Engine, calTab *cal.Table) *analog.FrontEnd {
 	fe.OnApply(e.NoteFrontEndWrite)   // roll drops data captured across a relay switch
 	e.SetBodeScaleSource(func(ch int) float64 {
 		idx, _ := fe.Snapshot()
-		return analog.AnalogVdiv(idx[ch&1]) * fe.ProbeFactor(ch)
+		return analog.Vdiv(idx[ch&1]) * fe.ProbeFactor(ch)
 	})
 	fe.OnCoupling(e.SetChannelCoupling) // software AC: the trigger level follows the AC trace
 	logf("SPI front end up (seeded to boot detent, not emitted)")

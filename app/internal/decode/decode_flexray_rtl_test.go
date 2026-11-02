@@ -77,7 +77,7 @@ type flexRefFrame struct {
 	tss  int
 }
 
-// Compare the FlexRay trigger RTL with DecodeFlexRay on the same line.
+// Compare the FlexRay trigger RTL with FlexRay on the same line.
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-018
 func TestFlexRayTriggerRTL(t *testing.T) {
 	for _, tool := range []string{"iverilog", "vvp"} {
@@ -134,7 +134,7 @@ func TestFlexRayTriggerRTL(t *testing.T) {
 	}
 	check := func(t *testing.T, codes []uint8, bitrate int, pattern []int, args ...string) []canRTLEvent {
 		t.Helper()
-		ref := DecodeFlexRay(codes, canRTLTicks, FlexRayCfg{Bitrate: bitrate, Threshold: 128, HaveThr: true})
+		ref := FlexRay(codes, canRTLTicks, FlexRayCfg{Bitrate: bitrate, Threshold: 128, HaveThr: true})
 		var frames []flexRefFrame
 		for _, s := range ref.Spans {
 			switch s.Kind {

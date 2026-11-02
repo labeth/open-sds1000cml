@@ -77,7 +77,7 @@ func TestOracleUSBFS(t *testing.T) {
 		usblsPacketBits(0xB, usblsDataBits([]int{0xFF, 0xFF, 0xFF, 0x00}, 0x1)),
 	}
 	dp, dm := oracleUSBFSWave(sr, packets, 12)
-	r := DecodeUSBLS(bitsToCodes(dp), 1.0/sr, USBLSCfg{})
+	r := USBLS(bitsToCodes(dp), 1.0/sr, USBLSCfg{})
 	if !r.OK || r.Baud != 12000000 {
 		t.Fatalf("repo: ok=%v %d b/s %s", r.OK, r.Baud, r.Error)
 	}

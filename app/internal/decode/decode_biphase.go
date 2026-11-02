@@ -22,7 +22,7 @@ type DALICfg struct {
 	Format    string
 }
 
-// DecodeDALI decodes DALI (IEC 62386): Manchester bits of 833 us, a 1 the
+// DALI decodes DALI (IEC 62386): Manchester bits of 833 us, a 1 the
 // line at its active level in the first half and idle in the second (the
 // bus idles high), a frame a start bit (1, "sof" START), then 8 (backward,
 // an answer "R5A"), 16 (forward: address "A01" and opcode "D90") or 24
@@ -30,17 +30,17 @@ type DALICfg struct {
 // bit after it within the record). The idle level is the level of
 // the line's longest run. OK needs a whole frame.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-235
-func DecodeDALI(codes []uint8, colTimeS float64, cfg DALICfg) Result {
+func DALI(codes []uint8, colTimeS float64, cfg DALICfg) Result {
 	return decodeDALI(samplesIn(codes), colTimeS, cfg)
 }
 
-// DecodeDALIEdges is DecodeDALI over digital lines' edges (EdgeLine).
+// DALIEdges is DALI over digital lines' edges (EdgeLine).
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-235
-func DecodeDALIEdges(codes *EdgeLine, colTimeS float64, cfg DALICfg) Result {
+func DALIEdges(codes *EdgeLine, colTimeS float64, cfg DALICfg) Result {
 	return decodeDALI(edgesIn(codes), colTimeS, cfg)
 }
 
-// decodeDALI is DecodeDALI over samples or edges.
+// decodeDALI is DALI over samples or edges.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-235
 func decodeDALI(codes lineIn, colTimeS float64, cfg DALICfg) Result {
 	S := codes.slice(cfg.Threshold, cfg.HaveThr)
@@ -240,24 +240,24 @@ func bmcBits(sl sliced, bit float64) [][]bmcBit {
 	return out
 }
 
-// DecodeUSBPD decodes USB Power Delivery messages on a CC line: biphase-mark
+// USBPD decodes USB Power Delivery messages on a CC line: biphase-mark
 // bits at 300 kbit/s, the preamble, the start-of-packet ordered set ("sof"
 // SOP, SOP', SOP"... or a reset), then 4b5b symbols, two to a byte, low
 // nibble first: the 16-bit header (its first byte named by the message type,
 // "Request"), the data objects and the CRC-32 (flagged when it does not
 // check), then EOP. OK needs a message whose CRC checks.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-235
-func DecodeUSBPD(codes []uint8, colTimeS float64, cfg USBPDCfg) Result {
+func USBPD(codes []uint8, colTimeS float64, cfg USBPDCfg) Result {
 	return decodeUSBPD(samplesIn(codes), colTimeS, cfg)
 }
 
-// DecodeUSBPDEdges is DecodeUSBPD over digital lines' edges (EdgeLine).
+// USBPDEdges is USBPD over digital lines' edges (EdgeLine).
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-235
-func DecodeUSBPDEdges(codes *EdgeLine, colTimeS float64, cfg USBPDCfg) Result {
+func USBPDEdges(codes *EdgeLine, colTimeS float64, cfg USBPDCfg) Result {
 	return decodeUSBPD(edgesIn(codes), colTimeS, cfg)
 }
 
-// decodeUSBPD is DecodeUSBPD over samples or edges.
+// decodeUSBPD is USBPD over samples or edges.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-235
 func decodeUSBPD(codes lineIn, colTimeS float64, cfg USBPDCfg) Result { //nolint:gocyclo // a protocol state machine kept step for step with its decode_*.js twin (parity tests)
 	S := codes.slice(cfg.Threshold, cfg.HaveThr)
@@ -429,7 +429,7 @@ func spdifHalf(sl sliced) float64 {
 	return sum / float64(cnt)
 }
 
-// DecodeSPDIF decodes S/PDIF (IEC 60958): biphase-mark cells at 64 times
+// SPDIF decodes S/PDIF (IEC 60958): biphase-mark cells at 64 times
 // the sample rate, each subframe a preamble that breaks the code (B opens a
 // block of 192 frames, "sof" B; M the first channel, W the second, "rw"),
 // then 28 cells: the 24-bit sample (auxiliary and audio bits, least
@@ -437,17 +437,17 @@ func spdifHalf(sl sliced) float64 {
 // and parity bits (even parity over the 28; a sample whose parity fails is
 // flagged). OK needs two subframes whose parity checks.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-235
-func DecodeSPDIF(codes []uint8, colTimeS float64, cfg SPDIFCfg) Result {
+func SPDIF(codes []uint8, colTimeS float64, cfg SPDIFCfg) Result {
 	return decodeSPDIF(samplesIn(codes), colTimeS, cfg)
 }
 
-// DecodeSPDIFEdges is DecodeSPDIF over digital lines' edges (EdgeLine).
+// SPDIFEdges is SPDIF over digital lines' edges (EdgeLine).
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-235
-func DecodeSPDIFEdges(codes *EdgeLine, colTimeS float64, cfg SPDIFCfg) Result {
+func SPDIFEdges(codes *EdgeLine, colTimeS float64, cfg SPDIFCfg) Result {
 	return decodeSPDIF(edgesIn(codes), colTimeS, cfg)
 }
 
-// decodeSPDIF is DecodeSPDIF over samples or edges.
+// decodeSPDIF is SPDIF over samples or edges.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-235
 func decodeSPDIF(codes lineIn, colTimeS float64, cfg SPDIFCfg) Result {
 	S := codes.slice(cfg.Threshold, cfg.HaveThr)

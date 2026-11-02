@@ -21,7 +21,7 @@ func TestOracleDALI(t *testing.T) {
 	daliFrame(w, 16, 0xFF05, 10e-3)
 	daliFrame(w, 16, 0xA300, 10e-3)
 	daliFrame(w, 8, 0x00, 10e-3)
-	r := DecodeDALI(w.codes(), 1.0/sr, DALICfg{})
+	r := DALI(w.codes(), 1.0/sr, DALICfg{})
 	if !r.OK {
 		t.Fatal(r.Error)
 	}
@@ -55,7 +55,7 @@ func TestOracleUSBPD(t *testing.T) {
 	pdMessage(w, pdSOP, 0x2042, []uint32{0x12345678, 0x0A0B0C0D}, false)
 	pdMessage(w, pdSOPPrime, 0x1042, []uint32{0x12345678}, true)
 	w.add(w.bits[len(w.bits)-1], 2e-3) // sigrok ends a message on a millisecond's idle
-	r := DecodeUSBPD(w.codes(), 1.0/sr, USBPDCfg{})
+	r := USBPD(w.codes(), 1.0/sr, USBPDCfg{})
 	if !r.OK {
 		t.Fatal(r.Error)
 	}
@@ -124,7 +124,7 @@ func TestOracleSPDIF(t *testing.T) {
 		s = append(s, [2]int{(i * 0x13579) & 0xffffff, (0xF0F0F0 - i*0x1111) & 0xffffff})
 	}
 	spdifStream(w, 48e3, 180, s)
-	r := DecodeSPDIF(w.codes(), 1.0/sr, SPDIFCfg{})
+	r := SPDIF(w.codes(), 1.0/sr, SPDIFCfg{})
 	if !r.OK {
 		t.Fatal(r.Error)
 	}

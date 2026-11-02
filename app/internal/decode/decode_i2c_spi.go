@@ -90,10 +90,10 @@ func i2cDeglitch(level []int8, g int) {
 	}
 }
 
-// DecodeI2C decodes I2C given SCL + SDA codes (decode.js decodeI2C). SCL
+// I2C decodes I2C given SCL + SDA codes (decode.js decodeI2C). SCL
 // clocks the bits: the sample time takes no part.
 // TRLC-LINKS: REQ-SDS-018
-func DecodeI2C(scl, sda []uint8, _ float64, cfg I2CCfg) Result { //nolint:gocyclo // a protocol state machine kept step for step with its decode_*.js twin (parity tests)
+func I2C(scl, sda []uint8, _ float64, cfg I2CCfg) Result { //nolint:gocyclo // a protocol state machine kept step for step with its decode_*.js twin (parity tests)
 	if cfg.Inverted {
 		scl, sda = invertLogic(scl), invertLogic(sda)
 		if cfg.HaveThr {
@@ -239,9 +239,9 @@ func DecodeI2C(scl, sda []uint8, _ float64, cfg I2CCfg) Result { //nolint:gocycl
 	}
 }
 
-// DecodeSPI decodes SPI given CLK + DATA codes, no chip-select (decode.js decodeSPI).
+// SPI decodes SPI given CLK + DATA codes, no chip-select (decode.js decodeSPI).
 // TRLC-LINKS: REQ-SDS-018
-func DecodeSPI(clk, data []uint8, colTimeS float64, cfg SPICfg) Result { //nolint:gocyclo // a protocol state machine kept step for step with its decode_*.js twin (parity tests)
+func SPI(clk, data []uint8, colTimeS float64, cfg SPICfg) Result { //nolint:gocyclo // a protocol state machine kept step for step with its decode_*.js twin (parity tests)
 	if cfg.Inverted {
 		clk, data = invertLogic(clk), invertLogic(data)
 		if cfg.HaveThr {

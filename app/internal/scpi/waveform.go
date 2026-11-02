@@ -128,7 +128,7 @@ func (h *Handler) wavedesc(ch int, f *engine.Frame) []byte {
 	vdiv := 1.0
 	if h.fe != nil {
 		idx, _ := h.fe.Snapshot()
-		vdiv = analog.AnalogVdiv(idx[ch&1]) // codes are on the analog range (zoomed detents)
+		vdiv = analog.Vdiv(idx[ch&1]) // codes are on the analog range (zoomed detents)
 	}
 	gain := float32(vdiv / 25 * h.probe(ch)) // WF? scale: 25 codes/div (spec 11 §4)
 	f32(156, gain)

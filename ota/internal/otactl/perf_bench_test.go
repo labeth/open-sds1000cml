@@ -87,7 +87,7 @@ func BenchmarkPutFile(b *testing.B) {
 	if err := os.WriteFile(p, data, 0o644); err != nil {
 		b.Fatal(err)
 	}
-	c := &Client{T: &memTransport{}}
+	c := &Client{Transport: &memTransport{}}
 	for b.Loop() {
 		if _, err := c.PutFile(p, "/x/f.bin", 0o755, 0, nil); err != nil {
 			b.Fatal(err)
@@ -99,7 +99,7 @@ func BenchmarkPutFile(b *testing.B) {
 func BenchmarkGetFile(b *testing.B) {
 	data := make([]byte, 256<<10)
 	rand.Read(data)
-	c := &Client{T: &memTransport{file: data}}
+	c := &Client{Transport: &memTransport{file: data}}
 	p := filepath.Join(b.TempDir(), "g.bin")
 	for b.Loop() {
 		if err := c.GetFile("/x/g.bin", p, nil); err != nil {

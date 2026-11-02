@@ -17,7 +17,7 @@ func TestDecodeLINRoundTrip(t *testing.T) {
 		linFrame(w, baud, 13, 0x3c, []int{0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08}, true)
 		linFrame(w, baud, 14, 0x12, []int{0xA5, 0x5A}, false)
 		linFrame(w, baud, 13, 0x20, nil, false)
-		r := DecodeLIN(w.codes(), 1/sr, LINCfg{})
+		r := LIN(w.codes(), 1/sr, LINCfg{})
 		if !r.OK {
 			t.Fatalf("baud %v: %s", baud, r.Error)
 		}
@@ -53,7 +53,7 @@ func TestDecodeLINFlagsErrors(t *testing.T) {
 	tlUART(w2, 0xA5, 19200, "none", 1)
 	tlUART(w2, 0x00, 19200, "none", 1) // a wrong checksum
 	w2.idle(30 * bit)
-	r := DecodeLIN(bitsToCodes(append(bits, w2.bits...)), 1/sr, LINCfg{})
+	r := LIN(bitsToCodes(append(bits, w2.bits...)), 1/sr, LINCfg{})
 	if !r.OK || !strings.Contains(r.Text, "!ID12") || !strings.Contains(r.Text, "!CK00") {
 		t.Fatalf("got %q ok=%v", r.Text, r.OK)
 	}
@@ -70,7 +70,7 @@ func TestDecodeDMX512RoundTrip(t *testing.T) {
 	}
 	dmxPacket(w, 100, 12, 0, slots)
 	dmxPacket(w, 176, 8, 0xCC, slots[:5])
-	r := DecodeDMX512(w.codes(), 1/sr, DMXCfg{})
+	r := DMX512(w.codes(), 1/sr, DMXCfg{})
 	if !r.OK {
 		t.Fatal(r.Error)
 	}
@@ -92,7 +92,7 @@ func TestDecodeMIDIRoundTrip(t *testing.T) {
 		tlUART(w, b, 31250, "none", 1)
 	}
 	w.idle(1e-3)
-	r := DecodeMIDI(w.codes(), 1/sr, MIDICfg{})
+	r := MIDI(w.codes(), 1/sr, MIDICfg{})
 	if !r.OK {
 		t.Fatal(r.Error)
 	}
@@ -113,7 +113,7 @@ func TestDecodeModbusRoundTrip(t *testing.T) {
 		modbusFrame(w, 19200, tc.parity, tc.stops, []int{0x01, 0x03, 0x00, 0x6B, 0x00, 0x03})
 		modbusFrame(w, 19200, tc.parity, tc.stops, []int{0x01, 0x03, 0x06, 0x02, 0x2B, 0x00, 0x00, 0x00, 0x64})
 		modbusFrame(w, 19200, tc.parity, tc.stops, []int{0x11, 0x83, 0x02})
-		r := DecodeModbus(w.codes(), 1/sr, ModbusCfg{})
+		r := Modbus(w.codes(), 1/sr, ModbusCfg{})
 		if !r.OK || r.Parity != tc.parity || strings.Contains(strings.ReplaceAll(r.Text, "F83!", ""), "!") {
 			t.Fatalf("%s: ok=%v parity=%s %q (%s)", tc.parity, r.OK, r.Parity, r.Text, r.Error)
 		}

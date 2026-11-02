@@ -75,7 +75,7 @@ func TestJSDecoderParity(t *testing.T) {
 			want := []int{0xAA, 0xB3, 0x2C, 0x47, 0x99}
 			w, ct := bkBuild(want, ieee, true, 8, spb, 100000, 0, 0)
 			add("manchester", w, ct, jsCfg{"ieee": ieee, "msb": true, "bits": 8},
-				DecodeManchester(w, ct, ManchesterCfg{IEEE: ieee, MSB: true}))
+				Manchester(w, ct, ManchesterCfg{IEEE: ieee, MSB: true}))
 		}
 	}
 	// constant-bit (idle-symmetry phase) + its control + alternating preamble only.
@@ -93,7 +93,7 @@ func TestJSDecoderParity(t *testing.T) {
 		} {
 			w := manchesterWave(mBits(tc.want, true, 8), tc.ieee, spb)
 			add("manchester", w, ct, jsCfg{"ieee": tc.ieee, "msb": true, "bits": 8},
-				DecodeManchester(w, ct, ManchesterCfg{IEEE: tc.ieee, MSB: true}))
+				Manchester(w, ct, ManchesterCfg{IEEE: tc.ieee, MSB: true}))
 		}
 	}
 
@@ -104,9 +104,9 @@ func TestJSDecoderParity(t *testing.T) {
 		par := []int{mil1553OddParity(0x1234), mil1553OddParity(0xAAAA)}
 		w := mil1553Wave(words, cmd, par, spb)
 		ct := 1.0 / (float64(spb) * 1e6)
-		add("mil1553", w, ct, jsCfg{}, DecodeMIL1553(w, ct, MIL1553Cfg{}))
+		add("mil1553", w, ct, jsCfg{}, MIL1553(w, ct, MIL1553Cfg{}))
 		inv := invertLogic(w)
-		add("mil1553", inv, ct, jsCfg{"inverted": true, "threshold": 130}, DecodeMIL1553(inv, ct, MIL1553Cfg{Inverted: true, Threshold: 130, HaveThr: true}))
+		add("mil1553", inv, ct, jsCfg{"inverted": true, "threshold": 130}, MIL1553(inv, ct, MIL1553Cfg{Inverted: true, Threshold: 130, HaveThr: true}))
 	}
 
 	// ---- FlexRay: a valid-CRC frame (explicit + auto) and a corrupted-CRC frame.
@@ -115,12 +115,12 @@ func TestJSDecoderParity(t *testing.T) {
 		good := brFlexFixCRC([]int{0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC, 0xDE})
 		w := brFlexFrame(good, spb, 8, 8, 8)
 		ctE := ctForExact(10_000_000, spb)
-		add("flexray", w, ctE, jsCfg{"bitrate": 10_000_000}, DecodeFlexRay(w, ctE, FlexRayCfg{Bitrate: 10_000_000}))
-		add("flexray", w, 1e-8, jsCfg{}, DecodeFlexRay(w, 1e-8, FlexRayCfg{}))
+		add("flexray", w, ctE, jsCfg{"bitrate": 10_000_000}, FlexRay(w, ctE, FlexRayCfg{Bitrate: 10_000_000}))
+		add("flexray", w, 1e-8, jsCfg{}, FlexRay(w, 1e-8, FlexRayCfg{}))
 		bad := append([]int{}, good...)
 		bad[3] ^= 0x40 // flip a header-CRC-field bit
 		wb := brFlexFrame(bad, spb, 8, 8, 8)
-		add("flexray", wb, ctE, jsCfg{"bitrate": 10_000_000}, DecodeFlexRay(wb, ctE, FlexRayCfg{Bitrate: 10_000_000}))
+		add("flexray", wb, ctE, jsCfg{"bitrate": 10_000_000}, FlexRay(wb, ctE, FlexRayCfg{Bitrate: 10_000_000}))
 	}
 
 	// ---- SENT: a CRC-valid frame + a corrupted-CRC frame (both cfg.nibbles=8).
@@ -128,15 +128,15 @@ func TestJSDecoderParity(t *testing.T) {
 		nibs := []int{0x1, 0xA, 0x5, 0xF, 0x0, 0xC, 0x3, 0}
 		nibs[7] = sentCRC4(nibs[1:7])
 		w := sentWave([][]int{nibs}, 6, 0, 0)
-		add("sent", w, 1e-6, jsCfg{"nibbles": 8}, DecodeSENT(w, 1e-6, SENTCfg{Nibbles: 8}))
+		add("sent", w, 1e-6, jsCfg{"nibbles": 8}, SENT(w, 1e-6, SENTCfg{Nibbles: 8}))
 		bad := append([]int{}, nibs...)
 		bad[7] ^= 0xF
 		wb := sentWave([][]int{bad}, 6, 0, 0)
-		add("sent", wb, 1e-6, jsCfg{"nibbles": 8}, DecodeSENT(wb, 1e-6, SENTCfg{Nibbles: 8}))
+		add("sent", wb, 1e-6, jsCfg{"nibbles": 8}, SENT(wb, 1e-6, SENTCfg{Nibbles: 8}))
 		for i := range w {
 			w[i] = 255 - w[i]
 		}
-		add("sent", w, 1e-6, jsCfg{"nibbles": 8, "inverted": true}, DecodeSENT(w, 1e-6, SENTCfg{Nibbles: 8, Inverted: true}))
+		add("sent", w, 1e-6, jsCfg{"nibbles": 8, "inverted": true}, SENT(w, 1e-6, SENTCfg{Nibbles: 8, Inverted: true}))
 	}
 
 	// ---- CAN: a standard data frame (stuff-bit + CRC-15 path).
@@ -146,13 +146,13 @@ func TestJSDecoderParity(t *testing.T) {
 		codes := canRender(wire, spb, true, 8*spb, 8*spb)
 		ct := 1.0 / (float64(spb) * 500000.0)
 		add("canfd", codes, ct, jsCfg{"nominalBaud": 500000, "dominantLow": true},
-			DecodeCANFD(codes, ct, CANFDCfg{NominalBaud: 500000, DominantLow: true}))
+			CANFD(codes, ct, CANFDCfg{NominalBaud: 500000, DominantLow: true}))
 		// a record opening inside a frame (no SOF read there), then the next
 		// frame, its rate inferred 1.2 % off the standard 500 kbit/s
 		two := append(append([]uint8{}, codes...), codes...)
 		cut := two[len(codes)/3:]
 		ct2 := 1.0 / (float64(spb) * 506000.0)
-		add("canfd", cut, ct2, jsCfg{"dominantLow": true}, DecodeCANFD(cut, ct2, CANFDCfg{DominantLow: true}))
+		add("canfd", cut, ct2, jsCfg{"dominantLow": true}, CANFD(cut, ct2, CANFDCfg{DominantLow: true}))
 	}
 
 	// ---- ARINC 429: a complete word (auto bit-rate, pulse-count gate).
@@ -164,7 +164,7 @@ func TestJSDecoderParity(t *testing.T) {
 		arincIdle(&w, 6*spb)
 		arincAppendWord(&w, bits, spb)
 		arincIdle(&w, 6*spb)
-		add("arinc429", w, ct, jsCfg{}, DecodeARINC429(w, ct, ARINC429Cfg{}))
+		add("arinc429", w, ct, jsCfg{}, ARINC429(w, ct, ARINC429Cfg{}))
 	}
 
 	// ---- UART: same 8N1 wave decoded under each parity setting; Go and JS must
@@ -175,7 +175,7 @@ func TestJSDecoderParity(t *testing.T) {
 		w := uartWave([]int{0x48, 0x69, 0x21}, spb)
 		baud := int(1.0 / (float64(spb) * ct))
 		add("uart", w, ct, jsCfg{"baud": baud, "parity": par},
-			DecodeUART(w, ct, UARTCfg{Baud: baud, Parity: par}))
+			UART(w, ct, UARTCfg{Baud: baud, Parity: par}))
 	}
 
 	// ---- UART windows opening inside the bench line's traffic: the sync-in
@@ -186,7 +186,7 @@ func TestJSDecoderParity(t *testing.T) {
 		ct := 1.0 / (115200 * 12)
 		for cut := 0; cut < period; cut += 23 {
 			w := line[cut : cut+2*period]
-			add("uart", w, ct, jsCfg{"baud": 115200, "parity": "none"}, DecodeUART(w, ct, UARTCfg{Baud: 115200}))
+			add("uart", w, ct, jsCfg{"baud": 115200, "parity": "none"}, UART(w, ct, UARTCfg{Baud: 115200}))
 		}
 	}
 
@@ -202,7 +202,7 @@ func TestJSDecoderParity(t *testing.T) {
 			rec := w[30*spb+cut : aa+5*10*spb]
 			anchor := float64(aa-(30*spb+cut)) + 9.5*spb
 			add("uart", rec, ct, jsCfg{"baud": 115200, "parity": "none", "anchor": anchor},
-				DecodeUART(rec, ct, UARTCfg{Baud: 115200, Anchor: anchor, HasAnchor: true}))
+				UART(rec, ct, UARTCfg{Baud: 115200, Anchor: anchor, HasAnchor: true}))
 		}
 	}
 
@@ -218,7 +218,7 @@ func TestJSDecoderParity(t *testing.T) {
 			}
 			w := buInjectRing(buRasterize(buBuildSeq(want, 8, "none", 8, 24, 1), spb, it%3), rrng, 3)
 			ct := 1e-6
-			add("uart", w, ct, jsCfg{"parity": "none"}, DecodeUART(w, ct, UARTCfg{}))
+			add("uart", w, ct, jsCfg{"parity": "none"}, UART(w, ct, UARTCfg{}))
 		}
 		// Genuinely ambiguous two-tone pulses: both sides must refuse identically.
 		var amb []uint8
@@ -233,7 +233,7 @@ func TestJSDecoderParity(t *testing.T) {
 			}
 			lv = 250 - lv
 		}
-		add("uart", amb, 1e-6, jsCfg{}, DecodeUART(amb, 1e-6, UARTCfg{}))
+		add("uart", amb, 1e-6, jsCfg{}, UART(amb, 1e-6, UARTCfg{}))
 	}
 
 	// ---- SPI: all four modes + both bit orders, the HW 374-vs-372 sampling-
@@ -249,7 +249,7 @@ func TestJSDecoderParity(t *testing.T) {
 					bo = "msb"
 				}
 				add2("spi", clk, dat, ct, jsCfg{"cpol": mode[0], "cpha": mode[1], "bitOrder": bo},
-					DecodeSPI(clk, dat, ct, SPICfg{CPOL: mode[0], CPHA: mode[1], MSB: msb, Format: "hex"}))
+					SPI(clk, dat, ct, SPICfg{CPOL: mode[0], CPHA: mode[1], MSB: msb, Format: "hex"}))
 			}
 		}
 		// The 374-vs-372 HW shape: partial 124-col first half-cycle + ~375-col
@@ -277,10 +277,10 @@ func TestJSDecoderParity(t *testing.T) {
 		}
 		seg(40, 40, 400)
 		add2("spi", clk, dat, ct, jsCfg{"cpol": false, "cpha": false, "bitOrder": "msb"},
-			DecodeSPI(clk, dat, ct, SPICfg{MSB: true, Format: "hex"}))
+			SPI(clk, dat, ct, SPICfg{MSB: true, Format: "hex"}))
 		aclk, adat := spiWaveAsym([]int{0x5A, 0x3C}, 2, 12)
 		add2("spi", aclk, adat, ct, jsCfg{"cpol": false, "cpha": false, "bitOrder": "msb"},
-			DecodeSPI(aclk, adat, ct, SPICfg{MSB: true, Format: "hex"}))
+			SPI(aclk, adat, ct, SPICfg{MSB: true, Format: "hex"}))
 		// Under six samples a clock period: the data line at the clock's
 		// interpolated crossing plus the channels' phase (75 and 104 MHz at 2 ns).
 		for _, b := range synthCases() {
@@ -297,7 +297,7 @@ func TestJSDecoderParity(t *testing.T) {
 				bo = "msb"
 			}
 			add2("spi", fclk, fdat, 2e-9, jsCfg{"cpol": b.cpol, "cpha": b.cpha, "bitOrder": bo, "threshold": 120, "dataLag": lag},
-				DecodeSPI(fclk, fdat, 2e-9, SPICfg{CPOL: b.cpol, CPHA: b.cpha, MSB: b.msb, Format: "hex", Threshold: 120, HaveThr: true, DataLag: lag}))
+				SPI(fclk, fdat, 2e-9, SPICfg{CPOL: b.cpol, CPHA: b.cpha, MSB: b.msb, Format: "hex", Threshold: 120, HaveThr: true, DataLag: lag}))
 		}
 		// A device's data settling 7 ns late, read at the data delay (and,
 		// without it, a bit early) at 104 and 25 MHz.
@@ -307,7 +307,7 @@ func TestJSDecoderParity(t *testing.T) {
 			lag := SPIDataLag(1, 2e-9)
 			for _, delay := range []float64{0, 3.5} {
 				add2("spi", c2, c1, 2e-9, jsCfg{"cpol": false, "cpha": false, "bitOrder": "msb", "threshold": 120, "dataLag": lag, "dataDelay": delay},
-					DecodeSPI(c2, c1, 2e-9, SPICfg{MSB: true, Format: "hex", Threshold: 120, HaveThr: true, DataLag: lag, DataDelay: delay}))
+					SPI(c2, c1, 2e-9, SPICfg{MSB: true, Format: "hex", Threshold: 120, HaveThr: true, DataLag: lag, DataDelay: delay}))
 			}
 		}
 		// The scope's 104 MHz flash read with a clock half sampled short of
@@ -315,15 +315,15 @@ func TestJSDecoderParity(t *testing.T) {
 		c1, c2 := loadSPIRunt(t)
 		lag := SPIDataLag(1, 2e-9)
 		add2("spi", c2, c1, 2e-9, jsCfg{"cpol": false, "cpha": false, "bitOrder": "msb", "dataLag": lag, "dataDelay": 3.7},
-			DecodeSPI(c2, c1, 2e-9, SPICfg{MSB: true, Format: "hex", DataLag: lag, DataDelay: 3.7}))
+			SPI(c2, c1, 2e-9, SPICfg{MSB: true, Format: "hex", DataLag: lag, DataDelay: 3.7}))
 	}
 
 	// ---- I2C: a full transaction, plus the channel swap (SCL<->SDA).
 	{
 		ct := 2e-7
 		scl, sda := i2cWave(0x24, 0, []int{0x55, 0xAA}, 20)
-		add2("i2c", scl, sda, ct, jsCfg{}, DecodeI2C(scl, sda, ct, I2CCfg{}))
-		add2("i2c", sda, scl, ct, jsCfg{}, DecodeI2C(sda, scl, ct, I2CCfg{}))
+		add2("i2c", scl, sda, ct, jsCfg{}, I2C(scl, sda, ct, I2CCfg{}))
+		add2("i2c", sda, scl, ct, jsCfg{}, I2C(sda, scl, ct, I2CCfg{}))
 	}
 
 	// ---- Corruption fuzz: flip/truncate random regions of each base waveform and
@@ -383,55 +383,55 @@ func TestJSDecoderParity(t *testing.T) {
 			"manchester", manCT,
 			jsCfg{"ieee": true, "msb": true, "bits": 8},
 			manW,
-			func(w []uint8) Result { return DecodeManchester(w, manCT, ManchesterCfg{IEEE: true, MSB: true}) },
+			func(w []uint8) Result { return Manchester(w, manCT, ManchesterCfg{IEEE: true, MSB: true}) },
 		},
 		{
 			"mil1553", milCT,
 			jsCfg{},
 			milW,
-			func(w []uint8) Result { return DecodeMIL1553(w, milCT, MIL1553Cfg{}) },
+			func(w []uint8) Result { return MIL1553(w, milCT, MIL1553Cfg{}) },
 		},
 		{
 			"flexray", flxCT,
 			jsCfg{"bitrate": 10_000_000},
 			flxW,
-			func(w []uint8) Result { return DecodeFlexRay(w, flxCT, FlexRayCfg{Bitrate: 10_000_000}) },
+			func(w []uint8) Result { return FlexRay(w, flxCT, FlexRayCfg{Bitrate: 10_000_000}) },
 		},
 		{
 			"sent", 1e-6,
 			jsCfg{"nibbles": 8},
 			sntW,
-			func(w []uint8) Result { return DecodeSENT(w, 1e-6, SENTCfg{Nibbles: 8}) },
+			func(w []uint8) Result { return SENT(w, 1e-6, SENTCfg{Nibbles: 8}) },
 		},
 		{
 			"canfd", canCT,
 			jsCfg{"nominalBaud": 500000, "dominantLow": true},
 			canW,
-			func(w []uint8) Result { return DecodeCANFD(w, canCT, CANFDCfg{NominalBaud: 500000, DominantLow: true}) },
+			func(w []uint8) Result { return CANFD(w, canCT, CANFDCfg{NominalBaud: 500000, DominantLow: true}) },
 		},
 		{
 			"arinc429", 2.5e-7,
 			jsCfg{},
 			arW,
-			func(w []uint8) Result { return DecodeARINC429(w, 2.5e-7, ARINC429Cfg{}) },
+			func(w []uint8) Result { return ARINC429(w, 2.5e-7, ARINC429Cfg{}) },
 		},
 		{
 			"uart", uaCT,
 			jsCfg{"baud": uaBaud, "parity": "none"},
 			uaW,
-			func(w []uint8) Result { return DecodeUART(w, uaCT, UARTCfg{Baud: uaBaud}) },
+			func(w []uint8) Result { return UART(w, uaCT, UARTCfg{Baud: uaBaud}) },
 		},
 		{
 			"uart", uaCT,
 			jsCfg{"baud": uaBaud, "parity": "even"},
 			uaEvenW,
-			func(w []uint8) Result { return DecodeUART(w, uaCT, UARTCfg{Baud: uaBaud, Parity: "even"}) },
+			func(w []uint8) Result { return UART(w, uaCT, UARTCfg{Baud: uaBaud, Parity: "even"}) },
 		},
 		{
 			"uart", uaCT,
 			jsCfg{"baud": uaBaud, "parity": "odd"},
 			uaOddW,
-			func(w []uint8) Result { return DecodeUART(w, uaCT, UARTCfg{Baud: uaBaud, Parity: "odd"}) },
+			func(w []uint8) Result { return UART(w, uaCT, UARTCfg{Baud: uaBaud, Parity: "odd"}) },
 		},
 	}
 	for _, bc := range bases {
@@ -465,7 +465,7 @@ func TestJSDecoderParity(t *testing.T) {
 			for range 6 * parityMult() {
 				mc, _ := fuzzMutate(rng, c)
 				for _, o := range [][2][]uint8{{mc.c1, mc.c2}, {mc.c2, mc.c1}} {
-					add2("swd", o[0], o[1], mc.colT, jsCfg{}, DecodeSWD(o[0], o[1], mc.colT, ClockedCfg{}))
+					add2("swd", o[0], o[1], mc.colT, jsCfg{}, SWD(o[0], o[1], mc.colT, ClockedCfg{}))
 				}
 			}
 		}
@@ -480,7 +480,7 @@ func TestJSDecoderParity(t *testing.T) {
 			for range 8 * parityMult() {
 				mc, _ := fuzzMutate(rng, c)
 				for _, o := range [][2][]uint8{{mc.c1, mc.c2}, {mc.c2, mc.c1}} {
-					add2("i2c", o[0], o[1], mc.colT, jsCfg{}, DecodeI2C(o[0], o[1], mc.colT, I2CCfg{}))
+					add2("i2c", o[0], o[1], mc.colT, jsCfg{}, I2C(o[0], o[1], mc.colT, I2CCfg{}))
 				}
 			}
 		}

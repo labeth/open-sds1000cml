@@ -28,7 +28,7 @@ func TestDenonMessageMax(t *testing.T) {
 		irDenon(l, 0x1F, 0x3FF)
 		l.space(100e-3)
 	})
-	r := DecodeIRMP(w.codes(), 1.0/sr, LineCfg{})
+	r := IRMP(w.codes(), 1.0/sr, LineCfg{})
 	if r.FrameBits != IRDenon {
 		t.Fatalf("decoded %d: %s", r.FrameBits, r.Error)
 	}

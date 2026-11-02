@@ -34,7 +34,7 @@ func TestUARTInvertedPolarity(t *testing.T) {
 	}
 	original := append([]byte(nil), samples...)
 	for _, explicit := range []bool{false, true} {
-		r := DecodeUART(samples, 1.0/2_000_000, UARTCfg{Baud: 100000, Inverted: true, HaveThr: explicit, Threshold: 100})
+		r := UART(samples, 1.0/2_000_000, UARTCfg{Baud: 100000, Inverted: true, HaveThr: explicit, Threshold: 100})
 		if !r.OK || !reflect.DeepEqual(r.Bytes, want) {
 			t.Fatalf("explicit=%t: %+v", explicit, r)
 		}

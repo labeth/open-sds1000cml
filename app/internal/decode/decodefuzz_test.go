@@ -77,16 +77,16 @@ func TestDecodeFuzzNoPanic(t *testing.T) {
 			}()
 			switch rng.Intn(4) {
 			case 0:
-				DecodeUART(a, ct, UARTCfg{
+				UART(a, ct, UARTCfg{
 					Baud:   []int{0, -9600, 110, 115200, 1 << 30}[rng.Intn(5)],
 					Bits:   []int{0, 5, 8, 9, 64}[rng.Intn(5)],
 					Parity: []string{"none", "even", "odd", "x"}[rng.Intn(4)],
 					Format: fm, Threshold: rng.Float64()*400 - 70, HaveThr: rng.Intn(2) == 0,
 				})
 			case 1:
-				DecodeI2C(a, b, ct, I2CCfg{Format: fm, Threshold: rng.Float64() * 300, HaveThr: rng.Intn(2) == 0})
+				I2C(a, b, ct, I2CCfg{Format: fm, Threshold: rng.Float64() * 300, HaveThr: rng.Intn(2) == 0})
 			case 2:
-				DecodeSPI(a, b, ct, SPICfg{
+				SPI(a, b, ct, SPICfg{
 					CPOL: rng.Intn(2) == 0, CPHA: rng.Intn(2) == 0,
 					MSB: rng.Intn(2) == 0, Format: fm, Threshold: rng.Float64() * 300, HaveThr: rng.Intn(2) == 0,
 				})
@@ -157,19 +157,19 @@ func TestDecodeFuzzNewProtos(t *testing.T) {
 			}()
 			switch rng.Intn(7) {
 			case 0:
-				DecodeManchester(a, ct, ManchesterCfg{Bitrate: br, IEEE: hv, MSB: !hv, Bits: []int{0, 8, 1, 16, 99}[rng.Intn(5)], Threshold: thr, HaveThr: hv})
+				Manchester(a, ct, ManchesterCfg{Bitrate: br, IEEE: hv, MSB: !hv, Bits: []int{0, 8, 1, 16, 99}[rng.Intn(5)], Threshold: thr, HaveThr: hv})
 			case 1:
-				DecodeSENT(a, ct, SENTCfg{TickNs: float64(br), Nibbles: rng.Intn(70), Threshold: thr, HaveThr: hv})
+				SENT(a, ct, SENTCfg{TickNs: float64(br), Nibbles: rng.Intn(70), Threshold: thr, HaveThr: hv})
 			case 2:
-				DecodeCANFD(a, ct, CANFDCfg{NominalBaud: br, DataBaud: br, DominantLow: hv, Threshold: thr, HaveThr: hv})
+				CANFD(a, ct, CANFDCfg{NominalBaud: br, DataBaud: br, DominantLow: hv, Threshold: thr, HaveThr: hv})
 			case 3:
-				DecodeMIL1553(a, ct, MIL1553Cfg{Bitrate: br, Threshold: thr, HaveThr: hv})
+				MIL1553(a, ct, MIL1553Cfg{Bitrate: br, Threshold: thr, HaveThr: hv})
 			case 4:
-				DecodeARINC429(a, ct, ARINC429Cfg{Bitrate: br, Threshold: thr, HaveThr: hv})
+				ARINC429(a, ct, ARINC429Cfg{Bitrate: br, Threshold: thr, HaveThr: hv})
 			case 5:
-				DecodeUSBLS(a, ct, USBLSCfg{Bitrate: br, Threshold: thr, HaveThr: hv})
+				USBLS(a, ct, USBLSCfg{Bitrate: br, Threshold: thr, HaveThr: hv})
 			case 6:
-				DecodeFlexRay(a, ct, FlexRayCfg{Bitrate: br, Threshold: thr, HaveThr: hv})
+				FlexRay(a, ct, FlexRayCfg{Bitrate: br, Threshold: thr, HaveThr: hv})
 			}
 		}()
 		if d := time.Since(t0); d > 2*time.Second {
