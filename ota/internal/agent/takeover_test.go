@@ -96,6 +96,7 @@ func TestTakeoverIdempotentWhenAlreadyTakenOver(t *testing.T) {
 	if err := a.st.update(func(s *State) { s.TakenOver = true }); err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(a.wd.Disarm)
 	res := a.Takeover(TakeoverOpts{})
 	if !res.OK {
 		t.Fatalf("second takeover must be idempotent: %+v", res)
@@ -104,8 +105,14 @@ func TestTakeoverIdempotentWhenAlreadyTakenOver(t *testing.T) {
 		t.Errorf("summary = %q", res.Summary())
 	}
 	// It re-arms the watchdog in the background (against the temp-file device
-	// from testAgent) — give it a beat and confirm nothing exploded.
-	time.Sleep(100 * time.Millisecond)
+	// from testAgent).
+	deadline := time.Now().Add(5 * time.Second)
+	for !a.wd.Status().Armed {
+		if time.Now().After(deadline) {
+			t.Fatal("the idempotent takeover did not re-arm the watchdog")
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
 }
 
 // TRLC-LINKS: REQ-SDS-104

@@ -3,7 +3,6 @@
 package watchdog
 
 import (
-	"bytes"
 	"os"
 	"path/filepath"
 	"strings"
@@ -64,17 +63,25 @@ func TestPetLoopFeedsOnInterval(t *testing.T) {
 	if err := w.Acquire(time.Second, 20*time.Millisecond); err != nil {
 		t.Fatalf("acquire: %v", err)
 	}
-	time.Sleep(300 * time.Millisecond)
+	// Each pet stamps LastPet: wait for a few ticker pets after the
+	// immediate one, so the loop demonstrably runs.
+	first := w.Status().LastPet
+	deadline := time.Now().Add(5 * time.Second)
+	for pets := 0; pets < 3; {
+		if time.Now().After(deadline) {
+			t.Fatalf("only %d ticker pets in 5s at a 20ms interval", pets)
+		}
+		if last := w.Status().LastPet; last.After(first) {
+			first = last
+			pets++
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
 	w.Disarm()
 
 	b, err := os.ReadFile(dev)
 	if err != nil {
 		t.Fatal(err)
-	}
-	// 1 immediate pet + ~15 ticker pets in 300ms at 20ms; be generous against
-	// scheduler jitter but require that the loop demonstrably ran.
-	if pets := bytes.Count(b, []byte{0x01}); pets < 4 {
-		t.Errorf("only %d keepalive bytes written in 300ms at 20ms interval", pets)
 	}
 	if b[len(b)-1] != 'V' {
 		t.Errorf("last byte = %#x, want the magic disarm byte 'V'", b[len(b)-1])
