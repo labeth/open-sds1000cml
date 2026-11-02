@@ -253,8 +253,20 @@ func (c *Capture) DrainStream(ctx context.Context, expected uint64, dst io.Write
 	}
 	after := decodeStreamStatus(raw)
 	mask := uint8(1 << block.Bank)
-	if after.Fault || !after.Enabled || after.Ready&mask == 0 || (after.Tokens^s.Tokens)&mask != 0 {
-		return block, fmt.Errorf("sramcapture: stream changed or faulted during DMA")
+	changed := func(st StreamStatus) bool {
+		return st.Fault || !st.Enabled || st.Ready&mask == 0 || (st.Tokens^s.Tokens)&mask != 0
+	}
+	if changed(after) {
+		// A bank the host holds is not republished before its release, so
+		// the status is read again before the stream ends: about one stream
+		// start in four hundred ended here with no fault, overrun or backlog
+		// set. A real change (a token or a fault) reads the same twice.
+		if raw, e = c.read(32); e != nil {
+			return block, e
+		}
+		if after = decodeStreamStatus(raw); changed(after) {
+			return block, fmt.Errorf("sramcapture: stream changed or faulted during DMA")
+		}
 	}
 	if e = ctx.Err(); e != nil {
 		return block, e

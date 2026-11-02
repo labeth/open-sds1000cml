@@ -18,6 +18,7 @@ type streamFake struct {
 	counts                             [2]uint16
 	releases                           []uint16
 	badPointer, faultOnPop, tokenOnPop bool
+	glitchOnPop, glitched              bool // one status read after the pop shows the bank not ready
 }
 
 // TRLC-LINKS: REQ-SDS-035
@@ -49,6 +50,10 @@ func (s *streamFake) Read(p uint8, r uint16) (uint16, error) {
 	}
 	switch {
 	case r == 32:
+		if s.glitched {
+			s.glitched = false
+			return s.flags &^ 3, nil
+		}
 		return s.flags, nil
 	case r == 33 || r == 34:
 		return s.counts[r-33], nil
@@ -57,6 +62,9 @@ func (s *streamFake) Read(p uint8, r uint16) (uint16, error) {
 	case r == 25:
 		if s.faultOnPop {
 			s.flags |= 64
+		}
+		if s.glitchOnPop {
+			s.glitched, s.glitchOnPop = true, false
 		}
 		if s.tokenOnPop {
 			s.flags ^= 12
@@ -313,5 +321,25 @@ func TestStreamDrainIntoReserverWraps(t *testing.T) {
 	b.first[0] = 2048
 	if _, e = c.DrainStream(context.Background(), 2048, r); e == nil || r.count != 8192 {
 		t.Fatalf("a failed drain committed: %v %d", e, r.count)
+	}
+}
+
+// One status read after the DMA that shows the bank not ready, with no
+// fault, is read again: the bank is drained and released. A change that
+// reads the same twice (token-during above) still ends the stream.
+// TRLC-LINKS: REQ-SDS-035
+func TestStreamDrainReadsAChangedStatusAgain(t *testing.T) {
+	b := streamBus()
+	b.flags = 256 | 1
+	b.first[0] = 0
+	b.counts[0] = 2
+	b.glitchOnPop = true
+	c, _ := New(b)
+	block, e := c.DrainStream(context.Background(), 0, io.Discard)
+	if e != nil {
+		t.Fatalf("a status read once wrong ended the stream: %v", e)
+	}
+	if block.Words != 4 || len(b.releases) != 1 {
+		t.Fatalf("block %d words, %d releases", block.Words, len(b.releases))
 	}
 }
