@@ -141,7 +141,11 @@ func blockMeanN(out, x []float64, k int) []float64 {
 func yinDifference(x []float64, w, tauMax int) []float64 {
 	n := len(x)
 	m := mean(x)
-	size := pow2(n + w)
+	// The transform need only hold the stretch: a lag's products a[i]*b[i+t]
+	// (i < w, t < tauMax = n - w) never index past n, so the circular
+	// correlation wraps nothing the difference reads. Twice the stretch made
+	// the tuner's two transforms more than twice as long.
+	size := pow2(n)
 	// Both real sequences in one complex transform, z = b + i a (b the whole
 	// stretch, a its first w samples): a third fewer transforms than one
 	// each, the tuner's largest cost on the instrument.

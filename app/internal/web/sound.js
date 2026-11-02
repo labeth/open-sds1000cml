@@ -155,7 +155,8 @@ const SND_VOICED = 0.45;
 
 // TRLC-LINKS: REQ-SDS-267
 function sndYinDiff(x, w, tauMax) {
-  const n = x.length, m = sndMean(x), size = sndPow2(n + w);
+  // the transform holds the stretch: no lag read reaches past n (yinDifference)
+  const n = x.length, m = sndMean(x), size = sndPow2(n);
   const ar = new Float64Array(size), ai = new Float64Array(size), br = new Float64Array(size), bi = new Float64Array(size);
   for (let i = 0; i < n; i++) { br[i] = x[i] - m; if (i < w) ar[i] = br[i]; }
   sndFFT(ar, ai, false);

@@ -540,8 +540,14 @@ func (s *soundSvc) volts(b engine.SoundBlock, ch int, dst []float64) []float64 {
 				end = int(d)
 			}
 		}
-		for _, v := range q[i:end] {
-			dst = append(dst, (float64(v)-32768)*vpc/256-off)
+		// vpc/256 is exact (a power of two), so the product rounds as
+		// (v-32768)*vpc/256 did, without a division a sample
+		per := vpc / 256
+		at := len(dst)
+		dst = slices.Grow(dst, end-i)[:at+end-i]
+		out := dst[at:]
+		for j, v := range q[i:end] {
+			out[j] = (float64(v)-32768)*per - off
 		}
 		i = end
 	}
