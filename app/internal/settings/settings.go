@@ -194,10 +194,12 @@ type Serial struct {
 // TRLC-LINKS: REQ-SDS-211, REQ-SDS-089
 type UI struct {
 	Set       bool   `json:"set"`
-	Workspace int    `json:"workspace"`          // 0 SCOPE, 1 BUS, 2 SPECTRUM, 3 MEASURE, 4 COMPARE
-	Views     [5]int `json:"views"`              // each workspace's display view
-	BusEye    bool   `json:"bus_eye,omitempty"`  // BUS on the eye diagram
-	MeasAll   bool   `json:"meas_all,omitempty"` // MEASURE on all values
+	Workspace int    `json:"workspace"`            // 0 SCOPE, 1 BUS, 2 SPECTRUM, 3 MEASURE, 4 COMPARE
+	Views     [5]int `json:"views"`                // each workspace's display view
+	BusEye    bool   `json:"bus_eye,omitempty"`    // BUS on the eye diagram
+	BusStream bool   `json:"bus_stream,omitempty"` // BUS on its Stream view (the stream starts again)
+	BusVisual bool   `json:"bus_visual,omitempty"` // BUS on its Visual view
+	MeasAll   bool   `json:"meas_all,omitempty"`   // MEASURE on all values
 	// Meas holds the chosen readouts in order: channel*32 + parameter + 1
 	// (0 = none).
 	Meas          [12]int `json:"meas"`

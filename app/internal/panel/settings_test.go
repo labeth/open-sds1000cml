@@ -273,3 +273,39 @@ func TestSettingsViewFrameStartMatchRoundTrip(t *testing.T) {
 		}
 	}
 }
+
+// BUS's view survives a restart or a recalled setup like every other
+// workspace's: Visual comes back Visual, the Stream view comes back streaming,
+// and a stream the web page holds is saved as the view the scope goes back
+// to when the page lets go.
+// TRLC-LINKS: REQ-SDS-136, REQ-SDS-211, REQ-SDS-228, REQ-SDS-281
+func TestSettingsViewKeepsTheBusView(t *testing.T) {
+	r, _, uart := streamRig(t)
+	a := r.c
+	press(t, a, "f2")
+	uart()
+	press(t, a, "f2", "f2", "f2") // Eye diagram, Stream, Visual
+	if v := mustState(t, a, "BUS", "workspace").View; v != "Visual" {
+		t.Fatalf("set-up view %s", v)
+	}
+	visual := a.SettingsView()
+	a.PageStream(true) // the web page's Visual streams the bus
+	held := a.SettingsView()
+	a.PageStream(false)
+	press(t, a, "f2", "f2", "f2") // Packets, Eye diagram, Stream
+	stream := a.SettingsView()
+
+	for _, tc := range []struct {
+		name string
+		v    settings.ViewState
+		want string
+		live bool
+	}{{"visual", visual, "Visual", false}, {"page-held", held, "Visual", false}, {"stream", stream, "Stream", true}} {
+		rb, rs, _ := streamRig(t)
+		b := rb.c
+		b.ApplySettingsView(tc.v)
+		if st := mustState(t, b, "BUS", "workspace"); st.View != tc.want || rs.Active() != tc.live {
+			t.Errorf("%s: restored on %s (want %s), streaming %v (want %v)", tc.name, st.View, tc.want, rs.Active(), tc.live)
+		}
+	}
+}

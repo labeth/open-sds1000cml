@@ -21,13 +21,19 @@ func (c *Controller) SettingsView() settings.ViewState {
 	ser := serialSettingsOf(s) // the engine's serial trigger, as snap read it
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	ui := settings.UI{Set: true, Workspace: int(c.ui.ws), BusEye: c.ui.busEye, MeasAll: c.ui.measAll,
-		FFTSource: c.fftSrc, MasterDepth: c.stackN, RemoteNotices: c.remoteNotices,
+	ui := settings.UI{Set: true, Workspace: int(c.ui.ws), BusEye: c.ui.busEye, BusStream: c.ui.busStream, BusVisual: c.ui.busVisual,
+		MeasAll: c.ui.measAll, FFTSource: c.fftSrc, MasterDepth: c.stackN, RemoteNotices: c.remoteNotices,
 		MaskFrames: c.maskN, MaskTol: c.maskTol + 1, SrCh: c.srCh + 1, SrGrid: c.srK, SrStop: c.srStopMode + 1, SrTarget: c.srStopVal}
 	for i := range ui.Views {
 		ui.Views[i] = c.ui.views[i]
 	}
 	ui.Views[c.ui.ws] = c.viewMode
+	if c.page.on {
+		// the web page's stream is the page's: the scope's own view is the
+		// one it goes back to when the page lets go
+		ui.BusStream, ui.BusVisual = false, c.page.busVisual
+		ui.Workspace = int(c.page.ws)
+	}
 	for i, it := range c.meas {
 		if i < len(ui.Meas) {
 			ui.Meas[i] = it.ch*32 + it.param + 1
@@ -159,6 +165,7 @@ func (c *Controller) ApplySettingsView(v settings.ViewState) {
 	d.Format = mod3(d.Format)
 	view := modViews(v.ViewMode)
 
+	restream := false
 	c.mu.Lock()
 	c.viewMode = view
 	c.mathMode = mod5(v.Display.MathMode)
@@ -210,9 +217,14 @@ func (c *Controller) ApplySettingsView(v settings.ViewState) {
 		for i := range c.ui.views {
 			c.ui.views[i] = modViews(u.Views[i])
 		}
-		c.ui.ws, c.ui.busEye, c.ui.measAll = ws, u.BusEye && !c.ui.busStream, u.MeasAll // a stream under way keeps its view
-		if c.ui.busEye {
-			c.ui.busVisual = false // BUS shows one view
+		c.ui.ws, c.ui.measAll = ws, u.MeasAll
+		if !c.ui.busStream { // a stream under way keeps its view
+			// BUS shows one view; the Stream view starts its stream again
+			// once the bus is known (syncStreamView below, or detection's end)
+			c.ui.busStream = u.BusStream
+			c.ui.busEye = u.BusEye && !c.ui.busStream
+			c.ui.busVisual = u.BusVisual && !c.ui.busStream && !c.ui.busEye
+			restream = c.ui.busStream
 		}
 		c.viewMode = c.ui.views[ws]
 		if c.apiDepth == 0 { // a remote's recall leaves the LCD's menus as they are
@@ -278,6 +290,9 @@ func (c *Controller) ApplySettingsView(v settings.ViewState) {
 	}
 	c.syncDecodeView(d.Proto != framecalc.ProtoOff)
 	c.restoreSerial(v.Serial)
+	if restream {
+		c.syncStreamView()
+	}
 	if detect {
 		c.autoDecode()
 	}
