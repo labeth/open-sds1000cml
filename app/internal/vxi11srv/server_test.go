@@ -220,6 +220,38 @@ func TestReadTimeout(t *testing.T) {
 	}
 }
 
+// A line that never ends is refused once it passes maxRecvSize, and the
+// link goes on with the next line.
+// TRLC-LINKS: REQ-SDS-024
+func TestEndlessLineIsBounded(t *testing.T) {
+	_, port := startTest(t)
+	tc := dial(t, port)
+	_, lid := tc.createLink(t)
+	chunk := make([]byte, 1<<20)
+	for i := range chunk {
+		chunk[i] = 'x'
+	}
+	refused := false
+	for range maxRecvSize/len(chunk) + 2 {
+		args := putU32(nil, lid)
+		args = putU32(args, 5000)
+		args = putU32(args, 0)
+		args = putU32(args, 0) // no END: the line goes on
+		args = putOpaque(args, chunk)
+		if r := tc.call(t, procDeviceWrite, args); binary.BigEndian.Uint32(r) == errIO {
+			refused = true
+			break
+		}
+	}
+	if !refused {
+		t.Fatalf("a line of more than %d bytes was taken", maxRecvSize)
+	}
+	tc.write(t, lid, "*IDN?\n")
+	if errc, _, data := tc.read(t, lid, 1024); errc != 0 || string(data) != "Siglent,TEST,0,0\n" {
+		t.Fatalf("after the refused line: err=%d data=%q", errc, data)
+	}
+}
+
 // END ends a message without a newline (python-vxi11 sends "*IDN?" bare);
 // without END a partial line waits for the rest.
 // TRLC-LINKS: REQ-SDS-024

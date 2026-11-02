@@ -39,6 +39,7 @@ const (
 
 	errOK      = 0
 	errInvLink = 4
+	errIO      = 17
 	errLocked  = 11
 	errTimeout = 15
 
@@ -320,6 +321,14 @@ func (cn *conn) dispatch(proc uint32, x *xdr) []byte {
 		data := x.opaque()
 		if !cn.owns(lid) || x.err {
 			r := putU32(nil, errInvLink)
+			return putU32(r, 0)
+		}
+		// A line never ends past maxRecvSize: a client that keeps writing
+		// without a newline or END would otherwise grow the buffer until the
+		// scope runs out of memory. The partial line is dropped.
+		if len(cn.lineBuf)+len(data) > maxRecvSize {
+			cn.lineBuf = nil
+			r := putU32(nil, errIO)
 			return putU32(r, 0)
 		}
 		cn.lineBuf = append(cn.lineBuf, data...)

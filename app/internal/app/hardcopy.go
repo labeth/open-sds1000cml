@@ -3,7 +3,9 @@
 package app
 
 import (
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -26,7 +28,7 @@ func saveHardcopy(dir string, png []byte) (string, error) {
 	for n := 1; n < 10000; n++ {
 		name := fmt.Sprintf("SDS%04d.png", n)
 		f, err := os.OpenFile(filepath.Join(dir, name), os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644) //nolint:gosec // G302: a screenshot the owner copies off the stick
-		if os.IsExist(err) {
+		if errors.Is(err, fs.ErrExist) {
 			continue
 		}
 		if err != nil {

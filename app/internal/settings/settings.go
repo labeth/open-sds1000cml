@@ -18,7 +18,9 @@ package settings
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io/fs"
 	"open-sds/app/internal/engine"
 	"os"
 	"path/filepath"
@@ -280,7 +282,7 @@ func Load(path string, logf func(string, ...any)) (Settings, bool) {
 	}
 	raw, err := os.ReadFile(path) //nolint:gosec // G304: the app's own setup file
 	if err != nil {
-		if !os.IsNotExist(err) {
+		if !errors.Is(err, fs.ErrNotExist) {
 			logf("settings: read %s: %v — using defaults", path, err)
 		}
 		return Settings{}, false
