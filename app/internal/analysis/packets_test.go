@@ -572,7 +572,7 @@ func TestPacketsDegenerate(t *testing.T) {
 func BenchmarkPackets(b *testing.B) {
 	var msgs [][]byte
 	for i := range 200 {
-		msgs = append(msgs, []byte(fmt.Sprintf("message %d: status OK\r\n", i)))
+		msgs = append(msgs, fmt.Appendf(nil, "message %d: status OK\r\n", i))
 	}
 	w := uartMsgs(msgs, 8, 40, 30, 40)
 	r := decode.DecodeUART(w, 1/(8*115200.0), decode.UARTCfg{Baud: 115200})

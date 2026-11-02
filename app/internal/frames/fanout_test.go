@@ -6,6 +6,7 @@ import (
 	"open-sds/app/internal/engine"
 	"sync/atomic"
 	"testing"
+	"testing/synctest"
 	"time"
 )
 
@@ -30,53 +31,59 @@ func (s *tickSource) Consume() (*engine.Frame, bool) {
 	return &s.f, true
 }
 
+// A parked waiter wakes on the next publish. In a synctest bubble the
+// ticker's time is the bubble's and Wait returns once the waiter is parked.
 // TRLC-LINKS: REQ-SDS-020
 func TestWaitNextWakesOnPublish(t *testing.T) {
-	src := &tickSource{}
-	fo := New()
-	stop := make(chan struct{})
-	defer close(stop)
-	go fo.Run(src, stop)
+	synctest.Test(t, func(t *testing.T) {
+		src := &tickSource{}
+		fo := New()
+		stop := make(chan struct{})
+		defer close(stop)
+		go fo.Run(src, stop)
 
-	src.fresh.Store(true)
-	if seq := fo.WaitNext(0, time.Second); seq != 1 {
-		t.Fatalf("WaitNext(0) = %d, want 1", seq)
-	}
-	// Parked waiter wakes on the NEXT publish.
-	done := make(chan uint64, 1)
-	go func() { done <- fo.WaitNext(1, time.Second) }()
-	time.Sleep(20 * time.Millisecond) // let it park
-	src.fresh.Store(true)
-	select {
-	case seq := <-done:
-		if seq != 2 {
+		src.fresh.Store(true)
+		if seq := fo.WaitNext(0, time.Second); seq != 1 {
+			t.Fatalf("WaitNext(0) = %d, want 1", seq)
+		}
+		done := make(chan uint64, 1)
+		go func() { done <- fo.WaitNext(1, time.Second) }()
+		synctest.Wait() // the waiter is parked
+		select {
+		case <-done:
+			t.Fatal("WaitNext returned with nothing new")
+		default:
+		}
+		src.fresh.Store(true)
+		if seq := <-done; seq != 2 {
 			t.Fatalf("parked WaitNext = %d, want 2", seq)
 		}
-	case <-time.After(time.Second):
-		t.Fatal("parked WaitNext never woke")
-	}
+	})
 }
 
+// With nothing new, WaitNext returns the current Seq after its timeout.
 // TRLC-LINKS: REQ-SDS-020
 func TestWaitNextTimesOutIdle(t *testing.T) {
-	src := &tickSource{}
-	fo := New()
-	stop := make(chan struct{})
-	defer close(stop)
-	go fo.Run(src, stop)
+	synctest.Test(t, func(t *testing.T) {
+		src := &tickSource{}
+		fo := New()
+		stop := make(chan struct{})
+		defer close(stop)
+		go fo.Run(src, stop)
 
-	src.fresh.Store(true)
-	if seq := fo.WaitNext(0, time.Second); seq != 1 {
-		t.Fatalf("setup publish: seq = %d", seq)
-	}
-	t0 := time.Now()
-	seq := fo.WaitNext(1, 120*time.Millisecond) // nothing new coming
-	if el := time.Since(t0); el < 100*time.Millisecond || el > 500*time.Millisecond {
-		t.Fatalf("timeout took %v, want ~120ms", el)
-	}
-	if seq != 1 {
-		t.Fatalf("idle WaitNext = %d, want unchanged 1", seq)
-	}
+		src.fresh.Store(true)
+		if seq := fo.WaitNext(0, time.Second); seq != 1 {
+			t.Fatalf("setup publish: seq = %d", seq)
+		}
+		t0 := time.Now()
+		seq := fo.WaitNext(1, 120*time.Millisecond) // nothing new coming
+		if el := time.Since(t0); el != 120*time.Millisecond {
+			t.Fatalf("timeout took %v, want 120ms", el)
+		}
+		if seq != 1 {
+			t.Fatalf("idle WaitNext = %d, want unchanged 1", seq)
+		}
+	})
 }
 
 // TRLC-LINKS: REQ-SDS-020
