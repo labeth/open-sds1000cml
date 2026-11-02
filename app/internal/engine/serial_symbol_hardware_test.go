@@ -3,9 +3,8 @@ package engine
 
 import (
 	"math"
-	"testing"
-
 	"open-sds/app/internal/decode"
+	"testing"
 )
 
 // symWave builds two lines at the symbol trigger's 125 MHz clock from timed
@@ -46,7 +45,7 @@ func (w *symWave) runs(first bool, d ...float64) {
 func (w *symWave) uart(v, bits int, parity string, stops int, T float64) {
 	w.hold(false, true, T)
 	ones := 0
-	for i := 0; i < bits; i++ {
+	for i := range bits {
 		bit := v>>i&1 != 0
 		if bit {
 			ones++
@@ -89,7 +88,7 @@ func symCheck(b []int, width int, poly, init uint64, reflected bool) int {
 		} else {
 			c ^= uint64(v&0xff) << (width - 8)
 		}
-		for i := 0; i < 8; i++ {
+		for range 8 {
 			switch {
 			case reflected && c&1 != 0:
 				c = c>>1 ^ poly
@@ -179,18 +178,24 @@ func symbolCases() []symCase {
 				w.hold(true, true, 3*ms)
 			}
 			return w
-		}, reqs: []symReq{{[]PatternElem{symStart}, 4}, {[]PatternElem{symStart, symAny}, 4}, {[]PatternElem{symStart, symData(0x80, 0xff)}, 2},
-			{[]PatternElem{symStart, symData(0x42, 0xff), symData(0x12, 0xff)}, 1}, {[]PatternElem{symData(0x34, 0xff)}, 4}, {[]PatternElem{symData(0x55, 0xff)}, 0}}},
+		}, reqs: []symReq{
+			{[]PatternElem{symStart}, 4},
+			{[]PatternElem{symStart, symAny}, 4},
+			{[]PatternElem{symStart, symData(0x80, 0xff)}, 2},
+			{[]PatternElem{symStart, symData(0x42, 0xff), symData(0x12, 0xff)}, 1},
+			{[]PatternElem{symData(0x34, 0xff)}, 4},
+			{[]PatternElem{symData(0x55, 0xff)}, 0},
+		}},
 		{name: "DMX", p: symParams(serDMX, 250000), wave: func() *symWave {
 			T := 4 * us
 			w := &symWave{}
 			w.hold(true, true, 100*us)
-			for f := 0; f < 3; f++ {
+			for f := range 3 {
 				w.mark()
 				w.hold(false, true, 120*us)
 				w.hold(true, true, 12*us)
 				w.uart([]int{0, 0x17, 0}[f], 8, "none", 2, T)
-				for s := 0; s < 20; s++ {
+				for s := range 20 {
 					w.uart(s*7+f, 8, "none", 2, T)
 					if s%5 == 0 {
 						w.hold(true, true, 10*us)
@@ -209,7 +214,7 @@ func symbolCases() []symCase {
 				crc := 0xffff // CRC-16/MODBUS, low byte first
 				for _, v := range frame {
 					crc ^= v
-					for k := 0; k < 8; k++ {
+					for range 8 {
 						if crc&1 != 0 {
 							crc = crc>>1 ^ 0xa001
 						} else {
@@ -227,15 +232,20 @@ func symbolCases() []symCase {
 				w.hold(true, true, 6*ms)
 			}
 			return w
-		}, reqs: []symReq{{[]PatternElem{symStart}, 3}, {[]PatternElem{symStart, symAny}, 3}, {[]PatternElem{symStart, symData(0x11, 0xff)}, 2},
-			{[]PatternElem{symStart, symData(0x01, 0xff), symData(0x06, 0xff)}, 1}, {[]PatternElem{symData(0x6b, 0xff)}, 1}}},
+		}, reqs: []symReq{
+			{[]PatternElem{symStart}, 3},
+			{[]PatternElem{symStart, symAny}, 3},
+			{[]PatternElem{symStart, symData(0x11, 0xff)}, 2},
+			{[]PatternElem{symStart, symData(0x01, 0xff), symData(0x06, 0xff)}, 1},
+			{[]PatternElem{symData(0x6b, 0xff)}, 1},
+		}},
 		{name: "1-Wire", p: symParams(serOneWire, 16300), wave: func() *symWave {
 			w := &symWave{}
 			w.hold(true, true, 200*us)
 			for _, cmd := range []int{0xcc, 0x33, 0xcc, 0x55} {
 				w.mark()
 				w.runs(false, 500*us, 30*us, 120*us, 400*us)
-				for i := 0; i < 16; i++ {
+				for i := range 16 {
 					v := cmd
 					if i >= 8 {
 						v = 0x44
@@ -253,7 +263,7 @@ func symbolCases() []symCase {
 		{name: "WS281x", p: symParams(serWS281x, 800000), wave: func() *symWave {
 			w := &symWave{}
 			w.hold(false, true, 80*us)
-			for f := 0; f < 3; f++ {
+			for f := range 3 {
 				w.mark()
 				for _, v := range []int{0x10 + f, 0x80, 0xff, 0x00, 0x5a, 0x0f} {
 					for i := 7; i >= 0; i-- {
@@ -271,7 +281,7 @@ func symbolCases() []symCase {
 		{name: "DHT", p: symParams(serDHT, 20000), wave: func() *symWave {
 			w := &symWave{}
 			w.hold(true, true, 2*ms)
-			for f := 0; f < 3; f++ {
+			for f := range 3 {
 				w.mark()
 				w.runs(false, 1.1*ms, 30*us, 80*us, 80*us)
 				for _, v := range []int{0x02, 0x8c + f, 0x01, 0x5f, 0xee} {
@@ -345,7 +355,7 @@ func symbolCases() []symCase {
 				w.mark()
 				w.runs(false, 9*ms, 4.5*ms)
 				for _, v := range []int{addr, addr ^ 0xff, 0x16, 0xe9} {
-					for i := 0; i < 8; i++ {
+					for i := range 8 {
 						sp := 0.5625 * ms
 						if v>>i&1 != 0 {
 							sp = 1.6875 * ms
@@ -367,7 +377,7 @@ func symbolCases() []symCase {
 				w.mark()
 				w.runs(false, 2.4*ms, 0.6*ms)
 				v := cmd | 1<<7 // address 1
-				for i := 0; i < 12; i++ {
+				for i := range 12 {
 					m := 0.6 * ms
 					if v>>i&1 != 0 {
 						m = 1.2 * ms
@@ -435,14 +445,14 @@ func symbolCases() []symCase {
 			}
 			enc := []int{0b11110, 0b01001, 0b10100, 0b10101, 0b01010, 0b01011, 0b01110, 0b01111, 0b10010, 0b10011, 0b10110, 0b10111, 0b11010, 0b11011, 0b11100, 0b11101}
 			sym := func(code int) {
-				for i := 0; i < 5; i++ {
+				for i := range 5 {
 					bit(code >> i & 1)
 				}
 			}
 			w.hold(false, true, 50*us)
 			for _, hdr := range []int{0x41, 0xa1, 0x41} {
 				w.mark()
-				for i := 0; i < 64; i++ {
+				for i := range 64 {
 					bit(i & 1)
 				}
 				for _, k := range []int{0b11000, 0b11000, 0b11000, 0b10001} {
@@ -470,12 +480,12 @@ func symbolCases() []symCase {
 				}
 				w.hold(level, true, h)
 			}
-			for i := 0; i < 64; i++ { // the end of a subframe before the first B
+			for i := range 64 { // the end of a subframe before the first B
 				half(i%2 == 0 || i%4 == 1)
 			}
 			pre := map[string][]bool{"B": {true, false, false, true, true, true, false, false}, "M": {true, false, false, true, false, false, true, true}, "W": {true, false, false, true, false, true, true, false}}
-			for f := 0; f < 6; f++ {
-				for ch := 0; ch < 2; ch++ {
+			for f := range 6 {
+				for ch := range 2 {
 					p := "W"
 					if ch == 0 {
 						p = "M"
@@ -492,7 +502,7 @@ func symbolCases() []symCase {
 						sample = 0x0f0f0f
 					}
 					ones := 0
-					for i := 0; i < 28; i++ {
+					for i := range 28 {
 						v := 0
 						if i < 24 {
 							v = sample >> i & 1
@@ -516,7 +526,7 @@ func symbolCases() []symCase {
 				w.mark()
 				ones := 0
 				bits := []int{0}
-				for i := 0; i < 8; i++ {
+				for i := range 8 {
 					bits = append(bits, v>>i&1)
 					ones += v >> i & 1
 				}
@@ -538,7 +548,7 @@ func symbolCases() []symCase {
 			type cyc struct{ b, target bool }
 			var cs []cyc
 			bits := func(v, n int, target bool) {
-				for i := 0; i < n; i++ {
+				for i := range n {
 					cs = append(cs, cyc{v>>i&1 != 0, target})
 				}
 			}
@@ -589,8 +599,11 @@ func symbolCases() []symCase {
 				w.hold(true, true, 5*us)
 			}
 			return w
-		}, reqs: []symReq{{[]PatternElem{symStart}, 3}, {[]PatternElem{symStart, symData(1<<12|2<<10|3<<5|1, 0x3fff)}, 2},
-			{[]PatternElem{symStart, symData(1<<12|2<<10|3<<5|1, 0x3fff), symData(0x794b, 0xffff)}, 1}}},
+		}, reqs: []symReq{
+			{[]PatternElem{symStart}, 3},
+			{[]PatternElem{symStart, symData(1<<12|2<<10|3<<5|1, 0x3fff)}, 2},
+			{[]PatternElem{symStart, symData(1<<12|2<<10|3<<5|1, 0x3fff), symData(0x794b, 0xffff)}, 1},
+		}},
 		{name: "Wiegand", p: func() SerialParams { p := symParams(serWiegand, 1000); p.Bits = 26; return p }(), wave: func() *symWave {
 			w := &symWave{}
 			w.hold(true, true, 20*ms)

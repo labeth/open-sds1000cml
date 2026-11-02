@@ -1,7 +1,7 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-SRAMCAPTURE
 package sramcapture
 
-import "fmt"
+import "errors"
 
 // TRLC-LINKS: REQ-SDS-013
 type I2CTriggerConfig struct {
@@ -61,7 +61,7 @@ func (c *Capture) configureI2C(revision uint16, p I2CTriggerConfig) error {
 	}
 	if (capability != i2cLevels && capability != i2cSamples) || (p.Enabled && p.Samples && capability != i2cSamples) {
 		if p.Enabled {
-			return fmt.Errorf("sramcapture: fabric lacks hardware I2C trigger")
+			return errors.New("sramcapture: fabric lacks hardware I2C trigger")
 		}
 		return nil
 	}

@@ -2,11 +2,10 @@
 package lcd
 
 import (
-	"strings"
-	"testing"
-
 	"open-sds/app/internal/decode"
 	"open-sds/app/internal/panel/wsview"
+	"strings"
+	"testing"
 )
 
 // TestVisualPictures: each bus's picture draws from its spans (a MIDI
@@ -70,7 +69,7 @@ func TestVisualPicturesNeverBreak(t *testing.T) {
 	texts := []string{"", "A04", "C16", "F42", "C4660", "12.34mm", "26b", "50.0%", "MIN12", "HR3", "DAY9", "MON1", "YR26", "F12", "R-3", "ID02", "CK12", "!CK12", "RST", "H12"}
 	seed := uint32(5)
 	rnd := func(n int) int { seed = seed*1664525 + 1013904223; return int(seed>>8) % n }
-	for it := 0; it < 3000; it++ {
+	for it := range 3000 {
 		var spans []decode.Span
 		for k, n := 0, rnd(400); k < n; k++ {
 			spans = append(spans, decode.Span{Kind: kinds[rnd(len(kinds))], Text: texts[rnd(len(texts))], I0: rnd(5000), I1: rnd(5000), Val: rnd(1 << 20)})
@@ -104,7 +103,7 @@ func TestVisualPicturesNeverBreak(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-281
 func TestVisualLongFrameFits(t *testing.T) {
 	spans := []decode.Span{{Kind: "sof"}, {Kind: "id", Val: 0x123}}
-	for i := 0; i < 64; i++ {
+	for i := range 64 {
 		spans = append(spans, decode.Span{Kind: "data", Val: i})
 	}
 	spans = append(spans, decode.Span{Kind: "sof"})
@@ -116,7 +115,7 @@ func TestVisualLongFrameFits(t *testing.T) {
 		// the frame's row: nothing past the area, and a gap before the count
 		y0 := a.y0 + 4
 		last, countX := -1, -1
-		for x := 0; x < W; x++ {
+		for x := range W {
 			for y := y0; y < y0+8; y++ {
 				o := (y*W + x) * 2
 				if sf.Pix[o] != 0 || sf.Pix[o+1] != 0 {

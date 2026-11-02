@@ -88,7 +88,7 @@ func DetectOrder(rbf []byte) (Order, error) {
 		return OrderUnknown, fmt.Errorf("image is %d bytes: too short for the device header at 0x%02x..0x%02x",
 			len(rbf), rbfHeaderOff, rbfHeaderOff+rbfHeaderLen-1)
 	}
-	for i := 0; i < rbfPreambleLen; i++ {
+	for i := range rbfPreambleLen {
 		if rbf[i] != 0xFF {
 			return OrderUnknown, fmt.Errorf("preamble byte 0x%02x is 0x%02x, not 0xff — not a passive-serial container", i, rbf[i])
 		}

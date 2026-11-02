@@ -2,11 +2,10 @@
 package web
 
 import (
+	"open-sds/app/internal/testenv"
 	"os/exec"
 	"strings"
 	"testing"
-
-	"open-sds/app/internal/testenv"
 )
 
 // TestSuperresEtsJS runs the phase-coherent equivalent-time reconstruction

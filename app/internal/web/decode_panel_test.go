@@ -3,13 +3,12 @@ package web
 
 import (
 	"fmt"
-	"strings"
-	"sync"
-	"time"
-
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/panel"
 	"open-sds/app/internal/panel/framecalc"
+	"strings"
+	"sync"
+	"time"
 )
 
 // decodePanel is the scope's decoder settings and its Auto, for the browser
@@ -143,8 +142,10 @@ func (p *decodePanel) detect() {
 			return
 		}
 		found = true
-		res = framecalc.DecodeParams{Proto: proto, Baud: r.Baud, ChA: r.Roles.ChA & 1, ChB: 1 - r.Roles.ChA&1,
-			CPOL: r.Roles.CPOL, CPHA: r.Roles.CPHA, LSB: !r.Roles.MSB}
+		res = framecalc.DecodeParams{
+			Proto: proto, Baud: r.Baud, ChA: r.Roles.ChA & 1, ChB: 1 - r.Roles.ChA&1,
+			CPOL: r.Roles.CPOL, CPHA: r.Roles.CPHA, LSB: !r.Roles.MSB,
+		}
 		if framecalc.TwoLine(proto) {
 			res.ChB = r.Roles.ChB & 1
 		}

@@ -4,9 +4,8 @@ package engine
 import (
 	"fmt"
 	"math"
-	"testing"
-
 	"open-sds/app/internal/sramcapture"
+	"testing"
 )
 
 // TRLC-LINKS: REQ-SDS-012
@@ -94,7 +93,7 @@ func TestAverageAlignsToFractionOfSample(t *testing.T) {
 	ramp := func(edge float64) Frame {
 		n := 64
 		f := Frame{Valid: n, C1: make([]byte, n), C2: make([]byte, n), Q1: make([]uint16, n), Q2: make([]uint16, n), EdgeX: edge}
-		for i := 0; i < n; i++ {
+		for i := range n {
 			v := 128 + 4*(float64(i)-edge)
 			f.Q1[i] = uint16(math.Round(v * 256))
 			f.Q2[i] = f.Q1[i]

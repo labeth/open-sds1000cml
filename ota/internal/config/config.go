@@ -169,7 +169,7 @@ func Load() *Config {
 		AutoTakeover:  envBool("OTA_AUTO_TAKEOVER"),
 	}
 	if v := os.Getenv("OTA_FACTORY_NAMES"); v != "" {
-		for _, s := range strings.Split(v, ",") {
+		for s := range strings.SplitSeq(v, ",") {
 			if s = strings.TrimSpace(s); s != "" {
 				c.FactoryNames = append(c.FactoryNames, s)
 			}

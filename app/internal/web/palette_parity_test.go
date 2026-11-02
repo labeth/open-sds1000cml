@@ -3,7 +3,6 @@ package web
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
 	"regexp"
 	"strconv"
@@ -27,8 +26,10 @@ func read(t *testing.T, p string) string {
 	return string(b)
 }
 
-var cssVarRe = regexp.MustCompile(`--([\w-]+):\s*(#[0-9a-fA-F]{6})`)
-var palRe = regexp.MustCompile(`(col\w+)\s*=\s*rgb\((\d+),\s*(\d+),\s*(\d+)\)`)
+var (
+	cssVarRe = regexp.MustCompile(`--([\w-]+):\s*(#[0-9a-fA-F]{6})`)
+	palRe    = regexp.MustCompile(`(col\w+)\s*=\s*rgb\((\d+),\s*(\d+),\s*(\d+)\)`)
+)
 
 // TRLC-LINKS: REQ-SDS-021
 func hex2rgb(h string) [3]int {
@@ -88,5 +89,5 @@ func TestPaletteParity(t *testing.T) {
 		return
 	}
 	t.Logf("palette parity OK: %d web tokens, %d shared LCD colors, single source %s",
-		len(src.Tokens), len(src.LCD), fmt.Sprintf("tokens.json"))
+		len(src.Tokens), len(src.LCD), "tokens.json")
 }

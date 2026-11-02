@@ -4,10 +4,9 @@ package sramcapture
 import (
 	"context"
 	"fmt"
+	"open-sds/app/internal/superres"
 	"strings"
 	"testing"
-
-	"open-sds/app/internal/superres"
 )
 
 // stackPortBus emulates stack_engine_port.v over a frozen revision-8 record.
@@ -137,7 +136,7 @@ func (f *stackPortBus) RawWrite(s, v uint16) error {
 			initial := uint32(f.regs[selStackInitial]) | uint32(f.regs[selStackInitial+1])<<16
 			first := int(f.regs[selStackFirstBin]) | int(f.regs[selStackFirstBin+1])<<16
 			for b := 0; b < int(f.regs[selStackBins]); b++ {
-				for c := 0; c < 2; c++ {
+				for c := range 2 {
 					m, err := superres.DecodeFPGAMoments(f.tile[b][c][:])
 					if err != nil {
 						return err
@@ -196,7 +195,7 @@ func TestStackRecordTilesAndRestore(t *testing.T) {
 		t.Fatalf("scans %d uploads %d", bus.scans, bus.uploads)
 	}
 	for b := 0; b < cfg.Bins; b++ {
-		for ch := 0; ch < 2; ch++ {
+		for ch := range 2 {
 			m := st.Moments[2*b+ch]
 			want := uint64(b+1) << 24
 			if m.Count != 6 || m.Sum[0] != 6*want || m.CountOdd != 3 || m.SumOdd[0] != 3*want {
@@ -267,8 +266,10 @@ func TestStackTemplateQualifier(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cfg := StackConfig{Level: 128, Bins: 32, Factor: 4, ChannelMask: 3,
-		Template: []int{40, 80, 200, 200}, TemplateStride: 3, TemplatePre: 6, TemplateThreshold: 90}
+	cfg := StackConfig{
+		Level: 128, Bins: 32, Factor: 4, ChannelMask: 3,
+		Template: []int{40, 80, 200, 200}, TemplateStride: 3, TemplatePre: 6, TemplateThreshold: 90,
+	}
 	if _, err := c.StackBegin(cfg); err != nil {
 		t.Fatal(err)
 	}

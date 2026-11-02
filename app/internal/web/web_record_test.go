@@ -4,15 +4,15 @@ package web
 import (
 	"encoding/binary"
 	"encoding/json"
+	"net/http"
 	"net/http/httptest"
+	"open-sds/app/internal/engine"
+	"open-sds/app/internal/testenv"
 	"os/exec"
 	"strings"
 	"sync"
 	"testing"
 	"time"
-
-	"open-sds/app/internal/engine"
-	"open-sds/app/internal/testenv"
 )
 
 // recordScope is a fake scope whose bus-sample lease turns its frames from
@@ -70,7 +70,7 @@ func TestRecordServesAWholeSampledRecord(t *testing.T) {
 	sc.init()
 	s := New(sc, nil, nil, nil)
 	rec := httptest.NewRecorder()
-	s.Handler().ServeHTTP(rec, httptest.NewRequest("GET", "/api/record.bin?sample_s=2e-8&wait_ms=2000", nil))
+	s.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/record.bin?sample_s=2e-8&wait_ms=2000", nil))
 	if rec.Code != 200 {
 		t.Fatalf("code %d: %s", rec.Code, rec.Body.String())
 	}
@@ -93,7 +93,7 @@ func TestRecordServesAWholeSampledRecord(t *testing.T) {
 	sc2 := &recordScope{fakeScope: &fakeScope{}, never: true}
 	sc2.init()
 	rec = httptest.NewRecorder()
-	New(sc2, nil, nil, nil).Handler().ServeHTTP(rec, httptest.NewRequest("GET", "/api/record.bin?sample_s=2e-8&wait_ms=300", nil))
+	New(sc2, nil, nil, nil).Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/record.bin?sample_s=2e-8&wait_ms=300", nil))
 	if rec.Code != 409 || !strings.Contains(rec.Body.String(), "err") {
 		t.Fatalf("no record: code %d %s", rec.Code, rec.Body.String())
 	}
@@ -102,14 +102,14 @@ func TestRecordServesAWholeSampledRecord(t *testing.T) {
 	first := make(chan int)
 	go func() {
 		r := httptest.NewRecorder()
-		s2.Handler().ServeHTTP(r, httptest.NewRequest("GET", "/api/record.bin?sample_s=2e-8&wait_ms=600", nil))
+		s2.Handler().ServeHTTP(r, httptest.NewRequest(http.MethodGet, "/api/record.bin?sample_s=2e-8&wait_ms=600", nil))
 		first <- r.Code
 	}()
 	for !s2.recordBusy.Load() {
 		time.Sleep(time.Millisecond)
 	}
 	rec = httptest.NewRecorder()
-	s2.Handler().ServeHTTP(rec, httptest.NewRequest("GET", "/api/record.bin?sample_s=2e-8&wait_ms=100", nil))
+	s2.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/record.bin?sample_s=2e-8&wait_ms=100", nil))
 	if rec.Code != 409 || !strings.Contains(rec.Body.String(), "one at a time") {
 		t.Fatalf("a second record meanwhile: code %d %s", rec.Code, rec.Body.String())
 	}
@@ -117,7 +117,7 @@ func TestRecordServesAWholeSampledRecord(t *testing.T) {
 		t.Fatalf("the first: code %d, still busy %v", c, s2.recordBusy.Load())
 	}
 	rec = httptest.NewRecorder()
-	New(sc2, nil, nil, nil).Handler().ServeHTTP(rec, httptest.NewRequest("GET", "/api/record.bin?sample_s=0", nil))
+	New(sc2, nil, nil, nil).Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/record.bin?sample_s=0", nil))
 	if rec.Code != 400 {
 		t.Fatalf("a bad sample_s: code %d", rec.Code)
 	}

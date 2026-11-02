@@ -4,13 +4,12 @@ package framecalc
 import (
 	"encoding/json"
 	"math"
+	"open-sds/app/internal/engine"
+	"open-sds/app/internal/testenv"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"testing"
-
-	"open-sds/app/internal/engine"
-	"open-sds/app/internal/testenv"
 )
 
 // TestSpectrumJSParity runs the LCD's spectrum (Spectrum) and the web's

@@ -1,10 +1,9 @@
 package app
 
 import (
-	"testing"
-
 	"open-sds/app/internal/lcd"
 	"open-sds/app/internal/panel/wsview"
+	"testing"
 )
 
 // The SOUND view repaints when its pane changes (a new tuner reading, a
@@ -14,8 +13,10 @@ import (
 // TRLC-LINKS: REQ-SDS-168, REQ-SDS-273
 func TestSoundViewRepaintsOnlyOnChange(t *testing.T) {
 	pane := func(cents float64) *wsview.SoundPane {
-		return &wsview.SoundPane{HasPitch: true, Note: "A4", Cents: cents, Hz: "440.00 Hz", Strip: []float32{1, 2},
-			Meter: [2]wsview.SoundMeter{{On: true}}, Traces: [][]float32{{0, 1, 0}}}
+		return &wsview.SoundPane{
+			HasPitch: true, Note: "A4", Cents: cents, Hz: "440.00 Hz", Strip: []float32{1, 2},
+			Meter: [2]wsview.SoundMeter{{On: true}}, Traces: [][]float32{{0, 1, 0}},
+		}
 	}
 	h := lcd.HUD{ViewMode: lcdSoundView, UI: wsview.View{Sound: pane(3)}}
 	if lcdForceRepaint(h) {

@@ -2,11 +2,10 @@
 package web
 
 import (
+	"open-sds/app/internal/testenv"
 	"os/exec"
 	"strings"
 	"testing"
-
-	"open-sds/app/internal/testenv"
 )
 
 // Locks the JS spectrogram helpers under node: the colormap endpoints/segments

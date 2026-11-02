@@ -4,11 +4,10 @@ package engine
 import (
 	"fmt"
 	"math"
+	"open-sds/app/internal/sramcapture"
 	"strings"
 	"testing"
 	"time"
-
-	"open-sds/app/internal/sramcapture"
 )
 
 // levelsEngine is a bare engine whose image has the hardware UART matcher,
@@ -17,7 +16,7 @@ import (
 // TRLC-LINKS: REQ-SDS-013
 func levelsEngine(p SerialParams) *Engine {
 	e := &Engine{hardwareUART: true, hardwareSPI: true, hardwareSequence: true, band: Band{TdivS: 100e-6}}
-	for ch := 0; ch < 2; ch++ {
+	for ch := range 2 {
 		e.chVdivBits[ch].Store(math.Float64bits(1))
 	}
 	e.trigPosFrac.Store(math.Float64bits(.5))
@@ -148,7 +147,7 @@ func TestUARTAutoBaudPlansTheHardwareMatcher(t *testing.T) {
 func sentLine(frames [][]int, tick int) []uint8 {
 	var w []uint8
 	push := func(v uint8, k int) {
-		for j := 0; j < k; j++ {
+		for range k {
 			w = append(w, v)
 		}
 	}
@@ -173,7 +172,7 @@ func sentLine(frames [][]int, tick int) []uint8 {
 // TRLC-LINKS: REQ-SDS-013
 func TestEveryBusPlansFromTheScope(t *testing.T) {
 	e, b, _ := newPacketTestEngine(t)
-	for ch := 0; ch < 2; ch++ {
+	for ch := range 2 {
 		e.chVdivBits[ch].Store(math.Float64bits(1))
 	}
 	e.trigPosFrac.Store(math.Float64bits(.5))

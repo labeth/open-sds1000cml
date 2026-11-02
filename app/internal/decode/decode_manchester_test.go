@@ -4,6 +4,7 @@ package decode
 import (
 	"fmt"
 	"math/rand"
+	"strings"
 	"testing"
 )
 
@@ -18,7 +19,7 @@ func mBits(bytes []int, msb bool, bits int) []int {
 				out = append(out, (b>>k)&1)
 			}
 		} else {
-			for k := 0; k < bits; k++ {
+			for k := range bits {
 				out = append(out, (b>>k)&1)
 			}
 		}
@@ -51,7 +52,7 @@ func manchesterWave(bitsSeq []int, ieee bool, spb int) []uint8 {
 		if !ieee {
 			first, second = bit, 1-bit // Thomas: inverted
 		}
-		for j := 0; j < half; j++ {
+		for range half {
 			w = append(w, lvl(first))
 		}
 		for j := 0; j < spb-half; j++ {
@@ -101,12 +102,14 @@ func TestDecodeManchesterRoundTrip(t *testing.T) {
 	// a preamble/sync span must be flagged (kind "start") from the 0xAA run
 	var kinds string
 	sawSync := false
+	var kindsSb104 strings.Builder
 	for _, s := range r.Spans {
-		kinds += s.Kind + " "
+		kindsSb104.WriteString(s.Kind + " ")
 		if s.Kind == "start" && s.Text == "SYNC" {
 			sawSync = true
 		}
 	}
+	kinds += kindsSb104.String()
 	if !sawSync {
 		t.Errorf("expected a SYNC/start span; got kinds: %s", kinds)
 	}
@@ -190,7 +193,7 @@ func TestDecodeManchesterNoPanic(t *testing.T) {
 		return s
 	}
 	inputs := [][]uint8{nil, {}, {200}, mk(3, 2)}
-	for n := 0; n < 60; n++ {
+	for range 60 {
 		inputs = append(inputs, mk(rng.Intn(3000), rng.Intn(4)))
 	}
 	colTimes := []float64{0, 1e-12, 1e-6, 1}

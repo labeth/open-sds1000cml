@@ -6,10 +6,9 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"open-sds/app/internal/panel"
 	"testing"
 	"time"
-
-	"open-sds/app/internal/panel"
 )
 
 // panelFixture is the panel's remote surface with canned answers; it
@@ -44,8 +43,10 @@ func (p *panelFixture) WaitPanel(seq uint64, d time.Duration) panel.Status {
 
 // TRLC-LINKS: REQ-SDS-164
 func (p *panelFixture) Sheets() panel.SheetsModel {
-	return panel.SheetsModel{Seq: 7, Tabs: []panel.TabModel{{ID: "trig", Name: "TRIG",
-		Rows: []panel.RowModel{{ID: "trig.level", Label: "Level", Kind: "number", Value: 0.2, Text: "200mV", Unit: "V"}}}}}
+	return panel.SheetsModel{Seq: 7, Tabs: []panel.TabModel{{
+		ID: "trig", Name: "TRIG",
+		Rows: []panel.RowModel{{ID: "trig.level", Label: "Level", Kind: "number", Value: 0.2, Text: "200mV", Unit: "V"}},
+	}}}
 }
 
 // TRLC-LINKS: REQ-SDS-162
@@ -99,9 +100,11 @@ func httpCall(t *testing.T, s *Server, method, path string, body any) (int, map[
 // it, and reading it writes nothing.
 // TRLC-LINKS: REQ-SDS-164, REQ-SDS-211
 func TestStatusReportsPanelSnapshotWithoutControlWrites(t *testing.T) {
-	p := &panelFixture{status: panel.Status{Seq: 3, AutosetBusy: true, Workspace: "BUS", View: "Packets", Mode: "workspace",
+	p := &panelFixture{status: panel.Status{
+		Seq: 3, AutosetBusy: true, Workspace: "BUS", View: "Packets", Mode: "workspace",
 		FKeys: [5]panel.KeyStatus{{Label: "SCOP"}, {Label: "BUS", Sel: true}}, Tool: []panel.ToolSeg{{Knob: "Adjust", Job: "packet"}},
-		Again: "F2 again: Eye diagram", Lamps: 0x2050, LampsLit: []string{"CH1", "CH2", "RUN"}}}
+		Again: "F2 again: Eye diagram", Lamps: 0x2050, LampsLit: []string{"CH1", "CH2", "RUN"},
+	}}
 	s := New(&fakeScope{}, nil, p, nil)
 	got := getStatus(t, s)["panel"].(map[string]any)
 	if got["Workspace"] != "BUS" || got["AutosetBusy"] != true || got["Seq"] != 3.0 ||

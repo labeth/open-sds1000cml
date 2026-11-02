@@ -4,9 +4,8 @@ package engine
 import (
 	_ "embed"
 	"encoding/json"
-	"fmt"
+	"errors"
 	"math"
-
 	"open-sds/app/internal/dsp"
 )
 
@@ -35,56 +34,56 @@ func parseInterleaveCalibration(b []byte) (*InterleaveCalibration, error) {
 	if err := json.Unmarshal(b, &c); err != nil {
 		return nil, err
 	}
-	for ch := 0; ch < 2; ch++ {
+	for ch := range 2 {
 		if c.Vdiv[ch] <= 0 || math.IsNaN(c.Vdiv[ch]) || math.IsInf(c.Vdiv[ch], 0) {
-			return nil, fmt.Errorf("invalid calibration scale")
+			return nil, errors.New("invalid calibration scale")
 		}
 		for _, scale := range c.VerifiedVdiv[ch] {
 			if scale <= 0 || math.IsNaN(scale) || math.IsInf(scale, 0) {
-				return nil, fmt.Errorf("invalid verified calibration scale")
+				return nil, errors.New("invalid verified calibration scale")
 			}
 		}
 		if c.GainVdiv[ch] != 0 {
 			if math.IsNaN(c.GainVdiv[ch]) || math.IsInf(c.GainVdiv[ch], 0) || c.GainVdiv[ch] <= 0 {
-				return nil, fmt.Errorf("invalid gain calibration scale")
+				return nil, errors.New("invalid gain calibration scale")
 			}
 			gainSum, offsetSum := 0.0, 0.0
 			for phase, gain := range c.Gain[ch] {
 				offset := c.GainOffset[ch][phase]
 				if math.IsNaN(gain) || math.IsInf(gain, 0) || gain < .9 || gain > 1.1 || math.IsNaN(offset) || math.IsInf(offset, 0) || math.Abs(offset) > 2 {
-					return nil, fmt.Errorf("invalid converter gain calibration")
+					return nil, errors.New("invalid converter gain calibration")
 				}
 				gainSum += gain
 				offsetSum += offset
 			}
 			if math.Abs(gainSum-5) > .001 || math.Abs(offsetSum) > .01 {
-				return nil, fmt.Errorf("gain calibration must preserve nominal channel scale and centre")
+				return nil, errors.New("gain calibration must preserve nominal channel scale and centre")
 			}
 		}
 		if c.TimingVdiv[ch] != 0 {
 			if math.IsNaN(c.TimingVdiv[ch]) || math.IsInf(c.TimingVdiv[ch], 0) || c.TimingVdiv[ch] <= 0 || c.TimingVdiv[ch] != c.GainVdiv[ch] {
-				return nil, fmt.Errorf("timing calibration requires matching gain scale")
+				return nil, errors.New("timing calibration requires matching gain scale")
 			}
 			sum := 0.0
 			for _, delay := range c.TimingNs[ch] {
 				if math.IsNaN(delay) || math.IsInf(delay, 0) || math.Abs(delay) > .5 {
-					return nil, fmt.Errorf("invalid aperture correction")
+					return nil, errors.New("invalid aperture correction")
 				}
 				sum += delay
 			}
 			if math.Abs(sum) > .001 {
-				return nil, fmt.Errorf("aperture correction must preserve channel delay")
+				return nil, errors.New("aperture correction must preserve channel delay")
 			}
 		}
 		sum := 0.0
 		for _, v := range c.Offset[ch] {
 			if math.IsNaN(v) || math.IsInf(v, 0) || math.Abs(v) > 32 {
-				return nil, fmt.Errorf("invalid calibration offset")
+				return nil, errors.New("invalid calibration offset")
 			}
 			sum += v
 		}
 		if math.Abs(sum) > 0.01 {
-			return nil, fmt.Errorf("calibration must preserve channel DC")
+			return nil, errors.New("calibration must preserve channel DC")
 		}
 	}
 	return &c, nil
@@ -108,7 +107,7 @@ func (c *InterleaveCalibration) apply(a, b []uint8, q1, q2 []uint16, scale [2]fl
 		sums, count := phaseSums(x)
 		usable[ch] = true
 		avg := 0.0
-		for i := 0; i < 5; i++ {
+		for i := range 5 {
 			if count[i] < len(x)/10 {
 				usable[ch] = false
 				break
@@ -116,20 +115,20 @@ func (c *InterleaveCalibration) apply(a, b []uint8, q1, q2 []uint16, scale [2]fl
 			means[ch][i] = float64(sums[i]) / float64(count[i])
 			avg += means[ch][i] / 5
 		}
-		for i := 0; i < 5; i++ {
+		for i := range 5 {
 			means[ch][i] -= avg
 		}
 	}
 	rotation, found := 0, false
 	bestFit := math.Inf(1)
-	for ch := 0; ch < 2; ch++ {
+	for ch := range 2 {
 		if !usable[ch] {
 			continue
 		}
 		best, second, r0 := math.Inf(1), math.Inf(1), 0
-		for r := 0; r < 5; r++ {
+		for r := range 5 {
 			score := 0.0
-			for i := 0; i < 5; i++ {
+			for i := range 5 {
 				d := means[ch][i] - c.Offset[ch][(i+r)%5]
 				score += d * d / 5
 			}
@@ -147,10 +146,10 @@ func (c *InterleaveCalibration) apply(a, b []uint8, q1, q2 []uint16, scale [2]fl
 		return false
 	}
 	if !c.tableReady {
-		for ch := 0; ch < 2; ch++ {
-			for mode := 0; mode < 2; mode++ {
-				for phase := 0; phase < 5; phase++ {
-					for v := 0; v < 256; v++ {
+		for ch := range 2 {
+			for mode := range 2 {
+				for phase := range 5 {
+					for v := range 256 {
 						corrected := float64(v) - c.Offset[ch][phase]
 						if mode == 1 && c.GainVdiv[ch] > 0 {
 							corrected = 128 + (corrected-128-c.GainOffset[ch][phase])/c.Gain[ch][phase]

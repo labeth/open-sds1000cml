@@ -2,10 +2,9 @@
 package lcd
 
 import (
-	"testing"
-
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/panel/wsview"
+	"testing"
 )
 
 // The LCD draws 20 frames a second on the device's single core; these
@@ -18,7 +17,7 @@ import (
 func benchRender(b *testing.B, f *engine.Frame, h HUD) {
 	sf := NewMemSurface()
 	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		Render(sf, f, h, true)
 	}
 }
@@ -43,8 +42,10 @@ func BenchmarkRenderSheet(b *testing.B) {
 func BenchmarkRenderBusEye(b *testing.B) {
 	const cols, rows = 384, 166
 	grid, mx := goldenEyeGrid(cols, rows)
-	e := &wsview.EyePane{Pane: wsview.Pane{Title: "BUS"}, Grid: grid, Cols: cols, Rows: rows, Max: mx, HasBox: true,
-		Box: [4]int{110, 20, 270, 145}, SampleCol: cols / 2, ThreshRow: rows / 2, TimeLabel: "TIME"}
+	e := &wsview.EyePane{
+		Pane: wsview.Pane{Title: "BUS"}, Grid: grid, Cols: cols, Rows: rows, Max: mx, HasBox: true,
+		Box: [4]int{110, 20, 270, 145}, SampleCol: cols / 2, ThreshRow: rows / 2, TimeLabel: "TIME",
+	}
 	v := wsview.View{WS: wsview.Bus, Layout: wsview.Layout{MenuW: 30, PlotTop: 136, HideTraces: true, HideBottom: true}, Rail: true, Eye: e}
 	h := goldenUIHUD(v)
 	h.TdivS = 100e-6

@@ -107,8 +107,24 @@ func TestOracleLayerTPIU(t *testing.T) {
 	orcNeed(t, "uart", "arm_tpiu", "arm_itm")
 	// stream 1 the ITM, 2 another source; sigrok's TPIU passes stream 1 on
 	// to its ITM decoder
-	frames := append([]byte{0xff, 0xff, 0xff, 0x7f}, tpiuFrame([]tpiuItem{{id: 1}, {b: 0x0b}, {b: 1}, {b: 2}, {b: 3}, {b: 4},
-		{id: 2}, {b: 0x10}, {b: 0x20}, {id: 1}, {b: 0x70}, {b: 0x0b}, {b: 5}, {b: 6}, {b: 7}, {b: 8}})...)
+	frames := append([]byte{0xff, 0xff, 0xff, 0x7f}, tpiuFrame([]tpiuItem{
+		{id: 1},
+		{b: 0x0b},
+		{b: 1},
+		{b: 2},
+		{b: 3},
+		{b: 4},
+		{id: 2},
+		{b: 0x10},
+		{b: 0x20},
+		{id: 1},
+		{b: 0x70},
+		{b: 0x0b},
+		{b: 5},
+		{b: 6},
+		{b: 7},
+		{b: 8},
+	})...)
 	ps, anns := orcUARTRun(t, "arm_tpiu", "uart:rx=RX:baudrate=115200", "arm_tpiu,arm_itm", 115200, "none", 1, false, [][]byte{frames}, 30)
 	var repo []string
 	for _, n := range orcNotes(ps) {
@@ -151,8 +167,10 @@ func TestOracleLayerETMv3(t *testing.T) {
 			orc = append(orc, "A-SYNC")
 		case strings.HasPrefix(s, "I-Sync: "):
 			m := regexp.MustCompile(`^I-Sync: ([A-Za-z ]+), PC 0x([0-9a-f]{8}), (\w+) state`).FindStringSubmatch(s)
-			reason := map[string]string{"Periodic": "periodic", "Tracing enabled": "trace on", "After overflow": "overflow",
-				"Exit from debug": "debug exit"}[m[1]]
+			reason := map[string]string{
+				"Periodic": "periodic", "Tracing enabled": "trace on", "After overflow": "overflow",
+				"Exit from debug": "debug exit",
+			}[m[1]]
 			orc = append(orc, "I-SYNC 0x"+strings.ToUpper(m[2])+" "+m[3]+" "+reason)
 		case regexp.MustCompile(`^\d+ instructions executed`).MatchString(s):
 			m := regexp.MustCompile(`^(\d+) instructions executed(?:, (\d+) skipped)?`).FindStringSubmatch(s)
@@ -178,8 +196,13 @@ func TestOracleLayerETMv3(t *testing.T) {
 func TestOracleLayerAmulet(t *testing.T) {
 	orcNeed(t, "uart", "amulet_ascii")
 	ps, anns := orcUARTRun(t, "amulet", "uart:rx=RX:baudrate=115200", "amulet_ascii", 115200, "none", 1, false, [][]byte{
-		{0xd0, '1', 'A'}, {0xd5, '0', '2', 'F', 'F'}, {0xd6, '0', '3', '1', '2', '3', '4'}, {0xd7, '0', '4', 'h', 'i', 0},
-		{0xd1, '2', '2'}, {0xf0}, {0xf1},
+		{0xd0, '1', 'A'},
+		{0xd5, '0', '2', 'F', 'F'},
+		{0xd6, '0', '3', '1', '2', '3', '4'},
+		{0xd7, '0', '4', 'h', 'i', 0},
+		{0xd1, '2', '2'},
+		{0xf0},
+		{0xf1},
 	}, 30)
 	repo := orcMatch(orcNotes(ps), `^([A-Z]+)`)
 	var orc []string

@@ -18,10 +18,10 @@ func TestOracleQuadrature(t *testing.T) {
 	l := newTwoLine(sr)
 	l.add(0, 0, 500e-6)
 	var moves []int
-	for i := 0; i < 12; i++ {
+	for range 12 {
 		moves = append(moves, 1)
 	}
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		moves = append(moves, -1)
 	}
 	moves = append(moves, 1, -1, 1, 1)

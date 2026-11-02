@@ -3,11 +3,10 @@ package engine
 
 import (
 	"context"
+	"open-sds/app/internal/sramcapture"
 	"strings"
 	"testing"
 	"time"
-
-	"open-sds/app/internal/sramcapture"
 )
 
 // A symbol bus's stream asked to stop on an error (the Stream trigger's

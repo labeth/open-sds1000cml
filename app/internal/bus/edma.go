@@ -21,13 +21,13 @@
 package bus
 
 import (
+	"errors"
 	"fmt"
+	"open-sds/app/internal/iface"
 	"os"
 	"syscall"
 	"time"
 	"unsafe"
-
-	"open-sds/app/internal/iface"
 )
 
 const (
@@ -239,11 +239,11 @@ func (p *pagemapPager) alloc(nbytes int) (*dmaBuf, error) {
 	}
 	npages := nbytes / pageSize
 	phys := make([]uint32, npages)
-	for pg := 0; pg < npages; pg++ {
+	for pg := range npages {
 		phys[pg] = physOf(p.pm, unsafe.Pointer(&buf[pg*pageSize]))
 		if phys[pg] == 0 {
 			syscall.Munmap(buf)
-			return nil, fmt.Errorf("edma pagemap resolve failed (need root)")
+			return nil, errors.New("edma pagemap resolve failed (need root)")
 		}
 	}
 	return &dmaBuf{buf: buf, phys: phys, release: func() { syscall.Munmap(buf) }}, nil
@@ -269,7 +269,7 @@ func (p *pagemapPager) mapShared(fd, nbytes int) (*dmaBuf, error) {
 		phys[pg] = physOf(p.pm, unsafe.Pointer(&buf[pg*pageSize]))
 		if phys[pg] == 0 {
 			syscall.Munmap(buf)
-			return nil, fmt.Errorf("edma pagemap resolve failed (need root)")
+			return nil, errors.New("edma pagemap resolve failed (need root)")
 		}
 	}
 	return &dmaBuf{buf: buf, phys: phys, release: func() { syscall.Munmap(buf) }}, nil
@@ -283,11 +283,11 @@ func (p *pagemapPager) mapShared(fd, nbytes int) (*dmaBuf, error) {
 // TRLC-LINKS: REQ-SDS-035
 func (d *Dev) PinSharedRing(fd, nbytes int) ([]byte, error) {
 	if d.edma == nil || d.edma.inv == nil {
-		return nil, fmt.Errorf("bus: in-place DMA needs the EDMA drain and /dev/dcinv")
+		return nil, errors.New("bus: in-place DMA needs the EDMA drain and /dev/dcinv")
 	}
 	pg, ok := d.edma.pg.(*pagemapPager)
 	if !ok {
-		return nil, fmt.Errorf("bus: no page mapper")
+		return nil, errors.New("bus: no page mapper")
 	}
 	b, err := pg.mapShared(fd, nbytes)
 	if err != nil {
@@ -551,7 +551,7 @@ func (e *edmaDrainer) drain(c1, c2 []uint8, n int) bool {
 	if e.inv != nil {
 		e.inv(b.buf[:n*2])
 	}
-	for i := 0; i < n; i++ {
+	for i := range n {
 		c1[i] = b.buf[i*2+1]
 		c2[i] = b.buf[i*2]
 	}

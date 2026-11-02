@@ -14,10 +14,7 @@ func buildTemplate(ref []float32, n int, edgeX float64, valid int) *template {
 	}
 	lo0 := 0
 	if edgeX >= 0 {
-		lo0 = jsRound(edgeX) + 16
-		if lo0 > hi0-1 {
-			lo0 = hi0 - 1
-		}
+		lo0 = min(jsRound(edgeX)+16, hi0-1)
 	}
 	if hi0-lo0 < 16 {
 		return nil
@@ -83,12 +80,12 @@ func buildTemplate(ref []float32, n int, edgeX float64, valid int) *template {
 	L := hi - lo + 1
 	data := make([]float64, L)
 	mean := 0.0
-	for i := 0; i < L; i++ {
+	for i := range L {
 		mean += float64(ref[lo+i])
 	}
 	mean /= float64(L)
 	ss := 0.0
-	for i := 0; i < L; i++ {
+	for i := range L {
 		d := float64(ref[lo+i]) - mean
 		data[i] = d
 		p := d * d // materialize (no FMA fuse)

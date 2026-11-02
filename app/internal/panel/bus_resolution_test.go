@@ -2,18 +2,17 @@
 package panel
 
 import (
-	"fmt"
+	"errors"
+	"open-sds/app/internal/decode"
+	"open-sds/app/internal/engine"
+	"open-sds/app/internal/panel/framecalc"
+	"open-sds/app/internal/streamview"
 	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
-
-	"open-sds/app/internal/decode"
-	"open-sds/app/internal/engine"
-	"open-sds/app/internal/panel/framecalc"
-	"open-sds/app/internal/streamview"
 )
 
 // i2cFrame is an I2C bus (SCL on C1, SDA on C2) repeating a write of the
@@ -53,8 +52,10 @@ func i2cFrame(fclk, sampleS float64, n int, bytes ...int) *engine.Frame {
 		put(hi, lo, 2)
 		put(hi, hi, 2) // STOP: SDA rises, SCL high
 	}
-	return &engine.Frame{C1: c1, C2: c2, Valid: n, WinCols: n, EdgeX: float64(n) / 2, SampleS: sampleS,
-		TdivS: float64(n) * sampleS / 10, Trigd: true}
+	return &engine.Frame{
+		C1: c1, C2: c2, Valid: n, WinCols: n, EdgeX: float64(n) / 2, SampleS: sampleS,
+		TdivS: float64(n) * sampleS / 10, Trigd: true,
+	}
 }
 
 // envelope2 is f as the live readout's time-ordered envelope: a (min, max)
@@ -66,7 +67,7 @@ func envelope2(f *engine.Frame, bucket int) *engine.Frame {
 	env := func(src []uint8) []uint8 {
 		out := make([]uint8, 0, 2*n)
 		last := src[0]
-		for b := 0; b < n; b++ {
+		for b := range n {
 			lo, hi := uint8(255), uint8(0)
 			for _, v := range src[b*bucket : (b+1)*bucket] {
 				lo, hi = min(lo, v), max(hi, v)
@@ -81,8 +82,10 @@ func envelope2(f *engine.Frame, bucket int) *engine.Frame {
 		}
 		return out
 	}
-	return &engine.Frame{C1: env(f.C1), C2: env(f.C2), Valid: 2 * n, WinCols: 2 * n, EdgeX: float64(n),
-		SampleS: f.SampleS * float64(bucket) / 2, TdivS: f.TdivS, PeakDetect: true, Ordered: true}
+	return &engine.Frame{
+		C1: env(f.C1), C2: env(f.C2), Valid: 2 * n, WinCols: 2 * n, EdgeX: float64(n),
+		SampleS: f.SampleS * float64(bucket) / 2, TdivS: f.TdivS, PeakDetect: true, Ordered: true,
+	}
 }
 
 // TRLC-LINKS: REQ-SDS-214
@@ -653,7 +656,7 @@ func (s *slowStream) Start(_ engine.SerialParams, _ engine.StreamTrigger, _ int,
 	s.mu.Lock()
 	if s.starting {
 		s.mu.Unlock()
-		return fmt.Errorf("a stream is already starting")
+		return errors.New("a stream is already starting")
 	}
 	s.starting, s.stopReq, s.label = true, false, label
 	s.mu.Unlock()

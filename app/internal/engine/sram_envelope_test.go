@@ -3,10 +3,9 @@ package engine
 
 import (
 	"math"
+	"open-sds/app/internal/sramcapture"
 	"testing"
 	"time"
-
-	"open-sds/app/internal/sramcapture"
 )
 
 // The envelope covers at least the window asked for: whole even buckets,

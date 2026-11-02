@@ -2,6 +2,7 @@
 package panel
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"strconv"
@@ -30,7 +31,7 @@ var siPrefix = map[rune]float64{
 func parseNumber(text, unit string) (float64, error) {
 	s := strings.TrimSpace(text)
 	if s == "" {
-		return 0, fmt.Errorf("empty value")
+		return 0, errors.New("empty value")
 	}
 	if err := ambiguousComma(text); err != nil {
 		return 0, err
@@ -174,7 +175,7 @@ func parseMatchText(text string) ([]string, error) {
 			return nil, err
 		}
 		if len(body) == 0 {
-			return nil, fmt.Errorf("empty text")
+			return nil, errors.New("empty text")
 		}
 		var toks []string
 		for _, b := range []byte(body) {
@@ -229,7 +230,7 @@ func unescape(s string) (string, error) {
 		}
 		i++
 		if i >= len(s) {
-			return "", fmt.Errorf("text ends in a backslash")
+			return "", errors.New("text ends in a backslash")
 		}
 		switch s[i] {
 		case 'r':
@@ -244,11 +245,11 @@ func unescape(s string) (string, error) {
 			b.WriteByte(s[i])
 		case 'x':
 			if i+2 >= len(s) {
-				return "", fmt.Errorf(`\x needs two hex digits`)
+				return "", errors.New(`\x needs two hex digits`)
 			}
 			v, err := strconv.ParseUint(s[i+1:i+3], 16, 8)
 			if err != nil {
-				return "", fmt.Errorf(`\x needs two hex digits`)
+				return "", errors.New(`\x needs two hex digits`)
 			}
 			b.WriteByte(byte(v))
 			i += 2

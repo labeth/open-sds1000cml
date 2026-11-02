@@ -2,10 +2,9 @@
 package analysis
 
 import (
+	"open-sds/app/internal/decode"
 	"reflect"
 	"testing"
-
-	"open-sds/app/internal/decode"
 )
 
 // The protocols that open each frame with a start marker take their packets
@@ -15,10 +14,13 @@ import (
 // TRLC-LINKS: REQ-SDS-214
 func TestPacketsOpenedFrames(t *testing.T) {
 	lin := decode.Result{OK: true, Proto: "lin", SPB: 50, Spans: []decode.Span{
-		{I0: 100, I1: 800, Text: "BRK", Kind: "sof"}, {I0: 850, I1: 1350, Text: "SYNC", Kind: "rw", Val: 0x55},
-		{I0: 1400, I1: 1900, Text: "IDB2", Kind: "data", Val: 0xB2}, {I0: 2000, I1: 2500, Text: "A5", Kind: "data", Val: 0xA5},
+		{I0: 100, I1: 800, Text: "BRK", Kind: "sof"},
+		{I0: 850, I1: 1350, Text: "SYNC", Kind: "rw", Val: 0x55},
+		{I0: 1400, I1: 1900, Text: "IDB2", Kind: "data", Val: 0xB2},
+		{I0: 2000, I1: 2500, Text: "A5", Kind: "data", Val: 0xA5},
 		{I0: 2500, I1: 3000, Text: "!CK00", Kind: "frame-error", Val: 0},
-		{I0: 5000, I1: 5700, Text: "BRK", Kind: "sof"}, {I0: 5750, I1: 6250, Text: "SYNC", Kind: "rw", Val: 0x55},
+		{I0: 5000, I1: 5700, Text: "BRK", Kind: "sof"},
+		{I0: 5750, I1: 6250, Text: "SYNC", Kind: "rw", Val: 0x55},
 		{I0: 6300, I1: 6800, Text: "ID20", Kind: "data", Val: 0x20},
 	}}
 	ps := Packets(lin, 7000)
@@ -28,8 +30,10 @@ func TestPacketsOpenedFrames(t *testing.T) {
 		t.Fatalf("LIN packets %+v", ps)
 	}
 	swd := decode.Result{OK: true, Proto: "swd", SPB: 20, Spans: []decode.Span{
-		{I0: 10, I1: 10, Kind: "sof"}, {I0: 10, I1: 170, Text: "RDP0", Kind: "data", Val: 0xA5},
-		{I0: 190, I1: 250, Text: "OK", Kind: "data", Val: 1}, {I0: 250, I1: 900, Text: "2BA01477", Kind: "data", Val: 0x2BA01477},
+		{I0: 10, I1: 10, Kind: "sof"},
+		{I0: 10, I1: 170, Text: "RDP0", Kind: "data", Val: 0xA5},
+		{I0: 190, I1: 250, Text: "OK", Kind: "data", Val: 1},
+		{I0: 250, I1: 900, Text: "2BA01477", Kind: "data", Val: 0x2BA01477},
 	}}
 	ps = Packets(swd, 100000)
 	if len(ps) != 1 || !reflect.DeepEqual(ps[0].Bytes, []byte{0xA5, 0x01, 0x2B, 0xA0, 0x14, 0x77}) {

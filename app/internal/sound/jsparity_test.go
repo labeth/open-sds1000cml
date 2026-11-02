@@ -5,12 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"open-sds/app/internal/testenv"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"testing"
-
-	"open-sds/app/internal/testenv"
 )
 
 // pvec is one parity vector: what to run on which samples.
@@ -64,8 +63,10 @@ func goReading(v pvec) any {
 	switch v.Kind {
 	case "measure":
 		l := Measure(v.X)
-		return map[string]any{"n": float64(l.N), "min": num(l.Min), "max": num(l.Max), "vpp": num(l.Vpp), "dc": num(l.DC),
-			"rms": num(l.RMS), "total": num(l.Total), "peak": num(l.Peak), "crestDB": num(l.CrestDB)}
+		return map[string]any{
+			"n": float64(l.N), "min": num(l.Min), "max": num(l.Max), "vpp": num(l.Vpp), "dc": num(l.DC),
+			"rms": num(l.RMS), "total": num(l.Total), "peak": num(l.Peak), "crestDB": num(l.CrestDB),
+		}
 	case "pitch":
 		p := DetectPitch(v.X, v.Fs, PitchRange(v.Range))
 		return map[string]any{"hz": num(p.Hz), "clarity": num(p.Clarity), "ok": p.OK}
@@ -83,11 +84,13 @@ func goReading(v pvec) any {
 			env, efs = Envelope(v.X, v.Fs, 0.02, 0.001)
 		}
 		r := AnalyzeADSR(env, efs, v.On, v.Off)
-		return map[string]any{"envN": float64(len(env)), "envFs": num(efs), "adsr": map[string]any{"ok": r.OK, "why": r.Why,
+		return map[string]any{"envN": float64(len(env)), "envFs": num(efs), "adsr": map[string]any{
+			"ok": r.OK, "why": r.Why,
 			"start": num(r.Start), "peakAt": num(r.PeakAt), "decayEnd": num(r.DecayEnd), "releaseAt": num(r.ReleaseAt), "end": num(r.End),
 			"floor": num(r.Floor), "peak": num(r.Peak), "attack1090": num(r.Attack1090), "attack0100": num(r.Attack0100),
 			"decay": num(r.Decay), "decayTau": num(r.DecayTau), "sustain": num(r.Sustain), "sustainPct": num(r.SustainPct),
-			"sustainDB": num(r.SustainDB), "hasSustain": r.HasSustain, "release": num(r.Release), "releaseTau": num(r.ReleaseTau)}}
+			"sustainDB": num(r.SustainDB), "hasSustain": r.HasSustain, "release": num(r.Release), "releaseTau": num(r.ReleaseTau),
+		}}
 	case "mod":
 		d := Demodulate(v.X, v.Fs, v.Fc, 1000)
 		m := AnalyzeModulation(d)
@@ -96,16 +99,21 @@ func goReading(v pvec) any {
 			"ok": m.OK, "why": m.Why, "fc": num(m.Fc), "hasAM": m.HasAM, "amPct": num(m.AMPct), "amDB": num(m.AMDB), "amRate": num(m.AMRate),
 			"amShape": m.AMShape, "hasFM": m.HasFM, "fmHz": num(m.FMHz), "fmCents": num(m.FMCents), "fmRate": num(m.FMRate),
 			"fmShape": m.FMShape, "wowPct": num(m.WowPct), "flutterPct": num(m.FlutterPct), "wfPct": num(m.WFPct),
-			"amCycles": float64(m.AMCycles), "fmCycles": float64(m.FMCycles)}}
+			"amCycles": float64(m.AMCycles), "fmCycles": float64(m.FMCycles),
+		}}
 	case "sidebands":
 		sp := AudioSpectrum(v.X, v.Fs, v.N)
 		s := AnalyzeSidebands(sp.DBV, sp.BinHz)
-		return map[string]any{"ok": s.OK, "why": s.Why, "fc": num(s.Fc), "fm": num(s.Fm), "ratio": s.Ratio, "beta": num(s.Beta),
-			"fit": num(s.Fit), "lines": float64(s.Lines)}
+		return map[string]any{
+			"ok": s.OK, "why": s.Why, "fc": num(s.Fc), "fm": num(s.Fm), "ratio": s.Ratio, "beta": num(s.Beta),
+			"fit": num(s.Fit), "lines": float64(s.Lines),
+		}
 	case "lfo":
 		l := AnalyzeLFO(v.X, v.Fs)
-		return map[string]any{"ok": l.OK, "why": l.Why, "rateHz": num(l.RateHz), "cycles": float64(l.Cycles), "min": num(l.Min),
-			"max": num(l.Max), "vpp": num(l.Vpp), "mean": num(l.Mean), "risePct": num(l.RisePct), "shape": l.Shape}
+		return map[string]any{
+			"ok": l.OK, "why": l.Why, "rateHz": num(l.RateHz), "cycles": float64(l.Cycles), "min": num(l.Min),
+			"max": num(l.Max), "vpp": num(l.Vpp), "mean": num(l.Mean), "risePct": num(l.RisePct), "shape": l.Shape,
+		}
 	case "harm":
 		sp := AudioSpectrum(v.X, v.Fs, v.N)
 		h := Harmonics(sp, v.F0)
@@ -121,23 +129,31 @@ func goReading(v pvec) any {
 			hs = append(hs, map[string]any{"n": float64(x.N), "hz": num(x.Hz), "dbv": num(x.DBV), "relDB": num(x.RelDB), "found": x.Found})
 		}
 		k := min(64, len(sp.DBV))
-		return map[string]any{"binHz": num(sp.BinHz), "dbv": nums(sp.DBV[:k]), "h": map[string]any{"ok": h.OK, "f0": num(h.F0), "h": hs,
+		return map[string]any{"binHz": num(sp.BinHz), "dbv": nums(sp.DBV[:k]), "h": map[string]any{
+			"ok": h.OK, "f0": num(h.F0), "h": hs,
 			"thdPct": num(h.THDPct), "thdDB": num(h.THDDB), "evenDB": num(h.EvenDB), "oddDB": num(h.OddDB), "evenOdd": num(h.EvenOdd),
-			"floorDBV": num(h.FloorDBV), "character": h.Character, "hum": map[string]any{"found": h.Hum.Found, "mainHz": num(h.Hum.MainHz),
-				"dbv": num(h.Hum.DBV), "sumDBV": num(h.Hum.SumDBV)}}}
+			"floorDBV": num(h.FloorDBV), "character": h.Character, "hum": map[string]any{
+				"found": h.Hum.Found, "mainHz": num(h.Hum.MainHz),
+				"dbv": num(h.Hum.DBV), "sumDBV": num(h.Hum.SumDBV),
+			},
+		}}
 	case "ab":
 		r := CompareAB(v.X, v.Y, v.Fs, v.F0)
-		return map[string]any{"ok": r.OK, "why": r.Why, "f0": num(r.F0), "gainDB": num(r.GainDB), "phaseDeg": num(r.PhaseDeg),
+		return map[string]any{
+			"ok": r.OK, "why": r.Why, "f0": num(r.F0), "gainDB": num(r.GainDB), "phaseDeg": num(r.PhaseDeg),
 			"rmsGainDB": num(r.RMSGainDB), "delayS": num(r.DelayS), "delayOK": r.DelayOK, "thdA": num(r.THDA), "thdB": num(r.THDB),
-			"addedPct": num(r.AddedPct), "addedDB": num(r.AddedDB), "match": num(r.Match)}
+			"addedPct": num(r.AddedPct), "addedDB": num(r.AddedDB), "match": num(r.Match),
+		}
 	case "voct":
 		f := FitVOct(v.Pts, 440)
 		var rows []any
 		for _, r := range f.Rows {
 			rows = append(rows, map[string]any{"v": r.V, "hz": r.Hz, "note": r.Note, "errCents": num(r.ErrCents), "residCents": num(r.ResidCents)})
 		}
-		return map[string]any{"ok": f.OK, "rows": rows, "octPerV": num(f.OctPerV), "scaleCents": num(f.ScaleCents), "trimPct": num(f.TrimPct),
-			"hfDevCents": num(f.HFDevCents), "spanOctaves": num(f.SpanOctaves)}
+		return map[string]any{
+			"ok": f.OK, "rows": rows, "octPerV": num(f.OctPerV), "scaleCents": num(f.ScaleCents), "trimPct": num(f.TrimPct),
+			"hfDevCents": num(f.HFDevCents), "spanOctaves": num(f.SpanOctaves),
+		}
 	case "columns":
 		lo, hi := MinMaxColumns(v.X, v.N)
 		return map[string]any{"lo": nums(lo), "hi": nums(hi)}
@@ -146,9 +162,11 @@ func goReading(v pvec) any {
 		out := map[string]any{"at": num(at), "ok": ok, "c": nil}
 		if ok {
 			c := ExtractCycles(v.X, v.Fs, at, v.Period, 2, 64)
-			out["c"] = map[string]any{"ok": c.OK, "trace": nums(c.Trace), "cycles": float64(c.Cycles), "periodS": num(c.PeriodS),
+			out["c"] = map[string]any{
+				"ok": c.OK, "trace": nums(c.Trace), "cycles": float64(c.Cycles), "periodS": num(c.PeriodS),
 				"min": num(c.Min), "max": num(c.Max), "vpp": num(c.Vpp), "dutyPct": num(c.DutyPct), "riseS": num(c.RiseS),
-				"fallS": num(c.FallS), "slewVus": num(c.SlewVus)}
+				"fallS": num(c.FallS), "slewVus": num(c.SlewVus),
+			}
 		}
 		return out
 	}

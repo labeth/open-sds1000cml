@@ -57,7 +57,7 @@ type decodedRequest struct {
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-001
 func (e *Engine) decodedCall(ctx context.Context, run func() (any, error)) (any, error) {
 	if e.sram == nil {
-		return nil, fmt.Errorf("decoded capture requires the general SRAM image")
+		return nil, errors.New("decoded capture requires the general SRAM image")
 	}
 	req := decodedRequest{ctx: ctx, run: run, done: make(chan decodedReply, 1)}
 	select {
@@ -79,7 +79,7 @@ func (e *Engine) decodedCall(ctx context.Context, run func() (any, error)) (any,
 
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-001
 func (e *Engine) serviceDecodedRequests() {
-	for i := 0; i < 8; i++ {
+	for range 8 {
 		select {
 		case req := <-e.decodedRequests:
 			if err := req.ctx.Err(); err != nil {
@@ -137,7 +137,7 @@ func (e *Engine) pumpDecodedEvents() {
 	// times, so one owner iteration can move several IPC payloads. One read
 	// an iteration caps the transcript near 50 k events/s, and USB-LS and
 	// FlexRay streams overflow the worker's queue.
-	for pass := 0; pass < decodedPumpReads; pass++ {
+	for range decodedPumpReads {
 		batch, err := e.sram.ReadDecodedEventsInto(e.decodedSession.Identity.Epoch, e.decodedScratch)
 		s.maxRead = max(s.maxRead, time.Since(now))
 		s.reads++
@@ -179,11 +179,11 @@ func (e *Engine) bufferDecoded(batch []sramcapture.DecodedEvent) error {
 			s.lost += uint64(v.Count)
 		}
 		if v.Sequence != e.decodedSequence+uint32(k) {
-			err = fmt.Errorf("decoded event sequence discontinuity")
+			err = errors.New("decoded event sequence discontinuity")
 			break
 		}
 		if e.decodedCount+k >= decodedBufferLimit {
-			err = fmt.Errorf("decoded host buffer overflow; transcript incomplete")
+			err = errors.New("decoded host buffer overflow; transcript incomplete")
 			break
 		}
 	}
@@ -213,14 +213,14 @@ func (e *Engine) beginDecodedCapture(ctx context.Context, cfg sramcapture.Config
 	value, err := e.decodedCall(ctx, func() (any, error) {
 		e.decodedStarting = time.Time{} // the session (or its failure) takes over the image
 		if e.soft != nil {
-			return nil, fmt.Errorf("a decoded stream is already running")
+			return nil, errors.New("a decoded stream is already running")
 		}
 		if err := e.decodedTaken(web); err != nil {
 			return nil, err
 		}
 		if cfg.Packet.Enabled && cfg.Packet.Protocol == sramcapture.PacketARINC && cfg.Packet.Aux == 0 {
 			if cfg.Packet.Aux = e.arincAux.Load(); cfg.Packet.Aux == 0 {
-				return nil, fmt.Errorf("ARINC 429 levels are not known yet: show the signal with ARINC decoding and a manual threshold first")
+				return nil, errors.New("ARINC 429 levels are not known yet: show the signal with ARINC decoding and a manual threshold first")
 			}
 		}
 		// a configuration the fabric refuses is refused before the image
@@ -231,7 +231,7 @@ func (e *Engine) beginDecodedCapture(ctx context.Context, cfg sramcapture.Config
 			return nil, err
 		}
 		if cfg.Symbol.Enabled {
-			return nil, fmt.Errorf("the image that triggers this protocol cannot stream its decoded events")
+			return nil, errors.New("the image that triggers this protocol cannot stream its decoded events")
 		}
 		e.soundYield()
 		// Only UART, I2C and SPI stream from the general image; a request for
@@ -260,7 +260,7 @@ func (e *Engine) beginDecodedCapture(ctx context.Context, cfg sramcapture.Config
 			return nil, err
 		}
 		if !supported {
-			return nil, fmt.Errorf("loaded image lacks decoded capture support")
+			return nil, errors.New("loaded image lacks decoded capture support")
 		}
 		e.SetRunning(false) // keeps the status in step: streaming is not RUN
 		if err := e.sram.Halt(ctx); err != nil {
@@ -326,13 +326,13 @@ func (e *Engine) decodedTaken(web bool) error {
 	if !web || e.decodedSession == nil || e.decodedWeb || time.Since(e.decodedContact) >= decodedOrphanAfter {
 		return nil
 	}
-	return fmt.Errorf("the scope is streaming this bus (BUS Stream): end it there first")
+	return errors.New("the scope is streaming this bus (BUS Stream): end it there first")
 }
 
 // TRLC-LINKS: REQ-SDS-013
 func (e *Engine) decodedIdentity(id sramcapture.RecordIdentity) error {
 	if e.decodedSession == nil || e.decodedSession.Identity != id {
-		return fmt.Errorf("decoded capture identity is no longer active")
+		return errors.New("decoded capture identity is no longer active")
 	}
 	return nil
 }
@@ -413,7 +413,7 @@ func (e *Engine) DecodedCaptureStatus(ctx context.Context, id sramcapture.Record
 			return nil, err
 		}
 		if !m.HasRecordIdentity || m.RecordID != id.Record || m.EventEpoch != id.Epoch {
-			return nil, fmt.Errorf("retained record identity changed")
+			return nil, errors.New("retained record identity changed")
 		}
 		return m, nil
 	})
@@ -428,7 +428,7 @@ func (e *Engine) DecodedCaptureStatus(ctx context.Context, id sramcapture.Record
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-033
 func (e *Engine) RecallDecodedRecord(ctx context.Context, id sramcapture.RecordIdentity, offset, count uint32) ([]byte, error) {
 	if uint64(offset)+uint64(count) > uint64(sramcapture.Words) {
-		return nil, fmt.Errorf("decoded recall exceeds SRAM capacity")
+		return nil, errors.New("decoded recall exceeds SRAM capacity")
 	}
 	out := make([]byte, int(count)*4)
 	// Queue each chunk separately: stream readers and panel requests can run
@@ -453,7 +453,7 @@ func (e *Engine) RecallDecodedRecord(ctx context.Context, id sramcapture.RecordI
 			}
 			e.pumpDecodedEvents()
 			if chunk.Len() != int(n)*4 {
-				return nil, fmt.Errorf("decoded recall returned a short chunk")
+				return nil, errors.New("decoded recall returned a short chunk")
 			}
 			return nil, nil
 		})

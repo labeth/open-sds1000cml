@@ -2,13 +2,12 @@
 package panel
 
 import (
+	"open-sds/app/internal/engine"
+	"open-sds/app/internal/superres"
 	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
-
-	"open-sds/app/internal/engine"
-	"open-sds/app/internal/superres"
 )
 
 // An FPGA stack reviews at the session's timebase: one screen of samples with

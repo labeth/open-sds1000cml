@@ -10,7 +10,7 @@ func Transfer(a, b []float64, w, h int, aLo, aHi, bLo, bHi float64) []uint16 {
 		return out
 	}
 	n := min(len(a), len(b))
-	for i := 0; i < n; i++ {
+	for i := range n {
 		x := int((a[i] - aLo) / (aHi - aLo) * float64(w))
 		y := h - 1 - int((b[i]-bLo)/(bHi-bLo)*float64(h))
 		if x < 0 || x >= w || y < 0 || y >= h {

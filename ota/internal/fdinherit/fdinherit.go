@@ -136,7 +136,7 @@ func PPid(pid int) int {
 	if err != nil {
 		return -1
 	}
-	for _, line := range strings.Split(string(b), "\n") {
+	for line := range strings.SplitSeq(string(b), "\n") {
 		if v, ok := strings.CutPrefix(line, "PPid:"); ok {
 			n, err := strconv.Atoi(strings.TrimSpace(v))
 			if err != nil {
@@ -154,7 +154,7 @@ func PPid(pid int) int {
 func AncestorsOfSelf() map[int]bool {
 	out := map[int]bool{}
 	pid := os.Getpid()
-	for i := 0; i < 64; i++ { // bounded against /proc races
+	for range 64 { // bounded against /proc races
 		pid = PPid(pid)
 		if pid <= 0 || out[pid] {
 			break

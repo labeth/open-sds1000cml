@@ -10,8 +10,10 @@ import (
 // NaN positions.
 // TRLC-LINKS: REQ-SDS-218
 func TestFloorIntIsFloor(t *testing.T) {
-	for _, v := range []float64{0, 0.5, 1, 1.999999, -0.000001, -0.5, -1, -1.5, 12345.678, -98765.4321,
-		1<<31 - 0.5, -1 << 31, -1<<31 - 0.5, 3e9, -3e9, math.Nextafter(7, 0), math.Nextafter(-7, 0)} {
+	for _, v := range []float64{
+		0, 0.5, 1, 1.999999, -0.000001, -0.5, -1, -1.5, 12345.678, -98765.4321,
+		1<<31 - 0.5, -1 << 31, -1<<31 - 0.5, 3e9, -3e9, math.Nextafter(7, 0), math.Nextafter(-7, 0),
+	} {
 		if got, want := floorInt(v), int(math.Floor(v)); got != want {
 			t.Errorf("floorInt(%v) = %d, want %d", v, got, want)
 		}

@@ -4,10 +4,9 @@ package web
 import (
 	"context"
 	"encoding/json"
-	"fmt"
+	"errors"
 	"io"
 	"net/http"
-
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/superres"
 )
@@ -49,7 +48,7 @@ func (s *Server) frameTemplate(cfg engine.FPGAStackRequest, points int, toleranc
 		sampleS, edgeX = f.SampleS, f.EdgeX
 	})
 	if sig == nil {
-		return superres.FPGATemplate{}, fmt.Errorf("no frame to take a template from")
+		return superres.FPGATemplate{}, errors.New("no frame to take a template from")
 	}
 	return superres.BuildFPGATemplate(sig, sampleS, edgeX, float64(cfg.Stack.Level), cfg.Stack.Falling, points, tolerance)
 }
@@ -73,19 +72,19 @@ func (s *Server) registerFPGAStack(mux *http.ServeMux) {
 		decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, 16<<10))
 		decoder.DisallowUnknownFields()
 		if err := decoder.Decode(&body); err != nil {
-			http.Error(w, err.Error(), 400)
+			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 		var extra any
 		if err := decoder.Decode(&extra); err != io.EOF {
-			http.Error(w, "expected one request", 400)
+			http.Error(w, "expected one request", http.StatusBadRequest)
 			return
 		}
 		req := body.FPGAStackRequest
 		if m := body.Match; m != nil && m.Points > 0 {
 			tpl, err := s.frameTemplate(req, m.Points, m.Tolerance)
 			if err != nil {
-				http.Error(w, "match: "+err.Error(), 409)
+				http.Error(w, "match: "+err.Error(), http.StatusConflict)
 				return
 			}
 			req.Stack.Template = make([]int, len(tpl.Values))
@@ -98,7 +97,7 @@ func (s *Server) registerFPGAStack(mux *http.ServeMux) {
 		// stack may legitimately take longer than five minutes.
 		res, err := source.FPGAStack(r.Context(), req)
 		if err != nil {
-			http.Error(w, err.Error(), 409)
+			http.Error(w, err.Error(), http.StatusConflict)
 			return
 		}
 		writeJSON(w, struct {

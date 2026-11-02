@@ -3,13 +3,12 @@ package engine
 
 import (
 	"fmt"
+	"open-sds/app/internal/testenv"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
 	"testing"
-
-	"open-sds/app/internal/testenv"
 )
 
 // The stream and bits images' top levels stream the paced counter ramp
@@ -48,9 +47,11 @@ func TestStreamDrumTopRTL(t *testing.T) {
 			}
 			image := filepath.Join(dir, "drum.vvp")
 			args := []string{"-g2012", "-s", "tb_top_stream_drum", "-o", image, "-I", rtl, defs}
-			for _, f := range append([]string{"top.v", "record.v", "transport.v", "adc_unpack.v", "gpmc_slave.v", "ddio_pair.v", "lane_in.v",
+			for _, f := range append([]string{
+				"top.v", "record.v", "transport.v", "adc_unpack.v", "gpmc_slave.v", "ddio_pair.v", "lane_in.v",
 				"sim/ddr_model.v", "sim/tb_top_stream_drum.v", "panel_scan.v", "box_decim.v", "stream_packetizer.v", "stream_banks.v",
-				"stream_drum.v", "stream_marks.v"}, files...) {
+				"stream_drum.v", "stream_marks.v",
+			}, files...) {
 				args = append(args, filepath.Join(rtl, f))
 			}
 			if out, err := exec.Command("iverilog", args...).CombinedOutput(); err != nil {

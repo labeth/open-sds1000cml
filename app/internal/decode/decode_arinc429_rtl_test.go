@@ -41,18 +41,20 @@ func TestARINC429TriggerRTL(t *testing.T) {
 			fmt.Fprintf(&input, "%02x\n", v)
 		}
 		path := filepath.Join(dir, "samples.mem")
-		if err := os.WriteFile(path, []byte(input.String()), 0600); err != nil {
+		if err := os.WriteFile(path, []byte(input.String()), 0o600); err != nil {
 			t.Fatal(err)
 		}
-		argv := []string{image, "+input=" + path, fmt.Sprintf("+length=%d", len(wave)), fmt.Sprintf("+period=%d", period),
-			fmt.Sprintf("+pattern=%08x", pattern), fmt.Sprintf("+mask=%08x", mask)}
+		argv := []string{
+			image, "+input=" + path, fmt.Sprintf("+length=%d", len(wave)), fmt.Sprintf("+period=%d", period),
+			fmt.Sprintf("+pattern=%08x", pattern), fmt.Sprintf("+mask=%08x", mask),
+		}
 		argv = append(argv, args...)
 		output, err := exec.Command("vvp", argv...).CombinedOutput()
 		if err != nil {
 			t.Fatalf("simulate: %v\n%s", err, output)
 		}
 		var events []arincRTLEvent
-		for _, line := range strings.Split(strings.TrimSpace(string(output)), "\n") {
+		for line := range strings.SplitSeq(strings.TrimSpace(string(output)), "\n") {
 			if line == "" {
 				continue
 			}
@@ -107,7 +109,7 @@ func TestARINC429TriggerRTL(t *testing.T) {
 			t.Run(fmt.Sprintf("T%d/%s", period, mode), func(t *testing.T) {
 				var wave []uint8
 				arincIdle(&wave, 4*period)
-				words := [][]int{arincMakeWord(0312, 1, 0x2abcd, 3), arincMakeWord(0107, 2, 0x15a3f, 1), arincMakeWord(0, 0, 0, 0)}
+				words := [][]int{arincMakeWord(0o312, 1, 0x2abcd, 3), arincMakeWord(0o107, 2, 0x15a3f, 1), arincMakeWord(0, 0, 0, 0)}
 				if mode == "parity" {
 					words[1][31] ^= 1
 				}
@@ -133,7 +135,7 @@ func TestARINC429TriggerRTL(t *testing.T) {
 								wave[start+(c+4)*period+1] = 128
 							}
 						case "hysteresis":
-							for c := 0; c < 32; c++ { // excursions inside hysteresis must not make a second pulse
+							for c := range 32 { // excursions inside hysteresis must not make a second pulse
 								if bits[c] == 1 {
 									wave[start+c*period+1] = 150
 								} else {
@@ -141,7 +143,7 @@ func TestARINC429TriggerRTL(t *testing.T) {
 								}
 							}
 						case "direct-polarity":
-							for c := 0; c < 31; c++ {
+							for c := range 31 {
 								if bits[c] != bits[c+1] {
 									for j := period / 2; j < period; j++ {
 										wave[start+c*period+j] = wave[start+c*period]
@@ -169,7 +171,7 @@ func TestARINC429TriggerRTL(t *testing.T) {
 					pattern, mask = 0x12345678, 0xffffffff
 				}
 				if mode == "mask" {
-					pattern, mask = 0312, 0xff
+					pattern, mask = 0o312, 0xff
 				}
 				var args []string
 				base := uint64(0xfffffff0)
@@ -186,11 +188,11 @@ func TestARINC429TriggerRTL(t *testing.T) {
 			t.Run(fmt.Sprintf("gap-boundary/T%d/extra%d", period, extra), func(t *testing.T) {
 				var wave []uint8
 				arincIdle(&wave, 4*period)
-				arincAppendWord(&wave, arincMakeWord(0312, 1, 0x2abcd, 3), period)
+				arincAppendWord(&wave, arincMakeWord(0o312, 1, 0x2abcd, 3), period)
 				// The pulse-start spacing is exactly floor(2.5T), or one
 				// accepted sample longer. Only the latter starts a new word.
 				arincIdle(&wave, period*3/2+extra)
-				arincAppendWord(&wave, arincMakeWord(0107, 2, 0x15a3f, 1), period)
+				arincAppendWord(&wave, arincMakeWord(0o107, 2, 0x15a3f, 1), period)
 				arincIdle(&wave, 4*period)
 				check(t, wave, period, 0, 0, 0xfffffff0, run(t, wave, period, 0, 0))
 			})
@@ -202,10 +204,10 @@ func TestARINC429TriggerRTL(t *testing.T) {
 			var wave []uint8
 			arincIdle(&wave, 4*period)
 			first := len(wave)
-			arincAppendWord(&wave, arincMakeWord(0312, 1, 0x2abcd, 3), period)
+			arincAppendWord(&wave, arincMakeWord(0o312, 1, 0x2abcd, 3), period)
 			end := len(wave)
 			arincIdle(&wave, 4*period)
-			arincAppendWord(&wave, arincMakeWord(0107, 2, 0x15a3f, 1), period)
+			arincAppendWord(&wave, arincMakeWord(0o107, 2, 0x15a3f, 1), period)
 			arincIdle(&wave, 4*period)
 			args := []string{}
 			p := period

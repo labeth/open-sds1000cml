@@ -4,10 +4,9 @@ package engine
 import (
 	"fmt"
 	"math"
-	"sync/atomic"
-
 	"open-sds/app/internal/decode"
 	"open-sds/app/internal/sramcapture"
+	"sync/atomic"
 )
 
 // The pulse, slope and video triggers are the FPGA's (ADR-HARDWARE-QUALIFIERS):
@@ -34,7 +33,7 @@ func (e *Engine) learnQualExtentOf(f *Frame, sc [2]chScale, lv *frameLevels) {
 	if f == nil || f.Valid < 64 {
 		return
 	}
-	for ch := 0; ch < 2; ch++ {
+	for ch := range 2 {
 		codes := f.C1
 		if ch == 1 {
 			codes = f.C2
@@ -154,7 +153,7 @@ func (e *Engine) planQualifier(tp trigParams, ch int, rising bool) (sramcapture.
 // ticks from W = m*P+1 clocks and over M ticks from W = (M+1)*P+1, so a
 // minimum of W clocks is (W-1)/P ticks and a maximum W/P-1, exact at P 1.
 // TRLC-LINKS: REQ-SDS-011
-func qualTicks(minNs, maxNs float64) (prescale uint32, minTicks, maxTicks uint32) {
+func qualTicks(minNs, maxNs float64) (prescale, minTicks, maxTicks uint32) {
 	longest := math.Max(math.Max(minNs, maxNs), 0)
 	prescale = 1
 	for prescale < sramcapture.QualMaxPrescale && longest/float64(sramcapture.QualTickNs*int(prescale)) > sramcapture.QualMaxTicks {
@@ -264,8 +263,10 @@ func (e *Engine) planZones() (z sramcapture.ZoneConfig, delayS float64, why stri
 			start, end := int(math.Floor(lo/bs)), int(math.Ceil(hi/bs))
 			minStart, maxEnd = min(minStart, start), max(maxEnd, end)
 			cl, ch := min(max(zn.CodeLo, 0), 255), min(max(zn.CodeHi, 0), 255)
-			ws[i] = sramcapture.ZoneWindow{Enabled: true, Channel: uint8(zn.Ch & 1), Lo: uint8(min(cl, ch)), Hi: uint8(max(cl, ch)),
-				Start: int16(max(start, -1024)), End: int16(min(end, 1024)), Avoid: zn.Avoid}
+			ws[i] = sramcapture.ZoneWindow{
+				Enabled: true, Channel: uint8(zn.Ch & 1), Lo: uint8(min(cl, ch)), Hi: uint8(max(cl, ch)),
+				Start: int16(max(start, -1024)), End: int16(min(end, 1024)), Avoid: zn.Avoid,
+			}
 		}
 		wait := max(maxEnd+1, 1)
 		if minStart < -1000 || maxEnd > 1000 || wait-minStart+1 > 1023 {

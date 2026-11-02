@@ -2,11 +2,10 @@
 package web
 
 import (
+	"open-sds/app/internal/testenv"
 	"os"
 	"sync"
 	"testing"
-
-	"open-sds/app/internal/testenv"
 )
 
 // rigInverter is the display invert the CH tabs' Invert rows drive (SCPI's

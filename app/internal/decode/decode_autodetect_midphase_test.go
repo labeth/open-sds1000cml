@@ -11,7 +11,7 @@ import (
 // TRLC-LINKS: REQ-SDS-018
 func pair(hp, at, bits int) (clk, dat []uint8) {
 	v := 1
-	for b := 0; b < bits; b++ {
+	for range bits {
 		v = (v*1103515245 + 12345) & 0x7fffffff
 		bit := uint8(40 + 160*((v>>16)&1))
 		prev := dat

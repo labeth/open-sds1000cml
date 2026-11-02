@@ -10,7 +10,7 @@ import (
 // TRLC-LINKS: REQ-SDS-016
 func TestInterleaveCalibrationRotationAndGuards(t *testing.T) {
 	c := InterleaveCalibration{Vdiv: [2]float64{2, 2}, Offset: [2][5]float64{{3, -6, -7, 5, 5}, {-2, -1, 0, 1, 2}}}
-	for r := 0; r < 5; r++ {
+	for r := range 5 {
 		n := 50000
 		a := make([]uint8, n)
 		b := make([]uint8, n)
@@ -113,7 +113,7 @@ func TestVerifiedInterleaveRanges(t *testing.T) {
 func TestInterleaveGainOnlyAtMeasuredScale(t *testing.T) {
 	c := InterleaveCalibration{Vdiv: [2]float64{2, 2}, VerifiedVdiv: [2][]float64{{1}, {1}}, Offset: [2][5]float64{{3, -6, -7, 5, 5}, {-2, -1, 0, 1, 2}}, GainVdiv: [2]float64{1, 1}, Gain: [2][5]float64{{1.02, .98, 1, 1, 1}, {.99, 1.01, 1, 1, 1}}, GainOffset: [2][5]float64{{.1, -.1, 0, 0, 0}, {0, 0, .1, -.1, 0}}}
 	for _, scale := range [][2]float64{{1, 1}, {2, 2}, {1, 2}} {
-		for rotation := 0; rotation < 5; rotation++ {
+		for rotation := range 5 {
 			a, b := make([]uint8, 5000), make([]uint8, 5000)
 			q1, q2 := make([]uint16, 5000), make([]uint16, 5000)
 			for ch, x := range [][]uint8{a, b} {
@@ -144,7 +144,7 @@ func TestInterleaveGainOnlyAtMeasuredScale(t *testing.T) {
 func TestApertureCorrectionAgainstKnownSampleTimes(t *testing.T) {
 	delays := [5]float64{.1, -.2, .15, -.1, .05}
 	for _, hz := range []float64{1e6, 5e6, 25e6, 31.25e6, 50e6} {
-		for rotation := 0; rotation < 5; rotation++ {
+		for rotation := range 5 {
 			q := make([]uint16, 4000)
 			codes := make([]uint8, len(q))
 			truth := make([]float64, len(q))
@@ -198,7 +198,7 @@ func TestDebiasEnvelope(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-016
 func TestCorrectApertureIsTheFormula(t *testing.T) {
 	r := rand.New(rand.NewSource(16))
-	for k := 0; k < 200; k++ {
+	for k := range 200 {
 		n := 5 + r.Intn(3000)
 		q := make([]uint16, n)
 		for i := range q {

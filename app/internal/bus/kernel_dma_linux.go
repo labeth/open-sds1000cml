@@ -2,6 +2,7 @@
 package bus
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"runtime"
@@ -21,10 +22,10 @@ type kernelDMADrainer struct {
 // TRLC-LINKS: REQ-SDS-002, REQ-SDS-081, REQ-SDS-134
 func (d *Dev) EnableKernelDMA() error {
 	if unsafe.Sizeof(uintptr(0)) != 4 {
-		return fmt.Errorf("bus: kernel DMA ABI requires 32-bit ARM scope")
+		return errors.New("bus: kernel DMA ABI requires 32-bit ARM scope")
 	}
 	if d.edma != nil || d.kernelDMA != nil {
-		return fmt.Errorf("bus: DMA already enabled")
+		return errors.New("bus: DMA already enabled")
 	}
 	f, err := os.OpenFile("/dev/acq_dma", os.O_RDWR, 0)
 	if err != nil {
@@ -59,10 +60,10 @@ func (d *Dev) CloseKernelDMA() error {
 // TRLC-LINKS: REQ-SDS-134
 func (k *kernelDMADrainer) pop(sel uint16, dst []byte) error {
 	if k.streaming {
-		return fmt.Errorf("bus: kernel stream owns GPMC until CloseKernelDMA")
+		return errors.New("bus: kernel stream owns GPMC until CloseKernelDMA")
 	}
 	if sel != 25 || len(dst) == 0 || len(dst) > 16384 || len(dst)%2 != 0 {
-		return fmt.Errorf("bus: invalid kernel pop selector/size")
+		return errors.New("bus: invalid kernel pop selector/size")
 	}
 	a := [4]uint32{uint32(len(dst)), uint32(uintptr(unsafe.Pointer(&dst[0]))), 0, 0}
 	_, _, e := syscall.Syscall(syscall.SYS_IOCTL, k.file.Fd(), 0x40105101, uintptr(unsafe.Pointer(&a)))
@@ -79,13 +80,13 @@ func (k *kernelDMADrainer) pop(sel uint16, dst []byte) error {
 // TRLC-LINKS: REQ-SDS-134
 func (d *Dev) StartKernelStream(log, source, target, seconds uint32) error {
 	if d.kernelDMA == nil {
-		return fmt.Errorf("bus: kernel DMA disabled")
+		return errors.New("bus: kernel DMA disabled")
 	}
 	if d.kernelDMA.streaming {
-		return fmt.Errorf("bus: kernel stream already started")
+		return errors.New("bus: kernel stream already started")
 	}
 	if log < 8 || log > 20 || source > 1 || target == 0 || seconds == 0 || seconds > 30 {
-		return fmt.Errorf("bus: invalid kernel stream configuration")
+		return errors.New("bus: invalid kernel stream configuration")
 	}
 	a := [4]uint32{log, source, target, seconds}
 	_, _, e := syscall.Syscall(syscall.SYS_IOCTL, d.kernelDMA.file.Fd(), 0x40105103, uintptr(unsafe.Pointer(&a)))
@@ -101,13 +102,13 @@ func (d *Dev) StartKernelStream(log, source, target, seconds uint32) error {
 // TRLC-LINKS: REQ-SDS-134
 func (d *Dev) ReadKernelStream(dst []byte) (int, error) {
 	if d.kernelDMA == nil {
-		return 0, fmt.Errorf("bus: kernel DMA disabled")
+		return 0, errors.New("bus: kernel DMA disabled")
 	}
 	if !d.kernelDMA.streaming {
-		return 0, fmt.Errorf("bus: kernel stream not started")
+		return 0, errors.New("bus: kernel stream not started")
 	}
 	if len(dst) < 16400 {
-		return 0, fmt.Errorf("bus: kernel stream buffer too small")
+		return 0, errors.New("bus: kernel stream buffer too small")
 	}
 	return d.kernelDMA.file.Read(dst)
 }
@@ -116,7 +117,7 @@ func (d *Dev) ReadKernelStream(dst []byte) (int, error) {
 func (d *Dev) KernelStreamStats() ([8]uint32, error) {
 	var stats [8]uint32
 	if d.kernelDMA == nil {
-		return stats, fmt.Errorf("bus: kernel DMA disabled")
+		return stats, errors.New("bus: kernel DMA disabled")
 	}
 	_, _, e := syscall.Syscall(syscall.SYS_IOCTL, d.kernelDMA.file.Fd(), 0x80205104, uintptr(unsafe.Pointer(&stats)))
 	if e != 0 {

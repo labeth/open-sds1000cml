@@ -13,7 +13,7 @@ import (
 func TestOppositeEdgeBucket(t *testing.T) {
 	// A square of 20-bucket periods: high from bucket 10 to 19, low 0-9.
 	pairs := make([]uint8, 0, 200)
-	for b := 0; b < 100; b++ {
+	for b := range 100 {
 		lo, hi := uint8(50), uint8(50)
 		switch {
 		case b%20 == 10: // a rising edge inside the bucket
@@ -76,7 +76,7 @@ func TestEdgeDetailRate(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-021
 func TestNearestEdgeBucket(t *testing.T) {
 	pairs := make([]uint8, 0, 200)
-	for b := 0; b < 100; b++ { // low 0-29, a rise inside 30, high 31-59, a fall between 59 and 60
+	for b := range 100 { // low 0-29, a rise inside 30, high 31-59, a fall between 59 and 60
 		lo, hi := uint8(50), uint8(50)
 		switch {
 		case b == 30:

@@ -3,10 +3,10 @@ package panel
 
 import (
 	"fmt"
-	"time"
-
 	"open-sds/app/internal/analog"
 	"open-sds/app/internal/engine"
+	"strconv"
+	"time"
 )
 
 // RefCols is a reference's width: one point per screen column.
@@ -189,8 +189,10 @@ func (c *Controller) RefsExport() [2]RefExport {
 	var out [2]RefExport
 	for i, r := range c.refs {
 		if r.has {
-			e := RefExport{Has: true, Show: r.show, Gen: r.gen, At: r.at.UnixMilli(), Cols: RefCols, C1: ints(r.c1), C2: ints(r.c2),
-				TdivS: r.tdiv, PosFrac: r.posFrac}
+			e := RefExport{
+				Has: true, Show: r.show, Gen: r.gen, At: r.at.UnixMilli(), Cols: RefCols, C1: ints(r.c1), C2: ints(r.c2),
+				TdivS: r.tdiv, PosFrac: r.posFrac,
+			}
 			for ch := range e.Vdiv {
 				p := max(r.probe[ch], 1)
 				e.Vdiv[ch], e.Off[ch], e.Probe[ch] = r.vdiv[ch]*p, r.off[ch]*p, p
@@ -225,7 +227,7 @@ func (c *Controller) RefTags() [2]RefTag {
 // TRLC-LINKS: REQ-SDS-227
 func (c *Controller) RefAction(slot int, op string) SetResult {
 	if slot < 0 || slot > 1 {
-		return SetResult{Error: "no reference slot " + fmt.Sprint(slot)}
+		return SetResult{Error: "no reference slot " + strconv.Itoa(slot)}
 	}
 	n := string(rune('a' + slot))
 	switch op {
@@ -271,8 +273,10 @@ type cmpSetup struct {
 // TRLC-LINKS: REQ-SDS-138, REQ-SDS-224
 func (c *Controller) takeSetup() cmpSetup {
 	st := c.eng.Snapshot()
-	s := cmpSetup{has: true, tdiv: st.TdivSet(), posFrac: st.TrigPosFrac, trigCode: st.TrigCode,
-		trigSrc: st.TrigSource & 1, rising: st.TrigRising, trigType: st.TrigType & 3}
+	s := cmpSetup{
+		has: true, tdiv: st.TdivSet(), posFrac: st.TrigPosFrac, trigCode: st.TrigCode,
+		trigSrc: st.TrigSource & 1, rising: st.TrigRising, trigType: st.TrigType & 3,
+	}
 	if st.SerialMode != 0 {
 		s.trigType = 0
 	}
@@ -300,7 +304,7 @@ func (c *Controller) applySetup(s cmpSetup) {
 		_ = c.setTrigPos(s.posFrac)
 	}
 	if c.fe != nil {
-		for ch := 0; ch < 2; ch++ {
+		for ch := range 2 {
 			c.setVdiv(ch, s.vidx[ch])
 			c.fe.SetOffset(ch, s.offReq[ch])
 		}

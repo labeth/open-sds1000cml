@@ -2,10 +2,9 @@
 package engine
 
 import (
+	"open-sds/app/internal/sramcapture"
 	"runtime/debug"
 	"testing"
-
-	"open-sds/app/internal/sramcapture"
 )
 
 // The SRAM loop (the instrument's) runs with the memory backstop above a

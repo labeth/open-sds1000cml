@@ -33,7 +33,7 @@ const usblsBitrate = 1_500_000 // USB low-speed is fixed at 1.5 Mbit/s
 // TRLC-LINKS: REQ-SDS-018
 func usblsLSB(v, n int) []int {
 	out := make([]int, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		out[i] = (v >> i) & 1
 	}
 	return out
@@ -45,7 +45,7 @@ func usblsLSB(v, n int) []int {
 // TRLC-LINKS: REQ-SDS-018
 func usblsRev(num, count int) int {
 	out := 0
-	for i := 0; i < count; i++ {
+	for i := range count {
 		if num>>i&1 == 1 {
 			out |= 1 << (count - 1 - i)
 		}
@@ -203,7 +203,7 @@ func oracleUSBLSWaveKA(sr float64, nKA int, kaGapBits float64, packets [][]int, 
 		}
 	}
 	emit(stJ, 20) // lead idle
-	for k := 0; k < nKA; k++ {
+	for range nKA {
 		sym(0, 0, 2)           // keep-alive: bare EOP (2 bit-times SE0)
 		emit(stJ, 1+kaGapBits) // closing J + inter-KA idle
 	}

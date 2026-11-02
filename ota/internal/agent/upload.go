@@ -4,6 +4,7 @@ package agent
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"hash"
 	"os"
@@ -41,7 +42,7 @@ type uploadSession struct {
 func (a *Agent) newUpload(dest string, size int64, sha string, mode uint32) (string, error) {
 	dest = filepath.Clean(dest)
 	if !filepath.IsAbs(dest) {
-		return "", fmt.Errorf("upload: dest must be absolute")
+		return "", errors.New("upload: dest must be absolute")
 	}
 	if err := os.MkdirAll(filepath.Dir(dest), 0o755); err != nil {
 		return "", err
@@ -56,7 +57,7 @@ func (a *Agent) newUpload(dest string, size int64, sha string, mode uint32) (str
 		}
 	}
 	if len(a.ups) >= 8 {
-		return "", fmt.Errorf("upload: too many concurrent sessions")
+		return "", errors.New("upload: too many concurrent sessions")
 	}
 	id := "up-" + strconv.FormatInt(time.Now().UnixNano(), 36)
 	// Temp file in the DESTINATION's directory so the final rename is same-
@@ -99,10 +100,10 @@ func (a *Agent) writeUpload(id string, offset int64, data []byte) (int, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.f == nil {
-		return 0, fmt.Errorf("upload: session closed")
+		return 0, errors.New("upload: session closed")
 	}
 	if s.size > 0 && offset+int64(len(data)) > s.size {
-		return 0, fmt.Errorf("upload: chunk exceeds declared size")
+		return 0, errors.New("upload: chunk exceeds declared size")
 	}
 	n, err := s.f.WriteAt(data, offset)
 	if offset == s.hashed {
@@ -129,7 +130,7 @@ func (a *Agent) commitUpload(id string) (string, string, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.f == nil {
-		return "", "", fmt.Errorf("upload: session already committed")
+		return "", "", errors.New("upload: session already committed")
 	}
 	if err := s.f.Sync(); err != nil {
 		return "", "", err
@@ -149,7 +150,7 @@ func (a *Agent) commitUpload(id string) (string, string, error) {
 	// (below) catches any gap — a sparse-zero hole cannot match.
 	if s.size > 0 && s.sha == "" {
 		os.Remove(s.tmp)
-		return "", "", fmt.Errorf("upload: sha256 required when size is declared (guards against sparse/out-of-order gaps)")
+		return "", "", errors.New("upload: sha256 required when size is declared (guards against sparse/out-of-order gaps)")
 	}
 	var sum string
 	if s.hashed == s.written {

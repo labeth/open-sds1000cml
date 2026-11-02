@@ -58,7 +58,8 @@ func irMarks(S sliced, colTimeS float64) ([]irMark, bool) {
 // irDecode runs the line through irMarks and a protocol's frame reader.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-234
 func irDecode(proto string, codes []uint8, colTimeS float64, cfg IRCfg,
-	read func(m []irMark, us func(float64) float64, n int, out *irOut)) Result {
+	read func(m []irMark, us func(float64) float64, n int, out *irOut),
+) Result {
 	S := sliceChannel(codes, cfg.Threshold, cfg.HaveThr)
 	if !S.ok {
 		return Result{Proto: proto, Error: S.reason}
@@ -73,8 +74,10 @@ func irDecode(proto string, codes []uint8, colTimeS float64, cfg IRCfg,
 	if len(out.spans) == 0 {
 		return Result{Proto: proto, Error: "no " + irNames[proto] + " frame"}
 	}
-	res := Result{OK: out.good, Proto: proto, Spans: out.spans, Text: strings.Join(out.toks, " "), Bytes: out.units,
-		Thr: S.threshold, Inverted: high, SPB: out.unitUs * 1e-6 / colTimeS, FrameBits: out.frameBits}
+	res := Result{
+		OK: out.good, Proto: proto, Spans: out.spans, Text: strings.Join(out.toks, " "), Bytes: out.units,
+		Thr: S.threshold, Inverted: high, SPB: out.unitUs * 1e-6 / colTimeS, FrameBits: out.frameBits,
+	}
 	if out.unitUs > 0 {
 		res.Baud = int(math.Round(1e6 / out.unitUs))
 	}
@@ -139,7 +142,7 @@ func DecodeIRNEC(codes []uint8, colTimeS float64, cfg IRCfg) Result {
 			var vals [4]int
 			ok := true
 			j := i + 1
-			for b := 0; b < 32; b++ {
+			for b := range 32 {
 				if j+1 >= len(m) {
 					ok = false
 					break
@@ -165,7 +168,7 @@ func DecodeIRNEC(codes []uint8, colTimeS float64, cfg IRCfg) Result {
 				i = j - 1
 				continue
 			}
-			for k := 0; k < 4; k++ {
+			for k := range 4 {
 				x0, x1 := m[i+1+8*k].x0, m[i+9+8*k].x0
 				txt, kind := hex2(vals[k]), "data"
 				switch k {
@@ -237,7 +240,7 @@ func DecodeIRSIRC(codes []uint8, colTimeS float64, cfg IRCfg) Result {
 			}
 			field := func(from, cnt int, pfx string) {
 				v := 0
-				for k := 0; k < cnt; k++ {
+				for k := range cnt {
 					v |= bits[from+k] << k
 				}
 				o.add(m[i+1+from].x0, m[i+from+cnt].x1, n, pfx+hex2(v), "data", v, true)
@@ -304,7 +307,7 @@ func DecodeIRRC5(codes []uint8, colTimeS float64, cfg IRCfg) Result {
 	return irDecode("irrc5", codes, colTimeS, cfg, func(m []irMark, us func(float64) float64, n int, o *irOut) {
 		const half = 889.0
 		o.unitUs = 2 * half
-		for i := 0; i < len(m); i++ {
+		for i := range m {
 			// a frame opens after an idle longer than any space in one
 			if (i > 0 && us(m[i].x0-m[i-1].x1) < 5000) || (i == 0 && us(m[0].x0) < 2000) {
 				continue
@@ -320,7 +323,7 @@ func DecodeIRRC5(codes []uint8, colTimeS float64, cfg IRCfg) Result {
 			}
 			bits := make([]int, 14)
 			ok := true
-			for b := 0; b < 14; b++ {
+			for b := range 14 {
 				switch {
 				case lv[2*b] == 0 && lv[2*b+1] == 1:
 					bits[b] = 1
@@ -338,10 +341,10 @@ func DecodeIRRC5(codes []uint8, colTimeS float64, cfg IRCfg) Result {
 			bx := func(b int) float64 { return xs[2*b] }
 			o.add(bx(2), bx(3), n, fmt.Sprintf("T%d", bits[2]), "rw", bits[2], false)
 			a, c := 0, 0
-			for k := 0; k < 5; k++ {
+			for k := range 5 {
 				a = a<<1 | bits[3+k]
 			}
-			for k := 0; k < 6; k++ {
+			for k := range 6 {
 				c = c<<1 | bits[8+k]
 			}
 			c |= (1 - bits[1]) << 6
@@ -433,7 +436,7 @@ func DecodeIRRC6(codes []uint8, colTimeS float64, cfg IRCfg) Result {
 			}
 			for b := 0; b < len(bits)/8; b++ {
 				v := 0
-				for k := 0; k < 8; k++ {
+				for k := range 8 {
 					v = v<<1 | bits[8*b+k]
 				}
 				txt := hex2(v)

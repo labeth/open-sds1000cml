@@ -4,6 +4,7 @@ package decode
 import (
 	"fmt"
 	"math"
+	"strconv"
 	"strings"
 )
 
@@ -152,18 +153,18 @@ func decodeRCEncode(codes lineIn, colTimeS float64, cfg LineCfg) Result {
 		spans = append(spans, pspan(f[0].x0, f[0].x0, n, "", "sof", 0))
 		trits := make([]int, 12)
 		allTrits := true
-		for t := 0; t < 12; t++ {
+		for t := range 12 {
 			a, b := f[2*t], f[2*t+1]
 			trits[t] = rcTrit([4]float64{a.x1 - a.x0, a.gap, b.x1 - b.x0, b.gap})
 			allTrits = allTrits && trits[t] >= 0
 		}
 		bad := false
 		if cfg.Variant == 12 || (cfg.Variant != 24 && allTrits) {
-			for t := 0; t < 12; t++ {
+			for t := range 12 {
 				txt, kind := "", "data"
 				switch trits[t] {
 				case 0, 1:
-					txt = fmt.Sprint(trits[t])
+					txt = strconv.Itoa(trits[t])
 				case 2:
 					txt = "F"
 				default:
@@ -177,9 +178,9 @@ func decodeRCEncode(codes lineIn, colTimeS float64, cfg LineCfg) Result {
 				frameBits = 12
 			}
 		} else {
-			for by := 0; by < 3; by++ {
+			for by := range 3 {
 				v, ok := 0, true
-				for k := 0; k < 8; k++ {
+				for k := range 8 {
 					p := f[8*by+k]
 					b := rcBit(p.x1-p.x0, p.gap)
 					if b < 0 {
@@ -209,8 +210,10 @@ func decodeRCEncode(codes lineIn, colTimeS float64, cfg LineCfg) Result {
 	if len(spans) == 0 {
 		return Result{Proto: "rcencode", Error: "no encoder frame"}
 	}
-	res := Result{OK: good, Proto: "rcencode", Spans: spans, Text: strings.Join(toks, " "), Bytes: units,
-		Thr: S.threshold, Inverted: !high, SPB: short, FrameBits: frameBits}
+	res := Result{
+		OK: good, Proto: "rcencode", Spans: spans, Text: strings.Join(toks, " "), Bytes: units,
+		Thr: S.threshold, Inverted: !high, SPB: short, FrameBits: frameBits,
+	}
 	if colTimeS > 0 && short > 0 {
 		res.Baud = int(math.Round(1 / (short * colTimeS)))
 	}
@@ -330,7 +333,7 @@ func decodeOOK(codes lineIn, colTimeS float64, cfg LineCfg) Result {
 		// a burst opens with its first edge at a bit's middle or start: the
 		// pairing that reads more bits wins (the wrong one breaks at the
 		// first double-length run)
-		for off := 0; off < 2; off++ {
+		for off := range 2 {
 			var b []int
 			var x []float64
 			for j := off; j+1 < len(lv); j += 2 {
@@ -424,8 +427,10 @@ func decodeOOK(codes lineIn, colTimeS float64, cfg LineCfg) Result {
 	if len(spans) == 0 {
 		return Result{Proto: "ook", Error: "no Oregon burst"}
 	}
-	res := Result{OK: good, Proto: "ook", Spans: spans, Text: strings.Join(toks, " "), Bytes: units,
-		Thr: S.threshold, SPB: 2 * hpRead, FrameBits: ver}
+	res := Result{
+		OK: good, Proto: "ook", Spans: spans, Text: strings.Join(toks, " "), Bytes: units,
+		Thr: S.threshold, SPB: 2 * hpRead, FrameBits: ver,
+	}
 	if colTimeS > 0 {
 		res.Baud = int(math.Round(1 / (2 * hpRead * colTimeS)))
 	}
@@ -656,8 +661,10 @@ func decodeMiller(codes lineIn, colTimeS float64, cfg LineCfg) Result {
 		}
 		k = j // the edge after the idle opens the next message
 	}
-	res := Result{OK: good, Proto: "miller", Spans: spans, Text: strings.Join(toks, " "), Bytes: units,
-		Thr: S.threshold, SPB: T, Inverted: pauses}
+	res := Result{
+		OK: good, Proto: "miller", Spans: spans, Text: strings.Join(toks, " "), Bytes: units,
+		Thr: S.threshold, SPB: T, Inverted: pauses,
+	}
 	if inMsg > 0 {
 		res.Cover = float64(halfMore) / float64(inMsg)
 	}
@@ -672,12 +679,14 @@ func decodeMiller(codes lineIn, colTimeS float64, cfg LineCfg) Result {
 
 // morseCode is the Morse alphabet the decoder reads, a code as dots and
 // dashes.
-var morseCode = map[string]byte{".-": 'A', "-...": 'B', "-.-.": 'C', "-..": 'D', ".": 'E', "..-.": 'F', "--.": 'G',
+var morseCode = map[string]byte{
+	".-": 'A', "-...": 'B', "-.-.": 'C', "-..": 'D', ".": 'E', "..-.": 'F', "--.": 'G',
 	"....": 'H', "..": 'I', ".---": 'J', "-.-": 'K', ".-..": 'L', "--": 'M', "-.": 'N', "---": 'O', ".--.": 'P',
 	"--.-": 'Q', ".-.": 'R', "...": 'S', "-": 'T', "..-": 'U', "...-": 'V', ".--": 'W', "-..-": 'X', "-.--": 'Y',
 	"--..": 'Z', ".----": '1', "..---": '2', "...--": '3', "....-": '4', ".....": '5', "-....": '6', "--...": '7',
 	"---..": '8', "----.": '9', "-----": '0', ".-.-.-": '.', "--..--": ',', "---...": ':', "..--..": '?',
-	"-....-": '-', "-..-.": '/', "-.--.": '(', "-.--.-": ')', "-...-": '=', ".-.-.": '+', ".--.-.": '@'}
+	"-....-": '-', "-..-.": '/', "-.--.": '(', "-.--.-": ')', "-...-": '=', ".-.-.": '+', ".--.-.": '@',
+}
 
 // MorseOf is a character's Morse code ("" for none).
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-251
@@ -783,8 +792,10 @@ func decodeMorse(codes lineIn, colTimeS float64, cfg LineCfg) Result {
 		nc = 0
 	}
 	good := letters >= 2
-	res := Result{OK: good, Proto: "morse", Spans: spans, Text: strings.Join(toks, " "), Bytes: units,
-		Thr: S.threshold, Inverted: !high, SPB: u, Cover: float64(timed) / float64(len(m))}
+	res := Result{
+		OK: good, Proto: "morse", Spans: spans, Text: strings.Join(toks, " "), Bytes: units,
+		Thr: S.threshold, Inverted: !high, SPB: u, Cover: float64(timed) / float64(len(m)),
+	}
 	if colTimeS > 0 {
 		res.Baud = int(math.Round(1 / (u * colTimeS)))
 	}
@@ -930,8 +941,10 @@ func decodeDCF77(codes lineIn, colTimeS float64, cfg LineCfg) Result {
 	if len(spans) == 0 {
 		return Result{Proto: "dcf77", Error: "no DCF77 minute"}
 	}
-	res := Result{OK: good, Proto: "dcf77", Spans: spans, Text: strings.Join(toks, " "), Bytes: units,
-		Thr: S.threshold, Inverted: !high, SPB: sec / colTimeS, Baud: int(math.Round(1 / sec))}
+	res := Result{
+		OK: good, Proto: "dcf77", Spans: spans, Text: strings.Join(toks, " "), Bytes: units,
+		Thr: S.threshold, Inverted: !high, SPB: sec / colTimeS, Baud: int(math.Round(1 / sec)),
+	}
 	if !good {
 		res.Error = "no DCF77 field whose parity checks"
 	}

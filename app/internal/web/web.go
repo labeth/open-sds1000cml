@@ -10,6 +10,9 @@ import (
 	"io"
 	"net/http"
 	"net/http/pprof"
+	"open-sds/app/internal/engine"
+	"open-sds/app/internal/measure"
+	"open-sds/app/internal/panel"
 	"open-sds/app/internal/sramcapture"
 	"open-sds/app/internal/streamview"
 	"strconv"
@@ -17,10 +20,6 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
-
-	"open-sds/app/internal/engine"
-	"open-sds/app/internal/measure"
-	"open-sds/app/internal/panel"
 )
 
 //go:generate go run gen_tokens.go
@@ -506,7 +505,7 @@ func (s *Server) hStreamLines(w http.ResponseWriter, r *http.Request) {
 		StreamLines(from, max int) (streamview.LinesPage, bool)
 	})
 	if !ok {
-		http.Error(w, "no decoded stream", 404)
+		http.Error(w, "no decoded stream", http.StatusNotFound)
 		return
 	}
 	from, _ := strconv.Atoi(r.URL.Query().Get("from"))
@@ -516,7 +515,7 @@ func (s *Server) hStreamLines(w http.ResponseWriter, r *http.Request) {
 	}
 	page, ok := src.StreamLines(from, n)
 	if !ok {
-		http.Error(w, "no decoded stream", 404)
+		http.Error(w, "no decoded stream", http.StatusNotFound)
 		return
 	}
 	writeJSON(w, page)
@@ -530,7 +529,7 @@ func (s *Server) hStreamWindow(w http.ResponseWriter, r *http.Request) {
 		StreamWindow(rows int) (streamview.Page, bool)
 	})
 	if !ok {
-		http.Error(w, "no decoded stream", 404)
+		http.Error(w, "no decoded stream", http.StatusNotFound)
 		return
 	}
 	n, err := strconv.Atoi(r.URL.Query().Get("rows"))
@@ -539,7 +538,7 @@ func (s *Server) hStreamWindow(w http.ResponseWriter, r *http.Request) {
 	}
 	page, ok := src.StreamWindow(n)
 	if !ok {
-		http.Error(w, "no decoded stream", 404)
+		http.Error(w, "no decoded stream", http.StatusNotFound)
 		return
 	}
 	writeJSON(w, page)
@@ -554,14 +553,14 @@ func (s *Server) hStreamLinesBin(w http.ResponseWriter, r *http.Request) {
 		StreamLinesBinary(from int, dst []byte) (int, bool)
 	})
 	if !ok {
-		http.Error(w, "no decoded stream", 404)
+		http.Error(w, "no decoded stream", http.StatusNotFound)
 		return
 	}
 	from, _ := strconv.Atoi(r.URL.Query().Get("from"))
 	buf := make([]byte, 1<<20)
 	n, ok := src.StreamLinesBinary(from, buf)
 	if !ok {
-		http.Error(w, "no decoded stream", 404)
+		http.Error(w, "no decoded stream", http.StatusNotFound)
 		return
 	}
 	w.Header().Set("Content-Type", "application/octet-stream")

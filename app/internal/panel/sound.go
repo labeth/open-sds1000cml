@@ -2,14 +2,14 @@
 package panel
 
 import (
+	"errors"
 	"fmt"
 	"math"
+	"open-sds/app/internal/engine"
+	"open-sds/app/internal/sound"
 	"slices"
 	"sync"
 	"time"
-
-	"open-sds/app/internal/engine"
-	"open-sds/app/internal/sound"
 )
 
 // SOUND (ADR-SOUND) on the scope's side: the settings the LCD, the web page
@@ -312,7 +312,7 @@ func (s *soundSvc) needed(now time.Time) (any, readouts bool) {
 	readouts = s.lcd || remote && now.Before(s.apiUntil)
 	any = readouts || remote && (now.Before(s.marksUntil) || s.adsr == adsrArmed || s.adsr == adsrCapturing) ||
 		remote && shown && (s.set.VOctAuto || s.set.Drift)
-	return
+	return any, readouts
 }
 
 // remoteOKLocked reports whether a page may hold the stream: the LCD has not
@@ -643,7 +643,7 @@ func (s *soundSvc) readLevels(e soundEngine, set SoundSettings) {
 		n = int(math.Min(s.tv.span, 4*s.fs)) // a take: over its window (at most four seconds)
 	}
 	s.mu.Unlock()
-	for ch := 0; ch < 2; ch++ {
+	for ch := range 2 {
 		x, b := s.latest(e, n, ch)
 		if len(x) == 0 {
 			continue
@@ -653,8 +653,10 @@ func (s *soundSvc) readLevels(e soundEngine, set SoundSettings) {
 		if ch == 1 {
 			q = b.Q2
 		}
-		lv[ch] = SoundLevel{OK: true, Vpp: m.Vpp, RMS: m.RMS, Peak: m.Peak, DC: m.DC, CrestDB: m.CrestDB,
-			DB: sound.DB(m.RMS, ref), PeakDB: sound.DB(m.Peak/math.Sqrt2, ref), Clip: sound.ClipCodes(q)}
+		lv[ch] = SoundLevel{
+			OK: true, Vpp: m.Vpp, RMS: m.RMS, Peak: m.Peak, DC: m.DC, CrestDB: m.CrestDB,
+			DB: sound.DB(m.RMS, ref), PeakDB: sound.DB(m.Peak/math.Sqrt2, ref), Clip: sound.ClipCodes(q),
+		}
 	}
 	s.mu.Lock()
 	s.levels = lv
@@ -856,8 +858,7 @@ func (s *soundSvc) readCycle(e soundEngine, set SoundSettings) {
 	b := e.SoundLatest(int(math.Min(0.5*fs, 4*span+fs*0.05)), s.q1, s.q2)
 	s.q1, s.q2 = b.Q1, b.Q2
 	var mark *engine.SoundMark
-	for i := len(b.Marks) - 1; i >= 0; i-- {
-		m := b.Marks[i]
+	for _, m := range slices.Backward(b.Marks) {
 		if m.Rising && m.Ch == set.Ch && float64(m.At)+span+8 < float64(b.First)+float64(b.N) && m.At >= b.First+8 {
 			mark = &m
 			break
@@ -1085,7 +1086,7 @@ func (s *soundSvc) voctCapture() error {
 	hz, fs, ch := s.hz, s.fs, s.set.Ch
 	s.mu.Unlock()
 	if !(hz > 0) {
-		return fmt.Errorf("no pitch on the VCO's channel")
+		return errors.New("no pitch on the VCO's channel")
 	}
 	cv := 0.0
 	if e := s.engine(); e != nil && fs > 0 {
@@ -1197,10 +1198,12 @@ func reduceDrift(pts []sound.DriftPoint, max int) []sound.DriftPoint {
 func (s *soundSvc) Report() SoundReport {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	r := SoundReport{Info: s.info, Settings: s.set, Hz: s.hz, Clarity: s.clarity, Levels: s.levels, CV: s.cv,
+	r := SoundReport{
+		Info: s.info, Settings: s.set, Hz: s.hz, Clarity: s.clarity, Levels: s.levels, CV: s.cv,
 		ADSR: s.adsr, ADSRWhy: s.adsrWhy, ADSRRes: s.adsrRes, ADSREFs: s.adsrEFs,
 		VOct: append([]sound.VOctPoint(nil), s.voct...), Drift: reduceDrift(s.drift.Points, driftReportMax),
-		Mod: s.mod, LFO: s.lfo, SB: s.sb, AB: s.ab, Harm: s.harm}
+		Mod: s.mod, LFO: s.lfo, SB: s.sb, AB: s.ab, Harm: s.harm,
+	}
 	if !s.remoteOKLocked() {
 		r.Paused, r.PausedWhy = true, SoundPausedText
 	}

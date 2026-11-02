@@ -2,11 +2,10 @@
 package web
 
 import (
+	"open-sds/app/internal/testenv"
 	"os/exec"
 	"strings"
 	"testing"
-
-	"open-sds/app/internal/testenv"
 )
 
 // TestEyejitterJS runs the eye-diagram/jitter engine (eyejitter.js) under node

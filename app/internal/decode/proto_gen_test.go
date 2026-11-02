@@ -13,7 +13,7 @@ func tlUART(w *timeline, v int, baud float64, parity string, stops int) {
 	bit := 1 / baud
 	w.add(0, bit)
 	ones := 0
-	for i := 0; i < 8; i++ {
+	for i := range 8 {
 		b := byte(v >> i & 1)
 		ones += int(b)
 		w.add(b, bit)
@@ -31,7 +31,7 @@ func tlUART(w *timeline, v int, baud float64, parity string, stops int) {
 // the sync, the protected identifier of id and, unless data is nil, the
 // response with its checksum (enhanced unless classic or a diagnostic ID).
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-232
-func linFrame(w *timeline, baud float64, breakBits float64, id int, data []int, classic bool) {
+func linFrame(w *timeline, baud, breakBits float64, id int, data []int, classic bool) {
 	bit := 1 / baud
 	w.add(0, breakBits*bit)
 	w.add(1, bit)

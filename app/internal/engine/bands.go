@@ -163,17 +163,11 @@ func (b Band) Kind() Kind {
 // TRLC-LINKS: REQ-SDS-010
 func (b Band) EnvPlan() (winCols int, divisor uint32) {
 	span := screenDivsH * b.TdivS
-	w := int(math.Round(span / envIntervalS))
-	if w < envMinWin {
-		w = envMinWin
-	}
+	w := max(int(math.Round(span/envIntervalS)), envMinWin)
 	if w > envMaxWin {
 		w = envMaxWin
 	}
-	d := uint32(math.Round(span / float64(w) / 10e-9))
-	if d < 1 {
-		d = 1
-	}
+	d := max(uint32(math.Round(span/float64(w)/10e-9)), 1)
 	return w, d
 }
 
@@ -190,10 +184,9 @@ func (b Band) EnvPlan() (winCols int, divisor uint32) {
 // TRLC-LINKS: REQ-SDS-010
 func (b Band) EnvCaptureCols() int {
 	w, _ := b.EnvPlan()
-	want := w + 2*envMargin
-	if want > envFillCap {
-		want = envFillCap // the fill counter can't gate higher — the slowest band
-	} //                     (50 ms/div, w>envFillCap) then displays fewer real
+	want := min(w+2*envMargin,
+		// the fill counter can't gate higher — the slowest band
+		envFillCap) //                     (50 ms/div, w>envFillCap) then displays fewer real
 	if want > envMaxWin { //  samples via WinCols, instead of draining dead-tail.
 		want = envMaxWin
 	}
@@ -242,10 +235,7 @@ func (b Band) nominalIntervalNs() float64 {
 func (b Band) Decim() uint32 {
 	// The nominal interval is whole nanoseconds, so its fifth never ends in
 	// .5: the product rounds as the quotient does, without a divide.
-	d := uint32(math.Round(b.nominalIntervalNs() * (1 / baseTickNs)))
-	if d < 1 {
-		d = 1
-	}
+	d := max(uint32(math.Round(b.nominalIntervalNs()*(1/baseTickNs))), 1)
 	return d
 }
 
@@ -310,10 +300,7 @@ func (b Band) WinCols() int {
 	case KindRoll:
 		return rollWin
 	}
-	w := int(math.Round(screenDivsH * b.TdivS / (b.displayIntervalNs() * 1e-9)))
-	if w < 1 {
-		w = 1
-	}
+	w := max(int(math.Round(screenDivsH*b.TdivS/(b.displayIntervalNs()*1e-9))), 1)
 	// The display window caps at decimWin on decimated bands — NOT at DrainCols,
 	// which now carries extra centring margin. Native-fast still caps at its
 	// (full-record) drain, where the clamp never binds anyway.
@@ -345,10 +332,7 @@ func (b Band) DisplayedSdivS() float64 {
 // clamp(3 · captureInterval · LatchAt, 40 ms, 80 ms), in nanoseconds.
 // TRLC-LINKS: REQ-SDS-008, REQ-SDS-010
 func (b Band) WaitBudgetNs() int64 {
-	n := int64(3 * b.CaptureIntervalNs() * latchAt)
-	if n < 40e6 {
-		n = 40e6
-	}
+	n := max(int64(3*b.CaptureIntervalNs()*latchAt), 40e6)
 	if n > 80e6 {
 		n = 80e6
 	}
@@ -362,10 +346,7 @@ func (b Band) WaitBudgetNs() int64 {
 // (skipped by rollUpdate) and risks wedging the port. Clamped to [50 µs, 40 ms].
 // TRLC-LINKS: REQ-SDS-010
 func RollPaceNs() int64 {
-	n := int64(rollDivisor * 10)
-	if n < 50e3 {
-		n = 50e3
-	}
+	n := max(int64(rollDivisor*10), 50e3)
 	if n > 40e6 {
 		n = 40e6
 	}

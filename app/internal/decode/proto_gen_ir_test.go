@@ -51,7 +51,7 @@ func necFrame(l irLine, addr, addrHi, cmd int) {
 	l.mark(9e-3)
 	l.space(4.5e-3)
 	for _, v := range []int{addr, addrHi, cmd, cmd ^ 0xff} {
-		for i := 0; i < 8; i++ {
+		for i := range 8 {
 			l.mark(562.5e-6)
 			if v>>i&1 == 1 {
 				l.space(1687.5e-6)
@@ -78,7 +78,7 @@ func necRepeat(l irLine) {
 func sircFrame(l irLine, nbits, cmd, addr, ext int) {
 	bits := make([]int, 0, nbits)
 	push := func(v, n int) {
-		for i := 0; i < n; i++ {
+		for i := range n {
 			bits = append(bits, v>>i&1)
 		}
 	}

@@ -11,9 +11,14 @@ func TestWideWordFormatting(t *testing.T) {
 		v, bits      int
 		format, want string
 	}{
-		{0x1234, 16, "hex", "1234"}, {0x0ff0, 16, "hex", "0FF0"}, {0x148, 9, "hex", "148"},
-		{0x148, 9, "ascii", "."}, {0x148, 9, "both", "148"}, {0x48, 16, "both", "0048'H"},
-		{0x101, 9, "bin", "100000001"}, {0x101, 9, "dec", "257"},
+		{0x1234, 16, "hex", "1234"},
+		{0x0ff0, 16, "hex", "0FF0"},
+		{0x148, 9, "hex", "148"},
+		{0x148, 9, "ascii", "."},
+		{0x148, 9, "both", "148"},
+		{0x48, 16, "both", "0048'H"},
+		{0x101, 9, "bin", "100000001"},
+		{0x101, 9, "dec", "257"},
 	} {
 		if got := FmtWord(tc.v, tc.bits, tc.format); got != tc.want {
 			t.Fatalf("%+v: %q", tc, got)

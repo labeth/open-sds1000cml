@@ -9,7 +9,7 @@ import (
 // squareDiv is a square wave in divisions: +-2 div, period samples long,
 // shifted by shift samples, with noise (div rms).
 // TRLC-LINKS: REQ-SDS-218
-func squareDiv(n, period int, shift float64, noise float64, seed uint64) []float64 {
+func squareDiv(n, period int, shift, noise float64, seed uint64) []float64 {
 	r := rng{s: seed}
 	out := make([]float64, n)
 	for i := range out {
@@ -37,7 +37,7 @@ func TestRefDiff(t *testing.T) {
 	for i := range live {
 		live[i] += 0.3
 	}
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		live[i] += 0.5 // 10 % of the samples 0.8 div off
 	}
 	mx, rms, pct := RefDiff(live, ref, 0.5)

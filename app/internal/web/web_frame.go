@@ -127,7 +127,7 @@ type frameReply struct {
 // TRLC-LINKS: REQ-SDS-163
 func resampleEnv(v []uint8, envCols, n int) []int16 {
 	out := make([]int16, n)
-	for x := 0; x < n; x++ {
+	for x := range n {
 		c := x * envCols / n
 		if c < len(v) {
 			out[x] = int16(v[c])
@@ -163,10 +163,7 @@ func window(sig []uint8, valid, winCols int, edgeX float64, interp bool, n int, 
 		}
 		return out
 	}
-	win := winCols
-	if win > valid {
-		win = valid
-	}
+	win := min(winCols, valid)
 	xc := edgeX
 	// !(xc >= 0) also catches NaN and -Inf; +Inf is handled by the per-column
 	// upper clamp below. A non-finite index (int(NaN) = min-int) panicked the
@@ -215,7 +212,7 @@ func window(sig []uint8, valid, winCols int, edgeX float64, interp bool, n int, 
 // the 25-codes/div render scale, spec 10 §7.1) for each channel, using the
 // front-end V/div when available.
 // TRLC-LINKS: REQ-SDS-164
-func (s *Server) vertScales() (off [2]float64, vpc [2]float64) {
+func (s *Server) vertScales() (off, vpc [2]float64) {
 	vpc = [2]float64{1.0 / 25, 1.0 / 25} // nominal 1 V/div when no front end
 	st := s.sc.Snapshot()
 	if s.fe != nil {

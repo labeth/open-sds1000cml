@@ -3,9 +3,8 @@ package lcd
 
 import (
 	"bytes"
-	"testing"
-
 	"open-sds/app/internal/engine"
+	"testing"
 )
 
 // traceRows scans the mid-screen window (clear of the top-bar channel labels,
@@ -37,7 +36,7 @@ func flatFrame(v1, v2 uint8) *engine.Frame {
 		Valid: n, WinCols: n, Seq: 1, EdgeX: -1, // flat capture → centre on the record
 		TdivS: 500e-6, DisplayedS: 500e-6, SampleS: 800e-9, Ptp: 0,
 	}
-	for i := 0; i < n; i++ {
+	for i := range n {
 		f.C1[i], f.C2[i] = v1, v2
 	}
 	return f
@@ -104,7 +103,7 @@ func TestRenderINVSFlipsEnvelope(t *testing.T) {
 		EnvMin2: make([]uint8, n), EnvMax2: make([]uint8, n),
 		TdivS: 0.1, DisplayedS: 0.1,
 	}
-	for i := 0; i < n; i++ {
+	for i := range n {
 		f.EnvMin[i], f.EnvMax[i] = 100, 150
 		f.EnvMin2[i], f.EnvMax2[i] = 60, 70
 	}

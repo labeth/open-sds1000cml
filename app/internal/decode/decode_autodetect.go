@@ -635,7 +635,7 @@ func Autodetect(c1, c2 []uint8, colTimeS float64, format string) Result {
 	// line and pair checks below read that slicing.
 	clk := [2]clockInfo{clockScore(c1), clockScore(c2)}
 	var active []int
-	for k := 0; k < 2; k++ {
+	for k := range 2 {
 		if chans[k] == nil {
 			continue
 		}
@@ -1070,7 +1070,7 @@ func clockOrPulseBytes(b []int) bool {
 func periodicBits(b []int) bool {
 	var bs []int
 	for _, v := range b {
-		for k := 0; k < 8; k++ {
+		for k := range 8 {
 			bs = append(bs, v>>k&1)
 		}
 	}

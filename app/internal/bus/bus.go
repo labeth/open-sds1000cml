@@ -17,11 +17,11 @@
 package bus
 
 import (
+	"errors"
 	"fmt"
+	"open-sds/app/internal/iface"
 	"syscall"
 	"unsafe"
-
-	"open-sds/app/internal/iface"
 )
 
 // Bus is the register surface the acquisition engine (and, through
@@ -82,7 +82,7 @@ type Dev struct {
 // TRLC-LINKS: REQ-SDS-002, REQ-SDS-129
 func New(fd int) (*Dev, error) {
 	if fd < 0 {
-		return nil, fmt.Errorf("bus: no inherited gpmc fd")
+		return nil, errors.New("bus: no inherited gpmc fd")
 	}
 	return &Dev{fd: fd}, nil
 }
@@ -114,7 +114,7 @@ func (d *Dev) ioctl(req uintptr, b *[6]byte) error {
 		return d.workerIOCTL(req, b)
 	}
 	if d.kernelDMA != nil && d.kernelDMA.streaming {
-		return fmt.Errorf("bus: kernel stream owns GPMC until CloseKernelDMA")
+		return errors.New("bus: kernel stream owns GPMC until CloseKernelDMA")
 	}
 	// These six-byte ioctls perform one bounded register transaction, not a
 	// blocking stream read. Keep the Go execution slot across the call so a
@@ -195,7 +195,7 @@ func (d *Dev) BurstInto(c1, c2 []uint8, n int) {
 	if d.edma != nil && d.edma.drain(c1, c2, n) {
 		return
 	}
-	for i := 0; i < n; i++ {
+	for i := range n {
 		v, _ := d.Read(PlaneCS1, iface.SelBurst)
 		c1[i] = uint8(v >> 8)
 		c2[i] = uint8(v)
@@ -217,7 +217,7 @@ func (d *Dev) PopWords(sel uint16, dst []uint16, n int) {
 		d.edma.drainWords(burstPortPhys, dst, n) {
 		return
 	}
-	for i := 0; i < n; i++ {
+	for i := range n {
 		v, _ := d.Read(PlaneCS1, sel)
 		dst[i] = v
 	}
@@ -295,7 +295,7 @@ func (d *Dev) PopWordsChecked(sel uint16, dst []uint16) error {
 	}
 	if d.kernelDMA != nil {
 		if len(dst)*2 > len(d.kernelDMA.bytes) {
-			return fmt.Errorf("bus: kernel DMA size exceeds buffer")
+			return errors.New("bus: kernel DMA size exceeds buffer")
 		}
 		b := d.kernelDMA.bytes[:len(dst)*2]
 		if err := d.kernelDMA.pop(sel, b); err != nil {
@@ -308,7 +308,7 @@ func (d *Dev) PopWordsChecked(sel uint16, dst []uint16) error {
 	}
 	if d.edma != nil {
 		if !d.edma.drainWords(uint32(cs1PhysBase)+uint32(sel)*2, dst, len(dst)) {
-			return fmt.Errorf("bus: DMA pop failed; pointer may have advanced")
+			return errors.New("bus: DMA pop failed; pointer may have advanced")
 		}
 		return nil
 	}
@@ -327,7 +327,7 @@ func (d *Dev) PopWordsChecked(sel uint16, dst []uint16) error {
 // TRLC-LINKS: REQ-SDS-081, REQ-SDS-129, REQ-SDS-134
 func (d *Dev) PopBytesChecked(sel uint16, dst []byte) error {
 	if sel > 127 || len(dst)%2 != 0 {
-		return fmt.Errorf("bus: invalid byte pop selector/length")
+		return errors.New("bus: invalid byte pop selector/length")
 	}
 	if len(dst) == 0 {
 		return nil
@@ -335,7 +335,7 @@ func (d *Dev) PopBytesChecked(sel uint16, dst []byte) error {
 	if d.remote != nil {
 		n, err := d.remote.call(workerPop, 1, sel, 0, 0, dst)
 		if err == nil && n != len(dst) {
-			return fmt.Errorf("bus: short worker pop (consumption uncertain)")
+			return errors.New("bus: short worker pop (consumption uncertain)")
 		}
 		return err
 	}
@@ -344,7 +344,7 @@ func (d *Dev) PopBytesChecked(sel uint16, dst []byte) error {
 	}
 	if d.edma != nil {
 		if !d.edma.drainBytes(uint32(cs1PhysBase)+uint32(sel)*2, dst) {
-			return fmt.Errorf("bus: DMA pop failed; pointer may have advanced")
+			return errors.New("bus: DMA pop failed; pointer may have advanced")
 		}
 		return nil
 	}

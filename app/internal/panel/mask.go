@@ -4,10 +4,9 @@ package panel
 import (
 	"fmt"
 	"math"
-	"time"
-
 	"open-sds/app/internal/analog"
 	"open-sds/app/internal/engine"
+	"time"
 )
 
 // Device-side mask testing flow (docs/zonemask-plan.md §3): the MASK page
@@ -84,10 +83,7 @@ func (c *Controller) maskBuildRun(gen uint64, n, tolT, tolV, ch int, posFrac flo
 			if ch == 1 {
 				sig = f.C2
 			}
-			valid := f.Valid
-			if valid > len(sig) {
-				valid = len(sig)
-			}
+			valid := min(f.Valid, len(sig))
 			if valid == 0 {
 				return
 			}

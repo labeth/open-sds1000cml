@@ -3,11 +3,10 @@ package panel
 
 import (
 	"math"
-	"testing"
-	"time"
-
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/measure"
+	"testing"
+	"time"
 )
 
 // MEASURE reads an inverted channel's live envelope with the complement duty,
@@ -17,7 +16,7 @@ import (
 func TestMeasureInvertedEnvelopeDuty(t *testing.T) {
 	n := 2048
 	f := &engine.Frame{C1: make([]uint8, n), C2: make([]uint8, n), Valid: n, WinCols: n, SampleS: 96e-9, PeakDetect: true, Ordered: true}
-	for b := 0; b < n/2; b++ {
+	for b := range n / 2 {
 		v := uint8(78)
 		if b%104 < 31 {
 			v = 178
@@ -60,7 +59,7 @@ func TestMeasureAliasedEnvelopeMeanUnknown(t *testing.T) {
 func TestStatisticsCountAnEdgeReadingOnce(t *testing.T) {
 	n := 2048
 	env := make([]uint8, n)
-	for b := 0; b < n/2; b++ {
+	for b := range n / 2 {
 		v := uint8(78)
 		if b%104 < 52 {
 			v = 178
@@ -82,16 +81,20 @@ func TestStatisticsCountAnEdgeReadingOnce(t *testing.T) {
 		return &engine.EdgeWindow{C1: w, C2: w, SampleS: 2e-9, Full: true}
 	}
 	c := &Controller{clock: func() time.Time { return time.Unix(0, 0) }}
-	s := &sv{probe: [2]float64{1, 1}, vidx: [2]int{10, 10}, chDisp: [2]bool{true, true},
-		meas: []measItem{{0, measIndex("rise")}, {0, measIndex("pkpk")}}}
+	s := &sv{
+		probe: [2]float64{1, 1}, vidx: [2]int{10, 10}, chDisp: [2]bool{true, true},
+		meas: []measItem{{0, measIndex("rise")}, {0, measIndex("pkpk")}},
+	}
 	first, second := win(10), win(14)
 	for seq, w := range []*engine.EdgeWindow{first, first, first, second} {
 		read := uint64(1)
 		if w == second {
 			read = 2
 		}
-		f := &engine.Frame{Seq: uint64(seq + 1), C1: env, C2: env, Valid: n, WinCols: n, SampleS: 96e-9, PeakDetect: true, Ordered: true,
-			Edge: w, EdgeRead: read}
+		f := &engine.Frame{
+			Seq: uint64(seq + 1), C1: env, C2: env, Valid: n, WinCols: n, SampleS: 96e-9, PeakDetect: true, Ordered: true,
+			Edge: w, EdgeRead: read,
+		}
 		c.measFrame(&c.ana, s, f)
 	}
 	rise, pkpk := c.ana.stats[measItem{0, measIndex("rise")}], c.ana.stats[measItem{0, measIndex("pkpk")}]

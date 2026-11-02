@@ -3,6 +3,8 @@ package analysis
 
 import (
 	"fmt"
+	"slices"
+	"strconv"
 	"strings"
 )
 
@@ -247,11 +249,11 @@ func fixed(num, den int64, places int) string {
 		num = -num
 	}
 	scale := int64(1)
-	for i := 0; i < places; i++ {
+	for range places {
 		scale *= 10
 	}
 	q := (num*scale*2 + den) / (den * 2)
-	s := fmt.Sprint(q / scale)
+	s := strconv.FormatInt(q/scale, 10)
 	if places > 0 {
 		s += "." + fmt.Sprintf("%0*d", places, q%scale)
 	}
@@ -295,8 +297,8 @@ func be64(b []byte) int64 {
 // TRLC-LINKS: REQ-SDS-241
 func le64(b []byte) int64 {
 	var v int64
-	for i := len(b) - 1; i >= 0; i-- {
-		v = v<<8 | int64(b[i])
+	for _, v0 := range slices.Backward(b) {
+		v = v<<8 | int64(v0)
 	}
 	return v
 }
@@ -305,8 +307,8 @@ func le64(b []byte) int64 {
 // TRLC-LINKS: REQ-SDS-241
 func le(b []byte) int {
 	v := 0
-	for i := len(b) - 1; i >= 0; i-- {
-		v = v<<8 | int(b[i])
+	for _, v0 := range slices.Backward(b) {
+		v = v<<8 | int(v0)
 	}
 	return v
 }

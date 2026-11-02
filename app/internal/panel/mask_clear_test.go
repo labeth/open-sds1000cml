@@ -3,11 +3,10 @@ package panel
 
 import (
 	"math"
+	"open-sds/app/internal/engine"
 	"strings"
 	"testing"
 	"time"
-
-	"open-sds/app/internal/engine"
 )
 
 // installTestMask puts a two-column mask in the engine with its test in mode.
@@ -191,7 +190,7 @@ func TestMasterMaskInLiveGeometry(t *testing.T) {
 		t.Fatalf("the master's mask %+v, test mode %d: want the live geometry", m, eng.Snapshot().MaskMode)
 	}
 	left := int(math.Round(live.EdgeX - float64(m.WinCols)*0.5))
-	for j := 0; j < m.WinCols; j++ {
+	for j := range m.WinCols {
 		if v := live.C1[left+j]; v < m.Lo[j] || v > m.Hi[j] {
 			t.Fatalf("column %d: the live sample %d is outside its master's mask [%d, %d]", j, v, m.Lo[j], m.Hi[j])
 		}
@@ -253,8 +252,10 @@ func TestDefaultSetupResetsTheQualifiers(t *testing.T) {
 		q.SlopeMinNs != 100 || q.SlopeMaxNs != 1000 || q.SlopeCond != 0 || q.VideoStd != 0 || q.VideoLine != 0 || !q.VideoNeg {
 		t.Fatalf("after default setup: %+v", q)
 	}
-	for row, want := range map[string]string{"trig.type": "Edge", "trig.pulse_when": "Any", "trig.pulse_max": "1us", "trig.slope_when": "Any",
-		"trig.video_std": "PAL", "trig.video_sync": "Negative"} {
+	for row, want := range map[string]string{
+		"trig.type": "Edge", "trig.pulse_when": "Any", "trig.pulse_max": "1us", "trig.slope_when": "Any",
+		"trig.video_std": "PAL", "trig.video_sync": "Negative",
+	} {
 		if got := rowText(c, row); got != want {
 			t.Errorf("%s after default setup: %q, want %q", row, got, want)
 		}
@@ -295,16 +296,20 @@ func TestMaskBuildSaysWhyItFailed(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-136
 func TestDefaultSetupResetsMaskBuildAndSuperres(t *testing.T) {
 	c, eng, _ := newC(t) // no inverter
-	for row, text := range map[string]string{"cmp.mask_frames": "128", "cmp.mask_tol": "12pt/20cd", "acq.sr_channel": "C2",
-		"acq.sr_grid": "x64", "acq.sr_stop": "Time"} {
+	for row, text := range map[string]string{
+		"cmp.mask_frames": "128", "cmp.mask_tol": "12pt/20cd", "acq.sr_channel": "C2",
+		"acq.sr_grid": "x64", "acq.sr_stop": "Time",
+	} {
 		if res := c.SheetSet(row, nil, text); !res.OK {
 			t.Fatalf("%s %s: %+v", row, text, res)
 		}
 	}
 	eng.SetTrigLevelCode(30000)
 	c.DefaultSetup()
-	for row, want := range map[string]string{"cmp.mask_frames": "32", "cmp.mask_tol": "5pt/8cd", "acq.sr_channel": "C1",
-		"acq.sr_grid": "x32", "acq.sr_stop": "Bits", "acq.sr_target": "4"} {
+	for row, want := range map[string]string{
+		"cmp.mask_frames": "32", "cmp.mask_tol": "5pt/8cd", "acq.sr_channel": "C1",
+		"acq.sr_grid": "x32", "acq.sr_stop": "Bits", "acq.sr_target": "4",
+	} {
 		if got := rowText(c, row); got != want {
 			t.Errorf("%s after default setup: %q, want %q", row, got, want)
 		}
@@ -328,8 +333,10 @@ func (f *fakeEng) SetPrecisionRate(hz float64) float64 {
 // TRLC-LINKS: REQ-SDS-136
 func TestDefaultSetupRestoresPowerOnSettings(t *testing.T) {
 	c, eng, _ := newC(t)
-	for id, v := range map[string]int{"acq.averages": 4, "acq.eres": 3, "cmp.master_depth": 16, "meas.freq": 1, "meas.pkpk": 1,
-		"view.fft_source": 1, "bus.stream_trigger": 1, "time.roll": 1} {
+	for id, v := range map[string]int{
+		"acq.averages": 4, "acq.eres": 3, "cmp.master_depth": 16, "meas.freq": 1, "meas.pkpk": 1,
+		"view.fft_source": 1, "bus.stream_trigger": 1, "time.roll": 1,
+	} {
 		if err := rowByID[id].set(c, v); err != nil {
 			t.Fatalf("%s: %v", id, err)
 		}
@@ -339,8 +346,10 @@ func TestDefaultSetupRestoresPowerOnSettings(t *testing.T) {
 	}
 	eng.SetPrecisionRate(3906250)
 	c.DefaultSetup()
-	for id, want := range map[string]string{"acq.averages": "16", "acq.eres": "1", "cmp.master_depth": "64", "meas.freq": "Off",
-		"meas.pkpk": "Off", "view.fft_source": "CH1", "bus.stream_trigger": "On error", "bus.stream_value": "0x00", "time.roll": "Chunked"} {
+	for id, want := range map[string]string{
+		"acq.averages": "16", "acq.eres": "1", "cmp.master_depth": "64", "meas.freq": "Off",
+		"meas.pkpk": "Off", "view.fft_source": "CH1", "bus.stream_trigger": "On error", "bus.stream_value": "0x00", "time.roll": "Chunked",
+	} {
 		if got := rowText(c, id); got != want {
 			t.Errorf("%s after default setup: %q, want %q", id, got, want)
 		}

@@ -2,13 +2,12 @@
 package panel
 
 import (
+	"open-sds/app/internal/engine"
+	"open-sds/app/internal/streamview"
 	"strings"
 	"sync"
 	"testing"
 	"time"
-
-	"open-sds/app/internal/engine"
-	"open-sds/app/internal/streamview"
 )
 
 // BUS's Stream view (REQ-SDS-228): F2 again cycles Packets, the eye diagram

@@ -13,7 +13,7 @@ func boxDownClean(w []uint8, box, phase int) []uint8 {
 	var d []uint8
 	for i := phase; i+box <= len(w); i += box {
 		s := 0
-		for k := 0; k < box; k++ {
+		for k := range box {
 			s += int(w[i+k])
 		}
 		d = append(d, uint8(s/box))
@@ -72,7 +72,7 @@ func TestBusDecodeEndsWhereTheRecordCannotHoldIt(t *testing.T) {
 		w := newTimeline(sr)
 		w.add(0, 50e-9)
 		var s [][2]int
-		for i := 0; i < 6; i++ {
+		for i := range 6 {
 			s = append(s, [2]int{(i * 0x1357) & 0xffffff, 0xFFFFF0 - i*0x10})
 		}
 		spdifStream(w, 48e3, 190, s)
@@ -111,7 +111,7 @@ func TestBusDecodeEndsWhereTheRecordCannotHoldIt(t *testing.T) {
 				return boxDownClean(b.codes, box, phase)
 			}
 			failed := 0
-			for seed := 0; seed < 20; seed++ {
+			for seed := range 20 {
 				rng := rand.New(rand.NewSource(int64(seed)))
 				if r := b.decode(down(b.ok, seed*b.ok/20, rng), float64(b.ok)/sr); !reads(r) {
 					t.Fatalf("seed %d: at %g ns a sample: %v %q, want %s", seed, 2*float64(b.ok), r.Bytes, r.Error, want)

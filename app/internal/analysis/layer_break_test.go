@@ -117,7 +117,7 @@ func FuzzLayers(f *testing.F) {
 		ls := Layers()
 		l := ls[int(layer)%len(ls)]
 		var ps []Packet
-		for k := 0; k < 3; k++ { // the bytes split into three packets
+		for k := range 3 { // the bytes split into three packets
 			lo, hi := k*len(b)/3, (k+1)*len(b)/3
 			p := Packet{Bytes: b[lo:hi], ByteErr: make([]bool, hi-lo), Complete: true, Read: read != (k == 1)}
 			if l.Bus == "i2c" || l.Bus == "usbls" || l.Bus == "mdio" {
@@ -155,7 +155,7 @@ func TestLayerRandomFlagsAreStable(t *testing.T) {
 			continue // they read any bytes (pixels, buttons, codes, register writes)
 		}
 		flagged, noted := 0, 0
-		for rec := 0; rec < 200; rec++ {
+		for range 200 {
 			b := make([]byte, 1+r.Intn(30))
 			for i := range b {
 				b[i] = byte(r.Intn(256))

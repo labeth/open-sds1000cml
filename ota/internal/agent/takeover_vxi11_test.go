@@ -18,9 +18,14 @@ package agent
 
 import (
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
 	"net"
+	"open-sds/ota/internal/config"
+	"open-sds/ota/internal/fdinherit"
+	"open-sds/ota/internal/gpmc"
+	"open-sds/ota/internal/vxi11"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -31,11 +36,6 @@ import (
 	"syscall"
 	"testing"
 	"time"
-
-	"open-sds/ota/internal/config"
-	"open-sds/ota/internal/fdinherit"
-	"open-sds/ota/internal/gpmc"
-	"open-sds/ota/internal/vxi11"
 )
 
 // ---- fake gpmc reader (behind the gpmcReader seam) --------------------------
@@ -501,7 +501,7 @@ func TestTakeoverRefusesWhenFactoryStopUnreachable(t *testing.T) {
 	g := &fakeGpmc{versionOK: true, idle: true}
 	a, gpmcPath := takeoverAgent(t, g)
 	swapVxiDial(t, func(host string, timeout time.Duration) (*vxi11.Client, error) {
-		return nil, fmt.Errorf("vxi11: portmap dial: connection refused (test)")
+		return nil, errors.New("vxi11: portmap dial: connection refused (test)")
 	})
 	reassert := captureReassert(t)
 	pid := spawnGpmcHolder(t, a, gpmcPath)
@@ -532,7 +532,7 @@ func TestTakeoverForcePartialFailureStillReassertsNetwork(t *testing.T) {
 	g := &fakeGpmc{versionOK: false, idle: false}
 	a, gpmcPath := takeoverAgent(t, g)
 	swapVxiDial(t, func(host string, timeout time.Duration) (*vxi11.Client, error) {
-		return nil, fmt.Errorf("vxi11: portmap dial: connection refused (test)")
+		return nil, errors.New("vxi11: portmap dial: connection refused (test)")
 	})
 	swapIdleTimeout(t, 300*time.Millisecond)
 	reassert := captureReassert(t)

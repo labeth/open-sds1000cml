@@ -4,13 +4,12 @@ package web
 import (
 	"math"
 	"net/http/httptest"
+	"open-sds/app/internal/engine"
+	"open-sds/app/internal/testenv"
 	"os/exec"
 	"strings"
 	"sync/atomic"
 	"testing"
-
-	"open-sds/app/internal/engine"
-	"open-sds/app/internal/testenv"
 )
 
 // TestFFTBrowser drives the real UI in headless Chromium (via Playwright) against
@@ -44,7 +43,7 @@ func TestFFTBrowser(t *testing.T) {
 		const N = 2048
 		c1 := make([]uint8, N)
 		c2 := make([]uint8, N)
-		for i := 0; i < N; i++ {
+		for i := range N {
 			c1[i] = clamp8(128 +
 				ampA*math.Sin(2*math.Pi*24*float64(i)/N) +
 				ampB*math.Sin(2*math.Pi*61*float64(i)/N))

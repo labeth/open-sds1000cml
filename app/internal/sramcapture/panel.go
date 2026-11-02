@@ -101,7 +101,7 @@ func (c *Capture) PanelWords() ([11]uint16, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	var w [11]uint16
-	for i := uint16(0); i < 11; i++ {
+	for i := range uint16(11) {
 		if err := c.write(34, i); err != nil {
 			return w, err
 		}

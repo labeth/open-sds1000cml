@@ -3,11 +3,10 @@ package panel
 
 import (
 	"math"
+	"open-sds/app/internal/engine"
 	"strings"
 	"testing"
 	"time"
-
-	"open-sds/app/internal/engine"
 )
 
 // countEng counts the stream reads of each length the service asks for.
@@ -36,7 +35,7 @@ func TestSoundTunerAndMetersTakeTurns(t *testing.T) {
 	c.snd.setLCD(true, true)
 	now := time.Now()
 	se.next = int(se.fs)
-	for i := 0; i < 8; i++ {
+	for range 8 {
 		se.next += int(soundTick.Seconds() * se.fs)
 		now = now.Add(soundTick)
 		c.snd.step(now)

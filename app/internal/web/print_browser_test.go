@@ -2,11 +2,10 @@
 package web
 
 import (
+	"open-sds/app/internal/testenv"
 	"os/exec"
 	"strings"
 	"testing"
-
-	"open-sds/app/internal/testenv"
 )
 
 // The web's Device screenshot (PRINT) says what the scope saved, as its LCD

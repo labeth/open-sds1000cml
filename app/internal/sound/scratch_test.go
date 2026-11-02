@@ -29,10 +29,10 @@ func TestAnalysesReuseTheirBuffers(t *testing.T) {
 	// The pools empty at a collection: a round it falls in allocates
 	// again, so the least of a few tries is the reuse.
 	best := uint64(math.MaxUint64)
-	for try := 0; try < 4; try++ {
+	for range 4 {
 		var a, b runtime.MemStats
 		runtime.ReadMemStats(&a)
-		for i := 0; i < 5; i++ {
+		for range 5 {
 			run()
 		}
 		runtime.ReadMemStats(&b)

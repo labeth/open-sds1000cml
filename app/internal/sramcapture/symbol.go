@@ -1,7 +1,7 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-SRAMCAPTURE
 package sramcapture
 
-import "fmt"
+import "errors"
 
 // Symbol trigger bit sources (ADR-SYMBOL-TRIGGER, the qualify image's
 // symbol_trigger.v).
@@ -66,7 +66,7 @@ func (p SymbolTriggerConfig) validate() error {
 	}
 	if p.Channel > 1 || p.Mode > SymbolClocked || p.LeadLen > 4 || p.Prescale > 7 || p.UnitQ8 < 2048 || p.UnitQ8 >= 1<<28 ||
 		p.FrameUnits > 63 || p.Period > 63 || p.Phase0 > 63 || (p.Period != 0 && p.Phase0 >= p.Period) || p.K > 1023 {
-		return fmt.Errorf("sramcapture: invalid hardware symbol trigger configuration")
+		return errors.New("sramcapture: invalid hardware symbol trigger configuration")
 	}
 	return nil
 }
@@ -113,7 +113,7 @@ func (c *Capture) configureSymbol(revision uint16, p SymbolTriggerConfig) error 
 	}
 	if capability != symbolBlock {
 		if p.Enabled {
-			return fmt.Errorf("sramcapture: fabric lacks the hardware symbol trigger")
+			return errors.New("sramcapture: fabric lacks the hardware symbol trigger")
 		}
 		return nil
 	}
@@ -157,10 +157,18 @@ func SymbolRegisters(p SymbolTriggerConfig) [][2]uint16 {
 		}
 	}
 	return [][2]uint16{
-		{94, uint16(p.UnitQ8)}, {95, uint16(p.UnitQ8 >> 16)},
-		{96, uint16(p.Period)<<8 | uint16(p.FrameUnits)}, {97, uint16(p.Phase0)<<10 | p.K},
-		{101, uint16(p.Pattern)}, {102, uint16(p.Pattern >> 16)}, {103, uint16(p.Pattern >> 32)}, {104, uint16(p.Pattern >> 48)},
-		{105, uint16(p.Mask)}, {106, uint16(p.Mask >> 16)}, {107, uint16(p.Mask >> 32)}, {108, uint16(p.Mask >> 48)},
+		{94, uint16(p.UnitQ8)},
+		{95, uint16(p.UnitQ8 >> 16)},
+		{96, uint16(p.Period)<<8 | uint16(p.FrameUnits)},
+		{97, uint16(p.Phase0)<<10 | p.K},
+		{101, uint16(p.Pattern)},
+		{102, uint16(p.Pattern >> 16)},
+		{103, uint16(p.Pattern >> 32)},
+		{104, uint16(p.Pattern >> 48)},
+		{105, uint16(p.Mask)},
+		{106, uint16(p.Mask >> 16)},
+		{107, uint16(p.Mask >> 32)},
+		{108, uint16(p.Mask >> 48)},
 		{93, control},
 	}
 }

@@ -3,6 +3,7 @@ package decode
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 )
 
@@ -12,19 +13,19 @@ import (
 func uartWave(bytes []int, spb int) []uint8 {
 	lo, hi := uint8(40), uint8(210)
 	var w []uint8
-	push := func(bit int, k int) {
+	push := func(bit, k int) {
 		v := lo
 		if bit == 1 {
 			v = hi
 		}
-		for j := 0; j < k; j++ {
+		for range k {
 			w = append(w, v)
 		}
 	}
 	push(1, spb*8) // lead idle
 	for _, b := range bytes {
 		push(0, spb) // start
-		for c := 0; c < 8; c++ {
+		for c := range 8 {
 			push((b>>c)&1, spb) // LSB first
 		}
 		push(1, spb) // stop
@@ -72,7 +73,7 @@ func TestDecodeUARTRoundTrip(t *testing.T) {
 func spiWave(bytes []int, h int) (clk, data []uint8) {
 	lo, hi := uint8(40), uint8(210)
 	seg := func(c, d uint8, n int) {
-		for i := 0; i < n; i++ {
+		for range n {
 			clk = append(clk, c)
 			data = append(data, d)
 		}
@@ -111,7 +112,7 @@ func TestDecodeSPIRoundTrip(t *testing.T) {
 func i2cWave(addr7, rw int, data []int, h int) (scl, sda []uint8) {
 	lo, hi := uint8(40), uint8(210)
 	seg := func(c, d uint8, n int) {
-		for i := 0; i < n; i++ {
+		for range n {
 			scl = append(scl, c)
 			sda = append(sda, d)
 		}
@@ -153,9 +154,11 @@ func TestDecodeI2CRoundTrip(t *testing.T) {
 	}
 	// The span stream must carry START, addr 0x24, W, ACK, data, STOP.
 	var kinds string
+	var kindsSb156 strings.Builder
 	for _, s := range r.Spans {
-		kinds += s.Kind + " "
+		kindsSb156.WriteString(s.Kind + " ")
 	}
+	kinds += kindsSb156.String()
 	for _, need := range []string{"start", "addr", "rw", "ack", "data", "stop"} {
 		if !containsWord(kinds, need) {
 			t.Errorf("I2C spans missing %q; got %s", need, kinds)
@@ -258,7 +261,7 @@ func TestAutodetectAllProtocols(t *testing.T) {
 	// A bare clock (pure square, >40 edges) must NOT be claimed as constant-bit
 	// Manchester (or 0x55 UART) — there is no data on a clock, so Auto says off.
 	var sq []uint8
-	for i := 0; i < 60*40; i++ {
+	for i := range 60 * 40 {
 		if (i/20)%2 == 0 {
 			sq = append(sq, 210)
 		} else {
@@ -294,13 +297,13 @@ func TestDecodeUARTFrameError(t *testing.T) {
 		if bit == 1 {
 			v = hi
 		}
-		for j := 0; j < k; j++ {
+		for range k {
 			w = append(w, v)
 		}
 	}
 	push(1, spb*8)
-	push(0, spb)             // start
-	for c := 0; c < 8; c++ { // data 0x55
+	push(0, spb)       // start
+	for c := range 8 { // data 0x55
 		push((0x55>>c)&1, spb)
 	}
 	push(0, spb) // BAD stop (should be high)
@@ -317,7 +320,7 @@ func TestDecodeUARTFrameError(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-018
 func TestAutodetectARINCWithParityErrors(t *testing.T) {
 	var w []uint8
-	for i := 0; i < 9; i++ {
+	for i := range 9 {
 		word := []uint32{0x92345678, 0x12345678, 0x956789ab}[i%3]
 		bits := make([]int, 32)
 		for j := range bits {
@@ -339,7 +342,7 @@ func TestAutodetectARINCWithParityErrors(t *testing.T) {
 	}
 	// Free-running records may begin/end inside a word. Partial words must
 	// not let a UART interpretation outweigh the complete ARINC words.
-	for phase := 0; phase < 120; phase++ {
+	for phase := range 120 {
 		capture := w[phase*40 : phase*40+8000]
 		if r := Autodetect(capture, nil, 2.5e-7, "hex"); r.Proto != "arinc429" {
 			t.Fatalf("phase %d: ARINC parity errors misidentified as %s: %s", phase, r.Proto, r.Text)

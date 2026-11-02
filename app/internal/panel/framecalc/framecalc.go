@@ -9,13 +9,12 @@ package framecalc
 
 import (
 	"math"
+	"open-sds/app/internal/decode"
+	"open-sds/app/internal/engine"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
-
-	"open-sds/app/internal/decode"
-	"open-sds/app/internal/engine"
 )
 
 // Protocol numbers, shared by the panel's decode setting and the LCD.
@@ -81,7 +80,8 @@ const (
 )
 
 // protoNumbers are the protocol numbers by a decode's Proto name.
-var protoNumbers = map[string]int{"uart": ProtoUART, "i2c": ProtoI2C, "spi": ProtoSPI, "manchester": ProtoManchester,
+var protoNumbers = map[string]int{
+	"uart": ProtoUART, "i2c": ProtoI2C, "spi": ProtoSPI, "manchester": ProtoManchester,
 	"sent": ProtoSENT, "canfd": ProtoCAN, "mil1553": ProtoMIL1553, "arinc429": ProtoARINC429, "usbls": ProtoUSB,
 	"flexray": ProtoFlexRay, "lin": ProtoLIN, "dmx512": ProtoDMX, "midi": ProtoMIDI, "modbus": ProtoModbus,
 	"onewire": ProtoOneWire, "ws281x": ProtoWS281x, "dht": ProtoDHT, "cec": ProtoCEC, "j1850": ProtoJ1850,
@@ -91,7 +91,8 @@ var protoNumbers = map[string]int{"uart": ProtoUART, "i2c": ProtoI2C, "spi": Pro
 	"miller": ProtoMiller, "morse": ProtoMorse, "dcf77": ProtoDCF77, "em4100": ProtoEM4100, "em4305": ProtoEM4305,
 	"t55xx": ProtoT55xx, "swim": ProtoSWIM, "sdq": ProtoSDQ, "pjdl": ProtoPJDL, "dsi": ProtoDSI, "qi": ProtoQi,
 	"sdcard": ProtoSDCard, "pdi": ProtoPDI, "cjtag": ProtoCJTAG, "maple": ProtoMaple, "caliper": ProtoCaliper,
-	"irmp": ProtoIRMP}
+	"irmp": ProtoIRMP,
+}
 
 // ProtoOf is the protocol number of a decode's Proto name (decode.Result's
 // "uart", "lin"...), 0 for none.
@@ -152,8 +153,10 @@ var Formats = [3]string{"hex", "ascii", "both"}
 // 104 MHz device one bit behind the list).
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-214
 func Params(proto, baud, chA, chB int, cpol, cpha, lsb bool, format int, spiDelayNs float64, parity string) DecodeParams {
-	p := DecodeParams{Proto: proto, Baud: baud, ChA: chA, ChB: chB, CPOL: cpol, CPHA: cpha, LSB: lsb,
-		Format: Formats[((format%3)+3)%3]}
+	p := DecodeParams{
+		Proto: proto, Baud: baud, ChA: chA, ChB: chB, CPOL: cpol, CPHA: cpha, LSB: lsb,
+		Format: Formats[((format%3)+3)%3],
+	}
 	if proto == ProtoSPI {
 		p.DataDelayS = spiDelayNs * 1e-9
 	}
@@ -357,7 +360,8 @@ func decodePhys(p DecodeParams, a, b []uint8, sampleS float64) decode.Result {
 		ProtoMiller: decode.DecodeMiller, ProtoMorse: decode.DecodeMorse, ProtoDCF77: decode.DecodeDCF77,
 		ProtoEM4100: decode.DecodeEM4100, ProtoEM4305: decode.DecodeEM4305, ProtoT55xx: decode.DecodeT55xx,
 		ProtoSWIM: decode.DecodeSWIM, ProtoSDQ: decode.DecodeSDQ, ProtoPJDL: decode.DecodePJDL, ProtoDSI: decode.DecodeDSI,
-		ProtoQi: decode.DecodeQi, ProtoIRMP: decode.DecodeIRMP}[p.Proto]
+		ProtoQi: decode.DecodeQi, ProtoIRMP: decode.DecodeIRMP,
+	}[p.Proto]
 	if line == nil {
 		return decode.Result{}
 	}
@@ -512,7 +516,7 @@ func FFT(re, im []float64) {
 		wr, wi := math.Cos(ang), math.Sin(ang)
 		h := l / 2
 		cr, ci := 1.0, 0.0
-		for k := 0; k < h; k++ {
+		for k := range h {
 			twr[k], twi[k] = cr, ci
 			cr, ci = cr*wr-ci*wi, cr*wi+ci*wr
 		}
@@ -552,14 +556,14 @@ func Mags(samples []float64) ([]float64, float64, int) {
 	}
 	mean /= float64(n)
 	zr, zi := make([]float64, half), make([]float64, half)
-	for k := 0; k < half; k++ {
+	for k := range half {
 		zr[k] = (samples[2*k] - mean) * tab.win[2*k]
 		zi[k] = (samples[2*k+1] - mean) * tab.win[2*k+1]
 	}
 	FFT(zr, zi)
 	mags := make([]float64, half)
 	peak, peakK := 1e-9, 1
-	for k := 0; k < half; k++ {
+	for k := range half {
 		j := half - k // (half-k) mod half, without a division a bin
 		if k == 0 {
 			j = 0
@@ -749,7 +753,7 @@ func SpectrumRows(f *engine.Frame, ch int, sampleS float64) []Spec {
 	src := Channel(f, ch&1, Valid(f))
 	seg := RowFFT * full.Stride
 	out := make([]Spec, 0, k)
-	for i := 0; i < k; i++ {
+	for i := range k {
 		out = append(out, specOf(BlockMeans(src[i*seg:(i+1)*seg], RowFFT, full.Stride), full.Stride, sampleS, f.BandwidthHz))
 	}
 	return out

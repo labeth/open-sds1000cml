@@ -3,12 +3,11 @@ package panel
 
 import (
 	"encoding/json"
-	"strings"
-	"testing"
-
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/panel/framecalc"
 	"open-sds/app/internal/settings"
+	"strings"
+	"testing"
 )
 
 // twoLineFrame renders a clock (C1) and a data line (C2) from timed levels:
@@ -36,8 +35,10 @@ func (f *twoLineFrame) seg(a, b bool, d float64) {
 // TRLC-LINKS: REQ-SDS-241
 func (f *twoLineFrame) frame() *engine.Frame {
 	n := len(f.c1)
-	return &engine.Frame{C1: f.c1, C2: f.c2, Valid: n, WinCols: n, EdgeX: float64(n) / 2, Ptp: 150,
-		TdivS: float64(n) * f.sampleS / 10, SampleS: f.sampleS, Trigd: true, FullRate: true}
+	return &engine.Frame{
+		C1: f.c1, C2: f.c2, Valid: n, WinCols: n, EdgeX: float64(n) / 2, Ptp: 150,
+		TdivS: float64(n) * f.sampleS / 10, SampleS: f.sampleS, Trigd: true, FullRate: true,
+	}
 }
 
 // spiFlashFrame is an SPI flash session (mode 0, MSB first, 1 MHz) on C1
@@ -45,8 +46,15 @@ func (f *twoLineFrame) frame() *engine.Frame {
 // TRLC-LINKS: REQ-SDS-242, REQ-SDS-247
 func spiFlashFrame() *engine.Frame {
 	f := &twoLineFrame{c1: make([]uint8, 50000), c2: make([]uint8, 50000), sampleS: 20e-9}
-	txns := [][]byte{{0x9f, 0, 0, 0}, {0x06}, {0x02, 0x00, 0x01, 0x00, 0xde, 0xad}, {0x05, 0}, {0x03, 0x00, 0x10, 0x00, 0, 0, 0, 0},
-		{0x06}, {0x20, 0x01, 0x00, 0x00}}
+	txns := [][]byte{
+		{0x9f, 0, 0, 0},
+		{0x06},
+		{0x02, 0x00, 0x01, 0x00, 0xde, 0xad},
+		{0x05, 0},
+		{0x03, 0x00, 0x10, 0x00, 0, 0, 0, 0},
+		{0x06},
+		{0x20, 0x01, 0x00, 0x00},
+	}
 	const bt = 1e-6
 	f.seg(false, false, 10e-6)
 	for f.t < 0.95e-3 {
@@ -277,7 +285,7 @@ func TestMatchFromLayer(t *testing.T) {
 	press(t, r.c, "f2")
 	r.show(spiFlashFrame())
 	// select the READ
-	for i := 0; i < 20; i++ {
+	for range 20 {
 		p, ok := r.c.selectedPacket()
 		if ok && len(p.Bytes) > 0 && p.Bytes[0] == 0x03 {
 			break
@@ -294,7 +302,7 @@ func TestMatchFromLayer(t *testing.T) {
 	r2.show(i2cEEPROMFrame())
 	press(t, r2.c, "f2")
 	r2.show(i2cEEPROMFrame())
-	for i := 0; i < 20; i++ {
+	for range 20 {
 		p, ok := r2.c.selectedPacket()
 		if ok && !p.Read && len(p.Bytes) == 1 && p.Bytes[0] == 0x12 {
 			break
@@ -332,7 +340,7 @@ func sbusLineFrame() *engine.Frame {
 		for _, v := range frame {
 			bit(0)
 			ones := 0
-			for j := 0; j < 8; j++ {
+			for j := range 8 {
 				bit(v >> j & 1)
 				ones += v >> j & 1
 			}

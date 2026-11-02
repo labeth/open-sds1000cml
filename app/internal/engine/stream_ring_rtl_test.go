@@ -3,15 +3,14 @@ package engine
 
 import (
 	"fmt"
+	"open-sds/app/internal/sramcapture"
+	"open-sds/app/internal/testenv"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strconv"
 	"testing"
-
-	"open-sds/app/internal/sramcapture"
-	"open-sds/app/internal/testenv"
 )
 
 // The bits image's top level in ring mode (ADR-STREAM-RING,
@@ -44,9 +43,11 @@ func TestStreamRingTopRTL(t *testing.T) {
 			}
 			image := filepath.Join(dir, "ring.vvp")
 			args := []string{"-g2012", "-s", "tb_top_bits_ring", "-o", image, "-I", rtl, defs}
-			for _, f := range []string{"top.v", "record.v", "transport.v", "adc_unpack.v", "gpmc_slave.v", "ddio_pair.v", "lane_in.v",
+			for _, f := range []string{
+				"top.v", "record.v", "transport.v", "adc_unpack.v", "gpmc_slave.v", "ddio_pair.v", "lane_in.v",
 				"sim/ddr_model.v", "sim/tb_top_bits_ring.v", "panel_scan.v", "box_decim.v", "stream_packetizer.v", "stream_banks.v",
-				"stream_bits.v", "stream_drum.v", "stream_marks.v", "ring_stamp.v"} {
+				"stream_bits.v", "stream_drum.v", "stream_marks.v", "ring_stamp.v",
+			} {
 				args = append(args, filepath.Join(rtl, f))
 			}
 			if out, err := exec.Command("iverilog", args...).CombinedOutput(); err != nil {

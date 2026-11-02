@@ -4,10 +4,10 @@ package sramcapture
 import (
 	"context"
 	"encoding/binary"
+	"errors"
 	"fmt"
-	"time"
-
 	"open-sds/app/internal/superres"
+	"time"
 )
 
 // Edge-locked FPGA stacking port (fpga/acq_sram/stack_engine_port.v,
@@ -108,7 +108,7 @@ func (c *Capture) stackTileBins() (int, error) {
 func (cfg StackConfig) validate(tile int, pow2 bool) error {
 	switch {
 	case tile == 0:
-		return fmt.Errorf("sramcapture: loaded image has no stacking port")
+		return errors.New("sramcapture: loaded image has no stacking port")
 	case cfg.Channel > 1:
 		return fmt.Errorf("sramcapture: stack channel %d", cfg.Channel)
 	case cfg.Bins < 1 || cfg.Bins > 1<<20:
@@ -248,7 +248,7 @@ func (c *Capture) StackRecord(ctx context.Context, cfg StackConfig, st *StackSta
 		return 0, 0, err
 	}
 	if !m.Ready || !m.Frozen || m.Running || m.SamplesPerWord != 2 || m.Length == 0 {
-		return 0, 0, fmt.Errorf("sramcapture: stacking needs a frozen raw record")
+		return 0, 0, errors.New("sramcapture: stacking needs a frozen raw record")
 	}
 	if err := c.stackGrant(ctx, true); err != nil {
 		return 0, 0, err
@@ -297,8 +297,8 @@ func (c *Capture) StackRecord(ctx context.Context, cfg StackConfig, st *StackSta
 		if err = c.stackOp(ctx, stackOpReset, time.Second); err != nil {
 			return 0, 0, err
 		}
-		for b := 0; b < n; b++ {
-			for ch := 0; ch < 2; ch++ {
+		for b := range n {
+			for ch := range 2 {
 				if m := next[2*(first+b)+ch]; m.Count != 0 {
 					if err = c.stackUpload(ctx, b, ch, m); err != nil {
 						return 0, 0, err
@@ -327,8 +327,8 @@ func (c *Capture) StackRecord(ctx context.Context, cfg StackConfig, st *StackSta
 			return 0, 0, fmt.Errorf("sramcapture: stack tile %d saw %d hits/%d crossings, first tile %d/%d", first/tile, h, x, hits, crossings)
 		}
 		hits, crossings = h, x
-		for b := 0; b < n; b++ {
-			for ch := 0; ch < 2; ch++ {
+		for b := range n {
+			for ch := range 2 {
 				if next[2*(first+b)+ch], err = c.stackDownload(ctx, b, ch); err != nil {
 					return 0, 0, err
 				}
@@ -405,7 +405,7 @@ func (c *Capture) StackDownloadWords(ctx context.Context, n int, dst []byte) err
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if len(dst) != n*superres.FPGAStackWords*2 {
-		return fmt.Errorf("sramcapture: stack download buffer")
+		return errors.New("sramcapture: stack download buffer")
 	}
 	pop, ok := c.bus.(interface{ PopBytesChecked(uint16, []byte) error })
 	ctx, cancel := context.WithTimeout(ctx, time.Second)
@@ -554,7 +554,7 @@ func (c *Capture) StackScan(ctx context.Context, first, n int, initial uint32) (
 		return 0, 0, 0, err
 	}
 	if !m.Ready || !m.Frozen || m.Running || m.SamplesPerWord != 2 || m.Length == 0 {
-		return 0, 0, 0, fmt.Errorf("sramcapture: stacking needs a frozen raw record")
+		return 0, 0, 0, errors.New("sramcapture: stacking needs a frozen raw record")
 	}
 	for _, w := range []struct {
 		sel uint16
@@ -597,7 +597,7 @@ func (c *Capture) StackUpload(ctx context.Context, src []superres.FPGAStackMomen
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if len(src)%2 != 0 {
-		return fmt.Errorf("sramcapture: stack upload needs whole bins")
+		return errors.New("sramcapture: stack upload needs whole bins")
 	}
 	for i, m := range src {
 		if m.Count == 0 {
@@ -617,7 +617,7 @@ func (c *Capture) StackDownload(ctx context.Context, dst []superres.FPGAStackMom
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if len(dst)%2 != 0 {
-		return fmt.Errorf("sramcapture: stack download needs whole bins")
+		return errors.New("sramcapture: stack download needs whole bins")
 	}
 	// A bus worker reads the tile's moments in one round trip; a moment
 	// that reads back inconsistent is read again here, as below.
@@ -645,7 +645,7 @@ func (c *Capture) StackDownload(ctx context.Context, dst []superres.FPGAStackMom
 		// accumulator: re-read it once, then report the transfer fault.
 		var m superres.FPGAStackMoments
 		var err error
-		for try := 0; try < 2; try++ {
+		for range 2 {
 			if m, err = c.stackDownload(ctx, i/2, i%2); err == nil && m.CountOdd > m.Count {
 				err = fmt.Errorf("sramcapture: stack bin %d channel %d read back inconsistent (odd %d > %d)", i/2, i%2, m.CountOdd, m.Count)
 			}

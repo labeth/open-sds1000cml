@@ -47,7 +47,7 @@ func fuzzSignal(kind uint8, n int, f0 float64, raw []byte) []float64 {
 // settings: none may panic or hang.
 // TRLC-LINKS: REQ-SDS-266, REQ-SDS-267, REQ-SDS-268, REQ-SDS-269, REQ-SDS-270, REQ-SDS-271, REQ-SDS-272
 func FuzzSoundAnalysis(f *testing.F) {
-	for k := uint8(0); k < 6; k++ {
+	for k := range uint8(6) {
 		f.Add(k, uint16(4096), 440.0, fsTest, 3.0, []byte{})
 		f.Add(k, uint16(20000), 82.4, fsTest, 1000.0, []byte{1, 2, 0, 9, 9, 3, 200, 7, 5})
 	}
@@ -112,7 +112,7 @@ func FuzzSoundAnalysis(f *testing.F) {
 		var tu Tuner
 		var va VOctAuto
 		var dr Drift
-		for i := 0; i < 20; i++ {
+		for i := range 20 {
 			hz := tu.Add(Pitch{Hz: f0 * (1 + float64(i%3)/100), OK: i%7 != 0})
 			_, _ = va.Add(float64(i)*0.1, knob, hz)
 			dr.Add(float64(i)*0.3, hz)

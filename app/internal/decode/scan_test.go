@@ -12,7 +12,7 @@ import (
 func TestScanRuns(t *testing.T) {
 	rng := rand.New(rand.NewSource(1))
 	buf := make([]uint8, 200)
-	for trial := 0; trial < 300; trial++ {
+	for range 300 {
 		center := rng.Intn(256)
 		spread := 1 + rng.Intn(40)
 		for i := range buf {
@@ -75,7 +75,7 @@ func TestHeldBeyondRuns(t *testing.T) {
 		return float64(min(held[0], held[1]))
 	}
 	rng := rand.New(rand.NewSource(2))
-	for trial := 0; trial < 3000; trial++ {
+	for range 3000 {
 		codes := make([]uint8, rng.Intn(300))
 		lo, hi := rng.Intn(256), rng.Intn(256)
 		for i := range codes {

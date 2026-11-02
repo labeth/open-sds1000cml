@@ -4,7 +4,9 @@ package decode
 import (
 	"encoding/json"
 	"fmt"
+	"maps"
 	"math/rand"
+	"open-sds/app/internal/testenv"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -13,8 +15,6 @@ import (
 	"strconv"
 	"strings"
 	"testing"
-
-	"open-sds/app/internal/testenv"
 )
 
 // webdecJSCfg is each edge protocol's JS decoder and its settings, the same
@@ -208,12 +208,12 @@ func TestWebDecStreamParity(t *testing.T) {
 				if tc.c.lines == 2 {
 					cfg["thresholdB"] = 128
 				}
-				for k, v := range js.cfg {
-					cfg[k] = v
-				}
-				cases = append(cases, webdecCase{Name: id, Fn: js.fn, Two: tc.c.lines == 2, Cfg: cfg, SS: ss,
+				maps.Copy(cfg, js.cfg)
+				cases = append(cases, webdecCase{
+					Name: id, Fn: js.fn, Two: tc.c.lines == 2, Cfg: cfg, SS: ss,
 					CloseN: int(tc.quiet / ss), MaxN: int((tc.longest + tc.quiet) / ss), LeadN: int(tc.lead / ss), Subframes: name == "spdif",
-					Words: wf, Pieces: pieces, Out: filepath.Join(dir, id+".json")})
+					Words: wf, Pieces: pieces, Out: filepath.Join(dir, id+".json"),
+				})
 				want[id] = frames
 			}
 		}

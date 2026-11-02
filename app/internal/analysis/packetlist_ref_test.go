@@ -10,7 +10,7 @@ func (l *PacketList) Len() int { return len(l.rows) }
 // itself downward when dir is 0. Bytes the decoder flagged never match. It
 // returns the row, or -1 (no wrap-around: the caller says "no more").
 // TRLC-LINKS: REQ-SDS-214
-func (l *PacketList) FindMatch(seq []byte, from int, dir int) int {
+func (l *PacketList) FindMatch(seq []byte, from, dir int) int {
 	if len(seq) == 0 || len(l.rows) == 0 {
 		return -1
 	}

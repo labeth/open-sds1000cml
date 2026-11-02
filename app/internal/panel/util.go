@@ -1,6 +1,8 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-PANEL
 package panel
 
+import "slices"
+
 // stepNs steps a width/time value along a 1-2-5 nanosecond ladder from
 // 10 ns to 10 s; a press (wrap) cycles past the top back to the bottom. It
 // reaches 10 s so a UART idle or a slow pulse can be qualified from the panel.
@@ -99,9 +101,9 @@ func nextHoldoff(cur float64, dir int, wrap bool) float64 {
 		}
 		return opts[len(opts)-1]
 	}
-	for i := len(opts) - 1; i >= 0; i-- {
-		if opts[i] < cur*(1-1e-6) {
-			return opts[i]
+	for _, opt := range slices.Backward(opts) {
+		if opt < cur*(1-1e-6) {
+			return opt
 		}
 	}
 	if wrap {

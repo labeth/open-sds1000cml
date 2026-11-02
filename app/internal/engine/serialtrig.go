@@ -14,10 +14,9 @@ package engine
 
 import (
 	"math"
+	"open-sds/app/internal/decode"
 	"sync"
 	"time"
-
-	"open-sds/app/internal/decode"
 )
 
 const (
@@ -355,7 +354,7 @@ func pickSerialMatch(sp []decode.Span, p SerialParams, match func([]decode.Span,
 // contain that sequence. Anchors on the address span (the transaction start).
 // TRLC-LINKS: REQ-SDS-013
 func matchI2C(sp []decode.Span, p SerialParams) (bool, int) {
-	for i := 0; i < len(sp); i++ {
+	for i := range sp {
 		if sp[i].Kind != "addr" {
 			continue
 		}
@@ -426,16 +425,13 @@ func matchBytes(sp []decode.Span, want []int) (bool, int) {
 	}
 	for start := 0; start+len(want) <= len(seq); start++ {
 		ok := true
-		for k := 0; k < len(want); k++ {
+		for k := range want {
 			if seq[start+k].val != want[k] || seq[start+k].segment != seq[start].segment {
 				ok = false
 				break
 			}
 			if k > 0 { // require adjacency: gap ≤ ~2 byte-widths, else it bridged a gap
-				w := seq[start+k].i1 - seq[start+k].i0
-				if w < 1 {
-					w = 1
-				}
+				w := max(seq[start+k].i1-seq[start+k].i0, 1)
 				if seq[start+k].i0-seq[start+k-1].i1 > 2*w {
 					ok = false
 					break

@@ -124,12 +124,12 @@ func zmFamilies() []zmFamily {
 // first rising mid-crossing after sample 600 (mimicking the trigger anchor).
 // violAt >= 0 injects the family's violation at edge-relative sample violAt.
 // TRLC-LINKS: REQ-SDS-014
-func zmGen(fam zmFamily, frameIdx int, violAt int, rng func() float64) (*Frame, float64, int, []float64) {
+func zmGen(fam zmFamily, frameIdx, violAt int, rng func() float64) (*Frame, float64, int, []float64) {
 	const n = 4096
 	f := &Frame{C1: make([]uint8, n), C2: make([]uint8, n), Valid: n}
 	ph := rng() * fam.period
 	vals := make([]float64, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		vals[i] = 128 + fam.off + fam.amp*fam.shape(i, ph)
 	}
 	// Trigger anchor: first rising crossing of (mid + amp/2) preceded by a
@@ -140,10 +140,7 @@ func zmGen(fam zmFamily, frameIdx int, violAt int, rng func() float64) (*Frame, 
 	// sits at mid (burst). This is exactly how a user sets up a real scope:
 	// level on the feature + holdoff over the repetition's inner edges.
 	level := 128 + fam.off + fam.amp*0.5
-	quiet := int(0.15 * fam.period)
-	if quiet < 4 {
-		quiet = 4
-	}
+	quiet := max(int(0.15*fam.period), 4)
 	edgeX := -1.0
 	below := 0
 	for i := 1; i < n-1; i++ {
@@ -188,7 +185,7 @@ func zmGen(fam zmFamily, frameIdx int, violAt int, rng func() float64) (*Frame, 
 			}
 		}
 	}
-	for i := 0; i < n; i++ {
+	for i := range n {
 		v := vals[i] + fam.noise*(rng()*2-1)
 		if v < 0 {
 			v = 0
@@ -236,10 +233,10 @@ func TestZoneMaskBreaker(t *testing.T) {
 		for j := range lo {
 			lo[j] = 255
 		}
-		for k := 0; k < 32; k++ {
+		for k := range 32 {
 			f, edgeX, _, _ := zmGen(fam, k, -1, rng)
 			left := int(math.Round(edgeX - float64(win)*posFrac))
-			for j := 0; j < win; j++ {
+			for j := range win {
 				s := left + j
 				if s < 0 || s >= f.Valid {
 					continue
@@ -262,7 +259,7 @@ func TestZoneMaskBreaker(t *testing.T) {
 		e.ClearMaskFails()
 
 		// ---- clean frames must all pass ----
-		for k := 0; k < 16; k++ {
+		for k := range 16 {
 			f, edgeX, _, _ := zmGen(fam, 100+k, -1, rng)
 			if fail, _ := e.maskEval(f, f.Valid, 0, edgeX, sampleS, posFrac); fail {
 				mf := e.MaskFails()
@@ -270,7 +267,7 @@ func TestZoneMaskBreaker(t *testing.T) {
 			}
 		}
 		// ---- violated frames must all fail, near the injected position ----
-		for k := 0; k < 12; k++ {
+		for k := range 12 {
 			violAt := 40 + (k*53)%(win/2-80) // within the tested window, after the edge
 			f, edgeX, violSample, clean := zmGen(fam, 200+k, violAt, rng)
 			// PHYSICS REFEREE: an amplitude mask can only promise detection when

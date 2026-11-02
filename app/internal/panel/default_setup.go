@@ -69,7 +69,7 @@ func (c *Controller) DefaultSetup() {
 	}
 	if c.fe != nil {
 		oneV := analog.BootDetent // 1 V/div
-		for ch := 0; ch < 2; ch++ {
+		for ch := range 2 {
 			c.vIdx[ch] = oneV
 			if err := c.fe.SetVdiv(ch, oneV); err != nil {
 				c.logf("panel: default setup V/div: %v", err)
@@ -90,7 +90,7 @@ func (c *Controller) DefaultSetup() {
 		c.eng.SetTrigLevelCode(uint16(c.fe.TrigCode(0, 0)))
 	}
 	if c.inverter != nil { // the traces the right way up
-		for ch := 0; ch < 2; ch++ {
+		for ch := range 2 {
 			c.inverter.SetInverted(ch, false)
 		}
 	}

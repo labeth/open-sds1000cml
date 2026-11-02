@@ -173,7 +173,7 @@ func decodePS2(clk, data lineIn, colTimeS float64, cfg ClockedCfg) Result {
 			continue
 		}
 		v, ones := 0, 0
-		for k := 0; k < 8; k++ {
+		for k := range 8 {
 			v |= F[i+1+k].d << k
 			ones += F[i+1+k].d
 		}
@@ -222,8 +222,10 @@ func decodePS2(clk, data lineIn, colTimeS float64, cfg ClockedCfg) Result {
 	// not clocks PS/2 leaves unexplained (a keyboard's two frames, the first
 	// cut by the record's start, fell to half and the pair read as SPI).
 	cut := min(firstF, 12) + min(len(F)-1-lastF, 12)
-	res := Result{OK: good, Proto: "ps2", Spans: spans, Text: strings.Join(toks, " "), Bytes: units,
-		Thr: C.threshold, SPB: per, Cover: min(1, float64(explained)/float64(max(1, len(F)-cut)))}
+	res := Result{
+		OK: good, Proto: "ps2", Spans: spans, Text: strings.Join(toks, " "), Bytes: units,
+		Thr: C.threshold, SPB: per, Cover: min(1, float64(explained)/float64(max(1, len(F)-cut))),
+	}
 	if colTimeS > 0 {
 		res.Baud = int(1/(per*colTimeS) + 0.5)
 	}
@@ -364,7 +366,7 @@ func decodeSWD(clk, dio lineIn, colTimeS float64, cfg ClockedCfg) Result {
 			break
 		}
 		v, cnt := 0, 0
-		for k := 0; k < 32; k++ {
+		for k := range 32 {
 			b := tb(first + k)
 			if rnw == 0 {
 				b = cy[first+k].dr
@@ -416,8 +418,10 @@ func decodeSWD(clk, dio lineIn, colTimeS float64, cfg ClockedCfg) Result {
 	// one rate while it runs
 	_, _, near := C.roundUps()
 	good = good && cover >= 0.5 && swdSteady(cy, per, near)
-	res := Result{OK: good, Proto: "swd", Spans: o.spans, Text: strings.Join(o.toks, " "), Bytes: o.units,
-		Thr: C.threshold, SPB: per, Cover: cover}
+	res := Result{
+		OK: good, Proto: "swd", Spans: o.spans, Text: strings.Join(o.toks, " "), Bytes: o.units,
+		Thr: C.threshold, SPB: per, Cover: cover,
+	}
 	if colTimeS > 0 {
 		res.Baud = int(1/(per*colTimeS) + 0.5)
 	}
@@ -679,7 +683,7 @@ func decodeMDIO(mdc, mdio lineIn, colTimeS float64, cfg ClockedCfg) Result {
 		bit := func(k int) int { return R[i+k].d }
 		bits := func(from, cnt int) int {
 			v := 0
-			for k := 0; k < cnt; k++ {
+			for k := range cnt {
 				v = v<<1 | bit(from+k)
 			}
 			return v
@@ -716,8 +720,10 @@ func decodeMDIO(mdc, mdio lineIn, colTimeS float64, cfg ClockedCfg) Result {
 	if len(o.spans) == 0 {
 		return Result{Proto: "mdio", Error: "no MDIO frame"}
 	}
-	res := Result{OK: good, Proto: "mdio", Spans: o.spans, Text: strings.Join(o.toks, " "), Bytes: o.units,
-		Thr: C.threshold, SPB: per, Cover: min(1, float64(explained)/float64(max(1, len(R)-mdioCut(firstR, lastR, len(R)))))}
+	res := Result{
+		OK: good, Proto: "mdio", Spans: o.spans, Text: strings.Join(o.toks, " "), Bytes: o.units,
+		Thr: C.threshold, SPB: per, Cover: min(1, float64(explained)/float64(max(1, len(R)-mdioCut(firstR, lastR, len(R))))),
+	}
 	if colTimeS > 0 {
 		res.Baud = int(1/(per*colTimeS) + 0.5)
 	}
@@ -830,7 +836,7 @@ func decodeWiegand(d0, d1 lineIn, colTimeS float64, cfg ClockedCfg) Result {
 		spans = append(spans, pspan(fr[0].x0, fr[nb-1].x1, n, lbl, "rw", nb))
 		toks = append(toks, lbl)
 		bits := func(from, cnt int) (v, ones int) {
-			for k := 0; k < cnt; k++ {
+			for k := range cnt {
 				v = v<<1 | fr[from+k].v
 				ones += fr[from+k].v
 			}
@@ -887,8 +893,10 @@ func decodeWiegand(d0, d1 lineIn, colTimeS float64, cfg ClockedCfg) Result {
 	if !A.ok {
 		thr = B.threshold
 	}
-	res := Result{OK: good, Proto: "wiegand", Spans: spans, Text: strings.Join(toks, " "), Bytes: units,
-		Thr: thr, SPB: interval, FrameBits: frameBits}
+	res := Result{
+		OK: good, Proto: "wiegand", Spans: spans, Text: strings.Join(toks, " "), Bytes: units,
+		Thr: thr, SPB: interval, FrameBits: frameBits,
+	}
 	if interval > 0 {
 		res.Baud = int(1/(interval*colTimeS) + 0.5)
 	}

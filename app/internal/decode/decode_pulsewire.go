@@ -79,7 +79,7 @@ func crc8Maxim(b []int) int {
 	c := 0
 	for _, v := range b {
 		c ^= v & 0xff
-		for i := 0; i < 8; i++ {
+		for range 8 {
 			if c&1 != 0 {
 				c = c>>1 ^ 0x8C
 			} else {
@@ -102,8 +102,10 @@ type OneWireCfg struct {
 }
 
 // oneWireROM names the ROM commands.
-var oneWireROM = map[int]string{0x33: "RDROM", 0x0F: "RDROM", 0x55: "MATCH", 0xF0: "SEARCH", 0xEC: "ALARM",
-	0xCC: "SKIP", 0x3C: "ODSKIP", 0x69: "ODMATCH", 0xA5: "RESUME"}
+var oneWireROM = map[int]string{
+	0x33: "RDROM", 0x0F: "RDROM", 0x55: "MATCH", 0xF0: "SEARCH", 0xEC: "ALARM",
+	0xCC: "SKIP", 0x3C: "ODSKIP", 0x69: "ODMATCH", 0xA5: "RESUME",
+}
 
 // owBit is one 1-Wire time slot.
 type owBit struct {
@@ -198,7 +200,7 @@ func decodeOneWire(codes lineIn, colTimeS float64, cfg OneWireCfg) Result {
 		for phase == 2 && len(bits) >= 24 {
 			// eight bits of the ROM: each the third slot of a triplet
 			v := 0
-			for i := 0; i < 8; i++ {
+			for i := range 8 {
 				v |= bits[3*i+2].v << i
 			}
 			flushByte(bits[:24], v, hex2(v), "data")
@@ -264,8 +266,10 @@ func decodeOneWire(codes lineIn, colTimeS float64, cfg OneWireCfg) Result {
 	if len(spans) == 0 {
 		return Result{Proto: "onewire", Error: "no 1-Wire reset or slot"}
 	}
-	res := Result{OK: good, Proto: "onewire", Spans: spans, Text: strings.Join(toks, " "), Bytes: units,
-		Thr: S.threshold, SPB: 1e-6 / colTimeS}
+	res := Result{
+		OK: good, Proto: "onewire", Spans: spans, Text: strings.Join(toks, " "), Bytes: units,
+		Thr: S.threshold, SPB: 1e-6 / colTimeS,
+	}
 	if od {
 		res.Baud = 125000
 	} else {
@@ -413,9 +417,9 @@ func decodeWS281x(codes lineIn, colTimeS float64, cfg WS281xCfg) Result {
 		o.add(frame[0].x0, frame[0].x0, "", "sof", 0, false)
 		nb := len(frame) / 8
 		both, mid := hi > 1.5*lo, (lo+hi)/2
-		for b := 0; b < nb; b++ {
+		for b := range nb {
 			v := 0
-			for i := 0; i < 8; i++ {
+			for i := range 8 {
 				f := &frame[8*b+i]
 				var one bool
 				if both {
@@ -562,7 +566,7 @@ func decodeDHT(codes lineIn, colTimeS float64, cfg DHTCfg) Result {
 		var xs [][2]float64
 		for len(vals) < 5 && j < len(runs) {
 			v, x0, ok := 0, runs[j].x0, true
-			for b := 0; b < 8; b++ {
+			for b := range 8 {
 				if j+1 >= len(runs) || !in(runs[j], 25, 90) || runs[j+1].lvl != 1 || !in(runs[j+1], 10, 100) {
 					ok = false
 					break
@@ -602,8 +606,10 @@ func decodeDHT(codes lineIn, colTimeS float64, cfg DHTCfg) Result {
 	if len(spans) == 0 {
 		return Result{Proto: "dht", Error: "no DHT start and response"}
 	}
-	res := Result{OK: good, Proto: "dht", Spans: spans, Text: strings.Join(toks, " "), Bytes: units,
-		Thr: S.threshold, SPB: 1e-6 / colTimeS, Baud: 10000}
+	res := Result{
+		OK: good, Proto: "dht", Spans: spans, Text: strings.Join(toks, " "), Bytes: units,
+		Thr: S.threshold, SPB: 1e-6 / colTimeS, Baud: 10000,
+	}
 	if !good {
 		res.Error = "no DHT reading whose checksum checks"
 	}
@@ -711,7 +717,7 @@ func decodeCEC(codes lineIn, colTimeS float64, cfg CECCfg) Result {
 				break
 			}
 			v := 0
-			for b := 0; b < 8; b++ {
+			for b := range 8 {
 				v = v<<1 | bs[b]
 			}
 			txt := FmtByte(v, cfg.Format)
@@ -749,8 +755,10 @@ func decodeCEC(codes lineIn, colTimeS float64, cfg CECCfg) Result {
 	if len(spans) == 0 {
 		return Result{Proto: "cec", Error: "no CEC start bit"}
 	}
-	res := Result{OK: good, Proto: "cec", Spans: spans, Text: strings.Join(toks, " "), Bytes: units,
-		Thr: S.threshold, SPB: 2.4e-3 / colTimeS, Baud: 417}
+	res := Result{
+		OK: good, Proto: "cec", Spans: spans, Text: strings.Join(toks, " "), Bytes: units,
+		Thr: S.threshold, SPB: 2.4e-3 / colTimeS, Baud: 417,
+	}
 	if !good {
 		res.Error = "no complete CEC message"
 	}
@@ -771,7 +779,7 @@ func j1850CRC(b []int) int {
 	c := 0xff
 	for _, v := range b {
 		c ^= v & 0xff
-		for i := 0; i < 8; i++ {
+		for range 8 {
 			if c&0x80 != 0 {
 				c = (c<<1 ^ 0x1D) & 0xff
 			} else {
@@ -901,8 +909,10 @@ func decodeJ1850(codes lineIn, colTimeS float64, cfg J1850Cfg) Result {
 	if len(spans) == 0 {
 		return Result{Proto: "j1850", Error: "no J1850 start of frame"}
 	}
-	res := Result{OK: good, Proto: "j1850", Spans: spans, Text: strings.Join(toks, " "), Bytes: units,
-		Thr: S.threshold, SPB: 64e-6 / colTimeS, Baud: 10400}
+	res := Result{
+		OK: good, Proto: "j1850", Spans: spans, Text: strings.Join(toks, " "), Bytes: units,
+		Thr: S.threshold, SPB: 64e-6 / colTimeS, Baud: 10400,
+	}
 	if !good {
 		res.Error = "no J1850 frame whose CRC checks"
 	}

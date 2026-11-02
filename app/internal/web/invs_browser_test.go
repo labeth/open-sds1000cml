@@ -3,12 +3,11 @@ package web
 
 import (
 	"net/http/httptest"
+	"open-sds/app/internal/engine"
+	"open-sds/app/internal/testenv"
 	"os/exec"
 	"strings"
 	"testing"
-
-	"open-sds/app/internal/engine"
-	"open-sds/app/internal/testenv"
 )
 
 // TestINVSBrowser drives invs_browser.mjs over the REAL ui.html + WebGL draw
@@ -28,7 +27,7 @@ func TestINVSBrowser(t *testing.T) {
 	const N = 2048
 	c1 := make([]uint8, N)
 	c2 := make([]uint8, N)
-	for i := 0; i < N; i++ {
+	for i := range N {
 		c1[i], c2[i] = 178, 88
 	}
 	gen := func() *engine.Frame {

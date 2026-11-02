@@ -83,8 +83,11 @@ func TestPeaksAndTHDOfWaveforms(t *testing.T) {
 		{"square 31.7 bins", tones(n, squareComps(31.7, 80, 15), 0.5, 1, true), 31.7, sq, 1.5, []int{1, 3, 5, 7, 9}},
 		{"square on a bin", tones(n, squareComps(32, 80, 15), 0.5, 2, true), 32, sq, 1.5, []int{1, 3, 5, 7, 9}},
 		{"triangle 23.4 bins", tones(n, triangleComps(23.4, 90, 15), 0.3, 3, false), 23.4, tri, 0.5, []int{1, 3, 5, 7, 9}},
-		{"sine + H2 at -40 dB", tones(n, []comp{{57.25, 90, 0}, {114.5, 0.9, 1}}, 0.05, 4, false),
-			57.25, 0.01, 0.05, []int{1, 2}},
+		{
+			"sine + H2 at -40 dB", tones(n, []comp{{57.25, 90, 0}, {114.5, 0.9, 1}}, 0.05, 4, false),
+			57.25, 0.01, 0.05,
+			[]int{1, 2},
+		},
 	} {
 		ps, db, binHz := peaksOf(tc.samples, 8)
 		th := Harmonics(ps, 0)
@@ -163,8 +166,15 @@ func TestPeakLevelBetweenBins(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-216
 func TestPeaksDegenerate(t *testing.T) {
 	nan, inf := math.NaN(), math.Inf(1)
-	for _, db := range [][]float64{nil, {}, {0, 0, 0, 0}, make([]float64, 64),
-		{nan, nan, nan, nan, nan, nan}, {0, -1, -2, inf, -2, -1, 0}, {-inf, -inf, -inf, -inf, -inf, -inf}} {
+	for _, db := range [][]float64{
+		nil,
+		{},
+		{0, 0, 0, 0},
+		make([]float64, 64),
+		{nan, nan, nan, nan, nan, nan},
+		{0, -1, -2, inf, -2, -1, 0},
+		{-inf, -inf, -inf, -inf, -inf, -inf},
+	} {
 		if ps := Peaks(db, 10, 8); len(ps) != 0 {
 			t.Errorf("Peaks(%v) = %v", db, ps)
 		}

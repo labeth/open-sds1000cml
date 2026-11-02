@@ -18,7 +18,7 @@ func TestWedgeLadderNativeFast(t *testing.T) {
 
 	// CONF_DONE high: dead runs accumulate and bring-up re-asserts, but a
 	// flat input is indistinguishable from a partial wedge — never Wedged.
-	for i := 0; i < 50; i++ {
+	for range 50 {
 		e.oneFrame(false)
 	}
 	s := e.Snapshot()
@@ -33,7 +33,7 @@ func TestWedgeLadderNativeFast(t *testing.T) {
 	fb.mu.Lock()
 	fb.confDone = 0x00
 	fb.mu.Unlock()
-	for i := 0; i < 50; i++ {
+	for range 50 {
 		e.oneFrame(false)
 	}
 	if s := e.Snapshot(); !s.Wedged {
@@ -56,7 +56,7 @@ func TestWedgeLadderDecimated(t *testing.T) {
 	fb.mu.Unlock()
 	e, _ := newTestEngine(t, fb)
 	e.bringUp()
-	for i := 0; i < 50; i++ {
+	for range 50 {
 		e.oneFrame(false)
 	}
 	if s := e.Snapshot(); !s.Wedged {
@@ -75,7 +75,7 @@ func TestWedgeLadderResetsOnActivity(t *testing.T) {
 	b, _ := PlanTdiv(1e-6)
 	e.band = b
 	e.bringUp()
-	for i := 0; i < 9; i++ {
+	for range 9 {
 		e.oneFrame(false)
 	}
 	if s := e.Snapshot(); s.DeadRuns != 9 {

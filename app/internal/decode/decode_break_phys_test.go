@@ -132,10 +132,12 @@ func TestDecodeFuzzPhys(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-256
 func TestBreakPhysNoFalseFrames(t *testing.T) {
 	rng := rand.New(rand.NewSource(101))
-	checked := map[string]bool{"ook": true, "em4100": true, "em4305": true, "sdcard": true, "pjdl": true, "qi": true,
-		"maple": true}
+	checked := map[string]bool{
+		"ook": true, "em4100": true, "em4305": true, "sdcard": true, "pjdl": true, "qi": true,
+		"maple": true,
+	}
 	falses := map[string]int{}
-	for it := 0; it < 150; it++ {
+	for range 150 {
 		n := 2000 + rng.Intn(30000)
 		a, b := make([]uint8, n), make([]uint8, n)
 		va, vb, p := 200, 200, 3+rng.Intn(400)
@@ -163,7 +165,7 @@ func TestBreakPhysNoFalseFrames(t *testing.T) {
 	// the protocols without a check: the detection does not name them on
 	// random line pairs either
 	named := map[string]int{}
-	for it := 0; it < 60; it++ {
+	for range 60 {
 		n := 4000 + rng.Intn(20000)
 		a, b := make([]uint8, n), make([]uint8, n)
 		va, vb, p := 200, 200, 3+rng.Intn(200)
@@ -314,7 +316,6 @@ func TestBreakPhysChecksFlagged(t *testing.T) {
 func TestBreakPhysRecordEnds(t *testing.T) {
 	dec := map[string]func(a, b []uint8, ct float64) Result{}
 	for _, d := range physDecoders {
-		d := d
 		dec[d.name] = func(a, b []uint8, ct float64) Result { return d.dec(a, b, ct, rand.New(rand.NewSource(0))) }
 	}
 	for _, c := range physDetectCases() {

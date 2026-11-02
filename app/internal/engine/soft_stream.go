@@ -3,17 +3,17 @@ package engine
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"math/bits"
-	"slices"
-	"sync"
-	"time"
-
 	"open-sds/app/internal/bus"
 	"open-sds/app/internal/decode"
 	"open-sds/app/internal/decodedlines"
 	"open-sds/app/internal/sramcapture"
+	"slices"
+	"sync"
+	"time"
 )
 
 // The decoded stream of the protocols on the qualify image's symbol trigger
@@ -179,13 +179,15 @@ type softStream struct {
 const softValueMisses = 8
 
 // softProtoNames are the decode package's names of the symbol protocols.
-var softProtoNames = map[int]string{serLIN: "lin", serDMX: "dmx512", serModbus: "modbus", serOneWire: "onewire",
+var softProtoNames = map[int]string{
+	serLIN: "lin", serDMX: "dmx512", serModbus: "modbus", serOneWire: "onewire",
 	serWS281x: "ws281x", serDHT: "dht", serCEC: "cec", serJ1850: "j1850", serIRNEC: "irnec", serIRSIRC: "irsirc",
 	serIRRC5: "irrc5", serIRRC6: "irrc6", serDALI: "dali", serUSBPD: "usbpd", serSPDIF: "spdif", serPS2: "ps2",
 	serSWD: "swd", serMDIO: "mdio", serWiegand: "wiegand", serQuad: "quad", serStepper: "stepper", serPWM: "pwm",
 	serRCEncode: "rcencode", serOOK: "ook", serMiller: "miller", serMorse: "morse", serDCF77: "dcf77", serEM4100: "em4100",
 	serEM4305: "em4305", serT55xx: "t55xx", serSWIM: "swim", serSDQ: "sdq", serPJDL: "pjdl", serDSI: "dsi", serQi: "qi",
-	serSDCard: "sdcard", serPDI: "pdi", serCJTAG: "cjtag", serMaple: "maple", serCaliper: "caliper", serIRMP: "irmp"}
+	serSDCard: "sdcard", serPDI: "pdi", serCJTAG: "cjtag", serMaple: "maple", serCaliper: "caliper", serIRMP: "irmp",
+}
 
 // softProtoName is softProtoNames[proto] from a table by id, built once
 // (the map is hashed on every stream view's frame otherwise).
@@ -386,15 +388,17 @@ func (e *Engine) beginSoftStream(ctx context.Context, p SerialParams, trig Strea
 			return sramcapture.RecordIdentity{}, fmt.Errorf("%s streams as captures, and the FPGA's symbol trigger matches %X only at a fixed place in a frame: stop it by hand", d.Name, value&unitMask(p))
 		}
 	}
-	s := &softStream{p: p, proto: name, decoder: d, trig: trig, value: value & unitMask(p), mask: unitMask(p),
-		gapFree: gapFree, quiet: quiet, bits: bits, byHand: onError, ring: bits && trig == StreamOnValue, subframes: name == "spdif"}
+	s := &softStream{
+		p: p, proto: name, decoder: d, trig: trig, value: value & unitMask(p), mask: unitMask(p),
+		gapFree: gapFree, quiet: quiet, bits: bits, byHand: onError, ring: bits && trig == StreamOnValue, subframes: name == "spdif",
+	}
 	if bits {
 		s.overBudget = float64(softLines(p.Proto))/decode.StreamBitsPeriod(plan.period) > softBitsBudget
 	}
 	v, err := e.decodedCall(ctx, func() (any, error) {
 		e.decodedStarting = time.Time{}
 		if e.decodedSession != nil || e.soft != nil {
-			return nil, fmt.Errorf("a decoded stream is already running")
+			return nil, errors.New("a decoded stream is already running")
 		}
 		want := imageQualify
 		if bits {
@@ -556,8 +560,10 @@ func (e *Engine) softStreamStart(s *softStream) error {
 		return fmt.Errorf("a stream of %.3g M words a second is past the bus's %.3g M", r/1e6, decode.StreamBusWords/1e6)
 	}
 	ch := uint8(s.p.ChA & 1)
-	cfg := sramcapture.Config{Source: sramcapture.ADC, DecimationLog2: s.log, PreWords: sramcapture.Words - 17, PostWords: 17,
-		TriggerChannel: ch, TriggerLevel: uint8(math.Round(s.p.Threshold))}
+	cfg := sramcapture.Config{
+		Source: sramcapture.ADC, DecimationLog2: s.log, PreWords: sramcapture.Words - 17, PostWords: 17,
+		TriggerChannel: ch, TriggerLevel: uint8(math.Round(s.p.Threshold)),
+	}
 	if s.bits {
 		e.planBitsLevels(s, &cfg)
 	}
@@ -865,7 +871,7 @@ func (e *Engine) feedBitsQuiet(s *softStream, raw []byte) {
 	two := clockedTwoLine(s.p.Proto)
 	n := len(raw) / 4
 	from := 0 // the first word not yet queued or left out
-	for i := 0; i < n; i++ {
+	for i := range n {
 		w := raw[4*i : 4*i+4 : 4*i+4]
 		a := uint16(w[2*ch]) | uint16(w[2*ch+1])<<8
 		b := uint16(w[2-2*ch]) | uint16(w[3-2*ch])<<8
@@ -1044,7 +1050,7 @@ func peakPairs(o []uint8, raw []byte, ch int, prev int32, t *[2][256]int32) int3
 	t0, t1 := &t[0], &t[1]
 	c := ch & 1
 	n := min(len(raw)/4, len(o)/2)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		w := raw[4*i : 4*i+4 : 4*i+4]
 		el, eh := t0[w[c]], t1[w[2+c]]
 		dl, dh := el>>8-prev, eh>>8-prev
@@ -1241,7 +1247,7 @@ const softEventsMax = decodedBufferLimit
 func (s *softStream) addEvent(ev sramcapture.DecodedEvent) {
 	if len(s.events)-s.evHead >= softEventsMax {
 		if s.err == nil {
-			s.err = fmt.Errorf("decoded host buffer overflow; transcript incomplete")
+			s.err = errors.New("decoded host buffer overflow; transcript incomplete")
 		}
 		return
 	}
@@ -1266,7 +1272,7 @@ func (s *softStream) valuePattern(at int) []PatternElem {
 		return []PatternElem{{Kind: patternData, Value: s.value, Mask: s.mask}}
 	}
 	pat := []PatternElem{{Kind: patternStart}}
-	for i := 0; i < at; i++ {
+	for range at {
 		pat = append(pat, PatternElem{Kind: patternData})
 	}
 	pat = append(pat, PatternElem{Kind: patternData, Value: s.value, Mask: s.mask})
@@ -1335,12 +1341,12 @@ func (e *Engine) softRecordConfig(s *softStream, words uint32, log uint8, patter
 func (e *Engine) softArmRecord(s *softStream) {
 	s.phase = softDone
 	if !e.hasImage(imageQualify) {
-		s.err = fmt.Errorf("no qualify FPGA image for the record")
+		s.err = errors.New("no qualify FPGA image for the record")
 		return
 	}
 	if e.protocolImage != imageQualify {
 		if e.loadImage(imageQualify); e.protocolImage != imageQualify {
-			s.err = fmt.Errorf("the qualify FPGA image did not load for the record")
+			s.err = errors.New("the qualify FPGA image did not load for the record")
 			return
 		}
 	}
@@ -1541,7 +1547,7 @@ func (e *Engine) softFor(id sramcapture.RecordIdentity) bool {
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
 func (e *Engine) softIdentity(id sramcapture.RecordIdentity) error {
 	if e.soft == nil || e.soft.id != id {
-		return fmt.Errorf("decoded capture identity is no longer active")
+		return errors.New("decoded capture identity is no longer active")
 	}
 	return nil
 }
@@ -1577,12 +1583,14 @@ func (e *Engine) softStatus(id sramcapture.RecordIdentity) (sramcapture.Metadata
 	}
 	if !s.recOK {
 		if s.err == nil {
-			s.err = fmt.Errorf("no record")
+			s.err = errors.New("no record")
 		}
 		return sramcapture.Metadata{}, s.err
 	}
-	return sramcapture.Metadata{Triggered: true, Frozen: true, Ready: true, HasSampleTimeline: true,
-		SampleFirst: s.stopFirst, SampleLast: s.stopLast}, nil
+	return sramcapture.Metadata{
+		Triggered: true, Frozen: true, Ready: true, HasSampleTimeline: true,
+		SampleFirst: s.stopFirst, SampleLast: s.stopLast,
+	}, nil
 }
 
 // softFreeze ends the stream's acquisition; a record the symbol trigger
@@ -1617,8 +1625,10 @@ func (e *Engine) softFreeze(ctx context.Context, id sramcapture.RecordIdentity) 
 	e.mu.Lock()
 	e.adopt = &adoptedRecord{m: s.recMeta, cfg: s.recCfg}
 	e.mu.Unlock()
-	return sramcapture.Metadata{Triggered: true, Frozen: true, Ready: true, HasSampleTimeline: true,
-		SampleFirst: s.stopFirst, SampleLast: s.stopLast}, true, nil
+	return sramcapture.Metadata{
+		Triggered: true, Frozen: true, Ready: true, HasSampleTimeline: true,
+		SampleFirst: s.stopFirst, SampleLast: s.stopLast,
+	}, true, nil
 }
 
 // softEnd tears the stream down; acquisition stays stopped until RUN.

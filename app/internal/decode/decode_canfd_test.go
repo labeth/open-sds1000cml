@@ -17,7 +17,7 @@ import (
 // TRLC-LINKS: REQ-SDS-018
 func canBitsMSB(val, nbits int) []int {
 	out := make([]int, nbits)
-	for k := 0; k < nbits; k++ {
+	for k := range nbits {
 		out[k] = (val >> (nbits - 1 - k)) & 1
 	}
 	return out
@@ -43,7 +43,7 @@ func canStuffCore(bits []int) (out []int, runVal, runLen int) {
 			runVal, runLen = b, 1
 		}
 	}
-	return
+	return out, runVal, runLen
 }
 
 // canStdFrame builds a classic standard (11-bit) data frame. Returns the
@@ -69,7 +69,7 @@ func canStdFrame(id, dlc int, data []int) (crcInput, wire []int) {
 	wire = append(wire, 1) // CRC delimiter (recessive)
 	wire = append(wire, 0) // ACK slot (dominant = acknowledged)
 	wire = append(wire, 1) // ACK delimiter (recessive)
-	for i := 0; i < 7+3; i++ {
+	for range 7 + 3 {
 		wire = append(wire, 1) // EOF (7) + IFS (3)
 	}
 	return crcInput, wire
@@ -100,7 +100,7 @@ func canExtFrame(id29, dlc int, data []int) (crcInput, wire []int) {
 	}
 	wire = append(wire, stuffed...)
 	wire = append(wire, 1, 0, 1) // CRC del, ACK, ACK del
-	for i := 0; i < 7+3; i++ {
+	for range 7 + 3 {
 		wire = append(wire, 1)
 	}
 	return crcInput, wire
@@ -126,7 +126,7 @@ func canFDStdFrame(id, dlc int, data []int) []int {
 	}
 	stuffed, _, _ := canStuffCore(bits)
 	wire := append([]int{}, stuffed...)
-	for i := 0; i < 24; i++ {
+	for range 24 {
 		wire = append(wire, 1) // recessive tail (skipped by the FD best-effort path)
 	}
 	return wire
@@ -154,7 +154,7 @@ func canRender(wire []int, spb int, dominantLow bool, lead, trail int) []uint8 {
 				v = hi
 			}
 		}
-		for j := 0; j < count; j++ {
+		for range count {
 			codes = append(codes, v)
 		}
 	}
@@ -169,9 +169,11 @@ func canRender(wire []int, spb int, dominantLow bool, lead, trail int) []uint8 {
 // TRLC-LINKS: REQ-SDS-018
 func spanKinds(r Result) string {
 	s := ""
+	var sSb172 strings.Builder
 	for _, sp := range r.Spans {
-		s += sp.Kind + " "
+		sSb172.WriteString(sp.Kind + " ")
 	}
+	s += sSb172.String()
 	return s
 }
 
@@ -365,7 +367,7 @@ func TestDecodeCANFDNoPanic(t *testing.T) {
 	}
 	colTimes := []float64{0, 1e-12, 1e-6, 1}
 	bauds := []int{0, -1, 500, 25000, 1 << 28}
-	for i := 0; i < 400; i++ {
+	for i := range 400 {
 		codes := mk(rng.Intn(4000), rng.Intn(4))
 		ct := colTimes[rng.Intn(len(colTimes))]
 		cfg := CANFDCfg{

@@ -3,12 +3,11 @@ package web
 
 import (
 	"net/http/httptest"
+	"open-sds/app/internal/engine"
+	"open-sds/app/internal/testenv"
 	"os/exec"
 	"strings"
 	"testing"
-
-	"open-sds/app/internal/engine"
-	"open-sds/app/internal/testenv"
 )
 
 // TestADCFaultBrowser drives adcfault_browser.mjs: with /api/status carrying
@@ -23,11 +22,15 @@ func TestADCFaultBrowser(t *testing.T) {
 		c1[i], c2[i] = 150, 100
 	}
 	gen := func() *engine.Frame {
-		return &engine.Frame{C1: c1, C2: c2, Seq: 3, Valid: N, WinCols: N, EdgeX: -1,
-			TdivS: 500e-6, DisplayedS: 500e-6, SampleS: 800e-9}
+		return &engine.Frame{
+			C1: c1, C2: c2, Seq: 3, Valid: N, WinCols: N, EdgeX: -1,
+			TdivS: 500e-6, DisplayedS: 500e-6, SampleS: 800e-9,
+		}
 	}
-	fs := &fakeScope{frameGen: gen, stats: engine.Stats{Running: true, TrigPosFrac: 0.5,
-		ADCFault: "ADC fault: converter E2 not converting - restart the scope"}}
+	fs := &fakeScope{frameGen: gen, stats: engine.Stats{
+		Running: true, TrigPosFrac: 0.5,
+		ADCFault: "ADC fault: converter E2 not converting - restart the scope",
+	}}
 	srv := httptest.NewServer(New(fs, nil, nil, nil).Handler())
 	defer srv.Close()
 	out, err := exec.Command("node", "adcfault_browser.mjs", srv.URL).CombinedOutput()

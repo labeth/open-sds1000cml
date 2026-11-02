@@ -96,7 +96,7 @@ func canOracleWire(f canOFrame) (wire []int, nStuff, txCRC int) {
 		ackBit = 1 // nobody ACKed: the slot stays recessive
 	}
 	wire = append(stuffed, 1, ackBit, 1) // CRC delimiter, ACK slot, ACK delimiter
-	for i := 0; i < 7+3; i++ {
+	for range 7 + 3 {
 		wire = append(wire, 1) // EOF(7) + intermission(3): the legal minimum gap
 	}
 	return wire, nStuff, txCRC
@@ -548,8 +548,10 @@ func TestOracleCAN(t *testing.T) {
 		// are pinned; a fixed PD trips the phantom checks below and this pin
 		// gets upgraded to a strict comparison.
 		const baud = 50_000
-		f := canOFrame{id: 0x144, dlc: 12,
-			data: []int{0x10, 0x32, 0x54, 0x76, 0x98, 0xBA, 0xDC, 0xFE}}
+		f := canOFrame{
+			id: 0x144, dlc: 12,
+			data: []int{0x10, 0x32, 0x54, 0x76, 0x98, 0xBA, 0xDC, 0xFE},
+		}
 		wire, _, _ := canOracleWire(f)
 		bits := canOracleBits(sr, baud, wire)
 		res := decode(t, bits, baud)

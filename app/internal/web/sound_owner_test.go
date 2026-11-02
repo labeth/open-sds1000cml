@@ -9,15 +9,14 @@ import (
 	"math"
 	"net/http"
 	"net/http/httptest"
+	"open-sds/app/internal/engine"
+	"open-sds/app/internal/panel"
+	"open-sds/app/internal/testenv"
 	"os/exec"
 	"strings"
 	"sync"
 	"testing"
 	"time"
-
-	"open-sds/app/internal/engine"
-	"open-sds/app/internal/panel"
-	"open-sds/app/internal/testenv"
 )
 
 // ownerScope is a scope with an audio stream behind the real panel: the
@@ -94,7 +93,7 @@ func newOwnerScope(t *testing.T) (*ownerScope, *panel.Controller, *Server, func(
 func soundBinHead(t *testing.T, h http.Handler, url string) soundBinHeader {
 	t.Helper()
 	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, httptest.NewRequest("GET", url, nil))
+	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, url, nil))
 	b := rec.Body.Bytes()
 	if len(b) < 8 || string(b[:2]) != "SB" {
 		t.Fatalf("%s: %d %q", url, rec.Code, b)
@@ -160,7 +159,7 @@ func TestSoundLCDKeyPausesThePage(t *testing.T) {
 	}
 
 	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, httptest.NewRequest("POST", "/api/panel", strings.NewReader(`{"button":"set50"}`)))
+	h.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/api/panel", strings.NewReader(`{"button":"set50"}`)))
 	waitFor(t, "the LCD's key took the scope", pc.SoundPaused)
 	_, before := o.leased()
 	hd := soundBinHead(t, h, "/api/sound.bin?max=64&wait=50")

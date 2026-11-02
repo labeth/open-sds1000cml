@@ -3,9 +3,8 @@ package engine
 
 import (
 	"math"
-	"time"
-
 	"open-sds/app/internal/iface"
+	"time"
 )
 
 // Equivalent-time sampling (spec 04 §3): OPT-IN ONLY, never auto-routed.
@@ -31,8 +30,12 @@ func etsPlan(tdivS float64) (factor, nCols int) {
 		tdiv   float64
 		factor int
 	}{
-		{1e-9, 500}, {2e-9, 500}, {5e-9, 500},
-		{10e-9, 250}, {20e-9, 100}, {50e-9, 50},
+		{1e-9, 500},
+		{2e-9, 500},
+		{5e-9, 500},
+		{10e-9, 250},
+		{20e-9, 100},
+		{50e-9, 50},
 	}
 	best, bestD := rows[1], math.MaxFloat64
 	for _, r := range rows {
@@ -219,7 +222,7 @@ func (e *Engine) etsRebuild(f *Frame, nCols int) {
 	render := func(sum []int64, out []uint8) {
 		lastFilled := -1
 		firstFilled := -1
-		for c := 0; c < nCols; c++ {
+		for c := range nCols {
 			if e.etsCnt[c] == 0 {
 				continue
 			}

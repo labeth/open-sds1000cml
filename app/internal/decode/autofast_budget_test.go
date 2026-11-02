@@ -42,7 +42,7 @@ func TestAutodetectEdgeBudget(t *testing.T) {
 		t.Fatalf("a UART record was cut to %d of %d", n, len(u))
 	}
 	var bytes []int
-	for i := 0; i < 20000; i++ {
+	for i := range 20000 {
 		bytes = append(bytes, (i*37+11)&0xff)
 	}
 	clk, data := spiWave(bytes, 3) // a fast SPI bus busy over the whole record

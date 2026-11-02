@@ -108,7 +108,7 @@ func sigrokDecode(t *testing.T, sampleRate int, names []string, chans [][]byte, 
 	}
 	var sb strings.Builder
 	sb.WriteString(strings.Join(names, ",") + "\n")
-	for i := 0; i < n; i++ {
+	for i := range n {
 		for k, c := range chans {
 			if k > 0 {
 				sb.WriteByte(',')
@@ -139,7 +139,7 @@ func sigrokDecode(t *testing.T, sampleRate int, names []string, chans [][]byte, 
 		t.Fatalf("sigrok-cli %v failed: %v\n%s", args, err, out)
 	}
 	var anns []ann
-	for _, line := range strings.Split(string(out), "\n") {
+	for line := range strings.SplitSeq(string(out), "\n") {
 		m := annRe.FindStringSubmatch(strings.TrimSpace(line))
 		if m == nil {
 			continue

@@ -3,10 +3,9 @@ package engine
 
 import (
 	"math"
-	"testing"
-
 	"open-sds/app/internal/decode"
 	"open-sds/app/internal/sramcapture"
+	"testing"
 )
 
 // A digital period of any whole number of raw words maps the stream's
@@ -60,14 +59,14 @@ func TestSoftStreamPaceFrameOrdinals(t *testing.T) {
 	}
 	char := func(v int) {
 		add(false, 1)
-		for i := 0; i < 8; i++ {
+		for i := range 8 {
 			add(v>>i&1 == 1, 1)
 		}
 		add(true, 1)
 	}
 	add(true, 300)
 	var frames [][]int
-	for i := 0; i < 8; i++ {
+	for i := range 8 {
 		id := 0x10 + i
 		bit := func(k int) int { return id >> k & 1 }
 		pid := id | (bit(0)^bit(1)^bit(2)^bit(4))<<6 | (1^bit(1)^bit(3)^bit(4)^bit(5))<<7
@@ -98,9 +97,11 @@ func TestSoftStreamPaceFrameOrdinals(t *testing.T) {
 	for _, period := range []int{16, 64, 13, 90, 166, 251} {
 		raw := bitsWords(levels, 2*period)
 		d, _ := serialDecoder(serLIN)
-		s := &softStream{p: SerialParams{Proto: serLIN, Baud: baud, Threshold: 128, HaveThr: true}, proto: name, decoder: d,
+		s := &softStream{
+			p: SerialParams{Proto: serLIN, Baud: baud, Threshold: 128, HaveThr: true}, proto: name, decoder: d,
 			mask: 0xff, gapFree: true, quiet: quiet, bits: true, trig: StreamManual,
-			id: sramcapture.RecordIdentity{Epoch: softEpochBase | 1}}
+			id: sramcapture.RecordIdentity{Epoch: softEpochBase | 1},
+		}
 		s.setTiming(softPlan{log: softBitsLog(period), period: period, bits: true})
 		s.dec = decode.NewStreamDecoder(s.decodeFunc(), int(quiet/s.sampleS), int((longest+quiet)/s.sampleS))
 		for at := 0; at < len(raw); {

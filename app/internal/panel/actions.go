@@ -3,13 +3,13 @@ package panel
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
-	"time"
-
 	"open-sds/app/internal/analog"
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/panel/framecalc"
+	"time"
 )
 
 // Instrument actions: the one setter path each setting has, shared by the
@@ -73,7 +73,7 @@ func (c *Controller) setTrigType(v int) error {
 	st := c.eng.Snapshot()
 	if v == trigSerial {
 		if c.serialTrig() == nil {
-			return fmt.Errorf("no serial trigger in this engine")
+			return errors.New("no serial trigger in this engine")
 		}
 		return c.armSerial()
 	}
@@ -90,7 +90,7 @@ func (c *Controller) armSerial() error {
 	c.mu.Unlock()
 	if proto == framecalc.ProtoOff {
 		c.toast("Serial trigger needs a bus: BUS workspace (F2) finds it, or set Protocol", 2200*time.Millisecond)
-		return fmt.Errorf("the serial trigger needs a bus: decode is off")
+		return errors.New("the serial trigger needs a bus: decode is off")
 	}
 	if !serialProto(proto) {
 		c.toast("The serial trigger needs a bus (decoding "+protoName(proto)+")", 2000*time.Millisecond)
@@ -167,7 +167,7 @@ func (c *Controller) editVideo(fn func()) error {
 // TRLC-LINKS: REQ-SDS-212
 func (c *Controller) setVdivIdx(ch, idx int) error {
 	if c.fe == nil {
-		return fmt.Errorf("no analog front end")
+		return errors.New("no analog front end")
 	}
 	idx = clampInt(idx, 0, len(analog.Detents)-1)
 	if err := c.fe.SetVdiv(ch, idx); err != nil {
@@ -183,7 +183,7 @@ func (c *Controller) setVdivIdx(ch, idx int) error {
 // TRLC-LINKS: REQ-SDS-212
 func (c *Controller) stepVdiv(ch, n int) error {
 	if c.fe == nil {
-		return fmt.Errorf("no analog front end")
+		return errors.New("no analog front end")
 	}
 	idx, _ := c.fe.Snapshot()
 	return c.setVdivIdx(ch, idx[ch]+n)
@@ -204,7 +204,7 @@ func offsetRangeV(idx int) float64 {
 // TRLC-LINKS: REQ-SDS-212
 func (c *Controller) setOffsetTip(ch int, v float64) error {
 	if c.fe == nil {
-		return fmt.Errorf("no analog front end")
+		return errors.New("no analog front end")
 	}
 	c.fe.SetOffset(ch, v/c.fe.ProbeFactor(ch))
 	return nil
@@ -226,7 +226,7 @@ func (c *Controller) stepOffset(ch, n int) error {
 // TRLC-LINKS: REQ-SDS-212
 func (c *Controller) setCoupling(ch, mode int) error {
 	if c.fe == nil {
-		return fmt.Errorf("no analog front end")
+		return errors.New("no analog front end")
 	}
 	return c.fe.SetCoupling(ch, mode)
 }
@@ -235,7 +235,7 @@ func (c *Controller) setCoupling(ch, mode int) error {
 // TRLC-LINKS: REQ-SDS-212
 func (c *Controller) setProbe(ch, x int) error {
 	if c.fe == nil {
-		return fmt.Errorf("no analog front end")
+		return errors.New("no analog front end")
 	}
 	c.fe.SetProbe(ch, float64(x))
 	return nil
@@ -246,7 +246,7 @@ func (c *Controller) setProbe(ch, x int) error {
 func (c *Controller) setBWL(ch int, on bool) error {
 	b, ok := c.fe.(interface{ SetBWL(ch int, on bool) error })
 	if !ok {
-		return fmt.Errorf("no bandwidth limit on this front end")
+		return errors.New("no bandwidth limit on this front end")
 	}
 	return b.SetBWL(ch, on)
 }
@@ -255,7 +255,7 @@ func (c *Controller) setBWL(ch int, on bool) error {
 // TRLC-LINKS: REQ-SDS-212
 func (c *Controller) setInvert(ch int, on bool) error {
 	if c.inverter == nil {
-		return fmt.Errorf("invert unavailable")
+		return errors.New("invert unavailable")
 	}
 	c.inverter.SetInverted(ch, on)
 	return nil
@@ -276,7 +276,7 @@ func (c *Controller) setChanShown(ch int, on bool) error {
 // TRLC-LINKS: REQ-SDS-212
 func (c *Controller) setTdivIdx(i int) error {
 	if len(c.tdivs) == 0 {
-		return fmt.Errorf("no timebase ladder")
+		return errors.New("no timebase ladder")
 	}
 	i = clampInt(i, 0, len(c.tdivs)-1)
 	// An image that records raw samples only (2.1 ms) shows no slower screen
@@ -359,7 +359,7 @@ func (c *Controller) setZoomOff(f float64) error {
 func (c *Controller) setRollStream(on bool) error {
 	e, ok := c.eng.(interface{ SetRollStream(bool) })
 	if !ok {
-		return fmt.Errorf("no roll stream in this engine")
+		return errors.New("no roll stream in this engine")
 	}
 	e.SetRollStream(on)
 	return nil
@@ -494,7 +494,7 @@ func (c *Controller) storeRef(i int) error {
 	ok := c.refs[i&1].has
 	c.mu.Unlock()
 	if !ok {
-		return fmt.Errorf("no frame to store")
+		return errors.New("no frame to store")
 	}
 	return nil
 }

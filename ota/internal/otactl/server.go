@@ -2,6 +2,7 @@
 package otactl
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
@@ -27,7 +28,7 @@ func RunServer(host string, port int, printBanner func(string)) error {
 	}
 	go ns.Start()
 	if !ns.ReadyForConnections(10 * time.Second) {
-		return fmt.Errorf("nats-server not ready")
+		return errors.New("nats-server not ready")
 	}
 	if printBanner != nil {
 		printBanner(ns.ClientURL())

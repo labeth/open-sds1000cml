@@ -20,7 +20,7 @@ func snapsOf(n int, seed int64, noise float64, sig func(t float64) float64, held
 	out := make([][10]uint8, n)
 	for i := range out {
 		t := r.Float64()
-		for b := 0; b < 10; b++ {
+		for b := range 10 {
 			if v, ok := held[b]; ok {
 				out[i][b] = v
 				continue

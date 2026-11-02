@@ -141,7 +141,7 @@ func randomLevels(rng *rand.Rand, n int, mean float64, sparse bool) []byte {
 func TestEdgeLineSliceMatchesSamples(t *testing.T) {
 	rng := rand.New(rand.NewSource(1))
 	thrs := []float64{128, 127.5, 0, -3, 1, 20, 25.5, 26, 100, 200, 229, 229.5, 230, 254.5, 255, 256, math.NaN()}
-	for it := 0; it < 3000; it++ {
+	for range 3000 {
 		n := []int{0, 1, 3, 5, 7, 8, 9, 30, 500, 5000}[rng.Intn(10)]
 		lv := randomLevels(rng, n, []float64{1, 3, 40}[rng.Intn(3)], rng.Intn(4) == 0)
 		codes, l := codesOf(lv), edgeLineOf(lv)
@@ -161,7 +161,7 @@ func TestEdgeLineSliceMatchesSamples(t *testing.T) {
 				}
 				if want.ok && fast {
 					w := sliceChannel(codes, thr, have)
-					for k := 0; k < 40; k++ {
+					for range 40 {
 						x := rng.Float64()*float64(n+2) - 1
 						if a, b := logicAt(&w, x), logicAt(&got, x); a != b {
 							t.Fatalf("logicAt(%v) %d, want %d", x, b, a)
@@ -177,11 +177,11 @@ func TestEdgeLineSliceMatchesSamples(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
 func TestEdgeLineBuilds(t *testing.T) {
 	rng := rand.New(rand.NewSource(2))
-	for it := 0; it < 2000; it++ {
+	for range 2000 {
 		words := 1 + rng.Intn(40)
 		raw := make([]byte, 4*words)
 		var lv [2][]byte
-		for i := 0; i < words; i++ {
+		for i := range words {
 			for ch := range 2 {
 				var w uint16
 				switch rng.Intn(4) {
@@ -211,7 +211,7 @@ func TestEdgeLineBuilds(t *testing.T) {
 			// pieces of it, appended and dropped
 			var r EdgeLine
 			var want []byte
-			for k := 0; k < 6; k++ {
+			for range 6 {
 				from := rng.Intn(l.N + 1)
 				to := from + rng.Intn(l.N-from+1)
 				r.AppendRange(&l, from, to)

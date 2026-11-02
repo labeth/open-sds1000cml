@@ -183,10 +183,12 @@ func NewEye(cols, rows int) *Eye {
 	cols = clampInt(cols, 2, eyeMaxCols) &^ 1
 	rows = clampInt(rows, 2, eyeMaxRows)
 	tw := cols / 2
-	return &Eye{cols: cols, rows: rows, tw: tw, cpr: (EyeCodeHi - EyeCodeLo) / float64(rows),
+	return &Eye{
+		cols: cols, rows: rows, tw: tw, cpr: (EyeCodeHi - EyeCodeLo) / float64(rows),
 		tile: make([]uint32, rows*tw), diff: make([]int32, rows*(tw+1)), dense: make([]uint32, rows*tw),
 		grid: make([]uint32, rows*cols), scratch: make([]float64, max(rows, tw)),
-		tieMin: math.Inf(1), tieMax: math.Inf(-1), tieDecim: 1}
+		tieMin: math.Inf(1), tieMax: math.Inf(-1), tieDecim: 1,
+	}
 }
 
 // Reset empties the eye, keeping its size.
@@ -196,10 +198,12 @@ func (e *Eye) Reset() {
 	clear(e.diff)
 	clear(e.dense)
 	clear(e.grid)
-	*e = Eye{cols: e.cols, rows: e.rows, tw: e.tw, cpr: e.cpr, tile: e.tile, diff: e.diff,
+	*e = Eye{
+		cols: e.cols, rows: e.rows, tw: e.tw, cpr: e.cpr, tile: e.tile, diff: e.diff,
 		dense: e.dense, grid: e.grid, scratch: e.scratch, pool: e.pool[:0],
 		tie: e.tie[:0], periodJ: e.periodJ[:0], c2cJ: e.c2cJ[:0],
-		tieMin: math.Inf(1), tieMax: math.Inf(-1), tieDecim: 1}
+		tieMin: math.Inf(1), tieMax: math.Inf(-1), tieDecim: 1,
+	}
 }
 
 // Feed folds one capture of codes taken sampleS seconds apart into the eye.
@@ -207,7 +211,7 @@ func (e *Eye) Reset() {
 // clock period), or 0 to estimate it from the edges alone. A capture that
 // cannot be folded is counted and its reason kept in LastErr.
 // TRLC-LINKS: REQ-SDS-215
-func (e *Eye) Feed(codes []float64, sampleS float64, bitHintS float64) {
+func (e *Eye) Feed(codes []float64, sampleS, bitHintS float64) {
 	if !(sampleS > 0) || math.IsInf(sampleS, 0) || len(codes) < 16 {
 		e.reject(EyeNoRecord)
 		return
@@ -340,7 +344,7 @@ func (e *Eye) foldBurst(sig []float64, es *EdgeSet, a, b int, ui0, sampleS float
 	// (an I2C START or STOP moves SDA while SCL is high): fold without it.
 	// One such edge tilts the fit, so the worse end goes first and the other
 	// is judged on the refit.
-	for drop := 0; drop < 2; drop++ {
+	for range 2 {
 		lim := framingLimit(fit)
 		first, last := math.Abs(fit.TIE[0]), math.Abs(fit.TIE[len(fit.TIE)-1])
 		if first <= lim && last <= lim {
@@ -454,7 +458,7 @@ func fitOffset(t []float64, ui float64) *GridFit {
 	m := float64(len(t))
 	t0 := t[0]
 	n := make([]float64, len(t))
-	for pass := 0; pass < 2; pass++ {
+	for range 2 {
 		s := 0.0
 		for i := range t {
 			n[i] = jsRound((t[i] - t0) / ui)
@@ -766,11 +770,13 @@ func (e *Eye) reject(why string) {
 // TRLC-LINKS: REQ-SDS-215
 func (e *Eye) Result() EyeResult {
 	nan := math.NaN()
-	r := EyeResult{BitRate: nan, UI: nan, SamplesPerUI: nan, EyeHeight: nan, EyeWidth: nan,
+	r := EyeResult{
+		BitRate: nan, UI: nan, SamplesPerUI: nan, EyeHeight: nan, EyeWidth: nan,
 		Crossing: nan, Rise: nan, Fall: nan, TIERms: nan, TIEPkPk: nan, RJ: nan, DJ: nan, PeriodJ: nan, C2CJ: nan,
 		Lo: nan, Hi: nan,
 		UIs: e.uis, Edges: e.tieN, Records: e.records, Rejected: e.rejected, LastErr: e.lastErr,
-		Cols: e.cols, Rows: e.rows, Grid: e.grid}
+		Cols: e.cols, Rows: e.rows, Grid: e.grid,
+	}
 	if e.uiN > 0 && e.uiS > 0 {
 		r.UI, r.BitRate = e.uiS, 1/e.uiS
 		if e.sampleS > 0 {
@@ -903,7 +909,7 @@ func (e *Eye) Opening(sampleUI, threshold float64) EyeBox {
 		if rr < 0 || rr >= e.rows {
 			continue
 		}
-		for c := 0; c < tw; c++ {
+		for c := range tw {
 			v := float64(e.dense[rr*tw+c])
 			row[c] += v
 			rowTot += v

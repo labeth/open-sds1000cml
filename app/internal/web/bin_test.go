@@ -6,18 +6,17 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"open-sds/app/internal/engine"
 	"reflect"
 	"testing"
 	"time"
-
-	"open-sds/app/internal/engine"
 )
 
 // getBin fetches /api/frame.bin and returns the decoded header + raw payload.
 // TRLC-LINKS: REQ-SDS-163
 func getBin(t *testing.T, s *Server, url string) (frameReply, byte, []byte) {
 	t.Helper()
-	req := httptest.NewRequest("GET", url, nil)
+	req := httptest.NewRequest(http.MethodGet, url, nil)
 	rec := httptest.NewRecorder()
 	s.Handler().ServeHTTP(rec, req)
 	b := rec.Body.Bytes()
@@ -106,31 +105,41 @@ func TestBinFrameParity(t *testing.T) {
 	}{
 		{"native-windowed", func() *engine.Frame {
 			c1, c2 := deepC(2048)
-			return &engine.Frame{C1: c1, C2: c2, Seq: 11, Valid: 2048, WinCols: 2048,
-				EdgeX: 1024, TdivS: 500e-6, DisplayedS: 500e-6, SampleS: 800e-9}
+			return &engine.Frame{
+				C1: c1, C2: c2, Seq: 11, Valid: 2048, WinCols: 2048,
+				EdgeX: 1024, TdivS: 500e-6, DisplayedS: 500e-6, SampleS: 800e-9,
+			}
 		}(), 0},
 		{"native-interp", func() *engine.Frame {
 			c1, c2 := deepC(400)
-			return &engine.Frame{C1: c1, C2: c2, Seq: 12, Valid: 400, WinCols: 320,
-				EdgeX: 200, Interp: true, TdivS: 1e-6, DisplayedS: 1e-6, SampleS: 25e-9}
+			return &engine.Frame{
+				C1: c1, C2: c2, Seq: 12, Valid: 400, WinCols: 320,
+				EdgeX: 200, Interp: true, TdivS: 1e-6, DisplayedS: 1e-6, SampleS: 25e-9,
+			}
 		}(), 0},
 		{"deep-trig-edge-start", func() *engine.Frame {
 			c1, c2 := deepC(6144)
 			// Edge near the record start: the record is served VERBATIM (the client
 			// centres it), so there are no head/tail margins regardless of edge pos.
-			return &engine.Frame{C1: c1, C2: c2, Seq: 13, Valid: 6144, WinCols: 2048,
-				EdgeX: 100, TdivS: 1e-3, DisplayedS: 1e-3, SampleS: 1.6e-6}
+			return &engine.Frame{
+				C1: c1, C2: c2, Seq: 13, Valid: 6144, WinCols: 2048,
+				EdgeX: 100, TdivS: 1e-3, DisplayedS: 1e-3, SampleS: 1.6e-6,
+			}
 		}(), binDeep},
 		{"deep-trig-edge-end", func() *engine.Frame {
 			c1, c2 := deepC(6144)
 			// Edge near the record end: still served verbatim, still no margins.
-			return &engine.Frame{C1: c1, C2: c2, Seq: 14, Valid: 6144, WinCols: 2048,
-				EdgeX: 6100, TdivS: 1e-3, DisplayedS: 1e-3, SampleS: 1.6e-6}
+			return &engine.Frame{
+				C1: c1, C2: c2, Seq: 14, Valid: 6144, WinCols: 2048,
+				EdgeX: 6100, TdivS: 1e-3, DisplayedS: 1e-3, SampleS: 1.6e-6,
+			}
 		}(), binDeep},
 		{"deep-freerun", func() *engine.Frame {
 			c1, c2 := deepC(6144)
-			return &engine.Frame{C1: c1, C2: c2, Seq: 15, Valid: 6144, WinCols: 2048,
-				EdgeX: -1, TdivS: 1e-3, DisplayedS: 1e-3, SampleS: 1.6e-6}
+			return &engine.Frame{
+				C1: c1, C2: c2, Seq: 15, Valid: 6144, WinCols: 2048,
+				EdgeX: -1, TdivS: 1e-3, DisplayedS: 1e-3, SampleS: 1.6e-6,
+			}
 		}(), binDeep},
 		{"envelope", func() *engine.Frame {
 			mk := func(base int) []uint8 {
@@ -141,9 +150,11 @@ func TestBinFrameParity(t *testing.T) {
 				return e
 			}
 			c1, c2 := deepC(800)
-			return &engine.Frame{C1: c1, C2: c2, Seq: 16, Valid: 800, WinCols: 800, EdgeX: -1,
+			return &engine.Frame{
+				C1: c1, C2: c2, Seq: 16, Valid: 800, WinCols: 800, EdgeX: -1,
 				IsEnv: true, EnvCols: 800, EnvMin: mk(0), EnvMax: mk(50), EnvMin2: mk(100), EnvMax2: mk(150),
-				TdivS: 0.01, DisplayedS: 0.01, SampleS: 1e-4}
+				TdivS: 0.01, DisplayedS: 0.01, SampleS: 1e-4,
+			}
 		}(), binEnv},
 	}
 	for _, tc := range shapes {
@@ -291,9 +302,11 @@ func TestBinFrameRawShape(t *testing.T) {
 		c1[i] = uint8(i % 251)
 		c2[i] = uint8((i * 3) % 249)
 	}
-	f := &engine.Frame{C1: c1, C2: c2, Seq: 31, Valid: n, WinCols: 200,
+	f := &engine.Frame{
+		C1: c1, C2: c2, Seq: 31, Valid: n, WinCols: 200,
 		EdgeX: 123.625, TdivS: 5e-6, DisplayedS: 5e-6, SampleS: 1e-8, Ptp: 140, Trigd: true,
-		Degraded: true}
+		Degraded: true,
+	}
 	fs := &fakeScope{frame: f, fresh: true}
 	s := New(fs, nil, nil, nil)
 
@@ -313,7 +326,7 @@ func TestBinFrameRawShape(t *testing.T) {
 	if len(pay) != 2*n {
 		t.Fatalf("raw payload %d bytes, want %d", len(pay), 2*n)
 	}
-	for i := 0; i < n; i++ {
+	for i := range n {
 		if pay[i] != c1[i] || pay[n+i] != c2[i] {
 			t.Fatalf("raw payload mismatch at %d: %d/%d vs %d/%d", i, pay[i], pay[n+i], c1[i], c2[i])
 		}
@@ -356,7 +369,7 @@ func TestRawFeedRequestsChronologicalSamples(t *testing.T) {
 	}
 	// a bus search done with its record gives the lease back at once
 	rec := httptest.NewRecorder()
-	s.Handler().ServeHTTP(rec, httptest.NewRequest("GET", "/api/frame.bin?lease=raw&end=1", nil))
+	s.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/frame.bin?lease=raw&end=1", nil))
 	if sc.lease != 0 || rec.Code != http.StatusNoContent {
 		t.Fatalf("release: lease %v, status %d", sc.lease, rec.Code)
 	}
@@ -388,7 +401,7 @@ func TestSpectrumFeedLeasesSpectrumFrames(t *testing.T) {
 	}
 	// the FFT view closed: the lease is given back at once, no frame served
 	rec := httptest.NewRecorder()
-	s.Handler().ServeHTTP(rec, httptest.NewRequest("GET", "/api/frame.bin?lease=spectrum&end=1", nil))
+	s.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/frame.bin?lease=spectrum&end=1", nil))
 	if sc.lease != 0 || rec.Code != http.StatusNoContent {
 		t.Fatalf("release: lease %v, status %d", sc.lease, rec.Code)
 	}
@@ -427,7 +440,7 @@ func TestSampleLeaseEnds(t *testing.T) {
 		t.Fatalf("sample lease = %v", sc.lease)
 	}
 	rec := httptest.NewRecorder()
-	s.Handler().ServeHTTP(rec, httptest.NewRequest("GET", "/api/frame.bin?lease=samples&end=1", nil))
+	s.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/frame.bin?lease=samples&end=1", nil))
 	if sc.lease != 0 || rec.Code != http.StatusNoContent {
 		t.Fatalf("release: lease %v, status %d", sc.lease, rec.Code)
 	}

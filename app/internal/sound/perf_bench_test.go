@@ -122,7 +122,7 @@ func fftRef(re, im []float64, inverse bool) {
 	for l := 2; l <= n; l <<= 1 {
 		h, step := l/2, n/l
 		for i := 0; i < n; i += l {
-			for k := 0; k < h; k++ {
+			for k := range h {
 				wr, wi := cs[k*step], sn[k*step]
 				if inverse {
 					wi = -wi

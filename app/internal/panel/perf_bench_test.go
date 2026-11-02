@@ -4,15 +4,14 @@ package panel
 import (
 	"fmt"
 	"math"
-	"strings"
-	"testing"
-
 	"open-sds/app/internal/analog"
 	"open-sds/app/internal/decode"
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/panel/framecalc"
 	"open-sds/app/internal/panel/wsview"
 	"open-sds/app/internal/settings"
+	"strings"
+	"testing"
 )
 
 // Each workspace's view, built every LCD tick on the device's single core.
@@ -103,7 +102,7 @@ func BenchmarkSpecPane(b *testing.B) {
 	c.amu.Lock()
 	c.ana.specOK = true
 	c.ana.spec.BinHz, c.ana.spec.SpanHz, c.ana.spec.N, c.ana.spec.EffNyq = 1220.7, 2.5e6, 4096, 2.5e6
-	for i := 0; i < maxPeaks; i++ {
+	for i := range maxPeaks {
 		c.ana.peaks = append(c.ana.peaks, Peak{Freq: 1e3 * float64(2*i+1), DB: -6 - 9.5*float64(i), RelDB: -9.5 * float64(i), Bin: 2*i + 1, Harm: 2*i + 1})
 	}
 	c.ana.floorDBV = -92
@@ -234,7 +233,7 @@ func BenchmarkSoundPane(b *testing.B) {
 	ss := c.snd
 	ss.mu.Lock()
 	ss.hz = 440.8
-	for i := 0; i < 80; i++ {
+	for i := range 80 {
 		ss.strip = append(ss.strip, stripPoint{cents: float64(i % 7), ok: i > 3})
 	}
 	ss.mu.Unlock()
@@ -248,7 +247,7 @@ func BenchmarkSoundPane(b *testing.B) {
 func BenchmarkDecodesBus(b *testing.B) {
 	var bad decode.Result // a 115200 Bd line read at 460800 Bd: one unit in five an error
 	bad.OK = true
-	for i := 0; i < 2000; i++ {
+	for i := range 2000 {
 		kind := "data"
 		if i%5 == 0 {
 			kind = "frame-error"
@@ -268,7 +267,7 @@ func BenchmarkGuidePage(b *testing.B) {
 	c, _, _ := newC(&testing.T{})
 	s := c.snap()
 	for b.Loop() {
-		for ws := wsview.WS(0); ws < wsview.Count; ws++ {
+		for ws := range wsview.WS(wsview.Count) {
 			s.ui.ws = ws
 			guidePage(s)
 		}
@@ -392,11 +391,15 @@ func TestParseNumberOddInput(t *testing.T) {
 // soundBlock is a sound block of n samples with a scale change in it.
 // TRLC-LINKS: REQ-SDS-265
 func soundBlock(n int) engine.SoundBlock {
-	b := engine.SoundBlock{First: 1000, N: n, Q1: make([]uint16, n), Q2: make([]uint16, n),
-		Scales: []engine.SoundScale{{From: 0, VdivV: [2]float64{0.1, 0.2}, OffV: [2]float64{0.01, -0.02}},
+	b := engine.SoundBlock{
+		First: 1000, N: n, Q1: make([]uint16, n), Q2: make([]uint16, n),
+		Scales: []engine.SoundScale{
+			{From: 0, VdivV: [2]float64{0.1, 0.2}, OffV: [2]float64{0.01, -0.02}},
 			{From: 1000 + uint64(n/3), VdivV: [2]float64{0.05, 0.2}, OffV: [2]float64{0, 0.5}},
 			{From: 1000 + uint64(n/3), VdivV: [2]float64{0.5, 2}}, // two from one sample: the last stands
-			{From: 1000 + uint64(2*n/3), VdivV: [2]float64{1, 1}}}}
+			{From: 1000 + uint64(2*n/3), VdivV: [2]float64{1, 1}},
+		},
+	}
 	for i := range b.Q1 {
 		b.Q1[i], b.Q2[i] = uint16(32768+i*97), uint16(i*13)
 	}
@@ -438,7 +441,7 @@ func TestSoundVoltsSegments(t *testing.T) {
 		for _, cut := range []int{0, 1, 2, 3, 4} {
 			b := soundBlock(n)
 			b.Scales = b.Scales[:cut]
-			for ch := 0; ch < 2; ch++ {
+			for ch := range 2 {
 				got, want := c.snd.volts(b, ch, nil), ref(b, ch)
 				if len(got) != len(want) {
 					t.Fatalf("n %d scales %d: %d volts, want %d", n, cut, len(got), len(want))
@@ -498,8 +501,14 @@ func TestTakeTitle(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-013
 func BenchmarkTokensOf(b *testing.B) {
 	bytes := engine.SerialParams{Bytes: []int{0x55, 0xAA, 0x01, 0x80, 0xFF, 0x10, 0x20, 0x30}}
-	pat := engine.SerialParams{Pattern: []engine.PatternElem{{Kind: 1}, {Kind: 2, Value: 0x5A, Mask: 0xff}, {Kind: 2, Value: 0xA0, Mask: 0xf0},
-		{Kind: 2, Value: 0x0C, Mask: 0x0f}, {Kind: 2, Mask: 0}, {Kind: 4}}}
+	pat := engine.SerialParams{Pattern: []engine.PatternElem{
+		{Kind: 1},
+		{Kind: 2, Value: 0x5A, Mask: 0xff},
+		{Kind: 2, Value: 0xA0, Mask: 0xf0},
+		{Kind: 2, Value: 0x0C, Mask: 0x0f},
+		{Kind: 2, Mask: 0},
+		{Kind: 4},
+	}}
 	for b.Loop() {
 		tokensOf(bytes)
 		tokensOf(pat)
@@ -573,7 +582,7 @@ func BenchmarkStepTrigLevel(b *testing.B) {
 // foldEnvelopeRef is the column-by-column fold foldEnvelope replaced.
 // TRLC-LINKS: REQ-SDS-139
 func foldEnvelopeRef(lo, hi, sig []uint8, left int) {
-	for j := 0; j < len(lo); j++ {
+	for j := range lo {
 		s := left + j
 		if s < 0 || s >= len(sig) {
 			continue
@@ -656,7 +665,7 @@ func TestCodeSwingThresholds(t *testing.T) {
 		if m := mid2 - 2; m > 0 {
 			loAt = (m + 1) / 2
 		}
-		for v := 0; v < 256; v++ {
+		for v := range 256 {
 			if (v >= hiAt) != (2*v > mid2+2) || (v < loAt) != (2*v < mid2-2) {
 				t.Fatalf("mid2 %d v %d: thresholds %d %d", mid2, v, hiAt, loAt)
 			}
@@ -701,7 +710,7 @@ func setupSummaryRef(st settings.Settings) string {
 	tr := []string{"", "PLS ", "SLP ", "VID "}[clampInt(st.Trigger.Type, 0, 3)]
 	parts = append(parts, fmt.Sprintf("%sC%d%s %s", tr, st.Trigger.Source+1, edge, si(engine.TrigLevelVolts(uint16(clampInt(st.Trigger.LevelCode, 1, 65535))), "V")))
 	var ch []string
-	for i := 0; i < 2; i++ {
+	for i := range 2 {
 		if !st.Display.Hidden[i] && st.Ch[i].VdivV > 0 {
 			ch = append(ch, fmt.Sprintf("C%d %s", i+1, si(st.Ch[i].VdivV*max(st.Ch[i].Probe, 1), "V")))
 		}
@@ -720,7 +729,7 @@ func setupSummaryRef(st settings.Settings) string {
 // TRLC-LINKS: REQ-SDS-136
 func summarySetups() []settings.Settings {
 	var out []settings.Settings
-	for k := 0; k < 8; k++ {
+	for k := range 8 {
 		var st settings.Settings
 		st.UI.Set, st.UI.Workspace = k%2 == 0, k%5
 		st.TdivS = []float64{1e-6, 500e-6, 2e-3, 1}[k%4]

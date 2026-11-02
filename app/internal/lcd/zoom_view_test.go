@@ -2,10 +2,9 @@
 package lcd
 
 import (
-	"testing"
-
 	"open-sds/app/internal/analog"
 	"open-sds/app/internal/engine"
+	"testing"
 )
 
 // zoomFrame is a live envelope frame, flat at code level, with a view window
@@ -14,8 +13,10 @@ import (
 // TRLC-LINKS: REQ-SDS-021
 func zoomFrame(level uint8) (*engine.Frame, *engine.ViewWindow) {
 	const n, vn, period = 4096, 1540, 154
-	f := &engine.Frame{C1: make([]uint8, n), C2: make([]uint8, n), Valid: n, WinCols: n, EdgeX: n / 2, Seq: 1,
-		PeakDetect: true, Ordered: true, Trigd: true, TdivS: 200e-6, DisplayedS: 200e-6, SampleS: 488e-9}
+	f := &engine.Frame{
+		C1: make([]uint8, n), C2: make([]uint8, n), Valid: n, WinCols: n, EdgeX: n / 2, Seq: 1,
+		PeakDetect: true, Ordered: true, Trigd: true, TdivS: 200e-6, DisplayedS: 200e-6, SampleS: 488e-9,
+	}
 	for i := range n {
 		f.C1[i], f.C2[i] = level, level
 	}
@@ -34,7 +35,7 @@ func zoomFrame(level uint8) (*engine.Frame, *engine.ViewWindow) {
 // TRLC-LINKS: REQ-SDS-021
 func highRuns(sf *MemSurface, y int) int {
 	runs, in := 0, false
-	for x := 0; x < W-railW; x++ {
+	for x := range W - railW {
 		on := sf.At(x, y) == colC1
 		if on && !in {
 			runs++

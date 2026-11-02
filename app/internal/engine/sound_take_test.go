@@ -12,7 +12,7 @@ import (
 // TRLC-LINKS: REQ-SDS-275
 func takeWords(start uint64, n, per int) []byte {
 	b := make([]byte, 4*n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		c := uint16(100)
 		if (int(start)+i)%per >= per/2 {
 			c = 160

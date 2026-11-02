@@ -99,7 +99,7 @@ func TestStreamDrainOrdersBanksAndKeepsOddTail(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	for i := 0; i < 2048; i++ {
+	for i := range 2048 {
 		b.buffer[i] = uint32(i + 2048)
 		b.buffer[2048+i] = uint32(i)
 	}
@@ -237,7 +237,7 @@ func TestStreamLargeBanksUseAdvertisedCapacity(t *testing.T) {
 	b.bufferCapacity = 8192
 	b.first = [2]uint64{4096, 0}
 	b.counts = [2]uint16{2, 2048}
-	for i := 0; i < 4096; i++ {
+	for i := range 4096 {
 		b.buffer[4096+i] = uint32(i)
 		b.buffer[i] = uint32(i + 4096)
 	}
@@ -304,7 +304,7 @@ func TestStreamDrainIntoReserverWraps(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	for i := 0; i < 2048; i++ {
+	for i := range 2048 {
 		b.buffer[2048+i] = uint32(i)
 	}
 	r := &ringReserver{ring: make([]byte, 10000), head: 5000}

@@ -27,7 +27,7 @@ import (
 // ---------------------------------------------------------------------------
 
 // TRLC-LINKS: REQ-SDS-018
-func bkEqual(a []int, b []int) bool {
+func bkEqual(a, b []int) bool {
 	if len(a) != len(b) {
 		return false
 	}
@@ -55,7 +55,7 @@ func bkHasKind(r Result, kind string) bool {
 // TRLC-LINKS: REQ-SDS-018
 func bkAltWord(bits int, msb bool) int {
 	v := 0
-	for i := 0; i < bits; i++ {
+	for i := range bits {
 		bit := 0
 		if i%2 == 0 {
 			bit = 1
@@ -87,7 +87,7 @@ func bkBuild(want []int, ieee, msb bool, bits, spb, bitrate, pre, post int) (w [
 	ct = 1.0 / (float64(spb) * float64(bitrate))
 	core := manchesterWave(mBits(want, msb, bits), ieee, spb)
 	w = append(append(bkPad(pre), core...), bkPad(post)...)
-	return
+	return w, ct
 }
 
 // TRLC-LINKS: REQ-SDS-018
@@ -103,7 +103,7 @@ func TestBreakManchester(t *testing.T) {
 		rng := rand.New(rand.NewSource(0xA5A5))
 		bitrates := []int{9600, 31250, 100000, 250000, 1000000}
 		fails := 0
-		for it := 0; it < 80; it++ {
+		for range 80 {
 			bits := 1 + rng.Intn(16) // 1..16
 			ieee := rng.Intn(2) == 0
 			msb := rng.Intn(2) == 0
@@ -112,7 +112,7 @@ func TestBreakManchester(t *testing.T) {
 			maxv := 1 << bits
 			nData := 1 + rng.Intn(6) // 1..6 data words -> single vs multi-word
 			want := []int{bkAltWord(bits, msb)}
-			for i := 0; i < nData; i++ {
+			for range nData {
 				want = append(want, rng.Intn(maxv))
 			}
 			// occasionally a second alternating word mid-stream (back-to-back cells)
@@ -154,7 +154,7 @@ func TestBreakManchester(t *testing.T) {
 	t.Run("FalseNegatives_auto", func(t *testing.T) {
 		rng := rand.New(rand.NewSource(0x5A5A))
 		fails := 0
-		for it := 0; it < 60; it++ {
+		for range 60 {
 			bits := 8
 			ieee := rng.Intn(2) == 0
 			msb := rng.Intn(2) == 0
@@ -205,7 +205,7 @@ func TestBreakManchester(t *testing.T) {
 	// 2a. Pure FLAT / DC at random levels must yield NO frame (no long clean run).
 	t.Run("FP_flat_dc", func(t *testing.T) {
 		rng := rand.New(rand.NewSource(0xF1A7))
-		for it := 0; it < 60; it++ {
+		for range 60 {
 			n := 50 + rng.Intn(4000)
 			lvl := uint8(rng.Intn(256))
 			s := make([]uint8, n)
@@ -278,7 +278,7 @@ func TestBreakManchester(t *testing.T) {
 	// (Arbitrary short byte runs on noise are inherent for a checksum-less code.)
 	t.Run("FP_noise", func(t *testing.T) {
 		rng := rand.New(rand.NewSource(0x0FF1CE))
-		for it := 0; it < 60; it++ {
+		for range 60 {
 			n := rng.Intn(3000)
 			s := make([]uint8, n)
 			for i := range s {
@@ -305,7 +305,7 @@ func TestBreakManchester(t *testing.T) {
 		unflagged := 0       // OK=true, corruption not reported (no frame-error) though output changed
 		iters := 60
 		var sample string
-		for it := 0; it < iters; it++ {
+		for range iters {
 			nb := 3 + rng.Intn(5)
 			want := []int{0xAA}
 			for i := 1; i < nb; i++ {
@@ -366,17 +366,14 @@ func TestBreakManchester(t *testing.T) {
 		rng := rand.New(rand.NewSource(0x7A17))
 		spb, bitrate := 40, 100000
 		ct := 1.0 / (float64(spb) * float64(bitrate))
-		for it := 0; it < 50; it++ {
+		for range 50 {
 			want := []int{0xAA}
-			for i := 0; i < 5; i++ {
+			for range 5 {
 				want = append(want, rng.Intn(256))
 			}
 			clean := manchesterWave(mBits(want, true, 8), true, spb)
 			// cut somewhere inside the data region (drop the trailing idle + some cells)
-			cut := 6*spb + (1+rng.Intn(5))*spb + rng.Intn(spb)
-			if cut > len(clean) {
-				cut = len(clean)
-			}
+			cut := min(6*spb+(1+rng.Intn(5))*spb+rng.Intn(spb), len(clean))
 			w := append([]uint8{}, clean[:cut]...)
 			r := DecodeManchester(w, ct, ManchesterCfg{Bitrate: bitrate, IEEE: true, MSB: true})
 			if r.OK {
@@ -496,7 +493,7 @@ func TestBreakManchester(t *testing.T) {
 		inputs := [][]uint8{nil, {}, {200}, {200, 40}, {40, 210}, bkPad(1), bkPad(2), bkPad(500)}
 		// a couple of tiny real fragments
 		inputs = append(inputs, manchesterWave(mBits([]int{0xAA}, true, 8), true, 4))
-		for i := 0; i < 30; i++ {
+		for range 30 {
 			n := rng.Intn(400)
 			s := make([]uint8, n)
 			for j := range s {
@@ -508,7 +505,7 @@ func TestBreakManchester(t *testing.T) {
 		bitrates := []int{0, -100, -1, 1, 25000, 1 << 30, math.MaxInt}
 		bitsVals := []int{-1, 0, 1, 8, 9, 16, 17, 64, 1 << 20}
 		for _, in := range inputs {
-			for k := 0; k < 12; k++ {
+			for range 12 {
 				cfg := ManchesterCfg{
 					Bitrate:   bitrates[rng.Intn(len(bitrates))],
 					IEEE:      rng.Intn(2) == 0,
@@ -542,7 +539,7 @@ func TestBreakManchester(t *testing.T) {
 		bitrate, spb := 100000, 40
 		ct := 1.0 / (float64(spb) * float64(bitrate))
 		want := []int{0xAA}
-		for i := 0; i < 200; i++ {
+		for i := range 200 {
 			want = append(want, (i*37+5)&0xff)
 		}
 		w, _ := bkBuild(want, true, true, 8, spb, bitrate, 0, 0)
@@ -575,7 +572,7 @@ func TestBreakManchester(t *testing.T) {
 		// require the decoder never to fall back to a ~half-period misread.
 		rng := rand.New(rand.NewSource(0x1553FA))
 		fp := 0
-		for it := 0; it < 60; it++ {
+		for range 60 {
 			w2 := append([]uint8{}, w...)
 			for f := 0; f < 5+rng.Intn(4); f++ {
 				cell := 8 + rng.Intn(len(want)*8-8)

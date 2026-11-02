@@ -4,10 +4,9 @@ package analog
 import (
 	"fmt"
 	"math"
+	"open-sds/app/internal/cal"
 	"sync"
 	"time"
-
-	"open-sds/app/internal/cal"
 )
 
 // Detent is one V/div step of the vertical ladder (spec 06 §4.3). The 2 mV

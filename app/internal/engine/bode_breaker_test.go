@@ -197,7 +197,7 @@ func mkChan(fam bkFamily, n int, dt float64, seed int64) []uint8 {
 		return float64(s%1_000_000) / 1_000_000
 	}
 	out := make([]uint8, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		out[i] = clamp8(fam.gen(i, n, rng))
 	}
 	return out

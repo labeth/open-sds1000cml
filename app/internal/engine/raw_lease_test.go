@@ -1,10 +1,9 @@
 package engine
 
 import (
+	"open-sds/app/internal/sramcapture"
 	"testing"
 	"time"
-
-	"open-sds/app/internal/sramcapture"
 )
 
 // A raw lease is its holder's own: ending the eye's leaves the web's (and a

@@ -2,9 +2,8 @@
 package panel
 
 import (
-	"sync"
-
 	"open-sds/app/internal/panel/wsview"
+	"sync"
 )
 
 // The Help guide (the SYS tab, opened by the Help key on its Help row): the
@@ -23,14 +22,17 @@ func gN(t string) gl { return gl{Text: t, Col: wsview.Text} }
 func gD(t string) gl { return gl{Text: t, Col: wsview.Dim} }
 
 var wsGuide = [wsview.Count][]gl{
-	{gT("SCOPE (F1): THE WHOLE TRACE AND THE EVERYDAY READOUTS"),
+	{
+		gT("SCOPE (F1): THE WHOLE TRACE AND THE EVERYDAY READOUTS"),
 		gN("Adjust ......... the last value you set in a sheet (tag at the bottom),"),
 		gD("                 else the active cursor"),
 		gN("Adjust push .... opens the sheet at that row"),
 		gN("Position < > ... trigger position (zoomed: zoom position); push = centre"),
 		gN("F1 again ....... Y-T / X-Y"),
-		gN("Menu On/Off .... sheet with TRIG CH1 CH2 TIME ACQ first")},
-	{gT("BUS (F2): PACKETS (HEX DUMP), EYE DIAGRAM OR STREAM, TRIGGER ON BYTES"),
+		gN("Menu On/Off .... sheet with TRIG CH1 CH2 TIME ACQ first"),
+	},
+	{
+		gT("BUS (F2): PACKETS (HEX DUMP), EYE DIAGRAM OR STREAM, TRIGGER ON BYTES"),
 		gD("Entering with decode off finds the bus and decodes it at once;"),
 		gD("decoding stays on when you leave (BUS sheet: Protocol Off ends it)."),
 		gD("Packets: hex and string of each complete packet; the decode strip under"),
@@ -47,8 +49,10 @@ var wsGuide = [wsview.Count][]gl{
 		gN("STREAM   Adjust: what stops it  push: stop / stream again (Run/Stop too)"),
 		gN("         Position pushed: scroll the transcript   S/DIV push: list / wave"),
 		gD("The stream decodes the bus in hardware without gaps; leaving the view ends it."),
-		gN("Menu On/Off .... sheet with BUS TRIG TIME first")},
-	{gT("SPECTRUM (F3): FFT, SPECTROGRAM OR BODE, PEAKS, TIME TRACE"),
+		gN("Menu On/Off .... sheet with BUS TRIG TIME first"),
+	},
+	{
+		gT("SPECTRUM (F3): FFT, SPECTROGRAM OR BODE, PEAKS, TIME TRACE"),
 		gD("Entering turns the screen to the analysis view; leaving returns."),
 		gN("Adjust ......... marker to the next / previous peak of the table"),
 		gN("Adjust push .... delta marker on / off (the readout shows the difference)"),
@@ -56,16 +60,20 @@ var wsGuide = [wsview.Count][]gl{
 		gD("                 push again: back.  VIEW sheet Marker: largest peak"),
 		gN("S/DIV .......... time/div sets the span and the resolution"),
 		gN("F3 again ....... FFT / Spectrogram / Bode"),
-		gN("Menu On/Off .... sheet with VIEW (FFT source, Bode channels) ACQ TIME first")},
-	{gT("MEASURE (F4): STATISTICS OF YOUR MEASUREMENTS, CURSORS"),
+		gN("Menu On/Off .... sheet with VIEW (FFT source, Bode channels) ACQ TIME first"),
+	},
+	{
+		gT("MEASURE (F4): STATISTICS OF YOUR MEASUREMENTS, CURSORS"),
 		gD("Entering with nothing chosen measures Vpp and Freq of each channel."),
 		gN("Adjust ......... cursor A"),
 		gN("Adjust push .... cursors Off / Time / Volts"),
 		gN("Position < > ... trigger position; push: cursor B, again: back"),
 		gD("                 MEAS sheet Statistics: zero them"),
 		gN("F4 again ....... statistics / all values of both channels"),
-		gN("Menu On/Off .... sheet with MEAS CURS ACQ first")},
-	{gT("COMPARE (F5): A STACKED MASTER, REFERENCES, MASK TEST, MATH"),
+		gN("Menu On/Off .... sheet with MEAS CURS ACQ first"),
+	},
+	{
+		gT("COMPARE (F5): A STACKED MASTER, REFERENCES, MASK TEST, MATH"),
 		gN("F5 again ....... stack a master (again while stacking: cancel):"),
 		gD("                 average N captures of the trigger source, store them"),
 		gD("                 as REF A, build the mask from them, restore the"),
@@ -78,17 +86,21 @@ var wsGuide = [wsview.Count][]gl{
 		gD("                 store or show/hide, build the mask then its test"),
 		gD("                 (counting, stop on the first fail, off), next math"),
 		gN("Position < > ... trigger position (zoomed: zoom position); push = centre"),
-		gN("Menu On/Off .... sheet with MATH/REF CH1 CH2 first")},
+		gN("Menu On/Off .... sheet with MATH/REF CH1 CH2 first"),
+	},
 }
 
-var guideCommon = []gl{gT("ANY WORKSPACE"),
+var guideCommon = []gl{
+	gT("ANY WORKSPACE"),
 	gN("F1-F5 .......... switch workspace (the pictogram rail beside the keys)"),
 	gD("                 the active key again: the next view (tool line, right)"),
 	gN("Keys (Trig Menu, 1, 2, Acquire ...) open their sheet tab; again closes"),
 	gN("V/DIV, Position, Level, S/DIV as printed; pushes Variable, Zero, Zoom"),
-	gD("                 (BUS, SPECTRUM, MEASURE: the Position push = 2nd job)")}
+	gD("                 (BUS, SPECTRUM, MEASURE: the Position push = 2nd job)"),
+}
 
-var guideSheets = []gl{gT("SHEET OPEN: F1-F5 BELONG TO THE SHEET"),
+var guideSheets = []gl{
+	gT("SHEET OPEN: F1-F5 BELONG TO THE SHEET"),
 	gN("S/DIV knob ......... previous / next tab (clockwise = next)"),
 	gN("Adjust turn ........ move the row cursor"),
 	gN("F1..F5 ............. pick the choice shown beside the key"),
@@ -99,9 +111,11 @@ var guideSheets = []gl{gT("SHEET OPEN: F1-F5 BELONG TO THE SHEET"),
 	gT("THE WORKSPACE'S OWN TABS COME FIRST, THE REST AFTER THE BAR"),
 	gN("Trig Menu TRIG   1 CH1   2 CH2   Hori Menu TIME   Acquire ACQ"),
 	gN("Display VIEW   Measure MEAS   Cursors CURS   Math/Ref MATH/REF"),
-	gN("Utility BUS   Save/Recall FILE   Help SYS (this guide)")}
+	gN("Utility BUS   Save/Recall FILE   Help SYS (this guide)"),
+}
 
-var guideKnobs = []gl{gT("NO MENU OPEN: KNOBS AND KEYS AS PRINTED"),
+var guideKnobs = []gl{
+	gT("NO MENU OPEN: KNOBS AND KEYS AS PRINTED"),
 	gN("V/DIV ....... volts/div       (clockwise toward mV, as the printed arc)"),
 	gD("              push Variable: no fine V/div here (12 calibrated steps)"),
 	gN("Position .... trace offset    push Zero: offset 0 V"),
@@ -116,7 +130,8 @@ var guideKnobs = []gl{gT("NO MENU OPEN: KNOBS AND KEYS AS PRINTED"),
 	gN("Display: not Y-T or persistence    Utility: decoding"),
 	gN("Math: a math trace    Ref: a reference shown    Cursors: on    Single: armed"),
 	gN("Save/Recall: settings unchanged since the last save or recall"),
-	gN("Run/Stop: green running, amber waiting for a trigger, red stopped")}
+	gN("Run/Stop: green running, amber waiting for a trigger, red stopped"),
+}
 
 // guidePage is the Help page on show.
 // TRLC-LINKS: REQ-SDS-212

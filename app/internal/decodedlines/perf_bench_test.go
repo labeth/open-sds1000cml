@@ -56,7 +56,7 @@ func benchTranscript(proto, n int, r *rand.Rand) *Transcript {
 	t := New(proto, n)
 	notes := []string{"", "W 50", "GAP", "SOP\"D", "LOST 12", "SOF", "µs"}
 	s := uint64(1000)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		var l Line
 		l.Sample = s
 		s += uint64(r.Intn(100000))
@@ -88,7 +88,7 @@ func TestFormatIsTheReference(t *testing.T) {
 	r := rand.New(rand.NewSource(5))
 	for _, proto := range []int{0, 5, 7, 8, 26, 28, 29, 31, 52} {
 		tr := benchTranscript(proto, 300, r)
-		for pass := 0; pass < 2; pass++ {
+		for range 2 {
 			for i := 0; i < tr.Count(); i++ {
 				if got, want := tr.Format(i), formatRef(tr, i); got != want {
 					t.Fatalf("proto %d line %d:\n got %q\nwant %q", proto, i, got, want)

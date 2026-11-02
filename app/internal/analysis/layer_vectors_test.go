@@ -38,7 +38,7 @@ func sbusBytes(ch [16]int, flags byte) []byte {
 	b[0] = 0x0f
 	bit := 0
 	for _, v := range ch {
-		for j := 0; j < 11; j++ {
+		for j := range 11 {
 			if v>>j&1 != 0 {
 				b[1+bit>>3] |= 1 << (bit & 7)
 			}
@@ -176,10 +176,14 @@ func layerCurated() []layerVec {
 	add("xfp", "xfp", "i2c", mkI2C(0x50, false, 0), mkI2C(0x50, true, xfp...), mkI2C(0x50, false, 96),
 		mkI2C(0x50, true, xfp[96:110]...), mkI2C(0x50, false, 127, 1))
 	add("demux", "i2cdemux", "i2c", mkI2C(0x50, false, 1), mkI2C(0x68, true, 1, 2), mkI2C(0x50, true, 3), mkI2C(0x20, false))
-	vs = append(vs, layerVec{Name: "filter 0x50 reads", ID: "i2cfilter", Proto: "i2c", Args: LayerArgs{Addr: 0x50, Dir: 1},
-		Packets: []Packet{mkI2C(0x50, false, 1), mkI2C(0x68, true, 1, 2), mkI2C(0x50, true, 3), mkI2C(0x50, true)}})
-	vs = append(vs, layerVec{Name: "filter writes any", ID: "i2cfilter", Proto: "i2c", Args: LayerArgs{Addr: -1, Dir: 2},
-		Packets: []Packet{mkI2C(0x50, false, 1), mkI2C(0x68, true, 1, 2), mkI2C(0x20, false)}})
+	vs = append(vs, layerVec{
+		Name: "filter 0x50 reads", ID: "i2cfilter", Proto: "i2c", Args: LayerArgs{Addr: 0x50, Dir: 1},
+		Packets: []Packet{mkI2C(0x50, false, 1), mkI2C(0x68, true, 1, 2), mkI2C(0x50, true, 3), mkI2C(0x50, true)},
+	})
+	vs = append(vs, layerVec{
+		Name: "filter writes any", ID: "i2cfilter", Proto: "i2c", Args: LayerArgs{Addr: -1, Dir: 2},
+		Packets: []Packet{mkI2C(0x50, false, 1), mkI2C(0x68, true, 1, 2), mkI2C(0x20, false)},
+	})
 
 	var ch [16]int
 	for k := range ch {
@@ -220,9 +224,14 @@ func layerCurated() []layerVec {
 	sp := []byte{0x91, 0x01, 0x4b, 0x46, 0x7f, 0xff, 0x0f, 0x10, 0}
 	sp[8] = byte(crc8Maxim(sp[:8]))
 	ow := func(b ...byte) Packet { return Packet{Bytes: b, ByteErr: make([]bool, len(b)), Complete: true} }
-	owSet := []Packet{ow(append(append([]byte{0x55}, rom...), 0x44)...), ow(append([]byte{0xcc, 0xbe}, sp...)...),
+	owSet := []Packet{
+		ow(append(append([]byte{0x55}, rom...), 0x44)...), ow(append([]byte{0xcc, 0xbe}, sp...)...),
 		ow(append([]byte{0x33}, rom42...)...), ow(0xf0, 1, 2, 3, 4, 5, 6, 7, 8), ow(0xcc, 0x4e, 0x4b, 0x46, 0x7f),
-		ow(0xa5, 0x12), {Complete: true}, {Err: FaultCRC, Complete: true}, ow(0x55, 1, 2), ow(0x99, 1)}
+		ow(0xa5, 0x12),
+		{Complete: true},
+		{Err: FaultCRC, Complete: true},
+		ow(0x55, 1, 2), ow(0x99, 1),
+	}
 	add("1-wire net", "onewire_net", "onewire", owSet...)
 	add("ds28ea00", "ds28ea00", "onewire", append(owSet, ow(0xcc, 0xa5, 0x0f, 0xf0), ow(0xcc, 0x48), ow(0xcc, 0x13))...)
 	add("ds2408", "ds2408", "onewire", ow(0xcc, 0xf0, 0x88, 0x00, 0xff, 0x00), ow(0xcc, 0xf5, 0xff, 0xfe), ow(0xcc, 0x5a, 0x0f, 0xf0, 0xaa, 0x0f),
@@ -238,8 +247,10 @@ func layerCurated() []layerVec {
 
 	md := func(st, op, port, dev, data int, bad bool) Packet {
 		h := st<<12 | op<<10 | port<<5 | dev
-		p := Packet{Bytes: []byte{byte(h >> 8), byte(h), byte(data >> 8), byte(data)}, ByteErr: []bool{false, false, bad, bad},
-			Addr: port, HasAddr: true, Read: op&2 != 0, Complete: true}
+		p := Packet{
+			Bytes: []byte{byte(h >> 8), byte(h), byte(data >> 8), byte(data)}, ByteErr: []bool{false, false, bad, bad},
+			Addr: port, HasAddr: true, Read: op&2 != 0, Complete: true,
+		}
 		return p
 	}
 	add("cfp", "cfp", "mdio", md(0, 0, 0, 1, 0x8000, false), md(0, 3, 0, 1, 0x000e, false), md(0, 0, 0, 1, 0x8010, false),
@@ -321,7 +332,7 @@ func layerRandom(seed int64) []layerVec {
 	r := rand.New(rand.NewSource(seed))
 	var vs []layerVec
 	for _, l := range layerList[1:] {
-		for rec := 0; rec < 4; rec++ {
+		for rec := range 4 {
 			v := layerVec{Name: fmt.Sprintf("random %s %d", l.ID, rec), ID: l.ID, Proto: l.Bus, Args: LayerArgs{Addr: r.Intn(130) - 2, Dir: r.Intn(3)}}
 			for k := 0; k < 1+r.Intn(12); k++ {
 				n := r.Intn(30)

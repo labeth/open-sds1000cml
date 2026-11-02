@@ -85,10 +85,10 @@ func TestEventSequenceRTL(t *testing.T) {
 			fmt.Fprintf(&el, "%x\n%x\n%x\n", p.kind, p.mask, p.value)
 		}
 		ep, pp := filepath.Join(dir, "events.mem"), filepath.Join(dir, "elements.mem")
-		if err := os.WriteFile(ep, []byte(ev.String()), 0600); err != nil {
+		if err := os.WriteFile(ep, []byte(ev.String()), 0o600); err != nil {
 			t.Fatal(err)
 		}
-		if err := os.WriteFile(pp, []byte(el.String()), 0600); err != nil {
+		if err := os.WriteFile(pp, []byte(el.String()), 0o600); err != nil {
 			t.Fatal(err)
 		}
 		q, b := 0, 0
@@ -105,7 +105,7 @@ func TestEventSequenceRTL(t *testing.T) {
 		}
 		var fired []int
 		overflows := -1
-		for _, line := range strings.Split(string(out), "\n") {
+		for line := range strings.SplitSeq(string(out), "\n") {
 			var v int
 			if _, err := fmt.Sscanf(line, "M %d", &v); err == nil {
 				fired = append(fired, v)
@@ -138,7 +138,7 @@ func TestEventSequenceRTL(t *testing.T) {
 			t.Errorf("random trials produced only %d matches", total)
 		}
 	}()
-	for trial := 0; trial < 60; trial++ {
+	for trial := range 60 {
 		events := randomEvents(300, 40)
 		m := 1 + rng.Intn(32)
 		if trial%3 == 0 {

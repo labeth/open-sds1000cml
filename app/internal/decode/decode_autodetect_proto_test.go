@@ -148,7 +148,7 @@ func protoDetectCases() []detectCase {
 		w := newTimeline(500e6)
 		w.add(0, 50e-9)
 		var s [][2]int
-		for i := 0; i < 8; i++ {
+		for i := range 8 {
 			s = append(s, [2]int{i * 0x11111 & 0xffffff, 0xABCDEF - i})
 		}
 		spdifStream(w, 48e3, 0, s)
@@ -222,7 +222,7 @@ func TestAutodetectPlainUARTIsNoFramedProtocol(t *testing.T) {
 		sr := 64 * baud
 		w := newTimeline(sr)
 		w.idle(20 / baud)
-		for i := 0; i < 24; i++ {
+		for i := range 24 {
 			tlUART(w, 0x20+rng.Intn(0x5f), baud, "none", 1)
 			if i%6 == 5 {
 				w.idle(30 / baud)

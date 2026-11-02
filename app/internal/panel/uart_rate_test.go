@@ -2,10 +2,9 @@
 package panel
 
 import (
-	"testing"
-
 	"open-sds/app/internal/panel/framecalc"
 	"open-sds/app/internal/settings"
+	"testing"
 )
 
 // A UART on the fast image's receiver runs to 62.5 MBd: the Baud row takes

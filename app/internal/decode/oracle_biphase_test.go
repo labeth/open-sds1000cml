@@ -119,7 +119,7 @@ func TestOracleSPDIF(t *testing.T) {
 	w := newTimeline(sr)
 	w.add(0, 100e-9)
 	var s [][2]int
-	for i := 0; i < 40; i++ {
+	for i := range 40 {
 		s = append(s, [2]int{(i * 0x13579) & 0xffffff, (0xF0F0F0 - i*0x1111) & 0xffffff})
 	}
 	spdifStream(w, 48e3, 180, s)

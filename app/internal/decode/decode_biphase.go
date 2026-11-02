@@ -58,7 +58,7 @@ func decodeDALI(codes lineIn, colTimeS float64, cfg DALICfg) Result {
 	var toks []string
 	var units []int
 	good := false
-	for i := 0; i < len(marks); i++ {
+	for i := range marks {
 		// a frame opens after the stop bits' idle (2 bits and the settling time)
 		if (i > 0 && us(marks[i].x0-marks[i-1].x1) < 1600) || (i == 0 && us(marks[0].x0) < 900) {
 			continue
@@ -97,7 +97,7 @@ func decodeDALI(codes lineIn, colTimeS float64, cfg DALICfg) Result {
 		}
 		for b := 0; b < nb/8; b++ {
 			v := 0
-			for k := 0; k < 8; k++ {
+			for k := range 8 {
 				v = v<<1 | bits[1+8*b+k]
 			}
 			txt := hex2(v)
@@ -119,8 +119,10 @@ func decodeDALI(codes lineIn, colTimeS float64, cfg DALICfg) Result {
 	if len(spans) == 0 {
 		return Result{Proto: "dali", Error: "no DALI frame"}
 	}
-	res := Result{OK: good, Proto: "dali", Spans: spans, Text: strings.Join(toks, " "), Bytes: units,
-		Thr: S.threshold, Inverted: high, SPB: 2 * hx, Baud: 1200}
+	res := Result{
+		OK: good, Proto: "dali", Spans: spans, Text: strings.Join(toks, " "), Bytes: units,
+		Thr: S.threshold, Inverted: high, SPB: 2 * hx, Baud: 1200,
+	}
 	if !good {
 		res.Error = "no whole DALI frame"
 	}
@@ -139,22 +141,30 @@ type USBPDCfg struct {
 
 // pd4b5b decodes the 5-bit line symbols: 0..15 data, 16 error, 17..21
 // Sync-1, Sync-2, Sync-3, RST-1, RST-2, 22 EOP.
-var pd4b5b = [32]int{16, 16, 16, 16, 16, 16, 19, 20, 16, 1, 4, 5, 16, 22, 6, 7,
-	16, 18, 8, 9, 2, 3, 10, 11, 17, 21, 12, 13, 14, 15, 0, 16}
+var pd4b5b = [32]int{
+	16, 16, 16, 16, 16, 16, 19, 20, 16, 1, 4, 5, 16, 22, 6, 7,
+	16, 18, 8, 9, 2, 3, 10, 11, 17, 21, 12, 13, 14, 15, 0, 16,
+}
 
 // pdOrderedSets are the start-of-packet ordered sets and their names.
 var pdOrderedSets = []struct {
 	k    [4]int
 	name string
 }{
-	{[4]int{17, 17, 17, 18}, "SOP"}, {[4]int{17, 17, 19, 19}, "SOP'"}, {[4]int{17, 19, 17, 19}, "SOP\""},
-	{[4]int{17, 21, 21, 19}, "SOP'D"}, {[4]int{17, 21, 19, 18}, "SOP\"D"},
-	{[4]int{20, 17, 20, 19}, "CRST"}, {[4]int{20, 20, 20, 21}, "HRST"},
+	{[4]int{17, 17, 17, 18}, "SOP"},
+	{[4]int{17, 17, 19, 19}, "SOP'"},
+	{[4]int{17, 19, 17, 19}, "SOP\""},
+	{[4]int{17, 21, 21, 19}, "SOP'D"},
+	{[4]int{17, 21, 19, 18}, "SOP\"D"},
+	{[4]int{20, 17, 20, 19}, "CRST"},
+	{[4]int{20, 20, 20, 21}, "HRST"},
 }
 
 // pdCtrlNames and pdDataNames name the message types.
-var pdCtrlNames = map[int]string{1: "GoodCRC", 2: "GotoMin", 3: "Accept", 4: "Reject", 5: "Ping", 6: "PS_RDY",
-	7: "GetSrcCap", 8: "GetSnkCap", 9: "DR_Swap", 10: "PR_Swap", 11: "VCONN_Swap", 12: "Wait", 13: "SoftReset"}
+var pdCtrlNames = map[int]string{
+	1: "GoodCRC", 2: "GotoMin", 3: "Accept", 4: "Reject", 5: "Ping", 6: "PS_RDY",
+	7: "GetSrcCap", 8: "GetSnkCap", 9: "DR_Swap", 10: "PR_Swap", 11: "VCONN_Swap", 12: "Wait", 13: "SoftReset",
+}
 var pdDataNames = map[int]string{1: "SrcCap", 2: "Request", 3: "BIST", 4: "SnkCap", 15: "VDM"}
 
 // crc32IEEE is the IEEE 802.3 CRC-32 (reflected 0xEDB88320, from all ones,
@@ -164,7 +174,7 @@ func crc32IEEE(b []int) uint32 {
 	c := uint32(0xFFFFFFFF)
 	for _, v := range b {
 		c ^= uint32(v & 0xff)
-		for i := 0; i < 8; i++ {
+		for range 8 {
 			if c&1 != 0 {
 				c = c>>1 ^ 0xEDB88320
 			} else {
@@ -289,7 +299,7 @@ func decodeUSBPD(codes lineIn, colTimeS float64, cfg USBPDCfg) Result {
 		for i := 0; i+20 <= len(burst) && at < 0; i++ {
 			for _, os := range pdOrderedSets {
 				hits := 0
-				for q := 0; q < 4; q++ {
+				for q := range 4 {
 					if sym(i+5*q) == os.k[q] {
 						hits++
 					}
@@ -373,8 +383,10 @@ func decodeUSBPD(codes lineIn, colTimeS float64, cfg USBPDCfg) Result {
 	if len(o.spans) == 0 {
 		return Result{Proto: "usbpd", Error: "no USB PD start of packet"}
 	}
-	res := Result{OK: good, Proto: "usbpd", Spans: o.spans, Text: strings.Join(o.toks, " "), Bytes: o.units,
-		Thr: S.threshold, SPB: bit, Baud: baud}
+	res := Result{
+		OK: good, Proto: "usbpd", Spans: o.spans, Text: strings.Join(o.toks, " "), Bytes: o.units,
+		Thr: S.threshold, SPB: bit, Baud: baud,
+	}
 	if !good {
 		res.Error = "no USB PD message whose CRC checks"
 	}
@@ -505,7 +517,7 @@ func decodeSPDIF(codes lineIn, colTimeS float64, cfg SPDIFCfg) Result {
 			continue
 		}
 		v, ones := 0, 0
-		for b := 0; b < 28; b++ {
+		for b := range 28 {
 			if b < 24 {
 				v |= bits[b] << b
 			}
@@ -525,8 +537,10 @@ func decodeSPDIF(codes lineIn, colTimeS float64, cfg SPDIFCfg) Result {
 	if len(spans) == 0 {
 		return Result{Proto: "spdif", Error: "no S/PDIF preamble"}
 	}
-	res := Result{OK: goodN >= 2, Proto: "spdif", Spans: spans, Text: strings.Join(toks, " "), Bytes: units,
-		Thr: S.threshold, SPB: 2 * h}
+	res := Result{
+		OK: goodN >= 2, Proto: "spdif", Spans: spans, Text: strings.Join(toks, " "), Bytes: units,
+		Thr: S.threshold, SPB: 2 * h,
+	}
 	if colTimeS > 0 {
 		// the cell rate, 64 times a standard sample rate
 		res.Baud = snapRate(int(math.Round(1/(2*h*colTimeS))), 64*32e3, 64*44.1e3, 64*48e3, 64*88.2e3, 64*96e3, 64*176.4e3, 64*192e3)

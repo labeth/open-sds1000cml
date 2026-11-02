@@ -51,7 +51,7 @@ func sdqBreak(w *timeline, T float64) {
 // quarter bit, a 0 for three quarters.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-253
 func sdqByte(w *timeline, v int, T float64) {
-	for i := 0; i < 8; i++ {
+	for i := range 8 {
 		lo := 0.75
 		if v>>i&1 == 1 {
 			lo = 0.25
@@ -82,14 +82,14 @@ func pjonPacket(rx, header int, payload []int, badEnd bool) []int {
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-253
 func pjdlFrame(w *timeline, m int, b []int, idle float64) {
 	data, pad := pjdlModes[m][0]*1e-6, pjdlModes[m][1]*1e-6
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		w.add(1, pad)
 		w.add(0, data)
 	}
 	for _, v := range b {
 		w.add(1, pad)
 		w.add(0, data)
-		for k := 0; k < 8; k++ {
+		for k := range 8 {
 			w.add(byte(v>>k&1), data)
 		}
 	}
@@ -124,7 +124,7 @@ func qiPacket(w *timeline, b []int, badCk bool, idle float64) {
 	if k := len(w.bits); k > 0 {
 		l.lvl = w.bits[k-1]
 	}
-	for i := 0; i < 11; i++ {
+	for range 11 {
 		l.put(1)
 	}
 	x := 0
@@ -137,7 +137,7 @@ func qiPacket(w *timeline, b []int, badCk bool, idle float64) {
 	for _, v := range append(append([]int{}, b...), x) {
 		l.put(0)
 		p := 1
-		for i := 0; i < 8; i++ {
+		for i := range 8 {
 			l.put(v >> i & 1)
 			p ^= v >> i & 1
 		}

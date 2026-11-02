@@ -2,10 +2,9 @@
 package web
 
 import (
+	"open-sds/app/internal/testenv"
 	"os/exec"
 	"testing"
-
-	"open-sds/app/internal/testenv"
 )
 
 // The Listen player plays through replies that now and then come 160 ms

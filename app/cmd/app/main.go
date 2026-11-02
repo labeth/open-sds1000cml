@@ -10,9 +10,8 @@
 package main
 
 import (
-	"os"
-
 	"open-sds/app/internal/app"
+	"os"
 )
 
 // TRLC-LINKS: REQ-SDS-167

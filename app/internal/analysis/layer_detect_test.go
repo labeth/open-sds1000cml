@@ -11,10 +11,12 @@ import (
 // at 0x50 is no EEPROM, an XFP's identifier no EEPROM either).
 // TRLC-LINKS: REQ-SDS-247
 func TestDetectLayerNamesItsOwn(t *testing.T) {
-	want := map[string]string{"flash session": "spiflash", "sd card init": "sdcard", "avr isp": "avrisp",
+	want := map[string]string{
+		"flash session": "spiflash", "sd card init": "sdcard", "avr isp": "avrisp",
 		"edid in two reads": "edid", "eeprom 2-byte addresses": "eeprom24xx", "ds1307": "ds1307", "rtc8564": "rtc8564",
 		"nunchuk": "nunchuk", "hdcp": "hdcp", "xfp": "xfp", "itm": "arm_itm", "tpiu": "arm_tpiu",
-		"pan1321": "pan1321", "1-wire net": "ds28ea00", "ds2408": "onewire_net", "cfp": "cfp", "usb enumeration": "usb_request"}
+		"pan1321": "pan1321", "1-wire net": "ds28ea00", "ds2408": "onewire_net", "cfp": "cfp", "usb enumeration": "usb_request",
+	}
 	got := map[string]bool{}
 	for _, v := range layerCurated() {
 		w, ok := want[v.Name]
@@ -77,10 +79,10 @@ func TestDetectLayerClaimsNothingUnproven(t *testing.T) {
 		return b
 	}
 	claims := map[string]int{}
-	for rec := 0; rec < 3000; rec++ {
+	for range 3000 {
 		k := 2 + r.Intn(10)
 		var spi, i2c, uart, ow, usb, mdio []Packet
-		for i := 0; i < k; i++ {
+		for range k {
 			spi = append(spi, mkSPI(rnd(1+r.Intn(24))...))
 			i2c = append(i2c, mkI2C(0x30+r.Intn(16), r.Intn(2) == 0, rnd(r.Intn(8))...))
 			text := []byte("temperature 21.5 C, humidity 40 %\r\n")

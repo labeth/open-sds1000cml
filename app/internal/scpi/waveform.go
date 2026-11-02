@@ -5,7 +5,6 @@ import (
 	"encoding/binary"
 	"fmt"
 	"math"
-
 	"open-sds/app/internal/analog"
 	"open-sds/app/internal/engine"
 )
@@ -58,10 +57,9 @@ func (h *Handler) dat2(ch int, f *engine.Frame) []byte {
 	if ch == 1 {
 		sig = f.C2
 	}
-	valid := f.Valid
-	if valid > len(sig) { // Valid>len invariant slip must not panic the VXI readout
-		valid = len(sig)
-	}
+	valid := min(f.Valid,
+		// Valid>len invariant slip must not panic the VXI readout
+		len(sig))
 	if valid < 0 {
 		valid = 0
 	}
@@ -69,10 +67,7 @@ func (h *Handler) dat2(ch int, f *engine.Frame) []byte {
 	if h.wfFP >= len(sig) {
 		return nil // reject at readout time; never index past the record
 	}
-	sp := h.wfSP
-	if sp < 1 {
-		sp = 1
-	}
+	sp := max(h.wfSP, 1)
 	max := (len(sig) - h.wfFP + sp - 1) / sp
 	np := h.wfNP
 	if np == 0 || np > max {
@@ -86,7 +81,7 @@ func (h *Handler) dat2(ch int, f *engine.Frame) []byte {
 		}
 		return out
 	}
-	for i := 0; i < np; i++ {
+	for i := range np {
 		v := sig[h.wfFP+i*sp]
 		if f.RollCodes {
 			// Legacy roll FIFO codes are half-scale, so a roll deviation d

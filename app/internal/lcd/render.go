@@ -4,12 +4,12 @@ package lcd
 import (
 	"fmt"
 	"math"
-	"sync"
-
 	"open-sds/app/internal/analog"
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/panel/wsview"
 	"open-sds/app/internal/streamview"
+	"strconv"
+	"sync"
 )
 
 // Colour palette (spec 07 §2.2). The col* variables are GENERATED into
@@ -392,7 +392,7 @@ func acquiringLines(hud HUD) []string {
 		what = "serial match " + m
 		hint = "No match in the signal at this timebase yet: press AUTO to find the bus again."
 	case hud.ZoneTrig:
-		what = "zones on C" + fmt.Sprint(hud.TrigSrc+1)
+		what = "zones on C" + strconv.Itoa(hud.TrigSrc+1)
 		hint = "No edge passes every zone: check the zones (COMPARE) or the level."
 	case hud.TrigType != 0:
 		what = trigTag(hud)
@@ -423,7 +423,7 @@ func drawDenseTrace(sf Surface, p plotArea, id traceID, sig []uint8, held []bool
 	var cc [W]uint16
 	w := min(p.w, W)
 	prevY := -1
-	for x := 0; x < w; x++ {
+	for x := range w {
 		yTop, yBot := y(cols.mx[x]), y(cols.mn[x])
 		if prevY >= 0 { // join: the span reaches the previous column's last value
 			yTop, yBot = min(yTop, prevY), max(yBot, prevY)
@@ -513,7 +513,7 @@ func denseBlock(px []uint16, top, bot []int16, cc []uint16, x0 int) bool {
 	}
 	var t0, ht [spanBlock]int32
 	rTop, rBot, cover := int32(H), int32(-1), 0
-	for i := 0; i < nb; i++ {
+	for i := range nb {
 		a, b := max(int32(top[i]), 0), min(int32(bot[i]), H-1)
 		if a > b { // empty: a first row no row reaches
 			t0[i], ht[i] = 1<<20, 0
@@ -662,7 +662,7 @@ func drawEnvelope(sf Surface, p plotArea, mn, mx []uint8, cols int, col uint16, 
 	var cc [W]uint16
 	w := min(p.w, W)
 	rows := p.codeRows(z)
-	for x := 0; x < w; x++ {
+	for x := range w {
 		top[x], bot[x], cc[x] = 1, 0, col // nothing drawn
 		c := x * cols / p.w
 		if c >= cols || c >= len(mn) || c >= len(mx) {
@@ -681,10 +681,7 @@ func drawEnvelope(sf Surface, p plotArea, mn, mx []uint8, cols int, col uint16, 
 // alternate-view renderers below).
 // TRLC-LINKS: REQ-SDS-021
 func frameValid(f *engine.Frame) int {
-	valid := f.Valid
-	if valid < 1 {
-		valid = 1
-	}
+	valid := max(f.Valid, 1)
 	if valid > len(f.C1) {
 		valid = len(f.C1)
 	}

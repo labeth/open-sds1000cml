@@ -5,13 +5,12 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"open-sds/ota/internal/slots"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
 	"testing"
-
-	"open-sds/ota/internal/slots"
 )
 
 // mustData re-marshals a handler's Data so tests can decode it into the shape

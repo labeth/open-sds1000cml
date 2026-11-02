@@ -14,7 +14,7 @@ func boxDown(w []uint8, box int, rng *rand.Rand) []uint8 {
 	var d []uint8
 	for i := rng.Intn(box); i+box <= len(w); i += box {
 		s := 0
-		for k := 0; k < box; k++ {
+		for k := range box {
 			s += int(w[i+k]) + rng.Intn(9) - 4
 		}
 		d = append(d, uint8(s/box))
@@ -27,11 +27,11 @@ func boxDown(w []uint8, box int, rng *rand.Rand) []uint8 {
 // 10ms/div's own records), and refuse fewer than three: their floor.
 // TRLC-LINKS: REQ-SDS-018
 func TestLineCodesDecodeAtThreeSamplesABit(t *testing.T) {
-	for seed := 0; seed < 50; seed++ {
+	for seed := range 50 {
 		rng := rand.New(rand.NewSource(int64(seed)))
 		var frames [][]int
 		var all []int
-		for f := 0; f < 3; f++ {
+		for range 3 {
 			b := brFlexFixCRC([]int{rng.Intn(256), rng.Intn(256), rng.Intn(256), rng.Intn(256), rng.Intn(256), rng.Intn(256), rng.Intn(256), rng.Intn(256)})
 			frames, all = append(frames, b), append(all, b...)
 		}

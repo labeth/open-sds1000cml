@@ -3,6 +3,7 @@ package sramcapture
 
 import (
 	"context"
+	"errors"
 	"fmt"
 )
 
@@ -50,12 +51,12 @@ func (c *Capture) StartStreamRing(ctx context.Context, cfg Config, streamLog uin
 	c.mu.Lock()
 	rev, err := c.read(13)
 	if err == nil && rev != 11 {
-		err = fmt.Errorf("sramcapture: stream requires revision 11")
+		err = errors.New("sramcapture: stream requires revision 11")
 	}
 	if err == nil {
 		var v uint16
 		if v, err = c.read(61); err == nil && v != streamRingCapability {
-			err = fmt.Errorf("sramcapture: this image has no history ring")
+			err = errors.New("sramcapture: this image has no history ring")
 		}
 	}
 	if err == nil {
@@ -96,7 +97,7 @@ func (c *Capture) FreezeRing(ctx context.Context) (Metadata, uint32, error) {
 	ring := c.ringStream
 	c.mu.Unlock()
 	if !ring {
-		return Metadata{}, 0, fmt.Errorf("sramcapture: no history ring runs")
+		return Metadata{}, 0, errors.New("sramcapture: no history ring runs")
 	}
 	if err := c.Halt(ctx); err != nil {
 		return Metadata{}, 0, err
@@ -108,7 +109,7 @@ func (c *Capture) FreezeRing(ctx context.Context) (Metadata, uint32, error) {
 		return m, 0, err
 	}
 	if !m.Frozen || !m.Ready || m.Length == 0 {
-		return m, 0, fmt.Errorf("sramcapture: the history ring did not freeze")
+		return m, 0, errors.New("sramcapture: the history ring did not freeze")
 	}
 	last, err := c.read32(62)
 	return m, last, err

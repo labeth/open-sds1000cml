@@ -102,22 +102,24 @@ func TestFlexRayTriggerRTL(t *testing.T) {
 			}
 		}
 		path := filepath.Join(dir, "line.mem")
-		if err := os.WriteFile(path, []byte(in.String()), 0600); err != nil {
+		if err := os.WriteFile(path, []byte(in.String()), 0o600); err != nil {
 			t.Fatal(err)
 		}
 		var p uint64
 		for _, b := range pattern {
 			p = p<<8 | uint64(b)
 		}
-		argv := append([]string{image, "+input=" + path, fmt.Sprintf("+length=%d", len(codes)),
+		argv := append([]string{
+			image, "+input=" + path, fmt.Sprintf("+length=%d", len(codes)),
 			fmt.Sprintf("+nominal=%d", int(math.Round(256/(float64(bitrate)*canRTLTicks)))),
-			fmt.Sprintf("+pattern=%016x", p), fmt.Sprintf("+len=%d", len(pattern))}, args...)
+			fmt.Sprintf("+pattern=%016x", p), fmt.Sprintf("+len=%d", len(pattern)),
+		}, args...)
 		out, err := exec.Command("vvp", argv...).CombinedOutput()
 		if err != nil {
 			t.Fatalf("simulate: %v\n%s", err, out)
 		}
 		var events []canRTLEvent
-		for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
+		for line := range strings.SplitSeq(strings.TrimSpace(string(out)), "\n") {
 			if !strings.HasPrefix(line, "E ") {
 				continue
 			}

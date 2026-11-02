@@ -1,7 +1,10 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-SRAMCAPTURE
 package sramcapture
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
 
 // Packet trigger protocols use the repository protocol IDs.
 const (
@@ -47,7 +50,7 @@ func (p PacketTriggerConfig) validate() error {
 		bad = true
 	}
 	if bad {
-		return fmt.Errorf("sramcapture: invalid hardware packet trigger configuration")
+		return errors.New("sramcapture: invalid hardware packet trigger configuration")
 	}
 	return nil
 }
@@ -82,7 +85,7 @@ func (c *Capture) configurePacket(p PacketTriggerConfig) error {
 	}
 	if mask == 0 {
 		if p.Enabled {
-			return fmt.Errorf("sramcapture: fabric lacks the hardware packet trigger")
+			return errors.New("sramcapture: fabric lacks the hardware packet trigger")
 		}
 		return nil
 	}
@@ -122,7 +125,7 @@ type ManchesterTriggerConfig struct {
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-018
 func (p ManchesterTriggerConfig) validate() error {
 	if p.Enabled && (p.Channel > 1 || p.Bits < 1 || p.Bits > 16 || p.BitTicks < 8 || p.BitTicks > 0x3fffff || p.Length > 4) {
-		return fmt.Errorf("sramcapture: invalid hardware Manchester configuration")
+		return errors.New("sramcapture: invalid hardware Manchester configuration")
 	}
 	return nil
 }
@@ -155,7 +158,7 @@ func (c *Capture) configureManchester(p ManchesterTriggerConfig) error {
 	}
 	if !present {
 		if p.Enabled {
-			return fmt.Errorf("sramcapture: fabric lacks hardware Manchester trigger")
+			return errors.New("sramcapture: fabric lacks hardware Manchester trigger")
 		}
 		return nil
 	}

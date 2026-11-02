@@ -29,7 +29,7 @@ func spiModeWave(bytes []int, h, delay int, cpol, cpha, msb bool) (clk, dat []ui
 	var sets []set
 	t := 4 * h
 	for _, b := range bytes {
-		for j := 0; j < 8; j++ {
+		for j := range 8 {
 			k := 7 - j
 			if !msb {
 				k = j

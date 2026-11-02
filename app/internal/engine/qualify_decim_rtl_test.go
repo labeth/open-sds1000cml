@@ -3,13 +3,12 @@ package engine
 
 import (
 	"fmt"
+	"open-sds/app/internal/testenv"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
-
-	"open-sds/app/internal/testenv"
 )
 
 // The qualify image's top level with a pulse qualifier on full-rate and
@@ -38,10 +37,12 @@ func TestQualifierDecimatedTopRTL(t *testing.T) {
 	}
 	image := filepath.Join(dir, "qualify-decim.vvp")
 	args := []string{"-g2012", "-s", "tb_top_qualify_decim", "-o", image, "-I", rtl, defs}
-	for _, f := range []string{"top.v", "record.v", "transport.v", "adc_unpack.v", "sample_timeline.v", "decoded_event_queue.v",
+	for _, f := range []string{
+		"top.v", "record.v", "transport.v", "adc_unpack.v", "sample_timeline.v", "decoded_event_queue.v",
 		"decoded_event_bridge.v", "decoded_event_reader.v", "decoded_event_transport.v", "decoded_event_port.v",
 		"gpmc_slave.v", "ddio_pair.v", "lane_in.v", "sim/ddr_model.v", "sim/tb_top_qualify_decim.v", "event_sequence.v", "envelope_reduce.v", "panel_scan.v",
-		"qual_trigger.v", "zone_qual.v", "sum_edge_pair.v", "symbol_trigger.v", "box_decim.v"} {
+		"qual_trigger.v", "zone_qual.v", "sum_edge_pair.v", "symbol_trigger.v", "box_decim.v",
+	} {
 		args = append(args, filepath.Join(rtl, f))
 	}
 	if out, err := exec.Command("iverilog", args...).CombinedOutput(); err != nil {
@@ -56,12 +57,12 @@ func TestQualifierDecimatedTopRTL(t *testing.T) {
 		}
 	}
 	var starts []int // each burst's start bit, in words
-	for f := 0; f < 4; f++ {
+	for range 4 {
 		hold(true, idle)
 		starts = append(starts, len(line)/2)
 		for _, c := range []int{0x48, 0x69, 0x55, 0xAA} {
 			hold(false, bit)
-			for i := 0; i < 8; i++ {
+			for i := range 8 {
 				hold(c>>i&1 == 1, bit)
 			}
 			hold(true, bit)
@@ -85,8 +86,16 @@ func TestQualifierDecimatedTopRTL(t *testing.T) {
 	// a high pulse over 20 us (at least 10), as AUTO's UART frame start asks
 	prescale, minTicks, maxTicks := qualTicks(10e3, 20e3)
 	for _, log := range []int{0, 4, 5, 8} {
-		regs := [][2]uint32{{7, 125 | 4<<8}, {18, uint32(log)}, {22, minTicks - 1}, {24, maxTicks}, {26, 0x8080}, {27, 0},
-			{28, prescale - 1}, {21, 1 | 2<<4}}
+		regs := [][2]uint32{
+			{7, 125 | 4<<8},
+			{18, uint32(log)},
+			{22, minTicks - 1},
+			{24, maxTicks},
+			{26, 0x8080},
+			{27, 0},
+			{28, prescale - 1},
+			{21, 1 | 2<<4},
+		}
 		var rb strings.Builder
 		for _, r := range regs {
 			fmt.Fprintf(&rb, "%x\n%x\n", r[0], r[1])
@@ -101,7 +110,7 @@ func TestQualifierDecimatedTopRTL(t *testing.T) {
 			t.Fatalf("/%d: %v\n%s", 1<<log, err, out)
 		}
 		trigger := -1
-		for _, l := range strings.Split(string(out), "\n") {
+		for l := range strings.SplitSeq(string(out), "\n") {
 			fmt.Sscanf(l, "T %d", &trigger)
 		}
 		// within a few decimated samples (two a word at the full rate) of a start
@@ -145,10 +154,12 @@ func TestEdgeDecimatedTopRTL(t *testing.T) {
 	}
 	image := filepath.Join(dir, "edge-decim.vvp")
 	args := []string{"-g2012", "-s", "tb_top_qualify_decim", "-o", image, "-I", rtl, defs}
-	for _, f := range []string{"top.v", "record.v", "transport.v", "adc_unpack.v", "sample_timeline.v", "decoded_event_queue.v",
+	for _, f := range []string{
+		"top.v", "record.v", "transport.v", "adc_unpack.v", "sample_timeline.v", "decoded_event_queue.v",
 		"decoded_event_bridge.v", "decoded_event_reader.v", "decoded_event_transport.v", "decoded_event_port.v",
 		"gpmc_slave.v", "ddio_pair.v", "lane_in.v", "sim/ddr_model.v", "sim/tb_top_qualify_decim.v", "event_sequence.v", "envelope_reduce.v", "panel_scan.v",
-		"qual_trigger.v", "zone_qual.v", "sum_edge_pair.v", "symbol_trigger.v", "box_decim.v"} {
+		"qual_trigger.v", "zone_qual.v", "sum_edge_pair.v", "symbol_trigger.v", "box_decim.v",
+	} {
 		args = append(args, filepath.Join(rtl, f))
 	}
 	if out, err := exec.Command("iverilog", args...).CombinedOutput(); err != nil {
@@ -157,16 +168,16 @@ func TestEdgeDecimatedTopRTL(t *testing.T) {
 	const sampleS = 2e-9
 	var line []uint32
 	var starts, spreads []int // each burst's and each spread's start, in words
-	for b := 0; b < 4; b++ {
-		for i := 0; i < int(20e-6/sampleS); i++ {
+	for range 4 {
+		for range int(20e-6 / sampleS) {
 			line = append(line, 50)
 		}
 		spreads = append(spreads, len(line)/2)
-		for i := 0; i < int(20e-6/sampleS); i++ {
+		for i := range int(20e-6 / sampleS) {
 			line = append(line, uint32(152+i%5*4)) // 152..168 about the level 160
 		}
 		starts = append(starts, len(line)/2)
-		for i := 0; i < int(4e-6/sampleS); i++ {
+		for i := range int(4e-6 / sampleS) {
 			line = append(line, map[bool]uint32{true: 200, false: 50}[i/8%2 == 0])
 		}
 	}
@@ -195,7 +206,7 @@ func TestEdgeDecimatedTopRTL(t *testing.T) {
 			t.Fatalf("/%d: %v\n%s", 1<<log, err, out)
 		}
 		trigger := -1
-		for _, l := range strings.Split(string(out), "\n") {
+		for l := range strings.SplitSeq(string(out), "\n") {
 			fmt.Sscanf(l, "T %d", &trigger)
 		}
 		// full rate the comparators take the spread's first crossing (the

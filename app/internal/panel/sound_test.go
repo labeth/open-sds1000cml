@@ -3,12 +3,11 @@ package panel
 
 import (
 	"math"
+	"open-sds/app/internal/engine"
+	"open-sds/app/internal/sound"
 	"strings"
 	"testing"
 	"time"
-
-	"open-sds/app/internal/engine"
-	"open-sds/app/internal/sound"
 )
 
 // soundEng is the panel's fake engine with an audio stream: two channels of
@@ -30,7 +29,7 @@ type soundEng struct {
 func newSoundEng(fn [2]func(t float64) float64, seconds float64) *soundEng {
 	e := &soundEng{fakeEng: newEng(), fs: 500e6 / 8192}
 	n := int(seconds * e.fs)
-	for ch := 0; ch < 2; ch++ {
+	for ch := range 2 {
 		e.q[ch] = make([]uint16, n)
 		for i := range e.q[ch] {
 			v := fn[ch](float64(i) / e.fs)
@@ -89,8 +88,10 @@ func (e *soundEng) marks(from, to int) []engine.SoundMark {
 func (e *soundEng) SoundRead(from uint64, n int, q1, q2 []uint16) engine.SoundBlock {
 	a := min(int(from), e.next)
 	b := min(a+n, e.next)
-	return engine.SoundBlock{First: uint64(a), N: b - a, Q1: append(q1[:0], e.q[0][a:b]...), Q2: append(q2[:0], e.q[1][a:b]...),
-		RateHz: e.fs, Scales: []engine.SoundScale{{VdivV: [2]float64{1, 1}}}, Marks: e.marks(a, b), Next: uint64(e.next)}
+	return engine.SoundBlock{
+		First: uint64(a), N: b - a, Q1: append(q1[:0], e.q[0][a:b]...), Q2: append(q2[:0], e.q[1][a:b]...),
+		RateHz: e.fs, Scales: []engine.SoundScale{{VdivV: [2]float64{1, 1}}}, Marks: e.marks(a, b), Next: uint64(e.next),
+	}
 }
 
 // TRLC-LINKS: REQ-SDS-273
@@ -259,7 +260,7 @@ func TestSoundDriftReportReduced(t *testing.T) {
 func TestSoundVOctBounded(t *testing.T) {
 	s := newSoundSvc(&Controller{})
 	s.hz = 440
-	for i := 0; i < 3*voctMax; i++ {
+	for range 3 * voctMax {
 		if err := s.action("voct_capture"); err != nil {
 			t.Fatal(err)
 		}

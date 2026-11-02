@@ -4,12 +4,11 @@ package web
 import (
 	"math"
 	"net/http/httptest"
+	"open-sds/app/internal/engine"
+	"open-sds/app/internal/testenv"
 	"os/exec"
 	"strings"
 	"testing"
-
-	"open-sds/app/internal/engine"
-	"open-sds/app/internal/testenv"
 )
 
 // TestSuperresBrowser drives superres_browser.mjs against a fakeScope whose
@@ -40,7 +39,7 @@ func testSuperresBrowserBand(t *testing.T, band string) {
 		jitter := (rnd() - 0.5) * 6 // ±3 samples of trigger phase
 		c1 := make([]uint8, N)
 		c2 := make([]uint8, N)
-		for i := 0; i < N; i++ {
+		for i := range N {
 			v := 128 + 55*math.Sin(2*math.Pi*(float64(i)-jitter)/256) + 2.5*(rnd()-0.5)*2
 			if v < 0 {
 				v = 0

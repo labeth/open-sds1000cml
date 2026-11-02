@@ -2,14 +2,13 @@
 package panel
 
 import (
-	"strings"
-	"testing"
-	"time"
-
 	"open-sds/app/internal/analog"
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/panel/framecalc"
 	"open-sds/app/internal/panel/wsview"
+	"strings"
+	"testing"
+	"time"
 )
 
 // AUTO in BUS scans for the bus anew: the bus decoded before is forgotten
@@ -62,14 +61,16 @@ func TestAutoOutsideBusIsAutoset(t *testing.T) {
 // frame's start, an ARINC 429 word, a MIL-1553 command word; none for UART.
 // TRLC-LINKS: REQ-SDS-223
 func TestFrameStartPatterns(t *testing.T) {
-	for proto, want := range map[int]string{framecalc.ProtoI2C: "", framecalc.ProtoSPI: "SOF ??", framecalc.ProtoCAN: "SOF ??",
+	for proto, want := range map[int]string{
+		framecalc.ProtoI2C: "", framecalc.ProtoSPI: "SOF ??", framecalc.ProtoCAN: "SOF ??",
 		framecalc.ProtoManchester: "SOF ??", framecalc.ProtoSENT: "SOF ??", framecalc.ProtoUSB: "SOF ??", framecalc.ProtoFlexRay: "SOF ??",
 		framecalc.ProtoARINC429: "??", framecalc.ProtoMIL1553: "CMD", framecalc.ProtoMIDI: "STS",
 		framecalc.ProtoLIN: "SOF ??", framecalc.ProtoDMX: "SOF ??", framecalc.ProtoModbus: "SOF ??", framecalc.ProtoOneWire: "SOF ??",
 		framecalc.ProtoWS281x: "SOF ??", framecalc.ProtoDHT: "SOF ??", framecalc.ProtoCEC: "SOF ??", framecalc.ProtoJ1850: "SOF ??",
 		framecalc.ProtoIRNEC: "SOF ??", framecalc.ProtoIRSIRC: "SOF ??", framecalc.ProtoIRRC5: "SOF ??", framecalc.ProtoIRRC6: "SOF ??",
 		framecalc.ProtoDALI: "SOF ??", framecalc.ProtoUSBPD: "SOF ??", framecalc.ProtoSPDIF: "SOF ??", framecalc.ProtoPS2: "SOF ??",
-		framecalc.ProtoSWD: "SOF ??", framecalc.ProtoMDIO: "SOF ??", framecalc.ProtoWiegand: "SOF ??"} {
+		framecalc.ProtoSWD: "SOF ??", framecalc.ProtoMDIO: "SOF ??", framecalc.ProtoWiegand: "SOF ??",
+	} {
 		b, p, name, ok := sofPattern(proto)
 		if got := strings.Join(tokensOf(engine.SerialParams{Bytes: b, Pattern: p}), " "); !ok || got != want || name == "" {
 			t.Fatalf("%s: %q (%v %q), want %q", protoName(proto), got, ok, name, want)

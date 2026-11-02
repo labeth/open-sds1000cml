@@ -335,10 +335,9 @@ func (cn *conn) dispatch(proc uint32, x *xdr) []byte {
 	case procDeviceRead:
 		lid := x.u32()
 		reqSize := int(x.u32())
-		ioMs := x.u32()
-		if ioMs > 10000 {
-			ioMs = 10000 // clamp a client-supplied timeout so a huge value
-		} //              can't pin the conn goroutine indefinitely
+		ioMs := min(x.u32(),
+			// clamp a client-supplied timeout so a huge value
+			10000) //              can't pin the conn goroutine indefinitely
 		ioTimeout := time.Duration(ioMs) * time.Millisecond
 		if !cn.owns(lid) {
 			r := putU32(nil, errInvLink)
@@ -357,10 +356,7 @@ func (cn *conn) dispatch(proc uint32, x *xdr) []byte {
 				return putOpaque(r, nil)
 			}
 		}
-		n := len(cn.pending)
-		if n > reqSize {
-			n = reqSize
-		}
+		n := min(len(cn.pending), reqSize)
 		chunk := cn.pending[:n]
 		cn.pending = cn.pending[n:]
 		reason := uint32(0) // 0 = more remains, client loops
@@ -423,7 +419,7 @@ func indexByte(b []byte, c byte) int {
 // dial from a local port <1024 (the app runs as root on the device).
 // TRLC-LINKS: REQ-SDS-024
 func registerPortmap(port int, logf func(string, ...any)) error {
-	call := func(proc uint32, prog, vers, prot, prt uint32) error {
+	call := func(proc, prog, vers, prot, prt uint32) error {
 		var c net.Conn
 		var err error
 		for lp := 1023; lp >= 600; lp-- {

@@ -146,7 +146,7 @@ func TestSaverDebounce(t *testing.T) {
 	}
 
 	// Quiet steady state: no rewrites.
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		step(time.Second)
 	}
 	if len(*saves) != 1 {
@@ -155,7 +155,7 @@ func TestSaverDebounce(t *testing.T) {
 
 	// A burst of changes (knob sweep) coalesces into ONE write, settle-delayed
 	// from the LAST change.
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		cur.Trigger.LevelCode = 28000 + i*100
 		step(time.Second) // every poll sees a fresh value → settle keeps restarting
 	}

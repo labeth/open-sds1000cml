@@ -3,11 +3,10 @@ package panel
 
 import (
 	"math"
-	"strings"
-	"testing"
-
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/panel/framecalc"
+	"strings"
+	"testing"
 )
 
 // The sheets' rows drive the instrument as the old menu pages did: the

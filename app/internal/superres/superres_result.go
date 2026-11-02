@@ -36,7 +36,7 @@ func (st *Stack) Result(statsOnly bool, stride int) Result {
 		B := &st.C[1-st.Align]
 		mean = make([]float32, nb)
 		mean2 = make([]float32, nb)
-		for b := 0; b < nb; b++ {
+		for b := range nb {
 			if c := A.cnt[b]; c < EPS {
 				mean[b] = -1
 			} else {
@@ -50,10 +50,7 @@ func (st *Stack) Result(statsOnly bool, stride int) Result {
 		}
 	}
 	statLo, statHi := st.StatLo*st.K, st.StatHi*st.K
-	span := statHi - statLo
-	if span < 1 {
-		span = 1
-	}
+	span := max(statHi-statLo, 1)
 	statStride := stride
 	if s := int(math.Ceil(float64(span) / 4096)); s > statStride {
 		statStride = s

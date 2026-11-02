@@ -1,7 +1,7 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-SRAMCAPTURE
 package sramcapture
 
-import "fmt"
+import "errors"
 
 // Qualifier kinds (ADR-HARDWARE-QUALIFIERS).
 const (
@@ -80,7 +80,7 @@ func (p QualifierConfig) validate() error {
 	}
 	if p.Kind > QualVideo || p.Channel > 1 || p.Cond > QualBetween || p.MinTicks > QualMaxTicks || p.MaxTicks > QualMaxTicks ||
 		p.Prescale < 1 || p.Prescale > QualMaxPrescale || p.Prescale&(p.Prescale-1) != 0 || p.Line > 1023 {
-		return fmt.Errorf("sramcapture: invalid hardware qualifier configuration")
+		return errors.New("sramcapture: invalid hardware qualifier configuration")
 	}
 	return nil
 }
@@ -108,7 +108,7 @@ func (c *Capture) configureQualifier(revision uint16, p QualifierConfig) error {
 	}
 	if capability != 0x5154 {
 		if p.Enabled {
-			return fmt.Errorf("sramcapture: fabric lacks hardware trigger qualifiers")
+			return errors.New("sramcapture: fabric lacks hardware trigger qualifiers")
 		}
 		return nil
 	}
@@ -180,12 +180,12 @@ func (z ZoneConfig) validate() error {
 		return nil
 	}
 	if z.Wait < 1 || z.Wait > 1023 || z.Bucket < 1 || z.Bucket > 4096 || z.Bucket&(z.Bucket-1) != 0 {
-		return fmt.Errorf("sramcapture: invalid hardware zone configuration")
+		return errors.New("sramcapture: invalid hardware zone configuration")
 	}
 	for _, w := range z.Zones {
 		// the oldest count read must still be in the 1024-bucket history
 		if w.Enabled && (w.Channel > 1 || w.Start > w.End || w.Start < -1000 || w.End > 1000 || int(z.Wait)-int(w.Start)+1 > 1023 || int(w.End)+1 > int(z.Wait)) {
-			return fmt.Errorf("sramcapture: zone window outside the hardware history")
+			return errors.New("sramcapture: zone window outside the hardware history")
 		}
 	}
 	return nil
@@ -206,7 +206,7 @@ func (c *Capture) configureZones(revision uint16, z ZoneConfig) error {
 	}
 	if kinds&8 == 0 {
 		if z.Enabled() {
-			return fmt.Errorf("sramcapture: fabric lacks the hardware zone trigger")
+			return errors.New("sramcapture: fabric lacks the hardware zone trigger")
 		}
 		return nil
 	}

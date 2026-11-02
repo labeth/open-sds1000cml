@@ -157,14 +157,14 @@ func yinDifference(x []float64, w, tauMax int) []float64 {
 	defer putScratch(pi)
 	clear(zr)
 	clear(zi)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		zr[i] = x[i] - m
 		if i < w {
 			zi[i] = zr[i]
 		}
 	}
 	fft(zr, zi, false)
-	for k := 0; k < size; k++ {
+	for k := range size {
 		j := (size - k) & (size - 1)
 		// B = (Z[k] + conj Z[-k]) / 2, A = (Z[k] - conj Z[-k]) / 2i
 		br, bi := (zr[k]+zr[j])/2, (zi[k]-zi[j])/2
@@ -178,13 +178,13 @@ func yinDifference(x []float64, w, tauMax int) []float64 {
 	cum := getScratch(n + 1)
 	defer putScratch(cum)
 	cum[0] = 0
-	for i := 0; i < n; i++ {
+	for i := range n {
 		v := x[i] - m
 		cum[i+1] = cum[i] + v*v
 	}
 	d := getScratch(tauMax) // the caller puts it back
 	e0 := cum[w]
-	for t := 0; t < tauMax; t++ {
+	for t := range tauMax {
 		r := pr[t] / float64(size)
 		et := cum[t+w] - cum[t]
 		d[t] = math.Max(0, e0+et-2*r)
@@ -219,7 +219,7 @@ func refinePitch(x []float64, fs, f float64) float64 {
 	if fh*float64(half)/fs < 4 {
 		return f
 	}
-	for it := 0; it < 2; it++ {
+	for range 2 {
 		r1, i1 := toneAt(x[:half], fh, fs)
 		r2, i2 := toneAt(x[half:2*half], fh, fs)
 		if math.Hypot(r1, i1) == 0 || math.Hypot(r2, i2) == 0 {

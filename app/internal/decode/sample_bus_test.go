@@ -41,7 +41,7 @@ func (p lineSet) words() []uint64 {
 	offsets := [2][5]float64{{0, 2, 11, 11, 0}, {0, 4, 3, 4, 3}}
 	rng := rand.New(rand.NewSource(p.seed))
 	codes := [2][]uint8{make([]uint8, n), make([]uint8, n)}
-	for ch := 0; ch < 2; ch++ {
+	for ch := range 2 {
 		list, idle := p.tr[ch], p.idle[ch]
 		sigma := func(up bool) float64 {
 			if up {
@@ -82,7 +82,7 @@ func (p lineSet) words() []uint64 {
 	}
 	wide := make([]uint64, n/4)
 	for k := range wide {
-		for j := 0; j < 4; j++ {
+		for j := range 4 {
 			wide[k] |= uint64(codes[0][4*k+j])<<(16*j) | uint64(codes[1][4*k+j])<<(16*j+8)
 		}
 	}
@@ -159,8 +159,10 @@ func (u uartBus) lines() lineSet {
 
 // TRLC-LINKS: REQ-SDS-229
 func (u uartBus) config() SampleUARTConfig {
-	return SampleUARTConfig{Ch: u.ch, Level: 120, Low: 107, High: 133, Inverted: u.inverted, Period16: UARTPeriod16(u.baud),
-		Bits: u.bits, Parity: u.parity, Resync: true}
+	return SampleUARTConfig{
+		Ch: u.ch, Level: 120, Low: 107, High: 133, Inverted: u.inverted, Period16: UARTPeriod16(u.baud),
+		Bits: u.bits, Parity: u.parity, Resync: true,
+	}
 }
 
 // want is the events the receiver publishes for the frames: their data, or
@@ -185,7 +187,7 @@ func uartFrames(bits int, seed int64) []uartFrame {
 	rng := rand.New(rand.NewSource(seed))
 	vals := []int{0x00, 0x1ff, 0x55, 0xaa, 0x01, 0x100, 0x80, 0x7f, 0x48, 0x0f, 0xf0}
 	var fs []uartFrame
-	for i := 0; i < 28; i++ {
+	for i := range 28 {
 		v := rng.Intn(512)
 		if i < len(vals) {
 			v = vals[i]
@@ -219,8 +221,10 @@ func uartCases() []uartBus {
 	for i, baud := range []float64{115200, 1e6, 10e6, 25e6, 50e6, 62.5e6} {
 		for j, f := range formats {
 			for _, e := range []float64{-0.02, 0, 0.02} {
-				u := uartBus{baud: baud, err: e, bits: f.bits, parity: f.parity, stop: f.stop, inverted: f.inverted, ch: (i + j) % 2,
-					rise: 3e-9, noise: 1, seed: int64(100*i + 10*j + int(e*100))}
+				u := uartBus{
+					baud: baud, err: e, bits: f.bits, parity: f.parity, stop: f.stop, inverted: f.inverted, ch: (i + j) % 2,
+					rise: 3e-9, noise: 1, seed: int64(100*i + 10*j + int(e*100)),
+				}
 				u.frames = uartFrames(f.bits, u.seed)
 				cases = append(cases, u)
 			}
@@ -327,11 +331,12 @@ func i2cTransfers(seq byte) [][]i2cOp {
 	B := func(b byte) i2cOp { return i2cOp{kind: 'B', b: b} }
 	S, P := i2cOp{kind: 'S'}, i2cOp{kind: 'P'}
 	read := []i2cOp{S, B(0xa0), B(0x00), B(0x10), S, B(0xa1)}
-	for i := 0; i < 8; i++ {
+	for i := range 8 {
 		read = append(read, i2cOp{kind: 'B', b: seq + byte(i), nack: i == 7})
 	}
 	read = append(read, P)
-	return [][]i2cOp{read,
+	return [][]i2cOp{
+		read,
 		{S, B(0xf4), B(0xa5), B('H'), B('S'), P}, // ten-bit address 0x2a5, write
 		{S, {kind: 'B', b: 0x78, nack: true}, P},
 	}
@@ -357,7 +362,7 @@ func (b i2cBus) lines() lineSet {
 				addTr(&scl, &cl, t+high, false)
 				t += high
 			case 'B':
-				for i := 0; i < 9; i++ {
+				for i := range 9 {
 					bit := op.nack
 					if i < 8 {
 						bit = op.b>>(7-i)&1 != 0
@@ -389,8 +394,10 @@ func (b i2cBus) config() SampleI2CConfig {
 		delay = -delay
 	}
 	scl, sda := uint8(120+b.shift[b.clockCh]), uint8(120+b.shift[1-b.clockCh])
-	return SampleI2CConfig{ClockCh: b.clockCh, Level: scl, Low: scl - 13, High: scl + 13, SDALevel: sda, SDALow: sda - 13, SDAHigh: sda + 13,
-		Inverted: b.inverted, Delay: delay, Address: -1, Direction: 2}
+	return SampleI2CConfig{
+		ClockCh: b.clockCh, Level: scl, Low: scl - 13, High: scl + 13, SDALevel: sda, SDALow: sda - 13, SDAHigh: sda + 13,
+		Inverted: b.inverted, Delay: delay, Address: -1, Direction: 2,
+	}
 }
 
 // want is the events the bus carries: START, each byte with its address
@@ -431,8 +438,10 @@ func i2cCases() []i2cBus {
 	var cases []i2cBus
 	for i, m := range []struct{ rate, rise float64 }{{100e3, 1000e-9}, {400e3, 300e-9}, {1e6, 120e-9}, {3.4e6, 40e-9}} {
 		for j, edge := range []float64{m.rise, 3e-9} {
-			b := i2cBus{rateHz: m.rate, hold: 0.25 / m.rate, rise: edge, fall: math.Min(edge, 10e-9), clockCh: (i + j) % 2, inverted: i == 2 && j == 1,
-				noise: 1, seed: int64(10*i + j)}
+			b := i2cBus{
+				rateHz: m.rate, hold: 0.25 / m.rate, rise: edge, fall: math.Min(edge, 10e-9), clockCh: (i + j) % 2, inverted: i == 2 && j == 1,
+				noise: 1, seed: int64(10*i + j),
+			}
 			b.transfers = i2cTransfers(byte(16 * i))
 			cases = append(cases, b)
 		}
@@ -542,7 +551,7 @@ func (s rtlSim) runRx(t *testing.T, words []uint64, args ...string) rxRun {
 	}
 	var r rxRun
 	done := false
-	for _, line := range strings.Split(strings.TrimSpace(out), "\n") {
+	for line := range strings.SplitSeq(strings.TrimSpace(out), "\n") {
 		var a, b, c, d, e int
 		switch {
 		case strings.HasPrefix(line, "EA "), strings.HasPrefix(line, "EB "):
@@ -697,9 +706,14 @@ type uartCapture struct {
 }
 
 var uartCaptures = []uartCapture{
-	{"uart_sample_1mbd.bin.gz", 1e6, 8, 0}, {"uart_sample_10mbd.bin.gz", 10e6, 8, 0}, {"uart_sample_25mbd.bin.gz", 25e6, 8, 0},
-	{"uart_sample_50mbd.bin.gz", 50e6, 8, 0}, {"uart_sample_62mbd.bin.gz", 62.5e6, 8, 0}, {"uart_sample_62mbd_7e1.bin.gz", 62.5e6, 7, 1},
-	{"uart_sample_62mbd_9o1.bin.gz", 62.5e6, 9, 2}, {"uart_sample_62mbd_8n2.bin.gz", 62.5e6, 8, 0},
+	{"uart_sample_1mbd.bin.gz", 1e6, 8, 0},
+	{"uart_sample_10mbd.bin.gz", 10e6, 8, 0},
+	{"uart_sample_25mbd.bin.gz", 25e6, 8, 0},
+	{"uart_sample_50mbd.bin.gz", 50e6, 8, 0},
+	{"uart_sample_62mbd.bin.gz", 62.5e6, 8, 0},
+	{"uart_sample_62mbd_7e1.bin.gz", 62.5e6, 7, 1},
+	{"uart_sample_62mbd_9o1.bin.gz", 62.5e6, 9, 2},
+	{"uart_sample_62mbd_8n2.bin.gz", 62.5e6, 8, 0},
 }
 
 // uartBenchBurst is the source's burst n at the given data width.
@@ -709,7 +723,7 @@ func uartBenchBurst(n, bits int) []int {
 	for _, c := range "OPEN-SDS UART!\r\n" {
 		out = append(out, int(c))
 	}
-	for i := 0; i < 16; i++ {
+	for i := range 16 {
 		v := (n + i) & 0xff
 		if bits == 9 {
 			v |= (i & 1) << 8
@@ -726,10 +740,12 @@ func uartBenchBurst(n, bits int) []int {
 func TestSampleUARTCaptures(t *testing.T) {
 	for _, c := range uartCaptures {
 		words := readCapture(t, c.file)
-		for ch := 0; ch < 2; ch++ {
+		for ch := range 2 {
 			t.Run(fmt.Sprintf("%s/C%d", c.file, ch+1), func(t *testing.T) {
-				ev := SampleUART(words, SampleUARTConfig{Ch: ch, Level: 128, Low: 115, High: 141, Inverted: ch == 1,
-					Period16: UARTPeriod16(c.baud), Bits: c.bits, Parity: c.parity, Resync: true})
+				ev := SampleUART(words, SampleUARTConfig{
+					Ch: ch, Level: 128, Low: 115, High: 141, Inverted: ch == 1,
+					Period16: UARTPeriod16(c.baud), Bits: c.bits, Parity: c.parity, Resync: true,
+				})
 				var got []int
 				for _, e := range ev {
 					v := int(e.Data)

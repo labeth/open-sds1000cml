@@ -73,8 +73,10 @@ func TestOracleLayerSPIFlash(t *testing.T) {
 	}, false)
 	// the command, the address and the bytes after it
 	repo := orcMatch(orcNotes(ps), `^(\S+?)(?: 4K)?(?: 0x([0-9A-F]{6}))?(?:, (\d+) bytes?)?(?:: |$)`)
-	names := map[string]string{"Write enable": "WREN", "Page program": "PP", "Read status register": "RDSR",
-		"Read data": "READ", "Fast read data": "FAST_READ", "Write disable": "WRDI"}
+	names := map[string]string{
+		"Write enable": "WREN", "Page program": "PP", "Read status register": "RDSR",
+		"Read data": "READ", "Fast read data": "FAST_READ", "Write disable": "WRDI",
+	}
 	var orc []string
 	for _, a := range anns {
 		if m := regexp.MustCompile(`^Erase sector \d+ \(0x([0-9a-f]{6})\)`).FindStringSubmatch(a.Text); m != nil {
@@ -131,8 +133,13 @@ func TestOracleLayerSDCard(t *testing.T) {
 func TestOracleLayerNRF24L01(t *testing.T) {
 	orcNeed(t, "spi", "nrf24l01")
 	ps, anns := orcSPIRun(t, "nrf24l01", "nrf24l01", "nrf24l01", []orcSPITxn{
-		{mosi: []byte{0x20, 0x0e}}, {mosi: []byte{0x25, 0x4c}}, {mosi: []byte{0x30, 0xe7, 0xe6, 0xe5, 0xe4, 0xe3}},
-		{mosi: []byte{0xa0, 'h', 'e', 'y'}}, {mosi: []byte{0xe1}}, {mosi: []byte{0xe2}}, {mosi: []byte{0x27, 0x70}},
+		{mosi: []byte{0x20, 0x0e}},
+		{mosi: []byte{0x25, 0x4c}},
+		{mosi: []byte{0x30, 0xe7, 0xe6, 0xe5, 0xe4, 0xe3}},
+		{mosi: []byte{0xa0, 'h', 'e', 'y'}},
+		{mosi: []byte{0xe1}},
+		{mosi: []byte{0xe2}},
+		{mosi: []byte{0x27, 0x70}},
 	}, false)
 	var repo []string
 	for _, n := range orcNotes(ps) {
@@ -167,8 +174,12 @@ func TestOracleLayerNRF905(t *testing.T) {
 	// sigrok's CHANNEL_CONFIG handler fails on a tuple, so the commands
 	// cross-checked are the rest
 	ps, anns := orcSPIRun(t, "nrf905", "nrf905", "nrf905=cmd", []orcSPITxn{
-		{mosi: []byte{0x00, 0x6c, 0x0c}}, {mosi: []byte{0x22, 0xe7, 0xe7, 0xe7, 0xe7}}, {mosi: []byte{0x20, 1, 2, 3}},
-		{mosi: []byte{0x10, 0, 0}}, {mosi: []byte{0x24, 0, 0}}, {mosi: []byte{0x23, 0}},
+		{mosi: []byte{0x00, 0x6c, 0x0c}},
+		{mosi: []byte{0x22, 0xe7, 0xe7, 0xe7, 0xe7}},
+		{mosi: []byte{0x20, 1, 2, 3}},
+		{mosi: []byte{0x10, 0, 0}},
+		{mosi: []byte{0x24, 0, 0}},
+		{mosi: []byte{0x23, 0}},
 	}, false)
 	repo := orcMatch(orcNotes(ps), `^([A-Z_]+)`)
 	orc := orcMatch(orcTexts(anns), `^CMD: ([A-Z_]+) `)
@@ -179,8 +190,13 @@ func TestOracleLayerNRF905(t *testing.T) {
 func TestOracleLayerCC1101(t *testing.T) {
 	orcNeed(t, "spi", "cc1101")
 	ps, anns := orcSPIRun(t, "cc1101", "cc1101", "cc1101", []orcSPITxn{
-		{mosi: []byte{0x30}}, {mosi: []byte{0x0d, 0x10}}, {mosi: []byte{0x7e, 0xc0, 0xc8}}, {mosi: []byte{0x80, 0}},
-		{mosi: []byte{0xf5, 0}}, {mosi: []byte{0x34}}, {mosi: []byte{0x46, 1, 2, 3}},
+		{mosi: []byte{0x30}},
+		{mosi: []byte{0x0d, 0x10}},
+		{mosi: []byte{0x7e, 0xc0, 0xc8}},
+		{mosi: []byte{0x80, 0}},
+		{mosi: []byte{0xf5, 0}},
+		{mosi: []byte{0x34}},
+		{mosi: []byte{0x46, 1, 2, 3}},
 	}, false)
 	// the operation, the register and the bytes written
 	repo := orcMatch(orcNotes(ps), `^((?:BURST |STATUS )?[A-Z]+) ([A-Z0-9_]+)(?: = ([0-9A-F ]+))?`)
@@ -202,14 +218,24 @@ func TestOracleLayerRFM12(t *testing.T) {
 	// sigrok's frequency setting handler reads a third byte the command
 	// does not have, so it is left out
 	ps, anns := orcSPIRun(t, "rfm12", "rfm12", "rfm12=commands", []orcSPITxn{
-		{mosi: []byte{0x80, 0xd7}}, {mosi: []byte{0x82, 0x39}}, {mosi: []byte{0xc6, 0x23}}, {mosi: []byte{0x94, 0xa2}},
-		{mosi: []byte{0xca, 0x81}}, {mosi: []byte{0xb8, 0xaa}}, {mosi: []byte{0x00, 0x00}}, {mosi: []byte{0xc2, 0xac}},
-		{mosi: []byte{0xcc, 0x77}}, {mosi: []byte{0xfe, 0x00}}, {mosi: []byte{0xc0, 0xe0}},
+		{mosi: []byte{0x80, 0xd7}},
+		{mosi: []byte{0x82, 0x39}},
+		{mosi: []byte{0xc6, 0x23}},
+		{mosi: []byte{0x94, 0xa2}},
+		{mosi: []byte{0xca, 0x81}},
+		{mosi: []byte{0xb8, 0xaa}},
+		{mosi: []byte{0x00, 0x00}},
+		{mosi: []byte{0xc2, 0xac}},
+		{mosi: []byte{0xcc, 0x77}},
+		{mosi: []byte{0xfe, 0x00}},
+		{mosi: []byte{0xc0, 0xe0}},
 	}, false)
-	names := map[string]string{"Configuration command": "CONFIG", "Power management": "POWER", "Data rate command": "DATA RATE",
+	names := map[string]string{
+		"Configuration command": "CONFIG", "Power management": "POWER", "Data rate command": "DATA RATE",
 		"Receiver control command": "RX CTRL", "FIFO and reset command": "FIFO RESET", "Transmitter register command": "TX BYTE",
 		"Status read command": "STATUS READ", "Data filter command": "DATA FILTER", "PLL setting command": "PLL",
-		"Software reset command": "RESET", "Low battery detector command": "LOW BATTERY"}
+		"Software reset command": "RESET", "Low battery detector command": "LOW BATTERY",
+	}
 	repo := orcMatch(orcNotes(ps), `^(CONFIG|POWER|DATA RATE|RX CTRL|FIFO RESET|TX BYTE|STATUS READ|DATA FILTER|PLL|RESET|LOW BATTERY)\b`)
 	var orc []string
 	for _, s := range orcTexts(anns) {
@@ -232,8 +258,12 @@ func TestOracleLayerRFM12(t *testing.T) {
 func TestOracleLayerMRF24J40(t *testing.T) {
 	orcNeed(t, "spi", "mrf24j40")
 	ps, anns := orcSPIRun(t, "mrf24j40", "mrf24j40", "mrf24j40", []orcSPITxn{
-		{mosi: []byte{0x01, 0x01}}, {mosi: []byte{0x02, 0}}, {mosi: []byte{0x80, 0x10, 0x41}}, {mosi: []byte{0xc0, 0x10, 0x07}},
-		{mosi: []byte{0x37, 0x05}}, {mosi: []byte{0xe0, 0x10, 0x55}},
+		{mosi: []byte{0x01, 0x01}},
+		{mosi: []byte{0x02, 0}},
+		{mosi: []byte{0x80, 0x10, 0x41}},
+		{mosi: []byte{0xc0, 0x10, 0x07}},
+		{mosi: []byte{0x37, 0x05}},
+		{mosi: []byte{0xe0, 0x10, 0x55}},
 	}, false)
 	var repo []string
 	for _, s := range orcMatch(orcNotes(ps), `^([WR]) (.+?)(?: = ([0-9A-F]+)|, 1 byte)$`) {
@@ -268,11 +298,20 @@ func TestOracleLayerMRF24J40(t *testing.T) {
 func TestOracleLayerENC28J60(t *testing.T) {
 	orcNeed(t, "spi", "enc28j60")
 	ps, anns := orcSPIRun(t, "enc28j60", "enc28j60", "enc28j60", []orcSPITxn{
-		{mosi: []byte{0x5f, 0x02}}, {mosi: []byte{0x14, 0, 0}}, {mosi: []byte{0x9f, 0x01}}, {mosi: []byte{0x02, 0, 0}},
-		{mosi: []byte{0xbf, 0x03}}, {mosi: []byte{0x08, 0}}, {mosi: []byte{0x7a, 1, 2}}, {mosi: []byte{0x3a, 0, 0}}, {mosi: []byte{0xff}},
+		{mosi: []byte{0x5f, 0x02}},
+		{mosi: []byte{0x14, 0, 0}},
+		{mosi: []byte{0x9f, 0x01}},
+		{mosi: []byte{0x02, 0, 0}},
+		{mosi: []byte{0xbf, 0x03}},
+		{mosi: []byte{0x08, 0}},
+		{mosi: []byte{0x7a, 1, 2}},
+		{mosi: []byte{0x3a, 0, 0}},
+		{mosi: []byte{0xff}},
 	}, false)
-	ops := map[string]string{"Write Control Register": "WCR", "Read Control Register": "RCR", "Bit Field Set": "BFS",
-		"Bit Field Clear": "BFC", "Write Buffer Memory": "WBM", "Read Buffer Memory": "RBM", "System Reset Command": "SRC"}
+	ops := map[string]string{
+		"Write Control Register": "WCR", "Read Control Register": "RCR", "Bit Field Set": "BFS",
+		"Bit Field Clear": "BFC", "Write Buffer Memory": "WBM", "Read Buffer Memory": "RBM", "System Reset Command": "SRC",
+	}
 	repo := orcMatch(orcNotes(ps), `^(WCR|RCR|BFS|BFC|WBM|RBM|SRC)(?: ([A-Z][A-Z0-9]+))?`)
 	var orc []string
 	ts := orcTexts(anns)
@@ -302,8 +341,13 @@ func TestOracleLayerENC28J60(t *testing.T) {
 func TestOracleLayerST25R39xx(t *testing.T) {
 	orcNeed(t, "spi", "st25r39xx_spi")
 	ps, anns := orcSPIRun(t, "st25r39xx", "st25r39xx_spi", "st25r39xx_spi", []orcSPITxn{
-		{mosi: []byte{0x02, 0x80}}, {mosi: []byte{0x42, 0}}, {mosi: []byte{0xc1}}, {mosi: []byte{0x80, 1, 2}},
-		{mosi: []byte{0x9f, 0, 0}}, {mosi: []byte{0xd5}}, {mosi: []byte{0x00, 0x0f}},
+		{mosi: []byte{0x02, 0x80}},
+		{mosi: []byte{0x42, 0}},
+		{mosi: []byte{0xc1}},
+		{mosi: []byte{0x80, 1, 2}},
+		{mosi: []byte{0x9f, 0, 0}},
+		{mosi: []byte{0xd5}},
+		{mosi: []byte{0x00, 0x0f}},
 	}, false)
 	var repo []string
 	for _, n := range orcNotes(ps) {
@@ -339,7 +383,10 @@ func TestOracleLayerST25R39xx(t *testing.T) {
 func TestOracleLayerADXL345(t *testing.T) {
 	orcNeed(t, "spi", "adxl345")
 	ps, anns := orcSPIRun(t, "adxl345", "adxl345", "adxl345", []orcSPITxn{
-		{mosi: []byte{0x2d, 0x08}}, {mosi: []byte{0x2c, 0x0a}}, {mosi: []byte{0x31, 0x0b}}, {mosi: []byte{0x1e, 0x05}},
+		{mosi: []byte{0x2d, 0x08}},
+		{mosi: []byte{0x2c, 0x0a}},
+		{mosi: []byte{0x31, 0x0b}},
+		{mosi: []byte{0x1e, 0x05}},
 		{mosi: []byte{0x80, 0}, miso: []byte{0, 0xe5}},
 	}, false)
 	repo := orcMatch(orcNotes(ps), `^([WR]) ([A-Za-z0-9_]+)`)
@@ -363,7 +410,9 @@ func TestOracleLayerADXL345(t *testing.T) {
 func TestOracleLayerADNS5020(t *testing.T) {
 	orcNeed(t, "spi", "adns5020")
 	ps, anns := orcSPIRun(t, "adns5020", "adns5020", "adns5020", []orcSPITxn{
-		{mosi: []byte{0x02, 0}, miso: []byte{0, 0x80}}, {mosi: []byte{0x8d, 0x01}}, {mosi: []byte{0x00, 0}, miso: []byte{0, 0x12}},
+		{mosi: []byte{0x02, 0}, miso: []byte{0, 0x80}},
+		{mosi: []byte{0x8d, 0x01}},
+		{mosi: []byte{0x00, 0}, miso: []byte{0, 0x12}},
 		{mosi: []byte{0xba, 0x5a}},
 	}, false)
 	var repo []string
@@ -391,7 +440,9 @@ func TestOracleLayerADNS5020(t *testing.T) {
 func TestOracleLayerADE7758(t *testing.T) {
 	orcNeed(t, "spi", "ade77xx")
 	ps, anns := orcSPIRun(t, "ade77xx", "ade77xx", "ade77xx", []orcSPITxn{
-		{mosi: []byte{0x93, 0x04}}, {mosi: []byte{0x9b, 0x12, 0x34}}, {mosi: []byte{0x0d, 0, 0, 0}, miso: []byte{0, 1, 2, 3}},
+		{mosi: []byte{0x93, 0x04}},
+		{mosi: []byte{0x9b, 0x12, 0x34}},
+		{mosi: []byte{0x0d, 0, 0, 0}, miso: []byte{0, 1, 2, 3}},
 		{mosi: []byte{0x98, 0x01, 0x02, 0x03}},
 	}, false)
 	var repo []string
@@ -418,8 +469,12 @@ func TestOracleLayerADE7758(t *testing.T) {
 func TestOracleLayerADF435x(t *testing.T) {
 	orcNeed(t, "spi", "adf435x")
 	ps, anns := orcSPIRun(t, "adf435x", "adf435x", "adf435x", []orcSPITxn{
-		{mosi: []byte{0x00, 0x58, 0x00, 0x05}}, {mosi: []byte{0x00, 0x8c, 0x80, 0x3c}}, {mosi: []byte{0x00, 0x00, 0x04, 0xb3}},
-		{mosi: []byte{0x00, 0x00, 0x4e, 0x42}}, {mosi: []byte{0x08, 0x00, 0x80, 0x29}}, {mosi: []byte{0x00, 0x40, 0x00, 0x00}},
+		{mosi: []byte{0x00, 0x58, 0x00, 0x05}},
+		{mosi: []byte{0x00, 0x8c, 0x80, 0x3c}},
+		{mosi: []byte{0x00, 0x00, 0x04, 0xb3}},
+		{mosi: []byte{0x00, 0x00, 0x4e, 0x42}},
+		{mosi: []byte{0x08, 0x00, 0x80, 0x29}},
+		{mosi: []byte{0x00, 0x40, 0x00, 0x00}},
 		{mosi: []byte{0x00, 0x58, 0x00, 0x05}}, // 0.5's decoder writes a word out at the next one
 	}, false)
 	var repo []string
@@ -444,12 +499,16 @@ func TestOracleLayerADF435x(t *testing.T) {
 			cur = m[1]
 			continue
 		}
-		for _, re := range []string{`^INT: (\d+)$`, `^FRAC: (\d+)$`, `^MOD: (\d+)$`, `^Phase: (\d+)$`, `^Prescalar: (\S+)$`,
-			`^Clock Divider: (\d+)$`, `^R Counter: (\d+)$`, `^Output Power: \+?([-+]?\d+)dBm$`} {
+		var curSb447 strings.Builder
+		for _, re := range []string{
+			`^INT: (\d+)$`, `^FRAC: (\d+)$`, `^MOD: (\d+)$`, `^Phase: (\d+)$`, `^Prescalar: (\S+)$`,
+			`^Clock Divider: (\d+)$`, `^R Counter: (\d+)$`, `^Output Power: \+?([-+]?\d+)dBm$`,
+		} {
 			if m := regexp.MustCompile(re).FindStringSubmatch(s); m != nil {
-				cur += " " + m[1]
+				curSb447.WriteString(" " + m[1])
 			}
 		}
+		cur += curSb447.String()
 	}
 	orc = append(orc, cur)
 	repo, orc = repo[:6], orc[:min(6, len(orc))]
@@ -491,7 +550,8 @@ func TestOracleLayerAD5626(t *testing.T) {
 func TestOracleLayerAD79x0(t *testing.T) {
 	orcNeed(t, "spi", "ad79x0")
 	ps, anns := orcSPIRun(t, "ad79x0", "ad79x0", "ad79x0", []orcSPITxn{
-		{mosi: []byte{0, 0}, miso: []byte{0x07, 0xff}}, {mosi: []byte{0, 0}, miso: []byte{0x00, 0x10}},
+		{mosi: []byte{0, 0}, miso: []byte{0x07, 0xff}},
+		{mosi: []byte{0, 0}, miso: []byte{0x00, 0x10}},
 		{mosi: []byte{0, 0}, miso: []byte{0x0f, 0xfe}},
 	}, true)
 	// the code as volts at sigrok's default reference, 1.5 V
@@ -508,8 +568,10 @@ func TestOracleLayerLTC242x(t *testing.T) {
 	orcNeed(t, "spi", "ltc242x")
 	// readings a whole share of the reference, which both write exactly
 	ps, anns := orcSPIRun(t, "ltc242x", "ltc242x", "ltc242x", []orcSPITxn{
-		{mosi: []byte{0, 0, 0}, miso: []byte{0x20, 0x00, 0x00}}, {mosi: []byte{0, 0, 0}, miso: []byte{0x2f, 0xff, 0xff}},
-		{mosi: []byte{0, 0, 0}, miso: []byte{0x50, 0x00, 0x01}}, {mosi: []byte{0, 0, 0}, miso: []byte{0x6f, 0xff, 0xff}},
+		{mosi: []byte{0, 0, 0}, miso: []byte{0x20, 0x00, 0x00}},
+		{mosi: []byte{0, 0, 0}, miso: []byte{0x2f, 0xff, 0xff}},
+		{mosi: []byte{0, 0, 0}, miso: []byte{0x50, 0x00, 0x01}},
+		{mosi: []byte{0, 0, 0}, miso: []byte{0x6f, 0xff, 0xff}},
 	}, true)
 	var repo []string
 	for _, s := range orcMatch(orcNotes(ps), `^CH(\d) (-?\d\.\d{6}) Vref`) {
@@ -525,8 +587,13 @@ func TestOracleLayerLTC242x(t *testing.T) {
 func TestOracleLayerMAX72xx(t *testing.T) {
 	orcNeed(t, "spi", "max72xx")
 	ps, anns := orcSPIRun(t, "max72xx", "max72xx", "max72xx", []orcSPITxn{
-		{mosi: []byte{0x0c, 0x01}}, {mosi: []byte{0x0a, 0x08}}, {mosi: []byte{0x01, 0x7e}}, {mosi: []byte{0x09, 0xff}},
-		{mosi: []byte{0x0b, 0x07}}, {mosi: []byte{0x0f, 0x00}}, {mosi: []byte{0x05, 0x30}},
+		{mosi: []byte{0x0c, 0x01}},
+		{mosi: []byte{0x0a, 0x08}},
+		{mosi: []byte{0x01, 0x7e}},
+		{mosi: []byte{0x09, 0xff}},
+		{mosi: []byte{0x0b, 0x07}},
+		{mosi: []byte{0x0f, 0x00}},
+		{mosi: []byte{0x05, 0x30}},
 	}, false)
 	var repo []string
 	for _, n := range orcNotes(ps) {
@@ -559,16 +626,18 @@ func TestOracleLayerAVRISP(t *testing.T) {
 			orcSPITxn{mosi: []byte{0x40, 0, 5, 0xab}, miso: []byte{0, 0x40, 0, 0}})
 	}
 	ps, anns := orcSPIRun(t, "avrisp", "avr_isp", "avr_isp=commands", txns, false)
-	names := map[string]string{"Programming enable": "PROGRAMMING ENABLE", "Vendor code": "READ SIGNATURE 0",
+	names := map[string]string{
+		"Programming enable": "PROGRAMMING ENABLE", "Vendor code": "READ SIGNATURE 0",
 		"Part family / memory size": "READ SIGNATURE 1", "Part number": "READ SIGNATURE 2", "Read EEPROM Memory": "READ EEPROM",
 		"Read fuse bits": "READ FUSE", "Read fuse high bits": "READ HIGH FUSE", "Read program memory High": "READ FLASH H",
-		"Load program memory page Low": "LOAD PAGE L", "Chip erase": "CHIP ERASE"}
+		"Load program memory page Low": "LOAD PAGE L", "Chip erase": "CHIP ERASE",
+	}
 	repo := orcMatch(orcNotes(ps), `^(PROGRAMMING ENABLE|READ SIGNATURE \d|READ EEPROM|READ FUSE|READ HIGH FUSE|READ FLASH H|LOAD PAGE L|CHIP ERASE)`)
 	var orc []string
 	for _, s := range orcTexts(anns) {
 		name := s
-		if k := strings.Index(s, ":"); k >= 0 {
-			name = s[:k]
+		if before, _, ok := strings.Cut(s, ":"); ok {
+			name = before
 		}
 		if n, ok := names[name]; ok {
 			orc = append(orc, n)
@@ -600,8 +669,14 @@ func TestOracleLayerX2444M(t *testing.T) {
 	orcNeed(t, "spi", "x2444m")
 	// the X2444's chip enable is active high
 	const sr, rate = 2_000_000, 100_000
-	txns := []orcSPITxn{{mosi: []byte{0x84}}, {mosi: []byte{0x9b, 0x12, 0x34}}, {mosi: []byte{0x81}}, {mosi: []byte{0x85}},
-		{mosi: []byte{0xae, 0, 0}, miso: []byte{0, 0x56, 0x78}}, {mosi: []byte{0x80}}}
+	txns := []orcSPITxn{
+		{mosi: []byte{0x84}},
+		{mosi: []byte{0x9b, 0x12, 0x34}},
+		{mosi: []byte{0x81}},
+		{mosi: []byte{0x85}},
+		{mosi: []byte{0xae, 0, 0}, miso: []byte{0, 0x56, 0x78}},
+		{mosi: []byte{0x80}},
+	}
 	clk, mo, mi, cs := orcSPIWaves(sr, rate, txns, 12)
 	for i := range cs {
 		cs[i] ^= 1
@@ -645,7 +720,9 @@ func TestOracleLayerRGBLED(t *testing.T) {
 func TestOracleLayerNESGamepad(t *testing.T) {
 	orcNeed(t, "spi", "nes_gamepad")
 	ps, anns := orcSPIRun(t, "nesgamepad", "nes_gamepad", "nes_gamepad", []orcSPITxn{
-		{mosi: []byte{0}, miso: []byte{0xff}}, {mosi: []byte{0}, miso: []byte{0x7e}}, {mosi: []byte{0}, miso: []byte{0xa5}},
+		{mosi: []byte{0}, miso: []byte{0xff}},
+		{mosi: []byte{0}, miso: []byte{0x7e}},
+		{mosi: []byte{0}, miso: []byte{0xa5}},
 		{mosi: []byte{0}, miso: []byte{0x00}},
 	}, true)
 	dirs := strings.NewReplacer("Up", "North", "Down", "South", "Left", "West", "Right", "East", "+", " + ",
@@ -663,8 +740,10 @@ func TestOracleLayerSSI32(t *testing.T) {
 	ctrl := make([]byte, 64)
 	copy(ctrl, []byte{0x01, 0x02, 4, 0x55, 9, 8, 7, 6})
 	// the device's answer has no data (sigrok reads its size off MISO)
-	ps, anns := orcSPIRun(t, "ssi32", "ssi32", "ssi32=tx", []orcSPITxn{{mosi: []byte{0x80, 0, 0, 0}},
-		{mosi: ctrl, miso: []byte{0x01, 0x00, 0x00, 0x00}}}, false)
+	ps, anns := orcSPIRun(t, "ssi32", "ssi32", "ssi32=tx", []orcSPITxn{
+		{mosi: []byte{0x80, 0, 0, 0}},
+		{mosi: ctrl, miso: []byte{0x01, 0x00, 0x00, 0x00}},
+	}, false)
 	var repo []string
 	for _, n := range orcNotes(ps) {
 		n = regexp.MustCompile(`^ACK 0x(..)$`).ReplaceAllString(n, "> ACK:0x$1")

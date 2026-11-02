@@ -4,13 +4,12 @@ package web
 import (
 	"math"
 	"net/http/httptest"
+	"open-sds/app/internal/engine"
+	"open-sds/app/internal/testenv"
 	"os/exec"
 	"strings"
 	"sync/atomic"
 	"testing"
-
-	"open-sds/app/internal/engine"
-	"open-sds/app/internal/testenv"
 )
 
 // TestDeepMemBrowser drives the real ui.html against a server serving a DEEP
@@ -31,7 +30,7 @@ func TestDeepMemBrowser(t *testing.T) {
 		c2 := make([]uint8, depth)
 		// A 1 kHz-ish square on C1 across the whole deep record + a marker notch at
 		// the trigger edge so the browser can verify centering.
-		for i := 0; i < depth; i++ {
+		for i := range depth {
 			if (i/64)%2 == 0 {
 				c1[i] = 200
 			} else {

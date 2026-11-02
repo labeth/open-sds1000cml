@@ -212,7 +212,7 @@ func TestEdgeDecodersMatchSamplesAtThresholds(t *testing.T) {
 		rng := rand.New(rand.NewSource(int64(len(la))))
 		for _, th := range thrs {
 			edec, sdec := edgeThrDecs[name](th[0], th[1])
-			for w := 0; w < 3; w++ {
+			for w := range 3 {
 				from, to := 0, len(la)
 				if w > 0 {
 					from = rng.Intn(len(la))

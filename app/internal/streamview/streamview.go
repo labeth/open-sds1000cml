@@ -7,14 +7,13 @@ package streamview
 
 import (
 	"context"
-	"fmt"
-	"sync"
-	"time"
-
+	"errors"
 	"open-sds/app/internal/decode"
 	"open-sds/app/internal/decodedlines"
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/sramcapture"
+	"sync"
+	"time"
 )
 
 // Source is the engine's decoded-capture surface.
@@ -134,7 +133,7 @@ func (c *Controller) StartNoted(p engine.SerialParams, trig engine.StreamTrigger
 	c.mu.Lock()
 	if c.view.State == Starting {
 		c.mu.Unlock()
-		return fmt.Errorf("a stream is already starting")
+		return errors.New("a stream is already starting")
 	}
 	c.view = View{Label: label, TriggerLine: -1, State: Starting, Note: note}
 	c.t = decodedlines.New(p.Proto, historyLines)
@@ -400,10 +399,10 @@ func (c *Controller) Window(rows, top int) Page {
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-013, REQ-SDS-222
 func ParamsFromDecode(p engine.SerialParams, r decode.Result, colTimeS float64) (engine.SerialParams, error) {
 	if !r.OK {
-		return engine.SerialParams{}, fmt.Errorf("the bus does not decode on screen: nothing to stream")
+		return engine.SerialParams{}, errors.New("the bus does not decode on screen: nothing to stream")
 	}
 	if !(colTimeS > 0) || !(r.Thr > 0 && r.Thr < 255) {
-		return engine.SerialParams{}, fmt.Errorf("the decode on screen has no usable threshold or sample time")
+		return engine.SerialParams{}, errors.New("the decode on screen has no usable threshold or sample time")
 	}
 	p.Threshold, p.HaveThr = r.Thr, true
 	rate := 0.0
@@ -485,8 +484,10 @@ func (c *Controller) Lines(from, limit int) LinesPage {
 			vals = append(vals, l.Vals[:l.N]...)
 			u = vals[k:len(vals):len(vals)]
 		}
-		p.Lines = append(p.Lines, LineData{Index: i, Sample: l.Sample, Units: u,
-			Errs: l.Errs, Naks: l.Naks, Note: l.Note})
+		p.Lines = append(p.Lines, LineData{
+			Index: i, Sample: l.Sample, Units: u,
+			Errs: l.Errs, Naks: l.Naks, Note: l.Note,
+		})
 	}
 	if len(p.Lines) > 0 {
 		p.Next = p.Lines[len(p.Lines)-1].Index + 1

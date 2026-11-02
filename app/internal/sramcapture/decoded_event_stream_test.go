@@ -3,6 +3,7 @@ package sramcapture
 
 import (
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"testing"
 )
@@ -31,7 +32,7 @@ func (b *eventBus) Read(_ uint8, s uint16) (uint16, error) {
 	case 59:
 		if b.cursor == b.fail {
 			b.fail = -1
-			return 0, fmt.Errorf("injected read failure")
+			return 0, errors.New("injected read failure")
 		}
 		v := binary.LittleEndian.Uint16(b.data[b.cursor*2:])
 		b.cursor++
@@ -122,12 +123,12 @@ type dmaEventBus struct {
 func (b *dmaEventBus) PopBytesChecked(selector uint16, dst []byte) error {
 	b.calls++
 	if selector != 59 || len(dst) != DecodedEventBytes {
-		return fmt.Errorf("invalid event DMA")
+		return errors.New("invalid event DMA")
 	}
 	copy(dst, b.data)
 	b.data = nil // A failure may happen after the final pop; fallback is forbidden.
 	if b.failDMA {
-		return fmt.Errorf("injected DMA completion failure")
+		return errors.New("injected DMA completion failure")
 	}
 	return nil
 }
@@ -184,12 +185,12 @@ func (b *batchEventBus) RawWrite(s, v uint16) error {
 func (b *batchEventBus) PopBytesChecked(s uint16, dst []byte) error {
 	b.calls++
 	if s != 59 || len(dst) > len(b.data) || len(dst)%DecodedEventBytes != 0 {
-		return fmt.Errorf("invalid reserved DMA")
+		return errors.New("invalid reserved DMA")
 	}
 	copy(dst, b.data)
 	b.data = b.data[len(dst):]
 	if b.failDMA {
-		return fmt.Errorf("injected completion failure")
+		return errors.New("injected completion failure")
 	}
 	return nil
 }
@@ -198,7 +199,7 @@ func (b *batchEventBus) PopBytesChecked(s uint16, dst []byte) error {
 func TestDecodedReservedBatch(t *testing.T) {
 	for _, failure := range []bool{false, true} {
 		b := &batchEventBus{eventBus: &eventBus{epoch: 7, enabled: true, fail: -1, cursor: 3}, failDMA: failure}
-		for i := 0; i < 3; i++ {
+		for i := range 3 {
 			data, _ := (DecodedEvent{Epoch: 7, Sequence: uint32(i), Protocol: 2, Kind: EventData, Value: uint32(i + 85)}).MarshalBinary()
 			b.data = append(b.data, data...)
 		}

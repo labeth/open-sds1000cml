@@ -4,13 +4,12 @@ package web
 import (
 	"math"
 	"net/http/httptest"
+	"open-sds/app/internal/engine"
+	"open-sds/app/internal/testenv"
 	"os/exec"
 	"strconv"
 	"strings"
 	"testing"
-
-	"open-sds/app/internal/engine"
-	"open-sds/app/internal/testenv"
 )
 
 // TestChaosBrowser drives chaos_browser.mjs: a seeded monkey pokes every
@@ -26,7 +25,7 @@ func TestChaosBrowser(t *testing.T) {
 		n++
 		c1 := make([]uint8, N)
 		c2 := make([]uint8, N)
-		for i := 0; i < N; i++ {
+		for i := range N {
 			c1[i] = uint8(128 + 60*math.Sin(2*math.Pi*8*float64(i)/N+float64(n)*0.05))
 			c2[i] = uint8(128 + 40*math.Sin(2*math.Pi*3*float64(i)/N))
 		}

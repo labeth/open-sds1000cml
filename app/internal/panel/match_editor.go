@@ -2,13 +2,13 @@
 package panel
 
 import (
+	"errors"
 	"fmt"
+	"open-sds/app/internal/engine"
+	"open-sds/app/internal/panel/wsview"
 	"strconv"
 	"strings"
 	"time"
-
-	"open-sds/app/internal/engine"
-	"open-sds/app/internal/panel/wsview"
 )
 
 // The match editor is a full-screen keyboard for the serial trigger's match,
@@ -47,9 +47,9 @@ func kbGrid(set int) [][]string {
 	switch set {
 	case kbText:
 		var rows [][]string
-		for r := 0; r < 6; r++ {
+		for r := range 6 {
 			var row []string
-			for k := 0; k < 16; k++ {
+			for k := range 16 {
 				if c := 0x20 + r*16 + k; c < 0x7f {
 					row = append(row, string(rune(c)))
 				}
@@ -153,8 +153,10 @@ func compileTokens(toks []string) (bytes []int, pattern []engine.PatternElem, er
 	for _, t := range toks {
 		switch t {
 		case "ERR", "SOF", "CMD", "STS": // an error; a frame's start; a MIL-1553 command word; a MIDI status byte
-			e := map[string]engine.PatternElem{"ERR": {Kind: 4}, "SOF": {Kind: 1},
-				"CMD": {Kind: 2, Value: engine.MILCommand, Mask: engine.MILCommand}, "STS": midiStatus}[t]
+			e := map[string]engine.PatternElem{
+				"ERR": {Kind: 4}, "SOF": {Kind: 1},
+				"CMD": {Kind: 2, Value: engine.MILCommand, Mask: engine.MILCommand}, "STS": midiStatus,
+			}[t]
 			pattern = append(pattern, e)
 			plain = false
 			continue
@@ -195,7 +197,7 @@ func compileTokens(toks []string) (bytes []int, pattern []engine.PatternElem, er
 func (c *Controller) setMatchTokens(toks []string) error {
 	se := c.serialTrig()
 	if se == nil {
-		return fmt.Errorf("no serial trigger in this engine")
+		return errors.New("no serial trigger in this engine")
 	}
 	if len(toks) > kbMaxTokens {
 		return fmt.Errorf("%d units: %d at most", len(toks), kbMaxTokens)
@@ -241,8 +243,10 @@ func (c *Controller) MatchEditor() MatchEditorView {
 			proto = protoName(p + 1) // the engine's numbering is the panel's less one
 		}
 	}
-	return MatchEditorView{Open: true, Set: kbSetNames[k.set], Keys: kbGrid(k.set), Row: k.row, Col: k.col,
-		Toks: k.toks, Cur: k.cur, Typing: k.typing, Proto: proto, Msg: k.msg}
+	return MatchEditorView{
+		Open: true, Set: kbSetNames[k.set], Keys: kbGrid(k.set), Row: k.row, Col: k.col,
+		Toks: k.toks, Cur: k.cur, Typing: k.typing, Proto: proto, Msg: k.msg,
+	}
 }
 
 // matchKeys are the editor's F-keys: key set, type, delete, apply, cancel.
@@ -477,7 +481,7 @@ func (c *Controller) pickKeys(s *sv) []fkey {
 	unit := max(p.unit, 1)
 	var out []fkey
 	for n := 1; n <= 4; n++ {
-		n := n
+
 		// an ARINC 429 match is one word: each word is a frame of its own
 		ok := p.start+n*unit <= len(p.toks) && (unit != 3 || n == 1)
 		var toks []string
@@ -544,7 +548,7 @@ func (c *Controller) pickUse(n int) error {
 	c.mu.Unlock()
 	n *= max(p.unit, 1)
 	if p.start+n > len(p.toks) {
-		return fmt.Errorf("not enough bytes after the highlighted one")
+		return errors.New("not enough bytes after the highlighted one")
 	}
 	var toks []string
 	for _, t := range p.toks[p.start : p.start+n] {

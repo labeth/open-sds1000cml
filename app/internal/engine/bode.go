@@ -258,7 +258,7 @@ func singleBinDFT(sig []uint8, f0, sampleS float64) (re, im float64) {
 	// incremental cos/sin via rotation to avoid a trig call per sample
 	c, s := math.Cos(w), math.Sin(w)
 	cosk, sink := 1.0, 0.0
-	for i := 0; i < n; i++ {
+	for i := range n {
 		v := float64(sig[i]) - mean
 		re += v * cosk
 		im -= v * sink

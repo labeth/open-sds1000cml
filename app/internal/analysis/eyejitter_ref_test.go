@@ -43,7 +43,7 @@ func fftInPlace(re, im []float64) {
 		h := l / 2
 		for i := 0; i < n; i += l {
 			cr, ci := 1.0, 0.0
-			for k := 0; k < h; k++ {
+			for k := range h {
 				ur, ui := re[i+k], im[i+k]
 				vr := re[i+k+h]*cr - im[i+k+h]*ci
 				vi := re[i+k+h]*ci + im[i+k+h]*cr
@@ -90,8 +90,10 @@ func NewEyeJitter(o EyeJitterOptions) *EyeJitter {
 	if tc <= 0 {
 		tc = 60000
 	}
-	return &EyeJitter{eyeW: w, eyeH: h, eye: make([]float64, w*h), lo: 255, eyeY0: EyeCodeLo, eyeY1: EyeCodeHi,
-		tieCap: tc, tieDecim: 1, tieMin: math.Inf(1), tieMax: math.Inf(-1), fftN: p}
+	return &EyeJitter{
+		eyeW: w, eyeH: h, eye: make([]float64, w*h), lo: 255, eyeY0: EyeCodeLo, eyeY1: EyeCodeHi,
+		tieCap: tc, tieDecim: 1, tieMin: math.Inf(1), tieMax: math.Inf(-1), fftN: p,
+	}
 }
 
 // Feed analyses one raw record of codes taken sampleS seconds apart (ejFeed)
@@ -236,7 +238,7 @@ func (s *EyeJitter) feedSpectrum(fit *GridFit, nUI, sampleS float64) {
 	span := int(math.Min(float64(nf), nUI+1))
 	// linear-interpolate the data-dependent gaps (PRBS7 runs up to 7 UI)
 	last, haveCnt := -1, 0
-	for i := 0; i < span; i++ {
+	for i := range span {
 		if !have[i] {
 			continue
 		}
@@ -264,12 +266,12 @@ func (s *EyeJitter) feedSpectrum(fit *GridFit, nUI, sampleS float64) {
 		return
 	}
 	mean := 0.0
-	for i := 0; i < span; i++ {
+	for i := range span {
 		mean += grid[i]
 	}
 	mean /= float64(span)
 	re, im := make([]float64, nf), make([]float64, nf)
-	for i := 0; i < span; i++ {
+	for i := range span {
 		w := 0.5 - 0.5*math.Cos(2*math.Pi*float64(i)/float64(span-1))
 		re[i] = (grid[i] - mean) * w
 	}
@@ -299,8 +301,10 @@ func (s *EyeJitter) reject(why string) string {
 // buffer.
 // TRLC-LINKS: REQ-SDS-199, REQ-SDS-215
 func (s *EyeJitter) Result() JitterResult {
-	out := JitterResult{Records: s.records, Rejected: s.rejected, Edges: s.edges, UIs: s.uis,
-		UI: s.ui, SampleS: s.sampleS, UISeconds: s.ui * s.sampleS, LastErr: s.lastErr}
+	out := JitterResult{
+		Records: s.records, Rejected: s.rejected, Edges: s.edges, UIs: s.uis,
+		UI: s.ui, SampleS: s.sampleS, UISeconds: s.ui * s.sampleS, LastErr: s.lastErr,
+	}
 	if s.ui > 0 && s.sampleS > 0 {
 		out.BitRate = 1 / (s.ui * s.sampleS)
 	}
@@ -363,7 +367,7 @@ func (s *EyeJitter) Metrics() *EyeMetrics {
 		if x < 0 || x >= w {
 			continue
 		}
-		for y := 0; y < h; y++ {
+		for y := range h {
 			col[y] += s.eye[y*w+x]
 			total += s.eye[y*w+x]
 		}
@@ -401,7 +405,7 @@ func (s *EyeJitter) Metrics() *EyeMetrics {
 		if y < 0 || y >= h {
 			continue
 		}
-		for x := 0; x < w; x++ {
+		for x := range w {
 			row[x] += s.eye[y*w+x]
 			rowTot += s.eye[y*w+x]
 		}
@@ -548,7 +552,7 @@ func SpectrumDB(samples []float64) []float64 {
 	half := n / 2
 	db := make([]float64, half)
 	peak := 1e-9
-	for k := 0; k < half; k++ {
+	for k := range half {
 		db[k] = math.Hypot(re[k], im[k])
 		if db[k] > peak {
 			peak = db[k]

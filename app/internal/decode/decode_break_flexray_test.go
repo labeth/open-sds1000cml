@@ -17,11 +17,11 @@ import (
 // TRLC-LINKS: REQ-SDS-018
 func brFlexPad(w []uint8, lead, trail int, level uint8) []uint8 {
 	out := make([]uint8, 0, lead+len(w)+trail)
-	for i := 0; i < lead; i++ {
+	for range lead {
 		out = append(out, level)
 	}
 	out = append(out, w...)
-	for i := 0; i < trail; i++ {
+	for range trail {
 		out = append(out, level)
 	}
 	return out
@@ -40,7 +40,7 @@ func brFlexFrame(bytes []int, spb, tssBits, leadBits, trailBits int) []uint8 {
 		if bit == 1 {
 			v = hi
 		}
-		for j := 0; j < k; j++ {
+		for range k {
 			w = append(w, v)
 		}
 	}
@@ -88,7 +88,7 @@ func brFlexTwoNoGap(f1, f2 []int, spb, tssBits int) []uint8 {
 		if bit == 1 {
 			v = hi
 		}
-		for j := 0; j < k; j++ {
+		for range k {
 			w = append(w, v)
 		}
 	}
@@ -169,7 +169,7 @@ func brFlexFixCRC(fb []int) []int {
 		return fb
 	}
 	var h uint64
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		h = (h << 8) | uint64(fb[i]&0xff)
 	}
 	sync := int((h >> 36) & 1)
@@ -198,7 +198,7 @@ func brFlexSafe(t *testing.T, tag string, codes []uint8, ct float64, cfg FlexRay
 		}
 	}()
 	r = DecodeFlexRay(codes, ct, cfg)
-	return
+	return r, panicked
 }
 
 // ctForExact returns a colTimeS that makes the decoder's sample-per-bit T land
@@ -218,13 +218,13 @@ func TestBreakFlexray(t *testing.T) {
 		rng := rand.New(rand.NewSource(0xF1E57))
 		const iters = 80
 		fails := 0
-		for it := 0; it < iters; it++ {
+		for it := range iters {
 			spb := 6 + rng.Intn(35)    // 6..40 samples/bit (legal: T>=4)
 			tssBits := 5 + rng.Intn(8) // 5..12 bit TSS
 			nframes := 1 + rng.Intn(2) // 1 or 2 frames
 			var frames [][]int
 			var want []int
-			for f := 0; f < nframes; f++ {
+			for range nframes {
 				nb := 5 + rng.Intn(20) // 5..24 bytes (>=5 exercises the header note)
 				fb := make([]int, nb)
 				for i := range fb {
@@ -294,7 +294,7 @@ func TestBreakFlexray(t *testing.T) {
 		}
 
 		// flat / DC at several levels
-		for k := 0; k < 15; k++ {
+		for range 15 {
 			lvl := uint8(rng.Intn(256))
 			w := make([]uint8, 800+rng.Intn(1200))
 			for i := range w {
@@ -303,7 +303,7 @@ func TestBreakFlexray(t *testing.T) {
 			nonSignal("flat", w, FlexRayCfg{})
 		}
 		// slow monotonic ramp (single threshold crossing)
-		for k := 0; k < 10; k++ {
+		for range 10 {
 			n := 600 + rng.Intn(1400)
 			w := make([]uint8, n)
 			for i := range w {
@@ -312,7 +312,7 @@ func TestBreakFlexray(t *testing.T) {
 			nonSignal("ramp", w, FlexRayCfg{})
 		}
 		// Nyquist toggle (alternate every sample)
-		for k := 0; k < 10; k++ {
+		for range 10 {
 			n := 500 + rng.Intn(1500)
 			w := make([]uint8, n)
 			for i := range w {
@@ -325,7 +325,7 @@ func TestBreakFlexray(t *testing.T) {
 			nonSignal("nyquist", w, FlexRayCfg{})
 		}
 		// wrong-protocol 50% square wave (no LOW run >= 4T)
-		for k := 0; k < 10; k++ {
+		for range 10 {
 			half := 6 + rng.Intn(30)
 			n := 40 * half
 			w := make([]uint8, n)
@@ -339,7 +339,7 @@ func TestBreakFlexray(t *testing.T) {
 			nonSignal("square", w, FlexRayCfg{})
 		}
 		// too-short TSS (1..3 LOW bits): a coding violation, must not decode as the frame
-		for k := 0; k < 10; k++ {
+		for range 10 {
 			spb := 8 + rng.Intn(16)
 			tss := 1 + rng.Intn(3) // 1..3  (< the 4-bit minimum)
 			nb := 5 + rng.Intn(6)
@@ -359,7 +359,7 @@ func TestBreakFlexray(t *testing.T) {
 		}
 		// corrupted framing: flip a BSS bit inside a valid frame — must NOT
 		// reproduce the intact byte sequence.
-		for k := 0; k < 20; k++ {
+		for k := range 20 {
 			spb := 10 + rng.Intn(14)
 			tss := 8
 			nb := 6 + rng.Intn(8)
@@ -386,7 +386,7 @@ func TestBreakFlexray(t *testing.T) {
 		}
 		// truncation mid-frame: cut inside a non-final byte — the intact frame
 		// must not come back.
-		for k := 0; k < 10; k++ {
+		for range 10 {
 			spb := 10 + rng.Intn(14)
 			tss := 8
 			nb := 6 + rng.Intn(8)
@@ -398,10 +398,7 @@ func TestBreakFlexray(t *testing.T) {
 			// cut so at least the final 2 bytes are lost
 			cutByte := nb - 2
 			cutBit := brFlexBitOffsetBSS0(cutByte, tss, 8) + 4 // mid-byte
-			cut := cutBit * spb
-			if cut > len(w) {
-				cut = len(w)
-			}
+			cut := min(cutBit*spb, len(w))
 			trunc := w[:cut]
 			strict++
 			r, pan := brFlexSafe(t, "trunc", trunc, ctForExact(10_000_000, spb), FlexRayCfg{Bitrate: 10_000_000})
@@ -416,7 +413,7 @@ func TestBreakFlexray(t *testing.T) {
 		// -- pure random noise: no CRC to lean on, so a stray byte-run is
 		// inherent; we only require it never panics and record the rate. --
 		noiseOK := 0
-		for k := 0; k < 20; k++ {
+		for k := range 20 {
 			n := 400 + rng.Intn(3000)
 			w := make([]uint8, n)
 			for i := range w {
@@ -446,7 +443,11 @@ func TestBreakFlexray(t *testing.T) {
 	t.Run("edge_cases", func(t *testing.T) {
 		// boundary sample counts + degenerate configs (must not panic).
 		degenerate := [][]uint8{
-			nil, {}, {200}, {40, 210}, {210, 210, 210},
+			nil,
+			{},
+			{200},
+			{40, 210},
+			{210, 210, 210},
 			make([]uint8, 7), // < 8 valid samples
 		}
 		cts := []float64{0, -1, 1e-12, 1e-8, 1e6}
@@ -554,7 +555,7 @@ func TestBreakFlexray(t *testing.T) {
 			spb, tss := 8, 6
 			var frames [][]int
 			var want []int
-			for f := 0; f < 40; f++ {
+			for f := range 40 {
 				fb := brFlexFixCRC([]int{f & 0xff, 0x00, 0x11, 0x22, 0x33, 0x44, 0x55})
 				frames = append(frames, fb)
 				want = append(want, fb...)
@@ -590,7 +591,7 @@ func TestBreakFlexray(t *testing.T) {
 		rng := rand.New(rand.NewSource(0xC12C))
 		accepted := 0
 		const trials = 24
-		for trial := 0; trial < trials; trial++ {
+		for range trials {
 			sync := rng.Intn(2)
 			startup := rng.Intn(2)
 			frameID := rng.Intn(0x800)

@@ -33,7 +33,7 @@ func oracleUARTBits(sr, baud float64, dataBits int, parity string, frames []ufra
 	for _, f := range frames {
 		w.add(0, bt) // start
 		ones := 0
-		for i := 0; i < dataBits; i++ {
+		for i := range dataBits {
 			b := byte(f.v>>i) & 1
 			ones += int(b)
 			w.add(b, bt)
@@ -76,7 +76,7 @@ func TestOracleUART(t *testing.T) {
 	pd := func(baud int, extra string) string {
 		return fmt.Sprintf("uart:rx=RX:baudrate=%d%s", baud, extra)
 	}
-	run := func(bits []byte, baud int, extra string, annClass string) []ann {
+	run := func(bits []byte, baud int, extra, annClass string) []ann {
 		return sigrokDecode(t, sr, []string{"RX"}, [][]byte{bits}, pd(baud, extra), "uart="+annClass)
 	}
 
@@ -252,7 +252,7 @@ func TestOracleUART(t *testing.T) {
 		w.add(1, 8*bt) // lead idle
 		emit := func(v int) {
 			w.add(0, bt) // start
-			for i := 0; i < 8; i++ {
+			for i := range 8 {
 				w.add(byte(v>>i)&1, bt)
 			}
 			w.add(1, 2*bt) // stop + one idle bit

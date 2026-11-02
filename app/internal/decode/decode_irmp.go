@@ -27,16 +27,20 @@ const (
 )
 
 // IRMPNames name the IR multi protocols.
-var IRMPNames = map[int]string{IRMatsushita: "MATSUSH", IRKaseikyo: "KASEIKYO", IRSamsung: "SAMSUNG", IRDenon: "DENON",
-	IRSamsung32: "SAMSG32", IRJVC: "JVC", IRNEC16: "NEC16", IRNEC42: "NEC42"}
+var IRMPNames = map[int]string{
+	IRMatsushita: "MATSUSH", IRKaseikyo: "KASEIKYO", IRSamsung: "SAMSUNG", IRDenon: "DENON",
+	IRSamsung32: "SAMSG32", IRJVC: "JVC", IRNEC16: "NEC16", IRNEC42: "NEC42",
+}
 
 // irmpTiming is a protocol's pulse and pauses (us) and its bits.
 type irmpTiming struct{ pulse, zero, one float64 }
 
 // irmpTimings are the IR multi protocols' bit timings.
-var irmpTimings = map[int]irmpTiming{IRSamsung32: {550, 550, 1650}, IRSamsung: {550, 550, 1650}, IRJVC: {560, 560, 1690},
+var irmpTimings = map[int]irmpTiming{
+	IRSamsung32: {550, 550, 1650}, IRSamsung: {550, 550, 1650}, IRJVC: {560, 560, 1690},
 	IRNEC16: {560, 560, 1690}, IRNEC42: {560, 560, 1690}, IRKaseikyo: {423, 423, 1269}, IRMatsushita: {872, 872, 2616},
-	IRDenon: {310, 745, 1780}}
+	IRDenon: {310, 745, 1780},
+}
 
 // irDenonRepeatUS is the longest a Denon frame's inverted repeat waits after
 // it (us), from the frame's last mark to the repeat's first.
@@ -89,7 +93,7 @@ func irmpBits(m []irMark, i int, tm irmpTiming, max int, us func(float64) float6
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-255
 func lsbOf(b []int, at, n int) int {
 	v := 0
-	for k := 0; k < n; k++ {
+	for k := range n {
 		v |= b[at+k] << k
 	}
 	return v
@@ -235,8 +239,10 @@ func DecodeIRMP(codes []uint8, colTimeS float64, cfg LineCfg) Result {
 	if len(o.spans) == 0 {
 		return Result{Proto: "irmp", Error: "no IR multi frame"}
 	}
-	res := Result{OK: good, Proto: "irmp", Spans: o.spans, Text: strings.Join(o.toks, " "), Bytes: o.units,
-		Thr: S.threshold, Inverted: high, FrameBits: first}
+	res := Result{
+		OK: good, Proto: "irmp", Spans: o.spans, Text: strings.Join(o.toks, " "), Bytes: o.units,
+		Thr: S.threshold, Inverted: high, FrameBits: first,
+	}
 	if unit > 0 {
 		res.SPB = unit * 1e-6 / colTimeS
 		res.Baud = int(math.Round(1e6 / unit))

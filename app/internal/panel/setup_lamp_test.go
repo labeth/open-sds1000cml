@@ -2,12 +2,11 @@
 package panel
 
 import (
+	"open-sds/app/internal/engine"
+	"open-sds/app/internal/settings"
 	"strings"
 	"testing"
 	"time"
-
-	"open-sds/app/internal/engine"
-	"open-sds/app/internal/settings"
 )
 
 // wholeSlots is a setup store that gives the setup a save would write: here

@@ -10,7 +10,7 @@ import "testing"
 func mkTail(n, split int, noisy bool, glitchEvery int) []uint8 {
 	sig := make([]uint8, n)
 	base := [5]uint8{185, 171, 159, 153, 155}
-	for i := 0; i < n; i++ {
+	for i := range n {
 		if i < split {
 			if (i/64)%2 == 0 {
 				sig[i] = 200
@@ -103,7 +103,7 @@ func TestDegradedFlagAndStuckEscalation(t *testing.T) {
 		t.Fatal("published frame does not carry Degraded")
 	}
 
-	for i := 0; i < stuckSuspectRuns+2; i++ {
+	for range stuckSuspectRuns + 2 {
 		e.oneFrame(false)
 	}
 	if s := e.Snapshot(); !s.StuckSuspect {

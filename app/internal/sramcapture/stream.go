@@ -35,8 +35,10 @@ type StreamStatus struct {
 
 // TRLC-LINKS: REQ-SDS-035
 func decodeStreamStatus(v uint16) StreamStatus {
-	return StreamStatus{uint8(v & 3), uint8((v >> 2) & 3), uint8((v >> 4) & 3), v&64 != 0, v&128 != 0, v&256 != 0,
-		v&512 != 0, v&1024 != 0, v&2048 != 0, v&4096 != 0, v&8192 != 0}
+	return StreamStatus{
+		uint8(v & 3), uint8((v >> 2) & 3), uint8((v >> 4) & 3), v&64 != 0, v&128 != 0, v&256 != 0,
+		v&512 != 0, v&1024 != 0, v&2048 != 0, v&4096 != 0, v&8192 != 0,
+	}
 }
 
 // TRLC-LINKS: REQ-SDS-035
@@ -48,7 +50,7 @@ func (c *Capture) StreamStatus() (StreamStatus, error) {
 		return StreamStatus{}, e
 	}
 	if v[0] != 11 {
-		return StreamStatus{}, fmt.Errorf("sramcapture: stream requires experimental revision 11")
+		return StreamStatus{}, errors.New("sramcapture: stream requires experimental revision 11")
 	}
 	return decodeStreamStatus(v[1]), nil
 }
@@ -64,7 +66,7 @@ func (c *Capture) PrepareStream() error {
 		return err
 	}
 	if rev != 11 {
-		return fmt.Errorf("sramcapture: stream requires experimental revision 11")
+		return errors.New("sramcapture: stream requires experimental revision 11")
 	}
 	return c.prepareStreamBuffers()
 }
@@ -140,7 +142,7 @@ func (c *Capture) DrainStream(ctx context.Context, expected uint64, dst io.Write
 		return block, e
 	}
 	if rev != 11 {
-		return block, fmt.Errorf("sramcapture: stream requires experimental revision 11")
+		return block, errors.New("sramcapture: stream requires experimental revision 11")
 	}
 	raw, e := c.read(32)
 	if e != nil {
@@ -149,7 +151,7 @@ func (c *Capture) DrainStream(ctx context.Context, expected uint64, dst io.Write
 	s := decodeStreamStatus(raw)
 	c.streamBacklog = s.Backlog
 	if s.Fault {
-		return block, fmt.Errorf("sramcapture: stream overrun or packetizer fault")
+		return block, errors.New("sramcapture: stream overrun or packetizer fault")
 	}
 	if !s.Enabled {
 		return block, ErrStreamDisabled
@@ -158,12 +160,12 @@ func (c *Capture) DrainStream(ctx context.Context, expected uint64, dst io.Write
 		return block, ErrNoStreamBlock
 	}
 	found := false
-	for bank := uint8(0); bank < 2; bank++ {
+	for bank := range uint8(2) {
 		if s.Ready&(1<<bank) == 0 {
 			continue
 		}
 		var first uint64
-		for part := uint16(0); part < 4; part++ {
+		for part := range uint16(4) {
 			v, e := c.read(35 + uint16(bank)*4 + part)
 			if e != nil {
 				return block, e
@@ -332,7 +334,7 @@ func (c *Capture) setStreamPace(p StreamPace) error {
 		return err
 	}
 	if v[0] != streamPaceCapability {
-		return fmt.Errorf("sramcapture: this FPGA image streams at powers of two only")
+		return errors.New("sramcapture: this FPGA image streams at powers of two only")
 	}
 	if uint32(v[1])|uint32(v[2]&15)<<16 != p.Words || v[3] != p.RampClocks {
 		return fmt.Errorf("sramcapture: stream pace read back %d words, %d clocks", uint32(v[1])|uint32(v[2]&15)<<16, v[3])
@@ -357,7 +359,7 @@ func (c *Capture) StartStream(ctx context.Context, cfg Config, continuous, peak 
 	c.mu.Lock()
 	rev, err := c.read(13)
 	if err == nil && rev != 11 {
-		err = fmt.Errorf("sramcapture: stream requires revision 11")
+		err = errors.New("sramcapture: stream requires revision 11")
 	}
 	if err == nil {
 		err = c.prepareStreamBuffers()

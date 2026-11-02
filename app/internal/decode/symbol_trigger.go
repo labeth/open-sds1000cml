@@ -75,14 +75,11 @@ func SymbolIndex(level bool, count uint32) int {
 // SymbolCount is the prescaled ticks the block counts for a run of w clocks
 // (edges w clocks apart).
 // TRLC-LINKS: REQ-SDS-013
-func SymbolCount(w int, prescale int) uint32 {
+func SymbolCount(w, prescale int) uint32 {
 	if w < 1 {
 		return 0
 	}
-	c := uint32((w - 1) >> prescale)
-	if c > SymbolMaxCount {
-		c = SymbolMaxCount
-	}
+	c := min(uint32((w-1)>>prescale), SymbolMaxCount)
 	return c
 }
 

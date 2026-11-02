@@ -3,10 +3,9 @@ package lcd
 
 import (
 	"math"
-	"testing"
-
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/panel/framecalc"
+	"testing"
 )
 
 // A synthetic super-res HUD: a K× fine-grid mean built from gen(fineBin), a
@@ -15,7 +14,7 @@ import (
 func srHUD(nb, K int, sampleS float64, gen, gen2 func(b int) float64) HUD {
 	m1 := make([]float32, nb)
 	m2 := make([]float32, nb)
-	for b := 0; b < nb; b++ {
+	for b := range nb {
 		m1[b] = float32(gen(b))
 		if gen2 != nil {
 			m2[b] = float32(gen2(b))
@@ -111,11 +110,11 @@ func TestSuperresFFTFloatFloorBeatsQuantised(t *testing.T) {
 		re := make([]float64, n)
 		im := make([]float64, n)
 		var mean float64
-		for i := 0; i < n; i++ {
+		for i := range n {
 			mean += samples[i]
 		}
 		mean /= float64(n)
-		for i := 0; i < n; i++ {
+		for i := range n {
 			w := 0.5 - 0.5*math.Cos(2*math.Pi*float64(i)/float64(n-1))
 			re[i] = (samples[i] - mean) * w
 		}
@@ -141,7 +140,7 @@ func TestSuperresFFTFloatFloorBeatsQuantised(t *testing.T) {
 	}
 	fl := make([]float64, n)
 	qz := make([]float64, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		v := 128 + 40*math.Sin(2*math.Pi*F*float64(i)/float64(n))
 		fl[i] = v             // crunched float precision
 		qz[i] = math.Round(v) // one 8-bit capture (quantised)

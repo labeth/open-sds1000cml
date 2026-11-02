@@ -2,9 +2,8 @@
 package engine
 
 import (
-	"testing"
-
 	"open-sds/app/internal/decode"
+	"testing"
 )
 
 // ---- synthetic protocol waveforms (mirrors internal/decode/decode_test.go) ---
@@ -18,14 +17,14 @@ func uartWave(bytes []int, spb int) []uint8 {
 		if bit == 1 {
 			v = hi
 		}
-		for j := 0; j < k; j++ {
+		for range k {
 			w = append(w, v)
 		}
 	}
 	push(1, spb*8)
 	for _, b := range bytes {
 		push(0, spb) // start
-		for c := 0; c < 8; c++ {
+		for c := range 8 {
 			push((b>>c)&1, spb) // LSB first
 		}
 		push(1, spb) // stop
@@ -39,7 +38,7 @@ func uartWave(bytes []int, spb int) []uint8 {
 func spiWave(bytes []int, h int) (clk, data []uint8) {
 	lo, hi := uint8(40), uint8(210)
 	seg := func(c, d uint8, n int) {
-		for i := 0; i < n; i++ {
+		for range n {
 			clk = append(clk, c)
 			data = append(data, d)
 		}
@@ -63,7 +62,7 @@ func spiWave(bytes []int, h int) (clk, data []uint8) {
 func i2cWave(addr7, rw int, data []int, h int) (scl, sda []uint8) {
 	lo, hi := uint8(40), uint8(210)
 	seg := func(c, d uint8, n int) {
-		for i := 0; i < n; i++ {
+		for range n {
 			scl = append(scl, c)
 			sda = append(sda, d)
 		}
@@ -356,7 +355,7 @@ func TestSerialRegistryCapabilities(t *testing.T) {
 func TestSerialQualifyPicksCentredMatch(t *testing.T) {
 	msg := []int{0x48, 0x55, 0xAA, 0x0F, 0x0A}
 	var bytes []int
-	for i := 0; i < 4; i++ {
+	for range 4 {
 		bytes = append(bytes, msg...)
 	}
 	w := uartWave(bytes, 40)
@@ -439,7 +438,7 @@ func TestAutoGateLiveness(t *testing.T) {
 		e.mu.Lock()
 		e.lastPublish = e.clk.Now()
 		e.mu.Unlock()
-		for round := 0; round < 2; round++ {
+		for range 2 {
 			for i := 1; i < gate.fallback; i++ {
 				if e.autoGateLiveness() {
 					t.Fatalf("%s: rejected capture %d published", gate.name, i)

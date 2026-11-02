@@ -96,10 +96,14 @@ var layerImpls = map[string]layerFns{
 	"edid":       {notes: edidNotes, detect: edidDetect, match: i2cAddrMatch},
 	"xfp":        {notes: xfpNotes, detect: xfpDetect, match: i2cAddrMatch},
 	"eeprom24xx": {notes: eepromNotes, detect: eepromDetect, match: eepromMatch},
-	"ds1307": {notes: func(ps []Packet) { rtcNotes(ps, ds1307Spec, 0x68) },
-		detect: func(ps []Packet) string { return rtcDetect(ps, ds1307Spec, 0x68) }, match: i2cFirst(1)},
-	"rtc8564": {notes: func(ps []Packet) { rtcNotes(ps, rtc8564Spec, 0x51) },
-		detect: func(ps []Packet) string { return rtcDetect(ps, rtc8564Spec, 0x51) }, match: i2cFirst(1)},
+	"ds1307": {
+		notes:  func(ps []Packet) { rtcNotes(ps, ds1307Spec, 0x68) },
+		detect: func(ps []Packet) string { return rtcDetect(ps, ds1307Spec, 0x68) }, match: i2cFirst(1),
+	},
+	"rtc8564": {
+		notes:  func(ps []Packet) { rtcNotes(ps, rtc8564Spec, 0x51) },
+		detect: func(ps []Packet) string { return rtcDetect(ps, rtc8564Spec, 0x51) }, match: i2cFirst(1),
+	},
 	"atsha204a": {notes: atshaNotes, detect: atshaDetect, match: i2cFirst(3)},
 	"mlx90614":  {notes: mlxNotes, detect: mlxDetect, match: i2cFirst(1)},
 	"nunchuk":   {notes: nunchukNotes, detect: nunchukDetect, match: i2cAddrMatch},
@@ -125,12 +129,18 @@ var layerImpls = map[string]layerFns{
 	"pan1321":   {notes: panNotes, detect: panDetect},
 	"amulet":    {notes: func(ps []Packet) { eachNote(ps, amuletNote) }, match: uartFirst(1)},
 
-	"ds28ea00": {notes: owDevNotes(ds28ea00Fn), match: owMatch,
-		detect: func(ps []Packet) string { return owFamilyDetect(ps, "DS28EA00, DS18B20", 0x42, 0x28) }},
-	"ds2408": {notes: owDevNotes(ds2408Fn), match: owMatch,
-		detect: func(ps []Packet) string { return owFamilyDetect(ps, "DS2408", 0x29) }},
-	"ds243x": {notes: owDevNotes(ds243xFn), match: owMatch,
-		detect: func(ps []Packet) string { return owFamilyDetect(ps, "DS243x", 0x2d, 0x23, 0x33) }},
+	"ds28ea00": {
+		notes: owDevNotes(ds28ea00Fn), match: owMatch,
+		detect: func(ps []Packet) string { return owFamilyDetect(ps, "DS28EA00, DS18B20", 0x42, 0x28) },
+	},
+	"ds2408": {
+		notes: owDevNotes(ds2408Fn), match: owMatch,
+		detect: func(ps []Packet) string { return owFamilyDetect(ps, "DS2408", 0x29) },
+	},
+	"ds243x": {
+		notes: owDevNotes(ds243xFn), match: owMatch,
+		detect: func(ps []Packet) string { return owFamilyDetect(ps, "DS243x", 0x2d, 0x23, 0x33) },
+	},
 	"onewire_net": {notes: owNetNotes, detect: owNetDetect, match: owMatch},
 
 	"cfp": {notes: cfpNotes, detect: cfpDetect},

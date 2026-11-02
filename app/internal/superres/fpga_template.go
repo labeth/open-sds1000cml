@@ -2,6 +2,7 @@
 package superres
 
 import (
+	"errors"
 	"fmt"
 	"math"
 )
@@ -35,7 +36,7 @@ type FPGATemplate struct {
 // of placing the window to within half a template point. FPGATemplateLoose
 // allows an eighth of the window's swing per point (at least 4 codes).
 // TRLC-LINKS: REQ-SDS-141
-func BuildFPGATemplate(sig []float64, sampleS, edgeX float64, level float64, falling bool, count int, tolerance float64) (FPGATemplate, error) {
+func BuildFPGATemplate(sig []float64, sampleS, edgeX, level float64, falling bool, count int, tolerance float64) (FPGATemplate, error) {
 	var t FPGATemplate
 	if count < 2 || count > 1024 {
 		return t, fmt.Errorf("template length %d out of 2..1024", count)
@@ -71,7 +72,7 @@ func BuildFPGATemplate(sig []float64, sampleS, edgeX float64, level float64, fal
 	lead := count / 4
 	first := int(math.Round(crossing)) - lead
 	if first < 0 || first+count > len(sig) {
-		return t, fmt.Errorf("template window leaves the frame")
+		return t, errors.New("template window leaves the frame")
 	}
 	t.Values = make([]uint8, count)
 	lo, hi := 255.0, 0.0

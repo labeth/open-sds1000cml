@@ -3,11 +3,10 @@ package lcd
 
 import (
 	"math"
-	"testing"
-
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/panel/framecalc"
 	"open-sds/app/internal/panel/wsview"
+	"testing"
 )
 
 // TRLC-LINKS: REQ-SDS-021
@@ -32,15 +31,17 @@ func testFrame(valid int) *engine.Frame {
 
 // TRLC-LINKS: REQ-SDS-021
 func defaultHUD() HUD {
-	return HUD{C1VdivV: 1, C2VdivV: 1, TdivS: 500e-6, TrigRising: true,
-		Running: true, SampleS: 800e-9, TwoChan: true}
+	return HUD{
+		C1VdivV: 1, C2VdivV: 1, TdivS: 500e-6, TrigRising: true,
+		Running: true, SampleS: 800e-9, TwoChan: true,
+	}
 }
 
 // TRLC-LINKS: REQ-SDS-021
 func countColor(m *MemSurface, c uint16) int {
 	n := 0
-	for y := 0; y < H; y++ {
-		for x := 0; x < W; x++ {
+	for y := range H {
+		for x := range W {
 			if m.At(x, y) == c {
 				n++
 			}
@@ -80,7 +81,7 @@ func TestRenderPersistence(t *testing.T) {
 		return f
 	}
 	rowHasInk := func(m *MemSurface, y int) bool {
-		for x := 0; x < W-160; x++ {
+		for x := range W - 160 {
 			if m.At(x, y) != 0 {
 				return true
 			}
@@ -174,8 +175,10 @@ func TestRenderAltViews(t *testing.T) {
 func TestRenderKeysSelectedFilled(t *testing.T) {
 	m := NewMemSurface()
 	h := defaultHUD()
-	h.UI = wsview.View{Layout: wsview.Layout{MenuW: 116, Sheet: true, HideTraces: true}, Sheet: &wsview.Sheet{WSName: "SCOPE"},
-		Keys: &wsview.Keys{Title: "MODE", Top: 30, Items: [5]wsview.Key{{Label: "Auto"}, {Label: "Normal", Sel: true}, {Label: "Single"}}}}
+	h.UI = wsview.View{
+		Layout: wsview.Layout{MenuW: 116, Sheet: true, HideTraces: true}, Sheet: &wsview.Sheet{WSName: "SCOPE"},
+		Keys: &wsview.Keys{Title: "MODE", Top: 30, Items: [5]wsview.Key{{Label: "Auto"}, {Label: "Normal", Sel: true}, {Label: "Single"}}},
+	}
 	// slot 1 (F2), aligned to the physical button at softkeyY[1]
 	Render(m, testFrame(2048), h, true)
 	// slot i=1 bar spans y in [softkeyY[1]-9, softkeyY[1]+9], x in [687,797]
@@ -304,7 +307,7 @@ func TestRenderEnvelopeBranch(t *testing.T) {
 	f := testFrame(4096)
 	f.IsEnv = true
 	f.EnvCols = 800
-	for i := 0; i < 800; i++ {
+	for i := range 800 {
 		f.EnvMin[i], f.EnvMax[i] = 80, 180
 		f.EnvMin2[i], f.EnvMax2[i] = 100, 140
 	}
@@ -440,7 +443,7 @@ func TestRenderBodeView(t *testing.T) {
 	hud := defaultHUD()
 	hud.ViewMode = 3
 	// a synthetic swept curve: -6 dB flat, phase ramping
-	for i := 0; i < 20; i++ {
+	for i := range 20 {
 		f := 1e6 * math.Pow(10, float64(i)/10) // 1 MHz .. ~8 MHz over 2 decades
 		hud.BodeFreq = append(hud.BodeFreq, f)
 		hud.BodeGain = append(hud.BodeGain, -6)
@@ -551,10 +554,14 @@ func TestRenderSheetStatus(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-021, REQ-SDS-214
 func TestRenderMatchEditor(t *testing.T) {
 	h := defaultHUD()
-	h.UI = wsview.View{Layout: wsview.Layout{MenuW: 116, Sheet: true, HideTraces: true}, Sheet: &wsview.Sheet{WSName: "BUS"},
-		Keys: &wsview.Keys{Title: "MATCH EDITOR", Top: 30, Items: [5]wsview.Key{{Label: "Keys", Value: "Hex"}, {Label: "Type"}}}}
-	h.Match = MatchView{Open: true, Set: "Hex", Proto: "UART", Toks: []string{"55", "A?", "ERR"}, Cur: 3,
-		Keys: [][]string{{"0", "1", "2"}, {"3", "4", "5"}}, Row: 1, Col: 2}
+	h.UI = wsview.View{
+		Layout: wsview.Layout{MenuW: 116, Sheet: true, HideTraces: true}, Sheet: &wsview.Sheet{WSName: "BUS"},
+		Keys: &wsview.Keys{Title: "MATCH EDITOR", Top: 30, Items: [5]wsview.Key{{Label: "Keys", Value: "Hex"}, {Label: "Type"}}},
+	}
+	h.Match = MatchView{
+		Open: true, Set: "Hex", Proto: "UART", Toks: []string{"55", "A?", "ERR"}, Cur: 3,
+		Keys: [][]string{{"0", "1", "2"}, {"3", "4", "5"}}, Row: 1, Col: 2,
+	}
 	m := NewMemSurface()
 	Render(m, testFrame(2048), h, true)
 	if n := countColorIn(m, colTrig, 4+2*226, 80+56, 4+3*226, 80+2*56); n < 2000 {
@@ -603,7 +610,7 @@ func TestRefDrawnThroughItsProbe(t *testing.T) {
 	drawRefs(m, fullPlot, hud)
 	row := func(code float64) int {
 		n := 0
-		for x := 0; x < W; x++ {
+		for x := range W {
 			if m.At(x, fullPlot.sy(code)) == colInfo {
 				n++
 			}

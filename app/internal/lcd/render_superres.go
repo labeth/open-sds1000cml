@@ -24,10 +24,7 @@ func drawSuperresHUD(sf Surface, p plotArea, hud HUD) {
 	}
 	if hud.SRFocus != 3 && hud.SRN > 0 && mHi > mLo {
 		xAt := func(s int) int {
-			x := s * p.w / hud.SRN
-			if x < 0 {
-				x = 0
-			}
+			x := max(s*p.w/hud.SRN, 0)
 			if x > p.w-1 {
 				x = p.w - 1
 			}
@@ -90,10 +87,7 @@ func drawSuperresTrace(sf Surface, p plotArea, hud HUD) {
 	if nb == 0 {
 		return
 	}
-	K := hud.SRk
-	if K < 1 {
-		K = 1
-	}
+	K := max(hud.SRk, 1)
 	winLo, winHi := float64(hud.SRWinLo), float64(hud.SRWinHi)
 	if winHi <= winLo { // no recorded span: render the whole grid across the screen
 		winLo, winHi = float64(hud.SRGateLo), float64(hud.SRGateLo)+float64(nb)/float64(K)
@@ -171,7 +165,7 @@ func srFilled(mean []float32) []float64 {
 	nb := len(mean)
 	out := make([]float64, nb)
 	first, last := -1, -1
-	for i := 0; i < nb; i++ {
+	for i := range nb {
 		if mean[i] < 0 {
 			out[i] = math.NaN()
 		} else {
@@ -225,7 +219,7 @@ func srResampleArray(mean []float32, nOut int) (out []float64, valid []bool) {
 	filled := srFilled(mean)
 	out = make([]float64, nOut)
 	valid = make([]bool, nOut)
-	for i := 0; i < nOut; i++ {
+	for i := range nOut {
 		p := (float64(i) + 0.5) * float64(nb) / float64(nOut) // sample centres
 		i0 := int(p)
 		if i0 >= nb-1 {
@@ -250,10 +244,7 @@ func srFFTPlan(hud HUD) (n int, effNyq float64, kLo, kHi int, ok bool) {
 	if nb < 16 || hud.SRSampleS <= 0 {
 		return 0, 0, 0, 0, false
 	}
-	K := hud.SRk
-	if K < 1 {
-		K = 1
-	}
+	K := max(hud.SRk, 1)
 	n = 1
 	for n < nb && n < 8192 { // smallest pow2 ≥ nb (capped): dt ≈ fine dt, no aliasing
 		n <<= 1
@@ -269,15 +260,9 @@ func srFFTPlan(hud HUD) (n int, effNyq float64, kLo, kHi int, ok bool) {
 	half := n / 2
 	kLo, kHi = 1, half-1
 	if hud.Zoom > 1 {
-		bandSpan := (half - 1) / hud.Zoom
-		if bandSpan < 4 {
-			bandSpan = 4
-		}
+		bandSpan := max((half-1)/hud.Zoom, 4)
 		center := (half-1)/2 + int(hud.ZoomOff*float64(half-1))
-		kLo = center - bandSpan/2
-		if kLo < 1 {
-			kLo = 1
-		}
+		kLo = max(center-bandSpan/2, 1)
 		kHi = kLo + bandSpan
 		if kHi > half-1 {
 			kHi = half - 1
@@ -348,7 +333,7 @@ func drawSuperresXY(sf Surface, p plotArea, hud HUD) {
 		return
 	}
 	px, py := -1, -1
-	for i := 0; i < nOut; i++ {
+	for i := range nOut {
 		if !vx[i] || !vy[i] { // gap in either channel → lift the pen
 			px = -1
 			continue

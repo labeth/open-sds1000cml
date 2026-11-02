@@ -4,12 +4,11 @@ package web
 import (
 	"math"
 	"net/http/httptest"
+	"open-sds/app/internal/engine"
+	"open-sds/app/internal/testenv"
 	"os/exec"
 	"strings"
 	"testing"
-
-	"open-sds/app/internal/engine"
-	"open-sds/app/internal/testenv"
 )
 
 // TestStackPerfBrowser guards the superres-view redraw hot path: with a large
@@ -28,7 +27,7 @@ func TestStackPerfBrowser(t *testing.T) {
 		n++
 		c1 := make([]uint8, N)
 		c2 := make([]uint8, N)
-		for i := 0; i < N; i++ {
+		for i := range N {
 			c1[i] = uint8(128 + 50*math.Sin(2*math.Pi*float64(i)/256))
 			c2[i] = uint8(128 + 30*math.Sin(2*math.Pi*float64(i)/512))
 		}

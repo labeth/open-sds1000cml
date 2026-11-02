@@ -2,13 +2,12 @@ package lcd
 
 import (
 	"fmt"
-	"strings"
-	"testing"
-
 	"open-sds/app/internal/analysis"
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/panel/framecalc"
 	"open-sds/app/internal/panel/wsview"
+	"strings"
+	"testing"
 )
 
 // TestDecodeStripClearsTrace: with a protocol decoded, the Y-T plot ends
@@ -18,8 +17,10 @@ import (
 // TRLC-LINKS: REQ-SDS-021, REQ-SDS-214
 func TestDecodeStripClearsTrace(t *testing.T) {
 	const n = 1024
-	f := &engine.Frame{C1: make([]uint8, n), C2: make([]uint8, n), Valid: n, WinCols: n, EdgeX: n / 2,
-		Ptp: 0, TdivS: 100e-6, SampleS: 1e-6, Trigd: true}
+	f := &engine.Frame{
+		C1: make([]uint8, n), C2: make([]uint8, n), Valid: n, WinCols: n, EdgeX: n / 2,
+		Ptp: 0, TdivS: 100e-6, SampleS: 1e-6, Trigd: true,
+	}
 	for i := range f.C1 {
 		f.C1[i] = 128 - 88 // -3.52 div
 	}
@@ -74,7 +75,7 @@ func lateSPIFlash(msg []byte, lateS, startS, gapS float64, n int) (c1, c2 []uint
 		}
 	}
 	for t := -startS; t < float64(n)*2e-9; t += float64(8*len(msg))*period + gapS {
-		for i := 0; i < 8*len(msg); i++ {
+		for i := range 8 * len(msg) {
 			start := t + float64(i)*period
 			set(&dat, &dl, start+lateS, msg[i/8]>>(7-i%8)&1 == 1)
 			set(&clk, &cl, start+period/2, true)

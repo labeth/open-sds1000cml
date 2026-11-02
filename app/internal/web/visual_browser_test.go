@@ -4,12 +4,11 @@ package web
 import (
 	"math"
 	"net/http/httptest"
+	"open-sds/app/internal/engine"
+	"open-sds/app/internal/testenv"
 	"sync"
 	"testing"
 	"time"
-
-	"open-sds/app/internal/engine"
-	"open-sds/app/internal/testenv"
 )
 
 // TestVisualMIDIBrowser: a MIDI bus (two notes on, one off) decodes in BUS,
@@ -65,7 +64,7 @@ func i2sRecord(seq uint64, dt float64) *engine.Frame {
 	bitS := 1 / (fs * 2 * slot)
 	n := int(0.012 / dt) // 12 ms
 	c1, c2 := make([]uint8, n), make([]uint8, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		j := int(float64(i) * dt / bitS)
 		frame, within := j/(2*slot), j%(2*slot)
 		ch := within / slot

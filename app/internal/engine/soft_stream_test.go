@@ -3,12 +3,11 @@ package engine
 
 import (
 	"math"
-	"slices"
-	"testing"
-
 	"open-sds/app/internal/decode"
 	"open-sds/app/internal/decodedlines"
 	"open-sds/app/internal/sramcapture"
+	"slices"
+	"testing"
 )
 
 // linLevels is a LIN line (idle high) at baud: per frame a 13-bit break, the
@@ -26,7 +25,7 @@ func linLevels(sr, baud float64, frames [][]int) []bool {
 	}
 	char := func(v int) {
 		add(false, 1/baud)
-		for i := 0; i < 8; i++ {
+		for i := range 8 {
 			add(v>>i&1 == 1, 1/baud)
 		}
 		add(true, 1/baud)
@@ -79,7 +78,7 @@ func TestSoftStreamPeakWordsToEvents(t *testing.T) {
 	_ = feature
 	bucket := float64(uint64(1)<<log) * 2e-9
 	frames := [][]int{}
-	for i := 0; i < 30; i++ {
+	for i := range 30 {
 		id := 0x10 + i%40
 		bit := func(k int) int { return id >> k & 1 }
 		pid := id | (bit(0)^bit(1)^bit(2)^bit(4))<<6 | (1^bit(1)^bit(3)^bit(4)^bit(5))<<7
@@ -94,8 +93,10 @@ func TestSoftStreamPeakWordsToEvents(t *testing.T) {
 	raw := peakWords(linLevels(8/bucket, baud, frames), 8)
 	for _, stop := range []bool{false, true} {
 		d, _ := serialDecoder(serLIN)
-		s := &softStream{p: SerialParams{Proto: serLIN, Baud: baud, Threshold: 128, HaveThr: true}, proto: name, decoder: d,
-			mask: 0xff, gapFree: true, quiet: quiet, log: uint8(log), trig: StreamManual, id: sramcapture.RecordIdentity{Epoch: softEpochBase | 1}}
+		s := &softStream{
+			p: SerialParams{Proto: serLIN, Baud: baud, Threshold: 128, HaveThr: true}, proto: name, decoder: d,
+			mask: 0xff, gapFree: true, quiet: quiet, log: uint8(log), trig: StreamManual, id: sramcapture.RecordIdentity{Epoch: softEpochBase | 1},
+		}
 		if stop {
 			s.trig, s.value = StreamOnValue, 0x80+20 // frame 20's second data byte
 		}
@@ -157,8 +158,10 @@ func TestSoftStreamValuePatternPlaces(t *testing.T) {
 		proto, baud, value, unit int
 		bits                     int
 	}{{serIRSIRC, 1667, 0x01, 1, 12}, {serIRRC5, 562, 0x0C, 1, 0}, {serDALI, 1200, 0x80, 1, 0}, {serWiegand, 1000, 0x1234, 1, 26}} {
-		s := &softStream{p: SerialParams{Proto: c.proto, Baud: c.baud, Bits: c.bits, ChA: 0, ChB: 1, Threshold: 128, HaveThr: true,
-			ThresholdB: 128, HaveThrB: true}, value: c.value, mask: unitMask(SerialParams{Proto: c.proto})}
+		s := &softStream{p: SerialParams{
+			Proto: c.proto, Baud: c.baud, Bits: c.bits, ChA: 0, ChB: 1, Threshold: 128, HaveThr: true,
+			ThresholdB: 128, HaveThrB: true,
+		}, value: c.value, mask: unitMask(SerialParams{Proto: c.proto})}
 		if !s.symbolPlans(s.valuePattern(-1)) && !s.symbolPlans(s.valuePattern(c.unit)) {
 			t.Errorf("protocol %d: %X matches neither at any unit nor as unit %d", c.proto, c.value, c.unit)
 		}
@@ -200,8 +203,10 @@ func TestSoftStreamEmitReadsOnWhereTheFPGADidNotFire(t *testing.T) {
 // its frame: the symbol trigger reads a lone value as the address.
 // TRLC-LINKS: REQ-SDS-260
 func TestSoftStreamStopPatternAtItsPlace(t *testing.T) {
-	s := &softStream{p: SerialParams{Proto: serIRMP, Baud: 1818, Bits: decode.IRSamsung32, Threshold: 128, HaveThr: true},
-		proto: "irmp", value: 0xFD02, mask: 0xffff, stopUnit: 1}
+	s := &softStream{
+		p:     SerialParams{Proto: serIRMP, Baud: 1818, Bits: decode.IRSamsung32, Threshold: 128, HaveThr: true},
+		proto: "irmp", value: 0xFD02, mask: 0xffff, stopUnit: 1,
+	}
 	pat := s.stopPattern()
 	if len(pat) != 3 || pat[0].Kind != patternStart || pat[1].Mask != 0 || pat[2].Value != 0xFD02 || pat[2].Mask != 0xffff {
 		t.Fatalf("Samsung32 command FD02: %+v", pat)
@@ -210,8 +215,10 @@ func TestSoftStreamStopPatternAtItsPlace(t *testing.T) {
 	if pat := s.stopPattern(); len(pat) != 2 || pat[1].Value != 0x0707 {
 		t.Fatalf("Samsung32 address 0707: %+v", pat)
 	}
-	u := &softStream{p: SerialParams{Proto: serLIN, Baud: 19200, Threshold: 128, HaveThr: true}, proto: "lin", value: 0x55,
-		mask: 0xff, stopUnit: 3}
+	u := &softStream{
+		p: SerialParams{Proto: serLIN, Baud: 19200, Threshold: 128, HaveThr: true}, proto: "lin", value: 0x55,
+		mask: 0xff, stopUnit: 3,
+	}
 	if pat := u.stopPattern(); len(pat) != 1 { // LIN: the value at any unit
 		t.Fatalf("LIN 55: %+v", pat)
 	}
@@ -221,7 +228,8 @@ func TestSoftStreamStopPatternAtItsPlace(t *testing.T) {
 // captures, at their usual rates (the bench sources' and the panel's).
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
 func TestSoftStreamModes(t *testing.T) {
-	for proto, want := range map[int]string{serLIN: "gap-free", serDMX: "gap-free", serModbus: "gap-free",
+	for proto, want := range map[int]string{
+		serLIN: "gap-free", serDMX: "gap-free", serModbus: "gap-free",
 		serOneWire: "gap-free", serDHT: "gap-free", serCEC: "gap-free", serJ1850: "gap-free", serIRNEC: "gap-free",
 		serIRSIRC: "gap-free", serIRRC5: "gap-free", serIRRC6: "gap-free", serDALI: "gap-free", serPS2: "gap-free",
 		serWiegand: "gap-free", serUSBPD: "captures", serSPDIF: "captures", serSWD: "captures", serMDIO: "captures",
@@ -229,14 +237,17 @@ func TestSoftStreamModes(t *testing.T) {
 		serQuad: "gap-free", serStepper: "gap-free", serPWM: "captures", serRCEncode: "gap-free", serOOK: "gap-free",
 		serMiller: "captures", serMorse: "gap-free", serDCF77: "gap-free", serEM4100: "gap-free", serEM4305: "gap-free",
 		serT55xx: "gap-free", serSWIM: "captures", serSDQ: "captures", serPJDL: "gap-free", serDSI: "gap-free", serQi: "gap-free",
-		serSDCard: "captures", serPDI: "captures", serCJTAG: "captures", serMaple: "captures", serCaliper: "gap-free", serIRMP: "gap-free"} {
-		baud := map[int]int{serLIN: 19200, serDMX: 250000, serModbus: 19200, serOneWire: 16300, serDHT: 20000,
+		serSDCard: "captures", serPDI: "captures", serCJTAG: "captures", serMaple: "captures", serCaliper: "gap-free", serIRMP: "gap-free",
+	} {
+		baud := map[int]int{
+			serLIN: 19200, serDMX: 250000, serModbus: 19200, serOneWire: 16300, serDHT: 20000,
 			serCEC: 417, serJ1850: 10400, serIRNEC: 889, serIRSIRC: 1667, serIRRC5: 562, serIRRC6: 1126, serDALI: 1200,
 			serPS2: 16700, serWiegand: 1000, serUSBPD: 300000, serSPDIF: 3072000, serSWD: 1000000, serMDIO: 1000000,
 			serWS281x: 800000, serQuad: 10000, serStepper: 5000, serPWM: 10000, serRCEncode: 2857, serOOK: 1024, serMiller: 106007,
 			serMorse: 500, serDCF77: 333, serEM4100: 1953, serEM4305: 125000, serT55xx: 125000, serSWIM: 363636, serSDQ: 98425,
 			serPJDL: 22727, serDSI: 600, serQi: 2000, serSDCard: 250000, serPDI: 250000, serCJTAG: 250000, serMaple: 1333333,
-			serCaliper: 12500, serIRMP: 1786}[proto]
+			serCaliper: 12500, serIRMP: 1786,
+		}[proto]
 		if got := SoftStreamMode(proto, baud, false); got != want {
 			t.Errorf("protocol %d at %d: %q, want %q", proto, baud, got, want)
 		}
@@ -296,7 +307,7 @@ func TestSoftEventsQueue(t *testing.T) {
 		}
 		return n
 	}
-	for i := 0; i < 50000; i++ {
+	for i := range 50000 {
 		s.addEvent(sramcapture.DecodedEvent{Kind: sramcapture.EventData, Value: uint32(i)})
 		if i%3000 == 0 {
 			read()
@@ -307,7 +318,7 @@ func TestSoftEventsQueue(t *testing.T) {
 	if next != 50000 || s.err != nil {
 		t.Fatalf("read %d of 50000 (err %v)", next, s.err)
 	}
-	for i := 0; i < 2*softEventsMax; i++ {
+	for range 2 * softEventsMax {
 		s.addEvent(sramcapture.DecodedEvent{Kind: sramcapture.EventData})
 	}
 	if q := len(s.events) - s.evHead; q != softEventsMax || s.err == nil || cap(s.events) > 2*softEventsMax {

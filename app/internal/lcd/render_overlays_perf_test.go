@@ -59,7 +59,7 @@ func TestMathCodesMatchesRef(t *testing.T) {
 		{C1VdivV: 0, C2VdivV: -1, Probe2: 100, OffC2V: 1e-3},
 		{C1VdivV: 1, C2VdivV: 1, OffC1V: math.Inf(1), OffC2V: math.Inf(1)}, // NaN sums
 	} {
-		for mode := 0; mode <= 5; mode++ {
+		for mode := range 6 {
 			h.MathMode = mode
 			got, want := mathCodes(c1, c2, h), mathCodesRef(c1, c2, h)
 			if string(got) != string(want) {

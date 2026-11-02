@@ -3,7 +3,6 @@ package engine
 
 import (
 	"math"
-
 	"open-sds/app/internal/dsp"
 )
 
@@ -39,10 +38,7 @@ func validDepthP(sig []uint8, p int) int {
 	thr := p / 8
 	last := 0
 	for from := 0; from < n; from += w {
-		to := from + w
-		if to > n {
-			to = n
-		}
+		to := min(from+w, n)
 		if _, _, lp := ptp(sig[from:to]); lp >= thr {
 			last = to
 		}
@@ -122,7 +118,7 @@ func noiseFloor(sig []uint8) float64 {
 	}
 	half := total / 2
 	cum, med := 0, 0
-	for b := 0; b <= 512; b++ {
+	for b := range 513 {
 		if cum += hist[b]; cum > half {
 			med = b
 			break
@@ -233,15 +229,9 @@ func centerCrossNF(sig []uint8, lvl int, rising bool, hint, nf float64) float64 
 	//     falling crossing must reach lvl+h going BACKWARD, but a rising trace goes
 	//     LOW backward, so it cannot. Scale-free (h tracks the noise floor), so it
 	//     holds from steep native edges to shallow slow ramps.
-	h := int(hystK*nf + 0.5)
-	if h < hystMinCodes {
-		h = hystMinCodes
-	}
+	h := max(int(hystK*nf+0.5), hystMinCodes)
 	loT, hiT := lvl-h, lvl+h
-	maxW := n
-	if maxW > hystMaxReach {
-		maxW = hystMaxReach
-	}
+	maxW := min(n, hystMaxReach)
 	confirmed := func(c int) bool {
 		// Backward target: rising→low(loT), falling→high(hiT). Forward mirror.
 		backFound, fwdFound := false, false

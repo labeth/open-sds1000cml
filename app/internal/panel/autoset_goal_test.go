@@ -3,15 +3,14 @@ package panel
 
 import (
 	"math"
-	"strings"
-	"sync"
-	"testing"
-	"time"
-
 	"open-sds/app/internal/analog"
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/measure"
 	"open-sds/app/internal/panel/wsview"
+	"strings"
+	"sync"
+	"testing"
+	"time"
 )
 
 // simFE is the fake front end with the offset reaching the engine's offset
@@ -148,7 +147,7 @@ func TestAutoScopeFramesTwoCycles(t *testing.T) {
 	if math.Abs(st.TdivS-200e-9) > 1e-12 {
 		t.Fatalf("SCOPE timebase %g, want 200ns (two cycles of 1 MHz)", st.TdivS)
 	}
-	for ch := 0; ch < 2; ch++ {
+	for ch := range 2 {
 		if v := b.vdivOf(ch); v != 0.5 {
 			t.Fatalf("C%d %g V/div, want 0.5 (3.3 V on 6.6 divisions)", ch+1, v)
 		}
@@ -324,7 +323,7 @@ func TestAutoStepsCoarserWhenClipped(t *testing.T) {
 		return sq(tt)
 	})
 	note := b.run(wsview.Scope, -1)
-	for ch := 0; ch < 2; ch++ {
+	for ch := range 2 {
 		if b.c.clipped(ch) {
 			t.Fatalf("C%d left clipped at %g V/div", ch+1, b.vdivOf(ch))
 		}
@@ -470,7 +469,7 @@ func TestAutoRefinesOnTheScreenItLeaves(t *testing.T) {
 	if st := b.eng.Snapshot(); math.Abs(st.TdivS-200e-9) > 1e-12 {
 		t.Fatalf("timebase %g, want 200ns", st.TdivS)
 	}
-	for ch := 0; ch < 2; ch++ {
+	for ch := range 2 {
 		if v := b.vdivOf(ch); v != 0.5 {
 			t.Fatalf("C%d %g V/div, want 0.5 (3.3 V on the screen AUTO leaves)", ch+1, v)
 		}
@@ -542,7 +541,7 @@ func TestOverScreen(t *testing.T) {
 		return sq(tt)
 	})
 	b.c.setTdivNearest(1e-6)
-	for ch := 0; ch < 2; ch++ {
+	for ch := range 2 {
 		b.c.setVdiv(ch, nearestDetent(0.5))
 		b.fe.SetOffset(ch, 0)
 	}

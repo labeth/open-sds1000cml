@@ -4,14 +4,13 @@ package analysis
 import (
 	"encoding/json"
 	"math"
+	"open-sds/app/internal/testenv"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
 	"sync"
 	"testing"
-
-	"open-sds/app/internal/testenv"
 )
 
 // The eye/jitter parity vectors: clean PRBS and UART-like NRZ at several
@@ -82,7 +81,7 @@ func ejVectors() []ejVector {
 	// nrz renders nrec records of a bit stream, each at another phase
 	nrz := func(nrec int, src []int, ui float64, w wave, tie func(r, k int) float64) [][]float64 {
 		var recs [][]float64
-		for r := 0; r < nrec; r++ {
+		for r := range nrec {
 			phase := 20 + math.Mod(float64(r)*37.3, ui)
 			var tf func(k int) float64
 			if tie != nil {
@@ -133,7 +132,7 @@ func ejVectors() []ejVector {
 	{
 		var recs [][]float64
 		msgs := [][]byte{[]byte("Hi U\xaa"), []byte("status=OK\r\n"), []byte("\x01\x02\x03")}
-		for r := 0; r < 8; r++ {
+		for r := range 8 {
 			uw := w(1)
 			uw.n, uw.seed, uw.startHigh = n, uint64(r+11), true
 			gaps := []float64{173.37 + float64(r), 291.81, 88.5 + 3.3*float64(r)}
@@ -163,7 +162,7 @@ func ejVectors() []ejVector {
 	}
 	{
 		var recs [][]float64
-		for r := 0; r < 4; r++ {
+		for r := range 4 {
 			fw := base
 			fw.lo, fw.hi, fw.n, fw.seed, fw.noise = 128, 128, n, uint64(r+3), 2
 			recs = append(recs, fw.render(nil))
@@ -176,7 +175,7 @@ func ejVectors() []ejVector {
 	}
 	{
 		var recs [][]float64
-		for r := 0; r < 10; r++ {
+		for r := range 10 {
 			sb := make([]int, 14)
 			s := 0x5a + r
 			for k := range sb {
@@ -189,10 +188,14 @@ func ejVectors() []ejVector {
 		add("edge-starved-ui700", 700, true, recs)
 	}
 	vs = append(vs,
-		ejVector{Name: "tiecap64-ui25", SampleS: sampleS, Records: nrz(8, bits, 25, w(2.5), rj),
-			Opts: map[string]int{"tieCap": 64}, opts: EyeJitterOptions{TIECap: 64}},
-		ejVector{Name: "small-eye-ui16", SampleS: sampleS, Records: nrz(8, bits, 16, w(2), nil),
-			Opts: map[string]int{"eyeW": 64, "eyeH": 32, "fftN": 256}, opts: EyeJitterOptions{EyeW: 64, EyeH: 32, FFTN: 256}})
+		ejVector{
+			Name: "tiecap64-ui25", SampleS: sampleS, Records: nrz(8, bits, 25, w(2.5), rj),
+			Opts: map[string]int{"tieCap": 64}, opts: EyeJitterOptions{TIECap: 64},
+		},
+		ejVector{
+			Name: "small-eye-ui16", SampleS: sampleS, Records: nrz(8, bits, 16, w(2), nil),
+			Opts: map[string]int{"eyeW": 64, "eyeH": 32, "fftN": 256}, opts: EyeJitterOptions{EyeW: 64, EyeH: 32, FFTN: 256},
+		})
 	return vs
 }
 

@@ -282,11 +282,13 @@ func TestStreamRecordCaptures(t *testing.T) {
 					}
 					if !ok || want != frameKey(f) {
 						near := ""
+						var nearSb285 strings.Builder
 						for _, tf := range truth {
 							if tf.I1+2000 > uint64(pos)+f.I0 && tf.I0 < uint64(pos)+f.I1+2000 {
-								near += fmt.Sprintf(" [%d..%d %q]", int64(tf.I0)-int64(pos), int64(tf.I1)-int64(pos), frameKey(tf))
+								nearSb285.WriteString(fmt.Sprintf(" [%d..%d %q]", int64(tf.I0)-int64(pos), int64(tf.I1)-int64(pos), frameKey(tf)))
 							}
 						}
+						near += nearSb285.String()
 						t.Fatalf("record at %d: frame at %d..%d %q, the whole signal %q (%v); near:%s", pos, f.I0, f.I1, frameKey(f), want, ok, near)
 					}
 					got++
@@ -401,7 +403,7 @@ func TestStreamDecoderGapFree(t *testing.T) {
 			if c.frames > 0 {
 				frames = c.frames
 			}
-			for i := 0; i < frames; i++ {
+			for i := range frames {
 				c.gen(fine, i, rng)
 			}
 			fine.add(idle[0], idle[1], 2*quiet+longest)
@@ -497,7 +499,7 @@ func TestStreamDecoderStartedInsideAFrame(t *testing.T) {
 			if c.frames > 0 {
 				frames = min(frames, c.frames)
 			}
-			for i := 0; i < frames; i++ {
+			for i := range frames {
 				c.gen(fine, i, rng)
 			}
 			fine.add(idle[0], idle[1], 2*quiet+longest)

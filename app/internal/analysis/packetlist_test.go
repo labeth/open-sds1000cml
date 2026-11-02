@@ -3,10 +3,9 @@ package analysis
 
 import (
 	"fmt"
+	"open-sds/app/internal/decode"
 	"strings"
 	"testing"
-
-	"open-sds/app/internal/decode"
 )
 
 // captures decodes windows of a long UART stream at moving offsets, as a
@@ -17,13 +16,13 @@ func captures(t *testing.T, msgs [][]byte, repeat, n, count int) [][]Packet {
 	t.Helper()
 	const spb = 8
 	var all [][]byte
-	for i := 0; i < repeat; i++ {
+	for range repeat {
 		all = append(all, msgs...)
 	}
 	w := uartMsgs(all, spb, 40, 25, 40)
 	ct := 1.0 / (spb * 115200.0)
 	var out [][]Packet
-	for c := 0; c < count; c++ {
+	for c := range count {
 		off := (c * 7919 * spb) % (len(w) - n)
 		r := decode.DecodeUART(w[off:off+n], ct, decode.UARTCfg{Baud: 115200})
 		out = append(out, Packets(r, n))
@@ -157,8 +156,10 @@ func TestPacketListSelectAndFind(t *testing.T) {
 		}
 		return p
 	}
-	ps := []Packet{mk(0, "Hi U\x55\xaa", -1), mk(100, "status", -1), mk(200, "x\x55\xaay", -1),
-		mk(300, "status", -1), mk(400, "z\x55\xaa", 1), mk(500, "\x55\xaa!", -1)}
+	ps := []Packet{
+		mk(0, "Hi U\x55\xaa", -1), mk(100, "status", -1), mk(200, "x\x55\xaay", -1),
+		mk(300, "status", -1), mk(400, "z\x55\xaa", 1), mk(500, "\x55\xaa!", -1),
+	}
 	var l PacketList
 	if !l.Update(ps) || l.Selected() != 0 {
 		t.Fatalf("first rows: selected %d", l.Selected())
@@ -190,8 +191,11 @@ func TestPacketListSelectAndFind(t *testing.T) {
 	// the live capture holds "status" twice at other places; the selected row
 	// (row 3, the second "status") maps to the live packet nearest its place
 	l.Select(3)
-	live := []Packet{mk(5, "x\x55\xaay", -1), mk(105, "status", -1), {I0: 150, Bytes: []byte("status")},
-		mk(205, "Hi U\x55\xaa", -1), mk(305, "\x55\xaa!", -1), mk(405, "status", -1)}
+	live := []Packet{
+		mk(5, "x\x55\xaay", -1), mk(105, "status", -1),
+		{I0: 150, Bytes: []byte("status")},
+		mk(205, "Hi U\x55\xaa", -1), mk(305, "\x55\xaa!", -1), mk(405, "status", -1),
+	}
 	if got := l.SelectedIn(live); got != 5 {
 		t.Errorf("SelectedIn = %d, want 5 (the incomplete copy does not count)", got)
 	}
@@ -216,8 +220,10 @@ func TestPacketListSelectAndFind(t *testing.T) {
 // direction, fault and flagged bytes, not by position.
 // TRLC-LINKS: REQ-SDS-214
 func TestPacketListContent(t *testing.T) {
-	base := Packet{I0: 10, I1: 90, Bytes: []byte{1, 2}, ByteErr: []bool{false, false}, Addr: 0x24, HasAddr: true,
-		Complete: true}
+	base := Packet{
+		I0: 10, I1: 90, Bytes: []byte{1, 2}, ByteErr: []bool{false, false}, Addr: 0x24, HasAddr: true,
+		Complete: true,
+	}
 	moved := base
 	moved.I0, moved.I1 = 500, 580
 	if contentKey(base) != contentKey(moved) {
@@ -252,7 +258,7 @@ func TestPacketListContent(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-214
 func BenchmarkPacketListUpdate(b *testing.B) {
 	var ps []Packet
-	for i := 0; i < 200; i++ {
+	for i := range 200 {
 		s := fmt.Sprintf("message %d", i%20)
 		ps = append(ps, Packet{I0: i * 100, I1: i*100 + 90, Bytes: []byte(s), ByteErr: make([]bool, len(s)), Complete: true})
 	}

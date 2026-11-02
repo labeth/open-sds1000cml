@@ -173,9 +173,11 @@ func TestOracleIRRC6(t *testing.T) {
 	flush := func() {
 		if len(frame) > 0 {
 			rest := ""
+			var restSb176 strings.Builder
 			for _, v := range frame[1:] {
-				rest += fmt.Sprintf("%02X", v)
+				restSb176.WriteString(fmt.Sprintf("%02X", v))
 			}
+			rest += restSb176.String()
 			repo = append(repo, fmt.Sprintf("A%02X", frame[0]), "D"+strings.TrimLeft(rest, "0"))
 		}
 		frame = nil

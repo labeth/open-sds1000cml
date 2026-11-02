@@ -27,7 +27,7 @@ func physDetectCases() []detectCase {
 		w := newTimeline(2e6)
 		w.add(0, 30e-6)
 		var d []float64
-		for i := 0; i < 24; i++ {
+		for i := range 24 {
 			d = append(d, 0.3+0.4*float64(i%7)/6)
 		}
 		pwmWave(w, 100e-6, d)
@@ -44,7 +44,7 @@ func physDetectCases() []detectCase {
 	{
 		w := newTimeline(100e3)
 		w.add(0, 20e-3)
-		for i := 0; i < 2; i++ {
+		for range 2 {
 			oregonBurst(w, 3, []int{0xF, 0x8, 0x2, 0x4, 0x1, 0x3, 0xA, 0x0, 0x5, 0x3, 0x2, 0x0, 0x4, 0x5, 0x0}, 1/2048.0, false, 40e-3)
 		}
 		one("Oregon OOK", "ook", 100e3, w)
@@ -94,7 +94,7 @@ func physDetectCases() []detectCase {
 	{
 		w := newTimeline(500e3)
 		w.add(1, 768e-6)
-		for i := 0; i < 3; i++ {
+		for range 3 {
 			em4100Frame(w, [5]int{0x01, 0x23, 0x45, 0x67, 0x89}, 256e-6, false)
 		}
 		one("EM4100", "em4100", 500e3, w)
@@ -179,7 +179,7 @@ func physDetectCases() []detectCase {
 		l := newTwoLine(1e6)
 		l.add(0, 0, 300e-6)
 		var moves []int
-		for i := 0; i < 30; i++ {
+		for range 30 {
 			moves = append(moves, 1)
 		}
 		quadMoves(l, moves, 100e-6, 1e-3)
@@ -189,7 +189,7 @@ func physDetectCases() []detectCase {
 		l := newTwoLine(1e6)
 		l.add(0, 1, 300e-6)
 		dirs := make([]byte, 0, 30)
-		for i := 0; i < 30; i++ {
+		for i := range 30 {
 			dirs = append(dirs, byte(i/15))
 		}
 		stepperMoves(l, dirs, 200e-6, 1e-3)
@@ -198,8 +198,10 @@ func physDetectCases() []detectCase {
 	{
 		l := newTwoLine(4e6)
 		var bits []int
-		for _, t := range [][]int{sdIdle(16), sdToken(true, 17, 0x1000, false), sdIdle(4), sdToken(false, 17, 0x900, false),
-			sdIdle(16), sdToken(true, 13, 0x12340000, false), sdIdle(4), sdToken(false, 13, 0x900, false), sdIdle(16)} {
+		for _, t := range [][]int{
+			sdIdle(16), sdToken(true, 17, 0x1000, false), sdIdle(4), sdToken(false, 17, 0x900, false),
+			sdIdle(16), sdToken(true, 13, 0x12340000, false), sdIdle(4), sdToken(false, 13, 0x900, false), sdIdle(16),
+		} {
 			bits = append(bits, t...)
 		}
 		clockBits(l, bits, 4e-6)
@@ -217,7 +219,7 @@ func physDetectCases() []detectCase {
 	}
 	{
 		c := &cjtagLine{l: newTwoLine(2e6), per: 4e-6}
-		for i := 0; i < 4; i++ {
+		for range 4 {
 			c.rise(0)
 		}
 		c.escape(6)
@@ -233,7 +235,7 @@ func physDetectCases() []detectCase {
 		m := &mapleLine{l: newTwoLine(20e6), st: 250e-9}
 		m.set(1, 1)
 		m.frame(mapleBytes(0x20, 0x00, 0x01, nil, false))
-		for i := 0; i < 20; i++ {
+		for range 20 {
 			m.set(1, 1)
 		}
 		m.frame(mapleBytes(0x00, 0x20, 0x05, []int{0x00, 0x00, 0x00, 0x01}, false))
@@ -243,7 +245,7 @@ func physDetectCases() []detectCase {
 	{
 		l := newTwoLine(200e3)
 		l.add(0, 0, 20e-3)
-		for i := 0; i < 3; i++ {
+		for i := range 3 {
 			caliperFrame(l, 1234+i, false, false, 80e-6, 30e-3)
 		}
 		two("Caliper", "caliper", 200e3, l)
@@ -310,7 +312,7 @@ func TestAutodetectPhysStealsNothing(t *testing.T) {
 	}
 	// a clock, and the same clock on both channels
 	w := newTimeline(10e6)
-	for i := 0; i < 200; i++ {
+	for range 200 {
 		w.add(1, 1e-6)
 		w.add(0, 1e-6)
 	}
@@ -322,7 +324,7 @@ func TestAutodetectPhysStealsNothing(t *testing.T) {
 	}
 	// Manchester data
 	bits := []int{1, 0, 1, 0, 1, 0, 1, 1}
-	for i := 0; i < 64; i++ {
+	for i := range 64 {
 		bits = append(bits, (i*7+3)%5&1)
 	}
 	w = newTimeline(4e6)

@@ -4,13 +4,12 @@ package panel
 import (
 	"fmt"
 	"math"
+	"open-sds/app/internal/analog"
+	"open-sds/app/internal/engine"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
-
-	"open-sds/app/internal/analog"
-	"open-sds/app/internal/engine"
 )
 
 // Run is the panel event loop: SIGIO (knobs + buttons, rate-capped ~150 Hz)
@@ -125,9 +124,9 @@ func (c *Controller) decode(m [5]uint16, knobsOn bool) {
 		c.prev, c.havePrev = m, true
 		return
 	}
-	for i := 0; i < 4; i++ {
+	for i := range 4 {
 		pressed := (c.prev[i] &^ m[i]) &^ uint16(knobPhaseMask)
-		for bit := 0; bit < 16; bit++ {
+		for bit := range 16 {
 			if pressed&(1<<uint(bit)) != 0 && !c.noteInput(true) { // a key that wakes the screen does nothing else
 				c.lcdButton(bcode(i, bit))
 			}

@@ -4,17 +4,16 @@ package web
 import (
 	"math"
 	"net/http/httptest"
+	"open-sds/app/internal/analog"
+	"open-sds/app/internal/engine"
+	"open-sds/app/internal/panel"
+	"open-sds/app/internal/testenv"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
-
-	"open-sds/app/internal/analog"
-	"open-sds/app/internal/engine"
-	"open-sds/app/internal/panel"
-	"open-sds/app/internal/testenv"
 )
 
 // ---------------------------------------------------------------------------
@@ -85,7 +84,7 @@ func (z *fuzzScope) frameLocked() *engine.Frame {
 	c1 := make([]uint8, fuzzN)
 	c2 := make([]uint8, fuzzN)
 	ph := float64(z.seq) * 0.05
-	for i := 0; i < fuzzN; i++ {
+	for i := range fuzzN {
 		c1[i] = uint8(128 + 60*math.Sin(2*math.Pi*8*float64(i)/fuzzN+ph))
 		c2[i] = uint8(128 + 40*math.Sin(2*math.Pi*3*float64(i)/fuzzN))
 	}

@@ -37,8 +37,10 @@ func (b *qualBus) RawWrite(s, v uint16) error {
 func TestQualifierAndZoneRegisters(t *testing.T) {
 	b := &qualBus{block: true, writes: map[uint16]uint16{}}
 	c := &Capture{bus: b}
-	q := QualifierConfig{Enabled: true, Kind: QualSlope, Channel: 1, Negative: true, Cond: QualBetween,
-		MinTicks: 0x2345, MaxTicks: 0x789a, Prescale: 8, LevelA: 0x40, LevelB: 0xc0}
+	q := QualifierConfig{
+		Enabled: true, Kind: QualSlope, Channel: 1, Negative: true, Cond: QualBetween,
+		MinTicks: 0x2345, MaxTicks: 0x789a, Prescale: 8, LevelA: 0x40, LevelB: 0xc0,
+	}
 	if err := q.validate(); err != nil {
 		t.Fatal(err)
 	}
@@ -79,8 +81,10 @@ func TestQualifierAndZoneRegisters(t *testing.T) {
 	if err := c.configureZones(10, z); err != nil {
 		t.Fatal(err)
 	}
-	want = map[uint16]uint16{84: 314, 85: 7, 86: 220<<8 | 180, 90: uint16(0x800 - 625), 70: uint16(0x800 - 156),
-		89: 60 << 8, 69: 78, 73: 313, 83: 1 | 1<<3 | 1<<7 | 1<<11}
+	want = map[uint16]uint16{
+		84: 314, 85: 7, 86: 220<<8 | 180, 90: uint16(0x800 - 625), 70: uint16(0x800 - 156),
+		89: 60 << 8, 69: 78, 73: 313, 83: 1 | 1<<3 | 1<<7 | 1<<11,
+	}
 	for s, v := range want {
 		if b.writes[s] != v {
 			t.Fatalf("zone register %d = %#x, want %#x", s, b.writes[s], v)

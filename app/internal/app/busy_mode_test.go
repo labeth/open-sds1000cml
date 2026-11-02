@@ -3,10 +3,9 @@ package app
 
 import (
 	"bytes"
-	"testing"
-
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/lcd"
+	"testing"
 )
 
 // While the engine loads (a full record, an image) the display draws the

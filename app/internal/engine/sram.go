@@ -144,11 +144,11 @@ type sramFrameWriter struct {
 // TRLC-LINKS: REQ-SDS-040
 func (w *sramFrameWriter) Write(b []byte) (int, error) {
 	if len(b)%4 != 0 {
-		return 0, fmt.Errorf("unaligned SRAM payload")
+		return 0, errors.New("unaligned SRAM payload")
 	}
 	samples := len(b) / 4 * int(w.m.SamplesPerWord)
 	if w.n+samples > w.f.Valid {
-		return 0, fmt.Errorf("SRAM payload exceeds frame")
+		return 0, errors.New("SRAM payload exceeds frame")
 	}
 	if !(w.m.FractionBits == 8 && w.m.SamplesPerWord == 1 || w.m.FractionBits != 8 && w.m.SamplesPerWord == 2) {
 		return w.writeWords(b) // a layout other than the capture's two
@@ -190,10 +190,7 @@ func (w *sramFrameWriter) writeWords(b []byte) (int, error) {
 
 // TRLC-LINKS: REQ-SDS-040
 func roundQ8(x uint16) uint8 {
-	v := (uint32(x) + 128) >> 8
-	if v > 255 {
-		v = 255
-	}
+	v := min((uint32(x)+128)>>8, 255)
 	return uint8(v)
 }
 
@@ -377,9 +374,11 @@ func (e *Engine) sramConfigInto(c *sramcapture.Config) (SRAMPlan, float64, bool,
 		if pre >= words {
 			pre = words - 1
 		}
-		*c = sramcapture.Config{Source: sramcapture.ADC, DecimationLog2: p.Log, PreWords: pre, PostWords: words - pre,
+		*c = sramcapture.Config{
+			Source: sramcapture.ADC, DecimationLog2: p.Log, PreWords: pre, PostWords: words - pre,
 			Normal: tp.typ == TrigEdge && e.serialMode.Load() != SerialTrigger, Falling: !e.trigRising.Load(),
-			TriggerChannel: uint8(e.trigSrc.Load()), TriggerLevel: uint8(e.trigLevelWord())}
+			TriggerChannel: uint8(e.trigSrc.Load()), TriggerLevel: uint8(e.trigLevelWord()),
+		}
 		if (e.hardwareUART || e.hardwareI2C || e.hardwareSPI || e.hardwareSENT || e.hardwareMIL1553 || e.hardwareUSBLS || e.hardwareManchester || e.hardwarePacket != 0 || e.hardwareSymbol) && e.serialMode.Load() == SerialTrigger {
 			e.ser.mu.Lock()
 			serial := e.ser.params
@@ -953,7 +952,7 @@ acquisitionLoop:
 					e.busErr(haltErr)
 				}
 				if m.DataFault {
-					e.busErr(fmt.Errorf("SRAM acquisition FIFO overflow"))
+					e.busErr(errors.New("SRAM acquisition FIFO overflow"))
 				}
 				continue
 			}
@@ -1029,9 +1028,11 @@ acquisitionLoop:
 		f := e.arena.Write()
 		q1, q2 := f.Q1, f.Q2
 		c1, c2 := f.C1, f.C2
-		*f = Frame{C1: c1, C2: c2, Valid: int(recallWords) * int(m.SamplesPerWord), WinCols: plan.Screen, SampleS: 1 / m.SampleRateHz, TdivS: tdiv, DisplayedS: math.Min(tdiv, float64(plan.Samples)*plan.SampleS/10),
+		*f = Frame{
+			C1: c1, C2: c2, Valid: int(recallWords) * int(m.SamplesPerWord), WinCols: plan.Screen, SampleS: 1 / m.SampleRateHz, TdivS: tdiv, DisplayedS: math.Min(tdiv, float64(plan.Samples)*plan.SampleS/10),
 			EdgeX: float64(m.TriggerIndex-recallOffset) * float64(m.SamplesPerWord), TrigPos: int(m.TriggerIndex-recallOffset) * int(m.SamplesPerWord),
-			Trigd: m.Triggered && (cfg.Normal || m.HostTrigger) && !forced, Coherent: true, HaltOK: true, Norm: norm, Interp: plan.Screen < 800, Decimation: m.Decimation, TriggerKind: "hardware-edge"}
+			Trigd: m.Triggered && (cfg.Normal || m.HostTrigger) && !forced, Coherent: true, HaltOK: true, Norm: norm, Interp: plan.Screen < 800, Decimation: m.Decimation, TriggerKind: "hardware-edge",
+		}
 		f.CaptureDepth = int(m.Length) * int(m.SamplesPerWord)
 		if !f.Trigd {
 			f.TriggerKind = "forced"
@@ -1125,7 +1126,7 @@ acquisitionLoop:
 		}
 		if err != nil || writer.n != f.Valid {
 			if err == nil {
-				err = fmt.Errorf("short SRAM frame")
+				err = errors.New("short SRAM frame")
 			}
 			e.busErr(err)
 			continue
@@ -1249,7 +1250,7 @@ acquisitionLoop:
 				if length > 1 {
 					if len(f.Q1) != f.Valid {
 						f.Q1, f.Q2 = qBuffer(q1, f.Valid), qBuffer(q2, f.Valid)
-						for i := 0; i < f.Valid; i++ {
+						for i := range f.Valid {
 							f.Q1[i], f.Q2[i] = uint16(f.C1[i])<<8, uint16(f.C2[i])<<8
 						}
 					}
@@ -1452,7 +1453,7 @@ acquisitionLoop:
 			}
 			if len(f.Q1) != f.Valid {
 				f.Q1, f.Q2 = qBuffer(q1, f.Valid), qBuffer(q2, f.Valid)
-				for i := 0; i < f.Valid; i++ {
+				for i := range f.Valid {
 					f.Q1[i], f.Q2[i] = uint16(f.C1[i])<<8, uint16(f.C2[i])<<8
 				}
 			}

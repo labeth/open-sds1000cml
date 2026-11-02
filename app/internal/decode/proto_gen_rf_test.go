@@ -34,7 +34,7 @@ func rcFrame2262(w *timeline, trits []int, a float64) {
 // short pulse of a seconds, then its sync.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-251
 func rcFrame1527(w *timeline, v int, a float64) {
-	for i := 0; i < 24; i++ {
+	for i := range 24 {
 		if v>>i&1 == 1 {
 			w.add(1, 3*a)
 			w.add(0, a)
@@ -81,7 +81,7 @@ func oregonBurst(w *timeline, ver int, nibbles []int, hp float64, minus10 bool, 
 	}
 	bits = append(bits, 0, 1, 0, 1)
 	for _, x := range nib {
-		for k := 0; k < 4; k++ {
+		for k := range 4 {
 			bits = append(bits, x>>k&1)
 		}
 	}
@@ -141,7 +141,7 @@ func millerMessage(w *timeline, bits []int, T, pause, idle float64) {
 // morseText appends text keyed in Morse at a unit of u seconds (a word gap
 // for a space), then idle units of rest.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-251
-func morseText(w *timeline, text string, u float64, rest float64) {
+func morseText(w *timeline, text string, u, rest float64) {
 	for i := 0; i < len(text); i++ {
 		c := text[i]
 		if c == ' ' {
@@ -179,7 +179,7 @@ func dcf77MinuteAt(w *timeline, sec float64, min, hr, day, dow, mon, yr int, bad
 	var b [59]int
 	b[20] = 1
 	put := func(at, wd, v int) {
-		for q := 0; q < wd; q++ {
+		for q := range wd {
 			b[at+q] = v >> q & 1
 		}
 	}
@@ -202,7 +202,7 @@ func dcf77MinuteAt(w *timeline, sec float64, min, hr, day, dow, mon, yr int, bad
 	}
 	b[35] = par(29, 34)
 	b[58] = par(36, 57)
-	for s := 0; s < 59; s++ {
+	for s := range 59 {
 		hi := 0.1
 		if b[s] == 1 {
 			hi = 0.2

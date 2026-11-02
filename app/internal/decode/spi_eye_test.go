@@ -100,7 +100,8 @@ func TestSampleSPIRuntPulse(t *testing.T) {
 func flash104Records(t *testing.T) (r []struct {
 	TdivS  float64 `json:"tdiv_s"`
 	C1, C2 []uint8
-}) {
+},
+) {
 	t.Helper()
 	f, err := os.Open(filepath.Join("testdata", "spi_flash104_records.json.gz"))
 	if err != nil {

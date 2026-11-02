@@ -2,12 +2,11 @@
 package web
 
 import (
-	"os"
-	"testing"
-
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/panel"
 	"open-sds/app/internal/testenv"
+	"os"
+	"testing"
 )
 
 // framedRig is the remote rig whose engine serves a square on C1 and a
@@ -36,8 +35,10 @@ func framedRig(t *testing.T) *remoteRig {
 					}
 				}
 				tdiv := f.stats.TdivS
-				return &engine.Frame{C1: c1, C2: c2, Seq: seq, Valid: n, WinCols: n, EdgeX: n / 2, TdivS: tdiv, DisplayedS: tdiv,
-					SampleS: tdiv * 10 / n, Trigd: true, Coherent: true}
+				return &engine.Frame{
+					C1: c1, C2: c2, Seq: seq, Valid: n, WinCols: n, EdgeX: n / 2, TdivS: tdiv, DisplayedS: tdiv,
+					SampleS: tdiv * 10 / n, Trigd: true, Coherent: true,
+				}
 			}
 			f.mu.Unlock()
 		})

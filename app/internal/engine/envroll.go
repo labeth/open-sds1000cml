@@ -2,9 +2,8 @@
 package engine
 
 import (
-	"time"
-
 	"open-sds/app/internal/iface"
+	"time"
 )
 
 // Slow-envelope and roll band paths (spec 04). Both display a per-column
@@ -205,7 +204,7 @@ func (e *Engine) envPush(f *Frame, off, n int) {
 func (e *Engine) envReduce(f *Frame) {
 	reduce := func(ring [][]uint8, mn, mx []uint8) {
 		var seen [envDisplayCols]bool
-		for c := 0; c < envDisplayCols; c++ {
+		for c := range envDisplayCols {
 			mn[c], mx[c] = 0xff, 0
 		}
 		for r := 0; r < e.envRingCnt; r++ {
@@ -233,7 +232,7 @@ func (e *Engine) envReduce(f *Frame) {
 			}
 		}
 		last := -1
-		for c := 0; c < envDisplayCols; c++ {
+		for c := range envDisplayCols {
 			if seen[c] {
 				last = c
 				continue
@@ -244,7 +243,7 @@ func (e *Engine) envReduce(f *Frame) {
 		}
 		// Leading never-seen columns copy the first seen one.
 		first := -1
-		for c := 0; c < envDisplayCols; c++ {
+		for c := range envDisplayCols {
 			if seen[c] {
 				first = c
 				break
@@ -294,10 +293,7 @@ func (e *Engine) rollBringUp() {
 // return stale samples.
 // TRLC-LINKS: REQ-SDS-010
 func (e *Engine) rollPop(max int) int {
-	n := int(e.r(iface.SelBurstRemain) & iface.BurstRemainRemainMask)
-	if n > max {
-		n = max
-	}
+	n := min(int(e.r(iface.SelBurstRemain)&iface.BurstRemainRemainMask), max)
 	if n <= 0 {
 		return 0
 	}
@@ -323,7 +319,7 @@ func (e *Engine) rollUpdate(norm bool) {
 			return // bail unpublished; the ring keeps streaming (that is safe)
 		}
 		n := e.rollPop(rollBatch - got)
-		for i := 0; i < n; i++ {
+		for i := range n {
 			e.rollRing1[e.rollPos] = e.rollBuf1[i]
 			e.rollRing2[e.rollPos] = e.rollBuf2[i]
 			e.rollPos = (e.rollPos + 1) % rollWin
@@ -349,7 +345,7 @@ func (e *Engine) rollUpdate(norm bool) {
 	// Copy the ring in scroll order (oldest first) into the frame, snapshot
 	// it, and reduce the snapshot deque to the 800-column band.
 	f := e.arena.Write()
-	for i := 0; i < rollWin; i++ {
+	for i := range rollWin {
 		j := (e.rollPos + i) % rollWin
 		f.C1[i] = e.rollRing1[j]
 		f.C2[i] = e.rollRing2[j]
@@ -411,7 +407,7 @@ func (e *Engine) rollSnap(f *Frame) {
 // TRLC-LINKS: REQ-SDS-012
 func (e *Engine) rollReduce(f *Frame) {
 	reduce := func(snaps [][]uint8, mn, mx []uint8) {
-		for c := 0; c < envDisplayCols; c++ {
+		for c := range envDisplayCols {
 			mn[c], mx[c] = 0xff, 0
 		}
 		for _, s := range snaps {
@@ -436,7 +432,7 @@ func (e *Engine) rollReduce(f *Frame) {
 		// mid-line, never a false 0-rail bar.
 		gmn, gmx := uint8(0xff), uint8(0)
 		thin := 0
-		for c := 0; c < envDisplayCols; c++ {
+		for c := range envDisplayCols {
 			if mx[c] >= mn[c] { // seen
 				if mn[c] < gmn {
 					gmn = mn[c]
@@ -450,11 +446,11 @@ func (e *Engine) rollReduce(f *Frame) {
 			}
 		}
 		if gmx > gmn && int(gmx)-int(gmn) >= nativeEdgeMinPtp && thin > envDisplayCols/3 {
-			for c := 0; c < envDisplayCols; c++ {
+			for c := range envDisplayCols {
 				mn[c], mx[c] = gmn, gmx
 			}
 		} else {
-			for c := 0; c < envDisplayCols; c++ {
+			for c := range envDisplayCols {
 				if mn[c] > mx[c] { // never-seen
 					mn[c], mx[c] = 128, 128
 				}

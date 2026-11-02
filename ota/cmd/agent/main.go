@@ -16,13 +16,13 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"os"
-	"os/signal"
-	"syscall"
-
 	"open-sds/ota/internal/agent"
 	"open-sds/ota/internal/buildinfo"
 	"open-sds/ota/internal/config"
+	"os"
+	"os/signal"
+	"slices"
+	"syscall"
 )
 
 // TRLC-LINKS: REQ-SDS-124
@@ -67,12 +67,7 @@ func main() {
 
 // TRLC-LINKS: REQ-SDS-124
 func hasFlag(f string) bool {
-	for _, a := range os.Args[2:] {
-		if a == f {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(os.Args[2:], f)
 }
 
 const usage = `open-sds OTA agent

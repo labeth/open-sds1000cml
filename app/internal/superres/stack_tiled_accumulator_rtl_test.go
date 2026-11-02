@@ -51,13 +51,13 @@ func TestStackTiledAccumulatorRTL(t *testing.T) {
 				odd := h % 2
 				fmt.Fprintf(&input, "2 %d %d %d %d %d %d 8\n", p, first, delta, factor, mask, odd)
 				hits++
-				for b := int64(0); b < 8; b++ {
+				for b := range int64(8) {
 					pos := (p << 24) + delta + ((first+b)<<24)/factor
 					if pos < 0 || pos>>24 >= 31 {
 						continue
 					}
 					idx, frac := pos>>24, pos&((1<<24)-1)
-					for ch := 0; ch < 2; ch++ {
+					for ch := range 2 {
 						if mask&(1<<ch) == 0 {
 							continue
 						}
@@ -84,13 +84,13 @@ func TestStackTiledAccumulatorRTL(t *testing.T) {
 			}
 		}
 	}
-	for ch := 0; ch < 2; ch++ {
+	for ch := range 2 {
 		fmt.Fprintf(&input, "1 31 %d\n", ch)
 		expected = append(expected, FPGAStackMoments{})
 	}
 	dir := t.TempDir()
 	p := filepath.Join(dir, "input.txt")
-	if err := os.WriteFile(p, []byte(input.String()), 0600); err != nil {
+	if err := os.WriteFile(p, []byte(input.String()), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	image := compileStackRTL(t, dir, "tb_stack_tiled_accumulator", "stack_tiled_accumulator.v", "stack_tile_access.v", "stack_tile_transfer.v", "stack_state_tile.v", "stack_resample_store.v", "stack_resample.v", "stack_positions.v", "stack_interpolate.v", "stack_accumulate.v", "stack_bin_writer.v", "sim/tb_stack_tiled_accumulator.v")
@@ -99,7 +99,7 @@ func TestStackTiledAccumulatorRTL(t *testing.T) {
 		t.Fatalf("simulation %v\n%s", err, out)
 	}
 	n := 0
-	for _, line := range strings.Split(string(out), "\n") {
+	for line := range strings.SplitSeq(string(out), "\n") {
 		if !strings.HasPrefix(line, "S ") {
 			continue
 		}

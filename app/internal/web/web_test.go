@@ -7,10 +7,9 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"open-sds/app/internal/engine"
 	"sync"
 	"testing"
-
-	"open-sds/app/internal/engine"
 )
 
 // fakeScope records setter calls and serves a canned frame. Status-visible
@@ -453,7 +452,7 @@ func (f *fakeScope) SetTdiv(s float64) (engine.Band, bool) {
 func post(t *testing.T, s *Server, control string, value float64) map[string]any {
 	t.Helper()
 	body, _ := json.Marshal(map[string]any{"control": control, "value": value})
-	req := httptest.NewRequest("POST", "/api/set", bytes.NewReader(body))
+	req := httptest.NewRequest(http.MethodPost, "/api/set", bytes.NewReader(body))
 	rec := httptest.NewRecorder()
 	s.Handler().ServeHTTP(rec, req)
 	var out map[string]any
@@ -466,7 +465,7 @@ func post(t *testing.T, s *Server, control string, value float64) map[string]any
 // TRLC-LINKS: REQ-SDS-164
 func getStatus(t *testing.T, s *Server) map[string]any {
 	t.Helper()
-	req := httptest.NewRequest("GET", "/api/status", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/status", nil)
 	rec := httptest.NewRecorder()
 	s.Handler().ServeHTTP(rec, req)
 	var rep map[string]any
@@ -480,7 +479,7 @@ func getStatus(t *testing.T, s *Server) map[string]any {
 func TestStatusEndpoint(t *testing.T) {
 	fs := &fakeScope{stats: engine.Stats{Frames: 5, TrigCode: 31437}}
 	s := New(fs, nil, nil, nil)
-	req := httptest.NewRequest("GET", "/api/status", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/status", nil)
 	rec := httptest.NewRecorder()
 	s.Handler().ServeHTTP(rec, req)
 	var rep map[string]any
@@ -501,7 +500,7 @@ func TestStatusEndpoint(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-161
 func TestRootServesUI(t *testing.T) {
 	s := New(&fakeScope{}, nil, nil, nil)
-	req := httptest.NewRequest("GET", "/", nil)
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 	s.Handler().ServeHTTP(rec, req)
 	if rec.Code != 200 || !bytes.Contains(rec.Body.Bytes(), []byte("open-sds1000cml")) {
@@ -517,13 +516,13 @@ func TestRootServesUI(t *testing.T) {
 func TestClaimSupersedesEarlierRun(t *testing.T) {
 	s := New(&fakeScope{}, nil, nil, nil)
 	req := func(e uint64) *http.Request {
-		return httptest.NewRequest("GET", fmt.Sprintf("/api/frame.bin?epoch=%d", e), nil)
+		return httptest.NewRequest(http.MethodGet, fmt.Sprintf("/api/frame.bin?epoch=%d", e), nil)
 	}
 	if s.superseded(req(3)) {
 		t.Fatal("before any claim in this run, a page from before the restart was refused")
 	}
 	rr := httptest.NewRecorder()
-	s.Handler().ServeHTTP(rr, httptest.NewRequest("GET", "/api/claim", nil))
+	s.Handler().ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "/api/claim", nil))
 	var c struct{ Epoch uint64 }
 	if err := json.Unmarshal(rr.Body.Bytes(), &c); err != nil || c.Epoch <= 3 {
 		t.Fatalf("claim: %v %s", err, rr.Body.String())

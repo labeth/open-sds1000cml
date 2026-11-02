@@ -2,9 +2,8 @@
 package lcd
 
 import (
-	"testing"
-
 	"open-sds/app/internal/engine"
+	"testing"
 )
 
 // A frame with no crossing (forced in AUTO) shows the screen centred on the

@@ -3,9 +3,8 @@ package panel
 
 import (
 	"context"
-	"testing"
-
 	"open-sds/app/internal/engine"
+	"testing"
 )
 
 // fakeEng's web decoded capture: EndWebDecodedCapture ends it and counts the

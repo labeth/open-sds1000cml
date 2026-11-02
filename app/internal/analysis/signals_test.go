@@ -133,7 +133,7 @@ func uartBits(bytes []byte, idle []int) []int {
 	bits := []int{1, 1}
 	for f, b := range bytes {
 		bits = append(bits, 0)
-		for c := 0; c < 8; c++ {
+		for c := range 8 {
 			bits = append(bits, int(b>>c)&1)
 		}
 		bits = append(bits, 1)

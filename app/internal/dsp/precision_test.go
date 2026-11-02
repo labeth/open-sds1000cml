@@ -23,10 +23,7 @@ func TestPrecisionMatchesDirectConvolution(t *testing.T) {
 			for j, tap := range precisionTaps {
 				sum += int64(tap) * int64(original[i-PrecisionGuard+j])
 			}
-			v := (sum + (1 << 21)) >> 22
-			if v < 0 {
-				v = 0
-			}
+			v := max((sum+(1<<21))>>22, 0)
 			if v > 65535 {
 				v = 65535
 			}
@@ -191,7 +188,7 @@ func TestRoundQ8(t *testing.T) {
 		dst := make([]uint8, n+1)
 		dst[n] = 7
 		RoundQ8(dst[:n], src[:n])
-		for i := 0; i < n; i++ {
+		for i := range n {
 			if want := uint8(min((uint32(src[i])+128)>>8, 255)); dst[i] != want {
 				t.Fatalf("n %d sample %d (%d): %d, want %d", n, i, src[i], dst[i], want)
 			}
@@ -241,7 +238,7 @@ func TestSplitQ8(t *testing.T) {
 		c1, c2 := make([]uint8, n+1), make([]uint8, n+1)
 		q1[n], q2[n], c1[n], c2[n] = 9, 9, 9, 9
 		SplitQ8(q1[:n], q2[:n], c1[:n], c2[:n], b)
-		for k := 0; k < n; k++ {
+		for k := range n {
 			x, y := uint16(b[4*k])|uint16(b[4*k+1])<<8, uint16(b[4*k+2])|uint16(b[4*k+3])<<8
 			cx, cy := uint8(min((uint32(x)+128)>>8, 255)), uint8(min((uint32(y)+128)>>8, 255))
 			if q1[k] != x || q2[k] != y || c1[k] != cx || c2[k] != cy {
@@ -259,7 +256,7 @@ func TestSplitQ8(t *testing.T) {
 func TestMinMax8(t *testing.T) {
 	rng := rand.New(rand.NewSource(88))
 	buf := make([]uint8, 3000)
-	for k := 0; k < 2000; k++ {
+	for k := range 2000 {
 		for i := range buf {
 			buf[i] = uint8(100 + rng.Intn(20))
 		}

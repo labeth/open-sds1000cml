@@ -2,11 +2,10 @@
 package decode
 
 import (
+	"open-sds/app/internal/testenv"
 	"os"
 	"path/filepath"
 	"testing"
-
-	"open-sds/app/internal/testenv"
 )
 
 // generalPrecisionStub stands in for the vendor-FIFO precision filter in the
@@ -38,15 +37,26 @@ func TestGeneralImageDecimatedTopRTL(t *testing.T) {
 		t.Fatal(err)
 	}
 	general := compileWordsTop(t, dir, "general-decim", generalImageDefines+"`define PRECISION\n", "uart_trigger.v", "i2c_trigger.v", "spi_trigger.v", rel)
-	p := spiBus{rateHz: 5e6, msb: true, clockCh: 1, frames: [][]byte{benchFrame(0)[:12], benchFrame(1)[:12], benchFrame(2)[:12]},
-		idleS: 2e-6 + 3/5e6, riseS: 3e-9, noise: 1, seed: 7, shift: [2]float64{75, -60}}
+	p := spiBus{
+		rateHz: 5e6, msb: true, clockCh: 1, frames: [][]byte{benchFrame(0)[:12], benchFrame(1)[:12], benchFrame(2)[:12]},
+		idleS: 2e-6 + 3/5e6, riseS: 3e-9, noise: 1, seed: 7, shift: [2]float64{75, -60},
+	}
 	c := p.config()
 	c.Pattern, c.Length = 0x0b0010, 3
 	control := uint32(1 | c.ClockCh<<1 | int(b2u8(c.Inverted))<<2 | int(b2u8(c.CPOL))<<3 | int(b2u8(c.CPHA))<<4 | int(b2u8(c.MSB))<<5 | c.Length<<6)
 	first := -1
 	for _, log := range []uint32{0, 4, 8} {
-		regs := [][2]uint32{{18, log}, {7, uint32(c.Level) | 13<<8}, {59, uint32(c.DataLevel)}, {58, uint32(c.Delay) & 0xff},
-			{65, 38}, {66, 0}, {67, c.Pattern & 0xffff}, {68, c.Pattern >> 16}, {64, control}}
+		regs := [][2]uint32{
+			{18, log},
+			{7, uint32(c.Level) | 13<<8},
+			{59, uint32(c.DataLevel)},
+			{58, uint32(c.Delay) & 0xff},
+			{65, 38},
+			{66, 0},
+			{67, c.Pattern & 0xffff},
+			{68, c.Pattern >> 16},
+			{64, control},
+		}
 		_, _, trigger := runFastTop(t, dir, general, p.words(), regs, "+general", "+precision", "+pre=2", "+post=400")
 		if first < 0 {
 			first = trigger

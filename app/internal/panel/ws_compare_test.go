@@ -3,12 +3,11 @@ package panel
 
 import (
 	"math/rand"
+	"open-sds/app/internal/engine"
+	"open-sds/app/internal/panel/wsview"
 	"strings"
 	"testing"
 	"time"
-
-	"open-sds/app/internal/engine"
-	"open-sds/app/internal/panel/wsview"
 )
 
 // noiseFrame is a capture that does not repeat: a random C1.
@@ -39,7 +38,7 @@ func TestMasterRefusedWhileTheSourceDoesNotRepeat(t *testing.T) {
 	rng := rand.New(rand.NewSource(3))
 	press(t, c, "f5")
 	step := stabSpaced(c)
-	for i := 0; i < 8; i++ {
+	for range 8 {
 		step()
 		r.show(noiseFrame(rng))
 	}
@@ -62,7 +61,7 @@ func TestMasterStacksStoresAndTests(t *testing.T) {
 	c := r.c
 	r.eng.set(func(st *engine.Stats) { st.AvgCount = 4 })
 	press(t, c, "f5")
-	for i := 0; i < 8; i++ {
+	for range 8 {
 		r.show(toneFrame(""))
 	}
 	press(t, c, "f5")
@@ -168,7 +167,7 @@ func TestRepeatCaptionOutsideCompare(t *testing.T) {
 		t.Fatalf("before captures: %q", cap)
 	}
 	step := stabSpaced(c)
-	for i := 0; i < 8; i++ {
+	for range 8 {
 		step()
 		r.show(toneFrame(""))
 	}

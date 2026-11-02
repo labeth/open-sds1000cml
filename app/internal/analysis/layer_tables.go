@@ -18,10 +18,12 @@ var cc1101Regs = map[int]string{
 	0x37: "WORTIME0", 0x38: "PKTSTATUS", 0x39: "VCO_VC_DAC", 0x3A: "TXBYTES", 0x3B: "RXBYTES",
 	0x3C: "RCCTRL1_STATUS", 0x3D: "RCCTRL0_STATUS", 0x3E: "PATABLE", 0x3F: "FIFO",
 }
+
 var cc1101Strobes = map[int]string{
 	0x30: "SRES", 0x31: "SFSTXON", 0x32: "SXOFF", 0x33: "SCAL", 0x34: "SRX", 0x35: "STX", 0x36: "SIDLE",
 	0x38: "SWOR", 0x39: "SPWD", 0x3A: "SFRX", 0x3B: "SFTX", 0x3C: "SWORRST", 0x3D: "SNOP",
 }
+
 var nrf24Regs = map[int]string{
 	0x00: "CONFIG", 0x01: "EN_AA", 0x02: "EN_RXADDR", 0x03: "SETUP_AW", 0x04: "SETUP_RETR", 0x05: "RF_CH",
 	0x06: "RF_SETUP", 0x07: "STATUS", 0x08: "OBSERVE_TX", 0x09: "RPD", 0x0A: "RX_ADDR_P0", 0x0B: "RX_ADDR_P1",
@@ -29,9 +31,11 @@ var nrf24Regs = map[int]string{
 	0x11: "RX_PW_P0", 0x12: "RX_PW_P1", 0x13: "RX_PW_P2", 0x14: "RX_PW_P3", 0x15: "RX_PW_P4", 0x16: "RX_PW_P5",
 	0x17: "FIFO_STATUS", 0x1C: "DYNPD", 0x1D: "FEATURE",
 }
+
 var nrf24Size = map[int]int{
 	0x0A: 5, 0x0B: 5, 0x10: 5,
 }
+
 var enc28j60Bank0 = map[int]string{
 	0x00: "ERDPTL", 0x01: "ERDPTH", 0x02: "EWRPTL", 0x03: "EWRPTH", 0x04: "ETXSTL", 0x05: "ETXSTH",
 	0x06: "ETXNDL", 0x07: "ETXNDH", 0x08: "ERXSTL", 0x09: "ERXSTH", 0x0A: "ERXNDL", 0x0B: "ERXNDH",
@@ -40,6 +44,7 @@ var enc28j60Bank0 = map[int]string{
 	0x18: "-", 0x19: "-", 0x1A: "Reserved", 0x1B: "EIE", 0x1C: "EIR", 0x1D: "ESTAT", 0x1E: "ECON2",
 	0x1F: "ECON1",
 }
+
 var enc28j60Bank1 = map[int]string{
 	0x00: "EHT0", 0x01: "EHT1", 0x02: "EHT2", 0x03: "EHT3", 0x04: "EHT4", 0x05: "EHT5", 0x06: "EHT6",
 	0x07: "EHT7", 0x08: "EPMM0", 0x09: "EPMM1", 0x0A: "EPMM2", 0x0B: "EPMM3", 0x0C: "EPMM4", 0x0D: "EPMM5",
@@ -47,6 +52,7 @@ var enc28j60Bank1 = map[int]string{
 	0x15: "EPMOH", 0x16: "Reserved", 0x17: "Reserved", 0x18: "ERXFCON", 0x19: "EPKTCNT", 0x1A: "Reserved",
 	0x1B: "EIE", 0x1C: "EIR", 0x1D: "ESTAT", 0x1E: "ECON2", 0x1F: "ECON1",
 }
+
 var enc28j60Bank2 = map[int]string{
 	0x00: "MACON1", 0x01: "Reserved", 0x02: "MACON3", 0x03: "MACON4", 0x04: "MABBIPG", 0x05: "-",
 	0x06: "MAIPGL", 0x07: "MAIPGH", 0x08: "MACLCON1", 0x09: "MACLCON2", 0x0A: "MAMXFLL", 0x0B: "MAMXFLH",
@@ -54,6 +60,7 @@ var enc28j60Bank2 = map[int]string{
 	0x12: "MICMD", 0x13: "-", 0x14: "MIREGADR", 0x15: "Reserved", 0x16: "MIWRL", 0x17: "MIWRH", 0x18: "MIRDL",
 	0x19: "MIRDH", 0x1A: "Reserved", 0x1B: "EIE", 0x1C: "EIR", 0x1D: "ESTAT", 0x1E: "ECON2", 0x1F: "ECON1",
 }
+
 var enc28j60Bank3 = map[int]string{
 	0x00: "MAADR5", 0x01: "MAADR6", 0x02: "MAADR3", 0x03: "MAADR4", 0x04: "MAADR1", 0x05: "MAADR2",
 	0x06: "EBSTSD", 0x07: "EBSTCON", 0x08: "EBSTCSL", 0x09: "EBSTCSH", 0x0A: "MISTAT", 0x0B: "-", 0x0C: "-",
@@ -61,6 +68,7 @@ var enc28j60Bank3 = map[int]string{
 	0x16: "Reserved", 0x17: "EFLOCON", 0x18: "EPAUSL", 0x19: "EPAUSH", 0x1A: "Reserved", 0x1B: "EIE",
 	0x1C: "EIR", 0x1D: "ESTAT", 0x1E: "ECON2", 0x1F: "ECON1",
 }
+
 var mrf24Short = map[int]string{
 	0x00: "RXMCR", 0x01: "PANIDL", 0x02: "PANIDH", 0x03: "SADRL", 0x04: "SADRH", 0x05: "EADR0", 0x06: "EADR1",
 	0x07: "EADR2", 0x08: "EADR3", 0x09: "EADR4", 0x0A: "EADR5", 0x0B: "EADR6", 0x0C: "EADR7", 0x0D: "RXFLUSH",
@@ -74,6 +82,7 @@ var mrf24Short = map[int]string{
 	0x38: "BBREG0", 0x39: "BBREG1", 0x3A: "BBREG2", 0x3B: "BBREG3", 0x3C: "BBREG4", 0x3D: "Reserved",
 	0x3E: "BBREG6", 0x3F: "CCAEDTH",
 }
+
 var mrf24Long = map[int]string{
 	0x200: "RFCON0", 0x201: "RFCON1", 0x202: "RFCON2", 0x203: "RFCON3", 0x204: "Reserved", 0x205: "RFCON5",
 	0x206: "RFCON6", 0x207: "RFCON7", 0x208: "RFCON8", 0x209: "SLPCAL0", 0x20A: "SLPCAL1", 0x20B: "SLPCAL2",
@@ -91,6 +100,7 @@ var mrf24Long = map[int]string{
 	0x243: "UPNONCE3", 0x244: "UPNONCE4", 0x245: "UPNONCE5", 0x246: "UPNONCE6", 0x247: "UPNONCE7",
 	0x248: "UPNONCE8", 0x249: "UPNONCE9", 0x24A: "UPNONCE10", 0x24B: "UPNONCE11", 0x24C: "UPNONCE12",
 }
+
 var st25Cmds = map[int]string{
 	0xC0: "SET_DEFAULT", 0xC1: "SET_DEFAULT", 0xC2: "STOP", 0xC3: "STOP", 0xC4: "TXCRC", 0xC5: "TXNOCRC",
 	0xC6: "TXREQA", 0xC7: "TXWUPA", 0xC8: "NFCINITFON", 0xC9: "NFCRESFON", 0xCD: "GOIDLE", 0xCE: "GOHALT",
@@ -100,6 +110,7 @@ var st25Cmds = map[int]string{
 	0xE3: "STARNRESPTIM", 0xE4: "STARPPON2TIM", 0xE8: "STOPNRESTIM", 0xFA: "RFU", 0xFB: "REGSPACEB",
 	0xFC: "TESTACCESS",
 }
+
 var st25RegsA = map[int]string{
 	0x00: "IOCFG1", 0x01: "IOCFG2", 0x02: "OPCTRL", 0x03: "MODEDEF", 0x04: "BITRATE", 0x05: "TYPEA",
 	0x06: "TYPEB", 0x07: "TYPEBF", 0x08: "NFCIP1", 0x09: "STREAM", 0x0A: "AUX", 0x0B: "RXCFG1", 0x0C: "RXCFG2",
@@ -115,15 +126,18 @@ var st25RegsA = map[int]string{
 	0x3D: "CAPAAAVGDISP", 0x3E: "CAPADISP", 0x3F: "ICIDENT", 0xA0: "PT_memLoadA", 0xA8: "PT_memLoadF",
 	0xAC: "PT_memLoadTSN", 0xBF: "PT_memRead",
 }
+
 var st25RegsB = map[int]string{
 	0x05: "EMDSUPPRCONF", 0x06: "SUBCSTARTIM", 0x0B: "P2PRXCONF", 0x0C: "CORRCONF1", 0x0D: "CORRCONF2",
 	0x0F: "SQUELSHTIM", 0x15: "NFCGUARDTIM", 0x28: "AUXMODSET", 0x29: "TXDRVTIM", 0x2A: "RESAMMODE",
 	0x2B: "TXDRVTIMDISP", 0x2C: "REGDISP", 0x30: "OSHOOTCONF1", 0x31: "OSHOOTCONF2", 0x32: "USHOOTCONF1",
 	0x33: "USHOOTCONF2",
 }
+
 var st25RegsTest = map[int]string{
 	0x01: "ANTSTOBS",
 }
+
 var adxl345Regs = map[int]string{
 	0x00: "DEVID", 0x1D: "THRESH_TAP", 0x1E: "OFSX", 0x1F: "OFSY", 0x20: "OFSZ", 0x21: "DUR", 0x22: "Latent",
 	0x23: "Window", 0x24: "THRESH_ACT", 0x25: "THRESH_INACT", 0x26: "TIME_INACT", 0x27: "ACT_INACT_CTL",
@@ -132,12 +146,14 @@ var adxl345Regs = map[int]string{
 	0x32: "DATAX0", 0x33: "DATAX1", 0x34: "DATAY0", 0x35: "DATAY1", 0x36: "DATAZ0", 0x37: "DATAZ1",
 	0x38: "FIFO_CTL", 0x39: "FIFO_STATUS",
 }
+
 var adns5020Regs = map[int]string{
 	0x00: "Product_ID", 0x01: "Revision_ID", 0x02: "Motion", 0x03: "Delta_X", 0x04: "Delta_Y", 0x05: "SQUAL",
 	0x06: "Shutter_Upper", 0x07: "Shutter_Lower", 0x08: "Maximum_Pixel", 0x09: "Pixel_Sum",
 	0x0A: "Minimum_Pixel", 0x0B: "Pixel_Grab", 0x0D: "Mouse_Control", 0x3A: "Chip_Reset", 0x3F: "Inv_Rev_ID",
 	0x63: "Motion_Burst",
 }
+
 var ade7758Regs = map[int]string{
 	0x01: "AWATTHR", 0x02: "BWATTHR", 0x03: "CWATTHR", 0x04: "AVARHR", 0x05: "BVARHR", 0x06: "CVARHR",
 	0x07: "AVAHR", 0x08: "BVAHR", 0x09: "CVAHR", 0x0A: "AIRMS", 0x0B: "BIRMS", 0x0C: "CIRMS", 0x0D: "AVRMS",
@@ -152,6 +168,7 @@ var ade7758Regs = map[int]string{
 	0x41: "CPHCAL", 0x42: "WDIV", 0x43: "VARDIV", 0x44: "VADIV", 0x45: "APCFNUM", 0x46: "APCFDEN",
 	0x47: "VARCFNUM", 0x48: "VARCFDEN", 0x7E: "CHKSUM", 0x7F: "Version",
 }
+
 var ade7758Bits = map[int]int{
 	0x01: 16, 0x02: 16, 0x03: 16, 0x04: 16, 0x05: 16, 0x06: 16, 0x07: 16, 0x08: 16, 0x09: 16, 0x0A: 24,
 	0x0B: 24, 0x0C: 24, 0x0D: 24, 0x0E: 24, 0x0F: 24, 0x10: 12, 0x11: 8, 0x12: 24, 0x13: 8, 0x14: 8, 0x15: 8,

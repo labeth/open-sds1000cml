@@ -3,6 +3,11 @@ package panel
 
 import (
 	"math"
+	"open-sds/app/internal/analog"
+	"open-sds/app/internal/engine"
+	"open-sds/app/internal/lcd"
+	"open-sds/app/internal/panel/wsview"
+	"open-sds/app/internal/streamview"
 	"os"
 	"path/filepath"
 	"strings"
@@ -10,12 +15,6 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
-
-	"open-sds/app/internal/analog"
-	"open-sds/app/internal/engine"
-	"open-sds/app/internal/lcd"
-	"open-sds/app/internal/panel/wsview"
-	"open-sds/app/internal/streamview"
 )
 
 // Every workspace, view, sheet tab and picker drawn end to end: the panel's
@@ -155,7 +154,8 @@ func (r *viewRig) show(f *engine.Frame) {
 func (r *viewRig) hud() lcd.HUD {
 	c, st := r.c, r.eng.Snapshot()
 	d, v := c.Snapshot()
-	h := lcd.HUD{C1VdivV: analog.Detents[r.fe.idx[0]].VdivV, C2VdivV: analog.Detents[r.fe.idx[1]].VdivV,
+	h := lcd.HUD{
+		C1VdivV: analog.Detents[r.fe.idx[0]].VdivV, C2VdivV: analog.Detents[r.fe.idx[1]].VdivV,
 		TdivS: st.TdivS, TrigSrc: st.TrigSource, TrigRising: st.TrigRising, Running: st.Running, Norm: st.Norm,
 		Single: st.Single, TrigPosFrac: st.TrigPosFrac, TwoChan: true, URL: "http://192.168.1.209:8080",
 		ShowC1: d.ShowC1, ShowC2: d.ShowC2, ChanExplicit: true, ShowMeas: d.ShowMeas, MeasItems: d.MeasItems,
@@ -164,7 +164,8 @@ func (r *viewRig) hud() lcd.HUD {
 		Persist: d.Persist, DecProto: d.DecProto, DecBaud: d.DecBaud, DecChA: d.DecChA, DecChB: d.DecChB,
 		DecCPOL: d.DecCPOL, DecCPHA: d.DecCPHA, DecFormat: d.DecFormat, CurOn: d.CurOn, CurType: d.CurType,
 		CurSel: d.CurSel, CurX: d.CurX, CurY: d.CurY, MaskMode: st.MaskMode, MaskPass: st.MaskPass, MaskFail: st.MaskFail,
-		MaskMsg: c.MaskStatus(), Spect: r.spect}
+		MaskMsg: c.MaskStatus(), Spect: r.spect,
+	}
 	h.TrigLvlV = (31437 - float64(st.TrigCode)) / 911
 	h.TrigLvlDiv = h.TrigLvlV / h.C1VdivV
 	for i, rw := range c.RefView() {
@@ -225,7 +226,7 @@ func uartFrame(msgs []string, baud, gapS, sampleS float64, n int) *engine.Frame 
 	for k := 0; t < float64(n); k++ {
 		for _, ch := range []byte(msgs[k%len(msgs)]) {
 			put(40, 1)
-			for bit := 0; bit < 8; bit++ {
+			for bit := range 8 {
 				put(map[bool]uint8{true: 210, false: 40}[ch>>bit&1 == 1], 1)
 			}
 			put(210, 2) // the stop bit and one idle bit: every byte on the bit grid
@@ -235,8 +236,10 @@ func uartFrame(msgs []string, baud, gapS, sampleS float64, n int) *engine.Frame 
 	for i := range c1 { // a little ringing on the edges' flat tops
 		c1[i] = uint8(int(c1[i]) + int(2*math.Sin(float64(i)*0.7)))
 	}
-	return &engine.Frame{C1: c1, C2: c2, Valid: n, WinCols: n, EdgeX: float64(n) / 2, Ptp: 170,
-		TdivS: float64(n) * sampleS / 10, SampleS: sampleS, Trigd: true, FullRate: true}
+	return &engine.Frame{
+		C1: c1, C2: c2, Valid: n, WinCols: n, EdgeX: float64(n) / 2, Ptp: 170,
+		TdivS: float64(n) * sampleS / 10, SampleS: sampleS, Trigd: true, FullRate: true,
+	}
 }
 
 // toneFrame is a 1 kHz square on C1 and a 3 kHz sine on C2 over 5 ms.
@@ -244,9 +247,11 @@ func uartFrame(msgs []string, baud, gapS, sampleS float64, n int) *engine.Frame 
 func toneFrame(filter string) *engine.Frame {
 	const n = 20000
 	sampleS := 5e-3 / n
-	f := &engine.Frame{C1: make([]uint8, n), C2: make([]uint8, n), Valid: n, WinCols: n, EdgeX: n / 2, Ptp: 150,
-		TdivS: 500e-6, SampleS: sampleS, Trigd: true, Filter: filter}
-	for i := 0; i < n; i++ {
+	f := &engine.Frame{
+		C1: make([]uint8, n), C2: make([]uint8, n), Valid: n, WinCols: n, EdgeX: n / 2, Ptp: 150,
+		TdivS: 500e-6, SampleS: sampleS, Trigd: true, Filter: filter,
+	}
+	for i := range n {
 		ph := float64(i-n/2) * sampleS * 1e3
 		v := 60.0
 		if ph-math.Floor(ph) < 0.5 {
@@ -320,7 +325,7 @@ func TestWorkspaceScreens(t *testing.T) {
 	uart()
 	r.shot("bus_match")
 	press(t, c, "f2")
-	for i := 0; i < 6; i++ {
+	for range 6 {
 		uart()
 	}
 	if v := r.shot("bus_eye"); v.Eye == nil || v.Eye.Why != "" || len(v.Eye.Grid) == 0 {
@@ -348,7 +353,7 @@ func TestWorkspaceScreens(t *testing.T) {
 	// SPECTRUM: the FFT with its peak table, the spectrogram, Bode.
 	tone()
 	press(t, c, "f3")
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		tone()
 	}
 	r.clk.advance(2 * time.Second)
@@ -359,8 +364,13 @@ func TestWorkspaceScreens(t *testing.T) {
 	r.shot("spectrum_marker")
 	press(t, c, "f3")
 	r.shot("spectrum_spgm")
-	r.eng.pts = []engine.BodePoint{{FreqHz: 100, GainDB: 0, PhaseDeg: -2}, {FreqHz: 1e3, GainDB: -0.4, PhaseDeg: -20},
-		{FreqHz: 3e3, GainDB: -3.1, PhaseDeg: -45}, {FreqHz: 1e4, GainDB: -10.5, PhaseDeg: -73}, {FreqHz: 1e5, GainDB: -30, PhaseDeg: -88}}
+	r.eng.pts = []engine.BodePoint{
+		{FreqHz: 100, GainDB: 0, PhaseDeg: -2},
+		{FreqHz: 1e3, GainDB: -0.4, PhaseDeg: -20},
+		{FreqHz: 3e3, GainDB: -3.1, PhaseDeg: -45},
+		{FreqHz: 1e4, GainDB: -10.5, PhaseDeg: -73},
+		{FreqHz: 1e5, GainDB: -30, PhaseDeg: -88},
+	}
 	press(t, c, "f3")
 	if v := r.shot("spectrum_bode"); v.Spec == nil || !v.Spec.Bode || len(v.Spec.Rows) != 5 {
 		t.Fatalf("SPECTRUM Bode %+v", v.Spec)
@@ -368,7 +378,7 @@ func TestWorkspaceScreens(t *testing.T) {
 
 	// MEASURE: statistics, then all values.
 	press(t, c, "f4")
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		tone()
 	}
 	r.clk.advance(2 * time.Second)
@@ -381,7 +391,7 @@ func TestWorkspaceScreens(t *testing.T) {
 
 	// COMPARE: the rows; stacking a master; the master tested.
 	press(t, c, "f5")
-	for i := 0; i < 8; i++ {
+	for range 8 {
 		tone()
 	}
 	r.clk.advance(2 * time.Second)

@@ -12,9 +12,14 @@ func TestBusRatesSnapToStandard(t *testing.T) {
 		baud  int
 		rates []float64
 		want  int
-	}{{999000, []float64{1e6}, 1000000}, {9880000, []float64{2.5e6, 5e6, 10e6}, 10000000},
-		{10100000, []float64{2.5e6, 5e6, 10e6}, 10000000}, {101200, []float64{12.5e3, 100e3}, 100000},
-		{970000, []float64{1e6}, 970000}, {1510000, []float64{1.5e6, 12e6}, 1500000}} {
+	}{
+		{999000, []float64{1e6}, 1000000},
+		{9880000, []float64{2.5e6, 5e6, 10e6}, 10000000},
+		{10100000, []float64{2.5e6, 5e6, 10e6}, 10000000},
+		{101200, []float64{12.5e3, 100e3}, 100000},
+		{970000, []float64{1e6}, 970000},
+		{1510000, []float64{1.5e6, 12e6}, 1500000},
+	} {
 		if got := snapRate(c.baud, c.rates...); got != c.want {
 			t.Errorf("snapRate(%d) = %d, want %d", c.baud, got, c.want)
 		}

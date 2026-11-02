@@ -3,12 +3,11 @@ package panel
 
 import (
 	"math"
-	"strings"
-
 	"open-sds/app/internal/analysis"
 	"open-sds/app/internal/panel/framecalc"
 	"open-sds/app/internal/panel/wsview"
 	"open-sds/app/internal/settings"
+	"strings"
 )
 
 // SettingsView reports the controller-owned slice of the persisted setup
@@ -21,9 +20,11 @@ func (c *Controller) SettingsView() settings.ViewState {
 	ser := serialSettingsOf(s) // the engine's serial trigger, as snap read it
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	ui := settings.UI{Set: true, Workspace: int(c.ui.ws), BusEye: c.ui.busEye, BusStream: c.ui.busStream, BusVisual: c.ui.busVisual,
+	ui := settings.UI{
+		Set: true, Workspace: int(c.ui.ws), BusEye: c.ui.busEye, BusStream: c.ui.busStream, BusVisual: c.ui.busVisual,
 		MeasAll: c.ui.measAll, FFTSource: c.fftSrc, MasterDepth: c.stackN, RemoteNotices: c.remoteNotices,
-		MaskFrames: c.maskN, MaskTol: c.maskTol + 1, SrCh: c.srCh + 1, SrGrid: c.srK, SrStop: c.srStopMode + 1, SrTarget: c.srStopVal}
+		MaskFrames: c.maskN, MaskTol: c.maskTol + 1, SrCh: c.srCh + 1, SrGrid: c.srK, SrStop: c.srStopMode + 1, SrTarget: c.srStopVal,
+	}
 	for i := range ui.Views {
 		ui.Views[i] = c.ui.views[i]
 	}
@@ -39,10 +40,12 @@ func (c *Controller) SettingsView() settings.ViewState {
 			ui.Meas[i] = it.ch*32 + it.param + 1
 		}
 	}
-	disp := settings.Display{MathMode: c.mathMode, ShowMeas: c.showMeas, Persist: c.persist,
+	disp := settings.Display{
+		MathMode: c.mathMode, ShowMeas: c.showMeas, Persist: c.persist,
 		Hidden: [2]bool{!c.chDisp[0], !c.chDisp[1]},
 		Set:    true, CurX: s.curX, CurY: s.curY, CurAt: true, CurT: c.curT, CurV: c.curV, CurVCh: c.curVCh,
-		CurSel: c.curSel, Zoom: c.zoom, ZoomOff: c.zoomOff}
+		CurSel: c.curSel, Zoom: c.zoom, ZoomOff: c.zoomOff,
+	}
 	if c.curOn {
 		disp.CurMode = 1 + c.curType
 	}
@@ -74,8 +77,10 @@ func (c *Controller) SettingsView() settings.ViewState {
 // soundSettingsOut is SOUND's settings as the settings file keeps them.
 // TRLC-LINKS: REQ-SDS-273, REQ-SDS-089
 func soundSettingsOut(s SoundSettings) settings.Sound {
-	return settings.Sound{Set: true, A4: s.A4, Ch: s.Ch, Ref: s.Ref, Range: s.Range, Slow: s.Slow, Page: s.Page, Cycles: s.Cycles,
-		ABIn: s.ABIn, EnvCV: s.EnvCV, Gate: s.Gate, GateV: s.GateV, VOctAuto: s.VOctAuto, Drift: s.Drift, PreS: s.PreS, PostS: s.PostS, TrigGate: s.TrigGate}
+	return settings.Sound{
+		Set: true, A4: s.A4, Ch: s.Ch, Ref: s.Ref, Range: s.Range, Slow: s.Slow, Page: s.Page, Cycles: s.Cycles,
+		ABIn: s.ABIn, EnvCV: s.EnvCV, Gate: s.Gate, GateV: s.GateV, VOctAuto: s.VOctAuto, Drift: s.Drift, PreS: s.PreS, PostS: s.PostS, TrigGate: s.TrigGate,
+	}
 }
 
 // soundSettingsIn is a saved SOUND block as settings (bounded on the way in).
@@ -86,9 +91,11 @@ func soundSettingsIn(s settings.Sound) SoundSettings {
 	if s.PostS == 0 && s.PreS == 0 {
 		s.PreS, s.PostS = 1, 4 // a file from before takes
 	}
-	return SoundSettings{A4: s.A4, Ch: s.Ch, Ref: s.Ref, Range: s.Range, Slow: s.Slow, Page: s.Page, Cycles: s.Cycles,
+	return SoundSettings{
+		A4: s.A4, Ch: s.Ch, Ref: s.Ref, Range: s.Range, Slow: s.Slow, Page: s.Page, Cycles: s.Cycles,
 		ABIn: s.ABIn, EnvCV: s.EnvCV, Gate: s.Gate, GateV: s.GateV, VOctAuto: s.VOctAuto,
-		PreS: s.PreS, PostS: s.PostS, TrigGate: s.TrigGate}.clean()
+		PreS: s.PreS, PostS: s.PostS, TrigGate: s.TrigGate,
+	}.clean()
 }
 
 // serialSettingsOf is the serial trigger as the settings file keeps it, from
@@ -99,8 +106,10 @@ func serialSettingsOf(s *sv) settings.Serial {
 		return settings.Serial{}
 	}
 	p := s.serial
-	return settings.Serial{Set: true, Armed: s.st.SerialMode != 0,
-		Match: strings.Join(tokensOf(p), " "), Addr: p.Addr, RW: p.RW}
+	return settings.Serial{
+		Set: true, Armed: s.st.SerialMode != 0,
+		Match: strings.Join(tokensOf(p), " "), Addr: p.Addr, RW: p.RW,
+	}
 }
 
 // restoreSerial puts back a saved serial trigger: the match, the I2C address
@@ -180,7 +189,7 @@ func (c *Controller) ApplySettingsView(v settings.ViewState) {
 			c.curT, c.curV, c.curVCh, c.curPend = ds.CurT, ds.CurV, ds.CurVCh&1, nil
 		} else {
 			p := [2][2]float64{}
-			for k := 0; k < 2; k++ {
+			for k := range 2 {
 				p[0][k], p[1][k] = clampF(ds.CurX[k], 0, 1), clampF(ds.CurY[k], 0, 1)
 			}
 			c.curPend, c.curVCh = &p, 0
@@ -284,7 +293,7 @@ func (c *Controller) ApplySettingsView(v settings.ViewState) {
 	}
 	c.mu.Unlock()
 	if inv != nil && inverter != nil {
-		for ch := 0; ch < 2; ch++ {
+		for ch := range 2 {
 			inverter.SetInverted(ch, inv[ch])
 		}
 	}

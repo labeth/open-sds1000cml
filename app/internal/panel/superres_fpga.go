@@ -5,11 +5,10 @@ import (
 	"context"
 	"fmt"
 	"math"
-	"strconv"
-
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/sramcapture"
 	"open-sds/app/internal/superres"
+	"strconv"
 )
 
 // srStopFPGA is the fourth Stop-on mode: stack Target records in the FPGA
@@ -112,7 +111,8 @@ func (c *Controller) srFPGARun() {
 	req := engine.FPGAStackRequest{Records: records, RecordWords: fpgaRecordWords, Stack: sramcapture.StackConfig{
 		Channel: uint8(ch), Level: level, Hysteresis: hysteresis,
 		PreSamples: fpgaWindow / 2, MinSeparation: fpgaWindow,
-		Bins: fpgaWindow * k, Factor: k, ChannelMask: 3}}
+		Bins: fpgaWindow * k, Factor: k, ChannelMask: 3,
+	}}
 	if match {
 		tpl, err := superres.BuildFPGATemplate(fine, sampleS, edgeX, float64(level), false, fpgaMatchPoints, 0)
 		if err != nil {

@@ -6,9 +6,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"maps"
 	"math"
 	"net/http"
 	"net/http/httptest"
+	"open-sds/app/internal/testenv"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -17,8 +19,6 @@ import (
 	"sync"
 	"testing"
 	"time"
-
-	"open-sds/app/internal/testenv"
 )
 
 // webdecRLE codes words as the engine's ring does (engine appendWordsRLE,
@@ -89,11 +89,13 @@ func webdecBenchInfo(tc streamCPUCase, ss float64, session int) map[string]any {
 	if tc.c.lines == 2 {
 		mask = 0xFFFFFFFF
 	}
-	return map[string]any{"session": session, "proto": tc.c.name, "params": p, "periodS": ss, "lines": tc.c.lines,
+	return map[string]any{
+		"session": session, "proto": tc.c.name, "params": p, "periodS": ss, "lines": tc.c.lines,
 		"closeN": int(tc.quiet / ss), "maxN": int((tc.longest + tc.quiet) / ss), "leadN": lead,
 		"pushN": min(int(math.Max(0.2, math.Min(1, 2*tc.quiet))/ss), 1<<18), "pushMax": 1 << 18,
 		"keepWords": int(tc.quiet/ss)/16 + leadWords + 2, "leadWords": leadWords, "subframes": tc.c.name == "spdif",
-		"mask": mask, "active": true}
+		"mask": mask, "active": true,
+	}
 }
 
 // TestWebDecBrowserThroughput plays dense and bursty digital streams of
@@ -126,14 +128,16 @@ func TestWebDecBrowserThroughput(t *testing.T) {
 			raw := levelWords(la, lb)
 			info := webdecBenchInfo(tc, ss, len(cases)+1)
 			mask := info["mask"].(uint32)
-			c := &webdecBenchCase{name: fmt.Sprintf("%s %s", name, map[bool]string{false: "dense", true: "bursty"}[bursty]), info: info,
-				secs: float64(len(raw)/4*16) * ss}
+			c := &webdecBenchCase{
+				name: fmt.Sprintf("%s %s", name, map[bool]string{false: "dense", true: "bursty"}[bursty]), info: info,
+				secs: float64(len(raw)/4*16) * ss,
+			}
 			for at := 0; at < len(raw); at += 65536 {
 				piece := raw[at:min(len(raw), at+65536)]
 				c.chunks = append(c.chunks, webdecRLE(piece, mask))
 				c.words = append(c.words, len(piece)/4)
 			}
-			for ch := 0; ch < tc.c.lines; ch++ {
+			for ch := range tc.c.lines {
 				var l EdgeLine
 				l.AppendWords(raw, ch)
 				c.edges += len(l.At)
@@ -185,11 +189,9 @@ w.postMessage({ cmd: "start" });
 				c.start = now
 			}
 			hdr = map[string]any{}
-			for k, v := range c.info {
-				hdr[k] = v
-			}
+			maps.Copy(hdr, c.info)
 			index := uint64(0)
-			for k := 0; k < next; k++ {
+			for k := range next {
 				index += uint64(16 * c.words[k])
 			}
 			n := 0
@@ -226,7 +228,7 @@ w.postMessage({ cmd: "start" });
 	mux.HandleFunc("/api/stream/frames.bin", func(w http.ResponseWriter, r *http.Request) {
 		b, _ := io.ReadAll(r.Body)
 		if len(b) < 20 || string(b[:4]) != "SDF1" {
-			http.Error(w, "bad frames", 400)
+			http.Error(w, "bad frames", http.StatusBadRequest)
 			return
 		}
 		session := int(binary.LittleEndian.Uint32(b[4:]))
@@ -263,7 +265,7 @@ w.postMessage({ cmd: "start" });
 		t.Fatalf("webdec_browser.mjs: %v\n%s", err, out)
 	}
 	stats := map[int]map[string]any{}
-	for _, line := range strings.Split(string(out), "\n") {
+	for line := range strings.SplitSeq(string(out), "\n") {
 		if s, ok := strings.CutPrefix(line, "STAT "); ok {
 			var m map[string]any
 			if json.Unmarshal([]byte(s), &m) == nil {

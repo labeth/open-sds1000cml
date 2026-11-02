@@ -12,7 +12,7 @@ import (
 // TRLC-LINKS: REQ-SDS-066
 func synthSine(n int, freqHz, sampleS, ampCodes, offCodes, phaseRad float64) []uint8 {
 	s := make([]uint8, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		v := offCodes + ampCodes*math.Sin(2*math.Pi*freqHz*float64(i)*sampleS+phaseRad)
 		if v < 0 {
 			v = 0

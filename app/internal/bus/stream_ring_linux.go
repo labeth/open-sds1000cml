@@ -73,7 +73,7 @@ func workerHasSharedRing() bool {
 func (r streamRingWriter) Reserve(n int) (a, b []byte, err error) {
 	w := r.w
 	if w.sCount+n > len(w.sring) {
-		return nil, nil, fmt.Errorf("isolated stream ring overflow; words lost")
+		return nil, nil, errors.New("isolated stream ring overflow; words lost")
 	}
 	at := (w.sHead + w.sCount) % len(w.sring)
 	a = w.sring[at:min(len(w.sring), at+n)]
@@ -125,7 +125,7 @@ func (d *Dev) PeekIsolatedStream(release int) (first uint64, a, b []byte, err er
 		return 0, nil, nil, err
 	}
 	if n != 16 {
-		return 0, nil, nil, fmt.Errorf("bus: short worker peek reply")
+		return 0, nil, nil, errors.New("bus: short worker peek reply")
 	}
 	ring := d.remote.shared
 	first = binary.LittleEndian.Uint64(reply[0:])

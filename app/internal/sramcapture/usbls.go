@@ -1,7 +1,7 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-SRAMCAPTURE
 package sramcapture
 
-import "fmt"
+import "errors"
 
 // USBLSTriggerConfig matches payload within one single-ended USB packet.
 // BitTicksQ8 is the bit period in 125 MHz clocks with eight fractional bits.
@@ -19,7 +19,7 @@ type USBLSTriggerConfig struct {
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-018
 func (p USBLSTriggerConfig) validate() error {
 	if p.Enabled && (p.Channel > 1 || p.BitTicksQ8 < 2048 || p.BitTicksQ8 > 0xffffff || p.Length > 4) {
-		return fmt.Errorf("sramcapture: invalid hardware USB configuration")
+		return errors.New("sramcapture: invalid hardware USB configuration")
 	}
 	return nil
 }
@@ -44,7 +44,7 @@ func (c *Capture) configureUSBLS(revision uint16, p USBLSTriggerConfig) error {
 	}
 	if capability != 0x5501 {
 		if p.Enabled {
-			return fmt.Errorf("sramcapture: fabric lacks hardware USB trigger")
+			return errors.New("sramcapture: fabric lacks hardware USB trigger")
 		}
 		return nil
 	}

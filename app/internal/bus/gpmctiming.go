@@ -61,8 +61,10 @@ type CS1Timing struct {
 // FactoryCS1Timing is the bootloader's CS1 timing on this unit (fpga-specs
 // 10 §4.3 table) with the shipped cycle gap 5 (EnableEDMA). Used only as the
 // fallback when the boot-time read is unavailable in a report.
-var FactoryCS1Timing = CS1Timing{Config1: 0x00001001, Config2: 0x00141400, Config3: 0x00020201,
-	Config4: 0x10041004, Config5: 0x010d141f, Config6: 0x060005c1, Config7: 0x00000F41}
+var FactoryCS1Timing = CS1Timing{
+	Config1: 0x00001001, Config2: 0x00141400, Config3: 0x00020201,
+	Config4: 0x10041004, Config5: 0x010d141f, Config6: 0x060005c1, Config7: 0x00000F41,
+}
 
 // TRLC-LINKS: REQ-SDS-131
 func bits(w uint32, shift, width uint) uint32 { return (w >> shift) & (1<<width - 1) }
@@ -106,6 +108,7 @@ func (t CS1Timing) RdAccess() uint32 { return bits(t.Config5, 16, 5) }
 
 // TRLC-LINKS: REQ-SDS-131
 func (t CS1Timing) Gap() uint32 { return bits(t.Config6, 8, 4) } // CYCLE2CYCLEDELAY
+
 // TRLC-LINKS: REQ-SDS-131
 func (t CS1Timing) SameCSEn() bool { return bits(t.Config6, 7, 1) == 1 }
 
@@ -159,9 +162,11 @@ type TimingFields struct {
 // Fields decodes the timing.
 // TRLC-LINKS: REQ-SDS-131
 func (t CS1Timing) Fields() TimingFields {
-	return TimingFields{RdCycle: t.RdCycle(), RdAccess: t.RdAccess(), OEOn: t.OEOn(), OEOff: t.OEOff(),
+	return TimingFields{
+		RdCycle: t.RdCycle(), RdAccess: t.RdAccess(), OEOn: t.OEOn(), OEOff: t.OEOff(),
 		CSOn: t.CSOn(), CSRdOff: t.CSRdOff(), Gap: t.Gap(), SameCSEn: t.SameCSEn(),
-		WrCycle: t.WrCycle(), WrAccess: t.WrAccess(), WEOn: t.WEOn(), WEOff: t.WEOff(), CSWrOff: t.CSWrOff()}
+		WrCycle: t.WrCycle(), WrAccess: t.WrAccess(), WEOn: t.WEOn(), WEOff: t.WEOff(), CSWrOff: t.CSWrOff(),
+	}
 }
 
 // String is the compact read-side summary used in logs.
@@ -228,8 +233,10 @@ type TimingPort interface {
 // readTiming / applyTiming operate on a mapped register block.
 // TRLC-LINKS: REQ-SDS-131
 func readTiming(r regs32) CS1Timing {
-	return CS1Timing{Config1: r.R(gpmcConfig1), Config2: r.R(gpmcConfig2), Config3: r.R(gpmcConfig3),
-		Config4: r.R(gpmcConfig4), Config5: r.R(gpmcConfig5), Config6: r.R(gpmcConfig6), Config7: r.R(gpmcConfig7)}
+	return CS1Timing{
+		Config1: r.R(gpmcConfig1), Config2: r.R(gpmcConfig2), Config3: r.R(gpmcConfig3),
+		Config4: r.R(gpmcConfig4), Config5: r.R(gpmcConfig5), Config6: r.R(gpmcConfig6), Config7: r.R(gpmcConfig7),
+	}
 }
 
 // applyTiming writes CONFIG2/4/5/6 with CSVALID quiesced around the retiming

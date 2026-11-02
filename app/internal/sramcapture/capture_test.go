@@ -165,7 +165,7 @@ func (f *fakeBus) RawWrite(s, v uint16) error {
 		if n > 4096 || (f.revision < 8 && n > 512) {
 			return errors.New("buffer overflow")
 		}
-		for i := uint32(0); i < n; i++ {
+		for i := range n {
 			relative := (first + i - f.origin - f.start) & addressMask
 			f.buffer[i] = f.base + relative
 		}
@@ -193,12 +193,12 @@ func client(t *testing.T, f *fakeBus) *Capture {
 }
 
 // TRLC-LINKS: REQ-SDS-033
-func checkWords(t *testing.T, data []byte, base uint32, n uint32) {
+func checkWords(t *testing.T, data []byte, base, n uint32) {
 	t.Helper()
 	if len(data) != int(n)*4 {
 		t.Fatalf("bytes %d want %d", len(data), n*4)
 	}
-	for i := uint32(0); i < n; i++ {
+	for i := range n {
 		if got := binary.LittleEndian.Uint32(data[4*i:]); got != base+i {
 			t.Fatalf("word %d: %08x want %08x", i, got, base+i)
 		}
@@ -210,7 +210,7 @@ func TestFullCapacityWrappedAndRepeatedRecall(t *testing.T) {
 	f := frozenBus()
 	c := client(t, f)
 	ctx := context.Background()
-	for attempt := 0; attempt < 2; attempt++ {
+	for range 2 {
 		var dst bytes.Buffer
 		n, e := c.Recall(ctx, 0, Words, &dst)
 		if e != nil || n != int64(Bytes) {
@@ -395,7 +395,7 @@ func TestInterleaveWarmRecallPreservesFullCapacity(t *testing.T) {
 	f.staged[19] = 2
 	f.corruptBurstHead = true
 	c := client(t, f)
-	for attempt := 0; attempt < 2; attempt++ {
+	for attempt := range 2 {
 		var dst bytes.Buffer
 		n, e := c.Recall(context.Background(), 0, Words, &dst)
 		if e != nil || n != int64(Bytes) {

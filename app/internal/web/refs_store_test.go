@@ -3,11 +3,10 @@ package web
 
 import (
 	"fmt"
-	"sync"
-	"time"
-
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/panel"
+	"sync"
+	"time"
 )
 
 // fakeRefStore keeps REF A/B as the panel does for the web's fake scopes: a
@@ -61,8 +60,10 @@ func (s *fakeRefStore) act(frames func(func(*engine.Frame)), slot int, op string
 				}
 				return out
 			}
-			e = panel.RefExport{Has: true, Show: true, Cols: panel.RefCols, C1: cols(f.C1), C2: cols(f.C2), Vdiv: [2]float64{1, 1},
-				Probe: [2]float64{1, 1}, TdivS: f.TdivS, PosFrac: .5, At: time.Now().UnixMilli()}
+			e = panel.RefExport{
+				Has: true, Show: true, Cols: panel.RefCols, C1: cols(f.C1), C2: cols(f.C2), Vdiv: [2]float64{1, 1},
+				Probe: [2]float64{1, 1}, TdivS: f.TdivS, PosFrac: .5, At: time.Now().UnixMilli(),
+			}
 		})
 		if !e.Has {
 			return panel.SetResult{Error: "no frame to store"}

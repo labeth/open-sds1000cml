@@ -3,15 +3,14 @@ package streamview
 
 import (
 	"context"
-	"strings"
-	"sync"
-	"testing"
-	"time"
-
 	"open-sds/app/internal/decode"
 	"open-sds/app/internal/decodedlines"
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/sramcapture"
+	"strings"
+	"sync"
+	"testing"
+	"time"
 )
 
 type fakeSource struct {
@@ -208,7 +207,7 @@ func TestStartingNoteSaysWhy(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-018
 func TestHistoryAndWindow(t *testing.T) {
 	tr := decodedlines.New(1, historyLines)
-	for i := 0; i < historyLines+10; i++ {
+	for i := range historyLines + 10 {
 		tr.Add(uart("0123456789abcdef", uint64(i)*100000))
 	}
 	if tr.Count() != historyLines {
@@ -267,8 +266,11 @@ func TestStopDrainsQueuedUnits(t *testing.T) {
 func TestUSBPIDNotes(t *testing.T) {
 	tr := decodedlines.New(9, historyLines)
 	tr.Add([]sramcapture.DecodedEvent{
-		{Kind: sramcapture.EventStart, Value: 0xC3}, {Kind: sramcapture.EventData, Value: 0xFF}, {Kind: sramcapture.EventEnd, Value: 0xC3},
-		{Kind: sramcapture.EventStart, Value: 0xD2, Sample: decodedlines.HistorySamples}, {Kind: sramcapture.EventError, Value: 0xD2, Sample: decodedlines.HistorySamples},
+		{Kind: sramcapture.EventStart, Value: 0xC3},
+		{Kind: sramcapture.EventData, Value: 0xFF},
+		{Kind: sramcapture.EventEnd, Value: 0xC3},
+		{Kind: sramcapture.EventStart, Value: 0xD2, Sample: decodedlines.HistorySamples},
+		{Kind: sramcapture.EventError, Value: 0xD2, Sample: decodedlines.HistorySamples},
 	})
 	if l := tr.Format(0); !strings.Contains(l, "DATA0") || !strings.Contains(l, " FF") {
 		t.Fatalf("data line %q", l)
@@ -282,7 +284,7 @@ func TestUSBPIDNotes(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-018
 func TestLinesFollowsAcrossWrap(t *testing.T) {
 	c := &Controller{t: decodedlines.New(1, historyLines)}
-	for i := 0; i < historyLines+5; i++ {
+	for i := range historyLines + 5 {
 		c.t.Add(uart("0123456789abcdef", uint64(i)*100000))
 	}
 	p := c.Lines(0, 3)
@@ -316,9 +318,11 @@ func TestLineModeFollowsWorker(t *testing.T) {
 	p := c.Window(5, -1)
 	text := ""
 	col := strings.Index(p.Header, "text")
+	var textSb319 strings.Builder
 	for _, l := range p.Lines {
-		text += l[col:]
+		textSb319.WriteString(l[col:])
 	}
+	text += textSb319.String()
 	if !strings.Contains(text, "Hello, scope! 0123456789abcdeftail") {
 		t.Fatalf("lines %q", p.Lines)
 	}

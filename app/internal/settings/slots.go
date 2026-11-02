@@ -2,6 +2,7 @@
 package settings
 
 import (
+	"errors"
 	"fmt"
 	"path/filepath"
 	"strconv"
@@ -31,7 +32,7 @@ func (s Slots) slotPath(n int) string {
 // TRLC-LINKS: REQ-SDS-072, REQ-SDS-089
 func (s Slots) SaveSetup(n int) error {
 	if s.Collect == nil {
-		return fmt.Errorf("setup memory unavailable")
+		return errors.New("setup memory unavailable")
 	}
 	return Save(s.slotPath(n), s.setup())
 }
@@ -44,7 +45,7 @@ func (s Slots) RecallSetup(n int) error {
 		return fmt.Errorf("setup slot %d is empty", n)
 	}
 	if s.Apply == nil {
-		return fmt.Errorf("setup memory unavailable")
+		return errors.New("setup memory unavailable")
 	}
 	st.Screen = Screen{} // the screen saver is the instrument's
 	s.Apply(st)
@@ -82,7 +83,7 @@ func (s Slots) PeekSetup(n int) (Settings, bool) {
 // TRLC-LINKS: REQ-SDS-072, REQ-SDS-089
 func (s Slots) SaveSetupFile(name string) error {
 	if s.Collect == nil || name != filepath.Base(name) {
-		return fmt.Errorf("setup file unavailable")
+		return errors.New("setup file unavailable")
 	}
 	return Save(filepath.Join(s.Dir, name), s.setup())
 }
@@ -91,14 +92,14 @@ func (s Slots) SaveSetupFile(name string) error {
 // TRLC-LINKS: REQ-SDS-072, REQ-SDS-089
 func (s Slots) RecallSetupFile(name string) error {
 	if name != filepath.Base(name) {
-		return fmt.Errorf("setup file unavailable")
+		return errors.New("setup file unavailable")
 	}
 	st, ok := Load(filepath.Join(s.Dir, name), nil)
 	if !ok {
 		return fmt.Errorf("no setup file %s", name)
 	}
 	if s.Apply == nil {
-		return fmt.Errorf("setup memory unavailable")
+		return errors.New("setup memory unavailable")
 	}
 	st.Screen = Screen{} // the screen saver is the instrument's
 	s.Apply(st)

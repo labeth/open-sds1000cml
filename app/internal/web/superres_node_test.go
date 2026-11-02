@@ -2,11 +2,10 @@
 package web
 
 import (
+	"open-sds/app/internal/testenv"
 	"os/exec"
 	"strings"
 	"testing"
-
-	"open-sds/app/internal/testenv"
 )
 
 // TestSuperresJS runs the super-resolution stacker math (superres.js) under

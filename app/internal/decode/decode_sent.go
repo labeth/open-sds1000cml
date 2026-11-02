@@ -100,7 +100,7 @@ func DecodeSENT(codes []uint8, colTimeS float64, cfg SENTCfg) Result {
 	// One pulse period per consecutive pair of falling edges.
 	np := len(fallX) - 1
 	period := make([]float64, np)
-	for k := 0; k < np; k++ {
+	for k := range np {
 		period[k] = fallX[k+1] - fallX[k]
 	}
 
@@ -117,14 +117,14 @@ func DecodeSENT(codes []uint8, colTimeS float64, cfg SENTCfg) Result {
 	// mis-taken as SYNC yields a tiny tick that blows every follower out of range.
 	firstSync := -1
 	if haveTick {
-		for k := 0; k < np; k++ {
+		for k := range np {
 			if math.Abs(period[k]/seedTick-sentSyncTicks) <= sentTol*sentSyncTicks {
 				firstSync = k
 				break
 			}
 		}
 	} else {
-		for k := 0; k < np; k++ {
+		for k := range np {
 			if period[k] <= 0 {
 				continue
 			}
@@ -151,7 +151,7 @@ func DecodeSENT(codes []uint8, colTimeS float64, cfg SENTCfg) Result {
 		// never panics on garbage (bounded, best-effort).
 		if firstSync < 0 {
 			maxK, maxV := -1, 0.0
-			for k := 0; k < np; k++ {
+			for k := range np {
 				if period[k] > maxV {
 					maxV, maxK = period[k], k
 				}
@@ -250,8 +250,10 @@ func DecodeSENT(codes []uint8, colTimeS float64, cfg SENTCfg) Result {
 	// CRC-4. Noise and corrupted frames still return their spans (so the display
 	// can show them with the CRC flagged), but OK=false so nothing downstream (the
 	// serial trigger, callers) treats garbage as a confirmed SENT frame.
-	res := Result{OK: goodCRC, Proto: "sent", Spans: spans, Text: strings.Join(toks, " "),
-		Bytes: bytes, SPB: curTick, Thr: S.threshold}
+	res := Result{
+		OK: goodCRC, Proto: "sent", Spans: spans, Text: strings.Join(toks, " "),
+		Bytes: bytes, SPB: curTick, Thr: S.threshold,
+	}
 	if !goodCRC {
 		res.Error = "no CRC-valid SENT frame"
 	}

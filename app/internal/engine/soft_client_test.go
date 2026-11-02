@@ -7,6 +7,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/rand"
+	"open-sds/app/internal/decode"
+	"open-sds/app/internal/sramcapture"
+	"open-sds/app/internal/testenv"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -15,10 +18,6 @@ import (
 	"strings"
 	"testing"
 	"time"
-
-	"open-sds/app/internal/decode"
-	"open-sds/app/internal/sramcapture"
-	"open-sds/app/internal/testenv"
 )
 
 // rleWords undoes appendWordsRLE.
@@ -50,7 +49,7 @@ func rleWords(t *testing.T, enc []byte) []uint32 {
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
 func TestAppendWordsRLE(t *testing.T) {
 	rng := rand.New(rand.NewSource(3))
-	for it := 0; it < 300; it++ {
+	for it := range 300 {
 		n := rng.Intn(2000)
 		raw := make([]byte, 4*n)
 		for i := 0; i < n; {
@@ -97,7 +96,7 @@ func TestClientTapRing(t *testing.T) {
 	rng := rand.New(rand.NewSource(1))
 	index := uint64(160)
 	var sent [][]uint32
-	for k := 0; k < 400; k++ {
+	for range 400 {
 		n := 1 + rng.Intn(16384)
 		raw := make([]byte, 4*n)
 		for i := range raw {
@@ -148,7 +147,7 @@ func TestClientTapRing(t *testing.T) {
 	// while the read writes from the ring, the owner keeps out of its words:
 	// it drops the newest instead, and the next chunk marks them lost
 	first := append([]byte(nil), cw.Chunks[0].Enc...)
-	for k := 0; k < 200; k++ {
+	for range 200 {
 		raw := make([]byte, 4*16384)
 		tp.append(raw, index, false, true)
 		index += 16 * 16384
@@ -203,8 +202,10 @@ func clientTestStream(t *testing.T, proto int, p SerialParams, pushN int) *softS
 	}
 	_, longest, quiet, _ := decode.StreamTiming(name, float64(p.Baud))
 	d, _ := serialDecoder(proto)
-	s := &softStream{p: p, proto: name, decoder: d, mask: unitMask(p), gapFree: true, quiet: quiet, bits: true,
-		trig: StreamManual, id: sramcapture.RecordIdentity{Epoch: softEpochBase | 7}}
+	s := &softStream{
+		p: p, proto: name, decoder: d, mask: unitMask(p), gapFree: true, quiet: quiet, bits: true,
+		trig: StreamManual, id: sramcapture.RecordIdentity{Epoch: softEpochBase | 7},
+	}
 	s.setTiming(plan)
 	s.newDecoder(int(quiet/s.sampleS), int((longest+quiet)/s.sampleS))
 	lead := int(decode.StreamLead(name, float64(p.Baud)) / s.sampleS)
@@ -288,11 +289,14 @@ func TestClientDecodeMatchesScope(t *testing.T) {
 		const baud = 19200
 		plan, _ := softGapFreePlan("lin", baud, false, 1)
 		var frames [][]int
-		for i := 0; i < 30; i++ {
+		for i := range 30 {
 			frames = append(frames, []int{0x80 | i, i, 0x55, 0})
 		}
-		cases = append(cases, clientCase{"lin-frames", serLIN, SerialParams{Proto: serLIN, Baud: baud, Threshold: 90, HaveThr: true},
-			bitsWords(linLevels(13/decode.StreamBitsPeriod(plan.period), baud, frames), 13)})
+		cases = append(cases, clientCase{
+			"lin-frames", serLIN,
+			SerialParams{Proto: serLIN, Baud: baud, Threshold: 90, HaveThr: true},
+			bitsWords(linLevels(13/decode.StreamBitsPeriod(plan.period), baud, frames), 13),
+		})
 
 		dir := t.TempDir()
 		type nodeCase struct {
@@ -462,8 +466,10 @@ func TestClientDecodeHandover(t *testing.T) {
 		for _, ev := range s.events {
 			kinds = append(kinds, ev.Kind)
 		}
-		want := []uint8{sramcapture.EventStart, sramcapture.EventData, sramcapture.EventEnd, sramcapture.EventLoss,
-			sramcapture.EventStart, sramcapture.EventData, sramcapture.EventEnd, sramcapture.EventTrigger}
+		want := []uint8{
+			sramcapture.EventStart, sramcapture.EventData, sramcapture.EventEnd, sramcapture.EventLoss,
+			sramcapture.EventStart, sramcapture.EventData, sramcapture.EventEnd, sramcapture.EventTrigger,
+		}
 		if !reflect.DeepEqual(kinds, want) {
 			t.Fatalf("events %v, want %v", kinds, want)
 		}
@@ -545,7 +551,7 @@ func BenchmarkClientTapRead(b *testing.B) {
 	raw := clientBenchWords(false)
 	var tp clientTap
 	tp.begin(ClientStreamInfo{Session: 1, Mask: 0xFFFFFFFF, Active: true}, 0)
-	for k := 0; k < 48; k++ {
+	for k := range 48 {
 		tp.append(raw, uint64(k*len(raw)*4), false, true)
 	}
 	dst := make([]ClientChunk, 0, 64)

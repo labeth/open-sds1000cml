@@ -106,7 +106,7 @@ func Delay(a, b []float64, fs, maxS float64) (float64, bool) {
 	clear(br)
 	clear(bi)
 	ma, mb := mean(a), mean(b)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		w := hann(i, n)
 		ar[i], br[i] = (a[i]-ma)*w, (b[i]-mb)*w
 	}

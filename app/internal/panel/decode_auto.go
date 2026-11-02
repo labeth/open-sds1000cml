@@ -3,12 +3,11 @@ package panel
 
 import (
 	"math"
-	"strings"
-	"time"
-
 	"open-sds/app/internal/decode"
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/panel/framecalc"
+	"strings"
+	"time"
 )
 
 // Auto is no decoding mode (REQ-SDS-214): it detects the bus once and fills

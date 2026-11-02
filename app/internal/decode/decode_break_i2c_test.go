@@ -36,7 +36,7 @@ type bkTxn struct {
 func bkI2CBuild(txns []bkTxn, h, leadIdle, interGap, trailIdle int) (scl, sda []uint8) {
 	lo, hi := uint8(40), uint8(210)
 	seg := func(c, d uint8, n int) {
-		for i := 0; i < n; i++ {
+		for range n {
 			scl = append(scl, c)
 			sda = append(sda, d)
 		}
@@ -80,7 +80,7 @@ func bkI2CBuild(txns []bkTxn, h, leadIdle, interGap, trailIdle int) (scl, sda []
 	} else {
 		seg(hi, hi, trailIdle)
 	}
-	return
+	return scl, sda
 }
 
 // TRLC-LINKS: REQ-SDS-018
@@ -146,7 +146,7 @@ func TestBreakI2c(t *testing.T) {
 	// CLASS 1: FALSE NEGATIVES — >=50 fully VALID frames must decode EXACTLY.
 	// ===================================================================
 	fnBad := 0
-	for it := 0; it < 120; it++ {
+	for it := range 120 {
 		h := 2 + rng.Intn(40) // samples per half-clock; colsPerClock = 2h >= 4
 		nTxn := 1 + rng.Intn(3)
 		// A real bus is idle-high before START, so a capture that begins the
@@ -159,7 +159,7 @@ func TestBreakI2c(t *testing.T) {
 		var wantAddr []int
 		var wantRW []int
 		var wantBytes []int
-		for k := 0; k < nTxn; k++ {
+		for range nTxn {
 			addr := rng.Intn(128)
 			rw := rng.Intn(2)
 			nd := rng.Intn(5) // 0..4 data bytes
@@ -233,7 +233,7 @@ func TestBreakI2c(t *testing.T) {
 	// FALSE NEGATIVES, part 2: valid frames re-railed to asymmetric levels with
 	// additive noise (stresses auto threshold + hysteresis) — must still decode
 	// exactly. All wave samples are exactly 40 or 210, so remap is unambiguous.
-	for it := 0; it < 60; it++ {
+	for it := range 60 {
 		h := 4 + rng.Intn(24)
 		addr := rng.Intn(128)
 		rw := rng.Intn(2)
@@ -259,10 +259,7 @@ func TestBreakI2c(t *testing.T) {
 				if noiseMax > 0 {
 					nz = rng.Intn(2*noiseMax+1) - noiseMax
 				}
-				c := base + nz
-				if c < 0 {
-					c = 0
-				}
+				c := max(base+nz, 0)
 				if c > 255 {
 					c = 255
 				}
@@ -300,7 +297,7 @@ func TestBreakI2c(t *testing.T) {
 	// confident (START..STOP, no frame-error) transaction.
 	// ===================================================================
 	// Flat/DC and degenerate shapes: must yield NO decoded bytes at all.
-	for it := 0; it < 20; it++ {
+	for it := range 20 {
 		n := 500 + rng.Intn(3000)
 		lvl := uint8(rng.Intn(256))
 		flat := make([]uint8, n)
@@ -317,7 +314,7 @@ func TestBreakI2c(t *testing.T) {
 	}
 
 	// Slow ramps and Nyquist toggles on both channels: no confident frame.
-	for it := 0; it < 20; it++ {
+	for it := range 20 {
 		n := 500 + rng.Intn(3000)
 		a := make([]uint8, n)
 		b := make([]uint8, n)
@@ -347,19 +344,19 @@ func TestBreakI2c(t *testing.T) {
 	// Wrong-protocol square wave with NO START (SDA only changes while SCL
 	// low, and never falls while SCL high): must decode ZERO bytes because no
 	// transaction is ever opened.
-	for it := 0; it < 20; it++ {
+	for it := range 20 {
 		h := 4 + rng.Intn(20)
 		lo, hi := uint8(40), uint8(210)
 		var scl, sda []uint8
 		seg := func(c, d uint8, k int) {
-			for i := 0; i < k; i++ {
+			for range k {
 				scl = append(scl, c)
 				sda = append(sda, d)
 			}
 		}
 		nbit := 8 + rng.Intn(40)
 		seg(lo, lo, h*3)
-		for k := 0; k < nbit; k++ {
+		for range nbit {
 			d := lo
 			if rng.Intn(2) == 0 {
 				d = hi
@@ -382,7 +379,7 @@ func TestBreakI2c(t *testing.T) {
 	// STOP)") and MUST NOT report it as a confident transaction.
 	truncMissed := 0
 	truncExercised := 0 // iterations that actually reached the open-frame state
-	for it := 0; it < 30; it++ {
+	for it := range 30 {
 		h := 3 + rng.Intn(20)
 		addr := rng.Intn(128)
 		nd := 2 + rng.Intn(4)
@@ -392,10 +389,7 @@ func TestBreakI2c(t *testing.T) {
 			// Build a full frame, then slice off the tail before the STOP.
 			txns := []bkTxn{{addr7: addr, rw: rng.Intn(2), data: data, naks: make([]bool, 1+nd), stop: true}}
 			scl, sda = bkI2CBuild(txns, h, 2*h, 0, 2*h)
-			cut := len(scl) * (55 + rng.Intn(30)) / 100
-			if cut < 1 {
-				cut = 1
-			}
+			cut := max(len(scl)*(55+rng.Intn(30))/100, 1)
 			scl, sda = scl[:cut], sda[:cut]
 		} else {
 			// Build a frame that simply never emits a STOP (ends SCL low).
@@ -568,7 +562,7 @@ func TestBreakI2c(t *testing.T) {
 
 	// Fuzz: random noise on both channels must never panic (mirrors the
 	// package fuzz) and — being checksum-less — we only require no panic here.
-	for it := 0; it < 60; it++ {
+	for range 60 {
 		n := rng.Intn(4000)
 		a := make([]uint8, n)
 		b := make([]uint8, n)

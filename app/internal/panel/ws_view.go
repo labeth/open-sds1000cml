@@ -4,9 +4,6 @@ package panel
 import (
 	"fmt"
 	"math"
-	"strings"
-	"time"
-
 	"open-sds/app/internal/analog"
 	"open-sds/app/internal/analysis"
 	"open-sds/app/internal/buildinfo"
@@ -14,6 +11,8 @@ import (
 	"open-sds/app/internal/panel/framecalc"
 	"open-sds/app/internal/panel/wsview"
 	"open-sds/app/internal/streamview"
+	"strings"
+	"time"
 )
 
 // Display is the instrument display state the LCD renders the frame with
@@ -198,11 +197,15 @@ func (c *Controller) sheetView(s *sv) *wsview.Sheet {
 	sh.Side = c.sideView(s, curRow(u))
 	switch {
 	case u.sub == subPick:
-		sh.Sub = &wsview.Sub{Title: fmt.Sprintf("PICK FROM SCREEN  (%d bytes decoded)", len(u.pick.toks)), Toks: u.pick.toks, Cur: u.pick.start,
-			Lines: []wsview.Span{{Text: "| = idle gap (message start).  Underlined: the next bytes.", Col: wsview.Dim},
+		sh.Sub = &wsview.Sub{
+			Title: fmt.Sprintf("PICK FROM SCREEN  (%d bytes decoded)", len(u.pick.toks)), Toks: u.pick.toks, Cur: u.pick.start,
+			Lines: []wsview.Span{
+				{Text: "| = idle gap (message start).  Underlined: the next bytes.", Col: wsview.Dim},
 				{Text: "Turn Adjust/Position: first byte.  F1..F4: trigger on", Col: wsview.Dim},
 				{Text: "1..4 bytes from it (sets the match, type Serial).", Col: wsview.Dim},
-				{Text: "F5 or push Adjust: cancel.   Now: " + matchText(s), Col: wsview.Text}}}
+				{Text: "F5 or push Adjust: cancel.   Now: " + matchText(s), Col: wsview.Text},
+			},
+		}
 	}
 	sh.Hint = sheetHint(s, t)
 	return sh
@@ -223,7 +226,7 @@ func (c *Controller) rowView(s *sv, r *row, focus, edit bool, allVals [2][]float
 			rv.Opts = append(rv.Opts, wsview.Opt{Text: o.t, Sel: sel, Quiet: sel && (o.t == "Off" || !rel)})
 		}
 		if r.meas > 0 {
-			for ch := 0; ch < 2; ch++ {
+			for ch := range 2 {
 				if s.chDisp[ch] && allOK[ch] && len(allVals[ch]) > r.meas-1 {
 					rv.Meas[ch] = fmtMeas(r.meas-1, allVals[ch][r.meas-1])
 				} else if s.chDisp[ch] {
@@ -261,13 +264,17 @@ func (c *Controller) sideView(s *sv, r *row) wsview.Side {
 	text := func(t string) wsview.Span { return wsview.Span{Text: t, Col: wsview.Text} }
 	switch u.sub {
 	case subMatch:
-		return wsview.Side{Title: "MATCH EDITOR", Lines: []wsview.Span{text("Turn Adjust: the key."), text("Position < >: the cursor."),
+		return wsview.Side{Title: "MATCH EDITOR", Lines: []wsview.Span{
+			text("Turn Adjust: the key."), text("Position < >: the cursor."),
 			text(""), text("F2 or push Adjust: type it;"), text("F1 changes the key set."), text(""),
-			text("?? = any byte, A? = nibble,"), text("ERR = a framing error."), text(""), text("F4: use. Menu On/Off: discard.")}}
+			text("?? = any byte, A? = nibble,"), text("ERR = a framing error."), text(""), text("F4: use. Menu On/Off: discard."),
+		}}
 	case subPick:
-		return wsview.Side{Title: "PICK FROM SCREEN", Lines: []wsview.Span{text("Bytes decoded on screen,"), text("starting at the first"),
+		return wsview.Side{Title: "PICK FROM SCREEN", Lines: []wsview.Span{
+			text("Bytes decoded on screen,"), text("starting at the first"),
 			text("complete message."), text(""), text("Turn Adjust or Position:"), text("the first byte to match."), text(""),
-			text("Push Adjust or F1: trigger"), text("on it (Serial); F2-F4: on"), text("2-4 bytes. F5/Menu: back.")}}
+			text("Push Adjust or F1: trigger"), text("on it (Serial); F2-F4: on"), text("2-4 bytes. F5/Menu: back."),
+		}}
 	}
 	rel := r.relevant(s)
 	sd := wsview.Side{Label: r.label, Value: r.longText(s)}
@@ -397,7 +404,7 @@ func tabStatus(c *Controller, s *sv, t *tab) []wsview.Span {
 				out = append(out, wsview.Span{Text: line, Col: wsview.Amber})
 			} else {
 				var parts []string
-				for ch := 0; ch < 2; ch++ {
+				for ch := range 2 {
 					if s.chDisp[ch] {
 						va, vb := cursorVolts(s, ch)
 						parts = append(parts, fmt.Sprintf("dV%d %s", ch+1, si(abs64(vb-va), "V")))
@@ -478,11 +485,15 @@ func tabStatus(c *Controller, s *sv, t *tab) []wsview.Span {
 // TRLC-LINKS: REQ-SDS-214
 func pickerView(s *sv) *wsview.Picker {
 	p := s.ui.pick
-	return &wsview.Picker{Caption: fmt.Sprintf("to trigger on  (%d decoded on screen)", len(p.toks)), Toks: p.toks, Cur: p.start,
-		Lines: []wsview.Span{{Text: "| = idle gap (a message starts).  Underlined: the bytes the F-keys would add.", Col: wsview.Dim},
+	return &wsview.Picker{
+		Caption: fmt.Sprintf("to trigger on  (%d decoded on screen)", len(p.toks)), Toks: p.toks, Cur: p.start,
+		Lines: []wsview.Span{
+			{Text: "| = idle gap (a message starts).  Underlined: the bytes the F-keys would add.", Col: wsview.Dim},
 			{Text: "Turn Adjust or Position: the first byte.  Push Adjust (or F1): trigger on it; F2-F4: on 2-4 bytes.", Col: wsview.Text},
-			{Text: "F5 or Menu On/Off: back, the trigger as it was.", Col: wsview.Dim}},
-		Now: "Now: " + matchText(s) + map[bool]string{true: "  (serial trigger on)", false: ""}[s.st.SerialMode != 0]}
+			{Text: "F5 or Menu On/Off: back, the trigger as it was.", Col: wsview.Dim},
+		},
+		Now: "Now: " + matchText(s) + map[bool]string{true: "  (serial trigger on)", false: ""}[s.st.SerialMode != 0],
+	}
 }
 
 // ---- the panes ----
@@ -531,9 +542,11 @@ func (c *Controller) busPane(s *sv) *wsview.BusPane {
 			p.Msg = []wsview.Span{{Text: "DETECTING...", Col: wsview.Text}}
 		default:
 			p.Caption, p.CapCol = map[bool]string{true: "no bus found - decode is off", false: "decode is off"}[failed], wsview.Dim
-			p.Msg = []wsview.Span{{Text: map[bool]string{true: "NO BUS FOUND", false: "DECODE IS OFF"}[failed], Col: wsview.Text},
+			p.Msg = []wsview.Span{
+				{Text: map[bool]string{true: "NO BUS FOUND", false: "DECODE IS OFF"}[failed], Col: wsview.Text},
 				{Text: "Push Adjust: try again - auto-detects UART, I2C, SPI and more on CH1/CH2 and decodes it", Col: wsview.Amber},
-				{Text: "Utility or Menu On/Off: set the protocol, baud and lines by hand on the BUS sheet", Col: wsview.Dim}}
+				{Text: "Utility or Menu On/Off: set the protocol, baud and lines by hand on the BUS sheet", Col: wsview.Dim},
+			}
 			if failed {
 				if u.busNote != "" { // what the search did: AUTO, BUS entry or Adjust
 					p.Caption = "AUTO: " + u.busNote
@@ -729,16 +742,20 @@ func (c *Controller) streamPane(s *sv) *wsview.BusPane {
 	switch {
 	case u.busDetecting:
 		p.Caption, p.CapCol = "STREAM: detecting the bus on CH1 and CH2...", wsview.Amber
-		p.Msg = []wsview.Span{{Text: "DETECTING...", Col: wsview.Text},
-			{Text: "The stream starts on the bus found.", Col: wsview.Dim}}
+		p.Msg = []wsview.Span{
+			{Text: "DETECTING...", Col: wsview.Text},
+			{Text: "The stream starts on the bus found.", Col: wsview.Dim},
+		}
 		p.Tool = posTool(s)
 		return p
 	case !busDecoding(s):
 		p.Caption, p.CapCol = "STREAM: no bus decoded", wsview.Dim
-		p.Msg = []wsview.Span{{Text: map[bool]string{true: "NO BUS FOUND", false: "NO BUS DECODED"}[u.busFailed], Col: wsview.Text},
+		p.Msg = []wsview.Span{
+			{Text: map[bool]string{true: "NO BUS FOUND", false: "NO BUS DECODED"}[u.busFailed], Col: wsview.Text},
 			{Text: "Push Adjust: detect the bus on CH1/CH2 - the stream then starts on it", Col: wsview.Amber},
 			{Text: "Utility or Menu On/Off: set the protocol, baud and lines by hand on the BUS sheet", Col: wsview.Dim},
-			{Text: "A stream decodes the bus into a transcript (Stream mode on the BUS sheet says how)", Col: wsview.Dim}}
+			{Text: "A stream decodes the bus into a transcript (Stream mode on the BUS sheet says how)", Col: wsview.Dim},
+		}
 		if u.busFailed {
 			p.Msg[3] = wsview.Span{Text: "Check that the bus is connected and its channel is not on GND coupling.", Col: wsview.Dim}
 		}
@@ -747,8 +764,10 @@ func (c *Controller) streamPane(s *sv) *wsview.BusPane {
 		return p
 	case !s.hasStream || !serialProto(s.decProto):
 		p.Caption, p.CapCol = "STREAM: "+protoName(s.decProto), wsview.Dim
-		p.Msg = []wsview.Span{{Text: "NO HARDWARE STREAM", Col: wsview.Text},
-			{Text: "This scope has no hardware decoder to stream " + protoName(s.decProto) + ".", Col: wsview.Dim}}
+		p.Msg = []wsview.Span{
+			{Text: "NO HARDWARE STREAM", Col: wsview.Text},
+			{Text: "This scope has no hardware decoder to stream " + protoName(s.decProto) + ".", Col: wsview.Dim},
+		}
 		p.Tool = posTool(s)
 		return p
 	}
@@ -771,9 +790,11 @@ func (c *Controller) streamPane(s *sv) *wsview.BusPane {
 	if s.streamStopped {
 		push, again = "stream again", "Run/Stop or push Adjust: stream again"
 	}
-	p.Msg = []wsview.Span{{Text: head, Col: wsview.Text},
+	p.Msg = []wsview.Span{
+		{Text: head, Col: wsview.Text},
 		{Text: fmt.Sprintf("%d units  %s/s  errors %d  lost %d", v.Units, si(math.Round(v.UnitsPerSecond), ""), v.Errors, v.Lost), Col: col},
-		{Text: "Mode: " + streamModeText(s), Col: wsview.Dim}}
+		{Text: "Mode: " + streamModeText(s), Col: wsview.Dim},
+	}
 	switch {
 	case v.Err != "":
 		p.Msg = append(p.Msg, wsview.Span{Text: cut(v.Err, 120), Col: wsview.Stop})
@@ -865,15 +886,24 @@ func (c *Controller) eyePane(s *sv) *wsview.EyePane {
 	// figures, the UI with its samples, RJ/DJ and the period jitter.
 	tb := mark(r.TIEBound, "<")
 	p.Figures = [3][4][2]string{
-		{{"BIT RATE", fig(r.BitRate, si5(r.BitRate, "bit/s"))},
+		{
+			{"BIT RATE", fig(r.BitRate, si5(r.BitRate, "bit/s"))},
 			{"UI", fig(r.UI, si(r.UI, "s")+fmt.Sprintf(" %.1f samples", r.SamplesPerUI))},
-			{"CROSSING", fig(r.Crossing, fmt.Sprintf("%.1f %%", r.Crossing*100))}, {"FOLDED", fmt.Sprintf("%.0f UI", r.UIs)}},
-		{{"EYE HEIGHT", fig(r.EyeHeight, si(r.EyeHeight*vpc, "V"))},
+			{"CROSSING", fig(r.Crossing, fmt.Sprintf("%.1f %%", r.Crossing*100))},
+			{"FOLDED", fmt.Sprintf("%.0f UI", r.UIs)},
+		},
+		{
+			{"EYE HEIGHT", fig(r.EyeHeight, si(r.EyeHeight*vpc, "V"))},
 			{"EYE WIDTH", fig(r.EyeWidth, fmt.Sprintf("%s%.2f UI", mark(r.WidthBound, ">"), r.EyeWidth))},
-			{"RISE", fig(r.Rise, mark(r.RiseBound, "<")+si(r.Rise, "s"))}, {"FALL", fig(r.Fall, mark(r.FallBound, "<")+si(r.Fall, "s"))}},
-		{{"TIE RMS", fig(r.TIERms, tb+si(r.TIERms, "s"))}, {"TIE PK-PK", fig(r.TIEPkPk, tb+si(r.TIEPkPk, "s"))},
+			{"RISE", fig(r.Rise, mark(r.RiseBound, "<")+si(r.Rise, "s"))},
+			{"FALL", fig(r.Fall, mark(r.FallBound, "<")+si(r.Fall, "s"))},
+		},
+		{
+			{"TIE RMS", fig(r.TIERms, tb+si(r.TIERms, "s"))},
+			{"TIE PK-PK", fig(r.TIEPkPk, tb+si(r.TIEPkPk, "s"))},
 			{"RJ / DJ", fig(r.RJ, tb+si(r.RJ, "s")+" / "+si(r.DJ, "s"))},
-			{"PER / C2C", fig(r.PeriodJ, tb+si(r.PeriodJ, "s")+" / "+si(r.C2CJ, "s"))}},
+			{"PER / C2C", fig(r.PeriodJ, tb+si(r.PeriodJ, "s")+" / "+si(r.C2CJ, "s"))},
+		},
 	}
 	ov, oh := "---", "---"
 	if !math.IsNaN(cur.Height()) {
@@ -920,12 +950,12 @@ func (c *Controller) eyePane(s *sv) *wsview.EyePane {
 // "" for any other error.
 // TRLC-LINKS: REQ-SDS-214
 func decodeRateHint(err string, tdiv float64, serial bool, matches int64) string {
-	i := strings.Index(err, "samples/bit")
-	if i < 0 || !(tdiv > 0) {
+	before, _, ok := strings.Cut(err, "samples/bit")
+	if !ok || !(tdiv > 0) {
 		return ""
 	}
 	var have, need float64
-	from := strings.LastIndex(strings.TrimRight(err[:i], " "), " ") + 1 // the figure before "samples/bit"
+	from := strings.LastIndex(strings.TrimRight(before, " "), " ") + 1 // the figure before "samples/bit"
 	if _, e := fmt.Sscanf(err[from:], "%g samples/bit; need >= %g", &have, &need); e != nil || !(have > 0) || !(need > have) {
 		return ""
 	}

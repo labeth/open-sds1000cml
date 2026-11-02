@@ -4,7 +4,6 @@ package lcd
 import (
 	"fmt"
 	"math"
-
 	"open-sds/app/internal/decode"
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/panel/framecalc"
@@ -155,7 +154,7 @@ func drawRefs(sf Surface, p plotArea, hud HUD) {
 	}
 	liveProbe := [2]float64{max(hud.Probe1, 1), max(hud.Probe2, 1)}
 	zoom := [2]int{hud.Zoom1, hud.Zoom2}
-	for i := 0; i < 2; i++ {
+	for i := range 2 {
 		if !hud.RefShow[i] {
 			continue
 		}
@@ -206,10 +205,12 @@ func decodeColor(kind string) uint16 {
 
 // protoNames are the strip's protocol labels (1, Auto, is a detection the
 // panel resolves to a protocol: never drawn).
-var protoNames = []string{"", "", "UART", "I2C", "SPI", "MANCH", "SENT", "CAN", "1553", "ARINC", "USB", "FLEXR",
+var protoNames = []string{
+	"", "", "UART", "I2C", "SPI", "MANCH", "SENT", "CAN", "1553", "ARINC", "USB", "FLEXR",
 	"LIN", "DMX", "MIDI", "MODBUS", "1WIRE", "WS281X", "DHT", "CEC", "J1850", "NEC", "SIRC", "RC5", "RC6", "DALI",
 	"USBPD", "SPDIF", "PS2", "SWD", "MDIO", "WIEG", "QUAD", "STEP", "PWM", "RC", "OOK", "MILLER", "MORSE", "DCF77",
-	"EM4100", "EM4305", "T55XX", "SWIM", "SDQ", "PJON", "DSI", "QI", "SD", "PDI", "CJTAG", "MAPLE", "CALIP", "IR"}
+	"EM4100", "EM4305", "T55XX", "SWIM", "SDQ", "PJON", "DSI", "QI", "SD", "PDI", "CJTAG", "MAPLE", "CALIP", "IR",
+}
 
 // drawDecode runs the protocol decoder on the frame and draws the decoded byte
 // spans in a strip under the plot (decodeStrip: the plot ends above it, as

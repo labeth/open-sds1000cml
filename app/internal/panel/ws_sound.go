@@ -4,13 +4,13 @@ package panel
 import (
 	"fmt"
 	"math"
-	"strconv"
-	"time"
-
 	"open-sds/app/internal/analog"
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/panel/wsview"
 	"open-sds/app/internal/sound"
+	"strconv"
+	"strings"
+	"time"
 )
 
 // SOUND is SPECTRUM's fourth view (ADR-SOUND): F3 again cycles FFT,
@@ -55,8 +55,12 @@ func (c *Controller) soundPane(s *sv) *wsview.SoundPane {
 			p.State += ": " + in.Err
 		}
 	}
-	p.Tool = []wsview.Seg{{Key: "Adjust", Job: "readout"}, {Key: "push", Job: soundPushJob(set.Page)},
-		{Key: "Position", Job: "cycles"}, {Key: "push", Job: "C1/C2"}}
+	p.Tool = []wsview.Seg{
+		{Key: "Adjust", Job: "readout"},
+		{Key: "push", Job: soundPushJob(set.Page)},
+		{Key: "Position", Job: "cycles"},
+		{Key: "push", Job: "C1/C2"},
+	}
 	trigFrom := "TRIG"
 	if set.TrigGate {
 		trigFrom = "the gate"
@@ -113,8 +117,10 @@ func (c *Controller) soundPane(s *sv) *wsview.SoundPane {
 		}
 		m.On, m.DB, m.PeakDB, m.Clip = true, l.DB, l.PeakDB, l.Clip
 		m.Hot = l.DB > 0 && set.Ref != "dbu" && set.Ref != "dbv"
-		m.Lines = []string{dbText(l.DB, set.Ref), "rms " + si(l.RMS, "V"), "pk " + si(l.Peak, "V"),
-			"Vpp " + si(l.Vpp, "V"), "DC " + sgnSI(l.DC, "V"), fmt.Sprintf("crest %.1fdB", l.CrestDB)}
+		m.Lines = []string{
+			dbText(l.DB, set.Ref), "rms " + si(l.RMS, "V"), "pk " + si(l.Peak, "V"),
+			"Vpp " + si(l.Vpp, "V"), "DC " + sgnSI(l.DC, "V"), fmt.Sprintf("crest %.1fdB", l.CrestDB),
+		}
 	}
 	p.Lines = soundPageLines(ss, set)
 	// The cycle trace.
@@ -146,9 +152,11 @@ func (c *Controller) soundPane(s *sv) *wsview.SoundPane {
 		}
 		p.TraceLo, p.TraceHi, p.Traces = ss.pane.lo, ss.pane.hi, ss.pane.traces
 		cy := ss.cycleShown
-		p.TraceTop = []wsview.Span{{Text: fmt.Sprintf("%d %s, trigger: FPGA edge mark C%d", set.Cycles, plural(set.Cycles, "cycle"), set.Ch+1), Col: wsview.Dim},
+		p.TraceTop = []wsview.Span{
+			{Text: fmt.Sprintf("%d %s, trigger: FPGA edge mark C%d", set.Cycles, plural(set.Cycles, "cycle"), set.Ch+1), Col: wsview.Dim},
 			{Text: "period " + si(cy.PeriodS, "s") + "  duty " + fmt.Sprintf("%.1f%%", cy.DutyPct) + "  Vpp " + si(cy.Vpp, "V"), Col: wsview.Text},
-			{Text: "rise " + si(cy.RiseS, "s") + "  fall " + si(cy.FallS, "s") + "  slew " + fmt.Sprintf("%.3g V/us", cy.SlewVus), Col: wsview.Text}}
+			{Text: "rise " + si(cy.RiseS, "s") + "  fall " + si(cy.FallS, "s") + "  slew " + fmt.Sprintf("%.3g V/us", cy.SlewVus), Col: wsview.Text},
+		}
 	}
 	return p
 }
@@ -243,7 +251,7 @@ func soundPageLines(ss *soundSvc, set SoundSettings) []wsview.Span {
 		if set.Gate >= 0 {
 			gate = fmt.Sprintf("gate C%d", set.Gate+1)
 		}
-		out = append(out, d("trigger: FPGA edge, "+gate+fmt.Sprintf(" %s", si(set.GateV, "V"))))
+		out = append(out, d("trigger: FPGA edge, "+gate+" "+si(set.GateV, "V")))
 		switch ss.adsr {
 		case adsrIdle:
 			out = append(out, d("push Adjust to arm"))
@@ -292,6 +300,7 @@ func soundPageLines(ss *soundSvc, set SoundSettings) []wsview.Span {
 		out = append(out, t("H1 "+si(h.F0, "Hz")+fmt.Sprintf("  %.1f dBV", h.H[0].DBV)))
 		for i := 1; i < 10; i += 2 {
 			l := ""
+			var lSb295 strings.Builder
 			for k := i; k < i+2 && k < 10; k++ {
 				x := h.H[k]
 				v := "  -- "
@@ -300,8 +309,9 @@ func soundPageLines(ss *soundSvc, set SoundSettings) []wsview.Span {
 				} else if x.DBV > math.Inf(-1) {
 					v = "   ---"
 				}
-				l += fmt.Sprintf("H%-2d%s  ", k+1, v)
+				lSb295.WriteString(fmt.Sprintf("H%-2d%s  ", k+1, v))
 			}
+			l += lSb295.String()
 			out = append(out, t(l))
 		}
 		out = append(out, t("THD "+pctText(h.THDPct)))

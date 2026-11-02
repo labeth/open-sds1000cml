@@ -2,10 +2,9 @@
 package panel
 
 import (
+	"open-sds/app/internal/engine"
 	"strings"
 	"testing"
-
-	"open-sds/app/internal/engine"
 )
 
 // A bus that swings too little to decode at the V/div in use (a 3.3 V bus

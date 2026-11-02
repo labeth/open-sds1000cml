@@ -198,7 +198,7 @@ func edidNotes(ps []Packet) {
 		}
 		a := st.ptr.take(*p, 1)
 		if a.write {
-			p.Note = "EDID offset " + fmt.Sprint(a.reg)
+			p.Note = "EDID offset " + strconv.Itoa(a.reg)
 			continue
 		}
 		if !a.known {
@@ -245,12 +245,14 @@ func (st *edidState) summary() (string, bool) {
 	}
 	id := []byte{64 + m[8]>>2&0x1f, 64 + (m[8]&3)<<3 | m[9]>>5, 64 + m[9]&0x1f}
 	s := fmt.Sprintf("EDID %s %s", string(id), hx(int(m[11])<<8|int(m[10]), 4))
+	var sSb248 strings.Builder
 	for d := 54; d+18 <= 126; d += 18 {
 		if m[d] == 0 && m[d+1] == 0 && m[d+3] == 0xfc {
-			s += " '" + printable(strings.TrimRight(strings.SplitN(string(m[d+5:d+18]), "\n", 2)[0], " ")) + "'"
+			sSb248.WriteString(" '" + printable(strings.TrimRight(strings.SplitN(string(m[d+5:d+18]), "\n", 2)[0], " ")) + "'")
 			break
 		}
 	}
+	s += sSb248.String()
 	if pc := int(m[55])<<8 | int(m[54]); pc != 0 {
 		h := int(m[58]&0xf0)<<4 | int(m[56])
 		v := int(m[61]&0xf0)<<4 | int(m[59])
@@ -299,13 +301,19 @@ type rtcSpec struct {
 	regs                                   map[int]string
 }
 
-var ds1307Spec = rtcSpec{name: "RTC", sec: 0, min: 1, hour: 2, wday: 3, day: 4, month: 5, year: 6, weekdayFrom: 1,
-	regs: map[int]string{0: "Seconds", 1: "Minutes", 2: "Hours", 3: "Day", 4: "Date", 5: "Month", 6: "Year", 7: "Control"}}
+var ds1307Spec = rtcSpec{
+	name: "RTC", sec: 0, min: 1, hour: 2, wday: 3, day: 4, month: 5, year: 6, weekdayFrom: 1,
+	regs: map[int]string{0: "Seconds", 1: "Minutes", 2: "Hours", 3: "Day", 4: "Date", 5: "Month", 6: "Year", 7: "Control"},
+}
 
-var rtc8564Spec = rtcSpec{name: "RTC", sec: 2, min: 3, hour: 4, wday: 6, day: 5, month: 7, year: 8, weekdayFrom: 0,
-	regs: map[int]string{0: "Control1", 1: "Control2", 2: "Seconds", 3: "Minutes", 4: "Hours", 5: "Days", 6: "Weekdays",
+var rtc8564Spec = rtcSpec{
+	name: "RTC", sec: 2, min: 3, hour: 4, wday: 6, day: 5, month: 7, year: 8, weekdayFrom: 0,
+	regs: map[int]string{
+		0: "Control1", 1: "Control2", 2: "Seconds", 3: "Minutes", 4: "Hours", 5: "Days", 6: "Weekdays",
 		7: "Months", 8: "Years", 9: "Minute alarm", 10: "Hour alarm", 11: "Day alarm", 12: "Weekday alarm",
-		13: "CLKOUT", 14: "Timer control", 15: "Timer"}}
+		13: "CLKOUT", 14: "Timer control", 15: "Timer",
+	},
+}
 
 // weekdays name the days of the week from Sunday.
 var weekdays = []string{"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"}
@@ -486,9 +494,11 @@ func smbusPEC(b []byte) int {
 }
 
 // mlxRegs name the MLX90614's RAM and EEPROM words (EEPROM at 0x20+).
-var mlxRegs = map[int]string{0x04: "Raw IR1", 0x05: "Raw IR2", 0x06: "Ta", 0x07: "Tobj1", 0x08: "Tobj2",
+var mlxRegs = map[int]string{
+	0x04: "Raw IR1", 0x05: "Raw IR2", 0x06: "Ta", 0x07: "Tobj1", 0x08: "Tobj2",
 	0x20: "To max", 0x21: "To min", 0x22: "PWM ctrl", 0x23: "Ta range", 0x24: "Emissivity", 0x25: "Config1",
-	0x2E: "SMBus address", 0x3C: "ID0", 0x3D: "ID1", 0x3E: "ID2", 0x3F: "ID3"}
+	0x2E: "SMBus address", 0x3C: "ID0", 0x3D: "ID1", 0x3E: "ID2", 0x3F: "ID3",
+}
 
 // mlxNotes reads MLX90614 word reads (the command, then a read of the low
 // byte, the high byte and the PEC): a temperature in kelvin times 50, shown
@@ -573,14 +583,18 @@ func atshaCRC(b []byte) int {
 }
 
 // atshaOps name the ATSHA204A's command opcodes.
-var atshaOps = map[int]string{0x01: "Pause", 0x02: "Read", 0x08: "MAC", 0x11: "HMAC", 0x12: "Write", 0x15: "GenDig",
+var atshaOps = map[int]string{
+	0x01: "Pause", 0x02: "Read", 0x08: "MAC", 0x11: "HMAC", 0x12: "Write", 0x15: "GenDig",
 	0x16: "Nonce", 0x17: "Lock", 0x1b: "Random", 0x1c: "DeriveKey", 0x20: "UpdateExtra", 0x24: "Counter",
 	0x28: "CheckMac", 0x30: "DevRev", 0x40: "GenKey", 0x41: "Sign", 0x43: "ECDH", 0x45: "Verify", 0x46: "PrivWrite",
-	0x47: "SHA"}
+	0x47: "SHA",
+}
 
 // atshaStatus names a response's status byte.
-var atshaStatus = map[int]string{0x00: "success", 0x01: "checkmac failure", 0x03: "parse error",
-	0x0f: "execution error", 0x11: "ready", 0xff: "CRC error"}
+var atshaStatus = map[int]string{
+	0x00: "success", 0x01: "checkmac failure", 0x03: "parse error",
+	0x0f: "execution error", 0x11: "ready", 0xff: "CRC error",
+}
 
 // atshaCRCok checks a block's count, data and CRC (the count covers itself
 // and the CRC).
@@ -615,7 +629,7 @@ func atshaNotes(ps []Packet) {
 				}
 				p.Note = "ATSHA204A status " + st
 			default:
-				p.Note = fmt.Sprintf("ATSHA204A response, %s", plural(max(len(b)-3, 0), "byte"))
+				p.Note = "ATSHA204A response, " + plural(max(len(b)-3, 0), "byte")
 			}
 			if len(b) > 0 && !atshaCRCok(b) {
 				p.Note += " CRC bad"
@@ -672,15 +686,19 @@ func atshaDetect(ps []Packet) string {
 // ---- HDCP (DDC at 0x3A) ----
 
 // hdcpRegs name the HDCP receiver's register offsets.
-var hdcpRegs = map[int]string{0x00: "Bksv", 0x08: "Ri'", 0x0a: "Pj'", 0x10: "Aksv", 0x15: "Ainfo", 0x18: "An",
+var hdcpRegs = map[int]string{
+	0x00: "Bksv", 0x08: "Ri'", 0x0a: "Pj'", 0x10: "Aksv", 0x15: "Ainfo", 0x18: "An",
 	0x20: "V'H0", 0x24: "V'H1", 0x28: "V'H2", 0x2c: "V'H3", 0x30: "V'H4", 0x40: "Bcaps", 0x41: "Bstatus",
-	0x43: "KSV FIFO", 0x50: "HDCP2Version", 0x60: "Write_Message", 0x70: "RxStatus", 0x80: "Read_Message"}
+	0x43: "KSV FIFO", 0x50: "HDCP2Version", 0x60: "Write_Message", 0x70: "RxStatus", 0x80: "Read_Message",
+}
 
 // hdcpMsgs name the HDCP 2.2 messages.
-var hdcpMsgs = map[int]string{2: "AKE_Init", 3: "AKE_Send_Cert", 4: "AKE_No_stored_km", 5: "AKE_Stored_km",
+var hdcpMsgs = map[int]string{
+	2: "AKE_Init", 3: "AKE_Send_Cert", 4: "AKE_No_stored_km", 5: "AKE_Stored_km",
 	7: "AKE_Send_H_prime", 8: "AKE_Send_Pairing_Info", 9: "LC_Init", 10: "LC_Send_L_prime", 11: "SKE_Send_Eks",
 	12: "RepeaterAuth_Send_ReceiverID_List", 15: "RepeaterAuth_Send_Ack", 16: "RepeaterAuth_Stream_Manage",
-	17: "RepeaterAuth_Stream_Ready"}
+	17: "RepeaterAuth_Stream_Ready",
+}
 
 // hdcpNotes reads HDCP transfers at 0x3A: the register written and read,
 // Bstatus's device count, RxStatus's message length, and the HDCP 2
@@ -771,8 +789,10 @@ func hdcpDetect(ps []Packet) string {
 // ---- LTC2607/2617/2627 dual DAC ----
 
 // ltcCmds and ltcDACs name the DAC's command and address nibbles.
-var ltcCmds = map[int]string{0: "Write", 1: "Update", 3: "Write+Update", 4: "Power down", 15: "No op"}
-var ltcDACs = map[int]string{0: "DAC A", 1: "DAC B", 15: "all DACs"}
+var (
+	ltcCmds = map[int]string{0: "Write", 1: "Update", 3: "Write+Update", 4: "Power down", 15: "No op"}
+	ltcDACs = map[int]string{0: "DAC A", 1: "DAC B", 15: "all DACs"}
+)
 
 // ltcNotes reads LTC26x7 writes: a command and address byte, then the
 // 16-bit code (the LTC2607's; the 2617 and 2627 left-justify 14 and 12).
@@ -845,8 +865,10 @@ func mcpNames(wide bool) map[int]string {
 	return m
 }
 
-var mcp23008Regs = mcpNames(false)
-var mcp23017Regs = mcpNames(true)
+var (
+	mcp23008Regs = mcpNames(false)
+	mcp23017Regs = mcpNames(true)
+)
 
 // regNotes reads a simple register device's accesses at lo..hi: the pointer
 // written, then registers written or read from it, named by names(address).
@@ -1061,7 +1083,7 @@ func xfpNotes(ps []Packet) {
 			parts = append(parts, "PN '"+xfpText(st.mem[168:184])+"'")
 		}
 		if covers(186, 187) {
-			parts = append(parts, fmt.Sprintf("%s nm", fixed(int64(int(st.mem[186])<<8|int(st.mem[187])), 20, 2)))
+			parts = append(parts, fixed(int64(int(st.mem[186])<<8|int(st.mem[187])), 20, 2)+" nm")
 		}
 		if covers(196, 211) {
 			parts = append(parts, "SN '"+xfpText(st.mem[196:212])+"'")

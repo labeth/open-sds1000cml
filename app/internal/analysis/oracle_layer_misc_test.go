@@ -41,8 +41,12 @@ func orcSigrokROM(s string) string {
 func TestOracleLayerOneWireNetwork(t *testing.T) {
 	orcNeed(t, "onewire_link", "onewire_network")
 	rom := orcROM(0x28, 0x2c, 0x1b, 0x6a, 0x05, 0, 0)
-	ps, anns := orcOWRun(t, "onewire_net", "onewire_network", [][]byte{append(append([]byte{0x55}, rom...), 0x44),
-		{0xcc, 0xbe, 0x12}, append([]byte{0x33}, rom...), {0xa5, 0x01}})
+	ps, anns := orcOWRun(t, "onewire_net", "onewire_network", [][]byte{
+		append(append([]byte{0x55}, rom...), 0x44),
+		{0xcc, 0xbe, 0x12},
+		append([]byte{0x33}, rom...),
+		{0xa5, 0x01},
+	})
 	var repo []string
 	for _, n := range orcNotes(ps) {
 		m := regexp.MustCompile(`^([A-Z ]+?)(?: ([0-9A-F]{2}-[0-9A-F]{12}))?(?:: ([0-9A-F ]+))?$`).FindStringSubmatch(n)
@@ -83,7 +87,8 @@ func TestOracleLayerDS28EA00(t *testing.T) {
 	sp2[8] = byte(crc8Maxim(sp2[:8]))
 	ps, anns := orcOWRun(t, "ds28ea00", "onewire_network,ds28ea00", [][]byte{
 		append(append([]byte{0x55}, rom...), 0x44), append(append(append([]byte{0x55}, rom...), 0xbe), sp...),
-		append(append(append([]byte{0x55}, rom...), 0xbe), sp2...), append(append([]byte{0x55}, rom...), 0xb4)})
+		append(append(append([]byte{0x55}, rom...), 0xbe), sp2...), append(append([]byte{0x55}, rom...), 0xb4),
+	})
 	names := map[string]string{"Convert temperature": "Convert T", "Read scratchpad": "Read scratchpad", "Read power mode": "Read power mode"}
 	repo := orcMatch(orcNotes(ps), `: (Convert T|Read scratchpad|Read power mode)(?: (-?\d+\.\d+) C)?`)
 	var orc []string
@@ -110,10 +115,11 @@ func TestOracleLayerDS2408(t *testing.T) {
 	rom := orcROM(0x29, 1, 2, 3, 4, 5, 6)
 	ps, anns := orcOWRun(t, "ds2408", "onewire_network,ds2408", [][]byte{
 		append(append([]byte{0x55}, rom...), 0xf0, 0x88, 0x00, 0xff), append(append([]byte{0x55}, rom...), 0x5a, 0x0f, 0xf0, 0xaa, 0x0f),
-		append(append([]byte{0x55}, rom...), 0xc3, 0xaa, 0xaa)})
+		append(append([]byte{0x55}, rom...), 0xc3, 0xaa, 0xaa),
+	})
 	repo := orcMatch(orcNotes(ps), `: (Read PIO registers @0x0088: FF|Channel access write 0x0F done|Reset activity latches done)$`)
 	var orc []string
-	for _, s := range strings.Split(strings.Join(orcTexts(anns), "\n"), "Reset/presence: true") {
+	for s := range strings.SplitSeq(strings.Join(orcTexts(anns), "\n"), "Reset/presence: true") {
 		switch {
 		case strings.Contains(s, "Read PIO Registers") && strings.Contains(s, "Target address: 0x0088") && strings.Contains(s, "Data: 0xff"):
 			orc = append(orc, "Read PIO registers @0x0088: FF")
@@ -134,7 +140,8 @@ func TestOracleLayerDS243x(t *testing.T) {
 	c := crc16Maxim(ws[:11])
 	ws[11], ws[12] = byte(c), byte(c>>8)
 	ps, anns := orcOWRun(t, "ds243x", "onewire_network,ds243x", [][]byte{
-		append(append([]byte{0x55}, rom...), 0xf0, 0x20, 0x00, 1, 2, 3), append(append([]byte{0x55}, rom...), ws...)})
+		append(append([]byte{0x55}, rom...), 0xf0, 0x20, 0x00, 1, 2, 3), append(append([]byte{0x55}, rom...), ws...),
+	})
 	var repo []string
 	for _, n := range orcNotes(ps) {
 		if m := regexp.MustCompile(`: Read memory @0x([0-9A-F]{4}), \d+ bytes: ([0-9A-F ]+)$`).FindStringSubmatch(n); m != nil {
@@ -145,7 +152,7 @@ func TestOracleLayerDS243x(t *testing.T) {
 		}
 	}
 	var orc []string
-	for _, s := range strings.Split(strings.Join(orcTexts(anns), "\n"), "Reset/presence: true") {
+	for s := range strings.SplitSeq(strings.Join(orcTexts(anns), "\n"), "Reset/presence: true") {
 		if strings.Contains(s, "Function command: Read memory") {
 			ta := regexp.MustCompile(`Target address: 0x([0-9a-f]{4})`).FindStringSubmatch(s)[1]
 			var d []string
@@ -169,8 +176,16 @@ func TestOracleLayerDS243x(t *testing.T) {
 func TestOracleLayerCFP(t *testing.T) {
 	orcNeed(t, "mdio", "cfp")
 	const sr = 10_000_000
-	mdc, mdio := orcMDIOWaves(sr, 1e-6, []orcMDIOFrame{{0, 0, 0, 1, 0x8000}, {0, 3, 0, 1, 0x000e}, {0, 0, 0, 1, 0x8090},
-		{0, 3, 0, 1, 0x1234}, {0, 0, 0, 1, 0xa000}, {0, 3, 0, 1, 0x55}, {0, 0, 0, 1, 0x8410}, {0, 2, 0, 1, 0x99}})
+	mdc, mdio := orcMDIOWaves(sr, 1e-6, []orcMDIOFrame{
+		{0, 0, 0, 1, 0x8000},
+		{0, 3, 0, 1, 0x000e},
+		{0, 0, 0, 1, 0x8090},
+		{0, 3, 0, 1, 0x1234},
+		{0, 0, 0, 1, 0xa000},
+		{0, 3, 0, 1, 0x55},
+		{0, 0, 0, 1, 0x8410},
+		{0, 2, 0, 1, 0x99},
+	})
 	r := decodeMDIO(t, sr, mdc, mdio)
 	ps := ApplyLayer("cfp", "mdio", Packets(r, len(mdc)), LayerArgs{Addr: -1})
 	anns := orcDecode(t, sr, []string{"MDC", "MDIO"}, [][]byte{mdc, mdio}, "mdio:mdc=MDC:mdio=MDIO,cfp", "cfp")
@@ -235,7 +250,7 @@ func TestOracleLayerUSBRequest(t *testing.T) {
 			continue
 		}
 		var su []int
-		for _, f := range strings.Fields(m[1]) {
+		for f := range strings.FieldsSeq(m[1]) {
 			v, _ := strconv.ParseUint(f, 16, 8)
 			su = append(su, int(v))
 		}

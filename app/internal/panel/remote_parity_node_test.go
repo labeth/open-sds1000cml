@@ -5,14 +5,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"open-sds/app/internal/panel/wsview"
+	"open-sds/app/internal/testenv"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
-
-	"open-sds/app/internal/panel/wsview"
-	"open-sds/app/internal/testenv"
 )
 
 // TestRemoteCoreParity: what the phone remote says before it sends a value
@@ -96,15 +95,19 @@ func TestRemoteCoreParity(t *testing.T) {
 		}
 	}
 	for _, unit := range []string{"V", "s", "%", "div", "b/s", ""} {
-		for _, text := range []string{"1.25", "1.25V", "1.25 V", "500u", "500us", "500 us", "-20 mV", "+1.2", "1e-3", "2k", "115.2k", "50%", "25 %",
+		for _, text := range []string{
+			"1.25", "1.25V", "1.25 V", "500u", "500us", "500 us", "-20 mV", "+1.2", "1e-3", "2k", "115.2k", "50%", "25 %",
 			"0x1F", "-0x10", "0xZZ", "abc", "", "  ", "1.2.3", "1e", "1e5", "5mA", "2 volts", "3 sec", "10 div", "9600 baud", ".5", "-.5ms", "1Meg", "µs", "3µs",
 			"2,5V", "2,5", "115,2k", "57,600", "1,2,3", "1.2,3", ",5", "-0,5 ms", "1,5e3", "0x1,2", "2,5 volts", "0,125", "1,250 ms",
-			"-1,500", "1,2345", "12,34k", "+3,000V", "000,500", "0x-999", "0x+5", "-0x-5", "0x"} {
+			"-1,500", "1,2345", "12,34k", "+3,000V", "000,500", "0x-999", "0x+5", "-0x-5", "0x",
+		} {
 			vec.Parse = append(vec.Parse, parseVec{text, unit})
 		}
 	}
-	vec.Match = []string{"55 AA 0F", "55aa", "55,AA", "?? A? ?F ERR", "SOF ??", "sof 12 cmd", "CMD", "SOFA", "5", "55 ZZ", "", "any", "Any Byte", `"Hi"`, `"Hi\r\n"`, `'\x41\\'`, `"\q"`, `""`,
-		`"\x4"`, `"a\"b"`, strings.Repeat("00 ", 33), strings.Repeat("A", 64), `"é"`, `"tab\there"`, "AAB", "err ??"}
+	vec.Match = []string{
+		"55 AA 0F", "55aa", "55,AA", "?? A? ?F ERR", "SOF ??", "sof 12 cmd", "CMD", "SOFA", "5", "55 ZZ", "", "any", "Any Byte", `"Hi"`, `"Hi\r\n"`, `'\x41\\'`, `"\q"`, `""`,
+		`"\x4"`, `"a\"b"`, strings.Repeat("00 ", 33), strings.Repeat("A", 64), `"é"`, `"tab\there"`, "AAB", "err ??",
+	}
 
 	dir := t.TempDir()
 	blob, err := json.Marshal(vec)

@@ -4,16 +4,15 @@ package lcd
 import (
 	"bytes"
 	"math"
-	"testing"
-
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/panel/wsview"
+	"testing"
 )
 
 // TRLC-LINKS: REQ-SDS-068
 func sgSine(n int, freqHz, sampleS float64) *engine.Frame {
 	c := make([]uint8, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		v := 128 + 90*math.Sin(2*math.Pi*freqHz*float64(i)*sampleS)
 		if v < 0 {
 			v = 0
@@ -57,7 +56,7 @@ func TestSpectrogramPeakColumn(t *testing.T) {
 	// scan the top row for the brightest column, map back to a frequency
 	best, bestLum := 0, -1
 	lum := func(c uint16) int { return int((c>>11)&0x1f)*2 + int((c>>5)&0x3f) + int(c&0x1f) }
-	for x := 0; x < sgCols; x++ {
+	for x := range sgCols {
 		l := lum(sg.img.At(sgX0+x, sg.imgRow(0)))
 		if l > bestLum {
 			bestLum, best = l, x
@@ -80,7 +79,7 @@ func TestSpectrogramTracksSteppedFrequency(t *testing.T) {
 	brightCol := func(row int) int {
 		best, bestLum := 0, -1
 		lum := func(c uint16) int { return int((c>>11)&0x1f)*2 + int((c>>5)&0x3f) + int(c&0x1f) }
-		for x := 0; x < sgCols; x++ {
+		for x := range sgCols {
 			l := lum(sg.img.At(sgX0+x, sg.imgRow(row)))
 			if l > bestLum {
 				bestLum, best = l, x
@@ -128,7 +127,7 @@ func TestSpectrogramRowsPerStretch(t *testing.T) {
 	lum := func(c uint16) int { return int((c>>11)&0x1f)*2 + int((c>>5)&0x3f) + int(c&0x1f) }
 	hz := func(row int) float64 {
 		best, bestLum := 0, -1
-		for x := 0; x < sgCols; x++ {
+		for x := range sgCols {
 			if l := lum(sg.img.At(sgX0+x, sg.imgRow(row))); l > bestLum {
 				bestLum, best = l, x
 			}
@@ -163,7 +162,7 @@ func TestRenderSpectrogramView(t *testing.T) {
 		return &engine.Frame{C1: c, C2: c, Valid: n, SampleS: dt}
 	}
 	sg := NewSpectrogram()
-	for i := 0; i < 30; i++ { // many rows so the waterfall (not just the hint) is drawn
+	for range 30 { // many rows so the waterfall (not just the hint) is drawn
 		sg.Push(noise(), 0, 0.5/dt)
 	}
 	hud := defaultHUD()
@@ -205,7 +204,7 @@ var heatStops = [7][3]uint8{
 
 // TRLC-LINKS: REQ-SDS-068
 func TestHeatStops(t *testing.T) {
-	for i := 0; i < 7; i++ {
+	for i := range 7 {
 		r, g, b := unrgb(heat(float64(i) / 6)) // t=i/6 lands exactly on stop i
 		want := heatStops[i]
 		// RGB565 quantisation: R/B 5-bit (±8), G 6-bit (±4)
@@ -277,8 +276,8 @@ func TestSpectrumColumnsShowNarrowTones(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-068
 func TestSpectrogramBlitMatchesPixels(t *testing.T) {
 	sg := NewSpectrogram()
-	for s := 0; s < 6; s++ {
-		for r := 0; r < 10; r++ {
+	for s := range 6 {
+		for range 10 {
 			sg.Push(sgSine(4096, 10e6+15e6*float64(s), 2e-9), 0, 0.5/2e-9)
 		}
 	}

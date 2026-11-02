@@ -2,6 +2,7 @@
 package panel
 
 import (
+	"slices"
 	"strconv"
 	"time"
 )
@@ -78,10 +79,8 @@ func minuteText(m int) string {
 // future settings file never sets a time the rows cannot show).
 // TRLC-LINKS: REQ-SDS-221
 func oneOf(m int, choices []int, def int) int {
-	for _, c := range choices {
-		if c == m {
-			return m
-		}
+	if slices.Contains(choices, m) {
+		return m
 	}
 	return def
 }

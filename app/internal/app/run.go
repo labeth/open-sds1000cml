@@ -207,7 +207,7 @@ func Run() {
 	}
 
 	if fe != nil {
-		for ch := 0; ch < 2; ch++ {
+		for ch := range 2 {
 			if err := fe.SetVdiv(ch, 8); err != nil {
 				logf("SRAM: initial range: %v", err)
 				return
@@ -279,9 +279,11 @@ func Run() {
 	go saver.Run(stopFo)
 	// *SAV/*RCL: numbered setups beside the persisted one, through the same
 	// Collect/Apply paths as the boot restore.
-	setupSlots := settings.Slots{Dir: filepath.Dir(setPath),
+	setupSlots := settings.Slots{
+		Dir:     filepath.Dir(setPath),
 		Collect: func() settings.Settings { return settings.Collect(e, setFE, pc) },
-		Apply:   func(st settings.Settings) { settings.Apply(st, e, setFE, pc, logf) }}
+		Apply:   func(st settings.Settings) { settings.Apply(st, e, setFE, pc, logf) },
+	}
 	pc.SetSetupMemory(setupSlots) // SAVE/RECALL key: the same slots as *SAV/*RCL
 	// SCPI and the web save and recall through the panel, so its FILE rows and
 	// SAVE/RECALL lamp follow them.

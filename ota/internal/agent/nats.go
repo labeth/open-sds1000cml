@@ -3,11 +3,10 @@ package agent
 
 import (
 	"encoding/json"
-	"time"
-
 	"open-sds/ota/internal/buildinfo"
 	"open-sds/ota/internal/sysinfo"
 	"open-sds/ota/internal/watchdog"
+	"time"
 
 	"github.com/nats-io/nats.go"
 )

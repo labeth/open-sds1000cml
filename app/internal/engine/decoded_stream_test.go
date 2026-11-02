@@ -3,10 +3,9 @@ package engine
 
 import (
 	"context"
+	"open-sds/app/internal/sramcapture"
 	"testing"
 	"time"
-
-	"open-sds/app/internal/sramcapture"
 )
 
 // The planner accepts the stream triggers' patterns: an error token, and a

@@ -3,7 +3,8 @@ package web
 
 import (
 	"context"
-	"fmt"
+	"errors"
+	"net/http"
 	"net/http/httptest"
 	"open-sds/app/internal/sramcapture"
 	"strings"
@@ -24,7 +25,7 @@ type decodedReusableScope struct {
 
 // TRLC-LINKS: REQ-SDS-013
 func (f *decodedReusableScope) ReadDecodedBatch(context.Context, sramcapture.RecordIdentity) ([]sramcapture.DecodedEvent, error) {
-	return nil, fmt.Errorf("allocating fallback used")
+	return nil, errors.New("allocating fallback used")
 }
 
 // TRLC-LINKS: REQ-SDS-013
@@ -41,7 +42,7 @@ func (f *decodedReusableScope) ReadDecodedBatchInto(ctx context.Context, id sram
 func TestDecodedHTTPReusesConsumerStorage(t *testing.T) {
 	f := &decodedReusableScope{decodedWebScope: &decodedWebScope{fakeScope: &fakeScope{}, id: sramcapture.RecordIdentity{Epoch: 7, Record: 9}}}
 	rr := httptest.NewRecorder()
-	New(f, nil, nil, nil).Handler().ServeHTTP(rr, httptest.NewRequest("GET", "/api/decoded/events.bin?epoch=7&record=9", nil))
+	New(f, nil, nil, nil).Handler().ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "/api/decoded/events.bin?epoch=7&record=9", nil))
 	if rr.Code != 200 || rr.Body.Len() != 64 || !f.reused {
 		t.Fatal("reusable transport", rr.Code, rr.Body.Len(), f.reused)
 	}
@@ -59,11 +60,11 @@ func (f *decodedWebScope) BeginDecodedCapture(_ context.Context, _ sramcapture.C
 // TRLC-LINKS: REQ-SDS-013
 func (f *decodedWebScope) ReadDecodedBatch(_ context.Context, id sramcapture.RecordIdentity) ([]sramcapture.DecodedEvent, error) {
 	if id != f.id {
-		return nil, fmt.Errorf("stale identity")
+		return nil, errors.New("stale identity")
 	}
 	f.reads++
 	if f.reads > 1 {
-		return nil, fmt.Errorf("transcript stopped")
+		return nil, errors.New("transcript stopped")
 	}
 	return []sramcapture.DecodedEvent{{Epoch: id.Epoch, Protocol: 1, Kind: sramcapture.EventData, Value: 0xa5}, {Epoch: id.Epoch, Sequence: 1, Kind: sramcapture.EventLoss, Count: 3}}, nil
 }
@@ -77,7 +78,7 @@ func (f *decodedWebScope) DecodedCaptureStatus(_ context.Context, id sramcapture
 func (f *decodedWebScope) RecallDecodedRecord(_ context.Context, id sramcapture.RecordIdentity, offset, count uint32) ([]byte, error) {
 	f.recalls++
 	if id != f.id {
-		return nil, fmt.Errorf("stale identity")
+		return nil, errors.New("stale identity")
 	}
 	return make([]byte, count*4), nil
 }
@@ -92,7 +93,7 @@ func TestDecodedHTTPEventsAndLoss(t *testing.T) {
 	f := &decodedWebScope{fakeScope: &fakeScope{}, id: sramcapture.RecordIdentity{Epoch: 7, Record: 9}}
 	h := New(f, nil, nil, nil).Handler()
 	rr := httptest.NewRecorder()
-	h.ServeHTTP(rr, httptest.NewRequest("GET", "/api/decoded/events.bin?epoch=7&record=9", nil))
+	h.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "/api/decoded/events.bin?epoch=7&record=9", nil))
 	if rr.Code != 200 || rr.Body.Len() != 64 {
 		t.Fatalf("response %d %s", rr.Code, rr.Body.String())
 	}
@@ -111,7 +112,7 @@ func TestDecodedHTTPGuards(t *testing.T) {
 	h := New(f, nil, nil, nil).Handler()
 	for _, url := range []string{"/api/decoded/record.bin?epoch=7&words=1&offset=0", "/api/decoded/record.bin?epoch=7&record=9&words=4294967295&offset=1"} {
 		rr := httptest.NewRecorder()
-		h.ServeHTTP(rr, httptest.NewRequest("GET", url, nil))
+		h.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, url, nil))
 		if rr.Code != 400 {
 			t.Fatal(rr.Code)
 		}
@@ -120,12 +121,12 @@ func TestDecodedHTTPGuards(t *testing.T) {
 		t.Fatal("invalid request reached acquisition")
 	}
 	rr := httptest.NewRecorder()
-	h.ServeHTTP(rr, httptest.NewRequest("POST", "/api/decoded/start", strings.NewReader(`{} {}`)))
+	h.ServeHTTP(rr, httptest.NewRequest(http.MethodPost, "/api/decoded/start", strings.NewReader(`{} {}`)))
 	if rr.Code != 400 || f.starts != 0 {
 		t.Fatal("multiple JSON objects accepted")
 	}
 	rr = httptest.NewRecorder()
-	h.ServeHTTP(rr, httptest.NewRequest("GET", "/api/decoded/record.bin?epoch=6&record=9&offset=0&words=1", nil))
+	h.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "/api/decoded/record.bin?epoch=6&record=9&offset=0&words=1", nil))
 	if rr.Code != 409 {
 		t.Fatal("stale record accepted")
 	}

@@ -18,7 +18,7 @@ func TestCursorsTurnedOnOffScreenComeHome(t *testing.T) {
 	}
 	c.setCursorMode(1)
 	s := c.snap()
-	for k := 0; k < 2; k++ {
+	for k := range 2 {
 		if s.curX[k] < 0 || s.curX[k] > 1 {
 			t.Fatalf("time cursors turned on off the screen: %v", s.curX)
 		}

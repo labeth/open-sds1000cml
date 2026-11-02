@@ -1,9 +1,8 @@
 package panel
 
 import (
-	"time"
-
 	"open-sds/app/internal/panel/wsview"
+	"time"
 )
 
 // pageStreamAbandon is how long the web page that asked for the scope's

@@ -2,17 +2,17 @@
 package decode
 
 // parityAdd records one Go decode as a parity vector (TestJSDecoderParity).
-type parityAdd func(proto string, codes []uint8, colT float64, cfg map[string]interface{}, r Result)
+type parityAdd func(proto string, codes []uint8, colT float64, cfg map[string]any, r Result)
 
 // parityAdd2 is parityAdd for a two-line protocol.
-type parityAdd2 func(proto string, c1, c2 []uint8, colT float64, cfg map[string]interface{}, r Result)
+type parityAdd2 func(proto string, c1, c2 []uint8, colT float64, cfg map[string]any, r Result)
 
 // protoParityVectors adds the Go<->JS parity vectors of the protocols beyond
 // the first ten: each family's clean frames, frames with their checks
 // failing, and corrupted copies (corrupt) that drive the reject paths.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-073
 func protoParityVectors(add parityAdd, add2 parityAdd2, corrupt func([]uint8) []uint8) {
-	type cfg = map[string]interface{}
+	type cfg = map[string]any
 	type base struct {
 		proto string
 		colT  float64
@@ -166,7 +166,7 @@ func protoParityVectors(add parityAdd, add2 parityAdd2, corrupt func([]uint8) []
 		ws := newTimeline(250e6)
 		ws.add(0, 50e-9)
 		var smp [][2]int
-		for i := 0; i < 5; i++ {
+		for i := range 5 {
 			smp = append(smp, [2]int{(i * 0x1357) & 0xffffff, 0xFFFFF0 - i*0x10})
 		}
 		spdifStream(ws, 48e3, 190, smp)

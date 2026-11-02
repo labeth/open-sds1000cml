@@ -11,6 +11,7 @@
 package gpmc
 
 import (
+	"errors"
 	"fmt"
 	"time"
 	"unsafe"
@@ -64,7 +65,7 @@ func DecodeValue(b [6]byte) uint16 { return uint16(b[4]) | uint16(b[5])<<8 }
 // TRLC-LINKS: REQ-SDS-103
 func (r *Reader) Read(plane uint8, sel uint16) (uint16, error) {
 	if r.fd < 0 {
-		return 0, fmt.Errorf("gpmc: no inherited fd")
+		return 0, errors.New("gpmc: no inherited fd")
 	}
 	if plane != 1 && plane != 3 {
 		return 0, fmt.Errorf("gpmc: invalid plane %d", plane)
@@ -96,7 +97,7 @@ func (r *Reader) FillFrozen(pairs int, gap time.Duration) (bool, []uint16, error
 	}
 	prev &= FillMask
 	seen = append(seen, prev)
-	for i := 0; i < pairs; i++ {
+	for range pairs {
 		time.Sleep(gap)
 		v, err := r.Read(PlaneCS1, SelFill)
 		if err != nil {

@@ -4,15 +4,14 @@ package web
 import (
 	"math"
 	"net/http/httptest"
+	"open-sds/app/internal/engine"
+	"open-sds/app/internal/panel"
+	"open-sds/app/internal/testenv"
 	"os/exec"
 	"strings"
 	"sync"
 	"testing"
 	"time"
-
-	"open-sds/app/internal/engine"
-	"open-sds/app/internal/panel"
-	"open-sds/app/internal/testenv"
 )
 
 // soundScope is a scope with an audio stream: A4 three cents sharp on C1
@@ -47,8 +46,10 @@ func (s *soundScope) LeaseSound(time.Duration) { s.mu.Lock(); s.leases++; s.mu.U
 
 // TRLC-LINKS: REQ-SDS-274, REQ-SDS-275
 func (s *soundScope) SoundInfo() engine.SoundInfo {
-	in := engine.SoundInfo{State: "streaming", Active: true, RateHz: s.fs, Next: s.nextOrd(), Marks: true, Mode: "live",
-		MarkCfg: engine.SoundMarkConfig{Ch: 0, Level: 128, Hyst: 2, Rising: true}}
+	in := engine.SoundInfo{
+		State: "streaming", Active: true, RateHz: s.fs, Next: s.nextOrd(), Marks: true, Mode: "live",
+		MarkCfg: engine.SoundMarkConfig{Ch: 0, Level: 128, Hyst: 2, Rising: true},
+	}
 	if t := s.SoundTake(); t != nil {
 		in.State, in.Active, in.Mode, in.Take = "stopped", false, "stopped", t.ID
 	}
@@ -82,7 +83,7 @@ func (s *soundScope) SoundRead(from uint64, n int, q1, q2 []uint16) engine.Sound
 	}
 	m := int(min(uint64(n), next-from))
 	b := engine.SoundBlock{First: from, N: m, RateHz: s.fs, Next: next, Scales: []engine.SoundScale{{VdivV: [2]float64{1, 1}}}}
-	for i := 0; i < m; i++ {
+	for i := range m {
 		o := from + uint64(i)
 		b.Q1 = append(b.Q1, s.code(0, o))
 		b.Q2 = append(b.Q2, s.code(1, o))

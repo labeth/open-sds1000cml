@@ -76,7 +76,7 @@ func bootEnv() ([]string, error) {
 		return nil, fmt.Errorf("boot_env: read /proc/1/environ: %w", err)
 	}
 	var out []string
-	for _, s := range strings.Split(string(b), "\x00") {
+	for s := range strings.SplitSeq(string(b), "\x00") {
 		if s != "" {
 			out = append(out, s)
 		}

@@ -2,10 +2,9 @@
 package lcd
 
 import (
+	"open-sds/app/internal/decode"
 	"reflect"
 	"testing"
-
-	"open-sds/app/internal/decode"
 )
 
 // TestEnclosingSpans: a reading over its bytes and a length over its fields

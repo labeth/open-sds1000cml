@@ -148,8 +148,10 @@ func expTau(e []float64, i0, i1 int, s, lo, rate float64) float64 {
 // TRLC-LINKS: REQ-SDS-268
 func AnalyzeADSR(env []float64, fs, gateOn, gateOff float64) ADSR {
 	nan := math.NaN()
-	r := ADSR{Start: nan, PeakAt: nan, DecayEnd: nan, ReleaseAt: nan, End: nan, Attack1090: nan, Attack0100: nan,
-		Decay: nan, DecayTau: nan, Sustain: nan, SustainPct: nan, SustainDB: nan, Release: nan, ReleaseTau: nan}
+	r := ADSR{
+		Start: nan, PeakAt: nan, DecayEnd: nan, ReleaseAt: nan, End: nan, Attack1090: nan, Attack0100: nan,
+		Decay: nan, DecayTau: nan, Sustain: nan, SustainPct: nan, SustainDB: nan, Release: nan, ReleaseTau: nan,
+	}
 	n := len(env)
 	if n < 8 || !(fs > 0) {
 		r.Why = "too short"

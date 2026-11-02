@@ -3,12 +3,11 @@ package panel
 
 import (
 	"context"
+	"open-sds/app/internal/engine"
+	"open-sds/app/internal/superres"
 	"strings"
 	"testing"
 	"time"
-
-	"open-sds/app/internal/engine"
-	"open-sds/app/internal/superres"
 )
 
 type fpgaFakeEng struct {
@@ -22,8 +21,10 @@ func (f *fpgaFakeEng) FPGAStack(_ context.Context, req engine.FPGAStackRequest) 
 	moments := make([]superres.FPGAStackMoments, 2*req.Stack.Bins)
 	for i := range moments {
 		v := uint64(100+i/2) << 24
-		moments[i] = superres.FPGAStackMoments{Sum: [2]uint64{8 * v, 0}, Count: 8, SumOdd: [2]uint64{4 * v, 0}, CountOdd: 4,
-			SumSquares: [2]uint64{0, 8 * (v >> 16) * (v >> 16) >> 32}}
+		moments[i] = superres.FPGAStackMoments{
+			Sum: [2]uint64{8 * v, 0}, Count: 8, SumOdd: [2]uint64{4 * v, 0}, CountOdd: 4,
+			SumSquares: [2]uint64{0, 8 * (v >> 16) * (v >> 16) >> 32},
+		}
 	}
 	st, err := superres.FPGAStack(moments, req.Stack.Factor, int(req.Stack.Channel), 8, req.Records, 2e-9)
 	if err != nil {

@@ -8,7 +8,7 @@ func SampleEdges(wide []uint64, c SampleLineConfig) []SampleLineEdge {
 	other := 1 - c.Ch
 	levels := make([]bool, 4*n) // the other line's samples at or above its level
 	for k, w := range wide {
-		for j := 0; j < 4; j++ {
+		for j := range 4 {
 			levels[4*k+j] = sampleOf(w, other, j) >= c.OtherLevel
 		}
 	}
@@ -20,7 +20,7 @@ func SampleEdges(wide []uint64, c SampleLineConfig) []SampleLineEdge {
 		o := &out[k]
 		pos, rising := -1, false
 		lowAll, highAll := true, true // the clock's four samples all beyond the band
-		for j := 0; j < 4; j++ {
+		for j := range 4 {
 			s := sampleOf(w, c.Ch, j)
 			lowAll, highAll = lowAll && s <= c.Low, highAll && s >= c.High
 			hitR, farR := s >= c.Level, s <= c.Low
@@ -92,7 +92,7 @@ func SampleUART(wide []uint64, c SampleUARTConfig) []SampleBusEvent {
 	index := 0
 	value, ones := 0, 0
 	history, count := uint32(0), 0
-	for t := 0; t < len(wide); t++ {
+	for t := range wide {
 		k := t - SampleUARTLatency
 		if k < 0 {
 			continue
@@ -195,7 +195,7 @@ func SampleI2C(wide []uint64, c SampleI2CConfig) (events []SampleBusEvent, match
 	bitIndex, count := 0, 0
 	shift := uint8(0)
 	history := uint32(0)
-	for t := 0; t < len(wide); t++ {
+	for t := range wide {
 		k := t - SampleI2CLatency
 		if k < 0 {
 			continue

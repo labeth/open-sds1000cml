@@ -47,7 +47,7 @@ func feedPeakRef(s *softStream, raw []byte, cal *InterleaveCalibration) {
 			prev = (q[0][raw[ch]] + q[1][raw[2+ch]]) / 2
 		}
 		o := out[at:]
-		for i := 0; i < n; i++ {
+		for i := range n {
 			bl, bh := raw[4*i+ch], raw[4*i+2+ch]
 			lo, hi := q[0][bl], q[1][bh]
 			dl, dh := lo-prev, hi-prev

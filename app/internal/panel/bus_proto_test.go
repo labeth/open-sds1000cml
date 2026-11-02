@@ -2,11 +2,10 @@
 package panel
 
 import (
-	"strings"
-	"testing"
-
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/panel/framecalc"
+	"strings"
+	"testing"
 )
 
 // linFrameRecord is a 20 ms record of LIN frames at 19200 bit/s on C1 (C2
@@ -29,7 +28,7 @@ func linFrameRecord() *engine.Frame {
 	}
 	char := func(v int) {
 		put(40, 1)
-		for b := 0; b < 8; b++ {
+		for b := range 8 {
 			put(map[bool]uint8{true: 210, false: 40}[v>>b&1 == 1], 1)
 		}
 		put(210, 1)
@@ -57,8 +56,10 @@ func linFrameRecord() *engine.Frame {
 		char(0xff - sum)
 		t = start + 4000
 	}
-	return &engine.Frame{C1: c1, C2: c2, Valid: n, WinCols: n, EdgeX: n / 2, Ptp: 170,
-		TdivS: n * sampleS / 10, SampleS: sampleS, Trigd: true, FullRate: true}
+	return &engine.Frame{
+		C1: c1, C2: c2, Valid: n, WinCols: n, EdgeX: n / 2, Ptp: 170,
+		TdivS: n * sampleS / 10, SampleS: sampleS, Trigd: true, FullRate: true,
+	}
 }
 
 // BUS entry finds a LIN bus and arms its frame start (the hardware's break

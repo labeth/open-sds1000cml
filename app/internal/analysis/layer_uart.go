@@ -23,7 +23,7 @@ func sbusFrame(b []byte) (string, bool) {
 	bit := 0
 	for k := range ch {
 		v := 0
-		for j := 0; j < 11; j++ {
+		for j := range 11 {
 			byteI, bitI := 1+(bit>>3), bit&7
 			v |= int(b[byteI]>>bitI&1) << j
 			bit++
@@ -105,8 +105,10 @@ func sbusMatch(p Packet) ([]string, int) { return []string{"0F"}, -1 }
 // ---- ARM ITM (instrumentation trace over SWO) ----
 
 // itmExceptions name the Cortex-M exception numbers.
-var itmExceptions = map[int]string{0: "Thread", 1: "Reset", 2: "NMI", 3: "HardFault", 4: "MemManage", 5: "BusFault",
-	6: "UsageFault", 11: "SVCall", 12: "DebugMon", 14: "PendSV", 15: "SysTick"}
+var itmExceptions = map[int]string{
+	0: "Thread", 1: "Reset", 2: "NMI", 3: "HardFault", 4: "MemManage", 5: "BusFault",
+	6: "UsageFault", 11: "SVCall", 12: "DebugMon", 14: "PendSV", 15: "SysTick",
+}
 
 // itmText reports a character an ITM stimulus write joins to a string.
 // TRLC-LINKS: REQ-SDS-244
@@ -534,7 +536,8 @@ func etmNotes(ps []Packet) {
 // (2 characters), 'w' address and a word (4), 's' address and a string to
 // NUL, 'p' a page change (02, the index, a checksum), 'c' coordinates (four
 // 16-bit values, 16 characters), 'a' address and a list to NUL, '-' nothing.
-var amuletCmds = map[int][2]string{0xa0: {"PAGE", "p"}, 0xd0: {"GBV", "r"}, 0xd1: {"GWV", "r"}, 0xd2: {"GSV", "r"},
+var amuletCmds = map[int][2]string{
+	0xa0: {"PAGE", "p"}, 0xd0: {"GBV", "r"}, 0xd1: {"GWV", "r"}, 0xd2: {"GSV", "r"},
 	0xd3: {"GLV", "r"}, 0xd4: {"GRPC", "r"}, 0xd5: {"SBV", "b"}, 0xd6: {"SWV", "w"}, 0xd7: {"SSV", "s"}, 0xd8: {"RPC", "r"},
 	0xd9: {"LINE", "c"}, 0xda: {"RECT", "c"}, 0xdb: {"FRECT", "c"}, 0xdc: {"PIXEL", "c"}, 0xdd: {"GBVA", "r"},
 	0xde: {"GWVA", "r"}, 0xdf: {"SBVA", "a"}, 0xe0: {"GBVR", "b"}, 0xe1: {"GWVR", "w"}, 0xe2: {"GSVR", "s"},
@@ -542,7 +545,8 @@ var amuletCmds = map[int][2]string{0xa0: {"PAGE", "p"}, 0xd0: {"GBV", "r"}, 0xd1
 	0xe8: {"RPCR", "r"}, 0xe9: {"LINER", "c"}, 0xea: {"RECTR", "c"}, 0xeb: {"FRECTR", "c"}, 0xec: {"PIXELR", "c"},
 	0xed: {"GBVAR", "a"}, 0xee: {"GWVAR", "a"}, 0xef: {"SBVAR", "a"}, 0xf0: {"ACK", "-"}, 0xf1: {"NACK", "-"},
 	0xf2: {"SWVA", "a"}, 0xf3: {"SWVAR", "a"}, 0xf4: {"GCV", "r"}, 0xf5: {"GCVR", "w"}, 0xf6: {"SCV", "w"},
-	0xf7: {"SCVR", "w"}}
+	0xf7: {"SCVR", "w"},
+}
 
 // amuletHex reads n ASCII hex characters.
 // TRLC-LINKS: REQ-SDS-244
@@ -594,10 +598,10 @@ func amuletNote(b []byte) (string, bool) {
 			s += fmt.Sprintf(" 0x%s = 0x%s", hx(addr, 2), hx(v, len(f)-2))
 		case "c":
 			var xy []string
-			for k := 0; k < 4; k++ {
+			for k := range 4 {
 				v, vok := amuletHex(f[4*k : 4*k+4])
 				aok = aok && vok
-				xy = append(xy, fmt.Sprint(v))
+				xy = append(xy, strconv.Itoa(v))
 			}
 			s += " " + strings.Join(xy, ",")
 		case "p":
@@ -654,8 +658,8 @@ func (st *panState) note(b []byte) (string, bool) {
 		switch {
 		case strings.HasPrefix(s, "AT+JSLN"):
 			name := s
-			if k := strings.IndexByte(s, ','); k >= 0 {
-				name = s[k+1:]
+			if _, after, ok := strings.Cut(s, ","); ok {
+				name = after
 			}
 			parts = append(parts, "name '"+printable(name)+"'")
 		case strings.HasPrefix(s, "AT+JSEC"):
@@ -674,7 +678,7 @@ func (st *panState) note(b []byte) (string, bool) {
 		case strings.HasPrefix(s, "AT+JSDA="):
 			l, d, _ := strings.Cut(s[8:], ",")
 			parts = append(parts, fmt.Sprintf("send %s: %s", printable(l), quoted([]byte(d), 16)))
-			bad = bad || fmt.Sprint(len(d)) != l
+			bad = bad || strconv.Itoa(len(d)) != l
 		case s == "ROK":
 			parts = append(parts, "ready")
 		case s == "OK":

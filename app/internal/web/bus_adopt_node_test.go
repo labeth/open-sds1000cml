@@ -2,10 +2,9 @@
 package web
 
 import (
+	"open-sds/app/internal/testenv"
 	"os/exec"
 	"testing"
-
-	"open-sds/app/internal/testenv"
 )
 
 // TRLC-LINKS: REQ-SDS-214, REQ-SDS-222

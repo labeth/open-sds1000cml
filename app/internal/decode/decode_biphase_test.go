@@ -50,7 +50,7 @@ func TestDecodeSPDIFRoundTrip(t *testing.T) {
 		w.add(0, 50e-9)
 		var s [][2]int
 		var want []int
-		for i := 0; i < 6; i++ {
+		for i := range 6 {
 			a, b := (i*0x1357)&0xffffff, 0xFFFFF0-i*0x10
 			s = append(s, [2]int{a, b})
 			want = append(want, a, b)

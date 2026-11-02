@@ -41,8 +41,10 @@ func TestPacketTriggerArmAndDisable(t *testing.T) {
 	if mask, err := c.PacketProtocols(); err != nil || mask != 0x0540 {
 		t.Fatalf("mask %x %v", mask, err)
 	}
-	cfg := Config{Normal: true, PostWords: 16, DecodedEvents: false, Packet: PacketTriggerConfig{Enabled: true, Protocol: PacketCAN, Channel: 1,
-		Ticks: 32000, Aux: 8000, Pattern: 0x0102030405060708, Length: 8}}
+	cfg := Config{Normal: true, PostWords: 16, DecodedEvents: false, Packet: PacketTriggerConfig{
+		Enabled: true, Protocol: PacketCAN, Channel: 1,
+		Ticks: 32000, Aux: 8000, Pattern: 0x0102030405060708, Length: 8,
+	}}
 	if err := c.Arm(context.Background(), cfg); err != nil {
 		t.Fatal(err)
 	}
@@ -85,8 +87,10 @@ func TestPacketImageBoxDecimation(t *testing.T) {
 	if raw, err := c.RawOnly(); err != nil || raw {
 		t.Fatalf("raw only %v %v", raw, err)
 	}
-	cfg := Config{Normal: true, PostWords: 16, DecimationLog2: 8, Packet: PacketTriggerConfig{Enabled: true, Protocol: PacketCAN, Channel: 1,
-		Ticks: 32000, Aux: 8000, Pattern: 0x0102030405060708, Length: 8}}
+	cfg := Config{Normal: true, PostWords: 16, DecimationLog2: 8, Packet: PacketTriggerConfig{
+		Enabled: true, Protocol: PacketCAN, Channel: 1,
+		Ticks: 32000, Aux: 8000, Pattern: 0x0102030405060708, Length: 8,
+	}}
 	if err := c.Arm(context.Background(), cfg); err != nil {
 		t.Fatal(err)
 	}
@@ -212,7 +216,7 @@ func TestSequenceTriggerArm(t *testing.T) {
 	c.bus = b
 	var seq SequenceTriggerConfig
 	seq.Length, seq.Qualify = 20, true
-	for k := 0; k < 20; k++ {
+	for k := range 20 {
 		seq.Elements[k] = SequenceElement{Kind: SequenceData, Value: uint32(k * 7), Mask: 0xff}
 	}
 	cfg := Config{Normal: true, PostWords: 16, Sequence: seq, Packet: PacketTriggerConfig{Enabled: true, Protocol: PacketCAN, Ticks: 32000, Aux: 32000}}

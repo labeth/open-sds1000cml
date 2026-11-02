@@ -2,12 +2,11 @@ package panel
 
 import (
 	"fmt"
+	"open-sds/app/internal/engine"
+	"open-sds/app/internal/panel/wsview"
 	"sync"
 	"testing"
 	"time"
-
-	"open-sds/app/internal/engine"
-	"open-sds/app/internal/panel/wsview"
 )
 
 // namedLeaseEng records the named raw leases asked of it.

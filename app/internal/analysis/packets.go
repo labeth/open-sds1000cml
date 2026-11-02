@@ -1,7 +1,12 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ANALYSIS
 package analysis
 
-import "fmt"
+import (
+	"fmt"
+	"math"
+	"open-sds/app/internal/decode"
+	"strings"
+)
 
 // Packets: the decoded spans of one record grouped into the messages of the
 // BUS workspace's packet list (REQ-SDS-214). Byte-stream buses (UART, SPI)
@@ -15,13 +20,6 @@ import "fmt"
 // enough idle line before it, and an end marker, another packet or enough idle
 // line after it. A packet cut by the record's edges is still returned, marked
 // incomplete.
-
-import (
-	"math"
-	"strings"
-
-	"open-sds/app/internal/decode"
-)
 
 // Packet faults (Packet.Err).
 const (
@@ -430,7 +428,8 @@ func (g *grouper) framed(proto string, spans []decode.Span) {
 
 // openedFault names the fault an error span marks in the protocols that
 // open each frame with a start marker (opened).
-var openedFault = map[string]string{"lin": FaultCRC, "modbus": FaultCRC, "j1850": FaultCRC, "usbpd": FaultCRC,
+var openedFault = map[string]string{
+	"lin": FaultCRC, "modbus": FaultCRC, "j1850": FaultCRC, "usbpd": FaultCRC,
 	"dht": FaultCRC, "onewire": FaultCRC, "ps2": FaultParity, "swd": FaultParity, "wiegand": FaultParity,
 	"spdif": FaultParity, "irnec": FaultParity, "dmx512": FaultCoding, "midi": FaultCoding, "cec": FaultCoding,
 	"irsirc": FaultCoding, "irrc5": FaultCoding, "irrc6": FaultCoding, "dali": FaultCoding, "mdio": FaultNAK,
@@ -438,7 +437,8 @@ var openedFault = map[string]string{"lin": FaultCRC, "modbus": FaultCRC, "j1850"
 	"miller": FaultCoding, "morse": FaultCoding, "dcf77": FaultParity, "em4100": FaultParity, "em4305": FaultParity,
 	"t55xx": FaultCoding, "swim": FaultParity, "sdq": FaultCoding, "pjdl": FaultCRC, "dsi": FaultCoding,
 	"qi": FaultParity, "sdcard": FaultCRC, "pdi": FaultParity, "cjtag": FaultCoding, "maple": FaultCRC,
-	"caliper": FaultCoding, "irmp": FaultCoding}
+	"caliper": FaultCoding, "irmp": FaultCoding,
+}
 
 // openedWidth is the bytes a unit of the protocols with wide units takes in
 // Packet.Bytes: an MDIO header and data word and a Wiegand field are 16

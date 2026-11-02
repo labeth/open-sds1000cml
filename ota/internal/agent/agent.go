@@ -18,12 +18,6 @@ package agent
 import (
 	"fmt"
 	"log"
-	"os"
-	"path/filepath"
-	"sync"
-	"sync/atomic"
-	"time"
-
 	"open-sds/ota/internal/buildinfo"
 	"open-sds/ota/internal/config"
 	"open-sds/ota/internal/fdinherit"
@@ -31,6 +25,11 @@ import (
 	"open-sds/ota/internal/slots"
 	"open-sds/ota/internal/sysinfo"
 	"open-sds/ota/internal/watchdog"
+	"os"
+	"path/filepath"
+	"sync"
+	"sync/atomic"
+	"time"
 )
 
 const (

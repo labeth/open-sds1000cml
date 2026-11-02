@@ -30,7 +30,7 @@ func envelopeReference(words []uint32, skip, bucket int, q8 bool) [][2]uint32 {
 			} else {
 				v = [2][2]uint32{{w & 0xff, w >> 16 & 0xff}, {w >> 8 & 0xff, w >> 24}}
 			}
-			for ch := 0; ch < 2; ch++ {
+			for ch := range 2 {
 				for _, x := range v[ch] {
 					mn[ch], mx[ch] = min(mn[ch], x), max(mx[ch], x)
 				}
@@ -82,7 +82,7 @@ func TestEnvelopeReduceRTL(t *testing.T) {
 				fmt.Fprintf(&in, "%08x\n%x\n", words[i], gap)
 			}
 			path := filepath.Join(dir, "words.mem")
-			if err := os.WriteFile(path, []byte(in.String()), 0600); err != nil {
+			if err := os.WriteFile(path, []byte(in.String()), 0o600); err != nil {
 				t.Fatal(err)
 			}
 			q := 0
@@ -96,7 +96,7 @@ func TestEnvelopeReduceRTL(t *testing.T) {
 			}
 			var got [][2]uint32
 			count := -1
-			for _, line := range strings.Split(string(out), "\n") {
+			for line := range strings.SplitSeq(string(out), "\n") {
 				var addr int
 				var hi, lo uint32
 				if _, err := fmt.Sscanf(line, "E %d %x %x", &addr, &hi, &lo); err == nil {

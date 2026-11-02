@@ -47,7 +47,7 @@ func uartChars(S sliced, spb float64, parity string, stops int, breakBits float6
 			continue // a glitch, no start bit
 		}
 		val, off := 0, false
-		for c := 0; c < 8; c++ {
+		for c := range 8 {
 			b := lv.at(x0 + (1.5+float64(c))*spb)
 			if b < 0 {
 				off = true
@@ -319,8 +319,10 @@ func decodeLIN(codes lineIn, colTimeS float64, cfg LINCfg) Result {
 	if len(spans) == 0 {
 		return Result{Proto: "lin", Error: "no LIN break"}
 	}
-	res := Result{OK: good, Proto: "lin", Spans: spans, Text: strings.Join(toks, " "), Bytes: units,
-		Baud: int(math.Round(1 / (spb * colTimeS))), SPB: spb, Thr: S.threshold}
+	res := Result{
+		OK: good, Proto: "lin", Spans: spans, Text: strings.Join(toks, " "), Bytes: units,
+		Baud: int(math.Round(1 / (spb * colTimeS))), SPB: spb, Thr: S.threshold,
+	}
 	if !good {
 		res.Error = "no LIN frame with a valid identifier"
 	}
@@ -425,8 +427,10 @@ func decodeDMX512(codes lineIn, colTimeS float64, cfg DMXCfg) Result {
 	if len(units) == 0 {
 		units = nil // as a decode with no slot has always read
 	}
-	res := Result{OK: good, Proto: "dmx512", Spans: spans, Text: strings.Join(toks, " "), Bytes: units,
-		Baud: baud, SPB: spb, Thr: S.threshold}
+	res := Result{
+		OK: good, Proto: "dmx512", Spans: spans, Text: strings.Join(toks, " "), Bytes: units,
+		Baud: baud, SPB: spb, Thr: S.threshold,
+	}
 	if !good {
 		res.Error = "no complete DMX512 packet"
 	}
@@ -470,8 +474,10 @@ func midiName(st int) string {
 	if st < 0xF0 {
 		return fmt.Sprintf("%s%d", ch[(st>>4)-8], st&0xf+1)
 	}
-	sys := map[int]string{0xF0: "SYX", 0xF1: "MTC", 0xF2: "SPP", 0xF3: "SNG", 0xF6: "TUN", 0xF7: "EOX",
-		0xF8: "CLK", 0xFA: "START", 0xFB: "CONT", 0xFC: "STOP", 0xFE: "SENS", 0xFF: "RST"}
+	sys := map[int]string{
+		0xF0: "SYX", 0xF1: "MTC", 0xF2: "SPP", 0xF3: "SNG", 0xF6: "TUN", 0xF7: "EOX",
+		0xF8: "CLK", 0xFA: "START", 0xFB: "CONT", 0xFC: "STOP", 0xFE: "SENS", 0xFF: "RST",
+	}
 	if s, ok := sys[st]; ok {
 		return s
 	}
@@ -565,8 +571,10 @@ func DecodeMIDI(codes []uint8, colTimeS float64, cfg MIDICfg) Result {
 	if len(spans) == 0 {
 		return Result{Proto: "midi", Error: "no MIDI bytes"}
 	}
-	res := Result{OK: complete > 0, Proto: "midi", Spans: spans, Text: strings.Join(toks, " "), Bytes: units,
-		Baud: baud, SPB: spb, Thr: S.threshold}
+	res := Result{
+		OK: complete > 0, Proto: "midi", Spans: spans, Text: strings.Join(toks, " "), Bytes: units,
+		Baud: baud, SPB: spb, Thr: S.threshold,
+	}
 	if complete == 0 {
 		res.Error = "no complete MIDI message"
 	}
@@ -592,7 +600,7 @@ func modbusCRC(b []int) int {
 	c := 0xFFFF
 	for _, v := range b {
 		c ^= v & 0xff
-		for i := 0; i < 8; i++ {
+		for range 8 {
 			if c&1 != 0 {
 				c = c>>1 ^ 0xA001
 			} else {
@@ -738,8 +746,10 @@ func decodeModbus(codes lineIn, colTimeS float64, cfg ModbusCfg) Result {
 	if len(spans) == 0 {
 		return Result{Proto: "modbus", Error: "no characters"}
 	}
-	res := Result{OK: bestGood > 0, Proto: "modbus", Spans: spans, Text: strings.Join(toks, " "), Bytes: units,
-		Baud: int(math.Round(1 / (spb * colTimeS))), SPB: spb, Thr: S.threshold, Parity: parity}
+	res := Result{
+		OK: bestGood > 0, Proto: "modbus", Spans: spans, Text: strings.Join(toks, " "), Bytes: units,
+		Baud: int(math.Round(1 / (spb * colTimeS))), SPB: spb, Thr: S.threshold, Parity: parity,
+	}
 	if bestGood <= 0 {
 		res.Error = "no CRC-valid Modbus RTU frame"
 	}

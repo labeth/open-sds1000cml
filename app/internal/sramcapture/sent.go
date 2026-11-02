@@ -1,7 +1,7 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-SRAMCAPTURE
 package sramcapture
 
-import "fmt"
+import "errors"
 
 // SENTTriggerConfig uses 125 MHz clocks per nominal tick. Pattern contains up
 // to four byte-sized nibbles, including status, and is accepted only at good CRC.
@@ -23,11 +23,11 @@ func (p SENTTriggerConfig) validate() error {
 		return nil
 	}
 	if p.Channel > 1 || p.TickTicks < 4 || p.TickTicks > 0xffffff || p.Nibbles < 1 || p.Nibbles > 64 || p.Length > 4 {
-		return fmt.Errorf("sramcapture: invalid hardware SENT configuration")
+		return errors.New("sramcapture: invalid hardware SENT configuration")
 	}
-	for i := uint8(0); i < p.Length; i++ {
+	for i := range uint8(p.Length) {
 		if (p.Pattern>>(8*i))&255 > 15 {
-			return fmt.Errorf("sramcapture: SENT pattern values must be nibbles")
+			return errors.New("sramcapture: SENT pattern values must be nibbles")
 		}
 	}
 	return nil
@@ -53,7 +53,7 @@ func (c *Capture) configureSENT(revision uint16, p SENTTriggerConfig) error {
 	}
 	if capability != 0x5e01 {
 		if p.Enabled {
-			return fmt.Errorf("sramcapture: fabric lacks hardware SENT trigger")
+			return errors.New("sramcapture: fabric lacks hardware SENT trigger")
 		}
 		return nil
 	}

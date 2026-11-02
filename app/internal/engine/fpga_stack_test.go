@@ -4,13 +4,12 @@ package engine
 import (
 	"context"
 	"errors"
-	"strings"
-	"testing"
-	"time"
-
 	"open-sds/app/internal/bus"
 	"open-sds/app/internal/sramcapture"
 	"open-sds/app/internal/superres"
+	"strings"
+	"testing"
+	"time"
 )
 
 // stackEngineBus emulates the SRAM capture ABI in both images and the stack
@@ -120,7 +119,7 @@ func (b *stackEngineBus) RawWrite(s, v uint16) error {
 				return nil
 			}
 			for i := 0; i < int(b.regs[119]); i++ {
-				for c := 0; c < 2; c++ {
+				for c := range 2 {
 					m := &b.tile[i][c]
 					m.Count += 2
 					value := i + 1
@@ -234,8 +233,10 @@ func newStackTestEngine(t *testing.T) (*Engine, *stackEngineBus, *fakeImages) {
 		t.Fatal(err)
 	}
 	images := &fakeImages{b: b}
-	e := &Engine{b: b, sram: capture, sramJobs: make(chan sramJob, 1), done: make(chan struct{}), images: images,
-		logf: t.Logf, clk: Clock{Now: time.Now, Sleep: func(time.Duration) {}}}
+	e := &Engine{
+		b: b, sram: capture, sramJobs: make(chan sramJob, 1), done: make(chan struct{}), images: images,
+		logf: t.Logf, clk: Clock{Now: time.Now, Sleep: func(time.Duration) {}},
+	}
 	return e, b, images
 }
 

@@ -110,8 +110,10 @@ func TestPitchRich(t *testing.T) {
 	for name, c := range map[string]struct {
 		fn func(float64) float64
 		f  float64
-	}{"square 110": {square(1, 110, fsTest), 110}, "saw 82.4": {saw(82.41), 82.41}, "saw 1318": {saw(1318.5), 1318.5},
-		"weak fundamental 196": {weak(196), 196}} {
+	}{
+		"square 110": {square(1, 110, fsTest), 110}, "saw 82.4": {saw(82.41), 82.41}, "saw 1318": {saw(1318.5), 1318.5},
+		"weak fundamental 196": {weak(196), 196},
+	} {
 		x := gen(TunerWindow(c.f, fsTest), fsTest, c.fn, 0.005, 3)
 		p := DetectPitch(x, fsTest, DefaultPitchOpts)
 		if !p.OK || math.Abs(Cents(p.Hz, c.f)) > 1 {
@@ -134,8 +136,16 @@ func TestNotes(t *testing.T) {
 		f, a4 float64
 		name  string
 		cents float64
-	}{{440, 440, "A4", 0}, {261.6255653, 440, "C4", 0}, {445, 440, "A4", 19.56}, {432, 432, "A4", 0}, {27.5, 440, "A0", 0},
-		{16.3516, 440, "C0", 0}, {8.1758, 440, "C-1", 0}, {466.1637615, 440, "A#4", 0}}
+	}{
+		{440, 440, "A4", 0},
+		{261.6255653, 440, "C4", 0},
+		{445, 440, "A4", 19.56},
+		{432, 432, "A4", 0},
+		{27.5, 440, "A0", 0},
+		{16.3516, 440, "C0", 0},
+		{8.1758, 440, "C-1", 0},
+		{466.1637615, 440, "A#4", 0},
+	}
 	for _, c := range cases {
 		n := NoteOf(c.f, c.a4)
 		if n.String() != c.name || math.Abs(n.Cents-c.cents) > 0.02 {
@@ -450,7 +460,7 @@ func TestVOct(t *testing.T) {
 	// Auto: a CV stepped every second with a stable pitch takes a point each.
 	var au VOctAuto
 	got := 0
-	for i := 0; i < 400; i++ {
+	for i := range 400 {
 		tt := float64(i) * 0.01
 		v := math.Floor(tt)
 		if _, ok := au.Add(tt, v+0.0005*math.Sin(float64(i)), 100*math.Pow(2, v)); ok {
@@ -461,7 +471,7 @@ func TestVOct(t *testing.T) {
 		t.Errorf("auto took %d points", got)
 	}
 	var dr Drift
-	for i := 0; i < 1000; i++ {
+	for i := range 1000 {
 		tt := float64(i) * 0.01
 		dr.Add(tt, 440*math.Pow(2, tt/1200))
 	}
@@ -503,7 +513,7 @@ func TestCycle(t *testing.T) {
 func TestBreakers(t *testing.T) {
 	r := rand.New(rand.NewSource(19))
 	inputs := [][]float64{nil, {1}, make([]float64, 7), make([]float64, 5000)}
-	for i := 0; i < 20; i++ {
+	for i := range 20 {
 		x := make([]float64, 1+r.Intn(70000))
 		for j := range x {
 			switch i % 4 {

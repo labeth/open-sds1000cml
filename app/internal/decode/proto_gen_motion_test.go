@@ -14,7 +14,7 @@ func quadMoves(l twoLine, moves []int, per, rest float64) {
 	seq := [4][2]byte{{0, 0}, {1, 0}, {1, 1}, {0, 1}}
 	ph := 0
 	for _, m := range moves {
-		for q := 0; q < 4; q++ {
+		for range 4 {
 			ph = ((ph+m)%4 + 4) % 4
 			l.add(seq[ph][0], seq[ph][1], per/4)
 		}

@@ -29,7 +29,7 @@ const (
 func cycleGapWords(old6, old7, delay uint32) (new6, quiesced7 uint32) {
 	new6 = (old6 &^ uint32(c6GapMask)) | (delay << 8) | c6SameCSEn
 	quiesced7 = old7 &^ uint32(c7CSValid)
-	return
+	return new6, quiesced7
 }
 
 // applyCS1CycleGap performs the sequence against a register block.

@@ -24,7 +24,7 @@ func TestStackStateTileRTL(t *testing.T) {
 		}
 	}
 	clear()
-	emit := func(write bool, bin uint32, ch int, abort int) {
+	emit := func(write bool, bin uint32, ch, abort int) {
 		w := 0
 		if write {
 			w = 1
@@ -44,13 +44,13 @@ func TestStackStateTileRTL(t *testing.T) {
 		}
 		expected = append(expected, out)
 	}
-	for bin := uint32(0); bin < 32; bin++ {
-		for ch := 0; ch < 2; ch++ {
+	for bin := range uint32(32) {
+		for ch := range 2 {
 			emit(false, bin, ch, 0)
 			emit(true, bin, ch, 0)
 		}
 	}
-	for i := 0; i < 200; i++ {
+	for i := range 200 {
 		emit(i%3 == 0, uint32(rng.Intn(32)), rng.Intn(2), 0)
 	}
 	for _, bin := range []uint32{32, 33, 1 << 31, ^uint32(0)} {
@@ -59,7 +59,7 @@ func TestStackStateTileRTL(t *testing.T) {
 	}
 	for _, delay := range []int{1, 5, 9} {
 		emit(true, 12, 1, delay)
-		for bin := uint32(0); bin < 32; bin++ {
+		for bin := range uint32(32) {
 			emit(false, bin, 0, 0)
 			emit(false, bin, 1, 0)
 		}
@@ -68,7 +68,7 @@ func TestStackStateTileRTL(t *testing.T) {
 	}
 	dir := t.TempDir()
 	p := filepath.Join(dir, "input.txt")
-	if err := os.WriteFile(p, []byte(input.String()), 0600); err != nil {
+	if err := os.WriteFile(p, []byte(input.String()), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	image := compileStackRTL(t, dir, "tb_stack_state_tile", "stack_state_tile.v", "sim/tb_stack_state_tile.v")
@@ -77,7 +77,7 @@ func TestStackStateTileRTL(t *testing.T) {
 		t.Fatalf("simulation %v\n%s", err, out)
 	}
 	n := 0
-	for _, line := range strings.Split(string(out), "\n") {
+	for line := range strings.SplitSeq(string(out), "\n") {
 		if !strings.HasPrefix(line, "T ") {
 			continue
 		}

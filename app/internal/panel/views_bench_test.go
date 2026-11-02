@@ -12,7 +12,7 @@ import "testing"
 func BenchmarkViewScope(b *testing.B) {
 	c, _, _ := newC(&testing.T{})
 	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		c.Snapshot()
 	}
 }
@@ -22,7 +22,7 @@ func BenchmarkViewSheet(b *testing.B) {
 	c, _, _ := newC(&testing.T{})
 	c.button(btnTrigMenu)
 	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		c.Snapshot()
 	}
 }
@@ -32,7 +32,7 @@ func BenchmarkViewPublish(b *testing.B) {
 	c, _, _ := newC(&testing.T{})
 	c.Sheets() // a remote is watching the sheets: the values are hashed too
 	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		c.publish()
 	}
 }

@@ -1,9 +1,8 @@
 package lcd
 
 import (
-	"testing"
-
 	"open-sds/app/internal/panel/wsview"
+	"testing"
 )
 
 // A cursor whose signal time or level is off the screen keeps its value and

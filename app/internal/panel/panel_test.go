@@ -3,12 +3,12 @@ package panel
 
 import (
 	"fmt"
+	"open-sds/app/internal/analog"
+	"open-sds/app/internal/engine"
+	"slices"
 	"sync"
 	"testing"
 	"time"
-
-	"open-sds/app/internal/analog"
-	"open-sds/app/internal/engine"
 )
 
 // TRLC-LINKS: REQ-SDS-135
@@ -388,12 +388,7 @@ func b2i(b bool) int {
 
 // TRLC-LINKS: REQ-SDS-136
 func inInts(v int, opts ...int) bool {
-	for _, o := range opts {
-		if v == o {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(opts, v)
 }
 
 // TRLC-LINKS: REQ-SDS-136
@@ -608,7 +603,7 @@ func turn(c *Controller, knob string, n int) {
 	if n < 0 {
 		dir, n = -1, -n
 	}
-	for i := 0; i < n; i++ {
+	for range n {
 		c.resync()
 		c.dispatch(knob, dir, 1)
 	}

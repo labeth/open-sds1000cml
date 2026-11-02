@@ -40,7 +40,7 @@ func TestSaverSavesOnlyASettledChange(t *testing.T) {
 	s.now = func() time.Time { return now }
 	s.step()
 	cur.TdivS = 2e-3
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		now = now.Add(time.Second)
 		s.step()
 	}
@@ -51,7 +51,7 @@ func TestSaverSavesOnlyASettledChange(t *testing.T) {
 	now = now.Add(time.Second)
 	s.step()
 	cur.TdivS = 2e-3
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		now = now.Add(time.Second)
 		s.step()
 	}

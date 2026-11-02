@@ -11,7 +11,7 @@ import (
 // TRLC-LINKS: REQ-SDS-034
 func counterBytes(n int) []byte {
 	b := make([]byte, 4*n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		binary.LittleEndian.PutUint32(b[4*i:], uint32(i))
 	}
 	return b
@@ -69,9 +69,11 @@ type tripBus struct{ trips int }
 // TRLC-LINKS: REQ-SDS-082
 func (b *tripBus) Read(_ uint8, s uint16) (uint16, error) {
 	b.trips++
-	return map[uint16]uint16{13: 10, 53: i2cLevels, 64: spiLevels, 77: 0x5e01, 93: 0x4d01, 97: 0x5501, 102: 0x4d01,
+	return map[uint16]uint16{
+		13: 10, 53: i2cLevels, 64: spiLevels, 77: 0x5e01, 93: 0x4d01, 97: 0x5501, 102: 0x4d01,
 		109: 0x5001, 110: 0xffff, 73: 0x5201, 118: 0x5351, qualCapability: 0x5154, qualCapability + 1: 0xf,
-		symbolCapability: symbolBlock, symbolLoaded: 0}[s], nil
+		symbolCapability: symbolBlock, symbolLoaded: 0,
+	}[s], nil
 }
 
 // TRLC-LINKS: REQ-SDS-082
@@ -114,7 +116,8 @@ func configureAll(c *Capture) error {
 func benchConfigure(b *testing.B, bus interface {
 	Bus
 	count() int
-}) {
+},
+) {
 	c := &Capture{bus: bus}
 	for b.Loop() {
 		if err := configureAll(c); err != nil {

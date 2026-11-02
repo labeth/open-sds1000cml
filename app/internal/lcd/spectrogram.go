@@ -4,7 +4,6 @@ package lcd
 import (
 	"fmt"
 	"math"
-
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/panel/framecalc"
 	"open-sds/app/internal/panel/wsview"
@@ -59,10 +58,9 @@ func heat(t float64) uint16 {
 	// six segments across the ramp
 	const seg = 6.0
 	s := t * seg
-	i := int(s)
-	if i < 0 { // defensive: keep the index in range whatever float slips through
-		i = 0
-	}
+	i := max(int(s),
+		// defensive: keep the index in range whatever float slips through
+		0)
 	if i > 5 {
 		i = 5
 	}
@@ -146,7 +144,7 @@ func (sg *Spectrogram) paintRow(y int, mags []float64, peak float64) {
 		floor = -60
 	}
 	invFloor := 1.0 / (-floor)
-	for x := 0; x < sgCols; x++ {
+	for x := range sgCols {
 		k0 := x * half / sgCols
 		k1 := min((x+1)*half/sgCols-1, half-1) // a pixel shows the largest of its bins
 		db := 20 * framecalc.Log10(binMax(mags, k0, k1)/peak+1e-12)
@@ -193,7 +191,7 @@ func drawSpectrogramMark(sf Surface, p plotArea, sg *Spectrogram, hideCaptions b
 			}
 		}
 		var line [W]uint16
-		for y := 0; y < rows; y++ {
+		for y := range rows {
 			srow := src[sg.imgRow(y*sgRows/rows)*W:]
 			drow := dst[(y0+y)*W+x0 : (y0+y)*W+x0+cols]
 			if xmap == nil {
@@ -207,9 +205,9 @@ func drawSpectrogramMark(sf Surface, p plotArea, sg *Spectrogram, hideCaptions b
 			copy(drow, line[:cols])
 		}
 	} else {
-		for y := 0; y < rows; y++ {
+		for y := range rows {
 			sy := sg.imgRow(y * sgRows / rows)
-			for x := 0; x < cols; x++ {
+			for x := range cols {
 				sf.SetPixel(x0+x, y0+y, sg.img.At(sgX0+x*sgCols/cols, sy))
 			}
 		}
@@ -247,7 +245,7 @@ func drawSpectrogramMark(sf Surface, p plotArea, sg *Spectrogram, hideCaptions b
 	}
 	// dB colour key along the top-right, clear of the status bar
 	ky := max(p.y0+6, 13)
-	for i := 0; i < 40; i++ {
+	for i := range 40 {
 		c := heat(float64(i) / 39)
 		fillRect(sf, x1-44+i, ky, 1, 8, c)
 	}

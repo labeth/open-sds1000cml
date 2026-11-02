@@ -3,10 +3,9 @@ package panel
 
 import (
 	"fmt"
+	"open-sds/app/internal/panel/wsview"
 	"strings"
 	"time"
-
-	"open-sds/app/internal/panel/wsview"
 )
 
 // Settings sheets (REQ-SDS-212): full screen, every option written out.
@@ -35,7 +34,7 @@ func tabOrder(ws wsview.WS) []int {
 	for _, id := range wsDefs[ws].tabs {
 		out = append(out, tabIndex(id))
 	}
-	for i := 0; i < numTabs; i++ {
+	for i := range numTabs {
 		own := false
 		for _, o := range out {
 			own = own || o == i
@@ -189,7 +188,6 @@ func (c *Controller) rowKeys(s *sv, r *row) []fkey {
 	case wsview.Enum:
 		cur := r.get(s)
 		for _, o := range r.quickOpts(s) {
-			o := o
 			out = append(out, fkey{label: o.t, sel: o.v == cur, run: func() error { return r.setEnum(c, c.snap(), o.v) }})
 		}
 	case wsview.Number:

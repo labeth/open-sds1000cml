@@ -4,6 +4,7 @@ package sramcapture
 import (
 	"context"
 	"encoding/binary"
+	"errors"
 	"fmt"
 )
 
@@ -50,7 +51,7 @@ type counterVerifier struct{ next uint32 }
 // TRLC-LINKS: REQ-SDS-034
 func (s *counterVerifier) Write(b []byte) (int, error) {
 	if len(b)%4 != 0 {
-		return 0, fmt.Errorf("sramcapture: unaligned startup counter")
+		return 0, errors.New("sramcapture: unaligned startup counter")
 	}
 	i := 0
 	// Two words at a time while both are right: one 64-bit compare.

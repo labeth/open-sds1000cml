@@ -3,13 +3,12 @@ package settings_test
 
 import (
 	"math"
-	"testing"
-	"time"
-
 	"open-sds/app/internal/analog"
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/panel"
 	"open-sds/app/internal/settings"
+	"testing"
+	"time"
 )
 
 // nullBus satisfies bus.Bus without any hardware: the engine is constructed
@@ -79,10 +78,12 @@ func TestApplyRestoreCollectFidelity(t *testing.T) {
 		ViewMode: 4,
 		// The workspace UI: SPECTRUM on its spectrogram, BUS on the eye,
 		// MEASURE on all values with two readouts, the master depth.
-		UI: settings.UI{Set: true, Workspace: 2, Views: [5]int{1, 0, 4, 0, 0}, BusEye: true, MeasAll: true,
+		UI: settings.UI{
+			Set: true, Workspace: 2, Views: [5]int{1, 0, 4, 0, 0}, BusEye: true, MeasAll: true,
 			Meas: [12]int{1*32 + 0 + 1, 0*32 + 1 + 1}, FFTSource: 1, MasterDepth: 128, RemoteNotices: true,
 			// the mask build and super-res's stop
-			MaskFrames: 64, MaskTol: 3, SrCh: 2, SrGrid: 16, SrStop: 3, SrTarget: 120},
+			MaskFrames: 64, MaskTol: 3, SrCh: 2, SrGrid: 16, SrStop: 3, SrTarget: 120,
+		},
 		// The serial trigger's match, kept while disarmed (a trigger type
 		// other than Serial is set above); not I2C, so any address.
 		Serial: settings.Serial{Set: true, Match: "55 AA", Addr: -1, RW: 2},
@@ -90,15 +91,19 @@ func TestApplyRestoreCollectFidelity(t *testing.T) {
 		Screen: settings.Screen{Set: true, SaverMin: 5, OffMin: 120},
 		// The volts cursors, the zoom (no inverter in this rig: invert stays
 		// off) and the frequency response's channels swapped.
-		Display: settings.Display{Set: true, CurMode: 2, CurX: [2]float64{0.25, 0.75}, CurY: [2]float64{0.4, 0.55},
-			CurSel: 1, Zoom: 10, ZoomOff: -0.2},
+		Display: settings.Display{
+			Set: true, CurMode: 2, CurX: [2]float64{0.25, 0.75}, CurY: [2]float64{0.4, 0.55},
+			CurSel: 1, Zoom: 10, ZoomOff: -0.2,
+		},
 		Bode: settings.Bode{Set: true, Ref: 1, Dut: 0},
 		// SOUND: tuned on C2 at A4 = 442 Hz, meters on Eurorack's 10 Vpp,
 		// the harmonics page, four cycles, a gate on C1 for the envelope.
 		// The drift log is left out: it never comes back on (it runs only
 		// while SOUND shows).
-		Sound: settings.Sound{Set: true, A4: 442, Ch: 1, Ref: "euro", Range: "bass", Slow: true, Page: 3, Cycles: 4, ABIn: 1,
-			EnvCV: true, Gate: 0, GateV: 1.5, VOctAuto: true, PreS: 2.5, PostS: 6, TrigGate: true},
+		Sound: settings.Sound{
+			Set: true, A4: 442, Ch: 1, Ref: "euro", Range: "bass", Slow: true, Page: 3, Cycles: 4, ABIn: 1,
+			EnvCV: true, Gate: 0, GateV: 1.5, VOctAuto: true, PreS: 2.5, PostS: 6, TrigGate: true,
+		},
 	}
 	settings.Apply(want, e, fe, pc, t.Logf)
 	got := settings.Collect(e, fe, pc)

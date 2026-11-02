@@ -16,11 +16,11 @@ import (
 func TestAutodetectShortSPITransfers(t *testing.T) {
 	rng := rand.New(rand.NewSource(1))
 	var ok, total [4]int
-	for trial := 0; trial < 400; trial++ {
+	for trial := range 400 {
 		mode := trial % 4
 		frames, n, h := 2+rng.Intn(8), 1+rng.Intn(5), 4+rng.Intn(12)
 		var clk, dat []uint8
-		for i := 0; i < frames; i++ {
+		for range frames {
 			b := make([]int, n)
 			for k := range b {
 				b[k] = rng.Intn(256)
@@ -47,10 +47,10 @@ func TestAutodetectShortSPITransfers(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-238
 func TestAutodetectI2CBurstsOfWholeBytes(t *testing.T) {
 	var scl, sda []uint8
-	for i := 0; i < 4; i++ {
+	for i := range 4 {
 		c, d := i2cWave(0x50+i, 0, []int{0x10, 0x20 + i, 0x30, 0x40, 0x50, 0x60}, 20) // address + 6 bytes
 		scl, sda = append(scl, c...), append(sda, d...)
-		for k := 0; k < 400; k++ {
+		for range 400 {
 			scl, sda = append(scl, 210), append(sda, 210)
 		}
 	}

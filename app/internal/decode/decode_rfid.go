@@ -4,6 +4,7 @@ package decode
 import (
 	"fmt"
 	"math"
+	"strconv"
 	"strings"
 )
 
@@ -74,7 +75,7 @@ type rbit struct {
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-252
 func bitsMSB(b []rbit, at, n int) int {
 	v := 0
-	for i := 0; i < n; i++ {
+	for i := range n {
 		v = v<<1 | b[at+i].v
 	}
 	return v
@@ -205,7 +206,7 @@ func rfidWrites(proto string, codes []uint8, colTimeS float64, cfg LineCfg) Resu
 				bits = append(bits, rbit{0, last, g.x1})
 			case d > 32*fc && d < 300*fc:
 				k := int(d / (32 * fc))
-				for i := 0; i < k; i++ {
+				for i := range k {
 					x := last + float64(i)*32*fc
 					bits = append(bits, rbit{1, x, x + 32*fc})
 				}
@@ -229,8 +230,10 @@ func rfidWrites(proto string, codes []uint8, colTimeS float64, cfg LineCfg) Resu
 	if len(o.spans) == 0 {
 		return Result{Proto: proto, Error: "no reader command"}
 	}
-	res := Result{OK: good, Proto: proto, Spans: o.spans, Text: strings.Join(o.toks, " "), Bytes: o.units,
-		Thr: S.threshold, SPB: fc, Baud: int(math.Round(coil)), FrameBits: frameBits, Inverted: carrier}
+	res := Result{
+		OK: good, Proto: proto, Spans: o.spans, Text: strings.Join(o.toks, " "), Bytes: o.units,
+		Thr: S.threshold, SPB: fc, Baud: int(math.Round(coil)), FrameBits: frameBits, Inverted: carrier,
+	}
 	if !good {
 		res.Error = "no whole reader command"
 	}
@@ -243,7 +246,7 @@ func rfidWrites(proto string, codes []uint8, colTimeS float64, cfg LineCfg) Resu
 func em4305Fields(o *rfidOut, b []rbit) bool {
 	if len(b) != 50 && len(b) != 57 {
 		for _, x := range b {
-			o.add(x.x0, x.x1, fmt.Sprint(x.v), "rw", x.v, false)
+			o.add(x.x0, x.x1, strconv.Itoa(x.v), "rw", x.v, false)
 		}
 		if len(b) > 0 {
 			o.add(b[len(b)-1].x1, b[len(b)-1].x1, "!", "frame-error", 0, false)
@@ -268,7 +271,7 @@ func em4305Fields(o *rfidOut, b []rbit) bool {
 		at = 12
 	}
 	col := 0
-	for k := 0; k < 4; k++ {
+	for k := range 4 {
 		v := bitsMSB(b, at+9*k, 8)
 		col ^= v
 		unit(at+9*k, 9, hex2(v), v, evenOK(b, at+9*k, 8))
@@ -287,7 +290,7 @@ func t55xxFields(o *rfidOut, b []rbit) bool {
 	n := len(b)
 	if n != 70 && n != 38 && n != 2 {
 		for _, x := range b {
-			o.add(x.x0, x.x1, fmt.Sprint(x.v), "rw", x.v, false)
+			o.add(x.x0, x.x1, strconv.Itoa(x.v), "rw", x.v, false)
 		}
 		if n > 0 {
 			o.add(b[n-1].x1, b[n-1].x1, "!", "frame-error", 0, false)
@@ -301,7 +304,7 @@ func t55xxFields(o *rfidOut, b []rbit) bool {
 	}
 	at := 2
 	word := func(prefix string) {
-		for k := 0; k < 4; k++ {
+		for k := range 4 {
 			v := bitsMSB(b, at+8*k, 8)
 			o.add(b[at+8*k].x0, b[at+8*k+7].x1, prefix+hex2(v), "data", v, true)
 		}
@@ -327,7 +330,7 @@ func t55xxFields(o *rfidOut, b []rbit) bool {
 func manchesterStream(runs []lrun, hp float64) []rbit {
 	var lv []int
 	var xs []float64
-	for k := 0; k < len(runs); k++ {
+	for k := range runs {
 		r := runs[k]
 		q := int(math.Round((r.x1 - r.x0) / hp))
 		if r.open && q > 2 && k > 0 {
@@ -395,7 +398,7 @@ func DecodeEM4100(codes []uint8, colTimeS float64, cfg LineCfg) Result {
 			continue
 		}
 		hdr := true
-		for k := 0; k < 9; k++ {
+		for k := range 9 {
 			hdr = hdr && bits[i+k].v == 1
 		}
 		if !hdr {
@@ -412,7 +415,7 @@ func DecodeEM4100(codes []uint8, colTimeS float64, cfg LineCfg) Result {
 		o.add(f[0].x0, f[0].x0, "", "sof", 0, false)
 		ok := true
 		col := 0
-		for by := 0; by < 5; by++ {
+		for by := range 5 {
 			r0, r1 := 9+10*by, 14+10*by
 			v := bitsMSB(f, r0, 4)<<4 | bitsMSB(f, r1, 4)
 			col ^= bitsMSB(f, r0, 4) ^ bitsMSB(f, r1, 4)
@@ -432,8 +435,10 @@ func DecodeEM4100(codes []uint8, colTimeS float64, cfg LineCfg) Result {
 	if len(o.spans) == 0 {
 		return Result{Proto: "em4100", Error: "no EM4100 frame"}
 	}
-	res := Result{OK: good, Proto: "em4100", Spans: o.spans, Text: strings.Join(o.toks, " "), Bytes: o.units,
-		Thr: S.threshold, SPB: 2 * hp}
+	res := Result{
+		OK: good, Proto: "em4100", Spans: o.spans, Text: strings.Join(o.toks, " "), Bytes: o.units,
+		Thr: S.threshold, SPB: 2 * hp,
+	}
 	if colTimeS > 0 {
 		res.Baud = int(math.Round(1 / (2 * hp * colTimeS)))
 	}

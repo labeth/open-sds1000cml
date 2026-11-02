@@ -4,12 +4,11 @@ package superres
 import (
 	"encoding/json"
 	"math"
+	"open-sds/app/internal/testenv"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"testing"
-
-	"open-sds/app/internal/testenv"
 )
 
 // synthetic REPETITIVE frames (triangle) plus one non-matching frame, generated
@@ -26,10 +25,7 @@ func genFrames() (N, K, align int, frames []jframe) {
 		return float64(seed)/float64(0x7fffffff) - 0.5
 	}
 	clamp := func(v float64) int16 {
-		r := int(math.Round(v))
-		if r < 12 {
-			r = 12
-		}
+		r := max(int(math.Round(v)), 12)
 		if r > 243 {
 			r = 243
 		}
@@ -44,14 +40,14 @@ func genFrames() (N, K, align int, frames []jframe) {
 	}
 	tri := func(frac, na float64) []int16 {
 		a := make([]int16, N)
-		for i := 0; i < N; i++ {
+		for i := range N {
 			a[i] = clamp(tval(float64(i)-frac) + na*rnd())
 		}
 		return a
 	}
 	other := func(na float64) []int16 { // a DIFFERENT waveform (slow ramp) → no hits
 		a := make([]int16, N)
-		for i := 0; i < N; i++ {
+		for i := range N {
 			a[i] = clamp(90 + 70*float64(i)/float64(N) + na*rnd())
 		}
 		return a
@@ -60,7 +56,7 @@ func genFrames() (N, K, align int, frames []jframe) {
 	// shape. Exercises the segment-consistency + level checks cross-engine.
 	decoy := func(na float64) []int16 {
 		a := make([]int16, N)
-		for i := 0; i < N; i++ {
+		for i := range N {
 			ph := math.Mod(math.Mod(float64(i), P)+P, P)
 			v := 88.0
 			if ph >= P/2 {
@@ -77,7 +73,7 @@ func genFrames() (N, K, align int, frames []jframe) {
 	}
 	frames = append(frames, mk(other(6))) // non-matching ramp → rejected
 	frames = append(frames, mk(decoy(6))) // same-period lookalike → rejected
-	return
+	return N, K, align, frames
 }
 
 // TRLC-LINKS: REQ-SDS-141
@@ -128,8 +124,10 @@ func runParity(t *testing.T, gateLo, gateHi int) {
 	// --- JS engine via the driver ---
 	payload, _ := json.Marshal(map[string]any{"N": N, "K": K, "align": align, "frames": frames})
 	if gateHi > gateLo && gateLo >= 0 {
-		payload, _ = json.Marshal(map[string]any{"N": N, "K": K, "align": align, "frames": frames,
-			"gate": map[string]int{"lo": gateLo, "hi": gateHi}})
+		payload, _ = json.Marshal(map[string]any{
+			"N": N, "K": K, "align": align, "frames": frames,
+			"gate": map[string]int{"lo": gateLo, "hi": gateHi},
+		})
 	}
 	tmp := filepath.Join(t.TempDir(), "frames.json")
 	if err := os.WriteFile(tmp, payload, 0o644); err != nil {

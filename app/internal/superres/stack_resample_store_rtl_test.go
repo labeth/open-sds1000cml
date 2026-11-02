@@ -27,17 +27,17 @@ func TestStackResampleStoreRTL(t *testing.T) {
 		for _, p := range []int64{0, 4, 29, 31} {
 			for _, delta := range []int64{-1 << 23, 0, 1 << 22} {
 				for _, factor := range []int64{1, 3, 8} {
-					for mask := 0; mask < 4; mask++ {
+					for mask := range 4 {
 						odd := fixtures % 2
 						reads, ops := 0, 0
-						for bin := int64(0); bin < 8; bin++ {
+						for bin := range int64(8) {
 							q := (p << 24) + delta + ((first+bin)<<24)/factor
 							if q < 0 || (q>>24)+1 >= 32 || mask == 0 {
 								continue
 							}
 							reads++
 							idx, frac := q>>24, q&((1<<24)-1)
-							for ch := 0; ch < 2; ch++ {
+							for ch := range 2 {
 								if mask&(1<<ch) == 0 {
 									continue
 								}
@@ -68,7 +68,7 @@ func TestStackResampleStoreRTL(t *testing.T) {
 	}
 	dir := t.TempDir()
 	path := filepath.Join(dir, "input.txt")
-	if err := os.WriteFile(path, []byte(input.String()), 0600); err != nil {
+	if err := os.WriteFile(path, []byte(input.String()), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	for _, bench := range []string{"tb_stack_resample_store", "tb_stack_tiled_store"} {
@@ -79,7 +79,7 @@ func TestStackResampleStoreRTL(t *testing.T) {
 				t.Fatalf("simulation %v\n%s", err, out)
 			}
 			n := 0
-			for _, line := range strings.Split(string(out), "\n") {
+			for line := range strings.SplitSeq(string(out), "\n") {
 				if !strings.HasPrefix(line, "B ") {
 					continue
 				}

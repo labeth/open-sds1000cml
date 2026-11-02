@@ -6,18 +6,17 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"open-sds/app/internal/analog"
+	"open-sds/app/internal/engine"
+	"open-sds/app/internal/panel"
+	"open-sds/app/internal/settings"
+	"open-sds/app/internal/testenv"
 	"os"
 	"strconv"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
-
-	"open-sds/app/internal/analog"
-	"open-sds/app/internal/engine"
-	"open-sds/app/internal/panel"
-	"open-sds/app/internal/settings"
-	"open-sds/app/internal/testenv"
 )
 
 // ---------------------------------------------------------------------------
@@ -45,8 +44,10 @@ type remoteEngine struct {
 
 // TRLC-LINKS: REQ-SDS-220
 func newRemoteEngine() *remoteEngine {
-	return &remoteEngine{fakeScope: &fakeScope{stats: engine.Stats{Running: true, TdivS: 500e-6, TrigCode: 31437, TrigPosFrac: 0.5,
-		TrigRising: true, AvgCount: 16, EresLen: 1, MemDepth: 20480}}}
+	return &remoteEngine{fakeScope: &fakeScope{stats: engine.Stats{
+		Running: true, TdivS: 500e-6, TrigCode: 31437, TrigPosFrac: 0.5,
+		TrigRising: true, AvgCount: 16, EresLen: 1, MemDepth: 20480,
+	}}}
 }
 
 // TRLC-LINKS: REQ-SDS-220
@@ -74,7 +75,7 @@ func (e *remoteEngine) Snapshot() (s engine.Stats) {
 			s.TdivSetS = e.tdivPend
 		}
 	})
-	return
+	return s
 }
 
 // TRLC-LINKS: REQ-SDS-220
@@ -97,7 +98,7 @@ func (e *remoteEngine) SetTdiv(v float64) (b engine.Band, ok bool) {
 			})
 		})
 	})
-	return
+	return b, ok
 }
 
 // TRLC-LINKS: REQ-SDS-220
@@ -114,7 +115,7 @@ func (e *remoteEngine) SetSingle() {
 // TRLC-LINKS: REQ-SDS-220
 func (e *remoteEngine) SetTrigLevelCode(c uint16) (out uint16) {
 	e.lock(func() { out = e.fakeScope.SetTrigLevelCode(c) })
-	return
+	return out
 }
 
 // TRLC-LINKS: REQ-SDS-220
@@ -144,13 +145,13 @@ func (e *remoteEngine) SetTrigPosFrac(f float64) { e.lock(func() { e.fakeScope.S
 // TRLC-LINKS: REQ-SDS-220
 func (e *remoteEngine) SetHoldoff(s float64) (out float64) {
 	e.lock(func() { out = e.fakeScope.SetHoldoff(s) })
-	return
+	return out
 }
 
 // TRLC-LINKS: REQ-SDS-220
 func (e *remoteEngine) SetMemDepth(n int) (out int) {
 	e.lock(func() { out = e.fakeScope.SetMemDepth(n) })
-	return
+	return out
 }
 
 // TRLC-LINKS: REQ-SDS-220
@@ -185,7 +186,7 @@ func (e *remoteEngine) ClearMaskFails() { e.lock(func() { e.fakeScope.ClearMaskF
 // TRLC-LINKS: REQ-SDS-220
 func (e *remoteEngine) AcqLog(n int) (s []engine.AcqSample, h float64) {
 	e.lock(func() { s, h = e.fakeScope.AcqLog(n) })
-	return
+	return s, h
 }
 
 // TRLC-LINKS: REQ-SDS-220
@@ -197,7 +198,7 @@ func (e *remoteEngine) SetSerialParams(p engine.SerialParams) { e.lock(func() { 
 // TRLC-LINKS: REQ-SDS-220
 func (e *remoteEngine) SerialConfig() (p engine.SerialParams) {
 	e.lock(func() { p = e.serial })
-	return
+	return p
 }
 
 // remoteSPI is the front end's SPI with nothing on it.
@@ -221,8 +222,10 @@ type remoteSetups struct {
 // TRLC-LINKS: REQ-SDS-220
 func (m *remoteSetups) SaveSetup(n int) error {
 	st := m.eng.Snapshot()
-	s := settings.Settings{TdivS: st.TdivS, UI: settings.UI{Set: true, Workspace: m.ws()},
-		Trigger: settings.Trigger{LevelCode: int(st.TrigCode), Rising: st.TrigRising, Source: st.TrigSource}}
+	s := settings.Settings{
+		TdivS: st.TdivS, UI: settings.UI{Set: true, Workspace: m.ws()},
+		Trigger: settings.Trigger{LevelCode: int(st.TrigCode), Rising: st.TrigRising, Source: st.TrigSource},
+	}
 	s.Ch[0].VdivV, s.Ch[1].VdivV = 1, 1
 	m.mu.Lock()
 	m.slots[n] = s
@@ -306,10 +309,12 @@ func newRemoteRig(t testing.TB, before ...func(*panel.Controller, *remoteEngine)
 	fe := analog.New(remoteSPI{}, func(time.Duration) {}, nil)
 	fe.OnOffset(eng.SetOffsetDAC)
 	pc := panel.New(eng, fe, -1, engine.SupportedTdivs(), 500e-6, func(string, ...any) {})
-	pc.SetSetupMemory(&remoteSetups{eng: eng, slots: map[int]settings.Settings{},
+	pc.SetSetupMemory(&remoteSetups{
+		eng: eng, slots: map[int]settings.Settings{},
 		ws: func() int {
 			return map[string]int{"bus": 1, "spectrum": 2, "measure": 3, "compare": 4}[pc.PanelStatus().WorkspaceID]
-		}})
+		},
+	})
 	for _, fn := range before {
 		fn(pc, eng)
 	}
@@ -370,8 +375,10 @@ func newRemoteRig(t testing.TB, before ...func(*panel.Controller, *remoteEngine)
 	mux.HandleFunc("/engine", func(w http.ResponseWriter, _ *http.Request) {
 		st := eng.Snapshot()
 		ser := eng.SerialConfig()
-		writeJSON(w, map[string]any{"tdiv": st.TdivS, "trigCode": st.TrigCode, "norm": st.Norm, "running": st.Running,
-			"serialMode": st.SerialMode, "serialBytes": ser.Bytes, "holdoff": st.HoldoffS, "acqMode": st.AcqMode, "avg": st.AvgCount})
+		writeJSON(w, map[string]any{
+			"tdiv": st.TdivS, "trigCode": st.TrigCode, "norm": st.Norm, "running": st.Running,
+			"serialMode": st.SerialMode, "serialBytes": ser.Bytes, "holdoff": st.HoldoffS, "acqMode": st.AcqMode, "avg": st.AvgCount,
+		})
 	})
 	r.ctrl = httptest.NewServer(mux)
 	t.Cleanup(func() {

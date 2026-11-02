@@ -31,7 +31,7 @@ func TestReadRecordFragments(t *testing.T) {
 			mark |= 0x80000000
 		}
 		in = binary.BigEndian.AppendUint32(in, mark)
-		for k := 0; k < n; k++ {
+		for k := range n {
 			in = append(in, byte(i*31+k))
 			want = append(want, byte(i*31+k))
 		}

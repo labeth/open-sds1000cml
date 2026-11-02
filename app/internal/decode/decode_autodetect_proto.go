@@ -119,7 +119,7 @@ func considerPairs(c1, c2 []uint8, sl [2]*sliced, colTimeS float64, format strin
 	}
 	S := [2]sliced{*sl[0], *sl[1]}
 	chans := [2][]uint8{c1, c2}
-	for a := 0; a < 2; a++ {
+	for a := range 2 {
 		if !S[a].ok || !S[1-a].ok || len(S[a].edges) < 8 {
 			continue
 		}

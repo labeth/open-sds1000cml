@@ -14,14 +14,14 @@ func TestUARTSyncInIsNotAnError(t *testing.T) {
 	const spb = 10
 	var line []uint8
 	bit := func(b int) {
-		for k := 0; k < spb; k++ {
+		for range spb {
 			line = append(line, uint8(40+160*b))
 		}
 	}
-	for f := 0; f < 40; f++ {
+	for f := range 40 {
 		v := []int{0x55, 0xAA, 0x0F, 0xF0}[f%4]
 		bit(0)
-		for c := 0; c < 8; c++ {
+		for c := range 8 {
 			bit(v >> c & 1)
 		}
 		bit(1)
@@ -56,7 +56,7 @@ func TestUARTSyncInKeepsBreakAfterIdleStart(t *testing.T) {
 	}
 	emit := func(v int) {
 		level(0, 1)
-		for c := 0; c < 8; c++ {
+		for c := range 8 {
 			level(v>>c&1, 1)
 		}
 		level(1, 2)
@@ -85,10 +85,10 @@ func benchUARTLine(spb, messages int) ([]uint8, []int) {
 			line = append(line, uint8(40+160*b))
 		}
 	}
-	for m := 0; m < messages; m++ {
+	for range messages {
 		for _, v := range msg {
 			level(0, 1)
-			for c := 0; c < 8; c++ {
+			for c := range 8 {
 				level(v>>c&1, 1)
 			}
 			level(1, 2)
@@ -110,7 +110,7 @@ func TestUARTSyncInBenchLine(t *testing.T) {
 	period := (8*11 + 27) * spb
 	ct := 1.0 / (115200 * spb)
 	bad := 0
-	for cut := 0; cut < period; cut++ {
+	for cut := range period {
 		rec := line[cut : cut+2*period]
 		r := DecodeUART(rec, ct, UARTCfg{Baud: 115200, Format: "hex", Threshold: 120, HaveThr: true})
 		if !r.OK || strings.Contains(r.Text, "!") || len(r.Bytes) < len(msg) {

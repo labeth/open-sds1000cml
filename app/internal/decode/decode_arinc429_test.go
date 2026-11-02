@@ -14,18 +14,18 @@ import (
 // TRLC-LINKS: REQ-SDS-018
 func arincMakeWord(label8, sdi2, data19, ssm2 int) []int {
 	bits := make([]int, 32)
-	for i := 0; i < 8; i++ {
+	for i := range 8 {
 		bits[i] = (label8 >> i) & 1
 	}
 	bits[8] = sdi2 & 1
 	bits[9] = (sdi2 >> 1) & 1
-	for i := 0; i < 19; i++ {
+	for i := range 19 {
 		bits[10+i] = (data19 >> i) & 1
 	}
 	bits[29] = ssm2 & 1
 	bits[30] = (ssm2 >> 1) & 1
 	ones := 0
-	for i := 0; i < 31; i++ {
+	for i := range 31 {
 		ones += bits[i]
 	}
 	if ones%2 == 0 { // make the total (incl. parity) odd
@@ -39,23 +39,23 @@ func arincMakeWord(label8, sdi2, data19, ssm2 int) []int {
 // TRLC-LINKS: REQ-SDS-018
 func arincExpect(bits []int) (labelOct, dataHex, ssmTxt string, bytesLE []int) {
 	labelRev := 0
-	for i := 0; i < 8; i++ {
+	for i := range 8 {
 		labelRev = (labelRev << 1) | bits[i]
 	}
 	dataVal := 0
-	for i := 0; i < 19; i++ {
+	for i := range 19 {
 		dataVal |= bits[10+i] << i
 	}
 	ssm := bits[29] | bits[30]<<1
 	word32 := 0
-	for i := 0; i < 32; i++ {
+	for i := range 32 {
 		word32 |= bits[i] << i
 	}
 	labelOct = fmt.Sprintf("%03o", labelRev&0xff)
 	dataHex = fmt.Sprintf("%05X", dataVal&0x7ffff)
 	ssmTxt = fmt.Sprintf("SSM%d", ssm)
 	bytesLE = []int{word32 & 0xff, (word32 >> 8) & 0xff, (word32 >> 16) & 0xff, (word32 >> 24) & 0xff}
-	return
+	return labelOct, dataHex, ssmTxt, bytesLE
 }
 
 // arincAppendWord renders 32 (or fewer, for a partial) bits as a bipolar RZ pulse
@@ -70,7 +70,7 @@ func arincAppendWord(w *[]uint8, bits []int, spb int) {
 		if b == 1 {
 			pv = hi
 		}
-		for j := 0; j < half; j++ {
+		for range half {
 			*w = append(*w, pv)
 		}
 		for j := 0; j < spb-half; j++ {
@@ -81,7 +81,7 @@ func arincAppendWord(w *[]uint8, bits []int, spb int) {
 
 // TRLC-LINKS: REQ-SDS-018
 func arincIdle(w *[]uint8, k int) {
-	for j := 0; j < k; j++ {
+	for range k {
 		*w = append(*w, 128)
 	}
 }
@@ -92,8 +92,8 @@ func TestDecodeARINC429RoundTrip(t *testing.T) {
 	colTimeS := 2.5e-7                              // -> 100 kbit/s at spb=40
 	bitrate := int(1.0 / (float64(spb) * colTimeS)) // 100000
 
-	w1 := arincMakeWord(0312, 1 /*SDI*/, 0x2ABCD /*data19*/, 3 /*SSM*/)
-	w2 := arincMakeWord(0107, 2, 0x15A3F, 1)
+	w1 := arincMakeWord(0o312, 1 /*SDI*/, 0x2ABCD /*data19*/, 3 /*SSM*/)
+	w2 := arincMakeWord(0o107, 2, 0x15A3F, 1)
 	lead := []int{1, 0, 1, 1, 0, 0, 1, 0, 1, 0} // a partial fragment (10 bits) at the record start
 	trail := []int{0, 1, 1, 0, 0, 1, 1, 0}      // a partial fragment (8 bits) at the record end
 
@@ -173,7 +173,7 @@ func TestDecodeARINC429ParityError(t *testing.T) {
 	spb := 40
 	colTimeS := 2.5e-7
 	bitrate := int(1.0 / (float64(spb) * colTimeS))
-	bits := arincMakeWord(0250, 0, 0x3C0F0, 2)
+	bits := arincMakeWord(0o250, 0, 0x3C0F0, 2)
 	bits[31] ^= 1 // corrupt the parity bit -> odd parity now violated
 
 	var w []uint8
@@ -224,7 +224,7 @@ func TestDecodeARINC429NoPanic(t *testing.T) {
 		return s
 	}
 	inputs := [][]uint8{nil, {}, {200}, mk(3, 2)}
-	for k := 0; k < 60; k++ {
+	for range 60 {
 		inputs = append(inputs, mk(rng.Intn(3000), rng.Intn(4)))
 	}
 	colTimes := []float64{0, 1e-12, 2.5e-7, 1}
@@ -258,7 +258,7 @@ func TestDecodeARINC429NoPanic(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-018
 func TestARINC429LevelsRippledNull(t *testing.T) {
 	var codes []uint8
-	for i := 0; i < 20000; i++ {
+	for i := range 20000 {
 		switch i % 20 {
 		case 0, 1, 2:
 			codes = append(codes, 210) // HI

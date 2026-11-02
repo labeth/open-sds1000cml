@@ -10,7 +10,7 @@ import (
 // TRLC-LINKS: REQ-SDS-141
 func TestFPGAMomentsWire(t *testing.T) {
 	rng := rand.New(rand.NewSource(1415))
-	for i := 0; i < 1024; i++ {
+	for i := range 1024 {
 		m := FPGAStackMoments{Sum: [2]uint64{rng.Uint64(), rng.Uint64() & 31}, SumSquares: [2]uint64{rng.Uint64(), rng.Uint64() & ((1 << 42) - 1)}, SumOdd: [2]uint64{rng.Uint64(), rng.Uint64() & 31}, Count: rng.Uint32(), CountOdd: rng.Uint32()}
 		words, err := EncodeFPGAMoments(m)
 		if err != nil {

@@ -4,19 +4,23 @@ package analysis
 import (
 	"encoding/binary"
 	"math"
-	"testing"
-
 	"open-sds/app/internal/decode"
+	"testing"
 )
 
 // Native fuzz targets: the seed corpus runs in every `go test`; `go test
 // -fuzz=FuzzX` explores further. Each checks that nothing panics and that the
 // results keep their invariants.
 
-var fuzzProtos = []string{"uart", "spi", "i2c", "canfd", "manchester", "flexray", "usbls", "mil1553",
-	"arinc429", "sent", "", "who"}
-var fuzzKinds = []string{"data", "frame-error", "parity-error", "gap", "start", "stop", "addr", "rw", "ack", "nak",
-	"sof", "id", "ide", "rtr", "fd", "dlc", "crc", "crc-error", "sync", "pause", "rubbish"}
+var fuzzProtos = []string{
+	"uart", "spi", "i2c", "canfd", "manchester", "flexray", "usbls", "mil1553",
+	"arinc429", "sent", "", "who",
+}
+
+var fuzzKinds = []string{
+	"data", "frame-error", "parity-error", "gap", "start", "stop", "addr", "rw", "ack", "nak",
+	"sof", "id", "ide", "rtr", "fd", "dlc", "crc", "crc-error", "sync", "pause", "rubbish",
+}
 var fuzzTexts = []string{"", "R", "W", "csync", "dsync", "STUFF!", "(no STOP)", "!"}
 
 // checkPacketInvariants holds for any grouping.
@@ -74,10 +78,7 @@ func FuzzPackets(f *testing.F) {
 			})
 		}
 		ps := Packets(r, n)
-		limit := n
-		if n <= 0 {
-			limit = 0
-		}
+		limit := max(n, 0)
 		checkPacketInvariants(t, ps, limit)
 	})
 }
@@ -175,9 +176,11 @@ func FuzzEyeJitter(f *testing.F) {
 				sig[i] = math.NaN()
 			}
 		}
-		s := NewEyeJitter(EyeJitterOptions{EyeW: int(mode % 7), EyeH: int(mode % 5), FFTN: int(mode % 33),
-			TIECap: int(mode % 3)})
-		for k := 0; k < 3; k++ {
+		s := NewEyeJitter(EyeJitterOptions{
+			EyeW: int(mode % 7), EyeH: int(mode % 5), FFTN: int(mode % 33),
+			TIECap: int(mode % 3),
+		})
+		for range 3 {
 			s.Feed(sig, 1e-9)
 		}
 		r := s.Result()

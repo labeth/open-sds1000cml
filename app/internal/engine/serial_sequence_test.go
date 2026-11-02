@@ -3,10 +3,9 @@ package engine
 
 import (
 	"math"
-	"testing"
-
 	"open-sds/app/internal/decode"
 	"open-sds/app/internal/sramcapture"
+	"testing"
 )
 
 // TRLC-LINKS: REQ-SDS-013
@@ -144,13 +143,21 @@ func TestFrameStartSequence(t *testing.T) {
 	if c := planSequence(SerialParams{Proto: serCAN, Pattern: []PatternElem{{Kind: patternData, Value: MILCommand, Mask: MILCommand}}}); c.Length != 0 {
 		t.Fatalf("the command flag on CAN: %+v", c)
 	}
-	sp := []decode.Span{{I0: 0, I1: 9, Kind: "data", Val: 1}, {I0: 20, I1: 20, Kind: "start"}, {I0: 21, I1: 29, Kind: "data", Val: 2},
-		{I0: 30, I1: 39, Kind: "data", Val: 3}}
+	sp := []decode.Span{
+		{I0: 0, I1: 9, Kind: "data", Val: 1},
+		{I0: 20, I1: 20, Kind: "start"},
+		{I0: 21, I1: 29, Kind: "data", Val: 2},
+		{I0: 30, I1: 39, Kind: "data", Val: 3},
+	}
 	if ok, at := matchSequence(sp, SerialParams{Proto: serCAN, Pattern: []PatternElem{{Kind: patternStart}, {Kind: patternData}}}); !ok || at != 20 {
 		t.Fatalf("frame start matched %v at %d, want the frame opening at 20", ok, at)
 	}
-	mil := []decode.Span{{I0: 0, I1: 2, Kind: "start", Text: "dsync"}, {I0: 3, I1: 19, Kind: "data", Val: 0xAAAA},
-		{I0: 40, I1: 42, Kind: "start", Text: "csync"}, {I0: 43, I1: 59, Kind: "data", Val: 0x1234}}
+	mil := []decode.Span{
+		{I0: 0, I1: 2, Kind: "start", Text: "dsync"},
+		{I0: 3, I1: 19, Kind: "data", Val: 0xAAAA},
+		{I0: 40, I1: 42, Kind: "start", Text: "csync"},
+		{I0: 43, I1: 59, Kind: "data", Val: 0x1234},
+	}
 	if ok, at := matchSequence(mil, SerialParams{Proto: serMIL1553, Pattern: []PatternElem{{Kind: patternData, Value: MILCommand, Mask: MILCommand}}}); !ok || at != 43 {
 		t.Fatalf("command word matched %v at %d, want 43", ok, at)
 	}
@@ -192,8 +199,13 @@ func TestFrameUnitStart(t *testing.T) {
 // past its own fields; a unit with nothing marked before it opens itself.
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-223
 func TestFrameOpening(t *testing.T) {
-	can := []decode.Span{{I0: 0, I1: 9, Kind: "data"}, {I0: 50, I1: 51, Kind: "sof"}, {I0: 52, I1: 80, Kind: "id"},
-		{I0: 81, I1: 90, Kind: "ctl"}, {I0: 91, I1: 110, Kind: "data"}}
+	can := []decode.Span{
+		{I0: 0, I1: 9, Kind: "data"},
+		{I0: 50, I1: 51, Kind: "sof"},
+		{I0: 52, I1: 80, Kind: "id"},
+		{I0: 81, I1: 90, Kind: "ctl"},
+		{I0: 91, I1: 110, Kind: "data"},
+	}
 	if at := frameOpening(can, 111); at != 50 {
 		t.Fatalf("CAN frame opens at %d, want its SOF at 50", at)
 	}
@@ -206,13 +218,24 @@ func TestFrameOpening(t *testing.T) {
 	// The Manchester image fires as the frame's fourth word ends (the bench:
 	// 24 us past the SYNC at 1 Mb/s): the frame still opens at its SYNC. A
 	// frame before it, an idle gap away, is not this one's.
-	man := []decode.Span{{I0: 0, I1: 8, Kind: "data"}, {I0: 20, I1: 24, Kind: "start", Text: "SYNC"}, {I0: 20, I1: 28, Kind: "data"},
-		{I0: 28, I1: 36, Kind: "data"}, {I0: 36, I1: 44, Kind: "data"}, {I0: 44, I1: 52, Kind: "data"}}
+	man := []decode.Span{
+		{I0: 0, I1: 8, Kind: "data"},
+		{I0: 20, I1: 24, Kind: "start", Text: "SYNC"},
+		{I0: 20, I1: 28, Kind: "data"},
+		{I0: 28, I1: 36, Kind: "data"},
+		{I0: 36, I1: 44, Kind: "data"},
+		{I0: 44, I1: 52, Kind: "data"},
+	}
 	if at := frameOpening(man, 52); at != 20 {
 		t.Fatalf("Manchester frame fired on its fourth word opens at %d, want its SYNC at 20", at)
 	}
-	usb := []decode.Span{{I0: 0, I1: 5, Kind: "start", Text: "SYNC"}, {I0: 5, I1: 10, Kind: "addr", Text: "DATA0"},
-		{I0: 10, I1: 15, Kind: "data"}, {I0: 15, I1: 20, Kind: "data"}, {I0: 20, I1: 25, Kind: "data"}}
+	usb := []decode.Span{
+		{I0: 0, I1: 5, Kind: "start", Text: "SYNC"},
+		{I0: 5, I1: 10, Kind: "addr", Text: "DATA0"},
+		{I0: 10, I1: 15, Kind: "data"},
+		{I0: 15, I1: 20, Kind: "data"},
+		{I0: 20, I1: 25, Kind: "data"},
+	}
 	if at := frameOpening(usb, 25); at != 0 {
 		t.Fatalf("USB packet fired on its third byte opens at %d, want its SYNC at 0", at)
 	}

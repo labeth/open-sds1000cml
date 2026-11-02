@@ -3,12 +3,11 @@ package engine
 
 import (
 	"fmt"
+	"open-sds/app/internal/bus"
+	"open-sds/app/internal/iface"
 	"sync"
 	"testing"
 	"time"
-
-	"open-sds/app/internal/bus"
-	"open-sds/app/internal/iface"
 )
 
 // fakeClock advances instantly on Sleep so FSM waits are deterministic.
@@ -176,10 +175,7 @@ func (f *fakeBus) Read(plane uint8, sel uint16) (uint16, error) {
 			f.remainLast = 0
 			return 0, nil
 		}
-		rem := f.record() - f.drainN
-		if rem < 0 {
-			rem = 0
-		}
+		rem := max(f.record()-f.drainN, 0)
 		f.remainLast = rem
 		return iface.BurstRemainReadyMask | uint16(rem), nil
 	case iface.SelBurst, iface.SelBurstAlias:
@@ -262,7 +258,7 @@ func (f *fakeBus) RawWrite(sel, val uint16) error {
 func (f *fakeBus) BurstInto(c1, c2 []uint8, n int) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	for i := 0; i < n; i++ {
+	for i := range n {
 		w := f.pop()
 		c1[i] = uint8(w >> 8)
 		c2[i] = uint8(w)
@@ -273,7 +269,7 @@ func (f *fakeBus) BurstInto(c1, c2 []uint8, n int) {
 func (f *fakeBus) PopWords(sel uint16, dst []uint16, n int) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	for i := 0; i < n; i++ {
+	for i := range n {
 		if m := iface.MaskSel(sel); m == iface.SelBurst || m == iface.SelBurstAlias {
 			dst[i] = f.pop()
 		} else {
@@ -310,13 +306,18 @@ func bringUpWords(b Band, cols int, run, acq, lvl uint16) []wr {
 	return []wr{
 		{1, iface.SelOpcode, iface.OpReset},
 		{1, iface.SelRun, run},
-		{1, iface.SelDecimLo, uint16(d)}, {1, iface.SelDecimHi, uint16(d >> 16)},
-		{1, iface.SelPretrigLo, uint16(pre)}, {1, iface.SelPretrigHi, uint16(pre >> 16)},
-		{1, iface.SelPosttrigLo, uint16(post)}, {1, iface.SelPosttrigHi, uint16(post >> 16)},
+		{1, iface.SelDecimLo, uint16(d)},
+		{1, iface.SelDecimHi, uint16(d >> 16)},
+		{1, iface.SelPretrigLo, uint16(pre)},
+		{1, iface.SelPretrigHi, uint16(pre >> 16)},
+		{1, iface.SelPosttrigLo, uint16(post)},
+		{1, iface.SelPosttrigHi, uint16(post >> 16)},
 		{1, iface.SelAcqCtrl, acq},
 		{1, iface.SelTrigLevel, lvl},
 		// schema v3: ADC source, full drain window
-		{1, iface.SelIlCtrl, 0}, {1, iface.SelDrainStart, 0}, {1, iface.SelDrainLen, 0},
+		{1, iface.SelIlCtrl, 0},
+		{1, iface.SelDrainStart, 0},
+		{1, iface.SelDrainLen, 0},
 	}
 }
 

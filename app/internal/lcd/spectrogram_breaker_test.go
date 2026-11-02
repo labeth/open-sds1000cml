@@ -4,9 +4,8 @@ package lcd
 import (
 	"fmt"
 	"math"
-	"testing"
-
 	"open-sds/app/internal/engine"
+	"testing"
 )
 
 // heat() is the colour primitive shared by the device waterfall and (mirrored)
@@ -242,7 +241,7 @@ func TestSpectrogramBreaker50(t *testing.T) {
 			s = (s*6364136223846793005 + 1442695040888963407) & 0x7fffffffffffffff
 			return float64(s%1_000_000) / 1_000_000
 		}
-		for i := 0; i < n; i++ {
+		for i := range n {
 			buf[i] = sgClamp8(fam.gen(i, n, rng))
 		}
 		sg := NewSpectrogram()
@@ -254,7 +253,7 @@ func TestSpectrogramBreaker50(t *testing.T) {
 				}
 			}()
 			// push several frames to exercise the scroll + repeated paint
-			for rep := 0; rep < 4; rep++ {
+			for range 4 {
 				sg.Push(fr, 0, nyq)
 			}
 		}()

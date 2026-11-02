@@ -2,9 +2,8 @@ package engine
 
 import (
 	"math/rand"
-	"testing"
-
 	"open-sds/app/internal/superres"
+	"testing"
 )
 
 // TRLC-LINKS: REQ-SDS-141

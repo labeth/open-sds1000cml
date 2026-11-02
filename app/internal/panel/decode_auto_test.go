@@ -2,13 +2,12 @@
 package panel
 
 import (
-	"strings"
-	"testing"
-	"time"
-
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/panel/framecalc"
 	"open-sds/app/internal/settings"
+	"strings"
+	"testing"
+	"time"
 )
 
 // fastUART is the rig's bus: a 460800 Bd UART; otherBus a 115200 Bd one the
@@ -58,7 +57,7 @@ func waitBaud(t *testing.T, c *Controller, want int) bool {
 func TestAutoDetectsAgainWhenTheBusIsLost(t *testing.T) {
 	r := autoRig(t)
 	r.show(fastUART()) // decodes: the watch is armed
-	for i := 0; i < autoLostCaptures; i++ {
+	for range autoLostCaptures {
 		r.clk.advance(autoLostAfter)
 		r.show(otherBus())
 	}
@@ -81,7 +80,7 @@ func TestAutoKeepsTheBusOverABadCapture(t *testing.T) {
 	r.show(otherBus())
 	r.clk.advance(time.Second)
 	r.show(fastUART())
-	for i := 0; i < autoLostCaptures-1; i++ {
+	for range autoLostCaptures - 1 {
 		r.clk.advance(autoLostAfter)
 		r.show(otherBus())
 	}
@@ -101,7 +100,7 @@ func TestHandSetSettingsAreNotRedetected(t *testing.T) {
 		t.Fatal("a rate set by hand still reads as Auto's")
 	}
 	r.show(fastUART())
-	for i := 0; i < 2*autoLostCaptures; i++ {
+	for range 2 * autoLostCaptures {
 		r.clk.advance(autoLostAfter)
 		r.show(otherBus())
 	}
@@ -163,7 +162,7 @@ func TestIdleLinesDoNotDetect(t *testing.T) {
 	for i := range flat {
 		flat[i] = 210
 	}
-	for i := 0; i < 2*autoLostCaptures; i++ {
+	for range 2 * autoLostCaptures {
 		r.clk.advance(autoLostAfter)
 		r.show(&engine.Frame{C1: flat, C2: flat, Valid: len(flat), WinCols: len(flat), SampleS: 100e-9})
 	}
@@ -171,7 +170,7 @@ func TestIdleLinesDoNotDetect(t *testing.T) {
 	if s := r.c.snap(); s.decBaud != 460800 || s.ui.busDetecting || strings.Contains(r.c.View().Notice, "detecting the bus again") {
 		t.Fatalf("idle lines started a detection: baud %d, notice %q", s.decBaud, r.c.View().Notice)
 	}
-	for i := 0; i < autoLostCaptures; i++ {
+	for range autoLostCaptures {
 		r.clk.advance(time.Second)
 		r.show(otherBus())
 	}
@@ -198,11 +197,13 @@ func TestAutoKeepsTheBusAtAnotherTimebase(t *testing.T) {
 	}
 	const n = 120 // 12 us: five bits of one character at 1.2 us/div
 	closer := func() *engine.Frame {
-		return &engine.Frame{C1: append([]uint8(nil), full.C1[at:at+n]...), C2: append([]uint8(nil), full.C2[at:at+n]...),
-			Valid: n, WinCols: n, EdgeX: n / 2, TdivS: n * 100e-9 / 10, SampleS: 100e-9, Trigd: true}
+		return &engine.Frame{
+			C1: append([]uint8(nil), full.C1[at:at+n]...), C2: append([]uint8(nil), full.C2[at:at+n]...),
+			Valid: n, WinCols: n, EdgeX: n / 2, TdivS: n * 100e-9 / 10, SampleS: 100e-9, Trigd: true,
+		}
 	}
 	note := r.c.snap().ui.busNote
-	for i := 0; i < 2*autoLostCaptures; i++ {
+	for range 2 * autoLostCaptures {
 		r.clk.advance(autoLostAfter)
 		r.show(closer())
 	}
@@ -211,7 +212,7 @@ func TestAutoKeepsTheBusAtAnotherTimebase(t *testing.T) {
 		t.Fatalf("a closer timebase started a detection: baud %d, notice %q, detection's note %q", s.decBaud, r.c.View().Notice, s.ui.busNote)
 	}
 	r.show(fastUART()) // back at the timebase it decodes at
-	for i := 0; i < autoLostCaptures; i++ {
+	for range autoLostCaptures {
 		r.clk.advance(autoLostAfter)
 		r.show(otherBus())
 	}

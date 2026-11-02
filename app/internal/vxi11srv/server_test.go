@@ -84,7 +84,7 @@ func (tc *testClient) write(t *testing.T, lid uint32, s string) {
 }
 
 // TRLC-LINKS: REQ-SDS-024
-func (tc *testClient) read(t *testing.T, lid uint32, reqSize uint32) (uint32, uint32, []byte) {
+func (tc *testClient) read(t *testing.T, lid, reqSize uint32) (uint32, uint32, []byte) {
 	args := putU32(nil, lid)
 	args = putU32(args, reqSize)
 	args = putU32(args, 2000)
@@ -148,7 +148,7 @@ func TestChunkedRead(t *testing.T) {
 	tc.write(t, lid, "BIG?\n")
 
 	var got []byte
-	for i := 0; i < 64; i++ {
+	for range 64 {
 		errc, reason, data := tc.read(t, lid, 256)
 		if errc != 0 {
 			t.Fatalf("chunk err %d", errc)

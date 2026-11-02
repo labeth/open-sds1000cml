@@ -16,7 +16,7 @@ func TestStatisticsSpanStopsWithTheReadings(t *testing.T) {
 	r := newViewRig(t)
 	c := r.c
 	press(t, c, "f4")
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		r.show(toneFrame(""))
 		r.clk.advance(200 * time.Millisecond)
 	}

@@ -2,10 +2,9 @@
 package engine
 
 import (
+	"open-sds/app/internal/iface"
 	"testing"
 	"time"
-
-	"open-sds/app/internal/iface"
 )
 
 // TRLC-LINKS: REQ-SDS-001, REQ-SDS-011
@@ -25,8 +24,10 @@ func TestTriggerLevelRecommit(t *testing.T) {
 		t.Fatalf("display level for 0x7530 = %d", lvl)
 	}
 	wantWrites(t, fb.snapWrites(), []wr{
-		{3, cs3LevelALo, 0x30}, {3, cs3LevelAHi, 0x75},
-		{3, cs3LevelBLo, 0x30}, {3, cs3LevelBHi, 0x75},
+		{3, cs3LevelALo, 0x30},
+		{3, cs3LevelAHi, 0x75},
+		{3, cs3LevelBLo, 0x30},
+		{3, cs3LevelBHi, 0x75},
 		{1, iface.SelTrigLevel, uint16(lvl)},
 		{1, iface.SelOpcode, iface.OpGo},
 	})
@@ -102,8 +103,10 @@ func TestOffsetDACFlush(t *testing.T) {
 	got := fb.snapWrites()
 	// Offsets: C1 lo/hi, C2 lo/hi (MAX V DACs) — then the level quad.
 	want := []wr{
-		{3, cs3OffC1Lo, 0x68}, {3, cs3OffC1Hi, 0x29},
-		{3, cs3OffC2Lo, 0x30}, {3, cs3OffC2Hi, 0x2A},
+		{3, cs3OffC1Lo, 0x68},
+		{3, cs3OffC1Hi, 0x29},
+		{3, cs3OffC2Lo, 0x30},
+		{3, cs3OffC2Hi, 0x2A},
 	}
 	if len(got) < len(want) {
 		t.Fatalf("only %d writes: %#v", len(got), got)

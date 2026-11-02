@@ -2,13 +2,12 @@
 package web
 
 import (
+	"open-sds/app/internal/testenv"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
-
-	"open-sds/app/internal/testenv"
 )
 
 // TestSigrokExportLogicE2E proves the whole point of the mixed analog+logic
@@ -70,7 +69,7 @@ require("fs").writeFileSync(process.argv[process.argv.length - 1], sigrokSR(sigr
 		t.Fatalf("sigrok-cli uart decode failed: %v\n%s", err, dec)
 	}
 	var got []string
-	for _, line := range strings.Split(string(dec), "\n") {
+	for line := range strings.SplitSeq(string(dec), "\n") {
 		if i := strings.LastIndex(line, ": "); i >= 0 && strings.Contains(line, "uart-") {
 			got = append(got, strings.TrimSpace(line[i+2:]))
 		}

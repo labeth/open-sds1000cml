@@ -4,7 +4,6 @@ package panel
 import (
 	"fmt"
 	"math"
-
 	"open-sds/app/internal/panel/wsview"
 	"open-sds/app/internal/sound"
 )
@@ -31,7 +30,8 @@ func (s *soundSvc) rowInfo() soundRowInfo {
 // sndEnum is an enum row over one SOUND setting.
 // TRLC-LINKS: REQ-SDS-273
 func sndEnum(id, label, help string, opts []opt, get func(SoundSettings) int, set func(*SoundSettings, int)) *row {
-	return &row{id: id, label: label, kind: wsview.Enum, help: help, opts: staticOpts(opts),
+	return &row{
+		id: id, label: label, kind: wsview.Enum, help: help, opts: staticOpts(opts),
 		get: func(s *sv) int { return get(s.snd) },
 		set: func(c *Controller, v int) error {
 			c.snd.update(func(st *SoundSettings) { set(st, v) })
@@ -107,31 +107,40 @@ func soundRows() []*row {
 		}, siFmt("V"))
 	gateV.help = "A gate's level, or how far above its quiet level the signal must rise."
 	gateV.def = func(c *Controller) error { return gateV.setN(c, 0.1) }
-	arm := &row{id: "snd.adsr", label: "Capture", kind: wsview.Action,
+	arm := &row{
+		id: "snd.adsr", label: "Capture", kind: wsview.Action,
 		help: "Arm: the next edge of the trigger starts an envelope capture; it ends when the sound has died away.",
 		knob: "In the SOUND view's envelope page: push Adjust.",
 		acts: func(s *sv) []act {
-			return []act{{id: "arm", t: "Arm", run: func(c *Controller) error { return c.snd.action("adsr_arm") }},
-				{id: "cancel", t: "Cancel", dim: s.sndRow.adsr != adsrArmed && s.sndRow.adsr != adsrCapturing,
-					run: func(c *Controller) error { return c.snd.action("adsr_cancel") }}}
+			return []act{
+				{id: "arm", t: "Arm", run: func(c *Controller) error { return c.snd.action("adsr_arm") }},
+				{
+					id: "cancel", t: "Cancel", dim: s.sndRow.adsr != adsrArmed && s.sndRow.adsr != adsrCapturing,
+					run: func(c *Controller) error { return c.snd.action("adsr_cancel") },
+				},
+			}
 		},
 		status: func(s *sv) string { return s.sndRow.adsr },
 	}
 	auto := sndEnum("snd.voct_auto", "V/oct points", "By hand (push Adjust on the V/oct page) or taken by themselves once the CV and the pitch hold still.",
 		[]opt{{0, "By hand"}, {1, "Auto"}}, func(s SoundSettings) int { return b2ic(s.VOctAuto) }, func(s *SoundSettings, v int) { s.VOctAuto = v == 1 })
 	auto.hdr = "V/OCT AND DRIFT"
-	voct := &row{id: "snd.voct", label: "V/oct table", kind: wsview.Action,
+	voct := &row{
+		id: "snd.voct", label: "V/oct table", kind: wsview.Action,
 		help: "Take a point now (the CV on the other channel, the VCO's pitch), undo the last, or start over.",
 		acts: func(*sv) []act {
-			return []act{{id: "take", t: "Take", run: func(c *Controller) error { return c.snd.action("voct_capture") }},
+			return []act{
+				{id: "take", t: "Take", run: func(c *Controller) error { return c.snd.action("voct_capture") }},
 				{id: "undo", t: "Undo", run: func(c *Controller) error { return c.snd.action("voct_undo") }},
-				{id: "clear", t: "Clear", run: func(c *Controller) error { return c.snd.action("voct_clear") }}}
+				{id: "clear", t: "Clear", run: func(c *Controller) error { return c.snd.action("voct_clear") }},
+			}
 		},
 		status: func(s *sv) string { return fmt.Sprintf("%d %s", s.sndRow.points, plural(s.sndRow.points, "point")) },
 	}
 	drift := sndEnum("snd.drift", "Drift log", "Log the tuned pitch once a second (a VCO warming up).",
 		onOff, func(s SoundSettings) int { return b2ic(s.Drift) }, func(s *SoundSettings, v int) { s.Drift = v == 1 })
-	driftClear := &row{id: "snd.drift_clear", label: "Drift points", kind: wsview.Action,
+	driftClear := &row{
+		id: "snd.drift_clear", label: "Drift points", kind: wsview.Action,
 		help: "Start the drift log over.",
 		acts: func(*sv) []act {
 			return []act{{id: "clear", t: "Clear", run: func(c *Controller) error { return c.snd.action("drift_clear") }}}

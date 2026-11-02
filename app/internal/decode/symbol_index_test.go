@@ -29,7 +29,7 @@ func symbolIndexRef(level bool, count uint32) int {
 // SymbolIndex agrees with the bit-by-bit reference on every count.
 // TRLC-LINKS: REQ-SDS-013
 func TestSymbolIndexMatchesRef(t *testing.T) {
-	for c := uint32(0); c < 1<<22; c++ {
+	for c := range uint32(1 << 22) {
 		for _, l := range []bool{false, true} {
 			if got, want := SymbolIndex(l, c), symbolIndexRef(l, c); got != want {
 				t.Fatalf("SymbolIndex(%v, %d) = %d, want %d", l, c, got, want)

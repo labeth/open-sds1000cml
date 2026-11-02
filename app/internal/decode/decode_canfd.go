@@ -164,7 +164,7 @@ func (r *canReader) next() (int, bool) {
 // TRLC-LINKS: REQ-SDS-018
 func (r *canReader) readField(nbits int) (val, i0, i1 int, ok bool) {
 	i0, i1 = -1, -1
-	for k := 0; k < nbits; k++ {
+	for k := range nbits {
 		b, o := r.next()
 		if !o {
 			return 0, i0, i1, false
@@ -263,8 +263,10 @@ func DecodeCANFD(codes []uint8, colTimeS float64, cfg CANFDCfg) Result {
 	if baud <= 0 && colTimeS > 0 {
 		baud = int(math.Round(1 / (spb * colTimeS)))
 	}
-	return Result{OK: true, Proto: "canfd", Spans: spans, Text: strings.Join(toks, " "),
-		Bytes: allBytes, Baud: baud, SPB: spb, Thr: S.threshold}
+	return Result{
+		OK: true, Proto: "canfd", Spans: spans, Text: strings.Join(toks, " "),
+		Bytes: allBytes, Baud: baud, SPB: spb, Thr: S.threshold,
+	}
 }
 
 // inferCANspb estimates the samples-per-bit from the edge-gap distribution.
@@ -319,7 +321,7 @@ func inferCANspb(S sliced) (float64, string) {
 			continue
 		}
 		ref := cand
-		for pass := 0; pass < 2; pass++ {
+		for range 2 {
 			sum, cnt := 0.0, 0
 			for _, g := range kg {
 				if math.Abs(g-ref) <= 0.35*ref {
@@ -392,8 +394,10 @@ func canIdleBefore(S sliced, k int, spb float64) bool {
 // problem so the caller can skip a false SOF candidate.
 // TRLC-LINKS: REQ-SDS-018
 func decodeCANOneFrame(S sliced, cfg CANFDCfg, sofStart, spb, dataSpb float64) canFrame {
-	r := &canReader{S: S, dominantLow: cfg.DominantLow, pos: sofStart, spb: spb,
-		runVal: -1, runLen: 0, stuffOn: true, record: true}
+	r := &canReader{
+		S: S, dominantLow: cfg.DominantLow, pos: sofStart, spb: spb,
+		runVal: -1, runLen: 0, stuffOn: true, record: true,
+	}
 	// The resync walks the edges from the first one at a sample a bit before
 	// the start of frame: an edge lies at or before its sample, so none
 	// before that one is near enough to snap to. From the record's first

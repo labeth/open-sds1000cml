@@ -4,11 +4,10 @@ package scpi
 import (
 	"fmt"
 	"math"
-	"strings"
-
 	"open-sds/app/internal/analog"
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/measure"
+	"strings"
 )
 
 // liveFront is the front end's live probe and coupling, when it offers them:
@@ -144,8 +143,10 @@ func (h *Handler) pava(ch int, arg string) []byte {
 }
 
 // pavaOrder is PAVA? ALL's parameter order.
-var pavaOrder = []string{"PKPK", "MAX", "MIN", "AMPL", "TOP", "BASE", "MEAN", "RMS", "OVSP", "RPRE",
-	"PER", "FREQ", "PWID", "NWID", "RISE", "FALL", "DUTY", "NDUTY"}
+var pavaOrder = []string{
+	"PKPK", "MAX", "MIN", "AMPL", "TOP", "BASE", "MEAN", "RMS", "OVSP", "RPRE",
+	"PER", "FREQ", "PWID", "NWID", "RISE", "FALL", "DUTY", "NDUTY",
+}
 
 // pavaValue formats one parameter of a measurement; "****" when the record
 // cannot support it.

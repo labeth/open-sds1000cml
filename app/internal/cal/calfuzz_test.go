@@ -13,7 +13,7 @@ import (
 // TRLC-LINKS: REQ-SDS-016
 func TestCalParseFuzz(t *testing.T) {
 	rng := rand.New(rand.NewSource(0xCA1))
-	for i := 0; i < 5000; i++ {
+	for i := range 5000 {
 		raw := make([]byte, fileSize, fileSize+16) // headroom for the wrong-size slice below
 		rng.Read(raw)
 		if i%2 == 0 {

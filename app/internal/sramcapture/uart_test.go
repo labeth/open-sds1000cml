@@ -75,8 +75,13 @@ func TestHardwareSampleUARTProgramming(t *testing.T) {
 			t.Fatalf("register %d=%x, want %x", s, f.staged[s], want)
 		}
 	}
-	for _, bad := range []UARTTriggerConfig{{Enabled: true, Period16: 255}, {Enabled: true, Period16: 1 << 24}, {Enabled: true, Period16: 320, Bits: 4},
-		{Enabled: true, Period16: 320, Parity: 3}, {Enabled: true, BitTicks: 100, Parity: 1}} {
+	for _, bad := range []UARTTriggerConfig{
+		{Enabled: true, Period16: 255},
+		{Enabled: true, Period16: 1 << 24},
+		{Enabled: true, Period16: 320, Bits: 4},
+		{Enabled: true, Period16: 320, Parity: 3},
+		{Enabled: true, BitTicks: 100, Parity: 1},
+	} {
 		f.flags = 4 | 16 | 32 | 64
 		if err := c.Arm(context.Background(), Config{Normal: true, PostWords: 16, UART: bad}); err == nil {
 			t.Fatalf("invalid %+v accepted", bad)

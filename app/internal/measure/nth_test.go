@@ -10,7 +10,7 @@ import (
 // TRLC-LINKS: REQ-SDS-017
 func TestNthFloatMatchesSort(t *testing.T) {
 	r := rand.New(rand.NewSource(5))
-	for it := 0; it < 20000; it++ {
+	for range 20000 {
 		n := 1 + r.Intn(300)
 		x := make([]float64, n)
 		levels := 1 + r.Intn(20)

@@ -5,13 +5,12 @@ import (
 	"fmt"
 	"math"
 	"net/http/httptest"
+	"open-sds/app/internal/engine"
+	"open-sds/app/internal/testenv"
 	"os/exec"
 	"strings"
 	"sync"
 	"testing"
-
-	"open-sds/app/internal/engine"
-	"open-sds/app/internal/testenv"
 )
 
 // ---------------------------------------------------------------------------
@@ -67,10 +66,7 @@ func (w *wsScope) WithFrame(fn func(*engine.Frame)) {
 		z.seq++
 		done := true
 		if z.acqMode == 1 && w.block {
-			n := z.avgCount
-			if n < 1 {
-				n = 1
-			}
+			n := max(z.avgCount, 1)
 			w.avgK++
 			if w.avgK > n {
 				w.avgK = 1
@@ -158,7 +154,7 @@ func uartSig(msg []byte, spb, start, gap int) func(uint64) ([]uint8, []uint8) {
 	for pos < fuzzN {
 		for _, b := range msg {
 			bits := []int{0}
-			for k := 0; k < 8; k++ {
+			for k := range 8 {
 				bits = append(bits, int(b>>k)&1)
 			}
 			bits = append(bits, 1)

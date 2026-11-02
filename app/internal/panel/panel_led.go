@@ -3,10 +3,9 @@ package panel
 
 import (
 	"math"
+	"open-sds/app/internal/panel/framecalc"
 	"strconv"
 	"time"
-
-	"open-sds/app/internal/panel/framecalc"
 )
 
 // Lamps (spec 08 §8.2): only the confirmed lamps, each with one meaning,
@@ -99,7 +98,7 @@ func setupPrint(s *sv) string {
 	n(s.st.AcqMode)
 	n(s.st.AvgCount)
 	n(s.st.EresLen)
-	for ch := 0; ch < 2; ch++ {
+	for ch := range 2 {
 		n(s.vidx[ch])
 		f(s.offV[ch])
 		n(s.cpl[ch])

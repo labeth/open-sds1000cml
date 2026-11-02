@@ -2,15 +2,14 @@
 package settings_test
 
 import (
-	"testing"
-	"time"
-
 	"open-sds/app/internal/analog"
 	"open-sds/app/internal/analysis"
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/panel"
 	"open-sds/app/internal/panel/framecalc"
 	"open-sds/app/internal/settings"
+	"testing"
+	"time"
 )
 
 // FuzzParseAndApply hammers the loader with hostile bytes: Parse must never

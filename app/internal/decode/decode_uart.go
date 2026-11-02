@@ -101,7 +101,7 @@ func inferUARTspb(S sliced) (float64, string) {
 		// window instead would merge genuinely incommensurate pulse widths and
 		// destroy the ambiguity honesty; re-centering does not.
 		ref := cand
-		for pass := 0; pass < 2; pass++ {
+		for range 2 {
 			sum, cnt := 0.0, 0
 			for _, g := range kg {
 				if math.Abs(g-ref) <= 0.35*ref {
@@ -304,8 +304,10 @@ func DecodeUART(codes []uint8, colTimeS float64, cfg UARTCfg) Result {
 			toks, bytes = append(toks, sp.Text), append(bytes, sp.Val)
 		}
 	}
-	return Result{OK: true, Proto: "uart", Spans: spans, Text: strings.Join(toks, " "),
-		Bytes: bytes, Baud: int(math.Round(baud)), SPB: spb, Thr: S.threshold}
+	return Result{
+		OK: true, Proto: "uart", Spans: spans, Text: strings.Join(toks, " "),
+		Bytes: bytes, Baud: int(math.Round(baud)), SPB: spb, Thr: S.threshold,
+	}
 }
 
 // uartAnchorChain is the frames a hardware match fixes the framing of, in
@@ -420,8 +422,10 @@ func syncIn(spans []Span, S sliced, spb float64, frameBits int, confirm float64)
 }
 
 // standardBauds are the common UART rates auto-baud snaps to.
-var standardBauds = []float64{300, 600, 1200, 2400, 4800, 9600, 14400, 19200, 28800, 38400,
-	57600, 76800, 115200, 230400, 250000, 460800, 500000, 921600, 1000000, 1500000, 2000000, 3000000}
+var standardBauds = []float64{
+	300, 600, 1200, 2400, 4800, 9600, 14400, 19200, 28800, 38400,
+	57600, 76800, 115200, 230400, 250000, 460800, 500000, 921600, 1000000, 1500000, 2000000, 3000000,
+}
 
 // snapStandardBaud moves an inferred samples-per-bit onto the nearest standard
 // rate when one lies within 1.5%: an estimate from a short record is a

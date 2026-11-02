@@ -1,7 +1,10 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-SRAMCAPTURE
 package sramcapture
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
 
 // Event kinds a sequence element can require; SequenceAny matches any kind.
 const (
@@ -105,7 +108,7 @@ func (c *Capture) configureSequence(p SequenceTriggerConfig) error {
 	}
 	if !present {
 		if p.Length != 0 {
-			return fmt.Errorf("sramcapture: fabric lacks the sequence trigger")
+			return errors.New("sramcapture: fabric lacks the sequence trigger")
 		}
 		return nil
 	}

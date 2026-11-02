@@ -2,10 +2,9 @@ package app
 
 import (
 	"math"
-	"testing"
-
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/lcd"
+	"testing"
 )
 
 // The scope's zoom leases its stretch of a live envelope at full detail in

@@ -231,8 +231,10 @@ func decodeSteps(proto string, a, b lineIn, colTimeS float64, cfg ClockedCfg, qu
 		units = append(units, v)
 		steps++
 	}
-	res := Result{OK: steps >= 2, Proto: proto, Spans: spans, Text: strings.Join(toks, " "), Bytes: units,
-		Thr: A.threshold, SPB: T, Baud: int(math.Round(1 / (T * colTimeS)))}
+	res := Result{
+		OK: steps >= 2, Proto: proto, Spans: spans, Text: strings.Join(toks, " "), Bytes: units,
+		Thr: A.threshold, SPB: T, Baud: int(math.Round(1 / (T * colTimeS))),
+	}
 	if !quad && !math.IsInf(pulse, 1) {
 		res.Feature = pulse
 	}
@@ -295,7 +297,7 @@ func decodePWM(codes lineIn, colTimeS float64, cfg LineCfg) Result {
 	iper := scratchSlice[int](S.sc, periods) // the periods in samples (nthNear)
 	narrow := math.Inf(1)                    // the narrowest high or low
 	duty := pwmDutyTexts()
-	for k := 0; k < len(E); k++ {
+	for k := range E {
 		if E[k].dir < 0 || k+2 >= len(E) {
 			continue
 		}
@@ -333,6 +335,8 @@ func decodePWM(codes lineIn, colTimeS float64, cfg LineCfg) Result {
 	} else {
 		T = medianOf(pers)
 	}
-	return Result{OK: true, Proto: "pwm", Spans: o.spans, Text: strings.Join(o.toks, " "), Bytes: o.units,
-		Thr: S.threshold, SPB: T, Baud: int(math.Round(1 / (T * colTimeS))), Feature: narrow}
+	return Result{
+		OK: true, Proto: "pwm", Spans: o.spans, Text: strings.Join(o.toks, " "), Bytes: o.units,
+		Thr: S.threshold, SPB: T, Baud: int(math.Round(1 / (T * colTimeS))), Feature: narrow,
+	}
 }

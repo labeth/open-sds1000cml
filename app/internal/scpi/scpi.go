@@ -9,14 +9,13 @@ package scpi
 import (
 	"fmt"
 	"math"
+	"open-sds/app/internal/engine"
 	"os"
 	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
-
-	"open-sds/app/internal/engine"
 )
 
 // Scope is the instrument surface (engine + fan-out frames).
@@ -368,12 +367,16 @@ func parseNum(s string) (float64, error) {
 		s string
 		m float64
 	}{
-		{"NS", 1e-9}, {"US", 1e-6}, {"MS", 1e-3},
-		{"MV", 1e-3}, {"UV", 1e-6},
-		{"V", 1}, {"S", 1},
+		{"NS", 1e-9},
+		{"US", 1e-6},
+		{"MS", 1e-3},
+		{"MV", 1e-3},
+		{"UV", 1e-6},
+		{"V", 1},
+		{"S", 1},
 	} {
-		if strings.HasSuffix(up, suf.s) {
-			up = strings.TrimSuffix(up, suf.s)
+		if before, ok := strings.CutSuffix(up, suf.s); ok {
+			up = before
 			mult = suf.m
 			break
 		}

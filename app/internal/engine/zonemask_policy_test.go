@@ -40,7 +40,7 @@ func TestZoneMaskPublishPolicy(t *testing.T) {
 	e.SetZoneMode(ZoneTrigger)
 
 	// NORM: exactly the feature frames publish.
-	for k := 0; k < 20; k++ {
+	for k := range 20 {
 		feature = k%3 == 0
 		e.oneFrame(true)
 		_, fresh := e.Consume()
@@ -54,7 +54,7 @@ func TestZoneMaskPublishPolicy(t *testing.T) {
 	feature = false
 	e.zoneHeld = 0
 	pubs := 0
-	for k := 0; k < 2*zoneFallback; k++ {
+	for range 2 * zoneFallback {
 		e.oneFrame(false)
 		if _, fresh := e.Consume(); fresh {
 			pubs++
@@ -73,13 +73,13 @@ func TestZoneMaskPublishPolicy(t *testing.T) {
 		lo[j], hi[j] = 0, 255
 	}
 	// a tight band that the square wave violates immediately
-	for j := 0; j < win; j++ {
+	for j := range win {
 		hi[j] = 100
 	}
 	e.SetMask(&Mask{Lo: lo, Hi: hi, WinCols: win, Ch: 0})
 	e.SetMaskMode(MaskTest)
 	before := e.maskFail.Load()
-	for k := 0; k < 6; k++ {
+	for range 6 {
 		e.oneFrame(false) // zone still holds (feature off)
 	}
 	if got := e.maskFail.Load() - before; got != 6 {
@@ -129,10 +129,10 @@ func TestMaskGeometryFuzz(t *testing.T) {
 	for _, posFrac := range []float64{0.1, 0.5, 0.9} {
 		for _, edgeX := range []float64{40.7, 900.2, 3000.5, float64(n) - 60.3} {
 			for _, liveDepth := range []int{0, int(edgeX) + 150, n} {
-				for k := 0; k < 12; k++ {
+				for range 12 {
 					// flat frame with one spike at a random raw position
 					f := &Frame{C1: make([]uint8, n), C2: make([]uint8, n), Valid: n}
-					for i := 0; i < n; i++ {
+					for i := range n {
 						f.C1[i] = 100
 						f.C2[i] = 100
 					}
@@ -298,7 +298,7 @@ func TestSingleShotWaitsForZoneQualify(t *testing.T) {
 	e.SetZones([]Zone{{DtLoS: 36 * f.SampleS, DtHiS: 52 * f.SampleS, CodeLo: 230, CodeHi: 255}})
 	e.SetZoneMode(ZoneTrigger)
 	e.SetSingle()
-	for k := 0; k < 8; k++ { // unqualified frames must not satisfy the single
+	for k := range 8 { // unqualified frames must not satisfy the single
 		e.oneFrame(true)
 		if !e.singleArmed.Load() {
 			t.Fatalf("single latched on an unqualified frame (k=%d)", k)
@@ -320,8 +320,10 @@ func TestSingleShotWaitsForZoneQualify(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-014
 func TestMaskKeepsBuilderGeometry(t *testing.T) {
 	e := &Engine{sram: &sramcapture.Capture{}, pubIdent: frameIdent{.0002, 1e-6, true}}
-	e.SetMask(&Mask{Lo: []uint8{0, 0}, Hi: []uint8{255, 255}, WinCols: 2,
-		FrameIdent: true, TdivS: .0002, SampleS: 2e-9})
+	e.SetMask(&Mask{
+		Lo: []uint8{0, 0}, Hi: []uint8{255, 255}, WinCols: 2,
+		FrameIdent: true, TdivS: .0002, SampleS: 2e-9,
+	})
 	e.SetMaskMode(MaskTest)
 	f := &Frame{C1: []uint8{50, 200}, Valid: 2, WinCols: 2, TdivS: .0002, SampleS: 2e-9}
 	e.maskEval(f, 2, 0, 1, f.SampleS, .5)
@@ -358,8 +360,10 @@ func TestMaskTestsAnotherSamplingThroughTime(t *testing.T) {
 	e.SetMaskMode(MaskTest)
 	// The live envelope of the same screen: 100 min/max samples at 10 ns.
 	env := func(glitchAt int) *Frame {
-		f := &Frame{C1: make([]uint8, 100), C2: make([]uint8, 100), Valid: 100, WinCols: 100, TdivS: tdiv,
-			SampleS: 10e-9, PeakDetect: true, Ordered: true, EdgeX: 50}
+		f := &Frame{
+			C1: make([]uint8, 100), C2: make([]uint8, 100), Valid: 100, WinCols: 100, TdivS: tdiv,
+			SampleS: 10e-9, PeakDetect: true, Ordered: true, EdgeX: 50,
+		}
 		for i := range f.C1 {
 			f.C1[i] = 30
 			if i >= 50 {
@@ -400,8 +404,10 @@ func TestMaskTestsAnotherSamplingThroughTime(t *testing.T) {
 	e.SetMask(&Mask{Lo: lo, Hi: hi, WinCols: 100, FrameIdent: true, TdivS: tdiv, SampleS: 10e-9, PeakDetect: true})
 	e.SetMaskMode(MaskTest)
 	raw := func(glitchAt int) *Frame {
-		f := &Frame{C1: make([]uint8, 1000), C2: make([]uint8, 1000), Valid: 1000, WinCols: 1000, TdivS: tdiv,
-			SampleS: 1e-9, EdgeX: 500}
+		f := &Frame{
+			C1: make([]uint8, 1000), C2: make([]uint8, 1000), Valid: 1000, WinCols: 1000, TdivS: tdiv,
+			SampleS: 1e-9, EdgeX: 500,
+		}
 		for i := range f.C1 {
 			f.C1[i] = 30
 			if i >= 500 {

@@ -4,14 +4,13 @@ package panel
 import (
 	"fmt"
 	"math"
-	"slices"
-	"strings"
-	"time"
-
 	"open-sds/app/internal/analog"
 	"open-sds/app/internal/decode"
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/panel/framecalc"
+	"slices"
+	"strings"
+	"time"
 )
 
 // AUTO in BUS (REQ-SDS-223) frames the bus for reading instead of fitting a
@@ -118,7 +117,7 @@ func (c *Controller) runBusAuto(stop chan struct{}) {
 	// a 10x probe set as 1x, sliced at 0.7 div and lost one AUTO in three),
 	// and GND shows no line at all
 	if c.fe != nil {
-		for ch := 0; ch < 2; ch++ {
+		for ch := range 2 {
 			if c.fe.Coupling(ch) != analog.CplDC {
 				_ = c.setCoupling(ch, analog.CplDC)
 			}

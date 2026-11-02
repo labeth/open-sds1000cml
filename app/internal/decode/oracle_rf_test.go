@@ -79,7 +79,7 @@ func TestOracleRCEncode(t *testing.T) {
 		case sp.Text == "SYNC":
 			repo = append(repo, "Sync")
 		case sp.Kind == "data":
-			for k := 0; k < 8; k++ {
+			for k := range 8 {
 				repo = append(repo, strconv.Itoa(sp.Val>>k&1))
 			}
 		}
@@ -178,7 +178,7 @@ func TestOracleMiller(t *testing.T) {
 				flush()
 				bits = []int{}
 			case "data":
-				for k := 0; k < 8; k++ {
+				for k := range 8 {
 					bits = append(bits, sp.Val>>k&1)
 				}
 			}

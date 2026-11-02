@@ -3,10 +3,9 @@ package engine
 
 import (
 	"context"
-	"time"
-
 	"open-sds/app/internal/measure"
 	"open-sds/app/internal/sramcapture"
+	"time"
 )
 
 // EdgeWindow is a full-rate stretch of the record around one edge of a live
@@ -111,7 +110,7 @@ func nearestEdgeBucket(pairs []uint8, trig int) (int, bool) {
 		}
 		return false, false
 	}
-	for d := 0; d < n; d++ {
+	for d := range n {
 		for _, i := range []int{trig - d, trig + d} {
 			if i >= 0 && i < n {
 				if ok, rising := edgeAt(i); ok {

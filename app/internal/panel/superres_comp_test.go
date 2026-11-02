@@ -2,11 +2,10 @@
 package panel
 
 import (
-	"reflect"
-	"testing"
-
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/superres"
+	"reflect"
+	"testing"
 )
 
 // Native review must show the accumulated mean without implicit deconvolution.
@@ -20,7 +19,7 @@ func TestNativeStackReviewPreservesAccumulatedMean(t *testing.T) {
 	for i := range sig {
 		sig[i] = uint8(60 + i*4)
 	}
-	for i := 0; i < 20; i++ {
+	for i := range 20 {
 		st.Feed(sig, sig, 16+float64(i)*.02)
 	}
 	want := st.Result(false, 1)

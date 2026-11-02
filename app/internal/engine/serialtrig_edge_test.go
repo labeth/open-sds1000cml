@@ -2,9 +2,8 @@
 package engine
 
 import (
-	"testing"
-
 	"open-sds/app/internal/decode"
+	"testing"
 )
 
 // adversarial matchI2C span sequences (repeated-START, missing R/W, cross-txn data).
@@ -94,7 +93,7 @@ func TestSerialTriggerComposesWithMask(t *testing.T) {
 	e.SetSerialParams(SerialParams{Proto: serUART, ChA: 0, Bytes: []int{0x11, 0x22, 0x33, 0x44, 0x55}})
 	e.SetSerialMode(SerialTrigger)
 	beforeFail := e.maskFail.Load()
-	for k := 0; k < 5; k++ {
+	for k := range 5 {
 		e.oneFrame(true) // NORM: a non-matching frame must hold
 		if _, fresh := e.Consume(); fresh {
 			t.Fatalf("frame %d: serial NORM must not publish a non-matching frame", k)

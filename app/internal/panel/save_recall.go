@@ -2,15 +2,15 @@
 package panel
 
 import (
+	"errors"
 	"fmt"
-	"strconv"
-	"strings"
-	"time"
-
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/panel/framecalc"
 	"open-sds/app/internal/panel/wsview"
 	"open-sds/app/internal/settings"
+	"strconv"
+	"strings"
+	"time"
 )
 
 // SetupMemory stores and recalls whole setups in numbered slots (the same
@@ -139,7 +139,7 @@ func setupSummary(st settings.Settings) string {
 	tr := []string{"", "PLS ", "SLP ", "VID "}[clampInt(st.Trigger.Type, 0, 3)]
 	parts = append(parts, tr+"C"+strconv.Itoa(st.Trigger.Source+1)+edge+" "+si(engine.TrigLevelVolts(uint16(clampInt(st.Trigger.LevelCode, 1, 65535))), "V"))
 	ch := ""
-	for i := 0; i < 2; i++ {
+	for i := range 2 {
 		if !st.Display.Hidden[i] && st.Ch[i].VdivV > 0 {
 			if ch != "" {
 				ch += " "
@@ -186,7 +186,7 @@ func (s *SharedSetups) store() SetupMemory {
 func (s *SharedSetups) SaveSetup(n int) error {
 	m := s.store()
 	if m == nil {
-		return fmt.Errorf("setup memory unavailable")
+		return errors.New("setup memory unavailable")
 	}
 	if err := m.SaveSetup(n); err != nil {
 		return err
@@ -201,7 +201,7 @@ func (s *SharedSetups) SaveSetup(n int) error {
 func (s *SharedSetups) RecallSetup(n int) error {
 	m := s.store()
 	if m == nil {
-		return fmt.Errorf("setup memory unavailable")
+		return errors.New("setup memory unavailable")
 	}
 	if err := m.RecallSetup(n); err != nil {
 		return err
@@ -215,7 +215,7 @@ func (s *SharedSetups) RecallSetup(n int) error {
 func (s *SharedSetups) SaveSetupFile(name string) error {
 	f, ok := s.store().(interface{ SaveSetupFile(string) error })
 	if !ok {
-		return fmt.Errorf("named setups unavailable")
+		return errors.New("named setups unavailable")
 	}
 	return f.SaveSetupFile(name)
 }
@@ -225,7 +225,7 @@ func (s *SharedSetups) SaveSetupFile(name string) error {
 func (s *SharedSetups) RecallSetupFile(name string) error {
 	f, ok := s.store().(interface{ RecallSetupFile(string) error })
 	if !ok {
-		return fmt.Errorf("named setups unavailable")
+		return errors.New("named setups unavailable")
 	}
 	return f.RecallSetupFile(name)
 }
@@ -249,11 +249,11 @@ func (c *Controller) saveSlot(n int) error {
 	m := c.setups
 	c.mu.Unlock()
 	if m == nil {
-		return fmt.Errorf("setup memory unavailable")
+		return errors.New("setup memory unavailable")
 	}
 	if err := m.SaveSetup(n); err != nil {
 		c.logf("panel: setup slot %d: %v", n, err)
-		return fmt.Errorf("save failed")
+		return errors.New("save failed")
 	}
 	c.refreshSlot(n)
 	c.noteSetup(n)
@@ -270,7 +270,7 @@ func (c *Controller) recallSlot(n int) error {
 	m := c.setups
 	c.mu.Unlock()
 	if m == nil {
-		return fmt.Errorf("setup memory unavailable")
+		return errors.New("setup memory unavailable")
 	}
 	if err := m.RecallSetup(n); err != nil {
 		return fmt.Errorf("setup %d is empty", n)

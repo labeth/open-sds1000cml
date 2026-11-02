@@ -19,7 +19,7 @@ func sentWave(frames [][]int, tick, pauseTicks, jit int) []uint8 {
 	lo, hi := uint8(40), uint8(210)
 	var w []uint8
 	pushLevel := func(v uint8, k int) {
-		for j := 0; j < k; j++ {
+		for range k {
 			w = append(w, v)
 		}
 	}
@@ -28,10 +28,7 @@ func sentWave(frames [][]int, tick, pauseTicks, jit int) []uint8 {
 	// delta perturbs THIS pulse's period only (no drift into the next).
 	pulse := func(totalTicks, delta int) {
 		low := 5 * tick
-		high := totalTicks*tick - low + delta
-		if high < 1 {
-			high = 1
-		}
+		high := max(totalTicks*tick-low+delta, 1)
 		pushLevel(lo, low)
 		pushLevel(hi, high)
 	}

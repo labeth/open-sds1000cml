@@ -3,10 +3,9 @@ package engine
 
 import (
 	"math"
+	"open-sds/app/internal/sramcapture"
 	"testing"
 	"time"
-
-	"open-sds/app/internal/sramcapture"
 )
 
 // A view is read only where the screen's envelope is coarser than the display

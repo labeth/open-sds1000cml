@@ -24,7 +24,7 @@ func TestStackBinWriterRTL(t *testing.T) {
 	}
 	rng := rand.New(rand.NewSource(1412))
 	var input strings.Builder
-	for i := 0; i < 256; i++ {
+	for i := range 256 {
 		bin, mask, odd := rng.Intn(8), i%4, i%3 == 0
 		v := [2]uint64{rng.Uint64() & ((1 << 37) - 1), rng.Uint64() & ((1 << 37) - 1)}
 		o := 0
@@ -32,7 +32,7 @@ func TestStackBinWriterRTL(t *testing.T) {
 			o = 1
 		}
 		fmt.Fprintf(&input, "%d %d %d %d %d\n", bin, mask, o, v[0], v[1])
-		for ch := 0; ch < 2; ch++ {
+		for ch := range 2 {
 			if mask&(1<<ch) == 0 {
 				continue
 			}
@@ -49,7 +49,7 @@ func TestStackBinWriterRTL(t *testing.T) {
 	}
 	dir := t.TempDir()
 	path := filepath.Join(dir, "input.txt")
-	if err := os.WriteFile(path, []byte(input.String()), 0600); err != nil {
+	if err := os.WriteFile(path, []byte(input.String()), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	image := compileStackRTL(t, dir, "tb_stack_bin_writer", "stack_accumulate.v", "stack_bin_writer.v", "sim/tb_stack_bin_writer.v")
@@ -58,7 +58,7 @@ func TestStackBinWriterRTL(t *testing.T) {
 		t.Fatalf("simulation %v\n%s", err, out)
 	}
 	n := 0
-	for _, line := range strings.Split(string(out), "\n") {
+	for line := range strings.SplitSeq(string(out), "\n") {
 		if !strings.HasPrefix(line, "B ") {
 			continue
 		}

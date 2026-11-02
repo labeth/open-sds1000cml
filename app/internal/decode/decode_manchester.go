@@ -49,7 +49,7 @@ type mCell struct {
 // TRLC-LINKS: REQ-SDS-018
 func recoverManchester(S sliced, s0, T float64, ieee bool, lastEdgeX float64) (cells []mCell, good, viol int) {
 	if !(T >= 2) || S.n == 0 {
-		return
+		return cells, good, viol
 	}
 	limit := lastEdgeX + 0.25*T         // stop once cells fall into trailing idle
 	maxCells := int(float64(S.n)/T) + 4 // safety cap; the limit/gap breaks normally
@@ -58,7 +58,7 @@ func recoverManchester(S sliced, s0, T float64, ieee bool, lastEdgeX float64) (c
 	//                                     stop there (real captures hold several frames whose
 	//                                     gaps are non-integer T apart, so one phase cannot
 	//                                     align them all — decode the first frame cleanly).
-	for k := 0; k < maxCells; k++ {
+	for k := range maxCells {
 		centre := s0 + (float64(k)+0.5)*T
 		if centre > limit {
 			break
@@ -102,7 +102,7 @@ func recoverManchester(S sliced, s0, T float64, ieee bool, lastEdgeX float64) (c
 		cells = append(cells, mCell{i0, i1, bit})
 		good++
 	}
-	return
+	return cells, good, viol
 }
 
 // DecodeManchester decodes Manchester-encoded data on one channel's codes.
@@ -225,10 +225,7 @@ func decodeManchesterAt(S sliced, T float64, cfg ManchesterCfg, bits int, colTim
 		scA, scB := goodA-4*violA, goodB-4*violB
 		var cells []mCell
 		var bestGood int
-		bestScore := scA
-		if scB > bestScore {
-			bestScore = scB
-		}
+		bestScore := max(scB, scA)
 		switch {
 		case scA > scB:
 			cells, bestGood = cA, goodA
@@ -329,6 +326,8 @@ func decodeManchesterAt(S sliced, T float64, cfg ManchesterCfg, bits int, colTim
 	if colTimeS > 0 {
 		baud = int(math.Round(1.0 / (T * colTimeS)))
 	}
-	return Result{OK: true, Proto: "manchester", Spans: spans, Text: strings.Join(toks, " "),
-		Bytes: bytesOut, Baud: baud, SPB: T, Thr: S.threshold}, frames, totalGood
+	return Result{
+		OK: true, Proto: "manchester", Spans: spans, Text: strings.Join(toks, " "),
+		Bytes: bytesOut, Baud: baud, SPB: T, Thr: S.threshold,
+	}, frames, totalGood
 }

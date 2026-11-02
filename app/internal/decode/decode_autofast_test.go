@@ -11,14 +11,14 @@ func TestAutodetectFastUART(t *testing.T) {
 	msg := []byte("Hi U, hello scope")
 	var c1 []uint8
 	idle := func(n int) {
-		for i := 0; i < n; i++ {
+		for range n {
 			c1 = append(c1, 210)
 		}
 	}
 	idle(3 * spb)
 	for _, b := range msg {
 		bits := []int{0}
-		for k := 0; k < 8; k++ {
+		for k := range 8 {
 			bits = append(bits, int(b>>k)&1)
 		}
 		bits = append(bits, 1)
@@ -27,7 +27,7 @@ func TestAutodetectFastUART(t *testing.T) {
 			if bit == 1 {
 				v = 210
 			}
-			for i := 0; i < spb; i++ {
+			for range spb {
 				c1 = append(c1, v)
 			}
 		}

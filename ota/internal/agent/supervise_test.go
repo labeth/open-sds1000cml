@@ -2,14 +2,13 @@
 package agent
 
 import (
+	"open-sds/ota/internal/slots"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
-
-	"open-sds/ota/internal/slots"
 )
 
 // writeSlotBinary drops a runnable /bin/sh script into a slot so the real
@@ -89,7 +88,7 @@ func TestRollbackBelowThresholdDoesNothing(t *testing.T) {
 	_ = a.store.SetActive(slots.SlotB)
 	_ = a.store.SetConfirmed(slots.SlotA)
 
-	for i := 0; i < a.cfg.MaxFails-1; i++ {
+	for range a.cfg.MaxFails - 1 {
 		a.bumpFail("crash")
 	}
 	a.rollbackIfNeeded(slots.SlotB)
@@ -110,7 +109,7 @@ func TestRollbackToConfirmedAtThreshold(t *testing.T) {
 	_ = a.store.SetActive(slots.SlotB)
 	_ = a.store.SetConfirmed(slots.SlotA)
 
-	for i := 0; i < a.cfg.MaxFails; i++ {
+	for range a.cfg.MaxFails {
 		a.bumpFail("crash")
 	}
 	a.rollbackIfNeeded(slots.SlotB)
@@ -128,7 +127,7 @@ func TestRollbackExhaustedKeepsRetrying(t *testing.T) {
 	_ = a.store.Init()
 	writeSlotBinary(t, a, slots.SlotA, "exit 0") // no other binary anywhere
 
-	for i := 0; i < a.cfg.MaxFails; i++ {
+	for range a.cfg.MaxFails {
 		a.bumpFail("crash")
 	}
 	a.rollbackIfNeeded(slots.SlotA)

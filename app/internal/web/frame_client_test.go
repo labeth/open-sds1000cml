@@ -2,11 +2,11 @@
 package web
 
 import (
+	"net/http"
 	"net/http/httptest"
+	"open-sds/app/internal/engine"
 	"testing"
 	"time"
-
-	"open-sds/app/internal/engine"
 )
 
 // A page counts as showing the scope once it asks for a frame, and for as
@@ -18,7 +18,7 @@ func TestFrameClient(t *testing.T) {
 	if s.FrameClient(time.Hour) {
 		t.Fatal("a page shows the scope before any asked for a frame")
 	}
-	s.Handler().ServeHTTP(httptest.NewRecorder(), httptest.NewRequest("GET", "/api/frame.bin?since=0&cols=800", nil))
+	s.Handler().ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/api/frame.bin?since=0&cols=800", nil))
 	if !s.FrameClient(time.Second) {
 		t.Fatal("no page after a frame request")
 	}

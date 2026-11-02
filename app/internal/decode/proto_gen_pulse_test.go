@@ -46,7 +46,7 @@ func owBitSlot(w *timeline, b int, od bool) {
 // owByte appends a byte least significant bit first.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-233
 func owByte(w *timeline, v int, od bool) {
-	for i := 0; i < 8; i++ {
+	for i := range 8 {
 		owBitSlot(w, v>>i&1, od)
 	}
 }
@@ -56,7 +56,7 @@ func owByte(w *timeline, v int, od bool) {
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-233
 func owSearchROM(w *timeline, rom []int) {
 	for _, v := range rom {
-		for i := 0; i < 8; i++ {
+		for i := range 8 {
 			b := v >> i & 1
 			owBitSlot(w, b, false)
 			owBitSlot(w, 1-b, false)
@@ -130,7 +130,7 @@ func cecBit(w *timeline, b int) {
 // with EOM on the last; acks gives each block's acknowledge bit as the
 // follower leaves it (0: held low).
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-233
-func cecMessage(w *timeline, b []int, acks []int) {
+func cecMessage(w *timeline, b, acks []int) {
 	w.add(0, 3.7e-3)
 	w.add(1, 0.8e-3)
 	for i, v := range b {

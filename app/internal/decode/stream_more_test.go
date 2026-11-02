@@ -159,7 +159,7 @@ var moreStreamCases = []streamCase{
 	// TRLC-LINKS: REQ-SDS-018, REQ-SDS-260
 	{name: "miller", baud: 106000, lines: 1, idle: idleOf(1, 1), gen: func(l twoLine, i int, rng *rand.Rand) {
 		var bits []int
-		for k := 0; k < 16; k++ {
+		for k := range 16 {
 			bits = append(bits, (i>>k^k)&1)
 		}
 		millerMessage(l.a, bits, 1/106000.0, 2e-6, 60e-6+rng.Float64()*40e-6)
@@ -204,7 +204,7 @@ var moreStreamCases = []streamCase{
 	{name: "cjtag", baud: 250000, lines: 2, idle: idleOf(0, 0), gen: func(l twoLine, i int, rng *rand.Rand) {
 		// each frame selects OScan1 again: escape, activation code, scans
 		c := &cjtagLine{l: l, per: 4e-6}
-		for k := 0; k < 6; k++ {
+		for range 6 {
 			c.rise(0)
 		}
 		c.escape(6)

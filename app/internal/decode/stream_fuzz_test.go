@@ -33,7 +33,7 @@ func streamFuzzCase(c streamCase, seed int64, frames int) (a, b []uint8, ss floa
 		idle = *c.idle
 	}
 	fine.add(idle[0], idle[1], quiet+2e-3)
-	for i := 0; i < frames; i++ {
+	for i := range frames {
 		c.gen(fine, i, rng)
 	}
 	fine.add(idle[0], idle[1], 2*quiet+longest)

@@ -2,9 +2,8 @@
 package bus
 
 import (
-	"testing"
-
 	"open-sds/app/internal/iface"
+	"testing"
 )
 
 // TRLC-LINKS: REQ-SDS-129
@@ -121,7 +120,7 @@ func (f *fakeCC) W(off, v uint32) {
 			pg, ok := f.pages[dst&^(pageSize-1)]
 			if ok {
 				pg = pg[dst&(pageSize-1):]
-				for i := uint32(0); i < bcnt; i++ {
+				for i := range bcnt {
 					w := f.srcWord
 					f.srcWord++
 					pg[i*2] = byte(w)
@@ -148,7 +147,7 @@ func (p *fakePager) alloc(nbytes int) (*dmaBuf, error) {
 	buf := make([]byte, nbytes)
 	n := nbytes / pageSize
 	phys := make([]uint32, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		phys[i] = 0x8000_0000 + uint32(p.allocs)<<20 + uint32(i)*0x3000 // non-contiguous pages
 		p.cc.pages[phys[i]] = buf[i*pageSize : (i+1)*pageSize]
 	}
@@ -240,7 +239,7 @@ func TestDrainSplitsPagesAndBytes(t *testing.T) {
 		t.Error("consecutive transfers must target distinct physical pages")
 	}
 	// The pop counter advanced continuously across pages: word i == i, hi byte → C1.
-	for i := 0; i < n; i++ {
+	for i := range n {
 		w := uint16(i)
 		if c1[i] != uint8(w>>8) || c2[i] != uint8(w) {
 			t.Fatalf("word %d: c1=%d c2=%d, want %d/%d", i, c1[i], c2[i], w>>8, uint8(w))
@@ -354,13 +353,13 @@ func TestPopBytesPreservesPagesAndReusedCoherentBuffer(t *testing.T) {
 	invalidations := 0
 	e.inv = func(b []byte) { invalidations++; b[0], b[1] = 0xab, 0x80 }
 	d := &Dev{edma: e}
-	for pass := 0; pass < 2; pass++ {
+	for pass := range 2 {
 		dst := make([]byte, 10000)
 		start := cc.srcWord
 		if err := d.PopBytesChecked(25, dst); err != nil {
 			t.Fatal(err)
 		}
-		for i := 0; i < 5000; i++ {
+		for i := range 5000 {
 			want := start + uint16(i)
 			if i == 0 {
 				want = 0x80ab
@@ -407,7 +406,7 @@ func TestPopBytesIntoPinnedBufferInPlace(t *testing.T) {
 	if err := d.PopBytesChecked(25, dst); err != nil {
 		t.Fatal(err)
 	}
-	for i := 0; i < 4096; i++ {
+	for i := range 4096 {
 		if uint16(dst[2*i])|uint16(dst[2*i+1])<<8 != uint16(i) {
 			t.Fatalf("word %d", i)
 		}

@@ -74,7 +74,7 @@ func TestManchesterTriggerRTL(t *testing.T) {
 								if padding < 0 {
 									t.Fatal("invalid frame gap fixture")
 								}
-								for i := 0; i < padding; i++ {
+								for range padding {
 									wave = append(wave, 210)
 								}
 							}
@@ -133,7 +133,7 @@ func TestManchesterTriggerRTL(t *testing.T) {
 							}
 						}
 						path := filepath.Join(dir, "samples.mem")
-						if err := os.WriteFile(path, []byte(input.String()), 0600); err != nil {
+						if err := os.WriteFile(path, []byte(input.String()), 0o600); err != nil {
 							t.Fatal(err)
 						}
 						b := func(v bool) int {
@@ -149,7 +149,7 @@ func TestManchesterTriggerRTL(t *testing.T) {
 						var got []event
 						hits, starts, ends := 0, 0, 0
 						complete := false
-						for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
+						for line := range strings.SplitSeq(strings.TrimSpace(string(out)), "\n") {
 							if strings.HasPrefix(line, "E ") {
 								var e event
 								if _, err := fmt.Sscanf(line, "E %d %d %d %d", &e.kind, &e.value, &e.sample, &e.hit); err != nil {

@@ -99,7 +99,7 @@ func BenchmarkFFT4096Ref(b *testing.B) { benchFFT(b, fftRef) }
 func TestLog10(t *testing.T) {
 	r := rand.New(rand.NewSource(10))
 	worst := 0.0
-	for k := 0; k < 200000; k++ {
+	for range 200000 {
 		x := math.Exp(r.Float64()*1400 - 700)
 		got, want := Log10(x), math.Log10(x)
 		err := math.Abs(got - want)

@@ -2,11 +2,10 @@
 package scpi
 
 import (
+	"open-sds/app/internal/engine"
 	"sync"
 	"testing"
 	"time"
-
-	"open-sds/app/internal/engine"
 )
 
 // slowScope applies a timebase only when the test lets it, as the engine's

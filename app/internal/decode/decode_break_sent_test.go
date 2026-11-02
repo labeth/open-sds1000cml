@@ -31,11 +31,11 @@ import (
 // TRLC-LINKS: REQ-SDS-018
 func padHigh(w []uint8, before, after int) []uint8 {
 	out := make([]uint8, 0, before+len(w)+after)
-	for i := 0; i < before; i++ {
+	for range before {
 		out = append(out, 210)
 	}
 	out = append(out, w...)
-	for i := 0; i < after; i++ {
+	for range after {
 		out = append(out, 210)
 	}
 	return out
@@ -58,7 +58,7 @@ func sentSpanCounts(r Result) (nSync, nData, nCRC, nFerr, nPause int) {
 			nPause++
 		}
 	}
-	return
+	return nSync, nData, nCRC, nFerr, nPause
 }
 
 // buildFrame makes one nib-nibble frame with a correct trailing CRC-4 nibble.
@@ -83,7 +83,7 @@ func TestBreakSent(t *testing.T) {
 	// =========================================================================
 	fn := rand.New(rand.NewSource(0xBADC0DE))
 	fnIters := 80
-	for it := 0; it < fnIters; it++ {
+	for it := range fnIters {
 		tick := 3 + fn.Intn(30)     // 3..32 samples per tick (legal bit-rate range)
 		nFrames := 1 + fn.Intn(3)   // 1..3 frames
 		nib := 2 + fn.Intn(19)      // 2..20 nibbles (a real frame carries a CRC nibble)
@@ -99,7 +99,7 @@ func TestBreakSent(t *testing.T) {
 
 		var frames [][]int
 		var expected []int
-		for f := 0; f < nFrames; f++ {
+		for range nFrames {
 			nibs := buildFrame(fn, nib)
 			frames = append(frames, nibs)
 			expected = append(expected, nibs...)
@@ -201,7 +201,7 @@ func TestBreakSent(t *testing.T) {
 	// full frame's worth of DATA nibbles with ok=true.
 	noiseFrameHits := 0
 	const noiseIters = 50
-	for s := 0; s < noiseIters; s++ {
+	for range noiseIters {
 		g := make([]uint8, 3000)
 		for i := range g {
 			g[i] = uint8(fp.Intn(256))
@@ -225,7 +225,7 @@ func TestBreakSent(t *testing.T) {
 	// is a corrupted frame that a real decoder MUST flag (ok=false, or a
 	// frame-error/parity-error span). Repeated over several random payloads.
 	acceptedCorruptCRC, totalCorrupt := 0, 0
-	for trial := 0; trial < 10; trial++ {
+	for range 10 {
 		nib := 8
 		base := buildFrame(fp, nib)
 		trueCRC := base[nib-1]
@@ -233,7 +233,7 @@ func TestBreakSent(t *testing.T) {
 		if r := DecodeSENT(sentWave([][]int{base}, 8, 0, 0), 1e-6, SENTCfg{Nibbles: nib}); !r.OK {
 			t.Errorf("setup: correct-CRC frame unexpectedly rejected: %s", r.Error)
 		}
-		for c := 0; c < 16; c++ {
+		for c := range 16 {
 			if c == trueCRC {
 				continue
 			}
@@ -333,7 +333,7 @@ func TestBreakSent(t *testing.T) {
 			t.Errorf("EDGE: shortest record failed ok=%v bytes=%v", r.OK, r.Bytes)
 		}
 		var longFrames [][]int
-		for f := 0; f < 40; f++ {
+		for range 40 {
 			longFrames = append(longFrames, buildFrame(fp, 12))
 		}
 		longW := sentWave(longFrames, 20, 0, 0)

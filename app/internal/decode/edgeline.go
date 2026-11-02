@@ -143,7 +143,7 @@ func (l *EdgeLine) AppendWords(raw []byte, ch int) {
 	prev := uint32(l.First ^ uint8(len(l.At)&1))
 	at, edges := l.N, l.At
 	m := len(edges)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		b := raw[4*i+o : 4*i+o+2 : 4*i+o+2]
 		w := uint32(b[0]) | uint32(b[1])<<8
 		if t := (w ^ (w<<1 | prev)) & 0xffff; t != 0 {
@@ -315,8 +315,10 @@ func (l *EdgeLine) slice(thr float64, haveThr bool) sliced {
 		edges[k] = edge{j, d, float64(j-1) + frac}
 		d = -d
 	}
-	return sliced{ok: true, n: n, threshold: threshold, lowRail: lowRail, highRail: highRail, amp: amp,
-		thHi: thHi, thLo: thLo, first: int8(l.First), edges: edges, sc: l.sc}
+	return sliced{
+		ok: true, n: n, threshold: threshold, lowRail: lowRail, highRail: highRail, amp: amp,
+		thHi: thHi, thLo: thLo, first: int8(l.First), edges: edges, sc: l.sc,
+	}
 }
 
 // lineIn is a decoder's line: 8-bit samples, or a digital line's edges.

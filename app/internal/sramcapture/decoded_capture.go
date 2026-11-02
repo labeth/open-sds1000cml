@@ -3,7 +3,7 @@ package sramcapture
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"io"
 	"time"
 )
@@ -45,7 +45,7 @@ func (c *Capture) StartDecodedCapture(ctx context.Context, cfg Config) (*Decoded
 		return nil, err
 	}
 	if v[0] != 0x5201 {
-		return nil, fmt.Errorf("sramcapture: fabric lacks retained record identity")
+		return nil, errors.New("sramcapture: fabric lacks retained record identity")
 	}
 	oldID := uint32(v[1]) | uint32(v[2])<<16
 	cfg.DecodedEvents = true
@@ -71,7 +71,7 @@ func (c *Capture) StartDecodedCapture(ctx context.Context, cfg Config) (*Decoded
 			return nil, err
 		}
 		if !m.HasRecordIdentity {
-			return nil, fmt.Errorf("sramcapture: capture has no record identity")
+			return nil, errors.New("sramcapture: capture has no record identity")
 		}
 		if m.RecordID != oldID && m.EventEpoch == epoch {
 			return &DecodedCapture{capture: c, Identity: RecordIdentity{Epoch: epoch, Record: m.RecordID}}, nil
@@ -106,10 +106,10 @@ func (s *DecodedCapture) WaitRetained(ctx context.Context) (Metadata, error) {
 			return m, err
 		}
 		if !m.HasRecordIdentity || m.EventEpoch != s.Identity.Epoch || m.RecordID != s.Identity.Record {
-			return Metadata{}, fmt.Errorf("sramcapture: retained record identity changed")
+			return Metadata{}, errors.New("sramcapture: retained record identity changed")
 		}
 		if m.DataFault {
-			return Metadata{}, fmt.Errorf("sramcapture: retained record has an acquisition data fault")
+			return Metadata{}, errors.New("sramcapture: retained record has an acquisition data fault")
 		}
 		if m.Frozen && m.Ready && !m.Running {
 			return m, nil

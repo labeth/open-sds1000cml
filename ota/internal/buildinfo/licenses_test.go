@@ -29,11 +29,11 @@ func TestThirdPartyLicensesCoverLinkedModules(t *testing.T) {
 		t.Fatalf("go list: %v", err)
 	}
 	headers := map[string]bool{}
-	for _, line := range strings.Split(string(text), "\n") {
+	for line := range strings.SplitSeq(string(text), "\n") {
 		headers[strings.TrimSpace(line)] = true
 	}
 	seen := map[string]bool{}
-	for _, m := range strings.Fields(string(out)) {
+	for m := range strings.FieldsSeq(string(out)) {
 		if seen[m] {
 			continue
 		}

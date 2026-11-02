@@ -38,7 +38,7 @@ func TestMeasureFuzzFinite(t *testing.T) {
 			return 10
 		}),
 	}
-	for i := 0; i < 300; i++ { // random walks, bursts, spikes
+	for range 300 { // random walks, bursts, spikes
 		n := 1 + rng.Intn(5000)
 		v := 128.0
 		cases = append(cases, mk(n, func(int) uint8 {

@@ -2,10 +2,9 @@
 package panel
 
 import (
-	"testing"
-
 	"open-sds/app/internal/decode"
 	"open-sds/app/internal/panel/framecalc"
+	"testing"
 )
 
 // An SPI bus BUS entry finds samples its data at the middle of the eye

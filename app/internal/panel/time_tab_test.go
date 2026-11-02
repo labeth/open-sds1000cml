@@ -2,10 +2,9 @@
 package panel
 
 import (
+	"open-sds/app/internal/engine"
 	"strings"
 	"testing"
-
-	"open-sds/app/internal/engine"
 )
 
 // The TIME tab names the converters' sample interval: on a peak-detect

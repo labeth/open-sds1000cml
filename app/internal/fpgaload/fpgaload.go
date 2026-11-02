@@ -222,7 +222,7 @@ func configureOnce(p Port, rbf []byte, rev bool, o *Options) error {
 	}
 	// 7. CONF_DONE.
 	maxPolls := int(o.Timeout/o.PollEvery) + 1
-	for i := 0; i < maxPolls; i++ {
+	for i := range maxPolls {
 		v, err := p.ReadCfg()
 		if err != nil {
 			return fmt.Errorf("CONF_DONE read: %w", err)
@@ -298,7 +298,7 @@ func shiftMem(p *memPort, rbf []byte, rev bool, o *Options) error {
 // TRLC-LINKS: REQ-SDS-005
 func portWords(rev bool) *[256][16]uint16 {
 	words := new([256][16]uint16)
-	for b := 0; b < 256; b++ {
+	for b := range 256 {
 		by := byte(b)
 		if rev {
 			by = bitrev(by)

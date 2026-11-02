@@ -2,11 +2,10 @@
 package web
 
 import (
-	"os/exec"
-	"testing"
-
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/testenv"
+	"os/exec"
+	"testing"
 )
 
 // Auto-measurement logic now lives in internal/measure (with its own thorough
@@ -30,8 +29,10 @@ func TestResampleEnv(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-217
 func TestReplyNamesTheMeasuredFrame(t *testing.T) {
 	mk := func(seq, read uint64) *engine.Frame {
-		f := &engine.Frame{C1: make([]uint8, 2048), C2: make([]uint8, 2048), Seq: seq, Valid: 2048, WinCols: 2048, EdgeX: 1024,
-			SampleS: 2e-9, TdivS: 1e-6, DisplayedS: 1e-6, EdgeRead: read}
+		f := &engine.Frame{
+			C1: make([]uint8, 2048), C2: make([]uint8, 2048), Seq: seq, Valid: 2048, WinCols: 2048, EdgeX: 1024,
+			SampleS: 2e-9, TdivS: 1e-6, DisplayedS: 1e-6, EdgeRead: read,
+		}
 		for i := range f.C1 {
 			f.C1[i] = uint8(60 + 120*(i/100%2))
 		}

@@ -317,7 +317,7 @@ type manyReader interface {
 
 // readMany reads the CS1 registers sels into dst in order.
 // TRLC-LINKS: REQ-SDS-082
-func (c *Capture) readMany(sels []uint16, dst []uint16) error {
+func (c *Capture) readMany(sels, dst []uint16) error {
 	if err := c.flushWrites(); err != nil {
 		return err
 	}
@@ -531,12 +531,12 @@ func (c *Capture) sampleTimeline(m *Metadata) error {
 	low, high := uint32(t[0])|uint32(t[1])<<16, uint32(t[2])|uint32(t[3])<<16
 	id, epoch := uint32(t[4])|uint32(t[5])<<16, uint32(t[6])|uint32(t[7])<<16
 	if id != m.RecordID || epoch != m.EventEpoch {
-		return fmt.Errorf("sramcapture: sample timeline identity changed")
+		return errors.New("sramcapture: sample timeline identity changed")
 	}
 	lastWord := uint64(high)<<32 | uint64(low)
 	span := 2 * uint64(m.Length-1)
 	if m.Length > Words || lastWord < span || lastWord&1 != 0 {
-		return fmt.Errorf("sramcapture: invalid raw sample timeline")
+		return errors.New("sramcapture: invalid raw sample timeline")
 	}
 	m.SampleFirst, m.SampleLast = lastWord-span, lastWord+1
 	m.HasSampleTimeline = true
@@ -646,7 +646,7 @@ func (cfg Config) Check() error {
 	// A sequence matches the events of one enabled hardware decoder.
 	if cfg.Sequence.Length != 0 && !(cfg.Packet.Enabled || cfg.Manchester.Enabled || cfg.USBLS.Enabled || cfg.MIL1553.Enabled ||
 		cfg.SENT.Enabled || cfg.SPI.Enabled || cfg.I2C.Enabled || cfg.UART.Enabled) {
-		return fmt.Errorf("sramcapture: a sequence trigger needs a configured hardware decoder")
+		return errors.New("sramcapture: a sequence trigger needs a configured hardware decoder")
 	}
 	if err := cfg.Manchester.validate(); err != nil {
 		return err
@@ -663,53 +663,53 @@ func (cfg Config) Check() error {
 	// The symbol trigger fires on its own matches in place of the trigger edge.
 	if cfg.Symbol.Enabled && (cfg.Qualifier.Enabled || cfg.Zones.Enabled() || cfg.Sequence.Length != 0 || cfg.Packet.Enabled || cfg.Manchester.Enabled ||
 		cfg.USBLS.Enabled || cfg.MIL1553.Enabled || cfg.SENT.Enabled || cfg.SPI.Enabled || cfg.I2C.Enabled || cfg.UART.Enabled || cfg.Source != ADC || !cfg.Normal) {
-		return fmt.Errorf("sramcapture: a symbol trigger requires exclusive ADC normal triggering")
+		return errors.New("sramcapture: a symbol trigger requires exclusive ADC normal triggering")
 	}
 	if cfg.Zones.Enabled() && (cfg.Source != ADC || !cfg.Normal) {
-		return fmt.Errorf("sramcapture: zones qualify a normal ADC trigger")
+		return errors.New("sramcapture: zones qualify a normal ADC trigger")
 	}
 	// A qualifier fires on its own event in place of the trigger edge.
 	if cfg.Qualifier.Enabled && (cfg.Packet.Enabled || cfg.Manchester.Enabled || cfg.USBLS.Enabled || cfg.MIL1553.Enabled || cfg.SENT.Enabled ||
 		cfg.SPI.Enabled || cfg.I2C.Enabled || cfg.UART.Enabled || cfg.Source != ADC || !cfg.Normal) {
-		return fmt.Errorf("sramcapture: a qualifier requires exclusive ADC normal triggering")
+		return errors.New("sramcapture: a qualifier requires exclusive ADC normal triggering")
 	}
 	// The packet image carries only these two blocks; each needs the whole receiver.
 	general := cfg.USBLS.Enabled || cfg.MIL1553.Enabled || cfg.SENT.Enabled || cfg.SPI.Enabled || cfg.I2C.Enabled || cfg.UART.Enabled
 	if (cfg.Packet.Enabled || cfg.Manchester.Enabled) && ((cfg.Packet.Enabled && cfg.Manchester.Enabled) || general || cfg.Source != ADC || !cfg.Normal) {
-		return fmt.Errorf("sramcapture: packet and Manchester triggers require exclusive ADC normal triggering")
+		return errors.New("sramcapture: packet and Manchester triggers require exclusive ADC normal triggering")
 	}
 	if err := cfg.USBLS.validate(); err != nil {
 		return err
 	}
 	if cfg.USBLS.Enabled && (cfg.UART.Enabled || cfg.I2C.Enabled || cfg.SPI.Enabled || cfg.SENT.Enabled || cfg.MIL1553.Enabled || cfg.Source != ADC || !cfg.Normal) {
-		return fmt.Errorf("sramcapture: USB requires exclusive ADC normal triggering")
+		return errors.New("sramcapture: USB requires exclusive ADC normal triggering")
 	}
 	if err := cfg.MIL1553.validate(); err != nil {
 		return err
 	}
 	if cfg.MIL1553.Enabled && (cfg.UART.Enabled || cfg.I2C.Enabled || cfg.SPI.Enabled || cfg.SENT.Enabled || cfg.Source != ADC || !cfg.Normal) {
-		return fmt.Errorf("sramcapture: MIL-STD-1553 requires exclusive ADC normal triggering")
+		return errors.New("sramcapture: MIL-STD-1553 requires exclusive ADC normal triggering")
 	}
 	if err := cfg.SENT.validate(); err != nil {
 		return err
 	}
 	if cfg.SENT.Enabled && (cfg.UART.Enabled || cfg.I2C.Enabled || cfg.SPI.Enabled || cfg.Source != ADC || !cfg.Normal) {
-		return fmt.Errorf("sramcapture: SENT requires exclusive ADC normal triggering")
+		return errors.New("sramcapture: SENT requires exclusive ADC normal triggering")
 	}
 	if cfg.DecodedEvents && !(cfg.Packet.Enabled || cfg.Manchester.Enabled || cfg.USBLS.Enabled || cfg.UART.Enabled || cfg.I2C.Enabled || cfg.SPI.Enabled || cfg.SENT.Enabled || cfg.MIL1553.Enabled) {
-		return fmt.Errorf("sramcapture: decoded streaming requires a configured hardware decoder")
+		return errors.New("sramcapture: decoded streaming requires a configured hardware decoder")
 	}
 	if cfg.SPI.Enabled && (cfg.UART.Enabled || cfg.I2C.Enabled || cfg.Source != ADC || !cfg.Normal || cfg.SPI.ClockChannel > 1 || cfg.SPI.Length > 4 || cfg.SPI.GapTicks < 3 || cfg.SPI.GapTicks > 0xffffff) {
-		return fmt.Errorf("sramcapture: invalid hardware SPI configuration")
+		return errors.New("sramcapture: invalid hardware SPI configuration")
 	}
 	if cfg.I2C.Enabled && (cfg.UART.Enabled || cfg.Source != ADC || !cfg.Normal || cfg.I2C.ClockChannel > 1 || cfg.I2C.Address < -1 || cfg.I2C.Address > 127 || cfg.I2C.Direction > 2 || cfg.I2C.Length > 4) {
-		return fmt.Errorf("sramcapture: invalid hardware I2C configuration")
+		return errors.New("sramcapture: invalid hardware I2C configuration")
 	}
 	if cfg.UART.Enabled && (cfg.Source != ADC || !cfg.Normal || !cfg.UART.valid()) {
-		return fmt.Errorf("sramcapture: invalid hardware UART configuration")
+		return errors.New("sramcapture: invalid hardware UART configuration")
 	}
 	if (cfg.DecimationLog2 != 0 && (cfg.DecimationLog2 < 4 || cfg.DecimationLog2 > 20)) || cfg.Source > Counter || cfg.Pair > 4 || cfg.TriggerChannel > 1 || cfg.PostWords == 0 || uint64(cfg.PreWords)+uint64(cfg.PostWords) > uint64(Words) {
-		return fmt.Errorf("sramcapture: invalid source, channel, or record geometry")
+		return errors.New("sramcapture: invalid source, channel, or record geometry")
 	}
 	return nil
 }
@@ -736,21 +736,21 @@ func (c *Capture) Arm(ctx context.Context, cfg Config) (err error) {
 	}()
 	s := c.armRead[0]
 	if s&4 == 0 || s&8 != 0 {
-		return fmt.Errorf("sramcapture: halt the current acquisition before rearming")
+		return errors.New("sramcapture: halt the current acquisition before rearming")
 	}
 	revision, e := c.read(13)
 	if e != nil {
 		return e
 	}
 	if revision >= 6 && cfg.Pair != 0 {
-		return fmt.Errorf("sramcapture: interleaved image uses all five pairs; pair must be zero")
+		return errors.New("sramcapture: interleaved image uses all five pairs; pair must be zero")
 	}
 	if revision < 9 && cfg.DecimationLog2 != 0 {
-		return fmt.Errorf("sramcapture: fabric lacks precision decimation")
+		return errors.New("sramcapture: fabric lacks precision decimation")
 	}
 	if cfg.DecimationLog2 != 0 {
 		if raw, e := c.rawOnly(); e != nil || raw {
-			return errors.Join(e, fmt.Errorf("sramcapture: loaded image records raw samples only"))
+			return errors.Join(e, errors.New("sramcapture: loaded image records raw samples only"))
 		}
 	}
 	// Unknown registers read zero on the owned fabric. Discover the optional
@@ -762,7 +762,7 @@ func (c *Capture) Arm(ctx context.Context, cfg Config) (err error) {
 		}
 	}
 	if cfg.DecodedEvents && streamCapability != 0x4501 {
-		return fmt.Errorf("sramcapture: fabric lacks decoded event transport")
+		return errors.New("sramcapture: fabric lacks decoded event transport")
 	}
 	// Each arm is a new capture configuration. Stop the previous stream before
 	// changing receiver registers; its epoch is invalidated on the next enable.
@@ -814,7 +814,7 @@ func (c *Capture) Arm(ctx context.Context, cfg Config) (err error) {
 		if capability == uartLevels || capability == uartSamples {
 			u := cfg.UART
 			if u.Enabled && u.sampleUART() != (capability == uartSamples) {
-				return fmt.Errorf("sramcapture: the loaded image's UART receiver takes the other configuration")
+				return errors.New("sramcapture: the loaded image's UART receiver takes the other configuration")
 			}
 			control := uint16(0)
 			if u.Enabled {
@@ -835,8 +835,10 @@ func (c *Capture) Arm(ctx context.Context, cfg Config) (err error) {
 					ticks = u.Period16
 				}
 				for _, r := range []struct{ sel, value uint16 }{
-					{49, uint16(ticks)}, {50, uint16(ticks >> 16)},
-					{51, uint16(u.Pattern)}, {52, uint16(u.Pattern >> 16)},
+					{49, uint16(ticks)},
+					{50, uint16(ticks >> 16)},
+					{51, uint16(u.Pattern)},
+					{52, uint16(u.Pattern >> 16)},
 				} {
 					if err := c.write(r.sel, r.value); err != nil {
 						return err
@@ -847,10 +849,10 @@ func (c *Capture) Arm(ctx context.Context, cfg Config) (err error) {
 				return err
 			}
 		} else if cfg.UART.Enabled {
-			return fmt.Errorf("sramcapture: fabric lacks hardware UART trigger")
+			return errors.New("sramcapture: fabric lacks hardware UART trigger")
 		}
 	} else if cfg.UART.Enabled {
-		return fmt.Errorf("sramcapture: fabric lacks hardware UART trigger")
+		return errors.New("sramcapture: fabric lacks hardware UART trigger")
 	}
 	if revision >= 9 {
 		reg := uint16(cfg.DecimationLog2)
@@ -970,7 +972,7 @@ func (c *Capture) Snapshot(ctx context.Context) (out [10]uint8, err error) {
 			return out, e
 		}
 	}
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		v, e := c.read(uint16(20 + i))
 		if e != nil {
 			return out, e
@@ -1077,7 +1079,7 @@ func (c *Capture) RecallRecord(ctx context.Context, id RecordIdentity, reads []R
 		return err
 	}
 	if !m.HasRecordIdentity || m.RecordID != id.Record || m.EventEpoch != id.Epoch {
-		return fmt.Errorf("sramcapture: retained record identity changed")
+		return errors.New("sramcapture: retained record identity changed")
 	}
 	for _, r := range reads {
 		if err := c.recallRead(ctx, m, r); err != nil {
@@ -1099,7 +1101,7 @@ func (c *Capture) sameFrozen(m Metadata) (Metadata, error) {
 			return now, err
 		}
 		if now.Length != m.Length || now.Start != m.Start || now.Origin != m.Origin || (now.TriggerIndex != m.TriggerIndex && !m.HostTrigger) || now.Revision != m.Revision || now.Decimation != m.Decimation {
-			return now, fmt.Errorf("sramcapture: retained record changed")
+			return now, errors.New("sramcapture: retained record changed")
 		}
 		return now, nil
 	}
@@ -1108,7 +1110,7 @@ func (c *Capture) sameFrozen(m Metadata) (Metadata, error) {
 		return m, err
 	}
 	if s&4 == 0 || s&16 == 0 || s&8 != 0 {
-		return m, fmt.Errorf("sramcapture: record is not frozen")
+		return m, errors.New("sramcapture: record is not frozen")
 	}
 	record, err := c.read32(69)
 	if err != nil {
@@ -1119,7 +1121,7 @@ func (c *Capture) sameFrozen(m Metadata) (Metadata, error) {
 		return m, err
 	}
 	if record != m.RecordID || epoch != m.EventEpoch {
-		return m, fmt.Errorf("sramcapture: retained record identity changed")
+		return m, errors.New("sramcapture: retained record identity changed")
 	}
 	return m, nil
 }
@@ -1208,7 +1210,7 @@ func (c *Capture) recallChecked(ctx context.Context, offset, count uint32, dst i
 		return 0, err
 	}
 	if expected != nil && (!m.HasRecordIdentity || m.RecordID != expected.Record || m.EventEpoch != expected.Epoch) {
-		return 0, fmt.Errorf("sramcapture: retained record identity changed")
+		return 0, errors.New("sramcapture: retained record identity changed")
 	}
 	// A bus worker reads the whole window in one round trip (a raw read is
 	// the forward read on a revision 10 fabric, as this one): through the
@@ -1242,10 +1244,10 @@ var recallPositionSels = [3]uint16{8, 9, 1}
 // TRLC-LINKS: REQ-SDS-033
 func (c *Capture) recallFrozen(ctx context.Context, m Metadata, offset, count uint32, dst io.Writer, forward bool) (written int64, err error) {
 	if m.DataFault {
-		return 0, fmt.Errorf("sramcapture: interleave FIFO fault; record has missing samples")
+		return 0, errors.New("sramcapture: interleave FIFO fault; record has missing samples")
 	}
 	if !m.Ready || !m.Frozen || m.Running {
-		return 0, fmt.Errorf("sramcapture: record is not frozen")
+		return 0, errors.New("sramcapture: record is not frozen")
 	}
 	// Writes queue until the next read or burst, as in Arm.
 	c.queueWrites = true
@@ -1262,7 +1264,7 @@ func (c *Capture) recallFrozen(ctx context.Context, m Metadata, offset, count ui
 		c.envelopeOn = false
 	}
 	if m.Length > Words || uint64(offset)+uint64(count) > uint64(m.Length) {
-		return 0, fmt.Errorf("sramcapture: recall window exceeds record")
+		return 0, errors.New("sramcapture: recall window exceeds record")
 	}
 	// Revision 7 qualifies fresh bursts with a discarded SRAM warm-up prefix.
 	// These reads wrap physically but never add samples to the returned window.
@@ -1286,7 +1288,7 @@ func (c *Capture) recallFrozen(ctx context.Context, m Metadata, offset, count ui
 		bufferWords = min(bufferWords, 4096)
 	}
 	if forward && m.Revision != 10 {
-		return 0, fmt.Errorf("sramcapture: forward recall requires revision 10")
+		return 0, errors.New("sramcapture: forward recall requires revision 10")
 	}
 	// The bursts' commands share this deadline (commandIn), within the
 	// caller's (a command alone has 1 s, a full record through the app's
@@ -1419,7 +1421,7 @@ func (c *Capture) recallFrozen(ctx context.Context, m Metadata, offset, count ui
 				}
 			}
 		} else {
-			for i := uint32(0); i < n; i++ {
+			for i := range n {
 				if e = c.write(16, uint16(i+prefix)); e != nil {
 					return written, e
 				}
@@ -1505,16 +1507,10 @@ type recallSpan struct{ offset, count uint32 }
 func recallSpans(count, payload, gap uint32) []recallSpan {
 	var bulk, holes []recallSpan
 	for at := uint32(0); at < count; {
-		n := count - at
-		if n > payload {
-			n = payload
-		}
+		n := min(count-at, payload)
 		bulk = append(bulk, recallSpan{at, n})
 		at += n
-		n = count - at
-		if n > gap {
-			n = gap
-		}
+		n = min(count-at, gap)
 		if n != 0 {
 			holes = append(holes, recallSpan{at, n})
 			at += n

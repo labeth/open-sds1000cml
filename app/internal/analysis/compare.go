@@ -21,7 +21,7 @@ func RefDiff(live, ref []float64, tolDiv float64) (maxAbs, rms, pctWithin float6
 	n := min(len(live), len(ref))
 	var ss float64
 	cnt, within := 0, 0
-	for i := 0; i < n; i++ {
+	for i := range n {
 		d := live[i] - ref[i]
 		if math.IsNaN(d) {
 			continue

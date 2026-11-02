@@ -3,10 +3,9 @@ package engine
 
 import (
 	"math"
-	"sort"
-
 	"open-sds/app/internal/decode"
 	"open-sds/app/internal/sramcapture"
+	"sort"
 )
 
 // symbolProtocol reports a protocol the qualify image's symbol trigger
@@ -45,7 +44,7 @@ func (b *symBits) fixed(bits ...int) {
 // skip appends n free bits.
 // TRLC-LINKS: REQ-SDS-013
 func (b *symBits) skip(n int) {
-	for i := 0; i < n; i++ {
+	for range n {
 		b.put(false, false)
 	}
 }
@@ -53,7 +52,7 @@ func (b *symBits) skip(n int) {
 // field appends n bits of value under mask, MSB or LSB first.
 // TRLC-LINKS: REQ-SDS-013
 func (b *symBits) field(value, mask, n int, msb bool) {
-	for i := 0; i < n; i++ {
+	for i := range n {
 		k := i
 		if msb {
 			k = n - 1 - i
@@ -66,7 +65,7 @@ func (b *symBits) field(value, mask, n int, msb bool) {
 // of a 1 (a 0 is their complement).
 // TRLC-LINKS: REQ-SDS-013
 func (b *symBits) manchester(value, mask, n int, msb bool, one [2]int) {
-	for i := 0; i < n; i++ {
+	for i := range n {
 		k := i
 		if msb {
 			k = n - 1 - i
@@ -85,7 +84,7 @@ func (b *symBits) manchester(value, mask, n int, msb bool, one [2]int) {
 // opens with an edge, and a 1 has another mid-cell.
 // TRLC-LINKS: REQ-SDS-013
 func (b *symBits) bmc(value, mask, n int, msb bool) {
-	for i := 0; i < n; i++ {
+	for i := range n {
 		k := i
 		if msb {
 			k = n - 1 - i
@@ -253,7 +252,7 @@ func symbolSpec(p SerialParams) (symSpec, bool) {
 	s := symSpec{cfg: sramcapture.SymbolTriggerConfig{Enabled: true, Channel: uint8(p.ChA), InvA: p.Inverted, InvB: p.Inverted, UnitQ8: 2048}, width: w8}
 	none := func(*symBits, []symUnit) bool { return true }
 	s.start = none
-	set := func(mode int, lead int, longest float64, data uint8) {
+	set := func(mode, lead int, longest float64, data uint8) {
 		s.cfg.Mode, s.cfg.LeadLen = uint8(mode), uint8(lead)
 		s.tab = newSymTab(longest, decode.SymLeadNone, data)
 	}
@@ -445,8 +444,10 @@ func symbolSpec(p SerialParams) (symSpec, bool) {
 			}
 			return true
 		}
-		enc := [16]int{0b11110, 0b01001, 0b10100, 0b10101, 0b01010, 0b01011, 0b01110, 0b01111,
-			0b10010, 0b10011, 0b10110, 0b10111, 0b11010, 0b11011, 0b11100, 0b11101}
+		enc := [16]int{
+			0b11110, 0b01001, 0b10100, 0b10101, 0b01010, 0b01011, 0b01110, 0b01111,
+			0b10010, 0b10011, 0b10110, 0b10111, 0b11010, 0b11011, 0b11100, 0b11101,
+		}
 		s.unit = func(b *symBits, _ int, u symUnit) bool {
 			for _, sh := range []int{0, 4} {
 				switch u.mask >> sh & 15 {
@@ -532,7 +533,7 @@ func symbolSpec(p SerialParams) (symSpec, bool) {
 		s.cfg.TwoLines, s.sliding = true, true
 		s.width = func(i int) int { return []int{14, 16, 0}[min(i, 2)] }
 		s.start = func(b *symBits, units []symUnit) bool {
-			for i := 0; i < 32; i++ {
+			for range 32 {
 				b.fixed(1)
 			}
 			b.fixed(0)

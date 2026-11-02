@@ -195,7 +195,7 @@ func DecodeFlexRay(codes []uint8, colTimeS float64, cfg FlexRayCfg) Result {
 		var frameToks []string
 		anchor := anchorFSS + T
 		lastByteEnd := e.i
-		for b := 0; b < maxBytes; b++ {
+		for range maxBytes {
 			anchor = resync(anchor)
 			// A valid BSS is HIGH then LOW. Anything else — FES (low,high), idle
 			// (high,high), or running off the end — ends the frame.
@@ -203,7 +203,7 @@ func DecodeFlexRay(codes []uint8, colTimeS float64, cfg FlexRayCfg) Result {
 				break
 			}
 			val, eof := 0, false
-			for d := 0; d < 8; d++ { // 8 data bits, MSB-first
+			for d := range 8 { // 8 data bits, MSB-first
 				bit := logicAt(&S, anchor+(2.5+float64(d))*T)
 				if bit < 0 {
 					eof = true
@@ -244,7 +244,7 @@ func DecodeFlexRay(codes []uint8, colTimeS float64, cfg FlexRayCfg) Result {
 		fcrcOK := true
 		if len(frameBytes) >= 5 {
 			var hdr uint64
-			for hb := 0; hb < 5; hb++ {
+			for hb := range 5 {
 				hdr = (hdr << 8) | uint64(frameBytes[hb]&0xff)
 			}
 			frameID := int((hdr >> 24) & 0x7FF)
@@ -313,8 +313,10 @@ func DecodeFlexRay(codes []uint8, colTimeS float64, cfg FlexRayCfg) Result {
 	// returned (flagged) in Spans/Bytes so the UI can show them, but they never
 	// make OK true on their own — a corrupted frame must not read as a
 	// confident, valid FlexRay frame.
-	res := Result{OK: goodFrames > 0, Proto: "flexray", Spans: spans, Text: strings.Join(toks, " "),
-		Bytes: bytesOut, Baud: baud, SPB: T, Thr: S.threshold}
+	res := Result{
+		OK: goodFrames > 0, Proto: "flexray", Spans: spans, Text: strings.Join(toks, " "),
+		Bytes: bytesOut, Baud: baud, SPB: T, Thr: S.threshold,
+	}
 	if goodFrames == 0 {
 		res.Error = "no CRC-valid FlexRay frame"
 	}

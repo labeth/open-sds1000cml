@@ -2,10 +2,9 @@
 package engine
 
 import (
+	"open-sds/app/internal/sramcapture"
 	"testing"
 	"time"
-
-	"open-sds/app/internal/sramcapture"
 )
 
 // words packs n stream words whose CH1 code is the sample's ordinal from
@@ -13,7 +12,7 @@ import (
 // TRLC-LINKS: REQ-SDS-265
 func soundWords(start uint64, n int) []byte {
 	b := make([]byte, 4*n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		v := uint16(start + uint64(i))
 		b[4*i], b[4*i+1] = byte(v), byte(v>>8)
 		b[4*i+2], b[4*i+3] = byte(^v), byte(^v>>8)
@@ -29,7 +28,7 @@ func TestSoundRing(t *testing.T) {
 	now := time.Unix(10, 0)
 	sc := SoundScale{VdivV: [2]float64{1, 0.5}}
 	at := uint64(0)
-	for k := 0; k < 40; k++ {
+	for k := range 40 {
 		n := 37 + k*13
 		s := sc
 		if k >= 20 {

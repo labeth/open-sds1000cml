@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"net/http"
 	"net/http/httptest"
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/panel"
@@ -153,8 +154,10 @@ func TestACCouplingRemovesDC(t *testing.T) {
 		}
 	}
 	fs := &fakeScope{frameGen: func() *engine.Frame {
-		return &engine.Frame{C1: c1, C2: c1, Seq: 3, Valid: N, WinCols: N, EdgeX: N / 2,
-			TdivS: 500e-6, DisplayedS: 500e-6, SampleS: 800e-9}
+		return &engine.Frame{
+			C1: c1, C2: c1, Seq: 3, Valid: N, WinCols: N, EdgeX: N / 2,
+			TdivS: 500e-6, DisplayedS: 500e-6, SampleS: 800e-9,
+		}
 	}}
 	fa := &fakeAnalog{}
 	s := New(fs, fa, nil, nil)
@@ -221,7 +224,7 @@ func TestQualifierAndAcqVerbs(t *testing.T) {
 
 	// Param verbs carry named fields.
 	body, _ := json.Marshal(map[string]any{"control": "pulseparams", "lvl": 0.4, "min": 100.0, "max": 500.0, "cond": 3})
-	req := httptest.NewRequest("POST", "/api/set", bytes.NewReader(body))
+	req := httptest.NewRequest(http.MethodPost, "/api/set", bytes.NewReader(body))
 	rec := httptest.NewRecorder()
 	s.Handler().ServeHTTP(rec, req)
 	last := fs.lastCall()
@@ -242,7 +245,7 @@ func TestBodeEndpoint(t *testing.T) {
 		{FreqHz: 2e6, GainDB: -12, PhaseDeg: -90},
 	}}
 	s := New(fs, nil, nil, nil)
-	req := httptest.NewRequest("GET", "/api/bode", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/bode", nil)
 	rec := httptest.NewRecorder()
 	s.Handler().ServeHTTP(rec, req)
 	var rep struct {
@@ -267,7 +270,7 @@ func TestBodeEndpoint(t *testing.T) {
 	// empty curve → n:0, valid arrays (not null-crash)
 	s2 := New(&fakeScope{}, nil, nil, nil)
 	rec2 := httptest.NewRecorder()
-	s2.Handler().ServeHTTP(rec2, httptest.NewRequest("GET", "/api/bode", nil))
+	s2.Handler().ServeHTTP(rec2, httptest.NewRequest(http.MethodGet, "/api/bode", nil))
 	var rep2 map[string]any
 	if err := json.Unmarshal(rec2.Body.Bytes(), &rep2); err != nil {
 		t.Fatalf("empty bode bad JSON: %v", err)
@@ -315,7 +318,7 @@ func (*fakeRefs) RefsExport() [2]panel.RefExport {
 func TestRefsEndpoint(t *testing.T) {
 	s := New(&fakeScope{}, nil, &fakeRefs{}, nil)
 	rec := httptest.NewRecorder()
-	s.Handler().ServeHTTP(rec, httptest.NewRequest("GET", "/api/refs", nil))
+	s.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/refs", nil))
 	var got struct {
 		OK   bool              `json:"ok"`
 		Refs [2]map[string]any `json:"refs"`
@@ -324,12 +327,12 @@ func TestRefsEndpoint(t *testing.T) {
 		t.Fatalf("refs %s (%v)", rec.Body.String(), err)
 	}
 	rec = httptest.NewRecorder()
-	New(&fakeScope{}, nil, nil, nil).Handler().ServeHTTP(rec, httptest.NewRequest("GET", "/api/refs", nil))
+	New(&fakeScope{}, nil, nil, nil).Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/refs", nil))
 	if !strings.Contains(rec.Body.String(), `"ok":false`) {
 		t.Fatalf("no panel: %s", rec.Body.String())
 	}
 	rec = httptest.NewRecorder()
-	s.Handler().ServeHTTP(rec, httptest.NewRequest("PUT", "/api/refs", nil))
+	s.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodPut, "/api/refs", nil))
 	if rec.Code != 405 {
 		t.Fatalf("PUT: %d", rec.Code)
 	}
@@ -355,7 +358,7 @@ func TestRefsEndpointChangesTheScopes(t *testing.T) {
 	h := New(&fakeScope{}, nil, p, nil).Handler()
 	post := func(body string) map[string]any {
 		rec := httptest.NewRecorder()
-		h.ServeHTTP(rec, httptest.NewRequest("POST", "/api/refs", strings.NewReader(body)))
+		h.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/api/refs", strings.NewReader(body)))
 		var out map[string]any
 		if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
 			t.Fatalf("%s: %v", rec.Body.String(), err)
@@ -400,7 +403,7 @@ func TestPanelAutoForThePagesWorkspace(t *testing.T) {
 	h := New(&fakeScope{}, nil, p, nil).Handler()
 	post := func(body string) string {
 		rec := httptest.NewRecorder()
-		h.ServeHTTP(rec, httptest.NewRequest("POST", "/api/panel", strings.NewReader(body)))
+		h.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/api/panel", strings.NewReader(body)))
 		return strings.TrimSpace(rec.Body.String())
 	}
 	if got := post(`{"button":"auto","for":"bus"}`); got != `{"ok":true}` {

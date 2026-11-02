@@ -21,12 +21,21 @@ func TestRequestGoldenWire(t *testing.T) {
 	}{
 		{"bare", Request{Cmd: "ping"}, `{"cmd":"ping"}`},
 		{"empty cmd", Request{}, `{"cmd":""}`},
-		{"object args", Request{Cmd: "logs", Args: map[string]any{"file": "boot", "tail": 4096}},
-			`{"cmd":"logs","args":{"file":"boot","tail":4096}}`},
-		{"nested array args", Request{Cmd: "exec", Args: map[string]any{"argv": []string{"/bin/echo", "hi"}, "timeout_s": 5}},
-			`{"cmd":"exec","args":{"argv":["/bin/echo","hi"],"timeout_s":5}}`},
-		{"bool args", Request{Cmd: "takeover", Args: map[string]any{"dry_run": true}},
-			`{"cmd":"takeover","args":{"dry_run":true}}`},
+		{
+			"object args",
+			Request{Cmd: "logs", Args: map[string]any{"file": "boot", "tail": 4096}},
+			`{"cmd":"logs","args":{"file":"boot","tail":4096}}`,
+		},
+		{
+			"nested array args",
+			Request{Cmd: "exec", Args: map[string]any{"argv": []string{"/bin/echo", "hi"}, "timeout_s": 5}},
+			`{"cmd":"exec","args":{"argv":["/bin/echo","hi"],"timeout_s":5}}`,
+		},
+		{
+			"bool args",
+			Request{Cmd: "takeover", Args: map[string]any{"dry_run": true}},
+			`{"cmd":"takeover","args":{"dry_run":true}}`,
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -60,8 +69,11 @@ func TestResponseGoldenWire(t *testing.T) {
 		{"error", Response{OK: false, Err: "boom"}, `{"ok":false,"err":"boom"}`},
 		// The agent's Dispatch keeps handler Data alongside Err (e.g. exec exit
 		// codes on failure) — the envelope must carry both.
-		{"error with data", Response{OK: false, Err: "exit status 4", Data: json.RawMessage(`{"exit":4}`)},
-			`{"ok":false,"err":"exit status 4","data":{"exit":4}}`},
+		{
+			"error with data",
+			Response{OK: false, Err: "exit status 4", Data: json.RawMessage(`{"exit":4}`)},
+			`{"ok":false,"err":"exit status 4","data":{"exit":4}}`,
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

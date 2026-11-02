@@ -160,7 +160,7 @@ func MinMaxColumns(x []float64, cols int) (lo, hi []float64) {
 		return nil, nil
 	}
 	lo, hi = make([]float64, cols), make([]float64, cols)
-	for i := 0; i < cols; i++ {
+	for i := range cols {
 		a := min(i*n/cols, n-1)
 		b := min(max(a+1, (i+1)*n/cols), n)
 		l, h := x[a], x[a]

@@ -3,12 +3,11 @@ package lcd
 
 import (
 	"math"
-	"strings"
-
 	"open-sds/app/internal/dsp"
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/panel/framecalc"
 	"open-sds/app/internal/panel/wsview"
+	"strings"
 )
 
 // The task-workspace UI on the LCD (ADR-TASK-WORKSPACES): a 30 px pictogram
@@ -94,7 +93,7 @@ func drawPicto(sf Surface, ws wsview.WS, x, y int, fg, fg2 uint16) {
 	case wsview.Scope:
 		wave(y+7, 6, fg, false)
 	case wsview.Bus:
-		for k := 0; k < 3; k++ {
+		for k := range 3 {
 			strokeRect(sf, x+k*8, y+2, 6, 8, fg)
 		}
 		fillRect(sf, x+9, y+3, 4, 6, fg)
@@ -123,7 +122,7 @@ func drawPicto(sf Surface, ws wsview.WS, x, y int, fg, fg2 uint16) {
 // TRLC-LINKS: REQ-SDS-211
 func drawRail(sf Surface, active wsview.WS) {
 	fillRect(sf, railX, 12, railW, H-12, colBG)
-	for i := 0; i < wsview.Count; i++ {
+	for i := range wsview.Count {
 		x0, w, y0, h := railX+1, railW-2, softkeyY[i]-17, 34
 		fg, fg2, tag := colInfo, colDim, colDim
 		if wsview.WS(i) == active {
@@ -616,13 +615,13 @@ func drawEyePlot(sf Surface, p plotArea, hud HUD, e *wsview.EyePane) {
 // dashRect draws a dashed rectangle (3 on, 2 off).
 // TRLC-LINKS: REQ-SDS-215
 func dashRect(sf Surface, x, y, w, h int, c uint16) {
-	for i := 0; i < w; i++ {
+	for i := range w {
 		if i%5 < 3 {
 			sf.SetPixel(x+i, y, c)
 			sf.SetPixel(x+i, y+h-1, c)
 		}
 	}
-	for i := 0; i < h; i++ {
+	for i := range h {
 		if i%5 < 3 {
 			sf.SetPixel(x, y+i, c)
 			sf.SetPixel(x+w-1, y+i, c)
@@ -729,7 +728,7 @@ func drawMeasPane(sf Surface, p plotArea, m *wsview.MeasPane) {
 			DrawText(sf, x, 27, "PARAM", colDim, 1)
 			DrawTextRight(sf, x+130, 27, "C1", colC1, 1)
 			DrawTextRight(sf, x+206, 27, "C2", colC2, 1)
-			for r := 0; r < 9; r++ {
+			for r := range 9 {
 				i := r
 				if k == 1 {
 					i = split + r
@@ -854,7 +853,7 @@ func drawMiniScope(sf Surface, f *engine.Frame, hud HUD, x0, y0, w, h int) {
 				if ch == 1 {
 					mn, mx = f.EnvMin2, f.EnvMax2
 				}
-				for x := 0; x < w; x++ {
+				for x := range w {
 					c := x * f.EnvCols / w
 					if c < len(mn) && c < len(mx) {
 						vline(sf, x0+x, yOf(mx[c]), yOf(mn[c]), col)
@@ -873,7 +872,7 @@ func drawMiniScope(sf Surface, f *engine.Frame, hud HUD, x0, y0, w, h int) {
 			win, xc, posFrac := traceWindow(f, hud, valid)
 			left := xc - float64(win)*posFrac
 			prev := -1
-			for x := 0; x < w; x++ {
+			for x := range w {
 				lo := clampI(int(left+float64(x)*float64(win)/float64(w)), 0, valid-1)
 				hi := clampI(int(left+float64(x+1)*float64(win)/float64(w))-1, lo, valid-1)
 				mn, mx := dsp.MinMax8(sig[lo : hi+1])
@@ -1297,7 +1296,7 @@ func drawThumb(sf Surface, f *engine.Frame, hud HUD, sh *wsview.Sheet) {
 	default:
 		drawMiniScope(sf, f, hud, x0, y0, w, h)
 		if hud.CurOn {
-			for k := 0; k < 2; k++ {
+			for k := range 2 {
 				col := colDim
 				if k == hud.CurSel {
 					col = colTrig
@@ -1366,7 +1365,7 @@ func drawThumbFFT(sf Surface, f *engine.Frame, hud HUD, ch, x0, y0, w, h int) {
 	}
 	pk := math.Max(spec.Peak, 1e-12)
 	prevX, prevY := -1, 0
-	for c := 0; c < cols; c++ {
+	for c := range cols {
 		k0 := 1 + c*(nb-1)/cols
 		k1 := max(k0, (c+1)*(nb-1)/cols)
 		m := 0.0

@@ -79,11 +79,11 @@ func TestTrapezoidRiseTime(t *testing.T) {
 	base, top, ramp := 56, 200, 40
 	var out []uint8
 	seg := func(f func(k int) int, n int) {
-		for k := 0; k < n; k++ {
+		for k := range n {
 			out = append(out, uint8(f(k)))
 		}
 	}
-	for c := 0; c < 6; c++ {
+	for range 6 {
 		seg(func(k int) int { return base }, 30)
 		seg(func(k int) int { return base + (top-base)*k/ramp }, ramp) // rising
 		seg(func(k int) int { return top }, 30)
@@ -248,7 +248,7 @@ func TestAvgWidthMergeParity(t *testing.T) {
 		}
 		return out
 	}
-	for trial := 0; trial < 500; trial++ {
+	for trial := range 500 {
 		nf, nt := trial%17, (trial*7)%23
 		from := ascending(nf, rand01()*10)
 		to := ascending(nt, rand01()*10)
@@ -342,15 +342,15 @@ func TestQ8TopBaseIgnoreOvershoot(t *testing.T) {
 	const vpc = 1.0 / 25
 	code := func(v float64) uint16 { return uint16((128 + (v-1.65)*25) * 256) }
 	q := make([]uint16, 0, 5000)
-	for p := 0; p < 10; p++ {
-		for i := 0; i < 250; i++ {
+	for range 10 {
+		for i := range 250 {
 			v := 3.3
 			if i < 30 {
 				v = 3.84
 			}
 			q = append(q, code(v))
 		}
-		for i := 0; i < 250; i++ {
+		for i := range 250 {
 			v := 0.0
 			if i < 30 {
 				v = -0.5
@@ -391,7 +391,7 @@ func TestQ8TopBaseLongRecord(t *testing.T) {
 func TestEnvelopeTiming(t *testing.T) {
 	envelope := func(periodSamples, bucket, buckets int) []uint8 {
 		env := make([]uint8, 0, 2*buckets)
-		for b := 0; b < buckets; b++ {
+		for b := range buckets {
 			mn, mx := uint8(255), uint8(0)
 			for i := b * bucket; i < (b+1)*bucket; i++ {
 				v := uint8(78)
@@ -435,9 +435,11 @@ func TestEnvelopeTiming(t *testing.T) {
 // An inverted channel reads its levels negated and its edges swapped.
 // TRLC-LINKS: REQ-SDS-021
 func TestResultInverted(t *testing.T) {
-	r := &Result{Vpp: 3.3, Vmax: 3.3, Vmin: 0, Vmean: 1.6, Vtop: 3.2, Vbase: 0.1, Vampl: 3.1,
+	r := &Result{
+		Vpp: 3.3, Vmax: 3.3, Vmin: 0, Vmean: 1.6, Vtop: 3.2, Vbase: 0.1, Vampl: 3.1,
 		Overshoot: 5, Preshoot: 1, Freq: 5000, Duty: 30, RiseS: 1e-9, FallS: 2e-9,
-		PosWidthS: 60e-6, NegWidthS: 140e-6, HasTiming: true}
+		PosWidthS: 60e-6, NegWidthS: 140e-6, HasTiming: true,
+	}
 	i := r.Inverted()
 	if i.Vmax != 0 || i.Vmin != -3.3 || i.Vmean != -1.6 || i.Vtop != -0.1 || i.Vbase != -3.2 || i.Vpp != 3.3 || i.Vampl != 3.1 {
 		t.Fatalf("levels %+v", i)
@@ -474,7 +476,7 @@ func TestEdgeDetailFromWindows(t *testing.T) {
 		return w
 	}
 	env := make([]uint8, 0, 2048)
-	for b := 0; b < 1024; b++ { // a 30 % square, 104 buckets a period
+	for b := range 1024 { // a 30 % square, 104 buckets a period
 		v := uint8(78)
 		if b%104 < 31 {
 			v = 178
@@ -515,7 +517,7 @@ func TestAliasedEnvelopeMeanFromWindows(t *testing.T) {
 	const vpc = 3.3 / 100
 	const off = -78 * vpc         // code 50 reads 0 V, 150 reads 3.3 V
 	env := make([]uint8, 0, 2048) // every bucket spans 50..150: a pulse train faster than a bucket
-	for b := 0; b < 1024; b++ {
+	for range 1024 {
 		env = append(env, 50, 150)
 	}
 	r := Compute(env, vpc, off, 1e-6).WithEnvelopeTiming(env, vpc, off, 1e-6)
@@ -542,7 +544,7 @@ func TestAliasedEnvelopeMeanFromWindows(t *testing.T) {
 	}
 	// A resolved envelope (a slow square) is not flagged.
 	slow := make([]uint8, 0, 2048)
-	for b := 0; b < 1024; b++ {
+	for b := range 1024 {
 		v := uint8(50)
 		if b%200 < 100 {
 			v = 150
@@ -560,7 +562,7 @@ func TestAliasedEnvelopeMeanFromWindows(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-021
 func TestEnvelopeNarrowPulseDropsTiming(t *testing.T) {
 	env := make([]uint8, 0, 2048) // 30 % square, 104-bucket period, and a one-bucket pulse
-	for b := 0; b < 1024; b++ {
+	for b := range 1024 {
 		lo, hi := uint8(78), uint8(78)
 		switch {
 		case b%104 < 31:
@@ -578,7 +580,7 @@ func TestEnvelopeNarrowPulseDropsTiming(t *testing.T) {
 	}
 	// the one-bucket pulse alone, then the two-bucket one alone
 	one, two := append([]uint8(nil), env...), append([]uint8(nil), env...)
-	for b := 0; b < 1024; b++ {
+	for b := range 1024 {
 		switch b % 104 {
 		case 80, 81:
 			one[2*b+1] = 78
@@ -627,7 +629,7 @@ func TestComputeQ8LevelsMatchTheFineHistogram(t *testing.T) {
 		}
 		return top, base
 	}
-	for trial := 0; trial < 300; trial++ {
+	for trial := range 300 {
 		n := 64 + rng.Intn(4000)
 		lo, hi := 20+rng.Intn(80), 140+rng.Intn(100)
 		q := make([]uint16, n)
@@ -654,7 +656,7 @@ func TestWindowTimingWhenTheEnvelopeHasNone(t *testing.T) {
 	const vpc = 3.3 / 100
 	const off = -78 * vpc
 	env := make([]uint8, 0, 2048) // every bucket spans the swing
-	for b := 0; b < 1024; b++ {
+	for range 1024 {
 		env = append(env, 50, 150)
 	}
 	r := Compute(env, vpc, off, 492e-9).WithEnvelopeTiming(env, vpc, off, 492e-9)
@@ -696,10 +698,10 @@ func TestWindowTimingWhenTheEnvelopeHasNone(t *testing.T) {
 func TestBurstClockFrequency(t *testing.T) {
 	sig := make([]uint8, 0, 20000)
 	for len(sig) < 19000 {
-		for c := 0; c < 552; c++ {
+		for range 552 {
 			sig = append(sig, 40, 40, 200, 200, 200) // 10 ns at 2 ns a sample, wrong duty on purpose
 		}
-		for k := 0; k < 1000; k++ {
+		for range 1000 {
 			sig = append(sig, 40)
 		}
 	}

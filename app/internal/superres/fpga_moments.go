@@ -1,7 +1,10 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-SUPERRES
 package superres
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
 
 // FPGAStackWords is the number of little-endian 16-bit words in one channel/bin.
 // TRLC-LINKS: REQ-SDS-141
@@ -22,7 +25,7 @@ type FPGAStackMoments struct {
 func EncodeFPGAMoments(m FPGAStackMoments) ([FPGAStackWords]uint16, error) {
 	var words [FPGAStackWords]uint16
 	if m.Sum[1]>>5 != 0 || m.SumOdd[1]>>5 != 0 || m.SumSquares[1]>>42 != 0 {
-		return words, fmt.Errorf("FPGA stack moment exceeds wire width")
+		return words, errors.New("FPGA stack moment exceeds wire width")
 	}
 	putFPGAField(&words, 0, 69, m.Sum)
 	putFPGAField(&words, 69, 106, m.SumSquares)
@@ -40,15 +43,17 @@ func DecodeFPGAMoments(words []uint16) (FPGAStackMoments, error) {
 		return FPGAStackMoments{}, fmt.Errorf("FPGA stack state has %d words, want %d", len(words), FPGAStackWords)
 	}
 	if words[19]&0xfff0 != 0 {
-		return FPGAStackMoments{}, fmt.Errorf("FPGA stack state has nonzero reserved padding")
+		return FPGAStackMoments{}, errors.New("FPGA stack state has nonzero reserved padding")
 	}
-	return FPGAStackMoments{Sum: getFPGAField(words, 0, 69), SumSquares: getFPGAField(words, 69, 106),
-		Count: uint32(getFPGAField(words, 175, 32)[0]), SumOdd: getFPGAField(words, 207, 69), CountOdd: uint32(getFPGAField(words, 276, 32)[0])}, nil
+	return FPGAStackMoments{
+		Sum: getFPGAField(words, 0, 69), SumSquares: getFPGAField(words, 69, 106),
+		Count: uint32(getFPGAField(words, 175, 32)[0]), SumOdd: getFPGAField(words, 207, 69), CountOdd: uint32(getFPGAField(words, 276, 32)[0]),
+	}, nil
 }
 
 // TRLC-LINKS: REQ-SDS-141
 func putFPGAField(words *[FPGAStackWords]uint16, offset, width int, value [2]uint64) {
-	for bit := 0; bit < width; bit++ {
+	for bit := range width {
 		if value[bit/64]&(uint64(1)<<uint(bit%64)) != 0 {
 			p := offset + bit
 			words[p/16] |= uint16(1) << uint(p%16)

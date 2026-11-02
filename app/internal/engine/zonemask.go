@@ -484,7 +484,7 @@ func BuildMaskFromEnvelope(lo, hi []uint8, winCols, tolCols, tolCodes, ch int) *
 	// before dilating.
 	nLo := make([]uint8, winCols)
 	nHi := make([]uint8, winCols)
-	for j := 0; j < winCols; j++ {
+	for j := range winCols {
 		if lo[j] > hi[j] {
 			nLo[j], nHi[j] = 0, 255
 		} else {
@@ -496,7 +496,7 @@ func BuildMaskFromEnvelope(lo, hi []uint8, winCols, tolCols, tolCodes, ch int) *
 	wLo, wHi := slideExtreme(nLo, max(tolCols, 0), false), slideExtreme(nHi, max(tolCols, 0), true)
 	outLo := make([]uint8, winCols)
 	outHi := make([]uint8, winCols)
-	for j := 0; j < winCols; j++ {
+	for j := range winCols {
 		mn, mx := int(wLo[j]), int(wHi[j])
 		mn -= tolCodes
 		mx += tolCodes

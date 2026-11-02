@@ -4,12 +4,11 @@ package web
 import (
 	"math"
 	"net/http/httptest"
+	"open-sds/app/internal/engine"
+	"open-sds/app/internal/testenv"
 	"os/exec"
 	"strings"
 	"testing"
-
-	"open-sds/app/internal/engine"
-	"open-sds/app/internal/testenv"
 )
 
 // TestSerialTrigBrowser drives serialtrig_browser.mjs against a live server:
@@ -24,12 +23,14 @@ func TestSerialTrigBrowser(t *testing.T) {
 		seq++
 		c1 := make([]uint8, N)
 		c2 := make([]uint8, N)
-		for i := 0; i < N; i++ {
+		for i := range N {
 			c1[i] = uint8(128 + 60*math.Sin(2*math.Pi*8*float64(i)/N))
 			c2[i] = uint8(128 + 40*math.Sin(2*math.Pi*5*float64(i)/N))
 		}
-		return &engine.Frame{C1: c1, C2: c2, Seq: seq, Valid: N, WinCols: N, EdgeX: N / 2,
-			TdivS: 500e-6, DisplayedS: 500e-6, SampleS: 800e-9}
+		return &engine.Frame{
+			C1: c1, C2: c2, Seq: seq, Valid: N, WinCols: N, EdgeX: N / 2,
+			TdivS: 500e-6, DisplayedS: 500e-6, SampleS: 800e-9,
+		}
 	}
 	fs := &fakeScope{frameGen: gen, stats: engine.Stats{Running: true, TrigPosFrac: 0.5}}
 	srv := httptest.NewServer(New(fs, nil, newDecodePanel(fs, nil), nil).Handler())

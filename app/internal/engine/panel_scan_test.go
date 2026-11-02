@@ -1,9 +1,8 @@
 package engine
 
 import (
-	"testing"
-
 	"open-sds/app/internal/sramcapture"
+	"testing"
 )
 
 // Frames captured on the instrument (ADR-PANEL-SERIAL-SCAN).
@@ -52,7 +51,7 @@ func TestPanelMatrixKnobs(t *testing.T) {
 	// The decoder's priority serves T/div (row 3) first, one step a read,
 	// then the trigger level's whole count.
 	var m [5]uint16
-	for i := 0; i < 2; i++ {
+	for i := range 2 {
 		m, _ = panelMatrix(frame, &k)
 		if m[2] != 0xffff&^(1<<(8+7)) || m[0] != 0xffff || m[4] != 1 {
 			t.Fatalf("T/div read %d: %04x, want one counter-clockwise step", i, m)

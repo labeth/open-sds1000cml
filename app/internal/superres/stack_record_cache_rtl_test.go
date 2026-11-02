@@ -17,8 +17,15 @@ func TestStackRecordCacheRTL(t *testing.T) {
 	for _, cfg := range []struct {
 		name                   string
 		aw, cache, full, delay int
-	}{{"direct", 8, 3, 0, 0}, {"registered-commands", 8, 3, 0, 1}, {"sixteen-word-pages", 8, 4, 0, 1}, {"large-pages", 10, 8, 0, 0},
-		{"two-word-pages", 8, 1, 1, 1}, {"largest-pages", 12, 11, 1, 0}, {"physical-depth", 19, 8, 1, 1}} {
+	}{
+		{"direct", 8, 3, 0, 0},
+		{"registered-commands", 8, 3, 0, 1},
+		{"sixteen-word-pages", 8, 4, 0, 1},
+		{"large-pages", 10, 8, 0, 0},
+		{"two-word-pages", 8, 1, 1, 1},
+		{"largest-pages", 12, 11, 1, 0},
+		{"physical-depth", 19, 8, 1, 1},
+	} {
 		t.Run(cfg.name, func(t *testing.T) {
 			dir := t.TempDir()
 			image := filepath.Join(dir, "cache.vvp")

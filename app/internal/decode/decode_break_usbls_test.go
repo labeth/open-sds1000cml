@@ -88,7 +88,7 @@ func brkSync() []int { return []int{0, 0, 0, 0, 0, 0, 0, 1} }
 // TRLC-LINKS: REQ-SDS-018
 func brkBits(v, n int) []int {
 	b := make([]int, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		b[i] = (v >> i) & 1
 	}
 	return b
@@ -124,7 +124,6 @@ var brkValidPIDs = []int{0x1, 0x9, 0x5, 0xD, 0x3, 0xB, 0x7, 0xF, 0x2, 0xA, 0xE, 
 
 // TRLC-LINKS: REQ-SDS-018
 func TestBreakUsbls(t *testing.T) {
-
 	// ---------------------------------------------------------------------
 	// CLASS 1 — FALSE NEGATIVES: >=50 fully valid frames must round-trip
 	// exactly. Vary payloads, spb across the legal range, single vs back-to-
@@ -134,7 +133,7 @@ func TestBreakUsbls(t *testing.T) {
 	t.Run("false_negatives", func(t *testing.T) {
 		rng := rand.New(rand.NewSource(0xF00D))
 		spbs := []int{4, 5, 6, 7, 8, 10, 13, 16, 20, 32, 40, 64, 100}
-		for iter := 0; iter < 60; iter++ {
+		for iter := range 60 {
 			spb := spbs[rng.Intn(len(spbs))]
 			colTimeS := 1.0 / (float64(spb) * 1.5e6)
 			bitrate := 1500000
@@ -144,11 +143,11 @@ func TestBreakUsbls(t *testing.T) {
 			var bitLists [][]int
 			var want []int
 			var wantNames []string
-			for p := 0; p < npk; p++ {
+			for range npk {
 				pid := brkValidPIDs[rng.Intn(len(brkValidPIDs))]
 				nd := rng.Intn(7)
 				var data []int
-				for d := 0; d < nd; d++ {
+				for range nd {
 					data = append(data, rng.Intn(256))
 				}
 				pkts = append(pkts, usbPkt{pid: pid, data: data})
@@ -202,7 +201,7 @@ func TestBreakUsbls(t *testing.T) {
 		rng := rand.New(rand.NewSource(0xBADC0DE))
 		cts := []float64{1e-8, 1.0 / (20 * 1.5e6)}
 		fp := 0
-		for iter := 0; iter < 60; iter++ {
+		for iter := range 60 {
 			kind := iter % 6
 			n := 300 + rng.Intn(4000)
 			s := make([]uint8, n)
@@ -245,7 +244,7 @@ func TestBreakUsbls(t *testing.T) {
 						idx++
 					}
 					b := rng.Intn(256)
-					for bit := 0; bit < 8; bit++ {
+					for bit := range 8 {
 						lv := uint8(40)
 						if (b>>bit)&1 == 1 {
 							lv = 210
@@ -387,7 +386,7 @@ func TestBreakUsbls(t *testing.T) {
 			colTimeS := 1.0 / (float64(spb) * 1.5e6)
 			var bl [][]int
 			var want []int
-			for i := 0; i < 40; i++ {
+			for i := range 40 {
 				d := []int{i & 0xFF, (i * 7) & 0xFF}
 				bl = append(bl, brkFrame(0x3, d))
 				want = append(want, d...)

@@ -21,7 +21,7 @@ func TestSuperresFuzzNoPanic(t *testing.T) {
 		}
 		return s
 	}
-	for i := 0; i < 3000; i++ {
+	for i := range 3000 {
 		n := 1 + rng.Intn(4000)
 		K := []int{1, 8, 16, 32, 64}[rng.Intn(5)]
 		st := New(n, K)
@@ -43,7 +43,7 @@ func TestSuperresFuzzNoPanic(t *testing.T) {
 			}
 			// feed a handful of frames of assorted lengths (mismatch is realistic:
 			// band jitter changes Valid frame-to-frame)
-			for k := 0; k < 4; k++ {
+			for range 4 {
 				m := 1 + rng.Intn(4000)
 				st.Feed(sig(m), sig(m), []float64{-1, float64(m) / 2, math.NaN()}[rng.Intn(3)])
 			}

@@ -99,7 +99,7 @@ func wrapText(s string, n int) []string {
 	}
 	var out []string
 	line := ""
-	for _, w := range strings.Fields(s) {
+	for w := range strings.FieldsSeq(s) {
 		for len(w) > n {
 			if line != "" {
 				out = append(out, line)
@@ -132,7 +132,7 @@ func singleSpaced(s string) bool {
 	if s == "" || s[0] == ' ' || s[len(s)-1] == ' ' {
 		return false
 	}
-	for i := 0; i < len(s); i++ {
+	for i := range len(s) {
 		switch c := s[i]; {
 		case c >= 0x80, c == '\t', c == '\n', c == '\v', c == '\f', c == '\r':
 			return false

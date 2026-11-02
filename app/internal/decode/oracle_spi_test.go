@@ -51,7 +51,7 @@ func oracleSPIBits(sr, bitRate float64, cpol, cpha, msb bool, words []spiOWord) 
 		if nb == 0 {
 			nb = 8
 		}
-		for i := 0; i < nb; i++ {
+		for i := range nb {
 			k := 7 - i // MSB-first: bit 7 down; partial words send the TOP bits
 			if !msb {
 				k = i
@@ -170,8 +170,12 @@ func TestOracleSPI(t *testing.T) {
 		// re-frame is a no-op and sigrok's clock counting reaches the same
 		// boundaries, so payloads must still match exactly.
 		words := []spiOWord{
-			{v: 0x9A, gapBits: 40}, {v: 0x02}, {v: 0x40, gapBits: 40},
-			{v: 0xF1}, {v: 0x1F, gapBits: 40}, {v: 0x55},
+			{v: 0x9A, gapBits: 40},
+			{v: 0x02},
+			{v: 0x40, gapBits: 40},
+			{v: 0xF1},
+			{v: 0x1F, gapBits: 40},
+			{v: 0x55},
 		}
 		clk, mosi := oracleSPIBits(sr, rate, false, false, true, words)
 		r := DecodeSPI(bitsToCodes(clk), bitsToCodes(mosi), 1.0/sr, SPICfg{MSB: true})

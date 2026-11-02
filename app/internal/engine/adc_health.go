@@ -65,10 +65,10 @@ func stuckCores(snaps [][10]uint8) uint16 {
 		return 0
 	}
 	var stuck uint16
-	for ch := 0; ch < 2; ch++ {
+	for ch := range 2 {
 		var held [5]bool
 		moving := false
-		for p := 0; p < 5; p++ {
+		for p := range 5 {
 			// the core's codes as a histogram: held is all of them one code,
 			// the median the code whose running count passes n/2 (what a sort
 			// put at n/2)
@@ -127,7 +127,7 @@ func recordStuck(c1, c2 []uint8) uint16 {
 	step, frac := periods/m, periods%m
 	for j := range snaps {
 		k := 5 * at
-		for r := 0; r < 5; r++ {
+		for r := range 5 {
 			snaps[j][2*r], snaps[j][2*r+1] = c1[k+r], c2[k+r]
 		}
 		at += step
@@ -159,7 +159,7 @@ func (e *Engine) noteRecordCores(c1, c2 []uint8) {
 // TRLC-LINKS: REQ-SDS-231
 func coreNames(stuck uint16) string {
 	var names []string
-	for p := 0; p < 5; p++ {
+	for p := range 5 {
 		switch (stuck >> (2 * p)) & 3 {
 		case 3:
 			names = append(names, fmt.Sprintf("E%d", p+1))

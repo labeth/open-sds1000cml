@@ -2,17 +2,17 @@
 package panel
 
 import (
+	"errors"
 	"fmt"
 	"math"
-	"strings"
-	"sync"
-	"time"
-
 	"open-sds/app/internal/analysis"
 	"open-sds/app/internal/decode"
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/panel/framecalc"
 	"open-sds/app/internal/panel/wsview"
+	"strings"
+	"sync"
+	"time"
 )
 
 // The bus's layer (REQ-SDS-241): the application protocol or chip the BUS
@@ -105,7 +105,8 @@ func layerRows() []*row {
 	decOn := func(s *sv) bool {
 		return s.decProto != framecalc.ProtoOff && len(analysis.LayersOn(framecalc.ResultName(s.decProto))) > 1
 	}
-	layer := &row{id: "bus.layer", label: "Layer", kind: wsview.Enum, hdr: "LAYER",
+	layer := &row{
+		id: "bus.layer", label: "Layer", kind: wsview.Enum, hdr: "LAYER",
 		help: "The chip or protocol the bus carries: the packet list, the strip and the web table name each transaction.",
 		knob: "AUTO in BUS chooses one when the packets prove it (an SPI flash's commands, EEPROM reads, an EDID header).",
 		rel:  decOn, why: "a Protocol with layers (SPI, I2C, UART, 1-Wire, MDIO, USB)",
@@ -152,7 +153,8 @@ func layerRows() []*row {
 	addr.rel, addr.why = isFilter, "Layer = Address filter"
 	addr.presets = func(*sv) []preset { return []preset{{t: "Any", v: -1}} }
 	addr.def = func(c *Controller) error { return addr.setN(c, -1) }
-	dir := &row{id: "bus.layer_direction", label: "Filter direction", kind: wsview.Enum,
+	dir := &row{
+		id: "bus.layer_direction", label: "Filter direction", kind: wsview.Enum,
 		help: "The transfers the Address filter layer lists: reads, writes or both.",
 		rel:  isFilter, why: "Layer = Address filter",
 		opts: staticOpts([]opt{{0, "Both"}, {1, "Read"}, {2, "Write"}}),
@@ -173,7 +175,8 @@ func layerRows() []*row {
 // S.BUS sends it).
 // TRLC-LINKS: REQ-SDS-244
 func uartLineRow() *row {
-	r := &row{id: "bus.uart_line", label: "UART line", kind: wsview.Enum,
+	r := &row{
+		id: "bus.uart_line", label: "UART line", kind: wsview.Enum,
 		help: "Normal: the line idles high; Inverted: it idles low (S.BUS). Auto and the S.BUS layer set it.",
 		rel:  func(s *sv) bool { return s.decProto == framecalc.ProtoUART }, why: "Protocol = UART",
 		opts: staticOpts([]opt{{0, "Normal"}, {1, "Inverted"}}),
@@ -213,15 +216,15 @@ func (c *Controller) selectedPacket() (Packet, bool) {
 func (c *Controller) matchFromLayer() error {
 	s := c.snap()
 	if s.decLayer == "" {
-		return fmt.Errorf("no layer: set the BUS sheet's Layer first")
+		return errors.New("no layer: set the BUS sheet's Layer first")
 	}
 	p, ok := c.selectedPacket()
 	if !ok {
-		return fmt.Errorf("no packet selected in BUS")
+		return errors.New("no packet selected in BUS")
 	}
 	toks, addr, ok := analysis.LayerMatch(s.decLayer, p)
 	if !ok {
-		return fmt.Errorf("this layer offers no match for the packet")
+		return errors.New("this layer offers no match for the packet")
 	}
 	if err := c.setMatchTokens(toks); err != nil {
 		return err

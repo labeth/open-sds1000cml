@@ -2,10 +2,9 @@
 package lcd
 
 import (
+	"open-sds/app/internal/measure"
 	"strings"
 	"testing"
-
-	"open-sds/app/internal/measure"
 )
 
 // A measurement's envelope timing is taken once for it and its scale: the
@@ -40,7 +39,7 @@ func TestTimedForTakesTheTimingOnce(t *testing.T) {
 func TestXYTablesMatchTheArithmetic(t *testing.T) {
 	p := plotArea{top: 20, bot: 400, y0: 14, h: 400, w: 700}
 	rows := p.codeRows(1)
-	for c := 0; c < 256; c++ {
+	for c := range 256 {
 		if int(rows[c]) != p.sy(float64(c)) {
 			t.Fatalf("code %d: row %d, sy %d", c, rows[c], p.sy(float64(c)))
 		}

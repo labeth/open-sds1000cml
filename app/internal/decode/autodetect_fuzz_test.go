@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -61,12 +62,7 @@ func cleanNamesIt(c detectCase, m fuzzMutation) bool {
 
 // TRLC-LINKS: REQ-SDS-018
 func alikeName(want, got string) bool {
-	for _, a := range autoAlike[want] {
-		if a == got {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(autoAlike[want], got)
 }
 
 // fuzzUART is a UART bus: text at baud, sampled at sr.
@@ -74,7 +70,7 @@ func alikeName(want, got string) bool {
 func fuzzUART(rng *rand.Rand, baud, sr float64) []uint8 {
 	w := newTimeline(sr)
 	w.idle(30 / baud)
-	for i := 0; i < 40; i++ {
+	for range 40 {
 		tlUART(w, 0x20+rng.Intn(0x5f), baud, "none", 1)
 		if rng.Intn(6) == 0 {
 			w.idle(float64(5+rng.Intn(30)) / baud)
@@ -106,7 +102,7 @@ func fuzzSPI(rng *rand.Rand, s spiShape, sr float64, bytes int) twoLine {
 	T := 1 / s.hz
 	l.add(idle, 0, 20*T)
 	d := byte(0)
-	for k := 0; k < bytes; k++ {
+	for range bytes {
 		v := rng.Intn(256)
 		for i := 7; i >= 0; i-- {
 			bit := byte(v >> i & 1)
@@ -155,7 +151,7 @@ func fuzzI2C(rng *rand.Rand, hz, sr float64, transfers int) twoLine {
 		l.add(1, b, T/2)
 		sda = b
 	}
-	for k := 0; k < transfers; k++ {
+	for range transfers {
 		l.add(1, 0, T/2) // START
 		l.add(0, 0, T/2)
 		sda = 0
@@ -204,7 +200,8 @@ func fuzzCorpus(t testing.TB) []fuzzCase {
 		cs = append(cs, fuzzCase{detectCase: detectCase{fmt.Sprintf("UART %g", baud), c, idleLike(c), 1 / sr, "uart", 0}})
 	}
 	for _, s := range []spiShape{
-		{hz: 1e6, duty: 0.5}, {hz: 5e6, duty: 0.5, byteGap: 2},
+		{hz: 1e6, duty: 0.5},
+		{hz: 5e6, duty: 0.5, byteGap: 2},
 		{hz: 1e6, duty: 0.125, jitter: 2, byteGap: 3, cpol: true}, // a bit-banged driver, short pulses
 		{hz: 500e3, duty: 0.2, jitter: 1, byteGap: 2},
 		{hz: 2e6, duty: 0.8, jitter: 1, byteGap: 1, cpha: true},
@@ -289,7 +286,7 @@ func fuzzMutate(rng *rand.Rand, c detectCase) (detectCase, fuzzMutation) {
 	out := c
 	out.colT *= float64(m.decim)
 	chans := [2][]uint8{c.c1, c.c2}
-	for k := 0; k < 2; k++ {
+	for k := range 2 {
 		src := chans[k][h : n-tl]
 		if idle[k] && m.distractor != "" {
 			src = distractor(rng, m.distractor, len(src))
@@ -362,7 +359,7 @@ func shapeChannel(rng *rand.Rand, c []uint8, m fuzzMutation) []uint8 {
 	out := make([]uint8, 0, len(f)/d+1)
 	for i := 0; i+d <= len(f); i += d {
 		s := 0.0
-		for k := 0; k < d; k++ {
+		for k := range d {
 			s += f[i+k]
 		}
 		out = append(out, uint8(min(255, max(0, math.Round(s/float64(d))))))
@@ -385,10 +382,8 @@ func fuzzRun(corpus []fuzzCase, seed0 int64, n int) []fuzzFinding {
 	var out []fuzzFinding
 	jobs := make(chan int64)
 	var wg sync.WaitGroup
-	for w := 0; w < 8; w++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+	for range 8 {
+		wg.Go(func() {
 			for seed := range jobs {
 				if f, ok := fuzzOne(corpus, seed); ok {
 					mu.Lock()
@@ -396,7 +391,7 @@ func fuzzRun(corpus []fuzzCase, seed0 int64, n int) []fuzzFinding {
 					mu.Unlock()
 				}
 			}
-		}()
+		})
 	}
 	for s := seed0; s < seed0+int64(n); s++ {
 		jobs <- s
@@ -504,7 +499,7 @@ func TestAutodetectLineBesideDistractor(t *testing.T) {
 		if c.proto != "dcf77" && c.proto != "modbus" {
 			continue
 		}
-		for seed := int64(0); seed < 1500; seed++ {
+		for seed := range int64(1500) {
 			mc, m := fuzzMutate(rand.New(rand.NewSource(seed)), c)
 			if (m.distractor != "square" && m.distractor != "telegraph") || !(m.mild || m.moderate) {
 				continue // a heavy mutation may hide the bus (the campaign's rule)

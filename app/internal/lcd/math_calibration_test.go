@@ -11,8 +11,10 @@ func TestMathUsesCalibratedVoltages(t *testing.T) {
 		mode int
 		want []uint8
 	}{
-		{1, []uint8{128, 228}}, {2, []uint8{128, 128}},
-		{3, []uint8{128, 128}}, {4, []uint8{128, 141}},
+		{1, []uint8{128, 228}},
+		{2, []uint8{128, 128}},
+		{3, []uint8{128, 128}},
+		{4, []uint8{128, 141}},
 	} {
 		h.MathMode = tc.mode
 		got := mathCodes([]uint8{103, 153}, []uint8{103, 128}, h)

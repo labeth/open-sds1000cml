@@ -2,10 +2,9 @@
 package web
 
 import (
+	"open-sds/app/internal/testenv"
 	"os/exec"
 	"testing"
-
-	"open-sds/app/internal/testenv"
 )
 
 // The SOUND readout boxes' steady figures (sound_steady.test.cjs).

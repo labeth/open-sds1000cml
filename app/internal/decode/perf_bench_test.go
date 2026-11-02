@@ -2,6 +2,7 @@
 package decode
 
 import (
+	"slices"
 	"testing"
 )
 
@@ -129,7 +130,7 @@ func BenchmarkDec(b *testing.B) {
 	}
 	{
 		var w []uint8
-		for _, wd := range [][]int{arincMakeWord(0312, 1, 0x2ABCD, 3), arincMakeWord(0107, 2, 0x15A3F, 1), arincMakeWord(0200, 0, 0x12345, 0)} {
+		for _, wd := range [][]int{arincMakeWord(0o312, 1, 0x2ABCD, 3), arincMakeWord(0o107, 2, 0x15A3F, 1), arincMakeWord(0o200, 0, 0x12345, 0)} {
 			arincIdle(&w, 40*6)
 			arincAppendWord(&w, wd, 40)
 		}
@@ -169,7 +170,7 @@ func BenchmarkAutodetect(b *testing.B) {
 	cs := append(physDetectCases(), protoDetectCases()...)
 	b.Run("corpus", func(b *testing.B) {
 		for b.Loop() {
-			for _, c := range cs[:len(cs):len(cs)] {
+			for _, c := range slices.Clip(cs) {
 				Autodetect(c.c1, c.c2, c.colT, "hex")
 			}
 		}
@@ -291,7 +292,7 @@ func BenchmarkMeasureSPIEye(b *testing.B) {
 func BenchmarkStreamDecoder(b *testing.B) {
 	msg := []int{0x48, 0x65, 0x6C, 0x6C, 0x6F, 0x0D, 0x0A}
 	var w []uint8
-	for i := 0; i < 20; i++ {
+	for range 20 {
 		w = append(w, uartWave(msg, 40)...)
 	}
 	dec := func(a, _ []uint8) Result { return DecodeUART(a, 1e-6, UARTCfg{Baud: 25000, Bits: 8, Parity: "none"}) }
@@ -307,7 +308,7 @@ func BenchmarkStreamDecoder(b *testing.B) {
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
 func BenchmarkStreamGroup(b *testing.B) {
 	var r Result
-	for i := 0; i < 400; i++ { // 40 frames of a start and nine bytes
+	for i := range 400 { // 40 frames of a start and nine bytes
 		x := i * 20
 		kind := "data"
 		if i%10 == 0 {

@@ -4,13 +4,12 @@ package web
 import (
 	"math"
 	"net/http/httptest"
+	"open-sds/app/internal/engine"
+	"open-sds/app/internal/testenv"
 	"os/exec"
 	"strings"
 	"sync/atomic"
 	"testing"
-
-	"open-sds/app/internal/engine"
-	"open-sds/app/internal/testenv"
 )
 
 // TestBodeBrowser drives the real web BODE/FRA card in headless Chromium: ARM
@@ -26,12 +25,14 @@ func TestBodeBrowser(t *testing.T) {
 		const N = 2048
 		c1 := make([]uint8, N)
 		c2 := make([]uint8, N)
-		for i := 0; i < N; i++ {
+		for i := range N {
 			c1[i] = uint8(128 + 80*math.Sin(2*math.Pi*20*float64(i)/N))
 			c2[i] = uint8(128 + 40*math.Sin(2*math.Pi*20*float64(i)/N))
 		}
-		return &engine.Frame{C1: c1, C2: c2, Seq: uint64(n), Valid: N, WinCols: N,
-			EdgeX: -1, TdivS: 500e-6, DisplayedS: 500e-6, SampleS: 800e-9, Trigd: true}
+		return &engine.Frame{
+			C1: c1, C2: c2, Seq: uint64(n), Valid: N, WinCols: N,
+			EdgeX: -1, TdivS: 500e-6, DisplayedS: 500e-6, SampleS: 800e-9, Trigd: true,
+		}
 	}
 	fs := &fakeScope{
 		frameGen: gen,

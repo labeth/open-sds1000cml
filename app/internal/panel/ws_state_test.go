@@ -2,15 +2,15 @@
 package panel
 
 import (
+	"errors"
 	"fmt"
+	"open-sds/app/internal/engine"
+	"open-sds/app/internal/panel/wsview"
+	"open-sds/app/internal/settings"
 	"slices"
 	"strings"
 	"testing"
 	"time"
-
-	"open-sds/app/internal/engine"
-	"open-sds/app/internal/panel/wsview"
-	"open-sds/app/internal/settings"
 )
 
 // The task-workspace state machine (ADR-TASK-WORKSPACES): F1..F5 switch
@@ -210,7 +210,7 @@ func TestKnobToolsPerWorkspace(t *testing.T) {
 	// MEASURE: Adjust and (pushed to its second job) Position the cursors;
 	// the MEAS sheet's Statistics row zeroes the statistics.
 	press(t, c, "f4")
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		r.show(toneFrame(""))
 	}
 	if !strings.Contains(tool(), "Adjust:cursor A") || !strings.Contains(tool(), "Position:trigger position push:cursor B") {
@@ -505,7 +505,7 @@ func (m *memSlots) PeekSetup(n int) (settings.Settings, bool) {
 // TRLC-LINKS: REQ-SDS-214
 func (m *memSlots) RecallSetup(n int) error {
 	if !m.saved[n] {
-		return fmt.Errorf("empty")
+		return errors.New("empty")
 	}
 	m.rec = append(m.rec, n)
 	return nil

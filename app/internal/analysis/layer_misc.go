@@ -14,9 +14,11 @@ import (
 var owROMCmds = map[int]struct {
 	name string
 	rom  bool
-}{0x33: {"READ ROM", true}, 0x0f: {"READ ROM", true}, 0x55: {"MATCH ROM", true}, 0xf0: {"SEARCH ROM", true},
+}{
+	0x33: {"READ ROM", true}, 0x0f: {"READ ROM", true}, 0x55: {"MATCH ROM", true}, 0xf0: {"SEARCH ROM", true},
 	0xec: {"ALARM SEARCH", true}, 0xcc: {"SKIP ROM", false}, 0x3c: {"OD SKIP ROM", false},
-	0x69: {"OD MATCH ROM", true}, 0xa5: {"RESUME", false}}
+	0x69: {"OD MATCH ROM", true}, 0xa5: {"RESUME", false},
+}
 
 // owTxn is one 1-Wire transaction as the network layer reads it: the ROM
 // command, the ROM code (family, serial, CRC) when one follows, and the
@@ -167,7 +169,7 @@ func crc8Maxim(b []byte) int {
 	crc := 0
 	for _, v := range b {
 		crc ^= int(v)
-		for k := 0; k < 8; k++ {
+		for range 8 {
 			if crc&1 != 0 {
 				crc = crc>>1 ^ 0x8c
 			} else {
@@ -184,7 +186,7 @@ func crc16Maxim(b []byte) int {
 	crc := 0
 	for _, v := range b {
 		x := int(v)
-		for k := 0; k < 8; k++ {
+		for range 8 {
 			if (x^crc)&1 != 0 {
 				crc = crc>>1 ^ 0xa001
 			} else {
@@ -202,9 +204,11 @@ func crc16Maxim(b []byte) int {
 // rest.
 // TRLC-LINKS: REQ-SDS-245
 func ds28ea00Fn(fn []byte) (string, bool) {
-	names := map[int]string{0x4e: "Write scratchpad", 0xbe: "Read scratchpad", 0x48: "Copy scratchpad",
+	names := map[int]string{
+		0x4e: "Write scratchpad", 0xbe: "Read scratchpad", 0x48: "Copy scratchpad",
 		0x44: "Convert T", 0xb4: "Read power mode", 0xb8: "Recall EEPROM", 0xf5: "PIO read", 0xa5: "PIO write",
-		0x99: "Chain"}
+		0x99: "Chain",
+	}
 	name, ok := names[int(fn[0])]
 	if !ok {
 		return "? function 0x" + hx(int(fn[0]), 2), true
@@ -375,8 +379,10 @@ func cfpRegion(a int) string {
 }
 
 // cfpModules name the module identifiers (SFF-8024).
-var cfpModules = map[int]string{0x0e: "CFP", 0x11: "CFP2", 0x12: "CFP4", 0x0c: "QSFP", 0x0d: "QSFP+", 0x06: "XFP",
-	0x03: "SFP"}
+var cfpModules = map[int]string{
+	0x0e: "CFP", 0x11: "CFP2", 0x12: "CFP4", 0x0c: "QSFP", 0x0d: "QSFP+", 0x06: "XFP",
+	0x03: "SFP",
+}
 
 // mdioFrame reads an MDIO packet: the header word (start, opcode, port and
 // device address) and the data word.
@@ -457,11 +463,16 @@ func cfpDetect(ps []Packet) string {
 // ---- USB control and data transfers ----
 
 // usbRequests name the standard requests; usbDescs the descriptor types.
-var usbRequests = map[int]string{0: "GET_STATUS", 1: "CLEAR_FEATURE", 3: "SET_FEATURE", 5: "SET_ADDRESS",
+var usbRequests = map[int]string{
+	0: "GET_STATUS", 1: "CLEAR_FEATURE", 3: "SET_FEATURE", 5: "SET_ADDRESS",
 	6: "GET_DESCRIPTOR", 7: "SET_DESCRIPTOR", 8: "GET_CONFIGURATION", 9: "SET_CONFIGURATION", 10: "GET_INTERFACE",
-	11: "SET_INTERFACE", 12: "SYNCH_FRAME"}
-var usbDescs = map[int]string{1: "Device", 2: "Configuration", 3: "String", 4: "Interface", 5: "Endpoint",
-	6: "Device qualifier", 0x21: "HID", 0x22: "Report"}
+	11: "SET_INTERFACE", 12: "SYNCH_FRAME",
+}
+
+var usbDescs = map[int]string{
+	1: "Device", 2: "Configuration", 3: "String", 4: "Interface", 5: "Endpoint",
+	6: "Device qualifier", 0x21: "HID", 0x22: "Report",
+}
 
 // usbSetup reads a SETUP stage's eight bytes.
 // TRLC-LINKS: REQ-SDS-246

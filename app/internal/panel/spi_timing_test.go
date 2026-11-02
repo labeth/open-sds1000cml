@@ -6,14 +6,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
-	"os"
-	"strings"
-	"testing"
-
 	"open-sds/app/internal/decode"
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/panel/framecalc"
 	"open-sds/app/internal/panel/wsview"
+	"os"
+	"strings"
+	"testing"
 )
 
 // SPI's data delay: Auto takes the eye's middle measured on the record, a
@@ -94,7 +93,7 @@ func spiRecord(late float64) (c1, c2 []uint8) {
 	}
 	t := 1e-6
 	for burst := 0; t < float64(n)*2e-9-10e-6; burst++ {
-		for i := 0; i < 64; i++ {
+		for i := range 64 {
 			bit := (burst*7+i*13)%5 < 2
 			start := t + float64(i)*period
 			set(&dat, &dl, start+late, bit)
@@ -188,9 +187,11 @@ func TestSPIEyeFlashAfterRestart(t *testing.T) {
 		}
 		r := framecalc.Decode(f, decodeParamsOf(s))
 		hex := ""
+		var hexSb191 strings.Builder
 		for _, b := range r.Bytes {
-			hex += fmt.Sprintf(" %02X", b)
+			hexSb191.WriteString(fmt.Sprintf(" %02X", b))
 		}
+		hex += hexSb191.String()
 		if !r.OK || !strings.Contains(hex, " 0B 00 10 00 FF 53 50 49") {
 			t.Fatalf("record %d at %+.2f ns:%s", i, s.spiDelayNs(), hex)
 		}

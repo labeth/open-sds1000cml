@@ -2,15 +2,15 @@
 package agent
 
 import (
+	"errors"
 	"fmt"
+	"open-sds/ota/internal/fdinherit"
 	"os"
 	"os/exec"
 	"strconv"
 	"strings"
 	"syscall"
 	"time"
-
-	"open-sds/ota/internal/fdinherit"
 )
 
 // superviseLoop is the app lifecycle state machine. It only acts once the
@@ -216,8 +216,10 @@ func (a *Agent) runAppOnce(slot string) {
 	a.log.Printf("app started slot=%s pid=%d bin=%s", slot, pid, bin)
 	a.appMu.Lock()
 	prevFails := a.app.Fails // carry the consecutive-failure count across launches
-	a.app = appState{Running: true, PID: pid, Slot: slot,
-		StartedAt: time.Now().Format(time.RFC3339), Fails: prevFails}
+	a.app = appState{
+		Running: true, PID: pid, Slot: slot,
+		StartedAt: time.Now().Format(time.RFC3339), Fails: prevFails,
+	}
 	a.appMu.Unlock()
 	a.event("app.start", map[string]any{"slot": slot, "pid": pid})
 
@@ -403,12 +405,12 @@ func (a *Agent) ctlRequest(op string, timeout time.Duration) error {
 	select {
 	case a.ctl <- m:
 	case <-time.After(timeout):
-		return fmt.Errorf("supervisor busy")
+		return errors.New("supervisor busy")
 	}
 	select {
 	case err := <-m.reply:
 		return err
 	case <-time.After(timeout):
-		return fmt.Errorf("supervisor did not answer")
+		return errors.New("supervisor did not answer")
 	}
 }

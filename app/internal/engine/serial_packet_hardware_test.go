@@ -3,12 +3,11 @@ package engine
 
 import (
 	"errors"
+	"open-sds/app/internal/decode"
+	"open-sds/app/internal/sramcapture"
 	"strings"
 	"testing"
 	"time"
-
-	"open-sds/app/internal/decode"
-	"open-sds/app/internal/sramcapture"
 )
 
 // packetEngineBus adds the packet image's capability registers to the
@@ -159,8 +158,10 @@ func newPacketTestEngine(t *testing.T) (*Engine, *stackEngineBus, *packetImages)
 		t.Fatal(err)
 	}
 	images := &packetImages{b: b}
-	e := &Engine{b: fake, sram: capture, sramJobs: make(chan sramJob, 1), done: make(chan struct{}), images: images,
-		logf: t.Logf, clk: Clock{Now: time.Now, Sleep: func(time.Duration) {}}}
+	e := &Engine{
+		b: fake, sram: capture, sramJobs: make(chan sramJob, 1), done: make(chan struct{}), images: images,
+		logf: t.Logf, clk: Clock{Now: time.Now, Sleep: func(time.Duration) {}},
+	}
 	e.probeSerialHardware()
 	return e, b, images
 }
@@ -250,13 +251,19 @@ func TestPlanHardwarePacket(t *testing.T) {
 		}), all, 0, sramcapture.PacketTriggerConfig{Enabled: true, Protocol: 6, Channel: 1, Ticks: 32000, Aux: 6400, Pattern: 0x0102030405060708, Length: 8}},
 		{"can-too-long", with(func(p *SerialParams) { p.Proto, p.Baud, p.Bytes = serCAN, 1000000, make([]int, 9) }), all, 0, sramcapture.PacketTriggerConfig{}},
 		{"can-too-fast", with(func(p *SerialParams) { p.Proto, p.Baud = serCAN, 20000000 }), all, 0, sramcapture.PacketTriggerConfig{}},
-		{"flexray", with(func(p *SerialParams) { p.Proto, p.Baud, p.Bytes = serFlexRay, 10000000, []int{0x55} }), all, 0,
-			sramcapture.PacketTriggerConfig{Enabled: true, Protocol: 10, Channel: 1, Ticks: 3200, Pattern: 0x55, Length: 1}},
+		{
+			"flexray", with(func(p *SerialParams) { p.Proto, p.Baud, p.Bytes = serFlexRay, 10000000, []int{0x55} }), all, 0,
+			sramcapture.PacketTriggerConfig{Enabled: true, Protocol: 10, Channel: 1, Ticks: 3200, Pattern: 0x55, Length: 1},
+		},
 		{"flexray-absent", with(func(p *SerialParams) { p.Proto, p.Baud = serFlexRay, 10000000 }), 1 << 6, 0, sramcapture.PacketTriggerConfig{}},
-		{"arinc", with(func(p *SerialParams) { p.Proto, p.Baud, p.Bytes = serARINC, 100000, []int{0x2abcd} }), all, 0x8d72a15c,
-			sramcapture.PacketTriggerConfig{Enabled: true, Protocol: 8, Channel: 1, Ticks: 1250, Aux: 0x8d72a15c, Pattern: 0x7ffff<<42 | 0x2abcd<<10}},
-		{"arinc-any", with(func(p *SerialParams) { p.Proto, p.Baud = serARINC, 12500 }), all, 0x8d72a15c,
-			sramcapture.PacketTriggerConfig{Enabled: true, Protocol: 8, Channel: 1, Ticks: 10000, Aux: 0x8d72a15c}},
+		{
+			"arinc", with(func(p *SerialParams) { p.Proto, p.Baud, p.Bytes = serARINC, 100000, []int{0x2abcd} }), all, 0x8d72a15c,
+			sramcapture.PacketTriggerConfig{Enabled: true, Protocol: 8, Channel: 1, Ticks: 1250, Aux: 0x8d72a15c, Pattern: 0x7ffff<<42 | 0x2abcd<<10},
+		},
+		{
+			"arinc-any", with(func(p *SerialParams) { p.Proto, p.Baud = serARINC, 12500 }), all, 0x8d72a15c,
+			sramcapture.PacketTriggerConfig{Enabled: true, Protocol: 8, Channel: 1, Ticks: 10000, Aux: 0x8d72a15c},
+		},
 		{"arinc-no-levels", with(func(p *SerialParams) { p.Proto, p.Baud = serARINC, 100000 }), all, 0, sramcapture.PacketTriggerConfig{}},
 		{"arinc-two-words", with(func(p *SerialParams) { p.Proto, p.Baud, p.Bytes = serARINC, 100000, []int{1, 2} }), all, 0x8d72a15c, sramcapture.PacketTriggerConfig{}},
 		{"auto-threshold", with(func(p *SerialParams) { p.Proto, p.Baud, p.HaveThr = serCAN, 500000, false }), all, 0, sramcapture.PacketTriggerConfig{}},
@@ -281,7 +288,7 @@ func TestPlanHardwarePacket(t *testing.T) {
 func TestARINCLevelsMatchDecoder(t *testing.T) {
 	for _, rails := range [][3]int{{128, 210, 40}, {120, 200, 60}, {131, 180, 90}, {100, 250, 5}} {
 		var codes []uint8
-		for i := 0; i < 4000; i++ {
+		for i := range 4000 {
 			v := rails[0]
 			switch i % 20 {
 			case 0, 1, 2:
@@ -301,7 +308,7 @@ func TestARINCLevelsMatchDecoder(t *testing.T) {
 			t.Fatal(reason)
 		}
 		h, l, eh, el := int(aux>>8&0xff), int(aux&0xff), int(aux>>24), int(aux>>16&0xff)
-		for c := 0; c < 256; c++ {
+		for c := range 256 {
 			v := float64(c)
 			if (v >= hi) != (c >= h) || (v <= lo) != (c <= l) || (v < exitHi) != (c < eh) || (v > exitLo) != (c > el) {
 				t.Fatalf("rails %v code %d: float %.2f %.2f %.2f %.2f integer %d %d %d %d", rails, c, hi, lo, exitHi, exitLo, h, l, eh, el)
@@ -319,7 +326,7 @@ func TestARINCLevelsWaitForASampledRecord(t *testing.T) {
 	e := levelsEngine(SerialParams{Proto: serARINC, ChA: 0, Baud: 100000, Bytes: []int{0xABCD}})
 	e.clk = Clock{Now: time.Now, Sleep: func(time.Duration) {}}
 	var codes []uint8
-	for i := 0; i < 4000; i++ {
+	for i := range 4000 {
 		v := 128
 		switch i % 20 {
 		case 0, 1, 2:

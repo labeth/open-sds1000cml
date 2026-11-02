@@ -35,7 +35,7 @@ import (
 // stream carried them.
 var streamCPUExtra = []streamCase{
 	{name: "uart", baud: 115200, lines: 1, gen: func(l twoLine, i int, rng *rand.Rand) {
-		for k := 0; k < 1+i%4; k++ {
+		for k := range 1 + i%4 {
 			tlUART(l.a, (i*37+k*91+rng.Intn(256))&0xff, 115200, "none", 1)
 		}
 		l.a.idle((20 + rng.Float64()*40) / 115200)
@@ -55,7 +55,7 @@ var streamCPUExtra = []streamCase{
 		l.add(1, 0, q) // START: SDA falls, SCL high
 		l.add(0, 0, q)
 		byteOut(0x50<<1 | i&1)
-		for k := 0; k < 1+i%3; k++ {
+		for range 1 + i%3 {
 			byteOut((i*29 + rng.Intn(256)) & 0xff)
 		}
 		l.add(0, 0, q) // STOP
@@ -66,7 +66,7 @@ var streamCPUExtra = []streamCase{
 	}},
 	{name: "spi", baud: 1000000, lines: 2, idle: idleOf(0, 0), gen: func(l twoLine, i int, rng *rand.Rand) {
 		h := 0.5 / 1e6
-		for k := 0; k < 1+i%3; k++ {
+		for range 1 + i%3 {
 			v := (i*53 + rng.Intn(256)) & 0xff
 			for j := 7; j >= 0; j-- {
 				d := byte(v >> j & 1)

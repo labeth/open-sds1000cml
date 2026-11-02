@@ -127,7 +127,7 @@ func (m *MemSurface) fillSpan(x0, y0, x1, y1 int, c uint16) {
 func (m *MemSurface) Fill(c uint16) {
 	lo, hi := byte(c), byte(c>>8)
 	row := m.Pix[:W*2]
-	for x := 0; x < W; x++ {
+	for x := range W {
 		row[x*2], row[x*2+1] = lo, hi
 	}
 	for y := 1; y < H; y++ {
@@ -247,10 +247,7 @@ func OpenFB() (*FB, error) {
 			yv = y
 		}
 	}
-	pages := yv / H
-	if pages < 1 {
-		pages = 1
-	}
+	pages := max(yv/H, 1)
 	mem, err := syscall.Mmap(fd, 0, W*yv*2, syscall.PROT_READ|syscall.PROT_WRITE, syscall.MAP_SHARED)
 	if err != nil {
 		syscall.Close(fd)

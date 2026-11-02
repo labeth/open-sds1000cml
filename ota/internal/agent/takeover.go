@@ -3,16 +3,15 @@ package agent
 
 import (
 	"fmt"
+	"open-sds/ota/internal/fdinherit"
+	"open-sds/ota/internal/gpmc"
+	"open-sds/ota/internal/sysinfo"
+	"open-sds/ota/internal/vxi11"
 	"os"
 	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
-
-	"open-sds/ota/internal/fdinherit"
-	"open-sds/ota/internal/gpmc"
-	"open-sds/ota/internal/sysinfo"
-	"open-sds/ota/internal/vxi11"
 )
 
 // Takeover implements the spec 01 §2.2 inherit-then-kill sequence. The engine
@@ -316,7 +315,7 @@ func (a *Agent) confirmIdle(res *TakeoverResult, timeout time.Duration) error {
 // TRLC-LINKS: REQ-SDS-027
 func (a *Agent) killFactory(res *TakeoverResult) int {
 	killed := 0
-	for round := 0; round < 4; round++ {
+	for round := range 4 {
 		cands := a.factoryCandidates()
 		if round == 0 {
 			cands = res.Candidates // use the reported set for the first pass
@@ -372,13 +371,13 @@ func (a *Agent) reassertNetwork(preIPs []string) {
 
 // TRLC-LINKS: REQ-SDS-027
 func splitCIDR(cidr string) (ip, mask string, ok bool) {
-	i := strings.IndexByte(cidr, '/')
-	if i < 0 {
+	before, after, ok := strings.Cut(cidr, "/")
+	if !ok {
 		return "", "", false
 	}
-	ip = cidr[:i]
+	ip = before
 	var bits int
-	if _, err := fmt.Sscanf(cidr[i+1:], "%d", &bits); err != nil || bits < 0 || bits > 32 {
+	if _, err := fmt.Sscanf(after, "%d", &bits); err != nil || bits < 0 || bits > 32 {
 		return "", "", false
 	}
 	v := ^uint32(0) << (32 - bits)

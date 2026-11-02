@@ -3,10 +3,9 @@ package panel
 
 import (
 	"math"
-	"testing"
-
 	"open-sds/app/internal/decode"
 	"open-sds/app/internal/engine"
+	"testing"
 )
 
 // An Oregon sensor's burst cut by a 5 ms/div record reads as a Manchester

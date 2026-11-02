@@ -14,6 +14,7 @@ package analysis
 
 import (
 	"fmt"
+	"open-sds/app/internal/decode"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -21,8 +22,6 @@ import (
 	"strconv"
 	"strings"
 	"testing"
-
-	"open-sds/app/internal/decode"
 )
 
 // orcNeed skips (or under CI_REQUIRE_SIGROK=1 fails) without sigrok-cli and
@@ -93,14 +92,16 @@ func orcDecode(t *testing.T, sr int, names []string, chans [][]byte, pd, ann str
 	if err := os.WriteFile(csv, []byte(sb.String()), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	args := []string{"-i", csv, "-I", fmt.Sprintf("csv:column_formats=%dl:samplerate=%d", len(chans), sr), "-P", pd,
-		"-A", ann, "--protocol-decoder-samplenum"}
+	args := []string{
+		"-i", csv, "-I", fmt.Sprintf("csv:column_formats=%dl:samplerate=%d", len(chans), sr), "-P", pd,
+		"-A", ann, "--protocol-decoder-samplenum",
+	}
 	out, err := exec.Command("sigrok-cli", args...).CombinedOutput()
 	if err != nil {
 		t.Fatalf("sigrok-cli %v: %v\n%s", args, err, out)
 	}
 	var anns []orcAnn
-	for _, line := range strings.Split(string(out), "\n") {
+	for line := range strings.SplitSeq(string(out), "\n") {
 		m := orcAnnRe.FindStringSubmatch(strings.TrimSpace(line))
 		if m == nil {
 			continue
@@ -356,7 +357,7 @@ func orcUARTWave(sr, baud float64, parity string, stops int, inverted bool, burs
 		for _, v := range burst {
 			w.add(lv(0), bt)
 			ones := 0
-			for k := 0; k < 8; k++ {
+			for k := range 8 {
 				b := v >> k & 1
 				ones += int(b)
 				w.add(lv(b), bt)
@@ -401,7 +402,7 @@ func orcOWReset(w *orcLine) {
 // orcOWByte appends a byte's time slots, least significant bit first.
 // TRLC-LINKS: REQ-SDS-241
 func orcOWByte(w *orcLine, v byte) {
-	for k := 0; k < 8; k++ {
+	for k := range 8 {
 		if v>>k&1 == 1 {
 			w.add(0, 6e-6)
 			w.add(1, 64e-6)
@@ -469,7 +470,7 @@ func orcMDIOWaves(sr, per float64, fs []orcMDIOFrame) (mdc, mdio []byte) {
 	c.add(0, 4*per)
 	d.add(1, 4*per)
 	for _, f := range fs {
-		for i := 0; i < 32; i++ {
+		for range 32 {
 			bit(1)
 		}
 		put(f.st, 2)
@@ -514,7 +515,7 @@ func orcUSBLSB(v, n int) []int {
 // TRLC-LINKS: REQ-SDS-241
 func orcUSBRev(v, count int) int {
 	out := 0
-	for i := 0; i < count; i++ {
+	for i := range count {
 		if v>>i&1 == 1 {
 			out |= 1 << (count - 1 - i)
 		}

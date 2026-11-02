@@ -4,12 +4,11 @@ package panel
 import (
 	"fmt"
 	"math"
+	"open-sds/app/internal/engine"
+	"open-sds/app/internal/panel/wsview"
 	"sort"
 	"strings"
 	"testing"
-
-	"open-sds/app/internal/engine"
-	"open-sds/app/internal/panel/wsview"
 )
 
 // Reachability (REQ-SDS-212): every setting is a sheet row, every row can be
@@ -102,8 +101,10 @@ func rigFor(t *testing.T, x reachContext) *viewRig {
 	// the engine's power-on qualifiers (defaultTrigParams): the time limits
 	// start inside their rows' 10 ns .. 10 s, as on the scope
 	r.eng.set(func(st *engine.Stats) {
-		st.TrigQual = engine.TrigQual{PulseLvl: 0.5, PulseMinNs: 100, PulseMaxNs: 1000, SlopeLo: 0.2, SlopeHi: 0.8,
-			SlopeMinNs: 100, SlopeMaxNs: 1000, VideoNeg: true}
+		st.TrigQual = engine.TrigQual{
+			PulseLvl: 0.5, PulseMinNs: 100, PulseMaxNs: 1000, SlopeLo: 0.2, SlopeHi: 0.8,
+			SlopeMinNs: 100, SlopeMaxNs: 1000, VideoNeg: true,
+		}
 	})
 	r.show(smallFrame())
 	x.prep(t, r)

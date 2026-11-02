@@ -4,11 +4,10 @@ package engine
 import (
 	"fmt"
 	"math"
+	"open-sds/app/internal/decode"
 	"slices"
 	"sync/atomic"
 	"time"
-
-	"open-sds/app/internal/decode"
 )
 
 // The serial trigger is the FPGA's (ADR-SERIAL-HARDWARE-TRIGGER): its
@@ -62,7 +61,7 @@ func (e *Engine) learnSerialLevelsOf(f *Frame, sc [2]chScale, lv *frameLevels) {
 	if f == nil || f.Valid < 64 {
 		return
 	}
-	for ch := 0; ch < 2; ch++ {
+	for ch := range 2 {
 		codes := f.C1
 		if ch == 1 {
 			codes = f.C2
@@ -790,9 +789,11 @@ func (e *Engine) serialNoHardware() string {
 		return "loading the " + want + " FPGA image"
 	}
 	packet := func(proto int) bool { return e.hardwarePacket&(1<<proto) != 0 }
-	have := map[int]bool{serUART: e.hardwareUART, serI2C: e.hardwareI2C, serSPI: e.hardwareSPI, serManchester: e.hardwareManchester,
+	have := map[int]bool{
+		serUART: e.hardwareUART, serI2C: e.hardwareI2C, serSPI: e.hardwareSPI, serManchester: e.hardwareManchester,
 		serSENT: e.hardwareSENT, serCAN: packet(serCAN), serMIL1553: e.hardwareMIL1553, serARINC: packet(serARINC),
-		serUSB: e.hardwareUSBLS, serFlexRay: packet(serFlexRay), serMIDI: e.hardwareUART}
+		serUSB: e.hardwareUSBLS, serFlexRay: packet(serFlexRay), serMIDI: e.hardwareUART,
+	}
 	for proto := serLIN; proto < SerialProtocols; proto++ {
 		if symbolProtocol(proto) {
 			have[proto] = e.hardwareSymbol

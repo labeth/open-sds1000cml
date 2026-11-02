@@ -8,13 +8,12 @@ package engine
 
 import (
 	"math"
-	"sync"
-	"sync/atomic"
-	"time"
-
 	"open-sds/app/internal/bus"
 	"open-sds/app/internal/iface"
 	"open-sds/app/internal/sramcapture"
+	"sync"
+	"sync/atomic"
+	"time"
 )
 
 // Register bindings: every fabric selector, opcode and field comes from the
@@ -830,10 +829,7 @@ func (e *Engine) TuneSnapshot() TuneVals {
 // RenderPeriod is the LCD loop's tunable tick (read each render tick).
 // TRLC-LINKS: REQ-SDS-021, REQ-SDS-127
 func (e *Engine) RenderPeriod() time.Duration {
-	ms := e.tuneRenderMs.Load()
-	if ms < 1 {
-		ms = 1
-	}
+	ms := max(e.tuneRenderMs.Load(), 1)
 	return time.Duration(ms) * time.Millisecond
 }
 
@@ -937,7 +933,7 @@ func (e *Engine) AcqLog(n int) ([]AcqSample, float64) {
 	// Count how many valid (recorded) entries exist: acqHead has wrapped past
 	// filled entries; a never-written slot has Seq==0 && Cols==0.
 	avail := 0
-	for i := 0; i < len(e.acqRing); i++ {
+	for i := range len(e.acqRing) {
 		idx := (e.acqHead - 1 - i + len(e.acqRing)) % len(e.acqRing)
 		if e.acqRing[idx].Cols == 0 {
 			break
@@ -945,10 +941,7 @@ func (e *Engine) AcqLog(n int) ([]AcqSample, float64) {
 		avail++
 	}
 	// HALF rate over the last up-to-64 recorded samples.
-	rateN := avail
-	if rateN > 64 {
-		rateN = 64
-	}
+	rateN := min(avail, 64)
 	half := 0
 	for i := 0; i < rateN; i++ {
 		idx := (e.acqHead - 1 - i + len(e.acqRing)) % len(e.acqRing)
@@ -984,7 +977,7 @@ func (e *Engine) CmdLog(n int) []CmdNote {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	avail := 0
-	for i := 0; i < len(e.cmdRing); i++ {
+	for i := range len(e.cmdRing) {
 		idx := (e.cmdHead - 1 - i + len(e.cmdRing)) % len(e.cmdRing)
 		if e.cmdRing[idx].Name == "" {
 			break

@@ -2,11 +2,10 @@
 package panel
 
 import (
-	"strings"
-	"testing"
-
 	"open-sds/app/internal/panel/framecalc"
 	"open-sds/app/internal/settings"
+	"strings"
+	"testing"
 )
 
 // TRLC-LINKS: REQ-SDS-136
@@ -29,8 +28,10 @@ func TestSettingsViewRoundTrip(t *testing.T) {
 	if ds := got.Display; !ds.Set || ds.CurMode != 0 || ds.Zoom != 1 || ds.Invert != [2]bool{} {
 		t.Fatalf("the display state kept: %+v", ds)
 	}
-	got.Display = settings.Display{MathMode: got.Display.MathMode, ShowMeas: got.Display.ShowMeas,
-		Persist: got.Display.Persist, Hidden: got.Display.Hidden}
+	got.Display = settings.Display{
+		MathMode: got.Display.MathMode, ShowMeas: got.Display.ShowMeas,
+		Persist: got.Display.Persist, Hidden: got.Display.Hidden,
+	}
 	if got != want {
 		t.Fatalf("round trip mismatch:\n got %+v\nwant %+v", got, want)
 	}
@@ -221,8 +222,10 @@ func TestSettingsViewDisplayStateRoundTrip(t *testing.T) {
 	c, _, _ := newC(t)
 	inv := &fakeInverter{}
 	c.SetInverter(inv)
-	want := settings.Display{Set: true, Invert: [2]bool{true, false}, CurMode: 2, CurX: [2]float64{0.2, 0.7},
-		CurY: [2]float64{0.3, 0.6}, CurSel: 1, Zoom: 5, ZoomOff: 0.25}
+	want := settings.Display{
+		Set: true, Invert: [2]bool{true, false}, CurMode: 2, CurX: [2]float64{0.2, 0.7},
+		CurY: [2]float64{0.3, 0.6}, CurSel: 1, Zoom: 5, ZoomOff: 0.25,
+	}
 	c.ApplySettingsView(settings.ViewState{Display: want})
 	if inv.inv != [2]bool{true, false} {
 		t.Fatalf("invert not restored: %v", inv.inv)

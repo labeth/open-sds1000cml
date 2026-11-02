@@ -2,11 +2,10 @@
 package frames
 
 import (
+	"open-sds/app/internal/engine"
 	"sync/atomic"
 	"testing"
 	"time"
-
-	"open-sds/app/internal/engine"
 )
 
 // tickSource publishes a fresh frame with an advancing Seq each time `fresh`
@@ -90,14 +89,14 @@ func TestWaitNextConcurrentWithReaders(t *testing.T) {
 	// Hammer WithFrame while frames publish and waiters park (race detector food).
 	done := make(chan struct{})
 	go func() {
-		for i := 0; i < 50; i++ {
+		for range 50 {
 			fo.WithFrame(func(f *engine.Frame) {})
 			time.Sleep(time.Millisecond)
 		}
 		close(done)
 	}()
 	last := uint64(0)
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		src.fresh.Store(true)
 		got := fo.WaitNext(last, time.Second)
 		if got == last {

@@ -10,15 +10,14 @@ package otactl_test
 
 import (
 	"encoding/json"
-	"path/filepath"
-	"strings"
-	"testing"
-	"time"
-
 	"open-sds/ota/internal/agent"
 	"open-sds/ota/internal/config"
 	"open-sds/ota/internal/otactl"
 	"open-sds/ota/internal/rpcproto"
+	"path/filepath"
+	"strings"
+	"testing"
+	"time"
 
 	natsserver "github.com/nats-io/nats-server/v2/server"
 	"github.com/nats-io/nats.go"

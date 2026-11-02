@@ -36,7 +36,7 @@ import (
 // of the k-th input (real, non-stuff) bit, so a two-rate FD renderer can find
 // the exact wire position of the BRS bit.
 // TRLC-LINKS: REQ-SDS-018
-func canStuffTrackedB(bits []int) (out []int, realIdx []int) {
+func canStuffTrackedB(bits []int) (out, realIdx []int) {
 	runVal, runLen := -1, 0
 	for _, b := range bits {
 		if runLen == 5 {
@@ -52,7 +52,7 @@ func canStuffTrackedB(bits []int) (out []int, realIdx []int) {
 			runVal, runLen = b, 1
 		}
 	}
-	return
+	return out, realIdx
 }
 
 // canFDBRSFrameB builds a CAN-FD base frame with BRS=1 (data-phase rate switch)
@@ -75,10 +75,10 @@ func canFDBRSFrameB(id, dlc int, data []int) (wire []int, split int) {
 	stuffed, realIdx := canStuffTrackedB(bits)
 	split = realIdx[16] // BRS is the 17th input bit; last one at nominal rate
 	wire = append([]int{}, stuffed...)
-	for i := 0; i < 30; i++ {
+	for range 30 {
 		wire = append(wire, 1) // recessive tail (FD best-effort path stops at data)
 	}
-	return
+	return wire, split
 }
 
 // canRenderTwoRateB lays wire out with wire[0..split] at spb1 and wire[split+1:]
@@ -102,7 +102,7 @@ func canRenderTwoRateB(wire []int, split, spb1, spb2 int, dominantLow bool, lead
 				v = hi
 			}
 		}
-		for j := 0; j < count; j++ {
+		for range count {
 			codes = append(codes, v)
 		}
 	}
@@ -136,7 +136,7 @@ func canStdRemoteFrameB(id, dlc int) []int {
 	}
 	wire := append([]int{}, stuffed...)
 	wire = append(wire, 1, 0, 1) // CRC del, ACK, ACK del
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		wire = append(wire, 1) // EOF + IFS
 	}
 	return wire
@@ -195,7 +195,7 @@ func breakCANFalseNeg(t *testing.T) {
 
 	// --- single valid frames, explicit exact baud, strict assertions ---------
 	const N = 60
-	for i := 0; i < N; i++ {
+	for range N {
 		spb := 3 + rng.Intn(60) // decoder floor is spb >= 3
 		dom := rng.Intn(2) == 0
 		class := rng.Intn(4) // 0 std, 1 ext, 2 fd, 3 fd+brs
@@ -306,7 +306,7 @@ func breakCANFalseNeg(t *testing.T) {
 	}
 
 	// --- auto-baud (the default menu path): must still recover the payload ----
-	for i := 0; i < 15; i++ {
+	for range 15 {
 		spb := 8 + rng.Intn(40)
 		dlc := rng.Intn(9)
 		data := make([]int, dlc)
@@ -332,12 +332,12 @@ func breakCANFalseNeg(t *testing.T) {
 	}
 
 	// --- back-to-back frames, no external gap between them --------------------
-	for i := 0; i < 12; i++ {
+	for range 12 {
 		spb := 8 + rng.Intn(24)
 		nf := 2 + rng.Intn(3)
 		var wire []int
 		var allData []int
-		for f := 0; f < nf; f++ {
+		for range nf {
 			dlc := rng.Intn(9)
 			data := make([]int, dlc)
 			for k := range data {
@@ -368,7 +368,7 @@ func breakCANFalsePos(t *testing.T) {
 
 	// --- pure garbage shapes: noise / ramp / flat / wrong-square / step ------
 	garbageFP := 0
-	for i := 0; i < 60; i++ {
+	for i := range 60 {
 		n := 300 + rng.Intn(3000)
 		kind := i % 5
 		codes := make([]uint8, n)
@@ -420,7 +420,7 @@ func breakCANFalsePos(t *testing.T) {
 
 	// --- corrupted CRC: a flipped CRC MUST be flagged ('!'), never accepted ---
 	crcFP := 0
-	for i := 0; i < 60; i++ {
+	for range 60 {
 		spb := 8 + rng.Intn(24)
 		dlc := 1 + rng.Intn(8)
 		data := make([]int, dlc)
@@ -441,7 +441,7 @@ func breakCANFalsePos(t *testing.T) {
 		}
 		wire := append([]int{}, stuffed...)
 		wire = append(wire, 1, 0, 1)
-		for j := 0; j < 10; j++ {
+		for range 10 {
 			wire = append(wire, 1)
 		}
 		codes := canRender(wire, spb, true, 8, 8)
@@ -463,7 +463,7 @@ func breakCANFalsePos(t *testing.T) {
 
 	// --- truncation: a frame cut before/inside the CRC must not be confident --
 	truncFP := 0
-	for i := 0; i < 60; i++ {
+	for range 60 {
 		spb := 8 + rng.Intn(20)
 		dlc := 3 + rng.Intn(6)
 		data := make([]int, dlc)
@@ -627,7 +627,7 @@ func breakCANEdge(t *testing.T) {
 	{
 		var big []int
 		var want []int
-		for f := 0; f < 40; f++ {
+		for f := range 40 {
 			data := []int{byte8(f), byte8(f * 7), byte8(f * 13)}
 			_, w := canStdFrame(f&0x7ff, 3, data)
 			big = append(big, w...)
@@ -658,15 +658,15 @@ func TestCANRecordOpeningInsideAFrame(t *testing.T) {
 	_, w1 := canStdFrame(0x123, 4, []int{0x55, 0xAA, 0x0F, 0xF0})
 	_, w2 := canStdFrame(0x100, 2, []int{0x11, 0x22})
 	var wire []int
-	for i := 0; i < 20; i++ {
+	for range 20 {
 		wire = append(wire, 1)
 	}
 	wire = append(wire, w1...)
-	for i := 0; i < 20; i++ {
+	for range 20 {
 		wire = append(wire, 1)
 	}
 	wire = append(wire, w2...)
-	for i := 0; i < 20; i++ {
+	for range 20 {
 		wire = append(wire, 1)
 	}
 	const spb = 8

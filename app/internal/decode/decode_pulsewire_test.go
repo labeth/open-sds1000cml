@@ -134,7 +134,7 @@ func TestDecodeWS281xLongStrip(t *testing.T) {
 	w := newTimeline(sr)
 	w.add(0, 60e-6)
 	var b []int
-	for i := 0; i < 3*60; i++ { // sixty LEDs
+	for i := range 3 * 60 { // sixty LEDs
 		b = append(b, (i*37)&0xFF)
 	}
 	wsFrame(w, 800e3, b)

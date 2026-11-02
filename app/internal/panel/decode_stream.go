@@ -5,13 +5,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
-
 	"open-sds/app/internal/decode"
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/panel/framecalc"
 	"open-sds/app/internal/panel/wsview"
 	"open-sds/app/internal/streamview"
+	"time"
 )
 
 // Stream is the scope-side decoded stream (ADR-PANEL-DECODED-STREAM).
@@ -514,7 +513,7 @@ func (c *Controller) setStreamMode(on bool) error {
 	c.mu.Unlock()
 	switch {
 	case on && !bus:
-		return fmt.Errorf("a stream needs a bus: set Protocol (Auto finds it)")
+		return errors.New("a stream needs a bus: set Protocol (Auto finds it)")
 	case on || inView:
 		c.showBusView(on)
 	}

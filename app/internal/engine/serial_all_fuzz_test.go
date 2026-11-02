@@ -4,10 +4,9 @@ package engine
 import (
 	"encoding/binary"
 	"math"
+	"open-sds/app/internal/sramcapture"
 	"testing"
 	"time"
-
-	"open-sds/app/internal/sramcapture"
 )
 
 // fuzzSampleS are the sample times a decoder meets: the scope's rates, the
@@ -17,7 +16,7 @@ var fuzzSampleS = []float64{2e-9, 4e-9, 1e-8, 1.024e-6 / 2, 2e-6, 1e-4, 0, -1, m
 // fuzzSerialParams builds every protocol's settings from the fuzzer's
 // bytes: in-range values most of the time, hostile ones the rest.
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-018
-func fuzzSerialParams(proto uint8, knobs []byte, pat []byte) SerialParams {
+func fuzzSerialParams(proto uint8, knobs, pat []byte) SerialParams {
 	k := make([]byte, 24)
 	copy(k, knobs)
 	u32 := func(i int) uint32 { return binary.LittleEndian.Uint32(k[i:]) }

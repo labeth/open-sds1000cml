@@ -13,7 +13,7 @@ import (
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-254
 func TestDecodeSDCardRecordCutInsideAToken(t *testing.T) {
 	var bits []int
-	for k := 0; k < 4; k++ {
+	for range 4 {
 		bits = append(bits, sdToken(true, 17, 0x1000, false)...)
 		bits = append(bits, sdIdle(2)...)
 		bits = append(bits, sdToken(false, 17, 0x900, false)...)
@@ -22,7 +22,7 @@ func TestDecodeSDCardRecordCutInsideAToken(t *testing.T) {
 		bits = append(bits, sdToken(false, 13, 0x900, false)...)
 	}
 	sr, per := 4e6, 4e-6
-	for cut := 0; cut < 48; cut++ {
+	for cut := range 48 {
 		l := newTwoLine(sr)
 		clockBits(l, bits[cut:], per)
 		r := DecodeSDCard(l.a.codes(), l.b.codes(), 1/sr, ClockedCfg{})

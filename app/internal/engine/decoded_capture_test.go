@@ -125,7 +125,7 @@ func TestDecodedOwnerBufferOverflowIsExplicit(t *testing.T) {
 		t.Fatal(err)
 	}
 	e := &Engine{sram: capture, decodedSession: &sramcapture.DecodedCapture{Identity: sramcapture.RecordIdentity{Epoch: 7, Record: 1}}}
-	for i := 0; i < decodedBufferLimit+52; i++ {
+	for range decodedBufferLimit + 52 {
 		e.pumpDecodedEvents()
 	}
 	if e.decodedError == nil || len(e.decodedBuffer) != decodedBufferLimit {
@@ -253,9 +253,11 @@ func webSessionEngine(t *testing.T, web bool, contact time.Duration) *Engine {
 	if err != nil {
 		t.Fatal(err)
 	}
-	e := &Engine{sram: capture, decodedRequests: make(chan decodedRequest, 1), done: make(chan struct{}), logf: t.Logf,
+	e := &Engine{
+		sram: capture, decodedRequests: make(chan decodedRequest, 1), done: make(chan struct{}), logf: t.Logf,
 		decodedSession: &sramcapture.DecodedCapture{Identity: sramcapture.RecordIdentity{Epoch: 7, Record: 1}},
-		decodedWeb:     web, decodedContact: time.Now().Add(-contact)}
+		decodedWeb:     web, decodedContact: time.Now().Add(-contact),
+	}
 	e.stats.DecodedWeb = web
 	e.SetRunning(true)
 	return e

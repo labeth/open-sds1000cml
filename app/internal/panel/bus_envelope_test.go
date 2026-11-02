@@ -4,14 +4,13 @@ package panel
 import (
 	"compress/gzip"
 	"encoding/json"
-	"os"
-	"strings"
-	"testing"
-
 	"open-sds/app/internal/decode"
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/panel/framecalc"
 	"open-sds/app/internal/panel/wsview"
+	"os"
+	"strings"
+	"testing"
 )
 
 // flash104 is the bench's 104 MHz SPI flash look-alike (clock C2, data C1,
@@ -468,8 +467,10 @@ func TestTheClockedPairsTakeTheirClockFromTheRecord(t *testing.T) {
 			t.Errorf("%s: a slow reading far coarser than a faster find stood", p)
 		}
 	}
-	cj := look{found: true, res: decode.Result{OK: true, Proto: "cjtag", SPB: 40, Bytes: []int{1, 2, 3}, Roles: decode.Roles{ChA: 1, ChB: 0}},
-		sampleS: 1.024e-6, envRun: [2]float64{0.2e-6, 0.2e-6}, envSeen: true}
+	cj := look{
+		found: true, res: decode.Result{OK: true, Proto: "cjtag", SPB: 40, Bytes: []int{1, 2, 3}, Roles: decode.Roles{ChA: 1, ChB: 0}},
+		sampleS: 1.024e-6, envRun: [2]float64{0.2e-6, 0.2e-6}, envSeen: true,
+	}
 	if stands(cj) {
 		t.Error("a cJTAG read off a 10 MHz bus's decimated record stood against its envelope")
 	}

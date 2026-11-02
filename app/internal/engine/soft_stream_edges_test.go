@@ -4,11 +4,10 @@ package engine
 import (
 	"math"
 	"math/rand"
-	"reflect"
-	"testing"
-
 	"open-sds/app/internal/decode"
 	"open-sds/app/internal/sramcapture"
+	"reflect"
+	"testing"
 )
 
 // linesWords packs two lines of levels (0 or 1, a period each) into
@@ -17,9 +16,9 @@ import (
 func linesWords(a, b []byte) []byte {
 	n := min(len(a), len(b)) / 16
 	raw := make([]byte, 4*n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		var wa, wb uint16
-		for k := 0; k < 16; k++ {
+		for k := range 16 {
 			wa |= uint16(a[16*i+k]&1) << k
 			wb |= uint16(b[16*i+k]&1) << k
 		}
@@ -66,8 +65,10 @@ func softEdgeRun(t *testing.T, proto int, p SerialParams, raw []byte, edges bool
 	if !edges {
 		d.Edges = nil
 	}
-	s := &softStream{p: p, proto: name, decoder: d, mask: 0xff, gapFree: true, quiet: quiet, bits: true,
-		trig: StreamManual, id: sramcapture.RecordIdentity{Epoch: softEpochBase | 1}}
+	s := &softStream{
+		p: p, proto: name, decoder: d, mask: 0xff, gapFree: true, quiet: quiet, bits: true,
+		trig: StreamManual, id: sramcapture.RecordIdentity{Epoch: softEpochBase | 1},
+	}
 	s.setTiming(plan)
 	s.newDecoder(int(quiet/s.sampleS), int((longest+quiet)/s.sampleS))
 	if s.edges != edges {
@@ -144,7 +145,7 @@ func TestSoftStreamEdgesMatchSamples(t *testing.T) {
 		plan, _ := softGapFreePlan("lin", baud, false, 1)
 		period := decode.StreamBitsPeriod(plan.period)
 		var frames [][]int
-		for i := 0; i < 30; i++ {
+		for i := range 30 {
 			frames = append(frames, []int{0x80 | i, i, 0x55, 0})
 		}
 		raw := bitsWords(linLevels(13/period, baud, frames), 13)
@@ -162,7 +163,7 @@ func TestSoftStreamEdgesMatchSamples(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-240
 func TestSoftStreamOrd(t *testing.T) {
 	rng := rand.New(rand.NewSource(9))
-	for it := 0; it < 200000; it++ {
+	for range 200000 {
 		s := &softStream{ordStep: math.Ldexp(1, rng.Intn(16)-3)}
 		switch rng.Intn(4) {
 		case 0:

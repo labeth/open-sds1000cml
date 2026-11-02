@@ -3,10 +3,10 @@ package engine
 
 import (
 	"math"
+	"open-sds/app/internal/sramcapture"
+	"strings"
 	"testing"
 	"time"
-
-	"open-sds/app/internal/sramcapture"
 )
 
 // A deep raw screen is decimated to a display-sized live record; a screen that
@@ -118,7 +118,7 @@ func TestHeldRecallRoundTrip(t *testing.T) {
 	var h heldRecall
 	mk := func(n int, fill byte) *Frame {
 		f := &Frame{C1: make([]uint8, n), C2: make([]uint8, n), Q1: make([]uint16, n), Q2: make([]uint16, n), Valid: n}
-		for i := 0; i < n; i++ {
+		for i := range n {
 			f.C1[i], f.C2[i], f.Q1[i], f.Q2[i] = fill+byte(i), fill-byte(i), uint16(i)<<4, uint16(i)<<5
 		}
 		return f
@@ -282,13 +282,15 @@ func TestRollHeldMarksGaps(t *testing.T) {
 	r.push(0, chunk(4), chunk(4), nil) // the past filled from the first chunk: 8 held, 4 captured
 	r.push(3, chunk(5), chunk(5), nil) // 3 held, 5 captured
 	got := ""
+	var gotSb285 strings.Builder
 	for _, h := range r.held {
 		if h {
-			got += "H"
+			gotSb285.WriteString("H")
 		} else {
-			got += "."
+			gotSb285.WriteString(".")
 		}
 	}
+	got += gotSb285.String()
 	// the newest 12: the first chunk (4), the gap (3), the second chunk (5)
 	if got != "....HHH....." {
 		t.Fatalf("held mask %s", got)

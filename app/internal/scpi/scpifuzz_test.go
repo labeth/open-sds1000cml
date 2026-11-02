@@ -5,12 +5,11 @@ import (
 	"fmt"
 	"math"
 	"math/rand"
+	"open-sds/app/internal/analog"
+	"open-sds/app/internal/engine"
 	"strconv"
 	"strings"
 	"testing"
-
-	"open-sds/app/internal/analog"
-	"open-sds/app/internal/engine"
 )
 
 // SCPI parser fuzz: HandleLine must never panic, whatever arrives on the
@@ -54,7 +53,7 @@ func TestSCPIFuzzNoPanic(t *testing.T) {
 	// random mutations of real-looking commands
 	rng := rand.New(rand.NewSource(42))
 	seeds := []string{"C1:VDIV 0.5", "TDIV 1E-3", "TRMD NORM", "C1:WF? DAT2", "WFSU SP,4,NP,1000,FP,0", "MSIZ 14K", "TRSE EDGE,SR,C1,HT,TI,HV,100NS", "C1:BWL OFF", "C2:UNIT A", "C1:SKEW -5NS", "C1:INVS ON", "TRCP DC", "C1:CPL A1M", "XYDS ON", "PESU INFINITE", "MENU ON", "GRDS FULL", "INTS GRID,100,TRACE,100", "BUZZ OFF"}
-	for i := 0; i < 20000; i++ {
+	for i := range 20000 {
 		b := []byte(seeds[rng.Intn(len(seeds))])
 		for k := 0; k < 1+rng.Intn(6); k++ {
 			switch rng.Intn(4) {
@@ -124,24 +123,32 @@ func TestSCPIFuzzSetQueryInvariant(t *testing.T) {
 	gens := []func() round{
 		func() round { // UNIT: shadow round-trip
 			ch, u := 1+rng.Intn(2), pick("V", "A")
-			return round{fmt.Sprintf("C%d:UNIT %s", ch, u), "",
-				fmt.Sprintf("C%d:UNIT?", ch), fmt.Sprintf("C%d:UNIT %s\n", ch, u)}
+			return round{
+				fmt.Sprintf("C%d:UNIT %s", ch, u), "",
+				fmt.Sprintf("C%d:UNIT?", ch), fmt.Sprintf("C%d:UNIT %s\n", ch, u),
+			}
 		},
 		func() round { // SKEW: shadow round-trip through the float grammar
 			ch := 1 + rng.Intn(2)
 			v := (rng.Float64()*200 - 100) * 1e-9
-			return round{fmt.Sprintf("C%d:SKEW %s", ch, strconv.FormatFloat(v, 'E', -1, 64)), "",
-				fmt.Sprintf("C%d:SKEW?", ch), fmt.Sprintf("C%d:SKEW %s\n", ch, sciS(v))}
+			return round{
+				fmt.Sprintf("C%d:SKEW %s", ch, strconv.FormatFloat(v, 'E', -1, 64)), "",
+				fmt.Sprintf("C%d:SKEW?", ch), fmt.Sprintf("C%d:SKEW %s\n", ch, sciS(v)),
+			}
 		},
 		func() round { // INVS: shadow round-trip
 			ch, s := 1+rng.Intn(2), pick("ON", "OFF")
-			return round{fmt.Sprintf("C%d:INVS %s", ch, s), "",
-				fmt.Sprintf("C%d:INVS?", ch), fmt.Sprintf("C%d:INVS %s\n", ch, s)}
+			return round{
+				fmt.Sprintf("C%d:INVS %s", ch, s), "",
+				fmt.Sprintf("C%d:INVS?", ch), fmt.Sprintf("C%d:INVS %s\n", ch, s),
+			}
 		},
 		func() round { // BWL: OFF matches the fixed state, ON must error
 			ch := 1 + rng.Intn(2)
-			r := round{fmt.Sprintf("C%d:BWL OFF", ch), "",
-				fmt.Sprintf("C%d:BWL?", ch), fmt.Sprintf("C%d:BWL OFF\n", ch)}
+			r := round{
+				fmt.Sprintf("C%d:BWL OFF", ch), "",
+				fmt.Sprintf("C%d:BWL?", ch), fmt.Sprintf("C%d:BWL OFF\n", ch),
+			}
 			if rng.Intn(2) == 0 {
 				r.set = fmt.Sprintf("C%d:BWL ON", ch)
 				r.setErr = "Data out of range\n"
@@ -158,28 +165,31 @@ func TestSCPIFuzzSetQueryInvariant(t *testing.T) {
 		},
 		func() round { // TDIV: engine ladder round-trip
 			v := tdivs[rng.Intn(len(tdivs))]
-			return round{"TDIV " + strconv.FormatFloat(v, 'E', -1, 64), "",
-				"TDIV?", "TDIV " + sciS(v) + "\n"}
+			return round{
+				"TDIV " + strconv.FormatFloat(v, 'E', -1, 64), "",
+				"TDIV?", "TDIV " + sciS(v) + "\n",
+			}
 		},
 		func() round { // TRLV: the query reflects the CLAMPED+quantized effective level
 			v := rng.Float64()*20 - 10 // spans well past the DAC window to exercise the clamp
-			code := int(math.Round(31437 - 911*v))
-			if code < engine.TrigCodeMin {
-				code = engine.TrigCodeMin
-			}
+			code := max(int(math.Round(31437-911*v)), engine.TrigCodeMin)
 			if code > engine.TrigCodeMax {
 				code = engine.TrigCodeMax
 			}
 			eff := engine.TrigLevelVolts(uint16(code))
-			return round{"TRLV " + strconv.FormatFloat(v, 'E', -1, 64), "",
-				"TRLV?", "TRLV " + sciV(eff) + "\n"}
+			return round{
+				"TRLV " + strconv.FormatFloat(v, 'E', -1, 64), "",
+				"TRLV?", "TRLV " + sciV(eff) + "\n",
+			}
 		},
 		func() round { // TRDL
 			// Within the screen: the trigger position holds it.
 			tdiv := h.sc.Snapshot().TdivS
 			v := (rng.Float64()*2 - 1) * 4.9 * tdiv
-			return round{"TRDL " + strconv.FormatFloat(v, 'E', -1, 64), "",
-				"TRDL?", "TRDL " + sciS(v) + "\n"}
+			return round{
+				"TRDL " + strconv.FormatFloat(v, 'E', -1, 64), "",
+				"TRDL?", "TRDL " + sciS(v) + "\n",
+			}
 		},
 		func() round { // TRSL
 			s := pick("POS", "NEG")
@@ -189,11 +199,15 @@ func TestSCPIFuzzSetQueryInvariant(t *testing.T) {
 			q := func() string { return "TRSE EDGE,SR," + trseSrc + ",HT,OFF\n" }
 			switch rng.Intn(4) {
 			case 2:
-				return round{"TRSE EDGE,SR," + pick("EX", "EX5", "EX10", "LINE") + ",HT,OFF",
-					"Data out of range\n", "TRSE?", q()}
+				return round{
+					"TRSE EDGE,SR," + pick("EX", "EX5", "EX10", "LINE") + ",HT,OFF",
+					"Data out of range\n", "TRSE?", q(),
+				}
 			case 3:
-				return round{"TRSE EDGE,SR," + pick("ZZ", "C9", "12") + ",HT,OFF",
-					"Command header error\n", "TRSE?", q()}
+				return round{
+					"TRSE EDGE,SR," + pick("ZZ", "C9", "12") + ",HT,OFF",
+					"Command header error\n", "TRSE?", q(),
+				}
 			default:
 				trseSrc = pick("C1", "C2")
 				return round{"TRSE EDGE,SR," + trseSrc + ",HT,OFF", "", "TRSE?", q()}
@@ -213,35 +227,47 @@ func TestSCPIFuzzSetQueryInvariant(t *testing.T) {
 		},
 		func() round { // ATTN
 			ch, v := 1+rng.Intn(2), pick("1", "10", "100", "1000")
-			return round{fmt.Sprintf("C%d:ATTN %s", ch, v), "",
-				fmt.Sprintf("C%d:ATTN?", ch), fmt.Sprintf("C%d:ATTN %s\n", ch, v)}
+			return round{
+				fmt.Sprintf("C%d:ATTN %s", ch, v), "",
+				fmt.Sprintf("C%d:ATTN?", ch), fmt.Sprintf("C%d:ATTN %s\n", ch, v),
+			}
 		},
 		func() round { // TRA
 			ch, s := 1+rng.Intn(2), pick("ON", "OFF")
-			return round{fmt.Sprintf("C%d:TRA %s", ch, s), "",
-				fmt.Sprintf("C%d:TRA?", ch), fmt.Sprintf("C%d:TRA %s\n", ch, s)}
+			return round{
+				fmt.Sprintf("C%d:TRA %s", ch, s), "",
+				fmt.Sprintf("C%d:TRA?", ch), fmt.Sprintf("C%d:TRA %s\n", ch, s),
+			}
 		},
 		func() round { // CPL: A1M/D1M/GND round-trip; 50Ω forms + garbage error, shadow untouched
 			ch := 1 + rng.Intn(2)
 			q := fmt.Sprintf("C%d:CPL?", ch)
 			switch rng.Intn(4) {
 			case 2:
-				return round{fmt.Sprintf("C%d:CPL %s", ch, pick("A50", "D50")),
-					"Data out of range\n", q, fmt.Sprintf("C%d:CPL %s\n", ch, cplLast[ch-1])}
+				return round{
+					fmt.Sprintf("C%d:CPL %s", ch, pick("A50", "D50")),
+					"Data out of range\n", q, fmt.Sprintf("C%d:CPL %s\n", ch, cplLast[ch-1]),
+				}
 			case 3:
-				return round{fmt.Sprintf("C%d:CPL %s", ch, pick("AC", "DC", "XYZ", "A1")),
-					"Command header error\n", q, fmt.Sprintf("C%d:CPL %s\n", ch, cplLast[ch-1])}
+				return round{
+					fmt.Sprintf("C%d:CPL %s", ch, pick("AC", "DC", "XYZ", "A1")),
+					"Command header error\n", q, fmt.Sprintf("C%d:CPL %s\n", ch, cplLast[ch-1]),
+				}
 			default:
 				s := pick("A1M", "D1M", "GND")
 				cplLast[ch-1] = s
-				return round{fmt.Sprintf("C%d:CPL %s", ch, s), "", q,
-					fmt.Sprintf("C%d:CPL %s\n", ch, s)}
+				return round{
+					fmt.Sprintf("C%d:CPL %s", ch, s), "", q,
+					fmt.Sprintf("C%d:CPL %s\n", ch, s),
+				}
 			}
 		},
 		func() round { // XYDS ↔ the panel view state; garbage errors, state untouched
 			if rng.Intn(3) == 0 {
-				return round{"XYDS " + pick("MAYBE", "1", "TRUE"), "Command header error\n",
-					"XYDS?", "XYDS " + onoff(xyOn) + "\n"}
+				return round{
+					"XYDS " + pick("MAYBE", "1", "TRUE"), "Command header error\n",
+					"XYDS?", "XYDS " + onoff(xyOn) + "\n",
+				}
 			}
 			xyOn = rng.Intn(2) == 0
 			return round{"XYDS " + onoff(xyOn), "", "XYDS?", "XYDS " + onoff(xyOn) + "\n"}
@@ -255,11 +281,15 @@ func TestSCPIFuzzSetQueryInvariant(t *testing.T) {
 			}
 			switch rng.Intn(4) {
 			case 2:
-				return round{"PESU " + pick("1", "2", "5", "10", "20"),
-					"Data out of range\n", "PESU?", "PESU " + p() + "\n"}
+				return round{
+					"PESU " + pick("1", "2", "5", "10", "20"),
+					"Data out of range\n", "PESU?", "PESU " + p() + "\n",
+				}
 			case 3:
-				return round{"PESU " + pick("FOREVER", "0.5", "ON"),
-					"Command header error\n", "PESU?", "PESU " + p() + "\n"}
+				return round{
+					"PESU " + pick("FOREVER", "0.5", "ON"),
+					"Command header error\n", "PESU?", "PESU " + p() + "\n",
+				}
 			default:
 				peOn = rng.Intn(2) == 0
 				return round{"PESU " + p(), "", "PESU?", "PESU " + p() + "\n"}
@@ -267,8 +297,10 @@ func TestSCPIFuzzSetQueryInvariant(t *testing.T) {
 		},
 		func() round { // MENU ↔ the panel softkey-menu state
 			if rng.Intn(3) == 0 {
-				return round{"MENU " + pick("2", "SHOW"), "Command header error\n",
-					"MENU?", "MENU " + onoff(menuOn) + "\n"}
+				return round{
+					"MENU " + pick("2", "SHOW"), "Command header error\n",
+					"MENU?", "MENU " + onoff(menuOn) + "\n",
+				}
 			}
 			menuOn = rng.Intn(2) == 0
 			return round{"MENU " + onoff(menuOn), "", "MENU?", "MENU " + onoff(menuOn) + "\n"}
@@ -300,8 +332,10 @@ func TestSCPIFuzzSetQueryInvariant(t *testing.T) {
 		func() round { // VDIV: detent ladder round-trip through the fake FE
 			ch := 1 + rng.Intn(2)
 			v := analog.Detents[rng.Intn(len(analog.Detents))].VdivV * h.probe(ch-1) // probe-tip
-			return round{fmt.Sprintf("C%d:VDIV %s", ch, strconv.FormatFloat(v, 'E', -1, 64)), "",
-				fmt.Sprintf("C%d:VDIV?", ch), fmt.Sprintf("C%d:VDIV %s\n", ch, sciV(v))}
+			return round{
+				fmt.Sprintf("C%d:VDIV %s", ch, strconv.FormatFloat(v, 'E', -1, 64)), "",
+				fmt.Sprintf("C%d:VDIV?", ch), fmt.Sprintf("C%d:VDIV %s\n", ch, sciV(v)),
+			}
 		},
 		func() round { // OFST: round-trips through the DAC-code quantizer
 			ch := 1 + rng.Intn(2)
@@ -312,12 +346,14 @@ func TestSCPIFuzzSetQueryInvariant(t *testing.T) {
 			if code != 0 {
 				w = analog.OffsetVolts(ch-1, code) * p
 			}
-			return round{fmt.Sprintf("C%d:OFST %s", ch, strconv.FormatFloat(v, 'E', -1, 64)), "",
-				fmt.Sprintf("C%d:OFST?", ch), fmt.Sprintf("C%d:OFST %s\n", ch, sciV(w))}
+			return round{
+				fmt.Sprintf("C%d:OFST %s", ch, strconv.FormatFloat(v, 'E', -1, 64)), "",
+				fmt.Sprintf("C%d:OFST?", ch), fmt.Sprintf("C%d:OFST %s\n", ch, sciV(w)),
+			}
 		},
 	}
 
-	for i := 0; i < 5000; i++ {
+	for i := range 5000 {
 		r := gens[rng.Intn(len(gens))]()
 		gotSet := string(h.HandleLine([]byte(r.set + "\n")))
 		if gotSet != r.setErr {

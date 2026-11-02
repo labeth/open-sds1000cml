@@ -138,16 +138,16 @@ func TestStackEdgeAccumulatorRTL(t *testing.T) {
 			moments[b][c] = moment{new(big.Int), new(big.Int), new(big.Int), 0, 0}
 		}
 	}
-	accumulate := func(hits []edgeHit, initial int64, firstBin, factor int64, mask int) {
+	accumulate := func(hits []edgeHit, initial, firstBin, factor int64, mask int) {
 		for k, h := range hits {
 			odd := (initial+int64(k))%2 == 0
-			for b := int64(0); b < bins; b++ {
+			for b := range int64(bins) {
 				pos := (h.position << 24) + h.delta + ((firstBin+b)<<24)/factor
 				if pos < 0 || pos>>24 >= n-1 {
 					continue
 				}
 				idx, frac := pos>>24, pos&(1<<24-1)
-				for c := 0; c < 2; c++ {
+				for c := range 2 {
 					if mask&(1<<c) == 0 {
 						continue
 					}
@@ -179,8 +179,8 @@ func TestStackEdgeAccumulatorRTL(t *testing.T) {
 	expected := [][]FPGAStackMoments{}
 	snapshot := func() {
 		var tile []FPGAStackMoments
-		for b := 0; b < bins; b++ {
-			for c := 0; c < 2; c++ {
+		for b := range bins {
+			for c := range 2 {
 				m := moments[b][c]
 				tile = append(tile, FPGAStackMoments{Sum: limbs(m.s), SumSquares: limbs(m.q), SumOdd: limbs(m.a), Count: m.n, CountOdd: m.na})
 				fmt.Fprintf(&input, "r %d %d\n", b, c)
@@ -200,9 +200,11 @@ func TestStackEdgeAccumulatorRTL(t *testing.T) {
 		line := "q 0 0 1 0 0\n"
 		if qual != nil {
 			line = fmt.Sprintf("t %d", len(qual.template))
+			var lineSb203 strings.Builder
 			for _, v := range qual.template {
-				line += fmt.Sprintf(" %d", v)
+				lineSb203.WriteString(fmt.Sprintf(" %d", v))
 			}
+			line += lineSb203.String()
 			line += fmt.Sprintf("\nq 1 %d %d %d %d\n", qual.count, qual.stride, qual.pre, qual.threshold)
 		}
 		line += fmt.Sprintf("s %d %d %d %d %d %d %d %d %d %d %d %d %d\n", first, n, pre, separation, ch, f, level, hysteresis, bins, firstBin, factor, initial, mask)
@@ -280,13 +282,13 @@ func TestStackEdgeAccumulatorRTL(t *testing.T) {
 		fmt.Fprintf(&hex, "%02x%02x\n", w[1], w[0])
 	}
 	wavePath, inputPath, portPath := filepath.Join(dir, "wave.hex"), filepath.Join(dir, "input.txt"), filepath.Join(dir, "port.txt")
-	if err := os.WriteFile(portPath, []byte(portInput.String()), 0600); err != nil {
+	if err := os.WriteFile(portPath, []byte(portInput.String()), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(wavePath, []byte(hex.String()), 0600); err != nil {
+	if err := os.WriteFile(wavePath, []byte(hex.String()), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(inputPath, []byte(input.String()), 0600); err != nil {
+	if err := os.WriteFile(inputPath, []byte(input.String()), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	engine := []string{"stack_edge_accumulator.v", "stack_edge_hits.v", "stack_tiled_accumulator.v", "stack_tile_access.v", "stack_tile_transfer.v", "stack_state_tile.v", "stack_resample_store.v", "stack_resample.v", "stack_positions.v", "stack_interpolate.v", "stack_accumulate.v", "stack_bin_writer.v"}
@@ -295,7 +297,7 @@ func TestStackEdgeAccumulatorRTL(t *testing.T) {
 		t.Helper()
 		var tiles, done, peeked int
 		var state []FPGAStackMoments
-		for _, line := range strings.Split(string(out), "\n") {
+		for line := range strings.SplitSeq(string(out), "\n") {
 			switch {
 			case strings.HasPrefix(line, "D "):
 				var hits, crossings, invalid, rejected int

@@ -194,8 +194,10 @@ func CompAuto(bitsGained, rawNyqHz, spend float64) CompOpts {
 		return CompFigures(CompOpts{Fbw: fbw, Eps: eps, Gmax: gmax, Order: 3}).PeakBoostDb
 	}
 	mk := func(fbw float64) CompOpts {
-		return CompOpts{Fbw: fbw, Eps: eps, Gmax: gmax, Order: 3,
-			BudgetDb: budgetDb, BitsGained: bg, Auto: true}
+		return CompOpts{
+			Fbw: fbw, Eps: eps, Gmax: gmax, Order: 3,
+			BudgetDb: budgetDb, BitsGained: bg, Auto: true,
+		}
 	}
 	if peak(floor) >= budgetDb {
 		return mk(floor)
@@ -204,7 +206,7 @@ func CompAuto(bitsGained, rawNyqHz, spend float64) CompOpts {
 		return mk(ceil)
 	}
 	lo, hi := floor, ceil
-	for i := 0; i < 26; i++ {
+	for range 26 {
 		mid := (lo + hi) / 2
 		if peak(mid) <= budgetDb {
 			lo = mid
@@ -244,7 +246,7 @@ func compFFT(re, im []float64, inverse bool) {
 		wr, wi := math.Cos(ang), math.Sin(ang)
 		half := length / 2
 		cr, ci := 1.0, 0.0
-		for k := 0; k < half; k++ {
+		for k := range half {
 			twr[k], twi[k] = cr, ci
 			u1 := cr * wr
 			u2 := ci * wi
@@ -275,7 +277,7 @@ func compFFT(re, im []float64, inverse bool) {
 		}
 	}
 	if inverse {
-		for i := 0; i < n; i++ {
+		for i := range n {
 			re[i] /= float64(n)
 			im[i] /= float64(n)
 		}
@@ -288,7 +290,7 @@ func compFFT(re, im []float64, inverse bool) {
 func compResample(src []float64, m, nDst int) []float64 {
 	dst := make([]float64, nDst)
 	ratio := float64(m) / float64(nDst)
-	for j := 0; j < nDst; j++ {
+	for j := range nDst {
 		t := float64(j) * ratio
 		i0 := int(math.Floor(t))
 		w := t - float64(i0)
@@ -335,7 +337,7 @@ func Compensate(mean []float32, dtFine float64, o CompOpts) []float32 {
 		return mean
 	}
 	last := -1
-	for i := 0; i < m; i++ {
+	for i := range m {
 		if mean[i] >= 0 {
 			if last >= 0 && i-last > 1 {
 				a, b := x[last], x[i]
@@ -359,13 +361,10 @@ func Compensate(mean []float32, dtFine float64, o CompOpts) []float32 {
 	}
 
 	// 1b. Endpoint detrend (boundary-match the circular record).
-	den := m - 1
-	if den < 1 {
-		den = 1
-	}
+	den := max(m-1, 1)
 	trend0 := x[0]
 	trendSlope := (x[m-1] - x[0]) / float64(den)
-	for i := 0; i < m; i++ {
+	for i := range m {
 		p := trendSlope * float64(i)
 		x[i] -= trend0 + p
 	}
@@ -402,7 +401,7 @@ func Compensate(mean []float32, dtFine float64, o CompOpts) []float32 {
 	// 4. Resample back, floor filled samples at 0, restore the gap pattern.
 	back := compResample(re, n, m)
 	comp := make([]float32, m)
-	for i := 0; i < m; i++ {
+	for i := range m {
 		if mean[i] < 0 {
 			comp[i] = -1
 			continue

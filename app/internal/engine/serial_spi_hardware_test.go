@@ -2,9 +2,8 @@
 package engine
 
 import (
-	"testing"
-
 	"open-sds/app/internal/sramcapture"
+	"testing"
 )
 
 // TRLC-LINKS: REQ-SDS-013

@@ -14,7 +14,7 @@ func TestHoldoffStepsOneTwoFiveToTenSeconds(t *testing.T) {
 	press(t, c, "trigmenu")
 	goRow(t, c, "trig.holdoff")
 	var seen []string
-	for i := 0; i < 20; i++ {
+	for range 20 {
 		seen = append(seen, rowText(c, "trig.holdoff"))
 		turn(c, "horizpos", 1)
 	}

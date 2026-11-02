@@ -2,11 +2,10 @@
 package panel
 
 import (
+	"open-sds/app/internal/settings"
 	"strings"
 	"testing"
 	"time"
-
-	"open-sds/app/internal/settings"
 )
 
 // The Save/Recall key opens the FILE tab: a row per numbered setup with what
@@ -72,10 +71,12 @@ func TestPrintKeyShowsResult(t *testing.T) {
 // trigger, the channels, the decoder and the view.
 // TRLC-LINKS: REQ-SDS-136
 func TestSetupSummary(t *testing.T) {
-	st := settings.Settings{TdivS: 500e-6, Trigger: settings.Trigger{Rising: true, Source: 1, LevelCode: 31437},
+	st := settings.Settings{
+		TdivS: 500e-6, Trigger: settings.Trigger{Rising: true, Source: 1, LevelCode: 31437},
 		Ch:     [2]settings.Channel{{VdivV: 1, Probe: 10}, {VdivV: 0.5, Probe: 1}},
 		Decode: settings.Decode{Proto: 2}, ViewMode: 2,
-		UI: settings.UI{Set: true, Workspace: 2}}
+		UI: settings.UI{Set: true, Workspace: 2},
+	}
 	if got := setupSummary(st); got != "SPECTRUM  500us/div  C2^ 0V  C1 10V C2 500mV  UART  FFT" {
 		t.Fatalf("summary %q", got)
 	}

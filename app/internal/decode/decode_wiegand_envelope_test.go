@@ -10,7 +10,7 @@ func peakEnvelope(src []uint8, bucket int) []uint8 {
 	n := len(src) / bucket
 	out := make([]uint8, 0, 2*n)
 	last := src[0]
-	for b := 0; b < n; b++ {
+	for b := range n {
 		lo, hi := uint8(255), uint8(0)
 		for _, v := range src[b*bucket : (b+1)*bucket] {
 			lo, hi = min(lo, v), max(hi, v)

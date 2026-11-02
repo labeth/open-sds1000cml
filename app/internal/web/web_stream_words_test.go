@@ -8,6 +8,8 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"open-sds/app/internal/engine"
+	"open-sds/app/internal/testenv"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -15,9 +17,6 @@ import (
 	"sync"
 	"testing"
 	"time"
-
-	"open-sds/app/internal/engine"
-	"open-sds/app/internal/testenv"
 )
 
 // wordsScope is a scope whose digital stream a page decodes: two chunks of
@@ -40,9 +39,11 @@ func (s *wordsScope) ReadClientWords(seq uint64, max int, wait time.Duration, ds
 	s.asked = append(s.asked, seq)
 	s.waits = append(s.waits, wait)
 	s.mu.Unlock()
-	info := engine.ClientStreamInfo{Session: 0xC0000003, Proto: "lin", PeriodS: 8.192e-6, Lines: 1, CloseN: 900, MaxN: 4000, PushN: 1 << 12,
+	info := engine.ClientStreamInfo{
+		Session: 0xC0000003, Proto: "lin", PeriodS: 8.192e-6, Lines: 1, CloseN: 900, MaxN: 4000, PushN: 1 << 12,
 		PushMax: 1 << 18, KeepWords: 60, LeadWords: 4, Mask: 0xFFFF, Active: true,
-		Params: engine.SerialParams{Proto: 11, Baud: 19200, Threshold: 90, HaveThr: true}}
+		Params: engine.SerialParams{Proto: 11, Baud: 19200, Threshold: 90, HaveThr: true},
+	}
 	quiet := []byte{3, 0, 0, 0x80, 0xFF, 0xFF, 0, 0} // a run of three quiet words
 	busy := []byte{2, 0, 0, 0, 0x0F, 0xF0, 0, 0, 0xFF, 0x00, 0, 0}
 	dst = append(dst[:0], engine.ClientChunk{Seq: seq, Index: 160, Words: 3, Check: true, Enc: quiet},
@@ -95,7 +96,7 @@ func TestStreamWordsEndpoints(t *testing.T) {
 	}
 	body, _ := io.ReadAll(r.Body)
 	r.Body.Close()
-	if r.StatusCode != 200 || string(body[:4]) != "SDW1" {
+	if r.StatusCode != http.StatusOK || string(body[:4]) != "SDW1" {
 		t.Fatalf("status %d, %q", r.StatusCode, body[:min(8, len(body))])
 	}
 	if len(sc.asked) != 1 || sc.asked[0] != 7 || sc.waits[0] != 1500*time.Millisecond {
@@ -201,7 +202,7 @@ type benchWords struct {
 func (s *benchWords) ReadClientWords(seq uint64, max int, wait time.Duration, dst []engine.ClientChunk) (engine.ClientWords, func()) {
 	cw := engine.ClientWords{Info: engine.ClientStreamInfo{Session: 1, Proto: "swd", Lines: 2, Mask: 0xFFFFFFFF, Active: true}, Next: seq + 16}
 	n := min(max>>16, len(s.enc)>>16)
-	for k := 0; k < n; k++ {
+	for k := range n {
 		dst = append(dst, engine.ClientChunk{Seq: seq + uint64(k), Index: uint64(k) << 18, Words: 16383, Enc: s.enc[k<<16 : (k+1)<<16]})
 	}
 	cw.Chunks = dst
@@ -251,7 +252,7 @@ func (d *discardRW) WriteHeader(int) {}
 func BenchmarkStreamWordsHandler(b *testing.B) {
 	sc := &benchWords{fakeScope: &fakeScope{}, enc: make([]byte, 1<<20)}
 	h := New(sc, nil, nil, nil).Handler()
-	req := httptest.NewRequest("GET", "/api/stream/words.bin?from=0&max=1048576", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/stream/words.bin?from=0&max=1048576", nil)
 	w := &discardRW{h: http.Header{}}
 	b.ReportAllocs()
 	for b.Loop() {

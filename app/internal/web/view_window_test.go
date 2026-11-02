@@ -3,13 +3,12 @@ package web
 
 import (
 	"math"
-	"os/exec"
-	"testing"
-	"time"
-
 	"open-sds/app/internal/analog"
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/testenv"
+	"os/exec"
+	"testing"
+	"time"
 )
 
 // viewLeaseScope records the page's view-window lease.
@@ -57,8 +56,10 @@ func TestFramePollLeasesTheViewWindow(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-163, REQ-SDS-202
 func TestBinFrameCarriesTheViewWindow(t *testing.T) {
 	const n, vn = 4096, 100
-	f := &engine.Frame{C1: make([]uint8, n), C2: make([]uint8, n), Seq: 3, Valid: n, WinCols: 4065, CaptureDepth: 1 << 20,
-		EdgeX: 2048, PeakDetect: true, Ordered: true, Trigd: true, TdivS: 200e-6, DisplayedS: 200e-6, SampleS: 488e-9}
+	f := &engine.Frame{
+		C1: make([]uint8, n), C2: make([]uint8, n), Seq: 3, Valid: n, WinCols: 4065, CaptureDepth: 1 << 20,
+		EdgeX: 2048, PeakDetect: true, Ordered: true, Trigd: true, TdivS: 200e-6, DisplayedS: 200e-6, SampleS: 488e-9,
+	}
 	for i := range n {
 		f.C1[i], f.C2[i] = 150, 100
 	}

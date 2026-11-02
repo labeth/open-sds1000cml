@@ -2,10 +2,9 @@
 package web
 
 import (
+	"open-sds/app/internal/analysis"
 	"os"
 	"testing"
-
-	"open-sds/app/internal/analysis"
 )
 
 // TestLayerTablesJS keeps layer_tables.js equal to the scope's layer tables,

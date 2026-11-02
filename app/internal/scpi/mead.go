@@ -4,7 +4,6 @@ package scpi
 import (
 	"fmt"
 	"math"
-
 	"open-sds/app/internal/analog"
 	"open-sds/app/internal/engine"
 )

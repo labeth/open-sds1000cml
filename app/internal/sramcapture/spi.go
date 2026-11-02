@@ -1,7 +1,7 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-SRAMCAPTURE
 package sramcapture
 
-import "fmt"
+import "errors"
 
 // SPITriggerConfig selects two-wire, eight-bit SPI with explicit idle framing.
 // GapTicks is the maximum interval between sampling edges at 125 MHz; use
@@ -69,7 +69,7 @@ func (c *Capture) configureSPI(revision uint16, p SPITriggerConfig) error {
 	}
 	if capability != spiLevels && capability != spiSamples {
 		if p.Enabled {
-			return fmt.Errorf("sramcapture: fabric lacks hardware SPI trigger")
+			return errors.New("sramcapture: fabric lacks hardware SPI trigger")
 		}
 		return nil
 	}

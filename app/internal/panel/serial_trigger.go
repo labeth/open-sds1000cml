@@ -2,8 +2,7 @@
 package panel
 
 import (
-	"fmt"
-
+	"errors"
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/panel/framecalc"
 )
@@ -154,7 +153,7 @@ func (c *Controller) syncSerialBus() {
 func (c *Controller) setI2CAddr(a int) error {
 	se := c.serialTrig()
 	if se == nil {
-		return fmt.Errorf("no serial trigger in this engine")
+		return errors.New("no serial trigger in this engine")
 	}
 	p := se.SerialConfig()
 	p.Addr = clampInt(a, -1, 127)

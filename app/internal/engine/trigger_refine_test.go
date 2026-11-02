@@ -60,7 +60,7 @@ func TestUnconfirmedEdgeTriggersAreCounted(t *testing.T) {
 	if !e.placeEdgeTrigger(g, edge, nil, 136, true) || math.Abs(g.EdgeX-99.5) > 0.01 || e.stats.FalseTriggers != 1 {
 		t.Fatalf("a real edge: point %.2f, %d noise", g.EdgeX, e.stats.FalseTriggers)
 	}
-	for i := 0; i < 30; i++ {
+	for range 30 {
 		e.placeEdgeTrigger(&Frame{C1: flat, Valid: 200, EdgeX: 98, Trigd: true}, flat, nil, 136, true)
 	}
 	if e.stats.NoiseTriggers < 0.25 {

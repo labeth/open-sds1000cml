@@ -2,10 +2,9 @@
 package app
 
 import (
+	"open-sds/app/internal/engine"
 	"testing"
 	"time"
-
-	"open-sds/app/internal/engine"
 )
 
 // With a web page showing the scope the engine comes first: under its rate
@@ -19,37 +18,37 @@ import (
 func TestLCDGovPage(t *testing.T) {
 	run := func(fps float64) engine.Stats { return engine.Stats{Running: true, FPS: fps} }
 	g := newLCDGov()
-	for i := 0; i < 200; i++ {
+	for range 200 {
 		g.step(run(55), 25, 0.99, true, true)
 	}
 	if g.period != lcdSlowestPeriod || g.hold != lcdLongestHold || g.pace != 0 {
 		t.Fatalf("slow engine, busy core, display at 25: %+v", *g)
 	}
-	for i := 0; i < 200; i++ {
+	for range 200 {
 		g.step(run(55), 15, 0.99, true, true)
 	}
 	if g.pace != lcdLongestPace {
 		t.Fatalf("display under 20: pace %v, want %v", g.pace, lcdLongestPace)
 	}
-	for i := 0; i < 200; i++ {
+	for range 200 {
 		g.step(run(20), 19, 0.99, true, true)
 	}
 	if g.pace != 0 {
 		t.Fatalf("display keeping up with a paced engine: pace %v, want 0", g.pace)
 	}
-	for i := 0; i < 200; i++ {
+	for range 200 {
 		g.step(run(70), 40, 0.95, true, true)
 	}
 	if g.period != lcdFramePeriod || g.hold != 0 || g.pace != 0 {
 		t.Fatalf("engine with room: %+v", *g)
 	}
-	for i := 0; i < 200; i++ {
+	for range 200 {
 		g.step(run(31), 31, 0.70, true, true)
 	}
 	if g.period != lcdFramePeriod || g.hold != 0 {
 		t.Fatalf("engine waiting on its records: %+v", *g)
 	}
-	for i := 0; i < 200; i++ {
+	for range 200 {
 		g.step(run(55), 0, 0.99, true, true)
 	}
 	g.step(run(55), 0, 0.99, true, false)
@@ -77,19 +76,19 @@ func TestLCDGovNoPage(t *testing.T) {
 	if g.period != lcdFramePeriod || g.hold != 0 {
 		t.Fatalf("no page: %+v", *g)
 	}
-	for i := 0; i < 200; i++ {
+	for range 200 {
 		g.step(run(40), 20, 0.99, false, true)
 	}
 	if g.pace != lcdLongestPace {
 		t.Fatalf("display behind a busy engine: pace %v, want %v", g.pace, lcdLongestPace)
 	}
-	for i := 0; i < 200; i++ {
+	for range 200 {
 		g.step(run(45), 45, 0.99, false, true)
 	}
 	if g.pace != 0 {
 		t.Fatalf("display keeping up: pace %v, want 0", g.pace)
 	}
-	for i := 0; i < 200; i++ {
+	for range 200 {
 		g.step(run(60), 0, 0.99, false, false)
 	}
 	if g.pace != 0 {

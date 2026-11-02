@@ -120,7 +120,7 @@ func buildHUD(e *engine.Engine, fe *analog.FrontEnd) lcd.HUD {
 		hud.DecParity = d.DecParity
 		hud.DecFormat, hud.DecDelayNs = d.DecFormat, d.DecDelayNs
 		rv := pc.RefView()
-		for i := 0; i < 2; i++ {
+		for i := range 2 {
 			hud.RefC1[i], hud.RefC2[i], hud.RefShow[i] = rv[i].C1, rv[i].C2, rv[i].Show
 			hud.RefVdiv[i], hud.RefOff[i], hud.RefProbe[i] = rv[i].Vdiv, rv[i].Off, rv[i].Probe
 		}

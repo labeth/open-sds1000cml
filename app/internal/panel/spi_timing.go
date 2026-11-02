@@ -2,9 +2,9 @@
 package panel
 
 import (
+	"errors"
 	"fmt"
 	"math"
-
 	"open-sds/app/internal/decode"
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/panel/framecalc"
@@ -103,7 +103,7 @@ func (c *Controller) setSPIDelayAuto() error {
 func (c *Controller) setSPIClock(hz int) error {
 	se := c.serialTrig()
 	if se == nil {
-		return fmt.Errorf("no serial trigger in this engine")
+		return errors.New("no serial trigger in this engine")
 	}
 	p := se.SerialConfig()
 	p.SPIClockHz = max(0, min(hz, 125_000_000))
@@ -206,7 +206,8 @@ var spiClockLadder = []float64{100e3, 400e3, 1e6, 2e6, 5e6, 10e6, 20e6, 25e6, 33
 // receiverRow is BUS's choice of FPGA receiver for SPI, UART and I2C.
 // TRLC-LINKS: REQ-SDS-229
 func receiverRow() *row {
-	return &row{id: "bus.receiver", label: "Receiver", kind: wsview.Enum,
+	return &row{
+		id: "bus.receiver", label: "Receiver", kind: wsview.Enum,
 		help: "The FPGA receiver that triggers and streams SPI, UART and I2C. Auto: the general image's receiver on 125 MHz line levels where it reads the bus, else the one on the samples (the fast image: sub-nanosecond edges, SPI to 125 MHz, UART to 62.5 MBd, I2C high-speed mode). Samples: that one at any rate (an image load of a few seconds).",
 		rel: func(s *sv) bool {
 			return s.hasSerial && (s.decProto == framecalc.ProtoUART || s.decProto == framecalc.ProtoI2C || s.decProto == framecalc.ProtoSPI)

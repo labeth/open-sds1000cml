@@ -292,13 +292,12 @@ func (s *Server) rawBinMsg(since uint64) []byte {
 			flags |= binUnchanged
 			return
 		}
-		n := f.Valid
-		// clamp to the actual sample slices: Valid > len is an engine-invariant
-		// violation, but a serve-path slice panic on one bad frame must never
-		// crash the UI (frame-serve fuzz). C2 may be shorter than C1.
-		if n > len(f.C1) {
-			n = len(f.C1)
-		}
+		n := min(
+			// clamp to the actual sample slices: Valid > len is an engine-invariant
+			// violation, but a serve-path slice panic on one bad frame must never
+			// crash the UI (frame-serve fuzz). C2 may be shorter than C1.
+			f.Valid, len(f.C1),
+		)
 		if n > len(f.C2) {
 			n = len(f.C2)
 		}

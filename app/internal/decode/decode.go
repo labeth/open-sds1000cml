@@ -230,7 +230,8 @@ func EnvelopeRun(codes []uint8, sampleS float64) (run, busy float64) {
 }
 
 // Names are the protocols as the screens name them.
-var Names = map[string]string{"uart": "UART", "i2c": "I2C", "spi": "SPI", "manchester": "Manchester", "sent": "SENT",
+var Names = map[string]string{
+	"uart": "UART", "i2c": "I2C", "spi": "SPI", "manchester": "Manchester", "sent": "SENT",
 	"canfd": "CAN", "mil1553": "MIL-1553", "arinc429": "ARINC 429", "usbls": "USB", "flexray": "FlexRay",
 	"lin": "LIN", "dmx512": "DMX512", "midi": "MIDI", "modbus": "Modbus RTU", "onewire": "1-Wire", "ws281x": "WS281x",
 	"dht": "DHT", "cec": "HDMI-CEC", "j1850": "J1850 VPW", "irnec": "IR NEC", "irsirc": "IR Sony", "irrc5": "IR RC-5",
@@ -238,7 +239,8 @@ var Names = map[string]string{"uart": "UART", "i2c": "I2C", "spi": "SPI", "manch
 	"wiegand": "Wiegand", "quad": "Quadrature", "stepper": "Stepper", "pwm": "PWM", "rcencode": "RC encode", "ook": "OOK",
 	"miller": "Miller", "morse": "Morse", "dcf77": "DCF77", "em4100": "EM4100", "em4305": "EM4305", "t55xx": "T55xx",
 	"swim": "SWIM", "sdq": "SDQ", "pjdl": "PJON", "dsi": "DSI", "qi": "Qi", "sdcard": "SD card", "pdi": "PDI", "cjtag": "cJTAG",
-	"maple": "Maple", "caliper": "Caliper", "irmp": "IR multi"}
+	"maple": "Maple", "caliper": "Caliper", "irmp": "IR multi",
+}
 
 // Roles is the channel assignment and SPI framing Autodetect chose: ChA is the
 // line (or I2C SCL / SPI CLK), ChB the I2C SDA / SPI DATA, 0 = C1.
@@ -340,7 +342,7 @@ func FmtByte(v int, format string) string {
 // "ascii" and "both" (the last two for the printable bytes).
 var byteTexts = func() (t [4][256]string) {
 	for v := range 256 {
-		t[0][v] = fmt.Sprint(v)
+		t[0][v] = strconv.Itoa(v)
 		t[1][v] = fmt.Sprintf("%08b", v)
 		if v >= 32 && v < 127 {
 			t[2][v] = string(rune(v))
@@ -670,8 +672,10 @@ func sliceChannel(codes []uint8, thr float64, haveThr bool) sliced {
 		}
 		i = j + 1
 	}
-	return sliced{ok: true, n: n, codes: codes, threshold: threshold, lowRail: lowRail,
-		highRail: highRail, amp: amp, thHi: thHi, thLo: thLo, first: first, edges: edges}
+	return sliced{
+		ok: true, n: n, codes: codes, threshold: threshold, lowRail: lowRail,
+		highRail: highRail, amp: amp, thHi: thHi, thLo: thLo, first: first, edges: edges,
+	}
 }
 
 // codeCeil is the least code at or above t (256: none, as for NaN).
@@ -740,7 +744,7 @@ func FmtWord(v, bits int, format string) string {
 	v &= (1 << bits) - 1
 	switch format {
 	case "dec":
-		return fmt.Sprint(v)
+		return strconv.Itoa(v)
 	case "bin":
 		return fmt.Sprintf("%0*b", bits, v)
 	case "ascii":

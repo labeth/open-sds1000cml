@@ -3,12 +3,11 @@ package panel
 
 import (
 	"math"
-	"strconv"
-	"time"
-
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/panel/wsview"
 	"open-sds/app/internal/sound"
+	"strconv"
+	"time"
 )
 
 // SOUND's takes on the scope's side (engine/sound_take.go makes them): while
@@ -96,8 +95,10 @@ func (s *soundSvc) takeLatest(n, ch int) ([]float64, engine.SoundBlock, bool) {
 	a := int(math.Round(c - float64(n)/2))
 	a = max(0, min(a, tk.N-n))
 	b := min(tk.N, a+n)
-	blk := engine.SoundBlock{First: tk.First + uint64(a), N: b - a, Q1: tk.Q1[a:b], Q2: tk.Q2[a:b], RateHz: tk.RateHz,
-		Scales: tk.Scales, Next: tk.First + uint64(tk.N)}
+	blk := engine.SoundBlock{
+		First: tk.First + uint64(a), N: b - a, Q1: tk.Q1[a:b], Q2: tk.Q2[a:b], RateHz: tk.RateHz,
+		Scales: tk.Scales, Next: tk.First + uint64(tk.N),
+	}
 	for _, g := range tk.Gaps {
 		if g > blk.First && g < blk.First+uint64(blk.N) {
 			blk.Gaps = append(blk.Gaps, g)
@@ -251,8 +252,10 @@ func (s *soundSvc) takePaneLocked(width int) *wsview.SoundTake {
 		s.tv.cols.key = key
 	}
 	c := s.tv.cols
-	out := &wsview.SoundTake{Lo: c.lo, Hi: c.hi, VLo: c.vlo, VHi: c.vhi, TrigX: -1,
-		From: s.tv.from / float64(tk.N), To: (s.tv.from + s.tv.span) / float64(tk.N)}
+	out := &wsview.SoundTake{
+		Lo: c.lo, Hi: c.hi, VLo: c.vlo, VHi: c.vhi, TrigX: -1,
+		From: s.tv.from / float64(tk.N), To: (s.tv.from + s.tv.span) / float64(tk.N),
+	}
 	t0 := float64(tk.First)
 	if tk.HasTrig {
 		t0 = float64(tk.Trig)
@@ -294,7 +297,7 @@ func (s *soundSvc) takeColumns(tk *engine.SoundTake, width int) soundTakeCols {
 	b := min(tk.N, int(math.Ceil(s.tv.from+s.tv.span)))
 	blk := engine.SoundBlock{First: tk.First + uint64(a), N: b - a, Q1: tk.Q1[a:b], Q2: tk.Q2[a:b], RateHz: tk.RateHz, Scales: tk.Scales}
 	var out soundTakeCols
-	for ch := 0; ch < 2; ch++ {
+	for ch := range 2 {
 		x := s.volts(blk, ch, nil)
 		lo, hi := sound.MinMaxColumns(x, width)
 		out.lo[ch], out.hi[ch] = make([]float32, len(lo)), make([]float32, len(hi))

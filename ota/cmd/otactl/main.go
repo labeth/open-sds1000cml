@@ -20,17 +20,17 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
-	"os"
-	"strings"
-	"time"
-
 	"net"
-
 	"open-sds/ota/internal/buildinfo"
 	"open-sds/ota/internal/otactl"
 	"open-sds/ota/internal/vxi11"
+	"os"
+	"slices"
+	"strings"
+	"time"
 
 	"github.com/nats-io/nats.go"
 )
@@ -116,7 +116,7 @@ func main() {
 		fmt.Printf("== %s ==\n%s\n", v.Path, v.Text)
 	case "exec":
 		if len(rest) == 0 {
-			fatal(fmt.Errorf("exec needs a command"))
+			fatal(errors.New("exec needs a command"))
 		}
 		printExec(mustCall(c, "exec", map[string]any{"argv": rest, "timeout_s": *timeoutS}, timeout))
 	case "sh":
@@ -142,19 +142,19 @@ func main() {
 		printJSON(mustCall(c, "restore-factory", rfArgs, timeout))
 	case "app":
 		if len(rest) == 0 {
-			fatal(fmt.Errorf("app needs start|stop|restart"))
+			fatal(errors.New("app needs start|stop|restart"))
 		}
 		printJSON(mustCall(c, "app."+rest[0], nil, timeout))
 	case "activate":
 		if len(rest) == 0 {
-			fatal(fmt.Errorf("activate needs a slot (A|B)"))
+			fatal(errors.New("activate needs a slot (A|B)"))
 		}
 		printJSON(mustCall(c, "app.activate", map[string]any{"slot": rest[0]}, timeout))
 	case "reboot":
 		printJSON(mustCall(c, "reboot", map[string]any{"confirm": has(rest, "--confirm")}, timeout))
 	case "put":
 		if len(rest) < 2 {
-			fatal(fmt.Errorf("put <local> <device-path>"))
+			fatal(errors.New("put <local> <device-path>"))
 		}
 		sum, err := c.PutFile(rest[0], rest[1], 0, 0, progressBar("upload"))
 		fmt.Println()
@@ -164,7 +164,7 @@ func main() {
 		fmt.Printf("ok: %s -> %s sha256=%s\n", rest[0], rest[1], sum)
 	case "get":
 		if len(rest) < 2 {
-			fatal(fmt.Errorf("get <device-path> <local>"))
+			fatal(errors.New("get <device-path> <local>"))
 		}
 		if err := c.GetFile(rest[0], rest[1], progressBar("download")); err != nil {
 			fmt.Println()
@@ -173,7 +173,7 @@ func main() {
 		fmt.Printf("\nok: %s -> %s\n", rest[0], rest[1])
 	case "update-app":
 		if len(rest) == 0 {
-			fatal(fmt.Errorf("update-app <local-app-binary>"))
+			fatal(errors.New("update-app <local-app-binary>"))
 		}
 		fmt.Printf("uploading %s ...\n", rest[0])
 		if _, err := c.PutFile(rest[0], *stageDir+"/app.upload", 0o755, 0, progressBar("upload")); err != nil {
@@ -184,7 +184,7 @@ func main() {
 		printJSON(mustRaw(c.UpdateApp(rest[0], *stageDir)))
 	case "update-agent":
 		if len(rest) == 0 {
-			fatal(fmt.Errorf("update-agent <local-agent-binary>"))
+			fatal(errors.New("update-agent <local-agent-binary>"))
 		}
 		fmt.Printf("uploading %s ...\n", rest[0])
 		printJSON(mustRaw(c.UpdateAgent(rest[0], *stageDir)))
@@ -201,11 +201,11 @@ func dial(natsURL, tcpAddr, device string) (otactl.Transport, error) {
 	}
 	if natsURL != "" {
 		if device == "" {
-			return nil, fmt.Errorf("nats transport needs -device")
+			return nil, errors.New("nats transport needs -device")
 		}
 		return otactl.NewNATS(natsURL, device)
 	}
-	return nil, fmt.Errorf("no transport: pass -tcp host:port or -nats url -device id")
+	return nil, errors.New("no transport: pass -tcp host:port or -nats url -device id")
 }
 
 // TRLC-LINKS: REQ-SDS-111, REQ-SDS-175
@@ -235,10 +235,10 @@ func runPower(shellyIP string, rest []string) {
 		shellyIP = *local
 	}
 	if shellyIP == "" {
-		fatal(fmt.Errorf("power needs -shelly <host> (or -shelly before the subcommand, or OTA_SHELLY)"))
+		fatal(errors.New("power needs -shelly <host> (or -shelly before the subcommand, or OTA_SHELLY)"))
 	}
 	if len(rest) == 0 {
-		fatal(fmt.Errorf("power on|off|cycle|state"))
+		fatal(errors.New("power on|off|cycle|state"))
 	}
 	s := otactl.NewShelly(shellyIP)
 	switch rest[0] {
@@ -261,7 +261,7 @@ func runPower(shellyIP string, rest []string) {
 		}
 		fmt.Printf("relay: %v\n", map[bool]string{true: "ON", false: "OFF"}[on])
 	default:
-		fatal(fmt.Errorf("power on|off|cycle|state"))
+		fatal(errors.New("power on|off|cycle|state"))
 	}
 }
 
@@ -272,10 +272,10 @@ func runPower(shellyIP string, rest []string) {
 // TRLC-LINKS: REQ-SDS-175
 func runScpi(host string, args []string, timeout time.Duration) {
 	if host == "" {
-		fatal(fmt.Errorf("scpi needs a device host (pass -tcp <ip>:<port>)"))
+		fatal(errors.New("scpi needs a device host (pass -tcp <ip>:<port>)"))
 	}
 	if len(args) == 0 {
-		fatal(fmt.Errorf("scpi <command>   e.g. scpi \"*IDN?\"  or  scpi STOP"))
+		fatal(errors.New("scpi <command>   e.g. scpi \"*IDN?\"  or  scpi STOP"))
 	}
 	cmd := strings.Join(args, " ")
 	cl, err := vxi11.Dial(host, timeout)
@@ -316,7 +316,7 @@ func hostOf(addr string) string {
 // TRLC-LINKS: REQ-SDS-175
 func runDiscover(natsURL string, timeout time.Duration) {
 	if natsURL == "" {
-		fatal(fmt.Errorf("discover needs -nats"))
+		fatal(errors.New("discover needs -nats"))
 	}
 	nc, err := nats.Connect(natsURL, nats.Name("otactl-discover"))
 	if err != nil {
@@ -342,7 +342,7 @@ func runDiscover(natsURL string, timeout time.Duration) {
 // TRLC-LINKS: REQ-SDS-175
 func runWatch(natsURL, device string) {
 	if natsURL == "" {
-		fatal(fmt.Errorf("watch needs -nats"))
+		fatal(errors.New("watch needs -nats"))
 	}
 	nc, err := nats.Connect(natsURL, nats.Name("otactl-watch"),
 		nats.MaxReconnects(-1), nats.ReconnectWait(2*time.Second))
@@ -451,12 +451,7 @@ func report(out string, err error) {
 
 // TRLC-LINKS: REQ-SDS-175
 func has(args []string, flag string) bool {
-	for _, a := range args {
-		if a == flag {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(args, flag)
 }
 
 // TRLC-LINKS: REQ-SDS-175

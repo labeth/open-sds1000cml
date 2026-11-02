@@ -42,9 +42,11 @@ type sbusLineOpts struct {
 
 // sbusOpts is a true S.BUS line: 100 kBd 8E2 inverted, a frame each period.
 // TRLC-LINKS: REQ-SDS-244
-func sbusOpts(periodS float64, sr float64) sbusLineOpts {
-	return sbusLineOpts{periodS: periodS, frames: 4, header: 0x0f, end: 0x00, length: 25, baud: 100000,
-		parity: "even", inverted: true, leadS: 1e-3, sampleRate: sr, seed: 1}
+func sbusOpts(periodS, sr float64) sbusLineOpts {
+	return sbusLineOpts{
+		periodS: periodS, frames: 4, header: 0x0f, end: 0x00, length: 25, baud: 100000,
+		parity: "even", inverted: true, leadS: 1e-3, sampleRate: sr, seed: 1,
+	}
 }
 
 // sbusLine records the line o describes.
@@ -151,7 +153,7 @@ func TestAutodetectSBUSCrossConfusion(t *testing.T) {
 			sr := 32 * baud
 			w := newTimeline(sr)
 			w.idle(2e-3)
-			for i := 0; i < 40; i++ {
+			for i := range 40 {
 				tlUART(w, 0x20+rng.Intn(0x5f), baud, "even", 2)
 				if i%10 == 9 {
 					w.idle(3e-3)

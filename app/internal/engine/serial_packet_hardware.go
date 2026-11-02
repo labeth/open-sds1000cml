@@ -2,12 +2,11 @@
 package engine
 
 import (
-	"fmt"
+	"errors"
 	"math"
-	"time"
-
 	"open-sds/app/internal/decode"
 	"open-sds/app/internal/sramcapture"
+	"time"
 )
 
 // Hardware plans mirror the registry decoders: a pattern the software matcher
@@ -168,11 +167,15 @@ func (e *Engine) probeSerialHardware() {
 		dst  *bool
 		fn   func() (bool, error)
 	}{
-		{"UART", &e.hardwareUART, e.sram.SupportsUART}, {"I2C", &e.hardwareI2C, e.sram.SupportsI2C},
-		{"SPI", &e.hardwareSPI, e.sram.SupportsSPI}, {"SPI on the samples", &e.hardwareSampleSPI, e.sram.SupportsSampleSPI},
-		{"UART on the samples", &e.hardwareSampleUART, e.sram.SupportsSampleUART}, {"I2C on the samples", &e.hardwareSampleI2C, e.sram.SupportsSampleI2C},
+		{"UART", &e.hardwareUART, e.sram.SupportsUART},
+		{"I2C", &e.hardwareI2C, e.sram.SupportsI2C},
+		{"SPI", &e.hardwareSPI, e.sram.SupportsSPI},
+		{"SPI on the samples", &e.hardwareSampleSPI, e.sram.SupportsSampleSPI},
+		{"UART on the samples", &e.hardwareSampleUART, e.sram.SupportsSampleUART},
+		{"I2C on the samples", &e.hardwareSampleI2C, e.sram.SupportsSampleI2C},
 		{"SENT", &e.hardwareSENT, e.sram.SupportsSENT},
-		{"USB", &e.hardwareUSBLS, e.sram.SupportsUSBLS}, {"MIL-STD-1553", &e.hardwareMIL1553, e.sram.SupportsMIL1553},
+		{"USB", &e.hardwareUSBLS, e.sram.SupportsUSBLS},
+		{"MIL-STD-1553", &e.hardwareMIL1553, e.sram.SupportsMIL1553},
 		{"Manchester", &e.hardwareManchester, e.sram.SupportsManchester},
 		{"sequence", &e.hardwareSequence, e.sram.SupportsSequence},
 		{"envelope", &e.hardwareEnvelope, e.sram.SupportsEnvelope},
@@ -451,7 +454,7 @@ func (e *Engine) loadImage(name string) bool {
 // TRLC-LINKS: REQ-SDS-231, REQ-SDS-005
 func (e *Engine) reloadImage() error {
 	if e.images == nil {
-		return fmt.Errorf("no image switcher")
+		return errors.New("no image switcher")
 	}
 	shown := e.protocolImage
 	if shown == "" {

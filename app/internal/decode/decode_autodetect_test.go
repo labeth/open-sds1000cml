@@ -163,7 +163,7 @@ func TestAutodetectSPIDataOnClockEdgesIsNotI2C(t *testing.T) {
 // ringing on another bus's edges.
 // TRLC-LINKS: REQ-SDS-018
 func TestUARTScoreNeedsEvidence(t *testing.T) {
-	uart := func(bytes, misframed int, baud int) Result {
+	uart := func(bytes, misframed, baud int) Result {
 		r := Result{OK: true, Proto: "uart", Baud: baud, SPB: 20}
 		for i := range bytes {
 			r.Bytes = append(r.Bytes, i)
@@ -202,7 +202,7 @@ func TestUARTScoreNeedsEvidence(t *testing.T) {
 // few samples more fell on.
 // TRLC-LINKS: REQ-SDS-018
 func TestIdleLevelFromTheGap(t *testing.T) {
-	clock := func(lead int, lead0 uint8, halves int, tail int, tail0 uint8) []uint8 {
+	clock := func(lead int, lead0 uint8, halves, tail int, tail0 uint8) []uint8 {
 		var c []uint8
 		put := func(v uint8, n int) {
 			for range n {
@@ -265,7 +265,7 @@ func TestAutodetectSPIPhaseFromLaunchEdges(t *testing.T) {
 func TestAutodetectARINCOnlyAtItsRates(t *testing.T) {
 	words := func(baud int) Result {
 		r := Result{OK: true, Proto: "arinc429", Baud: baud}
-		for i := 0; i < 4; i++ {
+		for i := range 4 {
 			r.Spans = append(r.Spans, Span{I0: i * 40, I1: i*40 + 8, Kind: "addr"}, Span{I0: i*40 + 8, I1: i*40 + 32, Kind: "data"})
 		}
 		return r

@@ -2,10 +2,9 @@ package panel
 
 import (
 	"math"
+	"open-sds/app/internal/engine"
 	"strings"
 	"testing"
-
-	"open-sds/app/internal/engine"
 )
 
 // The cursors stay on the signal, not on the screen: a time cursor keeps its

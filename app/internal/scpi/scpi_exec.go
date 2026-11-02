@@ -46,7 +46,7 @@ func (h *Handler) execGlobal(head, arg string) []byte {
 		h.cpl = [2]string{"D1M", "D1M"}
 		h.attn = [2]float64{1, 1}
 		if h.fe != nil {
-			for ch := 0; ch < 2; ch++ {
+			for ch := range 2 {
 				_ = h.fe.SetCoupling(ch, analog.CplDC) // D1M
 				h.fe.SetProbe(ch, 1)
 			}
@@ -280,10 +280,7 @@ func (h *Handler) execGlobal(head, arg string) []byte {
 		if h.fe != nil {
 			codeF = h.fe.TrigCode(v, src)
 		}
-		code := int(math.Round(codeF))
-		if code < engine.TrigCodeMin {
-			code = engine.TrigCodeMin
-		}
+		code := max(int(math.Round(codeF)), engine.TrigCodeMin)
 		if code > engine.TrigCodeMax {
 			code = engine.TrigCodeMax
 		}

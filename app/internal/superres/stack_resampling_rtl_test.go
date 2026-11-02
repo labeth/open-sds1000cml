@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -37,10 +38,15 @@ func TestStackPositionsRTL(t *testing.T) {
 		first        uint32
 	}
 	fixtures := []fixture{
-		{0, 20, 4, 8, -1 << 23, 0, 0, 0}, {0, 20, 4, 8, 1 << 23, 0, 0, 0}, {7, 20, 4, 8, 0, 0, 0, 0},
-		{0, 8, 1, 0, 0, 0, 0, 0}, {0, 8, 1, 1, 0, 0, 0, 0},
+		{0, 20, 4, 8, -1 << 23, 0, 0, 0},
+		{0, 20, 4, 8, 1 << 23, 0, 0, 0},
+		{7, 20, 4, 8, 0, 0, 0, 0},
+		{0, 8, 1, 0, 0, 0, 0, 0},
+		{0, 8, 1, 1, 0, 0, 0, 0},
 		{^uint32(0), 20, 1, ^uint32(0), 1 << 23, 0, 0, 0},
-		{2, 12, 0, 30, 0, 0, 0, 0}, {2, 0, 4, 30, 0, 0, 0, 0}, {2, 12, 4, 30, 1<<23 + 1, 0, 0, 0},
+		{2, 12, 0, 30, 0, 0, 0, 0},
+		{2, 0, 4, 30, 0, 0, 0, 0},
+		{2, 12, 4, 30, 1<<23 + 1, 0, 0, 0},
 	}
 	for _, k := range []uint32{1, 2, 3, 7, 16, 32, 64, 255, 65535, 1 << 24, 1<<24 + 1, ^uint32(0)} {
 		fixtures = append(fixtures, fixture{3, 513, k, 1000, -2359296, 0, 0, 0})
@@ -83,7 +89,7 @@ func TestStackPositionsRTL(t *testing.T) {
 			t.Run(fmt.Sprint(no, variant), func(t *testing.T) {
 				file := filepath.Join(dir, "positions.txt")
 				input := fmt.Sprintf("%d %d %d %d %d %d %d %d\n", f.p, f.b, f.k, f.n, f.d, f.abort, f.delay, f.first)
-				if err := os.WriteFile(file, []byte(input), 0600); err != nil {
+				if err := os.WriteFile(file, []byte(input), 0o600); err != nil {
 					t.Fatal(err)
 				}
 				out, err := exec.Command("vvp", image, "+input="+file).CombinedOutput()
@@ -94,7 +100,7 @@ func TestStackPositionsRTL(t *testing.T) {
 					isPow2 && (f.k&(f.k-1) != 0 || f.k > 1<<24)
 				count := uint32(0)
 				completed := false
-				for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
+				for line := range strings.SplitSeq(strings.TrimSpace(string(out)), "\n") {
 					if strings.HasPrefix(line, "D ") {
 						expect := 0
 						if bad {
@@ -151,7 +157,7 @@ func TestStackInterpolateRTL(t *testing.T) {
 		}
 	}
 	rng := rand.New(rand.NewSource(141028))
-	for i := 0; i < 300; i++ {
+	for range 300 {
 		var v [4]uint64
 		for k := range v {
 			v[k] = uint64(rng.Int63n(1 << 37))
@@ -169,7 +175,7 @@ func TestStackInterpolateRTL(t *testing.T) {
 	}
 	dir := t.TempDir()
 	file := filepath.Join(dir, "interpolate.txt")
-	if err := os.WriteFile(file, []byte(input.String()), 0600); err != nil {
+	if err := os.WriteFile(file, []byte(input.String()), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	image := compileStackRTL(t, dir, "tb_stack_interpolate", "stack_interpolate.v", "sim/tb_stack_interpolate.v")
@@ -195,7 +201,7 @@ func TestStackInterpolateRTL(t *testing.T) {
 		if cycles > maxCycles {
 			maxCycles = cycles
 		}
-		for ch := 0; ch < 2; ch++ {
+		for ch := range 2 {
 			want := uint64(0)
 			if mask&(1<<ch) != 0 {
 				a, b := f.v[ch*2], f.v[ch*2+1]
@@ -226,23 +232,32 @@ func TestStackResampleRTL(t *testing.T) {
 		mask, odd, abort, fault int
 	}
 	fixtures := []fixture{
-		{0, 64, 4, 16, -1 << 23, 3, 1, 0, 0}, {14, 32, 4, 16, 1 << 23, 3, 0, 0, 0},
-		{0, 32, 1, 32, 0, 3, 1, 0, 0}, {2, 80, 3, 32, 1234567, 3, 0, 0, 0},
-		{2, 80, 7, 32, -1234567, 3, 1, 0, 0}, {3, 96, 32, 32, 1234567, 1, 1, 0, 0},
-		{3, 96, 64, 32, -1234567, 2, 0, 0, 0}, {3, 16, 4, 32, 0, 0, 1, 0, 0},
-		{0, 8, 4, 0, 0, 3, 0, 0, 0}, {0, 8, 4, 1, 0, 3, 0, 0, 0},
-		{2, 32, 4, 32, 1234567, 3, 1, 1, 0}, {2, 32, 4, 32, 1234567, 3, 1, 2, 0},
-		{2, 32, 4, 32, 1234567, 3, 1, 3, 0}, {2, 32, 4, 32, 1234567, 3, 1, 4, 1},
-		{2, 32, 4, 32, 0, 3, 0, 0, 1}, {2, 32, 0, 32, 0, 3, 0, 0, 0},
-		{2, 0, 4, 32, 0, 3, 0, 0, 0}, {2, 32, 4, 32, 1<<23 + 1, 3, 0, 0, 0},
+		{0, 64, 4, 16, -1 << 23, 3, 1, 0, 0},
+		{14, 32, 4, 16, 1 << 23, 3, 0, 0, 0},
+		{0, 32, 1, 32, 0, 3, 1, 0, 0},
+		{2, 80, 3, 32, 1234567, 3, 0, 0, 0},
+		{2, 80, 7, 32, -1234567, 3, 1, 0, 0},
+		{3, 96, 32, 32, 1234567, 1, 1, 0, 0},
+		{3, 96, 64, 32, -1234567, 2, 0, 0, 0},
+		{3, 16, 4, 32, 0, 0, 1, 0, 0},
+		{0, 8, 4, 0, 0, 3, 0, 0, 0},
+		{0, 8, 4, 1, 0, 3, 0, 0, 0},
+		{2, 32, 4, 32, 1234567, 3, 1, 1, 0},
+		{2, 32, 4, 32, 1234567, 3, 1, 2, 0},
+		{2, 32, 4, 32, 1234567, 3, 1, 3, 0},
+		{2, 32, 4, 32, 1234567, 3, 1, 4, 1},
+		{2, 32, 4, 32, 0, 3, 0, 0, 1},
+		{2, 32, 0, 32, 0, 3, 0, 0, 0},
+		{2, 0, 4, 32, 0, 3, 0, 0, 0},
+		{2, 32, 4, 32, 1<<23 + 1, 3, 0, 0, 0},
 	}
 	dir := t.TempDir()
 	image := compileStackRTL(t, dir, "tb_stack_resample", "stack_positions.v", "stack_interpolate.v", "stack_resample.v", "sim/tb_stack_resample.v")
 	rng := rand.New(rand.NewSource(141029))
 	for no, f := range fixtures {
-		t.Run(fmt.Sprint(no), func(t *testing.T) {
+		t.Run(strconv.Itoa(no), func(t *testing.T) {
 			var sig [2][]float32
-			for ch := 0; ch < 2; ch++ {
+			for ch := range 2 {
 				sig[ch] = make([]float32, f.n)
 				for k := range sig[ch] {
 					sig[ch][k] = float32(rng.Intn(11000)) / 4
@@ -254,7 +269,7 @@ func TestStackResampleRTL(t *testing.T) {
 				fmt.Fprintf(&input, "%d %d\n", uint64(float64(sig[0][k])*(1<<24)), uint64(float64(sig[1][k])*(1<<24)))
 			}
 			file := filepath.Join(dir, "resample.txt")
-			if err := os.WriteFile(file, []byte(input.String()), 0600); err != nil {
+			if err := os.WriteFile(file, []byte(input.String()), 0o600); err != nil {
 				t.Fatal(err)
 			}
 			out, err := exec.Command("vvp", image, "+input="+file).CombinedOutput()
@@ -264,7 +279,7 @@ func TestStackResampleRTL(t *testing.T) {
 			bad := f.b == 0 || f.k == 0 || f.d > 1<<23 || f.d < -(1<<23) || f.fault != 0 && f.abort != 4
 			st := Stack{N: f.n, K: f.k, Nbins: f.b}
 			if !bad {
-				for ch := 0; ch < 2; ch++ {
+				for ch := range 2 {
 					st.C[ch] = chanState{sum: make([]float64, f.b), sum2: make([]float64, f.b), cnt: make([]float64, f.b), sumA: make([]float64, f.b), cntA: make([]float64, f.b)}
 					if f.mask&(1<<ch) != 0 {
 						st.drizzleHit(ch, sig[ch], float64(f.p)+float64(f.d)/(1<<24), f.odd != 0)
@@ -273,7 +288,7 @@ func TestStackResampleRTL(t *testing.T) {
 			}
 			count, expectedReads := 0, 0
 			completed := false
-			for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
+			for line := range strings.SplitSeq(strings.TrimSpace(string(out)), "\n") {
 				if line == "R" {
 					count = 0
 					expectedReads = 0
@@ -316,7 +331,7 @@ func TestStackResampleRTL(t *testing.T) {
 				if mask != 0 {
 					expectedReads++
 				}
-				for ch := 0; ch < 2; ch++ {
+				for ch := range 2 {
 					want := uint64(0)
 					if mask&(1<<ch) != 0 {
 						a, b := uint64(float64(sig[ch][idx])*(1<<24)), uint64(float64(sig[ch][idx+1])*(1<<24))

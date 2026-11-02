@@ -18,17 +18,17 @@ func TestUARTInvertedPolarity(t *testing.T) {
 		}
 		samples = append(samples, bytes.Repeat([]byte{code}, 20)...)
 	}
-	for i := 0; i < 4; i++ {
+	for range 4 {
 		bit(1)
 	}
 	for _, v := range want {
 		bit(0)
-		for i := 0; i < 8; i++ {
+		for i := range 8 {
 			bit((v >> i) & 1)
 		}
 		bit(1)
 	}
-	for i := 0; i < 4; i++ {
+	for range 4 {
 		bit(1)
 	}
 	original := append([]byte(nil), samples...)

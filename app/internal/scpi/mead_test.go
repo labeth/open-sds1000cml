@@ -3,12 +3,11 @@ package scpi
 
 import (
 	"fmt"
+	"open-sds/app/internal/engine"
+	"open-sds/app/internal/measure"
 	"strconv"
 	"strings"
 	"testing"
-
-	"open-sds/app/internal/engine"
-	"open-sds/app/internal/measure"
 )
 
 // square is a 0/200-code square of the given period starting high at phase.

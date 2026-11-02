@@ -7,13 +7,12 @@ import (
 	"io"
 	"math"
 	"net/http"
+	"open-sds/app/internal/engine"
+	"open-sds/app/internal/panel"
 	"reflect"
 	"strconv"
 	"strings"
 	"time"
-
-	"open-sds/app/internal/engine"
-	"open-sds/app/internal/panel"
 )
 
 // SOUND's web surface (ADR-SOUND): /api/sound.bin hands the audio stream to
@@ -134,8 +133,10 @@ func (s *Server) hSoundBin(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		info := src.SoundInfo()
-		h := soundBinHeader{First: info.Next, Next: info.Next, Rate: info.RateHz, State: panel.SoundPausedText,
-			Paused: true, ServerMS: time.Now().UnixMilli()}
+		h := soundBinHeader{
+			First: info.Next, Next: info.Next, Rate: info.RateHz, State: panel.SoundPausedText,
+			Paused: true, ServerMS: time.Now().UnixMilli(),
+		}
 		writeSoundBin(w, h, engine.SoundBlock{}, 5*time.Second)
 		return
 	}
@@ -165,9 +166,11 @@ func (s *Server) hSoundBin(w http.ResponseWriter, r *http.Request) {
 		info = src.SoundInfo()
 	}
 	b := src.SoundRead(from, maxN, nil, nil)
-	h := soundBinHeader{First: b.First, N: b.N, Next: b.Next, Rate: b.RateHz, Gaps: b.Gaps, Marks: b.Marks,
+	h := soundBinHeader{
+		First: b.First, N: b.N, Next: b.Next, Rate: b.RateHz, Gaps: b.Gaps, Marks: b.Marks,
 		State: info.State, Active: info.Active, Losses: info.Losses, MarksOn: info.Marks, MarkCh: info.MarkCfg.Ch,
-		ServerMS: time.Now().UnixMilli(), Err: info.Err}
+		ServerMS: time.Now().UnixMilli(), Err: info.Err,
+	}
 	h.Scales = s.scalesOut(b.Scales)
 	h.MarkV = levelVolts(h.Scales, info.MarkCfg.Ch, info.MarkCfg.Level)
 	writeSoundBin(w, h, b, 5*time.Second)
@@ -180,7 +183,7 @@ func (s *Server) scalesOut(scales []engine.SoundScale) []soundScaleOut {
 	for _, sc := range scales {
 		var o soundScaleOut
 		o.From = sc.From
-		for ch := 0; ch < 2; ch++ {
+		for ch := range 2 {
 			vpc, off := sc.SoundVolts(ch)
 			p := s.probeOf(ch)
 			o.VPC[ch], o.Off[ch] = vpc*p, off*p
@@ -265,8 +268,10 @@ func (s *Server) hSoundTakeBin(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "no take", http.StatusNotFound)
 		return
 	}
-	h := soundTakeHeader{ID: t.ID, Why: t.Why, First: t.First, N: t.N, Rate: t.RateHz, Gaps: t.Gaps, Marks: t.Marks,
-		HasTrig: t.HasTrig, Trig: t.Trig, TrigCh: t.TrigCh, TrigRising: t.TrigRising}
+	h := soundTakeHeader{
+		ID: t.ID, Why: t.Why, First: t.First, N: t.N, Rate: t.RateHz, Gaps: t.Gaps, Marks: t.Marks,
+		HasTrig: t.HasTrig, Trig: t.Trig, TrigCh: t.TrigCh, TrigRising: t.TrigRising,
+	}
 	h.Scales = s.scalesOut(t.Scales)
 	h.TrigV = levelVolts(h.Scales, t.TrigCh, t.TrigLevel)
 	writeSoundBin(w, h, t.SoundBlock, 20*time.Second)
@@ -390,7 +395,7 @@ func jsonSafe(v reflect.Value) any {
 		}
 		return f
 	case reflect.Struct:
-		if t, ok := v.Interface().(time.Time); ok {
+		if t, ok := reflect.TypeAssert[time.Time](v); ok {
 			return t
 		}
 		m := map[string]any{}

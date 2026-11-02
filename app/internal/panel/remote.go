@@ -5,10 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"open-sds/app/internal/panel/wsview"
 	"strings"
 	"time"
-
-	"open-sds/app/internal/panel/wsview"
 )
 
 // The remote surface (/api/status, /api/panel, /api/sheets): the phone
@@ -178,9 +177,21 @@ func lampNames(w uint16) []string {
 	for _, l := range []struct {
 		bit  uint16
 		name string
-	}{{ledCH1, "CH1"}, {ledCH2, "CH2"}, {ledMath, "MATH"}, {ledRef, "REF"}, {ledRun, "RUN"}, {ledStop, "STOP"}, {ledSingle, "SINGLE"},
-		{ledMeasure, "MEASURE"}, {ledCursors, "CURSORS"}, {ledAcquire, "ACQUIRE"}, {ledDisplay, "DISPLAY"}, {ledUtility, "UTILITY"},
-		{ledSaveRec, "SAVE/RECALL"}} {
+	}{
+		{ledCH1, "CH1"},
+		{ledCH2, "CH2"},
+		{ledMath, "MATH"},
+		{ledRef, "REF"},
+		{ledRun, "RUN"},
+		{ledStop, "STOP"},
+		{ledSingle, "SINGLE"},
+		{ledMeasure, "MEASURE"},
+		{ledCursors, "CURSORS"},
+		{ledAcquire, "ACQUIRE"},
+		{ledDisplay, "DISPLAY"},
+		{ledUtility, "UTILITY"},
+		{ledSaveRec, "SAVE/RECALL"},
+	} {
 		if w&l.bit != 0 {
 			out = append(out, l.name)
 		}
@@ -214,8 +225,10 @@ func workspaceView(s *sv, ws wsview.WS) string {
 func (c *Controller) status(s *sv) Status {
 	u := &s.ui
 	d, v := c.displayAndView(s)
-	st := Status{AutosetBusy: d.AutosetBusy, AutosetMsg: d.AutosetMsg, Workspace: wsview.Names[u.ws], WorkspaceID: wsview.IDs[u.ws],
-		View: workspaceView(s, u.ws), AgainNext: c.againNext(s), Notice: v.Notice, Remote: d.Remote, Display: d}
+	st := Status{
+		AutosetBusy: d.AutosetBusy, AutosetMsg: d.AutosetMsg, Workspace: wsview.Names[u.ws], WorkspaceID: wsview.IDs[u.ws],
+		View: workspaceView(s, u.ws), AgainNext: c.againNext(s), Notice: v.Notice, Remote: d.Remote, Display: d,
+	}
 	for i := range st.Views {
 		st.Views[i] = workspaceView(s, wsview.WS(i))
 	}
@@ -241,7 +254,7 @@ func (c *Controller) status(s *sv) Status {
 			st.FKeys[i] = KeyStatus{Label: k.Label, Value: k.Value, Sel: k.Sel, Dim: k.Dim}
 		}
 	} else {
-		for i := 0; i < wsview.Count; i++ {
+		for i := range wsview.Count {
 			st.FKeys[i] = KeyStatus{Label: wsview.Tags[i], Sel: wsview.WS(i) == u.ws}
 		}
 	}
@@ -338,12 +351,14 @@ func (c *Controller) displayAndView(s *sv) (Display, wsview.View) {
 	c.mu.Lock()
 	busy, amsg := c.autosetBusy, c.autosetMsg
 	c.mu.Unlock()
-	d := Display{ShowC1: s.chDisp[0], ShowC2: s.chDisp[1], ShowMeas: s.showMeas, ViewMode: s.viewMode, MathMode: s.mathMode,
+	d := Display{
+		ShowC1: s.chDisp[0], ShowC2: s.chDisp[1], ShowMeas: s.showMeas, ViewMode: s.viewMode, MathMode: s.mathMode,
 		Zoom: max(s.zoom, 1), ZoomOff: s.zoomOff, Persist: s.persist, FFTSrc: s.fftSrc,
 		DecProto: s.decProto, DecBaud: s.decBaud, DecChA: s.decChA, DecChB: s.decChB, DecCPOL: s.decCPOL, DecCPHA: s.decCPHA,
 		DecLSB: s.decLSB, DecParity: s.decParity, DecInverted: s.decInv, DecBits: s.decBits, DecLayer: s.decLayer, DecLayerAddr: s.decLayerAddr, DecLayerDir: s.decLayerDir, DecDelayNs: s.spiDelayNs(), DecFormat: s.decFormat, DecDetecting: s.ui.busDetecting, DecAuto: s.decAuto, DecNote: s.ui.busNote, CurOn: s.curOn, CurType: s.curType, CurSel: s.curSel, CurX: s.curX, CurY: s.curY,
 		CurT: s.curT, CurV: s.curV, CurVCh: s.curVCh,
-		AutosetBusy: busy, AutosetMsg: amsg}
+		AutosetBusy: busy, AutosetMsg: amsg,
+	}
 	if len(s.meas) > 0 {
 		d.MeasItems = make([]string, 0, len(s.meas))
 	}
@@ -372,9 +387,9 @@ func rowModel(s *sv, r *row) RowModel {
 	case wsview.Number:
 		m.Kind, m.Value, m.Unit = "number", finiteOr(r.val(s)), r.unitFor(s)
 		lo, hi := r.lim(s)
-		m.Min, m.Max = ptr(finiteOr(lo)), ptr(finiteOr(hi))
+		m.Min, m.Max = new(finiteOr(lo)), new(finiteOr(hi))
 		if st := r.step(s); st > 0 {
-			m.Step = ptr(st)
+			m.Step = new(st)
 		}
 		if r.ladder != nil {
 			m.Ladder = r.ladder(s)
@@ -405,7 +420,9 @@ func finiteOr(v float64) float64 {
 }
 
 // TRLC-LINKS: REQ-SDS-212
-func ptr(v float64) *float64 { return &v }
+//
+//go:fix inline
+func ptr(v float64) *float64 { return new(v) }
 
 // sheetSig hashes every row's value and availability (not live counters),
 // so the Seq follows a setting changed anywhere.
@@ -475,7 +492,7 @@ func (h *sig64) bytes(b []byte) {
 // TRLC-LINKS: REQ-SDS-211
 func (h *sig64) u64(v uint64) {
 	x := uint64(*h)
-	for i := 0; i < 8; i++ {
+	for i := range 8 {
 		x = (x ^ (v >> (8 * i) & 0xff)) * 1099511628211
 	}
 	*h = sig64(x)
@@ -739,7 +756,7 @@ func (c *Controller) RemoteWorkspace(name string) SetResult {
 // TRLC-LINKS: REQ-SDS-211, REQ-SDS-220
 func wsIndex(name string) int {
 	n := strings.TrimSpace(name)
-	for i := 0; i < wsview.Count; i++ {
+	for i := range wsview.Count {
 		if strings.EqualFold(n, wsview.IDs[i]) || strings.EqualFold(n, wsview.Names[i]) || strings.EqualFold(n, wsview.Tags[i]) {
 			return i
 		}
@@ -805,9 +822,11 @@ const menuRefusal = "A menu is open on the scope: Adjust and Position move it th
 // closes a menu on the LCD (Default Setup and Auto leave a remote's LCD menus
 // as they are). The menu keys and the F-keys work the LCD's menus: a remote
 // opens its own.
-var remoteKeys = map[int]bool{btnRunStop: true, btnSingle: true, btnAuto: true, btnDefaultSetup: true, btnSet50: true, btnForce: true,
+var remoteKeys = map[int]bool{
+	btnRunStop: true, btnSingle: true, btnAuto: true, btnDefaultSetup: true, btnSet50: true, btnForce: true,
 	btnPrint: true, btnCh1VdivPush: true, btnCh2VdivPush: true, btnCh1PosPush: true, btnCh2PosPush: true, btnTrigLvlPush: true,
-	btnTdivPush: true, btnHorizPosPush: true, btnAdjustPsh: true}
+	btnTdivPush: true, btnHorizPosPush: true, btnAdjustPsh: true,
+}
 
 // RemoteKey presses a key of the panel for a remote and answers once it has
 // run, with the rows it changed and the notice it raised (remoteCall). It
@@ -1064,7 +1083,7 @@ func (c *Controller) runAction(id, action string, remote bool) SetResult {
 		return c.runPreset(r, action, remote)
 	}
 	if r.kind != wsview.Action && r.kind != wsview.Slot {
-		return SetResult{Row: id, Error: fmt.Sprintf("%s is a setting, not an action: use /api/sheets/set", r.label)}
+		return SetResult{Row: id, Error: r.label + " is a setting, not an action: use /api/sheets/set"}
 	}
 	s := c.snap()
 	acts := r.acts(s)

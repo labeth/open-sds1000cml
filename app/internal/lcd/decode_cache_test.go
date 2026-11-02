@@ -2,9 +2,8 @@
 package lcd
 
 import (
-	"testing"
-
 	"open-sds/app/internal/engine"
+	"testing"
 )
 
 // A newer frame with the same decoder settings is decoded afresh, or the

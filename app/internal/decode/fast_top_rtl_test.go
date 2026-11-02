@@ -52,14 +52,16 @@ func runFastTop(t *testing.T, dir, image string, wide []uint64, regs [][2]uint32
 			post = a
 		}
 	}
-	args := append([]string{image, "+input=" + words, fmt.Sprintf("+length=%d", 2*len(wide)), "+regs=" + rp, fmt.Sprintf("+nregs=%d", len(regs)),
-		pre, post}, extra...)
+	args := append([]string{
+		image, "+input=" + words, fmt.Sprintf("+length=%d", 2*len(wide)), "+regs=" + rp, fmt.Sprintf("+nregs=%d", len(regs)),
+		pre, post,
+	}, extra...)
 	out, err := exec.Command("vvp", args...).CombinedOutput()
 	if err != nil || !strings.Contains(string(out), "PASS fast top") {
 		t.Fatalf("simulate: %v\n%s", err, out)
 	}
 	trigger = -1
-	for _, line := range strings.Split(string(out), "\n") {
+	for line := range strings.SplitSeq(string(out), "\n") {
 		var e fastTopEvent
 		var n int
 		if _, err := fmt.Sscanf(line, "E %d %d %x %d %d", &e.Protocol, &e.Kind, &e.Value, &e.Meta, &n); err == nil {
@@ -67,7 +69,7 @@ func runFastTop(t *testing.T, dir, image string, wide []uint64, regs [][2]uint32
 		}
 		fmt.Sscanf(line, "T %d", &trigger)
 	}
-	return
+	return events, eventWords, trigger
 }
 
 // The fast image's top level: SPI, UART and I2C configured over the host
@@ -105,8 +107,15 @@ func TestFastImageTopRTL(t *testing.T) {
 		wide := p.words()
 		model, _ := SampleSPI(wide, c)
 		control := uint32(1 | c.ClockCh<<1 | int(b2u8(c.Inverted))<<2 | int(b2u8(c.CPOL))<<3 | int(b2u8(c.CPHA))<<4 | int(b2u8(c.MSB))<<5 | c.Length<<6)
-		ev, _, trigger := runFastTop(t, dir, image, wide, [][2]uint32{level, level2, {58, uint32(c.Delay) & 0xff},
-			{65, uint32(c.GapClocks) & 0xffff}, {66, uint32(c.GapClocks) >> 16}, {67, c.Pattern & 0xffff}, {68, c.Pattern >> 16}, {64, control}})
+		ev, _, trigger := runFastTop(t, dir, image, wide, [][2]uint32{
+			level, level2,
+			{58, uint32(c.Delay) & 0xff},
+			{65, uint32(c.GapClocks) & 0xffff},
+			{66, uint32(c.GapClocks) >> 16},
+			{67, c.Pattern & 0xffff},
+			{68, c.Pattern >> 16},
+			{64, control},
+		})
 		var want []fastTopEvent
 		match := -1
 		for _, e := range model {
@@ -129,8 +138,14 @@ func TestFastImageTopRTL(t *testing.T) {
 		wide := u.lines().words()
 		model := SampleUART(wide, c)
 		control := uint32(1 | c.Ch<<1 | int(b2u8(c.Inverted))<<2 | c.Length<<3 | c.Bits<<6 | c.Parity<<10 | int(b2u8(c.Resync))<<12)
-		ev, _, trigger := runFastTop(t, dir, image, wide, [][2]uint32{level, {49, uint32(c.Period16) & 0xffff}, {50, uint32(c.Period16) >> 16},
-			{51, c.Pattern & 0xffff}, {52, c.Pattern >> 16}, {48, control}})
+		ev, _, trigger := runFastTop(t, dir, image, wide, [][2]uint32{
+			level,
+			{49, uint32(c.Period16) & 0xffff},
+			{50, uint32(c.Period16) >> 16},
+			{51, c.Pattern & 0xffff},
+			{52, c.Pattern >> 16},
+			{48, control},
+		})
 		var want []fastTopEvent
 		match := -1
 		for _, e := range model {
@@ -152,8 +167,14 @@ func TestFastImageTopRTL(t *testing.T) {
 		wide := b.lines().words()
 		model, matches := SampleI2C(wide, c)
 		control := uint32(1 | c.ClockCh<<1 | int(b2u8(c.Inverted))<<2 | c.Direction<<3 | c.Length<<6)
-		ev, _, trigger := runFastTop(t, dir, image, wide, [][2]uint32{level, level2, {58, uint32(c.Delay) & 0xff}, {54, uint32(c.Address)},
-			{55, c.Pattern & 0xffff}, {56, c.Pattern >> 16}, {53, control}})
+		ev, _, trigger := runFastTop(t, dir, image, wide, [][2]uint32{
+			level, level2,
+			{58, uint32(c.Delay) & 0xff},
+			{54, uint32(c.Address)},
+			{55, c.Pattern & 0xffff},
+			{56, c.Pattern >> 16},
+			{53, control},
+		})
 		var want []fastTopEvent
 		for _, e := range model {
 			want = append(want, fastTopEvent{Protocol: 2, Kind: int(e.Kind), Value: uint32(e.Data), Meta: int(e.Meta)})
@@ -205,8 +226,15 @@ func TestFastImageDecimatedTopRTL(t *testing.T) {
 				}
 			}
 			control := uint32(1 | c.ClockCh<<1 | int(b2u8(c.Inverted))<<2 | int(b2u8(c.CPOL))<<3 | int(b2u8(c.CPHA))<<4 | int(b2u8(c.MSB))<<5 | c.Length<<6)
-			_, _, trigger := runFastTop(t, dir, image, wide, [][2]uint32{decim, level, level2, {58, uint32(c.Delay) & 0xff},
-				{65, uint32(c.GapClocks) & 0xffff}, {66, uint32(c.GapClocks) >> 16}, {67, c.Pattern & 0xffff}, {68, c.Pattern >> 16}, {64, control}}, args...)
+			_, _, trigger := runFastTop(t, dir, image, wide, [][2]uint32{
+				decim, level, level2,
+				{58, uint32(c.Delay) & 0xff},
+				{65, uint32(c.GapClocks) & 0xffff},
+				{66, uint32(c.GapClocks) >> 16},
+				{67, c.Pattern & 0xffff},
+				{68, c.Pattern >> 16},
+				{64, control},
+			}, args...)
 			if match < 0 || trigger < 2*match || trigger > 2*match+24 {
 				t.Fatalf("trigger at word %d, the model's match at word %d", trigger, 2*match)
 			}
@@ -218,8 +246,14 @@ func TestFastImageDecimatedTopRTL(t *testing.T) {
 			wide := b.lines().words()
 			_, matches := SampleI2C(wide, c)
 			control := uint32(1 | c.ClockCh<<1 | int(b2u8(c.Inverted))<<2 | c.Direction<<3 | c.Length<<6)
-			_, _, trigger := runFastTop(t, dir, image, wide, [][2]uint32{decim, level, level2, {58, uint32(c.Delay) & 0xff}, {54, uint32(c.Address)},
-				{55, c.Pattern & 0xffff}, {56, c.Pattern >> 16}, {53, control}}, args...)
+			_, _, trigger := runFastTop(t, dir, image, wide, [][2]uint32{
+				decim, level, level2,
+				{58, uint32(c.Delay) & 0xff},
+				{54, uint32(c.Address)},
+				{55, c.Pattern & 0xffff},
+				{56, c.Pattern >> 16},
+				{53, control},
+			}, args...)
 			if len(matches) == 0 || trigger < 2*matches[0] || trigger > 2*matches[0]+24 {
 				t.Fatalf("trigger at word %d, the model's match at word %v", trigger, matches)
 			}
@@ -239,9 +273,11 @@ func compileWordsTop(t *testing.T, dir, name, defines string, decoders ...string
 	}
 	image := filepath.Join(dir, name+".vvp")
 	args := []string{"-g2012", "-s", "tb_top_fast", "-o", image, "-I", rtl, defs}
-	for _, f := range append([]string{"top.v", "record.v", "transport.v", "adc_unpack.v", "sample_timeline.v", "decoded_event_queue.v",
+	for _, f := range append([]string{
+		"top.v", "record.v", "transport.v", "adc_unpack.v", "sample_timeline.v", "decoded_event_queue.v",
 		"decoded_event_bridge.v", "decoded_event_reader.v", "decoded_event_transport.v", "decoded_event_port.v",
-		"gpmc_slave.v", "ddio_pair.v", "lane_in.v", "sim/ddr_model.v", "sim/tb_top_fast.v", "event_sequence.v", "envelope_reduce.v", "panel_scan.v"}, decoders...) {
+		"gpmc_slave.v", "ddio_pair.v", "lane_in.v", "sim/ddr_model.v", "sim/tb_top_fast.v", "event_sequence.v", "envelope_reduce.v", "panel_scan.v",
+	}, decoders...) {
 		args = append(args, filepath.Join(rtl, f))
 	}
 	if out, err := exec.Command("iverilog", args...).CombinedOutput(); err != nil {
@@ -313,8 +349,10 @@ func TestTwoLineLevelsTopRTL(t *testing.T) {
 		{"general-spi-5MHz-clock-C1", general, 5e6, 0, true},
 	} {
 		t.Run(r.name, func(t *testing.T) {
-			p := spiBus{rateHz: r.rateHz, msb: true, clockCh: r.clockCh, frames: [][]byte{benchFrame(0)[:12], benchFrame(1)[:12], benchFrame(2)[:12]},
-				idleS: 2e-6 + 3/r.rateHz, riseS: 3e-9, noise: 1, seed: 7, shift: apart}
+			p := spiBus{
+				rateHz: r.rateHz, msb: true, clockCh: r.clockCh, frames: [][]byte{benchFrame(0)[:12], benchFrame(1)[:12], benchFrame(2)[:12]},
+				idleS: 2e-6 + 3/r.rateHz, riseS: 3e-9, noise: 1, seed: 7, shift: apart,
+			}
 			if r.clockCh == 0 {
 				p.shift = [2]float64{apart[1], apart[0]}
 			}

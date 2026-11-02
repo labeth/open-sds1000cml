@@ -4,7 +4,7 @@ package web
 import (
 	"context"
 	"encoding/json"
-	"fmt"
+	"errors"
 	"io"
 	"net/http"
 	"open-sds/app/internal/sramcapture"
@@ -32,11 +32,11 @@ func decodedIdentity(r *http.Request) (sramcapture.RecordIdentity, error) {
 	q := r.URL.Query() // parsed once for both values
 	epoch, e := strconv.ParseUint(q.Get("epoch"), 10, 32)
 	if e != nil {
-		return sramcapture.RecordIdentity{}, fmt.Errorf("epoch is required")
+		return sramcapture.RecordIdentity{}, errors.New("epoch is required")
 	}
 	record, e := strconv.ParseUint(q.Get("record"), 10, 32)
 	if e != nil {
-		return sramcapture.RecordIdentity{}, fmt.Errorf("record is required")
+		return sramcapture.RecordIdentity{}, errors.New("record is required")
 	}
 	return sramcapture.RecordIdentity{Epoch: uint32(epoch), Record: uint32(record)}, nil
 }
@@ -52,12 +52,12 @@ func (s *Server) registerDecodedCapture(mux *http.ServeMux) {
 		decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096))
 		decoder.DisallowUnknownFields()
 		if err := decoder.Decode(&cfg); err != nil {
-			http.Error(w, err.Error(), 400)
+			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 		var extra any
 		if err := decoder.Decode(&extra); err != io.EOF {
-			http.Error(w, "expected one configuration", 400)
+			http.Error(w, "expected one configuration", http.StatusBadRequest)
 			return
 		}
 		// Starting a packet-protocol stream may first load the packet image.
@@ -65,7 +65,7 @@ func (s *Server) registerDecodedCapture(mux *http.ServeMux) {
 		defer cancel()
 		id, err := source.BeginDecodedCapture(ctx, cfg)
 		if err != nil {
-			http.Error(w, err.Error(), 409)
+			http.Error(w, err.Error(), http.StatusConflict)
 			return
 		}
 		writeJSON(w, id)
@@ -73,14 +73,14 @@ func (s *Server) registerDecodedCapture(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/decoded/status", func(w http.ResponseWriter, r *http.Request) {
 		id, err := decodedIdentity(r)
 		if err != nil {
-			http.Error(w, err.Error(), 400)
+			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 		ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
 		defer cancel()
 		m, err := source.DecodedCaptureStatus(ctx, id)
 		if err != nil {
-			http.Error(w, err.Error(), 409)
+			http.Error(w, err.Error(), http.StatusConflict)
 			return
 		}
 		writeJSON(w, m)
@@ -88,13 +88,13 @@ func (s *Server) registerDecodedCapture(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/decoded/end", func(w http.ResponseWriter, r *http.Request) {
 		id, err := decodedIdentity(r)
 		if err != nil {
-			http.Error(w, err.Error(), 400)
+			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 		ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
 		defer cancel()
 		if err := source.EndDecodedCapture(ctx, id); err != nil {
-			http.Error(w, err.Error(), 409)
+			http.Error(w, err.Error(), http.StatusConflict)
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
@@ -102,24 +102,24 @@ func (s *Server) registerDecodedCapture(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/decoded/record.bin", func(w http.ResponseWriter, r *http.Request) {
 		id, err := decodedIdentity(r)
 		if err != nil {
-			http.Error(w, err.Error(), 400)
+			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 		offset, err := strconv.ParseUint(r.URL.Query().Get("offset"), 10, 32)
 		if err != nil {
-			http.Error(w, "offset is required", 400)
+			http.Error(w, "offset is required", http.StatusBadRequest)
 			return
 		}
 		count, err := strconv.ParseUint(r.URL.Query().Get("words"), 10, 32)
 		if err != nil || offset+count > uint64(sramcapture.Words) {
-			http.Error(w, "invalid word range", 400)
+			http.Error(w, "invalid word range", http.StatusBadRequest)
 			return
 		}
 		ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
 		defer cancel()
 		data, err := source.RecallDecodedRecord(ctx, id, uint32(offset), uint32(count))
 		if err != nil {
-			http.Error(w, err.Error(), 409)
+			http.Error(w, err.Error(), http.StatusConflict)
 			return
 		}
 		w.Header().Set("Content-Type", "application/octet-stream")
@@ -130,7 +130,7 @@ func (s *Server) registerDecodedCapture(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/decoded/events.bin", func(w http.ResponseWriter, r *http.Request) {
 		id, err := decodedIdentity(r)
 		if err != nil {
-			http.Error(w, err.Error(), 400)
+			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 		readBatch := func() ([]sramcapture.DecodedEvent, error) { return source.ReadDecodedBatch(r.Context(), id) }
@@ -143,7 +143,7 @@ func (s *Server) registerDecodedCapture(mux *http.ServeMux) {
 		}
 		batch, err := readBatch()
 		if err != nil {
-			http.Error(w, err.Error(), 409)
+			http.Error(w, err.Error(), http.StatusConflict)
 			return
 		}
 		w.Header().Set("Content-Type", "application/octet-stream")

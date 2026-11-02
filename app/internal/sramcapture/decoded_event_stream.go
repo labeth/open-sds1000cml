@@ -3,6 +3,7 @@ package sramcapture
 
 import (
 	"encoding/binary"
+	"errors"
 	"fmt"
 )
 
@@ -24,7 +25,7 @@ func (c *Capture) enableDecodedEvents(enabled bool) (uint32, error) {
 		return 0, err
 	}
 	if capability != 0x4501 {
-		return 0, fmt.Errorf("sramcapture: fabric lacks decoded event transport")
+		return 0, errors.New("sramcapture: fabric lacks decoded event transport")
 	}
 	regs := [][2]uint16{{57, 0}, {60, 2}}
 	if enabled {
@@ -58,7 +59,7 @@ func (c *Capture) ReadDecodedEvent(epoch uint32) (event DecodedEvent, available 
 		return event, false, err
 	}
 	if active != 1 {
-		return event, false, fmt.Errorf("sramcapture: decoded stream is disabled")
+		return event, false, errors.New("sramcapture: decoded stream is disabled")
 	}
 	current, err := c.read32(61)
 	if err != nil {
@@ -132,7 +133,7 @@ func (c *Capture) readDecodedEvents(epoch uint32, limit int, dst []DecodedEvent)
 	// A direct FIFO read returns at most its 512-entry depth; the isolated
 	// worker hands over up to DecodedBatchMax from its ring per packet.
 	if limit < 1 || limit > DecodedBatchMax {
-		return nil, fmt.Errorf("sramcapture: invalid event batch limit")
+		return nil, errors.New("sramcapture: invalid event batch limit")
 	}
 	if isolated, ok := c.bus.(interface {
 		ReadIsolatedDecodedBytes(uint32, []byte) (int, bool, error)
@@ -149,7 +150,7 @@ func (c *Capture) readDecodedEvents(epoch uint32, limit int, dst []DecodedEvent)
 				return nil, err
 			}
 			if n < 0 || n > len(data) || n%DecodedEventBytes != 0 {
-				return nil, fmt.Errorf("sramcapture: invalid isolated event batch")
+				return nil, errors.New("sramcapture: invalid isolated event batch")
 			}
 			c.beats.Add(uint64(n/2 + 1))
 			events := dst
@@ -164,7 +165,7 @@ func (c *Capture) readDecodedEvents(epoch uint32, limit int, dst []DecodedEvent)
 					return nil, err
 				}
 				if event.Epoch != epoch {
-					return nil, fmt.Errorf("sramcapture: isolated epoch mismatch")
+					return nil, errors.New("sramcapture: isolated epoch mismatch")
 				}
 				events[i] = event
 			}
@@ -196,14 +197,14 @@ func (c *Capture) readDecodedEvents(epoch uint32, limit int, dst []DecodedEvent)
 		return nil, err
 	}
 	if active != 1 {
-		return nil, fmt.Errorf("sramcapture: decoded stream is disabled")
+		return nil, errors.New("sramcapture: decoded stream is disabled")
 	}
 	current, err := c.read32(61)
 	if err != nil {
 		return nil, err
 	}
 	if current != epoch {
-		return nil, fmt.Errorf("sramcapture: decoded epoch changed")
+		return nil, errors.New("sramcapture: decoded epoch changed")
 	}
 	status, err := c.read(58)
 	if err != nil {

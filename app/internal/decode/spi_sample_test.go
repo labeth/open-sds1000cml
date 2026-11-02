@@ -58,7 +58,7 @@ func (p spiBus) words() []uint64 {
 	for _, f := range p.frames {
 		b := 0
 		for _, by := range f {
-			for i := 0; i < 8; i++ {
+			for i := range 8 {
 				bit := by>>(7-i)&1 != 0
 				if !p.msb {
 					bit = by>>i&1 != 0
@@ -93,7 +93,7 @@ func (p spiBus) words() []uint64 {
 	offsets := [2][5]float64{{0, 2, 11, 11, 0}, {0, 4, 3, 4, 3}}
 	rng := rand.New(rand.NewSource(p.seed))
 	codes := [2][]uint8{make([]uint8, n), make([]uint8, n)}
-	for ch := 0; ch < 2; ch++ {
+	for ch := range 2 {
 		list, idle := dat, false
 		if ch == p.clockCh {
 			list, idle = clk, p.cpol
@@ -129,7 +129,7 @@ func (p spiBus) words() []uint64 {
 	}
 	wide := make([]uint64, n/4)
 	for k := range wide {
-		for j := 0; j < 4; j++ {
+		for j := range 4 {
 			wide[k] |= uint64(codes[0][4*k+j])<<(16*j) | uint64(codes[1][4*k+j])<<(16*j+8)
 		}
 	}
@@ -143,8 +143,10 @@ func (p spiBus) config() SampleSPIConfig {
 		delay = -delay
 	}
 	clock := uint8(120 + p.shift[p.clockCh])
-	return SampleSPIConfig{ClockCh: p.clockCh, Level: clock, Low: clock - 13, High: clock + 13, DataLevel: uint8(120 + p.shift[1-p.clockCh]),
-		Inverted: p.inverted, CPOL: p.cpol, CPHA: p.cpha, MSB: p.msb, Delay: delay, GapClocks: SampleSPIGap(p.rateHz)}
+	return SampleSPIConfig{
+		ClockCh: p.clockCh, Level: clock, Low: clock - 13, High: clock + 13, DataLevel: uint8(120 + p.shift[1-p.clockCh]),
+		Inverted: p.inverted, CPOL: p.cpol, CPHA: p.cpha, MSB: p.msb, Delay: delay, GapClocks: SampleSPIGap(p.rateHz),
+	}
 }
 
 // frameBytes groups the receiver's events into frames; a frame that ends
@@ -180,7 +182,7 @@ func frameBytes(ev []SampleSPIEvent) ([][]byte, error) {
 // TRLC-LINKS: REQ-SDS-229
 func benchFrame(n int) []byte {
 	b := append([]byte{0x0b, 0, 0x10, 0, 0xff}, "SPI FLASH 104MHZ OPEN-SDS 0123  "...)
-	for i := 0; i < 32; i++ {
+	for i := range 32 {
 		b = append(b, byte(n+i))
 	}
 	return b
@@ -193,17 +195,21 @@ func synthCases() []spiBus {
 	var cases []spiBus
 	frames := [][]byte{benchFrame(0)[:12], {0x00, 0xff, 0xa5, 0x5a}, {0x81, 0x7e, 0x01, 0x80}}
 	for i, rate := range []float64{1e6, 10e6, 25e6, 50e6, 75e6, 104e6} {
-		for mode := 0; mode < 4; mode++ {
-			p := spiBus{rateHz: rate, cpol: mode >= 2, cpha: mode%2 == 1, msb: mode != 1, inverted: mode == 3 && i%2 == 0,
-				clockCh: 1 - mode%2, frames: frames, idleS: 2e-6 + 3/rate, riseS: 3e-9, noise: 1, seed: int64(10*i + mode)}
+		for mode := range 4 {
+			p := spiBus{
+				rateHz: rate, cpol: mode >= 2, cpha: mode%2 == 1, msb: mode != 1, inverted: mode == 3 && i%2 == 0,
+				clockCh: 1 - mode%2, frames: frames, idleS: 2e-6 + 3/rate, riseS: 3e-9, noise: 1, seed: int64(10*i + mode),
+			}
 			cases = append(cases, p)
 		}
 	}
 	// the traces apart on the screen: each line sliced at its own level,
 	// neither line's swing reaching the other's
 	for i, rate := range []float64{104e6, 10e6} {
-		p := spiBus{rateHz: rate, msb: true, cpha: i == 1, clockCh: 1 - i, frames: frames, idleS: 2e-6 + 3/rate, riseS: 3e-9, noise: 1, seed: int64(90 + i),
-			shift: [2]float64{75, -60}}
+		p := spiBus{
+			rateHz: rate, msb: true, cpha: i == 1, clockCh: 1 - i, frames: frames, idleS: 2e-6 + 3/rate, riseS: 3e-9, noise: 1, seed: int64(90 + i),
+			shift: [2]float64{75, -60},
+		}
 		cases = append(cases, p)
 	}
 	return cases
@@ -255,8 +261,11 @@ type spiCapture struct {
 }
 
 var spiCaptures = []spiCapture{
-	{"spi_sample_104mhz.bin.gz", 104e6}, {"spi_sample_75mhz.bin.gz", 75e6}, {"spi_sample_50mhz.bin.gz", 50e6},
-	{"spi_sample_25mhz.bin.gz", 25e6}, {"spi_sample_10mhz.bin.gz", 10e6},
+	{"spi_sample_104mhz.bin.gz", 104e6},
+	{"spi_sample_75mhz.bin.gz", 75e6},
+	{"spi_sample_50mhz.bin.gz", 50e6},
+	{"spi_sample_25mhz.bin.gz", 25e6},
+	{"spi_sample_10mhz.bin.gz", 10e6},
 }
 
 // TRLC-LINKS: REQ-SDS-229
@@ -423,7 +432,7 @@ func (s rtlSim) run(t *testing.T, words []uint64, c SampleSPIConfig) ([]SampleSP
 	var edges []SampleSPIEdge
 	var events []SampleSPIEvent
 	done := false
-	for _, line := range strings.Split(strings.TrimSpace(out), "\n") {
+	for line := range strings.SplitSeq(strings.TrimSpace(out), "\n") {
 		var a, b, c2, d int
 		switch {
 		case strings.HasPrefix(line, "EDGE "):
@@ -472,12 +481,12 @@ func runCmd(name string, args ...string) (string, error) {
 // TRLC-LINKS: REQ-SDS-229
 func lines(wide []uint64) (c1, c2 []uint8) {
 	for _, w := range wide {
-		for j := 0; j < 4; j++ {
+		for j := range 4 {
 			c1 = append(c1, sampleOf(w, 0, j))
 			c2 = append(c2, sampleOf(w, 1, j))
 		}
 	}
-	return
+	return c1, c2
 }
 
 // The software decoder takes the data line at the clock's interpolated

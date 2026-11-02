@@ -41,17 +41,17 @@ func buExpParity(val, bits int, parity string) int {
 // TRLC-LINKS: REQ-SDS-018
 func buBuildSeq(bytes []int, bits int, parity string, lead, trail, gap int) []int {
 	var seq []int
-	for i := 0; i < lead; i++ {
+	for range lead {
 		seq = append(seq, 1)
 	}
 	for bi, b := range bytes {
 		if bi > 0 {
-			for i := 0; i < gap; i++ {
+			for range gap {
 				seq = append(seq, 1)
 			}
 		}
 		seq = append(seq, 0) // start
-		for c := 0; c < bits; c++ {
+		for c := range bits {
 			seq = append(seq, (b>>uint(c))&1) // LSB first
 		}
 		if parity != "none" && parity != "" {
@@ -59,7 +59,7 @@ func buBuildSeq(bytes []int, bits int, parity string, lead, trail, gap int) []in
 		}
 		seq = append(seq, 1) // stop
 	}
-	for i := 0; i < trail; i++ {
+	for range trail {
 		seq = append(seq, 1)
 	}
 	return seq
@@ -71,18 +71,12 @@ func buBuildSeq(bytes []int, bits int, parity string, lead, trail, gap int) []in
 // TRLC-LINKS: REQ-SDS-018
 func buRasterize(seq []int, spb float64, frontPad int) []uint8 {
 	const lo, hi = 40, 210
-	total := frontPad + int(math.Round(float64(len(seq))*spb))
-	if total < 0 {
-		total = 0
-	}
+	total := max(frontPad+int(math.Round(float64(len(seq))*spb)), 0)
 	w := make([]uint8, total)
 	for j := 0; j < total; j++ {
 		b := 1
 		if j >= frontPad && len(seq) > 0 {
-			idx := int(math.Floor(float64(j-frontPad) / spb))
-			if idx < 0 {
-				idx = 0
-			}
+			idx := max(int(math.Floor(float64(j-frontPad)/spb)), 0)
 			if idx >= len(seq) {
 				idx = len(seq) - 1
 			}
@@ -122,7 +116,7 @@ func buCountKinds(spans []Span) (frameErr, parityErr, gap int) {
 			gap++
 		}
 	}
-	return
+	return frameErr, parityErr, gap
 }
 
 // buInjectRing models RINGY edges: for every transition in w it injects a
@@ -158,7 +152,7 @@ func TestBreakUartRingyEdges(t *testing.T) {
 	rng := rand.New(rand.NewSource(0x51C4))
 
 	// ---- 60 ringy round-trips: every transition rings, payload must survive.
-	for it := 0; it < 60; it++ {
+	for it := range 60 {
 		bits := 8
 		parity := []string{"none", "even", "odd"}[rng.Intn(3)]
 		spbT := 12.0 + rng.Float64()*20.0 // 12..32 samples/bit (ring ≤4 ≪ bit)
@@ -205,7 +199,7 @@ func TestBreakUartRingyEdges(t *testing.T) {
 	{
 		var w []uint8
 		lv := uint8(210)
-		for p := 0; p < 60; p++ {
+		for p := range 60 {
 			n := 11
 			if p%2 == 1 {
 				n = 17
@@ -234,7 +228,7 @@ func TestBreakUart(t *testing.T) {
 	// CLASS 1: FALSE NEGATIVES — a valid frame must round-trip exactly.
 	// ------------------------------------------------------------------
 	fnIter := 80
-	for it := 0; it < fnIter; it++ {
+	for it := range fnIter {
 		bits := []int{5, 6, 7, 8, 9}[rng.Intn(5)]
 		parity := []string{"none", "even", "odd"}[rng.Intn(3)]
 		// Target a random (usually fractional) samples/bit across the legal
@@ -286,7 +280,7 @@ func TestBreakUart(t *testing.T) {
 	// confirmed as a clean valid frame.
 	// ------------------------------------------------------------------
 	fpIter := 66
-	for it := 0; it < fpIter; it++ {
+	for it := range fpIter {
 		kind := it % 6
 		switch kind {
 		case 0: // flat / DC: no long clean byte run may be reported.

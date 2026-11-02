@@ -57,7 +57,7 @@ func TestStreamMode(t *testing.T) {
 		t.Fatal("SetStreamMode(true) not applied")
 	}
 	e.bringUp()
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		e.stitchFrame(false)
 	}
 	s := e.Snapshot()

@@ -1,11 +1,10 @@
 package app
 
 import (
-	"os"
-	"path/filepath"
-
 	"open-sds/app/internal/lcd"
 	"open-sds/app/internal/panel/wsview"
+	"os"
+	"path/filepath"
 	"testing"
 )
 
@@ -35,11 +34,17 @@ func TestSaveHardcopyNumbers(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-168, REQ-SDS-211
 func TestRenderSigSeesUIChanges(t *testing.T) {
 	view := func(typ string) wsview.View {
-		return wsview.View{Layout: wsview.Layout{MenuW: 116, Sheet: true},
-			Sheet: &wsview.Sheet{WSName: "SCOPE", Rows: []wsview.Row{{Kind: wsview.Enum, Label: "Type",
-				Opts: []wsview.Opt{{Text: "Pulse", Sel: typ == "Pulse"}, {Text: "Slope", Sel: typ == "Slope"}}}},
-				Sub: &wsview.Sub{Title: "x"}},
-			Keys: &wsview.Keys{Title: "TYPE"}}
+		return wsview.View{
+			Layout: wsview.Layout{MenuW: 116, Sheet: true},
+			Sheet: &wsview.Sheet{
+				WSName: "SCOPE", Rows: []wsview.Row{{
+					Kind: wsview.Enum, Label: "Type",
+					Opts: []wsview.Opt{{Text: "Pulse", Sel: typ == "Pulse"}, {Text: "Slope", Sel: typ == "Slope"}},
+				}},
+				Sub: &wsview.Sub{Title: "x"},
+			},
+			Keys: &wsview.Keys{Title: "TYPE"},
+		}
 	}
 	h := lcd.HUD{UI: view("Pulse")}
 	a := renderSigOf(nil, h, false)

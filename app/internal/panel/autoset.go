@@ -4,15 +4,14 @@ package panel
 import (
 	"fmt"
 	"math"
-	"slices"
-	"strings"
-	"time"
-
 	"open-sds/app/internal/analog"
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/measure"
 	"open-sds/app/internal/panel/framecalc"
 	"open-sds/app/internal/panel/wsview"
+	"slices"
+	"strings"
+	"time"
 )
 
 const divX = 10 // horizontal graticule divisions (spec 07)
@@ -128,8 +127,10 @@ type autoEntry struct {
 // TRLC-LINKS: REQ-SDS-137
 func (c *Controller) autoEntryNow() autoEntry {
 	st := c.eng.Snapshot()
-	e := autoEntry{tdiv: st.TdivSet(), trig: st.TrigType, src: st.TrigSource, rising: st.TrigRising, code: st.TrigCode,
-		norm: st.Norm, running: st.Running}
+	e := autoEntry{
+		tdiv: st.TdivSet(), trig: st.TrigType, src: st.TrigSource, rising: st.TrigRising, code: st.TrigCode,
+		norm: st.Norm, running: st.Running,
+	}
 	if st.SerialMode != 0 {
 		e.trig = trigSerial
 	}
@@ -172,7 +173,7 @@ func (c *Controller) cancelledAuto(stop chan struct{}, e autoEntry) {
 		_ = c.setMatchTokens(e.match)
 	}
 	if c.fe != nil {
-		for ch := 0; ch < 2; ch++ {
+		for ch := range 2 {
 			c.setVdiv(ch, e.vidx[ch])
 			c.fe.SetOffset(ch, e.off[ch])
 		}
@@ -446,7 +447,7 @@ func (c *Controller) autosetSweep(stop chan struct{}, g autoGoal) (autoResult, b
 			c.setTdivNearest(entryTdiv)
 		}
 		if c.fe != nil {
-			for ch := 0; ch < 2; ch++ {
+			for ch := range 2 {
 				c.setVdiv(ch, entryVidx[ch])
 				c.fe.SetOffset(ch, entryOff[ch])
 			}
@@ -474,7 +475,7 @@ func (c *Controller) autosetSweep(stop chan struct{}, g autoGoal) (autoResult, b
 	//    signal (an unknown frequency needs a scale where a few cycles are on
 	//    screen and native — not decimated — so the frequency reads true).
 	if c.fe != nil {
-		for ch := 0; ch < 2; ch++ {
+		for ch := range 2 {
 			// 2 V/div at the probe tip: ±8 V unclipped. The detents are the
 			// BNC's: with a 10x probe 2 V/div there was 20 V/div at the tip,
 			// a 3.3 V logic swing four codes, and AUTO found no signal.
@@ -509,7 +510,7 @@ func (c *Controller) autosetSweep(stop chan struct{}, g autoGoal) (autoResult, b
 				break
 			}
 			found, swing, timed = nil, [2]*measure.Result{}, [2]bool{}
-			for ch := 0; ch < 2; ch++ {
+			for ch := range 2 {
 				c.setVdiv(ch, nearestDetent(tip/c.fe.ProbeFactor(ch)))
 				c.fe.SetOffset(ch, 0)
 			}
@@ -635,7 +636,7 @@ func (c *Controller) autosetSweep(stop chan struct{}, g autoGoal) (autoResult, b
 	// the screen when the other came. It keeps the sweep's 2 V/div at 0 V,
 	// where either level of a logic line shows, and is fitted no further.
 	if c.fe != nil {
-		for ch := 0; ch < 2; ch++ {
+		for ch := range 2 {
 			if has(m[ch]) && !timed[ch] && swing[ch].Vpp < refineMinVpp {
 				c.fe.SetOffset(ch, 0)
 				m[ch], swing[ch] = nil, nil
@@ -651,7 +652,7 @@ func (c *Controller) autosetSweep(stop chan struct{}, g autoGoal) (autoResult, b
 	//    (Vmax+Vmin)/2 — NOT the mean, which for a duty-cycled signal (UART idles
 	//    high) skews toward a rail and would push the other rail off-screen.
 	if c.fe != nil {
-		for ch := 0; ch < 2; ch++ {
+		for ch := range 2 {
 			if !has(m[ch]) {
 				continue
 			}
@@ -681,7 +682,7 @@ func (c *Controller) autosetSweep(stop chan struct{}, g autoGoal) (autoResult, b
 	//     model-independent — it works off the raw codes. A larger fill leaves
 	//     less room above and below, so it centres closer.
 	if c.fe != nil {
-		for ch := 0; ch < 2; ch++ {
+		for ch := range 2 {
 			if !has(m[ch]) {
 				continue
 			}
@@ -709,7 +710,7 @@ func (c *Controller) autosetSweep(stop chan struct{}, g autoGoal) (autoResult, b
 	//     signal onto an ATTENUATED range (V/div ≥ 500 mV) where the offset actually
 	//     works. Bounded by the detent count so it can never spin.
 	if c.fe != nil {
-		for ch := 0; ch < 2; ch++ {
+		for ch := range 2 {
 			if !has(m[ch]) {
 				continue
 			}
@@ -791,11 +792,11 @@ func (c *Controller) autosetSweep(stop chan struct{}, g autoGoal) (autoResult, b
 	if c.fe != nil {
 		again := false
 		var steps [2]int // each channel's steps, at most autoClipSteps off the rail
-		for look := 0; look < autoClipLooks; look++ {
+		for look := range autoClipLooks {
 			if look > 0 && !c.waitFrame(stop) {
 				return res, false
 			}
-			for ch := 0; ch < 2; ch++ {
+			for ch := range 2 {
 				if !has(swing[ch]) {
 					continue // (a railed trace measures no swing now: the sweep's says it had one)
 				}
@@ -920,7 +921,7 @@ func (c *Controller) refineVertical(stop chan struct{}, m, swing [2]*measure.Res
 		}
 	}
 	step := func(r *measure.Result) float64 { return r.Vtop - r.Vbase }
-	for ch := 0; ch < 2; ch++ {
+	for ch := range 2 {
 		if !has(m[ch]) || !has(mf[ch]) || !has(swing[ch]) || swing[ch].Vpp < refineMinVpp || c.clipped(ch) ||
 			mf[ch].Vpp < refineShare*swing[ch].Vpp && !(step(mf[ch]) >= refineShare*step(swing[ch]) && step(swing[ch]) > 0) {
 			continue
@@ -1055,10 +1056,7 @@ func (c *Controller) autoTrigger(stop chan struct{}, m *[2]*measure.Result, swin
 	if c.fe != nil {
 		codeF = c.fe.TrigCode(mid, src)
 	}
-	code := int(codeF + 0.5)
-	if code < engine.TrigCodeMin {
-		code = engine.TrigCodeMin
-	}
+	code := max(int(codeF+0.5), engine.TrigCodeMin)
 	if code > engine.TrigCodeMax {
 		code = engine.TrigCodeMax
 	}
@@ -1204,15 +1202,12 @@ func (c *Controller) measureChans() ([2]*measure.Result, bool) {
 			return
 		}
 		ok = true
-		valid := f.Valid
-		if valid < 1 {
-			valid = 1
-		}
+		valid := max(f.Valid, 1)
 		if valid > len(f.C1) {
 			valid = len(f.C1)
 		}
 		off := [2]uint16{st.OffC1, st.OffC2}
-		for ch := 0; ch < 2; ch++ {
+		for ch := range 2 {
 			var sig []uint8
 			if ch == 0 {
 				sig = f.C1[:valid]
@@ -1325,7 +1320,7 @@ func (c *Controller) rawCentre(ch int) (errDiv float64, span int) {
 		}
 		trim := valid / 100 // ignore the extreme 1% each end
 		lo, hi, acc := 0, 255, 0
-		for i := 0; i < 256; i++ {
+		for i := range 256 {
 			if acc += h[i]; acc > trim {
 				lo = i
 				break
@@ -1690,7 +1685,7 @@ func (c *Controller) waitBandFrame(stop chan struct{}, wantSampleS float64) bool
 	// transition, and measuring one of those aliases the signal. Require a
 	// FRESH, NON-ENVELOPE frame whose sample rate matches the new band before
 	// the caller measures (found by the 1 MHz workflow from a 10 ms/div start).
-	for i := 0; i < 16; i++ { // ~16×settle ≈ 3.5 s worst case (roll→fast)
+	for range 16 { // ~16×settle ≈ 3.5 s worst case (roll→fast)
 		if !c.waitFrame(stop) {
 			return false // cancelled
 		}

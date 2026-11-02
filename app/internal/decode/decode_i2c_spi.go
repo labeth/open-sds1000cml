@@ -104,10 +104,7 @@ func DecodeI2C(scl, sda []uint8, colTimeS float64, cfg I2CCfg) Result {
 	if !DA.ok {
 		return Result{Proto: "i2c", Error: "SDA " + DA.reason}
 	}
-	n := CL.n
-	if DA.n < n {
-		n = DA.n
-	}
+	n := min(DA.n, CL.n)
 	risings := 0
 	for _, e := range CL.edges {
 		if e.dir > 0 && e.i < n {
@@ -195,7 +192,7 @@ func DecodeI2C(scl, sda []uint8, colTimeS float64, cfg I2CCfg) Result {
 		g := i2cGlitch(clEdges)
 		i2cDeglitch(clLevel, g)
 		i2cDeglitch(daLevel, g)
-		for i := 0; i < n; i++ {
+		for i := range n {
 			pcl, pda := cl, da
 			cl, da = int(clLevel[i]), int(daLevel[i])
 			if pcl >= 0 && pda >= 0 {
@@ -232,8 +229,10 @@ func DecodeI2C(scl, sda []uint8, colTimeS float64, cfg I2CCfg) Result {
 	if inTxn {
 		spans = append(spans, Span{n - 1, n - 1, "(no STOP)", "frame-error", 0})
 	}
-	return Result{OK: true, Proto: "i2c", Spans: spans, Text: strings.Join(toks, " "),
-		Bytes: bytes, SPB: colsPerClock, Thr: CL.threshold}
+	return Result{
+		OK: true, Proto: "i2c", Spans: spans, Text: strings.Join(toks, " "),
+		Bytes: bytes, SPB: colsPerClock, Thr: CL.threshold,
+	}
 }
 
 // DecodeSPI decodes SPI given CLK + DATA codes, no chip-select (decode.js decodeSPI).
@@ -253,10 +252,7 @@ func DecodeSPI(clk, data []uint8, colTimeS float64, cfg SPICfg) Result {
 	if !DA.ok {
 		return Result{Proto: "spi", Error: "DATA " + DA.reason}
 	}
-	n := CK.n
-	if DA.n < n {
-		n = DA.n
-	}
+	n := min(DA.n, CK.n)
 	eIn := make([]edge, 0, len(CK.edges))
 	for _, e := range CK.edges {
 		if e.i < n {
@@ -379,7 +375,7 @@ func DecodeSPI(clk, data []uint8, colTimeS float64, cfg SPICfg) Result {
 	}
 	if fine {
 		ckLevel := CK.levels()
-		for i := 0; i < n; i++ {
+		for i := range n {
 			pck := ck
 			ck = int(ckLevel[i])
 			if pck < 0 {
@@ -402,8 +398,10 @@ func DecodeSPI(clk, data []uint8, colTimeS float64, cfg SPICfg) Result {
 	if mN > 0 {
 		margin = mSum / float64(mN)
 	}
-	return Result{OK: true, Proto: "spi", Spans: spans, Text: strings.Join(toks, " "),
-		Bytes: bytes, SPB: period, Thr: CK.threshold, Margin: margin}
+	return Result{
+		OK: true, Proto: "spi", Spans: spans, Text: strings.Join(toks, " "),
+		Bytes: bytes, SPB: period, Thr: CK.threshold, Margin: margin,
+	}
 }
 
 // armedCrossings marks a sliced line's crossings as the FPGA's receiver on

@@ -3,11 +3,10 @@ package lcd
 
 import (
 	"math"
-	"testing"
-
 	"open-sds/app/internal/panel/framecalc"
 	"open-sds/app/internal/panel/wsview"
 	"open-sds/app/internal/streamview"
+	"testing"
 )
 
 // TRLC-LINKS: REQ-SDS-021
@@ -25,8 +24,8 @@ func BenchmarkDrawText(b *testing.B) {
 // TRLC-LINKS: REQ-SDS-021
 func benchPattern() *MemSurface {
 	m := NewMemSurface()
-	for y := 0; y < H; y++ {
-		for x := 0; x < W; x++ {
+	for y := range H {
+		for x := range W {
 			if (x*7+y*3)%11 < 3 {
 				m.SetPixel(x, y, uint16(x*131+y*17))
 			}
@@ -136,8 +135,10 @@ func BenchmarkDrawMatchEditor(b *testing.B) {
 	for i := range toks {
 		toks[i] = [...]string{"48", "65", "6C", "?F", "??", "ERR", "20"}[i%7]
 	}
-	m := MatchView{Open: true, Set: "Hex", Proto: "UART", Toks: toks, Cur: 30,
-		Keys: [][]string{{"0", "1", "2", "3", "4", "5"}, {"6", "7", "8", "9", "A", "B"}, {"C", "D", "E", "F", "?", "??"}}, Row: 1, Col: 4}
+	m := MatchView{
+		Open: true, Set: "Hex", Proto: "UART", Toks: toks, Cur: 30,
+		Keys: [][]string{{"0", "1", "2", "3", "4", "5"}, {"6", "7", "8", "9", "A", "B"}, {"C", "D", "E", "F", "?", "??"}}, Row: 1, Col: 4,
+	}
 	sf := NewMemSurface()
 	for b.Loop() {
 		drawMatchEditor(sf, m)
@@ -149,7 +150,7 @@ func BenchmarkRenderBode(b *testing.B) {
 	h := defaultHUD()
 	h.ViewMode = 3
 	const fc = 30e3
-	for i := 0; i < 25; i++ {
+	for i := range 25 {
 		f := 1e3 * math.Pow(10, 3*float64(i)/24)
 		h.BodeFreq = append(h.BodeFreq, f)
 		h.BodeGain = append(h.BodeGain, -10*math.Log10(1+(f/fc)*(f/fc)))
@@ -188,7 +189,7 @@ func BenchmarkSpectrogramPush(b *testing.B) {
 // TRLC-LINKS: REQ-SDS-068
 func BenchmarkSpectrogramPaneBlit(b *testing.B) {
 	sg := NewSpectrogram()
-	for r := 0; r < 40; r++ {
+	for r := range 40 {
 		sg.Push(sgSine(4096, 10e6+1e5*float64(r), 2e-9), 0, 0.5/2e-9)
 	}
 	m := NewMemSurface()
@@ -201,8 +202,8 @@ func BenchmarkSpectrogramPaneBlit(b *testing.B) {
 // TRLC-LINKS: REQ-SDS-068
 func BenchmarkRenderSpectrogram(b *testing.B) {
 	sg := NewSpectrogram()
-	for s := 0; s < 8; s++ {
-		for r := 0; r < 12; r++ {
+	for s := range 8 {
+		for range 12 {
 			sg.Push(sgSine(4096, 10e6+15e6*float64(s), 2e-9), 0, 0.5/2e-9)
 		}
 	}

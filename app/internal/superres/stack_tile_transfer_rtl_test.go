@@ -47,14 +47,14 @@ func TestStackTileTransferRTL(t *testing.T) {
 		}
 		expected = append(expected, fmt.Sprintf("%d %x", err, out))
 	}
-	for b := uint32(0); b < 32; b++ {
-		for ch := 0; ch < 2; ch++ {
+	for b := range uint32(32) {
+		for ch := range 2 {
 			emit(false, b, ch, 0, false)
 			emit(true, b, ch, 0, false)
 			emit(false, b, ch, 0, false)
 		}
 	}
-	for i := 0; i < 80; i++ {
+	for range 80 {
 		b, ch := uint32(rng.Intn(32)), rng.Intn(2)
 		emit(true, b, ch, 0, true)
 		emit(false, b, ch, 0, false)
@@ -65,7 +65,7 @@ func TestStackTileTransferRTL(t *testing.T) {
 	}
 	for _, n := range []int{1, 10, 19} {
 		emit(true, 12, 1, n, false)
-		for b := uint32(0); b < 32; b++ {
+		for b := range uint32(32) {
 			emit(false, b, 0, 0, false)
 			emit(false, b, 1, 0, false)
 		}
@@ -74,7 +74,7 @@ func TestStackTileTransferRTL(t *testing.T) {
 	}
 	dir := t.TempDir()
 	p := filepath.Join(dir, "input.txt")
-	if err := os.WriteFile(p, []byte(input.String()), 0600); err != nil {
+	if err := os.WriteFile(p, []byte(input.String()), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	image := compileStackRTL(t, dir, "tb_stack_tile_transfer", "stack_tile_transfer.v", "stack_state_tile.v", "sim/tb_stack_tile_transfer.v")
@@ -83,7 +83,7 @@ func TestStackTileTransferRTL(t *testing.T) {
 		t.Fatalf("simulation %v\n%s", err, out)
 	}
 	n := 0
-	for _, line := range strings.Split(string(out), "\n") {
+	for line := range strings.SplitSeq(string(out), "\n") {
 		if !strings.HasPrefix(line, "X ") {
 			continue
 		}

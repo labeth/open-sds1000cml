@@ -3,14 +3,13 @@ package panel
 
 import (
 	"fmt"
-	"strings"
-	"testing"
-	"time"
-
 	"open-sds/app/internal/decode"
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/panel/framecalc"
 	"open-sds/app/internal/panel/wsview"
+	"strings"
+	"testing"
+	"time"
 )
 
 // BUS trades the frame rate for the decode: a live envelope too coarse for

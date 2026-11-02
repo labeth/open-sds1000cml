@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"fmt"
 	"testing"
 	"time"
 )
@@ -50,7 +49,7 @@ func TestFrozenSampleTimeline(t *testing.T) {
 			f := frozenBus()
 			f.revision = 10
 			b := &timelineBus{decodedCaptureBus: &decodedCaptureBus{fakeBus: f, record: 7, recordEpoch: 9}, regs: map[uint16]uint16{83: 0x5401, 84: tc.valid, 89: tc.id, 91: tc.epoch}}
-			for i := uint16(0); i < 4; i++ {
+			for i := range uint16(4) {
 				b.regs[85+i] = uint16(tc.last >> (16 * i))
 			}
 			c, err := New(b)
@@ -121,7 +120,7 @@ func (b *decodedCaptureBus) RawWrite(s, v uint16) error {
 		b.enabled = v == 1
 	}
 	if s >= 64 && s <= 68 && b.enabled {
-		return fmt.Errorf("configured decoder while streaming")
+		return errors.New("configured decoder while streaming")
 	}
 	if s == 1 && v == 1 {
 		b.record++

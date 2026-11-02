@@ -225,15 +225,19 @@ func flashMatch(p Packet) ([]string, int) {
 
 // sdCmdNames name the SD card's commands in SPI mode; sdACmdNames the
 // application commands (after CMD55).
-var sdCmdNames = map[int]string{0: "GO_IDLE_STATE", 1: "SEND_OP_COND", 6: "SWITCH_FUNC", 8: "SEND_IF_COND",
+var sdCmdNames = map[int]string{
+	0: "GO_IDLE_STATE", 1: "SEND_OP_COND", 6: "SWITCH_FUNC", 8: "SEND_IF_COND",
 	9: "SEND_CSD", 10: "SEND_CID", 12: "STOP_TRANSMISSION", 13: "SEND_STATUS", 16: "SET_BLOCKLEN",
 	17: "READ_SINGLE_BLOCK", 18: "READ_MULTIPLE_BLOCK", 23: "SET_BLOCK_COUNT", 24: "WRITE_BLOCK",
 	25: "WRITE_MULTIPLE_BLOCK", 27: "PROGRAM_CSD", 28: "SET_WRITE_PROT", 29: "CLR_WRITE_PROT",
 	30: "SEND_WRITE_PROT", 32: "ERASE_WR_BLK_START_ADDR", 33: "ERASE_WR_BLK_END_ADDR", 38: "ERASE",
-	42: "LOCK_UNLOCK", 55: "APP_CMD", 56: "GEN_CMD", 58: "READ_OCR", 59: "CRC_ON_OFF"}
+	42: "LOCK_UNLOCK", 55: "APP_CMD", 56: "GEN_CMD", 58: "READ_OCR", 59: "CRC_ON_OFF",
+}
 
-var sdACmdNames = map[int]string{6: "SET_BUS_WIDTH", 13: "SD_STATUS", 22: "SEND_NUM_WR_BLOCKS",
-	23: "SET_WR_BLK_ERASE_COUNT", 41: "SD_SEND_OP_COND", 42: "SET_CLR_CARD_DETECT", 51: "SEND_SCR"}
+var sdACmdNames = map[int]string{
+	6: "SET_BUS_WIDTH", 13: "SD_STATUS", 22: "SEND_NUM_WR_BLOCKS",
+	23: "SET_WR_BLK_ERASE_COUNT", 41: "SD_SEND_OP_COND", 42: "SET_CLR_CARD_DETECT", 51: "SEND_SCR",
+}
 
 // sdCRC7 is the CRC-7 (polynomial x^7 + x^3 + 1) of a command token's first
 // five bytes, in the token's last byte with its end bit: (crc << 1) | 1.
@@ -294,7 +298,7 @@ func (st *sdState) note(b []byte) (string, bool) {
 			i += 6
 		case v == 0xfe || v == 0xfc: // a write's data token and block
 			n := len(b) - i - 1
-			parts = append(parts, fmt.Sprintf("data block, %s", plural(n, "byte")))
+			parts = append(parts, "data block, "+plural(n, "byte"))
 			i = len(b)
 		case v == 0xfd:
 			parts = append(parts, "stop token")
@@ -680,7 +684,7 @@ type st25State struct{ space int }
 func (st *st25State) note(b []byte) (string, bool) {
 	var parts []string
 	bad := false
-	for i := 0; i < len(b); i++ {
+	for i := range b {
 		c := int(b[i])
 		d := b[i+1:]
 		if c <= 0x7f {
@@ -759,8 +763,10 @@ func adxl345Note(b []byte) (string, bool) {
 func adxl345Value(a, v int) string {
 	switch a {
 	case 0x2c:
-		rates := []string{"0.10", "0.20", "0.39", "0.78", "1.56", "3.13", "6.25", "12.5", "25", "50", "100", "200",
-			"400", "800", "1600", "3200"}
+		rates := []string{
+			"0.10", "0.20", "0.39", "0.78", "1.56", "3.13", "6.25", "12.5", "25", "50", "100", "200",
+			"400", "800", "1600", "3200",
+		}
 		return " (" + rates[v&0xf] + " Hz)"
 	case 0x31:
 		return fmt.Sprintf(" (+-%dg)", 2<<(v&3))
@@ -877,7 +883,7 @@ func ad79x0Note(b []byte) (string, bool) {
 	case len(b) == 1:
 		return "ADC power-down", false
 	case len(b) != 2:
-		return fmt.Sprintf("? %s", plural(len(b), "byte")), true
+		return "? " + plural(len(b), "byte"), true
 	}
 	v := be(b)
 	if v == 0xfff {
@@ -969,13 +975,13 @@ func avrNote(b []byte) (string, bool) {
 		case c[0] == 0x58 && c[1] == 0x00:
 			s = "READ LOCK"
 		case c[0] == 0xa0 && c[1]&0xc0 == 0:
-			s = fmt.Sprintf("READ EEPROM 0x%s", hx(int(c[1]&1)<<8|int(c[2]), 3))
+			s = "READ EEPROM 0x" + hx(int(c[1]&1)<<8|int(c[2]), 3)
 		case (c[0] == 0x20 || c[0] == 0x28) && c[1]&0xf0 == 0:
 			s = fmt.Sprintf("READ FLASH %s 0x%s", map[bool]string{true: "H", false: "L"}[c[0] == 0x28], hx(int(c[1]&0x0f)<<8|int(c[2]), 3))
 		case (c[0] == 0x40 || c[0] == 0x48) && c[1]&0xf0 == 0:
 			s = fmt.Sprintf("LOAD PAGE %s 0x%s = %s", map[bool]string{true: "H", false: "L"}[c[0] == 0x48], hx(int(c[2]&0x1f), 2), hx(int(c[3]), 2))
 		case c[0] == 0x4c && c[1]&0xf0 == 0:
-			s = fmt.Sprintf("WRITE PAGE 0x%s", hx(int(c[1]&0x0f)<<3+int(c[2])<<5, 2))
+			s = "WRITE PAGE 0x" + hx(int(c[1]&0x0f)<<3+int(c[2])<<5, 2)
 		default:
 			s = "? " + hexList(c, 4)
 			bad = true
@@ -1076,7 +1082,7 @@ var nesButtons = func() (t [256]string) {
 			t[v] = "not connected"
 		default:
 			var on []string
-			for k := 0; k < 8; k++ {
+			for k := range 8 {
 				if v>>(7-k)&1 == 0 {
 					on = append(on, names[k])
 				}

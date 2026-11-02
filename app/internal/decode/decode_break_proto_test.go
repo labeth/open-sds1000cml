@@ -124,10 +124,12 @@ func TestDecodeFuzzBeyondTen(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-018
 func TestBreakProtoNoFalseFrames(t *testing.T) {
 	rng := rand.New(rand.NewSource(99))
-	checked := map[string]bool{"lin": true, "modbus": true, "dht": true, "j1850": true, "irnec": true, "usbpd": true,
-		"mdio": true, "wiegand": true, "swd": true}
+	checked := map[string]bool{
+		"lin": true, "modbus": true, "dht": true, "j1850": true, "irnec": true, "usbpd": true,
+		"mdio": true, "wiegand": true, "swd": true,
+	}
 	falses := map[string]int{}
-	for it := 0; it < 150; it++ {
+	for range 150 {
 		n := 2000 + rng.Intn(30000)
 		a, b := make([]uint8, n), make([]uint8, n)
 		va, vb, p := 200, 200, 3+rng.Intn(400)
@@ -204,7 +206,7 @@ func TestBreakProtoChecksFlagged(t *testing.T) {
 		l.mark(9e-3)
 		l.space(4.5e-3)
 		for _, v := range []int{0x04, 0xFB, 0x08, 0x08} { // the command's inverse broken
-			for i := 0; i < 8; i++ {
+			for i := range 8 {
 				l.mark(562.5e-6)
 				if v>>i&1 == 1 {
 					l.space(1687.5e-6)
@@ -253,7 +255,6 @@ func TestBreakProtoRecordEnds(t *testing.T) {
 		}
 		dec := map[string]func(a, b []uint8) Result{}
 		for _, d := range protoDecoders {
-			d := d
 			dec[d.name] = func(a, b []uint8) Result { return d.dec(a, b, c.colT, rand.New(rand.NewSource(0))) }
 		}
 		f := dec[c.proto]

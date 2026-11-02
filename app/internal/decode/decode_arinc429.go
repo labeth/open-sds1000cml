@@ -65,7 +65,7 @@ func DecodeARINC429(codes []uint8, colTimeS float64, cfg ARINC429Cfg) Result {
 	}
 	var pulses []pulse
 	state := 0 // 0 NULL, +1 HI, -1 LO
-	for i := 0; i < n; i++ {
+	for i := range n {
 		v := float64(codes[i])
 		switch state {
 		case 0:
@@ -178,35 +178,29 @@ func DecodeARINC429(codes []uint8, colTimeS float64, cfg ARINC429Cfg) Result {
 
 		// Fields, transmission order (bits[0] = first bit on the wire = ARINC #1).
 		labelRev := 0
-		for i := 0; i < 8; i++ {
+		for i := range 8 {
 			labelRev = (labelRev << 1) | bits[i] // bit 1 -> octal MSB (bit-reversed)
 		}
 		dataVal := 0
-		for i := 0; i < 19; i++ {
+		for i := range 19 {
 			dataVal |= bits[10+i] << i
 		}
 		ssm := bits[29] | bits[30]<<1
 		word32 := 0
-		for i := 0; i < 32; i++ {
+		for i := range 32 {
 			word32 |= bits[i] << i // ARINC bit 1 = LSB
 		}
 		parityOdd := popcount(word32)&1 == 1 // odd parity over all 32 bits
 
 		cellStart := func(k int) int {
-			p := int(math.Round(s0 + float64(k)*T))
-			if p < 0 {
-				p = 0
-			}
+			p := max(int(math.Round(s0+float64(k)*T)), 0)
 			if p >= n {
 				p = n - 1
 			}
 			return p
 		}
 		cellEnd := func(k int) int {
-			p := int(math.Round(s0+float64(k+1)*T)) - 1
-			if p < 0 {
-				p = 0
-			}
+			p := max(int(math.Round(s0+float64(k+1)*T))-1, 0)
 			if p >= n {
 				p = n - 1
 			}
@@ -242,8 +236,10 @@ func DecodeARINC429(codes []uint8, colTimeS float64, cfg ARINC429Cfg) Result {
 	if colTimeS > 0 {
 		baud = snapRate(int(math.Round(1.0/(T*colTimeS))), 12.5e3, 100e3)
 	}
-	return Result{OK: true, Proto: proto, Spans: spans, Text: strings.Join(toks, " "),
-		Bytes: bytesOut, Baud: baud, SPB: T, Thr: midf}
+	return Result{
+		OK: true, Proto: proto, Spans: spans, Text: strings.Join(toks, " "),
+		Bytes: bytesOut, Baud: baud, SPB: T, Thr: midf,
+	}
 }
 
 // ARINC429Levels derives the tri-level slicer from a record: NULL is the mode

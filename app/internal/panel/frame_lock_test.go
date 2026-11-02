@@ -3,10 +3,9 @@ package panel
 
 import (
 	"math/rand"
+	"open-sds/app/internal/engine"
 	"testing"
 	"time"
-
-	"open-sds/app/internal/engine"
 )
 
 // A bus search and a decode of the screen run on a copy of the frame: the

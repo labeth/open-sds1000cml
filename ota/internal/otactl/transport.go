@@ -7,9 +7,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
-	"time"
-
 	"open-sds/ota/internal/rpcproto"
+	"time"
 
 	"github.com/nats-io/nats.go"
 )

@@ -64,7 +64,7 @@ func TestManchesterReceiveRTL(t *testing.T) {
 								}
 							}
 							path := filepath.Join(dir, "samples.mem")
-							if err := os.WriteFile(path, []byte(input.String()), 0600); err != nil {
+							if err := os.WriteFile(path, []byte(input.String()), 0o600); err != nil {
 								t.Fatal(err)
 							}
 							boolInt := func(v bool) int {
@@ -84,7 +84,7 @@ func TestManchesterReceiveRTL(t *testing.T) {
 							var actual [2][]manchesterCandidate
 							var scores, goods [2]int
 							seenScore := false
-							for _, line := range strings.Split(strings.TrimSpace(string(output)), "\n") {
+							for line := range strings.SplitSeq(strings.TrimSpace(string(output)), "\n") {
 								if strings.HasPrefix(line, "E ") {
 									var phase int
 									var e manchesterCandidate
@@ -104,7 +104,7 @@ func TestManchesterReceiveRTL(t *testing.T) {
 							if !seenScore {
 								t.Fatal("missing final scores")
 							}
-							for phase := 0; phase < 2; phase++ {
+							for phase := range 2 {
 								start := float64(s.edges[0].i) - float64(phase*period)/2
 								cells, good, viol := recoverManchester(s, start, float64(period), ieee, float64(s.edges[len(s.edges)-1].i))
 								var want []manchesterCandidate

@@ -10,6 +10,7 @@ package vxi11
 
 import (
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -97,19 +98,19 @@ func rpcCall(conn net.Conn, timeout time.Duration, prog, vers, proc uint32, args
 		return nil, fmt.Errorf("vxi11: short reply (%d bytes)", len(reply))
 	}
 	if got := binary.BigEndian.Uint32(reply[0:4]); got != xid {
-		return nil, fmt.Errorf("vxi11: xid mismatch")
+		return nil, errors.New("vxi11: xid mismatch")
 	}
 	if binary.BigEndian.Uint32(reply[4:8]) != 1 { // REPLY
-		return nil, fmt.Errorf("vxi11: not a reply")
+		return nil, errors.New("vxi11: not a reply")
 	}
 	if binary.BigEndian.Uint32(reply[8:12]) != 0 { // MSG_ACCEPTED
-		return nil, fmt.Errorf("vxi11: rpc denied")
+		return nil, errors.New("vxi11: rpc denied")
 	}
 	// verf flavor+len at 12..20 (AUTH_NULL, len 0), accept_stat at 20..24.
 	verfLen := binary.BigEndian.Uint32(reply[16:20])
 	off := 20 + int(verfLen+3)/4*4
 	if len(reply) < off+4 {
-		return nil, fmt.Errorf("vxi11: truncated reply")
+		return nil, errors.New("vxi11: truncated reply")
 	}
 	if st := binary.BigEndian.Uint32(reply[off : off+4]); st != 0 {
 		return nil, fmt.Errorf("vxi11: accept_stat=%d", st)
@@ -156,7 +157,7 @@ func dialAt(pmAddr, host string, timeout time.Duration) (*Client, error) {
 		return nil, fmt.Errorf("vxi11: GETPORT: %w", err)
 	}
 	if len(res) < 4 {
-		return nil, fmt.Errorf("vxi11: GETPORT short result")
+		return nil, errors.New("vxi11: GETPORT short result")
 	}
 	port := binary.BigEndian.Uint32(res[0:4])
 	if port == 0 || port > 65535 {
@@ -170,7 +171,7 @@ func dialAt(pmAddr, host string, timeout time.Duration) (*Client, error) {
 	c := &Client{conn: conn, timeout: timeout}
 
 	var lastErr error
-	for attempt := 0; attempt < 3; attempt++ {
+	for range 3 {
 		var cl xdrBuf
 		cl.u32(1 /*clientId*/).u32(0 /*lockDevice=false*/).u32(0 /*lock_timeout*/)
 		cl.opaque([]byte("inst0"))
@@ -178,7 +179,7 @@ func dialAt(pmAddr, host string, timeout time.Duration) (*Client, error) {
 		if err != nil {
 			lastErr = err
 		} else if len(res) < 16 {
-			lastErr = fmt.Errorf("vxi11: create_link short result")
+			lastErr = errors.New("vxi11: create_link short result")
 		} else if e := binary.BigEndian.Uint32(res[0:4]); e != 0 {
 			lastErr = fmt.Errorf("vxi11: create_link error %d (stale link?)", e)
 		} else {
@@ -219,7 +220,7 @@ func (c *Client) Query(cmd string) (string, error) {
 		return "", err
 	}
 	var out []byte
-	for i := 0; i < 64; i++ { // bounded reassembly loop
+	for range 64 { // bounded reassembly loop
 		var args xdrBuf
 		args.u32(c.lid).u32(0x400000 /*requestSize*/).u32(5000).u32(0).u32(0).u32(0)
 		res, err := rpcCall(c.conn, c.timeout, coreProg, coreVers, procDeviceRead, args.b)
@@ -227,7 +228,7 @@ func (c *Client) Query(cmd string) (string, error) {
 			return string(out), err
 		}
 		if len(res) < 12 {
-			return string(out), fmt.Errorf("vxi11: device_read short result")
+			return string(out), errors.New("vxi11: device_read short result")
 		}
 		e := binary.BigEndian.Uint32(res[0:4])
 		reason := binary.BigEndian.Uint32(res[4:8])

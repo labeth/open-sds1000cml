@@ -87,7 +87,7 @@ func DrawText(sf Surface, x, y int, s string, c uint16, scale int) {
 			if mem && scale == 1 && x >= 0 && y >= 0 && x+5 <= W && y+8 <= H {
 				// Most of the HUD: one pixel a set bit, a column at a time.
 				px := m.px()
-				for col := 0; col < 5; col++ {
+				for col := range 5 {
 					o := y*W + x + col
 					for bits := g[col]; bits != 0; bits >>= 1 {
 						if bits&1 != 0 {
@@ -99,27 +99,27 @@ func DrawText(sf Surface, x, y int, s string, c uint16, scale int) {
 			} else if mem && x >= 0 && y >= 0 && x+5*scale <= W && y+8*scale <= H {
 				// The glyph's box is on the screen: its pixels written
 				// directly, as SetPixel would write them.
-				for col := 0; col < 5; col++ {
+				for col := range 5 {
 					bits := g[col]
-					for row := 0; row < 8; row++ {
+					for row := range 8 {
 						if bits&(1<<uint(row)) == 0 {
 							continue
 						}
-						for dy := 0; dy < scale; dy++ {
+						for dy := range scale {
 							o := ((y+row*scale+dy)*W + x + col*scale) * 2
-							for dx := 0; dx < scale; dx++ {
+							for dx := range scale {
 								m.Pix[o+2*dx], m.Pix[o+2*dx+1] = lo, hi
 							}
 						}
 					}
 				}
 			} else {
-				for col := 0; col < 5; col++ {
+				for col := range 5 {
 					bits := g[col]
-					for row := 0; row < 8; row++ { // row 7: descenders (g j p q y)
+					for row := range 8 { // row 7: descenders (g j p q y)
 						if bits&(1<<uint(row)) != 0 {
-							for dy := 0; dy < scale; dy++ {
-								for dx := 0; dx < scale; dx++ {
+							for dy := range scale {
+								for dx := range scale {
 									sf.SetPixel(x+col*scale+dx, y+row*scale+dy, c)
 								}
 							}

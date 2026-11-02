@@ -23,7 +23,7 @@ func (t twoLine) add(la, lb byte, d float64) {
 func ps2Frame(t twoLine, v int, host, badParity bool, per, gap float64) {
 	ones := 0
 	bits := []byte{0}
-	for i := 0; i < 8; i++ {
+	for i := range 8 {
 		b := byte(v >> i & 1)
 		ones += int(b)
 		bits = append(bits, b)
@@ -46,7 +46,7 @@ func ps2Frame(t twoLine, v int, host, badParity bool, per, gap float64) {
 	t.add(0, 1, 120e-6)
 	t.add(0, 0, 10e-6)
 	t.add(1, 0, per/2)
-	for k := 0; k < 12; k++ {
+	for k := range 12 {
 		d := byte(0) // the device's acknowledge on the twelfth clock
 		if k < 11 {
 			d = bits[k]
@@ -88,7 +88,7 @@ func (s *swdLine) host(b ...byte) { s.cycles(b, b) }
 // lineReset clocks 56 cycles with SWDIO high, then two idle cycles.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-236
 func (s *swdLine) lineReset() {
-	for i := 0; i < 56; i++ {
+	for range 56 {
 		s.host(1)
 	}
 	s.host(0, 0)
@@ -100,7 +100,7 @@ func (s *swdLine) lineReset() {
 // cycles after the turnaround's: each cycle's low half holds the bit read
 // at its fall, the previous cycle's high half drives it.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-236
-func (s *swdLine) transfer(ap, read bool, addr int, ack int, data uint32, badParity bool, idle int) {
+func (s *swdLine) transfer(ap, read bool, addr, ack int, data uint32, badParity bool, idle int) {
 	b := func(v bool) byte {
 		if v {
 			return 1
@@ -110,7 +110,7 @@ func (s *swdLine) transfer(ap, read bool, addr int, ack int, data uint32, badPar
 	a2, a3 := byte(addr>>2&1), byte(addr>>3&1)
 	s.host(1, b(ap), b(read), a2, a3, (b(ap)+b(read)+a2+a3)&1, 0, 1)
 	par := byte(0)
-	for k := 0; k < 32; k++ {
+	for k := range 32 {
 		par ^= byte(data >> k & 1)
 	}
 	if badParity {
@@ -119,7 +119,7 @@ func (s *swdLine) transfer(ap, read bool, addr int, ack int, data uint32, badPar
 	// the target's bits, read at the falls of the cycles after the turnaround
 	tb := []byte{byte(ack & 1), byte(ack >> 1 & 1), byte(ack >> 2 & 1)}
 	if ack == 1 && read {
-		for k := 0; k < 32; k++ {
+		for k := range 32 {
 			tb = append(tb, byte(data>>k&1))
 		}
 		tb = append(tb, par)
@@ -136,12 +136,12 @@ func (s *swdLine) transfer(ap, read bool, addr int, ack int, data uint32, badPar
 	s.cycles(lo, hi)
 	if ack == 1 && !read {
 		s.host(1) // the turnaround back to the host
-		for k := 0; k < 32; k++ {
+		for k := range 32 {
 			s.host(byte(data >> k & 1))
 		}
 		s.host(par)
 	}
-	for i := 0; i < idle; i++ {
+	for range idle {
 		s.host(0)
 	}
 }
@@ -155,7 +155,7 @@ func mdioFrame(t twoLine, per float64, pre, st, op, phy, reg, data int, taBit2 b
 		t.add(0, b, per/2)
 		t.add(1, b, per/2)
 	}
-	for i := 0; i < pre; i++ {
+	for range pre {
 		bit(1)
 	}
 	put := func(v, n int) {

@@ -3,9 +3,8 @@ package engine
 
 import (
 	"math"
-	"time"
-
 	"open-sds/app/internal/iface"
+	"time"
 )
 
 // The acq2 capture sequence (workplan §2, iface): RESET → RUN → DECIM →
@@ -54,10 +53,7 @@ func (e *Engine) bringUp() {
 // PRETRIG_MAX, see maxRecordCols) so the drain never exceeds the record.
 // TRLC-LINKS: REQ-SDS-009, REQ-SDS-010
 func (e *Engine) capDepth() int {
-	c := e.effDrainCols()
-	if c > maxRecordCols {
-		c = maxRecordCols
-	}
+	c := min(e.effDrainCols(), maxRecordCols)
 	if c < 2 {
 		c = 2
 	}
@@ -195,7 +191,7 @@ func (e *Engine) waitCapture(norm bool) (anchored, sawTrig, filled, fillMoved bo
 			// budget, then holds.
 			if filled && e.clk.Now().Sub(start) >= nativeMature &&
 				(anchored || sawTrig || !norm) {
-				return
+				return anchored, sawTrig, filled, fillMoved, trigPos
 			}
 		} else {
 			if anchored && filled {
@@ -208,18 +204,18 @@ func (e *Engine) waitCapture(norm bool) (anchored, sawTrig, filled, fillMoved bo
 					postOK = e.clk.Now().Sub(trigAt) >= postNs
 				}
 				if postOK && (!denseWait || e.clk.Now().Sub(start) >= time.Duration(denseNs)) {
-					return // triggered, post-trigger record filled (and dense in NORM)
+					return anchored, sawTrig, filled, fillMoved, trigPos // triggered, post-trigger record filled (and dense in NORM)
 				}
 			}
 			if !norm && !sawTrig && capCols > 0 && fill >= capCols {
-				return // AUTO free-run (no edge): the record is written through, drain it now
+				return anchored, sawTrig, filled, fillMoved, trigPos // AUTO free-run (no edge): the record is written through, drain it now
 			}
 		}
 		if e.stopReq.Load() {
-			return // abandon armed+filling: safe; boundary handles shutdown
+			return anchored, sawTrig, filled, fillMoved, trigPos // abandon armed+filling: safe; boundary handles shutdown
 		}
 		if !e.clk.Now().Before(deadline) {
-			return // budget expired: AUTO free-runs a refresh, NORM holds
+			return anchored, sawTrig, filled, fillMoved, trigPos // budget expired: AUTO free-runs a refresh, NORM holds
 		}
 		e.beatN.Add(1)
 		busyFill := time.Duration(e.tuneBusyFillUs.Load()) * time.Microsecond
@@ -237,7 +233,7 @@ func (e *Engine) halt() bool {
 	e.w(iface.SelOpcode, iface.OpHalt)
 	prev := e.r(iface.SelFill) & fillMask
 	e.lastFillAtHalt = int(prev)
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		cur := e.r(iface.SelFill) & fillMask
 		e.lastFillAtHalt = int(cur)
 		if cur == prev {

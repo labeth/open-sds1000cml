@@ -3,13 +3,13 @@ package engine
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/bits"
-	"sync/atomic"
-	"time"
-
 	"open-sds/app/internal/sramcapture"
 	"open-sds/app/internal/superres"
+	"sync/atomic"
+	"time"
 )
 
 // ImageSwitcher reconfigures the acquisition FPGA between the general image
@@ -112,7 +112,7 @@ var bitsImage atomic.Bool
 // TRLC-LINKS: REQ-SDS-141
 func (e *Engine) sramCall(ctx context.Context, run func(context.Context) (any, error)) (any, error) {
 	if e.sram == nil {
-		return nil, fmt.Errorf("FPGA stacking requires the SRAM acquisition image")
+		return nil, errors.New("FPGA stacking requires the SRAM acquisition image")
 	}
 	req := sramJob{ctx: ctx, run: run, done: make(chan decodedReply, 1)}
 	select {
@@ -156,14 +156,14 @@ func (e *Engine) serviceSRAMJobs() bool {
 // TRLC-LINKS: REQ-SDS-141
 func (e *Engine) FPGAStack(ctx context.Context, req FPGAStackRequest) (FPGAStackResult, error) {
 	if e.images == nil || !e.images.HasStack() {
-		return FPGAStackResult{}, fmt.Errorf("FPGA stacking image not available in this build")
+		return FPGAStackResult{}, errors.New("FPGA stacking image not available in this build")
 	}
 	if req.Records < 1 || req.Records > 100000 {
 		return FPGAStackResult{}, fmt.Errorf("records %d out of range", req.Records)
 	}
 	value, err := e.sramCall(ctx, func(ctx context.Context) (any, error) {
 		if e.decodedSession != nil || e.soft != nil {
-			return nil, fmt.Errorf("decoded capture is active")
+			return nil, errors.New("decoded capture is active")
 		}
 		cfg, _, _, _, _ := e.sramConfig()
 		// Raw samples at the current depth. Hits come from the stacker's own
@@ -243,7 +243,7 @@ func (e *Engine) runFPGAStack(ctx context.Context, cfg sramcapture.Config, req F
 	scratch := make([]superres.FPGAStackMoments, 2*tile)
 	stackStart, beats := time.Now(), e.sram.Beats()
 	var m sramcapture.Metadata
-	for r := 0; r < req.Records; r++ {
+	for r := range req.Records {
 		t0 := time.Now()
 		if m, err = e.captureOne(ctx, cfg); err != nil {
 			return res, fmt.Errorf("record %d: %w", r, err)
@@ -335,7 +335,7 @@ func (e *Engine) captureOne(ctx context.Context, cfg sramcapture.Config) (sramca
 			return m, err
 		}
 		if m.DataFault {
-			return m, fmt.Errorf("SRAM acquisition FIFO overflow")
+			return m, errors.New("SRAM acquisition FIFO overflow")
 		}
 		if m.Frozen && m.Ready {
 			return m, nil

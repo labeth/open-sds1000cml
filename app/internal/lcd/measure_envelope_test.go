@@ -3,10 +3,9 @@ package lcd
 
 import (
 	"math"
-	"testing"
-
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/measure"
+	"testing"
 )
 
 // An inverted channel on a live envelope frame reads the complement duty: the
@@ -16,7 +15,7 @@ import (
 func TestInvertedEnvelopeDuty(t *testing.T) {
 	n := 2048
 	f := &engine.Frame{C1: make([]uint8, n), C2: make([]uint8, n), Valid: n, WinCols: n, SampleS: 96e-9, PeakDetect: true, Ordered: true, Seq: 0}
-	for b := 0; b < n/2; b++ {
+	for b := range n / 2 {
 		v := uint8(78)
 		if b%104 < 31 { // 30 % of each 104-bucket period high
 			v = 178

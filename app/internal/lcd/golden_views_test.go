@@ -3,9 +3,8 @@ package lcd
 
 import (
 	"math"
-	"testing"
-
 	"open-sds/app/internal/engine"
+	"testing"
 )
 
 // Golden coverage for the core LCD views (see golden_test.go for the harness).
@@ -37,7 +36,7 @@ func goldenFrame(n int, g1, g2 func(i int) float64) *engine.Frame {
 		Valid: n, WinCols: n, EdgeX: float64(n) / 2,
 		Ptp: 144, TdivS: 500e-6, SampleS: 800e-9, Trigd: true,
 	}
-	for i := 0; i < n; i++ {
+	for i := range n {
 		f.C1[i] = goldenClamp(g1(i))
 		f.C2[i] = goldenClamp(g2(i))
 	}
@@ -98,14 +97,14 @@ func goldenUARTWave(bytes []int, spb, n int) []uint8 {
 		if bit == 1 {
 			v = 210
 		}
-		for j := 0; j < k; j++ {
+		for range k {
 			w = append(w, v)
 		}
 	}
 	push(1, spb*8) // lead idle
 	for _, b := range bytes {
 		push(0, spb) // start
-		for c := 0; c < 8; c++ {
+		for c := range 8 {
 			push((b>>c)&1, spb) // LSB first
 		}
 		push(1, spb) // stop
@@ -211,7 +210,7 @@ func TestGoldenEnvelope(t *testing.T) {
 		IsEnv: true, EnvCols: cols,
 		Ptp: 130, TdivS: 100e-3, SampleS: 1e-3,
 	}
-	for i := 0; i < cols; i++ {
+	for i := range cols {
 		amp := 40 + 25*math.Sin(2*math.Pi*3*float64(i)/cols) // C1: AM band
 		f.EnvMin[i] = goldenClamp(128 - amp)
 		f.EnvMax[i] = goldenClamp(128 + amp)
@@ -236,7 +235,7 @@ func TestGoldenBode(t *testing.T) {
 	h := defaultHUD()
 	h.ViewMode = 3
 	const fc = 30e3
-	for i := 0; i < 25; i++ {
+	for i := range 25 {
 		f := 1e3 * math.Pow(10, 3*float64(i)/24) // 1 kHz .. 1 MHz
 		h.BodeFreq = append(h.BodeFreq, f)
 		h.BodeGain = append(h.BodeGain, -10*math.Log10(1+(f/fc)*(f/fc)))
@@ -257,10 +256,10 @@ func TestGoldenSpectrogram(t *testing.T) {
 	const n = 4096
 	const dt = 2e-9 // Nyquist 250 MHz: 4096 samples are under MaxFFT, so the FFT view's spectrum and the waterfall span it all
 	sg := NewSpectrogram()
-	for s := 0; s < 8; s++ {
+	for s := range 8 {
 		f := 10e6 + 15e6*float64(s) // 10..115 MHz staircase
 		// two rows a 4096-sample record: 24 a step
-		for r := 0; r < 12; r++ {
+		for range 12 {
 			sg.Push(sgSine(n, f, dt), 0, 0.5/dt)
 		}
 	}

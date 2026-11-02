@@ -3,10 +3,10 @@ package web
 
 import (
 	"encoding/json"
+	"net/http"
 	"net/http/httptest"
-	"testing"
-
 	"open-sds/app/internal/engine"
+	"testing"
 )
 
 // TestStatusInvertSource pins the server half of the display-level INVS
@@ -21,7 +21,7 @@ func TestStatusInvertSource(t *testing.T) {
 	get := func() (bool, bool) {
 		t.Helper()
 		rec := httptest.NewRecorder()
-		s.hStatus(rec, httptest.NewRequest("GET", "/api/status", nil))
+		s.hStatus(rec, httptest.NewRequest(http.MethodGet, "/api/status", nil))
 		// Decode with the page's wire names, so a JSON-tag change fails here.
 		var rep struct {
 			Inv1 bool `json:"inv1"`

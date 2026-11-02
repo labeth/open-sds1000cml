@@ -4,13 +4,13 @@ package panel
 import (
 	"fmt"
 	"math"
-	"strings"
-	"time"
-
 	"open-sds/app/internal/analog"
 	"open-sds/app/internal/decode"
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/panel/wsview"
+	"strconv"
+	"strings"
+	"time"
 )
 
 // The settings model (REQ-SDS-212): every setting is a row of a sheet tab,
@@ -134,7 +134,7 @@ func (r *row) valueText(s *sv) string {
 				return o.t
 			}
 		}
-		return fmt.Sprint(cur)
+		return strconv.Itoa(cur)
 	case wsview.Number:
 		if r.text != nil {
 			return r.text(s)
@@ -275,7 +275,7 @@ func (r *row) parseEnum(s *sv, text string) (int, error) {
 		}
 	}
 	for _, o := range r.options(s) {
-		if fmt.Sprint(o.v) == t {
+		if strconv.Itoa(o.v) == t {
 			return o.v, nil
 		}
 	}

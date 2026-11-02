@@ -53,7 +53,7 @@ func FindEdges(sig []float64) *EdgeSet {
 	}
 	// light smoothing so single-code noise spikes do not win the mode
 	var sm [256]float64
-	for c := 0; c < 256; c++ {
+	for c := range 256 {
 		a, b := 0.0, 0.0
 		if c > 0 {
 			a = hist[c-1]
@@ -70,7 +70,7 @@ func FindEdges(sig []float64) *EdgeSet {
 		}
 	}
 	m2 := -1
-	for c := 0; c < 256; c++ {
+	for c := range 256 {
 		if c-m1 < 24 && m1-c < 24 {
 			continue // must be a distinct level
 		}
@@ -170,7 +170,7 @@ func refineUI(d []float64, ui float64) float64 {
 	if !(ui > 1) {
 		return 0
 	}
-	for pass := 0; pass < 3; pass++ {
+	for range 3 {
 		num, den, bad := 0.0, 0.0, 0
 		for _, dd := range d {
 			k := jsRound(dd / ui)
@@ -222,7 +222,7 @@ func FitGrid(t []float64, ui0 float64) *GridFit {
 	t0, ui := t[0], ui0
 	m := float64(len(t))
 	nIdx := make([]float64, len(t))
-	for pass := 0; pass < 2; pass++ {
+	for range 2 {
 		for i := range t {
 			nIdx[i] = jsRound((t[i] - t0) / ui)
 		}

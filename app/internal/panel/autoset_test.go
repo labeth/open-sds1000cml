@@ -3,13 +3,12 @@ package panel
 
 import (
 	"math"
-	"sync/atomic"
-	"testing"
-	"time"
-
 	"open-sds/app/internal/analog"
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/measure"
+	"sync/atomic"
+	"testing"
+	"time"
 )
 
 // TestRailing pins the semantics the coarsen-on-rail guard (autoset step 3c)
@@ -58,7 +57,7 @@ func TestRailing(t *testing.T) {
 		for i := range s {
 			s[i] = 128
 		}
-		for i := 0; i < 80; i++ {
+		for i := range 80 {
 			s[i] = 0
 		}
 		use(&engine.Frame{C1: s, C2: s, Valid: 1000})
@@ -88,7 +87,7 @@ func TestRailing(t *testing.T) {
 			clean[i] = 128
 			railed[i] = 128
 		}
-		for i := 0; i < 80; i++ {
+		for i := range 80 {
 			railed[i] = 255
 		}
 		use(&engine.Frame{C1: clean, C2: railed, Valid: 1000})
@@ -181,7 +180,7 @@ func TestAutosetLeasesSampleFrames(t *testing.T) {
 		fn(&engine.Frame{C1: sig, C2: sig, Valid: len(sig), SampleS: 50e-9, IsEnv: len(leaser.leases) == 0})
 	})
 	stop := make(chan struct{})
-	for i := 0; i < 2; i++ {
+	for i := range 2 {
 		if !c.waitFrame(stop) {
 			t.Fatal("unexpected cancellation")
 		}
@@ -258,12 +257,12 @@ func TestAutosetKeepsABurstsSwing(t *testing.T) {
 	want := detentFor(160*analog.AnalogVdiv(nearestDetent(2.0))/25, goalScope.fill) // the burst read at the sweep's 2 V/div
 	// the midpoint the burst reads at that scale: the offset centres it (an
 	// idle-only capture's midpoint, its rail, must not re-centre it)
-	for ch := 0; ch < 2; ch++ {
+	for ch := range 2 {
 		c.setVdiv(ch, nearestDetent(2.0))
 	}
 	e.stats.TdivS = 1e-6
 	m, _ := c.measureChans()
-	for ch := 0; ch < 2; ch++ {
+	for ch := range 2 {
 		if vidx[ch] < want {
 			t.Fatalf("C%d fitted detent %d, want %d or coarser for the burst's swing", ch+1, vidx[ch], want)
 		}
@@ -288,8 +287,8 @@ func TestAutosetFindsALogicSignalThroughA10xProbe(t *testing.T) {
 		c.SetFrameSource(func(fn func(*engine.Frame)) {
 			idx, _ := fe.Snapshot()
 			var codes [2][]uint8
-			for ch := 0; ch < 2; ch++ {
-				for i := 0; i < 400; i++ {
+			for ch := range 2 {
+				for i := range 400 {
 					tip := 0.0
 					if i%20 >= 10 {
 						tip = 3.3
@@ -309,7 +308,7 @@ func TestAutosetFindsALogicSignalThroughA10xProbe(t *testing.T) {
 			t.Fatalf("%+v: no signal", pr)
 		}
 		vidx, _ := fe.Snapshot()
-		for ch := 0; ch < 2; ch++ {
+		for ch := range 2 {
 			// the 3.3 V swing fitted to 500 mV or 1 V a division at the tip
 			if tip := analog.Detents[vidx[ch]].VdivV * pr.physical; tip < 0.45 || tip > 1.05 {
 				t.Fatalf("%+v: C%d fitted %g V/div at the BNC, %g at the tip", pr, ch+1, analog.Detents[vidx[ch]].VdivV, tip)
@@ -335,7 +334,7 @@ func TestAutosetLooksAgainForASparseBus(t *testing.T) {
 		idx, _ := fe.Snapshot()
 		if e.search.Load() { // a whole record holds a frame
 			var codes []uint8
-			for i := 0; i < 1000; i++ {
+			for i := range 1000 {
 				tip := 0.0
 				if i%100 >= 50 {
 					tip = 3.3

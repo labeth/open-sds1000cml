@@ -2,11 +2,10 @@
 package web
 
 import (
+	"open-sds/app/internal/testenv"
 	"os/exec"
 	"reflect"
 	"testing"
-
-	"open-sds/app/internal/testenv"
 )
 
 // A roll view's held samples reach the page as ranges, which it draws dimmed.

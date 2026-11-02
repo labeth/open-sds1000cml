@@ -2,10 +2,9 @@
 package engine
 
 import (
-	"testing"
-
 	"open-sds/app/internal/decodedlines"
 	"open-sds/app/internal/sramcapture"
+	"testing"
 )
 
 // Every protocol that streams through the FPGA's decoded events stops "on
@@ -16,8 +15,10 @@ import (
 func TestDecodedStreamOnErrorPlansTheErrorToken(t *testing.T) {
 	images := map[string]*Engine{
 		"general": {hardwareUART: true, hardwareI2C: true, hardwareSPI: true, hardwareSequence: true},
-		"packet": {hardwareSENT: true, hardwareMIL1553: true, hardwareSequence: true, sequenceOnly: true,
-			hardwarePacket: 1<<serCAN | 1<<serARINC | 1<<serFlexRay},
+		"packet": {
+			hardwareSENT: true, hardwareMIL1553: true, hardwareSequence: true, sequenceOnly: true,
+			hardwarePacket: 1<<serCAN | 1<<serARINC | 1<<serFlexRay,
+		},
 		"line": {hardwareManchester: true, hardwareUSBLS: true, hardwareSequence: true, sequenceOnly: true},
 	}
 	for _, c := range []struct {

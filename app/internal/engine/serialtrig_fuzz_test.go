@@ -22,7 +22,7 @@ func TestSerialQualifyFuzz(t *testing.T) {
 
 	sampleSs := []float64{0, -1, 1e-6, 2e-7, math.NaN(), math.Inf(1), math.Inf(-1), 1e30, -1e-30}
 	e := &Engine{}
-	for iter := 0; iter < 4000; iter++ {
+	for iter := range 4000 {
 		// hostile params
 		nb := ni(6)
 		bytes := make([]int, nb)
@@ -71,16 +71,10 @@ func TestSerialQualifyFuzz(t *testing.T) {
 			}()
 			matched, anchor := e.serialQualify(f, valid, sampleS)
 			if matched && anchor != -1 {
-				lim := valid
-				if lim > len(c1) {
-					lim = len(c1)
-				}
+				lim := min(valid, len(c1))
 				if anchor < 0 || (lim > 0 && anchor >= lim) {
 					// anchor may reference either channel; bound-check against the max plausible.
-					maxLen := len(c1)
-					if len(c2) > maxLen {
-						maxLen = len(c2)
-					}
+					maxLen := max(len(c2), len(c1))
 					if anchor < 0 || anchor >= maxLen {
 						t.Fatalf("iter=%d anchor %d out of [0,%d) params=%+v", iter, anchor, maxLen, p)
 					}

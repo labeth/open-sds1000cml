@@ -2,10 +2,9 @@
 package panel
 
 import (
-	"testing"
-
 	"open-sds/app/internal/analog"
 	"open-sds/app/internal/engine"
+	"testing"
 )
 
 // A reference is the screen at the save: from a deep stopped record it holds

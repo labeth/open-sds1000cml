@@ -3,7 +3,7 @@ package sramcapture
 
 import (
 	"encoding/binary"
-	"fmt"
+	"errors"
 )
 
 // DecodedEventBytes is the fixed transport record size. This ABI is proposed
@@ -54,16 +54,16 @@ func (e DecodedEvent) MarshalBinary() ([]byte, error) {
 // TRLC-LINKS: REQ-SDS-013
 func (e *DecodedEvent) validate() error {
 	if e.Kind < EventStart || e.Kind > EventRetained || e.Protocol > 10 || e.Channels > 3 {
-		return fmt.Errorf("invalid decoded event header")
+		return errors.New("invalid decoded event header")
 	}
 	if e.Protocol == 0 && e.Kind != EventLoss && e.Kind != EventRetained {
-		return fmt.Errorf("protocol required for decoded event")
+		return errors.New("protocol required for decoded event")
 	}
 	if (e.Kind == EventLoss || e.Kind == EventError) && e.Valid {
-		return fmt.Errorf("loss or error cannot be valid decoded data")
+		return errors.New("loss or error cannot be valid decoded data")
 	}
 	if e.Kind == EventRetained && (!e.RecordValid || e.Count == 0) {
-		return fmt.Errorf("retained event requires a record and nonempty sample range")
+		return errors.New("retained event requires a record and nonempty sample range")
 	}
 	return nil
 }
@@ -72,7 +72,7 @@ func (e *DecodedEvent) validate() error {
 // TRLC-LINKS: REQ-SDS-013
 func (e DecodedEvent) MarshalTo(b []byte) error {
 	if len(b) != DecodedEventBytes {
-		return fmt.Errorf("invalid decoded event output size")
+		return errors.New("invalid decoded event output size")
 	}
 	if err := e.validate(); err != nil {
 		return err
@@ -98,7 +98,7 @@ func (e DecodedEvent) MarshalTo(b []byte) error {
 // TRLC-LINKS: REQ-SDS-013
 func ParseDecodedEvent(b []byte) (DecodedEvent, error) {
 	if len(b) != DecodedEventBytes || b[0] != 1 || b[3]&0xf0 != 0 {
-		return DecodedEvent{}, fmt.Errorf("invalid decoded event framing")
+		return DecodedEvent{}, errors.New("invalid decoded event framing")
 	}
 	e := DecodedEvent{
 		Kind: b[1], Protocol: b[2], Channels: b[3] & 3, Valid: b[3]&4 != 0, RecordValid: b[3]&8 != 0,

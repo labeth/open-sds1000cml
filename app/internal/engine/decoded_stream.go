@@ -5,11 +5,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"sync"
-	"time"
-
 	"open-sds/app/internal/decodedlines"
 	"open-sds/app/internal/sramcapture"
+	"sync"
+	"time"
 )
 
 // StreamTrigger is what ends a scope-side decoded stream (ADR-PANEL-DECODED-STREAM).
@@ -109,11 +108,11 @@ func (e *Engine) decodedStreamConfig(p SerialParams, trig StreamTrigger) (sramca
 	c := sramcapture.Config{Source: sramcapture.ADC, PreWords: words / 2, PostWords: words - words/2, Normal: true}
 	e.planSerial(&c, p, false)
 	if hardwareSerialName(c) == "" {
-		return c, fmt.Errorf("the loaded image cannot stream this protocol with that trigger")
+		return c, errors.New("the loaded image cannot stream this protocol with that trigger")
 	}
 	if trig == StreamManual {
 		if c.Sequence.Length != 1 {
-			return c, fmt.Errorf("the loaded image has no sequence trigger for a manual stream")
+			return c, errors.New("the loaded image has no sequence trigger for a manual stream")
 		}
 		c.Sequence.Qualify = false
 		c.Sequence.Elements[0] = sramcapture.SequenceElement{Kind: sramcapture.SequenceData, Value: streamNever, Mask: streamNever}

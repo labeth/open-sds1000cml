@@ -2,10 +2,9 @@
 package lcd
 
 import (
-	"testing"
-
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/panel/wsview"
+	"testing"
 )
 
 // A record denser than the screen draws each column's full min..max: a
@@ -45,7 +44,7 @@ func TestStaleTimebaseFrameNotDrawn(t *testing.T) {
 		sf := NewMemSurface()
 		Render(sf, f, hud, true)
 		n := 0
-		for x := 0; x < W; x++ {
+		for x := range W {
 			if sf.At(x, sampleToY(200)) == colC1 {
 				n++
 			}
@@ -101,8 +100,8 @@ func TestDenseTraceBlockFillMatchesColumns(t *testing.T) {
 		drawDenseTrace(rows, c.p, traceID{1, 1, 0, false}, sig, c.held, c.left, len(sig), colC1, c.z)
 		drawDenseTrace(pixelSurface{cols}, c.p, traceID{1, 1, 0, false}, sig, c.held, c.left, len(sig), colC1, c.z)
 		drawn := 0
-		for y := 0; y < H; y++ {
-			for x := 0; x < W; x++ {
+		for y := range H {
+			for x := range W {
 				a, b := rows.At(x, y), cols.At(x, y)
 				if a != b {
 					t.Fatalf("plot %d wide, zoom %v: pixel (%d,%d) %#x by rows, %#x by columns", c.p.w, c.z, x, y, a, b)
@@ -134,8 +133,8 @@ func TestEnvelopeBlockFillMatchesColumns(t *testing.T) {
 		drawEnvelope(rows, fullPlot, mn, mx, cols, colC2, 1)
 		drawEnvelope(pixelSurface{each}, fullPlot, mn, mx, cols, colC2, 1)
 		drawn := 0
-		for y := 0; y < H; y++ {
-			for x := 0; x < W; x++ {
+		for y := range H {
+			for x := range W {
 				if a, b := rows.At(x, y), each.At(x, y); a != b {
 					t.Fatalf("%d columns: pixel (%d,%d) %#x in blocks, %#x by columns", cols, x, y, a, b)
 				} else if a != 0 {

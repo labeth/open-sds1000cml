@@ -46,7 +46,7 @@ func BenchmarkComputeQ8(b *testing.B) {
 func benchEnvelope() []uint8 {
 	r := rand.New(rand.NewSource(4))
 	env := make([]uint8, 2*1400)
-	for i := 0; i < 1400; i++ {
+	for i := range 1400 {
 		lv := 70.0
 		if i/28%2 == 1 {
 			lv = 190
@@ -84,7 +84,7 @@ func BenchmarkClippedSwing(b *testing.B) {
 // TRLC-LINKS: REQ-SDS-021
 func TestEnvelopeTimingLongEnvelope(t *testing.T) {
 	env := make([]uint8, 2*5000)
-	for i := 0; i < 5000; i++ {
+	for i := range 5000 {
 		v := uint8(70)
 		if i/50%2 == 1 {
 			v = 190

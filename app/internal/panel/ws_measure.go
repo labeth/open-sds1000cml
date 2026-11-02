@@ -4,13 +4,12 @@ package panel
 import (
 	"fmt"
 	"math"
-	"strconv"
-	"time"
-
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/measure"
 	"open-sds/app/internal/panel/framecalc"
 	"open-sds/app/internal/panel/wsview"
+	"strconv"
+	"time"
 )
 
 // MEASURE (REQ-SDS-217): running statistics of the chosen measurements (now,
@@ -32,7 +31,7 @@ func (c *Controller) setMeasParam(p, chans int) {
 		}
 	}
 	dropped := false
-	for ch := 0; ch < 2; ch++ {
+	for ch := range 2 {
 		if chans&(1<<ch) != 0 {
 			keep = append(keep, measItem{ch: ch, param: p})
 		}
@@ -69,7 +68,7 @@ func (c *Controller) seedMeas() {
 	if len(c.meas) > 0 {
 		return
 	}
-	for ch := 0; ch < 2; ch++ {
+	for ch := range 2 {
 		if c.chDisp[ch] {
 			c.meas = append(c.meas, measItem{ch: ch, param: mPkpk}, measItem{ch: ch, param: mFreq})
 		}
@@ -113,7 +112,7 @@ func measTabOpen(s *sv) bool { return s.ui.open && sheetTabs[s.ui.tab].id == "me
 // measVals measures the channels in need: every parameter's value.
 // TRLC-LINKS: REQ-SDS-217
 func measVals(a *anaState, s *sv, f *engine.Frame, need [2]bool) {
-	for ch := 0; ch < 2; ch++ {
+	for ch := range 2 {
 		a.allOK[ch] = false
 		if !need[ch] {
 			continue
@@ -321,7 +320,7 @@ func (c *Controller) cursorVoltChLocked(s *sv, ch int) int {
 		}
 	}
 	if ch != c.curVCh {
-		for k := 0; k < 2; k++ {
+		for k := range 2 {
 			c.curV[k] = cursorVoltAt(s, cursorYOf(s, c.curV[k], c.curVCh), ch)
 		}
 		c.curVCh = ch
@@ -431,28 +430,36 @@ func cursorVolts(s *sv, ch int) (va, vb float64) {
 func cursorLines(s *sv, liveV [2][2]float64, liveOK [2]bool) []wsview.Span {
 	switch {
 	case !s.curOn:
-		return []wsview.Span{{Text: "CURSORS OFF", Col: wsview.Dim}, {Text: "Push Adjust: time cursors", Col: wsview.Dim},
-			{Text: "then Adjust moves A,", Col: wsview.Dim}, {Text: "Position moves B.", Col: wsview.Dim}}
+		return []wsview.Span{
+			{Text: "CURSORS OFF", Col: wsview.Dim},
+			{Text: "Push Adjust: time cursors", Col: wsview.Dim},
+			{Text: "then Adjust moves A,", Col: wsview.Dim},
+			{Text: "Position moves B.", Col: wsview.Dim},
+		}
 	case s.curType == 0:
 		ta, tb := cursorTimes(s)
 		dt := math.Abs(tb - ta)
-		out := []wsview.Span{{Text: "CURSORS TIME", Col: wsview.Amber},
-			{Text: "A " + sgnSI(ta, "s") + "  B " + sgnSI(tb, "s"), Col: wsview.Text}}
+		out := []wsview.Span{
+			{Text: "CURSORS TIME", Col: wsview.Amber},
+			{Text: "A " + sgnSI(ta, "s") + "  B " + sgnSI(tb, "s"), Col: wsview.Text},
+		}
 		inv := "---"
 		if dt > 0 {
 			inv = si(1/dt, "Hz")
 		}
 		out = append(out, wsview.Span{Text: "dt " + si(dt, "s") + "  1/dt " + inv, Col: wsview.Amber})
-		for ch := 0; ch < 2; ch++ {
+		for ch := range 2 {
 			if s.chDisp[ch] && liveOK[ch] {
-				out = append(out, wsview.Span{Text: fmt.Sprintf("C%d A %s  B %s", ch+1, si(liveV[ch][0], "V"), si(liveV[ch][1], "V")),
-					Col: wsview.C1 + wsview.Col(ch)})
+				out = append(out, wsview.Span{
+					Text: fmt.Sprintf("C%d A %s  B %s", ch+1, si(liveV[ch][0], "V"), si(liveV[ch][1], "V")),
+					Col:  wsview.C1 + wsview.Col(ch),
+				})
 			}
 		}
 		return out
 	}
 	out := []wsview.Span{{Text: "CURSORS VOLTS", Col: wsview.Amber}}
-	for ch := 0; ch < 2; ch++ {
+	for ch := range 2 {
 		if !s.chDisp[ch] {
 			continue
 		}
@@ -467,16 +474,16 @@ func cursorLines(s *sv, liveV [2][2]float64, liveOK [2]bool) []wsview.Span {
 // TRLC-LINKS: REQ-SDS-217
 func cursorTraceVolts(f *engine.Frame, s *sv) (v [2][2]float64, ok [2]bool) {
 	if f == nil || f.IsEnv || len(f.C1) == 0 {
-		return
+		return v, ok
 	}
 	g := geom{valid: framecalc.Valid(f), winCols: f.WinCols, edgeX: f.EdgeX, sampleS: f.SampleS}
 	left, win := windowOf(g, s)
-	for ch := 0; ch < 2; ch++ {
+	for ch := range 2 {
 		if ch == 1 && len(f.C2) < g.valid {
 			continue
 		}
 		sig := framecalc.Channel(f, ch, g.valid)
-		for k := 0; k < 2; k++ {
+		for k := range 2 {
 			i := int(math.Floor(left + s.curX[k]*float64(win)))
 			if i < 0 || i >= g.valid { // a cursor beyond the record: no trace there
 				v[ch][k] = math.NaN()
@@ -486,7 +493,7 @@ func cursorTraceVolts(f *engine.Frame, s *sv) (v [2][2]float64, ok [2]bool) {
 		}
 		ok[ch] = true
 	}
-	return
+	return v, ok
 }
 
 // measPane builds the MEASURE pane.
@@ -530,7 +537,7 @@ func (c *Controller) measPane(s *sv) *wsview.MeasPane {
 				continue
 			}
 			p.AllRows[row][0] = measParams[i].short
-			for ch := 0; ch < 2; ch++ {
+			for ch := range 2 {
 				p.AllRows[row][1+ch] = "---"
 				if s.chDisp[ch] && allOK[ch] {
 					p.AllRows[row][1+ch] = fmtMeas(i, all[ch][i])
@@ -558,9 +565,11 @@ func (c *Controller) measPane(s *sv) *wsview.MeasPane {
 			if !math.IsNaN(r.sd) {
 				sdev = fmtMeas(r.it.param, r.sd)
 			}
-			p.Stats = append(p.Stats, wsview.StatRow{Name: "C" + strconv.Itoa(r.it.ch+1) + " " + measParams[r.it.param].short,
-				Col: wsview.C1 + wsview.Col(r.it.ch), Now: fmtMeas(r.it.param, r.now), Mean: fmtMeas(r.it.param, r.mean),
-				Min: fmtMeas(r.it.param, r.mn), Max: fmtMeas(r.it.param, r.mx), Sdev: sdev, N: strconv.Itoa(r.cnt)})
+			p.Stats = append(p.Stats, wsview.StatRow{
+				Name: "C" + strconv.Itoa(r.it.ch+1) + " " + measParams[r.it.param].short,
+				Col:  wsview.C1 + wsview.Col(r.it.ch), Now: fmtMeas(r.it.param, r.now), Mean: fmtMeas(r.it.param, r.mean),
+				Min: fmtMeas(r.it.param, r.mn), Max: fmtMeas(r.it.param, r.mx), Sdev: sdev, N: strconv.Itoa(r.cnt),
+			})
 		}
 	}
 	p.Cursor = cursorLines(s, liveV, liveOK)

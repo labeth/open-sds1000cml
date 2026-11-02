@@ -4,20 +4,22 @@ package web
 import (
 	"bytes"
 	"encoding/json"
+	"net/http"
 	"net/http/httptest"
+	"open-sds/app/internal/engine"
 	"strings"
 	"testing"
 	"time"
-
-	"open-sds/app/internal/engine"
 )
 
 // benchServer serves a 5000-sample frame with its Q8.8 record.
 // TRLC-LINKS: REQ-SDS-162
 func benchServer() *Server {
 	n := 5000
-	f := &engine.Frame{C1: make([]uint8, n), C2: make([]uint8, n), Q1: make([]uint16, n), Q2: make([]uint16, n),
-		Valid: n, WinCols: n, Seq: 9, SampleS: 2e-9, EdgeX: 2500}
+	f := &engine.Frame{
+		C1: make([]uint8, n), C2: make([]uint8, n), Q1: make([]uint16, n), Q2: make([]uint16, n),
+		Valid: n, WinCols: n, Seq: 9, SampleS: 2e-9, EdgeX: 2500,
+	}
 	for i := range f.C1 {
 		v := uint8(60 + 130*(i/40%2))
 		f.C1[i], f.C2[i] = v, 255-v
@@ -31,7 +33,7 @@ func benchServer() *Server {
 func BenchmarkHTTPStatus(b *testing.B) {
 	h := benchServer().Handler()
 	for b.Loop() {
-		h.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest("GET", "/api/status", nil))
+		h.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/api/status", nil))
 	}
 }
 
@@ -39,7 +41,7 @@ func BenchmarkHTTPStatus(b *testing.B) {
 func BenchmarkHTTPFrameBin(b *testing.B) {
 	h := benchServer().Handler()
 	for b.Loop() {
-		h.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest("GET", "/api/frame.bin?since=0", nil))
+		h.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/api/frame.bin?since=0", nil))
 	}
 }
 
@@ -47,7 +49,7 @@ func BenchmarkHTTPFrameBin(b *testing.B) {
 func BenchmarkHTTPSet(b *testing.B) {
 	h := benchServer().Handler()
 	for b.Loop() {
-		h.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest("POST", "/api/set", strings.NewReader(`{"control":"tdiv","value":0.000002}`)))
+		h.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodPost, "/api/set", strings.NewReader(`{"control":"tdiv","value":0.000002}`)))
 	}
 }
 
@@ -55,7 +57,7 @@ func BenchmarkHTTPSet(b *testing.B) {
 func BenchmarkHTTPAsset(b *testing.B) {
 	h := benchServer().Handler()
 	for b.Loop() {
-		r := httptest.NewRequest("GET", "/app_core.js", nil)
+		r := httptest.NewRequest(http.MethodGet, "/app_core.js", nil)
 		r.Header.Set("Accept-Encoding", "gzip")
 		h.ServeHTTP(httptest.NewRecorder(), r)
 	}
@@ -65,7 +67,7 @@ func BenchmarkHTTPAsset(b *testing.B) {
 func BenchmarkHTTPRoot(b *testing.B) {
 	h := benchServer().Handler()
 	for b.Loop() {
-		h.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest("GET", "/", nil))
+		h.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/", nil))
 	}
 }
 
@@ -73,7 +75,7 @@ func BenchmarkHTTPRoot(b *testing.B) {
 func BenchmarkHTTPClaim(b *testing.B) {
 	h := benchServer().Handler()
 	for b.Loop() {
-		h.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest("POST", "/api/claim", nil))
+		h.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodPost, "/api/claim", nil))
 	}
 }
 
@@ -81,7 +83,7 @@ func BenchmarkHTTPClaim(b *testing.B) {
 // TRLC-LINKS: REQ-SDS-161
 func TestClaimText(t *testing.T) {
 	rec := httptest.NewRecorder()
-	benchServer().Handler().ServeHTTP(rec, httptest.NewRequest("POST", "/api/claim", nil))
+	benchServer().Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/api/claim", nil))
 	var got map[string]uint64
 	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
 		t.Fatal(err)
@@ -111,7 +113,7 @@ func BenchmarkHTTPPanelWait(b *testing.B) {
 	defer rig.app.Close()
 	h := rig.gate.h
 	for b.Loop() {
-		h.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest("GET", "/api/panel/wait?seq=0&timeout_ms=0", nil))
+		h.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/api/panel/wait?seq=0&timeout_ms=0", nil))
 	}
 }
 
@@ -119,13 +121,13 @@ func BenchmarkHTTPPanelWait(b *testing.B) {
 func BenchmarkHTTPSetupPost(b *testing.B) {
 	h := benchServer().Handler()
 	for b.Loop() {
-		h.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest("POST", "/api/setup", strings.NewReader(`{"op":"save","slot":3}`)))
+		h.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodPost, "/api/setup", strings.NewReader(`{"op":"save","slot":3}`)))
 	}
 }
 
 // TRLC-LINKS: REQ-SDS-013
 func BenchmarkDecodedIdentity(b *testing.B) {
-	r := httptest.NewRequest("GET", "/api/decoded/status?epoch=7&record=12345", nil)
+	r := httptest.NewRequest(http.MethodGet, "/api/decoded/status?epoch=7&record=12345", nil)
 	for b.Loop() {
 		if _, err := decodedIdentity(r); err != nil {
 			b.Fatal(err)

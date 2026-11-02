@@ -10,7 +10,7 @@ import (
 // codesOf returns a channel's valid samples as codes (Q8.8 when the frame
 // carries them), with the display coupling applied.
 // TRLC-LINKS: REQ-SDS-215
-func codesOf(f *engine.Frame, ch, lo, hi int, cpl int) []float64 {
+func codesOf(f *engine.Frame, ch, lo, hi, cpl int) []float64 {
 	valid := framecalc.Valid(f)
 	lo, hi = max(lo, 0), min(hi, valid)
 	if hi <= lo {

@@ -4,9 +4,8 @@ package web
 import (
 	"context"
 	"fmt"
-	"testing"
-
 	"open-sds/app/internal/streamview"
+	"testing"
 )
 
 // streamPanel is a panel streaming its bus: the status's stream and the LCD's
@@ -19,15 +18,17 @@ type streamPanel struct {
 
 // TRLC-LINKS: REQ-SDS-018
 func (p *streamPanel) StreamStatus() (streamview.View, bool) {
-	return streamview.View{State: streamview.Streaming, Label: "UART 115200 b/s C1", Units: 50174, UnitsPerSecond: 8778,
-		Lines: 3212, TriggerLine: -1}, p.on
+	return streamview.View{
+		State: streamview.Streaming, Label: "UART 115200 b/s C1", Units: 50174, UnitsPerSecond: 8778,
+		Lines: 3212, TriggerLine: -1,
+	}, p.on
 }
 
 // TRLC-LINKS: REQ-SDS-018
 func (p *streamPanel) StreamWindow(rows int) (streamview.Page, bool) {
 	p.rows = rows
 	pg := streamview.Page{Header: "         t ms        hex", Total: 3212, Top: 3212 - rows, TriggerLine: -1}
-	for i := 0; i < rows; i++ {
+	for i := range rows {
 		pg.Lines = append(pg.Lines, fmt.Sprintf("  %+11.4f        48 69 20 55 AA 0F F0 0A", 1.8227*float64(i)))
 	}
 	return pg, p.on

@@ -4,15 +4,14 @@ package panel
 import (
 	"fmt"
 	"math"
-	"sort"
-	"time"
-
 	"open-sds/app/internal/analog"
 	"open-sds/app/internal/decode"
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/measure"
 	"open-sds/app/internal/panel/framecalc"
 	"open-sds/app/internal/panel/wsview"
+	"sort"
+	"time"
 )
 
 // Per-frame analysis for the workspace panes. The render paths call OnFrame
@@ -180,8 +179,10 @@ func (c *Controller) OnFrame(f *engine.Frame) {
 		return
 	}
 	a.key, a.need = k, need
-	a.g = geom{valid: framecalc.Valid(f), winCols: f.WinCols, edgeX: f.EdgeX, sampleS: f.SampleS, tdivS: f.TdivS,
-		peak: f.PeakDetect, captureS: f.CaptureSampleS}
+	a.g = geom{
+		valid: framecalc.Valid(f), winCols: f.WinCols, edgeX: f.EdgeX, sampleS: f.SampleS, tdivS: f.TdivS,
+		peak: f.PeakDetect, captureS: f.CaptureSampleS,
+	}
 	if g := a.g.valid; g > 0 { // the cursors' zoomed screen: its pan is a fraction of the record
 		c.curRecords.Store(math.Float64bits(float64(g) / float64(max(min(f.WinCols, g), 1))))
 	}

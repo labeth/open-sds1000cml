@@ -10,21 +10,21 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"open-sds/app/internal/engine"
+	"open-sds/app/internal/panel"
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
-
-	"open-sds/app/internal/engine"
-	"open-sds/app/internal/panel"
 )
 
 // get runs one GET (with extra headers) against s.
 // TRLC-LINKS: REQ-SDS-220
 func get(s *Server, path string, hdr ...string) *httptest.ResponseRecorder {
-	req := httptest.NewRequest("GET", path, nil)
+	req := httptest.NewRequest(http.MethodGet, path, nil)
 	for i := 0; i+1 < len(hdr); i += 2 {
 		req.Header.Set(hdr[i], hdr[i+1])
 	}
@@ -46,8 +46,10 @@ func TestRemotePageServed(t *testing.T) {
 	if rec.Code != 200 || !strings.HasPrefix(rec.Header().Get("Content-Type"), "text/html") || rec.Header().Get("Content-Security-Policy") != pageCSP {
 		t.Fatalf("/remote: %d %q csp %q", rec.Code, rec.Header().Get("Content-Type"), rec.Header().Get("Content-Security-Policy"))
 	}
-	for _, want := range []string{`<script src="remote_core.js?v=`, `<script src="remote_app.js?v=`, `rel="manifest" href="remote.webmanifest"`,
-		`rel="apple-touch-icon" href="remote-icon-180.png"`, `name="apple-mobile-web-app-capable" content="yes"`, "viewport-fit=cover"} {
+	for _, want := range []string{
+		`<script src="remote_core.js?v=`, `<script src="remote_app.js?v=`, `rel="manifest" href="remote.webmanifest"`,
+		`rel="apple-touch-icon" href="remote-icon-180.png"`, `name="apple-mobile-web-app-capable" content="yes"`, "viewport-fit=cover",
+	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("remote.html lacks %s", want)
 		}
@@ -84,7 +86,7 @@ func TestRemotePageServed(t *testing.T) {
 		for _, ic := range man.Icons {
 			out = append(out, ic.Src)
 		}
-		return
+		return out
 	}()...)
 	for _, src := range icons {
 		ir := get(s, "/"+src)
@@ -93,7 +95,7 @@ func TestRemotePageServed(t *testing.T) {
 			t.Fatalf("%s: %d %q %v", src, ir.Code, ir.Header().Get("Content-Type"), err)
 		}
 		size := regexp.MustCompile(`(\d+)\.png$`).FindStringSubmatch(src)[1]
-		if b := img.Bounds(); fmt.Sprint(b.Dx()) != size || b.Dx() != b.Dy() {
+		if b := img.Bounds(); strconv.Itoa(b.Dx()) != size || b.Dx() != b.Dy() {
 			t.Fatalf("%s is %v", src, b)
 		}
 	}
@@ -285,7 +287,7 @@ func TestPanelWorkspaceWithAnLCDSheetOpen(t *testing.T) {
 		t.Fatalf("Trig Menu: %v", out)
 	}
 	var before panel.Status
-	for i := 0; i < 200; i++ {
+	for range 200 {
 		if before = pc.PanelStatus(); before.Mode == "sheet" {
 			break
 		}

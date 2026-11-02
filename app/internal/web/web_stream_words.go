@@ -7,12 +7,11 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"open-sds/app/internal/engine"
 	"slices"
 	"strconv"
 	"sync"
 	"time"
-
-	"open-sds/app/internal/engine"
 )
 
 // The client decode's transport (ADR-STREAM-CLIENT-DECODE): a page's web
@@ -82,8 +81,10 @@ func (s *Server) hStreamWords(w http.ResponseWriter, r *http.Request) {
 	cw, release := src.ReadClientWords(from, maxB, time.Duration(wait)*time.Millisecond, wb.chunks[:0])
 	defer release()
 	wb.chunks = cw.Chunks
-	h := wordsBinHeader{ClientStreamInfo: cw.Info, Next: cw.Next, Dropped: cw.Dropped, Chunks: len(cw.Chunks), Lag: cw.Lag,
-		ServerMS: time.Now().UnixMilli()}
+	h := wordsBinHeader{
+		ClientStreamInfo: cw.Info, Next: cw.Next, Dropped: cw.Dropped, Chunks: len(cw.Chunks), Lag: cw.Lag,
+		ServerMS: time.Now().UnixMilli(),
+	}
 	hj, err := json.Marshal(h)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)

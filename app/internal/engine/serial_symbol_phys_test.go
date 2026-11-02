@@ -19,7 +19,7 @@ func physSymbolCases() []symCase {
 			for _, burst := range [][2]int{{10, 1}, {6, -1}, {4, 1}} {
 				w.mark()
 				for c := 0; c < burst[0]; c++ {
-					for q := 0; q < 4; q++ {
+					for range 4 {
 						ph = ((ph+burst[1])%4 + 4) % 4
 						w.hold(seq[ph][0], seq[ph][1], 5*us)
 					}
@@ -27,8 +27,12 @@ func physSymbolCases() []symCase {
 				w.hold(seq[ph][0], seq[ph][1], 200*us)
 			}
 			return w
-		}, reqs: []symReq{{[]PatternElem{symStart}, 3}, {[]PatternElem{symStart, symAny}, 3}, {[]PatternElem{symStart, symData(1, 1)}, 2},
-			{[]PatternElem{symStart, symData(0, 1), symData(0, 1)}, 1}}},
+		}, reqs: []symReq{
+			{[]PatternElem{symStart}, 3},
+			{[]PatternElem{symStart, symAny}, 3},
+			{[]PatternElem{symStart, symData(1, 1)}, 2},
+			{[]PatternElem{symStart, symData(0, 1), symData(0, 1)}, 1},
+		}},
 		{name: "Stepper", p: symParams(serStepper, 50000), wave: func() *symWave {
 			w := &symWave{}
 			w.hold(false, true, 200*us)
@@ -56,8 +60,11 @@ func physSymbolCases() []symCase {
 			}
 			w.hold(true, true, 1*us)
 			return w
-		}, reqs: []symReq{{[]PatternElem{symStart, symData(0x80, 0x80)}, 3}, {[]PatternElem{symStart, symData(0x00, 0xc0)}, 2},
-			{[]PatternElem{symStart, symData(0x80, 0xc0)}, 2}}},
+		}, reqs: []symReq{
+			{[]PatternElem{symStart, symData(0x80, 0x80)}, 3},
+			{[]PatternElem{symStart, symData(0x00, 0xc0)}, 2},
+			{[]PatternElem{symStart, symData(0x80, 0xc0)}, 2},
+		}},
 		{name: "RC encode", p: withBits(symParams(serRCEncode, 10000), 12), wave: func() *symWave {
 			w := &symWave{}
 			a := 100 * us
@@ -86,7 +93,7 @@ func physSymbolCases() []symCase {
 			w := &symWave{}
 			hp := 1 / 8192.0 / 2
 			w.hold(false, true, 2*ms)
-			for f := 0; f < 3; f++ {
+			for f := range 3 {
 				nib := []int{0xF, 0x8, 0x2, 0x4, 0x1, 0x3, 0xA, 0x0, 0x5 + f}
 				sum := 0
 				for _, x := range nib {
@@ -94,12 +101,12 @@ func physSymbolCases() []symCase {
 				}
 				nib = append(nib, sum&15, sum>>4&15)
 				bits := []int{}
-				for i := 0; i < 24; i++ {
+				for range 24 {
 					bits = append(bits, 1)
 				}
 				bits = append(bits, 0, 1, 0, 1)
 				for _, x := range nib {
-					for k := 0; k < 4; k++ {
+					for k := range 4 {
 						bits = append(bits, x>>k&1)
 					}
 				}
@@ -140,8 +147,12 @@ func physSymbolCases() []symCase {
 			}
 			w.hold(false, true, 3*u)
 			return w
-		}, reqs: []symReq{{[]PatternElem{symStart}, 3}, {[]PatternElem{symStart, symData('S', 0xff)}, 2}, {[]PatternElem{symStart, symData('T', 0xff), symData('E', 0xff)}, 1},
-			{[]PatternElem{symData('O', 0xff)}, 2}}},
+		}, reqs: []symReq{
+			{[]PatternElem{symStart}, 3},
+			{[]PatternElem{symStart, symData('S', 0xff)}, 2},
+			{[]PatternElem{symStart, symData('T', 0xff), symData('E', 0xff)}, 1},
+			{[]PatternElem{symData('O', 0xff)}, 2},
+		}},
 		{name: "DCF77", p: symParams(serDCF77, 1000), wave: func() *symWave {
 			w := &symWave{}
 			sec := 1 * ms
@@ -153,7 +164,7 @@ func physSymbolCases() []symCase {
 				var b [59]int
 				b[20] = 1
 				put := func(at, n, v int) {
-					for k := 0; k < n; k++ {
+					for k := range n {
 						b[at+k] = v >> k & 1
 					}
 				}
@@ -171,7 +182,7 @@ func physSymbolCases() []symCase {
 				par(28, 21, 27)
 				par(35, 29, 34)
 				par(58, 36, 57)
-				for s := 0; s < 59; s++ {
+				for s := range 59 {
 					hi := 0.1
 					if b[s] == 1 {
 						hi = 0.2
@@ -195,7 +206,7 @@ func physSymbolCases() []symCase {
 				w.mark()
 				bits := []int{1, 1, 1, 1, 1, 1, 1, 1, 1}
 				col := 0
-				for k := 0; k < 10; k++ {
+				for k := range 10 {
 					nib := tag[k/2] >> (4 * (1 - k%2)) & 15
 					col ^= nib
 					p := 0
@@ -311,7 +322,7 @@ func physSymbolCases() []symCase {
 				w.hold(false, true, 2*T)
 				w.hold(true, true, T)
 				for _, v := range bytes {
-					for i := 0; i < 8; i++ {
+					for i := range 8 {
 						lo := 0.75
 						if v>>i&1 == 1 {
 							lo = 0.25
@@ -330,14 +341,14 @@ func physSymbolCases() []symCase {
 			w.hold(false, true, 1*ms)
 			for _, f := range [][]int{{0x2A, 0x02, 0x08, 0x40, 0x11, 0x22, 0x33, 0x3C}, {0x05, 0x00, 0x07, 0x16, 0x48, 0x69, 0x09}, {0x2A, 0x00, 0x06, 0x65, 0xFF, 0x7D}} {
 				w.mark()
-				for i := 0; i < 3; i++ {
+				for range 3 {
 					w.hold(true, true, pad)
 					w.hold(false, true, data)
 				}
 				for _, v := range f {
 					w.hold(true, true, pad)
 					w.hold(false, true, data)
-					for k := 0; k < 8; k++ {
+					for k := range 8 {
 						w.hold(v>>k&1 == 1, true, data)
 					}
 				}
@@ -379,7 +390,7 @@ func physSymbolCases() []symCase {
 			}
 			for _, pkt := range [][]int{{0x01, 0x80}, {0x03, 0x05}, {0x01, 0x40}} {
 				w.mark()
-				for i := 0; i < 11; i++ {
+				for range 11 {
 					put(1)
 				}
 				x := 0
@@ -389,7 +400,7 @@ func physSymbolCases() []symCase {
 				for _, v := range append(append([]int{}, pkt...), x) {
 					put(0)
 					p := 1
-					for k := 0; k < 8; k++ {
+					for k := range 8 {
 						put(v >> k & 1)
 						p ^= v >> k & 1
 					}
@@ -405,7 +416,7 @@ func physSymbolCases() []symCase {
 			w := &symWave{}
 			bits := []int{}
 			idle := func(n int) {
-				for i := 0; i < n; i++ {
+				for range n {
 					bits = append(bits, 1)
 				}
 			}
@@ -461,7 +472,7 @@ func physSymbolCases() []symCase {
 			char := func(v int) {
 				bits = append(bits, 0)
 				p := 0
-				for i := 0; i < 8; i++ {
+				for i := range 8 {
 					bits = append(bits, v>>i&1)
 					p ^= v >> i & 1
 				}
@@ -496,14 +507,14 @@ func physSymbolCases() []symCase {
 				w.hold(false, tms, per/4)
 				w.hold(true, tms, per/2)
 			}
-			for i := 0; i < 12; i++ { // traffic before: the escape follows TMSC rises
+			for i := range 12 { // traffic before: the escape follows TMSC rises
 				rise(i%3 == 0)
 			}
-			for e := 0; e < 3; e++ {
+			for range 3 {
 				w.mark()
 				w.hold(false, tms, per/2)
 				w.hold(true, tms, per/2)
-				for i := 0; i < 6; i++ {
+				for range 6 {
 					tms = !tms
 					w.hold(true, tms, per/2)
 				}
@@ -512,7 +523,7 @@ func physSymbolCases() []symCase {
 					_ = i
 					rise(b)
 				}
-				for i := 0; i < 30; i++ { // OScan1 TCKs at run-test/idle
+				for i := range 30 { // OScan1 TCKs at run-test/idle
 					rise(i%3 == 0)
 				}
 			}
@@ -523,13 +534,13 @@ func physSymbolCases() []symCase {
 			st := 250e-9
 			la, lb := true, true
 			set := func(a, b bool) { la, lb = a, b; w.hold(a, b, st) }
-			for i := 0; i < 20; i++ {
+			for range 20 {
 				set(true, true)
 			}
 			for _, f := range [][]int{{0x00, 0x20, 0x00, 0x01, 0x21}, {0x01, 0x00, 0x20, 0x05, 0x00, 0x00, 0x00, 0x01, 0x25}, {0x00, 0x20, 0x00, 0x01, 0x21}} {
 				w.mark()
 				set(false, true)
-				for i := 0; i < 4; i++ {
+				for range 4 {
 					set(false, false)
 					set(false, true)
 				}
@@ -559,7 +570,7 @@ func physSymbolCases() []symCase {
 				set(true, false)
 				set(false, false)
 				set(true, true)
-				for i := 0; i < 20; i++ {
+				for range 20 {
 					set(true, true)
 				}
 			}
@@ -570,7 +581,7 @@ func physSymbolCases() []symCase {
 			w.hold(false, false, 20*ms)
 			for _, v := range []int{1234, 4321, 1234} {
 				w.mark()
-				for i := 0; i < 24; i++ {
+				for i := range 24 {
 					bit := i < 16 && v>>i&1 == 1
 					w.hold(false, bit, 40*us)
 					w.hold(true, bit, 40*us)
@@ -586,7 +597,7 @@ func physSymbolCases() []symCase {
 				w.mark()
 				w.runs(false, 4.5*ms, 4.5*ms)
 				for _, v := range []int{addr, 0xFD02} {
-					for i := 0; i < 16; i++ {
+					for i := range 16 {
 						sp := 550 * us
 						if v>>i&1 != 0 {
 							sp = 1650 * us
@@ -610,7 +621,7 @@ func physSymbolCases() []symCase {
 				by[5] = by[2] ^ by[3] ^ by[4]
 				w.runs(false, 3380*us, 1690*us)
 				for _, v := range by {
-					for i := 0; i < 8; i++ {
+					for i := range 8 {
 						sp := 423 * us
 						if v>>i&1 != 0 {
 							sp = 1269 * us
@@ -627,7 +638,7 @@ func physSymbolCases() []symCase {
 			w := &symWave{}
 			w.hold(true, true, 20*ms)
 			for _, cmd := range []int{0x2C4, 0x016, 0x2C4} {
-				for rep := 0; rep < 2; rep++ {
+				for rep := range 2 {
 					if rep == 0 {
 						w.mark()
 					}

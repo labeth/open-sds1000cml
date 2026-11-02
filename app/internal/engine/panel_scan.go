@@ -2,11 +2,11 @@
 package engine
 
 import (
+	"errors"
 	"fmt"
 	"math/bits"
-	"time"
-
 	"open-sds/app/internal/sramcapture"
+	"time"
 )
 
 // Panel matrix synthesis (ADR-PANEL-SERIAL-SCAN). The scan's 64 bits arrive
@@ -78,7 +78,7 @@ func (e *Engine) applyPanelScan() error {
 // TRLC-LINKS: REQ-SDS-022
 func (e *Engine) PanelScan() (sramcapture.PanelFrame, error) {
 	if e.sram == nil {
-		return sramcapture.PanelFrame{}, fmt.Errorf("engine: no SRAM fabric")
+		return sramcapture.PanelFrame{}, errors.New("engine: no SRAM fabric")
 	}
 	if ok, err := e.sram.SupportsPanel(); err != nil || !ok {
 		return sramcapture.PanelFrame{}, fmt.Errorf("engine: fabric lacks the panel scan: %v", err)
@@ -142,7 +142,7 @@ func panelMatrix(f sramcapture.PanelFrame, k *panelKnobs) ([5]uint16, bool) {
 		m[i] = 0xffff
 	}
 	down := 0
-	for row := 0; row < 8; row++ {
+	for row := range 8 {
 		b := uint8(f.Words[row/2] >> (8 * uint(row%2)))
 		down += 6 - bits.OnesCount8(b&0xfc) // keys at positions 2..7 read low when down
 		if k.primed {
@@ -156,7 +156,7 @@ func panelMatrix(f sramcapture.PanelFrame, k *panelKnobs) ([5]uint16, bool) {
 		k.primed = false
 		return [5]uint16{0xffff, 0xffff, 0xffff, 0xffff, 0}, false
 	}
-	for row := 0; row < 8; row++ {
+	for row := range 8 {
 		b := uint8(f.Words[row/2] >> (8 * uint(row%2)))
 		word, shift := 3-row/2, uint(8)
 		if row%2 == 1 {
@@ -174,7 +174,7 @@ func panelMatrix(f sramcapture.PanelFrame, k *panelKnobs) ([5]uint16, bool) {
 		k.last[row] = count
 	}
 	k.primed = true
-	for row := 0; row < 8; row++ {
+	for row := range 8 {
 		steps := k.pending[row] / panelCountsPerDetent
 		if steps == 0 {
 			continue

@@ -4,11 +4,11 @@ package web
 import (
 	"fmt"
 	"math"
+	"net/http"
 	"net/http/httptest"
+	"open-sds/app/internal/engine"
 	"strings"
 	"testing"
-
-	"open-sds/app/internal/engine"
 )
 
 // API fuzz: every endpoint is fed malformed, extreme, and hostile inputs.
@@ -25,8 +25,10 @@ func TestAPIFuzz(t *testing.T) {
 		for i := range c1 {
 			c1[i] = uint8(128 + 60*math.Sin(float64(i)/32))
 		}
-		return &engine.Frame{C1: c1, C2: c1, Seq: n, Valid: 2048, WinCols: 2048,
-			EdgeX: 1024, TdivS: 500e-6, SampleS: 800e-9, Trigd: true, Ptp: 120}
+		return &engine.Frame{
+			C1: c1, C2: c1, Seq: n, Valid: 2048, WinCols: 2048,
+			EdgeX: 1024, TdivS: 500e-6, SampleS: 800e-9, Trigd: true, Ptp: 120,
+		}
 	}
 	fs := &fakeScope{frameGen: gen, stats: engine.Stats{Running: true, TrigPosFrac: 0.5, WinCols: 2048}}
 	srv := httptest.NewServer(New(fs, nil, nil, nil).Handler())
@@ -133,7 +135,7 @@ func TestAPIFuzz(t *testing.T) {
 
 	// the server must still be alive and serving real frames after all of it
 	r, err := client.Get(srv.URL + "/api/status")
-	if err != nil || r.StatusCode != 200 {
+	if err != nil || r.StatusCode != http.StatusOK {
 		t.Fatalf("server unhealthy after fuzz: %v %v", err, r)
 	}
 	r.Body.Close()

@@ -77,7 +77,7 @@ func (h *sigHash) add(v reflect.Value) {
 			h.word(maphash.Bytes(sigSeed, v.Bytes()))
 			return
 		}
-		for i := 0; i < n; i++ {
+		for i := range n {
 			h.add(v.Index(i))
 		}
 	case reflect.Struct:

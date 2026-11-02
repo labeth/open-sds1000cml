@@ -1,7 +1,7 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-SRAMCAPTURE
 package sramcapture
 
-import "fmt"
+import "errors"
 
 // MIL1553TriggerConfig accepts one complete 16-bit word after odd parity.
 // BitTicks is the explicit bit period in 125 MHz receiver clocks.
@@ -18,7 +18,7 @@ type MIL1553TriggerConfig struct {
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-018
 func (p MIL1553TriggerConfig) validate() error {
 	if p.Enabled && (p.Channel > 1 || p.BitTicks < 8 || p.BitTicks > 0x3fffff) {
-		return fmt.Errorf("sramcapture: invalid hardware MIL-STD-1553 configuration")
+		return errors.New("sramcapture: invalid hardware MIL-STD-1553 configuration")
 	}
 	return nil
 }
@@ -43,7 +43,7 @@ func (c *Capture) configureMIL1553(revision uint16, p MIL1553TriggerConfig) erro
 	}
 	if capability != 0x4d01 {
 		if p.Enabled {
-			return fmt.Errorf("sramcapture: fabric lacks hardware MIL-STD-1553 trigger")
+			return errors.New("sramcapture: fabric lacks hardware MIL-STD-1553 trigger")
 		}
 		return nil
 	}

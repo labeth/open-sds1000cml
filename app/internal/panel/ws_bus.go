@@ -2,13 +2,9 @@
 package panel
 
 import (
+	"errors"
 	"fmt"
 	"math"
-	"slices"
-	"strings"
-	"sync/atomic"
-	"time"
-
 	"open-sds/app/internal/analog"
 	"open-sds/app/internal/analysis"
 	"open-sds/app/internal/decode"
@@ -17,6 +13,10 @@ import (
 	"open-sds/app/internal/panel/framecalc"
 	"open-sds/app/internal/panel/wsview"
 	"open-sds/app/internal/sramcapture"
+	"slices"
+	"strings"
+	"sync/atomic"
+	"time"
 )
 
 // BUS (REQ-SDS-214): entering it with decode off finds the bus and decodes
@@ -152,8 +152,10 @@ func (a *anaState) packetMarks(live []Packet, liveSel int, toks []string) ([]wsv
 	}
 	var marks []wsview.PacketMark
 	for i, q := range live {
-		marks = append(marks, wsview.PacketMark{I0: q.I0, I1: q.I1, Sel: i == liveSel, Match: len(toks) > 0 && tokMatch(toks, q),
-			Text: q.Note, Err: q.NoteErr})
+		marks = append(marks, wsview.PacketMark{
+			I0: q.I0, I1: q.I1, Sel: i == liveSel, Match: len(toks) > 0 && tokMatch(toks, q),
+			Text: q.Note, Err: q.NoteErr,
+		})
 	}
 	a.marks = busMarks{live: first, n: len(live), sel: liveSel, toks: key, marks: marks, gen: marksGen.Add(1), have: true}
 	return marks, a.marks.gen
@@ -213,7 +215,7 @@ func tokMatchAt(toks []string, p Packet, i int) bool {
 	if n == 0 || i+n > len(p.Bytes) {
 		return false
 	}
-	for j := 0; j < n; j++ {
+	for j := range n {
 		bad := i+j < len(p.ByteErr) && p.ByteErr[i+j]
 		if !tokByte(toks[j], p.Bytes[i+j], bad) {
 			return false
@@ -1514,7 +1516,7 @@ func (c *Controller) smallSwing(auto bool) string {
 // TRLC-LINKS: REQ-SDS-214
 func codePercentile(h *[256]int, n int, q float64) int {
 	want, acc := int(q*float64(n)), 0
-	for v := 0; v < 256; v++ {
+	for v := range 256 {
 		acc += h[v]
 		if acc > want {
 			return v
@@ -1754,7 +1756,7 @@ func (c *Controller) openPickSub() error {
 	var res decode.Result
 	s := c.snap()
 	if s.decProto == framecalc.ProtoOff {
-		return fmt.Errorf("no decoded bytes on screen: set Protocol first")
+		return errors.New("no decoded bytes on screen: set Protocol first")
 	}
 	var valid int
 	if c.frameFn != nil {
@@ -1765,7 +1767,7 @@ func (c *Controller) openPickSub() error {
 	}
 	ps := anaPackets(res, valid)
 	if len(ps) == 0 {
-		return fmt.Errorf("no decoded bytes on screen: set Protocol first")
+		return errors.New("no decoded bytes on screen: set Protocol first")
 	}
 	var toks [][]string
 	var starts []bool
@@ -2206,7 +2208,7 @@ func displayCodes(f *engine.Frame, s *sv, ch, lo, n, stride int) []float64 {
 	fine := cpl == analog.CplDC && len(q) >= valid
 	z := float64(max(analog.Detents[s.vidx[ch]].Zoom, 1))
 	out := make([]float64, 0, n)
-	for k := 0; k < n; k++ {
+	for k := range n {
 		i := lo + k*stride
 		if i < 0 || i >= valid {
 			continue

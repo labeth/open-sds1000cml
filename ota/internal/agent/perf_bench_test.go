@@ -8,13 +8,12 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"net"
+	"open-sds/ota/internal/config"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"testing"
 	"time"
-
-	"open-sds/ota/internal/config"
 )
 
 // TRLC-LINKS: REQ-SDS-113
@@ -49,7 +48,8 @@ func BenchmarkPutChunk(b *testing.B) {
 	chunk := make([]byte, 128*1024)
 	rand.Read(chunk)
 	req, _ := json.Marshal(Request{Cmd: "put.chunk", Args: mustJSON(map[string]any{
-		"id": id, "offset": 0, "data": base64.StdEncoding.EncodeToString(chunk)})})
+		"id": id, "offset": 0, "data": base64.StdEncoding.EncodeToString(chunk),
+	})})
 	for b.Loop() {
 		if r := a.DispatchJSON(req); len(r) < 10 {
 			b.Fatal(string(r))

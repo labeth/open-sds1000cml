@@ -3,16 +3,15 @@ package engine
 
 import (
 	"fmt"
+	"open-sds/app/internal/decode"
+	"open-sds/app/internal/sramcapture"
+	"open-sds/app/internal/testenv"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
-
-	"open-sds/app/internal/decode"
-	"open-sds/app/internal/sramcapture"
-	"open-sds/app/internal/testenv"
 )
 
 // The qualify image's defines for the top-level simulation (the vendor-FIFO
@@ -52,7 +51,7 @@ func TestSymbolTopRTL(t *testing.T) {
 		}(), func() *symWave {
 			w := &symWave{}
 			w.hold(false, true, 20*us)
-			for f := 0; f < 3; f++ {
+			for f := range 3 {
 				for _, v := range []int{0x10 + f, 0x80, 0x5a} {
 					for i := 7; i >= 0; i-- {
 						if v>>i&1 != 0 {
@@ -73,7 +72,7 @@ func TestSymbolTopRTL(t *testing.T) {
 		}(), func() *symWave {
 			w := &symWave{}
 			w.hold(true, true, 20*us)
-			for f := 0; f < 3; f++ {
+			for f := range 3 {
 				w.hold(false, true, 100*us)
 				w.hold(true, true, 12*us)
 				for s, v := range []int{f % 2, 0x21, 0x43} {
@@ -94,7 +93,7 @@ func TestSymbolTopRTL(t *testing.T) {
 			w := &symWave{}
 			T := 0.2 * us
 			bits := func(v, n int) {
-				for i := 0; i < n; i++ {
+				for i := range n {
 					b := v>>i&1 != 0
 					w.hold(false, b, T/2)
 					w.hold(true, b, T/2)
@@ -149,10 +148,12 @@ func compileQualifyTop(t *testing.T, dir, name, defines string, extra ...string)
 	}
 	image := filepath.Join(dir, name+".vvp")
 	args := []string{"-g2012", "-s", "tb_top_qualify", "-o", image, "-I", rtl, defs}
-	for _, f := range append([]string{"top.v", "record.v", "transport.v", "adc_unpack.v", "sample_timeline.v", "decoded_event_queue.v",
+	for _, f := range append([]string{
+		"top.v", "record.v", "transport.v", "adc_unpack.v", "sample_timeline.v", "decoded_event_queue.v",
 		"decoded_event_bridge.v", "decoded_event_reader.v", "decoded_event_transport.v", "decoded_event_port.v",
 		"gpmc_slave.v", "ddio_pair.v", "lane_in.v", "sim/ddr_model.v", "sim/tb_top_qualify.v", "event_sequence.v", "envelope_reduce.v", "panel_scan.v",
-		"qual_trigger.v", "zone_qual.v", "sum_edge_pair.v", "symbol_trigger.v"}, extra...) {
+		"qual_trigger.v", "zone_qual.v", "sum_edge_pair.v", "symbol_trigger.v",
+	}, extra...) {
 		args = append(args, filepath.Join(rtl, f))
 	}
 	if out, err := exec.Command("iverilog", args...).CombinedOutput(); err != nil {
@@ -217,15 +218,17 @@ func runSymbolTop(t *testing.T, dir, image, name string, p SerialParams, w *symW
 	if err := os.WriteFile(rp, []byte(rb.String()), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	args := append([]string{"-N", image, "+input=" + words, fmt.Sprintf("+length=%d", 2*len(w.a)), "+regs=" + rp, fmt.Sprintf("+nregs=%d", len(regs)),
-		pre, "+post=2000"}, extra...)
+	args := append([]string{
+		"-N", image, "+input=" + words, fmt.Sprintf("+length=%d", 2*len(w.a)), "+regs=" + rp, fmt.Sprintf("+nregs=%d", len(regs)),
+		pre, "+post=2000",
+	}, extra...)
 	out, err := exec.Command("vvp", args...).CombinedOutput()
 	if err != nil || !strings.Contains(string(out), "PASS qualify top") {
 		t.Fatalf("simulate: %v\n%s", err, out)
 	}
 	var ms []int
 	trigger, recorded, count := -1, -1, -1
-	for _, line := range strings.Split(string(out), "\n") {
+	for line := range strings.SplitSeq(string(out), "\n") {
 		var n int
 		if _, err := fmt.Sscanf(line, "M %d", &n); err == nil {
 			ms = append(ms, n)
@@ -408,7 +411,7 @@ func TestQualifyPickAltTopRTL(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			out := runSymbolTop(t, dir, image, "SWD-"+name, p, tc.wave(), 4, "+pre=2", extra...)
 			words := 0
-			for _, line := range strings.Split(out, "\n") {
+			for line := range strings.SplitSeq(out, "\n") {
 				var n int
 				var v uint32
 				if _, err := fmt.Sscanf(line, "P %d %x", &n, &v); err != nil {

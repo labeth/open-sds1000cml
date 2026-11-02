@@ -7,11 +7,10 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"testing"
-	"time"
-
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/panel"
+	"testing"
+	"time"
 )
 
 // /api/sound/take.bin: no take while the stream is live (404); STOPped, the

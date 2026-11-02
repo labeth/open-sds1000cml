@@ -3,10 +3,9 @@ package engine
 
 import (
 	"math"
+	"open-sds/app/internal/iface"
 	"testing"
 	"time"
-
-	"open-sds/app/internal/iface"
 )
 
 // TRLC-LINKS: REQ-SDS-010
@@ -77,7 +76,7 @@ func TestEnvelopeFrame(t *testing.T) {
 	e.band = b
 	e.transition(false, false)
 
-	for i := 0; i < 6; i++ {
+	for range 6 {
 		e.envFrame(false)
 	}
 	if fb.earlyDrain {

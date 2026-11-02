@@ -2,9 +2,8 @@
 package engine
 
 import (
-	"testing"
-
 	"open-sds/app/internal/iface"
+	"testing"
 )
 
 // TRLC-LINKS: REQ-SDS-007, REQ-SDS-009, REQ-SDS-011
@@ -12,7 +11,7 @@ func TestDecimatedAutoPublishes(t *testing.T) {
 	fb := newFakeBus()
 	e, _ := newTestEngine(t, fb)
 	e.bringUp()
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		e.oneFrame(false)
 	}
 	if fb.earlyDrain {
@@ -174,7 +173,7 @@ func TestDecimatedAutoWrongSlopeLiveness(t *testing.T) {
 	fb.mu.Unlock()
 	e, _ := newTestEngine(t, fb)
 	e.bringUp()
-	for i := 0; i < nativeFlatFallbck+2; i++ {
+	for range nativeFlatFallbck + 2 {
 		e.oneFrame(false) // AUTO
 	}
 	s := e.Snapshot()
@@ -200,7 +199,7 @@ func TestDecimatedAutoWrongSlopeLiveness(t *testing.T) {
 	e2.SetNorm(true)
 	e2.serviceCommands()
 	e2.transition(true, false)
-	for i := 0; i < nativeFlatFallbck+2; i++ {
+	for range nativeFlatFallbck + 2 {
 		e2.oneFrame(true)
 	}
 	if s2 := e2.Snapshot(); s2.Published != 0 {
@@ -260,7 +259,7 @@ func TestSingleShotNotConsumedByFlatFallback(t *testing.T) {
 	e.band = b
 	e.SetSingle()
 	e.bringUp()
-	for i := 0; i < nativeFlatFallbck+5; i++ {
+	for range nativeFlatFallbck + 5 {
 		e.oneFrame(true) // single forces NORM
 	}
 	s := e.Snapshot()
@@ -355,7 +354,7 @@ func TestDecimatedFlatFallback(t *testing.T) {
 	fb.mu.Unlock()
 	e, _ := newTestEngine(t, fb)
 	e.bringUp()
-	for i := 0; i < nativeFlatFallbck-1; i++ {
+	for range nativeFlatFallbck - 1 {
 		e.oneFrame(false) // held: not yet at the flat fallback
 	}
 	if s := e.Snapshot(); s.Published != 0 {
@@ -474,7 +473,7 @@ func TestNativeFastContentGate(t *testing.T) {
 	fb.mu.Lock()
 	fb.wave = func(int) (uint8, uint8) { return 128, 128 }
 	fb.mu.Unlock()
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		e.oneFrame(false)
 		f, fresh = e.Consume()
 		if !fresh || f.EdgeX != -1 || f.Trigd {
@@ -482,7 +481,7 @@ func TestNativeFastContentGate(t *testing.T) {
 		}
 	}
 	// NORM keeps the trigger-hold with the honest 60-frame flat fallback.
-	for i := 0; i < nativeFlatFallbck-1; i++ {
+	for range nativeFlatFallbck - 1 {
 		e.oneFrame(true)
 	}
 	if _, fresh := e.Consume(); fresh {

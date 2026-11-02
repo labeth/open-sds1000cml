@@ -4,11 +4,11 @@ package web
 import (
 	"bytes"
 	"encoding/json"
+	"net/http"
 	"net/http/httptest"
+	"open-sds/app/internal/engine"
 	"reflect"
 	"testing"
-
-	"open-sds/app/internal/engine"
 )
 
 // TRLC-LINKS: REQ-SDS-162
@@ -21,7 +21,7 @@ func TestSerialTriggerEndpoints(t *testing.T) {
 		"proto": 2, "chA": 0, "chB": 1, "addr": 0x50, "rw": 0,
 		"bytes": []int{0xDE, 0x1FF /*→clamped 255*/, -3 /*→0*/},
 	})
-	req := httptest.NewRequest("POST", "/api/serial", bytes.NewReader(body))
+	req := httptest.NewRequest(http.MethodPost, "/api/serial", bytes.NewReader(body))
 	rec := httptest.NewRecorder()
 	s.Handler().ServeHTTP(rec, req)
 	if rec.Code != 200 {
@@ -39,7 +39,7 @@ func TestSerialTriggerEndpoints(t *testing.T) {
 	} {
 		body, _ = json.Marshal(map[string]any{"proto": tc.proto, "bits": tc.bits, "bytes": []int{tc.max, tc.max + 1, -1}})
 		rec = httptest.NewRecorder()
-		s.Handler().ServeHTTP(rec, httptest.NewRequest("POST", "/api/serial", bytes.NewReader(body)))
+		s.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/api/serial", bytes.NewReader(body)))
 		if rec.Code != 200 || !reflect.DeepEqual(fs.serialParams.Bytes, []int{tc.max, tc.max, 0}) {
 			t.Fatalf("protocol %d lost word width: %v", tc.proto, fs.serialParams.Bytes)
 		}
@@ -50,7 +50,7 @@ func TestSerialTriggerEndpoints(t *testing.T) {
 	for _, tc := range []struct{ baud, want int }{{62_500_000, 62_500_000}, {25_000_000, 25_000_000}, {65_000_000, 0}} {
 		body, _ = json.Marshal(map[string]any{"proto": 1, "baud": tc.baud, "bytes": []int{0x55}})
 		rec = httptest.NewRecorder()
-		s.Handler().ServeHTTP(rec, httptest.NewRequest("POST", "/api/serial", bytes.NewReader(body)))
+		s.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/api/serial", bytes.NewReader(body)))
 		if got := fs.serialParams.Baud; rec.Code != 200 || got != tc.want {
 			t.Fatalf("baud %d posted: the trigger has %d, want %d", tc.baud, got, tc.want)
 		}
@@ -61,7 +61,7 @@ func TestSerialTriggerEndpoints(t *testing.T) {
 	fs.serialParams.SPIClockHz, fs.serialParams.SPIDelayNs, fs.serialParams.Fine = 104_000_000, 7.5, true
 	body, _ = json.Marshal(map[string]any{"proto": 3, "spiClockHz": 10_400_000, "bytes": []int{0x9F}})
 	rec = httptest.NewRecorder()
-	s.Handler().ServeHTTP(rec, httptest.NewRequest("POST", "/api/serial", bytes.NewReader(body)))
+	s.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/api/serial", bytes.NewReader(body)))
 	if p := fs.serialParams; p.SPIClockHz != 104_000_000 || p.SPIDelayNs != 7.5 || !p.Fine || p.Proto != 3 || !reflect.DeepEqual(p.Bytes, []int{0x9F}) {
 		t.Fatalf("a post replaced the scope's SPI timing or lost its match: %+v", p)
 	}
@@ -77,7 +77,7 @@ func TestSerialTriggerEndpoints(t *testing.T) {
 	}
 
 	// bad json → ok:false, no panic
-	req = httptest.NewRequest("POST", "/api/serial", bytes.NewReader([]byte("{garbage")))
+	req = httptest.NewRequest(http.MethodPost, "/api/serial", bytes.NewReader([]byte("{garbage")))
 	rec = httptest.NewRecorder()
 	s.Handler().ServeHTTP(rec, req)
 	var out map[string]any
@@ -89,7 +89,7 @@ func TestSerialTriggerEndpoints(t *testing.T) {
 	// GET reads the trigger as armed, so a page can show it rather than
 	// replace it; another method is refused
 	fs.SetSerialParams(engine.SerialParams{Proto: 1, Bytes: []int{0xAA}, Addr: -1, RW: 2})
-	req = httptest.NewRequest("GET", "/api/serial", nil)
+	req = httptest.NewRequest(http.MethodGet, "/api/serial", nil)
 	rec = httptest.NewRecorder()
 	s.Handler().ServeHTTP(rec, req)
 	var got struct {
@@ -100,7 +100,7 @@ func TestSerialTriggerEndpoints(t *testing.T) {
 	if !got.OK || got.Params.Proto != 1 || len(got.Params.Bytes) != 1 || got.Params.Bytes[0] != 0xAA {
 		t.Fatalf("GET /api/serial: %s", rec.Body.String())
 	}
-	req = httptest.NewRequest("PUT", "/api/serial", nil)
+	req = httptest.NewRequest(http.MethodPut, "/api/serial", nil)
 	rec = httptest.NewRecorder()
 	s.Handler().ServeHTTP(rec, req)
 	if rec.Code != 405 {

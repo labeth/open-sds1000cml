@@ -16,15 +16,15 @@ func uartBackToBack(msg []int, repeats, gap, spb int) []uint8 {
 		if bit == 1 {
 			v = 210
 		}
-		for j := 0; j < k; j++ {
+		for range k {
 			w = append(w, v)
 		}
 	}
-	for r := 0; r < repeats; r++ {
+	for range repeats {
 		push(1, gap*spb)
 		for _, b := range msg {
 			push(0, spb)
-			for c := 0; c < 8; c++ {
+			for c := range 8 {
 				push((b>>c)&1, spb)
 			}
 			push(1, spb)

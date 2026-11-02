@@ -102,7 +102,7 @@ func TestQualifySlope(t *testing.T) {
 	for i := range sig {
 		sig[i] = 50
 	}
-	for i := 0; i < 100; i++ { // slow ramp at 500..599: 50 → 200
+	for i := range 100 { // slow ramp at 500..599: 50 → 200
 		sig[500+i] = uint8(50 + 150*i/100)
 	}
 	for i := 600; i < 1400; i++ {
@@ -163,9 +163,9 @@ func TestQualifyVideo(t *testing.T) {
 	for i := range sig {
 		sig[i] = 150
 	}
-	for line := 0; line < 10; line++ {
+	for line := range 10 {
 		base := line * 200
-		for i := 0; i < 15; i++ {
+		for i := range 15 {
 			if base+i < len(sig) {
 				sig[base+i] = 20
 			}
@@ -250,7 +250,7 @@ func TestAverageRing(t *testing.T) {
 	r.reset(4, 100)
 	f := &Frame{C1: make([]uint8, 1000), C2: make([]uint8, 1000), Valid: 1000}
 	// Frames with an edge at varying positions; alignment centres them all.
-	for k := 0; k < 4; k++ {
+	for k := range 4 {
 		edge := 480 + k*10
 		for i := range f.C1 {
 			if i < edge {
@@ -281,7 +281,7 @@ func TestAverageRingNoOffRecordBias(t *testing.T) {
 	r := &avgRing{}
 	r.reset(4, 200)
 	f := &Frame{C1: make([]uint8, 400), C2: make([]uint8, 400), Valid: 400}
-	for k := 0; k < 4; k++ {
+	for range 4 {
 		for i := range f.C1 {
 			f.C1[i], f.C2[i] = 40, 40 // a flat low rail, no 128 anywhere
 		}
@@ -289,7 +289,7 @@ func TestAverageRingNoOffRecordBias(t *testing.T) {
 	}
 	r.meanInto(f)
 	// Every contributing column is 40; no column should read the 128 fill.
-	for i := 0; i < 200; i++ {
+	for i := range 200 {
 		if f.C1[i] != 40 && f.C1[i] != 128 {
 			t.Fatalf("col %d = %d, expected 40 (real) or 128 (no-contribution)", i, f.C1[i])
 		}
@@ -345,7 +345,7 @@ func TestAverageModeInEngine(t *testing.T) {
 	e.bringUp()
 	e.SetAcqMode(AcqAverage)
 	e.SetAvgCount(4)
-	for i := 0; i < 4; i++ {
+	for range 4 {
 		e.oneFrame(false)
 	}
 	f, fresh := e.Consume()
@@ -363,7 +363,7 @@ func TestUniformityStats(t *testing.T) {
 	fb := newFakeBus()
 	e, _ := newTestEngine(t, fb)
 	e.bringUp()
-	for i := 0; i < 6; i++ {
+	for range 6 {
 		e.oneFrame(false)
 	}
 	s := e.Snapshot()
@@ -416,7 +416,7 @@ func TestRescaleCodesKeepsVolts(t *testing.T) {
 		want[i] = volts(float64(v), from)
 	}
 	rescaleCodes(c, q, from, to)
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		if got := volts(float64(c[i]), to); math.Abs(got-want[i]) > to.vdiv/25 {
 			t.Fatalf("code %d reads %.3f V, captured %.3f V", i, got, want[i])
 		}

@@ -142,8 +142,10 @@ func TestOraclePJDL(t *testing.T) {
 	const sr = 2000000
 	w := newTimeline(sr)
 	w.add(0, 500e-6)
-	frames := [][]int{pjonPacket(0x2A, 0x02, []int{0x11, 0x22, 0x33}, false), pjonPacket(0x05, 0x00, []int{0x48, 0x69}, true),
-		pjonPacket(0x00, 0x00, []int{0xFF}, false)}
+	frames := [][]int{
+		pjonPacket(0x2A, 0x02, []int{0x11, 0x22, 0x33}, false), pjonPacket(0x05, 0x00, []int{0x48, 0x69}, true),
+		pjonPacket(0x00, 0x00, []int{0xFF}, false),
+	}
 	for _, f := range frames {
 		pjdlFrame(w, 1, f, 1e-3)
 	}
@@ -208,8 +210,8 @@ func TestOracleDSI(t *testing.T) {
 	anns := sigrokDecode(t, sr, []string{"D"}, [][]byte{w.bits}, "dsi:dsi=D", "dsi=raw")
 	var orc []string
 	for _, a := range sortAnns(anns) {
-		if strings.HasPrefix(a.Text, "Data: ") {
-			orc = append(orc, strings.TrimPrefix(a.Text, "Data: "))
+		if after, ok := strings.CutPrefix(a.Text, "Data: "); ok {
+			orc = append(orc, after)
 		}
 	}
 	if fmt.Sprint(repo) != fmt.Sprint(orc) {

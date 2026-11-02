@@ -31,7 +31,7 @@ func TestStackAccumulateRTL(t *testing.T) {
 			fixtures = append(fixtures, base(v, odd))
 		}
 	}
-	for k := 0; k < 5; k++ {
+	for k := range 5 {
 		f := base((1<<37)-1, true)
 		switch k {
 		case 0:
@@ -64,7 +64,7 @@ func TestStackAccumulateRTL(t *testing.T) {
 	rng := rand.New(rand.NewSource(141))
 	limit69 := new(big.Int).Lsh(big.NewInt(1), 69)
 	limit106 := new(big.Int).Lsh(big.NewInt(1), 106)
-	for i := 0; i < 160; i++ {
+	for i := range 160 {
 		f := base(rng.Uint64()&((1<<37)-1), i%2 != 0)
 		f.sum = new(big.Int).Rand(rng, limit69)
 		f.sum2 = new(big.Int).Rand(rng, limit106)
@@ -75,7 +75,7 @@ func TestStackAccumulateRTL(t *testing.T) {
 	}
 	s, s2, sa := new(big.Int), new(big.Int), new(big.Int)
 	var n, na uint32
-	for i := 0; i < 80; i++ {
+	for i := range 80 {
 		f := base(rng.Uint64()&((1<<37)-1), i%2 != 0)
 		f.sum.Set(s)
 		f.sum2.Set(s2)
@@ -128,7 +128,7 @@ func TestStackAccumulateRTL(t *testing.T) {
 	}
 	dir := t.TempDir()
 	path := filepath.Join(dir, "fixtures.txt")
-	if err := os.WriteFile(path, []byte(input.String()), 0600); err != nil {
+	if err := os.WriteFile(path, []byte(input.String()), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	image := compileStackRTL(t, dir, "tb_stack_accumulate", "stack_accumulate.v", "sim/tb_stack_accumulate.v")
@@ -137,7 +137,7 @@ func TestStackAccumulateRTL(t *testing.T) {
 		t.Fatalf("simulation: %v\n%s", err, out)
 	}
 	lines := []string{}
-	for _, line := range strings.Split(string(out), "\n") {
+	for line := range strings.SplitSeq(string(out), "\n") {
 		if strings.HasPrefix(line, "A ") {
 			lines = append(lines, line)
 		}

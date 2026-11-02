@@ -3,9 +3,8 @@ package panel
 
 import (
 	"math/rand"
-	"testing"
-
 	"open-sds/app/internal/engine"
+	"testing"
 )
 
 // Panel chaos: random button presses and knob steps in every order, the
@@ -16,10 +15,12 @@ import (
 // TRLC-LINKS: REQ-SDS-135, REQ-SDS-136, REQ-SDS-211
 func TestPanelChaos(t *testing.T) {
 	var buttons []int
-	for _, n := range []string{"runstop", "single", "auto", "ch1vdivpush", "ch2vdivpush", "triglvlpush", "utility",
+	for _, n := range []string{
+		"runstop", "single", "auto", "ch1vdivpush", "ch2vdivpush", "triglvlpush", "utility",
 		"adjustpush", "f1", "f2", "f3", "f4", "f5", "trigmenu", "acquire", "display", "horizmenu", "menu", "measure",
 		"cursors", "math", "ref", "ch1", "ch2", "print", "saverecall", "set50", "defaultsetup", "force", "help",
-		"ch1pospush", "ch2pospush", "tdivpush", "horizpospush"} {
+		"ch1pospush", "ch2pospush", "tdivpush", "horizpospush",
+	} {
 		code, ok := nameCode(n)
 		if !ok {
 			t.Fatalf("no button %s", n)
@@ -57,7 +58,7 @@ func TestPanelChaos(t *testing.T) {
 				}
 			}
 		}()
-		for i := 0; i < 4000; i++ {
+		for i := range 4000 {
 			func() {
 				defer func() {
 					if r := recover(); r != nil {

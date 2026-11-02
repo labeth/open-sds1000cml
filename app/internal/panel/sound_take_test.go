@@ -3,11 +3,10 @@ package panel
 
 import (
 	"math"
+	"open-sds/app/internal/engine"
 	"strings"
 	"testing"
 	"time"
-
-	"open-sds/app/internal/engine"
 )
 
 // takeEng is soundEng with the engine's takes: STOPped (mode) it shows a
@@ -87,7 +86,7 @@ func TestSoundTakeView(t *testing.T) {
 		t.Fatalf("caption %q, columns %d, ranges %v %v", p.Caption, len(p.Take.Lo[0]), p.Take.VLo, p.Take.VHi)
 	}
 	// Zoom in about the centre (2.5 s: the bass) and read it.
-	for i := 0; i < 8; i++ {
+	for range 8 {
 		turn(c, "tdiv", 1)
 	}
 	se.run(c, 300*time.Millisecond, &now)

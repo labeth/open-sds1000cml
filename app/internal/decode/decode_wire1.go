@@ -352,8 +352,10 @@ func decodeSWIM(codes lineIn, colTimeS float64, cfg LineCfg) Result {
 	if len(o.spans) == 0 {
 		return Result{Proto: "swim", Error: "no SWIM frame"}
 	}
-	res := Result{OK: good, Proto: "swim", Spans: o.spans, Text: strings.Join(o.toks, " "), Bytes: o.units,
-		Thr: S.threshold, SPB: T}
+	res := Result{
+		OK: good, Proto: "swim", Spans: o.spans, Text: strings.Join(o.toks, " "), Bytes: o.units,
+		Thr: S.threshold, SPB: T,
+	}
 	if colTimeS > 0 {
 		res.Baud = int(math.Round(1 / (T * colTimeS)))
 	}
@@ -435,8 +437,10 @@ func decodeSDQ(codes lineIn, colTimeS float64, cfg LineCfg) Result {
 	if len(o.spans) == 0 {
 		return Result{Proto: "sdq", Error: "no SDQ bits"}
 	}
-	res := Result{OK: good, Proto: "sdq", Spans: o.spans, Text: strings.Join(o.toks, " "), Bytes: o.units,
-		Thr: S.threshold, SPB: T, Baud: int(math.Round(baud))}
+	res := Result{
+		OK: good, Proto: "sdq", Spans: o.spans, Text: strings.Join(o.toks, " "), Bytes: o.units,
+		Thr: S.threshold, SPB: T, Baud: int(math.Round(baud)),
+	}
 	if !good {
 		res.Error = "no SDQ bytes after a break"
 	}
@@ -461,7 +465,7 @@ func crc8PJON(b []int) int {
 	c := 0
 	for _, v := range b {
 		c ^= v & 0xff
-		for i := 0; i < 8; i++ {
+		for range 8 {
 			if c&1 != 0 {
 				c = c>>1 ^ 0x97
 			} else {
@@ -584,7 +588,7 @@ func decodePJDL(codes lineIn, colTimeS float64, cfg LineCfg) Result {
 			continue
 		}
 		v := 0
-		for k := 0; k < 8; k++ {
+		for k := range 8 {
 			if logicAt(&S, e+dt*(1.5+float64(k))) == 1 {
 				v |= 1 << k
 			}
@@ -601,8 +605,10 @@ func decodePJDL(codes lineIn, colTimeS float64, cfg LineCfg) Result {
 	if len(o.spans) == 0 {
 		return Result{Proto: "pjdl", Error: "no PJDL frame"}
 	}
-	res := Result{OK: good, Proto: "pjdl", Spans: o.spans, Text: strings.Join(o.toks, " "), Bytes: o.units,
-		Thr: S.threshold, SPB: dt, Baud: int(math.Round(1e6 / data)), FrameBits: mode}
+	res := Result{
+		OK: good, Proto: "pjdl", Spans: o.spans, Text: strings.Join(o.toks, " "), Bytes: o.units,
+		Thr: S.threshold, SPB: dt, Baud: int(math.Round(1e6 / data)), FrameBits: mode,
+	}
 	if !good {
 		res.Error = "no PJON frame whose CRC checks"
 	}
@@ -712,7 +718,7 @@ func decodeDSI(codes lineIn, colTimeS float64, cfg LineCfg) Result {
 	hx := half / us(1)
 	o := newWireOut(n, nil)
 	good := false
-	for i := 0; i < len(marks); i++ {
+	for i := range marks {
 		if (i > 0 && us(marks[i].x0-marks[i-1].x1) < 3200) || (i == 0 && us(marks[0].x0) < 1700) {
 			continue
 		}
@@ -751,8 +757,10 @@ func decodeDSI(codes lineIn, colTimeS float64, cfg LineCfg) Result {
 	if len(o.spans) == 0 {
 		return Result{Proto: "dsi", Error: "no DSI frame"}
 	}
-	res := Result{OK: good, Proto: "dsi", Spans: o.spans, Text: strings.Join(o.toks, " "), Bytes: o.units,
-		Thr: S.threshold, Inverted: high, SPB: 2 * hx, Baud: 600}
+	res := Result{
+		OK: good, Proto: "dsi", Spans: o.spans, Text: strings.Join(o.toks, " "), Bytes: o.units,
+		Thr: S.threshold, Inverted: high, SPB: 2 * hx, Baud: 600,
+	}
 	if !good {
 		res.Error = "no whole DSI frame"
 	}
@@ -833,7 +841,7 @@ func decodeQi(codes lineIn, colTimeS float64, cfg LineCfg) Result {
 				break
 			}
 			v, p := 0, 1
-			for i := 0; i < 8; i++ {
+			for i := range 8 {
 				v |= c[1+i].v << i
 				p ^= c[1+i].v
 			}
@@ -872,8 +880,10 @@ func decodeQi(codes lineIn, colTimeS float64, cfg LineCfg) Result {
 	if len(o.spans) == 0 {
 		return Result{Proto: "qi", Error: "no Qi packet"}
 	}
-	res := Result{OK: good, Proto: "qi", Spans: o.spans, Text: strings.Join(o.toks, " "), Bytes: o.units,
-		Thr: S.threshold, SPB: bit, Baud: 2000}
+	res := Result{
+		OK: good, Proto: "qi", Spans: o.spans, Text: strings.Join(o.toks, " "), Bytes: o.units,
+		Thr: S.threshold, SPB: bit, Baud: 2000,
+	}
 	if !good {
 		res.Error = "no Qi packet whose checksum checks"
 	}

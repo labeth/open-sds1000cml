@@ -2,12 +2,12 @@
 package panel
 
 import (
+	"errors"
 	"fmt"
 	"math"
-	"time"
-
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/superres"
+	"time"
 )
 
 // Device super-res (spec: reference-locked stack-and-crunch), the ACQ tab's
@@ -154,7 +154,7 @@ func (c *Controller) srSetGate(end bool, v int) error {
 	c.mu.Lock()
 	if !c.srActive || c.srStack == nil {
 		c.mu.Unlock()
-		return fmt.Errorf("super-res is off")
+		return errors.New("super-res is off")
 	}
 	if c.srManLo < 0 { // first edit: seed the manual gate from the auto gate
 		c.srManLo, c.srManHi = c.srStack.GateLo, c.srStack.GateHi
@@ -245,7 +245,7 @@ func (c *Controller) srSeedAndStartGen(gen uint64) bool {
 	if c1 != nil && cols*k > srSoftBinsMax && !c.eng.Snapshot().Running && c.srRunUntouched() {
 		stale := seq
 		c.eng.SetRunning(true)
-		for i := 0; i < 60; i++ {
+		for range 60 {
 			c.srLeaseRaw()
 			time.Sleep(50 * time.Millisecond)
 			fresh := false
@@ -635,7 +635,7 @@ func (c *Controller) srLeaseRaw() {
 // TRLC-LINKS: REQ-SDS-140
 func (c *Controller) srWaitRaw() {
 	c.srLeaseRaw()
-	for i := 0; i < 60; i++ {
+	for range 60 {
 		raw := false
 		c.frameFn(func(f *engine.Frame) { raw = f != nil && !f.IsEnv && !f.PeakDetect })
 		if raw {

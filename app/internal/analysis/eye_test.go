@@ -23,7 +23,7 @@ func feedEye(recs [][]float64, sampleS, hintS float64) (*Eye, EyeResult) {
 func prbsRecords(nrec, n int, ui float64, w wave, tie func(r, k int) float64) [][]float64 {
 	bits := prbs7(8000)
 	var recs [][]float64
-	for r := 0; r < nrec; r++ {
+	for r := range nrec {
 		var tf func(int) float64
 		if tie != nil {
 			rr := r
@@ -216,7 +216,7 @@ func TestEyeSparsePulses(t *testing.T) {
 		sparse[i] = 1
 	}
 	var recs [][]float64
-	for r := 0; r < 6; r++ {
+	for r := range 6 {
 		w := wave{n: 8192, lo: 60, hi: 200, rise: 4.5, noise: 0.7, seed: uint64(r + 1)}
 		recs = append(recs, w.render(nrzEdges(sparse, 30, 20+7.3*float64(r), nil)))
 	}
@@ -237,7 +237,7 @@ func TestEyeAsyncUART(t *testing.T) {
 	const ui = 9.6
 	msgs := [][]byte{[]byte("Hi U\xaa"), []byte("status=OK\r\n"), []byte("\x01\x02\x03")}
 	var recs [][]float64
-	for r := 0; r < 8; r++ {
+	for r := range 8 {
 		w := wave{n: 8192, lo: 60, hi: 200, rise: 1, noise: 0.7, startHigh: true, seed: uint64(r + 11)}
 		gaps := []float64{173.37 + float64(r), 291.81, 88.5 + 3.3*float64(r)}
 		recs = append(recs, w.render(asyncUART(msgs, ui, 50+7.7*float64(r), gaps)))
@@ -272,7 +272,7 @@ func TestEyeUndersampledUARTWithHint(t *testing.T) {
 	const ui = 3.6
 	msg := []byte("The quick brown fox jumps over the lazy dog. 0123456789")
 	var recs [][]float64
-	for r := 0; r < 6; r++ {
+	for r := range 6 {
 		w := wave{n: 4096, lo: 60, hi: 200, noise: 0.5, startHigh: true, seed: uint64(r + 3)}
 		recs = append(recs, w.render(nrzEdges(uartBits(msg, []int{1, 4}), ui, 10+0.37*float64(r), nil)))
 	}
@@ -296,10 +296,10 @@ func TestEyeUndersampledUARTWithHint(t *testing.T) {
 func TestEyeI2CFramingEdges(t *testing.T) {
 	const h = 20 // samples per SCL half period
 	var recs [][]float64
-	for r := 0; r < 6; r++ {
+	for r := range 6 {
 		var sda []float64
 		seg := func(v float64, k int) {
-			for i := 0; i < k; i++ {
+			for range k {
 				sda = append(sda, v)
 			}
 		}
@@ -378,8 +378,10 @@ func TestEyeRejectsAndReset(t *testing.T) {
 		{"NaN interval", good, math.NaN(), EyeNoRecord},
 		{"NaN code", append(append([]float64{}, good[:100]...), math.NaN()), eyeSampleS, EyeNoRecord},
 		{"flat", make([]float64, 4096), eyeSampleS, EyeNoSwing},
-		{"another bit rate", prbsRecords(1, 4096, 10, wave{lo: 60, hi: 200, rise: 2, noise: 0.5}, nil)[0],
-			eyeSampleS, EyeUIInconsistent},
+		{
+			"another bit rate", prbsRecords(1, 4096, 10, wave{lo: 60, hi: 200, rise: 2, noise: 0.5}, nil)[0],
+			eyeSampleS, EyeUIInconsistent,
+		},
 	} {
 		e.Feed(tc.codes, tc.sampleS, 0)
 		if r := e.Result(); r.LastErr != tc.want {

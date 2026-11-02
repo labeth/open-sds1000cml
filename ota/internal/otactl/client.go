@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -69,7 +70,7 @@ func (c *Client) PutFile(localPath, devicePath string, mode uint32, chunk int, p
 	}
 	_ = json.Unmarshal(beginRaw, &begin)
 	if begin.ID == "" {
-		return "", fmt.Errorf("put.begin returned no id")
+		return "", errors.New("put.begin returned no id")
 	}
 
 	if chunk <= 0 {

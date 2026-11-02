@@ -3,9 +3,8 @@ package decodedlines
 
 import (
 	"encoding/binary"
-	"testing"
-
 	"open-sds/app/internal/sramcapture"
+	"testing"
 )
 
 // Any event stream the fabric might send, for any protocol, builds lines of

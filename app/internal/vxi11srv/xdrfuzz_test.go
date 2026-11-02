@@ -26,12 +26,12 @@ func TestXDRParseFuzz(t *testing.T) {
 	}
 	hostileLen := []uint32{0, 1, 3, 4, 0x7fffffff, 0x7ffffffc, 0x80000000, 0xffffffff, 0xfffffffc, 1 << 20}
 
-	for i := 0; i < 20000; i++ {
+	for i := range 20000 {
 		// build a plausible RPC CALL header with attacker-chosen auth + payload lengths
 		var msg []byte
 		msg = append(msg, be(uint32(rng.Int31()), 0, 2, progCore, 1, uint32(10+rng.Intn(16)))...) // xid,CALL,vers,prog,vers,proc
 		// two auth blocks with hostile lengths
-		for a := 0; a < 2; a++ {
+		for range 2 {
 			msg = append(msg, be(0, hostileLen[rng.Intn(len(hostileLen))])...)
 			// sometimes include some bytes, usually not (so the length lies)
 			if rng.Intn(3) == 0 {

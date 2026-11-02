@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"net/http"
 	"net/http/httptest"
 	"testing"
 )
@@ -28,7 +29,7 @@ func (f *fakeSetups) RecallSetup(n int) error {
 func setupCall(t *testing.T, s *Server, body string) map[string]any {
 	t.Helper()
 	rec := httptest.NewRecorder()
-	s.Handler().ServeHTTP(rec, httptest.NewRequest("POST", "/api/setup", bytes.NewReader([]byte(body))))
+	s.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/api/setup", bytes.NewReader([]byte(body))))
 	var out map[string]any
 	if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
 		t.Fatalf("bad json %q: %v", rec.Body.String(), err)
@@ -67,7 +68,7 @@ func TestSetupEndpoint(t *testing.T) {
 	// GET: what the slots hold, when the store can say (null when it cannot)
 	get := func() map[string]any {
 		rec := httptest.NewRecorder()
-		s.Handler().ServeHTTP(rec, httptest.NewRequest("GET", "/api/setup", nil))
+		s.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/setup", nil))
 		var out map[string]any
 		if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
 			t.Fatalf("GET: bad json %q: %v", rec.Body.String(), err)
@@ -90,7 +91,7 @@ func TestSetupEndpoint(t *testing.T) {
 		t.Fatalf("slot 5: %v", s5)
 	}
 	rec := httptest.NewRecorder()
-	s.Handler().ServeHTTP(rec, httptest.NewRequest("PUT", "/api/setup", nil))
+	s.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodPut, "/api/setup", nil))
 	if rec.Code != 405 {
 		t.Fatalf("PUT: %d", rec.Code)
 	}

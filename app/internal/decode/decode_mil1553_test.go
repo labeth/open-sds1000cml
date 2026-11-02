@@ -4,6 +4,7 @@ package decode
 import (
 	"fmt"
 	"math/rand"
+	"strings"
 	"testing"
 )
 
@@ -21,7 +22,7 @@ func mil1553Wave(words []int, cmd []bool, parity []int, spb int) []uint8 {
 	half := spb / 2
 	var w []uint8
 	push := func(v uint8, n int) {
-		for j := 0; j < n; j++ {
+		for range n {
 			w = append(w, v)
 		}
 	}
@@ -103,15 +104,19 @@ func TestDecodeMIL1553RoundTrip(t *testing.T) {
 	// The span stream must carry a command sync, a data sync, and data words, and
 	// no frame-error on a clean, correctly-parity'd capture.
 	var kinds, syncTexts string
+	var kindsSb106 strings.Builder
+	var syncTextsSb106 strings.Builder
 	for _, s := range r.Spans {
-		kinds += s.Kind + " "
+		kindsSb106.WriteString(s.Kind + " ")
 		if s.Kind == "start" {
-			syncTexts += s.Text + " "
+			syncTextsSb106.WriteString(s.Text + " ")
 		}
 		if s.Kind == "frame-error" {
 			t.Errorf("unexpected frame-error on a clean capture: %+v", s)
 		}
 	}
+	kinds += kindsSb106.String()
+	syncTexts += syncTextsSb106.String()
 	if !containsWord(kinds, "start") || !containsWord(kinds, "data") {
 		t.Errorf("expected start + data spans; got kinds: %s", kinds)
 	}
@@ -183,7 +188,7 @@ func TestDecodeMIL1553NoPanic(t *testing.T) {
 		return s
 	}
 	inputs := [][]uint8{nil, {}, {200}, mk(3, 2)}
-	for n := 0; n < 60; n++ {
+	for range 60 {
 		inputs = append(inputs, mk(rng.Intn(3000), rng.Intn(4)))
 	}
 	colTimes := []float64{0, 1e-12, 1e-6, 1}

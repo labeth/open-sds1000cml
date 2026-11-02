@@ -4,6 +4,7 @@ package decode
 import (
 	"fmt"
 	"math/rand"
+	"strings"
 	"testing"
 )
 
@@ -21,7 +22,7 @@ func flexrayWave(frames [][]int, spb, tssBits int) []uint8 {
 		if bit == 1 {
 			v = hi
 		}
-		for j := 0; j < k; j++ {
+		for range k {
 			w = append(w, v)
 		}
 	}
@@ -48,7 +49,7 @@ func flexrayWave(frames [][]int, spb, tssBits int) []uint8 {
 // TRLC-LINKS: REQ-SDS-018
 func headerNote(b []int) string {
 	var hdr uint64
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		hdr = (hdr << 8) | uint64(b[i]&0xff)
 	}
 	frameID := int((hdr >> 24) & 0x7FF)
@@ -100,8 +101,9 @@ func TestDecodeFlexRayRoundTrip(t *testing.T) {
 	var kinds string
 	sawTSS, sawHdr := false, false
 	wantNote := headerNote(want)
+	var kindsSb103 strings.Builder
 	for _, s := range r.Spans {
-		kinds += s.Kind + " "
+		kindsSb103.WriteString(s.Kind + " ")
 		if s.Kind == "start" && s.Text == "TSS" {
 			sawTSS = true
 		}
@@ -109,6 +111,7 @@ func TestDecodeFlexRayRoundTrip(t *testing.T) {
 			sawHdr = true
 		}
 	}
+	kinds += kindsSb103.String()
 	if !sawTSS {
 		t.Errorf("expected a TSS/start span; got kinds: %s", kinds)
 	}
@@ -210,7 +213,7 @@ func TestDecodeFlexRayNoPanic(t *testing.T) {
 		return s
 	}
 	inputs := [][]uint8{nil, {}, {200}, mk(5, 2)}
-	for n := 0; n < 60; n++ {
+	for range 60 {
 		inputs = append(inputs, mk(rng.Intn(4000), rng.Intn(4)))
 	}
 	colTimes := []float64{0, 1e-12, 1e-8, 1}

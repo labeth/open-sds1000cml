@@ -2,12 +2,11 @@
 package panel
 
 import (
+	"open-sds/app/internal/engine"
+	"open-sds/app/internal/panel/framecalc"
 	"reflect"
 	"strings"
 	"testing"
-
-	"open-sds/app/internal/engine"
-	"open-sds/app/internal/panel/framecalc"
 )
 
 // The serial trigger is the TRIG tab's fifth Type; it decodes with the BUS
@@ -131,7 +130,7 @@ func TestMatchEditor(t *testing.T) {
 		t.Helper()
 		g := kbGrid(c.kb.set)
 		want := 0
-		for r := 0; r < row; r++ {
+		for r := range row {
 			want += len(g[r])
 		}
 		want += col
@@ -167,8 +166,13 @@ func TestMatchEditor(t *testing.T) {
 		t.Fatalf("tokens %v cursor %d", m.Toks, m.Cur)
 	}
 	pickKey(t, c, "OK")
-	want := []engine.PatternElem{{Kind: 2, Value: 0x55, Mask: 0xff}, {Kind: 2, Value: 0xa0, Mask: 0xff},
-		{Kind: 2, Value: 0xa0, Mask: 0xf0}, {Kind: 2, Mask: 0}, {Kind: 4}}
+	want := []engine.PatternElem{
+		{Kind: 2, Value: 0x55, Mask: 0xff},
+		{Kind: 2, Value: 0xa0, Mask: 0xff},
+		{Kind: 2, Value: 0xa0, Mask: 0xf0},
+		{Kind: 2, Mask: 0},
+		{Kind: 4},
+	}
 	if p := eng.SerialConfig(); !reflect.DeepEqual(p.Pattern, want) || len(p.Bytes) != 0 {
 		t.Fatalf("armed %+v, want %+v", p, want)
 	}
@@ -277,9 +281,11 @@ func TestSerialTriggerBitOrderIsSPIs(t *testing.T) {
 // The match editor's title names the bus the match is for, every decoder's.
 // TRLC-LINKS: REQ-SDS-013
 func TestMatchEditorNamesTheBus(t *testing.T) {
-	for _, proto := range []string{"UART", "I2C", "SPI", "Manch", "SENT", "CAN", "1553", "ARINC", "USB", "FlexRay",
+	for _, proto := range []string{
+		"UART", "I2C", "SPI", "Manch", "SENT", "CAN", "1553", "ARINC", "USB", "FlexRay",
 		"LIN", "DMX512", "MIDI", "Modbus", "1-Wire", "WS281x", "DHT", "CEC", "J1850", "IR NEC", "IR Sony", "IR RC-5",
-		"IR RC-6", "DALI", "USB PD", "S/PDIF", "PS/2", "SWD", "MDIO", "Wiegand"} {
+		"IR RC-6", "DALI", "USB PD", "S/PDIF", "PS/2", "SWD", "MDIO", "Wiegand",
+	} {
 		c, _, _ := newC(t)
 		c.SheetSet("bus.protocol", nil, proto)
 		c.SheetSet("trig.type", nil, "Serial")

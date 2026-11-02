@@ -2,12 +2,12 @@
 package fpgaload
 
 import (
+	"errors"
 	"fmt"
+	"open-sds/app/internal/bus"
 	"os"
 	"syscall"
 	"unsafe"
-
-	"open-sds/app/internal/bus"
 )
 
 // ─── configuration ports ───────────────────────────────────────────────────
@@ -119,7 +119,7 @@ func openMemPort(ref Port) (*memPort, error) {
 // TRLC-LINKS: REQ-SDS-005
 func ConfigureVolatile(gpmcFD int, rbf []byte, options Options) error {
 	if gpmcFD < 0 {
-		return fmt.Errorf("fpgaload: inherited GPMC fd required")
+		return errors.New("fpgaload: inherited GPMC fd required")
 	}
 	p := &ioctlPort{fd: gpmcFD}
 	if m, err := openMemPort(p); err == nil {

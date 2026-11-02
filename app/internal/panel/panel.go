@@ -8,15 +8,14 @@
 package panel
 
 import (
-	"sync"
-	"sync/atomic"
-	"time"
-
 	"open-sds/app/internal/analog"
 	"open-sds/app/internal/decode"
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/settings"
 	"open-sds/app/internal/superres"
+	"sync"
+	"sync/atomic"
+	"time"
 )
 
 // Engine is the command surface the controller drives (spec 08 §4).

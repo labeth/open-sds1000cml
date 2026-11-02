@@ -3,10 +3,9 @@ package engine
 
 import (
 	"math"
+	"open-sds/app/internal/sramcapture"
 	"strings"
 	"testing"
-
-	"open-sds/app/internal/sramcapture"
 )
 
 // qualEngine is the packet test engine on the qualifier image at 1 V/div, its
@@ -14,7 +13,7 @@ import (
 // TRLC-LINKS: REQ-SDS-011
 func qualEngine(t *testing.T) (*Engine, *stackEngineBus, *packetImages) {
 	e, b, images := newPacketTestEngine(t)
-	for ch := 0; ch < 2; ch++ {
+	for ch := range 2 {
 		e.chVdivBits[ch].Store(math.Float64bits(1))
 	}
 	e.trigPosFrac.Store(math.Float64bits(.5))

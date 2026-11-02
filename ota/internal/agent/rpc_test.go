@@ -3,11 +3,10 @@ package agent
 
 import (
 	"encoding/json"
+	"open-sds/ota/internal/config"
 	"os"
 	"strings"
 	"testing"
-
-	"open-sds/ota/internal/config"
 )
 
 // TRLC-LINKS: REQ-SDS-027, REQ-SDS-113

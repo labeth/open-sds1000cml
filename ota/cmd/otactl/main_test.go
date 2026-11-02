@@ -1,10 +1,9 @@
 package main
 
 import (
-	"testing"
-
 	"open-sds/ota/internal/config"
 	"open-sds/ota/internal/slots"
+	"testing"
 )
 
 // TestDefaultStageIsTheAgentsStaging checks that uploads stage by default

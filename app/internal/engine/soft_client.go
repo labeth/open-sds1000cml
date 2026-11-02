@@ -5,13 +5,12 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"open-sds/app/internal/decodedlines"
+	"open-sds/app/internal/sramcapture"
 	"slices"
 	"sync"
 	"time"
 	"unsafe"
-
-	"open-sds/app/internal/decodedlines"
-	"open-sds/app/internal/sramcapture"
 )
 
 // Client decode of the digital stream (ADR-STREAM-CLIENT-DECODE): a web page
@@ -491,9 +490,11 @@ func (s *softStream) softClientInfo() ClientStreamInfo {
 	if lines == 2 {
 		mask = 0xFFFFFFFF
 	}
-	return ClientStreamInfo{Session: s.id.Epoch, Proto: s.proto, Params: s.p, PeriodS: s.sampleS, Log: int(s.log), Lines: lines,
+	return ClientStreamInfo{
+		Session: s.id.Epoch, Proto: s.proto, Params: s.p, PeriodS: s.sampleS, Log: int(s.log), Lines: lines,
 		CloseN: s.closeN, MaxN: s.maxN, LeadN: s.leadN, PushN: s.pushN, PushMax: softPushMax,
-		KeepWords: s.keepWords, LeadWords: s.leadWords, Subframes: s.subframes, Mask: mask, Active: true}
+		KeepWords: s.keepWords, LeadWords: s.leadWords, Subframes: s.subframes, Mask: mask, Active: true,
+	}
 }
 
 // softClientMode hands the stream's decode to the page that holds the lease
@@ -530,7 +531,7 @@ func (e *Engine) softClientMode(s *softStream) bool {
 			// ring behind again and again with the CPU the display needs. The
 			// stream ends and says why; started again it streams as captures.
 			e.softStreamStop(s)
-			s.err = fmt.Errorf("the web page decoding this stream went away; start the stream again to decode it on the scope")
+			s.err = errors.New("the web page decoding this stream went away; start the stream again to decode it on the scope")
 			s.phase = softDone
 			e.logf("engine: %s stream: %v", s.decoder.Name, s.err)
 			return true

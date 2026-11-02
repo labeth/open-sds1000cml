@@ -56,7 +56,7 @@ func mbFrameErrs(r Result) int {
 }
 
 // TRLC-LINKS: REQ-SDS-018
-func mbIntEq(a []int, b []int) bool {
+func mbIntEq(a, b []int) bool {
 	if len(a) != len(b) {
 		return false
 	}
@@ -77,11 +77,11 @@ func mbPad(w []uint8, pre, post int) []uint8 {
 		return w
 	}
 	out := make([]uint8, 0, pre+len(w)+post)
-	for i := 0; i < pre; i++ {
+	for range pre {
 		out = append(out, w[0])
 	}
 	out = append(out, w...)
-	for i := 0; i < post; i++ {
+	for range post {
 		out = append(out, w[len(w)-1])
 	}
 	return out
@@ -102,7 +102,7 @@ func TestBreakMil1553(t *testing.T) {
 	spbSet := []int{6, 8, 10, 12, 16, 20, 32, 40, 64, 100}
 	brSet := []int{1_000_000, 2_000_000, 4_000_000, 500_000}
 	autoMiss, autoWrong := 0, 0
-	for it := 0; it < 60; it++ {
+	for it := range 60 {
 		nw := 1 + rng.Intn(4)
 		words := make([]int, nw)
 		cmd := make([]bool, nw)
@@ -210,7 +210,7 @@ func TestBreakMil1553(t *testing.T) {
 	}
 
 	// (i) 40 pure-noise captures.
-	for s := 0; s < 40; s++ {
+	for s := range 40 {
 		g := rand.New(rand.NewSource(int64(1000 + s)))
 		n := 400 + g.Intn(3000)
 		w := make([]uint8, n)
@@ -258,7 +258,7 @@ func TestBreakMil1553(t *testing.T) {
 	// (vi) VALID frame with a CORRUPTED parity bit — must be FLAGGED, and (for a
 	// single-word frame) must NOT be confident. This is the core "don't confirm a
 	// parity you did not verify" test, swept over many payloads and sync types.
-	for s := 0; s < 40; s++ {
+	for s := range 40 {
 		g := rand.New(rand.NewSource(int64(7000 + s)))
 		wd := g.Intn(0x10000)
 		spb := spbSet[g.Intn(len(spbSet))]
@@ -278,10 +278,10 @@ func TestBreakMil1553(t *testing.T) {
 		spb := 40
 		wd := 0xBEEF
 		w := mil1553Wave([]int{wd}, []bool{true}, []int{mil1553OddParity(wd)}, spb)
-		keep := (4+3)*spb + cut*spb + spb/2 // lead + sync + cut whole data cells + a half
-		if keep > len(w) {
-			keep = len(w)
-		}
+		keep := min(
+			// lead + sync + cut whole data cells + a half
+			(4+3)*spb+cut*spb+spb/2, len(w),
+		)
 		assertNotConfident(fmt.Sprintf("truncated-%dbits", cut), append([]uint8(nil), w[:keep]...))
 	}
 	// (viii) VALID frame with one data cell smashed into a coding violation.
@@ -395,7 +395,7 @@ func TestBreakMil1553(t *testing.T) {
 	brs := []int{0, -100, -1, 1, 2, 1_000_000, 1 << 30, math.MaxInt}
 	kinds := 5
 	edgeIters := 0
-	for it := 0; it < 60; it++ {
+	for it := range 60 {
 		n := rng.Intn(2500)
 		w := make([]uint8, n)
 		switch rng.Intn(kinds) {

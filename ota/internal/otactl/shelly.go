@@ -32,7 +32,7 @@ func (s *Shelly) do(turn string) (string, error) {
 	}
 	defer resp.Body.Close()
 	body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
-	if resp.StatusCode != 200 {
+	if resp.StatusCode != http.StatusOK {
 		return string(body), fmt.Errorf("shelly %s: HTTP %d", turn, resp.StatusCode)
 	}
 	return string(body), nil

@@ -40,7 +40,7 @@ func TestStreamBitsPlan(t *testing.T) {
 	}
 	rng := rand.New(rand.NewSource(1))
 	powers := 0
-	for i := 0; i < 100000; i++ {
+	for range 100000 {
 		feature := math.Exp(rng.Float64()*math.Log(1e5)) * 50e-9 // 50 ns to 5 ms
 		rate := []float64{0, 1e6, 2e6, 4e6}[rng.Intn(4)]
 		p, ok := StreamBitsPlan(feature, rate)

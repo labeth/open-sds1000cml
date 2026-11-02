@@ -31,5 +31,5 @@ var log10Inv, log10Ln = func() (inv, ln [256]float64) {
 		c := 1 + float64(i)/256
 		inv[i], ln[i] = 1/c, math.Log(c)
 	}
-	return
+	return inv, ln
 }()

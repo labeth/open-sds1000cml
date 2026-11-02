@@ -5,10 +5,9 @@ import (
 	"context"
 	"errors"
 	"math"
-	"testing"
-
 	"open-sds/app/internal/decode"
 	"open-sds/app/internal/sramcapture"
+	"testing"
 )
 
 // softRingPlanFor is the ring plan beginSoftStream makes for a protocol on
@@ -60,8 +59,20 @@ func TestSoftRingPlan(t *testing.T) {
 	}
 	for _, c := range []struct {
 		proto, baud int
-	}{{serLIN, 19200}, {serDMX, 250000}, {serModbus, 19200}, {serOneWire, 16300}, {serDALI, 1200}, {serCEC, 417},
-		{serPS2, 16700}, {serJ1850, 10400}, {serPJDL, 22727}, {serDCF77, 333}, {serPDI, 250000}, {serSDQ, 98425}} {
+	}{
+		{serLIN, 19200},
+		{serDMX, 250000},
+		{serModbus, 19200},
+		{serOneWire, 16300},
+		{serDALI, 1200},
+		{serCEC, 417},
+		{serPS2, 16700},
+		{serJ1850, 10400},
+		{serPJDL, 22727},
+		{serDCF77, 333},
+		{serPDI, 250000},
+		{serSDQ, 98425},
+	} {
 		sl, rl, why, ok := softRingPlanFor(c.proto, c.baud)
 		name, _ := softProtoName(c.proto)
 		if ok {
@@ -128,8 +139,10 @@ func TestSoftRingWord(t *testing.T) {
 func TestSoftRingStopState(t *testing.T) {
 	const n = 9
 	mk := func() *softStream {
-		s := &softStream{ring: true, ringLog: n, ordStep: 16, sessBase: 1000, gapFree: true, bits: true, value: 0x55,
-			ringCfg: sramcapture.Config{DecimationLog2: n}, id: sramcapture.RecordIdentity{Epoch: softEpochBase | 1, Record: 1}}
+		s := &softStream{
+			ring: true, ringLog: n, ordStep: 16, sessBase: 1000, gapFree: true, bits: true, value: 0x55,
+			ringCfg: sramcapture.Config{DecimationLog2: n}, id: sramcapture.RecordIdentity{Epoch: softEpochBase | 1, Record: 1},
+		}
 		s.stopFirst = 1000*16 + 4_000_000 // the frame, 4 M samples into this session
 		s.stopLast = s.stopFirst + 5000
 		return s
@@ -188,9 +201,12 @@ func TestSoftRingPace(t *testing.T) {
 		last   uint32
 		ok     bool
 	}{
-		{8, 10226, 1310200, true}, {9, 5846, 1500126, true},
-		{9, 177972, 177972 * 256 * 2, false}, {9, 177972, 177972 * 128, false},
-		{9, 177972, 177972*256 + 3000, true}, {9, sramcapture.Words, 7, true},
+		{8, 10226, 1310200, true},
+		{9, 5846, 1500126, true},
+		{9, 177972, 177972 * 256 * 2, false},
+		{9, 177972, 177972 * 128, false},
+		{9, 177972, 177972*256 + 3000, true},
+		{9, sramcapture.Words, 7, true},
 	} {
 		err := softRingPace(sramcapture.Metadata{Length: c.length}, c.n, c.last)
 		if (err == nil) != c.ok {
@@ -224,7 +240,7 @@ func TestSoftRingStartFallsBackOnce(t *testing.T) {
 		}
 		return nil
 	}
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		if err := s.startFabric(sramcapture.Config{DecimationLog2: 12}, refuse, plain, t.Logf); err != nil {
 			t.Fatal(err)
 		}

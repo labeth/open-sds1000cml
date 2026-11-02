@@ -2,14 +2,14 @@
 package engine
 
 import (
+	"errors"
 	"fmt"
 	"math"
+	"open-sds/app/internal/decode"
+	"open-sds/app/internal/sramcapture"
 	"slices"
 	"testing"
 	"time"
-
-	"open-sds/app/internal/decode"
-	"open-sds/app/internal/sramcapture"
 )
 
 // The engine's per-capture work on the scope's single ARM core: these time
@@ -21,9 +21,9 @@ import (
 func packetSpans(n, size int) []decode.Span {
 	var sp []decode.Span
 	x := 0
-	for p := 0; p < n; p++ {
+	for p := range n {
 		sp = append(sp, decode.Span{I0: x, I1: x, Text: "SOF", Kind: "sof"})
-		for b := 0; b < size; b++ {
+		for b := range size {
 			sp = append(sp, decode.Span{I0: x + 10*b, I1: x + 10*b + 9, Text: "41", Kind: "data", Val: (p*7 + b) & 0xff})
 		}
 		x += 10*size + 40
@@ -154,7 +154,7 @@ func BenchmarkUniRingStats(b *testing.B) {
 	var u uniRing
 	u.reset()
 	disc := make([]uint8, 4096)
-	for k := 0; k < uniDepth; k++ {
+	for k := range uniDepth {
 		for i := range disc {
 			disc[i] = uint8(128 + 60*((i/97)%2*2-1) + (i*k)%7)
 		}
@@ -184,7 +184,7 @@ func TestUniRingStatsExact(t *testing.T) {
 			return math.Sqrt(v)
 		}
 		var sumC, sumR float64
-		for c := 0; c < uniCols; c++ {
+		for c := range uniCols {
 			sc := colStd(u.centred, c)
 			sumC += sc
 			sumR += colStd(u.raw, c)
@@ -197,7 +197,7 @@ func TestUniRingStatsExact(t *testing.T) {
 	var u uniRing
 	u.reset()
 	disc := make([]uint8, 3000)
-	for k := 0; k < uniDepth+3; k++ {
+	for k := range uniDepth + 3 {
 		for i := range disc {
 			disc[i] = uint8(128 + 60*((i/97)%2*2-1) + (i*k*31)%17)
 		}
@@ -303,9 +303,11 @@ func BenchmarkRollPush(b *testing.B) {
 // TRLC-LINKS: REQ-SDS-012
 func BenchmarkEnvReduce(b *testing.B) {
 	e, _ := newTestEngine(&testing.T{}, newFakeBus())
-	f := &Frame{C1: make([]uint8, 3000), C2: make([]uint8, 3000), EnvMin: make([]uint8, envDisplayCols), EnvMax: make([]uint8, envDisplayCols),
-		EnvMin2: make([]uint8, envDisplayCols), EnvMax2: make([]uint8, envDisplayCols)}
-	for k := 0; k < envRingN; k++ {
+	f := &Frame{
+		C1: make([]uint8, 3000), C2: make([]uint8, 3000), EnvMin: make([]uint8, envDisplayCols), EnvMax: make([]uint8, envDisplayCols),
+		EnvMin2: make([]uint8, envDisplayCols), EnvMax2: make([]uint8, envDisplayCols),
+	}
+	for k := range envRingN {
 		for i := range f.C1 {
 			f.C1[i], f.C2[i] = uint8(i*7+k), uint8(i*3)
 		}
@@ -361,14 +363,14 @@ func BenchmarkNotePublishRef(b *testing.B) {
 // TRLC-LINKS: REQ-SDS-009
 func TestNotePublishFPS(t *testing.T) {
 	e, clk := newTestEngine(t, newFakeBus())
-	for i := 0; i < 30; i++ {
+	for range 30 {
 		e.notePublish(e.clk.Now())
 		clk.t = clk.t.Add(10 * time.Millisecond)
 	}
 	if fps := e.Snapshot().FPS; fps != 30 {
 		t.Fatalf("FPS %v after 30 publishes in 0.3 s, want 30", fps)
 	}
-	for i := 0; i < 200; i++ {
+	for range 200 {
 		e.notePublish(e.clk.Now())
 		clk.t = clk.t.Add(10 * time.Millisecond)
 	}
@@ -381,7 +383,7 @@ func TestNotePublishFPS(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-014
 func buildMaskRef(lo, hi []uint8, winCols, tolCols, tolCodes int) (outLo, outHi []uint8) {
 	nLo, nHi := make([]uint8, winCols), make([]uint8, winCols)
-	for j := 0; j < winCols; j++ {
+	for j := range winCols {
 		if lo[j] > hi[j] {
 			nLo[j], nHi[j] = 0, 255
 		} else {
@@ -389,7 +391,7 @@ func buildMaskRef(lo, hi []uint8, winCols, tolCols, tolCodes int) (outLo, outHi 
 		}
 	}
 	outLo, outHi = make([]uint8, winCols), make([]uint8, winCols)
-	for j := 0; j < winCols; j++ {
+	for j := range winCols {
 		mn, mx := 255, 0
 		for k := max(j-tolCols, 0); k <= min(j+tolCols, winCols-1); k++ {
 			mn, mx = min(mn, int(nLo[k])), max(mx, int(nHi[k]))
@@ -446,8 +448,10 @@ func BenchmarkRefineTriggerEdge(b *testing.B) {
 
 // TRLC-LINKS: REQ-SDS-021
 func BenchmarkEdgeWindows(b *testing.B) {
-	f := &Frame{Edge: &EdgeWindow{C1: make([]uint8, 1024), C2: make([]uint8, 1024), SampleS: 2e-9},
-		EdgeOpp: &EdgeWindow{C1: make([]uint8, 1024), C2: make([]uint8, 1024), SampleS: 2e-9}}
+	f := &Frame{
+		Edge:    &EdgeWindow{C1: make([]uint8, 1024), C2: make([]uint8, 1024), SampleS: 2e-9},
+		EdgeOpp: &EdgeWindow{C1: make([]uint8, 1024), C2: make([]uint8, 1024), SampleS: 2e-9},
+	}
 	for b.Loop() {
 		f.EdgeWindows(0)
 		f.EdgeWindows(1)
@@ -564,7 +568,7 @@ func BenchmarkClockRate(b *testing.B) {
 // TRLC-LINKS: REQ-SDS-013
 func BenchmarkMatchSequence(b *testing.B) {
 	var sp []decode.Span
-	for t := 0; t < 100; t++ { // I2C transactions: start, address, direction, two bytes, stop
+	for t := range 100 { // I2C transactions: start, address, direction, two bytes, stop
 		x := t * 100
 		sp = append(sp, decode.Span{I0: x, Kind: "start"}, decode.Span{I0: x + 1, Kind: "addr", Val: 0x50 + t%3},
 			decode.Span{I0: x + 9, Kind: "rw", Text: "W"}, decode.Span{I0: x + 10, Kind: "data", Val: t & 0xff},
@@ -599,7 +603,7 @@ func TestRecordStuckIndex(t *testing.T) {
 		m := min(periods, 512)
 		at, rem := 0, 0
 		step, frac := periods/m, periods%m
-		for j := 0; j < m; j++ {
+		for j := range m {
 			if at != j*periods/m {
 				t.Fatalf("periods %d j %d: %d, want %d", periods, j, at, j*periods/m)
 			}
@@ -622,10 +626,10 @@ func TestStuckCoresSame(t *testing.T) {
 		}
 		var stuck uint16
 		vals := make([]int, n)
-		for ch := 0; ch < 2; ch++ {
+		for ch := range 2 {
 			var held [5]bool
 			moving := false
-			for p := 0; p < 5; p++ {
+			for p := range 5 {
 				for i, s := range snaps {
 					vals[i] = int(s[2*p+ch])
 				}
@@ -656,11 +660,11 @@ func TestStuckCoresSame(t *testing.T) {
 		}
 		return stuck
 	}
-	for seed := 0; seed < 300; seed++ {
+	for seed := range 300 {
 		n := adcSnaps/2 + seed%400
 		snaps := make([][10]uint8, n)
 		for j := range snaps {
-			for k := 0; k < 10; k++ {
+			for k := range 10 {
 				switch (seed + k) % 4 {
 				case 0: // held
 					snaps[j][k] = uint8(seed)
@@ -893,7 +897,7 @@ func fundamentalHzRef(sig []uint8, sampleS float64) float64 {
 
 // TRLC-LINKS: REQ-SDS-066
 func TestFundamentalHzSame(t *testing.T) {
-	for seed := 0; seed < 200; seed++ {
+	for seed := range 200 {
 		n := 50 + seed*37
 		sig := make([]uint8, n)
 		for i := range sig {
@@ -942,9 +946,9 @@ func BenchmarkSoundRingRead(b *testing.B) {
 // TRLC-LINKS: REQ-SDS-265
 func TestSoundRingReadWraps(t *testing.T) {
 	r := newSoundRing(8)
-	for k := 0; k < 5; k++ {
+	for k := range 5 {
 		raw := make([]byte, 4*97)
-		for i := 0; i < 97; i++ {
+		for i := range 97 {
 			v := uint16(k*1000 + i)
 			raw[4*i], raw[4*i+1], raw[4*i+2], raw[4*i+3] = byte(v), byte(v>>8), byte(^v), byte(^v>>8)
 		}
@@ -1079,11 +1083,11 @@ func TestBufferDecodedSame(t *testing.T) {
 					s.lost += uint64(v.Count)
 				}
 				if v.Sequence != e.decodedSequence {
-					err = fmt.Errorf("decoded event sequence discontinuity")
+					err = errors.New("decoded event sequence discontinuity")
 					break
 				}
 				if e.decodedCount >= decodedBufferLimit {
-					err = fmt.Errorf("decoded host buffer overflow; transcript incomplete")
+					err = errors.New("decoded host buffer overflow; transcript incomplete")
 					break
 				}
 				e.decodedSequence++
@@ -1179,7 +1183,7 @@ func BenchmarkLineBufRef(b *testing.B) {
 // TRLC-LINKS: REQ-SDS-009
 func BenchmarkSnapshot(b *testing.B) {
 	e, clk := newTestEngine(&testing.T{}, newFakeBus())
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		e.notePublish(e.clk.Now())
 		clk.t = clk.t.Add(20 * time.Millisecond)
 	}

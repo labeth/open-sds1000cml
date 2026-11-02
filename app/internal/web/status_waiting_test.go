@@ -3,11 +3,11 @@ package web
 
 import (
 	"encoding/json"
+	"net/http"
 	"net/http/httptest"
+	"open-sds/app/internal/engine"
 	"testing"
 	"time"
-
-	"open-sds/app/internal/engine"
 )
 
 // sinceScope is a fake scope whose last frame came d ago.
@@ -27,7 +27,7 @@ func TestStatusWaitingForADecidedTrigger(t *testing.T) {
 	status := func(st engine.Stats) (bool, float64) {
 		s := New(sinceScope{&fakeScope{stats: st}, 6 * time.Second}, nil, nil, nil)
 		w := httptest.NewRecorder()
-		s.Handler().ServeHTTP(w, httptest.NewRequest("GET", "/api/status", nil))
+		s.Handler().ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/api/status", nil))
 		var rep struct {
 			Waiting bool    `json:"waiting"`
 			WaitS   float64 `json:"wait_s"`

@@ -319,10 +319,7 @@ func qualifyVideoAt(disc []uint8, intervalNs float64, p trigParams, at anchorSpa
 	if p.videoStd == 1 {
 		maxLine = 525 // NTSC
 	}
-	line := p.videoLine
-	if line > maxLine {
-		line = maxLine
-	}
+	line := min(p.videoLine, maxLine)
 
 	count := 0
 	bestX, bestDist := -1.0, n+1

@@ -115,7 +115,7 @@ func TestAutodetectNoI2COnADecimatedFlash(t *testing.T) {
 func TestAutodetectQuietLineBesideOneWire(t *testing.T) {
 	w := newTimeline(500e6)
 	w.idle(100e-6)
-	for k := 0; k < 3; k++ {
+	for range 3 {
 		owReset(w, false, true)
 		owByte(w, 0xcc, false)
 		owByte(w, 0x44, false)
@@ -150,8 +150,8 @@ func TestRailsOfASparselyPulsedLine(t *testing.T) {
 	for i := range codes {
 		codes[i] = 200
 	}
-	for p := 0; p < 6; p++ { // six pulses, five samples each over five codes
-		for k := 0; k < 5; k++ {
+	for p := range 6 { // six pulses, five samples each over five codes
+		for k := range 5 {
 			codes[1000+1500*p+k] = uint8(48 + k)
 		}
 	}

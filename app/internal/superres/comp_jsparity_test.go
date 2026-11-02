@@ -4,12 +4,11 @@ package superres
 import (
 	"encoding/json"
 	"math"
+	"open-sds/app/internal/testenv"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"testing"
-
-	"open-sds/app/internal/testenv"
 )
 
 // jsOpts is a PARTIAL options object for the JS side: omitempty drops zero
@@ -98,7 +97,7 @@ func TestCompParityJS(t *testing.T) {
 	// return-input-unchanged gates (all-gap, short, dt=0).
 	mkTone := func(m int, dt float64, gaps [][2]int) []float32 {
 		out := make([]float32, m)
-		for i := 0; i < m; i++ {
+		for i := range m {
 			ti := float64(i) * dt
 			v := 128 + 70*math.Sin(2*math.Pi*21e6*ti) + 25*math.Sin(2*math.Pi*55e6*ti+0.7)
 			if i > m/2 {
@@ -119,8 +118,10 @@ func TestCompParityJS(t *testing.T) {
 	}
 	fine16 := 1e-9 / 16
 	comps := []compCase{
-		{Mean: mkTone(300, fine16, [][2]int{{0, 3}, {40, 55}, {297, 300}}), DtFine: fine16,
-			Auto: &autoCase{2.3, 250e6, 0.8}},
+		{
+			Mean: mkTone(300, fine16, [][2]int{{0, 3}, {40, 55}, {297, 300}}), DtFine: fine16,
+			Auto: &autoCase{2.3, 250e6, 0.8},
+		},
 		{Mean: mkTone(256, 2e-9/32, nil), DtFine: 2e-9 / 32, Opts: &jsOpts{Fbw: 70e6}},
 		{Mean: mkTone(520, fine16, [][2]int{{100, 104}}), DtFine: fine16, Opts: &jsOpts{Fbw: 60e6}},
 		{Mean: allGap, DtFine: fine16},                 // all-gap → input unchanged

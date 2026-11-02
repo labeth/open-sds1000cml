@@ -2,13 +2,12 @@
 package agent
 
 import (
-	"strings"
-	"sync"
-	"time"
-
 	"open-sds/ota/internal/fdinherit"
 	"open-sds/ota/internal/gpmc"
 	"open-sds/ota/internal/sysinfo"
+	"strings"
+	"sync"
+	"time"
 )
 
 // ProbeReport is the first-session, read-only device fingerprint. It answers

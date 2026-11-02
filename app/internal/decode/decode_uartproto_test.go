@@ -20,8 +20,10 @@ func TestDecodeLINRoundTrip(t *testing.T) {
 		if !r.OK {
 			t.Fatalf("baud %v: %s", baud, r.Error)
 		}
-		want := []int{linPIDParity(0x3c), 1, 2, 3, 4, 5, 6, 7, 8, linChecksum(linPIDParity(0x3c), []int{1, 2, 3, 4, 5, 6, 7, 8}, false),
-			linPIDParity(0x12), 0xA5, 0x5A, linChecksum(linPIDParity(0x12), []int{0xA5, 0x5A}, true), linPIDParity(0x20)}
+		want := []int{
+			linPIDParity(0x3c), 1, 2, 3, 4, 5, 6, 7, 8, linChecksum(linPIDParity(0x3c), []int{1, 2, 3, 4, 5, 6, 7, 8}, false),
+			linPIDParity(0x12), 0xA5, 0x5A, linChecksum(linPIDParity(0x12), []int{0xA5, 0x5A}, true), linPIDParity(0x20),
+		}
 		if !reflect.DeepEqual(r.Bytes, want) {
 			t.Fatalf("baud %v: bytes %X want %X (%s)", baud, r.Bytes, want, r.Text)
 		}

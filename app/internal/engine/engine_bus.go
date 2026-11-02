@@ -2,11 +2,11 @@
 package engine
 
 import (
+	"errors"
 	"fmt"
-	"time"
-
 	"open-sds/app/internal/bus"
 	"open-sds/app/internal/iface"
+	"time"
 )
 
 // SetLEDs stages the panel LED latch word (MAX V, CS3 0x09..0x0b): compare-on-
@@ -46,10 +46,7 @@ func (e *Engine) Beats() uint64 {
 // TRLC-LINKS: REQ-SDS-008, REQ-SDS-025
 func (e *Engine) sleepBeating(d time.Duration) {
 	for d > 0 && !e.stopReq.Load() {
-		s := d
-		if s > 500*time.Millisecond {
-			s = 500 * time.Millisecond
-		}
+		s := min(d, 500*time.Millisecond)
 		e.clk.Sleep(s)
 		e.beatN.Add(1)
 		d -= s
@@ -195,10 +192,10 @@ func (e *Engine) checkIdentity() error {
 
 // ErrExecTimeout is returned by Exec when the owner did not reach a service
 // point within the timeout (a long capture, or a stopped engine mid-sleep).
-var ErrExecTimeout = fmt.Errorf("engine: exec timeout (owner busy)")
+var ErrExecTimeout = errors.New("engine: exec timeout (owner busy)")
 
 // ErrExecStopped is returned when the engine has exited.
-var ErrExecStopped = fmt.Errorf("engine: stopped")
+var ErrExecStopped = errors.New("engine: stopped")
 
 // TRLC-LINKS: REQ-SDS-001, REQ-SDS-127
 type execReq struct {
@@ -215,7 +212,7 @@ type execReq struct {
 // TRLC-LINKS: REQ-SDS-001, REQ-SDS-127
 func (e *Engine) Exec(fn func(bus.Bus) error, timeout time.Duration) error {
 	if e.sram != nil {
-		return fmt.Errorf("legacy fabric diagnostics unavailable on SRAM ABI")
+		return errors.New("legacy fabric diagnostics unavailable on SRAM ABI")
 	}
 	req := execReq{fn: fn, done: make(chan error, 1)}
 	select {

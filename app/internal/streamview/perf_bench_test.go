@@ -2,16 +2,15 @@
 package streamview
 
 import (
-	"testing"
-
 	"open-sds/app/internal/decodedlines"
+	"testing"
 )
 
 // benchController holds n 16-unit lines.
 // TRLC-LINKS: REQ-SDS-018
 func benchController(n int) *Controller {
 	t := decodedlines.New(1, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		l := decodedlines.Line{Sample: uint64(1000 * i), N: 16}
 		for k := range l.Vals {
 			l.Vals[k] = uint32(i + k)

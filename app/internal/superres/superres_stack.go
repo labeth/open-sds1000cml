@@ -72,7 +72,7 @@ func (st *Stack) SeedRefGate(sig1, sig2 []uint8, edgeX float64, gateLo, gateHi i
 		return false
 	}
 	st.RefEdgeX = edgeX
-	for ch := 0; ch < 2; ch++ {
+	for ch := range 2 {
 		s := sigs[ch]
 		if len(s) < st.N {
 			continue
@@ -129,7 +129,7 @@ func (st *Stack) ResetKeepRef() {
 	st.Frames, st.Rejected, st.Clipped, st.Hits = 0, 0, 0, 0
 	st.Scores, st.Shifts = st.Scores[:0], st.Shifts[:0]
 	st.Hits = 1
-	for ch := 0; ch < 2; ch++ {
+	for ch := range 2 {
 		if st.C[ch].ref != nil {
 			st.drizzleHit(ch, st.C[ch].ref, float64(st.GateLo), true) // re-seed the gate
 		}
@@ -142,14 +142,8 @@ func (st *Stack) ResetKeepRef() {
 // gainOffset fits g,b minimizing |ref − (g·sig[·+lag] + b)|² over [wLo,wHi).
 // TRLC-LINKS: REQ-SDS-141
 func gainOffset(ref []float32, sig []uint8, lag, wLo, wHi int) (g, b float64) {
-	lo := wLo
-	if -lag > lo {
-		lo = -lag
-	}
-	hi := wHi
-	if len(ref) < hi {
-		hi = len(ref)
-	}
+	lo := max(-lag, wLo)
+	hi := min(len(ref), wHi)
 	if len(sig)-lag < hi {
 		hi = len(sig) - lag
 	}
@@ -213,10 +207,7 @@ func (st *Stack) Feed(sig1, sig2 []uint8, edgeX float64) string {
 		L := st.gtpl.L
 		const maxWork = 12000000
 		if int64(st.N-L)*int64(L) > maxWork {
-			R = maxWork / (2 * L)
-			if R < 64 {
-				R = 64
-			}
+			R = max(maxWork/(2*L), 64)
 		}
 	}
 	hits := st.gateFind(alignSig, base, R)
@@ -229,7 +220,7 @@ func (st *Stack) Feed(sig1, sig2 []uint8, edgeX float64) string {
 		lag := h.loc - st.GateLo
 		st.Hits++
 		odd := (st.Hits & 1) == 1
-		for ch := 0; ch < 2; ch++ {
+		for ch := range 2 {
 			s := sigs[ch]
 			if len(s) < st.N || st.C[ch].ref == nil {
 				continue

@@ -5,12 +5,11 @@ import (
 	"bytes"
 	"encoding/binary"
 	"math"
+	"open-sds/app/internal/analog"
+	"open-sds/app/internal/engine"
 	"strings"
 	"testing"
 	"time"
-
-	"open-sds/app/internal/analog"
-	"open-sds/app/internal/engine"
 )
 
 // fakeScope is a truthful mini-instrument: every setter updates the stats
@@ -296,7 +295,7 @@ func TestWFSUAndDAT2(t *testing.T) {
 	}
 	payload := out[len(head) : len(head)+100]
 	// Sample i comes from FP + i·SP = 8, 12, 16... of (i%200).
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		if payload[i] != uint8((8+i*4)%200)^0x80 { // signed about 128
 			t.Fatalf("payload[%d] = %d", i, payload[i])
 		}

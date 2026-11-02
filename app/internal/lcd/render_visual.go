@@ -3,10 +3,11 @@ package lcd
 
 import (
 	"fmt"
-	"strings"
-
 	"open-sds/app/internal/decode"
 	"open-sds/app/internal/engine"
+	"slices"
+	"strconv"
+	"strings"
 )
 
 // BUS's Visual view on the LCD: the frame's decode drawn as what it carries,
@@ -21,9 +22,11 @@ import (
 const visTop = 14
 
 // visChColours colour MIDI's sixteen channels (the web's colours).
-var visChColours = [16]uint16{rgb(79, 195, 247), rgb(255, 183, 77), rgb(129, 199, 132), rgb(229, 115, 115), rgb(186, 104, 200), rgb(255, 241, 118),
+var visChColours = [16]uint16{
+	rgb(79, 195, 247), rgb(255, 183, 77), rgb(129, 199, 132), rgb(229, 115, 115), rgb(186, 104, 200), rgb(255, 241, 118),
 	rgb(77, 182, 172), rgb(240, 98, 146), rgb(149, 117, 205), rgb(161, 136, 127), rgb(174, 213, 129), rgb(100, 181, 246),
-	rgb(255, 138, 101), rgb(144, 164, 174), rgb(220, 231, 117), rgb(121, 134, 203)}
+	rgb(255, 138, 101), rgb(144, 164, 174), rgb(220, 231, 117), rgb(121, 134, 203),
+}
 
 // drawVisualPane draws the frame's bus as what it carries in the plot.
 // TRLC-LINKS: REQ-SDS-281
@@ -206,7 +209,7 @@ func visDrawMIDI(sf Surface, a visArea, spans []decode.Span) string {
 			sf.SetPixel(cx, yy, c) // its lane down to the key
 		}
 		if e.on {
-			for d := 0; d < 5; d++ {
+			for d := range 5 {
 				hline(sf, cx-4+d, cx+4-d, y-3+d, c)
 			}
 		} else {
@@ -283,7 +286,7 @@ func visDrawDMX(sf Surface, a visArea, spans []decode.Span) string {
 		return ""
 	}
 	cw, ch := a.w/32, a.h/16
-	for i := 0; i < 512; i++ {
+	for i := range 512 {
 		x, y := (i%32)*cw, a.y0+(i/32)*ch
 		bg := rgb(8, 11, 15)
 		if i+1 < len(pkt) {
@@ -297,7 +300,7 @@ func visDrawDMX(sf Surface, a visArea, spans []decode.Span) string {
 			}
 		}
 		if i%8 == 0 {
-			DrawText(sf, x+2, y+2, fmt.Sprint(i+1), colDim, 1)
+			DrawText(sf, x+2, y+2, strconv.Itoa(i+1), colDim, 1)
 		}
 	}
 	return fmt.Sprintf("start code %02X · %d slots", pkt[0], len(pkt)-1)
@@ -398,7 +401,7 @@ func visDrawText(sf Surface, a visArea, spans []decode.Span) string {
 	}
 	cols := max(10, (a.w-16)/6)
 	var lines []string
-	for _, l := range strings.Split(b.String(), "\n") {
+	for l := range strings.SplitSeq(b.String(), "\n") {
 		for len(l) > cols {
 			lines, l = append(lines, l[:cols]), l[cols:]
 		}
@@ -532,9 +535,9 @@ func visIRReading(spans []decode.Span) (string, string, bool) {
 // visCaliperReading is the newest reading ("12.34mm").
 // TRLC-LINKS: REQ-SDS-281
 func visCaliperReading(spans []decode.Span) (string, string, bool) {
-	for i := len(spans) - 1; i >= 0; i-- {
-		if spans[i].Kind == "rw" && (strings.HasSuffix(spans[i].Text, "mm") || strings.HasSuffix(spans[i].Text, "in")) {
-			return spans[i].Text, "caliper", true
+	for _, span := range slices.Backward(spans) {
+		if span.Kind == "rw" && (strings.HasSuffix(span.Text, "mm") || strings.HasSuffix(span.Text, "in")) {
+			return span.Text, "caliper", true
 		}
 	}
 	return "", "", false
@@ -605,9 +608,9 @@ func visDCFReading(spans []decode.Span) (string, string, bool) {
 // visStepReading is the capture's steps: the newest count from its start and its direction.
 // TRLC-LINKS: REQ-SDS-281
 func visStepReading(spans []decode.Span) (string, string, bool) {
-	for i := len(spans) - 1; i >= 0; i-- {
-		t := spans[i].Text
-		if spans[i].Kind == "data" && len(t) > 1 && (t[0] == 'F' || t[0] == 'R') {
+	for _, span := range slices.Backward(spans) {
+		t := span.Text
+		if span.Kind == "data" && len(t) > 1 && (t[0] == 'F' || t[0] == 'R') {
 			return t[1:] + " steps", map[bool]string{true: "forward", false: "reverse"}[t[0] == 'F'] + " · counted from this capture's start", true
 		}
 	}

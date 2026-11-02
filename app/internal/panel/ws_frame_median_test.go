@@ -14,7 +14,7 @@ import (
 func TestMedianAsSorted(t *testing.T) {
 	rng := rand.New(rand.NewSource(5))
 	for n := 1; n < 200; n++ {
-		for trial := 0; trial < 20; trial++ {
+		for trial := range 20 {
 			xs := make([]float64, n)
 			for i := range xs {
 				switch trial % 4 {

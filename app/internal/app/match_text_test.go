@@ -2,9 +2,8 @@
 package app
 
 import (
-	"testing"
-
 	"open-sds/app/internal/engine"
+	"testing"
 )
 
 // The trigger readout writes the armed match as the BUS table does.

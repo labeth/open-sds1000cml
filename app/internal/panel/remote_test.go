@@ -5,13 +5,12 @@ import (
 	"fmt"
 	"math"
 	"math/rand"
+	"open-sds/app/internal/engine"
 	"slices"
 	"strings"
 	"sync"
 	"testing"
 	"time"
-
-	"open-sds/app/internal/engine"
 )
 
 // The phone remote's surface: the panel snapshot labels everything as the
@@ -185,7 +184,7 @@ func TestCompareStabilityLeavesTheSeqAlone(t *testing.T) {
 	c.Sheets()
 	rng := rand.New(rand.NewSource(3))
 	step := stabSpaced(c)
-	for i := 0; i < 8; i++ {
+	for range 8 {
 		step()
 		r.show(toneFrame(""))
 	}
@@ -193,7 +192,7 @@ func TestCompareStabilityLeavesTheSeqAlone(t *testing.T) {
 	if st0.AgainNext != "stack master" || st0.Again != "F5 again: stack master" {
 		t.Fatalf("COMPARE: again %q next %q", st0.Again, st0.AgainNext)
 	}
-	for i := 0; i < 8; i++ {
+	for range 8 {
 		step()
 		r.show(noiseFrame(rng))
 	}
@@ -294,8 +293,10 @@ func TestRemoteKeysAnswerWhatTheyDid(t *testing.T) {
 	press(t, c, "trigmenu")
 	goRow(t, c, "trig.mode")
 	before := c.PanelStatus().Sheet
-	for i, res := range []SetResult{c.RemoteKnob("adjust", 1, 1, true), c.RemoteKnob("horizpos", -1, 1, true), c.RemoteKey("adjustpush", true),
-		c.RemoteKey("horizpospush", true), c.RemoteKnob("tdiv", 1, 1, false), c.RemoteKnob("adjust", 1, 1, false)} {
+	for i, res := range []SetResult{
+		c.RemoteKnob("adjust", 1, 1, true), c.RemoteKnob("horizpos", -1, 1, true), c.RemoteKey("adjustpush", true),
+		c.RemoteKey("horizpospush", true), c.RemoteKnob("tdiv", 1, 1, false), c.RemoteKnob("adjust", 1, 1, false),
+	} {
 		if res.OK || res.Error != menuRefusal || len(res.Changed) != 0 {
 			t.Fatalf("%d with a menu open on the LCD: %+v", i, res)
 		}
@@ -408,9 +409,11 @@ func TestTypedCommaAndNegativeTexts(t *testing.T) {
 	if res := c.SheetSet("trig.level", nil, "1,250V"); res.OK || !strings.Contains(res.Error, `the comma in "1,250V" reads two ways`) {
 		t.Fatalf("1,250V: %+v", res)
 	}
-	for _, x := range [][3]string{{"trig.holdoff", "-5", "holdoff -5s is outside Off .. 10s"},
+	for _, x := range [][3]string{
+		{"trig.holdoff", "-5", "holdoff -5s is outside Off .. 10s"},
 		{"bus.stream_value", "-1", "stream value -0x01 is outside 0x00 .. 0xFFFFFF"},
-		{"bus.i2c_address", "-2", "i2c address -0x02 is outside Any .. 0x7F"}} {
+		{"bus.i2c_address", "-2", "i2c address -0x02 is outside Any .. 0x7F"},
+	} {
 		if res := c.SheetSet(x[0], nil, x[1]); res.OK || res.Error != x[2] {
 			t.Fatalf("%s %s: %+v", x[0], x[1], res)
 		}

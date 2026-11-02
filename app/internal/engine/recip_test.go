@@ -21,7 +21,7 @@ func TestRecipExact(t *testing.T) {
 				t.Fatalf("%d/%d = %d, want %d", x, d, got, want)
 			}
 		}
-		for k := uint64(0); k < 64; k++ {
+		for k := range uint64(64) {
 			check(k)
 			check(limit - 1 - k)
 			check(uint64(d)*k*1031 + k)
@@ -36,7 +36,7 @@ func TestRecipExact(t *testing.T) {
 	for _, d := range []uint32{3, 7, 63, 255, 256, 257} { // every dividend under the bound
 		r := newRecip(d)
 		limit := uint32(1) << (17 + bits.Len32(d-1))
-		for x := uint32(0); x < limit; x++ {
+		for x := range limit {
 			if r.div(x) != x/d {
 				t.Fatalf("%d/%d", x, d)
 			}

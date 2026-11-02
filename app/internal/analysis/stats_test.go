@@ -30,7 +30,7 @@ func TestStats(t *testing.T) {
 	// sum of squares (1e12-scale terms) would lose it
 	r := rng{s: 99}
 	var vals []float64
-	for i := 0; i < 5000; i++ {
+	for i := range 5000 {
 		v := 1e6 + 0.37*r.gauss()
 		vals = append(vals, v)
 		s.Add(v)
@@ -62,7 +62,7 @@ func TestStats(t *testing.T) {
 		t.Errorf("after Reset: N %d mean %v", s.N(), s.Mean())
 	}
 	// identical values: no negative variance from rounding
-	for i := 0; i < 1000; i++ {
+	for range 1000 {
 		s.Add(0.1)
 	}
 	if s.Sdev() != 0 || s.Mean() != 0.1 {

@@ -12,8 +12,12 @@ func TestPacketTriggerBoundaries(t *testing.T) {
 		id       int
 		boundary string
 	}{
-		{serSENT, "sync"}, {serCAN, "sof"}, {serMIL1553, "start"},
-		{serARINC, "gap"}, {serUSB, "start"}, {serFlexRay, "start"},
+		{serSENT, "sync"},
+		{serCAN, "sof"},
+		{serMIL1553, "start"},
+		{serARINC, "gap"},
+		{serUSB, "start"},
+		{serFlexRay, "start"},
 	} {
 		d, _ := serialDecoder(tc.id)
 		t.Run(d.Name, func(t *testing.T) {

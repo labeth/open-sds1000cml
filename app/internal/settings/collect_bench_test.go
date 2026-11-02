@@ -2,9 +2,8 @@
 package settings_test
 
 import (
-	"testing"
-
 	"open-sds/app/internal/settings"
+	"testing"
 )
 
 // Collect over a live engine, front end and panel (the saver's poll and the

@@ -3,14 +3,14 @@ package engine
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
+	"open-sds/app/internal/bus"
+	"open-sds/app/internal/sramcapture"
 	"sync"
 	"sync/atomic"
 	"time"
-
-	"open-sds/app/internal/bus"
-	"open-sds/app/internal/sramcapture"
 )
 
 // The audio stream (ADR-SOUND): while a SOUND consumer holds the lease (the
@@ -164,7 +164,7 @@ func (r *soundRing) pushWords(raw []byte, sc SoundScale, gap bool, now time.Time
 		r.scales = append(r.scales, sc)
 	}
 	q1, q2 := r.q[0], r.q[1]
-	for i := 0; i < n; i++ {
+	for i := range n {
 		j := (r.next + uint64(i)) & mask
 		q1[j] = uint16(raw[4*i]) | uint16(raw[4*i+1])<<8
 		q2[j] = uint16(raw[4*i+2]) | uint16(raw[4*i+3])<<8
@@ -588,12 +588,14 @@ func (e *Engine) soundStart(s *soundState) error {
 		}
 		e.loadImage(imageStream)
 		if e.protocolImage != imageStream {
-			return fmt.Errorf("the stream image did not load")
+			return errors.New("the stream image did not load")
 		}
 	}
 	mc := e.soundMarkWant(s)
-	cfg := sramcapture.Config{Source: sramcapture.ADC, DecimationLog2: SoundLog2, PreWords: sramcapture.Words - 17, PostWords: 17,
-		TriggerChannel: uint8(mc.Ch), TriggerLevel: mc.Level, TriggerHysteresis: mc.Hyst, Normal: true}
+	cfg := sramcapture.Config{
+		Source: sramcapture.ADC, DecimationLog2: SoundLog2, PreWords: sramcapture.Words - 17, PostWords: 17,
+		TriggerChannel: uint8(mc.Ch), TriggerLevel: mc.Level, TriggerHysteresis: mc.Hyst, Normal: true,
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 	marks := e.sram.StreamMarksSupported()

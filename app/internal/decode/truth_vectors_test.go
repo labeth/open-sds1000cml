@@ -51,7 +51,6 @@ func TestTruthSENT(t *testing.T) {
 		{[]int{0x0, 0x0, 0x0, 0x0, 0x0, 0x0}, 0x5, 0xF},
 	}
 	for _, v := range vectors {
-		v := v
 		t.Run(fmt.Sprintf("allegro-%X-crc-%X", v.data, v.crc), func(t *testing.T) {
 			// Status nibble deliberately non-zero: J2716 covers the DATA
 			// nibbles only (Melexis MLX90324 p.29, Microchip §3.0) — a
@@ -181,7 +180,7 @@ func TestTruthARINC429(t *testing.T) {
 	// computation is the circularity under test.
 	wire := func(word uint32) []int {
 		bits := make([]int, 32)
-		for i := 0; i < 32; i++ {
+		for i := range 32 {
 			bits[i] = int(word>>i) & 1
 		}
 		return bits

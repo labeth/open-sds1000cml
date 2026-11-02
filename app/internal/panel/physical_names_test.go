@@ -10,11 +10,13 @@ import (
 // the dispatcher as a real key: none is unassigned any more.
 // TRLC-LINKS: REQ-SDS-135
 func TestPhysicalNamesReachTheDispatcher(t *testing.T) {
-	for _, name := range []string{"run", "runstop", "single", "auto", "ch1vdivpush", "ch2vdivpush", "triglvlpush",
+	for _, name := range []string{
+		"run", "runstop", "single", "auto", "ch1vdivpush", "ch2vdivpush", "triglvlpush",
 		"utility", "util", "adjustpush", "intensity", "f1", "f2", "f3", "f4", "f5", "trigmenu", "trigger", "acquire",
 		"acq", "display", "disp", "horizmenu", "horiz", "menu", "measure", "meas", "cursors", "cursor", "math", "ref",
 		"ch1", "ch2", "print", "hardcopy", "saverecall", "set50", "defaultsetup", "force", "help", "ch1pospush",
-		"ch2pospush", "tdivpush", "horizpospush"} {
+		"ch2pospush", "tdivpush", "horizpospush",
+	} {
 		c, _, _ := newC(t)
 		if !c.InjectButton(name) {
 			t.Fatalf("%s rejected", name)
@@ -155,7 +157,7 @@ func TestTriggerQualifierLimitsStayOrdered(t *testing.T) {
 	c.SheetSet("trig.type", nil, "Pulse")
 	press(t, c, "trigmenu")
 	goRow(t, c, "trig.pulse_min")
-	for i := 0; i < 8; i++ {
+	for range 8 {
 		pickKey(t, c, "Up")
 		if c.pulseMin >= c.pulseMax {
 			t.Fatalf("W min %g >= W max %g", c.pulseMin, c.pulseMax)
@@ -163,14 +165,14 @@ func TestTriggerQualifierLimitsStayOrdered(t *testing.T) {
 	}
 	c.SheetSet("trig.type", nil, "Slope")
 	goRow(t, c, "trig.slope_high")
-	for i := 0; i < 20; i++ {
+	for range 20 {
 		turn(c, "horizpos", -1)
 		if c.slopeLo >= c.slopeHi {
 			t.Fatalf("Low %g >= High %g", c.slopeLo, c.slopeHi)
 		}
 	}
 	goRow(t, c, "trig.slope_max")
-	for i := 0; i < 20; i++ {
+	for range 20 {
 		turn(c, "horizpos", -1)
 		if c.slopeMin >= c.slopeMax {
 			t.Fatalf("T min %g >= T max %g", c.slopeMin, c.slopeMax)

@@ -4,12 +4,12 @@ package engine
 import (
 	"context"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"math"
-	"time"
-
 	"open-sds/app/internal/bus"
 	"open-sds/app/internal/sramcapture"
+	"time"
 )
 
 // Roll mode (ADR-SRAM-ROLL): at slow timebases a triggered frame must wait out
@@ -219,7 +219,7 @@ func (r *rollView) groupPeak(raw []byte) []byte {
 	data := append(r.carry, raw...)
 	n := len(data) / 4 / g
 	out := make([]byte, 4*n)
-	for k := 0; k < n; k++ {
+	for k := range n {
 		w := data[4*g*k:]
 		lo1, lo2, hi1, hi2 := w[0], w[1], w[2], w[3]
 		for j := 1; j < g; j++ {
@@ -247,7 +247,7 @@ func (r *rollView) push(gap int, q1, q2 []uint16, held []bool) {
 			r.held[i] = i < at+hold || held != nil && k >= 0 && k < len(held) && held[k]
 		}
 		if r.filled == 0 { // the first chunk also fills the view's past: no capture
-			for i := 0; i < at; i++ {
+			for i := range at {
 				r.held[i] = true
 			}
 		}
@@ -270,7 +270,7 @@ func (r *rollView) push(gap int, q1, q2 []uint16, held []bool) {
 			if r.filled == 0 && len(q) > 0 {
 				h = [2]float32{r.volts(ch, q[0]), r.volts(ch, q[0])}
 			}
-			for i := 0; i < hold; i++ {
+			for i := range hold {
 				v[at+i] = h[i%2]
 			}
 		}
@@ -283,7 +283,7 @@ func (r *rollView) push(gap int, q1, q2 []uint16, held []bool) {
 			v[at+hold+i] = float32((float64(x)/256-128)*vdiv/25 - off)
 		}
 		if r.filled == 0 { // the first chunk also fills the view's past
-			for i := 0; i < at; i++ {
+			for i := range at {
 				v[i] = v[at]
 			}
 		}
@@ -349,7 +349,7 @@ type rollWriter struct {
 // TRLC-LINKS: REQ-SDS-010
 func (w *rollWriter) Write(b []byte) (int, error) {
 	if len(b)%4 != 0 {
-		return 0, fmt.Errorf("unaligned roll payload")
+		return 0, errors.New("unaligned roll payload")
 	}
 	w.raw = append(w.raw, b...)
 	for i := 0; i < len(b); i += 4 {
@@ -382,8 +382,10 @@ func (e *Engine) rollStep(r *rollView) {
 		r.rescale(scale, e.clk.Now()) // a V/div or offset change, or any front-end write
 	}
 	r.feGen = e.feGen.Load()
-	cfg := sramcapture.Config{Source: sramcapture.ADC, DecimationLog2: p.log, PreWords: uint32(p.chunk - 1), PostWords: 1,
-		TriggerChannel: uint8(e.trigSrc.Load()), TriggerLevel: uint8(e.trigLevelWord())}
+	cfg := sramcapture.Config{
+		Source: sramcapture.ADC, DecimationLog2: p.log, PreWords: uint32(p.chunk - 1), PostWords: 1,
+		TriggerChannel: uint8(e.trigSrc.Load()), TriggerLevel: uint8(e.trigLevelWord()),
+	}
 	armAt := e.clk.Now()
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	err := e.sram.Arm(ctx, cfg)
@@ -440,7 +442,7 @@ func (e *Engine) rollStep(r *rollView) {
 	cancel()
 	if err != nil || len(w.q1) == 0 {
 		if err == nil {
-			err = fmt.Errorf("empty roll chunk")
+			err = errors.New("empty roll chunk")
 		}
 		e.busErr(err)
 		return
@@ -489,9 +491,11 @@ func (e *Engine) rollPublish(r *rollView, decimation uint32, filter, readout, st
 	p, tdiv := r.plan, r.tdiv
 	f := e.arena.Write()
 	c1, c2, q1, q2 := f.C1, f.C2, f.Q1, f.Q2
-	*f = Frame{C1: c1, C2: c2, Valid: p.screen, WinCols: p.screen, SampleS: p.sampleS, CaptureSampleS: p.sampleS,
+	*f = Frame{
+		C1: c1, C2: c2, Valid: p.screen, WinCols: p.screen, SampleS: p.sampleS, CaptureSampleS: p.sampleS,
 		TdivS: tdiv, DisplayedS: tdiv, EdgeX: -1, TrigPos: -1, Coherent: true, HaltOK: true, Interp: false,
-		Decimation: decimation, TriggerKind: "roll", Roll: true, CaptureDepth: p.screen, Filter: filter}
+		Decimation: decimation, TriggerKind: "roll", Roll: true, CaptureDepth: p.screen, Filter: filter,
+	}
 	copy(f.C1, r.c1)
 	copy(f.C2, r.c2)
 	f.Q1 = append(q1[:0], r.q1...)
@@ -552,8 +556,10 @@ func (e *Engine) rollStreamStep(r *rollView) {
 			e.sleepBeating(100 * time.Millisecond)
 			return
 		}
-		cfg := sramcapture.Config{Source: sramcapture.ADC, DecimationLog2: p.log, PreWords: sramcapture.Words - 17, PostWords: 17,
-			TriggerChannel: uint8(e.trigSrc.Load()), TriggerLevel: uint8(e.trigLevelWord())}
+		cfg := sramcapture.Config{
+			Source: sramcapture.ADC, DecimationLog2: p.log, PreWords: sramcapture.Words - 17, PostWords: 17,
+			TriggerChannel: uint8(e.trigSrc.Load()), TriggerLevel: uint8(e.trigLevelWord()),
+		}
 		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 		err := e.sram.StartStream(ctx, cfg, true, true, sramcapture.StreamPace{})
 		cancel()
@@ -709,7 +715,7 @@ func (e *Engine) peakSamples(r *rollView, raw []byte) ([]uint16, []uint16) {
 	// Two leading slots carry the view's newest sample for the ordering.
 	c := [2][]uint8{make([]uint8, 2+2*n), make([]uint8, 2+2*n)}
 	q := [2][]uint16{make([]uint16, 2+2*n), make([]uint16, 2+2*n)}
-	for i := 0; i < n; i++ {
+	for i := range n {
 		b := raw[4*i : 4*i+4]
 		c[0][2+2*i], c[0][3+2*i] = b[0], b[2] // CH1 min, max
 		c[1][2+2*i], c[1][3+2*i] = b[1], b[3] // CH2 min, max

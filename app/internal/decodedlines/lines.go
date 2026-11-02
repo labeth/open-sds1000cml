@@ -7,13 +7,13 @@ package decodedlines
 
 import (
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"math/bits"
+	"open-sds/app/internal/sramcapture"
 	"strconv"
 	"strings"
 	"unicode/utf8"
-
-	"open-sds/app/internal/sramcapture"
 )
 
 // Line is one hexdump line: up to sixteen units of one frame.
@@ -100,8 +100,10 @@ const HistorySamples = 524288
 // startNotes are the start-of-frame names a software-decoded stream's
 // EventStart carries (its Value indexes them, 0 none): the decoders' "sof"
 // texts.
-var startNotes = []string{"", "LDR", "REP", "SIRC", "RC5", "RC6", "RST", "START", "SOF", "BRK", "B", "SOP", "SOP'",
-	"SOP\"", "SOP'D", "SOP\"D", "HRST", "CRST", "MATSUSH", "KASEIKYO", "SAMSUNG", "DENON", "SAMSG32", "JVC", "NEC16", "NEC42"}
+var startNotes = []string{
+	"", "LDR", "REP", "SIRC", "RC5", "RC6", "RST", "START", "SOF", "BRK", "B", "SOP", "SOP'",
+	"SOP\"", "SOP'D", "SOP\"D", "HRST", "CRST", "MATSUSH", "KASEIKYO", "SAMSUNG", "DENON", "SAMSG32", "JVC", "NEC16", "NEC42",
+}
 
 // canNote names a CAN frame's identity (the end event's value): its
 // identifier in hex, X before an extended one, " FD" after an FD frame's,
@@ -463,8 +465,10 @@ func appendHex(buf []byte, v uint32, digits int) []byte {
 }
 
 // usbPIDs names USB packet identifiers for the note column.
-var usbPIDs = map[uint32]string{0xE1: "OUT", 0x69: "IN", 0xA5: "SOF", 0x2D: "SETUP", 0xC3: "DATA0", 0x4B: "DATA1",
-	0x87: "DATA2", 0x0F: "MDATA", 0xD2: "ACK", 0x5A: "NAK", 0x1E: "STALL", 0x96: "NYET", 0x3C: "PRE"}
+var usbPIDs = map[uint32]string{
+	0xE1: "OUT", 0x69: "IN", 0xA5: "SOF", 0x2D: "SETUP", 0xC3: "DATA0", 0x4B: "DATA1",
+	0x87: "DATA2", 0x0F: "MDATA", 0xD2: "ACK", 0x5A: "NAK", 0x1E: "STALL", 0x96: "NYET", 0x3C: "PRE",
+}
 
 // Wire format of a line batch (worker to GUI process), little-endian:
 //
@@ -556,17 +560,19 @@ func (t *Transcript) EncodeLines(from int, dst []byte) int {
 func DecodeLines(b []byte) (Batch, error) {
 	var bt Batch
 	if len(b) < batchHeader {
-		return bt, fmt.Errorf("decodedlines: short batch")
+		return bt, errors.New("decodedlines: short batch")
 	}
 	bt.Base = int(binary.LittleEndian.Uint32(b[0:]))
 	bt.Next = int(binary.LittleEndian.Uint32(b[4:]))
-	bt.Counters = Counters{binary.LittleEndian.Uint64(b[8:]), binary.LittleEndian.Uint64(b[16:]),
-		binary.LittleEndian.Uint64(b[24:]), binary.LittleEndian.Uint64(b[32:])}
+	bt.Counters = Counters{
+		binary.LittleEndian.Uint64(b[8:]), binary.LittleEndian.Uint64(b[16:]),
+		binary.LittleEndian.Uint64(b[24:]), binary.LittleEndian.Uint64(b[32:]),
+	}
 	bt.TriggerHint = b[40]&1 != 0
 	count := int(binary.LittleEndian.Uint16(b[41:]))
 	bt.Indices, bt.Lines = make([]int, 0, count), make([]Line, 0, count)
 	off := batchHeader
-	for c := 0; c < count; c++ {
+	for c := range count {
 		if off+18 > len(b) {
 			return bt, fmt.Errorf("decodedlines: truncated line %d", c)
 		}

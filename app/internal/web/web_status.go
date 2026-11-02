@@ -96,9 +96,11 @@ func (s *Server) hStatus(w http.ResponseWriter, r *http.Request) {
 		StreamStatus() (streamview.View, bool)
 	}); ok {
 		if v, on := sr.StreamStatus(); on {
-			rep.Stream = &streamStatus{State: v.State.String(), Label: v.Label, Units: v.Units, Errors: v.Errors,
+			rep.Stream = &streamStatus{
+				State: v.State.String(), Label: v.Label, Units: v.Units, Errors: v.Errors,
 				Lost: v.Lost, Lines: v.Lines, UnitsPerSecond: v.UnitsPerSecond, Err: v.Err, Note: v.Note, Record: v.RecordAvailable,
-				TriggerLine: v.TriggerLine, Mode: v.Mode}
+				TriggerLine: v.TriggerLine, Mode: v.Mode,
+			}
 		}
 	}
 	if reporter, ok := s.panel.(interface{ PanelStatus() panel.Status }); ok {
@@ -195,7 +197,8 @@ type streamStatus struct {
 var ladder = func() (l struct {
 	tdivs                   []float64
 	fullRateTdiv, fullRateS float64
-}) {
+},
+) {
 	l.tdivs = engine.SupportedTdivs()
 	l.fullRateTdiv = engine.FullRateTdiv(l.tdivs)
 	l.fullRateS = engine.PlanSRAM(slices.Min(l.tdivs)).SampleS

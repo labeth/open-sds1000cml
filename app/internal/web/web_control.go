@@ -44,9 +44,11 @@ func (s *Server) hZones(w http.ResponseWriter, r *http.Request) {
 		if math.IsNaN(z.DtLoS) || math.IsNaN(z.DtHiS) || math.IsInf(z.DtLoS, 0) || math.IsInf(z.DtHiS, 0) {
 			continue
 		}
-		out = append(out, engine.Zone{DtLoS: z.DtLoS, DtHiS: z.DtHiS,
+		out = append(out, engine.Zone{
+			DtLoS: z.DtLoS, DtHiS: z.DtHiS,
 			CodeLo: clampI(z.CodeLo, 0, 255), CodeHi: clampI(z.CodeHi, 0, 255),
-			Avoid: z.Avoid, Ch: z.Ch & 1})
+			Avoid: z.Avoid, Ch: z.Ch & 1,
+		})
 	}
 	s.sc.SetZones(out)
 	writeJSON(w, map[string]any{"ok": true, "zones": len(out)})
@@ -199,7 +201,7 @@ func (s *Server) hMask(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		lo, hi = make([]uint8, m.Win), make([]uint8, m.Win)
-		for i := 0; i < m.Win; i++ {
+		for i := range m.Win {
 			lo[i] = uint8(clampI(m.Lo[i], 0, 255))
 			hi[i] = uint8(clampI(m.Hi[i], 0, 255))
 		}
@@ -213,8 +215,10 @@ func (s *Server) hMask(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	s.sc.SetMask(&engine.Mask{Lo: lo, Hi: hi, WinCols: m.Win, Ch: m.Ch & 1,
-		FrameIdent: m.TdivS > 0 && m.SampleS > 0, TdivS: m.TdivS, SampleS: m.SampleS, PeakDetect: m.PeakDetect})
+	s.sc.SetMask(&engine.Mask{
+		Lo: lo, Hi: hi, WinCols: m.Win, Ch: m.Ch & 1,
+		FrameIdent: m.TdivS > 0 && m.SampleS > 0, TdivS: m.TdivS, SampleS: m.SampleS, PeakDetect: m.PeakDetect,
+	})
 	// gen names this install: the page keeps re-scaling its mask only while
 	// the scope still holds it (Stats.MaskGen)
 	writeJSON(w, map[string]any{"ok": true, "win": m.Win, "gen": s.sc.Snapshot().MaskGen})

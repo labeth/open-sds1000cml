@@ -3,10 +3,9 @@ package framecalc
 
 import (
 	"math"
+	"open-sds/app/internal/engine"
 	"strings"
 	"testing"
-
-	"open-sds/app/internal/engine"
 )
 
 // sineFrame is a frame of a sine of cycles periods over n samples.
@@ -96,13 +95,13 @@ func TestDecodeFramesFromTheHardwareMatch(t *testing.T) {
 	const spb = 20
 	var w []uint8
 	bit := func(b int) {
-		for j := 0; j < spb; j++ {
+		for range spb {
 			w = append(w, uint8(40+170*b))
 		}
 	}
 	for _, c := range []int{0x48, 0x69, 0x20, 0x55, 0xAA, 0x0F, 0xF0, 0x0A} {
 		bit(0)
-		for k := 0; k < 8; k++ {
+		for k := range 8 {
 			bit(c >> k & 1)
 		}
 		bit(1)
@@ -110,8 +109,10 @@ func TestDecodeFramesFromTheHardwareMatch(t *testing.T) {
 	cut := 2*10*spb + 3*spb // the record opens inside 20
 	rec := append([]uint8(nil), w[cut:]...)
 	aaStart := float64(4*10*spb - cut)
-	f := &engine.Frame{C1: rec, C2: rec, Valid: len(rec), SampleS: 1 / (115200.0 * spb), Seq: 7,
-		EdgeX: aaStart, MatchEndS: 9.5 / 115200, HasMatchEnd: true}
+	f := &engine.Frame{
+		C1: rec, C2: rec, Valid: len(rec), SampleS: 1 / (115200.0 * spb), Seq: 7,
+		EdgeX: aaStart, MatchEndS: 9.5 / 115200, HasMatchEnd: true,
+	}
 	r := Decode(f, DecodeParams{Proto: ProtoUART, Baud: 115200, Format: "hex"})
 	if !strings.Contains(r.Text, "55 AA 0F F0") || strings.Contains(r.Text, "!") {
 		t.Fatalf("decoded %q, want 55 AA 0F F0 in sync", r.Text)

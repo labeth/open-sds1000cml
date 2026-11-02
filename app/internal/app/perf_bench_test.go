@@ -2,11 +2,10 @@
 package app
 
 import (
-	"testing"
-
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/lcd"
 	"open-sds/app/internal/panel/wsview"
+	"testing"
 )
 
 // benchHUD is a HUD as the LCD loop builds it for SCOPE with a menu open.

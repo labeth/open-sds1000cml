@@ -36,10 +36,10 @@ func symbolRTL(t *testing.T, image, dir string, c SymbolCfg, a, b []bool, resets
 		fmt.Fprintf(&tb, "%02x\n", v)
 	}
 	inPath, tblPath := filepath.Join(dir, "lines.mem"), filepath.Join(dir, "table.mem")
-	if err := os.WriteFile(inPath, []byte(in.String()), 0600); err != nil {
+	if err := os.WriteFile(inPath, []byte(in.String()), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(tblPath, []byte(tb.String()), 0600); err != nil {
+	if err := os.WriteFile(tblPath, []byte(tb.String()), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	bi := func(v bool) int {
@@ -58,7 +58,7 @@ func symbolRTL(t *testing.T, image, dir string, c SymbolCfg, a, b []bool, resets
 	}
 	var got []int
 	done := false
-	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
+	for line := range strings.SplitSeq(strings.TrimSpace(string(out)), "\n") {
 		var v int
 		switch {
 		case strings.HasPrefix(line, "M "):
@@ -101,7 +101,7 @@ func symbolRTLImage(t *testing.T) (string, string) {
 func symbolRuns(dst []bool, first bool, runs ...int) []bool {
 	l := first
 	for _, w := range runs {
-		for i := 0; i < w; i++ {
+		for range w {
 			dst = append(dst, l)
 		}
 		l = !l
@@ -124,7 +124,7 @@ func TestSymbolTriggerRTL(t *testing.T) {
 			t.Errorf("random trials matched %d times: too few to compare", matched)
 		}
 	}()
-	for trial := 0; trial < 24; trial++ {
+	for trial := range 24 {
 		t.Run(fmt.Sprintf("random%d", trial), func(t *testing.T) {
 			var c SymbolCfg
 			c.Mode = trial % 4
@@ -147,7 +147,7 @@ func TestSymbolTriggerRTL(t *testing.T) {
 			c.Pattern = rng.Uint64()
 			c.Mask = rng.Uint64() & (1<<uint(rng.Intn(7)) - 1)
 			// Tables of a few windows per level, as protocols use them.
-			for lvl := 0; lvl < 2; lvl++ {
+			for lvl := range 2 {
 				lo := 0
 				for lo < 1024 {
 					w := 1 + rng.Intn(200)

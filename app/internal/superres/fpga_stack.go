@@ -41,7 +41,7 @@ func FPGAStack(moments []FPGAStackMoments, k, align, hits, frames int, sampleS f
 	}
 	st := New(len(moments)/2/k, k)
 	for b := 0; b < st.Nbins; b++ {
-		for ch := 0; ch < 2; ch++ {
+		for ch := range 2 {
 			m := moments[2*b+ch]
 			if m.CountOdd > m.Count {
 				return nil, fmt.Errorf("FPGA stack: bin %d channel %d odd count %d exceeds %d", b, ch, m.CountOdd, m.Count)

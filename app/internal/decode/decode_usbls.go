@@ -107,7 +107,7 @@ func DecodeUSBLS(dp []uint8, colTimeS float64, cfg USBLSCfg) Result {
 				continue
 			}
 			ref := cand
-			for pass := 0; pass < 2; pass++ {
+			for range 2 {
 				sum, cnt := 0.0, 0
 				for _, g := range kg {
 					if math.Abs(g-ref) <= 0.35*ref {
@@ -198,10 +198,7 @@ func DecodeUSBLS(dp []uint8, colTimeS float64, cfg USBLSCfg) Result {
 		if idleX > float64(n-1) {
 			idleX = float64(n - 1)
 		}
-		prev := logicAt(&S, idleX)
-		if prev < 0 {
-			prev = 0
-		}
+		prev := max(logicAt(&S, idleX), 0)
 		var rawBits, rawCell []int
 		// Re-synchronize the cell grid on edges (as a USB receiver's DPLL does):
 		// an edge within 0.4 bit of a cell boundary re-anchors the grid there.
@@ -271,7 +268,7 @@ func DecodeUSBLS(dp []uint8, colTimeS float64, cfg USBLSCfg) Result {
 		}
 		// SYNC must be 00000001; anything else is a partial/garbage frame — drop it.
 		syncOK := bitsArr[7] == 1
-		for i := 0; i < 7; i++ {
+		for i := range 7 {
 			if bitsArr[i] != 0 {
 				syncOK = false
 			}
@@ -281,7 +278,7 @@ func DecodeUSBLS(dp []uint8, colTimeS float64, cfg USBLSCfg) Result {
 		}
 		// PID = 8 bits LSB-first: low nibble = PID, high nibble = its complement.
 		pidByte := 0
-		for i := 0; i < 8; i++ {
+		for i := range 8 {
 			pidByte |= bitsArr[8+i] << i
 		}
 		pid4 := pidByte & 0xF
@@ -310,9 +307,9 @@ func DecodeUSBLS(dp []uint8, colTimeS float64, cfg USBLSCfg) Result {
 		// from a degraded capture are never shown as good.
 		nBytes := (len(bitsArr) - 16) / 8
 		payload := make([]int, nBytes)
-		for b := 0; b < nBytes; b++ {
+		for b := range nBytes {
 			base := 16 + b*8
-			for i := 0; i < 8; i++ {
+			for i := range 8 {
 				payload[b] |= bitsArr[base+i] << i
 			}
 		}
@@ -344,8 +341,10 @@ func DecodeUSBLS(dp []uint8, colTimeS float64, cfg USBLSCfg) Result {
 	if colTimeS > 0 {
 		baud = snapRate(int(math.Round(1.0/(T*colTimeS))), 1.5e6, 12e6)
 	}
-	return Result{OK: true, Proto: "usbls", Spans: spans, Text: strings.Join(toks, " "),
-		Bytes: bytesOut, Baud: baud, SPB: T, Thr: S.threshold}
+	return Result{
+		OK: true, Proto: "usbls", Spans: spans, Text: strings.Join(toks, " "),
+		Bytes: bytesOut, Baud: baud, SPB: T, Thr: S.threshold,
+	}
 }
 
 // usbIsToken reports a token PID (OUT, IN, SOF, SETUP, PING), whose 11
@@ -359,7 +358,7 @@ func usbIsToken(pid4 int) bool { return pid4&3 == 1 || pid4 == 0x4 }
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-237
 func usbCRC5(v int) int {
 	c := 0x1F
-	for i := 0; i < 11; i++ {
+	for i := range 11 {
 		c <<= 1
 		if v>>i&1 != c>>5 {
 			c ^= 0x25
@@ -381,7 +380,7 @@ func usbCRC16(data []int) int {
 	c := 0xFFFF
 	for _, b := range data {
 		c ^= b & 0xFF
-		for i := 0; i < 8; i++ {
+		for range 8 {
 			if c&1 != 0 {
 				c = c>>1 ^ 0xA001
 			} else {

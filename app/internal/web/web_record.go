@@ -5,10 +5,9 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"net/http"
+	"open-sds/app/internal/engine"
 	"strconv"
 	"time"
-
-	"open-sds/app/internal/engine"
 )
 
 // recordReply is /api/record.bin's header: the record's samples a channel,

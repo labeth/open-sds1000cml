@@ -2,11 +2,10 @@
 package panel
 
 import (
-	"strings"
-	"testing"
-
 	"open-sds/app/internal/buildinfo"
 	"open-sds/app/internal/engine"
+	"strings"
+	"testing"
 )
 
 // The SYS tab (Help key) names the firmware and its version, so an owner can

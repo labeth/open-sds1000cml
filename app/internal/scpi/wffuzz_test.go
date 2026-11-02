@@ -3,9 +3,8 @@ package scpi
 
 import (
 	"math/rand"
-	"testing"
-
 	"open-sds/app/internal/engine"
+	"testing"
 )
 
 // Waveform readout fuzz: the VXI-11 WF? path is network-exposed and does
@@ -14,7 +13,7 @@ import (
 // TRLC-LINKS: REQ-SDS-024
 func TestWaveformReadoutFuzz(t *testing.T) {
 	rng := rand.New(rand.NewSource(0xBEEF))
-	for i := 0; i < 4000; i++ {
+	for i := range 4000 {
 		h, fs := newH(t)
 		// hostile-but-in-protocol WFSU (out-of-range values are rejected, but
 		// legal combinations over a tiny/empty record must still be safe)

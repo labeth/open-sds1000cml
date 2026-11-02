@@ -4,11 +4,11 @@ package web
 import (
 	"math"
 	"math/rand"
+	"net/http"
 	"net/http/httptest"
+	"open-sds/app/internal/engine"
 	"sync/atomic"
 	"testing"
-
-	"open-sds/app/internal/engine"
 )
 
 // Frame-serving fuzz: even if an engine invariant slipped (Valid > len,
@@ -73,7 +73,7 @@ func TestFrameServeFuzz(t *testing.T) {
 		"/api/frame.bin", "/api/frame.bin?raw=1",
 		"/api/frame.bin?since=0&waitms=0", "/api/frame.bin?depth=1",
 	}
-	for i := 0; i < 1500; i++ {
+	for i := range 1500 {
 		cur.Store(mkFrame(uint64(i + 1)))
 		p := paths[rng.Intn(len(paths))]
 		r, err := client.Get(srv.URL + p)
@@ -87,7 +87,7 @@ func TestFrameServeFuzz(t *testing.T) {
 	}
 	// server still healthy
 	r, err := client.Get(srv.URL + "/api/status")
-	if err != nil || r.StatusCode != 200 {
+	if err != nil || r.StatusCode != http.StatusOK {
 		t.Fatalf("server unhealthy after frame fuzz: %v", err)
 	}
 	r.Body.Close()

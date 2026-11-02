@@ -2,12 +2,12 @@
 package web
 
 import (
+	"net/http"
 	"net/http/httptest"
+	"open-sds/app/internal/engine"
 	"os"
 	"strings"
 	"testing"
-
-	"open-sds/app/internal/engine"
 )
 
 // These are ALWAYS-RUN pure-Go guardrails for the UI/UX refactor. They must NOT
@@ -56,8 +56,8 @@ func TestInlineScriptBudget(t *testing.T) {
 	inline := 0
 	for _, seg := range strings.Split(html, "<script")[1:] {
 		head := seg
-		if i := strings.IndexByte(seg, '>'); i >= 0 {
-			head = seg[:i]
+		if before, _, ok := strings.Cut(seg, ">"); ok {
+			head = before
 		}
 		if !strings.Contains(head, "src=") {
 			inline++
@@ -77,7 +77,7 @@ func TestInlineScriptBudget(t *testing.T) {
 func TestContentSecurityPolicy(t *testing.T) {
 	fs := &fakeScope{stats: engine.Stats{Running: true}}
 	rec := httptest.NewRecorder()
-	req := httptest.NewRequest("GET", "/", nil)
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	New(fs, nil, nil, nil).Handler().ServeHTTP(rec, req)
 	csp := rec.Header().Get("Content-Security-Policy")
 	if csp == "" {
@@ -88,7 +88,7 @@ func TestContentSecurityPolicy(t *testing.T) {
 	}
 	// The script-src directive must be present and must NOT allow inline script.
 	script := ""
-	for _, d := range strings.Split(csp, ";") {
+	for d := range strings.SplitSeq(csp, ";") {
 		if d = strings.TrimSpace(d); strings.HasPrefix(d, "script-src") {
 			script = d
 		}

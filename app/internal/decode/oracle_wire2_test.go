@@ -83,7 +83,7 @@ func TestOraclePDI(t *testing.T) {
 	l := newTwoLine(sr)
 	var bits []int
 	idle := func(n int) {
-		for i := 0; i < n; i++ {
+		for range n {
 			bits = append(bits, 1)
 		}
 	}
@@ -170,7 +170,7 @@ func TestOracleCJTAG(t *testing.T) {
 	needSigrokPD(t, "cjtag")
 	const sr = 2000000
 	c := &cjtagLine{l: newTwoLine(sr), per: 4e-6}
-	for i := 0; i < 6; i++ {
+	for range 6 {
 		c.rise(0)
 	}
 	c.escape(6)
@@ -182,7 +182,7 @@ func TestOracleCJTAG(t *testing.T) {
 	c.scan(true, 4, 0x5, 0x1)
 	c.scan(false, 32, 0x12345678, 0x4BA00477)
 	c.scan(false, 8, 0xA5, 0x3C)
-	for i := 0; i < 6; i++ {
+	for range 6 {
 		c.tck(0, 0, 0, false)
 	}
 	r := DecodeCJTAG(c.l.a.codes(), c.l.b.codes(), 1.0/sr, ClockedCfg{})
@@ -212,11 +212,13 @@ func TestOracleMaple(t *testing.T) {
 	const sr = 20000000
 	m := &mapleLine{l: newTwoLine(sr), st: 250e-9}
 	m.set(1, 1)
-	frames := [][]int{mapleBytes(0x20, 0x00, 0x01, nil, false), mapleBytes(0x00, 0x20, 0x05, []int{0x00, 0x00, 0x00, 0x01, 0x12, 0x34, 0x56, 0x78}, false),
-		mapleBytes(0x01, 0x20, 0x09, []int{0xFF, 0x00, 0xA5, 0x5A}, true)}
+	frames := [][]int{
+		mapleBytes(0x20, 0x00, 0x01, nil, false), mapleBytes(0x00, 0x20, 0x05, []int{0x00, 0x00, 0x00, 0x01, 0x12, 0x34, 0x56, 0x78}, false),
+		mapleBytes(0x01, 0x20, 0x09, []int{0xFF, 0x00, 0xA5, 0x5A}, true),
+	}
 	for _, f := range frames {
 		m.frame(f)
-		for i := 0; i < 20; i++ {
+		for range 20 {
 			m.set(1, 1)
 		}
 	}

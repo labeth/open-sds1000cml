@@ -13,7 +13,7 @@ import (
 func wrapTextRef(s string, n int) []string {
 	var out []string
 	line := ""
-	for _, w := range strings.Fields(s) {
+	for w := range strings.FieldsSeq(s) {
 		for len(w) > n {
 			if line != "" {
 				out = append(out, line)
@@ -44,7 +44,7 @@ func wrapTextRef(s string, n int) []string {
 func TestWrapTextMatchesRef(t *testing.T) {
 	rng := rand.New(rand.NewSource(1))
 	alpha := []string{"a", "bb", "ccc", "dddddddddd", "eeeeeeeeeeeeeeeeeeeeeeeee", " ", " ", "  ", "\t", "é", "x"}
-	for i := 0; i < 20000; i++ {
+	for range 20000 {
 		var b strings.Builder
 		for k := rng.Intn(30); k > 0; k-- {
 			b.WriteString(alpha[rng.Intn(len(alpha))])

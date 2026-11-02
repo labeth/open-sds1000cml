@@ -3,9 +3,8 @@ package lcd
 
 import (
 	"fmt"
-	"strconv"
-
 	"open-sds/app/internal/streamview"
+	"strconv"
 )
 
 // streamFullScreen reports the transcript replacing the waveform: a running

@@ -5,9 +5,8 @@ import (
 	"context"
 	"fmt"
 	"math"
-	"time"
-
 	"open-sds/app/internal/sramcapture"
+	"time"
 )
 
 // The history ring (ADR-STREAM-RING). On a gap-free digital stream that

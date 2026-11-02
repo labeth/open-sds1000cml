@@ -3,16 +3,16 @@ package bus
 
 import (
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"net"
+	"open-sds/app/internal/sramcapture"
 	"os"
 	"strings"
 	"sync/atomic"
 	"syscall"
 	"testing"
 	"time"
-
-	"open-sds/app/internal/sramcapture"
 )
 
 type workerFake struct {
@@ -74,7 +74,7 @@ func (f *workerFake) PopBytesChecked(sel uint16, dst []byte) error {
 		return nil
 	}
 	if sel != 59 || len(dst)%32 != 0 {
-		return fmt.Errorf("bad fake pop")
+		return errors.New("bad fake pop")
 	}
 	for i := 0; i < len(dst); i += 32 {
 		e := sramcapture.DecodedEvent{Epoch: 7, Sequence: f.sequence, Sample: 0xfffffff0 + uint64(f.sequence)*4, Kind: sramcapture.EventData, Protocol: 9, Value: f.sequence & 255, Valid: true}
@@ -220,7 +220,7 @@ func TestWorkerRingWrapAndOverflowAreExplicit(t *testing.T) {
 	if n := w.handle(req[:]); n != workerHeader+96 || w.response[10] != 0 {
 		t.Fatal("wrapped batch", n)
 	}
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		e, err := sramcapture.ParseDecodedEvent(w.response[workerHeader+i*32 : workerHeader+(i+1)*32])
 		if err != nil || e.Sequence != uint32(i) {
 			t.Fatal(e, err)
@@ -242,7 +242,7 @@ func TestWorkerRingWrapAndOverflowAreExplicit(t *testing.T) {
 func TestWorkerDisconnectNeverFallsBackToParentFD(t *testing.T) {
 	d, _ := workerFixture(t)
 	d.remote.conn.Close()
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		_, err := d.Read(1, 0)
 		if err == nil || !strings.Contains(err.Error(), "worker transport failed") {
 			t.Fatal("did not fail closed", err)

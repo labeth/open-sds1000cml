@@ -4,13 +4,12 @@ package web
 import (
 	"math"
 	"net/http/httptest"
+	"open-sds/app/internal/engine"
+	"open-sds/app/internal/testenv"
 	"os/exec"
 	"strings"
 	"sync/atomic"
 	"testing"
-
-	"open-sds/app/internal/engine"
-	"open-sds/app/internal/testenv"
 )
 
 // TestSpectrogramBrowser drives the real web SPECTROGRAM card in headless
@@ -26,7 +25,7 @@ func TestSpectrogramBrowser(t *testing.T) {
 		const N = 2048
 		c1 := make([]uint8, N)
 		c2 := make([]uint8, N)
-		for i := 0; i < N; i++ {
+		for i := range N {
 			v := 128 + 90*math.Sin(2*math.Pi*40*float64(i)/N) // a clean tone
 			c1[i] = uint8(v)
 			c2[i] = uint8(v)

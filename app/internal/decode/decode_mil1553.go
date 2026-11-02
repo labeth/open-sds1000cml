@@ -151,7 +151,7 @@ func decodeMIL1553At(S sliced, T, colTimeS float64) (Result, int) {
 		}
 		// 16 data bits, MSB first. A coding violation among them => not a real word.
 		word, bad := 0, false
-		for c := 0; c < 16; c++ {
+		for c := range 16 {
 			if cells[c].Bit < 0 {
 				bad = true
 				break
@@ -170,10 +170,7 @@ func decodeMIL1553At(S sliced, T, colTimeS float64) (Result, int) {
 		if !isCmd {
 			label = "dsync"
 		}
-		syncI0 := int(math.Round(syncStart))
-		if syncI0 < 0 {
-			syncI0 = 0
-		}
+		syncI0 := max(int(math.Round(syncStart)), 0)
 		syncI1 := int(math.Round(syncEnd)) - 1
 		if syncI1 >= S.n {
 			syncI1 = S.n - 1
@@ -202,6 +199,8 @@ func decodeMIL1553At(S sliced, T, colTimeS float64) (Result, int) {
 	if colTimeS > 0 {
 		baud = snapRate(int(math.Round(1.0/(T*colTimeS))), 1e6)
 	}
-	return Result{OK: true, Proto: "mil1553", Spans: spans, Text: strings.Join(toks, " "),
-		Bytes: bytesOut, Baud: baud, SPB: T, Thr: S.threshold}, words
+	return Result{
+		OK: true, Proto: "mil1553", Spans: spans, Text: strings.Join(toks, " "),
+		Bytes: bytesOut, Baud: baud, SPB: T, Thr: S.threshold,
+	}, words
 }

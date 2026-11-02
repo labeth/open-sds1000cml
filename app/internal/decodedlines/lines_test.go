@@ -2,10 +2,9 @@
 package decodedlines
 
 import (
+	"open-sds/app/internal/sramcapture"
 	"strings"
 	"testing"
-
-	"open-sds/app/internal/sramcapture"
 )
 
 // TRLC-LINKS: REQ-SDS-018
@@ -67,7 +66,7 @@ func TestEncodeDecodeAppend(t *testing.T) {
 		g.Append(b.Indices[i], l)
 	}
 	g.SetCounters(b.Counters)
-	for i := 0; i < 2; i++ {
+	for i := range 2 {
 		if g.Format(i) != w.Format(i) {
 			t.Fatalf("line %d: %q vs %q", i, g.Format(i), w.Format(i))
 		}
@@ -82,7 +81,7 @@ func TestEncodeDecodeAppend(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-018
 func TestEncodePagesAndGaps(t *testing.T) {
 	w := New(1, 1024)
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		w.Add(uart("0123456789abcdef", uint64(i)*100000))
 	}
 	buf := make([]byte, batchHeader+3*(18+16))

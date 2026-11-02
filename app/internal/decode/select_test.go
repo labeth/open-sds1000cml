@@ -13,7 +13,7 @@ import (
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-214
 func TestNthValueIsTheSortedValue(t *testing.T) {
 	rng := rand.New(rand.NewSource(3))
-	for trial := 0; trial < 300; trial++ {
+	for range 300 {
 		n := rng.Intn(60)
 		v := make([]float64, n)
 		for i := range v {
@@ -29,7 +29,7 @@ func TestNthValueIsTheSortedValue(t *testing.T) {
 		in := append([]float64(nil), v...)
 		want := append([]float64(nil), v...)
 		sort.Float64s(want)
-		for k := 0; k < n; k++ {
+		for k := range n {
 			got := nthValue(v, k)
 			if got != want[k] && !(math.IsNaN(got) && math.IsNaN(want[k])) {
 				t.Fatalf("%v: k %d got %v want %v", in, k, got, want[k])
@@ -47,7 +47,7 @@ func TestNthValueIsTheSortedValue(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-254
 func TestRunningMedianIsMedianOf(t *testing.T) {
 	rng := rand.New(rand.NewSource(7))
-	for trial := 0; trial < 200; trial++ {
+	for trial := range 200 {
 		var m runningMedian
 		var v []float64
 		if m.value() != 0 {

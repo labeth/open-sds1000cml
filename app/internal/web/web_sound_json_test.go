@@ -4,11 +4,10 @@ package web
 import (
 	"encoding/json"
 	"math"
-	"reflect"
-	"testing"
-
 	"open-sds/app/internal/panel"
 	"open-sds/app/internal/sound"
+	"reflect"
+	"testing"
 )
 
 // TestJSONSafeSeries reads a SOUND report with long series through
@@ -17,7 +16,7 @@ import (
 // TRLC-LINKS: REQ-SDS-274
 func TestJSONSafeSeries(t *testing.T) {
 	var r panel.SoundReport
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		r.Drift = append(r.Drift, sound.DriftPoint{T: float64(i), Hz: 440.5, Cents: -1.25})
 		r.ADSREnv = append(r.ADSREnv, float64(i)/8)
 		r.VOct = append(r.VOct, sound.VOctPoint{V: float64(i), Hz: 55})

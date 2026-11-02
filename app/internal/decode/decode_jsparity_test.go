@@ -4,13 +4,12 @@ package decode
 import (
 	"encoding/json"
 	"math/rand"
+	"open-sds/app/internal/testenv"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
-
-	"open-sds/app/internal/testenv"
 )
 
 // parityMult is PARITY_MULT, the corruption count multiplier (1 in CI).
@@ -29,7 +28,7 @@ func TestJSDecoderParity(t *testing.T) {
 	testenv.NeedNode(t)
 	node, _ := exec.LookPath("node")
 
-	type jsCfg = map[string]interface{}
+	type jsCfg = map[string]any
 	type vec struct {
 		Proto  string  `json:"proto"`
 		Codes  []int   `json:"codes"`
@@ -53,16 +52,20 @@ func TestJSDecoderParity(t *testing.T) {
 		if b == nil {
 			b = []int{}
 		}
-		vecs = append(vecs, vec{Proto: proto, Codes: u8(codes), ColT: colT, Cfg: cfg,
-			OK: r.OK, Bytes: b, Text: r.Text})
+		vecs = append(vecs, vec{
+			Proto: proto, Codes: u8(codes), ColT: colT, Cfg: cfg,
+			OK: r.OK, Bytes: b, Text: r.Text,
+		})
 	}
 	add2 := func(proto string, c1, c2 []uint8, colT float64, cfg jsCfg, r Result) {
 		b := r.Bytes
 		if b == nil {
 			b = []int{}
 		}
-		vecs = append(vecs, vec{Proto: proto, Codes: u8(c1), Codes2: u8(c2), ColT: colT,
-			Cfg: cfg, OK: r.OK, Bytes: b, Text: r.Text})
+		vecs = append(vecs, vec{
+			Proto: proto, Codes: u8(c1), Codes2: u8(c2), ColT: colT,
+			Cfg: cfg, OK: r.OK, Bytes: b, Text: r.Text,
+		})
 	}
 
 	// ---- Manchester: auto-bitrate across spb (incl. spb=5), both conventions.
@@ -82,8 +85,10 @@ func TestJSDecoderParity(t *testing.T) {
 			ieee bool
 			want []int
 		}{
-			{true, []int{0x00, 0x00, 0x00}}, {false, []int{0xFF, 0xFF, 0xFF}},
-			{true, []int{0xFF, 0xFF, 0xFF}}, {false, []int{0x00, 0x00, 0x00}},
+			{true, []int{0x00, 0x00, 0x00}},
+			{false, []int{0xFF, 0xFF, 0xFF}},
+			{true, []int{0xFF, 0xFF, 0xFF}},
+			{false, []int{0x00, 0x00, 0x00}},
 		} {
 			w := manchesterWave(mBits(tc.want, true, 8), tc.ieee, spb)
 			add("manchester", w, ct, jsCfg{"ieee": tc.ieee, "msb": true, "bits": 8},
@@ -204,7 +209,7 @@ func TestJSDecoderParity(t *testing.T) {
 	// inference must land on the same spb — hence the same bytes — in Go and JS.
 	{
 		rrng := rand.New(rand.NewSource(0x21A6))
-		for it := 0; it < 8; it++ {
+		for it := range 8 {
 			spb := []float64{12.0, 14.5, 16.0, 20.25}[it%4]
 			want := make([]int, 5)
 			for i := range want {
@@ -217,7 +222,7 @@ func TestJSDecoderParity(t *testing.T) {
 		// Genuinely ambiguous two-tone pulses: both sides must refuse identically.
 		var amb []uint8
 		lv := uint8(210)
-		for p := 0; p < 60; p++ {
+		for p := range 60 {
 			n := 11
 			if p%2 == 1 {
 				n = 17
@@ -250,7 +255,7 @@ func TestJSDecoderParity(t *testing.T) {
 		// jittered periods (built like TestBreakSpiSamplingCadence).
 		var clk, dat []uint8
 		seg := func(c, d uint8, n int) {
-			for i := 0; i < n; i++ {
+			for range n {
 				clk = append(clk, c)
 				dat = append(dat, d)
 			}
@@ -373,24 +378,60 @@ func TestJSDecoderParity(t *testing.T) {
 	uaCT := 1e-6
 	uaBaud := int(1.0 / (16.0 * uaCT))
 	bases := []baseCase{
-		{"manchester", manCT, jsCfg{"ieee": true, "msb": true, "bits": 8}, manW,
-			func(w []uint8) Result { return DecodeManchester(w, manCT, ManchesterCfg{IEEE: true, MSB: true}) }},
-		{"mil1553", milCT, jsCfg{}, milW,
-			func(w []uint8) Result { return DecodeMIL1553(w, milCT, MIL1553Cfg{}) }},
-		{"flexray", flxCT, jsCfg{"bitrate": 10_000_000}, flxW,
-			func(w []uint8) Result { return DecodeFlexRay(w, flxCT, FlexRayCfg{Bitrate: 10_000_000}) }},
-		{"sent", 1e-6, jsCfg{"nibbles": 8}, sntW,
-			func(w []uint8) Result { return DecodeSENT(w, 1e-6, SENTCfg{Nibbles: 8}) }},
-		{"canfd", canCT, jsCfg{"nominalBaud": 500000, "dominantLow": true}, canW,
-			func(w []uint8) Result { return DecodeCANFD(w, canCT, CANFDCfg{NominalBaud: 500000, DominantLow: true}) }},
-		{"arinc429", 2.5e-7, jsCfg{}, arW,
-			func(w []uint8) Result { return DecodeARINC429(w, 2.5e-7, ARINC429Cfg{}) }},
-		{"uart", uaCT, jsCfg{"baud": uaBaud, "parity": "none"}, uaW,
-			func(w []uint8) Result { return DecodeUART(w, uaCT, UARTCfg{Baud: uaBaud}) }},
-		{"uart", uaCT, jsCfg{"baud": uaBaud, "parity": "even"}, uaEvenW,
-			func(w []uint8) Result { return DecodeUART(w, uaCT, UARTCfg{Baud: uaBaud, Parity: "even"}) }},
-		{"uart", uaCT, jsCfg{"baud": uaBaud, "parity": "odd"}, uaOddW,
-			func(w []uint8) Result { return DecodeUART(w, uaCT, UARTCfg{Baud: uaBaud, Parity: "odd"}) }},
+		{
+			"manchester", manCT,
+			jsCfg{"ieee": true, "msb": true, "bits": 8},
+			manW,
+			func(w []uint8) Result { return DecodeManchester(w, manCT, ManchesterCfg{IEEE: true, MSB: true}) },
+		},
+		{
+			"mil1553", milCT,
+			jsCfg{},
+			milW,
+			func(w []uint8) Result { return DecodeMIL1553(w, milCT, MIL1553Cfg{}) },
+		},
+		{
+			"flexray", flxCT,
+			jsCfg{"bitrate": 10_000_000},
+			flxW,
+			func(w []uint8) Result { return DecodeFlexRay(w, flxCT, FlexRayCfg{Bitrate: 10_000_000}) },
+		},
+		{
+			"sent", 1e-6,
+			jsCfg{"nibbles": 8},
+			sntW,
+			func(w []uint8) Result { return DecodeSENT(w, 1e-6, SENTCfg{Nibbles: 8}) },
+		},
+		{
+			"canfd", canCT,
+			jsCfg{"nominalBaud": 500000, "dominantLow": true},
+			canW,
+			func(w []uint8) Result { return DecodeCANFD(w, canCT, CANFDCfg{NominalBaud: 500000, DominantLow: true}) },
+		},
+		{
+			"arinc429", 2.5e-7,
+			jsCfg{},
+			arW,
+			func(w []uint8) Result { return DecodeARINC429(w, 2.5e-7, ARINC429Cfg{}) },
+		},
+		{
+			"uart", uaCT,
+			jsCfg{"baud": uaBaud, "parity": "none"},
+			uaW,
+			func(w []uint8) Result { return DecodeUART(w, uaCT, UARTCfg{Baud: uaBaud}) },
+		},
+		{
+			"uart", uaCT,
+			jsCfg{"baud": uaBaud, "parity": "even"},
+			uaEvenW,
+			func(w []uint8) Result { return DecodeUART(w, uaCT, UARTCfg{Baud: uaBaud, Parity: "even"}) },
+		},
+		{
+			"uart", uaCT,
+			jsCfg{"baud": uaBaud, "parity": "odd"},
+			uaOddW,
+			func(w []uint8) Result { return DecodeUART(w, uaCT, UARTCfg{Baud: uaBaud, Parity: "odd"}) },
+		},
 	}
 	for _, bc := range bases {
 		for it := 0; it < 24*parityMult(); it++ {

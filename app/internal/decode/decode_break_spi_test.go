@@ -46,7 +46,7 @@ func spiSynth(frames [][]int, h int, msb, sampleRising bool, lead, mid, trail in
 		inact, act = hi, lo
 	}
 	seg := func(c, d uint8, n int) {
-		for i := 0; i < n; i++ {
+		for range n {
 			clk = append(clk, c)
 			data = append(data, d)
 		}
@@ -57,7 +57,7 @@ func spiSynth(frames [][]int, h int, msb, sampleRising bool, lead, mid, trail in
 			seg(inact, lo, mid)
 		}
 		for _, b := range fr {
-			for j := 0; j < 8; j++ {
+			for j := range 8 {
 				k := j
 				if msb {
 					k = 7 - j
@@ -73,7 +73,7 @@ func spiSynth(frames [][]int, h int, msb, sampleRising bool, lead, mid, trail in
 		}
 	}
 	seg(inact, lo, trail)
-	return
+	return clk, data, want
 }
 
 // modeCfg maps a desired sampleRising to a random legal (CPOL,CPHA) pair so we
@@ -116,13 +116,13 @@ func TestBreakSpi(t *testing.T) {
 		rnd := rand.New(rand.NewSource(0x5F1FA15E))
 		const iters = 60
 		fails := 0
-		for it := 0; it < iters; it++ {
+		for it := range iters {
 			nFrames := 1 + rnd.Intn(3)
 			frames := make([][]int, nFrames)
-			for f := 0; f < nFrames; f++ {
+			for f := range nFrames {
 				nb := 1 + rnd.Intn(8)
 				fr := make([]int, nb)
-				for b := 0; b < nb; b++ {
+				for b := range nb {
 					fr[b] = rnd.Intn(256)
 				}
 				frames[f] = fr
@@ -163,7 +163,7 @@ func TestBreakSpi(t *testing.T) {
 	t.Run("FalsePositives", func(t *testing.T) {
 		rnd := rand.New(rand.NewSource(0x0FF5E7))
 		const iters = 66
-		for it := 0; it < iters; it++ {
+		for it := range iters {
 			cat := it % 6
 			ct := 2e-7
 			switch cat {
@@ -279,7 +279,7 @@ func TestBreakSpi(t *testing.T) {
 		for _, n := range []int{0, 1, 2, 3, 7} {
 			clk := make([]uint8, n)
 			data := make([]uint8, n)
-			for i := 0; i < n; i++ {
+			for i := range n {
 				clk[i] = uint8(40 + 170*(i%2))
 				data[i] = uint8(40 + 170*((i/1)%2))
 			}
@@ -380,7 +380,7 @@ func TestBreakSpi(t *testing.T) {
 
 		// Randomized edge loop to exceed 50 iterations, mixing tiny valid frames
 		// and random small records; every call must be panic-free.
-		for it := 0; it < 50; it++ {
+		for it := range 50 {
 			if rnd.Intn(2) == 0 {
 				nb := 1 + rnd.Intn(3)
 				fr := make([]int, nb)
@@ -436,7 +436,7 @@ func TestBreakSpiSamplingCadence(t *testing.T) {
 		want := []int{0xA7, 0x3C, 0x81}
 		var clk, data []uint8
 		seg := func(c, d uint8, n int) {
-			for i := 0; i < n; i++ {
+			for range n {
 				clk = append(clk, c)
 				data = append(data, d)
 			}
@@ -504,7 +504,7 @@ func spiSynthBits(bytes []int, bits, h int, msb, sampleRising bool, lead int) (c
 		inact, act = hi, lo
 	}
 	seg := func(c, d uint8, n int) {
-		for i := 0; i < n; i++ {
+		for range n {
 			clk = append(clk, c)
 			data = append(data, d)
 		}
@@ -512,10 +512,10 @@ func spiSynthBits(bytes []int, bits, h int, msb, sampleRising bool, lead int) (c
 	seg(inact, lo, lead)
 	emitted = 0
 	for _, b := range bytes {
-		for j := 0; j < 8; j++ {
+		for j := range 8 {
 			if emitted >= bits {
 				seg(inact, lo, lead) // trailing idle, no more sample edges
-				return
+				return clk, data, emitted
 			}
 			k := j
 			if msb {
@@ -531,7 +531,7 @@ func spiSynthBits(bytes []int, bits, h int, msb, sampleRising bool, lead int) (c
 		}
 	}
 	seg(inact, lo, lead)
-	return
+	return clk, data, emitted
 }
 
 // spiWaveAsym builds a Mode-0 MSB-first capture with an asymmetric clock duty:
@@ -541,7 +541,7 @@ func spiSynthBits(bytes []int, bits, h int, msb, sampleRising bool, lead int) (c
 func spiWaveAsym(bytes []int, setup, active int) (clk, data []uint8) {
 	lo, hi := uint8(40), uint8(210)
 	seg := func(c, d uint8, n int) {
-		for i := 0; i < n; i++ {
+		for range n {
 			clk = append(clk, c)
 			data = append(data, d)
 		}
@@ -558,5 +558,5 @@ func spiWaveAsym(bytes []int, setup, active int) (clk, data []uint8) {
 		}
 	}
 	seg(lo, lo, (setup+active)*4)
-	return
+	return clk, data
 }

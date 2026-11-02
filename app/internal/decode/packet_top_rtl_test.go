@@ -47,10 +47,10 @@ func sequenceRegs(dir, name string, elements []seqElem, qualify, endBad bool, ex
 		fmt.Fprintf(&b, "%x\n%x\n", r[0], r[1])
 	}
 	path := filepath.Join(dir, name+"-regs.mem")
-	if err := os.WriteFile(path, []byte(b.String()), 0600); err != nil {
+	if err := os.WriteFile(path, []byte(b.String()), 0o600); err != nil {
 		panic(err)
 	}
-	return fmt.Sprintf("+regs=%s", path) + " " + fmt.Sprintf("+nregs=%d", len(regs))
+	return "+regs=" + path + " " + fmt.Sprintf("+nregs=%d", len(regs))
 }
 
 // TRLC-LINKS: REQ-SDS-013
@@ -77,17 +77,19 @@ func runPacketTop(t *testing.T, dir, image string, entries []uint8, unit int, co
 		fmt.Fprintf(&in, "%02x\n", v)
 	}
 	path := filepath.Join(dir, fmt.Sprintf("wave-%04x.mem", control))
-	if err := os.WriteFile(path, []byte(in.String()), 0600); err != nil {
+	if err := os.WriteFile(path, []byte(in.String()), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	argv := append([]string{image, "+input=" + path, fmt.Sprintf("+length=%d", len(entries)), fmt.Sprintf("+unit=%d", unit),
-		fmt.Sprintf("+control=%x", control), fmt.Sprintf("+ticks=%d", ticks), fmt.Sprintf("+aux=%x", aux), fmt.Sprintf("+pattern=%x", pattern)}, extra...)
+	argv := append([]string{
+		image, "+input=" + path, fmt.Sprintf("+length=%d", len(entries)), fmt.Sprintf("+unit=%d", unit),
+		fmt.Sprintf("+control=%x", control), fmt.Sprintf("+ticks=%d", ticks), fmt.Sprintf("+aux=%x", aux), fmt.Sprintf("+pattern=%x", pattern),
+	}, extra...)
 	out, err := exec.Command("vvp", argv...).CombinedOutput()
 	if err != nil || !strings.Contains(string(out), "PASS packet top") {
 		t.Fatalf("simulate: %v\n%s", err, out)
 	}
 	r := packetTopRun{trigger: -1}
-	for _, line := range strings.Split(string(out), "\n") {
+	for line := range strings.SplitSeq(string(out), "\n") {
 		var e [4]uint64
 		if _, err := fmt.Sscanf(line, "E %d %d %x %d", &e[0], &e[1], &e[2], &e[3]); err == nil {
 			r.events = append(r.events, e)
@@ -126,14 +128,16 @@ func TestPacketImageTopRTL(t *testing.T) {
 	rtl := testenv.RTLDir(t)
 	compile := func(name, defines string, decoders ...string) string {
 		defs := filepath.Join(dir, name+"-defines.v")
-		if err := os.WriteFile(defs, []byte(defines), 0600); err != nil {
+		if err := os.WriteFile(defs, []byte(defines), 0o600); err != nil {
 			t.Fatal(err)
 		}
 		image := filepath.Join(dir, name+".vvp")
 		args := []string{"-g2012", "-s", "tb_top_packet", "-o", image, "-I", rtl, defs}
-		for _, f := range append([]string{"top.v", "record.v", "transport.v", "adc_unpack.v", "sample_timeline.v", "decoded_event_queue.v",
+		for _, f := range append([]string{
+			"top.v", "record.v", "transport.v", "adc_unpack.v", "sample_timeline.v", "decoded_event_queue.v",
 			"decoded_event_bridge.v", "decoded_event_reader.v", "decoded_event_transport.v", "decoded_event_port.v",
-			"gpmc_slave.v", "ddio_pair.v", "lane_in.v", "sim/ddr_model.v", "sim/tb_top_packet.v", "event_sequence.v", "envelope_reduce.v", "panel_scan.v"}, decoders...) {
+			"gpmc_slave.v", "ddio_pair.v", "lane_in.v", "sim/ddr_model.v", "sim/tb_top_packet.v", "event_sequence.v", "envelope_reduce.v", "panel_scan.v",
+		}, decoders...) {
 			args = append(args, filepath.Join(rtl, f))
 		}
 		if out, err := exec.Command("iverilog", args...).CombinedOutput(); err != nil {
@@ -192,14 +196,16 @@ func TestPacketImageTopRTL(t *testing.T) {
 		// envelope and check each bucket's extremes against the SRAM words.
 		_, w := canStdFrame(0x123, 4, []int{0x55, 0xAA, 0x0F, 0xF0})
 		wire := append(append(ones(20), w...), ones(10)...)
-		out, err := exec.Command("vvp", []string{image, "+input=" + writeEntries(t, dir, bitsEntries(wire, 210, 40)),
-			fmt.Sprintf("+length=%d", len(wire)), "+unit=500", "+control=601", "+ticks=32000", "+aux=7d00", "+pattern=0", "+envelope=256"}...).CombinedOutput()
+		out, err := exec.Command("vvp", []string{
+			image, "+input=" + writeEntries(t, dir, bitsEntries(wire, 210, 40)),
+			fmt.Sprintf("+length=%d", len(wire)), "+unit=500", "+control=601", "+ticks=32000", "+aux=7d00", "+pattern=0", "+envelope=256",
+		}...).CombinedOutput()
 		if err != nil || !strings.Contains(string(out), "PASS packet top") {
 			t.Fatalf("simulate: %v\n%s", err, out)
 		}
 		var sram, buffer []uint32
 		received := -1
-		for _, line := range strings.Split(string(out), "\n") {
+		for line := range strings.SplitSeq(string(out), "\n") {
 			var v uint32
 			if _, err := fmt.Sscanf(line, "S %x", &v); err == nil {
 				sram = append(sram, v)
@@ -286,7 +292,7 @@ func TestPacketImageTopRTL(t *testing.T) {
 		wire := ones(20)
 		for i, b := range bytes {
 			wire = append(wire, 0)
-			for k := 0; k < 8; k++ {
+			for k := range 8 {
 				wire = append(wire, b>>k&1)
 			}
 			if i == badStop {
@@ -426,9 +432,9 @@ func TestPacketImageTopRTL(t *testing.T) {
 		// 100 kbit/s: two entries per bit, 2500 ADC samples each; 1250 receiver clocks per bit.
 		var w []uint8
 		arincIdle(&w, 8)
-		arincAppendWord(&w, arincMakeWord(0312, 1, 0x2abcd, 3), 2)
+		arincAppendWord(&w, arincMakeWord(0o312, 1, 0x2abcd, 3), 2)
 		arincIdle(&w, 8)
-		arincAppendWord(&w, arincMakeWord(0107, 2, 0x15a3f, 1), 2)
+		arincAppendWord(&w, arincMakeWord(0o107, 2, 0x15a3f, 1), 2)
 		arincIdle(&w, 16)
 		levels := uint32(141)<<24 | uint32(114)<<16 | uint32(161)<<8 | 92
 		r := runPacketTop(t, dir, image, w, 2500, 1|8<<8, 1250, levels, 0,
@@ -470,7 +476,7 @@ func envelopeRef(words []uint32, skip, bucket int) []uint32 {
 		mn, mx := [2]uint32{0xff, 0xff}, [2]uint32{}
 		for _, w := range words[b : b+bucket] {
 			for _, x := range [][2]uint32{{w & 0xff, w >> 8 & 0xff}, {w >> 16 & 0xff, w >> 24}} {
-				for ch := 0; ch < 2; ch++ {
+				for ch := range 2 {
 					mn[ch], mx[ch] = min(mn[ch], x[ch]), max(mx[ch], x[ch])
 				}
 			}
@@ -489,7 +495,7 @@ func writeEntries(t *testing.T, dir string, entries []uint8) string {
 		fmt.Fprintf(&in, "%02x\n", v)
 	}
 	path := filepath.Join(dir, "envelope-wave.mem")
-	if err := os.WriteFile(path, []byte(in.String()), 0600); err != nil {
+	if err := os.WriteFile(path, []byte(in.String()), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	return path

@@ -4,14 +4,13 @@ package lcd
 import (
 	"fmt"
 	"math"
-	"strconv"
-	"sync"
-	"time"
-
 	"open-sds/app/internal/analog"
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/measure"
 	"open-sds/app/internal/panel/wsview"
+	"strconv"
+	"sync"
+	"time"
 )
 
 // measFor throttles the full-record auto-measurement to readout rate. The HUD
@@ -183,8 +182,10 @@ func measParamRow(m *measure.Result, id string) (measRow, bool) {
 }
 
 // allMeasParams is every parameter, in the readout box's order: the web's.
-var allMeasParams = []string{"pkpk", "max", "min", "mean", "rms", "freq", "period", "duty",
-	"acrms", "top", "base", "ampl", "rise", "fall", "pwid", "nwid", "ovsh", "prsh"}
+var allMeasParams = []string{
+	"pkpk", "max", "min", "mean", "rms", "freq", "period", "duty",
+	"acrms", "top", "base", "ampl", "rise", "fall", "pwid", "nwid", "ovsh", "prsh",
+}
 
 // drawMeasPanel draws the MEASURE readout boxes: per shown channel, a box of
 // its chosen parameters (every parameter when nothing is chosen), via the
@@ -322,7 +323,7 @@ func drawCursors(sf Surface, p plotArea, hud HUD) {
 	}
 	var label string
 	if hud.CurType == 0 { // X (time) cursors
-		for k := 0; k < 2; k++ {
+		for k := range 2 {
 			if !off(true, hud.CurX[k], k) {
 				dash(true, int(hud.CurX[k]*float64(p.w-1)), hud.CurSel == k)
 			}
@@ -337,7 +338,7 @@ func drawCursors(sf Surface, p plotArea, hud HUD) {
 			label += "  1/dt " + fmtFreq(1/dt)
 		}
 	} else { // Y (volts) cursors — report ΔV for BOTH channels (web parity)
-		for k := 0; k < 2; k++ {
+		for k := range 2 {
 			if !off(false, hud.CurY[k], k) {
 				dash(false, p.top+int(hud.CurY[k]*float64(p.bot-p.top)), hud.CurSel == k)
 			}

@@ -4,13 +4,12 @@ package web
 import (
 	"math"
 	"net/http/httptest"
+	"open-sds/app/internal/engine"
+	"open-sds/app/internal/testenv"
 	"os/exec"
 	"strings"
 	"sync/atomic"
 	"testing"
-
-	"open-sds/app/internal/engine"
-	"open-sds/app/internal/testenv"
 )
 
 // TestZoneMaskBrowser drives zonemask_browser.mjs: real-browser coverage of
@@ -28,7 +27,7 @@ func TestZoneMaskBrowser(t *testing.T) {
 		seq := n.Add(1)
 		c1 := make([]uint8, N)
 		c2 := make([]uint8, N)
-		for i := 0; i < N; i++ {
+		for i := range N {
 			c1[i] = uint8(128 + 60*math.Sin(2*math.Pi*8*float64(i)/N))
 			c2[i] = uint8(128 + 40*math.Sin(2*math.Pi*5*float64(i)/N))
 		}
@@ -78,7 +77,7 @@ func TestZoneMaskBrowser(t *testing.T) {
 	if fs.lastMask == nil || fs.lastMask.WinCols != N {
 		t.Fatalf("mask upload missing: %+v", fs.lastMask)
 	}
-	for j := 0; j < N; j++ {
+	for j := range N {
 		if fs.lastMask.Lo[j] > fs.lastMask.Hi[j] {
 			t.Fatalf("mask bounds inverted at col %d: [%d,%d]", j, fs.lastMask.Lo[j], fs.lastMask.Hi[j])
 		}

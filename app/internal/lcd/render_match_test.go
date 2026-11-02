@@ -9,8 +9,8 @@ import (
 // hexPair accepts exactly the two-character tokens ParseUint(t, 16, 8) does.
 // TRLC-LINKS: REQ-SDS-214
 func TestHexPairMatchesParseUint(t *testing.T) {
-	for a := 0; a < 256; a++ {
-		for b := 0; b < 256; b++ {
+	for a := range 256 {
+		for b := range 256 {
 			tok := string([]byte{byte(a), byte(b)})
 			v, err := strconv.ParseUint(tok, 16, 8)
 			got, ok := hexPair(tok)

@@ -2,10 +2,9 @@
 package panel
 
 import (
+	"open-sds/app/internal/engine"
 	"testing"
 	"time"
-
-	"open-sds/app/internal/engine"
 )
 
 // Converters that stay stuck after the engine's recoveries show a notice

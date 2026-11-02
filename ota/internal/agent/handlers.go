@@ -3,16 +3,16 @@ package agent
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"open-sds/ota/internal/gpmc"
+	"open-sds/ota/internal/slots"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
 	"syscall"
 	"time"
-
-	"open-sds/ota/internal/gpmc"
-	"open-sds/ota/internal/slots"
 )
 
 var handlers = map[string]handlerFn{}
@@ -113,7 +113,7 @@ func hExec(a *Agent, args json.RawMessage) (any, error) {
 		return nil, err
 	}
 	if len(p.Argv) == 0 {
-		return nil, fmt.Errorf("exec: empty argv")
+		return nil, errors.New("exec: empty argv")
 	}
 	to := time.Duration(p.Timeout) * time.Second
 	if to <= 0 {
@@ -133,7 +133,7 @@ func hSh(a *Agent, args json.RawMessage) (any, error) {
 		return nil, err
 	}
 	if strings.TrimSpace(p.Script) == "" {
-		return nil, fmt.Errorf("sh: empty script")
+		return nil, errors.New("sh: empty script")
 	}
 	to := time.Duration(p.Timeout) * time.Second
 	if to <= 0 {
@@ -157,7 +157,7 @@ func hPutBegin(a *Agent, args json.RawMessage) (any, error) {
 		return nil, err
 	}
 	if p.Dest == "" {
-		return nil, fmt.Errorf("put.begin: dest required")
+		return nil, errors.New("put.begin: dest required")
 	}
 	id, err := a.newUpload(p.Dest, p.Size, p.SHA, p.Mode)
 	if err != nil {
@@ -231,7 +231,7 @@ func hGet(a *Agent, args json.RawMessage) (any, error) {
 // TRLC-LINKS: REQ-SDS-117
 func hAppStart(a *Agent, _ json.RawMessage) (any, error) {
 	if !a.st.get().TakenOver {
-		return nil, fmt.Errorf("not taken over — the factory app owns the instrument; run takeover first")
+		return nil, errors.New("not taken over — the factory app owns the instrument; run takeover first")
 	}
 	a.clearFails()
 	return map[string]any{"ok": true}, a.ctlRequest("start", 5*time.Second)
@@ -245,7 +245,7 @@ func hAppStop(a *Agent, _ json.RawMessage) (any, error) {
 // TRLC-LINKS: REQ-SDS-117
 func hAppRestart(a *Agent, _ json.RawMessage) (any, error) {
 	if !a.st.get().TakenOver {
-		return nil, fmt.Errorf("not taken over")
+		return nil, errors.New("not taken over")
 	}
 	return map[string]any{"ok": true}, a.ctlRequest("restart", 8*time.Second)
 }
@@ -262,7 +262,7 @@ func hAppUpdate(a *Agent, args json.RawMessage) (any, error) {
 		return nil, err
 	}
 	if p.Src == "" {
-		return nil, fmt.Errorf("app.update: src required")
+		return nil, errors.New("app.update: src required")
 	}
 	if p.SHA != "" {
 		got, err := slots.FileSHA256(p.Src)
@@ -329,7 +329,7 @@ func hAgentUpdate(a *Agent, args json.RawMessage) (any, error) {
 		return nil, err
 	}
 	if p.Src == "" {
-		return nil, fmt.Errorf("agent.update: src required")
+		return nil, errors.New("agent.update: src required")
 	}
 	if p.SHA != "" {
 		got, err := slots.FileSHA256(p.Src)
@@ -431,7 +431,7 @@ func hRestoreFactory(a *Agent, args json.RawMessage) (any, error) {
 		p.Dir = "/usr/bin/siglent"
 	}
 	if st := a.st.get(); st.TakenOver {
-		return nil, fmt.Errorf("still taken over — run untakeover first so the supervisor doesn't fight the factory app for the bus")
+		return nil, errors.New("still taken over — run untakeover first so the supervisor doesn't fight the factory app for the bus")
 	}
 	if _, err := os.Stat(p.Path); err != nil {
 		return nil, fmt.Errorf("restore-factory: %s not found: %w", p.Path, err)
@@ -459,11 +459,15 @@ func hRestoreFactory(a *Agent, args json.RawMessage) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	a.event("restore-factory", map[string]any{"path": p.Path, "pid": pid, "console": p.Console,
-		"inherit": p.Inherit, "setsid": p.Setsid, "boot_env": p.BootEnv, "release_fds": p.ReleaseFDs})
-	return map[string]any{"launched": p.Path, "pid": pid, "console": p.Console,
+	a.event("restore-factory", map[string]any{
+		"path": p.Path, "pid": pid, "console": p.Console,
 		"inherit": p.Inherit, "setsid": p.Setsid, "boot_env": p.BootEnv, "release_fds": p.ReleaseFDs,
-		"note": "if the display does not return, reboot"}, nil
+	})
+	return map[string]any{
+		"launched": p.Path, "pid": pid, "console": p.Console,
+		"inherit": p.Inherit, "setsid": p.Setsid, "boot_env": p.BootEnv, "release_fds": p.ReleaseFDs,
+		"note": "if the display does not return, reboot",
+	}, nil
 }
 
 // TRLC-LINKS: REQ-SDS-114
@@ -480,7 +484,7 @@ func hReboot(a *Agent, args json.RawMessage) (any, error) {
 		Confirm bool `json:"confirm"`
 	}](args)
 	if !p.Confirm {
-		return nil, fmt.Errorf("reboot: pass confirm=true — note reboot is often a no-op on this unit; a wedge needs the external power plug")
+		return nil, errors.New("reboot: pass confirm=true — note reboot is often a no-op on this unit; a wedge needs the external power plug")
 	}
 	out, err := a.runShell("sync; (sleep 1; reboot) &", 5*time.Second)
 	return map[string]any{"output": string(out)}, err

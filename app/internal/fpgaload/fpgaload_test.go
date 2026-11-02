@@ -381,7 +381,7 @@ func TestRBFLen(t *testing.T) {
 func TestPortWordsMatchTheShift(t *testing.T) {
 	for _, rev := range []bool{false, true} {
 		words := portWords(rev)
-		for b := 0; b < 256; b++ {
+		for b := range 256 {
 			f := &fakePort{}
 			o := Options{}
 			o.withDefaults()

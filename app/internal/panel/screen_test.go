@@ -16,8 +16,13 @@ func TestScreenSaverTimes(t *testing.T) {
 	for i, step := range []struct {
 		after time.Duration
 		want  Screen
-	}{{0, ScreenOn}, {15*time.Minute - time.Second, ScreenOn}, {time.Second, ScreenSaver},
-		{45*time.Minute - time.Second, ScreenSaver}, {time.Second, ScreenOff}} {
+	}{
+		{0, ScreenOn},
+		{15*time.Minute - time.Second, ScreenOn},
+		{time.Second, ScreenSaver},
+		{45*time.Minute - time.Second, ScreenSaver},
+		{time.Second, ScreenOff},
+	} {
 		k.advance(step.after)
 		if got := c.Screen(); got != step.want {
 			t.Fatalf("step %d: %v, want %v", i, got, step.want)
@@ -122,8 +127,12 @@ func TestScreenRows(t *testing.T) {
 	if a, b := rowText(c, "sys.saver"), rowText(c, "sys.screen_off"); a != "15 min" || b != "1 h" {
 		t.Fatalf("factory: saver %q, off %q", a, b)
 	}
-	for _, set := range [][3]string{{"sys.saver", "1 min", "1 min"}, {"sys.saver", "1 h", "1 h"},
-		{"sys.screen_off", "4 h", "4 h"}, {"sys.screen_off", "Off", "Off"}} {
+	for _, set := range [][3]string{
+		{"sys.saver", "1 min", "1 min"},
+		{"sys.saver", "1 h", "1 h"},
+		{"sys.screen_off", "4 h", "4 h"},
+		{"sys.screen_off", "Off", "Off"},
+	} {
 		if res := c.SheetSet(set[0], nil, set[1]); !res.OK || rowText(c, set[0]) != set[2] {
 			t.Fatalf("%s %q: %+v, the row %q", set[0], set[1], res, rowText(c, set[0]))
 		}

@@ -29,12 +29,12 @@ func TestAutodetectEitherChannel(t *testing.T) {
 	for i, a := range []int{0x24, 0x50, 0x3C, 0x68} {
 		c, d := i2cWave(a, i&1, []int{0x55 + i, 0xAA - i, 0x0F}, 20)
 		scl, sda = append(scl, c...), append(sda, d...)
-		for k := 0; k < 200; k++ {
+		for range 200 {
 			scl, sda = append(scl, 210), append(sda, 210)
 		}
 	}
 	caps = append(caps, cap{"I2C", scl, sda, 1e-7})
-	for mode := 0; mode < 4; mode++ {
+	for mode := range 4 {
 		clk, dat := spiModeWave([]int{0x0F, 0xF0, 0x3C, 0xC3, 0x12, 0x34, 0x56, 0x78, 0x01, 0x80}, 8, 0, mode&2 != 0, mode&1 != 0, true)
 		caps = append(caps, cap{fmt.Sprintf("SPI mode %d", mode), clk, dat, 1e-7})
 	}

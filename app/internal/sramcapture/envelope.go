@@ -3,6 +3,7 @@ package sramcapture
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 )
@@ -83,10 +84,10 @@ func (c *Capture) recallEnvelope(ctx context.Context, m Metadata, offset, bucket
 		return fmt.Errorf("sramcapture: fabric lacks the envelope recall: %v", err)
 	}
 	if m.DataFault {
-		return fmt.Errorf("sramcapture: interleave FIFO fault; record has missing samples")
+		return errors.New("sramcapture: interleave FIFO fault; record has missing samples")
 	}
 	if !m.Ready || !m.Frozen || m.Running {
-		return fmt.Errorf("sramcapture: record is not frozen")
+		return errors.New("sramcapture: record is not frozen")
 	}
 	q8 := m.FractionBits == 8
 	perBucket := uint32(1)
@@ -97,7 +98,7 @@ func (c *Capture) recallEnvelope(ctx context.Context, m Metadata, offset, bucket
 	// The FPGA reduces two-word packets: buckets are an even number of words.
 	if bucket < 2 || bucket%2 != 0 || bucket > 0xffffe || buckets == 0 || buckets*perBucket > EnvelopeOutputWords || (!q8 && buckets%2 != 0) ||
 		uint64(offset)+uint64(words) > uint64(m.Length) || words+16 > Words {
-		return fmt.Errorf("sramcapture: invalid envelope window")
+		return errors.New("sramcapture: invalid envelope window")
 	}
 	const prefix = 16
 	target := (m.Origin + m.Start + offset - prefix) & addressMask

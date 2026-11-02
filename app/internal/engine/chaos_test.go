@@ -22,12 +22,10 @@ func TestEngineConcurrencyChaos(t *testing.T) {
 
 	// the "engine goroutine": frames + boundary band changes, dispatched by
 	// band kind exactly like run() — 400 iterations, then stop the hammers.
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		defer stop.Store(true)
 		last := KindDecimated
-		for i := 0; i < 400; i++ {
+		for range 400 {
 			e.mu.Lock()
 			if e.pendSet {
 				e.band = e.pendBand
@@ -50,17 +48,15 @@ func TestEngineConcurrencyChaos(t *testing.T) {
 			}
 			e.Consume()
 		}
-	}()
+	})
 
 	hammer := func(seed int64, fn func(r *rand.Rand)) {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			r := rand.New(rand.NewSource(seed))
 			for !stop.Load() {
 				fn(r)
 			}
-		}()
+		})
 	}
 	tdivs := []float64{100e-9, 1e-6, 50e-6, 500e-6, 5e-3, 100e-3}
 	hammer(1, func(r *rand.Rand) { e.SetTdiv(tdivs[r.Intn(len(tdivs))]) })

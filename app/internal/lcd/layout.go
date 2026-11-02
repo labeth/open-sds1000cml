@@ -2,9 +2,8 @@
 package lcd
 
 import (
-	"sync"
-
 	"open-sds/app/internal/panel/wsview"
+	"sync"
 )
 
 // plotArea is the rectangle the waveform views draw in (REQ-SDS-211): the

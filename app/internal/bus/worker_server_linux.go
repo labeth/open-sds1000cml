@@ -4,14 +4,14 @@ package bus
 import (
 	"context"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
+	"open-sds/app/internal/decodedlines"
+	"open-sds/app/internal/sramcapture"
 	"syscall"
 	"time"
 	"unsafe"
-
-	"open-sds/app/internal/decodedlines"
-	"open-sds/app/internal/sramcapture"
 )
 
 const workerQueueEvents = 131072
@@ -74,7 +74,7 @@ type streamRingWriter struct{ w *acquisitionWorker }
 func (r streamRingWriter) Write(b []byte) (int, error) {
 	w := r.w
 	if w.sCount+len(b) > len(w.sring) {
-		return 0, fmt.Errorf("isolated stream ring overflow; words lost")
+		return 0, errors.New("isolated stream ring overflow; words lost")
 	}
 	for done := 0; done < len(b); {
 		at := (w.sHead + w.sCount) % len(w.sring)
@@ -164,7 +164,7 @@ func (w *acquisitionWorker) streamPump() {
 	// it), and a timer a pass cost a tenth of the worker at the fastest
 	// stream.
 	ctx := context.Background()
-	for i := 0; i < 8; i++ {
+	for range 8 {
 		t0 := time.Now()
 		block, err := w.capture.DrainStream(ctx, w.sExpected, streamRingWriter{w})
 		// A pump started ahead of its stream waits for it to be enabled; once
@@ -262,14 +262,16 @@ func RunAcquisitionWorker(gpmcFD, socketFD int, logf func(string, ...any)) error
 		return err
 	}
 	if !d.EnableEDMA(8192, logf) {
-		return fmt.Errorf("worker requires coherent EDMA")
+		return errors.New("worker requires coherent EDMA")
 	}
 	c, err := sramcapture.New(d)
 	if err != nil {
 		return err
 	}
-	w := &acquisitionWorker{bus: d, capture: c, logf: logf, ring: make([]byte, workerQueueEvents*sramcapture.DecodedEventBytes),
-		linesStore: decodedlines.New(0, workerLineCapacity)}
+	w := &acquisitionWorker{
+		bus: d, capture: c, logf: logf, ring: make([]byte, workerQueueEvents*sramcapture.DecodedEventBytes),
+		linesStore: decodedlines.New(0, workerLineCapacity),
+	}
 	// The stream ring is pinned before any stream: pinning took about 0.19 s,
 	// and a stream started meanwhile filled the drum's ring at 2.6M words/s.
 	w.pinStreamRing()
@@ -294,7 +296,7 @@ func (w *acquisitionWorker) pinStreamRing() {
 
 // errWorkerQueueOverflow is the event queue's overflow: an explicit end of a
 // transcript of events, a marked loss once the worker builds the lines.
-var errWorkerQueueOverflow = fmt.Errorf("isolated decoded queue overflow; transcript incomplete")
+var errWorkerQueueOverflow = errors.New("isolated decoded queue overflow; transcript incomplete")
 
 // pump runs independently of GUI requests. The bounded ring can absorb client
 // scheduling gaps, but exhaustion is explicit and never masquerades as lossless.
@@ -395,12 +397,12 @@ func (w *acquisitionWorker) handle(request []byte) int {
 	n := 0
 	var err error
 	if count > workerPayload {
-		err = fmt.Errorf("oversized worker request")
+		err = errors.New("oversized worker request")
 	} else {
 		switch op {
 		case workerHello:
 			if count != 1 {
-				err = fmt.Errorf("invalid ready request")
+				err = errors.New("invalid ready request")
 				break
 			}
 			if w.bus.FastDrain() {
@@ -411,11 +413,11 @@ func (w *acquisitionWorker) handle(request []byte) int {
 			n = 1
 		case workerRead:
 			if count != 2 || !validPlane(plane) || sel > 127 {
-				err = fmt.Errorf("invalid register read")
+				err = errors.New("invalid register read")
 				break
 			}
 			if w.active && plane == 1 && sel == 59 {
-				err = fmt.Errorf("decoded event port belongs to worker")
+				err = errors.New("decoded event port belongs to worker")
 				break
 			}
 			var v uint16
@@ -425,7 +427,7 @@ func (w *acquisitionWorker) handle(request []byte) int {
 		case workerReadMany:
 			params := request[min(len(request), workerHeader):]
 			if len(params) < 2 || len(params)%2 != 0 || count != len(params) || !validPlane(plane) {
-				err = fmt.Errorf("invalid register reads")
+				err = errors.New("invalid register reads")
 				break
 			}
 			for i := 0; i < len(params) && err == nil; i += 2 {
@@ -442,7 +444,7 @@ func (w *acquisitionWorker) handle(request []byte) int {
 		case workerWriteMany:
 			params := request[min(len(request), workerHeader):]
 			if count != 0 || len(params) < 4 || len(params)%4 != 0 || plane != PlaneCS1 {
-				err = fmt.Errorf("invalid register writes")
+				err = errors.New("invalid register writes")
 				break
 			}
 			for i := 0; i < len(params) && err == nil; i += 4 {
@@ -457,11 +459,11 @@ func (w *acquisitionWorker) handle(request []byte) int {
 			}
 		case workerWrite:
 			if count != 0 || !validPlane(plane) || sel > 127 || (plane == 3 && !Writable(plane, sel)) {
-				err = fmt.Errorf("invalid register write")
+				err = errors.New("invalid register write")
 				break
 			}
 			if w.active && plane == 1 && (sel == 60 || sel == 76) {
-				err = fmt.Errorf("decoded FIFO control belongs to worker")
+				err = errors.New("decoded FIFO control belongs to worker")
 				break
 			}
 			if plane == 1 {
@@ -474,14 +476,14 @@ func (w *acquisitionWorker) handle(request []byte) int {
 			}
 		case workerPop:
 			if count == 0 || count%2 != 0 || sel > 127 || (w.active && sel == 59) {
-				err = fmt.Errorf("invalid or worker-owned pop")
+				err = errors.New("invalid or worker-owned pop")
 				break
 			}
 			err = w.bus.PopBytesChecked(sel, data[:count])
 			n = count
 		case workerEvents:
 			if count == 0 || count%32 != 0 || !w.active || epoch != w.epoch {
-				err = fmt.Errorf("inactive or stale decoded epoch")
+				err = errors.New("inactive or stale decoded epoch")
 				break
 			}
 			if w.fault != nil {
@@ -497,7 +499,7 @@ func (w *acquisitionWorker) handle(request []byte) int {
 			n = amount * 32
 		case workerLineMode:
 			if !w.active || count != 0 {
-				err = fmt.Errorf("line mode needs an active decoded stream")
+				err = errors.New("line mode needs an active decoded stream")
 				break
 			}
 			if value == 0 {
@@ -528,7 +530,7 @@ func (w *acquisitionWorker) handle(request []byte) int {
 			}
 		case workerLines:
 			if !w.active || w.lines == nil || epoch != w.epoch {
-				err = fmt.Errorf("no decoded line stream")
+				err = errors.New("no decoded line stream")
 				break
 			}
 			if w.fault != nil {
@@ -542,7 +544,7 @@ func (w *acquisitionWorker) handle(request []byte) int {
 		case workerRecall:
 			params := request[min(len(request), workerHeader):]
 			if count == 0 || len(params) < 16 || (len(params)-4)%12 != 0 {
-				err = fmt.Errorf("invalid recall request")
+				err = errors.New("invalid recall request")
 				break
 			}
 			out := sliceWriter{b: data[:count]}
@@ -563,7 +565,7 @@ func (w *acquisitionWorker) handle(request []byte) int {
 			params := request[min(len(request), workerHeader):]
 			size := int(sel)<<16 | int(value)
 			if count != 4 || len(params) < 16 || (len(params)-4)%12 != 0 || size == 0 {
-				err = fmt.Errorf("invalid shared recall request")
+				err = errors.New("invalid shared recall request")
 				break
 			}
 			n = 4
@@ -592,7 +594,7 @@ func (w *acquisitionWorker) handle(request []byte) int {
 			n = count
 		case workerPanel:
 			if count != 22 {
-				err = fmt.Errorf("invalid panel request")
+				err = errors.New("invalid panel request")
 				break
 			}
 			var words [11]uint16
@@ -603,13 +605,13 @@ func (w *acquisitionWorker) handle(request []byte) int {
 			n = 22
 		case workerStreamPump:
 			if count != 0 {
-				err = fmt.Errorf("invalid stream pump request")
+				err = errors.New("invalid stream pump request")
 				break
 			}
 			err = w.streamPumpOn(value&1 != 0)
 		case workerStreamWords:
 			if count < 8 || !w.sOn {
-				err = fmt.Errorf("no stream pump")
+				err = errors.New("no stream pump")
 				break
 			}
 			if w.sFault != nil {
@@ -629,7 +631,7 @@ func (w *acquisitionWorker) handle(request []byte) int {
 		case workerStreamPeek:
 			n, err = w.streamPeek(epoch, data)
 		default:
-			err = fmt.Errorf("unknown worker operation")
+			err = errors.New("unknown worker operation")
 		}
 	}
 	if err != nil {
@@ -716,7 +718,7 @@ func (w *acquisitionWorker) serve(fd int) error {
 			n, _, errno := syscall.RawSyscall(syscall.SYS_WRITE, uintptr(fd), uintptr(unsafe.Pointer(&w.response[0])), uintptr(pending))
 			if errno == 0 {
 				if int(n) != pending {
-					return fmt.Errorf("short worker response")
+					return errors.New("short worker response")
 				}
 				pending = 0
 			} else if errno != syscall.EAGAIN && errno != syscall.EINTR && errno != syscall.ENOBUFS {
@@ -735,7 +737,7 @@ func (w *acquisitionWorker) serve(fd int) error {
 				op := binary.LittleEndian.Uint16(request[8:10])
 				withParams := int(n) > workerHeader && int(n) <= workerHeader+workerRecallParams && (op == workerRecall || op == workerRecallShared || op == workerReadMany || op == workerWriteMany)
 				if int(n) != workerHeader && !withParams || binary.LittleEndian.Uint32(request[:4]) != workerMagic || request[11] != 1 {
-					return fmt.Errorf("invalid worker request framing")
+					return errors.New("invalid worker request framing")
 				}
 				pending = w.handle(request[:n])
 				// Answer before the next FPGA drain: a pump between request and
@@ -744,7 +746,7 @@ func (w *acquisitionWorker) serve(fd int) error {
 				n, _, errno := syscall.RawSyscall(syscall.SYS_WRITE, uintptr(fd), uintptr(unsafe.Pointer(&w.response[0])), uintptr(pending))
 				if errno == 0 {
 					if int(n) != pending {
-						return fmt.Errorf("short worker response")
+						return errors.New("short worker response")
 					}
 					pending = 0
 				} else if errno != syscall.EAGAIN && errno != syscall.EINTR && errno != syscall.ENOBUFS {

@@ -33,8 +33,10 @@ func orcI2CRun(t *testing.T, layer, pd, ann string, txns []orcI2CTxn) ([]Packet,
 func TestOracleLayerEDID(t *testing.T) {
 	orcNeed(t, "i2c", "edid")
 	edid := edidBlock()
-	ps, anns := orcI2CRun(t, "edid", "edid", "edid", []orcI2CTxn{{addr: 0x50, data: []byte{0}, noStop: true},
-		{addr: 0x50, read: true, data: edid}})
+	ps, anns := orcI2CRun(t, "edid", "edid", "edid", []orcI2CTxn{
+		{addr: 0x50, data: []byte{0}, noStop: true},
+		{addr: 0x50, read: true, data: edid},
+	})
 	repo := orcMatch(orcNotes(ps), `^EDID ([A-Z]{3}) ([0-9A-F]{4}) '(.*)' (\d+)x(\d+)@\d+Hz v(\d)\.(\d) checksum (ok)$`)
 	ts := strings.Join(orcTexts(anns), "\n")
 	get := func(re string) string {
@@ -44,9 +46,11 @@ func TestOracleLayerEDID(t *testing.T) {
 		}
 		return m[1]
 	}
-	orc := []string{strings.Join([]string{get(`(?m)^([A-Z]{3})(?: \(|$)`), strings.ToUpper(get(`(?m)^Product 0x([0-9a-f]{4})$`)),
+	orc := []string{strings.Join([]string{
+		get(`(?m)^([A-Z]{3})(?: \(|$)`), strings.ToUpper(get(`(?m)^Product 0x([0-9a-f]{4})$`)),
 		get(`(?m)^Monitor name\n([^\n]+)$`), get(`(?m)^Horizontal active: (\d+)`), get(`(?m)^Vertical active: (\d+)`),
-		get(`(?m)^Version (\d+)$`), get(`(?m)^Revision (\d+)$`), strings.ToLower(get(`(?m)^Checksum: \d+ \((OK)\)$`))}, "|")}
+		get(`(?m)^Version (\d+)$`), get(`(?m)^Revision (\d+)$`), strings.ToLower(get(`(?m)^Checksum: \d+ \((OK)\)$`)),
+	}, "|")}
 	orcEq(t, "EDID", repo, orc)
 }
 
@@ -63,8 +67,10 @@ func TestOracleLayerXFP(t *testing.T) {
 	m[186], m[187] = 0x66, 0x58
 	copy(m[196:212], "SN0001          ")
 	copy(m[212:220], "26101800") // the manufacture date code
-	ps, anns := orcI2CRun(t, "xfp", "xfp", "xfp", []orcI2CTxn{{addr: 0x50, data: []byte{0}, noStop: true},
-		{addr: 0x50, read: true, data: m}})
+	ps, anns := orcI2CRun(t, "xfp", "xfp", "xfp", []orcI2CTxn{
+		{addr: 0x50, data: []byte{0}, noStop: true},
+		{addr: 0x50, read: true, data: m},
+	})
 	repo := orcMatch(orcNotes(ps), `^XFP (XFP) (\d+\.\d) C .* TX (\d\.\d\d)\d mW RX (\d\.\d\d)\d mW XFP '([^']*)' PN '([^']*)' (\d+)\.\d\d nm SN '([^']*)'$`)
 	ts := strings.Join(orcTexts(anns), "\n")
 	get := func(re string) string {
@@ -74,10 +80,12 @@ func TestOracleLayerXFP(t *testing.T) {
 		}
 		return r[1]
 	}
-	orc := []string{strings.Join([]string{get(`(?m)^Module identifier: (XFP)$`), get(`(?m)^Module temperature: (\d+\.\d) C$`),
+	orc := []string{strings.Join([]string{
+		get(`(?m)^Module identifier: (XFP)$`), get(`(?m)^Module temperature: (\d+\.\d) C$`),
 		get(`(?m)^Measured TX output power: (\d\.\d\d) mW$`), get(`(?m)^Measured RX input power: (\d\.\d\d) mW$`),
 		get(`(?m)^Vendor: (.+)$`), get(`(?m)^Vendor part number: (.+)$`), get(`(?m)^Wavelength: (\d+) nm$`),
-		get(`(?m)^Vendor serial number: (.+)$`)}, "|")}
+		get(`(?m)^Vendor serial number: (.+)$`),
+	}, "|")}
 	orcEq(t, "XFP fields", repo, orc)
 }
 
@@ -85,10 +93,14 @@ func TestOracleLayerXFP(t *testing.T) {
 func TestOracleLayerEEPROM24xx(t *testing.T) {
 	orcNeed(t, "i2c", "eeprom24xx")
 	ps, anns := orcI2CRun(t, "eeprom24xx", "eeprom24xx", "eeprom24xx", []orcI2CTxn{
-		{addr: 0x50, data: []byte{0x10, 0xab}}, {addr: 0x50, data: []byte{0x20, 1, 2, 3}},
-		{addr: 0x50, data: []byte{0x10}, noStop: true}, {addr: 0x50, read: true, data: []byte{0xab}},
-		{addr: 0x50, data: []byte{0x20}, noStop: true}, {addr: 0x50, read: true, data: []byte{1, 2, 3}},
-		{addr: 0x50, read: true, data: []byte{4}}})
+		{addr: 0x50, data: []byte{0x10, 0xab}},
+		{addr: 0x50, data: []byte{0x20, 1, 2, 3}},
+		{addr: 0x50, data: []byte{0x10}, noStop: true},
+		{addr: 0x50, read: true, data: []byte{0xab}},
+		{addr: 0x50, data: []byte{0x20}, noStop: true},
+		{addr: 0x50, read: true, data: []byte{1, 2, 3}},
+		{addr: 0x50, read: true, data: []byte{4}},
+	})
 	// the operation, its word address and its bytes
 	var repo []string
 	for _, s := range orcMatch(orcNotes(ps), `^EEPROM 50 (byte write|page write|read) @0x([0-9A-F]+)(?:, \d+ bytes?)?: ([0-9A-F ]+)$`) {
@@ -98,8 +110,10 @@ func TestOracleLayerEEPROM24xx(t *testing.T) {
 	var orc []string
 	for _, s := range orcMatch(orcTexts(anns), `^(Byte write|Page write|Random access read|Sequential random read) \(addr=([0-9A-F]+), \d+ bytes?\): ([0-9A-F ]+)$`) {
 		f := strings.Split(s, "|")
-		op := map[string]string{"Byte write": "byte write", "Page write": "page write", "Random access read": "read",
-			"Sequential random read": "read"}[f[0]]
+		op := map[string]string{
+			"Byte write": "byte write", "Page write": "page write", "Random access read": "read",
+			"Sequential random read": "read",
+		}[f[0]]
 		orc = append(orc, op+"|"+orcHex(f[1])+"|"+f[2])
 	}
 	// the current address read: its byte and the address both count on to
@@ -112,8 +126,10 @@ func TestOracleLayerEEPROM24xx(t *testing.T) {
 func TestOracleLayerDS1307(t *testing.T) {
 	orcNeed(t, "i2c", "ds1307")
 	ps, anns := orcI2CRun(t, "ds1307", "ds1307", "ds1307", []orcI2CTxn{
-		{addr: 0x68, data: []byte{0}, noStop: true}, {addr: 0x68, read: true, data: []byte{0x56, 0x34, 0x12, 0x07, 0x18, 0x10, 0x26}},
-		{addr: 0x68, data: []byte{0, 0x00, 0x45, 0x23, 0x02, 0x31, 0x12, 0x99}}})
+		{addr: 0x68, data: []byte{0}, noStop: true},
+		{addr: 0x68, read: true, data: []byte{0x56, 0x34, 0x12, 0x07, 0x18, 0x10, 0x26}},
+		{addr: 0x68, data: []byte{0, 0x00, 0x45, 0x23, 0x02, 0x31, 0x12, 0x99}},
+	})
 	repo := orcMatch(orcNotes(ps), `^RTC (read|write) (\d{4})-(\d\d)-(\d\d) (\d\d:\d\d:\d\d) ([A-Z][a-z]{2})$`)
 	var orc []string
 	for _, s := range orcMatch(orcTexts(anns), `^(Read|Written) date/time: ([A-Z][a-z]{2})[a-z]*, (\d\d)\.(\d\d)\.(\d{4}) (\d\d:\d\d:\d\d)$`) {
@@ -128,7 +144,8 @@ func TestOracleLayerDS1307(t *testing.T) {
 func TestOracleLayerRTC8564(t *testing.T) {
 	orcNeed(t, "i2c", "rtc8564")
 	ps, anns := orcI2CRun(t, "rtc8564", "rtc8564", "rtc8564", []orcI2CTxn{
-		{addr: 0x51, data: []byte{2}, noStop: true}, {addr: 0x51, read: true, data: []byte{0x56, 0x34, 0x12, 0x18, 0x03, 0x10, 0x26}}})
+		{addr: 0x51, data: []byte{2}, noStop: true}, {addr: 0x51, read: true, data: []byte{0x56, 0x34, 0x12, 0x18, 0x03, 0x10, 0x26}},
+	})
 	repo := orcMatch(orcNotes(ps), `^RTC read \d\d(\d\d)-(\d\d)-(\d\d) (\d\d:\d\d:\d\d) `)
 	var orc []string
 	for _, s := range orcMatch(orcTexts(anns), `^Read date/time: (\d\d)\.(\d\d)\.(\d\d) (\d\d:\d\d:\d\d)$`) {
@@ -144,8 +161,11 @@ func TestOracleLayerATSHA204A(t *testing.T) {
 	rd := atshaCmd(0x02, 0x00, 0x0010, nil)
 	nonce := atshaCmd(0x16, 0x00, 0x0000, make([]byte, 20))
 	ps, anns := orcI2CRun(t, "atsha204a", "atsha204a", "atsha204a", []orcI2CTxn{
-		{addr: 0x64, data: rd.Bytes}, {addr: 0x64, read: true, data: []byte{4, 0x00, 0x03, 0x40}},
-		{addr: 0x64, data: nonce.Bytes}, {addr: 0x64, data: []byte{0x01}}})
+		{addr: 0x64, data: rd.Bytes},
+		{addr: 0x64, read: true, data: []byte{4, 0x00, 0x03, 0x40}},
+		{addr: 0x64, data: nonce.Bytes},
+		{addr: 0x64, data: []byte{0x01}},
+	})
 	repo := orcMatch(orcNotes(ps), `^ATSHA204A (\w+)`)
 	var orc []string
 	ts := orcTexts(anns)
@@ -166,8 +186,10 @@ func TestOracleLayerATSHA204A(t *testing.T) {
 func TestOracleLayerNunchuk(t *testing.T) {
 	orcNeed(t, "i2c", "nunchuk")
 	ps, anns := orcI2CRun(t, "nunchuk", "nunchuk", "nunchuk", []orcI2CTxn{
-		{addr: 0x52, data: []byte{0x40, 0x00}}, {addr: 0x52, read: true, data: []byte{0x80, 0x7f, 0x80, 0x81, 0xb0, 0x5d}},
-		{addr: 0x52, read: true, data: []byte{0x10, 0xe0, 0x40, 0x41, 0x42, 0x02}}})
+		{addr: 0x52, data: []byte{0x40, 0x00}},
+		{addr: 0x52, read: true, data: []byte{0x80, 0x7f, 0x80, 0x81, 0xb0, 0x5d}},
+		{addr: 0x52, read: true, data: []byte{0x10, 0xe0, 0x40, 0x41, 0x42, 0x02}},
+	})
 	var repo []string
 	for _, s := range orcMatch(orcNotes(ps), `^Nunchuk stick (\d+)/(\d+) accel (\d+)/(\d+)/(\d+)( Z)?( C)?$`) {
 		f := strings.Split(s, "|")
@@ -195,10 +217,14 @@ func TestOracleLayerNunchuk(t *testing.T) {
 func TestOracleLayerHDCP(t *testing.T) {
 	orcNeed(t, "i2c", "hdcp")
 	ps, anns := orcI2CRun(t, "hdcp", "hdcp", "hdcp", []orcI2CTxn{
-		{addr: 0x3a, data: []byte{0x41}, noStop: true}, {addr: 0x3a, read: true, data: []byte{0x02, 0x10}},
-		{addr: 0x3a, data: []byte{0x50}, noStop: true}, {addr: 0x3a, read: true, data: []byte{0x04}},
-		{addr: 0x3a, data: []byte{0x70}, noStop: true}, {addr: 0x3a, read: true, data: []byte{0x34, 0x06}},
-		{addr: 0x3a, data: []byte{0x60, 0x02, 1, 2}}})
+		{addr: 0x3a, data: []byte{0x41}, noStop: true},
+		{addr: 0x3a, read: true, data: []byte{0x02, 0x10}},
+		{addr: 0x3a, data: []byte{0x50}, noStop: true},
+		{addr: 0x3a, read: true, data: []byte{0x04}},
+		{addr: 0x3a, data: []byte{0x70}, noStop: true},
+		{addr: 0x3a, read: true, data: []byte{0x34, 0x06}},
+		{addr: 0x3a, data: []byte{0x60, 0x02, 1, 2}},
+	})
 	var repo []string
 	for _, n := range orcNotes(ps) {
 		switch {
@@ -238,8 +264,10 @@ func TestOracleLayerLM75(t *testing.T) {
 	// sigrok's LM75 reads the temperature register (its pointer at power-up)
 	// and does not sign the value: temperatures above zero
 	ps, anns := orcI2CRun(t, "lm75", "lm75", "lm75=celsius", []orcI2CTxn{
-		{addr: 0x48, read: true, data: []byte{0x19, 0x80}}, {addr: 0x48, read: true, data: []byte{0x64, 0x00}},
-		{addr: 0x4f, read: true, data: []byte{0x00, 0x80}}})
+		{addr: 0x48, read: true, data: []byte{0x19, 0x80}},
+		{addr: 0x48, read: true, data: []byte{0x64, 0x00}},
+		{addr: 0x4f, read: true, data: []byte{0x00, 0x80}},
+	})
 	orcEq(t, "LM75 temperatures", orcMatch(orcNotes(ps), `Temperature (-?\d+\.\d) C$`), orcMatch(orcTexts(anns), `^Temperature: (-?\d+\.\d) °C$`))
 }
 
@@ -247,7 +275,8 @@ func TestOracleLayerLM75(t *testing.T) {
 func TestOracleLayerLTC26x7(t *testing.T) {
 	orcNeed(t, "i2c", "ltc26x7")
 	ps, anns := orcI2CRun(t, "ltc26x7", "ltc26x7", "ltc26x7", []orcI2CTxn{
-		{addr: 0x10, data: []byte{0x30, 0x80, 0x00}}, {addr: 0x10, data: []byte{0x01, 0xff, 0xff}}, {addr: 0x10, data: []byte{0x0f, 0x40, 0x00}}})
+		{addr: 0x10, data: []byte{0x30, 0x80, 0x00}}, {addr: 0x10, data: []byte{0x01, 0xff, 0xff}}, {addr: 0x10, data: []byte{0x0f, 0x40, 0x00}},
+	})
 	names := map[string]string{"Write": "Write Input Register", "Write+Update": "Write and Power Up DAC", "Update": "Update DAC"}
 	var repo []string
 	for _, s := range orcMatch(orcNotes(ps), `^LTC26x7 (Write\+Update|Write|Update) (DAC A|DAC B|all DACs) 0x([0-9A-F]{4})`) {
@@ -275,8 +304,12 @@ func TestOracleLayerLTC26x7(t *testing.T) {
 func TestOracleLayerTCA6408A(t *testing.T) {
 	orcNeed(t, "i2c", "tca6408a")
 	ps, anns := orcI2CRun(t, "tca6408a", "tca6408a", "tca6408a", []orcI2CTxn{
-		{addr: 0x20, data: []byte{3, 0xf0}}, {addr: 0x20, data: []byte{1, 0x0f}}, {addr: 0x20, data: []byte{2, 0x01}},
-		{addr: 0x20, data: []byte{0}, noStop: true}, {addr: 0x20, read: true, data: []byte{0xaa}}})
+		{addr: 0x20, data: []byte{3, 0xf0}},
+		{addr: 0x20, data: []byte{1, 0x0f}},
+		{addr: 0x20, data: []byte{2, 0x01}},
+		{addr: 0x20, data: []byte{0}, noStop: true},
+		{addr: 0x20, read: true, data: []byte{0xaa}},
+	})
 	var repo []string
 	for _, s := range orcMatch(orcNotes(ps), `(Input|Output|Polarity|Config)=([0-9A-F]{2})`) {
 		repo = append(repo, s)
@@ -294,7 +327,8 @@ func TestOracleLayerTCA6408A(t *testing.T) {
 func TestOracleLayerPCA9571(t *testing.T) {
 	orcNeed(t, "i2c", "pca9571")
 	ps, anns := orcI2CRun(t, "pca9571", "pca9571", "pca9571", []orcI2CTxn{
-		{addr: 0x25, data: []byte{0x55}}, {addr: 0x25, read: true, data: []byte{0x55}}, {addr: 0x25, data: []byte{0xa0}}})
+		{addr: 0x25, data: []byte{0x55}}, {addr: 0x25, read: true, data: []byte{0x55}}, {addr: 0x25, data: []byte{0xa0}},
+	})
 	repo := orcMatch(orcNotes(ps), `^PCA9571 (outputs|read) ([0-9A-F]{2})$`)
 	var orc []string
 	for _, s := range orcMatch(orcTexts(anns), `^(Outputs set|Outputs read): ([0-9A-F]{2})$`) {
@@ -308,15 +342,18 @@ func TestOracleLayerPCA9571(t *testing.T) {
 func TestOracleLayerMCP23017(t *testing.T) {
 	orcNeed(t, "i2c", "mcp230xx")
 	ps, anns := orcI2CRun(t, "mcp23017", "mcp230xx", "mcp230xx", []orcI2CTxn{
-		{addr: 0x20, data: []byte{0x00, 0x00, 0xff}}, {addr: 0x20, data: []byte{0x12}, noStop: true},
-		{addr: 0x20, read: true, data: []byte{0x55, 0xaa}}, {addr: 0x21, data: []byte{0x14, 0x01}}})
+		{addr: 0x20, data: []byte{0x00, 0x00, 0xff}},
+		{addr: 0x20, data: []byte{0x12}, noStop: true},
+		{addr: 0x20, read: true, data: []byte{0x55, 0xaa}},
+		{addr: 0x21, data: []byte{0x14, 0x01}},
+	})
 	var repo []string
 	for _, n := range orcNotes(ps) {
 		m := regexp.MustCompile(`^MCP23017 2[01] (read|write) (.*)$`).FindStringSubmatch(n)
 		if m == nil {
 			continue
 		}
-		for _, kv := range strings.Fields(m[2]) {
+		for kv := range strings.FieldsSeq(m[2]) {
 			f := strings.SplitN(kv, "=", 2)
 			repo = append(repo, map[string]string{"read": "Read", "write": "Write"}[m[1]]+" "+f[0]+": "+f[1])
 		}
@@ -328,8 +365,12 @@ func TestOracleLayerMCP23017(t *testing.T) {
 func TestOracleLayerMCP23008(t *testing.T) {
 	orcNeed(t, "i2c", "mcp230xx")
 	const sr, f = 2_000_000, 100_000
-	scl, sda := orcI2CWaves(sr, f, []orcI2CTxn{{addr: 0x20, data: []byte{0x00, 0x0f}}, {addr: 0x20, data: []byte{0x09}, noStop: true},
-		{addr: 0x20, read: true, data: []byte{0x5a}}, {addr: 0x20, data: []byte{0x06, 0xff, 0x00}}})
+	scl, sda := orcI2CWaves(sr, f, []orcI2CTxn{
+		{addr: 0x20, data: []byte{0x00, 0x0f}},
+		{addr: 0x20, data: []byte{0x09}, noStop: true},
+		{addr: 0x20, read: true, data: []byte{0x5a}},
+		{addr: 0x20, data: []byte{0x06, 0xff, 0x00}},
+	})
 	ps := orcI2CLayer(t, sr, scl, sda, "mcp23008")
 	anns := orcDecode(t, sr, []string{"SCL", "SDA"}, [][]byte{scl, sda}, "i2c:scl=SCL:sda=SDA,mcp230xx:type=MCP23008", "mcp230xx")
 	var repo []string
@@ -338,7 +379,7 @@ func TestOracleLayerMCP23008(t *testing.T) {
 		if m == nil {
 			continue
 		}
-		for _, kv := range strings.Fields(m[2]) {
+		for kv := range strings.FieldsSeq(m[2]) {
 			f := strings.SplitN(kv, "=", 2)
 			repo = append(repo, map[string]string{"read": "Read", "write": "Write"}[m[1]]+" "+f[0]+": "+f[1])
 		}
@@ -351,8 +392,11 @@ func TestOracleLayerMXC6225XU(t *testing.T) {
 	orcNeed(t, "i2c", "mxc6225xu")
 	// sigrok writes the axes unsigned: values under 128
 	ps, anns := orcI2CRun(t, "mxc6225xu", "mxc6225xu", "mxc6225xu", []orcI2CTxn{
-		{addr: 0x15, data: []byte{0}, noStop: true}, {addr: 0x15, read: true, data: []byte{0x10, 0x30}},
-		{addr: 0x15, data: []byte{0}, noStop: true}, {addr: 0x15, read: true, data: []byte{0x7f, 0x01}}})
+		{addr: 0x15, data: []byte{0}, noStop: true},
+		{addr: 0x15, read: true, data: []byte{0x10, 0x30}},
+		{addr: 0x15, data: []byte{0}, noStop: true},
+		{addr: 0x15, read: true, data: []byte{0x7f, 0x01}},
+	})
 	var repo []string
 	for _, n := range orcNotes(ps) {
 		for _, m := range regexp.MustCompile(`([XY]OUT)=(-?\d+)`).FindAllStringSubmatch(n, -1) {
@@ -369,8 +413,13 @@ func TestOracleLayerI2CFilter(t *testing.T) {
 	// on it; the scope's filter keeps them in the packet list, read here by
 	// the MCP23017 layer
 	const sr, f = 2_000_000, 100_000
-	scl, sda := orcI2CWaves(sr, f, []orcI2CTxn{{addr: 0x20, data: []byte{0x00, 0xff}}, {addr: 0x21, data: []byte{0x00, 0x0f}},
-		{addr: 0x21, data: []byte{0x12}, noStop: true}, {addr: 0x21, read: true, data: []byte{0x55}}, {addr: 0x20, data: []byte{0x14, 0x01}}})
+	scl, sda := orcI2CWaves(sr, f, []orcI2CTxn{
+		{addr: 0x20, data: []byte{0x00, 0xff}},
+		{addr: 0x21, data: []byte{0x00, 0x0f}},
+		{addr: 0x21, data: []byte{0x12}, noStop: true},
+		{addr: 0x21, read: true, data: []byte{0x55}},
+		{addr: 0x20, data: []byte{0x14, 0x01}},
+	})
 	r := decodeI2COrFail(t, sr, scl, sda)
 	kept := ApplyLayer("i2cfilter", "i2c", Packets(r, len(scl)), LayerArgs{Addr: 0x21})
 	ps := ApplyLayer("mcp23017", "i2c", kept, LayerArgs{Addr: -1})
@@ -384,7 +433,7 @@ func TestOracleLayerI2CFilter(t *testing.T) {
 			}
 			continue
 		}
-		for _, kv := range strings.Fields(m[2]) {
+		for kv := range strings.FieldsSeq(m[2]) {
 			f := strings.SplitN(kv, "=", 2)
 			repo = append(repo, map[string]string{"read": "Read", "write": "Write"}[m[1]]+" "+f[0]+": "+f[1])
 		}

@@ -9,8 +9,10 @@ import (
 func TestCS1TimingFieldCodec(t *testing.T) {
 	f := FactoryCS1Timing.Fields()
 	// fpga-specs 10 §4.3: CONFIG2 0x00141400, CONFIG4 0x10041004, CONFIG5 0x010d141f, CONFIG6 0x060005c1.
-	want := TimingFields{RdCycle: 31, RdAccess: 13, OEOn: 4, OEOff: 16, CSOn: 0, CSRdOff: 20, Gap: 5, SameCSEn: true,
-		WrCycle: 20, WrAccess: 6, WEOn: 4, WEOff: 16, CSWrOff: 20}
+	want := TimingFields{
+		RdCycle: 31, RdAccess: 13, OEOn: 4, OEOff: 16, CSOn: 0, CSRdOff: 20, Gap: 5, SameCSEn: true,
+		WrCycle: 20, WrAccess: 6, WEOn: 4, WEOff: 16, CSWrOff: 20,
+	}
 	if f != want {
 		t.Fatalf("factory fields %+v, want %+v", f, want)
 	}
@@ -63,8 +65,10 @@ func TestCS1TimingValidate(t *testing.T) {
 
 // TRLC-LINKS: REQ-SDS-131
 func TestApplyTimingSequence(t *testing.T) {
-	g := &fakeGPMC{regs: map[uint32]uint32{gpmcConfig1: 0x00001001, gpmcConfig2: 0x00141400, gpmcConfig3: 0x00020201,
-		gpmcConfig4: 0x10041004, gpmcConfig5: 0x010d141f, gpmcConfig6: 0x060005c1, gpmcConfig7: 0x00000F41}}
+	g := &fakeGPMC{regs: map[uint32]uint32{
+		gpmcConfig1: 0x00001001, gpmcConfig2: 0x00141400, gpmcConfig3: 0x00020201,
+		gpmcConfig4: 0x10041004, gpmcConfig5: 0x010d141f, gpmcConfig6: 0x060005c1, gpmcConfig7: 0x00000F41,
+	}}
 	got := readTiming(g)
 	if got != FactoryCS1Timing {
 		t.Fatalf("readTiming %+v", got)

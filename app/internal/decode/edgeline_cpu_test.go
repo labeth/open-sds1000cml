@@ -33,7 +33,7 @@ func unpackWords(dst []uint8, raw []byte, ch int) []uint8 {
 	o := 2 * (ch & 1)
 	for i := 0; i+4 <= len(raw); i += 4 {
 		w := uint16(raw[i+o]) | uint16(raw[i+o+1])<<8
-		for k := 0; k < 16; k++ {
+		for k := range 16 {
 			dst = append(dst, uint8(0-(w>>k&1)))
 		}
 	}
@@ -46,9 +46,9 @@ func unpackWords(dst []uint8, raw []byte, ch int) []uint8 {
 func levelWords(a, b []byte) []byte {
 	n := min(len(a), len(b)) / 16
 	raw := make([]byte, 4*n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		var wa, wb uint16
-		for k := 0; k < 16; k++ {
+		for k := range 16 {
 			wa |= uint16(a[16*i+k]&1) << k
 			wb |= uint16(b[16*i+k]&1) << k
 		}
@@ -133,7 +133,7 @@ func TestEdgeStreamCPU(t *testing.T) {
 		raw := levelWords(la, lb)
 		lines := tc.c.lines
 		var edges int
-		for ch := 0; ch < lines; ch++ {
+		for ch := range lines {
 			var l EdgeLine
 			l.AppendWords(raw, ch)
 			edges += len(l.At)

@@ -4,11 +4,10 @@ package analysis
 import (
 	"encoding/json"
 	"fmt"
+	"open-sds/app/internal/decode"
 	"os"
 	"strings"
 	"testing"
-
-	"open-sds/app/internal/decode"
 )
 
 // Waveform builders for the decoders, after the decode package's own test
@@ -29,7 +28,7 @@ func level(b int) uint8 {
 // line appends n samples of a level.
 // TRLC-LINKS: REQ-SDS-214
 func line(w []uint8, v uint8, n int) []uint8 {
-	for i := 0; i < n; i++ {
+	for range n {
 		w = append(w, v)
 	}
 	return w
@@ -39,10 +38,10 @@ func line(w []uint8, v uint8, n int) []uint8 {
 // and parity, when not "", adds an even or odd parity bit (a wrong one when
 // badParity).
 // TRLC-LINKS: REQ-SDS-214
-func uartFrame(w []uint8, b byte, spb int, stop int, parity string, badParity bool) []uint8 {
+func uartFrame(w []uint8, b byte, spb, stop int, parity string, badParity bool) []uint8 {
 	w = line(w, lvLo, spb)
 	ones := 0
-	for c := 0; c < 8; c++ {
+	for c := range 8 {
 		bit := int(b>>c) & 1
 		ones += bit
 		w = line(w, level(bit), spb)
@@ -384,7 +383,7 @@ func canFrameBits(id int, rtr bool, data []byte, ack bool) []int {
 		a = 0
 	}
 	wire = append(wire, 1, a, 1)
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		wire = append(wire, 1)
 	}
 	return wire
@@ -422,7 +421,7 @@ func TestPacketsCAN(t *testing.T) {
 
 	const spb = 10
 	var wire []int
-	for i := 0; i < 12; i++ {
+	for range 12 {
 		wire = append(wire, 1)
 	}
 	wire = append(wire, canFrameBits(0x123, false, []byte{0x55, 0xAA, 0x0F, 0xF0}, true)...)
@@ -533,8 +532,11 @@ func TestPacketsDegenerate(t *testing.T) {
 		t.Errorf("failed decode: %v", ps)
 	}
 	odd := decode.Result{Proto: "uart", SPB: 10, Spans: []decode.Span{
-		{I0: 500, I1: 400, Kind: "data", Val: 1}, {I0: -50, I1: 30, Kind: "data", Val: 2},
-		{I0: 10, I1: 9000, Kind: "data", Val: 3}, {I0: 1, I1: 2, Kind: "start"}, {I0: 0, I1: 0, Kind: "gap"},
+		{I0: 500, I1: 400, Kind: "data", Val: 1},
+		{I0: -50, I1: 30, Kind: "data", Val: 2},
+		{I0: 10, I1: 9000, Kind: "data", Val: 3},
+		{I0: 1, I1: 2, Kind: "start"},
+		{I0: 0, I1: 0, Kind: "gap"},
 	}}
 	for _, p := range Packets(odd, 1000) {
 		if p.I0 < 0 || p.I1 > 999 || p.I0 > p.I1 || len(p.Bytes) != len(p.ByteErr) {
@@ -543,14 +545,18 @@ func TestPacketsDegenerate(t *testing.T) {
 	}
 	// a 9-bit UART word and a 1553 word take two bytes each, most significant first
 	wide := decode.Result{Proto: "uart", SPB: 10, Spans: []decode.Span{
-		{I0: 200, I1: 290, Kind: "data", Val: 0x1A5}, {I0: 300, I1: 390, Kind: "frame-error", Val: 0x0FF}}}
+		{I0: 200, I1: 290, Kind: "data", Val: 0x1A5}, {I0: 300, I1: 390, Kind: "frame-error", Val: 0x0FF},
+	}}
 	if got := packetBytes(Packets(wide, 2000)); strings.Join(got, "|") != "01 A5 00* FF*" {
 		t.Errorf("wide UART words: %q", got)
 	}
 	mil := decode.Result{Proto: "mil1553", SPB: 20, Spans: []decode.Span{
-		{I0: 100, I1: 160, Kind: "start", Text: "csync"}, {I0: 160, I1: 480, Kind: "data", Val: 0x2C45},
-		{I0: 500, I1: 560, Kind: "start", Text: "dsync"}, {I0: 560, I1: 880, Kind: "data", Val: 0xBEEF},
-		{I0: 880, I1: 900, Kind: "frame-error", Text: "!par"}}}
+		{I0: 100, I1: 160, Kind: "start", Text: "csync"},
+		{I0: 160, I1: 480, Kind: "data", Val: 0x2C45},
+		{I0: 500, I1: 560, Kind: "start", Text: "dsync"},
+		{I0: 560, I1: 880, Kind: "data", Val: 0xBEEF},
+		{I0: 880, I1: 900, Kind: "frame-error", Text: "!par"},
+	}}
 	if got := packetBytes(Packets(mil, 2000)); strings.Join(got, "|") != "@5R:2C 45 BE* EF* !parity" {
 		t.Errorf("1553 message: %q", got)
 	}
@@ -564,7 +570,7 @@ func TestPacketsDegenerate(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-214
 func BenchmarkPackets(b *testing.B) {
 	var msgs [][]byte
-	for i := 0; i < 200; i++ {
+	for i := range 200 {
 		msgs = append(msgs, []byte(fmt.Sprintf("message %d: status OK\r\n", i)))
 	}
 	w := uartMsgs(msgs, 8, 40, 30, 40)

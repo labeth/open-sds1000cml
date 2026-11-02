@@ -3,6 +3,7 @@ package decode
 
 import (
 	"math"
+	"slices"
 	"strconv"
 	"strings"
 )
@@ -184,8 +185,10 @@ tokens:
 	if len(o.spans) == 0 {
 		return Result{Proto: "sdcard", Error: "no SD token"}
 	}
-	res := Result{OK: good, Proto: "sdcard", Spans: o.spans, Text: strings.Join(o.toks, " "), Bytes: o.units,
-		Thr: C.threshold, SPB: per}
+	res := Result{
+		OK: good, Proto: "sdcard", Spans: o.spans, Text: strings.Join(o.toks, " "), Bytes: o.units,
+		Thr: C.threshold, SPB: per,
+	}
 	if colTimeS > 0 && per > 0 {
 		res.Baud = int(math.Round(1 / (per * colTimeS)))
 	}
@@ -314,7 +317,7 @@ func decodePDI(a, b lineIn, colTimeS float64, cfg ClockedCfg) Result {
 		}
 		c := B[i : i+11]
 		v, p := 0, 0
-		for k := 0; k < 8; k++ {
+		for k := range 8 {
 			v |= c[1+k].v << k
 			p ^= c[1+k].v
 		}
@@ -357,8 +360,8 @@ func decodePDI(a, b lineIn, colTimeS float64, cfg ClockedCfg) Result {
 				// the count, least significant byte first (at most 4096:
 				// a record holds no more)
 				rep = 0
-				for k := len(cur) - 1; k >= 0; k-- {
-					rep = min(rep*256+cur[k], 4096)
+				for _, c := range slices.Backward(cur) {
+					rep = min(rep*256+c, 4096)
 				}
 			}
 			groups, cur = groups[1:], nil
@@ -367,8 +370,10 @@ func decodePDI(a, b lineIn, colTimeS float64, cfg ClockedCfg) Result {
 	if len(o.spans) == 0 {
 		return Result{Proto: "pdi", Error: "no PDI character"}
 	}
-	res := Result{OK: good, Proto: "pdi", Spans: o.spans, Text: strings.Join(o.toks, " "), Bytes: o.units,
-		Thr: C.threshold, SPB: per}
+	res := Result{
+		OK: good, Proto: "pdi", Spans: o.spans, Text: strings.Join(o.toks, " "), Bytes: o.units,
+		Thr: C.threshold, SPB: per,
+	}
 	if colTimeS > 0 && per > 0 {
 		res.Baud = int(math.Round(1 / (per * colTimeS)))
 	}
@@ -385,8 +390,24 @@ func jtagNext(s, tms int) int {
 	// 0 reset, 1 idle, 2 sel-DR, 3 cap-DR, 4 shift-DR, 5 exit1-DR, 6 pause-DR,
 	// 7 exit2-DR, 8 update-DR, 9 sel-IR, 10 cap-IR, 11 shift-IR, 12 exit1-IR,
 	// 13 pause-IR, 14 exit2-IR, 15 update-IR
-	next := [16][2]int{{1, 0}, {1, 2}, {3, 9}, {4, 5}, {4, 5}, {6, 8}, {6, 7}, {4, 8}, {1, 2},
-		{10, 0}, {11, 12}, {11, 12}, {13, 15}, {13, 14}, {11, 15}, {1, 2}}
+	next := [16][2]int{
+		{1, 0},
+		{1, 2},
+		{3, 9},
+		{4, 5},
+		{4, 5},
+		{6, 8},
+		{6, 7},
+		{4, 8},
+		{1, 2},
+		{10, 0},
+		{11, 12},
+		{11, 12},
+		{13, 15},
+		{13, 14},
+		{11, 15},
+		{1, 2},
+	}
 	return next[s][tms&1]
 }
 
@@ -548,8 +569,10 @@ func decodeCJTAG(a, b lineIn, colTimeS float64, cfg ClockedCfg) Result {
 			regular++
 		}
 	}
-	res := Result{OK: good, Proto: "cjtag", Spans: o.spans, Text: strings.Join(o.toks, " "), Bytes: o.units,
-		Thr: K.threshold, SPB: T}
+	res := Result{
+		OK: good, Proto: "cjtag", Spans: o.spans, Text: strings.Join(o.toks, " "), Bytes: o.units,
+		Thr: K.threshold, SPB: T,
+	}
 	if len(per) > 0 {
 		res.Cover = float64(regular) / float64(len(per))
 	}
@@ -759,8 +782,10 @@ func decodeMaple(a, b lineIn, colTimeS float64, cfg ClockedCfg) Result {
 		return Result{Proto: "maple", Error: "no Maple frame"}
 	}
 	T := bitT.value()
-	res := Result{OK: good, Proto: "maple", Spans: o.spans, Text: strings.Join(o.toks, " "), Bytes: o.units,
-		Thr: A.threshold, SPB: T}
+	res := Result{
+		OK: good, Proto: "maple", Spans: o.spans, Text: strings.Join(o.toks, " "), Bytes: o.units,
+		Thr: A.threshold, SPB: T,
+	}
 	if colTimeS > 0 && T > 0 {
 		res.Baud = int(math.Round(1 / (T * colTimeS)))
 	}
@@ -816,10 +841,10 @@ func decodeCaliper(a, b lineIn, colTimeS float64, cfg ClockedCfg) Result {
 		}
 		o.add(f[0].x, f[0].x, "", "sof", 0, false)
 		num, flags := 0, 0
-		for k := 0; k < 16; k++ {
+		for k := range 16 {
 			num |= f[k].v << k
 		}
-		for k := 0; k < 8; k++ {
+		for k := range 8 {
 			flags |= f[16+k].v << k
 		}
 		o.add(f[0].x, f[7].x+per, hex2(num&0xff), "data", num&0xff, true)
@@ -842,8 +867,10 @@ func decodeCaliper(a, b lineIn, colTimeS float64, cfg ClockedCfg) Result {
 	if len(o.spans) == 0 {
 		return Result{Proto: "caliper", Error: "no caliper frame"}
 	}
-	res := Result{OK: good, Proto: "caliper", Spans: o.spans, Text: strings.Join(o.toks, " "), Bytes: o.units,
-		Thr: C.threshold, SPB: per}
+	res := Result{
+		OK: good, Proto: "caliper", Spans: o.spans, Text: strings.Join(o.toks, " "), Bytes: o.units,
+		Thr: C.threshold, SPB: per,
+	}
 	if per > 0 {
 		res.Baud = int(math.Round(1 / (per * colTimeS)))
 	}

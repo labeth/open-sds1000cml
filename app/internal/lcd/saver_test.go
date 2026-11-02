@@ -42,8 +42,8 @@ func TestDrawSaver(t *testing.T) {
 		DrawSaver(m, f, hud, step)
 		x0, y0 := SaverPos(step)
 		var c1, ok int
-		for y := 0; y < H; y++ {
-			for x := 0; x < W; x++ {
+		for y := range H {
+			for x := range W {
 				c := m.At(x, y)
 				in := x >= x0 && x < x0+saverW && y >= y0 && y < y0+saverBoxH
 				if c != 0 && !in {

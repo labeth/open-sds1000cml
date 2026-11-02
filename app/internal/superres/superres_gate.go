@@ -43,12 +43,12 @@ func gateTemplate(ref []float32, lo, hi int) *gateTpl {
 	}
 	data := make([]float64, L)
 	mean := 0.0
-	for i := 0; i < L; i++ {
+	for i := range L {
 		mean += float64(ref[lo+i])
 	}
 	mean /= float64(L)
 	ss := 0.0
-	for i := 0; i < L; i++ {
+	for i := range L {
 		d := float64(ref[lo+i]) - mean
 		data[i] = d
 		p := d * d // materialize (no FMA fuse)
@@ -59,10 +59,7 @@ func gateTemplate(ref []float32, lo, hi int) *gateTpl {
 		return nil
 	}
 	// Segments: ~8 across the gate, each ≥24 samples (shorter is too noisy).
-	nseg := L / 24
-	if nseg > 8 {
-		nseg = 8
-	}
+	nseg := min(L/24, 8)
 	if nseg < 1 {
 		nseg = 1
 	}
@@ -81,7 +78,7 @@ func gateTemplate(ref []float32, lo, hi int) *gateTpl {
 		sm /= float64(sl)
 		sdata := make([]float64, sl)
 		sss := 0.0
-		for i := 0; i < sl; i++ {
+		for i := range sl {
 			d := float64(ref[lo+a+i]) - sm
 			sdata[i] = d
 			p := d * d // materialize
@@ -110,12 +107,12 @@ func (t *gateTpl) segMatch(sig []uint8, loc int) bool {
 	}
 	L := t.L
 	wm := 0.0
-	for i := 0; i < L; i++ {
+	for i := range L {
 		wm += float64(sig[loc+i])
 	}
 	wm /= float64(L)
 	wss := 0.0
-	for i := 0; i < L; i++ {
+	for i := range L {
 		d := float64(sig[loc+i]) - wm
 		p := d * d // materialize
 		wss += p
@@ -172,12 +169,12 @@ func (st *Stack) ambientMax(ref []float32) float64 {
 	best, prev, prev2 := 0.0, -2.0, -2.0
 	for loc := 0; loc <= n-L; loc++ {
 		mean := 0.0
-		for i := 0; i < L; i++ {
+		for i := range L {
 			mean += float64(ref[loc+i])
 		}
 		mean /= float64(L)
 		dot, ss := 0.0, 0.0
-		for i := 0; i < L; i++ {
+		for i := range L {
 			s := float64(ref[loc+i]) - mean
 			p := t.data[i] * s // materialize
 			dot += p
@@ -220,7 +217,7 @@ func detectPeriod(ref []float32, lo, hi int) int {
 	}
 	mean /= float64(W)
 	x := make([]float64, W)
-	for i := 0; i < W; i++ {
+	for i := range W {
 		x[i] = float64(ref[lo+i]) - mean
 	}
 	minLag, maxLag := 8, W>>1
@@ -228,7 +225,7 @@ func detectPeriod(ref []float32, lo, hi int) int {
 	for lag := minLag; lag <= maxLag; lag++ {
 		dot, ea, eb := 0.0, 0.0, 0.0
 		m := W - lag
-		for i := 0; i < m; i++ {
+		for i := range m {
 			a, b := x[i], x[i+lag]
 			p := a * b
 			dot += p
@@ -289,7 +286,7 @@ func (st *Stack) gateInstall(gLo, gHi int) bool {
 	st.Nbins = L * st.K
 	st.StatLo, st.StatHi = 0, L
 	st.Hits = 0
-	for ch := 0; ch < 2; ch++ {
+	for ch := range 2 {
 		C := &st.C[ch]
 		C.sum = make([]float64, st.Nbins)
 		C.sum2 = make([]float64, st.Nbins)
@@ -316,7 +313,7 @@ func (st *Stack) gateInstall(gLo, gHi int) bool {
 		st.AdaptFloor = f
 	}
 	st.Hits = 1
-	for ch := 0; ch < 2; ch++ {
+	for ch := range 2 {
 		if st.C[ch].ref != nil {
 			st.drizzleHit(ch, st.C[ch].ref, float64(gLo), true)
 		}
@@ -341,14 +338,8 @@ func (st *Stack) gateFind(sig []uint8, base, R int) []hit {
 	lo, hi := 0, n-L
 	if R > 0 {
 		c := st.GateLo + base
-		lo = c - R
-		if lo < 0 {
-			lo = 0
-		}
-		hi = c + R
-		if hi > n-L {
-			hi = n - L
-		}
+		lo = max(c-R, 0)
+		hi = min(c+R, n-L)
 	}
 	if hi < lo {
 		return nil
@@ -358,7 +349,7 @@ func (st *Stack) gateFind(sig []uint8, base, R int) []hit {
 	// The window's sum runs along with it: whole codes, so the integer sum
 	// is exactly the float sum the mean took sample by sample.
 	run := 0
-	for i := 0; i < L; i++ {
+	for i := range L {
 		run += int(sig[lo+i])
 	}
 	for loc := lo; loc <= hi; loc++ {
@@ -368,7 +359,7 @@ func (st *Stack) gateFind(sig []uint8, base, R int) []hit {
 		mean := float64(run)
 		mean /= float64(L)
 		dot, ss := 0.0, 0.0
-		for i := 0; i < L; i++ {
+		for i := range L {
 			s := float64(sig[loc+i]) - mean
 			p := data[i] * s // materialize
 			dot += p
@@ -389,13 +380,10 @@ func (st *Stack) gateFind(sig []uint8, base, R int) []hit {
 	if floor == 0 {
 		floor = 0.8
 	}
-	minSep := L >> 1
-	if minSep < 1 {
-		minSep = 1
-	}
+	minSep := max(L>>1, 1)
 	var hits []hit
 	lastLoc := -(1 << 30)
-	for k := 0; k < M; k++ {
+	for k := range M {
 		sc := ncc[k]
 		if sc < floor {
 			continue

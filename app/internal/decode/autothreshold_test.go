@@ -34,7 +34,7 @@ func TestAutoThresholdIsTheDecoders(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-011, REQ-SDS-018
 func TestAutoThresholdExtentIsBoth(t *testing.T) {
 	r := rand.New(rand.NewSource(11))
-	for k := 0; k < 300; k++ {
+	for k := range 300 {
 		n := 4 + r.Intn(5000)
 		codes := make([]uint8, n)
 		lo, hi := r.Intn(256), r.Intn(256)
@@ -61,7 +61,7 @@ func TestArmedCrossingsIsTheFloatOne(t *testing.T) {
 	ref := func(s sliced, n int) (rise, fall []bool) {
 		rise, fall = make([]bool, n), make([]bool, n)
 		upArmed, downArmed := false, false
-		for i := 0; i < n; i++ {
+		for i := range n {
 			c := float64(s.codes[i])
 			if upArmed && c >= s.threshold {
 				rise[i], upArmed = true, false
@@ -86,7 +86,7 @@ func TestArmedCrossingsIsTheFloatOne(t *testing.T) {
 		}
 		return r.Float64()*270 - 7
 	}
-	for k := 0; k < 3000; k++ {
+	for k := range 3000 {
 		n := r.Intn(300)
 		codes := make([]uint8, n)
 		for i := range codes {
@@ -95,7 +95,7 @@ func TestArmedCrossingsIsTheFloatOne(t *testing.T) {
 		s := sliced{codes: codes, n: n, threshold: pick(), thLo: pick(), thHi: pick()}
 		gr, gf := armedCrossings(s, n)
 		wr, wf := ref(s, n)
-		for i := 0; i < n; i++ {
+		for i := range n {
 			if gr[i] != wr[i] || gf[i] != wf[i] {
 				t.Fatalf("case %d (thr %v lo %v hi %v) sample %d differs", k, s.threshold, s.thLo, s.thHi, i)
 			}

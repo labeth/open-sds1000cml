@@ -6,7 +6,7 @@ package decode
 // checks fail, and corrupted copies (corrupt) that drive the reject paths.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-073
 func physParityVectors(add parityAdd, add2 parityAdd2, corrupt func([]uint8) []uint8) {
-	type cfg = map[string]interface{}
+	type cfg = map[string]any
 	type base struct {
 		proto string
 		colT  float64
@@ -199,10 +199,12 @@ func physParityVectors(add parityAdd, add2 parityAdd2, corrupt func([]uint8) []u
 
 		l = newTwoLine(4e6)
 		var bits []int
-		for _, t := range [][]int{sdIdle(10), sdToken(true, 8, 0x1AA, false), sdIdle(4), sdToken(false, 8, 0x1AA, false),
+		for _, t := range [][]int{
+			sdIdle(10), sdToken(true, 8, 0x1AA, false), sdIdle(4), sdToken(false, 8, 0x1AA, false),
 			sdIdle(10), sdToken(true, 2, 0, false), sdIdle(4),
 			sdR2([15]int{0x03, 0x53, 0x44, 0x53, 0x44, 0x31, 0x36, 0x47, 0x80, 0x12, 0x34, 0x56, 0x78, 0x01, 0x23}),
-			sdIdle(10), sdToken(true, 17, 0x1000, true), sdIdle(10)} {
+			sdIdle(10), sdToken(true, 17, 0x1000, true), sdIdle(10),
+		} {
 			bits = append(bits, t...)
 		}
 		clockBits(l, bits, 4e-6)
@@ -219,7 +221,7 @@ func physParityVectors(add parityAdd, add2 parityAdd2, corrupt func([]uint8) []u
 		two("pdi", 2e6, l, DecodePDI)
 
 		c := &cjtagLine{l: newTwoLine(2e6), per: 4e-6}
-		for i := 0; i < 4; i++ {
+		for range 4 {
 			c.rise(0)
 		}
 		c.escape(6)

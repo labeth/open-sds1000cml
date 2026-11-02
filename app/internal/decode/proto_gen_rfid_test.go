@@ -24,7 +24,7 @@ func (f rfidField) on(d float64) {
 	}
 	half := rfidFC / 2
 	k := int(d/half + 0.5)
-	for i := 0; i < k; i++ {
+	for i := range k {
 		f.w.add(byte(1-i&1), half)
 	}
 }
@@ -128,7 +128,7 @@ func t55xxBits(op int, pwd int64, lock int, word uint32, blk int) []int {
 func em4100Frame(w *timeline, b [5]int, hp float64, badRow bool) {
 	bits := []int{1, 1, 1, 1, 1, 1, 1, 1, 1}
 	col := 0
-	for k := 0; k < 10; k++ {
+	for k := range 10 {
 		nib := b[k/2] >> (4 * (1 - k%2)) & 15
 		col ^= nib
 		p := 0

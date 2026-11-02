@@ -16,7 +16,7 @@ func TestAutodetectMIDIBurstIsNoPWM(t *testing.T) {
 	w.idle(430e-6)
 	for _, b := range []int{0xB0, 0x07, 0x64} {
 		w.add(0, bit)
-		for k := 0; k < 8; k++ {
+		for k := range 8 {
 			w.add(byte(b>>k&1), bit)
 		}
 		w.add(1, bit)

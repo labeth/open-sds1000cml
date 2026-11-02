@@ -52,7 +52,7 @@ func skipSigrokDefect(t *testing.T, names []string, pdSpec, annSpec, symptom str
 	needSigrok(t)
 	var sb strings.Builder
 	sb.WriteString(strings.Join(names, ",") + "\n")
-	for i := 0; i < 64; i++ {
+	for range 64 {
 		sb.WriteString(strings.Repeat("1,", len(names)-1) + "1\n")
 	}
 	csv := filepath.Join(t.TempDir(), "idle.csv")

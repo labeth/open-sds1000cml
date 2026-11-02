@@ -3,9 +3,8 @@ package lcd
 
 import (
 	"math/rand"
-	"testing"
-
 	"open-sds/app/internal/engine"
+	"testing"
 )
 
 // Render fuzz: the LCD renderer runs on the device 20x a second — a panic on
@@ -63,7 +62,7 @@ func TestRenderFuzzNoPanic(t *testing.T) {
 		}
 	}
 
-	for i := 0; i < 400; i++ {
+	for i := range 400 {
 		f := mkFrame()
 		maskWin := []int{0, 100, 2048, 4096}[rng.Intn(4)]
 		var mlo, mhi []uint8
@@ -95,8 +94,10 @@ func TestRenderFuzzNoPanic(t *testing.T) {
 			SRGateLo:  rng.Intn(4096) - 100, SRGateHi: rng.Intn(4096) - 100,
 			SRWinLo: rng.Intn(4096) - 100, SRWinHi: rng.Intn(4096) - 100, SRPeriod: rng.Intn(300) - 10,
 			ZoneMode: rng.Intn(2), MaskMode: rng.Intn(3),
-			Zones: []engine.Zone{{DtLoS: rng.Float64()*2e-4 - 1e-4, DtHiS: rng.Float64()*2e-4 - 1e-4,
-				CodeLo: rng.Intn(400) - 100, CodeHi: rng.Intn(400) - 100, Ch: rng.Intn(2)}},
+			Zones: []engine.Zone{{
+				DtLoS: rng.Float64()*2e-4 - 1e-4, DtHiS: rng.Float64()*2e-4 - 1e-4,
+				CodeLo: rng.Intn(400) - 100, CodeHi: rng.Intn(400) - 100, Ch: rng.Intn(2),
+			}},
 			MaskLo: mlo, MaskHi: mhi, MaskWin: maskWin,
 			MaskPass: int64(rng.Intn(1000)), MaskFail: int64(rng.Intn(10)), MaskSkip: int64(rng.Intn(10)),
 			MaskStopped: rng.Intn(4) == 0, MaskMsg: []string{"", "MASK: building 9/32"}[rng.Intn(2)],

@@ -137,7 +137,7 @@ func zb2Families() []zb2Family {
 	}
 	var fams []zb2Family
 	for si, sh := range shapes {
-		for v := 0; v < 5; v++ {
+		for v := range 5 {
 			p := 90.0 + float64((si*53+v*97)%320)
 			q := 20.0 + float64((si*31+v*17)%60)
 			gen := sh.gen(p, q)
@@ -162,7 +162,7 @@ func zb2Frame(fam zb2Family, rng func() float64) *Frame {
 	const n = 4096
 	f := &Frame{C1: make([]uint8, n), C2: make([]uint8, n), Valid: fam.valid}
 	ph := int(rng() * 512)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		v := 128 + fam.c1(i+ph) + 2*(rng()*2-1)
 		if v < 0 {
 			v = 0
@@ -249,7 +249,7 @@ func TestZoneBreakerDifferential(t *testing.T) {
 			{DtLoS: -1e-6, DtHiS: 3e-6, CodeLo: 200, CodeHi: 100},                      // inverted codes: never hits
 			{DtLoS: -2e-6, DtHiS: 6e-6, CodeLo: 0, CodeHi: 255, Avoid: true},           // avoid-everything: must violate
 		}
-		for k := 0; k < 30; k++ {
+		for range 30 {
 			dtA := (rng()*5000 - 1500) * sampleS
 			dtB := (rng()*5000 - 1500) * sampleS
 			cl := int(rng()*280) - 10
@@ -276,7 +276,7 @@ func TestZoneBreakerDifferential(t *testing.T) {
 			}
 		}
 		// multi-zone AND combos
-		for k := 0; k < 10; k++ {
+		for k := range 10 {
 			var combo []Zone
 			must := +1
 			for j := 0; j < 2+int(rng()*2); j++ {

@@ -3,10 +3,10 @@ package analog
 
 import (
 	"math"
+	"open-sds/app/internal/cal"
+	"slices"
 	"testing"
 	"time"
-
-	"open-sds/app/internal/cal"
 )
 
 // TRLC-LINKS: REQ-SDS-015
@@ -97,9 +97,9 @@ func TestRelayWordReference(t *testing.T) {
 
 // TRLC-LINKS: REQ-SDS-015
 func lastRelay(tr *fakeTr) (uint32, bool) {
-	for i := len(tr.ops) - 1; i >= 0; i-- {
-		if tr.ops[i].kind == "relay" {
-			return tr.ops[i].word, true
+	for _, v := range slices.Backward(tr.ops) {
+		if v.kind == "relay" {
+			return v.word, true
 		}
 	}
 	return 0, false

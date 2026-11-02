@@ -2,12 +2,11 @@
 package web
 
 import (
+	"open-sds/app/internal/testenv"
 	"os"
 	"os/exec"
 	"strings"
 	"testing"
-
-	"open-sds/app/internal/testenv"
 )
 
 // TestRemoteCoreJS runs the phone remote's pure logic (remote_core.js) under

@@ -29,7 +29,7 @@ func fuzzKnob(name string, def int) int {
 // TRLC-LINKS: REQ-SDS-018
 func TestDecodeFuzzNoPanic(t *testing.T) {
 	rng := rand.New(rand.NewSource(int64(2718 + fuzzKnob("DECODE_FUZZ_SEED", 0))))
-	sig := func(n int, kind int) []uint8 {
+	sig := func(n, kind int) []uint8 {
 		s := make([]uint8, n)
 		switch kind {
 		case 0: // noise
@@ -61,7 +61,7 @@ func TestDecodeFuzzNoPanic(t *testing.T) {
 	}
 	colTimes := []float64{0, 1e-12, 800e-9, 1}
 	formats := []string{"", "hex", "ascii", "both", "garbage"}
-	for i := 0; i < 600*fuzzKnob("DECODE_FUZZ_MULT", 1); i++ {
+	for i := range 600 * fuzzKnob("DECODE_FUZZ_MULT", 1) {
 		n := rng.Intn(5000)
 		a := sig(n, rng.Intn(5))
 		b := sig(n, rng.Intn(5))
@@ -85,8 +85,10 @@ func TestDecodeFuzzNoPanic(t *testing.T) {
 			case 1:
 				DecodeI2C(a, b, ct, I2CCfg{Format: fm, Threshold: rng.Float64() * 300, HaveThr: rng.Intn(2) == 0})
 			case 2:
-				DecodeSPI(a, b, ct, SPICfg{CPOL: rng.Intn(2) == 0, CPHA: rng.Intn(2) == 0,
-					MSB: rng.Intn(2) == 0, Format: fm, Threshold: rng.Float64() * 300, HaveThr: rng.Intn(2) == 0})
+				DecodeSPI(a, b, ct, SPICfg{
+					CPOL: rng.Intn(2) == 0, CPHA: rng.Intn(2) == 0,
+					MSB: rng.Intn(2) == 0, Format: fm, Threshold: rng.Float64() * 300, HaveThr: rng.Intn(2) == 0,
+				})
 			case 3:
 				Autodetect(a, b, ct, fm)
 			}
@@ -139,7 +141,7 @@ func TestDecodeFuzzNewProtos(t *testing.T) {
 	}
 	cts := []float64{0, -1, 1e-12, 500e-9, 2e-6, 1}
 	brs := []int{0, -1, 1, 100, 115200, 1_000_000, 12_000_000, 1 << 30}
-	for i := 0; i < 900*fuzzKnob("DECODE_FUZZ_MULT", 1); i++ {
+	for i := range 900 * fuzzKnob("DECODE_FUZZ_MULT", 1) {
 		a := mk(rng.Intn(6000), rng.Intn(5))
 		ct := cts[rng.Intn(len(cts))]
 		br := brs[rng.Intn(len(brs))]

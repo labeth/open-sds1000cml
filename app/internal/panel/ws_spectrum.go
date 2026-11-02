@@ -2,14 +2,14 @@
 package panel
 
 import (
+	"errors"
 	"fmt"
 	"math"
-	"strconv"
-	"time"
-
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/panel/framecalc"
 	"open-sds/app/internal/panel/wsview"
+	"strconv"
+	"time"
 )
 
 // SPECTRUM (REQ-SDS-216): the FFT large, a small time trace, and a peak
@@ -78,7 +78,7 @@ func (c *Controller) specFrame(a *anaState, s *sv, f *engine.Frame) {
 func (c *Controller) setBodeChannel(dut bool, ch int) error {
 	b, ok := c.eng.(interface{ SetBodeMode(bool, int, int) })
 	if !ok {
-		return fmt.Errorf("this engine has no frequency response")
+		return errors.New("this engine has no frequency response")
 	}
 	st := c.eng.Snapshot()
 	ref, d := st.BodeRef&1, st.BodeDut&1
@@ -102,7 +102,7 @@ func (c *Controller) setBodeChannel(dut bool, ch int) error {
 func (c *Controller) bodeClear() error {
 	b, ok := c.eng.(interface{ ClearBode() })
 	if !ok {
-		return fmt.Errorf("this engine has no frequency response")
+		return errors.New("this engine has no frequency response")
 	}
 	b.ClearBode()
 	c.toast("Bode points cleared", 1200*time.Millisecond)
@@ -338,8 +338,10 @@ func (c *Controller) specPane(s *sv) *wsview.SpecPane {
 		if q.RelDB != 0 {
 			rel = strconv.FormatFloat(q.RelDB, 'f', 1, 64) + "dB" // %.1f
 		}
-		p.Rows = append(p.Rows, wsview.SpecRow{Num: i + 1, Freq: si(q.Freq, "Hz"), Level: strconv.FormatFloat(q.DB, 'f', 1, 64) + "dBV",
-			Rel: rel, Harm: harmName(q), Sel: i == row})
+		p.Rows = append(p.Rows, wsview.SpecRow{
+			Num: i + 1, Freq: si(q.Freq, "Hz"), Level: strconv.FormatFloat(q.DB, 'f', 1, 64) + "dBV",
+			Rel: rel, Harm: harmName(q), Sel: i == row,
+		})
 	}
 	if ok && len(peaks) == 0 {
 		p.Empty = "No peaks above the noise floor"
@@ -409,8 +411,10 @@ func (c *Controller) bodePane(s *sv, p *wsview.SpecPane) {
 		i0 := clampInt(mi-3, 0, max(0, len(pts)-7))
 		for r := 0; r < 7 && i0+r < len(pts); r++ {
 			q := pts[i0+r]
-			p.Rows = append(p.Rows, wsview.SpecRow{Num: i0 + r + 1, Freq: si(q.FreqHz, "Hz"),
-				Level: fmt.Sprintf("%.1fdB", q.GainDB), Rel: fmt.Sprintf("%.0fdeg", q.PhaseDeg), Sel: i0+r == mi})
+			p.Rows = append(p.Rows, wsview.SpecRow{
+				Num: i0 + r + 1, Freq: si(q.FreqHz, "Hz"),
+				Level: fmt.Sprintf("%.1fdB", q.GainDB), Rel: fmt.Sprintf("%.0fdeg", q.PhaseDeg), Sel: i0+r == mi,
+			})
 		}
 		pk, f3 := 0, -1
 		for i := range pts {

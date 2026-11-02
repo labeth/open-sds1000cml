@@ -26,16 +26,15 @@ package panel
 import (
 	"fmt"
 	"math/rand"
-	"os"
-	"strconv"
-	"strings"
-	"testing"
-
 	"open-sds/app/internal/analog"
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/lcd"
 	"open-sds/app/internal/panel/framecalc"
 	"open-sds/app/internal/panel/wsview"
+	"os"
+	"strconv"
+	"strings"
+	"testing"
 )
 
 // fuzzAction is one scripted step: a button press, a knob turn or a frame.
@@ -48,10 +47,12 @@ type fuzzAction struct {
 // TRLC-LINKS: REQ-SDS-136
 func fuzzAlphabet() []fuzzAction {
 	var acts []fuzzAction
-	for _, n := range []string{"menu", "f1", "f2", "f3", "f4", "f5", "trigmenu", "acquire", "display", "horizmenu",
+	for _, n := range []string{
+		"menu", "f1", "f2", "f3", "f4", "f5", "trigmenu", "acquire", "display", "horizmenu",
 		"cursors", "ref", "math", "measure", "ch1", "ch2", "utility", "saverecall", "help", "adjustpush",
 		"runstop", "single", "ch1vdivpush", "ch2vdivpush", "triglvlpush", "ch1pospush", "ch2pospush",
-		"tdivpush", "horizpospush", "set50", "force", "print"} {
+		"tdivpush", "horizpospush", "set50", "force", "print",
+	} {
 		code, _ := nameCode(n)
 		acts = append(acts, fuzzAction{"press:" + n, func(r *viewRig) { r.c.button(code) }})
 	}
@@ -116,7 +117,6 @@ func fuzzAlphabet() []fuzzAction {
 	// walk this full of menu keys leaves too rarely to reach every workspace:
 	// close what is open with Menu On/Off first, as a user would.
 	for i, key := range []int{btnF1, btnF2, btnF3, btnF4, btnF5} {
-		key := key
 		acts = append(acts, fuzzAction{fmt.Sprintf("nav:ws%d", i+1), func(r *viewRig) {
 			for j := 0; j < 3 && (r.c.ui.open || r.c.ui.wpick || r.c.ui.sub != subNone); j++ {
 				r.c.button(btnMenuOnOff)
@@ -197,7 +197,7 @@ func checkUIInvariants(c *Controller) []string {
 	if c.tdivIdx < 0 || c.tdivIdx >= len(c.tdivs) {
 		fail("tdivIdx %d", c.tdivIdx)
 	}
-	for ch := 0; ch < 2; ch++ {
+	for ch := range 2 {
 		if c.vIdx[ch] < 0 || c.vIdx[ch] >= len(analog.Detents) {
 			fail("vIdx[%d]=%d", ch, c.vIdx[ch])
 		}
@@ -208,7 +208,7 @@ func checkUIInvariants(c *Controller) []string {
 	if !inIntRange(c.curType, 0, 1) || !inIntRange(c.curSel, 0, 1) {
 		fail("cursor type/sel %d/%d", c.curType, c.curSel)
 	}
-	for i := 0; i < 2; i++ { // anchored to the signal: off the screen is allowed, not a non-number
+	for i := range 2 { // anchored to the signal: off the screen is allowed, not a non-number
 		if !finiteAll(c.curT[i], c.curV[i]) || !inIntRange(c.curVCh, 0, 1) {
 			fail("cursor %d at t=%g v=%g on C%d", i, c.curT[i], c.curV[i], c.curVCh+1)
 		}
@@ -274,7 +274,7 @@ func TestUIFuzz(t *testing.T) {
 	seeds := []int64{1, 1337, 20260710}
 	if v := os.Getenv("UI_FUZZ_SEEDS"); v != "" {
 		seeds = seeds[:0]
-		for _, f := range strings.Split(v, ",") {
+		for f := range strings.SplitSeq(v, ",") {
 			if n, err := strconv.ParseInt(strings.TrimSpace(f), 10, 64); err == nil {
 				seeds = append(seeds, n)
 			}

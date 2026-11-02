@@ -3,6 +3,7 @@ package sramcapture
 
 import (
 	"context"
+	"errors"
 	"fmt"
 )
 
@@ -66,7 +67,7 @@ func (c *Capture) StartStreamMarked(ctx context.Context, cfg Config, m StreamMar
 	c.mu.Lock()
 	rev, err := c.read(13)
 	if err == nil && rev != 11 {
-		err = fmt.Errorf("sramcapture: stream requires revision 11")
+		err = errors.New("sramcapture: stream requires revision 11")
 	}
 	if err == nil {
 		err = c.prepareStreamBuffers()
@@ -130,7 +131,7 @@ func (c *Capture) StreamMarks() (StreamMarkRead, error) {
 			count, word, ok = v[3], uint32(v[1])|uint32(v[2])<<16, v[0] == v[3]
 		}
 		if !ok {
-			return r, fmt.Errorf("sramcapture: stream marks kept changing")
+			return r, errors.New("sramcapture: stream marks kept changing")
 		}
 		if k == 0 {
 			r.RiseCount, r.RiseWord = count, word

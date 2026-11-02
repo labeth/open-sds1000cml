@@ -511,7 +511,7 @@ func AnalyzeSidebands(db []float64, binHz float64) Sidebands {
 		}
 	}
 	lo, hi := math.Max(0, bb-0.05), bb+0.05
-	for it := 0; it < 40; it++ { // golden-section refinement
+	for range 40 { // golden-section refinement
 		m1, m2 := hi-(hi-lo)*0.618, lo+(hi-lo)*0.618
 		if err(m1) < err(m2) {
 			hi = m2

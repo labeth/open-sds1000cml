@@ -3,8 +3,8 @@ package analysis
 
 import (
 	"encoding/json"
-	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 )
@@ -36,27 +36,27 @@ var layerTablesJS = sync.OnceValue(func() string {
 	}
 	ints := map[string]any{}
 	for k, v := range nrf24Size {
-		ints[fmt.Sprint(k)] = v
+		ints[strconv.Itoa(k)] = v
 	}
 	obj["nrf24Size"] = ints
 	ints = map[string]any{}
 	for k, v := range ade7758Bits {
-		ints[fmt.Sprint(k)] = v
+		ints[strconv.Itoa(k)] = v
 	}
 	obj["ade7758Bits"] = ints
 	flash := map[string]any{}
 	for k, c := range flashCmds {
-		flash[fmt.Sprint(k)] = []any{c.name, c.addr, c.dummy, c.rest, c.erase}
+		flash[strconv.Itoa(k)] = []any{c.name, c.addr, c.dummy, c.rest, c.erase}
 	}
 	obj["flashCmds"] = flash
 	amulet := map[string]any{}
 	for k, c := range amuletCmds {
-		amulet[fmt.Sprint(k)] = []string{c[0], c[1]}
+		amulet[strconv.Itoa(k)] = []string{c[0], c[1]}
 	}
 	obj["amuletCmds"] = amulet
 	ow := map[string]any{}
 	for k, c := range owROMCmds {
-		ow[fmt.Sprint(k)] = []any{c.name, c.rom}
+		ow[strconv.Itoa(k)] = []any{c.name, c.rom}
 	}
 	obj["owROMCmds"] = ow
 	var sb strings.Builder
@@ -88,7 +88,7 @@ var layerTablesJS = sync.OnceValue(func() string {
 func jsKeyed(t map[int]string) map[string]string {
 	out := map[string]string{}
 	for k, v := range t {
-		out[fmt.Sprint(k)] = v
+		out[strconv.Itoa(k)] = v
 	}
 	return out
 }

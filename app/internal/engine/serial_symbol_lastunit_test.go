@@ -2,9 +2,8 @@
 package engine
 
 import (
-	"testing"
-
 	"open-sds/app/internal/decode"
+	"testing"
 )
 
 // Every symbol-trigger protocol's frames matched on their last unit, whole:
@@ -70,7 +69,7 @@ func TestSymbolTriggerMatchesLastUnit(t *testing.T) {
 				}
 				mask := 1<<min(wd, 31) - 1 // a pattern unit's 31 bits (an SWD data word's low ones)
 				pat := []PatternElem{symStart}
-				for i := 0; i < last; i++ {
+				for range last {
 					pat = append(pat, symAny)
 				}
 				pat = append(pat, symData(units[last].Val&mask, mask))

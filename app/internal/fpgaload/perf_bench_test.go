@@ -82,7 +82,7 @@ func BenchmarkIoctlXfer(b *testing.B) {
 // TRLC-LINKS: REQ-SDS-092
 func BenchmarkResolveBitOrder(b *testing.B) {
 	rbf := make([]byte, rbfHeaderOff+rbfHeaderLen)
-	for i := 0; i < rbfPreambleLen; i++ {
+	for i := range rbfPreambleLen {
 		rbf[i] = 0xff
 	}
 	copy(rbf[rbfHeaderOff:], hdrNative)

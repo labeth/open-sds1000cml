@@ -3,25 +3,28 @@ package bus
 
 import (
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"net"
+	"open-sds/app/internal/sramcapture"
 	"os"
 	"os/exec"
 	"runtime"
 	"sync"
 	"syscall"
 	"time"
-
-	"open-sds/app/internal/sramcapture"
 )
 
-const workerMagic = 0x57435141
-const workerHeader = 24
+const (
+	workerMagic  = 0x57435141
+	workerHeader = 24
+)
 
 // workerPayload bounds one worker packet: 2048 decoded events. At 512 a call
 // the parent's pulls cap a decoded stream near 82 k events/s and the
 // worker's ring overflows (continuous 921600 Bd UART).
 const workerPayload = 65536
+
 const (
 	workerHello uint16 = iota
 	workerRead
@@ -92,10 +95,10 @@ type workerClient struct {
 // TRLC-LINKS: REQ-SDS-001, REQ-SDS-002, REQ-SDS-013
 func (d *Dev) StartWorker(executable string, logf func(string, ...any)) error {
 	if d.remote != nil {
-		return fmt.Errorf("bus: worker already owns GPMC")
+		return errors.New("bus: worker already owns GPMC")
 	}
 	if d.kernelDMA != nil {
-		return fmt.Errorf("bus: kernel DMA already owns hardware")
+		return errors.New("bus: kernel DMA already owns hardware")
 	}
 	pair, err := syscall.Socketpair(syscall.AF_UNIX, syscall.SOCK_SEQPACKET|syscall.SOCK_CLOEXEC, 0)
 	if err != nil {
@@ -154,7 +157,7 @@ func (d *Dev) StartWorker(executable string, logf func(string, ...any)) error {
 		_ = cmd.Process.Kill()
 		<-c.done
 		runtime.UnlockOSThread()
-		return fmt.Errorf("bus: worker lost qualified DMA capability")
+		return errors.New("bus: worker lost qualified DMA capability")
 	}
 	d.remote = c
 	if d.edma != nil {
@@ -211,11 +214,11 @@ func (c *workerClient) callSplit(op uint16, plane uint8, selector, value uint16,
 	}
 	want := len(head) + len(dst)
 	if want > workerPayload {
-		return 0, fmt.Errorf("bus: oversized worker response")
+		return 0, errors.New("bus: oversized worker response")
 	}
 	c.sequence++
 	if len(params) > workerRecallParams {
-		return 0, fmt.Errorf("bus: oversized worker request")
+		return 0, errors.New("bus: oversized worker request")
 	}
 	request := c.request[:workerHeader+copy(c.request[workerHeader:], params)]
 	binary.LittleEndian.PutUint32(request[:4], workerMagic)
@@ -237,13 +240,13 @@ func (c *workerClient) callSplit(op uint16, plane uint8, selector, value uint16,
 	}
 	n, err := c.conn.Write(request)
 	if err == nil && n != len(request) {
-		err = fmt.Errorf("short worker request")
+		err = errors.New("short worker request")
 	}
 	if err == nil {
 		n, err = c.conn.Read(c.response[:])
 	}
 	if err == nil && (n < workerHeader || binary.LittleEndian.Uint32(c.response[:4]) != workerMagic || binary.LittleEndian.Uint32(c.response[4:8]) != c.sequence || binary.LittleEndian.Uint16(c.response[8:10]) != op || c.response[11] != 1 || int(binary.LittleEndian.Uint32(c.response[16:20])) != n-workerHeader) {
-		err = fmt.Errorf("invalid worker response")
+		err = errors.New("invalid worker response")
 	}
 	if err != nil {
 		c.failed = fmt.Errorf("bus: worker transport failed (consumption uncertain): %w", err)
@@ -254,7 +257,7 @@ func (c *workerClient) callSplit(op uint16, plane uint8, selector, value uint16,
 		return 0, fmt.Errorf("bus worker: %s", c.response[workerHeader:n])
 	}
 	if n-workerHeader > want {
-		c.failed = fmt.Errorf("bus: oversized worker payload")
+		c.failed = errors.New("bus: oversized worker payload")
 		c.conn.Close()
 		return 0, c.failed
 	}
@@ -308,14 +311,14 @@ func (d *Dev) recallShared(epoch, record uint32, windows []uint32, dst []byte) (
 		return true, err
 	}
 	if n != len(got) {
-		return true, fmt.Errorf("bus: short shared recall reply")
+		return true, errors.New("bus: short shared recall reply")
 	}
 	switch binary.LittleEndian.Uint32(got[:]) {
 	case 0:
 		return false, nil // the ring is the stream's now
 	case size:
 	default:
-		return true, fmt.Errorf("bus: short shared recall")
+		return true, errors.New("bus: short shared recall")
 	}
 	copy(dst, d.remote.shared[:len(dst)])
 	return true, nil
@@ -331,7 +334,7 @@ func (d *Dev) StackDownloadIsolated(n int, dst []byte) (bool, error) {
 	}
 	got, err := d.remote.call(workerStackDownload, 0, 0, uint16(n), 0, dst)
 	if err == nil && got != len(dst) {
-		err = fmt.Errorf("bus: short worker stack download")
+		err = errors.New("bus: short worker stack download")
 	}
 	return true, err
 }
@@ -347,7 +350,7 @@ func (d *Dev) ReadIsolatedPanel() (words [11]uint16, owned bool, err error) {
 	var buf [22]byte
 	n, err := d.remote.call(workerPanel, 0, 0, 0, 0, buf[:])
 	if err == nil && n != len(buf) {
-		err = fmt.Errorf("bus: short worker panel read")
+		err = errors.New("bus: short worker panel read")
 	}
 	if err != nil {
 		return words, true, err
@@ -397,7 +400,7 @@ func (d *Dev) ReadIsolatedStream(dst []byte) (first uint64, n int, owned bool, e
 	m, err := d.remote.callSplit(workerStreamWords, 0, 0, 0, 0, nil, head[:], dst[:limit])
 	if err != nil || m < 8 {
 		if err == nil {
-			err = fmt.Errorf("bus: short worker stream reply")
+			err = errors.New("bus: short worker stream reply")
 		}
 		return 0, 0, true, err
 	}
@@ -460,7 +463,7 @@ func (d *Dev) ReadMany(plane uint8, sels, dst []uint16) error {
 		return fmt.Errorf("bus: read cs%d: %w", plane, err)
 	}
 	if n != 2*len(sels) {
-		return fmt.Errorf("bus: short worker register reads")
+		return errors.New("bus: short worker register reads")
 	}
 	for i := range sels {
 		dst[i] = binary.LittleEndian.Uint16(out[2*i:])
@@ -474,7 +477,7 @@ func (d *Dev) workerIOCTL(req uintptr, b *[6]byte) error {
 	if req == reqRead {
 		n, err := d.remote.call(workerRead, b[0], sel, 0, 0, b[4:6])
 		if err == nil && n != 2 {
-			return fmt.Errorf("bus: short worker register read")
+			return errors.New("bus: short worker register read")
 		}
 		return err
 	}

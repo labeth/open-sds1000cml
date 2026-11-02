@@ -3,9 +3,8 @@ package lcd
 
 import (
 	"math"
-	"strconv"
-
 	"open-sds/app/internal/panel/wsview"
+	"strconv"
 )
 
 // SPECTRUM's SOUND view (ADR-SOUND): the tuner (the note large, a cents
@@ -110,7 +109,7 @@ func drawTuner(sf Surface, s *wsview.SoundPane, bottom int) {
 	if s.HasPitch {
 		const period = 24
 		off := int(s.Strobe * period)
-		for x := 0; x < w; x++ {
+		for x := range w {
 			if ((x+off)%period+period)%period < period/2 {
 				vline(sf, x0+x, sy0+2, sy0+sh-3, noteCol)
 			}
@@ -168,7 +167,7 @@ func drawMeters(sf Surface, s *wsview.SoundPane, bottom int) {
 		hline(sf, sx-3, sx+3, yy, colAxis)
 		DrawTextRight(sf, sx+28, yy-3, strconv.Itoa(int(db)), colDim, 1)
 	}
-	for ch := 0; ch < 2; ch++ {
+	for ch := range 2 {
 		m := s.Meter[ch]
 		bx := x0 + 30 + ch*72
 		lx := x0 + 4 + ch*126
@@ -273,7 +272,7 @@ func drawSoundTrace(sf Surface, p plotArea, s *wsview.SoundPane) {
 func drawSoundTake(sf Surface, p plotArea, t *wsview.SoundTake) {
 	top, h := p.y0+16, p.h-30
 	lane := h / 2
-	for ch := 0; ch < 2; ch++ {
+	for ch := range 2 {
 		lo, hi := t.Lo[ch], t.Hi[ch]
 		n := len(lo)
 		vlo, vhi := t.VLo[ch], t.VHi[ch]
@@ -304,7 +303,7 @@ func drawSoundTake(sf Surface, p plotArea, t *wsview.SoundTake) {
 		for y := top; y < top+h; y += 4 {
 			vline(sf, x, y, min(y+1, top+h-1), colTrig)
 		}
-		for k := 0; k < 5; k++ { // the marker: a small triangle on top
+		for k := range 5 { // the marker: a small triangle on top
 			hline(sf, x-4+k, x+4-k, top+k, colTrig)
 		}
 	}

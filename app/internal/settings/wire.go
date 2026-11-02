@@ -3,7 +3,6 @@ package settings
 
 import (
 	"math"
-
 	"open-sds/app/internal/analog"
 	"open-sds/app/internal/engine"
 )
@@ -106,7 +105,7 @@ func Collect(eng Engine, fe Analog, pc Panel) Settings {
 		all, hasAll := fe.(interface {
 			ChannelState(ch int) (offV float64, cpl int, probe float64, bwl bool)
 		})
-		for ch := 0; ch < 2; ch++ {
+		for ch := range 2 {
 			if idx[ch] >= 0 && idx[ch] < len(analog.Detents) {
 				s.Ch[ch].VdivV = analog.Detents[idx[ch]].VdivV
 			}
@@ -201,7 +200,7 @@ func Apply(s Settings, eng Engine, fe Analog, pc Panel, logf func(string, ...any
 		}
 	}
 	if fe != nil {
-		for ch := 0; ch < 2; ch++ {
+		for ch := range 2 {
 			cs := s.Ch[ch]
 			// V/div + offset only when the saved front end had actually been
 			// driven: restoring boot defaults onto a virgin front end would
@@ -240,8 +239,10 @@ func Apply(s Settings, eng Engine, fe Analog, pc Panel, logf func(string, ...any
 		b.SetBodeMode(eng.Snapshot().BodeMode != 0, ref, dut) // the armed state stays as it is
 	}
 	if pc != nil {
-		pc.ApplySettingsView(ViewState{ViewMode: s.ViewMode, Decode: s.Decode, Display: s.Display, UI: s.UI, Serial: s.Serial,
-			Screen: s.Screen, Sound: s.Sound})
+		pc.ApplySettingsView(ViewState{
+			ViewMode: s.ViewMode, Decode: s.Decode, Display: s.Display, UI: s.UI, Serial: s.Serial,
+			Screen: s.Screen, Sound: s.Sound,
+		})
 	}
 }
 

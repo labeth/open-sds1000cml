@@ -56,7 +56,7 @@ func TestBreakArinc429(t *testing.T) {
 				ssms = append(ssms, sp.Text)
 			}
 		}
-		return
+		return labels, datas, ssms
 	}
 	randFrag := func(rng *rand.Rand, w *[]uint8, spb int) {
 		pf := 1 + rng.Intn(31) // 1..31 bits -> can never fill a 32-slot word
@@ -76,7 +76,7 @@ func TestBreakArinc429(t *testing.T) {
 	t.Run("false_negatives", func(t *testing.T) {
 		rng := rand.New(rand.NewSource(0xA429F1))
 		bitrates := []int{12500, 25000, 50000, 100000}
-		for it := 0; it < 60; it++ {
+		for it := range 60 {
 			spb := 4 + rng.Intn(61) // 4..64 samples/bit (T>=minSPB=4)
 			bitrate := bitrates[rng.Intn(len(bitrates))]
 			if rng.Intn(3) == 0 {
@@ -94,7 +94,7 @@ func TestBreakArinc429(t *testing.T) {
 				randFrag(rng, &w, spb)
 				arincIdle(&w, (3+rng.Intn(4))*spb) // proper inter-segment gap
 			}
-			for wi := 0; wi < nWords; wi++ {
+			for wi := range nWords {
 				bits := arincMakeWord(rng.Intn(256), rng.Intn(4), rng.Intn(1<<19), rng.Intn(4))
 				l, d, s, b := arincExpect(bits)
 				wantLabels = append(wantLabels, l)
@@ -158,7 +158,7 @@ func TestBreakArinc429(t *testing.T) {
 		// (a) A valid word with a single deliberately-corrupted bit MUST be
 		// flagged (frame-error), never silently accepted with intact parity.
 		rngA := rand.New(rand.NewSource(0xA429F2))
-		for it := 0; it < 60; it++ {
+		for it := range 60 {
 			spb := 8 + rngA.Intn(40)
 			bitrate := 100000
 			colTimeS := 1.0 / (float64(spb) * float64(bitrate))
@@ -178,7 +178,7 @@ func TestBreakArinc429(t *testing.T) {
 		// (b) A valid frame TRUNCATED to a partial word (<32 pulses) must not
 		// decode as valid.
 		rngB := rand.New(rand.NewSource(0xA429F3))
-		for it := 0; it < 60; it++ {
+		for it := range 60 {
 			spb := 8 + rngB.Intn(40)
 			bitrate := 100000
 			colTimeS := 1.0 / (float64(spb) * float64(bitrate))
@@ -188,10 +188,7 @@ func TestBreakArinc429(t *testing.T) {
 			arincIdle(&w, leadN)
 			arincAppendWord(&w, bits, spb)
 			keep := 1 + rngB.Intn(31) // keep only the first <32 bit cells
-			cut := leadN + keep*spb
-			if cut > len(w) {
-				cut = len(w)
-			}
+			cut := min(leadN+keep*spb, len(w))
 			w = w[:cut]
 			r := DecodeARINC429(w, colTimeS, ARINC429Cfg{Bitrate: bitrate})
 			if confidentValid(r) {
@@ -203,7 +200,7 @@ func TestBreakArinc429(t *testing.T) {
 		// protocol square wave) must not produce a confident valid word.
 		rngC := rand.New(rand.NewSource(0xA429F4))
 		shapeNames := []string{"flatDC", "ramp", "nyquist", "square"}
-		for it := 0; it < 60; it++ {
+		for it := range 60 {
 			n := 400 + rngC.Intn(3000)
 			s := make([]uint8, n)
 			kind := it % 4
@@ -245,7 +242,7 @@ func TestBreakArinc429(t *testing.T) {
 		const iters = 300
 		confident := 0
 		firstRepro := ""
-		for it := 0; it < iters; it++ {
+		for it := range iters {
 			n := 400 + rngD.Intn(3600)
 			s := make([]uint8, n)
 			for i := range s {
@@ -297,10 +294,10 @@ func TestBreakArinc429(t *testing.T) {
 			}
 		}
 		// Minimum legal bit rate (spb=4 -> T=minSPB).
-		r, want := roundTripOne(4, 100000, 0312, 1, 0x2ABCD, 3, false)
+		r, want := roundTripOne(4, 100000, 0o312, 1, 0x2ABCD, 3, false)
 		checkOne("min-spb4", r, want)
 		// Large spb / very slow bit rate, auto-inferred.
-		r, want = roundTripOne(250, 4000, 0107, 2, 0x15A3F, 1, true)
+		r, want = roundTripOne(250, 4000, 0o107, 2, 0x15A3F, 1, true)
 		checkOne("large-spb250-auto", r, want)
 		// All-0x00 payload/fields.
 		r, want = roundTripOne(20, 100000, 0, 0, 0, 0, false)
@@ -321,8 +318,8 @@ func TestBreakArinc429(t *testing.T) {
 			colTimeS := 1.0 / (float64(spb) * float64(bitrate))
 			var w []uint8
 			arincIdle(&w, 5*spb)
-			arincAppendWord(&w, arincMakeWord(0312, 1, 0x11111, 3), spb)
-			arincAppendWord(&w, arincMakeWord(0107, 2, 0x22222, 1), spb) // no gap
+			arincAppendWord(&w, arincMakeWord(0o312, 1, 0x11111, 3), spb)
+			arincAppendWord(&w, arincMakeWord(0o107, 2, 0x22222, 1), spb) // no gap
 			arincIdle(&w, 5*spb)
 			r := DecodeARINC429(w, colTimeS, ARINC429Cfg{Bitrate: bitrate})
 			if r.OK && len(r.Bytes)%4 != 0 {
@@ -334,7 +331,7 @@ func TestBreakArinc429(t *testing.T) {
 		// negative / zero colTimeS and bit rate): never panic, always OK or Error.
 		degenerate := [][]uint8{nil, {}, {200}, {40, 210}, {128, 128}, {128}}
 		rngE := rand.New(rand.NewSource(0xA429F5))
-		for i := 0; i < 60; i++ {
+		for range 60 {
 			s := make([]uint8, rngE.Intn(40))
 			for j := range s {
 				s[j] = uint8(rngE.Intn(256))

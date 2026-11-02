@@ -3,10 +3,9 @@ package panel
 
 import (
 	"math"
-	"time"
-
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/panel/wsview"
+	"time"
 )
 
 // Task workspaces (ADR-TASK-WORKSPACES). With no menu open, F1..F5 switch the
@@ -218,7 +217,7 @@ func (c *Controller) snap() *sv {
 			ChannelState(ch int) (offV float64, cpl int, probe float64, bwl bool)
 		}); ok {
 			// a channel's settings under one lock, not one a value
-			for ch := 0; ch < 2; ch++ {
+			for ch := range 2 {
 				off, cpl, p, bwl := cs.ChannelState(ch)
 				if !(p >= 1) { // as ProbeFactor
 					p = 1
@@ -229,7 +228,7 @@ func (c *Controller) snap() *sv {
 				}
 			}
 		} else {
-			for ch := 0; ch < 2; ch++ {
+			for ch := range 2 {
 				s.probe[ch] = c.fe.ProbeFactor(ch)
 				s.cpl[ch] = c.fe.Coupling(ch)
 				s.offV[ch] = c.fe.OffsetReqV(ch)
@@ -270,9 +269,11 @@ func (c *Controller) snap() *sv {
 	q := s.st.TrigQual
 	c.mu.Lock()
 	if q.PulseLvl <= 0 { // an engine that does not publish its qualifiers: the shadows
-		q = engine.TrigQual{PulseLvl: c.pulseLvl, PulseMinNs: c.pulseMin, PulseMaxNs: c.pulseMax, PulseCond: c.pulseCond,
+		q = engine.TrigQual{
+			PulseLvl: c.pulseLvl, PulseMinNs: c.pulseMin, PulseMaxNs: c.pulseMax, PulseCond: c.pulseCond,
 			SlopeLo: c.slopeLo, SlopeHi: c.slopeHi, SlopeMinNs: c.slopeMin, SlopeMaxNs: c.slopeMax, SlopeCond: c.slopeCond,
-			VideoStd: c.videoStd, VideoLine: c.videoLine, VideoNeg: c.videoNeg}
+			VideoStd: c.videoStd, VideoLine: c.videoLine, VideoNeg: c.videoNeg,
+		}
 	}
 	s.pulse = [4]float64{q.PulseLvl, q.PulseMinNs, q.PulseMaxNs, float64(q.PulseCond)}
 	s.slope = [5]float64{q.SlopeLo, q.SlopeHi, q.SlopeMinNs, q.SlopeMaxNs, float64(q.SlopeCond)}
@@ -289,13 +290,13 @@ func (c *Controller) snap() *sv {
 	s.hasStream = c.stream != nil
 	s.records = math.Float64frombits(c.curRecords.Load())
 	if c.curPend != nil { // anchor fractions to the signal on the scales now
-		for k := 0; k < 2; k++ {
+		for k := range 2 {
 			c.curT[k], c.curV[k] = cursorTimeAt(s, c.curPend[0][k]), cursorVoltAt(s, c.curPend[1][k], c.curVCh)
 		}
 		c.curPend = nil
 	}
 	s.curOn, s.curType, s.curSel, s.curT, s.curV, s.curVCh = c.curOn, c.curType, c.curSel, c.curT, c.curV, c.curVCh
-	for k := 0; k < 2; k++ {
+	for k := range 2 {
 		s.curX[k], s.curY[k] = cursorXOf(s, s.curT[k]), cursorYOf(s, s.curV[k], s.curVCh)
 	}
 	for i, r := range c.refs {

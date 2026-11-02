@@ -45,7 +45,7 @@ func SampleSPI(wide []uint64, c SampleSPIConfig) ([]SampleSPIEvent, []SampleSPIE
 	idle, nbits, count := 0, 0, 0
 	shift := uint8(0)
 	history := uint32(0)
-	for t := 0; t < n; t++ {
+	for t := range n {
 		if !validConfig {
 			continue
 		}

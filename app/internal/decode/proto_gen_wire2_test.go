@@ -75,7 +75,7 @@ func sdIdle(n int) []int {
 func pdiChar(v int, badPar bool) []int {
 	b := []int{0}
 	p := 0
-	for i := 0; i < 8; i++ {
+	for i := range 8 {
 		b = append(b, v>>i&1)
 		p ^= v >> i & 1
 	}
@@ -108,7 +108,7 @@ func (c *cjtagLine) rise(v int) {
 func (c *cjtagLine) escape(n int) {
 	c.l.add(0, c.tms, c.per/2)
 	c.l.add(1, c.tms, c.per/2)
-	for i := 0; i < n; i++ {
+	for range n {
 		c.tms ^= 1
 		c.l.add(1, c.tms, c.per/2)
 	}
@@ -136,7 +136,7 @@ func (c *cjtagLine) scan(ir bool, n int, tdi, tdo uint32) {
 	}
 	c.tck(0, 0, 0, false) // capture
 	c.tck(0, 0, 0, false) // shift
-	for i := 0; i < n; i++ {
+	for i := range n {
 		tms := 0
 		if i == n-1 {
 			tms = 1 // exit1 with the last bit
@@ -168,7 +168,7 @@ func (m *mapleLine) set(a, b byte) {
 func (m *mapleLine) frame(bytes []int) {
 	m.set(1, 1)
 	m.set(0, 1)
-	for i := 0; i < 4; i++ {
+	for range 4 {
 		m.set(0, 0)
 		m.set(0, 1)
 	}
@@ -234,10 +234,10 @@ func caliperFrame(l twoLine, count int, neg, inch bool, per, rest float64) {
 		flags |= 1 << 7
 	}
 	var bits []int
-	for i := 0; i < 16; i++ {
+	for i := range 16 {
 		bits = append(bits, count>>i&1)
 	}
-	for i := 0; i < 8; i++ {
+	for i := range 8 {
 		bits = append(bits, flags>>i&1)
 	}
 	clockBits(l, bits, per)

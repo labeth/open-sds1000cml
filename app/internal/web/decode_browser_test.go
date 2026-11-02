@@ -3,13 +3,12 @@ package web
 
 import (
 	"net/http/httptest"
+	"open-sds/app/internal/engine"
+	"open-sds/app/internal/testenv"
 	"os/exec"
 	"strings"
 	"sync/atomic"
 	"testing"
-
-	"open-sds/app/internal/engine"
-	"open-sds/app/internal/testenv"
 )
 
 // i2cWave renders one I2C transaction (START, addr 0x50 W, ACK, 0x00, ACK, 0xFF,
@@ -26,7 +25,7 @@ func i2cWave(n int) (scl, sda []uint8) {
 		return lo
 	}
 	seg := func(cols int, s, d bool) {
-		for k := 0; k < cols; k++ {
+		for range cols {
 			scl = append(scl, c(s))
 			sda = append(sda, c(d))
 		}

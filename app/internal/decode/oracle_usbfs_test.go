@@ -19,7 +19,7 @@ func TestUSBTokenCRC5(t *testing.T) {
 		t.Fatalf("CRC5 of address 15h endpoint Eh is %02X, want 1D", got)
 	}
 	rng := rand.New(rand.NewSource(5))
-	for i := 0; i < 500; i++ {
+	for range 500 {
 		v := rng.Intn(1 << 11)
 		if usbCRC5(v) != usblsCRC5(usblsLSB(v, 11)) {
 			t.Fatalf("CRC5 of %03X: %02X, sigrok's routine %02X", v, usbCRC5(v), usblsCRC5(usblsLSB(v, 11)))

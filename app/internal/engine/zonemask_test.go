@@ -8,7 +8,7 @@ import "testing"
 // TRLC-LINKS: REQ-SDS-014
 func zmFrame(n int, code uint8, pLo, pHi int) *Frame {
 	f := &Frame{C1: make([]uint8, n), C2: make([]uint8, n), Valid: n}
-	for i := 0; i < n; i++ {
+	for i := range n {
 		f.C1[i] = 100
 		if i >= pLo && i < pHi {
 			f.C1[i] = code
@@ -107,7 +107,7 @@ func TestMaskEvalAndRing(t *testing.T) {
 		t.Fatal("MaskStopFail must request a stop")
 	}
 	// ring caps at maskRingCap
-	for i := 0; i < maskRingCap+4; i++ {
+	for range maskRingCap + 4 {
 		e.maskEval(f2, n, 0, edgeX, 2e-9, 0.5)
 	}
 	if len(e.MaskFails()) != maskRingCap {

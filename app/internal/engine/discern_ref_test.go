@@ -29,10 +29,7 @@ func windowSlopeMatches(sig []uint8, xc float64, winCols int, rising bool) bool 
 		return true
 	}
 	c := int(xc)
-	skip := winCols / 16
-	if skip < 1 {
-		skip = 1
-	}
+	skip := max(winCols/16, 1)
 	span := winCols / 4
 	mean := func(from, to int) (float64, bool) {
 		if from < 0 {

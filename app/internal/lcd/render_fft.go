@@ -3,7 +3,6 @@ package lcd
 
 import (
 	"math"
-
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/panel/framecalc"
 	"open-sds/app/internal/panel/wsview"
@@ -16,15 +15,9 @@ import (
 func fftBand(half, zoom int, zoomOff float64) (kLo, kHi int) {
 	kLo, kHi = 1, half-1
 	if zoom > 1 {
-		bandSpan := (half - 1) / zoom
-		if bandSpan < 4 {
-			bandSpan = 4
-		}
+		bandSpan := max((half-1)/zoom, 4)
 		center := (half-1)/2 + int(zoomOff*float64(half-1))
-		kLo = center - bandSpan/2
-		if kLo < 1 {
-			kLo = 1
-		}
+		kLo = max(center-bandSpan/2, 1)
 		kHi = kLo + bandSpan
 		if kHi > half-1 {
 			kHi = half - 1
@@ -115,7 +108,7 @@ func drawSpecMarker(sf Surface, p plotArea, m *wsview.SpecPane, fLo, fHi float64
 	vdash(sf, x, p.y0+2, H-3, colTrig)
 	rel := math.Max(-80, math.Min(0, m.MarkRel))
 	y := max(p.top+int(-rel/80*float64(p.bot-p.top)), p.y0+16) // the top peak's triangle stays in the plot
-	for dy := 0; dy <= 4; dy++ {                               // a triangle pointing down onto the level
+	for dy := range 5 {                                        // a triangle pointing down onto the level
 		hline(sf, x-(4-dy), x+(4-dy), y-7+dy, colTrig)
 	}
 	lw := TextWidth(m.MarkText, 1) + 4
@@ -187,7 +180,7 @@ func drawSpectrum(sf Surface, p plotArea, mags []float64, peak float64, col uint
 	// (the web draws the same per-pixel maxima).
 	prevY := -1
 	next := kLo // column x's first bin; the next column's is one past its last
-	for x := 0; x < p.w; x++ {
+	for x := range p.w {
 		k0 := next
 		next = kLo + (x+1)*span/(p.w-1)
 		k1 := next - 1

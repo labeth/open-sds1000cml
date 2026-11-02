@@ -4,6 +4,7 @@ package decode
 import (
 	"fmt"
 	"math/rand"
+	"strings"
 	"testing"
 )
 
@@ -40,11 +41,11 @@ func usbWave(packets []usbPkt, spb int) []uint8 {
 		// Logical bit stream: SYNC + PID + data (all LSB-first for the byte fields).
 		bits := []int{0, 0, 0, 0, 0, 0, 0, 1} // SYNC
 		pidByte := (p.pid & 0xF) | ((^p.pid & 0xF) << 4)
-		for i := 0; i < 8; i++ {
+		for i := range 8 {
 			bits = append(bits, (pidByte>>i)&1)
 		}
 		for _, d := range p.data {
-			for i := 0; i < 8; i++ {
+			for i := range 8 {
 				bits = append(bits, (d>>i)&1)
 			}
 		}
@@ -142,9 +143,11 @@ func TestDecodeUSBLSRoundTrip(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-018
 func usblsKinds(spans []Span) string {
 	s := ""
+	var sSb145 strings.Builder
 	for _, sp := range spans {
-		s += sp.Kind + " "
+		sSb145.WriteString(sp.Kind + " ")
 	}
+	s += sSb145.String()
 	return s
 }
 
@@ -176,7 +179,7 @@ func TestDecodeUSBLSNoPanic(t *testing.T) {
 		return s
 	}
 	inputs := [][]uint8{nil, {}, {200}, mk(3, 2)}
-	for k := 0; k < 60; k++ {
+	for range 60 {
 		inputs = append(inputs, mk(rng.Intn(3000), rng.Intn(4)))
 	}
 	colTimes := []float64{0, 1e-12, 1e-8, 1}
@@ -207,7 +210,7 @@ func TestDecodeUSBLSNoPanic(t *testing.T) {
 func TestUSBObservedStuffViolationIsFrameError(t *testing.T) {
 	const spb = 40
 	var w []uint8
-	push := func(level int, cells int) {
+	push := func(level, cells int) {
 		v := uint8(40)
 		if level != 0 {
 			v = 210
@@ -221,7 +224,7 @@ func TestUSBObservedStuffViolationIsFrameError(t *testing.T) {
 	// Omit stuffing in FF, with a transition in the following 00 before the
 	// ten-cell packet-gap threshold. The clean 00 prefix must not hide corruption.
 	for _, b := range []int{0x80, 0xc3, 0x00, 0xff, 0x00} {
-		for i := 0; i < 8; i++ {
+		for i := range 8 {
 			if (b>>i)&1 == 0 {
 				level ^= 1
 			}

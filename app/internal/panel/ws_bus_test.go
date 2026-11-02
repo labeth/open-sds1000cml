@@ -4,12 +4,11 @@ package panel
 import (
 	"fmt"
 	"math"
+	"open-sds/app/internal/engine"
 	"reflect"
 	"strings"
 	"testing"
 	"time"
-
-	"open-sds/app/internal/engine"
 )
 
 // BUS: the list holds the complete packets still while the messages repeat;
@@ -78,7 +77,7 @@ func TestBusEyeTools(t *testing.T) {
 	uart := func() { r.show(uartFrame([]string{"Hello, eye!\r\n"}, 460800, 60e-6, 100e-9, 20000)) }
 	uart()
 	press(t, c, "f2", "f2")
-	for i := 0; i < 4; i++ {
+	for range 4 {
 		uart()
 	}
 	e := c.View().Eye
@@ -117,7 +116,7 @@ func prbsSPIFrame(bitS, sampleS float64, n int, phase float64) *engine.Frame {
 	spb := bitS / sampleS
 	lfsr := 0x7f
 	data := uint8(40)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		b := (float64(i) - phase) / spb
 		k := math.Floor(b)
 		if i == 0 || math.Floor((float64(i-1)-phase)/spb) != k { // a bit boundary: the next PRBS7 bit
@@ -130,8 +129,10 @@ func prbsSPIFrame(bitS, sampleS float64, n int, phase float64) *engine.Frame {
 			c2[i] = 210
 		}
 	}
-	return &engine.Frame{C1: c1, C2: c2, Valid: n, WinCols: n, EdgeX: float64(n) / 2, Ptp: 170,
-		TdivS: float64(n) * sampleS / 10, SampleS: sampleS, Trigd: true, FullRate: true}
+	return &engine.Frame{
+		C1: c1, C2: c2, Valid: n, WinCols: n, EdgeX: float64(n) / 2, Ptp: 170,
+		TdivS: float64(n) * sampleS / 10, SampleS: sampleS, Trigd: true, FullRate: true,
+	}
 }
 
 // The eye of an SPI bus keeps folding capture after capture: the clock
@@ -257,8 +258,15 @@ func TestSI5(t *testing.T) {
 	for _, c := range []struct {
 		v    float64
 		want string
-	}{{2.0001e6, "2.0001 Mbit/s"}, {2e6, "2.0000 Mbit/s"}, {115200, "115.20 kbit/s"}, {9600, "9.6000 kbit/s"},
-		{999.9999e3, "1.0000 Mbit/s"}, {300, "300.00 bit/s"}, {math.NaN(), "---"}} {
+	}{
+		{2.0001e6, "2.0001 Mbit/s"},
+		{2e6, "2.0000 Mbit/s"},
+		{115200, "115.20 kbit/s"},
+		{9600, "9.6000 kbit/s"},
+		{999.9999e3, "1.0000 Mbit/s"},
+		{300, "300.00 bit/s"},
+		{math.NaN(), "---"},
+	} {
 		if got := si5(c.v, "bit/s"); got != c.want {
 			t.Errorf("si5(%g) = %q, want %q", c.v, got, c.want)
 		}

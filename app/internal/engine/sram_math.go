@@ -4,7 +4,6 @@ package engine
 import (
 	"math"
 	"math/bits"
-
 	"open-sds/app/internal/sramcapture"
 )
 
@@ -21,18 +20,12 @@ func eresQ8(src, scratch []uint16, length int) {
 	var by recip // division by the window's samples, rebuilt where it shrinks
 	byN := uint32(0)
 	for i := range src {
-		end := i + half + 1
-		if end > len(src) {
-			end = len(src)
-		}
+		end := min(i+half+1, len(src))
 		for hi < end {
 			sum += uint32(src[hi])
 			hi++
 		}
-		start := i - half
-		if start < 0 {
-			start = 0
-		}
+		start := max(i-half, 0)
 		for lo < start {
 			sum -= uint32(src[lo])
 			lo++
@@ -133,7 +126,7 @@ func (a *sramAverage) push(f *Frame, target int) int {
 	// 1/target share for the new record's.
 	running, t := a.count >= target, uint32(target)
 	byT := newRecip(t)
-	for i := 0; i < m; i++ {
+	for i := range m {
 		if a.count == 0 {
 			a.sum1[i] = 0
 			a.sum2[i] = 0

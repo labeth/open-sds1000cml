@@ -8,6 +8,7 @@ package boot
 // terminates.
 
 import (
+	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -47,9 +48,7 @@ func run(t *testing.T, env map[string]string, wantMarker string, timeout time.Du
 		"OTA_RESPAWN":      "0", // don't sleep between respawns
 		"OTA_AGENT_STABLE": "1",
 	}
-	for k, v := range env {
-		base[k] = v
-	}
+	maps.Copy(base, env)
 	// OTA_DIR must exist for pointer files unless the test overrides paths.
 	_ = os.MkdirAll(base["OTA_DIR"], 0o755)
 

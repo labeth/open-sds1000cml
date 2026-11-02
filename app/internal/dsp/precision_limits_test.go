@@ -10,10 +10,10 @@ import (
 func TestPrecisionNoiseAgainstImpulse(t *testing.T) {
 	for _, r := range []int{16, 32, 64, 256} {
 		h := []float64{1}
-		for stage := 0; stage < 3; stage++ {
+		for range 3 {
 			out := make([]float64, len(h)+r-1)
 			for i, v := range h {
-				for j := 0; j < r; j++ {
+				for j := range r {
 					out[i+j] += v / float64(r)
 				}
 			}

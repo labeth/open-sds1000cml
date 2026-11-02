@@ -4,7 +4,6 @@ package engine
 import (
 	"math"
 	"math/bits"
-
 	"open-sds/app/internal/decode"
 	"open-sds/app/internal/sramcapture"
 )
@@ -127,7 +126,7 @@ func physSymbolSpec(p *SerialParams, s *symSpec) bool {
 			return true
 		}
 		s.unit = func(b *symBits, _ int, u symUnit) bool {
-			for k := 0; k < 4; k++ {
+			for k := range 4 {
 				bit(b, u.value>>k&1 != 0, u.mask>>k&1 != 0)
 			}
 			return true
@@ -148,7 +147,7 @@ func physSymbolSpec(p *SerialParams, s *symSpec) bool {
 			// a classic line's one edge a transition, units of half a bit
 			s.cfg.UnitQ8, s.period = q8(T/2), 16
 			s.unit = func(b *symBits, _ int, u symUnit) bool {
-				for k := 0; k < 8; k++ {
+				for k := range 8 {
 					b.skip(1)
 					b.put(u.value>>k&1 != 0, u.mask>>k&1 != 0)
 				}
@@ -173,7 +172,7 @@ func physSymbolSpec(p *SerialParams, s *symSpec) bool {
 			return true
 		}
 		s.unit = func(b *symBits, _ int, u symUnit) bool {
-			for k := 0; k < 8; k++ {
+			for k := range 8 {
 				if bitN > 0 {
 					b.skip(2) // the bit's first half
 				}
@@ -280,7 +279,7 @@ func physSymbolSpec(p *SerialParams, s *symSpec) bool {
 		s.cfg.UnitQ8, s.sliding = q8(half), true
 		s.start = func(b *symBits, _ []symUnit) bool {
 			manch(b, false, true)
-			for i := 0; i < 9; i++ {
+			for range 9 {
 				manch(b, true, true)
 			}
 			return true
@@ -345,7 +344,7 @@ func physSymbolSpec(p *SerialParams, s *symSpec) bool {
 					if u.value > 15 || u.mask > 15 {
 						return false
 					}
-					for k := 0; k < 4; k++ {
+					for k := range 4 {
 						bit(b, u.value>>k&1 != 0, u.mask>>k&1 != 0)
 					}
 					bit(b, false, true)
@@ -455,7 +454,7 @@ func physSymbolSpec(p *SerialParams, s *symSpec) bool {
 			b.fixed(0)
 		}
 		s.start = func(b *symBits, _ []symUnit) bool {
-			for i := 0; i < 3; i++ {
+			for range 3 {
 				sync(b)
 			}
 			return true
@@ -499,7 +498,7 @@ func physSymbolSpec(p *SerialParams, s *symSpec) bool {
 			if ones < 4 {
 				return false
 			}
-			for i := 0; i < ones; i++ {
+			for range ones {
 				bmc(b, true, true)
 			}
 			if len(units) == 0 {
@@ -509,7 +508,7 @@ func physSymbolSpec(p *SerialParams, s *symSpec) bool {
 		}
 		s.unit = func(b *symBits, _ int, u symUnit) bool {
 			bmc(b, false, true)
-			for k := 0; k < 8; k++ {
+			for k := range 8 {
 				bmc(b, u.value>>k&1 != 0, u.mask>>k&1 != 0)
 			}
 			bmc(b, onesOf(u.value&255)&1 == 0, u.mask&255 == 255)
@@ -522,7 +521,7 @@ func physSymbolSpec(p *SerialParams, s *symSpec) bool {
 		set(sramcapture.SymbolClocked, 0, T, decode.SymDataSep)
 		s.cfg.TwoLines, s.sliding = true, true
 		s.start = func(b *symBits, units []symUnit) bool {
-			for i := 0; i < 8; i++ {
+			for range 8 {
 				b.fixed(1)
 			}
 			if len(units) == 0 {
@@ -621,13 +620,20 @@ var irmpFrames = map[int]irmpFrame{
 	decode.IRSamsung32: {4500, 4500, 550, 550, 1650, 32, [][]int{irmpPlaces(0, 16, 1), irmpPlaces(16, 16, 1)}, nil},
 	decode.IRJVC:       {9000, 4500, 560, 560, 1690, 16, [][]int{irmpPlaces(0, 4, 1), irmpPlaces(4, 12, 1)}, nil},
 	decode.IRNEC16:     {9000, 4500, 560, 560, 1690, 16, [][]int{irmpPlaces(0, 8, 1), irmpPlaces(8, 8, 1)}, nil},
-	decode.IRNEC42: {9000, 4500, 560, 560, 1690, 42, [][]int{irmpPlaces(0, 13, 1), irmpPlaces(26, 8, 1)},
-		[][2]int{{0, 13}, {1, 34}}},
-	decode.IRKaseikyo: {3380, 1690, 423, 423, 1269, 48, [][]int{irmpPlaces(0, 16, 1),
-		append(irmpPlaces(28, 12, 1), irmpPlaces(20, 4, 1)...)}, nil},
+	decode.IRNEC42: {
+		9000, 4500, 560, 560, 1690, 42,
+		[][]int{irmpPlaces(0, 13, 1), irmpPlaces(26, 8, 1)},
+		[][2]int{{0, 13}, {1, 34}},
+	},
+	decode.IRKaseikyo: {3380, 1690, 423, 423, 1269, 48, [][]int{
+		irmpPlaces(0, 16, 1),
+		append(irmpPlaces(28, 12, 1), irmpPlaces(20, 4, 1)...),
+	}, nil},
 	decode.IRMatsushita: {3488, 3488, 872, 872, 2616, 24, [][]int{irmpPlaces(12, 12, 1), irmpPlaces(0, 12, 1)}, nil},
-	decode.IRSamsung: {4500, 4500, 550, 550, 1650, 36, [][]int{irmpPlaces(0, 16, 1),
-		append(irmpPlaces(20, 8, 1), irmpPlaces(16, 4, 1)...)}, nil},
+	decode.IRSamsung: {4500, 4500, 550, 550, 1650, 36, [][]int{
+		irmpPlaces(0, 16, 1),
+		append(irmpPlaces(20, 8, 1), irmpPlaces(16, 4, 1)...),
+	}, nil},
 	decode.IRDenon: {0, 10000, 310, 745, 1780, 15, [][]int{irmpPlaces(4, 5, -1), irmpPlaces(14, 10, -1)}, nil},
 }
 
@@ -690,7 +696,7 @@ func irmpSymbolSpec(p *SerialParams, s *symSpec, set func(mode, lead int, longes
 			}
 		}
 		if p.Bits == decode.IRSamsung && len(units) > 1 && units[1].mask&0xff == 0xff {
-			for k := 0; k < 8; k++ { // the command's inverse
+			for k := range 8 { // the command's inverse
 				val[28+k], care[28+k] = units[1].value>>k&1 == 0, true
 				last = max(last, 28+k)
 			}

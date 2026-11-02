@@ -102,8 +102,8 @@ func Parse(raw []byte) (*Table, error) {
 	notTriangular(payload)
 
 	t := &Table{}
-	for ch := 0; ch < 2; ch++ {
-		for vd := 0; vd < numVdiv; vd++ {
+	for ch := range 2 {
+		for vd := range numVdiv {
 			base := (ch*numVdiv + vd) * 8
 			t.Rec[ch][vd] = Rec{
 				GainDAC: int16(binary.LittleEndian.Uint16(payload[base:])),
@@ -134,7 +134,7 @@ func byteSum(b []byte) uint32 {
 	for len(b) >= 8 {
 		var lanes uint64
 		n := min(len(b)/8, 128) // 128 words of at most 2*255 a lane fit 16 bits
-		for k := 0; k < n; k++ {
+		for k := range n {
 			w := binary.LittleEndian.Uint64(b[8*k:])
 			lanes += w&lo + w>>8&lo
 		}
@@ -156,8 +156,8 @@ func Defaults() *Table {
 	// interpolate this ladder monotonically.
 	gain := [numVdiv]float32{19.190, 8.845, 3.801, 1.841, 0.936, 16.495, 8.547, 4.206, 1.719, 0.902, 0.426, 0.169}
 	t := &Table{Source: "defaults"}
-	for ch := 0; ch < 2; ch++ {
-		for vd := 0; vd < numVdiv; vd++ {
+	for ch := range 2 {
+		for vd := range numVdiv {
 			t.Rec[ch][vd] = Rec{GainDAC: gainDAC[vd], Zero: 0x27ef, Gain: gain[vd]}
 		}
 	}

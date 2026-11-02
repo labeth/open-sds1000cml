@@ -13,7 +13,7 @@ import (
 // TRLC-LINKS: REQ-SDS-018
 func TestHexTextIsSprintf(t *testing.T) {
 	rng := rand.New(rand.NewSource(1))
-	for it := 0; it < 20000; it++ {
+	for it := range 20000 {
 		v := uint64(rng.Int63()) >> uint(rng.Intn(64))
 		if it%7 == 0 {
 			v = 0
@@ -31,7 +31,7 @@ func TestHexTextIsSprintf(t *testing.T) {
 func TestFmtByteTables(t *testing.T) {
 	for v := -300; v < 600; v++ {
 		b := v & 0xff
-		want := map[string]string{"dec": fmt.Sprint(b), "bin": fmt.Sprintf("%08b", b), "": hex2(v)}
+		want := map[string]string{"dec": strconv.Itoa(b), "bin": fmt.Sprintf("%08b", b), "": hex2(v)}
 		if v >= 32 && v < 127 {
 			want["ascii"], want["both"] = string(rune(v)), hex2(v)+"'"+string(rune(v))
 		} else {
@@ -57,7 +57,7 @@ func TestFmtByteTables(t *testing.T) {
 func TestNthNearIsNthValue(t *testing.T) {
 	rng := rand.New(rand.NewSource(2))
 	var b nearBuf
-	for it := 0; it < 5000; it++ {
+	for range 5000 {
 		n := 1 + rng.Intn([]int{5, 50, 3000}[rng.Intn(3)])
 		v, iv := make([]float64, n), make([]int, n)
 		base := []int{1, 8, 1 << 20}[rng.Intn(3)]
@@ -111,7 +111,7 @@ func TestOrderKey(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-236
 func TestLevelCursorIsLogicAt(t *testing.T) {
 	rng := rand.New(rand.NewSource(4))
-	for it := 0; it < 300; it++ {
+	for range 300 {
 		n := 1 + rng.Intn(3000)
 		l := edgeLineOf(randomLevels(rng, n, []float64{1, 4, 60}[rng.Intn(3)], rng.Intn(4) == 0))
 		s := l.slice(128, true)
@@ -140,7 +140,7 @@ func TestRoundUpsIsRound(t *testing.T) {
 	rng := rand.New(rand.NewSource(5))
 	thrs := []float64{128, 127.5, 127.5 + 1e-12, 127.5 - 1e-12, 127.5 + 1e-3, 30, 228, 90.25}
 	tried := 0
-	for it := 0; it < 200; it++ {
+	for range 200 {
 		l := edgeLineOf(randomLevels(rng, 1+rng.Intn(20000), 5, false))
 		for _, thr := range thrs {
 			s := l.slice(thr, true)

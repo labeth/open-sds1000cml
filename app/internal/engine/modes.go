@@ -54,7 +54,7 @@ func eresBoxcar(sig []uint8, l int, scratch []uint16) {
 	sum := 0
 	lo, hi := 0, -1
 	out := scratch[:n]
-	for i := 0; i < n; i++ {
+	for i := range n {
 		wantLo, wantHi := i-half, i+half
 		if wantLo < 0 {
 			wantLo = 0
@@ -72,7 +72,7 @@ func eresBoxcar(sig []uint8, l int, scratch []uint16) {
 		}
 		out[i] = uint16(math.Round(float64(sum) / float64(wantHi-wantLo+1)))
 	}
-	for i := 0; i < n; i++ {
+	for i := range n {
 		sig[i] = uint8(out[i])
 	}
 }
@@ -199,11 +199,8 @@ func (u *uniRing) push(disc []uint8, winCols int, edgeX float64) {
 	n := len(disc)
 	extract := func(dst []uint8, xc float64) {
 		left := xc - float64(winCols)/2
-		for x := 0; x < uniCols; x++ {
-			pos := int(left + float64(x)*float64(winCols)/float64(uniCols))
-			if pos < 0 {
-				pos = 0
-			}
+		for x := range uniCols {
+			pos := max(int(left+float64(x)*float64(winCols)/float64(uniCols)), 0)
 			if pos > n-1 {
 				pos = n - 1
 			}
@@ -254,7 +251,7 @@ func (u *uniRing) stats() (std, stdRaw, worst float64) {
 	colStds(u.centred, &stdC)
 	colStds(u.raw, &stdR)
 	var sumC, sumR float64
-	for c := 0; c < uniCols; c++ {
+	for c := range uniCols {
 		sc := stdC[c]
 		sumC += sc
 		sumR += stdR[c]
