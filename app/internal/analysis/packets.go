@@ -1,7 +1,9 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ANALYSIS
+
 package analysis
 
 import (
+	"cmp"
 	"fmt"
 	"math"
 	"open-sds/app/internal/decode"
@@ -88,15 +90,15 @@ func Packets(r decode.Result, recordLen int) []Packet {
 		g.i2c(r.Spans)
 	case "canfd":
 		g.can(r.Spans)
-	case "manchester", "flexray", "usbls", "mil1553", "arinc429", "sent":
+	case "manchester", "flexray", protoUSBLS, protoMIL1553, protoARINC429, "sent":
 		g.framed(r.Proto, r.Spans)
-	case "lin", "dmx512", "midi", "modbus", "onewire", "ws281x", "dht", "cec", "j1850", "irnec", "irsirc", "irrc5",
-		"irrc6", "dali", "usbpd", "spdif", "ps2", "swd", "mdio", "wiegand",
+	case "lin", "dmx512", "midi", "modbus", protoOneWire, "ws281x", "dht", "cec", "j1850", "irnec", "irsirc", "irrc5",
+		"irrc6", "dali", "usbpd", "spdif", "ps2", "swd", protoMDIO, "wiegand",
 		"quad", "stepper", "pwm", "rcencode", "ook", "miller", "morse", "dcf77", "em4100", "em4305", "t55xx", "swim",
-		"sdq", "pjdl", "dsi", "qi", "sdcard", "pdi", "cjtag", "maple", "caliper", "irmp":
+		"sdq", "pjdl", "dsi", "qi", protoSDCard, "pdi", "cjtag", "maple", "caliper", "irmp":
 		g.opened(r.Proto, r.Spans)
 	default: // uart, spi, and any byte stream to come
-		g.gaps(r.Proto == "uart", r.Spans)
+		g.gaps(r.Proto == protoUART, r.Spans)
 	}
 	return g.out
 }
@@ -105,16 +107,16 @@ func Packets(r decode.Result, recordLen int) []Packet {
 // TRLC-LINKS: REQ-SDS-214
 func wordWidth(r decode.Result) int {
 	switch r.Proto {
-	case "mil1553":
+	case protoMIL1553:
 		return 2
-	case "arinc429":
+	case protoARINC429:
 		return 3
-	case "i2c", "spi", "canfd", "usbls", "flexray", "sent":
+	case "i2c", "spi", "canfd", protoUSBLS, "flexray", "sent":
 		return 1
-	case "lin", "dmx512", "midi", "modbus", "onewire", "ws281x", "dht", "cec", "j1850", "irnec", "irsirc", "irrc5",
-		"irrc6", "dali", "usbpd", "spdif", "ps2", "swd", "mdio", "wiegand",
+	case "lin", "dmx512", "midi", "modbus", protoOneWire, "ws281x", "dht", "cec", "j1850", "irnec", "irsirc", "irrc5",
+		"irrc6", "dali", "usbpd", "spdif", "ps2", "swd", protoMDIO, "wiegand",
 		"quad", "stepper", "pwm", "rcencode", "ook", "miller", "morse", "dcf77", "em4100", "em4305", "t55xx", "swim",
-		"sdq", "pjdl", "dsi", "qi", "sdcard", "pdi", "cjtag", "maple", "caliper", "irmp":
+		"sdq", "pjdl", "dsi", "qi", protoSDCard, "pdi", "cjtag", "maple", "caliper", "irmp":
 		return 1 // opened sets each unit's own (openedWidth)
 	}
 	top := 0 // UART and Manchester words take 1..16 bits
@@ -135,7 +137,7 @@ func wordWidth(r decode.Result) int {
 // isWord reports whether a span of a byte-stream decode carries a data word.
 // TRLC-LINKS: REQ-SDS-214
 func isWord(kind string) bool {
-	return kind == "data" || kind == "frame-error" || kind == "parity-error"
+	return kind == kindData || kind == kindFrameError || kind == kindParityError
 }
 
 // grouper builds the packets of one decode.
@@ -181,7 +183,7 @@ func (g *grouper) span(sp decode.Span) {
 func (g *grouper) word(sp decode.Span, bad bool) {
 	g.span(sp)
 	for k := g.width - 1; k >= 0; k-- {
-		g.cur.Bytes = append(g.cur.Bytes, byte(sp.Val>>(8*k)))
+		g.cur.Bytes = append(g.cur.Bytes, byte(sp.Val>>(8*k)&0xff))
 		g.cur.ByteErr = append(g.cur.ByteErr, bad)
 	}
 }
@@ -214,7 +216,7 @@ func (g *grouper) gaps(uart bool, spans []decode.Span) {
 	if len(ws) == 0 {
 		return
 	}
-	med := float64(selectInt(ws, len(ws)/2)) // the sorted middle, selected
+	med := float64(quickselect(ws, len(ws)/2)) // the sorted middle, selected
 
 	bit := g.bit
 	if bit == 0 {
@@ -235,7 +237,7 @@ func (g *grouper) gaps(uart bool, spans []decode.Span) {
 				g.close(float64(sp.I0-g.cur.I1) > idle)
 			}
 			prev, prevEnd = evCut, max(prevEnd, sp.I1)
-		case uart && sp.Kind == "frame-error" && sp.Val == 0:
+		case uart && sp.Kind == kindFrameError && sp.Val == 0:
 			g.close(true)
 			prev, prevEnd = evBreak, max(prevEnd, sp.I1)
 		case isWord(sp.Kind):
@@ -252,7 +254,7 @@ func (g *grouper) gaps(uart bool, spans []decode.Span) {
 				}
 				g.open(sp.I0, startOK)
 			}
-			g.word(sp, sp.Kind != "data")
+			g.word(sp, sp.Kind != kindData)
 			prev, prevEnd = evWord, max(prevEnd, sp.I1)
 		}
 	}
@@ -279,7 +281,7 @@ func (g *grouper) i2c(spans []decode.Span) {
 				g.close(true)
 			}
 			continue
-		case "frame-error": // "(no STOP)": the record ended inside the transaction
+		case kindFrameError: // "(no STOP)": the record ended inside the transaction
 			if g.cur != nil {
 				g.cur.Err = FaultNoStop
 				g.close(false)
@@ -296,7 +298,7 @@ func (g *grouper) i2c(spans []decode.Span) {
 			addrPhase = true
 		case "rw":
 			g.cur.Read = sp.Text == "R"
-		case "data":
+		case kindData:
 			g.word(sp, false)
 			addrPhase = false
 		case "nak":
@@ -341,9 +343,9 @@ func (g *grouper) can(spans []decode.Span) {
 			g.cur.Read = sp.Val == 1
 		case "fd":
 			fd = true
-		case "data":
+		case kindData:
 			g.word(sp, false)
-		case "frame-error": // the CRC field: a mismatch or a stuffing violation
+		case kindFrameError: // the CRC field: a mismatch or a stuffing violation
 			g.cur.Err = FaultCRC
 		case "ack":
 			acked = true
@@ -368,9 +370,9 @@ func (g *grouper) framed(proto string, spans []decode.Span) {
 		head, tail = 2.5, 2.5 // the decoder's own inter-frame idle
 	case "flexray":
 		tail = 10 // a byte: the frame may go on
-	case "usbls":
+	case protoUSBLS:
 		tail = 3 // the end of packet
-	case "mil1553":
+	case protoMIL1553:
 		tail = 20 // a word: the message may go on
 	case "sent":
 		tail = 28 // the longest nibble pulse: the frame may go on
@@ -388,9 +390,9 @@ func (g *grouper) framed(proto string, spans []decode.Span) {
 		case sp.Kind == "gap":
 			end(true)
 			continue
-		case proto == "arinc429":
+		case proto == protoARINC429:
 			begins = sp.Kind == "addr" // each word opens with its label
-		case proto == "mil1553":
+		case proto == protoMIL1553:
 			begins = sp.Kind == "start" && (sp.Text != "dsync" || g.cur == nil)
 		default:
 			begins = sp.Kind == "start" || sp.Kind == "sync"
@@ -398,15 +400,15 @@ func (g *grouper) framed(proto string, spans []decode.Span) {
 		if begins {
 			end(true)
 			// a data word with no command word before it: the message was cut
-			g.open(sp.I0, float64(sp.I0) >= head && !(proto == "mil1553" && sp.Text == "dsync"))
+			g.open(sp.I0, float64(sp.I0) >= head && (proto != protoMIL1553 || sp.Text != "dsync"))
 		}
 		if g.cur == nil {
 			g.open(sp.I0, false)
 		}
 		g.span(sp)
 		switch sp.Kind {
-		case "data":
-			if proto == "mil1553" && len(g.cur.Bytes) == 0 && g.start {
+		case kindData:
+			if proto == protoMIL1553 && len(g.cur.Bytes) == 0 && g.start {
 				// the command (or status) word: RT address and T/R bit
 				g.cur.Addr, g.cur.HasAddr = (sp.Val>>11)&0x1f, true
 				g.cur.Read = (sp.Val>>10)&1 == 1
@@ -419,7 +421,7 @@ func (g *grouper) framed(proto string, spans []decode.Span) {
 			g.cur.Err = FaultCRC
 		case "addr":
 			g.cur.Addr, g.cur.HasAddr = sp.Val, true
-		case "frame-error":
+		case kindFrameError:
 			g.frameError(proto, sp)
 		}
 	}
@@ -430,13 +432,13 @@ func (g *grouper) framed(proto string, spans []decode.Span) {
 // open each frame with a start marker (opened).
 var openedFault = map[string]string{
 	"lin": FaultCRC, "modbus": FaultCRC, "j1850": FaultCRC, "usbpd": FaultCRC,
-	"dht": FaultCRC, "onewire": FaultCRC, "ps2": FaultParity, "swd": FaultParity, "wiegand": FaultParity,
+	"dht": FaultCRC, protoOneWire: FaultCRC, "ps2": FaultParity, "swd": FaultParity, "wiegand": FaultParity,
 	"spdif": FaultParity, "irnec": FaultParity, "dmx512": FaultCoding, "midi": FaultCoding, "cec": FaultCoding,
-	"irsirc": FaultCoding, "irrc5": FaultCoding, "irrc6": FaultCoding, "dali": FaultCoding, "mdio": FaultNAK,
+	"irsirc": FaultCoding, "irrc5": FaultCoding, "irrc6": FaultCoding, "dali": FaultCoding, protoMDIO: FaultNAK,
 	"quad": FaultCoding, "stepper": FaultCoding, "pwm": FaultCoding, "rcencode": FaultCoding, "ook": FaultCRC,
 	"miller": FaultCoding, "morse": FaultCoding, "dcf77": FaultParity, "em4100": FaultParity, "em4305": FaultParity,
 	"t55xx": FaultCoding, "swim": FaultParity, "sdq": FaultCoding, "pjdl": FaultCRC, "dsi": FaultCoding,
-	"qi": FaultParity, "sdcard": FaultCRC, "pdi": FaultParity, "cjtag": FaultCoding, "maple": FaultCRC,
+	"qi": FaultParity, protoSDCard: FaultCRC, "pdi": FaultParity, "cjtag": FaultCoding, "maple": FaultCRC,
 	"caliper": FaultCoding, "irmp": FaultCoding,
 }
 
@@ -448,7 +450,7 @@ var openedFault = map[string]string{
 // TRLC-LINKS: REQ-SDS-214
 func openedWidth(proto string, sp decode.Span) int {
 	switch proto {
-	case "mdio", "wiegand", "irmp":
+	case protoMDIO, "wiegand", "irmp":
 		return 2
 	case "cjtag":
 		return 4
@@ -495,8 +497,8 @@ func (g *grouper) opened(proto string, spans []decode.Span) {
 			units = 0
 		}
 		g.span(sp)
-		bad := sp.Kind == "frame-error" || sp.Kind == "parity-error"
-		if sp.Kind != "data" && !bad {
+		bad := sp.Kind == kindFrameError || sp.Kind == kindParityError
+		if sp.Kind != kindData && !bad {
 			continue
 		}
 		if bad && sp.Text == "!" { // a frame cut short: no unit
@@ -514,7 +516,7 @@ func (g *grouper) opened(proto string, spans []decode.Span) {
 				g.cur.Addr, g.cur.HasAddr = sp.Val&0x3f, true
 			case "modbus", "cec", "irnec", "irrc5", "irrc6", "dali":
 				g.cur.Addr, g.cur.HasAddr = sp.Val, true
-			case "mdio":
+			case protoMDIO:
 				g.cur.Addr, g.cur.HasAddr = sp.Val>>5&0x1f, true
 				g.cur.Read = sp.Val>>11&1 == 1
 			}
@@ -534,16 +536,16 @@ func (g *grouper) frameError(proto string, sp decode.Span) {
 		g.cur.Err = FaultCoding
 	case "flexray": // the header span, flagged for a header or frame CRC error
 		g.cur.Addr, g.cur.HasAddr, g.cur.Err = sp.Val, true, FaultCRC
-	case "usbls":
+	case protoUSBLS:
 		if sp.Text == "STUFF!" {
 			g.cur.Err = FaultStuff
 		} else {
 			g.cur.Addr, g.cur.HasAddr, g.cur.Err = sp.Val, true, FaultPID
 		}
-	case "mil1553":
+	case protoMIL1553:
 		g.markLast()
 		g.cur.Err = FaultParity
-	case "arinc429":
+	case protoARINC429:
 		g.cur.Err = FaultParity
 	}
 }
@@ -575,18 +577,18 @@ func AddrText(proto string, p Packet) string {
 			return fmt.Sprintf("%03X R", p.Addr)
 		}
 		return fmt.Sprintf("%03X", p.Addr)
-	case "arinc429":
+	case protoARINC429:
 		return fmt.Sprintf("%03o", p.Addr)
-	case "mil1553":
+	case protoMIL1553:
 		return fmt.Sprintf("RT%d %s", p.Addr, map[bool]string{true: "T", false: "R"}[p.Read])
 	}
 	return fmt.Sprintf("%02X", p.Addr)
 }
 
-// selectInt is the value sorting a would put at index k, by quickselect (a
-// is reordered).
-// TRLC-LINKS: REQ-SDS-214
-func selectInt(a []int, k int) int {
+// quickselect is the value sorting a would put at index k (a is reordered):
+// the packet-width median here, the jitter medians in eyejitter.go.
+// TRLC-LINKS: REQ-SDS-214, REQ-SDS-199
+func quickselect[T cmp.Ordered](a []T, k int) T {
 	lo, hi := 0, len(a)-1
 	for lo < hi {
 		mid := lo + (hi-lo)/2

@@ -7,6 +7,7 @@ package lcd
 
 import (
 	"bytes"
+	"encoding/binary"
 	"fmt"
 	"image"
 	"image/png"
@@ -16,7 +17,9 @@ import (
 )
 
 const (
-	W         = 800
+	// W is the panel's width in pixels.
+	W = 800
+	// H is the panel's height in pixels.
 	H         = 480
 	pageBytes = W * H * 2
 )
@@ -43,16 +46,18 @@ type MemSurface struct {
 	Pix []byte // RGB565 little-endian, W*H*2 bytes
 }
 
+// NewMemSurface returns a blank (black) in-memory page.
 // TRLC-LINKS: REQ-SDS-021
 func NewMemSurface() *MemSurface { return &MemSurface{Pix: make([]byte, pageBytes)} }
 
+// SetPixel sets one pixel; one off the page is ignored.
 // TRLC-LINKS: REQ-SDS-021
 func (m *MemSurface) SetPixel(x, y int, c uint16) {
 	if x < 0 || x >= W || y < 0 || y >= H {
 		return
 	}
 	o := (y*W + x) * 2
-	m.Pix[o] = byte(c)
+	m.Pix[o] = byte(c & 0xff)
 	m.Pix[o+1] = byte(c >> 8)
 }
 
@@ -100,7 +105,7 @@ func vlinePx(px []uint16, x, y0, y1 int, c uint16) {
 // runtime division on this ARM, and px is taken per drawn column.
 func (m *MemSurface) px() []uint16 {
 	_ = m.Pix[pageBytes-1]
-	return (*[W * H]uint16)(unsafe.Pointer(&m.Pix[0]))[:]
+	return (*[W * H]uint16)(unsafe.Pointer(&m.Pix[0]))[:] //nolint:gosec // Pix is W*H RGB565 words, length checked above
 }
 
 // fillSpan fills rows [y0,y1) of columns [x0,x1) of a MemSurface, clipped:
@@ -123,9 +128,10 @@ func (m *MemSurface) fillSpan(x0, y0, x1, y1 int, c uint16) {
 	}
 }
 
+// Fill sets every pixel of the page to c.
 // TRLC-LINKS: REQ-SDS-021
 func (m *MemSurface) Fill(c uint16) {
-	lo, hi := byte(c), byte(c>>8)
+	lo, hi := byte(c&0xff), byte(c>>8)
 	row := m.Pix[:W*2]
 	for x := range W {
 		row[x*2], row[x*2+1] = lo, hi
@@ -135,6 +141,7 @@ func (m *MemSurface) Fill(c uint16) {
 	}
 }
 
+// At reads one pixel (0 off the page).
 // TRLC-LINKS: REQ-SDS-021
 func (m *MemSurface) At(x, y int) uint16 {
 	if x < 0 || x >= W || y < 0 || y >= H {
@@ -194,7 +201,9 @@ func EncodePNG(m *MemSurface) []byte {
 	}
 	var buf bytes.Buffer
 	enc := png.Encoder{CompressionLevel: png.BestSpeed}
-	enc.Encode(&buf, img)
+	if err := enc.Encode(&buf, img); err != nil {
+		return nil // not reached: a fixed-size RGBA image into a memory buffer
+	}
 	return buf.Bytes()
 }
 
@@ -250,11 +259,11 @@ func OpenFB() (*FB, error) {
 	pages := max(yv/H, 1)
 	mem, err := syscall.Mmap(fd, 0, W*yv*2, syscall.PROT_READ|syscall.PROT_WRITE, syscall.MAP_SHARED)
 	if err != nil {
-		syscall.Close(fd)
+		_ = syscall.Close(fd) // the mmap failure is the error reported
 		return nil, fmt.Errorf("lcd: mmap fb: %w", err)
 	}
 	fb := &FB{fd: fd, mem: mem, pages: pages, panOK: pages >= 2}
-	if err := fbIoctl(fd, fbioGetVScreenInfo, unsafe.Pointer(&fb.vinfo[0])); err != nil {
+	if err := fbIoctl(fd, fbioGetVScreenInfo, unsafe.Pointer(&fb.vinfo[0])); err != nil { //nolint:gosec // the ioctl fills the fb_var_screeninfo bytes
 		fb.panOK = false
 	}
 	return fb, nil
@@ -281,10 +290,7 @@ func (fb *FB) Close() error {
 
 // TRLC-LINKS: REQ-SDS-021
 func (fb *FB) put32(off int, v uint32) {
-	fb.vinfo[off] = byte(v)
-	fb.vinfo[off+1] = byte(v >> 8)
-	fb.vinfo[off+2] = byte(v >> 16)
-	fb.vinfo[off+3] = byte(v >> 24)
+	binary.LittleEndian.PutUint32(fb.vinfo[off:], v)
 }
 
 // pan flips scanout to a page: FBIOPAN_DISPLAY first, then the
@@ -292,12 +298,12 @@ func (fb *FB) put32(off int, v uint32) {
 // only one).
 // TRLC-LINKS: REQ-SDS-021
 func (fb *FB) pan(page int) error {
-	fb.put32(offYoffset, uint32(page*H))
-	if err := fbIoctl(fb.fd, fbioPanDisplay, unsafe.Pointer(&fb.vinfo[0])); err == nil {
+	fb.put32(offYoffset, uint32(page*H))                                                 //nolint:gosec // page < fb.pages (a handful): the row offset is small
+	if err := fbIoctl(fb.fd, fbioPanDisplay, unsafe.Pointer(&fb.vinfo[0])); err == nil { //nolint:gosec // the ioctl reads the fb_var_screeninfo bytes
 		return nil
 	}
 	fb.put32(offActivate, fbActivateForce)
-	err := fbIoctl(fb.fd, fbioPutVScreenInfo, unsafe.Pointer(&fb.vinfo[0]))
+	err := fbIoctl(fb.fd, fbioPutVScreenInfo, unsafe.Pointer(&fb.vinfo[0])) //nolint:gosec // the ioctl reads the fb_var_screeninfo bytes
 	fb.put32(offActivate, 0)
 	return err
 }
@@ -312,17 +318,13 @@ func EncodeBMP(m *MemSurface) []byte {
 	b := make([]byte, hdrSize, total)
 	b[0], b[1] = 'B', 'M'
 	le32 := func(off int, v uint32) {
-		b[off] = byte(v)
-		b[off+1] = byte(v >> 8)
-		b[off+2] = byte(v >> 16)
-		b[off+3] = byte(v >> 24)
+		binary.LittleEndian.PutUint32(b[off:], v)
 	}
 	le32(2, uint32(total))
 	le32(10, hdrSize)
 	le32(14, 40) // BITMAPINFOHEADER
 	le32(18, W)
-	negH := int32(-H) // negative height = top-down rows
-	le32(22, uint32(negH))
+	le32(22, 1<<32-H)    // negative height (two's complement) = top-down rows
 	b[26], b[28] = 1, 16 // planes, bpp
 	le32(30, 3)          // BI_BITFIELDS
 	le32(34, uint32(pageBytes))
@@ -345,7 +347,7 @@ func (fb *FB) Present(back *MemSurface) {
 		}
 		fb.panOK = false
 	}
-	for p := 0; p < fb.pages; p++ {
+	for p := range fb.pages {
 		copyPage(fb.mem[p*pageBytes:(p+1)*pageBytes], back.Pix)
 	}
 }
@@ -367,7 +369,7 @@ func (fb *FB) PresentRows(back *MemSurface, y0, y1 int) {
 		copy(fb.mem[fb.cur*pageBytes+a:fb.cur*pageBytes+b], back.Pix[a:b])
 		return
 	}
-	for p := 0; p < fb.pages; p++ {
+	for p := range fb.pages {
 		copy(fb.mem[p*pageBytes+a:p*pageBytes+b], back.Pix[a:b])
 	}
 }

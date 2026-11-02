@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-LCD
+
 package lcd
 
 import (
@@ -16,9 +17,9 @@ import (
 // TRLC-LINKS: REQ-SDS-021
 func drawXY(sf Surface, p plotArea, f *engine.Frame, hud HUD) {
 	valid := frameValid(f)
-	cap := !hud.UI.Layout.HideViewCaptions
+	captions := !hud.UI.Layout.HideViewCaptions
 	if len(f.C2) < valid {
-		if cap {
+		if captions {
 			DrawText(sf, 10, p.y0+10, "X-Y needs CH2", colDim, 1)
 		}
 		return
@@ -44,7 +45,7 @@ func drawXY(sf Surface, p plotArea, f *engine.Frame, hud HUD) {
 		}
 		px, py = x, y
 	}
-	if cap {
+	if captions {
 		DrawText(sf, 10, p.y0+10, "X:C1  Y:C2", colDim, 1)
 	}
 }
@@ -100,19 +101,19 @@ func mathCodes(c1, c2 []uint8, hud HUD) []uint8 {
 	switch hud.MathMode {
 	case 1:
 		for i := range m {
-			put(i, va[c1[i]]+vb[c2[i]])
+			put(i, va[c1[i]]+vb[c2[i]]) //nolint:gosec // c1, c2 are cut to len(m) above
 		}
 	case 2:
 		for i := range m {
-			put(i, va[c1[i]]-vb[c2[i]])
+			put(i, va[c1[i]]-vb[c2[i]]) //nolint:gosec // c1, c2 are cut to len(m) above
 		}
 	case 3:
 		for i := range m {
-			put(i, vb[c2[i]]-va[c1[i]])
+			put(i, vb[c2[i]]-va[c1[i]]) //nolint:gosec // c1, c2 are cut to len(m) above
 		}
 	case 4:
 		for i := range m {
-			put(i, va[c1[i]]*vb[c2[i]])
+			put(i, va[c1[i]]*vb[c2[i]]) //nolint:gosec // c1, c2 are cut to len(m) above
 		}
 	default:
 		for i := range m {
@@ -393,31 +394,7 @@ func drawZoneMask(sf Surface, p plotArea, f *engine.Frame, hud HUD, win int, xc,
 		posFrac = 0.5
 	}
 	left := xc - float64(win)*posFrac
-	// mask envelope boundary lines
-	mw := hud.MaskWin
-	if hud.MaskMode > 0 && mw > 0 && len(hud.MaskLo) == mw && len(hud.MaskHi) == mw {
-		if mw == win {
-			for x := 0; x < p.w; x++ {
-				j := x * win / p.w
-				sf.SetPixel(x, p.sy(float64(hud.MaskLo[j])), colMask)
-				sf.SetPixel(x, p.sy(float64(hud.MaskHi[j])), colMask)
-			}
-		} else if hud.MaskSampleS > 0 && f.SampleS > 0 && f.EdgeX >= 0 && hud.MaskTdivS == f.TdivS {
-			maskPos := hud.TrigPosFrac
-			if !(maskPos >= 0 && maskPos <= 1) {
-				maskPos = 0.5
-			}
-			for x := 0; x < p.w; x++ {
-				s := left + float64(x)*float64(win)/float64(p.w)
-				j := int(math.Round((s-f.EdgeX)*f.SampleS/hud.MaskSampleS + float64(mw)*maskPos))
-				if j < 0 || j >= mw {
-					continue
-				}
-				sf.SetPixel(x, p.sy(float64(hud.MaskLo[j])), colMask)
-				sf.SetPixel(x, p.sy(float64(hud.MaskHi[j])), colMask)
-			}
-		}
-	}
+	drawMaskBounds(sf, p, f, hud, win, left)
 	// zone rectangles: dt (seconds from the edge) -> raw sample -> screen x
 	if len(hud.Zones) > 0 && f.SampleS > 0 && f.EdgeX >= 0 {
 		for _, z := range hud.Zones {
@@ -440,6 +417,39 @@ func drawZoneMask(sf Surface, p plotArea, f *engine.Frame, hud HUD, win int, xc,
 			drawLine(sf, x0, y1, x1, y1, col)
 			drawLine(sf, x0, y0, x0, y1, col)
 			drawLine(sf, x1, y0, x1, y1, col)
+		}
+	}
+}
+
+// drawMaskBounds draws the mask envelope's boundary lines over the record
+// window (win samples from left): column by column when the mask is the
+// window, else through trigger-relative time.
+// TRLC-LINKS: REQ-SDS-021
+func drawMaskBounds(sf Surface, p plotArea, f *engine.Frame, hud HUD, win int, left float64) {
+	mw := hud.MaskWin
+	if hud.MaskMode <= 0 || mw <= 0 || len(hud.MaskLo) != mw || len(hud.MaskHi) != mw {
+		return
+	}
+	mark := func(x, j int) {
+		sf.SetPixel(x, p.sy(float64(hud.MaskLo[j])), colMask)
+		sf.SetPixel(x, p.sy(float64(hud.MaskHi[j])), colMask)
+	}
+	switch {
+	case mw == win:
+		for x := range p.w {
+			mark(x, x*win/p.w)
+		}
+	case hud.MaskSampleS > 0 && f.SampleS > 0 && f.EdgeX >= 0 && hud.MaskTdivS == f.TdivS:
+		maskPos := hud.TrigPosFrac
+		if !(maskPos >= 0 && maskPos <= 1) {
+			maskPos = 0.5
+		}
+		for x := range p.w {
+			s := left + float64(x)*float64(win)/float64(p.w)
+			j := int(math.Round((s-f.EdgeX)*f.SampleS/hud.MaskSampleS + float64(mw)*maskPos))
+			if j >= 0 && j < mw {
+				mark(x, j)
+			}
 		}
 	}
 }

@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-LCD
+
 package lcd
 
 import (
@@ -58,12 +59,8 @@ func heat(t float64) uint16 {
 	// six segments across the ramp
 	const seg = 6.0
 	s := t * seg
-	i := max(int(s),
-		// defensive: keep the index in range whatever float slips through
-		0)
-	if i > 5 {
-		i = 5
-	}
+	// defensive: keep the index in range whatever float slips through
+	i := min(max(int(s), 0), 5)
 	f := s - float64(i)
 	lerp := func(a, b uint8) uint8 { return uint8(float64(a) + (float64(b)-float64(a))*f) }
 	// inferno-like ramp: monotone in brightness so higher dB always reads hotter
@@ -106,7 +103,7 @@ func (sg *Spectrogram) Push(f *engine.Frame, ch int, effNyq float64) {
 	}
 	sg.effNyq = rows[n-1].SpanHz
 	sg.scroll(n)
-	for i := 0; i < n; i++ { // the newest (last) stretch on the top row
+	for i := range n { // the newest (last) stretch on the top row
 		sg.paintRow(sgY0+n-1-i, rows[i].Mags, rows[i].Peak)
 	}
 	sg.rows = min(sg.rows+n, sgRows)
@@ -214,7 +211,7 @@ func drawSpectrogramMark(sf Surface, p plotArea, sg *Spectrogram, hideCaptions b
 	}
 	// frequency axis (0 .. effNyq) with a few ticks
 	if sg.effNyq > 0 {
-		for i := 0; i <= 4; i++ {
+		for i := range 5 {
 			x := x0 + i*cols/4
 			f := sg.effNyq * float64(i) / 4
 			if i == 4 { // right-aligned: centred, it ran off the screen edge

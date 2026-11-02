@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ANALYSIS
+
 package analysis
 
 import (
@@ -134,7 +135,7 @@ func (s *EyeJitter) Feed(sig []float64, sampleS float64) string {
 		s.lo, s.hi = e.Lo, e.Hi // the metrics' mid row
 		s.ui = fit.UI
 	} else {
-		s.ui = s.ui + (fit.UI-s.ui)/float64(min(s.uiN+1, 32))
+		s.ui += (fit.UI - s.ui) / float64(min(s.uiN+1, 32))
 	}
 	s.uiN++
 	s.sampleS = sampleS
@@ -248,7 +249,7 @@ func (s *EyeJitter) feedSpectrum(fit *GridFit, nUI, sampleS float64) {
 				grid[j] = grid[last] + (grid[i]-grid[last])*float64(j-last)/float64(i-last)
 			}
 		} else if last < 0 {
-			for j := 0; j < i; j++ {
+			for j := range i {
 				grid[j] = grid[i]
 			}
 		}
@@ -281,7 +282,7 @@ func (s *EyeJitter) feedSpectrum(fit *GridFit, nUI, sampleS float64) {
 	}
 	// calibrate each record with its own Hann span (records differ in coverage)
 	cal1 := 2 / (0.5 * float64(span))
-	for k := 0; k < nf/2; k++ {
+	for k := range nf / 2 {
 		s.spec[k] += math.Sqrt(re[k]*re[k]+im[k]*im[k]) * cal1
 	}
 	s.specN++
@@ -540,11 +541,11 @@ func SpectrumDB(samples []float64) []float64 {
 	}
 	re, im := make([]float64, n), make([]float64, n)
 	mean := 0.0
-	for i := 0; i < n; i++ {
+	for i := range n {
 		mean += samples[i]
 	}
 	mean /= float64(n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		w := 0.5 - 0.5*math.Cos(2*math.Pi*float64(i)/float64(n-1))
 		re[i] = (samples[i] - mean) * w
 	}

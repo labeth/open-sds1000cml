@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-SUPERRES
+
 package superres
 
 import (
@@ -40,7 +41,7 @@ func FPGAStack(moments []FPGAStackMoments, k, align, hits, frames int, sampleS f
 		return nil, fmt.Errorf("FPGA stack: align channel %d", align)
 	}
 	st := New(len(moments)/2/k, k)
-	for b := 0; b < st.Nbins; b++ {
+	for b := range st.Nbins {
 		for ch := range 2 {
 			m := moments[2*b+ch]
 			if m.CountOdd > m.Count {

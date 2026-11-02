@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-SOUND
+
 package sound
 
 import (
@@ -305,7 +306,7 @@ func TestSoundJSParity(t *testing.T) {
 	if err := os.WriteFile(vf, blob, 0o644); err != nil {
 		t.Fatal(err)
 	}
-	cmd := exec.Command(node, filepath.Join("testdata", "soundparity.cjs"), vf, filepath.Join("..", "web"))
+	cmd := exec.CommandContext(t.Context(), node, filepath.Join("testdata", "soundparity.cjs"), vf, filepath.Join("..", "web"))
 	cmd.Stderr = os.Stderr
 	outJS, err := cmd.Output()
 	if err != nil {

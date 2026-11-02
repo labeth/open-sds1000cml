@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DSP
+
 package dsp
 
 // minMax8Block is the extremes of the n codes at p, n a multiple of 32 and

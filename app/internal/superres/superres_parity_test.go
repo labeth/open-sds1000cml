@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-SUPERRES
+
 package superres
 
 import (
@@ -16,8 +17,8 @@ import (
 // Mirrors the web multi-hit fixture: the auto-gate narrows to one period, so each
 // frame yields many hits; the last frame carries a different waveform → reject.
 // TRLC-LINKS: REQ-SDS-141
-func genFrames() (N, K, align int, frames []jframe) {
-	N, K, align = 2048, 16, 0
+func genFrames() (n, k, align int, frames []jframe) {
+	n, k, align = 2048, 16, 0
 	const edge, P = 40, 40
 	var seed int64 = 12345
 	rnd := func() float64 { // deterministic LCG in [-0.5,0.5]
@@ -25,10 +26,7 @@ func genFrames() (N, K, align int, frames []jframe) {
 		return float64(seed)/float64(0x7fffffff) - 0.5
 	}
 	clamp := func(v float64) int16 {
-		r := max(int(math.Round(v)), 12)
-		if r > 243 {
-			r = 243
-		}
+		r := min(max(int(math.Round(v)), 12), 243)
 		return int16(r)
 	}
 	tval := func(t float64) float64 {
@@ -39,24 +37,24 @@ func genFrames() (N, K, align int, frames []jframe) {
 		return 128 + (120 - 160*ph/P)
 	}
 	tri := func(frac, na float64) []int16 {
-		a := make([]int16, N)
-		for i := range N {
+		a := make([]int16, n)
+		for i := range n {
 			a[i] = clamp(tval(float64(i)-frac) + na*rnd())
 		}
 		return a
 	}
 	other := func(na float64) []int16 { // a DIFFERENT waveform (slow ramp) → no hits
-		a := make([]int16, N)
-		for i := range N {
-			a[i] = clamp(90 + 70*float64(i)/float64(N) + na*rnd())
+		a := make([]int16, n)
+		for i := range n {
+			a[i] = clamp(90 + 70*float64(i)/float64(n) + na*rnd())
 		}
 		return a
 	}
 	// decoy: a square at the triangle's period — same scale/period, different
 	// shape. Exercises the segment-consistency + level checks cross-engine.
 	decoy := func(na float64) []int16 {
-		a := make([]int16, N)
-		for i := range N {
+		a := make([]int16, n)
+		for i := range n {
 			ph := math.Mod(math.Mod(float64(i), P)+P, P)
 			v := 88.0
 			if ph >= P/2 {
@@ -73,7 +71,7 @@ func genFrames() (N, K, align int, frames []jframe) {
 	}
 	frames = append(frames, mk(other(6))) // non-matching ramp → rejected
 	frames = append(frames, mk(decoy(6))) // same-period lookalike → rejected
-	return N, K, align, frames
+	return n, k, align, frames
 }
 
 // TRLC-LINKS: REQ-SDS-141
@@ -118,6 +116,7 @@ func TestParityManualGate(t *testing.T) { runParity(t, 40, 160) }
 
 // TRLC-LINKS: REQ-SDS-141
 func runParity(t *testing.T, gateLo, gateHi int) {
+	t.Helper()
 	testenv.NeedNode(t)
 	N, K, align, frames := genFrames()
 
@@ -133,7 +132,7 @@ func runParity(t *testing.T, gateLo, gateHi int) {
 	if err := os.WriteFile(tmp, payload, 0o644); err != nil {
 		t.Fatal(err)
 	}
-	out, err := exec.Command("node", "parity_driver.cjs", tmp).CombinedOutput()
+	out, err := exec.CommandContext(t.Context(), "node", "parity_driver.cjs", tmp).CombinedOutput()
 	if err != nil {
 		t.Fatalf("node driver failed: %v\n%s", err, out)
 	}

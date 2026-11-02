@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-SUPERRES
+
 package superres
 
 import (
@@ -18,12 +19,12 @@ func TestStackTileTransferRTL(t *testing.T) {
 	var input strings.Builder
 	expected := []string{}
 	var memory [64]*big.Int
-	clear := func() {
+	clearState := func() {
 		for i := range memory {
 			memory[i] = new(big.Int)
 		}
 	}
-	clear()
+	clearState()
 	emit := func(write bool, bin uint32, ch, abort int, badPadding bool) {
 		w := 0
 		if write {
@@ -36,13 +37,14 @@ func TestStackTileTransferRTL(t *testing.T) {
 		fmt.Fprintf(&input, "%d %d %d %080x %d %d\n", w, bin, ch, data, abort, len(expected)%4)
 		err := 0
 		out := new(big.Int)
-		if abort != 0 {
-			clear()
-		} else if bin >= 32 || write && badPadding {
+		switch {
+		case abort != 0:
+			clearState()
+		case bin >= 32 || write && badPadding:
 			err = 1
-		} else if write {
+		case write:
 			memory[int(bin)*2+ch].Set(data)
-		} else {
+		default:
 			out.Set(memory[int(bin)*2+ch])
 		}
 		expected = append(expected, fmt.Sprintf("%d %x", err, out))
@@ -78,7 +80,7 @@ func TestStackTileTransferRTL(t *testing.T) {
 		t.Fatal(err)
 	}
 	image := compileStackRTL(t, dir, "tb_stack_tile_transfer", "stack_tile_transfer.v", "stack_state_tile.v", "sim/tb_stack_tile_transfer.v")
-	out, err := exec.Command("vvp", image, "+input="+p).CombinedOutput()
+	out, err := exec.CommandContext(t.Context(), "vvp", image, "+input="+p).CombinedOutput()
 	if err != nil {
 		t.Fatalf("simulation %v\n%s", err, out)
 	}
@@ -111,7 +113,7 @@ func TestStackTileTransferRTL(t *testing.T) {
 func TestStackTileAccessRTL(t *testing.T) {
 	dir := t.TempDir()
 	image := compileStackRTL(t, dir, "tb_stack_tile_access", "stack_tile_access.v", "stack_tile_transfer.v", "stack_state_tile.v", "sim/tb_stack_tile_access.v")
-	out, err := exec.Command("vvp", image).CombinedOutput()
+	out, err := exec.CommandContext(t.Context(), "vvp", image).CombinedOutput()
 	if err != nil || !strings.Contains(string(out), "PASS exclusive ownership") {
 		t.Fatalf("ownership simulation: %v\n%s", err, out)
 	}

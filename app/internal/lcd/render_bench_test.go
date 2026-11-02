@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-LCD
+
 package lcd
 
 import (
@@ -15,6 +16,7 @@ import (
 // benchRender renders f with h b.N times.
 // TRLC-LINKS: REQ-SDS-021
 func benchRender(b *testing.B, f *engine.Frame, h HUD) {
+	b.Helper()
 	sf := NewMemSurface()
 	b.ReportAllocs()
 	for range b.N {

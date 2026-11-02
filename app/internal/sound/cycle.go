@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-SOUND
+
 package sound
 
 import "math"
@@ -117,7 +118,7 @@ func edgeTime(x []float64, lo, hi float64, rising bool) float64 {
 	start := -1.0
 	for i := 1; i < len(x); i++ {
 		a, b := x[i-1], x[i]
-		if rising {
+		if rising { //nolint:nestif // both directions in one loop, as sndEdgeTime in sound.js (parity test)
 			if a < lo && b >= lo {
 				start = float64(i-1) + (lo-a)/(b-a)
 			}

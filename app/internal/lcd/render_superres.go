@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-LCD
+
 package lcd
 
 import (
@@ -24,10 +25,7 @@ func drawSuperresHUD(sf Surface, p plotArea, hud HUD) {
 	}
 	if hud.SRFocus != 3 && hud.SRN > 0 && mHi > mLo {
 		xAt := func(s int) int {
-			x := max(s*p.w/hud.SRN, 0)
-			if x > p.w-1 {
-				x = p.w - 1
-			}
+			x := min(max(s*p.w/hud.SRN, 0), p.w-1)
 			return x
 		}
 		marker := func(x int, active bool) {
@@ -107,11 +105,11 @@ func drawSuperresTrace(sf Surface, p plotArea, hud HUD) {
 		return int(off * float64(K))
 	}
 	prevY, havePrev := 0, false
-	for x := 0; x < p.w; x++ {
+	for x := range p.w {
 		s0 := winLo + float64(x)*span/float64(p.w)
 		s1 := winLo + float64(x+1)*span/float64(p.w)
 		b0, b1 := binAt(s0), binAt(s1)
-		lo, hi, any := float32(1e9), float32(-1e9), false
+		lo, hi, seen := float32(1e9), float32(-1e9), false
 		scan := func(a, b int) {
 			for bi := a; bi <= b; bi++ {
 				if bi < 0 || bi >= nb {
@@ -127,7 +125,7 @@ func drawSuperresTrace(sf Surface, p plotArea, hud HUD) {
 				if v > hi {
 					hi = v
 				}
-				any = true
+				seen = true
 			}
 		}
 		if period > 0 && b1 < b0 { // the column wraps a tile boundary
@@ -136,7 +134,7 @@ func drawSuperresTrace(sf Surface, p plotArea, hud HUD) {
 		} else {
 			scan(b0, b1)
 		}
-		if !any {
+		if !seen {
 			havePrev = false
 			continue
 		}
@@ -182,7 +180,7 @@ func srFilled(mean []float32) []float64 {
 		}
 		return out
 	}
-	for i := 0; i < first; i++ {
+	for i := range first {
 		out[i] = out[first]
 	}
 	for i := last + 1; i < nb; i++ {

@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-LCD
+
 package lcd
 
 import (
@@ -9,6 +10,9 @@ import (
 	"strconv"
 	"strings"
 )
+
+// kindData is the kind of a decoded span that carries a unit.
+const kindData = "data"
 
 // BUS's Visual view on the LCD: the frame's decode drawn as what it carries,
 // the capture on its own (what fell between captures is not known, so
@@ -116,7 +120,7 @@ func visMIDIEvents(spans []decode.Span) []visMIDIEvent {
 	run, need := 0, 0
 	var data []int
 	for _, sp := range spans {
-		if sp.Kind != "data" {
+		if sp.Kind != kindData {
 			continue
 		}
 		b := sp.Val & 0xff
@@ -189,7 +193,7 @@ func visDrawMIDI(sf Surface, a visArea, spans []decode.Span) string {
 		span = 1 // a record without samples or their interval: no time scale to read
 	}
 	hgt := keyTop - 8 - top
-	for k := 0; k <= 4; k++ {
+	for k := range 5 {
 		y := keyTop - 8 - k*hgt/4
 		hline(sf, 0, a.w-1, y, colGrid)
 		if k > 0 {
@@ -276,7 +280,7 @@ func visDrawDMX(sf Surface, a visArea, spans []decode.Span) string {
 			cur, in = nil, true
 			continue
 		}
-		if in && sp.Kind == "data" {
+		if in && sp.Kind == kindData {
 			cur = append(cur, sp.Val&0xff)
 		}
 	}
@@ -296,7 +300,7 @@ func visDrawDMX(sf Surface, a visArea, spans []decode.Span) string {
 		if i+1 < len(pkt) {
 			if v := pkt[i+1]; v > 0 {
 				bh := (ch - 2) * v / 255
-				fillRect(sf, x+1, y+ch-1-bh, cw-2, bh, rgb(uint8(60+v*7/10), uint8(120+v/4), uint8(230-v/2)))
+				fillRect(sf, x+1, y+ch-1-bh, cw-2, bh, rgb(uint8(60+v*7/10), uint8(120+v/4), uint8(230-v/2))) //nolint:gosec // v is a DMX level (Val&0xff): each channel stays in 0..255
 			}
 		}
 		if i%8 == 0 {
@@ -314,7 +318,7 @@ func visDrawLEDs(sf Surface, a visArea, spans []decode.Span) string {
 		switch {
 		case sp.Kind == "sof":
 			cur = nil
-		case sp.Kind == "data":
+		case sp.Kind == kindData:
 			cur = append(cur, sp.Val&0xff)
 		case sp.Kind == "rw" && sp.Text == "RST" && len(cur) >= 3:
 			frame, cur = cur, nil
@@ -332,10 +336,10 @@ func visDrawLEDs(sf Surface, a visArea, spans []decode.Span) string {
 		per = max(1, a.w/d)
 		leds = min(leds, per*max(1, a.h/d))
 	}
-	for i := 0; i < leds; i++ {
+	for i := range leds {
 		g, r, b := frame[3*i], frame[3*i+1], frame[3*i+2]
 		x, y := (i%per)*d, a.y0+(i/per)*d
-		fillRect(sf, x+3, y+3, d-6, d-6, rgb(uint8(r), uint8(g), uint8(b)))
+		fillRect(sf, x+3, y+3, d-6, d-6, rgb(uint8(r), uint8(g), uint8(b))) //nolint:gosec // the frame holds bytes (Val&0xff)
 		strokeRect(sf, x+2, y+2, d-4, d-4, colGrid)
 	}
 	return fmt.Sprintf("%d LEDs (GRB)", len(frame)/3)
@@ -348,7 +352,7 @@ func visDrawPS2(sf Surface, a visArea, spans []decode.Span) string {
 	var lines []string
 	ext, brk := false, false
 	for _, sp := range spans {
-		if sp.Kind != "data" || strings.HasPrefix(sp.Text, "H") {
+		if sp.Kind != kindData || strings.HasPrefix(sp.Text, "H") {
 			continue
 		}
 		b := sp.Val & 0xff
@@ -386,7 +390,7 @@ func visDrawPS2(sf Surface, a visArea, spans []decode.Span) string {
 func visDrawText(sf Surface, a visArea, spans []decode.Span) string {
 	var b strings.Builder
 	for _, sp := range spans {
-		if sp.Kind != "data" {
+		if sp.Kind != kindData {
 			continue
 		}
 		c := sp.Val & 0xff
@@ -450,13 +454,13 @@ func visDrawFrames(sf Surface, a visArea, spans []decode.Span, lin bool) string 
 		case lin && strings.HasPrefix(sp.Text, "ID"):
 			id = sp.Val & 0x3f
 		case lin && strings.HasPrefix(strings.TrimPrefix(sp.Text, "!"), "CK"):
-			if sp.Kind != "data" {
+			if sp.Kind != kindData {
 				id = -1 // its checksum failed
 			}
 			done()
 		case !lin && sp.Kind == "id":
 			id = sp.Val
-		case sp.Kind == "data":
+		case sp.Kind == kindData:
 			bytes = append(bytes, sp.Val&0xff)
 		case sp.Kind == "frame-error" || sp.Kind == "crc-error" || sp.Kind == "parity-error":
 			id = -1
@@ -523,9 +527,9 @@ func visIRReading(spans []decode.Span) (string, string, bool) {
 		switch {
 		case sp.Kind == "sof" && sp.Text != "":
 			name = sp.Text
-		case sp.Kind == "data" && strings.HasPrefix(sp.Text, "A"):
+		case sp.Kind == kindData && strings.HasPrefix(sp.Text, "A"):
 			addr = sp.Text[1:]
-		case sp.Kind == "data" && strings.HasPrefix(sp.Text, "C"):
+		case sp.Kind == kindData && strings.HasPrefix(sp.Text, "C"):
 			cmd, ok = sp.Text[1:], true
 		}
 	}
@@ -551,9 +555,9 @@ func visWiegandReading(spans []decode.Span) (string, string, bool) {
 		switch {
 		case sp.Kind == "rw":
 			bits = sp.Text
-		case sp.Kind == "data" && strings.HasPrefix(sp.Text, "F"):
+		case sp.Kind == kindData && strings.HasPrefix(sp.Text, "F"):
 			fac = sp.Text[1:]
-		case sp.Kind == "data" && strings.HasPrefix(sp.Text, "C"):
+		case sp.Kind == kindData && strings.HasPrefix(sp.Text, "C"):
 			card, ok = sp.Text[1:], true
 		}
 	}
@@ -566,7 +570,7 @@ func visPWMReading(spans []decode.Span) (string, string, bool) {
 	sum, n := 0.0, 0
 	for _, sp := range spans {
 		var d float64
-		if sp.Kind == "data" {
+		if sp.Kind == kindData {
 			if _, err := fmt.Sscanf(sp.Text, "%f%%", &d); err == nil {
 				sum += d
 				n++
@@ -584,7 +588,7 @@ func visPWMReading(spans []decode.Span) (string, string, bool) {
 func visDCFReading(spans []decode.Span) (string, string, bool) {
 	f := map[string]int{}
 	for _, sp := range spans {
-		if sp.Kind != "data" {
+		if sp.Kind != kindData {
 			continue
 		}
 		for _, k := range []string{"MIN", "HR", "DAY", "DOW", "MON", "YR"} {
@@ -610,7 +614,7 @@ func visDCFReading(spans []decode.Span) (string, string, bool) {
 func visStepReading(spans []decode.Span) (string, string, bool) {
 	for _, span := range slices.Backward(spans) {
 		t := span.Text
-		if span.Kind == "data" && len(t) > 1 && (t[0] == 'F' || t[0] == 'R') {
+		if span.Kind == kindData && len(t) > 1 && (t[0] == 'F' || t[0] == 'R') {
 			return t[1:] + " steps", map[bool]string{true: "forward", false: "reverse"}[t[0] == 'F'] + " · counted from this capture's start", true
 		}
 	}

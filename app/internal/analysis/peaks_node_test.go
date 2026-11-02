@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ANALYSIS
+
 package analysis
 
 import (
@@ -61,7 +62,7 @@ func TestPeaksJSParity(t *testing.T) {
 	if err := os.WriteFile(vf, blob, 0o644); err != nil {
 		t.Fatal(err)
 	}
-	cmd := exec.Command(node, filepath.Join("testdata", "peaksparity.cjs"), vf, filepath.Join("..", "web"))
+	cmd := exec.CommandContext(t.Context(), node, filepath.Join("testdata", "peaksparity.cjs"), vf, filepath.Join("..", "web"))
 	cmd.Stderr = os.Stderr
 	out, err := cmd.Output()
 	if err != nil {

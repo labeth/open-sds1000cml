@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-SOUND
+
 package sound
 
 // Transfer bins (a, b) pairs into a w x h histogram over the given volt

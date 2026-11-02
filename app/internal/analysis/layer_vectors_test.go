@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ANALYSIS
+
 package analysis
 
 import (
@@ -334,7 +335,7 @@ func layerRandom(seed int64) []layerVec {
 	for _, l := range layerList[1:] {
 		for rec := range 4 {
 			v := layerVec{Name: fmt.Sprintf("random %s %d", l.ID, rec), ID: l.ID, Proto: l.Bus, Args: LayerArgs{Addr: r.Intn(130) - 2, Dir: r.Intn(3)}}
-			for k := 0; k < 1+r.Intn(12); k++ {
+			for range 1 + r.Intn(12) {
 				n := r.Intn(30)
 				if r.Intn(4) == 0 {
 					n = r.Intn(300)

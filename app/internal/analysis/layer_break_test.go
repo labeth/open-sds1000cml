@@ -1,8 +1,9 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ANALYSIS
+
 package analysis
 
 import (
-	"fmt"
+	"bytes"
 	"math/rand"
 	"strings"
 	"testing"
@@ -34,7 +35,7 @@ func layerSane(t *testing.T, name string, v layerVec) {
 		}
 	}
 	for i := range in {
-		if fmt.Sprint(in[i].Bytes) != fmt.Sprint(v.Packets[i].Bytes) {
+		if !bytes.Equal(in[i].Bytes, v.Packets[i].Bytes) {
 			t.Fatalf("%s: packet %d's bytes changed", name, i)
 		}
 	}

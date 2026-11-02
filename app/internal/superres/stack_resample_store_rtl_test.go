@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-SUPERRES
+
 package superres
 
 import (
@@ -74,7 +75,7 @@ func TestStackResampleStoreRTL(t *testing.T) {
 	for _, bench := range []string{"tb_stack_resample_store", "tb_stack_tiled_store"} {
 		t.Run(bench, func(t *testing.T) {
 			image := compileStackRTL(t, dir, bench, "stack_positions.v", "stack_interpolate.v", "stack_resample.v", "stack_accumulate.v", "stack_bin_writer.v", "stack_resample_store.v", "stack_state_tile.v", "sim/"+bench+".v")
-			out, err := exec.Command("vvp", image, "+input="+path).CombinedOutput()
+			out, err := exec.CommandContext(t.Context(), "vvp", image, "+input="+path).CombinedOutput()
 			if err != nil {
 				t.Fatalf("simulation %v\n%s", err, out)
 			}

@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ANALYSIS
+
 package analysis
 
 // A port of the web eye-diagram and jitter engine (internal/web/eyejitter.js
@@ -56,7 +57,7 @@ func FindEdges(sig []float64) *EdgeSet {
 	for c := range 256 {
 		a, b := 0.0, 0.0
 		if c > 0 {
-			a = hist[c-1]
+			a = hist[c-1] //nolint:gosec // c > 0 here
 		}
 		if c < 255 {
 			b = hist[c+1]
@@ -74,11 +75,11 @@ func FindEdges(sig []float64) *EdgeSet {
 		if c-m1 < 24 && m1-c < 24 {
 			continue // must be a distinct level
 		}
-		if m2 < 0 || sm[c] > sm[m2] {
+		if m2 < 0 || sm[c] > sm[m2] { //nolint:gosec // m2 is a code in 0..255 once set
 			m2 = c
 		}
 	}
-	if m2 < 0 || sm[m2] < 4 {
+	if m2 < 0 || sm[m2] < 4 { //nolint:gosec // m2 is a code in 0..255 once set
 		return nil // a single-level record: no serial swing
 	}
 	lo, hi := min(m1, m2), max(m1, m2)
@@ -96,31 +97,18 @@ func FindEdges(sig []float64) *EdgeSet {
 	}
 	for i := 1; i < n; i++ {
 		v := sig[i]
-		if state < 0 && v >= up {
+		switch {
+		case state < 0 && v >= up:
 			// rising: the mid crossing between the last below-mid sample and here
-			j := i
-			for j > 0 && sig[j-1] >= mid {
-				j--
-			}
-			if j > 0 {
-				a, b := sig[j-1], sig[j]
-				if b != a {
-					t = append(t, float64(j-1)+(mid-a)/(b-a))
-					pol = append(pol, 1)
-				}
+			if x, ok := midCrossing(sig, i, mid, true); ok {
+				t = append(t, x)
+				pol = append(pol, 1)
 			}
 			state = 1
-		} else if state > 0 && v <= down {
-			j := i
-			for j > 0 && sig[j-1] <= mid {
-				j--
-			}
-			if j > 0 {
-				a, b := sig[j-1], sig[j]
-				if b != a {
-					t = append(t, float64(j-1)+(mid-a)/(b-a))
-					pol = append(pol, -1)
-				}
+		case state > 0 && v <= down:
+			if x, ok := midCrossing(sig, i, mid, false); ok {
+				t = append(t, x)
+				pol = append(pol, -1)
 			}
 			state = -1
 		}
@@ -129,6 +117,32 @@ func FindEdges(sig []float64) *EdgeSet {
 		return nil
 	}
 	return &EdgeSet{T: t, Pol: pol, Lo: lo, Hi: hi, Mid: mid}
+}
+
+// midCrossing is the mid-level crossing of the edge sig[i] completed: the
+// interpolated position between the last sample before i still below mid
+// (above, for a falling edge) and the one after it; ok false at the record's
+// start or on a flat pair.
+// TRLC-LINKS: REQ-SDS-199, REQ-SDS-215
+func midCrossing(sig []float64, i int, mid float64, rising bool) (float64, bool) {
+	j := i
+	if rising {
+		for j > 0 && sig[j-1] >= mid {
+			j--
+		}
+	} else {
+		for j > 0 && sig[j-1] <= mid {
+			j--
+		}
+	}
+	if j == 0 {
+		return 0, false
+	}
+	a, b := sig[j-1], sig[j]
+	if b == a {
+		return 0, false
+	}
+	return float64(j-1) + (mid-a)/(b-a), true
 }
 
 // histCode is max(0, min(255, Math.round(v))) for a v that is not NaN,
@@ -264,44 +278,7 @@ func medianInPlace(a []float64) float64 {
 	if len(a) == 0 {
 		return 0
 	}
-	k := len(a) >> 1
-	lo, hi := 0, len(a)-1
-	for lo < hi {
-		mid := lo + (hi-lo)/2
-		if a[mid] < a[lo] {
-			a[mid], a[lo] = a[lo], a[mid]
-		}
-		if a[hi] < a[lo] {
-			a[hi], a[lo] = a[lo], a[hi]
-		}
-		if a[hi] < a[mid] {
-			a[hi], a[mid] = a[mid], a[hi]
-		}
-		p := a[mid]
-		i, j := lo, hi
-		for i <= j {
-			for a[i] < p {
-				i++
-			}
-			for a[j] > p {
-				j--
-			}
-			if i <= j {
-				a[i], a[j] = a[j], a[i]
-				i++
-				j--
-			}
-		}
-		switch {
-		case k <= j:
-			hi = j
-		case k >= i:
-			lo = i
-		default:
-			return a[k]
-		}
-	}
-	return a[k]
+	return quickselect(a, len(a)>>1)
 }
 
 // RJDJ splits the aggregated TIE into random and deterministic jitter, dual-

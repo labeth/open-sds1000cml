@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-LCD
+
 package lcd
 
 // sampleToY: higher code = higher on screen; clamp to panel (spec 07 §3.4).

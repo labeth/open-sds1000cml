@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-LCD
+
 package lcd
 
 import (
@@ -47,7 +48,7 @@ func TestVisualPictures(t *testing.T) {
 		}
 		painted := 0
 		for y := a.y0; y < a.y0+a.h; y++ {
-			for x := 0; x < a.w; x++ {
+			for x := range a.w {
 				if sf.At(x, y) != 0 {
 					painted++
 				}
@@ -77,16 +78,16 @@ func TestVisualPicturesNeverBreak(t *testing.T) {
 		sf := NewMemSurface()
 		// Visual's plots (the rail's menu, a sheet's; from the top) must hold
 		// the picture; any other size of plot only must not break it
-		real := rnd(2) == 0
+		isReal := rnd(2) == 0
 		l := wsview.Layout{MenuW: []int{30, 116}[rnd(2)]}
-		if !real {
+		if !isReal {
 			l = wsview.Layout{MenuW: rnd(W), PlotTop: rnd(320)}
 		}
 		p := plotOf(l)
 		a := visArea{x0: 0, y0: p.y0 + 16, w: p.w, h: p.h - 18, n: rnd(3) * rnd(10000), dt: float64(rnd(3)) * 1e-6}
 		proto := protos[rnd(len(protos))]
 		visDrawBus(sf, a, decode.Result{OK: true, Proto: proto, Spans: spans})
-		for y := 0; real && y < H; y++ {
+		for y := 0; isReal && y < H; y++ {
 			for x := 0; x < W; x++ {
 				o := (y*W + x) * 2
 				if (sf.Pix[o] != 0 || sf.Pix[o+1] != 0) && (x < a.x0 || x >= a.x0+a.w || y < a.y0 || y >= a.y0+a.h) {

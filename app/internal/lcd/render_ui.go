@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-LCD
+
 package lcd
 
 import (
@@ -37,7 +38,7 @@ func drawUI(sf Surface, f *engine.Frame, hud HUD, p plotArea) {
 		case ui.Bus != nil:
 			drawBusPane(sf, p, ui.Bus)
 		case ui.Eye != nil:
-			drawEyePlot(sf, p, hud, ui.Eye)
+			drawEyePlot(sf, p, ui.Eye)
 			drawEyePane(sf, p, f, hud, ui.Eye)
 		case ui.Visual != nil:
 			drawVisualPane(sf, p, f, hud)
@@ -75,7 +76,7 @@ func drawUI(sf Surface, f *engine.Frame, hud HUD, p plotArea) {
 func drawPicto(sf Surface, ws wsview.WS, x, y int, fg, fg2 uint16) {
 	wave := func(y0 int, amp float64, col uint16, dotted bool) {
 		px, py := x, y0
-		for i := 0; i <= 21; i++ {
+		for i := range 22 {
 			xx := x + i
 			yy := y0 - int(math.Round(amp*math.Sin(float64(i)/21*2*math.Pi)))
 			switch {
@@ -106,7 +107,7 @@ func drawPicto(sf Surface, ws wsview.WS, x, y int, fg, fg2 uint16) {
 		vline(sf, x+1, y, y+13, fg2)
 		vline(sf, x+20, y, y+13, fg2)
 		hline(sf, x+5, x+16, y+7, fg)
-		for d := 0; d <= 2; d++ { // arrow heads
+		for d := range 3 { // arrow heads
 			vline(sf, x+3+d, y+7-d, y+7+d, fg)
 			vline(sf, x+18-d, y+7-d, y+7+d, fg)
 		}
@@ -361,16 +362,7 @@ func drawBusPane(sf Surface, p plotArea, b *wsview.BusPane) {
 			DrawTextRight(sf, 24, y, itoa(ln.Num), numCol, 1)
 			DrawTextRight(sf, bytesR, y, itoa(ln.Bytes), colDim, 1)
 			DrawText(sf, addrX, y, cutText(ln.Addr, (matchX-addrX)/6-1), colInfo, 1)
-			x := matchX
-			if ln.Fault != "" { // the packet's fault first, in red, as the web marks it
-				DrawText(sf, x, y, ln.Fault, colStale, 1)
-				x += (len(ln.Fault) + 1) * 6
-			}
-			if ln.Match != "" {
-				DrawText(sf, x, y, cutText(ln.Match, (p.w-x-12)/6), colTrig, 1)
-			} else if ln.Cut != "" {
-				DrawText(sf, x, y, cutText(ln.Cut, (p.w-x-12)/6), colDim, 1)
-			}
+			drawBusLineMatch(sf, matchX, y, p.w-12, ln.Fault, ln.Match, ln.Cut)
 		} else {
 			DrawTextRight(sf, 24, y, "+", colDim, 1)
 		}
@@ -402,6 +394,21 @@ func drawBusPane(sf Surface, p plotArea, b *wsview.BusPane) {
 	}
 	if b.Dn {
 		DrawText(sf, p.w-10, listY+(listN-1)*10, "v", colDim, 1)
+	}
+}
+
+// drawBusLineMatch writes a packet line's MATCH column from x up to right:
+// its fault first, in red as the web marks it, then the match (or the cut).
+// TRLC-LINKS: REQ-SDS-214
+func drawBusLineMatch(sf Surface, x, y, right int, fault, match, cut string) {
+	if fault != "" {
+		DrawText(sf, x, y, fault, colStale, 1)
+		x += (len(fault) + 1) * 6
+	}
+	if match != "" {
+		DrawText(sf, x, y, cutText(match, (right-x)/6), colTrig, 1)
+	} else if cut != "" {
+		DrawText(sf, x, y, cutText(cut, (right-x)/6), colDim, 1)
 	}
 }
 
@@ -512,7 +519,7 @@ func unpack565(c uint16) (r, g, b uint8) {
 // drawEyePlot draws the eye in the plot: two UI around the bit centre, the
 // fold's density in four shades, the opening and the two cursors.
 // TRLC-LINKS: REQ-SDS-215
-func drawEyePlot(sf Surface, p plotArea, hud HUD, e *wsview.EyePane) {
+func drawEyePlot(sf Surface, p plotArea, e *wsview.EyePane) {
 	cols := e.Cols
 	if cols <= 0 {
 		cols = 384
@@ -520,14 +527,14 @@ func drawEyePlot(sf Surface, p plotArea, hud HUD, e *wsview.EyePane) {
 	quarter := cols / 2 // 0.5 UI in pixels (2 px per cell)
 	x0 := (p.w - 2*cols) / 2
 	y1, eh := p.y0, H-p.y0-12
-	for k := 0; k <= 4; k++ {
+	for k := range 5 {
 		col := colGrid
 		if k == 2 {
 			col = colAxis
 		}
 		vline(sf, x0+k*quarter, y1, y1+eh-1, col)
 	}
-	for r := 0; r <= 8; r++ {
+	for r := range 9 {
 		col := colGrid
 		if r == 4 {
 			col = colAxis
@@ -562,7 +569,7 @@ func drawEyePlot(sf Surface, p plotArea, hud HUD, e *wsview.EyePane) {
 	// compare as integers, not converted one by one.
 	i1, i2, i3 := uint64(math.Ceil(t1)), uint64(math.Ceil(t2)), uint64(math.Ceil(t3))
 	m, mem := sf.(*MemSurface)
-	for r := 0; r < e.Rows; r++ {
+	for r := range e.Rows {
 		y := y1 + 2*r
 		if y+1 >= H-12 {
 			break
@@ -584,7 +591,7 @@ func drawEyePlot(sf Surface, p plotArea, hud HUD, e *wsview.EyePane) {
 			x := x0 + 2*c
 			if mem && x >= 0 && x+1 < W && y >= 0 { // the 2x2 cell straight into the pixels
 				o := (y*W + x) * 2
-				lo, hi := byte(col), byte(col>>8)
+				lo, hi := byte(col&0xff), byte(col>>8)
 				m.Pix[o], m.Pix[o+1], m.Pix[o+2], m.Pix[o+3] = lo, hi, lo, hi
 				o += 2 * W
 				m.Pix[o], m.Pix[o+1], m.Pix[o+2], m.Pix[o+3] = lo, hi, lo, hi
@@ -820,14 +827,14 @@ func drawCmpPane(sf Surface, p plotArea, c *wsview.CmpPane) {
 // TRLC-LINKS: REQ-SDS-211, REQ-SDS-212
 func drawMiniScope(sf Surface, f *engine.Frame, hud HUD, x0, y0, w, h int) {
 	fillRect(sf, x0, y0, w, h, colBG)
-	for c := 0; c <= 10; c++ {
+	for c := range 11 {
 		col := colGrid
 		if c == 5 {
 			col = colAxis
 		}
 		vline(sf, x0+c*(w-1)/10, y0, y0+h-1, col)
 	}
-	for r := 0; r <= 8; r++ {
+	for r := range 9 {
 		col := colGrid
 		if r == 4 {
 			col = colAxis
@@ -838,60 +845,68 @@ func drawMiniScope(sf Surface, f *engine.Frame, hud HUD, x0, y0, w, h int) {
 		y := y0 + h - 1 - int((float64(v)-28)/200*float64(h-1)+0.5)
 		return min(max(y, y0), y0+h-1)
 	}
-	if f != nil && len(f.C1) > 0 && !(f.IsEnv && f.EnvCols == 0) {
+	if f != nil && len(f.C1) > 0 && (!f.IsEnv || f.EnvCols != 0) {
 		sc1, sc2 := hud.shownChans()
 		for _, ch := range []int{1, 0} {
 			if (ch == 0 && !sc1) || (ch == 1 && (!sc2 || !hud.TwoChan)) {
 				continue
 			}
-			col := colC1
-			if ch == 1 {
-				col = colC2
-			}
-			if f.IsEnv {
-				mn, mx := f.EnvMin, f.EnvMax
-				if ch == 1 {
-					mn, mx = f.EnvMin2, f.EnvMax2
-				}
-				for x := range w {
-					c := x * f.EnvCols / w
-					if c < len(mn) && c < len(mx) {
-						vline(sf, x0+x, yOf(mx[c]), yOf(mn[c]), col)
-					}
-				}
-				continue
-			}
-			valid := frameValid(f)
-			if ch == 1 && len(f.C2) < valid {
-				continue
-			}
-			sig := f.C1[:valid]
-			if ch == 1 {
-				sig = f.C2[:valid]
-			}
-			win, xc, posFrac := traceWindow(f, hud, valid)
-			left := xc - float64(win)*posFrac
-			prev := -1
-			for x := range w {
-				lo := clampI(int(left+float64(x)*float64(win)/float64(w)), 0, valid-1)
-				hi := clampI(int(left+float64(x+1)*float64(win)/float64(w))-1, lo, valid-1)
-				mn, mx := dsp.MinMax8(sig[lo : hi+1])
-				yt, yb := yOf(mx), yOf(mn)
-				if prev >= 0 {
-					yt, yb = min(yt, prev), max(yb, prev)
-				}
-				vline(sf, x0+x, yt, yb, col)
-				prev = yOf(sig[hi])
-			}
+			miniScopeChan(sf, f, hud, ch, x0, w, yOf)
 		}
 	}
 	if frac, ok := trigFrac(f, hud); ok {
 		tx := x0 + int(frac*float64(w-1))
-		for dy := 0; dy <= 3; dy++ {
+		for dy := range 4 {
 			hline(sf, tx-(3-dy), tx+(3-dy), y0+1+dy, colTrig)
 		}
 	}
 	strokeRect(sf, x0, y0, w, h, colAxis)
+}
+
+// miniScopeChan draws one channel (ch 0 = C1, 1 = C2) of the mini scope over
+// columns x0..x0+w-1, yOf placing a code: an envelope's bands, else each
+// column's extremes joined to the previous column.
+// TRLC-LINKS: REQ-SDS-211, REQ-SDS-212
+func miniScopeChan(sf Surface, f *engine.Frame, hud HUD, ch, x0, w int, yOf func(uint8) int) {
+	col := colC1
+	if ch == 1 {
+		col = colC2
+	}
+	if f.IsEnv {
+		mn, mx := f.EnvMin, f.EnvMax
+		if ch == 1 {
+			mn, mx = f.EnvMin2, f.EnvMax2
+		}
+		for x := range w {
+			c := x * f.EnvCols / w
+			if c < len(mn) && c < len(mx) {
+				vline(sf, x0+x, yOf(mx[c]), yOf(mn[c]), col)
+			}
+		}
+		return
+	}
+	valid := frameValid(f)
+	if ch == 1 && len(f.C2) < valid {
+		return
+	}
+	sig := f.C1[:valid]
+	if ch == 1 {
+		sig = f.C2[:valid]
+	}
+	win, xc, posFrac := traceWindow(f, hud, valid)
+	left := xc - float64(win)*posFrac
+	prev := -1
+	for x := range w {
+		lo := clampI(int(left+float64(x)*float64(win)/float64(w)), 0, valid-1)
+		hi := clampI(int(left+float64(x+1)*float64(win)/float64(w))-1, lo, valid-1)
+		mn, mx := dsp.MinMax8(sig[lo : hi+1])
+		yt, yb := yOf(mx), yOf(mn)
+		if prev >= 0 {
+			yt, yb = min(yt, prev), max(yb, prev)
+		}
+		vline(sf, x0+x, yt, yb, col)
+		prev = yOf(sig[hi])
+	}
 }
 
 // ---- the sheet ----
@@ -1032,6 +1047,7 @@ func drawRow(sf Surface, r wsview.Row, y int) {
 	DrawText(sf, xLbl, y+5, cutText(r.Label, 15), lc, 1)
 	xe := xEnd
 	switch r.Kind {
+	case wsview.Header: // drawn by drawRows as a section title
 	case wsview.Enum:
 		limit := xEnd + 2
 		if r.Meas != [2]string{} {

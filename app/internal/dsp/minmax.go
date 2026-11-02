@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DSP
+
 package dsp
 
 // minMaxBulk is the shortest run MinMax8 hands to the block: a shorter one

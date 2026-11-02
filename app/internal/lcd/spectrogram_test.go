@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-LCD
+
 package lcd
 
 import (
@@ -35,7 +36,7 @@ func TestHeatMonotone(t *testing.T) {
 		return r*2 + g + b // rough luminance in 565 units
 	}
 	prev := -1
-	for i := 0; i <= 20; i++ {
+	for i := range 21 {
 		l := lum(heat(float64(i) / 20))
 		if l < prev-2 { // allow tiny non-monotonicity from the 565 quantisation
 			t.Errorf("heat not monotone at t=%.2f (lum %d < %d)", float64(i)/20, l, prev)
@@ -99,7 +100,7 @@ func TestSpectrogramTracksSteppedFrequency(t *testing.T) {
 	if brightCol(1) != col0 || brightCol(3) != col1 {
 		t.Errorf("a record's two rows differ: %d/%d, %d/%d", col0, brightCol(1), col1, brightCol(3))
 	}
-	if !(col0 > col1 && col1 > col2) {
+	if col0 <= col1 || col1 <= col2 {
 		t.Errorf("stepped frequency not tracked over rows: cols top→down = %d, %d, %d (want decreasing)", col0, col1, col2)
 	}
 	// map row 0 back to ~100 MHz

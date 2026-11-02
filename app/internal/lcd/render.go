@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-LCD
+
 package lcd
 
 import (
@@ -169,7 +170,7 @@ const (
 // drawGraticule draws the plot's 10 x 8 divisions, centre axes brighter.
 // TRLC-LINKS: REQ-SDS-021
 func drawGraticule(sf Surface, p plotArea) {
-	for c := 0; c <= 10; c++ {
+	for c := range 11 {
 		x := p.gridX(c)
 		col := colGrid
 		if c == 5 {
@@ -177,7 +178,7 @@ func drawGraticule(sf Surface, p plotArea) {
 		}
 		vline(sf, x, p.y0, p.last(), col)
 	}
-	for r := 0; r <= 8; r++ {
+	for r := range 9 {
 		y := p.gridY(r)
 		col := colGrid
 		if r == 4 {
@@ -284,6 +285,35 @@ func heldColor(col uint16) uint16 {
 	return (r*2/5)<<11 | (g*2/5)<<5 | b*2/5
 }
 
+// codeAt is sig's code at record position pos (n = len(sig) > 0): linearly
+// interpolated between the neighbours, or the nearest-below sample, with pos
+// held to the record.
+// TRLC-LINKS: REQ-SDS-021
+func codeAt(sig []uint8, pos float64, interp bool) float64 {
+	n := len(sig)
+	if !interp {
+		i := int(pos)
+		if pos < 0 {
+			i = 0
+		} else if i > n-1 {
+			i = n - 1
+		}
+		return float64(sig[i])
+	}
+	if pos < 0 {
+		pos = 0
+	} else if pos > float64(n-1) {
+		pos = float64(n - 1)
+	}
+	i := int(pos)
+	v := float64(sig[i])
+	if i+1 < n {
+		frac := pos - float64(i)
+		v = v*(1-frac) + float64(sig[i+1])*frac
+	}
+	return v
+}
+
 // drawTraceHeld is drawTraceID with held marking samples (len(sig), or nil)
 // that no capture covered: those are drawn in heldColor, so a roll view's
 // held stretches do not read as signal.
@@ -315,31 +345,9 @@ func drawTraceHeld(sf Surface, p plotArea, id traceID, sig []uint8, held []bool,
 		return
 	}
 	prevX, prevY := -1, 0
-	for x := 0; x < p.w; x++ {
+	for x := range p.w {
 		pos := left + float64(x)*float64(win)/float64(p.w)
-		var y int
-		if interp {
-			if pos < 0 {
-				pos = 0
-			} else if pos > float64(n-1) {
-				pos = float64(n - 1)
-			}
-			i := int(pos)
-			v := float64(sig[i])
-			if i+1 < n {
-				frac := pos - float64(i)
-				v = v*(1-frac) + float64(sig[i+1])*frac
-			}
-			y = p.sy(128 + (v-128)*z)
-		} else {
-			i := int(pos)
-			if pos < 0 {
-				i = 0
-			} else if i > n-1 {
-				i = n - 1
-			}
-			y = p.sy(128 + (float64(sig[i])-128)*z)
-		}
+		y := p.sy(128 + (codeAt(sig, pos, interp)-128)*z)
 		c := col
 		if held != nil && held[min(max(int(pos), 0), n-1)] {
 			c = heldColor(col)
@@ -540,7 +548,7 @@ func denseBlock(px []uint16, top, bot []int16, cc []uint16, x0 int) bool {
 func spanRow(row []uint16, t0, ht []int32, cc []uint16, r int32) {
 	t0, ht, cc = t0[:len(row)], ht[:len(row)], cc[:len(row)]
 	for i := range row {
-		if uint32(r-t0[i]) <= uint32(ht[i]) {
+		if uint32(r-t0[i]) <= uint32(ht[i]) { //nolint:gosec // unsigned: 0 <= r-t0 <= ht in one compare
 			row[i] = cc[i]
 		}
 	}
@@ -625,7 +633,7 @@ func denseColumns(id traceID, sig []uint8, left float64, win, ncols int) *denseC
 	// compare stalls this core's pipeline).
 	trunc := left >= 0 && left+float64(ncols+1)*step < 1<<31
 	next := floorInt(left)
-	for x := 0; x < ncols; x++ {
+	for x := range ncols {
 		// Column x ends where x+1 starts: one floor a column.
 		lo := next
 		if pos := left + float64(x+1)*step; trunc {
@@ -668,11 +676,11 @@ func drawEnvelope(sf Surface, p plotArea, mn, mx []uint8, cols int, col uint16, 
 		if c >= cols || c >= len(mn) || c >= len(mx) {
 			continue
 		}
-		yTop, yBot := int(rows[mx[c]]), int(rows[mn[c]])
+		yTop, yBot := rows[mx[c]], rows[mn[c]]
 		if yTop > yBot {
 			yTop, yBot = yBot, yTop
 		}
-		top[x], bot[x] = int16(yTop), int16(yBot)
+		top[x], bot[x] = yTop, yBot
 	}
 	fillSpans(sf, top[:w], bot[:w], cc[:w])
 }
@@ -681,10 +689,7 @@ func drawEnvelope(sf Surface, p plotArea, mn, mx []uint8, cols int, col uint16, 
 // alternate-view renderers below).
 // TRLC-LINKS: REQ-SDS-021
 func frameValid(f *engine.Frame) int {
-	valid := max(f.Valid, 1)
-	if valid > len(f.C1) {
-		valid = len(f.C1)
-	}
+	valid := min(max(f.Valid, 1), len(f.C1))
 	return valid
 }
 
@@ -821,7 +826,7 @@ func Render(sf Surface, f *engine.Frame, hud HUD, live bool, persist ...*MemSurf
 	if yt {
 		drawMarkers(sf, p, f, hud)
 	}
-	drawHUD(sf, p, f, hud)
+	drawHUD(sf, f, hud)
 	if yt && hud.ShowMeas && !ui.Layout.HideMeas {
 		drawMeasPanel(sf, p, f, hud)
 	}
@@ -883,74 +888,102 @@ func drawViews(sf, traceTarget Surface, p plotArea, f *engine.Frame, hud HUD) {
 	case hud.ViewMode == 4:
 		drawSpectrogramMark(sf, p, hud.Spect, hud.UI.Layout.HideViewCaptions, hud.UI.Spec)
 	case f != nil && len(f.C1) > 0:
-		valid := frameValid(f)
-		if f.IsEnv && f.EnvCols > 0 {
-			if hud.TwoChan && sc2 {
-				mn2, mx2 := f.EnvMin2, f.EnvMax2
-				if hud.Inv2 { // INVS mirrors the band: min'=inv(max), max'=inv(min)
-					mn2, mx2 = invertCodes(mx2), invertCodes(mn2)
-				}
-				drawEnvelope(sf, p, mn2, mx2, f.EnvCols, colC2, hud.Zoom2)
-			}
-			if sc1 {
-				mn1, mx1 := f.EnvMin, f.EnvMax
-				if hud.Inv1 {
-					mn1, mx1 = invertCodes(mx1), invertCodes(mn1)
-				}
-				drawEnvelope(sf, p, mn1, mx1, f.EnvCols, colC1, hud.Zoom1)
-			}
-			break
-		}
-		win, xc, posFrac := traceWindow(f, hud, valid)
-		c1 := f.C1[:valid]
-		if hud.Cpl1 != analog.CplDC { // software coupling: AC removes DC, GND grounds
-			c1 = analog.CoupleDisplay(c1, hud.Cpl1)
-		}
-		if hud.Inv1 { // display-level INVS: mirror the rendered trace only
-			c1 = invertCodes(c1)
-		}
-		drawZoneMask(traceTarget, p, f, hud, win, xc, posFrac)
-		// Zoomed into a live envelope: the frame's view window holds the
-		// zoomed part at full detail, where the screen's buckets are too coarse.
-		view, vwin, vxc, zoomed := zoomView(f, hud, valid)
-		if hud.TwoChan && sc2 && len(f.C2) >= valid {
-			c2 := f.C2[:valid]
-			if zoomed {
-				c2 = analog.CoupleDisplayBy(view.C2[:view.Valid], c2, hud.Cpl2)
-			} else if hud.Cpl2 != analog.CplDC {
-				c2 = analog.CoupleDisplay(c2, hud.Cpl2)
-			}
-			if hud.Inv2 {
-				c2 = invertCodes(c2)
-			}
-			if zoomed {
-				drawTraceID(traceTarget, p, traceID{f.Seq, 4, hud.Cpl2, hud.Inv2}, c2, vwin, vxc, false, colC2, 0.5, hud.Zoom2)
-			} else {
-				drawTraceHeld(traceTarget, p, traceID{f.Seq, 2, hud.Cpl2, hud.Inv2}, c2, heldOf(f, valid), win, xc, f.Interp, colC2, posFrac, hud.Zoom2)
-			}
-		}
-		if sc1 {
-			if zoomed {
-				v1 := analog.CoupleDisplayBy(view.C1[:view.Valid], f.C1[:valid], hud.Cpl1)
-				if hud.Inv1 {
-					v1 = invertCodes(v1)
-				}
-				drawTraceID(traceTarget, p, traceID{f.Seq, 3, hud.Cpl1, hud.Inv1}, v1, vwin, vxc, false, colC1, 0.5, hud.Zoom1)
-			} else {
-				drawTraceHeld(traceTarget, p, traceID{f.Seq, 1, hud.Cpl1, hud.Inv1}, c1, heldOf(f, valid), win, xc, f.Interp, colC1, posFrac, hud.Zoom1)
-			}
-		}
-		if hud.MathMode != 0 {
-			drawMath(traceTarget, p, f, hud, win, xc, posFrac)
-		}
-		drawRefs(traceTarget, p, hud)
-		if hud.DecProto != 0 {
-			drawDecode(sf, p, f, hud, win, xc, posFrac)
-		}
+		drawYT(sf, traceTarget, p, f, hud, sc1, sc2)
 	}
 	if hud.StreamOn && !streamFullScreen(hud) && hud.Stream.State != streamview.Idle {
 		drawStreamStrip(sf, p, hud)
 	}
+}
+
+// drawYT draws the Y-T view: the traces (or a live envelope's bands) and
+// their overlays.
+// TRLC-LINKS: REQ-SDS-021
+func drawYT(sf, traceTarget Surface, p plotArea, f *engine.Frame, hud HUD, sc1, sc2 bool) {
+	valid := frameValid(f)
+	if f.IsEnv && f.EnvCols > 0 {
+		drawEnvelopes(sf, p, f, hud, sc1, sc2)
+		return
+	}
+	win, xc, posFrac := traceWindow(f, hud, valid)
+	c1 := f.C1[:valid]
+	if hud.Cpl1 != analog.CplDC { // software coupling: AC removes DC, GND grounds
+		c1 = analog.CoupleDisplay(c1, hud.Cpl1)
+	}
+	if hud.Inv1 { // display-level INVS: mirror the rendered trace only
+		c1 = invertCodes(c1)
+	}
+	drawZoneMask(traceTarget, p, f, hud, win, xc, posFrac)
+	// Zoomed into a live envelope: the frame's view window holds the
+	// zoomed part at full detail, where the screen's buckets are too coarse.
+	view, vwin, vxc, zoomed := zoomView(f, hud, valid)
+	if hud.TwoChan && sc2 && len(f.C2) >= valid {
+		drawC2(traceTarget, p, f, hud, valid, ytWindow{win, xc, posFrac}, ytWindow{vwin, vxc, 0.5}, view, zoomed)
+	}
+	if sc1 {
+		if zoomed {
+			v1 := analog.CoupleDisplayBy(view.C1[:view.Valid], f.C1[:valid], hud.Cpl1)
+			if hud.Inv1 {
+				v1 = invertCodes(v1)
+			}
+			drawTraceID(traceTarget, p, traceID{f.Seq, 3, hud.Cpl1, hud.Inv1}, v1, vwin, vxc, false, colC1, 0.5, hud.Zoom1)
+		} else {
+			drawTraceHeld(traceTarget, p, traceID{f.Seq, 1, hud.Cpl1, hud.Inv1}, c1, heldOf(f, valid), win, xc, f.Interp, colC1, posFrac, hud.Zoom1)
+		}
+	}
+	if hud.MathMode != 0 {
+		drawMath(traceTarget, p, f, hud, win, xc, posFrac)
+	}
+	drawRefs(traceTarget, p, hud)
+	if hud.DecProto != 0 {
+		drawDecode(sf, p, f, hud, win, xc, posFrac)
+	}
+}
+
+// drawEnvelopes draws a live envelope frame's bands, C2 under C1.
+// TRLC-LINKS: REQ-SDS-021
+func drawEnvelopes(sf Surface, p plotArea, f *engine.Frame, hud HUD, sc1, sc2 bool) {
+	if hud.TwoChan && sc2 {
+		mn2, mx2 := f.EnvMin2, f.EnvMax2
+		if hud.Inv2 { // INVS mirrors the band: min'=inv(max), max'=inv(min)
+			mn2, mx2 = invertCodes(mx2), invertCodes(mn2)
+		}
+		drawEnvelope(sf, p, mn2, mx2, f.EnvCols, colC2, hud.Zoom2)
+	}
+	if sc1 {
+		mn1, mx1 := f.EnvMin, f.EnvMax
+		if hud.Inv1 {
+			mn1, mx1 = invertCodes(mx1), invertCodes(mn1)
+		}
+		drawEnvelope(sf, p, mn1, mx1, f.EnvCols, colC1, hud.Zoom1)
+	}
+}
+
+// drawC2 draws C2's trace: coupled and inverted for the display, over the
+// record window rec, or over zw from the view window when the screen is
+// zoomed into a live envelope.
+// TRLC-LINKS: REQ-SDS-021
+func drawC2(traceTarget Surface, p plotArea, f *engine.Frame, hud HUD, valid int, rec, zw ytWindow, view *engine.ViewWindow, zoomed bool) {
+	c2 := f.C2[:valid]
+	if zoomed {
+		c2 = analog.CoupleDisplayBy(view.C2[:view.Valid], c2, hud.Cpl2)
+	} else if hud.Cpl2 != analog.CplDC {
+		c2 = analog.CoupleDisplay(c2, hud.Cpl2)
+	}
+	if hud.Inv2 {
+		c2 = invertCodes(c2)
+	}
+	if zoomed {
+		drawTraceID(traceTarget, p, traceID{f.Seq, 4, hud.Cpl2, hud.Inv2}, c2, zw.win, zw.xc, false, colC2, zw.posFrac, hud.Zoom2)
+	} else {
+		drawTraceHeld(traceTarget, p, traceID{f.Seq, 2, hud.Cpl2, hud.Inv2}, c2, heldOf(f, valid), rec.win, rec.xc, f.Interp, colC2, rec.posFrac, hud.Zoom2)
+	}
+}
+
+// ytWindow is a record window on the plot: its width in samples, centre and
+// the anchor's place across the plot (traceWindow's three).
+type ytWindow struct {
+	win         int
+	xc, posFrac float64
 }
 
 // traceWindow is the sample window the Y-T plot shows: win samples with the

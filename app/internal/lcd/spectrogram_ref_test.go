@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-LCD
+
 package lcd
 
 // pushMags scrolls the waterfall down one row and paints the half spectrum

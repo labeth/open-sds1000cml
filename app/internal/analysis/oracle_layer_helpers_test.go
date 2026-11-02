@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ANALYSIS
+
 package analysis
 
 // Oracle cross-checks of the layers against libsigrokdecode's stacked
@@ -13,6 +14,7 @@ package analysis
 // newer ones, which CI checks against libsigrokdecode's pinned decoders).
 
 import (
+	"context"
 	"fmt"
 	"open-sds/app/internal/decode"
 	"os"
@@ -35,7 +37,7 @@ func orcNeed(t *testing.T, pds ...string) {
 		}
 		t.Skip("sigrok-cli not installed; skipping oracle cross-check")
 	}
-	out, err := exec.Command("sigrok-cli", "-L").CombinedOutput()
+	out, err := exec.CommandContext(t.Context(), "sigrok-cli", "-L").CombinedOutput()
 	if err != nil {
 		t.Fatalf("sigrok-cli -L: %v\n%s", err, out)
 	}
@@ -50,7 +52,7 @@ func orcNeed(t *testing.T, pds ...string) {
 // ltc26x7, added after them): its decoders read more than 0.5.3's.
 // TRLC-LINKS: REQ-SDS-241
 func orcNewer() bool {
-	out, err := exec.Command("sigrok-cli", "-L").CombinedOutput()
+	out, err := exec.CommandContext(context.Background(), "sigrok-cli", "-L").CombinedOutput()
 	return err == nil && regexp.MustCompile(`(?m)^\s+ltc26x7\s`).Match(out)
 }
 
@@ -73,7 +75,7 @@ func orcDecode(t *testing.T, sr int, names []string, chans [][]byte, pd, ann str
 	}
 	var sb strings.Builder
 	sb.WriteString(strings.Join(names, ",") + "\n")
-	for i := 0; i < n; i++ {
+	for i := range n {
 		for k, c := range chans {
 			if k > 0 {
 				sb.WriteByte(',')
@@ -96,7 +98,7 @@ func orcDecode(t *testing.T, sr int, names []string, chans [][]byte, pd, ann str
 		"-i", csv, "-I", fmt.Sprintf("csv:column_formats=%dl:samplerate=%d", len(chans), sr), "-P", pd,
 		"-A", ann, "--protocol-decoder-samplenum",
 	}
-	out, err := exec.Command("sigrok-cli", args...).CombinedOutput()
+	out, err := exec.CommandContext(t.Context(), "sigrok-cli", args...).CombinedOutput()
 	if err != nil {
 		t.Fatalf("sigrok-cli %v: %v\n%s", args, err, out)
 	}
@@ -245,6 +247,7 @@ func orcSPILayer(t *testing.T, sr float64, clk, data []byte, layer string) []Pac
 // orcSPI is the sigrok stack for an SPI layer: the four lines.
 // TRLC-LINKS: REQ-SDS-241
 func orcSPI(t *testing.T, sr int, clk, mosi, miso, cs []byte, pd, ann string) []orcAnn {
+	t.Helper()
 	return orcDecode(t, sr, []string{"CLK", "MOSI", "MISO", "CS"}, [][]byte{clk, mosi, miso, cs},
 		"spi:clk=CLK:mosi=MOSI:miso=MISO:cs=CS,"+pd, ann)
 }
@@ -335,6 +338,7 @@ func decodeI2COrFail(t *testing.T, sr float64, scl, sda []byte) decode.Result {
 // orcI2C is the sigrok stack for an I2C layer.
 // TRLC-LINKS: REQ-SDS-241
 func orcI2C(t *testing.T, sr int, scl, sda []byte, pd, ann string) []orcAnn {
+	t.Helper()
 	return orcDecode(t, sr, []string{"SCL", "SDA"}, [][]byte{scl, sda}, "i2c:scl=SCL:sda=SDA,"+pd, ann)
 }
 

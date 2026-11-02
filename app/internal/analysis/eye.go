@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ANALYSIS
+
 package analysis
 
 // The accumulating eye diagram of the LCD's BUS workspace (BUS again). It is
@@ -24,11 +25,12 @@ package analysis
 import "math"
 
 const (
-	// EyeCodeLo and EyeCodeHi bound the grid's code window: the LCD
+	// EyeCodeLo is the low bound of the grid's code window: the LCD
 	// graticule's 8 divisions (25 codes per division centred on code 128,
 	// spec 10 §7.1), so the eye lies over the plot at the trace's own scale.
 	// Samples outside the window are not drawn.
 	EyeCodeLo = 28.0
+	// EyeCodeHi is the window's high bound (see EyeCodeLo).
 	EyeCodeHi = 228.0
 
 	// MinSamplesPerUI is the sampling below which the eye is sample-limited:
@@ -492,51 +494,70 @@ func (e *Eye) edgeTimes(sig []float64, es *EdgeSet, a, b int, lo, hi, ui, sample
 			continue
 		}
 		if es.Pol[k] > 0 {
-			i10, i90 := -1, -1
-			for i := j; i >= 0 && j-i <= lim; i-- {
-				if sig[i] <= l10 {
-					i10 = i
-					break
-				}
-			}
-			for i := j + 1; i < n && i-j <= lim+1; i++ {
-				if sig[i] >= l90 {
-					i90 = i
-					break
-				}
-			}
-			if i10 >= 0 && i90 > 0 {
-				t10 := float64(i10) + (l10-sig[i10])/(sig[i10+1]-sig[i10])
-				t90 := float64(i90-1) + (l90-sig[i90-1])/(sig[i90]-sig[i90-1])
-				if t90 > t10 {
-					e.riseSum += (t90 - t10) * sampleS
-					e.riseN++
-				}
+			if d, ok := riseSamples(sig, j, lim, l10, l90); ok {
+				e.riseSum += d * sampleS
+				e.riseN++
 			}
 			continue
 		}
-		i90, i10 := -1, -1
-		for i := j; i >= 0 && j-i <= lim; i-- {
-			if sig[i] >= l90 {
-				i90 = i
-				break
-			}
-		}
-		for i := j + 1; i < n && i-j <= lim+1; i++ {
-			if sig[i] <= l10 {
-				i10 = i
-				break
-			}
-		}
-		if i90 >= 0 && i10 > 0 {
-			t90 := float64(i90) + (sig[i90]-l90)/(sig[i90]-sig[i90+1])
-			t10 := float64(i10-1) + (sig[i10-1]-l10)/(sig[i10-1]-sig[i10])
-			if t10 > t90 {
-				e.fallSum += (t10 - t90) * sampleS
-				e.fallN++
-			}
+		if d, ok := fallSamples(sig, j, lim, l10, l90); ok {
+			e.fallSum += d * sampleS
+			e.fallN++
 		}
 	}
+}
+
+// riseSamples is the 10-90 % rise time, in samples, of the rising edge whose
+// mid crossing is between sig[j] and sig[j+1]: the levels are searched up to
+// lim samples either side; ok false when either is not found or the time is
+// not positive.
+// TRLC-LINKS: REQ-SDS-215
+func riseSamples(sig []float64, j, lim int, l10, l90 float64) (float64, bool) {
+	n := len(sig)
+	i10, i90 := -1, -1
+	for i := j; i >= 0 && j-i <= lim; i-- {
+		if sig[i] <= l10 {
+			i10 = i
+			break
+		}
+	}
+	for i := j + 1; i < n && i-j <= lim+1; i++ {
+		if sig[i] >= l90 {
+			i90 = i
+			break
+		}
+	}
+	if i10 < 0 || i90 <= 0 {
+		return 0, false
+	}
+	t10 := float64(i10) + (l10-sig[i10])/(sig[i10+1]-sig[i10])
+	t90 := float64(i90-1) + (l90-sig[i90-1])/(sig[i90]-sig[i90-1])
+	return t90 - t10, t90 > t10
+}
+
+// fallSamples is riseSamples for a falling edge: the 90-10 % fall time.
+// TRLC-LINKS: REQ-SDS-215
+func fallSamples(sig []float64, j, lim int, l10, l90 float64) (float64, bool) {
+	n := len(sig)
+	i90, i10 := -1, -1
+	for i := j; i >= 0 && j-i <= lim; i-- {
+		if sig[i] >= l90 {
+			i90 = i
+			break
+		}
+	}
+	for i := j + 1; i < n && i-j <= lim+1; i++ {
+		if sig[i] <= l10 {
+			i10 = i
+			break
+		}
+	}
+	if i90 < 0 || i10 <= 0 {
+		return 0, false
+	}
+	t90 := float64(i90) + (sig[i90]-l90)/(sig[i90]-sig[i90+1])
+	t10 := float64(i10-1) + (sig[i10-1]-l10)/(sig[i10-1]-sig[i10])
+	return t10 - t90, t10 > t90
 }
 
 // fold draws the samples from one UI before the burst's first edge to one UI
@@ -585,7 +606,7 @@ func (e *Eye) fold(sig []float64, fit *GridFit, tFirst, tLast, lo, hi float64) {
 	runs := 0
 	for j := ja; j <= jb; j++ {
 		v := sig[j]
-		if j > ja {
+		if j > ja { //nolint:nestif // the common lines inline, without a call (above): the fold is the eye's per-sample cost
 			d := step
 			if (j-ja)&1023 == 0 { // re-anchor: the rounded step drifts 0.5/65536 column a sample
 				if d = pos(j) - x; d < 0 {
@@ -746,14 +767,14 @@ func (e *Eye) materialize() {
 		return
 	}
 	tw := e.tw
-	for r := 0; r < e.rows; r++ {
+	for r := range e.rows {
 		d := e.diff[r*(tw+1) : r*(tw+1)+tw]
 		t := e.tile[r*tw : (r+1)*tw]
 		out := e.dense[r*tw : (r+1)*tw]
 		acc := int32(0)
 		for c := range out {
 			acc += d[c]
-			out[c] = t[c] + uint32(acc)
+			out[c] = t[c] + uint32(acc) //nolint:gosec // modular: the running difference sum wraps back onto the tile count it was taken from
 		}
 	}
 	e.dirty = false
@@ -810,7 +831,7 @@ func (e *Eye) Result() EyeResult {
 	riseOK := r.Rise >= 2*e.sampleS
 	fallOK := r.Fall >= 2*e.sampleS
 	r.RiseBound, r.FallBound = !riseOK, !fallOK
-	r.TIEBound = !(riseOK && fallOK)
+	r.TIEBound = !riseOK || !fallOK
 	r.WidthBound = r.TIEBound
 	r.SampleLimited = r.SamplesPerUI < MinSamplesPerUI
 	if riseOK && fallOK && e.xN >= 20 {
@@ -824,7 +845,7 @@ func (e *Eye) Result() EyeResult {
 	r.EyeHeight, r.EyeWidth = r.Open.Height(), r.Open.Width()
 	e.materialize()
 	gm := r.GridMax // kept in a register, not stored a cell
-	for row := 0; row < e.rows; row++ {
+	for row := range e.rows {
 		src := e.dense[row*e.tw : (row+1)*e.tw]
 		copy(e.grid[row*e.cols:], src)
 		copy(e.grid[row*e.cols+e.tw:], src)
@@ -864,33 +885,14 @@ func (e *Eye) Opening(sampleUI, threshold float64) EyeBox {
 	total := 0.0
 	for dc := -span; dc <= span; dc++ {
 		c := ((cs+dc)%tw + tw) % tw
-		for row := 0; row < e.rows; row++ {
+		for row := range e.rows {
 			v := float64(e.dense[row*tw+c])
 			col[row] += v
 			total += v
 		}
 	}
 	if total >= 500 {
-		rm := e.rowOf((lo + hi) / 2)
-		trim := math.Max(1, total*0.001)
-		hiRow, loRow := -1, -1
-		acc := 0.0
-		for row := int(math.Floor(rm)); row >= 0; row-- { // toward the upper rail
-			if row >= e.rows {
-				continue
-			}
-			if acc += col[row]; acc >= trim {
-				hiRow = row
-				break
-			}
-		}
-		acc = 0
-		for row := max(0, int(math.Ceil(rm))); row < e.rows; row++ { // toward the lower rail
-			if acc += col[row]; acc >= trim {
-				loRow = row
-				break
-			}
-		}
+		hiRow, loRow := e.openingRows(col, total, e.rowOf((lo+hi)/2))
 		if hiRow >= 0 && loRow >= 0 {
 			b.Hi, b.Lo, b.VOK = e.codeOfRow(hiRow), e.codeOfRow(loRow), true
 			if loRow <= hiRow {
@@ -932,4 +934,31 @@ func (e *Eye) Opening(sampleUI, threshold float64) EyeBox {
 		}
 	}
 	return b
+}
+
+// openingRows are the rows where the eye's centre column col (total counts)
+// closes: walking out from the mid row rm toward each rail, the first rows
+// past a trim of 0.1 % of the counts (-1 when a walk finds none).
+// TRLC-LINKS: REQ-SDS-215
+func (e *Eye) openingRows(col []float64, total, rm float64) (hiRow, loRow int) {
+	trim := math.Max(1, total*0.001)
+	hiRow, loRow = -1, -1
+	acc := 0.0
+	for row := int(math.Floor(rm)); row >= 0; row-- { // toward the upper rail
+		if row >= e.rows {
+			continue
+		}
+		if acc += col[row]; acc >= trim {
+			hiRow = row
+			break
+		}
+	}
+	acc = 0
+	for row := max(0, int(math.Ceil(rm))); row < e.rows; row++ { // toward the lower rail
+		if acc += col[row]; acc >= trim {
+			loRow = row
+			break
+		}
+	}
+	return hiRow, loRow
 }

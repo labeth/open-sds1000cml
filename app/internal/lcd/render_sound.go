@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-LCD
+
 package lcd
 
 import (
@@ -291,7 +292,7 @@ func drawSoundTake(sf Surface, p plotArea, t *wsview.SoundTake) {
 			hline(sf, 0, p.w-1, y0, colGrid)
 		}
 		col := chanCol(ch)
-		for x := 0; x < p.w; x++ {
+		for x := range p.w {
 			i := min(n-1, x*n/p.w)
 			vline(sf, x, yOf(hi[i]), yOf(lo[i]), col)
 		}

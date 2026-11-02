@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ANALYSIS
+
 package analysis
 
 // Spectral peaks for the SPECTRUM workspace's peak table, harmonics and THD.
@@ -125,7 +126,7 @@ func Harmonics(ps []Peak, f0 float64) THD {
 	if !(f0 > 0) || math.IsInf(f0, 0) {
 		strongest := -1
 		for i, p := range ps {
-			if finite(p.DB) && p.Freq > 0 && finite(p.Freq) && (strongest < 0 || p.DB > ps[strongest].DB) {
+			if finite(p.DB) && p.Freq > 0 && finite(p.Freq) && (strongest < 0 || p.DB > ps[strongest].DB) { //nolint:gosec // strongest is an index of ps once set
 				strongest = i
 			}
 		}

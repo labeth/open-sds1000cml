@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-SUPERRES
+
 package superres
 
 import (
@@ -21,7 +22,7 @@ func TestStackAccumulateRTL(t *testing.T) {
 		count, countA   uint32
 		abort, delay    int
 	}
-	max := func(n uint) *big.Int { return new(big.Int).Sub(new(big.Int).Lsh(big.NewInt(1), n), big.NewInt(1)) }
+	ones := func(n uint) *big.Int { return new(big.Int).Sub(new(big.Int).Lsh(big.NewInt(1), n), big.NewInt(1)) }
 	base := func(v uint64, odd bool) fixture {
 		return fixture{true, odd, v, new(big.Int), new(big.Int), new(big.Int), 0, 0, 0, 0}
 	}
@@ -35,11 +36,11 @@ func TestStackAccumulateRTL(t *testing.T) {
 		f := base((1<<37)-1, true)
 		switch k {
 		case 0:
-			f.sum = max(69)
+			f.sum = ones(69)
 		case 1:
-			f.sum2 = max(106)
+			f.sum2 = ones(106)
 		case 2:
-			f.sumA = max(69)
+			f.sumA = ones(69)
 		case 3:
 			f.count = ^uint32(0)
 		case 4:
@@ -51,7 +52,7 @@ func TestStackAccumulateRTL(t *testing.T) {
 	}
 	f := base(7, false)
 	f.countA = ^uint32(0)
-	f.sumA = max(69)
+	f.sumA = ones(69)
 	fixtures = append(fixtures, f)
 	for _, kind := range []int{1, 2} {
 		for _, delay := range []int{0, 1, 37, 100, 199, 205} {
@@ -132,7 +133,7 @@ func TestStackAccumulateRTL(t *testing.T) {
 		t.Fatal(err)
 	}
 	image := compileStackRTL(t, dir, "tb_stack_accumulate", "stack_accumulate.v", "sim/tb_stack_accumulate.v")
-	out, err := exec.Command("vvp", image, "+input="+path).CombinedOutput()
+	out, err := exec.CommandContext(t.Context(), "vvp", image, "+input="+path).CombinedOutput()
 	if err != nil {
 		t.Fatalf("simulation: %v\n%s", err, out)
 	}
@@ -153,7 +154,9 @@ func TestStackAccumulateRTL(t *testing.T) {
 			t.Fatalf("fixture %d:\ngot  %s\nwant %s", i, got, expected[i])
 		}
 		var cycles int
-		fmt.Sscan(fields[len(fields)-1], &cycles)
+		if _, err := fmt.Sscan(fields[len(fields)-1], &cycles); err != nil {
+			t.Fatalf("fixture %d: cycle count %q: %v", i, fields[len(fields)-1], err)
+		}
 		if cycles > maxCycles {
 			maxCycles = cycles
 		}

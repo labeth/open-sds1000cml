@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-SOUND
+
 package sound
 
 import (
@@ -510,7 +511,7 @@ func TestCycle(t *testing.T) {
 
 // TestBreakers feeds every reading degenerate and hostile input: no panic.
 // TRLC-LINKS: REQ-SDS-266, REQ-SDS-267, REQ-SDS-268, REQ-SDS-269, REQ-SDS-270, REQ-SDS-271, REQ-SDS-272
-func TestBreakers(t *testing.T) {
+func TestBreakers(_ *testing.T) {
 	r := rand.New(rand.NewSource(19))
 	inputs := [][]float64{nil, {1}, make([]float64, 7), make([]float64, 5000)}
 	for i := range 20 {

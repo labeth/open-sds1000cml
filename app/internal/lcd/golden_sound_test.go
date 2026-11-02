@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-LCD
+
 package lcd
 
 import (
@@ -117,7 +118,7 @@ func TestGoldenSoundTake(t *testing.T) {
 	for ch := range 2 {
 		tk.Lo[ch], tk.Hi[ch] = make([]float32, n), make([]float32, n)
 		for i := range n {
-			a := 1.0
+			var a float64
 			if ch == 1 {
 				a = 0.02
 				if i >= n/4 {

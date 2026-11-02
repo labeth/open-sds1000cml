@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-SUPERRES
+
 package superres
 
 import (
@@ -23,7 +24,7 @@ func compileStackRTL(t *testing.T, dir, bench string, files ...string) string {
 	for _, f := range files {
 		args = append(args, filepath.Join(root, f))
 	}
-	if out, err := exec.Command("iverilog", args...).CombinedOutput(); err != nil {
+	if out, err := exec.CommandContext(t.Context(), "iverilog", args...).CombinedOutput(); err != nil {
 		t.Fatalf("compile %v: %s", err, out)
 	}
 	return image
@@ -71,7 +72,7 @@ func TestStackPositionsRTL(t *testing.T) {
 	// general divider exactly for them.
 	pow2 := filepath.Join(dir, "pow2.vvp")
 	root := testenv.RTLDir(t)
-	if out, err := exec.Command("iverilog", "-g2012", "-s", "tb_stack_positions", "-Ptb_stack_positions.POW2_FACTOR=1", "-o", pow2,
+	if out, err := exec.CommandContext(t.Context(), "iverilog", "-g2012", "-s", "tb_stack_positions", "-Ptb_stack_positions.POW2_FACTOR=1", "-o", pow2,
 		filepath.Join(root, "stack_positions.v"), filepath.Join(root, "sim", "tb_stack_positions.v")).CombinedOutput(); err != nil {
 		t.Fatalf("compile %v: %s", err, out)
 	}
@@ -92,7 +93,7 @@ func TestStackPositionsRTL(t *testing.T) {
 				if err := os.WriteFile(file, []byte(input), 0o600); err != nil {
 					t.Fatal(err)
 				}
-				out, err := exec.Command("vvp", image, "+input="+file).CombinedOutput()
+				out, err := exec.CommandContext(t.Context(), "vvp", image, "+input="+file).CombinedOutput()
 				if err != nil {
 					t.Fatalf("simulate %v: %s", err, out)
 				}
@@ -150,10 +151,10 @@ func TestStackInterpolateRTL(t *testing.T) {
 		mask, abort, delay int
 	}
 	var fixtures []fixture
-	const max = (uint64(1) << 37) - 1
+	const maxSum = (uint64(1) << 37) - 1
 	for _, w := range []uint32{0, 1, 1 << 23, (1 << 24) - 1} {
 		for _, mask := range []int{0, 1, 2, 3} {
-			fixtures = append(fixtures, fixture{[4]uint64{0, max, max, 0}, w, mask, 0, 0})
+			fixtures = append(fixtures, fixture{[4]uint64{0, maxSum, maxSum, 0}, w, mask, 0, 0})
 		}
 	}
 	rng := rand.New(rand.NewSource(141028))
@@ -179,7 +180,7 @@ func TestStackInterpolateRTL(t *testing.T) {
 		t.Fatal(err)
 	}
 	image := compileStackRTL(t, dir, "tb_stack_interpolate", "stack_interpolate.v", "sim/tb_stack_interpolate.v")
-	out, err := exec.Command("vvp", image, "+input="+file).CombinedOutput()
+	out, err := exec.CommandContext(t.Context(), "vvp", image, "+input="+file).CombinedOutput()
 	if err != nil {
 		t.Fatalf("simulate %v: %s", err, out)
 	}
@@ -265,14 +266,14 @@ func TestStackResampleRTL(t *testing.T) {
 			}
 			var input strings.Builder
 			fmt.Fprintf(&input, "%d %d %d %d %d %d %d %d %d\n", f.p, f.b, f.k, f.n, f.d, f.mask, f.odd, f.abort, f.fault)
-			for k := 0; k < f.n; k++ {
+			for k := range f.n {
 				fmt.Fprintf(&input, "%d %d\n", uint64(float64(sig[0][k])*(1<<24)), uint64(float64(sig[1][k])*(1<<24)))
 			}
 			file := filepath.Join(dir, "resample.txt")
 			if err := os.WriteFile(file, []byte(input.String()), 0o600); err != nil {
 				t.Fatal(err)
 			}
-			out, err := exec.Command("vvp", image, "+input="+file).CombinedOutput()
+			out, err := exec.CommandContext(t.Context(), "vvp", image, "+input="+file).CombinedOutput()
 			if err != nil {
 				t.Fatalf("simulate %v: %s", err, out)
 			}

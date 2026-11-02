@@ -1,7 +1,9 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-LCD
+
 package lcd
 
 import (
+	"math"
 	"open-sds/app/internal/panel/wsview"
 	"sync"
 )
@@ -44,7 +46,7 @@ const decodeStripTop = H - 38
 // review).
 // TRLC-LINKS: REQ-SDS-021, REQ-SDS-214
 func decodeStrip(hud HUD) bool {
-	return hud.DecProto != 0 && hud.ViewMode == 0 && !streamFullScreen(hud) && !(hud.SRFocus == 3 && len(hud.SRMean) > 0)
+	return hud.DecProto != 0 && hud.ViewMode == 0 && !streamFullScreen(hud) && (hud.SRFocus != 3 || len(hud.SRMean) == 0)
 }
 
 // aboveStrip is plot p ending above the decode strip: the -4 division row
@@ -92,7 +94,7 @@ func (p plotArea) codeRows(z float64) (rows [256]int16) {
 		}
 	}
 	for v := range rows {
-		rows[v] = int16(p.sy(128 + (float64(v)-128)*z))
+		rows[v] = int16(min(max(p.sy(128+(float64(v)-128)*z), math.MinInt16), math.MaxInt16))
 	}
 	e := &codeRowCache.e[codeRowCache.next]
 	codeRowCache.next = (codeRowCache.next + 1) % len(codeRowCache.e)

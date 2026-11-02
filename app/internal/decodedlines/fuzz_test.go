@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
+
 package decodedlines
 
 import (
@@ -24,7 +25,7 @@ func FuzzTranscript(f *testing.F) {
 		}
 		tr.Add(ev)
 		tr.Flush()
-		for i := 0; i < tr.Count(); i++ {
+		for i := range tr.Count() {
 			if l := tr.At(i); int(l.N) > len(l.Vals) {
 				t.Fatalf("line %d holds %d units", i, l.N)
 			}

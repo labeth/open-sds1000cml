@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ANALYSIS
+
 package analysis
 
 // Oracle cross-checks of the I2C layers (oracle_layer_helpers_test.go).
@@ -310,10 +311,7 @@ func TestOracleLayerTCA6408A(t *testing.T) {
 		{addr: 0x20, data: []byte{0}, noStop: true},
 		{addr: 0x20, read: true, data: []byte{0xaa}},
 	})
-	var repo []string
-	for _, s := range orcMatch(orcNotes(ps), `(Input|Output|Polarity|Config)=([0-9A-F]{2})`) {
-		repo = append(repo, s)
-	}
+	repo := orcMatch(orcNotes(ps), `(Input|Output|Polarity|Config)=([0-9A-F]{2})`)
 	names := map[string]string{"State of inputs": "Input", "Outputs set": "Output", "Polarity inverted": "Polarity", "Configuration": "Config"}
 	var orc []string
 	for _, s := range orcMatch(orcTexts(anns), `^(State of inputs|Outputs set|Polarity inverted|Configuration): ([0-9A-F]{2})$`) {

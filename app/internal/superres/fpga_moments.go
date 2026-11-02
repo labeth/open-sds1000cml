@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-SUPERRES
+
 package superres
 
 import (
@@ -47,7 +48,7 @@ func DecodeFPGAMoments(words []uint16) (FPGAStackMoments, error) {
 	}
 	return FPGAStackMoments{
 		Sum: getFPGAField(words, 0, 69), SumSquares: getFPGAField(words, 69, 106),
-		Count: uint32(getFPGAField(words, 175, 32)[0]), SumOdd: getFPGAField(words, 207, 69), CountOdd: uint32(getFPGAField(words, 276, 32)[0]),
+		Count: uint32(getFPGAField(words, 175, 32)[0] & 0xffffffff), SumOdd: getFPGAField(words, 207, 69), CountOdd: uint32(getFPGAField(words, 276, 32)[0] & 0xffffffff),
 	}, nil
 }
 

@@ -136,7 +136,7 @@ type CompInfo struct {
 func CompFigures(o CompOpts) CompInfo {
 	o = o.withDefaults()
 	var peak, f3, prevDb, prevF float64
-	for i := 0; i <= 520; i++ { // f = 0, 0.5e6, …, 260e6 — the exact JS grid
+	for i := range 521 { // f = 0, 0.5e6, …, 260e6 — the exact JS grid
 		f := float64(i) * 0.5e6
 		g := CompGain(f, o)
 		if g > peak {
@@ -347,7 +347,7 @@ func Compensate(mean []float32, dtFine float64, o CompOpts) []float32 {
 					x[j] = a + num/float64(i-last)
 				}
 			} else if last < 0 {
-				for j := 0; j < i; j++ { // leading gap: hold first value
+				for j := range i { // leading gap: hold first value
 					x[j] = x[i]
 				}
 			}

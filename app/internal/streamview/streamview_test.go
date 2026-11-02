@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
+
 package streamview
 
 import (
@@ -115,7 +116,7 @@ func wait(t *testing.T, c *Controller, s State) View {
 // TRLC-LINKS: REQ-SDS-018
 func uart(text string, start uint64) []sramcapture.DecodedEvent {
 	var ev []sramcapture.DecodedEvent
-	for i := 0; i < len(text); i++ {
+	for i := range len(text) {
 		ev = append(ev, sramcapture.DecodedEvent{Kind: sramcapture.EventData, Value: uint32(text[i]), Sample: start + uint64(i)*4340, Protocol: 1})
 	}
 	return ev
@@ -191,7 +192,10 @@ func TestStreamEndDropsTheRecord(t *testing.T) {
 func TestStartingNoteSaysWhy(t *testing.T) {
 	f := &fakeSource{begin: make(chan struct{})}
 	c := New(f, t.Logf)
-	go c.StartNoted(engine.SerialParams{Proto: 1}, engine.StreamManual, 0, "UART", "loading the general FPGA image")
+	started := make(chan error, 1)
+	go func() {
+		started <- c.StartNoted(engine.SerialParams{Proto: 1}, engine.StreamManual, 0, "UART", "loading the general FPGA image")
+	}()
 	v := wait(t, c, Starting)
 	if v.Note != "loading the general FPGA image" {
 		t.Fatalf("starting: note %q", v.Note)
@@ -199,6 +203,9 @@ func TestStartingNoteSaysWhy(t *testing.T) {
 	close(f.begin)
 	if v := wait(t, c, Streaming); v.Note != "" {
 		t.Fatalf("streaming: note %q", v.Note)
+	}
+	if err := <-started; err != nil {
+		t.Fatalf("start: %v", err)
 	}
 	c.Stop()
 }

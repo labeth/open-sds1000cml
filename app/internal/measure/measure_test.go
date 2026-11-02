@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-MEASURE
+
 package measure
 
 import (
@@ -84,9 +85,9 @@ func TestTrapezoidRiseTime(t *testing.T) {
 		}
 	}
 	for range 6 {
-		seg(func(k int) int { return base }, 30)
+		seg(func(_ int) int { return base }, 30)
 		seg(func(k int) int { return base + (top-base)*k/ramp }, ramp) // rising
-		seg(func(k int) int { return top }, 30)
+		seg(func(_ int) int { return top }, 30)
 		seg(func(k int) int { return top - (top-base)*k/ramp }, ramp) // falling
 	}
 	r := Compute(out, 1.0/32, 0, 1e-6)

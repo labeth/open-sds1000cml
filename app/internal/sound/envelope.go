@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-SOUND
+
 package sound
 
 import "math"
@@ -235,7 +236,7 @@ func AnalyzeADSR(env []float64, fs, gateOn, gateOff float64) ADSR {
 	r.Sustain = low + sus*(pk-low)
 	r.SustainPct = 100 * sus
 	r.SustainDB = 20 * math.Log10(math.Max(sus, 1e-6))
-	if r.HasSustain {
+	if r.HasSustain { //nolint:nestif // decay and release as sound.js's ADSR reads them, step for step (parity test)
 		dEnd := crossDown(e, pi, n, sus+0.1*(1-sus))
 		if rel >= 0 {
 			dEnd = math.Min(dEnd, float64(rel))

@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DSP
+
 package dsp
 
 import (
@@ -23,10 +24,7 @@ func TestPrecisionMatchesDirectConvolution(t *testing.T) {
 			for j, tap := range precisionTaps {
 				sum += int64(tap) * int64(original[i-PrecisionGuard+j])
 			}
-			v := max((sum+(1<<21))>>22, 0)
-			if v > 65535 {
-				v = 65535
-			}
+			v := min(max((sum+(1<<21))>>22, 0), 65535)
 			want = uint16(v)
 		}
 		if s[i] != want {
@@ -44,7 +42,7 @@ func BenchmarkPrecisionFullRecord(b *testing.B) {
 	}
 	b.SetBytes(int64(len(s) * 2))
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		ConditionQ8(s, scratch)
 	}
 }

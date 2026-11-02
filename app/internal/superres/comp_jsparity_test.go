@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-SUPERRES
+
 package superres
 
 import (
@@ -62,7 +63,7 @@ func TestCompParityJS(t *testing.T) {
 	// table boundary (92 MHz) at ±ULP-ish offsets, negatives (even symmetry),
 	// and off-grid irrational-ish points.
 	var freqs []float64
-	for i := 0; i <= 1040; i++ {
+	for i := range 1041 {
 		freqs = append(freqs, float64(i)*0.25e6)
 	}
 	for i := 1; i <= 26; i++ {
@@ -139,7 +140,7 @@ func TestCompParityJS(t *testing.T) {
 	if err := os.WriteFile(tmp, payload, 0o644); err != nil {
 		t.Fatal(err)
 	}
-	out, err := exec.Command(node, "comp_parity_driver.cjs", tmp).CombinedOutput()
+	out, err := exec.CommandContext(t.Context(), node, "comp_parity_driver.cjs", tmp).CombinedOutput()
 	if err != nil {
 		t.Fatalf("node driver failed: %v\n%s", err, out)
 	}
@@ -167,8 +168,8 @@ func TestCompParityJS(t *testing.T) {
 		t.Fatalf("bad driver output: %v\n%s", err, out)
 	}
 
-	// close asserts |a-b| within 1e-9 relative (1e-9 absolute below 1).
-	close := func(what string, a, b float64) {
+	// near asserts |a-b| within 1e-9 relative (1e-9 absolute below 1).
+	near := func(what string, a, b float64) {
 		t.Helper()
 		tol := 1e-9 * math.Max(1, math.Max(math.Abs(a), math.Abs(b)))
 		if math.Abs(a-b) > tol || math.IsNaN(a) != math.IsNaN(b) {
@@ -184,16 +185,16 @@ func TestCompParityJS(t *testing.T) {
 		jc := js.Curves[ci]
 		od := o.withDefaults()
 		for fi, f := range freqs {
-			close("gain", CompGain(f, o), jc.Gain[fi])
-			close("calH", CompCalH(f), jc.Cal[fi])
-			close("targetH", CompTargetH(f, od.Fbw, od.Order), jc.Target[fi])
+			near("gain", CompGain(f, o), jc.Gain[fi])
+			near("calH", CompCalH(f), jc.Cal[fi])
+			near("targetH", CompTargetH(f, od.Fbw, od.Order), jc.Target[fi])
 			if t.Failed() {
 				t.Fatalf("curve %d diverged first at f=%g", ci, f)
 			}
 		}
 		info := CompFigures(o)
-		close("peakBoostDb", info.PeakBoostDb, jc.PeakBoostDb)
-		close("recoveredF3", info.RecoveredF3, jc.RecoveredF3)
+		near("peakBoostDb", info.PeakBoostDb, jc.PeakBoostDb)
+		near("recoveredF3", info.RecoveredF3, jc.RecoveredF3)
 	}
 
 	if len(js.Autos) != len(autos) {
@@ -202,13 +203,13 @@ func TestCompParityJS(t *testing.T) {
 	for ai, a := range autos {
 		o := CompAuto(a.BitsGained, a.RawNyqHz, a.Spend)
 		ja := js.Autos[ai]
-		close("auto.fbw", o.Fbw, ja.Fbw)
-		close("auto.eps", o.Eps, ja.Eps)
-		close("auto.gmax", o.Gmax, ja.Gmax)
-		close("auto.budgetDb", o.BudgetDb, ja.BudgetDb)
+		near("auto.fbw", o.Fbw, ja.Fbw)
+		near("auto.eps", o.Eps, ja.Eps)
+		near("auto.gmax", o.Gmax, ja.Gmax)
+		near("auto.budgetDb", o.BudgetDb, ja.BudgetDb)
 		info := CompFigures(o)
-		close("auto.peakBoostDb", info.PeakBoostDb, ja.PeakBoostDb)
-		close("auto.recoveredF3", info.RecoveredF3, ja.RecoveredF3)
+		near("auto.peakBoostDb", info.PeakBoostDb, ja.PeakBoostDb)
+		near("auto.recoveredF3", info.RecoveredF3, ja.RecoveredF3)
 		if t.Failed() {
 			t.Fatalf("auto case %d (bits=%g nyq=%g spend=%g) diverged", ai, a.BitsGained, a.RawNyqHz, a.Spend)
 		}

@@ -75,10 +75,10 @@ type Stack struct {
 	gtpl *gateTpl
 }
 
-// New allocates a stack: n input samples → n*K fine bins per channel.
+// New allocates a stack: n input samples → n*k fine bins per channel.
 // TRLC-LINKS: REQ-SDS-141
-func New(n, K int) *Stack {
-	nb := n * K
+func New(n, k int) *Stack {
+	nb := n * k
 	mk := func() chanState {
 		return chanState{
 			sum: make([]float64, nb), sum2: make([]float64, nb), cnt: make([]float64, nb),
@@ -87,7 +87,7 @@ func New(n, K int) *Stack {
 		}
 	}
 	return &Stack{
-		N: n, K: K, Nbins: nb,
+		N: n, K: k, Nbins: nb,
 		C:        [2]chanState{mk(), mk()},
 		RefEdgeX: -1, StatLo: 0, StatHi: n,
 		MaxShift: 64, MinMatch: 0.8,

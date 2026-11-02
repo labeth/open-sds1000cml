@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-SUPERRES
+
 package superres
 
 // accumCh resamples one aligned frame at every fine bin (interp kernel): bin b

@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
+
 package decodedlines
 
 import (
@@ -24,7 +25,7 @@ func formatRef(t *Transcript, i int) string {
 		ms = (float64(l.Sample) - float64(t.trig)) * 2e-6
 	}
 	var hex, text strings.Builder
-	for k := 0; k < int(l.N); k++ {
+	for k := range l.N {
 		if k > 0 {
 			hex.WriteByte(' ')
 		}
@@ -73,8 +74,10 @@ func benchTranscript(proto, n int, r *rand.Rand) *Transcript {
 				l.Vals[k] = uint32(r.Intn(16))
 			}
 		}
-		l.Errs = uint16(r.Intn(1<<16)) & uint16(r.Intn(1<<16)) & uint16(r.Intn(1<<16))
-		l.Naks = uint16(r.Intn(1<<16)) & uint16(r.Intn(1<<16))
+		e1, e2, e3 := uint16(r.Intn(1<<16)), uint16(r.Intn(1<<16)), uint16(r.Intn(1<<16))
+		l.Errs = e1 & e2 & e3 // about one unit in eight
+		n1, n2 := uint16(r.Intn(1<<16)), uint16(r.Intn(1<<16))
+		l.Naks = n1 & n2
 		l.Note = notes[r.Intn(len(notes))]
 		t.Append(i, l)
 	}
@@ -89,7 +92,7 @@ func TestFormatIsTheReference(t *testing.T) {
 	for _, proto := range []int{0, 5, 7, 8, 26, 28, 29, 31, 52} {
 		tr := benchTranscript(proto, 300, r)
 		for range 2 {
-			for i := 0; i < tr.Count(); i++ {
+			for i := range tr.Count() {
 				if got, want := tr.Format(i), formatRef(tr, i); got != want {
 					t.Fatalf("proto %d line %d:\n got %q\nwant %q", proto, i, got, want)
 				}

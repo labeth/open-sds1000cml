@@ -17,6 +17,8 @@ type Source interface {
 	Consume() (*engine.Frame, bool)
 }
 
+// Fanout holds the newest engine frame for every reader (LCD, web) and wakes
+// those waiting for a fresh one.
 // TRLC-LINKS: REQ-SDS-020
 type Fanout struct {
 	mu     sync.RWMutex
@@ -25,6 +27,7 @@ type Fanout struct {
 	wake   chan struct{} // closed+replaced under mu on every fresh snapshot
 }
 
+// New returns an empty fan-out.
 // TRLC-LINKS: REQ-SDS-020
 func New() *Fanout { return &Fanout{wake: make(chan struct{})} }
 
@@ -114,12 +117,16 @@ func CopyFrame(dst, src *engine.Frame) {
 	q1, q2 := dst.Q1, dst.Q2
 	e1n, e1x, e2n, e2x := dst.EnvMin, dst.EnvMax, dst.EnvMin2, dst.EnvMax2
 	*dst = *src
-	dst.Q1 = append(q1[:0], src.Q1...)
-	dst.Q2 = append(q2[:0], src.Q2...)
-	dst.C1 = append(c1[:0], src.C1[:src.Valid]...)
-	dst.C2 = append(c2[:0], src.C2[:src.Valid]...)
-	dst.EnvMin = append(e1n[:0], src.EnvMin...)
-	dst.EnvMax = append(e1x[:0], src.EnvMax...)
-	dst.EnvMin2 = append(e2n[:0], src.EnvMin2...)
-	dst.EnvMax2 = append(e2x[:0], src.EnvMax2...)
+	dst.Q1 = reuse(q1, src.Q1)
+	dst.Q2 = reuse(q2, src.Q2)
+	dst.C1 = reuse(c1, src.C1[:src.Valid])
+	dst.C2 = reuse(c2, src.C2[:src.Valid])
+	dst.EnvMin = reuse(e1n, src.EnvMin)
+	dst.EnvMax = reuse(e1x, src.EnvMax)
+	dst.EnvMin2 = reuse(e2n, src.EnvMin2)
+	dst.EnvMax2 = reuse(e2x, src.EnvMax2)
 }
+
+// reuse copies src into buf's storage, growing it only when it is short.
+// TRLC-LINKS: REQ-SDS-020
+func reuse[T any](buf, src []T) []T { return append(buf[:0], src...) }

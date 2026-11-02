@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-SUPERRES
+
 package superres
 
 import (
@@ -53,7 +54,7 @@ func TestStackBinWriterRTL(t *testing.T) {
 		t.Fatal(err)
 	}
 	image := compileStackRTL(t, dir, "tb_stack_bin_writer", "stack_accumulate.v", "stack_bin_writer.v", "sim/tb_stack_bin_writer.v")
-	out, err := exec.Command("vvp", image, "+input="+path).CombinedOutput()
+	out, err := exec.CommandContext(t.Context(), "vvp", image, "+input="+path).CombinedOutput()
 	if err != nil {
 		t.Fatalf("simulation %v\n%s", err, out)
 	}
