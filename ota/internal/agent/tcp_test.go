@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-OTA-AGENT
+
 package agent
 
 import (
@@ -19,7 +20,7 @@ import (
 func TestHandleConnSpeaksOtactlWire(t *testing.T) {
 	a := testAgent(t)
 	srv, cli := net.Pipe()
-	defer cli.Close()
+	defer func() { _ = cli.Close() }()
 	go a.handleConn(srv)
 
 	r := bufio.NewReaderSize(cli, 1<<20)
@@ -29,7 +30,7 @@ func TestHandleConnSpeaksOtactlWire(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		cli.SetDeadline(time.Now().Add(5 * time.Second))
+		_ = cli.SetDeadline(time.Now().Add(5 * time.Second))
 		if _, err := cli.Write(append(req, '\n')); err != nil {
 			t.Fatalf("write: %v", err)
 		}
@@ -67,7 +68,7 @@ func TestHandleConnSpeaksOtactlWire(t *testing.T) {
 	}
 
 	// A garbage line must produce an error response and keep the connection.
-	cli.SetDeadline(time.Now().Add(5 * time.Second))
+	_ = cli.SetDeadline(time.Now().Add(5 * time.Second))
 	if _, err := cli.Write([]byte("{oops\n")); err != nil {
 		t.Fatal(err)
 	}

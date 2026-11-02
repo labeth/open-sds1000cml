@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-OTA-BUILDINFO
+
 package buildinfo
 
 import "testing"

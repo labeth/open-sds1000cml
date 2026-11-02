@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-OTA-AGENT
+
 package agent
 
 import (
@@ -95,8 +96,12 @@ func TestLogsHandler(t *testing.T) {
 	if err := os.MkdirAll(logDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	os.WriteFile(filepath.Join(logDir, "agent.log"), []byte("agent says hi\n"), 0o644)
-	os.WriteFile(filepath.Join(logDir, "boot.log"), []byte("0123456789boot!\n"), 0o644)
+	if err := os.WriteFile(filepath.Join(logDir, "agent.log"), []byte("agent says hi\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(logDir, "boot.log"), []byte("0123456789boot!\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 
 	resp := a.Dispatch([]byte(`{"cmd":"logs"}`))
 	if !resp.OK {
@@ -183,7 +188,9 @@ func TestShHandler(t *testing.T) {
 func TestGetHandler(t *testing.T) {
 	a := testAgent(t)
 	path := filepath.Join(t.TempDir(), "payload")
-	os.WriteFile(path, []byte("0123456789"), 0o644)
+	if err := os.WriteFile(path, []byte("0123456789"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 
 	resp := a.Dispatch([]byte(fmt.Sprintf(`{"cmd":"get","args":{"path":%q,"offset":2,"len":4}}`, path)))
 	if !resp.OK {
@@ -258,7 +265,9 @@ func TestAppUpdateInstallsIntoInactiveSlot(t *testing.T) {
 	_ = a.store.Init()
 	src := filepath.Join(t.TempDir(), "newapp")
 	payload := []byte("#!/bin/sh\nexit 0\n")
-	os.WriteFile(src, payload, 0o755)
+	if err := os.WriteFile(src, payload, 0o755); err != nil {
+		t.Fatal(err)
+	}
 	sum, err := slots.FileSHA256(src)
 	if err != nil {
 		t.Fatal(err)
@@ -327,7 +336,9 @@ func TestAgentUpdateRefusalGates(t *testing.T) {
 		t.Errorf("missing src: %+v", resp)
 	}
 	src := filepath.Join(t.TempDir(), "agent-new")
-	os.WriteFile(src, []byte("elf-ish"), 0o755)
+	if err := os.WriteFile(src, []byte("elf-ish"), 0o755); err != nil {
+		t.Fatal(err)
+	}
 	resp = a.Dispatch([]byte(fmt.Sprintf(`{"cmd":"agent.update","args":{"src":%q,"sha256":"00"}}`, src)))
 	if resp.OK || !strings.Contains(resp.Err, "sha256 mismatch") {
 		t.Errorf("sha mismatch: %+v", resp)

@@ -21,7 +21,7 @@ func TestThirdPartyLicensesCoverLinkedModules(t *testing.T) {
 	if err != nil {
 		t.Fatalf("THIRD_PARTY_LICENSES.txt: %v", err)
 	}
-	cmd := exec.Command("go", "list", "-deps", "-f", "{{with .Module}}{{if not .Main}}{{.Path}}@{{.Version}}{{end}}{{end}}",
+	cmd := exec.CommandContext(t.Context(), "go", "list", "-deps", "-f", "{{with .Module}}{{if not .Main}}{{.Path}}@{{.Version}}{{end}}{{end}}",
 		"./cmd/otactl", "./cmd/agent")
 	cmd.Dir = filepath.Join("..", "..")
 	out, err := cmd.Output()

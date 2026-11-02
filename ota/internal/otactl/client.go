@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-OTA-OTACTL
+
 package otactl
 
 import (
@@ -19,6 +20,8 @@ type Client struct {
 	T Transport
 }
 
+// Call runs one RPC and turns a device-side failure into an error, keeping
+// any data the device sent with it.
 // TRLC-LINKS: REQ-SDS-109
 func (c *Client) Call(cmd string, args any, timeout time.Duration) (json.RawMessage, error) {
 	resp, err := c.T.Call(cmd, args, timeout)
@@ -35,11 +38,11 @@ func (c *Client) Call(cmd string, args any, timeout time.Duration) (json.RawMess
 // put.chunk/put.commit and returns the device-side sha256.
 // TRLC-LINKS: REQ-SDS-110
 func (c *Client) PutFile(localPath, devicePath string, mode uint32, chunk int, progress func(done, total int64)) (string, error) {
-	f, err := os.Open(localPath)
+	f, err := os.Open(localPath) //nolint:gosec // uploading the file the user names is the command
 	if err != nil {
 		return "", err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }() // read-only: a close error loses nothing
 	fi, err := f.Stat()
 	if err != nil {
 		return "", err
@@ -124,12 +127,18 @@ type putChunkArgs struct {
 
 // GetFile pulls a device file to a local path via the get RPC.
 // TRLC-LINKS: REQ-SDS-110
-func (c *Client) GetFile(devicePath, localPath string, progress func(done, total int64)) error {
-	out, err := os.Create(localPath)
+func (c *Client) GetFile(devicePath, localPath string, progress func(done, total int64)) (err error) {
+	out, err := os.Create(localPath) //nolint:gosec // downloading to the path the user names is the command
 	if err != nil {
 		return err
 	}
-	defer out.Close()
+	defer func() {
+		// A write the file system defers can fail only at close: the file is
+		// then short, and the download is not done.
+		if cerr := out.Close(); err == nil {
+			err = cerr
+		}
+	}()
 	var off int64
 	const chunk = 256 * 1024
 	for {

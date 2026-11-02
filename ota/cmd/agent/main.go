@@ -70,7 +70,7 @@ func hasFlag(f string) bool {
 	return slices.Contains(os.Args[2:], f)
 }
 
-const usage = `open-sds OTA agent
+const usage = `open-sds OTA agent, usage:
   agent                 run the supervisor (boot path)
   agent probe [--gpmc]  read-only device fingerprint as JSON (--gpmc: also read version+fill)
   agent version         print version

@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-OTA-OTACTL
+
 package otactl
 
 import (
@@ -43,11 +44,11 @@ func startAgentLineServer(t *testing.T) (addr string, a *agent.Agent) {
 	}
 	a = agent.New(config.Load())
 
-	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	ln, err := (&net.ListenConfig{}).Listen(t.Context(), "tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { ln.Close() })
+	t.Cleanup(func() { _ = ln.Close() })
 	go func() {
 		for {
 			conn, err := ln.Accept()
@@ -55,7 +56,7 @@ func startAgentLineServer(t *testing.T) (addr string, a *agent.Agent) {
 				return
 			}
 			go func(c net.Conn) {
-				defer c.Close()
+				defer func() { _ = c.Close() }()
 				r := bufio.NewReaderSize(c, 1<<20)
 				for {
 					line, err := r.ReadBytes('\n')

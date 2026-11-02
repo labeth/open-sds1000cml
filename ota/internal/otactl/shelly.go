@@ -1,7 +1,9 @@
 // ENGMODEL-OWNER-UNIT: FU-OTA-OTACTL
+
 package otactl
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -18,19 +20,30 @@ type Shelly struct {
 	HTTP *http.Client
 }
 
+// NewShelly returns a client for the plug at host, with a short timeout.
 // TRLC-LINKS: REQ-SDS-112
 func NewShelly(host string) *Shelly {
 	return &Shelly{Host: host, HTTP: &http.Client{Timeout: 8 * time.Second}}
 }
 
+// get sends a GET for path on the plug.
+// TRLC-LINKS: REQ-SDS-112
+func (s *Shelly) get(path string) (*http.Response, error) {
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "http://"+s.Host+path, nil)
+	if err != nil {
+		return nil, err
+	}
+	return s.HTTP.Do(req)
+}
+
+// do switches the relay ("on" or "off") and returns the plug's reply.
 // TRLC-LINKS: REQ-SDS-112
 func (s *Shelly) do(turn string) (string, error) {
-	url := fmt.Sprintf("http://%s/relay/0?turn=%s", s.Host, turn)
-	resp, err := s.HTTP.Get(url)
+	resp, err := s.get("/relay/0?turn=" + turn)
 	if err != nil {
 		return "", fmt.Errorf("shelly %s: %w", turn, err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }() // read-only body
 	body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
 	if resp.StatusCode != http.StatusOK {
 		return string(body), fmt.Errorf("shelly %s: HTTP %d", turn, resp.StatusCode)
@@ -38,9 +51,11 @@ func (s *Shelly) do(turn string) (string, error) {
 	return string(body), nil
 }
 
+// On switches the relay on.
 // TRLC-LINKS: REQ-SDS-112
 func (s *Shelly) On() (string, error) { return s.do("on") }
 
+// Off switches the relay off.
 // TRLC-LINKS: REQ-SDS-112
 func (s *Shelly) Off() (string, error) { return s.do("off") }
 
@@ -58,11 +73,11 @@ func (s *Shelly) Cycle(off time.Duration) error {
 // State reports the relay's on/off state.
 // TRLC-LINKS: REQ-SDS-112
 func (s *Shelly) State() (bool, error) {
-	resp, err := s.HTTP.Get(fmt.Sprintf("http://%s/relay/0", s.Host))
+	resp, err := s.get("/relay/0")
 	if err != nil {
 		return false, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }() // read-only body
 	var v struct {
 		IsOn bool `json:"ison"`
 	}

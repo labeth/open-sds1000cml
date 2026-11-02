@@ -9,11 +9,13 @@
 package vxi11
 
 import (
+	"context"
 	"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
 	"net"
+	"strconv"
 	"time"
 )
 
@@ -50,7 +52,7 @@ func (x *xdrBuf) u32(v uint32) *xdrBuf {
 
 // TRLC-LINKS: REQ-SDS-100
 func (x *xdrBuf) opaque(p []byte) *xdrBuf {
-	x.u32(uint32(len(p)))
+	x.u32(uint32(len(p))) //nolint:gosec // an opaque here is a SCPI line or "inst0", far below 4 GiB
 	x.b = append(x.b, p...)
 	for len(x.b)%4 != 0 {
 		x.b = append(x.b, 0)
@@ -62,7 +64,7 @@ func (x *xdrBuf) opaque(p []byte) *xdrBuf {
 // (after the accepted-reply header) or an error.
 // TRLC-LINKS: REQ-SDS-100
 func rpcCall(conn net.Conn, timeout time.Duration, prog, vers, proc uint32, args []byte) ([]byte, error) {
-	xid := uint32(time.Now().UnixNano())
+	xid := uint32(time.Now().UnixNano()) //nolint:gosec // any 32 bits that differ per call make an xid; the clock's low bits do
 	// The record mark is reserved at the front and filled in last: the call
 	// is built and written as one buffer.
 	msg := xdrBuf{b: make([]byte, 4, 4+40+len(args))}
@@ -70,7 +72,7 @@ func rpcCall(conn net.Conn, timeout time.Duration, prog, vers, proc uint32, args
 	msg.u32(0).u32(0) // cred AUTH_NULL
 	msg.u32(0).u32(0) // verf AUTH_NULL
 	msg.b = append(msg.b, args...)
-	binary.BigEndian.PutUint32(msg.b[:4], 0x80000000|uint32(len(msg.b)-4))
+	binary.BigEndian.PutUint32(msg.b[:4], 0x80000000|uint32(len(msg.b)-4)) //nolint:gosec // one call's record, a SCPI line long
 
 	_ = conn.SetDeadline(time.Now().Add(timeout))
 	var rm [4]byte
@@ -145,7 +147,8 @@ func DialAt(pmAddr, host string, timeout time.Duration) (*Client, error) {
 // dialAt is Dial with an explicit portmapper address (test seam).
 // TRLC-LINKS: REQ-SDS-100
 func dialAt(pmAddr, host string, timeout time.Duration) (*Client, error) {
-	pm, err := net.DialTimeout("tcp", pmAddr, timeout)
+	d := net.Dialer{Timeout: timeout}
+	pm, err := d.DialContext(context.Background(), "tcp", pmAddr)
 	if err != nil {
 		return nil, fmt.Errorf("vxi11: portmap dial: %w", err)
 	}
@@ -164,7 +167,7 @@ func dialAt(pmAddr, host string, timeout time.Duration) (*Client, error) {
 		return nil, fmt.Errorf("vxi11: DEVICE_CORE not registered (port=%d)", port)
 	}
 
-	conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", host, port), timeout)
+	conn, err := d.DialContext(context.Background(), "tcp", net.JoinHostPort(host, strconv.FormatUint(uint64(port), 10)))
 	if err != nil {
 		return nil, fmt.Errorf("vxi11: core dial :%d: %w", port, err)
 	}

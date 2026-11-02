@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-OTA-AGENT
+
 package agent
 
 import (
@@ -63,7 +64,9 @@ func BenchmarkGetChunk(b *testing.B) {
 	p := filepath.Join(b.TempDir(), "y.bin")
 	data := make([]byte, 256*1024)
 	rand.Read(data)
-	os.WriteFile(p, data, 0o644)
+	if err := os.WriteFile(p, data, 0o644); err != nil {
+		b.Fatal(err)
+	}
 	req, _ := json.Marshal(Request{Cmd: "get", Args: mustJSON(map[string]any{"path": p, "offset": 0, "len": 256 * 1024})})
 	for b.Loop() {
 		if r := a.DispatchJSON(req); len(r) < 1000 {
@@ -92,11 +95,11 @@ func BenchmarkTCPCall(b *testing.B) {
 		c, s := net.Pipe()
 		done := make(chan struct{})
 		go func() { a.handleConn(s); close(done) }()
-		c.Write(req)
+		_, _ = c.Write(req)
 		if n, _ := c.Read(buf); n < 10 {
 			b.Fatal("short response")
 		}
-		c.Close()
+		_ = c.Close()
 		<-done
 	}
 }
@@ -129,7 +132,9 @@ func BenchmarkUpload8M(b *testing.B) {
 // TRLC-LINKS: REQ-SDS-105
 func BenchmarkHealthPoll(b *testing.B) {
 	p := filepath.Join(b.TempDir(), "health")
-	os.WriteFile(p, []byte("frames 1234 fps 38\n"), 0o644)
+	if err := os.WriteFile(p, []byte("frames 1234 fps 38\n"), 0o644); err != nil {
+		b.Fatal(err)
+	}
 	h := &healthWatcher{path: p}
 	for b.Loop() {
 		h.poll()
@@ -140,7 +145,9 @@ func BenchmarkHealthPoll(b *testing.B) {
 // TRLC-LINKS: REQ-SDS-104
 func BenchmarkStateUpdateSame(b *testing.B) {
 	sf := loadState(filepath.Join(b.TempDir(), "state.json"))
-	sf.update(func(s *State) { s.TakenOver = true })
+	if err := sf.update(func(s *State) { s.TakenOver = true }); err != nil {
+		b.Fatal(err)
+	}
 	for b.Loop() {
 		if err := sf.update(func(s *State) { s.TakenOver = true }); err != nil {
 			b.Fatal(err)
@@ -160,7 +167,9 @@ func BenchmarkProbe(b *testing.B) {
 // TRLC-LINKS: REQ-SDS-115
 func BenchmarkTailFile(b *testing.B) {
 	p := filepath.Join(b.TempDir(), "agent.log")
-	os.WriteFile(p, make([]byte, 256<<10), 0o644)
+	if err := os.WriteFile(p, make([]byte, 256<<10), 0o644); err != nil {
+		b.Fatal(err)
+	}
 	for b.Loop() {
 		if t, err := tailFile(p, 8192); err != nil || len(t) != 8192 {
 			b.Fatal(err)
@@ -195,18 +204,20 @@ func BenchmarkAgentSlot(b *testing.B) {
 func BenchmarkFactoryCandidates(b *testing.B) {
 	dir := b.TempDir()
 	node := filepath.Join(dir, "Gpmc")
-	os.WriteFile(node, nil, 0o644)
+	if err := os.WriteFile(node, nil, 0o644); err != nil {
+		b.Fatal(err)
+	}
 	b.Setenv("OTA_GPMC", node)
 	a := benchAgent(b)
 	a.cfg.GpmcDev = node
 	f, _ := os.Open(node)
-	defer f.Close()
-	child := exec.Command("sleep", "30")
+	defer func() { _ = f.Close() }()
+	child := exec.CommandContext(b.Context(), "sleep", "30")
 	child.ExtraFiles = []*os.File{f}
 	if err := child.Start(); err != nil {
 		b.Skip(err)
 	}
-	defer func() { child.Process.Kill(); child.Wait() }()
+	defer func() { _ = child.Process.Kill(); _ = child.Wait() }()
 	for b.Loop() {
 		if c := a.factoryCandidates(); len(c) != 0 {
 			b.Fatal(c)
@@ -227,9 +238,15 @@ func BenchmarkIdleWait(b *testing.B) {
 // TRLC-LINKS: REQ-SDS-028
 func BenchmarkConfirmTick(b *testing.B) {
 	a := benchAgent(b)
-	a.store.Init()
-	a.store.SetActive("A")
-	a.store.SetConfirmed("A")
+	if err := a.store.Init(); err != nil {
+		b.Fatal(err)
+	}
+	if err := a.store.SetActive("A"); err != nil {
+		b.Fatal(err)
+	}
+	if err := a.store.SetConfirmed("A"); err != nil {
+		b.Fatal(err)
+	}
 	hs := healthStatus{HealthyOnce: true}
 	for b.Loop() {
 		a.confirmIfStable("A", hs, time.Hour)

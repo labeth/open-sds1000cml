@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-OTA-AGENT
+
 package agent
 
 import (
@@ -29,7 +30,9 @@ func TestHealthWatcherLivenessAndStaleness(t *testing.T) {
 	h := newHealthWatcher(path)
 
 	// App writes the token (first genuine capture).
-	os.WriteFile(path, []byte("1"), 0o644)
+	if err := os.WriteFile(path, []byte("1"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 	h.poll()
 	if !h.status().HealthyOnce {
 		t.Fatal("first token change should mark healthy_once")
@@ -45,7 +48,9 @@ func TestHealthWatcherLivenessAndStaleness(t *testing.T) {
 	}
 
 	// App touches the token again with new content -> healthy again.
-	os.WriteFile(path, []byte("2"), 0o644)
+	if err := os.WriteFile(path, []byte("2"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 	h.poll()
 	if ok, _ := h.verdict(time.Second, 200*time.Millisecond); !ok {
 		t.Error("re-touched token should be healthy again")
@@ -57,7 +62,9 @@ func TestHealthWatcherIgnoresPreexistingToken(t *testing.T) {
 	// A token left from a previous run must be removed so the first-report
 	// gate is meaningful (spec 01 §4.2: do not rubber-stamp a wedged boot).
 	path := filepath.Join(t.TempDir(), "app.health")
-	os.WriteFile(path, []byte("stale"), 0o644)
+	if err := os.WriteFile(path, []byte("stale"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 	h := newHealthWatcher(path)
 	if _, err := os.Stat(path); !os.IsNotExist(err) {
 		t.Error("newHealthWatcher must remove a pre-existing token")

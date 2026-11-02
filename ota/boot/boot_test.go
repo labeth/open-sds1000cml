@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-OTA-BOOT
+
 package boot
 
 // These tests drive the real startup.sh with stub agents and a stub commands
@@ -52,7 +53,7 @@ func run(t *testing.T, env map[string]string, wantMarker string, timeout time.Du
 	// OTA_DIR must exist for pointer files unless the test overrides paths.
 	_ = os.MkdirAll(base["OTA_DIR"], 0o755)
 
-	cmd := exec.Command("/bin/sh", scriptPath(t))
+	cmd := exec.CommandContext(t.Context(), "/bin/sh", scriptPath(t))
 	cmd.Env = os.Environ()
 	for k, v := range base {
 		cmd.Env = append(cmd.Env, k+"="+v)
@@ -183,8 +184,12 @@ func TestCrashLoopRevertsToConfirmed(t *testing.T) {
 	if err := os.MkdirAll(otaDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	os.WriteFile(activeFile, []byte("B\n"), 0o644)
-	os.WriteFile(confirmedFile, []byte("A\n"), 0o644)
+	if err := os.WriteFile(activeFile, []byte("B\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(confirmedFile, []byte("A\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 
 	boot, _ := run(t, map[string]string{
 		"OTA_USB":             dir,
@@ -224,8 +229,12 @@ func TestIntentMarkerIsNeutralNoRevert(t *testing.T) {
 	}
 	// B drops the intent marker (deliberate restart) then exits fast.
 	writeStub(t, agentB, `printf 'restart\n' > "`+filepath.Join(otaDir, "agent.intent")+`" ; exit 0`)
-	os.WriteFile(activeFile, []byte("B\n"), 0o644)
-	os.WriteFile(confirmedFile, []byte("A\n"), 0o644)
+	if err := os.WriteFile(activeFile, []byte("B\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(confirmedFile, []byte("A\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 
 	boot, _ := run(t, map[string]string{
 		"OTA_USB":             dir,

@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-OTA-CONFIG
+
 package config
 
 import (
@@ -67,7 +68,7 @@ func TestLoadDeviceDefaults(t *testing.T) {
 		"HBInterval":    {c.HBInterval, 10 * time.Second},
 		"HealthTimeout": {c.HealthTimeout, 3 * time.Second},
 		"AppGrace":      {c.AppGrace, 30 * time.Second},
-		"StableSecs":    {c.StableSecs, 30 * time.Second},
+		"Stable":        {c.Stable, 30 * time.Second},
 		"WdPet":         {c.WdPet, 15 * time.Second},
 		"TakeoverDelay": {c.TakeoverDelay, 0}, // instant auto-takeover by default
 	} {
@@ -154,7 +155,7 @@ func TestLoadEveryOverride(t *testing.T) {
 		t.Errorf("device overrides not honored: %+v", c)
 	}
 	if c.HealthDir != dir+"/h" || c.HealthTimeout != time.Second || c.AppGrace != 7*time.Second ||
-		c.StableSecs != 500*time.Millisecond || c.MaxFails != 9 || c.WdPet != 20*time.Second {
+		c.Stable != 500*time.Millisecond || c.MaxFails != 9 || c.WdPet != 20*time.Second {
 		t.Errorf("health/supervision overrides not honored: %+v", c)
 	}
 	if c.TakeoverDelay != 3*time.Second || !c.AutoTakeover {

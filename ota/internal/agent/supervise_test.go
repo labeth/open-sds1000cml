@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-OTA-AGENT
+
 package agent
 
 import (
@@ -152,19 +153,27 @@ func TestOrphanAppPid(t *testing.T) {
 	if pid := a.orphanAppPid(); pid != -1 {
 		t.Errorf("no pid file: got %d, want -1", pid)
 	}
-	os.WriteFile(pidFile, []byte("zork\n"), 0o644)
+	if err := os.WriteFile(pidFile, []byte("zork\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 	if pid := a.orphanAppPid(); pid != -1 {
 		t.Errorf("garbage pid file: got %d, want -1", pid)
 	}
-	os.WriteFile(pidFile, []byte("1\n"), 0o644)
+	if err := os.WriteFile(pidFile, []byte("1\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 	if pid := a.orphanAppPid(); pid != -1 {
 		t.Errorf("pid 1 must never be adopted: got %d", pid)
 	}
-	os.WriteFile(pidFile, []byte("999999999\n"), 0o644) // beyond pid_max, never alive
+	if err := os.WriteFile(pidFile, []byte("999999999\n"), 0o644); err != nil { // beyond pid_max, never alive
+		t.Fatal(err)
+	}
 	if pid := a.orphanAppPid(); pid != -1 {
 		t.Errorf("dead pid: got %d, want -1", pid)
 	}
-	os.WriteFile(pidFile, []byte("  "+itoa64(int64(os.Getpid()))+" \n"), 0o644)
+	if err := os.WriteFile(pidFile, []byte("  "+itoa64(int64(os.Getpid()))+" \n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 	if pid := a.orphanAppPid(); pid != os.Getpid() {
 		t.Errorf("live pid: got %d, want %d", pid, os.Getpid())
 	}
@@ -175,18 +184,20 @@ func TestSuperviseAdoptedTornDownByControl(t *testing.T) {
 	a := testAgent(t)
 	// A live process standing in for an app left by a previous agent
 	// generation. Reap it promptly so /proc/<pid> disappears on SIGTERM.
-	cmd := exec.Command("sleep", "30")
+	cmd := exec.CommandContext(t.Context(), "sleep", "30")
 	if err := cmd.Start(); err != nil {
 		t.Fatal(err)
 	}
-	go cmd.Wait()
+	go func() { _ = cmd.Wait() }()
 	pid := cmd.Process.Pid
 	// Seed a health token so the adopted app polls healthy and only the
 	// control request can end the loop.
 	if err := os.WriteFile(a.cfg.HealthPath(), []byte("adopted-ok"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	os.WriteFile(a.pidPath(appPidFile), []byte(itoa64(int64(pid))+"\n"), 0o644)
+	if err := os.WriteFile(a.pidPath(appPidFile), []byte(itoa64(int64(pid))+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 
 	done := make(chan struct{})
 	go func() { a.superviseAdopted(pid); close(done) }()
@@ -210,11 +221,11 @@ func TestSuperviseAdoptedTornDownByControl(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-028
 func TestSuperviseAdoptedKillsWhenNoHealthEverArrives(t *testing.T) {
 	a := testAgent(t)
-	cmd := exec.Command("sleep", "30")
+	cmd := exec.CommandContext(t.Context(), "sleep", "30")
 	if err := cmd.Start(); err != nil {
 		t.Fatal(err)
 	}
-	go cmd.Wait()
+	go func() { _ = cmd.Wait() }()
 	pid := cmd.Process.Pid
 	// No health token: superviseAdopted backdates started by an hour, so the
 	// grace deadline has long passed and the first verdict kills it.
@@ -416,14 +427,16 @@ func TestConfirmRetriesAfterAFailedWrite(t *testing.T) {
 		t.Skip("root writes through a read-only directory")
 	}
 	a := testAgent(t)
-	a.store.Init()
+	if err := a.store.Init(); err != nil {
+		t.Fatal(err)
+	}
 	_ = a.store.SetActive(slots.SlotB)
 	_ = a.store.SetConfirmed(slots.SlotA)
 	root := filepath.Dir(a.store.SlotDir(slots.SlotA))
 	if err := os.Chmod(root, 0o555); err != nil {
 		t.Fatal(err)
 	}
-	defer os.Chmod(root, 0o755)
+	defer func() { _ = os.Chmod(root, 0o755) }()
 	hs := healthStatus{HealthyOnce: true}
 	a.confirmIfStable(slots.SlotB, hs, time.Hour)
 	if got := a.store.Confirmed(); got != slots.SlotA || a.confirmedRun == slots.SlotB {

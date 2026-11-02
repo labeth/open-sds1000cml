@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-OTA-AGENT
+
 package agent
 
 // serveTCP tests: the local/LAN fallback transport end-to-end over a real
@@ -8,6 +9,7 @@ package agent
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"net"
 	"strings"
@@ -39,8 +41,8 @@ func startTCPAgent(t *testing.T) (*Agent, string) {
 // TRLC-LINKS: REQ-SDS-107
 func stopTCPAgent(a *Agent, addr string) {
 	a.Stop()
-	if c, err := net.DialTimeout("tcp", addr, time.Second); err == nil {
-		c.Close()
+	if c, err := (&net.Dialer{Timeout: time.Second}).DialContext(context.Background(), "tcp", addr); err == nil {
+		_ = c.Close()
 	}
 }
 
@@ -66,11 +68,11 @@ func TestServeTCPDispatchesOverRealSocket(t *testing.T) {
 	a, addr := startTCPAgent(t)
 	defer stopTCPAgent(a, addr)
 
-	conn, err := net.Dial("tcp", addr)
+	conn, err := (&net.Dialer{}).DialContext(t.Context(), "tcp", addr)
 	if err != nil {
 		t.Fatalf("dial %s: %v", addr, err)
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 	r := bufio.NewReader(conn)
 
 	// Request 1: ping — a full accept → handleConn → Dispatch → response line.
@@ -104,16 +106,16 @@ func TestServeTCPConcurrentConnections(t *testing.T) {
 
 	// The accept loop hands each connection to its own handleConn goroutine;
 	// two interleaved clients must both be served.
-	c1, err := net.Dial("tcp", addr)
+	c1, err := (&net.Dialer{}).DialContext(t.Context(), "tcp", addr)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer c1.Close()
-	c2, err := net.Dial("tcp", addr)
+	defer func() { _ = c1.Close() }()
+	c2, err := (&net.Dialer{}).DialContext(t.Context(), "tcp", addr)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer c2.Close()
+	defer func() { _ = c2.Close() }()
 	r1, r2 := bufio.NewReader(c1), bufio.NewReader(c2)
 
 	if resp := roundTrip(t, c1, r1, `{"cmd":"ping"}`); !resp.OK {
@@ -132,11 +134,11 @@ func TestServeTCPListenerClosesAfterStop(t *testing.T) {
 	a, addr := startTCPAgent(t)
 
 	// Sanity: reachable before Stop.
-	c, err := net.DialTimeout("tcp", addr, time.Second)
+	c, err := (&net.Dialer{Timeout: time.Second}).DialContext(t.Context(), "tcp", addr)
 	if err != nil {
 		t.Fatalf("pre-stop dial: %v", err)
 	}
-	c.Close()
+	_ = c.Close()
 
 	// Contract (accept loop): Stop() flags a.stopped; the loop notices it on
 	// the next accept and closes the listener. So after Stop, at most a few
@@ -144,11 +146,11 @@ func TestServeTCPListenerClosesAfterStop(t *testing.T) {
 	a.Stop()
 	deadline := time.Now().Add(5 * time.Second)
 	for {
-		c, err := net.DialTimeout("tcp", addr, time.Second)
+		c, err := (&net.Dialer{Timeout: time.Second}).DialContext(t.Context(), "tcp", addr)
 		if err != nil {
 			return // closed — contract satisfied
 		}
-		c.Close() // unblocked one accept; loop will see stopped and close
+		_ = c.Close() // unblocked one accept; loop will see stopped and close
 		if time.Now().After(deadline) {
 			t.Fatal("listener still accepting 5s after Stop")
 		}

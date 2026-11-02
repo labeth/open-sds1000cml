@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-OTA-OTACTL
+
 package otactl_test
 
 // End-to-end NATS path: an embedded nats-server on 127.0.0.1, the REAL agent
@@ -58,7 +59,7 @@ func startAgent(t *testing.T, natsURL string) (*agent.Agent, string) {
 	t.Setenv("OTA_DEVICE_ID", e2eDevice)
 	t.Setenv("OTA_HB_INTERVAL", "1")
 	a := agent.New(config.Load())
-	go a.Run()
+	go func() { _ = a.Run() }() // returns only at Stop
 	t.Cleanup(a.Stop)
 
 	deadline := time.Now().Add(5 * time.Second)

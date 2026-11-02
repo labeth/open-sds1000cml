@@ -49,6 +49,8 @@ type gpmcReader interface {
 	FillFrozen(pairs int, gap time.Duration) (bool, []uint16, error)
 }
 
+// Agent is the supervisor process: one per device, created by New and
+// driven by Run until Stop.
 // TRLC-LINKS: REQ-SDS-122
 type Agent struct {
 	cfg   *config.Config
@@ -116,6 +118,8 @@ type ctlMsg struct {
 	reply chan error
 }
 
+// New builds the agent from its configuration: loads the persisted state and
+// finds the inherited boot descriptors. It starts nothing; Run does.
 // TRLC-LINKS: REQ-SDS-122
 func New(cfg *config.Config) *Agent {
 	a := &Agent{
@@ -141,7 +145,7 @@ func (a *Agent) Run() error {
 	if err := a.store.Init(); err != nil {
 		a.log.Printf("slot store init: %v (continuing)", err)
 	}
-	_ = os.WriteFile(a.pidPath(agentPidFile), fmt.Appendf(nil, "%d\n", os.Getpid()), 0o644)
+	_ = os.WriteFile(a.pidPath(agentPidFile), fmt.Appendf(nil, "%d\n", os.Getpid()), 0o600)
 
 	a.log.Printf("open-sds OTA agent %s device=%s slot=%s", buildinfo.String(), a.cfg.DeviceID, a.AgentSlot())
 	a.log.Printf("inherited fds: gpmc=%d fpga_key=%d", a.gpmcFD, a.fpgaKeyFD)
@@ -150,13 +154,10 @@ func (a *Agent) Run() error {
 
 	// Already-taken-over restart (agent update / crash respawn): the factory
 	// app is long dead; nothing pets the watchdog until we do. Acquire NOW.
-	if st.TakenOver {
-		go func() {
-			if err := a.acquireWatchdogForever(); err != nil {
-				a.log.Printf("watchdog: %v", err)
-			}
-		}()
-	} else if st.AutoTakeover || a.cfg.AutoTakeover {
+	switch {
+	case st.TakenOver:
+		go a.keepWatchdog()
+	case st.AutoTakeover || a.cfg.AutoTakeover:
 		// Default is COEXIST: the factory app keeps driving the instrument and
 		// the agent only provides remote access + probe. Auto-takeover happens
 		// only when explicitly armed (OTA_AUTO_TAKEOVER or a persisted flag).
@@ -173,7 +174,7 @@ func (a *Agent) Run() error {
 			res := a.Takeover(TakeoverOpts{})
 			a.log.Printf("auto-takeover: ok=%v %s", res.OK, res.Summary())
 		}()
-	} else {
+	default:
 		a.log.Printf("coexist mode: factory app owns the instrument; run `otactl takeover` when ready")
 	}
 
@@ -249,6 +250,15 @@ func (a *Agent) setEventFn(fn func(string, map[string]any)) {
 	a.eventMu.Lock()
 	a.eventFn = fn
 	a.eventMu.Unlock()
+}
+
+// keepWatchdog runs acquireWatchdogForever and logs why it gave up (only an
+// agent stop ends it).
+// TRLC-LINKS: REQ-SDS-122
+func (a *Agent) keepWatchdog() {
+	if err := a.acquireWatchdogForever(); err != nil {
+		a.log.Printf("watchdog: %v", err)
+	}
 }
 
 // acquireWatchdogForever keeps trying until the watchdog is ours; used after

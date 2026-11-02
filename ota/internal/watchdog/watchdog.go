@@ -21,6 +21,8 @@ import (
 
 const wdiocKeepalive = 0x80045705 // WDIOC_KEEPALIVE (spec 01 §4.1)
 
+// Watchdog is the agent's hold on the watchdog device: unarmed from New,
+// armed and petted from Acquire, disarmed by Disarm.
 // TRLC-LINKS: REQ-SDS-026, REQ-SDS-086
 type Watchdog struct {
 	dev string
@@ -32,6 +34,7 @@ type Watchdog struct {
 	petErr  error
 }
 
+// New returns an unarmed watchdog for the device node dev.
 // TRLC-LINKS: REQ-SDS-086
 func New(dev string) *Watchdog {
 	return &Watchdog{dev: dev, fd: -1}
@@ -100,7 +103,7 @@ func (w *Watchdog) pet() {
 	_, _, ierrno := unix.Syscall(unix.SYS_IOCTL, uintptr(w.fd), wdiocKeepalive, 0)
 	w.lastPet = time.Now()
 	if werr != nil && ierrno != 0 {
-		w.petErr = fmt.Errorf("write: %v, ioctl: %v", werr, ierrno)
+		w.petErr = fmt.Errorf("write: %w, ioctl: %w", werr, ierrno)
 	} else {
 		w.petErr = nil
 	}
@@ -122,6 +125,7 @@ func (w *Watchdog) Disarm() {
 	w.fd = -1
 }
 
+// Status is the watchdog's state for the agent's status and heartbeat.
 // TRLC-LINKS: REQ-SDS-086
 type Status struct {
 	Armed   bool      `json:"armed"`
@@ -129,6 +133,8 @@ type Status struct {
 	PetErr  string    `json:"pet_err,omitempty"`
 }
 
+// Status reports whether the watchdog is armed, its last pet and the last
+// pet's failure.
 // TRLC-LINKS: REQ-SDS-086
 func (w *Watchdog) Status() Status {
 	w.mu.Lock()

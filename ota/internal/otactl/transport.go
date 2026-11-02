@@ -4,6 +4,7 @@ package otactl
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -33,11 +34,12 @@ func NewTCP(addr string) Transport { return &tcpTransport{addr: addr} }
 
 // TRLC-LINKS: REQ-SDS-109
 func (t *tcpTransport) Call(cmd string, args any, timeout time.Duration) (*rpcproto.Response, error) {
-	conn, err := net.DialTimeout("tcp", t.addr, 5*time.Second)
+	d := net.Dialer{Timeout: 5 * time.Second}
+	conn, err := d.DialContext(context.Background(), "tcp", t.addr)
 	if err != nil {
 		return nil, fmt.Errorf("dial %s: %w", t.addr, err)
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }() // the reply is read or the call failed
 	_ = conn.SetDeadline(time.Now().Add(timeout))
 	req, _ := json.Marshal(rpcproto.Request{Cmd: cmd, Args: args})
 	if _, err := conn.Write(append(req, '\n')); err != nil {
@@ -68,6 +70,8 @@ type natsTransport struct {
 	device string
 }
 
+// NewNATS connects to the broker at url and addresses the device by id;
+// opts are added to the client's defaults.
 // TRLC-LINKS: REQ-SDS-109
 func NewNATS(url, device string, opts ...nats.Option) (Transport, error) {
 	base := []nats.Option{nats.Name("otactl"), nats.Timeout(5 * time.Second)}
@@ -96,7 +100,7 @@ func (t *natsTransport) Call(cmd string, args any, timeout time.Duration) (*rpcp
 func (t *natsTransport) Conn() *nats.Conn { return t.nc }
 
 // TRLC-LINKS: REQ-SDS-109
-func (t *natsTransport) Close() { t.nc.Drain() }
+func (t *natsTransport) Close() { _ = t.nc.Drain() } // no reply is pending once the CLI closes
 
 // TRLC-LINKS: REQ-SDS-109
 func truncate(b []byte, n int) string {

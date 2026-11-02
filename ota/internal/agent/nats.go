@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-OTA-AGENT
+
 package agent
 
 import (
@@ -68,7 +69,9 @@ func (a *Agent) runNATS() {
 		}
 		a.log.Printf("nats connected to %s", nc.ConnectedUrl())
 		a.serveNATS(nc)
-		nc.Drain()
+		if err := nc.Drain(); err != nil {
+			a.log.Printf("nats drain: %v", err)
+		}
 		return
 	}
 }
@@ -87,7 +90,7 @@ func (a *Agent) serveNATS(nc *nats.Conn) {
 	if _, err := nc.QueueSubscribe("ota.all.rpc", "", reply); err != nil {
 		a.log.Printf("nats subscribe all.rpc: %v", err)
 	}
-	nc.Subscribe("ota.discover", func(m *nats.Msg) {
+	if _, err := nc.Subscribe("ota.discover", func(m *nats.Msg) {
 		if m.Reply != "" {
 			b, _ := json.Marshal(map[string]any{
 				"device": a.cfg.DeviceID, "ips": sysinfo.IPv4s(),
@@ -95,7 +98,9 @@ func (a *Agent) serveNATS(nc *nats.Conn) {
 			})
 			_ = nc.Publish(m.Reply, b)
 		}
-	})
+	}); err != nil {
+		a.log.Printf("nats subscribe discover: %v", err)
+	}
 
 	// Push events onto the wire.
 	a.setEventFn(func(kind string, detail map[string]any) {

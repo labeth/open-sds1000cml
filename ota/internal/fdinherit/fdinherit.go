@@ -62,7 +62,7 @@ func HoldersOfEach(paths ...string) [][]Holder {
 		return out
 	}
 	procs, err := d.Readdirnames(-1)
-	d.Close()
+	_ = d.Close() // read-only directory
 	if err != nil {
 		return out
 	}
@@ -73,12 +73,12 @@ func HoldersOfEach(paths ...string) [][]Holder {
 			continue
 		}
 		fdDir := "/proc/" + p + "/fd/"
-		fd, err := os.Open(fdDir)
+		fd, err := os.Open(fdDir) //nolint:gosec // /proc/<pid>/fd/ of a numeric /proc entry
 		if err != nil {
 			continue // vanished or not ours to read
 		}
 		fds, err := fd.Readdirnames(-1)
-		fd.Close()
+		_ = fd.Close() // read-only directory
 		if err != nil {
 			continue
 		}

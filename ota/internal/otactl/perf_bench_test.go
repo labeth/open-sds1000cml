@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-OTA-OTACTL
+
 package otactl
 
 import (
@@ -16,11 +17,11 @@ import (
 
 // TRLC-LINKS: REQ-SDS-109
 func BenchmarkTCPTransportCall(b *testing.B) {
-	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	ln, err := (&net.ListenConfig{}).Listen(b.Context(), "tcp", "127.0.0.1:0")
 	if err != nil {
 		b.Fatal(err)
 	}
-	defer ln.Close()
+	defer func() { _ = ln.Close() }()
 	go func() {
 		for {
 			c, err := ln.Accept()
@@ -28,10 +29,10 @@ func BenchmarkTCPTransportCall(b *testing.B) {
 				return
 			}
 			go func(c net.Conn) {
-				defer c.Close()
+				defer func() { _ = c.Close() }()
 				r := bufio.NewReader(c)
 				if _, err := r.ReadBytes('\n'); err == nil {
-					c.Write([]byte(`{"ok":true,"data":{"device":"x"}}` + "\n"))
+					_, _ = c.Write([]byte(`{"ok":true,"data":{"device":"x"}}` + "\n"))
 				}
 			}(c)
 		}
@@ -60,7 +61,9 @@ func (m *memTransport) Call(cmd string, args any, _ time.Duration) (*rpcproto.Re
 	}
 	switch cmd {
 	case "put.begin":
-		json.Unmarshal(req, &r)
+		if err := json.Unmarshal(req, &r); err != nil {
+			return nil, err
+		}
 		m.sha, _ = r.Args["sha256"].(string)
 		return &rpcproto.Response{OK: true, Data: json.RawMessage(`{"id":"up-1"}`)}, nil
 	case "put.commit":
@@ -81,7 +84,9 @@ func BenchmarkPutFile(b *testing.B) {
 	p := filepath.Join(b.TempDir(), "f.bin")
 	data := make([]byte, 1<<20)
 	rand.Read(data)
-	os.WriteFile(p, data, 0o644)
+	if err := os.WriteFile(p, data, 0o644); err != nil {
+		b.Fatal(err)
+	}
 	c := &Client{T: &memTransport{}}
 	for b.Loop() {
 		if _, err := c.PutFile(p, "/x/f.bin", 0o755, 0, nil); err != nil {

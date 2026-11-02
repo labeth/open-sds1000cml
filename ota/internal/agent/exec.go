@@ -1,13 +1,14 @@
 // ENGMODEL-OWNER-UNIT: FU-OTA-AGENT
+
 package agent
 
 import (
 	"bytes"
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
+	"open-sds/ota/internal/slots"
 	"os"
 	"os/exec"
 	"strings"
@@ -21,7 +22,7 @@ import (
 func (a *Agent) runArgv(argv []string, dir string, timeout time.Duration) ([]byte, int, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, argv[0], argv[1:]...)
+	cmd := exec.CommandContext(ctx, argv[0], argv[1:]...) //nolint:gosec // running the operator's command is the exec RPC's purpose
 	cmd.Dir = dir
 	var buf bytes.Buffer
 	cmd.Stdout = &buf
@@ -31,7 +32,7 @@ func (a *Agent) runArgv(argv []string, dir string, timeout time.Duration) ([]byt
 	if cmd.ProcessState != nil {
 		code = cmd.ProcessState.ExitCode()
 	}
-	if ctx.Err() == context.DeadlineExceeded {
+	if errors.Is(ctx.Err(), context.DeadlineExceeded) {
 		return buf.Bytes(), code, context.DeadlineExceeded
 	}
 	return buf.Bytes(), code, err
@@ -44,16 +45,11 @@ func (a *Agent) runShell(script string, timeout time.Duration) ([]byte, error) {
 	return out, err
 }
 
-// launchDetached starts a binary as a detached child that inherits the agent's
-// open fds (the boot /dev/Gpmc + /dev/fpga_key) and reparents to init, so it
-// survives the agent. Used to restore the factory app after a takeover test.
-// LaunchOpt selects what console the child gets.  hRestoreFactory's contract is to hand the
-// vendor UI "the still-open boot fds", but the default here did the opposite: Stdin nil is
-// /dev/null in Go, and Setpgid puts the child in a fresh process group with no controlling
-// terminal.  The vendor app opens the front-panel input devices on that console and fails with
-// "open keyboard interrupt: Bad address" without it, which is what closed the SRAM read port.
-// Which of the two details matters is an empirical question, so both are selectable and the
-// default is unchanged.
+// LaunchOpt selects the console, session and environment a detached child
+// gets. The default gives it /dev/null as stdin and a fresh process group
+// with no controlling terminal. The vendor app opens the front-panel input
+// devices on its console and fails with "open keyboard interrupt: Bad
+// address" without one, which leaves the SRAM read port closed.
 // TRLC-LINKS: REQ-SDS-120
 type LaunchOpt struct {
 	Console string `json:"console"`  // open this and give it to the child as stdin/out/err
@@ -84,9 +80,12 @@ func bootEnv() ([]string, error) {
 	return out, nil
 }
 
+// launchDetached starts a binary as a detached child that inherits the agent's
+// open fds (the boot /dev/Gpmc + /dev/fpga_key) and reparents to init, so it
+// survives the agent. Used to restore the factory app after a takeover test.
 // TRLC-LINKS: REQ-SDS-120
 func (a *Agent) launchDetached(path, dir string, opt LaunchOpt) (int, error) {
-	cmd := exec.Command(path)
+	cmd := exec.Command(path) //nolint:noctx // the child must outlive every context here
 	cmd.Dir = dir
 	cmd.Stdin = nil
 	cmd.Stdout = os.Stdout
@@ -99,7 +98,7 @@ func (a *Agent) launchDetached(path, dir string, opt LaunchOpt) (int, error) {
 		if err != nil {
 			return 0, fmt.Errorf("restore-factory: console %s: %w", opt.Console, err)
 		}
-		defer f.Close() // the child keeps its own dup; ours must not leak
+		defer func() { _ = f.Close() }() // the child keeps its own dup; ours must not leak
 		cmd.Stdin, cmd.Stdout, cmd.Stderr = f, f, f
 	}
 	if opt.BootEnv {
@@ -126,11 +125,11 @@ func (a *Agent) launchDetached(path, dir string, opt LaunchOpt) (int, error) {
 // tailFile returns the last n bytes of a file.
 // TRLC-LINKS: REQ-SDS-115
 func tailFile(path string, n int) ([]byte, error) {
-	f, err := os.Open(path)
+	f, err := os.Open(path) //nolint:gosec // the logs RPC reads the file the operator names, like its exec RPC could
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }() // read-only: a close error loses nothing
 	fi, err := f.Stat()
 	if err != nil {
 		return nil, err
@@ -143,7 +142,7 @@ func tailFile(path string, n int) ([]byte, error) {
 	// bytes, copying the tail over and over.
 	buf := make([]byte, fi.Size()-off)
 	m, err := f.ReadAt(buf, off)
-	if err == io.EOF {
+	if errors.Is(err, io.EOF) {
 		err = nil // the file shrank since the stat
 	}
 	return buf[:m], err
@@ -151,35 +150,4 @@ func tailFile(path string, n int) ([]byte, error) {
 
 // copyExecFile copies src to dst (0755) atomically and returns dst's sha256.
 // TRLC-LINKS: REQ-SDS-119
-func copyExecFile(src, dst string) (string, error) {
-	in, err := os.Open(src)
-	if err != nil {
-		return "", err
-	}
-	defer in.Close()
-	tmp := dst + ".tmp"
-	out, err := os.OpenFile(tmp, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o755)
-	if err != nil {
-		return "", err
-	}
-	h := sha256.New()
-	if _, err := io.Copy(io.MultiWriter(out, h), in); err != nil {
-		out.Close()
-		os.Remove(tmp)
-		return "", err
-	}
-	if err := out.Sync(); err != nil {
-		out.Close()
-		os.Remove(tmp)
-		return "", err
-	}
-	if err := out.Close(); err != nil {
-		os.Remove(tmp)
-		return "", err
-	}
-	if err := os.Rename(tmp, dst); err != nil {
-		os.Remove(tmp)
-		return "", err
-	}
-	return hex.EncodeToString(h.Sum(nil)), nil
-}
+func copyExecFile(src, dst string) (string, error) { return slots.CopyExecutable(src, dst) }

@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-OTA-VXI11
+
 package vxi11
 
 import (
@@ -11,7 +12,7 @@ import (
 // TRLC-LINKS: REQ-SDS-100
 func BenchmarkRPCCall(b *testing.B) {
 	c, s := net.Pipe()
-	defer c.Close()
+	defer func() { _ = c.Close() }()
 	go func() {
 		for {
 			body, err := readRecord(s)

@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-OTA-AGENT
+
 package agent
 
 import (
@@ -44,7 +45,7 @@ func (a *Agent) newUpload(dest string, size int64, sha string, mode uint32) (str
 	if !filepath.IsAbs(dest) {
 		return "", errors.New("upload: dest must be absolute")
 	}
-	if err := os.MkdirAll(filepath.Dir(dest), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(dest), 0o750); err != nil {
 		return "", err
 	}
 	a.upMu.Lock()
@@ -64,7 +65,7 @@ func (a *Agent) newUpload(dest string, size int64, sha string, mode uint32) (str
 	// filesystem (a fixed staging dir on the stick can't rename to a /tmp dest
 	// — that is a cross-device link error).
 	tmp := filepath.Join(filepath.Dir(dest), "."+id+".part")
-	f, err := os.OpenFile(tmp, os.O_CREATE|os.O_TRUNC|os.O_RDWR, 0o644)
+	f, err := os.OpenFile(tmp, os.O_CREATE|os.O_TRUNC|os.O_RDWR, 0o600) //nolint:gosec // the put RPC writes where the operator says; commit applies the requested mode
 	if err != nil {
 		return "", err
 	}
@@ -141,7 +142,7 @@ func (a *Agent) commitUpload(id string) (string, string, error) {
 	s.f = nil
 
 	if s.size > 0 && s.written != s.size {
-		os.Remove(s.tmp)
+		_ = os.Remove(s.tmp)
 		return "", "", fmt.Errorf("upload: size mismatch (got %d, want %d)", s.written, s.size)
 	}
 	// `written` is a high-water mark, not a coverage map: an out-of-order
@@ -149,7 +150,7 @@ func (a *Agent) commitUpload(id string) (string, string, error) {
 	// holes. Require a declared sha256 whenever a size is given so the hash
 	// (below) catches any gap — a sparse-zero hole cannot match.
 	if s.size > 0 && s.sha == "" {
-		os.Remove(s.tmp)
+		_ = os.Remove(s.tmp)
 		return "", "", errors.New("upload: sha256 required when size is declared (guards against sparse/out-of-order gaps)")
 	}
 	var sum string
@@ -159,7 +160,7 @@ func (a *Agent) commitUpload(id string) (string, string, error) {
 		return "", "", err
 	}
 	if s.sha != "" && sum != s.sha {
-		os.Remove(s.tmp)
+		_ = os.Remove(s.tmp)
 		return "", "", fmt.Errorf("upload: sha256 mismatch (got %s, want %s)", sum, s.sha)
 	}
 	if err := os.Chmod(s.tmp, s.mode); err != nil {
@@ -177,19 +178,19 @@ func (a *Agent) commitUpload(id string) (string, string, error) {
 // TRLC-LINKS: REQ-SDS-106
 func (s *uploadSession) abort() {
 	if s.f != nil {
-		s.f.Close()
+		_ = s.f.Close() // abandoned: the partial file is removed next
 		s.f = nil
 	}
-	os.Remove(s.tmp)
+	_ = os.Remove(s.tmp)
 }
 
 // TRLC-LINKS: REQ-SDS-106
 func fileSHA(path string) (string, error) {
-	f, err := os.Open(path)
+	f, err := os.Open(path) //nolint:gosec // path is the session's own temp file
 	if err != nil {
 		return "", err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }() // read-only: a close error loses nothing
 	h := sha256.New()
 	buf := make([]byte, 64*1024)
 	for {

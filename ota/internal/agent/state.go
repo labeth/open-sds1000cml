@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-OTA-AGENT
+
 package agent
 
 import (
@@ -32,7 +33,7 @@ type stateFile struct {
 // TRLC-LINKS: REQ-SDS-104
 func loadState(path string) *stateFile {
 	sf := &stateFile{path: path}
-	if b, err := os.ReadFile(path); err == nil {
+	if b, err := os.ReadFile(path); err == nil { //nolint:gosec // path is the configured state file
 		_ = json.Unmarshal(b, &sf.s)
 	}
 	sf.disk = sf.s
@@ -64,16 +65,16 @@ func (sf *stateFile) update(fn func(*State)) error {
 	// (default 30 s writeback) and the OLD state boots (the agent comes back
 	// taken_over=true and kills the factory app).
 	tmp := sf.path + ".tmp"
-	f, err := os.OpenFile(tmp, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o644)
+	f, err := os.OpenFile(tmp, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o600) //nolint:gosec // tmp is beside the configured state file
 	if err != nil {
 		return err
 	}
 	if _, err := f.Write(append(b, '\n')); err != nil {
-		f.Close()
+		_ = f.Close() // the write error is the one reported
 		return err
 	}
 	if err := f.Sync(); err != nil {
-		f.Close()
+		_ = f.Close() // the sync error is the one reported
 		return err
 	}
 	if err := f.Close(); err != nil {
@@ -85,7 +86,7 @@ func (sf *stateFile) update(fn func(*State)) error {
 	sf.disk = sf.s
 	if d, err := os.Open(filepath.Dir(sf.path)); err == nil {
 		_ = d.Sync() // directory entry (the rename) -- best effort, VFAT may not support it
-		d.Close()
+		_ = d.Close()
 	}
 	return nil
 }

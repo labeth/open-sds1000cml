@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-OTA-AGENT
+
 package agent
 
 // agent.update / agent.restart happy paths. Both handlers end in a deliberate
@@ -66,7 +67,10 @@ func TestAgentUpdateInstallsFlipsAndExitsClean(t *testing.T) {
 	if !resp.OK {
 		t.Fatalf("agent.update failed: %s", resp.Err)
 	}
-	data := resp.Data.(map[string]any)
+	data, ok := resp.Data.(map[string]any)
+	if !ok {
+		t.Fatalf("reply data is %T, want an object", resp.Data)
+	}
 	// The test binary runs off-slot (AgentSlot "?"), so the update targets B —
 	// the same inactive-slot choice a slot-A production agent makes.
 	if data["active_agent"] != "B" {
@@ -152,7 +156,10 @@ func TestAgentRestartExitsCleanWithIntent(t *testing.T) {
 	if !resp.OK {
 		t.Fatalf("agent.restart failed: %s", resp.Err)
 	}
-	data := resp.Data.(map[string]any)
+	data, ok := resp.Data.(map[string]any)
+	if !ok {
+		t.Fatalf("reply data is %T, want an object", resp.Data)
+	}
 	if data["ok"] != true {
 		t.Errorf("restart data = %v", data)
 	}

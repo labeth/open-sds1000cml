@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-OTA-AGENT
+
 package agent
 
 import (
@@ -191,7 +192,7 @@ func (a *Agent) runAppOnce(slot string) {
 	h := newHealthWatcher(a.cfg.HealthPath())
 	a.confirmedRun, a.confirmFailed = "", ""
 
-	cmd := exec.Command(bin)
+	cmd := exec.Command(bin) //nolint:noctx,gosec // the app outlives this call (it is adopted across agent generations); bin is the store's slot binary
 	cmd.Dir = a.store.SlotDir(slot)
 	cmd.Stdout = os.Stdout // agent stdout -> agent.log via startup.sh
 	cmd.Stderr = os.Stderr
@@ -212,7 +213,7 @@ func (a *Agent) runAppOnce(slot string) {
 		return
 	}
 	pid := cmd.Process.Pid
-	_ = os.WriteFile(a.pidPath(appPidFile), fmt.Appendf(nil, "%d\n", pid), 0o644)
+	_ = os.WriteFile(a.pidPath(appPidFile), fmt.Appendf(nil, "%d\n", pid), 0o600)
 	a.log.Printf("app started slot=%s pid=%d bin=%s", slot, pid, bin)
 	a.appMu.Lock()
 	prevFails := a.app.Fails // carry the consecutive-failure count across launches
@@ -221,7 +222,7 @@ func (a *Agent) runAppOnce(slot string) {
 		StartedAt: time.Now().Format(time.RFC3339), Fails: prevFails,
 	}
 	a.appMu.Unlock()
-	a.event("app.start", map[string]any{"slot": slot, "pid": pid})
+	a.event("app.start", map[string]any{keySlot: slot, "pid": pid})
 
 	exit := make(chan error, 1)
 	go func() { exit <- cmd.Wait() }()
@@ -278,7 +279,7 @@ loop:
 	case strings.HasPrefix(reason, "ctl:"):
 		// Operator action, not a failure.
 		a.setAppState(func(s *appState) { *s = appState{LastExit: reason, Fails: 0} })
-	case hs.HealthyOnce && ran >= a.cfg.StableSecs:
+	case hs.HealthyOnce && ran >= a.cfg.Stable:
 		a.confirmIfStable(slot, hs, ran)
 		a.setAppState(func(s *appState) { *s = appState{LastExit: reason, Fails: 0} })
 		a.idleWait(time.Second) // stable run that ended: relaunch after a beat
@@ -300,7 +301,7 @@ loop:
 // and the run's first failure is logged and sent once - a confirmed pointer
 // left on the old slot is the slot the next update overwrites.
 func (a *Agent) confirmIfStable(slot string, hs healthStatus, ran time.Duration) {
-	if !hs.HealthyOnce || ran < a.cfg.StableSecs || a.confirmedRun == slot {
+	if !hs.HealthyOnce || ran < a.cfg.Stable || a.confirmedRun == slot {
 		return
 	}
 	if a.store.Confirmed() != slot {
@@ -308,11 +309,11 @@ func (a *Agent) confirmIfStable(slot string, hs healthStatus, ran time.Duration)
 			if a.confirmFailed != slot {
 				a.confirmFailed = slot
 				a.log.Printf("confirm %s: %v (retrying)", slot, err)
-				a.event("app.confirm_failed", map[string]any{"slot": slot, "error": err.Error()})
+				a.event("app.confirm_failed", map[string]any{keySlot: slot, "error": err.Error()})
 			}
 			return
 		}
-		a.event("app.confirmed", map[string]any{"slot": slot})
+		a.event("app.confirmed", map[string]any{keySlot: slot})
 	}
 	a.confirmedRun, a.confirmFailed = slot, ""
 }
@@ -324,13 +325,13 @@ func (a *Agent) terminate(cmd *exec.Cmd, exit chan error) {
 	pid := cmd.Process.Pid
 	_ = syscall.Kill(-pid, syscall.SIGTERM) // whole group
 	select {
-	case <-exit:
+	case <-exit: //nolint:errcheck // a terminated app is classified by its reason, not its exit status
 		return
 	case <-time.After(3 * time.Second):
 	}
 	_ = syscall.Kill(-pid, syscall.SIGKILL)
 	select {
-	case <-exit:
+	case <-exit: //nolint:errcheck // as above
 	case <-time.After(2 * time.Second):
 	}
 }
@@ -380,7 +381,7 @@ func (a *Agent) rollbackIfNeeded(slot string) {
 		a.appMu.Unlock()
 		return
 	}
-	a.event("app.crash_loop", map[string]any{"slot": slot, "fails": fails})
+	a.event("app.crash_loop", map[string]any{keySlot: slot, "fails": fails})
 }
 
 // clearFails starts the failure count over (after an OTA push).

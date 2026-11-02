@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-OTA-FDINHERIT
+
 package fdinherit
 
 import (
@@ -13,7 +14,7 @@ func TestHoldersOfEachMatchesHoldersOf(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	paths := []string{f.Name(), "/dev/null", "/nonexistent/x"}
 	each := HoldersOfEach(paths...)
 	for i, p := range paths {

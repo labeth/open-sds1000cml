@@ -19,17 +19,21 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"net"
 	"open-sds/ota/internal/buildinfo"
 	"open-sds/ota/internal/otactl"
 	"open-sds/ota/internal/vxi11"
 	"os"
+	"os/signal"
 	"slices"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/nats-io/nats.go"
@@ -42,156 +46,265 @@ const defaultStageDir = "/usr/bin/siglent/usr/media/U-disk0/agent-slots/staging"
 
 // TRLC-LINKS: REQ-SDS-109, REQ-SDS-110, REQ-SDS-111, REQ-SDS-112, REQ-SDS-175
 func main() {
-	var (
-		natsURL  = flag.String("nats", envOr("OTA_NATS", ""), "NATS URL (else direct TCP)")
-		tcpAddr  = flag.String("tcp", envOr("OTA_TCP", ""), "device TCP address host:port (agent OTA_LISTEN)")
-		device   = flag.String("device", envOr("OTA_DEVICE_ID", ""), "device id (NATS transport)")
-		timeoutS = flag.Int("timeout", 30, "RPC timeout seconds")
-		shellyIP = flag.String("shelly", envOr("OTA_SHELLY", ""), "Shelly plug host for power control")
-		stageDir = flag.String("stage", defaultStageDir, "device staging dir for uploads")
-	)
-	flag.Usage = usage
-	flag.Parse()
-	args := flag.Args()
-	if len(args) == 0 {
-		usage()
-		os.Exit(2)
-	}
-	cmd := args[0]
-	rest := args[1:]
-	timeout := time.Duration(*timeoutS) * time.Second
+	os.Exit(run(os.Args[1:], os.Stdout, os.Stderr))
+}
 
-	switch cmd {
-	case "version":
-		fmt.Println("otactl", buildinfo.String())
-		return
-	case "serve":
-		runServe(rest)
-		return
-	case "power":
-		runPower(*shellyIP, rest)
-		return
-	case "shelly": // alias
-		runPower(*shellyIP, rest)
-		return
-	case "discover":
-		runDiscover(*natsURL, timeout)
-		return
-	case "watch":
-		runWatch(*natsURL, *device)
-		return
-	case "scpi":
-		runScpi(hostOf(*tcpAddr), rest, timeout)
-		return
-	}
+// cli is one invocation: the global flags and where output goes. Results go
+// to stdout; progress and errors go to stderr, so a result pipes cleanly.
+// TRLC-LINKS: REQ-SDS-175
+type cli struct {
+	natsURL, tcpAddr, device, shellyIP, stageDir string
+	timeoutS                                     int
+	timeout                                      time.Duration
+	out, errOut                                  io.Writer
+}
 
-	// Everything else needs a device transport.
-	tr, err := dial(*natsURL, *tcpAddr, *device)
+// usageError is a command used wrongly: it exits 2, a failure exits 1.
+// TRLC-LINKS: REQ-SDS-175
+type usageError struct{ msg string }
+
+// TRLC-LINKS: REQ-SDS-175
+func (e usageError) Error() string { return e.msg }
+
+// localCommands run without a device transport; every other command needs one.
+var localCommands = map[string]func(c *cli, rest []string) error{
+	"version":  cmdVersion,
+	"serve":    cmdServe,
+	"power":    cmdPower,
+	"shelly":   cmdPower, // alias
+	"discover": cmdDiscover,
+	"watch":    cmdWatch,
+	"scpi":     cmdScpi,
+}
+
+// deviceCommands are the commands that talk to one device's agent. A command
+// in neither table is sent to the agent as a raw RPC with no arguments.
+var deviceCommands = map[string]func(c *cli, dc *otactl.Client, rest []string) error{
+	"ping":            rpcNoArgs("ping"),
+	"status":          rpcNoArgs("status"),
+	"help":            rpcNoArgs("help"),
+	"commands":        rpcNoArgs("help"),
+	"untakeover":      rpcNoArgs("untakeover"),
+	"probe":           cmdProbe,
+	"logs":            cmdLogs,
+	"exec":            cmdExec,
+	"sh":              cmdSh,
+	"takeover":        cmdTakeover,
+	"restore-factory": cmdRestoreFactory,
+	"app":             cmdApp,
+	"activate":        cmdActivate,
+	"reboot":          cmdReboot,
+	"put":             cmdPut,
+	"get":             cmdGet,
+	"update-app":      cmdUpdateApp,
+	"update-agent":    cmdUpdateAgent,
+}
+
+// run parses the global flags, runs one command and returns the exit code.
+// TRLC-LINKS: REQ-SDS-109, REQ-SDS-175
+func run(args []string, stdout, stderr io.Writer) int {
+	c := &cli{out: stdout, errOut: stderr}
+	fs := flag.NewFlagSet("otactl", flag.ContinueOnError)
+	fs.SetOutput(stderr)
+	fs.StringVar(&c.natsURL, "nats", envOr("OTA_NATS", ""), "NATS URL (else direct TCP)")
+	fs.StringVar(&c.tcpAddr, "tcp", envOr("OTA_TCP", ""), "device TCP address host:port (agent OTA_LISTEN)")
+	fs.StringVar(&c.device, "device", envOr("OTA_DEVICE_ID", ""), "device id (NATS transport)")
+	fs.IntVar(&c.timeoutS, "timeout", 30, "RPC timeout seconds")
+	fs.StringVar(&c.shellyIP, "shelly", envOr("OTA_SHELLY", ""), "Shelly plug host for power control")
+	fs.StringVar(&c.stageDir, "stage", defaultStageDir, "device staging dir for uploads")
+	fs.Usage = func() { usage(stderr) }
+	if err := fs.Parse(args); err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			return 0
+		}
+		return 2
+	}
+	if fs.NArg() == 0 {
+		usage(stderr)
+		return 2
+	}
+	c.timeout = time.Duration(c.timeoutS) * time.Second
+	if err := c.dispatch(fs.Arg(0), fs.Args()[1:]); err != nil {
+		_, _ = fmt.Fprintln(stderr, "error:", err)
+		if _, ok := errors.AsType[usageError](err); ok {
+			return 2
+		}
+		return 1
+	}
+	return 0
+}
+
+// dispatch runs one command: a local one directly, anything else over a
+// transport to the device, closed again when the command returns.
+// TRLC-LINKS: REQ-SDS-109, REQ-SDS-175
+func (c *cli) dispatch(cmd string, rest []string) error {
+	if fn, ok := localCommands[cmd]; ok {
+		return fn(c, rest)
+	}
+	tr, err := dial(c.natsURL, c.tcpAddr, c.device)
 	if err != nil {
-		fatal(err)
+		return err
 	}
 	defer tr.Close()
-	c := &otactl.Client{T: tr}
-
-	switch cmd {
-	case "ping":
-		printJSON(mustCall(c, "ping", nil, timeout))
-	case "status":
-		printJSON(mustCall(c, "status", nil, timeout))
-	case "probe":
-		printJSON(mustCall(c, "probe", map[string]any{"read_gpmc": has(rest, "--gpmc")}, timeout))
-	case "help", "commands":
-		printJSON(mustCall(c, "help", nil, timeout))
-	case "logs":
-		which := "agent"
-		if len(rest) > 0 && !strings.HasPrefix(rest[0], "-") {
-			which = rest[0]
-		}
-		raw := mustCall(c, "logs", map[string]any{"file": which, "tail": 16384}, timeout)
-		var v struct {
-			Path string `json:"path"`
-			Text string `json:"text"`
-		}
-		_ = json.Unmarshal(raw, &v)
-		fmt.Printf("== %s ==\n%s\n", v.Path, v.Text)
-	case "exec":
-		if len(rest) == 0 {
-			fatal(errors.New("exec needs a command"))
-		}
-		printExec(mustCall(c, "exec", map[string]any{"argv": rest, "timeout_s": *timeoutS}, timeout))
-	case "sh":
-		printExec(mustCall(c, "sh", map[string]any{"script": strings.Join(rest, " "), "timeout_s": *timeoutS}, timeout))
-	case "takeover":
-		printJSON(mustCall(c, "takeover", map[string]any{
-			"dry_run": has(rest, "--dry-run"), "force": has(rest, "--force"),
-		}, timeout))
-	case "untakeover":
-		printJSON(mustCall(c, "untakeover", nil, timeout))
-	case "restore-factory":
-		// Optional JSON selects what console the vendor UI is launched on, e.g.
-		//   restore-factory '{"console":"/dev/console","setsid":true}'
-		// The default is unchanged.
-		var rfArgs any
-		if len(rest) > 0 && rest[0] != "" {
-			var m map[string]any
-			if err := json.Unmarshal([]byte(rest[0]), &m); err != nil {
-				fatal(fmt.Errorf("restore-factory: args must be JSON: %w", err))
-			}
-			rfArgs = m
-		}
-		printJSON(mustCall(c, "restore-factory", rfArgs, timeout))
-	case "app":
-		if len(rest) == 0 {
-			fatal(errors.New("app needs start|stop|restart"))
-		}
-		printJSON(mustCall(c, "app."+rest[0], nil, timeout))
-	case "activate":
-		if len(rest) == 0 {
-			fatal(errors.New("activate needs a slot (A|B)"))
-		}
-		printJSON(mustCall(c, "app.activate", map[string]any{"slot": rest[0]}, timeout))
-	case "reboot":
-		printJSON(mustCall(c, "reboot", map[string]any{"confirm": has(rest, "--confirm")}, timeout))
-	case "put":
-		if len(rest) < 2 {
-			fatal(errors.New("put <local> <device-path>"))
-		}
-		sum, err := c.PutFile(rest[0], rest[1], 0, 0, progressBar("upload"))
-		fmt.Println()
-		if err != nil {
-			fatal(err)
-		}
-		fmt.Printf("ok: %s -> %s sha256=%s\n", rest[0], rest[1], sum)
-	case "get":
-		if len(rest) < 2 {
-			fatal(errors.New("get <device-path> <local>"))
-		}
-		if err := c.GetFile(rest[0], rest[1], progressBar("download")); err != nil {
-			fmt.Println()
-			fatal(err)
-		}
-		fmt.Printf("\nok: %s -> %s\n", rest[0], rest[1])
-	case "update-app":
-		if len(rest) == 0 {
-			fatal(errors.New("update-app <local-app-binary>"))
-		}
-		fmt.Printf("uploading %s ...\n", rest[0])
-		if _, err := c.PutFile(rest[0], *stageDir+"/app.upload", 0o755, 0, progressBar("upload")); err != nil {
-			fmt.Println()
-			fatal(err)
-		}
-		fmt.Println()
-		printJSON(mustRaw(c.UpdateApp(rest[0], *stageDir)))
-	case "update-agent":
-		if len(rest) == 0 {
-			fatal(errors.New("update-agent <local-agent-binary>"))
-		}
-		fmt.Printf("uploading %s ...\n", rest[0])
-		printJSON(mustRaw(c.UpdateAgent(rest[0], *stageDir)))
-	default:
-		// Fall through: treat as a raw RPC cmd with no args.
-		printJSON(mustCall(c, cmd, nil, timeout))
+	dc := &otactl.Client{T: tr}
+	if fn, ok := deviceCommands[cmd]; ok {
+		return fn(c, dc, rest)
 	}
+	return c.callPrint(dc, cmd, nil)
+}
+
+// rpcNoArgs is a command that sends one RPC without arguments and prints
+// the reply.
+// TRLC-LINKS: REQ-SDS-109, REQ-SDS-175
+func rpcNoArgs(rpc string) func(*cli, *otactl.Client, []string) error {
+	return func(c *cli, dc *otactl.Client, _ []string) error { return c.callPrint(dc, rpc, nil) }
+}
+
+// TRLC-LINKS: REQ-SDS-175
+func cmdVersion(c *cli, _ []string) error {
+	_, err := fmt.Fprintln(c.out, "otactl", buildinfo.String())
+	return err
+}
+
+// TRLC-LINKS: REQ-SDS-114, REQ-SDS-175
+func cmdProbe(c *cli, dc *otactl.Client, rest []string) error {
+	return c.callPrint(dc, "probe", map[string]any{"read_gpmc": has(rest, "--gpmc")})
+}
+
+// TRLC-LINKS: REQ-SDS-115, REQ-SDS-175
+func cmdLogs(c *cli, dc *otactl.Client, rest []string) error {
+	which := "agent"
+	if len(rest) > 0 && !strings.HasPrefix(rest[0], "-") {
+		which = rest[0]
+	}
+	raw, err := c.call(dc, "logs", map[string]any{"file": which, "tail": 16384})
+	if err != nil {
+		return err
+	}
+	var v struct {
+		Path string `json:"path"`
+		Text string `json:"text"`
+	}
+	if err := json.Unmarshal(raw, &v); err != nil {
+		return fmt.Errorf("logs: %w", err)
+	}
+	_, err = fmt.Fprintf(c.out, "== %s ==\n%s\n", v.Path, v.Text)
+	return err
+}
+
+// TRLC-LINKS: REQ-SDS-115, REQ-SDS-175
+func cmdExec(c *cli, dc *otactl.Client, rest []string) error {
+	if len(rest) == 0 {
+		return usageError{"exec needs a command"}
+	}
+	raw, err := c.call(dc, "exec", map[string]any{"argv": rest, "timeout_s": c.timeoutS})
+	if err != nil {
+		return err
+	}
+	return c.printExec(raw)
+}
+
+// TRLC-LINKS: REQ-SDS-115, REQ-SDS-175
+func cmdSh(c *cli, dc *otactl.Client, rest []string) error {
+	raw, err := c.call(dc, "sh", map[string]any{"script": strings.Join(rest, " "), "timeout_s": c.timeoutS})
+	if err != nil {
+		return err
+	}
+	return c.printExec(raw)
+}
+
+// TRLC-LINKS: REQ-SDS-027, REQ-SDS-175
+func cmdTakeover(c *cli, dc *otactl.Client, rest []string) error {
+	return c.callPrint(dc, "takeover", map[string]any{
+		"dry_run": has(rest, "--dry-run"), "force": has(rest, "--force"),
+	})
+}
+
+// cmdRestoreFactory takes optional JSON choosing the console the vendor UI
+// is launched on, e.g. restore-factory '{"console":"/dev/console","setsid":true}'.
+// TRLC-LINKS: REQ-SDS-120, REQ-SDS-175
+func cmdRestoreFactory(c *cli, dc *otactl.Client, rest []string) error {
+	var rfArgs any
+	if len(rest) > 0 && rest[0] != "" {
+		var m map[string]any
+		if err := json.Unmarshal([]byte(rest[0]), &m); err != nil {
+			return usageError{fmt.Sprintf("restore-factory: args must be JSON: %v", err)}
+		}
+		rfArgs = m
+	}
+	return c.callPrint(dc, "restore-factory", rfArgs)
+}
+
+// TRLC-LINKS: REQ-SDS-117, REQ-SDS-175
+func cmdApp(c *cli, dc *otactl.Client, rest []string) error {
+	if len(rest) == 0 {
+		return usageError{"app needs start|stop|restart"}
+	}
+	return c.callPrint(dc, "app."+rest[0], nil)
+}
+
+// TRLC-LINKS: REQ-SDS-118, REQ-SDS-175
+func cmdActivate(c *cli, dc *otactl.Client, rest []string) error {
+	if len(rest) == 0 {
+		return usageError{"activate needs a slot (A|B)"}
+	}
+	return c.callPrint(dc, "app.activate", map[string]any{"slot": rest[0]})
+}
+
+// TRLC-LINKS: REQ-SDS-121, REQ-SDS-175
+func cmdReboot(c *cli, dc *otactl.Client, rest []string) error {
+	return c.callPrint(dc, "reboot", map[string]any{"confirm": has(rest, "--confirm")})
+}
+
+// TRLC-LINKS: REQ-SDS-110, REQ-SDS-175
+func cmdPut(c *cli, dc *otactl.Client, rest []string) error {
+	if len(rest) < 2 {
+		return usageError{"put <local> <device-path>"}
+	}
+	sum, err := dc.PutFile(rest[0], rest[1], 0, 0, c.progressBar("upload"))
+	_, _ = fmt.Fprintln(c.errOut)
+	if err != nil {
+		return err
+	}
+	_, err = fmt.Fprintf(c.out, "ok: %s -> %s sha256=%s\n", rest[0], rest[1], sum)
+	return err
+}
+
+// TRLC-LINKS: REQ-SDS-110, REQ-SDS-175
+func cmdGet(c *cli, dc *otactl.Client, rest []string) error {
+	if len(rest) < 2 {
+		return usageError{"get <device-path> <local>"}
+	}
+	err := dc.GetFile(rest[0], rest[1], c.progressBar("download"))
+	_, _ = fmt.Fprintln(c.errOut)
+	if err != nil {
+		return err
+	}
+	_, err = fmt.Fprintf(c.out, "ok: %s -> %s\n", rest[0], rest[1])
+	return err
+}
+
+// TRLC-LINKS: REQ-SDS-110, REQ-SDS-118, REQ-SDS-175
+func cmdUpdateApp(c *cli, dc *otactl.Client, rest []string) error {
+	if len(rest) == 0 {
+		return usageError{"update-app <local-app-binary>"}
+	}
+	_, _ = fmt.Fprintf(c.errOut, "uploading %s ...\n", rest[0])
+	_, err := dc.PutFile(rest[0], c.stageDir+"/app.upload", 0o755, 0, c.progressBar("upload"))
+	_, _ = fmt.Fprintln(c.errOut)
+	if err != nil {
+		return err
+	}
+	return c.printRaw(dc.UpdateApp(rest[0], c.stageDir))
+}
+
+// TRLC-LINKS: REQ-SDS-110, REQ-SDS-119, REQ-SDS-175
+func cmdUpdateAgent(c *cli, dc *otactl.Client, rest []string) error {
+	if len(rest) == 0 {
+		return usageError{"update-agent <local-agent-binary>"}
+	}
+	_, _ = fmt.Fprintf(c.errOut, "uploading %s ...\n", rest[0])
+	return c.printRaw(dc.UpdateAgent(rest[0], c.stageDir))
 }
 
 // TRLC-LINKS: REQ-SDS-109, REQ-SDS-175
@@ -201,86 +314,97 @@ func dial(natsURL, tcpAddr, device string) (otactl.Transport, error) {
 	}
 	if natsURL != "" {
 		if device == "" {
-			return nil, errors.New("nats transport needs -device")
+			return nil, usageError{"nats transport needs -device"}
 		}
 		return otactl.NewNATS(natsURL, device)
 	}
-	return nil, errors.New("no transport: pass -tcp host:port or -nats url -device id")
+	return nil, usageError{"no transport: pass -tcp host:port or -nats url -device id"}
 }
 
 // TRLC-LINKS: REQ-SDS-111, REQ-SDS-175
-func runServe(rest []string) {
-	fs := flag.NewFlagSet("serve", flag.ExitOnError)
+func cmdServe(c *cli, rest []string) error {
+	fs := flag.NewFlagSet("serve", flag.ContinueOnError)
+	fs.SetOutput(c.errOut)
 	host := fs.String("host", "0.0.0.0", "bind host")
 	port := fs.Int("port", 4222, "NATS port")
-	_ = fs.Parse(rest)
-	err := otactl.RunServer(*host, *port, func(url string) {
-		fmt.Printf("otactl NATS broker up at %s\n", url)
-		fmt.Printf("set OTA_NATS=nats://<this-host>:%d in the stick's ota/agent.env\n", *port)
-	})
-	if err != nil {
-		fatal(err)
+	if err := fs.Parse(rest); err != nil {
+		return usageError{err.Error()}
 	}
+	return otactl.RunServer(*host, *port, func(url string) {
+		_, _ = fmt.Fprintf(c.out, "otactl NATS broker up at %s\n", url)
+		_, _ = fmt.Fprintf(c.out, "set OTA_NATS=nats://<this-host>:%d in the stick's ota/agent.env\n", *port)
+	})
 }
 
+// cmdPower accepts -shelly either before the subcommand (global) or after it
+// (local flag set), so `otactl power -shelly <host> cycle` works as documented.
 // TRLC-LINKS: REQ-SDS-112, REQ-SDS-175
-func runPower(shellyIP string, rest []string) {
-	// Accept -shelly either before the subcommand (global) or after it (local
-	// flagset), so `otactl power -shelly <host> cycle` works as documented.
-	fs := flag.NewFlagSet("power", flag.ExitOnError)
+func cmdPower(c *cli, rest []string) error {
+	fs := flag.NewFlagSet("power", flag.ContinueOnError)
+	fs.SetOutput(c.errOut)
 	local := fs.String("shelly", "", "Shelly plug host")
-	_ = fs.Parse(rest)
+	if err := fs.Parse(rest); err != nil {
+		return usageError{err.Error()}
+	}
 	rest = fs.Args()
+	shellyIP := c.shellyIP
 	if *local != "" {
 		shellyIP = *local
 	}
 	if shellyIP == "" {
-		fatal(errors.New("power needs -shelly <host> (or -shelly before the subcommand, or OTA_SHELLY)"))
+		return usageError{"power needs -shelly <host> (or -shelly before the subcommand, or OTA_SHELLY)"}
 	}
 	if len(rest) == 0 {
-		fatal(errors.New("power on|off|cycle|state"))
+		return usageError{"power on|off|cycle|state"}
 	}
 	s := otactl.NewShelly(shellyIP)
 	switch rest[0] {
 	case "on":
-		out, err := s.On()
-		report(out, err)
+		return c.report(s.On())
 	case "off":
-		out, err := s.Off()
-		report(out, err)
+		return c.report(s.Off())
 	case "cycle":
-		fmt.Println("power off, waiting 5s, on ...")
+		_, _ = fmt.Fprintln(c.errOut, "power off, waiting 5s, on ...")
 		if err := s.Cycle(5 * time.Second); err != nil {
-			fatal(err)
+			return err
 		}
-		fmt.Println("power cycled")
+		_, err := fmt.Fprintln(c.out, "power cycled")
+		return err
 	case "state":
 		on, err := s.State()
 		if err != nil {
-			fatal(err)
+			return err
 		}
-		fmt.Printf("relay: %v\n", map[bool]string{true: "ON", false: "OFF"}[on])
+		_, err = fmt.Fprintf(c.out, "relay: %v\n", map[bool]string{true: "ON", false: "OFF"}[on])
+		return err
 	default:
-		fatal(errors.New("power on|off|cycle|state"))
+		return usageError{"power on|off|cycle|state"}
 	}
 }
 
-// runScpi speaks VXI-11 SCPI directly to the instrument (host:111 -> DEVICE_CORE)
-// — the vendor factory app OR a clean-room app. Validates the VXI-11 client and
-// lets you STOP/resume the factory app non-destructively. A command ending in
-// '?' is treated as a query and its reply printed.
+// cmdScpi speaks VXI-11 SCPI directly to the instrument (host:111 ->
+// DEVICE_CORE): the vendor factory app or a clean-room app. It validates the
+// VXI-11 client and stops or resumes the factory app non-destructively. A
+// command carrying '?' is a query and its reply is printed. The link is
+// always destroyed, a failed command too: the instrument serves one link.
 // TRLC-LINKS: REQ-SDS-175
-func runScpi(host string, args []string, timeout time.Duration) {
+func cmdScpi(c *cli, args []string) error {
+	host := hostOf(c.tcpAddr)
 	if host == "" {
-		fatal(errors.New("scpi needs a device host (pass -tcp <ip>:<port>)"))
+		return usageError{"scpi needs a device host (pass -tcp <ip>:<port>)"}
 	}
 	if len(args) == 0 {
-		fatal(errors.New("scpi <command>   e.g. scpi \"*IDN?\"  or  scpi STOP"))
+		return usageError{"scpi <command>   e.g. scpi \"*IDN?\"  or  scpi STOP"}
 	}
-	cmd := strings.Join(args, " ")
-	cl, err := vxi11.Dial(host, timeout)
+	return scpiAt(c, func() (*vxi11.Client, error) { return vxi11.Dial(host, c.timeout) }, strings.Join(args, " "))
+}
+
+// scpiAt runs one SCPI command on a link from dial.
+// TRLC-LINKS: REQ-SDS-175
+func scpiAt(c *cli, dial func() (*vxi11.Client, error), cmd string) error {
+	cl, err := dial()
 	if err != nil {
-		fatal(err)
+		return err
 	}
 	defer cl.Close()
 	// A query is any command carrying "?" -- "C1:WF? DAT2" and "WFSU?" alike
@@ -288,18 +412,19 @@ func runScpi(host string, args []string, timeout time.Duration) {
 	if strings.Contains(cmd, "?") {
 		resp, err := cl.Query(cmd)
 		if err != nil {
-			fatal(err)
+			return err
 		}
-		fmt.Print(resp)
 		if !strings.HasSuffix(resp, "\n") {
-			fmt.Println()
+			resp += "\n"
 		}
-		return
+		_, err = fmt.Fprint(c.out, resp)
+		return err
 	}
 	if err := cl.Send(cmd); err != nil {
-		fatal(err)
+		return err
 	}
-	fmt.Printf("sent: %s\n", cmd)
+	_, err = fmt.Fprintf(c.out, "sent: %s\n", cmd)
+	return err
 }
 
 // TRLC-LINKS: REQ-SDS-175
@@ -314,19 +439,24 @@ func hostOf(addr string) string {
 }
 
 // TRLC-LINKS: REQ-SDS-175
-func runDiscover(natsURL string, timeout time.Duration) {
-	if natsURL == "" {
-		fatal(errors.New("discover needs -nats"))
+func cmdDiscover(c *cli, _ []string) error {
+	if c.natsURL == "" {
+		return usageError{"discover needs -nats"}
 	}
-	nc, err := nats.Connect(natsURL, nats.Name("otactl-discover"))
+	nc, err := nats.Connect(c.natsURL, nats.Name("otactl-discover"))
 	if err != nil {
-		fatal(err)
+		return err
 	}
-	defer nc.Drain()
-	sub, _ := nc.SubscribeSync(nats.NewInbox())
-	_ = nc.PublishRequest("ota.discover", sub.Subject, nil)
-	deadline := time.Now().Add(timeout)
-	fmt.Println("discovering (waiting up to", timeout, ")...")
+	defer func() { _ = nc.Drain() }() // the replies are read; nothing is pending
+	sub, err := nc.SubscribeSync(nats.NewInbox())
+	if err != nil {
+		return err
+	}
+	if err := nc.PublishRequest("ota.discover", sub.Subject, nil); err != nil {
+		return err
+	}
+	deadline := time.Now().Add(c.timeout)
+	_, _ = fmt.Fprintln(c.errOut, "discovering (waiting up to", c.timeout, ")...")
 	n := 0
 	for time.Now().Before(deadline) {
 		msg, err := sub.NextMsg(time.Until(deadline))
@@ -334,84 +464,104 @@ func runDiscover(natsURL string, timeout time.Duration) {
 			break
 		}
 		n++
-		printJSON(msg.Data)
+		c.printJSON(msg.Data)
 	}
-	fmt.Printf("%d device(s) responded\n", n)
+	_, err = fmt.Fprintf(c.out, "%d device(s) responded\n", n)
+	return err
 }
 
+// cmdWatch prints the events and heartbeats until interrupted.
 // TRLC-LINKS: REQ-SDS-175
-func runWatch(natsURL, device string) {
-	if natsURL == "" {
-		fatal(errors.New("watch needs -nats"))
+func cmdWatch(c *cli, _ []string) error {
+	if c.natsURL == "" {
+		return usageError{"watch needs -nats"}
 	}
-	nc, err := nats.Connect(natsURL, nats.Name("otactl-watch"),
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	nc, err := nats.Connect(c.natsURL, nats.Name("otactl-watch"),
 		nats.MaxReconnects(-1), nats.ReconnectWait(2*time.Second))
 	if err != nil {
-		fatal(err)
+		return err
 	}
-	defer nc.Drain()
+	defer func() { _ = nc.Drain() }() // printing only: nothing to flush
 	sel := "*"
-	if device != "" {
-		sel = device
+	if c.device != "" {
+		sel = c.device
 	}
-	fmt.Printf("watching ota.%s.event and ota.%s.heartbeat (Ctrl-C to stop)\n", sel, sel)
-	_, _ = nc.Subscribe("ota."+sel+".event", func(m *nats.Msg) {
-		fmt.Printf("[event] %s\n", compact(m.Data))
-	})
-	_, _ = nc.Subscribe("ota."+sel+".heartbeat", func(m *nats.Msg) {
-		fmt.Printf("[hb]    %s\n", compact(m.Data))
-	})
-	select {} // block forever
+	_, _ = fmt.Fprintf(c.errOut, "watching ota.%s.event and ota.%s.heartbeat (Ctrl-C to stop)\n", sel, sel)
+	for subj, tag := range map[string]string{"event": "[event]", "heartbeat": "[hb]   "} {
+		if _, err := nc.Subscribe("ota."+sel+"."+subj, func(m *nats.Msg) {
+			_, _ = fmt.Fprintf(c.out, "%s %s\n", tag, compact(m.Data))
+		}); err != nil {
+			return err
+		}
+	}
+	<-ctx.Done()
+	return nil
 }
 
 // ---- helpers ---------------------------------------------------------------
 
+// call runs one RPC; a device-side failure's data is printed before the
+// error is returned.
 // TRLC-LINKS: REQ-SDS-109, REQ-SDS-175
-func mustCall(c *otactl.Client, cmd string, args any, timeout time.Duration) json.RawMessage {
-	raw, err := c.Call(cmd, args, timeout)
-	if err != nil {
-		if len(raw) > 0 {
-			printJSON(raw)
-		}
-		fatal(err)
+func (c *cli) call(dc *otactl.Client, cmd string, args any) (json.RawMessage, error) {
+	raw, err := dc.Call(cmd, args, c.timeout)
+	if err != nil && len(raw) > 0 {
+		c.printJSON(raw)
 	}
-	return raw
+	return raw, err
+}
+
+// callPrint runs one RPC and prints its reply.
+// TRLC-LINKS: REQ-SDS-109, REQ-SDS-175
+func (c *cli) callPrint(dc *otactl.Client, cmd string, args any) error {
+	raw, err := c.call(dc, cmd, args)
+	if err != nil {
+		return err
+	}
+	c.printJSON(raw)
+	return nil
+}
+
+// printRaw prints a multi-step operation's final reply, or its partial
+// reply and the error.
+// TRLC-LINKS: REQ-SDS-175
+func (c *cli) printRaw(raw json.RawMessage, err error) error {
+	if len(raw) > 0 {
+		c.printJSON(raw)
+	}
+	return err
 }
 
 // TRLC-LINKS: REQ-SDS-175
-func mustRaw(raw json.RawMessage, err error) json.RawMessage {
-	if err != nil {
-		if len(raw) > 0 {
-			printJSON(raw)
-		}
-		fatal(err)
-	}
-	return raw
-}
-
-// TRLC-LINKS: REQ-SDS-175
-func printExec(raw json.RawMessage) {
+func (c *cli) printExec(raw json.RawMessage) error {
 	var v struct {
 		Exit   int    `json:"exit"`
 		Output string `json:"output"`
 	}
-	_ = json.Unmarshal(raw, &v)
-	fmt.Print(v.Output)
-	if !strings.HasSuffix(v.Output, "\n") {
-		fmt.Println()
+	if err := json.Unmarshal(raw, &v); err != nil {
+		return fmt.Errorf("bad exec reply: %w", err)
 	}
-	fmt.Printf("[exit %d]\n", v.Exit)
+	out := v.Output
+	if !strings.HasSuffix(out, "\n") {
+		out += "\n"
+	}
+	_, err := fmt.Fprintf(c.out, "%s[exit %d]\n", out, v.Exit)
+	return err
 }
 
+// printJSON pretty-prints a reply with its keys sorted, or prints it as it
+// came when it is not JSON.
 // TRLC-LINKS: REQ-SDS-175
-func printJSON(raw json.RawMessage) {
+func (c *cli) printJSON(raw json.RawMessage) {
 	var v any
 	if err := json.Unmarshal(raw, &v); err != nil {
-		fmt.Println(string(raw))
+		_, _ = fmt.Fprintln(c.out, string(raw))
 		return
 	}
-	b, _ := json.MarshalIndent(v, "", "  ")
-	fmt.Println(string(b))
+	b, _ := json.MarshalIndent(v, "", "  ") // re-encoding a decoded value cannot fail
+	_, _ = fmt.Fprintln(c.out, string(b))
 }
 
 // TRLC-LINKS: REQ-SDS-175
@@ -425,28 +575,30 @@ func compact(b []byte) string {
 	return out.String()
 }
 
+// progressBar reports a transfer's progress on stderr, rewriting one line.
 // TRLC-LINKS: REQ-SDS-175
-func progressBar(label string) func(done, total int64) {
+func (c *cli) progressBar(label string) func(done, total int64) {
 	last := -1
 	return func(done, total int64) {
 		if total <= 0 {
-			fmt.Printf("\r%s: %d bytes", label, done)
+			_, _ = fmt.Fprintf(c.errOut, "\r%s: %d bytes", label, done)
 			return
 		}
 		pct := int(done * 100 / total)
 		if pct != last {
-			fmt.Printf("\r%s: %d%% (%d/%d)", label, pct, done, total)
+			_, _ = fmt.Fprintf(c.errOut, "\r%s: %d%% (%d/%d)", label, pct, done, total)
 			last = pct
 		}
 	}
 }
 
 // TRLC-LINKS: REQ-SDS-175
-func report(out string, err error) {
+func (c *cli) report(out string, err error) error {
 	if err != nil {
-		fatal(err)
+		return err
 	}
-	fmt.Println(strings.TrimSpace(out))
+	_, err = fmt.Fprintln(c.out, strings.TrimSpace(out))
+	return err
 }
 
 // TRLC-LINKS: REQ-SDS-175
@@ -463,14 +615,8 @@ func envOr(key, def string) string {
 }
 
 // TRLC-LINKS: REQ-SDS-175
-func fatal(err error) {
-	fmt.Fprintln(os.Stderr, "error:", err)
-	os.Exit(1)
-}
-
-// TRLC-LINKS: REQ-SDS-175
-func usage() {
-	fmt.Fprint(os.Stderr, `otactl — open-sds OTA host controller
+func usage(w io.Writer) {
+	_, _ = fmt.Fprint(w, `otactl — open-sds OTA host controller
 
 USAGE
   otactl [global flags] <command> [args]

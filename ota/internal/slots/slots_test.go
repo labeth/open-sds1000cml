@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-OTA-SLOTS
+
 package slots
 
 import (
@@ -40,7 +41,9 @@ func TestPointerDefaultsAndValidation(t *testing.T) {
 		t.Errorf("active = %q after SetActive(B)", s.Active())
 	}
 	// A garbage pointer file falls back to the default.
-	os.WriteFile(filepath.Join(s.Root(), "active"), []byte("garbage"), 0o644)
+	if err := os.WriteFile(filepath.Join(s.Root(), "active"), []byte("garbage"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 	if s.Active() != SlotA {
 		t.Errorf("garbage pointer should default to A, got %q", s.Active())
 	}

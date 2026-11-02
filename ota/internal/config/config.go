@@ -15,6 +15,7 @@ import (
 	"time"
 )
 
+// Config is the agent's settings, each named after the variable that sets it.
 // TRLC-LINKS: REQ-SDS-088
 type Config struct {
 	// Identity + transport.
@@ -45,7 +46,7 @@ type Config struct {
 	HealthDir     string        // OTA_HEALTH_DIR — RAM-backed (default /dev)
 	HealthTimeout time.Duration // OTA_HEALTH_TIMEOUT — staleness window
 	AppGrace      time.Duration // OTA_APP_GRACE — first health report deadline
-	StableSecs    time.Duration // OTA_STABLE — healthy runtime that confirms a slot
+	Stable        time.Duration // OTA_STABLE — healthy runtime that confirms a slot
 	MaxFails      int           // OTA_MAXFAILS — failures before rollback
 	WdPet         time.Duration // OTA_WD_PET — watchdog pet interval (<60s!)
 
@@ -133,6 +134,8 @@ func defaultDeviceID() string {
 	return "sds-unknown"
 }
 
+// Load reads the configuration from the environment, with the device
+// defaults for anything unset or invalid.
 // TRLC-LINKS: REQ-SDS-088
 func Load() *Config {
 	otaDir := envOr("OTA_DIR", exeDir)
@@ -161,7 +164,7 @@ func Load() *Config {
 		HealthDir:     env("OTA_HEALTH_DIR", "/dev"),
 		HealthTimeout: envDurSecs("OTA_HEALTH_TIMEOUT", 3*time.Second),
 		AppGrace:      envDurSecs("OTA_APP_GRACE", 30*time.Second),
-		StableSecs:    envDurSecs("OTA_STABLE", 30*time.Second),
+		Stable:        envDurSecs("OTA_STABLE", 30*time.Second),
 		MaxFails:      envInt("OTA_MAXFAILS", 3),
 		WdPet:         envDurSecs("OTA_WD_PET", 15*time.Second),
 

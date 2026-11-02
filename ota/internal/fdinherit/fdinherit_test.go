@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-OTA-FDINHERIT
+
 package fdinherit
 
 import (
@@ -13,7 +14,7 @@ func TestFindInheritedFD(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	path := f.Name()
 
 	fd := Find(path)
@@ -35,7 +36,7 @@ func TestHoldersOfSelf(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	holders := HoldersOf(f.Name())
 	found := false
 	me := os.Getpid()

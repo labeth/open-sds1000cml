@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-OTA-AGENT
+
 package agent
 
 import (
@@ -72,7 +73,7 @@ func TestDispatchPing(t *testing.T) {
 func TestDispatchPanicContained(t *testing.T) {
 	// Register a handler that panics; Dispatch must contain it (the agent must
 	// never die to a bad request — it holds the inherited fds).
-	handlers["_boom"] = func(a *Agent, _ json.RawMessage) (any, error) { panic("kaboom") }
+	handlers["_boom"] = func(_ *Agent, _ json.RawMessage) (any, error) { panic("kaboom") }
 	defer delete(handlers, "_boom")
 	a := testAgent(t)
 	resp := a.Dispatch([]byte(`{"cmd":"_boom"}`))

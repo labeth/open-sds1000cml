@@ -1,10 +1,12 @@
 // ENGMODEL-OWNER-UNIT: FU-OTA-VXI11
+
 package vxi11
 
 import (
 	"encoding/binary"
 	"io"
 	"net"
+	"net/netip"
 	"testing"
 	"time"
 )
@@ -36,7 +38,7 @@ func readRecord(c net.Conn) ([]byte, error) {
 func writeRecord(c net.Conn, body []byte) {
 	var rm [4]byte
 	binary.BigEndian.PutUint32(rm[:], 0x80000000|uint32(len(body)))
-	c.Write(append(rm[:], body...))
+	_, _ = c.Write(append(rm[:], body...))
 }
 
 // acceptedReply builds an accepted RPC reply header for xid + result payload.
@@ -61,17 +63,17 @@ func callProc(body []byte) uint32 { return binary.BigEndian.Uint32(body[20:24]) 
 // TRLC-LINKS: REQ-SDS-100
 func newFake(t *testing.T) *fakeInstrument {
 	t.Helper()
-	pm, err := net.Listen("tcp", "127.0.0.1:0")
+	pm, err := (&net.ListenConfig{}).Listen(t.Context(), "tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
 	}
-	core, err := net.Listen("tcp", "127.0.0.1:0")
+	core, err := (&net.ListenConfig{}).Listen(t.Context(), "tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
 	}
 	f := &fakeInstrument{
 		pmLn: pm, coreLn: core,
-		corePort:  uint32(core.Addr().(*net.TCPAddr).Port),
+		corePort:  uint32(netip.MustParseAddrPort(core.Addr().String()).Port()),
 		received:  make(chan string, 8),
 		readReply: "",
 	}
@@ -84,7 +86,9 @@ func newFake(t *testing.T) *fakeInstrument {
 func (f *fakeInstrument) host() string { return "127.0.0.1" }
 
 // TRLC-LINKS: REQ-SDS-100
-func (f *fakeInstrument) pmPort() int { return f.pmLn.Addr().(*net.TCPAddr).Port }
+func (f *fakeInstrument) pmPort() int {
+	return int(netip.MustParseAddrPort(f.pmLn.Addr().String()).Port())
+}
 
 // TRLC-LINKS: REQ-SDS-100
 func (f *fakeInstrument) servePortmap() {
@@ -94,7 +98,7 @@ func (f *fakeInstrument) servePortmap() {
 			return
 		}
 		go func(c net.Conn) {
-			defer c.Close()
+			defer func() { _ = c.Close() }()
 			for {
 				body, err := readRecord(c)
 				if err != nil {
@@ -117,7 +121,7 @@ func (f *fakeInstrument) serveCore() {
 			return
 		}
 		go func(c net.Conn) {
-			defer c.Close()
+			defer func() { _ = c.Close() }()
 			for {
 				body, err := readRecord(c)
 				if err != nil {
@@ -162,8 +166,8 @@ func (f *fakeInstrument) serveCore() {
 
 // TRLC-LINKS: REQ-SDS-100
 func (f *fakeInstrument) close() {
-	f.pmLn.Close()
-	f.coreLn.Close()
+	_ = f.pmLn.Close()
+	_ = f.coreLn.Close()
 }
 
 // TRLC-LINKS: REQ-SDS-100

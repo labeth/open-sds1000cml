@@ -11,6 +11,7 @@
 package gpmc
 
 import (
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"time"
@@ -19,17 +20,19 @@ import (
 	"golang.org/x/sys/unix"
 )
 
+// The ioctl, the plane and the registers the agent reads, with the values
+// that identify the FPGA and its fill counter.
 const (
 	reqRead = 0x80026700 // ioctl request code: register read (spec 01 §1.2)
 
-	PlaneCS1 = 1
+	PlaneCS1 = 1 // the register plane (3 is CS3; 0 is never valid)
 
 	SelVersion = 0x12 // FPGA version register; must read 0x0052
 	SelStatus  = 0x38 // held state shows ~0x8a after factory STOP (spec 01 §6)
 	SelFill    = 0x46 // 11-bit sample-write counter (mask 0x07ff)
 
-	VersionMagic = 0x0052
-	FillMask     = 0x07ff
+	VersionMagic = 0x0052 // what SelVersion reads on this FPGA
+	FillMask     = 0x07ff // SelFill's counter bits
 )
 
 // Reader reads CS1 registers on a raw inherited fd. It never closes the fd.
@@ -43,6 +46,7 @@ type Reader struct {
 // TRLC-LINKS: REQ-SDS-103
 func NewReader(fd int) *Reader { return &Reader{fd: fd} }
 
+// OK reports whether the reader has an inherited descriptor to read through.
 // TRLC-LINKS: REQ-SDS-103
 func (r *Reader) OK() bool { return r.fd >= 0 }
 
@@ -52,12 +56,15 @@ func (r *Reader) OK() bool { return r.fd >= 0 }
 // little-endian in b[4..5] (writes only; 0 for reads).
 // TRLC-LINKS: REQ-SDS-103
 func EncodeAccess(plane uint8, sel, val uint16) [6]byte {
-	return [6]byte{plane, 0, byte(sel), byte(sel >> 8), byte(val), byte(val >> 8)}
+	b := [6]byte{plane}
+	binary.LittleEndian.PutUint16(b[2:4], sel)
+	binary.LittleEndian.PutUint16(b[4:6], val)
+	return b
 }
 
 // DecodeValue extracts the little-endian value a read returns in b[4..5].
 // TRLC-LINKS: REQ-SDS-103
-func DecodeValue(b [6]byte) uint16 { return uint16(b[4]) | uint16(b[5])<<8 }
+func DecodeValue(b [6]byte) uint16 { return binary.LittleEndian.Uint16(b[4:6]) }
 
 // Read reads one 16-bit register from the given plane. b[0]=plane (1=CS1,
 // 3=CS3 — NEVER 0: index underflow stalls the bus for seconds), selector
@@ -71,11 +78,11 @@ func (r *Reader) Read(plane uint8, sel uint16) (uint16, error) {
 		return 0, fmt.Errorf("gpmc: invalid plane %d", plane)
 	}
 	b := EncodeAccess(plane, sel, 0)
-	_, _, errno := unix.Syscall(unix.SYS_IOCTL, uintptr(r.fd), reqRead, uintptr(unsafe.Pointer(&b[0])))
+	_, _, errno := unix.Syscall(unix.SYS_IOCTL, uintptr(r.fd), reqRead, uintptr(unsafe.Pointer(&b[0]))) //nolint:gosec // the driver's ioctl takes the struct's address; b lives across the call
 	if errno != 0 {
-		return 0, fmt.Errorf("gpmc: ioctl read sel=0x%02x: %v", sel, errno)
+		return 0, fmt.Errorf("gpmc: ioctl read sel=0x%02x: %w", sel, errno)
 	}
-	return uint16(b[4]) | uint16(b[5])<<8, nil
+	return DecodeValue(b), nil
 }
 
 // VerifyVersion confirms the CS1 window responds (selector 0x12 == 0x0052).

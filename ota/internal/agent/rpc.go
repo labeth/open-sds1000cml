@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-OTA-AGENT
+
 package agent
 
 import (
@@ -9,7 +10,7 @@ import (
 	"unicode/utf8"
 )
 
-// The RPC envelope shared by the NATS and TCP transports.
+// Request is the RPC envelope shared by the NATS and TCP transports.
 //
 //	request:  {"cmd": "exec", "args": {...}}
 //	response: {"ok": true, "data": {...}} | {"ok": false, "err": "..."}
@@ -20,6 +21,8 @@ type Request struct {
 	Args json.RawMessage `json:"args,omitempty"`
 }
 
+// Response is the reply envelope: Data on success, Err (and any partial
+// Data) on failure.
 // TRLC-LINKS: REQ-SDS-113
 type Response struct {
 	OK   bool   `json:"ok"`
@@ -97,6 +100,8 @@ func splitRequest(raw []byte) (Request, bool) {
 	return Request{Cmd: string(cmd), Args: args}, true
 }
 
+// DispatchJSON is Dispatch with the response encoded, the form both
+// transports send.
 // TRLC-LINKS: REQ-SDS-113
 func (a *Agent) DispatchJSON(raw []byte) []byte {
 	resp := a.Dispatch(raw)

@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-OTA-AGENT
+
 package agent
 
 import (
@@ -79,7 +80,7 @@ func (h *healthWatcher) status() healthStatus {
 	defer h.mu.Unlock()
 	s := healthStatus{HealthyOnce: h.healthyOnce, Token: string(h.lastContent)}
 	if h.healthyOnce {
-		s.SinceChange = time.Since(h.lastChange) / time.Millisecond * time.Millisecond
+		s.SinceChange = time.Since(h.lastChange).Truncate(time.Millisecond)
 	}
 	return s
 }
@@ -104,12 +105,12 @@ func (h *healthWatcher) verdict(grace, staleness time.Duration) (bool, string) {
 
 // TRLC-LINKS: REQ-SDS-105
 func readPrefixInto(path string, buf []byte) []byte {
-	f, err := os.Open(path)
+	f, err := os.Open(path) //nolint:gosec // path is the configured health token
 	if err != nil {
 		return nil
 	}
-	m, _ := f.Read(buf)
-	f.Close()
+	m, _ := f.Read(buf) // a short or failed read is a changed or absent sample, judged as such
+	_ = f.Close()       // read-only: a close error loses nothing
 	return buf[:m]
 }
 

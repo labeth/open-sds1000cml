@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-OTA-AGENT
+
 package agent
 
 import (
@@ -170,7 +171,7 @@ func TestFactoryCandidatesSkipOurOrphanApp(t *testing.T) {
 	}
 	// Both detach (the shell exits): not descendants of this process.
 	for _, bin := range []string{app, other} {
-		cmd := exec.Command("/bin/sh", "-c", bin+" 20 3<"+a.cfg.GpmcDev+" >/dev/null 2>&1 &")
+		cmd := exec.CommandContext(t.Context(), "/bin/sh", "-c", bin+" 20 3<"+a.cfg.GpmcDev+" >/dev/null 2>&1 &")
 		if err := cmd.Run(); err != nil {
 			t.Fatal(err)
 		}

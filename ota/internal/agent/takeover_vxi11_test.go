@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-OTA-AGENT
+
 package agent
 
 // Takeover sequence tests (spec 01 §2.2 inherit-then-kill), off-device:
@@ -22,6 +23,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"net/netip"
 	"open-sds/ota/internal/config"
 	"open-sds/ota/internal/fdinherit"
 	"open-sds/ota/internal/gpmc"
@@ -67,7 +69,7 @@ func (g *fakeGpmc) VerifyVersion() (uint16, bool) {
 }
 
 // TRLC-LINKS: REQ-SDS-027
-func (g *fakeGpmc) FillFrozen(pairs int, gap time.Duration) (bool, []uint16, error) {
+func (g *fakeGpmc) FillFrozen(_ int, _ time.Duration) (bool, []uint16, error) {
 	if g.idle {
 		return true, []uint16{42, 42, 42, 42}, nil
 	}
@@ -75,7 +77,7 @@ func (g *fakeGpmc) FillFrozen(pairs int, gap time.Duration) (bool, []uint16, err
 }
 
 // TRLC-LINKS: REQ-SDS-027
-func (g *fakeGpmc) Read(plane uint8, sel uint16) (uint16, error) { return 0x008a, nil }
+func (g *fakeGpmc) Read(_ uint8, _ uint16) (uint16, error) { return 0x008a, nil }
 
 // TRLC-LINKS: REQ-SDS-027
 func (g *fakeGpmc) verifiedAfterStop() bool {
@@ -119,7 +121,7 @@ func vxReadRecord(c net.Conn) ([]byte, error) {
 func vxWriteRecord(c net.Conn, body []byte) {
 	var rm [4]byte
 	binary.BigEndian.PutUint32(rm[:], 0x80000000|uint32(len(body)))
-	c.Write(append(rm[:], body...))
+	_, _ = c.Write(append(rm[:], body...))
 }
 
 // TRLC-LINKS: REQ-SDS-027
@@ -134,23 +136,23 @@ func vxAcceptedReply(xid uint32, result []byte) []byte {
 // TRLC-LINKS: REQ-SDS-027
 func newFakeInstr(t *testing.T, readReply string, onCmd func(string)) *fakeInstr {
 	t.Helper()
-	pm, err := net.Listen("tcp", "127.0.0.1:0")
+	pm, err := (&net.ListenConfig{}).Listen(t.Context(), "tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
 	}
-	core, err := net.Listen("tcp", "127.0.0.1:0")
+	core, err := (&net.ListenConfig{}).Listen(t.Context(), "tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
 	}
 	f := &fakeInstr{
 		pmLn: pm, coreLn: core,
-		corePort:  uint32(core.Addr().(*net.TCPAddr).Port),
+		corePort:  uint32(netip.MustParseAddrPort(core.Addr().String()).Port()),
 		readReply: readReply,
 		onCmd:     onCmd,
 	}
 	go f.servePortmap()
 	go f.serveCore()
-	t.Cleanup(func() { pm.Close(); core.Close() })
+	t.Cleanup(func() { _ = pm.Close(); _ = core.Close() })
 	return f
 }
 
@@ -172,7 +174,7 @@ func (f *fakeInstr) servePortmap() {
 			return
 		}
 		go func(c net.Conn) {
-			defer c.Close()
+			defer func() { _ = c.Close() }()
 			for {
 				body, err := vxReadRecord(c)
 				if err != nil {
@@ -194,7 +196,7 @@ func (f *fakeInstr) serveCore() {
 			return
 		}
 		go func(c net.Conn) {
-			defer c.Close()
+			defer func() { _ = c.Close() }()
 			for {
 				body, err := vxReadRecord(c)
 				if err != nil {
@@ -276,7 +278,7 @@ func captureReassert(t *testing.T) chan []string {
 	t.Helper()
 	ch := make(chan []string, 1)
 	old := reassertNetworkFn
-	reassertNetworkFn = func(a *Agent, preIPs []string) { ch <- preIPs }
+	reassertNetworkFn = func(_ *Agent, preIPs []string) { ch <- preIPs }
 	t.Cleanup(func() { reassertNetworkFn = old })
 	return ch
 }
@@ -312,7 +314,7 @@ func takeoverAgent(t *testing.T, g *fakeGpmc) (*Agent, string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { f.Close() })
+	t.Cleanup(func() { _ = f.Close() })
 
 	a := New(config.Load())
 	if a.gpmcFD < 0 {
@@ -332,7 +334,7 @@ func takeoverAgent(t *testing.T, g *fakeGpmc) (*Agent, string) {
 // TRLC-LINKS: REQ-SDS-027
 func spawnGpmcHolder(t *testing.T, a *Agent, path string) int {
 	t.Helper()
-	out, err := exec.Command("/bin/sh", "-c",
+	out, err := exec.CommandContext(t.Context(), "/bin/sh", "-c",
 		`sleep 30 < "$0" > /dev/null 2>&1 & echo $!`, path).Output()
 	if err != nil {
 		t.Fatalf("spawn holder: %v", err)
@@ -500,7 +502,7 @@ func TestTakeoverRefusesWhenFactoryStopUnreachable(t *testing.T) {
 	// force this is a hard refusal at the STOP gate.
 	g := &fakeGpmc{versionOK: true, idle: true}
 	a, gpmcPath := takeoverAgent(t, g)
-	swapVxiDial(t, func(host string, timeout time.Duration) (*vxi11.Client, error) {
+	swapVxiDial(t, func(_ string, _ time.Duration) (*vxi11.Client, error) {
 		return nil, errors.New("vxi11: portmap dial: connection refused (test)")
 	})
 	reassert := captureReassert(t)
@@ -531,7 +533,7 @@ func TestTakeoverForcePartialFailureStillReassertsNetwork(t *testing.T) {
 	// scheduled regardless of those partial failures.
 	g := &fakeGpmc{versionOK: false, idle: false}
 	a, gpmcPath := takeoverAgent(t, g)
-	swapVxiDial(t, func(host string, timeout time.Duration) (*vxi11.Client, error) {
+	swapVxiDial(t, func(_ string, _ time.Duration) (*vxi11.Client, error) {
 		return nil, errors.New("vxi11: portmap dial: connection refused (test)")
 	})
 	swapIdleTimeout(t, 300*time.Millisecond)

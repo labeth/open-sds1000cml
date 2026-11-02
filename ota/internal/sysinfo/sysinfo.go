@@ -12,6 +12,7 @@ import (
 	"golang.org/x/sys/unix"
 )
 
+// Info is the platform summary a status or probe reports.
 // TRLC-LINKS: REQ-SDS-102
 type Info struct {
 	Uname   string   `json:"uname"`
@@ -30,6 +31,7 @@ func cstr(b []byte) string {
 	return string(b)
 }
 
+// Uname is the kernel's uname fields on one line, or why they are missing.
 // TRLC-LINKS: REQ-SDS-102
 func Uname() string {
 	var u unix.Utsname
@@ -69,7 +71,7 @@ func IPv4s() []string {
 
 // TRLC-LINKS: REQ-SDS-102
 func firstLine(path string) string {
-	b, err := os.ReadFile(path)
+	b, err := os.ReadFile(path) //nolint:gosec // callers pass fixed /proc files
 	if err != nil {
 		return ""
 	}
@@ -100,15 +102,18 @@ func mem() string {
 	return free + " free / " + total
 }
 
+// FreeBytes is the space available to the agent on path's file system, or
+// -1 when it cannot be read.
 // TRLC-LINKS: REQ-SDS-102
 func FreeBytes(path string) int64 {
 	var st unix.Statfs_t
 	if err := unix.Statfs(path, &st); err != nil {
 		return -1
 	}
-	return int64(st.Bavail) * int64(st.Bsize)
+	return int64(st.Bavail) * int64(st.Bsize) //nolint:gosec,unconvert // Bsize is int32 on arm; a USB stick's free bytes are far below 2^63
 }
 
+// Collect gathers the summary, with the free space of otaDir's file system.
 // TRLC-LINKS: REQ-SDS-102
 func Collect(otaDir string) Info {
 	return Info{

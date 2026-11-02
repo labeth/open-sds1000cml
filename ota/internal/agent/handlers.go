@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-OTA-AGENT
+
 package agent
 
 import (
@@ -16,6 +17,13 @@ import (
 )
 
 var handlers = map[string]handlerFn{}
+
+// keySlot and keySHA256 are the reply and event keys several handlers share,
+// which host tools read.
+const (
+	keySlot   = "slot"
+	keySHA256 = "sha256"
+)
 
 // osExit is os.Exit behind a var so the agent.update/agent.restart happy
 // paths are testable in-process; production behavior is identical.
@@ -192,11 +200,11 @@ func hPutCommit(a *Agent, args json.RawMessage) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	return map[string]any{"path": path, "sha256": sum}, nil
+	return map[string]any{"path": path, keySHA256: sum}, nil
 }
 
 // TRLC-LINKS: REQ-SDS-116
-func hGet(a *Agent, args json.RawMessage) (any, error) {
+func hGet(_ *Agent, args json.RawMessage) (any, error) {
 	p, err := decodeArgs[struct {
 		Path   string `json:"path"`
 		Offset int64  `json:"offset"`
@@ -213,8 +221,11 @@ func hGet(a *Agent, args json.RawMessage) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
-	fi, _ := f.Stat()
+	defer func() { _ = f.Close() }() // read-only: a close error loses nothing
+	fi, err := f.Stat()
+	if err != nil {
+		return nil, err
+	}
 	buf := make([]byte, n)
 	m, rerr := f.ReadAt(buf, p.Offset)
 	eof := rerr != nil
@@ -282,12 +293,12 @@ func hAppUpdate(a *Agent, args json.RawMessage) (any, error) {
 		return nil, err
 	}
 	a.clearFails()
-	a.event("app.update", map[string]any{"slot": target, "sha256": sum})
+	a.event("app.update", map[string]any{keySlot: target, keySHA256: sum})
 	// Restart if running/taken over so the new slot launches now.
 	if a.st.get().TakenOver {
 		_ = a.ctlRequest("restart", 8*time.Second)
 	}
-	return map[string]any{"slot": target, "sha256": sum, "active": target}, nil
+	return map[string]any{keySlot: target, keySHA256: sum, "active": target}, nil
 }
 
 // TRLC-LINKS: REQ-SDS-118
@@ -352,7 +363,7 @@ func hAgentUpdate(a *Agent, args json.RawMessage) (any, error) {
 	if err := writeText(a.cfg.AgentActive, target+"\n"); err != nil {
 		return nil, err
 	}
-	a.event("agent.update", map[string]any{"from": cur, "to": target, "sha256": sum, "path": targetPath})
+	a.event("agent.update", map[string]any{"from": cur, "to": target, keySHA256: sum, "path": targetPath})
 	// Exit cleanly after replying; the startup.sh loop respawns the new slot.
 	go func() {
 		time.Sleep(750 * time.Millisecond)
@@ -361,7 +372,7 @@ func hAgentUpdate(a *Agent, args json.RawMessage) (any, error) {
 		a.Stop()
 		osExit(0)
 	}()
-	return map[string]any{"active_agent": target, "sha256": sum, "note": "agent exiting; startup.sh will launch the new slot"}, nil
+	return map[string]any{"active_agent": target, keySHA256: sum, "note": "agent exiting; startup.sh will launch the new slot"}, nil
 }
 
 // TRLC-LINKS: REQ-SDS-119
@@ -386,7 +397,7 @@ func hTakeover(a *Agent, args json.RawMessage) (any, error) {
 	}
 	res := a.Takeover(opts)
 	if !res.OK {
-		return res, fmt.Errorf("%s", res.Err)
+		return res, errors.New(res.Err)
 	}
 	return res, nil
 }
@@ -493,7 +504,7 @@ func hReboot(a *Agent, args json.RawMessage) (any, error) {
 // TRLC-LINKS: REQ-SDS-119
 func writeText(path, s string) error {
 	tmp := path + ".tmp"
-	if err := os.WriteFile(tmp, []byte(s), 0o644); err != nil {
+	if err := os.WriteFile(tmp, []byte(s), 0o600); err != nil {
 		return err
 	}
 	return os.Rename(tmp, path)
@@ -504,5 +515,5 @@ func writeText(path, s string) error {
 // does not trigger a spurious A/B revert of a freshly-activated slot.
 // TRLC-LINKS: REQ-SDS-119
 func (a *Agent) markIntent(kind string) {
-	_ = os.WriteFile(filepath.Join(a.cfg.OTADir, "agent.intent"), []byte(kind+"\n"), 0o644)
+	_ = os.WriteFile(filepath.Join(a.cfg.OTADir, "agent.intent"), []byte(kind+"\n"), 0o600)
 }

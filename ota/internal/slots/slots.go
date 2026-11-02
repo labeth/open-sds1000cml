@@ -25,12 +25,14 @@ import (
 	"time"
 )
 
+// The two slot names and the binary's file name inside a slot directory.
 const (
 	SlotA   = "A"
 	SlotB   = "B"
 	BinName = "app"
 )
 
+// Store is the slot tree under one root directory on the stick.
 // TRLC-LINKS: REQ-SDS-087
 type Store struct {
 	root string
@@ -44,39 +46,46 @@ type Store struct {
 // fileSum is a file's sha256 and the identity it was computed for.
 // TRLC-LINKS: REQ-SDS-087
 type fileSum struct {
-	ino, size int64
-	mod       time.Time
-	sum       string
+	ino  uint64
+	size int64
+	mod  time.Time
+	sum  string
 }
 
+// New returns the store rooted at root; Init creates its directories.
 // TRLC-LINKS: REQ-SDS-087
 func New(root string) *Store { return &Store{root: root} }
 
+// Root is the store's root directory.
 // TRLC-LINKS: REQ-SDS-087
 func (s *Store) Root() string { return s.root }
 
+// Init creates the root, both slot directories and the staging directory.
 // TRLC-LINKS: REQ-SDS-087
 func (s *Store) Init() error {
 	for _, d := range []string{s.root, s.SlotDir(SlotA), s.SlotDir(SlotB), s.StagingDir()} {
-		if err := os.MkdirAll(d, 0o755); err != nil {
+		if err := os.MkdirAll(d, 0o750); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
+// SlotDir is a slot's directory, the app's working directory when it runs.
 // TRLC-LINKS: REQ-SDS-087
 func (s *Store) SlotDir(slot string) string { return filepath.Join(s.root, slot) }
 
+// BinPath is the path of a slot's app binary.
 // TRLC-LINKS: REQ-SDS-087
 func (s *Store) BinPath(slot string) string { return filepath.Join(s.SlotDir(slot), BinName) }
 
+// StagingDir is where uploads land before they are installed into a slot.
 // TRLC-LINKS: REQ-SDS-087
 func (s *Store) StagingDir() string { return filepath.Join(s.root, "staging") }
 
 // TRLC-LINKS: REQ-SDS-087
 func readPointer(path, def string) string {
-	b, err := os.ReadFile(path)
+	b, err := os.ReadFile(path) //nolint:gosec // path is one of the store's own pointer files
 	if err != nil {
 		return def
 	}
@@ -90,20 +99,25 @@ func readPointer(path, def string) string {
 // TRLC-LINKS: REQ-SDS-087
 func writePointer(path, v string) error {
 	tmp := path + ".tmp"
-	if err := os.WriteFile(tmp, []byte(v+"\n"), 0o644); err != nil {
+	if err := os.WriteFile(tmp, []byte(v+"\n"), 0o600); err != nil {
 		return err
 	}
 	return os.Rename(tmp, path)
 }
 
+// Active is the slot the supervisor launches: the "active" pointer, A when
+// it is missing or unreadable.
 // TRLC-LINKS: REQ-SDS-087
 func (s *Store) Active() string { return readPointer(filepath.Join(s.root, "active"), SlotA) }
 
+// Confirmed is the last slot that ran stably, the rollback target: the
+// "confirmed" pointer, the active slot when it is missing or unreadable.
 // TRLC-LINKS: REQ-SDS-087
 func (s *Store) Confirmed() string {
 	return readPointer(filepath.Join(s.root, "confirmed"), s.Active())
 }
 
+// SetActive points the active pointer at slot.
 // TRLC-LINKS: REQ-SDS-087
 func (s *Store) SetActive(slot string) error {
 	if slot != SlotA && slot != SlotB {
@@ -112,6 +126,7 @@ func (s *Store) SetActive(slot string) error {
 	return writePointer(filepath.Join(s.root, "active"), slot)
 }
 
+// SetConfirmed points the confirmed pointer at slot.
 // TRLC-LINKS: REQ-SDS-087
 func (s *Store) SetConfirmed(slot string) error {
 	if slot != SlotA && slot != SlotB {
@@ -143,38 +158,46 @@ func (s *Store) Install(slot, src string) (string, error) {
 	if slot != SlotA && slot != SlotB {
 		return "", fmt.Errorf("slots: invalid slot %q", slot)
 	}
-	if err := os.MkdirAll(s.SlotDir(slot), 0o755); err != nil {
+	if err := os.MkdirAll(s.SlotDir(slot), 0o750); err != nil {
 		return "", err
 	}
-	in, err := os.Open(src)
-	if err != nil {
-		return "", err
-	}
-	defer in.Close()
+	return CopyExecutable(src, s.BinPath(slot))
+}
 
-	dst := s.BinPath(slot)
-	tmp := dst + ".tmp"
-	out, err := os.OpenFile(tmp, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o755)
+// CopyExecutable copies src to dst as an executable (0755): written to
+// dst.tmp, synced and renamed over dst, so a power cut leaves either the old
+// file or the whole new one. It returns the copy's sha256.
+// TRLC-LINKS: REQ-SDS-087, REQ-SDS-119
+func CopyExecutable(src, dst string) (string, error) {
+	in, err := os.Open(src) //nolint:gosec // src is the operator's upload; the control RPC runs any command anyway
 	if err != nil {
+		return "", err
+	}
+	defer func() { _ = in.Close() }() // read-only: a close error loses nothing
+
+	tmp := dst + ".tmp"
+	out, err := os.OpenFile(tmp, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o755) //nolint:gosec // dst is a slot binary or the agent's configured A/B path
+	if err != nil {
+		return "", err
+	}
+	discard := func(err error) (string, error) {
+		_ = out.Close() // the write already failed; that error is the one reported
+		_ = os.Remove(tmp)
 		return "", err
 	}
 	h := sha256.New()
 	if _, err := io.Copy(io.MultiWriter(out, h), in); err != nil {
-		out.Close()
-		os.Remove(tmp)
-		return "", err
+		return discard(err)
 	}
 	if err := out.Sync(); err != nil {
-		out.Close()
-		os.Remove(tmp)
-		return "", err
+		return discard(err)
 	}
 	if err := out.Close(); err != nil {
-		os.Remove(tmp)
+		_ = os.Remove(tmp)
 		return "", err
 	}
 	if err := os.Rename(tmp, dst); err != nil {
-		os.Remove(tmp)
+		_ = os.Remove(tmp)
 		return "", err
 	}
 	return hex.EncodeToString(h.Sum(nil)), nil
@@ -183,11 +206,11 @@ func (s *Store) Install(slot, src string) (string, error) {
 // FileSHA256 hashes an arbitrary file.
 // TRLC-LINKS: REQ-SDS-087
 func FileSHA256(path string) (string, error) {
-	f, err := os.Open(path)
+	f, err := os.Open(path) //nolint:gosec // hashing a file the caller names is this function's job
 	if err != nil {
 		return "", err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }() // read-only: a close error loses nothing
 	h := sha256.New()
 	if _, err := io.Copy(h, f); err != nil {
 		return "", err
@@ -195,6 +218,7 @@ func FileSHA256(path string) (string, error) {
 	return hex.EncodeToString(h.Sum(nil)), nil
 }
 
+// Status is the store's state as the agent's status RPC reports it.
 // TRLC-LINKS: REQ-SDS-087
 type Status struct {
 	Active    string            `json:"active"`
@@ -203,6 +227,8 @@ type Status struct {
 	Root      string            `json:"root"`
 }
 
+// Status reads both pointers and hashes each slot's binary (cached while
+// the file is unchanged).
 // TRLC-LINKS: REQ-SDS-087
 func (s *Store) Status() Status {
 	st := Status{Active: s.Active(), Confirmed: s.Confirmed(), Root: s.root, Binaries: map[string]string{}}
@@ -226,9 +252,9 @@ func (s *Store) cachedSHA256(path string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	var ino int64
+	var ino uint64
 	if sys, ok := fi.Sys().(*syscall.Stat_t); ok {
-		ino = int64(sys.Ino)
+		ino = sys.Ino
 	}
 	id := fileSum{ino: ino, size: fi.Size(), mod: fi.ModTime()}
 	s.mu.Lock()

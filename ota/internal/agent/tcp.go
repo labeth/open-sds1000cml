@@ -1,8 +1,10 @@
 // ENGMODEL-OWNER-UNIT: FU-OTA-AGENT
+
 package agent
 
 import (
 	"bufio"
+	"context"
 	"net"
 	"time"
 )
@@ -14,7 +16,7 @@ import (
 // never the GPMC bus.
 // TRLC-LINKS: REQ-SDS-107
 func (a *Agent) serveTCP() {
-	ln, err := net.Listen("tcp", a.cfg.TCPListen)
+	ln, err := (&net.ListenConfig{}).Listen(context.Background(), "tcp", a.cfg.TCPListen)
 	if err != nil {
 		a.log.Printf("tcp listen %s: %v", a.cfg.TCPListen, err)
 		return
@@ -56,7 +58,7 @@ func (a *Agent) TCPAddr() string {
 
 // TRLC-LINKS: REQ-SDS-107
 func (a *Agent) handleConn(conn net.Conn) {
-	defer conn.Close()
+	defer func() { _ = conn.Close() }() // the reply was written or the peer is gone
 	// Large deadline: file-transfer chunks and long exec can take a while.
 	// otactl dials once per call, so the reader is sized for a request line
 	// in a few fills rather than a whole chunk: ReadBytes grows past it, and a

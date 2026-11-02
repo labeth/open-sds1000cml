@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-OTA-AGENT
+
 package agent
 
 import (
@@ -9,6 +10,7 @@ import (
 
 // TRLC-LINKS: REQ-SDS-113
 func checkSplitRequest(t *testing.T, raw []byte) {
+	t.Helper()
 	got, ok := splitRequest(raw)
 	if !ok {
 		return

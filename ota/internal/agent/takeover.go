@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-OTA-AGENT
+
 package agent
 
 import (
@@ -14,27 +15,7 @@ import (
 	"time"
 )
 
-// Takeover implements the spec 01 §2.2 inherit-then-kill sequence. The engine
-// must never be killed mid-frame (that freezes it on the GPMC WAIT line —
-// power-cycle only), so the landing is manufactured:
-//
-//  1. guards: inherited /dev/Gpmc fd present (we are the fd holder that keeps
-//     the chip select alive across the kill), not already done
-//  2. identify the factory processes holding /dev/Gpmc (dry-run reports this
-//     and stops)
-//  3. drive the factory app to STOP over its own VXI-11 SCPI service — STOP
-//     halts the engine at every timebase (spec 01 §6)
-//  4. confirm the idle landing on the inherited fd: version 0x12 == 0x0052
-//     AND fill counter 0x46 frozen across consecutive reads. These reads
-//     happen while the factory app is still alive, post-STOP.
-//  5. persist taken_over=true BEFORE the kill (a crashed agent's successor
-//     must re-acquire the watchdog immediately, or the SoC warm-resets in
-//     ~60 s and the USB/OTA path is lost until a physical power-cycle)
-//  6. SIGKILL the factory tree; re-kill respawns for a few rounds
-//  7. acquire + pet /dev/watchdog (retrying while the factory fd drains)
-//  8. re-assert the LAN address if the kill dropped it
-//
-// After this returns the supervisor loop launches the app slot (if any).
+// TakeoverOpts are the takeover RPC's arguments.
 // TRLC-LINKS: REQ-SDS-027
 type TakeoverOpts struct {
 	DryRun bool `json:"dry_run"`
@@ -44,6 +25,8 @@ type TakeoverOpts struct {
 	Force bool `json:"force"`
 }
 
+// TakeoverResult is a takeover's outcome: each step it took, the factory
+// processes it found, and why it stopped when it did not finish.
 // TRLC-LINKS: REQ-SDS-027
 type TakeoverResult struct {
 	OK         bool               `json:"ok"`
@@ -57,6 +40,7 @@ func (r *TakeoverResult) step(format string, args ...any) {
 	r.Steps = append(r.Steps, fmt.Sprintf(format, args...))
 }
 
+// Summary is the steps on one line, for the log.
 // TRLC-LINKS: REQ-SDS-027
 func (r *TakeoverResult) Summary() string { return strings.Join(r.Steps, "; ") }
 
@@ -86,7 +70,7 @@ func (a *Agent) factoryCandidates() []fdinherit.Holder {
 	self := os.Getpid()
 	ourExe, _ := os.Executable()
 	ourExe, _ = filepath.EvalSymlinks(ourExe)
-	// Our own apps run from the slot root (A, B, emergency): one a previous
+	// Our own apps run from the slot root (A, B): one a previous
 	// agent generation left running is adopted (superviseLoop), not killed.
 	slotRoot, err := filepath.EvalSymlinks(a.store.Root())
 	if err != nil {
@@ -137,6 +121,27 @@ func (a *Agent) matchesFactoryName(h fdinherit.Holder) bool {
 	return false
 }
 
+// Takeover implements the spec 01 §2.2 inherit-then-kill sequence. The engine
+// must never be killed mid-frame (that freezes it on the GPMC WAIT line —
+// power-cycle only), so the landing is manufactured:
+//
+//  1. guards: inherited /dev/Gpmc fd present (we are the fd holder that keeps
+//     the chip select alive across the kill), not already done
+//  2. identify the factory processes holding /dev/Gpmc (dry-run reports this
+//     and stops)
+//  3. drive the factory app to STOP over its own VXI-11 SCPI service — STOP
+//     halts the engine at every timebase (spec 01 §6)
+//  4. confirm the idle landing on the inherited fd: version 0x12 == 0x0052
+//     AND fill counter 0x46 frozen across consecutive reads. These reads
+//     happen while the factory app is still alive, post-STOP.
+//  5. persist taken_over=true BEFORE the kill (a crashed agent's successor
+//     must re-acquire the watchdog immediately, or the SoC warm-resets in
+//     ~60 s and the USB/OTA path is lost until a physical power-cycle)
+//  6. SIGKILL the factory tree; re-kill respawns for a few rounds
+//  7. acquire + pet /dev/watchdog (retrying while the factory fd drains)
+//  8. re-assert the LAN address if the kill dropped it
+//
+// After this returns the supervisor loop launches the app slot (if any).
 // TRLC-LINKS: REQ-SDS-027
 func (a *Agent) Takeover(opts TakeoverOpts) *TakeoverResult {
 	a.tkMu.Lock()
@@ -147,7 +152,7 @@ func (a *Agent) Takeover(opts TakeoverOpts) *TakeoverResult {
 		res.OK = true
 		res.step("already taken over (idempotent)")
 		// Make sure the watchdog side is running (restart path does this too).
-		go a.acquireWatchdogForever()
+		go a.keepWatchdog()
 		return res
 	}
 
@@ -175,19 +180,8 @@ func (a *Agent) Takeover(opts TakeoverOpts) *TakeoverResult {
 	res.step("pre-kill IPs: %v", preIPs)
 
 	// Gate 2: drive the factory app to STOP via its own SCPI service.
-	if len(res.Candidates) > 0 {
-		if err := a.factoryStop(); err != nil {
-			res.step("VXI-11 STOP failed: %v", err)
-			if !opts.Force {
-				res.Err = "could not command factory STOP (use force only if the factory app is dead): " + err.Error()
-				return res
-			}
-			res.step("force: continuing without STOP")
-		} else {
-			res.step("factory STOP sent")
-		}
-	} else {
-		res.step("no factory candidates hold %s — engine assumed idle/absent", a.cfg.GpmcDev)
+	if !a.stopGate(res, opts.Force) {
+		return res
 	}
 
 	// Gate 3: idle landing confirmed on the inherited fd (post-STOP reads).
@@ -213,7 +207,7 @@ func (a *Agent) Takeover(opts TakeoverOpts) *TakeoverResult {
 	// Watchdog: from this moment nothing else pets it.
 	if err := a.wd.Acquire(15*time.Second, a.cfg.WdPet); err != nil {
 		res.step("watchdog acquire failed (%v) — background retry armed", err)
-		go a.acquireWatchdogForever()
+		go a.keepWatchdog()
 	} else {
 		res.step("watchdog acquired, petting every %s", a.cfg.WdPet)
 	}
@@ -227,6 +221,28 @@ func (a *Agent) Takeover(opts TakeoverOpts) *TakeoverResult {
 	res.OK = true
 	res.step("takeover complete — supervisor will launch the app slot if present")
 	return res
+}
+
+// stopGate sends the factory app STOP when it holds the bus, and reports
+// whether the takeover may go on: a failed STOP stops it unless forced.
+// TRLC-LINKS: REQ-SDS-027
+func (a *Agent) stopGate(res *TakeoverResult, force bool) bool {
+	if len(res.Candidates) == 0 {
+		res.step("no factory candidates hold %s — engine assumed idle/absent", a.cfg.GpmcDev)
+		return true
+	}
+	err := a.factoryStop()
+	if err == nil {
+		res.step("factory STOP sent")
+		return true
+	}
+	res.step("VXI-11 STOP failed: %v", err)
+	if !force {
+		res.Err = "could not command factory STOP (use force only if the factory app is dead): " + err.Error()
+		return false
+	}
+	res.step("force: continuing without STOP")
+	return true
 }
 
 // reclaimBus re-drives the takeover kill sequence when a factory process is

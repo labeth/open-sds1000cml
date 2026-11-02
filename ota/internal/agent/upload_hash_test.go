@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-OTA-AGENT
+
 package agent
 
 import (
@@ -23,10 +24,16 @@ func TestUploadRewrittenChunkHashesTheFile(t *testing.T) {
 		if rewrite {
 			first = []byte("hello")
 		}
-		a.writeUpload(id, 0, first)
-		a.writeUpload(id, 5, final[5:])
+		if _, err := a.writeUpload(id, 0, first); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := a.writeUpload(id, 5, final[5:]); err != nil {
+			t.Fatal(err)
+		}
 		if rewrite {
-			a.writeUpload(id, 0, final[:5])
+			if _, err := a.writeUpload(id, 0, final[:5]); err != nil {
+				t.Fatal(err)
+			}
 		}
 		if _, got, err := a.commitUpload(id); err != nil || got != sum {
 			t.Fatalf("rewrite=%v: sum %s err %v, want %s", rewrite, got, err, sum)

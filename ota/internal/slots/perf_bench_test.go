@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-OTA-SLOTS
+
 package slots
 
 import (
@@ -11,9 +12,13 @@ import (
 // TRLC-LINKS: REQ-SDS-087
 func BenchmarkStatus(b *testing.B) {
 	s := New(b.TempDir())
-	s.Init()
+	if err := s.Init(); err != nil {
+		b.Fatal(err)
+	}
 	for _, slot := range []string{SlotA, SlotB} {
-		os.WriteFile(filepath.Join(s.SlotDir(slot), BinName), make([]byte, 4<<20), 0o755)
+		if err := os.WriteFile(filepath.Join(s.SlotDir(slot), BinName), make([]byte, 4<<20), 0o755); err != nil {
+			b.Fatal(err)
+		}
 	}
 	for b.Loop() {
 		if st := s.Status(); len(st.Binaries) != 2 {
