@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-WEB
+
 package web
 
 import (
@@ -96,18 +97,18 @@ func (w *wsScope) WithFrame(fn func(*engine.Frame)) {
 func (w *wsScope) SetAcqMode(m int) {
 	w.note("acqmode %d", m)
 	w.fuzzScope.SetAcqMode(m)
-	w.fuzzScope.mu.Lock()
+	w.mu.Lock()
 	w.avgK = 0
-	w.fuzzScope.mu.Unlock()
+	w.mu.Unlock()
 }
 
 // TRLC-LINKS: REQ-SDS-219
 func (w *wsScope) SetAvgCount(n int) {
 	w.note("avgcount %d", n)
 	w.fuzzScope.SetAvgCount(n)
-	w.fuzzScope.mu.Lock()
+	w.mu.Lock()
 	w.avgK = 0
-	w.fuzzScope.mu.Unlock()
+	w.mu.Unlock()
 }
 
 // TRLC-LINKS: REQ-SDS-219
@@ -217,7 +218,7 @@ func squareSig(period int, free bool) func(uint64) ([]uint8, []uint8) {
 // TRLC-LINKS: REQ-SDS-219
 func wsDriver(t *testing.T, script string, urls ...string) {
 	t.Helper()
-	out, err := exec.Command("node", append([]string{script}, urls...)...).CombinedOutput()
+	out, err := exec.CommandContext(t.Context(), "node", append([]string{script}, urls...)...).CombinedOutput()
 	t.Logf("%s:\n%s", script, out)
 	if strings.Contains(string(out), "SKIP:") {
 		testenv.SkipBrowser(t, "browser driver skipped: %s", firstLine(out))

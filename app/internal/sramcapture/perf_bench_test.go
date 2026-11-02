@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-SRAMCAPTURE
+
 package sramcapture
 
 import (
@@ -118,6 +119,7 @@ func benchConfigure(b *testing.B, bus interface {
 	count() int
 },
 ) {
+	b.Helper()
 	c := &Capture{bus: bus}
 	for b.Loop() {
 		if err := configureAll(c); err != nil {
@@ -190,7 +192,7 @@ func BenchmarkDrainDecodedEvent(b *testing.B) {
 	for b.Loop() {
 		c := &Capture{bus: &eventBus{enabled: true, epoch: 7, data: raw, fail: -1}}
 		ctx, cancel := context.WithCancel(context.Background())
-		c.DrainDecodedEvents(ctx, 7, eventWriter(func(p []byte) (int, error) { cancel(); return len(p), nil }))
+		_, _ = c.DrainDecodedEvents(ctx, 7, eventWriter(func(p []byte) (int, error) { cancel(); return len(p), nil }))
 		cancel()
 	}
 }

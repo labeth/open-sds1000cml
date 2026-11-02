@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-WEB
+
 package web
 
 import (
@@ -245,7 +246,7 @@ func (s *Server) vertScales() (off, vpc [2]float64) {
 // permits reusing ≤100 ms-old measurements on a seq advance (fast free-run
 // only — pass false for single-shot/stopped, where values must be exact).
 // TRLC-LINKS: REQ-SDS-163, REQ-SDS-164
-func (s *Server) buildReply(f *engine.Frame, cols int, full bool, since uint64, off, vpc [2]float64, posFrac float64, measThrottle bool) frameReply {
+func (s *Server) buildReply(f *engine.Frame, cols int, full bool, since uint64, off, vpc [2]float64, posFrac float64, measThrottle bool) frameReply { //nolint:gocyclo // one reply assembled; each branch adds one optional part
 	if f == nil || f.Seq == 0 || f.Seq == since {
 		seq := uint64(0)
 		if f != nil {
@@ -379,7 +380,7 @@ func (s *Server) buildReply(f *engine.Frame, cols int, full bool, since uint64, 
 	// requests for the same seq (JSON + binary, or several clients) reuse it.
 	key := measKey{seq: f.Seq, cpl1: cpl[0], cpl2: cpl[1], vpc: vpc, off: moff, sampleS: f.SampleS}
 	s.measMu.Lock()
-	if s.measKey != key {
+	if s.measKey != key { //nolint:nestif // the measurement cache's refresh rule, in one place
 		// Fast-flow throttle: while frames stream at full rate, recompute at
 		// most every 100 ms and reuse the previous values in between — the
 		// numbers jitter per frame anyway, and at 20 fps × 2×20480 samples
@@ -390,7 +391,7 @@ func (s *Server) buildReply(f *engine.Frame, cols int, full bool, since uint64, 
 		// (a stale reuse there would never be corrected by a next frame).
 		sameCfg := key.cpl1 == s.measKey.cpl1 && key.cpl2 == s.measKey.cpl2 &&
 			key.vpc == s.measKey.vpc && key.off == s.measKey.off && key.sampleS == s.measKey.sampleS
-		if !(measThrottle && sameCfg && s.meas.m1 != nil && time.Since(s.measAt) < 100*time.Millisecond) {
+		if !measThrottle || !sameCfg || s.meas.m1 == nil || time.Since(s.measAt) >= 100*time.Millisecond {
 			s.measKey = key
 			s.measAt = time.Now()
 			a, b := f.MeasureRange() // a roll view's captured stretch

@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-SCPI
+
 package scpi
 
 import (

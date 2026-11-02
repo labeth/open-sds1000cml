@@ -18,6 +18,7 @@ var last struct {
 	version, commit, built, s string
 }
 
+// String is the build as one line: version, commit and build time.
 // TRLC-LINKS: REQ-SDS-174
 func String() string {
 	last.Lock()

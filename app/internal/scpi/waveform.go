@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-SCPI
+
 package scpi
 
 import (
@@ -57,21 +58,20 @@ func (h *Handler) dat2(ch int, f *engine.Frame) []byte {
 	if ch == 1 {
 		sig = f.C2
 	}
-	valid := min(f.Valid,
+	valid := max(
 		// Valid>len invariant slip must not panic the VXI readout
-		len(sig))
-	if valid < 0 {
-		valid = 0
-	}
+		min(f.Valid,
+
+			len(sig)), 0)
 	sig = sig[:valid]
 	if h.wfFP >= len(sig) {
 		return nil // reject at readout time; never index past the record
 	}
 	sp := max(h.wfSP, 1)
-	max := (len(sig) - h.wfFP + sp - 1) / sp
+	most := (len(sig) - h.wfFP + sp - 1) / sp
 	np := h.wfNP
-	if np == 0 || np > max {
-		np = max
+	if np == 0 || np > most {
+		np = most
 	}
 	out := make([]byte, np)
 	if !f.RollCodes {
@@ -88,14 +88,7 @@ func (h *Handler) dat2(ch int, f *engine.Frame) []byte {
 			// represents 2·d deep codes. Double the deviation (clamped) so it
 			// reads correctly under the DESC's Vdiv/25 gain (spec 11 §4). No
 			// current engine path sets RollCodes.
-			nv := 128 + (int(v)-128)*2
-			if nv < 0 {
-				nv = 0
-			}
-			if nv > 255 {
-				nv = 255
-			}
-			v = uint8(nv)
+			v = uint8(min(max(128+(int(v)-128)*2, 0), 255))
 		}
 		// Two's-complement code about the grid centre: COMM_TYPE 0 is a
 		// signed byte, and LeCroy/Siglent hosts read volts = code·gain −
@@ -112,23 +105,24 @@ func (h *Handler) wavedesc(ch int, f *engine.Frame) []byte {
 	d := make([]byte, 346)
 	copy(d[0:], "WAVEDESC")
 	copy(d[16:], "DSO")
-	le16 := func(off int, v int16) { binary.LittleEndian.PutUint16(d[off:], uint16(v)) }
-	le32 := func(off int, v int32) { binary.LittleEndian.PutUint32(d[off:], uint32(v)) }
+	// The descriptor's fields are 16- and 32-bit two's complement.
+	le16 := func(off, v int) { binary.LittleEndian.PutUint16(d[off:], uint16(v&0xffff)) }
+	le32 := func(off, v int) { binary.LittleEndian.PutUint32(d[off:], uint32(int64(v)&0xffffffff)) }
 	f32 := func(off int, v float32) { binary.LittleEndian.PutUint32(d[off:], math.Float32bits(v)) }
 	f64 := func(off int, v float64) { binary.LittleEndian.PutUint64(d[off:], math.Float64bits(v)) }
 
 	le16(32, 0) // COMM_TYPE: 8-bit
 	le16(34, 1) // COMM_ORDER: LOFIRST
 	le32(36, 346)
-	n := int32(f.Valid)
+	n := f.Valid
 	le32(60, n) // WAVE_ARRAY_1 = count × 1 byte
 	le32(116, n)
-	le32(120, int32(f.WinCols))
+	le32(120, f.WinCols)
 	le32(124, 0)
 	le32(128, n-1)
-	le32(132, int32(h.wfFP))
-	le32(136, int32(h.wfSP))
-	le32(140, int32(h.wfSN))
+	le32(132, h.wfFP)
+	le32(136, h.wfSP)
+	le32(140, h.wfSN)
 	le32(144, 1)
 
 	vdiv := 1.0
@@ -162,6 +156,6 @@ func (h *Handler) wavedesc(ch int, f *engine.Frame) []byte {
 	f64(188, -(float64(f.Valid) * f.SampleS / 2)) // first-pixel offset
 	copy(d[196:], "V")                            // VERTUNIT
 	copy(d[244:], "s")                            // HORUNIT
-	le16(344, int16(ch))                          // WAVE_SOURCE (0-based)
+	le16(344, ch)                                 // WAVE_SOURCE (0-based)
 	return d
 }

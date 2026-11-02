@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-WEB
+
 package web
 
 import (
@@ -16,7 +17,7 @@ import (
 // TRLC-LINKS: REQ-SDS-163
 func getBin(t *testing.T, s *Server, url string) (frameReply, byte, []byte) {
 	t.Helper()
-	req := httptest.NewRequest(http.MethodGet, url, nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, url, nil)
 	rec := httptest.NewRecorder()
 	s.Handler().ServeHTTP(rec, req)
 	b := rec.Body.Bytes()
@@ -369,7 +370,7 @@ func TestRawFeedRequestsChronologicalSamples(t *testing.T) {
 	}
 	// a bus search done with its record gives the lease back at once
 	rec := httptest.NewRecorder()
-	s.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/frame.bin?lease=raw&end=1", nil))
+	s.Handler().ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/frame.bin?lease=raw&end=1", nil))
 	if sc.lease != 0 || rec.Code != http.StatusNoContent {
 		t.Fatalf("release: lease %v, status %d", sc.lease, rec.Code)
 	}
@@ -401,7 +402,7 @@ func TestSpectrumFeedLeasesSpectrumFrames(t *testing.T) {
 	}
 	// the FFT view closed: the lease is given back at once, no frame served
 	rec := httptest.NewRecorder()
-	s.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/frame.bin?lease=spectrum&end=1", nil))
+	s.Handler().ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/frame.bin?lease=spectrum&end=1", nil))
 	if sc.lease != 0 || rec.Code != http.StatusNoContent {
 		t.Fatalf("release: lease %v, status %d", sc.lease, rec.Code)
 	}
@@ -440,7 +441,7 @@ func TestSampleLeaseEnds(t *testing.T) {
 		t.Fatalf("sample lease = %v", sc.lease)
 	}
 	rec := httptest.NewRecorder()
-	s.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/frame.bin?lease=samples&end=1", nil))
+	s.Handler().ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/frame.bin?lease=samples&end=1", nil))
 	if sc.lease != 0 || rec.Code != http.StatusNoContent {
 		t.Fatalf("release: lease %v, status %d", sc.lease, rec.Code)
 	}

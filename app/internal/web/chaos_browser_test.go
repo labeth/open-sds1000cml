@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-WEB
+
 package web
 
 import (
@@ -39,7 +40,7 @@ func TestChaosBrowser(t *testing.T) {
 	defer srv.Close()
 
 	for _, seed := range []int{1337, 99, 20260707} {
-		out, err := exec.Command("node", "chaos_browser.mjs", srv.URL, strconv.Itoa(seed), "400").CombinedOutput()
+		out, err := exec.CommandContext(t.Context(), "node", "chaos_browser.mjs", srv.URL, strconv.Itoa(seed), "400").CombinedOutput()
 		t.Logf("chaos seed %d:\n%s", seed, out)
 		if strings.HasPrefix(strings.TrimSpace(string(out)), "SKIP:") {
 			testenv.SkipBrowser(t, "browser unavailable")

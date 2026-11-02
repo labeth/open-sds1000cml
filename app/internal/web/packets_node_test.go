@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-WEB
+
 package web
 
 import (
@@ -14,7 +15,7 @@ import (
 // TRLC-LINKS: REQ-SDS-214
 func TestPacketsJS(t *testing.T) {
 	testenv.NeedNode(t)
-	out, err := exec.Command("node", "packets.test.cjs").CombinedOutput()
+	out, err := exec.CommandContext(t.Context(), "node", "packets.test.cjs").CombinedOutput()
 	if err != nil || !strings.Contains(string(out), "ALL PASS") {
 		t.Fatalf("packets.test.cjs: %v\n%s", err, out)
 	}
@@ -25,7 +26,7 @@ func TestPacketsJS(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-217, REQ-SDS-218
 func TestWorkspaceMathJS(t *testing.T) {
 	testenv.NeedNode(t)
-	out, err := exec.Command("node", "wsmath.test.cjs").CombinedOutput()
+	out, err := exec.CommandContext(t.Context(), "node", "wsmath.test.cjs").CombinedOutput()
 	if err != nil || !strings.Contains(string(out), "ALL PASS") {
 		t.Fatalf("wsmath.test.cjs: %v\n%s", err, out)
 	}

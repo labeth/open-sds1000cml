@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-SRAMCAPTURE
+
 package sramcapture
 
 import "errors"
@@ -23,6 +24,7 @@ func (p MIL1553TriggerConfig) validate() error {
 	return nil
 }
 
+// SupportsMIL1553 reports whether the image has the MIL-STD-1553 trigger.
 // TRLC-LINKS: REQ-SDS-013
 func (c *Capture) SupportsMIL1553() (bool, error) {
 	c.mu.Lock()
@@ -57,7 +59,7 @@ func (c *Capture) configureMIL1553(revision uint16, p MIL1553TriggerConfig) erro
 			control |= 8
 		}
 		// The registers, then the control, in one batch.
-		return c.writeMany([2]uint16{94, uint16(p.BitTicks)}, [2]uint16{95, uint16(p.BitTicks >> 16)}, [2]uint16{96, p.Pattern}, [2]uint16{93, control})
+		return c.writeMany([2]uint16{94, uint16(p.BitTicks & 0xffff)}, [2]uint16{95, uint16(p.BitTicks >> 16)}, [2]uint16{96, p.Pattern}, [2]uint16{93, control})
 	}
 	return c.write(93, control)
 }

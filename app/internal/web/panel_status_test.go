@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-WEB
+
 package web
 
 import (
@@ -85,7 +86,7 @@ func httpCall(t *testing.T, s *Server, method, path string, body any) (int, map[
 		rd = bytes.NewReader(raw)
 	}
 	rec := httptest.NewRecorder()
-	s.Handler().ServeHTTP(rec, httptest.NewRequest(method, path, rd))
+	s.Handler().ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), method, path, rd))
 	var out map[string]any
 	if rec.Code == http.StatusOK {
 		if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
@@ -106,13 +107,13 @@ func TestStatusReportsPanelSnapshotWithoutControlWrites(t *testing.T) {
 		Again: "F2 again: Eye diagram", Lamps: 0x2050, LampsLit: []string{"CH1", "CH2", "RUN"},
 	}}
 	s := New(&fakeScope{}, nil, p, nil)
-	got := getStatus(t, s)["panel"].(map[string]any)
+	got := jsonAt[map[string]any](t, getStatus(t, s), "panel")
 	if got["Workspace"] != "BUS" || got["AutosetBusy"] != true || got["Seq"] != 3.0 ||
-		got["FKeys"].([]any)[1].(map[string]any)["Label"] != "BUS" || got["Tool"].([]any)[0].(map[string]any)["Job"] != "packet" {
+		jsonAt[any](t, got, "FKeys", 1, "Label") != "BUS" || jsonAt[any](t, got, "Tool", 0, "Job") != "packet" {
 		t.Fatalf("missing LCD state: %v", got)
 	}
 	p.status.Workspace = "SPECTRUM"
-	if getStatus(t, s)["panel"].(map[string]any)["Workspace"] != "SPECTRUM" {
+	if jsonAt[any](t, getStatus(t, s), "panel", "Workspace") != "SPECTRUM" {
 		t.Fatal("panel state was cached")
 	}
 	if p.writes != 0 {
@@ -154,7 +155,7 @@ func TestSheetsEndpoints(t *testing.T) {
 	p := &panelFixture{}
 	s := New(&fakeScope{}, nil, p, nil)
 	code, out := httpCall(t, s, "GET", "/api/sheets", nil)
-	if code != 200 || out["Seq"] != 7.0 || out["Tabs"].([]any)[0].(map[string]any)["Rows"].([]any)[0].(map[string]any)["ID"] != "trig.level" {
+	if code != 200 || out["Seq"] != 7.0 || jsonAt[any](t, out, "Tabs", 0, "Rows", 0, "ID") != "trig.level" {
 		t.Fatalf("sheets: %d %v", code, out)
 	}
 	_, out = httpCall(t, s, "POST", "/api/sheets/set", map[string]any{"row": "trig.level", "text": "1.25V"})

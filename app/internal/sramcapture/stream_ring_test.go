@@ -1,8 +1,10 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-SRAMCAPTURE
+
 package sramcapture
 
 import (
 	"context"
+	"errors"
 	"io"
 	"slices"
 	"testing"
@@ -125,7 +127,7 @@ func TestStreamDrainBeforeTheStreamStarts(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := c.DrainStream(context.Background(), 0, io.Discard); err != ErrStreamDisabled {
+	if _, err := c.DrainStream(context.Background(), 0, io.Discard); !errors.Is(err, ErrStreamDisabled) {
 		t.Fatalf("disabled stream: %v", err)
 	}
 }

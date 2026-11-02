@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-FPGALOAD
+
 package fpgaload
 
 import "testing"
@@ -75,7 +76,7 @@ func (p *recPort) ReadCfg() (uint16, error) { return 0, nil }
 func BenchmarkIoctlXfer(b *testing.B) {
 	p := &ioctlPort{fd: -1}
 	for b.Loop() {
-		p.xfer(reqWrite, wordIdle)
+		_, _ = p.xfer(reqWrite, wordIdle) // fd -1: the cost of a refused call
 	}
 }
 

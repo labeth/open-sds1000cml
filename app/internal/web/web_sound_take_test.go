@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-WEB
+
 package web
 
 import (
@@ -22,21 +23,21 @@ func TestSoundTakeBin(t *testing.T) {
 	pp := &soundPanelFake{set: panel.SoundSettings{A4: 440, Ref: "dbu", Cycles: 2, Gate: -1, GateV: 0.1}}
 	srv := httptest.NewServer(New(sc, nil, pp, nil).Handler())
 	defer srv.Close()
-	r, err := http.Get(srv.URL + "/api/sound/take.bin")
+	r, err := httpGet(t, nil, srv.URL+"/api/sound/take.bin")
 	if err != nil {
 		t.Fatal(err)
 	}
-	r.Body.Close()
+	_ = r.Body.Close()
 	if r.StatusCode != http.StatusNotFound {
 		t.Fatalf("live: status %d", r.StatusCode)
 	}
 	sc.SetRunning(false)
-	r, err = http.Get(srv.URL + "/api/sound/take.bin")
+	r, err = httpGet(t, nil, srv.URL+"/api/sound/take.bin")
 	if err != nil {
 		t.Fatal(err)
 	}
 	body, _ := io.ReadAll(r.Body)
-	r.Body.Close()
+	_ = r.Body.Close()
 	if r.StatusCode != http.StatusOK || len(body) < 8 || body[0] != 'S' || body[1] != 'B' {
 		t.Fatalf("stopped: status %d, %d bytes", r.StatusCode, len(body))
 	}
@@ -53,14 +54,14 @@ func TestSoundTakeBin(t *testing.T) {
 			Info engine.SoundInfo `json:"info"`
 		} `json:"report"`
 	}
-	r, err = http.Get(srv.URL + "/api/sound")
+	r, err = httpGet(t, nil, srv.URL+"/api/sound")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if err := json.NewDecoder(r.Body).Decode(&rep); err != nil {
 		t.Fatal(err)
 	}
-	r.Body.Close()
+	_ = r.Body.Close()
 	if rep.Report.Info.Mode != "stopped" || rep.Report.Info.Take != 7 {
 		t.Fatalf("info %+v", rep.Report.Info)
 	}

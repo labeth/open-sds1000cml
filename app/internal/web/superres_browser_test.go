@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-WEB
+
 package web
 
 import (
@@ -24,6 +25,7 @@ func TestSuperresBrowser(t *testing.T) {
 
 // TRLC-LINKS: REQ-SDS-180
 func testSuperresBrowserBand(t *testing.T, band string) {
+	t.Helper()
 	testenv.NeedNode(t)
 	const N = 2048
 	n := uint64(0)
@@ -58,7 +60,7 @@ func testSuperresBrowserBand(t *testing.T, band string) {
 	srv := httptest.NewServer(New(fs, nil, nil, nil).Handler())
 	defer srv.Close()
 
-	out, err := exec.Command("node", "superres_browser.mjs", srv.URL).CombinedOutput()
+	out, err := exec.CommandContext(t.Context(), "node", "superres_browser.mjs", srv.URL).CombinedOutput()
 	t.Logf("superres_browser.mjs:\n%s", out)
 	if strings.HasPrefix(strings.TrimSpace(string(out)), "SKIP:") {
 		testenv.SkipBrowser(t, "browser unavailable")

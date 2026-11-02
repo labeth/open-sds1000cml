@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-SRAMCAPTURE
+
 package sramcapture
 
 import (
@@ -152,7 +153,7 @@ func TestStreamDrainFailuresRetainOwnership(t *testing.T) {
 			b.counts[0] = 2
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
-			var sink io.Writer = io.Discard
+			sink := io.Discard
 			switch name {
 			case "disabled":
 				b.flags = 1

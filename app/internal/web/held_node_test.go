@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-WEB
+
 package web
 
 import (
@@ -22,7 +23,7 @@ func TestHeldRanges(t *testing.T) {
 		t.Fatalf("no mask: %v", got)
 	}
 	testenv.NeedNode(t)
-	if out, err := exec.Command("node", "held_split.test.cjs").CombinedOutput(); err != nil {
+	if out, err := exec.CommandContext(t.Context(), "node", "held_split.test.cjs").CombinedOutput(); err != nil {
 		t.Fatalf("held split: %v\n%s", err, out)
 	}
 }

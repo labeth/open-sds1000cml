@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-SRAMCAPTURE
+
 package sramcapture
 
 import "errors"
@@ -126,8 +127,8 @@ func (c *Capture) configureQualifier(revision uint16, p QualifierConfig) error {
 			control |= 0x80
 		}
 		// The registers, then the control, in one batch.
-		return c.writeMany([2]uint16{22, uint16(minM1)}, [2]uint16{24, uint16(p.MaxTicks)},
-			[2]uint16{26, uint16(p.LevelB)<<8 | uint16(p.LevelA)}, [2]uint16{27, p.Line}, [2]uint16{28, uint16(p.Prescale - 1)},
+		return c.writeMany([2]uint16{22, uint16(minM1)}, [2]uint16{24, uint16(p.MaxTicks & 0xffff)},
+			[2]uint16{26, uint16(p.LevelB)<<8 | uint16(p.LevelA)}, [2]uint16{27, p.Line}, [2]uint16{28, uint16((p.Prescale - 1) & 0xffff)},
 			[2]uint16{21, control})
 	}
 	return c.write(21, control)
@@ -138,7 +139,7 @@ func (c *Capture) configureQualifier(revision uint16, p QualifierConfig) error {
 // and 26..28 the qualifier, 83..92 and 69..73 the zones.
 const qualCapability = 74
 
-// Zones is the zone trigger in the FPGA (ADR-HARDWARE-QUALIFIERS): up to four
+// ZoneConfig is the zone trigger in the FPGA (ADR-HARDWARE-QUALIFIERS): up to four
 // rectangles, each a window in buckets around the trigger edge and a range of
 // codes on one channel; an edge qualifies when every intersect zone was
 // entered in its window and every avoid zone was not. The FPGA fires Wait
@@ -224,7 +225,7 @@ func (c *Capture) configureZones(revision uint16, z ZoneConfig) error {
 				control |= 1 << (8 + i)
 			}
 			regs = append(regs, [2]uint16{uint16(86 + i), uint16(w.Hi)<<8 | uint16(w.Lo)},
-				[2]uint16{starts[i], uint16(w.Start) & 0x7ff}, [2]uint16{ends[i], uint16(w.End) & 0x7ff})
+				[2]uint16{starts[i], uint16(w.Start) & 0x7ff}, [2]uint16{ends[i], uint16(w.End) & 0x7ff}) //nolint:gosec // G115: the registers take the bounds as 11-bit two's complement
 		}
 		return c.writeMany(append(regs, [2]uint16{83, control})...) // one batch, the control last
 	}

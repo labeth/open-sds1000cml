@@ -21,6 +21,7 @@
 // (the CS1 base address) are never touched. Only CS1 is ever written — never
 // NAND CS0 and never the shared prefetch engine (fpga-specs 10 §2.4).
 // ENGMODEL-OWNER-UNIT: FU-APP-BUS
+
 package bus
 
 import (
@@ -75,65 +76,85 @@ func setBits(w *uint32, shift, width uint, v uint32) {
 	*w = (*w &^ m) | (v << shift & m)
 }
 
-// Read-side fields (getters).
+// CSOn is the chip-select assertion time (GPMC_CONFIG2 CSONTIME), in GPMC clocks.
 // TRLC-LINKS: REQ-SDS-131
 func (t CS1Timing) CSOn() uint32 { return bits(t.Config2, 0, 4) }
 
+// CSRdOff is the chip-select deassertion time of a read (CSRDOFFTIME), in GPMC clocks.
 // TRLC-LINKS: REQ-SDS-131
 func (t CS1Timing) CSRdOff() uint32 { return bits(t.Config2, 8, 5) }
 
+// CSWrOff is the chip-select deassertion time of a write (CSWROFFTIME), in GPMC clocks.
 // TRLC-LINKS: REQ-SDS-131
 func (t CS1Timing) CSWrOff() uint32 { return bits(t.Config2, 16, 5) }
 
+// OEOn is the output-enable assertion time (GPMC_CONFIG4 OEONTIME), in GPMC clocks.
 // TRLC-LINKS: REQ-SDS-131
 func (t CS1Timing) OEOn() uint32 { return bits(t.Config4, 0, 4) }
 
+// OEOff is the output-enable deassertion time (OEOFFTIME), in GPMC clocks.
 // TRLC-LINKS: REQ-SDS-131
 func (t CS1Timing) OEOff() uint32 { return bits(t.Config4, 8, 5) }
 
+// WEOn is the write-enable assertion time (WEONTIME), in GPMC clocks.
 // TRLC-LINKS: REQ-SDS-131
 func (t CS1Timing) WEOn() uint32 { return bits(t.Config4, 16, 4) }
 
+// WEOff is the write-enable deassertion time (WEOFFTIME), in GPMC clocks.
 // TRLC-LINKS: REQ-SDS-131
 func (t CS1Timing) WEOff() uint32 { return bits(t.Config4, 24, 5) }
 
+// RdCycle is the read cycle time (GPMC_CONFIG5 RDCYCLETIME), in GPMC clocks.
 // TRLC-LINKS: REQ-SDS-131
 func (t CS1Timing) RdCycle() uint32 { return bits(t.Config5, 0, 5) }
 
+// WrCycle is the write cycle time (WRCYCLETIME), in GPMC clocks.
 // TRLC-LINKS: REQ-SDS-131
 func (t CS1Timing) WrCycle() uint32 { return bits(t.Config5, 8, 5) }
 
+// RdAccess is the read access time (RDACCESSTIME), in GPMC clocks.
 // TRLC-LINKS: REQ-SDS-131
 func (t CS1Timing) RdAccess() uint32 { return bits(t.Config5, 16, 5) }
 
+// Gap is the delay between cycles (GPMC_CONFIG6 CYCLE2CYCLEDELAY), in GPMC clocks.
 // TRLC-LINKS: REQ-SDS-131
 func (t CS1Timing) Gap() uint32 { return bits(t.Config6, 8, 4) } // CYCLE2CYCLEDELAY
 
+// SameCSEn is whether the cycle gap also applies between accesses to the
+// same chip select (GPMC_CONFIG6 CYCLE2CYCLESAMECSEN).
 // TRLC-LINKS: REQ-SDS-131
 func (t CS1Timing) SameCSEn() bool { return bits(t.Config6, 7, 1) == 1 }
 
+// WrAccess is the write access time (WRACCESSTIME), in GPMC clocks.
 // TRLC-LINKS: REQ-SDS-131
 func (t CS1Timing) WrAccess() uint32 { return bits(t.Config6, 24, 5) }
 
+// Turnaround is the bus turnaround time (BUSTURNAROUND), in GPMC clocks.
 // TRLC-LINKS: REQ-SDS-131
 func (t CS1Timing) Turnaround() uint32 { return bits(t.Config6, 0, 4) }
 
-// Setters return a copy with one field replaced (values masked to the field).
+// WithRdAccess is a copy of t with the read access time set to v (masked to the field).
 // TRLC-LINKS: REQ-SDS-131
 func (t CS1Timing) WithRdAccess(v uint32) CS1Timing { setBits(&t.Config5, 16, 5, v); return t }
 
+// WithRdCycle is a copy of t with the read cycle time set to v (masked to the field).
 // TRLC-LINKS: REQ-SDS-131
 func (t CS1Timing) WithRdCycle(v uint32) CS1Timing { setBits(&t.Config5, 0, 5, v); return t }
 
+// WithOEOn is a copy of t with the output-enable assertion time set to v (masked to the field).
 // TRLC-LINKS: REQ-SDS-131
 func (t CS1Timing) WithOEOn(v uint32) CS1Timing { setBits(&t.Config4, 0, 4, v); return t }
 
+// WithOEOff is a copy of t with the output-enable deassertion time set to v (masked to the field).
 // TRLC-LINKS: REQ-SDS-131
 func (t CS1Timing) WithOEOff(v uint32) CS1Timing { setBits(&t.Config4, 8, 5, v); return t }
 
+// WithCSRdOff is a copy of t with the chip-select read deassertion time set to v (masked to the field).
 // TRLC-LINKS: REQ-SDS-131
 func (t CS1Timing) WithCSRdOff(v uint32) CS1Timing { setBits(&t.Config2, 8, 5, v); return t }
 
+// WithGap is a copy of t with the cycle gap set to v (masked to the field)
+// and applied between accesses to the same chip select.
 // TRLC-LINKS: REQ-SDS-131
 func (t CS1Timing) WithGap(v uint32) CS1Timing {
 	setBits(&t.Config6, 8, 4, v)
@@ -282,7 +303,7 @@ func OpenTimingPort() (*MemTimingPort, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	m, err := syscall.Mmap(int(f.Fd()), gpmcBase, gpmcLen, syscall.PROT_READ|syscall.PROT_WRITE, syscall.MAP_SHARED)
 	if err != nil {
 		return nil, fmt.Errorf("gpmc mmap: %w", err)
@@ -293,11 +314,15 @@ func OpenTimingPort() (*MemTimingPort, error) {
 // TRLC-LINKS: REQ-SDS-131
 func (p *MemTimingPort) Read() (CS1Timing, error) { return readTiming(memRegs{p.m}), nil }
 
+// Apply writes t to CS1's timing registers.
 // TRLC-LINKS: REQ-SDS-131
 func (p *MemTimingPort) Apply(t CS1Timing) error { return applyTiming(memRegs{p.m}, t, true) }
 
+// Restore writes t back to CS1's timing registers, as Apply does, after a
+// failed change.
 // TRLC-LINKS: REQ-SDS-131
 func (p *MemTimingPort) Restore(t CS1Timing) error { return applyTiming(memRegs{p.m}, t, false) }
 
+// Close unmaps the GPMC register block.
 // TRLC-LINKS: REQ-SDS-131
-func (p *MemTimingPort) Close() { syscall.Munmap(p.m) }
+func (p *MemTimingPort) Close() { _ = syscall.Munmap(p.m) }

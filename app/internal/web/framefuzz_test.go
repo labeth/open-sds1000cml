@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-WEB
+
 package web
 
 import (
@@ -62,7 +63,7 @@ func TestFrameServeFuzz(t *testing.T) {
 	}
 
 	fs := &fakeScope{
-		frameGen: func() *engine.Frame { return cur.Load() },
+		frameGen: cur.Load,
 		stats:    engine.Stats{Running: true, TrigPosFrac: 0.5, WinCols: 2048},
 	}
 	srv := httptest.NewServer(New(fs, nil, nil, nil).Handler())
@@ -76,19 +77,19 @@ func TestFrameServeFuzz(t *testing.T) {
 	for i := range 1500 {
 		cur.Store(mkFrame(uint64(i + 1)))
 		p := paths[rng.Intn(len(paths))]
-		r, err := client.Get(srv.URL + p)
+		r, err := httpGet(t, client, srv.URL+p)
 		if err != nil {
 			t.Fatalf("iter %d GET %s: transport error %v (server crashed?)", i, p, err)
 		}
-		r.Body.Close()
+		_ = r.Body.Close()
 		if r.StatusCode >= 500 {
 			t.Fatalf("iter %d GET %s: status %d", i, p, r.StatusCode)
 		}
 	}
 	// server still healthy
-	r, err := client.Get(srv.URL + "/api/status")
+	r, err := httpGet(t, client, srv.URL+"/api/status")
 	if err != nil || r.StatusCode != http.StatusOK {
 		t.Fatalf("server unhealthy after frame fuzz: %v", err)
 	}
-	r.Body.Close()
+	_ = r.Body.Close()
 }

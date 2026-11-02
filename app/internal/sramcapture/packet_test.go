@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-SRAMCAPTURE
+
 package sramcapture
 
 import (
@@ -204,7 +205,7 @@ func (b *sequenceBus) RawWrite(s, v uint16) error {
 		b.pending.Kind = uint8(v)
 		b.elements[b.index] = b.pending
 	}
-	return b.packetBus.fakeBus.RawWrite(s, v)
+	return b.fakeBus.RawWrite(s, v) // the bus underneath, never this method again
 }
 
 // TRLC-LINKS: REQ-SDS-013

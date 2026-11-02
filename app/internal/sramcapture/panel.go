@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-SRAMCAPTURE
+
 package sramcapture
 
 // PanelConfig drives the front-panel serial scan (ADR-PANEL-SERIAL-SCAN):

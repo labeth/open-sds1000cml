@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-SCPI
+
 package scpi
 
 import (
@@ -154,7 +155,7 @@ func (h *Handler) mead(a, b int, arg string) []byte {
 			}
 		}
 	})
-	v := "****"
+	v := noReading
 	if !math.IsNaN(value) {
 		v = fmt.Sprintf("%.6E%s", value, unit)
 	}
@@ -213,7 +214,7 @@ func (h *Handler) crva(ch int, arg string) []byte {
 		posFrac = .5
 	}
 	dt := (x[1] - x[0]) * 10 * tdiv
-	val := [2]string{"****", "****"}
+	val := [2]string{noReading, noReading}
 	h.sc.WithFrame(func(f *engine.Frame) {
 		if f == nil || f.Valid < 2 || f.WinCols < 2 {
 			return
@@ -236,7 +237,7 @@ func (h *Handler) crva(ch int, arg string) []byte {
 			}
 		}
 	})
-	inv := "****"
+	inv := noReading
 	if dt != 0 {
 		inv = fmt.Sprintf("%.2EHz", 1/math.Abs(dt))
 	}

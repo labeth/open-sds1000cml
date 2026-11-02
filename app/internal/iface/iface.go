@@ -572,12 +572,14 @@ const (
 // Access is the read/write capability of a register.
 type Access uint8
 
+// The access a register grants: read, write or both.
 const (
 	AccR  Access = 1
 	AccW  Access = 2
 	AccRW Access = 3
 )
 
+// CanWrite is whether the register accepts writes.
 // TRLC-LINKS: REQ-SDS-129
 func (a Access) CanWrite() bool { return a&AccW != 0 }
 

@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-WEB
+
 package web
 
 import (
@@ -125,7 +126,7 @@ func (s *Server) registerDecodedCapture(mux *http.ServeMux) {
 		w.Header().Set("Content-Type", "application/octet-stream")
 		w.Header().Set("Cache-Control", "no-store")
 		w.Header().Set("Content-Length", strconv.Itoa(len(data)))
-		_, _ = w.Write(data)
+		_, _ = w.Write(data) //nolint:gosec // G705: raw record words served as application/octet-stream, never rendered
 	})
 	mux.HandleFunc("GET /api/decoded/events.bin", func(w http.ResponseWriter, r *http.Request) {
 		id, err := decodedIdentity(r)

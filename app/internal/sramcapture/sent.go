@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-SRAMCAPTURE
+
 package sramcapture
 
 import "errors"
@@ -25,7 +26,7 @@ func (p SENTTriggerConfig) validate() error {
 	if p.Channel > 1 || p.TickTicks < 4 || p.TickTicks > 0xffffff || p.Nibbles < 1 || p.Nibbles > 64 || p.Length > 4 {
 		return errors.New("sramcapture: invalid hardware SENT configuration")
 	}
-	for i := range uint8(p.Length) {
+	for i := range p.Length {
 		if (p.Pattern>>(8*i))&255 > 15 {
 			return errors.New("sramcapture: SENT pattern values must be nibbles")
 		}
@@ -33,6 +34,7 @@ func (p SENTTriggerConfig) validate() error {
 	return nil
 }
 
+// SupportsSENT reports whether the image has the SENT trigger.
 // TRLC-LINKS: REQ-SDS-013
 func (c *Capture) SupportsSENT() (bool, error) {
 	c.mu.Lock()
@@ -67,7 +69,7 @@ func (c *Capture) configureSENT(revision uint16, p SENTTriggerConfig) error {
 			control |= 8
 		}
 		// The registers, then the control, in one batch.
-		return c.writeMany([2]uint16{78, uint16(p.TickTicks)}, [2]uint16{79, uint16(p.TickTicks >> 16)}, [2]uint16{80, uint16(p.Pattern)},
+		return c.writeMany([2]uint16{78, uint16(p.TickTicks & 0xffff)}, [2]uint16{79, uint16(p.TickTicks >> 16)}, [2]uint16{80, uint16(p.Pattern & 0xffff)},
 			[2]uint16{81, uint16(p.Pattern >> 16)}, [2]uint16{82, uint16(p.Nibbles)}, [2]uint16{77, control})
 	}
 	return c.write(77, control)

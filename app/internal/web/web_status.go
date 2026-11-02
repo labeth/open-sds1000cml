@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-WEB
+
 package web
 
 import (
@@ -68,7 +69,7 @@ type statusReply struct {
 }
 
 // TRLC-LINKS: REQ-SDS-164
-func (s *Server) hStatus(w http.ResponseWriter, r *http.Request) {
+func (s *Server) hStatus(w http.ResponseWriter, _ *http.Request) {
 	st := s.sc.Snapshot()
 	rep := statusReply{
 		Stats:         st,

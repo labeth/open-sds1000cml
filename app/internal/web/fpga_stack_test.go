@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-WEB
+
 package web
 
 import (
@@ -14,7 +15,7 @@ import (
 
 type contextFPGAStackScope struct {
 	fakeScope
-	seen context.Context
+	seen context.Context //nolint:containedctx // the fake keeps the context the handler passed, for the test to inspect
 }
 
 // TRLC-LINKS: REQ-SDS-141
@@ -28,7 +29,7 @@ func TestFPGAStackUsesRequestLifetime(t *testing.T) {
 	f := &contextFPGAStackScope{}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	r := httptest.NewRequest(http.MethodPost, "/api/superres/fpga", strings.NewReader(`{"records":20}`)).WithContext(ctx)
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/superres/fpga", strings.NewReader(`{"records":20}`)).WithContext(ctx)
 	w := httptest.NewRecorder()
 	New(f, nil, nil, nil).Handler().ServeHTTP(w, r)
 	if w.Code != 200 || f.seen == nil {
@@ -48,7 +49,7 @@ func TestFPGAStackUsesRequestLifetime(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-141
 func TestFPGAStackBrowserCancel(t *testing.T) {
 	testenv.NeedNode(t)
-	if out, err := exec.Command("node", "fpga_cancel.test.cjs").CombinedOutput(); err != nil {
+	if out, err := exec.CommandContext(t.Context(), "node", "fpga_cancel.test.cjs").CombinedOutput(); err != nil {
 		t.Fatalf("FPGA cancel: %v\n%s", err, out)
 	}
 }

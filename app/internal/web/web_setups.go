@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-WEB
+
 package web
 
 import (
@@ -62,7 +63,7 @@ func (s *Server) hSetup(w http.ResponseWriter, r *http.Request) {
 		Slot int    `json:"slot"`
 	}
 	if err := decodeSmall(io.LimitReader(r.Body, 1<<10), &req); err != nil {
-		writeJSON(w, map[string]any{"ok": false, "err": "bad json"})
+		writeBadJSON(w)
 		return
 	}
 	if req.Slot < 1 || req.Slot > setupSlotCount {

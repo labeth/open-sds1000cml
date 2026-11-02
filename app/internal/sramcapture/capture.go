@@ -17,6 +17,7 @@ import (
 	"time"
 )
 
+// The SRAM record's size and the fabric's identity values.
 const (
 	Words             = uint32(1 << 19)
 	Bytes             = Words * 4
@@ -35,6 +36,8 @@ type Bus interface {
 	RawWrite(selector, value uint16) error
 }
 
+// Capture drives the full-depth acquisition over CS1: it arms, waits for and
+// recalls SRAM records and streams, one bus user at a time.
 // TRLC-LINKS: REQ-SDS-033, REQ-SDS-082, REQ-SDS-083
 type Capture struct {
 	decodedScratch []byte
@@ -73,9 +76,11 @@ type Capture struct {
 	ringStream bool
 }
 
+// Source is what fills the SRAM: the ADC or the test counter.
 // TRLC-LINKS: REQ-SDS-032, REQ-SDS-040
 type Source uint8
 
+// The sources.
 const (
 	ADC Source = iota
 	Counter
@@ -205,6 +210,8 @@ type Metadata struct {
 	HostTrigger bool `json:"host_trigger,omitempty"`
 }
 
+// New is a capture on b once the fabric proves to be the SRAM image: its
+// identity, revision and converter lane map.
 // TRLC-LINKS: REQ-SDS-032
 func New(b Bus) (*Capture, error) {
 	c := &Capture{bus: b}
@@ -359,12 +366,13 @@ func (c *Capture) read32(s uint16) (uint32, error) {
 
 // TRLC-LINKS: REQ-SDS-082
 func (c *Capture) write32(s uint16, v uint32) error {
-	if e := c.write(s, uint16(v)); e != nil {
+	if e := c.write(s, uint16(v&0xffff)); e != nil {
 		return e
 	}
 	return c.write(s+1, uint16(v>>16))
 }
 
+// Status is the fabric's capture state.
 // TRLC-LINKS: REQ-SDS-040, REQ-SDS-083
 func (c *Capture) Status() (Metadata, error) { c.mu.Lock(); defer c.mu.Unlock(); return c.status() }
 
@@ -390,6 +398,7 @@ func (c *Capture) Poll() (m Metadata, err error) {
 	return m, nil
 }
 
+// SupportsUART reports whether the image has the UART trigger.
 // TRLC-LINKS: REQ-SDS-013
 func (c *Capture) SupportsUART() (bool, error) {
 	c.mu.Lock()
@@ -458,7 +467,7 @@ func (c *Capture) status() (m Metadata, err error) {
 	m.Decimation = 1
 	m.SampleBits = 8
 	m.SamplesPerWord = 2
-	if m.Revision >= 6 {
+	if m.Revision >= 6 { //nolint:nestif // the fields an image from revision 6 adds
 		rate, e := late[1], error(nil)
 		if !haveLate {
 			rate, e = c.read(15)
@@ -481,7 +490,7 @@ func (c *Capture) status() (m Metadata, err error) {
 		m.DataFault = flags&1 != 0
 		m.Locked = m.Locked && flags&2 != 0
 	}
-	if m.Revision >= 9 {
+	if m.Revision >= 9 { //nolint:nestif // the fields an image from revision 9 adds
 		log, bits, e := late[3], late[4], error(nil)
 		if !haveLate {
 			log, e = c.read(28)
@@ -633,10 +642,18 @@ func (c *Capture) ready(ctx context.Context) error {
 	return c.wait(ctx, 4)
 }
 
+// hasDecoder reports a hardware decoder enabled: what a sequence trigger and
+// decoded streaming take their events from.
+// TRLC-LINKS: REQ-SDS-032, REQ-SDS-040, REQ-SDS-082
+func (cfg Config) hasDecoder() bool {
+	return cfg.Packet.Enabled || cfg.Manchester.Enabled || cfg.USBLS.Enabled || cfg.MIL1553.Enabled ||
+		cfg.SENT.Enabled || cfg.SPI.Enabled || cfg.I2C.Enabled || cfg.UART.Enabled
+}
+
 // Check refuses a configuration the fabric cannot run, before any register
 // is touched: a caller can ask before it halts what runs now.
 // TRLC-LINKS: REQ-SDS-032, REQ-SDS-040, REQ-SDS-082
-func (cfg Config) Check() error {
+func (cfg Config) Check() error { //nolint:gocyclo // one check per rule the fabric imposes on a configuration, in one list
 	if err := cfg.Packet.validate(); err != nil {
 		return err
 	}
@@ -644,8 +661,7 @@ func (cfg Config) Check() error {
 		return err
 	}
 	// A sequence matches the events of one enabled hardware decoder.
-	if cfg.Sequence.Length != 0 && !(cfg.Packet.Enabled || cfg.Manchester.Enabled || cfg.USBLS.Enabled || cfg.MIL1553.Enabled ||
-		cfg.SENT.Enabled || cfg.SPI.Enabled || cfg.I2C.Enabled || cfg.UART.Enabled) {
+	if cfg.Sequence.Length != 0 && !cfg.hasDecoder() {
 		return errors.New("sramcapture: a sequence trigger needs a configured hardware decoder")
 	}
 	if err := cfg.Manchester.validate(); err != nil {
@@ -696,7 +712,7 @@ func (cfg Config) Check() error {
 	if cfg.SENT.Enabled && (cfg.UART.Enabled || cfg.I2C.Enabled || cfg.SPI.Enabled || cfg.Source != ADC || !cfg.Normal) {
 		return errors.New("sramcapture: SENT requires exclusive ADC normal triggering")
 	}
-	if cfg.DecodedEvents && !(cfg.Packet.Enabled || cfg.Manchester.Enabled || cfg.USBLS.Enabled || cfg.UART.Enabled || cfg.I2C.Enabled || cfg.SPI.Enabled || cfg.SENT.Enabled || cfg.MIL1553.Enabled) {
+	if cfg.DecodedEvents && !cfg.hasDecoder() {
 		return errors.New("sramcapture: decoded streaming requires a configured hardware decoder")
 	}
 	if cfg.SPI.Enabled && (cfg.UART.Enabled || cfg.I2C.Enabled || cfg.Source != ADC || !cfg.Normal || cfg.SPI.ClockChannel > 1 || cfg.SPI.Length > 4 || cfg.SPI.GapTicks < 3 || cfg.SPI.GapTicks > 0xffffff) {
@@ -714,8 +730,10 @@ func (cfg Config) Check() error {
 	return nil
 }
 
+// Arm configures and starts an acquisition of cfg, refusing a configuration
+// the fabric cannot run.
 // TRLC-LINKS: REQ-SDS-032, REQ-SDS-040, REQ-SDS-082
-func (c *Capture) Arm(ctx context.Context, cfg Config) (err error) {
+func (c *Capture) Arm(ctx context.Context, cfg Config) (err error) { //nolint:gocyclo,funlen // the arm's register sequence; its order is the fabric's protocol
 	if err := cfg.Check(); err != nil {
 		return err
 	}
@@ -806,7 +824,7 @@ func (c *Capture) Arm(ctx context.Context, cfg Config) (err error) {
 	}
 	// Unknown registers read zero on the owned fabric. Discover the optional
 	// block before writing it, and explicitly disable it when returning to edges.
-	if revision >= 10 {
+	if revision >= 10 { //nolint:nestif // the qualifier block only an image from revision 10 has
 		capability, err := c.read(48)
 		if err != nil {
 			return err
@@ -835,9 +853,9 @@ func (c *Capture) Arm(ctx context.Context, cfg Config) (err error) {
 					ticks = u.Period16
 				}
 				for _, r := range []struct{ sel, value uint16 }{
-					{49, uint16(ticks)},
+					{49, uint16(ticks & 0xffff)},
 					{50, uint16(ticks >> 16)},
-					{51, uint16(u.Pattern)},
+					{51, uint16(u.Pattern & 0xffff)},
 					{52, uint16(u.Pattern >> 16)},
 				} {
 					if err := c.write(r.sel, r.value); err != nil {
@@ -909,6 +927,7 @@ func (c *Capture) Arm(ctx context.Context, cfg Config) (err error) {
 	return e
 }
 
+// Force triggers the armed acquisition now.
 // TRLC-LINKS: REQ-SDS-082
 func (c *Capture) Force(ctx context.Context) error {
 	c.mu.Lock()
@@ -916,6 +935,7 @@ func (c *Capture) Force(ctx context.Context) error {
 	return c.command(ctx, 4)
 }
 
+// Halt stops the acquisition and waits for the fabric to be ready.
 // TRLC-LINKS: REQ-SDS-082
 func (c *Capture) Halt(ctx context.Context) error {
 	c.mu.Lock()
@@ -926,6 +946,8 @@ func (c *Capture) Halt(ctx context.Context) error {
 	return c.ready(ctx)
 }
 
+// WaitFrozen waits for the acquisition's record to freeze, letting other
+// callers Force or Halt it meanwhile.
 // TRLC-LINKS: REQ-SDS-082
 func (c *Capture) WaitFrozen(ctx context.Context) error {
 	// Do not hold ownership while waiting for an external trigger: another
@@ -953,6 +975,7 @@ func (c *Capture) WaitFrozen(ctx context.Context) error {
 	}
 }
 
+// Snapshot has the fabric latch ten ADC codes and reads them back.
 // TRLC-LINKS: REQ-SDS-084
 func (c *Capture) Snapshot(ctx context.Context) (out [10]uint8, err error) {
 	c.mu.Lock()
@@ -977,7 +1000,7 @@ func (c *Capture) Snapshot(ctx context.Context) (out [10]uint8, err error) {
 		if e != nil {
 			return out, e
 		}
-		out[2*i] = uint8(v)
+		out[2*i] = uint8(v & 0xff)
 		out[2*i+1] = uint8(v >> 8)
 	}
 	return out, nil
@@ -1242,7 +1265,7 @@ var recallPositionSels = [3]uint16{8, 9, 1}
 // recallFrozen recalls the window of the record m, read just now. Called
 // with c.mu held.
 // TRLC-LINKS: REQ-SDS-033
-func (c *Capture) recallFrozen(ctx context.Context, m Metadata, offset, count uint32, dst io.Writer, forward bool) (written int64, err error) {
+func (c *Capture) recallFrozen(ctx context.Context, m Metadata, offset, count uint32, dst io.Writer, forward bool) (written int64, err error) { //nolint:gocyclo // the recall's transfer paths (worker, DMA, pop, room) share one pointer protocol, kept in one place
 	if m.DataFault {
 		return 0, errors.New("sramcapture: interleave FIFO fault; record has missing samples")
 	}
@@ -1281,7 +1304,7 @@ func (c *Capture) recallFrozen(ctx context.Context, m Metadata, offset, count ui
 		}
 		bufferWords = uint32(size)
 		physicalBufferWords = bufferWords
-		if bufferWords != 4096 && !(m.Revision == 11 && bufferWords == 8192) {
+		if bufferWords != 4096 && (m.Revision != 11 || bufferWords != 8192) {
 			return written, fmt.Errorf("sramcapture: unknown read buffer %d", bufferWords)
 		}
 		// Keep frozen recall transfers within the existing 8192-halfword DMA limit.
@@ -1301,8 +1324,9 @@ func (c *Capture) recallFrozen(ctx context.Context, m Metadata, offset, count ui
 	// mapped for it (the worker's shared ring).
 	bytePop, isBytes := c.bus.(interface{ PopBytesChecked(uint16, []byte) error })
 	var room []byte
-	if r, ok := dst.(RecallRoom); ok && isBytes && m.Revision >= 8 {
-		room = r.Room(int(count * 4))
+	roomSink, hasRoom := dst.(RecallRoom)
+	if hasRoom && isBytes && m.Revision >= 8 {
+		room = roomSink.Room(int(count * 4))
 	}
 	if forward && room == nil {
 		if cap(c.recallScratch) < int(count*4) {
@@ -1336,7 +1360,7 @@ func (c *Capture) recallFrozen(ctx context.Context, m Metadata, offset, count ui
 		}
 		position, flags := uint32(pf[0])|uint32(pf[1])<<16, pf[2]
 		op := uint16(2)
-		if prefix == 0 && flags&1024 != 0 && target == (position-1)&addressMask {
+		if prefix == 0 && flags&1024 != 0 && target == (position-1)&addressMask { //nolint:nestif // the burst opcode and its pointer check belong together
 			op = 7
 		} else {
 			skip := (target - position) & addressMask
@@ -1368,7 +1392,7 @@ func (c *Capture) recallFrozen(ctx context.Context, m Metadata, offset, count ui
 		if uint32(got) != n+prefix {
 			return written, fmt.Errorf("sramcapture: short read buffer: got %d want %d", got, n+prefix)
 		}
-		if m.Revision >= 8 {
+		if m.Revision >= 8 { //nolint:nestif // the pop paths only an image from revision 8 has
 			if forward || m.Revision >= 10 {
 				// Prime the non-burst RAM address to the same first word before
 				// switching the host read mux to the DMA burst selector.
@@ -1400,7 +1424,7 @@ func (c *Capture) recallFrozen(ctx context.Context, m Metadata, offset, count ui
 					return written, e
 				}
 			} else {
-				for i := uint32(0); i < n*2; i++ {
+				for i := range n * 2 {
 					v, err := c.read(25)
 					if err != nil {
 						return written, err
@@ -1416,7 +1440,7 @@ func (c *Capture) recallFrozen(ctx context.Context, m Metadata, offset, count ui
 				return written, fmt.Errorf("sramcapture: burst pointer %d after %d words", index, n)
 			}
 			if !isBytes {
-				for i := uint32(0); i < n*2; i++ {
+				for i := range n * 2 {
 					binary.LittleEndian.PutUint16(data[2*i:], halves[i])
 				}
 			}
@@ -1449,7 +1473,7 @@ func (c *Capture) recallFrozen(ctx context.Context, m Metadata, offset, count ui
 		}
 	}
 	if room != nil {
-		dst.(RecallRoom).Fill(len(room))
+		roomSink.Fill(len(room))
 		return int64(len(room)), nil
 	}
 	if forward && count != 0 {

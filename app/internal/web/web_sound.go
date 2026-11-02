@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-WEB
+
 package web
 
 import (
@@ -29,7 +30,7 @@ import (
 type soundSource interface {
 	LeaseSound(time.Duration)
 	SoundInfo() engine.SoundInfo
-	SoundRead(from uint64, max int, q1, q2 []uint16) engine.SoundBlock
+	SoundRead(from uint64, limit int, q1, q2 []uint16) engine.SoundBlock
 	SoundWait(after uint64, timeout time.Duration) uint64
 }
 
@@ -218,7 +219,7 @@ func writeSoundBin(w http.ResponseWriter, h any, b engine.SoundBlock, deadline t
 	}
 	buf := make([]byte, 8, 8+len(hj)+4*b.N)
 	copy(buf, soundBinMagic[:])
-	binary.LittleEndian.PutUint32(buf[4:8], uint32(len(hj)))
+	binary.LittleEndian.PutUint32(buf[4:8], uint32(len(hj))) //nolint:gosec // G115: a JSON header of a few KB
 	buf = append(buf, hj...)
 	for _, seg := range [][]uint16{b.Q1, b.Q2} {
 		buf = append(buf, leBytes(seg)...) // the words' little-endian bytes
@@ -298,7 +299,7 @@ func (s *Server) hSound(w http.ResponseWriter, r *http.Request) {
 	var req soundPost
 	if r.Method == http.MethodPost {
 		if err := json.NewDecoder(io.LimitReader(r.Body, 8<<10)).Decode(&req); err != nil {
-			writeJSON(w, map[string]any{"ok": false, "err": "bad json"})
+			writeBadJSON(w)
 			return
 		}
 		if req.Action == "take_scope" {
@@ -312,7 +313,7 @@ func (s *Server) hSound(w http.ResponseWriter, r *http.Request) {
 	if src, ok := s.sc.(soundSource); ok && r.URL.Query().Get("lease") != "0" {
 		s.leaseSound(src, r)
 	}
-	if r.Method == http.MethodPost {
+	if r.Method == http.MethodPost { //nolint:nestif // a POST's settings and action, applied in order
 		if len(req.Settings) > 0 {
 			cur := sp.SoundSettings()
 			if err := json.Unmarshal(req.Settings, &cur); err != nil {
@@ -347,9 +348,9 @@ func (s *Server) hSound(w http.ResponseWriter, r *http.Request) {
 // TRLC-LINKS: REQ-SDS-274
 func finiteSeries(v reflect.Value) bool {
 	et := v.Type().Elem()
-	switch et.Kind() {
+	switch et.Kind() { //nolint:exhaustive // every other kind is not a series: false
 	case reflect.Float64, reflect.Float32:
-		for i := 0; i < v.Len(); i++ {
+		for i := range v.Len() {
 			if f := v.Index(i).Float(); math.IsNaN(f) || math.IsInf(f, 0) {
 				return false
 			}
@@ -357,12 +358,12 @@ func finiteSeries(v reflect.Value) bool {
 		return true
 	case reflect.Struct:
 		var floats []int
-		for i := 0; i < et.NumField(); i++ {
+		for i := range et.NumField() {
 			f := et.Field(i)
 			if !f.IsExported() || strings.Contains(f.Tag.Get("json"), ",") || f.Anonymous {
 				return false
 			}
-			switch f.Type.Kind() {
+			switch f.Type.Kind() { //nolint:exhaustive // the kinds listed are the safe ones; default refuses the rest
 			case reflect.Float64, reflect.Float32:
 				floats = append(floats, i)
 			case reflect.Int, reflect.Int64, reflect.Int32, reflect.Uint64, reflect.Uint32, reflect.Bool, reflect.String:
@@ -370,7 +371,7 @@ func finiteSeries(v reflect.Value) bool {
 				return false
 			}
 		}
-		for i := 0; i < v.Len(); i++ {
+		for i := range v.Len() {
 			e := v.Index(i)
 			for _, k := range floats {
 				if f := e.Field(k).Float(); math.IsNaN(f) || math.IsInf(f, 0) {
@@ -387,7 +388,7 @@ func finiteSeries(v reflect.Value) bool {
 // null (encoding/json refuses them): structs by their JSON names.
 // TRLC-LINKS: REQ-SDS-274
 func jsonSafe(v reflect.Value) any {
-	switch v.Kind() {
+	switch v.Kind() { //nolint:exhaustive // the kinds that can hold a NaN; every other value encodes as it is
 	case reflect.Float32, reflect.Float64:
 		f := v.Float()
 		if math.IsNaN(f) || math.IsInf(f, 0) {
@@ -400,7 +401,7 @@ func jsonSafe(v reflect.Value) any {
 		}
 		m := map[string]any{}
 		ty := v.Type()
-		for i := 0; i < ty.NumField(); i++ {
+		for i := range ty.NumField() {
 			f := ty.Field(i)
 			if !f.IsExported() {
 				continue

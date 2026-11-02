@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-WEB
+
 package web
 
 import (
@@ -44,7 +45,7 @@ ok(Math.abs(bx - expCol) <= 1, "tone lights the right column: got " + bx + " wan
 console.log(fail ? fail + " FAILED" : "ALL PASS");
 process.exit(fail ? 1 : 0);
 `
-	cmd := exec.Command("node", "-e", script)
+	cmd := exec.CommandContext(t.Context(), "node", "-e", script)
 	cmd.Dir = "."
 	out, err := cmd.CombinedOutput()
 	t.Logf("spectrogram.js:\n%s", out)
@@ -93,7 +94,7 @@ for (const floorDb of [-60, -40, -1, -1e-9, 0, 1, NaN, Infinity, -Infinity]) {
 console.log(fail ? fail + " FAILED" : "ALL PASS");
 process.exit(fail ? 1 : 0);
 `
-	cmd := exec.Command("node", "-e", script)
+	cmd := exec.CommandContext(t.Context(), "node", "-e", script)
 	cmd.Dir = "."
 	out, err := cmd.CombinedOutput()
 	t.Logf("spectrogram.js breaker:\n%s", out)

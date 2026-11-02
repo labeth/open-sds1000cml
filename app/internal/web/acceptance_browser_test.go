@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-WEB
+
 package web
 
 import (
@@ -37,7 +38,7 @@ func TestAcceptanceBrowser(t *testing.T) {
 	srv := httptest.NewServer(New(fs, nil, &refsOnlyPanel{frames: fs.WithFrame}, nil).Handler())
 	defer srv.Close()
 
-	out, err := exec.Command("node", "acceptance_browser.mjs", srv.URL).CombinedOutput()
+	out, err := exec.CommandContext(t.Context(), "node", "acceptance_browser.mjs", srv.URL).CombinedOutput()
 	t.Logf("acceptance_browser.mjs:\n%s", out)
 	if strings.HasPrefix(strings.TrimSpace(string(out)), "SKIP:") {
 		testenv.SkipBrowser(t, "browser unavailable")

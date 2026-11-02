@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-SRAMCAPTURE
+
 package sramcapture
 
 import (
@@ -40,10 +41,10 @@ func checkDecodedEventRTL(t *testing.T, aw, hostAW, burst, pause int, expectFull
 	for _, file := range []string{"decoded_event_transport.v", "decoded_event_queue.v", "decoded_event_bridge.v", "decoded_event_reader.v", "sim/tb_decoded_event_transport.v"} {
 		args = append(args, filepath.Join(rtl, file))
 	}
-	if out, err := exec.Command("iverilog", args...).CombinedOutput(); err != nil {
+	if out, err := exec.CommandContext(t.Context(), "iverilog", args...).CombinedOutput(); err != nil {
 		t.Fatalf("compile: %v\n%s", err, out)
 	}
-	if out, err := exec.Command("vvp", image, "+output="+output).CombinedOutput(); err != nil {
+	if out, err := exec.CommandContext(t.Context(), "vvp", image, "+output="+output).CombinedOutput(); err != nil {
 		t.Fatalf("simulate: %v\n%s", err, out)
 	}
 	b, err := os.ReadFile(output)

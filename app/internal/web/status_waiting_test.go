@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-WEB
+
 package web
 
 import (
@@ -27,7 +28,7 @@ func TestStatusWaitingForADecidedTrigger(t *testing.T) {
 	status := func(st engine.Stats) (bool, float64) {
 		s := New(sinceScope{&fakeScope{stats: st}, 6 * time.Second}, nil, nil, nil)
 		w := httptest.NewRecorder()
-		s.Handler().ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/api/status", nil))
+		s.Handler().ServeHTTP(w, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/status", nil))
 		var rep struct {
 			Waiting bool    `json:"waiting"`
 			WaitS   float64 `json:"wait_s"`

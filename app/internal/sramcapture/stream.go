@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-SRAMCAPTURE
+
 package sramcapture
 
 import (
@@ -16,6 +17,7 @@ var ErrNoStreamBlock = errors.New("sramcapture: no stream block ready")
 // starts it is not yet a loss (a pump started ahead of its stream).
 var ErrStreamDisabled = errors.New("sramcapture: streaming is disabled")
 
+// StreamStatus is the stream drum's state.
 // TRLC-LINKS: REQ-SDS-035
 type StreamStatus struct {
 	Ready      uint8 `json:"ready"`
@@ -41,6 +43,7 @@ func decodeStreamStatus(v uint16) StreamStatus {
 	}
 }
 
+// StreamStatus reads the stream drum's state.
 // TRLC-LINKS: REQ-SDS-035
 func (c *Capture) StreamStatus() (StreamStatus, error) {
 	c.mu.Lock()
@@ -96,6 +99,7 @@ func (c *Capture) prepareStreamBuffers() error {
 	return nil
 }
 
+// StreamBlock is one drained block of the stream.
 // TRLC-LINKS: REQ-SDS-035
 type StreamBlock struct {
 	FirstWord uint64 `json:"first_word"`
@@ -130,7 +134,7 @@ func (c *Capture) StreamBacklog() bool {
 // error is ambiguous and requires abort/restart, not a blind retry. Expensive FIR
 // work belongs after release. The inherited bus must have one owner.
 // TRLC-LINKS: REQ-SDS-035
-func (c *Capture) DrainStream(ctx context.Context, expected uint64, dst io.Writer) (StreamBlock, error) {
+func (c *Capture) DrainStream(ctx context.Context, expected uint64, dst io.Writer) (StreamBlock, error) { //nolint:gocyclo // the drum drain's protocol (status, pieces of a wrap, release), kept in one place
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	var block StreamBlock
@@ -211,7 +215,7 @@ func (c *Capture) DrainStream(ctx context.Context, expected uint64, dst io.Write
 	bytePop, direct := c.bus.(interface{ PopBytesChecked(uint16, []byte) error })
 	reserver, reserved := dst.(StreamReserver)
 	reserved = reserved && direct
-	if reserved {
+	if reserved { //nolint:nestif // the in-place path into the reader's room, in place of the copy below
 		// The pop port's pointer runs on across the two pieces of a wrap.
 		ra, rb, e := reserver.Reserve(len(bytes))
 		if e != nil {
@@ -323,7 +327,7 @@ func (c *Capture) setStreamPace(p StreamPace) error {
 	if p.RampClocks == 1 {
 		return fmt.Errorf("sramcapture: ramp pace %d clocks, need 2 or more", p.RampClocks)
 	}
-	if err := c.writeMany([2]uint16{29, uint16(p.Words)}, [2]uint16{30, uint16(p.Words >> 16)}, [2]uint16{46, p.RampClocks}); err != nil {
+	if err := c.writeMany([2]uint16{29, uint16(p.Words & 0xffff)}, [2]uint16{30, uint16(p.Words >> 16)}, [2]uint16{46, p.RampClocks}); err != nil {
 		return err
 	}
 	if p == (StreamPace{}) {
@@ -386,7 +390,7 @@ func (c *Capture) StartStream(ctx context.Context, cfg Config, continuous, peak 
 	}
 	if err = c.Arm(ctx, cfg); err != nil {
 		c.mu.Lock()
-		c.write(19, 0)
+		_ = c.write(19, 0) // best effort: the arm's error is the one reported
 		c.mu.Unlock()
 	}
 	return err

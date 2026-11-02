@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-WEB
+
 package web
 
 import (
@@ -16,7 +17,7 @@ import (
 func TestBinframeJS(t *testing.T) {
 	testenv.NeedNode(t)
 	node, _ := exec.LookPath("node")
-	out, err := exec.Command(node, "binframe.test.cjs").CombinedOutput()
+	out, err := exec.CommandContext(t.Context(), node, "binframe.test.cjs").CombinedOutput()
 	t.Logf("binframe.test.cjs output:\n%s", out)
 	if err != nil {
 		t.Fatalf("binframe.js test failed: %v", err)

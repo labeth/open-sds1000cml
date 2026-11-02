@@ -1,7 +1,9 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-BUS
+
 package bus
 
 import (
+	"context"
 	_ "embed"
 	"errors"
 	"fmt"
@@ -41,21 +43,21 @@ func realDcinvEnv() dcinvEnv {
 		exists: func(p string) bool { _, err := os.Stat(p); return err == nil },
 		writeKO: func(dir string) (string, error) {
 			p := filepath.Join(dir, "dcinv.ko")
-			if b, err := os.ReadFile(p); err == nil && string(b) == string(dcinvKO) {
+			if b, err := os.ReadFile(p); err == nil && string(b) == string(dcinvKO) { //nolint:gosec // G304: the module file this app writes
 				return p, nil
 			}
-			return p, os.WriteFile(p, dcinvKO, 0o644)
+			return p, os.WriteFile(p, dcinvKO, 0o600)
 		},
 		insmod: func(p string) error {
-			out, err := exec.Command("/sbin/insmod", p).CombinedOutput()
+			out, err := exec.CommandContext(context.Background(), "/sbin/insmod", p).CombinedOutput() //nolint:gosec // G204: insmod of the module file this app writes
 			if err != nil {
-				return fmt.Errorf("insmod: %v: %s", err, strings.TrimSpace(string(out)))
+				return fmt.Errorf("insmod: %w: %s", err, strings.TrimSpace(string(out)))
 			}
 			return nil
 		},
 		devices: func() (string, error) { b, err := os.ReadFile("/proc/devices"); return string(b), err },
 		mknod: func(p string, major int) error {
-			return syscall.Mknod(p, syscall.S_IFCHR|0o600, int(uint32(major)<<8))
+			return syscall.Mknod(p, syscall.S_IFCHR|0o600, int(uint32(major)<<8)) //nolint:gosec // G115: a major number from /proc/devices (< 4096)
 		},
 		sleep:    time.Sleep,
 		deadline: 2 * time.Second,
@@ -86,8 +88,7 @@ func ensureDcinv(e dcinvEnv, dir string, logf func(string, ...any)) error {
 		logf("bus: %s present", DcinvPath)
 		return nil
 	}
-	major, loaded := dcinvMajor(e)
-	if !loaded {
+	if _, loaded := dcinvMajor(e); !loaded {
 		p, err := e.writeKO(dir)
 		if err != nil {
 			return fmt.Errorf("dcinv: write module: %w", err)
@@ -106,7 +107,8 @@ func ensureDcinv(e dcinvEnv, dir string, logf func(string, ...any)) error {
 	if e.exists(DcinvPath) {
 		return nil
 	}
-	if major, loaded = dcinvMajor(e); !loaded {
+	major, loaded := dcinvMajor(e)
+	if !loaded {
 		return errors.New("dcinv: module loaded but /proc/devices has no dcinv entry")
 	}
 	if err := e.mknod(DcinvPath, major); err != nil {

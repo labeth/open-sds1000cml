@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-WEB
+
 package web
 
 import (
@@ -208,7 +209,7 @@ func (z *fuzzScope) SetTrigSlope(r bool) { z.mu.Lock(); z.trigRise = r; z.mu.Unl
 func (z *fuzzScope) SetTrigSource(ch int) { z.mu.Lock(); z.trigSrc = ch & 1; z.mu.Unlock() }
 
 // TRLC-LINKS: REQ-SDS-180
-func (z *fuzzScope) SetOffsetDAC(ch int, code uint16) {}
+func (z *fuzzScope) SetOffsetDAC(_ int, _ uint16) {}
 
 // TRLC-LINKS: REQ-SDS-180
 func (z *fuzzScope) SetETS(on bool) { z.mu.Lock(); z.ets = on; z.mu.Unlock() }
@@ -217,13 +218,13 @@ func (z *fuzzScope) SetETS(on bool) { z.mu.Lock(); z.ets = on; z.mu.Unlock() }
 func (z *fuzzScope) SetTrigType(t int) { z.mu.Lock(); z.trigType = t; z.mu.Unlock() }
 
 // TRLC-LINKS: REQ-SDS-180
-func (z *fuzzScope) SetPulseParams(lvl, wMin, wMax float64, cond int) {}
+func (z *fuzzScope) SetPulseParams(_, _, _ float64, _ int) {}
 
 // TRLC-LINKS: REQ-SDS-180
-func (z *fuzzScope) SetSlopeParams(lo, hi, tMin, tMax float64, cond int) {}
+func (z *fuzzScope) SetSlopeParams(_, _, _, _ float64, _ int) {}
 
 // TRLC-LINKS: REQ-SDS-180
-func (z *fuzzScope) SetVideoParams(std, line int, neg bool) {}
+func (z *fuzzScope) SetVideoParams(_, _ int, _ bool) {}
 
 // TRLC-LINKS: REQ-SDS-180
 func (z *fuzzScope) SetAcqMode(m int) { z.mu.Lock(); z.acqMode = m; z.mu.Unlock() }
@@ -283,7 +284,7 @@ func (z *fuzzScope) SetSerialParams(p engine.SerialParams) {
 func (z *fuzzScope) SetSerialMode(m int) { z.mu.Lock(); z.serMode = m; z.mu.Unlock() }
 
 // TRLC-LINKS: REQ-SDS-180
-func (z *fuzzScope) SetBodeMode(on bool, ref, dut int) {
+func (z *fuzzScope) SetBodeMode(on bool, _, _ int) {
 	z.mu.Lock()
 	if on {
 		z.bodeMode = 1
@@ -300,7 +301,7 @@ func (z *fuzzScope) ClearBode() {}
 func (z *fuzzScope) BodePoints() []engine.BodePoint { return nil }
 
 // TRLC-LINKS: REQ-SDS-180
-func (z *fuzzScope) AcqLog(n int) ([]engine.AcqSample, float64) { return nil, 0 }
+func (z *fuzzScope) AcqLog(_ int) ([]engine.AcqSample, float64) { return nil, 0 }
 
 // TRLC-LINKS: REQ-SDS-180
 func (z *fuzzScope) CmdLog(n int) []engine.CmdNote {
@@ -372,7 +373,7 @@ func (a *fuzzAnalog) OffsetVolts(ch int, code uint16) float64 {
 func (a *fuzzAnalog) CalSource() string { return "synthetic" }
 
 // TRLC-LINKS: REQ-SDS-180
-func (a *fuzzAnalog) DCVolts(ch int, mean float64) float64 { return 0 }
+func (a *fuzzAnalog) DCVolts(_ int, _ float64) float64 { return 0 }
 
 // TRLC-LINKS: REQ-SDS-180
 func (a *fuzzAnalog) SetProbe(ch int, x float64) { a.mu.Lock(); a.probe[ch&1] = x; a.mu.Unlock() }
@@ -439,7 +440,7 @@ func (p *fuzzPanel) InjectButton(name string) bool {
 }
 
 // TRLC-LINKS: REQ-SDS-180
-func (p *fuzzPanel) InjectKnob(name string, dir, steps int) bool { return false }
+func (p *fuzzPanel) InjectKnob(_ string, _, _ int) bool { return false }
 
 // TestFuzzBrowserSynthetic runs the seeded operator fuzzer (e2e/fuzz.mjs — the
 // same driver used against the live scope) for a bounded, fixed-seed campaign
@@ -464,7 +465,7 @@ func TestFuzzBrowserSynthetic(t *testing.T) {
 		seed = v
 	}
 	out := t.TempDir()
-	cmd := exec.Command("node", "e2e/fuzz.mjs")
+	cmd := exec.CommandContext(t.Context(), "node", "e2e/fuzz.mjs")
 	cmd.Env = append(os.Environ(),
 		"SCOPE_URL="+srv.URL,
 		"ITERS="+iters,
@@ -487,7 +488,7 @@ func TestFuzzBrowserSynthetic(t *testing.T) {
 }
 
 // TRLC-LINKS: REQ-SDS-180
-func (a *fuzzAnalog) TrigVolts(code uint16, srcCh int) float64 { return (31437 - float64(code)) / 911 }
+func (a *fuzzAnalog) TrigVolts(code uint16, _ int) float64 { return (31437 - float64(code)) / 911 }
 
 // TRLC-LINKS: REQ-SDS-180
-func (a *fuzzAnalog) TrigCalActive(srcCh int) (float64, float64) { return 31437, 911 }
+func (a *fuzzAnalog) TrigCalActive(_ int) (float64, float64) { return 31437, 911 }

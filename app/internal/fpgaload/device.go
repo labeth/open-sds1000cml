@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-FPGALOAD
+
 package fpgaload
 
 import (
@@ -28,10 +29,10 @@ type ioctlPort struct{ fd int }
 
 // TRLC-LINKS: REQ-SDS-005
 func (p *ioctlPort) xfer(req uintptr, val uint16) (uint16, error) {
-	b := [6]byte{bus.PlaneCS3, 0, byte(bus.CS3ConfigPort), 0, byte(val), byte(val >> 8)}
+	b := [6]byte{bus.PlaneCS3, 0, byte(bus.CS3ConfigPort), 0, byte(val & 0xff), byte(val >> 8)}
 	// One bounded register transaction, as the bus package's ioctls: a raw
 	// syscall skips the scheduler's bookkeeping, 5.9 M times a load here.
-	if _, _, errno := syscall.RawSyscall(syscall.SYS_IOCTL, uintptr(p.fd), req, uintptr(unsafe.Pointer(&b[0]))); errno != 0 {
+	if _, _, errno := syscall.RawSyscall(syscall.SYS_IOCTL, uintptr(p.fd), req, uintptr(unsafe.Pointer(&b[0]))); errno != 0 { //nolint:gosec // G103: the system call takes its argument by address
 		return 0, errno
 	}
 	return uint16(b[4]) | uint16(b[5])<<8, nil
@@ -82,7 +83,7 @@ func (p *memPort) WriteCfg(v uint16) error { store16(p.word, v); return nil }
 func (p *memPort) ReadCfg() (uint16, error) { return load16(p.word), nil }
 
 // TRLC-LINKS: REQ-SDS-005
-func (p *memPort) Close() { syscall.Munmap(p.m) }
+func (p *memPort) Close() { _ = syscall.Munmap(p.m) }
 
 // openMemPort maps the CS3 window and cross-checks it against the ioctl port:
 // both must read the same configuration-port word. On any failure the caller
@@ -93,12 +94,12 @@ func openMemPort(ref Port) (*memPort, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	m, err := syscall.Mmap(int(f.Fd()), cs3PhysBase, cs3MapLen, syscall.PROT_READ|syscall.PROT_WRITE, syscall.MAP_SHARED)
 	if err != nil {
 		return nil, fmt.Errorf("cs3 mmap: %w", err)
 	}
-	p := &memPort{m: m, word: (*uint16)(unsafe.Pointer(&m[cfgByteOff]))}
+	p := &memPort{m: m, word: (*uint16)(unsafe.Pointer(&m[cfgByteOff]))} //nolint:gosec // G103: a register in the block mapped from /dev/mem
 	want, err := ref.ReadCfg()
 	if err != nil {
 		p.Close()

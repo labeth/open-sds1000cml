@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-FPGALOAD
+
 package fpgaload
 
 import (
@@ -26,6 +27,7 @@ import (
 // TRLC-LINKS: REQ-SDS-092
 type Order int
 
+// The stored bit orders.
 const (
 	OrderUnknown     Order = iota
 	OrderNative            // header 6a f7 …: reverse each byte on the wire
@@ -39,6 +41,7 @@ func (o Order) String() string {
 		return "native Quartus order (6a f7 …)"
 	case OrderPreReversed:
 		return "pre-reversed factory order (56 ef …)"
+	case OrderUnknown:
 	}
 	return "unrecognised"
 }
@@ -51,6 +54,7 @@ func (o Order) Reverse() bool { return o == OrderNative }
 // TRLC-LINKS: REQ-SDS-092
 type BitOrder int
 
+// The bit orders a caller asks for.
 const (
 	BitOrderAuto BitOrder = iota
 	BitOrderReverse
@@ -64,6 +68,7 @@ func (b BitOrder) String() string {
 		return "reverse"
 	case BitOrderRaw:
 		return "raw"
+	case BitOrderAuto:
 	}
 	return "auto"
 }

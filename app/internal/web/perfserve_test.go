@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-WEB
+
 package web
 
 import (
@@ -34,6 +35,8 @@ func TestPerfServe(t *testing.T) {
 	fs := &fakeScope{frameGen: gen, stats: engine.Stats{Running: true, TrigPosFrac: 0.5}}
 	srv := httptest.NewServer(New(fs, nil, nil, nil).Handler())
 	defer srv.Close()
-	os.WriteFile("/tmp/perfserve.url", []byte(srv.URL), 0o644)
+	if err := os.WriteFile("/tmp/perfserve.url", []byte(srv.URL), 0o600); err != nil {
+		t.Fatal(err)
+	}
 	time.Sleep(120 * time.Second)
 }

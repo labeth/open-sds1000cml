@@ -1,8 +1,14 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-APP
+
+// Package app is the scope application's wiring: it brings the fabric up,
+// starts the acquisition engine and serves the LCD, the front panel, the web
+// UI and SCPI (Run), and is the acquisition worker the app starts again
+// (Worker).
 package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"open-sds/app/internal/analog"
@@ -114,53 +120,8 @@ func Run() {
 	// Fabric deployment: load the general image, verify the SRAM transport,
 	// then hand the bus to the acquisition worker. Any failure stops here:
 	// no health token is written, so the agent rolls the app back.
-	startMark("loading the general image")
-	if err := loadGeneralImage(gpmcFD); err != nil {
-		logf("FATAL: general image load: %v", err)
-		return
-	}
-	startMark("general image loaded")
-	sramBackend, err := sramcapture.New(b)
-	if err != nil {
-		logf("FATAL: SRAM capture: %v", err)
-		return
-	}
-	m, err := sramBackend.Status()
-	if err != nil || (m.Revision != 9 && m.Revision != 10 && m.Revision != 11) || !m.Locked {
-		logf("FATAL: the general image must report revision 9, 10 or 11, status=%+v error=%v", m, err)
-		return
-	}
-	if err := bus.EnsureDcinv(logf); err != nil {
-		logf("SRAM: coherent DMA unavailable: %v", err)
-	} else {
-		b.EnableEDMA(8192, logf)
-	}
-	if m.Revision == 10 && b.FastDrain() {
-		tp, err := bus.OpenTimingPort()
-		if err != nil {
-			logf("FATAL: SRAM timing port: %v", err)
-			return
-		}
-		fast, err := applySRAMReadTiming(tp, func() error {
-			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-			defer cancel()
-			return sramBackend.VerifyCounter(ctx)
-		})
-		tp.Close()
-		if err != nil {
-			logf("FATAL: SRAM startup transport check: %v", err)
-			return
-		}
-		logf("SRAM: full counter verified, fast GPMC timing=%v", fast)
-	}
-	logf("bus up, fast drain=%v", b.FastDrain())
-	startMark("bus up")
-	executable, err := os.Executable()
-	if err == nil {
-		err = b.StartWorker(executable, logf)
-	}
-	if err != nil {
-		logf("FATAL: acquisition worker: %v", err)
+	sramBackend, ok := bringUpFabric(b, gpmcFD)
+	if !ok {
 		return
 	}
 
@@ -182,28 +143,10 @@ func Run() {
 
 	// The vertical front end is off the GPMC bus (SPI). Optional: without it
 	// the scope still runs on the inherited boot range.
-	var fe *analog.FrontEnd
+	fe := startFrontEnd(e, calTab)
 	var feIface web.Analog
-	if dev, err := analog.NewDev(); err != nil {
-		logf("WARNING: SPI front end unavailable (%v) — V/div control disabled", err)
-	} else {
-		fe = analog.New(dev, nil, calTab)
-		if t, err := analog.DefaultZeroTrim(); err != nil {
-			logf("zero trim: built-in default rejected: %v", err)
-		} else {
-			fe.SetZeroTrim(t)
-		}
-		fe.OnOffset(e.SetOffsetDAC)       // offset re-anchors to each detent's cal zero
-		fe.OnOffsetV(e.SetChannelOffsetV) // trigger level rides the same offset reference as the samples
-		fe.OnVdiv(e.SetChannelVdiv)       // keep the trigger level→display-code map current
-		fe.OnApply(e.NoteFrontEndWrite)   // roll drops data captured across a relay switch
-		e.SetBodeScaleSource(func(ch int) float64 {
-			idx, _ := fe.Snapshot()
-			return analog.AnalogVdiv(idx[ch&1]) * fe.ProbeFactor(ch)
-		})
-		fe.OnCoupling(e.SetChannelCoupling) // software AC: the trigger level follows the AC trace
+	if fe != nil {
 		feIface = fe
-		logf("SPI front end up (seeded to boot detent, not emitted)")
 	}
 
 	if fe != nil {
@@ -301,28 +244,32 @@ func Run() {
 		logf("scpi: VXI-11 DEVICE_CORE on tcp/%d", port)
 	}
 
-	// Deliberately NO Read/Write/Idle timeouts: /api/frame.bin parks requests
-	// up to 2 s (long-poll), and a global WriteTimeout would kill every parked
-	// request. Slow-peer writes are bounded per-response inside the handler
-	// (SetWriteDeadline). Don't "harden" this without moving that contract.
+	// Deliberately NO Read/Write timeouts (see newWebServer): /api/frame.bin
+	// parks requests up to 2 s (long-poll), and a global WriteTimeout would
+	// kill every parked request. Slow-peer writes are bounded per-response
+	// inside the handler (SetWriteDeadline). Don't "harden" this without
+	// moving that contract.
 	ws := web.New(scopeSource{e, fo}, feIface, pc, screenPNG)
 	webSrv.Store(ws)
 	ws.SetInvertSource(scpiH.Inverted)         // display-level INVS: SCPI shadow → /api/status
 	ws.SetSetupMemory(webSetups{sharedSetups}) // the web top bar's Setups: the same slots as *SAV/*RCL
-	srv := &http.Server{Addr: listen, Handler: ws.Handler()}
+	srv := newWebServer(listen, ws.Handler())
 	go func() {
 		logf("web ui listening on %s", listen)
 		startMark("web up")
 		go web.Precompress()
-		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			logf("web server: %v", err)
 		}
 	}()
 
 	s := <-sig
 	logf("signal %v — stopping engine at frame boundary", s)
-	saver.Flush()          // a change still inside the debounce window survives the restart
-	lcd.SetBacklight(true) // never leave the panel dark behind the screen saver
+	saver.Flush() // a change still inside the debounce window survives the restart
+	// Never leave the panel dark behind the screen saver.
+	if err := lcd.SetBacklight(true); err != nil {
+		logf("backlight: %v", err)
+	}
 	if !e.Stop(2 * time.Second) {
 		logf("WARNING: engine did not stop in time")
 	}
@@ -330,6 +277,91 @@ func Run() {
 		logf("acquisition worker shutdown: %v", err)
 	}
 	os.Exit(0)
+}
+
+// bringUpFabric loads the general image, checks the SRAM transport (fast
+// GPMC timing where the image takes it) and starts the acquisition worker.
+// false: the fabric is not fit to drive; the failure is logged.
+// TRLC-LINKS: REQ-SDS-167
+func bringUpFabric(b *bus.Dev, gpmcFD int) (*sramcapture.Capture, bool) {
+	startMark("loading the general image")
+	if err := loadGeneralImage(gpmcFD); err != nil {
+		logf("FATAL: general image load: %v", err)
+		return nil, false
+	}
+	startMark("general image loaded")
+	sramBackend, err := sramcapture.New(b)
+	if err != nil {
+		logf("FATAL: SRAM capture: %v", err)
+		return nil, false
+	}
+	m, err := sramBackend.Status()
+	if err != nil || (m.Revision != 9 && m.Revision != 10 && m.Revision != 11) || !m.Locked {
+		logf("FATAL: the general image must report revision 9, 10 or 11, status=%+v error=%v", m, err)
+		return nil, false
+	}
+	if err := bus.EnsureDcinv(logf); err != nil {
+		logf("SRAM: coherent DMA unavailable: %v", err)
+	} else {
+		b.EnableEDMA(8192, logf)
+	}
+	if m.Revision == 10 && b.FastDrain() {
+		tp, err := bus.OpenTimingPort()
+		if err != nil {
+			logf("FATAL: SRAM timing port: %v", err)
+			return nil, false
+		}
+		fast, err := applySRAMReadTiming(tp, func() error {
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			return sramBackend.VerifyCounter(ctx)
+		})
+		tp.Close()
+		if err != nil {
+			logf("FATAL: SRAM startup transport check: %v", err)
+			return nil, false
+		}
+		logf("SRAM: full counter verified, fast GPMC timing=%v", fast)
+	}
+	logf("bus up, fast drain=%v", b.FastDrain())
+	startMark("bus up")
+	executable, err := os.Executable()
+	if err == nil {
+		err = b.StartWorker(executable, logf)
+	}
+	if err != nil {
+		logf("FATAL: acquisition worker: %v", err)
+		return nil, false
+	}
+	return sramBackend, true
+}
+
+// startFrontEnd brings up the SPI vertical front end and wires it to the
+// engine; nil when it is unavailable (logged).
+// TRLC-LINKS: REQ-SDS-167
+func startFrontEnd(e *engine.Engine, calTab *cal.Table) *analog.FrontEnd {
+	dev, err := analog.NewDev()
+	if err != nil {
+		logf("WARNING: SPI front end unavailable (%v) — V/div control disabled", err)
+		return nil
+	}
+	fe := analog.New(dev, nil, calTab)
+	if t, err := analog.DefaultZeroTrim(); err != nil {
+		logf("zero trim: built-in default rejected: %v", err)
+	} else {
+		fe.SetZeroTrim(t)
+	}
+	fe.OnOffset(e.SetOffsetDAC)       // offset re-anchors to each detent's cal zero
+	fe.OnOffsetV(e.SetChannelOffsetV) // trigger level rides the same offset reference as the samples
+	fe.OnVdiv(e.SetChannelVdiv)       // keep the trigger level→display-code map current
+	fe.OnApply(e.NoteFrontEndWrite)   // roll drops data captured across a relay switch
+	e.SetBodeScaleSource(func(ch int) float64 {
+		idx, _ := fe.Snapshot()
+		return analog.AnalogVdiv(idx[ch&1]) * fe.ProbeFactor(ch)
+	})
+	fe.OnCoupling(e.SetChannelCoupling) // software AC: the trigger level follows the AC trace
+	logf("SPI front end up (seeded to boot detent, not emitted)")
+	return fe
 }
 
 // Worker is the acquisition worker, the app started again with

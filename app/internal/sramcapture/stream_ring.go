@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-SRAMCAPTURE
+
 package sramcapture
 
 import (
@@ -81,7 +82,7 @@ func (c *Capture) StartStreamRing(ctx context.Context, cfg Config, streamLog uin
 	}
 	if err = c.Arm(ctx, cfg); err != nil {
 		c.mu.Lock()
-		c.write(19, 0)
+		_ = c.write(19, 0) // best effort: the arm's error is the one reported
 		c.ringStream = false
 		c.mu.Unlock()
 	}

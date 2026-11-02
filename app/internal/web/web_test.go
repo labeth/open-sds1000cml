@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-WEB
+
 package web
 
 import (
@@ -233,14 +234,14 @@ func (f *fakeScope) BodePoints() []engine.BodePoint {
 }
 
 // TRLC-LINKS: REQ-SDS-162
-func (f *fakeScope) AcqLog(n int) ([]engine.AcqSample, float64) {
+func (f *fakeScope) AcqLog(_ int) ([]engine.AcqSample, float64) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return f.acqLog, f.halfRate
 }
 
 // TRLC-LINKS: REQ-SDS-162
-func (f *fakeScope) CmdLog(n int) []engine.CmdNote {
+func (f *fakeScope) CmdLog(_ int) []engine.CmdNote {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return f.cmdLog
@@ -344,7 +345,7 @@ func (f *fakeAnalog) SetOffset(ch int, volts float64) uint16 {
 }
 
 // TRLC-LINKS: REQ-SDS-162
-func (f *fakeAnalog) OffsetVolts(ch int, code uint16) float64 {
+func (f *fakeAnalog) OffsetVolts(_ int, code uint16) float64 {
 	return float64(10223-int(code)) / 100
 }
 
@@ -352,7 +353,7 @@ func (f *fakeAnalog) OffsetVolts(ch int, code uint16) float64 {
 func (f *fakeAnalog) CalSource() string { return "defaults" }
 
 // TRLC-LINKS: REQ-SDS-162
-func (f *fakeAnalog) DCVolts(ch int, mean float64) float64 { return 0 }
+func (f *fakeAnalog) DCVolts(_ int, _ float64) float64 { return 0 }
 
 // TRLC-LINKS: REQ-SDS-162
 func (f *fakeAnalog) SetProbe(ch int, x float64) { f.probe[ch&1] = x }
@@ -452,7 +453,7 @@ func (f *fakeScope) SetTdiv(s float64) (engine.Band, bool) {
 func post(t *testing.T, s *Server, control string, value float64) map[string]any {
 	t.Helper()
 	body, _ := json.Marshal(map[string]any{"control": control, "value": value})
-	req := httptest.NewRequest(http.MethodPost, "/api/set", bytes.NewReader(body))
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/set", bytes.NewReader(body))
 	rec := httptest.NewRecorder()
 	s.Handler().ServeHTTP(rec, req)
 	var out map[string]any
@@ -465,7 +466,7 @@ func post(t *testing.T, s *Server, control string, value float64) map[string]any
 // TRLC-LINKS: REQ-SDS-164
 func getStatus(t *testing.T, s *Server) map[string]any {
 	t.Helper()
-	req := httptest.NewRequest(http.MethodGet, "/api/status", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/status", nil)
 	rec := httptest.NewRecorder()
 	s.Handler().ServeHTTP(rec, req)
 	var rep map[string]any
@@ -479,7 +480,7 @@ func getStatus(t *testing.T, s *Server) map[string]any {
 func TestStatusEndpoint(t *testing.T) {
 	fs := &fakeScope{stats: engine.Stats{Frames: 5, TrigCode: 31437}}
 	s := New(fs, nil, nil, nil)
-	req := httptest.NewRequest(http.MethodGet, "/api/status", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/status", nil)
 	rec := httptest.NewRecorder()
 	s.Handler().ServeHTTP(rec, req)
 	var rep map[string]any
@@ -492,15 +493,15 @@ func TestStatusEndpoint(t *testing.T) {
 	if rep["trig_volts"] != 0.0 {
 		t.Fatalf("trig_volts for code 31437 = %v, want 0", rep["trig_volts"])
 	}
-	if len(rep["tdivs"].([]any)) != 33 {
-		t.Fatalf("tdivs length = %d", len(rep["tdivs"].([]any)))
+	if tdivs := jsonAt[[]any](t, rep, "tdivs"); len(tdivs) != 33 {
+		t.Fatalf("tdivs length = %d", len(tdivs))
 	}
 }
 
 // TRLC-LINKS: REQ-SDS-161
 func TestRootServesUI(t *testing.T) {
 	s := New(&fakeScope{}, nil, nil, nil)
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 	s.Handler().ServeHTTP(rec, req)
 	if rec.Code != 200 || !bytes.Contains(rec.Body.Bytes(), []byte("open-sds1000cml")) {
@@ -516,13 +517,13 @@ func TestRootServesUI(t *testing.T) {
 func TestClaimSupersedesEarlierRun(t *testing.T) {
 	s := New(&fakeScope{}, nil, nil, nil)
 	req := func(e uint64) *http.Request {
-		return httptest.NewRequest(http.MethodGet, fmt.Sprintf("/api/frame.bin?epoch=%d", e), nil)
+		return httptest.NewRequestWithContext(t.Context(), http.MethodGet, fmt.Sprintf("/api/frame.bin?epoch=%d", e), nil)
 	}
 	if s.superseded(req(3)) {
 		t.Fatal("before any claim in this run, a page from before the restart was refused")
 	}
 	rr := httptest.NewRecorder()
-	s.Handler().ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "/api/claim", nil))
+	s.Handler().ServeHTTP(rr, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/claim", nil))
 	var c struct{ Epoch uint64 }
 	if err := json.Unmarshal(rr.Body.Bytes(), &c); err != nil || c.Epoch <= 3 {
 		t.Fatalf("claim: %v %s", err, rr.Body.String())

@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-SCPI
+
 package scpi
 
 import (
@@ -12,7 +13,7 @@ import (
 )
 
 // TRLC-LINKS: REQ-SDS-024
-func (h *Handler) execGlobal(head, arg string) []byte {
+func (h *Handler) execGlobal(head, arg string) []byte { //nolint:gocyclo,funlen // the SCPI dispatch: one case per command header
 	// The engine's snapshot, for the commands that read it only: copying it
 	// for every command was most of a query's time.
 	var st engine.Stats
@@ -280,10 +281,7 @@ func (h *Handler) execGlobal(head, arg string) []byte {
 		if h.fe != nil {
 			codeF = h.fe.TrigCode(v, src)
 		}
-		code := max(int(math.Round(codeF)), engine.TrigCodeMin)
-		if code > engine.TrigCodeMax {
-			code = engine.TrigCodeMax
-		}
+		code := min(max(int(math.Round(codeF)), engine.TrigCodeMin), engine.TrigCodeMax)
 		// The shadow holds the EFFECTIVE level — the volts the (possibly
 		// clamped, always quantized) DAC code the engine accepted maps back
 		// to — so TRLV? never echoes a level the comparator isn't at.
@@ -581,7 +579,7 @@ func (h *Handler) execGlobal(head, arg string) []byte {
 }
 
 // TRLC-LINKS: REQ-SDS-024
-func (h *Handler) execChannel(ch int, head, arg string) []byte {
+func (h *Handler) execChannel(ch int, head, arg string) []byte { //nolint:gocyclo,funlen // the channel commands' dispatch: one case per command header
 	switch head {
 	case "TRLV", "TRLV?", "TRSL", "TRSL?":
 		// The programming guide's form is <source>:TRLV / <source>:TRSL. One
@@ -903,7 +901,7 @@ func setupFileName(arg string) (string, string) {
 		return "", errOutOfRange
 	}
 	for _, r := range name {
-		if !(r >= 'A' && r <= 'Z' || r >= 'a' && r <= 'z' || r >= '0' && r <= '9' || r == '_' || r == '-' || r == '.') {
+		if (r < 'A' || r > 'Z') && (r < 'a' || r > 'z') && (r < '0' || r > '9') && r != '_' && r != '-' && r != '.' {
 			return "", errOutOfRange
 		}
 	}

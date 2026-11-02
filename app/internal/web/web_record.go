@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-WEB
+
 package web
 
 import (
@@ -110,7 +111,7 @@ func (s *Server) hRecord(w http.ResponseWriter, r *http.Request) {
 	hdr.Vpc1, hdr.Vpc2, hdr.Off1V, hdr.Off2V = vpc[0], vpc[1], off[0], off[1]
 	js, _ := json.Marshal(hdr)
 	out := make([]byte, 4, 4+len(js)+len(c1)+len(c2))
-	binary.LittleEndian.PutUint32(out, uint32(len(js)))
+	binary.LittleEndian.PutUint32(out, uint32(len(js))) //nolint:gosec // G115: a JSON header of a few KB
 	out = append(out, js...)
 	out = append(out, c1...)
 	out = append(out, c2...)

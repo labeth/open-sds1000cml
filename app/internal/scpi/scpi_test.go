@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-SCPI
+
 package scpi
 
 import (
@@ -175,8 +176,8 @@ func (d *fakeDisplay) MenuOpen() bool { return d.menu }
 func (d *fakeDisplay) SetMenuOpen(on bool) { d.menu = on }
 
 // TRLC-LINKS: REQ-SDS-024
-func newH(t testing.TB) (*Handler, *fakeScope) {
-	t.Helper()
+func newH(tb testing.TB) (*Handler, *fakeScope) {
+	tb.Helper()
 	f := &engine.Frame{
 		C1: make([]uint8, 2048), C2: make([]uint8, 2048),
 		Valid: 2048, WinCols: 2048, Seq: 3, SampleS: 800e-9, EdgeX: -1,
@@ -188,15 +189,15 @@ func newH(t testing.TB) (*Handler, *fakeScope) {
 		stats: engine.Stats{Running: true, TdivS: 500e-6, AvgCount: 16, TrigRising: true, TrigPosFrac: .5},
 		frame: f,
 	}
-	return New(fs, nil, nil, nil, t.Logf), fs
+	return New(fs, nil, nil, nil, tb.Logf), fs
 }
 
 // newHFE is newH plus a truthful fake front end (VDIV/OFST round-trips) and a
 // fake display (XYDS/PESU/MENU round-trips).
 // TRLC-LINKS: REQ-SDS-024
-func newHFE(t testing.TB) (*Handler, *fakeScope, *fakeFE) {
-	t.Helper()
-	h, fs := newH(t)
+func newHFE(tb testing.TB) (*Handler, *fakeScope, *fakeFE) {
+	tb.Helper()
+	h, fs := newH(tb)
 	fe := &fakeFE{fs: fs, probe: [2]float64{1, 1}}
 	h.fe = fe
 	h.disp = &fakeDisplay{}
@@ -578,10 +579,10 @@ func TestRollRescale(t *testing.T) {
 }
 
 // TRLC-LINKS: REQ-SDS-024
-func (f *fakeFE) TrigCode(volts float64, srcCh int) float64 { return 31437 - 911*volts }
+func (f *fakeFE) TrigCode(volts float64, _ int) float64 { return 31437 - 911*volts }
 
 // TRLC-LINKS: REQ-SDS-024
-func (f *fakeFE) TrigVolts(code uint16, srcCh int) float64 { return (31437 - float64(code)) / 911 }
+func (f *fakeFE) TrigVolts(code uint16, _ int) float64 { return (31437 - float64(code)) / 911 }
 
 // TRLC-LINKS: REQ-SDS-024
 func TestTRLVQueryFollowsLevelSetElsewhere(t *testing.T) {

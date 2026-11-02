@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-SRAMCAPTURE
+
 package sramcapture
 
 import (
@@ -25,6 +26,7 @@ type DecodedCapture struct {
 	Identity RecordIdentity
 }
 
+// SupportsDecodedCapture reports whether the image captures decoded events.
 // TRLC-LINKS: REQ-SDS-013
 func (c *Capture) SupportsDecodedCapture() (bool, error) {
 	c.mu.Lock()
@@ -34,6 +36,7 @@ func (c *Capture) SupportsDecodedCapture() (bool, error) {
 	return v[0] == 0x4501 && v[1] == 0x5201 && err == nil, err
 }
 
+// StartDecodedCapture starts capturing the decoded events of cfg's decoder.
 // TRLC-LINKS: REQ-SDS-013
 func (c *Capture) StartDecodedCapture(ctx context.Context, cfg Config) (*DecodedCapture, error) {
 	// The identity capability and the record now shown in one batch.

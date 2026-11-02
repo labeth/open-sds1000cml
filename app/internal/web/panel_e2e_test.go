@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-WEB
+
 package web
 
 import (
@@ -70,12 +71,12 @@ func TestPanelRemoteEndToEnd(t *testing.T) {
 	go pc.Run(stop)
 	s := New(ps, nil, pc, nil)
 
-	status := func() map[string]any { return getStatus(t, s)["panel"].(map[string]any) }
+	status := func() map[string]any { return jsonAt[map[string]any](t, getStatus(t, s), "panel") }
 	st := status()
-	if st["Workspace"] != "SCOPE" || st["Mode"] != "workspace" || st["FKeys"].([]any)[2].(map[string]any)["Label"] != "SPEC" {
+	if st["Workspace"] != "SCOPE" || st["Mode"] != "workspace" || jsonAt[any](t, st, "FKeys", 2, "Label") != "SPEC" {
 		t.Fatalf("status: %v", st)
 	}
-	seq := st["Seq"].(float64)
+	seq := jsonAt[float64](t, st, "Seq")
 
 	// A key wakes the long-poll.
 	got := make(chan map[string]any, 1)
@@ -89,7 +90,7 @@ func TestPanelRemoteEndToEnd(t *testing.T) {
 	}
 	select {
 	case out := <-got:
-		if out["Workspace"] != "SPECTRUM" || out["Seq"].(float64) == seq {
+		if out["Workspace"] != "SPECTRUM" || jsonAt[float64](t, out, "Seq") == seq {
 			t.Fatalf("long-poll woke with %v", out)
 		}
 	case <-time.After(3 * time.Second):
@@ -99,9 +100,9 @@ func TestPanelRemoteEndToEnd(t *testing.T) {
 	// The model lists the rows; a set changes the instrument, not the LCD.
 	_, model := httpCall(t, s, "GET", "/api/sheets", nil)
 	found := false
-	for _, tab := range model["Tabs"].([]any) {
-		for _, row := range tab.(map[string]any)["Rows"].([]any) {
-			found = found || row.(map[string]any)["ID"] == "trig.mode"
+	for _, tab := range jsonAt[[]any](t, model, "Tabs") {
+		for _, row := range jsonAt[[]any](t, tab, "Rows") {
+			found = found || jsonAt[any](t, row, "ID") == "trig.mode"
 		}
 	}
 	if !found {
@@ -111,11 +112,11 @@ func TestPanelRemoteEndToEnd(t *testing.T) {
 	if out["ok"] != true || out["text"] != "Normal" || !ps.Snapshot().Norm {
 		t.Fatalf("set trig.mode: %v (norm %v)", out, ps.Snapshot().Norm)
 	}
-	if st := status(); st["Mode"] != "workspace" || st["Workspace"] != "SPECTRUM" || !strings.HasPrefix(st["Remote"].(string), "REMOTE  TRIG mode Normal") {
+	if st := status(); st["Mode"] != "workspace" || st["Workspace"] != "SPECTRUM" || !strings.HasPrefix(jsonAt[string](t, st, "Remote"), "REMOTE  TRIG mode Normal") {
 		t.Fatalf("the LCD after a remote set: %v", st)
 	}
 	_, out = httpCall(t, s, "POST", "/api/sheets/set", map[string]any{"row": "trig.mode", "value": 7})
-	if out["ok"] == true || !strings.Contains(out["error"].(string), "has no value 7") {
+	if out["ok"] == true || !strings.Contains(jsonAt[string](t, out, "error"), "has no value 7") {
 		t.Fatalf("bad value: %v", out)
 	}
 	_, out = httpCall(t, s, "POST", "/api/sheets/set", map[string]any{"row": "time.tdiv", "text": "2us"})
@@ -127,7 +128,7 @@ func TestPanelRemoteEndToEnd(t *testing.T) {
 		t.Fatalf("force: %v", out)
 	}
 	_, out = httpCall(t, s, "POST", "/api/panel", map[string]any{"type": map[string]any{"text": "1V"}})
-	if out["ok"] != false || !strings.Contains(out["error"].(string), "nothing to type into") {
+	if out["ok"] != false || !strings.Contains(jsonAt[string](t, out, "error"), "nothing to type into") {
 		t.Fatalf("typed entry with no context: %v", out)
 	}
 	raw, _ := json.Marshal(status())

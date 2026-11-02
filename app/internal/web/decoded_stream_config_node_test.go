@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-WEB
+
 package web
 
 import (
@@ -13,7 +14,7 @@ import (
 // TRLC-LINKS: REQ-SDS-206
 func TestDecodedStreamConfigJS(t *testing.T) {
 	testenv.NeedNode(t)
-	out, err := exec.Command("node", "decoded_stream_config.test.cjs").CombinedOutput()
+	out, err := exec.CommandContext(t.Context(), "node", "decoded_stream_config.test.cjs").CombinedOutput()
 	if err != nil || !strings.Contains(string(out), "ALL PASS") {
 		t.Fatalf("decoded stream config: %v\n%s", err, out)
 	}

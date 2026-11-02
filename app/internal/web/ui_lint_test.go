@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-WEB
+
 package web
 
 import (
@@ -77,7 +78,7 @@ func TestInlineScriptBudget(t *testing.T) {
 func TestContentSecurityPolicy(t *testing.T) {
 	fs := &fakeScope{stats: engine.Stats{Running: true}}
 	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	New(fs, nil, nil, nil).Handler().ServeHTTP(rec, req)
 	csp := rec.Header().Get("Content-Security-Policy")
 	if csp == "" {

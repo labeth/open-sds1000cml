@@ -47,7 +47,7 @@ type Channel struct {
 // Trigger is the persisted trigger setup.
 // TRLC-LINKS: REQ-SDS-072, REQ-SDS-089
 type Trigger struct {
-	Qualifiers engine.TrigQual `json:"qualifiers,omitempty"`
+	Qualifiers engine.TrigQual `json:"qualifiers"`
 	LevelCode  int             `json:"level_code"`         // trigger-level DAC code; 0 = boot comparator untouched
 	Rising     bool            `json:"rising"`             // edge slope
 	Source     int             `json:"source"`             // 0=C1 1=C2
@@ -278,7 +278,7 @@ func Load(path string, logf func(string, ...any)) (Settings, bool) {
 	if logf == nil {
 		logf = func(string, ...any) {}
 	}
-	raw, err := os.ReadFile(path)
+	raw, err := os.ReadFile(path) //nolint:gosec // G304: the app's own setup file
 	if err != nil {
 		if !os.IsNotExist(err) {
 			logf("settings: read %s: %v — using defaults", path, err)
@@ -307,30 +307,32 @@ func Save(path string, s Settings) error {
 	b = append(b, '\n')
 	// A file that already holds this setup is left as it is: a write, an
 	// fsync and a rename on the stick cost milliseconds and wear it.
-	if old, err := os.ReadFile(path); err == nil && bytes.Equal(old, b) {
+	if old, err := os.ReadFile(path); err == nil && bytes.Equal(old, b) { //nolint:gosec // G304: the app's own setup file
 		return nil
 	}
 	tmp := path + ".tmp"
-	f, err := os.OpenFile(tmp, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o644)
+	f, err := os.OpenFile(tmp, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o644) //nolint:gosec // G302: the setup file is the owner's to copy off the stick
 	if err != nil {
 		return err
 	}
+	// On a failure the temporary file is cleaned up as far as it can be; the
+	// error returned is the one that stopped the save.
 	if _, err := f.Write(b); err != nil {
-		f.Close()
-		os.Remove(tmp)
+		_ = f.Close()
+		_ = os.Remove(tmp)
 		return err
 	}
 	if err := f.Sync(); err != nil {
-		f.Close()
-		os.Remove(tmp)
+		_ = f.Close()
+		_ = os.Remove(tmp)
 		return err
 	}
 	if err := f.Close(); err != nil {
-		os.Remove(tmp)
+		_ = os.Remove(tmp)
 		return err
 	}
 	if err := os.Rename(tmp, path); err != nil {
-		os.Remove(tmp)
+		_ = os.Remove(tmp)
 		return err
 	}
 	return nil

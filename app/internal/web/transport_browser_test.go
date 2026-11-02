@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-WEB
+
 package web
 
 import (
@@ -38,7 +39,7 @@ func TestTransportBrowser(t *testing.T) {
 	srv := httptest.NewServer(New(fs, nil, nil, nil).Handler())
 	defer srv.Close()
 
-	out, err := exec.Command("node", "transport_browser.mjs", srv.URL).CombinedOutput()
+	out, err := exec.CommandContext(t.Context(), "node", "transport_browser.mjs", srv.URL).CombinedOutput()
 	t.Logf("transport_browser.mjs:\n%s", out)
 	if strings.HasPrefix(strings.TrimSpace(string(out)), "SKIP:") {
 		testenv.SkipBrowser(t, "browser unavailable")

@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-FPGALOAD
+
 package fpgaload
 
 import (
@@ -92,12 +93,12 @@ func withFastWrites(load func() error) (ok bool, err error) {
 	if err != nil {
 		return false, fmt.Errorf("open: %w", err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	m, err := syscall.Mmap(int(f.Fd()), gpmcPhys, gpmcLen, syscall.PROT_READ|syscall.PROT_WRITE, syscall.MAP_SHARED)
 	if err != nil {
 		return false, fmt.Errorf("mmap: %w", err)
 	}
-	defer syscall.Munmap(m)
+	defer func() { _ = syscall.Munmap(m) }()
 	r := cs3Regs{m}
 	vendor := r.timing()
 	fast, ok := fastWrite(vendor)

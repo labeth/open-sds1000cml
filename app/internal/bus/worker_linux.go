@@ -1,7 +1,9 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-BUS
+
 package bus
 
 import (
+	"context"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -106,25 +108,25 @@ func (d *Dev) StartWorker(executable string, logf func(string, ...any)) error {
 	}
 	parent := os.NewFile(uintptr(pair[0]), "worker-parent")
 	child := os.NewFile(uintptr(pair[1]), "worker-child")
-	defer parent.Close()
-	defer child.Close()
+	defer func() { _ = parent.Close() }()
+	defer func() { _ = child.Close() }()
 	fd, err := syscall.Dup(d.fd)
 	if err != nil {
 		return err
 	}
 	inherited := os.NewFile(uintptr(fd), "inherited-gpmc-duplicate")
-	defer inherited.Close()
+	defer func() { _ = inherited.Close() }()
 	conn, err := net.FileConn(parent)
 	if err != nil {
 		return err
 	}
-	cmd := exec.Command(executable, "--acquisition-worker")
+	cmd := exec.CommandContext(context.Background(), executable, "--acquisition-worker")
 	cmd.ExtraFiles = []*os.File{inherited, child}
 	var shared []byte
 	if ring, err := createSharedRing(); err != nil {
 		logf("bus: no shared stream ring (%v); stream words go through the socket", err)
 	} else {
-		defer ring.Close()
+		defer func() { _ = ring.Close() }()
 		if shared, err = mapSharedRing(ring); err != nil {
 			logf("bus: shared stream ring map: %v; stream words go through the socket", err)
 			shared = nil
@@ -137,7 +139,7 @@ func (d *Dev) StartWorker(executable string, logf func(string, ...any)) error {
 	runtime.LockOSThread()
 	if err = cmd.Start(); err != nil {
 		runtime.UnlockOSThread()
-		conn.Close()
+		_ = conn.Close()
 		return err
 	}
 	c := &workerClient{conn: conn, cmd: cmd, done: make(chan error, 1), shared: shared}
@@ -145,17 +147,17 @@ func (d *Dev) StartWorker(executable string, logf func(string, ...any)) error {
 	var ready [1]byte
 	n, err := c.call(workerHello, 0, 0, 0, 0, ready[:])
 	if err != nil || n != 1 {
-		conn.Close()
+		_ = conn.Close()
 		_ = cmd.Process.Kill()
-		<-c.done
+		<-c.done //nolint:errcheck // the worker was killed: its exit status is not news
 		runtime.UnlockOSThread()
-		return fmt.Errorf("bus: worker startup failed: %v", err)
+		return fmt.Errorf("bus: worker startup failed: %w", err)
 	}
 	c.fast = ready[0] != 0
 	if d.edma != nil && !c.fast {
-		conn.Close()
+		_ = conn.Close()
 		_ = cmd.Process.Kill()
-		<-c.done
+		<-c.done //nolint:errcheck // the worker was killed: its exit status is not news
 		runtime.UnlockOSThread()
 		return errors.New("bus: worker lost qualified DMA capability")
 	}
@@ -250,7 +252,7 @@ func (c *workerClient) callSplit(op uint16, plane uint8, selector, value uint16,
 	}
 	if err != nil {
 		c.failed = fmt.Errorf("bus: worker transport failed (consumption uncertain): %w", err)
-		c.conn.Close()
+		_ = c.conn.Close()
 		return 0, c.failed
 	}
 	if c.response[10] != 0 {
@@ -258,7 +260,7 @@ func (c *workerClient) callSplit(op uint16, plane uint8, selector, value uint16,
 	}
 	if n-workerHeader > want {
 		c.failed = errors.New("bus: oversized worker payload")
-		c.conn.Close()
+		_ = c.conn.Close()
 		return 0, c.failed
 	}
 	k := copy(head, c.response[workerHeader:n])
@@ -305,8 +307,8 @@ func (d *Dev) recallShared(epoch, record uint32, windows []uint32, dst []byte) (
 		binary.LittleEndian.PutUint32(params[4+4*i:], v)
 	}
 	var got [4]byte
-	size := uint32(len(dst))
-	n, err := d.remote.callWith(workerRecallShared, 0, uint16(size>>16), uint16(size), epoch, params[:4+4*len(windows)], got[:])
+	size := uint32(len(dst)) //nolint:gosec // G115: a recall destination is at most a record (32 MB)
+	n, err := d.remote.callWith(workerRecallShared, 0, uint16(size>>16), uint16(size&0xffff), epoch, params[:4+4*len(windows)], got[:])
 	if err != nil {
 		return true, err
 	}
@@ -493,7 +495,7 @@ func (d *Dev) SetIsolatedLineMode(proto int) (bool, error) {
 	if d.remote == nil {
 		return false, nil
 	}
-	_, err := d.remote.call(workerLineMode, 0, 0, uint16(proto), 0, nil)
+	_, err := d.remote.call(workerLineMode, 0, 0, uint16(proto&0xffff), 0, nil)
 	return true, err
 }
 
@@ -508,6 +510,6 @@ func (d *Dev) ReadIsolatedLines(epoch uint32, from int, flush bool, dst []byte) 
 	if flush {
 		plane = 1
 	}
-	n, err := d.remote.call(workerLines, plane, uint16(from>>16), uint16(from), epoch, dst)
+	n, err := d.remote.call(workerLines, plane, uint16((from>>16)&0xffff), uint16(from&0xffff), epoch, dst)
 	return n, true, err
 }

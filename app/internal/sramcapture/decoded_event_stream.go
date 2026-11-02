@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-SRAMCAPTURE
+
 package sramcapture
 
 import (
@@ -135,7 +136,7 @@ func (c *Capture) readDecodedEvents(epoch uint32, limit int, dst []DecodedEvent)
 	if limit < 1 || limit > DecodedBatchMax {
 		return nil, errors.New("sramcapture: invalid event batch limit")
 	}
-	if isolated, ok := c.bus.(interface {
+	if isolated, ok := c.bus.(interface { //nolint:nestif // the bus worker's isolated read, in place of the bus reads below
 		ReadIsolatedDecodedBytes(uint32, []byte) (int, bool, error)
 	}); ok {
 		c.mu.Lock()
@@ -299,7 +300,7 @@ func (c *Capture) ReadDecodedLines(epoch uint32, from int, flush bool, dst []byt
 	defer c.mu.Unlock()
 	n, owned, err := w.ReadIsolatedLines(epoch, from, flush, dst)
 	if owned && err == nil {
-		c.beats.Add(uint64(n/2 + 1)) // the bus is alive: it feeds the health heartbeat as event reads do
+		c.beats.Add(uint64(n/2 + 1)) //nolint:gosec // G115: a count of words read, never negative; the bus is alive: it feeds the health heartbeat as event reads do
 	}
 	return n, owned, err
 }

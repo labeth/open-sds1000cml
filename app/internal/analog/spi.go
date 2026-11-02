@@ -74,7 +74,7 @@ func ioctlSys(fd int, req uintptr, p unsafe.Pointer) error {
 
 // TRLC-LINKS: REQ-SDS-015
 func openSPI(path string, bits uint8) (int, error) {
-	f, err := os.OpenFile(path, os.O_RDWR, 0)
+	f, err := os.OpenFile(path, os.O_RDWR, 0) //nolint:gosec // G304: a spidev node the front end names
 	if err != nil {
 		return -1, err
 	}
@@ -84,13 +84,13 @@ func openSPI(path string, bits uint8) (int, error) {
 	mode := uint8(spiMode)
 	speed := uint32(spiSpeedHz)
 	b := bits
-	if err := ioctlPtr(fd, spiWrMode, unsafe.Pointer(&mode)); err != nil {
+	if err := ioctlPtr(fd, spiWrMode, unsafe.Pointer(&mode)); err != nil { //nolint:gosec // G103: the system call takes its argument by address
 		return -1, fmt.Errorf("%s: set mode: %w", path, err)
 	}
-	if err := ioctlPtr(fd, spiWrBits, unsafe.Pointer(&b)); err != nil {
+	if err := ioctlPtr(fd, spiWrBits, unsafe.Pointer(&b)); err != nil { //nolint:gosec // G103: the system call takes its argument by address
 		return -1, fmt.Errorf("%s: set bits: %w", path, err)
 	}
-	if err := ioctlPtr(fd, spiWrMaxSpeed, unsafe.Pointer(&speed)); err != nil {
+	if err := ioctlPtr(fd, spiWrMaxSpeed, unsafe.Pointer(&speed)); err != nil { //nolint:gosec // G103: the system call takes its argument by address
 		return -1, fmt.Errorf("%s: set speed: %w", path, err)
 	}
 	// Prevent the *os.File from being finalized (and the fd closed).
@@ -121,29 +121,32 @@ func NewDev() (*Dev, error) {
 // TRLC-LINKS: REQ-SDS-015
 func (d *Dev) message(fd int, buf []byte, bits uint8) error {
 	tr := spiTransfer{
-		txBuf:       uint64(uintptr(unsafe.Pointer(&buf[0]))),
-		len:         uint32(len(buf)),
+		txBuf:       uint64(uintptr(unsafe.Pointer(&buf[0]))), //nolint:gosec // G103: the spidev transfer names its buffer by address; the buffer outlives the ioctl
+		len:         uint32(len(buf)),                         //nolint:gosec // G115: a frame of a few bytes
 		speedHz:     spiSpeedHz,
 		bitsPerWord: bits,
 	}
-	err := ioctlPtr(fd, spiMessage1, unsafe.Pointer(&tr))
+	err := ioctlPtr(fd, spiMessage1, unsafe.Pointer(&tr)) //nolint:gosec // G103: the system call takes its argument by address
 	// txBuf holds buf's address as an integer the GC can't see; keep buf
 	// alive until the syscall (which reads through that pointer) returns.
 	runtime.KeepAlive(buf)
 	return err
 }
 
+// WriteRelay shifts one 24-bit word into the relay and attenuator shift
+// register.
 // TRLC-LINKS: REQ-SDS-015
 func (d *Dev) WriteRelay(word uint32) error {
 	// One 24-bit word in a 32-bit container (len=4), MSB-first on the wire.
 	var buf [4]byte
-	buf[0] = byte(word)
-	buf[1] = byte(word >> 8)
-	buf[2] = byte(word >> 16)
+	buf[0] = byte(word & 0xff)
+	buf[1] = byte((word >> 8) & 0xff)
+	buf[2] = byte((word >> 16) & 0xff)
 	buf[3] = 0
 	return d.message(d.relayFD, buf[:], 24)
 }
 
+// WriteGain sets the two channels' gain DACs.
 // TRLC-LINKS: REQ-SDS-015
 func (d *Dev) WriteGain(ch2, ch1 uint8) error {
 	// Two separate CS-framed transfers, no address byte, CH2 then CH1: one
@@ -151,10 +154,10 @@ func (d *Dev) WriteGain(ch2, ch1 uint8) error {
 	// (cs_change), one syscall where two took twice the time.
 	buf := [2]byte{ch2, ch1}
 	tr := [2]spiTransfer{
-		{txBuf: uint64(uintptr(unsafe.Pointer(&buf[0]))), len: 1, speedHz: spiSpeedHz, bitsPerWord: 8, csChange: 1},
-		{txBuf: uint64(uintptr(unsafe.Pointer(&buf[1]))), len: 1, speedHz: spiSpeedHz, bitsPerWord: 8},
+		{txBuf: uint64(uintptr(unsafe.Pointer(&buf[0]))), len: 1, speedHz: spiSpeedHz, bitsPerWord: 8, csChange: 1}, //nolint:gosec // G103: the spidev transfer names its buffer by address; the buffer outlives the ioctl
+		{txBuf: uint64(uintptr(unsafe.Pointer(&buf[1]))), len: 1, speedHz: spiSpeedHz, bitsPerWord: 8},              //nolint:gosec // G103: the spidev transfer names its buffer by address; the buffer outlives the ioctl
 	}
-	err := ioctlPtr(d.gainFD, spiMessage2, unsafe.Pointer(&tr[0]))
+	err := ioctlPtr(d.gainFD, spiMessage2, unsafe.Pointer(&tr[0])) //nolint:gosec // G103: the system call takes its argument by address
 	runtime.KeepAlive(&buf)
 	return err
 }

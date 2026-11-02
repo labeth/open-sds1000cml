@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-WEB-REMOTE
+
 package web
 
 import (
@@ -276,7 +277,7 @@ func (g *remoteGate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if g.down.Load() {
 		if hj, ok := w.(http.Hijacker); ok {
 			if c, _, err := hj.Hijack(); err == nil {
-				c.Close()
+				_ = c.Close()
 				return
 			}
 		}
@@ -304,7 +305,8 @@ type remoteRig struct {
 // phones' requests by path since the last /hits). The before hooks wire the
 // controller and the engine before its loop runs (a frame source, frames).
 // TRLC-LINKS: REQ-SDS-220
-func newRemoteRig(t testing.TB, before ...func(*panel.Controller, *remoteEngine)) *remoteRig {
+func newRemoteRig(tb testing.TB, before ...func(*panel.Controller, *remoteEngine)) *remoteRig {
+	tb.Helper()
 	eng := newRemoteEngine()
 	fe := analog.New(remoteSPI{}, func(time.Duration) {}, nil)
 	fe.OnOffset(eng.SetOffsetDAC)
@@ -360,7 +362,7 @@ func newRemoteRig(t testing.TB, before ...func(*panel.Controller, *remoteEngine)
 		n, _ := strconv.ParseInt(q.URL.Query().Get("pass"), 10, 64)
 		eng.lock(func() {
 			eng.fakeScope.mu.Lock()
-			eng.fakeScope.stats.MaskPass = n
+			eng.stats.MaskPass = n
 			eng.fakeScope.mu.Unlock()
 		})
 		writeJSON(w, map[string]bool{"ok": true})
@@ -381,7 +383,7 @@ func newRemoteRig(t testing.TB, before ...func(*panel.Controller, *remoteEngine)
 		})
 	})
 	r.ctrl = httptest.NewServer(mux)
-	t.Cleanup(func() {
+	tb.Cleanup(func() {
 		r.ctrl.Close()
 		gate.down.Store(false)
 		r.app.Close()

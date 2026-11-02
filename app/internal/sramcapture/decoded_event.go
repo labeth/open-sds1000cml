@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-SRAMCAPTURE
+
 package sramcapture
 
 import (
@@ -10,6 +11,7 @@ import (
 // until the general image advertises its event-stream capability.
 const DecodedEventBytes = 32
 
+// The kinds of decoded event.
 const (
 	EventStart uint8 = iota + 1
 	EventData

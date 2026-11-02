@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-WEB
+
 package web
 
 import (
@@ -17,7 +18,7 @@ import (
 func TestSuperresJS(t *testing.T) {
 	testenv.NeedNode(t)
 	node, _ := exec.LookPath("node")
-	out, err := exec.Command(node, "superres.test.cjs").CombinedOutput()
+	out, err := exec.CommandContext(t.Context(), node, "superres.test.cjs").CombinedOutput()
 	t.Logf("superres.test.cjs output:\n%s", out)
 	if err != nil {
 		t.Fatalf("superres.js test failed: %v", err)
@@ -30,7 +31,7 @@ func TestSuperresJS(t *testing.T) {
 // TRLC-LINKS: REQ-SDS-019
 func TestEventStackUARTReviewJS(t *testing.T) {
 	testenv.NeedNode(t)
-	if out, err := exec.Command("node", "event_stack.test.cjs").CombinedOutput(); err != nil {
+	if out, err := exec.CommandContext(t.Context(), "node", "event_stack.test.cjs").CombinedOutput(); err != nil {
 		t.Fatalf("event stack review: %v\n%s", err, out)
 	}
 }

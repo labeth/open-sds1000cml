@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-WEB
+
 package web
 
 import (
@@ -34,7 +35,7 @@ ok(b.bodeFmtHz(1e3) === "1k", "1k: " + b.bodeFmtHz(1e3));
 console.log(fail ? fail + " FAILED" : "ALL PASS");
 process.exit(fail ? 1 : 0);
 `
-	cmd := exec.Command("node", "-e", script)
+	cmd := exec.CommandContext(t.Context(), "node", "-e", script)
 	cmd.Dir = "."
 	out, err := cmd.CombinedOutput()
 	t.Logf("bode.js helpers:\n%s", out)
@@ -109,7 +110,7 @@ for (const f of [0, -1, NaN, Infinity, 1e-9, 999, 1e6, 2.5e6]) {
 console.log(fail ? fail + " FAILED" : "ALL PASS");
 process.exit(fail ? 1 : 0);
 `
-	cmd := exec.Command("node", "-e", script)
+	cmd := exec.CommandContext(t.Context(), "node", "-e", script)
 	cmd.Dir = "."
 	out, err := cmd.CombinedOutput()
 	t.Logf("bode.js breaker:\n%s", out)
@@ -151,7 +152,7 @@ ok(els.bodeRef.value === "0" && els.bodeDut.value === "1", "after 3 s the scope'
 console.log(fail ? fail + " FAILED" : "ALL PASS");
 process.exit(fail ? 1 : 0);
 `
-	cmd := exec.Command("node", "-e", script)
+	cmd := exec.CommandContext(t.Context(), "node", "-e", script)
 	cmd.Dir = "."
 	out, err := cmd.CombinedOutput()
 	t.Logf("Bode channels:\n%s", out)

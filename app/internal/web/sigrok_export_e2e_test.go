@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-WEB
+
 package web
 
 import (
@@ -49,11 +50,11 @@ const frame = { seq: 1, c1, c2, vpc1: 0.02, vpc2: 0.02, off1_v: 0, off2_v: 0, dt
 require("fs").writeFileSync(process.argv[process.argv.length - 1], sigrokSR(sigrokSeries(frame)));
 `
 	node, _ := exec.LookPath("node")
-	if out, err := exec.Command(node, "-e", script, "--", sr).CombinedOutput(); err != nil {
+	if out, err := exec.CommandContext(t.Context(), node, "-e", script, "--", sr).CombinedOutput(); err != nil {
 		t.Fatalf("export encoder failed: %v\n%s", err, out)
 	}
 
-	show, err := exec.Command("sigrok-cli", "-i", sr, "--show").CombinedOutput()
+	show, err := exec.CommandContext(t.Context(), "sigrok-cli", "-i", sr, "--show").CombinedOutput()
 	if err != nil {
 		t.Fatalf("sigrok-cli --show failed: %v\n%s", err, show)
 	}
@@ -63,7 +64,7 @@ require("fs").writeFileSync(process.argv[process.argv.length - 1], sigrokSR(sigr
 		}
 	}
 
-	dec, err := exec.Command("sigrok-cli", "-i", sr,
+	dec, err := exec.CommandContext(t.Context(), "sigrok-cli", "-i", sr,
 		"-P", "uart:rx=D1:baudrate=62500", "-A", "uart=rx-data").CombinedOutput()
 	if err != nil {
 		t.Fatalf("sigrok-cli uart decode failed: %v\n%s", err, dec)

@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-FPGALOAD
+
 package fpgaload
 
 import (
@@ -37,7 +38,7 @@ func (f *fakePort) WriteCfg(v uint16) error {
 	if f.writeErrAt > 0 && len(f.writes) == f.writeErrAt {
 		return f.writeErr
 	}
-	prev := uint16(BitNCONFIG)
+	prev := BitNCONFIG
 	if len(f.writes) >= 2 {
 		prev = f.writes[len(f.writes)-2]
 	}

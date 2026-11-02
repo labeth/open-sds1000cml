@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-WEB
+
 package web
 
 import (
@@ -40,7 +41,7 @@ func TestINVSBrowser(t *testing.T) {
 	srv := httptest.NewServer(New(fs, nil, nil, nil).Handler())
 	defer srv.Close()
 
-	out, err := exec.Command("node", "invs_browser.mjs", srv.URL).CombinedOutput()
+	out, err := exec.CommandContext(t.Context(), "node", "invs_browser.mjs", srv.URL).CombinedOutput()
 	t.Logf("invs_browser.mjs:\n%s", out)
 	if strings.HasPrefix(strings.TrimSpace(string(out)), "SKIP:") {
 		testenv.SkipBrowser(t, "browser unavailable")

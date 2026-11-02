@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-WEB
+
 package web
 
 import (
@@ -70,6 +71,7 @@ func (o *ownerScope) SoundWait(after uint64, timeout time.Duration) uint64 {
 // newOwnerScope is the scope, the running panel and the server.
 // TRLC-LINKS: REQ-SDS-277
 func newOwnerScope(t *testing.T) (*ownerScope, *panel.Controller, *Server, func()) {
+	t.Helper()
 	gen := func() *engine.Frame {
 		const N = 1024
 		c1 := make([]uint8, N)
@@ -93,7 +95,7 @@ func newOwnerScope(t *testing.T) (*ownerScope, *panel.Controller, *Server, func(
 func soundBinHead(t *testing.T, h http.Handler, url string) soundBinHeader {
 	t.Helper()
 	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, url, nil))
+	h.ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), http.MethodGet, url, nil))
 	b := rec.Body.Bytes()
 	if len(b) < 8 || string(b[:2]) != "SB" {
 		t.Fatalf("%s: %d %q", url, rec.Code, b)
@@ -111,7 +113,7 @@ func soundBinHead(t *testing.T, h http.Handler, url string) soundBinHeader {
 func soundJSON(t *testing.T, h http.Handler, method, url, body string) map[string]any {
 	t.Helper()
 	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, httptest.NewRequest(method, url, strings.NewReader(body)))
+	h.ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), method, url, strings.NewReader(body)))
 	var out map[string]any
 	if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
 		t.Fatalf("%s %s: %v %q", method, url, err, rec.Body.String())
@@ -159,7 +161,7 @@ func TestSoundLCDKeyPausesThePage(t *testing.T) {
 	}
 
 	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/api/panel", strings.NewReader(`{"button":"set50"}`)))
+	h.ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/panel", strings.NewReader(`{"button":"set50"}`)))
 	waitFor(t, "the LCD's key took the scope", pc.SoundPaused)
 	_, before := o.leased()
 	hd := soundBinHead(t, h, "/api/sound.bin?max=64&wait=50")
@@ -196,14 +198,14 @@ func TestSoundOwnerBrowser(t *testing.T) {
 	defer done()
 	mux := http.NewServeMux()
 	// TRLC-LINKS: REQ-SDS-277
-	mux.HandleFunc("/test/leases", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/test/leases", func(w http.ResponseWriter, _ *http.Request) {
 		on, n := o.leased()
 		_, _ = io.WriteString(w, fmt.Sprintf(`{"on":%v,"n":%d}`, on, n))
 	})
 	mux.Handle("/", s.Handler())
 	srv := httptest.NewServer(mux)
 	defer srv.Close()
-	out, err := exec.Command("node", "sound_owner_browser.mjs", srv.URL).CombinedOutput()
+	out, err := exec.CommandContext(t.Context(), "node", "sound_owner_browser.mjs", srv.URL).CombinedOutput()
 	t.Logf("sound_owner_browser.mjs:\n%s", out)
 	if strings.Contains(string(out), "SKIP:") {
 		testenv.SkipBrowser(t, "browser driver skipped: %s", firstLine(out))

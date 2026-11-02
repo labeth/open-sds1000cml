@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-WEB
+
 package web
 
 import (
@@ -17,7 +18,7 @@ import (
 func TestSuperresCompJS(t *testing.T) {
 	testenv.NeedNode(t)
 	node, _ := exec.LookPath("node")
-	out, err := exec.Command(node, "superres_comp.test.cjs").CombinedOutput()
+	out, err := exec.CommandContext(t.Context(), node, "superres_comp.test.cjs").CombinedOutput()
 	t.Logf("superres_comp.test.cjs output:\n%s", out)
 	if err != nil {
 		t.Fatalf("superres_comp.js test failed: %v", err)

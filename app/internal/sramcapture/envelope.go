@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-SRAMCAPTURE
+
 package sramcapture
 
 import (
@@ -79,9 +80,9 @@ func (c *Capture) RecallEnvelope(ctx context.Context, offset, bucket, buckets ui
 // recallEnvelope reduces the window of the record m, read just now, into dst.
 // Called with c.mu held.
 // TRLC-LINKS: REQ-SDS-010, REQ-SDS-033
-func (c *Capture) recallEnvelope(ctx context.Context, m Metadata, offset, bucket, buckets uint32, dst io.Writer) error {
+func (c *Capture) recallEnvelope(ctx context.Context, m Metadata, offset, bucket, buckets uint32, dst io.Writer) error { //nolint:gocyclo // the envelope recall's register protocol, kept in one place
 	if present, err := c.envelopeCapabilityOf(m.Revision); err != nil || !present {
-		return fmt.Errorf("sramcapture: fabric lacks the envelope recall: %v", err)
+		return fmt.Errorf("sramcapture: fabric lacks the envelope recall: %w", err)
 	}
 	if m.DataFault {
 		return errors.New("sramcapture: interleave FIFO fault; record has missing samples")
@@ -111,7 +112,7 @@ func (c *Capture) recallEnvelope(ctx context.Context, m Metadata, offset, bucket
 	position := uint32(pw[0]) | uint32(pw[1])<<16
 	var err error
 	if skip := (target - position) & addressMask; skip != 0 {
-		if err = c.writeMany([2]uint16{8, uint16(skip)}, [2]uint16{9, uint16(skip >> 16)}); err != nil {
+		if err = c.writeMany([2]uint16{8, uint16(skip & 0xffff)}, [2]uint16{9, uint16(skip >> 16)}); err != nil {
 			return err
 		}
 		if err = c.command(ctx, 3); err != nil {
@@ -133,8 +134,8 @@ func (c *Capture) recallEnvelope(ctx context.Context, m Metadata, offset, bucket
 		}
 	}()
 	total := words + prefix
-	if err = c.writeMany([2]uint16{43, uint16(bucket)}, [2]uint16{44, control}, [2]uint16{45, prefix},
-		[2]uint16{8, uint16(total)}, [2]uint16{9, uint16(total >> 16)}); err != nil {
+	if err = c.writeMany([2]uint16{43, uint16(bucket & 0xffff)}, [2]uint16{44, control}, [2]uint16{45, prefix},
+		[2]uint16{8, uint16(total & 0xffff)}, [2]uint16{9, uint16(total >> 16)}); err != nil {
 		return err
 	}
 	if err = c.command(ctx, 2); err != nil {
@@ -196,7 +197,7 @@ func (c *Capture) recallEnvelope(ctx context.Context, m Metadata, offset, bucket
 	}
 	data := make([]byte, out*4)
 	for i, h := range halves {
-		data[2*i], data[2*i+1] = byte(h), byte(h>>8)
+		data[2*i], data[2*i+1] = byte(h&0xff), byte(h>>8)
 	}
 	n, err := dst.Write(data)
 	if err == nil && n != len(data) {

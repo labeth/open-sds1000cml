@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-BUS
+
 package bus
 
 import (
@@ -169,7 +170,7 @@ func (w *acquisitionWorker) streamPump() {
 		block, err := w.capture.DrainStream(ctx, w.sExpected, streamRingWriter{w})
 		// A pump started ahead of its stream waits for it to be enabled; once
 		// words came, a disabled stream is a loss like any other.
-		if err == sramcapture.ErrNoStreamBlock || err == sramcapture.ErrStreamDisabled && w.sExpected == 0 {
+		if errors.Is(err, sramcapture.ErrNoStreamBlock) || errors.Is(err, sramcapture.ErrStreamDisabled) && w.sExpected == 0 {
 			return
 		}
 		if err != nil {
@@ -384,7 +385,7 @@ func (w *acquisitionWorker) stream(enabled bool) error {
 // handle executes one bounded hardware operation. The response buffer is held
 // until its socket write succeeds; a blocked GUI never blocks pump.
 // TRLC-LINKS: REQ-SDS-001, REQ-SDS-013
-func (w *acquisitionWorker) handle(request []byte) int {
+func (w *acquisitionWorker) handle(request []byte) int { //nolint:gocyclo,funlen // the worker's request dispatch: one case per operation of the socket protocol
 	copy(w.response[:workerHeader], request)
 	w.response[10] = 0
 	op := binary.LittleEndian.Uint16(request[8:10])
@@ -396,7 +397,7 @@ func (w *acquisitionWorker) handle(request []byte) int {
 	data := w.response[workerHeader:]
 	n := 0
 	var err error
-	if count > workerPayload {
+	if count > workerPayload { //nolint:nestif // one request's handling, entered only when its size is valid
 		err = errors.New("oversized worker request")
 	} else {
 		switch op {
@@ -511,7 +512,7 @@ func (w *acquisitionWorker) handle(request []byte) int {
 			}
 			w.linesStore.Reset(int(value))
 			w.lines = w.linesStore
-			if w.fault == errWorkerQueueOverflow {
+			if errors.Is(w.fault, errWorkerQueueOverflow) {
 				// The queue overflowed before the switch (a busy bus fills it
 				// while the stream is being set up, about a second): the
 				// transcript says so and goes on, as it does for the FIFO's
@@ -586,7 +587,7 @@ func (w *acquisitionWorker) handle(request []byte) int {
 			if err == nil && out.n != size {
 				err = fmt.Errorf("shared recall produced %d of %d bytes", out.n, size)
 			}
-			binary.LittleEndian.PutUint32(data, uint32(out.n))
+			binary.LittleEndian.PutUint32(data, uint32(out.n)) //nolint:gosec // G115: a reply length bounded by the response buffer
 		case workerStackDownload:
 			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 			err = w.capture.StackDownloadWords(ctx, int(value), data[:count])
@@ -626,7 +627,7 @@ func (w *acquisitionWorker) handle(request []byte) int {
 				w.sHead = (w.sHead + k) % len(w.sring)
 			}
 			w.sCount -= amount
-			w.sFirst += uint64(amount / 4)
+			w.sFirst += uint64(amount / 4) //nolint:gosec // G115: bytes consumed, never negative
 			n = 8 + amount
 		case workerStreamPeek:
 			n, err = w.streamPeek(epoch, data)
@@ -715,7 +716,7 @@ func (w *acquisitionWorker) serve(fd int) error {
 		w.streamPump()
 		busy := time.Since(t0)
 		if pending != 0 {
-			n, _, errno := syscall.RawSyscall(syscall.SYS_WRITE, uintptr(fd), uintptr(unsafe.Pointer(&w.response[0])), uintptr(pending))
+			n, _, errno := syscall.RawSyscall(syscall.SYS_WRITE, uintptr(fd), uintptr(unsafe.Pointer(&w.response[0])), uintptr(pending)) //nolint:gosec // G103: the system call takes its argument by address
 			if errno == 0 {
 				if int(n) != pending {
 					return errors.New("short worker response")
@@ -728,8 +729,8 @@ func (w *acquisitionWorker) serve(fd int) error {
 				return errno
 			}
 		}
-		if pending == 0 {
-			n, _, errno := syscall.RawSyscall(syscall.SYS_READ, uintptr(fd), uintptr(unsafe.Pointer(&request[0])), uintptr(len(request)))
+		if pending == 0 { //nolint:nestif // the socket's read path, taken only with no reply pending
+			n, _, errno := syscall.RawSyscall(syscall.SYS_READ, uintptr(fd), uintptr(unsafe.Pointer(&request[0])), uintptr(len(request))) //nolint:gosec // G103: the system call takes its argument by address
 			if errno == 0 {
 				if n == 0 {
 					return nil
@@ -743,7 +744,7 @@ func (w *acquisitionWorker) serve(fd int) error {
 				// Answer before the next FPGA drain: a pump between request and
 				// reply puts a FIFO read into every register round trip and holds
 				// a decoded stream below 921600 Bd.
-				n, _, errno := syscall.RawSyscall(syscall.SYS_WRITE, uintptr(fd), uintptr(unsafe.Pointer(&w.response[0])), uintptr(pending))
+				n, _, errno := syscall.RawSyscall(syscall.SYS_WRITE, uintptr(fd), uintptr(unsafe.Pointer(&w.response[0])), uintptr(pending)) //nolint:gosec // G103: the system call takes its argument by address
 				if errno == 0 {
 					if int(n) != pending {
 						return errors.New("short worker response")
@@ -760,7 +761,7 @@ func (w *acquisitionWorker) serve(fd int) error {
 		poll := struct {
 			FD              int32
 			Events, Revents int16
-		}{FD: int32(fd), Events: 1}
+		}{FD: int32(fd), Events: 1} //nolint:gosec // G115: an open descriptor, small and non-negative
 		if pending != 0 {
 			poll.Events = 4
 		}
@@ -785,7 +786,7 @@ func (w *acquisitionWorker) serve(fd int) error {
 			}
 		}
 		timeout := syscall.NsecToTimespec(int64(wait))
-		_, _, errno := syscall.RawSyscall6(syscall.SYS_PPOLL, uintptr(unsafe.Pointer(&poll)), 1, uintptr(unsafe.Pointer(&timeout)), 0, 0, 0)
+		_, _, errno := syscall.RawSyscall6(syscall.SYS_PPOLL, uintptr(unsafe.Pointer(&poll)), 1, uintptr(unsafe.Pointer(&timeout)), 0, 0, 0) //nolint:gosec // G103: the system call takes its argument by address
 		if errno != 0 && errno != syscall.EINTR {
 			return errno
 		}

@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-BUS
+
 package bus
 
 import (
@@ -113,7 +114,7 @@ func (f *fakeCC) W(off, v uint32) {
 		return
 	case offShadow0 + offESR + 4:
 		if v&cb != 0 && !f.noComplete {
-			pb := uint32(offPaRAM + ch*paramSize)
+			pb := offPaRAM + ch*paramSize
 			src, dst := f.regs[pb+4], f.regs[pb+0xC]
 			bcnt := f.regs[pb+8] >> 16
 			f.transfers = append(f.transfers, struct{ src, dst, bcnt uint32 }{src, dst, bcnt})
@@ -169,7 +170,7 @@ func TestRunParamProgramsChannel40(t *testing.T) {
 		t.Fatal("runParam did not complete")
 	}
 	const ch = uint32(edmaChan)
-	pb := uint32(offPaRAM + ch*paramSize)
+	pb := offPaRAM + ch*paramSize
 	want := map[uint32]uint32{
 		pb + 0x00:        optSyncAB | ch<<12 | optTCINTEN,
 		pb + 0x04:        burstPortPhys,

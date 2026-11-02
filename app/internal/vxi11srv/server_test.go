@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-VXI11SRV
+
 package vxi11srv
 
 import (
@@ -20,10 +21,12 @@ type testClient struct {
 // TRLC-LINKS: REQ-SDS-024
 func dial(t *testing.T, port int) *testClient {
 	t.Helper()
-	c, err := net.DialTimeout("tcp", fmt.Sprintf("127.0.0.1:%d", port), time.Second)
+	d := net.Dialer{Timeout: time.Second}
+	c, err := d.DialContext(t.Context(), "tcp", fmt.Sprintf("127.0.0.1:%d", port))
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(func() { _ = c.Close() })
 	return &testClient{c: c, xid: 100}
 }
 
@@ -45,7 +48,9 @@ func (tc *testClient) call(t *testing.T, proc uint32, args []byte) []byte {
 	if err := writeRecord(tc.c, msg); err != nil {
 		t.Fatal(err)
 	}
-	tc.c.SetReadDeadline(time.Now().Add(3 * time.Second))
+	if err := tc.c.SetReadDeadline(time.Now().Add(3 * time.Second)); err != nil {
+		t.Fatal(err)
+	}
 	rep, err := readRecord(tc.c)
 	if err != nil {
 		t.Fatal(err)
@@ -62,6 +67,7 @@ func (tc *testClient) call(t *testing.T, proc uint32, args []byte) []byte {
 
 // TRLC-LINKS: REQ-SDS-024
 func (tc *testClient) createLink(t *testing.T) (uint32, uint32) {
+	t.Helper()
 	args := putU32(nil, 1)
 	args = putU32(args, 0)
 	args = putU32(args, 0)
@@ -72,6 +78,7 @@ func (tc *testClient) createLink(t *testing.T) (uint32, uint32) {
 
 // TRLC-LINKS: REQ-SDS-024
 func (tc *testClient) write(t *testing.T, lid uint32, s string) {
+	t.Helper()
 	args := putU32(nil, lid)
 	args = putU32(args, 5000)
 	args = putU32(args, 0)
@@ -85,6 +92,7 @@ func (tc *testClient) write(t *testing.T, lid uint32, s string) {
 
 // TRLC-LINKS: REQ-SDS-024
 func (tc *testClient) read(t *testing.T, lid, reqSize uint32) (uint32, uint32, []byte) {
+	t.Helper()
 	args := putU32(nil, lid)
 	args = putU32(args, reqSize)
 	args = putU32(args, 2000)
@@ -118,7 +126,7 @@ func startTest(t *testing.T) (*Server, int) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { s.ln.Close() })
+	t.Cleanup(func() { _ = s.ln.Close() })
 	return s, port
 }
 
@@ -126,7 +134,6 @@ func startTest(t *testing.T) (*Server, int) {
 func TestLinkWriteRead(t *testing.T) {
 	_, port := startTest(t)
 	tc := dial(t, port)
-	defer tc.c.Close()
 
 	errc, lid := tc.createLink(t)
 	if errc != 0 || lid == 0 {
@@ -143,7 +150,6 @@ func TestLinkWriteRead(t *testing.T) {
 func TestChunkedRead(t *testing.T) {
 	_, port := startTest(t)
 	tc := dial(t, port)
-	defer tc.c.Close()
 	_, lid := tc.createLink(t)
 	tc.write(t, lid, "BIG?\n")
 
@@ -177,7 +183,6 @@ func TestSingleLinkAndRelease(t *testing.T) {
 
 	// Second connection: create_link must fail with error 11.
 	tc2 := dial(t, port)
-	defer tc2.c.Close()
 	errc, _ := tc2.createLink(t)
 	if errc != errLocked {
 		t.Fatalf("second link err = %d, want %d", errc, errLocked)
@@ -185,7 +190,9 @@ func TestSingleLinkAndRelease(t *testing.T) {
 
 	// Dropping the first TCP connection must free the link (a dead client
 	// must never wedge the interface).
-	tc1.c.Close()
+	if err := tc1.c.Close(); err != nil {
+		t.Fatal(err)
+	}
 	deadline := time.Now().Add(2 * time.Second)
 	for {
 		errc, lid2 := tc2.createLink(t)
@@ -203,7 +210,6 @@ func TestSingleLinkAndRelease(t *testing.T) {
 func TestReadTimeout(t *testing.T) {
 	_, port := startTest(t)
 	tc := dial(t, port)
-	defer tc.c.Close()
 	_, lid := tc.createLink(t)
 	// Nothing pending (setter line produced no reply) → error 15 after
 	// io_timeout.
@@ -220,7 +226,6 @@ func TestReadTimeout(t *testing.T) {
 func TestEndFlagTerminatesMessage(t *testing.T) {
 	_, port := startTest(t)
 	tc := dial(t, port)
-	defer tc.c.Close()
 	_, lid := tc.createLink(t)
 	tc.write(t, lid, "*IDN?")
 	if errc, _, data := tc.read(t, lid, 0x400000); errc != 0 || string(data) != "Siglent,TEST,0,0\n" {

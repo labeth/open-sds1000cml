@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-SETTINGS
+
 package settings
 
 import (
@@ -146,90 +147,10 @@ func Apply(s Settings, eng Engine, fe Analog, pc Panel, logf func(string, ...any
 		logf = func(string, ...any) {}
 	}
 	if eng != nil {
-		if finite(s.TdivS) && s.TdivS > 0 {
-			if _, ok := eng.SetTdiv(s.TdivS); !ok {
-				logf("settings: tdiv %g not in ladder — skipped", s.TdivS)
-			}
-		}
-		eng.SetNorm(s.Trigger.Norm)
-		eng.SetTrigSlope(s.Trigger.Rising)
-		eng.SetTrigSource(s.Trigger.Source) // clamps to 0/1
-		eng.SetTrigType(s.Trigger.Type)     // clamps to edge on out-of-range
-		// Level code 0 = "boot comparator untouched" — never stage it. The
-		// uint16 conversion is guarded in float-free int space (an
-		// out-of-range conversion is implementation-defined on ARMv7).
-		if c := s.Trigger.LevelCode; c > 0 && c <= 0xFFFF {
-			eng.SetTrigLevelCode(uint16(c)) // clamps to the operational window
-		}
-		if p := s.Trigger.PosFrac; finite(p) && p > 0 && p <= 1 {
-			eng.SetTrigPosFrac(p)
-		}
-		if md, ok := eng.(interface{ SetMemDepth(int) int }); ok && s.Acq.MemDepth > 0 {
-			md.SetMemDepth(s.Acq.MemDepth) // clamps to the backend's range
-		}
-		if finite(s.Trigger.HoldoffS) {
-			eng.SetHoldoff(s.Trigger.HoldoffS) // clamps [0, 10] s
-		}
-		if rate, ok := eng.(interface{ SetPrecisionRate(float64) float64 }); ok && finite(s.Acq.PrecisionRateHz) && s.Acq.PrecisionRateHz > 0 {
-			rate.SetPrecisionRate(s.Acq.PrecisionRateHz)
-		}
-		// A missing qualifier block in older settings has PulseLvl=0.
-		q := s.Trigger.Qualifiers
-		if qe, ok := eng.(interface {
-			SetPulseParams(float64, float64, float64, int)
-			SetSlopeParams(float64, float64, float64, float64, int)
-			SetVideoParams(int, int, bool)
-		}); ok && q.PulseLvl > 0 {
-			if finite(q.PulseLvl) && finite(q.PulseMinNs) && finite(q.PulseMaxNs) && q.PulseMinNs >= 0 && q.PulseMaxNs >= 0 {
-				qe.SetPulseParams(q.PulseLvl, q.PulseMinNs, q.PulseMaxNs, q.PulseCond)
-			}
-			if finite(q.SlopeLo) && finite(q.SlopeHi) && finite(q.SlopeMinNs) && finite(q.SlopeMaxNs) && q.SlopeMinNs >= 0 && q.SlopeMaxNs >= 0 {
-				qe.SetSlopeParams(q.SlopeLo, q.SlopeHi, q.SlopeMinNs, q.SlopeMaxNs, q.SlopeCond)
-			}
-			qe.SetVideoParams(q.VideoStd, q.VideoLine, q.VideoNeg)
-		}
-		if rs, ok := eng.(interface{ SetRollStream(bool) }); ok {
-			rs.SetRollStream(s.Acq.RollStream)
-		}
-		eng.SetAcqMode(s.Acq.Mode) // clamps to normal on out-of-range
-		if s.Acq.AvgCount > 0 {
-			eng.SetAvgCount(s.Acq.AvgCount) // clamps [1, 256]
-		}
-		if s.Acq.EresLen > 0 {
-			eng.SetEresLen(s.Acq.EresLen) // clamps [1, 64] odd
-		}
+		applyEngine(s, eng, logf)
 	}
 	if fe != nil {
-		for ch := range 2 {
-			cs := s.Ch[ch]
-			// V/div + offset only when the saved front end had actually been
-			// driven: restoring boot defaults onto a virgin front end would
-			// break the seed-don't-emit startup rule (spec 06 §4.4) for no
-			// gain. Coupling/probe are software-only and always safe.
-			if s.VertSet {
-				if idx, ok := analog.PlanVdiv(cs.VdivV); ok {
-					if err := fe.SetVdiv(ch, idx); err != nil {
-						logf("settings: SetVdiv C%d: %v", ch+1, err)
-					}
-				} else {
-					logf("settings: C%d vdiv %g not in ladder — skipped", ch+1, cs.VdivV)
-				}
-			}
-			if cs.OffsetSet && finite(cs.OffsetV) {
-				fe.SetOffset(ch, cs.OffsetV) // per-tier offset law clamps
-			}
-			if cs.Coupling >= analog.CplDC && cs.Coupling <= analog.CplGND {
-				_ = fe.SetCoupling(ch, cs.Coupling)
-			}
-			if cs.Probe == 1 || cs.Probe == 10 || cs.Probe == 100 { // same domain the web enforces
-				fe.SetProbe(ch, cs.Probe)
-			}
-			if b, ok := fe.(interface{ SetBWL(ch int, on bool) error }); ok && s.VertSet {
-				if err := b.SetBWL(ch, cs.BWL); err != nil {
-					logf("settings: BWL C%d: %v", ch+1, err)
-				}
-			}
-		}
+		applyChannels(s, fe, logf)
 	}
 	if b, ok := eng.(interface{ SetBodeMode(bool, int, int) }); ok && s.Bode.Set {
 		ref, dut := s.Bode.Ref&1, s.Bode.Dut&1
@@ -243,6 +164,103 @@ func Apply(s Settings, eng Engine, fe Analog, pc Panel, logf func(string, ...any
 			ViewMode: s.ViewMode, Decode: s.Decode, Display: s.Display, UI: s.UI, Serial: s.Serial,
 			Screen: s.Screen, Sound: s.Sound,
 		})
+	}
+}
+
+// applyEngine restores the acquisition and trigger settings.
+// TRLC-LINKS: REQ-SDS-072
+func applyEngine(s Settings, eng Engine, logf func(string, ...any)) {
+	if finite(s.TdivS) && s.TdivS > 0 {
+		if _, ok := eng.SetTdiv(s.TdivS); !ok {
+			logf("settings: tdiv %g not in ladder — skipped", s.TdivS)
+		}
+	}
+	eng.SetNorm(s.Trigger.Norm)
+	eng.SetTrigSlope(s.Trigger.Rising)
+	eng.SetTrigSource(s.Trigger.Source) // clamps to 0/1
+	eng.SetTrigType(s.Trigger.Type)     // clamps to edge on out-of-range
+	// Level code 0 = "boot comparator untouched" — never stage it. The
+	// uint16 conversion is guarded in float-free int space (an
+	// out-of-range conversion is implementation-defined on ARMv7).
+	if c := s.Trigger.LevelCode; c > 0 && c <= 0xFFFF {
+		eng.SetTrigLevelCode(uint16(c)) // clamps to the operational window
+	}
+	if p := s.Trigger.PosFrac; finite(p) && p > 0 && p <= 1 {
+		eng.SetTrigPosFrac(p)
+	}
+	if md, ok := eng.(interface{ SetMemDepth(int) int }); ok && s.Acq.MemDepth > 0 {
+		md.SetMemDepth(s.Acq.MemDepth) // clamps to the backend's range
+	}
+	if finite(s.Trigger.HoldoffS) {
+		eng.SetHoldoff(s.Trigger.HoldoffS) // clamps [0, 10] s
+	}
+	if rate, ok := eng.(interface{ SetPrecisionRate(float64) float64 }); ok && finite(s.Acq.PrecisionRateHz) && s.Acq.PrecisionRateHz > 0 {
+		rate.SetPrecisionRate(s.Acq.PrecisionRateHz)
+	}
+	applyQualifiers(s.Trigger.Qualifiers, eng)
+	if rs, ok := eng.(interface{ SetRollStream(bool) }); ok {
+		rs.SetRollStream(s.Acq.RollStream)
+	}
+	eng.SetAcqMode(s.Acq.Mode) // clamps to normal on out-of-range
+	if s.Acq.AvgCount > 0 {
+		eng.SetAvgCount(s.Acq.AvgCount) // clamps [1, 256]
+	}
+	if s.Acq.EresLen > 0 {
+		eng.SetEresLen(s.Acq.EresLen) // clamps [1, 64] odd
+	}
+}
+
+// applyQualifiers restores the pulse, slope and video trigger qualifiers. A
+// missing qualifier block in older settings has PulseLvl=0.
+// TRLC-LINKS: REQ-SDS-072
+func applyQualifiers(q engine.TrigQual, eng Engine) {
+	if qe, ok := eng.(interface {
+		SetPulseParams(float64, float64, float64, int)
+		SetSlopeParams(float64, float64, float64, float64, int)
+		SetVideoParams(int, int, bool)
+	}); ok && q.PulseLvl > 0 {
+		if finite(q.PulseLvl) && finite(q.PulseMinNs) && finite(q.PulseMaxNs) && q.PulseMinNs >= 0 && q.PulseMaxNs >= 0 {
+			qe.SetPulseParams(q.PulseLvl, q.PulseMinNs, q.PulseMaxNs, q.PulseCond)
+		}
+		if finite(q.SlopeLo) && finite(q.SlopeHi) && finite(q.SlopeMinNs) && finite(q.SlopeMaxNs) && q.SlopeMinNs >= 0 && q.SlopeMaxNs >= 0 {
+			qe.SetSlopeParams(q.SlopeLo, q.SlopeHi, q.SlopeMinNs, q.SlopeMaxNs, q.SlopeCond)
+		}
+		qe.SetVideoParams(q.VideoStd, q.VideoLine, q.VideoNeg)
+	}
+}
+
+// applyChannels restores each channel's vertical settings.
+// TRLC-LINKS: REQ-SDS-072
+func applyChannels(s Settings, fe Analog, logf func(string, ...any)) {
+	for ch := range 2 {
+		cs := s.Ch[ch]
+		// V/div + offset only when the saved front end had actually been
+		// driven: restoring boot defaults onto a virgin front end would
+		// break the seed-don't-emit startup rule (spec 06 §4.4) for no
+		// gain. Coupling/probe are software-only and always safe.
+		if s.VertSet {
+			if idx, ok := analog.PlanVdiv(cs.VdivV); ok {
+				if err := fe.SetVdiv(ch, idx); err != nil {
+					logf("settings: SetVdiv C%d: %v", ch+1, err)
+				}
+			} else {
+				logf("settings: C%d vdiv %g not in ladder — skipped", ch+1, cs.VdivV)
+			}
+		}
+		if cs.OffsetSet && finite(cs.OffsetV) {
+			fe.SetOffset(ch, cs.OffsetV) // per-tier offset law clamps
+		}
+		if cs.Coupling >= analog.CplDC && cs.Coupling <= analog.CplGND {
+			_ = fe.SetCoupling(ch, cs.Coupling)
+		}
+		if cs.Probe == 1 || cs.Probe == 10 || cs.Probe == 100 { // same domain the web enforces
+			fe.SetProbe(ch, cs.Probe)
+		}
+		if b, ok := fe.(interface{ SetBWL(ch int, on bool) error }); ok && s.VertSet {
+			if err := b.SetBWL(ch, cs.BWL); err != nil {
+				logf("settings: BWL C%d: %v", ch+1, err)
+			}
+		}
 	}
 }
 

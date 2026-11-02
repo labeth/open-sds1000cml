@@ -190,6 +190,8 @@ type measVal struct {
 	edgeRead     uint64 // its edge windows' read (engine.Frame.EdgeRead)
 }
 
+// New is the web UI's server over sc; fe and panel may be nil, and screen
+// renders the LCD as a PNG.
 // TRLC-LINKS: REQ-SDS-161, REQ-SDS-162, REQ-SDS-163, REQ-SDS-164
 func New(sc Scope, fe Analog, panel Panel, screen func() []byte) *Server {
 	s := &Server{sc: sc, fe: fe, panel: panel, screen: screen, epoch0: uint64(time.Now().UnixMilli())}
@@ -203,6 +205,7 @@ func New(sc Scope, fe Analog, panel Panel, screen func() []byte) *Server {
 // TRLC-LINKS: REQ-SDS-164
 func (s *Server) SetInvertSource(fn func() [2]bool) { s.invSrc = fn }
 
+// Handler routes the page, its assets and the /api endpoints.
 // TRLC-LINKS: REQ-SDS-161
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
@@ -231,7 +234,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/record.bin", s.hRecord)
 	mux.HandleFunc("/api/zones", s.hZones)
 	mux.HandleFunc("/api/serial", s.hSerial)
-	mux.HandleFunc("GET /api/serial/protocols", func(w http.ResponseWriter, r *http.Request) { writeJSON(w, engine.SerialDecoderList()) })
+	mux.HandleFunc("GET /api/serial/protocols", func(w http.ResponseWriter, _ *http.Request) { writeJSON(w, engine.SerialDecoderList()) })
 	mux.HandleFunc("/api/mask", s.hMask)
 	mux.HandleFunc("/api/maskfail", s.hMaskFail)
 	mux.HandleFunc("/api/bode", s.hBode)
@@ -252,12 +255,13 @@ func (s *Server) Handler() http.Handler {
 // hClaim issues a fresh single-client epoch (see Server.epoch). The page calls
 // it once on load; opening a second browser bumps the epoch and takes over.
 // TRLC-LINKS: REQ-SDS-161
-func (s *Server) hClaim(w http.ResponseWriter, r *http.Request) {
+func (s *Server) hClaim(w http.ResponseWriter, _ *http.Request) {
 	e := s.epoch.Add(1)
 	w.Header().Set("Content-Type", "application/json")
 	// The encoder's text for the map, written directly.
-	w.Write(strconv.AppendUint([]byte(`{"epoch":`), e, 10))
-	w.Write([]byte("}\n"))
+	// A write to a client that went away has no one to report to.
+	_, _ = w.Write(strconv.AppendUint([]byte(`{"epoch":`), e, 10))
+	_, _ = w.Write([]byte("}\n"))
 }
 
 // hTune applies the live frame-rate and CPU tuning knobs and
@@ -274,7 +278,7 @@ func (s *Server) hTune(w http.ResponseWriter, r *http.Request) {
 	// its present setting; only what the body carries is overridden.
 	t := cur
 	if err := json.NewDecoder(io.LimitReader(r.Body, 4<<10)).Decode(&t); err != nil {
-		writeJSON(w, map[string]any{"ok": false, "err": "bad json"})
+		writeBadJSON(w)
 		return
 	}
 	writeJSON(w, s.sc.Tune(t))
@@ -291,7 +295,7 @@ func (s *Server) superseded(r *http.Request) bool {
 		return false
 	}
 	var e uint64
-	fmt.Sscanf(q, "%d", &e)
+	_, _ = fmt.Sscanf(q, "%d", &e) // unparsable: 0, exempt like an absent epoch
 	cur := s.epoch.Load()
 	return e != 0 && cur != s.epoch0 && e != cur
 }
@@ -329,7 +333,7 @@ func (s *Server) hPanel(w http.ResponseWriter, r *http.Request) {
 		} `json:"set"`
 	}
 	if err := json.NewDecoder(io.LimitReader(r.Body, 4<<10)).Decode(&req); err != nil {
-		writeJSON(w, map[string]any{"ok": false, "err": "bad json"})
+		writeBadJSON(w)
 		return
 	}
 	if s.panel == nil {
@@ -352,7 +356,7 @@ func (s *Server) hPanel(w http.ResponseWriter, r *http.Request) {
 		} else {
 			res = pr.SheetSet(req.Set.Row, nil, req.Set.Text)
 		}
-		writeJSON(w, map[string]any{"ok": res.OK, "applied": res.Text, "row": res.Row, "value": res.Value, "error": res.Error})
+		writeJSON(w, map[string]any{"ok": res.OK, "applied": res.Text, "row": res.Row, "value": res.Value, "error": res.Error}) //nolint:goconst // JSON field names: the literal shows the reply's shape
 		return
 	}
 	if pk, isKeys := s.panel.(panelKeys); isKeys && req.Remote && (req.Button != "" || req.Knob != "") {
@@ -379,14 +383,14 @@ func (s *Server) hPanel(w http.ResponseWriter, r *http.Request) {
 
 // hScreen returns a PNG of the current LCD render — the exact device screen.
 // TRLC-LINKS: REQ-SDS-161
-func (s *Server) hScreen(w http.ResponseWriter, r *http.Request) {
+func (s *Server) hScreen(w http.ResponseWriter, _ *http.Request) {
 	if s.screen == nil {
 		http.Error(w, "no screen", http.StatusServiceUnavailable)
 		return
 	}
 	w.Header().Set("Content-Type", "image/png")
 	w.Header().Set("Cache-Control", "no-store")
-	w.Write(s.screen())
+	_, _ = w.Write(s.screen())
 }
 
 // pageCSP is the strict same-origin CSP of the pages. Script and connect are
@@ -424,10 +428,16 @@ func (s *Server) hRemote(w http.ResponseWriter, r *http.Request) {
 	serveAsset(w, r, "remote.html")
 }
 
+// writeBadJSON answers a request whose body is not the JSON it takes.
+// TRLC-LINKS: REQ-SDS-162
+func writeBadJSON(w http.ResponseWriter) {
+	writeJSON(w, map[string]any{"ok": false, "err": "bad json"})
+}
+
 // TRLC-LINKS: REQ-SDS-161, REQ-SDS-162, REQ-SDS-163, REQ-SDS-164
 func writeJSON(w http.ResponseWriter, v any) {
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(v)
+	_ = json.NewEncoder(w).Encode(v) // a client that went away has no one to report to
 }
 
 const screenCols = 800
@@ -480,7 +490,7 @@ func (s *Server) hPanelScan(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost {
 		var p sramcapture.PanelConfig
 		if err := json.NewDecoder(io.LimitReader(r.Body, 4<<10)).Decode(&p); err != nil {
-			writeJSON(w, map[string]any{"ok": false, "err": "bad json"})
+			writeBadJSON(w)
 			return
 		}
 		if err := ps.SetPanelScan(p); err != nil {
@@ -502,7 +512,7 @@ func (s *Server) hPanelScan(w http.ResponseWriter, r *http.Request) {
 // TRLC-LINKS: REQ-SDS-018
 func (s *Server) hStreamLines(w http.ResponseWriter, r *http.Request) {
 	src, ok := s.panel.(interface {
-		StreamLines(from, max int) (streamview.LinesPage, bool)
+		StreamLines(from, limit int) (streamview.LinesPage, bool)
 	})
 	if !ok {
 		http.Error(w, "no decoded stream", http.StatusNotFound)

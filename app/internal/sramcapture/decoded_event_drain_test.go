@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-SRAMCAPTURE
+
 package sramcapture
 
 import (
@@ -44,7 +45,7 @@ func TestDecodedEventDrainRejectsMissingSequenceAndShortWrite(t *testing.T) {
 		e := DecodedEvent{Epoch: 7, Kind: EventData, Protocol: 1, Sequence: sequence}
 		raw, _ := e.MarshalBinary()
 		c := &Capture{bus: &eventBus{enabled: true, epoch: 7, data: raw, fail: -1}}
-		count, err := c.DrainDecodedEvents(context.Background(), 7, eventWriter(func(p []byte) (int, error) {
+		count, err := c.DrainDecodedEvents(context.Background(), 7, eventWriter(func(_ []byte) (int, error) {
 			if sequence != 0 {
 				t.Fatal("published discontinuous stream")
 			}
