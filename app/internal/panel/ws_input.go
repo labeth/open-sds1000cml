@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-PANEL
+
 package panel
 
 import (
@@ -43,6 +44,7 @@ func (c *Controller) switchWS(i wsview.WS) {
 		if dec == framecalc.ProtoOff {
 			c.autoDecodeBus()
 		}
+	case wsview.Scope, wsview.Spectrum, wsview.Compare: // nothing to seed
 	}
 	s := c.snap()
 	again := wsDefs[i].cycle
@@ -89,14 +91,14 @@ func (c *Controller) nextView() {
 		name, again = viewName(c.viewMode), viewName(nextSpecView(c.viewMode))
 	case wsview.Measure:
 		c.ui.measAll = !c.ui.measAll
-		name, again = map[bool]string{true: "All values", false: "Statistics"}[c.ui.measAll], map[bool]string{true: "Statistics", false: "All values"}[c.ui.measAll]
+		name, again = map[bool]string{true: labelAllValues, false: labelStats}[c.ui.measAll], map[bool]string{true: labelStats, false: labelAllValues}[c.ui.measAll]
 	case wsview.Compare:
 		stacking := c.stack != nil
 		c.mu.Unlock()
 		if stacking {
 			c.stackCancel("", false)
 		} else {
-			c.stackStart()
+			_ = c.stackStart() // it toasts why it cannot start
 		}
 		return
 	}
@@ -116,7 +118,7 @@ func (c *Controller) nextView() {
 func busViewName(u *uiState) string {
 	switch {
 	case u.busStream:
-		return "Stream"
+		return labelStream
 	case u.busEye:
 		return "Eye diagram"
 	case u.busVisual:
@@ -143,7 +145,7 @@ func busViewNext(u *uiState) string {
 	case u.busStream:
 		return "Visual"
 	case u.busEye:
-		return "Stream"
+		return labelStream
 	case u.busVisual:
 		return "Packets"
 	}
@@ -278,6 +280,7 @@ func posJob2(s *sv) string {
 		return "fine marker"
 	case wsview.Measure:
 		return "cursor B"
+	case wsview.Scope, wsview.Compare: // no second job
 	}
 	return ""
 }
@@ -302,6 +305,7 @@ func (c *Controller) posJobTurn(s *sv, dir, steps int) {
 		c.specFine(dir, steps)
 	case wsview.Measure:
 		c.measCursor(1, dir, steps)
+	case wsview.Scope, wsview.Compare: // no second job
 	}
 }
 
@@ -327,7 +331,7 @@ func toolLine(s *sv, head ...wsview.Seg) []wsview.Seg {
 	}
 	out := make([]wsview.Seg, len(head), len(head)+3)
 	copy(out, head)
-	return append(out, wsview.Seg{Key: "Position", Job: pos}, wsview.Seg{Key: "push", Job: push})
+	return append(out, wsview.Seg{Key: ctlPosition, Job: pos}, wsview.Seg{Key: ctlPush, Job: push})
 }
 
 // trigPosTurn moves the trigger position (zoomed: the zoom window).
@@ -373,11 +377,12 @@ func (c *Controller) adjustPush() {
 	case ws == wsview.Bus:
 		s := c.snap()
 		dec := busDecoding(s)
-		if dec && visual {
+		switch {
+		case dec && visual:
 			c.toast(visualAdjustToast, 1500*time.Millisecond)
-		} else if dec {
+		case dec:
 			c.openPickWS()
-		} else {
+		default:
 			c.autoDecodeBus()
 		}
 	case ws == wsview.Spectrum:
@@ -407,7 +412,7 @@ func (c *Controller) positionPush() {
 	case s.ui.ws == wsview.Spectrum && s.viewMode == viewSound:
 		c.soundChannel()
 	case posJob2(s) == "":
-		c.centreTrigger()
+		_ = c.centreTrigger() // cannot fail
 		c.toast("Trigger to centre", 900*time.Millisecond)
 	default:
 		c.posJobToggle(s)
@@ -461,9 +466,9 @@ func (c *Controller) tdivTurn(dir int) {
 				i = k
 			}
 		}
-		c.setZoom(zoomFactors[clampInt(i+dir, 1, len(zoomFactors)-1)])
+		_ = c.setZoom(zoomFactors[clampInt(i+dir, 1, len(zoomFactors)-1)]) // an offered zoom
 	default:
-		c.stepTdiv(-dir)
+		_ = c.stepTdiv(-dir) // at the ladder's end it stays
 	}
 }
 
@@ -519,7 +524,7 @@ func adjTarget(s *sv) *row {
 		return r
 	}
 	if s.curOn {
-		return rowByID["curs."+string(rune('a'+s.curSel))]
+		return rowByID[cursorRowID(s.curSel)]
 	}
 	return nil
 }
@@ -582,7 +587,7 @@ func (c *Controller) runAuto() {
 	ws, view := c.autoTargetLocked()
 	inSound := c.lcdInSoundLocked()
 	c.mu.Unlock()
-	if !(ws == wsview.Spectrum && view == viewSound) {
+	if ws != wsview.Spectrum || view != viewSound {
 		// AUTO frames captures: a page's audio stream gives the fabric back
 		// first, or the sweep would search a stream for a signal.
 		c.snd.lcdTake(inSound)
@@ -668,6 +673,7 @@ func (c *Controller) defaultSetupUI() {
 		c.seedMeas()
 	case wsview.Bus:
 		c.autoDecodeBus()
+	case wsview.Scope, wsview.Spectrum, wsview.Compare: // nothing to seed
 	}
 }
 

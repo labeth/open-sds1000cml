@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-PANEL
+
 package panel
 
 import (
@@ -107,7 +108,7 @@ func (c *Controller) statsReset() {
 
 // measTabOpen reports the MEAS tab showing (its rows show live values).
 // TRLC-LINKS: REQ-SDS-217
-func measTabOpen(s *sv) bool { return s.ui.open && sheetTabs[s.ui.tab].id == "meas" }
+func measTabOpen(s *sv) bool { return s.ui.open && sheetTabs[s.ui.tab].id == tabIDMeas }
 
 // measVals measures the channels in need: every parameter's value.
 // TRLC-LINKS: REQ-SDS-217
@@ -190,7 +191,7 @@ func (c *Controller) measFrame(a *anaState, s *sv, f *engine.Frame) {
 	// An edge-window reading is counted once, on the frame it is new to.
 	freshEdge := f.EdgeRead == 0 || f.EdgeRead != a.statEdge
 	a.statEdge = f.EdgeRead
-	any := false
+	anyOn := false
 	for _, it := range s.meas {
 		if !a.allOK[it.ch] {
 			continue
@@ -207,10 +208,10 @@ func (c *Controller) measFrame(a *anaState, s *sv, f *engine.Frame) {
 		}
 		if !math.IsNaN(v) {
 			st.Add(v)
-			any = true
+			anyOn = true
 		}
 	}
-	if any {
+	if anyOn {
 		a.statN++
 		a.statAt = c.now()
 	}
@@ -238,7 +239,7 @@ func (c *Controller) setCursorMode(v int) {
 	c.curOn = v != 0
 	if v != 0 {
 		c.curType = v - 1
-		c.ui.adj = "curs." + string(rune('a'+c.curSel))
+		c.ui.adj = cursorRowID(c.curSel)
 	}
 	c.mu.Unlock()
 	c.pushLEDs()
@@ -290,6 +291,10 @@ func cursorTimeAt(s *sv, x float64) float64 {
 	pos, span, at := cursorScreen(s)
 	return at + (x-pos)*span
 }
+
+// cursorRowID is the row of cursor sel (0 = A, 1 = B).
+// TRLC-LINKS: REQ-SDS-217
+func cursorRowID(sel int) string { return [2]string{"curs.a", "curs.b"}[sel&1] }
 
 // cursorYOf is the screen fraction down (0 the +4 division row, 1 the -4)
 // where channel ch shows v volts at its tip.
@@ -530,21 +535,7 @@ func (c *Controller) measPane(s *sv) *wsview.MeasPane {
 	c.amu.Unlock()
 	if u.measAll {
 		p.Caption = "all values, both channels (live)"
-		// the web's order and columns
-		for row, id := range measAllOrder {
-			i := measIndex(id)
-			if i < 0 || row >= len(p.AllRows) {
-				continue
-			}
-			p.AllRows[row][0] = measParams[i].short
-			for ch := range 2 {
-				p.AllRows[row][1+ch] = "---"
-				if s.chDisp[ch] && allOK[ch] {
-					p.AllRows[row][1+ch] = fmtMeas(i, all[ch][i])
-				}
-			}
-		}
-		p.AllN, p.AllSplit = min(len(measAllOrder), len(p.AllRows)), measAllSplit
+		allValueRows(s, p, all, allOK)
 	} else {
 		// The span runs to the last reading counted, not to now: stopped,
 		// a caption that kept counting redrew the whole LCD ten times a
@@ -567,7 +558,7 @@ func (c *Controller) measPane(s *sv) *wsview.MeasPane {
 			}
 			p.Stats = append(p.Stats, wsview.StatRow{
 				Name: "C" + strconv.Itoa(r.it.ch+1) + " " + measParams[r.it.param].short,
-				Col:  wsview.C1 + wsview.Col(r.it.ch), Now: fmtMeas(r.it.param, r.now), Mean: fmtMeas(r.it.param, r.mean),
+				Col:  wsview.C1 + wsview.Col(r.it.ch), Now: fmtMeas(r.it.param, r.now), Mean: fmtMeas(r.it.param, r.mean), //nolint:gosec // G115: ch is 0 or 1
 				Min: fmtMeas(r.it.param, r.mn), Max: fmtMeas(r.it.param, r.mx), Sdev: sdev, N: strconv.Itoa(r.cnt),
 			})
 		}
@@ -584,10 +575,31 @@ func (c *Controller) measPane(s *sv) *wsview.MeasPane {
 	if s.curOn {
 		next = []string{"Time", "Volts", "off"}[1+s.curType]
 	}
-	p.Tool = toolLine(s, wsview.Seg{Key: "Adjust", Job: "cursor A"}, wsview.Seg{Key: "push", Job: "cursors " + next})
+	p.Tool = toolLine(s, wsview.Seg{Key: ctlAdjust, Job: "cursor A"}, wsview.Seg{Key: ctlPush, Job: "cursors " + next})
 	p.Again = "F4 again: All values"
 	if u.measAll {
 		p.Again = "F4 again: Statistics"
 	}
 	return p
+}
+
+// allValueRows fills MEASURE's all-values table from each channel's values
+// (all, per parameter; allOK whether the channel read), in the web's order
+// and columns.
+// TRLC-LINKS: REQ-SDS-217
+func allValueRows(s *sv, p *wsview.MeasPane, all [2][]float64, allOK [2]bool) {
+	for row, id := range measAllOrder {
+		i := measIndex(id)
+		if i < 0 || row >= len(p.AllRows) {
+			continue
+		}
+		p.AllRows[row][0] = measParams[i].short
+		for ch := range 2 {
+			p.AllRows[row][1+ch] = "---"
+			if s.chDisp[ch] && allOK[ch] {
+				p.AllRows[row][1+ch] = fmtMeas(i, all[ch][i])
+			}
+		}
+	}
+	p.AllN, p.AllSplit = min(len(measAllOrder), len(p.AllRows)), measAllSplit
 }

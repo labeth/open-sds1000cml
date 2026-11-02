@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-PANEL
+
 package panel
 
 import (
@@ -164,7 +165,7 @@ func (c *Controller) button(code int) {
 		}
 		// Toggle RUN/STOP from the engine's state, not the shadow: a single that
 		// self-stopped moments ago may not be synced into the shadow yet.
-		c.setRun(map[bool]int{true: 1, false: 0}[c.eng.Snapshot().Running])
+		_ = c.setRun(map[bool]int{true: 1, false: 0}[c.eng.Snapshot().Running]) // cannot fail
 	case btnSingle:
 		c.single1() // Normal + one triggered capture, then stop
 	case btnAuto:
@@ -174,7 +175,7 @@ func (c *Controller) button(code int) {
 	case btnSet50:
 		c.setTrigMid()
 	case btnForce:
-		c.force()
+		_ = c.force() // cannot fail
 	case btnPrint:
 		c.printScreen()
 	case btnCh1VdivPush, btnCh2VdivPush:
@@ -182,11 +183,11 @@ func (c *Controller) button(code int) {
 	case btnCh1PosPush, btnCh2PosPush:
 		ch := map[bool]int{true: 1, false: 0}[code == btnCh2PosPush]
 		if c.fe != nil {
-			c.setOffsetTip(ch, 0) // Zero: the trace back to 0 V
+			_ = c.setOffsetTip(ch, 0) // Zero: the trace back to 0 V
 			c.toast(fmt.Sprintf("CH%d offset 0 V", ch+1), 900*time.Millisecond)
 		}
 	case btnTrigLvlPush:
-		c.zeroTrigLevel() // Zero: the trigger level to 0 V
+		_ = c.zeroTrigLevel() // Zero: the trigger level to 0 V
 		c.toast("Trigger level 0 V", 900*time.Millisecond)
 	case btnTdivPush:
 		c.tdivPush()
@@ -358,7 +359,7 @@ func (c *Controller) dispatch(name string, dir, steps int) {
 		// 40 codes was 22 div at 2 mV/div.
 		nc := int(c.trigCode) - dir*c.trigStepCodes()*steps
 		nc = clampInt(nc, engine.TrigCodeMin, engine.TrigCodeMax)
-		c.trigCode = uint16(nc)
+		c.trigCode = uint16(nc) //nolint:gosec // G115: clamped to the trigger code range just above
 		c.eng.SetTrigLevelCode(c.trigCode)
 	case "adjust":
 		// The workspace's tool, the sheet's row, or the picker's byte.

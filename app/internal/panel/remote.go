@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-PANEL
+
 package panel
 
 import (
@@ -29,6 +30,19 @@ type KeyStatus struct {
 
 // ToolSeg is one knob or push and its job now.
 type ToolSeg struct{ Knob, Job string }
+
+// The controls the tool lines name.
+const (
+	ctlAdjust   = "Adjust"
+	ctlPosition = "Position"
+	ctlPush     = "push"
+)
+
+// The remote's calls that are not sheet rows, as SetResult.Row names them.
+const (
+	rowWorkspace = "workspace"
+	rowAgain     = "again"
+)
 
 // OptModel is one option of an enum row.
 type OptModel struct {
@@ -206,12 +220,13 @@ func workspaceView(s *sv, ws wsview.WS) string {
 	case wsview.Bus:
 		return busViewName(&s.ui)
 	case wsview.Measure:
-		return map[bool]string{true: "All values", false: "Statistics"}[s.ui.measAll]
+		return map[bool]string{true: labelAllValues, false: labelStats}[s.ui.measAll]
 	case wsview.Compare:
 		if s.stacking {
 			return "Stacking"
 		}
 		return "Compare"
+	case wsview.Scope, wsview.Spectrum: // their view is the one chosen (below)
 	}
 	v := s.ui.views[ws]
 	if ws == s.ui.ws {
@@ -247,7 +262,7 @@ func (c *Controller) status(s *sv) Status {
 	case u.open:
 		st.Mode = "sheet"
 	default:
-		st.Mode = "workspace"
+		st.Mode = rowWorkspace
 	}
 	if v.Keys != nil {
 		for i, k := range v.Keys.Items {
@@ -269,14 +284,15 @@ func (c *Controller) status(s *sv) Status {
 			rm.Text = "" // a live status (a mask test's counts, the stack's): /api/sheets has it
 		}
 		st.Sheet.Row = &rm
-		st.Tool = []ToolSeg{{"S/DIV", "tab"}, {"Adjust", "row"}, {"push", "edit"}, {"Position", "change the row"}, {"push", "default"}}
-		if u.sub == subMatch {
-			st.Tool = []ToolSeg{{"Adjust", "key"}, {"push", "type"}, {"Position", "cursor"}, {"push", "clear"}}
-		} else if u.sub == subPick {
+		st.Tool = []ToolSeg{{"S/DIV", "tab"}, {ctlAdjust, "row"}, {ctlPush, "edit"}, {ctlPosition, "change the row"}, {ctlPush, "default"}}
+		switch u.sub {
+		case subMatch:
+			st.Tool = []ToolSeg{{ctlAdjust, "key"}, {ctlPush, "type"}, {ctlPosition, "cursor"}, {ctlPush, actClear}}
+		case subPick:
 			st.Tool = pickTool
 		}
 	} else {
-		st.Tool, st.Again = paneTool(c, s, v)
+		st.Tool, st.Again = paneTool(s, v)
 		if v.Cmp != nil {
 			st.Again = "F5 again: " + st.AgainNext // the key's job, not the trigger's stability
 		}
@@ -302,11 +318,11 @@ func (c *Controller) status(s *sv) Status {
 }
 
 // pickTool is the byte picker's tool line.
-var pickTool = []ToolSeg{{"Adjust", "byte"}, {"push", "trigger on it"}, {"Position", "byte"}, {"push", "back to start"}, {"Menu", "back"}}
+var pickTool = []ToolSeg{{ctlAdjust, "byte"}, {ctlPush, "trigger on it"}, {ctlPosition, "byte"}, {ctlPush, "back to start"}, {"Menu", "back"}}
 
 // paneTool is the tool line in workspace mode (SCOPE's from its Adjust tag).
 // TRLC-LINKS: REQ-SDS-211, REQ-SDS-212
-func paneTool(c *Controller, s *sv, v wsview.View) ([]ToolSeg, string) {
+func paneTool(s *sv, v wsview.View) ([]ToolSeg, string) {
 	var p *wsview.Pane
 	switch {
 	case v.Picker != nil:
@@ -337,7 +353,7 @@ func paneTool(c *Controller, s *sv, v wsview.View) ([]ToolSeg, string) {
 	if r := adjTarget(s); r != nil {
 		adj = r.label
 	}
-	out := []ToolSeg{{"Adjust", adj}, {"push", "open its sheet row"}}
+	out := []ToolSeg{{ctlAdjust, adj}, {ctlPush, "open its sheet row"}}
 	for _, sg := range posTool(s) {
 		out = append(out, ToolSeg{sg.Key, sg.Job})
 	}
@@ -406,6 +422,7 @@ func rowModel(s *sv, r *row) RowModel {
 		for _, a := range r.acts(s) {
 			m.Actions = append(m.Actions, ActModel{ID: a.id, Text: a.t, Available: !a.dim && m.Available})
 		}
+	case wsview.Header: // a header has no value
 	}
 	return m
 }
@@ -419,11 +436,6 @@ func finiteOr(v float64) float64 {
 	return v
 }
 
-// TRLC-LINKS: REQ-SDS-212
-//
-//go:fix inline
-func ptr(v float64) *float64 { return new(v) }
-
 // sheetSig hashes every row's value and availability (not live counters),
 // so the Seq follows a setting changed anywhere.
 // TRLC-LINKS: REQ-SDS-212
@@ -432,7 +444,7 @@ func sheetSig(s *sv) uint64 {
 	for _, t := range sheetTabs {
 		for _, r := range t.rows {
 			h.str(r.id)
-			h.u64(uint64(b2ic(r.relevant(s))))
+			h.u64(uint64(b2ic(r.relevant(s)))) //nolint:gosec // G115: 0 or 1
 			if r.kind == wsview.Enum {
 				h.u64(uint64(len(r.options(s))))
 			}
@@ -449,14 +461,15 @@ func sheetSig(s *sv) uint64 {
 func hashValue(h *sig64, s *sv, r *row) {
 	switch r.kind {
 	case wsview.Enum:
-		h.u64(uint64(r.get(s)))
+		h.u64(uint64(r.get(s))) //nolint:gosec // G115: a hash input: a negative index wraps the same every time
 	case wsview.Number:
 		h.u64(math.Float64bits(r.val(s)))
 	case wsview.Bytes:
 		h.str(matchText(s))
 	case wsview.Slot:
-		h.u64(uint64(b2ic(s.slotUsed[r.slot])))
+		h.u64(uint64(b2ic(s.slotUsed[r.slot]))) //nolint:gosec // G115: 0 or 1
 		h.str(s.slotSum[r.slot])
+	case wsview.Action, wsview.Header: // no value
 	}
 }
 
@@ -472,7 +485,7 @@ func newSig() sig64 { return 14695981039346656037 }
 // TRLC-LINKS: REQ-SDS-211
 func (h *sig64) str(s string) {
 	x := uint64(*h)
-	for i := 0; i < len(s); i++ {
+	for i := range len(s) {
 		x = (x ^ uint64(s[i])) * 1099511628211
 	}
 	*h = sig64(x)
@@ -560,7 +573,7 @@ func (c *Controller) changesSince(m changeMark) ([]string, string) {
 		}
 	}
 	if ws != m.ws {
-		out = append(out, "workspace")
+		out = append(out, rowWorkspace)
 	}
 	return out, notice
 }
@@ -673,7 +686,7 @@ func (c *Controller) Sheets() SheetsModel {
 		for _, r := range t.rows {
 			tm.Rows = append(tm.Rows, rowModel(s, r))
 		}
-		if t.id == "trig" {
+		if t.id == tabIDTrig {
 			// whether the FPGA decides the trigger, or why it cannot yet
 			for _, l := range tabStatus(c, s, t) {
 				tm.Notes = append(tm.Notes, TabNote{Text: l.Text, Warn: l.Col == wsview.Warn})
@@ -747,9 +760,9 @@ func (c *Controller) SheetAction(id, action string) SetResult {
 func (c *Controller) RemoteWorkspace(name string) SetResult {
 	ws := wsIndex(name)
 	if ws < 0 {
-		return SetResult{Row: "workspace", Error: fmt.Sprintf("no workspace %q: SCOPE, BUS, SPECTRUM, MEASURE or COMPARE", name)}
+		return SetResult{Row: rowWorkspace, Error: fmt.Sprintf("no workspace %q: SCOPE, BUS, SPECTRUM, MEASURE or COMPARE", name)}
 	}
-	return c.remoteCall("workspace", func() SetResult { return c.remoteWorkspace(wsview.WS(ws)) })
+	return c.remoteCall(rowWorkspace, func() SetResult { return c.remoteWorkspace(wsview.WS(ws)) })
 }
 
 // wsIndex finds a workspace by its id, name or tag, any case (-1: none).
@@ -773,7 +786,7 @@ const autosetRefusal = "Autoset is running: changes wait until it is done (Autos
 // TRLC-LINKS: REQ-SDS-211, REQ-SDS-220
 func (c *Controller) remoteWorkspace(ws wsview.WS) SetResult {
 	if c.AutosetBusy() {
-		return SetResult{Row: "workspace", Error: autosetRefusal}
+		return SetResult{Row: rowWorkspace, Error: autosetRefusal}
 	}
 	defer c.afterInput()
 	c.mu.Lock()
@@ -784,9 +797,9 @@ func (c *Controller) remoteWorkspace(ws wsview.WS) SetResult {
 	c.mu.Unlock()
 	if ws != cur {
 		c.switchWS(ws)
-		c.remoteLine("workspace", "REMOTE  workspace "+wsview.Names[ws])
+		c.remoteLine(rowWorkspace, "REMOTE  workspace "+wsview.Names[ws])
 	}
-	return SetResult{OK: true, Row: "workspace", Value: wsview.IDs[ws], Text: wsview.Names[ws]}
+	return SetResult{OK: true, Row: rowWorkspace, Value: wsview.IDs[ws], Text: wsview.Names[ws]}
 }
 
 // RemoteAgain is the active workspace's key again for the remote: its next
@@ -800,15 +813,15 @@ func (c *Controller) RemoteAgain(want string) SetResult {
 	ws := -1
 	if strings.TrimSpace(want) != "" {
 		if ws = wsIndex(want); ws < 0 {
-			return SetResult{Row: "again", Error: fmt.Sprintf("no workspace %q: SCOPE, BUS, SPECTRUM, MEASURE or COMPARE", want)}
+			return SetResult{Row: rowAgain, Error: fmt.Sprintf("no workspace %q: SCOPE, BUS, SPECTRUM, MEASURE or COMPARE", want)}
 		}
 	}
-	return c.remoteCall("again", func() SetResult {
+	return c.remoteCall(rowAgain, func() SetResult {
 		c.mu.Lock()
 		cur := c.ui.ws
 		c.mu.Unlock()
 		if ws >= 0 && wsview.WS(ws) != cur {
-			return SetResult{Row: "again", Error: wsview.Names[ws] + " again: the scope shows " + wsview.Names[cur] + " now"}
+			return SetResult{Row: rowAgain, Error: wsview.Names[ws] + " again: the scope shows " + wsview.Names[cur] + " now"}
 		}
 		return c.remoteAgain()
 	})
@@ -920,7 +933,7 @@ func (c *Controller) remoteWaits(autoset, nomenu bool) string {
 // TRLC-LINKS: REQ-SDS-211, REQ-SDS-218, REQ-SDS-220
 func (c *Controller) remoteAgain() SetResult {
 	if c.AutosetBusy() {
-		return SetResult{Row: "again", Error: autosetRefusal}
+		return SetResult{Row: rowAgain, Error: autosetRefusal}
 	}
 	defer c.afterInput()
 	c.mu.Lock()
@@ -931,14 +944,14 @@ func (c *Controller) remoteAgain() SetResult {
 		c.stackCancel("", false)
 	case ws == wsview.Compare:
 		if err := c.stackStart(); err != nil {
-			return SetResult{Row: "again", Error: err.Error()} // the LCD's notice, word for word
+			return SetResult{Row: rowAgain, Error: err.Error()} // the LCD's notice, word for word
 		}
 	default:
 		c.nextView()
 	}
 	view := workspaceView(c.snap(), ws)
-	c.remoteLine("again", "REMOTE  "+wsview.Names[ws]+" "+view)
-	return SetResult{OK: true, Row: "again", Value: view, Text: view}
+	c.remoteLine(rowAgain, "REMOTE  "+wsview.Names[ws]+" "+view)
+	return SetResult{OK: true, Row: rowAgain, Value: view, Text: view}
 }
 
 // againNext is what the active workspace's key again shows next. The pane's
@@ -952,12 +965,13 @@ func (c *Controller) againNext(s *sv) string {
 	case wsview.Spectrum:
 		return viewName(nextSpecView(s.viewMode))
 	case wsview.Measure:
-		return map[bool]string{true: "Statistics", false: "All values"}[s.ui.measAll]
+		return map[bool]string{true: labelStats, false: labelAllValues}[s.ui.measAll]
 	case wsview.Compare:
 		// the key's job: whether the trigger is stable enough is said when it
 		// is pressed (a verdict that flickers with the signal would wake every
 		// remote on every frame)
 		return map[bool]string{true: "cancel stack", false: "stack master"}[s.stacking]
+	case wsview.Scope: // its key again toggles YT and XY (below)
 	}
 	return viewName(map[bool]int{true: viewXY, false: viewYT}[s.viewMode == viewYT])
 }
@@ -1049,7 +1063,7 @@ func (c *Controller) applyRow(r *row, s *sv, value any, text string) error {
 		}
 		v, err := parseNumber(text, r.unitFor(s))
 		if err != nil {
-			return fmt.Errorf("%s: %v", r.label, err)
+			return fmt.Errorf("%s: %w", r.label, err)
 		}
 		return r.setNumber(c, s, v)
 	case wsview.Bytes:
@@ -1065,6 +1079,7 @@ func (c *Controller) applyRow(r *row, s *sv, value any, text string) error {
 			return err
 		}
 		return c.setMatchTokens(toks)
+	case wsview.Action, wsview.Slot, wsview.Header: // no value to set (below)
 	}
 	return fmt.Errorf("%s is an action: use /api/sheets/action", r.label)
 }

@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-PANEL
+
 package panel
 
 import (
@@ -69,7 +70,7 @@ func (c *Controller) setDecLayer(id string) error {
 	c.decLayer = id
 	framing := id == "sbus"
 	if framing {
-		c.decBaud, c.decParity, c.decInv = 100000, "even", true
+		c.decBaud, c.decParity, c.decInv = 100000, parityEven, true
 	}
 	c.mu.Unlock()
 	c.resetBusList()

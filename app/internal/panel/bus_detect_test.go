@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-PANEL
+
 package panel
 
 import (
@@ -352,7 +353,7 @@ func TestDetectionWaitsOutAnImageLoad(t *testing.T) {
 func TestAutoEndsTheSearchRunning(t *testing.T) {
 	c, e, _ := newC(t)
 	e.set(func(st *engine.Stats) { st.Running = true })
-	c.SetFrameSource(func(fn func(*engine.Frame)) {}) // no frame comes
+	c.SetFrameSource(func(func(*engine.Frame)) {}) // no frame comes
 	none := func(*engine.Frame, bool) bool { return false }
 	go func() {
 		time.Sleep(100 * time.Millisecond)

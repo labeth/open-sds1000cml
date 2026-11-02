@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-PANEL
+
 package panel
 
 import (
@@ -37,7 +38,7 @@ func loadSearchRecords(t *testing.T, path string) flash104 {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }() // read only: nothing to flush
 	z, err := gzip.NewReader(f)
 	if err != nil {
 		t.Fatal(err)
@@ -125,6 +126,7 @@ func TestBusSearchNamesTheFastSPIFlashNotI2C(t *testing.T) {
 // its decimated records the fixture's (named: read as I2C) or quiet.
 // TRLC-LINKS: REQ-SDS-214, REQ-SDS-223
 func searchFlash(t *testing.T, fx flash104, named bool, quiet []uint8) {
+	t.Helper()
 	_, base, fe := newC(t)
 	eng := &searchLeaseEng{fakeEng: base}
 	ctl := New(eng, fe, -1, engine.SupportedTdivs(), 500e-6, t.Logf)

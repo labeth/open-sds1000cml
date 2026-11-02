@@ -1,8 +1,9 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-PANEL
+
 // Package wsview is the render snapshot of the task-workspace UI
 // (ADR-TASK-WORKSPACES): everything the panel controller shows on the LCD,
 // as plain data the renderer draws. It holds no logic, so the panel (which
 // builds it) and the LCD (which draws it) share one definition.
-// ENGMODEL-OWNER-UNIT: FU-APP-PANEL
 package wsview
 
 // WS identifies a workspace; F1..F5 select them in this order.

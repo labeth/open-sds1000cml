@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-PANEL
+
 package panel
 
 import (
@@ -63,7 +64,7 @@ func fpgaLevel(sig []uint8) (level, hysteresis uint8, ok bool) {
 	if hi-lo < 16 {
 		return 0, 0, false
 	}
-	return uint8((int(lo) + int(hi)) / 2), max(uint8((hi-lo)/8), 2), true
+	return uint8((int(lo) + int(hi)) / 2), max((hi-lo)/8, 2), true //nolint:gosec // G115: the mean of two uint8
 }
 
 // srFPGARun starts an FPGA stacking session from the current settings and
@@ -109,7 +110,7 @@ func (c *Controller) srFPGARun() {
 		return
 	}
 	req := engine.FPGAStackRequest{Records: records, RecordWords: fpgaRecordWords, Stack: sramcapture.StackConfig{
-		Channel: uint8(ch), Level: level, Hysteresis: hysteresis,
+		Channel: uint8(ch), Level: level, Hysteresis: hysteresis, //nolint:gosec // G115: ch is 0 or 1
 		PreSamples: fpgaWindow / 2, MinSeparation: fpgaWindow,
 		Bins: fpgaWindow * k, Factor: k, ChannelMask: 3,
 	}}

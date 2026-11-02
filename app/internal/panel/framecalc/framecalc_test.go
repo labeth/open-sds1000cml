@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-PANEL
+
 package framecalc
 
 import (
@@ -89,7 +90,8 @@ func TestSpectrumEndsAtTheFilterBand(t *testing.T) {
 // A frame the hardware UART matcher triggered carries where the matched
 // character's stop bit lay (Frame.MatchEndS after EdgeX): the decode frames
 // the characters back to back with it from there, where a record opening
-// inside the traffic read "A5 ER ER ER" on the owner's AA trigger.
+// inside the traffic read "A5" and then "ER" three times on the owner's AA
+// trigger.
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-018
 func TestDecodeFramesFromTheHardwareMatch(t *testing.T) {
 	const spb = 20

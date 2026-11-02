@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-PANEL
+
 package panel
 
 import (
@@ -199,6 +200,7 @@ func (f *stateFE) ChannelState(ch int) (offV float64, cpl int, probe float64, bw
 
 // TRLC-LINKS: REQ-SDS-211
 func stateC(t *testing.T) (*Controller, *stateFE) {
+	t.Helper()
 	fe := &stateFE{fakeFE: &fakeFE{idx: [2]int{8, 8}}, bwl: [2]bool{false, true}}
 	c := New(newEng(), fe, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
 	c.decode(idle(), true)
@@ -211,7 +213,9 @@ func TestSnapChannelStateMatches(t *testing.T) {
 	c, fe := stateC(t)
 	fe.SetProbe(0, 10)
 	fe.SetProbe(1, 0.5) // below 1: reads 1
-	fe.SetCoupling(1, analog.CplAC)
+	if err := fe.SetCoupling(1, analog.CplAC); err != nil {
+		t.Fatal(err)
+	}
 	fe.offReqV = [2]float64{0.25, -1.5}
 	s := c.snap()
 	if s.probe != [2]float64{10, 1} || s.cpl != [2]int{analog.CplDC, analog.CplAC} || s.offV != fe.offReqV || !s.hasBWL || s.bwl != fe.bwl {
@@ -237,9 +241,8 @@ func BenchmarkSoundPane(b *testing.B) {
 		ss.strip = append(ss.strip, stripPoint{cents: float64(i % 7), ok: i > 3})
 	}
 	ss.mu.Unlock()
-	s := c.snap()
 	for b.Loop() {
-		c.soundPane(s)
+		c.soundPane()
 	}
 }
 
@@ -358,7 +361,7 @@ func BenchmarkParseNumber(b *testing.B) {
 	in := [][2]string{{"2.5MHz", "Hz"}, {"115200", ""}, {"10 mV", "V"}, {"-1.5e-3 V", "V"}, {"0x1F", ""}, {"2,5k", "Hz"}, {"40 ns", "s"}}
 	for b.Loop() {
 		for _, x := range in {
-			parseNumber(x[0], x[1])
+			_, _ = parseNumber(x[0], x[1])
 		}
 	}
 }
@@ -519,7 +522,7 @@ func BenchmarkTokensOf(b *testing.B) {
 // TRLC-LINKS: REQ-SDS-013
 func TestTokensOfHex(t *testing.T) {
 	p := engine.SerialParams{Bytes: []int{0, 0x5, 0xAB, 0xFF, -1, 0x1FF}}
-	if got := strings.Join(tokensOf(p), " "); got != "00 05 AB FF FF FF" {
+	if got := strings.Join(tokensOf(p), " "); got != "00 05 AB FF FF FF" { //nolint:dupword // the expected tokens repeat a clamped byte
 		t.Errorf("bytes: %q", got)
 	}
 	p = engine.SerialParams{Pattern: []engine.PatternElem{{Kind: 2, Value: 0xA0, Mask: 0xf0}, {Kind: 2, Value: 0x0C, Mask: 0x0f}, {Kind: 2, Value: 0x3E, Mask: 0xff}}}
@@ -574,7 +577,7 @@ func BenchmarkStepTrigLevel(b *testing.B) {
 	c, _, _ := newC(&testing.T{})
 	n := 1
 	for b.Loop() {
-		c.stepTrigLevel(n)
+		_ = c.stepTrigLevel(n)
 		n = -n
 	}
 }
@@ -660,7 +663,7 @@ func BenchmarkCodeSwing(b *testing.B) {
 // every midpoint.
 // TRLC-LINKS: REQ-SDS-137
 func TestCodeSwingThresholds(t *testing.T) {
-	for mid2 := 0; mid2 <= 510; mid2++ {
+	for mid2 := range 511 {
 		hiAt, loAt := (mid2+2)/2+1, 0
 		if m := mid2 - 2; m > 0 {
 			loAt = (m + 1) / 2

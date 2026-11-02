@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-PANEL
+
 package panel
 
 import (
@@ -36,6 +37,33 @@ const (
 	tabFile
 	tabSys
 	numTabs
+)
+
+// Tab ids the code names (the sheets' tabs are built in init), and the
+// relevance reasons several rows share.
+const (
+	tabIDTrig   = "trig"
+	tabIDTime   = "time"
+	tabIDMeas   = "meas"
+	whySlope    = "Type = Slope"
+	whyDecodeOn = "a Protocol (decode on)"
+)
+
+// Labels several rows, views and tool lines show, and the clear action's id.
+const (
+	labelAuto      = "Auto"
+	labelClear     = "Clear"
+	labelStats     = "Statistics"
+	labelAllValues = "All values"
+	labelStream    = "Stream"
+	actClear       = "clear"
+)
+
+// Modbus RTU's framings (decParity; "" the bus's default).
+const (
+	parityEven = "even"
+	parityOdd  = "odd"
+	parityNone = "none"
 )
 
 var (
@@ -110,14 +138,14 @@ var (
 // TRLC-LINKS: REQ-SDS-212
 func init() {
 	sheetTabs = [numTabs]*tab{
-		{id: "trig", name: "TRIG", title: "Trigger", key: "Trig Menu", rows: trigRows()},
+		{id: tabIDTrig, name: "TRIG", title: "Trigger", key: "Trig Menu", rows: trigRows()},
 		{id: "ch1", name: "CH1", title: "Channel 1", key: "1", rows: chanRows(0)},
 		{id: "ch2", name: "CH2", title: "Channel 2", key: "2", rows: chanRows(1)},
-		{id: "time", name: "TIME", title: "Horizontal", key: "Hori Menu", rows: timeRows()},
+		{id: tabIDTime, name: "TIME", title: "Horizontal", key: "Hori Menu", rows: timeRows()},
 		{id: "acq", name: "ACQ", title: "Acquire", key: "Acquire", rows: acqRows()},
 		{id: "view", name: "VIEW", title: "Display", key: "Display", rows: viewRows()},
 		{id: "snd", name: "SOUND", title: "Sound: tuner, meters, readouts", rows: soundRows()},
-		{id: "meas", name: "MEAS", title: "Measure", key: "Measure", rows: measRows(), home: 2},
+		{id: tabIDMeas, name: "MEAS", title: "Measure", key: "Measure", rows: measRows(), home: 2},
 		{id: "curs", name: "CURS", title: "Cursors", key: "Cursors", rows: cursRows()},
 		{id: "cmp", name: "MATH/REF", title: "Math, references, mask, master", key: "Math or Ref", rows: cmpRows()},
 		{id: "bus", name: "BUS", title: "Bus decode, serial trigger", key: "Utility", rows: busTabRows()},
@@ -268,7 +296,7 @@ func trigRows() []*row {
 		id: "trig.mode", label: "Mode", kind: wsview.Enum,
 		help: "Auto free-runs when nothing triggers; Normal waits for a trigger.",
 		knob: "Single also switches to Normal.",
-		opts: staticOpts([]opt{{0, "Auto"}, {1, "Normal"}}),
+		opts: staticOpts([]opt{{0, labelAuto}, {1, "Normal"}}),
 		get:  func(s *sv) int { return b2ic(s.st.Norm) },
 		set:  func(c *Controller, v int) error { return c.setNorm(v == 1) },
 		def:  func(c *Controller) error { return c.setNorm(false) },
@@ -346,21 +374,21 @@ func trigRows() []*row {
 
 	slopeWhen := &row{
 		id: "trig.slope_when", label: "Edge time when", kind: wsview.Enum, hdr: "SLOPE  (used when Type = Slope)",
-		help: "Which transition times trigger.", rel: isSlope, why: "Type = Slope", opts: staticOpts(condOpts),
+		help: "Which transition times trigger.", rel: isSlope, why: whySlope, opts: staticOpts(condOpts),
 		get: func(s *sv) int { return int(s.slope[4]) & 3 },
 		set: func(c *Controller, v int) error { return c.editSlope(func() { c.slopeCond = v & 3 }, false, false) },
 		def: func(c *Controller) error { return c.editSlope(func() { c.slopeCond = 0 }, false, false) },
 	}
 	slopeMin := timeQualRow("trig.slope_min", "Min time", func(s *sv) float64 { return s.slope[2] },
 		func(c *Controller, ns float64) error { return c.editSlope(func() { c.slopeMin = ns }, false, false) })
-	slopeMin.help, slopeMin.rel, slopeMin.why = "Lower transition-time limit.", isSlope, "Type = Slope"
+	slopeMin.help, slopeMin.rel, slopeMin.why = "Lower transition-time limit.", isSlope, whySlope
 	slopeMin.presets = func(*sv) []preset {
 		return []preset{{t: "10 ns", v: 10e-9}, {t: "100 ns", v: 100e-9}, {t: "1 us", v: 1e-6}}
 	}
 	slopeMin.def = func(c *Controller) error { return slopeMin.setN(c, 100e-9) }
 	slopeMax := timeQualRow("trig.slope_max", "Max time", func(s *sv) float64 { return s.slope[3] },
 		func(c *Controller, ns float64) error { return c.editSlope(func() { c.slopeMax = ns }, false, true) })
-	slopeMax.help, slopeMax.rel, slopeMax.why = "Upper transition-time limit.", isSlope, "Type = Slope"
+	slopeMax.help, slopeMax.rel, slopeMax.why = "Upper transition-time limit.", isSlope, whySlope
 	slopeMax.presets = func(*sv) []preset {
 		return []preset{{t: "20 ns", v: 20e-9}, {t: "200 ns", v: 200e-9}, {t: "2 us", v: 2e-6}}
 	}
@@ -368,13 +396,13 @@ func trigRows() []*row {
 	slopeLow := numRow("trig.slope_low", "Low level", "%", func(s *sv) float64 { return math.Round(s.slope[0] * 100) },
 		constLim(5, 95), constStep(5),
 		func(c *Controller, v float64) error { return c.editSlope(func() { c.slopeLo = v / 100 }, false, false) }, fmtPct)
-	slopeLow.help, slopeLow.rel, slopeLow.why = "Lower threshold, % of the signal swing.", isSlope, "Type = Slope"
+	slopeLow.help, slopeLow.rel, slopeLow.why = "Lower threshold, % of the signal swing.", isSlope, whySlope
 	slopeLow.presets = func(*sv) []preset { return []preset{{t: "10 %", v: 10}, {t: "20 %", v: 20}, {t: "30 %", v: 30}} }
 	slopeLow.def = func(c *Controller) error { return slopeLow.setN(c, 20) }
 	slopeHigh := numRow("trig.slope_high", "High level", "%", func(s *sv) float64 { return math.Round(s.slope[1] * 100) },
 		constLim(5, 95), constStep(5),
 		func(c *Controller, v float64) error { return c.editSlope(func() { c.slopeHi = v / 100 }, true, false) }, fmtPct)
-	slopeHigh.help, slopeHigh.rel, slopeHigh.why = "Upper threshold, % of the signal swing.", isSlope, "Type = Slope"
+	slopeHigh.help, slopeHigh.rel, slopeHigh.why = "Upper threshold, % of the signal swing.", isSlope, whySlope
 	slopeHigh.presets = func(*sv) []preset { return []preset{{t: "70 %", v: 70}, {t: "80 %", v: 80}, {t: "90 %", v: 90}} }
 	slopeHigh.def = func(c *Controller) error { return slopeHigh.setN(c, 80) }
 
@@ -468,24 +496,12 @@ func chanRows(ch int) []*row {
 		presets: func(*sv) []preset { return []preset{{t: "0 V", v: 0}} },
 		def:     func(c *Controller) error { return c.setOffsetTip(ch, 0) },
 	}
-	bwl := &row{
-		id: p + "bwl", label: "BW limit 20M", kind: wsview.Enum,
-		help: "Bandwidth limit: smoother, less noise.",
-		rel:  func(s *sv) bool { return s.hasBWL }, why: "a front end with the 20 MHz limit",
-		opts: staticOpts(onOff),
-		get:  func(s *sv) int { return b2ic(s.bwl[ch]) },
-		set:  func(c *Controller, v int) error { return c.setBWL(ch, v == 1) },
-		def:  func(c *Controller) error { return c.setBWL(ch, false) },
-	}
-	invert := &row{
-		id: p + "invert", label: "Invert", kind: wsview.Enum,
-		help: "Display the channel upside down (the measurements keep the true polarity).",
-		rel:  func(s *sv) bool { return s.hasInv }, why: "the display invert",
-		opts: staticOpts(onOff),
-		get:  func(s *sv) int { return b2ic(s.inv[ch]) },
-		set:  func(c *Controller, v int) error { return c.setInvert(ch, v == 1) },
-		def:  func(c *Controller) error { return c.setInvert(ch, false) },
-	}
+	bwl := chanSwitchRow(p+"bwl", "BW limit 20M", "Bandwidth limit: smoother, less noise.",
+		func(s *sv) bool { return s.hasBWL }, "a front end with the 20 MHz limit",
+		func(s *sv) bool { return s.bwl[ch] }, func(c *Controller, on bool) error { return c.setBWL(ch, on) })
+	invert := chanSwitchRow(p+"invert", "Invert", "Display the channel upside down (the measurements keep the true polarity).",
+		func(s *sv) bool { return s.hasInv }, "the display invert",
+		func(s *sv) bool { return s.inv[ch] }, func(c *Controller, on bool) error { return c.setInvert(ch, on) })
 	on := &row{
 		id: p + "on", label: "Channel", kind: wsview.Enum,
 		help: "Show or hide the channel's trace.", knob: "The " + strconv.Itoa(ch+1) + " key opens this tab and switches the channel on.",
@@ -552,7 +568,7 @@ func timeRows() []*row {
 		id: "time.roll", label: "Roll mode", kind: wsview.Enum,
 		help: "How the trace scrolls at 10 ms/div and slower: chunked (instant) or a gap-free stream.",
 		rel:  func(s *sv) bool { return s.st.TdivSet() >= engine.RollMinTdiv*0.999 }, why: "Time/div 10 ms or slower",
-		opts: staticOpts([]opt{{0, "Chunked"}, {1, "Stream"}}),
+		opts: staticOpts([]opt{{0, "Chunked"}, {1, labelStream}}),
 		get:  func(s *sv) int { return b2ic(s.st.RollStream) },
 		set:  func(c *Controller, v int) error { return c.setRollStream(v == 1) },
 		def:  func(c *Controller) error { return c.setRollStream(false) },
@@ -574,6 +590,21 @@ func directOnly(c *Controller, set func()) error {
 	return nil
 }
 
+// chanSwitchRow is an Off/On channel row: relevant where rel holds (why
+// names what it needs), on reads it and set switches it, Off its default.
+// TRLC-LINKS: REQ-SDS-212
+func chanSwitchRow(id, label, help string, rel func(*sv) bool, why string, on func(*sv) bool, set func(*Controller, bool) error) *row {
+	return &row{
+		id: id, label: label, kind: wsview.Enum, help: help, rel: rel, why: why,
+		opts: staticOpts(onOff),
+		get:  func(s *sv) int { return b2ic(on(s)) },
+		set:  func(c *Controller, v int) error { return set(c, v == 1) },
+		def:  func(c *Controller) error { return set(c, false) },
+	}
+}
+
+// acqRows are the ACQ tab's rows: the acquisition, super-res and run
+// control.
 // TRLC-LINKS: REQ-SDS-212
 func acqRows() []*row {
 	isSRAM := func(s *sv) bool { return s.st.BandKind == "sram" }
@@ -655,6 +686,30 @@ func acqRows() []*row {
 		set: func(c *Controller, v int) error { return directOnly(c, func() { c.eng.SetMemDepth(v) }) },
 		def: func(c *Controller) error { return directOnly(c, func() { c.eng.SetMemDepth(20480) }) },
 	}
+	run := &row{
+		id: "acq.run", label: "Acquisition", kind: wsview.Enum, hdr: "RUN CONTROL",
+		help: "Run continuously, Stop (freeze), or Single: Normal mode, one capture, then stop.",
+		knob: "Also the Run/Stop and Single keys.",
+		opts: staticOpts([]opt{{0, "Run"}, {1, "Stop"}, {2, "Single"}}),
+		get: func(s *sv) int {
+			switch {
+			case s.st.Single && s.st.Running:
+				return 2
+			case s.st.Running:
+				return 0
+			}
+			return 1
+		},
+		set: func(c *Controller, v int) error { return c.setRun(v) },
+		def: func(c *Controller) error { return c.setRun(0) },
+	}
+	rows := append([]*row{mode, avg, eres, ets, depth}, superResRows()...)
+	return append(rows, run)
+}
+
+// superResRows are the ACQ tab's super-res rows.
+// TRLC-LINKS: REQ-SDS-212, REQ-SDS-140
+func superResRows() []*row {
 	srOn := func(s *sv) bool { return s.srActive || s.srSeeding }
 	sr := &row{
 		id: "acq.superres", label: "Super-res", kind: wsview.Enum, hdr: "SUPER-RES  (stacking for extra vertical bits)",
@@ -716,7 +771,7 @@ func acqRows() []*row {
 		val:  func(s *sv) float64 { return s.srStopVal },
 		lim:  func(s *sv) (float64, float64) { return srTargetLimits(s.srStopMode) },
 		step: func(s *sv) float64 { return []float64{0.5, 50, 10, 10, 10}[clampInt(s.srStopMode, 0, 4)] },
-		fmtN: func(v float64) string { return g3(v) },
+		fmtN: g3,
 		setN: func(c *Controller, v float64) error {
 			c.mu.Lock()
 			c.srStopVal = v
@@ -758,7 +813,7 @@ func acqRows() []*row {
 			lim:     func(s *sv) (float64, float64) { return 0, float64(max(s.srN, 8)) },
 			step:    constStep(4),
 			fmtN:    func(v float64) string { return strconv.Itoa(int(v)) },
-			presets: func(*sv) []preset { return []preset{{t: "Auto", run: (*Controller).srAutoGate}} },
+			presets: func(*sv) []preset { return []preset{{t: labelAuto, run: (*Controller).srAutoGate}} },
 			def:     (*Controller).srAutoGate,
 		}
 		r.setN = func(c *Controller, v float64) error { return c.srSetGate(end, int(math.Round(v))) }
@@ -793,24 +848,7 @@ func acqRows() []*row {
 		},
 		status: func(s *sv) string { return s.srStatus },
 	}
-	run := &row{
-		id: "acq.run", label: "Acquisition", kind: wsview.Enum, hdr: "RUN CONTROL",
-		help: "Run continuously, Stop (freeze), or Single: Normal mode, one capture, then stop.",
-		knob: "Also the Run/Stop and Single keys.",
-		opts: staticOpts([]opt{{0, "Run"}, {1, "Stop"}, {2, "Single"}}),
-		get: func(s *sv) int {
-			switch {
-			case s.st.Single && s.st.Running:
-				return 2
-			case s.st.Running:
-				return 0
-			}
-			return 1
-		},
-		set: func(c *Controller, v int) error { return c.setRun(v) },
-		def: func(c *Controller) error { return c.setRun(0) },
-	}
-	return []*row{mode, avg, eres, ets, depth, sr, srCh, srGrid, srStop, srTarget, gate(false), gate(true), srShow, srRestart, run}
+	return []*row{sr, srCh, srGrid, srStop, srTarget, gate(false), gate(true), srShow, srRestart}
 }
 
 // ---- VIEW ----
@@ -856,7 +894,7 @@ func viewRows() []*row {
 	bodeClear := &row{
 		id: "view.bode_clear", label: "Bode points", kind: wsview.Action,
 		help: "Forget the frequency-response points measured so far (a new DUT or sweep).",
-		acts: func(*sv) []act { return []act{{id: "clear", t: "Clear", run: (*Controller).bodeClear}} },
+		acts: func(*sv) []act { return []act{{id: actClear, t: labelClear, run: (*Controller).bodeClear}} },
 		status: func(s *sv) string {
 			return fmt.Sprintf("%d %s", s.st.BodePoints, plural(s.st.BodePoints, "point"))
 		},
@@ -930,22 +968,22 @@ func measRows() []*row {
 		},
 		def: func(c *Controller) error { c.SetMeasOn(false); return nil },
 	}
-	clear := &row{
+	clearRow := &row{
 		id: "meas.clear", label: "Clear all", kind: wsview.Action,
 		help: "Remove every chosen measurement.",
 		acts: func(s *sv) []act {
-			return []act{{id: "clear", t: "Clear all", dim: len(s.meas) == 0, run: func(c *Controller) error { c.clearMeas(); return nil }}}
+			return []act{{id: actClear, t: "Clear all", dim: len(s.meas) == 0, run: func(c *Controller) error { c.clearMeas(); return nil }}}
 		},
 		status: func(s *sv) string { return fmt.Sprintf("%d of at most %d", len(s.meas), maxMeasItems) },
 	}
 	stats := &row{
-		id: "meas.stats", label: "Statistics", kind: wsview.Action,
+		id: "meas.stats", label: labelStats, kind: wsview.Action,
 		help: "Start the MEASURE statistics over (they also start over when a setting changes).",
 		acts: func(*sv) []act {
 			return []act{{id: "zero", t: "Zero", run: func(c *Controller) error { c.statsReset(); return nil }}}
 		},
 	}
-	rows := []*row{readouts, clear, stats}
+	rows := []*row{readouts, clearRow, stats}
 	for i, p := range measParams {
 		r := &row{
 			id: "meas." + p.id, label: p.label, kind: wsview.Enum, meas: i + 1,
@@ -1009,7 +1047,7 @@ func cursRows() []*row {
 				return s.curT[k]
 			},
 			text: func(s *sv) string { return cursorText(s, k) },
-			lim:  func(s *sv) (float64, float64) { return cursorRange(s) },
+			lim:  cursorRange,
 			step: func(s *sv) float64 { // a hundredth of the screen
 				lo, hi := cursorRange(s)
 				return (hi - lo) / 100
@@ -1130,7 +1168,7 @@ var stackDepths = []int{16, 32, 64, 128, 256}
 
 // TRLC-LINKS: REQ-SDS-212
 func cmpRows() []*row {
-	math_ := &row{
+	mathRow := &row{
 		id: "cmp.math", label: "Math", kind: wsview.Enum,
 		help: "Show a computed trace from both channels.",
 		knob: "COMPARE workspace: the MATH row, Adjust push = next.",
@@ -1140,14 +1178,14 @@ func cmpRows() []*row {
 		def:  func(c *Controller) error { return c.setMath(0) },
 	}
 	store := func(i int) *row {
-		n := string(rune('A' + i))
+		n := "AB"[i : i+1]
 		return &row{
 			id: "cmp.store_" + strings.ToLower(n), label: "Store Ref " + n, kind: wsview.Action,
 			help: "Store the screen as reference " + n + " and show it (COMPARE: the REF " + n + " row push), or delete it.",
 			acts: func(s *sv) []act {
 				return []act{
 					{id: "store", t: "Store now", run: func(c *Controller) error { return c.storeRef(i) }},
-					{id: "clear", t: "Clear", dim: !s.refHas[i], run: func(c *Controller) error { return c.clearRef(i) }},
+					{id: actClear, t: labelClear, dim: !s.refHas[i], run: func(c *Controller) error { return c.clearRef(i) }},
 				}
 			},
 			status: func(s *sv) string {
@@ -1163,7 +1201,7 @@ func cmpRows() []*row {
 		}
 	}
 	show := func(i int) *row {
-		n := string(rune('A' + i))
+		n := "AB"[i : i+1]
 		r := &row{
 			id: "cmp.show_" + strings.ToLower(n), label: "Show Ref " + n, kind: wsview.Enum,
 			help: "Display the stored reference " + n + ".",
@@ -1176,9 +1214,9 @@ func cmpRows() []*row {
 	}
 	sa, sb := store(0), store(1)
 	sa.hdr = "REFERENCES"
-	clear := &row{
+	clearRow := &row{
 		id: "cmp.clear_refs", label: "Clear refs", kind: wsview.Action, help: "Delete both references.",
-		acts: func(*sv) []act { return []act{{id: "clear", t: "Clear A + B", run: (*Controller).clearRefs}} },
+		acts: func(*sv) []act { return []act{{id: actClear, t: "Clear A + B", run: (*Controller).clearRefs}} },
 	}
 	maskMode := &row{
 		id: "cmp.mask", label: "Mask test", kind: wsview.Enum, hdr: "MASK TEST",
@@ -1216,7 +1254,7 @@ func cmpRows() []*row {
 		id: "cmp.clear_mask", label: "Clear mask", kind: wsview.Action,
 		help: "Remove the mask: its test goes off, its counts and captured failures are zeroed, and a build or master under way stops.",
 		acts: func(s *sv) []act {
-			return []act{{id: "clear", t: "Clear", dim: !s.st.MaskSet && !s.maskBusy && !s.stacking, run: (*Controller).clearMaskAction}}
+			return []act{{id: actClear, t: labelClear, dim: !s.st.MaskSet && !s.maskBusy && !s.stacking, run: (*Controller).clearMaskAction}}
 		},
 	}
 	frames := &row{
@@ -1287,7 +1325,7 @@ func cmpRows() []*row {
 			return "none"
 		},
 	}
-	return []*row{math_, sa, show(0), sb, show(1), clear, maskMode, build, clearMask, frames, tol, counters, depth, master}
+	return []*row{mathRow, sa, show(0), sb, show(1), clearRow, maskMode, build, clearMask, frames, tol, counters, depth, master}
 }
 
 // ---- BUS ----
@@ -1349,7 +1387,7 @@ var protoOpts = []opt{
 	{framecalc.ProtoMaple, "Maple"},
 	{framecalc.ProtoCaliper, "Caliper"},
 	{framecalc.ProtoIRMP, "IR multi"},
-	{framecalc.ProtoAuto, "Auto"},
+	{framecalc.ProtoAuto, labelAuto},
 }
 
 // protoName names a protocol number.
@@ -1456,6 +1494,8 @@ var protoRates = map[int]int{
 	framecalc.ProtoCaliper: 12500, framecalc.ProtoIRMP: 1786,
 }
 
+// busTabRows are the BUS tab's rows: the decoder, its stream, the lines,
+// the serial trigger's match and the layers.
 // TRLC-LINKS: REQ-SDS-214
 func busTabRows() []*row {
 	decOn := func(s *sv) bool { return s.decProto != framecalc.ProtoOff }
@@ -1490,7 +1530,7 @@ func busTabRows() []*row {
 		id: "bus.strip_format", label: "Strip format", kind: wsview.Enum,
 		help: "Format of the decode strip under the trace: Hex, String (text) or both. The BUS packet list always shows hex and string.",
 		knob: "Set here only (default Hex). F2 again in BUS cycles Packets / Eye diagram / Stream.",
-		rel:  decOn, why: "a Protocol (decode on)",
+		rel:  decOn, why: whyDecodeOn,
 		opts: staticOpts([]opt{{0, "Hex"}, {1, "String"}, {2, "Hex+String"}}),
 		get:  func(s *sv) int { return s.decFormat },
 		set: func(c *Controller, v int) error {
@@ -1501,68 +1541,6 @@ func busTabRows() []*row {
 		},
 	}
 	format.def = func(c *Controller) error { return format.set(c, 0) }
-	isAuto := func(s *sv) bool { return serialProto(s.decProto) && s.hasStream }
-	stream := &row{
-		id: "bus.stream", label: "Stream", kind: wsview.Enum,
-		help: "Decode the bus continuously into a transcript (Stream mode says how), with the settings below: BUS's Stream view, which On shows and Off leaves.",
-		knob: "F2 again in BUS (after the eye diagram) starts it, F2 once more ends it. Run/Stop stops and restarts a stream.",
-		rel:  isAuto, why: "a Protocol (decode on)",
-		opts: staticOpts(onOff),
-		get:  func(s *sv) int { return b2ic(s.decMode == decModeStream) },
-		set:  func(c *Controller, v int) error { return c.setStreamMode(v == 1) },
-		def:  func(c *Controller) error { return c.setStreamMode(false) },
-	}
-	streamTrig := &row{
-		id: "bus.stream_trigger", label: "Stream stops", kind: wsview.Enum,
-		help: "What ends a stream: a decode error, a value, or Run/Stop by hand.", rel: isAuto, why: "a Protocol (decode on)",
-		opts: staticOpts([]opt{{0, "On error"}, {1, "On value"}, {2, "By hand"}}),
-		get:  func(s *sv) int { return s.decTrig },
-		set: func(c *Controller, v int) error {
-			c.mu.Lock()
-			c.decTrig = mod3(v)
-			c.mu.Unlock()
-			return nil
-		},
-	}
-	streamTrig.def = func(c *Controller) error { return streamTrig.set(c, 0) }
-	streamMode := &row{
-		id: "bus.stream_mode", label: "Stream mode", kind: wsview.Action,
-		help: "How the bus streams: gap-free from the FPGA's decoded events, gap-free from software decode of the " +
-			"continuous stream (the buses on the symbol trigger, slow enough for it), or captures of back-to-back records " +
-			"that miss what lies between them (the fast ones), with the share of the signal time read.",
-		rel: isAuto, why: "a Protocol (decode on)",
-		acts: func(s *sv) []act {
-			return []act{{
-				id: "stream", t: "Stream", dim: s.decMode == decModeStream,
-				run: func(c *Controller) error { return c.setStreamMode(true) },
-			}}
-		},
-		status: streamModeText,
-	}
-	streamVal := numRow("bus.stream_value", "Stream value", "", func(s *sv) float64 { return float64(s.decValue) },
-		constLim(0, streamValueMax), constStep(1), func(c *Controller, v float64) error {
-			c.mu.Lock()
-			c.decValue = clampInt(int(math.Round(v)), 0, streamValueMax)
-			c.mu.Unlock()
-			return nil
-		}, hexText)
-	streamVal.help = "The decoded unit that ends a stream (Stream stops = On value): a byte, a MIL-1553, MDIO or Wiegand word, an ARINC 429 word's 19-bit data field, an S/PDIF sample."
-	streamVal.rel, streamVal.why = func(s *sv) bool { return isAuto(s) && s.decTrig == 1 }, "Stream stops = On value"
-	streamVal.def = func(c *Controller) error { return streamVal.setN(c, 0) }
-	streamScreen := &row{
-		id: "bus.stream_screen", label: "Stream shows", kind: wsview.Enum,
-		help: "A stopped stream: its record's waveform, or the transcript list (Position, once pushed, scrolls it).",
-		knob: "S/DIV push (Zoom) in BUS Stream switches them.",
-		rel:  func(s *sv) bool { return isAuto(s) && s.decMode == decModeStream && s.streamStopped }, why: "a stopped stream",
-		opts: staticOpts([]opt{{0, "Wave"}, {1, "List"}}),
-		get:  func(s *sv) int { return b2ic(s.streamList) },
-		set: func(c *Controller, v int) error {
-			if b2ic(c.snap().streamList) != v {
-				c.toggleStreamList()
-			}
-			return nil
-		},
-	}
 	baudOpts := func(s *sv) []opt {
 		var o []opt
 		std := false
@@ -1583,7 +1561,7 @@ func busTabRows() []*row {
 		quick: []int{9600, 19200, 38400, 57600, 115200},
 		get:   func(s *sv) int { return s.decBaud },
 		long:  func(s *sv) string { return fmt.Sprintf("%d baud", s.decBaud) },
-		parse: func(s *sv, t string) (int, bool) {
+		parse: func(_ *sv, t string) (int, bool) {
 			v, err := parseNumber(t, "Bd")
 			if err != nil || v < 50 || v > maxDecBaud {
 				return 0, false
@@ -1680,7 +1658,7 @@ func busTabRows() []*row {
 	arm := &row{
 		id: "bus.trigger_on", label: "Trigger on it", kind: wsview.Enum,
 		help: "On: trigger type Serial, firing on the match with the protocol above.",
-		rel:  serialBus, why: "a Protocol (decode on)",
+		rel:  serialBus, why: whyDecodeOn,
 		opts: staticOpts(onOff),
 		get:  func(s *sv) int { return b2ic(s.st.SerialMode != 0) },
 		set: func(c *Controller, v int) error {
@@ -1710,17 +1688,29 @@ func busTabRows() []*row {
 	addr.rel, addr.why = func(s *sv) bool { return serialBus(s) && s.decProto == framecalc.ProtoI2C }, "Protocol = I2C"
 	addr.presets = func(*sv) []preset { return []preset{{t: "Any", v: -1}} }
 	addr.def = func(c *Controller) error { return c.setI2CAddr(-1) }
+	parity := parityRow()
+	rows := append([]*row{proto, format}, streamRows()...)
+	rows = append(rows, baud, rate, parity, uartLineRow(), line, scl, sda, clk, data, spiMode, bitOrder)
+	rows = append(rows, spiTimingRows(isSPI)...)
+	rows = append(rows, layerRows()...)
+	return append(rows, match, arm, addr, receiverRow())
+}
+
+// parityRow is the BUS tab's parity row (Modbus RTU's framing, a UART's
+// parity bit).
+// TRLC-LINKS: REQ-SDS-214
+func parityRow() *row {
 	parity := &row{
 		id: "bus.parity", label: "Parity", kind: wsview.Enum,
 		help: "Modbus RTU character framing: even parity (the standard), odd, or none with two stop bits; Auto reads it off the frames' CRCs. A UART's parity bit (Auto: none).",
 		rel:  func(s *sv) bool { return s.decProto == framecalc.ProtoModbus || s.decProto == framecalc.ProtoUART }, why: "Protocol = Modbus or UART",
-		opts: staticOpts([]opt{{0, "Auto"}, {1, "Even"}, {2, "Odd"}, {3, "None"}}),
+		opts: staticOpts([]opt{{0, labelAuto}, {1, "Even"}, {2, "Odd"}, {3, "None"}}),
 		get: func(s *sv) int {
-			return map[string]int{"even": 1, "odd": 2, "none": 3}[s.decParity]
+			return map[string]int{parityEven: 1, parityOdd: 2, parityNone: 3}[s.decParity]
 		},
 		set: func(c *Controller, v int) error {
 			c.mu.Lock()
-			c.decParity = []string{"", "even", "odd", "none"}[clampInt(v, 0, 3)]
+			c.decParity = []string{"", parityEven, parityOdd, parityNone}[clampInt(v, 0, 3)]
 			c.auto = autoWatch{} // set by hand
 			c.mu.Unlock()
 			c.syncSerialBus()
@@ -1728,13 +1718,75 @@ func busTabRows() []*row {
 		},
 	}
 	parity.def = func(c *Controller) error { return parity.set(c, 0) }
-	rows := []*row{
-		proto, format, stream, streamTrig, streamVal, streamMode, streamScreen, baud, rate, parity, uartLineRow(), line, scl, sda,
-		clk, data, spiMode, bitOrder,
+	return parity
+}
+
+// streamRows are the BUS tab's decode stream rows.
+// TRLC-LINKS: REQ-SDS-214, REQ-SDS-228
+func streamRows() []*row {
+	isAuto := func(s *sv) bool { return serialProto(s.decProto) && s.hasStream }
+	stream := &row{
+		id: "bus.stream", label: labelStream, kind: wsview.Enum,
+		help: "Decode the bus continuously into a transcript (Stream mode says how), with the settings below: BUS's Stream view, which On shows and Off leaves.",
+		knob: "F2 again in BUS (after the eye diagram) starts it, F2 once more ends it. Run/Stop stops and restarts a stream.",
+		rel:  isAuto, why: whyDecodeOn,
+		opts: staticOpts(onOff),
+		get:  func(s *sv) int { return b2ic(s.decMode == decModeStream) },
+		set:  func(c *Controller, v int) error { return c.setStreamMode(v == 1) },
+		def:  func(c *Controller) error { return c.setStreamMode(false) },
 	}
-	rows = append(rows, spiTimingRows(isSPI)...)
-	rows = append(rows, layerRows()...)
-	return append(rows, match, arm, addr, receiverRow())
+	streamTrig := &row{
+		id: "bus.stream_trigger", label: "Stream stops", kind: wsview.Enum,
+		help: "What ends a stream: a decode error, a value, or Run/Stop by hand.", rel: isAuto, why: whyDecodeOn,
+		opts: staticOpts([]opt{{0, "On error"}, {1, "On value"}, {2, "By hand"}}),
+		get:  func(s *sv) int { return s.decTrig },
+		set: func(c *Controller, v int) error {
+			c.mu.Lock()
+			c.decTrig = mod3(v)
+			c.mu.Unlock()
+			return nil
+		},
+	}
+	streamTrig.def = func(c *Controller) error { return streamTrig.set(c, 0) }
+	streamMode := &row{
+		id: "bus.stream_mode", label: "Stream mode", kind: wsview.Action,
+		help: "How the bus streams: gap-free from the FPGA's decoded events, gap-free from software decode of the " +
+			"continuous stream (the buses on the symbol trigger, slow enough for it), or captures of back-to-back records " +
+			"that miss what lies between them (the fast ones), with the share of the signal time read.",
+		rel: isAuto, why: whyDecodeOn,
+		acts: func(s *sv) []act {
+			return []act{{
+				id: "stream", t: labelStream, dim: s.decMode == decModeStream,
+				run: func(c *Controller) error { return c.setStreamMode(true) },
+			}}
+		},
+		status: streamModeText,
+	}
+	streamVal := numRow("bus.stream_value", "Stream value", "", func(s *sv) float64 { return float64(s.decValue) },
+		constLim(0, streamValueMax), constStep(1), func(c *Controller, v float64) error {
+			c.mu.Lock()
+			c.decValue = clampInt(int(math.Round(v)), 0, streamValueMax)
+			c.mu.Unlock()
+			return nil
+		}, hexText)
+	streamVal.help = "The decoded unit that ends a stream (Stream stops = On value): a byte, a MIL-1553, MDIO or Wiegand word, an ARINC 429 word's 19-bit data field, an S/PDIF sample."
+	streamVal.rel, streamVal.why = func(s *sv) bool { return isAuto(s) && s.decTrig == 1 }, "Stream stops = On value"
+	streamVal.def = func(c *Controller) error { return streamVal.setN(c, 0) }
+	streamScreen := &row{
+		id: "bus.stream_screen", label: "Stream shows", kind: wsview.Enum,
+		help: "A stopped stream: its record's waveform, or the transcript list (Position, once pushed, scrolls it).",
+		knob: "S/DIV push (Zoom) in BUS Stream switches them.",
+		rel:  func(s *sv) bool { return isAuto(s) && s.decMode == decModeStream && s.streamStopped }, why: "a stopped stream",
+		opts: staticOpts([]opt{{0, "Wave"}, {1, "List"}}),
+		get:  func(s *sv) int { return b2ic(s.streamList) },
+		set: func(c *Controller, v int) error {
+			if b2ic(c.snap().streamList) != v {
+				c.toggleStreamList()
+			}
+			return nil
+		},
+	}
+	return []*row{stream, streamTrig, streamVal, streamMode, streamScreen}
 }
 
 // hexText writes a whole number as the hex rows do: 0x50, and -0x02 for a
@@ -1778,7 +1830,6 @@ func depthText(n int) string {
 func fileRows() []*row {
 	var rows []*row
 	for n := 1; n <= setupSlots; n++ {
-		n := n
 		rows = append(rows, &row{
 			id: fmt.Sprintf("file.setup%d", n), label: fmt.Sprintf("Setup %2d", n), kind: wsview.Slot, slot: n,
 			help: fmt.Sprintf("Setup memory %d: Save stores every setting and the workspace; Recall restores them.", n),
@@ -1822,7 +1873,7 @@ func sysRows() []*row {
 		},
 		status: func(s *sv) string { return guideNames[clampInt(s.ui.guide, 0, 2)] + " below" },
 	}
-	print := &row{
+	printRow := &row{
 		id: "sys.print", label: "Print screen", kind: wsview.Action,
 		help: "Save a screenshot to the U-disk (also the Print key).",
 		acts: func(s *sv) []act {
@@ -1884,5 +1935,5 @@ func sysRows() []*row {
 		},
 	}
 	off.def = func(c *Controller) error { return off.set(c, defOffMin) }
-	return []*row{help, print, auto, def, remote, saver, off}
+	return []*row{help, printRow, auto, def, remote, saver, off}
 }

@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-PANEL
+
 package panel
 
 import (
@@ -177,24 +178,7 @@ func selectedLive(a *anaState, partial bool, sel int) int {
 // TRLC-LINKS: REQ-SDS-214
 func tokMatch(toks []string, p Packet) bool {
 	if len(toks) > 0 && (toks[0] == "SOF" || toks[0] == "CMD") {
-		skip := 0
-		if toks[0] == "CMD" {
-			if !p.HasAddr || len(p.Bytes) < 2 {
-				return false
-			}
-			skip = 2
-		}
-		if len(toks) == 1 {
-			return len(p.Bytes) > 0
-		}
-		q := p
-		q.Bytes = p.Bytes[skip:]
-		if len(p.ByteErr) > skip {
-			q.ByteErr = p.ByteErr[skip:]
-		} else {
-			q.ByteErr = nil
-		}
-		return tokMatchAt(toks[1:], q, 0)
+		return tokMatchOpening(toks, p)
 	}
 	n := len(toks)
 	if n == 0 || n > len(p.Bytes) {
@@ -206,6 +190,30 @@ func tokMatch(toks []string, p Packet) bool {
 		}
 	}
 	return false
+}
+
+// tokMatchOpening is tokMatch for tokens that open on SOF or CMD: the units
+// after the opening, from the packet's start.
+// TRLC-LINKS: REQ-SDS-214
+func tokMatchOpening(toks []string, p Packet) bool {
+	skip := 0
+	if toks[0] == "CMD" {
+		if !p.HasAddr || len(p.Bytes) < 2 {
+			return false
+		}
+		skip = 2
+	}
+	if len(toks) == 1 {
+		return len(p.Bytes) > 0
+	}
+	q := p
+	q.Bytes = p.Bytes[skip:]
+	if len(p.ByteErr) > skip {
+		q.ByteErr = p.ByteErr[skip:]
+	} else {
+		q.ByteErr = nil
+	}
+	return tokMatchAt(toks[1:], q, 0)
 }
 
 // tokMatchAt reports whether the match tokens hold at byte i of a packet.
@@ -337,7 +345,7 @@ func (c *Controller) busNextMatch(dir int) {
 // TRLC-LINKS: REQ-SDS-214
 func (c *Controller) busToTrigger(s *sv) {
 	if s.zoom > 1 {
-		c.setZoomOff(0)
+		_ = c.setZoomOff(0) // cannot fail
 	}
 	c.amu.Lock()
 	c.ana.list.Select(0)
@@ -354,7 +362,7 @@ func (c *Controller) panToPacket(g geom, p Packet) {
 	if xc < 0 {
 		xc = float64(g.valid) / 2
 	}
-	c.setZoomOff((float64(p.I0+p.I1)/2 - xc) / float64(g.valid))
+	_ = c.setZoomOff((float64(p.I0+p.I1)/2 - xc) / float64(g.valid)) // cannot fail
 }
 
 // busZoom is the S/DIV push in BUS Packets: zoom onto the selected packet (a
@@ -363,7 +371,7 @@ func (c *Controller) panToPacket(g geom, p Packet) {
 func (c *Controller) busZoom() {
 	s := c.snap()
 	if s.zoom > 1 {
-		c.setZoom(1)
+		_ = c.setZoom(1) // 1x is always offered
 		c.toast("Zoom off", 900*time.Millisecond)
 		return
 	}
@@ -403,10 +411,10 @@ func (c *Controller) busZoom() {
 	}
 	msg := ""
 	if s.st.Running && s.st.SerialMode == 0 {
-		c.setRun(1)
+		_ = c.setRun(1) // cannot fail
 		msg = " (stopped - Run/Stop continues)"
 	}
-	c.setZoom(z)
+	_ = c.setZoom(z) // z is one of the offered zooms
 	c.panToPacket(g, p)
 	c.toast(fmt.Sprintf("Zoom %dx on packet %d%s", z, sel+1, msg), 1600*time.Millisecond)
 }
@@ -417,7 +425,7 @@ func (c *Controller) busZoom() {
 func (c *Controller) zoomToggle() {
 	s := c.snap()
 	if s.zoom > 1 {
-		c.setZoom(1)
+		_ = c.setZoom(1) // 1x is always offered
 		c.toast("Zoom off", 900*time.Millisecond)
 		return
 	}
@@ -425,8 +433,8 @@ func (c *Controller) zoomToggle() {
 	if z <= 1 {
 		z = 10
 	}
-	c.setZoom(z)
-	c.setZoomOff(0)
+	_ = c.setZoom(z)    // z is one of the offered zooms
+	_ = c.setZoomOff(0) // cannot fail
 	c.toast(fmt.Sprintf("Zoom %dx (S/DIV sets the factor)", z), 1400*time.Millisecond)
 }
 
@@ -511,7 +519,7 @@ func (c *Controller) detectOnScreen() (decode.Result, float64, bool) {
 // time order, enough of them.
 // TRLC-LINKS: REQ-SDS-214
 func searchable(f *engine.Frame) bool {
-	return f != nil && !f.IsEnv && !(f.PeakDetect && !f.Ordered) && len(f.C1) >= 32
+	return f != nil && !f.IsEnv && (!f.PeakDetect || f.Ordered) && len(f.C1) >= 32
 }
 
 // frameCopy is a copy of the frame on screen when ok accepts it (nil
@@ -670,13 +678,16 @@ func (c *Controller) detectOn(auto AutoSource) (decode.Result, float64, bool, lo
 // slower at most, a screen left from a timebase a decade slower is not.
 const slowerFrame = 4.0
 
+// protoUART is the decoders' name for UART (decode.Result.Proto).
+const protoUART = "uart"
+
 // decimatedWait bounds the wait for a decimated record: a scope waiting for
 // a trigger captures none.
 const decimatedWait = 1500 * time.Millisecond
 
 // decimatedFeature is the samples of a decimated record a bus's shortest
 // feature must span for a detection on it to stand (a 115200 Bd UART at
-// 200us/div spans 35); a faster bus is looked at at the full rate.
+// 200us/div spans 35); a faster bus is examined at the full rate.
 // decimatedCheckedFeature is the bound for a bus found by its frames' checks
 // (CAN's CRC-15, FlexRay's header CRC-11, Modbus's CRC-16, J1850's CRC-8,
 // USB PD's CRC-32, the LIN and DHT checksums, Wiegand's parities; an SD
@@ -700,7 +711,7 @@ func decimatedStands(res decode.Result) bool {
 	switch {
 	case checkedFind(res):
 		return fs >= decimatedCheckedFeature
-	case res.Proto == "uart":
+	case res.Proto == protoUART:
 		return fs >= decimatedFeature && decode.StandardBaud(float64(res.Baud))
 	}
 	return fs >= decimatedFeature
@@ -769,7 +780,7 @@ func (c *Controller) detectWith(decimated, stepped bool, accept func(*engine.Fra
 		var runs [2]int
 		if c.frameFn != nil {
 			c.frameFn(func(f *engine.Frame) {
-				usable = f != nil && !f.IsEnv && !(f.PeakDetect && !f.Ordered) && f.Valid >= 32 && len(f.C1) >= f.Valid
+				usable = f != nil && !f.IsEnv && (!f.PeakDetect || f.Ordered) && f.Valid >= 32 && len(f.C1) >= f.Valid
 				got = usable && !f.PeakDetect && accept(f, decimated) && fresh(f)
 				if got && decimated && len(f.C2) >= f.Valid {
 					runs = [2]int{decode.ShortestRun(f.C1[:f.Valid]), decode.ShortestRun(f.C2[:f.Valid])}
@@ -986,7 +997,7 @@ func runsResolved(run int) bool {
 // bit.
 // TRLC-LINKS: REQ-SDS-214
 func hidesFaster(l look) bool {
-	if l.res.Proto != "uart" || !(l.res.SPB > 0) {
+	if l.res.Proto != protoUART || !(l.res.SPB > 0) {
 		return false
 	}
 	run := l.runs[l.res.Roles.ChA&1]
@@ -1115,7 +1126,7 @@ func weakFind(res decode.Result) bool {
 // fewUART reports a UART find of under fewUARTBytes bytes.
 // TRLC-LINKS: REQ-SDS-214
 func fewUART(res decode.Result) bool {
-	return res.Proto == "uart" && len(res.Bytes) < fewUARTBytes
+	return res.Proto == protoUART && len(res.Bytes) < fewUARTBytes
 }
 
 // slowTdivs are the timebases a bus found nowhere faster is looked for at:
@@ -1171,12 +1182,12 @@ func (c *Controller) findSlowBus(auto AutoSource, wanted func() bool, prior stri
 		c.setTdivNearest(t)
 		at := c.snap().st.TdivSet()
 		var seen uint64 // the newest frame a look here was offered
-		for look := 0; look < slowLooks(i); look++ {
+		for range slowLooks(i) {
 			after := seen
 			// a frame of the search's own screen, not one the live view or
 			// the look on screen read at the timebase (four times coarser),
 			// and newer than the look before read
-			accept := func(f *engine.Frame, decimated bool) bool {
+			accept := func(f *engine.Frame, _ bool) bool {
 				ok := (f.TdivS == 0 || math.Abs(f.TdivS-at) <= 1e-3*at) && (after == 0 || f.Seq > after) &&
 					(!searching || f.SampleS <= 2*10*at/engine.SearchLiveSamples)
 				if ok {
@@ -1301,7 +1312,7 @@ func (c *Controller) findAtFullRate(full, t float64, first *look, auto AutoSourc
 		}
 		c.setTdivNearest(t)
 	}
-	// A bus too fast for it is looked at at the full rate on a short record
+	// A bus too fast for it is examined at the full rate on a short record
 	// first: its frames are short, and the whole record takes seconds to
 	// read.
 	var cut *look // a find the short record may have cut a frame of: kept, should the whole record show nothing else
@@ -1335,7 +1346,7 @@ func (c *Controller) findAtFullRate(full, t float64, first *look, auto AutoSourc
 // no UART uses.
 // TRLC-LINKS: REQ-SDS-214
 func scantUART(res decode.Result) bool {
-	return res.Proto == "uart" && (len(res.Bytes) < scantBytes || !decode.StandardBaud(float64(res.Baud)))
+	return res.Proto == protoUART && (len(res.Bytes) < scantBytes || !decode.StandardBaud(float64(res.Baud)))
 }
 
 // scantFind reports a first find to look on from: a scant UART, or an SPI or
@@ -1539,6 +1550,22 @@ func (c *Controller) offPanel(fn func()) {
 	go fn()
 }
 
+// foundBusNote sets up the bus a detection found (res, read at sampleS,
+// stepped the timebase it stepped to, frame the frame-start trigger asked
+// for) and says what it set: the timebase, a layer the packets prove, the
+// frame-start trigger.
+// TRLC-LINKS: REQ-SDS-223
+func (c *Controller) foundBusNote(res decode.Result, sampleS, stepped float64, frame int) string {
+	note := c.readTimebase(res, sampleS, stepped, frame != 0)
+	if l := c.detectLayer(res, 0); l != "" { // a layer the packets prove
+		note += "; layer " + l
+	}
+	if frame != 0 {
+		note += "; " + c.frameBus(decode.EnvelopeFeatureSamples(res)*sampleS, frame == busFrameAuto)
+	}
+	return note
+}
+
 // readTimebase steps to the timebase that reads a bus findBus found live
 // (readableTimebase), and says where the timebase went: the step, or the
 // full-rate timebase the search kept. arming: a serial trigger is armed next
@@ -1665,13 +1692,7 @@ func (c *Controller) runDetect() {
 	tdivNote, none := "", ""
 	frame := c.takeBusFrame()
 	if locked {
-		tdivNote = c.readTimebase(res, sampleS, stepped, frame != 0)
-		if l := c.detectLayer(res, 0); l != "" { // a layer the packets prove
-			tdivNote += "; layer " + l
-		}
-		if frame != 0 {
-			tdivNote += "; " + c.frameBus(decode.EnvelopeFeatureSamples(res)*sampleS, frame == busFrameAuto)
-		}
+		tdivNote = c.foundBusNote(res, sampleS, stepped, frame)
 	} else if small := c.smallSwing(frame == busFrameAuto); small != "" {
 		none = c.noBusNote(small)
 	} else if prev == framecalc.ProtoOff {

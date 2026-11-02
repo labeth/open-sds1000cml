@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-PANEL
+
 package panel
 
 import (
@@ -31,7 +32,7 @@ func (e *soundEng) leaseActive() bool { return time.Now().Before(e.lease) }
 // every workspace, so the scope captured nothing even after a restart.
 // TRLC-LINKS: REQ-SDS-276
 func TestSoundDriftEndsWithSound(t *testing.T) {
-	tone := func(t float64) float64 { return 0 }
+	tone := func(float64) float64 { return 0 }
 	e := newSoundEng([2]func(float64) float64{tone, tone}, 30)
 	c := New(e, &fakeFE{idx: [2]int{8, 8}}, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
 	c.decode(idle(), true)

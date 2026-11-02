@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-PANEL
+
 package panel
 
 import (
@@ -119,7 +120,9 @@ func TestSuperresArmFromStoppedDeepRecord(t *testing.T) {
 		}
 		fn(&engine.Frame{C1: live, C2: live, Valid: len(live), EdgeX: 512, SampleS: 2e-9, Seq: 2})
 	}
-	c.srArm()
+	if err := c.srArm(); err != nil {
+		t.Fatal(err)
+	}
 	defer c.srCancel("")
 	c.mu.Lock()
 	active, status, n := c.srActive, c.srStatus, 0

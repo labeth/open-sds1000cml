@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-PANEL
+
 package panel
 
 import (
@@ -30,7 +31,7 @@ func TestSelfGatedEnvelopeEndsAboveTheFloor(t *testing.T) {
 		func(t float64) float64 {
 			return 2*env(t)*math.Sin(2*math.Pi*330*t) + 0.16*math.Sin(2*math.Pi*7000*t) // floor 8 % of the peak
 		},
-		func(t float64) float64 { return 0 },
+		func(float64) float64 { return 0 },
 	}, 20)
 	c := New(e, &fakeFE{idx: [2]int{8, 8}}, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
 	c.SetSoundSettings(SoundSettings{A4: 440, Ref: "dbu", Cycles: 2, Gate: -1, GateV: 0.5, Page: soundPageADSR})

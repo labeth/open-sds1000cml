@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-PANEL
+
 package panel
 
 import (
@@ -251,7 +252,7 @@ func (c *Controller) MatchEditor() MatchEditorView {
 
 // matchKeys are the editor's F-keys: key set, type, delete, apply, cancel.
 // TRLC-LINKS: REQ-SDS-013
-func (c *Controller) matchKeys(s *sv) []fkey {
+func (c *Controller) matchKeys() []fkey {
 	c.mu.Lock()
 	k := c.kb
 	c.mu.Unlock()
@@ -481,7 +482,6 @@ func (c *Controller) pickKeys(s *sv) []fkey {
 	unit := max(p.unit, 1)
 	var out []fkey
 	for n := 1; n <= 4; n++ {
-
 		// an ARINC 429 match is one word: each word is a frame of its own
 		ok := p.start+n*unit <= len(p.toks) && (unit != 3 || n == 1)
 		var toks []string

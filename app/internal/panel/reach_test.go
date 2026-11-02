@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-PANEL
+
 package panel
 
 import (
@@ -39,47 +40,62 @@ func set(t *testing.T, c *Controller, id, text string) {
 func reachContexts() []reachContext {
 	return []reachContext{
 		{"base", func(*testing.T, *viewRig) {}},
-		{"pulse", func(t *testing.T, r *viewRig) { set(t, r.c, "trig.type", "Pulse") }},
-		{"slope", func(t *testing.T, r *viewRig) { set(t, r.c, "trig.type", "Slope") }},
-		{"video", func(t *testing.T, r *viewRig) { set(t, r.c, "trig.type", "Video") }},
-		{"uart", func(t *testing.T, r *viewRig) { set(t, r.c, "bus.protocol", "UART") }},
+		{"pulse", setsRow("trig.type", "Pulse")},
+		{"slope", setsRow("trig.type", "Slope")},
+		{"video", setsRow("trig.type", "Video")},
+		{"uart", setsRow("bus.protocol", "UART")},
 		{"i2c serial", func(t *testing.T, r *viewRig) {
+			t.Helper()
 			set(t, r.c, "bus.protocol", "I2C")
 			set(t, r.c, "trig.type", "Serial")
 		}},
-		{"spi", func(t *testing.T, r *viewRig) { set(t, r.c, "bus.protocol", "SPI") }},
-		{"manchester", func(t *testing.T, r *viewRig) { set(t, r.c, "bus.protocol", "Manch") }},
-		{"modbus", func(t *testing.T, r *viewRig) { set(t, r.c, "bus.protocol", "Modbus") }},
+		{"spi", setsRow("bus.protocol", "SPI")},
+		{"manchester", setsRow("bus.protocol", "Manch")},
+		{"modbus", setsRow("bus.protocol", "Modbus")},
 		{"i2c filter", func(t *testing.T, r *viewRig) {
+			t.Helper()
 			set(t, r.c, "bus.protocol", "I2C")
 			set(t, r.c, "bus.layer", "Address filter")
 		}},
 		{"stream", func(t *testing.T, r *viewRig) {
+			t.Helper()
 			set(t, r.c, "bus.protocol", "UART")
 			set(t, r.c, "bus.stream", "On")
 		}},
 		{"stream on value", func(t *testing.T, r *viewRig) {
+			t.Helper()
 			set(t, r.c, "bus.protocol", "UART")
 			set(t, r.c, "bus.stream", "On")
 			set(t, r.c, "bus.stream_trigger", "On value")
 		}},
-		{"zoom", func(t *testing.T, r *viewRig) { set(t, r.c, "time.zoom", "10x") }},
-		{"roll", func(t *testing.T, r *viewRig) { set(t, r.c, "time.tdiv", "200ms") }},
-		{"average", func(t *testing.T, r *viewRig) { set(t, r.c, "acq.mode", "Average") }},
-		{"eres", func(t *testing.T, r *viewRig) { set(t, r.c, "acq.mode", "ERes") }},
+		{"zoom", setsRow("time.zoom", "10x")},
+		{"roll", setsRow("time.tdiv", "200ms")},
+		{"average", setsRow("acq.mode", "Average")},
+		{"eres", setsRow("acq.mode", "ERes")},
 		{"super-res", func(t *testing.T, r *viewRig) {
+			t.Helper()
 			r.show(smallFrame())
 			set(t, r.c, "acq.superres", "On")
 		}},
-		{"cursors", func(t *testing.T, r *viewRig) { set(t, r.c, "curs.mode", "Time") }},
+		{"cursors", setsRow("curs.mode", "Time")},
 		{"refs", func(t *testing.T, r *viewRig) {
+			t.Helper()
 			for _, id := range []string{"cmp.store_a", "cmp.store_b"} {
 				if res := r.c.SheetAction(id, ""); !res.OK {
 					t.Fatalf("%s: %s", id, res.Error)
 				}
 			}
 		}},
-		{"readouts", func(t *testing.T, r *viewRig) { set(t, r.c, "meas.readouts", "On") }},
+		{"readouts", setsRow("meas.readouts", "On")},
+	}
+}
+
+// setsRow is a context's preparation that sets one row.
+// TRLC-LINKS: REQ-SDS-212
+func setsRow(id, text string) func(*testing.T, *viewRig) {
+	return func(t *testing.T, r *viewRig) {
+		t.Helper()
+		set(t, r.c, id, text)
 	}
 }
 
@@ -97,6 +113,7 @@ func smallFrame() *engine.Frame {
 // rigFor is a rig in context x, showing a short capture super-res can stack.
 // TRLC-LINKS: REQ-SDS-212
 func rigFor(t *testing.T, x reachContext) *viewRig {
+	t.Helper()
 	r := newViewRig(t)
 	// the engine's power-on qualifiers (defaultTrigParams): the time limits
 	// start inside their rows' 10 ns .. 10 s, as on the scope
@@ -145,7 +162,10 @@ func otherValue(m RowModel) (any, bool) {
 			}
 		}
 	case "number":
-		v := m.Value.(float64)
+		v, ok := m.Value.(float64)
+		if !ok {
+			return nil, false
+		}
 		if l := m.Ladder; len(l) > 1 {
 			i := 0
 			for k := range l {
@@ -362,6 +382,7 @@ func TestSheetsModelListsEveryRow(t *testing.T) {
 				need(r.fmtN != nil || r.fmtS != nil, "fmtN")
 			case wsview.Action, wsview.Slot:
 				need(r.acts != nil, "acts")
+			case wsview.Bytes, wsview.Header: // the match bytes have their own editor; a header no value
 			}
 			if len(miss) > 0 {
 				t.Errorf("%s lacks %s", r.id, strings.Join(miss, ", "))

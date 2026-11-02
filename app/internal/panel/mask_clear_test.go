@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-PANEL
+
 package panel
 
 import (
@@ -195,7 +196,9 @@ func TestMasterMaskInLiveGeometry(t *testing.T) {
 			t.Fatalf("column %d: the live sample %d is outside its master's mask [%d, %d]", j, v, m.Lo[j], m.Hi[j])
 		}
 	}
-	c.clearRefs()
+	if err := c.clearRefs(); err != nil {
+		t.Fatal(err)
+	}
 	if got := rowByID["cmp.stack_master"].status(c.snap()); got != "none" {
 		t.Fatalf("after Clear refs the master row says %q", got)
 	}

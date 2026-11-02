@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-PANEL
+
 package panel
 
 import (
@@ -465,64 +466,25 @@ func (c *Controller) srLoop(stop chan struct{}, st *superres.Stack, seedTdiv flo
 		// stack, the lease would read 500 k words a frame at 200 us/div and
 		// hold the live view at 1 fps for as long as super-res stays armed.
 		c.srLeaseRaw()
-		var c1, c2 []uint8
-		var edgeX float64
-		var seq uint64
-		var cols int
-		var sampleS, tdiv float64
-		var envelope bool
-		c.frameFn(func(f *engine.Frame) {
-			if f != nil && (f.IsEnv || f.PeakDetect) {
-				envelope = true
-				return
-			}
-			if f == nil || f.Seq == lastSeq {
-				return
-			}
-			v := f.Valid
-			if v < 1 || v > len(f.C1) {
-				v = len(f.C1)
-			}
-			if v < 8 {
-				return
-			}
-			seq, cols, edgeX, sampleS, tdiv = f.Seq, v, f.EdgeX, f.SampleS, f.TdivS
-			c1, c2 = srFrameCopy(f, v, buf1, buf2)
-			buf1 = c1
-			if len(f.C2) >= v {
-				buf2 = c2
-			}
-		})
-		if envelope {
+		fr := c.srTakeFrame(lastSeq, &buf1, &buf2)
+		if fr.envelope {
 			c.srReachReview(st, "sampled frame required - stack kept")
 			reached = true
 			continue
 		}
-		if c1 == nil {
+		if fr.c1 == nil {
 			continue // no new frame yet
 		}
-		lastSeq = seq
-		// A real band/tdiv change (SampleS) rescales the whole record — freeze the
-		// stack for review. Per-frame Valid jitter (drain timing routinely varies
-		// the drained count by a chunk) is NOT a scale change: a frame too short to
-		// cover the grid is simply skipped, no penalty, no cancel.
-		if st.SampleS != 0 && sampleS != 0 && sampleS != st.SampleS {
-			c.srReachReview(st, "scale changed - stack kept")
+		lastSeq = fr.seq
+		if why := srFrameChange(st, fr, seedTdiv); why != "" {
+			c.srReachReview(st, why)
 			reached = true
 			continue
 		}
-		// Raw SRAM frames keep their 2 ns pitch at every timebase, so a
-		// timebase change shows only as TdivS (else the stack keeps feeding
-		// 500 k sample frames at 200 us/div).
-		if seedTdiv > 0 && tdiv > 0 && math.Abs(tdiv-seedTdiv) > seedTdiv*1e-6 {
-			c.srReachReview(st, "timebase changed - stack kept")
-			reached = true
-			continue
-		}
-		if cols < st.N {
+		if fr.cols < st.N {
 			continue // short frame: can't fill the n·K grid this time, skip it
 		}
-		st.Feed(c1, c2, edgeX)
+		st.Feed(fr.c1, fr.c2, fr.edgeX)
 		res := st.Result(true, 0) // stats-only: cheap, for status + stop
 		c.mu.Lock()
 		if !c.srActive || c.srFPGABusy || c.srStack != st {
@@ -588,13 +550,74 @@ type SuperresView struct {
 	Period         int // >0: the stack is one period; the review tiles it over the span
 }
 
+// srFrame is a live frame the super-res loop took: both channels' samples
+// (copied), the frame's sequence, its valid columns, trigger edge, sample
+// interval and timebase, or envelope for a frame it cannot stack.
+type srFrame struct {
+	c1, c2        []uint8
+	edgeX         float64
+	seq           uint64
+	cols          int
+	sampleS, tdiv float64
+	envelope      bool
+}
+
+// srTakeFrame copies the newest frame after lastSeq into buf1 and buf2
+// (srFrameCopy; c1 nil for none yet, or a frame under 8 samples).
+// TRLC-LINKS: REQ-SDS-140
+func (c *Controller) srTakeFrame(lastSeq uint64, buf1, buf2 *[]uint8) srFrame {
+	var fr srFrame
+	c.frameFn(func(f *engine.Frame) {
+		if f != nil && (f.IsEnv || f.PeakDetect) {
+			fr.envelope = true
+			return
+		}
+		if f == nil || f.Seq == lastSeq {
+			return
+		}
+		v := f.Valid
+		if v < 1 || v > len(f.C1) {
+			v = len(f.C1)
+		}
+		if v < 8 {
+			return
+		}
+		fr.seq, fr.cols, fr.edgeX, fr.sampleS, fr.tdiv = f.Seq, v, f.EdgeX, f.SampleS, f.TdivS
+		fr.c1, fr.c2 = srFrameCopy(f, v, *buf1, *buf2)
+		*buf1 = fr.c1
+		if len(f.C2) >= v {
+			*buf2 = fr.c2
+		}
+	})
+	return fr
+}
+
+// srFrameChange is why frame fr ends the stack st (seeded at seedTdiv), ""
+// for none. A real band/tdiv change (SampleS) rescales the whole record —
+// freeze the stack for review. Per-frame Valid jitter (drain timing
+// routinely varies the drained count by a chunk) is NOT a scale change: a
+// frame too short to cover the grid is simply skipped, no penalty, no
+// cancel. Raw SRAM frames keep their 2 ns pitch at every timebase, so a
+// timebase change shows only as TdivS (else the stack keeps feeding 500 k
+// sample frames at 200 us/div).
+// TRLC-LINKS: REQ-SDS-140
+func srFrameChange(st *superres.Stack, fr srFrame, seedTdiv float64) string {
+	if st.SampleS != 0 && fr.sampleS != 0 && fr.sampleS != st.SampleS {
+		return "scale changed - stack kept"
+	}
+	if seedTdiv > 0 && fr.tdiv > 0 && math.Abs(fr.tdiv-seedTdiv) > seedTdiv*1e-6 {
+		return "timebase changed - stack kept"
+	}
+	return ""
+}
+
 // srFrameCopy copies a frame's first v samples of both channels into b1
 // and b2, the loop's buffers from frame to frame (Feed reads them, keeps
 // none): a raw frame is half a million samples a channel, a fresh copy each
 // frame. A short C2 shares C1's copy.
 // TRLC-LINKS: REQ-SDS-140
 func srFrameCopy(f *engine.Frame, v int, b1, b2 []uint8) (c1, c2 []uint8) {
-	c1 = append(b1[:0], f.C1[:v]...)
+	c1 = append(b1[:0], f.C1[:v]...) //nolint:gocritic // appendAssign: b1 is the caller's reused buffer, its copy returned as c1
 	if len(f.C2) < v {
 		return c1, c1
 	}

@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-PANEL
+
 package panel
 
 import (
@@ -28,6 +29,8 @@ func atSearchPriority(fn func()) {
 		fn()
 		return
 	}
-	defer syscall.Setpriority(syscall.PRIO_PROCESS, tid, 20-prev) // Getpriority returns 20 - nice
+	// Getpriority returns 20 - nice. Restoring the nice it raised can only
+	// fail for a thread that is gone, so its error is not acted on.
+	defer func() { _ = syscall.Setpriority(syscall.PRIO_PROCESS, tid, 20-prev) }()
 	fn()
 }

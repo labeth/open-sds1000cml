@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-PANEL
+
 package panel
 
 // Front-panel button codes (spec 08 §6), sel-index<<8 | bit.
@@ -36,9 +37,12 @@ var (
 // softkeys are F1..F5, top to bottom.
 var softkeys = []int{btnF1, btnF2, btnF3, btnF4, btnF5}
 
+// keyMath is the Math key's name (it opens the MATH/REF tab on its row).
+const keyMath = "math"
+
 // tabKeys map the dedicated keys to the names keyTab knows them by.
 var tabKeys = map[int]string{
 	btnTrigMenu: "trigmenu", btnAcquire: "acquire", btnDisplay: "display", btnHorizMenu: "horizmenu",
-	btnMeasure: "measure", btnCursors: "cursors", btnMath: "math", btnRef: "ref", btnUtility: "utility",
+	btnMeasure: "measure", btnCursors: "cursors", btnMath: keyMath, btnRef: "ref", btnUtility: "utility",
 	btnSaveRecall: "saverecall",
 }

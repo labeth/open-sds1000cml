@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-PANEL
+
 package panel
 
 import (
@@ -44,11 +45,11 @@ func (c *Controller) stepTrigLevel(n int) error {
 	case c.fe != nil: // trigStepCodes on what resync read
 		step = trigStepCodesAt(idx, st.TrigSource&1)
 	}
-	nc := clampInt(int(c.trigCode)-n*step, engine.TrigCodeMin, engine.TrigCodeMax)
+	nc := uint16(clampInt(int(c.trigCode)-n*step, engine.TrigCodeMin, engine.TrigCodeMax)) //nolint:gosec // G115: clamped to the trigger code range
 	c.mu.Lock()
-	c.trigCode = uint16(nc)
+	c.trigCode = nc
 	c.mu.Unlock()
-	c.eng.SetTrigLevelCode(uint16(nc))
+	c.eng.SetTrigLevelCode(nc)
 	return nil
 }
 

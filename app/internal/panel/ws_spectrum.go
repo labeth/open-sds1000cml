@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-PANEL
+
 package panel
 
 import (
@@ -158,7 +159,7 @@ func (c *Controller) specAdjust(dir int) {
 		return
 	}
 	if s.viewMode == viewBode {
-		c.bodeMove(s, dir)
+		c.bodeMove(dir)
 		return
 	}
 	c.amu.Lock()
@@ -184,7 +185,7 @@ func (c *Controller) specAdjust(dir int) {
 func (c *Controller) specFine(dir, n int) {
 	s := c.snap()
 	if s.viewMode == viewBode {
-		c.bodeMove(s, dir*n)
+		c.bodeMove(dir * n)
 		return
 	}
 	c.amu.Lock()
@@ -271,7 +272,7 @@ func bodeIndex(u *uiState, n int) int {
 
 // bodeMove moves the Bode marker n points.
 // TRLC-LINKS: REQ-SDS-216
-func (c *Controller) bodeMove(s *sv, n int) {
+func (c *Controller) bodeMove(n int) {
 	pts := c.bodePoints()
 	if len(pts) == 0 {
 		return
@@ -379,7 +380,7 @@ func (c *Controller) specPane(s *sv) *wsview.SpecPane {
 	if u.specRefSet {
 		delta = "delta off"
 	}
-	p.Tool = toolLine(s, wsview.Seg{Key: "Adjust", Job: "peak"}, wsview.Seg{Key: "push", Job: delta})
+	p.Tool = toolLine(s, wsview.Seg{Key: ctlAdjust, Job: "peak"}, wsview.Seg{Key: ctlPush, Job: delta})
 	return p
 }
 
@@ -398,59 +399,66 @@ func (c *Controller) bodePane(s *sv, p *wsview.SpecPane) {
 			p.Empty = "No point: " + why
 		}
 	} else {
-		p.Caption = fmt.Sprintf("BODE  ref C%d, DUT C%d  %d points", s.st.BodeRef&1+1, s.st.BodeDut&1+1, len(pts))
-		if why := s.st.BodeWhy; why != "" {
-			p.Caption += "  - " + why
-		}
-		p.Right = si(pts[0].FreqHz, "Hz") + ".." + si(pts[len(pts)-1].FreqHz, "Hz")
-		mi := bodeIndex(u, len(pts))
-		p.BodeIdx = mi
-		if u.bodeRef >= 0 && u.bodeRef < len(pts) {
-			p.BodeRef = u.bodeRef
-		}
-		i0 := clampInt(mi-3, 0, max(0, len(pts)-7))
-		for r := 0; r < 7 && i0+r < len(pts); r++ {
-			q := pts[i0+r]
-			p.Rows = append(p.Rows, wsview.SpecRow{
-				Num: i0 + r + 1, Freq: si(q.FreqHz, "Hz"),
-				Level: fmt.Sprintf("%.1fdB", q.GainDB), Rel: fmt.Sprintf("%.0fdeg", q.PhaseDeg), Sel: i0+r == mi,
-			})
-		}
-		pk, f3 := 0, -1
-		for i := range pts {
-			if pts[i].GainDB > pts[pk].GainDB {
-				pk = i
-			}
-		}
-		for i := 1; i < len(pts); i++ {
-			if pts[i].GainDB < pts[0].GainDB-3 {
-				f3 = i
-				break
-			}
-		}
-		p.Readout = append(p.Readout,
-			wsview.Span{Text: fmt.Sprintf("start %.1fdB", pts[0].GainDB), Col: wsview.Text},
-			wsview.Span{Text: fmt.Sprintf("peak %.1fdB %s", pts[pk].GainDB, si(pts[pk].FreqHz, "Hz")), Col: wsview.Text})
-		if f3 >= 0 {
-			p.Readout = append(p.Readout, wsview.Span{Text: "-3dB near " + si(pts[f3].FreqHz, "Hz"), Col: wsview.Text})
-		} else {
-			p.Readout = append(p.Readout, wsview.Span{Text: "-3dB ---", Col: wsview.Text})
-		}
-		m := pts[mi]
-		t := fmt.Sprintf("MKR %s  %.1fdB  %.0fdeg", si(m.FreqHz, "Hz"), m.GainDB, m.PhaseDeg)
-		if p.BodeRef >= 0 {
-			r := pts[p.BodeRef]
-			t += fmt.Sprintf("   D %s  %.1fdB  %.0fdeg", sgnSI(m.FreqHz-r.FreqHz, "Hz"), m.GainDB-r.GainDB, m.PhaseDeg-r.PhaseDeg)
-		}
-		p.Marker = t
-		p.HasMark, p.MarkHz = true, m.FreqHz
-		p.MarkText = fmt.Sprintf("M %s %.1fdB", si(m.FreqHz, "Hz"), m.GainDB)
+		bodeSweep(s, p, pts)
 	}
 	delta := "delta"
 	if u.bodeRef >= 0 {
 		delta = "delta off"
 	}
-	p.Tool = toolLine(s, wsview.Seg{Key: "Adjust", Job: "point"}, wsview.Seg{Key: "push", Job: delta})
+	p.Tool = toolLine(s, wsview.Seg{Key: ctlAdjust, Job: "point"}, wsview.Seg{Key: ctlPush, Job: delta})
+}
+
+// bodeSweep fills the Bode pane from the sweep's points: the rows around
+// the marker, the start, peak and -3 dB readouts, and the marker's line.
+// TRLC-LINKS: REQ-SDS-216
+func bodeSweep(s *sv, p *wsview.SpecPane, pts []engine.BodePoint) {
+	p.Caption = fmt.Sprintf("BODE  ref C%d, DUT C%d  %d points", s.st.BodeRef&1+1, s.st.BodeDut&1+1, len(pts))
+	if why := s.st.BodeWhy; why != "" {
+		p.Caption += "  - " + why
+	}
+	p.Right = si(pts[0].FreqHz, "Hz") + ".." + si(pts[len(pts)-1].FreqHz, "Hz")
+	mi := bodeIndex(&s.ui, len(pts))
+	p.BodeIdx = mi
+	if s.ui.bodeRef >= 0 && s.ui.bodeRef < len(pts) {
+		p.BodeRef = s.ui.bodeRef
+	}
+	i0 := clampInt(mi-3, 0, max(0, len(pts)-7))
+	for r := 0; r < 7 && i0+r < len(pts); r++ {
+		q := pts[i0+r]
+		p.Rows = append(p.Rows, wsview.SpecRow{
+			Num: i0 + r + 1, Freq: si(q.FreqHz, "Hz"),
+			Level: fmt.Sprintf("%.1fdB", q.GainDB), Rel: fmt.Sprintf("%.0fdeg", q.PhaseDeg), Sel: i0+r == mi,
+		})
+	}
+	pk, f3 := 0, -1
+	for i := range pts {
+		if pts[i].GainDB > pts[pk].GainDB {
+			pk = i
+		}
+	}
+	for i := 1; i < len(pts); i++ {
+		if pts[i].GainDB < pts[0].GainDB-3 {
+			f3 = i
+			break
+		}
+	}
+	p.Readout = append(p.Readout,
+		wsview.Span{Text: fmt.Sprintf("start %.1fdB", pts[0].GainDB), Col: wsview.Text},
+		wsview.Span{Text: fmt.Sprintf("peak %.1fdB %s", pts[pk].GainDB, si(pts[pk].FreqHz, "Hz")), Col: wsview.Text})
+	if f3 >= 0 {
+		p.Readout = append(p.Readout, wsview.Span{Text: "-3dB near " + si(pts[f3].FreqHz, "Hz"), Col: wsview.Text})
+	} else {
+		p.Readout = append(p.Readout, wsview.Span{Text: "-3dB ---", Col: wsview.Text})
+	}
+	m := pts[mi]
+	t := fmt.Sprintf("MKR %s  %.1fdB  %.0fdeg", si(m.FreqHz, "Hz"), m.GainDB, m.PhaseDeg)
+	if p.BodeRef >= 0 {
+		r := pts[p.BodeRef]
+		t += fmt.Sprintf("   D %s  %.1fdB  %.0fdeg", sgnSI(m.FreqHz-r.FreqHz, "Hz"), m.GainDB-r.GainDB, m.PhaseDeg-r.PhaseDeg)
+	}
+	p.Marker = t
+	p.HasMark, p.MarkHz = true, m.FreqHz
+	p.MarkText = fmt.Sprintf("M %s %.1fdB", si(m.FreqHz, "Hz"), m.GainDB)
 }
 
 // nextSpecView is SPECTRUM again: FFT, spectrogram, Bode, SOUND, FFT.

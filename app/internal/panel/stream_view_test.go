@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-PANEL
+
 package panel
 
 import (
@@ -33,7 +34,7 @@ type viewStream struct {
 }
 
 // TRLC-LINKS: REQ-SDS-228
-func (s *viewStream) Start(p engine.SerialParams, trig engine.StreamTrigger, value int, label string) error {
+func (s *viewStream) Start(_ engine.SerialParams, trig engine.StreamTrigger, value int, label string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.starts = append(s.starts, viewStart{trig, value, label})
@@ -66,7 +67,7 @@ func (s *viewStream) Snapshot() streamview.View {
 }
 
 // TRLC-LINKS: REQ-SDS-228
-func (s *viewStream) Refuse(reason string) {
+func (s *viewStream) Refuse(string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.state = streamview.Failed
@@ -97,6 +98,7 @@ func (s *viewStream) last() viewStart {
 // streamRig is a view rig with a recording stream and a UART on screen.
 // TRLC-LINKS: REQ-SDS-228
 func streamRig(t *testing.T) (*viewRig, *viewStream, func()) {
+	t.Helper()
 	r := newViewRig(t)
 	rs := &viewStream{}
 	r.c.SetDecodeStream(rs)

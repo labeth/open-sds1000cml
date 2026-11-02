@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-PANEL
+
 package panel
 
 import (
@@ -39,7 +40,7 @@ const setupCheckEvery = 250 * time.Millisecond
 // noteSetup takes the settings now as those of slot n.
 // TRLC-LINKS: REQ-SDS-136
 func (c *Controller) noteSetup(n int) {
-	print := setupPrint(c.snap())
+	fingerprint := setupPrint(c.snap())
 	c.mu.Lock()
 	m := c.setups
 	c.mu.Unlock()
@@ -48,7 +49,7 @@ func (c *Controller) noteSetup(n int) {
 		cur = sc.CurrentSetup()
 	}
 	c.mu.Lock()
-	c.lastSetup, c.lastSetupPrint, c.lastSetupSt = n, print, cur
+	c.lastSetup, c.lastSetupPrint, c.lastSetupSt = n, fingerprint, cur
 	c.setupSameAt = time.Time{}
 	c.mu.Unlock()
 }
@@ -60,7 +61,7 @@ func (c *Controller) noteSetup(n int) {
 // TRLC-LINKS: REQ-SDS-136
 func (c *Controller) sameAsSavedSetup(s *sv) bool {
 	c.mu.Lock()
-	last, print, base, m := c.lastSetup, c.lastSetupPrint, c.lastSetupSt, c.setups
+	last, lastPrint, base, m := c.lastSetup, c.lastSetupPrint, c.lastSetupSt, c.setups
 	same, at := c.setupSame, c.setupSameAt
 	c.mu.Unlock()
 	if last <= 0 || !s.slotUsed[last] {
@@ -68,7 +69,7 @@ func (c *Controller) sameAsSavedSetup(s *sv) bool {
 	}
 	sc, ok := m.(setupCurrent)
 	if !ok {
-		return print == setupPrint(s)
+		return lastPrint == setupPrint(s)
 	}
 	if !at.IsZero() && s.now.Sub(at) < setupCheckEvery && !s.now.Before(at) {
 		return same
@@ -137,7 +138,7 @@ func setupSummary(st settings.Settings) string {
 		edge = "v"
 	}
 	tr := []string{"", "PLS ", "SLP ", "VID "}[clampInt(st.Trigger.Type, 0, 3)]
-	parts = append(parts, tr+"C"+strconv.Itoa(st.Trigger.Source+1)+edge+" "+si(engine.TrigLevelVolts(uint16(clampInt(st.Trigger.LevelCode, 1, 65535))), "V"))
+	parts = append(parts, tr+"C"+strconv.Itoa(st.Trigger.Source+1)+edge+" "+si(engine.TrigLevelVolts(uint16(clampInt(st.Trigger.LevelCode, 1, 65535))), "V")) //nolint:gosec // G115: clamped to 1..65535
 	ch := ""
 	for i := range 2 {
 		if !st.Display.Hidden[i] && st.Ch[i].VdivV > 0 {

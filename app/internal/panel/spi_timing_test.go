@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-PANEL
+
 package panel
 
 import (
@@ -144,7 +145,7 @@ func flashRecords(t *testing.T) (tdivs []float64, frames []*engine.Frame) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }() // read only: nothing to flush
 	z, err := gzip.NewReader(f)
 	if err != nil {
 		t.Fatal(err)
@@ -186,12 +187,11 @@ func TestSPIEyeFlashAfterRestart(t *testing.T) {
 			t.Fatalf("record %d: row %q", i, txt)
 		}
 		r := framecalc.Decode(f, decodeParamsOf(s))
-		hex := ""
-		var hexSb191 strings.Builder
+		var hb strings.Builder
 		for _, b := range r.Bytes {
-			hexSb191.WriteString(fmt.Sprintf(" %02X", b))
+			fmt.Fprintf(&hb, " %02X", b)
 		}
-		hex += hexSb191.String()
+		hex := hb.String()
 		if !r.OK || !strings.Contains(hex, " 0B 00 10 00 FF 53 50 49") {
 			t.Fatalf("record %d at %+.2f ns:%s", i, s.spiDelayNs(), hex)
 		}

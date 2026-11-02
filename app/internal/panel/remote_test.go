@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-PANEL
+
 package panel
 
 import (
@@ -700,7 +701,11 @@ func TestRemoteSetLeavesTheLCDAlone(t *testing.T) {
 func TestRemoteActions(t *testing.T) {
 	c, _, _ := newC(t)
 	var forced int
-	c.eng = &forceEng{fakeEng: c.eng.(*fakeEng), n: &forced}
+	fe, ok := c.eng.(*fakeEng)
+	if !ok {
+		t.Fatalf("engine %T, want *fakeEng", c.eng)
+	}
+	c.eng = &forceEng{fakeEng: fe, n: &forced}
 	press(t, c, "trigmenu")
 	goRow(t, c, "trig.mode")
 	if res := c.SheetAction("trig.force", ""); !res.OK || forced != 1 {

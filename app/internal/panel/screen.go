@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-PANEL
+
 package panel
 
 import (
@@ -16,6 +17,7 @@ import (
 // Screen is what the LCD shows.
 type Screen int
 
+// The screen states: the workspace, and the two idle states.
 const (
 	ScreenOn    Screen = iota // the workspace
 	ScreenSaver               // the drifting live scope
@@ -30,6 +32,7 @@ func (s Screen) String() string {
 		return "saver"
 	case ScreenOff:
 		return "off"
+	case ScreenOn: // "on" (below), as an unknown state reads
 	}
 	return "on"
 }

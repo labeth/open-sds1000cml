@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-PANEL
+
 package panel
 
 import (
@@ -135,7 +136,7 @@ func TestMatchEditor(t *testing.T) {
 		}
 		want += col
 		cur := 0
-		for r := 0; r < c.kb.row; r++ {
+		for r := range c.kb.row {
 			cur += len(g[r])
 		}
 		cur += c.kb.col

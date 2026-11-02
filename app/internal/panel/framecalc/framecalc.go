@@ -1,10 +1,11 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-PANEL
+
 // Package framecalc holds the per-frame calculations that both the LCD
 // renderer and the panel's workspace tools need: the protocol decode of a
 // published frame and its magnitude spectrum. Each is cached by frame
 // content, so the decode strip and the BUS packet list, or the FFT plot and
 // the SPECTRUM peak table, share one computation per frame instead of
 // repeating it per redraw (the ARM renders about 20 times a second).
-// ENGMODEL-OWNER-UNIT: FU-APP-PANEL
 package framecalc
 
 import (
