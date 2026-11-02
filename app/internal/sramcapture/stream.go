@@ -265,7 +265,7 @@ func (c *Capture) DrainStream(ctx context.Context, expected uint64, dst io.Write
 			return block, e
 		}
 		if after = decodeStreamStatus(raw); changed(after) {
-			return block, fmt.Errorf("sramcapture: stream changed or faulted during DMA")
+			return block, fmt.Errorf("sramcapture: stream changed or faulted during DMA (bank %d of %d words; before %+v, after %+v)", block.Bank, block.Words, s, after)
 		}
 	}
 	if e = ctx.Err(); e != nil {
