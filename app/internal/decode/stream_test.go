@@ -282,14 +282,13 @@ func TestStreamRecordCaptures(t *testing.T) {
 						}
 					}
 					if !ok || want != frameKey(f) {
-						near := ""
-						var nearSb285 strings.Builder
+						var nearBuf strings.Builder
 						for _, tf := range truth {
 							if tf.I1+2000 > uint64(pos)+f.I0 && tf.I0 < uint64(pos)+f.I1+2000 {
-								fmt.Fprintf(&nearSb285, " [%d..%d %q]", int64(tf.I0)-int64(pos), int64(tf.I1)-int64(pos), frameKey(tf))
+								fmt.Fprintf(&nearBuf, " [%d..%d %q]", int64(tf.I0)-int64(pos), int64(tf.I1)-int64(pos), frameKey(tf))
 							}
 						}
-						near += nearSb285.String()
+						near := nearBuf.String()
 						t.Fatalf("record at %d: frame at %d..%d %q, the whole signal %q (%v); near:%s", pos, f.I0, f.I1, frameKey(f), want, ok, near)
 					}
 					got++

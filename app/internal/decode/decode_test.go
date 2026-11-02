@@ -154,12 +154,11 @@ func TestDecodeI2CRoundTrip(t *testing.T) {
 		t.Errorf("I2C data bytes: got %v want [85 170]", r.Bytes)
 	}
 	// The span stream must carry START, addr 0x24, W, ACK, data, STOP.
-	var kinds string
-	var kindsSb156 strings.Builder
+	var kindsBuf strings.Builder
 	for _, s := range r.Spans {
-		kindsSb156.WriteString(s.Kind + " ")
+		kindsBuf.WriteString(s.Kind + " ")
 	}
-	kinds += kindsSb156.String()
+	kinds := kindsBuf.String()
 	for _, need := range []string{"start", "addr", "rw", "ack", "data", "stop"} {
 		if !containsWord(kinds, need) {
 			t.Errorf("I2C spans missing %q; got %s", need, kinds)

@@ -99,12 +99,11 @@ func TestDecodeFlexRayRoundTrip(t *testing.T) {
 	}
 
 	// span checks: a TSS start span, data spans, and the 5-byte header note.
-	var kinds string
 	sawTSS, sawHdr := false, false
 	wantNote := headerNote(want)
-	var kindsSb103 strings.Builder
+	var kindsBuf strings.Builder
 	for _, s := range r.Spans {
-		kindsSb103.WriteString(s.Kind + " ")
+		kindsBuf.WriteString(s.Kind + " ")
 		if s.Kind == "start" && s.Text == "TSS" {
 			sawTSS = true
 		}
@@ -112,7 +111,7 @@ func TestDecodeFlexRayRoundTrip(t *testing.T) {
 			sawHdr = true
 		}
 	}
-	kinds += kindsSb103.String()
+	kinds := kindsBuf.String()
 	if !sawTSS {
 		t.Errorf("expected a TSS/start span; got kinds: %s", kinds)
 	}

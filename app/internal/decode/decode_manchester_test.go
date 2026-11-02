@@ -101,16 +101,15 @@ func TestDecodeManchesterRoundTrip(t *testing.T) {
 	}
 
 	// a preamble/sync span must be flagged (kind "start") from the 0xAA run
-	var kinds string
 	sawSync := false
-	var kindsSb104 strings.Builder
+	var kindsBuf strings.Builder
 	for _, s := range r.Spans {
-		kindsSb104.WriteString(s.Kind + " ")
+		kindsBuf.WriteString(s.Kind + " ")
 		if s.Kind == "start" && s.Text == "SYNC" {
 			sawSync = true
 		}
 	}
-	kinds += kindsSb104.String()
+	kinds := kindsBuf.String()
 	if !sawSync {
 		t.Errorf("expected a SYNC/start span; got kinds: %s", kinds)
 	}

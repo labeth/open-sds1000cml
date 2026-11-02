@@ -143,13 +143,11 @@ func TestDecodeUSBLSRoundTrip(t *testing.T) {
 // usblsKinds concatenates span kinds for a containsWord check.
 // TRLC-LINKS: REQ-SDS-018
 func usblsKinds(spans []Span) string {
-	s := ""
-	var sSb145 strings.Builder
+	var sb strings.Builder
 	for _, sp := range spans {
-		sSb145.WriteString(sp.Kind + " ")
+		sb.WriteString(sp.Kind + " ")
 	}
-	s += sSb145.String()
-	return s
+	return sb.String()
 }
 
 // TestDecodeUSBLSNoPanic feeds degenerate/hostile inputs — a decoder must return

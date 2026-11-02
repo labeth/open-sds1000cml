@@ -102,6 +102,8 @@ type irOut struct {
 	frameBits int     // the first whole frame's bits (SIRC)
 }
 
+// add appends a span over x0..x1, its text a token when not empty and val a
+// unit when unit.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-234
 func (o *irOut) add(x0, x1 float64, n int, text, kind string, val int, unit bool) {
 	o.spans = append(o.spans, pspan(x0, x1, n, text, kind, val))

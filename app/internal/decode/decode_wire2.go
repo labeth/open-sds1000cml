@@ -20,6 +20,8 @@ type cbit struct {
 	x float64
 }
 
+// risingBits reads the data line at each rise of the clock: the bits, their
+// median clock period in samples, the clock line sliced, or why not.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-254
 func risingBits(a, b lineIn, cfg ClockedCfg) ([]cbit, float64, sliced, string) {
 	E, _, C, why := clockedLines(a, b, cfg)

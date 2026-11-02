@@ -30,6 +30,7 @@ const (
 	sentTol       = 0.20 // ±20% jitter tolerance on the tick
 )
 
+// sentHex1 is v's low nibble as one hex digit.
 // TRLC-LINKS: REQ-SDS-018
 func sentHex1(v int) string { i := v & 0xf; return "0123456789ABCDEF"[i : i+1] }
 
@@ -51,6 +52,7 @@ func sentCRC4(data []int) int {
 	return crc & 0xf
 }
 
+// sentClampNib clamps v to a nibble's range 0..15.
 // TRLC-LINKS: REQ-SDS-018
 func sentClampNib(v int) int {
 	if v < 0 {

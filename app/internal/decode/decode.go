@@ -1,7 +1,12 @@
-// Package decode ports the web protocol decoders (internal/web/decode.js) to Go
-// for the on-device LCD: UART / I2C / SPI over sampled 8-bit codes. Kept
-// algorithm-faithful to decode.js so the two surfaces agree byte-for-byte.
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
+
+// Package decode reads serial buses and line codes off the scope's records:
+// each protocol's decoder over sampled 8-bit codes or a digital line's edges
+// (EdgeLine), Autodetect's search for the bus a pair of lines carries,
+// StreamDecoder over a continuous stream, and the models of the FPGA's bus
+// receivers and symbol trigger that the RTL tests hold the hardware to. The
+// decoders are kept algorithm-faithful to their web twins
+// (internal/web/decode*.js) so the two surfaces agree byte for byte.
 package decode
 
 import (
@@ -332,6 +337,7 @@ type Roles struct {
 	CPOL, CPHA, MSB bool
 }
 
+// invertLogic is codes with high and low swapped (255-v).
 // TRLC-LINKS: REQ-SDS-018
 func invertLogic(codes []uint8) []uint8 {
 	out := make([]uint8, len(codes))
@@ -350,6 +356,7 @@ var hexBytes = func() (t [256]string) {
 	return t
 }()
 
+// hex2 is b's low byte as two hex digits.
 // TRLC-LINKS: REQ-SDS-018
 func hex2(b int) string { return hexBytes[b&0xff] }
 
@@ -423,6 +430,7 @@ func gapClusters(gaps []float64) []float64 {
 	return cands
 }
 
+// popcount counts the set bits of v's two's-complement word.
 // TRLC-LINKS: REQ-SDS-018
 func popcount(v int) int {
 	// UNSIGNED shift: an arithmetic >> on a negative int shifts in sign bits
@@ -818,6 +826,8 @@ func codeFloor(t float64) int {
 	return int(min(255, math.Floor(t)))
 }
 
+// logicAt is the line's level (0 or 1) at the sample nearest x, -1 past
+// the record's ends.
 // TRLC-LINKS: REQ-SDS-018
 func logicAt(s *sliced, x float64) int {
 	i := int(math.Round(x))
@@ -836,6 +846,8 @@ func logicAt(s *sliced, x float64) int {
 	return 0
 }
 
+// minEdgeGap is the fewest samples between successive edges whose direction
+// dirOk takes, +Inf for fewer than two.
 // TRLC-LINKS: REQ-SDS-018
 func minEdgeGap(edges []edge, dirOk func(int) bool) float64 {
 	prev := -1

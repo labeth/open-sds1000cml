@@ -159,13 +159,11 @@ func canRender(wire []int, spb int, dominantLow bool, lead, trail int) []uint8 {
 
 // TRLC-LINKS: REQ-SDS-018
 func spanKinds(r Result) string {
-	s := ""
-	var sSb172 strings.Builder
+	var sb strings.Builder
 	for _, sp := range r.Spans {
-		sSb172.WriteString(sp.Kind + " ")
+		sb.WriteString(sp.Kind + " ")
 	}
-	s += sSb172.String()
-	return s
+	return sb.String()
 }
 
 // TRLC-LINKS: REQ-SDS-018

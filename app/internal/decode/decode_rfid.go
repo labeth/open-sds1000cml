@@ -55,6 +55,8 @@ type rfidOut struct {
 	units []int
 }
 
+// add appends a span over x0..x1, its text a token when not empty and val a
+// unit when unit.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-252
 func (o *rfidOut) add(x0, x1 float64, text, kind string, val int, unit bool) {
 	o.spans = append(o.spans, pspan(x0, x1, o.n, text, kind, val))

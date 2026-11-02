@@ -53,6 +53,8 @@ func newWireOutSized(n int, sc *scratch, spans, toks, units int) *wireOut {
 	return &wireOut{n: n, spans: make([]Span, 0, spans), toks: make([]string, 0, toks), units: make([]int, 0, units)}
 }
 
+// add appends a span over x0..x1, its text a token when not empty and val a
+// unit when unit.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-253
 func (o *wireOut) add(x0, x1 float64, text, kind string, val int, unit bool) {
 	// pspan's span, set field by field in place: no struct copied in

@@ -140,6 +140,8 @@ func loneFrameOnLine(r Result, s *sliced) Result {
 	return r
 }
 
+// scoreResult rates a decode as the bus a line carries: -1e9 for none, more
+// for more frames that pass the protocol's own checks.
 // TRLC-LINKS: REQ-SDS-018
 func scoreResult(r Result) float64 { //nolint:gocyclo // one self-contained rule per protocol, kept together in the order they apply
 	if !r.OK {

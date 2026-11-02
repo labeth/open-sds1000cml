@@ -104,20 +104,19 @@ func TestDecodeMIL1553RoundTrip(t *testing.T) {
 
 	// The span stream must carry a command sync, a data sync, and data words, and
 	// no frame-error on a clean, correctly-parity'd capture.
-	var kinds, syncTexts string
-	var kindsSb106 strings.Builder
-	var syncTextsSb106 strings.Builder
+	var kindsBuf strings.Builder
+	var syncTextsBuf strings.Builder
 	for _, s := range r.Spans {
-		kindsSb106.WriteString(s.Kind + " ")
+		kindsBuf.WriteString(s.Kind + " ")
 		if s.Kind == "start" {
-			syncTextsSb106.WriteString(s.Text + " ")
+			syncTextsBuf.WriteString(s.Text + " ")
 		}
 		if s.Kind == "frame-error" {
 			t.Errorf("unexpected frame-error on a clean capture: %+v", s)
 		}
 	}
-	kinds += kindsSb106.String()
-	syncTexts += syncTextsSb106.String()
+	kinds := kindsBuf.String()
+	syncTexts := syncTextsBuf.String()
 	if !containsWord(kinds, "start") || !containsWord(kinds, "data") {
 		t.Errorf("expected start + data spans; got kinds: %s", kinds)
 	}
