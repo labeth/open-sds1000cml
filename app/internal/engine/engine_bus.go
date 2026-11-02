@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
+
 package engine
 
 import (
@@ -103,6 +104,20 @@ func (e *Engine) trigLevelWord() uint16 {
 		w |= iface.TrigLevelHwSelMask
 	}
 	return w
+}
+
+// trigLevelCode is the trigger level in sample codes, as a capture
+// configuration takes it.
+// TRLC-LINKS: REQ-SDS-011
+func (e *Engine) trigLevelCode() uint8 {
+	return uint8(e.trigLevelWord() & iface.TrigLevelLevelMask)
+}
+
+// trigChannel is the trigger source as a capture configuration takes it
+// (SetTrigSource stores 0 or 1).
+// TRLC-LINKS: REQ-SDS-011
+func (e *Engine) trigChannel() uint8 {
+	return uint8(e.trigSrc.Load() & 1)
 }
 
 // flushTrigWords writes ACQ_CTRL / TRIG_LEVEL when they differ from the last

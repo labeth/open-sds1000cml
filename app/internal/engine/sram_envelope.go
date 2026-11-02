@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
+
 package engine
 
 import (
@@ -9,7 +10,7 @@ import (
 // envelopeBlock names what keeps a live frame from the envelope readout, or
 // "" when it may use it (reported as the live_readout status).
 // TRLC-LINKS: REQ-SDS-010
-func (e *Engine) envelopeBlock(cfg *sramcapture.Config, tp trigParams) string {
+func (e *Engine) envelopeBlock() string {
 	// Everything else reads a live frame as a time-ordered envelope of the
 	// full-depth capture (see orderEnvelope): live frames stay fast whatever
 	// is enabled, and the full record is read on STOP or SINGLE.
@@ -150,7 +151,7 @@ func liveDecimates(block string) bool {
 // TRLC-LINKS: REQ-SDS-010
 func envelopeWindow(offset, words, buckets, total, front uint32) (bucket, start, length uint32) {
 	// A read, with its 16 warm-up words, stays within one SRAM's worth.
-	limit := min(uint32(sramcapture.Words-16), total)
+	limit := min(sramcapture.Words-16, total)
 	front = min(front, words)
 	if words > limit {
 		drop := min(words-limit, front)

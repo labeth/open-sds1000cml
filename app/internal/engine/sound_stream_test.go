@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
+
 package engine
 
 import (
@@ -44,7 +45,7 @@ func TestSoundRing(t *testing.T) {
 	if b.N != 4096 || b.First != at-4096 || b.Next != at {
 		t.Fatalf("latest: first %d n %d next %d (wrote %d)", b.First, b.N, b.Next, at)
 	}
-	for i := 0; i < b.N; i++ {
+	for i := range b.N {
 		want := uint16(b.First + uint64(i))
 		if b.Q1[i] != want || b.Q2[i] != ^want {
 			t.Fatalf("sample %d: %d %d, want %d", i, b.Q1[i], b.Q2[i], want)

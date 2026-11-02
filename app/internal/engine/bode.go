@@ -1,10 +1,12 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
+
 package engine
 
 import (
+	"cmp"
 	"fmt"
 	"math"
-	"sort"
+	"slices"
 	"sync"
 )
 
@@ -16,9 +18,10 @@ import (
 // curve. The engine is the single source of truth; the web and the LCD render
 // the same accumulated points.
 
+// The Bode mode states (SetBodeMode), and the accumulation limits.
 const (
-	BodeOff = 0
-	BodeOn  = 1
+	BodeOff = 0 // frames are not measured for the frequency response
+	BodeOn  = 1 // every frame adds a point to the frequency response
 
 	bodeBinsPerDecade = 30   // log-frequency accumulation resolution
 	bodeMaxPoints     = 4096 // hard cap on the accumulated set
@@ -94,7 +97,7 @@ func (e *Engine) BodePoints() []BodePoint {
 	for _, p := range e.bode.bins {
 		out = append(out, p)
 	}
-	sort.Slice(out, func(i, j int) bool { return out[i].FreqHz < out[j].FreqHz })
+	slices.SortFunc(out, func(a, b BodePoint) int { return cmp.Compare(a.FreqHz, b.FreqHz) })
 	return out
 }
 

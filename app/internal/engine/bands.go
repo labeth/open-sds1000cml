@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
+
 package engine
 
 import "math"
@@ -74,11 +75,12 @@ const (
 // TRLC-LINKS: REQ-SDS-010
 type Kind int
 
+// The capture paths, fastest timebases first.
 const (
-	KindNativeFast Kind = iota
-	KindDecimated
-	KindEnvelope // 5–50 ms/div: min/max ring over phase-scattered frames
-	KindRoll     // ≥100 ms/div: free-running FIFO, arm-once, never halt
+	KindNativeFast Kind = iota // full-rate record from the native-fast fabric
+	KindDecimated              // hardware-decimated record
+	KindEnvelope               // 5–50 ms/div: min/max ring over phase-scattered frames
+	KindRoll                   // ≥100 ms/div: free-running FIFO, arm-once, never halt
 )
 
 // bands is the full 33-detent ladder. The fast decade uses 25 ns (not 20 ns).
@@ -163,10 +165,7 @@ func (b Band) Kind() Kind {
 // TRLC-LINKS: REQ-SDS-010
 func (b Band) EnvPlan() (winCols int, divisor uint32) {
 	span := screenDivsH * b.TdivS
-	w := max(int(math.Round(span/envIntervalS)), envMinWin)
-	if w > envMaxWin {
-		w = envMaxWin
-	}
+	w := min(max(int(math.Round(span/envIntervalS)), envMinWin), envMaxWin)
 	d := max(uint32(math.Round(span/float64(w)/10e-9)), 1)
 	return w, d
 }
@@ -184,15 +183,10 @@ func (b Band) EnvPlan() (winCols int, divisor uint32) {
 // TRLC-LINKS: REQ-SDS-010
 func (b Band) EnvCaptureCols() int {
 	w, _ := b.EnvPlan()
-	want := min(w+2*envMargin,
-		// the fill counter can't gate higher — the slowest band
-		envFillCap) //                     (50 ms/div, w>envFillCap) then displays fewer real
-	if want > envMaxWin { //  samples via WinCols, instead of draining dead-tail.
-		want = envMaxWin
-	}
-	if want < 2*envMargin+envMinWin {
-		want = 2*envMargin + envMinWin
-	}
+	// The fill counter can't gate higher than envFillCap: the slowest band
+	// (50 ms/div, w > envFillCap) then displays fewer real samples via WinCols
+	// instead of draining dead-tail.
+	want := max(min(w+2*envMargin, envFillCap, envMaxWin), 2*envMargin+envMinWin)
 	return want
 }
 
@@ -204,7 +198,7 @@ func (b Band) EnvFillTarget() uint16 {
 	if c > envFillCap {
 		return envFillCap
 	}
-	return uint16(c)
+	return uint16(c) //nolint:gosec // G115: c is under envFillCap here
 }
 
 // nominalIntervalNs is the per-sample interval the band asks for: the
@@ -243,7 +237,7 @@ func (b Band) Decim() uint32 {
 // TRLC-LINKS: REQ-SDS-010
 func (b Band) Divisor() uint32 { return uint32(b.Lo) | uint32(b.Hi)<<16 }
 
-// NativeFast: class 0x20/0x01 always, class 0x80 with divisor ≤ 4. The
+// NativeFast reports a native-fast band: class 0x20/0x01 always, class 0x80 with divisor ≤ 4. The
 // ladder has no divisor 5–7, so >4 → decimated is gap-free.
 // TRLC-LINKS: REQ-SDS-010
 func (b Band) NativeFast() bool {
@@ -280,6 +274,7 @@ func (b Band) DrainCols() int {
 		return b.EnvCaptureCols() // display span + deadline-gated centring margin
 	case KindRoll:
 		return rollWin
+	case KindDecimated:
 	}
 	return decimDrain
 }
@@ -299,19 +294,17 @@ func (b Band) WinCols() int {
 		return envMinWin
 	case KindRoll:
 		return rollWin
+	case KindNativeFast, KindDecimated: // the real-time bands, below
 	}
 	w := max(int(math.Round(screenDivsH*b.TdivS/(b.displayIntervalNs()*1e-9))), 1)
 	// The display window caps at decimWin on decimated bands — NOT at DrainCols,
 	// which now carries extra centring margin. Native-fast still caps at its
 	// (full-record) drain, where the clamp never binds anyway.
-	cap := b.DrainCols()
+	limit := b.DrainCols()
 	if b.Kind() == KindDecimated {
-		cap = decimWin
+		limit = decimWin
 	}
-	if w > cap {
-		w = cap
-	}
-	return w
+	return min(w, limit)
 }
 
 // DisplayedSdivS is the on-screen seconds/div actually delivered. On decimated
@@ -321,21 +314,17 @@ func (b Band) WinCols() int {
 // label.
 // TRLC-LINKS: REQ-SDS-010
 func (b Band) DisplayedSdivS() float64 {
-	switch b.Kind() {
-	case KindRoll:
+	if b.Kind() == KindRoll {
 		return b.TdivS
 	}
 	return float64(b.WinCols()) * b.displayIntervalNs() * 1e-9 / screenDivsH
 }
 
-// WaitBudget is the bounded wait-for-capture budget for real-time bands:
+// WaitBudgetNs is the bounded wait-for-capture budget for real-time bands:
 // clamp(3 · captureInterval · LatchAt, 40 ms, 80 ms), in nanoseconds.
 // TRLC-LINKS: REQ-SDS-008, REQ-SDS-010
 func (b Band) WaitBudgetNs() int64 {
-	n := max(int64(3*b.CaptureIntervalNs()*latchAt), 40e6)
-	if n > 80e6 {
-		n = 80e6
-	}
+	n := min(max(int64(3*b.CaptureIntervalNs()*latchAt), 40e6), 80e6)
 	return n
 }
 
@@ -346,9 +335,6 @@ func (b Band) WaitBudgetNs() int64 {
 // (skipped by rollUpdate) and risks wedging the port. Clamped to [50 µs, 40 ms].
 // TRLC-LINKS: REQ-SDS-010
 func RollPaceNs() int64 {
-	n := max(int64(rollDivisor*10), 50e3)
-	if n > 40e6 {
-		n = 40e6
-	}
+	n := min(max(int64(rollDivisor*10), 50e3), 40e6)
 	return n
 }

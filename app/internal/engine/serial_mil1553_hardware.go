@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
+
 package engine
 
 import (
@@ -22,7 +23,7 @@ func planHardwareMIL1553(p *SerialParams) sramcapture.MIL1553TriggerConfig {
 		if p.Bytes[0] < 0 || p.Bytes[0] > 65535 {
 			return sramcapture.MIL1553TriggerConfig{}
 		}
-		c.Pattern = uint16(p.Bytes[0])
+		c.Pattern = uint16(p.Bytes[0]) //nolint:gosec // G115: checked to 0..65535 above
 	}
 	return c
 }

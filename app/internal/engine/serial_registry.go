@@ -1,11 +1,13 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
+
 package engine
 
 import (
+	"cmp"
 	"errors"
 	"fmt"
 	"open-sds/app/internal/decode"
-	"sort"
+	"slices"
 	"sync"
 )
 
@@ -55,7 +57,7 @@ func SerialDecoderList() []SerialDecoder {
 	for _, d := range serialDecoders.byID {
 		result = append(result, d)
 	}
-	sort.Slice(result, func(i, j int) bool { return result[i].ID < result[j].ID })
+	slices.SortFunc(result, func(a, b SerialDecoder) int { return cmp.Compare(a.ID, b.ID) })
 	return result
 }
 
@@ -70,333 +72,10 @@ func serialDecoder(id int) (SerialDecoder, bool) {
 // TRLC-LINKS: REQ-SDS-013
 func init() {
 	byteMatch := func(s []decode.Span, p SerialParams) (bool, int) { return matchBytes(s, p.Bytes) }
-	for _, d := range []SerialDecoder{
-		{ID: serUART, Name: "UART", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
-			return decode.DecodeUART(a, sampleS, decode.UARTCfg{Inverted: p.Inverted, Baud: p.Baud, Bits: p.Bits, Parity: p.Parity, Threshold: p.Threshold, HaveThr: p.HaveThr})
-		}, Match: byteMatch},
-		{ID: serI2C, Name: "I²C", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
-			return decode.DecodeI2C(a, b, sampleS, decode.I2CCfg{Inverted: p.Inverted, Threshold: p.Threshold, HaveThr: p.HaveThr})
-		}, Match: matchI2C},
-		{ID: serSPI, Name: "SPI", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
-			cfg := decode.SPICfg{Inverted: p.Inverted, CPOL: p.CPOL, CPHA: p.CPHA, MSB: p.MSB, Threshold: p.Threshold, HaveThr: p.HaveThr, DataLag: decode.SPIDataLag(p.ChA, sampleS)}
-			if sampleS > 0 {
-				cfg.DataDelay = SPIDelayFPGA(p.SPIDelayNs, p.ChA) * 1e-9 / sampleS // as the FPGA's receiver reads it
-			}
-			return decode.DecodeSPI(a, b, sampleS, cfg)
-		}, Match: byteMatch},
-		{ID: serManchester, Name: "Manchester", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
-			return decode.DecodeManchester(a, sampleS, decode.ManchesterCfg{Bitrate: p.Baud, IEEE: p.IEEE, MSB: p.MSB, Bits: p.Bits, Threshold: p.Threshold, HaveThr: p.HaveThr})
-		}, Match: byteMatch},
-		{ID: serSENT, Name: "SENT", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
-			return decode.DecodeSENT(a, sampleS, decode.SENTCfg{Inverted: p.Inverted, TickNs: p.TickNs, Nibbles: p.Nibbles, Threshold: p.Threshold, HaveThr: p.HaveThr})
-		}, Match: byteMatch},
-		{ID: serCAN, Name: "CAN FD", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
-			return decode.DecodeCANFD(a, sampleS, decode.CANFDCfg{NominalBaud: p.Baud, DataBaud: p.DataBaud, DominantLow: true, Threshold: p.Threshold, HaveThr: p.HaveThr})
-		}, Match: byteMatch},
-		{ID: serMIL1553, Name: "MIL-STD-1553", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
-			return decode.DecodeMIL1553(a, sampleS, decode.MIL1553Cfg{Inverted: p.Inverted, Bitrate: p.Baud, Threshold: p.Threshold, HaveThr: p.HaveThr})
-		}, Match: byteMatch},
-		{ID: serARINC, Name: "ARINC 429", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
-			return decode.DecodeARINC429(a, sampleS, decode.ARINC429Cfg{Bitrate: p.Baud, Threshold: p.Threshold, HaveThr: p.HaveThr})
-		}, Match: byteMatch},
-		{ID: serUSB, Name: "USB LS", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
-			return decode.DecodeUSBLS(a, sampleS, decode.USBLSCfg{Bitrate: p.Baud, Threshold: p.Threshold, HaveThr: p.HaveThr})
-		}, Match: byteMatch},
-		{ID: serFlexRay, Name: "FlexRay", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
-			return decode.DecodeFlexRay(a, sampleS, decode.FlexRayCfg{Bitrate: p.Baud, Threshold: p.Threshold, HaveThr: p.HaveThr})
-		}, Match: byteMatch},
-		{
-			ID: serLIN, Name: "LIN", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
-				return decode.DecodeLIN(a, sampleS, decode.LINCfg{Baud: p.Baud, Threshold: p.Threshold, HaveThr: p.HaveThr})
-			}, Match: byteMatch,
-			Edges: func(a, b *decode.EdgeLine, sampleS float64, p SerialParams) decode.Result {
-				return decode.DecodeLINEdges(a, sampleS, decode.LINCfg{Baud: p.Baud, Threshold: p.Threshold, HaveThr: p.HaveThr})
-			},
-		},
-		{
-			ID: serDMX, Name: "DMX512", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
-				return decode.DecodeDMX512(a, sampleS, decode.DMXCfg{Baud: p.Baud, Threshold: p.Threshold, HaveThr: p.HaveThr})
-			}, Match: byteMatch,
-			Edges: func(a, b *decode.EdgeLine, sampleS float64, p SerialParams) decode.Result {
-				return decode.DecodeDMX512Edges(a, sampleS, decode.DMXCfg{Baud: p.Baud, Threshold: p.Threshold, HaveThr: p.HaveThr})
-			},
-		},
-		{ID: serMIDI, Name: "MIDI", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
-			return decode.DecodeMIDI(a, sampleS, decode.MIDICfg{Baud: p.Baud, Threshold: p.Threshold, HaveThr: p.HaveThr})
-		}, Match: byteMatch},
-		{
-			ID: serModbus, Name: "Modbus RTU", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
-				return decode.DecodeModbus(a, sampleS, decode.ModbusCfg{Baud: p.Baud, Parity: p.Parity, Threshold: p.Threshold, HaveThr: p.HaveThr})
-			}, Match: byteMatch,
-			Edges: func(a, b *decode.EdgeLine, sampleS float64, p SerialParams) decode.Result {
-				return decode.DecodeModbusEdges(a, sampleS, decode.ModbusCfg{Baud: p.Baud, Parity: p.Parity, Threshold: p.Threshold, HaveThr: p.HaveThr})
-			},
-		},
-		{
-			ID: serOneWire, Name: "1-Wire", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
-				return decode.DecodeOneWire(a, sampleS, decode.OneWireCfg{Overdrive: p.Overdrive, Threshold: p.Threshold, HaveThr: p.HaveThr})
-			}, Match: byteMatch,
-			Edges: func(a, b *decode.EdgeLine, sampleS float64, p SerialParams) decode.Result {
-				return decode.DecodeOneWireEdges(a, sampleS, decode.OneWireCfg{Overdrive: p.Overdrive, Threshold: p.Threshold, HaveThr: p.HaveThr})
-			},
-		},
-		{
-			ID: serWS281x, Name: "WS281x", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
-				return decode.DecodeWS281x(a, sampleS, decode.WS281xCfg{Threshold: p.Threshold, HaveThr: p.HaveThr})
-			}, Match: byteMatch,
-			Edges: func(a, b *decode.EdgeLine, sampleS float64, p SerialParams) decode.Result {
-				return decode.DecodeWS281xEdges(a, sampleS, decode.WS281xCfg{Threshold: p.Threshold, HaveThr: p.HaveThr})
-			},
-		},
-		{
-			ID: serDHT, Name: "DHT", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
-				return decode.DecodeDHT(a, sampleS, decode.DHTCfg{Threshold: p.Threshold, HaveThr: p.HaveThr})
-			}, Match: byteMatch,
-			Edges: func(a, b *decode.EdgeLine, sampleS float64, p SerialParams) decode.Result {
-				return decode.DecodeDHTEdges(a, sampleS, decode.DHTCfg{Threshold: p.Threshold, HaveThr: p.HaveThr})
-			},
-		},
-		{
-			ID: serCEC, Name: "HDMI-CEC", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
-				return decode.DecodeCEC(a, sampleS, decode.CECCfg{Threshold: p.Threshold, HaveThr: p.HaveThr})
-			}, Match: byteMatch,
-			Edges: func(a, b *decode.EdgeLine, sampleS float64, p SerialParams) decode.Result {
-				return decode.DecodeCECEdges(a, sampleS, decode.CECCfg{Threshold: p.Threshold, HaveThr: p.HaveThr})
-			},
-		},
-		{
-			ID: serJ1850, Name: "J1850 VPW", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
-				return decode.DecodeJ1850(a, sampleS, decode.J1850Cfg{Threshold: p.Threshold, HaveThr: p.HaveThr})
-			}, Match: byteMatch,
-			Edges: func(a, b *decode.EdgeLine, sampleS float64, p SerialParams) decode.Result {
-				return decode.DecodeJ1850Edges(a, sampleS, decode.J1850Cfg{Threshold: p.Threshold, HaveThr: p.HaveThr})
-			},
-		},
-		{ID: serIRNEC, Name: "IR NEC", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
-			return decode.DecodeIRNEC(a, sampleS, decode.IRCfg{Threshold: p.Threshold, HaveThr: p.HaveThr})
-		}, Match: byteMatch},
-		{ID: serIRSIRC, Name: "IR Sony", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
-			return decode.DecodeIRSIRC(a, sampleS, decode.IRCfg{Threshold: p.Threshold, HaveThr: p.HaveThr})
-		}, Match: byteMatch},
-		{ID: serIRRC5, Name: "IR RC-5", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
-			return decode.DecodeIRRC5(a, sampleS, decode.IRCfg{Threshold: p.Threshold, HaveThr: p.HaveThr})
-		}, Match: byteMatch},
-		{ID: serIRRC6, Name: "IR RC-6", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
-			return decode.DecodeIRRC6(a, sampleS, decode.IRCfg{Threshold: p.Threshold, HaveThr: p.HaveThr})
-		}, Match: byteMatch},
-		{
-			ID: serDALI, Name: "DALI", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
-				return decode.DecodeDALI(a, sampleS, decode.DALICfg{Threshold: p.Threshold, HaveThr: p.HaveThr})
-			}, Match: byteMatch,
-			Edges: func(a, b *decode.EdgeLine, sampleS float64, p SerialParams) decode.Result {
-				return decode.DecodeDALIEdges(a, sampleS, decode.DALICfg{Threshold: p.Threshold, HaveThr: p.HaveThr})
-			},
-		},
-		{
-			ID: serUSBPD, Name: "USB PD", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
-				return decode.DecodeUSBPD(a, sampleS, decode.USBPDCfg{Baud: p.Baud, Threshold: p.Threshold, HaveThr: p.HaveThr})
-			}, Match: byteMatch,
-			Edges: func(a, b *decode.EdgeLine, sampleS float64, p SerialParams) decode.Result {
-				return decode.DecodeUSBPDEdges(a, sampleS, decode.USBPDCfg{Baud: p.Baud, Threshold: p.Threshold, HaveThr: p.HaveThr})
-			},
-		},
-		{
-			ID: serSPDIF, Name: "S/PDIF", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
-				return decode.DecodeSPDIF(a, sampleS, decode.SPDIFCfg{Threshold: p.Threshold, HaveThr: p.HaveThr})
-			}, Match: byteMatch,
-			Edges: func(a, b *decode.EdgeLine, sampleS float64, p SerialParams) decode.Result {
-				return decode.DecodeSPDIFEdges(a, sampleS, decode.SPDIFCfg{Threshold: p.Threshold, HaveThr: p.HaveThr})
-			},
-		},
-		{
-			ID: serPS2, Name: "PS/2", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
-				return decode.DecodePS2(a, b, sampleS, clockedCfg(p))
-			}, Match: byteMatch,
-			Edges: func(a, b *decode.EdgeLine, sampleS float64, p SerialParams) decode.Result {
-				return decode.DecodePS2Edges(a, b, sampleS, clockedCfg(p))
-			},
-		},
-		{
-			ID: serSWD, Name: "SWD", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
-				return decode.DecodeSWD(a, b, sampleS, clockedCfg(p))
-			}, Match: byteMatch,
-			Edges: func(a, b *decode.EdgeLine, sampleS float64, p SerialParams) decode.Result {
-				return decode.DecodeSWDEdges(a, b, sampleS, clockedCfg(p))
-			},
-		},
-		{
-			ID: serMDIO, Name: "MDIO", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
-				return decode.DecodeMDIO(a, b, sampleS, clockedCfg(p))
-			}, Match: byteMatch,
-			Edges: func(a, b *decode.EdgeLine, sampleS float64, p SerialParams) decode.Result {
-				return decode.DecodeMDIOEdges(a, b, sampleS, clockedCfg(p))
-			},
-		},
-		{
-			ID: serWiegand, Name: "Wiegand", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
-				return decode.DecodeWiegand(a, b, sampleS, clockedCfg(p))
-			}, Match: byteMatch,
-			Edges: func(a, b *decode.EdgeLine, sampleS float64, p SerialParams) decode.Result {
-				return decode.DecodeWiegandEdges(a, b, sampleS, clockedCfg(p))
-			},
-		},
-		{
-			ID: serQuad, Name: "Quadrature", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
-				return decode.DecodeQuadrature(a, b, sampleS, clockedCfg(p))
-			}, Match: byteMatch,
-			Edges: func(a, b *decode.EdgeLine, sampleS float64, p SerialParams) decode.Result {
-				return decode.DecodeQuadratureEdges(a, b, sampleS, clockedCfg(p))
-			},
-		},
-		{
-			ID: serStepper, Name: "Stepper", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
-				return decode.DecodeStepper(a, b, sampleS, clockedCfg(p))
-			}, Match: byteMatch,
-			Edges: func(a, b *decode.EdgeLine, sampleS float64, p SerialParams) decode.Result {
-				return decode.DecodeStepperEdges(a, b, sampleS, clockedCfg(p))
-			},
-		},
-		{
-			ID: serPWM, Name: "PWM", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
-				return decode.DecodePWM(a, sampleS, lineCfg(p, false))
-			}, Match: byteMatch,
-			Edges: func(a, b *decode.EdgeLine, sampleS float64, p SerialParams) decode.Result {
-				return decode.DecodePWMEdges(a, sampleS, lineCfg(p, false))
-			},
-		},
-		{
-			ID: serRCEncode, Name: "RC encode", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
-				return decode.DecodeRCEncode(a, sampleS, lineCfg(p, false))
-			}, Match: byteMatch,
-			Edges: func(a, b *decode.EdgeLine, sampleS float64, p SerialParams) decode.Result {
-				return decode.DecodeRCEncodeEdges(a, sampleS, lineCfg(p, false))
-			},
-		},
-		{
-			ID: serOOK, Name: "OOK", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
-				return decode.DecodeOOK(a, sampleS, lineCfg(p, false))
-			}, Match: byteMatch,
-			Edges: func(a, b *decode.EdgeLine, sampleS float64, p SerialParams) decode.Result {
-				return decode.DecodeOOKEdges(a, sampleS, lineCfg(p, false))
-			},
-		},
-		{
-			ID: serMiller, Name: "Miller", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
-				return decode.DecodeMiller(a, sampleS, lineCfg(p, true))
-			}, Match: byteMatch,
-			Edges: func(a, b *decode.EdgeLine, sampleS float64, p SerialParams) decode.Result {
-				return decode.DecodeMillerEdges(a, sampleS, lineCfg(p, true))
-			},
-		},
-		{
-			ID: serMorse, Name: "Morse", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
-				return decode.DecodeMorse(a, sampleS, lineCfg(p, false))
-			}, Match: byteMatch,
-			Edges: func(a, b *decode.EdgeLine, sampleS float64, p SerialParams) decode.Result {
-				return decode.DecodeMorseEdges(a, sampleS, lineCfg(p, false))
-			},
-		},
-		{
-			ID: serDCF77, Name: "DCF77", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
-				return decode.DecodeDCF77(a, sampleS, lineCfg(p, true))
-			}, Match: byteMatch,
-			Edges: func(a, b *decode.EdgeLine, sampleS float64, p SerialParams) decode.Result {
-				return decode.DecodeDCF77Edges(a, sampleS, lineCfg(p, true))
-			},
-		},
-		{ID: serEM4100, Name: "EM4100", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
-			return decode.DecodeEM4100(a, sampleS, lineCfg(p, true))
-		}, Match: byteMatch},
-		{ID: serEM4305, Name: "EM4305", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
-			return decode.DecodeEM4305(a, sampleS, lineCfg(p, true))
-		}, Match: byteMatch},
-		{ID: serT55xx, Name: "T55xx", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
-			return decode.DecodeT55xx(a, sampleS, lineCfg(p, true))
-		}, Match: byteMatch},
-		{
-			ID: serSWIM, Name: "SWIM", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
-				return decode.DecodeSWIM(a, sampleS, lineCfg(p, false))
-			}, Match: byteMatch,
-			Edges: func(a, b *decode.EdgeLine, sampleS float64, p SerialParams) decode.Result {
-				return decode.DecodeSWIMEdges(a, sampleS, lineCfg(p, false))
-			},
-		},
-		{
-			ID: serSDQ, Name: "SDQ", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
-				return decode.DecodeSDQ(a, sampleS, lineCfg(p, true))
-			}, Match: byteMatch,
-			Edges: func(a, b *decode.EdgeLine, sampleS float64, p SerialParams) decode.Result {
-				return decode.DecodeSDQEdges(a, sampleS, lineCfg(p, true))
-			},
-		},
-		{
-			ID: serPJDL, Name: "PJON", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
-				return decode.DecodePJDL(a, sampleS, lineCfg(p, false))
-			}, Match: byteMatch,
-			Edges: func(a, b *decode.EdgeLine, sampleS float64, p SerialParams) decode.Result {
-				return decode.DecodePJDLEdges(a, sampleS, lineCfg(p, false))
-			},
-		},
-		{
-			ID: serDSI, Name: "DSI", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
-				return decode.DecodeDSI(a, sampleS, lineCfg(p, false))
-			}, Match: byteMatch,
-			Edges: func(a, b *decode.EdgeLine, sampleS float64, p SerialParams) decode.Result {
-				return decode.DecodeDSIEdges(a, sampleS, lineCfg(p, false))
-			},
-		},
-		{
-			ID: serQi, Name: "Qi", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
-				return decode.DecodeQi(a, sampleS, lineCfg(p, false))
-			}, Match: byteMatch,
-			Edges: func(a, b *decode.EdgeLine, sampleS float64, p SerialParams) decode.Result {
-				return decode.DecodeQiEdges(a, sampleS, lineCfg(p, false))
-			},
-		},
-		{
-			ID: serSDCard, Name: "SD card", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
-				return decode.DecodeSDCard(a, b, sampleS, clockedCfg(p))
-			}, Match: byteMatch,
-			Edges: func(a, b *decode.EdgeLine, sampleS float64, p SerialParams) decode.Result {
-				return decode.DecodeSDCardEdges(a, b, sampleS, clockedCfg(p))
-			},
-		},
-		{
-			ID: serPDI, Name: "PDI", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
-				return decode.DecodePDI(a, b, sampleS, clockedCfg(p))
-			}, Match: byteMatch,
-			Edges: func(a, b *decode.EdgeLine, sampleS float64, p SerialParams) decode.Result {
-				return decode.DecodePDIEdges(a, b, sampleS, clockedCfg(p))
-			},
-		},
-		{
-			ID: serCJTAG, Name: "cJTAG", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
-				return decode.DecodeCJTAG(a, b, sampleS, clockedCfg(p))
-			}, Match: byteMatch,
-			Edges: func(a, b *decode.EdgeLine, sampleS float64, p SerialParams) decode.Result {
-				return decode.DecodeCJTAGEdges(a, b, sampleS, clockedCfg(p))
-			},
-		},
-		{
-			ID: serMaple, Name: "Maple", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
-				return decode.DecodeMaple(a, b, sampleS, clockedCfg(p))
-			}, Match: byteMatch,
-			Edges: func(a, b *decode.EdgeLine, sampleS float64, p SerialParams) decode.Result {
-				return decode.DecodeMapleEdges(a, b, sampleS, clockedCfg(p))
-			},
-		},
-		{
-			ID: serCaliper, Name: "Caliper", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
-				return decode.DecodeCaliper(a, b, sampleS, clockedCfg(p))
-			}, Match: byteMatch,
-			Edges: func(a, b *decode.EdgeLine, sampleS float64, p SerialParams) decode.Result {
-				return decode.DecodeCaliperEdges(a, b, sampleS, clockedCfg(p))
-			},
-		},
-		{ID: serIRMP, Name: "IR multi", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
-			return decode.DecodeIRMP(a, sampleS, lineCfg(p, false))
-		}, Match: byteMatch},
-	} {
+	for _, d := range serialDecoderTable() {
+		if d.Match == nil {
+			d.Match = byteMatch
+		}
 		switch {
 		case d.ID == serSENT, d.ID == serCAN, d.ID == serMIL1553, d.ID == serARINC, d.ID == serUSB, d.ID == serFlexRay,
 			d.ID >= serLIN && d.ID != serMIDI:
@@ -409,6 +88,163 @@ func init() {
 		}
 	}
 }
+
+// serialDecoderTable is the built-in decoders; a nil Match is filled in
+// by init.
+// TRLC-LINKS: REQ-SDS-013
+func serialDecoderTable() []SerialDecoder {
+	return []SerialDecoder{
+		{ID: serUART, Name: "UART", Decode: func(a, _ []uint8, sampleS float64, p SerialParams) decode.Result {
+			return decode.DecodeUART(a, sampleS, decode.UARTCfg{Inverted: p.Inverted, Baud: p.Baud, Bits: p.Bits, Parity: p.Parity, Threshold: p.Threshold, HaveThr: p.HaveThr})
+		}},
+		{ID: serI2C, Name: "I²C", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
+			return decode.DecodeI2C(a, b, sampleS, decode.I2CCfg{Inverted: p.Inverted, Threshold: p.Threshold, HaveThr: p.HaveThr})
+		}, Match: matchI2C},
+		{ID: serSPI, Name: "SPI", Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
+			cfg := decode.SPICfg{Inverted: p.Inverted, CPOL: p.CPOL, CPHA: p.CPHA, MSB: p.MSB, Threshold: p.Threshold, HaveThr: p.HaveThr, DataLag: decode.SPIDataLag(p.ChA, sampleS)}
+			if sampleS > 0 {
+				cfg.DataDelay = SPIDelayFPGA(p.SPIDelayNs, p.ChA) * 1e-9 / sampleS // as the FPGA's receiver reads it
+			}
+			return decode.DecodeSPI(a, b, sampleS, cfg)
+		}},
+		lineDecoder(serManchester, "Manchester", func(p SerialParams) decode.ManchesterCfg {
+			return decode.ManchesterCfg{Bitrate: p.Baud, IEEE: p.IEEE, MSB: p.MSB, Bits: p.Bits, Threshold: p.Threshold, HaveThr: p.HaveThr}
+		}, decode.DecodeManchester, nil),
+		lineDecoder(serSENT, "SENT", func(p SerialParams) decode.SENTCfg {
+			return decode.SENTCfg{Inverted: p.Inverted, TickNs: p.TickNs, Nibbles: p.Nibbles, Threshold: p.Threshold, HaveThr: p.HaveThr}
+		}, decode.DecodeSENT, nil),
+		lineDecoder(serCAN, "CAN FD", func(p SerialParams) decode.CANFDCfg {
+			return decode.CANFDCfg{NominalBaud: p.Baud, DataBaud: p.DataBaud, DominantLow: true, Threshold: p.Threshold, HaveThr: p.HaveThr}
+		}, decode.DecodeCANFD, nil),
+		lineDecoder(serMIL1553, "MIL-STD-1553", func(p SerialParams) decode.MIL1553Cfg {
+			return decode.MIL1553Cfg{Inverted: p.Inverted, Bitrate: p.Baud, Threshold: p.Threshold, HaveThr: p.HaveThr}
+		}, decode.DecodeMIL1553, nil),
+		lineDecoder(serARINC, "ARINC 429", func(p SerialParams) decode.ARINC429Cfg {
+			return decode.ARINC429Cfg{Bitrate: p.Baud, Threshold: p.Threshold, HaveThr: p.HaveThr}
+		}, decode.DecodeARINC429, nil),
+		lineDecoder(serUSB, "USB LS", func(p SerialParams) decode.USBLSCfg {
+			return decode.USBLSCfg{Bitrate: p.Baud, Threshold: p.Threshold, HaveThr: p.HaveThr}
+		}, decode.DecodeUSBLS, nil),
+		lineDecoder(serFlexRay, "FlexRay", func(p SerialParams) decode.FlexRayCfg {
+			return decode.FlexRayCfg{Bitrate: p.Baud, Threshold: p.Threshold, HaveThr: p.HaveThr}
+		}, decode.DecodeFlexRay, nil),
+		lineDecoder(serLIN, "LIN", func(p SerialParams) decode.LINCfg {
+			return decode.LINCfg{Baud: p.Baud, Threshold: p.Threshold, HaveThr: p.HaveThr}
+		}, decode.DecodeLIN, decode.DecodeLINEdges),
+		lineDecoder(serDMX, "DMX512", func(p SerialParams) decode.DMXCfg {
+			return decode.DMXCfg{Baud: p.Baud, Threshold: p.Threshold, HaveThr: p.HaveThr}
+		}, decode.DecodeDMX512, decode.DecodeDMX512Edges),
+		lineDecoder(serMIDI, "MIDI", func(p SerialParams) decode.MIDICfg {
+			return decode.MIDICfg{Baud: p.Baud, Threshold: p.Threshold, HaveThr: p.HaveThr}
+		}, decode.DecodeMIDI, nil),
+		lineDecoder(serModbus, "Modbus RTU", func(p SerialParams) decode.ModbusCfg {
+			return decode.ModbusCfg{Baud: p.Baud, Parity: p.Parity, Threshold: p.Threshold, HaveThr: p.HaveThr}
+		}, decode.DecodeModbus, decode.DecodeModbusEdges),
+		lineDecoder(serOneWire, "1-Wire", func(p SerialParams) decode.OneWireCfg {
+			return decode.OneWireCfg{Overdrive: p.Overdrive, Threshold: p.Threshold, HaveThr: p.HaveThr}
+		}, decode.DecodeOneWire, decode.DecodeOneWireEdges),
+		lineDecoder(serWS281x, "WS281x", func(p SerialParams) decode.WS281xCfg {
+			return decode.WS281xCfg{Threshold: p.Threshold, HaveThr: p.HaveThr}
+		}, decode.DecodeWS281x, decode.DecodeWS281xEdges),
+		lineDecoder(serDHT, "DHT", func(p SerialParams) decode.DHTCfg {
+			return decode.DHTCfg{Threshold: p.Threshold, HaveThr: p.HaveThr}
+		}, decode.DecodeDHT, decode.DecodeDHTEdges),
+		lineDecoder(serCEC, "HDMI-CEC", func(p SerialParams) decode.CECCfg {
+			return decode.CECCfg{Threshold: p.Threshold, HaveThr: p.HaveThr}
+		}, decode.DecodeCEC, decode.DecodeCECEdges),
+		lineDecoder(serJ1850, "J1850 VPW", func(p SerialParams) decode.J1850Cfg {
+			return decode.J1850Cfg{Threshold: p.Threshold, HaveThr: p.HaveThr}
+		}, decode.DecodeJ1850, decode.DecodeJ1850Edges),
+		lineDecoder(serIRNEC, "IR NEC", irCfg, decode.DecodeIRNEC, nil),
+		lineDecoder(serIRSIRC, "IR Sony", irCfg, decode.DecodeIRSIRC, nil),
+		lineDecoder(serIRRC5, "IR RC-5", irCfg, decode.DecodeIRRC5, nil),
+		lineDecoder(serIRRC6, "IR RC-6", irCfg, decode.DecodeIRRC6, nil),
+		lineDecoder(serDALI, "DALI", func(p SerialParams) decode.DALICfg {
+			return decode.DALICfg{Threshold: p.Threshold, HaveThr: p.HaveThr}
+		}, decode.DecodeDALI, decode.DecodeDALIEdges),
+		lineDecoder(serUSBPD, "USB PD", func(p SerialParams) decode.USBPDCfg {
+			return decode.USBPDCfg{Baud: p.Baud, Threshold: p.Threshold, HaveThr: p.HaveThr}
+		}, decode.DecodeUSBPD, decode.DecodeUSBPDEdges),
+		lineDecoder(serSPDIF, "S/PDIF", func(p SerialParams) decode.SPDIFCfg {
+			return decode.SPDIFCfg{Threshold: p.Threshold, HaveThr: p.HaveThr}
+		}, decode.DecodeSPDIF, decode.DecodeSPDIFEdges),
+		clockedDecoder(serPS2, "PS/2", decode.DecodePS2, decode.DecodePS2Edges),
+		clockedDecoder(serSWD, "SWD", decode.DecodeSWD, decode.DecodeSWDEdges),
+		clockedDecoder(serMDIO, "MDIO", decode.DecodeMDIO, decode.DecodeMDIOEdges),
+		clockedDecoder(serWiegand, "Wiegand", decode.DecodeWiegand, decode.DecodeWiegandEdges),
+		clockedDecoder(serQuad, "Quadrature", decode.DecodeQuadrature, decode.DecodeQuadratureEdges),
+		clockedDecoder(serStepper, "Stepper", decode.DecodeStepper, decode.DecodeStepperEdges),
+		lineDecoder(serPWM, "PWM", lineCfgFixed, decode.DecodePWM, decode.DecodePWMEdges),
+		lineDecoder(serRCEncode, "RC encode", lineCfgFixed, decode.DecodeRCEncode, decode.DecodeRCEncodeEdges),
+		lineDecoder(serOOK, "OOK", lineCfgFixed, decode.DecodeOOK, decode.DecodeOOKEdges),
+		lineDecoder(serMiller, "Miller", lineCfgRate, decode.DecodeMiller, decode.DecodeMillerEdges),
+		lineDecoder(serMorse, "Morse", lineCfgFixed, decode.DecodeMorse, decode.DecodeMorseEdges),
+		lineDecoder(serDCF77, "DCF77", lineCfgRate, decode.DecodeDCF77, decode.DecodeDCF77Edges),
+		lineDecoder(serEM4100, "EM4100", lineCfgRate, decode.DecodeEM4100, nil),
+		lineDecoder(serEM4305, "EM4305", lineCfgRate, decode.DecodeEM4305, nil),
+		lineDecoder(serT55xx, "T55xx", lineCfgRate, decode.DecodeT55xx, nil),
+		lineDecoder(serSWIM, "SWIM", lineCfgFixed, decode.DecodeSWIM, decode.DecodeSWIMEdges),
+		lineDecoder(serSDQ, "SDQ", lineCfgRate, decode.DecodeSDQ, decode.DecodeSDQEdges),
+		lineDecoder(serPJDL, "PJON", lineCfgFixed, decode.DecodePJDL, decode.DecodePJDLEdges),
+		lineDecoder(serDSI, "DSI", lineCfgFixed, decode.DecodeDSI, decode.DecodeDSIEdges),
+		lineDecoder(serQi, "Qi", lineCfgFixed, decode.DecodeQi, decode.DecodeQiEdges),
+		clockedDecoder(serSDCard, "SD card", decode.DecodeSDCard, decode.DecodeSDCardEdges),
+		clockedDecoder(serPDI, "PDI", decode.DecodePDI, decode.DecodePDIEdges),
+		clockedDecoder(serCJTAG, "cJTAG", decode.DecodeCJTAG, decode.DecodeCJTAGEdges),
+		clockedDecoder(serMaple, "Maple", decode.DecodeMaple, decode.DecodeMapleEdges),
+		clockedDecoder(serCaliper, "Caliper", decode.DecodeCaliper, decode.DecodeCaliperEdges),
+		lineDecoder(serIRMP, "IR multi", lineCfgFixed, decode.DecodeIRMP, nil),
+	}
+}
+
+// lineDecoder is a single-line decoder: samples reads the first line's
+// samples, edges (nil for none) its edges, each with the settings cfg makes
+// of the request.
+// TRLC-LINKS: REQ-SDS-013
+func lineDecoder[C any](id int, name string, cfg func(SerialParams) C,
+	samples func([]uint8, float64, C) decode.Result, edges func(*decode.EdgeLine, float64, C) decode.Result,
+) SerialDecoder {
+	d := SerialDecoder{ID: id, Name: name, Decode: func(a, _ []uint8, sampleS float64, p SerialParams) decode.Result {
+		return samples(a, sampleS, cfg(p))
+	}}
+	if edges != nil {
+		d.Edges = func(a, _ *decode.EdgeLine, sampleS float64, p SerialParams) decode.Result {
+			return edges(a, sampleS, cfg(p))
+		}
+	}
+	return d
+}
+
+// clockedDecoder is a clocked two-line decoder, from samples or edges.
+// TRLC-LINKS: REQ-SDS-013
+func clockedDecoder(id int, name string,
+	samples func(a, b []uint8, sampleS float64, cfg decode.ClockedCfg) decode.Result,
+	edges func(a, b *decode.EdgeLine, sampleS float64, cfg decode.ClockedCfg) decode.Result,
+) SerialDecoder {
+	return SerialDecoder{
+		ID: id, Name: name,
+		Decode: func(a, b []uint8, sampleS float64, p SerialParams) decode.Result {
+			return samples(a, b, sampleS, clockedCfg(p))
+		},
+		Edges: func(a, b *decode.EdgeLine, sampleS float64, p SerialParams) decode.Result {
+			return edges(a, b, sampleS, clockedCfg(p))
+		},
+	}
+}
+
+// irCfg is a request's threshold as the infrared decoders take it.
+// TRLC-LINKS: REQ-SDS-013
+func irCfg(p SerialParams) decode.IRCfg {
+	return decode.IRCfg{Threshold: p.Threshold, HaveThr: p.HaveThr}
+}
+
+// lineCfgFixed is lineCfg for a decoder that measures its own rate.
+// TRLC-LINKS: REQ-SDS-013
+func lineCfgFixed(p SerialParams) decode.LineCfg { return lineCfg(p, false) }
+
+// lineCfgRate is lineCfg for a decoder that takes the request's rate.
+// TRLC-LINKS: REQ-SDS-013
+func lineCfgRate(p SerialParams) decode.LineCfg { return lineCfg(p, true) }
 
 // clockedCfg is a request's two thresholds as the clocked decoders take them.
 // TRLC-LINKS: REQ-SDS-013

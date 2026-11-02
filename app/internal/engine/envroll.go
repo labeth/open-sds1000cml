@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
+
 package engine
 
 import (
@@ -207,7 +208,7 @@ func (e *Engine) envReduce(f *Frame) {
 		for c := range envDisplayCols {
 			mn[c], mx[c] = 0xff, 0
 		}
-		for r := 0; r < e.envRingCnt; r++ {
+		for r := range e.envRingCnt {
 			s := ring[r]
 			n := len(s)
 			if n == 0 {
@@ -250,13 +251,13 @@ func (e *Engine) envReduce(f *Frame) {
 			}
 		}
 		if first > 0 {
-			for c := 0; c < first; c++ {
+			for c := range first {
 				mn[c], mx[c] = mn[first], mx[first]
 			}
 		}
 	}
-	reduce(e.envRing1[:], f.EnvMin, f.EnvMax)
-	reduce(e.envRing2[:], f.EnvMin2, f.EnvMax2)
+	reduce(e.envRing1, f.EnvMin, f.EnvMax)
+	reduce(e.envRing2, f.EnvMin2, f.EnvMax2)
 }
 
 // ---- roll (≥100 ms/div) ----
@@ -287,13 +288,13 @@ func (e *Engine) rollBringUp() {
 	e.rollArmed = true
 }
 
-// rollPop pops up to max live words the stream ring reports available
+// rollPop pops up to limit live words the stream ring reports available
 // (BURST_REMAIN.REMAIN) into rollBuf1/2 and returns the count. Nothing is
 // popped when the ring reports no words — a pop past the write pointer would
 // return stale samples.
 // TRLC-LINKS: REQ-SDS-010
-func (e *Engine) rollPop(max int) int {
-	n := min(int(e.r(iface.SelBurstRemain)&iface.BurstRemainRemainMask), max)
+func (e *Engine) rollPop(limit int) int {
+	n := min(int(e.r(iface.SelBurstRemain)&iface.BurstRemainRemainMask), limit)
 	if n <= 0 {
 		return 0
 	}

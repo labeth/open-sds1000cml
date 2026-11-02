@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
+
 package engine
 
 import "open-sds/app/internal/decode"
@@ -18,7 +19,7 @@ func physSymbolCases() []symCase {
 			w.hold(false, false, 200*us)
 			for _, burst := range [][2]int{{10, 1}, {6, -1}, {4, 1}} {
 				w.mark()
-				for c := 0; c < burst[0]; c++ {
+				for range burst[0] {
 					for range 4 {
 						ph = ((ph+burst[1])%4 + 4) % 4
 						w.hold(seq[ph][0], seq[ph][1], 5*us)
@@ -42,7 +43,7 @@ func physSymbolCases() []symCase {
 			}{{8, true}, {5, false}, {6, true}} {
 				w.hold(false, burst.dir, 20*us)
 				w.mark()
-				for i := 0; i < burst.n; i++ {
+				for range burst.n {
 					w.hold(true, burst.dir, 5*us)
 					w.hold(false, burst.dir, 15*us)
 				}
@@ -131,7 +132,7 @@ func physSymbolCases() []symCase {
 				w.mark()
 				for _, c := range word {
 					code := decode.MorseOf(byte(c))
-					for k := 0; k < len(code); k++ {
+					for k := range len(code) {
 						d := u
 						if code[k] == '-' {
 							d = 3 * u

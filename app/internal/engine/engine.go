@@ -320,6 +320,9 @@ type CmdNote struct {
 	Seq  uint64  `json:"at_seq"`
 }
 
+// Engine is the acquisition engine: its owner goroutine (Run) is the only code
+// that touches the bus; the exported methods stage commands for it and read
+// the frames and status it publishes.
 // TRLC-LINKS: REQ-SDS-001, REQ-SDS-007, REQ-SDS-008
 type Engine struct {
 	interleaveCalibration *InterleaveCalibration
@@ -518,12 +521,12 @@ type Engine struct {
 	pubEpoch      time.Time // an hour before the first publish: unused slots (0) are long past
 
 	// sramJobs carries FPGA image-switching work (fpga_stack.go) to the owner.
-	sramJobs chan sramJob
+	sramJobs chan ownerJob
 	images   ImageSwitcher
 
 	// execReq carries diagnostic/owner-side work (Exec) to the owner goroutine.
 	execReq                   chan execReq
-	decodedRequests           chan decodedRequest
+	decodedRequests           chan ownerJob
 	decodedSession            *sramcapture.DecodedCapture // acquisition-owner fields
 	decodedBuffer             []sramcapture.DecodedEvent
 	decodedHead, decodedCount int
@@ -605,6 +608,8 @@ type Engine struct {
 	eresScratch []uint16
 }
 
+// New builds an engine over cfg's bus, filling in the defaults for the zero
+// fields; Run starts its owner loop.
 // TRLC-LINKS: REQ-SDS-001, REQ-SDS-007, REQ-SDS-008
 func New(cfg Config) *Engine {
 	// A nil clock means the real monotonic clock (production). Only then may the
@@ -646,8 +651,8 @@ func New(cfg Config) *Engine {
 		prevKind:              start.Kind(),
 		done:                  make(chan struct{}),
 		execReq:               make(chan execReq, 8),
-		sramJobs:              make(chan sramJob, 1),
-		decodedRequests:       make(chan decodedRequest, 8),
+		sramJobs:              make(chan ownerJob, 1),
+		decodedRequests:       make(chan ownerJob, 8),
 	}
 	// Tuning defaults. ROOT-CAUSE FIX for the native-fast half-record: the free-run
 	// wait returned the instant done+fill asserted and halted immediately, catching
@@ -741,13 +746,14 @@ func (e *Engine) Stop(timeout time.Duration) bool {
 	}
 }
 
-// QuietRLock/QuietRUnlock bracket a concurrent CPU consumer's work (LCD render,
+// QuietRLock and QuietRUnlock bracket a concurrent CPU consumer's work (LCD render,
 // web serialize, panel). It blocks while the engine is in a load-sensitive
 // window (arm-settle or drain), so the consumer runs only during the loop's
 // ~90ms of dead time — never during the ~19ms that corrupts the HW capture.
 // TRLC-LINKS: REQ-SDS-001
 func (e *Engine) QuietRLock() { e.quiet.RLock() }
 
+// QuietRUnlock ends a QuietRLock bracket.
 // TRLC-LINKS: REQ-SDS-001
 func (e *Engine) QuietRUnlock() { e.quiet.RUnlock() }
 
@@ -943,7 +949,7 @@ func (e *Engine) AcqLog(n int) ([]AcqSample, float64) {
 	// HALF rate over the last up-to-64 recorded samples.
 	rateN := min(avail, 64)
 	half := 0
-	for i := 0; i < rateN; i++ {
+	for i := range rateN {
 		idx := (e.acqHead - 1 - i + len(e.acqRing)) % len(e.acqRing)
 		if e.acqRing[idx].Half {
 			half++
@@ -957,7 +963,7 @@ func (e *Engine) AcqLog(n int) ([]AcqSample, float64) {
 		n = avail
 	}
 	out := make([]AcqSample, n)
-	for i := 0; i < n; i++ { // most-recent-last: fill from the tail back
+	for i := range n { // most-recent-last: fill from the tail back
 		idx := (e.acqHead - n + i + len(e.acqRing)) % len(e.acqRing)
 		out[i] = e.acqRing[idx]
 	}
@@ -988,7 +994,7 @@ func (e *Engine) CmdLog(n int) []CmdNote {
 		n = avail
 	}
 	out := make([]CmdNote, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		idx := (e.cmdHead - n + i + len(e.cmdRing)) % len(e.cmdRing)
 		out[i] = e.cmdRing[idx]
 	}

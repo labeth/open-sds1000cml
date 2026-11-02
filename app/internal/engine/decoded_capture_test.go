@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
+
 package engine
 
 import (
@@ -103,7 +104,7 @@ func TestDecodedTranscriptFailurePreservesHardwareLiveness(t *testing.T) {
 	e := &Engine{sram: capture, decodedSession: &sramcapture.DecodedCapture{Identity: sramcapture.RecordIdentity{Epoch: 7, Record: 1}}, decodedError: failure}
 	before := e.Beats()
 	e.pumpDecodedEvents()
-	if e.Beats() <= before || b.remaining != 5 || e.decodedError != failure {
+	if e.Beats() <= before || b.remaining != 5 || !errors.Is(e.decodedError, failure) {
 		t.Fatal("failed transcript lost health, consumed data or hid its error")
 	}
 	b.fail = true
@@ -115,7 +116,7 @@ func TestDecodedTranscriptFailurePreservesHardwareLiveness(t *testing.T) {
 }
 
 // TRLC-LINKS: REQ-SDS-013
-func (b *decodedTestBus) RawWrite(s, v uint16) error { return fmt.Errorf("unexpected write %d", s) }
+func (b *decodedTestBus) RawWrite(s, _ uint16) error { return fmt.Errorf("unexpected write %d", s) }
 
 // TRLC-LINKS: REQ-SDS-013
 func TestDecodedOwnerBufferOverflowIsExplicit(t *testing.T) {
@@ -150,7 +151,7 @@ func TestDecodedOwnerSkipsCancelledRequest(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	e := &Engine{sram: capture, decodedRequests: make(chan decodedRequest, 1), done: make(chan struct{})}
+	e := &Engine{sram: capture, decodedRequests: make(chan ownerJob, 1), done: make(chan struct{})}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	result := make(chan error, 1)
@@ -178,7 +179,7 @@ func TestDecodedBatchRingWrapAndCancelledReuse(t *testing.T) {
 		t.Fatal(err)
 	}
 	id := sramcapture.RecordIdentity{Epoch: 7, Record: 1}
-	e := &Engine{sram: capture, decodedRequests: make(chan decodedRequest, 1), done: make(chan struct{}), decodedSession: &sramcapture.DecodedCapture{Identity: id}, decodedBuffer: make([]sramcapture.DecodedEvent, decodedBufferLimit), decodedHead: decodedBufferLimit - 1, decodedCount: 2}
+	e := &Engine{sram: capture, decodedRequests: make(chan ownerJob, 1), done: make(chan struct{}), decodedSession: &sramcapture.DecodedCapture{Identity: id}, decodedBuffer: make([]sramcapture.DecodedEvent, decodedBufferLimit), decodedHead: decodedBufferLimit - 1, decodedCount: 2}
 	e.decodedBuffer[decodedBufferLimit-1] = sramcapture.DecodedEvent{Sequence: 40, Value: 0xaa}
 	e.decodedBuffer[0] = sramcapture.DecodedEvent{Sequence: 41, Value: 0x55}
 	dst := make([]sramcapture.DecodedEvent, 2)
@@ -237,7 +238,7 @@ func (b *haltBus) Read(p uint8, s uint16) (uint16, error) {
 }
 
 // TRLC-LINKS: REQ-SDS-013
-func (b *haltBus) RawWrite(s, v uint16) error {
+func (b *haltBus) RawWrite(s, _ uint16) error {
 	if s == 1 {
 		b.ack ^= 512
 	}
@@ -254,7 +255,7 @@ func webSessionEngine(t *testing.T, web bool, contact time.Duration) *Engine {
 		t.Fatal(err)
 	}
 	e := &Engine{
-		sram: capture, decodedRequests: make(chan decodedRequest, 1), done: make(chan struct{}), logf: t.Logf,
+		sram: capture, decodedRequests: make(chan ownerJob, 1), done: make(chan struct{}), logf: t.Logf,
 		decodedSession: &sramcapture.DecodedCapture{Identity: sramcapture.RecordIdentity{Epoch: 7, Record: 1}},
 		decodedWeb:     web, decodedContact: time.Now().Add(-contact),
 	}

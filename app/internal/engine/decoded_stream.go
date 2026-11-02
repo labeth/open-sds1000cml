@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
+
 package engine
 
 import (
@@ -51,13 +52,11 @@ func (e *Engine) BeginDecodedStream(ctx context.Context, p SerialParams, trig St
 		// event transport; these buses are decoded in software.
 		return e.beginSoftStream(ctx, p, trig, value)
 	}
-	switch trig {
-	case StreamOnError:
-		p.Pattern = []PatternElem{{Kind: patternError}}
-	case StreamOnValue:
+	// An error trigger; a manual stream is planned as one, then made
+	// unmatchable below.
+	p.Pattern = []PatternElem{{Kind: patternError}}
+	if trig == StreamOnValue {
 		p.Pattern = []PatternElem{{Kind: patternData, Value: value & unitMask(p), Mask: unitMask(p)}}
-	default: // planned as an error trigger, then made unmatchable below
-		p.Pattern = []PatternElem{{Kind: patternError}}
 	}
 	cfgValue, err := e.decodedCall(ctx, func() (cfg any, err error) {
 		// Hold the image until BeginDecodedCapture takes over: between the two
@@ -86,11 +85,12 @@ func (e *Engine) BeginDecodedStream(ctx context.Context, p SerialParams, trig St
 		}
 		return e.decodedStreamConfig(p, trig)
 	})
+	cfg, err := ownerResult[sramcapture.Config](cfgValue, err)
 	if err != nil {
 		return sramcapture.RecordIdentity{}, err
 	}
 	// Install worker transcript mode in the same owner call that starts capture.
-	id, err := e.beginDecodedCapture(ctx, cfgValue.(sramcapture.Config), p.Proto, false)
+	id, err := e.beginDecodedCapture(ctx, cfg, p.Proto, false)
 	if err == nil {
 		e.mu.Lock()
 		e.stats.DecodedStreamMode = "gap-free, the FPGA's decoded events"
@@ -104,7 +104,7 @@ func (e *Engine) BeginDecodedStream(ctx context.Context, p SerialParams, trig St
 // token, a value, or for a manual stream an element no unit matches).
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-018
 func (e *Engine) decodedStreamConfig(p SerialParams, trig StreamTrigger) (sramcapture.Config, error) {
-	words := uint32(sramcapture.SamplesPerChannel / 2)
+	words := sramcapture.SamplesPerChannel / 2
 	c := sramcapture.Config{Source: sramcapture.ADC, PreWords: words / 2, PostWords: words - words/2, Normal: true}
 	e.planSerial(&c, p, false)
 	if hardwareSerialName(c) == "" {
@@ -126,7 +126,7 @@ func (e *Engine) decodedStreamConfig(p SerialParams, trig StreamTrigger) (sramca
 // stream runs in event mode (no worker).
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-018
 func (e *Engine) ReadDecodedLines(ctx context.Context, id sramcapture.RecordIdentity, from int, flush bool) (decodedlines.Batch, bool, error) {
-	bp := lineBufs.Get().(*[]byte)
+	bp := getLineBuf()
 	buf := *bp
 	var n int
 	var lines bool
@@ -159,7 +159,22 @@ func (e *Engine) ReadDecodedLines(ctx context.Context, id sramcapture.RecordIden
 
 // lineBufs hold the transcript reads' 64 KB buffers for reuse: a stream's
 // list polls several times a second, a cleared allocation each.
-var lineBufs = sync.Pool{New: func() any { b := make([]byte, 64*1024); return &b }}
+var lineBufs = sync.Pool{New: func() any { return newLineBuf() }}
+
+// TRLC-LINKS: REQ-SDS-018
+func newLineBuf() *[]byte {
+	b := make([]byte, 64*1024)
+	return &b
+}
+
+// getLineBuf takes a transcript read buffer from lineBufs.
+// TRLC-LINKS: REQ-SDS-018
+func getLineBuf() *[]byte {
+	if bp, ok := lineBufs.Get().(*[]byte); ok {
+		return bp
+	}
+	return newLineBuf()
+}
 
 // FreezeDecodedStream freezes a decoded capture's record - forcing the
 // trigger when none has fired - and halts acquisition, leaving the session
@@ -189,7 +204,7 @@ func (e *Engine) FreezeDecodedStream(ctx context.Context, id sramcapture.RecordI
 			if err != nil {
 				return nil, err
 			}
-			if !(m.Frozen && m.Ready) {
+			if !m.Frozen || !m.Ready {
 				if err := e.sram.Force(ctx); err != nil {
 					return nil, err
 				}

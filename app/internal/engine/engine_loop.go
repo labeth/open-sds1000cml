@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
+
 package engine
 
 import (
@@ -26,7 +27,7 @@ const memBackstopMin = 60 << 20
 func (e *Engine) setMemoryBackstop() {
 	var ms runtime.MemStats
 	runtime.ReadMemStats(&ms)
-	debug.SetMemoryLimit(max(int64(ms.Sys)+32<<20, memBackstopMin))
+	debug.SetMemoryLimit(max(int64(ms.Sys)+32<<20, memBackstopMin)) //nolint:gosec // G115: the process memory, far below 2^63
 }
 
 // Run is the engine owner loop. It must be the only goroutine that ever
@@ -83,31 +84,13 @@ func (e *Engine) Run() {
 	// at the top of the loop — a safe window with no settle or drain in flight. The
 	// memory limit is the backstop: on a leak, GC resumes rather than OOM the 128MB
 	// unit. Gated on armBusy so fake-clock tests keep the stock collector.
-	const gcEvery = 8
-	gcTick := 0
-	lastGcCtl := false
+	var gc gcControl
 
 	for !e.stopReq.Load() {
 		e.serviceCommands()
 		e.bumpFrames() // heartbeat advances every iteration, stopped or not
 		if e.armBusy {
-			// Controlled GC (tunable): disable proportional auto-GC and run it here,
-			// a safe point (previous frame drained + paced), so no collection async-
-			// preempts a settle. Toggle restores the stock collector.
-			if gcCtl := e.tuneGcCtl.Load(); gcCtl != lastGcCtl {
-				lastGcCtl = gcCtl
-				if gcCtl {
-					debug.SetGCPercent(-1)
-				} else {
-					debug.SetGCPercent(100)
-				}
-			}
-			if lastGcCtl {
-				if gcTick++; gcTick >= gcEvery {
-					gcTick = 0
-					runtime.GC()
-				}
-			}
+			gc.step(e.tuneGcCtl.Load())
 		}
 
 		if lvl := e.reinitReq.Swap(0); lvl > 0 {
@@ -168,7 +151,7 @@ func (e *Engine) bumpFrames() {
 
 // oneFrame runs one arm→wait→halt→drain→re-arm→publish iteration.
 // TRLC-LINKS: REQ-SDS-007, REQ-SDS-009, REQ-SDS-011, REQ-SDS-012, REQ-SDS-013, REQ-SDS-014, REQ-SDS-126, REQ-SDS-128
-func (e *Engine) oneFrame(norm bool) {
+func (e *Engine) oneFrame(norm bool) { //nolint:gocyclo,funlen // one native-fast/decimated frame arm-wait-halt-drain-publish pass, read top to bottom against spec 03
 	start := e.clk.Now()
 	if e.hintReset.Swap(false) {
 		e.lastEdgeX = -1 // config changed → drop the stale phase hint
@@ -200,7 +183,7 @@ func (e *Engine) oneFrame(norm bool) {
 	// instead of holding on every frame that fails to trigger.
 	ready := (anchored && filled) || !norm
 	if !nativeFast && !ready {
-		e.holdFrame(fillMoved, norm)
+		e.holdFrame(fillMoved)
 		e.pace(start)
 		return
 	}
@@ -211,8 +194,7 @@ func (e *Engine) oneFrame(norm bool) {
 	// fill isn't starved). Tunable via fill_extra_us; 0 = off.
 	if nativeFast && e.armBusy {
 		if ex := time.Duration(e.tuneFillExtraUs.Load()) * time.Microsecond; ex > 0 {
-			for st := time.Now(); time.Since(st) < ex; {
-			}
+			spinFor(ex)
 		}
 	}
 	haltOK := e.halt()
@@ -261,7 +243,7 @@ func (e *Engine) oneFrame(norm bool) {
 		loC1, hiC1, pC1 = ptp(f.C1[:cols])
 		rd = realDepthP(f.C1[:cols], pC1)
 	}
-	drainMs := e.clk.Now().Sub(drainStart)
+	drainTime := e.clk.Now().Sub(drainStart)
 	// Degraded = the comparator fired but the dead tail survived every
 	// re-capture retry: a genuinely corrupt triggered capture. An untriggered
 	// half-record is NOT degraded — it is the FSM's normal no-trigger state and
@@ -284,11 +266,8 @@ func (e *Engine) oneFrame(norm bool) {
 	// garbage. The live half (~10k samples) is 5× a native-fast display window.
 	usable := cols
 	if nativeFast && rd*4 < cols*3 {
-		if min := e.band.WinCols(); rd < min {
-			rd = min
-			if rd > cols {
-				rd = cols
-			}
+		if win := e.band.WinCols(); rd < win {
+			rd = min(win, cols)
 		}
 		usable = rd
 	}
@@ -363,7 +342,7 @@ func (e *Engine) oneFrame(norm bool) {
 		edgeX = qualifySlope(disc, interval, tp, rising)
 	case TrigVideo:
 		edgeX = qualifyVideo(disc, interval, tp)
-	default:
+	case TrigEdge:
 		// EDGE: anchor on the user's HW trigger level (WYSIWYG — the display
 		// crosses where the level is set). A lock requires a right-slope crossing
 		// AT that level (centerCross returns ONLY a crossing of the requested
@@ -504,23 +483,21 @@ func (e *Engine) oneFrame(norm bool) {
 	// DISPLAYED but not OBSERVED: with serial armed, only MATCHED frames feed the
 	// mask/average/uniformity/Bode consumers, so a non-match can never trip
 	// stop-on-fail or smear an average against a wandering anchor.
-	serialMatched := true // true when serial is not armed → everything observes normally
-	if e.serialMode.Load() == SerialTrigger {
-		serialMatched = false
-		if publish { // only test frames that would otherwise publish
-			if matched, anchor := e.serialQualify(f, cols, f.SampleS); matched {
-				serialMatched = true
-				e.serialHeld = 0
-				e.serialMatches.Add(1)
-				if anchor >= 0 && anchor < cols {
-					edgeX = float64(anchor) // centre the matched byte
-					f.Trigd = true
-				}
-			} else {
-				if norm || !e.autoLivenessDue(&e.serialHeld, serialFallback) {
-					publish = false // (an AUTO liveness frame is displayed, but not observed)
-				}
+	serialArmed := e.serialMode.Load() == SerialTrigger
+	serialMatched := !serialArmed // when serial is not armed everything observes normally
+	if serialArmed && publish {   // only test frames that would otherwise publish
+		matched, anchor := e.serialQualify(f, cols, f.SampleS)
+		switch {
+		case matched:
+			serialMatched = true
+			e.serialHeld = 0
+			e.serialMatches.Add(1)
+			if anchor >= 0 && anchor < cols {
+				edgeX = float64(anchor) // centre the matched byte
+				f.Trigd = true
 			}
+		case norm || !e.autoLivenessDue(&e.serialHeld, serialFallback):
+			publish = false // (an AUTO liveness frame is displayed, but not observed)
 		}
 	}
 	observeOK := serialMatched // gate the "observe every locked frame" consumers
@@ -536,10 +513,8 @@ func (e *Engine) oneFrame(norm bool) {
 		qualified := lock && e.zonesQualify(f, cols, edgeX, f.SampleS)
 		if qualified {
 			e.zoneHeld = 0
-		} else {
-			if norm || !e.autoLivenessDue(&e.zoneHeld, zoneFallback) {
-				publish = false // (AUTO lets a liveness frame through)
-			}
+		} else if norm || !e.autoLivenessDue(&e.zoneHeld, zoneFallback) {
+			publish = false // (AUTO lets a liveness frame through)
 		}
 	}
 
@@ -629,7 +604,7 @@ func (e *Engine) oneFrame(norm bool) {
 	e.stats.ValidDepth = vd
 	e.stats.MemDepth = int(e.memDepth.Load())
 	e.stats.ArmToLatch = armToLatchMs
-	e.stats.DrainMs = float64(drainMs) / float64(time.Millisecond)
+	e.stats.DrainMs = float64(drainTime) / float64(time.Millisecond)
 	// Realtime acquisition checker (instrumentation only): record every
 	// halt+drain frame so a HALF record can be traced to its wait/halt state.
 	e.acqRing[e.acqHead] = AcqSample{
@@ -697,12 +672,43 @@ func (e *Engine) oneFrame(norm bool) {
 	e.paceHold(start, publish && f.Trigd) // holdoff extends the floor after a real trigger
 }
 
+// gcControl is the owner loop's controlled collection (the gc_ctl knob):
+// proportional auto-GC off and a collection every gcEvery loops at the
+// loop's safe point (previous frame drained and paced), so no collection
+// async-preempts a settle. Turning the knob off restores the stock collector.
+type gcControl struct {
+	on   bool
+	tick int
+}
+
+const gcEvery = 8
+
+// step applies the knob for one loop.
+// TRLC-LINKS: REQ-SDS-001, REQ-SDS-006
+func (g *gcControl) step(want bool) {
+	if want != g.on {
+		g.on = want
+		if want {
+			debug.SetGCPercent(-1)
+		} else {
+			debug.SetGCPercent(100)
+		}
+	}
+	if !g.on {
+		return
+	}
+	if g.tick++; g.tick >= gcEvery {
+		g.tick = 0
+		runtime.GC()
+	}
+}
+
 // holdFrame accounts a decimated hold and feeds the wedge ladder: a quiet
 // NORM keeps the fill advancing; a dead bus does not. A frozen SMALL fill at
 // a decimated band cannot be counter saturation (a saturated counter would
 // have set the filled gate), so it is certain wedge evidence.
 // TRLC-LINKS: REQ-SDS-011, REQ-SDS-128
-func (e *Engine) holdFrame(fillMoved, norm bool) {
+func (e *Engine) holdFrame(fillMoved bool) {
 	e.mu.Lock()
 	e.stats.Held++
 	e.mu.Unlock()

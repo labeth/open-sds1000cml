@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
+
 package engine
 
 import (
@@ -81,14 +82,6 @@ type FPGAStackResult struct {
 	Stack *superres.Stack `json:"-"`
 }
 
-// sramJob runs on the owner goroutine at the top of the SRAM loop, where no
-// arm or recall is in flight. Any retained record is forgotten afterwards.
-type sramJob struct {
-	ctx  context.Context
-	run  func(context.Context) (any, error)
-	done chan decodedReply
-}
-
 // SetImageSwitcher enables FPGA stacking. Call before Run.
 // TRLC-LINKS: REQ-SDS-141
 func (e *Engine) SetImageSwitcher(s ImageSwitcher) {
@@ -109,41 +102,26 @@ type BitsImages interface {
 // which plans without an engine (the panel's decode menu asks it).
 var bitsImage atomic.Bool
 
+// sramCall runs an SRAM job on the owner goroutine at the top of the SRAM
+// loop, where no arm or recall is in flight; any retained record is
+// forgotten afterwards. A job whose caller gave up still runs to completion
+// and restores the general image.
 // TRLC-LINKS: REQ-SDS-141
 func (e *Engine) sramCall(ctx context.Context, run func(context.Context) (any, error)) (any, error) {
 	if e.sram == nil {
 		return nil, errors.New("FPGA stacking requires the SRAM acquisition image")
 	}
-	req := sramJob{ctx: ctx, run: run, done: make(chan decodedReply, 1)}
-	select {
-	case e.sramJobs <- req:
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	case <-e.done:
-		return nil, ErrExecStopped
-	}
-	select {
-	case r := <-req.done:
-		return r.value, r.err
-	case <-ctx.Done():
-		// The job still runs to completion and restores the general image.
-		return nil, ctx.Err()
-	case <-e.done:
-		return nil, ErrExecStopped
-	}
+	return e.callOwner(ctx, e.sramJobs, func() (any, error) { return run(ctx) })
 }
 
 // serviceSRAMJobs reports whether a job ran (and so replaced the fabric).
 // TRLC-LINKS: REQ-SDS-141
 func (e *Engine) serviceSRAMJobs() bool {
 	select {
-	case req := <-e.sramJobs:
-		if err := req.ctx.Err(); err != nil {
-			req.done <- decodedReply{err: err}
+	case job := <-e.sramJobs:
+		if !job.serve() {
 			return false
 		}
-		value, err := req.run(req.ctx)
-		req.done <- decodedReply{value, err}
 		e.beatN.Add(1)
 		return true
 	default:
@@ -175,10 +153,7 @@ func (e *Engine) FPGAStack(ctx context.Context, req FPGAStackRequest) (FPGAStack
 		}
 		return e.runFPGAStack(ctx, cfg, req)
 	})
-	if err != nil {
-		return FPGAStackResult{}, err
-	}
-	return value.(FPGAStackResult), nil
+	return ownerResult[FPGAStackResult](value, err)
 }
 
 // TRLC-LINKS: REQ-SDS-141
@@ -186,20 +161,7 @@ func (e *Engine) runFPGAStack(ctx context.Context, cfg sramcapture.Config, req F
 	// The session holds the owner loop for seconds, including two FPGA loads
 	// with no bus reads. It is bounded by ctx, so beat for its duration or the
 	// OTA agent judges the app hung and restarts it.
-	beating := make(chan struct{})
-	defer close(beating)
-	go func() {
-		tick := time.NewTicker(200 * time.Millisecond)
-		defer tick.Stop()
-		for {
-			select {
-			case <-beating:
-				return
-			case <-tick.C:
-				e.beatN.Add(1)
-			}
-		}
-	}()
+	defer e.beatWhile()()
 	halt, cancel := context.WithTimeout(context.Background(), time.Second)
 	haltErr := e.sram.Halt(halt)
 	cancel()
@@ -342,9 +304,9 @@ func (e *Engine) captureOne(ctx context.Context, cfg sramcapture.Config) (sramca
 		}
 		if err := wait.Err(); err != nil {
 			halt, cancel := context.WithTimeout(context.Background(), time.Second)
-			e.sram.Halt(halt)
+			haltErr := e.sram.Halt(halt)
 			cancel()
-			return m, err
+			return m, errors.Join(err, haltErr)
 		}
 		e.clk.Sleep(time.Millisecond)
 	}

@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
+
 package engine
 
 import "open-sds/app/internal/decode"
@@ -15,7 +16,7 @@ func matchPackets(sp []decode.Span, want []int) (bool, int) {
 		boundary := i == len(sp)
 		if !boundary {
 			switch sp[i].Kind {
-			case "gap", "start", "stop", "sof", "sync":
+			case spanGap, spanStart, spanStop, spanSOF, spanSync:
 				boundary = true
 			}
 		}
@@ -27,7 +28,7 @@ func matchPackets(sp []decode.Span, want []int) (bool, int) {
 				}
 			}
 			start, bad = i+1, false
-		} else if sp[i].Kind == "frame-error" || sp[i].Kind == "parity-error" {
+		} else if sp[i].Kind == spanFrameError || sp[i].Kind == spanParityError {
 			bad = true
 		}
 	}

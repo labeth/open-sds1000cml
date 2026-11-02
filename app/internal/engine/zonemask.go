@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
+
 package engine
 
 import (
@@ -296,24 +297,10 @@ func (e *Engine) maskEval(f *Frame, valid, liveDepth int, edgeX, sampleS, posFra
 	frameWin := win // the frame's window, in its own samples
 	var mapLo, mapHi []uint8
 	if m.FrameIdent {
-		w := f.WinCols
-		if w <= 0 || w > valid {
-			w = valid
-		}
-		frameWin = w
-		if m.TdivS != f.TdivS {
+		var ok bool
+		if frameWin, mapLo, mapHi, ok = e.maskFrameWindow(m, f, valid, posFrac); !ok {
 			e.maskSkip.Add(1)
-			return false, false // another timebase: not comparable
-		}
-		if w != win || m.SampleS != f.SampleS || m.PeakDetect != f.PeakDetect {
-			// The same screen sampled otherwise - a full-rate record while a
-			// view holds a lease, the live envelope after one: the mask is read
-			// through trigger-relative time, as the web draws it. Skipped, a mask
-			// built during a lease would test nothing once the lease ends.
-			if mapLo, mapHi = e.maskThroughTime(m, w, f.SampleS, f.PeakDetect, posFrac); mapLo == nil {
-				e.maskSkip.Add(1)
-				return false, false // a window of another span: not comparable
-			}
+			return false, false
 		}
 	} else if e.band.WinCols() != win ||
 		m.TdivS != e.band.TdivS || m.SampleS != e.band.CaptureIntervalNs()*1e-9 {
@@ -360,7 +347,7 @@ func (e *Engine) maskEval(f *Frame, valid, liveDepth int, edgeX, sampleS, posFra
 	left := int(math.Round(edgeX - float64(frameWin)*posFrac))
 	failCol, failCode, failSample := -1, 0, 0
 	tested := 0
-	for j := 0; j < frameWin; j++ {
+	for j := range frameWin {
 		s := left + j
 		if s < 0 || s >= valid {
 			continue // off-record columns are not testable (rail-extend on display)
@@ -424,6 +411,32 @@ type maskMapKey struct {
 type maskMapState struct {
 	key    maskMapKey
 	lo, hi []uint8
+}
+
+// maskFrameWindow is the window of frame f a frame-identified mask m tests,
+// in f's own samples, and the mask read through trigger-relative time when f
+// samples the screen otherwise (mapLo nil when it does not). ok is false
+// when f is not comparable with m.
+// TRLC-LINKS: REQ-SDS-014
+func (e *Engine) maskFrameWindow(m *Mask, f *Frame, valid int, posFrac float64) (w int, mapLo, mapHi []uint8, ok bool) {
+	w = f.WinCols
+	if w <= 0 || w > valid {
+		w = valid
+	}
+	if m.TdivS != f.TdivS {
+		return w, nil, nil, false // another timebase: not comparable
+	}
+	if w == m.WinCols && m.SampleS == f.SampleS && m.PeakDetect == f.PeakDetect {
+		return w, nil, nil, true
+	}
+	// The same screen sampled otherwise - a full-rate record while a view
+	// holds a lease, the live envelope after one: the mask is read through
+	// trigger-relative time, as the web draws it. Skipped, a mask built
+	// during a lease would test nothing once the lease ends.
+	if mapLo, mapHi = e.maskThroughTime(m, w, f.SampleS, f.PeakDetect, posFrac); mapLo == nil {
+		return w, nil, nil, false // a window of another span: not comparable
+	}
+	return w, mapLo, mapHi, true
 }
 
 // maskThroughTime reads mask m for a frame window of w samples at sampleS

@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
+
 package engine
 
 import (
@@ -155,7 +156,7 @@ func (r *soundRing) pushWords(raw []byte, sc SoundScale, gap bool, now time.Time
 	if len(r.q[0]) == 0 {
 		r.q = [2][]uint16{make([]uint16, r.size), make([]uint16, r.size)}
 	}
-	mask := uint64(len(r.q[0]) - 1)
+	mask := uint64(len(r.q[0]) - 1) //nolint:gosec // G115: the ring is a non-empty power of two
 	if gap && r.next > 0 && (len(r.gaps) == 0 || r.gaps[len(r.gaps)-1] != r.next) {
 		r.gaps = append(r.gaps, r.next)
 	}
@@ -210,10 +211,10 @@ func (r *soundRing) trimLocked() {
 	}
 }
 
-// read copies up to max samples from ordinal from (moved up to the oldest
+// read copies up to limit samples from ordinal from (moved up to the oldest
 // held) into q1, q2 (grown as needed).
 // TRLC-LINKS: REQ-SDS-265
-func (r *soundRing) read(from uint64, max int, q1, q2 []uint16, rate float64) SoundBlock {
+func (r *soundRing) read(from uint64, limit int, q1, q2 []uint16, rate float64) SoundBlock {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	b := SoundBlock{RateHz: rate, Next: r.next}
@@ -223,11 +224,11 @@ func (r *soundRing) read(from uint64, max int, q1, q2 []uint16, rate float64) So
 	if from > r.next {
 		from = r.next
 	}
-	n := int(min(uint64(max), r.next-from))
+	n := int(min(uint64(limit), r.next-from)) //nolint:gosec // G115: the result is at most the samples held
 	b.First, b.N = from, n
 	b.Q1, b.Q2 = grow16(q1, n), grow16(q2, n)
 	if n > 0 { // at most two stretches: to the ring's end, then from its start
-		at := int(from & uint64(len(r.q[0])-1))
+		at := int(from & uint64(len(r.q[0])-1)) //nolint:gosec // G115: the ring is a non-empty power of two
 		k := copy(b.Q1, r.q[0][at:])
 		copy(b.Q1[k:], r.q[0])
 		copy(b.Q2, r.q[1][at:])
@@ -268,8 +269,8 @@ func (r *soundRing) latest(n int, q1, q2 []uint16, rate float64) SoundBlock {
 	next := r.next
 	r.mu.Unlock()
 	from := uint64(0)
-	if next > uint64(n) {
-		from = next - uint64(n)
+	if next > uint64(n) { //nolint:gosec // G115: n is a non-negative sample count
+		from = next - uint64(n) //nolint:gosec // G115: n is a non-negative sample count
 	}
 	return r.read(from, n, q1, q2, rate)
 }
@@ -311,7 +312,7 @@ type soundState struct {
 
 	// Owner-only.
 	streaming bool
-	isolated  bool
+	pump      streamPumper // the bus worker's pump while it drains the banks; nil otherwise
 	deadline  *bus.DecodedDeadline
 	expected  uint64 // stream words drained (the stream's own ordinal)
 	base      uint64 // the ring ordinal of this stream's word 0
@@ -425,12 +426,12 @@ func (e *Engine) SoundInfo() SoundInfo {
 	return in
 }
 
-// SoundRead copies up to max samples of each channel from ordinal from (or
+// SoundRead copies up to limit samples of each channel from ordinal from (or
 // the oldest held) into q1, q2.
 // TRLC-LINKS: REQ-SDS-265
-func (e *Engine) SoundRead(from uint64, max int, q1, q2 []uint16) SoundBlock {
+func (e *Engine) SoundRead(from uint64, limit int, q1, q2 []uint16) SoundBlock {
 	s := e.sound()
-	return s.ring.read(from, max, q1, q2, s.info.RateHz)
+	return s.ring.read(from, limit, q1, q2, s.info.RateHz)
 }
 
 // SoundLatest copies the newest n samples of each channel.
@@ -594,7 +595,7 @@ func (e *Engine) soundStart(s *soundState) error {
 	mc := e.soundMarkWant(s)
 	cfg := sramcapture.Config{
 		Source: sramcapture.ADC, DecimationLog2: SoundLog2, PreWords: sramcapture.Words - 17, PostWords: 17,
-		TriggerChannel: uint8(mc.Ch), TriggerLevel: mc.Level, TriggerHysteresis: mc.Hyst, Normal: true,
+		TriggerChannel: uint8(mc.Ch), TriggerLevel: mc.Level, TriggerHysteresis: mc.Hyst, Normal: true, //nolint:gosec // G115: the mark channel is 0 or 1
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
@@ -608,15 +609,13 @@ func (e *Engine) soundStart(s *soundState) error {
 	s.base = s.ring.next
 	s.cfgFrom = s.base
 	s.ring.mu.Unlock()
-	if p, ok := e.b.(streamPumper); ok {
-		owned, err := p.SetIsolatedStreamPump(true)
-		if err != nil {
-			e.soundStop(s)
-			return err
-		}
-		s.isolated = owned
+	pump, err := e.ownStreamPump()
+	if err != nil {
+		e.soundStop(s)
+		return err
 	}
-	if dev, ok := e.b.(*bus.Dev); ok && !s.isolated && s.deadline == nil {
+	s.pump = pump
+	if dev, ok := e.b.(*bus.Dev); ok && s.pump == nil && s.deadline == nil {
 		if d, err := dev.StartDecodedDeadline(); err == nil {
 			s.deadline = d
 		}
@@ -637,11 +636,11 @@ func (e *Engine) soundStop(s *soundState) {
 	if !s.streaming {
 		return
 	}
-	if s.isolated {
-		if _, err := e.b.(streamPumper).SetIsolatedStreamPump(false); err != nil {
+	if s.pump != nil {
+		if _, err := s.pump.SetIsolatedStreamPump(false); err != nil {
 			e.busErr(err)
 		}
-		s.isolated = false
+		s.pump = nil
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	if err := e.sram.StopStream(ctx); err != nil {
@@ -671,11 +670,11 @@ func (e *Engine) soundYield() {
 // writing nothing to the fabric (its pump and deadline released).
 // TRLC-LINKS: REQ-SDS-265
 func (e *Engine) soundDrop(s *soundState) {
-	if s.isolated {
-		if _, err := e.b.(streamPumper).SetIsolatedStreamPump(false); err != nil {
+	if s.pump != nil {
+		if _, err := s.pump.SetIsolatedStreamPump(false); err != nil {
 			e.busErr(err)
 		}
-		s.isolated = false
+		s.pump = nil
 	}
 	if s.deadline != nil {
 		_ = s.deadline.Close()
@@ -702,35 +701,13 @@ func (e *Engine) soundDrain(s *soundState) {
 	}
 	got := 0
 	for end := e.clk.Now().Add(40 * time.Millisecond); e.clk.Now().Before(end) && !e.stopReq.Load(); {
-		var raw []byte
-		if s.isolated {
-			first, n, _, err := e.b.(streamPumper).ReadIsolatedStream(s.buf[:])
-			if err == nil && n > 0 && first != s.expected {
-				err = fmt.Errorf("stream ordinal %d, want %d", first, s.expected)
-			}
-			if err != nil {
-				e.soundLoss(s, err)
-				return
-			}
-			if n == 0 {
-				break
-			}
-			raw = s.buf[:n]
-			s.expected += uint64(n / 4)
-		} else {
-			w := byteSink{dst: &raw}
-			raw = s.buf[:0]
-			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-			block, err := e.sram.DrainStream(ctx, s.expected, &w)
-			cancel()
-			if err == sramcapture.ErrNoStreamBlock {
-				break
-			}
-			if err != nil {
-				e.soundLoss(s, err)
-				return
-			}
-			s.expected = block.FirstWord + uint64(block.Words)
+		raw, err := e.soundNextWords(s)
+		if err != nil {
+			e.soundLoss(s, err)
+			return
+		}
+		if raw == nil {
+			break
 		}
 		s.ring.pushWords(raw, e.soundScale(), s.gapNext, e.clk.Now())
 		s.gapNext = false
@@ -746,6 +723,36 @@ func (e *Engine) soundDrain(s *soundState) {
 			e.clk.Sleep(5 * time.Millisecond)
 		}
 	}
+}
+
+// soundNextWords reads the stream's next words: from the bus worker's ring,
+// or drained from the banks. nil when none are there yet.
+// TRLC-LINKS: REQ-SDS-265
+func (e *Engine) soundNextWords(s *soundState) ([]byte, error) {
+	if s.pump != nil {
+		first, n, _, err := s.pump.ReadIsolatedStream(s.buf[:])
+		if err == nil && n > 0 && first != s.expected {
+			err = fmt.Errorf("stream ordinal %d, want %d", first, s.expected)
+		}
+		if err != nil || n == 0 {
+			return nil, err
+		}
+		s.expected += uint64(n / 4) //nolint:gosec // G115: n is a read's non-negative byte count
+		return s.buf[:n], nil
+	}
+	raw := s.buf[:0]
+	w := byteSink{dst: &raw}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	block, err := e.sram.DrainStream(ctx, s.expected, &w)
+	cancel()
+	if errors.Is(err, sramcapture.ErrNoStreamBlock) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	s.expected = block.FirstWord + uint64(block.Words)
+	return raw, nil
 }
 
 // soundScale is the front end's scale now.

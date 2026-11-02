@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
+
 package engine
 
 import (
@@ -42,23 +43,23 @@ func (w *symWave) runs(first bool, d ...float64) {
 
 // uart holds one character: start, data LSB first, parity, stops.
 // TRLC-LINKS: REQ-SDS-013
-func (w *symWave) uart(v, bits int, parity string, stops int, T float64) {
-	w.hold(false, true, T)
+func (w *symWave) uart(v, bits int, parity string, stops int, bitT float64) {
+	w.hold(false, true, bitT)
 	ones := 0
 	for i := range bits {
 		bit := v>>i&1 != 0
 		if bit {
 			ones++
 		}
-		w.hold(bit, true, T)
+		w.hold(bit, true, bitT)
 	}
 	switch parity {
 	case "even":
-		w.hold(ones&1 != 0, true, T)
+		w.hold(ones&1 != 0, true, bitT)
 	case "odd":
-		w.hold(ones&1 == 0, true, T)
+		w.hold(ones&1 == 0, true, bitT)
 	}
-	w.hold(true, true, float64(stops)*T)
+	w.hold(true, true, float64(stops)*bitT)
 }
 
 // halves holds Manchester half bits: each bit's two levels from one (the

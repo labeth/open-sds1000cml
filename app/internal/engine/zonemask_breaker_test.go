@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
+
 package engine
 
 import (
@@ -124,7 +125,7 @@ func zmFamilies() []zmFamily {
 // first rising mid-crossing after sample 600 (mimicking the trigger anchor).
 // violAt >= 0 injects the family's violation at edge-relative sample violAt.
 // TRLC-LINKS: REQ-SDS-014
-func zmGen(fam zmFamily, frameIdx, violAt int, rng func() float64) (*Frame, float64, int, []float64) {
+func zmGen(fam zmFamily, _, violAt int, rng func() float64) (*Frame, float64, int, []float64) {
 	const n = 4096
 	f := &Frame{C1: make([]uint8, n), C2: make([]uint8, n), Valid: n}
 	ph := rng() * fam.period

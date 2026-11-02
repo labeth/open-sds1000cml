@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
+
 package engine
 
 import (
@@ -176,9 +177,10 @@ func TestFrameUnitStart(t *testing.T) {
 	n := 0
 	for _, sp := range res.Spans {
 		if sp.Kind == "data" {
-			if n == 0 {
+			switch n {
+			case 0:
 				first = [2]int{sp.I0, sp.I1}
-			} else if n == 1 {
+			case 1:
 				second = [2]int{sp.I0, sp.I1}
 			}
 			n++

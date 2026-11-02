@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
+
 package engine
 
 import (
@@ -19,7 +20,7 @@ func feedPeakRef(s *softStream, raw []byte, cal *InterleaveCalibration) {
 	if clockedTwoLine(s.p.Proto) {
 		lines = 2
 	}
-	for k := 0; k < lines; k++ {
+	for k := range lines {
 		ch := s.p.ChA & 1
 		dst := &s.pendA
 		if k == 1 {

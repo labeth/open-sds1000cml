@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
+
 package engine
 
 import (
@@ -76,11 +77,11 @@ func (e *Engine) etsFrame(norm bool) {
 		e.etsScratch2 = make([]uint8, etsDrainCols)
 	}
 
-	Wns := screenDivsH * e.band.TdivS * 1e9
-	if Wns <= 0 {
-		Wns = float64(nCols) * etsTs
+	wNs := screenDivsH * e.band.TdivS * 1e9
+	if wNs <= 0 {
+		wNs = float64(nCols) * etsTs
 	}
-	etColTime := Wns / float64(nCols)
+	etColTime := wNs / float64(nCols)
 	rising := e.trigRising.Load()
 	deadline := e.clk.Now().Add(etsFrameBudgetMs * time.Millisecond)
 
@@ -139,7 +140,7 @@ func (e *Engine) etsFrame(norm bool) {
 		if k1 > etsDrainCols-1 {
 			k1 = etsDrainCols - 1
 		}
-		e.etsFold(xref, k0, k1, nCols, Wns, etColTime)
+		e.etsFold(xref, k0, k1, nCols, wNs, etColTime)
 		if covered() == factor {
 			break // full phase coverage — stop the frame early
 		}
@@ -244,7 +245,7 @@ func (e *Engine) etsRebuild(f *Frame, nCols int) {
 		if firstFilled < 0 {
 			return // nothing filled; caller's coverage gate prevents this
 		}
-		for c := 0; c < firstFilled; c++ {
+		for c := range firstFilled {
 			out[c] = out[firstFilled]
 		}
 		for c := lastFilled + 1; c < nCols; c++ {
@@ -260,16 +261,16 @@ func (e *Engine) etsRebuild(f *Frame, nCols int) {
 // float sum of 8-bit codes was every step an exact integer, so the columns'
 // means are the same without a float add a sample.
 // TRLC-LINKS: REQ-SDS-019
-func (e *Engine) etsFold(xref float64, k0, k1, nCols int, Wns, etColTime float64) {
+func (e *Engine) etsFold(xref float64, k0, k1, nCols int, wNs, etColTime float64) {
 	// Only samples within half the screen (and a column) of xref land on a
 	// column: the rest are not divided for; a sample of margin either side,
 	// and the test below still decides.
-	if reach := (Wns/2 + etColTime) / etsTs; reach < float64(k1-k0) {
+	if reach := (wNs/2 + etColTime) / etsTs; reach < float64(k1-k0) {
 		k0 = max(k0, int(math.Floor(xref-reach))-1)
 		k1 = min(k1, int(math.Ceil(xref+reach))+1)
 	}
 	for k := k0; k <= k1; k++ {
-		col := int(math.Round(((float64(k)-xref)*etsTs + Wns/2) / etColTime))
+		col := int(math.Round(((float64(k)-xref)*etsTs + wNs/2) / etColTime))
 		if col < 0 || col >= nCols {
 			continue
 		}

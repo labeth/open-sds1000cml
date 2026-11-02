@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
+
 package engine
 
 import (
@@ -48,19 +49,19 @@ func FuzzSoundRing(f *testing.F) {
 				if a&1 == 0 {
 					from %= 4096
 				}
-				max := int(int8(b)) * 37
-				blk := r.read(from, max, nil, nil, 61035)
+				limit := int(int8(b)) * 37
+				blk := r.read(from, limit, nil, nil, 61035)
 				r.mu.Lock()
 				next, old := r.next, r.oldestLocked()
 				r.mu.Unlock()
 				if blk.N < 0 || len(blk.Q1) != blk.N || len(blk.Q2) != blk.N || blk.N > 1024 {
-					t.Fatalf("read(%d, %d): N %d, %d and %d samples", from, max, blk.N, len(blk.Q1), len(blk.Q2))
+					t.Fatalf("read(%d, %d): N %d, %d and %d samples", from, limit, blk.N, len(blk.Q1), len(blk.Q2))
 				}
 				if blk.N > 0 && (blk.First < old || blk.First+uint64(blk.N) > next) {
-					t.Fatalf("read(%d, %d): %d..%d outside the ring's %d..%d", from, max, blk.First, blk.First+uint64(blk.N), old, next)
+					t.Fatalf("read(%d, %d): %d..%d outside the ring's %d..%d", from, limit, blk.First, blk.First+uint64(blk.N), old, next)
 				}
 				if blk.N > 0 && (len(blk.Scales) == 0 || blk.Scales[0].From > blk.First) {
-					t.Fatalf("read(%d, %d) from %d: scales %+v", from, max, blk.First, blk.Scales)
+					t.Fatalf("read(%d, %d) from %d: scales %+v", from, limit, blk.First, blk.Scales)
 				}
 				for _, g := range blk.Gaps {
 					if g <= blk.First || g >= blk.First+uint64(blk.N) {

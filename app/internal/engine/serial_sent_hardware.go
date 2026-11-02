@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
+
 package engine
 
 import (
@@ -19,7 +20,7 @@ func planHardwareSENT(p *SerialParams) sramcapture.SENTTriggerConfig {
 	if ticks < 4 || ticks > 0xffffff || n < 1 || n > 64 {
 		return sramcapture.SENTTriggerConfig{}
 	}
-	c := sramcapture.SENTTriggerConfig{Enabled: true, Channel: uint8(p.ChA), Inverted: p.Inverted, TickTicks: uint32(ticks), Nibbles: uint8(n), Length: uint8(len(p.Bytes))}
+	c := sramcapture.SENTTriggerConfig{Enabled: true, Channel: uint8(p.ChA), Inverted: p.Inverted, TickTicks: uint32(ticks), Nibbles: uint8(n), Length: uint8(len(p.Bytes))} //nolint:gosec // G115: the checks above bound each field
 	for _, b := range p.Bytes {
 		if b < 0 || b > 15 {
 			return sramcapture.SENTTriggerConfig{}

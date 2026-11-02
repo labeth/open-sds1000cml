@@ -1,7 +1,6 @@
 package engine
 
 import (
-	"open-sds/app/internal/sramcapture"
 	"testing"
 	"time"
 )
@@ -21,8 +20,8 @@ func TestRawLeaseEndAbandonsTheReadNobodyWants(t *testing.T) {
 	}
 	e.LeaseRawFor("eye", 3*time.Second)
 	e.LeaseDecodeView(3 * time.Second) // the web's eye
-	if !e.rawLeased() || e.envelopeBlock(&sramcapture.Config{}, trigParams{}) != blockRaw {
-		t.Fatalf("leased: raw %v, live readout block %q", e.rawLeased(), e.envelopeBlock(&sramcapture.Config{}, trigParams{}))
+	if !e.rawLeased() || e.envelopeBlock() != blockRaw {
+		t.Fatalf("leased: raw %v, live readout block %q", e.rawLeased(), e.envelopeBlock())
 	}
 	inFlight()
 	e.LeaseRawFor("eye", 0)

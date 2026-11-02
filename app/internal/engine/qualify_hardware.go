@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
+
 package engine
 
 import (
@@ -116,14 +117,14 @@ func (e *Engine) planQualifier(tp trigParams, ch int, rising bool) (sramcapture.
 		return sramcapture.QualifierConfig{}, 0, fmt.Sprintf("no signal swing on C%d", ch+1)
 	}
 	clamp := func(v float64) uint8 { return uint8(math.Round(math.Max(1, math.Min(254, v)))) }
-	q := sramcapture.QualifierConfig{Enabled: true, Channel: uint8(ch), Cond: uint8(tp.pulseCond)}
+	q := sramcapture.QualifierConfig{Enabled: true, Channel: uint8(ch), Cond: uint8(tp.pulseCond)} //nolint:gosec // G115: the channel is 0 or 1, the condition 0..3 (SetPulseParams)
 	level := clamp(lo + tp.pulseLvlFrac*span)
 	minNs, maxNs := tp.pulseWMinNs, tp.pulseWMaxNs
 	switch tp.typ {
 	case TrigPulse:
 		q.Kind, q.Negative = sramcapture.QualPulse, !rising
 	case TrigSlope:
-		q.Kind, q.Negative, q.Cond = sramcapture.QualSlope, !rising, uint8(tp.slopeCond)
+		q.Kind, q.Negative, q.Cond = sramcapture.QualSlope, !rising, uint8(tp.slopeCond) //nolint:gosec // G115: the condition is 0..3 (SetSlopeParams)
 		q.LevelA, q.LevelB = clamp(lo+tp.slopeLoFrac*span), clamp(lo+tp.slopeHiFrac*span)
 		level, minNs, maxNs = q.LevelA, tp.slopeTMinNs, tp.slopeTMaxNs
 	case TrigVideo:
@@ -140,8 +141,10 @@ func (e *Engine) planQualifier(tp trigParams, ch int, rising bool) (sramcapture.
 			q.Line = uint16(max(1, min(1023, tp.videoLine-first+1)))
 		}
 		minNs, maxNs = 0, 0
-	default:
+	case TrigEdge:
 		return sramcapture.QualifierConfig{}, 0, "an edge trigger has no qualifier"
+	default:
+		return sramcapture.QualifierConfig{}, 0, "the trigger type has no qualifier"
 	}
 	q.Prescale, q.MinTicks, q.MaxTicks = qualTicks(minNs, maxNs)
 	return q, level, ""
@@ -265,7 +268,7 @@ func (e *Engine) planZones() (z sramcapture.ZoneConfig, delayS float64, why stri
 			cl, ch := min(max(zn.CodeLo, 0), 255), min(max(zn.CodeHi, 0), 255)
 			ws[i] = sramcapture.ZoneWindow{
 				Enabled: true, Channel: uint8(zn.Ch & 1), Lo: uint8(min(cl, ch)), Hi: uint8(max(cl, ch)),
-				Start: int16(max(start, -1024)), End: int16(min(end, 1024)), Avoid: zn.Avoid,
+				Start: int16(max(start, -1024)), End: int16(min(end, 1024)), Avoid: zn.Avoid, //nolint:gosec // G115: a bucket is refused below unless both lie within ±1000
 			}
 		}
 		wait := max(maxEnd+1, 1)

@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
+
 package engine
 
 import (
@@ -368,7 +369,7 @@ func TestClientDecodeMatchesScope(t *testing.T) {
 		if err := os.WriteFile(cj, blob, 0o644); err != nil {
 			t.Fatal(err)
 		}
-		out, err := exec.Command("node", "../web/webdec_check.mjs", "session", cj).CombinedOutput()
+		out, err := exec.CommandContext(t.Context(), "node", "../web/webdec_check.mjs", "session", cj).CombinedOutput()
 		if err != nil || !strings.Contains(string(out), "WEBDEC OK") {
 			t.Fatalf("webdec_check.mjs: %v\n%s", err, out)
 		}

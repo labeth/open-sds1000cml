@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
+
 package engine
 
 import (
@@ -13,9 +14,68 @@ import (
 	"time"
 )
 
-type decodedReply struct {
+// ownerJob is work another goroutine hands the owner loop: run on the owner,
+// unless the caller's context ended (cancelled reports it) before the owner
+// came to it; the reply goes to done.
+type ownerJob struct {
+	cancelled func() error
+	run       func() (any, error)
+	done      chan ownerReply
+}
+
+// ownerReply is an owner job's result.
+type ownerReply struct {
 	value any
 	err   error
+}
+
+// serve runs the job on the owner and reports whether it ran.
+// TRLC-LINKS: REQ-SDS-001
+func (j ownerJob) serve() bool {
+	if err := j.cancelled(); err != nil {
+		j.done <- ownerReply{err: err}
+		return false
+	}
+	value, err := j.run()
+	j.done <- ownerReply{value, err}
+	return true
+}
+
+// callOwner queues run for the owner loop and waits for its reply. A caller
+// whose context ends gets its error at once; a job already running still
+// runs to completion.
+// TRLC-LINKS: REQ-SDS-001
+func (e *Engine) callOwner(ctx context.Context, queue chan<- ownerJob, run func() (any, error)) (any, error) {
+	job := ownerJob{cancelled: ctx.Err, run: run, done: make(chan ownerReply, 1)}
+	select {
+	case queue <- job:
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case <-e.done:
+		return nil, ErrExecStopped
+	}
+	select {
+	case r := <-job.done:
+		return r.value, r.err
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case <-e.done:
+		return nil, ErrExecStopped
+	}
+}
+
+// ownerResult converts an owner call's reply to the type its run returns.
+// TRLC-LINKS: REQ-SDS-001
+func ownerResult[T any](value any, err error) (T, error) {
+	var zero T
+	if err != nil {
+		return zero, err
+	}
+	v, ok := value.(T)
+	if !ok {
+		return zero, fmt.Errorf("owner call returned %T, not %T", value, zero)
+	}
+	return v, nil
 }
 
 const decodedBufferLimit = 131072 // 5 MiB; finite client-backpressure allowance
@@ -46,12 +106,6 @@ type decodedServiceStats struct {
 	gaps                                       [16]struct{ At, Gap time.Duration }
 }
 
-type decodedRequest struct {
-	ctx  context.Context
-	run  func() (any, error)
-	done chan decodedReply
-}
-
 // decodedCall stages SRAM work on the existing acquisition owner. Cancellation
 // of a queued request prevents it from touching hardware when serviced later.
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-001
@@ -59,36 +113,17 @@ func (e *Engine) decodedCall(ctx context.Context, run func() (any, error)) (any,
 	if e.sram == nil {
 		return nil, errors.New("decoded capture requires the general SRAM image")
 	}
-	req := decodedRequest{ctx: ctx, run: run, done: make(chan decodedReply, 1)}
-	select {
-	case e.decodedRequests <- req:
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	case <-e.done:
-		return nil, ErrExecStopped
-	}
-	select {
-	case r := <-req.done:
-		return r.value, r.err
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	case <-e.done:
-		return nil, ErrExecStopped
-	}
+	return e.callOwner(ctx, e.decodedRequests, run)
 }
 
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-001
 func (e *Engine) serviceDecodedRequests() {
 	for range 8 {
 		select {
-		case req := <-e.decodedRequests:
-			if err := req.ctx.Err(); err != nil {
-				req.done <- decodedReply{err: err}
-				continue
+		case job := <-e.decodedRequests:
+			if job.serve() {
+				e.beatN.Add(1)
 			}
-			value, err := req.run()
-			req.done <- decodedReply{value, err}
-			e.beatN.Add(1)
 		default:
 			return
 		}
@@ -240,13 +275,14 @@ func (e *Engine) beginDecodedCapture(ctx context.Context, cfg sramcapture.Config
 		// or with a data delay, a UART bit time in sixteenths of a
 		// nanosecond, I2C asking for it.
 		want := ""
-		if cfg.Packet.Enabled {
+		switch {
+		case cfg.Packet.Enabled:
 			want = imagePacket
-		} else if cfg.MIL1553.Enabled || cfg.SENT.Enabled || cfg.USBLS.Enabled {
+		case cfg.MIL1553.Enabled || cfg.SENT.Enabled || cfg.USBLS.Enabled:
 			want = imageFrame
-		} else if cfg.Manchester.Enabled {
+		case cfg.Manchester.Enabled:
 			want = imageLine
-		} else if (cfg.SPI.Enabled && (cfg.SPI.GapTicks < 9 || cfg.SPI.Delay != 0)) || (cfg.UART.Enabled && cfg.UART.Period16 != 0) || (cfg.I2C.Enabled && cfg.I2C.Samples) {
+		case (cfg.SPI.Enabled && (cfg.SPI.GapTicks < 9 || cfg.SPI.Delay != 0)) || (cfg.UART.Enabled && cfg.UART.Period16 != 0) || (cfg.I2C.Enabled && cfg.I2C.Samples):
 			want = imageFast
 		}
 		if e.images != nil && e.hasImage(want) && want != e.protocolImage {
@@ -309,10 +345,7 @@ func (e *Engine) beginDecodedCapture(ctx context.Context, cfg sramcapture.Config
 		e.mu.Unlock()
 		return session.Identity, nil
 	})
-	if err != nil {
-		return sramcapture.RecordIdentity{}, err
-	}
-	return value.(sramcapture.RecordIdentity), nil
+	return ownerResult[sramcapture.RecordIdentity](value, err)
 }
 
 // decodedTaken refuses a web page's decoded capture while the scope's own
@@ -398,6 +431,8 @@ func (e *Engine) ReadDecodedBatchInto(ctx context.Context, id sramcapture.Record
 	return n, nil
 }
 
+// DecodedCaptureStatus reads the status of the retained record id names,
+// failing when that record is no longer the one the capture holds.
 // TRLC-LINKS: REQ-SDS-013
 func (e *Engine) DecodedCaptureStatus(ctx context.Context, id sramcapture.RecordIdentity) (sramcapture.Metadata, error) {
 	value, err := e.decodedCall(ctx, func() (any, error) {
@@ -417,10 +452,7 @@ func (e *Engine) DecodedCaptureStatus(ctx context.Context, id sramcapture.Record
 		}
 		return m, nil
 	})
-	if err != nil {
-		return sramcapture.Metadata{}, err
-	}
-	return value.(sramcapture.Metadata), nil
+	return ownerResult[sramcapture.Metadata](value, err)
 }
 
 // RecallDecodedRecord stages raw data before returning to the network layer.
@@ -497,10 +529,7 @@ func (e *Engine) EndWebDecodedCapture(ctx context.Context) (bool, error) {
 		e.logf("engine: the scope's keys end the web page's decoded capture")
 		return true, e.endDecoded(ctx, false)
 	})
-	if err != nil {
-		return false, err
-	}
-	return v.(bool), nil
+	return ownerResult[bool](v, err)
 }
 
 // expireDecoded ends a web page's session no client has touched for
@@ -566,8 +595,8 @@ func (e *Engine) endDecoded(ctx context.Context, force bool) error {
 	var mem runtime.MemStats
 	runtime.ReadMemStats(&mem)
 	s := &e.decodedService
-	e.logf("decoded service: epoch=%d reads=%d events=%d lost=%d max_gap=%s max_read=%s gc_pause=%s slow_gaps=%d first=%v buffered_peak=%d consumer_gap=%s exec=%s requests=%s controls=%s pause=%s", id.Epoch, s.reads, s.events, s.lost, s.maxGap, s.maxRead, time.Duration(mem.PauseTotalNs-s.pauseTotal), s.slow, s.gaps[:min(s.slow, uint64(len(s.gaps)))], s.maxBuffered, s.maxConsumerGap, s.maxExec, s.maxRequests, s.maxControl, s.maxPause)
-	e.SetRunning(false) // keeps the status in step: streaming is not RUN
+	e.logf("decoded service: epoch=%d reads=%d events=%d lost=%d max_gap=%s max_read=%s gc_pause=%s slow_gaps=%d first=%v buffered_peak=%d consumer_gap=%s exec=%s requests=%s controls=%s pause=%s", id.Epoch, s.reads, s.events, s.lost, s.maxGap, s.maxRead, time.Duration(mem.PauseTotalNs-s.pauseTotal), s.slow, s.gaps[:min(s.slow, uint64(len(s.gaps)))], s.maxBuffered, s.maxConsumerGap, s.maxExec, s.maxRequests, s.maxControl, s.maxPause) //nolint:gosec // G115: GC pause nanoseconds of one session, far below 2^63
+	e.SetRunning(false)                                                                                                                                                                                                                                                                                                                                                                                                                               // keeps the status in step: streaming is not RUN
 	return nil
 }
 

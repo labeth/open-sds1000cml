@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
+
 package engine
 
 import (
@@ -15,7 +16,7 @@ func planHardwareI2C(p *SerialParams, sample bool) sramcapture.I2CTriggerConfig 
 		p.ChA < 0 || p.ChA > 1 || p.ChB < 0 || p.ChB > 1 || p.ChA == p.ChB || p.Addr < -1 || p.Addr > 127 || p.RW < 0 || p.RW > 2 || len(p.Bytes) > 4 {
 		return sramcapture.I2CTriggerConfig{}
 	}
-	c := sramcapture.I2CTriggerConfig{Enabled: true, ClockChannel: uint8(p.ChA), Inverted: p.Inverted, Address: p.Addr, Direction: uint8(p.RW), Length: uint8(len(p.Bytes))}
+	c := sramcapture.I2CTriggerConfig{Enabled: true, ClockChannel: uint8(p.ChA), Inverted: p.Inverted, Address: p.Addr, Direction: uint8(p.RW), Length: uint8(len(p.Bytes))} //nolint:gosec // G115: the checks above bound each field
 	if sample {
 		c.Samples, c.Delay = true, spiPhase16
 		if p.ChA == 0 {

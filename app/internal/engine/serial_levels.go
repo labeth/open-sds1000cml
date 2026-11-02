@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
+
 package engine
 
 import (
@@ -120,7 +121,7 @@ func (e *Engine) learnSerialLevelsOf(f *Frame, sc [2]chScale, lv *frameLevels) {
 	case p.Proto == serSENT && (p.TickNs <= 0 || p.Nibbles <= 0):
 		if tick, nib := sentShape(line, f.SampleS); tick > 0 {
 			e.serLv.sentNs.Store(math.Float64bits(tick))
-			e.serLv.sentNib.Store(int32(nib))
+			e.serLv.sentNib.Store(int32(nib)) //nolint:gosec // G115: a SENT frame has a few nibbles
 		}
 	}
 }
@@ -336,6 +337,27 @@ const minClockSamples = 4
 // complete.
 // TRLC-LINKS: REQ-SDS-013
 func (e *Engine) serialPlanParams(p SerialParams) (SerialParams, string) {
+	p, why := e.planThresholds(p)
+	if why != "" {
+		return p, why
+	}
+	if p, why = e.planMeasuredRates(p); why != "" {
+		return p, why
+	}
+	p = joinUnits(p)
+	// Each ARINC 429 word is a frame of its own, and a sequence counts within
+	// one frame: two words never match. Said, rather than armed in vain.
+	if p.Proto == serARINC && len(patternOf(p)) > 1 {
+		return p, arincOneWord
+	}
+	return p, ""
+}
+
+// planThresholds fills in p's missing line thresholds: the learned decoder
+// threshold of each line at the current V/div and offset. why says which
+// line's levels are still being learned.
+// TRLC-LINKS: REQ-SDS-013
+func (e *Engine) planThresholds(p SerialParams) (SerialParams, string) {
 	twoLines := p.Proto == serSPI || p.Proto == serI2C || clockedTwoLine(p.Proto)
 	if !p.HaveThr {
 		lines := []int{p.ChA & 1}
@@ -355,6 +377,14 @@ func (e *Engine) serialPlanParams(p SerialParams) (SerialParams, string) {
 	if twoLines && !p.HaveThrB {
 		p.ThresholdB, p.HaveThrB = p.Threshold, true
 	}
+	return p, ""
+}
+
+// planMeasuredRates fills in the rates p leaves to the decoder's own
+// measurement (SPI's and I2C's clock, UART's bit rate, SENT's tick). why
+// says which is still being measured.
+// TRLC-LINKS: REQ-SDS-013
+func (e *Engine) planMeasuredRates(p SerialParams) (SerialParams, string) {
 	if p.Proto == serSPI && p.SPIClockHz <= 0 {
 		hz := math.Float64frombits(e.serLv.spiHz.Load())
 		if !(hz > 0) || e.serLv.spiProbe.Load() {
@@ -386,6 +416,13 @@ func (e *Engine) serialPlanParams(p SerialParams) (SerialParams, string) {
 			p.Nibbles = int(e.serLv.sentNib.Load()) // 0: the standard eight
 		}
 	}
+	return p, ""
+}
+
+// joinUnits is p's match bytes as the matcher's units where the scope's
+// match editor holds a unit as several bytes.
+// TRLC-LINKS: REQ-SDS-013
+func joinUnits(p SerialParams) SerialParams {
 	// A MIL-1553 word typed as two bytes, an ARINC 429 data field as up to
 	// three (the scope's match editor holds bytes, as its BUS table shows them);
 	// a sequence of words as their bytes in turn (two each, three each).
@@ -407,12 +444,7 @@ func (e *Engine) serialPlanParams(p SerialParams) (SerialParams, string) {
 	case p.Proto == serARINC && len(p.Pattern) >= 3:
 		p.Pattern = groupPattern(p.Pattern, 3, 0x7ffff)
 	}
-	// Each ARINC 429 word is a frame of its own, and a sequence counts within
-	// one frame: two words never match. Said, rather than armed in vain.
-	if p.Proto == serARINC && len(patternOf(p)) > 1 {
-		return p, arincOneWord
-	}
-	return p, ""
+	return p
 }
 
 // arincOneWord refuses an ARINC 429 match of more than one word: the
@@ -616,7 +648,7 @@ func frameUnitStart(a, b []uint8, sampleS float64, p SerialParams, at, lo int) f
 func frameOpening(spans []decode.Span, at int) int {
 	best, bestD := -1, math.MaxInt
 	for k, sp := range spans {
-		if sp.Kind != "data" || sp.I0 > at {
+		if sp.Kind != spanData || sp.I0 > at {
 			continue
 		}
 		dd := at - sp.I1
@@ -636,21 +668,22 @@ func frameOpening(spans []decode.Span, at int) int {
 	// images fire a few units into the frame (a Manchester or USB frame's
 	// fourth), as they match buffered units. Units back to back belong to
 	// one frame; a unit with no opening marked before it opens itself.
-	prev := spans[best]
+	first := spans[best]
+	prev := first
 	for k := best - 1; k >= 0; k-- {
 		switch sp := spans[k]; sp.Kind {
-		case "start", "sof", "sync":
+		case spanStart, spanSOF, spanSync:
 			return sp.I0
-		case "data":
+		case spanData:
 			if prev.I0-sp.I1 > max(1, prev.I1-prev.I0) {
-				return spans[best].I0
+				return first.I0
 			}
 			prev = sp
-		case "gap", "stop", "frame-error", "parity-error", "crc":
-			return spans[best].I0
+		case spanGap, spanStop, spanFrameError, spanParityError, "crc":
+			return first.I0
 		}
 	}
-	return spans[best].I0
+	return first.I0
 }
 
 // serialUnitSamples is one decoded unit's length in samples (a UART
@@ -670,7 +703,7 @@ func serialUnitSamples(p SerialParams, sampleS, spiHz float64) int {
 		if p.Bits > 0 {
 			bits = float64(p.Bits) + 2
 		}
-		if p.Parity != "" && p.Parity != "none" {
+		if p.Parity != "" && p.Parity != parityNone {
 			bits++
 		}
 	case serSPI:
@@ -784,7 +817,7 @@ func (e *Engine) serialNoHardware() string {
 	}
 	if want := protocolImage(planned); want != e.protocolImage && e.images != nil && e.hasImage(want) {
 		if want == "" {
-			want = "general"
+			want = imageGeneralName
 		}
 		return "loading the " + want + " FPGA image"
 	}

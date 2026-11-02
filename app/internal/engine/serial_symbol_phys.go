@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
+
 package engine
 
 import (
@@ -14,7 +15,7 @@ import (
 // Each frame start and unit is laid out as the decoder of the protocol
 // reads it, bit for bit in the block's bit source.
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-257
-func physSymbolSpec(p *SerialParams, s *symSpec) bool {
+func physSymbolSpec(p *SerialParams, s *symSpec) bool { //nolint:gocyclo,funlen // one case per protocol: the table reads as one
 	if p.Baud <= 0 && p.Proto != serSDCard && p.Proto != serPDI && p.Proto != serCJTAG {
 		return false
 	}
@@ -23,13 +24,13 @@ func physSymbolSpec(p *SerialParams, s *symSpec) bool {
 	us, ms := 1e-6, 1e-3
 	q8 := func(d float64) uint32 { return uint32(math.Round(d / (sramcapture.SymbolClockNs * 1e-9) * 256)) }
 	set := func(mode, lead int, longest float64, data uint8) {
-		s.cfg.Mode, s.cfg.LeadLen = uint8(mode), uint8(lead)
+		s.cfg.Mode, s.cfg.LeadLen = uint8(mode), uint8(lead) //nolint:gosec // G115: a symbol mode and a leader of a few units
 		s.tab = newSymTab(longest, decode.SymLeadNone, data)
 	}
 	w8 := func(int) int { return 8 }
 	s.width = w8
 	byteLSB := func(b *symBits, _ int, u symUnit) bool { b.field(u.value, u.mask, 8, false); return true }
-	freeOnly := func(b *symBits, _ int, u symUnit) bool { return u.mask == 0 }
+	freeOnly := func(_ *symBits, _ int, u symUnit) bool { return u.mask == 0 }
 	// a bit as Manchester half levels: first half v (high is a 1)
 	manch := func(b *symBits, v, care bool) { b.put(v, care); b.put(!v, care) }
 	switch p.Proto {
@@ -117,7 +118,7 @@ func physSymbolSpec(p *SerialParams, s *symSpec) bool {
 			if v21 {
 				ones = 4
 			}
-			for i := 0; i < ones; i++ {
+			for range ones {
 				bit(b, true, true)
 			}
 			for _, v := range []bool{false, true, false, true} {
@@ -142,7 +143,7 @@ func physSymbolSpec(p *SerialParams, s *symSpec) bool {
 		set(sramcapture.SymbolEdge, 1, 2.5*T, decode.SymDataSep)
 		s.tab.both(true, 2.5*T, inf, leadStep0, decode.SymDataRestart)
 		s.tab.both(false, 2.5*T, inf, leadStep0, decode.SymDataRestart)
-		s.start = func(b *symBits, _ []symUnit) bool { return true }
+		s.start = func(_ *symBits, _ []symUnit) bool { return true }
 		if !p.Inverted {
 			// a classic line's one edge a transition, units of half a bit
 			s.cfg.UnitQ8, s.period = q8(T/2), 16
@@ -201,11 +202,11 @@ func physSymbolSpec(p *SerialParams, s *symSpec) bool {
 					b.skip(1) // any letter: its first element
 					break
 				}
-				code := decode.MorseOf(byte(x.value))
+				code := decode.MorseOf(byte(x.value)) //nolint:gosec // G115: a Morse character code is 0..255
 				if x.mask != 0xff || code == "" {
 					return b, 0, false
 				}
-				for k := 0; k < len(code); k++ {
+				for k := range len(code) {
 					b.put(code[k] == '-', true)
 					b.put(k == len(code)-1, true)
 				}
@@ -241,7 +242,7 @@ func physSymbolSpec(p *SerialParams, s *symSpec) bool {
 					return symBits{}, 0, false
 				}
 				f := fields[i]
-				for k := 0; k < f[1]; k++ {
+				for k := range f[1] {
 					bits[f[0]+k], care[f[0]+k] = x.value>>k&1, x.mask>>k&1 != 0
 				}
 				last = f[0] + f[1] - 1
@@ -326,7 +327,7 @@ func physSymbolSpec(p *SerialParams, s *symSpec) bool {
 				}
 				return 8 // a write's address: 4 (s.unit refuses more)
 			}
-			s.start = func(b *symBits, units []symUnit) bool {
+			s.start = func(_ *symBits, units []symUnit) bool {
 				// a write's address follows its command: a write asked for,
 				// or six units (a login holds five)
 				write = len(units) > 0 && units[0].mask == 7 && units[0].value == 2 || len(units) == 6
@@ -448,7 +449,7 @@ func physSymbolSpec(p *SerialParams, s *symSpec) bool {
 			padBits++
 		}
 		sync := func(b *symBits) {
-			for i := 0; i < padBits; i++ {
+			for range padBits {
 				b.fixed(1)
 			}
 			b.fixed(0)
@@ -562,14 +563,14 @@ func physSymbolSpec(p *SerialParams, s *symSpec) bool {
 		// TCKC at TMSC's rises: an escape's rises come with TCKC high, three
 		// of the six edges that select the online activation code
 		set(sramcapture.SymbolClocked, 0, T, decode.SymDataSep)
-		s.cfg.Channel, s.cfg.TwoLines, s.sliding = uint8(p.ChB), true, true
+		s.cfg.Channel, s.cfg.TwoLines, s.sliding = uint8(p.ChB), true, true //nolint:gosec // G115: the channel is 0 or 1 (serialPlanParams)
 		s.start = func(b *symBits, _ []symUnit) bool { b.fixed(0, 1, 1, 1, 0); return true }
 		s.unit = freeOnly
 	case serMaple:
 		// SDCKA at SDCKB's falls: after SDCKB idled high, the start
 		// pattern's four falls with SDCKA low
 		set(sramcapture.SymbolClocked, 1, 4*T, decode.SymDataSep)
-		s.cfg.Channel, s.cfg.TwoLines, s.cfg.ClockFall = uint8(p.ChB), true, true
+		s.cfg.Channel, s.cfg.TwoLines, s.cfg.ClockFall = uint8(p.ChB), true, true //nolint:gosec // G115: the channel is 0 or 1 (serialPlanParams)
 		s.tab.both(true, 4*T, inf, leadStep0, decode.SymDataRestart)
 		s.start = func(b *symBits, _ []symUnit) bool { b.fixed(0, 0, 0, 0); return true }
 		s.unit = freeOnly

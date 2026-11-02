@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
+
 package engine
 
 import (
@@ -34,7 +35,7 @@ func eresQ8(src, scratch []uint16, length int) {
 		if n != byN {
 			by, byN = newRecip(n), n
 		}
-		scratch[i] = uint16(by.div(sum + n/2))
+		scratch[i] = uint16(by.div(sum + n/2)) //nolint:gosec // G115: a mean of Q8.8 codes
 	}
 	copy(src, scratch[:len(src)])
 }
@@ -47,6 +48,7 @@ type sramAverage struct {
 	count      int
 	anchor     float64
 	lo, hi     int
+	key        string // the settings the sums are for
 }
 
 // TRLC-LINKS: REQ-SDS-012
@@ -124,7 +126,7 @@ func (a *sramAverage) push(f *Frame, target int) int {
 	// Accumulate before writing output, so shifting cannot overwrite input.
 	// Once full, a sum holds target times the average: it loses its own
 	// 1/target share for the new record's.
-	running, t := a.count >= target, uint32(target)
+	running, t := a.count >= target, uint32(target) //nolint:gosec // G115: an average of at most 256 records
 	byT := newRecip(t)
 	for i := range m {
 		if a.count == 0 {
@@ -147,12 +149,12 @@ func (a *sramAverage) push(f *Frame, target int) int {
 		a.sum1[i] += x1
 		a.sum2[i] += x2
 	}
-	count := uint32(min(a.count+1, target))
+	count := uint32(min(a.count+1, target)) //nolint:gosec // G115: an average of at most 256 records
 	byC := newRecip(count)
 	for i := a.lo; i < a.hi; i++ {
 		out := i - a.lo
-		f.Q1[out] = uint16(byC.div(a.sum1[i] + count/2))
-		f.Q2[out] = uint16(byC.div(a.sum2[i] + count/2))
+		f.Q1[out] = uint16(byC.div(a.sum1[i] + count/2)) //nolint:gosec // G115: a mean of Q8.8 codes
+		f.Q2[out] = uint16(byC.div(a.sum2[i] + count/2)) //nolint:gosec // G115: a mean of Q8.8 codes
 		f.C1[out] = roundQ8(f.Q1[out])
 		f.C2[out] = roundQ8(f.Q2[out])
 	}
@@ -187,4 +189,4 @@ func newRecip(d uint32) recip {
 
 // div is x/d, rounded down.
 // TRLC-LINKS: REQ-SDS-012
-func (r recip) div(x uint32) uint32 { return uint32(uint64(x) * r.m >> r.s) }
+func (r recip) div(x uint32) uint32 { return uint32(uint64(x) * r.m >> r.s) } //nolint:gosec // G115: newRecip picks m and s so the quotient fits 32 bits

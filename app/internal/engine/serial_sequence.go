@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
+
 package engine
 
 import (
@@ -142,7 +143,7 @@ func planSequence(p SerialParams) sramcapture.SequenceTriggerConfig {
 			if allowed := unitMask(p) | unitFlags(p); e.Value < 0 || e.Mask < 0 || e.Value&^allowed != 0 || e.Mask&^allowed != 0 {
 				return sramcapture.SequenceTriggerConfig{}
 			}
-			value, mask := uint32(e.Value&e.Mask), uint32(e.Mask)
+			value, mask := uint32(e.Value&e.Mask), uint32(e.Mask) //nolint:gosec // G115: checked non-negative and within the unit mask above
 			switch p.Proto {
 			case serARINC:
 				value, mask = value<<10, mask<<10
@@ -154,10 +155,25 @@ func planSequence(p SerialParams) sramcapture.SequenceTriggerConfig {
 			return sramcapture.SequenceTriggerConfig{}
 		}
 	}
-	c.Length = uint8(len(elems))
+	c.Length = uint8(len(elems)) //nolint:gosec // G115: checked to at most SequenceMax elements above
 	c.Qualify = dataOnly && framedProtocol(p.Proto)
 	c.EndBadValue = p.Proto == serManchester || p.Proto == serARINC
 	return c
+}
+
+// i2cSelected reports whether the I2C address span sp[i] opens a
+// transaction p asks for: its address (any when p.Addr < 0) and direction
+// (p.RW 0 write, 1 read, 2 either).
+// TRLC-LINKS: REQ-SDS-013
+func i2cSelected(sp []decode.Span, i int, p SerialParams) bool {
+	rw := "" // the direction's text: W, R (none for another RW)
+	switch p.RW {
+	case 0:
+		rw = "W"
+	case 1:
+		rw = "R"
+	}
+	return (p.Addr < 0 || sp[i].Val == p.Addr) && (p.RW == 2 || i+1 < len(sp) && sp[i+1].Kind == "rw" && sp[i+1].Text == rw)
 }
 
 // matchSequence is the software form of the sequence trigger over decoded
@@ -201,18 +217,18 @@ func matchSequence(sp []decode.Span, p SerialParams) (bool, int) {
 	for i, s := range sp {
 		kind := 0
 		switch s.Kind {
-		case "data":
+		case spanData:
 			kind = patternData
-		case "frame-error", "parity-error":
+		case spanFrameError, spanParityError:
 			kind, bad = patternError, true
-		case "gap", "start", "stop", "sof", "sync":
+		case spanGap, spanStart, spanStop, spanSOF, spanSync:
 			reset()
 			if qualify {
 				if ok, at := finish(); ok {
 					return true, at
 				}
 			}
-			if p.Proto == serI2C && s.Kind == "stop" {
+			if p.Proto == serI2C && s.Kind == spanStop {
 				selected = false
 			}
 			if p.Proto == serMIL1553 {
@@ -221,7 +237,7 @@ func matchSequence(sp []decode.Span, p SerialParams) (bool, int) {
 					command = MILCommand
 				}
 			}
-			if s.Kind == "gap" || s.Kind == "stop" {
+			if s.Kind == spanGap || s.Kind == spanStop {
 				continue
 			}
 			kind = patternStart // a frame opens: a start element matches here
@@ -230,14 +246,7 @@ func matchSequence(sp []decode.Span, p SerialParams) (bool, int) {
 				continue
 			}
 			reset()
-			rw := "" // the direction's text: W, R (none for another RW)
-			switch p.RW {
-			case 0:
-				rw = "W"
-			case 1:
-				rw = "R"
-			}
-			selected = (p.Addr < 0 || s.Val == p.Addr) && (p.RW == 2 || i+1 < len(sp) && sp[i+1].Kind == "rw" && sp[i+1].Text == rw)
+			selected = i2cSelected(sp, i, p)
 			continue
 		default:
 			continue

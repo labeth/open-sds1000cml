@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
+
 package engine
 
 import (
@@ -31,16 +32,16 @@ const maxRecordCols = iface.PretrigMax
 func (e *Engine) bringUp() {
 	capCols := e.capDepth()
 	e.lastCapCols = capCols
-	pre := uint32(capCols / 2)
-	post := uint32(capCols - capCols/2)
+	pre := uint32(capCols / 2)          //nolint:gosec // G115: capDepth is 2..maxRecordCols
+	post := uint32(capCols - capCols/2) //nolint:gosec // G115: capDepth is 2..maxRecordCols
 	decim := e.band.Decim()
 	e.w(iface.SelOpcode, iface.OpReset) // idle the capture FSM before reprogramming
 	e.w(iface.SelRun, e.runWord())
-	e.w(iface.SelDecimLo, uint16(decim))
+	e.w(iface.SelDecimLo, uint16(decim&0xffff))
 	e.w(iface.SelDecimHi, uint16(decim>>16))
-	e.w(iface.SelPretrigLo, uint16(pre))
+	e.w(iface.SelPretrigLo, uint16(pre&0xffff))
 	e.w(iface.SelPretrigHi, uint16(pre>>16))
-	e.w(iface.SelPosttrigLo, uint16(post))
+	e.w(iface.SelPosttrigLo, uint16(post&0xffff))
 	e.w(iface.SelPosttrigHi, uint16(post>>16))
 	e.flushTrigWords(true)
 	e.w(iface.SelIlCtrl, iface.IlCtrlTsrcAdc<<iface.IlCtrlTsrcShift)
@@ -53,10 +54,7 @@ func (e *Engine) bringUp() {
 // PRETRIG_MAX, see maxRecordCols) so the drain never exceeds the record.
 // TRLC-LINKS: REQ-SDS-009, REQ-SDS-010
 func (e *Engine) capDepth() int {
-	c := min(e.effDrainCols(), maxRecordCols)
-	if c < 2 {
-		c = 2
-	}
+	c := max(min(e.effDrainCols(), maxRecordCols), 2)
 	return c
 }
 
@@ -99,8 +97,7 @@ func (e *Engine) armEngineQuiet(quietHeld bool) {
 	}
 	settle := time.Duration(e.tuneArmSettleUs.Load()) * time.Microsecond
 	if e.armBusy && e.tuneArmSpin.Load() {
-		for start := time.Now(); time.Since(start) < settle; {
-		}
+		spinFor(settle)
 	} else {
 		e.clk.Sleep(settle)
 	}
@@ -144,7 +141,7 @@ func (e *Engine) waitCapture(norm bool) (anchored, sawTrig, filled, fillMoved bo
 	// Native-fast maturation: DONE can assert before the deep record is fully
 	// written; hold a short floor before halting (tunable).
 	nativeMature := time.Duration(e.tuneMatureUs.Load()) * time.Microsecond
-	capCols := uint16(e.lastCapCols)
+	capCols := uint16(e.lastCapCols) //nolint:gosec // G115: capDepth is 2..maxRecordCols
 	fill0 := e.r(iface.SelFill) & fillMask
 	var trigAt time.Time
 	for {
@@ -157,13 +154,7 @@ func (e *Engine) waitCapture(norm bool) (anchored, sawTrig, filled, fillMoved bo
 			// post-trigger time — extend the deadline so a late edge is not
 			// halted mid post-fill by the budget expiry.
 			if !nativeFast {
-				postNs := time.Duration(denseNs)
-				if frac := e.trigPosFracVal(); frac > 0 && frac < 1 {
-					postNs = time.Duration(float64(denseNs) * (1 - frac) * 1.15)
-				}
-				if d2 := trigAt.Add(postNs + 2*time.Millisecond); d2.After(deadline) {
-					deadline = d2
-				}
+				deadline = later(deadline, trigAt.Add(e.postTrigNs(denseNs)+2*time.Millisecond))
 			}
 		}
 		completed := s&statDone != 0
@@ -194,18 +185,9 @@ func (e *Engine) waitCapture(norm bool) (anchored, sawTrig, filled, fillMoved bo
 				return anchored, sawTrig, filled, fillMoved, trigPos
 			}
 		} else {
-			if anchored && filled {
-				postOK := true
-				if sawTrig {
-					postNs := time.Duration(denseNs)
-					if frac := e.trigPosFracVal(); frac > 0 && frac < 1 {
-						postNs = time.Duration(float64(denseNs) * (1 - frac) * 1.15)
-					}
-					postOK = e.clk.Now().Sub(trigAt) >= postNs
-				}
-				if postOK && (!denseWait || e.clk.Now().Sub(start) >= time.Duration(denseNs)) {
-					return anchored, sawTrig, filled, fillMoved, trigPos // triggered, post-trigger record filled (and dense in NORM)
-				}
+			if anchored && filled && (!sawTrig || e.clk.Now().Sub(trigAt) >= e.postTrigNs(denseNs)) &&
+				(!denseWait || e.clk.Now().Sub(start) >= time.Duration(denseNs)) {
+				return anchored, sawTrig, filled, fillMoved, trigPos // triggered, post-trigger record filled (and dense in NORM)
 			}
 			if !norm && !sawTrig && capCols > 0 && fill >= capCols {
 				return anchored, sawTrig, filled, fillMoved, trigPos // AUTO free-run (no edge): the record is written through, drain it now
@@ -224,6 +206,25 @@ func (e *Engine) waitCapture(norm bool) (anchored, sawTrig, filled, fillMoved bo
 		}
 		e.clk.Sleep(e.pollEvery)
 	}
+}
+
+// later is the later of two times.
+// TRLC-LINKS: REQ-SDS-008
+func later(a, b time.Time) time.Time {
+	if b.After(a) {
+		return b
+	}
+	return a
+}
+
+// postTrigNs is how long the post-trigger record takes to fill after the
+// edge, with margin, for a record of denseNs.
+// TRLC-LINKS: REQ-SDS-008
+func (e *Engine) postTrigNs(denseNs int64) time.Duration {
+	if frac := e.trigPosFracVal(); frac > 0 && frac < 1 {
+		return time.Duration(float64(denseNs) * (1 - frac) * 1.15)
+	}
+	return time.Duration(denseNs)
 }
 
 // halt freezes the record (OPCODE = HALT) and confirms the fill froze:
@@ -251,8 +252,15 @@ func (e *Engine) haltSettle(nativeFast bool) {
 	if !nativeFast || !e.armBusy {
 		return
 	}
-	d := time.Duration(e.tuneHaltSettleUs.Load()) * time.Microsecond
-	for start := time.Now(); time.Since(start) < d; {
+	spinFor(time.Duration(e.tuneHaltSettleUs.Load()) * time.Microsecond)
+}
+
+// spinFor busy-waits d on the monotonic clock. The arm, fill and halt
+// windows it times are tens of microseconds: a sleep would hand the core to
+// another goroutine and wake past the window.
+// TRLC-LINKS: REQ-SDS-001, REQ-SDS-008
+func spinFor(d time.Duration) {
+	for start := time.Now(); time.Since(start) < d; { //nolint:revive // empty-block: the loop condition is the wait
 	}
 }
 
@@ -339,7 +347,7 @@ func (e *Engine) stitchFrame(norm bool) {
 	f := e.arena.Write()
 	drainStart := e.clk.Now()
 	e.drain(f, cols)
-	drainMs := e.clk.Now().Sub(drainStart)
+	drainTime := e.clk.Now().Sub(drainStart)
 
 	f.Valid, f.WinCols = cols, decimWin
 	f.EdgeX = -1
@@ -368,7 +376,7 @@ func (e *Engine) stitchFrame(norm bool) {
 	e.stats.LastPtp = p
 	e.stats.ValidDepth = validDepthP(f.C1[:cols], p)
 	e.stats.MemDepth = int(e.memDepth.Load())
-	e.stats.DrainMs = float64(drainMs) / float64(time.Millisecond)
+	e.stats.DrainMs = float64(drainTime) / float64(time.Millisecond)
 	e.stats.GapMs = float64(gapNs) / float64(time.Millisecond)
 	e.stats.Stream = true
 	e.notePublish(e.clk.Now())

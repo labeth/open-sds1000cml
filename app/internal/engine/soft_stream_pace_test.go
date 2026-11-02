@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
+
 package engine
 
 import (
@@ -53,7 +54,7 @@ func TestSoftStreamPaceFrameOrdinals(t *testing.T) {
 	var levels []bool
 	var breaks []uint64
 	add := func(v bool, bits int) {
-		for k := 0; k < bits*bitN; k++ {
+		for range bits * bitN {
 			levels = append(levels, v)
 		}
 	}
@@ -79,7 +80,7 @@ func TestSoftStreamPaceFrameOrdinals(t *testing.T) {
 		frames = append(frames, []int{pid, i, 0x80 + i, ^sum & 0xff})
 		// a break that starts anywhere in a period: an odd sample shift
 		add(true, 0)
-		for k := 0; k < 37*i+11; k++ {
+		for range 37*i + 11 {
 			levels = append(levels, true)
 		}
 		breaks = append(breaks, uint64(len(levels)))

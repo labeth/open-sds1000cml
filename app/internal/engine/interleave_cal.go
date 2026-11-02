@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
+
 package engine
 
 import (
@@ -328,13 +329,13 @@ func (c *InterleaveCalibration) debiasEnvelope(ch int, sig []uint8, q []uint16, 
 	q = q[:len(sig)]
 	if fromQ { // the source chosen once, not per sample
 		for i, x := range q {
-			q[i] = uint16(debiasQ(int(x), off[i&1]))
+			q[i] = uint16(debiasQ(int(x), off[i&1])) //nolint:gosec // G115: debiasQ keeps a Q8.8 code in 0..255*256
 			sig[i] = roundQ8(q[i])
 		}
 		return
 	}
 	for i, v := range sig {
-		q[i] = uint16(debiasQ(int(v)<<8, off[i&1]))
+		q[i] = uint16(debiasQ(int(v)<<8, off[i&1])) //nolint:gosec // G115: debiasQ keeps a Q8.8 code in 0..255*256
 		sig[i] = roundQ8(q[i])
 	}
 }

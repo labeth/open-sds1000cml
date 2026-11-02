@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
+
 package engine
 
 import (
@@ -232,50 +233,37 @@ func centerCrossNF(sig []uint8, lvl int, rising bool, hint, nf float64) float64 
 	h := max(int(hystK*nf+0.5), hystMinCodes)
 	loT, hiT := lvl-h, lvl+h
 	maxW := min(n, hystMaxReach)
+	// In the slope's own orientation (codes negated for a falling edge) the
+	// near state is at or under nearT and the far one at or over farT.
+	sg, nearT, farT := 1, loT, hiT
+	if !rising {
+		sg, nearT, farT = -1, -hiT, -loT
+	}
 	confirmed := func(c int) bool {
-		// Backward target: rising→low(loT), falling→high(hiT). Forward mirror.
+		// Backward the trace must reach the near state before bouncing to the
+		// far one; forward, the mirror.
 		backFound, fwdFound := false, false
 		for i := c - 1; i >= 0 && i >= c-maxW; i-- {
-			s := int(sig[i])
-			if rising {
-				if s >= hiT {
-					break // bounced high before reaching the low state
-				}
-				if s <= loT {
-					backFound = true
-					break
-				}
-			} else {
-				if s <= loT {
-					break
-				}
-				if s >= hiT {
-					backFound = true
-					break
-				}
+			s := sg * int(sig[i])
+			if s >= farT {
+				break // bounced to the far state before reaching the near one
+			}
+			if s <= nearT {
+				backFound = true
+				break
 			}
 		}
 		if !backFound {
 			return false
 		}
 		for j := c; j < n && j < c+maxW; j++ {
-			s := int(sig[j])
-			if rising {
-				if s <= loT {
-					break
-				}
-				if s >= hiT {
-					fwdFound = true
-					break
-				}
-			} else {
-				if s >= hiT {
-					break
-				}
-				if s <= loT {
-					fwdFound = true
-					break
-				}
+			s := sg * int(sig[j])
+			if s <= nearT {
+				break
+			}
+			if s >= farT {
+				fwdFound = true
+				break
 			}
 		}
 		return fwdFound
