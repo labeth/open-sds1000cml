@@ -4,6 +4,7 @@ package engine
 import (
 	"encoding/json"
 	"math"
+	"math/rand"
 	"os"
 	"path/filepath"
 	"testing"
@@ -221,5 +222,56 @@ func TestDebiasEnvelope(t *testing.T) {
 		if got := float64(q[i]) / 256; math.Abs(got-w) > 1.0/256 {
 			t.Fatalf("entry %d: %v, want %v", i, got, w)
 		}
+	}
+}
+
+// correctAperture gives the per-sample float formula's samples and codes.
+// TRLC-LINKS: REQ-SDS-016
+func TestCorrectApertureIsTheFormula(t *testing.T) {
+	r := rand.New(rand.NewSource(16))
+	for k := 0; k < 200; k++ {
+		n := 5 + r.Intn(3000)
+		q := make([]uint16, n)
+		for i := range q {
+			q[i] = uint16(r.Intn(65536))
+			if k%3 == 0 {
+				q[i] = uint16(min(65535, 30000+i*40%9000+r.Intn(300)))
+			}
+		}
+		var delays [5]float64
+		for i := range delays {
+			delays[i] = r.Float64()*0.8 - 0.4
+		}
+		rotation := r.Intn(5)
+		want, wantCodes := append([]uint16(nil), q...), make([]uint8, n)
+		prev2, prev1 := float64(want[0]), float64(want[1])
+		for i := 2; i < n-2; i++ {
+			current := float64(want[i])
+			derivative := (prev2 - 8*prev1 + 8*float64(want[i+1]) - float64(want[i+2])) / 12
+			corrected := math.Round(current + delays[(i+rotation)%5]/2*derivative)
+			want[i] = uint16(math.Max(0, math.Min(65535, corrected)))
+			wantCodes[i] = roundQ8(want[i])
+			prev2, prev1 = prev1, current
+		}
+		codes := make([]uint8, n)
+		correctAperture(q, codes, delays, rotation)
+		for i := range q {
+			if q[i] != want[i] || codes[i] != wantCodes[i] {
+				t.Fatalf("case %d sample %d: %d/%d, want %d/%d", k, i, q[i], codes[i], want[i], wantCodes[i])
+			}
+		}
+	}
+}
+
+// TRLC-LINKS: REQ-SDS-016
+func BenchmarkCorrectAperture(b *testing.B) {
+	q := make([]uint16, 65536)
+	for i := range q {
+		q[i] = uint16(30000 + i*97%5000)
+	}
+	codes := make([]uint8, len(q))
+	delays := [5]float64{0.1, -0.2, 0.05, 0.3, -0.1}
+	for b.Loop() {
+		correctAperture(q, codes, delays, 2)
 	}
 }

@@ -297,15 +297,32 @@ func correctAperture(q []uint16, codes []uint8, delayNs [5]float64, rotation int
 	if len(q) < 5 {
 		return
 	}
+	// The phase counted, not i%5 (no divider on this ARM); the clamp by
+	// branches; the codes rounded after, in one vector pass (dsp.RoundQ8).
+	var half [5]float64
+	for k, d := range delayNs {
+		half[k] = d / 2
+	}
+	ph := (2 + rotation) % 5
 	prev2, prev1 := float64(q[0]), float64(q[1])
 	for i := 2; i < len(q)-2; i++ {
 		current := float64(q[i])
 		derivative := (prev2 - 8*prev1 + 8*float64(q[i+1]) - float64(q[i+2])) / 12
-		corrected := math.Round(current + delayNs[(i+rotation)%5]/2*derivative)
-		q[i] = uint16(math.Max(0, math.Min(65535, corrected)))
-		codes[i] = roundQ8(q[i])
+		corrected := math.Round(current + half[ph]*derivative)
+		switch {
+		case corrected <= 0:
+			q[i] = 0
+		case corrected >= 65535:
+			q[i] = 65535
+		default:
+			q[i] = uint16(corrected)
+		}
 		prev2, prev1 = prev1, current
+		if ph++; ph == 5 {
+			ph = 0
+		}
 	}
+	dsp.RoundQ8(codes[2:len(q)-2], q[2:len(q)-2])
 }
 
 // TRLC-LINKS: REQ-SDS-016
