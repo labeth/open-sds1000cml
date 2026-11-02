@@ -58,6 +58,13 @@ func (w *Watchdog) Acquire(timeout, petEvery time.Duration) error {
 		fd, err := unix.Open(w.dev, unix.O_RDWR|unix.O_CLOEXEC, 0) // never inherited by the app or a shell
 		if err == nil {
 			w.mu.Lock()
+			if w.fd >= 0 {
+				// Another Acquire armed it while this one opened: one
+				// descriptor and one pet loop, or Disarm closes only one.
+				w.mu.Unlock()
+				_ = unix.Close(fd)
+				return nil
+			}
 			w.fd = fd
 			w.stop = make(chan struct{})
 			w.mu.Unlock()

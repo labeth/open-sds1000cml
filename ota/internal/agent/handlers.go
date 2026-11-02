@@ -454,17 +454,7 @@ func hRestoreFactory(a *Agent, args json.RawMessage) (any, error) {
 	// cannot, which is consistent with what we see: it runs to the end of its setup and then
 	// exits without a word.  Release them first when asked, so the vendor gets the bus back.
 	if p.ReleaseFDs {
-		for name, fd := range map[string]*int{"gpmc": &a.gpmcFD, "fpga_key": &a.fpgaKeyFD} {
-			if *fd >= 0 {
-				if err := syscall.Close(*fd); err != nil {
-					a.log.Printf("restore-factory: close %s fd %d: %v", name, *fd, err)
-				} else {
-					a.log.Printf("restore-factory: released %s fd %d", name, *fd)
-				}
-				*fd = -1
-			}
-		}
-		a.gpmc = gpmc.NewReader(-1)
+		a.releaseBootFDs()
 	}
 	pid, err := a.launchDetached(p.Path, p.Dir, p.LaunchOpt)
 	if err != nil {
@@ -479,6 +469,28 @@ func hRestoreFactory(a *Agent, args json.RawMessage) (any, error) {
 		"inherit": p.Inherit, "setsid": p.Setsid, "boot_env": p.BootEnv, "release_fds": p.ReleaseFDs,
 		"note": "if the display does not return, reboot",
 	}, nil
+}
+
+// releaseBootFDs closes the inherited Gpmc and FPGA-key descriptors so the
+// vendor app can claim the bus. It holds tkMu (no takeover reads them
+// meanwhile) and fdMu (status and probe).
+// TRLC-LINKS: REQ-SDS-120
+func (a *Agent) releaseBootFDs() {
+	a.tkMu.Lock()
+	defer a.tkMu.Unlock()
+	a.fdMu.Lock()
+	defer a.fdMu.Unlock()
+	for name, fd := range map[string]*int{"gpmc": &a.gpmcFD, "fpga_key": &a.fpgaKeyFD} {
+		if *fd >= 0 {
+			if err := syscall.Close(*fd); err != nil {
+				a.log.Printf("restore-factory: close %s fd %d: %v", name, *fd, err)
+			} else {
+				a.log.Printf("restore-factory: released %s fd %d", name, *fd)
+			}
+			*fd = -1
+		}
+	}
+	a.gpmc = gpmc.NewReader(-1)
 }
 
 // TRLC-LINKS: REQ-SDS-114

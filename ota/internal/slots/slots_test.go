@@ -99,3 +99,12 @@ func TestHasBinaryRejectsEmpty(t *testing.T) {
 		t.Error("empty file should not count as a binary")
 	}
 }
+
+// A file that cannot be read through has no hash: the error is returned, not
+// the hash of what was read before it (a directory opens but fails to read).
+// TRLC-LINKS: REQ-SDS-087, REQ-SDS-106
+func TestFileSHA256ReportsAReadError(t *testing.T) {
+	if sum, err := FileSHA256(t.TempDir()); err == nil {
+		t.Fatalf("hashing a directory gave %s and no error", sum)
+	}
+}

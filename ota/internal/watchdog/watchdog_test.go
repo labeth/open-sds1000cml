@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -201,4 +202,47 @@ func TestAcquiredFdClosesOnExec(t *testing.T) {
 	if flags&unix.FD_CLOEXEC == 0 {
 		t.Fatalf("watchdog fd flags %#x: no FD_CLOEXEC, children inherit it", flags)
 	}
+}
+
+// Acquires that race (the agent's restart path and a takeover RPC both
+// acquire) arm one descriptor: after Disarm none is left open on the device.
+// TRLC-LINKS: REQ-SDS-086
+func TestConcurrentAcquireLeavesOneDescriptor(t *testing.T) {
+	dev := fakeDev(t)
+	for round := range 300 { // the race is a few microseconds wide: give it many tries
+		w := New(dev)
+		var wg sync.WaitGroup
+		start := make(chan struct{})
+		for range 16 {
+			wg.Go(func() {
+				<-start
+				if err := w.Acquire(time.Second, time.Hour); err != nil {
+					t.Error(err)
+				}
+			})
+		}
+		close(start)
+		wg.Wait()
+		w.Disarm()
+		if n := openOn(t, dev); n != 0 {
+			t.Fatalf("round %d: %d descriptors still open on the device after Disarm", round, n)
+		}
+	}
+}
+
+// openOn counts this process's descriptors open on path.
+// TRLC-LINKS: REQ-SDS-086
+func openOn(t *testing.T, path string) int {
+	t.Helper()
+	ents, err := os.ReadDir("/proc/self/fd")
+	if err != nil {
+		t.Skip("no /proc/self/fd")
+	}
+	n := 0
+	for _, e := range ents {
+		if target, err := os.Readlink(filepath.Join("/proc/self/fd", e.Name())); err == nil && target == path {
+			n++
+		}
+	}
+	return n
 }

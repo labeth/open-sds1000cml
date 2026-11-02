@@ -41,7 +41,7 @@ func (a *Agent) probe(readGpmc bool) ProbeReport {
 		Device:      a.cfg.DeviceID,
 		Uname:       sysinfo.Uname(),
 		Sys:         sysinfo.Collect(a.cfg.OTADir),
-		InheritedFD: map[string]int{"gpmc": a.gpmcFD, "fpga_key": a.fpgaKeyFD},
+		InheritedFD: a.bootFDs(),
 		FactoryCand: a.factoryCandidates(),
 		TakenOver:   a.st.get().TakenOver,
 		Cmds:        map[string]string{},
@@ -75,13 +75,13 @@ func (a *Agent) probe(readGpmc bool) ProbeReport {
 	}
 	wg.Wait()
 
-	if readGpmc && a.gpmc.OK() {
-		if v, ok := a.gpmc.VerifyVersion(); ok {
+	if g := a.reader(); readGpmc && g.OK() {
+		if v, ok := g.VerifyVersion(); ok {
 			r.GpmcVersion = "0x0052 (verified)"
 		} else {
 			r.GpmcVersion = hex4(v) + " (UNEXPECTED — want 0x0052)"
 		}
-		if fill, err := a.gpmc.Read(gpmc.PlaneCS1, gpmc.SelFill); err == nil {
+		if fill, err := g.Read(gpmc.PlaneCS1, gpmc.SelFill); err == nil {
 			r.GpmcFill = hex4(fill & gpmc.FillMask)
 		}
 	}

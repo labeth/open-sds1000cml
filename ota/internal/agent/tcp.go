@@ -5,6 +5,8 @@ package agent
 import (
 	"bufio"
 	"context"
+	"encoding/json"
+	"errors"
 	"net"
 	"time"
 )
@@ -56,6 +58,11 @@ func (a *Agent) TCPAddr() string {
 	return a.tcpAddr
 }
 
+// maxRequestLine bounds one request line. otactl's largest request is a
+// 128 KiB file chunk (about 175 KiB as base64); a line is otherwise buffered
+// whole, so a peer that never sends a newline would grow it without limit.
+const maxRequestLine = 8 << 20
+
 // TRLC-LINKS: REQ-SDS-107
 func (a *Agent) handleConn(conn net.Conn) {
 	defer func() { _ = conn.Close() }() // the reply was written or the peer is gone
@@ -66,7 +73,13 @@ func (a *Agent) handleConn(conn net.Conn) {
 	r := bufio.NewReaderSize(conn, 64<<10)
 	for {
 		_ = conn.SetReadDeadline(time.Now().Add(120 * time.Second))
-		line, err := r.ReadBytes('\n')
+		line, err := readLine(r, maxRequestLine)
+		if errors.Is(err, errLineTooLong) {
+			resp, _ := json.Marshal(Response{OK: false, Err: err.Error()}) // a fixed struct encodes
+			_ = conn.SetWriteDeadline(time.Now().Add(30 * time.Second))
+			_, _ = conn.Write(append(resp, '\n'))
+			return
+		}
 		if len(line) > 0 {
 			resp := a.DispatchJSON(line)
 			_ = conn.SetWriteDeadline(time.Now().Add(30 * time.Second))
@@ -76,6 +89,25 @@ func (a *Agent) handleConn(conn net.Conn) {
 		}
 		if err != nil {
 			return
+		}
+	}
+}
+
+// errLineTooLong is a request line over maxRequestLine.
+var errLineTooLong = errors.New("request line over 8 MiB")
+
+// readLine is ReadBytes('\n') that stops at max bytes.
+// TRLC-LINKS: REQ-SDS-107
+func readLine(r *bufio.Reader, maxLen int) ([]byte, error) {
+	var line []byte
+	for {
+		frag, err := r.ReadSlice('\n')
+		if len(line)+len(frag) > maxLen {
+			return nil, errLineTooLong
+		}
+		line = append(line, frag...)
+		if !errors.Is(err, bufio.ErrBufferFull) {
+			return line, err
 		}
 	}
 }

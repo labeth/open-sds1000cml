@@ -47,15 +47,32 @@ func (sf *stateFile) get() State {
 	return sf.s
 }
 
+// update applies fn and persists the result. A write that fails leaves the
+// state as it was: the agent acts on the state it has (the supervisor
+// reclaims the bus once taken over), so a taken_over the stick does not hold
+// must not be acted on - the watchdog would go unpetted after a takeover
+// that reported failure.
 // TRLC-LINKS: REQ-SDS-104
 func (sf *stateFile) update(fn func(*State)) error {
 	sf.mu.Lock()
 	defer sf.mu.Unlock()
-	fn(&sf.s)
-	if sf.s == sf.disk {
+	next := sf.s
+	fn(&next)
+	if next == sf.disk {
+		sf.s = next
 		return nil
 	}
-	b, err := json.MarshalIndent(sf.s, "", "  ")
+	if err := sf.write(next); err != nil {
+		return err
+	}
+	sf.s, sf.disk = next, next
+	return nil
+}
+
+// write persists s durably: temp file, fsync, rename, directory fsync.
+// TRLC-LINKS: REQ-SDS-104
+func (sf *stateFile) write(s State) error {
+	b, err := json.MarshalIndent(s, "", "  ")
 	if err != nil {
 		return err
 	}
@@ -83,7 +100,6 @@ func (sf *stateFile) update(fn func(*State)) error {
 	if err := os.Rename(tmp, sf.path); err != nil {
 		return err
 	}
-	sf.disk = sf.s
 	if d, err := os.Open(filepath.Dir(sf.path)); err == nil {
 		_ = d.Sync() // directory entry (the rename) -- best effort, VFAT may not support it
 		_ = d.Close()

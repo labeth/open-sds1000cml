@@ -37,6 +37,12 @@ const (
 	flagEnd = 0x8 // device_write: assert EOI on last byte
 
 	readReasonMask = 0x7 // END|CHR|REQCNT — non-zero means response complete
+
+	// maxReply bounds a reply's fragments: a device_read asks for at most
+	// 4 MiB, and a length off the wire is not an allocation size.
+	maxReply = 8 << 20
+	// maxAuthBody is the largest opaque_auth body ONC RPC allows (RFC 5531).
+	maxAuthBody = 400
 )
 
 // TRLC-LINKS: REQ-SDS-100
@@ -87,8 +93,12 @@ func rpcCall(conn net.Conn, timeout time.Duration, prog, vers, proc uint32, args
 			return nil, fmt.Errorf("vxi11: read record mark: %w", err)
 		}
 		h := binary.BigEndian.Uint32(rm[:])
+		size := int64(h & 0x7fffffff)
+		if int64(len(reply))+size > maxReply {
+			return nil, fmt.Errorf("vxi11: reply over %d bytes", maxReply)
+		}
 		at := len(reply) // each fragment read straight onto the reply
-		reply = append(reply, make([]byte, h&0x7fffffff)...)
+		reply = append(reply, make([]byte, size)...)
 		if _, err := io.ReadFull(conn, reply[at:]); err != nil {
 			return nil, fmt.Errorf("vxi11: read fragment: %w", err)
 		}
@@ -110,6 +120,9 @@ func rpcCall(conn net.Conn, timeout time.Duration, prog, vers, proc uint32, args
 	}
 	// verf flavor+len at 12..20 (AUTH_NULL, len 0), accept_stat at 20..24.
 	verfLen := binary.BigEndian.Uint32(reply[16:20])
+	if verfLen > maxAuthBody {
+		return nil, fmt.Errorf("vxi11: verifier of %d bytes", verfLen)
+	}
 	off := 20 + int(verfLen+3)/4*4
 	if len(reply) < off+4 {
 		return nil, errors.New("vxi11: truncated reply")
@@ -235,11 +248,13 @@ func (c *Client) Query(cmd string) (string, error) {
 		}
 		e := binary.BigEndian.Uint32(res[0:4])
 		reason := binary.BigEndian.Uint32(res[4:8])
-		n := binary.BigEndian.Uint32(res[8:12])
-		if int(n) > len(res)-12 {
-			n = uint32(len(res) - 12)
+		data := res[12:]
+		// The count is clamped to the bytes that came, compared unsigned: as
+		// an int, a count over 2^31 is negative on the 32-bit device.
+		if n := binary.BigEndian.Uint32(res[8:12]); uint64(n) < uint64(len(data)) {
+			data = data[:n]
 		}
-		out = append(out, res[12:12+n]...)
+		out = append(out, data...)
 		if e != 0 {
 			return string(out), fmt.Errorf("vxi11: device_read error %d", e)
 		}

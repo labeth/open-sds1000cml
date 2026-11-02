@@ -87,3 +87,33 @@ func TestHandleConnSpeaksOtactlWire(t *testing.T) {
 		t.Errorf("connection unusable after a garbage line: %+v", resp)
 	}
 }
+
+// A request line over the limit is answered with an error and the connection
+// closed, rather than buffered until the peer stops sending.
+// TRLC-LINKS: REQ-SDS-107
+func TestHandleConnRefusesAnOverlongLine(t *testing.T) {
+	a := testAgent(t)
+	srv, cli := net.Pipe()
+	defer func() { _ = cli.Close() }()
+	go a.handleConn(srv)
+	_ = cli.SetDeadline(time.Now().Add(5 * time.Second))
+
+	got := make(chan []byte, 1)
+	go func() {
+		line, _ := bufio.NewReader(cli).ReadBytes('\n')
+		got <- line
+	}()
+	chunk := make([]byte, 64<<10)
+	for i := range chunk {
+		chunk[i] = 'x'
+	}
+	for sent := 0; sent <= maxRequestLine; sent += len(chunk) {
+		if _, err := cli.Write(chunk); err != nil {
+			break // the agent stopped reading: it has answered
+		}
+	}
+	var resp Response
+	if err := json.Unmarshal(<-got, &resp); err != nil || resp.OK || !strings.Contains(resp.Err, "over") {
+		t.Fatalf("overlong line: %+v %v, want an error reply", resp, err)
+	}
+}

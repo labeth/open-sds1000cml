@@ -59,7 +59,11 @@ type Agent struct {
 	wd    *watchdog.Watchdog
 	log   *log.Logger
 
-	// Inherited boot descriptors (raw ints; never closed, never wrapped).
+	// Inherited boot descriptors (raw ints; never closed, never wrapped
+	// except by restore-factory's release). The release writes them holding
+	// tkMu and fdMu: the takeover reads them under tkMu, status and probe
+	// through bootFDs and reader.
+	fdMu      sync.Mutex
 	gpmcFD    int
 	fpgaKeyFD int
 	gpmc      gpmcReader
@@ -207,6 +211,22 @@ func (a *Agent) Stop() {
 	close(a.stopped)
 }
 
+// bootFDs reports the inherited descriptor numbers (-1 once released).
+// TRLC-LINKS: REQ-SDS-114
+func (a *Agent) bootFDs() map[string]int {
+	a.fdMu.Lock()
+	defer a.fdMu.Unlock()
+	return map[string]int{"gpmc": a.gpmcFD, "fpga_key": a.fpgaKeyFD}
+}
+
+// reader is the register reader on the inherited Gpmc descriptor.
+// TRLC-LINKS: REQ-SDS-114
+func (a *Agent) reader() gpmcReader {
+	a.fdMu.Lock()
+	defer a.fdMu.Unlock()
+	return a.gpmc
+}
+
 // TRLC-LINKS: REQ-SDS-122
 func (a *Agent) pidPath(name string) string {
 	return filepath.Join(a.cfg.HealthDir, name)
@@ -318,7 +338,7 @@ func (a *Agent) status() statusDoc {
 		App:          app,
 		Slots:        a.store.Status(),
 		Watchdog:     a.wd.Status(),
-		FDs:          map[string]int{"gpmc": a.gpmcFD, "fpga_key": a.fpgaKeyFD},
+		FDs:          a.bootFDs(),
 		Sys:          sysinfo.Collect(a.cfg.OTADir),
 		TimeUnix:     time.Now().Unix(),
 	}

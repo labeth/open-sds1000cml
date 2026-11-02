@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"hash"
+	"open-sds/ota/internal/slots"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -48,15 +49,9 @@ func (a *Agent) newUpload(dest string, size int64, sha string, mode uint32) (str
 	if err := os.MkdirAll(filepath.Dir(dest), 0o750); err != nil {
 		return "", err
 	}
+	a.evictStale()
 	a.upMu.Lock()
 	defer a.upMu.Unlock()
-	// Evict stale sessions (> 10 min) and cap concurrency.
-	for id, s := range a.ups {
-		if time.Since(s.created) > 10*time.Minute {
-			s.abort()
-			delete(a.ups, id)
-		}
-	}
 	if len(a.ups) >= 8 {
 		return "", errors.New("upload: too many concurrent sessions")
 	}
@@ -79,6 +74,26 @@ func (a *Agent) newUpload(dest string, size int64, sha string, mode uint32) (str
 		hash: sha256.New(),
 	}
 	return id, nil
+}
+
+// evictStale drops the sessions older than 10 minutes and removes their
+// partial files. A session is aborted under its own lock, after upMu is
+// released: a chunk may be writing to it, and commit takes upMu while holding
+// a session's lock.
+// TRLC-LINKS: REQ-SDS-106
+func (a *Agent) evictStale() {
+	var stale []*uploadSession
+	a.upMu.Lock()
+	for id, s := range a.ups {
+		if time.Since(s.created) > 10*time.Minute {
+			stale = append(stale, s)
+			delete(a.ups, id)
+		}
+	}
+	a.upMu.Unlock()
+	for _, s := range stale {
+		s.abort()
+	}
 }
 
 // TRLC-LINKS: REQ-SDS-106
@@ -156,7 +171,7 @@ func (a *Agent) commitUpload(id string) (string, string, error) {
 	var sum string
 	if s.hashed == s.written {
 		sum = hex.EncodeToString(s.hash.Sum(nil))
-	} else if sum, err = fileSHA(s.tmp); err != nil {
+	} else if sum, err = slots.FileSHA256(s.tmp); err != nil { // a read error fails the commit, not the hash
 		return "", "", err
 	}
 	if s.sha != "" && sum != s.sha {
@@ -175,32 +190,14 @@ func (a *Agent) commitUpload(id string) (string, string, error) {
 	return s.dest, sum, nil
 }
 
+// abort closes the session and removes its partial file.
 // TRLC-LINKS: REQ-SDS-106
 func (s *uploadSession) abort() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if s.f != nil {
 		_ = s.f.Close() // abandoned: the partial file is removed next
 		s.f = nil
 	}
 	_ = os.Remove(s.tmp)
-}
-
-// TRLC-LINKS: REQ-SDS-106
-func fileSHA(path string) (string, error) {
-	f, err := os.Open(path) //nolint:gosec // path is the session's own temp file
-	if err != nil {
-		return "", err
-	}
-	defer func() { _ = f.Close() }() // read-only: a close error loses nothing
-	h := sha256.New()
-	buf := make([]byte, 64*1024)
-	for {
-		n, err := f.Read(buf)
-		if n > 0 {
-			h.Write(buf[:n])
-		}
-		if err != nil {
-			break
-		}
-	}
-	return hex.EncodeToString(h.Sum(nil)), nil
 }

@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 // TRLC-LINKS: REQ-SDS-106
@@ -66,4 +67,49 @@ func TestUploadRoundTripWithSHA(t *testing.T) {
 func fileSHAOfBytes(b []byte) (string, error) {
 	h := sha256.Sum256(b)
 	return hex.EncodeToString(h[:]), nil
+}
+
+// A stale session is evicted while a chunk may still be writing to it: the
+// eviction waits for the session's own lock, so it never closes the file
+// under a chunk in progress.
+// TRLC-LINKS: REQ-SDS-106
+func TestUploadEvictionWaitsForAChunk(t *testing.T) {
+	a := testAgent(t)
+	dir := t.TempDir()
+	id, err := a.newUpload(filepath.Join(dir, "old.bin"), 0, "", 0o644)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s, err := a.getUpload(id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s.created = time.Now().Add(-time.Hour)
+
+	s.mu.Lock() // a chunk in progress
+	done := make(chan error, 1)
+	go func() {
+		_, err := a.newUpload(filepath.Join(dir, "new.bin"), 0, "", 0o644)
+		done <- err
+	}()
+	var evictErr error
+	early := false
+	select {
+	case evictErr = <-done:
+		early = true
+	case <-time.After(200 * time.Millisecond):
+	}
+	if s.f == nil {
+		t.Error("eviction closed the file under a chunk in progress")
+	}
+	s.mu.Unlock()
+	if !early {
+		evictErr = <-done
+	}
+	if evictErr != nil {
+		t.Fatal(evictErr)
+	}
+	if _, err := a.getUpload(id); err == nil {
+		t.Error("the stale session survived eviction")
+	}
 }

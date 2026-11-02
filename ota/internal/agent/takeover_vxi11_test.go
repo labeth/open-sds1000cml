@@ -564,3 +564,26 @@ func TestTakeoverForcePartialFailureStillReassertsNetwork(t *testing.T) {
 		t.Error("reassertNetwork must run even when STOP/idle-confirm failed under force")
 	}
 }
+
+// A takeover whose taken_over cannot be persisted stops before the kill and
+// leaves the agent not taken over: a taken_over held only in memory makes the
+// supervisor reclaim the bus (kill the factory app) with no watchdog armed.
+// TRLC-LINKS: REQ-SDS-027, REQ-SDS-104
+func TestTakeoverPersistFailureLeavesStateUntaken(t *testing.T) {
+	g := &fakeGpmc{versionOK: true, idle: true}
+	a, _ := takeoverAgent(t, g)
+	swapIdleTimeout(t, 400*time.Millisecond)
+	captureReassert(t)
+	a.st.path = filepath.Join(t.TempDir(), "missing", "state.json") // its directory does not exist
+
+	res := a.Takeover(TakeoverOpts{})
+	if res.OK || !strings.Contains(res.Err, "persist state") {
+		t.Fatalf("takeover with an unwritable state: ok=%v err=%q", res.OK, res.Err)
+	}
+	if a.st.get().TakenOver {
+		t.Error("taken_over held in memory although the stick did not take it")
+	}
+	if a.wd.Status().Armed {
+		t.Error("a failed takeover armed the watchdog")
+	}
+}

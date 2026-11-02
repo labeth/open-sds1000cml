@@ -7,6 +7,7 @@ import (
 	"io"
 	"net"
 	"net/netip"
+	"strings"
 	"testing"
 	"time"
 )
@@ -20,6 +21,9 @@ type fakeInstrument struct {
 	corePort     uint32
 	received     chan string
 	readReply    string
+	// readCount, when set, is the byte count device_read claims instead of
+	// the reply's length.
+	readCount uint32
 }
 
 // TRLC-LINKS: REQ-SDS-100
@@ -151,6 +155,9 @@ func (f *fakeInstrument) serveCore() {
 					binary.BigEndian.PutUint32(res[0:], 0)   // error
 					binary.BigEndian.PutUint32(res[4:], 0x4) // reason END
 					binary.BigEndian.PutUint32(res[8:], uint32(len(reply)))
+					if f.readCount != 0 {
+						binary.BigEndian.PutUint32(res[8:], f.readCount)
+					}
 					copy(res[12:], reply)
 					writeRecord(c, acceptedReply(xid, res))
 				case procDestroyLink:
@@ -220,4 +227,74 @@ func itoa(n int) string {
 		n /= 10
 	}
 	return string(b[i:])
+}
+
+// A device_read whose byte count exceeds the bytes sent yields the bytes
+// sent. A count of 2^31 or more must not slice past them: as an int it is
+// negative on a 32-bit target (run with GOARCH=386 to cover the device's word
+// size).
+// TRLC-LINKS: REQ-SDS-100
+func TestQueryClampsAnOversizedReadCount(t *testing.T) {
+	for _, count := range []uint32{64, 0x80000000, 0xffffffff} {
+		f := newFake(t)
+		f.readReply = "SAST Stopped\n"
+		f.readCount = count
+		cl, err := dialAt(net.JoinHostPort(f.host(), itoa(f.pmPort())), f.host(), 5*time.Second)
+		if err != nil {
+			t.Fatalf("dial: %v", err)
+		}
+		resp, err := cl.Query("SAST?")
+		cl.Close()
+		f.close()
+		if err != nil || resp != "SAST Stopped\n" {
+			t.Errorf("count %#x: reply %q, %v; want the bytes sent", count, resp, err)
+		}
+	}
+}
+
+// rpcReply answers one call on a pipe with the raw reply body given.
+// TRLC-LINKS: REQ-SDS-100
+func rpcReply(t *testing.T, body func(xid uint32) []byte) ([]byte, error) {
+	t.Helper()
+	cli, srv := net.Pipe()
+	defer func() { _ = cli.Close() }()
+	go func() {
+		defer func() { _ = srv.Close() }()
+		call, err := readRecord(srv)
+		if err != nil {
+			return
+		}
+		writeRecord(srv, body(callXID(call)))
+	}()
+	return rpcCall(cli, 2*time.Second, coreProg, coreVers, procDeviceRead, nil)
+}
+
+// A reply's lengths come off the wire: a verifier longer than ONC RPC allows
+// is an error, not an offset (on 32 bits one near 2^31 wrapped negative), and
+// a fragment claiming gigabytes is refused before it is allocated.
+// TRLC-LINKS: REQ-SDS-100
+func TestRPCReplyLengthsAreBounded(t *testing.T) {
+	_, err := rpcReply(t, func(xid uint32) []byte {
+		b := acceptedReply(xid, make([]byte, 8))
+		binary.BigEndian.PutUint32(b[16:], 0x7ffffffe) // verf len
+		return b
+	})
+	if err == nil {
+		t.Error("a 2 GiB verifier was accepted")
+	}
+
+	cli, srv := net.Pipe()
+	defer func() { _ = cli.Close() }()
+	go func() {
+		defer func() { _ = srv.Close() }()
+		if _, err := readRecord(srv); err != nil {
+			return
+		}
+		var rm [4]byte
+		binary.BigEndian.PutUint32(rm[:], 0xffffffff) // last fragment, 2 GiB
+		_, _ = srv.Write(rm[:])
+	}()
+	if _, err := rpcCall(cli, 2*time.Second, coreProg, coreVers, procDeviceRead, nil); err == nil || !strings.Contains(err.Error(), "reply over") {
+		t.Errorf("a 2 GiB fragment: %v, want it refused by size", err)
+	}
 }

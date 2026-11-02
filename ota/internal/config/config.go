@@ -7,6 +7,7 @@ package config
 
 import (
 	"fmt"
+	"math"
 	"net"
 	"os"
 	"path/filepath"
@@ -75,6 +76,9 @@ func envOr(key string, def func() string) string {
 	return def()
 }
 
+// envDurSecs reads a positive number of seconds. A value that is not one,
+// or that rounds to no time or past a Duration's range, gives def: the
+// intervals feed tickers, which panic on zero or negative.
 // TRLC-LINKS: REQ-SDS-088
 func envDurSecs(key string, def time.Duration) time.Duration {
 	v := os.Getenv(key)
@@ -82,10 +86,13 @@ func envDurSecs(key string, def time.Duration) time.Duration {
 		return def
 	}
 	f, err := strconv.ParseFloat(v, 64)
-	if err != nil || f <= 0 {
+	if err != nil || !(f > 0) || f >= float64(math.MaxInt64)/float64(time.Second) {
 		return def
 	}
-	return time.Duration(f * float64(time.Second))
+	if d := time.Duration(f * float64(time.Second)); d > 0 {
+		return d
+	}
+	return def
 }
 
 // TRLC-LINKS: REQ-SDS-088

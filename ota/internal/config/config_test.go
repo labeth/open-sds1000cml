@@ -185,6 +185,12 @@ func TestEnvDurSecs(t *testing.T) {
 		{"abc", def}, // malformed -> default
 		{"1e-3", time.Millisecond},
 		{" 5", def}, // ParseFloat rejects leading space -> default
+		// Out of a Duration's range: a ticker given zero or a wrapped negative
+		// interval panics, so these are invalid too.
+		{"1e300", def},
+		{"Inf", def},
+		{"NaN", def},
+		{"1e-12", def},
 	}
 	for _, tc := range cases {
 		t.Setenv(key, tc.val)

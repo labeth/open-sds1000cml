@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"syscall"
 	"testing"
 )
 
@@ -416,5 +417,35 @@ func TestAppLifecycleHandlersDriveSupervisor(t *testing.T) {
 	resp = a.Dispatch([]byte(`{"cmd":"app.restart"}`))
 	if !resp.OK {
 		t.Fatalf("app.restart: %s", resp.Err)
+	}
+}
+
+// restore-factory's release of the boot descriptors races no reader: a status
+// call during it sees the descriptor before or after, never torn (run with
+// -race), and the release leaves both at -1.
+// TRLC-LINKS: REQ-SDS-120, REQ-SDS-114
+func TestRestoreFactoryReleaseRacesNoStatus(t *testing.T) {
+	a := testAgent(t)
+	for _, fd := range []*int{&a.gpmcFD, &a.fpgaKeyFD} {
+		n, err := syscall.Open(os.DevNull, syscall.O_RDONLY|syscall.O_CLOEXEC, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		*fd = n
+	}
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		for range 50 {
+			_ = a.status()
+		}
+	}()
+	resp := a.Dispatch([]byte(`{"cmd":"restore-factory","args":{"path":"/bin/true","dir":"/","release_fds":true}}`))
+	<-done
+	if !resp.OK {
+		t.Fatalf("restore-factory: %s", resp.Err)
+	}
+	if fds := a.bootFDs(); fds["gpmc"] != -1 || fds["fpga_key"] != -1 {
+		t.Errorf("after release: %v, want both -1", fds)
 	}
 }
