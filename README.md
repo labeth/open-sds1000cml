@@ -400,7 +400,7 @@ Nothing is written to the scope's own flash: the firmware runs from the stick, a
 kept on the stick.
 
 **Install** from a [release](https://github.com/labeth/open-sds1000cml/releases), no build needed
-(what is new and the known limitations: [release notes](docs/release-notes-1.1.md)):
+(what is new and the known limitations: [release notes](docs/release-notes-1.2.md)):
 
 1. Download `open-sds1000cml-<version>-usb.zip` (and `SHA256SUMS` to check it:
    `sha256sum -c SHA256SUMS --ignore-missing`).
