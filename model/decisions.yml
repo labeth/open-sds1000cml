@@ -1741,6 +1741,21 @@ decisions:
     2.6M words/s loss-free for 20 to 30 s through 20 to 30 ms worker pauses; 2.9M loss-free with the words
     counted; at 3M the host's reading is the limit (the bus drains a bank at about 3M). Hence StreamBusWords
     2.61M (the digital stream's period 6).
+  - On the instrument about one 3 s stream start in a hundred at 2.4M and 2.6M words/s ended in the FIFO's fault
+    with a backlog, early in the stream as often as late, and no more often at the higher rate. tb_stream_drum
+    SHORT with the worker's pump and its first look 60 ms late (the host holding both banks as a backlog begins)
+    shows it - after a burst at the write head the counter went on to the read head, where with both banks the
+    host's nothing could be read, a due trip did not turn it, and the way there and back - a lap - filled the
+    FIFO. The trip also fell due late, as its projection counts the way's pulses, not the commands' overheads, the
+    rewind or the write's half rate, and partial reads one after another kept the counter at the read head. The
+    trip now falls due 512 words earlier, makes one read of what fits, and a due trip with no bank room and the
+    read head a lap away goes to the write head at once. Every case at board size holds - the late first look at
+    2.4 and 2.6M (FIFO peak about 4.0k of 4.6k words, the old drum faults), short stalls at 2.8M (4.3k; the old
+    drum faults) and a 45 ms stall at 2.6M (4.1k; 4.56k before), with FAST, REAL and the default phases. Waiting
+    at the write head instead starved the reads (the default and board-stall cases fault), turning every due trip
+    to the write head broke FAST (bursts of ten words), and a larger FIFO does not fit (the stream image uses all
+    46 block RAMs). On the instrument (counter source, 3 s starts) no FIFO fault in 400 at 2.4M and 400 at 2.6M
+    (the old drum 7 in 400 and 2 in 600).
 - id: ADR-STREAM-BITS
   title: The decoded stream streams each line sliced, sixteen periods a word
   status: accepted
