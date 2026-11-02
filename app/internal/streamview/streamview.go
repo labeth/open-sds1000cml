@@ -202,7 +202,10 @@ func (c *Controller) run(ctx context.Context, id sramcapture.RecordIdentity, don
 		c.finish(id, Failed, err, lineMode)
 		return
 	}
-	buf := make([]sramcapture.DecodedEvent, 32768)
+	var buf []sramcapture.DecodedEvent // events: only when run builds the lines
+	if !lineMode {
+		buf = make([]sramcapture.DecodedEvent, 32768)
+	}
 	nextStatus := time.Now()
 	for {
 		var got int
