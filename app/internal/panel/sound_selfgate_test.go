@@ -4,9 +4,10 @@ package panel
 
 import (
 	"math"
-	"open-sds/app/internal/engine"
 	"testing"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
 // A self-gated envelope (Gate = the signal) of a note that repeats over a

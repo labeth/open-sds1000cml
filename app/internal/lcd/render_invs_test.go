@@ -4,8 +4,9 @@ package lcd
 
 import (
 	"bytes"
-	"open-sds/app/internal/engine"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
 // traceRows scans the mid-screen window (clear of the top-bar channel labels,

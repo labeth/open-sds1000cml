@@ -8,13 +8,14 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"open-sds/app/internal/sramcapture"
 	"os"
 	"os/exec"
 	"runtime"
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
 const (

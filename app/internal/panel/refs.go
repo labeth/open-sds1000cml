@@ -4,10 +4,11 @@ package panel
 
 import (
 	"fmt"
-	"open-sds/app/internal/analog"
-	"open-sds/app/internal/engine"
 	"strconv"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/analog"
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
 // RefCols is a reference's width: one point per screen column.

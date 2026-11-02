@@ -5,9 +5,10 @@ package web
 import (
 	"net/http"
 	"net/http/httptest"
-	"open-sds/app/internal/engine"
 	"testing"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
 // A page counts as showing the scope once it asks for a frame, and for as

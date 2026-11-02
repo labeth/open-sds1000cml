@@ -8,8 +8,9 @@ import (
 	"errors"
 	"io"
 	"net/http"
-	"open-sds/app/internal/engine"
-	"open-sds/app/internal/superres"
+
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	"github.com/labeth/open-sds1000cml/app/internal/superres"
 )
 
 // fpgaStackBody is the request: an engine request plus an optional "match",

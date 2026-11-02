@@ -8,9 +8,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/rand"
-	"open-sds/app/internal/decode"
-	"open-sds/app/internal/sramcapture"
-	"open-sds/app/internal/testenv"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -19,6 +16,10 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/decode"
+	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
+	"github.com/labeth/open-sds1000cml/app/internal/testenv"
 )
 
 // rleWords undoes appendWordsRLE.

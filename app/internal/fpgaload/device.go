@@ -5,10 +5,11 @@ package fpgaload
 import (
 	"errors"
 	"fmt"
-	"open-sds/app/internal/bus"
 	"os"
 	"syscall"
 	"unsafe"
+
+	"github.com/labeth/open-sds1000cml/app/internal/bus"
 )
 
 // ─── configuration ports ───────────────────────────────────────────────────

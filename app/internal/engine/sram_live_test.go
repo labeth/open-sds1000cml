@@ -4,10 +4,11 @@ package engine
 
 import (
 	"math"
-	"open-sds/app/internal/sramcapture"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
 // A deep raw screen is decimated to a display-sized live record; a screen that

@@ -6,13 +6,14 @@ import (
 	"fmt"
 	"math"
 	"math/rand"
-	"open-sds/app/internal/engine"
 	"slices"
 	"strings"
 	"sync"
 	"testing"
 	"testing/synctest"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
 // The phone remote's surface: the panel snapshot labels everything as the

@@ -2,7 +2,7 @@
 
 package sramcapture
 
-import "open-sds/app/internal/superres"
+import "github.com/labeth/open-sds1000cml/app/internal/superres"
 
 // NewStackState returns an empty accumulation for bins fine bins.
 // TRLC-LINKS: REQ-SDS-141

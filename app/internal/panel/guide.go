@@ -3,8 +3,9 @@
 package panel
 
 import (
-	"open-sds/app/internal/panel/wsview"
 	"sync"
+
+	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
 )
 
 // The Help guide (the SYS tab, opened by the Help key on its Help row): the

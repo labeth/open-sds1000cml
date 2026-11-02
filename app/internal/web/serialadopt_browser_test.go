@@ -5,12 +5,13 @@ package web
 import (
 	"math"
 	"net/http/httptest"
-	"open-sds/app/internal/engine"
-	"open-sds/app/internal/testenv"
 	"os/exec"
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	"github.com/labeth/open-sds1000cml/app/internal/testenv"
 )
 
 // A serial trigger armed elsewhere is shown by a page, not replaced by its

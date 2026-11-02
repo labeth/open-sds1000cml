@@ -5,12 +5,13 @@ package sramcapture
 import (
 	"fmt"
 	"math/rand"
-	"open-sds/app/internal/testenv"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/testenv"
 )
 
 // envelopeReference reduces words (after skip words) into the buffer entries

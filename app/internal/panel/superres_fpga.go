@@ -6,10 +6,11 @@ import (
 	"context"
 	"fmt"
 	"math"
-	"open-sds/app/internal/engine"
-	"open-sds/app/internal/sramcapture"
-	"open-sds/app/internal/superres"
 	"strconv"
+
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
+	"github.com/labeth/open-sds1000cml/app/internal/superres"
 )
 
 // srStopFPGA is the fourth Stop-on mode: stack Target records in the FPGA

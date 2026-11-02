@@ -3,8 +3,9 @@
 package panel
 
 import (
-	"open-sds/app/internal/engine"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
 // fireEng: AcqLog reports SawTrig only while the committed level code sits

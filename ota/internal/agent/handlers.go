@@ -6,14 +6,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"open-sds/ota/internal/gpmc"
-	"open-sds/ota/internal/slots"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/ota/internal/gpmc"
+	"github.com/labeth/open-sds1000cml/ota/internal/slots"
 )
 
 var handlers = map[string]handlerFn{}

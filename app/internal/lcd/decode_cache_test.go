@@ -3,8 +3,9 @@
 package lcd
 
 import (
-	"open-sds/app/internal/engine"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
 // A newer frame with the same decoder settings is decoded afresh, or the

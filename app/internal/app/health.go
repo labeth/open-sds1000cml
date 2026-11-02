@@ -4,10 +4,11 @@ package app
 
 import (
 	"fmt"
-	"open-sds/app/internal/engine"
 	"os"
 	"sync/atomic"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
 // heartbeatMode is what the health token currently attests (read by the

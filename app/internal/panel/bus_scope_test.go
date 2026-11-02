@@ -5,9 +5,10 @@ package panel
 import (
 	"compress/gzip"
 	"encoding/json"
-	"open-sds/app/internal/decode"
 	"os"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/decode"
 )
 
 // loadScopeCapture reads a scope record of the decode testdata (sample

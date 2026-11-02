@@ -5,12 +5,13 @@ package decode
 import (
 	"fmt"
 	"math"
-	"open-sds/app/internal/testenv"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/testenv"
 )
 
 // Compare qualified FPGA frames with the repository's public decoder. This

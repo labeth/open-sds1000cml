@@ -4,8 +4,9 @@ package engine
 
 import (
 	"math"
-	"open-sds/app/internal/decode"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/decode"
 )
 
 // symWave builds two lines at the symbol trigger's 125 MHz clock from timed

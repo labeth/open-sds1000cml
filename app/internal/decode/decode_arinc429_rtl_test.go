@@ -4,12 +4,13 @@ package decode
 
 import (
 	"fmt"
-	"open-sds/app/internal/testenv"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/testenv"
 )
 
 type arincRTLEvent struct {

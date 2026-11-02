@@ -5,9 +5,10 @@ package sramcapture
 import (
 	"context"
 	"fmt"
-	"open-sds/app/internal/superres"
 	"strings"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/superres"
 )
 
 // stackPortBus emulates stack_engine_port.v over a frozen revision-8 record.

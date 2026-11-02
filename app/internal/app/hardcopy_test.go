@@ -1,11 +1,12 @@
 package app
 
 import (
-	"open-sds/app/internal/lcd"
-	"open-sds/app/internal/panel/wsview"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/lcd"
+	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
 )
 
 // PRINT numbers its screenshots and never overwrites one.

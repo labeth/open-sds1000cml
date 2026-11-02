@@ -4,11 +4,12 @@ package panel
 
 import (
 	"math"
-	"open-sds/app/internal/engine"
-	"open-sds/app/internal/measure"
-	"open-sds/app/internal/panel/framecalc"
 	"strings"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	"github.com/labeth/open-sds1000cml/app/internal/measure"
+	"github.com/labeth/open-sds1000cml/app/internal/panel/framecalc"
 )
 
 // SPECTRUM: the peak table finds the square wave's odd harmonics with THD,

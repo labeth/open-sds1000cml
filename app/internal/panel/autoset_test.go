@@ -4,12 +4,13 @@ package panel
 
 import (
 	"math"
-	"open-sds/app/internal/analog"
-	"open-sds/app/internal/engine"
-	"open-sds/app/internal/measure"
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/analog"
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	"github.com/labeth/open-sds1000cml/app/internal/measure"
 )
 
 // TestRailing pins the semantics the coarsen-on-rail guard (autoset step 3c)

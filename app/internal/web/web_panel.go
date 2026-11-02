@@ -6,9 +6,10 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
-	"open-sds/app/internal/panel"
 	"strconv"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/panel"
 )
 
 // The phone remote's surface (REQ-SDS-211, REQ-SDS-212): the panel snapshot

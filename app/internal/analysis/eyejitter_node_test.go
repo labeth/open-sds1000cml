@@ -5,13 +5,14 @@ package analysis
 import (
 	"encoding/json"
 	"math"
-	"open-sds/app/internal/testenv"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
 	"sync"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/testenv"
 )
 
 // The eye/jitter parity vectors: clean PRBS and UART-like NRZ at several

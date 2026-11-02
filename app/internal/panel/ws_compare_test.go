@@ -4,11 +4,12 @@ package panel
 
 import (
 	"math/rand"
-	"open-sds/app/internal/engine"
-	"open-sds/app/internal/panel/wsview"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
 )
 
 // noiseFrame is a capture that does not repeat: a random C1.

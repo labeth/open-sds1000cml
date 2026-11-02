@@ -3,9 +3,9 @@
 package panel
 
 import (
-	"open-sds/app/internal/analog"
-	"open-sds/app/internal/engine"
-	"open-sds/app/internal/panel/framecalc"
+	"github.com/labeth/open-sds1000cml/app/internal/analog"
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	"github.com/labeth/open-sds1000cml/app/internal/panel/framecalc"
 )
 
 // codesOf returns a channel's valid samples as codes (Q8.8 when the frame

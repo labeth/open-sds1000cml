@@ -3,12 +3,13 @@
 package panel
 
 import (
-	"open-sds/app/internal/engine"
-	"open-sds/app/internal/settings"
 	"sync"
 	"testing"
 	"testing/synctest"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	"github.com/labeth/open-sds1000cml/app/internal/settings"
 )
 
 // lcdPress runs keys as the LCD's own (a physical press or /api/panel).

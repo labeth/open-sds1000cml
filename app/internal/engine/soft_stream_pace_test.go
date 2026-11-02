@@ -4,9 +4,10 @@ package engine
 
 import (
 	"math"
-	"open-sds/app/internal/decode"
-	"open-sds/app/internal/sramcapture"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/decode"
+	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
 // A digital period of any whole number of raw words maps the stream's

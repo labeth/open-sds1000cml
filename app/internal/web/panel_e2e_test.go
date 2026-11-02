@@ -5,12 +5,13 @@ package web
 import (
 	"encoding/json"
 	"fmt"
-	"open-sds/app/internal/engine"
-	"open-sds/app/internal/panel"
 	"strings"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	"github.com/labeth/open-sds1000cml/app/internal/panel"
 )
 
 // panelScope is the web test's engine fake as both the server's scope and

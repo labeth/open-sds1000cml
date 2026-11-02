@@ -8,12 +8,13 @@ package streamview
 import (
 	"context"
 	"errors"
-	"open-sds/app/internal/decode"
-	"open-sds/app/internal/decodedlines"
-	"open-sds/app/internal/engine"
-	"open-sds/app/internal/sramcapture"
 	"sync"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/decode"
+	"github.com/labeth/open-sds1000cml/app/internal/decodedlines"
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
 // Source is the engine's decoded-capture surface.

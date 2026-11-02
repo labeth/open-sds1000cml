@@ -4,10 +4,11 @@ package panel
 
 import (
 	"math"
-	"open-sds/app/internal/engine"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
 // takeEng is soundEng with the engine's takes: STOPped (mode) it shows a

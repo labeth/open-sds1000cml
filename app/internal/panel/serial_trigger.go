@@ -4,8 +4,9 @@ package panel
 
 import (
 	"errors"
-	"open-sds/app/internal/engine"
-	"open-sds/app/internal/panel/framecalc"
+
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	"github.com/labeth/open-sds1000cml/app/internal/panel/framecalc"
 )
 
 // Serial is the TRIG tab's fifth trigger type: the engine's serial trigger

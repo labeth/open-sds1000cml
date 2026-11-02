@@ -16,13 +16,14 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"open-sds/ota/internal/agent"
-	"open-sds/ota/internal/buildinfo"
-	"open-sds/ota/internal/config"
 	"os"
 	"os/signal"
 	"slices"
 	"syscall"
+
+	"github.com/labeth/open-sds1000cml/ota/internal/agent"
+	"github.com/labeth/open-sds1000cml/ota/internal/buildinfo"
+	"github.com/labeth/open-sds1000cml/ota/internal/config"
 )
 
 // TRLC-LINKS: REQ-SDS-124

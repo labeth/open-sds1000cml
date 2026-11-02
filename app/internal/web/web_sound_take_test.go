@@ -8,10 +8,11 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"open-sds/app/internal/engine"
-	"open-sds/app/internal/panel"
 	"testing"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	"github.com/labeth/open-sds1000cml/app/internal/panel"
 )
 
 // /api/sound/take.bin: no take while the stream is live (404); STOPped, the

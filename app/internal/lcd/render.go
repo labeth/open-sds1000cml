@@ -5,12 +5,13 @@ package lcd
 import (
 	"fmt"
 	"math"
-	"open-sds/app/internal/analog"
-	"open-sds/app/internal/engine"
-	"open-sds/app/internal/panel/wsview"
-	"open-sds/app/internal/streamview"
 	"strconv"
 	"sync"
+
+	"github.com/labeth/open-sds1000cml/app/internal/analog"
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
+	"github.com/labeth/open-sds1000cml/app/internal/streamview"
 )
 
 // Colour palette (spec 07 §2.2). The col* variables are GENERATED into

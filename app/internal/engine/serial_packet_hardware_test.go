@@ -4,11 +4,12 @@ package engine
 
 import (
 	"errors"
-	"open-sds/app/internal/decode"
-	"open-sds/app/internal/sramcapture"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/decode"
+	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
 // packetEngineBus adds the packet image's capability registers to the

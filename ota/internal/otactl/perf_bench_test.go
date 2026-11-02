@@ -8,11 +8,12 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"net"
-	"open-sds/ota/internal/rpcproto"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/ota/internal/rpcproto"
 )
 
 // TRLC-LINKS: REQ-SDS-109

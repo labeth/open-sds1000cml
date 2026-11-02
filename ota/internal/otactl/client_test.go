@@ -9,13 +9,14 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"net"
-	"open-sds/ota/internal/agent"
-	"open-sds/ota/internal/config"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/ota/internal/agent"
+	"github.com/labeth/open-sds1000cml/ota/internal/config"
 )
 
 // startAgentLineServer runs a REAL agent behind a loopback TCP listener with

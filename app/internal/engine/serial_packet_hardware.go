@@ -5,9 +5,10 @@ package engine
 import (
 	"errors"
 	"math"
-	"open-sds/app/internal/decode"
-	"open-sds/app/internal/sramcapture"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/decode"
+	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
 // Hardware plans mirror the registry decoders: a pattern the software matcher

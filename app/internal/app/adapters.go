@@ -4,12 +4,13 @@ package app
 
 import (
 	"fmt"
-	"open-sds/app/internal/engine"
-	"open-sds/app/internal/frames"
-	"open-sds/app/internal/panel"
-	"open-sds/app/internal/web"
 	"strings"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	"github.com/labeth/open-sds1000cml/app/internal/frames"
+	"github.com/labeth/open-sds1000cml/app/internal/panel"
+	"github.com/labeth/open-sds1000cml/app/internal/web"
 )
 
 // scopeSource wires the web layer: setters/stats from the engine, frames

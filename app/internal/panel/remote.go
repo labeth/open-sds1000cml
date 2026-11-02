@@ -6,9 +6,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
-	"open-sds/app/internal/panel/wsview"
 	"strings"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
 )
 
 // The remote surface (/api/status, /api/panel, /api/sheets): the phone

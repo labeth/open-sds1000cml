@@ -3,8 +3,9 @@
 package panel
 
 import (
-	"open-sds/app/internal/engine"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
 // TRLC-LINKS: REQ-SDS-139

@@ -3,9 +3,10 @@
 package engine
 
 import (
-	"open-sds/app/internal/sramcapture"
 	"testing"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
 // words packs n stream words whose CH1 code is the sample's ordinal from

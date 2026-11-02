@@ -18,18 +18,19 @@ package agent
 import (
 	"fmt"
 	"log"
-	"open-sds/ota/internal/buildinfo"
-	"open-sds/ota/internal/config"
-	"open-sds/ota/internal/fdinherit"
-	"open-sds/ota/internal/gpmc"
-	"open-sds/ota/internal/slots"
-	"open-sds/ota/internal/sysinfo"
-	"open-sds/ota/internal/watchdog"
 	"os"
 	"path/filepath"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/ota/internal/buildinfo"
+	"github.com/labeth/open-sds1000cml/ota/internal/config"
+	"github.com/labeth/open-sds1000cml/ota/internal/fdinherit"
+	"github.com/labeth/open-sds1000cml/ota/internal/gpmc"
+	"github.com/labeth/open-sds1000cml/ota/internal/slots"
+	"github.com/labeth/open-sds1000cml/ota/internal/sysinfo"
+	"github.com/labeth/open-sds1000cml/ota/internal/watchdog"
 )
 
 const (

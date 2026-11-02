@@ -4,8 +4,9 @@ package lcd
 
 import (
 	"math"
-	"open-sds/app/internal/panel/wsview"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
 )
 
 // goldenSoundPane is a SOUND view as the panel builds it: A4 3 cents sharp

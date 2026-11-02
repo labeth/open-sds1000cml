@@ -6,11 +6,12 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"open-sds/app/internal/decode"
-	"open-sds/app/internal/sramcapture"
 	"slices"
 	"testing"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/decode"
+	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
 // The engine's per-capture work on the scope's single ARM core: these time

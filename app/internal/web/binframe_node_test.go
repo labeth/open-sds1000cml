@@ -3,10 +3,11 @@
 package web
 
 import (
-	"open-sds/app/internal/testenv"
 	"os/exec"
 	"strings"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/testenv"
 )
 
 // TestBinframeJS runs the binary-transport decoder (binframe.js) under node

@@ -1,8 +1,9 @@
 package engine
 
 import (
-	"open-sds/app/internal/sramcapture"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
 // Frames captured on the instrument (ADR-PANEL-SERIAL-SCAN).

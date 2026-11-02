@@ -8,10 +8,11 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"open-sds/app/internal/dsp"
-	"open-sds/app/internal/sramcapture"
 	"slices"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/dsp"
+	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
 // SRAMPlan retains the complete physical record. Reduction is the smallest

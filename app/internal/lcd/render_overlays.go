@@ -5,10 +5,11 @@ package lcd
 import (
 	"fmt"
 	"math"
-	"open-sds/app/internal/decode"
-	"open-sds/app/internal/engine"
-	"open-sds/app/internal/panel/framecalc"
-	"open-sds/app/internal/panel/wsview"
+
+	"github.com/labeth/open-sds1000cml/app/internal/decode"
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	"github.com/labeth/open-sds1000cml/app/internal/panel/framecalc"
+	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
 )
 
 // drawXY plots C1 (x) against C2 (y) — the Lissajous view (parity with the web

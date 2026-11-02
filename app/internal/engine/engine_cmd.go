@@ -3,8 +3,9 @@
 package engine
 
 import (
-	"open-sds/app/internal/iface"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/iface"
 )
 
 // flushLEDs writes a staged lamp word. The LED latch strobe (MAX V CS3

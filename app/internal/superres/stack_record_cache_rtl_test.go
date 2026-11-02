@@ -4,11 +4,12 @@ package superres
 
 import (
 	"fmt"
-	"open-sds/app/internal/testenv"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/testenv"
 )
 
 // Exercise the real seek/warmup controller and DDR transport against the

@@ -4,8 +4,9 @@ package lcd
 
 import (
 	"math"
-	"open-sds/app/internal/engine"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
 // Golden coverage for the core LCD views (see golden_test.go for the harness).

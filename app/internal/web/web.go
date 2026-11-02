@@ -10,16 +10,17 @@ import (
 	"io"
 	"net/http"
 	"net/http/pprof"
-	"open-sds/app/internal/engine"
-	"open-sds/app/internal/measure"
-	"open-sds/app/internal/panel"
-	"open-sds/app/internal/sramcapture"
-	"open-sds/app/internal/streamview"
 	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	"github.com/labeth/open-sds1000cml/app/internal/measure"
+	"github.com/labeth/open-sds1000cml/app/internal/panel"
+	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
+	"github.com/labeth/open-sds1000cml/app/internal/streamview"
 )
 
 //go:generate go run gen_tokens.go

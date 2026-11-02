@@ -3,9 +3,10 @@
 package lcd
 
 import (
-	"open-sds/app/internal/decode"
 	"reflect"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/decode"
 )
 
 // TestEnclosingSpans: a reading over its bytes and a length over its fields

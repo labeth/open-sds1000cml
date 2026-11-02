@@ -5,13 +5,14 @@ package decode
 import (
 	"fmt"
 	"math"
-	"open-sds/app/internal/testenv"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/testenv"
 )
 
 type canRTLEvent struct {

@@ -4,8 +4,9 @@ package engine
 
 import (
 	"math"
-	"open-sds/app/internal/decode"
-	"open-sds/app/internal/sramcapture"
+
+	"github.com/labeth/open-sds1000cml/app/internal/decode"
+	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
 // planHardwareUART plans the image's UART receiver: on the 125 MHz line

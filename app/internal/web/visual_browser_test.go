@@ -5,11 +5,12 @@ package web
 import (
 	"math"
 	"net/http/httptest"
-	"open-sds/app/internal/engine"
-	"open-sds/app/internal/testenv"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	"github.com/labeth/open-sds1000cml/app/internal/testenv"
 )
 
 // TestVisualMIDIBrowser: a MIDI bus (two notes on, one off) decodes in BUS,

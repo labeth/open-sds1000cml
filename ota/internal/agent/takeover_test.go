@@ -3,8 +3,6 @@
 package agent
 
 import (
-	"open-sds/ota/internal/fdinherit"
-	"open-sds/ota/internal/slots"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -12,6 +10,9 @@ import (
 	"syscall"
 	"testing"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/ota/internal/fdinherit"
+	"github.com/labeth/open-sds1000cml/ota/internal/slots"
 )
 
 // TRLC-LINKS: REQ-SDS-027

@@ -6,9 +6,10 @@ import (
 	"cmp"
 	"errors"
 	"fmt"
-	"open-sds/app/internal/decode"
 	"slices"
 	"sync"
+
+	"github.com/labeth/open-sds1000cml/app/internal/decode"
 )
 
 // SerialDecoder receives chronological samples with their acquisition interval.

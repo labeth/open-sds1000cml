@@ -3,8 +3,8 @@
 package engine
 
 import (
-	"open-sds/app/internal/decode"
-	"open-sds/app/internal/sramcapture"
+	"github.com/labeth/open-sds1000cml/app/internal/decode"
+	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
 // symbolCfg is the Go model's form of a planned symbol trigger.

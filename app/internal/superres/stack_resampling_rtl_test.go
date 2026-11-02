@@ -6,13 +6,14 @@ import (
 	"fmt"
 	"math"
 	"math/rand"
-	"open-sds/app/internal/testenv"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/testenv"
 )
 
 // TRLC-LINKS: REQ-SDS-141

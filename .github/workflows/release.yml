@@ -55,7 +55,7 @@ jobs:
           # the same stamp as the agent's (ota/Makefile): version, commit, and
           # the build time from SOURCE_DATE_EPOCH, so `otactl version` names them
           BUILT=$(date -u -d "@${SOURCE_DATE_EPOCH}" +%Y-%m-%dT%H:%M:%SZ)
-          BI=open-sds/ota/internal/buildinfo
+          BI=github.com/labeth/open-sds1000cml/ota/internal/buildinfo
           LD="-s -w -X ${BI}.Version=${VERSION} -X ${BI}.Commit=$(git rev-parse --short HEAD) -X ${BI}.Built=${BUILT}"
           for t in linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64; do
             os=${t%/*}; arch=${t#*/}; ext=""; [ "$os" = windows ] && ext=.exe

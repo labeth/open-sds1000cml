@@ -4,9 +4,10 @@ package app
 
 import (
 	"bytes"
-	"open-sds/app/internal/engine"
-	"open-sds/app/internal/lcd"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	"github.com/labeth/open-sds1000cml/app/internal/lcd"
 )
 
 // While the engine loads (a full record, an image) the display draws the

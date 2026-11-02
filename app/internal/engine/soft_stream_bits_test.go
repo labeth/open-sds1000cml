@@ -3,10 +3,11 @@
 package engine
 
 import (
-	"open-sds/app/internal/decode"
-	"open-sds/app/internal/decodedlines"
-	"open-sds/app/internal/sramcapture"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/decode"
+	"github.com/labeth/open-sds1000cml/app/internal/decodedlines"
+	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
 // bitsWords slices levels (m per period) as stream_bits.v does: a period

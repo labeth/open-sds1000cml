@@ -4,9 +4,10 @@ package panel
 
 import (
 	"math/rand"
-	"open-sds/app/internal/engine"
 	"testing"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
 // A bus search and a decode of the screen run on a copy of the frame: the

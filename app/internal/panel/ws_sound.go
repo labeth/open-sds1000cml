@@ -5,13 +5,14 @@ package panel
 import (
 	"fmt"
 	"math"
-	"open-sds/app/internal/analog"
-	"open-sds/app/internal/engine"
-	"open-sds/app/internal/panel/wsview"
-	"open-sds/app/internal/sound"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/analog"
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
+	"github.com/labeth/open-sds1000cml/app/internal/sound"
 )
 
 // SOUND is SPECTRUM's fourth view (ADR-SOUND): F3 again cycles FFT,

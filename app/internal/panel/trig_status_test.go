@@ -3,9 +3,10 @@
 package panel
 
 import (
-	"open-sds/app/internal/panel/wsview"
 	"strings"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
 )
 
 // The TRIG tab says whether the FPGA decides a pulse, slope, video or zone

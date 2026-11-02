@@ -8,12 +8,13 @@ import (
 	"io"
 	"net"
 	"net/netip"
-	"open-sds/ota/internal/config"
-	"open-sds/ota/internal/slots"
-	"open-sds/ota/internal/vxi11"
 	"slices"
 	"testing"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/ota/internal/config"
+	"github.com/labeth/open-sds1000cml/ota/internal/slots"
+	"github.com/labeth/open-sds1000cml/ota/internal/vxi11"
 )
 
 // TestDefaultStageIsTheAgentsStaging checks that uploads stage by default

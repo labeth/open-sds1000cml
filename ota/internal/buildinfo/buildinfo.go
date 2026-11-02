@@ -4,7 +4,7 @@ package buildinfo
 
 import "sync"
 
-// Set via -ldflags "-X open-sds/ota/internal/buildinfo.Version=... -X ...".
+// Set via -ldflags "-X github.com/labeth/open-sds1000cml/ota/internal/buildinfo.Version=... -X ...".
 var (
 	Version = "dev"
 	Commit  = "unknown"

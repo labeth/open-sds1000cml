@@ -3,9 +3,10 @@
 package lcd
 
 import (
-	"open-sds/app/internal/analog"
-	"open-sds/app/internal/engine"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/analog"
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
 // zoomFrame is a live envelope frame, flat at code level, with a view window

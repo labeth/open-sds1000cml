@@ -4,8 +4,9 @@ package engine
 
 import (
 	"math"
-	"open-sds/app/internal/sramcapture"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
 // SetTrigType selects the trigger type (a TrigType; out of range is edge).

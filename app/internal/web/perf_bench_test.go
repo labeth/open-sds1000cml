@@ -7,10 +7,11 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"open-sds/app/internal/engine"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
 // benchServer serves a 5000-sample frame with its Q8.8 record.

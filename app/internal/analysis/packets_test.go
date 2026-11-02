@@ -5,10 +5,11 @@ package analysis
 import (
 	"encoding/json"
 	"fmt"
-	"open-sds/app/internal/decode"
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/decode"
 )
 
 // Waveform builders for the decoders, after the decode package's own test

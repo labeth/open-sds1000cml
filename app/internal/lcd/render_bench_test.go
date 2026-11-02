@@ -3,9 +3,10 @@
 package lcd
 
 import (
-	"open-sds/app/internal/engine"
-	"open-sds/app/internal/panel/wsview"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
 )
 
 // The LCD draws 20 frames a second on the device's single core; these

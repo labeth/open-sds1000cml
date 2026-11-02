@@ -1,4 +1,4 @@
-module open-sds/ota
+module github.com/labeth/open-sds1000cml/ota
 
 go 1.26.10
 

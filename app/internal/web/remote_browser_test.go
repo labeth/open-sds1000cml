@@ -7,17 +7,18 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"open-sds/app/internal/analog"
-	"open-sds/app/internal/engine"
-	"open-sds/app/internal/panel"
-	"open-sds/app/internal/settings"
-	"open-sds/app/internal/testenv"
 	"os"
 	"strconv"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/analog"
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	"github.com/labeth/open-sds1000cml/app/internal/panel"
+	"github.com/labeth/open-sds1000cml/app/internal/settings"
+	"github.com/labeth/open-sds1000cml/app/internal/testenv"
 )
 
 // ---------------------------------------------------------------------------

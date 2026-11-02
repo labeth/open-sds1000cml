@@ -4,11 +4,12 @@ package panel
 
 import (
 	"math"
-	"open-sds/app/internal/decode"
-	"open-sds/app/internal/engine"
-	"open-sds/app/internal/panel/framecalc"
 	"strings"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/decode"
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	"github.com/labeth/open-sds1000cml/app/internal/panel/framecalc"
 )
 
 // Auto is no decoding mode (REQ-SDS-214): it detects the bus once and fills

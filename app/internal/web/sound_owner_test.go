@@ -10,14 +10,15 @@ import (
 	"math"
 	"net/http"
 	"net/http/httptest"
-	"open-sds/app/internal/engine"
-	"open-sds/app/internal/panel"
-	"open-sds/app/internal/testenv"
 	"os/exec"
 	"strings"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	"github.com/labeth/open-sds1000cml/app/internal/panel"
+	"github.com/labeth/open-sds1000cml/app/internal/testenv"
 )
 
 // ownerScope is a scope with an audio stream behind the real panel: the

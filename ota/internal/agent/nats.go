@@ -4,10 +4,11 @@ package agent
 
 import (
 	"encoding/json"
-	"open-sds/ota/internal/buildinfo"
-	"open-sds/ota/internal/sysinfo"
-	"open-sds/ota/internal/watchdog"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/ota/internal/buildinfo"
+	"github.com/labeth/open-sds1000cml/ota/internal/sysinfo"
+	"github.com/labeth/open-sds1000cml/ota/internal/watchdog"
 
 	"github.com/nats-io/nats.go"
 )

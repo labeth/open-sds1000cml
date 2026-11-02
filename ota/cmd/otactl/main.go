@@ -26,15 +26,16 @@ import (
 	"fmt"
 	"io"
 	"net"
-	"open-sds/ota/internal/buildinfo"
-	"open-sds/ota/internal/otactl"
-	"open-sds/ota/internal/vxi11"
 	"os"
 	"os/signal"
 	"slices"
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/ota/internal/buildinfo"
+	"github.com/labeth/open-sds1000cml/ota/internal/otactl"
+	"github.com/labeth/open-sds1000cml/ota/internal/vxi11"
 
 	"github.com/nats-io/nats.go"
 )

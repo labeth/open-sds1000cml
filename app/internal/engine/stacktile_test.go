@@ -2,8 +2,9 @@ package engine
 
 import (
 	"math/rand"
-	"open-sds/app/internal/superres"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/superres"
 )
 
 // TRLC-LINKS: REQ-SDS-141

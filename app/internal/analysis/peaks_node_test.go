@@ -5,11 +5,12 @@ package analysis
 import (
 	"encoding/json"
 	"math"
-	"open-sds/app/internal/testenv"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/testenv"
 )
 
 // TestPeaksJSParity runs the web's peak search (peaks.js spectrum and

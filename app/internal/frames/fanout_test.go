@@ -3,11 +3,12 @@
 package frames
 
 import (
-	"open-sds/app/internal/engine"
 	"sync/atomic"
 	"testing"
 	"testing/synctest"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
 // tickSource publishes a fresh frame with an advancing Seq each time `fresh`

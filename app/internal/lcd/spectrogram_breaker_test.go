@@ -5,8 +5,9 @@ package lcd
 import (
 	"fmt"
 	"math"
-	"open-sds/app/internal/engine"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
 // heat() is the colour primitive shared by the device waterfall and (mirrored)

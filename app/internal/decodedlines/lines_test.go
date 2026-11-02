@@ -3,9 +3,10 @@
 package decodedlines
 
 import (
-	"open-sds/app/internal/sramcapture"
 	"strings"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
 // TRLC-LINKS: REQ-SDS-018

@@ -3,7 +3,6 @@
 package agent
 
 import (
-	"open-sds/ota/internal/slots"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -11,6 +10,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/ota/internal/slots"
 )
 
 // writeSlotBinary drops a runnable /bin/sh script into a slot so the real

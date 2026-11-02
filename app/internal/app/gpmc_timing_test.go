@@ -4,8 +4,9 @@ package app
 
 import (
 	"errors"
-	"open-sds/app/internal/bus"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/bus"
 )
 
 // TRLC-LINKS: REQ-SDS-034

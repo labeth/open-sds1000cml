@@ -5,8 +5,9 @@ package engine
 import (
 	"math"
 	"math/bits"
-	"open-sds/app/internal/decode"
-	"open-sds/app/internal/sramcapture"
+
+	"github.com/labeth/open-sds1000cml/app/internal/decode"
+	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
 // physSymbolSpec compiles the line timing of the sigrok protocols beyond

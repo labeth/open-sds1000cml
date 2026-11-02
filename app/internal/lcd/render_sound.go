@@ -4,8 +4,9 @@ package lcd
 
 import (
 	"math"
-	"open-sds/app/internal/panel/wsview"
 	"strconv"
+
+	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
 )
 
 // SPECTRUM's SOUND view (ADR-SOUND): the tuner (the note large, a cents

@@ -4,10 +4,11 @@ package analog
 
 import (
 	"math"
-	"open-sds/app/internal/cal"
 	"slices"
 	"testing"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/cal"
 )
 
 // TRLC-LINKS: REQ-SDS-015

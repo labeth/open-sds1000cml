@@ -5,10 +5,11 @@ package web
 import (
 	"net/http"
 	"net/http/httptest"
-	"open-sds/app/internal/engine"
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
 // These are ALWAYS-RUN pure-Go guardrails for the UI/UX refactor. They must NOT

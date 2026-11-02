@@ -4,11 +4,12 @@ package app
 
 import (
 	"math"
-	"open-sds/app/internal/analog"
-	"open-sds/app/internal/engine"
-	"open-sds/app/internal/lcd"
-	"open-sds/app/internal/streamview"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/analog"
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	"github.com/labeth/open-sds1000cml/app/internal/lcd"
+	"github.com/labeth/open-sds1000cml/app/internal/streamview"
 )
 
 // buildHUD assembles the LCD/SCDP heads-up state from the engine + front end.

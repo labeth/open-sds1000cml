@@ -5,8 +5,9 @@ package web
 import (
 	"context"
 	"fmt"
-	"open-sds/app/internal/streamview"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/streamview"
 )
 
 // streamPanel is a panel streaming its bus: the status's stream and the LCD's

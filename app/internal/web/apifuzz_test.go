@@ -7,9 +7,10 @@ import (
 	"math"
 	"net/http"
 	"net/http/httptest"
-	"open-sds/app/internal/engine"
 	"strings"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
 // API fuzz: every endpoint is fed malformed, extreme, and hostile inputs.

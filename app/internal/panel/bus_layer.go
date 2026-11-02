@@ -6,14 +6,15 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"open-sds/app/internal/analysis"
-	"open-sds/app/internal/decode"
-	"open-sds/app/internal/engine"
-	"open-sds/app/internal/panel/framecalc"
-	"open-sds/app/internal/panel/wsview"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/analysis"
+	"github.com/labeth/open-sds1000cml/app/internal/decode"
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	"github.com/labeth/open-sds1000cml/app/internal/panel/framecalc"
+	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
 )
 
 // The bus's layer (REQ-SDS-241): the application protocol or chip the BUS

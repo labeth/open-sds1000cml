@@ -4,9 +4,10 @@ package engine
 
 import (
 	"math"
-	"open-sds/app/internal/decode"
-	"open-sds/app/internal/sramcapture"
 	"sort"
+
+	"github.com/labeth/open-sds1000cml/app/internal/decode"
+	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
 // symbolProtocol reports a protocol the qualify image's symbol trigger

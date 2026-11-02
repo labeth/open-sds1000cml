@@ -4,12 +4,13 @@ package settings_test
 
 import (
 	"math"
-	"open-sds/app/internal/analog"
-	"open-sds/app/internal/engine"
-	"open-sds/app/internal/panel"
-	"open-sds/app/internal/settings"
 	"testing"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/analog"
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	"github.com/labeth/open-sds1000cml/app/internal/panel"
+	"github.com/labeth/open-sds1000cml/app/internal/settings"
 )
 
 // nullBus satisfies bus.Bus without any hardware: the engine is constructed

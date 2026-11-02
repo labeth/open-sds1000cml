@@ -3,13 +3,14 @@
 package panel
 
 import (
-	"open-sds/app/internal/engine"
-	"open-sds/app/internal/panel/framecalc"
-	"open-sds/app/internal/settings"
 	"strings"
 	"testing"
 	"testing/synctest"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	"github.com/labeth/open-sds1000cml/app/internal/panel/framecalc"
+	"github.com/labeth/open-sds1000cml/app/internal/settings"
 )
 
 // fastUART is the rig's bus: a 460800 Bd UART; otherBus a 115200 Bd one the

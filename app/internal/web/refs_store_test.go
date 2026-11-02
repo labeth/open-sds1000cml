@@ -4,10 +4,11 @@ package web
 
 import (
 	"fmt"
-	"open-sds/app/internal/engine"
-	"open-sds/app/internal/panel"
 	"sync"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	"github.com/labeth/open-sds1000cml/app/internal/panel"
 )
 
 // fakeRefStore keeps REF A/B as the panel does for the web's fake scopes: a

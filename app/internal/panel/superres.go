@@ -6,9 +6,10 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"open-sds/app/internal/engine"
-	"open-sds/app/internal/superres"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	"github.com/labeth/open-sds1000cml/app/internal/superres"
 )
 
 // Device super-res (spec: reference-locked stack-and-crunch), the ACQ tab's

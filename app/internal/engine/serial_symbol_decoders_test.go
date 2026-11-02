@@ -3,8 +3,9 @@
 package engine
 
 import (
-	"open-sds/app/internal/decode"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/decode"
 )
 
 // The symbol trigger against the protocols' software decoders on the same

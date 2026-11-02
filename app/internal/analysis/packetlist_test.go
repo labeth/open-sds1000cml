@@ -4,9 +4,10 @@ package analysis
 
 import (
 	"fmt"
-	"open-sds/app/internal/decode"
 	"strings"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/decode"
 )
 
 // captures decodes windows of a long UART stream at moving offsets, as a

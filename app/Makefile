@@ -12,9 +12,9 @@ else
 BUILT ?= $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
 endif
 LDFLAGS := -s -w \
-  -X open-sds/app/internal/buildinfo.Version=$(VERSION) \
-  -X open-sds/app/internal/buildinfo.Commit=$(COMMIT) \
-  -X open-sds/app/internal/buildinfo.Built=$(BUILT)
+  -X github.com/labeth/open-sds1000cml/app/internal/buildinfo.Version=$(VERSION) \
+  -X github.com/labeth/open-sds1000cml/app/internal/buildinfo.Commit=$(COMMIT) \
+  -X github.com/labeth/open-sds1000cml/app/internal/buildinfo.Built=$(BUILT)
 
 DIST := dist
 # The nine shipping FPGA images (fpga/bitstreams, built by fpga/build.ts), each

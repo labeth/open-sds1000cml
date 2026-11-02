@@ -4,12 +4,13 @@ package panel
 
 import (
 	"context"
-	"open-sds/app/internal/engine"
-	"open-sds/app/internal/superres"
 	"strings"
 	"testing"
 	"testing/synctest"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	"github.com/labeth/open-sds1000cml/app/internal/superres"
 )
 
 type fpgaFakeEng struct {

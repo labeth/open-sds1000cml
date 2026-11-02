@@ -8,11 +8,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"open-sds/app/internal/decodedlines"
-	"open-sds/app/internal/sramcapture"
 	"syscall"
 	"time"
 	"unsafe"
+
+	"github.com/labeth/open-sds1000cml/app/internal/decodedlines"
+	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
 const workerQueueEvents = 131072

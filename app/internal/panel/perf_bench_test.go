@@ -5,14 +5,15 @@ package panel
 import (
 	"fmt"
 	"math"
-	"open-sds/app/internal/analog"
-	"open-sds/app/internal/decode"
-	"open-sds/app/internal/engine"
-	"open-sds/app/internal/panel/framecalc"
-	"open-sds/app/internal/panel/wsview"
-	"open-sds/app/internal/settings"
 	"strings"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/analog"
+	"github.com/labeth/open-sds1000cml/app/internal/decode"
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	"github.com/labeth/open-sds1000cml/app/internal/panel/framecalc"
+	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
+	"github.com/labeth/open-sds1000cml/app/internal/settings"
 )
 
 // Each workspace's view, built every LCD tick on the device's single core.

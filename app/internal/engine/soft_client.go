@@ -6,12 +6,13 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"open-sds/app/internal/decodedlines"
-	"open-sds/app/internal/sramcapture"
 	"slices"
 	"sync"
 	"time"
 	"unsafe"
+
+	"github.com/labeth/open-sds1000cml/app/internal/decodedlines"
+	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
 // Client decode of the digital stream (ADR-STREAM-CLIENT-DECODE): a web page

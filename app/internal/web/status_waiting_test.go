@@ -6,9 +6,10 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"open-sds/app/internal/engine"
 	"testing"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
 // sinceScope is a fake scope whose last frame came d ago.

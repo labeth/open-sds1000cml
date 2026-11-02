@@ -4,9 +4,10 @@ package bus
 
 import (
 	"fmt"
-	"open-sds/app/internal/sramcapture"
 	"strings"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
 // A register read through the worker: the app's per-register round trip.

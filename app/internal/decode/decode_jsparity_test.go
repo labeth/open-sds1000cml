@@ -5,12 +5,13 @@ package decode
 import (
 	"encoding/json"
 	"math/rand"
-	"open-sds/app/internal/testenv"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/testenv"
 )
 
 // parityMult is PARITY_MULT, the corruption count multiplier (1 in CI).

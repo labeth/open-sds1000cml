@@ -8,9 +8,10 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"open-sds/app/internal/engine"
 	"sync"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
 // fakeScope records setter calls and serves a canned frame. Status-visible

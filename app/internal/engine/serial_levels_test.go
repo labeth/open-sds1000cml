@@ -5,10 +5,11 @@ package engine
 import (
 	"fmt"
 	"math"
-	"open-sds/app/internal/sramcapture"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
 // levelsEngine is a bare engine whose image has the hardware UART matcher,

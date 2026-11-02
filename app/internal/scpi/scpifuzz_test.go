@@ -6,11 +6,12 @@ import (
 	"fmt"
 	"math"
 	"math/rand"
-	"open-sds/app/internal/analog"
-	"open-sds/app/internal/engine"
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/analog"
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
 // SCPI parser fuzz: HandleLine must never panic, whatever arrives on the

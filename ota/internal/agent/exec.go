@@ -8,12 +8,13 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"open-sds/ota/internal/slots"
 	"os"
 	"os/exec"
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/ota/internal/slots"
 )
 
 // runArgv runs a command with a timeout, capturing combined output. It never

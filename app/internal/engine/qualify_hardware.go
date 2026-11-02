@@ -5,9 +5,10 @@ package engine
 import (
 	"fmt"
 	"math"
-	"open-sds/app/internal/decode"
-	"open-sds/app/internal/sramcapture"
 	"sync/atomic"
+
+	"github.com/labeth/open-sds1000cml/app/internal/decode"
+	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
 // The pulse, slope and video triggers are the FPGA's (ADR-HARDWARE-QUALIFIERS):

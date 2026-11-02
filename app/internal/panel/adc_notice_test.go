@@ -3,9 +3,10 @@
 package panel
 
 import (
-	"open-sds/app/internal/engine"
 	"testing"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
 // Converters that stay stuck after the engine's recoveries show a notice

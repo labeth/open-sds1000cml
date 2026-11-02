@@ -7,10 +7,11 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"open-sds/app/internal/sramcapture"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
 type decodedTestBus struct {

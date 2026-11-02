@@ -4,10 +4,11 @@ package engine
 
 import (
 	"math"
-	"open-sds/app/internal/iface"
 	"runtime"
 	"runtime/debug"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/iface"
 )
 
 // memBackstopMin is the least soft memory limit on the device: above a

@@ -3,8 +3,9 @@
 package lcd
 
 import (
-	"open-sds/app/internal/analog"
 	"strconv"
+
+	"github.com/labeth/open-sds1000cml/app/internal/analog"
 )
 
 // TRLC-LINKS: REQ-SDS-021

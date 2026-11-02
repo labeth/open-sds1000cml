@@ -3,8 +3,9 @@
 package bus
 
 import (
-	"open-sds/app/internal/iface"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/iface"
 )
 
 // TRLC-LINKS: REQ-SDS-129

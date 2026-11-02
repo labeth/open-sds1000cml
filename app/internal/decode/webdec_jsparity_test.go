@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"maps"
 	"math/rand"
-	"open-sds/app/internal/testenv"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -16,6 +15,8 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/testenv"
 )
 
 // webdecJSCfg is each edge protocol's JS decoder and its settings, the same

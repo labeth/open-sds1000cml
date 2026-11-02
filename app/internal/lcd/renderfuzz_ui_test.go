@@ -4,8 +4,9 @@ package lcd
 
 import (
 	"math/rand"
-	"open-sds/app/internal/panel/wsview"
 	"strings"
+
+	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
 )
 
 // fuzzView is a hostile workspace UI for the render fuzz: any workspace,

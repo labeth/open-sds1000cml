@@ -7,9 +7,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"open-sds/app/internal/engine"
 	"time"
 	"unsafe"
+
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
 // encodeBinFrame serializes a built reply to the binary wire format. It runs

@@ -5,12 +5,13 @@ package engine
 import (
 	"context"
 	"errors"
-	"open-sds/app/internal/bus"
-	"open-sds/app/internal/sramcapture"
-	"open-sds/app/internal/superres"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/bus"
+	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
+	"github.com/labeth/open-sds1000cml/app/internal/superres"
 )
 
 // stackEngineBus emulates the SRAM capture ABI in both images and the stack

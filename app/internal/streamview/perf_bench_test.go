@@ -3,8 +3,9 @@
 package streamview
 
 import (
-	"open-sds/app/internal/decodedlines"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/decodedlines"
 )
 
 // benchController holds n 16-unit lines.

@@ -5,10 +5,11 @@ package engine
 import (
 	"fmt"
 	"math"
-	"open-sds/app/internal/decode"
 	"slices"
 	"sync/atomic"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/decode"
 )
 
 // The serial trigger is the FPGA's (ADR-SERIAL-HARDWARE-TRIGGER): its

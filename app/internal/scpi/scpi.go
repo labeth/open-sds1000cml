@@ -9,13 +9,14 @@ package scpi
 import (
 	"fmt"
 	"math"
-	"open-sds/app/internal/engine"
 	"os"
 	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
 // Scope is the instrument surface (engine + fan-out frames).

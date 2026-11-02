@@ -10,10 +10,11 @@ import (
 	"errors"
 	"fmt"
 	"math/bits"
-	"open-sds/app/internal/sramcapture"
 	"strconv"
 	"strings"
 	"unicode/utf8"
+
+	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
 // Line is one hexdump line: up to sixteen units of one frame.

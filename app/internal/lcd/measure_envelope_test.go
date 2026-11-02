@@ -4,9 +4,10 @@ package lcd
 
 import (
 	"math"
-	"open-sds/app/internal/engine"
-	"open-sds/app/internal/measure"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	"github.com/labeth/open-sds1000cml/app/internal/measure"
 )
 
 // An inverted channel on a live envelope frame reads the complement duty: the

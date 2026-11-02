@@ -11,10 +11,11 @@ import (
 	"log"
 	"math"
 	"net/http"
-	"open-sds/app/internal/analog"
-	"open-sds/app/internal/engine"
 	"sync"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/analog"
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
 // hZones installs the zone-trigger rectangles (POST JSON array of zones in

@@ -3,9 +3,10 @@
 package engine
 
 import (
-	"open-sds/app/internal/sramcapture"
 	"runtime/debug"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
 // The SRAM loop (the instrument's) runs with the memory backstop above a

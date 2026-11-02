@@ -3,13 +3,14 @@
 package panel
 
 import (
-	"open-sds/app/internal/engine"
-	"open-sds/app/internal/superres"
 	"strings"
 	"sync/atomic"
 	"testing"
 	"testing/synctest"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	"github.com/labeth/open-sds1000cml/app/internal/superres"
 )
 
 // An FPGA stack reviews at the session's timebase: one screen of samples with

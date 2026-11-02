@@ -4,12 +4,13 @@ package panel
 
 import (
 	"fmt"
-	"open-sds/app/internal/analog"
-	"open-sds/app/internal/engine"
 	"slices"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/analog"
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
 // TRLC-LINKS: REQ-SDS-135

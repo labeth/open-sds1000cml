@@ -6,8 +6,9 @@ import (
 	"errors"
 	"fmt"
 	"math/bits"
-	"open-sds/app/internal/sramcapture"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
 // Panel matrix synthesis (ADR-PANEL-SERIAL-SCAN). The scan's 64 bits arrive

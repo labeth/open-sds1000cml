@@ -8,13 +8,14 @@ import (
 	"fmt"
 	"math"
 	"math/bits"
-	"open-sds/app/internal/bus"
-	"open-sds/app/internal/decode"
-	"open-sds/app/internal/decodedlines"
-	"open-sds/app/internal/sramcapture"
 	"slices"
 	"sync"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/bus"
+	"github.com/labeth/open-sds1000cml/app/internal/decode"
+	"github.com/labeth/open-sds1000cml/app/internal/decodedlines"
+	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
 // The decoded stream of the protocols on the qualify image's symbol trigger

@@ -5,11 +5,12 @@ package superres
 import (
 	"encoding/json"
 	"math"
-	"open-sds/app/internal/testenv"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/testenv"
 )
 
 // jsOpts is a PARTIAL options object for the JS side: omitempty drops zero

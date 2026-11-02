@@ -5,9 +5,10 @@ package panel
 import (
 	"fmt"
 	"math"
-	"open-sds/app/internal/analog"
-	"open-sds/app/internal/engine"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/analog"
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
 // Device-side mask testing flow (docs/zonemask-plan.md §3): the MASK page

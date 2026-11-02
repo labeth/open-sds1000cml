@@ -3,9 +3,10 @@
 package engine
 
 import (
-	"open-sds/app/internal/decodedlines"
-	"open-sds/app/internal/sramcapture"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/decodedlines"
+	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
 // Every protocol that streams through the FPGA's decoded events stops "on

@@ -16,7 +16,6 @@ package analysis
 import (
 	"context"
 	"fmt"
-	"open-sds/app/internal/decode"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -24,6 +23,8 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/decode"
 )
 
 // orcNeed skips (or under CI_REQUIRE_SIGROK=1 fails) without sigrok-cli and

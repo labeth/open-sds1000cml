@@ -4,11 +4,12 @@ package engine
 
 import (
 	"fmt"
-	"open-sds/app/internal/bus"
-	"open-sds/app/internal/iface"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/bus"
+	"github.com/labeth/open-sds1000cml/app/internal/iface"
 )
 
 // fakeClock advances instantly on Sleep so FSM waits are deterministic.

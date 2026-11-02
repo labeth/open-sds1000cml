@@ -4,10 +4,11 @@ package panel
 
 import (
 	"math"
-	"open-sds/app/internal/engine"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
 // countEng counts the stream reads of each length the service asks for.

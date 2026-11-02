@@ -4,9 +4,10 @@ package framecalc
 
 import (
 	"math"
-	"open-sds/app/internal/engine"
 	"testing"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
 // holdFrame is a 4096-sample tone frame with sequence number seq.

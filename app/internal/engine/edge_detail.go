@@ -4,9 +4,10 @@ package engine
 
 import (
 	"context"
-	"open-sds/app/internal/measure"
-	"open-sds/app/internal/sramcapture"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/measure"
+	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
 // EdgeWindow is a full-rate stretch of the record around one edge of a live

@@ -4,7 +4,8 @@ package engine
 
 import (
 	"math"
-	"open-sds/app/internal/sramcapture"
+
+	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
 // envelopeBlock names what keeps a live frame from the envelope readout, or

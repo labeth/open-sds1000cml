@@ -3,11 +3,12 @@
 package web
 
 import (
-	"open-sds/app/internal/engine"
-	"open-sds/app/internal/panel"
-	"open-sds/app/internal/testenv"
 	"os"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	"github.com/labeth/open-sds1000cml/app/internal/panel"
+	"github.com/labeth/open-sds1000cml/app/internal/testenv"
 )
 
 // framedRig is the remote rig whose engine serves a square on C1 and a

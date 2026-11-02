@@ -4,7 +4,8 @@ package app
 
 import (
 	"fmt"
-	"open-sds/app/internal/bus"
+
+	"github.com/labeth/open-sds1000cml/app/internal/bus"
 )
 
 // applySRAMReadTiming is revision-10-only, invoked before the engine owns CS1.

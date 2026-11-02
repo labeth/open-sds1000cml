@@ -4,7 +4,8 @@ package engine
 
 import (
 	"math"
-	"open-sds/app/internal/sramcapture"
+
+	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
 // TRLC-LINKS: REQ-SDS-013, REQ-SDS-018

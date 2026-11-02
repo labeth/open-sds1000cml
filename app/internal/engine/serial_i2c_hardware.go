@@ -4,7 +4,8 @@ package engine
 
 import (
 	"math"
-	"open-sds/app/internal/sramcapture"
+
+	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
 // planHardwareI2C plans the image's I2C receiver: on the 125 MHz line

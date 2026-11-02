@@ -6,11 +6,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
-	"open-sds/app/internal/testenv"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/testenv"
 )
 
 // pvec is one parity vector: what to run on which samples.

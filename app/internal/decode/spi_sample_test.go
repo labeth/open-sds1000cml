@@ -11,13 +11,14 @@ import (
 	"io"
 	"math"
 	"math/rand"
-	"open-sds/app/internal/testenv"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/testenv"
 )
 
 // spiBus is an SPI bus as the converters see it: band-limited edges, the

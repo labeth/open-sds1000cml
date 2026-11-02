@@ -7,9 +7,10 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
-	"open-sds/app/internal/sramcapture"
 	"strings"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
 type decodedWebScope struct {

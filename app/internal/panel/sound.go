@@ -6,11 +6,12 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"open-sds/app/internal/engine"
-	"open-sds/app/internal/sound"
 	"slices"
 	"sync"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	"github.com/labeth/open-sds1000cml/app/internal/sound"
 )
 
 // SOUND (ADR-SOUND) on the scope's side: the settings the LCD, the web page

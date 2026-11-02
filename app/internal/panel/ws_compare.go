@@ -5,14 +5,15 @@ package panel
 import (
 	"fmt"
 	"math"
-	"open-sds/app/internal/analog"
-	"open-sds/app/internal/dsp"
-	"open-sds/app/internal/engine"
-	"open-sds/app/internal/panel/framecalc"
-	"open-sds/app/internal/panel/wsview"
 	"regexp"
 	"strconv"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/analog"
+	"github.com/labeth/open-sds1000cml/app/internal/dsp"
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	"github.com/labeth/open-sds1000cml/app/internal/panel/framecalc"
+	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
 )
 
 // COMPARE (REQ-SDS-218): rows MASTER, REF A, REF B, MASK and MATH with a

@@ -4,9 +4,10 @@ package lcd
 
 import (
 	"math"
-	"open-sds/app/internal/engine"
-	"open-sds/app/internal/panel/framecalc"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	"github.com/labeth/open-sds1000cml/app/internal/panel/framecalc"
 )
 
 // A synthetic super-res HUD: a k× fine-grid mean built from gen(fineBin), a

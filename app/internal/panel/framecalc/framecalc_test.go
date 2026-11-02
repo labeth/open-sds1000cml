@@ -4,9 +4,10 @@ package framecalc
 
 import (
 	"math"
-	"open-sds/app/internal/engine"
 	"strings"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
 // sineFrame is a frame of a sine of cycles periods over n samples.

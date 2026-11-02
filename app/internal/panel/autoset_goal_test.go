@@ -4,14 +4,15 @@ package panel
 
 import (
 	"math"
-	"open-sds/app/internal/analog"
-	"open-sds/app/internal/engine"
-	"open-sds/app/internal/measure"
-	"open-sds/app/internal/panel/wsview"
 	"strings"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/analog"
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	"github.com/labeth/open-sds1000cml/app/internal/measure"
+	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
 )
 
 // simFE is the fake front end with the offset reaching the engine's offset

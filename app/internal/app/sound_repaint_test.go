@@ -1,9 +1,10 @@
 package app
 
 import (
-	"open-sds/app/internal/lcd"
-	"open-sds/app/internal/panel/wsview"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/lcd"
+	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
 )
 
 // The SOUND view repaints when its pane changes (a new tuner reading, a

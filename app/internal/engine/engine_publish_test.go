@@ -3,8 +3,9 @@
 package engine
 
 import (
-	"open-sds/app/internal/iface"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/iface"
 )
 
 // TRLC-LINKS: REQ-SDS-007, REQ-SDS-009, REQ-SDS-011

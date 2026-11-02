@@ -6,10 +6,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"open-sds/app/internal/decodedlines"
-	"open-sds/app/internal/sramcapture"
 	"sync"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/decodedlines"
+	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
 // StreamTrigger is what ends a scope-side decoded stream (ADR-PANEL-DECODED-STREAM).

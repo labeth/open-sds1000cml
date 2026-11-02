@@ -8,9 +8,10 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"open-sds/app/internal/bus"
-	"open-sds/app/internal/sramcapture"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/bus"
+	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
 // Roll mode (ADR-SRAM-ROLL): at slow timebases a triggered frame must wait out

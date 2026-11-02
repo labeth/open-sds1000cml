@@ -7,11 +7,12 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"open-sds/app/internal/bus"
-	"open-sds/app/internal/sramcapture"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/bus"
+	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
 // The audio stream (ADR-SOUND): while a SOUND consumer holds the lease (the

@@ -4,20 +4,21 @@ package app
 
 import (
 	"math"
-	"open-sds/app/internal/analog"
-	"open-sds/app/internal/engine"
-	"open-sds/app/internal/frames"
-	"open-sds/app/internal/lcd"
-	"open-sds/app/internal/panel"
-	"open-sds/app/internal/panel/framecalc"
-	"open-sds/app/internal/panel/wsview"
-	"open-sds/app/internal/scpi"
-	"open-sds/app/internal/streamview"
-	"open-sds/app/internal/web"
 	"os"
 	"reflect"
 	"sync/atomic"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/analog"
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	"github.com/labeth/open-sds1000cml/app/internal/frames"
+	"github.com/labeth/open-sds1000cml/app/internal/lcd"
+	"github.com/labeth/open-sds1000cml/app/internal/panel"
+	"github.com/labeth/open-sds1000cml/app/internal/panel/framecalc"
+	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
+	"github.com/labeth/open-sds1000cml/app/internal/scpi"
+	"github.com/labeth/open-sds1000cml/app/internal/streamview"
+	"github.com/labeth/open-sds1000cml/app/internal/web"
 )
 
 // lastViewWasBode tracks whether the DEVICE's BODE view armed FRA, so leaving

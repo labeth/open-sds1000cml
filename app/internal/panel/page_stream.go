@@ -3,8 +3,9 @@
 package panel
 
 import (
-	"open-sds/app/internal/panel/wsview"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
 )
 
 // pageStreamAbandon is how long the web page that asked for the scope's

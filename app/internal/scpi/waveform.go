@@ -6,8 +6,9 @@ import (
 	"encoding/binary"
 	"fmt"
 	"math"
-	"open-sds/app/internal/analog"
-	"open-sds/app/internal/engine"
+
+	"github.com/labeth/open-sds1000cml/app/internal/analog"
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
 // waveform implements Cn:WF? DAT2|DESC (spec 11 §4): the byte-exact LeCroy

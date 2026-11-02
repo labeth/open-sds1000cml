@@ -9,14 +9,15 @@
 package panel
 
 import (
-	"open-sds/app/internal/analog"
-	"open-sds/app/internal/decode"
-	"open-sds/app/internal/engine"
-	"open-sds/app/internal/settings"
-	"open-sds/app/internal/superres"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/analog"
+	"github.com/labeth/open-sds1000cml/app/internal/decode"
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	"github.com/labeth/open-sds1000cml/app/internal/settings"
+	"github.com/labeth/open-sds1000cml/app/internal/superres"
 )
 
 // Engine is the command surface the controller drives (spec 08 §4).

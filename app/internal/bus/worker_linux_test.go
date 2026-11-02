@@ -7,13 +7,14 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"open-sds/app/internal/sramcapture"
 	"os"
 	"strings"
 	"sync/atomic"
 	"syscall"
 	"testing"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
 type workerFake struct {

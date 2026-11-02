@@ -4,9 +4,10 @@ package panel
 
 import (
 	"math"
-	"open-sds/app/internal/engine"
-	"open-sds/app/internal/panel/wsview"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
 )
 
 // Task workspaces (ADR-TASK-WORKSPACES). With no menu open, F1..F5 switch the

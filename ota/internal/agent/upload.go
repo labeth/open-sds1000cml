@@ -8,13 +8,14 @@ import (
 	"errors"
 	"fmt"
 	"hash"
-	"open-sds/ota/internal/slots"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/ota/internal/slots"
 )
 
 // uploadSession is a chunked file transfer into the staging area. Chunks may

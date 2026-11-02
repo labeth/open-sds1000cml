@@ -7,11 +7,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"open-sds/app/internal/bus"
-	"open-sds/app/internal/sramcapture"
 	"runtime"
 	"sync"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/bus"
+	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
 // ownerJob is work another goroutine hands the owner loop: run on the owner,

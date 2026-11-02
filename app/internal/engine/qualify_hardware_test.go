@@ -4,9 +4,10 @@ package engine
 
 import (
 	"math"
-	"open-sds/app/internal/sramcapture"
 	"strings"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
 // qualEngine is the packet test engine on the qualifier image at 1 V/div, its

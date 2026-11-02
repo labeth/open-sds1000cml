@@ -5,13 +5,14 @@ package panel
 import (
 	"errors"
 	"fmt"
-	"open-sds/app/internal/engine"
-	"open-sds/app/internal/panel/wsview"
-	"open-sds/app/internal/settings"
 	"slices"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
+	"github.com/labeth/open-sds1000cml/app/internal/settings"
 )
 
 // The task-workspace state machine (ADR-TASK-WORKSPACES): F1..F5 switch

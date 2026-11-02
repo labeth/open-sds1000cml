@@ -5,12 +5,13 @@ package panel
 import (
 	"fmt"
 	"math"
-	"open-sds/app/internal/analog"
-	"open-sds/app/internal/engine"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/analog"
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
 // Run is the panel event loop: SIGIO (knobs + buttons, rate-capped ~150 Hz)

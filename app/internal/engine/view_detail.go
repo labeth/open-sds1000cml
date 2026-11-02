@@ -4,9 +4,10 @@ package engine
 
 import (
 	"math"
-	"open-sds/app/internal/sramcapture"
 	"sync/atomic"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
 // ViewWindow is a stretch of a live envelope frame's screen read again at

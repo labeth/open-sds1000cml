@@ -4,7 +4,8 @@ package engine
 
 import (
 	"math"
-	"open-sds/app/internal/sramcapture"
+
+	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
 // Each repository MIL sync-delimited packet contains one word. A multiword

@@ -8,12 +8,13 @@ package engine
 
 import (
 	"math"
-	"open-sds/app/internal/bus"
-	"open-sds/app/internal/iface"
-	"open-sds/app/internal/sramcapture"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/bus"
+	"github.com/labeth/open-sds1000cml/app/internal/iface"
+	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
 // Register bindings: every fabric selector, opcode and field comes from the

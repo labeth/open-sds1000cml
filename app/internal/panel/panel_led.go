@@ -4,9 +4,10 @@ package panel
 
 import (
 	"math"
-	"open-sds/app/internal/panel/framecalc"
 	"strconv"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/panel/framecalc"
 )
 
 // Lamps (spec 08 §8.2): only the confirmed lamps, each with one meaning,

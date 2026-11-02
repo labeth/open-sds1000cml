@@ -3,10 +3,11 @@
 package web
 
 import (
-	"open-sds/app/internal/engine"
-	"open-sds/app/internal/testenv"
 	"os/exec"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	"github.com/labeth/open-sds1000cml/app/internal/testenv"
 )
 
 // Auto-measurement logic now lives in internal/measure (with its own thorough

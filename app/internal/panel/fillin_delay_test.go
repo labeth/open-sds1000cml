@@ -3,9 +3,10 @@
 package panel
 
 import (
-	"open-sds/app/internal/decode"
-	"open-sds/app/internal/panel/framecalc"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/decode"
+	"github.com/labeth/open-sds1000cml/app/internal/panel/framecalc"
 )
 
 // An SPI bus BUS entry finds samples its data at the middle of the eye

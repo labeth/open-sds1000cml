@@ -4,8 +4,9 @@ package panel
 
 import (
 	"math/rand"
-	"open-sds/app/internal/engine"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
 // Panel chaos: random button presses and knob steps in every order, the

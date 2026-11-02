@@ -9,11 +9,12 @@ import (
 	"math"
 	"net/http"
 	"net/http/httptest"
-	"open-sds/app/internal/engine"
-	"open-sds/app/internal/panel"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	"github.com/labeth/open-sds1000cml/app/internal/panel"
 )
 
 // soundFakeScope is a scope with an audio stream of n samples from 1000 on:

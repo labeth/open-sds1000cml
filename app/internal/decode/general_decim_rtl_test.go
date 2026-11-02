@@ -3,10 +3,11 @@
 package decode
 
 import (
-	"open-sds/app/internal/testenv"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/testenv"
 )
 
 // generalPrecisionStub stands in for the vendor-FIFO precision filter in the

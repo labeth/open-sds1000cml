@@ -3,10 +3,11 @@
 package lcd
 
 import (
-	"open-sds/app/internal/decode"
-	"open-sds/app/internal/panel/wsview"
 	"strings"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/decode"
+	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
 )
 
 // TestVisualPictures: each bus's picture draws from its spans (a MIDI

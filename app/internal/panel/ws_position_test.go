@@ -5,10 +5,11 @@ package panel
 import (
 	"fmt"
 	"math"
-	"open-sds/app/internal/panel/wsview"
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
 )
 
 // toolText is the scope's tool line as "Knob:job" words.

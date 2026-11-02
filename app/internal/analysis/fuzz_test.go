@@ -5,8 +5,9 @@ package analysis
 import (
 	"encoding/binary"
 	"math"
-	"open-sds/app/internal/decode"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/decode"
 )
 
 // Native fuzz targets: the seed corpus runs in every `go test`; `go test

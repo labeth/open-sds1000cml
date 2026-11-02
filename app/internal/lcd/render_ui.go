@@ -4,11 +4,12 @@ package lcd
 
 import (
 	"math"
-	"open-sds/app/internal/dsp"
-	"open-sds/app/internal/engine"
-	"open-sds/app/internal/panel/framecalc"
-	"open-sds/app/internal/panel/wsview"
 	"strings"
+
+	"github.com/labeth/open-sds1000cml/app/internal/dsp"
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	"github.com/labeth/open-sds1000cml/app/internal/panel/framecalc"
+	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
 )
 
 // The task-workspace UI on the LCD (ADR-TASK-WORKSPACES): a 30 px pictogram

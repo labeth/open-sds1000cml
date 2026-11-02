@@ -10,8 +10,9 @@
 package main
 
 import (
-	"open-sds/app/internal/app"
 	"os"
+
+	"github.com/labeth/open-sds1000cml/app/internal/app"
 )
 
 // TRLC-LINKS: REQ-SDS-167

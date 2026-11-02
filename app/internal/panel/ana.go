@@ -3,8 +3,8 @@
 package panel
 
 import (
-	"open-sds/app/internal/analysis"
-	"open-sds/app/internal/decode"
+	"github.com/labeth/open-sds1000cml/app/internal/analysis"
+	"github.com/labeth/open-sds1000cml/app/internal/decode"
 )
 
 // The workspace tools use the shared analysis package (packets, eye and

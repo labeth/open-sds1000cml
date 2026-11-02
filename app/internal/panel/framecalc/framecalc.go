@@ -10,12 +10,13 @@ package framecalc
 
 import (
 	"math"
-	"open-sds/app/internal/decode"
-	"open-sds/app/internal/engine"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/decode"
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
 // Protocol numbers, shared by the panel's decode setting and the LCD.

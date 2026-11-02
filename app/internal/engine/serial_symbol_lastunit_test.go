@@ -3,8 +3,9 @@
 package engine
 
 import (
-	"open-sds/app/internal/decode"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/decode"
 )
 
 // Every symbol-trigger protocol's frames matched on their last unit, whole:

@@ -8,8 +8,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
-	"open-sds/ota/internal/rpcproto"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/ota/internal/rpcproto"
 
 	"github.com/nats-io/nats.go"
 )

@@ -4,10 +4,11 @@ package agent
 
 import (
 	"encoding/json"
-	"open-sds/ota/internal/config"
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/ota/internal/config"
 )
 
 // TRLC-LINKS: REQ-SDS-027, REQ-SDS-113

@@ -5,12 +5,13 @@ package web
 import (
 	"math"
 	"net/http/httptest"
-	"open-sds/app/internal/engine"
-	"open-sds/app/internal/testenv"
 	"os/exec"
 	"strings"
 	"sync/atomic"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	"github.com/labeth/open-sds1000cml/app/internal/testenv"
 )
 
 // TestBodeBrowser drives the real web BODE/FRA card in headless Chromium: ARM

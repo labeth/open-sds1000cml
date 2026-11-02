@@ -6,10 +6,11 @@ import (
 	"bufio"
 	"encoding/json"
 	"net"
-	"open-sds/ota/internal/rpcproto"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/ota/internal/rpcproto"
 )
 
 // TestHandleConnSpeaksOtactlWire drives handleConn over an in-memory pipe with

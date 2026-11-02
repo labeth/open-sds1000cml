@@ -24,11 +24,12 @@ package bus
 import (
 	"errors"
 	"fmt"
-	"open-sds/app/internal/iface"
 	"os"
 	"syscall"
 	"time"
 	"unsafe"
+
+	"github.com/labeth/open-sds1000cml/app/internal/iface"
 )
 
 const (

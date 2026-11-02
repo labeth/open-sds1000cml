@@ -7,8 +7,9 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"open-sds/app/internal/superres"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/superres"
 )
 
 // Edge-locked FPGA stacking port (fpga/acq_sram/stack_engine_port.v,

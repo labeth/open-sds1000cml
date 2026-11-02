@@ -2,9 +2,10 @@ package app
 
 import (
 	"math"
-	"open-sds/app/internal/engine"
-	"open-sds/app/internal/lcd"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	"github.com/labeth/open-sds1000cml/app/internal/lcd"
 )
 
 // The scope's zoom leases its stretch of a live envelope at full detail in

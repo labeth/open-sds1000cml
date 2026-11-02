@@ -4,8 +4,9 @@ package engine
 
 import (
 	"math"
-	"open-sds/app/internal/iface"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/iface"
 )
 
 // The acq2 capture sequence (workplan §2, iface): RESET → RUN → DECIM →

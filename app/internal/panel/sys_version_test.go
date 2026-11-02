@@ -3,10 +3,11 @@
 package panel
 
 import (
-	"open-sds/app/internal/buildinfo"
-	"open-sds/app/internal/engine"
 	"strings"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/buildinfo"
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
 // The SYS tab (Help key) names the firmware and its version, so an owner can

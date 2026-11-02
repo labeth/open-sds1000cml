@@ -5,7 +5,8 @@ package engine
 import (
 	"math"
 	"math/bits"
-	"open-sds/app/internal/sramcapture"
+
+	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
 // eresQ8 keeps fractional codes through a centred moving average. The

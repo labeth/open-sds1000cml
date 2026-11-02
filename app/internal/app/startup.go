@@ -4,8 +4,9 @@ package app
 
 import (
 	"errors"
-	"open-sds/app/internal/fpgaload"
-	"open-sds/app/internal/lcd"
+
+	"github.com/labeth/open-sds1000cml/app/internal/fpgaload"
+	"github.com/labeth/open-sds1000cml/app/internal/lcd"
 )
 
 // loadGeneralImage loads the embedded general image before any SRAM register

@@ -3,9 +3,10 @@
 package web
 
 import (
-	"open-sds/app/internal/testenv"
 	"os/exec"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/testenv"
 )
 
 // TRLC-LINKS: REQ-SDS-014

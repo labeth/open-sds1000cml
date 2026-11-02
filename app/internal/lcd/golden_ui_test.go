@@ -5,10 +5,11 @@ package lcd
 import (
 	"fmt"
 	"math"
-	"open-sds/app/internal/engine"
-	"open-sds/app/internal/panel/wsview"
-	"open-sds/app/internal/streamview"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
+	"github.com/labeth/open-sds1000cml/app/internal/streamview"
 )
 
 // Golden coverage for the task-workspace UI (ADR-TASK-WORKSPACES): the rail,

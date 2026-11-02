@@ -6,13 +6,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
-	"open-sds/app/internal/panel/wsview"
-	"open-sds/app/internal/testenv"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
+	"github.com/labeth/open-sds1000cml/app/internal/testenv"
 )
 
 // TestRemoteCoreParity: what the phone remote says before it sends a value

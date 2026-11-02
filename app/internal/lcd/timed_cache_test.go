@@ -3,9 +3,10 @@
 package lcd
 
 import (
-	"open-sds/app/internal/measure"
 	"strings"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/measure"
 )
 
 // A measurement's envelope timing is taken once for it and its scale: the

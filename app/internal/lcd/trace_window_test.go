@@ -3,8 +3,9 @@
 package lcd
 
 import (
-	"open-sds/app/internal/engine"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
 // A frame with no crossing (forced in AUTO) shows the screen centred on the

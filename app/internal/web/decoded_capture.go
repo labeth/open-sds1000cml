@@ -8,9 +8,10 @@ import (
 	"errors"
 	"io"
 	"net/http"
-	"open-sds/app/internal/sramcapture"
 	"strconv"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
 // Optional capability implemented by the normal SRAM acquisition owner.

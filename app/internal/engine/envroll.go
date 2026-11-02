@@ -3,8 +3,9 @@
 package engine
 
 import (
-	"open-sds/app/internal/iface"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/iface"
 )
 
 // Slow-envelope and roll band paths (spec 04). Both display a per-column

@@ -3,10 +3,11 @@
 package web
 
 import (
-	"open-sds/app/internal/testenv"
 	"os/exec"
 	"strings"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/testenv"
 )
 
 // TestSuperresJS runs the super-resolution stacker math (superres.js) under

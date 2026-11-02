@@ -5,13 +5,14 @@ package decode
 import (
 	"fmt"
 	"math/rand"
-	"open-sds/app/internal/testenv"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/testenv"
 )
 
 // symbolRTL runs tb_symbol_trigger on per-clock lines with configuration c

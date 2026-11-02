@@ -12,8 +12,9 @@ package measure
 
 import (
 	"math"
-	"open-sds/app/internal/dsp"
 	"unsafe"
+
+	"github.com/labeth/open-sds1000cml/app/internal/dsp"
 )
 
 // Result is the full auto-measurement set: volts, seconds and Hz. HasTiming is

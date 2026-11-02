@@ -5,10 +5,11 @@ package engine
 import (
 	"math"
 	"math/rand"
-	"open-sds/app/internal/decode"
-	"open-sds/app/internal/sramcapture"
 	"reflect"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/decode"
+	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
 // linesWords packs two lines of levels (0 or 1, a period each) into

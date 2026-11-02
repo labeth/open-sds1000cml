@@ -4,11 +4,12 @@ package panel
 
 import (
 	"math"
-	"open-sds/app/internal/analysis"
-	"open-sds/app/internal/panel/framecalc"
-	"open-sds/app/internal/panel/wsview"
-	"open-sds/app/internal/settings"
 	"strings"
+
+	"github.com/labeth/open-sds1000cml/app/internal/analysis"
+	"github.com/labeth/open-sds1000cml/app/internal/panel/framecalc"
+	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
+	"github.com/labeth/open-sds1000cml/app/internal/settings"
 )
 
 // SettingsView reports the controller-owned slice of the persisted setup

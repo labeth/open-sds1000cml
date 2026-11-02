@@ -3,12 +3,13 @@
 package web
 
 import (
-	"open-sds/app/internal/testenv"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/testenv"
 )
 
 // TestSigrokExportLogicE2E proves the whole point of the mixed analog+logic

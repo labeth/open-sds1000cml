@@ -8,9 +8,10 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"open-sds/app/internal/engine"
 	"strings"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
 // TRLC-LINKS: REQ-SDS-162

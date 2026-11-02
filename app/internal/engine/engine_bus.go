@@ -5,9 +5,10 @@ package engine
 import (
 	"errors"
 	"fmt"
-	"open-sds/app/internal/bus"
-	"open-sds/app/internal/iface"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/bus"
+	"github.com/labeth/open-sds1000cml/app/internal/iface"
 )
 
 // SetLEDs stages the panel LED latch word (MAX V, CS3 0x09..0x0b): compare-on-

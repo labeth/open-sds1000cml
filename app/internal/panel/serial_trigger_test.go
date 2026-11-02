@@ -3,11 +3,12 @@
 package panel
 
 import (
-	"open-sds/app/internal/engine"
-	"open-sds/app/internal/panel/framecalc"
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	"github.com/labeth/open-sds1000cml/app/internal/panel/framecalc"
 )
 
 // The serial trigger is the TRIG tab's fifth Type; it decodes with the BUS

@@ -24,10 +24,6 @@ import (
 	"io"
 	"net"
 	"net/netip"
-	"open-sds/ota/internal/config"
-	"open-sds/ota/internal/fdinherit"
-	"open-sds/ota/internal/gpmc"
-	"open-sds/ota/internal/vxi11"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -38,6 +34,11 @@ import (
 	"syscall"
 	"testing"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/ota/internal/config"
+	"github.com/labeth/open-sds1000cml/ota/internal/fdinherit"
+	"github.com/labeth/open-sds1000cml/ota/internal/gpmc"
+	"github.com/labeth/open-sds1000cml/ota/internal/vxi11"
 )
 
 // ---- fake gpmc reader (behind the gpmcReader seam) --------------------------

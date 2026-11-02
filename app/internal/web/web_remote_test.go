@@ -12,8 +12,6 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"open-sds/app/internal/engine"
-	"open-sds/app/internal/panel"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -21,6 +19,9 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	"github.com/labeth/open-sds1000cml/app/internal/panel"
 )
 
 // get runs one GET (with extra headers) against s.

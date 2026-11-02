@@ -19,9 +19,10 @@ package bus
 import (
 	"errors"
 	"fmt"
-	"open-sds/app/internal/iface"
 	"syscall"
 	"unsafe"
+
+	"github.com/labeth/open-sds1000cml/app/internal/iface"
 )
 
 // Bus is the register surface the acquisition engine (and, through

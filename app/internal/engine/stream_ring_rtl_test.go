@@ -4,14 +4,15 @@ package engine
 
 import (
 	"fmt"
-	"open-sds/app/internal/sramcapture"
-	"open-sds/app/internal/testenv"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strconv"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
+	"github.com/labeth/open-sds1000cml/app/internal/testenv"
 )
 
 // The bits image's top level in ring mode (ADR-STREAM-RING,

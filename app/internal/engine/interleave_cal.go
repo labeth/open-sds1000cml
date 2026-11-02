@@ -7,7 +7,8 @@ import (
 	"encoding/json"
 	"errors"
 	"math"
-	"open-sds/app/internal/dsp"
+
+	"github.com/labeth/open-sds1000cml/app/internal/dsp"
 )
 
 // InterleaveCalibration contains measured offset, gain and aperture corrections.

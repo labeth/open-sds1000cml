@@ -3,10 +3,11 @@
 package panel
 
 import (
-	"open-sds/app/internal/engine"
-	"open-sds/app/internal/superres"
 	"reflect"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	"github.com/labeth/open-sds1000cml/app/internal/superres"
 )
 
 // Native review must show the accumulated mean without implicit deconvolution.

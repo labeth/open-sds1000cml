@@ -12,9 +12,9 @@ else
 BUILT ?= $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
 endif
 LDFLAGS := -s -w \
-  -X open-sds/ota/internal/buildinfo.Version=$(VERSION) \
-  -X open-sds/ota/internal/buildinfo.Commit=$(COMMIT) \
-  -X open-sds/ota/internal/buildinfo.Built=$(BUILT)
+  -X github.com/labeth/open-sds1000cml/ota/internal/buildinfo.Version=$(VERSION) \
+  -X github.com/labeth/open-sds1000cml/ota/internal/buildinfo.Commit=$(COMMIT) \
+  -X github.com/labeth/open-sds1000cml/ota/internal/buildinfo.Built=$(BUILT)
 
 DIST := dist
 

@@ -4,11 +4,12 @@ package lcd
 
 import (
 	"fmt"
-	"open-sds/app/internal/decode"
-	"open-sds/app/internal/engine"
 	"slices"
 	"strconv"
 	"strings"
+
+	"github.com/labeth/open-sds1000cml/app/internal/decode"
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
 // kindData is the kind of a decoded span that carries a unit.

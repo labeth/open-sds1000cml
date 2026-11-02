@@ -15,9 +15,10 @@ package engine
 
 import (
 	"math"
-	"open-sds/app/internal/decode"
 	"sync"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/decode"
 )
 
 // The decode.Span kinds the serial trigger and the streams read.

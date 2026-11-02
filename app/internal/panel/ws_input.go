@@ -4,9 +4,10 @@ package panel
 
 import (
 	"fmt"
-	"open-sds/app/internal/panel/framecalc"
-	"open-sds/app/internal/panel/wsview"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/panel/framecalc"
+	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
 )
 
 // Input routing (REQ-SDS-211, REQ-SDS-213). F1..F5 switch workspaces with

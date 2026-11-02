@@ -5,9 +5,10 @@ package engine
 import (
 	"encoding/binary"
 	"math"
-	"open-sds/app/internal/sramcapture"
 	"testing"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
 // fuzzSampleS are the sample times a decoder meets: the scope's rates, the

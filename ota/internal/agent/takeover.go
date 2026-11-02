@@ -4,15 +4,16 @@ package agent
 
 import (
 	"fmt"
-	"open-sds/ota/internal/fdinherit"
-	"open-sds/ota/internal/gpmc"
-	"open-sds/ota/internal/sysinfo"
-	"open-sds/ota/internal/vxi11"
 	"os"
 	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/ota/internal/fdinherit"
+	"github.com/labeth/open-sds1000cml/ota/internal/gpmc"
+	"github.com/labeth/open-sds1000cml/ota/internal/sysinfo"
+	"github.com/labeth/open-sds1000cml/ota/internal/vxi11"
 )
 
 // TakeoverOpts are the takeover RPC's arguments.

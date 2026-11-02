@@ -3,11 +3,12 @@
 package panel
 
 import (
-	"open-sds/app/internal/settings"
 	"strings"
 	"testing"
 	"testing/synctest"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/settings"
 )
 
 // The Save/Recall key opens the FILE tab: a row per numbered setup with what

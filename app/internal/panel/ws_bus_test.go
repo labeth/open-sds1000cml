@@ -5,11 +5,12 @@ package panel
 import (
 	"fmt"
 	"math"
-	"open-sds/app/internal/engine"
 	"reflect"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
 // BUS: the list holds the complete packets still while the messages repeat;

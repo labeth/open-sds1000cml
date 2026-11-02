@@ -4,8 +4,9 @@ package scpi
 
 import (
 	"math/rand"
-	"open-sds/app/internal/engine"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
 // Waveform readout fuzz: the VXI-11 WF? path is network-exposed and does

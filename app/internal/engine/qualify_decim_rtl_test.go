@@ -4,12 +4,13 @@ package engine
 
 import (
 	"fmt"
-	"open-sds/app/internal/testenv"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/testenv"
 )
 
 // The qualify image's top level with a pulse qualifier on full-rate and

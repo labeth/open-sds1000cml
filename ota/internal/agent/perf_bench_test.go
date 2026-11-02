@@ -9,12 +9,13 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"net"
-	"open-sds/ota/internal/config"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/ota/internal/config"
 )
 
 // TRLC-LINKS: REQ-SDS-113

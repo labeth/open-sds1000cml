@@ -5,13 +5,14 @@ package agent
 import (
 	"errors"
 	"fmt"
-	"open-sds/ota/internal/fdinherit"
 	"os"
 	"os/exec"
 	"strconv"
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/ota/internal/fdinherit"
 )
 
 // superviseLoop is the app lifecycle state machine. It only acts once the

@@ -6,11 +6,12 @@ import (
 	"bytes"
 	"encoding/binary"
 	"math"
-	"open-sds/app/internal/analog"
-	"open-sds/app/internal/engine"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/analog"
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
 // fakeScope is a truthful mini-instrument: every setter updates the stats

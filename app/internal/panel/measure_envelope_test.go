@@ -4,10 +4,11 @@ package panel
 
 import (
 	"math"
-	"open-sds/app/internal/engine"
-	"open-sds/app/internal/measure"
 	"testing"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	"github.com/labeth/open-sds1000cml/app/internal/measure"
 )
 
 // MEASURE reads an inverted channel's live envelope with the complement duty,

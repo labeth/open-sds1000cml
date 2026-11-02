@@ -6,9 +6,10 @@
 package frames
 
 import (
-	"open-sds/app/internal/engine"
 	"sync"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
 // Source is the single-consumer frame producer (the engine).

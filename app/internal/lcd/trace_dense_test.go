@@ -3,9 +3,10 @@
 package lcd
 
 import (
-	"open-sds/app/internal/engine"
-	"open-sds/app/internal/panel/wsview"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
+	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
 )
 
 // A record denser than the screen draws each column's full min..max: a

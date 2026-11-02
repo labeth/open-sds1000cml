@@ -7,9 +7,10 @@ import (
 	"math/rand"
 	"net/http"
 	"net/http/httptest"
-	"open-sds/app/internal/engine"
 	"sync/atomic"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
 // Frame-serving fuzz: even if an engine invariant slipped (Valid > len,

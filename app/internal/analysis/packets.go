@@ -6,8 +6,9 @@ import (
 	"cmp"
 	"fmt"
 	"math"
-	"open-sds/app/internal/decode"
 	"strings"
+
+	"github.com/labeth/open-sds1000cml/app/internal/decode"
 )
 
 // Packets: the decoded spans of one record grouped into the messages of the

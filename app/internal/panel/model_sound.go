@@ -5,8 +5,9 @@ package panel
 import (
 	"fmt"
 	"math"
-	"open-sds/app/internal/panel/wsview"
-	"open-sds/app/internal/sound"
+
+	"github.com/labeth/open-sds1000cml/app/internal/panel/wsview"
+	"github.com/labeth/open-sds1000cml/app/internal/sound"
 )
 
 // The SOUND tab: SOUND's settings as sheet rows, so the LCD's sheet, the

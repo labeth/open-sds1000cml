@@ -5,12 +5,13 @@ package analysis
 import (
 	"encoding/json"
 	"fmt"
-	"open-sds/app/internal/testenv"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/testenv"
 )
 
 // TestJSLayerParity runs every layer of the web page (layers.js) and of the

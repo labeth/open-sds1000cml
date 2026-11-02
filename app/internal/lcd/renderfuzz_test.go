@@ -4,8 +4,9 @@ package lcd
 
 import (
 	"math/rand"
-	"open-sds/app/internal/engine"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
 // Render fuzz: the LCD renderer runs on the device 20x a second — a panic on

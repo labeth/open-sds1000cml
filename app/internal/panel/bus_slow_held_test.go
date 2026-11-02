@@ -4,9 +4,10 @@ package panel
 
 import (
 	"math"
-	"open-sds/app/internal/decode"
-	"open-sds/app/internal/engine"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/decode"
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
 // An Oregon sensor's burst cut by a 5 ms/div record reads as a Manchester

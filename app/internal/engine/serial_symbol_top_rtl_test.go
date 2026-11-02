@@ -4,15 +4,16 @@ package engine
 
 import (
 	"fmt"
-	"open-sds/app/internal/decode"
-	"open-sds/app/internal/sramcapture"
-	"open-sds/app/internal/testenv"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/decode"
+	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
+	"github.com/labeth/open-sds1000cml/app/internal/testenv"
 )
 
 // The qualify image's defines for the top-level simulation (the vendor-FIFO

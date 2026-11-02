@@ -4,8 +4,9 @@ package lcd
 
 import (
 	"fmt"
-	"open-sds/app/internal/streamview"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/streamview"
 )
 
 // streamStatusRef is the fmt-built status line streamStatus must match.

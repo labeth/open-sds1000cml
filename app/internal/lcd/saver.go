@@ -3,10 +3,11 @@
 package lcd
 
 import (
-	"open-sds/app/internal/engine"
 	"os"
 	"strconv"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
 // The screen saver picture (ADR-SCREEN-SAVER): a small live scope with its run

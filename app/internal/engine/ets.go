@@ -4,8 +4,9 @@ package engine
 
 import (
 	"math"
-	"open-sds/app/internal/iface"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/iface"
 )
 
 // Equivalent-time sampling (spec 04 §3): OPT-IN ONLY, never auto-routed.

@@ -7,10 +7,11 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"open-sds/app/internal/engine"
 	"reflect"
 	"testing"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
 // getBin fetches /api/frame.bin and returns the decoded header + raw payload.

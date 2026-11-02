@@ -3,9 +3,10 @@
 package panel
 
 import (
-	"open-sds/app/internal/analog"
-	"open-sds/app/internal/engine"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/analog"
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
 // A reference is the screen at the save: from a deep stopped record it holds

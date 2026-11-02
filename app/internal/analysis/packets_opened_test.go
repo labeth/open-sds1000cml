@@ -3,9 +3,10 @@
 package analysis
 
 import (
-	"open-sds/app/internal/decode"
 	"reflect"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/decode"
 )
 
 // The protocols that open each frame with a start marker take their packets

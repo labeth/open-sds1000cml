@@ -4,11 +4,12 @@ package engine
 
 import (
 	"math"
-	"open-sds/app/internal/decode"
-	"open-sds/app/internal/decodedlines"
-	"open-sds/app/internal/sramcapture"
 	"slices"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/decode"
+	"github.com/labeth/open-sds1000cml/app/internal/decodedlines"
+	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
 // linLevels is a LIN line (idle high) at baud: per frame a 13-bit break, the

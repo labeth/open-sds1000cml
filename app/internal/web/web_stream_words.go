@@ -8,11 +8,12 @@ import (
 	"errors"
 	"io"
 	"net/http"
-	"open-sds/app/internal/engine"
 	"slices"
 	"strconv"
 	"sync"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/engine"
 )
 
 // The client decode's transport (ADR-STREAM-CLIENT-DECODE): a page's web

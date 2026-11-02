@@ -2,7 +2,7 @@
 
 package panel
 
-import "open-sds/app/internal/engine"
+import "github.com/labeth/open-sds1000cml/app/internal/engine"
 
 // Display-state accessors for the SCPI handler (scpi.Display): the panel
 // controller owns the X-Y view, persistence and menu state that the SCPI

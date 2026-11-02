@@ -4,13 +4,14 @@ package decode
 
 import (
 	"fmt"
-	"open-sds/app/internal/testenv"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/testenv"
 )
 
 // The protocol images' decoder lists (ADR-PROTOCOL-PACKET-IMAGE).

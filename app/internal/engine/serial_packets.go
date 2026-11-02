@@ -2,7 +2,7 @@
 
 package engine
 
-import "open-sds/app/internal/decode"
+import "github.com/labeth/open-sds1000cml/app/internal/decode"
 
 // matchPackets keeps a payload pattern inside one decoder-delimited packet.
 // Check the whole packet before matching: CRC/parity errors can follow its data.

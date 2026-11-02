@@ -3,9 +3,10 @@
 package lcd
 
 import (
-	"open-sds/app/internal/streamview"
 	"strings"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/streamview"
 )
 
 // A stream that waits for an FPGA image says why instead of its (empty)

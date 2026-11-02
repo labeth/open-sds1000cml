@@ -7,10 +7,11 @@ import (
 	"errors"
 	"fmt"
 	"math/bits"
-	"open-sds/app/internal/sramcapture"
-	"open-sds/app/internal/superres"
 	"sync/atomic"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
+	"github.com/labeth/open-sds1000cml/app/internal/superres"
 )
 
 // ImageSwitcher reconfigures the acquisition FPGA between the general image

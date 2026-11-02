@@ -6,9 +6,10 @@ import (
 	"context"
 	"errors"
 	"math"
-	"open-sds/app/internal/decode"
-	"open-sds/app/internal/sramcapture"
 	"testing"
+
+	"github.com/labeth/open-sds1000cml/app/internal/decode"
+	"github.com/labeth/open-sds1000cml/app/internal/sramcapture"
 )
 
 // softRingPlanFor is the ring plan beginSoftStream makes for a protocol on

@@ -7,9 +7,10 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"open-sds/app/internal/panel"
 	"testing"
 	"time"
+
+	"github.com/labeth/open-sds1000cml/app/internal/panel"
 )
 
 // panelFixture is the panel's remote surface with canned answers; it
