@@ -72,7 +72,7 @@ func (c *Controller) nextView() {
 			c.viewMode = viewYT
 		}
 		c.ui.views[ws] = c.viewMode
-		name, again = viewName(c.viewMode), viewName(map[bool]int{true: viewXY, false: viewYT}[c.viewMode == viewYT])
+		name, again = viewName(c.viewMode), viewName(choose(c.viewMode == viewYT, viewXY, viewYT))
 	case wsview.Bus:
 		// Packets -> Eye diagram -> Stream -> Visual -> Packets
 		eye, stream, visual := !c.ui.busEye && !c.ui.busStream && !c.ui.busVisual, c.ui.busEye, c.ui.busStream
@@ -91,7 +91,7 @@ func (c *Controller) nextView() {
 		name, again = viewName(c.viewMode), viewName(nextSpecView(c.viewMode))
 	case wsview.Measure:
 		c.ui.measAll = !c.ui.measAll
-		name, again = map[bool]string{true: labelAllValues, false: labelStats}[c.ui.measAll], map[bool]string{true: labelStats, false: labelAllValues}[c.ui.measAll]
+		name, again = choose(c.ui.measAll, labelAllValues, labelStats), choose(c.ui.measAll, labelStats, labelAllValues)
 	case wsview.Compare:
 		stacking := c.stack != nil
 		c.mu.Unlock()

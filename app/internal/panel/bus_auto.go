@@ -497,7 +497,7 @@ func (c *Controller) measureSlower(m busMsgs, featureS float64) busMsgs {
 	// the search's records, whole and resolving the bus (findSlowBus): the
 	// BUS view's sampled ones are a screen's budget (a sample every 261 us
 	// at 5ms/div, under the bench DCF77's 300 us pulse)
-	if e, ok := c.eng.(interface{ LeaseSearchView(time.Duration) }); ok {
+	if e, ok := c.eng.(searchViewLeaser); ok {
 		e.LeaseSearchView(10 * time.Second)
 		defer e.LeaseSearchView(0)
 	}
@@ -618,7 +618,7 @@ func (c *Controller) endAutoset(stop chan struct{}) {
 	c.mu.Unlock()
 	// The sweep's sample lease ends with it: held on, the live view stayed
 	// the filtered decimated capture (2.34 MHz at 5us/div) for 3 s after.
-	if e, ok := c.eng.(interface{ LeaseSampleView(time.Duration) }); ok {
+	if e, ok := c.eng.(sampleViewLeaser); ok {
 		e.LeaseSampleView(0)
 	}
 	c.syncStreamView() // BUS's Stream view streams again, the bus as AUTO left it

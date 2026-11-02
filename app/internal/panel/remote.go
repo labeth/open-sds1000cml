@@ -220,7 +220,7 @@ func workspaceView(s *sv, ws wsview.WS) string {
 	case wsview.Bus:
 		return busViewName(&s.ui)
 	case wsview.Measure:
-		return map[bool]string{true: labelAllValues, false: labelStats}[s.ui.measAll]
+		return choose(s.ui.measAll, labelAllValues, labelStats)
 	case wsview.Compare:
 		if s.stacking {
 			return "Stacking"
@@ -358,7 +358,7 @@ func paneTool(s *sv, v wsview.View) ([]ToolSeg, string) {
 		out = append(out, ToolSeg{sg.Key, sg.Job})
 	}
 	return out,
-		"F1 again: " + viewName(map[bool]int{true: viewXY, false: viewYT}[s.viewMode == viewYT])
+		"F1 again: " + viewName(choose(s.viewMode == viewYT, viewXY, viewYT))
 }
 
 // displayAndView is Snapshot from a state read already taken.
@@ -885,7 +885,7 @@ func (c *Controller) RemoteKnob(name string, dir, steps int, nomenu bool) SetRes
 	if !knobNames[name] {
 		return SetResult{Row: name, Error: fmt.Sprintf("no knob %q", name)}
 	}
-	dir = map[bool]int{true: 1, false: -1}[dir >= 0]
+	dir = choose(dir >= 0, 1, -1)
 	menuKnob := name == "tdiv" || name == "adjust" || name == "horizpos"
 	return c.remoteCall(name, func() SetResult {
 		if why := c.remoteWaits(true, nomenu || menuKnob); why != "" {
@@ -970,15 +970,15 @@ func (c *Controller) againNext(s *sv) string {
 	case wsview.Spectrum:
 		return viewName(nextSpecView(s.viewMode))
 	case wsview.Measure:
-		return map[bool]string{true: labelStats, false: labelAllValues}[s.ui.measAll]
+		return choose(s.ui.measAll, labelStats, labelAllValues)
 	case wsview.Compare:
 		// the key's job: whether the trigger is stable enough is said when it
 		// is pressed (a verdict that flickers with the signal would wake every
 		// remote on every frame)
-		return map[bool]string{true: "cancel stack", false: "stack master"}[s.stacking]
+		return choose(s.stacking, "cancel stack", "stack master")
 	case wsview.Scope: // its key again toggles YT and XY (below)
 	}
-	return viewName(map[bool]int{true: viewXY, false: viewYT}[s.viewMode == viewYT])
+	return viewName(choose(s.viewMode == viewYT, viewXY, viewYT))
 }
 
 // TypeText applies text to the LCD's current context: the highlighted sheet

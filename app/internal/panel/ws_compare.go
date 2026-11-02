@@ -623,7 +623,7 @@ func (c *Controller) cmpAction() {
 			return
 		}
 		_ = c.showRef(i, !s.refShow[i]) // the reference is held (checked above)
-		c.toast(fmt.Sprintf("REF %c %s", 'A'+i, map[bool]string{true: "hidden", false: "shown"}[s.refShow[i]]), 900*time.Millisecond)
+		c.toast(fmt.Sprintf("REF %c %s", 'A'+i, choose(s.refShow[i], "hidden", "shown")), 900*time.Millisecond)
 	case cmpMask:
 		if s.st.MaskSet {
 			next, ok := maskNext[s.st.MaskMode]
@@ -671,7 +671,7 @@ func cmpActionText(s *sv, row int) string {
 		if !s.refHas[i] {
 			return "push: store"
 		}
-		return "push: " + map[bool]string{true: "hide", false: "show"}[s.refShow[i]]
+		return "push: " + choose(s.refShow[i], "hide", "show")
 	case cmpMask:
 		if s.st.MaskSet {
 			return "push: " + map[int]string{1: "stop on fail", 2: "clear mask", 0: "count"}[s.st.MaskMode]
@@ -777,7 +777,7 @@ func (c *Controller) cmpPane(s *sv) *wsview.CmpPane {
 				ref := c.refs[k]
 				c.mu.Unlock()
 				r.Info = fmt.Sprintf("C1+C2 %s %s", si(ref.vdiv[src]*max(ref.probe[src], 1), "V"), si(ref.tdiv, "s"))
-				r.Info += map[bool]string{true: "  shown", false: "  hidden"}[s.refShow[k]]
+				r.Info += choose(s.refShow[k], "  shown", "  hidden")
 				d := diffs[k] //nolint:gosec // G602: k is 0 or 1 (REF A, REF B), diffs is [2]
 				switch {
 				case d.why != "":

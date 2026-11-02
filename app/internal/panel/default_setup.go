@@ -35,7 +35,7 @@ func (c *Controller) DefaultSetup() {
 	if e, ok := c.eng.(interface{ SetPrecisionRate(float64) float64 }); ok {
 		e.SetPrecisionRate(powerOnPrecisionRateHz)
 	}
-	if e, ok := c.eng.(interface{ SetRollStream(bool) }); ok {
+	if e, ok := c.eng.(rollStreamer); ok {
 		e.SetRollStream(false)
 	}
 	c.eng.SetHoldoff(0)
@@ -152,7 +152,7 @@ func (c *Controller) defaultChannel(ch int) {
 	}
 	c.fe.SetProbe(ch, 1)
 	c.fe.SetOffset(ch, 0)
-	b, ok := c.fe.(interface{ SetBWL(int, bool) error })
+	b, ok := c.fe.(bwLimiter)
 	if !ok {
 		return
 	}

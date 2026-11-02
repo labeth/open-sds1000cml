@@ -133,3 +133,13 @@ func clampF(x, lo, hi float64) float64 {
 	}
 	return x
 }
+
+// choose is yes when cond holds, else no (Go has no conditional
+// expression; both are evaluated).
+// TRLC-LINKS: REQ-SDS-211
+func choose[T any](cond bool, yes, no T) T {
+	if cond {
+		return yes
+	}
+	return no
+}

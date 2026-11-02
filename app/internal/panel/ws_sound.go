@@ -385,7 +385,7 @@ func (c *Controller) soundPush() {
 		busy := c.snd.adsr == adsrArmed || c.snd.adsr == adsrCapturing
 		c.snd.mu.Unlock()
 		c.snd.arm(!busy)
-		msg = map[bool]string{true: "Envelope: cancelled", false: "Envelope: armed (the FPGA's edge starts it)"}[busy]
+		msg = choose(busy, "Envelope: cancelled", "Envelope: armed (the FPGA's edge starts it)")
 	case soundPageAB:
 		set = c.snd.update(func(s *SoundSettings) { s.ABIn = 1 - s.ABIn })
 		msg = fmt.Sprintf("A/B: in C%d, out C%d", set.ABIn+1, 2-set.ABIn)

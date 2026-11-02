@@ -66,7 +66,7 @@ func (c *Controller) autoset() {
 	ws, view := c.autoTargetLocked()
 	c.mu.Unlock()
 	c.pushLEDs()
-	if e, ok := c.eng.(interface{ LeaseSpectrumView(time.Duration) }); ok {
+	if e, ok := c.eng.(spectrumViewLeaser); ok {
 		e.LeaseSpectrumView(0) // the sweep's frames come faster without (spectrumAuto takes it back)
 	}
 	go c.runAutosetFor(stop, ws, view)
@@ -398,7 +398,7 @@ func (c *Controller) spectrumAuto(stop chan struct{}, r *autoResult) {
 		c.ui.specF, c.ui.specFSet = f.Freq, true
 		c.mu.Unlock()
 	}
-	if e, ok := c.eng.(interface{ LeaseSpectrumView(time.Duration) }); ok {
+	if e, ok := c.eng.(spectrumViewLeaser); ok {
 		e.LeaseSpectrumView(3 * time.Second)
 	}
 	if !c.waitFrames(stop, 2) || c.frameFn == nil {
@@ -783,7 +783,7 @@ func (c *Controller) autoSweepLook(stop chan struct{}, pass int, td float64) (m 
 		return m, false, true
 	}
 	// whole records, not the roll view's chunks with their gaps
-	e, leased := c.eng.(interface{ LeaseSearchView(time.Duration) })
+	e, leased := c.eng.(searchViewLeaser)
 	for k := 0; k < sparseLooks && missing(); k++ {
 		if leased {
 			e.LeaseSearchView(2 * time.Second)
@@ -1245,7 +1245,7 @@ func (c *Controller) waitFrames(stop chan struct{}, n int) bool {
 func (c *Controller) waitFrame(stop chan struct{}) bool {
 	// Autoset measures chronological samples. Renew its own lease (evenly
 	// sampled frames; a decimated live capture keeps the sweep fast).
-	if e, ok := c.eng.(interface{ LeaseSampleView(time.Duration) }); ok {
+	if e, ok := c.eng.(sampleViewLeaser); ok {
 		e.LeaseSampleView(3 * time.Second)
 	}
 	seq0 := c.frameSeq()

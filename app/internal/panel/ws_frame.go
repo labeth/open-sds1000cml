@@ -216,7 +216,7 @@ func (c *Controller) OnFrame(f *engine.Frame) {
 	}
 	if a.specLease && (s.ui.ws != wsview.Spectrum || s.viewMode != viewFFT && s.viewMode != viewSpectrogram) {
 		a.specLease = false
-		if e, ok := c.eng.(interface{ LeaseSpectrumView(time.Duration) }); ok {
+		if e, ok := c.eng.(spectrumViewLeaser); ok {
 			e.LeaseSpectrumView(0)
 		}
 	}

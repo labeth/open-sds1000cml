@@ -411,7 +411,7 @@ func (c *Controller) measCursor(k, dir, n int) {
 // TRLC-LINKS: REQ-SDS-217
 func (c *Controller) measCursorMode() {
 	s := c.snap()
-	next := map[int]int{0: 1, 1: 2, 2: 0}[map[bool]int{false: 0, true: 1 + s.curType}[s.curOn]]
+	next := map[int]int{0: 1, 1: 2, 2: 0}[choose(s.curOn, 1+s.curType, 0)]
 	c.setCursorMode(next)
 	c.toast("Cursors "+[]string{"off", "Time (Adjust: A; push Position, then turn it: B)", "Volts (Adjust: A; push Position, then turn it: B)"}[next], 1400*time.Millisecond)
 }

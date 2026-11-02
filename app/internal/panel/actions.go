@@ -245,7 +245,7 @@ func (c *Controller) setProbe(ch, x int) error {
 // setBWL sets the 20 MHz bandwidth limit.
 // TRLC-LINKS: REQ-SDS-212
 func (c *Controller) setBWL(ch int, on bool) error {
-	b, ok := c.fe.(interface{ SetBWL(ch int, on bool) error })
+	b, ok := c.fe.(bwLimiter)
 	if !ok {
 		return errors.New("no bandwidth limit on this front end")
 	}
@@ -358,7 +358,7 @@ func (c *Controller) setZoomOff(f float64) error {
 // setRollStream picks how roll runs (chunked or the gap-free stream image).
 // TRLC-LINKS: REQ-SDS-212
 func (c *Controller) setRollStream(on bool) error {
-	e, ok := c.eng.(interface{ SetRollStream(bool) })
+	e, ok := c.eng.(rollStreamer)
 	if !ok {
 		return errors.New("no roll stream in this engine")
 	}

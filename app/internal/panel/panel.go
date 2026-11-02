@@ -70,6 +70,18 @@ type Analog interface {
 	SetTrigCalDetent(ch, detent int, c analog.TrigCal)
 }
 
+// The engine's and the front end's optional capabilities: one that has the
+// method does it, any other leaves the request (a test fake, an engine
+// without the view).
+type (
+	spectrumViewLeaser interface{ LeaseSpectrumView(time.Duration) }
+	searchViewLeaser   interface{ LeaseSearchView(time.Duration) }
+	sampleViewLeaser   interface{ LeaseSampleView(time.Duration) }
+	busSampleLeaser    interface{ LeaseBusSamples(float64, time.Duration) }
+	rollStreamer       interface{ SetRollStream(bool) }
+	bwLimiter          interface{ SetBWL(ch int, on bool) error }
+)
+
 // LED shadow-word bits — spec 02 §7.5 "LED shadow-word bit map". This is the
 // corroborated PCB wiring; the boot firmware's internal LED-index order does NOT
 // match it, so this map is authoritative. (There is no TRIG'd latch LED —

@@ -165,7 +165,7 @@ func (c *Controller) button(code int) {
 		}
 		// Toggle RUN/STOP from the engine's state, not the shadow: a single that
 		// self-stopped moments ago may not be synced into the shadow yet.
-		_ = c.setRun(map[bool]int{true: 1, false: 0}[c.eng.Snapshot().Running]) // cannot fail
+		_ = c.setRun(b2ic(c.eng.Snapshot().Running)) // cannot fail
 	case btnSingle:
 		c.single1() // Normal + one triggered capture, then stop
 	case btnAuto:
@@ -179,9 +179,9 @@ func (c *Controller) button(code int) {
 	case btnPrint:
 		c.printScreen()
 	case btnCh1VdivPush, btnCh2VdivPush:
-		c.variablePush(map[bool]int{true: 1, false: 0}[code == btnCh2VdivPush])
+		c.variablePush(b2ic(code == btnCh2VdivPush))
 	case btnCh1PosPush, btnCh2PosPush:
-		ch := map[bool]int{true: 1, false: 0}[code == btnCh2PosPush]
+		ch := b2ic(code == btnCh2PosPush)
 		if c.fe != nil {
 			_ = c.setOffsetTip(ch, 0) // Zero: the trace back to 0 V
 			c.toast(fmt.Sprintf("CH%d offset 0 V", ch+1), 900*time.Millisecond)
@@ -200,7 +200,7 @@ func (c *Controller) button(code int) {
 	case btnHelp:
 		c.helpKey()
 	case btnCh1, btnCh2:
-		c.chanKey(map[bool]int{true: 1, false: 0}[code == btnCh2])
+		c.chanKey(b2ic(code == btnCh2))
 	default:
 		for i, sk := range softkeys {
 			if code == sk {

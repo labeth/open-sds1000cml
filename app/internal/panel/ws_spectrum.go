@@ -31,7 +31,7 @@ func (c *Controller) specFrame(a *anaState, s *sv, f *engine.Frame) {
 		// not the live envelope's extremes. Not during AUTO's sweep: its
 		// steps wait for frames, and a spectrum's come at a third of the rate
 		// (AUTO leases one itself for its last reading).
-		if e, ok := c.eng.(interface{ LeaseSpectrumView(time.Duration) }); ok {
+		if e, ok := c.eng.(spectrumViewLeaser); ok {
 			e.LeaseSpectrumView(3 * time.Second)
 			a.specLease = true
 		}
@@ -171,7 +171,7 @@ func (c *Controller) specAdjust(dir int) {
 		return
 	}
 	if row < 0 {
-		row = map[bool]int{true: -1, false: 0}[dir > 0]
+		row = choose(dir > 0, -1, 0)
 	}
 	i := clampInt(row+dir, 0, len(peaks)-1)
 	c.mu.Lock()

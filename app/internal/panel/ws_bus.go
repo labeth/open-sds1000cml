@@ -761,7 +761,7 @@ func (c *Controller) detectWith(decimated, stepped bool, accept func(*engine.Fra
 	fresh := func(f *engine.Frame) bool { return stepped || start == 0 || f.Seq >= start+2 }
 	lease := func(d time.Duration) {
 		if decimated {
-			if e, ok := c.eng.(interface{ LeaseSampleView(time.Duration) }); ok {
+			if e, ok := c.eng.(sampleViewLeaser); ok {
 				e.LeaseSampleView(d)
 			}
 		} else {
@@ -806,7 +806,7 @@ func (c *Controller) detectWith(decimated, stepped bool, accept func(*engine.Fra
 			res, sampleS, found := auto()
 			// The search's steps in the log: where AUTO's seconds went.
 			c.logf("panel: bus search: %s look at %s/div waited %v, searched %v: %s", kind, si(c.snap().st.TdivSet(), "s"),
-				t1.Sub(t0).Round(time.Millisecond), c.now().Sub(t1).Round(time.Millisecond), map[bool]string{true: res.Proto, false: "nothing"}[found])
+				t1.Sub(t0).Round(time.Millisecond), c.now().Sub(t1).Round(time.Millisecond), choose(found, res.Proto, "nothing"))
 			return look{res, sampleS, found, resolved, runs, envRun, envBusy, envSeen}
 		}
 		if last {
@@ -1154,7 +1154,7 @@ var slowTdivs = []float64{5e-3, 20e-3, 50e-3}
 // TRLC-LINKS: REQ-SDS-214
 func (c *Controller) findSlowBus(auto AutoSource, wanted func() bool, prior string, priorFeat float64) (r decode.Result, sampleS float64, found bool, stepped float64, again bool) {
 	prev := c.snap().st.TdivSet()
-	e, searching := c.eng.(interface{ LeaseSearchView(time.Duration) })
+	e, searching := c.eng.(searchViewLeaser)
 	if searching {
 		e.LeaseSearchView(10 * time.Second)
 		defer e.LeaseSearchView(0)
@@ -2089,7 +2089,7 @@ func busFeatureKey(s *sv) string {
 // (sampleS 0, LeaseRawFor), ending the other.
 // TRLC-LINKS: REQ-SDS-214
 func (c *Controller) holdBusLease(sampleS float64) {
-	e, ok := c.eng.(interface{ LeaseBusSamples(float64, time.Duration) })
+	e, ok := c.eng.(busSampleLeaser)
 	if sampleS > 0 && ok {
 		if c.busRawHeld.Swap(false) {
 			c.leaseRaw(rawForBus, 0)
@@ -2139,7 +2139,7 @@ func (c *Controller) endBusRaw() {
 		c.leaseRaw(rawForBus, 0)
 	}
 	if c.busSampHeld.Swap(false) {
-		if e, ok := c.eng.(interface{ LeaseBusSamples(float64, time.Duration) }); ok {
+		if e, ok := c.eng.(busSampleLeaser); ok {
 			e.LeaseBusSamples(0, 0)
 		}
 	}

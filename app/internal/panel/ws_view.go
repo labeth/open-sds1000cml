@@ -500,7 +500,7 @@ func pickerView(s *sv) *wsview.Picker {
 			{Text: "Turn Adjust or Position: the first byte.  Push Adjust (or F1): trigger on it; F2-F4: on 2-4 bytes.", Col: wsview.Text},
 			{Text: "F5 or Menu On/Off: back, the trigger as it was.", Col: wsview.Dim},
 		},
-		Now: "Now: " + matchText(s) + map[bool]string{true: "  (serial trigger on)", false: ""}[s.st.SerialMode != 0],
+		Now: "Now: " + matchText(s) + choose(s.st.SerialMode != 0, "  (serial trigger on)", ""),
 	}
 }
 
@@ -667,9 +667,9 @@ func busOffPane(s *sv, p *wsview.BusPane) {
 		p.Caption, p.CapCol = "AUTO: detecting the bus on CH1 and CH2...", wsview.Amber
 		p.Msg = []wsview.Span{{Text: "DETECTING...", Col: wsview.Text}}
 	default:
-		p.Caption, p.CapCol = map[bool]string{true: "no bus found - decode is off", false: "decode is off"}[failed], wsview.Dim
+		p.Caption, p.CapCol = choose(failed, "no bus found - decode is off", "decode is off"), wsview.Dim
 		p.Msg = []wsview.Span{
-			{Text: map[bool]string{true: "NO BUS FOUND", false: "DECODE IS OFF"}[failed], Col: wsview.Text},
+			{Text: choose(failed, "NO BUS FOUND", "DECODE IS OFF"), Col: wsview.Text},
 			{Text: "Push Adjust: try again - auto-detects UART, I2C, SPI and more on CH1/CH2 and decodes it", Col: wsview.Amber},
 			{Text: "Utility or Menu On/Off: set the protocol, baud and lines by hand on the BUS sheet", Col: wsview.Dim},
 		}
@@ -782,7 +782,7 @@ func (c *Controller) streamPane(s *sv) *wsview.BusPane {
 	case !busDecoding(s):
 		p.Caption, p.CapCol = "STREAM: no bus decoded", wsview.Dim
 		p.Msg = []wsview.Span{
-			{Text: map[bool]string{true: "NO BUS FOUND", false: "NO BUS DECODED"}[u.busFailed], Col: wsview.Text},
+			{Text: choose(u.busFailed, "NO BUS FOUND", "NO BUS DECODED"), Col: wsview.Text},
 			{Text: "Push Adjust: detect the bus on CH1/CH2 - the stream then starts on it", Col: wsview.Amber},
 			{Text: "Utility or Menu On/Off: set the protocol, baud and lines by hand on the BUS sheet", Col: wsview.Dim},
 			{Text: "A stream decodes the bus into a transcript (Stream mode on the BUS sheet says how)", Col: wsview.Dim},
