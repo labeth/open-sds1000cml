@@ -20,9 +20,9 @@
     "inputs": "2023da302e22f2eeba8a1187326e1fd7321b520014d395278c1baaa56454f355"
   },
   "stream": {
-    "seed": 66,
-    "sha256": "9da19141c07c1d5f1ee6343d7de6d711fc4cacd0566d9ae3edec97655cf67190",
-    "inputs": "9314acad6834b569282f4113d0359a27171f6229f0a3e56530ab173be1a9b2dc"
+    "seed": 233,
+    "sha256": "b50f4867f50cafa02d81f01fcf0db7e4984a14cd408cb1c5cf2474c57fd2525a",
+    "inputs": "54ec49eabb007f79a6d83566a0efbd805a3d33961ffa8e0a0d9ac04ceb6de026"
   },
   "qualify": {
     "seed": 52,
@@ -40,8 +40,8 @@
     "inputs": "8151238e1cf58b42cd80fa40475012cce1c178e933ad7bbbe150683bfe779474"
   },
   "bits": {
-    "seed": 43,
-    "sha256": "f49cb5e852c99c7500212460c08a6fbd7c1a89a9c7e7d7649b7e6452f5e4080d",
-    "inputs": "ce3ce1ecbc993fa3c96b851d0b3bcab2f4a293796a276e5f7d52fc398c488c85"
+    "seed": 217,
+    "sha256": "2e6fc8008658a87440e0ddb9ec36c8eb40fce2f6ee026f98c74647b3aa25a3eb",
+    "inputs": "a0f207a156f2275df8ef823ca3c366f82580d2ea2949183f1ef19b53830e01ec"
   }
 }
