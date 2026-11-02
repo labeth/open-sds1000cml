@@ -208,6 +208,20 @@ func (w *acquisitionWorker) spinning() bool {
 	return time.Since(w.sSpin) < streamSpinFor
 }
 
+// spinPause is the wait between looks while spinning: none, unless the
+// shared ring is over half full. The worker runs at real-time priority and
+// the app reads the ring at normal priority on the same core: a worker that
+// never sleeps starves the reader it fills the ring for, and the ring
+// overflowed (after an 80 ms pump gap, half a second of catching up). Then
+// it waits half as long as the pump took, a third of the core for the app.
+// TRLC-LINKS: REQ-SDS-035
+func (w *acquisitionWorker) spinPause(busy time.Duration) time.Duration {
+	if !w.sShared || w.sCount <= len(w.sring)/2 {
+		return 0
+	}
+	return max(streamPumpFastest, busy/2)
+}
+
 // streamPumpOn starts or stops the stream pump and its FIFO service.
 // TRLC-LINKS: REQ-SDS-035
 func (w *acquisitionWorker) streamPumpOn(on bool) error {
@@ -760,7 +774,7 @@ func (w *acquisitionWorker) serve(fd int) error {
 			// drain itself is bus time the stream's rate bounds.
 			wait = w.pumpWait()
 			if w.spinning() {
-				wait = 0
+				wait = w.spinPause(busy)
 			} else if w.sEvery == streamPumpFastest {
 				// A backlog: the drum refills a bank as soon as one is free,
 				// so the next look comes at once, not after a wait as long

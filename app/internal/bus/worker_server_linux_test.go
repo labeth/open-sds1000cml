@@ -28,3 +28,25 @@ func TestPumpEveryFollowsTheRate(t *testing.T) {
 		}
 	}
 }
+
+// A spinning pump leaves the app's reader the core once the shared ring is
+// over half full, and never sleeps while the ring has room.
+// TRLC-LINKS: REQ-SDS-035
+func TestSpinPauseGivesTheReaderTheCore(t *testing.T) {
+	w := &acquisitionWorker{sShared: true, sring: make([]byte, 1<<20)}
+	w.sCount = len(w.sring) / 2
+	if d := w.spinPause(6 * time.Millisecond); d != 0 {
+		t.Fatalf("half full: paused %v", d)
+	}
+	w.sCount++
+	if d := w.spinPause(6 * time.Millisecond); d != 3*time.Millisecond {
+		t.Fatalf("over half full after a 6 ms pump: paused %v, want 3ms", d)
+	}
+	if d := w.spinPause(0); d != streamPumpFastest {
+		t.Fatalf("over half full after an empty look: paused %v, want %v", d, streamPumpFastest)
+	}
+	w.sShared = false
+	if d := w.spinPause(6 * time.Millisecond); d != 0 {
+		t.Fatalf("no shared ring: paused %v", d)
+	}
+}
