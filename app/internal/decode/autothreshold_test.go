@@ -2,6 +2,7 @@
 package decode
 
 import (
+	"math"
 	"math/rand"
 	"testing"
 )
@@ -53,3 +54,51 @@ func TestAutoThresholdExtentIsBoth(t *testing.T) {
 	}
 }
 
+// armedCrossings in integers marks what the float comparisons marked, for
+// any threshold and band (fractional, off the codes, NaN).
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-229
+func TestArmedCrossingsIsTheFloatOne(t *testing.T) {
+	ref := func(s sliced, n int) (rise, fall []bool) {
+		rise, fall = make([]bool, n), make([]bool, n)
+		upArmed, downArmed := false, false
+		for i := 0; i < n; i++ {
+			c := float64(s.codes[i])
+			if upArmed && c >= s.threshold {
+				rise[i], upArmed = true, false
+			}
+			if downArmed && c < s.threshold {
+				fall[i], downArmed = true, false
+			}
+			if c <= s.thLo {
+				upArmed = true
+			}
+			if c >= s.thHi {
+				downArmed = true
+			}
+		}
+		return rise, fall
+	}
+	r := rand.New(rand.NewSource(12))
+	levels := []float64{math.NaN(), -3, 0, 0.5, 63.5, 64, 127.25, 200, 255, 255.5, 300}
+	pick := func() float64 {
+		if r.Intn(3) == 0 {
+			return levels[r.Intn(len(levels))]
+		}
+		return r.Float64()*270 - 7
+	}
+	for k := 0; k < 3000; k++ {
+		n := r.Intn(300)
+		codes := make([]uint8, n)
+		for i := range codes {
+			codes[i] = uint8(r.Intn(256))
+		}
+		s := sliced{codes: codes, n: n, threshold: pick(), thLo: pick(), thHi: pick()}
+		gr, gf := armedCrossings(s, n)
+		wr, wf := ref(s, n)
+		for i := 0; i < n; i++ {
+			if gr[i] != wr[i] || gf[i] != wf[i] {
+				t.Fatalf("case %d (thr %v lo %v hi %v) sample %d differs", k, s.threshold, s.thLo, s.thHi, i)
+			}
+		}
+	}
+}

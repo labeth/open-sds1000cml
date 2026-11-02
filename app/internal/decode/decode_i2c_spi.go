@@ -415,19 +415,28 @@ func DecodeSPI(clk, data []uint8, colTimeS float64, cfg SPICfg) Result {
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-229
 func armedCrossings(s sliced, n int) (rise, fall []bool) {
 	rise, fall = make([]bool, n), make([]bool, n)
+	// The levels as codes, compared in integers (a float compare a sample
+	// stalled the device's pipeline): c >= threshold exactly when c >= on,
+	// c < threshold when c < below (none for a NaN threshold), c <= thLo
+	// when c <= lo, c >= thHi when c >= hi.
+	on, lo, hi := codeCeil(s.threshold), codeFloor(s.thLo), codeCeil(s.thHi)
+	below := on
+	if math.IsNaN(s.threshold) {
+		below = 0
+	}
 	upArmed, downArmed := false, false
-	for i := 0; i < n; i++ {
-		c := float64(s.codes[i])
-		if upArmed && c >= s.threshold {
+	for i, v := range s.codes[:n] {
+		c := int(v)
+		if upArmed && c >= on {
 			rise[i], upArmed = true, false
 		}
-		if downArmed && c < s.threshold {
+		if downArmed && c < below {
 			fall[i], downArmed = true, false
 		}
-		if c <= s.thLo {
+		if c <= lo {
 			upArmed = true
 		}
-		if c >= s.thHi {
+		if c >= hi {
 			downArmed = true
 		}
 	}
