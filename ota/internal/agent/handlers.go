@@ -245,12 +245,12 @@ func hAppStart(a *Agent, _ json.RawMessage) (any, error) {
 		return nil, errors.New("not taken over — the factory app owns the instrument; run takeover first")
 	}
 	a.clearFails()
-	return map[string]any{"ok": true}, a.ctlRequest("start", 5*time.Second)
+	return map[string]any{"ok": true}, a.ctlRequest(opStart, 5*time.Second)
 }
 
 // TRLC-LINKS: REQ-SDS-117
 func hAppStop(a *Agent, _ json.RawMessage) (any, error) {
-	return map[string]any{"ok": true}, a.ctlRequest("stop", 8*time.Second)
+	return map[string]any{"ok": true}, a.ctlRequest(opStop, 8*time.Second)
 }
 
 // TRLC-LINKS: REQ-SDS-117
@@ -258,7 +258,7 @@ func hAppRestart(a *Agent, _ json.RawMessage) (any, error) {
 	if !a.st.get().TakenOver {
 		return nil, errors.New("not taken over")
 	}
-	return map[string]any{"ok": true}, a.ctlRequest("restart", 8*time.Second)
+	return map[string]any{"ok": true}, a.ctlRequest(opRestart, 8*time.Second)
 }
 
 // hAppUpdate installs a staged/uploaded binary into the INACTIVE slot, points
@@ -296,7 +296,7 @@ func hAppUpdate(a *Agent, args json.RawMessage) (any, error) {
 	a.event("app.update", map[string]any{keySlot: target, keySHA256: sum})
 	// Restart if running/taken over so the new slot launches now.
 	if a.st.get().TakenOver {
-		_ = a.ctlRequest("restart", 8*time.Second)
+		_ = a.ctlRequest(opRestart, 8*time.Second)
 	}
 	return map[string]any{keySlot: target, keySHA256: sum, "active": target}, nil
 }
@@ -318,7 +318,7 @@ func hAppActivate(a *Agent, args json.RawMessage) (any, error) {
 	}
 	a.clearFails()
 	if a.st.get().TakenOver {
-		_ = a.ctlRequest("restart", 8*time.Second)
+		_ = a.ctlRequest(opRestart, 8*time.Second)
 	}
 	return map[string]any{"active": p.Slot}, nil
 }
@@ -412,7 +412,7 @@ func hTakeover(a *Agent, args json.RawMessage) (any, error) {
 // reversible.
 // TRLC-LINKS: REQ-SDS-120
 func hUntakeover(a *Agent, _ json.RawMessage) (any, error) {
-	_ = a.ctlRequest("stop", 8*time.Second) // pause supervisor + terminate the app
+	_ = a.ctlRequest(opStop, 8*time.Second) // pause supervisor + terminate the app
 	if err := a.st.update(func(s *State) { s.TakenOver = false; s.AutoTakeover = false }); err != nil {
 		return nil, err
 	}

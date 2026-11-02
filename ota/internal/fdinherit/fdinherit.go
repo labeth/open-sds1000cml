@@ -148,54 +148,6 @@ func PPid(pid int) int {
 	return -1
 }
 
-// AncestorsOfSelf returns the pid set of this process's ancestor chain
-// (parent, grandparent, … up to init), self excluded.
-// TRLC-LINKS: REQ-SDS-085
-func AncestorsOfSelf() map[int]bool {
-	out := map[int]bool{}
-	pid := os.Getpid()
-	for range 64 { // bounded against /proc races
-		pid = PPid(pid)
-		if pid <= 0 || out[pid] {
-			break
-		}
-		out[pid] = true
-		if pid == 1 {
-			break
-		}
-	}
-	return out
-}
-
-// DescendantsOfSelf returns the pid set of this process's descendants.
-// TRLC-LINKS: REQ-SDS-085
-func DescendantsOfSelf() map[int]bool {
-	children := map[int][]int{}
-	procs, _ := os.ReadDir("/proc")
-	for _, p := range procs {
-		pid, err := strconv.Atoi(p.Name())
-		if err != nil {
-			continue
-		}
-		if pp := PPid(pid); pp > 0 {
-			children[pp] = append(children[pp], pid)
-		}
-	}
-	out := map[int]bool{}
-	stack := []int{os.Getpid()}
-	for len(stack) > 0 {
-		p := stack[len(stack)-1]
-		stack = stack[:len(stack)-1]
-		for _, c := range children[p] {
-			if !out[c] {
-				out[c] = true
-				stack = append(stack, c)
-			}
-		}
-	}
-	return out
-}
-
 // Alive reports whether /proc/<pid> still exists.
 // TRLC-LINKS: REQ-SDS-085
 func Alive(pid int) bool {

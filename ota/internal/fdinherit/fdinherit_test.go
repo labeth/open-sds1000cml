@@ -51,14 +51,7 @@ func TestHoldersOfSelf(t *testing.T) {
 }
 
 // TRLC-LINKS: REQ-SDS-085
-func TestAncestorsAndAlive(t *testing.T) {
-	anc := AncestorsOfSelf()
-	if len(anc) == 0 {
-		t.Error("expected at least one ancestor (the test runner / shell)")
-	}
-	if anc[os.Getpid()] {
-		t.Error("self should not be in ancestors")
-	}
+func TestAlive(t *testing.T) {
 	if !Alive(os.Getpid()) {
 		t.Error("self should be alive")
 	}

@@ -146,7 +146,7 @@ type Client struct {
 // connection can leave the single link stuck until it times out.
 // TRLC-LINKS: REQ-SDS-100
 func Dial(host string, timeout time.Duration) (*Client, error) {
-	return dialAt(net.JoinHostPort(host, "111"), host, timeout)
+	return DialAt(net.JoinHostPort(host, "111"), host, timeout)
 }
 
 // DialAt is Dial with an explicit portmapper address instead of the fixed
@@ -154,12 +154,6 @@ func Dial(host string, timeout time.Duration) (*Client, error) {
 // portmapper port. Dial(host, t) is exactly DialAt(host+":111", host, t).
 // TRLC-LINKS: REQ-SDS-100
 func DialAt(pmAddr, host string, timeout time.Duration) (*Client, error) {
-	return dialAt(pmAddr, host, timeout)
-}
-
-// dialAt is Dial with an explicit portmapper address (test seam).
-// TRLC-LINKS: REQ-SDS-100
-func dialAt(pmAddr, host string, timeout time.Duration) (*Client, error) {
 	d := net.Dialer{Timeout: timeout}
 	pm, err := d.DialContext(context.Background(), "tcp", pmAddr)
 	if err != nil {

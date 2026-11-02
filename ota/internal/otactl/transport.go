@@ -97,9 +97,6 @@ func (t *natsTransport) Call(cmd string, args any, timeout time.Duration) (*rpcp
 }
 
 // TRLC-LINKS: REQ-SDS-109
-func (t *natsTransport) Conn() *nats.Conn { return t.nc }
-
-// TRLC-LINKS: REQ-SDS-109
 func (t *natsTransport) Close() { _ = t.nc.Drain() } // no reply is pending once the CLI closes
 
 // TRLC-LINKS: REQ-SDS-109

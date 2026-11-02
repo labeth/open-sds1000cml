@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -171,7 +172,7 @@ func TestOrphanAppPid(t *testing.T) {
 	if pid := a.orphanAppPid(); pid != -1 {
 		t.Errorf("dead pid: got %d, want -1", pid)
 	}
-	if err := os.WriteFile(pidFile, []byte("  "+itoa64(int64(os.Getpid()))+" \n"), 0o644); err != nil {
+	if err := os.WriteFile(pidFile, []byte("  "+strconv.Itoa(os.Getpid())+" \n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	if pid := a.orphanAppPid(); pid != os.Getpid() {
@@ -195,7 +196,7 @@ func TestSuperviseAdoptedTornDownByControl(t *testing.T) {
 	if err := os.WriteFile(a.cfg.HealthPath(), []byte("adopted-ok"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(a.pidPath(appPidFile), []byte(itoa64(int64(pid))+"\n"), 0o644); err != nil {
+	if err := os.WriteFile(a.pidPath(appPidFile), []byte(strconv.Itoa(pid)+"\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 

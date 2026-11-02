@@ -10,10 +10,3 @@ func BenchmarkHoldersOf(b *testing.B) {
 		HoldersOf("/dev/null")
 	}
 }
-
-// TRLC-LINKS: REQ-SDS-085
-func BenchmarkDescendantsOfSelf(b *testing.B) {
-	for b.Loop() {
-		DescendantsOfSelf()
-	}
-}

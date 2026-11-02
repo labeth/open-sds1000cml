@@ -187,7 +187,7 @@ func TestDialSendQuery(t *testing.T) {
 	// dialing the portmap listener's actual address through a small shim: we
 	// can't override 111 here, so exercise the RPC layer via a direct client.
 	host := net.JoinHostPort(f.host(), itoa(f.pmPort()))
-	cl, err := dialAt(host, f.host(), 5*time.Second)
+	cl, err := DialAt(host, f.host(), 5*time.Second)
 	if err != nil {
 		t.Fatalf("dial: %v", err)
 	}
@@ -239,7 +239,7 @@ func TestQueryClampsAnOversizedReadCount(t *testing.T) {
 		f := newFake(t)
 		f.readReply = "SAST Stopped\n"
 		f.readCount = count
-		cl, err := dialAt(net.JoinHostPort(f.host(), itoa(f.pmPort())), f.host(), 5*time.Second)
+		cl, err := DialAt(net.JoinHostPort(f.host(), itoa(f.pmPort())), f.host(), 5*time.Second)
 		if err != nil {
 			t.Fatalf("dial: %v", err)
 		}

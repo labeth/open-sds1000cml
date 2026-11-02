@@ -116,9 +116,21 @@ type appState struct {
 	Health    any    `json:"health,omitempty"`
 }
 
+// ctlOp is a control request to the supervisor.
+// TRLC-LINKS: REQ-SDS-117
+type ctlOp string
+
+// The supervisor's control requests: stop pauses it (terminating the app),
+// start resumes it, restart relaunches the app.
+const (
+	opStart   ctlOp = "start"
+	opStop    ctlOp = "stop"
+	opRestart ctlOp = "restart"
+)
+
 // TRLC-LINKS: REQ-SDS-117
 type ctlMsg struct {
-	op    string // "restart" | "stop" | "start"
+	op    ctlOp
 	reply chan error
 }
 

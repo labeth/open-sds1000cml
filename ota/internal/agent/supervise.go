@@ -79,17 +79,17 @@ func (a *Agent) idleWait(d time.Duration) {
 	case <-a.stopped:
 	case m := <-a.ctl:
 		switch m.op {
-		case "start":
+		case opStart:
 			a.appMu.Lock()
 			a.paused = false
 			a.appMu.Unlock()
 			m.reply <- nil
-		case "stop":
+		case opStop:
 			a.appMu.Lock()
 			a.paused = true
 			a.appMu.Unlock()
 			m.reply <- nil
-		case "restart":
+		case opRestart:
 			a.appMu.Lock()
 			a.paused = false
 			a.appMu.Unlock()
@@ -157,7 +157,7 @@ func (a *Agent) superviseAdopted(pid int) {
 			a.log.Printf("control %q on adopted app: terminating pid=%d", m.op, pid)
 			a.killPid(pid)
 			_ = os.Remove(a.pidPath(appPidFile))
-			if m.op == "stop" {
+			if m.op == opStop {
 				a.appMu.Lock()
 				a.paused = true
 				a.appMu.Unlock()
@@ -241,9 +241,9 @@ loop:
 			reason = "exited"
 			break loop
 		case m := <-a.ctl:
-			reason = "ctl:" + m.op
+			reason = "ctl:" + string(m.op)
 			a.terminate(cmd, exit)
-			if m.op == "stop" {
+			if m.op == opStop {
 				a.appMu.Lock()
 				a.paused = true
 				a.appMu.Unlock()
@@ -401,7 +401,7 @@ func (a *Agent) setAppState(fn func(*appState)) {
 
 // ctlRequest sends a control op to the supervisor and waits.
 // TRLC-LINKS: REQ-SDS-117
-func (a *Agent) ctlRequest(op string, timeout time.Duration) error {
+func (a *Agent) ctlRequest(op ctlOp, timeout time.Duration) error {
 	m := ctlMsg{op: op, reply: make(chan error, 1)}
 	select {
 	case a.ctl <- m:
