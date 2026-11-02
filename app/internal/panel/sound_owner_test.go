@@ -7,6 +7,7 @@ import (
 	"open-sds/app/internal/settings"
 	"sync"
 	"testing"
+	"testing/synctest"
 	"time"
 )
 
@@ -188,66 +189,68 @@ func (e *acqSoundEng) SoundInfo() engine.SoundInfo {
 // said "no signal").
 // TRLC-LINKS: REQ-SDS-277, REQ-SDS-137
 func TestSoundAutoTakesTheScopeFirst(t *testing.T) {
-	c, fe0, _ := newC(t)
-	e := &acqSoundEng{fakeEng: fe0}
-	c.eng = e
-	sig := make([]uint8, 200)
-	for i := range sig {
-		sig[i] = 40
-		if i%20 >= 10 {
-			sig[i] = 200
-		}
-	}
-	var mu sync.Mutex
-	blind, seen := 0, 0
-	c.SetFrameSource(func(fn func(*engine.Frame)) {
-		mu.Lock()
-		if e.leased() {
-			blind++
-			mu.Unlock()
-			fn(nil) // the stream holds the fabric: no capture
-			return
-		}
-		seen++
-		mu.Unlock()
-		fn(&engine.Frame{C1: sig, C2: sig, Valid: len(sig), SampleS: 50e-9})
-	})
-	lease := func() { e.LeaseSound(3 * time.Second) }
-	if !c.SoundRemoteLease("", lease) {
-		t.Fatal("the page did not hold the stream")
-	}
-	// The page polls on through the AUTO.
-	stop := make(chan struct{})
-	refused := make(chan int, 1)
-	go func() {
-		n := 0
-		for {
-			select {
-			case <-stop:
-				refused <- n
-				return
-			case <-time.After(20 * time.Millisecond):
-				if !c.SoundRemoteLease("", lease) {
-					n++
-				}
+	synctest.Test(t, func(t *testing.T) {
+		c, fe0, _ := newC(t)
+		e := &acqSoundEng{fakeEng: fe0}
+		c.eng = e
+		sig := make([]uint8, 200)
+		for i := range sig {
+			sig[i] = 40
+			if i%20 >= 10 {
+				sig[i] = 200
 			}
 		}
-	}()
-	lcdPress(t, c, "auto")
-	end := time.Now().Add(60 * time.Second)
-	for c.AutosetBusy() && time.Now().Before(end) {
-		time.Sleep(20 * time.Millisecond)
-	}
-	close(stop)
-	n := <-refused
-	mu.Lock()
-	defer mu.Unlock()
-	if blind != 0 || seen == 0 {
-		t.Fatalf("the sweep read %d captures while the stream held the fabric, %d real ones", blind, seen)
-	}
-	if n == 0 || e.leased() {
-		t.Fatalf("the page's polls were not refused (%d refused, leased %v)", n, e.leased())
-	}
+		var mu sync.Mutex
+		blind, seen := 0, 0
+		c.SetFrameSource(func(fn func(*engine.Frame)) {
+			mu.Lock()
+			if e.leased() {
+				blind++
+				mu.Unlock()
+				fn(nil) // the stream holds the fabric: no capture
+				return
+			}
+			seen++
+			mu.Unlock()
+			fn(&engine.Frame{C1: sig, C2: sig, Valid: len(sig), SampleS: 50e-9})
+		})
+		lease := func() { e.LeaseSound(3 * time.Second) }
+		if !c.SoundRemoteLease("", lease) {
+			t.Fatal("the page did not hold the stream")
+		}
+		// The page polls on through the AUTO.
+		stop := make(chan struct{})
+		refused := make(chan int, 1)
+		go func() {
+			n := 0
+			for {
+				select {
+				case <-stop:
+					refused <- n
+					return
+				case <-time.After(20 * time.Millisecond):
+					if !c.SoundRemoteLease("", lease) {
+						n++
+					}
+				}
+			}
+		}()
+		lcdPress(t, c, "auto")
+		end := time.Now().Add(60 * time.Second)
+		for c.AutosetBusy() && time.Now().Before(end) {
+			time.Sleep(20 * time.Millisecond)
+		}
+		close(stop)
+		n := <-refused
+		mu.Lock()
+		defer mu.Unlock()
+		if blind != 0 || seen == 0 {
+			t.Fatalf("the sweep read %d captures while the stream held the fabric, %d real ones", blind, seen)
+		}
+		if n == 0 || e.leased() {
+			t.Fatalf("the page's polls were not refused (%d refused, leased %v)", n, e.leased())
+		}
+	})
 }
 
 // A web page and a phone on SOUND at once share the stream, and the notice

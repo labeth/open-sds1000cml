@@ -11,6 +11,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"testing/synctest"
 	"time"
 )
 
@@ -547,34 +548,36 @@ func TestTimebaseAskedForLeadsUntilApplied(t *testing.T) {
 // press cancels it and puts back what it changed: none are named.
 // TRLC-LINKS: REQ-SDS-137, REQ-SDS-220
 func TestAutosetSaysWhatItChanged(t *testing.T) {
-	sq := square(1e6, 0, 3.3)
-	c := newSimBench(t, func(tt, _ float64, _ int) float64 { return sq(tt) }).c
-	wait := func() {
-		for end := time.Now().Add(30 * time.Second); c.AutosetBusy() && time.Now().Before(end); {
-			time.Sleep(10 * time.Millisecond)
+	synctest.Test(t, func(t *testing.T) {
+		sq := square(1e6, 0, 3.3)
+		c := newSimBench(t, func(tt, _ float64, _ int) float64 { return sq(tt) }).c
+		wait := func() {
+			for end := time.Now().Add(30 * time.Second); c.AutosetBusy() && time.Now().Before(end); {
+				time.Sleep(10 * time.Millisecond)
+			}
 		}
-	}
-	c.SheetSet("trig.mode", nil, "Normal")
-	res := c.SheetAction("sys.autoset", "")
-	if !res.OK || res.Autoset == 0 || !c.AutosetBusy() {
-		t.Fatalf("autoset: %+v busy %v", res, c.AutosetBusy())
-	}
-	wait()
-	st := c.PanelStatus()
-	if c.AutosetBusy() || st.AutosetDone != res.Autoset || !slices.Contains(st.AutosetChanged, "trig.mode") || !slices.Contains(st.AutosetChanged, "time.tdiv") {
-		t.Fatalf("after the sweep: done %d (started %d), changed %v", st.AutosetDone, res.Autoset, st.AutosetChanged)
-	}
-	c.SheetSet("trig.mode", nil, "Normal")
-	res = c.SheetAction("sys.autoset", "")
-	time.Sleep(300 * time.Millisecond)
-	if again := c.SheetAction("sys.autoset", ""); !again.OK || again.Autoset != 0 {
-		t.Fatalf("the second press cancels: %+v", again)
-	}
-	wait()
-	st = c.PanelStatus()
-	if c.AutosetBusy() || st.AutosetDone != res.Autoset || len(st.AutosetChanged) != 0 || rowText(c, "trig.mode") != "Normal" {
-		t.Fatalf("after the cancel: done %d (started %d), changed %v, mode %s", st.AutosetDone, res.Autoset, st.AutosetChanged, rowText(c, "trig.mode"))
-	}
+		c.SheetSet("trig.mode", nil, "Normal")
+		res := c.SheetAction("sys.autoset", "")
+		if !res.OK || res.Autoset == 0 || !c.AutosetBusy() {
+			t.Fatalf("autoset: %+v busy %v", res, c.AutosetBusy())
+		}
+		wait()
+		st := c.PanelStatus()
+		if c.AutosetBusy() || st.AutosetDone != res.Autoset || !slices.Contains(st.AutosetChanged, "trig.mode") || !slices.Contains(st.AutosetChanged, "time.tdiv") {
+			t.Fatalf("after the sweep: done %d (started %d), changed %v", st.AutosetDone, res.Autoset, st.AutosetChanged)
+		}
+		c.SheetSet("trig.mode", nil, "Normal")
+		res = c.SheetAction("sys.autoset", "")
+		time.Sleep(300 * time.Millisecond)
+		if again := c.SheetAction("sys.autoset", ""); !again.OK || again.Autoset != 0 {
+			t.Fatalf("the second press cancels: %+v", again)
+		}
+		wait()
+		st = c.PanelStatus()
+		if c.AutosetBusy() || st.AutosetDone != res.Autoset || len(st.AutosetChanged) != 0 || rowText(c, "trig.mode") != "Normal" {
+			t.Fatalf("after the cancel: done %d (started %d), changed %v, mode %s", st.AutosetDone, res.Autoset, st.AutosetChanged, rowText(c, "trig.mode"))
+		}
+	})
 }
 
 // waitLoop waits for Run to serve injected events.

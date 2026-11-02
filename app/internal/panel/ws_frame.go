@@ -11,7 +11,7 @@ import (
 	"open-sds/app/internal/measure"
 	"open-sds/app/internal/panel/framecalc"
 	"open-sds/app/internal/panel/wsview"
-	"sort"
+	"slices"
 	"time"
 )
 
@@ -436,7 +436,7 @@ func median(xs []float64) float64 {
 	s := append([]float64(nil), xs...)
 	for _, v := range s {
 		if v != v { // NaN: sorting's order (NaN first) decides
-			sort.Float64s(s)
+			slices.Sort(s)
 			return s[len(s)/2]
 		}
 	}

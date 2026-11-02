@@ -9,6 +9,7 @@ import (
 	"open-sds/app/internal/panel/wsview"
 	"strings"
 	"testing"
+	"testing/synctest"
 	"time"
 )
 
@@ -42,19 +43,21 @@ func TestAutoInBusScansAndFramesTheBus(t *testing.T) {
 // AUTO in the other workspaces stays the autoset.
 // TRLC-LINKS: REQ-SDS-137, REQ-SDS-223
 func TestAutoOutsideBusIsAutoset(t *testing.T) {
-	c, _, _ := newC(t)
-	c.SetFrameSource(func(fn func(*engine.Frame)) { fn(fastUART()) })
-	press(t, c, "auto")
-	c.mu.Lock()
-	msg := c.autosetMsg
-	c.mu.Unlock()
-	if msg != "AUTOSET..." {
-		t.Fatalf("AUTO in SCOPE runs %q, not the autoset", msg)
-	}
-	press(t, c, "auto") // cancel
-	for i := 0; i < 400 && c.AutosetBusy(); i++ {
-		time.Sleep(5 * time.Millisecond)
-	}
+	synctest.Test(t, func(t *testing.T) {
+		c, _, _ := newC(t)
+		c.SetFrameSource(func(fn func(*engine.Frame)) { fn(fastUART()) })
+		press(t, c, "auto")
+		c.mu.Lock()
+		msg := c.autosetMsg
+		c.mu.Unlock()
+		if msg != "AUTOSET..." {
+			t.Fatalf("AUTO in SCOPE runs %q, not the autoset", msg)
+		}
+		press(t, c, "auto") // cancel
+		for i := 0; i < 400 && c.AutosetBusy(); i++ {
+			time.Sleep(5 * time.Millisecond)
+		}
+	})
 }
 
 // The frame start each bus's hardware matcher takes: I2C's own matcher with
@@ -167,33 +170,35 @@ func TestMessageTimebase(t *testing.T) {
 // each for itself, and the one ending last left its own.
 // TRLC-LINKS: REQ-SDS-137, REQ-SDS-223
 func TestAutoWaitsForTheDetectionUnderWay(t *testing.T) {
-	c, eng, _ := newEnvRig(t)
-	eng.leased.Store(true)
-	c.mu.Lock()
-	c.ui.ws = wsview.Bus
-	c.ui.busDetecting = true // BUS entry's detection, under way
-	c.mu.Unlock()
-	tdiv0 := eng.Snapshot().TdivS
-	done := make(chan struct{})
-	go func() {
-		defer close(done)
-		press(t, c, "auto")
-	}()
-	time.Sleep(300 * time.Millisecond)
-	if td := eng.Snapshot().TdivS; td != tdiv0 {
-		t.Fatalf("AUTO swept during the detection: timebase %g -> %g", tdiv0, td)
-	}
-	c.mu.Lock()
-	c.ui.busDetecting = false // the detection ends
-	c.mu.Unlock()
-	select {
-	case <-done:
-	case <-time.After(30 * time.Second):
-		t.Fatal("AUTO never ran after the detection ended")
-	}
-	if s := c.snap(); s.decProto != framecalc.ProtoUART || c.AutosetBusy() {
-		t.Fatalf("AUTO after the detection: protocol %d busy %v", s.decProto, c.AutosetBusy())
-	}
+	synctest.Test(t, func(t *testing.T) {
+		c, eng, _ := newEnvRig(t)
+		eng.leased.Store(true)
+		c.mu.Lock()
+		c.ui.ws = wsview.Bus
+		c.ui.busDetecting = true // BUS entry's detection, under way
+		c.mu.Unlock()
+		tdiv0 := eng.Snapshot().TdivS
+		done := make(chan struct{})
+		go func() {
+			defer close(done)
+			press(t, c, "auto")
+		}()
+		time.Sleep(300 * time.Millisecond)
+		if td := eng.Snapshot().TdivS; td != tdiv0 {
+			t.Fatalf("AUTO swept during the detection: timebase %g -> %g", tdiv0, td)
+		}
+		c.mu.Lock()
+		c.ui.busDetecting = false // the detection ends
+		c.mu.Unlock()
+		select {
+		case <-done:
+		case <-time.After(30 * time.Second):
+			t.Fatal("AUTO never ran after the detection ended")
+		}
+		if s := c.snap(); s.decProto != framecalc.ProtoUART || c.AutosetBusy() {
+			t.Fatalf("AUTO after the detection: protocol %d busy %v", s.decProto, c.AutosetBusy())
+		}
+	})
 }
 
 // AUTO pressed on a page frames for the page's workspace: with the LCD on

@@ -7,7 +7,7 @@ import (
 	"math"
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/panel/wsview"
-	"sort"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -230,7 +230,7 @@ func (rc *reach) never() []string {
 			}
 		}
 	}
-	sort.Strings(out)
+	slices.Sort(out)
 	return out
 }
 

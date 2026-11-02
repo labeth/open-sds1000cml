@@ -5,7 +5,7 @@ package panel
 import (
 	"math"
 	"math/rand"
-	"sort"
+	"slices"
 	"testing"
 )
 
@@ -33,7 +33,7 @@ func TestMedianAsSorted(t *testing.T) {
 				}
 			}
 			s := append([]float64(nil), xs...)
-			sort.Float64s(s)
+			slices.Sort(s)
 			want, got := s[n/2], median(xs)
 			if !(got == want || math.IsNaN(got) && math.IsNaN(want)) {
 				t.Fatalf("n %d trial %d: median %v, sorted middle %v", n, trial, got, want)

@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
+	"testing/synctest"
 	"time"
 )
 
@@ -38,61 +39,65 @@ func (e *leaseEng) LeaseDecodeView(time.Duration) { e.n.Add(1) }
 // long as super-res stays armed.
 // TRLC-LINKS: REQ-SDS-140
 func TestSuperresFinalStackReleasesRawLease(t *testing.T) {
-	_, base, fe := newC(t)
-	eng := &leaseEng{fakeEng: base}
-	c := New(eng, fe, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
-	var seq uint64
-	c.frameFn = func(fn func(*engine.Frame)) {
-		seq++
-		w := make([]uint8, 256)
-		fn(&engine.Frame{C1: w, C2: w, Valid: len(w), SampleS: 2e-9, Seq: seq})
-	}
-	st := superres.New(16, 4)
-	st.SampleS = 1e-9 // stacked at another timebase
-	stop := make(chan struct{})
-	c.mu.Lock()
-	c.srActive, c.srStack, c.srStop = true, st, stop
-	c.mu.Unlock()
-	go c.srLoop(stop, st, 0)
-	defer close(stop)
-	time.Sleep(150 * time.Millisecond)
-	settled := eng.n.Load()
-	time.Sleep(200 * time.Millisecond)
-	if more := eng.n.Load() - settled; more > 0 {
-		t.Fatalf("final stack renewed the raw lease %d more times", more)
-	}
+	synctest.Test(t, func(t *testing.T) {
+		_, base, fe := newC(t)
+		eng := &leaseEng{fakeEng: base}
+		c := New(eng, fe, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
+		var seq uint64
+		c.frameFn = func(fn func(*engine.Frame)) {
+			seq++
+			w := make([]uint8, 256)
+			fn(&engine.Frame{C1: w, C2: w, Valid: len(w), SampleS: 2e-9, Seq: seq})
+		}
+		st := superres.New(16, 4)
+		st.SampleS = 1e-9 // stacked at another timebase
+		stop := make(chan struct{})
+		c.mu.Lock()
+		c.srActive, c.srStack, c.srStop = true, st, stop
+		c.mu.Unlock()
+		go c.srLoop(stop, st, 0)
+		defer close(stop)
+		time.Sleep(150 * time.Millisecond)
+		settled := eng.n.Load()
+		time.Sleep(200 * time.Millisecond)
+		if more := eng.n.Load() - settled; more > 0 {
+			t.Fatalf("final stack renewed the raw lease %d more times", more)
+		}
+	})
 }
 
 // Raw SRAM frames keep their pitch at every timebase: a timebase change
 // freezes the stack (and its lease) by TdivS.
 // TRLC-LINKS: REQ-SDS-140
 func TestSuperresTimebaseChangeFreezesStack(t *testing.T) {
-	_, base, fe := newC(t)
-	eng := &leaseEng{fakeEng: base}
-	c := New(eng, fe, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
-	var seq uint64
-	c.frameFn = func(fn func(*engine.Frame)) {
-		seq++
-		w := make([]uint8, 256)
-		fn(&engine.Frame{C1: w, C2: w, Valid: len(w), SampleS: 2e-9, TdivS: 200e-6, Seq: seq})
-	}
-	st := superres.New(16, 4)
-	st.SampleS = 2e-9 // same pitch: only the timebase moved
-	stop := make(chan struct{})
-	c.mu.Lock()
-	c.srActive, c.srStack, c.srStop = true, st, stop
-	c.mu.Unlock()
-	go c.srLoop(stop, st, 100e-9)
-	defer close(stop)
-	time.Sleep(150 * time.Millisecond)
-	settled := eng.n.Load()
-	time.Sleep(200 * time.Millisecond)
-	c.mu.Lock()
-	status := c.srStatus
-	c.mu.Unlock()
-	if more := eng.n.Load() - settled; more > 0 || !strings.Contains(status, "timebase changed") {
-		t.Fatalf("status %q, %d more leases after the timebase changed", status, more)
-	}
+	synctest.Test(t, func(t *testing.T) {
+		_, base, fe := newC(t)
+		eng := &leaseEng{fakeEng: base}
+		c := New(eng, fe, -1, engine.SupportedTdivs(), 500e-6, t.Logf)
+		var seq uint64
+		c.frameFn = func(fn func(*engine.Frame)) {
+			seq++
+			w := make([]uint8, 256)
+			fn(&engine.Frame{C1: w, C2: w, Valid: len(w), SampleS: 2e-9, TdivS: 200e-6, Seq: seq})
+		}
+		st := superres.New(16, 4)
+		st.SampleS = 2e-9 // same pitch: only the timebase moved
+		stop := make(chan struct{})
+		c.mu.Lock()
+		c.srActive, c.srStack, c.srStop = true, st, stop
+		c.mu.Unlock()
+		go c.srLoop(stop, st, 100e-9)
+		defer close(stop)
+		time.Sleep(150 * time.Millisecond)
+		settled := eng.n.Load()
+		time.Sleep(200 * time.Millisecond)
+		c.mu.Lock()
+		status := c.srStatus
+		c.mu.Unlock()
+		if more := eng.n.Load() - settled; more > 0 || !strings.Contains(status, "timebase changed") {
+			t.Fatalf("status %q, %d more leases after the timebase changed", status, more)
+		}
+	})
 }
 
 // SINGLE then UTILITY: the stopped full record is far too deep to stack in
@@ -141,54 +146,7 @@ func TestSuperresArmFromStoppedDeepRecord(t *testing.T) {
 // edge's knob detent 1-2 s).
 // TRLC-LINKS: REQ-SDS-140
 func TestSuperresSeedsOffThePanelLoop(t *testing.T) {
-	c, eng, _ := newC(t)
-	eng.SetRunning(true)
-	fr := smallFrame()
-	fr.SampleS = 1e-9
-	hold := make(chan struct{})
-	var calls atomic.Int32
-	c.SetFrameSource(func(fn func(*engine.Frame)) {
-		if calls.Add(1) == 2 { // the seed's first look waits here
-			<-hold
-		}
-		fn(fr)
-	})
-	c.looping.Store(true)
-	defer c.looping.Store(false)
-	idle := func() bool { c.mu.Lock(); defer c.mu.Unlock(); return !c.srSeederOn }
-	wait := func(ok func() bool) {
-		for deadline := time.Now().Add(3 * time.Second); !ok(); {
-			if time.Now().After(deadline) {
-				t.Fatal("the seeder did not finish")
-			}
-			time.Sleep(5 * time.Millisecond)
-		}
-	}
-	start := time.Now()
-	if err := c.srArm(); err != nil || time.Since(start) > 200*time.Millisecond || rowText(c, "acq.superres") != "On" {
-		t.Fatalf("On: %v after %v, the row %q", err, time.Since(start), rowText(c, "acq.superres"))
-	}
-	if s := c.SuperresView().Status; s != "finding the reference..." { // not the last session's status
-		t.Fatalf("status while the seed runs: %q", s)
-	}
-	c.srCancel("cancelled") // Off while the seed waits
-	close(hold)
-	wait(idle)
-	if c.SuperresView().Active || rowText(c, "acq.superres") != "Off" {
-		t.Fatalf("a seed cancelled in flight armed super-res: active %v row %q", c.SuperresView().Active, rowText(c, "acq.superres"))
-	}
-	if err := c.srArm(); err != nil {
-		t.Fatal(err)
-	}
-	defer c.srCancel("")
-	wait(func() bool { return idle() && c.SuperresView().Active })
-}
-
-// A Stop pressed while a seed runs off the panel goroutine stands (the seed's
-// end must not resume RUN over it); with no press meanwhile it resumes.
-// TRLC-LINKS: REQ-SDS-140
-func TestSuperresSeedKeepsAStopPressedMeanwhile(t *testing.T) {
-	for _, press := range []bool{true, false} {
+	synctest.Test(t, func(t *testing.T) {
 		c, eng, _ := newC(t)
 		eng.SetRunning(true)
 		fr := smallFrame()
@@ -202,27 +160,78 @@ func TestSuperresSeedKeepsAStopPressedMeanwhile(t *testing.T) {
 			fn(fr)
 		})
 		c.looping.Store(true)
+		defer c.looping.Store(false)
+		idle := func() bool { c.mu.Lock(); defer c.mu.Unlock(); return !c.srSeederOn }
+		wait := func(ok func() bool) {
+			for deadline := time.Now().Add(3 * time.Second); !ok(); {
+				if time.Now().After(deadline) {
+					t.Fatal("the seeder did not finish")
+				}
+				time.Sleep(5 * time.Millisecond)
+			}
+		}
+		start := time.Now()
+		if err := c.srArm(); err != nil || time.Since(start) > 200*time.Millisecond || rowText(c, "acq.superres") != "On" {
+			t.Fatalf("On: %v after %v, the row %q", err, time.Since(start), rowText(c, "acq.superres"))
+		}
+		if s := c.SuperresView().Status; s != "finding the reference..." { // not the last session's status
+			t.Fatalf("status while the seed runs: %q", s)
+		}
+		c.srCancel("cancelled") // Off while the seed waits
+		close(hold)
+		wait(idle)
+		if c.SuperresView().Active || rowText(c, "acq.superres") != "Off" {
+			t.Fatalf("a seed cancelled in flight armed super-res: active %v row %q", c.SuperresView().Active, rowText(c, "acq.superres"))
+		}
 		if err := c.srArm(); err != nil {
 			t.Fatal(err)
 		}
-		if press {
-			if err := c.setRun(1); err != nil { // Stop while the seed runs
+		defer c.srCancel("")
+		wait(func() bool { return idle() && c.SuperresView().Active })
+	})
+}
+
+// A Stop pressed while a seed runs off the panel goroutine stands (the seed's
+// end must not resume RUN over it); with no press meanwhile it resumes.
+// TRLC-LINKS: REQ-SDS-140
+func TestSuperresSeedKeepsAStopPressedMeanwhile(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		for _, press := range []bool{true, false} {
+			c, eng, _ := newC(t)
+			eng.SetRunning(true)
+			fr := smallFrame()
+			fr.SampleS = 1e-9
+			hold := make(chan struct{})
+			var calls atomic.Int32
+			c.SetFrameSource(func(fn func(*engine.Frame)) {
+				if calls.Add(1) == 2 { // the seed's first look waits here
+					<-hold
+				}
+				fn(fr)
+			})
+			c.looping.Store(true)
+			if err := c.srArm(); err != nil {
 				t.Fatal(err)
 			}
-		} else {
-			eng.SetRunning(false) // stopped, but not by a press since On
-		}
-		close(hold)
-		for deadline := time.Now().Add(3 * time.Second); !c.SuperresView().Active; {
-			if time.Now().After(deadline) {
-				t.Fatal("the seed did not finish")
+			if press {
+				if err := c.setRun(1); err != nil { // Stop while the seed runs
+					t.Fatal(err)
+				}
+			} else {
+				eng.SetRunning(false) // stopped, but not by a press since On
 			}
-			time.Sleep(5 * time.Millisecond)
+			close(hold)
+			for deadline := time.Now().Add(3 * time.Second); !c.SuperresView().Active; {
+				if time.Now().After(deadline) {
+					t.Fatal("the seed did not finish")
+				}
+				time.Sleep(5 * time.Millisecond)
+			}
+			if running := eng.Snapshot().Running; running == press {
+				t.Fatalf("Stop pressed meanwhile %v: running %v after the seed", press, running)
+			}
+			c.srCancel("")
+			c.looping.Store(false)
 		}
-		if running := eng.Snapshot().Running; running == press {
-			t.Fatalf("Stop pressed meanwhile %v: running %v after the seed", press, running)
-		}
-		c.srCancel("")
-		c.looping.Store(false)
-	}
+	})
 }

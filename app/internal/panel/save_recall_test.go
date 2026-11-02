@@ -6,6 +6,7 @@ import (
 	"open-sds/app/internal/settings"
 	"strings"
 	"testing"
+	"testing/synctest"
 	"time"
 )
 
@@ -50,22 +51,24 @@ func TestSaveRecallKeyFileTab(t *testing.T) {
 // hook it says so, not claim-and-ignore.
 // TRLC-LINKS: REQ-SDS-136
 func TestPrintKeyShowsResult(t *testing.T) {
-	c, _, _ := newC(t)
-	press(t, c, "print")
-	if n := c.View().Notice; n != "PRINT: unavailable" {
-		t.Fatalf("no hook: notice %q", n)
-	}
-	done := make(chan struct{})
-	c.SetHardcopy(func() (string, error) { defer close(done); return "SDS0007.png", nil })
-	press(t, c, "print")
-	<-done
-	deadline := time.Now().Add(time.Second)
-	for c.View().Notice != "SAVED SDS0007.png" {
-		if time.Now().After(deadline) {
-			t.Fatalf("notice %q", c.View().Notice)
+	synctest.Test(t, func(t *testing.T) {
+		c, _, _ := newC(t)
+		press(t, c, "print")
+		if n := c.View().Notice; n != "PRINT: unavailable" {
+			t.Fatalf("no hook: notice %q", n)
 		}
-		time.Sleep(time.Millisecond)
-	}
+		done := make(chan struct{})
+		c.SetHardcopy(func() (string, error) { defer close(done); return "SDS0007.png", nil })
+		press(t, c, "print")
+		<-done
+		deadline := time.Now().Add(time.Second)
+		for c.View().Notice != "SAVED SDS0007.png" {
+			if time.Now().After(deadline) {
+				t.Fatalf("notice %q", c.View().Notice)
+			}
+			time.Sleep(time.Millisecond)
+		}
+	})
 }
 
 // A slot's row summarises what it holds: the workspace, the timebase, the

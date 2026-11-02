@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"testing/synctest"
 	"time"
 )
 
@@ -272,21 +273,23 @@ func TestStreamRowShowsTheStreamView(t *testing.T) {
 // is refused: the bus decoded a moment later starts it.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-228
 func TestStreamStartWaitsForAFrameOfTheBus(t *testing.T) {
-	r, rs, uart := streamRig(t)
-	c := r.c
-	press(t, c, "f2")
-	uart() // the bus decoded
-	r.show(smallFrame())
-	go func() {
-		time.Sleep(300 * time.Millisecond)
-		uart()
-	}()
-	press(t, c, "f2", "f2") // the Stream view: starts the stream
-	for end := time.Now().Add(3 * time.Second); time.Now().Before(end); time.Sleep(20 * time.Millisecond) {
-		if n, _ := rs.counts(); n == 1 {
-			return
+	synctest.Test(t, func(t *testing.T) {
+		r, rs, uart := streamRig(t)
+		c := r.c
+		press(t, c, "f2")
+		uart() // the bus decoded
+		r.show(smallFrame())
+		go func() {
+			time.Sleep(300 * time.Millisecond)
+			uart()
+		}()
+		press(t, c, "f2", "f2") // the Stream view: starts the stream
+		for end := time.Now().Add(3 * time.Second); time.Now().Before(end); time.Sleep(20 * time.Millisecond) {
+			if n, _ := rs.counts(); n == 1 {
+				return
+			}
 		}
-	}
-	n, _ := rs.counts()
-	t.Fatalf("the bus decoded 300 ms after the start: %d starts, view %s", n, mustState(t, c, "BUS", "workspace").View)
+		n, _ := rs.counts()
+		t.Fatalf("the bus decoded 300 ms after the start: %d starts, view %s", n, mustState(t, c, "BUS", "workspace").View)
+	})
 }

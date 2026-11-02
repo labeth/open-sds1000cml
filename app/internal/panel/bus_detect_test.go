@@ -9,6 +9,7 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
+	"testing/synctest"
 	"time"
 )
 
@@ -316,34 +317,36 @@ func TestBusSearchSkipsAFullRateRecordTheDecimatedOneResolves(t *testing.T) {
 // the search's wait ran out during the load and it read the old frame.
 // TRLC-LINKS: REQ-SDS-214
 func TestDetectionWaitsOutAnImageLoad(t *testing.T) {
-	c, e, _ := newC(t)
-	stale := uartFrame([]string{"old bus\r\n"}, 115200, 60e-6, 100e-9, 20000)
-	stale.Seq, stale.Content = 7, 7001
-	var loading atomic.Bool
-	loading.Store(true)
-	var seq atomic.Uint64
-	seq.Store(100)
-	e.set(func(st *engine.Stats) { st.Running, st.Busy = true, "loading general image" })
-	c.SetFrameSource(func(fn func(*engine.Frame)) {
-		if loading.Load() {
-			fn(stale)
-			return
+	synctest.Test(t, func(t *testing.T) {
+		c, e, _ := newC(t)
+		stale := uartFrame([]string{"old bus\r\n"}, 115200, 60e-6, 100e-9, 20000)
+		stale.Seq, stale.Content = 7, 7001
+		var loading atomic.Bool
+		loading.Store(true)
+		var seq atomic.Uint64
+		seq.Store(100)
+		e.set(func(st *engine.Stats) { st.Running, st.Busy = true, "loading general image" })
+		c.SetFrameSource(func(fn func(*engine.Frame)) {
+			if loading.Load() {
+				fn(stale)
+				return
+			}
+			f := fastUART()
+			f.Seq = seq.Add(1)
+			f.Content = 9000 + f.Seq
+			fn(f)
+		})
+		go func() {
+			time.Sleep(400 * time.Millisecond)
+			e.set(func(st *engine.Stats) { st.Busy = "" })
+			loading.Store(false)
+		}()
+		all := func(*engine.Frame, bool) bool { return true }
+		l := c.detectWith(false, false, all, c.detectOnScreen, 150*time.Millisecond)
+		if !l.found || l.res.Baud != 460800 {
+			t.Fatalf("the search read baud %d (found %v): the frame from before the image load", l.res.Baud, l.found)
 		}
-		f := fastUART()
-		f.Seq = seq.Add(1)
-		f.Content = 9000 + f.Seq
-		fn(f)
 	})
-	go func() {
-		time.Sleep(400 * time.Millisecond)
-		e.set(func(st *engine.Stats) { st.Busy = "" })
-		loading.Store(false)
-	}()
-	all := func(*engine.Frame, bool) bool { return true }
-	l := c.detectWith(false, false, all, c.detectOnScreen, 150*time.Millisecond)
-	if !l.found || l.res.Baud != 460800 {
-		t.Fatalf("the search read baud %d (found %v): the frame from before the image load", l.res.Baud, l.found)
-	}
 }
 
 // AUTO in BUS ends the bus search running (BUS entry's, on a front end
@@ -351,27 +354,29 @@ func TestDetectionWaitsOutAnImageLoad(t *testing.T) {
 // the seconds of its looks, and AUTO's own search runs undisturbed.
 // TRLC-LINKS: REQ-SDS-214, REQ-SDS-223
 func TestAutoEndsTheSearchRunning(t *testing.T) {
-	c, e, _ := newC(t)
-	e.set(func(st *engine.Stats) { st.Running = true })
-	c.SetFrameSource(func(func(*engine.Frame)) {}) // no frame comes
-	none := func(*engine.Frame, bool) bool { return false }
-	go func() {
-		time.Sleep(100 * time.Millisecond)
-		c.mu.Lock()
-		c.autosetBusy = true // AUTO pressed
-		c.mu.Unlock()
-	}()
-	t0 := time.Now()
-	if l := c.detectWith(true, true, none, c.detectOnScreen, 3*time.Second); l.found {
-		t.Fatal("found a bus without a frame")
-	}
-	if d := time.Since(t0); d > time.Second {
-		t.Fatalf("the search waited %v after AUTO", d)
-	}
-	c.searchOwn = true // AUTO's search
-	if c.searchDropped() {
-		t.Fatal("AUTO's own search dropped")
-	}
+	synctest.Test(t, func(t *testing.T) {
+		c, e, _ := newC(t)
+		e.set(func(st *engine.Stats) { st.Running = true })
+		c.SetFrameSource(func(func(*engine.Frame)) {}) // no frame comes
+		none := func(*engine.Frame, bool) bool { return false }
+		go func() {
+			time.Sleep(100 * time.Millisecond)
+			c.mu.Lock()
+			c.autosetBusy = true // AUTO pressed
+			c.mu.Unlock()
+		}()
+		t0 := time.Now()
+		if l := c.detectWith(true, true, none, c.detectOnScreen, 3*time.Second); l.found {
+			t.Fatal("found a bus without a frame")
+		}
+		if d := time.Since(t0); d > time.Second {
+			t.Fatalf("the search waited %v after AUTO", d)
+		}
+		c.searchOwn = true // AUTO's search
+		if c.searchDropped() {
+			t.Fatal("AUTO's own search dropped")
+		}
+	})
 }
 
 // A UART of a few bytes at a rate UARTs use, on a record resolving its bits

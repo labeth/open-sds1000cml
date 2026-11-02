@@ -8,6 +8,7 @@ import (
 	"open-sds/app/internal/settings"
 	"strings"
 	"testing"
+	"testing/synctest"
 	"time"
 )
 
@@ -75,40 +76,44 @@ func TestAutoDetectsAgainWhenTheBusIsLost(t *testing.T) {
 // next capture that decodes holds them.
 // TRLC-LINKS: REQ-SDS-214, REQ-SDS-222
 func TestAutoKeepsTheBusOverABadCapture(t *testing.T) {
-	r := autoRig(t)
-	r.show(fastUART())
-	r.clk.advance(10 * time.Second)
-	r.show(otherBus())
-	r.clk.advance(time.Second)
-	r.show(fastUART())
-	for range autoLostCaptures - 1 {
-		r.clk.advance(autoLostAfter)
+	synctest.Test(t, func(t *testing.T) {
+		r := autoRig(t)
+		r.show(fastUART())
+		r.clk.advance(10 * time.Second)
 		r.show(otherBus())
-	}
-	time.Sleep(100 * time.Millisecond) // a detection would run off the frame path
-	if s := r.c.snap(); s.decBaud != 460800 || s.ui.busDetecting || strings.Contains(r.c.View().Notice, "detecting the bus again") {
-		t.Fatalf("a bad capture moved the bus: baud %d, notice %q", s.decBaud, r.c.View().Notice)
-	}
+		r.clk.advance(time.Second)
+		r.show(fastUART())
+		for range autoLostCaptures - 1 {
+			r.clk.advance(autoLostAfter)
+			r.show(otherBus())
+		}
+		time.Sleep(100 * time.Millisecond) // a detection would run off the frame path
+		if s := r.c.snap(); s.decBaud != 460800 || s.ui.busDetecting || strings.Contains(r.c.View().Notice, "detecting the bus again") {
+			t.Fatalf("a bad capture moved the bus: baud %d, notice %q", s.decBaud, r.c.View().Notice)
+		}
+	})
 }
 
 // Settings set by hand are used as they are: losing their bus detects
 // nothing.
 // TRLC-LINKS: REQ-SDS-214, REQ-SDS-222
 func TestHandSetSettingsAreNotRedetected(t *testing.T) {
-	r := autoRig(t)
-	set(t, r.c, "bus.baud", "460800")
-	if r.c.snap().decAuto {
-		t.Fatal("a rate set by hand still reads as Auto's")
-	}
-	r.show(fastUART())
-	for range 2 * autoLostCaptures {
-		r.clk.advance(autoLostAfter)
-		r.show(otherBus())
-	}
-	time.Sleep(100 * time.Millisecond)
-	if s := r.c.snap(); s.decBaud != 460800 || s.ui.busDetecting {
-		t.Fatalf("hand-set settings were replaced: baud %d", s.decBaud)
-	}
+	synctest.Test(t, func(t *testing.T) {
+		r := autoRig(t)
+		set(t, r.c, "bus.baud", "460800")
+		if r.c.snap().decAuto {
+			t.Fatal("a rate set by hand still reads as Auto's")
+		}
+		r.show(fastUART())
+		for range 2 * autoLostCaptures {
+			r.clk.advance(autoLostAfter)
+			r.show(otherBus())
+		}
+		time.Sleep(100 * time.Millisecond)
+		if s := r.c.snap(); s.decBaud != 460800 || s.ui.busDetecting {
+			t.Fatalf("hand-set settings were replaced: baud %d", s.decBaud)
+		}
+	})
 }
 
 // A setup saved while Auto was a decoding mode holds Protocol = Auto: it
@@ -157,27 +162,29 @@ func TestFilledInBitRateIsTheStandardOne(t *testing.T) {
 // comes after them is detected once it fails to decode.
 // TRLC-LINKS: REQ-SDS-214, REQ-SDS-222
 func TestIdleLinesDoNotDetect(t *testing.T) {
-	r := autoRig(t)
-	r.show(fastUART())
-	flat := make([]uint8, 20000)
-	for i := range flat {
-		flat[i] = 210
-	}
-	for range 2 * autoLostCaptures {
-		r.clk.advance(autoLostAfter)
-		r.show(&engine.Frame{C1: flat, C2: flat, Valid: len(flat), WinCols: len(flat), SampleS: 100e-9})
-	}
-	time.Sleep(100 * time.Millisecond)
-	if s := r.c.snap(); s.decBaud != 460800 || s.ui.busDetecting || strings.Contains(r.c.View().Notice, "detecting the bus again") {
-		t.Fatalf("idle lines started a detection: baud %d, notice %q", s.decBaud, r.c.View().Notice)
-	}
-	for range autoLostCaptures {
-		r.clk.advance(time.Second)
-		r.show(otherBus())
-	}
-	if !waitBaud(t, r.c, 115200) {
-		t.Fatalf("the bus after the idle lines: baud %d, notice %q", r.c.snap().decBaud, r.c.View().Notice)
-	}
+	synctest.Test(t, func(t *testing.T) {
+		r := autoRig(t)
+		r.show(fastUART())
+		flat := make([]uint8, 20000)
+		for i := range flat {
+			flat[i] = 210
+		}
+		for range 2 * autoLostCaptures {
+			r.clk.advance(autoLostAfter)
+			r.show(&engine.Frame{C1: flat, C2: flat, Valid: len(flat), WinCols: len(flat), SampleS: 100e-9})
+		}
+		time.Sleep(100 * time.Millisecond)
+		if s := r.c.snap(); s.decBaud != 460800 || s.ui.busDetecting || strings.Contains(r.c.View().Notice, "detecting the bus again") {
+			t.Fatalf("idle lines started a detection: baud %d, notice %q", s.decBaud, r.c.View().Notice)
+		}
+		for range autoLostCaptures {
+			r.clk.advance(time.Second)
+			r.show(otherBus())
+		}
+		if !waitBaud(t, r.c, 115200) {
+			t.Fatalf("the bus after the idle lines: baud %d, notice %q", r.c.snap().decBaud, r.c.View().Notice)
+		}
+	})
 }
 
 // A timebase turned to look closer at the bus (a few bits of one character
@@ -186,40 +193,42 @@ func TestIdleLinesDoNotDetect(t *testing.T) {
 // timebase back. The bus lost at the timebase it decoded at still is.
 // TRLC-LINKS: REQ-SDS-214, REQ-SDS-222
 func TestAutoKeepsTheBusAtAnotherTimebase(t *testing.T) {
-	r := autoRig(t)
-	r.show(fastUART())
-	full := fastUART()
-	at := 0
-	for i := 400; i < len(full.C1); i++ {
-		if full.C1[i] < 100 && full.C1[i-1] > 150 { // a start bit
-			at = i - 10
-			break
+	synctest.Test(t, func(t *testing.T) {
+		r := autoRig(t)
+		r.show(fastUART())
+		full := fastUART()
+		at := 0
+		for i := 400; i < len(full.C1); i++ {
+			if full.C1[i] < 100 && full.C1[i-1] > 150 { // a start bit
+				at = i - 10
+				break
+			}
 		}
-	}
-	const n = 120 // 12 us: five bits of one character at 1.2 us/div
-	closer := func() *engine.Frame {
-		return &engine.Frame{
-			C1: append([]uint8(nil), full.C1[at:at+n]...), C2: append([]uint8(nil), full.C2[at:at+n]...),
-			Valid: n, WinCols: n, EdgeX: n / 2, TdivS: n * 100e-9 / 10, SampleS: 100e-9, Trigd: true,
+		const n = 120 // 12 us: five bits of one character at 1.2 us/div
+		closer := func() *engine.Frame {
+			return &engine.Frame{
+				C1: append([]uint8(nil), full.C1[at:at+n]...), C2: append([]uint8(nil), full.C2[at:at+n]...),
+				Valid: n, WinCols: n, EdgeX: n / 2, TdivS: n * 100e-9 / 10, SampleS: 100e-9, Trigd: true,
+			}
 		}
-	}
-	note := r.c.snap().ui.busNote
-	for range 2 * autoLostCaptures {
-		r.clk.advance(autoLostAfter)
-		r.show(closer())
-	}
-	time.Sleep(100 * time.Millisecond)
-	if s := r.c.snap(); s.decBaud != 460800 || s.ui.busDetecting || s.ui.busNote != note || strings.HasPrefix(r.c.View().Notice, "AUTO") {
-		t.Fatalf("a closer timebase started a detection: baud %d, notice %q, detection's note %q", s.decBaud, r.c.View().Notice, s.ui.busNote)
-	}
-	r.show(fastUART()) // back at the timebase it decodes at
-	for range autoLostCaptures {
-		r.clk.advance(autoLostAfter)
-		r.show(otherBus())
-	}
-	if !waitBaud(t, r.c, 115200) {
-		t.Fatalf("the bus lost at its timebase: baud %d, notice %q", r.c.snap().decBaud, r.c.View().Notice)
-	}
+		note := r.c.snap().ui.busNote
+		for range 2 * autoLostCaptures {
+			r.clk.advance(autoLostAfter)
+			r.show(closer())
+		}
+		time.Sleep(100 * time.Millisecond)
+		if s := r.c.snap(); s.decBaud != 460800 || s.ui.busDetecting || s.ui.busNote != note || strings.HasPrefix(r.c.View().Notice, "AUTO") {
+			t.Fatalf("a closer timebase started a detection: baud %d, notice %q, detection's note %q", s.decBaud, r.c.View().Notice, s.ui.busNote)
+		}
+		r.show(fastUART()) // back at the timebase it decodes at
+		for range autoLostCaptures {
+			r.clk.advance(autoLostAfter)
+			r.show(otherBus())
+		}
+		if !waitBaud(t, r.c, 115200) {
+			t.Fatalf("the bus lost at its timebase: baud %d, notice %q", r.c.snap().decBaud, r.c.View().Notice)
+		}
+	})
 }
 
 // While Auto's detection runs, the Protocol row (the sheet's list, the
