@@ -68,6 +68,7 @@ func orderFrac(lo, hi float64, hiEdited bool) (float64, float64) {
 	return lo - 0.05, lo
 }
 
+// b2ic is 1 for true, 0 for false.
 // TRLC-LINKS: REQ-SDS-136
 func b2ic(b bool) int {
 	if b {
@@ -76,6 +77,7 @@ func b2ic(b bool) int {
 	return 0
 }
 
+// mod5 is x modulo 5, never negative.
 // TRLC-LINKS: REQ-SDS-136
 func mod5(x int) int { return ((x % 5) + 5) % 5 }
 
@@ -83,6 +85,7 @@ func mod5(x int) int { return ((x % 5) + 5) % 5 }
 // TRLC-LINKS: REQ-SDS-273
 func modViews(x int) int { return ((x % numViews) + numViews) % numViews }
 
+// mod3 is x modulo 3, never negative.
 // TRLC-LINKS: REQ-SDS-136
 func mod3(x int) int { return ((x % 3) + 3) % 3 }
 

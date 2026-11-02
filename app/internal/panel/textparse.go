@@ -148,6 +148,7 @@ func unitIs(u, unit string) bool {
 	return false
 }
 
+// isDigit reports an ASCII digit.
 // TRLC-LINKS: REQ-SDS-212
 func isDigit(b byte) bool { return b >= '0' && b <= '9' }
 

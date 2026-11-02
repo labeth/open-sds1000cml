@@ -4,6 +4,7 @@ package panel
 
 import (
 	"fmt"
+	"math"
 	"open-sds/app/internal/panel/wsview"
 	"strings"
 	"time"
@@ -204,7 +205,7 @@ func (c *Controller) rowKeys(s *sv, r *row) []fkey {
 				if p.run != nil {
 					k.run = func() error { return p.run(c) }
 				} else {
-					k.sel = abs64(v-p.v) <= 1e-12+1e-9*abs64(p.v)
+					k.sel = math.Abs(v-p.v) <= 1e-12+1e-9*math.Abs(p.v)
 					k.run = func() error { return r.setNumber(c, c.snap(), p.v) }
 				}
 				out = append(out, k)
@@ -247,15 +248,6 @@ func (c *Controller) rowKeys(s *sv, r *row) []fkey {
 	case wsview.Header: // no keys
 	}
 	return out
-}
-
-// abs64 is |x|.
-// TRLC-LINKS: REQ-SDS-212
-func abs64(x float64) float64 {
-	if x < 0 {
-		return -x
-	}
-	return x
 }
 
 // sheetPressF is F1..F5 with a sheet open: the choice beside the key.

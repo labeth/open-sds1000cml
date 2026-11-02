@@ -102,6 +102,7 @@ func (c *Controller) Run(stop <-chan struct{}) {
 	}
 }
 
+// armSIGIO makes the key device fd signal this process (SIGIO) when it has input.
 // TRLC-LINKS: REQ-SDS-135
 func armSIGIO(fd int) error {
 	if _, _, errno := syscall.Syscall(syscall.SYS_FCNTL, uintptr(fd), syscall.F_SETOWN, uintptr(syscall.Getpid())); errno != 0 {
@@ -139,6 +140,7 @@ func (c *Controller) decode(m [5]uint16, knobsOn bool) {
 	c.prev = m
 }
 
+// button handles a front-panel key press.
 // TRLC-LINKS: REQ-SDS-135
 func (c *Controller) button(code int) {
 	// While an autoset sweep runs, ignore everything except AUTO (which cancels)
@@ -248,7 +250,7 @@ func (c *Controller) resyncInto(st *engine.Stats) (idx [2]int, ok bool) {
 	c.running, c.norm, c.single = st.Running, st.Norm, st.Single // guarded — pushLEDs reads these
 	c.mu.Unlock()
 	for i, t := range c.tdivs { // the timebase asked for: one waiting for the next capture counts
-		if ts := st.TdivSet(); ts > 0 && absf(t-ts) <= t*1e-6 {
+		if ts := st.TdivSet(); ts > 0 && math.Abs(t-ts) <= t*1e-6 {
 			c.tdivIdx = i
 			break
 		}
@@ -258,14 +260,6 @@ func (c *Controller) resyncInto(st *engine.Stats) (idx [2]int, ok bool) {
 		c.vIdx = idx
 	}
 	return idx, true
-}
-
-// TRLC-LINKS: REQ-SDS-135
-func absf(x float64) float64 {
-	if x < 0 {
-		return -x
-	}
-	return x
 }
 
 // knob services AT MOST ONE knob per event, walking the fixed priority order
@@ -309,6 +303,7 @@ func (c *Controller) knob(m [5]uint16) {
 	}
 }
 
+// dispatch turns knob name dir (+1 clockwise) by steps detents.
 // TRLC-LINKS: REQ-SDS-135
 func (c *Controller) dispatch(name string, dir, steps int) {
 	c.mu.Lock()

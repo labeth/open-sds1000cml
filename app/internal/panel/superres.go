@@ -382,6 +382,7 @@ func (c *Controller) srReqReset() {
 	c.mu.Unlock()
 }
 
+// srSetStatus sets the super-res status line.
 // TRLC-LINKS: REQ-SDS-140
 func (c *Controller) srSetStatus(s string) {
 	c.mu.Lock()

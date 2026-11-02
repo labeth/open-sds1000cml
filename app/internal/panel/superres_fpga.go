@@ -46,6 +46,7 @@ const (
 	fpgaRecordWords = 65536
 )
 
+// fpgaStacker is an engine that stacks records in the FPGA.
 type fpgaStacker interface {
 	FPGAStack(context.Context, engine.FPGAStackRequest) (engine.FPGAStackResult, error)
 }

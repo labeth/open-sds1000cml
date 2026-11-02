@@ -355,9 +355,9 @@ func cursorDelta(s *sv) string {
 	if s.curType == 0 {
 		ta, tb := cursorTimes(s)
 		dt := tb - ta
-		line := "dt " + si(abs64(dt), "s")
+		line := "dt " + si(math.Abs(dt), "s")
 		if dt != 0 {
-			line += "  1/dt " + si(1/abs64(dt), "Hz")
+			line += "  1/dt " + si(1/math.Abs(dt), "Hz")
 		}
 		return line
 	}
@@ -365,7 +365,7 @@ func cursorDelta(s *sv) string {
 	for ch := range 2 {
 		if s.chDisp[ch] {
 			va, vb := cursorVolts(s, ch)
-			parts = append(parts, fmt.Sprintf("dV%d %s", ch+1, si(abs64(vb-va), "V")))
+			parts = append(parts, fmt.Sprintf("dV%d %s", ch+1, si(math.Abs(vb-va), "V")))
 		}
 	}
 	return strings.Join(parts, "  ")

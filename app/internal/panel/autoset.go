@@ -1582,6 +1582,7 @@ func (c *Controller) offScreenFor(ch int, swing *measure.Result) bool {
 	return full && math.Abs(errDiv) > 2.5
 }
 
+// has reports a measured channel with a swing above noise (20 mV).
 // TRLC-LINKS: REQ-SDS-137
 func has(r *measure.Result) bool { return r != nil && r.Vpp > 0.02 }
 
@@ -1699,6 +1700,7 @@ func widestSwing(r, seen *measure.Result) *measure.Result {
 	return &w
 }
 
+// strongerCh is the channel of the two with the larger swing (0 on a tie).
 // TRLC-LINKS: REQ-SDS-137
 func strongerCh(m [2]*measure.Result) int {
 	if has(m[1]) && (!has(m[0]) || m[1].Vpp > m[0].Vpp) {

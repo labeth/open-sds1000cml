@@ -71,6 +71,7 @@ var (
 	chans = []opt{{0, "CH1"}, {1, "CH2"}}
 )
 
+// staticOpts is an options function for a row whose options never change.
 // TRLC-LINKS: REQ-SDS-212
 func staticOpts(o []opt) func(*sv) []opt { return func(*sv) []opt { return o } }
 
@@ -135,6 +136,8 @@ var (
 	rowTab    = map[string]int{}
 )
 
+// init builds the sheet tabs and indexes every row by its id (a duplicate
+// id is a programming error).
 // TRLC-LINKS: REQ-SDS-212
 func init() {
 	sheetTabs = [numTabs]*tab{
@@ -186,9 +189,11 @@ func rowIndex(id string) int {
 
 // ---- helpers ----
 
+// notSerial reports a trigger that is not the serial trigger.
 // TRLC-LINKS: REQ-SDS-212
 func notSerial(s *sv) bool { return s.st.SerialMode == 0 }
 
+// trigTypeIs is a relevance test for the rows of trigger type t.
 // TRLC-LINKS: REQ-SDS-212
 func trigTypeIs(t int) func(*sv) bool {
 	return func(s *sv) bool { return s.st.SerialMode == 0 && s.st.TrigType == t }
@@ -208,14 +213,17 @@ func numRow(id, label, unit string, val func(*sv) float64, lim func(*sv) (float6
 	return r
 }
 
+// constStep is a fixed step for a number row.
 // TRLC-LINKS: REQ-SDS-212
 func constStep(v float64) func(*sv) float64 { return func(*sv) float64 { return v } }
 
+// constLim is a fixed range for a number row.
 // TRLC-LINKS: REQ-SDS-212
 func constLim(lo, hi float64) func(*sv) (float64, float64) {
 	return func(*sv) (float64, float64) { return lo, hi }
 }
 
+// siFmt formats a number row's value with an SI prefix and unit.
 // TRLC-LINKS: REQ-SDS-212
 func siFmt(unit string) func(float64) string { return func(v float64) string { return si(v, unit) } }
 
@@ -263,6 +271,7 @@ var condOpts = []opt{{0, "Any"}, {1, "< min"}, {2, "> max"}, {3, "In range"}}
 // 5 s are reached by the knob, not only typed.
 var holdoffLadder = []float64{0, 100e-6, 200e-6, 500e-6, 1e-3, 2e-3, 5e-3, 10e-3, 20e-3, 50e-3, 100e-3, 200e-3, 500e-3, 1, 2, 5, 10}
 
+// trigRows are the TRIG tab's rows.
 // TRLC-LINKS: REQ-SDS-212
 func trigRows() []*row {
 	edge := &row{
@@ -437,6 +446,7 @@ func trigRows() []*row {
 
 // ---- CH1 / CH2 ----
 
+// chanRows are channel ch's tab rows.
 // TRLC-LINKS: REQ-SDS-212
 func chanRows(ch int) []*row {
 	p := fmt.Sprintf("ch%d.", ch+1)
@@ -515,6 +525,7 @@ func chanRows(ch int) []*row {
 
 // ---- TIME ----
 
+// timeRows are the TIME tab's rows.
 // TRLC-LINKS: REQ-SDS-212
 func timeRows() []*row {
 	tdiv := &row{
@@ -853,6 +864,7 @@ func superResRows() []*row {
 
 // ---- VIEW ----
 
+// viewRows are the VIEW tab's rows.
 // TRLC-LINKS: REQ-SDS-212
 func viewRows() []*row {
 	view := &row{
@@ -955,6 +967,7 @@ func bodeChanRow(id, label, help string, dut bool) *row {
 
 var measOpts = []opt{{0, "Off"}, {1, "C1"}, {2, "C2"}, {3, "Both"}}
 
+// measRows are the MEAS tab's rows.
 // TRLC-LINKS: REQ-SDS-066
 func measRows() []*row {
 	readouts := &row{
@@ -1008,6 +1021,7 @@ func measRows() []*row {
 
 // ---- CURS ----
 
+// cursRows are the CURS tab's rows.
 // TRLC-LINKS: REQ-SDS-066
 func cursRows() []*row {
 	mode := &row{
@@ -1166,6 +1180,7 @@ func maskTolOpts() []opt {
 // stackDepths are the master's stack depths (captures averaged).
 var stackDepths = []int{16, 32, 64, 128, 256}
 
+// cmpRows are the MATH/REF tab's rows.
 // TRLC-LINKS: REQ-SDS-212
 func cmpRows() []*row {
 	mathRow := &row{
@@ -1826,6 +1841,7 @@ func depthText(n int) string {
 
 // ---- FILE ----
 
+// fileRows are the FILE tab's setup slots.
 // TRLC-LINKS: REQ-SDS-212
 func fileRows() []*row {
 	var rows []*row
@@ -1854,6 +1870,7 @@ func fileRows() []*row {
 
 var guideNames = []string{"This workspace", "Sheets", "Knobs, lamps"}
 
+// sysRows are the SYS tab's rows.
 // TRLC-LINKS: REQ-SDS-212
 func sysRows() []*row {
 	help := &row{

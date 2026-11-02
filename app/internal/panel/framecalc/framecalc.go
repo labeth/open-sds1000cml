@@ -167,6 +167,7 @@ func Params(proto, baud, chA, chB int, cpol, cpha, lsb bool, format int, spiDela
 	return p
 }
 
+// decodeKey identifies a frame and the decode settings a cached decode was made for.
 type decodeKey struct {
 	id, seq bool
 	ident   uint64
@@ -612,6 +613,7 @@ func magsTables(n int) *magsTable {
 	return t
 }
 
+// specKey identifies a frame and the spectrum settings a cached spectrum was made for.
 type specKey struct {
 	id, seq bool
 	ident   uint64

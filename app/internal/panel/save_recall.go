@@ -175,6 +175,7 @@ type SetupSlot struct {
 	Summary string
 }
 
+// store is the controller's setup memory (nil without one).
 // TRLC-LINKS: REQ-SDS-136
 func (s *SharedSetups) store() SetupMemory {
 	s.c.mu.Lock()
