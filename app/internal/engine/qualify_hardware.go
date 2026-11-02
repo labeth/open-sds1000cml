@@ -32,6 +32,13 @@ type qualExtent struct {
 // does not change (and re-arm) on every capture's noise.
 // TRLC-LINKS: REQ-SDS-011
 func (e *Engine) learnQualExtent(f *Frame, sc [2]chScale) {
+	e.learnQualExtentOf(f, sc, nil)
+}
+
+// learnQualExtentOf is learnQualExtent with the channels' extents taken
+// from lv when it is given.
+// TRLC-LINKS: REQ-SDS-011
+func (e *Engine) learnQualExtentOf(f *Frame, sc [2]chScale, lv *frameLevels) {
 	if f == nil || f.Valid < 64 {
 		return
 	}
@@ -43,7 +50,14 @@ func (e *Engine) learnQualExtent(f *Frame, sc [2]chScale) {
 		if len(codes) < f.Valid || !(sc[ch].vdiv > 0) {
 			continue
 		}
-		lo, hi, ok := decode.Extent(codes[:f.Valid])
+		var lo, hi int
+		var ok bool
+		if lv != nil {
+			lv.of(ch, codes[:f.Valid])
+			lo, hi, ok = lv.extLo[ch], lv.extHi[ch], lv.extOK[ch]
+		} else {
+			lo, hi, ok = decode.Extent(codes[:f.Valid])
+		}
 		if !ok {
 			continue
 		}
@@ -71,8 +85,9 @@ func (e *Engine) learnQualExtent(f *Frame, sc [2]chScale) {
 // TRLC-LINKS: REQ-SDS-011, REQ-SDS-013
 func (e *Engine) learnLevels(f *Frame, sc [2]chScale, feAtArm uint64) {
 	if feAtArm == e.feGen.Load() && feAtArm == e.learnFE {
-		e.learnSerialLevels(f, sc)
-		e.learnQualExtent(f, sc)
+		var lv frameLevels // one histogram a channel for both
+		e.learnSerialLevelsOf(f, sc, &lv)
+		e.learnQualExtentOf(f, sc, &lv)
 	}
 	e.learnFE = feAtArm
 }

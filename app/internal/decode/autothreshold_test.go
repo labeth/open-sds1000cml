@@ -1,7 +1,10 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-DECODE
 package decode
 
-import "testing"
+import (
+	"math/rand"
+	"testing"
+)
 
 // AutoThreshold is the level the decoders slice at without one set, so the
 // hardware matcher given it slices where the decode does; a line without two
@@ -25,3 +28,28 @@ func TestAutoThresholdIsTheDecoders(t *testing.T) {
 		t.Fatal("a 6-code noise band has no threshold")
 	}
 }
+
+// AutoThresholdExtent is AutoThreshold and Extent of the same codes.
+// TRLC-LINKS: REQ-SDS-011, REQ-SDS-018
+func TestAutoThresholdExtentIsBoth(t *testing.T) {
+	r := rand.New(rand.NewSource(11))
+	for k := 0; k < 300; k++ {
+		n := 4 + r.Intn(5000)
+		codes := make([]uint8, n)
+		lo, hi := r.Intn(256), r.Intn(256)
+		for i := range codes {
+			v := lo
+			if r.Intn(1+k%40) == 0 {
+				v = hi
+			}
+			codes[i] = uint8(min(255, max(0, v+r.Intn(5)-2)))
+		}
+		thr, ok := AutoThreshold(codes)
+		elo, ehi, eok := Extent(codes)
+		thr2, ok2, elo2, ehi2, eok2 := AutoThresholdExtent(codes)
+		if thr != thr2 || ok != ok2 || elo != elo2 || ehi != ehi2 || eok != eok2 {
+			t.Fatalf("case %d: %v %v %v %v %v, want %v %v %v %v %v", k, thr2, ok2, elo2, ehi2, eok2, thr, ok, elo, ehi, eok)
+		}
+	}
+}
+

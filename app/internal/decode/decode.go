@@ -408,14 +408,32 @@ func AutoThreshold(codes []uint8) (float64, bool) {
 func Extent(codes []uint8) (lo, hi int, ok bool) {
 	var counts [4][256]int32
 	histogram4(&counts, codes)
+	return extentCounts(&counts, len(codes))
+}
+
+// AutoThresholdExtent is AutoThreshold and Extent of the same codes from one
+// histogram: the engine learns both of every channel of every capture, and a
+// histogram is a pass over the whole record.
+// TRLC-LINKS: REQ-SDS-011, REQ-SDS-018
+func AutoThresholdExtent(codes []uint8) (thr float64, thrOK bool, lo, hi int, extOK bool) {
+	var counts [4][256]int32
+	histogram4(&counts, codes)
+	l, h, reason := railsCounts(&counts, codes)
+	lo, hi, extOK = extentCounts(&counts, len(codes))
+	return (l + h) / 2, reason == "", lo, hi, extOK
+}
+
+// extentCounts is Extent from the four-table histogram of n codes.
+// TRLC-LINKS: REQ-SDS-011
+func extentCounts(counts *[4][256]int32, n int) (lo, hi int, ok bool) {
 	var h [256]int
 	for c := range h {
 		h[c] = int(counts[0][c] + counts[1][c] + counts[2][c] + counts[3][c])
 	}
-	if len(codes) < 8 {
+	if n < 8 {
 		return 0, 0, false
 	}
-	noiseFloor := max(1, len(codes)/1000)
+	noiseFloor := max(1, n/1000)
 	lo, hi = 0, 255
 	for lo < 255 && h[lo] < noiseFloor {
 		lo++
@@ -444,6 +462,12 @@ func rails(codes []uint8) (lowRail, highRail float64, reason string) {
 	// each increment wait for the previous one's store.
 	var counts [4][256]int32
 	histogram4(&counts, codes)
+	return railsCounts(&counts, codes)
+}
+
+// railsCounts is rails from the codes' four-table histogram.
+// TRLC-LINKS: REQ-SDS-018
+func railsCounts(counts *[4][256]int32, codes []uint8) (lowRail, highRail float64, reason string) {
 	valid := len(codes)
 	var h [256]float64
 	for c := range h {

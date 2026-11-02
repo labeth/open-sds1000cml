@@ -43,6 +43,31 @@ type serialLevels struct {
 // (and re-arm) on every capture's noise.
 // TRLC-LINKS: REQ-SDS-013
 func (e *Engine) learnSerialLevels(f *Frame, sc [2]chScale) {
+	e.learnSerialLevelsOf(f, sc, nil)
+}
+
+// frameLevels is what one histogram of each channel of a capture gives
+// (decode.AutoThresholdExtent): its threshold and its extent.
+type frameLevels struct {
+	done         [2]bool
+	thr          [2]float64
+	thrOK, extOK [2]bool
+	extLo, extHi [2]int
+}
+
+// of measures channel ch (its codes) into lv once.
+// TRLC-LINKS: REQ-SDS-011, REQ-SDS-013
+func (lv *frameLevels) of(ch int, codes []uint8) {
+	if !lv.done[ch] {
+		lv.thr[ch], lv.thrOK[ch], lv.extLo[ch], lv.extHi[ch], lv.extOK[ch] = decode.AutoThresholdExtent(codes)
+		lv.done[ch] = true
+	}
+}
+
+// learnSerialLevelsOf is learnSerialLevels with the channels' thresholds
+// taken from lv when it is given.
+// TRLC-LINKS: REQ-SDS-013
+func (e *Engine) learnSerialLevelsOf(f *Frame, sc [2]chScale, lv *frameLevels) {
 	if f == nil || f.Valid < 64 {
 		return
 	}
@@ -54,7 +79,14 @@ func (e *Engine) learnSerialLevels(f *Frame, sc [2]chScale) {
 		if len(codes) < f.Valid || !(sc[ch].vdiv > 0) {
 			continue
 		}
-		thr, ok := decode.AutoThreshold(codes[:f.Valid])
+		var thr float64
+		var ok bool
+		if lv != nil {
+			lv.of(ch, codes[:f.Valid])
+			thr, ok = lv.thr[ch], lv.thrOK[ch]
+		} else {
+			thr, ok = decode.AutoThreshold(codes[:f.Valid])
+		}
 		if !ok {
 			continue
 		}
