@@ -105,18 +105,29 @@ func decodeSDCard(a, b lineIn, colTimeS float64, cfg ClockedCfg) Result {
 	var tokBits [136]int // a token's bits
 	good := false
 	lastCmd, acmd, nextACMD := -1, false, false
+tokens:
 	for i := 0; i < len(B); i++ {
 		if B[i].v != 0 || i+1 >= len(B) {
 			continue
 		}
-		host := B[i+1].v == 1
-		n := 48
-		if !host && !acmd && (lastCmd == 2 || lastCmd == 9 || lastCmd == 10) {
-			n = 136
-		}
+		n, ok, _ := sdCheck(B, i, lastCmd, acmd, tokBits[:])
 		if i+n > len(B) {
 			break
 		}
+		if !ok {
+			// a token that fails its check may be a record cut inside one,
+			// or bits read off the token's own start: two tokens in a row
+			// whose CRCs check, the first starting within it, are the bus
+			// again (else the rest of a record of back-to-back tokens reads
+			// out of step); one CRC-7 alone passes random bits too often
+			for j := i + 1; j < i+n; j++ {
+				if B[j].v == 0 && sdResyncs(B, j, lastCmd, acmd, tokBits[:]) {
+					i = j - 1
+					continue tokens
+				}
+			}
+		}
+		host := B[i+1].v == 1
 		t := B[i : i+n]
 		bits := tokBits[:n] // every one set below
 		for k := range t {
@@ -182,6 +193,60 @@ func decodeSDCard(a, b lineIn, colTimeS float64, cfg ClockedCfg) Result {
 		res.Error = "no SD token whose CRC checks"
 	}
 	return res
+}
+
+// sdResyncs reports two tokens in a row whose CRCs check from bit j (the
+// second at the next start bit after the first).
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-254
+func sdResyncs(B []cbit, j, lastCmd int, acmd bool, bits []int) bool {
+	if j+1 >= len(B) {
+		return false
+	}
+	nj, ok, crc := sdCheck(B, j, lastCmd, acmd, bits)
+	if !ok || !crc {
+		return false
+	}
+	if B[j+1].v == 1 { // a command: the response after it follows it
+		lastCmd = bitsInt(bits[2:8])
+	}
+	k := j + nj
+	for k < len(B) && B[k].v != 0 {
+		k++
+	}
+	if k+1 >= len(B) {
+		return false
+	}
+	_, ok, crc = sdCheck(B, k, lastCmd, acmd, bits)
+	return ok && crc
+}
+
+// sdCheck is the SD token starting at bit i after the tokens before it
+// (the last command, whether it was an ACMD): its length, whether its CRC-7 (none for
+// R3) and end bit check, and whether a CRC was checked. bits is scratch of
+// 136.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-254
+func sdCheck(B []cbit, i, lastCmd int, acmd bool, bits []int) (n int, ok, crc bool) {
+	host := B[i+1].v == 1
+	n = 48
+	if !host && !acmd && (lastCmd == 2 || lastCmd == 9 || lastCmd == 10) {
+		n = 136
+	}
+	if i+n > len(B) {
+		return n, false, false
+	}
+	for k := 0; k < n; k++ {
+		bits[k] = B[i+k].v
+	}
+	ok, crc = true, true
+	switch {
+	case !host && n == 136:
+		ok = crc7(bits[8:128]) == bitsInt(bits[128:135])
+	case !host && acmd && lastCmd == 41:
+		crc = false // R3: the OCR carries no CRC
+	default:
+		ok = crc7(bits[:40]) == bitsInt(bits[40:47])
+	}
+	return n, ok && bits[n-1] == 1, crc
 }
 
 // bitsInt is bits, most significant first, as a number.

@@ -40,6 +40,42 @@ function bitsInt(b) {
   return v;
 }
 
+// sdResyncs mirrors decode_wire2.go sdResyncs.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-254
+function sdResyncs(B, j, lastCmd, acmd) {
+  if (j + 1 >= B.length) return false;
+  const t = sdCheck(B, j, lastCmd, acmd);
+  if (!t.ok || !t.crc) return false;
+  if (B[j + 1].v === 1) {
+    let idx = 0;
+    for (let k = 2; k < 8; k++) idx = (idx << 1) | B[j + k].v;
+    lastCmd = idx;
+  }
+  let k = j + t.n;
+  while (k < B.length && B[k].v !== 0) k++;
+  if (k + 1 >= B.length) return false;
+  const u = sdCheck(B, k, lastCmd, acmd);
+  return u.ok && u.crc;
+}
+
+// sdCheck mirrors decode_wire2.go sdCheck: the token at bit i's length,
+// whether it checks, and whether a CRC was checked.
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-254
+function sdCheck(B, i, lastCmd, acmd) {
+  const host = B[i + 1].v === 1;
+  let n = 48;
+  if (!host && !acmd && (lastCmd === 2 || lastCmd === 9 || lastCmd === 10)) n = 136;
+  if (i + n > B.length) return { n, ok: false, crc: false };
+  const bits = [];
+  for (let k = 0; k < n; k++) bits.push(B[i + k].v);
+  let ok = true;
+  let crc = true;
+  if (!host && n === 136) ok = crc7(bits.slice(8, 128)) === bitsInt(bits.slice(128, 135));
+  else if (!host && acmd && lastCmd === 41) crc = false;
+  else ok = crc7(bits.slice(0, 40)) === bitsInt(bits.slice(40, 47));
+  return { n, ok: ok && bits[n - 1] === 1, crc };
+}
+
 // decodeSDCard mirrors decode_wire2.go DecodeSDCard.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-254
 function decodeSDCard(a, b, colTimeS, cfg) {
@@ -49,12 +85,21 @@ function decodeSDCard(a, b, colTimeS, cfg) {
   const { B, per, C } = R;
   const o = wireOut(C.n);
   let good = false, lastCmd = -1, acmd = false, nextACMD = false;
-  for (let i = 0; i < B.length; i++) {
+  tokens: for (let i = 0; i < B.length; i++) {
     if (B[i].v !== 0 || i + 1 >= B.length) continue;
     const host = B[i + 1].v === 1;
-    let n = 48;
-    if (!host && !acmd && (lastCmd === 2 || lastCmd === 9 || lastCmd === 10)) n = 136;
+    const tk = sdCheck(B, i, lastCmd, acmd);
+    const n = tk.n;
     if (i + n > B.length) break;
+    if (!tk.ok) {
+      // two tokens in a row whose CRCs check, the first within a failed one, are the bus again
+      for (let j = i + 1; j < i + n; j++) {
+        if (B[j].v === 0 && sdResyncs(B, j, lastCmd, acmd)) {
+          i = j - 1;
+          continue tokens;
+        }
+      }
+    }
     const t = B.slice(i, i + n);
     const bits = t.map((x) => x.v);
     o.add(t[0].x, t[0].x, "", "sof", 0, false);
