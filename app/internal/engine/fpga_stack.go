@@ -161,20 +161,7 @@ func (e *Engine) runFPGAStack(ctx context.Context, cfg sramcapture.Config, req F
 	// The session holds the owner loop for seconds, including two FPGA loads
 	// with no bus reads. It is bounded by ctx, so beat for its duration or the
 	// OTA agent judges the app hung and restarts it.
-	beating := make(chan struct{})
-	defer close(beating)
-	go func() {
-		tick := time.NewTicker(200 * time.Millisecond)
-		defer tick.Stop()
-		for {
-			select {
-			case <-beating:
-				return
-			case <-tick.C:
-				e.beatN.Add(1)
-			}
-		}
-	}()
+	defer e.beatWhile()()
 	halt, cancel := context.WithTimeout(context.Background(), time.Second)
 	haltErr := e.sram.Halt(halt)
 	cancel()

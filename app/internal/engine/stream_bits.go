@@ -33,8 +33,8 @@ func unpackBits(dst []uint8, raw []byte, ch int) []uint8 {
 	if n == 0 {
 		return dst
 	}
-	o := unsafe.Pointer(&dst[at])     //nolint:gosec // G103: the bit unpacker writes dst[at:at+n], grown above
-	src := unsafe.Pointer(&raw[2*ch]) //nolint:gosec // G103: the bit unpacker reads raw within its length, checked above
+	o := unsafe.Pointer(&dst[at])     //nolint:gosec // G103: the loop writes dst[at:at+16*n], grown above
+	src := unsafe.Pointer(&raw[2*ch]) //nolint:gosec // G103: the loop reads raw[4*i+2*ch] and the byte after, i < len(raw)/4
 	for i := range n {
 		lo := &bitWords[*(*uint8)(unsafe.Add(src, 4*i))]
 		hi := &bitWords[*(*uint8)(unsafe.Add(src, 4*i+1))]

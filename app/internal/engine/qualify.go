@@ -140,12 +140,11 @@ func qualifyPulse(disc []uint8, intervalNs float64, p trigParams, rising bool) f
 // TRLC-LINKS: REQ-SDS-011
 func qualifyPulseAt(disc []uint8, intervalNs float64, p trigParams, rising bool, at anchorSpan) float64 {
 	n := len(disc)
-	mn, mx, span := ptp(disc)
+	mn, _, span := ptp(disc)
 	if span < flatRejectSpan {
 		return -1
 	}
 	lvl := mn + int(p.pulseLvlFrac*float64(span))
-	_ = mx
 
 	bestX, bestDist := -1.0, n+1
 	enter := -1
