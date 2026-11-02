@@ -16,6 +16,10 @@ import (
 // that follows the bus's edges, not its samples: on the device a decode
 // sample by sample reads a few million samples a second beside the display,
 // and the digital stream brings tens of millions on a fast bus.
+//
+// An EdgeLine that lends its decodes working arrays (a StreamDecoder's
+// window) is decoded by one goroutine at a time; the arrays a Result holds
+// are the line's until its next decode.
 type EdgeLine struct {
 	N     int
 	First uint8 // the level of sample 0: 0 or 1

@@ -37,6 +37,9 @@ type StreamFrame struct {
 // is one such stretch), and Max the longest frame plus Close: a window that
 // grows past Max (a bus that never pauses) hands out its spans up to Close
 // before its end as they stand.
+//
+// A StreamDecoder holds one stream's window and the working arrays its
+// decodes reuse: one goroutine at a time pushes to it.
 type StreamDecoder struct {
 	decode     func(a, b []uint8) Result
 	closeN     int
