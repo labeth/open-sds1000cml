@@ -262,9 +262,9 @@ loop:
 			// A slot that has run healthy for STABLE seconds is confirmed while it
 			// still runs: an app normally runs until the next update restarts it,
 			// and that update overwrites the other slot. Confirming only at exit
-			// left the pointer on the slot the update was about to overwrite, so a
-			// crash-looping update could not roll back to the version that ran
-			// before it.
+			// would leave the pointer on the slot the update is about to
+			// overwrite, so a crash-looping update could not roll back to the
+			// version that ran before it.
 			a.confirmIfStable(slot, hs, time.Since(start))
 		}
 	}
@@ -292,14 +292,14 @@ loop:
 
 // confirmIfStable points the confirmed slot at slot once it has been healthy
 // for STABLE seconds.
-// TRLC-LINKS: REQ-SDS-028
 //
 // The slot found confirmed is remembered for the run (confirmedRun, set by
-// the supervisor alone, the pointer's only writer): a healthy app's every
-// tick otherwise read both pointer files off the stick. A write that fails
+// the supervisor alone, the pointer's only writer): otherwise a healthy
+// app's every tick reads both pointer files off the stick. A write that fails
 // (the stick flipped read-only) is not remembered: the next tick tries again,
 // and the run's first failure is logged and sent once - a confirmed pointer
 // left on the old slot is the slot the next update overwrites.
+// TRLC-LINKS: REQ-SDS-028
 func (a *Agent) confirmIfStable(slot string, hs healthStatus, ran time.Duration) {
 	if !hs.HealthyOnce || ran < a.cfg.Stable || a.confirmedRun == slot {
 		return

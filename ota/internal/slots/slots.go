@@ -37,8 +37,8 @@ const (
 type Store struct {
 	root string
 	// sums keeps each slot binary's sha256 against the file it was read
-	// from (path, inode, size, mtime): a status call hashed every ~15 MB
-	// binary off the stick again.
+	// from (path, inode, size, mtime): otherwise every status call hashes
+	// each ~15 MB binary off the stick again.
 	mu   sync.Mutex
 	sums map[string]fileSum
 }
