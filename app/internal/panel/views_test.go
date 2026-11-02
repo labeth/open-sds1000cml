@@ -82,7 +82,7 @@ type viewRig struct {
 }
 
 // fakeStream is a decoded stream that never starts (Auto finds nothing).
-type fakeStream struct{ mu sync.Mutex }
+type fakeStream struct{}
 
 // TRLC-LINKS: REQ-SDS-211, REQ-SDS-212, REQ-SDS-214, REQ-SDS-215, REQ-SDS-216, REQ-SDS-217, REQ-SDS-218
 func (s *fakeStream) Start(engine.SerialParams, engine.StreamTrigger, int, string) error { return nil }

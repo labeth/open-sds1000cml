@@ -291,43 +291,6 @@ func scanEnvelope(env []uint8) envSwing {
 // TRLC-LINKS: REQ-SDS-021
 func (q envSwing) resolvable() bool { return q.hi-q.lo >= minAmplCodes }
 
-// envelopeNarrowPulse reports a pulse within two buckets: one or two buckets
-// that span the middle half of the swing between buckets wholly at the same
-// level. Bucket midpoints miss such a pulse, so the timing would count too few
-// edges (1, 2, 3 and 5 us pulses every 60 us at 200us/div read 51 kHz, not
-// 66.8 kHz): it is unknown instead.
-// TRLC-LINKS: REQ-SDS-021
-func envelopeNarrowPulse(env []uint8) bool {
-	if len(env)/2 < 3 {
-		return false
-	}
-	return scanEnvelope(env).narrowPulse(env)
-}
-
-// TRLC-LINKS: REQ-SDS-021
-func (q envSwing) narrowPulse(env []uint8) bool {
-	n := len(env) / 2
-	if n < 3 || !q.resolvable() {
-		return false
-	}
-	class := make([]uint8, n)
-	for i := range class {
-		a, b := int(env[2*i]), int(env[2*i+1])
-		lo, hi := min(a, b), max(a, b)
-		switch {
-		case lo <= q.q1 && hi >= q.q3:
-			class[i] = bucketSpans
-		case hi <= q.q1:
-			class[i] = bucketLow
-		case lo >= q.q3:
-			class[i] = bucketHigh
-		default:
-			class[i] = bucketBetween
-		}
-	}
-	return narrowPulseIn(class)
-}
-
 // Bucket classes against the middle half of the swing: spanning it, wholly
 // below or above it, or neither.
 const (
@@ -357,28 +320,6 @@ func narrowPulseIn(class []uint8) bool {
 		}
 	}
 	return false
-}
-
-// envelopeAliased reports whether most of an envelope's buckets span the
-// middle half of its swing: a signal faster than a bucket.
-// TRLC-LINKS: REQ-SDS-021
-func envelopeAliased(env []uint8) bool {
-	n := len(env) / 2
-	if n == 0 {
-		return false
-	}
-	q := scanEnvelope(env)
-	if !q.resolvable() {
-		return false
-	}
-	spans := 0
-	for i := 0; i < n; i++ {
-		a, b := int(env[2*i]), int(env[2*i+1])
-		if min(a, b) <= q.q1 && max(a, b) >= q.q3 {
-			spans++
-		}
-	}
-	return 2*spans > n
 }
 
 // minAmplCodes is the smallest top−base span (in ADC codes) for which timing is

@@ -86,12 +86,6 @@ type StackState struct {
 	Records   int
 }
 
-// NewStackState returns an empty accumulation for bins fine bins.
-// TRLC-LINKS: REQ-SDS-141
-func NewStackState(bins int) *StackState {
-	return &StackState{Moments: make([]superres.FPGAStackMoments, 2*bins)}
-}
-
 // StackTileBins reports the loaded image's tile size, or 0 without stacking.
 // TRLC-LINKS: REQ-SDS-141
 func (c *Capture) StackTileBins() (int, error) {

@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
-	"os"
 )
 
 // ZeroTrim is a per-channel, per-detent correction to the calibration file's
@@ -34,16 +33,6 @@ var zeroTrimDefault []byte
 // DefaultZeroTrim returns the built-in zero trim.
 // TRLC-LINKS: REQ-SDS-095
 func DefaultZeroTrim() (*ZeroTrim, error) { return parseZeroTrim(zeroTrimDefault) }
-
-// LoadZeroTrim reads a zero trim file.
-// TRLC-LINKS: REQ-SDS-095
-func LoadZeroTrim(path string) (*ZeroTrim, error) {
-	raw, err := os.ReadFile(path)
-	if err != nil {
-		return nil, err
-	}
-	return parseZeroTrim(raw)
-}
 
 // TRLC-LINKS: REQ-SDS-095
 func parseZeroTrim(raw []byte) (*ZeroTrim, error) {

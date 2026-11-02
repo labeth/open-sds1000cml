@@ -55,17 +55,6 @@ const (
 // TRLC-LINKS: REQ-SDS-035, REQ-SDS-240
 func softRingSpan(n int) float64 { return float64(sramcapture.Words) * float64(uint64(1)<<n) * 2e-9 }
 
-// softRingPlan is the history ring's decimation for a digital stream at
-// decimation streamLog (feature, longest and quiet the protocol's timing,
-// pushS the time between decodes): ok false when the stream's words come
-// too fast for the on-chip slack to ride out a pump gap, or when no ring
-// both covers the host's latency, the frame and the margin and keeps three
-// ring words in the protocol's shortest feature.
-// TRLC-LINKS: REQ-SDS-035, REQ-SDS-240
-func softRingPlan(streamLog int, feature, longest, quiet, pushS float64) (n int, why string, ok bool) {
-	return softRingPlanRate(500e6/float64(uint64(1)<<streamLog), feature, longest, quiet, pushS)
-}
-
 // softRingPlanRate is softRingPlan for a stream of rate words a second (a
 // paced stream's rate is no power of two).
 // TRLC-LINKS: REQ-SDS-035, REQ-SDS-240

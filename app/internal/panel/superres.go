@@ -192,34 +192,6 @@ const srPeriodSpanMax = 16384
 // srSoftBinsMax bounds the software stack: 10 float64 per bin, ~21 MB.
 const srSoftBinsMax = 1 << 18
 
-// srFocusName returns the label for the current intensity-cycle focus.
-// TRLC-LINKS: REQ-SDS-140
-func srFocusName(f int) string {
-	switch f {
-	case 1:
-		return "gate start"
-	case 2:
-		return "gate end"
-	case 3:
-		return "review"
-	default:
-		return "watch"
-	}
-}
-
-// srSeedAndStart grabs the current frame, builds a fresh stack sized for the
-// current srK/srCh, seeds it as the locked reference, resumes RUN and (re)starts
-// the stacker goroutine. Any existing stacker is stopped first (its old Stack is
-// a captured local, so no race with the new one). Returns false if there is no
-// usable frame or the reference is unusable.
-// TRLC-LINKS: REQ-SDS-140
-func (c *Controller) srSeedAndStart() bool {
-	c.mu.Lock()
-	gen := c.srSeedGen
-	c.mu.Unlock()
-	return c.srSeedAndStartGen(gen)
-}
-
 // srSeedAndStartGen is srSeedAndStart for request gen: a newer request or Off
 // meanwhile discards it (its status, and the stack it built).
 // TRLC-LINKS: REQ-SDS-140

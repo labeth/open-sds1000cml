@@ -6,8 +6,6 @@ import (
 	"errors"
 	"testing"
 	"time"
-
-	"open-sds/app/internal/iface"
 )
 
 // fakePort models the MAX V configuration port: every write is recorded;
@@ -322,89 +320,6 @@ func TestReloadExplicitOrder(t *testing.T) {
 }
 
 // ---- EnsureDefault ----
-
-// TRLC-LINKS: REQ-SDS-004
-type fakeFabric struct {
-	good  bool
-	port  *fakePort
-	reads int
-}
-
-// TRLC-LINKS: REQ-SDS-004
-func (f *fakeFabric) read(sel uint16) (uint16, error) {
-	f.reads++
-	// the identity becomes good once the fake port reports CONF_DONE
-	good := f.good || (f.port != nil && f.port.confDone)
-	if !good {
-		return 0x00c0, nil // floating bus
-	}
-	switch sel {
-	case iface.SelBuildidLo:
-		return iface.BuildIDLo, nil
-	case iface.SelBuildidHi:
-		return iface.BuildIDHi, nil
-	case iface.SelVersion:
-		return iface.VersionMagic, nil
-	case iface.SelFabricId:
-		return iface.FabricID, nil
-	}
-	return 0, nil
-}
-
-// TRLC-LINKS: REQ-SDS-004
-func TestEnsureDefaultSkipsWhenVerified(t *testing.T) {
-	p := &fakePort{}
-	fab := &fakeFabric{good: true}
-	if err := EnsureDefault(fab.read, p, container(hdrNative, 400), fastOpts()); err != nil {
-		t.Fatal(err)
-	}
-	if len(p.writes) != 0 {
-		t.Fatalf("verified fabric was reloaded (%d writes)", len(p.writes))
-	}
-}
-
-// TRLC-LINKS: REQ-SDS-004, REQ-SDS-005
-func TestEnsureDefaultReloadsAndVerifies(t *testing.T) {
-	p := &fakePort{}
-	fab := &fakeFabric{port: p}
-	if err := EnsureDefault(fab.read, p, container(hdrNative, 400), fastOpts()); err != nil {
-		t.Fatal(err)
-	}
-	if p.pulses != 1 {
-		t.Fatalf("pulses = %d, want 1", p.pulses)
-	}
-	if fab.reads < 8 {
-		t.Fatalf("identity read %d times, want before and after the reload", fab.reads)
-	}
-}
-
-// TRLC-LINKS: REQ-SDS-004
-func TestEnsureDefaultWithoutBitstream(t *testing.T) {
-	p := &fakePort{}
-	fab := &fakeFabric{}
-	if err := EnsureDefault(fab.read, p, nil, fastOpts()); err == nil {
-		t.Fatal("mismatch without a bitstream must fail")
-	}
-	if len(p.writes) != 0 {
-		t.Fatal("attempted a reload with no bitstream")
-	}
-	if Default() != nil {
-		t.Skip("built with the bitstream embedded")
-	}
-}
-
-// TRLC-LINKS: REQ-SDS-004
-func TestEnsureDefaultPostVerifyFails(t *testing.T) {
-	p := &fakePort{}
-	fab := &fakeFabric{} // never becomes good (port not linked)
-	err := EnsureDefault(fab.read, p, container(hdrNative, 400), fastOpts())
-	if err == nil {
-		t.Fatal("post-reload verify must fail when the identity stays wrong")
-	}
-	if p.pulses != 1 {
-		t.Fatalf("pulses = %d, want 1", p.pulses)
-	}
-}
 
 // ---- container / bit order ----
 

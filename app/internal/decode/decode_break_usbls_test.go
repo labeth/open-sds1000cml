@@ -119,15 +119,6 @@ func brkEqInts(a, b []int) bool {
 	return true
 }
 
-// TRLC-LINKS: REQ-SDS-018
-func brkIdle(n int) []uint8 {
-	s := make([]uint8, n)
-	for i := range s {
-		s[i] = 210
-	}
-	return s
-}
-
 // brkValidPIDs is the set of well-defined PID nibbles (all map to a name).
 var brkValidPIDs = []int{0x1, 0x9, 0x5, 0xD, 0x3, 0xB, 0x7, 0xF, 0x2, 0xA, 0xE, 0x6, 0xC, 0x8, 0x4}
 

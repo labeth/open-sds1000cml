@@ -100,14 +100,6 @@ func (c *Controller) armSerial() error {
 	return nil
 }
 
-// snapProto reads the decode protocol.
-// TRLC-LINKS: REQ-SDS-214
-func (c *Controller) snapProto() int {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	return c.decProto
-}
-
 // setHoldoff sets the trigger holdoff (0 = off), as the engine clamps it.
 // TRLC-LINKS: REQ-SDS-212
 func (c *Controller) setHoldoff(v float64) error {

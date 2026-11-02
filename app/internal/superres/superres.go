@@ -55,7 +55,6 @@ type Stack struct {
 	StatHi      int
 	SampleS     float64
 	UserRef     bool
-	tpl         *template
 	MaxShift    int     // translation budget (samples) for the locate; 0 → default 64
 	MinMatch    float64 // match-score cut; 0 → default 0.8
 
@@ -176,12 +175,4 @@ func selectKth(a []float64, k int) float64 {
 		}
 	}
 	return a[k]
-}
-
-// TRLC-LINKS: REQ-SDS-141
-func abs(x int) int {
-	if x < 0 {
-		return -x
-	}
-	return x
 }

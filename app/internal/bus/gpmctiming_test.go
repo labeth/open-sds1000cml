@@ -2,11 +2,7 @@
 package bus
 
 import (
-	"math"
 	"testing"
-	"time"
-
-	"open-sds/app/internal/iface"
 )
 
 // TRLC-LINKS: REQ-SDS-131
@@ -30,10 +26,6 @@ func TestCS1TimingFieldCodec(t *testing.T) {
 	}
 	if err := n.Validate(); err != nil {
 		t.Fatalf("valid timing refused: %v", err)
-	}
-	if FactoryCS1Timing.forCycle(15).OEOff() != 15 || FactoryCS1Timing.forCycle(15).CSRdOff() != 15 ||
-		FactoryCS1Timing.forCycle(25).OEOff() != 16 || FactoryCS1Timing.forCycle(25).CSRdOff() != 20 {
-		t.Fatalf("forCycle: %s / %s", FactoryCS1Timing.forCycle(15), FactoryCS1Timing.forCycle(25))
 	}
 	if FactoryCS1Timing.ReadTicks() != 36 {
 		t.Fatalf("ReadTicks = %d, want 36 (31 + gap 5 = the 360 ns/word of the R0 report at 100 MHz)", FactoryCS1Timing.ReadTicks())
@@ -77,7 +69,7 @@ func TestApplyTimingSequence(t *testing.T) {
 	if got != FactoryCS1Timing {
 		t.Fatalf("readTiming %+v", got)
 	}
-	n := FactoryCS1Timing.WithRdAccess(9).forCycle(14)
+	n := FactoryCS1Timing.WithRdAccess(9).WithRdCycle(14).WithOEOff(14).WithCSRdOff(14)
 	if err := applyTiming(g, n, true); err != nil {
 		t.Fatal(err)
 	}
@@ -96,230 +88,5 @@ func TestApplyTimingSequence(t *testing.T) {
 	}
 	if err := applyTiming(g, FactoryCS1Timing.WithRdAccess(30), false); err != nil {
 		t.Fatalf("restore path must not validate: %v", err)
-	}
-}
-
-// fakePort is a timing port with floors: below them the fabric's pops
-// corrupt. It also drives the fake clock: each drained word costs
-// (RDCYCLETIME + gap) ticks at 100 MHz, so the FCLK estimate can be checked.
-// TRLC-LINKS: REQ-SDS-131
-type fakePort struct {
-	fab         *fakeFab
-	cur         CS1Timing
-	minAccess   uint32
-	minCycle    uint32
-	minGap      uint32
-	applies     int
-	validations int
-}
-
-// TRLC-LINKS: REQ-SDS-131
-func (p *fakePort) Read() (CS1Timing, error) { return p.cur, nil }
-
-// TRLC-LINKS: REQ-SDS-131
-func (p *fakePort) set(t CS1Timing) {
-	p.cur = t
-	p.applies++
-	p.fab.corrupt = t.RdAccess() < p.minAccess || t.RdCycle() < p.minCycle || t.Gap() < p.minGap
-}
-
-// TRLC-LINKS: REQ-SDS-131
-func (p *fakePort) Apply(t CS1Timing) error {
-	p.validations++
-	if err := t.Validate(); err != nil {
-		return err
-	}
-	p.set(t)
-	return nil
-}
-
-// TRLC-LINKS: REQ-SDS-131
-func (p *fakePort) Restore(t CS1Timing) error { p.set(t); return nil }
-
-// tickClock advances 10 ns per GPMC tick per popped word: the fake fabric's
-// pop counter drives it.
-// TRLC-LINKS: REQ-SDS-131
-type tickClock struct {
-	fab  *fakeFab
-	port *fakePort
-	t    time.Time
-	last uint16
-}
-
-// TRLC-LINKS: REQ-SDS-131
-func (c *tickClock) now() time.Time {
-	c.fab.mu.Lock()
-	pops := c.fab.pops
-	c.fab.mu.Unlock()
-	d := int(uint16(pops - c.last))
-	c.last = pops
-	c.t = c.t.Add(time.Duration(d) * time.Duration(c.port.cur.ReadTicks()) * 10 * time.Nanosecond)
-	return c.t
-}
-
-// TRLC-LINKS: REQ-SDS-131
-func TestSweepFindsFloorsAndRestores(t *testing.T) {
-	fab := newFakeFab()
-	port := &fakePort{fab: fab, cur: FactoryCS1Timing, minAccess: 9, minCycle: 12, minGap: 4}
-	clk := &tickClock{fab: fab, port: port, t: time.Unix(0, 0)}
-	sw := &Sweeper{Port: port, Sleep: noSleep, now: clk.now, Logf: t.Logf,
-		o: SweepOptions{Words: 500, Drains: 2, Blocks: 3, VerifyWords: 5000, SweepGap: true}}
-	res, err := sw.Run(fab)
-	if err != nil {
-		t.Fatalf("sweep: %v (%s)", err, res.Err)
-	}
-	if !res.OK || !res.Restored || port.cur != FactoryCS1Timing {
-		t.Fatalf("ok=%v restored=%v cur=%s", res.OK, res.Restored, port.cur)
-	}
-	if res.FloorAccess != 9 || res.FloorCycle != 12 || res.FloorGap != 4 {
-		t.Fatalf("floors access=%d cycle=%d gap=%d, want 9/12/4", res.FloorAccess, res.FloorCycle, res.FloorGap)
-	}
-	c := res.Chosen
-	if c.RdAccess != 10 || c.RdCycle != 13 || c.Gap != 5 || c.OEOff != 13 || c.CSRdOff != 13 {
-		t.Fatalf("chosen %+v, want one tick above every floor with OEOFF/CSRDOFF at the cycle end", c)
-	}
-	// The failing setting is the last of each phase; every earlier one passed.
-	for _, ph := range [][]SettingResult{res.Access, res.Cycle, res.GapPhase} {
-		for i, s := range ph {
-			if s.Pass != (i < len(ph)-1) {
-				t.Fatalf("phase entry %d/%d pass=%v: %+v", i, len(ph), s.Pass, s)
-			}
-			if s.Drains != 6 || s.Words != 3000 || !s.BaselineOK || len(s.PerBlock) != 3 {
-				t.Fatalf("block accounting: %+v", s)
-			}
-		}
-	}
-	if last := res.Access[len(res.Access)-1]; last.FirstBad == nil || last.Breaks == 0 {
-		t.Fatalf("the failing access setting carries no evidence: %+v", last)
-	}
-	// Verify covered >= VerifyWords at the chosen timing (3 blocks × 4 drains × 500 = 6000).
-	if res.Verify.Words < 5000 || !res.Verify.Pass {
-		t.Fatalf("verify: %+v", res.Verify)
-	}
-	// Rates: 36 ticks × 10 ns at the factory timing, 18 at the chosen one; FCLK from the slope.
-	if math.Abs(res.Access[0].Baseline-360) > 1e-6 || math.Abs(res.Verify.NsPerWord-180) > 1e-6 {
-		t.Fatalf("ns/word baseline=%.1f verify=%.1f, want 360 / 180", res.Access[0].Baseline, res.Verify.NsPerWord)
-	}
-	if math.Abs(res.FclkMHz-100) > 0.01 {
-		t.Fatalf("FCLK estimate %.3f MHz, want 100", res.FclkMHz)
-	}
-	if res.Verify.WordsPerS < 5.5e6 || res.Verify.WordsPerS > 5.6e6 {
-		t.Fatalf("words/s %.0f", res.Verify.WordsPerS)
-	}
-}
-
-// TRLC-LINKS: REQ-SDS-131
-func TestSweepNothingGained(t *testing.T) {
-	// Every candidate fails: the chosen timing is the start timing, still restored.
-	fab := newFakeFab()
-	port := &fakePort{fab: fab, cur: FactoryCS1Timing, minAccess: 13, minCycle: 31, minGap: 5}
-	sw := &Sweeper{Port: port, Sleep: noSleep, now: (&tickClock{fab: fab, port: port}).now,
-		o: SweepOptions{Words: 300, Drains: 1, VerifyWords: 300}}
-	res, err := sw.Run(fab)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if res.ChosenRaw != FactoryCS1Timing || !res.OK || len(res.Access) != 1 || len(res.Cycle) != 1 || len(res.GapPhase) != 0 {
-		t.Fatalf("chosen %s ok=%v access=%d cycle=%d gap=%d", res.ChosenRaw, res.OK, len(res.Access), len(res.Cycle), len(res.GapPhase))
-	}
-	if res.FclkMHz != 0 {
-		t.Fatalf("FCLK must not be estimated from < 3 clean points: %.1f", res.FclkMHz)
-	}
-}
-
-// TRLC-LINKS: REQ-SDS-131
-func TestSweepAbortsOnBrokenBaseline(t *testing.T) {
-	fab := newFakeFab()
-	port := &fakePort{fab: fab, cur: FactoryCS1Timing, minAccess: 14} // the baseline itself is below the floor
-	sw := &Sweeper{Port: port, Sleep: noSleep, now: (&tickClock{fab: fab, port: port}).now,
-		o: SweepOptions{Words: 300, Drains: 1}}
-	res, err := sw.Run(fab)
-	if err == nil || res.Restored != true || res.OK || port.cur != FactoryCS1Timing {
-		t.Fatalf("broken baseline: err=%v restored=%v ok=%v cur=%s", err, res.Restored, res.OK, port.cur)
-	}
-}
-
-// slowFab is the fake fabric on the ioctl drain (FastDrain false): the step
-// budget then holds fewer drains per step.
-// TRLC-LINKS: REQ-SDS-131
-type slowFab struct{ *fakeFab }
-
-// TRLC-LINKS: REQ-SDS-131
-func (slowFab) FastDrain() bool { return false }
-
-// TestSweepStepsRestoreEveryStep is the health-contract property of the step
-// machine: every Step is bounded (at most DrainsStep scored drains, sized by
-// the drain mode), the start timing is back in the controller when it
-// returns, and the step timeout scales with the drain mode.
-// TRLC-LINKS: REQ-SDS-131
-func TestSweepStepsRestoreEveryStep(t *testing.T) {
-	fab := newFakeFab()
-	port := &fakePort{fab: fab, cur: FactoryCS1Timing, minAccess: 11, minCycle: 29}
-	clk := &tickClock{fab: fab, port: port, t: time.Unix(0, 0)}
-	o := SweepOptions{Words: iface.PretrigMax, Drains: 7, Blocks: 3, VerifyWords: 100000}
-	sw := &Sweeper{Port: port, Sleep: noSleep, now: clk.now, o: o}
-	if got := sw.StepTimeout(); got < 2*time.Second || got > 6*time.Second {
-		t.Fatalf("ioctl step timeout %v (unknown mode assumes the slow drain)", got)
-	}
-	var steps, applies int
-	lastApplies := 0
-	for {
-		done, err := sw.Step(slowFab{fab})
-		steps++
-		if port.cur != FactoryCS1Timing {
-			t.Fatalf("step %d left the controller at %s", steps, port.cur)
-		}
-		if a := port.applies - lastApplies; a > 2 {
-			t.Fatalf("step %d wrote the timing %d times (want apply + restore at most)", steps, a)
-		}
-		lastApplies = port.applies
-		applies = port.applies
-		if err != nil {
-			t.Fatalf("step %d: %v", steps, err)
-		}
-		if done {
-			break
-		}
-	}
-	res := sw.Result()
-	if !res.OK || !res.Restored || res.FastDrain {
-		t.Fatalf("ok=%v restored=%v fast=%v", res.OK, res.Restored, res.FastDrain)
-	}
-	// 20478 words × 2.5 µs = 51 ms per drain: 4 drains fit the 250 ms budget,
-	// so a 7-drain half takes two steps; the step timeout follows.
-	if res.DrainsStep != 4 {
-		t.Fatalf("drains per step %d, want 4 on the ioctl drain", res.DrainsStep)
-	}
-	if got := sw.StepTimeout(); got < 2*time.Second || got > 6*time.Second {
-		t.Fatalf("ioctl step timeout %v", got)
-	}
-	// Three settings per phase (12, 11 clean, 10 failing; 30, 29, 28) × 3
-	// blocks × 2 halves × 2 steps, plus the verify setting (100000 / (3 ×
-	// 20478) → 2 drains per half: 1 step each) = 6 × 12 + 6 = 78 steps and one
-	// closing step that only finishes; every candidate half wrote apply +
-	// restore, and the finish restored once more.
-	if steps != 79 || res.Steps != 78 || applies != 2*(6*3*2+3)+1 {
-		t.Fatalf("steps=%d/%d applies=%d", steps, res.Steps, applies)
-	}
-	for _, s := range append(res.Access, res.Cycle...) {
-		if s.Drains != 21 || len(s.PerBlock) != 3 {
-			t.Fatalf("setting accounting across steps: %+v", s)
-		}
-	}
-	if res.Chosen.RdAccess != 12 || res.Chosen.RdCycle != 30 {
-		t.Fatalf("chosen %+v", res.Chosen)
-	}
-	// On the EDMA drain (0.4 µs/word) the same 250 ms budget holds 30 drains
-	// per step (a whole 7-drain half in one step); the step timeout stays ~2 s
-	// because it is derived from the same budget.
-	fast := &Sweeper{Port: port, Sleep: noSleep, now: clk.now, o: o}
-	if _, err := fast.Step(fab); err != nil {
-		t.Fatal(err)
-	}
-	if fast.Result().DrainsStep != 30 || fast.StepTimeout() < 1500*time.Millisecond || fast.StepTimeout() > 3*time.Second {
-		t.Fatalf("EDMA: drains/step %d timeout %v vs ioctl %v", fast.Result().DrainsStep, fast.StepTimeout(), sw.StepTimeout())
-	}
-	if port.cur != FactoryCS1Timing || fast.Phase() != "access" || fast.Setting() == "" {
-		t.Fatalf("after one EDMA step: cur=%s phase=%s setting=%q", port.cur, fast.Phase(), fast.Setting())
 	}
 }

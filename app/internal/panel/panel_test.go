@@ -3,7 +3,6 @@ package panel
 
 import (
 	"fmt"
-	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -726,14 +725,4 @@ func TestLEDMap(t *testing.T) {
 	if w := eng.lastLEDs(); w&ledCH1 != 0 || w&ledCH2 == 0 {
 		t.Errorf("C1 off: lamps %#x", w)
 	}
-}
-
-// keyNamesOf lists the keys of a map (for messages).
-// TRLC-LINKS: REQ-SDS-135
-func keyNamesOf[V any](m map[string]V) string {
-	var out []string
-	for k := range m {
-		out = append(out, k)
-	}
-	return strings.Join(out, ",")
 }

@@ -4,15 +4,12 @@ package web
 import (
 	"bytes"
 	"encoding/json"
-	"io"
-	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
 
 	"open-sds/app/internal/engine"
-	"open-sds/app/internal/sramcapture"
 )
 
 // benchServer serves a 5000-sample frame with its Q8.8 record.
@@ -146,65 +143,11 @@ func BenchmarkFrameTemplate(b *testing.B) {
 	}
 }
 
-// deadlineRW is a response writer that takes write deadlines, as the
-// server's does.
-type deadlineRW struct{ httptest.ResponseRecorder }
-
-// TRLC-LINKS: REQ-SDS-166
-func (d *deadlineRW) SetWriteDeadline(time.Time) error { return nil }
-
-// deadlineWriterRef is the writer as first written: a controller a chunk.
-type deadlineWriterRef struct{ http.ResponseWriter }
-
-// TRLC-LINKS: REQ-SDS-166
-func (w deadlineWriterRef) Write(p []byte) (int, error) {
-	_ = http.NewResponseController(w.ResponseWriter).SetWriteDeadline(time.Now().Add(1500 * time.Millisecond))
-	return w.ResponseWriter.Write(p)
-}
-
-// TRLC-LINKS: REQ-SDS-166
-func benchWriter(b *testing.B, mk func(http.ResponseWriter) io.Writer) {
-	rw := &deadlineRW{*httptest.NewRecorder()}
-	w := mk(rw)
-	p := make([]byte, 64)
-	for b.Loop() {
-		w.Write(p)
-		rw.Body.Reset()
-	}
-}
-
-// TRLC-LINKS: REQ-SDS-166
-func BenchmarkDeadlineWriter(b *testing.B) {
-	benchWriter(b, func(w http.ResponseWriter) io.Writer { return deadlineWriter{w} })
-}
-
-// TRLC-LINKS: REQ-SDS-166
-func BenchmarkDeadlineWriterRef(b *testing.B) {
-	benchWriter(b, func(w http.ResponseWriter) io.Writer { return deadlineWriterRef{w} })
-}
-
 // TRLC-LINKS: REQ-SDS-265
 func BenchmarkWriteSoundBin(b *testing.B) {
 	blk := engine.SoundBlock{N: 4096, Q1: make([]uint16, 4096), Q2: make([]uint16, 4096)}
 	h := map[string]int{"n": 4096}
 	for b.Loop() {
 		writeSoundBin(httptest.NewRecorder(), h, blk, time.Second)
-	}
-}
-
-// A small window of the SRAM record (the diag page's reads).
-// TRLC-LINKS: REQ-SDS-166
-func BenchmarkSRAMRecordWindow(b *testing.B) {
-	h := SRAMHandler(&sramTestSource{m: sramcapture.Metadata{Ready: true, Frozen: true, Length: sramcapture.Words}})
-	for b.Loop() {
-		h.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest("GET", "/api/sram/record.bin?offset=524280&words=8", nil))
-	}
-}
-
-// TRLC-LINKS: REQ-SDS-165
-func BenchmarkHTTPDiagMap(b *testing.B) {
-	h := benchServer().Handler()
-	for b.Loop() {
-		h.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest("GET", "/api/diag/map", nil))
 	}
 }

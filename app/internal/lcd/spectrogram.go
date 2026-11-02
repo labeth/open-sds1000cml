@@ -114,17 +114,6 @@ func (sg *Spectrogram) Push(f *engine.Frame, ch int, effNyq float64) {
 	sg.rows = min(sg.rows+n, sgRows)
 }
 
-// pushMags scrolls the waterfall down one row and paints the half spectrum
-// mags (peak its largest) as the top row.
-// TRLC-LINKS: REQ-SDS-068
-func (sg *Spectrogram) pushMags(mags []float64, peak float64) {
-	sg.scroll(1)
-	sg.paintRow(sgY0, mags, peak)
-	if sg.rows < sgRows {
-		sg.rows++
-	}
-}
-
 // scroll moves the heatmap down n rows, the oldest dropping off the bottom:
 // the image's rows are a ring (imgRow), so the newest rows take the oldest
 // ones' place and nothing moves. Copying the whole heatmap down a push read
@@ -166,10 +155,6 @@ func (sg *Spectrogram) paintRow(y int, mags []float64, peak float64) {
 	}
 }
 
-// Rows reports how many waterfall rows have been painted (debug/status).
-// TRLC-LINKS: REQ-SDS-068
-func (sg *Spectrogram) Rows() int { return sg.rows }
-
 // Clear blanks the waterfall.
 // TRLC-LINKS: REQ-SDS-068
 func (sg *Spectrogram) Clear() {
@@ -177,13 +162,6 @@ func (sg *Spectrogram) Clear() {
 		sg.img.Pix[i] = 0
 	}
 	sg.rows, sg.top = 0, 0
-}
-
-// drawSpectrogram blits the waterfall image and draws the frequency axis + a dB
-// colour key. `sg` is the accumulated image passed via the HUD.
-// TRLC-LINKS: REQ-SDS-021, REQ-SDS-068
-func drawSpectrogram(sf Surface, p plotArea, sg *Spectrogram, hideCaptions bool) {
-	drawSpectrogramMark(sf, p, sg, hideCaptions, nil)
 }
 
 // drawSpectrogramMark blits the waterfall into plot p (scaled from its

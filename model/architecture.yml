@@ -36,19 +36,20 @@ architecture:
   - id: FU-APP-APP
     name: Application composition root
     group: FG-APP
-    prose: 'Selects default, default-sram or SRAM-only composition using inherited descriptors. Wires acquisition,
-      front-end, fanout, panel, settings, LCD, SCPI and HTTP for the selected mode. Diagnostic health can precede
+    prose: 'One composition (ADR-ONE-APP): loads the general image over the inherited descriptors, verifies the SRAM
+      transport, starts the acquisition worker and wires acquisition, front-end, fanout, panel, settings, LCD, SCPI
+      and HTTP. Diagnostic health can precede
       coherent frames; frame-labelled health refresh follows engine beats after an initial threshold. HUD
       construction has Bode side effects and the LCD cache uses selected scalar state. Default shutdown flushes
       settings and requests engine stop before process exit; it does not join all services. REQ-SDS-167 through
-      REQ-SDS-169 and existing descriptor, mode, identity, health and timing contracts.'
+      REQ-SDS-168 and existing descriptor, identity, health and timing contracts.'
     tags:
     - source-backed
   - id: FU-APP-BUILD
     name: App Build
     group: FG-BUILD
-    prose: 'app/Makefile cross-compiles cmd/app for ARMv7; make app-release embeds the four FPGA bitstreams from
-      fpga/bitstreams/.'
+    prose: 'app/Makefile cross-compiles cmd/app for ARMv7 with all nine FPGA images from fpga/bitstreams/ embedded
+      (make app; app-release is the same build). A binary without its images does not start.'
     tags:
     - source-backed
   - id: FU-APP-BUILDINFO
@@ -84,15 +85,6 @@ architecture:
     group: FG-APP
     prose: 'UART, I2C, SPI, Manchester, SENT, CAN/CAN-FD, MIL-STD-1553B, ARINC 429, USB low-speed and FlexRay with
       browser parity and oracle tests.'
-    tags:
-    - source-backed
-  - id: FU-APP-DIAG
-    name: App Diag
-    group: FG-APP
-    prose: 'Named register and window access, identity, lane census, snapshots, bus-control experiments, timing jobs
-      and capture comparisons are routed through an injected bus owner. Probe, quiet-listening and finite crank
-      flows retain unqualified physical hypotheses. Restoration is conditional and some errors are ignored. All
-      six Go files are reviewed; the original timing-sweep test exposes concurrent progress races.'
     tags:
     - source-backed
   - id: FU-APP-DSP
@@ -319,14 +311,6 @@ architecture:
     name: A/B update slots
     group: FG-OTA
     prose: 'Staging, activation, confirmation and rollback of versioned application/agent slots on USB.'
-    tags:
-    - source-backed
-  - id: FU-OTA-STUBAPP
-    name: Ota Stubapp
-    group: FG-OTA
-    prose: 'Reference child reports inherited descriptor observations and simulates health with timers after warmup,
-      even when no GPMC descriptor was found. It does not access the bus or capture samples; source inspection
-      and compilation do not qualify device progress.'
     tags:
     - source-backed
   - id: FU-OTA-SYSINFO
@@ -1130,7 +1114,6 @@ architecture:
     - FU-APP-BUS
     - FU-APP-CAL
     - FU-APP-DECODE
-    - FU-APP-DIAG
     - FU-APP-DSP
     - FU-APP-ENGINE
     - FU-APP-FPGALOAD

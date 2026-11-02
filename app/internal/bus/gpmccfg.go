@@ -3,7 +3,6 @@ package bus
 
 import (
 	"fmt"
-	mbits "math/bits"
 	"os"
 	"syscall"
 )
@@ -85,105 +84,4 @@ type CSRegion struct {
 	Config  [7]uint32 `json:"config"`   // CONFIG1..CONFIG7 verbatim
 }
 
-// gpmcCSConfig is CONFIG<n>_<cs>: the per-CS block starts at 0x60 and is
-// 0x30 long, CONFIG1 first (AM335x TRM 7.5).
-// TRLC-LINKS: REQ-SDS-133
-func gpmcCSConfig(cs, n int) uint32 { return uint32(0x60 + cs*0x30 + (n-1)*4) }
-
-// maskToMB decodes MASKADDRESS: the nibble is the run of 1s from bit 11 down,
-// 0xF = 16 MB ... 0x0 = 256 MB.
-// TRLC-LINKS: REQ-SDS-133
-func maskToMB(mask uint32) int {
-	return 256 >> mbits.OnesCount32(mask&0xF) // a halving a set bit
-}
-
-// TRLC-LINKS: REQ-SDS-133
-func surveyRegions(r regs32) []CSRegion {
-	out := make([]CSRegion, 0, 7)
-	for cs := 0; cs < 7; cs++ {
-		reg := CSRegion{CS: cs}
-		for n := 1; n <= 7; n++ {
-			reg.Config[n-1] = r.R(gpmcCSConfig(cs, n))
-		}
-		c7 := reg.Config[6]
-		reg.Valid = c7&c7CSValid != 0
-		reg.Base = (c7 & 0x3F) << 24
-		reg.MaskRaw = (c7 >> 8) & 0xF
-		reg.SizeMB = maskToMB(reg.MaskRaw)
-		out = append(out, reg)
-	}
-	return out
-}
-
-// SurveyCSRegions maps the GPMC controller read-only and reports every chip
-// select's region. It writes nothing.
-// TRLC-LINKS: REQ-SDS-133
-func SurveyCSRegions() ([]CSRegion, error) {
-	f, err := os.OpenFile("/dev/mem", os.O_RDONLY|syscall.O_SYNC, 0)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-	m, err := syscall.Mmap(int(f.Fd()), gpmcBase, gpmcLen, syscall.PROT_READ, syscall.MAP_SHARED)
-	if err != nil {
-		return nil, fmt.Errorf("gpmc mmap: %w", err)
-	}
-	defer syscall.Munmap(m)
-	return surveyRegions(memRegs{m}), nil
-}
-
 // ---- read-only peek at an arbitrary GPMC chip-select region ----
-
-// PeekCS maps `n` 16-bit words at `off` inside the GPMC region of chip select
-// `cs` and returns them. It opens /dev/mem O_RDONLY and maps PROT_READ, so it
-// **cannot** write: this is a survey instrument, not an access path.
-//
-// Why it exists. SurveyCSRegions reports four VALID chip selects on this board —
-// CS0 (NAND), CS1 (the Cyclone), CS3 (the MAX V) and **CS2 at 0x02000000, which
-// nothing in this project has ever read** (the acq2 analysis branch
-// item 6 lists "CS2: never read"). The SRAM work has assumed the external
-// part is reached through the Cyclone or the MAX V, and the Cyclone's pad census
-// leaves nobody to drive a 19-bit address (2026-09-06-sram-interface-decoded.md).
-// An ARM-addressed region on its own chip select is the one supplier that resolves
-// that, and it costs a read to find out.
-// TRLC-LINKS: REQ-SDS-133
-func PeekCS(cs int, off uint32, n int) ([]uint16, uint32, error) {
-	if cs < 0 || cs > 6 {
-		return nil, 0, fmt.Errorf("gpmc: cs %d out of range", cs)
-	}
-	if n <= 0 || n > 4096 {
-		n = 256
-	}
-	regions, err := SurveyCSRegions()
-	if err != nil {
-		return nil, 0, err
-	}
-	r := regions[cs]
-	if !r.Valid {
-		return nil, 0, fmt.Errorf("gpmc: CS%d is not valid (CSVALID clear)", cs)
-	}
-	// page-align the mapping; the GPMC window is device memory, so O_SYNC.
-	const pageSz = 4096
-	start := (r.Base + off) &^ (pageSz - 1)
-	skip := int((r.Base + off) - start)
-	length := skip + n*2
-	if length%pageSz != 0 {
-		length += pageSz - length%pageSz
-	}
-	f, err := os.OpenFile("/dev/mem", os.O_RDONLY|syscall.O_SYNC, 0)
-	if err != nil {
-		return nil, 0, err
-	}
-	defer f.Close()
-	m, err := syscall.Mmap(int(f.Fd()), int64(start), length, syscall.PROT_READ, syscall.MAP_SHARED)
-	if err != nil {
-		return nil, 0, fmt.Errorf("gpmc CS%d mmap at %#x: %w", cs, start, err)
-	}
-	defer syscall.Munmap(m)
-	out := make([]uint16, n)
-	for i := 0; i < n; i++ {
-		j := skip + i*2
-		out[i] = uint16(m[j]) | uint16(m[j+1])<<8
-	}
-	return out, r.Base + off, nil
-}

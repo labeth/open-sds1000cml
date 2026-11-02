@@ -41,30 +41,6 @@ var autoAlike = map[string][]string{
 	"ook": {"manchester"}, "em4100": {"manchester"}, // an Oregon sensor's and a tag's bits are Manchester
 }
 
-// clockedOwn are the clocked two-line buses' own decoders: where a cut
-// leaves none of the bus's frames whole, SPI's reading of the clocked bits
-// is the record's best (fuzzOne).
-var clockedOwn = map[string]func(a, b []uint8, ct float64, cfg ClockedCfg) Result{
-	"ps2": DecodePS2, "swd": DecodeSWD, "mdio": DecodeMDIO, "pdi": DecodePDI, "sdcard": DecodeSDCard,
-	"maple": DecodeMaple, "cjtag": DecodeCJTAG, "caliper": DecodeCaliper,
-}
-
-// ownFrames reports a capture on which the bus's own decoder reads frames
-// the detection would keep (a score above none), either line its first.
-// TRLC-LINKS: REQ-SDS-018
-func ownFrames(c detectCase) bool {
-	d := clockedOwn[c.proto]
-	if d == nil {
-		return true
-	}
-	for _, ord := range [][2][]uint8{{c.c1, c.c2}, {c.c2, c.c1}} {
-		if scoreResult(d(ord[0], ord[1], c.colT, ClockedCfg{Format: "hex"})) > 0 {
-			return true
-		}
-	}
-	return false
-}
-
 // cleanNamesIt reports a mutation whose cut and decimation alone (no noise,
 // edge, swing, offset or distractor) leave the bus named: where they do not,
 // the cut left a fragment another bus reads as well (a T55xx command cut to

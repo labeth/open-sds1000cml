@@ -579,23 +579,7 @@ const (
 )
 
 // TRLC-LINKS: REQ-SDS-129
-func (a Access) CanRead() bool { return a&AccR != 0 }
-
-// TRLC-LINKS: REQ-SDS-129
 func (a Access) CanWrite() bool { return a&AccW != 0 }
-
-// TRLC-LINKS: REQ-SDS-129
-func (a Access) String() string {
-	switch a {
-	case AccR:
-		return "R"
-	case AccW:
-		return "W"
-	case AccRW:
-		return "RW"
-	}
-	return fmt.Sprintf("Access(%d)", uint8(a))
-}
 
 // EnumValue is a named value of a field.
 type EnumValue struct {
@@ -611,26 +595,6 @@ type Field struct {
 	Shift uint8
 	Enum  []EnumValue // named values, if any (unshifted)
 	Desc  string
-}
-
-// Get extracts the field from word.
-// TRLC-LINKS: REQ-SDS-129
-func (f Field) Get(word uint16) uint16 { return (word & f.Mask) >> f.Shift }
-
-// Put returns word with the field replaced by v (v is masked to the field width).
-// TRLC-LINKS: REQ-SDS-129
-func (f Field) Put(word, v uint16) uint16 { return (word &^ f.Mask) | ((v << f.Shift) & f.Mask) }
-
-// ValueName returns the enum name of the field's value in word ("" if unnamed).
-// TRLC-LINKS: REQ-SDS-129
-func (f Field) ValueName(word uint16) string {
-	v := f.Get(word)
-	for _, e := range f.Enum {
-		if e.Value == v {
-			return e.Name
-		}
-	}
-	return ""
 }
 
 // Register describes one selector of the map.
@@ -687,41 +651,10 @@ func BySel(sel uint16) (Register, bool) {
 	return Register{}, false
 }
 
-// ByName returns the register called name.
-// TRLC-LINKS: REQ-SDS-129
-func ByName(name string) (Register, bool) {
-	for i := range registers {
-		if registers[i].Name == name {
-			return registers[i], true
-		}
-	}
-	return Register{}, false
-}
-
 // Undecoded returns the selectors the contract keeps undecoded (read 0, writes
 // ignored; the vendor arm/halt words), a fresh copy.
 // TRLC-LINKS: REQ-SDS-129
 func Undecoded() []uint16 { return append([]uint16(nil), undecoded...) }
-
-// IsUndecoded reports whether sel (after MaskSel) is one of them.
-// TRLC-LINKS: REQ-SDS-129
-func IsUndecoded(sel uint16) bool {
-	sel = MaskSel(sel)
-	for _, u := range undecoded {
-		if u == sel {
-			return true
-		}
-	}
-	return false
-}
-
-// DiagWindow returns the DIAG window table in index order (a fresh copy).
-// TRLC-LINKS: REQ-SDS-129
-func DiagWindow() []DiagEntry { return append([]DiagEntry(nil), diagWindow...) }
-
-// Opcodes returns the opcode table (a fresh copy).
-// TRLC-LINKS: REQ-SDS-129
-func Opcodes() []Opcode { return append([]Opcode(nil), opcodes...) }
 
 // CheckIdentity compares the four identity words read from a fabric against this
 // interface and returns a descriptive error on the first mismatch (fabric-ID,
@@ -794,58 +727,6 @@ var registers = []Register{
 
 var undecoded = []uint16{0x21, 0x57}
 
-var diagWindow = []DiagEntry{
-	{Name: "BUS_OE_LO", Idx: 0x00, Count: 1, Access: AccRW, Stub: false, Fields: nil, Desc: "per-ball output enable, bus balls 0..15 (J6 K5 L1 L2 L3 L4 N1 N2 P1 P2 R1 M6 N6 N3 N5 P3); effective only with DIAG_CTRL.BUS_DRV_EN"},
-	{Name: "BUS_OE_HI", Idx: 0x01, Count: 1, Access: AccRW, Stub: false, Fields: []Field{{Name: "OE", Mask: 0x07ff, Shift: 0, Desc: "bus balls 16..26 (R3 R4 R5 R6 R7 T2 T3 T4 T5 T6 T7)"}}, Desc: "per-ball output enable, bus balls 16..26"},
-	{Name: "BUS_DRV_LO", Idx: 0x02, Count: 1, Access: AccRW, Stub: false, Fields: nil, Desc: "drive level, bus balls 0..15"},
-	{Name: "BUS_DRV_HI", Idx: 0x03, Count: 1, Access: AccRW, Stub: false, Fields: []Field{{Name: "DRV", Mask: 0x07ff, Shift: 0, Desc: "bus balls 16..26"}}, Desc: "drive level, bus balls 16..26"},
-	{Name: "BUS_RD_LO", Idx: 0x04, Count: 1, Access: AccR, Stub: false, Fields: nil, Desc: "registered pad input level, bus balls 0..15"},
-	{Name: "BUS_RD_HI", Idx: 0x05, Count: 1, Access: AccR, Stub: false, Fields: []Field{{Name: "RD", Mask: 0x07ff, Shift: 0, Desc: "bus balls 16..26"}}, Desc: "registered pad input level, bus balls 16..26"},
-	{Name: "SINGLE_CTRL", Idx: 0x06, Count: 1, Access: AccRW, Stub: false, Fields: []Field{{Name: "OE", Mask: 0x001f, Shift: 0, Desc: "output enable for the five single bidirectionals F3 F5 G5 D3 F7 (bit 0 = F3)"}, {Name: "DRV", Mask: 0x1f00, Shift: 8, Desc: "drive level for F3 F5 G5 D3 F7 (bit 8 = F3)"}}, Desc: "the five single bidirectional balls"},
-	{Name: "ADC_HOLD", Idx: 0x07, Count: 1, Access: AccRW, Stub: false, Fields: []Field{{Name: "L4", Mask: 0x0001, Shift: 0, Desc: "hold L4 static 1 (reset 1); 0 = L4 is a bus member"}, {Name: "T2", Mask: 0x0002, Shift: 1, Desc: "hold T2 static 1 (reset 1); 0 = T2 is a bus member"}, {Name: "T7", Mask: 0x0004, Shift: 2, Desc: "hold T7 static 1 (reset 1); 0 = T7 is a bus member"}}, Desc: "the proven ADC recipe (owned-fpga c8ec66d) vs bus membership of L4/T2/T7"},
-	{Name: "LANE_IDX", Idx: 0x08, Count: 1, Access: AccRW, Stub: false, Fields: []Field{{Name: "IDX", Mask: 0x007f, Shift: 0, Desc: "0x00..0x4f lanes 0..79, 0x50..0x6a bus balls 0..26, 0x70..0x74 singles F3 F5 G5 D3 F7, 0x78 P6, 0x79 A2, 0x7a B1, 0x7b K2, 0x7c B11, 0x7d J1 (listen-only input balls the factory reads; B11 is MAXV-INTERFACE.md s4's only far-end-facing input in the burst-terminator loop)"}}, Desc: "which input LANE_TOG / LANE_LVL report"},
-	{Name: "LANE_TOG", Idx: 0x09, Count: 1, Access: AccR, Stub: false, Fields: nil, Desc: "toggle count of LANE_IDX over the last 65536 bus-clock cycles (saturating)"},
-	{Name: "LANE_LVL", Idx: 0x0a, Count: 1, Access: AccR, Stub: false, Fields: []Field{{Name: "LEVEL", Mask: 0x0001, Shift: 0, Desc: "current registered level"}, {Name: "EVER1", Mask: 0x0002, Shift: 1, Desc: "seen 1 since LANE_GATE reset"}, {Name: "EVER0", Mask: 0x0004, Shift: 2, Desc: "seen 0 since LANE_GATE reset"}}, Desc: "level / ever-1 / ever-0 of LANE_IDX"},
-	{Name: "SNAP_MODE", Idx: 0x0b, Count: 1, Access: AccRW, Stub: false, Fields: []Field{{Name: "SLICE", Mask: 0x0007, Shift: 0, Desc: "slice recorded per clock: 0..4 = lanes 0-15..64-79, 5 = bus 0..15, 6 = {bus 16..26, P6, singles}, 7 = 5-word all-lane"}}, Desc: "snapshot RAM source (v2.2, the 2048x16 snapshot; superseded by SNAP_CTRL2 in v3.0)"},
-	{Name: "PAIR_TRIM", Idx: 0x0c, Count: 1, Access: AccRW, Stub: true, Fields: []Field{{Name: "E2", Mask: 0x000f, Shift: 0, Desc: "pair E2 trim, signed 4-bit, 125 ps steps, saturating at +-7"}, {Name: "E3", Mask: 0x00f0, Shift: 4, Desc: "pair E3 trim"}, {Name: "E4", Mask: 0x0f00, Shift: 8, Desc: "pair E4 trim"}, {Name: "E5", Mask: 0xf000, Shift: 12, Desc: "pair E5 trim"}}, Desc: "per-pair encode phase trim on counters c1..c4 (E1 = c0 is the reference); a write starts the step engine on the changed counters (STATUS_B.STEP_BUSY, DBG2); replaces PHASE_SEL; v3.0+: reads 0 in v2.2"},
-	{Name: "IL_DLY", Idx: 0x0d, Count: 1, Access: AccRW, Stub: true, Fields: []Field{{Name: "E1", Mask: 0x0003, Shift: 0, Desc: "pair E1 row-alignment delay in c0 cycles"}, {Name: "E2", Mask: 0x000c, Shift: 2, Desc: "pair E2"}, {Name: "E3", Mask: 0x0030, Shift: 4, Desc: "pair E3"}, {Name: "E4", Mask: 0x00c0, Shift: 6, Desc: "pair E4"}, {Name: "E5", Mask: 0x0300, Shift: 8, Desc: "pair E5"}}, Desc: "per-pair row-alignment delay (reset = the hop-chain latency table; at IL5-100 the LSB selects which of the two captures of a sample is taken); v3.0+: reads 0 in v2.2"},
-	{Name: "SNAP_CTRL2", Idx: 0x0e, Count: 1, Access: AccRW, Stub: true, Fields: []Field{{Name: "ROWS", Mask: 0x01ff, Shift: 0, Desc: "rows to capture (<= DLINE_ROWS)"}, {Name: "SRC", Mask: 0x0600, Shift: 9, Desc: "0 = raw 80 lanes (post-hop, coherent), 1 = assembled core row (10 x 8), 2 = post-CAL row, 3 = {bus 26..0, singles, P6, K2 level, ...} (the E3 bus view)", Enum: []EnumValue{{"LANES", 0, "raw 80 lanes"}, {"CORES", 1, "assembled core row"}, {"CAL", 2, "post-CAL row"}, {"BUS", 3, "bus view"}}}, {Name: "DECIM", Mask: 0x7800, Shift: 11, Desc: "one row per 2^DECIM c0 cycles"}}, Desc: "snapshot on the delay line: SNAP_POP pops ROW_COLS words per row, SNAP_REMAIN counts words; v3.0+: reads 0 in v2.2"},
-	{Name: "LANEMAP", Idx: 0x10, Count: 80, Access: AccR, Stub: false, Fields: []Field{{Name: "LANE", Mask: 0x007f, Shift: 0, Desc: "source lane (0..79) feeding core (i>>4), bit (i&15) of entry i; core k = pair E(k+1), bits 7..0 CH1, 15..8 CH2"}}, Desc: "the baked ten-core lane map (fpga/default/lanemap_seed.vh, from lanecal-2026-09-05), entry i = idx-0x10; read-only from v2.2 (a different map is a rebuild); dual mode reads CH1 from entries 0..7, CH2 from 8..15"},
-	{Name: "CAL_OFF", Idx: 0x60, Count: 10, Access: AccRW, Stub: true, Fields: []Field{{Name: "OFF", Mask: 0x00ff, Shift: 0, Desc: "signed offset in codes, subtracted before the gain"}}, Desc: "per-core offset, core = 2*pair + ch; y = sat((x - OFF) * GAIN); v3.0+: reads 0 in v2.2"},
-	{Name: "CAL_GAIN", Idx: 0x6a, Count: 10, Access: AccRW, Stub: true, Fields: []Field{{Name: "GAIN", Mask: 0x01ff, Shift: 0, Desc: "Q1.8 gain 0.75..1.996, reset 0x100"}}, Desc: "per-core gain, core = 2*pair + ch; v3.0+: reads 0 in v2.2"},
-	{Name: "PHASE_CNT", Idx: 0x74, Count: 8, Access: AccR, Stub: true, Fields: []Field{{Name: "COUNT", Mask: 0xffff, Shift: 0, Desc: "records accumulated into phase bin i = idx-0x74"}}, Desc: "records per phase bin in the current/last stack batch; v3.0+: reads 0 in v2.2"},
-	{Name: "CAL_STAT", Idx: 0x7c, Count: 1, Access: AccR, Stub: true, Fields: []Field{{Name: "SAT", Mask: 0x03ff, Shift: 0, Desc: "saturation seen per core since GO (bit = core, sticky)"}}, Desc: "CAL stage saturation; v3.0+: reads 0 in v2.2"},
-	{Name: "CAP_SEL", Idx: 0x7d, Count: 5, Access: AccR, Stub: true, Fields: []Field{{Name: "J", Mask: 0x0007, Shift: 0, Desc: "capture clock of pair k = c((k+J) mod 5)"}, {Name: "NEG", Mask: 0x0008, Shift: 3, Desc: "negative-edge capture"}, {Name: "HOPS", Mask: 0x0030, Shift: 4, Desc: "hop stages into c0"}}, Desc: "the static capture choice per pair k = idx-0x7d (build constant, for the calibration record and the app's sanity check); v3.0+: reads 0 in v2.2"},
-	{Name: "BUSGEN_CTL", Idx: 0x82, Count: 1, Access: AccRW, Stub: false, Fields: []Field{{Name: "EN", Mask: 0x0001, Shift: 0, Desc: "the generator owns the 27 balls (overrides the DIAG bus drive)"}, {Name: "RATE", Mask: 0x0006, Shift: 1, Desc: "phase clock: 0 = clk50, 1 = clk100, 2 = cap_clk (200 MHz), 3 = clk (C2)"}, {Name: "NPHASE", Mask: 0x0038, Shift: 3, Desc: "phases per rotation minus 1 (0 = 1 phase .. 4 = the factory's 5)"}, {Name: "ONESHOT", Mask: 0x0040, Shift: 6, Desc: "stop after one rotation instead of running free"}, {Name: "RUN", Mask: 0x0080, Shift: 7, Desc: "start (write 1; reads back the generator's running state)"}, {Name: "OE_PH", Mask: 0x1f00, Shift: 8, Desc: "output enable per phase, bit k = phase k (0 = release the group)"}, {Name: "OE_INV", Mask: 0x2000, Shift: 13, Desc: "invert every OE_PH bit"}}, Desc: "27-ball bus generator: control"},
-	{Name: "BUSGEN_PAT", Idx: 0x83, Count: 10, Access: AccRW, Stub: false, Fields: []Field{{Name: "BITS", Mask: 0xffff, Shift: 0, Desc: "phase (idx-0x83)>>1: low word = balls 0..15, high word = balls 16..26"}}, Desc: "27-ball bus generator: the word driven in each phase, two entries per phase, ball order J6 K5 L1 L2 L3 L4 N1 N2 P1 P2 R1 M6 N6 N3 N5 P3 R3 R4 R5 R6 R7 T2 T3 T4 T5 T6 T7"},
-	{Name: "BUSGEN_AUX", Idx: 0x8d, Count: 1, Access: AccRW, Stub: false, Fields: []Field{{Name: "K2", Mask: 0x0007, Shift: 0, Desc: "K2 source: 0 = the DIAG_CTRL 50 MHz forward, 1 = 0, 2 = 1, 3 = the phase clock, 4 = phase clock / 2, 5 = one tick per rotation, 6 = the inverse of the generator drive enable (the factory's K1 shape: low while the group is driven), 7 = the drive enable itself"}, {Name: "D1", Mask: 0x0038, Shift: 3, Desc: "D1 source, same encoding (D1 is an output in the factory image; DIAG drives it constant otherwise)"}, {Name: "D2", Mask: 0x01c0, Shift: 6, Desc: "D2 source, same encoding (0 = the DIAG_CTRL level)"}, {Name: "G2", Mask: 0x0e00, Shift: 9, Desc: "G2 source, same encoding (0 = the DIAG_CTRL level)"}, {Name: "K1", Mask: 0x7000, Shift: 12, Desc: "K1 source, same encoding (0 = the DIAG_CTRL level). The factory drives K1 from REG:X6Y4M2, whose inverse is the output enable of 24 of the 27 bus balls (the acq2 analysis branch), so code 6 is the posture to reproduce"}}, Desc: "27-ball bus generator: what the four clock-shaped balls carry while EN"},
-	{Name: "BUSCAP_CTL", Idx: 0x8e, Count: 1, Access: AccRW, Stub: false, Fields: []Field{{Name: "EN", Mask: 0x0001, Shift: 0, Desc: "the snapshot RAM records the whole 32-bit bus view (two words per sample: balls 0..15, then {singles 3..0, P6, balls 26..16}, both halves from the same bus tick), 1024 samples one every other tick"}, {Name: "TRIG", Mask: 0x0002, Shift: 1, Desc: "arm on a departure instead of immediately: the posture is latched at arm and recording starts on the first sample where a ball the generator is not driving differs from it"}, {Name: "TRIGGERED", Mask: 0x0004, Shift: 2, Desc: "read-only: the trigger fired in this run"}, {Name: "WAITING", Mask: 0x0008, Shift: 3, Desc: "read-only: armed and waiting for the departure"}, {Name: "CONFIRM", Mask: 0x0030, Shift: 4, Desc: "how many consecutive samples a departure must hold before it counts: 0 = 1 (any single sample), 1 = 2, 2 = 4, 3 = 8. A lone sample is not evidence: with the group switching hard, a floating ball reads low for one sample often enough to fire a 1-sample trigger in 6 runs of 10, and the record then shows it already back at its idle level (the acq2 analysis branch)"}}, Desc: "27-ball bus capture: control and status"},
-	{Name: "BUSGEN_OE_LO", Idx: 0x8f, Count: 1, Access: AccRW, Stub: false, Fields: []Field{{Name: "MASK", Mask: 0xffff, Shift: 0, Desc: "bit i enables the generator's drive on bus ball i, balls 0..15 (J6 K5 L1 L2 L3 L4 N1 N2 P1 P2 R1 M6 N6 N3 N5 P3); reset 0xffff"}}, Desc: "27-ball bus generator: per-ball drive mask, low half — ANDed with BUSGEN_CTL.OE_PH so a subset of the group can be driven while the rest is listened to (BUSCAP's departure trigger only watches the balls this mask leaves alone)"},
-	{Name: "BUSGEN_OE_HI", Idx: 0x90, Count: 1, Access: AccRW, Stub: false, Fields: []Field{{Name: "MASK", Mask: 0x07ff, Shift: 0, Desc: "bit i enables the generator's drive on bus ball 16+i (R3 R4 R5 R6 R7 T2 T3 T4 T5 T6 T7); reset 0x7ff"}}, Desc: "27-ball bus generator: per-ball drive mask, high half"},
-	{Name: "SRCLK_CTRL", Idx: 0x91, Count: 1, Access: AccRW, Stub: false, Fields: []Field{{Name: "F2_SRC", Mask: 0x0003, Shift: 0, Desc: "what drives ball F2; code 3 decodes as ZERO", Enum: []EnumValue{{"LEGACY", 0, "the DIAG_CTRL.F2_SEL level (reset; bit-for-bit the pre-crank image)"}, {"ZERO", 1, "static 0 regardless of DIAG_CTRL"}, {"CRANK", 2, "the counted-edge emitter; parked static 0 between bursts"}}}, {Name: "J2_SRC", Mask: 0x000c, Shift: 2, Desc: "what drives ball J2, same encoding", Enum: []EnumValue{{"LEGACY", 0, "the DIAG_CTRL.J2_SEL level (reset)"}, {"ZERO", 1, "static 0"}, {"CRANK", 2, "the counted-edge emitter"}}}, {Name: "CTRL_G2", Mask: 0x0010, Shift: 4, Desc: "RESERVED AND REFUSED in this build: an arm with this bit set is rejected with REFUSE = 7. G2's DDIO runs on busclk, which can be cap_clk, so routing the clk100 emitter to it creates a 100 -> 200 MHz transfer into the cell's own input flop, measured at -0.735 ns combinational and -1.716 ns registered against a domain with 0.2 ns to spare (the SDC false-paths G2's pad, not that flop). The crosstalk control is J2 instead: a DDIO on clk100, the emitter's own domain, costing no crossing, and being the other SRAM-clock candidate it is the more useful comparison"}, {Name: "SNAP_ON_ARM", Mask: 0x0020, Shift: 5, Desc: "RESERVED AND NOT WIRED in this build: setting it does nothing. Coupling the crank into the snapshot arm is the one new path into an existing, timing-critical block, and it put the snapshot arm downstream of an interlock that reads floating inputs — an unknown on the released bus then blocks the arm entirely. The app arms the snapshot itself immediately before arming the crank, and the edge-lock proof is the delay-shift rung, not the pre/post split"}, {Name: "D1_SRC", Mask: 0x0300, Shift: 8, Desc: "what drives ball D1; code 3 decodes as LEGACY", Enum: []EnumValue{{"LEGACY", 0, "the BUSGEN_AUX.D1 level (reset; D1 undriven, its acquisition rest posture)"}, {"ZERO", 1, "static 0 regardless of BUSGEN_AUX"}, {"CRANK", 2, "the counted-edge emitter, SDR on clk100. D1 is already bidir with a fabric OE, so this costs no pad direction change and no DDIO cell — and it is the only ball on this device with BOTH a pad readback (SRCLK_ARR_D1) and a far-end witness (SRCLK_ARR_P6, since [BENCH] P6 = (NOT D1) OR D2). Refused unless DIV >= 2, which keeps the SDR shape bit-identical to the DDIO one and the narrowest phase 2 samples wide"}}}, {Name: "GUARD", Mask: 0x00c0, Shift: 6, Desc: "the hardware abort watchdog: which monitored signals abort the burst the moment one moves", Enum: []EnumValue{{"OFF", 0, "no hardware abort; only permitted with NEDGE = 1"}, {"LANES", 1, "the 80 ADC lanes (reset)"}, {"ALL", 2, "the 80 lanes plus the 27 bus balls, 5 singles and P6"}}}}, Desc: "counted-edge crank: sources, control ball, snapshot coupling and the hardware abort"},
-	{Name: "SRCLK_N", Idx: 0x92, Count: 1, Access: AccRW, Stub: false, Fields: []Field{{Name: "NEDGE", Mask: 0x03ff, Shift: 0, Desc: "pad rising edges this arm will emit, 0..1023. 0 emits nothing. There is no free-run encoding and no wider field: 1023 is the per-arm ceiling because the register has no more bits"}, {Name: "DIV", Mask: 0x7c00, Shift: 10, Desc: "burst shape: f_pad = 100 MHz / 2^DIV (0 = a 5 ns DDIO pulse per clk100 cycle, 1 = 50 MHz, 4 = 6.25 MHz, 7 = 781 kHz). High time is half the period, so DIV varies rate and pulse width together. Latched at arm; it never free-runs"}}, Desc: "counted-edge crank: how many edges, and how fast"},
-	{Name: "SRCLK_DLY", Idx: 0x93, Count: 1, Access: AccRW, Stub: false, Fields: []Field{{Name: "DLY", Mask: 0x03ff, Shift: 0, Desc: "clk100 ticks from the accepted arm (after the guard baseline completes) to the first edge, 0..1023 = 0..10.23 us. With SNAP_ON_ARM the record carries its own baseline. Latched at arm"}}, Desc: "counted-edge crank: arm-to-first-edge delay, so one snapshot holds PRE and POST"},
-	{Name: "SRCLK_ARM", Idx: 0x94, Count: 1, Access: AccRW, Stub: false, Fields: []Field{{Name: "KEY", Mask: 0x00ff, Shift: 0, Desc: "must be 0xA5 in the SAME write, or the whole word is ignored (reads back 0x00a5)"}, {Name: "ARM", Mask: 0x0100, Shift: 8, Desc: "write-1 strobe, self-clearing, edge-triggered: load the budget and start. Ignored unless every interlock in SRCLK_STAT.REFUSE holds; a re-arm during a burst is ignored and CANNOT extend a budget"}, {Name: "STOP", Mask: 0x0200, Shift: 9, Desc: "write-1 strobe: end the burst now, park both balls at 0, set ABORTED"}, {Name: "CLR", Mask: 0x0400, Shift: 10, Desc: "write-1 strobe: clear ABORTED / REFUSED / the departure report. Does NOT clear SRCLK_LIFE — nothing does"}}, Desc: "counted-edge crank: keyed arm / stop / clear strobe (no stored state)"},
-	{Name: "SRCLK_STAT", Idx: 0x95, Count: 1, Access: AccR, Stub: false, Fields: []Field{{Name: "REMAIN", Mask: 0x03ff, Shift: 0, Desc: "edges still owed on this arm"}, {Name: "BUSY", Mask: 0x0400, Shift: 10, Desc: "a burst is in flight (guard baseline, delay, or emitting)"}, {Name: "ABORTED", Mask: 0x0800, Shift: 11, Desc: "sticky: the guard fired or STOP was written; ARM is refused until CLR"}, {Name: "REFUSED", Mask: 0x1000, Shift: 12, Desc: "sticky: the last keyed ARM was rejected by an interlock"}, {Name: "REFUSE", Mask: 0xe000, Shift: 13, Desc: "why: 0 = accepted; 1 = no CRANK source, or DIAG_CTRL.F2_SEL/J2_SEL not both 0; 2 = the 27-ball group is not in its released-high rest posture; 3 = NEDGE = 0; 4 = busy, or the guard baseline is not ready; 5 = ABORTED is set; 6 = would exceed the lifetime ceiling; 7 = GUARD off with NEDGE > 1, or CTRL_G2 without BUSGEN_CTL.RATE = 1"}}, Desc: "counted-edge crank: status (read while BUSY = 0; the crossing is per-bit)"},
-	{Name: "SRCLK_CNT_F2", Idx: 0x96, Count: 1, Access: AccR, Stub: false, Fields: []Field{{Name: "EMITTED", Mask: 0xffff, Shift: 0, Desc: "rising transitions of the data presented to F2's DDIO cell since the last accepted arm, counted in clk100 — the cell's own domain — from the FINAL per-ball mux output. This witnesses EMISSION, not arrival: a DDIO output port may not feed core logic on Cyclone IV, so no register in this image can report a pad level on F2/J2. Saturating"}}, Desc: "counted-edge crank: edges emitted on F2 since arm"},
-	{Name: "SRCLK_CNT_J2", Idx: 0x97, Count: 1, Access: AccR, Stub: false, Fields: []Field{{Name: "EMITTED", Mask: 0xffff, Shift: 0, Desc: "as SRCLK_CNT_F2, for J2"}}, Desc: "counted-edge crank: edges emitted on J2 since arm"},
-	{Name: "SRCLK_LIFE", Idx: 0x98, Count: 1, Access: AccR, Stub: false, Fields: []Field{{Name: "EDGES", Mask: 0xffff, Shift: 0, Desc: "emitter edges since this fabric was configured, saturating at the build ceiling 4096. An arm is refused unless EDGES + NEDGE <= 4096, so the ceiling is exact. There is no clear path in the fabric: only a reload resets it, which is reboot-recoverable (CRAM only, no flash)"}}, Desc: "counted-edge crank: the whole-configuration edge ceiling"},
-	{Name: "SRCLK_DEP", Idx: 0x99, Count: 1, Access: AccR, Stub: false, Fields: []Field{{Name: "GRP", Mask: 0x003f, Shift: 0, Desc: "which group moved since the arm: bits 0..4 = lanes 0-15, 16-31, 32-47, 48-63, 64-79; bit 5 = the 27 bus balls / 5 singles / P6. The per-signal truth is already in LANE_IDX + LANE_LVL.EVER0/EVER1 over the same gate window, so this is a 6-bit summary"}, {Name: "ABORT_EDGE", Mask: 0xffc0, Shift: 6, Desc: "the edge index in flight when the guard fired (0 = none)"}}, Desc: "counted-edge crank: the departure report, latched by the hardware abort"},
-	{Name: "SRCLK_CNT_D1", Idx: 0x9a, Count: 1, Access: AccR, Stub: false, Fields: []Field{{Name: "EMITTED", Mask: 0xffff, Shift: 0, Desc: "rising transitions of the data presented to D1's IOE output register since the last accepted arm, counted in clk100. EMISSION, exactly as SRCLK_CNT_F2. Saturating"}}, Desc: "counted-edge crank: edges emitted on D1 since arm"},
-	{Name: "SRCLK_ARR_D1", Idx: 0x9b, Count: 1, Access: AccR, Stub: false, Fields: []Field{{Name: "ARRIVED", Mask: 0xffff, Shift: 0, Desc: "rising transitions of D1's IOE INPUT register — the PAD NODE of the ball we are driving, sampled in clk100 while we drive it. ARRIVAL AT OUR OWN BALL: a count equal to NEDGE proves the output driver switched and the pad crossed both 3.3-V LVTTL thresholds. It does NOT prove the edge reached anything beyond the ball. Excluded from mon, moved, dep_grp and GUARD by construction. Valid for DIV >= 2 only. Saturating"}}, Desc: "counted-edge crank: edges present on the D1 pad since arm"},
-	{Name: "SRCLK_ARR_P6", Idx: 0x9c, Count: 1, Access: AccR, Stub: false, Fields: []Field{{Name: "ARRIVED", Mask: 0xffff, Shift: 0, Desc: "rising transitions of P6, two-flop synchronised into clk100, since the last accepted arm. ARRIVAL AT THE FAR DIE: nothing inside the Cyclone drives P6. [BENCH] P6 = (NOT D1) OR D2, 9/9, so with D1_SRC = CRANK and DIAG_CTRL.D2 = 0 this predicts ARRIVED == NEDGE exactly. With D2 = 1, P6 is constant and this predicts 0 — the negative control on the witness itself. P6 is masked out of moved/dep_grp/GUARD whenever D1_SRC = CRANK, because a D1 crank moves it by construction and would otherwise abort every burst at edge 1 and report a phantom departure. Its per-signal truth stays readable at LANE_IDX 0x78. Saturating"}}, Desc: "counted-edge crank: MAX V responses to D1 seen at P6 since arm"},
-	{Name: "SRCLK_W", Idx: 0x9d, Count: 1, Access: AccRW, Stub: false, Fields: []Field{{Name: "HIGH", Mask: 0x03ff, Shift: 0, Desc: "pulse HIGH time in clk100 ticks (10 ns each), 1..1023, INDEPENDENT of the period. 0 selects the legacy shape where high time is half the period and DIV varies rate and width together. This exists because every corner measured so far is confounded: the D1 -> far end -> P6 loop returns every edge below 48.8 kHz and none above 97.7 kHz, and DIV moved the pulse width and the repetition rate at the same time, so 'the node needs N us to charge after D1 releases it' and 'the far end needs a minimum width to see the pulse' predict the identical table. Holding the period and sweeping HIGH separates them. Refused unless HIGH < the period, and DIV is capped at 23 in width mode so the period counter cannot overflow. Latched at arm"}}, Desc: "counted-edge crank: pulse width, held independent of the period"},
-	{Name: "BUSGEN_PRE", Idx: 0x9e, Count: 1, Access: AccRW, Stub: false, Fields: []Field{{Name: "PRE", Mask: 0xffff, Shift: 0, Desc: "phase-advance prescaler: the generator advances one phase every PRE+1 bus-clock ticks, so a phase lasts (PRE+1) x 20 ns at RATE 0. 0 is the original behaviour, one phase per tick. This exists because EVERY experiment ever run on the 27-ball group has been fast: the generator's slowest phase was one bus-clock tick, about 20 ns, and its slowest pulse about 100 ns at five phases. The D1 loop then measured the only observable far-end path and found it passes a pulse only if it is wider than about 9.4 us (the acq2 analysis branch). If the bus group's far end filters anything like that, no stimulus this project has ever applied to those balls — 107 departure-armed conditions, the leave-one-out sweeps, roughly 4,300 static postures — was wide enough to be seen. At RATE 0 a prescale of 511 gives a 10.24 us phase, just past that threshold, and 65535 gives 1.31 ms"}}, Desc: "27-ball bus generator: phase-advance prescaler, so the group can be driven slowly"},
-}
-
-var opcodes = []Opcode{
-	{"RESET", OpReset, "return to idle, clear the record"},
-	{"GO", OpGo, "arm / re-arm (only while RUN.RUN=1); clears DRAIN_STAT and POP_MON"},
-	{"HALT", OpHalt, "freeze the record for drain (stack: end the batch with the partial count)"},
-	{"REWIND", OpRewind, "drain pointer back to DRAIN_START with DRAIN_LEN re-latched, record untouched (the app's re-drain path)"},
-	{"STACK_CLEAR", OpStackClear, "zero the stack accumulators and PHASE_CNT without re-arming; v3.0+ (stack, v3.1): ignored in v2.2"},
-}
-
 // ---- word-format models ----
 
 // Tier is an interleave tier: the sample spacing and the pair that fills each
@@ -867,53 +748,6 @@ var (
 	TierIL5x200 = Tier{Name: "IL5-200", TickNs: 1, Cols: [RowCols]uint8{0, 1, 2, 3, 4}}
 )
 
-// Decimated returns the tier with its tick scaled by the pick decimator
-// (dual-E1 records at DECIM = d have samples d x 5 ns apart).
-// TRLC-LINKS: REQ-SDS-129
-func (t Tier) Decimated(d uint32) Tier {
-	if d == 0 {
-		d = 1
-	}
-	t.TickNs *= float64(d)
-	return t
-}
-
-// PairOfWord returns the pair (0 = E1) that sampled record word w.
-// TRLC-LINKS: REQ-SDS-129
-func (t Tier) PairOfWord(w int) uint8 { return t.Cols[w%RowCols] }
-
-// ColumnsOfPair returns the columns a pair fills (one at IL5, all five for E1
-// in dual-E1, none for E2..E5 in dual-E1) — the freeze-signature check of rung
-// R6 looks at exactly these.
-// TRLC-LINKS: REQ-SDS-129
-func (t Tier) ColumnsOfPair(pair uint8) []int {
-	var cols []int
-	for c, p := range t.Cols {
-		if p == pair {
-			cols = append(cols, c)
-		}
-	}
-	return cols
-}
-
-// Word packs two samples into a BURST word.
-// TRLC-LINKS: REQ-SDS-129
-func Word(ch1, ch2 uint8) uint16 { return uint16(ch1)<<8 | uint16(ch2) }
-
-// Split unpacks a BURST word.
-// TRLC-LINKS: REQ-SDS-129
-func Split(w uint16) (ch1, ch2 uint8) { return uint8(w >> 8), uint8(w) }
-
-// SplitWords unpacks a word sequence into its two sample streams.
-// TRLC-LINKS: REQ-SDS-129
-func SplitWords(ws []uint16) (ch1, ch2 []uint8) {
-	ch1, ch2 = make([]uint8, len(ws)), make([]uint8, len(ws))
-	for i, w := range ws {
-		ch1[i], ch2[i] = Split(w)
-	}
-	return ch1, ch2
-}
-
 // Sequence is a modelled drain: the words the fabric emits in pop order and
 // their time base. Group consecutive words share one time step (1 for
 // RECORD / DECIM / BOXCAR8, 2 for PEAK / BOXCAR16 whose two words describe the
@@ -927,282 +761,18 @@ type Sequence struct {
 	Stack  *StackParams // set for ModelStack output
 }
 
-// TimeNs returns the sample time of word i relative to word 0.
-// TRLC-LINKS: REQ-SDS-129
-func (s Sequence) TimeNs(i int) float64 {
-	if s.Stack != nil {
-		return s.Stack.TimeNs(s.Tier, i)
-	}
-	g := s.Group
-	if g < 1 {
-		g = 1
-	}
-	return float64(i/g) * s.StepNs
-}
-
 // ---- RECORD -------------------------------------------------------------------
-
-// ModelRecord is the RAW record: dual mode packs {CH1[i], CH2[i]} per word;
-// single-channel mode packs two consecutive samples of the one channel per
-// word, the earlier one in the high byte (BURST.CH1). Trailing samples that do
-// not fill a word are dropped.
-// TRLC-LINKS: REQ-SDS-129
-func ModelRecord(t Tier, chmode uint16, ch1, ch2 []uint8) (Sequence, error) {
-	var ws []uint16
-	step := t.TickNs
-	switch chmode {
-	case RunChmodeDual:
-		n := min(len(ch1), len(ch2))
-		ws = make([]uint16, n)
-		for i := 0; i < n; i++ {
-			ws[i] = Word(ch1[i], ch2[i])
-		}
-	case RunChmodeCh1, RunChmodeCh2:
-		s := ch1
-		if chmode == RunChmodeCh2 {
-			s = ch2
-		}
-		ws = make([]uint16, len(s)/2)
-		for i := range ws {
-			ws[i] = Word(s[2*i], s[2*i+1])
-		}
-		step = 2 * t.TickNs
-	default:
-		return Sequence{}, fmt.Errorf("wordfmt: CHMODE %d is not a channel mode", chmode)
-	}
-	return Sequence{Tier: t, Words: ws, Group: 1, StepNs: step}, nil
-}
 
 // ---- TSRC test sources (IL_CTRL.TSRC) ----------------------------------------------
 
 // TsrcGlitchPeriod is the spacing of the GLITCH source's non-zero word.
 const TsrcGlitchPeriod = 512
 
-// TsrcWord is the word the test source substitutes for the writer's k-th word
-// since GO (k wraps with the ring in stream mode; the pattern index is the
-// writer's word count, not the record address):
-//
-//	RAMP    k & 0xffff                         (+1 per word)
-//	COLTAG  {k mod ROW_COLS, (k / ROW_COLS) & 0xff}  (column in the high byte, row in the low)
-//	GLITCH  0xffff when k mod 512 == 0, else 0x0000
-//
-// TRLC-LINKS: REQ-SDS-129
-func TsrcWord(mode uint16, k uint32) (uint16, error) {
-	switch mode {
-	case IlCtrlTsrcRamp:
-		return uint16(k), nil
-	case IlCtrlTsrcColtag:
-		return uint16(k%RowCols)<<8 | uint16((k/RowCols)&0xff), nil
-	case IlCtrlTsrcGlitch:
-		if k%TsrcGlitchPeriod == 0 {
-			return 0xffff, nil
-		}
-		return 0, nil
-	}
-	return 0, fmt.Errorf("wordfmt: TSRC %d is not a pattern source", mode)
-}
-
-// ModelTsrc is the RECORD drain of a test source: n words starting at pattern
-// index k0 (the writer's word index of the first drained word). Word content is
-// the same in every CHMODE — the substitution happens on the 16-bit record
-// word — which is what rung R2b relies on.
-// TRLC-LINKS: REQ-SDS-129
-func ModelTsrc(t Tier, mode uint16, k0 uint32, n int) (Sequence, error) {
-	ws := make([]uint16, n)
-	for i := range ws {
-		w, err := TsrcWord(mode, k0+uint32(i))
-		if err != nil {
-			return Sequence{}, err
-		}
-		ws[i] = w
-	}
-	return Sequence{Tier: t, Words: ws, Group: 1, StepNs: t.TickNs}, nil
-}
-
-// TsrcCheck recovers the pattern index of the first word of a drained test
-// source and lists the indices that do not follow the pattern from there. k0
-// is exact for RAMP (16-bit wrap), modulo ROW_COLS*256 for COLTAG and modulo
-// TsrcGlitchPeriod for GLITCH. A GLITCH drain shorter than one period without
-// a glitch word is consistent (k0 = 1 is returned); a longer one without any
-// is an error.
-// TRLC-LINKS: REQ-SDS-129
-func TsrcCheck(mode uint16, words []uint16) (k0 uint32, bad []int, err error) {
-	if len(words) == 0 {
-		return 0, nil, fmt.Errorf("wordfmt: no words")
-	}
-	switch mode {
-	case IlCtrlTsrcRamp:
-		k0 = uint32(words[0])
-	case IlCtrlTsrcColtag:
-		col, row := Split(words[0])
-		if col >= RowCols {
-			return 0, nil, fmt.Errorf("wordfmt: first word 0x%04x is not a column tag", words[0])
-		}
-		k0 = uint32(row)*RowCols + uint32(col)
-	case IlCtrlTsrcGlitch:
-		k0 = 1
-		found := false
-		for i, w := range words {
-			if w == 0xffff {
-				k0, found = uint32((TsrcGlitchPeriod-i%TsrcGlitchPeriod)%TsrcGlitchPeriod), true
-				break
-			}
-		}
-		if !found && len(words) >= TsrcGlitchPeriod {
-			return 0, nil, fmt.Errorf("wordfmt: no glitch word in %d words", len(words))
-		}
-	default:
-		return 0, nil, fmt.Errorf("wordfmt: TSRC %d is not a pattern source", mode)
-	}
-	for i, w := range words {
-		want, _ := TsrcWord(mode, k0+uint32(i))
-		if w != want {
-			bad = append(bad, i)
-		}
-	}
-	return k0, bad, nil
-}
-
 // ---- REDUCE (IL_CTRL.REDUCE_MODE, D = DECIM) ---------------------------------------
-
-// TRLC-LINKS: REQ-SDS-129
-func checkBlocks(d uint32, ch1, ch2 []uint8) (n int, err error) {
-	if d == 0 {
-		return 0, fmt.Errorf("wordfmt: D = 0")
-	}
-	n = min(len(ch1), len(ch2)) / int(d)
-	return n, nil
-}
-
-// ModelDecim is REDUCE_MODE 1: the pick decimator, {CH1[kD], CH2[kD]}.
-// TRLC-LINKS: REQ-SDS-129
-func ModelDecim(t Tier, d uint32, ch1, ch2 []uint8) (Sequence, error) {
-	n, err := checkBlocks(d, ch1, ch2)
-	if err != nil {
-		return Sequence{}, err
-	}
-	ws := make([]uint16, n)
-	for k := range ws {
-		ws[k] = Word(ch1[uint32(k)*d], ch2[uint32(k)*d])
-	}
-	return Sequence{Tier: t, Words: ws, Group: 1, StepNs: float64(d) * t.TickNs}, nil
-}
-
-// ModelPeak is REDUCE_MODE 2: per D samples the word {min1, min2} then the
-// word {max1, max2}. A partial trailing block emits nothing.
-// TRLC-LINKS: REQ-SDS-129
-func ModelPeak(t Tier, d uint32, ch1, ch2 []uint8) (Sequence, error) {
-	n, err := checkBlocks(d, ch1, ch2)
-	if err != nil {
-		return Sequence{}, err
-	}
-	ws := make([]uint16, 0, 2*n)
-	for k := 0; k < n; k++ {
-		lo, hi := uint32(k)*d, uint32(k+1)*d
-		min1, min2, max1, max2 := uint8(255), uint8(255), uint8(0), uint8(0)
-		for i := lo; i < hi; i++ {
-			min1, max1 = min(min1, ch1[i]), max(max1, ch1[i])
-			min2, max2 = min(min2, ch2[i]), max(max2, ch2[i])
-		}
-		ws = append(ws, Word(min1, min2), Word(max1, max2))
-	}
-	return Sequence{Tier: t, Words: ws, Group: 2, StepNs: float64(d) * t.TickNs}, nil
-}
 
 // BoxcarMaxD is the largest block length the 24-bit sum of the reduce unit holds
 // (65536 x 255 < 2^24).
 const BoxcarMaxD = 65536
-
-// BoxcarParams returns the DEC_RECIP / DEC_PRE words for a block length D
-// (2..BoxcarMaxD): PRE = max(0, ceil(log2 D) - 8) so the pre-shifted sum fits
-// the 18-bit multiplier input, and RECIP = round(2^(16+PRE) / D), which lies
-// in [256, 32768] and therefore fits 16 bits. 06-TIERS §1.5 writes the
-// reciprocal as round(2^16 / (D >> PRE)) — the same number whenever D >> PRE
-// is exact (every D <= 256, every power of two), but for other D above 256
-// that truncation of D costs up to 0.8 % (D = 257 is scaled as 256); this
-// constant keeps the same fabric arithmetic and removes that term. What
-// remains is the 16-bit reciprocal's own rounding (<= 0.5 / RECIP, i.e.
-// <= 2^-9 relative where D >> PRE approaches 256) plus the truncation of the
-// pre-shifted sum — not the 2^-15 the design quotes.
-// TRLC-LINKS: REQ-SDS-129
-func BoxcarParams(d uint32) (recip, pre uint16, err error) {
-	if d < 2 || d > BoxcarMaxD {
-		return 0, 0, fmt.Errorf("wordfmt: boxcar D = %d outside 2..%d", d, BoxcarMaxD)
-	}
-	var lg uint16
-	for (uint32(1) << lg) < d {
-		lg++
-	}
-	if lg > 8 {
-		pre = lg - 8
-	}
-	num := uint64(1) << (16 + pre)
-	recip = uint16((num + uint64(d)/2) / uint64(d))
-	return recip, pre, nil
-}
-
-// MeanQ88 is the reduce unit's scaling: ((sum >> pre) * recip) >> 8, the mean
-// in Q8.8 (the BOXCAR16 word).
-// TRLC-LINKS: REQ-SDS-129
-func MeanQ88(sum uint32, recip, pre uint16) uint16 {
-	return uint16(((uint64(sum) >> pre) * uint64(recip)) >> 8)
-}
-
-// Round8 rounds a Q8.8 mean to the 8-bit BOXCAR8 sample, saturating at 255.
-// TRLC-LINKS: REQ-SDS-129
-func Round8(q88 uint16) uint8 {
-	r := (uint32(q88) + 0x80) >> 8
-	if r > 255 {
-		r = 255
-	}
-	return uint8(r)
-}
-
-// TRLC-LINKS: REQ-SDS-129
-func boxcarSums(d uint32, ch1, ch2 []uint8, fn func(sum1, sum2 uint32)) error {
-	n, err := checkBlocks(d, ch1, ch2)
-	if err != nil {
-		return err
-	}
-	for k := 0; k < n; k++ {
-		var s1, s2 uint32
-		for i := uint32(k) * d; i < uint32(k+1)*d; i++ {
-			s1 += uint32(ch1[i])
-			s2 += uint32(ch2[i])
-		}
-		fn(s1, s2)
-	}
-	return nil
-}
-
-// ModelBoxcar8 is REDUCE_MODE 3: per D samples one word {Round8(mean1), Round8(mean2)}.
-// TRLC-LINKS: REQ-SDS-129
-func ModelBoxcar8(t Tier, d uint32, ch1, ch2 []uint8) (Sequence, error) {
-	recip, pre, err := BoxcarParams(d)
-	if err != nil {
-		return Sequence{}, err
-	}
-	var ws []uint16
-	err = boxcarSums(d, ch1, ch2, func(s1, s2 uint32) {
-		ws = append(ws, Word(Round8(MeanQ88(s1, recip, pre)), Round8(MeanQ88(s2, recip, pre))))
-	})
-	return Sequence{Tier: t, Words: ws, Group: 1, StepNs: float64(d) * t.TickNs}, err
-}
-
-// ModelBoxcar16 is REDUCE_MODE 4: per D samples the word mean1 (Q8.8) then the
-// word mean2 (Q8.8).
-// TRLC-LINKS: REQ-SDS-129
-func ModelBoxcar16(t Tier, d uint32, ch1, ch2 []uint8) (Sequence, error) {
-	recip, pre, err := BoxcarParams(d)
-	if err != nil {
-		return Sequence{}, err
-	}
-	var ws []uint16
-	err = boxcarSums(d, ch1, ch2, func(s1, s2 uint32) {
-		ws = append(ws, MeanQ88(s1, recip, pre), MeanQ88(s2, recip, pre))
-	})
-	return Sequence{Tier: t, Words: ws, Group: 2, StepNs: float64(d) * t.TickNs}, err
-}
 
 // ---- STACK (RUN.STACK, 06-TIERS §1.4) --------------------------------------------------
 
@@ -1214,102 +784,9 @@ type StackParams struct {
 	Rows      uint  // window rows (STACK_LEN)
 }
 
-// F is the number of phase bins.
-// TRLC-LINKS: REQ-SDS-129
-func (p StackParams) F() uint { return 1 << p.PhaseBins }
-
-// Words is the readout length: CH1 bins (recA) then CH2 bins (recB), Rows*F rows
-// of ROW_COLS words each.
-// TRLC-LINKS: REQ-SDS-129
-func (p StackParams) Words() int { return 2 * int(p.Rows) * int(p.F()) * RowCols }
-
-// Validate checks the geometry against the fabric's limits.
-// TRLC-LINKS: REQ-SDS-129
-func (p StackParams) Validate() error {
-	if p.PhaseBins > 3 {
-		return fmt.Errorf("wordfmt: PHASE_BINS %d > 3", p.PhaseBins)
-	}
-	if p.Shift > 3 {
-		return fmt.Errorf("wordfmt: SHIFT %d > 3", p.Shift)
-	}
-	if p.Rows == 0 || p.Rows*p.F() > Rows/2 {
-		return fmt.Errorf("wordfmt: %d rows x F %d exceeds the %d accumulator rows per channel", p.Rows, p.F(), Rows/2)
-	}
-	return nil
-}
-
-// TimeNs is the sample time of readout word i (within either channel block):
-// address a = i / ROW_COLS = row*F + phase, column c = i mod ROW_COLS, time =
-// (row*ROW_COLS + c) * tick + phase * tick / F.
-// TRLC-LINKS: REQ-SDS-129
-func (p StackParams) TimeNs(t Tier, i int) float64 {
-	half := p.Words() / 2
-	if half > 0 {
-		i %= half
-	}
-	a, c := i/RowCols, i%RowCols
-	f := int(p.F())
-	row, phase := a/f, a%f
-	return float64(row*RowCols+c)*t.TickNs + float64(phase)*t.TickNs/float64(f)
-}
-
-// PhaseBin is the phase bin of a record: the top PHASE_BINS bits of its Q16
-// trigger fraction (TRIGPOS_LO.FRAC).
-// TRLC-LINKS: REQ-SDS-129
-func PhaseBin(frac uint16, phaseBins uint8) uint8 {
-	if phaseBins == 0 {
-		return 0
-	}
-	return uint8(frac >> (16 - phaseBins))
-}
-
 // StackRecord is one accepted record of a batch: its phase bin and the window
 // the delay line delivered, Rows*ROW_COLS samples per channel in time order.
 type StackRecord struct {
 	Phase    uint8
 	CH1, CH2 []uint8
-}
-
-// ModelStack is the batch readout: every record is added into the ACC_BITS-wide
-// bins at address row*F + Phase (wrapping like the hardware, which cannot
-// happen for N <= STACK_N_MAX), then drained as recA (CH1 bins) followed by
-// recB (CH2 bins), row-major, column-minor, each word (sum >> SHIFT)[15:0].
-// phaseCnt is the PHASE_CNT window. HALT ends a batch early: pass the records
-// accepted so far.
-// TRLC-LINKS: REQ-SDS-129
-func ModelStack(t Tier, p StackParams, recs []StackRecord) (seq Sequence, phaseCnt [8]uint16, err error) {
-	if err = p.Validate(); err != nil {
-		return Sequence{}, phaseCnt, err
-	}
-	if len(recs) > StackNMax {
-		return Sequence{}, phaseCnt, fmt.Errorf("wordfmt: %d records > STACK_N_MAX %d", len(recs), StackNMax)
-	}
-	f := p.F()
-	cells := int(p.Rows) * int(f) * RowCols
-	accA, accB := make([]uint32, cells), make([]uint32, cells)
-	const wrap = uint32(1)<<AccBits - 1
-	for k, r := range recs {
-		if uint(r.Phase) >= f {
-			return Sequence{}, phaseCnt, fmt.Errorf("wordfmt: record %d phase %d >= F %d", k, r.Phase, f)
-		}
-		if len(r.CH1) != int(p.Rows)*RowCols || len(r.CH2) != int(p.Rows)*RowCols {
-			return Sequence{}, phaseCnt, fmt.Errorf("wordfmt: record %d has %d/%d samples, want %d per channel", k, len(r.CH1), len(r.CH2), int(p.Rows)*RowCols)
-		}
-		phaseCnt[r.Phase]++
-		for row := 0; row < int(p.Rows); row++ {
-			base := (row*int(f) + int(r.Phase)) * RowCols
-			for c := 0; c < RowCols; c++ {
-				accA[base+c] = (accA[base+c] + uint32(r.CH1[row*RowCols+c])) & wrap
-				accB[base+c] = (accB[base+c] + uint32(r.CH2[row*RowCols+c])) & wrap
-			}
-		}
-	}
-	ws := make([]uint16, 0, 2*cells)
-	for _, acc := range [][]uint32{accA, accB} {
-		for _, s := range acc {
-			ws = append(ws, uint16(s>>p.Shift))
-		}
-	}
-	pp := p
-	return Sequence{Tier: t, Words: ws, Group: 1, StepNs: t.TickNs, Stack: &pp}, phaseCnt, nil
 }

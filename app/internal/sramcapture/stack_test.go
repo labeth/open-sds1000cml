@@ -15,7 +15,6 @@ import (
 type stackPortBus struct {
 	regs                map[uint16]uint16
 	grant               bool
-	outstanding         bool
 	opError             bool
 	mailbox             [32]uint16
 	mailIndex           int

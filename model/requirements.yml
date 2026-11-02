@@ -34,6 +34,7 @@ requirements:
   category: functional
   sourceRefs:
   - CODE-APP-CMD-APP-MAIN-GO
+  - CODE-APP-INTERNAL-APP-RUN-GO
   - CODE-OTA-INTERNAL-FDINHERIT-FDINHERIT-GO
   - CODE-APP-INTERNAL-BUS-BUS-GO
   - CODE-APP-INTERNAL-BUS-BUS-TEST-GO
@@ -49,14 +50,15 @@ requirements:
   verificationCriteria: Inspect the linked implementation and run the corresponding offline tests; hardware claims
     require independently identified device evidence.
 - id: REQ-SDS-003
-  title: Capture mode isolation
-  text: The instrument shall select default, default-sram or sram before issuing mode-specific fabric commands.
+  title: One startup path
+  text: The instrument shall start one way only, under the OTA agent and with its embedded images, loading the general
+    image, verifying the SRAM transport and starting the acquisition worker before any capture command.
   status: draft
   category: functional
   sourceRefs:
   - CODE-APP-INTERNAL-ENGINE-SRAM-GO
   - CODE-APP-CMD-APP-MAIN-GO
-  - CODE-APP-CMD-APP-SRAM-GO
+  - CODE-APP-INTERNAL-APP-RUN-GO
   appliesTo:
   - FU-APP-APP
   notes: Source-derived contract; source presence is not evidence of a passing hardware qualification.
@@ -72,6 +74,7 @@ requirements:
   category: functional
   sourceRefs:
   - CODE-APP-CMD-APP-MAIN-GO
+  - CODE-APP-INTERNAL-APP-RUN-GO
   - CODE-APP-INTERNAL-ENGINE-ENGINE-LOOP-GO
   - CODE-APP-INTERNAL-FPGALOAD-FPGALOAD-GO
   - CODE-APP-INTERNAL-FPGALOAD-DEVICE-GO
@@ -529,7 +532,7 @@ requirements:
   - CODE-APP-INTERNAL-ENGINE-ETS-GO
   - CODE-APP-INTERNAL-ENGINE-ENVROLL-TEST-GO
   - CODE-APP-INTERNAL-ENGINE-ENVROLL-GO
-  - CODE-APP-INTERNAL-SUPERRES-COMP-GO
+  - CODE-APP-INTERNAL-SUPERRES-COMP-REF-TEST-GO
   - CODE-APP-INTERNAL-ENGINE-ENGINE-CONTROL-GO
   - CODE-APP-INTERNAL-WEB-SUPERRES-ETS-JS
   - CODE-APP-INTERNAL-WEB-SUPERRES-JS
@@ -756,6 +759,7 @@ requirements:
   category: functional
   sourceRefs:
   - CODE-APP-CMD-APP-MAIN-GO
+  - CODE-APP-INTERNAL-APP-RUN-GO
   - CODE-OTA-INTERNAL-AGENT-HEALTH-GO
   - CODE-APP-INTERNAL-ENGINE-ENGINE-BUS-GO
   - CODE-APP-INTERNAL-ENGINE-ENGINE-LOOP-GO
@@ -832,13 +836,13 @@ requirements:
   appliesTo:
   - FU-OTA-AGENT
   - FU-OTA-SLOTS
-  notes: 'The supervisor launches or adopts only while TakenOver and unpaused. Slot selection prefers forced emergency
-    when available, then active, confirmed and emergency. Adoption trusts a live PID without checking executable,
+  notes: 'The supervisor launches or adopts only while TakenOver and unpaused. Slot selection prefers the active slot,
+    then the confirmed one. Adoption trusts a live PID without checking executable,
     start time or ownership; adopted failures and executable-start failures do not directly invoke rollback. A launched
-    nonemergency slot is confirmed at run end when health was observed once and StableSecs elapsed, even after stale-health
+    slot is confirmed at run end when health was observed once and StableSecs elapsed, even after stale-health
     termination or a nonzero exit. Confirmation and active-pointer write errors are ignored while success events
     and failure resets can still occur. Other launched-run failures invoke the threshold ladder: confirmed slot,
-    then emergency, otherwise continued retries. Agent Stop leaves a launched app running for adoption. Group termination
+    otherwise continued retries. Agent Stop leaves a launched app running for adoption. Group termination
     waits are bounded and signal errors are ignored; adopted-PID termination does not establish final death. These
     behaviors do not prove continuous healthy operation, durable rollback or safe PID identity.'
   verificationMethods:
@@ -929,9 +933,9 @@ requirements:
   status: draft
   category: functional
   sourceRefs:
-  - CODE-APP-CMD-APP-SRAM-TIMING-GO
+  - CODE-APP-INTERNAL-APP-GPMC-TIMING-GO
   - CODE-APP-INTERNAL-SRAMCAPTURE-VERIFY-GO
-  - CODE-APP-CMD-APP-SRAM-TIMING-TEST-GO
+  - CODE-APP-INTERNAL-APP-GPMC-TIMING-TEST-GO
   appliesTo:
   - FU-APP-APP
   - FU-APP-SRAMCAPTURE
@@ -1554,8 +1558,7 @@ requirements:
     require independently identified device evidence.
 - id: REQ-SDS-087
   title: Application slot store
-  text: The instrument shall maintain A/B application binaries, an optional emergency binary, and active and confirmed
-    slot pointers.
+  text: The instrument shall maintain A/B application binaries and active and confirmed slot pointers.
   status: draft
   category: functional
   sourceRefs:
@@ -2121,7 +2124,7 @@ requirements:
   - CODE-OTA-INTERNAL-AGENT-SUPERVISE-GO
   appliesTo:
   - FU-OTA-AGENT
-  notes: Start and restart require TakenOver; stop does not. Start clears forced emergency before requesting control.
+  notes: Start and restart require TakenOver; stop does not. Start resets the failure count before requesting control.
     Start uses five seconds and stop/restart eight seconds for each control-channel phase. A timed-out queued request
     is not cancelled. Returned handler data may contain ok=true alongside an outer RPC error. These requests do
     not guarantee application health or immediate completion of every process transition. Control requests have
@@ -2143,16 +2146,15 @@ requirements:
   - CODE-OTA-INTERNAL-SLOTS-SLOTS-GO
   appliesTo:
   - FU-OTA-AGENT
-  notes: Application update installs to the other active slot, sets the active pointer and clears emergency state.
+  notes: Application update installs to the other active slot, sets the active pointer and resets the failure count.
     Supplied-digest checks are specified by REQ-SDS-029. Activation normalizes the slot name and requires a nonempty
-    regular file, without checking image validity or execute permission. Emergency installation accepts a source
-    path without a separate supplied-digest parameter. When TakenOver, update/activation request restart but ignore
+    regular file, without checking image validity or execute permission. When TakenOver, update/activation request restart but ignore
     its errors. Successful responses do not prove launch, health confirmation or rollback behavior.
   verificationMethods:
   - inspection
   - test
   verificationCriteria: Run temporary-file inactive-slot installation, activation normalization/empty-slot refusal
-    and emergency-install tests. The isolated activation fixture proves acceptance of non-image contents and missing
+    tests. The isolated activation fixture proves acceptance of non-image contents and missing
     executable bits without launching a payload.
 - id: REQ-SDS-119
   title: Agent self-update and restart handoff
@@ -2186,7 +2188,7 @@ requirements:
   - CODE-OTA-INTERNAL-AGENT-EXEC-GO
   appliesTo:
   - FU-OTA-AGENT
-  notes: Untakeover ignores stop-request failure, clears persisted takeover flags, clears emergency and disarms
+  notes: Untakeover ignores stop-request failure, clears persisted takeover flags, resets the failure count and disarms
     the watchdog; it does not relaunch the factory program. Restore ignores argument decode errors, rejects TakenOver
     and checks target existence. Optional descriptor release marks both retained descriptors unavailable even after
     close failure and does not restore them if launch fails. Detached launch defaults to null stdin and inherited
@@ -2381,23 +2383,6 @@ requirements:
   verificationCriteria: 'Host fakes do not establish physical GPMC, cache, DMA or module qualification.'
   notes: RawWrite bypasses CS1 schema permission; legacy unchecked drains still ignore read errors and can fall
     back after partial DMA. Checked and unchecked paths are distinct.
-- id: REQ-SDS-130
-  title: Frozen-record drain verification
-  text: The instrument shall support test-source capture, frozen-record windows and rewind drains with pattern,
-    reference and pointer-monitor comparisons.
-  status: draft
-  category: functional
-  sourceRefs:
-  - CODE-APP-INTERNAL-BUS-DRAINWIN-GO
-  - CODE-APP-INTERNAL-BUS-DRAINWIN-TEST-GO
-  appliesTo:
-  - FU-APP-BUS
-  verificationMethods:
-  - inspection
-  - test
-  verificationCriteria: 'Host fakes do not establish physical GPMC, cache, DMA or module qualification.'
-  notes: Pattern helpers share generated schema logic. Saturated underrun counters and fabricated reference-monitor
-    values limit exactness verdicts.
 - id: REQ-SDS-131
   title: CS1 read-timing sweep
   text: The instrument shall validate supported CS1 read-timing candidates, compare repeated candidate and baseline
@@ -2418,23 +2403,6 @@ requirements:
   verificationCriteria: 'Host fakes do not establish physical GPMC, cache, DMA or module qualification.'
   notes: Timing budgets are estimated; restoration can fail and initial read failure has no valid saved timing.
     Physical timing margins remain unqualified.
-- id: REQ-SDS-132
-  title: Persisted CS1 timing gate
-  text: The instrument shall load recorded timing, retain separate factory timing history and gate selected persisted
-    timing on the boot test-source check.
-  status: draft
-  category: functional
-  sourceRefs:
-  - CODE-APP-INTERNAL-BUS-GPMCPERSIST-GO
-  - CODE-APP-INTERNAL-BUS-GPMCPERSIST-TEST-GO
-  appliesTo:
-  - FU-APP-BUS
-  verificationMethods:
-  - inspection
-  - test
-  verificationCriteria: 'Host fakes do not establish physical GPMC, cache, DMA or module qualification.'
-  notes: File replacement uses rename without durability guarantees. Partial apply and restore errors, logged reset
-    failures and informational build identity limit recovery claims.
 - id: REQ-SDS-133
   title: GPMC region survey
   text: The instrument shall expose chip-select configuration decoding and explicitly requested read-only mapped
@@ -2633,7 +2601,7 @@ requirements:
   status: draft
   category: functional
   sourceRefs:
-  - CODE-APP-INTERNAL-SUPERRES-COMP-GO
+  - CODE-APP-INTERNAL-SUPERRES-COMP-REF-TEST-GO
   - CODE-APP-INTERNAL-SUPERRES-COMP-JSPARITY-TEST-GO
   - CODE-APP-INTERNAL-SUPERRES-COMP-TEST-GO
   - CODE-APP-INTERNAL-WEB-SUPERRES-COMP-JS
@@ -2656,162 +2624,6 @@ requirements:
     a -3 dB comment. Auto selection has a minimum 4 dB budget and 40 MHz floor; with zero gained bits and 10 MHz
     raw Nyquist it selects 40 MHz, exceeding the stated ceiling. Original restoration fixtures use the same response
     function for attenuation and compensation, so they are not independent calibration evidence.
-- id: REQ-SDS-143
-  title: Diagnostic register access and identity
-  text: The instrument shall expose named and numeric diagnostic register access, write snoop observations and fabric
-    identity through the bus owner callback interface.
-  status: draft
-  category: functional
-  sourceRefs:
-  - CODE-APP-INTERNAL-DIAG-DIAG-GO
-  - CODE-APP-INTERNAL-DIAG-DIAG-TEST-GO
-  appliesTo:
-  - FU-APP-DIAG
-  verificationMethods:
-  - inspection
-  - test
-  verificationCriteria: 'No physical probe or hardware qualification is established.'
-  notes: Raw writes bypass schema guards; selected read errors are discarded. Unknown numeric diagnostic indices
-    may be written. Health extras can override fields; readback is not side-effect-free.
-- id: REQ-SDS-144
-  title: Diagnostic lane census and snapshots
-  text: The instrument shall expose named lane observations and selectable diagnostic snapshot records with reported
-    clock and bus state.
-  status: draft
-  category: functional
-  sourceRefs:
-  - CODE-APP-INTERNAL-DIAG-DIAG-GO
-  - CODE-APP-INTERNAL-DIAG-DIAG-TEST-GO
-  appliesTo:
-  - FU-APP-DIAG
-  verificationMethods:
-  - inspection
-  - test
-  verificationCriteria: 'No physical probe or hardware qualification is established.'
-  notes: Census restores DIAG_IDX rather than the selected lane; several reads are unchecked. Snapshot mode/clock
-    persist. Fake lane counters and snapshot data do not establish physical pin behavior.
-- id: REQ-SDS-145
-  title: Diagnostic bus drive and ownership experiments
-  text: The instrument shall provide static bus controls and reports for vendor-word and alternating bus-follow
-    experiments through the bus owner.
-  status: draft
-  category: functional
-  sourceRefs:
-  - CODE-APP-INTERNAL-DIAG-DIAG-GO
-  - CODE-APP-INTERNAL-DIAG-DIAG-TEST-GO
-  appliesTo:
-  - FU-APP-DIAG
-  verificationMethods:
-  - inspection
-  - test
-  verificationCriteria: 'No physical probe or hardware qualification is established.'
-  notes: Restoration is conditional and can fail independently of operation error. Released-level observations and
-    follow statistics do not establish electrical ownership or universal contention safety.
-- id: REQ-SDS-146
-  title: Diagnostic GPMC timing jobs
-  text: The instrument shall expose background timing sweeps, progress observations and persisted or factory timing
-    application through the diagnostic interface.
-  status: draft
-  category: functional
-  sourceRefs:
-  - CODE-APP-INTERNAL-DIAG-DIAG-GO
-  - CODE-APP-INTERNAL-DIAG-DIAG-TEST-GO
-  - CODE-APP-INTERNAL-DIAG-V3-GO
-  appliesTo:
-  - FU-APP-DIAG
-  verificationMethods:
-  - inspection
-  - test
-  verificationCriteria: 'No physical probe or hardware qualification is established.'
-  notes: 'The original race-enabled sweep test fails: progress reads race with Sweeper mutations; a timing-port
-    fake also races. Restore errors may be discarded, done can precede result publication and apply does not exclude
-    a concurrent sweep.'
-- id: REQ-SDS-147
-  title: Diagnostic schema comparison
-  text: The instrument shall compare selected schema-defined register fields, stub behavior, lane-map read-only
-    behavior and selector independence against diagnostic readback.
-  status: draft
-  category: functional
-  sourceRefs:
-  - CODE-APP-INTERNAL-DIAG-DIAG-GO
-  - CODE-APP-INTERNAL-DIAG-DIAG-TEST-GO
-  - CODE-APP-INTERNAL-DIAG-V3-GO
-  appliesTo:
-  - FU-APP-DIAG
-  verificationMethods:
-  - inspection
-  - test
-  verificationCriteria: 'No physical probe or hardware qualification is established.'
-  notes: Schema-derived host fakes share production assumptions. Some operations discard errors; OK excludes restoration
-    failure. The test comment about reserved-bit corruption does not correspond to an injected corruption.
-- id: REQ-SDS-148
-  title: Diagnostic capture and repeated drains
-  text: The instrument shall report diagnostic capture distributions and compare repeated drains and record windows
-    against a frozen reference or selected test-source pattern.
-  status: draft
-  category: functional
-  sourceRefs:
-  - CODE-APP-INTERNAL-DIAG-DIAG-GO
-  - CODE-APP-INTERNAL-DIAG-DIAG-TEST-GO
-  - CODE-APP-INTERNAL-DIAG-V3-GO
-  appliesTo:
-  - FU-APP-DIAG
-  verificationMethods:
-  - inspection
-  - test
-  verificationCriteria: 'No physical probe or hardware qualification is established.'
-  notes: Unchecked transfer and monitor limitations persist. ADC comparisons establish self-consistency only; capture
-    completion and restoration are not universally guaranteed. Report OK is separate from Restored.
-- id: REQ-SDS-149
-  title: Diagnostic generator and CS3 probes
-  text: The instrument shall expose configurable generator capture reports, repeated CS3 observations and explicitly
-    requested CS3 write observations.
-  status: draft
-  category: functional
-  sourceRefs:
-  - CODE-APP-INTERNAL-DIAG-BUSPROBE-GO
-  appliesTo:
-  - FU-APP-DIAG
-  verificationMethods:
-  - inspection
-  - test
-  verificationCriteria: 'No physical probe or hardware qualification is established.'
-  notes: These flows have no original host tests. Error paths can skip cleanup; readback-based restoration is insufficient
-    for write-only controls. Safety claims in comments are not adopted as hardware guarantees.
-- id: REQ-SDS-150
-  title: Diagnostic quiet listening
-  text: The instrument shall expose lane observations during configurable converter-control, clock, generator and
-    CS3 diagnostic postures.
-  status: draft
-  category: functional
-  sourceRefs:
-  - CODE-APP-INTERNAL-DIAG-QUIETLISTEN-GO
-  appliesTo:
-  - FU-APP-DIAG
-  verificationMethods:
-  - inspection
-  - test
-  verificationCriteria: 'No physical probe or hardware qualification is established.'
-  notes: Bus topology remains hypothetical; movement does not identify SRAM data. Restoration ignores errors and
-    omits some state. Wide-mode verdict denominators remain80 and the nibble histogram is unpopulated. No original
-    test exercises this flow.
-- id: REQ-SDS-151
-  title: Diagnostic finite clock crank
-  text: The instrument shall configure requested finite clock-crank rungs and report arm, refusal, activity and
-    recorded status from the fabric.
-  status: draft
-  category: functional
-  sourceRefs:
-  - CODE-APP-INTERNAL-DIAG-SRAMCRANK-GO
-  appliesTo:
-  - FU-APP-DIAG
-  verificationMethods:
-  - inspection
-  - test
-  verificationCriteria: 'No physical probe or hardware qualification is established.'
-  notes: Software records preflight observations without enforcing every hardware gate. PASS means some sticky activity,
-    not SRAM qualification; Busy does not force failure. Generator and CS3 state are incompletely restored. No original
-    test exercises this flow.
 - id: REQ-SDS-161
   title: Web hosting routing and client epoch
   text: The instrument shall expose its default web assets and API routes and provide a client epoch claim checked
@@ -2912,55 +2724,15 @@ requirements:
   notes: Status combines separate observations and trusts owner indices and valid lengths. The measurement key omits
     some frame attributes and assumes immutable sequence identity. Passing host tests do not qualify calibration
     or hardware timing.
-- id: REQ-SDS-165
-  title: Diagnostic web access and delegation
-  text: The instrument shall expose diagnostic HTTP routes and delegate diagnostic operations to the configured
-    diagnostic owner, with a direct bus peek exception.
-  status: draft
-  category: functional
-  sourceRefs:
-  - CODE-APP-INTERNAL-WEB-APIFUZZ-TEST-GO
-  - CODE-APP-INTERNAL-WEB-DIAG-GO
-  - CODE-APP-INTERNAL-WEB-DIAG-V3-TEST-GO
-  - CODE-APP-INTERNAL-WEB-WEB-DIAG-TEST-GO
-  appliesTo:
-  - FU-APP-WEB
-  verificationMethods:
-  - inspection
-  - test
-  verificationCriteria: 'Require all 34 reviewed original host tests and six subtests to run; retain separate
-    diagnostic race evidence. No current hardware qualification is established.'
-  notes: The peek route calls the bus helper directly without diagnostic-owner locking. Several GET or non-POST
-    routes start operations. Write then readback is not atomic; CS3 poke decoding is unbounded. Existing diagnostic
-    timing race evidence remains failing and is not superseded by these web fake tests.
-- id: REQ-SDS-166
-  title: SRAM HTTP capture and record download
-  text: The instrument shall provide a separate SRAM handler for capture control, status and bounded full-record
-    or window downloads.
-  status: draft
-  category: functional
-  sourceRefs:
-  - CODE-APP-INTERNAL-WEB-SRAM-GO
-  - CODE-APP-INTERNAL-WEB-SRAM-TEST-GO
-  appliesTo:
-  - FU-APP-WEB
-  verificationMethods:
-  - inspection
-  - test
-  verificationCriteria: 'Require all 34 reviewed original host tests and six subtests to run; retain separate
-    diagnostic race evidence. No current hardware qualification is established.'
-  notes: Arm enforces bounded single-value JSON and unknown-field rejection; owner validation remains authoritative.
-    Download readiness and recall are separate observations. Partial-write failures cannot become JSON errors, chunk
-    deadlines are best effort and not cleared here, and host recorders do not qualify network timing.
 - id: REQ-SDS-167
   title: Application service composition
-  text: The instrument shall select its capture mode and compose acquisition, front-end, display, settings and remote-control
-    services for that mode.
+  text: The instrument shall compose its acquisition, front-end, display, settings and remote-control services
+    in one configuration.
   status: draft
   category: functional
   sourceRefs:
   - CODE-APP-CMD-APP-MAIN-GO
-  - CODE-APP-CMD-APP-SRAM-GO
+  - CODE-APP-INTERNAL-APP-RUN-GO
   appliesTo:
   - FU-APP-APP
   verificationMethods:
@@ -2969,7 +2741,7 @@ requirements:
   verificationCriteria: 'Inspect all reviewed command sources and compile six packages without invoking command mains.
     Run both original host helper tests and all five timing subtests. Most entrypoint behavior
     remains inspection-only. No current hardware qualification is established.'
-  notes: Default, default-sram and SRAM-only startup have different loader, analog, health and service behavior.
+  notes: The app has no capture modes, environment switches or build variants (ADR-ONE-APP).
     Listener failure may leave the default process alive. Signal exit flushes settings and requests engine stop,
     then exits without coordinated service shutdown. Main is source-inspected, not executed by host helper tests.
 - id: REQ-SDS-168
@@ -2980,6 +2752,7 @@ requirements:
   category: functional
   sourceRefs:
   - CODE-APP-CMD-APP-MAIN-GO
+  - CODE-APP-INTERNAL-APP-RUN-GO
   appliesTo:
   - FU-APP-APP
   verificationMethods:
@@ -2995,28 +2768,6 @@ requirements:
     is read or processed for more than 150 ms, redrawn alone without re-rendering the frame. Measurements and
     decode are cached per frame content, dense trace column extremes per frame, and no frame is drawn at a new
     scale while a stopped view is pending.
-- id: REQ-SDS-169
-  title: Mode-specific diagnostic health
-  text: The instrument shall distinguish diagnostic progress health from coherent-frame health and restrict SRAM-only
-    health-token paths to its declared storage locations.
-  status: draft
-  category: functional
-  sourceRefs:
-  - CODE-APP-CMD-APP-MAIN-GO
-  - CODE-APP-CMD-APP-SRAM-GO
-  - CODE-APP-CMD-APP-SRAM-TEST-GO
-  appliesTo:
-  - FU-APP-APP
-  verificationMethods:
-  - inspection
-  - test
-  verificationCriteria: 'Inspect all reviewed command sources and compile six packages without invoking command mains.
-    Run both original host helper tests and all five timing subtests. Most entrypoint behavior
-    remains inspection-only. No current hardware qualification is established.'
-  notes: Default diagnostic health permits startup without coherent frames unless disabled. After the frame threshold,
-    refresh follows engine progress rather than continued frame publication. SRAM health uses cached map/clock status
-    and bus beats. SRAM storage checks are lexical and do not resolve symlinks or mount types; default health has
-    no equivalent path restriction.
 - id: REQ-SDS-174
   title: Application version label
   text: The instrument shall expose its application version, commit and build-time labels from link-time metadata.
@@ -3076,25 +2827,6 @@ requirements:
   notes: Confirmation depends on elapsed runtime after exit, not health or successful exit. Any nonempty intent
     resets failures. Pointer writes and path/mount assumptions lack atomicity or validation. Shell sources are reviewed
     artifacts; native shell declaration inference is not yet available.
-- id: REQ-SDS-177
-  title: Reference application health simulation
-  text: The instrument shall provide a reference child application that reports inherited descriptor observations
-    and simulated health progress after warmup.
-  status: draft
-  category: functional
-  sourceRefs:
-  - CODE-OTA-CMD-STUBAPP-MAIN-GO
-  appliesTo:
-  - FU-OTA-STUBAPP
-  verificationMethods:
-  - inspection
-  - test
-  verificationCriteria: 'Inspect the reviewed source and compile four packages. Run the six original boot tests with
-    bounded temporary stub agents and without device, broker, power or remount operations. Command
-    mains and the actual fingerprint script remain inspection-only. No current hardware
-    qualification is established.'
-  notes: The stub can report health despite missing GPMC and does not capture data. Its timer and token writes demonstrate
-    a lifecycle interface, not device progress. Empty or failing health paths are not handled as fatal errors.
 - id: REQ-SDS-178
   title: OTA version label
   text: The instrument shall expose OTA version, commit and build-time labels from link-time metadata.

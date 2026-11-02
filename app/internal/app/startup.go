@@ -1,0 +1,115 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-APP
+package app
+
+import (
+	"fmt"
+	"open-sds/app/internal/fpgaload"
+	"open-sds/app/internal/lcd"
+)
+
+// loadGeneralImage loads the embedded general image before any SRAM register
+// access, so an older image with a compatible register signature cannot keep
+// stale logic running. A binary without its images (not built by make app)
+// does not start.
+// TRLC-LINKS: REQ-SDS-005, REQ-SDS-021
+func loadGeneralImage(fd int) error {
+	rbf := fpgaload.General()
+	if len(rbf) == 0 {
+		return fmt.Errorf("this binary embeds no FPGA images: build it with make app")
+	}
+	show := func(stage string, sent, total int) {}
+	if fb, err := lcd.OpenFB(); err == nil {
+		defer fb.Close()
+		surface := lcd.NewMemSurface()
+		shown := false
+		show = func(stage string, sent, total int) {
+			lcd.DrawLoading(surface, stage, sent, total)
+			if !shown || stage == "Firmware loading failed" {
+				fb.Present(surface)
+				shown = true
+				return
+			}
+			// Progress, inside the real-time shift: only the stage, bar and
+			// percentage rows change, a seventh of the screen to copy.
+			fb.PresentRows(surface, 215, 330)
+		}
+	} else {
+		logf("loading display unavailable: %v", err)
+	}
+	show("Preparing firmware", 0, 0)
+	err := fpgaload.ConfigureVolatile(fd, rbf, fpgaload.Options{BitOrder: fpgaload.BitOrderReverse, Force: true, Attempts: 1, Logf: logf, Progress: func(sent, total int) {
+		stage := "Transferring firmware"
+		if sent == total {
+			stage = "Verifying firmware"
+		}
+		show(stage, sent, total)
+	}})
+	if err != nil {
+		show("Firmware loading failed", 0, 0)
+		return err
+	}
+	show("Starting acquisition", len(rbf), len(rbf))
+	return nil
+}
+
+// imageSwitcher reloads the acquisition FPGA for FPGA stacking or packet
+// protocol triggering without LCD takeover; the engine owner calls it between
+// acquisitions only.
+// TRLC-LINKS: REQ-SDS-005, REQ-SDS-141
+type imageSwitcher struct{ fd int }
+
+// TRLC-LINKS: REQ-SDS-005, REQ-SDS-141
+func (s imageSwitcher) load(rbf []byte) error {
+	return fpgaload.ConfigureVolatile(s.fd, rbf, fpgaload.Options{BitOrder: fpgaload.BitOrderReverse, Force: true, Attempts: 1, Logf: logf})
+}
+
+// TRLC-LINKS: REQ-SDS-141
+func (s imageSwitcher) LoadStack() error { return s.load(fpgaload.Stack()) }
+
+// TRLC-LINKS: REQ-SDS-005
+func (s imageSwitcher) LoadGeneral() error { return s.load(fpgaload.General()) }
+
+// TRLC-LINKS: REQ-SDS-013
+func (s imageSwitcher) LoadPacket() error { return s.load(fpgaload.Packet()) }
+
+// TRLC-LINKS: REQ-SDS-141
+func (s imageSwitcher) HasStack() bool { return len(fpgaload.Stack()) != 0 }
+
+// TRLC-LINKS: REQ-SDS-013
+func (s imageSwitcher) HasPacket() bool { return len(fpgaload.Packet()) != 0 }
+
+// TRLC-LINKS: REQ-SDS-013
+func (s imageSwitcher) LoadLine() error { return s.load(fpgaload.Line()) }
+
+// TRLC-LINKS: REQ-SDS-013
+func (s imageSwitcher) HasLine() bool { return len(fpgaload.Line()) != 0 }
+
+// TRLC-LINKS: REQ-SDS-013
+func (s imageSwitcher) LoadFrame() error { return s.load(fpgaload.Frame()) }
+
+// TRLC-LINKS: REQ-SDS-013
+func (s imageSwitcher) HasFrame() bool { return len(fpgaload.Frame()) != 0 }
+
+// TRLC-LINKS: REQ-SDS-035
+func (s imageSwitcher) LoadStream() error { return s.load(fpgaload.Stream()) }
+
+// TRLC-LINKS: REQ-SDS-011
+func (s imageSwitcher) LoadQualify() error { return s.load(fpgaload.Qualify()) }
+
+// TRLC-LINKS: REQ-SDS-011
+func (s imageSwitcher) HasQualify() bool { return len(fpgaload.Qualify()) != 0 }
+
+// TRLC-LINKS: REQ-SDS-035
+func (s imageSwitcher) HasStream() bool { return len(fpgaload.Stream()) != 0 }
+
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-035
+func (s imageSwitcher) LoadBits() error { return s.load(fpgaload.Bits()) }
+
+// TRLC-LINKS: REQ-SDS-018, REQ-SDS-035
+func (s imageSwitcher) HasBits() bool { return len(fpgaload.Bits()) != 0 }
+
+// TRLC-LINKS: REQ-SDS-229
+func (s imageSwitcher) LoadFast() error { return s.load(fpgaload.Fast()) }
+
+// TRLC-LINKS: REQ-SDS-229
+func (s imageSwitcher) HasFast() bool { return len(fpgaload.Fast()) != 0 }

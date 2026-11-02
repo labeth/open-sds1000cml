@@ -113,38 +113,6 @@ func openMemPort(ref Port) (*memPort, error) {
 
 // ─── boot entrypoint ───────────────────────────────────────────────────────
 
-// Bringup is the boot hook (workplan §4.1): verify the fabric identity over
-// CS1; on mismatch reload the embedded default image over the CS3 port and
-// verify again. read is the CS1 register read; gpmcFD the inherited /dev/Gpmc
-// descriptor. It must run BEFORE the engine drives the bus. A returned error
-// means the fabric is not the default image and cannot be made so.
-// TRLC-LINKS: REQ-SDS-004, REQ-SDS-005
-func Bringup(gpmcFD int, read Reader, logf func(string, ...any)) error {
-	if logf == nil {
-		logf = func(string, ...any) {}
-	}
-	if err := Verify(read); err == nil {
-		logf("fpgaload: fabric already carries the default image — no reload")
-		return nil
-	} else {
-		logf("fpgaload: %v", err)
-	}
-	rbf := Default()
-	if len(rbf) == 0 {
-		return fmt.Errorf("fpgaload: fabric is not the default image and this binary embeds no bitstream (build with `make app-release`)")
-	}
-	ioc := &ioctlPort{fd: gpmcFD}
-	var port Port = ioc
-	if mp, err := openMemPort(ioc); err != nil {
-		logf("fpgaload: /dev/mem CS3 port unavailable (%v) — ioctl bit-bang (~16 s)", err)
-	} else {
-		defer mp.Close()
-		port = mp
-		logf("fpgaload: /dev/mem CS3 port verified — mmap bit-bang (~1 s)")
-	}
-	return EnsureDefault(read, port, rbf, Options{Logf: logf})
-}
-
 // ConfigureVolatile loads an explicitly selected non-default fabric through
 // CS3 selector 7. It never opens or closes /dev/Gpmc and never programs flash.
 // Callers must verify their own fabric identity after this function returns.
@@ -180,11 +148,4 @@ func reloadFast(m *memPort, rbf []byte, options Options) error {
 		}
 	}
 	return Reload(m, rbf, options)
-}
-
-// ConfigStatus reads the configuration port through the inherited fd (a read
-// never disturbs the fabric). Used by the diagnostic status line.
-// TRLC-LINKS: REQ-SDS-005
-func ConfigStatus(gpmcFD int) (uint16, error) {
-	return (&ioctlPort{fd: gpmcFD}).ReadCfg()
 }

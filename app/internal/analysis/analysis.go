@@ -32,10 +32,6 @@ func jsRound(x float64) float64 {
 // TRLC-LINKS: REQ-SDS-215
 func finite(x float64) bool { return x-x == 0 } // NaN and ±Inf give NaN: one subtraction
 
-// truthy is JavaScript's truth test on a number: neither 0 nor NaN.
-// TRLC-LINKS: REQ-SDS-215
-func truthy(x float64) bool { return x != 0 && !math.IsNaN(x) }
-
 // clampInt limits v to [lo, hi].
 // TRLC-LINKS: REQ-SDS-215
 func clampInt(v, lo, hi int) int {

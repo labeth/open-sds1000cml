@@ -244,35 +244,11 @@ type Display struct {
 	ZoomOff float64    `json:"zoom_off"` // the zoom window's pan
 }
 
-// DefaultPath resolves where the settings file lives.
-//
-//   - SCOPE_SETTINGS: explicit override (tests, bench runs).
-//   - $OTA_USB/scope-settings.json: the U-disk root, when the boot anchor
-//     exported it.
-//   - $OTA_DIR/scope-settings.json: the stick's ota/ dir — ALWAYS exported by
-//     startup.sh and proven writable (the agent keeps state.json + logs/
-//     there), and it survives app slot switches. This is the path used on the
-//     device.
-//   - next to the executable (an app slot on the U-disk when agent-launched;
-//     the build dir on a dev box).
-//
+// PathIn is the settings file in the stick's ota/ directory (OTA_DIR, which
+// startup.sh exports and the agent keeps its state and logs in): writable,
+// and kept across app slot switches.
 // TRLC-LINKS: REQ-SDS-089
-func DefaultPath() string {
-	if p := os.Getenv("SCOPE_SETTINGS"); p != "" {
-		return p
-	}
-	const name = "scope-settings.json"
-	if d := os.Getenv("OTA_USB"); d != "" {
-		return filepath.Join(d, name)
-	}
-	if d := os.Getenv("OTA_DIR"); d != "" {
-		return filepath.Join(d, name)
-	}
-	if exe, err := os.Executable(); err == nil {
-		return filepath.Join(filepath.Dir(exe), name)
-	}
-	return name
-}
+func PathIn(otaDir string) string { return filepath.Join(otaDir, "scope-settings.json") }
 
 // Parse decodes and validates one settings blob. It never panics on hostile
 // input; any structural problem is an error (the caller falls back to

@@ -23,8 +23,6 @@ package fpgaload
 import (
 	"fmt"
 	"time"
-
-	"open-sds/app/internal/iface"
 )
 
 // Port is the GPMC CS3 configuration port. Implementations: the ioctl port and
@@ -247,67 +245,6 @@ type Reader func(sel uint16) (uint16, error)
 // TRLC-LINKS: REQ-SDS-004
 type Identity struct {
 	BuildLo, BuildHi, Version, Fabric uint16
-}
-
-// TRLC-LINKS: REQ-SDS-004
-func (id Identity) BuildID() uint32 { return uint32(id.BuildHi)<<16 | uint32(id.BuildLo) }
-
-// ReadIdentity reads BUILDID_LO/HI, VERSION and FABRIC_ID.
-// TRLC-LINKS: REQ-SDS-004
-func ReadIdentity(read Reader) (Identity, error) {
-	var id Identity
-	var err error
-	if id.BuildLo, err = read(iface.SelBuildidLo); err != nil {
-		return id, err
-	}
-	if id.BuildHi, err = read(iface.SelBuildidHi); err != nil {
-		return id, err
-	}
-	if id.Version, err = read(iface.SelVersion); err != nil {
-		return id, err
-	}
-	if id.Fabric, err = read(iface.SelFabricId); err != nil {
-		return id, err
-	}
-	return id, nil
-}
-
-// Verify reads the identity and checks it against the generated interface.
-// TRLC-LINKS: REQ-SDS-004
-func Verify(read Reader) error {
-	id, err := ReadIdentity(read)
-	if err != nil {
-		return fmt.Errorf("identity read: %w", err)
-	}
-	return iface.CheckIdentity(id.BuildLo, id.BuildHi, id.Version, id.Fabric)
-}
-
-// EnsureDefault verifies the fabric is the default image (BUILDID + FABRIC_ID +
-// VERSION) and, on any mismatch, reloads rbf and verifies again. It returns
-// an error only when the fabric ends up NOT the default image; the caller must
-// then refuse to drive. A nil/empty rbf (a build without the bitstream) can only
-// succeed if the fabric already matches.
-// TRLC-LINKS: REQ-SDS-004, REQ-SDS-005
-func EnsureDefault(read Reader, p Port, rbf []byte, o Options) error {
-	o.withDefaults()
-	if err := Verify(read); err == nil {
-		o.Logf("fpgaload: fabric is already the default image (build-ID %#08x) — no reload", iface.BuildID)
-		return nil
-	} else {
-		o.Logf("fpgaload: fabric is not the default image: %v", err)
-	}
-	if len(rbf) == 0 {
-		return fmt.Errorf("fpgaload: fabric mismatch and no embedded bitstream (build with `make app-release`) — cannot configure")
-	}
-	o.Logf("fpgaload: reloading the embedded default image (%d bytes)", len(rbf))
-	if err := Reload(p, rbf, o); err != nil {
-		return err
-	}
-	if err := Verify(read); err != nil {
-		return fmt.Errorf("fpgaload: post-reload verify failed: %w", err)
-	}
-	o.Logf("fpgaload: loaded and verified build-ID %#08x (fabric %#04x)", iface.BuildID, iface.FabricID)
-	return nil
 }
 
 // shiftAll shifts every bit MSB-first of the (bit-reversed) bytes: DATA0

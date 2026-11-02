@@ -1096,13 +1096,6 @@ behavior:
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-APP
-    to: FU-APP-DIAG
-  - type: depends_on
-    from: FU-APP-DIAG
-    to: CODE-APP-INTERNAL-DIAG-BUSPROBE-GO
-    description: Primary implementation or support artifact; does not imply hardware qualification.
-  - type: contains
-    from: FG-APP
     to: FU-APP-DSP
   - type: depends_on
     from: FU-APP-DSP
@@ -1118,10 +1111,6 @@ behavior:
   - type: contains
     from: FG-APP
     to: FU-APP-FPGALOAD
-  - type: depends_on
-    from: FU-APP-FPGALOAD
-    to: CODE-APP-INTERNAL-FPGALOAD-BITSTREAM-EMBED-GO
-    description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-APP
     to: FU-APP-FRAMES
@@ -1183,7 +1172,7 @@ behavior:
     to: FU-APP-SUPERRES
   - type: depends_on
     from: FU-APP-SUPERRES
-    to: CODE-APP-INTERNAL-SUPERRES-COMP-GO
+    to: CODE-APP-INTERNAL-SUPERRES-COMP-REF-TEST-GO
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-APP
@@ -1278,13 +1267,6 @@ behavior:
   - type: depends_on
     from: FU-OTA-SLOTS
     to: CODE-OTA-INTERNAL-SLOTS-SLOTS-GO
-    description: Primary implementation or support artifact; does not imply hardware qualification.
-  - type: contains
-    from: FG-OTA
-    to: FU-OTA-STUBAPP
-  - type: depends_on
-    from: FU-OTA-STUBAPP
-    to: CODE-OTA-CMD-STUBAPP-MAIN-GO
     description: Primary implementation or support artifact; does not imply hardware qualification.
   - type: contains
     from: FG-OTA
@@ -1700,9 +1682,6 @@ behavior:
     from: FU-APP-DECODE
     to: DEP-DEVICE
   - type: deployed_to
-    from: FU-APP-DIAG
-    to: DEP-DEVICE
-  - type: deployed_to
     from: FU-APP-DSP
     to: DEP-DEVICE
   - type: deployed_to
@@ -1773,9 +1752,6 @@ behavior:
     to: DEP-DEVICE
   - type: deployed_to
     from: FU-OTA-SLOTS
-    to: DEP-DEVICE
-  - type: deployed_to
-    from: FU-OTA-STUBAPP
     to: DEP-DEVICE
   - type: deployed_to
     from: FU-OTA-SYSINFO
@@ -2203,10 +2179,6 @@ behavior:
     description: Resolved non-test Go import.
   - type: depends_on
     from: FU-APP-APP
-    to: FU-APP-DIAG
-    description: Resolved non-test Go import.
-  - type: depends_on
-    from: FU-APP-APP
     to: FU-APP-ENGINE
     description: Resolved non-test Go import.
   - type: depends_on
@@ -2255,14 +2227,6 @@ behavior:
     description: Resolved non-test Go import.
   - type: depends_on
     from: FU-APP-BUS
-    to: FU-APP-IFACE
-    description: Resolved non-test Go import.
-  - type: depends_on
-    from: FU-APP-DIAG
-    to: FU-APP-BUS
-    description: Resolved non-test Go import.
-  - type: depends_on
-    from: FU-APP-DIAG
     to: FU-APP-IFACE
     description: Resolved non-test Go import.
   - type: depends_on
@@ -2356,10 +2320,6 @@ behavior:
   - type: depends_on
     from: FU-APP-WEB
     to: FU-APP-BUS
-    description: Resolved non-test Go import.
-  - type: depends_on
-    from: FU-APP-WEB
-    to: FU-APP-DIAG
     description: Resolved non-test Go import.
   - type: depends_on
     from: FU-APP-WEB

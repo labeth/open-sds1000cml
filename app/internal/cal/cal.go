@@ -115,40 +115,6 @@ func Parse(raw []byte) (*Table, error) {
 	return t, nil
 }
 
-// descramble applies the three byte-involutions IN ORDER (spec 10 §2.2):
-// reverse, NOT the back half, NOT the triangular indices. The transform is
-// NOT self-inverse — Scramble applies them in reverse order.
-// TRLC-LINKS: REQ-SDS-016
-func descramble(buf []byte) {
-	reverse(buf)
-	notBackHalf(buf)
-	notTriangular(buf)
-}
-
-// Scramble is the write-side inverse (offline tooling/tests only — never
-// the live volume).
-// TRLC-LINKS: REQ-SDS-016
-func Scramble(buf []byte) {
-	notTriangular(buf)
-	notBackHalf(buf)
-	reverse(buf)
-}
-
-// TRLC-LINKS: REQ-SDS-016
-func reverse(buf []byte) {
-	for i, j := 0, len(buf)-1; i < j; i, j = i+1, j-1 {
-		buf[i], buf[j] = buf[j], buf[i]
-	}
-}
-
-// TRLC-LINKS: REQ-SDS-016
-func notBackHalf(buf []byte) {
-	n := len(buf)
-	for i := n - n/2; i < n; i++ {
-		buf[i] = ^buf[i]
-	}
-}
-
 // TRLC-LINKS: REQ-SDS-016
 func notTriangular(buf []byte) {
 	pos, step := 1, 2
@@ -157,12 +123,6 @@ func notTriangular(buf []byte) {
 		pos += step
 		step++
 	}
-}
-
-// Checksum computes the word-0 value for a scrambled payload (tooling).
-// TRLC-LINKS: REQ-SDS-016
-func Checksum(payload []byte) uint32 {
-	return -byteSum(payload)
 }
 
 // byteSum is the sum of b's bytes, eight at a time: the bytes of a word

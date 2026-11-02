@@ -6,7 +6,6 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
-	"os"
 	"syscall"
 	"time"
 	"unsafe"
@@ -262,7 +261,7 @@ func RunAcquisitionWorker(gpmcFD, socketFD int, logf func(string, ...any)) error
 	if err != nil {
 		return err
 	}
-	if os.Getenv("SCOPE_EDMA") != "0" && !d.EnableEDMA(8192, logf) {
+	if !d.EnableEDMA(8192, logf) {
 		return fmt.Errorf("worker requires coherent EDMA")
 	}
 	c, err := sramcapture.New(d)

@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
-	"os"
 
 	"open-sds/app/internal/dsp"
 )
@@ -28,15 +27,6 @@ type InterleaveCalibration struct {
 	TimingVdiv   [2]float64    `json:"timing_vdiv,omitempty"`
 	table        [2][2][5][256]uint16
 	tableReady   bool
-}
-
-// TRLC-LINKS: REQ-SDS-016
-func LoadInterleaveCalibration(path string) (*InterleaveCalibration, error) {
-	b, err := os.ReadFile(path)
-	if err != nil {
-		return nil, err
-	}
-	return parseInterleaveCalibration(b)
 }
 
 // TRLC-LINKS: REQ-SDS-016
@@ -269,24 +259,6 @@ func correctPhases(x []uint8, q []uint16, tbl *[5][256]uint16, rot int) {
 		qs[k] = t[k][xs[k]]
 	}
 	dsp.RoundQ8(x[:n], q[:n])
-}
-
-// supportsScale reports whether both channels sit at a measured scale. Offset
-// correction no longer needs it; it remains for range bookkeeping.
-// TRLC-LINKS: REQ-SDS-016
-func (c *InterleaveCalibration) supportsScale(scale [2]float64) bool {
-	for ch := 0; ch < 2; ch++ {
-		matched := scale[ch] == c.Vdiv[ch]
-		for _, v := range c.VerifiedVdiv[ch] {
-			if scale[ch] == v {
-				matched = true
-			}
-		}
-		if !matched {
-			return false
-		}
-	}
-	return true
 }
 
 // Five-point derivative shifts each converter to the common sample grid.

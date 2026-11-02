@@ -82,10 +82,6 @@ func sgnSI(v float64, unit string) string {
 // TRLC-LINKS: REQ-SDS-212
 func fmtPct(p float64) string { return strconv.FormatFloat(p, 'f', -1, 64) + " %" }
 
-// fmtDiv formats a cursor position in divisions: "5.50 div".
-// TRLC-LINKS: REQ-SDS-212
-func fmtDiv(d float64) string { return strconv.FormatFloat(d, 'f', 2, 64) + " div" }
-
 // cut shortens s to n characters with a trailing "..".
 // TRLC-LINKS: REQ-SDS-212
 func cut(s string, n int) string {

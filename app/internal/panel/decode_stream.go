@@ -36,7 +36,6 @@ const (
 	decModeStream = 1
 )
 
-var decTrigNames = [...]string{"Error", "Value", "Manual"}
 var decTrigKinds = [...]engine.StreamTrigger{engine.StreamOnError, engine.StreamOnValue, engine.StreamManual}
 
 // SetDecodeStream wires the decoded stream.
@@ -520,23 +519,6 @@ func (c *Controller) setStreamMode(on bool) error {
 		c.showBusView(on)
 	}
 	return nil
-}
-
-// TRLC-LINKS: REQ-SDS-018
-func streamName(proto string) string {
-	names := map[string]string{"uart": "UART", "i2c": "I2C", "spi": "SPI", "manchester": "MANCH", "sent": "SENT",
-		"canfd": "CAN", "mil1553": "1553", "usbls": "USB", "flexray": "FLEXR", "lin": "LIN", "dmx512": "DMX",
-		"midi": "MIDI", "modbus": "MODBUS", "onewire": "1WIRE", "ws281x": "WS281X", "dht": "DHT", "cec": "CEC",
-		"j1850": "J1850", "irnec": "NEC", "irsirc": "SIRC", "irrc5": "RC5", "irrc6": "RC6", "dali": "DALI",
-		"usbpd": "USBPD", "spdif": "SPDIF", "ps2": "PS2", "swd": "SWD", "mdio": "MDIO", "wiegand": "WIEG",
-		"quad": "QUAD", "stepper": "STEP", "pwm": "PWM", "rcencode": "RC", "ook": "OOK", "miller": "MILLER",
-		"morse": "MORSE", "dcf77": "DCF77", "em4100": "EM4100", "em4305": "EM4305", "t55xx": "T55XX", "swim": "SWIM",
-		"sdq": "SDQ", "pjdl": "PJON", "dsi": "DSI", "qi": "QI", "sdcard": "SD", "pdi": "PDI", "cjtag": "CJTAG",
-		"maple": "MAPLE", "caliper": "CALIP", "irmp": "IR"}
-	if n, ok := names[proto]; ok {
-		return n
-	}
-	return proto
 }
 
 // StreamMode reports the BUS sheet's Stream on, for the HUD.

@@ -163,7 +163,6 @@ type Controller struct {
 	tdivs    []float64
 	tdivIdx  int
 	vIdx     [2]int
-	offReqV  [2]float64
 	trigCode uint16
 	running  bool
 	norm     bool

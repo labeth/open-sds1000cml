@@ -136,15 +136,6 @@ func resampleEnv(v []uint8, envCols, n int) []int16 {
 	return out
 }
 
-// TRLC-LINKS: REQ-SDS-163
-func toCols(v []uint8, n int) []int16 {
-	out := make([]int16, n)
-	for i := 0; i < n && i < len(v); i++ {
-		out[i] = int16(v[i])
-	}
-	return out
-}
-
 // window maps the frame onto n screen columns (spec 04 §5): centre on the
 // software edge (or record middle for a flat frame), linear interpolation on
 // native-fast bands, nearest sample on decimated. The window is clamped to

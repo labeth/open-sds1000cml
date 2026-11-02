@@ -2,11 +2,8 @@
 package engine
 
 import (
-	"encoding/json"
 	"math"
 	"math/rand"
-	"os"
-	"path/filepath"
 	"testing"
 )
 
@@ -177,34 +174,6 @@ func TestApertureCorrectionAgainstKnownSampleTimes(t *testing.T) {
 				t.Fatal("boundary changed")
 			}
 		}
-	}
-}
-
-// TRLC-LINKS: REQ-SDS-016
-func TestTimingCalibrationValidationAndEligibility(t *testing.T) {
-	c := InterleaveCalibration{Vdiv: [2]float64{1, 1}, GainVdiv: [2]float64{1, 1}, Gain: [2][5]float64{{1, 1, 1, 1, 1}, {1, 1, 1, 1, 1}}, TimingVdiv: [2]float64{1, 1}, TimingNs: [2][5]float64{{.1, -.1, 0, 0, 0}, {0, 0, .1, -.1, 0}}}
-	path := filepath.Join(t.TempDir(), "cal.json")
-	for _, kind := range []string{"valid", "delay", "scale", "common-delay"} {
-		test := c
-		switch kind {
-		case "delay":
-			test.TimingNs[0][0] = 1
-		case "scale":
-			test.TimingVdiv[0] = 2
-		case "common-delay":
-			test.TimingNs[0][0] = .2
-		}
-		b, _ := json.Marshal(test)
-		if err := os.WriteFile(path, b, 0600); err != nil {
-			t.Fatal(err)
-		}
-		_, err := LoadInterleaveCalibration(path)
-		if (err == nil) != (kind == "valid") {
-			t.Fatalf("%s: %v", kind, err)
-		}
-	}
-	if !c.hasTiming([2]float64{1, 1}, 2e-9) || c.hasTiming([2]float64{2, 2}, 2e-9) || c.hasTiming([2]float64{1, 1}, 32e-9) {
-		t.Fatal("timing eligibility")
 	}
 }
 

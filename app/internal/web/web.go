@@ -18,7 +18,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"open-sds/app/internal/diag"
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/measure"
 	"open-sds/app/internal/panel"
@@ -141,9 +140,6 @@ type Server struct {
 	// Nil (tests, no SCPI) means no inversion.
 	invSrc func() [2]bool
 
-	// diag is the diagnostic block (SetDiag); nil answers 503 on /api/diag/*.
-	diag *diag.Diag
-
 	// setups is the numbered setup store behind /api/setup (SetSetupMemory).
 	setups SetupMemory
 
@@ -247,7 +243,6 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/api/claim", s.hClaim)
 	mux.HandleFunc("/api/setup", s.hSetup)
 	mux.HandleFunc("/api/debug/tune", s.hTune)
-	s.registerDiag(mux) // /diag page + /api/diag/* (503 until SetDiag)
 	// pprof (lab device): live CPU/heap profiling for optimization work.
 	mux.HandleFunc("/debug/pprof/", pprof.Index)
 	mux.HandleFunc("/debug/pprof/profile", pprof.Profile)

@@ -467,7 +467,7 @@ behavioural specifications the implementation was written from are in [`specs/`]
 ```sh
 make test                      # app and ota test suites
 fpga/sim.sh                    # self-checking RTL testbenches (iverilog)
-make -C app app-release        # ARMv7 app with the six FPGA images embedded
+make -C app app                # ARMv7 app with the nine FPGA images embedded
 tools/deploy.sh                # build and install on the scope (DEV=192.168.1.209)
 node --experimental-strip-types fpga/build.ts --image=general   # rebuild an FPGA image (Quartus 21.1 Lite)
 ```

@@ -228,7 +228,7 @@ type soundSvc struct {
 	drift sound.Drift
 
 	q1, q2 []uint16
-	x, y   []float64
+	x      []float64
 	t0     time.Time
 
 	tv     soundTakeView // the take shown (sound_take.go)

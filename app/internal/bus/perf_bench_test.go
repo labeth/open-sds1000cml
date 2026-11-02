@@ -29,43 +29,6 @@ func BenchmarkBurstIntoWorker(b *testing.B) {
 	}
 }
 
-// TRLC-LINKS: REQ-SDS-130
-func BenchmarkCheckExact(b *testing.B) {
-	w := make([]uint16, 65536)
-	for i := range w {
-		w[i] = uint16(i * 7)
-	}
-	ref := append([]uint16(nil), w...)
-	var r DrainResult
-	r.After.Pops = uint16(len(w))
-	for b.Loop() {
-		CheckExact(r, w, 0, ref)
-	}
-}
-
-// TRLC-LINKS: REQ-SDS-133
-func BenchmarkMaskToMB(b *testing.B) {
-	n := 0
-	for b.Loop() {
-		for m := uint32(0); m < 16; m++ {
-			n += maskToMB(m)
-		}
-	}
-	_ = n
-}
-
-// TRLC-LINKS: REQ-SDS-132
-func BenchmarkSaveTimingUnchanged(b *testing.B) {
-	path := b.TempDir() + "/t.json"
-	t := CS1Timing{Config2: 0x00140a00, Config4: 0x10040a04, Config5: 0x0108140a, Config6: 0x00000580}
-	f := TimingFile{AppVersion: "v1", Factory: t, Chosen: t}
-	for b.Loop() {
-		if err := SaveTiming(path, f); err != nil {
-			b.Fatal(err)
-		}
-	}
-}
-
 // TRLC-LINKS: REQ-SDS-131
 func BenchmarkTimingString(b *testing.B) {
 	t := CS1Timing{Config2: 0x00140a00, Config4: 0x10040a04, Config5: 0x0108140a, Config6: 0x00000580}

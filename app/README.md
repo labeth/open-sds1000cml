@@ -9,8 +9,7 @@ The model ([`../model/`](../model/)) documents
 its requirements, behaviour and decisions.
 
 ```sh
-make app-release   # dist/app-arm with ../fpga/bitstreams/*.rbf embedded
-make app           # without FPGA images (verifies a preloaded image only)
+make app           # dist/app-arm with the nine ../fpga/bitstreams/*.rbf embedded (the one build)
 go test ./...      # unit, RTL (iverilog), browser (node + Playwright) and parity tests
 GOARCH=386 go test ./...   # the device is 32-bit
 ```

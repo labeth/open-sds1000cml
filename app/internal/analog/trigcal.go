@@ -63,15 +63,6 @@ func (f *FrontEnd) calFor(srcCh int) TrigCal {
 	return globalFit
 }
 
-// DefaultTrigCal reports the nominal cal for a detent (globalFit if unset).
-// TRLC-LINKS: REQ-SDS-098
-func DefaultTrigCal(detent int) TrigCal {
-	if detent >= 0 && detent < numDetents && defaultTrigCal[detent].CPV != 0 {
-		return defaultTrigCal[detent]
-	}
-	return globalFit
-}
-
 // TrigVolts converts a trigger DAC code to probe-tip input volts at the source
 // channel's current detent. Matches the historical `TrigLevelVolts(code)·probe`
 // when the cal is the default fit.

@@ -7,13 +7,6 @@ import (
 	"open-sds/app/internal/sramcapture"
 )
 
-// envelopeAllowed reports whether a live frame may be read as a display
-// envelope (ADR-IMAGE-REGROUP-DECIMATION).
-// TRLC-LINKS: REQ-SDS-010
-func (e *Engine) envelopeAllowed(cfg sramcapture.Config, tp trigParams) bool {
-	return e.envelopeBlock(&cfg, tp) == ""
-}
-
 // envelopeBlock names what keeps a live frame from the envelope readout, or
 // "" when it may use it (reported as the live_readout status).
 // TRLC-LINKS: REQ-SDS-010

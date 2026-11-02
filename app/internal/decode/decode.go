@@ -280,7 +280,7 @@ func prefixedHex(p string) (t [256]string) {
 }
 
 // hexBang, hexSC and hexBangSC are prefixedHex's "!", "SC" and "!SC".
-var hexBang, hexSC, hexBangSC = prefixedHex("!"), prefixedHex("SC"), prefixedHex("!SC")
+var hexSC, hexBangSC = prefixedHex("SC"), prefixedHex("!SC")
 
 // hexText is pre followed by fmt.Sprintf("%0*X", digits, v): v's upper-case
 // hex digits, at least digits of them (and one), made in one allocation without fmt's

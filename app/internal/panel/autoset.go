@@ -72,14 +72,6 @@ func (c *Controller) autoset() {
 	go c.runAutosetFor(stop, ws, view)
 }
 
-// TRLC-LINKS: REQ-SDS-137, REQ-SDS-224
-func (c *Controller) runAutoset(stop chan struct{}) {
-	c.mu.Lock()
-	ws, view := c.ui.ws, c.viewMode
-	c.mu.Unlock()
-	c.runAutosetFor(stop, ws, view)
-}
-
 // runAutosetFor is the sweep for workspace ws showing view.
 // TRLC-LINKS: REQ-SDS-137, REQ-SDS-224, REQ-SDS-226
 func (c *Controller) runAutosetFor(stop chan struct{}, ws wsview.WS, view int) {
@@ -1309,17 +1301,6 @@ const (
 	ringAllow     = 0.02
 )
 
-// rawCenterErr reports how far a channel's signal MIDPOINT ((min+max)/2) sits from
-// screen centre, in divisions (+ve = above centre), read straight off the ADC codes
-// (128 = centre, 25 codes/div). Uses 1%-trimmed rails so a stray spike can't skew it,
-// and the midpoint (not the mean) so duty cycle doesn't matter. Model-independent, so
-// it corrects any offset-DAC calibration drift.
-// TRLC-LINKS: REQ-SDS-137
-func (c *Controller) rawCenterErr(ch int) float64 {
-	errDiv, _ := c.rawCentre(ch)
-	return errDiv
-}
-
 // rawCentre is rawCenterErr and the trimmed span (codes) it was read over.
 // TRLC-LINKS: REQ-SDS-137
 func (c *Controller) rawCentre(ch int) (errDiv float64, span int) {
@@ -1497,17 +1478,6 @@ func runOf(codes []uint8, out func(uint8) bool) bool {
 	}
 	return false
 }
-
-// offScreen reports whether a channel's trace still sits off-screen after
-// centring, so the 3c guard must coarsen it onto a range where the offset works.
-// It catches BOTH ways a DC-heavy signal escapes a sensitive range: a hard ADC
-// rail (railing), and front-end-amp SATURATION — where the trace pins at the
-// screen edge (raw-code midpoint ~251, i.e. > 2.5 div off centre) yet the codes
-// never reach the ADC rail. rawCenterErr is the same model-independent raw-code
-// midpoint read used by step 3b (+ve = above centre), so a legitimately centred
-// full-screen signal reads ≈0 and never false-coarsens.
-// TRLC-LINKS: REQ-SDS-137
-func (c *Controller) offScreen(ch int) bool { return c.offScreenFor(ch, nil) }
 
 // offScreenFor is offScreen judging the centre only on a capture that holds
 // most of swing (centreErrOver); a rail is off-screen in any capture.
@@ -1749,10 +1719,6 @@ func (c *Controller) waitBandFrame(stop chan struct{}, wantSampleS float64) bool
 	}
 	return true // best-effort: don't stall autoset on a stubborn transition
 }
-
-// detentForVpp is detentFor at six divisions.
-// TRLC-LINKS: REQ-SDS-137
-func detentForVpp(vpp float64) int { return detentFor(vpp, 6) }
 
 // detentFor picks the most sensitive V/div whose 8-division window still
 // fits Vpp within fill divisions — so autoset never lands on a range that

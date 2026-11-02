@@ -2780,3 +2780,29 @@ decisions:
   - 'TestEdgeDecimatedTopRTL locks it: a 31.25 MHz burst whose averages sit under the level triggers at /1, /16, /32
     and /256 (on the filter''s words, never), and a flat line whose converters spread past the level triggers only
     at /1, where software confirms; tb_edge_sustain checks the run against a sample-by-sample model.'
+- id: ADR-ONE-APP
+  title: One app, one path, no hidden configurations
+  status: accepted
+  date: '2026-11-02'
+  context: The app binary carried paths the instrument never ran - a SCOPE_CAPTURE switch selecting a raw SRAM
+    capture mode and a default mode with its own bring-up, register map and diagnostic pages; environment overrides
+    for the EDMA drain, the bring-up health token, the GPMC device and HTTP port, calibration files and the settings
+    location; a build without the FPGA images that kept whatever image was loaded; and on the stick a second app, the
+    emergency backstop, which the agent ran when both slots failed. None of them was reached on the instrument as
+    shipped, so none was tested there, and each was a way to run differently from what was tested.
+  decision: The app has one way to run. It starts only under the OTA agent, which hands it the GPMC device, the
+    health token's path and the stick's ota/ directory (it refuses to start without them); it always loads its
+    embedded general image, verifies the SRAM transport and starts the acquisition worker; there is one build (make
+    app, every image required). Code no path of the app reaches is removed, or moved into the tests it serves (Go
+    references the JavaScript is checked against, decoder and FPGA models). The stick carries the app in its two
+    slots and nothing else; when the confirmed slot itself crash-loops the agent keeps retrying and stays reachable
+    for an update. A tool or harness needed for a test or an experiment stays outside the repository and is
+    removed when done.
+  consequences:
+  - The diagnostic register pages (/diag, /api/diag) and the direct SRAM record endpoint are gone with the modes
+    that served them; the internal/diag package, the GPMC timing sweep and its persisted timing, the drain-window
+    probes and the fabric identity check of the old bring-up went with them.
+  - Every function the app keeps is reachable from cmd/app (golang.org/x/tools deadcode reports none outside test
+    references shared between packages); the acquisition worker is the same binary started by the app.
+  - A crash-looping confirmed slot no longer falls to a stand-in that only reported health; the agent's own OTA
+    service is the recovery path, as it already was past the backstop.

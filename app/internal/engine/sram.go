@@ -1574,13 +1574,6 @@ func boolInt(v bool) int {
 	return 0
 }
 
-// liveSRAMWindow selects a contiguous preview anchored at the trigger position. At timebases
-// needing more samples, retain the whole visible span instead of aliasing it.
-// TRLC-LINKS: REQ-SDS-010
-func liveSRAMWindow(m sramcapture.Metadata, screen int, posFrac float64) (uint32, uint32) {
-	return liveSRAMWindowPre(m, screen, posFrac, 0)
-}
-
 // liveSRAMWindowPre is liveSRAMWindow holding extraPre more samples before the
 // trigger, as many as the record holds beyond the screen: the screen's end
 // stays (a T55xx command at 2ms/div lost its last 2 ms to a serial
@@ -1664,48 +1657,11 @@ func rescaleCodes(c []uint8, q []uint16, from, to chScale) {
 	}
 }
 
-// softAnchor bounds a software qualifier to the anchors the display can
-// centre a full screen on: posFrac of the screen before, the rest after. It
-// prefers the event nearest the hardware edge. A window no larger than the
-// screen leaves only the hardware edge's own neighbourhood.
-// TRLC-LINKS: REQ-SDS-011
-func softAnchor(valid, screen int, posFrac, hwEdge float64) anchorSpan {
-	if !(posFrac >= 0 && posFrac <= 1) {
-		posFrac = .5
-	}
-	lo := int(math.Ceil(float64(screen) * posFrac))
-	hi := valid - int(math.Ceil(float64(screen)*(1-posFrac)))
-	target := int(hwEdge)
-	if hwEdge < 0 || hwEdge >= float64(valid) {
-		target = (lo + hi) / 2
-	}
-	if lo > hi { // the window cannot hold a screen: anywhere, as before
-		return anchorSpan{target: target, lo: 0, hi: valid}
-	}
-	return anchorSpan{target: target, lo: lo, hi: hi}
-}
-
 // A stopped timebase change reuses the captured sample pitch and depth.
 // TRLC-LINKS: REQ-SDS-010, REQ-SDS-040
 func retainedSRAMPlan(p SRAMPlan, tdiv float64) SRAMPlan {
 	p.Screen = int(math.Min(float64(p.Samples), math.Max(2, math.Round(10*tdiv/p.SampleS))))
 	return p
-}
-
-// offRecord is how many of a screen's winCols columns, centred on anchor at
-// posFrac, fall outside a record of valid samples; zero when the record
-// cannot hold a screen at all (then nothing better exists).
-// TRLC-LINKS: REQ-SDS-013
-func offRecord(valid, winCols int, posFrac float64, anchor int) int {
-	if winCols <= 0 || winCols > valid || anchor < 0 {
-		return 0
-	}
-	if !(posFrac >= 0 && posFrac <= 1) {
-		posFrac = .5
-	}
-	left := anchor - int(math.Round(posFrac*float64(winCols)))
-	right := left + winCols - valid
-	return max(0, -left) + max(0, right)
 }
 
 // symbolCount reads the symbol trigger's match count (modulo 2^16), or -1

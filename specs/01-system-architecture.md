@@ -156,9 +156,10 @@ These are normative agent↔app names; a mismatch silently breaks the feature:
 | Variable | Meaning |
 |---|---|
 | `OTA_HEALTH_PATH` | path of the health file the app writes and the agent watches (§4.2). |
-| `SCOPE_GPMC` | `/dev/Gpmc` path (default `/dev/Gpmc`). |
-| `SCOPE_LCD` | framebuffer path (default `/dev/fb0`). |
-| `SCOPE_MMAP_DRAIN` | `0` disables the `/dev/mem` fast path (forces ioctl reads); any other value enables it. |
+| `SCOPE_GPMC` | the GPMC device the agent opened, whose inherited fd the app finds (`/dev/Gpmc`). |
+| `OTA_DIR` | the stick's `ota/` directory (exported by `startup.sh`), where the app keeps its settings. |
+
+The app takes no other configuration: it refuses to start without these, and has one way to run.
 
 **The agent is the permanent fd holder; the app is a tenant.** Each app launch (including a restart
 after a crash or an OTA update) inherits the same live fds. This is why a wedge can be recovered by
@@ -285,7 +286,8 @@ wrong thing from correct data. Clear what you do not set.
 ### 4.1 The supervision chain
 
 The OTA agent supervises the app. It launches the app slot, watches a **health signal**, and rolls
-back on failure. Two slots exist (A/B) plus a known-good emergency binary for crash-loop safety. The
+back on failure. Two slots exist (A/B); when the confirmed slot itself crash-loops the agent keeps
+retrying and stays reachable, so an update can be pushed. The
 agent — not the app — owns the fds and the hardware watchdog.
 
 **The hardware watchdog contract.** The SoC (AM335x) has a **~60 s hardware watchdog** at
