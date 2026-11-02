@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-LCD
+
 package lcd
 
 import (
@@ -8,10 +9,10 @@ import (
 	"testing"
 )
 
-// A synthetic super-res HUD: a K× fine-grid mean built from gen(fineBin), a
+// A synthetic super-res HUD: a k× fine-grid mean built from gen(fineBin), a
 // second channel from gen2, review focus, and a window covering the whole grid.
 // TRLC-LINKS: REQ-SDS-021, REQ-SDS-070
-func srHUD(nb, K int, sampleS float64, gen, gen2 func(b int) float64) HUD {
+func srHUD(nb, k int, sampleS float64, gen, gen2 func(b int) float64) HUD {
 	m1 := make([]float32, nb)
 	m2 := make([]float32, nb)
 	for b := range nb {
@@ -25,9 +26,9 @@ func srHUD(nb, K int, sampleS float64, gen, gen2 func(b int) float64) HUD {
 	h := defaultHUD()
 	h.SRActive, h.SRFocus = true, 3
 	h.SRMean, h.SRMean2 = m1, m2
-	h.SRk, h.SRSampleS = K, sampleS
-	h.SRGateLo, h.SRGateHi, h.SRN = 0, nb/K, nb/K
-	h.SRWinLo, h.SRWinHi = 0, nb/K // review the whole grid
+	h.SRk, h.SRSampleS = k, sampleS
+	h.SRGateLo, h.SRGateHi, h.SRN = 0, nb/k, nb/k
+	h.SRWinLo, h.SRWinHi = 0, nb/k // review the whole grid
 	h.SRPeriod = 0
 	return h
 }

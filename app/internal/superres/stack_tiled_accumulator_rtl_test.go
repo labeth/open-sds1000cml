@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-SUPERRES
+
 package superres
 
 import (
@@ -94,7 +95,7 @@ func TestStackTiledAccumulatorRTL(t *testing.T) {
 		t.Fatal(err)
 	}
 	image := compileStackRTL(t, dir, "tb_stack_tiled_accumulator", "stack_tiled_accumulator.v", "stack_tile_access.v", "stack_tile_transfer.v", "stack_state_tile.v", "stack_resample_store.v", "stack_resample.v", "stack_positions.v", "stack_interpolate.v", "stack_accumulate.v", "stack_bin_writer.v", "sim/tb_stack_tiled_accumulator.v")
-	out, err := exec.Command("vvp", image, "+input="+p).CombinedOutput()
+	out, err := exec.CommandContext(t.Context(), "vvp", image, "+input="+p).CombinedOutput()
 	if err != nil {
 		t.Fatalf("simulation %v\n%s", err, out)
 	}

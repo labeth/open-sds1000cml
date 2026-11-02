@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ANALYSIS
+
 package analysis
 
 import "math"
@@ -138,7 +139,7 @@ func uartBits(bytes []byte, idle []int) []int {
 		}
 		bits = append(bits, 1)
 		if len(idle) > 0 {
-			for j := 0; j < idle[f%len(idle)]; j++ {
+			for range idle[f%len(idle)] {
 				bits = append(bits, 1)
 			}
 		}
@@ -154,8 +155,9 @@ func asyncUART(msgs [][]byte, ui, start float64, gaps []float64) []edgeAt {
 	var out []edgeAt
 	t := start
 	for m, msg := range msgs {
-		bits := append(uartBits(msg, nil)[2:], 1) // drop the lead idle
-		bits = append([]int{1}, bits...)          // one idle bit before the start bit
+		// one idle bit, then the message without its lead idle
+		bits := append([]int{1}, uartBits(msg, nil)[2:]...)
+		bits = append(bits, 1)
 		out = append(out, nrzEdges(bits, ui, t-ui, nil)...)
 		t += float64(len(bits)-1)*ui + gaps[m%len(gaps)]
 	}

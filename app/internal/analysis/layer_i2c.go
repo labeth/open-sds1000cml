@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ANALYSIS
+
 package analysis
 
 import (
@@ -228,7 +229,7 @@ func edidNotes(ps []Packet) {
 // complete reports the base block read whole.
 // TRLC-LINKS: REQ-SDS-243
 func (st *edidState) complete() bool {
-	for i := 0; i < 128; i++ {
+	for i := range 128 {
 		if !st.have[i] {
 			return false
 		}
@@ -283,7 +284,7 @@ func edidDetect(ps []Packet) string {
 		}
 		for k := 0; k+8 <= len(p.Bytes); k++ {
 			if string(p.Bytes[k:k+8]) == string(edidHeader) {
-				return "EDID header 00 FF FF FF FF FF FF 00 read at 0x50"
+				return "EDID header 00 FF FF FF FF FF FF 00 read at 0x50" //nolint:dupword // the bytes as the bus carries them
 			}
 		}
 	}
@@ -326,7 +327,7 @@ func (c rtcSpec) clock(r map[int]byte) (string, bool) {
 	m, ok2 := bcd(r[c.min] & 0x7f)
 	hb := r[c.hour]
 	var h int
-	ok3 := true
+	var ok3 bool
 	ampm := ""
 	if c.weekdayFrom == 1 && hb&0x40 != 0 { // DS1307 12-hour mode
 		h, ok3 = bcd(hb & 0x1f)
@@ -430,11 +431,19 @@ func rtcDetect(ps []Packet, c rtcSpec, addr int) string {
 // lm75Regs name the LM75's registers.
 var lm75Regs = map[int]string{0: "Temperature", 1: "Config", 2: "T_HYST", 3: "T_OS"}
 
+// signed8 reads a byte as two's complement.
+// TRLC-LINKS: REQ-SDS-243
+func signed8(b byte) int { return int(b) - int(b>>7)<<8 }
+
+// signed16 reads a 16-bit word as two's complement.
+// TRLC-LINKS: REQ-SDS-243, REQ-SDS-245
+func signed16(u uint16) int { return int(u) - int(u>>15)<<16 }
+
 // lm75Temp reads a temperature register: two's complement, the first byte
 // whole degrees, bit 7 of the second a half degree (the LM75's nine bits).
 // TRLC-LINKS: REQ-SDS-243
 func lm75Temp(b []byte) string {
-	v := int(int8(b[0]))*2 + int(b[1]>>7)
+	v := signed8(b[0])*2 + int(b[1]>>7)
 	return fixed(int64(v), 2, 1) + " C"
 }
 
@@ -482,7 +491,7 @@ func smbusPEC(b []byte) int {
 	crc := 0
 	for _, v := range b {
 		crc ^= int(v)
-		for k := 0; k < 8; k++ {
+		for range 8 {
 			if crc&0x80 != 0 {
 				crc = (crc<<1 ^ 0x07) & 0xff
 			} else {
@@ -527,7 +536,7 @@ func mlxNotes(ps []Packet) {
 			continue
 		}
 		w := int(p.Bytes[1])<<8 | int(p.Bytes[0])
-		pec := smbusPEC([]byte{byte(p.Addr << 1), byte(cmd), byte(p.Addr<<1 | 1), p.Bytes[0], p.Bytes[1]})
+		pec := smbusPEC([]byte{byte(p.Addr << 1 & 0xff), byte(cmd), byte((p.Addr<<1 | 1) & 0xff), p.Bytes[0], p.Bytes[1]})
 		name := regName(mlxRegs, cmd&0x3f)
 		var v string
 		if c := cmd & 0x3f; cmd < 0x20 && c >= 6 && c <= 8 {
@@ -570,7 +579,7 @@ func mlxDetect(ps []Packet) string {
 func atshaCRC(b []byte) int {
 	crc := 0
 	for _, v := range b {
-		for k := 0; k < 8; k++ {
+		for k := range 8 {
 			bit := int(v>>k) & 1
 			top := crc >> 15 & 1
 			crc = crc << 1 & 0xffff
@@ -854,11 +863,12 @@ func mcpNames(wide bool) map[int]string {
 	base := []string{"IODIR", "IPOL", "GPINTEN", "DEFVAL", "INTCON", "IOCON", "GPPU", "INTF", "INTCAP", "GPIO", "OLAT"}
 	m := map[int]string{}
 	for i, n := range base {
-		if !wide {
+		switch {
+		case !wide:
 			m[i] = n
-		} else if n == "IOCON" {
+		case n == "IOCON":
 			m[2*i], m[2*i+1] = n, n
-		} else {
+		default:
 			m[2*i], m[2*i+1] = n+"A", n+"B"
 		}
 	}
@@ -937,7 +947,7 @@ func mxcNotes(ps []Packet) {
 					break
 				}
 				if reg <= 1 {
-					parts = append(parts, fmt.Sprintf("%s=%d", regName(mxcRegs, reg), int8(v)))
+					parts = append(parts, fmt.Sprintf("%s=%d", regName(mxcRegs, reg), signed8(v)))
 				} else {
 					parts = append(parts, regName(mxcRegs, reg)+"="+hx(int(v), 2))
 				}
@@ -1066,7 +1076,7 @@ func xfpNotes(ps []Packet) {
 		}
 		if covers(96, 105) {
 			m := st.mem[:]
-			t := int(int16(uint16(m[96])<<8 | uint16(m[97])))
+			t := signed16(uint16(m[96])<<8 | uint16(m[97]))
 			bias := int(m[100])<<8 | int(m[101])
 			tx := int(m[102])<<8 | int(m[103])
 			rx := int(m[104])<<8 | int(m[105])

@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-SUPERRES
+
 package superres
 
 import "math"
@@ -66,16 +67,7 @@ func buildTemplate(ref []float32, n int, edgeX float64, valid int) *template {
 	if lo < 0 || hi-lo < 8 {
 		lo, hi = lo0, hi0-1
 	} else {
-		if lo-h < lo0 {
-			lo = lo0
-		} else {
-			lo -= h
-		}
-		if hi+h >= hi0 {
-			hi = hi0 - 1
-		} else {
-			hi += h
-		}
+		lo, hi = max(lo-h, lo0), min(hi+h, hi0-1)
 	}
 	L := hi - lo + 1
 	data := make([]float64, L)

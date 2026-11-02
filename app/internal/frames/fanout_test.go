@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-FRAMES
+
 package frames
 
 import (
@@ -90,7 +91,7 @@ func TestWaitNextConcurrentWithReaders(t *testing.T) {
 	done := make(chan struct{})
 	go func() {
 		for range 50 {
-			fo.WithFrame(func(f *engine.Frame) {})
+			fo.WithFrame(func(_ *engine.Frame) {})
 			time.Sleep(time.Millisecond)
 		}
 		close(done)

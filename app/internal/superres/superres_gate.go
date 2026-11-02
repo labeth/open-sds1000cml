@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-SUPERRES
+
 package superres
 
 import "math"
@@ -59,12 +60,9 @@ func gateTemplate(ref []float32, lo, hi int) *gateTpl {
 		return nil
 	}
 	// Segments: ~8 across the gate, each ≥24 samples (shorter is too noisy).
-	nseg := min(L/24, 8)
-	if nseg < 1 {
-		nseg = 1
-	}
+	nseg := max(min(L/24, 8), 1)
 	var segs []gateSeg
-	for s := 0; s < nseg; s++ {
+	for s := range nseg {
 		a := s * L / nseg
 		b := (s + 1) * L / nseg
 		sl := b - a
@@ -133,7 +131,7 @@ func (t *gateTpl) segMatch(sig []uint8, loc int) bool {
 	for gi := range t.segs {
 		g := &t.segs[gi]
 		sm := 0.0
-		for i := 0; i < g.len; i++ {
+		for i := range g.len {
 			sm += float64(sig[loc+g.a+i])
 		}
 		sm /= float64(g.len)
@@ -144,7 +142,7 @@ func (t *gateTpl) segMatch(sig []uint8, loc int) bool {
 			continue // dead segment: level checked above, no shape to correlate
 		}
 		dot, ss := 0.0, 0.0
-		for i := 0; i < g.len; i++ {
+		for i := range g.len {
 			s := float64(sig[loc+g.a+i]) - sm
 			p := g.data[i] * s // materialize
 			dot += p
@@ -326,20 +324,20 @@ func (st *Stack) gateInstall(gLo, gHi int) bool {
 
 // gateFind matched-filters the gate template across the frame and returns every
 // occurrence: NCC local maxima above the floor, L/2-separated, each with a
-// parabolic sub-sample offset. R>0 bounds to trigger-predicted ±R; R=0 = whole
+// parabolic sub-sample offset. radius>0 bounds to trigger-predicted ±radius; 0 = whole
 // frame. Mirrors srGateFind.
 // TRLC-LINKS: REQ-SDS-141
-func (st *Stack) gateFind(sig []uint8, base, R int) []hit {
+func (st *Stack) gateFind(sig []uint8, base, radius int) []hit {
 	t := st.gtpl
 	if t == nil {
 		return nil
 	}
 	L, data, tnorm, n := t.L, t.data, t.norm, st.N
 	lo, hi := 0, n-L
-	if R > 0 {
+	if radius > 0 {
 		c := st.GateLo + base
-		lo = max(c-R, 0)
-		hi = min(c+R, n-L)
+		lo = max(c-radius, 0)
+		hi = min(c+radius, n-L)
 	}
 	if hi < lo {
 		return nil

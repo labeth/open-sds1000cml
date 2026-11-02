@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ANALYSIS
+
 package analysis
 
 // Oracle cross-checks of the UART layers (oracle_layer_helpers_test.go).
@@ -76,9 +77,7 @@ func TestOracleLayerITM(t *testing.T) {
 	sortAnns(anns)
 	var repo []string
 	for _, n := range orcNotes(ps) {
-		for _, it := range regexp.MustCompile(`SYNC|OVERFLOW|TS \+\d+|ch\d+ '[^']*'|ch\d+ 0x[0-9A-F]+|PC 0x[0-9A-F]+`).FindAllString(n, -1) {
-			repo = append(repo, it)
-		}
+		repo = append(repo, regexp.MustCompile(`SYNC|OVERFLOW|TS \+\d+|ch\d+ '[^']*'|ch\d+ 0x[0-9A-F]+|PC 0x[0-9A-F]+`).FindAllString(n, -1)...)
 	}
 	var orc []string
 	for _, s := range orcTexts(anns) {
@@ -128,9 +127,7 @@ func TestOracleLayerTPIU(t *testing.T) {
 	ps, anns := orcUARTRun(t, "arm_tpiu", "uart:rx=RX:baudrate=115200", "arm_tpiu,arm_itm", 115200, "none", 1, false, [][]byte{frames}, 30)
 	var repo []string
 	for _, n := range orcNotes(ps) {
-		for _, it := range regexp.MustCompile(`OVERFLOW|ch\d+ 0x[0-9A-F]+`).FindAllString(n, -1) {
-			repo = append(repo, it)
-		}
+		repo = append(repo, regexp.MustCompile(`OVERFLOW|ch\d+ 0x[0-9A-F]+`).FindAllString(n, -1)...)
 	}
 	var orc []string
 	for _, s := range orcTexts(anns) {

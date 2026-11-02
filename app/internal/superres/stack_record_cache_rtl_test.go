@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-SUPERRES
+
 package superres
 
 import (
@@ -34,10 +35,10 @@ func TestStackRecordCacheRTL(t *testing.T) {
 			for _, file := range []string{"stack_record_cache.v", "transport.v", "sim/ddr_model.v", "sim/tb_stack_record_cache.v"} {
 				args = append(args, filepath.Join(root, file))
 			}
-			if out, err := exec.Command("iverilog", args...).CombinedOutput(); err != nil {
+			if out, err := exec.CommandContext(t.Context(), "iverilog", args...).CombinedOutput(); err != nil {
 				t.Fatalf("compile %v\n%s", err, out)
 			}
-			out, err := exec.Command("vvp", image).CombinedOutput()
+			out, err := exec.CommandContext(t.Context(), "vvp", image).CombinedOutput()
 			if err != nil || !strings.Contains(string(out), "PASS frozen SRAM cache") {
 				t.Fatalf("simulate %v\n%s", err, out)
 			}

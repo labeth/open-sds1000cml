@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ANALYSIS
+
 package analysis
 
 import (
@@ -8,7 +9,7 @@ import (
 
 // TRLC-LINKS: REQ-SDS-215
 func BenchmarkFinite(b *testing.B) {
-	v := []float64{1, -2.5, math.NaN(), math.Inf(1), 3e300, -0.0, math.Inf(-1), 7}
+	v := []float64{1, -2.5, math.NaN(), math.Inf(1), 3e300, math.Copysign(0, -1), math.Inf(-1), 7}
 	n := 0
 	for b.Loop() {
 		for _, x := range v {
@@ -23,7 +24,7 @@ func BenchmarkFinite(b *testing.B) {
 // finite is the NaN and infinity test it was.
 // TRLC-LINKS: REQ-SDS-215
 func TestFiniteIsTheTest(t *testing.T) {
-	for _, x := range []float64{0, -0.0, 1, -1, math.MaxFloat64, -math.MaxFloat64, math.SmallestNonzeroFloat64, math.NaN(), math.Inf(1), math.Inf(-1)} {
+	for _, x := range []float64{0, math.Copysign(0, -1), 1, -1, math.MaxFloat64, -math.MaxFloat64, math.SmallestNonzeroFloat64, math.NaN(), math.Inf(1), math.Inf(-1)} {
 		if finite(x) != (!math.IsNaN(x) && !math.IsInf(x, 0)) {
 			t.Fatalf("%v", x)
 		}

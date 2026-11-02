@@ -414,12 +414,12 @@ func (t *Transcript) Format(i int) string {
 	}
 	buf = append(buf, ' ')
 	hexStart := len(buf)
-	for k := 0; k < int(l.N); k++ {
+	for k := range l.N {
 		if k > 0 {
 			buf = append(buf, ' ')
 		}
 		if l.Errs&(1<<k) != 0 {
-			for d := 0; d < t.hexDigits; d++ {
+			for range t.hexDigits {
 				buf = append(buf, '!')
 			}
 			continue
@@ -431,7 +431,7 @@ func (t *Transcript) Format(i int) string {
 	}
 	if t.ascii {
 		buf = append(buf, ' ', ' ')
-		for k := 0; k < int(l.N); k++ {
+		for k := range l.N {
 			switch b := l.Vals[k]; {
 			case l.Errs&(1<<k) != 0:
 				buf = append(buf, '!')
@@ -509,7 +509,7 @@ func (t *Transcript) EncodeLines(from int, dst []byte) int {
 			note = note[:255]
 		}
 		width := 1
-		for k := 0; k < int(l.N); k++ {
+		for k := range l.N {
 			if l.Vals[k] > 0xff {
 				width = 4
 				break
@@ -519,7 +519,7 @@ func (t *Transcript) EncodeLines(from int, dst []byte) int {
 		if off+need > len(dst) || count == 0xffff {
 			break
 		}
-		binary.LittleEndian.PutUint32(dst[off:], uint32(i))
+		binary.LittleEndian.PutUint32(dst[off:], uint32(i)) //nolint:gosec // the wire index is the line count mod 2^32, as the reader takes it
 		binary.LittleEndian.PutUint64(dst[off+4:], l.Sample)
 		dst[off+12] = l.N
 		if width == 1 {
@@ -527,11 +527,11 @@ func (t *Transcript) EncodeLines(from int, dst []byte) int {
 		}
 		binary.LittleEndian.PutUint16(dst[off+13:], l.Errs)
 		binary.LittleEndian.PutUint16(dst[off+15:], l.Naks)
-		dst[off+17] = byte(len(note))
+		dst[off+17] = byte(len(note) & 0xff) // the note is cut to 255 bytes above
 		off += 18 + copy(dst[off+18:], note)
-		for k := 0; k < int(l.N); k++ {
+		for k := range l.N {
 			if width == 1 {
-				dst[off] = byte(l.Vals[k])
+				dst[off] = byte(l.Vals[k] & 0xff) // width 1: every value is under 0x100
 				off++
 			} else {
 				binary.LittleEndian.PutUint32(dst[off:], l.Vals[k])
@@ -540,8 +540,8 @@ func (t *Transcript) EncodeLines(from int, dst []byte) int {
 		}
 		count++
 	}
-	binary.LittleEndian.PutUint32(dst[0:], uint32(t.Base()))
-	binary.LittleEndian.PutUint32(dst[4:], uint32(t.Next()))
+	binary.LittleEndian.PutUint32(dst[0:], uint32(t.Base())) //nolint:gosec // line counts mod 2^32, as the reader takes them
+	binary.LittleEndian.PutUint32(dst[4:], uint32(t.Next())) //nolint:gosec // as Base
 	binary.LittleEndian.PutUint64(dst[8:], t.Events)
 	binary.LittleEndian.PutUint64(dst[16:], t.Units)
 	binary.LittleEndian.PutUint64(dst[24:], t.Lost)
@@ -595,7 +595,7 @@ func DecodeLines(b []byte) (Batch, error) {
 			l.Note = string(b[off : off+nl])
 		}
 		off += nl
-		for k := 0; k < int(l.N); k++ {
+		for k := range l.N {
 			if width == 1 {
 				l.Vals[k] = uint32(b[off])
 				off++

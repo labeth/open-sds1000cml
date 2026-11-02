@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ANALYSIS
+
 package analysis
 
 // The COMPARE workspace's figures (REQ-SDS-218): the live trace against a
@@ -21,8 +22,9 @@ func RefDiff(live, ref []float64, tolDiv float64) (maxAbs, rms, pctWithin float6
 	n := min(len(live), len(ref))
 	var ss float64
 	cnt, within := 0, 0
-	for i := range n {
-		d := live[i] - ref[i]
+	live, ref = live[:n], ref[:n]
+	for i, l := range live {
+		d := l - ref[i]
 		if math.IsNaN(d) {
 			continue
 		}

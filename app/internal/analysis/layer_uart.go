@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ANALYSIS
+
 package analysis
 
 import (
@@ -33,7 +34,7 @@ func sbusFrame(b []byte) (string, bool) {
 	var sb strings.Builder
 	sb.WriteString("S.BUS")
 	for _, v := range ch {
-		sb.WriteString(fmt.Sprintf(" %d", v))
+		fmt.Fprintf(&sb, " %d", v)
 	}
 	f := b[23]
 	if f&1 != 0 {
@@ -100,7 +101,7 @@ func sbusDetect(ps []Packet) string {
 
 // sbusMatch: the frame's header.
 // TRLC-LINKS: REQ-SDS-248
-func sbusMatch(p Packet) ([]string, int) { return []string{"0F"}, -1 }
+func sbusMatch(_ Packet) ([]string, int) { return []string{"0F"}, -1 }
 
 // ---- ARM ITM (instrumentation trace over SWO) ----
 
@@ -282,8 +283,8 @@ func itmMatch(p Packet) ([]string, int) {
 
 // ---- ARM TPIU (formatted trace port) ----
 
-// tpiuDemux reads TPIU frames of 16 bytes (after a synchronization FF FF FF
-// 7F, else from the burst's first byte): byte 15 holds the low bits of the
+// tpiuDemux reads TPIU frames of 16 bytes (after a synchronization
+// FF-FF-FF-7F, else from the burst's first byte): byte 15 holds the low bits of the
 // even bytes; an even byte with bit 0 set is a stream ID (taking effect
 // after the next byte when its low bit says so), else data; odd bytes are
 // data. It returns the bytes of each stream in order.
@@ -365,14 +366,14 @@ func tpiuNotes(ps []Packet) {
 	})
 }
 
-// tpiuDetect: a TPIU synchronization (FF FF FF 7F) and a whole frame after.
+// tpiuDetect: a TPIU synchronization (FF-FF-FF-7F) and a whole frame after.
 // TRLC-LINKS: REQ-SDS-247
 func tpiuDetect(ps []Packet) string {
 	for _, p := range ps {
 		b := p.Bytes
 		for k := 0; k+20 <= len(b); k++ {
 			if b[k] == 0xff && b[k+1] == 0xff && b[k+2] == 0xff && b[k+3] == 0x7f {
-				return "TPIU frame synchronization FF FF FF 7F"
+				return "TPIU frame synchronization FF FF FF 7F" //nolint:dupword // the bytes as the bus carries them
 			}
 		}
 	}
@@ -390,8 +391,8 @@ type etmState struct {
 
 // etmVarint reads a value seven bits a byte, bit 7 continuing.
 // TRLC-LINKS: REQ-SDS-244
-func etmVarint(b []byte, max int) (v int64, n int, ok bool) {
-	for n < len(b) && n < max {
+func etmVarint(b []byte, limit int) (v int64, n int, ok bool) {
+	for n < len(b) && n < limit {
 		v |= int64(b[n]&0x7f) << (7 * n)
 		n++
 		if b[n-1]&0x80 == 0 {

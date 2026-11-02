@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ANALYSIS
+
 package analysis
 
 import (
@@ -78,7 +79,7 @@ func LayersOn(proto string) []Layer {
 // TRLC-LINKS: REQ-SDS-241
 func busOf(proto string) string {
 	if proto == "usb" {
-		return "usbls"
+		return protoUSBLS
 	}
 	return proto
 }
@@ -183,12 +184,12 @@ var hexByte = func() (t [256]string) {
 	return t
 }()
 
-// hexList writes bytes as "12 34 56", at most max of them and ".." after.
+// hexList writes bytes as "12 34 56", at most limit of them and ".." after.
 // TRLC-LINKS: REQ-SDS-241
-func hexList(b []byte, max int) string {
+func hexList(b []byte, limit int) string {
 	var sb strings.Builder
 	for i, v := range b {
-		if i == max {
+		if i == limit {
 			sb.WriteString(" ..")
 			break
 		}
@@ -201,13 +202,13 @@ func hexList(b []byte, max int) string {
 }
 
 // quoted writes bytes as text in single quotes, '.' for a byte that does
-// not print, at most max of them and ".." after.
+// not print, at most limit of them and ".." after.
 // TRLC-LINKS: REQ-SDS-241
-func quoted(b []byte, max int) string {
+func quoted(b []byte, limit int) string {
 	var sb strings.Builder
 	sb.WriteByte('\'')
 	for i, v := range b {
-		if i == max {
+		if i == limit {
 			sb.WriteString("'..")
 			return sb.String()
 		}

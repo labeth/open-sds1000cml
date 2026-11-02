@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ANALYSIS
+
 package analysis
 
 import (
@@ -513,7 +514,7 @@ func rfm12Note(b []byte) (string, bool) {
 			den := int64(29 * (v&0x7f + 1) * (1 + 7*(v>>7)))
 			s = "DATA RATE " + fixed(10000, den, 3) + "kbps"
 		case c&0xf8 == 0x90:
-			s = "RX CTRL BW " + []string{"Reserved", "400kHz", "340kHz", "270kHz", "200kHz", "134kHz", "67kHz", "Reserved"}[v>>5]
+			s = "RX CTRL BW " + []string{regReserved, "400kHz", "340kHz", "270kHz", "200kHz", "134kHz", "67kHz", regReserved}[v>>5]
 		case c == 0xc2:
 			s = "DATA FILTER"
 		case c == 0xca:

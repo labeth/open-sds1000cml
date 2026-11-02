@@ -1,7 +1,9 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-LCD
+
 package lcd
 
 import (
+	"context"
 	"fmt"
 	"io/fs"
 	"os"
@@ -22,7 +24,7 @@ func Bringup(logf func(string, ...any)) error {
 				logf("lcd: module %s not found", mod)
 				continue
 			}
-			if out, err := exec.Command("insmod", path).CombinedOutput(); err != nil {
+			if out, err := exec.CommandContext(context.Background(), "insmod", path).CombinedOutput(); err != nil { //nolint:gosec // path is a fixed module name found under the module directories
 				logf("lcd: insmod %s: %v %s", mod, err, out)
 			}
 		}
@@ -34,10 +36,10 @@ func Bringup(logf func(string, ...any)) error {
 	// GPIO7 = panel enable (binary; no brightness control exists). Ignore
 	// errors: on a warm system the panel is already lit.
 	if _, err := os.Stat("/sys/class/gpio/gpio7"); err != nil {
-		os.WriteFile("/sys/class/gpio/export", []byte("7"), 0o644)
+		_ = os.WriteFile("/sys/class/gpio/export", []byte("7"), 0o600)
 	}
-	os.WriteFile("/sys/class/gpio/gpio7/direction", []byte("out"), 0o644)
-	os.WriteFile("/sys/class/gpio/gpio7/value", []byte("1"), 0o644)
+	_ = os.WriteFile("/sys/class/gpio/gpio7/direction", []byte("out"), 0o600)
+	_ = os.WriteFile("/sys/class/gpio/gpio7/value", []byte("1"), 0o600)
 	return nil
 }
 
@@ -47,11 +49,9 @@ func findModule(name string) string {
 		var found string
 		// WalkDir: the names and types come from the directory reads, no
 		// stat per file.
-		filepath.WalkDir(dir, func(p string, d fs.DirEntry, err error) error {
-			if err != nil {
-				return nil
-			}
-			if d != nil && !d.IsDir() && d.Name() == name {
+		// An unreadable entry is passed over (err != nil): the search goes on.
+		_ = filepath.WalkDir(dir, func(p string, d fs.DirEntry, err error) error {
+			if err == nil && d != nil && !d.IsDir() && d.Name() == name {
 				found = p
 				return filepath.SkipAll
 			}

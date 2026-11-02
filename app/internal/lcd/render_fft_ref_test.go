@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-LCD
+
 package lcd
 
 // fftCore Hann-windows `samples` (DC included; mean-subtracted here), FFTs it,

@@ -30,13 +30,14 @@ type Source interface {
 // State is where a stream stands.
 type State int
 
+// The states of a stream.
 const (
-	Idle State = iota
-	Streaming
-	Triggered // the trigger fired; the record is on the display
-	Stopped   // stopped by the operator
-	Failed
-	Starting // the capture is being set up (an image load can take seconds)
+	Idle      State = iota // no stream
+	Streaming              // lines are arriving
+	Triggered              // the trigger fired; the record is on the display
+	Stopped                // stopped by the operator
+	Failed                 // the stream could not start or ended in a fault
+	Starting               // the capture is being set up (an image load can take seconds)
 )
 
 // String names the state for the display.
@@ -268,6 +269,75 @@ func (c *Controller) appendLocked(b decodedlines.Batch) {
 	c.t.SetCounters(b.Counters)
 }
 
+// drainRecord moves into the transcript the units queued up to the moment
+// the record froze (acquisition halted): the record's own span among them
+// still belongs there. Decoders running on past the record end the drain, as
+// does a quiet source or two seconds.
+// TRLC-LINKS: REQ-SDS-018
+func (c *Controller) drainRecord(ctx context.Context, id sramcapture.RecordIdentity, m sramcapture.Metadata, lineMode bool) {
+	past := func(sample uint64) bool { return m.HasSampleTimeline && sample > m.SampleLast }
+	var buf []sramcapture.DecodedEvent
+	if !lineMode {
+		buf = make([]sramcapture.DecodedEvent, 32768)
+	}
+	for deadline := time.Now().Add(2 * time.Second); time.Now().Before(deadline); {
+		var more bool
+		if lineMode {
+			more = c.drainLines(ctx, id, past)
+		} else {
+			more = c.drainEvents(ctx, id, buf, past)
+		}
+		if !more {
+			return
+		}
+	}
+}
+
+// drainLines moves one batch of worker-built lines up to the record's end
+// into the transcript; false when the drain is over.
+// TRLC-LINKS: REQ-SDS-018
+func (c *Controller) drainLines(ctx context.Context, id sramcapture.RecordIdentity, past func(uint64) bool) bool {
+	c.mu.Lock()
+	from := c.t.Next()
+	c.mu.Unlock()
+	b, _, err := c.src.ReadDecodedLines(ctx, id, from, true)
+	if err != nil || len(b.Lines) == 0 {
+		return false
+	}
+	more := true
+	for k, l := range b.Lines {
+		if past(l.Sample) {
+			b.Lines, b.Indices, more = b.Lines[:k], b.Indices[:k], false
+			break
+		}
+	}
+	c.mu.Lock()
+	c.appendLocked(b)
+	c.mu.Unlock()
+	return more
+}
+
+// drainEvents moves one batch of decoded events up to the record's end into
+// the transcript; false when the drain is over.
+// TRLC-LINKS: REQ-SDS-018
+func (c *Controller) drainEvents(ctx context.Context, id sramcapture.RecordIdentity, buf []sramcapture.DecodedEvent, past func(uint64) bool) bool {
+	n, err := c.src.ReadDecodedBatchInto(ctx, id, buf)
+	if err != nil || n == 0 {
+		return false
+	}
+	more := true
+	for k, e := range buf[:n] {
+		if e.Kind != sramcapture.EventLoss && past(e.Sample) {
+			n, more = k, false
+			break
+		}
+	}
+	c.mu.Lock()
+	c.t.Add(buf[:n])
+	c.mu.Unlock()
+	return more
+}
+
 // finish ends the capture, handing the record to the display and marking
 // the trigger and the record's span in the transcript.
 // TRLC-LINKS: REQ-SDS-018
@@ -283,53 +353,7 @@ func (c *Controller) finish(id sramcapture.RecordIdentity, state State, cause er
 		adopted = false
 	}
 	if err == nil {
-		// The record is frozen and acquisition halted; the units queued up to
-		// that moment - the record's own span among them - still belong in
-		// the transcript. Decoders running on past the record end the drain.
-		past := func(sample uint64) bool { return m.HasSampleTimeline && sample > m.SampleLast }
-		buf := make([]sramcapture.DecodedEvent, 32768)
-		for deadline := time.Now().Add(2 * time.Second); time.Now().Before(deadline); {
-			if lineMode {
-				c.mu.Lock()
-				from := c.t.Next()
-				c.mu.Unlock()
-				b, _, rerr := c.src.ReadDecodedLines(ctx, id, from, true)
-				if rerr != nil || len(b.Lines) == 0 {
-					break
-				}
-				stop := false
-				for k, l := range b.Lines {
-					if past(l.Sample) {
-						b.Lines, b.Indices, stop = b.Lines[:k], b.Indices[:k], true
-						break
-					}
-				}
-				c.mu.Lock()
-				c.appendLocked(b)
-				c.mu.Unlock()
-				if stop {
-					break
-				}
-				continue
-			}
-			n, rerr := c.src.ReadDecodedBatchInto(ctx, id, buf)
-			if rerr != nil || n == 0 {
-				break
-			}
-			stop := false
-			for k, e := range buf[:n] {
-				if e.Kind != sramcapture.EventLoss && past(e.Sample) {
-					n, stop = k, true
-					break
-				}
-			}
-			c.mu.Lock()
-			c.t.Add(buf[:n])
-			c.mu.Unlock()
-			if stop {
-				break
-			}
-		}
+		c.drainRecord(ctx, id, m, lineMode)
 	}
 	if endErr := c.src.EndDecodedCapture(ctx, id); err == nil {
 		err = endErr

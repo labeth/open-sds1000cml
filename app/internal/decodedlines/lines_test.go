@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
+
 package decodedlines
 
 import (
@@ -10,7 +11,7 @@ import (
 // TRLC-LINKS: REQ-SDS-018
 func uart(text string, start uint64) []sramcapture.DecodedEvent {
 	var ev []sramcapture.DecodedEvent
-	for i := 0; i < len(text); i++ {
+	for i := range len(text) {
 		ev = append(ev, sramcapture.DecodedEvent{Kind: sramcapture.EventData, Value: uint32(text[i]), Sample: start + uint64(i)*4340})
 	}
 	return ev
@@ -135,7 +136,7 @@ func TestRateIsSignalTime(t *testing.T) {
 	// Lines built by the worker arrive with its counters, which also count
 	// units decoded before the first line held here (HW: 26 k/s on 8.8 k/s).
 	g := New(1, 64)
-	for i := 0; i < w.Count(); i++ {
+	for i := range w.Count() {
 		g.Append(w.Base()+i, *w.At(i))
 	}
 	g.SetCounters(Counters{Units: 3 * w.Units})

@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-LCD
+
 package lcd
 
 import (
@@ -587,7 +588,7 @@ func TestBodeHintNamesTheChannels(t *testing.T) {
 	msg := "BODE / FRA - sweep the source frequency (ref C2, DUT C1)"
 	DrawText(want, (p.w-TextWidth(msg, 1))/2, p.y0+p.h/2, msg, colDim, 1)
 	for y := p.y0 + p.h/2; y < p.y0+p.h/2+8; y++ {
-		for x := 0; x < p.w; x++ {
+		for x := range p.w {
 			if m.At(x, y) != want.At(x, y) {
 				t.Fatalf("the hint differs from %q at (%d,%d)", msg, x, y)
 			}
@@ -660,7 +661,7 @@ func TestZoomTagReadsTheFactor(t *testing.T) {
 	hud := defaultHUD()
 	hud.Zoom = 50
 	m := NewMemSurface()
-	drawHUD(m, fullPlot, nil, hud)
+	drawHUD(m, nil, hud)
 	want := NewMemSurface()
 	DrawText(want, 262, 2, "x50", colTrig, 1)
 	for y := 2; y < 10; y++ {

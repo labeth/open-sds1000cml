@@ -253,7 +253,7 @@ func (r *Result) WithEnvelopeTiming(env []uint8, voltsPerCode, offV, sampleS flo
 			k = bucketHigh
 		}
 		class[i] = k
-		mids[i] = uint8((a + b + 1) / 2)
+		mids[i] = uint8((a + b + 1) / 2) //nolint:gosec // a, b are 8-bit codes: their rounded mean is one
 	}
 	c.EnvAliased = q.resolvable() && 2*spans > n
 	if n < 2*envMinBuckets || !(sampleS > 0) || (q.resolvable() && narrowPulseIn(class)) {
@@ -429,7 +429,7 @@ func compute[T ~uint8 | ~uint16](sig []T, voltsPerCode, offV, sampleS, scale flo
 		// multiply-accumulate and two compares. Four tables keep runs of
 		// equal codes from waiting on the previous increment's store.
 		var h [4][256]int32
-		histogram4(&h, unsafe.Slice((*uint8)(unsafe.Pointer(&sig[0])), n))
+		histogram4(&h, unsafe.Slice((*uint8)(unsafe.Pointer(&sig[0])), n)) //nolint:gosec // T is 1 byte here (case above): the same samples as []uint8
 		cmin = -1
 		for c := range hist {
 			k := int(h[0][c] + h[1][c] + h[2][c] + h[3][c])
@@ -452,8 +452,8 @@ func compute[T ~uint8 | ~uint16](sig []T, voltsPerCode, offV, sampleS, scale flo
 		// to 2^24 samples a code.
 		lowSum = new([256]uint32)
 		var sq uint64
-		cmin, cmax, sum, sq = moments16(unsafe.Slice((*uint16)(unsafe.Pointer(&sig[0])), n), reference, &hist, lowSum)
-		sum2 = int64(sq)
+		cmin, cmax, sum, sq = moments16(unsafe.Slice((*uint16)(unsafe.Pointer(&sig[0])), n), reference, &hist, lowSum) //nolint:gosec // T is 2 bytes here (case above): the same samples as []uint16
+		sum2 = int64(sq)                                                                                               //nolint:gosec // under 2^24 samples of squares under 2^32: below 2^63
 	default:
 		for _, v := range sig {
 			iv := int(v)
@@ -490,44 +490,7 @@ func compute[T ~uint8 | ~uint16](sig []T, voltsPerCode, offV, sampleS, scale flo
 			baseCode = baseC
 		}
 	} else if topC >= 0 || baseC >= 0 {
-		// Both codes' means in one pass over the record. int64: the device's
-		// int is 32 bits, and a 1 M-sample record's count × Q8.8 code
-		// (~2.6e10) wraps it, so a single shot would measure top -6.35 V and
-		// base -4.82 V on a 0-3.3 V square.
-		var nTop, sumTop, nBase, sumBase int64
-		if lowSum != nil && n < 1<<24 {
-			if topC >= 0 {
-				nTop = int64(hist[topC])
-				sumTop = int64(topC)<<8*nTop + int64(lowSum[topC])
-			}
-			if baseC >= 0 {
-				nBase = int64(hist[baseC])
-				sumBase = int64(baseC)<<8*nBase + int64(lowSum[baseC])
-			}
-		} else {
-			for _, v := range sig {
-				switch int(v) >> shift {
-				case topC:
-					nTop++
-					sumTop += int64(v)
-				case baseC:
-					nBase++
-					sumBase += int64(v)
-				}
-			}
-		}
-		settled := func(code int, n, sum int64) int {
-			if n == 0 {
-				return code<<shift + 1<<shift/2
-			}
-			return int((sum + n/2) / n)
-		}
-		if topC >= 0 {
-			topCode = settled(topC, nTop, sumTop)
-		}
-		if baseC >= 0 {
-			baseCode = settled(baseC, nBase, sumBase)
-		}
+		topCode, baseCode = settledCodes(sig, shift, topC, baseC, topCode, baseCode, &hist, lowSum)
 	}
 
 	r := &Result{
@@ -574,65 +537,7 @@ func compute[T ~uint8 | ~uint16](sig []T, voltsPerCode, offV, sampleS, scale flo
 	// only: a float compare stalls this core's pipeline every sample).
 	// lowCode < midCode <= highCode, so a rise starts below midCode and a
 	// fall at or above it.
-	state := 0
-	if int(sig[0]) <= lowCode {
-		state = -1
-	}
-	if int(sig[0]) >= highCode {
-		state = 1
-	}
-	i := 1
-	for ; state == 0 && i < n; i++ {
-		if b := int(sig[i]); b <= lowCode {
-			state = -1
-		} else if b >= highCode {
-			state = 1
-		}
-	}
-walk:
-	for i < n {
-		if state < 0 {
-			for i < n && int(sig[i]) < midCode {
-				i++
-			}
-			if i == n {
-				break
-			}
-			candidate := interp(float64(sig[i-1]), float64(sig[i]), i, mid50)
-			for ; i < n; i++ {
-				b := int(sig[i])
-				if b >= highCode {
-					riseIdx = append(riseIdx, candidate)
-					state = 1
-					i++
-					continue walk
-				}
-				if b < midCode {
-					continue walk
-				}
-			}
-		} else {
-			for i < n && int(sig[i]) >= midCode {
-				i++
-			}
-			if i == n {
-				break
-			}
-			candidate := interp(float64(sig[i-1]), float64(sig[i]), i, mid50)
-			for ; i < n; i++ {
-				b := int(sig[i])
-				if b <= lowCode {
-					fallIdx = append(fallIdx, candidate)
-					state = -1
-					i++
-					continue walk
-				}
-				if b >= midCode {
-					continue walk
-				}
-			}
-		}
-	}
+	riseIdx, fallIdx = schmittCrossings(sig, lowCode, midCode, highCode, mid50, riseIdx, fallIdx)
 
 	if len(riseIdx) >= 2 {
 		period := cyclePeriod(riseIdx) * sampleS
@@ -661,6 +566,124 @@ walk:
 	return r
 }
 
+// settledCodes are the settled top and base levels of a Q8.8 record (shift
+// 8): the mean of the samples in the top and base modes' whole codes (topC,
+// baseC; -1 for none, which keeps top or base as given). Both means come in
+// one pass over the record, or from the histogram's low-byte sums.
+// TRLC-LINKS: REQ-SDS-017
+func settledCodes[T ~uint8 | ~uint16](sig []T, shift, topC, baseC, top, base int, hist *[256]int, lowSum *[256]uint32) (topCode, baseCode int) {
+	topCode, baseCode = top, base
+	// Both codes' means in one pass over the record. int64: the device's
+	// int is 32 bits, and a 1 M-sample record's count × Q8.8 code
+	// (~2.6e10) wraps it, so a single shot would measure top -6.35 V and
+	// base -4.82 V on a 0-3.3 V square.
+	var nTop, sumTop, nBase, sumBase int64
+	if lowSum != nil && len(sig) < 1<<24 {
+		if topC >= 0 {
+			nTop = int64(hist[topC])
+			sumTop = int64(topC)<<8*nTop + int64(lowSum[topC])
+		}
+		if baseC >= 0 {
+			nBase = int64(hist[baseC])
+			sumBase = int64(baseC)<<8*nBase + int64(lowSum[baseC])
+		}
+	} else {
+		for _, v := range sig {
+			switch int(v) >> shift {
+			case topC:
+				nTop++
+				sumTop += int64(v)
+			case baseC:
+				nBase++
+				sumBase += int64(v)
+			}
+		}
+	}
+	settled := func(code int, n, sum int64) int {
+		if n == 0 {
+			return code<<shift + 1<<shift/2
+		}
+		return int((sum + n/2) / n)
+	}
+	if topC >= 0 {
+		topCode = settled(topC, nTop, sumTop)
+	}
+	if baseC >= 0 {
+		baseCode = settled(baseC, nBase, sumBase)
+	}
+	return topCode, baseCode
+}
+
+// schmittCrossings appends to rise and fall the record's 50 % crossings
+// (interpolated at mid50) of each complete transition through the Schmitt
+// band: below lowCode, across midCode, beyond highCode. Small midpoint
+// recrossings do not turn one noisy edge into several periods.
+// TRLC-LINKS: REQ-SDS-017
+func schmittCrossings[T ~uint8 | ~uint16](sig []T, lowCode, midCode, highCode int, mid50 float64, rise, fall []float64) ([]float64, []float64) {
+	n := len(sig)
+	state := 0
+	if int(sig[0]) <= lowCode {
+		state = -1
+	}
+	if int(sig[0]) >= highCode {
+		state = 1
+	}
+	i := 1
+	for ; state == 0 && i < n; i++ {
+		if b := int(sig[i]); b <= lowCode {
+			state = -1
+		} else if b >= highCode {
+			state = 1
+		}
+	}
+walk:
+	for i < n {
+		if state < 0 { //nolint:nestif // both directions inline: the walk scans for one integer condition a sample
+			for i < n && int(sig[i]) < midCode {
+				i++
+			}
+			if i == n {
+				return rise, fall
+			}
+			candidate := interp(float64(sig[i-1]), float64(sig[i]), i, mid50)
+			for ; i < n; i++ {
+				b := int(sig[i])
+				if b >= highCode {
+					rise = append(rise, candidate)
+					state = 1
+					i++
+					continue walk
+				}
+				if b < midCode {
+					continue walk
+				}
+			}
+		} else {
+			for i < n && int(sig[i]) >= midCode {
+				i++
+			}
+			if i == n {
+				return rise, fall
+			}
+			candidate := interp(float64(sig[i-1]), float64(sig[i]), i, mid50)
+			for ; i < n; i++ {
+				b := int(sig[i])
+				if b <= lowCode {
+					fall = append(fall, candidate)
+					state = -1
+					i++
+					continue walk
+				}
+				if b >= midCode {
+					continue walk
+				}
+			}
+		}
+	}
+
+	return rise, fall
+}
+
 // moments16 is compute's pass over a Q8.8 record: the extremes, the sum and
 // sum of squares of the deltas from ref, and each whole code's count and
 // low-byte sum. Out of line for the same reason as histogram4.
@@ -678,12 +701,12 @@ func moments16(sig []uint16, ref int, coarse *[256]int, lowSum *[256]uint32) (cm
 		}
 		delta := iv - ref
 		sum += int64(delta)
-		ad := uint32(delta)
+		ad := uint32(delta) //nolint:gosec // |delta| < 2^16: both are 16-bit codes
 		if delta < 0 {
-			ad = uint32(-delta)
+			ad = uint32(-delta) //nolint:gosec // as above
 		}
 		sq += uint64(ad * ad)
-		c := uint8(iv >> 8)
+		c := uint8(iv >> 8 & 0xff)
 		coarse[c]++
 		lowSum[c] += uint32(iv & 0xff)
 	}
@@ -853,7 +876,7 @@ func firstEdge[T ~uint8 | ~uint16](sig []T, first, second float64, rising bool) 
 	// interpolated, sub-sample rise/fall; it gives the candidate up when the
 	// edge reverses before reaching second.
 	if rising {
-		for i := 1; i < n; i++ {
+		for i := 1; i < n; i++ { //nolint:dupl // one loop a direction (the falling one below): the compares are then all a sample costs
 			if b := int(sig[i]); b < firstUp || int(sig[i-1]) >= firstUp {
 				continue
 			}
@@ -869,7 +892,7 @@ func firstEdge[T ~uint8 | ~uint16](sig []T, first, second float64, rising bool) 
 		}
 		return 0, 0, false
 	}
-	for i := 1; i < n; i++ {
+	for i := 1; i < n; i++ { //nolint:dupl // the rising loop's mirror
 		if b := int(sig[i]); b > firstDown || int(sig[i-1]) <= firstDown {
 			continue
 		}

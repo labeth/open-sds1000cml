@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-LCD
+
 package lcd
 
 import (
@@ -259,7 +260,7 @@ func measBox(sf Surface, p plotArea, f *engine.Frame, hud HUD, ch, x int, params
 // along (dx, dy): one of left, right, up, down.
 // TRLC-LINKS: REQ-SDS-021, REQ-SDS-217
 func edgeArrow(sf Surface, x, y, dx, dy int, c uint16) {
-	for d := 0; d <= 6; d++ {
+	for d := range 7 {
 		for w := -d / 2; w <= d/2; w++ {
 			sf.SetPixel(x-dx*d+w*absI(dy), y-dy*d+w*absI(dx), c)
 		}
@@ -298,7 +299,7 @@ func drawCursors(sf Surface, p plotArea, hud HUD) {
 		if hud.CurSel == k {
 			col = colTrig
 		}
-		lab := string(rune('A' + k))
+		lab := string(rune('A' + k)) //nolint:gosec // k is a cursor index (0 or 1)
 		switch {
 		case vertical && f < 0:
 			y := p.top + 30 + 14*k
@@ -328,43 +329,60 @@ func drawCursors(sf Surface, p plotArea, hud HUD) {
 				dash(true, int(hud.CurX[k]*float64(p.w-1)), hud.CurSel == k)
 			}
 		}
-		span := hud.TdivS * 10
-		if hud.Zoom > 1 {
-			span /= float64(hud.Zoom)
-		}
-		dt := math.Abs(hud.CurX[0]-hud.CurX[1]) * span
-		label = "dt " + fmtTdiv(dt)
-		if dt > 0 {
-			label += "  1/dt " + fmtFreq(1/dt)
-		}
+		label = timeCursorLabel(hud)
 	} else { // Y (volts) cursors — report ΔV for BOTH channels (web parity)
 		for k := range 2 {
 			if !off(false, hud.CurY[k], k) {
 				dash(false, p.top+int(hud.CurY[k]*float64(p.bot-p.top)), hud.CurSel == k)
 			}
 		}
-		frac := math.Abs(hud.CurY[0] - hud.CurY[1])
-		dvOf := func(vdiv, probe float64) string {
-			if probe < 1 {
-				probe = 1
-			}
-			return fmtVolt(frac * vdiv * probe * 8) // 8 vertical divisions
-		}
-		sc1, sc2 := hud.shownChans()
-		if sc1 {
-			label = "dV1 " + dvOf(hud.C1VdivV, hud.Probe1)
-		}
-		if sc2 && hud.TwoChan {
-			if label != "" {
-				label += "  "
-			}
-			label += "dV2 " + dvOf(hud.C2VdivV, hud.Probe2)
-		}
+		label = voltCursorLabel(hud)
 	}
 	w := len(label)*6 + 6
 	x := p.w/2 - w/2 // top-centre, clear of the MEAS boxes (left) and the right column
 	fillRect(sf, x, p.y0+22, w, 12, colBoxBg)
 	DrawText(sf, x+3, p.y0+24, label, colTrig, 1)
+}
+
+// timeCursorLabel is the X cursors' readout: their time apart, and its
+// frequency.
+// TRLC-LINKS: REQ-SDS-021
+func timeCursorLabel(hud HUD) string {
+	span := hud.TdivS * 10
+	if hud.Zoom > 1 {
+		span /= float64(hud.Zoom)
+	}
+	dt := math.Abs(hud.CurX[0]-hud.CurX[1]) * span
+	label := "dt " + fmtTdiv(dt)
+	if dt > 0 {
+		label += "  1/dt " + fmtFreq(1/dt)
+	}
+	return label
+}
+
+// voltCursorLabel is the Y cursors' readout: their voltage apart on each
+// shown channel (web parity).
+// TRLC-LINKS: REQ-SDS-021
+func voltCursorLabel(hud HUD) string {
+	var label string
+	frac := math.Abs(hud.CurY[0] - hud.CurY[1])
+	dvOf := func(vdiv, probe float64) string {
+		if probe < 1 {
+			probe = 1
+		}
+		return fmtVolt(frac * vdiv * probe * 8) // 8 vertical divisions
+	}
+	sc1, sc2 := hud.shownChans()
+	if sc1 {
+		label = "dV1 " + dvOf(hud.C1VdivV, hud.Probe1)
+	}
+	if sc2 && hud.TwoChan {
+		if label != "" {
+			label += "  "
+		}
+		label += "dV2 " + dvOf(hud.C2VdivV, hud.Probe2)
+	}
+	return label
 }
 
 // drawAutosetBanner overlays a centred "AUTOSET…" progress banner while the
@@ -440,7 +458,7 @@ func drawMarkers(sf Surface, p plotArea, f *engine.Frame, hud HUD) {
 			px(x+1, ly, colTrig)
 		}
 		for dy := -4; dy <= 4; dy++ {
-			for dx := 0; dx < 5-absI(dy); dx++ {
+			for dx := range 5 - absI(dy) {
 				px(p.w-1-dx, ly+dy, colTrig)
 			}
 		}
@@ -460,7 +478,7 @@ func drawMarkers(sf Surface, p plotArea, f *engine.Frame, hud HUD) {
 			return
 		}
 		gy := p.sy(128 + offV*25/vdiv)
-		for dx := 0; dx <= 6; dx++ {
+		for dx := range 7 {
 			for dy := -(6 - dx); dy <= 6-dx; dy++ {
 				px(dx, gy+dy, col)
 			}
@@ -505,7 +523,7 @@ func trigFrac(f *engine.Frame, hud HUD) (float64, bool) {
 }
 
 // TRLC-LINKS: REQ-SDS-021
-func drawHUD(sf Surface, p plotArea, f *engine.Frame, hud HUD) {
+func drawHUD(sf Surface, f *engine.Frame, hud HUD) {
 	if f != nil && f.NoiseGainIdeal > 1 {
 		label := fmt.Sprintf("Ideal +%.2f bits (not ENOB)", math.Log2(f.NoiseGainIdeal))
 		if f.PassbandHz > 0 {
@@ -554,35 +572,7 @@ func drawHUD(sf Surface, p plotArea, f *engine.Frame, hud HUD) {
 		}
 	}
 
-	edge := "^"
-	if !hud.TrigRising {
-		edge = "v"
-	}
-	state := "AUTO"
-	if hud.Norm {
-		state = "NORM"
-	}
-	switch {
-	case hud.Single && hud.Running:
-		state = "SNGL" // armed, waiting for the single trigger
-	case !hud.Running && hud.Single:
-		state = "STOP" // (should not persist: single clears on capture)
-	case !hud.Running:
-		state = "STOP"
-	case hud.Roll:
-		state = "ROLL" // untriggered scrolling view (slow timebase)
-	case hud.Waiting:
-		state = "WAIT" // the held frame's T'D is stale
-	case hud.Trigd:
-		state = "T'D"
-	case hud.Norm:
-		state = "WAIT"
-	}
-	readout := fmt.Sprintf("T C%d %s %s %s", hud.TrigSrc+1, edge, fmtVolt(hud.TrigLvlV), state)
-	if tag := trigTag(hud); tag != "" {
-		readout = fmt.Sprintf("T %s %s", tag, state)
-	}
-	DrawTextRight(sf, 796, 2, readout, colTrig, 1)
+	DrawTextRight(sf, 796, 2, trigReadout(hud), colTrig, 1)
 
 	// Device URL (post-takeover support: "what do I browse to?"). Right-aligned
 	// on the top bar in the dead zone between the math legend (ends ≤ ~345) and
@@ -615,6 +605,41 @@ func drawHUD(sf Surface, p plotArea, f *engine.Frame, hud HUD) {
 		}
 		DrawText(sf, x, H-9, s, col, 1)
 	}
+}
+
+// trigReadout is the top bar's trigger readout: source, edge, level (or the
+// qualified trigger's tag) and the acquisition state.
+// TRLC-LINKS: REQ-SDS-021
+func trigReadout(hud HUD) string {
+	edge := "^"
+	if !hud.TrigRising {
+		edge = "v"
+	}
+	state := "AUTO"
+	if hud.Norm {
+		state = "NORM"
+	}
+	switch {
+	case hud.Single && hud.Running:
+		state = "SNGL" // armed, waiting for the single trigger
+	case !hud.Running && hud.Single:
+		state = "STOP" // (should not persist: single clears on capture)
+	case !hud.Running:
+		state = "STOP"
+	case hud.Roll:
+		state = "ROLL" // untriggered scrolling view (slow timebase)
+	case hud.Waiting:
+		state = "WAIT" // the held frame's T'D is stale
+	case hud.Trigd:
+		state = "T'D"
+	case hud.Norm:
+		state = "WAIT"
+	}
+	readout := fmt.Sprintf("T C%d %s %s %s", hud.TrigSrc+1, edge, fmtVolt(hud.TrigLvlV), state)
+	if tag := trigTag(hud); tag != "" {
+		readout = fmt.Sprintf("T %s %s", tag, state)
+	}
+	return readout
 }
 
 // TRLC-LINKS: REQ-SDS-021
@@ -733,6 +758,7 @@ func colorOf(c wsview.Col) uint16 {
 		return colBG
 	case wsview.Cursor:
 		return colCursor
+	case wsview.Text:
 	}
 	return colInfo
 }

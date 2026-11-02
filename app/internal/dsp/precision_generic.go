@@ -1,6 +1,7 @@
 //go:build !arm
 
 // ENGMODEL-OWNER-UNIT: FU-APP-DSP
+
 package dsp
 
 import "unsafe"
@@ -21,8 +22,8 @@ func precisionWindow(window *[63]uint16) int64 {
 
 // TRLC-LINKS: REQ-SDS-037
 func precisionBlock(src, dst *uint16, n int) {
-	in := unsafe.Slice(src, n+62)
-	out := unsafe.Slice(dst, n)
+	in := unsafe.Slice(src, n+62) //nolint:gosec // the block ABI the NEON twin shares: n outputs from n+62 samples
+	out := unsafe.Slice(dst, n)   //nolint:gosec // as above
 	for k := range out {
 		v := (precisionWindow((*[63]uint16)(in[k:k+63])) + (1 << 21)) >> 22
 		out[k] = uint16(min(max(v, 0), 65535))

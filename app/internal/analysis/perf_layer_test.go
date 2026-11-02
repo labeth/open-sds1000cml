@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ANALYSIS
+
 package analysis
 
 import "testing"
@@ -6,6 +7,7 @@ import "testing"
 // layerBench applies every curated and random vector of the bus group.
 // TRLC-LINKS: REQ-SDS-241
 func layerBench(b *testing.B, group string) {
+	b.Helper()
 	var vs []layerVec
 	for _, v := range append(layerCurated(), layerRandom(1)...) {
 		g := busOf(v.Proto)

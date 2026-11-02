@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-LCD
+
 package lcd
 
 // The 5×7 bitmap font (spec 07 §10.0, normative glyph table copied
@@ -74,7 +75,7 @@ func TextWidth(s string, scale int) int {
 // TRLC-LINKS: REQ-SDS-021
 func DrawText(sf Surface, x, y int, s string, c uint16, scale int) {
 	m, mem := sf.(*MemSurface)
-	lo, hi := byte(c), byte(c>>8)
+	lo, hi := byte(c&0xff), byte(c>>8)
 	for _, r := range s {
 		var g [5]byte
 		ok := false
@@ -83,52 +84,72 @@ func DrawText(sf Surface, x, y int, s string, c uint16, scale int) {
 		} else {
 			g, ok = glyphs[r]
 		}
-		if ok {
-			if mem && scale == 1 && x >= 0 && y >= 0 && x+5 <= W && y+8 <= H {
-				// Most of the HUD: one pixel a set bit, a column at a time.
-				px := m.px()
-				for col := range 5 {
-					o := y*W + x + col
-					for bits := g[col]; bits != 0; bits >>= 1 {
-						if bits&1 != 0 {
-							px[o] = c
-						}
-						o += W
-					}
-				}
-			} else if mem && x >= 0 && y >= 0 && x+5*scale <= W && y+8*scale <= H {
-				// The glyph's box is on the screen: its pixels written
-				// directly, as SetPixel would write them.
-				for col := range 5 {
-					bits := g[col]
-					for row := range 8 {
-						if bits&(1<<uint(row)) == 0 {
-							continue
-						}
-						for dy := range scale {
-							o := ((y+row*scale+dy)*W + x + col*scale) * 2
-							for dx := range scale {
-								m.Pix[o+2*dx], m.Pix[o+2*dx+1] = lo, hi
-							}
-						}
-					}
-				}
-			} else {
-				for col := range 5 {
-					bits := g[col]
-					for row := range 8 { // row 7: descenders (g j p q y)
-						if bits&(1<<uint(row)) != 0 {
-							for dy := range scale {
-								for dx := range scale {
-									sf.SetPixel(x+col*scale+dx, y+row*scale+dy, c)
-								}
-							}
-						}
-					}
+		switch {
+		case !ok:
+		case mem && scale == 1 && x >= 0 && y >= 0 && x+5 <= W && y+8 <= H:
+			// Most of the HUD: one pixel a set bit, a column at a time.
+			glyphPx(m.px(), y*W+x, &g, c)
+		case mem && x >= 0 && y >= 0 && x+5*scale <= W && y+8*scale <= H:
+			// The glyph's box is on the screen: its pixels written
+			// directly, as SetPixel would write them.
+			glyphPix(m.Pix, x, y, &g, scale, lo, hi)
+		default:
+			glyphAt(sf, x, y, &g, scale, c)
+		}
+		x += 6 * scale
+	}
+}
+
+// glyphPx writes a glyph at scale 1 into the page's words from offset o (its
+// top-left pixel): one pixel a set bit, a column at a time.
+// TRLC-LINKS: REQ-SDS-021
+func glyphPx(px []uint16, o int, g *[5]byte, c uint16) {
+	for col := range 5 {
+		p := o + col
+		for bits := g[col]; bits != 0; bits >>= 1 {
+			if bits&1 != 0 {
+				px[p] = c
+			}
+			p += W
+		}
+	}
+}
+
+// glyphPix writes a scaled glyph whose box is on the page straight into its
+// bytes (lo, hi: the colour's two), as SetPixel would write them.
+// TRLC-LINKS: REQ-SDS-021
+func glyphPix(pix []byte, x, y int, g *[5]byte, scale int, lo, hi byte) {
+	for col := range 5 {
+		bits := g[col]
+		for row := range 8 {
+			if bits&(1<<uint(row)) == 0 {
+				continue
+			}
+			for dy := range scale {
+				o := ((y+row*scale+dy)*W + x + col*scale) * 2
+				for dx := range scale {
+					pix[o+2*dx], pix[o+2*dx+1] = lo, hi
 				}
 			}
 		}
-		x += 6 * scale
+	}
+}
+
+// glyphAt draws a glyph pixel by pixel through the surface, clipped by it.
+// TRLC-LINKS: REQ-SDS-021
+func glyphAt(sf Surface, x, y int, g *[5]byte, scale int, c uint16) {
+	for col := range 5 {
+		bits := g[col]
+		for row := range 8 { // row 7: descenders (g j p q y)
+			if bits&(1<<uint(row)) == 0 {
+				continue
+			}
+			for dy := range scale {
+				for dx := range scale {
+					sf.SetPixel(x+col*scale+dx, y+row*scale+dy, c)
+				}
+			}
+		}
 	}
 }
 

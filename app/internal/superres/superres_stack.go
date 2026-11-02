@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-SUPERRES
+
 package superres
 
 import (
@@ -59,7 +60,7 @@ func (st *Stack) SeedRefGate(sig1, sig2 []uint8, edgeX float64, gateLo, gateHi i
 		return false
 	}
 	lo, hi := 255, 0
-	for i := 0; i < st.N; i++ {
+	for i := range st.N {
 		v := int(alignSig[i])
 		if v < lo {
 			lo = v
@@ -78,7 +79,7 @@ func (st *Stack) SeedRefGate(sig1, sig2 []uint8, edgeX float64, gateLo, gateHi i
 			continue
 		}
 		ref := make([]float32, st.N)
-		for i := 0; i < st.N; i++ {
+		for i := range st.N {
 			ref[i] = float32(s[i])
 		}
 		st.C[ch].ref = ref
@@ -89,29 +90,33 @@ func (st *Stack) SeedRefGate(sig1, sig2 []uint8, edgeX float64, gateLo, gateHi i
 		// user picked this region — do not narrow it. A wide gate stays cheap
 		// because Feed bounds the per-frame search; a repetitive wide gate still
 		// multi-hits (it matches at every period offset).
-		gLo, gHi = gateLo, gateHi
-		if gLo < 0 {
-			gLo = 0
-		}
-		if gHi > st.N {
-			gHi = st.N
-		}
+		gLo, gHi = max(gateLo, 0), min(gateHi, st.N)
 	} else {
-		// AUTO default: the active region, narrowed to ONE period when clearly
-		// periodic — a fast, sensible default (multi-hit, cheap search).
-		active := buildTemplate(st.C[st.Align].ref, st.N, st.RefEdgeX, st.N)
-		if active == nil {
+		var ok bool
+		if gLo, gHi, ok = st.autoGate(); !ok {
 			return false
-		}
-		gLo, gHi = active.lo, active.hi+1
-		if period := detectPeriod(st.C[st.Align].ref, gLo, gHi); period >= 16 && period < gHi-gLo {
-			gHi = gLo + period
 		}
 	}
 	if gHi-gLo < 4 {
 		return false
 	}
 	return st.gateInstall(gLo, gHi)
+}
+
+// autoGate is the default gate on the locked reference: the active region,
+// narrowed to ONE period when clearly periodic — a fast, sensible default
+// (multi-hit, cheap search). ok false when the reference has no feature.
+// TRLC-LINKS: REQ-SDS-141
+func (st *Stack) autoGate() (gLo, gHi int, ok bool) {
+	active := buildTemplate(st.C[st.Align].ref, st.N, st.RefEdgeX, st.N)
+	if active == nil {
+		return 0, 0, false
+	}
+	gLo, gHi = active.lo, active.hi+1
+	if period := detectPeriod(st.C[st.Align].ref, gLo, gHi); period >= 16 && period < gHi-gLo {
+		gHi = gLo + period
+	}
+	return gLo, gHi, true
 }
 
 // ResetKeepRef clears the accumulation and re-stacks the locked reference at
@@ -143,10 +148,7 @@ func (st *Stack) ResetKeepRef() {
 // TRLC-LINKS: REQ-SDS-141
 func gainOffset(ref []float32, sig []uint8, lag, wLo, wHi int) (g, b float64) {
 	lo := max(-lag, wLo)
-	hi := min(len(ref), wHi)
-	if len(sig)-lag < hi {
-		hi = len(sig) - lag
-	}
+	hi := min(len(ref), wHi, len(sig)-lag)
 	n := hi - lo
 	if n < 16 {
 		return 1, 0
@@ -232,7 +234,7 @@ func (st *Stack) Feed(sig1, sig2 []uint8, edgeX float64) string {
 			f := make([]float32, st.N)
 			g, b := gainOffset(st.C[ch].ref, s, lag, st.GateLo, st.GateHi)
 			if g != 1 || b != 0 {
-				for i := 0; i < st.N; i++ {
+				for i := range st.N {
 					v := (float64(s[i]) - b) / g
 					if v < 0 {
 						v = 0
@@ -240,7 +242,7 @@ func (st *Stack) Feed(sig1, sig2 []uint8, edgeX float64) string {
 					f[i] = float32(v)
 				}
 			} else {
-				for i := 0; i < st.N; i++ {
+				for i := range st.N {
 					f[i] = float32(s[i])
 				}
 			}

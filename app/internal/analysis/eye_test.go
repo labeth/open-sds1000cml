@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ANALYSIS
+
 package analysis
 
 import (
@@ -145,7 +146,7 @@ func TestEyeFiguresClean(t *testing.T) {
 	}
 	mid := int(math.Round((EyeCodeHi - 130) / ((EyeCodeHi - EyeCodeLo) / 170)))
 	best, bestV := 0, uint32(0)
-	for c := 0; c < r.Cols/2; c++ {
+	for c := range r.Cols / 2 {
 		if v := r.Grid[mid*r.Cols+c]; v > bestV {
 			best, bestV = c, v
 		}
@@ -456,7 +457,7 @@ func TestEyeGridHalving(t *testing.T) {
 	e.bound = eyeMaxCount + 1 // as after hours of captures
 	e.Feed(rec, eyeSampleS, 0)
 	after := e.Result().GridMax
-	if !(after < 2*before) || after == 0 {
+	if after >= 2*before || after == 0 {
 		t.Errorf("grid max %d -> %d: not halved", before, after)
 	}
 }

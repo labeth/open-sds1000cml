@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ANALYSIS
+
 package analysis
 
 import (
@@ -145,7 +146,7 @@ func ejVectors() []ejVector {
 		for i := range clock {
 			clock[i] = i & 1
 		}
-		dcd := func(r, k int) float64 { // falling edges 4 samples late
+		dcd := func(_, k int) float64 { // falling edges 4 samples late
 			if k%2 == 0 {
 				return 4
 			}
@@ -202,7 +203,7 @@ func ejVectors() []ejVector {
 var (
 	ejWebOnce sync.Once
 	ejWebOut  []ejWebResult
-	ejWebErr  error
+	errEJWeb  error
 	ejVecs    []ejVector
 )
 
@@ -214,32 +215,27 @@ func ejWeb(t *testing.T) ([]ejVector, []ejWebResult) {
 	ejWebOnce.Do(func() {
 		ejVecs = ejVectors()
 		node, _ := exec.LookPath("node")
-		dir, err := os.MkdirTemp("", "ejparity")
-		if err != nil {
-			ejWebErr = err
-			return
-		}
-		defer os.RemoveAll(dir)
+		dir := t.TempDir()
 		blob, err := json.Marshal(ejVecs)
 		if err != nil {
-			ejWebErr = err
+			errEJWeb = err
 			return
 		}
 		vf := filepath.Join(dir, "vectors.json")
-		if ejWebErr = os.WriteFile(vf, blob, 0o644); ejWebErr != nil {
+		if errEJWeb = os.WriteFile(vf, blob, 0o644); errEJWeb != nil {
 			return
 		}
-		cmd := exec.Command(node, filepath.Join("testdata", "ejparity.cjs"), vf, filepath.Join("..", "web"))
+		cmd := exec.CommandContext(t.Context(), node, filepath.Join("testdata", "ejparity.cjs"), vf, filepath.Join("..", "web"))
 		cmd.Stderr = os.Stderr
 		out, err := cmd.Output()
 		if err != nil {
-			ejWebErr = err
+			errEJWeb = err
 			return
 		}
-		ejWebErr = json.Unmarshal(out, &ejWebOut)
+		errEJWeb = json.Unmarshal(out, &ejWebOut)
 	})
-	if ejWebErr != nil {
-		t.Fatalf("eyejitter.js run: %v", ejWebErr)
+	if errEJWeb != nil {
+		t.Fatalf("eyejitter.js run: %v", errEJWeb)
 	}
 	if len(ejWebOut) != len(ejVecs) {
 		t.Fatalf("eyejitter.js answered %d of %d vectors", len(ejWebOut), len(ejVecs))

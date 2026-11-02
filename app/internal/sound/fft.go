@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-SOUND
+
 package sound
 
 import (
@@ -20,8 +21,9 @@ var twiddles sync.Map // n -> *[2][]float64 (cos, sin of -2*pi*k/n, k < n/2)
 // TRLC-LINKS: REQ-SDS-267, REQ-SDS-270
 func twiddle(n int) ([]float64, []float64) {
 	if t, ok := twiddles.Load(n); ok {
-		p := t.(*[2][]float64)
-		return p[0], p[1]
+		if p, ok := t.(*[2][]float64); ok {
+			return p[0], p[1]
+		}
 	}
 	c, s := make([]float64, n/2), make([]float64, n/2)
 	for k := range c {
@@ -60,7 +62,9 @@ func hannTable(n int) []float64 {
 		return w
 	}
 	if t, ok := hannTables.Load(n); ok {
-		return t.([]float64)
+		if w, ok := t.([]float64); ok {
+			return w
+		}
 	}
 	w := make([]float64, n)
 	for i := range w {
@@ -98,7 +102,7 @@ func putScratch(b []float64) {
 // fft transforms re, im in place (len a power of two); inverse runs the
 // inverse transform without the 1/n scale.
 // TRLC-LINKS: REQ-SDS-267, REQ-SDS-270
-func fft(re, im []float64, inverse bool) {
+func fft(re, im []float64, inverse bool) { //nolint:dupl // perf_bench_test.go keeps the first version as the oracle it must equal
 	n := len(re)
 	if n < 2 {
 		return

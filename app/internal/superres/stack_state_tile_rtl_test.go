@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-SUPERRES
+
 package superres
 
 import (
@@ -18,12 +19,12 @@ func TestStackStateTileRTL(t *testing.T) {
 	var input strings.Builder
 	expected := []string{}
 	var memory [64]string
-	clear := func() {
+	clearState := func() {
 		for i := range memory {
 			memory[i] = "0 0 0 0 0"
 		}
 	}
-	clear()
+	clearState()
 	emit := func(write bool, bin uint32, ch, abort int) {
 		w := 0
 		if write {
@@ -33,13 +34,14 @@ func TestStackStateTileRTL(t *testing.T) {
 		data := fmt.Sprintf("%s %s %d %s %d", random(69), random(106), rng.Uint32(), random(69), rng.Uint32())
 		fmt.Fprintf(&input, "%d %d %d %s %d %d\n", w, bin, ch, data, len(expected)%8, abort)
 		out := "T 0 0 0 0 0 0"
-		if abort != 0 {
-			clear()
-		} else if bin >= 32 {
+		switch {
+		case abort != 0:
+			clearState()
+		case bin >= 32:
 			out = "T 1 0 0 0 0 0"
-		} else if write {
+		case write:
 			memory[int(bin)*2+ch] = data
-		} else {
+		default:
 			out = "T 0 " + memory[int(bin)*2+ch]
 		}
 		expected = append(expected, out)
@@ -72,7 +74,7 @@ func TestStackStateTileRTL(t *testing.T) {
 		t.Fatal(err)
 	}
 	image := compileStackRTL(t, dir, "tb_stack_state_tile", "stack_state_tile.v", "sim/tb_stack_state_tile.v")
-	out, err := exec.Command("vvp", image, "+input="+p).CombinedOutput()
+	out, err := exec.CommandContext(t.Context(), "vvp", image, "+input="+p).CombinedOutput()
 	if err != nil {
 		t.Fatalf("simulation %v\n%s", err, out)
 	}

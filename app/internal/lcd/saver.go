@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-LCD
+
 package lcd
 
 import (
@@ -76,5 +77,5 @@ func SetBacklight(on bool) error {
 	if on {
 		v = []byte("1")
 	}
-	return os.WriteFile("/sys/class/gpio/gpio7/value", v, 0o644)
+	return os.WriteFile("/sys/class/gpio/gpio7/value", v, 0o600)
 }

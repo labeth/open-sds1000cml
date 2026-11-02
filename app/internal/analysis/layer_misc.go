@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-ANALYSIS
+
 package analysis
 
 import (
@@ -219,7 +220,7 @@ func ds28ea00Fn(fn []byte) (string, bool) {
 		if len(d) < 2 {
 			return name, false
 		}
-		t := int(int16(uint16(d[1])<<8 | uint16(d[0])))
+		t := signed16(uint16(d[1])<<8 | uint16(d[0]))
 		s := name + " " + fixed(int64(t), 16, 4) + " C"
 		if len(d) >= 9 {
 			if crc8Maxim(d[:8]) != int(d[8]) {

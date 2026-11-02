@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-SUPERRES
+
 package superres
 
 import (
@@ -30,7 +31,7 @@ func (q *edgeQualifier) accept(wave [][2]uint8, ch int, crossing, n int64) bool 
 		return false
 	}
 	idx, sad := crossing-q.pre, int64(0)
-	for k := int64(0); k < q.count; k++ {
+	for k := range q.count {
 		if idx > n-2 {
 			return false
 		}
@@ -69,7 +70,7 @@ func edgeScan(wave [][2]uint8, first, n, pre, separation int64, ch int, falling 
 	for i := first; i <= n-2; i++ {
 		a, b := code(i), code(i+1)
 		armed = armed || a <= low
-		if !(armed && a < threshold && b >= threshold) {
+		if !armed || a >= threshold || b < threshold {
 			continue
 		}
 		armed = false
@@ -200,11 +201,11 @@ func TestStackEdgeAccumulatorRTL(t *testing.T) {
 		line := "q 0 0 1 0 0\n"
 		if qual != nil {
 			line = fmt.Sprintf("t %d", len(qual.template))
-			var lineSb203 strings.Builder
+			var sb strings.Builder
 			for _, v := range qual.template {
-				lineSb203.WriteString(fmt.Sprintf(" %d", v))
+				fmt.Fprintf(&sb, " %d", v)
 			}
-			line += lineSb203.String()
+			line += sb.String()
 			line += fmt.Sprintf("\nq 1 %d %d %d %d\n", qual.count, qual.stride, qual.pre, qual.threshold)
 		}
 		line += fmt.Sprintf("s %d %d %d %d %d %d %d %d %d %d %d %d %d\n", first, n, pre, separation, ch, f, level, hysteresis, bins, firstBin, factor, initial, mask)
@@ -301,7 +302,9 @@ func TestStackEdgeAccumulatorRTL(t *testing.T) {
 			switch {
 			case strings.HasPrefix(line, "D "):
 				var hits, crossings, invalid, rejected int
-				fmt.Sscanf(line, "D %d %d %d %d", &hits, &crossings, &invalid, &rejected)
+				if _, err := fmt.Sscanf(line, "D %d %d %d %d", &hits, &crossings, &invalid, &rejected); err != nil {
+					t.Fatalf("%s run %d: %q: %v", bench, done, line, err)
+				}
 				if done >= len(runs) || invalid != 0 || hits != runs[done].hits || crossings != runs[done].crossings || rejected != runs[done].rejected {
 					t.Fatalf("%s run %d: got %q, want hits %+v", bench, done, line, runs)
 				}
@@ -333,7 +336,9 @@ func TestStackEdgeAccumulatorRTL(t *testing.T) {
 			case strings.HasPrefix(line, "P "):
 				var data uint32
 				var invalid int
-				fmt.Sscanf(line, "P %x %d", &data, &invalid)
+				if _, err := fmt.Sscanf(line, "P %x %d", &data, &invalid); err != nil {
+					t.Fatalf("%s peek %d: %q: %v", bench, peeked, line, err)
+				}
 				p := peeks[peeked]
 				want := uint32(wave[p][0]) | uint32(wave[p][1])<<8 | uint32(wave[p+1][0])<<16 | uint32(wave[p+1][1])<<24
 				if invalid != 0 || data != want {
@@ -347,13 +352,13 @@ func TestStackEdgeAccumulatorRTL(t *testing.T) {
 		}
 	}
 	image := compileStackRTL(t, dir, "tb_stack_edge_accumulator", append(engine, "sim/tb_stack_edge_accumulator.v")...)
-	out, err := exec.Command("vvp", image, "+wave="+wavePath, "+input="+inputPath).CombinedOutput()
+	out, err := exec.CommandContext(t.Context(), "vvp", image, "+wave="+wavePath, "+input="+inputPath).CombinedOutput()
 	if err != nil {
 		t.Fatalf("simulation %v\n%s", err, out)
 	}
 	check("engine", out, len(runs), len(expected))
 	image = compileStackRTL(t, dir, "tb_stack_engine_port", append(append(engine, cache...), "sim/tb_stack_engine_port.v")...)
-	out, err = exec.Command("vvp", image, "+wave="+wavePath, "+input="+portPath, fmt.Sprintf("+samples=%d", n)).CombinedOutput()
+	out, err = exec.CommandContext(t.Context(), "vvp", image, "+wave="+wavePath, "+input="+portPath, fmt.Sprintf("+samples=%d", n)).CombinedOutput()
 	if err != nil {
 		t.Fatalf("port simulation %v\n%s", err, out)
 	}

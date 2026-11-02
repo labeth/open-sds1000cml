@@ -1,4 +1,5 @@
 // ENGMODEL-OWNER-UNIT: FU-APP-MEASURE
+
 package measure
 
 import (
@@ -25,11 +26,11 @@ func TestMeasureFuzzFinite(t *testing.T) {
 		{},       // empty
 		{128},    // one sample
 		{0, 255}, // two rails
-		mk(4096, func(i int) uint8 { return 128 }),                  // flat
-		mk(4096, func(i int) uint8 { return 0 }),                    // rail low
-		mk(4096, func(i int) uint8 { return 255 }),                  // rail high
+		mk(4096, func(_ int) uint8 { return 128 }),                  // flat
+		mk(4096, func(_ int) uint8 { return 0 }),                    // rail low
+		mk(4096, func(_ int) uint8 { return 255 }),                  // rail high
 		mk(4096, func(i int) uint8 { return uint8(i % 2 * 255) }),   // nyquist toggle
-		mk(4096, func(i int) uint8 { return uint8(rng.Intn(256)) }), // noise
+		mk(4096, func(_ int) uint8 { return uint8(rng.Intn(256)) }), // noise
 		mk(3, func(i int) uint8 { return uint8(i * 100) }),          // tiny ramp
 		mk(4096, func(i int) uint8 { // single glitch on flat
 			if i == 2000 {
